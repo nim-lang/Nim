@@ -74,7 +74,7 @@ proc `$`*(oid: Oid): string =
 
 
 let
-  t = getTime().toUnix.int32
+  t = cast[int32](getTime().toUnix)
 
 var
   seed = initRand(t)
@@ -84,7 +84,7 @@ let fuzz = cast[int32](seed.rand(high(int)))
 
 
 template genOid(result: var Oid, incr: var int, fuzz: int32) =
-  var time = getTime().toUnix.int32
+  var time = cast[int32](getTime().toUnix)
   var i = cast[int32](atomicInc(incr))
 
   bigEndian32(addr result.time, addr(time))
