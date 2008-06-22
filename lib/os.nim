@@ -294,6 +294,10 @@ proc existsDir*(dir: string): bool
 proc getLastModificationTime*(file: string): TTime
   ## Gets the time of the `file`'s last modification.
 
+proc fileNewer*(a, b: string): bool 
+  ## returns true if the file `a` is newer than file `b`, i.e. if `a`'s
+  ## modification time is later than `b`'s.
+
 # procs dealing with environment variables:
 proc putEnv*(key, val: string)
   ## Sets the value of the environment variable named `key` to `val`.
@@ -935,5 +939,8 @@ else:
     raise newException(EInvalidIndex, "invalid index")
 
   proc paramCount(): int = return cmdCount-1
+
+proc fileNewer(a, b: string): bool =
+  result = getLastModificationTime(a) - getLastModificationTime(b) > 0
 
 {.pop.}

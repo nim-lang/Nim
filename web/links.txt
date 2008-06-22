@@ -1,1 +1,1 @@
-Currently there are no links to other Nimrod-related sites.
+Visit our project page at Launchpad: https://launchpad.net/nimrod.

@@ -1,5 +1,26 @@
-Note: Installation does not work yet - you have to bootstrap. Play with the
-``koch.py`` script to compile the compiler. 
+Installation
+============
+
+Installation on Windows - the easy way
+--------------------------------------
+
+Install Nimrod by downloading the appropriate .zip file and extracting it to a
+directory of your choice. The Nimrod Compiler will stay in this directory; 
+do not use a temporary one! You should add the ``bin`` directory of Nimrod to 
+your ``$PATH`` environment variable.
+
+
+
+Installation on UNIX
+--------------------
+
+Note:
+  A C compiler is required - knowledge of C is not!
+
+**Note: Installation under UNIX does not work yet** - you have to bootstrap. 
+Play with the ``koch.py`` script to compile the compiler. Under Windows the
+``nim.exe`` is provided, so you don't need to do anything. Under UNIX you need
+to install the `FreePascal <www.freepascal.org>`_ compiler. 
 Compile the compiler:: 
 
   python koch.py nim
@@ -7,16 +28,6 @@ Compile the compiler::
 To bootstrap (does not work yet)::
 
   python koch.py boot
-
-
-Installation
-============
-
-Note:
-  A C compiler is required - knowledge of C is not!
-
-Installation on UNIX
---------------------
 
 The GNU C Compiler is fully supported, other compilers may work. The C compiler
 should be in your ``$PATH`` (most likely the case). Note that some Linux
@@ -49,36 +60,29 @@ need to install Apple's developer's tools for the GNU Compiler Collection
 though.
 
 
-Installation on Windows
------------------------
+Installation on Windows - the hard way
+--------------------------------------
 
 Windows does not ship with a C compiler; you have to install one. The
 following C compilers are supported under Windows:
 
 - | Digital Mars C++
   | http://www.digitalmars.com/download/freecompiler.html
-
 - | Watcom C++
   | http://www.openwatcom.org/ftp/
-
 - | Borland C++ (5.5 or above; including Borland C++Builder)
   | http://www.borland.com/downloads/download_cbuilder.html
   | (Download the package under "compiler" - this requires registration though.)
-
 - | Microsoft's Visual C++
   | http://msdn.microsoft.com/visualc
   | (You may need the SDK too - but not the full one: Essential are only
     the win32api header files and import libraries.)
-
 - | Gnu C Compiler (the mingw version; the cygwin version has not been tested!)
   | http://www.mingw.org/download.shtml
-
 - | LLVM with GNU C/C++ frontend
   | http://llvm.org/releases/download.html#2.2
-
 - | Pelles C Compiler
   | http://www.smorgasbordet.com/pellesc
-
 - | Lcc-win32
   | http://www.cs.virginia.edu/~lcc-win32
 
@@ -91,8 +95,8 @@ LLVM.
 After you have made sure that a C compiler is available, install
 Nimrod by downloading the appropriate .zip file and extracting it to a
 directory of your choice. The Nimrod Compiler will stay in this
-directory; do not use a temporary one! Then run ``config.exe`` in the
-``bin`` subdirectory. Choose your C compiler and press ``OK``. You should
+directory; do not use a temporary one! Then adapt the ``config/nimrod.cfg`` 
+file appropriately. Choose your C compiler and press ``OK``. You should
 add Nimrod to your ``$PATH``.
 
 Alternatively, you can install Nimrod with the ``koch.py`` script just like

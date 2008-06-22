@@ -18,8 +18,8 @@ uses
   nimconf, msgs; // some things are read in from the configuration file
 
 type
-  TSystemCC = (ccNone, ccGcc, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc,
-               ccUcc, ccIcc, ccGpp);
+  TSystemCC = (ccNone, ccGcc, ccLLVM_Gcc, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, 
+               ccTcc, ccPcc, ccUcc, ccIcc, ccGpp);
 
   TInfoCCProp = ( // properties of the C compiler:
     hasSwitchRange,  // CC allows ranges in switch statements (GNU C extension)
@@ -54,6 +54,21 @@ const
       buildGui: ' -mwindows';
       buildDll: ' -mdll';
       link: 'gcc $options $buildgui $builddll -o $exefile $objfiles';
+      includeCmd: ' -I';
+      debug: '';
+      pic: '-fPIC';
+      asmStmtFrmt: 'asm($1);$n';
+      props: {@set}[hasSwitchRange, hasComputedGoto, hasCpp];
+    ),
+    (
+      name: 'llvm_gcc';
+      objExt: 'o'+'';
+      optSpeed: ' -O3 -ffast-math ';
+      optSize: ' -Os -ffast-math ';
+      compile: 'llvm-gcc -c $options $include -o $objfile $file';
+      buildGui: ' -mwindows';
+      buildDll: ' -mdll';
+      link: 'llvm-gcc $options $buildgui $builddll -o $exefile $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '-fPIC';

@@ -4,7 +4,8 @@
 Here you can download the latest version of the Nimrod Compiler.
 Please choose your platform:
 
-* binary and source for Windows (95, 98, XP): `<download/nimrod_win_0.7.0.exe>`_
-* source for Unix (including MacOS X): `<download/nimrod_unix_0.7.0.zip>`_
+* source for Unix (including MacOS X): `<download/nimrod_unix_0.5.1.zip>`_
+* binary and source for Windows (95, 98, XP): `<download/nimrod_windows_0.5.1.zip>`_
+  (includes LLVM and everything else you need)
 
 .. include:: ../install.txt

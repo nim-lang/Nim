@@ -703,9 +703,8 @@ begin
   if optCFileCache in gGlobalOptions then begin
     objFile := toObjFile(cfilenoext);
     if writeRopeIfNotEqual(code, cfile) then exit;
-    if ExistsFile(objFile) then result := false
-//    and ropeEqualsFile(code, cfile)
-//    and FileNewer(objFile, cfile) then
+    if ExistsFile(objFile) and nos.FileNewer(objFile, cfile) then
+      result := false
   end
   else
     writeRope(code, cfile);

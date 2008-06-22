@@ -6,12 +6,12 @@ This is the **Nimrod Compiler**. Nimrod is a new statically typed, imperative
 programming language, that supports procedural, functional, object oriented and 
 generic programming styles while remaining simple and efficient. A special 
 feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
-(AST) is part ofthe specification - this allows a powerful macro system which 
+(AST) is part of the specification - this allows a powerful macro system which 
 can be used to create domain specific languages.
 
 *Nimrod* is a compiled, garbage-collected systems programming language 
 which has an excellent productivity/performance ratio. Nimrod's design 
-focusses on the 3E: efficiency, expressiveness, elegance (in the order of 
+focuses on the 3E: efficiency, expressiveness, elegance (in the order of 
 priority). 
 
 See the file ``install.txt`` for installation instructions. See the file
