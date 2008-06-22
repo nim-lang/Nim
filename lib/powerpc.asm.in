@@ -1,0 +1,35 @@
+; This contains the CPU-dependant variants of some routines.
+; (C) 2005 Andreas Rumpf
+; This code was inspired by the Freepascal compiler's sources
+; All routines here have the _cdecl calling convention because
+; that is the only convention any C compiler supports.
+
+\python{
+def c(name): 
+  if os.name == 'posix':
+    return name
+  else:
+    return "_" + name
+}
+
+segment code
+
+global \c{cpu_inc_locked}
+global \c{cpu_dec_locked}
+
+\c{cpu_dec_locked}: 
+; input:  address of arg in r3 
+  .LDecLockedLoop:
+    lwarx   r10,0,r3
+    subi    r10,r10,1
+    stwcx.  r10,0,r3
+    bne-    .LDecLockedLoop
+    cntlzw  r3,r10
+    srwi    r3,r3,5
+     
+\c{cpu_inc_locked}:
+  .LIncLockedLoop:
+    lwarx   r10,0,r3
+    addi    r10,r10,1
+    stwcx.  r10,0,r3
+    bne-    .LIncLockedLoop

@@ -1,0 +1,43 @@
+Advanced commands::
+  pas                       convert a Pascal file to Nimrod standard syntax
+  pretty                    pretty print the inputfile
+  gen_depend                generate a DOT file containing the
+                            module dependency graph
+  list_def                  list all defined conditionals and exit
+  rst2html                  converts a reStructuredText file to HTML
+  check                     checks the project for syntax and semantic
+  parse                     parses a single file (for debugging Nimrod)
+  scan                      tokenizes a single file (for debugging Nimrod)
+  debugtrans                for debugging the transformation pass
+Advanced options:
+  -w, --warnings:on|off     warnings ON|OFF
+  --warning[X]:on|off       specific warning X ON|OFF
+  --hints:on|off            hints ON|OFF
+  --hint[X]:on|off          specific hint X ON|OFF
+  --cc:C_COMPILER           set the C/C++ compiler to use
+  --lib:PATH                set the system library path
+  -c, --compile_only        compile only; do not assemble or link
+  --no_linking              compile but do not link
+  --gen_script              generate a compile script (in the 'rod_gen'
+                            subdirectory named 'compile_$project$scriptext')
+  --os:SYMBOL               set the target operating system (cross-compilation)
+  --cpu:SYMBOL              set the target processor (cross-compilation)
+  --debuginfo               enables debug information
+  -t, --passc:OPTION        pass an option to the C compiler
+  -l, --passl:OPTION        pass an option to the linker
+  --gen_mapping             generate a mapping file containing
+                            (Nimrod, mangled) identifier pairs
+  --merge_output            generate only one C output file
+  --line_dir:on|off         generation of #line directive ON|OFF
+  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod
+  --skip_cfg                do not read the general configuration file
+  --skip_proj_cfg           do not read the project's configuration file
+  --import:MODULE_FILE      import the given module implicitly for each module
+  --maxerr:NUMBER           stop compilation after NUMBER errors; broken!
+  --ast_cache:on|off        caching of ASTs ON|OFF (default: OFF)
+  --c_file_cache:on|off     caching of generated C files ON|OFF (default: OFF)
+  --index:FILE              use FILE to generate a documenation index file
+  --putenv:key=value        set an environment variable
+  --list_cmd                list the commands used to execute external programs
+  -v, --verbose             show what Nimrod is doing
+  --version                 show detailed version information

@@ -1,0 +1,258 @@
+#
+#
+#           The Nimrod Compiler
+#        (c) Copyright 2008 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+{
+'SymFlag': [          # already 32 flags!
+  'sfGeneric',        # whether an operator, proc or type is generic
+  'sfForward',        # symbol is forward directed
+  'sfImportc',        # symbol is external; imported
+  'sfExportc',        # symbol is exported (under a specified name)
+  'sfVolatile',       # variable is volatile
+  'sfUsed',           # read access of sym (for warnings) or simply used
+  'sfWrite',          # write access of variable (for hints)
+  'sfRegister',       # variable should be placed in a register
+  'sfPure',           # object is "pure" that means it has no type-information
+  'sfCodeGenerated',  # wether we have already code generated for the proc
+  'sfPrivate',        # symbol should be made private after module compilation
+  'sfGlobal',         # symbol is at global scope
+  'sfResult',         # variable is 'result' in proc
+  'sfNoSideEffect',   # proc has no side effects
+  'sfMainModule',     # module is the main module
+  'sfSystemModule',   # module is the system module
+  'sfNoReturn',       # proc never returns (an exit proc)
+  'sfReturnsNew',     # proc returns new allocated thing (allows optimizations)
+  'sfInInterface',    # symbol is in interface section declared
+  'sfNoStatic',       # symbol is used within an iterator (needed for codegen)
+                      # so it cannot be 'static' in the C code
+                      # this is called 'nostatic' in the pragma section
+  'sfCompilerProc',   # proc is a compiler proc, that is a C proc that is
+                      # needed for the code generator
+  'sfCppMethod',      # proc is a C++ method
+  'sfDiscriminant',   # field is a discriminant in a record/object
+  'sfDeprecated',     # symbol is deprecated
+  'sfInClosure',      # variable is accessed by a closure
+  'sfIsCopy',         # symbol is a copy; needed for proper name mangling
+  'sfStar',           # symbol has * visibility
+  'sfMinus'           # symbol has - visibility
+],
+
+'TypeFlag': [
+  'tfIsDistinct',     # better use this flag to make it easier for accessing
+                      # typeKind in the code generators
+  'tfGeneric',        # type is a generic one
+  'tfExternal',       # type is external
+  'tfImported',       # type is imported from C
+  'tfInfoGenerated',  # whether we have generated type information for this type
+  'tfSemChecked',     # used to mark types that's semantic has been checked;
+                      # used to prevend endless loops during semantic checking
+  'tfHasOutParams',   # for a proc or iterator p:
+                      # it indicates that p has out or in out parameters: this
+                      # is used to speed up semantic checking a bit
+  'tfEnumHasWholes',  # enum cannot be mapped into a range
+  'tfVarargs',        # procedure has C styled varargs
+  'tfAssignable'      # can the type be assigned to?
+],
+
+'TypeKind': [        # order is important!
+                     # Don't forget to change hti.nim if you make a change here
+   'tyNone', 'tyBool', 'tyChar',
+   'tyEmptySet', 'tyArrayConstr', 'tyNil', 'tyRecordConstr',
+   'tyGeneric',
+   'tyGenericInst', # instantiated generic type
+   'tyGenericParam',
+   'tyEnum', 'tyAnyEnum',
+   'tyArray',
+   'tyRecord',
+   'tyObject',
+   'tyTuple',
+   'tySet',
+   'tyRange',
+   'tyPtr', 'tyRef',
+   'tyVar',
+   'tySequence',
+   'tyProc',
+   'tyPointer', 'tyOpenArray',
+   'tyString', 'tyCString', 'tyForward',
+   # numerical types:
+   'tyInt', 'tyInt8', 'tyInt16', 'tyInt32', 'tyInt64', # signed integers
+   'tyFloat', 'tyFloat32', 'tyFloat64', 'tyFloat128'
+],
+
+'NodeKind': [  # these are pure nodes
+  # order is extremely important, because ranges are used to check whether
+  # a node belongs to a certain class
+  'nkNone',               # unknown node kind: indicates an error
+
+  # Expressions:
+  # Atoms:
+  'nkEmpty',              # the node is empty
+  'nkIdent',              # node is an identifier
+  'nkSym',                # node is a symbol
+  'nkType',               # node is used for its typ field
+
+  'nkCharLit',            # a character literal ''
+  'nkRCharLit',           # a raw character literal r''
+
+  'nkIntLit',             # an integer literal
+  'nkInt8Lit',
+  'nkInt16Lit',
+  'nkInt32Lit',
+  'nkInt64Lit',
+  'nkFloatLit',           # a floating point literal
+  'nkFloat32Lit',
+  'nkFloat64Lit',
+  'nkStrLit',             # a string literal ""
+  'nkRStrLit',            # a raw string literal r""
+  'nkTripleStrLit',       # a triple string literal """
+  'nkNilLit',             # the nil literal
+  # end of atoms
+  'nkDotCall',            # used to temporarily flag a nkCall node; this is used
+                          # for transforming ``s.len`` to ``len(s)``
+  'nkCommand',            # a call like ``p 2 4`` without parenthesis
+  'nkCall',               # a call like p(x, y) or an operation like +(a, b)
+  'nkGenericCall',        # a call with given type parameters
+  'nkExplicitTypeListCall', # a call with given explicit typelist
+  'nkExprEqExpr',         # a named parameter with equals: ''expr = expr''
+  'nkExprColonExpr',      # a named parameter with colon: ''expr: expr''
+  'nkIdentDefs',          # a definition like `a, b: typeDesc = expr`
+                          # either typeDesc or expr may be nil; used in
+                          # formal parameters, var statements, etc.
+  'nkInfix',              # a call like (a + b)
+  'nkPrefix',             # a call like !a
+  'nkPostfix',            # something like a! (also used for visibility)
+  'nkPar',                # syntactic ()
+  'nkCurly',              # syntactic {}
+  'nkBracket',            # syntactic []
+  'nkBracketExpr',        # an expression like a[i..j, k]
+  'nkPragmaExpr',         # an expression like a{.pragmas.}
+  'nkRange',              # an expression like i..j
+  'nkDotExpr',            # a.b
+  'nkCheckedFieldExpr',   # a.b, but b is a field that needs to be checked
+  'nkDerefExpr',          # a^
+  'nkIfExpr',             # if as an expression
+  'nkElifExpr',
+  'nkElseExpr',
+  'nkLambda',             # lambda expression
+  'nkAccQuoted',          # `a` as a node
+  'nkHeaderQuoted',       # `a(x: int)` as a node
+
+  'nkSetConstr',          # a set constructor {}
+  'nkConstSetConstr',     # a set constructor with only constant expressions
+  'nkArrayConstr',        # an array constructor []
+  'nkConstArrayConstr',   # an array constructor with only constant expressions
+  'nkRecordConstr',       # a record constructor []
+  'nkConstRecordConstr',  # a record constructor with only constant expressions
+  'nkTableConstr',        # a table constructor {expr: expr}
+  'nkConstTableConstr',   # a table constructor with only constant expressions
+  'nkQualified',          # describes a.b for qualified identifiers
+  'nkHiddenStdConv',      # an implicit standard type conversion
+  'nkHiddenSubConv',      # an implicit type conversion from a subtype
+                          # to a supertype
+  'nkHiddenCallConv',     # an implicit type conversion via a type converter
+  'nkConv',               # a type conversion
+  'nkCast',               # a type cast
+  'nkAddr',               # a addr expression
+  # end of expressions
+
+  'nkAsgn',               # a = b
+  'nkDefaultTypeParam',   # `ident = typeDesc` in generic parameters
+  'nkGenericParams',      # generic parameters
+  'nkFormalParams',       # formal parameters
+  'nkOfInherit',          # inherited from symbol
+
+  'nkModule',             # the syntax tree of a module
+  'nkProcDef',            # a proc
+  'nkConverterDef',       # a converter
+  'nkMacroDef',           # a macro
+  'nkTemplateDef',        # a template
+  'nkIteratorDef',        # an iterator
+
+  'nkOfBranch',           # used inside case statements for (cond, action)-pairs
+  'nkElifBranch',         # used in if statements
+  'nkExceptBranch',       # an except section
+  'nkElse',               # an else part
+  'nkMacroStmt',          # a macro statement
+  'nkAsmStmt',            # an assembler block
+  'nkPragma',             # a pragma statement
+  'nkIfStmt',             # an if statement
+  'nkWhenStmt',           # a when statement
+  'nkForStmt',            # a for statement
+  'nkWhileStmt',          # a while statement
+  'nkCaseStmt',           # a case statement
+  'nkVarSection',         # a var section
+  'nkConstSection',       # a const section
+  'nkConstDef',           # a const definition
+  'nkTypeSection',        # a type section (consists of type definitions)
+  'nkTypeDef',            # a type definition
+  'nkYieldStmt',          # the yield statement as a tree
+  'nkTryStmt',            # a try statement
+  'nkFinally',            # a finally section
+  'nkRaiseStmt',          # a raise statement
+  'nkReturnStmt',         # a return statement
+  'nkBreakStmt',          # a break statement
+  'nkContinueStmt',       # a continue statement
+  'nkBlockStmt',          # a block statement
+  'nkGotoStmt',           # used by the transformation pass; first son is a sym
+                          # node containing a label
+  'nkDiscardStmt',        # a discard statement
+  'nkStmtList',           # a list of statements
+  'nkImportStmt',         # an import statement
+  'nkFromStmt',           # a from * import statement
+  'nkImportAs',           # an `import xyx as abc` section
+  'nkIncludeStmt',        # an include statement
+  'nkAccessStmt',         # used internally for iterators
+  'nkCommentStmt',        # a comment statement
+  'nkStmtListExpr',       # a statement list followed by an expr; this is used
+                          # to allow powerful multi-line templates
+  'nkBlockExpr',          # a statement block ending in an expr; this is used
+                          # to allowe powerful multi-line templates that open a
+                          # temporary scope
+  'nkVm',                 # indicates a virtual instruction; integer field is
+                          # used for the concrete opcode
+
+  # types as syntactic trees:
+  'nkTypeOfExpr',
+  'nkRecordTy',
+  'nkObjectTy',
+  'nkRecList',            # list of record/object parts
+  'nkRecCase',            # case section of record/object
+  'nkRecWhen',            # when section of record/object
+  'nkRefTy',
+  'nkPtrTy',
+  'nkVarTy',
+  'nkProcTy',
+  'nkEnumTy',
+  'nkEnumFieldDef'        # `ident = expr` in an enumeration
+], 
+
+'SymKind': [
+  # the different symbols (start with the prefix sk);
+  # order is important for the documentation generator!
+  'skUnknownSym',         # unknown symbol: used for parsing assembler blocks
+  'skConditional',        # symbol for the preprocessor (may become obsolete)
+  'skDynLib',             # symbol represents a dynamic library; this is used
+                          # internally; it does not exist in Nimrod code
+  'skParam',              # a parameter
+  'skTypeParam',          # a type parameter; example: proc x[T]() <- `T`
+  'skTemp',               # a temporary variable (introduced by compiler)
+  'skType',               # a type
+  'skConst',              # a constant
+  'skVar',                # a variable
+  'skProc',               # a proc
+  'skIterator',           # an iterator
+  'skConverter',          # a type converter
+  'skMacro',              # a macro
+  'skTemplate',           # a template
+  'skField',              # a field in a record or object
+  'skEnumField',          # an identifier in an enum
+  'skForVar',             # a for loop variable
+  'skModule',             # module identifier
+  'skLabel'               # a label (for block statement)
+]
+}

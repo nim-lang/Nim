@@ -1,0 +1,108 @@
+===========================================
+         Questions and Answers
+===========================================
+
+`How is Nimrod licensed?`:Q:
+
+The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed. 
+This means that you can use any license for your own programs developed with 
+Nimrod. If I receive enough requests with good arguments, I may change the 
+license of Nimrod to the BSD license.
+
+
+`Why is compilation so slow?`:Q:
+
+*Compilation* is fast. The problem is that Nimrod always
+recompiles **everything**. In the next version, only modules that
+have changed will be recompiled.
+
+Another issue may be that the C compiler that is called by Nimrod is slow.
+Especially GCC's compile times are a bad joke. On Linux you may be able to get
+`Tiny C <http://fabrice.bellard.free.fr/tcc/>`_ to work. TCC has excellent
+compile times. You should not use TCC for producing the release version
+though, as it has no optimizer.
+
+Experimental features are the *AST cache* and the *C file cache*. Both
+are not activated. To activate, add to your ``nimrod.cfg`` file the following
+lines::
+
+  --ast_cache:on
+  --c_file_cache:on
+
+
+`Which version of Freepascal is needed to compile Nimrod?`:Q:
+
+Version 2.0.0 or later. Earlier development versions like 1.9.6 may work,
+but 1.0.10 won't. Note that I have never compiled Nimrod with FPC's
+optimizer turned on; it may break things due to bugs in FPC.
+
+
+`How do I build a shared library?`:Q:
+
+This is currently not supported. The GC that makes trouble.
+
+
+`How do I use a different C compiler than the default one?`:Q:
+
+Edit the ``config/nimrod.cfg`` file.
+Change the value of the ``cc`` variable to one of the following:
+
+==============  ============================================
+Abbreviation    C/C++ Compiler
+==============  ============================================
+``dmc``         Digital Mars C++
+``wcc``         Watcom C++
+``bcc``         Borland C++ (including Borland C++Builder)
+``vcc``         Microsoft's Visual C++
+``gcc``         Gnu C
+``pcc``         Pelles C
+``lcc``         Lcc-win32
+``tcc``         Tiny C
+``llvm_gcc``    LLVM-GCC compiler
+``icc``         Intel C++ compiler
+``ucc``         Generic UNIX C compiler
+==============  ============================================
+
+If your C compiler is not in the above list, try using the
+*generic UNIX C compiler* (``ucc``). If the C compiler needs
+different command line arguments you have to edit the ``extccomp``
+module to add support for it and recompile the compiler. Please
+contribute a patch in this case.
+
+
+`Calling the C compiler fails - what's wrong?`:Q:
+
+Many C compilers need special environment variables to work
+properly. Although Nimrod tries hard to set them correctly (see
+``extccomp.pas`` for details), this may fail if you use a
+different version of the C compiler. The solution is to
+ensure that all environment variables are set correctly.
+
+You can set environment variables temporarily by using the
+``@putenv "key" "val"`` directive in the ``config/nimrod.cfg``
+configuration file. There are also ``@append_env`` and
+``@prepend_env`` directives for appending or prepending
+to environment variables.
+
+
+`Calling the C compiler still fails`:Q:
+
+Try to call the C compiler directly by doing the following::
+
+  nimrod --compile_only --gen_script your_path/your_file
+  sh ./your_path/rod_gen/compile_your_file.sh
+
+
+`How to overload the ``in`` operator?`:Q:
+
+The ``in`` and ``not_in`` operators are implemented as templates. The reason is
+that these operators need a reverse unification algorithm (don't ask). See the
+``system.nim`` module for a deeper explanation. The solution is to implement a
+simple ``in_Operator`` proc where the arguments are the other way round::
+
+  proc in_operator(s: string, c: char): bool =
+    for x in items(s):
+      if x == c: return True
+    return False
+    
+  writeln(stdout, 'z' in "abcdz") # now works!

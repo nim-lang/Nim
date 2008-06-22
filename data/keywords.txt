@@ -1,0 +1,19 @@
+addr and as asm
+block break
+case cast const continue converter
+discard div
+elif else end enum except exception
+finally for from generic
+if implies import in include is isnot iterator
+lambda
+macro method mod
+nil not notin
+object of or out
+proc ptr
+raise record ref return
+shl shr
+template try type
+var
+when where while with without
+xor
+yield

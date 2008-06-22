@@ -1,0 +1,186 @@
+module ::= ([COMMENT] [SAD] stmt)*
+
+optComma ::= [ ',' ] [COMMENT] [IND]
+operator ::= OP0 | OR | XOR | AND | OP3 | OP4 | OP5 | IS | ISNOT | IN | NOTIN
+           | OP6 | DIV | MOD | SHL | SHR | OP7 | NOT
+
+prefixOperator ::= OP0 | OP3 | OP4 | OP5 | OP6 | OP7 | NOT
+
+optInd ::= [COMMENT] [IND]
+
+
+lowestExpr ::= orExpr ( OP0 optInd orExpr )*
+orExpr ::= andExpr ( OR | XOR optInd andExpr )*
+andExpr ::= cmpExpr ( AND  optInd cmpExpr )*
+cmpExpr ::= ampExpr ( OP3 | IS | ISNOT | IN | NOTIN optInd ampExpr )*
+ampExpr ::= plusExpr ( OP4 optInd plusExpr )*
+plusExpr ::= mulExpr ( OP5 optInd mulExpr )*
+mulExpr ::= dollarExpr ( OP6 | DIV | MOD | SHL | SHR optInd dollarExpr )*
+dollarExpr ::= primary ( OP7 optInd primary )*
+
+namedTypeOrExpr ::=
+  DOTDOT [expr]
+  | expr [EQUALS (expr [DOTDOT expr] | typeDescK | DOTDOT [expr] )
+                 | DOTDOT [expr]]
+  | typeDescK
+               
+castExpr ::= CAST BRACKET_LE optInd typeDesc BRACKERT_RI 
+                  PAR_LE optInd expr PAR_RI
+addrExpr ::= ADDR PAR_LE optInd expr PAR_RI
+symbol ::= ACC (KEYWORD | IDENT | operator | PAR_LE PAR_RI
+               | BRACKET_LE BRACKET_RI) ACC | IDENT
+accExpr ::= KEYWORD | IDENT | operator [DOT KEYWORD | IDENT | operator]
+              paramList
+primary ::= ( prefixOperator optInd )* ( IDENT | literal | ACC accExpr ACC
+                                               | castExpr | addrExpr ) (
+               DOT optInd symbol
+             #| CURLY_LE namedTypeDescList CURLY_RI
+             | PAR_LE optInd
+               namedExprList
+               PAR_RI
+             | BRACKET_LE optInd
+               (namedTypeOrExpr optComma)*
+               BRACKET_RI
+             | CIRCUM
+             | pragma )*
+
+literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
+          | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
+          | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
+          | CHAR_LIT | RCHAR_LIT
+          | NIL
+          | BRACKET_LE optInd (expr [COLON expr] optComma )* BRACKET_RI # []-Constructor
+          | CURLY_LE optInd (expr [DOTDOT expr] optComma )* CURLY_RI    # {}-Constructor
+          | PAR_LE optInd (expr [COLON expr] optComma )* PAR_RI         # ()-Constructor
+
+
+exprList ::= ( expr optComma )*
+
+namedExpr ::= expr [EQUALS expr] # actually this is symbol EQUALS expr|expr
+namedExprList ::= ( namedExpr optComma )*
+
+exprOrSlice ::= expr [ DOTDOT expr ]
+sliceList ::= ( exprOrSlice optComma )+
+
+anonymousProc ::= LAMBDA paramList [pragma] EQUALS stmt
+expr ::= lowestExpr
+     | anonymousProc
+     | IF expr COLON expr
+       (ELIF expr COLON expr)*
+       ELSE COLON expr
+
+namedTypeDesc ::= typeDescK | expr [EQUALS (typeDescK | expr)]
+namedTypeDescList ::= ( namedTypeDesc optComma )*
+
+qualifiedIdent ::= symbol [ DOT symbol ]
+
+typeDescK ::= VAR typeDesc
+            | REF typeDesc
+            | PTR typeDesc
+            | TYPE expr
+            | PROC paramList [pragma]
+
+typeDesc ::= typeDescK | primary
+
+optSemicolon ::= [SEMICOLON]
+
+macroStmt ::= COLON [stmt] (OF [sliceList] COLON stmt
+                           | ELIF expr COLON stmt
+                           | EXCEPT exceptList COLON stmt )*
+                           [ELSE COLON stmt]
+
+simpleStmt ::= returnStmt
+           | yieldStmt
+           | discardStmt
+           | raiseStmt
+           | breakStmt
+           | continueStmt
+           | pragma
+           | importStmt
+           | fromStmt
+           | includeStmt
+           | exprStmt
+complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
+                 | blockStmt | asmStmt
+                 | procDecl | iteratorDecl | macroDecl | templateDecl
+                 | constSection | typeSection | whenStmt | varSection
+
+indPush ::= IND # push
+stmt ::= simpleStmt [SAD]
+ | indPush (complexStmt | simpleStmt)
+  ([SAD] (complexStmt | simpleStmt) )*
+   DED
+
+exprStmt ::= lowestExpr [EQUALS expr | (expr optComma)* [macroStmt]]
+returnStmt ::= RETURN [expr]
+yieldStmt ::= YIELD expr
+discardStmt ::= DISCARD expr
+raiseStmt ::= RAISE [expr]
+breakStmt ::= BREAK [symbol]
+continueStmt ::= CONTINUE
+ifStmt ::= IF expr COLON stmt (ELIF expr COLON stmt)* [ELSE COLON stmt]
+whenStmt ::= WHEN expr COLON stmt (ELIF expr COLON stmt)* [ELSE COLON stmt]
+caseStmt ::= CASE expr (OF sliceList COLON stmt)*
+                       (ELIF expr COLON stmt)*
+                       [ELSE COLON stmt]
+whileStmt ::= WHILE expr COLON stmt
+forStmt ::= FOR (symbol optComma)+ IN expr [DOTDOT expr] COLON stmt
+exceptList ::= (qualifiedIdent optComma)*
+
+tryStmt ::= TRY COLON stmt
+          (EXCEPT exceptList COLON stmt)*
+          [FINALLY COLON stmt]
+asmStmt ::= ASM [pragma] (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
+blockStmt ::= BLOCK [symbol] COLON stmt
+importStmt ::= IMPORT ((symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) [AS symbol] optComma)+
+includeStmt ::= INCLUDE ((symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) optComma)+
+fromStmt ::= FROM (symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) IMPORT (symbol optComma)+
+
+pragma ::= CURLYDOT_LE (expr [COLON expr] optComma)+ (CURLYDOT_RI | CURLY_RI)
+
+paramList ::= [PAR_LE ((symbol optComma)+ COLON typeDesc optComma)* PAR_RI] [COLON typeDesc]
+
+genericParams ::= BRACKET_LE (symbol [EQUALS typeDesc] )* BRACKET_RI
+
+procDecl ::= PROC symbol ["*"] [genericParams]
+             paramList [pragma]
+             [EQUALS stmt]
+macroDecl ::= MACRO symbol ["*"] [genericParams] paramList [pragma]
+             [EQUALS stmt]
+iteratorDecl ::= ITERATOR symbol ["*"] [genericParams] paramList [pragma]
+             [EQUALS stmt]
+templateDecl ::= TEMPLATE symbol ["*"] [genericParams] paramList [pragma]
+             [EQUALS stmt]
+
+colonAndEquals ::= [COLON typeDesc] EQUALS expr
+
+constDecl ::= symbol ["*"] [pragma] colonAndEquals [COMMENT | IND COMMENT]
+            | COMMENT
+constSection ::= CONST indPush constDecl (SAD constDecl)* DED
+typeDef ::= typeDesc | recordDef | objectDef | enumDef
+
+recordIdentPart ::=
+   (symbol ["*" | "-"] [pragma] optComma)+ COLON typeDesc [COMMENT | IND COMMENT]
+
+recordWhen ::= WHEN expr COLON [COMMENT] recordPart
+              (ELIF expr COLON [COMMENT] recordPart)*
+              [ELSE COLON [COMMENT] recordPart]
+recordCase ::= CASE expr COLON typeDesc [COMMENT]
+              (OF sliceList COLON [COMMENT] recordPart)*
+              [ELSE COLON [COMMENT] recordPart]
+
+recordPart ::= recordWhen | recordCase | recordIdentPart
+             | indPush recordPart (SAD recordPart)* DED
+recordDef ::= RECORD [pragma] recordPart
+
+objectDef ::= OBJECT [pragma] [OF typeDesc] recordPart
+enumDef ::= ENUM [OF typeDesc] (symbol [EQUALS expr] optComma [COMMENT | IND COMMENT])+
+
+typeDecl ::= COMMENT
+           | symbol ["*"] [genericParams] [EQUALS typeDef] [COMMENT | IND COMMENT]
+           
+typeSection ::= TYPE indPush typeDecl (SAD typeDecl)* DED
+         
+colonOrEquals ::= COLON typeDesc [EQUALS expr] | EQUALS expr
+varPart ::= (symbol ["*" | "-"] [pragma] optComma)+ colonOrEquals [COMMENT | IND COMMENT]
+varSection ::= VAR (varPart | indPush (COMMENT|varPart) (SAD (COMMENT|varPart))* DED)

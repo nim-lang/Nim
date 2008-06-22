@@ -1,0 +1,44 @@
+Short description of Nimrod's modules
+-------------------------------------
+
+==============  ==========================================================
+Module          Description
+==============  ==========================================================
+lexbase         buffer handling of the lexical analyser
+scanner         lexical analyser
+
+ast             type definitions of the abstract syntax tree (AST) and
+                node constructors
+astalgo         algorithms for containers of AST nodes; converting the
+                AST to YAML; the symbol table
+trees           few algorithms for nodes; this module is less important
+types           module for traversing type graphs; also contain several
+                helpers for dealing with types
+
+sigmatch        contains the matching algorithm that is used for proc
+                calls
+semexprs        contains the semantic checking phase for expressions
+semstmts        contains the semantic checking phase for statements
+semtypes        contains the semantic checking phase for types
+
+idents          implements a general mapping from identifiers to an internal
+                representation (``PIdent``) that is used, so that a simple
+                pointer comparison suffices to say whether two Nimrod
+                identifiers are equivalent
+
+ropes           implements long strings using represented as trees for
+                lazy evaluation; used mainly by the code generators
+
+ccgobj          contains type definitions neeeded for C code generation
+                and some helpers
+ccgmangl        contains the name mangler for converting Nimrod
+                identifiers to their C counterparts
+ccgutils        contains helpers for the C code generator
+ccgtemps        contains the handling of temporary variables for the
+                C code generator
+ccgtypes        the generator for C types
+ccgstmts        the generator for statements
+ccgexprs        the generator for expressions
+extccomp        this module calls the C compiler and linker; interesting
+                if you want to add support for a new C compiler
+==============  ==========================================================

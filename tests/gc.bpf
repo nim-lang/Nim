@@ -1,0 +1,9 @@
+USEUNIT("morc_gen\gctest.c");
+USEUNIT("..\lib\dlmalloc.c");
+USEUNIT("..\lib\morc_gen\io.c");
+USEUNIT("..\lib\morc_gen\strutils.c");
+USEUNIT("..\lib\morc_gen\system.c");
+//---------------------------------------------------------------------------
+This file is used by the project manager only and should be treated like the project file
+
+main

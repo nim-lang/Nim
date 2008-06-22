@@ -1,0 +1,10 @@
+USEUNIT("tnew.c");
+USEUNIT("..\lib\io.c");
+USEUNIT("..\lib\markstck.c");
+USEUNIT("..\lib\morsys.c");
+USEUNIT("..\lib\dlmalloc.c");
+//---------------------------------------------------------------------------
+This file is used by the project manager only and should be treated like the project file
+
+
+main

@@ -1,0 +1,26 @@
+# Object Pascal keywords for the Pascal scanner that is part of the
+# Nimrod distribution
+# (c) Andreas Rumpf 2007
+[
+  "and", "array", "as", "asm",
+  "begin",
+  "case", "class", "const", "constructor",
+  "destructor", "div", "do", "downto",
+  "else", "end", "except", "exports",
+  "finalization", "finally", "for", "function",
+  "goto",
+  "if", "implementation", "in", "inherited", "initialization", "inline",
+  "interface", "is",
+  "label", "library",
+  "mod",
+  "nil", "not",
+  "object", "of", "or", "out",
+  "packed", "procedure", "program", "property",
+  "raise", "record", "repeat", "resourcestring",
+  "set", "shl", "shr",
+  "then", "threadvar", "to", "try", "type",
+  "unit", "until", "uses",
+  "var",
+  "while", "with",
+  "xor"
+]
