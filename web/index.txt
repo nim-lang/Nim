@@ -1,0 +1,59 @@
+====
+Home
+====
+
+  "The most important thing in the programming language is the name. A language
+  will not succeed without a good name. I have recently invented a very good
+  name and now I am looking for a suitable language."
+  -- D. E. Knuth
+  
+**This page is about the Nimrod programming language, which combines Lisp's
+power with Python's readability and C++'s performance.**
+
+Welcome to the Nimrod programming language
+------------------------------------------
+
+**Nimrod** is a new statically typed, imperative 
+programming language, that supports procedural, functional, object oriented and 
+generic programming styles while remaining simple and efficient. A special 
+feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
+(*AST*) is part ofthe specification - this allows a powerful macro system which 
+can be used to create domain specific languages.
+
+*Nimrod* is a compiled, garbage-collected systems programming language 
+which has an excellent productivity/performance ratio. Nimrod's design 
+focusses on the 3E: efficiency, expressiveness, elegance (in the order of 
+priority). 
+
+
+Some more of Nimrod's highlights:
+
+* Native code (currently via compilation to C).
+* Garbage collection, but not dependant on a Virtual Machine.
+* Portable: The Nimrod Compiler runs on Windows, Linux and Mac OS X.
+  Porting to other platforms is easy.
+* System programming features: Ability to manage your own memory and access the
+  hardware directly. You will never have to use C/C++ for that again!
+* Closures and iterators.
+* Exceptions.
+* Modern type system with local type inference, tuples, variants, etc.
+* User-defineable operators; new operators often easier to read than overloaded
+  ones
+* High level datatypes: strings, sets, sequences, etc.
+* Compile time evaluation without resorting to meta-programming facilities.
+* *Forward* compatibility: If later versions of the language introduce new
+  keywords old code won't break!
+* Bindings to GTK2, X11, the Windows API, the POSIX API. New bindings are 
+  easily generated in a semi-atomatic way. 
+* A plugable parser system: If you don't like Nimrod's syntax, you can plug in
+  a parser and a source renderer for your own syntax!
+
+.. 
+  The Zen of Nimrod
+  -----------------
+  
+  * Faster computers are for solving bigger problems, not wasting cycles.
+  * Static is better than dynamic: More efficient, more understandable,
+    better verifyable.
+  * Don't criple the language in the name of simplicity.
+  * Be backward and *forward* compatible.

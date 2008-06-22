@@ -1,0 +1,5 @@
+#! /usr/bin/env sh
+
+python koch.py $@ configure
+
+

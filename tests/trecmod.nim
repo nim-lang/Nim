@@ -1,0 +1,2 @@
+# recursive module
+import mrecmod

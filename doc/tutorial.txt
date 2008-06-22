@@ -1,0 +1,215 @@
+===========================================
+Tutorial of the Nimrod Programming Language
+===========================================
+
+:Author: Andreas Rumpf
+
+Motivation
+==========
+
+Why yet another programming language?
+
+Look at the trends behind all the new programming languages:
+
+* They try to be dynamic: Dynamic typing, dynamic method binding, etc.
+  In my opinion the most things the dynamic features buy could be achieved
+  with static means in a more efficient and *understandable* way. 
+
+* They depend on big runtime environments which you need to
+  ship with your program as each new version of these may break compability
+  in subtle ways or you use recently added features - thus forcing your
+  users to update their runtime environment. Compiled programs where the
+  executable contains all needed code are simply the better solution. 
+
+* They are unsuitable for systems programming: Do you really want to
+  write an operating system, a device driver or an interpreter in a language
+  that is just-in-time compiled (or interpreted)?
+
+
+So what lacks are *good* systems programming languages. Nimrod is such a
+language. It offers the following features:
+
+* It is readable: It reads from left to right (unlike the C-syntax
+  languages).
+* It is strongly and statically typed: This enables the compiler to find
+  more errors. Static typing also makes programs more *readable*.
+* It is compiled. (Currently this is done via compilation to C.)
+* It is garbage collected. Big systems need garbage collection. Manuell
+  memory management is also supported through *untraced pointers*.
+* It scales because high level features are also available: It has built-in
+  bit sets, strings, enumerations, objects, arrays and dynamically resizeable
+  arrays (called *sequences*).
+* It has high performance: The current implementation compiles to C
+  and uses a Deutsch-Bobrow garbage collector together with Christoper's
+  partial mark-sweep garbage collector leading to excellent execution
+  speed and a small memory footprint.
+* It has real modules with proper interfaces and supports separate
+  compilation.
+* It is portable: It compiles to C and platform specific features have
+  been separated and documented. So even if your platform is not supported
+  porting should be easy.
+* It is flexible: Although primilarily a procedural language, generic,
+  functional and object-oriented programming is also supported.
+* It is easy to learn, easy to use and leads to elegant programs.
+* You can link an embedded debugger to your program (ENDB). ENDB is
+  very easy to use - there is no need to clutter your code with
+  ``echo`` statements for proper debugging.
+
+
+Introduction
+============
+
+This document is a tutorial for the programming language *Nimrod*. It should
+be a readable quick tour through the language instead of a dry specification
+(which can be found `here <manual.html>`_). This tutorial assumes that
+the reader already knows some other programming language such as Pascal. Thus
+it is detailed in cases where Nimrod differs from other programming languages
+and kept short where Nimrod is more or less the same.
+
+
+A quick tour through the language
+=================================
+
+The first program
+-----------------
+
+We start the tour with a modified "hallo world" program:
+
+.. code-block:: Nimrod
+  # This is a comment
+  # Standard IO-routines are always accessible
+  write(stdout, "What's your name? ")
+  var name: string = readLine(stdin)
+  write(stdout, "Hi, " & name & "!\n")
+
+
+Save this code to the file "greeting.nim". Now compile and run it::
+
+  nimrod run greeting.nim
+
+As you see, with the ``run`` command Nimrod executes the file automatically
+after compilation. You can even give your program command line arguments by
+appending them after the filename that is to be compiled and run::
+
+  nimrod run greeting.nim arg1 arg2
+
+Though it should be pretty obvious what the program does, I will explain the
+syntax: Statements which are not indented are executed when the program
+starts. Indentation is Nimrod's way of grouping statements. String literals
+are enclosed in double quotes. The ``var`` statement declares a new variable
+named ``name`` of type ``string`` with the value that is returned by the
+``readline`` procedure. Since the compiler knows that ``readline`` returns
+a string, you can leave out the type in the declaration. So this will work too:
+
+.. code-block:: Nimrod
+  var name = readline(stdin)
+
+Note that this is the only form of type inference that exists in Nimrod:
+This is because it yields a good compromise between brevity and readability.
+
+The ``&`` operator concates strings together. ``\n`` stands for the
+new line character(s). On several operating systems ``\n`` is represented by
+*two* characters: Linefeed and Carriage Return. That is why
+*character literals* cannot contain ``\n``. But since Nimrod handles strings
+so well, this is a nonissue.
+
+The "hallo world" program contains several identifiers that are already
+known to the compiler: ``write``, ``stdout``, ``readLine``, etc. These
+built-in items are declared in the system_ module which is implicitly
+imported by any other module.
+
+
+Lexical elements
+----------------
+
+Let us look into Nimrod's lexical elements in more detail: Like other
+programming languages Nimrod consists of identifiers, keywords, comments,
+operators, and other punctation marks. Case is *insignificant* in Nimrod and
+even underscores are ignored: ``This_is_an_identifier`` and this is the same
+identifier ``ThisIsAnIdentifier``. This feature enables one to use other
+peoples code without bothering about a naming convention that one does not
+like.
+
+String literals are enclosed in double quotes, character literals in single
+quotes. There exist also *raw* string and character literals:
+
+.. code-block:: Nimrod
+  r"C:\program files\nim"
+
+In raw literals the backslash is not an escape character, so they fit
+the principle *what you see is what you get*. *Long string literals*
+are also available (``""" ... """``); they can span over multiple lines
+and the ``\`` is not an escape character either. They are very useful
+for embedding SQL code templates for example.
+
+Comments start with ``#`` and run till the end of the line. (Well this is not
+quite true, but you should read the manual for a proper explanation.)
+
+... XXX number literals
+
+
+The usual statements - if, while, for, case
+-------------------------------------------
+
+In Nimrod indentation is used to group statements.
+An example showing the most common statement types:
+
+.. code-block:: Nimrod
+  var name = readLine(stdin)
+
+  if name == "Andreas":
+    echo("What a nice name!")
+  elif name == "":
+    echo("Don't you have a name?")
+  else:
+    echo("Boring name...")
+
+  for i in 0..length(name)-1:
+    if name[i] == 'm':
+      echo("hey, there is an *m* in your name!")
+
+  echo("Please give your password: \n")
+  var pw = readLine(stdin)
+
+  while pw != "12345":
+    echo("Wrong password! Next try: \n")
+    pw = readLine(stdin)
+
+  echo("""Login complete!
+  What do you want to do?
+  delete-everything
+  restart-computer
+  go-for-a-walk
+  """)
+
+  case readline(stdin)
+  of "delete-everything", "restart-computer":
+    echo("permission denied")
+  of "go-for-a-walk":     echo("please yourself")
+  else:                   echo("unknown command")
+
+
+..
+  Types
+  -----
+  
+  Nimrod has a rich type system. This tutorial only gives a few examples. Read
+  the `manual <manual.html>`_ for further information:
+  
+  .. code-block:: Nimrod
+    type
+      TMyRecord = record
+        x, y: int
+  
+  
+  Procedures
+  ----------
+  
+  Procedures are subroutines. They are declared in this way:
+  
+  .. code-block:: Nimrod
+    proc findSubStr(sub: string,
+
+
+.. _strutils: strutils.html
+.. _system: system.html

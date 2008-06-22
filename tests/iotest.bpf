@@ -1,0 +1,10 @@
+USEUNIT("tio.c");
+USEUNIT("..\lib\refcgc.c");
+USEUNIT("..\lib\io.c");
+USEUNIT("..\lib\morbase.c");
+USEUNIT("..\lib\morlib.c");
+//---------------------------------------------------------------------------
+This file is used by the project manager only and should be treated like the project file
+
+
+main

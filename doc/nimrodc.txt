@@ -1,0 +1,241 @@
+===================================
+   Nimrod Compiler User Guide
+===================================
+
+:Author: Andreas Rumpf
+:Version: |nimrodversion|
+
+.. contents::
+
+Introduction
+============
+
+This document describes the usage of the *Nimrod compiler*
+on the different supported platforms. It is not a definition of the Nimrod
+programming system (therefore is the Nimrod manual).
+
+Nimrod is free software; it is licensed under the
+`GNU General Public License <gpl.html>`_.
+
+
+Compiler Usage
+==============
+
+Command line switches
+---------------------
+Basis command line switches are:
+
+.. include:: ../data/basicopt.txt
+
+Advanced command line switches are:
+
+.. include:: ../data/advopt.txt
+
+
+Configuration file
+------------------
+The ``nimrod`` executable loads the configuration file ``config/nimrod.cfg``
+unless this is suppressed by the ``--skip_cfg`` command line option.
+Configuration settings can be overwritten in a project specific
+configuration file that is read automatically. This specific file has to
+be in the same directory as the project and be of the same name, except
+that its extension should be ``.cfg``.
+
+Command line settings have priority over configuration file settings.
+
+
+Nimrod's directory structure
+----------------------------
+The generated files that Nimrod produces all go into a subdirectory called
+``rod_gen``. This makes it easy to write a script that deletes all generated
+files. For example the generated C code for the module ``path/modA.nim``
+will become ``path/rod_gen/modA.c``.
+
+However, the generated C code is not platform independant! C code generated for
+Linux does not compile on Windows, for instance. The comment on top of the
+C file lists the OS, CPU and CC the file has been compiled for.
+
+The library lies in ``lib``. Directly in the library directory are essential
+Nimrod modules like the ``system`` and ``os`` modules. Under ``lib/base``
+are additional specialized libraries or interfaces to foreign libraries which
+are included in the standard distribution. The ``lib/extra`` directory is
+initially empty. Third party libraries should go there. In the default
+configuration the compiler always searches for libraries in ``lib``,
+``lib/base`` and ``lib/extra``.
+
+
+Additional Features
+===================
+
+This section describes Nimrod's additional features that are not listed in the
+Nimrod manual.
+
+New Pragmas and Options
+-----------------------
+
+Because Nimrod generates C code it needs some "red tape" to work properly.
+Thus lots of options and pragmas for tweaking the generated C code are
+available.
+
+No_decl Pragma
+~~~~~~~~~~~~~~
+The `no_decl`:idx: pragma can be applied to almost any symbol (variable, proc,
+type, etc.) and is one of the most important for interoperability with C:
+It tells Nimrod that it should not generate a declaration for the symbol in
+the C code. Thus it makes the following possible, for example:
+
+.. code-block:: Nimrod
+  var
+    EOF {.import: "EOF", no_decl.}: cint # pretend EOF was a variable, as
+                                         # Nimrod does not know its value
+
+Varargs Pragma
+~~~~~~~~~~~~~~
+The `varargs`:idx: pragma can be applied to procedures only. It tells Nimrod
+that the proc can take a variable number of parameters after the last
+specified parameter. Nimrod string values will be converted to C
+strings automatically:
+
+.. code-block:: Nimrod
+  proc printf(formatstr: cstring) {.nodecl, varargs.}
+
+  printf("hallo %s", "world") # "world" will be passed as C string
+
+
+Header Pragma
+~~~~~~~~~~~~~
+The `header`:idx: pragma is very similar to the ``no_decl`` pragma: It can be
+applied to almost any symbol and specifies that not only it should not be
+declared but also that it leads to the inclusion of a given header file:
+
+.. code-block:: Nimrod
+  type
+    PFile {.import: "FILE*", header: "<stdio.h>".} = pointer
+      # import C's FILE* type; Nimrod will treat it as a new pointer type
+
+The ``header`` pragma expects always a string constant. The string contant
+contains the header file: As usual for C, a system header file is enclosed
+in angle brackets: ``<>``. If no angle brackets are given, Nimrod
+encloses the header file in ``""`` in the generated C code.
+
+
+No_static Pragma
+~~~~~~~~~~~~~~~~
+The `no_static`:idx: pragma can be applied to almost any symbol and specifies
+that it shall not be declared ``static`` in the generated C code. Note that
+symbols in the interface part of a module never get declared ``static``, so
+only in special cases is this pragma necessary.
+
+
+Line_dir Option
+~~~~~~~~~~~~~~~
+The `line_dir`:idx: option can be turned on or off. If on the generated C code
+contains ``#line`` directives.
+
+
+Stack_trace Option
+~~~~~~~~~~~~~~~~~~
+If the `stack_trace`:idx: option is turned on, the generated C contains code to
+ensure that proper stack traces are given if the program crashes or an
+uncaught exception is raised.
+
+
+Line_trace Option
+~~~~~~~~~~~~~~~~~
+The `line_trace`:idx: option implies the ``stack_trace`` option. If turned on,
+the generated C contains code to ensure that proper stack traces with line
+number information are given if the program crashes or an uncaught exception
+is raised.
+
+Debugger Option
+~~~~~~~~~~~~~~~
+The `debugger`:idx: option enables or disables the *Embedded Nimrod Debugger*. 
+See the documentation of endb_ for further information.
+
+
+Breakpoint Pragma
+~~~~~~~~~~~~~~~~~
+The *breakpoint* pragma was specially added for the sake of debugging with
+ENDB. See the documentation of `endb <endb.html>`_ for further information.
+
+
+Volatile Pragma
+~~~~~~~~~~~~~~~
+The `volatile`:idx: pragma is for variables only. It declares the variable as
+``volatile``, whatever that means in C/C++.
+
+Register Pragma
+~~~~~~~~~~~~~~~
+The `register`:idx: pragma is for variables only. It declares the variable as
+``register``, giving the compiler a hint that the variable should be placed
+in a hardware register for faster access. C compilers usually ignore this
+though and for good reason: Often they do a better job without it anyway.
+
+In highly specific cases (a dispatch loop of interpreters for example) it
+may provide benefits, though.
+
+
+Disabling certain messages
+--------------------------
+Nimrod generates some warnings and hints ("line too long") that may annoy the
+user. Thus a mechanism for disabling certain messages is provided: Each hint
+and warning message contains a symbol in brackets. This is the message's
+identifier that can be used to enable or disable it:
+
+.. code-block:: Nimrod
+  {.warning[LineTooLong]: off.} # turn off warning about too long lines
+
+This is often better than disabling all warnings at once.
+
+
+Debugging with Nimrod
+=====================
+
+Nimrod comes with its own *Embedded Nimrod Debugger*. See
+the documentation of endb_ for further information.
+
+
+Optimizing for Nimrod
+=====================
+
+Nimrod has no separate optimizer, but the C code that is produced is very
+efficient. Most C compilers have excellent optimizers, so usually it is
+not needed to optimize one's code. Nimrod has been designed to encourage
+efficient code: The most readable code in Nimrod is often the most efficient
+too.
+
+However, sometimes one has to optimize. Do it in the following order:
+
+1. switch off the embedded debugger (it is **slow**!)
+2. turn on the optimizer and turn off runtime checks
+3. profile your code to find where the bottlenecks are
+4. try to find a better algorithm
+5. do low-level optimizations
+
+This section can only help you with the last item. Note that rewriting parts
+of your program in C is *never* necessary to speed up your program, because
+everything that can be done in C can be done in Nimrod. Rewriting parts in
+assembler *might*.
+
+Optimizing string handling
+--------------------------
+
+String assignments are sometimes expensive in Nimrod: They are required to
+copy the whole string. However, the compiler is often smart enough to not copy
+strings. Due to the argument passing semantics, strings are never copied when
+passed to subroutines. The compiler does not copy strings that are returned by
+a routine, because a routine returns a new string anyway. Thus it is efficient
+to do:
+
+.. code-block:: Nimrod
+  var s = procA() # assignment will not copy the string; procA allocates a new
+                  # string anyway
+
+However it is not efficient to do:
+
+.. code-block:: Nimrod
+  var s = varA    # assignment has to copy the whole string into a new buffer!
+
+String case statements are optimized too. A hashing scheme is used for them
+if several different string constants are used. This is likely to be more
+efficient than any hand-coded scheme.

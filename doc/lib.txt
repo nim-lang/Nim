@@ -1,0 +1,48 @@
+=======================
+Nimrod Standard Library
+=======================
+
+:Author: Andreas Rumpf
+:Version: |nimrodversion|
+
+Though the Nimrod Standard Library is still evolving, it is already quite
+usable. It is divided into basic libraries that contains modules that virtually
+every program will need and advanced libraries which are more heavy weight.
+Advanced libraries are in the ``lib/base`` directory.
+
+Basic libraries
+===============
+
+* `System <system.html>`_
+  Basic procs and operators that every program needs. It also provides IO
+  facilities for reading and writing text and binary files. It is imported
+  implicitly by the compiler. Do not import it directly. It relies on compiler
+  magic to work.
+
+* `Strutils <strutils.html>`_
+  This module contains common string handling operations like converting a
+  string into uppercase, splitting a string into substrings, searching for
+  substrings, replacing substrings.
+
+* `OS <os.html>`_
+  Basic operating system facilities like retrieving environment variables,
+  reading command line arguments, working with directories, running shell
+  commands, etc. This module is -- like any other basic library --
+  platform independant.
+
+* `Math <math.html>`_
+  Mathematical operations like cosine, square root.
+
+* `Complex <complex.html>`_
+  This module implements complex numbers and their mathematical operations.
+
+* `Times <times.html>`_
+  The ``times`` module contains basic support for working with time.
+
+
+Advanced libaries
+=================
+
+* `Regexprs <regexprs.html>`_
+  This module contains procedures and operators for handling regular
+  expressions.

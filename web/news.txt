@@ -1,0 +1,7 @@
+| `2008-01-12`:newsdate:
+| Nimrod version 0.8.0 has been released!
+  Get it `here <./download.html>`_.
+
+
+| `2008-01-06`:newsdate:
+| This page is finally online!

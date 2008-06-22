@@ -1,0 +1,10 @@
+USEUNIT("rod_gen\thallo.c");
+USEUNIT("..\lib\rod_gen\os.c");
+USEUNIT("..\lib\rod_gen\strutils.c");
+USEUNIT("..\lib\rod_gen\system.c");
+USEUNIT("..\lib\rod_gen\times.c");
+USEUNIT("..\lib\dlmalloc.c");
+//---------------------------------------------------------------------------
+This file is used by the project manager only and should be treated like the project file
+
+main

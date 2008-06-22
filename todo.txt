@@ -1,0 +1,167 @@
+TO IMPLEMENT
+============
+
+BPbRchqU
+
+RST
+---
+- footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
+  __ anonymous: www.nimrod.org
+- don't generate <p></p> if it is not allowed by the HTML standard; switch to
+  <br /> for those parts; this is pretty easy to fix
+
+High priority
+-------------
+- BUG: aliasing of record/object types does not work properly
+- BUG: repr from seq[string]
+- replace ``seq = []; setLen(seq, x)`` by something more efficient
+- disallow ``var var T``
+- replace appropriate asserts by internal errors!
+- type generation for tuples in the C code generator is difficult!
+- also check code generator for var-types
+- better code generation for const data
+- code generation for sets is wrong: &63
+- implement field checks for case records
+- evaluation + macros
+- ``is`` operator is missing
+- get assignable right!
+
+Low priority
+------------
+- macros: ``check`` pragma; this is really a good idea! This allows
+  transformations based on types!
+- make callconv a set
+- pasparse.nim: fixVarSection() loses its comment!
+- partial generic instantation is missing
+- commas are not optional any longer as this may lead to bugs
+- get code generation for C++ exception handling right!
+- implement the simple and cheap to implement module cache (default: disabled!)
+- remove r'c': it is pointless!
+- nkConv is not well-defined for rnimsyn; as are other node kinds;
+  separate them? But this way lies madness! Better make them consistent!
+- find a way for easy constructors and destructors; though constructors are
+  flawed... destructors are not, however!
+- multiple dispatch
+- LIB: stream implementation - the compiler should use it too!
+
+
+Changelog
+=========
+
+- pasparse: comments after begin end; are not longer part of the nkStmtList
+  node
+- BUGFIX in ccgexprs.genSetLengthSeq
+- adapted ast.pas for nil sons
+- case records: type information generation is now complete
+- enums: size depends on the number of values
+- fixType pass in semantic checking altered
+- implicit conversion from pointer to other pointer type disallowed
+- $ifdef implemented for Pascal parser
+- fixed bug in types.pas concerning computation of set size (div rounds down!)
+- fixed a bug in ``sameFile`` in ``nos.pas``
+- BUGFIX: Conversion from string to cstring
+
+
+For the next versions
+=====================
+
+- separate compilation
+- multi-processor support
+- tuple assignment
+- more Parser/Renderer combinations
+- IDE
+- better support for GDB
+- support for Boehm's GC
+- support for dynamic libraries
+
+
+Language features to be implemented
+===================================
+
+- sets of a basetype that is not starting at zero are broken
+- bit fields for ordinal types: {.bits: 9}
+- properties are the way to mimic OOP methods::
+
+  type
+    TFile = object
+      fx, fy: int
+      prop x: int in fx out fx
+      proc open
+
+  f.open(filename) is the same as open(f, filename)
+
+  open(f, filename)
+
+- this is the way to go::
+  type
+    TFile = object
+      ...
+  method open(f: TFile, mode: TFileMode) = # belongs to TFile!
+    ...
+  f.open(mode)
+
+- profiling support
+- yield statement warning/error
+
+
+Documentation to be written
+===========================
+- document generics
+- document (anonymous) procs
+- cookbook: a[i|j] for example
+
+Implementation details
+======================
+
+- {a} can lead to an memory overwrite if a is not in range of
+  set basetype?
+
+Optimizations
+=============
+
+- acyclic type detection; not needed; GC optimization does not work!
+- optimization of GC: types that cannot be involved in cycles should
+  not be stored in the AT; this does not work because the AT is needed
+  for stack checking!
+- better: generational GC for cycles
+- optimization for the GC: merge the refcount with the type info field
+- optimize range checks away (and out of bounds checks!)
+- merge set;string data (not critical; does C compiler for us)
+
+
+Further ideas/nice to have
+==========================
+
+- introduce: refany type???
+- CLR code generator; better use XYZ? --> Version 1.2?
+- provide an interactive shell: if the user wants his commands
+  to be executed, the command should end with #
+- multi-threaded programming
+- support for Boehm's GC
+- do finalizers right and add the built-in 'finalize'
+- built-in ``fast_assign``
+- implement packed arrays (bit arrays)/ packed records
+- implement tables (implement as library? - no! Builtin because of
+  constructor syntax is nice to have)
+- each compilation unit (proc, top-level-statement, etc.)
+  needs the options stored with them (for procs already done)
+
+
+Planned libraries
+=================
+
+- generic algorithm library (trees, tables, etc.)
+- An Unicode library (UTF8)
+- Binding for Opengl library (should be easy)
+- Binding for Sockets library (which one?)
+- xml parser; cgi module; fast cgi module
+- a good/extensive math library
+- neuronal network library; genetic algorithms
+- html parser
+- URL library
+- mySQL, sqlite interface
+- extensive platform independant AdvancedOS library
+- Lua, Python interface (almost done)
+- code generator for SQL-Schemes? ("Hibernate" done right)
+- mathematical expression parser (with lookup table for identifiers)
+- YAML parser (use generic AST for this)

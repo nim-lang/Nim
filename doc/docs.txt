@@ -1,0 +1,26 @@
+  "Incorrect documentation is often worse than no documentation."
+  -- Bertrand Meyer
+
+The documentation consists of several documents:
+
+- | `Nimrod manual <manual.html>`_
+  | Read this to get to know the Nimrod programming system.
+
+- | `User guide for the Nimrod Compiler <nimrodc.html>`_
+  | The user guide lists command line arguments, Nimrodc's special features, etc.
+
+- | `User guide for the Embedded Nimrod Debugger <endb.html>`_
+  | This document describes how to use the Embedded debugger. The embedded
+    debugger currently has no GUI. Please help!
+
+- | `Nimrod library documentation <lib.html>`_
+  | This document describes Nimrod's standard library.
+
+- | `Nimrod internal documentation <intern.html>`_
+  | The internal documentation describes how the compiler is implemented. Read
+    this if you want to hack the compiler or develop advanced macros.
+
+- | `Index <theindex.html>`_
+  | The generated index. Often the quickest way to find the piece of 
+    information you need.
+
