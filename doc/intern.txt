@@ -82,7 +82,7 @@ Coding standards
 ================
 
 The compiler is written in a subset of Pascal with special annotations so
-that it can be translated to Nimrod code automatically. As a generell rule,
+that it can be translated to Nimrod code automatically. As a general rule,
 Pascal code that does not translate to Nimrod automatically is forbidden.
 
 
@@ -125,55 +125,6 @@ Complex assignments
 We already knew the type information as a graph in the compiler.
 Thus we need to serialize this graph as RTTI for C code generation.
 Look at the files ``lib/typeinfo.nim``, ``lib/hti.nim`` for more information.
-
-However, generating type information proved to be difficult and the format
-wastes memory. Variant records make problems too. We use a mix of iterator
-procedures and constant data structures:
-
-.. code-block:: Nimrod
-  type
-    TNimTypeSlot {.export.} = record
-      offset: int
-      typ: int
-      name: CString
-    TSlotIterator = proc (obj: pointer, field: int): ptr TNimTypeSlot
-    TNimType {.export.} = record
-      Kind: TNimTypeKind
-      baseType, indexType: int
-      size, len: int
-      slots: TSlotIterator # instead of: ptr array [0..10_000, TNimTypeSlot]
-
-This is not easy to understand either. Best is to use just the ``rodgen``
-module and store type information as string constants.
-
-After thinking I came to the conclusion that this is again premature
-optimization. We should just construct the type graph at runtime. In the init
-section new types should be constructed and registered:
-
-.. code-block:: Nimrod
-  type
-    TSlotTriple = record
-      offset: int
-      typ: PRTL_Type
-      name: Cstring
-    PSlots = ptr TSlots
-    TSlots = record
-      case kind
-      of linear:
-        fields: array [TSlotTriple]
-      of nested:
-        discriminant: TSlotTriple
-        otherSlots: array [discriminant, PSlots]
-
-    TTypeKind = enum ...
-    RTL_Type = record
-      size: int
-      base: PRTL_Type
-      case kind
-      of tyArray, tySequence:
-        elemSize: int
-      of tyRecord, tyObject, tyEnum:
-        slots: PSlots
 
 
 The Garbage Collector
@@ -456,39 +407,6 @@ module. However, calls to some procedures like ``addInt`` are inserted by
 the CCG. Therefore the module ``magicsys`` contains a table
 (``compilerprocs``) with all symbols that are marked as ``compilerproc``.
 
-
-How separate compilation will work
-==================================
-
-Soon compiling from scratch every module that's needed will become too slow as
-programs grow. For easier cleaning all generated files are generated in the
-directory: ``$base/rod_gen``. This cannot be changed. The generated C files
-get the names of the modules they result from. A compiled Nimrod module has the
-extension ``.rod`` and is a binary file. The format may change from release
-to release. The rod-file is mostly a binary representation of the parse trees.
-
-Nimrod currently compiles any module into its own C file. Some things like
-type-information, common string literals, common constant sets need to be
-shared though. We deal with this problem by writing the shared data
-in the main C file. Only "headers" are generated in the other modules. However,
-each precompiled Nimrod module lists the shared data it depends on. The same
-holds for procedures that have to generated from generics.
-
-A big problem is that the data must get the same name each time it is compiled.
-
-The C compiler is only called for the C files, that changed after the last
-compilation (or if their object file does not exist anymore). To work
-reliably, in the header comment of the C file these things are listed, so
-that the C compiler is called again should they change:
-
-* Nimrod's Version
-* the target CC
-* the target OS
-* the target CPU
-
-The version is questionable: If the resulting C file is the same, it does not
-matter that Nimrods's version has increased. We do it anyway to be on the safe
-side.
 
 
 Generation of dynamic link libraries

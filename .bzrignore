@@ -1,0 +1,12 @@
+web/*.html
+doc/*.html
+*.o
+*.pyc
+*.pyo
+*.obj
+*.ppu
+*.exe
+*.dll
+*.zip
+*.tar.gz
+dist

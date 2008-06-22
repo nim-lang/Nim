@@ -8,7 +8,7 @@
 ##########################################################################
 
 import os, os.path, sys, re, zipfile, filecmp, shutil, cPickle, time
-import string, getopt, textwrap, glob, shutil, getopt, string
+import string, getopt, textwrap, glob, shutil, getopt, string, stat
 
 
 if sys.version_info[0] >= 3: # this script does not work with Python 3.0
@@ -20,7 +20,7 @@ from kochmod import *
 
 CFLAGS = ""  # modify to set flags to the first compilation step
 
-NIMROD_VERSION = '0.2.1'
+NIMROD_VERSION = '0.5.1'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**
@@ -118,10 +118,9 @@ Possible Commands:
   configure                configures the environment for developing Nimrod
   doc                      builds the documentation in HTML
   clean                    cleans Nimrod project; removes generated files
-  dist                     produces a distribution as
+  dist [target]            produces a distribution as
                            nimrod_$target_$version.zip
   boot [options]           bootstraps with given command line options
-  tests [options]          runs the complete testsuite (with options)
   rodsrc                   generates Nimrod version from Pascal version
   web                      generates the website (requires Cheetah)
 """ % (NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)))
@@ -149,9 +148,11 @@ def main(args):
     elif cmd == "configure": cmd_configure()
     elif cmd == "doc": cmd_doc()
     elif cmd == "clean": cmd_clean()
-    elif cmd == "dist": cmd_dist()
+    elif cmd == "dist": 
+      if i < len(args)-1: cmd_dist(args[i+1])
+      else: cmd_dist()
     elif cmd == "boot": cmd_boot(" ".join(args[i+1:]))
-    elif cmd == "tests": cmd_tests(" ".join(args[i+1:]))
+    #elif cmd == "tests": cmd_tests(" ".join(args[i+1:]))
     elif cmd == "install": cmd_install(args[i+1:])
     elif cmd == "rodsrc": cmd_rodsrc()
     elif cmd == "web": cmd_web()
@@ -243,7 +244,8 @@ def cmd_web():
   ]
   TEMPLATE_FILE = "web/sunset.tmpl"
   #CMD = "rst2html.py --template=web/docutils.tmpl web/%s.txt web/%s.temp "
-  CMD = "nim rst2html --compileonly -o:web/%s.temp web/%s.txt"
+  CMD = "nim rst2html --compileonly " \
+        " --putenv:nimrodversion=%s -o:web/%s.temp web/%s.txt"
 
   c = Changed("web", Glob("web/*.txt") + [TEMPLATE_FILE, "koch.py"] +
                      Glob("doc/*.txt") + Glob("lib/*.txt") + Glob("lib/*.nim")+
@@ -251,10 +253,10 @@ def cmd_web():
               EXPLAIN)
   if c or force:
     cmd_nim() # we need Nimrod for processing the documentation
-    Exec(CMD % ("news","news"))
+    Exec(CMD % (NIMROD_VERSION, "news","news"))
     newsText = file("web/news.temp").read()
     for t in TABS:
-      Exec(CMD % (t[1],t[1]))
+      Exec(CMD % (NIMROD_VERSION, t[1],t[1]))
 
       tmpl = Cheetah.Template.Template(file=TEMPLATE_FILE)
       tmpl.content = file("web/%s.temp" % t[1]).read()
@@ -262,14 +264,14 @@ def cmd_web():
       tmpl.tab = t[1]
       tmpl.tabs = TABS
       tmpl.lastupdate = time.strftime("%Y-%m-%d %X", time.gmtime())
-      f = file("web/%s.html" % t[1], "w+")
+      f = file("web/upload/%s.html" % t[1], "w+")
       f.write(str(tmpl))
       f.close()
     # remove temporaries:
     Remove("web/news.temp")
     for t in TABS: Remove("web/%s.temp" % t[1])
-    buildDoc("web")
-    if Exists("web/index.html"):
+    buildDoc("web/upload")
+    if Exists("web/upload/index.html"):
       c.success()
 
 # ------------------ doc ------------------------------------------------------
@@ -306,7 +308,10 @@ def cmd_clean(dir = "."):
     for name in files:
       if (extRegEx.match(name)
       or (root == "tests" and ('.' not in name))):
-        Remove(os.path.join(root, name))
+        x = os.path.join(root, name)
+        if "/dist/" not in x and "\\dist\\" not in x:
+          Echo("removing: " + x)
+          Remove(os.path.join(root, name))
     for name in dirs:
       if name == "rod_gen":
         shutil.rmtree(path=os.path.join(root, name), ignore_errors=True)
@@ -318,48 +323,48 @@ def cmd_clean(dir = "."):
 
 distlist = {
   'common': (
-    "copying.txt",
-    "gpl.html",
-    "koch.py",
+    "*.txt",
+    "*.html",
+    "*.py",
 
     "lib/nimbase.h -> lib/nimbase.h",
     "lib/*.nim -> lib",
 
-    "rod/*.nim -> rod",
-    "nim/*.pas -> nim",
-    "nim/*.txt -> nim",
+    "rod/*.* -> rod",
+    "build/*.* -> build",
+    "nim/*.* -> nim",
 
     "data/*.yml -> data",
     "data/*.txt -> data",
+    "obj/*.txt",
 
-    "config/nimrod.cfg -> config/nimrod.cfg",
+    "config/*.cfg -> config",
     # documentation:
-    "doc/*.txt",      # only include the text documentation; saves bandwidth!
-                      # the installation program should generate the HTML
-    "readme.txt -> readme.txt",
-    "install.txt -> install.txt",
-
+    "doc/*.txt",
+    "doc/*.html",
+    # tests:
+    "tests/*.*",
     # library:
-    "lib/base/pcre_all.c -> lib/base/pcre_all.c",
-    "lib/base/pcre.nim   -> lib/base/pcre.nim",
-    "lib/base/regexprs.nim -> lib/base/regexprs.nim",
-    #"lib/windows/winapi.nim -> lib/windows/winapi.nim"
+    "lib/base/*.c -> lib/base",
+    "lib/base/*.nim -> lib/base",
+    "lib/base/gtk/*.nim -> lib/base/gtk",
+    "lib/base/cairo/*.nim -> lib/base/cairo",
+    "lib/windows/*.nim -> lib/windows",
+    "lib/posix/*.nim -> lib/posix"
       # don't be too clever here; maybe useful on Linux
       # for cross-compiling to Windows?
   ),
   'windows': (
     "bin/nim.exe -> bin/nim.exe",
-    "koch.exe -> koch.exe",
     "lib/dlmalloc.h -> lib/dlmalloc.h",
     "lib/dlmalloc.c -> lib/dlmalloc.c",
+    "dist/llvm-gcc4.2",
   ),
-  'linux': (
+  'unix': (
     "lib/rod_gen/*.c -> build",
     "rod/rod_gen/*.c -> build",
-  ),
-  'macosx': (
-    "lib/rod_gen/*.c -> build",
-    "rod/rod_gen/*.c -> build",
+    "lib/dlmalloc.h -> lib/dlmalloc.h",
+    "lib/dlmalloc.c -> lib/dlmalloc.c",
   )
 }
 
@@ -370,6 +375,14 @@ def getHost():
   # a heuristic that could work (most likely not :-):
   else: return re.sub(r"[0-9]+$", r"", sys.platform).lower()
 
+def mydirwalker(dir, L):
+  for name in os.listdir(dir):
+    path = os.path.join(dir, name)
+    if os.path.isdir(path):
+      mydirwalker(path, L)
+    else:
+      L.append(path)
+
 def iterInstallFiles(target=getHost()):
   for section in ['common', target]:
     for rule in distlist[section]:
@@ -378,16 +391,27 @@ def iterInstallFiles(target=getHost()):
         source, dest = splittedRule
         if '*' in source:
           for f in Glob(source):
-            yield (Path(f), Path(dest + '/' + os.path.split(f)[1]))
+            if not stat.S_ISDIR(os.stat(f)[stat.ST_MODE]):        
+              yield (Path(f), Path(dest + '/' + os.path.split(f)[1]))
         else:
           yield (Path(source), Path(dest))
+      elif os.path.isdir(Path(rule)):
+        L = []
+        mydirwalker(Path(rule), L)
+        for f in L:
+          yield f, f
       else:
         for f in Glob(rule):
-          yield (Path(f), Path(f))
+          if not stat.S_ISDIR(os.stat(f)[stat.ST_MODE]):
+            yield (Path(f), Path(f))
 
-def cmd_dist(target=getHost()):
+def cmd_dist(target=""):
   from zipfile import ZipFile
-  distfile = Path('dist/nimrod_%s_%s.zip' % (target, getVersion()))
+  if not target:
+    if os.name == "nt": target = "windows"
+    else: target = "unix"
+  distfile = Path('web/upload/download/nimrod_%s_%s.zip' %
+                 (target, getVersion()))
   Echo("creating: %s..." % distfile)
   z = ZipFile(distfile, 'w', zipfile.ZIP_DEFLATED)
   for source, dest in iterInstallFiles(target):
@@ -407,8 +431,8 @@ DefaultDirName={code:GiveMeAPath|nimrod}
 DefaultGroupName=Nimrod
 AllowNoIcons=yes
 LicenseFile=nim\copying.txt
-OutputDir=dist
-OutputBaseFilename=install_nimrod_$version
+OutputDir=web\upload\download
+OutputBaseFilename=nimrod_windows_$version
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=none
@@ -464,8 +488,6 @@ def makeKochExe():
 
 def cmd_wininstaller():
   FILENAME = "install_nimrod.iss"
-  makeKochExe()
-
   # generate an installer file
   files = ""
   for source, dest in iterInstallFiles("windows"):
@@ -692,13 +714,14 @@ CONFIG_TEMPLATE = r"""# Configuration file for the Nimrod Compiler.
 # Environment variables cannot be used in the options, however!
 
 # Just call the compiler with several options:
-cc = @if unix: %(cc)s @else: vcc @end
+cc = @if unix: %(cc)s @else: llvm_gcc @end
 lib="$nimrod/lib"
 path="$lib/base"
 path="$lib/base/gtk"
 path="$lib/base/cairo"
 path="$lib/base/x11"
 path="$lib/windows"
+path="$lib/posix"
 path="$lib/extra"
 
 # additional defines:
@@ -719,6 +742,15 @@ hint[XDeclaredButNotUsed]=off
   passl = "-cxxlib"
   passc = "-cxxlib"
 @end
+
+# Configuration for the LLVM GCC compiler:
+@if windows:
+  llvm_gcc.path = r"dist\llvm-gcc4.2\bin"
+@end
+llvm_gcc.options.debug = "-g"
+llvm_gcc.options.always = "-w"
+llvm_gcc.options.speed = "-O3 -ffast-math"
+llvm_gcc.options.size = "-Os -ffast-math"
 
 # Configuration for the Borland C++ Compiler:
 @if windows:
@@ -801,15 +833,6 @@ pcc.options.debug = "-Zi"
 pcc.options.always = "-Ze"
 pcc.options.speed = "-Ox"
 pcc.options.size = "-Os"
-
-# Configuration for the LLVM GCC compiler:
-@if windows:
-  llvm_gcc.path = r"c:\eignes\compiler\llvm-gcc\bin"
-@end
-llvm_gcc.options.debug = "-g"
-llvm_gcc.options.always = "-w"
-llvm_gcc.options.speed = "-O3 -ffast-math"
-llvm_gcc.options.size = "-Os -ffast-math"
 
 @if windows:
   icc.path = r"c:\eignes\compiler\icc\bin"

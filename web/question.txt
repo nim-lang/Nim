@@ -22,11 +22,10 @@ Especially GCC's compile times are a bad joke. On Linux you may be able to get
 compile times. You should not use TCC for producing the release version
 though, as it has no optimizer.
 
-Experimental features are the *AST cache* and the *C file cache*. Both
-are not activated. To activate, add to your ``nimrod.cfg`` file the following
-lines::
+An experimental feature is the *C file cache*. It is not
+activated. To activate, add to your ``nimrod.cfg`` file the following
+line::
 
-  --ast_cache:on
   --c_file_cache:on
 
 
@@ -68,6 +67,11 @@ If your C compiler is not in the above list, try using the
 different command line arguments you have to edit the ``extccomp``
 module to add support for it and recompile the compiler. Please
 contribute a patch in this case.
+
+`The linker outputs strange errors about missing symbols`:Q:
+
+I have seen this bug only with the GNU linker. The reason for this unknown. 
+Try recompiling your code with the ``--c_file_cache:off`` command line switch.
 
 
 `Calling the C compiler fails - what's wrong?`:Q:

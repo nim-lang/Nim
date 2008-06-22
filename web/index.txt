@@ -17,18 +17,18 @@ Welcome to the Nimrod programming language
 programming language, that supports procedural, functional, object oriented and 
 generic programming styles while remaining simple and efficient. A special 
 feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
-(*AST*) is part ofthe specification - this allows a powerful macro system which 
+(*AST*) is part of the specification - this allows a powerful macro system which 
 can be used to create domain specific languages.
 
 *Nimrod* is a compiled, garbage-collected systems programming language 
 which has an excellent productivity/performance ratio. Nimrod's design 
-focusses on the 3E: efficiency, expressiveness, elegance (in the order of 
+focuses on the 3E: efficiency, expressiveness, elegance (in the order of 
 priority). 
 
 
 Some more of Nimrod's highlights:
 
-* Native code (currently via compilation to C).
+* Native code generation (currently via compilation to C).
 * Garbage collection, but not dependant on a Virtual Machine.
 * Portable: The Nimrod Compiler runs on Windows, Linux and Mac OS X.
   Porting to other platforms is easy.
@@ -38,12 +38,12 @@ Some more of Nimrod's highlights:
 * Exceptions.
 * Modern type system with local type inference, tuples, variants, etc.
 * User-defineable operators; new operators often easier to read than overloaded
-  ones
+  ones.
 * High level datatypes: strings, sets, sequences, etc.
 * Compile time evaluation without resorting to meta-programming facilities.
-* *Forward* compatibility: If later versions of the language introduce new
+* *Forward* compability: If later versions of the language introduce new
   keywords old code won't break!
-* Bindings to GTK2, X11, the Windows API, the POSIX API. New bindings are 
+* Bindings to GTK2, the Windows API, the POSIX API. New bindings are 
   easily generated in a semi-atomatic way. 
 * A plugable parser system: If you don't like Nimrod's syntax, you can plug in
   a parser and a source renderer for your own syntax!

@@ -566,7 +566,7 @@ Index
      `os.html#136 <os.html#136>`_
 
    `existsEnv`:idx:
-     `os.html#140 <os.html#140>`_
+     `os.html#141 <os.html#141>`_
 
    `ExistsFile`:idx:
      `os.html#115 <os.html#115>`_
@@ -591,6 +591,9 @@ Index
 
    `fatal`:idx:
      `manual.html#227 <manual.html#227>`_
+
+   `fileNewer`:idx:
+     `os.html#138 <os.html#138>`_
 
    `FileSystemCaseSensitive`:idx:
      `os.html#106 <os.html#106>`_
@@ -674,7 +677,7 @@ Index
      `times.html#111 <times.html#111>`_
 
    `getEnv`:idx:
-     `os.html#139 <os.html#139>`_
+     `os.html#140 <os.html#140>`_
 
    `getFilePos`:idx:
      `system.html#389 <system.html#389>`_
@@ -792,7 +795,7 @@ Index
      `manual.html#206 <manual.html#206>`_
 
    `iterOverEnvironment`:idx:
-     `os.html#144 <os.html#144>`_
+     `os.html#145 <os.html#145>`_
 
    `JoinPath`:idx:
      * `os.html#116 <os.html#116>`_
@@ -963,10 +966,10 @@ Index
      `manual.html#142 <manual.html#142>`_
 
    `paramCount`:idx:
-     `os.html#141 <os.html#141>`_
+     `os.html#142 <os.html#142>`_
 
    `paramStr`:idx:
-     `os.html#142 <os.html#142>`_
+     `os.html#143 <os.html#143>`_
 
    `ParDir`:idx:
      `os.html#102 <os.html#102>`_
@@ -1020,7 +1023,7 @@ Index
      `manual.html#230 <manual.html#230>`_
 
    `putEnv`:idx:
-     `os.html#138 <os.html#138>`_
+     `os.html#139 <os.html#139>`_
 
    `quit`:idx:
      `system.html#286 <system.html#286>`_
@@ -1105,7 +1108,7 @@ Index
      `manual.html#167 <manual.html#167>`_
 
    `sameFile`:idx:
-     `os.html#143 <os.html#143>`_
+     `os.html#144 <os.html#144>`_
 
    `scope`:idx:
      * `manual.html#106 <manual.html#106>`_
@@ -1381,7 +1384,7 @@ Index
      `nimrodc.html#109 <nimrodc.html#109>`_
 
    `walkFiles`:idx:
-     `os.html#145 <os.html#145>`_
+     `os.html#146 <os.html#146>`_
 
    `warning`:idx:
      * `manual.html#222 <manual.html#222>`_
