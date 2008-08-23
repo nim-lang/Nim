@@ -1,10 +1,7 @@
 # test the file-IO
 
-import
-  io
-
 proc main() =
-  for line in lines("thallo.mor"):
+  for line in lines("thallo.nim"):
     writeln(stdout, line)
 
 main()

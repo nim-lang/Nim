@@ -68,12 +68,12 @@ type
                             exc: PDomException): PDomString{.cdecl.}
 
   PDomDocument* = ptr TDomDocument
-  TDomDocument* = record 
+  TDomDocument* {.final.} = object 
     parent*: PDomNode
     iterators*: PGSList
 
   PDomDocumentClass* = ptr TDomDocumentClass
-  TDomDocumentClass* = record 
+  TDomDocumentClass* {.final.} = object 
     parent_class*: PDomNodeClass
 
   PHtmlFocusIterator* = ptr THtmlFocusIterator

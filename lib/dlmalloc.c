@@ -6,6 +6,8 @@
 #define ABORT_ON_ASSERT_FAILURE 0
 */
 
+#define ABORT do { printf("abort was called\n"); abort(); } while (0)
+
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by
   Doug Lea and released to the public domain, as explained at

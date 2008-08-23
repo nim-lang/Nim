@@ -272,25 +272,3 @@ end of the subject string, whatever options are set.
 The difference between ``\Z`` and ``\z`` is that ``\Z`` matches before
 a newline that is the last character of the string as well as at the end
 of the string, whereas ``\z`` matches only at the end.
-
-.. 
-  Regular expressions in Nimrod itself!
-  -------------------------------------
-  
-  'a' -- matches the character a
-  'a'-'z'  -- range operator '-'
-  'A' | 'B' -- alternative operator |
-  * 'a' -- prefix * is needed
-  + 'a' -- prefix + is needed
-  ? 'a' -- prefix ? is needed
-  letter  -- character classes with real names!
-  letters
-  white
-  whites
-  any   -- any character
-  ()    -- are Nimrod syntax
-  ! 'a'-'z'
-  
-  -- concatentation via proc call:
-  
-  re('A' 'Z' word * )

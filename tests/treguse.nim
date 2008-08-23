@@ -1,9 +1,6 @@
 # Test the register usage of the virtual machine and
 # the blocks in var statements
 
-import
-  io
-
 proc main(a, b: int) =
   var x = 0
   write(stdout, x)

@@ -1,9 +1,6 @@
 # test the improved readline handling that does not care whether its
 # Macintosh, Unix or Windows text format.
 
-import
-  io
-
 var
   inp: tTextFile
   line: string

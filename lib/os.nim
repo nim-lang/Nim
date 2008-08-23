@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,7 +10,9 @@
 ## Basic operating system facilities like retrieving environment variables,
 ## reading command line arguments, working with directories, running shell
 ## commands, etc. This module is -- like any other basic library --
-## platform independant.
+## platform independant. However, the ECMAScript target is not supported,
+## as there is no way to perform these operations in ECMAScript portably
+## or at all.
 
 {.push debugger:off.}
 
@@ -18,7 +20,7 @@ import
   strutils, times
 
 # copied from excpt.nim, because I don't want to make this template public
-template newException(exceptn, message: expr): expr = 
+template newException(exceptn, message: expr): expr =
   block: # open a new scope
     var
       e: ref exceptn
@@ -294,7 +296,7 @@ proc existsDir*(dir: string): bool
 proc getLastModificationTime*(file: string): TTime
   ## Gets the time of the `file`'s last modification.
 
-proc fileNewer*(a, b: string): bool 
+proc fileNewer*(a, b: string): bool
   ## returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
 
@@ -371,8 +373,11 @@ proc UnixToNativePath(path: string): string =
 
 # interface to C library:
 
+const
+  cunder = if defined(pcc): "_" else: ""
+
 type
-  TStat {.importc: "struct stat".} = record
+  TStat {.importc: "struct " & cunder & "stat", final.} = object
     st_dev: int16
     st_ino: int16
     st_mode: int16
@@ -397,7 +402,8 @@ else:
   {.error: "os library not ported to your OS. Please help!".}
 
 
-proc chdir(path: CString): cint {.importc: "chdir", header: dirHeader.}
+proc chdir(path: CString): cint {.
+  importc: cunder & "chdir", header: dirHeader.}
 
 when defined(unix):
   proc mkdir(dir: CString, theAccess: cint): cint {.
@@ -412,7 +418,7 @@ elif defined(windows):
   proc fullpath(buffer, file: CString, size: int): CString {.
     importc: "_fullpath", header: "<stdlib.h>".}
   proc getcwd(buf: CString, buflen: cint): CString {.
-    importc: "getcwd", header: "<direct.h>".}
+    importc: cunder & "getcwd", header: "<direct.h>".}
 
   proc CreateDirectory(pathName: cstring, security: Pointer): cint {.
     importc: "CreateDirectory", header: "<windows.h>".}
@@ -421,7 +427,8 @@ else:
   {.error: "os library not ported to your OS. Please help!".}
 
 
-proc rmdir(dir: CString): cint {.importc: "rmdir", header: "<time.h>".}
+proc rmdir(dir: CString): cint {.
+  importc: cunder & "rmdir", header: "<time.h>".}
   # rmdir is of course in ``dirHeader``, but we check here to include
   # time.h which is needed for stat(). stat() needs time.h and
   # sys/stat.h; we workaround a C library issue here.
@@ -432,17 +439,7 @@ proc free(c: cstring) {.importc: "free", nodecl.}
 proc strlen(str: CString): int {.importc: "strlen", nodecl.}
 
 proc stat(f: CString, res: var TStat): cint {.
-  importc: "stat", header: "<sys/stat.h>".}
-
-proc sameFile*(path1, path2: string): bool =
-  ## Returns True if both pathname arguments refer to the same file or
-  ## directory (as indicated by device number and i-node number).
-  ## Raises an exception if an os.stat() call on either pathname fails.
-  var
-    a, b: TStat
-  if stat(path1, a) < 0 or stat(path2, b) < 0:
-    raise newException(EOS, "stat() call failed")
-  return int(a.st_dev) == b.st_dev and int(a.st_ino) == b.st_ino
+  importc: cunder & "stat", header: "<sys/stat.h>".}
 
 when defined(windows):
   proc getModuleFilename(handle: int32, buf: CString, size: int32): int32 {.
@@ -456,13 +453,13 @@ proc getLastModificationTime(file: string): TTime =
 
 proc setCurrentDir(newDir: string) =
   if chdir(newDir) != 0:
-    raise newException(EOS, "cannot change the working directory to '$1'" % 
+    raise newException(EOS, "cannot change the working directory to '$1'" %
       newDir)
 
 when defined(linux) or defined(solaris) or defined(bsd):
   proc readlink(link, buf: cstring, size: int): int {.
     header: "<unistd.h>", cdecl.}
-  
+
   proc getApplAux(procPath: string): string =
     result = newString(256)
     var len = readlink(procPath, result, 256)
@@ -473,6 +470,13 @@ when defined(linux) or defined(solaris) or defined(bsd):
 
 when defined(solaris) or defined(bsd):
   proc getpid(): int {.importc, header: "<unistd.h>", cdecl.}
+elif defined(macosx):
+  # a really hacky solution: since we like to include 2 headers we have to
+  # define two procs which in reality are the same
+  proc getExecPath1(c: cstring, size: var int32) {.
+    importc: "_NSGetExecutablePath", header: "<sys/param.h>".}
+  proc getExecPath2(c: cstring, size: var int32): bool {.
+    importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
 proc getApplicationFilename(): string =
   # Linux: /proc/<pid>/exe
@@ -491,6 +495,12 @@ proc getApplicationFilename(): string =
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
   elif defined(bsd):
     result = getApplAux("/proc/" & $getpid() & "file")
+  elif defined(macosx):
+    var size: int32
+    getExecPath1(nil, size)
+    result = newString(int(size))
+    if getExecPath2(result, size):
+      result = "" # error!
   else:
     # little heuristic that may work on other POSIX-like systems:
     result = getEnv("_")
@@ -612,7 +622,7 @@ when defined(wcc):
   proc cputenv(env: CString): cint {.importc: "putenv", header: "<process.h>".}
 
 else: # is in <stdlib.h>
-  proc cputenv(env: CString): cint {.importc: "putenv", noDecl.} 
+  proc cputenv(env: CString): cint {.importc: cunder & "putenv", noDecl.}
 
 proc cgetenv(env: CString): CString {.importc: "getenv", noDecl.}
 
@@ -621,7 +631,7 @@ proc cgetenv(env: CString): CString {.importc: "getenv", noDecl.}
 #int  _findclose(long);
 when defined(windows):
   type
-    TFindData {.importc: "struct _finddata_t".} = record
+    TFindData {.importc: "struct _finddata_t", final.} = object
       attrib {.importc: "attrib".}: cint
       time_create {.importc: "time_create".}: cint
       time_access {.importc: "time_access".}: cint
@@ -636,7 +646,7 @@ when defined(windows):
   proc findclose(handle: cint) {.importc: "_findclose", header: "<io.h>".}
 else:
   type
-    TFindData {.importc: "glob_t".} = record
+    TFindData {.importc: "glob_t", final.} = object
       gl_pathc: int     # count of paths matched by pattern
       gl_pathv: ptr array[0..1000_000, CString] # list of matched path names
       gl_offs: int      # slots to reserve at beginning of gl_pathv
@@ -648,6 +658,30 @@ else:
 
   proc globfree(pglob: PFindData) {.
     importc: "globfree", header: "<glob.h>".}
+
+proc sameFile*(path1, path2: string): bool =
+  ## Returns True if both pathname arguments refer to the same file or
+  ## directory (as indicated by device number and i-node number).
+  ## Raises an exception if an os.stat() call on either pathname fails.
+  when defined(Windows):
+    var
+      a, b: TFindData
+    var resA = findfirst(path1, addr(a))
+    var resB = findfirst(path2, addr(b))
+    if resA != -1 and resB != -1:
+      result = $a.name == $b.name
+    else:
+      # work around some ``findfirst`` bugs
+      result = cmpPaths(path1, path2) == 0
+    if resA != -1: findclose(resA)
+    if resB != -1: findclose(resB)
+  else:
+    var
+      a, b: TStat
+    if stat(path1, a) < 0 or stat(path2, b) < 0:
+      result = cmpPaths(path1, path2) == 0 # be consistent with Windows
+    else:
+      result = int(a.st_dev) == b.st_dev and int(a.st_ino) == b.st_ino
 
 proc cremove(filename: CString): cint {.importc: "remove", noDecl.}
 proc crename(oldname, newname: CString): cint {.importc: "rename", noDecl.}
@@ -776,9 +810,9 @@ proc findEnvVar(key: string): int =
 
 proc getEnv(key: string): string =
   var i = findEnvVar(key)
-  if i >= 0: 
+  if i >= 0:
     return copy(environment[i], findSubStr("=", environment[i])+1)
-  else: 
+  else:
     var env = cgetenv(key)
     if env == nil: return ""
     result = $env
@@ -787,7 +821,7 @@ proc existsEnv(key: string): bool =
   if cgetenv(key) != nil: return true
   else: return findEnvVar(key) >= 0
 
-iterator iterOverEnvironment*(): tuple[string, string] =
+iterator iterOverEnvironment*(): tuple[key, value: string] =
   ## Iterate over all environments varialbes. In the first component of the
   ## tuple is the name of the current variable stored, in the second its value.
   getEnvVarsC()
@@ -798,7 +832,7 @@ iterator iterOverEnvironment*(): tuple[string, string] =
 proc putEnv(key, val: string) =
   # Note: by storing the string in the environment sequence,
   # we gurantee that we don't free the memory before the program
-  # ends (this is needed for POSIX compliance). It is also needed so that 
+  # ends (this is needed for POSIX compliance). It is also needed so that
   # the process itself may access its modified environment variables!
   var indx = findEnvVar(key)
   if indx >= 0:

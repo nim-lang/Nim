@@ -191,12 +191,12 @@ proc gdk_pixbuf_get_option*(pixbuf: PGdkPixbuf, key: cstring): cstring{.cdecl,
     dynlib: gdkpixbuflib, importc: "gdk_pixbuf_get_option".}
 type 
   PGdkPixbufLoader* = ptr TGdkPixbufLoader
-  TGdkPixbufLoader* = record 
+  TGdkPixbufLoader* {.final.} = object 
     parent_instance*: TGObject
     priv*: gpointer
 
   PGdkPixbufLoaderClass* = ptr TGdkPixbufLoaderClass
-  TGdkPixbufLoaderClass* = record 
+  TGdkPixbufLoaderClass* {.final.} = object 
     parent_class*: TGObjectClass
     area_prepared*: proc (loader: PGdkPixbufLoader){.cdecl.}
     area_updated*: proc (loader: PGdkPixbufLoader, x: int32, y: int32, 

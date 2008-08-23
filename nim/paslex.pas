@@ -70,6 +70,7 @@ type
     pxSymbol,    // a symbol
 
     pxIntLit,
+    pxInt64Lit,  // long constant like 0x00000070fffffff or out of int range
     pxFloatLit,
 
     pxParLe, pxParRi, pxBracketLe, pxBracketRi,
@@ -110,7 +111,8 @@ const
     'with', 'xor', 
     //[[[end]]]
     'pxComment', 'pxCommand',
-    '{&}', '{%}', 'pxStrLit', '[IDENTIFIER]', 'pxIntLit', 'pxFloatLit',
+    '{&}', '{%}', 'pxStrLit', '[IDENTIFIER]', 'pxIntLit', 'pxInt64Lit',
+    'pxFloatLit',
     '('+'', ')'+'', '['+'', ']'+'',
     ','+'', ';'+'', ':'+'',
     ':=', '='+'', '.'+'', '..', '^'+'', '+'+'', '-'+'', '*'+'', '/'+'',
@@ -135,7 +137,7 @@ implementation
 function pastokToStr(const tok: TPasTok): string;
 begin
   case tok.xkind of
-    pxIntLit:
+    pxIntLit, pxInt64Lit:
       result := toString(tok.iNumber);
     pxFloatLit:
       result := toStringF(tok.fNumber);
@@ -271,7 +273,7 @@ end;
 
 procedure getNumber2(var L: TPasLex; var tok: TPasTok);
 var
-  pos: int;
+  pos, bits: int;
   xi: biggestInt;
 begin
   pos := L.bufpos+1; // skip %
@@ -284,6 +286,7 @@ begin
 
   tok.base := base2;
   xi := 0;
+  bits := 0;
   while true do begin
     case L.buf[pos] of
       'A'..'Z', 'a'..'z', '2'..'9', '.': begin
@@ -294,23 +297,28 @@ begin
       '0', '1': begin
         xi := (xi shl 1) or (ord(L.buf[pos]) - ord('0'));
         inc(pos);
+        inc(bits);
       end;
       else break;
     end
   end;
   tok.iNumber := xi;
-  tok.xkind := pxIntLit;
+  if (bits > 32) then //or (xi < low(int32)) or (xi > high(int32)) then
+    tok.xkind := pxInt64Lit
+  else
+    tok.xkind := pxIntLit;
   L.bufpos := pos;
 end;
 
 procedure getNumber16(var L: TPasLex; var tok: TPasTok);
 var
-  pos: int;
+  pos, bits: int;
   xi: biggestInt;
 begin
   pos := L.bufpos+1; // skip $
   tok.base := base16;
   xi := 0;
+  bits := 0;
   while true do begin
     case L.buf[pos] of
       'G'..'Z', 'g'..'z', '.': begin
@@ -321,20 +329,26 @@ begin
       '0'..'9': begin
         xi := (xi shl 4) or (ord(L.buf[pos]) - ord('0'));
         inc(pos);
+        inc(bits, 4);
       end;
       'a'..'f': begin
         xi := (xi shl 4) or (ord(L.buf[pos]) - ord('a') + 10);
         inc(pos);
+        inc(bits, 4);
       end;
       'A'..'F': begin
         xi := (xi shl 4) or (ord(L.buf[pos]) - ord('A') + 10);
         inc(pos);
+        inc(bits, 4);
       end;
       else break;
     end
   end;
   tok.iNumber := xi;
-  tok.xkind := pxIntLit;
+  if (bits > 32) then // (xi < low(int32)) or (xi > high(int32)) then
+    tok.xkind := pxInt64Lit
+  else
+    tok.xkind := pxIntLit;
   L.bufpos := pos;
 end;
 
@@ -354,7 +368,10 @@ begin
     end
     else begin
       tok.iNumber := ParseInt(tok.literal);
-      tok.xkind := pxIntLit;
+      if (tok.iNumber < low(int32)) or (tok.iNumber > high(int32)) then
+        tok.xkind := pxInt64Lit
+      else
+        tok.xkind := pxIntLit;
     end;
   except
     on EInvalidValue do

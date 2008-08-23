@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  charsets, nsystem, sysutils, hashes, options, msgs, strutils, platform, 
+  charsets, nsystem, sysutils, hashes, options, msgs, strutils, platform,
   idents, lexbase, wordrecg, scanner;
 
 type
@@ -42,14 +42,14 @@ type
     gtLongComment,
     gtRegularExpression,
     gtTagStart,
-    gtTagEnd, 
+    gtTagEnd,
     gtKey,
     gtValue,
     gtRawData,
     gtAssembler,
     gtPreprocessor,
     gtDirective,
-    gtCommand, 
+    gtCommand,
     gtRule,
     gtHyperlink,
     gtLabel,
@@ -65,7 +65,7 @@ type
     state: TTokenClass;
   end;
   TSourceLanguage = (
-    langNone, 
+    langNone,
     langNimrod,
     langCpp,
     langCsharp,
@@ -97,14 +97,14 @@ const
     'LongComment',
     'RegularExpression',
     'TagStart',
-    'TagEnd', 
+    'TagEnd',
     'Key',
     'Value',
     'RawData',
     'Assembler',
     'Preprocessor',
     'Directive',
-    'Command', 
+    'Command',
     'Rule',
     'Hyperlink',
     'Label',
@@ -114,7 +114,7 @@ const
 
 function getSourceLanguage(const name: string): TSourceLanguage;
 
-procedure initGeneralTokenizer(var g: TGeneralTokenizer; 
+procedure initGeneralTokenizer(var g: TGeneralTokenizer;
                                const buf: string);
 procedure deinitGeneralTokenizer(var g: TGeneralTokenizer);
 procedure getNextToken(var g: TGeneralTokenizer; lang: TSourceLanguage);
@@ -125,18 +125,23 @@ function getSourceLanguage(const name: string): TSourceLanguage;
 var
   i: TSourceLanguage;
 begin
-  for i := succ(low(TSourceLanguage)) to high(TSourceLanguage) do 
+  for i := succ(low(TSourceLanguage)) to high(TSourceLanguage) do
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) = 0 then begin
       result := i; exit
     end;
   result := langNone
 end;
 
-procedure initGeneralTokenizer(var g: TGeneralTokenizer; 
+procedure initGeneralTokenizer(var g: TGeneralTokenizer;
                                const buf: string);
 begin
 {@ignore} fillChar(g, sizeof(g), 0); {@emit}
   g.buf := PChar(buf);
+  g.kind := low(TTokenClass);
+  g.start := 0;
+  g.len := 0;
+  g.pos := 0;
+  g.state := low(TTokenClass);
 end;
 
 procedure deinitGeneralTokenizer(var g: TGeneralTokenizer);
@@ -221,7 +226,7 @@ begin
         '\': begin
           g.kind := gtEscapeSequence;
           inc(pos);
-          case g.buf[pos] of 
+          case g.buf[pos] of
             'x', 'X': begin
               inc(pos);
               if g.buf[pos] in hexChars then inc(pos);
@@ -243,8 +248,8 @@ begin
       end
     end
   end
-  else begin 
-    case g.buf[pos] of 
+  else begin
+    case g.buf[pos] of
       ' ', #9..#13: begin
         g.kind := gtWhitespace;
         while g.buf[pos] in [' ', #9..#13] do inc(pos);
@@ -284,10 +289,10 @@ begin
           end;
           'o', 'O': begin
             inc(pos);
-            while g.buf[pos] in octChars do inc(pos);          
+            while g.buf[pos] in octChars do inc(pos);
             pos := nimNumberPostfix(g, pos);
           end;
-          else 
+          else
             pos := nimNumber(g, pos);
         end
       end;
@@ -315,7 +320,7 @@ begin
             case g.buf[pos] of
               #0: break;
               '"': begin
-                inc(pos); 
+                inc(pos);
                 if (g.buf[pos] = '"') and (g.buf[pos+1] = '"') then begin
                   inc(pos, 2);
                   break
@@ -411,7 +416,7 @@ begin
         end
       end;
       else if g.buf[pos] = c then begin
-        inc(pos); break;      
+        inc(pos); break;
       end
       else
         inc(pos);
@@ -468,7 +473,7 @@ type
   TTokenizerFlag = (hasPreprocessor, hasNestedComments);
   TTokenizerFlags = set of TTokenizerFlag;
 
-procedure clikeNextToken(var g: TGeneralTokenizer; 
+procedure clikeNextToken(var g: TGeneralTokenizer;
                          const keywords: array of string;
                          flags: TTokenizerFlags);
 const
@@ -489,7 +494,7 @@ begin
         '\': begin
           g.kind := gtEscapeSequence;
           inc(pos);
-          case g.buf[pos] of 
+          case g.buf[pos] of
             'x', 'X': begin
               inc(pos);
               if g.buf[pos] in hexChars then inc(pos);
@@ -511,8 +516,8 @@ begin
       end
     end
   end
-  else begin 
-    case g.buf[pos] of 
+  else begin
+    case g.buf[pos] of
       ' ', #9..#13: begin
         g.kind := gtWhitespace;
         while g.buf[pos] in [' ', #9..#13] do inc(pos);
@@ -583,7 +588,7 @@ begin
           end;
           '0'..'7': begin
             inc(pos);
-            while g.buf[pos] in octChars do inc(pos);          
+            while g.buf[pos] in octChars do inc(pos);
             if g.buf[pos] in ['A'..'Z', 'a'..'z'] then inc(pos);
           end;
           else begin
@@ -635,13 +640,13 @@ end;
 // --------------------------------------------------------------------------
 
 procedure cNextToken(var g: TGeneralTokenizer);
-const 
+const
   keywords: array [0..36] of string = (
     '_Bool', '_Complex', '_Imaginary',
-    'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do', 
-    'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 
-    'inline', 'int', 'long', 'register', 'restrict', 'return', 'short', 
-    'signed', 'sizeof', 'static', 'struct', 'switch', 'typedef', 'union', 
+    'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+    'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
+    'inline', 'int', 'long', 'register', 'restrict', 'return', 'short',
+    'signed', 'sizeof', 'static', 'struct', 'switch', 'typedef', 'union',
     'unsigned', 'void', 'volatile', 'while'
   );
 begin
@@ -649,12 +654,12 @@ begin
 end;
 
 procedure cppNextToken(var g: TGeneralTokenizer);
-const 
+const
   keywords: array [0..47] of string = (
     'asm', 'auto', 'break', 'case', 'catch', 'char', 'class', 'const',
     'continue', 'default', 'delete', 'do', 'double', 'else', 'enum', 'extern',
     'float', 'for', 'friend', 'goto', 'if', 'inline', 'int', 'long', 'new',
-    'operator', 'private', 'protected', 'public', 'register', 'return', 
+    'operator', 'private', 'protected', 'public', 'register', 'return',
     'short', 'signed', 'sizeof', 'static', 'struct', 'switch', 'template',
     'this', 'throw', 'try', 'typedef', 'union', 'unsigned', 'virtual', 'void',
     'volatile', 'while'
@@ -664,33 +669,33 @@ begin
 end;
 
 procedure csharpNextToken(var g: TGeneralTokenizer);
-const 
+const
   keywords: array [0..76] of string = (
-    'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch', 
-    'char', 'checked', 'class', 'const', 'continue', 'decimal', 'default', 
-    'delegate', 'do', 'double', 'else', 'enum', 'event', 'explicit', 'extern', 
-    'false', 'finally', 'fixed', 'float', 'for', 'foreach', 'goto', 'if', 
-    'implicit', 'in', 'int', 'interface', 'internal', 'is', 'lock', 'long', 
-    'namespace', 'new', 'null', 'object', 'operator', 'out', 'override', 
-    'params', 'private', 'protected', 'public', 'readonly', 'ref', 'return', 
-    'sbyte', 'sealed', 'short', 'sizeof', 'stackalloc', 'static', 'string', 
-    'struct', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'uint', 
-    'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual', 'void', 
-    'volatile', 'while'  
+    'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch',
+    'char', 'checked', 'class', 'const', 'continue', 'decimal', 'default',
+    'delegate', 'do', 'double', 'else', 'enum', 'event', 'explicit', 'extern',
+    'false', 'finally', 'fixed', 'float', 'for', 'foreach', 'goto', 'if',
+    'implicit', 'in', 'int', 'interface', 'internal', 'is', 'lock', 'long',
+    'namespace', 'new', 'null', 'object', 'operator', 'out', 'override',
+    'params', 'private', 'protected', 'public', 'readonly', 'ref', 'return',
+    'sbyte', 'sealed', 'short', 'sizeof', 'stackalloc', 'static', 'string',
+    'struct', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'uint',
+    'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual', 'void',
+    'volatile', 'while'
   );
 begin
   clikeNextToken(g, keywords, {@set}[hasPreprocessor]);
 end;
 
 procedure javaNextToken(var g: TGeneralTokenizer);
-const 
+const
   keywords: array [0..52] of string = (
-    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 
-    'char', 'class', 'const', 'continue', 'default', 'do', 'double', 'else', 
-    'enum', 'extends', 'false', 'final', 'finally', 'float', 'for', 'goto', 
-    'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long', 
-    'native', 'new', 'null', 'package', 'private', 'protected', 'public', 
-    'return', 'short', 'static', 'strictfp', 'super', 'switch', 
+    'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch',
+    'char', 'class', 'const', 'continue', 'default', 'do', 'double', 'else',
+    'enum', 'extends', 'false', 'final', 'finally', 'float', 'for', 'goto',
+    'if', 'implements', 'import', 'instanceof', 'int', 'interface', 'long',
+    'native', 'new', 'null', 'package', 'private', 'protected', 'public',
+    'return', 'short', 'static', 'strictfp', 'super', 'switch',
     'synchronized', 'this', 'throw', 'throws', 'transient', 'true', 'try',
     'void', 'volatile', 'while'
   );
@@ -700,7 +705,7 @@ end;
 
 procedure getNextToken(var g: TGeneralTokenizer; lang: TSourceLanguage);
 begin
-  case lang of 
+  case lang of
     langNimrod: nimNextToken(g);
     langCpp: cppNextToken(g);
     langCsharp: csharpNextToken(g);

@@ -65,6 +65,135 @@ for key, val in enums.iteritems():
   cog.out(b)
 ]]]*)
 type
+  TNodeKind = (
+    nkNone, nkEmpty, nkIdent, nkSym, 
+    nkType, nkCharLit, nkIntLit, nkInt8Lit, 
+    nkInt16Lit, nkInt32Lit, nkInt64Lit, nkFloatLit, 
+    nkFloat32Lit, nkFloat64Lit, nkStrLit, nkRStrLit, 
+    nkTripleStrLit, nkMetaNode, nkNilLit, nkDotCall, 
+    nkCommand, nkCall, nkGenericCall, nkExplicitTypeListCall, 
+    nkExprEqExpr, nkExprColonExpr, nkIdentDefs, nkInfix, 
+    nkPrefix, nkPostfix, nkPar, nkCurly, 
+    nkBracket, nkBracketExpr, nkPragmaExpr, nkRange, 
+    nkDotExpr, nkCheckedFieldExpr, nkDerefExpr, nkIfExpr, 
+    nkElifExpr, nkElseExpr, nkLambda, nkAccQuoted, 
+    nkHeaderQuoted, nkTableConstr, nkQualified, nkHiddenStdConv, 
+    nkHiddenSubConv, nkHiddenCallConv, nkConv, nkCast, 
+    nkAddr, nkHiddenAddr, nkHiddenDeref, nkObjDownConv, 
+    nkObjUpConv, nkChckRangeF, nkChckRange64, nkChckRange, 
+    nkStringToCString, nkCStringToString, nkPassAsOpenArray, nkAsgn, 
+    nkDefaultTypeParam, nkGenericParams, nkFormalParams, nkOfInherit, 
+    nkModule, nkProcDef, nkConverterDef, nkMacroDef, 
+    nkTemplateDef, nkIteratorDef, nkOfBranch, nkElifBranch, 
+    nkExceptBranch, nkElse, nkMacroStmt, nkAsmStmt, 
+    nkPragma, nkIfStmt, nkWhenStmt, nkForStmt, 
+    nkWhileStmt, nkCaseStmt, nkVarSection, nkConstSection, 
+    nkConstDef, nkTypeSection, nkTypeDef, nkYieldStmt, 
+    nkTryStmt, nkFinally, nkRaiseStmt, nkReturnStmt, 
+    nkBreakStmt, nkContinueStmt, nkBlockStmt, nkDiscardStmt, 
+    nkStmtList, nkImportStmt, nkFromStmt, nkImportAs, 
+    nkIncludeStmt, nkAccessStmt, nkCommentStmt, nkStmtListExpr, 
+    nkBlockExpr, nkVm, nkTypeOfExpr, nkObjectTy, 
+    nkTupleTy, nkRecList, nkRecCase, nkRecWhen, 
+    nkRefTy, nkPtrTy, nkVarTy, nkProcTy, 
+    nkEnumTy, nkEnumFieldDef, nkReturnToken);
+  TNodeKinds = set of TNodeKind;
+const
+  NodeKindToStr: array [TNodeKind] of string = (
+    'nkNone', 'nkEmpty', 'nkIdent', 'nkSym', 
+    'nkType', 'nkCharLit', 'nkIntLit', 'nkInt8Lit', 
+    'nkInt16Lit', 'nkInt32Lit', 'nkInt64Lit', 'nkFloatLit', 
+    'nkFloat32Lit', 'nkFloat64Lit', 'nkStrLit', 'nkRStrLit', 
+    'nkTripleStrLit', 'nkMetaNode', 'nkNilLit', 'nkDotCall', 
+    'nkCommand', 'nkCall', 'nkGenericCall', 'nkExplicitTypeListCall', 
+    'nkExprEqExpr', 'nkExprColonExpr', 'nkIdentDefs', 'nkInfix', 
+    'nkPrefix', 'nkPostfix', 'nkPar', 'nkCurly', 
+    'nkBracket', 'nkBracketExpr', 'nkPragmaExpr', 'nkRange', 
+    'nkDotExpr', 'nkCheckedFieldExpr', 'nkDerefExpr', 'nkIfExpr', 
+    'nkElifExpr', 'nkElseExpr', 'nkLambda', 'nkAccQuoted', 
+    'nkHeaderQuoted', 'nkTableConstr', 'nkQualified', 'nkHiddenStdConv', 
+    'nkHiddenSubConv', 'nkHiddenCallConv', 'nkConv', 'nkCast', 
+    'nkAddr', 'nkHiddenAddr', 'nkHiddenDeref', 'nkObjDownConv', 
+    'nkObjUpConv', 'nkChckRangeF', 'nkChckRange64', 'nkChckRange', 
+    'nkStringToCString', 'nkCStringToString', 'nkPassAsOpenArray', 'nkAsgn', 
+    'nkDefaultTypeParam', 'nkGenericParams', 'nkFormalParams', 'nkOfInherit', 
+    'nkModule', 'nkProcDef', 'nkConverterDef', 'nkMacroDef', 
+    'nkTemplateDef', 'nkIteratorDef', 'nkOfBranch', 'nkElifBranch', 
+    'nkExceptBranch', 'nkElse', 'nkMacroStmt', 'nkAsmStmt', 
+    'nkPragma', 'nkIfStmt', 'nkWhenStmt', 'nkForStmt', 
+    'nkWhileStmt', 'nkCaseStmt', 'nkVarSection', 'nkConstSection', 
+    'nkConstDef', 'nkTypeSection', 'nkTypeDef', 'nkYieldStmt', 
+    'nkTryStmt', 'nkFinally', 'nkRaiseStmt', 'nkReturnStmt', 
+    'nkBreakStmt', 'nkContinueStmt', 'nkBlockStmt', 'nkDiscardStmt', 
+    'nkStmtList', 'nkImportStmt', 'nkFromStmt', 'nkImportAs', 
+    'nkIncludeStmt', 'nkAccessStmt', 'nkCommentStmt', 'nkStmtListExpr', 
+    'nkBlockExpr', 'nkVm', 'nkTypeOfExpr', 'nkObjectTy', 
+    'nkTupleTy', 'nkRecList', 'nkRecCase', 'nkRecWhen', 
+    'nkRefTy', 'nkPtrTy', 'nkVarTy', 'nkProcTy', 
+    'nkEnumTy', 'nkEnumFieldDef', 'nkReturnToken');
+type
+  TSymFlag = (
+    sfTypeCheck, sfForward, sfImportc, sfExportc, 
+    sfVolatile, sfUsed, sfWrite, sfRegister, 
+    sfPure, sfCodeGenerated, sfPrivate, sfGlobal, 
+    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
+    sfNoReturn, sfAddrTaken, sfInInterface, sfNoStatic, 
+    sfCompilerProc, sfCppMethod, sfDiscriminant, sfDeprecated, 
+    sfInClosure, sfIsCopy, sfStar, sfMinus);
+  TSymFlags = set of TSymFlag;
+const
+  SymFlagToStr: array [TSymFlag] of string = (
+    'sfTypeCheck', 'sfForward', 'sfImportc', 'sfExportc', 
+    'sfVolatile', 'sfUsed', 'sfWrite', 'sfRegister', 
+    'sfPure', 'sfCodeGenerated', 'sfPrivate', 'sfGlobal', 
+    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
+    'sfNoReturn', 'sfAddrTaken', 'sfInInterface', 'sfNoStatic', 
+    'sfCompilerProc', 'sfCppMethod', 'sfDiscriminant', 'sfDeprecated', 
+    'sfInClosure', 'sfIsCopy', 'sfStar', 'sfMinus');
+type
+  TTypeKind = (
+    tyNone, tyBool, tyChar, tyEmptySet, 
+    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
+    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
+    tyObject, tyTuple, tySet, tyRange, 
+    tyPtr, tyRef, tyVar, tySequence, 
+    tyProc, tyPointer, tyOpenArray, tyString, 
+    tyCString, tyForward, tyInt, tyInt8, 
+    tyInt16, tyInt32, tyInt64, tyFloat, 
+    tyFloat32, tyFloat64, tyFloat128);
+  TTypeKinds = set of TTypeKind;
+const
+  TypeKindToStr: array [TTypeKind] of string = (
+    'tyNone', 'tyBool', 'tyChar', 'tyEmptySet', 
+    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
+    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
+    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
+    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
+    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
+    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
+    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
+    'tyFloat32', 'tyFloat64', 'tyFloat128');
+type
+  TNodeFlag = (
+    nfNone, nfBase2, nfBase8, nfBase16, 
+    nfAllConst);
+  TNodeFlags = set of TNodeFlag;
+const
+  NodeFlagToStr: array [TNodeFlag] of string = (
+    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
+    'nfAllConst');
+type
+  TTypeFlag = (
+    tfIsDistinct, tfGeneric, tfExternal, tfImported, 
+    tfInfoGenerated, tfSemChecked, tfHasOutParams, tfEnumHasWholes, 
+    tfVarargs, tfFinal);
+  TTypeFlags = set of TTypeFlag;
+const
+  TypeFlagToStr: array [TTypeFlag] of string = (
+    'tfIsDistinct', 'tfGeneric', 'tfExternal', 'tfImported', 
+    'tfInfoGenerated', 'tfSemChecked', 'tfHasOutParams', 'tfEnumHasWholes', 
+    'tfVarargs', 'tfFinal');
+type
   TSymKind = (
     skUnknownSym, skConditional, skDynLib, skParam, 
     skTypeParam, skTemp, skType, skConst, 
@@ -79,126 +208,6 @@ const
     'skVar', 'skProc', 'skIterator', 'skConverter', 
     'skMacro', 'skTemplate', 'skField', 'skEnumField', 
     'skForVar', 'skModule', 'skLabel');
-type
-  TNodeKind = (
-    nkNone, nkEmpty, nkIdent, nkSym, 
-    nkType, nkCharLit, nkRCharLit, nkIntLit, 
-    nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit, 
-    nkFloatLit, nkFloat32Lit, nkFloat64Lit, nkStrLit, 
-    nkRStrLit, nkTripleStrLit, nkNilLit, nkDotCall, 
-    nkCommand, nkCall, nkGenericCall, nkExplicitTypeListCall, 
-    nkExprEqExpr, nkExprColonExpr, nkIdentDefs, nkInfix, 
-    nkPrefix, nkPostfix, nkPar, nkCurly, 
-    nkBracket, nkBracketExpr, nkPragmaExpr, nkRange, 
-    nkDotExpr, nkCheckedFieldExpr, nkDerefExpr, nkIfExpr, 
-    nkElifExpr, nkElseExpr, nkLambda, nkAccQuoted, 
-    nkHeaderQuoted, nkSetConstr, nkConstSetConstr, nkArrayConstr, 
-    nkConstArrayConstr, nkRecordConstr, nkConstRecordConstr, nkTableConstr, 
-    nkConstTableConstr, nkQualified, nkHiddenStdConv, nkHiddenSubConv, 
-    nkHiddenCallConv, nkConv, nkCast, nkAddr, 
-    nkAsgn, nkDefaultTypeParam, nkGenericParams, nkFormalParams, 
-    nkOfInherit, nkModule, nkProcDef, nkConverterDef, 
-    nkMacroDef, nkTemplateDef, nkIteratorDef, nkOfBranch, 
-    nkElifBranch, nkExceptBranch, nkElse, nkMacroStmt, 
-    nkAsmStmt, nkPragma, nkIfStmt, nkWhenStmt, 
-    nkForStmt, nkWhileStmt, nkCaseStmt, nkVarSection, 
-    nkConstSection, nkConstDef, nkTypeSection, nkTypeDef, 
-    nkYieldStmt, nkTryStmt, nkFinally, nkRaiseStmt, 
-    nkReturnStmt, nkBreakStmt, nkContinueStmt, nkBlockStmt, 
-    nkGotoStmt, nkDiscardStmt, nkStmtList, nkImportStmt, 
-    nkFromStmt, nkImportAs, nkIncludeStmt, nkAccessStmt, 
-    nkCommentStmt, nkStmtListExpr, nkBlockExpr, nkVm, 
-    nkTypeOfExpr, nkRecordTy, nkObjectTy, nkRecList, 
-    nkRecCase, nkRecWhen, nkRefTy, nkPtrTy, 
-    nkVarTy, nkProcTy, nkEnumTy, nkEnumFieldDef);
-  TNodeKinds = set of TNodeKind;
-const
-  NodeKindToStr: array [TNodeKind] of string = (
-    'nkNone', 'nkEmpty', 'nkIdent', 'nkSym', 
-    'nkType', 'nkCharLit', 'nkRCharLit', 'nkIntLit', 
-    'nkInt8Lit', 'nkInt16Lit', 'nkInt32Lit', 'nkInt64Lit', 
-    'nkFloatLit', 'nkFloat32Lit', 'nkFloat64Lit', 'nkStrLit', 
-    'nkRStrLit', 'nkTripleStrLit', 'nkNilLit', 'nkDotCall', 
-    'nkCommand', 'nkCall', 'nkGenericCall', 'nkExplicitTypeListCall', 
-    'nkExprEqExpr', 'nkExprColonExpr', 'nkIdentDefs', 'nkInfix', 
-    'nkPrefix', 'nkPostfix', 'nkPar', 'nkCurly', 
-    'nkBracket', 'nkBracketExpr', 'nkPragmaExpr', 'nkRange', 
-    'nkDotExpr', 'nkCheckedFieldExpr', 'nkDerefExpr', 'nkIfExpr', 
-    'nkElifExpr', 'nkElseExpr', 'nkLambda', 'nkAccQuoted', 
-    'nkHeaderQuoted', 'nkSetConstr', 'nkConstSetConstr', 'nkArrayConstr', 
-    'nkConstArrayConstr', 'nkRecordConstr', 'nkConstRecordConstr', 'nkTableConstr', 
-    'nkConstTableConstr', 'nkQualified', 'nkHiddenStdConv', 'nkHiddenSubConv', 
-    'nkHiddenCallConv', 'nkConv', 'nkCast', 'nkAddr', 
-    'nkAsgn', 'nkDefaultTypeParam', 'nkGenericParams', 'nkFormalParams', 
-    'nkOfInherit', 'nkModule', 'nkProcDef', 'nkConverterDef', 
-    'nkMacroDef', 'nkTemplateDef', 'nkIteratorDef', 'nkOfBranch', 
-    'nkElifBranch', 'nkExceptBranch', 'nkElse', 'nkMacroStmt', 
-    'nkAsmStmt', 'nkPragma', 'nkIfStmt', 'nkWhenStmt', 
-    'nkForStmt', 'nkWhileStmt', 'nkCaseStmt', 'nkVarSection', 
-    'nkConstSection', 'nkConstDef', 'nkTypeSection', 'nkTypeDef', 
-    'nkYieldStmt', 'nkTryStmt', 'nkFinally', 'nkRaiseStmt', 
-    'nkReturnStmt', 'nkBreakStmt', 'nkContinueStmt', 'nkBlockStmt', 
-    'nkGotoStmt', 'nkDiscardStmt', 'nkStmtList', 'nkImportStmt', 
-    'nkFromStmt', 'nkImportAs', 'nkIncludeStmt', 'nkAccessStmt', 
-    'nkCommentStmt', 'nkStmtListExpr', 'nkBlockExpr', 'nkVm', 
-    'nkTypeOfExpr', 'nkRecordTy', 'nkObjectTy', 'nkRecList', 
-    'nkRecCase', 'nkRecWhen', 'nkRefTy', 'nkPtrTy', 
-    'nkVarTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef');
-type
-  TSymFlag = (
-    sfGeneric, sfForward, sfImportc, sfExportc, 
-    sfVolatile, sfUsed, sfWrite, sfRegister, 
-    sfPure, sfCodeGenerated, sfPrivate, sfGlobal, 
-    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
-    sfNoReturn, sfReturnsNew, sfInInterface, sfNoStatic, 
-    sfCompilerProc, sfCppMethod, sfDiscriminant, sfDeprecated, 
-    sfInClosure, sfIsCopy, sfStar, sfMinus);
-  TSymFlags = set of TSymFlag;
-const
-  SymFlagToStr: array [TSymFlag] of string = (
-    'sfGeneric', 'sfForward', 'sfImportc', 'sfExportc', 
-    'sfVolatile', 'sfUsed', 'sfWrite', 'sfRegister', 
-    'sfPure', 'sfCodeGenerated', 'sfPrivate', 'sfGlobal', 
-    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
-    'sfNoReturn', 'sfReturnsNew', 'sfInInterface', 'sfNoStatic', 
-    'sfCompilerProc', 'sfCppMethod', 'sfDiscriminant', 'sfDeprecated', 
-    'sfInClosure', 'sfIsCopy', 'sfStar', 'sfMinus');
-type
-  TTypeKind = (
-    tyNone, tyBool, tyChar, tyEmptySet, 
-    tyArrayConstr, tyNil, tyRecordConstr, tyGeneric, 
-    tyGenericInst, tyGenericParam, tyEnum, tyAnyEnum, 
-    tyArray, tyRecord, tyObject, tyTuple, 
-    tySet, tyRange, tyPtr, tyRef, 
-    tyVar, tySequence, tyProc, tyPointer, 
-    tyOpenArray, tyString, tyCString, tyForward, 
-    tyInt, tyInt8, tyInt16, tyInt32, 
-    tyInt64, tyFloat, tyFloat32, tyFloat64, 
-    tyFloat128);
-  TTypeKinds = set of TTypeKind;
-const
-  TypeKindToStr: array [TTypeKind] of string = (
-    'tyNone', 'tyBool', 'tyChar', 'tyEmptySet', 
-    'tyArrayConstr', 'tyNil', 'tyRecordConstr', 'tyGeneric', 
-    'tyGenericInst', 'tyGenericParam', 'tyEnum', 'tyAnyEnum', 
-    'tyArray', 'tyRecord', 'tyObject', 'tyTuple', 
-    'tySet', 'tyRange', 'tyPtr', 'tyRef', 
-    'tyVar', 'tySequence', 'tyProc', 'tyPointer', 
-    'tyOpenArray', 'tyString', 'tyCString', 'tyForward', 
-    'tyInt', 'tyInt8', 'tyInt16', 'tyInt32', 
-    'tyInt64', 'tyFloat', 'tyFloat32', 'tyFloat64', 
-    'tyFloat128');
-type
-  TTypeFlag = (
-    tfIsDistinct, tfGeneric, tfExternal, tfImported, 
-    tfInfoGenerated, tfSemChecked, tfHasOutParams, tfEnumHasWholes, 
-    tfVarargs, tfAssignable);
-  TTypeFlags = set of TTypeFlag;
-const
-  TypeFlagToStr: array [TTypeFlag] of string = (
-    'tfIsDistinct', 'tfGeneric', 'tfExternal', 'tfImported', 
-    'tfInfoGenerated', 'tfSemChecked', 'tfHasOutParams', 'tfEnumHasWholes', 
-    'tfVarargs', 'tfAssignable');
 {[[[end]]]}
 
 type
@@ -228,20 +237,28 @@ type
     mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, 
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mAbsI64, mNot, mUnaryPlusI, 
     mBitnotI, mUnaryPlusI64, mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, 
-    mZe, mZe64, mToU8, mToU16, mToU32, mToFloat, 
-    mToBiggestFloat, mToInt, mToBiggestInt, mAnd, mOr, mEqStr, 
-    mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
-    mConTArr, mConTT, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
-    mAppendSeqSeq, mInRange, mInSet, mIs, mAsgn, mRepr, 
-    mExit, mSetLengthStr, mSetLengthSeq, mAssert, mSwap, mArray, 
-    mOpenArray, mRange, mTuple, mSet, mSeq, mCompileDate, 
-    mCompileTime, mNimrodVersion, mNimrodMajor, mNimrodMinor, mNimrodPatch, mCpuEndian
+    mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, 
+    mToU8, mToU16, mToU32, mToFloat, mToBiggestFloat, mToInt, 
+    mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, 
+    mCStrToStr, mStrToStr, mAnd, mOr, mEqStr, mLeStr, 
+    mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, 
+    mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, mConTArr, 
+    mConTT, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, 
+    mInRange, mInSet, mIs, mAsgn, mRepr, mExit, 
+    mSetLengthStr, mSetLengthSeq, mAssert, mSwap, mIsNil, mArray, 
+    mOpenArray, mRange, mSet, mSeq, mCompileDate, mCompileTime, 
+    mNimrodVersion, mNimrodMajor, mNimrodMinor, mNimrodPatch, mCpuEndian, mNaN, 
+    mInf, mNegInf, mNLen, mNChild, mNSetChild, mNAdd, 
+    mNAddMultiple, mNDel, mNKind, mNIntVal, mNFloatVal, mNSymbol, 
+    mNIdent, mNGetType, mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, 
+    mNSetIdent, mNSetType, mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, 
+    mStrToIdent, mIdentToStr, mEqIdent, mNHint, mNWarning, mNError
     //[[[end]]]
   );
 
 type
   PNode = ^TNode;
+  PNodePtr = ^{@ptr}PNode;
   TNodeSeq = array of PNode;
 
   PType = ^TType;
@@ -254,22 +271,22 @@ type
     comment: string;
     sons: TNodeSeq; // else!
     info: TLineInfo;
-    base: TNumericalBase; // only valid for int or float literals
+    flags: TNodeFlags;
     case Kind: TNodeKind of
-      nkCharLit, nkRCharLit, 
-      nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit:
+      nkCharLit, nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit:
         (intVal: biggestInt);
       nkFloatLit, nkFloat32Lit, nkFloat64Lit:
         (floatVal: biggestFloat);
       nkSym: (sym: PSym);
       nkIdent: (ident: PIdent);
+      nkMetaNode: (nodePtr: PNodePtr);
   end;
   {@emit
   record // keep this below 32 bytes; otherwise the AST grows too much
     typ: PType;
     comment: string;
     info: TLineInfo;
-    base: TNumericalBase; // only valid for int or float literals
+    flags: TNodeFlags;
     case Kind: TNodeKind of
       nkCharLit..nkInt64Lit:
         (intVal: biggestInt);
@@ -279,6 +296,7 @@ type
         (strVal: string);
       nkSym: (sym: PSym);
       nkIdent: (ident: PIdent);
+      nkMetaNode: (nodePtr: PNodePtr);
       else (sons: TNodeSeq);
   end; }
 
@@ -305,29 +323,29 @@ type
     locCall,       // location is a call expression
     locOther       // location is something other
   );
-
+  
   TLocFlag = (
-  //  lfIndirect,    // location needs to be derefered
-    lfOnStack,     // location is on hardware stack
-    lfOnHeap,      // location is on heap
-    lfOnData,      // location is in the static constant data
-    lfOnUnknown,   // location is unknown (stack, heap or static)
-                   // other backend-flags:
+    lfIndirect,    // backend introduced a pointer
     lfNoDeepCopy,  // no need for a deep copy
     lfNoDecl,      // do not declare it in C
     lfDynamicLib,  // link symbol to dynamic library
     lfHeader       // include header file for symbol
   );
 
+  TStorageLoc = (
+    OnUnknown,     // location is unknown (stack, heap or static)
+    OnStack,       // location is on hardware stack
+    OnHeap         // location is on heap or global (reference counting needed)
+  );
+
   TLocFlags = set of TLocFlag;
   TLoc = record
     k: TLocKind;    // kind of location
-    t: PType;       // type of location
-    r: PRope;       // rope value of location (C code generator)
-    a: int;         // location's "address", i.e. slot for temporaries
+    s: TStorageLoc;
     flags: TLocFlags;  // location's flags
-    indirect: int;  // count the number of dereferences needed to access the
-                    // location
+    t: PType;       // type of location
+    r: PRope;       // rope value of location (code generators)
+    a: int;         // location's "address", i.e. slot for temporaries
   end;
 
 // ---------------- end of backend information ------------------------------
@@ -447,7 +465,7 @@ type
   PLib = ^TLib;
 
 const
-  OverloadableSyms = {@set}[skProc, skIterator, skEnumField];
+  OverloadableSyms = {@set}[skProc, skIterator, skConverter];
 
 const // "MagicToStr" array:
   MagicToStr: array [TMagic] of string = (
@@ -474,15 +492,22 @@ const // "MagicToStr" array:
     'EqProc', 'EqUntracedRef', 'LePtr', 'LtPtr', 'EqCString', 'Xor', 
     'UnaryMinusI', 'UnaryMinusI64', 'AbsI', 'AbsI64', 'Not', 'UnaryPlusI', 
     'BitnotI', 'UnaryPlusI64', 'BitnotI64', 'UnaryPlusF64', 'UnaryMinusF64', 'AbsF64', 
-    'Ze', 'Ze64', 'ToU8', 'ToU16', 'ToU32', 'ToFloat', 
-    'ToBiggestFloat', 'ToInt', 'ToBiggestInt', 'And', 'Or', 'EqStr', 
-    'LeStr', 'LtStr', 'EqSet', 'LeSet', 'LtSet', 'MulSet', 
-    'PlusSet', 'MinusSet', 'SymDiffSet', 'ConStrStr', 'ConArrArr', 'ConArrT', 
-    'ConTArr', 'ConTT', 'Slice', 'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 
-    'AppendSeqSeq', 'InRange', 'InSet', 'Is', 'Asgn', 'Repr', 
-    'Exit', 'SetLengthStr', 'SetLengthSeq', 'Assert', 'Swap', 'Array', 
-    'OpenArray', 'Range', 'Tuple', 'Set', 'Seq', 'CompileDate', 
-    'CompileTime', 'NimrodVersion', 'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 'CpuEndian'
+    'Ze8ToI', 'Ze8ToI64', 'Ze16ToI', 'Ze16ToI64', 'Ze32ToI64', 'ZeIToI64', 
+    'ToU8', 'ToU16', 'ToU32', 'ToFloat', 'ToBiggestFloat', 'ToInt', 
+    'ToBiggestInt', 'CharToStr', 'BoolToStr', 'IntToStr', 'Int64ToStr', 'FloatToStr', 
+    'CStrToStr', 'StrToStr', 'And', 'Or', 'EqStr', 'LeStr', 
+    'LtStr', 'EqSet', 'LeSet', 'LtSet', 'MulSet', 'PlusSet', 
+    'MinusSet', 'SymDiffSet', 'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 
+    'ConTT', 'Slice', 'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 
+    'InRange', 'InSet', 'Is', 'Asgn', 'Repr', 'Exit', 
+    'SetLengthStr', 'SetLengthSeq', 'Assert', 'Swap', 'IsNil', 'Array', 
+    'OpenArray', 'Range', 'Set', 'Seq', 'CompileDate', 'CompileTime', 
+    'NimrodVersion', 'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'NaN', 
+    'Inf', 'NegInf', 'NLen', 'NChild', 'NSetChild', 'NAdd', 
+    'NAddMultiple', 'NDel', 'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 
+    'NIdent', 'NGetType', 'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 
+    'NSetIdent', 'NSetType', 'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 
+    'StrToIdent', 'IdentToStr', 'EqIdent', 'NHint', 'NWarning', 'NError'
     //[[[end]]]
   );
 
@@ -490,7 +515,7 @@ const
   GenericTypes: TTypeKinds = {@set}[tyGeneric, tyGenericParam];
 
   StructuralEquivTypes: TTypeKinds = {@set}[
-    tyEmptySet, tyArrayConstr, tyNil, tyRecordConstr, tyTuple,
+    tyEmptySet, tyArrayConstr, tyNil, tyTuple,
     tyArray,
     tySet,
     tyRange,
@@ -503,16 +528,16 @@ const
   ConcreteTypes: TTypeKinds = {@set}[
   // types of the expr that may occur in::
   // var x = expr
-    tyBool, tyChar, tyEnum, tyArray, tyRecord, tyObject, tySet, tyTuple,
+    tyBool, tyChar, tyEnum, tyArray, tyObject, tySet, tyTuple,
     tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
     tyPointer, tyOpenArray,
     tyString, tyCString,
     tyInt..tyInt64,
     tyFloat..tyFloat128
   ];
-  ConstantDataTypes: TTypeKinds = {@set}[tyArray, tyRecord, tySet, tyTuple];
-  ExportableSymKinds = {@set}[skVar, skConst, skProc, skType, skEnumField,
-                              skIterator, skMacro, skTemplate];
+  ConstantDataTypes: TTypeKinds = {@set}[tyArray, tySet, tyTuple];
+  ExportableSymKinds = {@set}[skVar, skConst, skProc, skType,
+                              skIterator, skMacro, skTemplate, skConverter];
   namePos = 0;
   genericParamsPos = 1;
   paramsPos = 2;
@@ -534,7 +559,7 @@ function newIntTypeNode(kind: TNodeKind; const intVal: BiggestInt;
                         typ: PType): PNode;
 function newFloatNode(kind: TNodeKind; const floatVal: BiggestFloat): PNode;
 function newStrNode(kind: TNodeKind; const strVal: string): PNode;
-function newIdentNode(ident: PIdent): PNode;
+function newIdentNode(ident: PIdent; const info: TLineInfo): PNode;
 function newSymNode(sym: PSym): PNode;
 function newNodeI(kind: TNodeKind; const info: TLineInfo): PNode;
 function newNodeIT(kind: TNodeKind; const info: TLineInfo; typ: PType): PNode;
@@ -548,7 +573,7 @@ procedure initNodeTable(out x: TNodeTable);
 
 // copy procs:
 function copyType(t: PType; owner: PSym): PType;
-function copySym(s: PSym; owner: PSym): PSym;
+function copySym(s: PSym; keepId: bool = false): PSym;
 procedure assignType(dest, src: PType);
 
 procedure copyStrTable(out dest: TStrTable; const src: TStrTable);
@@ -620,7 +645,7 @@ begin
       if b.kind in [nkStrLit..nkTripleStrLit] then
         result := a.strVal <= b.strVal;
     end
-    else assert(false);
+    else InternalError(a.info, 'leValue');
   end
 end;
 
@@ -638,7 +663,7 @@ begin
       if b.kind in [nkStrLit..nkTripleStrLit] then
         result := a.strVal = b.strVal;
     end
-    else assert(false);
+    else InternalError(a.info, 'SameValue');
   end
 end;
 
@@ -652,7 +677,7 @@ begin
     nkStrLit..nkTripleStrLit:
       result := a.strVal;
     else begin
-      assert(false);
+      InternalError(a.info, 'valueToString');
       result := ''
     end
   end
@@ -663,6 +688,9 @@ var
   i: int;
 begin
   dest.counter := src.counter;
+{@emit
+  if isNil(src.data) then exit;
+}
   setLength(dest.data, length(src.data));
   for i := 0 to high(src.data) do
     dest.data[i] := src.data[i];
@@ -673,6 +701,9 @@ var
   i: int;
 begin
   dest.counter := src.counter;
+{@emit
+  if isNil(src.data) then exit;
+}
   setLength(dest.data, length(src.data));
   for i := 0 to high(src.data) do
     dest.data[i] := src.data[i];
@@ -683,6 +714,9 @@ var
   i: int;
 begin
   dest.counter := src.counter;
+{@emit
+  if isNil(src.data) then exit;
+}
   setLength(dest.data, length(src.data));
   for i := 0 to high(src.data) do
     dest.data[i] := src.data[i];
@@ -700,7 +734,7 @@ begin
   FillChar(result^, sizeof(result^), 0);
 {@emit}
   result.kind := kind;
-  result.info := UnknownLineInfo;
+  result.info := UnknownLineInfo();
 end;
 
 function newIntNode(kind: TNodeKind; const intVal: BiggestInt): PNode;
@@ -728,10 +762,11 @@ begin
   result.strVal := strVal
 end;
 
-function newIdentNode(ident: PIdent): PNode;
+function newIdentNode(ident: PIdent; const info: TLineInfo): PNode;
 begin
   result := newNode(nkIdent);
-  result.ident := ident
+  result.ident := ident;
+  result.info := info;
 end;
 
 function newSymNode(sym: PSym): PNode;
@@ -778,8 +813,9 @@ begin
   dest.n := src.n;
   dest.size := src.size;
   dest.align := src.align;
+  dest.containerID := src.containerID;
   newSons(dest, sonsLen(src));
-  for i := 0 to sonsLen(src)-1 do
+  for i := 0 to sonsLen(src)-1 do 
     dest.sons[i] := src.sons[i];
 end;
 
@@ -793,14 +829,13 @@ begin
   // backend-info should not be copied
 end;
 
-function copySym(s: PSym; owner: PSym): PSym;
+function copySym(s: PSym; keepId: bool = false): PSym;
 begin
-  result := newSym(s.kind, s.name, owner);
+  result := newSym(s.kind, s.name, s.owner);
   result.ast := nil; // BUGFIX; was: s.ast which made problems
   result.info := s.info;
   result.typ := s.typ;
-  if owner = s.owner then result.id := s.id
-  else result.id := getID();
+  if keepId then result.id := s.id else result.id := getID();
   result.flags := s.flags;
   result.magic := s.magic;
   copyStrTable(result.tab, s.tab);
@@ -820,7 +855,7 @@ begin
   result.Name := Name;
   result.Kind := symKind;
   result.flags := {@set}[];
-  result.info := UnknownLineInfo;
+  result.info := UnknownLineInfo();
   result.options := gOptions;
   result.owner := owner;
   result.offset := -1;
@@ -971,8 +1006,8 @@ begin
   if src = nil then begin result := nil; exit end;
   result := newNode(src.kind);
   result.info := src.info;
-  result.typ := src.typ;  
-  result.base := src.base;
+  result.typ := src.typ;
+  result.flags := src.flags;
   case src.Kind of
     nkCharLit..nkInt64Lit:
       result.intVal := src.intVal;
@@ -984,6 +1019,8 @@ begin
       result.ident := src.ident;
     nkStrLit..nkTripleStrLit:
       result.strVal := src.strVal;
+    nkMetaNode:
+      result.nodePtr := src.nodePtr;
     else begin end;
   end;
 end;
@@ -994,11 +1031,30 @@ var
   i: int;
 begin
   if src = nil then begin result := nil; exit end;
-  result := copyNode(src);
-  result.sons := nil; // BUGFIX
-  newSons(result, sonsLen(src));
-  for i := 0 to sonsLen(src)-1 do
-    result.sons[i] := copyTree(src.sons[i]);
+  result := newNode(src.kind);
+  result.info := src.info;
+  result.typ := src.typ;
+  result.flags := src.flags;
+  case src.Kind of
+    nkCharLit..nkInt64Lit:
+      result.intVal := src.intVal;
+    nkFloatLit, nkFloat32Lit, nkFloat64Lit:
+      result.floatVal := src.floatVal;
+    nkSym:
+      result.sym := src.sym;
+    nkIdent:
+      result.ident := src.ident;
+    nkStrLit..nkTripleStrLit:
+      result.strVal := src.strVal;
+    nkMetaNode:
+      result.nodePtr := src.nodePtr;
+    else begin
+      result.sons := nil;
+      newSons(result, sonsLen(src));
+      for i := 0 to sonsLen(src)-1 do
+        result.sons[i] := copyTree(src.sons[i]);
+    end;
+  end
 end;
 
 function lastSon(n: PNode): PNode;
@@ -1016,8 +1072,8 @@ var
   i: int;
 begin
   for i := 0 to sonsLen(n)-1 do begin
-    if (n.sons[i] <> nil) and (n.sons[i].kind = kind) then begin 
-      result := true; exit 
+    if (n.sons[i] <> nil) and (n.sons[i].kind = kind) then begin
+      result := true; exit
     end
   end;
   result := false
@@ -1031,9 +1087,9 @@ begin
     nkEmpty..nkNilLit: result := n.kind = kind;
     else begin
       for i := 0 to sonsLen(n)-1 do begin
-        if (n.sons[i] <> nil) and (n.sons[i].kind = kind) 
-        or hasSubnodeWith(n.sons[i], kind) then begin 
-          result := true; exit 
+        if (n.sons[i] <> nil) and (n.sons[i].kind = kind)
+        or hasSubnodeWith(n.sons[i], kind) then begin
+          result := true; exit
         end
       end;
       result := false

@@ -1,7 +1,7 @@
 # tests the copy proc
 
 import
-  strutils, io
+  strutils
 
 proc main() =
   const

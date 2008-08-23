@@ -1,8 +1,31 @@
-| `2008-06-23`:newsdate:
-| Nimrod version |nimrodversion| has been released!
-  Get it `here <./download.html>`_.
+====
+News
+====
+
+Developers needed
+=================
+Yes, this is nothing new. If you are interested to help designing and 
+implementing the new programming language Nimrod, visit our project page at 
+Launchpad: https://launchpad.net/nimrod and contact me.
 
 
-| `2008-06-22`:newsdate:
-| This page is finally online!
+2008-08-22 Version 0.6.0 released
+=================================
 
+Nimrod version 0.6.0 has been released! Get it `here <./download.html>`_.
+**This is the first version of the compiler that is able to compile itself!**
+A nice side-effect from this is that a source-based installation does not 
+depend on FreePascal any longer.
+
+Changes:
+* various bug fixes, too many to list them here
+* cleaned up the type system: records are now superfluous and not
+  supported anymore
+* improved the performance of the garbage collector
+* new modules in the library: 
+  - ``parseopt``: a simple to use command line parser
+  - ``hashes``: efficient computation of hash values
+  - ``strtabs``: efficient mapping from strings to strings 
+  - ``parsecfg``: an efficient configuration file parser 
+* macros and compile-time evaluation implemented (however, still experimental)
+* generics implemented (however, still experimental)

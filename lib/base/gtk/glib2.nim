@@ -61,7 +61,7 @@ type
   TGHFunc* = proc (key, value, user_data: gpointer){.cdecl.}
   PGFreeFunc* = proc (data: gpointer){.cdecl.}
   PGTimeVal* = ptr TGTimeVal
-  TGTimeVal* = record
+  TGTimeVal* {.final.} = object
     tv_sec*: glong
     tv_usec*: glong
 
@@ -88,17 +88,17 @@ type
   TGQuark* = guint32
   PGQuark* = ptr TGQuark
   PGTypeCValue* = ptr TGTypeCValue
-  TGTypeCValue* = record
+  TGTypeCValue* {.final.} = object
     v_double*: gdouble
 
   GType* = gulong
   PGType* = ptr GType
   PGTypeClass* = ptr TGTypeClass
-  TGTypeClass* = record
+  TGTypeClass* {.final.} = object
     g_type*: GType
 
   PGTypeInstance* = ptr TGTypeInstance
-  TGTypeInstance* = record
+  TGTypeInstance* {.final.} = object
     g_class*: PGTypeClass
 
   PGTypeInterface* = ptr TGTypeInterface
@@ -107,14 +107,14 @@ type
     g_instance_type*: GType
 
   PGTypeQuery* = ptr TGTypeQuery
-  TGTypeQuery* = record
+  TGTypeQuery* {.final.} = object
     theType*: GType
     type_name*: cstring
     class_size*: guint
     instance_size*: guint
 
   PGValue* = ptr TGValue
-  TGValue* = record
+  TGValue* {.final.} = object
     g_type*: GType
     data*: array[0..1, gdouble]
 
@@ -122,12 +122,12 @@ type
   PGData* = pointer
   PGSList* = ptr TGSList
   PPGSList* = ptr PGSList
-  TGSList* = record
+  TGSList* {.final.} = object
     data*: gpointer
     next*: PGSList
 
   PGList* = ptr TGList
-  TGList* = record
+  TGList* {.final.} = object
     data*: gpointer
     next*: PGList
     prev*: PGList
@@ -136,7 +136,7 @@ type
   TGParamFlags* = int32
   PGParamSpec* = ptr TGParamSpec
   PPGParamSpec* = ptr PGParamSpec
-  TGParamSpec* = record
+  TGParamSpec* {.final.} = object
     g_type_instance*: TGTypeInstance
     name*: cstring
     flags*: TGParamFlags
@@ -149,7 +149,7 @@ type
     param_id*: guint
 
   PGParamSpecClass* = ptr TGParamSpecClass
-  TGParamSpecClass* = record
+  TGParamSpecClass* {.final.} = object
     g_type_class*: TGTypeClass
     value_type*: GType
     finalize*: proc (pspec: PGParamSpec){.cdecl.}
@@ -160,7 +160,7 @@ type
     dummy*: array[0..3, gpointer]
 
   PGParameter* = ptr TGParameter
-  TGParameter* = record
+  TGParameter* {.final.} = object
     name*: cstring
     value*: TGValue
 
@@ -305,7 +305,7 @@ const
 
 type
   PGTypeValueTable* = ptr TGTypeValueTable
-  TGTypeValueTable* = record
+  TGTypeValueTable* {.final.} = object
     value_init*: proc (value: PGValue){.cdecl.}
     value_free*: proc (value: PGValue){.cdecl.}
     value_copy*: proc (src_value: PGValue, dest_value: PGValue){.cdecl.}
@@ -320,7 +320,7 @@ type
         cdecl.}
 
   PGTypeInfo* = ptr TGTypeInfo
-  TGTypeInfo* = record
+  TGTypeInfo* {.final.} = object
     class_size*: guint16
     base_init*: TGBaseInitFunc
     base_finalize*: TGBaseFinalizeFunc
@@ -333,11 +333,11 @@ type
     value_table*: PGTypeValueTable
 
   PGTypeFundamentalInfo* = ptr TGTypeFundamentalInfo
-  TGTypeFundamentalInfo* = record
+  TGTypeFundamentalInfo* {.final.} = object
     type_flags*: TGTypeFundamentalFlags
 
   PGInterfaceInfo* = ptr TGInterfaceInfo
-  TGInterfaceInfo* = record
+  TGInterfaceInfo* {.final.} = object
     interface_init*: TGInterfaceInitFunc
     interface_finalize*: TGInterfaceFinalizeFunc
     interface_data*: gpointer
@@ -449,7 +449,7 @@ const
 
 type
   PGValueArray* = ptr TGValueArray
-  TGValueArray* = record
+  TGValueArray* {.final.} = object
     n_values*: guint
     values*: PGValue
     n_prealloced*: guint
@@ -628,7 +628,7 @@ proc g_value_set_param_take_ownership*(value: PGValue, param: PGParamSpec){.
     cdecl, dynlib: gliblib, importc: "g_value_set_param_take_ownership".}
 type
   PGParamSpecTypeInfo* = ptr TGParamSpecTypeInfo
-  TGParamSpecTypeInfo* = record
+  TGParamSpecTypeInfo* {.final.} = object
     instance_size*: guint16
     n_preallocs*: guint16
     instance_init*: proc (pspec: PGParamSpec){.cdecl.}
@@ -668,7 +668,7 @@ type
   PGClosure* = ptr TGClosure
   PGClosureNotifyData* = ptr TGClosureNotifyData
   TGClosureNotify* = proc (data: gpointer, closure: PGClosure){.cdecl.}
-  TGClosure* = record
+  TGClosure* {.final.} = object
     flag0*: int32
     marshal*: proc (closure: PGClosure, return_value: PGValue,
                     n_param_values: guint, param_values: PGValue,
@@ -682,7 +682,7 @@ type
                             n_param_values: guint, param_values: PGValue,
                             invocation_hint: gpointer, marshal_data: gpointer){.
       cdecl.}
-  TGClosureNotifyData* = record
+  TGClosureNotifyData* {.final.} = object
     data*: gpointer
     notify*: TGClosureNotify
 
@@ -734,7 +734,7 @@ proc is_invalid*(a: var TGClosure): guint
 proc set_is_invalid*(a: var TGClosure, is_invalid: guint)
 type
   PGCClosure* = ptr TGCClosure
-  TGCClosure* = record
+  TGCClosure* {.final.} = object
     closure*: TGClosure
     callback*: gpointer
 
@@ -797,13 +797,13 @@ type
                                data: gpointer): gboolean{.cdecl.}
   PGSignalFlags* = ptr TGSignalFlags
   TGSignalFlags* = int32
-  TGSignalInvocationHint* = record
+  TGSignalInvocationHint* {.final.} = object
     signal_id*: guint
     detail*: TGQuark
     run_type*: TGSignalFlags
 
   PGSignalQuery* = ptr TGSignalQuery
-  TGSignalQuery* = record
+  TGSignalQuery* {.final.} = object
     signal_id*: guint
     signal_name*: cstring
     itype*: GType
@@ -952,7 +952,7 @@ type
   TGTypePluginCompleteInterfaceInfo* = proc (plugin: PGTypePlugin,
       instance_type: GType, interface_type: GType, info: PGInterfaceInfo){.cdecl.}
   PGTypePluginClass* = ptr TGTypePluginClass
-  TGTypePluginClass* = record
+  TGTypePluginClass* {.final.} = object
     base_iface*: TGTypeInterface
     use_plugin*: TGTypePluginUse
     unuse_plugin*: TGTypePluginUnuse
@@ -1011,7 +1011,7 @@ type
     notify*: proc (anObject: PGObject, pspec: PGParamSpec){.cdecl.}
     pdummy*: array[0..7, gpointer]
 
-  TGObjectConstructParam* = record
+  TGObjectConstructParam* {.final.} = object
     pspec*: PGParamSpec
     value*: PGValue
 
@@ -1125,27 +1125,27 @@ proc GUINT32_SWAP_LE_BE_CONSTANT*(val: guint32): guint32
 type
   PGEnumClass* = ptr TGEnumClass
   PGEnumValue* = ptr TGEnumValue
-  TGEnumClass* = record
+  TGEnumClass* {.final.} = object
     g_type_class*: TGTypeClass
     minimum*: gint
     maximum*: gint
     n_values*: guint
     values*: PGEnumValue
 
-  TGEnumValue* = record
+  TGEnumValue* {.final.} = object
     value*: gint
     value_name*: cstring
     value_nick*: cstring
 
   PGFlagsClass* = ptr TGFlagsClass
   PGFlagsValue* = ptr TGFlagsValue
-  TGFlagsClass* = record
+  TGFlagsClass* {.final.} = object
     g_type_class*: TGTypeClass
     mask*: guint
     n_values*: guint
     values*: PGFlagsValue
 
-  TGFlagsValue* = record
+  TGFlagsValue* {.final.} = object
     value*: guint
     value_name*: cstring
     value_nick*: cstring
@@ -1203,7 +1203,7 @@ const
   G_MAXUSHORT* = 2 * G_MAXSHORT + 1
   G_MAXINT* = 2147483647
   G_MININT* = - G_MAXINT - 1
-  G_MAXUINT* = 4294967295
+  G_MAXUINT* = -1
   G_MINLONG* = G_MININT
   G_MAXLONG* = G_MAXINT
   G_MAXULONG* = G_MAXUINT
@@ -1224,7 +1224,7 @@ const
 
 type
   PGSystemThread* = ptr TGSystemThread
-  TGSystemThread* = record
+  TGSystemThread* {.final.} = object
     data*: array[0..3, char]
     dummy_double*: float64
     dummy_pointer*: pointer
@@ -1350,7 +1350,7 @@ proc g_set_prgname*(prgname: cstring){.cdecl, dynlib: gliblib,
                                        importc: "g_set_prgname".}
 type
   PGDebugKey* = ptr TGDebugKey
-  TGDebugKey* = record
+  TGDebugKey* {.final.} = object
     key*: cstring
     value*: guint
 
@@ -1390,7 +1390,7 @@ proc g_bit_storage*(number: gulong): guint{.cdecl, dynlib: gliblib,
 type
   PPGTrashStack* = ptr PGTrashStack
   PGTrashStack* = ptr TGTrashStack
-  TGTrashStack* = record
+  TGTrashStack* {.final.} = object
     next*: PGTrashStack
 
 
@@ -1466,7 +1466,7 @@ const
 
 type
   PGMemVTable* = ptr TGMemVTable
-  TGMemVTable* = record
+  TGMemVTable* {.final.} = object
     malloc*: proc (n_bytes: gsize): gpointer{.cdecl.}
     realloc*: proc (mem: gpointer, n_bytes: gsize): gpointer{.cdecl.}
     free*: proc (mem: gpointer){.cdecl.}
@@ -1679,7 +1679,7 @@ type
   TGCompletionStrncmpFunc* = proc (s1: cstring, s2: cstring, n: gsize): gint{.
       cdecl.}
   PGCompletion* = ptr TGCompletion
-  TGCompletion* = record
+  TGCompletion* {.final.} = object
     items*: PGList
     func*: TGCompletionFunc
     prefix*: cstring
@@ -1809,7 +1809,7 @@ type
   PGDateDay* = ptr TGDateDay
   TGDateDay* = guint8
   Ptm* = ptr Ttm
-  Ttm* = record
+  Ttm* {.final.} = object
     tm_sec*: gint
     tm_min*: gint
     tm_hour*: gint
@@ -1872,7 +1872,7 @@ const
 
 type
   PGDate* = ptr TGDate
-  TGDate* = record
+  TGDate* {.final.} = object
     flag0*: int32
     flag1*: int32
 
@@ -2028,7 +2028,7 @@ proc g_file_open_tmp*(tmpl: cstring, name_used: PPchar, error: pointer): int32{.
     cdecl, dynlib: gliblib, importc: "g_file_open_tmp".}
 type
   PGHook* = ptr TGHook
-  TGHook* = record
+  TGHook* {.final.} = object
     data*: gpointer
     next*: PGHook
     prev*: PGHook
@@ -2047,7 +2047,7 @@ type
   TGHookFunc* = proc (data: gpointer){.cdecl.}
   TGHookCheckFunc* = proc (data: gpointer): gboolean{.cdecl.}
   TGHookFinalizeFunc* = proc (hook_list: PGHookList, hook: PGHook){.cdecl.}
-  TGHookList* = record
+  TGHookList* {.final.} = object
     seq_id*: gulong
     flag0*: int32
     hooks*: PGHook
@@ -2138,7 +2138,7 @@ proc g_hook_list_marshal_check*(hook_list: PGHookList, may_recurse: gboolean,
     importc: "g_hook_list_marshal_check".}
 type
   PGThreadPool* = ptr TGThreadPool
-  TGThreadPool* = record
+  TGThreadPool* {.final.} = object
     func*: TGFunc
     user_data*: gpointer
     exclusive*: gboolean
@@ -2352,7 +2352,7 @@ proc g_utf8_collate_key*(str: cstring, len: gssize): cstring{.cdecl,
     dynlib: gliblib, importc: "g_utf8_collate_key".}
 type
   PGString* = ptr TGString
-  TGString* = record
+  TGString* {.final.} = object
     str*: cstring
     len*: gsize
     allocated_len*: gsize
@@ -2468,7 +2468,7 @@ type
   TGIOFunc* = proc (source: PGIOChannel, condition: TGIOCondition,
                     data: gpointer): gboolean{.cdecl.}
   PGIOFuncs* = ptr TGIOFuncs
-  TGIOFuncs* = record
+  TGIOFuncs* {.final.} = object
     io_read*: proc (channel: PGIOChannel, buf: cstring, count: gsize,
                     bytes_read: Pgsize, err: pointer): TGIOStatus{.cdecl.}
     io_write*: proc (channel: PGIOChannel, buf: cstring, count: gsize,
@@ -2483,7 +2483,7 @@ type
         cdecl.}
     io_get_flags*: proc (channel: PGIOChannel): TGIOFlags{.cdecl.}
 
-  TGIOChannel* = record
+  TGIOChannel* {.final.} = object
     ref_count*: guint
     funcs*: PGIOFuncs
     encoding*: cstring
@@ -2699,7 +2699,7 @@ type
   PGMarkupParseContext* = ptr TGMarkupParseContext
   TGMarkupParseContext* = pointer
   PGMarkupParser* = ptr TGMarkupParser
-  TGMarkupParser* = record
+  TGMarkupParser* {.final.} = object
     start_element*: proc (context: PGMarkupParseContext, element_name: cstring,
                           attribute_names: PPgchar, attribute_values: PPgchar,
                           user_data: gpointer, error: pointer){.cdecl.}
@@ -2733,7 +2733,7 @@ proc g_markup_escape_text*(text: cstring, length: gssize): cstring{.cdecl,
     dynlib: gliblib, importc: "g_markup_escape_text".}
 type
   PGNode* = ptr TGNode
-  TGNode* = record
+  TGNode* {.final.} = object
     data*: gpointer
     next*: PGNode
     prev*: PGNode
@@ -2886,7 +2886,7 @@ proc g_qsort_with_data*(pbase: gconstpointer, total_elems: gint, size: gsize,
     cdecl, dynlib: gliblib, importc: "g_qsort_with_data".}
 type
   PGQueue* = ptr TGQueue
-  TGQueue* = record
+  TGQueue* {.final.} = object
     head*: PGList
     tail*: PGList
     length*: guint
@@ -2947,7 +2947,7 @@ proc g_random_double_range*(`begin`: gdouble, `end`: gdouble): gdouble{.cdecl,
     dynlib: gliblib, importc: "g_random_double_range".}
 type
   PGTuples* = ptr TGTuples
-  TGTuples* = record
+  TGTuples* {.final.} = object
     len*: guint
 
   PGRelation* = pointer
@@ -3003,12 +3003,12 @@ type
   PGScanner* = ptr TGScanner
   PGScannerConfig* = ptr TGScannerConfig
   PGTokenValue* = ptr TGTokenValue
-  TGTokenValue* = record
+  TGTokenValue* {.final.} = object
     v_float*: gdouble
 
   TGScannerMsgFunc* = proc (scanner: PGScanner, message: cstring,
                             error: gboolean){.cdecl.}
-  TGScanner* = record
+  TGScanner* {.final.} = object
     user_data*: gpointer
     max_parse_errors*: guint
     parse_errors*: guint
@@ -3031,7 +3031,7 @@ type
     scope_id*: guint
     msg_handler*: TGScannerMsgFunc
 
-  TGScannerConfig* = record
+  TGScannerConfig* {.final.} = object
     cset_skip_characters*: cstring
     cset_identifier_first*: cstring
     cset_identifier_nth*: cstring

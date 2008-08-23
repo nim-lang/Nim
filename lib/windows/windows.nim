@@ -5030,7 +5030,7 @@ const
                               # added manually PM, TREEITEM is not defined in the C headers
 
 type
-  TREEITEM* = record
+  TREEITEM* {.final.} = object
   HTREEITEM* = ptr TREEITEM
   TTREEITEM* = TREEITEM
   PTREEITEM* = ptr TREEITEM   # was #define dname def_expr
@@ -6481,7 +6481,7 @@ type                          # WARNING
                               #      va_list is just a dummy record
                               #      MvdV: Nevertheless it should be a pointer type, not a record
   va_list* = cstring
-  ABC* = record
+  ABC* {.final.} = object
     abcA*: int32
     abcB*: UINT
     abcC*: int32
@@ -6489,7 +6489,7 @@ type                          # WARNING
   LPABC* = ptr ABC
   TABC* = ABC
   PABC* = ptr ABC
-  ABCFLOAT* = record
+  ABCFLOAT* {.final.} = object
     abcfA*: float32
     abcfB*: float32
     abcfC*: float32
@@ -6497,7 +6497,7 @@ type                          # WARNING
   LPABCFLOAT* = ptr ABCFLOAT
   TABCFLOAT* = ABCFLOAT
   PABCFLOAT* = ptr ABCFLOAT
-  ACCEL* = record
+  ACCEL* {.final.} = object
     fVirt*: int8
     key*: int16
     cmd*: int16
@@ -6505,7 +6505,7 @@ type                          # WARNING
   LPACCEL* = ptr ACCEL
   TACCEL* = ACCEL
   PACCEL* = ptr ACCEL
-  ACE_HEADER* = record
+  ACE_HEADER* {.final.} = object
     AceType*: int8
     AceFlags*: int8
     AceSize*: int16
@@ -6514,27 +6514,27 @@ type                          # WARNING
   PACE_HEADER* = ptr ACE_HEADER
   ACCESS_MASK* = DWORD
   REGSAM* = ACCESS_MASK
-  ACCESS_ALLOWED_ACE* = record
+  ACCESS_ALLOWED_ACE* {.final.} = object
     Header*: ACE_HEADER
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
   TACCESS_ALLOWED_ACE* = ACCESS_ALLOWED_ACE
   PACCESS_ALLOWED_ACE* = ptr ACCESS_ALLOWED_ACE
-  ACCESS_DENIED_ACE* = record
+  ACCESS_DENIED_ACE* {.final.} = object
     Header*: ACE_HEADER
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
   TACCESS_DENIED_ACE* = ACCESS_DENIED_ACE
-  ACCESSTIMEOUT* = record
+  ACCESSTIMEOUT* {.final.} = object
     cbSize*: UINT
     dwFlags*: DWORD
     iTimeOutMSec*: DWORD
 
   TACCESSTIMEOUT* = ACCESSTIMEOUT
   PACCESSTIMEOUT* = ptr ACCESSTIMEOUT
-  ACL* = record
+  ACL* {.final.} = object
     AclRevision*: int8
     Sbz1*: int8
     AclSize*: int16
@@ -6543,23 +6543,23 @@ type                          # WARNING
 
   PACL* = ptr ACL
   TACL* = ACL
-  TACL_REVISION_INFORMATION* = record
+  TACL_REVISION_INFORMATION* {.final.} = object
     AclRevision*: DWORD
   PACLREVISIONINFORMATION* = ptr TACL_REVISION_INFORMATION
 
-  TACL_SIZE_INFORMATION* = record
+  TACL_SIZE_INFORMATION* {.final.} = object
     AceCount*: DWORD
     AclBytesInUse*: DWORD
     AclBytesFree*: DWORD
   PACLSIZEINFORMATION* = ptr TACL_SIZE_INFORMATION
-  ACTION_HEADER* = record
+  ACTION_HEADER* {.final.} = object
     transport_id*: ULONG
     action_code*: USHORT
     reserved*: USHORT
 
   TACTIONHEADER* = ACTION_HEADER
   PACTIONHEADER* = ptr ACTION_HEADER
-  ADAPTER_STATUS* = record
+  ADAPTER_STATUS* {.final.} = object
     adapter_address*: array[0..5, UCHAR]
     rev_major*: UCHAR
     reserved0*: UCHAR
@@ -6590,33 +6590,33 @@ type                          # WARNING
 
   TADAPTERSTATUS* = ADAPTER_STATUS
   PADAPTERSTATUS* = ptr ADAPTER_STATUS
-  ADDJOB_INFO_1* = record
+  ADDJOB_INFO_1* {.final.} = object
     Path*: LPTSTR
     JobId*: DWORD
 
   TADDJOB_INFO_1* = ADDJOB_INFO_1
   PADDJOB_INFO_1* = ptr ADDJOB_INFO_1
-  ANIMATIONINFO* = record
+  ANIMATIONINFO* {.final.} = object
     cbSize*: UINT
     iMinAnimate*: int32
 
   LPANIMATIONINFO* = ptr ANIMATIONINFO
   TANIMATIONINFO* = ANIMATIONINFO
   PANIMATIONINFO* = ptr ANIMATIONINFO
-  POINT* = record
+  POINT* {.final.} = object
     x*: LONG
     y*: LONG
 
   LPPOINT* = ptr POINT
   TPOINT* = POINT
   PPOINT* = ptr POINT
-  RECT* = record
+  RECT* {.final.} = object
     TopLeft*, BottomRight*: TPoint
 
   LPRECT* = ptr RECT
   TRECT* = RECT
   PRECT* = ptr RECT
-  RECTL* = record
+  RECTL* {.final.} = object
     left*: LONG
     top*: LONG
     right*: LONG
@@ -6624,7 +6624,7 @@ type                          # WARNING
 
   TRECTL* = RECTL
   PRECTL* = ptr RECTL
-  APPBARDATA* = record
+  APPBARDATA* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
     uCallbackMessage*: UINT
@@ -6634,7 +6634,7 @@ type                          # WARNING
 
   TAppBarData* = APPBARDATA
   PAppBarData* = ptr APPBARDATA
-  BITMAP* = record
+  BITMAP* {.final.} = object
     bmType*: LONG
     bmWidth*: LONG
     bmHeight*: LONG
@@ -6648,7 +6648,7 @@ type                          # WARNING
   LPBITMAP* = ptr BITMAP
   tagBITMAP* = BITMAP
   TBITMAP* = BITMAP
-  BITMAPCOREHEADER* = record
+  BITMAPCOREHEADER* {.final.} = object
     bcSize*: DWORD
     bcWidth*: int16
     bcHeight*: int16
@@ -6657,14 +6657,14 @@ type                          # WARNING
 
   TBITMAPCOREHEADER* = BITMAPCOREHEADER
   PBITMAPCOREHEADER* = ptr BITMAPCOREHEADER
-  RGBTRIPLE* = record
+  RGBTRIPLE* {.final.} = object
     rgbtBlue*: int8
     rgbtGreen*: int8
     rgbtRed*: int8
 
   TRGBTRIPLE* = RGBTRIPLE
   PRGBTRIPLE* = ptr RGBTRIPLE
-  BITMAPCOREINFO* = record
+  BITMAPCOREINFO* {.final.} = object
     bmciHeader*: BITMAPCOREHEADER
     bmciColors*: array[0..0, RGBTRIPLE]
 
@@ -6674,7 +6674,7 @@ type                          # WARNING
                                     #  WORD    bfReserved1;
                                     #  WORD    bfReserved2;
                                     # in declarator_list
-  BITMAPINFOHEADER* = record
+  BITMAPINFOHEADER* {.final.} = object
     biSize*: DWORD
     biWidth*: LONG
     biHeight*: LONG
@@ -6690,7 +6690,7 @@ type                          # WARNING
   LPBITMAPINFOHEADER* = ptr BITMAPINFOHEADER
   TBITMAPINFOHEADER* = BITMAPINFOHEADER
   PBITMAPINFOHEADER* = ptr BITMAPINFOHEADER
-  RGBQUAD* = record
+  RGBQUAD* {.final.} = object
     rgbBlue*: int8
     rgbGreen*: int8
     rgbRed*: int8
@@ -6699,7 +6699,7 @@ type                          # WARNING
   tagRGBQUAD* = RGBQUAD
   TRGBQUAD* = RGBQUAD
   PRGBQUAD* = ptr RGBQUAD
-  BITMAPINFO* = record
+  BITMAPINFO* {.final.} = object
     bmiHeader*: BITMAPINFOHEADER
     bmiColors*: array[0..0, RGBQUAD]
 
@@ -6710,7 +6710,7 @@ type                          # WARNING
   LPFXPT2DOT30* = ptr FXPT2DOT30
   TPFXPT2DOT30* = FXPT2DOT30
   PPFXPT2DOT30* = ptr FXPT2DOT30
-  CIEXYZ* = record
+  CIEXYZ* {.final.} = object
     ciexyzX*: FXPT2DOT30
     ciexyzY*: FXPT2DOT30
     ciexyzZ*: FXPT2DOT30
@@ -6719,7 +6719,7 @@ type                          # WARNING
   LPCIEXYZ* = ptr CIEXYZ
   TPCIEXYZ* = CIEXYZ
   PCIEXYZ* = ptr CIEXYZ
-  CIEXYZTRIPLE* = record
+  CIEXYZTRIPLE* {.final.} = object
     ciexyzRed*: CIEXYZ
     ciexyzGreen*: CIEXYZ
     ciexyzBlue*: CIEXYZ
@@ -6728,7 +6728,7 @@ type                          # WARNING
   LPCIEXYZTRIPLE* = ptr CIEXYZTRIPLE
   TCIEXYZTRIPLE* = CIEXYZTRIPLE
   PCIEXYZTRIPLE* = ptr CIEXYZTRIPLE
-  BITMAPV4HEADER* = record
+  BITMAPV4HEADER* {.final.} = object
     bV4Size*: DWORD
     bV4Width*: LONG
     bV4Height*: LONG
@@ -6753,20 +6753,20 @@ type                          # WARNING
   LPBITMAPV4HEADER* = ptr BITMAPV4HEADER
   TBITMAPV4HEADER* = BITMAPV4HEADER
   PBITMAPV4HEADER* = ptr BITMAPV4HEADER
-  BITMAPFILEHEADER* = record
+  BITMAPFILEHEADER* {.final.} = object
     bfType*: int16
     bfSize*: DWord
     bfReserved1*: int16
     bfReserved2*: int16
     bfOffBits*: DWord
 
-  BLOB* = record
+  BLOB* {.final.} = object
     cbSize*: ULONG
     pBlobData*: ptr int8
 
   TBLOB* = BLOB
   PBLOB* = ptr BLOB
-  SHITEMID* = record
+  SHITEMID* {.final.} = object
     cb*: USHORT
     abID*: array[0..0, int8]
 
@@ -6774,14 +6774,14 @@ type                          # WARNING
   LPCSHITEMID* = ptr SHITEMID
   TSHITEMID* = SHITEMID
   PSHITEMID* = ptr SHITEMID
-  ITEMIDLIST* = record
+  ITEMIDLIST* {.final.} = object
     mkid*: SHITEMID
 
   LPITEMIDLIST* = ptr ITEMIDLIST
   LPCITEMIDLIST* = ptr ITEMIDLIST
   TITEMIDLIST* = ITEMIDLIST
   PITEMIDLIST* = ptr ITEMIDLIST
-  BROWSEINFO* = record
+  BROWSEINFO* {.final.} = object
     hwndOwner*: HWND
     pidlRoot*: LPCITEMIDLIST
     pszDisplayName*: LPSTR
@@ -6794,14 +6794,14 @@ type                          # WARNING
   LPBROWSEINFO* = ptr BROWSEINFO
   Tbrowseinfo* = BROWSEINFO
   PBROWSEINFO* = ptr BROWSEINFO
-  FILETIME* = record
+  FILETIME* {.final.} = object
     dwLowDateTime*: DWORD
     dwHighDateTime*: DWORD
 
   LPFILETIME* = ptr FILETIME
   TFILETIME* = FILETIME
   PFILETIME* = ptr FILETIME
-  BY_HANDLE_FILE_INFORMATION* = record
+  BY_HANDLE_FILE_INFORMATION* {.final.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
     ftLastAccessTime*: FILETIME
@@ -6816,34 +6816,34 @@ type                          # WARNING
   LPBY_HANDLE_FILE_INFORMATION* = ptr BY_HANDLE_FILE_INFORMATION
   TBYHANDLEFILEINFORMATION* = BY_HANDLE_FILE_INFORMATION
   PBYHANDLEFILEINFORMATION* = ptr BY_HANDLE_FILE_INFORMATION
-  FIXED* = record
+  FIXED* {.final.} = object
     fract*: int16
     value*: SHORT
 
   TFIXED* = FIXED
   PFIXED* = ptr FIXED
-  POINTFX* = record
+  POINTFX* {.final.} = object
     x*: FIXED
     y*: FIXED
 
   TPOINTFX* = POINTFX
   PPOINTFX* = ptr POINTFX
-  POINTL* = record
+  POINTL* {.final.} = object
     x*: LONG
     y*: LONG
 
   TPOINTL* = POINTL
   PPOINTL* = ptr POINTL
-  TSmallPoint* = record
+  TSmallPoint* {.final.} = object
     X*, Y*: SHORT
 
-  POINTS* = record
+  POINTS* {.final.} = object
     x*: SHORT
     y*: SHORT
 
   TPOINTS* = POINTS
   PPOINTS* = ptr POINTS
-  CANDIDATEFORM* = record
+  CANDIDATEFORM* {.final.} = object
     dwIndex*: DWORD
     dwStyle*: DWORD
     ptCurrentPos*: POINT
@@ -6852,7 +6852,7 @@ type                          # WARNING
   LPCANDIDATEFORM* = ptr CANDIDATEFORM
   TCANDIDATEFORM* = CANDIDATEFORM
   PCANDIDATEFORM* = ptr CANDIDATEFORM
-  CANDIDATELIST* = record
+  CANDIDATELIST* {.final.} = object
     dwSize*: DWORD
     dwStyle*: DWORD
     dwCount*: DWORD
@@ -6864,7 +6864,7 @@ type                          # WARNING
   LPCANDIDATELIST* = ptr CANDIDATELIST
   TCANDIDATELIST* = CANDIDATELIST
   PCANDIDATELIST* = ptr CANDIDATELIST
-  CREATESTRUCT* = record
+  CREATESTRUCT* {.final.} = object
     lpCreateParams*: LPVOID
     hInstance*: HINST
     hMenu*: HMENU
@@ -6881,25 +6881,25 @@ type                          # WARNING
   LPCREATESTRUCT* = ptr CREATESTRUCT
   TCREATESTRUCT* = CREATESTRUCT
   PCREATESTRUCT* = ptr CREATESTRUCT
-  CBT_CREATEWND* = record
+  CBT_CREATEWND* {.final.} = object
     lpcs*: LPCREATESTRUCT
     hwndInsertAfter*: HWND
 
   TCBT_CREATEWND* = CBT_CREATEWND
   PCBT_CREATEWND* = ptr CBT_CREATEWND
-  CBTACTIVATESTRUCT* = record
+  CBTACTIVATESTRUCT* {.final.} = object
     fMouse*: WINBOOL
     hWndActive*: HWND
 
   TCBTACTIVATESTRUCT* = CBTACTIVATESTRUCT
   PCBTACTIVATESTRUCT* = ptr CBTACTIVATESTRUCT
-  CHAR_INFO* = record
+  CHAR_INFO* {.final.} = object
     UnicodeChar*: WCHAR
     Attributes*: int16        # other union part: AsciiChar : CHAR
 
   TCHAR_INFO* = CHAR_INFO
   PCHAR_INFO* = ptr CHAR_INFO
-  CHARFORMAT* = record
+  CHARFORMAT* {.final.} = object
     cbSize*: UINT
     dwMask*: DWORD
     dwEffects*: DWORD
@@ -6912,19 +6912,19 @@ type                          # WARNING
 
   Tcharformat* = CHARFORMAT
   Pcharformat* = ptr CHARFORMAT
-  CHARRANGE* = record
+  CHARRANGE* {.final.} = object
     cpMin*: LONG
     cpMax*: LONG
 
   Tcharrange* = CHARRANGE
   Pcharrange* = ptr CHARRANGE
-  CHARSET* = record
+  CHARSET* {.final.} = object
     aflBlock*: array[0..2, DWORD]
     flLang*: DWORD
 
   TCHARSET* = CHARSET
   PCHARSET* = ptr CHARSET
-  FONTSIGNATURE* = record
+  FONTSIGNATURE* {.final.} = object
     fsUsb*: array[0..3, DWORD]
     fsCsb*: array[0..1, DWORD]
 
@@ -6932,7 +6932,7 @@ type                          # WARNING
   tagFONTSIGNATURE* = FONTSIGNATURE
   TFONTSIGNATURE* = FONTSIGNATURE
   PFONTSIGNATURE* = ptr FONTSIGNATURE
-  CHARSETINFO* = record
+  CHARSETINFO* {.final.} = object
     ciCharset*: UINT
     ciACP*: UINT
     fs*: FONTSIGNATURE
@@ -6940,7 +6940,7 @@ type                          # WARNING
   LPCHARSETINFO* = ptr CHARSETINFO
   TCHARSETINFO* = CHARSETINFO
   PCHARSETINFO* = ptr CHARSETINFO #CHOOSECOLOR = record confilcts with function ChooseColor
-  TCHOOSECOLOR* = record
+  TCHOOSECOLOR* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hInstance*: HWND
@@ -6953,7 +6953,7 @@ type                          # WARNING
 
   LPCHOOSECOLOR* = ptr TCHOOSECOLOR
   PCHOOSECOLOR* = ptr TCHOOSECOLOR
-  LOGFONT* = record
+  LOGFONT* {.final.} = object
     lfHeight*: LONG
     lfWidth*: LONG
     lfEscapement*: LONG
@@ -6974,7 +6974,7 @@ type                          # WARNING
   TLOGFONTA* = LOGFONT
   PLOGFONT* = ptr LOGFONT
   PLOGFONTA* = PLOGFONT
-  LOGFONTW* = record
+  LOGFONTW* {.final.} = object
     lfHeight*: LONG
     lfWidth*: LONG
     lfEscapement*: LONG
@@ -6994,7 +6994,7 @@ type                          # WARNING
   NPLOGFONTW* = ptr LOGFONTW
   TLogFontW* = LOGFONTW
   PLogFontW* = ptr TLogFontW
-  TCHOOSEFONT* = record
+  TCHOOSEFONT* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hDC*: HDC
@@ -7014,14 +7014,14 @@ type                          # WARNING
 
   LPCHOOSEFONT* = ptr TCHOOSEFONT
   PCHOOSEFONT* = ptr TCHOOSEFONT
-  CIDA* = record
+  CIDA* {.final.} = object
     cidl*: UINT
     aoffset*: array[0..0, UINT]
 
   LPIDA* = ptr CIDA
   TIDA* = CIDA
   PIDA* = ptr CIDA
-  CLIENTCREATESTRUCT* = record
+  CLIENTCREATESTRUCT* {.final.} = object
     hWindowMenu*: HANDLE
     idFirstChild*: UINT
 
@@ -7029,7 +7029,7 @@ type                          # WARNING
   tagCLIENTCREATESTRUCT* = CLIENTCREATESTRUCT
   TCLIENTCREATESTRUCT* = CLIENTCREATESTRUCT
   PCLIENTCREATESTRUCT* = ptr CLIENTCREATESTRUCT
-  CMINVOKECOMMANDINFO* = record
+  CMINVOKECOMMANDINFO* {.final.} = object
     cbSize*: DWORD
     fMask*: DWORD
     hwnd*: HWND
@@ -7043,7 +7043,7 @@ type                          # WARNING
   LPCMINVOKECOMMANDINFO* = ptr CMINVOKECOMMANDINFO
   TCMInvokeCommandInfo* = CMINVOKECOMMANDINFO
   PCMInvokeCommandInfo* = ptr CMINVOKECOMMANDINFO
-  COLORADJUSTMENT* = record
+  COLORADJUSTMENT* {.final.} = object
     caSize*: int16
     caFlags*: int16
     caIlluminantIndex*: int16
@@ -7061,14 +7061,14 @@ type                          # WARNING
   tagCOLORADJUSTMENT* = COLORADJUSTMENT
   TCOLORADJUSTMENT* = COLORADJUSTMENT
   PCOLORADJUSTMENT* = ptr COLORADJUSTMENT
-  COLORMAP* = record
+  COLORMAP* {.final.} = object
     `from`*: COLORREF
     `to`*: COLORREF          # XXX!
 
   LPCOLORMAP* = ptr COLORMAP
   TCOLORMAP* = COLORMAP
   PCOLORMAP* = ptr COLORMAP
-  DCB* = record
+  DCB* {.final.} = object
     DCBlength*: DWORD
     BaudRate*: DWORD
     flags*: DWORD
@@ -7148,7 +7148,7 @@ proc set_fAbortOnError*(a: var DCB, fAbortOnError: DWORD)
 proc fDummy2*(a: var DCB): DWORD
 proc set_fDummy2*(a: var DCB, fDummy2: DWORD)
 type
-  COMMCONFIG* = record
+  COMMCONFIG* {.final.} = object
     dwSize*: DWORD
     wVersion*: int16
     wReserved*: int16
@@ -7161,7 +7161,7 @@ type
   LPCOMMCONFIG* = ptr COMMCONFIG
   TCOMMCONFIG* = COMMCONFIG
   PCOMMCONFIG* = ptr COMMCONFIG
-  COMMPROP* = record
+  COMMPROP* {.final.} = object
     wPacketLength*: int16
     wPacketVersion*: int16
     dwServiceMask*: DWORD
@@ -7184,7 +7184,7 @@ type
   LPCOMMPROP* = ptr COMMPROP
   TCOMMPROP* = COMMPROP
   PCOMMPROP* = ptr COMMPROP
-  COMMTIMEOUTS* = record
+  COMMTIMEOUTS* {.final.} = object
     ReadIntervalTimeout*: DWORD
     ReadTotalTimeoutMultiplier*: DWORD
     ReadTotalTimeoutConstant*: DWORD
@@ -7194,7 +7194,7 @@ type
   LPCOMMTIMEOUTS* = ptr COMMTIMEOUTS
   TCOMMTIMEOUTS* = COMMTIMEOUTS
   PCOMMTIMEOUTS* = ptr COMMTIMEOUTS
-  COMPAREITEMSTRUCT* = record
+  COMPAREITEMSTRUCT* {.final.} = object
     CtlType*: UINT
     CtlID*: UINT
     hwndItem*: HWND
@@ -7206,14 +7206,14 @@ type
   tagCOMPAREITEMSTRUCT* = COMPAREITEMSTRUCT
   TCOMPAREITEMSTRUCT* = COMPAREITEMSTRUCT
   PCOMPAREITEMSTRUCT* = ptr COMPAREITEMSTRUCT
-  COMPCOLOR* = record
+  COMPCOLOR* {.final.} = object
     crText*: COLORREF
     crBackground*: COLORREF
     dwEffects*: DWORD
 
   TCOMPCOLOR* = COMPCOLOR
   PCOMPCOLOR* = ptr COMPCOLOR
-  COMPOSITIONFORM* = record
+  COMPOSITIONFORM* {.final.} = object
     dwStyle*: DWORD
     ptCurrentPos*: POINT
     rcArea*: RECT
@@ -7222,7 +7222,7 @@ type
   TCOMPOSITIONFORM* = COMPOSITIONFORM
   PCOMPOSITIONFORM* = ptr COMPOSITIONFORM #     TComStatFlags = set of (fCtsHold, fDsrHold, fRlsdHold , fXoffHold ,
                                           #                    fXoffSent , fEof ,  fTxim  , fReserved);
-  COMSTAT* = record
+  COMSTAT* {.final.} = object
     flag0*: DWORD             # can't use tcomstatflags, set packing issues
                               # and conflicts with macro's
     cbInQue*: DWORD
@@ -7268,20 +7268,20 @@ proc set_fTxim*(a: var COMSTAT, fTxim: DWORD)
 proc fReserved*(a: var COMSTAT): DWORD
 proc set_fReserved*(a: var COMSTAT, fReserved: DWORD)
 type
-  CONSOLE_CURSOR_INFO* = record
+  CONSOLE_CURSOR_INFO* {.final.} = object
     dwSize*: DWORD
     bVisible*: WINBOOL
 
   PCONSOLE_CURSOR_INFO* = ptr CONSOLE_CURSOR_INFO
   TCONSOLECURSORINFO* = CONSOLE_CURSOR_INFO
   TCURSORINFO* = CONSOLE_CURSOR_INFO
-  COORD* = record
+  COORD* {.final.} = object
     X*: SHORT
     Y*: SHORT
 
   TCOORD* = COORD
   PCOORD* = ptr COORD
-  SMALL_RECT* = record
+  SMALL_RECT* {.final.} = object
     Left*: SHORT
     Top*: SHORT
     Right*: SHORT
@@ -7289,7 +7289,7 @@ type
 
   TSMALL_RECT* = SMALL_RECT
   PSMALL_RECT* = ptr SMALL_RECT
-  CONSOLE_SCREEN_BUFFER_INFO* = record
+  CONSOLE_SCREEN_BUFFER_INFO* {.final.} = object
     dwSize*: COORD
     dwCursorPosition*: COORD
     wAttributes*: int16
@@ -7301,7 +7301,7 @@ type
 
 when defined(i386):
   type
-    FLOATING_SAVE_AREA* = record
+    FLOATING_SAVE_AREA* {.final.} = object
       ControlWord*: DWORD
       StatusWord*: DWORD
       TagWord*: DWORD
@@ -7314,7 +7314,7 @@ when defined(i386):
 
     TFLOATINGSAVEAREA* = FLOATING_SAVE_AREA
     PFLOATINGSAVEAREA* = ptr FLOATING_SAVE_AREA
-    CONTEXT* = record
+    CONTEXT* {.final.} = object
       ContextFlags*: DWORD
       Dr0*: DWORD
       Dr1*: DWORD
@@ -7345,7 +7345,7 @@ when defined(x86_64):
   # Define 128-bit 16-byte aligned xmm register type.
   #
   type
-    M128A* = record
+    M128A* {.final.} = object
       Low*: ULONGLONG
       High*: LONGLONG
 
@@ -7355,7 +7355,7 @@ when defined(x86_64):
                      #
                      #typedef struct _XMM_SAVE_AREA32 {
   type
-    XMM_SAVE_AREA32* = record
+    XMM_SAVE_AREA32* {.final.} = object
       ControlWord*: int16
       StatusWord*: int16
       TagWord*: int8
@@ -7378,7 +7378,7 @@ when defined(x86_64):
   const
     LEGACY_SAVE_AREA_LENGTH* = sizeof(XMM_SAVE_AREA32)
   type
-    CONTEXT* = record
+    CONTEXT* {.final.} = object
       P1Home*: DWORD64
       P2Home*: DWORD64
       P3Home*: DWORD64
@@ -7465,7 +7465,7 @@ when defined(powerpc32):
   # Debug Status Register
   # Debug Control Register
   type
-    CONTEXT* = record
+    CONTEXT* {.final.} = object
       Fpr0*: float64
       Fpr1*: float64
       Fpr2*: float64
@@ -7554,13 +7554,13 @@ type
   PCONTEXT* = ptr CONTEXT
 
 type
-  LIST_ENTRY* = record
+  LIST_ENTRY* {.final.} = object
     Flink*: ptr LIST_ENTRY
     Blink*: ptr LIST_ENTRY
 
   TLISTENTRY* = LIST_ENTRY
   PLISTENTRY* = ptr LIST_ENTRY
-  CRITICAL_SECTION_DEBUG* = record
+  CRITICAL_SECTION_DEBUG* {.final.} = object
     `type`*: int16
     CreatorBackTraceIndex*: int16
     CriticalSection*: ptr TCRITICAL_SECTION
@@ -7570,7 +7570,7 @@ type
     Depth*: DWORD
     OwnerBackTrace*: array[0..4, PVOID]
 
-  TRTL_CRITICAL_SECTION* = record
+  TRTL_CRITICAL_SECTION* {.final.} = object
     DebugInfo*: ptr CRITICAL_SECTION_DEBUG
     LockCount*: int32
     RecursionCount*: int32
@@ -7586,7 +7586,7 @@ type
   TCRITICAL_SECTION* = TRTLCriticalSection
   PCRITICAL_SECTION* = PRTLCriticalSection
   LPCRITICAL_SECTION* = PRTLCriticalSection
-  SECURITY_QUALITY_OF_SERVICE* = record
+  SECURITY_QUALITY_OF_SERVICE* {.final.} = object
     len*: DWORD
     ImpersonationLevel*: SECURITY_IMPERSONATION_LEVEL
     ContextTrackingMode*: WINBOOL
@@ -7594,7 +7594,7 @@ type
 
   PSECURITY_QUALITY_OF_SERVICE* = ptr SECURITY_QUALITY_OF_SERVICE
   TSECURITYQUALITYOFSERVICE* = SECURITY_QUALITY_OF_SERVICE
-  CONVCONTEXT* = record
+  CONVCONTEXT* {.final.} = object
     cb*: UINT
     wFlags*: UINT
     wCountryID*: UINT
@@ -7605,7 +7605,7 @@ type
 
   TCONVCONTEXT* = CONVCONTEXT
   PCONVCONTEXT* = ptr CONVCONTEXT
-  CONVINFO* = record
+  CONVINFO* {.final.} = object
     cb*: DWORD
     hUser*: DWORD
     hConvPartner*: HCONV
@@ -7626,7 +7626,7 @@ type
   tagCONVINFO* = CONVINFO
   TCONVINFO* = CONVINFO
   PCONVINFO* = ptr CONVINFO
-  COPYDATASTRUCT* = record
+  COPYDATASTRUCT* {.final.} = object
     dwData*: DWORD
     cbData*: DWORD
     lpData*: PVOID
@@ -7634,7 +7634,7 @@ type
   tagCOPYDATASTRUCT* = COPYDATASTRUCT
   TCOPYDATASTRUCT* = COPYDATASTRUCT
   PCOPYDATASTRUCT* = ptr COPYDATASTRUCT
-  CPINFO* = record
+  CPINFO* {.final.} = object
     MaxCharSize*: UINT
     DefaultChar*: array[0..(MAX_DEFAULTCHAR) - 1, int8]
     LeadByte*: array[0..(MAX_LEADBYTES) - 1, int8]
@@ -7642,7 +7642,7 @@ type
   LPCPINFO* = ptr CPINFO
   Tcpinfo* = CPINFO
   Pcpinfo* = ptr CPINFO
-  CPLINFO* = record
+  CPLINFO* {.final.} = object
     idIcon*: int32
     idName*: int32
     idInfo*: int32
@@ -7651,7 +7651,7 @@ type
   tagCPLINFO* = CPLINFO
   TCPLINFO* = CPLINFO
   PCPLINFO* = ptr CPLINFO
-  CREATE_PROCESS_DEBUG_INFO* = record
+  CREATE_PROCESS_DEBUG_INFO* {.final.} = object
     hFile*: HANDLE
     hProcess*: HANDLE
     hThread*: HANDLE
@@ -7665,7 +7665,7 @@ type
 
   TCREATEPROCESSDEBUGINFO* = CREATE_PROCESS_DEBUG_INFO
   PCREATEPROCESSDEBUGINFO* = ptr CREATE_PROCESS_DEBUG_INFO
-  CREATE_THREAD_DEBUG_INFO* = record
+  CREATE_THREAD_DEBUG_INFO* {.final.} = object
     hThread*: HANDLE
     lpThreadLocalBase*: LPVOID
     lpStartAddress*: LPTHREAD_START_ROUTINE
@@ -7686,7 +7686,7 @@ type
                                                          #    INT             iProtocol;
                                                          #  } CSADDR_INFO;
                                                          #
-  CURRENCYFMT* = record
+  CURRENCYFMT* {.final.} = object
     NumDigits*: UINT
     LeadingZero*: UINT
     Grouping*: UINT
@@ -7698,7 +7698,7 @@ type
 
   Tcurrencyfmt* = CURRENCYFMT
   Pcurrencyfmt* = ptr CURRENCYFMT
-  CURSORSHAPE* = record
+  CURSORSHAPE* {.final.} = object
     xHotSpot*: int32
     yHotSpot*: int32
     cx*: int32
@@ -7710,7 +7710,7 @@ type
   LPCURSORSHAPE* = ptr CURSORSHAPE
   TCURSORSHAPE* = CURSORSHAPE
   PCURSORSHAPE* = ptr CURSORSHAPE
-  CWPRETSTRUCT* = record
+  CWPRETSTRUCT* {.final.} = object
     lResult*: LRESULT
     lParam*: LPARAM
     wParam*: WPARAM
@@ -7719,7 +7719,7 @@ type
 
   TCWPRETSTRUCT* = CWPRETSTRUCT
   PCWPRETSTRUCT* = ptr CWPRETSTRUCT
-  CWPSTRUCT* = record
+  CWPSTRUCT* {.final.} = object
     lParam*: LPARAM
     wParam*: WPARAM
     message*: UINT
@@ -7727,12 +7727,12 @@ type
 
   TCWPSTRUCT* = CWPSTRUCT
   PCWPSTRUCT* = ptr CWPSTRUCT
-  DATATYPES_INFO_1* = record
+  DATATYPES_INFO_1* {.final.} = object
     pName*: LPTSTR
 
   TDATATYPESINFO1* = DATATYPES_INFO_1
   PDATATYPESINFO1* = ptr DATATYPES_INFO_1
-  DDEACK* = record
+  DDEACK* {.final.} = object
     flag0*: int16
 
   TDDEACK* = DDEACK
@@ -7757,7 +7757,7 @@ proc set_fBusy*(a: var DDEACK, fBusy: int16)
 proc fAck*(a: var DDEACK): int16
 proc set_fAck*(a: var DDEACK, fAck: int16)
 type
-  DDEADVISE* = record
+  DDEADVISE* {.final.} = object
     flag0*: int16
     cfFormat*: SHORT
 
@@ -7779,7 +7779,7 @@ proc set_fDeferUpd*(a: var DDEADVISE, fDeferUpd: int16)
 proc fAckReq*(a: var DDEADVISE): int16
 proc set_fAckReq*(a: var DDEADVISE, fAckReq: int16)
 type
-  DDEDATA* = record
+  DDEDATA* {.final.} = object
     flag0*: int16
     cfFormat*: SHORT
     Value*: array[0..0, int8]
@@ -7809,7 +7809,7 @@ proc set_reserved*(a: var DDEDATA, reserved: int16)
 proc fAckReq*(a: var DDEDATA): int16
 proc set_fAckReq*(a: var DDEDATA, fAckReq: int16)
 type
-  DDELN* = record
+  DDELN* {.final.} = object
     flag0*: int16
     cfFormat*: SHORT
 
@@ -7835,7 +7835,7 @@ proc set_fDeferUpd*(a: var DDELN, fDeferUpd: int16)
 proc fAckReq*(a: var DDELN): int16
 proc set_fAckReq*(a: var DDELN, fAckReq: int16)
 type
-  DDEML_MSG_HOOK_DATA* = record
+  DDEML_MSG_HOOK_DATA* {.final.} = object
     uiLo*: UINT
     uiHi*: UINT
     cbData*: DWORD
@@ -7843,7 +7843,7 @@ type
 
   TDDEMLMSGHOOKDATA* = DDEML_MSG_HOOK_DATA
   PDDEMLMSGHOOKDATA* = ptr DDEML_MSG_HOOK_DATA
-  DDEPOKE* = record
+  DDEPOKE* {.final.} = object
     flag0*: int16
     cfFormat*: SHORT
     Value*: array[0..0, int8]
@@ -7866,7 +7866,7 @@ proc set_fRelease*(a: var DDEPOKE, fRelease: int16)
 proc fReserved*(a: var DDEPOKE): int16
 proc set_fReserved*(a: var DDEPOKE, fReserved: int16)
 type
-  DDEUP* = record
+  DDEUP* {.final.} = object
     flag0*: int16
     cfFormat*: SHORT
     rgb*: array[0..0, int8]
@@ -7897,7 +7897,7 @@ proc set_fReserved*(a: var DDEUP, fReserved: int16)
 proc fAckReq*(a: var DDEUP): int16
 proc set_fAckReq*(a: var DDEUP, fAckReq: int16)
 type
-  EXCEPTION_RECORD* = record
+  EXCEPTION_RECORD* {.final.} = object
     ExceptionCode*: DWORD
     ExceptionFlags*: DWORD
     ExceptionRecord*: ptr EXCEPTION_RECORD
@@ -7908,13 +7908,13 @@ type
 
   PEXCEPTION_RECORD* = ptr EXCEPTION_RECORD
   TEXCEPTIONRECORD* = EXCEPTION_RECORD
-  EXCEPTION_DEBUG_INFO* = record
+  EXCEPTION_DEBUG_INFO* {.final.} = object
     ExceptionRecord*: EXCEPTION_RECORD
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO* = ptr EXCEPTION_DEBUG_INFO
   TEXCEPTIONDEBUGINFO* = EXCEPTION_DEBUG_INFO
-  EXCEPTION_RECORD32* = record
+  EXCEPTION_RECORD32* {.final.} = object
     ExceptionCode*: DWORD
     ExceptionFlags*: DWORD
     ExceptionRecord*: DWORD
@@ -7924,13 +7924,13 @@ type
 
   PEXCEPTION_RECORD32* = ptr EXCEPTION_RECORD32
   TExceptionRecord32* = EXCEPTION_RECORD32
-  EXCEPTION_DEBUG_INFO32* = record
+  EXCEPTION_DEBUG_INFO32* {.final.} = object
     ExceptionRecord*: EXCEPTION_RECORD32
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO32* = ptr EXCEPTION_DEBUG_INFO32
   TExceptionDebugInfo32* = EXCEPTION_DEBUG_INFO32
-  EXCEPTION_RECORD64* = record
+  EXCEPTION_RECORD64* {.final.} = object
     ExceptionCode*: DWORD
     ExceptionFlags*: DWORD
     ExceptionRecord*: DWORD64
@@ -7941,23 +7941,23 @@ type
 
   PEXCEPTION_RECORD64* = ptr EXCEPTION_RECORD64
   TExceptionRecord64* = EXCEPTION_RECORD64
-  EXCEPTION_DEBUG_INFO64* = record
+  EXCEPTION_DEBUG_INFO64* {.final.} = object
     ExceptionRecord*: EXCEPTION_RECORD64
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO64* = ptr EXCEPTION_DEBUG_INFO64
   TExceptionDebugInfo64* = EXCEPTION_DEBUG_INFO64
-  EXIT_PROCESS_DEBUG_INFO* = record
+  EXIT_PROCESS_DEBUG_INFO* {.final.} = object
     dwExitCode*: DWORD
 
   TEXITPROCESSDEBUGINFO* = EXIT_PROCESS_DEBUG_INFO
   PEXITPROCESSDEBUGINFO* = ptr EXIT_PROCESS_DEBUG_INFO
-  EXIT_THREAD_DEBUG_INFO* = record
+  EXIT_THREAD_DEBUG_INFO* {.final.} = object
     dwExitCode*: DWORD
 
   TEXITTHREADDEBUGINFO* = EXIT_THREAD_DEBUG_INFO
   PEXITTHREADDEBUGINFO* = ptr EXIT_THREAD_DEBUG_INFO
-  LOAD_DLL_DEBUG_INFO* = record
+  LOAD_DLL_DEBUG_INFO* {.final.} = object
     hFile*: HANDLE
     lpBaseOfDll*: LPVOID
     dwDebugInfoFileOffset*: DWORD
@@ -7967,25 +7967,25 @@ type
 
   TLOADDLLDEBUGINFO* = LOAD_DLL_DEBUG_INFO
   PLOADDLLDEBUGINFO* = ptr LOAD_DLL_DEBUG_INFO
-  UNLOAD_DLL_DEBUG_INFO* = record
+  UNLOAD_DLL_DEBUG_INFO* {.final.} = object
     lpBaseOfDll*: LPVOID
 
   TUNLOADDLLDEBUGINFO* = UNLOAD_DLL_DEBUG_INFO
   PUNLOADDLLDEBUGINFO* = ptr UNLOAD_DLL_DEBUG_INFO
-  OUTPUT_DEBUG_STRING_INFO* = record
+  OUTPUT_DEBUG_STRING_INFO* {.final.} = object
     lpDebugStringData*: LPSTR
     fUnicode*: int16
     nDebugStringLength*: int16
 
   TOUTPUTDEBUGSTRINGINFO* = OUTPUT_DEBUG_STRING_INFO
   POUTPUTDEBUGSTRINGINFO* = ptr OUTPUT_DEBUG_STRING_INFO
-  RIP_INFO* = record
+  RIP_INFO* {.final.} = object
     dwError*: DWORD
     dwType*: DWORD
 
   TRIPINFO* = RIP_INFO
   PRIPINFO* = ptr RIP_INFO
-  DEBUG_EVENT* = record
+  DEBUG_EVENT* {.final.} = object
     dwDebugEventCode*: DWORD
     dwProcessId*: DWORD
     dwThreadId*: DWORD
@@ -8004,7 +8004,7 @@ type
   LPDEBUG_EVENT* = ptr DEBUG_EVENT
   TDEBUGEVENT* = DEBUG_EVENT
   PDEBUGEVENT* = ptr DEBUG_EVENT
-  DEBUGHOOKINFO* = record
+  DEBUGHOOKINFO* {.final.} = object
     idThread*: DWORD
     idThreadInstaller*: DWORD
     lParam*: LPARAM
@@ -8013,7 +8013,7 @@ type
 
   TDEBUGHOOKINFO* = DEBUGHOOKINFO
   PDEBUGHOOKINFO* = ptr DEBUGHOOKINFO
-  DELETEITEMSTRUCT* = record
+  DELETEITEMSTRUCT* {.final.} = object
     CtlType*: UINT
     CtlID*: UINT
     itemID*: UINT
@@ -8022,14 +8022,14 @@ type
 
   TDELETEITEMSTRUCT* = DELETEITEMSTRUCT
   PDELETEITEMSTRUCT* = ptr DELETEITEMSTRUCT
-  DEV_BROADCAST_HDR* = record
+  DEV_BROADCAST_HDR* {.final.} = object
     dbch_size*: ULONG
     dbch_devicetype*: ULONG
     dbch_reserved*: ULONG
 
   PDEV_BROADCAST_HDR* = ptr DEV_BROADCAST_HDR
   TDEVBROADCASTHDR* = DEV_BROADCAST_HDR
-  DEV_BROADCAST_OEM* = record
+  DEV_BROADCAST_OEM* {.final.} = object
     dbco_size*: ULONG
     dbco_devicetype*: ULONG
     dbco_reserved*: ULONG
@@ -8038,7 +8038,7 @@ type
 
   PDEV_BROADCAST_OEM* = ptr DEV_BROADCAST_OEM
   TDEVBROADCASTOEM* = DEV_BROADCAST_OEM
-  DEV_BROADCAST_PORT* = record
+  DEV_BROADCAST_PORT* {.final.} = object
     dbcp_size*: ULONG
     dbcp_devicetype*: ULONG
     dbcp_reserved*: ULONG
@@ -8046,14 +8046,14 @@ type
 
   PDEV_BROADCAST_PORT* = ptr DEV_BROADCAST_PORT
   TDEVBROADCASTPORT* = DEV_BROADCAST_PORT
-  DEV_BROADCAST_USERDEFINED* = record
+  DEV_BROADCAST_USERDEFINED* {.final.} = object
     dbud_dbh*: DEV_BROADCAST_HDR
     dbud_szName*: array[0..0, char]
     dbud_rgbUserDefined*: array[0..0, int8]
 
   TDEVBROADCASTUSERDEFINED* = DEV_BROADCAST_USERDEFINED
   PDEVBROADCASTUSERDEFINED* = ptr DEV_BROADCAST_USERDEFINED
-  DEV_BROADCAST_VOLUME* = record
+  DEV_BROADCAST_VOLUME* {.final.} = object
     dbcv_size*: ULONG
     dbcv_devicetype*: ULONG
     dbcv_reserved*: ULONG
@@ -8062,7 +8062,7 @@ type
 
   PDEV_BROADCAST_VOLUME* = ptr DEV_BROADCAST_VOLUME
   TDEVBROADCASTVOLUME* = DEV_BROADCAST_VOLUME
-  DEVMODE* = record
+  DEVMODE* {.final.} = object
     dmDeviceName*: array[0..(CCHDEVICENAME) - 1, BCHAR]
     dmSpecVersion*: int16
     dmDriverVersion*: int16
@@ -8107,7 +8107,7 @@ type
   PDeviceMode* = LPDEVMODE
   TDEVMODE* = DEVMODE
   PDEVMODE* = LPDEVMODE
-  devmodeW* = record
+  devmodeW* {.final.} = object
     dmDeviceName*: array[0..CCHDEVICENAME - 1, WCHAR]
     dmSpecVersion*: int16
     dmDriverVersion*: int16
@@ -8149,7 +8149,7 @@ type
   PDeviceModeW* = LPDEVMODEW
   TDEVMODEW* = DEVMODEW
   PDEVMODEW* = LPDEVMODEW
-  DEVNAMES* = record
+  DEVNAMES* {.final.} = object
     wDriverOffset*: int16
     wDeviceOffset*: int16
     wOutputOffset*: int16
@@ -8159,7 +8159,7 @@ type
   tagDEVNAMES* = DEVNAMES
   TDEVNAMES* = DEVNAMES
   PDEVNAMES* = ptr DEVNAMES
-  DIBSECTION* = record
+  DIBSECTION* {.final.} = object
     dsBm*: BITMAP
     dsBmih*: BITMAPINFOHEADER
     dsBitfields*: array[0..2, DWORD]
@@ -8187,7 +8187,7 @@ type
   TLargeInteger* = Int64
   PULARGE_INTEGER* = ptr ULARGE_INTEGER
   TULargeInteger* = int64
-  DISK_GEOMETRY* = record
+  DISK_GEOMETRY* {.final.} = object
     Cylinders*: LARGE_INTEGER
     MediaType*: MEDIA_TYPE
     TracksPerCylinder*: DWORD
@@ -8196,7 +8196,7 @@ type
 
   TDISKGEOMETRY* = DISK_GEOMETRY
   PDISKGEOMETRY* = ptr DISK_GEOMETRY
-  DISK_PERFORMANCE* = record
+  DISK_PERFORMANCE* {.final.} = object
     BytesRead*: LARGE_INTEGER
     BytesWritten*: LARGE_INTEGER
     ReadTime*: LARGE_INTEGER
@@ -8207,7 +8207,7 @@ type
 
   TDISKPERFORMANCE* = DISK_PERFORMANCE
   PDISKPERFORMANCE* = ptr DISK_PERFORMANCE
-  DLGITEMTEMPLATE* = record
+  DLGITEMTEMPLATE* {.final.} = object
     style*: DWORD
     dwExtendedStyle*: DWORD
     x*: int16
@@ -8219,7 +8219,7 @@ type
   LPDLGITEMTEMPLATE* = ptr DLGITEMTEMPLATE
   TDLGITEMTEMPLATE* = DLGITEMTEMPLATE
   PDLGITEMTEMPLATE* = ptr DLGITEMTEMPLATE
-  DLGTEMPLATE* = record
+  DLGTEMPLATE* {.final.} = object
     style*: DWORD
     dwExtendedStyle*: DWORD
     cdit*: int16
@@ -8232,14 +8232,14 @@ type
   LPCDLGTEMPLATE* = ptr DLGTEMPLATE
   TDLGTEMPLATE* = DLGTEMPLATE
   PDLGTEMPLATE* = ptr DLGTEMPLATE
-  DOC_INFO_1* = record
+  DOC_INFO_1* {.final.} = object
     pDocName*: LPTSTR
     pOutputFile*: LPTSTR
     pDatatype*: LPTSTR
 
   TDOCINFO1* = DOC_INFO_1
   PDOCINFO1* = ptr DOC_INFO_1
-  DOC_INFO_2* = record
+  DOC_INFO_2* {.final.} = object
     pDocName*: LPTSTR
     pOutputFile*: LPTSTR
     pDatatype*: LPTSTR
@@ -8248,7 +8248,7 @@ type
 
   TDOCINFO2* = DOC_INFO_2
   PDOCINFO2* = ptr DOC_INFO_2
-  DOCINFO* = record
+  DOCINFO* {.final.} = object
     cbSize*: int32
     lpszDocName*: LPCTSTR
     lpszOutput*: LPCTSTR
@@ -8258,7 +8258,7 @@ type
   TDOCINFO* = DOCINFO
   TDOCINFOA* = DOCINFO
   PDOCINFO* = ptr DOCINFO
-  DRAGLISTINFO* = record
+  DRAGLISTINFO* {.final.} = object
     uNotification*: UINT
     hWnd*: HWND
     ptCursor*: POINT
@@ -8266,7 +8266,7 @@ type
   LPDRAGLISTINFO* = ptr DRAGLISTINFO
   TDRAGLISTINFO* = DRAGLISTINFO
   PDRAGLISTINFO* = ptr DRAGLISTINFO
-  DRAWITEMSTRUCT* = record
+  DRAWITEMSTRUCT* {.final.} = object
     CtlType*: UINT
     CtlID*: UINT
     itemID*: UINT
@@ -8281,7 +8281,7 @@ type
   tagDRAWITEMSTRUCT* = DRAWITEMSTRUCT
   TDRAWITEMSTRUCT* = DRAWITEMSTRUCT
   PDRAWITEMSTRUCT* = ptr DRAWITEMSTRUCT
-  DRAWTEXTPARAMS* = record
+  DRAWTEXTPARAMS* {.final.} = object
     cbSize*: UINT
     iTabLength*: int32
     iLeftMargin*: int32
@@ -8291,7 +8291,7 @@ type
   LPDRAWTEXTPARAMS* = ptr DRAWTEXTPARAMS
   TDRAWTEXTPARAMS* = DRAWTEXTPARAMS
   PDRAWTEXTPARAMS* = ptr DRAWTEXTPARAMS
-  PARTITION_INFORMATION* = record
+  PARTITION_INFORMATION* {.final.} = object
     PartitionType*: int8
     BootIndicator*: bool
     RecognizedPartition*: bool
@@ -8302,19 +8302,19 @@ type
 
   TPARTITIONINFORMATION* = PARTITION_INFORMATION
   PPARTITIONINFORMATION* = ptr PARTITION_INFORMATION
-  DRIVE_LAYOUT_INFORMATION* = record
+  DRIVE_LAYOUT_INFORMATION* {.final.} = object
     PartitionCount*: DWORD
     Signature*: DWORD
     PartitionEntry*: array[0..0, PARTITION_INFORMATION]
 
   TDRIVELAYOUTINFORMATION* = DRIVE_LAYOUT_INFORMATION
   PDRIVELAYOUTINFORMATION* = ptr DRIVE_LAYOUT_INFORMATION
-  DRIVER_INFO_1* = record
+  DRIVER_INFO_1* {.final.} = object
     pName*: LPTSTR
 
   TDRIVERINFO1* = DRIVER_INFO_1
   PDRIVERINFO1* = ptr DRIVER_INFO_1
-  DRIVER_INFO_2* = record
+  DRIVER_INFO_2* {.final.} = object
     cVersion*: DWORD
     pName*: LPTSTR
     pEnvironment*: LPTSTR
@@ -8324,7 +8324,7 @@ type
 
   TDRIVERINFO2* = DRIVER_INFO_2
   PDRIVERINFO2* = ptr DRIVER_INFO_2
-  DRIVER_INFO_3* = record
+  DRIVER_INFO_3* {.final.} = object
     cVersion*: DWORD
     pName*: LPTSTR
     pEnvironment*: LPTSTR
@@ -8338,21 +8338,21 @@ type
 
   TDRIVERINFO3* = DRIVER_INFO_3
   PDRIVERINFO3* = ptr DRIVER_INFO_3
-  EDITSTREAM* = record
+  EDITSTREAM* {.final.} = object
     dwCookie*: DWORD
     dwError*: DWORD
     pfnCallback*: EDITSTREAMCALLBACK
 
   Teditstream* = EDITSTREAM
   Peditstream* = ptr EDITSTREAM
-  EMR* = record
+  EMR* {.final.} = object
     iType*: DWORD
     nSize*: DWORD
 
   tagEMR* = EMR
   TEMR* = EMR
   PEMR* = ptr EMR
-  EMRANGLEARC* = record
+  EMRANGLEARC* {.final.} = object
     emr*: EMR
     ptlCenter*: POINTL
     nRadius*: DWORD
@@ -8362,7 +8362,7 @@ type
   tagEMRANGLEARC* = EMRANGLEARC
   TEMRANGLEARC* = EMRANGLEARC
   PEMRANGLEARC* = ptr EMRANGLEARC
-  EMRARC* = record
+  EMRARC* {.final.} = object
     emr*: EMR
     rclBox*: RECTL
     ptlStart*: POINTL
@@ -8380,7 +8380,7 @@ type
   EMRPIE* = EMRARC
   TEMRPIE* = EMRARC
   PEMRPIE* = ptr EMRARC
-  XFORM* = record
+  XFORM* {.final.} = object
     eM11*: float32
     eM12*: float32
     eM21*: float32
@@ -8391,7 +8391,7 @@ type
   LPXFORM* = ptr XFORM
   TXFORM* = XFORM
   PXFORM* = ptr XFORM
-  EMRBITBLT* = record
+  EMRBITBLT* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     xDest*: LONG
@@ -8411,7 +8411,7 @@ type
   tagEMRBITBLT* = EMRBITBLT
   TEMRBITBLT* = EMRBITBLT
   PEMRBITBLT* = ptr EMRBITBLT
-  LOGBRUSH* = record
+  LOGBRUSH* {.final.} = object
     lbStyle*: UINT
     lbColor*: COLORREF
     lbHatch*: LONG
@@ -8419,7 +8419,7 @@ type
   tagLOGBRUSH* = LOGBRUSH
   TLOGBRUSH* = LOGBRUSH
   PLOGBRUSH* = ptr LOGBRUSH
-  EMRCREATEBRUSHINDIRECT* = record
+  EMRCREATEBRUSHINDIRECT* {.final.} = object
     emr*: EMR
     ihBrush*: DWORD
     lb*: LOGBRUSH
@@ -8429,7 +8429,7 @@ type
   PEMRCREATEBRUSHINDIRECT* = ptr EMRCREATEBRUSHINDIRECT
   LCSCSTYPE* = LONG
   LCSGAMUTMATCH* = LONG
-  LOGCOLORSPACE* = record
+  LOGCOLORSPACE* {.final.} = object
     lcsSignature*: DWORD
     lcsVersion*: DWORD
     lcsSize*: DWORD
@@ -8446,7 +8446,7 @@ type
   TLOGCOLORSPACE* = LOGCOLORSPACE
   TLOGCOLORSPACEA* = LOGCOLORSPACE
   PLOGCOLORSPACE* = ptr LOGCOLORSPACE
-  EMRCREATECOLORSPACE* = record
+  EMRCREATECOLORSPACE* {.final.} = object
     emr*: EMR
     ihCS*: DWORD
     lcs*: LOGCOLORSPACE
@@ -8454,7 +8454,7 @@ type
   tagEMRCREATECOLORSPACE* = EMRCREATECOLORSPACE
   TEMRCREATECOLORSPACE* = EMRCREATECOLORSPACE
   PEMRCREATECOLORSPACE* = ptr EMRCREATECOLORSPACE
-  EMRCREATEDIBPATTERNBRUSHPT* = record
+  EMRCREATEDIBPATTERNBRUSHPT* {.final.} = object
     emr*: EMR
     ihBrush*: DWORD
     iUsage*: DWORD
@@ -8466,7 +8466,7 @@ type
   tagEMRCREATEDIBPATTERNBRUSHPT* = EMRCREATEDIBPATTERNBRUSHPT
   TEMRCREATEDIBPATTERNBRUSHPT* = EMRCREATEDIBPATTERNBRUSHPT
   PEMRCREATEDIBPATTERNBRUSHPT* = EMRCREATEDIBPATTERNBRUSHPT
-  EMRCREATEMONOBRUSH* = record
+  EMRCREATEMONOBRUSH* {.final.} = object
     emr*: EMR
     ihBrush*: DWORD
     iUsage*: DWORD
@@ -8478,7 +8478,7 @@ type
   tagEMRCREATEMONOBRUSH* = EMRCREATEMONOBRUSH
   TEMRCREATEMONOBRUSH* = EMRCREATEMONOBRUSH
   PEMRCREATEMONOBRUSH* = ptr EMRCREATEMONOBRUSH
-  PALETTEENTRY* = record
+  PALETTEENTRY* {.final.} = object
     peRed*: int8
     peGreen*: int8
     peBlue*: int8
@@ -8488,7 +8488,7 @@ type
   tagPALETTEENTRY* = PALETTEENTRY
   TPALETTEENTRY* = PALETTEENTRY
   PPALETTEENTRY* = ptr PALETTEENTRY
-  LOGPALETTE* = record
+  LOGPALETTE* {.final.} = object
     palVersion*: int16
     palNumEntries*: int16
     palPalEntry*: array[0..0, PALETTEENTRY]
@@ -8497,7 +8497,7 @@ type
   tagLOGPALETTE* = LOGPALETTE
   TLOGPALETTE* = LOGPALETTE
   PLOGPALETTE* = ptr LOGPALETTE
-  EMRCREATEPALETTE* = record
+  EMRCREATEPALETTE* {.final.} = object
     emr*: EMR
     ihPal*: DWORD
     lgpl*: LOGPALETTE
@@ -8505,7 +8505,7 @@ type
   tagEMRCREATEPALETTE* = EMRCREATEPALETTE
   TEMRCREATEPALETTE* = EMRCREATEPALETTE
   PEMRCREATEPALETTE* = ptr EMRCREATEPALETTE
-  LOGPEN* = record
+  LOGPEN* {.final.} = object
     lopnStyle*: UINT
     lopnWidth*: POINT
     lopnColor*: COLORREF
@@ -8513,7 +8513,7 @@ type
   tagLOGPEN* = LOGPEN
   TLOGPEN* = LOGPEN
   PLOGPEN* = ptr LOGPEN
-  EMRCREATEPEN* = record
+  EMRCREATEPEN* {.final.} = object
     emr*: EMR
     ihPen*: DWORD
     lopn*: LOGPEN
@@ -8521,7 +8521,7 @@ type
   tagEMRCREATEPEN* = EMRCREATEPEN
   TEMRCREATEPEN* = EMRCREATEPEN
   PEMRCREATEPEN* = ptr EMRCREATEPEN
-  EMRELLIPSE* = record
+  EMRELLIPSE* {.final.} = object
     emr*: EMR
     rclBox*: RECTL
 
@@ -8531,7 +8531,7 @@ type
   EMRRECTANGLE* = EMRELLIPSE
   TEMRRECTANGLE* = EMRELLIPSE
   PEMRRECTANGLE* = ptr EMRELLIPSE
-  EMREOF* = record
+  EMREOF* {.final.} = object
     emr*: EMR
     nPalEntries*: DWORD
     offPalEntries*: DWORD
@@ -8540,7 +8540,7 @@ type
   tagEMREOF* = EMREOF
   TEMREOF* = EMREOF
   PEMREOF* = ptr EMREOF
-  EMREXCLUDECLIPRECT* = record
+  EMREXCLUDECLIPRECT* {.final.} = object
     emr*: EMR
     rclClip*: RECTL
 
@@ -8550,7 +8550,7 @@ type
   EMRINTERSECTCLIPRECT* = EMREXCLUDECLIPRECT
   TEMRINTERSECTCLIPRECT* = EMREXCLUDECLIPRECT
   PEMRINTERSECTCLIPRECT* = ptr EMREXCLUDECLIPRECT
-  PANOSE* = record
+  PANOSE* {.final.} = object
     bFamilyType*: int8
     bSerifStyle*: int8
     bWeight*: int8
@@ -8565,7 +8565,7 @@ type
   tagPANOSE* = PANOSE
   TPANOSE* = PANOSE
   PPANOSE* = ptr PANOSE
-  EXTLOGFONT* = record
+  EXTLOGFONT* {.final.} = object
     elfLogFont*: LOGFONT
     elfFullName*: array[0..(LF_FULLFACESIZE) - 1, BCHAR]
     elfStyle*: array[0..(LF_FACESIZE) - 1, BCHAR]
@@ -8580,7 +8580,7 @@ type
   tagEXTLOGFONT* = EXTLOGFONT
   TEXTLOGFONT* = EXTLOGFONT
   PEXTLOGFONT* = ptr EXTLOGFONT
-  EMREXTCREATEFONTINDIRECTW* = record
+  EMREXTCREATEFONTINDIRECTW* {.final.} = object
     emr*: EMR
     ihFont*: DWORD
     elfw*: EXTLOGFONT
@@ -8588,7 +8588,7 @@ type
   tagEMREXTCREATEFONTINDIRECTW* = EMREXTCREATEFONTINDIRECTW
   TEMREXTCREATEFONTINDIRECTW* = EMREXTCREATEFONTINDIRECTW
   PEMREXTCREATEFONTINDIRECTW* = ptr EMREXTCREATEFONTINDIRECTW
-  EXTLOGPEN* = record
+  EXTLOGPEN* {.final.} = object
     elpPenStyle*: UINT
     elpWidth*: UINT
     elpBrushStyle*: UINT
@@ -8600,7 +8600,7 @@ type
   tagEXTLOGPEN* = EXTLOGPEN
   TEXTLOGPEN* = EXTLOGPEN
   PEXTLOGPEN* = ptr EXTLOGPEN
-  EMREXTCREATEPEN* = record
+  EMREXTCREATEPEN* {.final.} = object
     emr*: EMR
     ihPen*: DWORD
     offBmi*: DWORD
@@ -8612,7 +8612,7 @@ type
   tagEMREXTCREATEPEN* = EMREXTCREATEPEN
   TEMREXTCREATEPEN* = EMREXTCREATEPEN
   PEMREXTCREATEPEN* = ptr EMREXTCREATEPEN
-  EMREXTFLOODFILL* = record
+  EMREXTFLOODFILL* {.final.} = object
     emr*: EMR
     ptlStart*: POINTL
     crColor*: COLORREF
@@ -8621,7 +8621,7 @@ type
   tagEMREXTFLOODFILL* = EMREXTFLOODFILL
   TEMREXTFLOODFILL* = EMREXTFLOODFILL
   PEMREXTFLOODFILL* = ptr EMREXTFLOODFILL
-  EMREXTSELECTCLIPRGN* = record
+  EMREXTSELECTCLIPRGN* {.final.} = object
     emr*: EMR
     cbRgnData*: DWORD
     iMode*: DWORD
@@ -8630,7 +8630,7 @@ type
   tagEMREXTSELECTCLIPRGN* = EMREXTSELECTCLIPRGN
   TEMREXTSELECTCLIPRGN* = EMREXTSELECTCLIPRGN
   PEMREXTSELECTCLIPRGN* = ptr EMREXTSELECTCLIPRGN
-  EMRTEXT* = record
+  EMRTEXT* {.final.} = object
     ptlReference*: POINTL
     nChars*: DWORD
     offString*: DWORD
@@ -8641,7 +8641,7 @@ type
   tagEMRTEXT* = EMRTEXT
   TEMRTEXT* = EMRTEXT
   PEMRTEXT* = ptr EMRTEXT
-  EMREXTTEXTOUTA* = record
+  EMREXTTEXTOUTA* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     iGraphicsMode*: DWORD
@@ -8655,7 +8655,7 @@ type
   EMREXTTEXTOUTW* = EMREXTTEXTOUTA
   TEMREXTTEXTOUTW* = EMREXTTEXTOUTA
   PEMREXTTEXTOUTW* = ptr EMREXTTEXTOUTA
-  EMRFILLPATH* = record
+  EMRFILLPATH* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
 
@@ -8668,7 +8668,7 @@ type
   EMRSTROKEPATH* = EMRFILLPATH
   TEMRSTROKEPATH* = EMRFILLPATH
   PEMRSTROKEPATH* = ptr EMRFILLPATH
-  EMRFILLRGN* = record
+  EMRFILLRGN* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cbRgnData*: DWORD
@@ -8678,7 +8678,7 @@ type
   tagEMRFILLRGN* = EMRFILLRGN
   TEMRFILLRGN* = EMRFILLRGN
   PEMRFILLRGN* = ptr EMRFILLRGN
-  EMRFORMAT* = record
+  EMRFORMAT* {.final.} = object
     dSignature*: DWORD
     nVersion*: DWORD
     cbData*: DWORD
@@ -8687,7 +8687,7 @@ type
   tagEMRFORMAT* = EMRFORMAT
   TEMRFORMAT* = EMRFORMAT
   PEMRFORMAT* = ptr EMRFORMAT
-  SIZE* = record
+  SIZE* {.final.} = object
     cx*: LONG
     cy*: LONG
 
@@ -8699,7 +8699,7 @@ type
   TSIZEL* = SIZE
   PSIZEL* = ptr SIZE
   LPSIZEL* = ptr SIZE
-  EMRFRAMERGN* = record
+  EMRFRAMERGN* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cbRgnData*: DWORD
@@ -8710,7 +8710,7 @@ type
   tagEMRFRAMERGN* = EMRFRAMERGN
   TEMRFRAMERGN* = EMRFRAMERGN
   PEMRFRAMERGN* = ptr EMRFRAMERGN
-  EMRGDICOMMENT* = record
+  EMRGDICOMMENT* {.final.} = object
     emr*: EMR
     cbData*: DWORD
     Data*: array[0..0, int8]
@@ -8718,7 +8718,7 @@ type
   tagEMRGDICOMMENT* = EMRGDICOMMENT
   TEMRGDICOMMENT* = EMRGDICOMMENT
   PEMRGDICOMMENT* = ptr EMRGDICOMMENT
-  EMRINVERTRGN* = record
+  EMRINVERTRGN* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cbRgnData*: DWORD
@@ -8730,7 +8730,7 @@ type
   EMRPAINTRGN* = EMRINVERTRGN
   TEMRPAINTRGN* = EMRINVERTRGN
   PEMRPAINTRGN* = ptr EMRINVERTRGN
-  EMRLINETO* = record
+  EMRLINETO* {.final.} = object
     emr*: EMR
     ptl*: POINTL
 
@@ -8740,7 +8740,7 @@ type
   EMRMOVETOEX* = EMRLINETO
   TEMRMOVETOEX* = EMRLINETO
   PEMRMOVETOEX* = ptr EMRLINETO
-  EMRMASKBLT* = record
+  EMRMASKBLT* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     xDest*: LONG
@@ -8768,7 +8768,7 @@ type
   tagEMRMASKBLT* = EMRMASKBLT
   TEMRMASKBLT* = EMRMASKBLT
   PEMRMASKBLT* = ptr EMRMASKBLT
-  EMRMODIFYWORLDTRANSFORM* = record
+  EMRMODIFYWORLDTRANSFORM* {.final.} = object
     emr*: EMR
     xform*: XFORM
     iMode*: DWORD
@@ -8776,14 +8776,14 @@ type
   tagEMRMODIFYWORLDTRANSFORM* = EMRMODIFYWORLDTRANSFORM
   TEMRMODIFYWORLDTRANSFORM* = EMRMODIFYWORLDTRANSFORM
   PEMRMODIFYWORLDTRANSFORM* = EMRMODIFYWORLDTRANSFORM
-  EMROFFSETCLIPRGN* = record
+  EMROFFSETCLIPRGN* {.final.} = object
     emr*: EMR
     ptlOffset*: POINTL
 
   tagEMROFFSETCLIPRGN* = EMROFFSETCLIPRGN
   TEMROFFSETCLIPRGN* = EMROFFSETCLIPRGN
   PEMROFFSETCLIPRGN* = ptr EMROFFSETCLIPRGN
-  EMRPLGBLT* = record
+  EMRPLGBLT* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     aptlDest*: array[0..2, POINTL]
@@ -8809,7 +8809,7 @@ type
   tagEMRPLGBLT* = EMRPLGBLT
   TEMRPLGBLT* = EMRPLGBLT
   PEMRPLGBLT* = ptr EMRPLGBLT
-  EMRPOLYDRAW* = record
+  EMRPOLYDRAW* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cptl*: DWORD
@@ -8819,7 +8819,7 @@ type
   tagEMRPOLYDRAW* = EMRPOLYDRAW
   TEMRPOLYDRAW* = EMRPOLYDRAW
   PEMRPOLYDRAW* = ptr EMRPOLYDRAW
-  EMRPOLYDRAW16* = record
+  EMRPOLYDRAW16* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cpts*: DWORD
@@ -8829,7 +8829,7 @@ type
   tagEMRPOLYDRAW16* = EMRPOLYDRAW16
   TEMRPOLYDRAW16* = EMRPOLYDRAW16
   PEMRPOLYDRAW16* = ptr EMRPOLYDRAW16
-  EMRPOLYLINE* = record
+  EMRPOLYLINE* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cptl*: DWORD
@@ -8850,7 +8850,7 @@ type
   EMRPOLYLINETO* = EMRPOLYLINE
   TEMRPOLYLINETO* = EMRPOLYLINE
   PEMRPOLYLINETO* = ptr EMRPOLYLINE
-  EMRPOLYLINE16* = record
+  EMRPOLYLINE16* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     cpts*: DWORD
@@ -8871,7 +8871,7 @@ type
   EMRPOLYLINETO16* = EMRPOLYLINE16
   TEMRPOLYLINETO16* = EMRPOLYLINE16
   PEMRPOLYLINETO16* = ptr EMRPOLYLINE16
-  EMRPOLYPOLYLINE* = record
+  EMRPOLYPOLYLINE* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     nPolys*: DWORD
@@ -8885,7 +8885,7 @@ type
   EMRPOLYPOLYGON* = EMRPOLYPOLYLINE
   TEMRPOLYPOLYGON* = EMRPOLYPOLYLINE
   PEMRPOLYPOLYGON* = ptr EMRPOLYPOLYLINE
-  EMRPOLYPOLYLINE16* = record
+  EMRPOLYPOLYLINE16* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     nPolys*: DWORD
@@ -8899,7 +8899,7 @@ type
   EMRPOLYPOLYGON16* = EMRPOLYPOLYLINE16
   TEMRPOLYPOLYGON16* = EMRPOLYPOLYLINE16
   PEMRPOLYPOLYGON16* = ptr EMRPOLYPOLYLINE16
-  EMRPOLYTEXTOUTA* = record
+  EMRPOLYTEXTOUTA* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     iGraphicsMode*: DWORD
@@ -8914,7 +8914,7 @@ type
   EMRPOLYTEXTOUTW* = EMRPOLYTEXTOUTA
   TEMRPOLYTEXTOUTW* = EMRPOLYTEXTOUTA
   PEMRPOLYTEXTOUTW* = ptr EMRPOLYTEXTOUTA
-  EMRRESIZEPALETTE* = record
+  EMRRESIZEPALETTE* {.final.} = object
     emr*: EMR
     ihPal*: DWORD
     cEntries*: DWORD
@@ -8922,14 +8922,14 @@ type
   tagEMRRESIZEPALETTE* = EMRRESIZEPALETTE
   TEMRRESIZEPALETTE* = EMRRESIZEPALETTE
   PEMRRESIZEPALETTE* = ptr EMRRESIZEPALETTE
-  EMRRESTOREDC* = record
+  EMRRESTOREDC* {.final.} = object
     emr*: EMR
     iRelative*: LONG
 
   tagEMRRESTOREDC* = EMRRESTOREDC
   TEMRRESTOREDC* = EMRRESTOREDC
   PEMRRESTOREDC* = ptr EMRRESTOREDC
-  EMRROUNDRECT* = record
+  EMRROUNDRECT* {.final.} = object
     emr*: EMR
     rclBox*: RECTL
     szlCorner*: SIZEL
@@ -8937,7 +8937,7 @@ type
   tagEMRROUNDRECT* = EMRROUNDRECT
   TEMRROUNDRECT* = EMRROUNDRECT
   PEMRROUNDRECT* = ptr EMRROUNDRECT
-  EMRSCALEVIEWPORTEXTEX* = record
+  EMRSCALEVIEWPORTEXTEX* {.final.} = object
     emr*: EMR
     xNum*: LONG
     xDenom*: LONG
@@ -8950,7 +8950,7 @@ type
   EMRSCALEWINDOWEXTEX* = EMRSCALEVIEWPORTEXTEX
   TEMRSCALEWINDOWEXTEX* = EMRSCALEVIEWPORTEXTEX
   PEMRSCALEWINDOWEXTEX* = ptr EMRSCALEVIEWPORTEXTEX
-  EMRSELECTCOLORSPACE* = record
+  EMRSELECTCOLORSPACE* {.final.} = object
     emr*: EMR
     ihCS*: DWORD
 
@@ -8960,7 +8960,7 @@ type
   EMRDELETECOLORSPACE* = EMRSELECTCOLORSPACE
   TEMRDELETECOLORSPACE* = EMRSELECTCOLORSPACE
   PEMRDELETECOLORSPACE* = ptr EMRSELECTCOLORSPACE
-  EMRSELECTOBJECT* = record
+  EMRSELECTOBJECT* {.final.} = object
     emr*: EMR
     ihObject*: DWORD
 
@@ -8970,21 +8970,21 @@ type
   EMRDELETEOBJECT* = EMRSELECTOBJECT
   TEMRDELETEOBJECT* = EMRSELECTOBJECT
   PEMRDELETEOBJECT* = ptr EMRSELECTOBJECT
-  EMRSELECTPALETTE* = record
+  EMRSELECTPALETTE* {.final.} = object
     emr*: EMR
     ihPal*: DWORD
 
   tagEMRSELECTPALETTE* = EMRSELECTPALETTE
   TEMRSELECTPALETTE* = EMRSELECTPALETTE
   PEMRSELECTPALETTE* = ptr EMRSELECTPALETTE
-  EMRSETARCDIRECTION* = record
+  EMRSETARCDIRECTION* {.final.} = object
     emr*: EMR
     iArcDirection*: DWORD
 
   tagEMRSETARCDIRECTION* = EMRSETARCDIRECTION
   TEMRSETARCDIRECTION* = EMRSETARCDIRECTION
   PEMRSETARCDIRECTION* = ptr EMRSETARCDIRECTION
-  EMRSETBKCOLOR* = record
+  EMRSETBKCOLOR* {.final.} = object
     emr*: EMR
     crColor*: COLORREF
 
@@ -8994,14 +8994,14 @@ type
   EMRSETTEXTCOLOR* = EMRSETBKCOLOR
   TEMRSETTEXTCOLOR* = EMRSETBKCOLOR
   PEMRSETTEXTCOLOR* = ptr EMRSETBKCOLOR
-  EMRSETCOLORADJUSTMENT* = record
+  EMRSETCOLORADJUSTMENT* {.final.} = object
     emr*: EMR
     ColorAdjustment*: COLORADJUSTMENT
 
   tagEMRSETCOLORADJUSTMENT* = EMRSETCOLORADJUSTMENT
   TEMRSETCOLORADJUSTMENT* = EMRSETCOLORADJUSTMENT
   PEMRSETCOLORADJUSTMENT* = ptr EMRSETCOLORADJUSTMENT
-  EMRSETDIBITSTODEVICE* = record
+  EMRSETDIBITSTODEVICE* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     xDest*: LONG
@@ -9021,21 +9021,21 @@ type
   tagEMRSETDIBITSTODEVICE* = EMRSETDIBITSTODEVICE
   TEMRSETDIBITSTODEVICE* = EMRSETDIBITSTODEVICE
   PEMRSETDIBITSTODEVICE* = ptr EMRSETDIBITSTODEVICE
-  EMRSETMAPPERFLAGS* = record
+  EMRSETMAPPERFLAGS* {.final.} = object
     emr*: EMR
     dwFlags*: DWORD
 
   tagEMRSETMAPPERFLAGS* = EMRSETMAPPERFLAGS
   TEMRSETMAPPERFLAGS* = EMRSETMAPPERFLAGS
   PEMRSETMAPPERFLAGS* = ptr EMRSETMAPPERFLAGS
-  EMRSETMITERLIMIT* = record
+  EMRSETMITERLIMIT* {.final.} = object
     emr*: EMR
     eMiterLimit*: float32
 
   tagEMRSETMITERLIMIT* = EMRSETMITERLIMIT
   TEMRSETMITERLIMIT* = EMRSETMITERLIMIT
   PEMRSETMITERLIMIT* = ptr EMRSETMITERLIMIT
-  EMRSETPALETTEENTRIES* = record
+  EMRSETPALETTEENTRIES* {.final.} = object
     emr*: EMR
     ihPal*: DWORD
     iStart*: DWORD
@@ -9045,7 +9045,7 @@ type
   tagEMRSETPALETTEENTRIES* = EMRSETPALETTEENTRIES
   TEMRSETPALETTEENTRIES* = EMRSETPALETTEENTRIES
   PEMRSETPALETTEENTRIES* = ptr EMRSETPALETTEENTRIES
-  EMRSETPIXELV* = record
+  EMRSETPIXELV* {.final.} = object
     emr*: EMR
     ptlPixel*: POINTL
     crColor*: COLORREF
@@ -9053,7 +9053,7 @@ type
   tagEMRSETPIXELV* = EMRSETPIXELV
   TEMRSETPIXELV* = EMRSETPIXELV
   PEMRSETPIXELV* = ptr EMRSETPIXELV
-  EMRSETVIEWPORTEXTEX* = record
+  EMRSETVIEWPORTEXTEX* {.final.} = object
     emr*: EMR
     szlExtent*: SIZEL
 
@@ -9063,7 +9063,7 @@ type
   EMRSETWINDOWEXTEX* = EMRSETVIEWPORTEXTEX
   TEMRSETWINDOWEXTEX* = EMRSETVIEWPORTEXTEX
   PEMRSETWINDOWEXTEX* = ptr EMRSETVIEWPORTEXTEX
-  EMRSETVIEWPORTORGEX* = record
+  EMRSETVIEWPORTORGEX* {.final.} = object
     emr*: EMR
     ptlOrigin*: POINTL
 
@@ -9076,14 +9076,14 @@ type
   EMRSETBRUSHORGEX* = EMRSETVIEWPORTORGEX
   TEMRSETBRUSHORGEX* = EMRSETVIEWPORTORGEX
   PEMRSETBRUSHORGEX* = ptr EMRSETVIEWPORTORGEX
-  EMRSETWORLDTRANSFORM* = record
+  EMRSETWORLDTRANSFORM* {.final.} = object
     emr*: EMR
     xform*: XFORM
 
   tagEMRSETWORLDTRANSFORM* = EMRSETWORLDTRANSFORM
   TEMRSETWORLDTRANSFORM* = EMRSETWORLDTRANSFORM
   PEMRSETWORLDTRANSFORM* = ptr EMRSETWORLDTRANSFORM
-  EMRSTRETCHBLT* = record
+  EMRSTRETCHBLT* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     xDest*: LONG
@@ -9106,7 +9106,7 @@ type
   tagEMRSTRETCHBLT* = EMRSTRETCHBLT
   TEMRSTRETCHBLT* = EMRSTRETCHBLT
   PEMRSTRETCHBLT* = ptr EMRSTRETCHBLT
-  EMRSTRETCHDIBITS* = record
+  EMRSTRETCHDIBITS* {.final.} = object
     emr*: EMR
     rclBounds*: RECTL
     xDest*: LONG
@@ -9127,7 +9127,7 @@ type
   tagEMRSTRETCHDIBITS* = EMRSTRETCHDIBITS
   TEMRSTRETCHDIBITS* = EMRSTRETCHDIBITS
   PEMRSTRETCHDIBITS* = ptr EMRSTRETCHDIBITS
-  EMRABORTPATH* = record
+  EMRABORTPATH* {.final.} = object
     emr*: EMR
 
   TEMRABORTPATH* = EMRABORTPATH
@@ -9158,7 +9158,7 @@ type
   EMRREALIZEPALETTE* = EMRABORTPATH
   TEMRREALIZEPALETTE* = EMRABORTPATH
   PEMRREALIZEPALETTE* = ptr EMRABORTPATH
-  EMRSELECTCLIPPATH* = record
+  EMRSELECTCLIPPATH* {.final.} = object
     emr*: EMR
     iMode*: DWORD
 
@@ -9186,7 +9186,7 @@ type
   EMRENABLEICM* = EMRSELECTCLIPPATH
   TEMRENABLEICM* = EMRSELECTCLIPPATH
   PEMRENABLEICM* = ptr EMRSELECTCLIPPATH
-  NMHDR* = record
+  NMHDR* {.final.} = object
     hwndFrom*: HWND
     idFrom*: UINT
     code*: UINT
@@ -9194,33 +9194,33 @@ type
   tagNMHDR* = NMHDR
   TNMHDR* = NMHDR
   PNMHDR* = ptr NMHDR
-  TENCORRECTTEXT* = record
+  TENCORRECTTEXT* {.final.} = object
     nmhdr*: NMHDR
     chrg*: CHARRANGE
     seltyp*: int16
 
   Pencorrecttext* = ptr TENCORRECTTEXT
-  TENDROPFILES* = record
+  TENDROPFILES* {.final.} = object
     nmhdr*: NMHDR
     hDrop*: HANDLE
     cp*: LONG
     fProtected*: WINBOOL
 
   Pendropfiles* = ptr TENDROPFILES
-  TENSAVECLIPBOARD* = record
+  TENSAVECLIPBOARD* {.final.} = object
     nmhdr*: NMHDR
     cObjectCount*: LONG
     cch*: LONG
 
   PENSAVECLIPBOARD* = ptr TENSAVECLIPBOARD
-  TENOLEOPFAILED* = record
+  TENOLEOPFAILED* {.final.} = object
     nmhdr*: NMHDR
     iob*: LONG
     lOper*: LONG
     hr*: HRESULT
 
   PENOLEOPFAILED* = ptr TENOLEOPFAILED
-  TENHMETAHEADER* = record
+  TENHMETAHEADER* {.final.} = object
     iType*: DWORD
     nSize*: DWORD
     rclBounds*: RECTL
@@ -9239,14 +9239,14 @@ type
 
   LPENHMETAHEADER* = ptr TENHMETAHEADER
   PENHMETAHEADER* = ptr TENHMETAHEADER
-  TENHMETARECORD* = record
+  TENHMETARECORD* {.final.} = object
     iType*: DWORD
     nSize*: DWORD
     dParm*: array[0..0, DWORD]
 
   LPENHMETARECORD* = ptr TENHMETARECORD
   PENHMETARECORD* = ptr TENHMETARECORD
-  TENPROTECTED* = record
+  TENPROTECTED* {.final.} = object
     nmhdr*: NMHDR
     msg*: UINT
     wParam*: WPARAM
@@ -9254,7 +9254,7 @@ type
     chrg*: CHARRANGE
 
   Penprotected* = ptr TENPROTECTED
-  SERVICE_STATUS* = record
+  SERVICE_STATUS* {.final.} = object
     dwServiceType*: DWORD
     dwCurrentState*: DWORD
     dwControlsAccepted*: DWORD
@@ -9266,7 +9266,7 @@ type
   LPSERVICE_STATUS* = ptr SERVICE_STATUS
   TSERVICESTATUS* = SERVICE_STATUS
   PSERVICESTATUS* = ptr SERVICE_STATUS
-  ENUM_SERVICE_STATUS* = record
+  ENUM_SERVICE_STATUS* {.final.} = object
     lpServiceName*: LPTSTR
     lpDisplayName*: LPTSTR
     ServiceStatus*: SERVICE_STATUS
@@ -9274,14 +9274,14 @@ type
   LPENUM_SERVICE_STATUS* = ptr ENUM_SERVICE_STATUS
   TENUMSERVICESTATUS* = ENUM_SERVICE_STATUS
   PENUMSERVICESTATUS* = ptr ENUM_SERVICE_STATUS
-  ENUMLOGFONT* = record
+  ENUMLOGFONT* {.final.} = object
     elfLogFont*: LOGFONT
     elfFullName*: array[0..(LF_FULLFACESIZE) - 1, BCHAR]
     elfStyle*: array[0..(LF_FACESIZE) - 1, BCHAR]
 
   TENUMLOGFONT* = ENUMLOGFONT
   PENUMLOGFONT* = ptr ENUMLOGFONT
-  ENUMLOGFONTEX* = record
+  ENUMLOGFONTEX* {.final.} = object
     elfLogFont*: LOGFONT
     elfFullName*: array[0..(LF_FULLFACESIZE) - 1, BCHAR]
     elfStyle*: array[0..(LF_FACESIZE) - 1, BCHAR]
@@ -9300,7 +9300,7 @@ type
                                       #    CHAR  Pad[]
                                       #    DWORD Length;
                                       #
-  EVENTLOGRECORD* = record
+  EVENTLOGRECORD* {.final.} = object
     len*: DWORD
     Reserved*: DWORD
     RecordNumber*: DWORD
@@ -9320,7 +9320,7 @@ type
 
   TEVENTLOGRECORD* = EVENTLOGRECORD
   PEVENTLOGRECORD* = ptr EVENTLOGRECORD
-  EVENTMSG* = record
+  EVENTMSG* {.final.} = object
     message*: UINT
     paramL*: UINT
     paramH*: UINT
@@ -9330,14 +9330,14 @@ type
   tagEVENTMSG* = EVENTMSG
   TEVENTMSG* = EVENTMSG
   PEVENTMSG* = ptr EVENTMSG
-  EXCEPTION_POINTERS* = record
+  EXCEPTION_POINTERS* {.final.} = object
     ExceptionRecord*: PEXCEPTION_RECORD
     ContextRecord*: PCONTEXT
 
   LPEXCEPTION_POINTERS* = ptr EXCEPTION_POINTERS
   PEXCEPTION_POINTERS* = ptr EXCEPTION_POINTERS
   TEXCEPTIONPOINTERS* = EXCEPTION_POINTERS
-  EXT_BUTTON* = record
+  EXT_BUTTON* {.final.} = object
     idCommand*: int16
     idsHelp*: int16
     fsStyle*: int16
@@ -9345,7 +9345,7 @@ type
   LPEXT_BUTTON* = ptr EXT_BUTTON
   TEXTBUTTON* = EXT_BUTTON
   PEXTBUTTON* = ptr EXT_BUTTON
-  FILTERKEYS* = record
+  FILTERKEYS* {.final.} = object
     cbSize*: UINT
     dwFlags*: DWORD
     iWaitMSec*: DWORD
@@ -9355,7 +9355,7 @@ type
 
   TFILTERKEYS* = FILTERKEYS
   PFILTERKEYS* = ptr FILTERKEYS
-  FIND_NAME_BUFFER* = record
+  FIND_NAME_BUFFER* {.final.} = object
     len*: UCHAR
     access_control*: UCHAR
     frame_control*: UCHAR
@@ -9365,14 +9365,14 @@ type
 
   TFINDNAMEBUFFER* = FIND_NAME_BUFFER
   PFINDNAMEBUFFER* = ptr FIND_NAME_BUFFER
-  FIND_NAME_HEADER* = record
+  FIND_NAME_HEADER* {.final.} = object
     node_count*: int16
     reserved*: UCHAR
     unique_group*: UCHAR
 
   TFINDNAMEHEADER* = FIND_NAME_HEADER
   PFINDNAMEHEADER* = ptr FIND_NAME_HEADER
-  FINDREPLACE* = record
+  FINDREPLACE* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hInstance*: HINST
@@ -9388,19 +9388,19 @@ type
   LPFINDREPLACE* = ptr FINDREPLACE
   TFINDREPLACE* = FINDREPLACE
   PFINDREPLACE* = ptr FINDREPLACE #FINDTEXT = record conflicts with FindText function
-  TFINDTEXT* = record
+  TFINDTEXT* {.final.} = object
     chrg*: CHARRANGE
     lpstrText*: LPSTR
 
   Pfindtext* = ptr TFINDTEXT
-  FINDTEXTEX* = record
+  FINDTEXTEX* {.final.} = object
     chrg*: CHARRANGE
     lpstrText*: LPSTR
     chrgText*: CHARRANGE
 
   Tfindtextex* = FINDTEXTEX
   Pfindtextex* = ptr FINDTEXTEX
-  FMS_GETDRIVEINFO* = record
+  FMS_GETDRIVEINFO* {.final.} = object
     dwTotalSpace*: DWORD
     dwFreeSpace*: DWORD
     szPath*: array[0..259, TCHAR]
@@ -9409,7 +9409,7 @@ type
 
   TFMSGETDRIVEINFO* = FMS_GETDRIVEINFO
   PFMSGETDRIVEINFO* = ptr FMS_GETDRIVEINFO
-  FMS_GETFILESEL* = record
+  FMS_GETFILESEL* {.final.} = object
     ftTime*: FILETIME
     dwSize*: DWORD
     bAttr*: int8
@@ -9417,7 +9417,7 @@ type
 
   TFMSGETFILESEL* = FMS_GETFILESEL
   PFMSGETFILESEL* = ptr FMS_GETFILESEL
-  FMS_LOAD* = record
+  FMS_LOAD* {.final.} = object
     dwSize*: DWORD
     szMenuName*: array[0..(MENU_TEXT_LEN) - 1, TCHAR]
     hMenu*: HMENU
@@ -9425,7 +9425,7 @@ type
 
   TFMSLOAD* = FMS_LOAD
   PFMSLOAD* = ptr FMS_LOAD
-  FMS_TOOLBARLOAD* = record
+  FMS_TOOLBARLOAD* {.final.} = object
     dwSize*: DWORD
     lpButtons*: LPEXT_BUTTON
     cButtons*: int16
@@ -9435,12 +9435,12 @@ type
 
   TFMSTOOLBARLOAD* = FMS_TOOLBARLOAD
   PFMSTOOLBARLOAD* = ptr FMS_TOOLBARLOAD
-  FOCUS_EVENT_RECORD* = record
+  FOCUS_EVENT_RECORD* {.final.} = object
     bSetFocus*: WINBOOL
 
   TFOCUSEVENTRECORD* = FOCUS_EVENT_RECORD
   PFOCUSEVENTRECORD* = ptr FOCUS_EVENT_RECORD
-  FORM_INFO_1* = record
+  FORM_INFO_1* {.final.} = object
     Flags*: DWORD
     pName*: LPTSTR
     Size*: SIZEL
@@ -9448,7 +9448,7 @@ type
 
   TFORMINFO1* = FORM_INFO_1
   PFORMINFO1* = ptr FORM_INFO_1
-  FORMAT_PARAMETERS* = record
+  FORMAT_PARAMETERS* {.final.} = object
     MediaType*: MEDIA_TYPE
     StartCylinderNumber*: DWORD
     EndCylinderNumber*: DWORD
@@ -9457,7 +9457,7 @@ type
 
   TFORMATPARAMETERS* = FORMAT_PARAMETERS
   PFORMATPARAMETERS* = ptr FORMAT_PARAMETERS
-  FORMATRANGE* = record
+  FORMATRANGE* {.final.} = object
     hdc*: HDC
     hdcTarget*: HDC
     rc*: RECT
@@ -9466,7 +9466,7 @@ type
 
   Tformatrange* = FORMATRANGE
   Pformatrange* = ptr FORMATRANGE
-  GCP_RESULTS* = record
+  GCP_RESULTS* {.final.} = object
     lStructSize*: DWORD
     lpOutString*: LPTSTR
     lpOrder*: ptr UINT
@@ -9481,7 +9481,7 @@ type
   tagGCP_RESULTS* = GCP_RESULTS
   TGCPRESULTS* = GCP_RESULTS
   PGCPRESULTS* = ptr GCP_RESULTS
-  GENERIC_MAPPING* = record
+  GENERIC_MAPPING* {.final.} = object
     GenericRead*: ACCESS_MASK
     GenericWrite*: ACCESS_MASK
     GenericExecute*: ACCESS_MASK
@@ -9489,7 +9489,7 @@ type
 
   PGENERIC_MAPPING* = ptr GENERIC_MAPPING
   TGENERICMAPPING* = GENERIC_MAPPING
-  GLYPHMETRICS* = record
+  GLYPHMETRICS* {.final.} = object
     gmBlackBoxX*: UINT
     gmBlackBoxY*: UINT
     gmptGlyphOrigin*: POINT
@@ -9499,20 +9499,20 @@ type
   LPGLYPHMETRICS* = ptr GLYPHMETRICS
   TGLYPHMETRICS* = GLYPHMETRICS
   PGLYPHMETRICS* = ptr GLYPHMETRICS
-  HANDLETABLE* = record
+  HANDLETABLE* {.final.} = object
     objectHandle*: array[0..0, HGDIOBJ]
 
   tagHANDLETABLE* = HANDLETABLE
   THANDLETABLE* = HANDLETABLE
   LPHANDLETABLE* = ptr HANDLETABLE
-  HD_HITTESTINFO* = record
+  HD_HITTESTINFO* {.final.} = object
     pt*: POINT
     flags*: UINT
     iItem*: int32
 
   THDHITTESTINFO* = HD_HITTESTINFO
   PHDHITTESTINFO* = ptr HD_HITTESTINFO
-  HD_ITEM* = record
+  HD_ITEM* {.final.} = object
     mask*: UINT
     cxy*: int32
     pszText*: LPTSTR
@@ -9523,7 +9523,7 @@ type
 
   THDITEM* = HD_ITEM
   PHDITEM* = ptr HD_ITEM
-  WINDOWPOS* = record
+  WINDOWPOS* {.final.} = object
     hwnd*: HWND
     hwndInsertAfter*: HWND
     x*: int32
@@ -9535,13 +9535,13 @@ type
   LPWINDOWPOS* = ptr WINDOWPOS
   TWINDOWPOS* = WINDOWPOS
   PWINDOWPOS* = ptr WINDOWPOS
-  HD_LAYOUT* = record
+  HD_LAYOUT* {.final.} = object
     prc*: ptr RECT
     pwpos*: ptr WINDOWPOS
 
   THDLAYOUT* = HD_LAYOUT
   PHDLAYOUT* = ptr HD_LAYOUT
-  HD_NOTIFY* = record
+  HD_NOTIFY* {.final.} = object
     hdr*: NMHDR
     iItem*: int32
     iButton*: int32
@@ -9549,7 +9549,7 @@ type
 
   THDNOTIFY* = HD_NOTIFY
   PHDNOTIFY* = ptr HD_NOTIFY
-  HELPINFO* = record
+  HELPINFO* {.final.} = object
     cbSize*: UINT
     iContextType*: int32
     iCtrlId*: int32
@@ -9561,7 +9561,7 @@ type
   tagHELPINFO* = HELPINFO
   THELPINFO* = HELPINFO
   PHELPINFO* = ptr HELPINFO
-  HELPWININFO* = record
+  HELPWININFO* {.final.} = object
     wStructSize*: int32
     x*: int32
     y*: int32
@@ -9572,7 +9572,7 @@ type
 
   THELPWININFO* = HELPWININFO
   PHELPWININFO* = ptr HELPWININFO
-  HIGHCONTRAST* = record
+  HIGHCONTRAST* {.final.} = object
     cbSize*: UINT
     dwFlags*: DWORD
     lpszDefaultScheme*: LPTSTR
@@ -9581,14 +9581,14 @@ type
   tagHIGHCONTRAST* = HIGHCONTRAST
   THIGHCONTRAST* = HIGHCONTRAST
   PHIGHCONTRAST* = ptr HIGHCONTRAST
-  HSZPAIR* = record
+  HSZPAIR* {.final.} = object
     hszSvc*: HSZ
     hszTopic*: HSZ
 
   tagHSZPAIR* = HSZPAIR
   THSZPAIR* = HSZPAIR
   PHSZPAIR* = ptr HSZPAIR
-  ICONINFO* = record
+  ICONINFO* {.final.} = object
     fIcon*: WINBOOL
     xHotspot*: DWORD
     yHotspot*: DWORD
@@ -9597,7 +9597,7 @@ type
 
   TICONINFO* = ICONINFO
   PICONINFO* = ptr ICONINFO
-  ICONMETRICS* = record
+  ICONMETRICS* {.final.} = object
     cbSize*: UINT
     iHorzSpacing*: int32
     iVertSpacing*: int32
@@ -9608,7 +9608,7 @@ type
   tagICONMETRICS* = ICONMETRICS
   TICONMETRICS* = ICONMETRICS
   PICONMETRICS* = ptr ICONMETRICS
-  IMAGEINFO* = record
+  IMAGEINFO* {.final.} = object
     hbmImage*: HBITMAP
     hbmMask*: HBITMAP
     Unused1*: int32
@@ -9617,7 +9617,7 @@ type
 
   TIMAGEINFO* = IMAGEINFO
   PIMAGEINFO* = ptr IMAGEINFO
-  KEY_EVENT_RECORD* = record
+  KEY_EVENT_RECORD* {.final.} = object
     bKeyDown*: WINBOOL
     wRepeatCount*: int16
     wVirtualKeyCode*: int16
@@ -9627,7 +9627,7 @@ type
 
   TKEYEVENTRECORD* = KEY_EVENT_RECORD
   PKEYEVENTRECORD* = ptr KEY_EVENT_RECORD
-  MOUSE_EVENT_RECORD* = record
+  MOUSE_EVENT_RECORD* {.final.} = object
     dwMousePosition*: COORD
     dwButtonState*: DWORD
     dwControlKeyState*: DWORD
@@ -9635,17 +9635,17 @@ type
 
   TMOUSEEVENTRECORD* = MOUSE_EVENT_RECORD
   PMOUSEEVENTRECORD* = ptr MOUSE_EVENT_RECORD
-  WINDOW_BUFFER_SIZE_RECORD* = record
+  WINDOW_BUFFER_SIZE_RECORD* {.final.} = object
     dwSize*: COORD
 
   TWINDOWBUFFERSIZERECORD* = WINDOW_BUFFER_SIZE_RECORD
   PWINDOWBUFFERSIZERECORD* = ptr WINDOW_BUFFER_SIZE_RECORD
-  MENU_EVENT_RECORD* = record
+  MENU_EVENT_RECORD* {.final.} = object
     dwCommandId*: UINT
 
   PMENU_EVENT_RECORD* = ptr MENU_EVENT_RECORD
   TMENUEVENTRECORD* = MENU_EVENT_RECORD
-  INPUT_RECORD* = record
+  INPUT_RECORD* {.final.} = object
     EventType*: int16
     Reserved*: int16
     event*: array[0..5, DWORD] #Event : record case longint of
@@ -9658,7 +9658,7 @@ type
 
   PINPUT_RECORD* = ptr INPUT_RECORD
   TINPUTRECORD* = INPUT_RECORD
-  SYSTEMTIME* = record
+  SYSTEMTIME* {.final.} = object
     wYear*: int16
     wMonth*: int16
     wDayOfWeek*: int16
@@ -9671,7 +9671,7 @@ type
   LPSYSTEMTIME* = ptr SYSTEMTIME
   TSYSTEMTIME* = SYSTEMTIME
   PSYSTEMTIME* = ptr SYSTEMTIME
-  JOB_INFO_1* = record
+  JOB_INFO_1* {.final.} = object
     JobId*: DWORD
     pPrinterName*: LPTSTR
     pMachineName*: LPTSTR
@@ -9688,13 +9688,13 @@ type
 
   TJOBINFO1* = JOB_INFO_1
   PJOBINFO1* = ptr JOB_INFO_1
-  SID_IDENTIFIER_AUTHORITY* = record
+  SID_IDENTIFIER_AUTHORITY* {.final.} = object
     Value*: array[0..5, int8]
 
   LPSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
   PSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
   TSIDIDENTIFIERAUTHORITY* = SID_IDENTIFIER_AUTHORITY
-  SID* = record
+  SID* {.final.} = object
     Revision*: int8
     SubAuthorityCount*: int8
     IdentifierAuthority*: SID_IDENTIFIER_AUTHORITY
@@ -9705,7 +9705,7 @@ type
   SECURITY_DESCRIPTOR_CONTROL* = int16
   PSECURITY_DESCRIPTOR_CONTROL* = ptr SECURITY_DESCRIPTOR_CONTROL
   TSECURITYDESCRIPTORCONTROL* = SECURITY_DESCRIPTOR_CONTROL
-  SECURITY_DESCRIPTOR* = record
+  SECURITY_DESCRIPTOR* {.final.} = object
     Revision*: int8
     Sbz1*: int8
     Control*: SECURITY_DESCRIPTOR_CONTROL
@@ -9716,7 +9716,7 @@ type
 
   PSECURITY_DESCRIPTOR* = ptr SECURITY_DESCRIPTOR
   TSECURITYDESCRIPTOR* = SECURITY_DESCRIPTOR
-  JOB_INFO_2* = record
+  JOB_INFO_2* {.final.} = object
     JobId*: DWORD
     pPrinterName*: LPTSTR
     pMachineName*: LPTSTR
@@ -9743,7 +9743,7 @@ type
 
   TJOBINFO2* = JOB_INFO_2
   PJOBINFO2* = ptr JOB_INFO_2
-  KERNINGPAIR* = record
+  KERNINGPAIR* {.final.} = object
     wFirst*: int16
     wSecond*: int16
     iKernAmount*: int32
@@ -9751,13 +9751,13 @@ type
   LPKERNINGPAIR* = ptr KERNINGPAIR
   TKERNINGPAIR* = KERNINGPAIR
   PKERNINGPAIR* = ptr KERNINGPAIR
-  LANA_ENUM* = record
+  LANA_ENUM* {.final.} = object
     len*: UCHAR
     lana*: array[0..(MAX_LANA) - 1, UCHAR]
 
   TLANAENUM* = LANA_ENUM
   PLANAENUM* = ptr LANA_ENUM
-  LDT_ENTRY* = record
+  LDT_ENTRY* {.final.} = object
     LimitLow*: int16
     BaseLow*: int16
     BaseMid*: int8
@@ -9792,7 +9792,7 @@ const
   bp_LDT_ENTRY_BaseHi* = 24
 
 type
-  LOCALESIGNATURE* = record
+  LOCALESIGNATURE* {.final.} = object
     lsUsb*: array[0..3, DWORD]
     lsCsbDefault*: array[0..1, DWORD]
     lsCsbSupported*: array[0..1, DWORD]
@@ -9800,12 +9800,12 @@ type
   tagLOCALESIGNATURE* = LOCALESIGNATURE
   TLOCALESIGNATURE* = LOCALESIGNATURE
   PLOCALESIGNATURE* = ptr LOCALESIGNATURE
-  LOCALGROUP_MEMBERS_INFO_0* = record
+  LOCALGROUP_MEMBERS_INFO_0* {.final.} = object
     lgrmi0_sid*: PSID
 
   TLOCALGROUPMEMBERSINFO0* = LOCALGROUP_MEMBERS_INFO_0
   PLOCALGROUPMEMBERSINFO0* = ptr LOCALGROUP_MEMBERS_INFO_0
-  LOCALGROUP_MEMBERS_INFO_3* = record
+  LOCALGROUP_MEMBERS_INFO_3* {.final.} = object
     lgrmi3_domainandname*: LPWSTR
 
   TLOCALGROUPMEMBERSINFO3* = LOCALGROUP_MEMBERS_INFO_3
@@ -9817,7 +9817,7 @@ type
   LUID* = TlargeInteger
   TLUID* = LUID
   PLUID* = ptr LUID
-  LUID_AND_ATTRIBUTES* = record
+  LUID_AND_ATTRIBUTES* {.final.} = object
     Luid*: LUID
     Attributes*: DWORD
 
@@ -9826,7 +9826,7 @@ type
   LUID_AND_ATTRIBUTES_ARRAY* = array[0..(ANYSIZE_ARRAY) - 1, LUID_AND_ATTRIBUTES]
   PLUID_AND_ATTRIBUTES_ARRAY* = ptr LUID_AND_ATTRIBUTES_ARRAY
   TLUIDANDATTRIBUTESARRAY* = LUID_AND_ATTRIBUTES_ARRAY
-  LV_COLUMN* = record
+  LV_COLUMN* {.final.} = object
     mask*: UINT
     fmt*: int32
     cx*: int32
@@ -9836,7 +9836,7 @@ type
 
   TLVCOLUMN* = LV_COLUMN
   PLVCOLUMN* = ptr LV_COLUMN
-  LV_ITEM* = record
+  LV_ITEM* {.final.} = object
     mask*: UINT
     iItem*: int32
     iSubItem*: int32
@@ -9849,14 +9849,14 @@ type
 
   TLVITEM* = LV_ITEM
   PLVITEM* = ptr LV_ITEM
-  LV_DISPINFO* = record
+  LV_DISPINFO* {.final.} = object
     hdr*: NMHDR
     item*: LV_ITEM
 
   tagLV_DISPINFO* = LV_DISPINFO
   TLVDISPINFO* = LV_DISPINFO
   PLVDISPINFO* = ptr LV_DISPINFO
-  LV_FINDINFO* = record
+  LV_FINDINFO* {.final.} = object
     flags*: UINT
     psz*: LPCTSTR
     lParam*: LPARAM
@@ -9865,14 +9865,14 @@ type
 
   TLVFINDINFO* = LV_FINDINFO
   PLVFINDINFO* = ptr LV_FINDINFO
-  LV_HITTESTINFO* = record
+  LV_HITTESTINFO* {.final.} = object
     pt*: POINT
     flags*: UINT
     iItem*: int32
 
   TLVHITTESTINFO* = LV_HITTESTINFO
   PLVHITTESTINFO* = ptr LV_HITTESTINFO
-  LV_KEYDOWN* = record
+  LV_KEYDOWN* {.final.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: UINT
@@ -9880,7 +9880,7 @@ type
   tagLV_KEYDOWN* = LV_KEYDOWN
   TLVKEYDOWN* = LV_KEYDOWN
   PLVKEYDOWN* = ptr LV_KEYDOWN
-  MAT2* = record
+  MAT2* {.final.} = object
     eM11*: FIXED
     eM12*: FIXED
     eM21*: FIXED
@@ -9888,7 +9888,7 @@ type
 
   TMAT2* = MAT2
   PMAT2* = ptr MAT2
-  MDICREATESTRUCT* = record
+  MDICREATESTRUCT* {.final.} = object
     szClass*: LPCTSTR
     szTitle*: LPCTSTR
     hOwner*: HANDLE
@@ -9903,7 +9903,7 @@ type
   tagMDICREATESTRUCT* = MDICREATESTRUCT
   TMDICREATESTRUCT* = MDICREATESTRUCT
   PMDICREATESTRUCT* = ptr MDICREATESTRUCT
-  MEASUREITEMSTRUCT* = record
+  MEASUREITEMSTRUCT* {.final.} = object
     CtlType*: UINT
     CtlID*: UINT
     itemID*: UINT
@@ -9915,7 +9915,7 @@ type
   tagMEASUREITEMSTRUCT* = MEASUREITEMSTRUCT
   TMEASUREITEMSTRUCT* = MEASUREITEMSTRUCT
   PMEASUREITEMSTRUCT* = ptr MEASUREITEMSTRUCT
-  MEMORY_BASIC_INFORMATION* = record
+  MEMORY_BASIC_INFORMATION* {.final.} = object
     BaseAddress*: PVOID
     AllocationBase*: PVOID
     AllocationProtect*: DWORD
@@ -9926,7 +9926,7 @@ type
 
   PMEMORY_BASIC_INFORMATION* = ptr MEMORY_BASIC_INFORMATION
   TMEMORYBASICINFORMATION* = MEMORY_BASIC_INFORMATION
-  MEMORYSTATUS* = record
+  MEMORYSTATUS* {.final.} = object
     dwLength*: DWORD
     dwMemoryLoad*: DWORD
     dwTotalPhys*: int
@@ -9936,7 +9936,7 @@ type
     dwTotalVirtual*: int
     dwAvailVirtual*: int
 
-  TGUID* = record
+  TGUID* {.final.} = object
     D1*: int32
     D2*: int16
     D3*: int16
@@ -9945,14 +9945,14 @@ type
   LPMEMORYSTATUS* = ptr MEMORYSTATUS
   TMEMORYSTATUS* = MEMORYSTATUS
   PMEMORYSTATUS* = ptr MEMORYSTATUS
-  MENUEX_TEMPLATE_HEADER* = record
+  MENUEX_TEMPLATE_HEADER* {.final.} = object
     wVersion*: int16
     wOffset*: int16
     dwHelpId*: DWORD
 
   TMENUXTEMPLATEHEADER* = MENUEX_TEMPLATE_HEADER
   PMENUXTEMPLATEHEADER* = ptr MENUEX_TEMPLATE_HEADER
-  MENUEX_TEMPLATE_ITEM* = record
+  MENUEX_TEMPLATE_ITEM* {.final.} = object
     dwType*: DWORD
     dwState*: DWORD
     uId*: UINT
@@ -9962,7 +9962,7 @@ type
 
   TMENUEXTEMPLATEITEM* = MENUEX_TEMPLATE_ITEM
   PMENUEXTEMPLATEITEM* = ptr MENUEX_TEMPLATE_ITEM
-  MENUINFO* = record
+  MENUINFO* {.final.} = object
     cbSize*: DWORD
     fMask*: DWORD
     dwStyle*: DWORD
@@ -9976,7 +9976,7 @@ type
   tagMENUINFO* = MENUINFO
   TMENUINFO* = MENUINFO
   PMENUINFO* = ptr MENUINFO
-  MENUITEMINFO* = record
+  MENUITEMINFO* {.final.} = object
     cbSize*: UINT
     fMask*: UINT
     fType*: UINT
@@ -9996,24 +9996,24 @@ type
   TMENUITEMINFO* = MENUITEMINFO
   TMENUITEMINFOA* = MENUITEMINFO
   PMENUITEMINFO* = ptr MENUITEMINFO
-  MENUITEMTEMPLATE* = record
+  MENUITEMTEMPLATE* {.final.} = object
     mtOption*: int16
     mtID*: int16
     mtString*: array[0..0, WCHAR]
 
   TMENUITEMTEMPLATE* = MENUITEMTEMPLATE
   PMENUITEMTEMPLATE* = ptr MENUITEMTEMPLATE
-  MENUITEMTEMPLATEHEADER* = record
+  MENUITEMTEMPLATEHEADER* {.final.} = object
     versionNumber*: int16
     offset*: int16
 
   TMENUITEMTEMPLATEHEADER* = MENUITEMTEMPLATEHEADER
   PMENUITEMTEMPLATEHEADER* = ptr MENUITEMTEMPLATEHEADER
-  MENUTEMPLATE* = record
+  MENUTEMPLATE* {.final.} = object
   LPMENUTEMPLATE* = ptr MENUTEMPLATE
   TMENUTEMPLATE* = MENUTEMPLATE
   PMENUTEMPLATE* = ptr MENUTEMPLATE
-  METAFILEPICT* = record
+  METAFILEPICT* {.final.} = object
     mm*: LONG
     xExt*: LONG
     yExt*: LONG
@@ -10023,7 +10023,7 @@ type
   tagMETAFILEPICT* = METAFILEPICT
   TMETAFILEPICT* = METAFILEPICT
   PMETAFILEPICT* = ptr METAFILEPICT
-  METAHEADER* = record
+  METAHEADER* {.final.} = object
     mtType*: int16
     mtHeaderSize*: int16
     mtVersion*: int16
@@ -10035,7 +10035,7 @@ type
   tagMETAHEADER* = METAHEADER
   TMETAHEADER* = METAHEADER
   PMETAHEADER* = ptr METAHEADER
-  METARECORD* = record
+  METARECORD* {.final.} = object
     rdSize*: DWORD
     rdFunction*: int16
     rdParm*: array[0..0, int16]
@@ -10044,7 +10044,7 @@ type
   tagMETARECORD* = METARECORD
   TMETARECORD* = METARECORD
   PMETARECORD* = ptr METARECORD
-  MINIMIZEDMETRICS* = record
+  MINIMIZEDMETRICS* {.final.} = object
     cbSize*: UINT
     iWidth*: int32
     iHorzGap*: int32
@@ -10055,7 +10055,7 @@ type
   tagMINIMIZEDMETRICS* = MINIMIZEDMETRICS
   TMINIMIZEDMETRICS* = MINIMIZEDMETRICS
   PMINIMIZEDMETRICS* = ptr MINIMIZEDMETRICS
-  MINMAXINFO* = record
+  MINMAXINFO* {.final.} = object
     ptReserved*: POINT
     ptMaxSize*: POINT
     ptMaxPosition*: POINT
@@ -10065,7 +10065,7 @@ type
   tagMINMAXINFO* = MINMAXINFO
   TMINMAXINFO* = MINMAXINFO
   PMINMAXINFO* = ptr MINMAXINFO
-  MODEMDEVCAPS* = record
+  MODEMDEVCAPS* {.final.} = object
     dwActualSize*: DWORD
     dwRequiredSize*: DWORD
     dwDevSpecificOffset*: DWORD
@@ -10091,7 +10091,7 @@ type
   TMODEMDEVCAPS* = MODEMDEVCAPS
   PMODEMDEVCAPS* = ptr MODEMDEVCAPS
   modemdevcaps_tag* = MODEMDEVCAPS
-  MODEMSETTINGS* = record
+  MODEMSETTINGS* {.final.} = object
     dwActualSize*: DWORD
     dwRequiredSize*: DWORD
     dwDevSpecificOffset*: DWORD
@@ -10109,7 +10109,7 @@ type
   TMODEMSETTINGS* = MODEMSETTINGS
   PMODEMSETTINGS* = ptr MODEMSETTINGS
   modemsettings_tag* = MODEMSETTINGS
-  MONCBSTRUCT* = record
+  MONCBSTRUCT* {.final.} = object
     cb*: UINT
     dwTime*: DWORD
     hTask*: HANDLE
@@ -10129,7 +10129,7 @@ type
   tagMONCBSTRUCT* = MONCBSTRUCT
   TMONCBSTRUCT* = MONCBSTRUCT
   PMONCBSTRUCT* = ptr MONCBSTRUCT
-  MONCONVSTRUCT* = record
+  MONCONVSTRUCT* {.final.} = object
     cb*: UINT
     fConnect*: WINBOOL
     dwTime*: DWORD
@@ -10142,7 +10142,7 @@ type
   tagMONCONVSTRUCT* = MONCONVSTRUCT
   TMONCONVSTRUCT* = MONCONVSTRUCT
   PMONCONVSTRUCT* = ptr MONCONVSTRUCT
-  MONERRSTRUCT* = record
+  MONERRSTRUCT* {.final.} = object
     cb*: UINT
     wLastError*: UINT
     dwTime*: DWORD
@@ -10151,7 +10151,7 @@ type
   tagMONERRSTRUCT* = MONERRSTRUCT
   TMONERRSTRUCT* = MONERRSTRUCT
   PMONERRSTRUCT* = ptr MONERRSTRUCT
-  MONHSZSTRUCT* = record
+  MONHSZSTRUCT* {.final.} = object
     cb*: UINT
     fsAction*: WINBOOL
     dwTime*: DWORD
@@ -10162,19 +10162,19 @@ type
   tagMONHSZSTRUCT* = MONHSZSTRUCT
   TMONHSZSTRUCT* = MONHSZSTRUCT
   PMONHSZSTRUCT* = ptr MONHSZSTRUCT
-  MONITOR_INFO_1* = record
+  MONITOR_INFO_1* {.final.} = object
     pName*: LPTSTR
 
   TMONITORINFO1* = MONITOR_INFO_1
   PMONITORINFO1* = ptr MONITOR_INFO_1
-  MONITOR_INFO_2* = record
+  MONITOR_INFO_2* {.final.} = object
     pName*: LPTSTR
     pEnvironment*: LPTSTR
     pDLLName*: LPTSTR
 
   TMONITORINFO2* = MONITOR_INFO_2
   PMONITORINFO2* = ptr MONITOR_INFO_2
-  MONLINKSTRUCT* = record
+  MONLINKSTRUCT* {.final.} = object
     cb*: UINT
     dwTime*: DWORD
     hTask*: HANDLE
@@ -10191,7 +10191,7 @@ type
   tagMONLINKSTRUCT* = MONLINKSTRUCT
   TMONLINKSTRUCT* = MONLINKSTRUCT
   PMONLINKSTRUCT* = ptr MONLINKSTRUCT
-  MONMSGSTRUCT* = record
+  MONMSGSTRUCT* {.final.} = object
     cb*: UINT
     hwndTo*: HWND
     dwTime*: DWORD
@@ -10204,7 +10204,7 @@ type
   tagMONMSGSTRUCT* = MONMSGSTRUCT
   TMONMSGSTRUCT* = MONMSGSTRUCT
   PMONMSGSTRUCT* = ptr MONMSGSTRUCT
-  MOUSEHOOKSTRUCT* = record
+  MOUSEHOOKSTRUCT* {.final.} = object
     pt*: POINT
     hwnd*: HWND
     wHitTestCode*: UINT
@@ -10214,7 +10214,7 @@ type
   tagMOUSEHOOKSTRUCT* = MOUSEHOOKSTRUCT
   TMOUSEHOOKSTRUCT* = MOUSEHOOKSTRUCT
   PMOUSEHOOKSTRUCT* = ptr MOUSEHOOKSTRUCT
-  MOUSEKEYS* = record
+  MOUSEKEYS* {.final.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
     iMaxSpeed*: DWORD
@@ -10227,7 +10227,7 @@ type
   PMOUSEKEYS* = ptr MOUSEKEYS
   MSGBOXCALLBACK* = proc (lpHelpInfo: LPHELPINFO){.stdcall.}
   TMSGBOXCALLBACK* = MSGBOXCALLBACK
-  MSGBOXPARAMS* = record
+  MSGBOXPARAMS* {.final.} = object
     cbSize*: UINT
     hwndOwner*: HWND
     hInstance*: HINST
@@ -10243,7 +10243,7 @@ type
   TMSGBOXPARAMS* = MSGBOXPARAMS
   TMSGBOXPARAMSA* = MSGBOXPARAMS
   PMSGBOXPARAMS* = ptr MSGBOXPARAMS
-  MSGFILTER* = record
+  MSGFILTER* {.final.} = object
     nmhdr*: NMHDR
     msg*: UINT
     wParam*: WPARAM
@@ -10251,7 +10251,7 @@ type
 
   Tmsgfilter* = MSGFILTER
   Pmsgfilter* = ptr MSGFILTER
-  MULTIKEYHELP* = record
+  MULTIKEYHELP* {.final.} = object
     mkSize*: DWORD
     mkKeylist*: TCHAR
     szKeyphrase*: array[0..0, TCHAR]
@@ -10259,7 +10259,7 @@ type
   tagMULTIKEYHELP* = MULTIKEYHELP
   TMULTIKEYHELP* = MULTIKEYHELP
   PMULTIKEYHELP* = ptr MULTIKEYHELP
-  NAME_BUFFER* = record
+  NAME_BUFFER* {.final.} = object
     name*: array[0..(NCBNAMSZ) - 1, UCHAR]
     name_num*: UCHAR
     name_flags*: UCHAR
@@ -10267,7 +10267,7 @@ type
   TNAMEBUFFER* = NAME_BUFFER
   PNAMEBUFFER* = ptr NAME_BUFFER
   p_NCB* = ptr NCB
-  NCB* = record
+  NCB* {.final.} = object
     ncb_command*: UCHAR
     ncb_retcode*: UCHAR
     ncb_lsn*: UCHAR
@@ -10285,13 +10285,13 @@ type
     ncb_event*: HANDLE
 
   TNCB* = NCB
-  NCCALCSIZE_PARAMS* = record
+  NCCALCSIZE_PARAMS* {.final.} = object
     rgrc*: array[0..2, RECT]
     lppos*: PWINDOWPOS
 
   TNCCALCSIZEPARAMS* = NCCALCSIZE_PARAMS
   PNCCALCSIZEPARAMS* = ptr NCCALCSIZE_PARAMS
-  NDDESHAREINFO* = record
+  NDDESHAREINFO* {.final.} = object
     lRevision*: LONG
     lpszShareName*: LPTSTR
     lShareType*: LONG
@@ -10306,7 +10306,7 @@ type
 
   TNDDESHAREINFO* = NDDESHAREINFO
   PNDDESHAREINFO* = ptr NDDESHAREINFO
-  NETRESOURCE* = record
+  NETRESOURCE* {.final.} = object
     dwScope*: DWORD
     dwType*: DWORD
     dwDisplayType*: DWORD
@@ -10321,7 +10321,7 @@ type
   TNETRESOURCEA* = NETRESOURCE
   PNETRESOURCE* = ptr NETRESOURCE
   PNETRESOURCEA* = ptr NETRESOURCE
-  NEWCPLINFO* = record
+  NEWCPLINFO* {.final.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
     dwHelpContext*: DWORD
@@ -10334,7 +10334,7 @@ type
   tagNEWCPLINFO* = NEWCPLINFO
   TNEWCPLINFO* = NEWCPLINFO
   PNEWCPLINFO* = ptr NEWCPLINFO
-  NEWTEXTMETRIC* = record
+  NEWTEXTMETRIC* {.final.} = object
     tmHeight*: LONG
     tmAscent*: LONG
     tmDescent*: LONG
@@ -10363,14 +10363,14 @@ type
   tagNEWTEXTMETRIC* = NEWTEXTMETRIC
   TNEWTEXTMETRIC* = NEWTEXTMETRIC
   PNEWTEXTMETRIC* = ptr NEWTEXTMETRIC
-  NEWTEXTMETRICEX* = record
+  NEWTEXTMETRICEX* {.final.} = object
     ntmentm*: NEWTEXTMETRIC
     ntmeFontSignature*: FONTSIGNATURE
 
   tagNEWTEXTMETRICEX* = NEWTEXTMETRICEX
   TNEWTEXTMETRICEX* = NEWTEXTMETRICEX
   PNEWTEXTMETRICEX* = ptr NEWTEXTMETRICEX
-  NM_LISTVIEW* = record
+  NM_LISTVIEW* {.final.} = object
     hdr*: NMHDR
     iItem*: int32
     iSubItem*: int32
@@ -10383,7 +10383,7 @@ type
   tagNM_LISTVIEW* = NM_LISTVIEW
   TNMLISTVIEW* = NM_LISTVIEW
   PNMLISTVIEW* = ptr NM_LISTVIEW
-  TV_ITEM* = record
+  TV_ITEM* {.final.} = object
     mask*: UINT
     hItem*: HTREEITEM
     state*: UINT
@@ -10398,7 +10398,7 @@ type
   LPTV_ITEM* = ptr TV_ITEM
   TTVITEM* = TV_ITEM
   PTVITEM* = ptr TV_ITEM
-  NM_TREEVIEW* = record
+  NM_TREEVIEW* {.final.} = object
     hdr*: NMHDR
     action*: UINT
     itemOld*: TV_ITEM
@@ -10408,14 +10408,14 @@ type
   LPNM_TREEVIEW* = ptr NM_TREEVIEW
   TNMTREEVIEW* = NM_TREEVIEW
   PNMTREEVIEW* = ptr NM_TREEVIEW
-  NM_UPDOWNW* = record
+  NM_UPDOWNW* {.final.} = object
     hdr*: NMHDR
     iPos*: int32
     iDelta*: int32
 
   TNMUPDOWN* = NM_UPDOWNW
   PNMUPDOWN* = ptr NM_UPDOWNW
-  NONCLIENTMETRICS* = record
+  NONCLIENTMETRICS* {.final.} = object
     cbSize*: UINT
     iBorderWidth*: int32
     iScrollWidth*: int32
@@ -10436,7 +10436,7 @@ type
   tagNONCLIENTMETRICS* = NONCLIENTMETRICS
   TNONCLIENTMETRICS* = NONCLIENTMETRICS
   PNONCLIENTMETRICS* = ptr NONCLIENTMETRICS
-  SERVICE_ADDRESS* = record
+  SERVICE_ADDRESS* {.final.} = object
     dwAddressType*: DWORD
     dwAddressFlags*: DWORD
     dwAddressLength*: DWORD
@@ -10446,7 +10446,7 @@ type
 
   TSERVICEADDRESS* = SERVICE_ADDRESS
   PSERVICEADDRESS* = ptr SERVICE_ADDRESS
-  SERVICE_ADDRESSES* = record
+  SERVICE_ADDRESSES* {.final.} = object
     dwAddressCount*: DWORD
     Addresses*: array[0..0, SERVICE_ADDRESS]
 
@@ -10459,7 +10459,7 @@ type
   LPCLSID* = ptr CLSID
   TCLSID* = CLSID
   PCLSID* = ptr CLSID
-  SERVICE_INFO* = record
+  SERVICE_INFO* {.final.} = object
     lpServiceType*: LPGUID
     lpServiceName*: LPTSTR
     lpComment*: LPTSTR
@@ -10473,13 +10473,13 @@ type
 
   TSERVICEINFO* = SERVICE_INFO
   PSERVICEINFO* = ptr SERVICE_INFO
-  NS_SERVICE_INFO* = record
+  NS_SERVICE_INFO* {.final.} = object
     dwNameSpace*: DWORD
     ServiceInfo*: SERVICE_INFO
 
   TNSSERVICEINFO* = NS_SERVICE_INFO
   PNSSERVICEINFO* = ptr NS_SERVICE_INFO
-  NUMBERFMT* = record
+  NUMBERFMT* {.final.} = object
     NumDigits*: UINT
     LeadingZero*: UINT
     Grouping*: UINT
@@ -10489,7 +10489,7 @@ type
 
   Tnumberfmt* = NUMBERFMT
   Pnumberfmt* = ptr NUMBERFMT
-  OFSTRUCT* = record
+  OFSTRUCT* {.final.} = object
     cBytes*: int8
     fFixedDisk*: int8
     nErrCode*: int16
@@ -10500,7 +10500,7 @@ type
   LPOFSTRUCT* = ptr OFSTRUCT
   TOFSTRUCT* = OFSTRUCT
   POFSTRUCT* = ptr OFSTRUCT
-  OPENFILENAME_NT4* = record
+  OPENFILENAME_NT4* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hInstance*: HINST
@@ -10525,7 +10525,7 @@ type
   LPOPENFILENAME_NT4* = ptr OPENFILENAME_NT4
   TOPENFILENAME_NT4* = OPENFILENAME_NT4
   POPENFILENAME_NT4* = ptr OPENFILENAME_NT4
-  TOPENFILENAME* = record
+  TOPENFILENAME* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hInstance*: HINST
@@ -10554,7 +10554,7 @@ type
   POPENFILENAME* = ptr TOPENFILENAME
   OFN* = TOPENFILENAME
   POFN* = ptr TOPENFILENAME
-  OFNOTIFY* = record
+  OFNOTIFY* {.final.} = object
     hdr*: NMHDR
     lpOFN*: LPOPENFILENAME
     pszFile*: LPTSTR
@@ -10562,7 +10562,7 @@ type
   LPOFNOTIFY* = ptr OFNOTIFY
   TOFNOTIFY* = OFNOTIFY
   POFNOTIFY* = ptr OFNOTIFY
-  OSVERSIONINFO* = record
+  OSVERSIONINFO* {.final.} = object
     dwOSVersionInfoSize*: DWORD
     dwMajorVersion*: DWORD
     dwMinorVersion*: DWORD
@@ -10573,7 +10573,7 @@ type
   LPOSVERSIONINFO* = ptr OSVERSIONINFO
   TOSVERSIONINFO* = OSVERSIONINFO
   POSVERSIONINFO* = ptr OSVERSIONINFO
-  OSVERSIONINFOW* = record
+  OSVERSIONINFOW* {.final.} = object
     dwOSVersionInfoSize*: DWORD
     dwMajorVersion*: DWORD
     dwMinorVersion*: DWORD
@@ -10584,7 +10584,7 @@ type
   LPOSVERSIONINFOW* = ptr OSVERSIONINFOW
   TOSVERSIONINFOW* = OSVERSIONINFOW
   POSVERSIONINFOW* = ptr OSVERSIONINFOW
-  TEXTMETRIC* = record
+  TEXTMETRIC* {.final.} = object
     tmHeight*: LONG
     tmAscent*: LONG
     tmDescent*: LONG
@@ -10610,7 +10610,7 @@ type
   tagTEXTMETRIC* = TEXTMETRIC
   TTEXTMETRIC* = TEXTMETRIC
   PTEXTMETRIC* = ptr TEXTMETRIC
-  TEXTMETRICW* = record
+  TEXTMETRICW* {.final.} = object
     tmHeight*: LONG
     tmAscent*: LONG
     tmDescent*: LONG
@@ -10636,7 +10636,7 @@ type
   tagTEXTMETRICW* = TEXTMETRICW
   TTEXTMETRICW* = TEXTMETRICW
   PTEXTMETRICW* = ptr TEXTMETRICW
-  OUTLINETEXTMETRIC* = record
+  OUTLINETEXTMETRIC* {.final.} = object
     otmSize*: UINT
     otmTextMetrics*: TEXTMETRIC
     otmFiller*: int8
@@ -10673,7 +10673,7 @@ type
   LPOUTLINETEXTMETRIC* = ptr OUTLINETEXTMETRIC
   TOUTLINETEXTMETRIC* = OUTLINETEXTMETRIC
   POUTLINETEXTMETRIC* = ptr OUTLINETEXTMETRIC
-  OVERLAPPED* = record
+  OVERLAPPED* {.final.} = object
     Internal*: DWORD
     InternalHigh*: DWORD
     Offset*: DWORD
@@ -10683,7 +10683,7 @@ type
   LPOVERLAPPED* = ptr OVERLAPPED
   TOVERLAPPED* = OVERLAPPED
   POVERLAPPED* = ptr OVERLAPPED #PAGESETUPDLG = record conflicts with function PageSetupDlg
-  TPAGESETUPDLG* = record
+  TPAGESETUPDLG* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hDevMode*: HGLOBAL
@@ -10704,7 +10704,7 @@ type
   tagPSD* = TPAGESETUPDLG
   TPSD* = TPAGESETUPDLG
   PPSD* = ptr TPAGESETUPDLG
-  PAINTSTRUCT* = record
+  PAINTSTRUCT* {.final.} = object
     hdc*: HDC
     fErase*: WINBOOL
     rcPaint*: RECT
@@ -10716,7 +10716,7 @@ type
   tagPAINTSTRUCT* = PAINTSTRUCT
   TPAINTSTRUCT* = PAINTSTRUCT
   PPAINTSTRUCT* = ptr PAINTSTRUCT
-  PARAFORMAT* = record
+  PARAFORMAT* {.final.} = object
     cbSize*: UINT
     dwMask*: DWORD
     wNumbering*: int16
@@ -10730,12 +10730,12 @@ type
 
   Tparaformat* = PARAFORMAT
   Pparaformat* = ptr PARAFORMAT
-  PERF_COUNTER_BLOCK* = record
+  PERF_COUNTER_BLOCK* {.final.} = object
     ByteLength*: DWORD
 
   TPERFCOUNTERBLOCK* = PERF_COUNTER_BLOCK
   PPERFCOUNTERBLOCK* = ptr PERF_COUNTER_BLOCK
-  PERF_COUNTER_DEFINITION* = record
+  PERF_COUNTER_DEFINITION* {.final.} = object
     ByteLength*: DWORD
     CounterNameTitleIndex*: DWORD
     CounterNameTitle*: LPWSTR
@@ -10749,7 +10749,7 @@ type
 
   TPERFCOUNTERDEFINITION* = PERF_COUNTER_DEFINITION
   PPERFCOUNTERDEFINITION* = ptr PERF_COUNTER_DEFINITION
-  PERF_DATA_BLOCK* = record
+  PERF_DATA_BLOCK* {.final.} = object
     Signature*: array[0..3, WCHAR]
     LittleEndian*: DWORD
     Version*: DWORD
@@ -10767,7 +10767,7 @@ type
 
   TPERFDATABLOCK* = PERF_DATA_BLOCK
   PPERFDATABLOCK* = ptr PERF_DATA_BLOCK
-  PERF_INSTANCE_DEFINITION* = record
+  PERF_INSTANCE_DEFINITION* {.final.} = object
     ByteLength*: DWORD
     ParentObjectTitleIndex*: DWORD
     ParentObjectInstance*: DWORD
@@ -10777,7 +10777,7 @@ type
 
   TPERFINSTANCEDEFINITION* = PERF_INSTANCE_DEFINITION
   PPERFINSTANCEDEFINITION* = PERF_INSTANCE_DEFINITION
-  PERF_OBJECT_TYPE* = record
+  PERF_OBJECT_TYPE* {.final.} = object
     TotalByteLength*: DWORD
     DefinitionLength*: DWORD
     HeaderLength*: DWORD
@@ -10795,7 +10795,7 @@ type
 
   TPERFOBJECTTYPE* = PERF_OBJECT_TYPE
   PPERFOBJECTTYPE* = ptr PERF_OBJECT_TYPE
-  POLYTEXT* = record
+  POLYTEXT* {.final.} = object
     x*: int32
     y*: int32
     n*: UINT
@@ -10806,12 +10806,12 @@ type
 
   TPOLYTEXT* = POLYTEXT
   PPOLYTEXT* = ptr POLYTEXT
-  PORT_INFO_1* = record
+  PORT_INFO_1* {.final.} = object
     pName*: LPTSTR
 
   TPORTINFO1* = PORT_INFO_1
   PPORTINFO1* = ptr PORT_INFO_1
-  PORT_INFO_2* = record
+  PORT_INFO_2* {.final.} = object
     pPortName*: LPSTR
     pMonitorName*: LPSTR
     pDescription*: LPSTR
@@ -10820,12 +10820,12 @@ type
 
   TPORTINFO2* = PORT_INFO_2
   PPORTINFO2* = ptr PORT_INFO_2
-  PREVENT_MEDIA_REMOVAL* = record
+  PREVENT_MEDIA_REMOVAL* {.final.} = object
     PreventMediaRemoval*: bool
 
   TPREVENTMEDIAREMOVAL* = PREVENT_MEDIA_REMOVAL
   PPREVENTMEDIAREMOVAL* = ptr PREVENT_MEDIA_REMOVAL #PRINTDLG = record conflicts with PrintDlg function
-  TPRINTDLG* = record
+  TPRINTDLG* {.final.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hDevMode*: HANDLE
@@ -10851,14 +10851,14 @@ type
   tagPD* = TPRINTDLG
   TPD* = TPRINTDLG
   PPD* = ptr TPRINTDLG
-  PRINTER_DEFAULTS* = record
+  PRINTER_DEFAULTS* {.final.} = object
     pDatatype*: LPTSTR
     pDevMode*: LPDEVMODE
     DesiredAccess*: ACCESS_MASK
 
   TPRINTERDEFAULTS* = PRINTER_DEFAULTS
   PPRINTERDEFAULTS* = ptr PRINTER_DEFAULTS
-  PRINTER_INFO_1* = record
+  PRINTER_INFO_1* {.final.} = object
     Flags*: DWORD
     pDescription*: LPTSTR
     pName*: LPTSTR
@@ -10867,7 +10867,7 @@ type
   LPPRINTER_INFO_1* = ptr PRINTER_INFO_1
   PPRINTER_INFO_1* = ptr PRINTER_INFO_1
   TPRINTERINFO1* = PRINTER_INFO_1
-  PRINTER_INFO_2* = record
+  PRINTER_INFO_2* {.final.} = object
     pServerName*: LPTSTR
     pPrinterName*: LPTSTR
     pShareName*: LPTSTR
@@ -10892,19 +10892,19 @@ type
 
   TPRINTERINFO2* = PRINTER_INFO_2
   PPRINTERINFO2* = ptr PRINTER_INFO_2
-  PRINTER_INFO_3* = record
+  PRINTER_INFO_3* {.final.} = object
     pSecurityDescriptor*: PSECURITY_DESCRIPTOR
 
   TPRINTERINFO3* = PRINTER_INFO_3
   PPRINTERINFO3* = ptr PRINTER_INFO_3
-  PRINTER_INFO_4* = record
+  PRINTER_INFO_4* {.final.} = object
     pPrinterName*: LPTSTR
     pServerName*: LPTSTR
     Attributes*: DWORD
 
   TPRINTERINFO4* = PRINTER_INFO_4
   PPRINTERINFO4* = ptr PRINTER_INFO_4
-  PRINTER_INFO_5* = record
+  PRINTER_INFO_5* {.final.} = object
     pPrinterName*: LPTSTR
     pPortName*: LPTSTR
     Attributes*: DWORD
@@ -10913,7 +10913,7 @@ type
 
   TPRINTERINFO5* = PRINTER_INFO_5
   PPRINTERINFO5* = ptr PRINTER_INFO_5
-  PRINTER_NOTIFY_INFO_DATA* = record
+  PRINTER_NOTIFY_INFO_DATA* {.final.} = object
     `type`*: int16
     Field*: int16
     Reserved*: DWORD
@@ -10923,7 +10923,7 @@ type
 
   TPRINTERNOTIFYINFODATA* = PRINTER_NOTIFY_INFO_DATA
   PPRINTERNOTIFYINFODATA* = ptr PRINTER_NOTIFY_INFO_DATA
-  PRINTER_NOTIFY_INFO* = record
+  PRINTER_NOTIFY_INFO* {.final.} = object
     Version*: DWORD
     Flags*: DWORD
     Count*: DWORD
@@ -10931,7 +10931,7 @@ type
 
   TPRINTERNOTIFYINFO* = PRINTER_NOTIFY_INFO
   PPRINTERNOTIFYINFO* = ptr PRINTER_NOTIFY_INFO
-  PRINTER_NOTIFY_OPTIONS_TYPE* = record
+  PRINTER_NOTIFY_OPTIONS_TYPE* {.final.} = object
     `type`*: int16
     Reserved0*: int16
     Reserved1*: DWORD
@@ -10941,7 +10941,7 @@ type
 
   PPRINTER_NOTIFY_OPTIONS_TYPE* = ptr PRINTER_NOTIFY_OPTIONS_TYPE
   TPRINTERNOTIFYOPTIONSTYPE* = PRINTER_NOTIFY_OPTIONS_TYPE
-  PRINTER_NOTIFY_OPTIONS* = record
+  PRINTER_NOTIFY_OPTIONS* {.final.} = object
     Version*: DWORD
     Flags*: DWORD
     Count*: DWORD
@@ -10949,12 +10949,12 @@ type
 
   TPRINTERNOTIFYOPTIONS* = PRINTER_NOTIFY_OPTIONS
   PPRINTERNOTIFYOPTIONS* = ptr PRINTER_NOTIFY_OPTIONS
-  PRINTPROCESSOR_INFO_1* = record
+  PRINTPROCESSOR_INFO_1* {.final.} = object
     pName*: LPTSTR
 
   TPRINTPROCESSORINFO1* = PRINTPROCESSOR_INFO_1
   PPRINTPROCESSORINFO1* = ptr PRINTPROCESSOR_INFO_1
-  PRIVILEGE_SET* = record
+  PRIVILEGE_SET* {.final.} = object
     PrivilegeCount*: DWORD
     Control*: DWORD
     Privilege*: array[0..(ANYSIZE_ARRAY) - 1, LUID_AND_ATTRIBUTES]
@@ -10962,7 +10962,7 @@ type
   LPPRIVILEGE_SET* = ptr PRIVILEGE_SET
   PPRIVILEGE_SET* = ptr PRIVILEGE_SET
   TPRIVILEGESET* = PRIVILEGE_SET
-  PROCESS_HEAPENTRY* = record
+  PROCESS_HEAPENTRY* {.final.} = object
     lpData*: PVOID
     cbData*: DWORD
     cbOverhead*: int8
@@ -10977,7 +10977,7 @@ type
   LPPROCESS_HEAP_ENTRY* = ptr PROCESS_HEAPENTRY
   TPROCESSHEAPENTRY* = PROCESS_HEAPENTRY
   PPROCESSHEAPENTRY* = ptr PROCESS_HEAPENTRY
-  PROCESS_INFORMATION* = record
+  PROCESS_INFORMATION* {.final.} = object
     hProcess*: HANDLE
     hThread*: HANDLE
     dwProcessId*: DWORD
@@ -10989,7 +10989,7 @@ type
   LPFNPSPCALLBACK* = proc (para1: HWND, para2: UINT, para3: LPVOID): UINT{.
       stdcall.}
   TFNPSPCALLBACK* = LPFNPSPCALLBACK
-  PROPSHEETPAGE* = record
+  PROPSHEETPAGE* {.final.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
     hInstance*: HINST
@@ -11004,10 +11004,10 @@ type
   LPCPROPSHEETPAGE* = ptr PROPSHEETPAGE
   TPROPSHEETPAGE* = PROPSHEETPAGE
   PPROPSHEETPAGE* = ptr PROPSHEETPAGE
-  emptyrecord* = record
+  emptyrecord* {.final.} = object
   lpemptyrecord* = ptr emptyrecord
   HPROPSHEETPAGE* = ptr emptyrecord
-  PROPSHEETHEADER* = record
+  PROPSHEETHEADER* {.final.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
     hwndParent*: HWND
@@ -11032,7 +11032,7 @@ type
   LPFNADDPROPSHEETPAGES* = proc (para1: LPVOID, para2: LPFNADDPROPSHEETPAGE,
                                  para3: LPARAM): WINBOOL{.stdcall.}
   TFNADDPROPSHEETPAGES* = LPFNADDPROPSHEETPAGES
-  PROTOCOL_INFO* = record
+  PROTOCOL_INFO* {.final.} = object
     dwServiceFlags*: DWORD
     iAddressFamily*: WINT
     iMaxSockAddr*: WINT
@@ -11044,27 +11044,27 @@ type
 
   TPROTOCOLINFO* = PROTOCOL_INFO
   PPROTOCOLINFO* = ptr PROTOCOL_INFO
-  PROVIDOR_INFO_1* = record
+  PROVIDOR_INFO_1* {.final.} = object
     pName*: LPTSTR
     pEnvironment*: LPTSTR
     pDLLName*: LPTSTR
 
   TPROVIDORINFO1* = PROVIDOR_INFO_1
   PPROVIDORINFO1* = ptr PROVIDOR_INFO_1
-  PSHNOTIFY* = record
+  PSHNOTIFY* {.final.} = object
     hdr*: NMHDR
     lParam*: LPARAM
 
   LPPSHNOTIFY* = ptr PSHNOTIFY
   TPSHNOTIFY* = PSHNOTIFY
   PPSHNOTIFY* = ptr PSHNOTIFY
-  PUNCTUATION* = record
+  PUNCTUATION* {.final.} = object
     iSize*: UINT
     szPunctuation*: LPSTR
 
   Tpunctuation* = PUNCTUATION
   Ppunctuation* = ptr PUNCTUATION
-  TQUERY_SERVICE_CONFIG* = record
+  TQUERY_SERVICE_CONFIG* {.final.} = object
     dwServiceType*: DWORD
     dwStartType*: DWORD
     dwErrorControl*: DWORD
@@ -11077,14 +11077,14 @@ type
 
   LPQUERY_SERVICE_CONFIG* = ptr TQUERY_SERVICE_CONFIG
   PQUERYSERVICECONFIG* = ptr TQUERY_SERVICE_CONFIG
-  TQUERY_SERVICE_LOCK_STATUS* = record
+  TQUERY_SERVICE_LOCK_STATUS* {.final.} = object
     fIsLocked*: DWORD
     lpLockOwner*: LPTSTR
     dwLockDuration*: DWORD
 
   LPQUERY_SERVICE_LOCK_STATUS* = ptr TQUERY_SERVICE_LOCK_STATUS
   PQUERYSERVICELOCKSTATUS* = ptr TQUERY_SERVICE_LOCK_STATUS
-  RASAMB* = record
+  RASAMB* {.final.} = object
     dwSize*: DWORD
     dwError*: DWORD
     szNetBiosError*: array[0..(NETBIOS_NAME_LEN + 1) - 1, TCHAR]
@@ -11092,7 +11092,7 @@ type
 
   TRASAMB* = RASAMB
   PRASAMB* = ptr RASAMB
-  RASCONN* = record
+  RASCONN* {.final.} = object
     dwSize*: DWORD
     hrasconn*: HRASCONN
     szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
@@ -11101,7 +11101,7 @@ type
 
   TRASCONN* = RASCONN
   PRASCONN* = ptr RASCONN
-  RASCONNSTATUS* = record
+  RASCONNSTATUS* {.final.} = object
     dwSize*: DWORD
     rasconnstate*: RASCONNSTATE
     dwError*: DWORD
@@ -11110,7 +11110,7 @@ type
 
   TRASCONNSTATUS* = RASCONNSTATUS
   PRASCONNSTATUS* = ptr RASCONNSTATUS
-  RASDIALEXTENSIONS* = record
+  RASDIALEXTENSIONS* {.final.} = object
     dwSize*: DWORD
     dwfOptions*: DWORD
     hwndParent*: HWND
@@ -11118,7 +11118,7 @@ type
 
   TRASDIALEXTENSIONS* = RASDIALEXTENSIONS
   PRASDIALEXTENSIONS* = ptr RASDIALEXTENSIONS
-  RASDIALPARAMS* = record
+  RASDIALPARAMS* {.final.} = object
     dwSize*: DWORD
     szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
     szPhoneNumber*: array[0..(RAS_MaxPhoneNumber + 1) - 1, TCHAR]
@@ -11129,27 +11129,27 @@ type
 
   TRASDIALPARAMS* = RASDIALPARAMS
   PRASDIALPARAMS* = ptr RASDIALPARAMS
-  RASENTRYNAME* = record
+  RASENTRYNAME* {.final.} = object
     dwSize*: DWORD
     szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
 
   TRASENTRYNAME* = RASENTRYNAME
   PRASENTRYNAME* = ptr RASENTRYNAME
-  RASPPPIP* = record
+  RASPPPIP* {.final.} = object
     dwSize*: DWORD
     dwError*: DWORD
     szIpAddress*: array[0..(RAS_MaxIpAddress + 1) - 1, TCHAR]
 
   TRASPPPIP* = RASPPPIP
   PRASPPPIP* = ptr RASPPPIP
-  RASPPPIPX* = record
+  RASPPPIPX* {.final.} = object
     dwSize*: DWORD
     dwError*: DWORD
     szIpxAddress*: array[0..(RAS_MaxIpxAddress + 1) - 1, TCHAR]
 
   TRASPPPIPX* = RASPPPIPX
   PRASPPPIPX* = ptr RASPPPIPX
-  RASPPPNBF* = record
+  RASPPPNBF* {.final.} = object
     dwSize*: DWORD
     dwError*: DWORD
     dwNetBiosError*: DWORD
@@ -11159,7 +11159,7 @@ type
 
   TRASPPPNBF* = RASPPPNBF
   PRASPPPNBF* = ptr RASPPPNBF
-  RASTERIZER_STATUS* = record
+  RASTERIZER_STATUS* {.final.} = object
     nSize*: short
     wFlags*: short
     nLanguageID*: short
@@ -11167,14 +11167,14 @@ type
   LPRASTERIZER_STATUS* = ptr RASTERIZER_STATUS
   TRASTERIZERSTATUS* = RASTERIZER_STATUS
   PRASTERIZERSTATUS* = ptr RASTERIZER_STATUS
-  REASSIGN_BLOCKS* = record
+  REASSIGN_BLOCKS* {.final.} = object
     Reserved*: int16
     Count*: int16
     BlockNumber*: array[0..0, DWORD]
 
   TREASSIGNBLOCKS* = REASSIGN_BLOCKS
   PREASSIGNBLOCKS* = ptr REASSIGN_BLOCKS
-  REMOTE_NAME_INFO* = record
+  REMOTE_NAME_INFO* {.final.} = object
     lpUniversalName*: LPTSTR
     lpConnectionName*: LPTSTR
     lpRemainingPath*: LPTSTR
@@ -11195,19 +11195,19 @@ type
                                           #    DWORD  dwUser;
                                           #  } REOBJECT;
                                           #
-  REPASTESPECIAL* = record
+  REPASTESPECIAL* {.final.} = object
     dwAspect*: DWORD
     dwParam*: DWORD
 
   Trepastespecial* = REPASTESPECIAL
   Prepastespecial* = ptr REPASTESPECIAL
-  REQRESIZE* = record
+  REQRESIZE* {.final.} = object
     nmhdr*: NMHDR
     rc*: RECT
 
   Treqresize* = REQRESIZE
   Preqresize* = ptr REQRESIZE
-  RGNDATAHEADER* = record
+  RGNDATAHEADER* {.final.} = object
     dwSize*: DWORD
     iType*: DWORD
     nCount*: DWORD
@@ -11216,14 +11216,14 @@ type
 
   TRGNDATAHEADER* = RGNDATAHEADER
   PRGNDATAHEADER* = ptr RGNDATAHEADER
-  RGNDATA* = record
+  RGNDATA* {.final.} = object
     rdh*: RGNDATAHEADER
     Buffer*: array[0..0, char]
 
   LPRGNDATA* = ptr RGNDATA
   TRGNDATA* = RGNDATA
   PRGNDATA* = ptr RGNDATA
-  SCROLLINFO* = record
+  SCROLLINFO* {.final.} = object
     cbSize*: UINT
     fMask*: UINT
     nMin*: int32
@@ -11236,7 +11236,7 @@ type
   LPCSCROLLINFO* = ptr SCROLLINFO
   TSCROLLINFO* = SCROLLINFO
   PSCROLLINFO* = ptr SCROLLINFO
-  SECURITY_ATTRIBUTES* = record
+  SECURITY_ATTRIBUTES* {.final.} = object
     nLength*: DWORD
     lpSecurityDescriptor*: LPVOID
     bInheritHandle*: WINBOOL
@@ -11247,14 +11247,14 @@ type
   SECURITY_INFORMATION* = DWORD
   PSECURITY_INFORMATION* = ptr SECURITY_INFORMATION
   TSECURITYINFORMATION* = SECURITY_INFORMATION
-  SELCHANGE* = record
+  SELCHANGE* {.final.} = object
     nmhdr*: NMHDR
     chrg*: CHARRANGE
     seltyp*: int16
 
   Tselchange* = SELCHANGE
   Pselchange* = ptr SELCHANGE
-  SERIALKEYS* = record
+  SERIALKEYS* {.final.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
     lpszActivePort*: LPSTR
@@ -11265,14 +11265,14 @@ type
   LPSERIALKEYS* = ptr SERIALKEYS
   TSERIALKEYS* = SERIALKEYS
   PSERIALKEYS* = ptr SERIALKEYS
-  SERVICE_TABLE_ENTRY* = record
+  SERVICE_TABLE_ENTRY* {.final.} = object
     lpServiceName*: LPTSTR
     lpServiceProc*: LPSERVICE_MAIN_FUNCTION
 
   LPSERVICE_TABLE_ENTRY* = ptr SERVICE_TABLE_ENTRY
   TSERVICETABLEENTRY* = SERVICE_TABLE_ENTRY
   PSERVICETABLEENTRY* = ptr SERVICE_TABLE_ENTRY
-  SERVICE_TYPE_VALUE_ABS* = record
+  SERVICE_TYPE_VALUE_ABS* {.final.} = object
     dwNameSpace*: DWORD
     dwValueType*: DWORD
     dwValueSize*: DWORD
@@ -11281,14 +11281,14 @@ type
 
   TSERVICETYPEVALUEABS* = SERVICE_TYPE_VALUE_ABS
   PSERVICETYPEVALUEABS* = ptr SERVICE_TYPE_VALUE_ABS
-  SERVICE_TYPE_INFO_ABS* = record
+  SERVICE_TYPE_INFO_ABS* {.final.} = object
     lpTypeName*: LPTSTR
     dwValueCount*: DWORD
     Values*: array[0..0, SERVICE_TYPE_VALUE_ABS]
 
   TSERVICETYPEINFOABS* = SERVICE_TYPE_INFO_ABS
   PSERVICETYPEINFOABS* = ptr SERVICE_TYPE_INFO_ABS
-  SESSION_BUFFER* = record
+  SESSION_BUFFER* {.final.} = object
     lsn*: UCHAR
     state*: UCHAR
     local_name*: array[0..(NCBNAMSZ) - 1, UCHAR]
@@ -11298,7 +11298,7 @@ type
 
   TSESSIONBUFFER* = SESSION_BUFFER
   PSESSIONBUFFER* = ptr SESSION_BUFFER
-  SESSION_HEADER* = record
+  SESSION_HEADER* {.final.} = object
     sess_name*: UCHAR
     num_sess*: UCHAR
     rcv_dg_outstanding*: UCHAR
@@ -11306,7 +11306,7 @@ type
 
   TSESSIONHEADER* = SESSION_HEADER
   PSESSIONHEADER* = ptr SESSION_HEADER
-  SET_PARTITION_INFORMATION* = record
+  SET_PARTITION_INFORMATION* {.final.} = object
     PartitionType*: int8
 
   TSETPARTITIONINFORMATION* = SET_PARTITION_INFORMATION
@@ -11314,7 +11314,7 @@ type
   SHCONTF* = enum
     SHCONTF_FOLDERS = 32, SHCONTF_NONFOLDERS = 64, SHCONTF_INCLUDEHIDDEN = 128
   TSHCONTF* = SHCONTF
-  SHFILEINFO* = record
+  SHFILEINFO* {.final.} = object
     hIcon*: HICON
     iIcon*: int32
     dwAttributes*: DWORD
@@ -11326,7 +11326,7 @@ type
   FILEOP_FLAGS* = int16
   TFILEOPFLAGS* = FILEOP_FLAGS
   PFILEOPFLAGS* = ptr FILEOP_FLAGS
-  SHFILEOPSTRUCT* = record
+  SHFILEOPSTRUCT* {.final.} = object
     hwnd*: HWND
     wFunc*: UINT
     pFrom*: LPCSTR
@@ -11343,7 +11343,7 @@ type
     SHGDN_NORMAL = 0, SHGDN_INFOLDER = 1, SHGDN_FORPARSING = 0x00008000
   tagSHGDN* = SHGNO
   TSHGDN* = SHGNO
-  SHNAMEMAPPING* = record
+  SHNAMEMAPPING* {.final.} = object
     pszOldPath*: LPSTR
     pszNewPath*: LPSTR
     cchOldPath*: int32
@@ -11352,7 +11352,7 @@ type
   LPSHNAMEMAPPING* = ptr SHNAMEMAPPING
   TSHNAMEMAPPING* = SHNAMEMAPPING
   PSHNAMEMAPPING* = ptr SHNAMEMAPPING
-  SID_AND_ATTRIBUTES* = record
+  SID_AND_ATTRIBUTES* {.final.} = object
     Sid*: PSID
     Attributes*: DWORD
 
@@ -11361,12 +11361,12 @@ type
   SID_AND_ATTRIBUTES_ARRAY* = array[0..(ANYSIZE_ARRAY) - 1, SID_AND_ATTRIBUTES]
   PSID_AND_ATTRIBUTES_ARRAY* = ptr SID_AND_ATTRIBUTES_ARRAY
   TSIDANDATTRIBUTESARRAY* = SID_AND_ATTRIBUTES_ARRAY
-  SINGLE_LIST_ENTRY* = record
+  SINGLE_LIST_ENTRY* {.final.} = object
     Next*: ptr SINGLE_LIST_ENTRY
 
   TSINGLELISTENTRY* = SINGLE_LIST_ENTRY
   PSINGLELISTENTRY* = ptr SINGLE_LIST_ENTRY
-  SOUNDSENTRY* = record
+  SOUNDSENTRY* {.final.} = object
     cbSize*: UINT
     dwFlags*: DWORD
     iFSTextEffect*: DWORD
@@ -11384,7 +11384,7 @@ type
   tagSOUNDSENTRY* = SOUNDSENTRY
   TSOUNDSENTRY* = SOUNDSENTRY
   PSOUNDSENTRY* = ptr SOUNDSENTRY
-  STARTUPINFO* = record
+  STARTUPINFO* {.final.} = object
     cb*: DWORD
     lpReserved*: LPTSTR
     lpDesktop*: LPTSTR
@@ -11407,42 +11407,42 @@ type
   LPSTARTUPINFO* = ptr STARTUPINFO
   TSTARTUPINFO* = STARTUPINFO
   PSTARTUPINFO* = ptr STARTUPINFO
-  STICKYKEYS* = record
+  STICKYKEYS* {.final.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
 
   LPSTICKYKEYS* = ptr STICKYKEYS
   TSTICKYKEYS* = STICKYKEYS
   PSTICKYKEYS* = ptr STICKYKEYS
-  STRRET* = record
+  STRRET* {.final.} = object
     uType*: UINT
     cStr*: array[0..(MAX_PATH) - 1, char]
 
   LPSTRRET* = ptr STRRET
   TSTRRET* = STRRET
   PSTRRET* = ptr STRRET
-  STYLEBUF* = record
+  STYLEBUF* {.final.} = object
     dwStyle*: DWORD
     szDescription*: array[0..31, CHAR]
 
   LPSTYLEBUF* = ptr STYLEBUF
   TSTYLEBUF* = STYLEBUF
   PSTYLEBUF* = ptr STYLEBUF
-  STYLESTRUCT* = record
+  STYLESTRUCT* {.final.} = object
     styleOld*: DWORD
     styleNew*: DWORD
 
   LPSTYLESTRUCT* = ptr STYLESTRUCT
   TSTYLESTRUCT* = STYLESTRUCT
   PSTYLESTRUCT* = ptr STYLESTRUCT
-  SYSTEM_AUDIT_ACE* = record
+  SYSTEM_AUDIT_ACE* {.final.} = object
     Header*: ACE_HEADER
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
   TSYSTEMAUDITACE* = SYSTEM_AUDIT_ACE
   PSYSTEMAUDITACE* = ptr SYSTEM_AUDIT_ACE
-  SYSTEM_INFO* = record
+  SYSTEM_INFO* {.final.} = object
     dwOemId*: DWORD
     dwPageSize*: DWORD
     lpMinimumApplicationAddress*: LPVOID
@@ -11457,7 +11457,7 @@ type
   LPSYSTEM_INFO* = ptr SYSTEM_INFO
   TSYSTEMINFO* = SYSTEM_INFO
   PSYSTEMINFO* = ptr SYSTEM_INFO
-  SYSTEM_POWER_STATUS* = record
+  SYSTEM_POWER_STATUS* {.final.} = object
     ACLineStatus*: int8
     BatteryFlag*: int8
     BatteryLifePercent*: int8
@@ -11468,12 +11468,12 @@ type
   TSYSTEMPOWERSTATUS* = SYSTEM_POWER_STATUS
   PSYSTEMPOWERSTATUS* = ptr SYSTEM_POWER_STATUS
   LPSYSTEM_POWER_STATUS* = ptr emptyrecord
-  TAPE_ERASE* = record
+  TAPE_ERASE* {.final.} = object
     `type`*: ULONG
 
   TTAPEERASE* = TAPE_ERASE
   PTAPEERASE* = ptr TAPE_ERASE
-  TAPE_GET_DRIVE_PARAMETERS* = record
+  TAPE_GET_DRIVE_PARAMETERS* {.final.} = object
     ECC*: bool
     Compression*: bool
     DataPadding*: bool
@@ -11488,7 +11488,7 @@ type
 
   TTAPEGETDRIVEPARAMETERS* = TAPE_GET_DRIVE_PARAMETERS
   PTAPEGETDRIVEPARAMETERS* = ptr TAPE_GET_DRIVE_PARAMETERS
-  TAPE_GET_MEDIA_PARAMETERS* = record
+  TAPE_GET_MEDIA_PARAMETERS* {.final.} = object
     Capacity*: LARGE_INTEGER
     Remaining*: LARGE_INTEGER
     BlockSize*: DWORD
@@ -11497,7 +11497,7 @@ type
 
   TTAPEGETMEDIAPARAMETERS* = TAPE_GET_MEDIA_PARAMETERS
   PTAPEGETMEDIAPARAMETERS* = ptr TAPE_GET_MEDIA_PARAMETERS
-  TAPE_GET_POSITION* = record
+  TAPE_GET_POSITION* {.final.} = object
     `type`*: ULONG
     Partition*: ULONG
     OffsetLow*: ULONG
@@ -11505,12 +11505,12 @@ type
 
   TTAPEGETPOSITION* = TAPE_GET_POSITION
   PTAPEGETPOSITION* = ptr TAPE_GET_POSITION
-  TAPE_PREPARE* = record
+  TAPE_PREPARE* {.final.} = object
     Operation*: ULONG
 
   TTAPEPREPARE* = TAPE_PREPARE
   PTAPEPREPARE* = ptr TAPE_PREPARE
-  TAPE_SET_DRIVE_PARAMETERS* = record
+  TAPE_SET_DRIVE_PARAMETERS* {.final.} = object
     ECC*: bool
     Compression*: bool
     DataPadding*: bool
@@ -11519,12 +11519,12 @@ type
 
   TTAPESETDRIVEPARAMETERS* = TAPE_SET_DRIVE_PARAMETERS
   PTAPESETDRIVEPARAMETERS* = ptr TAPE_SET_DRIVE_PARAMETERS
-  TAPE_SET_MEDIA_PARAMETERS* = record
+  TAPE_SET_MEDIA_PARAMETERS* {.final.} = object
     BlockSize*: ULONG
 
   TTAPESETMEDIAPARAMETERS* = TAPE_SET_MEDIA_PARAMETERS
   PTAPESETMEDIAPARAMETERS* = ptr TAPE_SET_MEDIA_PARAMETERS
-  TAPE_SET_POSITION* = record
+  TAPE_SET_POSITION* {.final.} = object
     `Method`*: ULONG
     Partition*: ULONG
     OffsetLow*: ULONG
@@ -11532,19 +11532,19 @@ type
 
   TTAPESETPOSITION* = TAPE_SET_POSITION
   PTAPESETPOSITION* = ptr TAPE_SET_POSITION
-  TAPE_WRITE_MARKS* = record
+  TAPE_WRITE_MARKS* {.final.} = object
     `type`*: ULONG
     Count*: ULONG
 
   TTAPEWRITEMARKS* = TAPE_WRITE_MARKS
   PTAPEWRITEMARKS* = ptr TAPE_WRITE_MARKS
-  TTBADDBITMAP* = record
+  TTBADDBITMAP* {.final.} = object
     hInst*: HINST
     nID*: UINT
 
   LPTBADDBITMAP* = ptr TTBADDBITMAP
   PTBADDBITMAP* = ptr TTBADDBITMAP
-  TBBUTTON* = record
+  TBBUTTON* {.final.} = object
     iBitmap*: int32
     idCommand*: int32
     fsState*: int8
@@ -11556,7 +11556,7 @@ type
   LPCTBBUTTON* = ptr TBBUTTON
   TTBBUTTON* = TBBUTTON
   PTBBUTTON* = ptr TBBUTTON
-  TBNOTIFY* = record
+  TBNOTIFY* {.final.} = object
     hdr*: NMHDR
     iItem*: int32
     tbButton*: TBBUTTON
@@ -11566,20 +11566,20 @@ type
   LPTBNOTIFY* = ptr TBNOTIFY
   TTBNOTIFY* = TBNOTIFY
   PTBNOTIFY* = ptr TBNOTIFY
-  TBSAVEPARAMS* = record
+  TBSAVEPARAMS* {.final.} = object
     hkr*: HKEY
     pszSubKey*: LPCTSTR
     pszValueName*: LPCTSTR
 
   TTBSAVEPARAMS* = TBSAVEPARAMS
   PTBSAVEPARAMS* = ptr TBSAVEPARAMS
-  TC_HITTESTINFO* = record
+  TC_HITTESTINFO* {.final.} = object
     pt*: POINT
     flags*: UINT
 
   TTCHITTESTINFO* = TC_HITTESTINFO
   PTCHITTESTINFO* = ptr TC_HITTESTINFO
-  TC_ITEM* = record
+  TC_ITEM* {.final.} = object
     mask*: UINT
     lpReserved1*: UINT
     lpReserved2*: UINT
@@ -11590,7 +11590,7 @@ type
 
   TTCITEM* = TC_ITEM
   PTCITEM* = ptr TC_ITEM
-  TC_ITEMHEADER* = record
+  TC_ITEMHEADER* {.final.} = object
     mask*: UINT
     lpReserved1*: UINT
     lpReserved2*: UINT
@@ -11600,20 +11600,20 @@ type
 
   TTCITEMHEADER* = TC_ITEMHEADER
   PTCITEMHEADER* = ptr TC_ITEMHEADER
-  TC_KEYDOWN* = record
+  TC_KEYDOWN* {.final.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: UINT
 
   TTCKEYDOWN* = TC_KEYDOWN
   PTCKEYDOWN* = ptr TC_KEYDOWN
-  TEXTRANGE* = record
+  TEXTRANGE* {.final.} = object
     chrg*: CHARRANGE
     lpstrText*: LPSTR
 
   Ttextrange* = TEXTRANGE
   Ptextrange* = ptr TEXTRANGE
-  TIME_ZONE_INFORMATION* = record
+  TIME_ZONE_INFORMATION* {.final.} = object
     Bias*: LONG
     StandardName*: array[0..31, WCHAR]
     StandardDate*: SYSTEMTIME
@@ -11625,18 +11625,18 @@ type
   LPTIME_ZONE_INFORMATION* = ptr TIME_ZONE_INFORMATION
   TTIMEZONEINFORMATION* = TIME_ZONE_INFORMATION
   PTIMEZONEINFORMATION* = ptr TIME_ZONE_INFORMATION
-  TOGGLEKEYS* = record
+  TOGGLEKEYS* {.final.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
 
   TTOGGLEKEYS* = TOGGLEKEYS
   PTOGGLEKEYS* = ptr TOGGLEKEYS
-  TTOKEN_SOURCE* = record
+  TTOKEN_SOURCE* {.final.} = object
     SourceName*: array[0..7, CHAR]
     SourceIdentifier*: LUID
 
   PTOKENSOURCE* = ptr TTOKEN_SOURCE
-  TOKEN_CONTROL* = record
+  TOKEN_CONTROL* {.final.} = object
     TokenId*: LUID
     AuthenticationId*: LUID
     ModifiedId*: LUID
@@ -11644,31 +11644,31 @@ type
 
   TTOKENCONTROL* = TOKEN_CONTROL
   PTOKENCONTROL* = ptr TOKEN_CONTROL
-  TTOKEN_DEFAULT_DACL* = record
+  TTOKEN_DEFAULT_DACL* {.final.} = object
     DefaultDacl*: PACL
 
   PTOKENDEFAULTDACL* = ptr TTOKEN_DEFAULT_DACL
-  TTOKEN_GROUPS* = record
+  TTOKEN_GROUPS* {.final.} = object
     GroupCount*: DWORD
     Groups*: array[0..(ANYSIZE_ARRAY) - 1, SID_AND_ATTRIBUTES]
 
   LPTOKEN_GROUPS* = ptr TTOKEN_GROUPS
   PTOKENGROUPS* = ptr TTOKEN_GROUPS
-  TTOKEN_OWNER* = record
+  TTOKEN_OWNER* {.final.} = object
     Owner*: PSID
 
   PTOKENOWNER* = ptr TTOKEN_OWNER
-  TTOKEN_PRIMARY_GROUP* = record
+  TTOKEN_PRIMARY_GROUP* {.final.} = object
     PrimaryGroup*: PSID
 
   PTOKENPRIMARYGROUP* = ptr TTOKEN_PRIMARY_GROUP
-  TTOKEN_PRIVILEGES* = record
+  TTOKEN_PRIVILEGES* {.final.} = object
     PrivilegeCount*: DWORD
     Privileges*: array[0..(ANYSIZE_ARRAY) - 1, LUID_AND_ATTRIBUTES]
 
   PTOKEN_PRIVILEGES* = ptr TTOKEN_PRIVILEGES
   LPTOKEN_PRIVILEGES* = ptr TTOKEN_PRIVILEGES
-  TTOKEN_STATISTICS* = record
+  TTOKEN_STATISTICS* {.final.} = object
     TokenId*: LUID
     AuthenticationId*: LUID
     ExpirationTime*: LARGE_INTEGER
@@ -11681,11 +11681,11 @@ type
     ModifiedId*: LUID
 
   PTOKENSTATISTICS* = ptr TTOKEN_STATISTICS
-  TTOKEN_USER* = record
+  TTOKEN_USER* {.final.} = object
     User*: SID_AND_ATTRIBUTES
 
   PTOKENUSER* = ptr TTOKEN_USER
-  TOOLINFO* = record
+  TOOLINFO* {.final.} = object
     cbSize*: UINT
     uFlags*: UINT
     hwnd*: HWND
@@ -11697,7 +11697,7 @@ type
   LPTOOLINFO* = ptr TOOLINFO
   TTOOLINFO* = TOOLINFO
   PTOOLINFO* = ptr TOOLINFO
-  TOOLTIPTEXT* = record
+  TOOLTIPTEXT* {.final.} = object
     hdr*: NMHDR
     lpszText*: LPTSTR
     szText*: array[0..79, char]
@@ -11707,7 +11707,7 @@ type
   LPTOOLTIPTEXT* = ptr TOOLTIPTEXT
   TTOOLTIPTEXT* = TOOLTIPTEXT
   PTOOLTIPTEXT* = ptr TOOLTIPTEXT
-  TPMPARAMS* = record
+  TPMPARAMS* {.final.} = object
     cbSize*: UINT
     rcExclude*: RECT
 
@@ -11715,7 +11715,7 @@ type
   tagTPMPARAMS* = TPMPARAMS
   TTPMPARAMS* = TPMPARAMS
   PTPMPARAMS* = ptr TPMPARAMS
-  TRANSMIT_FILE_BUFFERS* = record
+  TRANSMIT_FILE_BUFFERS* {.final.} = object
     Head*: PVOID
     HeadLength*: DWORD
     Tail*: PVOID
@@ -11723,7 +11723,7 @@ type
 
   TTRANSMITFILEBUFFERS* = TRANSMIT_FILE_BUFFERS
   PTRANSMITFILEBUFFERS* = ptr TRANSMIT_FILE_BUFFERS
-  TTHITTESTINFO* = record
+  TTHITTESTINFO* {.final.} = object
     hwnd*: HWND
     pt*: POINT
     ti*: TOOLINFO
@@ -11731,7 +11731,7 @@ type
   LPHITTESTINFO* = ptr TTHITTESTINFO
   TTTHITTESTINFO* = TTHITTESTINFO
   PTTHITTESTINFO* = ptr TTHITTESTINFO
-  TTPOLYCURVE* = record
+  TTPOLYCURVE* {.final.} = object
     wType*: int16
     cpfx*: int16
     apfx*: array[0..0, POINTFX]
@@ -11739,7 +11739,7 @@ type
   LPTTPOLYCURVE* = ptr TTPOLYCURVE
   TTTPOLYCURVE* = TTPOLYCURVE
   PTTPOLYCURVE* = ptr TTPOLYCURVE
-  TTPOLYGONHEADER* = record
+  TTPOLYGONHEADER* {.final.} = object
     cb*: DWORD
     dwType*: DWORD
     pfxStart*: POINTFX
@@ -11747,13 +11747,13 @@ type
   LPTTPOLYGONHEADER* = ptr TTPOLYGONHEADER
   TTTPOLYGONHEADER* = TTPOLYGONHEADER
   PTTPOLYGONHEADER* = ptr TTPOLYGONHEADER
-  TV_DISPINFO* = record
+  TV_DISPINFO* {.final.} = object
     hdr*: NMHDR
     item*: TV_ITEM
 
   TTVDISPINFO* = TV_DISPINFO
   PTVDISPINFO* = ptr TV_DISPINFO
-  TV_HITTESTINFO* = record
+  TV_HITTESTINFO* {.final.} = object
     pt*: POINT
     flags*: UINT
     hItem*: HTREEITEM
@@ -11761,7 +11761,7 @@ type
   LPTV_HITTESTINFO* = ptr TV_HITTESTINFO
   TTVHITTESTINFO* = TV_HITTESTINFO
   PTVHITTESTINFO* = ptr TV_HITTESTINFO
-  TV_INSERTSTRUCT* = record
+  TV_INSERTSTRUCT* {.final.} = object
     hParent*: HTREEITEM
     hInsertAfter*: HTREEITEM
     item*: TV_ITEM
@@ -11769,14 +11769,14 @@ type
   LPTV_INSERTSTRUCT* = ptr TV_INSERTSTRUCT
   TTVINSERTSTRUCT* = TV_INSERTSTRUCT
   PTVINSERTSTRUCT* = ptr TV_INSERTSTRUCT
-  TV_KEYDOWN* = record
+  TV_KEYDOWN* {.final.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: UINT
 
   TTVKEYDOWN* = TV_KEYDOWN
   PTVKEYDOWN* = ptr TV_KEYDOWN
-  TV_SORTCB* = record
+  TV_SORTCB* {.final.} = object
     hParent*: HTREEITEM
     lpfnCompare*: PFNTVCOMPARE
     lParam*: LPARAM
@@ -11784,18 +11784,18 @@ type
   LPTV_SORTCB* = ptr TV_SORTCB
   TTVSORTCB* = TV_SORTCB
   PTVSORTCB* = ptr TV_SORTCB
-  UDACCEL* = record
+  UDACCEL* {.final.} = object
     nSec*: UINT
     nInc*: UINT
 
   TUDACCEL* = UDACCEL
   PUDACCEL* = ptr UDACCEL
-  UNIVERSAL_NAME_INFO* = record
+  UNIVERSAL_NAME_INFO* {.final.} = object
     lpUniversalName*: LPTSTR
 
   TUNIVERSALNAMEINFO* = UNIVERSAL_NAME_INFO
   PUNIVERSALNAMEINFO* = ptr UNIVERSAL_NAME_INFO
-  USEROBJECTFLAGS* = record
+  USEROBJECTFLAGS* {.final.} = object
     fInherit*: WINBOOL
     fReserved*: WINBOOL
     dwFlags*: DWORD
@@ -11803,7 +11803,7 @@ type
   tagUSEROBJECTFLAGS* = USEROBJECTFLAGS
   TUSEROBJECTFLAGS* = USEROBJECTFLAGS
   PUSEROBJECTFLAGS* = ptr USEROBJECTFLAGS
-  VALENT* = record
+  VALENT* {.final.} = object
     ve_valuename*: LPTSTR
     ve_valuelen*: DWORD
     ve_valueptr*: DWORD
@@ -11814,13 +11814,13 @@ type
   value_ent* = VALENT
   Tvalue_ent* = VALENT
   Pvalue_ent* = ptr VALENT
-  VERIFY_INFORMATION* = record
+  VERIFY_INFORMATION* {.final.} = object
     StartingOffset*: LARGE_INTEGER
     len*: DWORD
 
   TVERIFYINFORMATION* = VERIFY_INFORMATION
   PVERIFYINFORMATION* = ptr VERIFY_INFORMATION
-  VS_FIXEDFILEINFO* = record
+  VS_FIXEDFILEINFO* {.final.} = object
     dwSignature*: DWORD
     dwStrucVersion*: DWORD
     dwFileVersionMS*: DWORD
@@ -11837,7 +11837,7 @@ type
 
   TVSFIXEDFILEINFO* = VS_FIXEDFILEINFO
   PVSFIXEDFILEINFO* = ptr VS_FIXEDFILEINFO
-  WIN32_FIND_DATA* = record
+  WIN32_FIND_DATA* {.final.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
     ftLastAccessTime*: FILETIME
@@ -11853,7 +11853,7 @@ type
   PWIN32_FIND_DATA* = ptr WIN32_FIND_DATA
   TWIN32FINDDATA* = WIN32_FIND_DATA
   TWIN32FINDDATAA* = WIN32_FIND_DATA
-  WIN32_FIND_DATAW* = record
+  WIN32_FIND_DATAW* {.final.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
     ftLastAccessTime*: FILETIME
@@ -11868,7 +11868,7 @@ type
   LPWIN32_FIND_DATAW* = ptr WIN32_FIND_DATAW
   PWIN32_FIND_DATAW* = ptr WIN32_FIND_DATAW
   TWIN32FINDDATAW* = WIN32_FIND_DATAW
-  WIN32_STREAM_ID* = record
+  WIN32_STREAM_ID* {.final.} = object
     dwStreamId*: DWORD
     dwStreamAttributes*: DWORD
     Size*: LARGE_INTEGER
@@ -11877,7 +11877,7 @@ type
 
   TWIN32STREAMID* = WIN32_STREAM_ID
   PWIN32STREAMID* = ptr WIN32_STREAM_ID
-  WINDOWPLACEMENT* = record
+  WINDOWPLACEMENT* {.final.} = object
     len*: UINT
     flags*: UINT
     showCmd*: UINT
@@ -11887,7 +11887,7 @@ type
 
   TWINDOWPLACEMENT* = WINDOWPLACEMENT
   PWINDOWPLACEMENT* = ptr WINDOWPLACEMENT
-  WNDCLASS* = record
+  WNDCLASS* {.final.} = object
     style*: UINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
@@ -11903,7 +11903,7 @@ type
   TWNDCLASS* = WNDCLASS
   TWNDCLASSA* = WNDCLASS
   PWNDCLASS* = ptr WNDCLASS
-  WNDCLASSW* = record
+  WNDCLASSW* {.final.} = object
     style*: UINT
     lpfnWndProc*: WNDPROC
     cbClsExtra*: int32
@@ -11918,7 +11918,7 @@ type
   LPWNDCLASSW* = ptr WNDCLASSW
   TWNDCLASSW* = WNDCLASSW
   PWNDCLASSW* = ptr WNDCLASSW
-  WNDCLASSEX* = record
+  WNDCLASSEX* {.final.} = object
     cbSize*: UINT
     style*: UINT
     lpfnWndProc*: WNDPROC
@@ -11936,7 +11936,7 @@ type
   TWNDCLASSEX* = WNDCLASSEX
   TWNDCLASSEXA* = WNDCLASSEX
   PWNDCLASSEX* = ptr WNDCLASSEX
-  WNDCLASSEXW* = record
+  WNDCLASSEXW* {.final.} = object
     cbSize*: UINT
     style*: UINT
     lpfnWndProc*: WNDPROC
@@ -11953,7 +11953,7 @@ type
   LPWNDCLASSEXW* = ptr WNDCLASSEXW
   TWNDCLASSEXW* = WNDCLASSEXW
   PWNDCLASSEXW* = ptr WNDCLASSEXW
-  CONNECTDLGSTRUCT* = record
+  CONNECTDLGSTRUCT* {.final.} = object
     cbStructure*: DWORD
     hwndOwner*: HWND
     lpConnRes*: LPNETRESOURCE
@@ -11963,7 +11963,7 @@ type
   LPCONNECTDLGSTRUCT* = ptr CONNECTDLGSTRUCT
   TCONNECTDLGSTRUCT* = CONNECTDLGSTRUCT
   PCONNECTDLGSTRUCT* = ptr CONNECTDLGSTRUCT
-  DISCDLGSTRUCT* = record
+  DISCDLGSTRUCT* {.final.} = object
     cbStructure*: DWORD
     hwndOwner*: HWND
     lpLocalName*: LPTSTR
@@ -11974,7 +11974,7 @@ type
   TDISCDLGSTRUCT* = DISCDLGSTRUCT
   TDISCDLGSTRUCTA* = DISCDLGSTRUCT
   PDISCDLGSTRUCT* = ptr DISCDLGSTRUCT
-  NETINFOSTRUCT* = record
+  NETINFOSTRUCT* {.final.} = object
     cbStructure*: DWORD
     dwProviderVersion*: DWORD
     dwStatus*: DWORD
@@ -11987,7 +11987,7 @@ type
   LPNETINFOSTRUCT* = ptr NETINFOSTRUCT
   TNETINFOSTRUCT* = NETINFOSTRUCT
   PNETINFOSTRUCT* = ptr NETINFOSTRUCT
-  NETCONNECTINFOSTRUCT* = record
+  NETCONNECTINFOSTRUCT* {.final.} = object
     cbStructure*: DWORD
     dwFlags*: DWORD
     dwSpeed*: DWORD
@@ -12009,13 +12009,13 @@ type
                           para3: int32, para4: LPARAM): int32{.stdcall.}
   LPOVERLAPPED_COMPLETION_ROUTINE* = proc (para1: DWORD, para2: DWORD,
       para3: LPOVERLAPPED){.stdcall.} # Structures for the extensions to OpenGL
-  POINTFLOAT* = record
+  POINTFLOAT* {.final.} = object
     x*: float32
     y*: float32
 
   TPOINTFLOAT* = POINTFLOAT
   PPOINTFLOAT* = ptr POINTFLOAT
-  GLYPHMETRICSFLOAT* = record
+  GLYPHMETRICSFLOAT* {.final.} = object
     gmfBlackBoxX*: float32
     gmfBlackBoxY*: float32
     gmfptGlyphOrigin*: POINTFLOAT
@@ -12025,7 +12025,7 @@ type
   LPGLYPHMETRICSFLOAT* = ptr GLYPHMETRICSFLOAT
   TGLYPHMETRICSFLOAT* = GLYPHMETRICSFLOAT
   PGLYPHMETRICSFLOAT* = ptr GLYPHMETRICSFLOAT
-  LAYERPLANEDESCRIPTOR* = record
+  LAYERPLANEDESCRIPTOR* {.final.} = object
     nSize*: int16
     nVersion*: int16
     dwFlags*: DWORD
@@ -12055,7 +12055,7 @@ type
   tagLAYERPLANEDESCRIPTOR* = LAYERPLANEDESCRIPTOR
   TLAYERPLANEDESCRIPTOR* = LAYERPLANEDESCRIPTOR
   PLAYERPLANEDESCRIPTOR* = ptr LAYERPLANEDESCRIPTOR
-  PIXELFORMATDESCRIPTOR* = record
+  PIXELFORMATDESCRIPTOR* {.final.} = object
     nSize*: int16
     nVersion*: int16
     dwFlags*: DWORD
@@ -12087,7 +12087,7 @@ type
   tagPIXELFORMATDESCRIPTOR* = PIXELFORMATDESCRIPTOR
   TPIXELFORMATDESCRIPTOR* = PIXELFORMATDESCRIPTOR
   PPIXELFORMATDESCRIPTOR* = ptr PIXELFORMATDESCRIPTOR
-  USER_INFO_2* = record
+  USER_INFO_2* {.final.} = object
     usri2_name*: LPWSTR
     usri2_password*: LPWSTR
     usri2_password_age*: DWORD
@@ -12116,13 +12116,13 @@ type
   PUSER_INFO_2* = ptr USER_INFO_2
   LPUSER_INFO_2* = ptr USER_INFO_2
   TUSERINFO2* = USER_INFO_2
-  USER_INFO_0* = record
+  USER_INFO_0* {.final.} = object
     usri0_name*: LPWSTR
 
   PUSER_INFO_0* = ptr USER_INFO_0
   LPUSER_INFO_0* = ptr USER_INFO_0
   TUSERINFO0* = USER_INFO_0
-  USER_INFO_3* = record
+  USER_INFO_3* {.final.} = object
     usri3_name*: LPWSTR
     usri3_password*: LPWSTR
     usri3_password_age*: DWORD
@@ -12156,7 +12156,7 @@ type
   PUSER_INFO_3* = ptr USER_INFO_3
   LPUSER_INFO_3* = ptr USER_INFO_3
   TUSERINFO3* = USER_INFO_3
-  GROUP_INFO_2* = record
+  GROUP_INFO_2* {.final.} = object
     grpi2_name*: LPWSTR
     grpi2_comment*: LPWSTR
     grpi2_group_id*: DWORD
@@ -12164,13 +12164,13 @@ type
 
   PGROUP_INFO_2* = ptr GROUP_INFO_2
   TGROUPINFO2* = GROUP_INFO_2
-  LOCALGROUP_INFO_0* = record
+  LOCALGROUP_INFO_0* {.final.} = object
     lgrpi0_name*: LPWSTR
 
   PLOCALGROUP_INFO_0* = ptr LOCALGROUP_INFO_0
   LPLOCALGROUP_INFO_0* = ptr LOCALGROUP_INFO_0
   TLOCALGROUPINFO0* = LOCALGROUP_INFO_0
-  IMAGE_DOS_HEADER* = record
+  IMAGE_DOS_HEADER* {.final.} = object
     e_magic*: int16
     e_cblp*: int16
     e_cp*: int16
@@ -12193,7 +12193,7 @@ type
 
   PIMAGE_DOS_HEADER* = ptr IMAGE_DOS_HEADER
   TIMAGEDOSHEADER* = IMAGE_DOS_HEADER
-  NOTIFYICONDATAA* = record
+  NOTIFYICONDATAA* {.final.} = object
     cbSize*: DWORD
     Wnd*: HWND
     uID*: UINT
@@ -12203,7 +12203,7 @@ type
     szTip*: array[0..63, Char]
 
   NOTIFYICONDATA* = NOTIFYICONDATAA
-  NOTIFYICONDATAW* = record
+  NOTIFYICONDATAW* {.final.} = object
     cbSize*: DWORD
     Wnd*: HWND
     uID*: UINT
@@ -12224,7 +12224,7 @@ type
 
 type
   PWaveFormatEx* = ptr TWaveFormatEx
-  TWaveFormatEx* = record
+  TWaveFormatEx* {.final.} = object
     wFormatTag*: int16        # format type
     nChannels*: int16         # number of channels (i.e. mono, stereo, etc.)
     nSamplesPerSec*: DWORD    # sample rate
@@ -12233,7 +12233,7 @@ type
     wBitsPerSample*: int16    # number of bits per sample of mono data
     cbSize*: int16            # the count in bytes of the size of
 
-  WIN32_FILE_ATTRIBUTE_DATA* = record
+  WIN32_FILE_ATTRIBUTE_DATA* {.final.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
     ftLastAccessTime*: FILETIME
@@ -12244,7 +12244,7 @@ type
   LPWIN32_FILE_ATTRIBUTE_DATA* = ptr WIN32_FILE_ATTRIBUTE_DATA
   TWIN32FILEATTRIBUTEDATA* = WIN32_FILE_ATTRIBUTE_DATA
   PWIN32FILEATTRIBUTEDATA* = ptr WIN32_FILE_ATTRIBUTE_DATA # TrackMouseEvent. NT or higher only.
-  TTrackMouseEvent* = record
+  TTrackMouseEvent* {.final.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
     hwndTrack*: HWND
@@ -13317,7 +13317,7 @@ else:
     HALFPARAM* = int16
     HALFPARAMBOOL* = WORDBOOL
 type
-  MSG* = record
+  MSG* {.final.} = object
     hwnd*: HWND
     message*: UINT
     wParam*: WPARAM
@@ -13330,20 +13330,20 @@ type
   TMSG* = MSG
   PMSG* = ptr MSG
   PMessage* = ptr TMessage
-  TMessage* = record          #fields according to ICS
+  TMessage* {.final.} = object          #fields according to ICS
     msg*: UINT
     wParam*: WPARAM
     lParam*: LPARAM
     Result*: LRESULT
 
-  TWMSize* = record
+  TWMSize* {.final.} = object
     Msg*: UINT
     SizeType*: WPARAM
     Width*: HALFPARAM
     Height*: HALFPARAM
     Result*: LRESULT
 
-  TWMNoParams* = record
+  TWMNoParams* {.final.} = object
     Msg*: UINT
     Unused*: array[0..3, HALFPARAM]
     Result*: LRESULT
@@ -13353,7 +13353,7 @@ type
   TWMDestroy* = TWMNoParams
   TWMClose* = TWMNoParams
   TWMQueryUIState* = TWMNoParams
-  TWMUIState* = record
+  TWMUIState* {.final.} = object
     Msg*: UINT
     Action*: int16
     Flags*: int16
@@ -13361,7 +13361,7 @@ type
 
   TWMChangeUIState* = TWMUIState
   TWMUpdateUIState* = TWMUIState
-  TWMKey* = record
+  TWMKey* {.final.} = object
     Msg*: UINT
     CharCode*: int16
     Unused*: int16
@@ -13374,7 +13374,7 @@ type
   TWMSysChar* = TWMKey
   TWMSysKeyDown* = TWMKey
   TWMSysKeyUp* = TWMKey
-  TWMMenuChar* = record
+  TWMMenuChar* {.final.} = object
     Msg*: UINT
     User*: Char
     MenuFlag*: int16
@@ -13386,7 +13386,7 @@ type
   TWMGetFont* = TWMNoParams
   TWMSysColorChange* = TWMNoParams
   TWMQueryDragIcon* = TWMNoParams
-  TWMScroll* = record
+  TWMScroll* {.final.} = object
     Msg*: UINT
     ScrollCode*: HALFPARAM
     Pos*: HALFPARAM
@@ -13395,59 +13395,59 @@ type
 
   TWMHScroll* = TWMScroll
   TWMVScroll* = TWMScroll
-  TWMGetText* = record
+  TWMGetText* {.final.} = object
     Msg*: UINT
     TextMax*: LPARAM
     Text*: cstring
     Result*: LRESULT
 
   TWMGetTextLength* = TWMNoParams
-  TWMKillFocus* = record
+  TWMKillFocus* {.final.} = object
     Msg*: UINT
     FocusedWnd*: HWND
     UnUsed*: WPARAM
     Result*: LRESULT
 
-  TWMSetCursor* = record
+  TWMSetCursor* {.final.} = object
     Msg*: UINT
     CursorWnd*: HWND
     HitTest*: HALFPARAM
     MouseMsg*: HALFPARAM
     Result*: LRESULT
 
-  TWMSetFocus* = record
+  TWMSetFocus* {.final.} = object
     Msg*: UINT
     FocusedWnd*: HWND
     Unused*: WPARAM
     Result*: LRESULT
 
-  TWMSetFont* = record
+  TWMSetFont* {.final.} = object
     Msg*: UINT
     Font*: HFONT
     Redraw*: HALFPARAMBOOL
     Unused*: HALFPARAM
     Result*: LRESULT
 
-  TWMShowWindow* = record
+  TWMShowWindow* {.final.} = object
     Msg*: UINT
     Show*: HALFPARAMBOOL
     Unused*: HALFPARAM
     Status*: WPARAM
     Result*: LRESULT
 
-  TWMEraseBkgnd* = record
+  TWMEraseBkgnd* {.final.} = object
     Msg*: UINT
     DC*: HDC
     Unused*: LPARAM
     Result*: LRESULT
 
-  TWMNCHitTest* = record
+  TWMNCHitTest* {.final.} = object
     Msg*: UINT
     Unused*: int32
     Pos*: TSmallPoint
     Result*: LRESULT
 
-  TWMMouse* = record
+  TWMMouse* {.final.} = object
     Msg*: UINT
     Keys*: int32
     Pos*: TSmallPoint
@@ -13459,14 +13459,14 @@ type
   TWMMButtonDblClk* = TWMMouse
   TWMMButtonDown* = TWMMouse
   TWMMButtonUp* = TWMMouse
-  TWMMouseWheel* = record
+  TWMMouseWheel* {.final.} = object
     Msg*: UINT
     Keys*: int16
     WheelDelta*: int16
     Pos*: TSmallPoint
     Result*: LRESULT
 
-  TWMNCHitMessage* = record
+  TWMNCHitMessage* {.final.} = object
     Msg*: UINT
     HitTest*: int32
     XCursor*: int16
@@ -13484,51 +13484,51 @@ type
   TWMRButtonDown* = TWMMouse
   TWMRButtonUp* = TWMMouse
   TWMMouseMove* = TWMMouse
-  TWMPaint* = record
+  TWMPaint* {.final.} = object
     Msg*: UINT
     DC*: HDC
     Unused*: int32
     Result*: LRESULT
 
-  TWMCommand* = record
+  TWMCommand* {.final.} = object
     Msg*: UINT
     ItemID*: int16
     NotifyCode*: int16
     Ctl*: HWND
     Result*: LRESULT
 
-  TWMNotify* = record
+  TWMNotify* {.final.} = object
     Msg*: UINT
     IDCtrl*: int32
     NMHdr*: PNMHdr
     Result*: LRESULT
 
-  TWMPrint* = record
+  TWMPrint* {.final.} = object
     Msg*: UINT
     DC*: HDC
     Flags*: int
     Result*: LRESULT
 
   TWMPrintClient* = TWMPrint
-  TWMWinIniChange* = record
+  TWMWinIniChange* {.final.} = object
     Msg*: UINT
     Unused*: int
     Section*: cstring
     Result*: LRESULT
 
-  TWMContextMenu* = record
+  TWMContextMenu* {.final.} = object
     Msg*: UINT
     hWnd*: HWND
     Pos*: TSmallPoint
     Result*: LRESULT
 
-  TWMNCCalcSize* = record
+  TWMNCCalcSize* {.final.} = object
     Msg*: UINT
     CalcValidRects*: WINBOOL
     CalcSize_Params*: PNCCalcSizeParams
     Result*: LRESULT
 
-  TWMCharToItem* = record
+  TWMCharToItem* {.final.} = object
     Msg*: UINT
     Key*: int16
     CaretPos*: int16
@@ -13537,7 +13537,7 @@ type
 
   TWMVKeyToItem* = TWMCharToItem
   TMyEventRange = range[0'i16..16000'i16]
-  TWMParentNotify* = record
+  TWMParentNotify* {.final.} = object
     Msg*: UINT
     case Event*: TMyEventRange
     of TMyEventRange(WM_CREATE), TMyEventRange(WM_DESTROY):
@@ -13556,7 +13556,7 @@ type
         Value2*: int32
         Result*: LRESULT
 
-  TWMSysCommand* = record
+  TWMSysCommand* {.final.} = object
     Msg*: UINT
     CmdType*: int32
     XPos*: int16
@@ -13574,13 +13574,13 @@ type
   #  else: # of SC_KEYMENU:
   #      Key*: int16
 
-  TWMMove* = record
+  TWMMove* {.final.} = object
     Msg*: UINT
     Unused*: int
     Pos*: TSmallPoint
     Result*: LRESULT
 
-  TWMWindowPosMsg* = record
+  TWMWindowPosMsg* {.final.} = object
     Msg*: UINT
     Unused*: int
     WindowPos*: PWindowPos
@@ -13588,101 +13588,101 @@ type
 
   TWMWindowPosChanged* = TWMWindowPosMsg
   TWMWindowPosChanging* = TWMWindowPosMsg
-  TWMCompareItem* = record
+  TWMCompareItem* {.final.} = object
     Msg*: UINT
     Ctl*: HWnd
     CompareItemStruct*: PCompareItemStruct
     Result*: LRESULT
 
-  TWMDeleteItem* = record
+  TWMDeleteItem* {.final.} = object
     Msg*: UINT
     Ctl*: HWND
     DeleteItemStruct*: PDeleteItemStruct
     Result*: LRESULT
 
-  TWMDrawItem* = record
+  TWMDrawItem* {.final.} = object
     Msg*: UINT
     Ctl*: HWND
     DrawItemStruct*: PDrawItemStruct
     Result*: LRESULT
 
-  TWMMeasureItem* = record
+  TWMMeasureItem* {.final.} = object
     Msg*: UINT
     IDCtl*: HWnd
     MeasureItemStruct*: PMeasureItemStruct
     Result*: LRESULT
 
-  TWMNCCreate* = record
+  TWMNCCreate* {.final.} = object
     Msg*: UINT
     Unused*: int
     CreateStruct*: PCreateStruct
     Result*: LRESULT
 
-  TWMInitMenuPopup* = record
+  TWMInitMenuPopup* {.final.} = object
     Msg*: UINT
     MenuPopup*: HMENU
     Pos*: int16
     SystemMenu*: WordBool
     Result*: LRESULT
 
-  TWMMenuSelect* = record
+  TWMMenuSelect* {.final.} = object
     Msg*: UINT
     IDItem*: int16
     MenuFlag*: int16
     Menu*: HMENU
     Result*: LRESULT
 
-  TWMActivate* = record
+  TWMActivate* {.final.} = object
     Msg*: UINT
     Active*: int16
     Minimized*: WordBool
     ActiveWindow*: HWND
     Result*: LRESULT
 
-  TWMQueryEndSession* = record
+  TWMQueryEndSession* {.final.} = object
     Msg*: UINT
     Source*: int32
     Unused*: int32
     Result*: LRESULT
 
-  TWMMDIActivate* = record
+  TWMMDIActivate* {.final.} = object
     Msg*: UINT
     DeactiveWnd*: HWND
     ActiveWnd*: HWND
     Result*: LRESULT
 
-  TWMNextDlgCtl* = record
+  TWMNextDlgCtl* {.final.} = object
     Msg*: UINT
     CtlFocus*: int32
     Handle*: WordBool
     Unused*: int16
     Result*: LRESULT
 
-  TWMHelp* = record
+  TWMHelp* {.final.} = object
     Msg*: UINT
     Unused*: int
     HelpInfo*: PHelpInfo
     Result*: LRESULT
 
-  TWMGetMinMaxInfo* = record
+  TWMGetMinMaxInfo* {.final.} = object
     Msg*: UINT
     Unused*: int
     MinMaxInfo*: PMinMaxInfo
     Result*: LRESULT
 
-  TWMSettingChange* = record
+  TWMSettingChange* {.final.} = object
     Msg*: UINT
     Flag*: int
     Section*: cstring
     Result*: LRESULT
 
-  TWMCreate* = record
+  TWMCreate* {.final.} = object
     Msg*: UINT
     Unused*: int
     CreateStruct*: PCreateStruct
     Result*: LRESULT
 
-  TWMCtlColor* = record
+  TWMCtlColor* {.final.} = object
     Msg*: UINT
     ChildDC*: HDC
     ChildWnd*: HWND
@@ -13695,38 +13695,38 @@ type
   TWMCtlColorMsgbox* = TWMCtlColor
   TWMCtlColorDlg* = TWMCtlColor
   TWMCtlColorEdit* = TWMCtlColor
-  TWMInitDialog* = record
+  TWMInitDialog* {.final.} = object
     Msg*: UINT
     Focus*: HWND
     InitParam*: int32
     Result*: LRESULT
 
-  TWMNCPaint* = record
+  TWMNCPaint* {.final.} = object
     Msg*: UINT
     RGN*: HRGN
     Unused*: int32
     Result*: LRESULT
 
-  TWMSetText* = record
+  TWMSetText* {.final.} = object
     Msg*: UINT
     Unused*: int32
     Text*: cstring
     Result*: LRESULT
 
-  TWMSizeClipboard* = record
+  TWMSizeClipboard* {.final.} = object
     Msg*: UINT
     Viewer*: HWND
     RC*: THandle
     Result*: LRESULT
 
-  TWMSpoolerStatus* = record
+  TWMSpoolerStatus* {.final.} = object
     Msg*: UINT
     JobStatus*: LPARAM
     JobsLeft*: WPARAM
     Unused*: WPARAM
     Result*: LRESULT
 
-  TWMStyleChange* = record
+  TWMStyleChange* {.final.} = object
     Msg*: UINT
     StyleType*: LPARAM
     StyleStruct*: PStyleStruct
@@ -13734,54 +13734,54 @@ type
 
   TWMStyleChanged* = TWMStyleChange
   TWMStyleChanging* = TWMStyleChange
-  TWMSysDeadChar* = record
+  TWMSysDeadChar* {.final.} = object
     Msg*: UINT
     CharCode*: WPARAM
     Unused*: WPARAM
     KeyData*: LPARAM
     Result*: LRESULT
 
-  TWMSystemError* = record
+  TWMSystemError* {.final.} = object
     Msg*: UINT
     ErrSpec*: WPARAM
     Unused*: LPARAM
     Result*: LRESULT
 
   TWMTimeChange* = TWMNoParams
-  TWMTimer* = record
+  TWMTimer* {.final.} = object
     Msg*: UINT
     TimerID*: LPARAM
     TimerProc*: TFarProc
     Result*: LRESULT
 
   TWMUndo* = TWMNoParams
-  TWMVScrollClipboard* = record
+  TWMVScrollClipboard* {.final.} = object
     Msg*: UINT
     Viewer*: HWND
     ScollCode*: WPARAM
     ThumbPos*: WPARAM
     Result*: LRESULT
 
-  TWMDisplayChange* = record
+  TWMDisplayChange* {.final.} = object
     Msg*: UINT
     BitsPerPixel*: int
     Width*: WPARAM
     Height*: WPARAM
     Result*: LRESULT
 
-  TWMDropFiles* = record
+  TWMDropFiles* {.final.} = object
     Msg*: UINT
     Drop*: THANDLE
     Unused*: LPARAM
     Result*: LRESULT
 
-  TWMEnable* = record
+  TWMEnable* {.final.} = object
     Msg*: int
     Enabled*: WINBOOL
     Unused*: int32
     Result*: int32
 
-  TWMMouseActivate* = record
+  TWMMouseActivate* {.final.} = object
     Msg*: int
     TopLevel*: HWND
     HitTestCode*: int16
@@ -20686,7 +20686,7 @@ type
   TFNFiberStartRoutine* = FARPROC
   TFNHookProc* = HOOKPROC
   PObjectTypeList* = ptr TObjectTypeList
-  OBJECT_TYPE_LIST* = record
+  OBJECT_TYPE_LIST* {.final.} = object
     Level*: int16
     Sbz*: int16
     ObjectType*: PGUID
@@ -20694,14 +20694,14 @@ type
   TObjectTypeList* = OBJECT_TYPE_LIST
   AUDIT_EVENT_TYPE* = DWORD
   PBlendFunction* = ptr TBlendFunction
-  BLENDFUNCTION* = record
+  BLENDFUNCTION* {.final.} = object
     BlendOp*: int8
     BlendFlags*: int8
     SourceConstantAlpha*: int8
     AlphaFormat*: int8
 
   TBlendFunction* = BLENDFUNCTION
-  WIN_CERTIFICATE* = record
+  WIN_CERTIFICATE* {.final.} = object
     dwLength*: DWord
     wRevision*: int16
     wCertificateType*: int16
@@ -20709,7 +20709,7 @@ type
 
   TWinCertificate* = WIN_CERTIFICATE
   PWinCertificate* = ptr TWinCertificate
-  TMaxLogPalette* = record
+  TMaxLogPalette* {.final.} = object
     palVersion*: int16
     palNumEntries*: int16
     palPalEntry*: array[int8, TPaletteEntry]

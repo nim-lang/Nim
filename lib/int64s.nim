@@ -10,8 +10,7 @@
 # 64 bit integers for platforms that don't have those
 
 type
-  IInt64 = record # "internal" int64
-    lo, hi: int32
+  IInt64 = tuple[lo, hi: int32]
 
 proc cmpI64(x, y: IInt64): int32 {.compilerproc.} =
   result = x.hi -% y.hi

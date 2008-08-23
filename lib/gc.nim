@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,33 +13,39 @@
 # For a description of the algorithms used here see:
 # intern.html
 
-#{.define: debugGC.}   # we wish to debug the GC...
+{.define: debugGC.}   # we wish to debug the GC...
 
 #when defined(debugGC):
 #  {.define: logGC.} # define if the GC should log some of its activities
 
 {.define: cycleGC.}
 
+const
+  traceGC = false # extensive debugging
+  reallyDealloc = true # for debugging purposes this can be set to false
+
 # Guess the page size of the system; if it is the
 # wrong value, performance may be worse (this is not
 # for sure though), but GC still works; must be a power of two!
 const
-  PageSize = 1024 * sizeof(int)
-  RC_Increase = 7 * PageSize # is an additive increase
+  PageShift = if sizeof(pointer) == 4: 12 else: 13
+  PageSize = 1 shl PageShift # on 32 bit systems 4096
   CycleIncrease = 2 # is a multiplicative increase
 
+  InitialCycleThreshold = 8*1024*1024 # X MB because cycle checking is slow
+  ZctThreshold = 512  # we collect garbage if the ZCT's size
+                      # reaches this threshold
+                      # this needs benchmarking...
+
 when defined(debugGC):
-  const InitialThreshold = 64*1024
-  const stressGC = True    # GC is debugged; no need to stress it
+  const stressGC = False
 else:
   const stressGC = False
-  const InitialThreshold = RC_Increase
-  # this may need benchmarking...
 
 # things the System module thinks should be available:
 when defined(useDL) or defined(nativeDL):
   type
-    TMallocInfo {.importc: "struct mallinfo", nodecl.} = record
+    TMallocInfo {.importc: "struct mallinfo", nodecl, final.} = object
       arena: cint    # non-mmapped space allocated from system
       ordblks: cint  # number of free chunks
       smblks: cint   # number of fastbin blocks
@@ -68,8 +74,7 @@ else: # not available:
   proc getTotalMem(): int = return -1
 
 var
-  rcThreshold: int = InitialThreshold
-  cycleThreshold: int = InitialThreshold
+  cycleThreshold: int = InitialCycleThreshold
 
   memUsed: int = 0 # we have to keep track how much we have allocated
 
@@ -113,11 +118,12 @@ type
     waNone, waRelease, waZctDecRef, waCycleDecRef, waCycleIncRef, waDebugIncRef
 
   TCollectorData = int
-  TCell = record
+  TCell {.final.} = object
     refcount: TCollectorData  # the refcount and bit flags
     typ: PNimType
-    stackcount: int           # stack counter for debugging
-    drefc: int                # real reference counter for debugging
+    when stressGC:
+      stackcount: int           # stack counter for debugging
+      drefc: int                # real reference counter for debugging
 
   PCell = ptr TCell
 
@@ -145,6 +151,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
   result = int(usrToCell(p).refcount)
+  if result < 0: result = 0
 
 proc gcAlloc(size: int): pointer =
   result = alloc0(size)
@@ -162,7 +169,7 @@ proc GC_setStrategy(strategy: TGC_Strategy) =
   of gcOptimizeTime: nil
 
 proc GC_enableMarkAndSweep() =
-  cycleThreshold = InitialThreshold
+  cycleThreshold = InitialCycleThreshold
 
 proc GC_disableMarkAndSweep() =
   cycleThreshold = high(cycleThreshold)-1
@@ -174,7 +181,7 @@ proc nextTry(h, maxHash: int): int {.inline.} =
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
 
-# ------------------ Zero count table (ZCT) and any table (AT) -------------
+# ------------------ Any table (AT) -------------
 
 # these values are for DL-malloc known for sure (and other allocators
 # can only be worse):
@@ -200,8 +207,7 @@ when BitsPerPage mod BitsPerUnit != 0:
 
 # ------------------- cell set handling ------------------------------
 # A cellset consists of a hash table of page descriptors. A page
-# descriptor has a bit for
-# every Memalignment'th byte in the page.
+# descriptor has a bit for every Memalignment'th byte in the page.
 # However, only bits corresponding to addresses that start memory blocks
 # are set.
 # Page descriptors are also linked to a list; the list
@@ -217,16 +223,58 @@ type
 
   TBitIndex = range[0..UnitsPerPage-1]
 
-  TPageDesc = record
+  TPageDesc {.final.} = object
     next: PPageDesc # all nodes are connected with this pointer
     key: TAddress   # start address at bit 0
     bits: array[TBitIndex, int] # a bit vector
 
   PPageDescArray = ptr array[0..1000_000, PPageDesc]
-  TCellSet = record
+  TCellSet {.final.} = object
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
+
+  PCellArray = ptr array[0..100_000_000, PCell]
+  TCellSeq {.final.} = object
+    len, cap: int
+    d: PCellArray
+
+  TSlowSet {.final.} = object  # used for debugging purposes only
+    L: int # current length
+    cap: int # capacity
+    d: PCellArray
+
+  TGcHeap {.final.} = object # this contains the zero count and
+                             # non-zero count table
+    mask: TAddress           # mask for fast pointer detection
+    zct: TCellSeq            # the zero count table
+    at: TCellSet             # a table that contains all references
+    newAT: TCellSet
+    stackCells: TCellSeq     # cells that need to be decremented because they
+                             # are in the hardware stack; a cell may occur
+                             # several times in this data structure
+
+var
+  stackBottom: pointer
+  gch: TGcHeap
+
+proc add(s: var TCellSeq, c: PCell) {.inline.} =
+  if s.len >= s.cap:
+    s.cap = s.cap * 3 div 2
+    s.d = cast[PCellArray](realloc(s.d, s.cap * sizeof(PCell)))
+    if s.d == nil: raiseOutOfMem()
+  s.d[s.len] = c
+  inc(s.len)
+
+proc inOperator(s: TCellSeq, c: PCell): bool {.inline.} =
+  for i in 0 .. s.len-1:
+    if s.d[i] == c: return True
+  return False
+
+proc init(s: var TCellSeq, cap: int = 1024) =
+  s.len = 0
+  s.cap = cap
+  s.d = cast[PCellArray](gcAlloc(cap * sizeof(PCell)))
 
 const
   InitCellSetSize = 1024 # must be a power of two!
@@ -284,7 +332,8 @@ proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
     if x.key == key: return x
     h = nextTry(h, t.max)
 
-  if (t.max+1) * 2 < t.counter * 3: CellSetEnlarge(t)
+  if ((t.max+1)*2 < t.counter*3) or ((t.max+1)-t.counter < 4):
+    CellSetEnlarge(t)
   inc(t.counter)
   h = cast[int](key) and t.max
   while t.data[h] != nil: h = nextTry(h, t.max)
@@ -303,7 +352,7 @@ proc in_Operator(s: TCellSet, cell: PCell): bool =
     u: TAddress
     t: PPageDesc
   u = cast[TAddress](cell)
-  t = CellSetGet(s, u /% PageSize)
+  t = CellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u %% PageSize) /% MemAlignment
     result = (t.bits[u /% BitsPerUnit] and (1 shl (u %% BitsPerUnit))) != 0
@@ -315,7 +364,7 @@ proc incl(s: var TCellSet, cell: PCell) =
     u: TAddress
     t: PPageDesc
   u = cast[TAddress](cell)
-  t = CellSetPut(s, u /% PageSize)
+  t = CellSetPut(s, u shr PageShift)
   u = (u %% PageSize) /% MemAlignment
   t.bits[u /% BitsPerUnit] = t.bits[u /% BitsPerUnit] or
     (1 shl (u %% BitsPerUnit))
@@ -325,7 +374,7 @@ proc excl(s: var TCellSet, cell: PCell) =
     u: TAddress
     t: PPageDesc
   u = cast[TAddress](cell)
-  t = CellSetGet(s, u /% PageSize)
+  t = CellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u %% PageSize) /% MemAlignment
     t.bits[u /% BitsPerUnit] = (t.bits[u /% BitsPerUnit] and
@@ -342,7 +391,7 @@ iterator elements(t: TCellSet): PCell {.inline.} =
       var j = 0
       while w != 0:         # test all remaining bits for zero
         if (w and 1) != 0:  # the bit is set!
-          yield cast[PCell]((r.key *% PageSize) +%
+          yield cast[PCell]((r.key shl PageShift) or # +%
                               (i*%BitsPerUnit+%j) *% MemAlignment)
         inc(j)
         w = w shr 1
@@ -354,68 +403,121 @@ iterator elements(t: TCellSet): PCell {.inline.} =
 proc testPageDescs() =
   var root: TCellSet
   CellSetInit(root)
-  var u = 10_000
-  while u <= 20_000:
-    incl(root, cast[PCell](u))
-    inc(u, 8)
-  for cell in elements(root):
-    c_fprintf(c_stdout, "%ld\n", cast[int](cell))
+  #var u = 10_000
+  #while u <= 20_000:
+  #  incl(root, cast[PCell](u))
+  #  inc(u, 8)
 
-# testPageDescs()
+  incl(root, cast[PCell](0x81cdfb8))
+  for cell in elements(root):
+    c_fprintf(c_stdout, "%p\n", cast[int](cell))
+
+#testPageDescs()
 
 when defined(debugGC):
   proc writeCell(msg: CString, c: PCell) =
-    c_fprintf(c_stdout, "%s: %p\n", msg, c)
+    if c.typ != nil:
+      if c.typ.kind == tyString:
+        c_fprintf(c_stdout, "%s\n", cast[TAddress](cellToUsr(c)) + sizeof(int)*2)
+      c_fprintf(c_stdout, "%s: %p %d\n", msg, c, c.typ.kind)
+    else: c_fprintf(c_stdout, "%s: %p (nil type)\n", msg, c)
   proc writePtr(msg: CString, p: Pointer) =
     c_fprintf(c_stdout, "%s: %p\n", msg, p)
 
+
+when traceGC:
+  # traceGC is a special switch to enable extensive debugging
+  type
+    TCellState = enum
+      csAllocated, csZctFreed, csCycFreed
+
+  proc cellSetInit(s: var TSlowSet) =
+    s.L = 0
+    s.cap = 4096
+    s.d = cast[PCellArray](gcAlloc(s.cap * sizeof(PCell)))
+
+  proc cellSetDeinit(s: var TSlowSet) =
+    s.L = 0
+    s.cap = 0
+    dealloc(s.d)
+
+  proc incl(s: var TSlowSet, c: PCell) =
+    if s.L >= s.cap:
+      s.cap = s.cap * 3 div 2
+      s.d = cast[PCellArray](realloc(s.d, s.cap * sizeof(PCell)))
+      if s.d == nil: raiseOutOfMem()
+    s.d[s.L] = c
+    inc(s.L)
+
+  proc excl(s: var TSlowSet, c: PCell) =
+    var i = 0
+    while i < s.L:
+      if s.d[i] == c:
+        s.d[i] = s.d[s.L-1]
+        dec(s.L)
+        break
+      inc(i)
+
+  proc inOperator(s: TSlowSet, c: PCell): bool =
+    var i = 0
+    while i < s.L:
+      if s.d[i] == c: return true
+      inc(i)
+
+  iterator elements(s: TSlowSet): PCell =
+    var i = 0
+    while i < s.L:
+      yield s.d[i]
+      inc(i)
+
+  var
+    states: array[TCellState, TSlowSet] # TCellSet]
+
+  proc traceCell(c: PCell, state: TCellState) =
+    case state
+    of csAllocated:
+      if c in states[csAllocated]:
+        writeCell("attempt to alloc a already allocated cell", c)
+        assert(false)
+      excl(states[csCycFreed], c)
+      excl(states[csZctFreed], c)
+    of csZctFreed:
+      if c notin states[csAllocated]:
+        writeCell("attempt to free a not allocated cell", c)
+        assert(false)
+      if c in states[csZctFreed]:
+        writeCell("attempt to free zct cell twice", c)
+        assert(false)
+      if c in states[csCycFreed]:
+        writeCell("attempt to free with zct, but already freed with cyc", c)
+        assert(false)
+      excl(states[csAllocated], c)
+    of csCycFreed:
+      if c notin states[csAllocated]:
+        writeCell("attempt to free a not allocated cell", c)
+        assert(false)
+      if c in states[csCycFreed]:
+        writeCell("attempt to free cyc cell twice", c)
+        assert(false)
+      if c in states[csZctFreed]:
+        writeCell("attempt to free with cyc, but already freed with zct", c)
+        assert(false)
+      excl(states[csAllocated], c)
+    incl(states[state], c)
+
+template gcTrace(cell, state: expr): stmt =
+  when traceGC: traceCell(cell, state)
+
 # -------------------------------------------------------------------------
 
-type
-  PStackCells = ptr array[0..1000_0000, PCell]
-  TCountTables = record     # this contains the zero count and
-                            # non-zero count table
-    mask: TAddress          # mask for fast pointer detection
-    zct: TCellSet           # the zero count table
-    at: TCellSet            # a table that contains all references
-    newAT: TCellSet
-    newZCT: TCellSet
-    stackCells: PStackCells # cells that need to be decremented because they
-                            # are in the hardware stack; a cell may occur
-                            # several times in this data structure
-    stackLen, stackMax: int # for managing the stack cells
+# forward declarations:
+proc collectCT(gch: var TGcHeap)
+proc IsOnStack(p: pointer): bool
+proc forAllChildren(cell: PCell, op: TWalkOp)
+proc collectCycles(gch: var TGcHeap)
 
-proc addStackCell(ct: var TCountTables, cell: PCell) =
-  if ct.stackLen >= ct.stackMax:
-    ct.stackMax = ct.stackMax * 3 div 2
-    ct.stackCells = cast[PStackCells](realloc(ct.stackCells, ct.stackMax *
-                                      sizeof(PCell)))
-    if ct.stackCells == nil: raiseOutOfMem()
-  ct.stackCells[ct.stackLen] = cell
-  inc(ct.stackLen)
-
-var
-  stackBottom: pointer
-  ct: TCountTables
-
-proc GC_invariant(): bool =
-  result = True
-  when stressGC:
-    if recGcLock == 0:
-      GC_disable()
-      for cell in elements(ct.at):
-        var t = cell.typ # getCellType(cell)
-        if t == nil or t.kind notin {tySequence, tyString, tyRef}:
-          writeCell("corrupt cell?", cell)
-          result = false
-      GC_enable()
-
-when stressGC:
-  proc GCdebugHook() =
-    if not GC_invariant():
-      assert(false)
-
-  dbgLineHook = GCdebugHook
+proc reprAny(p: pointer, typ: PNimType): string {.compilerproc.}
+# we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
   if cell.typ.finalizer != nil:
@@ -433,79 +535,95 @@ proc prepareDealloc(cell: PCell) =
   else:
     memUsed = memUsed - cell.typ.size
 
+proc checkZCT(): bool =
+  if recGcLock >= 1: return true # prevent endless recursion
+  inc(recGcLock)
+  result = true
+  for i in 0..gch.zct.len-1:
+    var c = gch.zct.d[i]
+    if c.refcount > 0: # should be in the ZCT!
+      writeCell("wrong ZCT entry", c)
+      result = false
+    elif gch.zct.d[-c.refcount] != c:
+      writeCell("wrong ZCT position", c)
+      result = false
+  dec(recGcLock)
+
+proc GC_invariant(): bool =
+  if recGcLock >= 1: return true # prevent endless recursion
+  inc(recGcLock)
+  result = True
+  block checks:
+    if not checkZCT():
+      result = false
+      break checks
+    # set counters back to zero:
+    for c in elements(gch.AT):
+      var t = c.typ
+      if t == nil or t.kind notin {tySequence, tyString, tyRef}:
+        writeCell("corrupt cell?", c)
+        result = false
+        break checks
+      when stressGC: c.drefc = 0
+    for c in elements(gch.AT):
+      forAllChildren(c, waDebugIncRef)
+    when stressGC:
+      for c in elements(gch.AT):
+        var rc = c.refcount
+        if rc < 0: rc = 0
+        if c.drefc > rc + c.stackcount:
+          result = false # failed
+          c_fprintf(c_stdout,
+             "broken cell: %p, refc: %ld, stack: %ld, real: %ld\n",
+             c, c.refcount, c.stackcount, c.drefc)
+          break checks
+  dec(recGcLock)
+
+when stressGC:
+  proc GCdebugHook() =
+    if not GC_invariant():
+      assert(false)
+
+  dbgLineHook = GCdebugHook
+
 proc setStackBottom(theStackBottom: pointer) {.compilerproc.} =
   stackBottom = theStackBottom
 
 proc initGC() =
+  when traceGC:
+    for i in low(TCellState)..high(TCellState): CellSetInit(states[i])
   # init the rt
-  CellSetInit(ct.zct)
-  CellSetInit(ct.at)
-  ct.stackLen = 0
-  ct.stackMax = 255
-  ct.stackCells = cast[PStackCells](gcAlloc((ct.stackMax+1) * sizeof(PCell)))
-  ct.mask = 0
+  init(gch.zct)
+  CellSetInit(gch.at)
+  init(gch.stackCells)
+  gch.mask = 0
   new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
   assert(GC_invariant())
 
-# forward declarations:
-proc collectCT(ct: var TCountTables)
-proc IsOnStack(p: pointer): bool
-proc forAllChildren(cell: PCell, op: TWalkOp)
-proc collectCycles()
-
-proc reprAny(p: pointer, typ: PNimType): string {.compilerproc.}
-# we need the prototype here for debugging purposes
-
-proc outputCell(c: PCell) =
-  inc(recGcLock)
-  write(stdout, reprAny(cellToUsr(c), c.typ))
-  dec(recGcLock)
-
-proc writeGraph() =
-  {.checkpoint.}
-  block:
-    inc(recGcLock)
-    for c in elements(ct.AT): outputCell(c)
-    dec(recGcLock)
-
-proc checkRefc(): bool =
-  if recGcLock >= 1: return true # prevent endless recursion
-  inc(recGcLock)
-  result = True
-  # set counters back to zero:
-  for c in elements(ct.AT):
-    c.drefc = 0
-  for c in elements(ct.AT):
-    forAllChildren(c, waDebugIncRef)
-  for c in elements(ct.AT):
-    if c.drefc > c.refcount - c.stackcount:
-      result = false # failed
-      c_fprintf(c_stdout,
-         "broken cell: %p, refc: %ld, stack: %ld, real: %ld\n",
-         c, c.refcount, c.stackcount, c.drefc)
-  dec(recGcLock)
-
-proc seqCheck(cell: PCell): bool =
-  assert(cell.typ != nil)
-  if cell.typ.kind in {tySequence, tyString}:
-    result = cell.refcount - cell.stackcount <= 1
-  else:
-    result = true
-
 proc decRef(cell: PCell) {.inline.} =
-  assert(cell in ct.AT)
-  when defined(debugGC):
-    if cell.refcount == 0:
-      writePtr("decref broken", cellToUsr(cell))
   assert(cell.refcount > 0) # this should be the case!
-  assert(seqCheck(cell))
+  when stressGC: assert(cell in gch.AT)
   dec(cell.refcount)
   if cell.refcount == 0:
-    incl(ct.zct, cell)
+    cell.refcount = -gch.zct.len
+    when stressGC: assert(cell notin gch.zct)
+    add(gch.zct, cell)
+  when stressGC: assert(checkZCT())
 
 proc incRef(cell: PCell) {.inline.} =
-  assert(seqCheck(cell))
-  inc(cell.refcount)
+  var rc = cell.refcount
+  if rc <= 0:
+    # remove from zero count table:
+    when stressGC: assert(gch.zct.len > -rc)
+    when stressGC: assert(gch.zct.d[-rc] == cell)
+    gch.zct.d[-rc] = gch.zct.d[gch.zct.len-1]
+    gch.zct.d[-rc].refcount = rc
+    dec(gch.zct.len)
+    cell.refcount = 1
+    when stressGC: assert(checkZCT())
+  else:
+    inc(cell.refcount)
+    when stressGC: assert(checkZCT())
 
 proc asgnRef(dest: ppointer, src: pointer) =
   # the code generator calls this proc!
@@ -514,18 +632,18 @@ proc asgnRef(dest: ppointer, src: pointer) =
   if src != nil: incRef(usrToCell(src))
   if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
-  #assert(checkRefc())
+  when stressGC: assert(GC_invariant())
 
 proc unsureAsgnRef(dest: ppointer, src: pointer) =
   if not IsOnStack(dest):
     if src != nil: incRef(usrToCell(src))
     if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
-  #assert(checkRefc())
+  when stressGC: assert(GC_invariant())
 
 proc restore(cell: PCell) =
-  if cell notin ct.newAT:
-    incl(ct.newAT, Cell)
+  if cell notin gch.newAT:
+    incl(gch.newAT, Cell)
     forAllChildren(cell, waCycleIncRef)
 
 proc doOperation(p: pointer, op: TWalkOp) =
@@ -536,19 +654,15 @@ proc doOperation(p: pointer, op: TWalkOp) =
   of waNone: assert(false)
   of waRelease: decRef(cell) # DEAD CODE!
   of waZctDecRef:
-    assert(cell.refcount > 0)
-    assert(seqCheck(cell))
-    dec(cell.refcount)
-    if cell.refcount == 0:
-      incl(ct.newZCT, cell)
+    decRef(cell)
   of waCycleDecRef:
-    assert(cell.refcount != 0)
+    assert(cell.refcount > 0)
     dec(cell.refcount)
   of waCycleIncRef:
     inc(cell.refcount) # restore proper reference counts!
     restore(cell)
   of waDebugIncRef:
-    inc(cell.drefc)
+    when stressGC: inc(cell.drefc)
 
 type
   TByteArray = array[0..1000_0000, byte]
@@ -590,16 +704,20 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
     if m != nil: forAllSlotsAux(dest, m, op)
 
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
+  const
+    handledTypes = {tyArray, tyArrayConstr, tyOpenArray, tyRef,
+                    tyString, tySequence, tyObject, tyPureObject, tyTuple}
   var
     d = cast[TAddress](dest)
   if dest == nil: return # nothing to do
   case mt.Kind
   of tyArray, tyArrayConstr, tyOpenArray:
-    for i in 0..(mt.size div mt.base.size)-1:
-      forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
+    if mt.base.kind in handledTypes:
+      for i in 0..(mt.size div mt.base.size)-1:
+        forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
   of tyRef, tyString, tySequence: # leaf:
     doOperation(cast[ppointer](d)^, op)
-  of tyRecord, tyObject, tyTuple:
+  of tyObject, tyTuple, tyPureObject:
     forAllSlotsAux(dest, mt.node, op)
   else: nil
 
@@ -608,6 +726,13 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
   when defined(debugGC):
     if cell.typ == nil:
       writeCell("cell has no type descriptor", cell)
+      when traceGC:
+        if cell notin states[csAllocated]:
+          writeCell("cell has never been allocated!", cell)
+        if cell in states[csCycFreed]:
+          writeCell("cell has been freed by Cyc", cell)
+        if cell in states[csZctFreed]:
+          writeCell("cell has been freed by Zct", cell)
   assert(cell.typ != nil)
   case cell.typ.Kind
   of tyRef: # common case
@@ -625,36 +750,36 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
 proc checkCollection() {.inline.} =
   # checks if a collection should be done
   if recGcLock == 0:
-    if memUsed >= rcThreshold or stressGC:
-      collectCT(ct)
-      when defined(debugGC):
-        write(stdout, "threshold is now: ")
-        writeln(stdout, rcThreshold)
+    collectCT(gch)
 
 proc newObj(typ: PNimType, size: int): pointer =
   # generates a new object and sets its reference counter to 0
   var
     res: PCell
+  when stressGC: assert(checkZCT())
   assert(typ.kind in {tyRef, tyString, tySequence})
   # check if we have to collect:
   checkCollection()
   res = cast[PCell](Alloc0(size + sizeof(TCell)))
+  when stressGC: assert((cast[TAddress](res) and (MemAlignment-1)) == 0)
   if res == nil: raiseOutOfMem()
   when defined(nimSize):
     memUsed = memUsed + nimSize(res)
   else:
     memUsed = memUsed + size
 
-  res.refcount = 0
   # now it is buffered in the ZCT
   res.typ = typ
-  incl(ct.zct, res) # its refcount is zero, so add it to the ZCT
-  incl(ct.at, res)  # add it to the any table too
-  ct.mask = ct.mask or cast[TAddress](res)
+  res.refcount = -gch.zct.len
+  add(gch.zct, res)  # its refcount is zero, so add it to the ZCT
+  incl(gch.at, res)  # add it to the any table too
+  gch.mask = gch.mask or cast[TAddress](res)
   when defined(debugGC):
-    writeCell("new cell", res)
-    assert(gcInvariant())
+    when defined(logGC): writeCell("new cell", res)
+  gcTrace(res, csAllocated)
   result = cellToUsr(res)
+  assert(res.typ == typ)
+  when stressGC: assert(checkZCT())
 
 proc newSeq(typ: PNimType, len: int): pointer =
   # XXX: overflow checks!
@@ -665,16 +790,19 @@ proc newSeq(typ: PNimType, len: int): pointer =
 proc growObj(old: pointer, newsize: int): pointer =
   var
     res, ol: PCell
+  when stressGC: assert(checkZCT())
   checkCollection()
   ol = usrToCell(old)
   assert(ol.typ.kind in {tyString, tySequence})
-  assert(seqCheck(ol))
   when defined(nimSize):
     memUsed = memUsed - nimSize(ol)
   else:
     memUsed = memUsed - ol.size # this is not exact
-  # pity that we don't know the old size
+                                # pity that we don't know the old size
   res = cast[PCell](realloc(ol, newsize + sizeof(TCell)))
+  #res = cast[PCell](gcAlloc(newsize + sizeof(TCell)))
+  #copyMem(res, ol, nimSize(ol))
+  assert((cast[TAddress](res) and (MemAlignment-1)) == 0)
   when defined(nimSize):
     memUsed = memUsed + nimSize(res)
   else:
@@ -682,74 +810,69 @@ proc growObj(old: pointer, newsize: int): pointer =
 
   if res != ol:
     if res == nil: raiseOutOfMem()
-    excl(ct.zct, ol) # remove old pointer in any case:
-    # It may have a refcount > 0 and is still in the ZCT.
-    # So do it safe here and remove it anyway.
-    excl(ct.at, ol)
-    if res.refcount == 0:
-      # store new pointer in ZCT, if refcount == 0:
-      incl(ct.zct, res)
-    incl(ct.at, res)
-    ct.mask = ct.mask or cast[TAddress](res)
-    when defined(debugGC):
+    if res.refcount <= 0:
+      assert(gch.zct.d[-res.refcount] == ol)
+      gch.zct.d[-res.refcount] = res
+    excl(gch.at, ol)
+    incl(gch.at, res)
+    gch.mask = gch.mask or cast[TAddress](res)
+    when defined(logGC):
       writeCell("growObj old cell", ol)
       writeCell("growObj new cell", res)
+    gcTrace(ol, csZctFreed)
+    gcTrace(res, csAllocated)
   result = cellToUsr(res)
-  #assert(checkRefc())
+  when stressGC: assert(checkZCT())
 
-proc collectCycles() =
-  when defined(debugGC):
-    echo("collecting cycles!\n")
+proc collectCycles(gch: var TGcHeap) =
+  when defined(logGC):
+    c_fprintf(c_stdout, "collecting cycles!\n")
 
   # step 1: pretend that any node is dead
-  for c in elements(ct.at):
+  for c in elements(gch.at):
     forallChildren(c, waCycleDecRef)
-  CellSetInit(ct.newAt)
+  CellSetInit(gch.newAt)
   # step 2: restore life cells
-  for c in elements(ct.at):
+  for c in elements(gch.at):
     if c.refcount > 0: restore(c)
   # step 3: free dead cells:
-  for cell in elements(ct.at):
+  for cell in elements(gch.at):
     if cell.refcount == 0:
-      assert(cell notin ct.zct)
       # We free an object that is part of a cycle here. Its children
       # may have been freed already. Thus the finalizer could access
       # garbage. To handle this case properly we need two passes for
       # freeing here which is too expensive. We just don't call the
       # finalizer for now. YYY: Any better ideas?
       prepareDealloc(cell)
-      dealloc(cell)
-      when defined(debugGC):
+      gcTrace(cell, csCycFreed)
+      when defined(logGC):
         writeCell("cycle collector dealloc cell", cell)
-  CellSetDeinit(ct.at)
-  ct.at = ct.newAt
-  #ct.newAt = nil
+      when reallyDealloc: dealloc(cell)
+  CellSetDeinit(gch.at)
+  gch.at = gch.newAt
 
-proc gcMark(p: pointer) =
+proc gcMark(gch: var TGcHeap, p: pointer) =
   # the addresses are not as objects on the stack, so turn them to objects:
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)
-  if ((c and ct.mask) == c) and cell in ct.at:
+  if ((c and gch.mask) == c) and cell in gch.at:
     # is the page that p "points to" in the AT? (All allocated pages are
     # always in the AT)
-    inc(cell.refcount)
-    inc(cell.stackcount)
-    addStackCell(ct, cell)
+    incRef(cell)
+    when stressGC: inc(cell.stackcount)
+    add(gch.stackCells, cell)
 
-proc unmarkStackAndRegisters() =
-  for i in 0 .. ct.stackLen-1:
-    var cell = ct.stackCells[i]
+proc unmarkStackAndRegisters(gch: var TGcHeap) =
+  when stressGC: assert(checkZCT())
+  for i in 0 .. gch.stackCells.len-1:
+    var cell = gch.stackCells.d[i]
     assert(cell.refcount > 0)
-    when defined(debugGC):
-      if cell.stackcount == 0:
-        writeGraph()
-        writePtr("broken stackcount", cellToUsr(cell))
-    assert(cell.stackcount > 0)
-    dec(cell.refcount)
-    dec(cell.stackcount)
-    if cell.refcount == 0:
-      incl(ct.zct, cell)
-  ct.stackLen = 0 # reset to zero
+    when stressGC:
+      assert(cell.stackcount > 0)
+      dec(cell.stackcount)
+    decRef(cell)
+  gch.stackCells.len = 0 # reset to zero
+  when stressGC: assert(checkZCT())
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel (c)
@@ -765,7 +888,7 @@ when defined(sparc): # For SPARC architecture.
       stackTop: array[0..1, pointer]
     result = p >= addr(stackTop[0]) and p <= stackBottom
 
-  proc markStackAndRegisters() =
+  proc markStackAndRegisters(gch: var TGcHeap) =
     when defined(sparcv9):
       asm  " flushw"
     else:
@@ -780,7 +903,7 @@ when defined(sparc): # For SPARC architecture.
     sp = addr(stackTop[0])
     # Addresses decrease as the stack grows.
     while sp <= max:
-      gcMark(sp^)
+      gcMark(gch, sp^)
       sp = cast[ppointer](cast[TAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
@@ -802,7 +925,7 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
       # a little hack to get the size of a TJmpBuf in the generated C code
       # in a platform independant way
 
-  proc markStackAndRegisters() =
+  proc markStackAndRegisters(gch: var TGcHeap) =
     var
       max = stackBottom
       registers: C_JmpBuf # The jmp_buf buffer is in the C stack.
@@ -814,7 +937,7 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
     # sp will traverse the JMP_BUF as well (jmp_buf size is added,
     # otherwise sp would be below the registers structure).
     while sp >= max:
-      gcMark(sp^)
+      gcMark(gch, sp^)
       sp = cast[ppointer](cast[TAddress](sp) -% sizeof(pointer))
 
 else:
@@ -826,7 +949,7 @@ else:
       stackTop: array [0..1, pointer]
     result = p >= addr(stackTop[0]) and p <= stackBottom
 
-  proc markStackAndRegisters() =
+  proc markStackAndRegisters(gch: var TGcHeap) =
     var
       max = stackBottom
       registers: C_JmpBuf # The jmp_buf buffer is in the C stack.
@@ -835,63 +958,58 @@ else:
     c_setjmp(registers)   # To fill the C stack with registers.
     sp = cast[ppointer](addr(registers))
     while sp <= max:
-      gcMark(sp^)
+      gcMark(gch, sp^)
       sp = cast[ppointer](cast[TAddress](sp) +% sizeof(pointer))
 
 # ----------------------------------------------------------------------------
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc CollectZCT =
-  CellSetInit(ct.newZCT)
-  for c in elements(ct.zct):
-    if c.refcount == 0:
-      # if != 0 the reference count has been increased, so this does not
-      # belong to the ZCT. We simply do nothing - it won't appear in the newZCT
-      # anyway.
-      # We are about to free the object, call the finalizer BEFORE its
-      # children are deleted as well, because otherwise the finalizer may
-      # access invalid memory. This is done by prepareDealloc():
-      prepareDealloc(c)
-      forAllChildren(c, waZctDecRef)
-      assert(c.refcount == 0) # should still be zero
-      excl(ct.at, c)
-      excl(ct.newZCT, c) # BUGFIX
-      when defined(debugGC):
-        writeCell("zct dealloc cell", c)
-      dealloc(c)
-  CellSetDeinit(ct.zct)
-  ct.zct = ct.newZCT
-  #ct.newZCT = nil
+proc CollectZCT(gch: var TGcHeap) =
+  while gch.zct.len > 0:
+    var c = gch.zct.d[0]
+    assert(c.refcount <= 0)
+    # remove from ZCT:
+    gch.zct.d[0] = gch.zct.d[gch.zct.len-1]
+    gch.zct.d[0].refcount = 0
+    dec(gch.zct.len)
+    # We are about to free the object, call the finalizer BEFORE its
+    # children are deleted as well, because otherwise the finalizer may
+    # access invalid memory. This is done by prepareDealloc():
+    gcTrace(c, csZctFreed)
+    prepareDealloc(c)
+    forAllChildren(c, waZctDecRef)
+    excl(gch.at, c)
+    when defined(logGC):
+      writeCell("zct dealloc cell", c)
+    #when defined(debugGC) and defined(nimSize): zeroMem(c, nimSize(c))
+    when reallyDealloc: dealloc(c)
 
-proc collectCT(ct: var TCountTables) =
-  when defined(debugGC):
+proc collectCT(gch: var TGcHeap) =
+  when defined(logGC):
     c_fprintf(c_stdout, "collecting zero count table; stack size: %ld\n",
               stackSize())
-  markStackAndRegisters()
-  assert(GC_invariant())
-  while True:
-    collectZCT()
-    if ct.zct.counter == 0: break
-    # ``counter`` counts the pages, but zero pages means zero cells
-
-  when defined(cycleGC):
-    # still over the cycle threshold?
-    if memUsed >= cycleThreshold or stressGC:
-      # collect the cyclic things:
-      assert(ct.zct.counter == 0)
-      assert(GC_invariant())
-      collectCycles()
-
-  # recompute the thresholds:
-  rcThreshold = (memUsed div RC_increase + 1) * RC_Increase
-  cycleThreshold = memUsed * cycleIncrease
-
-  assert(GC_invariant())
-  unmarkStackAndRegisters()
+  when stressGC: assert(checkZCT())
+  if gch.zct.len >= ZctThreshold or memUsed >= cycleThreshold or stressGC:
+    markStackAndRegisters(gch)
+    when stressGC: assert(GC_invariant())
+    collectZCT(gch)
+    when stressGC: assert(GC_invariant())
+    assert(gch.zct.len == 0)
+    when defined(cycleGC):
+      if memUsed >= cycleThreshold or stressGC:
+        when defined(logGC):
+          c_fprintf(c_stdout, "collecting cycles; memory used: %ld\n", memUsed)
+        collectCycles(gch)
+        cycleThreshold = max(InitialCycleThreshold, memUsed * cycleIncrease)
+        when defined(logGC):
+          c_fprintf(c_stdout, "now used: %ld; threshold: %ld\n",
+                    memUsed, cycleThreshold)
+    unmarkStackAndRegisters(gch)
+  when stressGC: assert(GC_invariant())
 
 proc GC_fullCollect() =
   var oldThreshold = cycleThreshold
   cycleThreshold = 0 # forces cycle collection
-  collectCT(ct)
+  collectCT(gch)
   cycleThreshold = oldThreshold

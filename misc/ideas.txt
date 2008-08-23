@@ -354,7 +354,7 @@ C vs LLVM for code generation
 =============================
 
 Advantages of C:
-* easier bootstrap; especially becuase the RTL depends on C's structures and
+* easier bootstrap; especially because the RTL depends on C's structures and
   constants which may change
 * the compiler will port to the LEGO mindstorm easily
 * interfacing with C is easier
@@ -564,7 +564,7 @@ overloading resolution:
 
 First we have to get generic parameters right: Unification over any order is
 quite expensive! Thus only unification from first to last is tried. It is
-only needed for generic procs. The only problem is that this rules is not
+only needed for generic procs. The only problem is that this rule is not
 applied for constructor expressions like {} or [].
 
 # -----------------------------------------------------------------------------

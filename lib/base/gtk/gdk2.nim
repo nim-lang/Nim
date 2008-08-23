@@ -32,7 +32,7 @@ type
   TGdkVisualClass* = object of TGObjectClass
 
   PGdkColor* = ptr TGdkColor
-  TGdkColor* = record 
+  TGdkColor* {.final.} = object 
     pixel*: guint32
     red*: guint16
     green*: guint16
@@ -52,7 +52,7 @@ type
   TGdkFontType* = enum 
     GDK_FONT_FONT, GDK_FONT_FONTSET
   PGdkFont* = ptr TGdkFont
-  TGdkFont* = record 
+  TGdkFont* {.final.} = object 
     `type`*: TGdkFontType
     ascent*: gint
     descent*: gint
@@ -79,7 +79,7 @@ type
   PGdkGCValuesMask* = ptr TGdkGCValuesMask
   TGdkGCValuesMask* = int32
   PGdkGCValues* = ptr TGdkGCValues
-  TGdkGCValues* = record 
+  TGdkGCValues* {.final.} = object 
     foreground*: TGdkColor
     background*: TGdkColor
     font*: PGdkFont
@@ -125,7 +125,7 @@ type
   TGdkInputCondition* = int32
   PGdkStatus* = ptr TGdkStatus
   TGdkStatus* = int32
-  TGdkPoint* = record 
+  TGdkPoint* {.final.} = object 
     x*: gint
     y*: gint
 
@@ -135,14 +135,14 @@ type
   PGdkWChar* = ptr TGdkWChar
   TGdkWChar* = guint32
   PGdkSegment* = ptr TGdkSegment
-  TGdkSegment* = record 
+  TGdkSegment* {.final.} = object 
     x1*: gint
     y1*: gint
     x2*: gint
     y2*: gint
 
   PGdkRectangle* = ptr TGdkRectangle
-  TGdkRectangle* = record 
+  TGdkRectangle* {.final.} = object 
     x*: gint
     y*: gint
     width*: gint
@@ -190,7 +190,7 @@ type
   PGdkCursorType* = ptr TGdkCursorType
   TGdkCursorType* = gint
   PGdkCursor* = ptr TGdkCursor
-  TGdkCursor* = record 
+  TGdkCursor* {.final.} = object 
     `type`*: TGdkCursorType
     ref_count*: guint
 
@@ -220,14 +220,14 @@ type
   PGdkRegionBox* = ptr TGdkRegionBox
   TGdkRegionBox* = TGdkSegment
   PGdkRegion* = ptr TGdkRegion
-  TGdkRegion* = record 
+  TGdkRegion* {.final.} = object 
     size*: int32
     numRects*: int32
     rects*: PGdkRegionBox
     extents*: TGdkRegionBox
 
   PPOINTBLOCK* = ptr TPOINTBLOCK
-  TPOINTBLOCK* = record 
+  TPOINTBLOCK* {.final.} = object 
     pts*: array[0..(NUMPTSTOBUFFER) - 1, TGdkPoint]
     next*: PPOINTBLOCK
 
@@ -336,13 +336,13 @@ type
     GDK_SETTING_ACTION_NEW, GDK_SETTING_ACTION_CHANGED, 
     GDK_SETTING_ACTION_DELETED
   PGdkEventAny* = ptr TGdkEventAny
-  TGdkEventAny* = record 
+  TGdkEventAny* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
 
   PGdkEventExpose* = ptr TGdkEventExpose
-  TGdkEventExpose* = record 
+  TGdkEventExpose* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -351,20 +351,20 @@ type
     count*: gint
 
   PGdkEventNoExpose* = ptr TGdkEventNoExpose
-  TGdkEventNoExpose* = record 
+  TGdkEventNoExpose* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
 
   PGdkEventVisibility* = ptr TGdkEventVisibility
-  TGdkEventVisibility* = record 
+  TGdkEventVisibility* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
     state*: TGdkVisibilityState
 
   PGdkEventMotion* = ptr TGdkEventMotion
-  TGdkEventMotion* = record 
+  TGdkEventMotion* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -379,7 +379,7 @@ type
     y_root*: gdouble
 
   PGdkEventButton* = ptr TGdkEventButton
-  TGdkEventButton* = record 
+  TGdkEventButton* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -394,7 +394,7 @@ type
     y_root*: gdouble
 
   PGdkEventScroll* = ptr TGdkEventScroll
-  TGdkEventScroll* = record 
+  TGdkEventScroll* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -408,7 +408,7 @@ type
     y_root*: gdouble
 
   PGdkEventKey* = ptr TGdkEventKey
-  TGdkEventKey* = record 
+  TGdkEventKey* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -421,7 +421,7 @@ type
     group*: guint8
 
   PGdkEventCrossing* = ptr TGdkEventCrossing
-  TGdkEventCrossing* = record 
+  TGdkEventCrossing* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -437,14 +437,14 @@ type
     state*: guint
 
   PGdkEventFocus* = ptr TGdkEventFocus
-  TGdkEventFocus* = record 
+  TGdkEventFocus* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
     `in`*: gint16
 
   PGdkEventConfigure* = ptr TGdkEventConfigure
-  TGdkEventConfigure* = record 
+  TGdkEventConfigure* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -454,7 +454,7 @@ type
     height*: gint
 
   PGdkEventProperty* = ptr TGdkEventProperty
-  TGdkEventProperty* = record 
+  TGdkEventProperty* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -464,7 +464,7 @@ type
 
   TGdkNativeWindow* = pointer
   PGdkEventSelection* = ptr TGdkEventSelection
-  TGdkEventSelection* = record 
+  TGdkEventSelection* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -475,7 +475,7 @@ type
     requestor*: TGdkNativeWindow
 
   PGdkEventProximity* = ptr TGdkEventProximity
-  TGdkEventProximity* = record 
+  TGdkEventProximity* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -483,11 +483,11 @@ type
     device*: PGdkDevice
 
   PmatDUMMY* = ptr TmatDUMMY
-  TmatDUMMY* = record 
+  TmatDUMMY* {.final.} = object 
     b*: array[0..19, char]
 
   PGdkEventClient* = ptr TGdkEventClient
-  TGdkEventClient* = record 
+  TGdkEventClient* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -496,7 +496,7 @@ type
     b*: array[0..19, char]
 
   PGdkEventSetting* = ptr TGdkEventSetting
-  TGdkEventSetting* = record 
+  TGdkEventSetting* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -504,7 +504,7 @@ type
     name*: cstring
 
   PGdkEventWindowState* = ptr TGdkEventWindowState
-  TGdkEventWindowState* = record 
+  TGdkEventWindowState* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -512,7 +512,7 @@ type
     new_window_state*: TGdkWindowState
 
   PGdkEventDND* = ptr TGdkEventDND
-  TGdkEventDND* = record 
+  TGdkEventDND* {.final.} = object 
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -521,7 +521,7 @@ type
     x_root*: gshort
     y_root*: gshort
 
-  TGdkEvent* = record 
+  TGdkEvent* {.final.} = object 
     data*: array[0..255, char] # union of
                                # `type`: TGdkEventType
                                #  any: TGdkEventAny
@@ -585,12 +585,12 @@ type
   PGdkAxisUse* = ptr TGdkAxisUse
   TGdkAxisUse* = int32
   PGdkDeviceKey* = ptr TGdkDeviceKey
-  TGdkDeviceKey* = record 
+  TGdkDeviceKey* {.final.} = object 
     keyval*: guint
     modifiers*: TGdkModifierType
 
   PGdkDeviceAxis* = ptr TGdkDeviceAxis
-  TGdkDeviceAxis* = record 
+  TGdkDeviceAxis* {.final.} = object 
     use*: TGdkAxisUse
     min*: gdouble
     max*: gdouble
@@ -605,12 +605,12 @@ type
     num_keys*: gint
     keys*: PGdkDeviceKey
 
-  TGdkTimeCoord* = record 
+  TGdkTimeCoord* {.final.} = object 
     time*: guint32
     axes*: array[0..(GDK_MAX_TIMECOORD_AXES) - 1, gdouble]
 
   PGdkKeymapKey* = ptr TGdkKeymapKey
-  TGdkKeymapKey* = record 
+  TGdkKeymapKey* {.final.} = object 
     keycode*: guint
     group*: gint
     level*: gint
@@ -624,12 +624,12 @@ type
     direction_changed*: proc (keymap: PGdkKeymap){.cdecl.}
 
   PGdkPangoAttrStipple* = ptr TGdkPangoAttrStipple
-  TGdkPangoAttrStipple* = record 
+  TGdkPangoAttrStipple* {.final.} = object 
     attr*: TPangoAttribute
     stipple*: PGdkBitmap
 
   PGdkPangoAttrEmbossed* = ptr TGdkPangoAttrEmbossed
-  TGdkPangoAttrEmbossed* = record 
+  TGdkPangoAttrEmbossed* {.final.} = object 
     attr*: TPangoAttribute
     embossed*: gboolean
 
@@ -653,7 +653,7 @@ type
     GDK_OVERLAP_RECTANGLE_PART
   TGdkSpanFunc* = proc (span: PGdkSpan, data: gpointer){.cdecl.}
   PGdkRgbCmap* = ptr TGdkRgbCmap
-  TGdkRgbCmap* = record 
+  TGdkRgbCmap* {.final.} = object 
     colors*: array[0..255, guint32]
     n_colors*: gint
     info_list*: PGSList
@@ -698,7 +698,7 @@ type
   TGdkInputFunction* = proc (data: gpointer, source: gint, 
                              condition: TGdkInputCondition){.cdecl.}
   TGdkDestroyNotify* = proc (data: gpointer){.cdecl.}
-  TGdkSpan* = record 
+  TGdkSpan* {.final.} = object 
     x*: gint
     y*: gint
     width*: gint
@@ -731,7 +731,7 @@ type
     GDK_WINDOW_EDGE_SOUTH_WEST, GDK_WINDOW_EDGE_SOUTH, 
     GDK_WINDOW_EDGE_SOUTH_EAST
   PGdkWindowAttr* = ptr TGdkWindowAttr
-  TGdkWindowAttr* = record 
+  TGdkWindowAttr* {.final.} = object 
     title*: cstring
     event_mask*: gint
     x*: gint
@@ -748,7 +748,7 @@ type
     override_redirect*: gboolean
 
   PGdkGeometry* = ptr TGdkGeometry
-  TGdkGeometry* = record 
+  TGdkGeometry* {.final.} = object 
     min_width*: gint
     min_height*: gint
     max_width*: gint
@@ -762,7 +762,7 @@ type
     win_gravity*: TGdkGravity
 
   PGdkPointerHooks* = ptr TGdkPointerHooks
-  TGdkPointerHooks* = record 
+  TGdkPointerHooks* {.final.} = object 
     get_pointer*: proc (window: PGdkWindow, x: Pgint, y: Pgint, 
                         mask: PGdkModifierType): PGdkWindow{.cdecl.}
     window_at_pointer*: proc (screen: PGdkScreen, win_x: Pgint, win_y: Pgint): PGdkWindow{.

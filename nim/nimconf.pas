@@ -101,7 +101,7 @@ var
 
 procedure doEnd(var L: TLexer; tok: PToken);
 begin
-  if high(condStack) < 0 then lexMessage(L, errAtIfExpected);
+  if high(condStack) < 0 then lexMessage(L, errTokenExpected, '@if');
   ppGetTok(L, tok); // skip 'end'
   setLength(condStack, high(condStack))
 end;
@@ -114,7 +114,7 @@ procedure jumpToDirective(var L: TLexer; tok: PToken; dest: TJumpDest); forward;
 procedure doElse(var L: TLexer; tok: PToken);
 begin
   if high(condStack) < 0 then
-    lexMessage(L, errAtIfExpectedBeforeElse);
+    lexMessage(L, errTokenExpected, '@if');
   ppGetTok(L, tok);
   if tok.tokType = tkColon then ppGetTok(L, tok);
   if condStack[high(condStack)] then
@@ -126,7 +126,7 @@ var
   res: bool;
 begin
   if high(condStack) < 0 then
-    lexMessage(L, errAtIfExpectedBeforeElif);
+    lexMessage(L, errTokenExpected, '@if');
   res := EvalppIf(L, tok);
   if condStack[high(condStack)] or not res then
     jumpToDirective(L, tok, jdElseEndif)
@@ -168,7 +168,7 @@ begin
       ppGetTok(L, tok)
     end
     else if tok.tokType = tkEof then
-      lexMessage(L, errAtEndExpected)
+      lexMessage(L, errTokenExpected, '@end')
     else
       ppGetTok(L, tok)
   end
@@ -303,7 +303,7 @@ begin
     while tok.tokType <> tkEof do
       parseAssignment(L, tok);
     if length(condStack) > 0 then
-      lexMessage(L, errAtEndExpected);
+      lexMessage(L, errTokenExpected, '@end');
     closeLexer(L)
   end
 end;

@@ -16,7 +16,7 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  var buf: array [0..59, char] 
+  var buf: array [0..59, char]
   c_sprintf(buf, "%p", x)
   return $buf
 
@@ -81,9 +81,9 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   of 1: u = ze64(cast[ptr int8](p)^)
   of 2: u = ze64(cast[ptr int16](p)^)
   of 4: u = ze64(cast[ptr int32](p)^)
-  of 8: u = ze64(cast[ptr int64](p)^)
+  of 8: u = cast[ptr int64](p)^
   else:
-    var a = cast[pbyteArray](p)^
+    var a = cast[pbyteArray](p)
     for i in 0 .. typ.size*8-1:
       if (a[i div 8] and (1 shl (i mod 8))) != 0:
         if elemCounter > 0: add result, ", "
@@ -102,8 +102,8 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerproc.} =
   reprSetAux(result, p, typ)
 
 type
-  TReprClosure = record # we cannot use a global variable here
-                        # as this wouldn't be thread-safe
+  TReprClosure {.final.} = object # we cannot use a global variable here
+                                  # as this wouldn't be thread-safe
     marked: TCellSet
     recdepth: int       # do not recurse endless
     indent: int         # indentation
@@ -151,18 +151,18 @@ proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
   case n.kind
   of nkNone: assert(false)
   of nkSlot:
-    add result, $n.name 
+    add result, $n.name
     add result, " = "
     reprAux(result, cast[pointer](cast[TAddress](p) + n.offset), n.typ, cl)
   of nkList:
-    for i in 0..n.len-1: 
+    for i in 0..n.len-1:
       if i > 0: add result, ",\n"
       reprRecordAux(result, p, n.sons[i], cl)
-  of nkCase: 
+  of nkCase:
     var m = selectBranch(p, n)
     reprAux(result, cast[pointer](cast[TAddress](p) + n.offset), n.typ, cl)
     if m != nil: reprRecordAux(result, p, m, cl)
-    
+
 proc reprRecord(result: var string, p: pointer, typ: PNimType,
                 cl: var TReprClosure) =
   add result, "["
@@ -189,8 +189,8 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   case typ.kind
   of tySet: reprSetAux(result, p, typ)
   of tyArray: reprArray(result, p, typ, cl)
-  of tyRecord: reprRecord(result, p, typ, cl)
-  of tyObject: # result = reprRecord(p, typ, cl)
+  of tyTuple, tyPureObject: reprRecord(result, p, typ, cl)
+  of tyObject: 
     var t = cast[ptr PNimType](p)^
     reprRecord(result, p, t, cl)
   of tyRef, tyPtr:
@@ -220,14 +220,28 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     add result, "(invalid data!)"
   inc(cl.recdepth)
 
+proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
+                   compilerproc.} =
+  var
+    cl: TReprClosure
+  initReprClosure(cl)
+  result = "["
+  var bs = elemtyp.size
+  for i in 0..length - 1:
+    if i > 0: add result, ", "
+    reprAux(result, cast[pointer](cast[TAddress](p) + i*bs), elemtyp, cl)
+  add result, "]"
+  deinitReprClosure(cl)
+
 proc reprAny(p: pointer, typ: PNimType): string =
   var
     cl: TReprClosure
   initReprClosure(cl)
   result = ""
-  if typ.kind in {tyObject, tyRecord, tyArray, tySet}:
+  if typ.kind in {tyObject, tyPureObject, tyTuple, tyArray, tySet}:
     reprAux(result, p, typ, cl)
   else:
+    var p = p
     reprAux(result, addr(p), typ, cl)
   add result, "\n"
   deinitReprClosure(cl)

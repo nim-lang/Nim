@@ -1,8 +1,5 @@
 # test for ref types (including refs to procs)
 
-import
-  io
-
 type
   TProc = proc (a, b: int): int {.stdcall.}
 

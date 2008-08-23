@@ -12,7 +12,7 @@ import
   lexbase, os, strutils
 
 type
-  TMyRec = record # describes a record
+  TMyRec {.final.} = object
     x, y: int     # coordinates
     c: char       # a character
     a: int32      # an integer

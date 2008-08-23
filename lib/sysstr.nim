@@ -16,7 +16,7 @@
 # the programmer may not want
 
 type
-  TStringDesc {.importc, nodecl.} = record
+  TStringDesc {.importc, nodecl, final.} = object
     len, space: int # len and space without counting the terminating zero
     data: array[0..0, char] # for the '\0' character
 
@@ -25,7 +25,6 @@ type
 # implementation:
 
 proc resize(old: int): int {.inline.} =
-  assert(old < 65536 * 4)
   if old <= 0: return 1
   elif old < 65536: return old * 2
   else: return old * 3 div 2 # for large arrays * 3/2 is better
@@ -64,6 +63,7 @@ proc cstrToNimstr(str: CString): mstring {.compilerProc.} =
   return toNimstr(str, c_strlen(str))
 
 proc copyString(src: mstring): mstring {.compilerProc.} =
+  if src == nil: return nil
   result = rawNewString(src.space)
   result.len = src.len
   c_memcpy(result.data, src.data, (src.len + 1) * sizeof(Char))
@@ -220,7 +220,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   result.len = newLen
 
 # --------------- other string routines ----------------------------------
-proc `$`(x: int): string =
+proc nimIntToStr(x: int): string {.compilerproc.} =
   result = newString(sizeof(x)*4)
   var i = 0
   var y = x
@@ -238,14 +238,12 @@ proc `$`(x: int): string =
   for j in 0..i div 2 - 1:
     swap(result[j], result[i-j-1])
 
-{.push warnings: off.}
-proc `$`(x: float): string =
+proc nimFloatToStr(x: float): string {.compilerproc.} =
   var buf: array [0..59, char]
   c_sprintf(buf, "%#g", x)
   return $buf
-{.pop.}
 
-proc `$`(x: int64): string =
+proc nimInt64ToStr(x: int64): string {.compilerproc.} =
   # we don't rely on C's runtime here as some C compiler's
   # int64 support is weak
   result = newString(sizeof(x)*4)
@@ -265,18 +263,12 @@ proc `$`(x: int64): string =
   for j in 0..i div 2 - 1:
     swap(result[j], result[i-j-1])
 
-proc `$`(x: bool): string =
-  if x: result = "true"
-  else: result = "false"
+proc nimBoolToStr(x: bool): string {.compilerproc.} =
+  return if x: "true" else: "false"
 
-proc `$`(x: char): string =
+proc nimCharToStr(x: char): string {.compilerproc.} =
   result = newString(1)
   result[0] = x
-
-proc `$`(x: string): string =
-  # this is useful for generic code!
-  return x
-
 
 proc binaryStrSearch(x: openarray[string], y: string): int {.compilerproc.} =
   var

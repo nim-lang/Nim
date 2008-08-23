@@ -13,7 +13,7 @@ unit platform;
 // Note: Unfortunately if an OS or CPU is listed here this does not mean that
 // Nimrod has been tested on this platform or that the RTL has been ported.
 // Feel free to test for your exentric platform! (Windows on I386 and Linux
-// on AMD64 have been tested, though.)
+// on I386 have been tested, though.)
 
 interface
 
@@ -45,7 +45,8 @@ type
     osAtari,
     osNetware,
     osMacos,
-    osMacosx
+    osMacosx,
+    osEcmaScript
   );
 type
   TInfoOSProp = (
@@ -55,7 +56,7 @@ type
   );
 
   TInfoOSProps = set of TInfoOSProp;
-  TInfoOS = record
+  TInfoOS = record{@tuple}
     name: string;
     parDir: string;
     dllExt: string;
@@ -73,7 +74,7 @@ type
   end;
 const
   OS: array [succ(low(TSystemOS))..high(TSystemOS)] of TInfoOS = (
-  ( 
+  (
     name: 'DOS';
     parDir: '..';
     dllExt: '.dll';
@@ -89,7 +90,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospCaseInsensitive];
   ),
-  ( 
+  (
     name: 'Windows';
     parDir: '..';
     dllExt: '.dll';
@@ -105,7 +106,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospCaseInsensitive];
   ),
-  ( 
+  (
     name: 'OS2';
     parDir: '..';
     dllExt: '.dll';
@@ -121,7 +122,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospCaseInsensitive];
   ),
-  ( 
+  (
     name: 'Linux';
     parDir: '..';
     dllExt: '.so';
@@ -137,7 +138,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'MorphOS';
     parDir: '..';
     dllExt: '.so';
@@ -153,7 +154,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'SkyOS';
     parDir: '..';
     dllExt: '.so';
@@ -169,7 +170,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'Solaris';
     parDir: '..';
     dllExt: '.so';
@@ -185,7 +186,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'Irix';
     parDir: '..';
     dllExt: '.so';
@@ -201,7 +202,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'NetBSD';
     parDir: '..';
     dllExt: '.so';
@@ -217,7 +218,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'FreeBSD';
     parDir: '..';
     dllExt: '.so';
@@ -233,7 +234,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'OpenBSD';
     parDir: '..';
     dllExt: '.so';
@@ -249,7 +250,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'PalmOS';
     parDir: '..';
     dllExt: '.so';
@@ -265,7 +266,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC];
   ),
-  ( 
+  (
     name: 'QNX';
     parDir: '..';
     dllExt: '.so';
@@ -281,7 +282,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
-  ( 
+  (
     name: 'Amiga';
     parDir: '..';
     dllExt: '.library';
@@ -297,7 +298,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC];
   ),
-  ( 
+  (
     name: 'Atari';
     parDir: '..';
     dllExt: '.dll';
@@ -313,7 +314,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC];
   ),
-  ( 
+  (
     name: 'Netware';
     parDir: '..';
     dllExt: '.nlm';
@@ -329,7 +330,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospCaseInsensitive];
   ),
-  ( 
+  (
     name: 'MacOS';
     parDir: '::';
     dllExt: 'Lib';
@@ -345,7 +346,7 @@ const
     extSep: '.'+'';
     props: {@set}[ospCaseInsensitive];
   ),
-  ( 
+  (
     name: 'MacOSX';
     parDir: '..';
     dllExt: '.dylib';
@@ -353,13 +354,29 @@ const
     dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
-    pathSep: ':'+''; 
+    pathSep: ':'+'';
     dirSep: '/'+'';
     scriptExt: '.sh';
     curDir: '.'+'';
     exeExt: '';
     extSep: '.'+'';
     props: {@set}[ospNeedsPIC, ospPosix];
+  ),
+  (
+    name: 'EcmaScript';
+    parDir: '..';
+    dllExt: '.so';
+    altDirSep: '/'+'';
+    dllPrefix: 'lib';
+    objExt: '.o';
+    newLine: #10+'';
+    pathSep: ':'+'';
+    dirSep: '/'+'';
+    scriptExt: '.sh';
+    curDir: '.'+'';
+    exeExt: '';
+    extSep: '.'+'';
+    props: {@set}[];
   )
 );
 type
@@ -377,11 +394,12 @@ type
     cpuIa64,
     cpuAmd64,
     cpuMips,
-    cpuArm
+    cpuArm,
+    cpuEcmaScript
   );
 type
   TEndian = (littleEndian, bigEndian);
-  TInfoCPU = record
+  TInfoCPU = record{@tuple}
     name: string;
     intSize: int;
     endian: TEndian;
@@ -460,6 +478,13 @@ const
     endian: littleEndian;
     floatSize: 64;
     bit: 32;
+  ),
+  (
+    name: 'ecmascript';
+    intSize: 32;
+    endian: bigEndian;
+    floatSize: 64;
+    bit: 32;
   )
 );
 
@@ -517,9 +542,9 @@ end;
 // this is Ok for the Pascal version, but the Nimrod version needs a different
 // mechanism
 {@emit
-procedure nimCPU(): cstring; importc;}
+procedure nimCPU(): cstring; importc; noconv;}
 {@emit
-procedure nimOS(): cstring; importc;}
+procedure nimOS(): cstring; importc; noconv;}
 
 {@ignore}
 initialization

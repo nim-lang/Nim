@@ -7,9 +7,9 @@
 //    distribution, for details about the copyright.
 //
 
-// This module handles the parsing of command line arguments.
-
 unit commands;
+
+// This module handles the parsing of command line arguments.
 
 interface
 
@@ -41,16 +41,14 @@ uses
 const
 {$ifdef fpc}
   compileDate = {$I %date%};
-  compileTime = {$I %time%};
 {$else}
   compileDate = '2008-0-0';
-  compileTime = '00:00:00';
 {$endif}
 {@emit}
 
 const
   HelpMessage = 'Nimrod Compiler Version $1 (' +{&}
-    compileDate +{&} ' ' +{&} compileTime +{&} ') [$2: $3]' +{&} nl +{&}
+    compileDate +{&} ') [$2: $3]' +{&} nl +{&}
     'Copyright (c) 2004-2008 by Andreas Rumpf' +{&} nl;
 
 const
@@ -66,7 +64,8 @@ const
 +{&} '  compile                   compile project with default code generator (C)' +{&} nl
 +{&} '  compile_to_c              compile project with C code generator' +{&} nl
 +{&} '  compile_to_cpp            compile project with C++ code generator' +{&} nl
-+{&} '  doc                       generate the documentation for inputfile; ' +{&} nl
++{&} '  compile_to_ecmascript     compile project to ECMAScript code (experimental)' +{&} nl
++{&} '  doc                       generate the documentation for inputfile;' +{&} nl
 +{&} '                            with --run switch opens it with $BROWSER' +{&} nl
 +{&} 'Arguments:' +{&} nl
 +{&} '  arguments are passed to the program being run (if --run option is selected)' +{&} nl
@@ -80,6 +79,8 @@ const
 +{&} '  --line_trace:on|off       code generation for line trace ON|OFF' +{&} nl
 +{&} '  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF' +{&} nl
 +{&} '  -x, --checks:on|off       code generation for all runtime checks ON|OFF' +{&} nl
++{&} '  --obj_checks:on|off       code generation for obj conversion checks ON|OFF' +{&} nl
++{&} '  --field_checks:on|off     code generation for case record fields ON|OFF' +{&} nl
 +{&} '  --range_checks:on|off     code generation for range checks ON|OFF' +{&} nl
 +{&} '  --bound_checks:on|off     code generation for bound checks ON|OFF' +{&} nl
 +{&} '  --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF' +{&} nl
@@ -174,17 +175,8 @@ const
   ;
 
 function getCommandLineDesc: string;
-var
-  v: string;
 begin
-  // the Pascal version number gets a little star ('*'), the Nimrod version
-  // does not! This helps distinguishing the different builds.
-{@ignore}
-  v := VersionAsString +{&} '*';
-{@emit
-  v := VersionAsString
-}
-  result := format(HelpMessage, [v, platform.os[hostOS].name,
+  result := format(HelpMessage, [VersionAsString, platform.os[hostOS].name,
     cpu[hostCPU].name]) +{&} Usage
 end;
 
@@ -210,6 +202,7 @@ begin
                                     cpu[hostCPU].name]) +{&} AdvancedUsage);
     advHelpWritten := true;
     helpWritten := true;
+    halt(0);
   end
 end;
 
@@ -423,7 +416,7 @@ begin
       ProcessOnOffSwitch({@set}[optHints], arg, pass, info);
     wCheckpoints:
       ProcessOnOffSwitch({@set}[optCheckpoints], arg, pass, info);
-    wStackTrace, wS:
+    wStackTrace:
       ProcessOnOffSwitch({@set}[optStackTrace], arg, pass, info);
     wLineTrace:
       ProcessOnOffSwitch({@set}[optLineTrace], arg, pass, info);
@@ -436,6 +429,10 @@ begin
     end;
     wChecks, wX:
       ProcessOnOffSwitch(checksOptions, arg, pass, info);
+    wObjChecks:
+      ProcessOnOffSwitch({@set}[optObjCheck], arg, pass, info);
+    wFieldChecks:
+      ProcessOnOffSwitch({@set}[optFieldCheck], arg, pass, info);
     wRangeChecks:
       ProcessOnOffSwitch({@set}[optRangeCheck], arg, pass, info);
     wBoundChecks:
@@ -484,6 +481,10 @@ begin
         else
           liMessage(info, errGuiConsoleOrLibExpectedButXFound, arg)
       end
+    end;
+    wListDef: begin
+      if pass in {@set}[passCmd2, passPP] then
+        condsyms.listSymbols();
     end;
     wPassC, wT: begin
       expectArg(switch, arg, pass, info);

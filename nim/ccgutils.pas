@@ -17,14 +17,40 @@ interface
 
 uses
   charsets, nsystem,
-  ast, astalgo, ropes, lists, hashes, strutils, types;
+  ast, astalgo, ropes, lists, hashes, strutils, types, msgs;
 
 function toCChar(c: Char): string;
 function makeCString(const s: string): PRope;
 
 function TableGetType(const tab: TIdTable; key: PType): PObject;
+function GetUniqueType(key: PType): PType;
 
 implementation
+
+var
+  gTypeTable: TIdTable;
+
+function GetUniqueType(key: PType): PType;
+var
+  t: PType;
+  h: THash;
+begin
+  result := key;
+  if key = nil then exit;
+  assert(key.kind <> tyForward);
+  if key.kind = tyGenericInst then begin
+    result := GetUniqueType(lastSon(key));
+    exit
+  end;
+  if IdTableHasObjectAsKey(gTypeTable, key) then exit;
+  // we have to do a slow linear search because types may need
+  // to be compared by their structure:
+  for h := 0 to high(gTypeTable.data) do begin
+    t := PType(gTypeTable.data[h].key);
+    if (t <> nil) and sameType(t, key) then begin result := t; exit end
+  end;
+  IdTablePut(gTypeTable, key, key);
+end;
 
 function TableGetType(const tab: TIdTable; key: PType): PObject;
 var
@@ -69,7 +95,7 @@ begin
   result := nil;
   res := '"'+'';
   for i := strStart to length(s)+strStart-1 do begin
-    if i mod MaxLineLength = 0 then begin
+    if (i-strStart+1) mod MaxLineLength = 0 then begin
       res := res +{&} '"' +{&} nl;
       app(result, toRope(res));
       res := '"'+''; // reset
@@ -80,4 +106,6 @@ begin
   app(result, toRope(res));
 end;
 
+initialization
+  InitIdTable(gTypeTable);
 end.

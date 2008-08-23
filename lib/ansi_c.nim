@@ -17,9 +17,9 @@ proc c_memcpy(a, b: CString, size: cint) {.nodecl, importc: "memcpy".}
 proc c_strlen(a: CString): cint {.nodecl, importc: "strlen".}
 
 type
-  C_TextFile {.importc: "FILE", nodecl.} = record   # empty record for
-                                                   # data hiding
-  C_BinaryFile {.importc: "FILE", nodecl.} = record
+  C_TextFile {.importc: "FILE", nodecl, final.} = object   # empty record for
+                                                           # data hiding
+  C_BinaryFile {.importc: "FILE", nodecl, final.} = object
   C_TextFileStar = ptr CTextFile
   C_BinaryFileStar = ptr CBinaryFile
 

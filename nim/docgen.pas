@@ -40,6 +40,7 @@ type
     modDesc: PRope;     // module description
     dependsOn: PRope;   // dependencies
     id: int;            // for generating IDs
+    splitAfter: int;    // split to long entries in the TOC
     tocPart: array of TTocEntry;
     hasToc: bool;
     toc, section: TSections;
@@ -54,7 +55,7 @@ function findIndexNode(n: PRstNode): PRstNode;
 var
   i: int;
 begin
-  if n = nil then 
+  if n = nil then
     result := nil
   else if n.kind = rnIndex then begin
     result := n.sons[2];
@@ -62,7 +63,7 @@ begin
       result := newRstNode(rnDefList);
       n.sons[2] := result
     end
-    else if result.kind = rnInner then 
+    else if result.kind = rnInner then
       result := result.sons[0]
   end
   else begin
@@ -83,10 +84,10 @@ begin
   gIndexFile := appendFileExt(gIndexFile, 'txt');
   d.indexValFilename := changeFileExt(extractFilename(d.filename), HtmlExt);
   if ExistsFile(gIndexFile) then begin
-    d.indexFile := rstParse(readFile(gIndexFile), false, gIndexFile, 0, 1, 
+    d.indexFile := rstParse(readFile(gIndexFile), false, gIndexFile, 0, 1,
                             dummyHasToc);
     d.theIndex := findIndexNode(d.indexFile);
-    if (d.theIndex = nil) or (d.theIndex.kind <> rnDefList) then 
+    if (d.theIndex = nil) or (d.theIndex.kind <> rnDefList) then
       rawMessage(errXisNoValidIndexFile, gIndexFile);
     clearIndex(d.theIndex, d.indexValFilename);
   end
@@ -106,6 +107,8 @@ begin
 end;
 
 function newDocumentor(const filename: string): PDoc;
+var
+  s: string;
 begin
   new(result);
 {@ignore}
@@ -115,6 +118,10 @@ begin
 }
   result.filename := filename;
   result.id := 100;
+  result.splitAfter := 25;
+  s := getConfigVar('split.item.toc');
+  if s <> '' then
+    result.splitAfter := parseInt(s);
 end;
 
 function getVarIdx(const varnames: array of string; const id: string): int;
@@ -122,7 +129,7 @@ var
   i: int;
 begin
   for i := 0 to high(varnames) do
-    if cmpIgnoreStyle(varnames[i], id) = 0 then begin 
+    if cmpIgnoreStyle(varnames[i], id) = 0 then begin
       result := i; exit
     end;
   result := -1
@@ -209,12 +216,16 @@ begin
   end
 end;
 
-function toXml(const s: string): string;
+function toXml(const s: string; splitAfter: int = -1): string;
 var
   i: int;
 begin
   result := '';
-  for i := strStart to length(s)+strStart-1 do addXmlChar(result, s[i])
+  for i := strStart to length(s)+strStart-1 do begin
+    if (splitAfter >= 0) and ((i-strStart+1) mod splitAfter = 0) then 
+      addChar(result, ' ');
+    addXmlChar(result, s[i])
+  end
 end;
 
 function renderRstToHtml(d: PDoc; n: PRstNode): PRope; forward;
@@ -226,8 +237,8 @@ var
 begin
   result := nil;
   for i := 0 to rsonsLen(n)-1 do
-    appRopeFormat(result, inner, [renderRstToHtml(d, n.sons[i])]);
-  result := ropeFormat(outer, [result]);
+    appf(result, inner, [renderRstToHtml(d, n.sons[i])]);
+  result := ropef(outer, [result]);
 end;
 
 procedure setIndexForSourceTerm(d: PDoc; name: PRstNode; id: int);
@@ -241,7 +252,7 @@ begin
   addSon(h, a);
   a := newRstNode(rnIdx);
   addSon(a, name);
-  setIndexPair(d.theIndex, a, h);  
+  setIndexPair(d.theIndex, a, h);
 end;
 
 function renderIndexTerm(d: PDoc; n: PRstNode): PRope;
@@ -249,7 +260,7 @@ var
   a, h: PRstNode;
 begin
   inc(d.id);
-  result := ropeFormat('<em id="$1">$2</em>', 
+  result := ropef('<em id="$1">$2</em>',
                        [toRope(d.id), renderAux(d, n)]);
   h := newRstNode(rnHyperlink);
   a := newRstNode(rnLeaf, d.indexValFilename +{&} '#' +{&} toString(d.id));
@@ -277,11 +288,13 @@ var
 begin
   if n = nil then begin result := nil; exit end;
   result := genComment(d, n);
-  if result = nil then
-    for i := 0 to sonsLen(n)-1 do begin
-      result := genRecComment(d, n.sons[i]);
-      if result <> nil then exit
-    end
+  if result = nil then begin
+    if not (n.kind in [nkEmpty..nkNilLit]) then
+      for i := 0 to sonsLen(n)-1 do begin
+        result := genRecComment(d, n.sons[i]);
+        if result <> nil then exit
+      end
+  end
   else
     n.comment := snil
 end;
@@ -299,18 +312,18 @@ begin
   end
   else if n.kind = nkSym then
     result := sfInInterface in n.sym.flags
-  else if n.kind = nkPragmaExpr then 
+  else if n.kind = nkPragmaExpr then
     result := isVisible(n.sons[0]);
 end;
 
-function getName(n: PNode): string;
+function getName(n: PNode; splitAfter: int = -1): string;
 begin
   case n.kind of
-    nkPostfix: result := getName(n.sons[1]);
-    nkPragmaExpr: result := getName(n.sons[0]);
-    nkSym: result := toXML(n.sym.name.s);
-    nkIdent: result := toXML(n.ident.s);
-    nkAccQuoted: result := '`' +{&} getName(n.sons[0]) +{&} '`';
+    nkPostfix: result := getName(n.sons[1], splitAfter);
+    nkPragmaExpr: result := getName(n.sons[0], splitAfter);
+    nkSym: result := toXML(n.sym.name.s, splitAfter);
+    nkIdent: result := toXML(n.ident.s, splitAfter);
+    nkAccQuoted: result := '`' +{&} getName(n.sons[0], splitAfter) +{&} '`';
     else begin
       internalError(n.info, 'getName()');
       result := ''
@@ -354,50 +367,50 @@ begin
     getNextTok(r, kind, literal);
     case kind of
       tkEof: break;
-      tkComment: 
-        appRopeFormat(result, '<span class="Comment">$1</span>', 
+      tkComment:
+        appf(result, '<span class="Comment">$1</span>',
                       [toRope(toXml(literal))]);
-      tokKeywordLow..tokKeywordHigh: 
-        appRopeFormat(result, '<span class="Keyword">$1</span>', 
+      tokKeywordLow..tokKeywordHigh:
+        appf(result, '<span class="Keyword">$1</span>',
                       [toRope(literal)]);
-      tkOpr, tkHat: 
-        appRopeFormat(result, '<span class="Operator">$1</span>', 
+      tkOpr, tkHat:
+        appf(result, '<span class="Operator">$1</span>',
                       [toRope(toXml(literal))]);
-      tkStrLit..tkTripleStrLit: 
-        appRopeFormat(result, '<span class="StringLit">$1</span>', 
+      tkStrLit..tkTripleStrLit:
+        appf(result, '<span class="StringLit">$1</span>',
                       [toRope(toXml(literal))]);
-      tkCharLit, tkRCharLit:
-        appRopeFormat(result, '<span class="CharLit">$1</span>', 
+      tkCharLit:
+        appf(result, '<span class="CharLit">$1</span>',
                       [toRope(toXml(literal))]);
       tkIntLit..tkInt64Lit:
-        appRopeFormat(result, '<span class="DecNumber">$1</span>', 
+        appf(result, '<span class="DecNumber">$1</span>',
                       [toRope(literal)]);
-      tkFloatLit..tkFloat64Lit: 
-        appRopeFormat(result, '<span class="FloatNumber">$1</span>', 
+      tkFloatLit..tkFloat64Lit:
+        appf(result, '<span class="FloatNumber">$1</span>',
                       [toRope(literal)]);
       tkSymbol:
-        appRopeFormat(result, '<span class="Identifier">$1</span>', 
+        appf(result, '<span class="Identifier">$1</span>',
                       [toRope(literal)]);
-      tkInd, tkSad, tkDed, tkSpaces: 
+      tkInd, tkSad, tkDed, tkSpaces:
         app(result, literal);
-        //appRopeFormat(result, '<span class="Whitespace">$1</span>', 
+        //appf(result, '<span class="Whitespace">$1</span>',
         //              [toRope(literal)]);
       tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
-      tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi, 
+      tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi,
       tkParDotLe, tkParDotRi, tkComma, tkSemiColon, tkColon,
       tkEquals, tkDot, tkDotDot, tkAccent:
-        appRopeFormat(result, '<span class="Other">$1</span>', 
+        appf(result, '<span class="Other">$1</span>',
                       [toRope(literal)]);
       else InternalError(n.info, 'docgen.genThing(' + toktypeToStr[kind] + ')');
     end
   end;
   inc(d.id);
   app(d.section[k], ropeFormatNamedVars(getConfigVar('doc.item'),
-                ['name', 'header', 'desc', 'itemID'],
-                [name, result, comm, toRope(d.id)]));
+      ['name', 'header', 'desc', 'itemID'],
+      [name, result, comm, toRope(d.id)]));
   app(d.toc[k], ropeFormatNamedVars(getConfigVar('doc.item.toc'),
-                ['name', 'header', 'desc', 'itemID'],
-                [name, result, comm, toRope(d.id)]));
+      ['name', 'header', 'desc', 'itemID'],
+      [toRope(getName(nameNode, d.splitAfter)), result, comm, toRope(d.id)]));
   setIndexForSourceTerm(d, getRstName(nameNode), d.id);
 end;
 
@@ -416,12 +429,12 @@ begin
     d.tocPart[len].refname := refname;
     d.tocPart[len].n := n;
     d.tocPart[len].header := result;
-    result := ropeFormat('<h$1><a class="toc-backref" id="$2" href="#$2_toc">$3'+
+    result := ropef('<h$1><a class="toc-backref" id="$2" href="#$2_toc">$3'+
                          '</a></h$1>',
                          [toRope(n.level), d.tocPart[len].refname, result]);
   end
-  else 
-    result := ropeFormat('<h$1 id="$2">$3</h$1>', 
+  else
+    result := ropef('<h$1 id="$2">$3</h$1>',
                          [toRope(n.level), refname, result]);
 end;
 
@@ -437,8 +450,8 @@ begin
   if d.meta[metaTitle] = nil then d.meta[metaTitle] := t
   else if d.meta[metaSubtitle] = nil then d.meta[metaSubtitle] := t
   else
-    result := ropeFormat('<h$1 id="$2"><center>$3</center></h$1>',
-                         [toRope(n.level), toRope(rstnodeToRefname(n)), t]);  
+    result := ropef('<h$1 id="$2"><center>$3</center></h$1>',
+                         [toRope(n.level), toRope(rstnodeToRefname(n)), t]);
 end;
 
 function renderRstToRst(d: PDoc; n: PRstNode): PRope; forward;
@@ -455,7 +468,7 @@ function renderRstToRst(d: PDoc; n: PRstNode): PRope;
 // this is needed for the index generation; it may also be useful for
 // debugging, but most code is already debugged...
 const
-  lvlToChar: array [0..8] of char = ('!', '=', '-', '~', '`', 
+  lvlToChar: array [0..8] of char = ('!', '=', '-', '~', '`',
                                      '<', '*', '|', '+');
 var
   L: int;
@@ -469,60 +482,60 @@ begin
     rnHeadline: begin
       result := renderRstSons(d, n);
       L := ropeLen(result);
-      result := ropeFormat('$n$1$2$n$1$3', [ind, result, 
+      result := ropef('$n$1$2$n$1$3', [ind, result,
                            toRope(repeatChar(L, lvlToChar[n.level]))]);
     end;
     rnOverline: begin
       result := renderRstSons(d, n);
       L := ropeLen(result);
-      result := ropeFormat('$n$1$3$n$1$2$n$1$3', [ind, result, 
+      result := ropef('$n$1$3$n$1$2$n$1$3', [ind, result,
                            toRope(repeatChar(L, lvlToChar[n.level]))]);
     end;
-    rnTransition: 
-      result := ropeFormat('$n$n$1$2$n$n', 
+    rnTransition:
+      result := ropef('$n$n$1$2$n$n',
                           [ind, toRope(repeatChar(78-d.indent, '-'))]);
     rnParagraph: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('$n$n$1$2', [ind, result]);
+      result := ropef('$n$n$1$2', [ind, result]);
     end;
     rnBulletItem: begin
       inc(d.indent, 2);
       result := renderRstSons(d, n);
-      if result <> nil then result := ropeFormat('$n$1* $2', [ind, result]);
+      if result <> nil then result := ropef('$n$1* $2', [ind, result]);
       dec(d.indent, 2);
     end;
     rnEnumItem: begin
       inc(d.indent, 4);
       result := renderRstSons(d, n);
-      if result <> nil then result := ropeFormat('$n$1(#) $2', [ind, result]);
+      if result <> nil then result := ropef('$n$1(#) $2', [ind, result]);
       dec(d.indent, 4);
     end;
     rnOptionList, rnFieldList, rnDefList, rnDefItem, rnLineBlock, rnFieldName,
-    rnFieldBody, rnStandaloneHyperlink, rnBulletList, rnEnumList: 
+    rnFieldBody, rnStandaloneHyperlink, rnBulletList, rnEnumList:
       result := renderRstSons(d, n);
     rnDefName: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('$n$n$1$2', [ind, result]);
+      result := ropef('$n$n$1$2', [ind, result]);
     end;
     rnDefBody: begin
       inc(d.indent, 2);
       result := renderRstSons(d, n);
       if n.sons[0].kind <> rnBulletList then
-        result := ropeFormat('$n$1  $2', [ind, result]);
+        result := ropef('$n$1  $2', [ind, result]);
       dec(d.indent, 2);
     end;
     rnField: begin
       result := renderRstToRst(d, n.sons[0]);
       L := max(ropeLen(result)+3, 30);
       inc(d.indent, L);
-      result := ropeFormat('$n$1:$2:$3$4', [
+      result := ropef('$n$1:$2:$3$4', [
         ind, result, toRope(repeatChar(L-ropeLen(result)-2)),
         renderRstToRst(d, n.sons[1])]);
       dec(d.indent, L);
     end;
     rnLineBlockItem: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('$n$1| $2', [ind, result]);
+      result := ropef('$n$1| $2', [ind, result]);
     end;
     rnBlockQuote: begin
       inc(d.indent, 2);
@@ -531,48 +544,48 @@ begin
     end;
     rnRef: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('`$1`_', [result]);
+      result := ropef('`$1`_', [result]);
     end;
     rnHyperlink: begin
-      result := ropeFormat('`$1 <$2>`_', [renderRstToRst(d, n.sons[0]), 
+      result := ropef('`$1 <$2>`_', [renderRstToRst(d, n.sons[0]),
                                           renderRstToRst(d, n.sons[1])]);
     end;
     rnGeneralRole: begin
       result := renderRstToRst(d, n.sons[0]);
-      result := ropeFormat('`$1`:$2:', [result, renderRstToRst(d, n.sons[1])]);    
+      result := ropef('`$1`:$2:', [result, renderRstToRst(d, n.sons[1])]);
     end;
     rnSub: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('`$1`:sub:', [result]);
+      result := ropef('`$1`:sub:', [result]);
     end;
     rnSup: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('`$1`:sup:', [result]);
+      result := ropef('`$1`:sup:', [result]);
     end;
     rnIdx: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('`$1`:idx:', [result]);
+      result := ropef('`$1`:idx:', [result]);
     end;
     rnEmphasis: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('*$1*', [result]);
+      result := ropef('*$1*', [result]);
     end;
     rnStrongEmphasis: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('**$1**', [result]);
+      result := ropef('**$1**', [result]);
     end;
     rnInterpretedText: begin
       result := renderRstSons(d, n);
-      result := ropeFormat('`$1`', [result]);
+      result := ropef('`$1`', [result]);
     end;
     rnInlineLiteral: begin
       inc(d.verbatim);
       result := renderRstSons(d, n);
-      result := ropeFormat('``$1``', [result]);
+      result := ropef('``$1``', [result]);
       dec(d.verbatim);
     end;
     rnLeaf: begin
-      if (d.verbatim = 0) and (n.text = '\'+'') then 
+      if (d.verbatim = 0) and (n.text = '\'+'') then
         result := toRope('\\') // XXX: escape more special characters!
       else
         result := toRope(n.text);
@@ -582,10 +595,10 @@ begin
       if n.sons[2] <> nil then
         result := renderRstSons(d, n.sons[2]);
       dec(d.indent, 3);
-      result := ropeFormat('$n$n$1.. index::$n$2', [ind, result]);
+      result := ropef('$n$n$1.. index::$n$2', [ind, result]);
     end;
     rnContents: begin
-      result := ropeFormat('$n$n$1.. contents::', [ind]);
+      result := ropef('$n$n$1.. contents::', [ind]);
     end;
     else rawMessage(errCannotRenderX, rstnodeKindToStr[n.kind]);
   end;
@@ -593,7 +606,7 @@ end;
 
 function renderTocEntry(d: PDoc; const e: TTocEntry): PRope;
 begin
-  result := ropeFormat('<li><a class="reference" id="$1_toc" href="#$1">$2' +
+  result := ropef('<li><a class="reference" id="$1_toc" href="#$1">$2' +
                        '</a></li>$n', [e.refname, e.header]);
 end;
 
@@ -614,24 +627,24 @@ begin
       break
   end;
   if lvl > 1 then
-    result := ropeFormat('<ul class="simple">$1</ul>', [result]);
+    result := ropef('<ul class="simple">$1</ul>', [result]);
 end;
 
 function renderImage(d: PDoc; n: PRstNode): PRope;
 var
   s: string;
 begin
-  result := ropeFormat('<img src="$1"', [toRope(getArgument(n))]);
+  result := ropef('<img src="$1"', [toRope(getArgument(n))]);
   s := getFieldValue(n, 'height');
-  if s <> '' then appRopeFormat(result, ' height="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' height="$1"', [toRope(s)]);
   s := getFieldValue(n, 'width');
-  if s <> '' then appRopeFormat(result, ' width="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' width="$1"', [toRope(s)]);
   s := getFieldValue(n, 'scale');
-  if s <> '' then appRopeFormat(result, ' scale="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' scale="$1"', [toRope(s)]);
   s := getFieldValue(n, 'alt');
-  if s <> '' then appRopeFormat(result, ' alt="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' alt="$1"', [toRope(s)]);
   s := getFieldValue(n, 'align');
-  if s <> '' then appRopeFormat(result, ' align="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' align="$1"', [toRope(s)]);
   app(result, ' />');
   if rsonsLen(n) >= 3 then app(result, renderRstToHtml(d, n.sons[2]))
 end;
@@ -644,14 +657,14 @@ var
   lang: TSourceLanguage;
 begin
   m := n.sons[2].sons[0];
-  assert(m.kind = rnLeaf);
+  if (m.kind <> rnLeaf) then InternalError('renderCodeBlock');
   result := nil;
   langstr := strip(getArgument(n));
   if langstr = '' then lang := langNimrod // default language
   else lang := getSourceLanguage(langstr);
   if lang = langNone then begin
     rawMessage(warnLanguageXNotSupported, langstr);
-    result := ropeFormat('<pre>$1</pre>', [toRope(m.text)])
+    result := ropef('<pre>$1</pre>', [toRope(m.text)])
   end
   else begin
     initGeneralTokenizer(g, m.text);
@@ -659,16 +672,18 @@ begin
       getNextToken(g, lang);
       case g.kind of
         gtEof: break;
-        gtNone, gtWhitespace: 
-          app(result, ncopy(m.text, g.start+strStart, g.len+g.start));
-        else 
-          appRopeFormat(result, '<span class="$2">$1</span>',
-            [toRope(ncopy(m.text, g.start+strStart, g.len+g.start)),
+        gtNone, gtWhitespace:
+          app(result, ncopy(m.text, g.start+strStart,
+                            g.len+g.start-1+strStart));
+        else
+          appf(result, '<span class="$2">$1</span>',
+            [toRope(ncopy(m.text, g.start+strStart,
+                          g.len+g.start-1+strStart)),
              toRope(tokenClassToStr[g.kind])]);
       end;
     end;
     deinitGeneralTokenizer(g);
-    if result <> nil then result := ropeFormat('<pre>$1</pre>', [result]);
+    if result <> nil then result := ropef('<pre>$1</pre>', [result]);
   end
 end;
 
@@ -697,10 +712,10 @@ begin
     rnDefItem: begin end;
     rnDefName: outer := '<dt>$1</dt>'+nl;
     rnDefBody: outer := '<dd>$1</dd>'+nl;
-    rnFieldList: 
+    rnFieldList:
       outer := '<table class="docinfo" frame="void" rules="none">' +
                '<col class="docinfo-name" />' +
-               '<col class="docinfo-content" />' +    
+               '<col class="docinfo-content" />' +
                '<tbody valign="top">$1' +
                '</tbody></table>';
     rnField: outer := '<tr>$1</tr>$n';
@@ -711,7 +726,7 @@ begin
       exit
     end;
 
-    rnOptionList: 
+    rnOptionList:
       outer := '<table frame="void">$1</table>';
     rnOptionListItem:
       outer := '<tr>$1</tr>$n';
@@ -719,36 +734,36 @@ begin
     rnDescription: outer := '<td align="left">$1</td>$n';
     rnOption,
     rnOptionString,
-    rnOptionArgument: assert(false);
+    rnOptionArgument: InternalError('renderRstToHtml');
 
     rnLiteralBlock: outer := '<pre>$1</pre>'+nl;
-    rnQuotedLiteralBlock: assert(false);
+    rnQuotedLiteralBlock: InternalError('renderRstToHtml');
 
     rnLineBlock: outer := '<p>$1</p>';
     rnLineBlockItem: outer := '$1<br />';
 
     rnBlockQuote: outer := '<blockquote>$1</blockquote>$n';
 
-    rnTable, rnGridTable: 
+    rnTable, rnGridTable:
       outer := '<table border="1" class="docutils">$1</table>';
     rnTableRow: outer := '<tr>$1</tr>$n';
     rnTableDataCell: outer := '<td>$1</td>';
     rnTableHeaderCell: outer := '<th>$1</th>';
 
-    rnLabel: assert(false);       // used for footnotes and other things
-    rnFootnote: assert(false);    // a footnote
+    rnLabel: InternalError('renderRstToHtml'); // used for footnotes and other
+    rnFootnote: InternalError('renderRstToHtml'); // a footnote
 
-    rnCitation: assert(false);    // similar to footnote
+    rnCitation: InternalError('renderRstToHtml');    // similar to footnote
     rnRef: begin
-      result := ropeFormat('<a class="reference external" href="#$2">$1</a>',
+      result := ropef('<a class="reference external" href="#$2">$1</a>',
                            [renderAux(d, n), toRope(rstnodeToRefname(n))]);
       exit
     end;
     rnStandaloneHyperlink:
       outer := '<a class="reference external" href="$1">$1</a>';
     rnHyperlink: begin
-      result := ropeFormat('<a class="reference external" href="$2">$1</a>',
-                           [renderRstToHtml(d, n.sons[0]), 
+      result := ropef('<a class="reference external" href="$2">$1</a>',
+                           [renderRstToHtml(d, n.sons[0]),
                             renderRstToHtml(d, n.sons[1])]);
       exit
     end;
@@ -766,8 +781,8 @@ begin
 
     // Inline markup:
     rnGeneralRole: begin
-      result := ropeFormat('<span class="$2">$1</span>',
-                           [renderRstToHtml(d, n.sons[0]), 
+      result := ropef('<span class="$2">$1</span>',
+                           [renderRstToHtml(d, n.sons[0]),
                             renderRstToHtml(d, n.sons[1])]);
       exit
     end;
@@ -776,8 +791,8 @@ begin
     rnEmphasis: outer := '<em>$1</em>';
     rnStrongEmphasis: outer := '<strong>$1</strong>';
     rnInterpretedText: outer := '<cite>$1</cite>';
-    rnIdx: begin 
-      if d.theIndex = nil then 
+    rnIdx: begin
+      if d.theIndex = nil then
         outer := '<em>$1</em>'
       else begin
         result := renderIndexTerm(d, n); exit
@@ -798,7 +813,7 @@ begin
       d.meta[metaTitle] := renderRstToHtml(d, n.sons[0]);
       exit
     end;
-    else assert(false);
+    else InternalError('renderRstToHtml');
   end;
   result := renderAux(d, n, outer, inner);
 end;
@@ -809,11 +824,12 @@ var
 begin
   if n = nil then exit;
   case n.kind of
-    nkCommentStmt: app(d.modDesc, genComment(d, n));
-    nkProcDef:     genItem(d, n, n.sons[namePos], skProc);
-    nkIteratorDef: genItem(d, n, n.sons[namePos], skIterator);
-    nkMacroDef:    genItem(d, n, n.sons[namePos], skMacro);
-    nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate);
+    nkCommentStmt:  app(d.modDesc, genComment(d, n));
+    nkProcDef:      genItem(d, n, n.sons[namePos], skProc);
+    nkIteratorDef:  genItem(d, n, n.sons[namePos], skIterator);
+    nkMacroDef:     genItem(d, n, n.sons[namePos], skMacro);
+    nkTemplateDef:  genItem(d, n, n.sons[namePos], skTemplate);
+    nkConverterDef: genItem(d, n, n.sons[namePos], skConverter);
     nkVarSection: begin
       for i := 0 to sonsLen(n)-1 do
         genItem(d, n.sons[i], n.sons[i].sons[0], skVar);
@@ -860,14 +876,16 @@ var
 begin
   j := 0;
   toc := renderTocEntries(d, j, 1);
+  code := nil;
+  content := nil;
+  title := nil;
   for i := low(TSymKind) to high(TSymKind) do begin
     genSection(d, i);
     app(toc, d.toc[i]);
   end;
   if toc <> nil then
     toc := ropeFormatNamedVars(getConfigVar('doc.toc'), ['content'], [toc]);
-  code := nil;
-  for i := low(TSymKind) to high(TSymKind) do 
+  for i := low(TSymKind) to high(TSymKind) do
     app(code, d.section[i]);
   if d.meta[metaTitle] <> nil then
     title := d.meta[metaTitle]
@@ -880,7 +898,7 @@ begin
   content := ropeFormatNamedVars(getConfigVar(bodyname),
     ['title', 'tableofcontents', 'moduledesc', 'date', 'time', 'content'],
     [title, toc, d.modDesc, toRope(getDateStr()), toRope(getClockStr()), code]);
-  if not (optCompileOnly in gGlobalOptions) then 
+  if not (optCompileOnly in gGlobalOptions) then
     code := ropeFormatNamedVars(getConfigVar('doc.file'),
       ['title', 'tableofcontents', 'moduledesc', 'date', 'time', 'content'],
       [title, toc, d.modDesc,
@@ -918,13 +936,16 @@ var
   filen: string;
   d: PDoc;
   rst: PRstNode;
+  code: PRope;
 begin
   filen := appendFileExt(filename, 'txt');
   d := newDocumentor(filen);
   initIndexFile(d);
   rst := rstParse(readFile(filen), false, filen, 0, 1, d.hasToc);
   d.modDesc := renderRstToHtml(d, rst);
-  writeRope(genHtmlFile(d), getOutFile(filename, HtmlExt));
+  code := genHtmlFile(d);
+  assert(ropeInvariant(code));
+  writeRope(code, getOutFile(filename, HtmlExt));
   generateIndex(d);
 end;
 

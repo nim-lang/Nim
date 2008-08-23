@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,6 +9,7 @@
 
 
 ## This module contains routines and types for dealing with time.
+## This module is available for the ECMAScript target.
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
@@ -22,9 +23,49 @@ type
   TWeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-  TTime* {.importc: "time_t".} = record ## abstract type that represents a time
+  TTime* {.importc: "time_t", final.} = object ## abstract type that 
+                                               ## represents a time
+    when defined(ECMAScript):
+      getDay: proc (): int
+      getFullYear: proc (): int
+      getHours: proc (): int
+      getMilliseconds: proc (): int
+      getMinutes: proc (): int
+      getMonth: proc (): int
+      getSeconds: proc (): int
+      getTime: proc (): int
+      getTimezoneOffset: proc (): int
+      getUTCDate: proc (): int
+      getUTCFullYear: proc (): int
+      getUTCHours: proc (): int
+      getUTCMilliseconds: proc (): int
+      getUTCMinutes: proc (): int
+      getUTCMonth: proc (): int
+      getUTCSeconds: proc (): int
+      getYear: proc (): int
+      parse: proc (s: cstring): TTime
+      setDate: proc (x: int)
+      setFullYear: proc (x: int)
+      setHours: proc (x: int)
+      setMilliseconds: proc (x: int)
+      setMinutes: proc (x: int)
+      setMonth: proc (x: int)
+      setSeconds: proc (x: int)
+      setTime: proc (x: int)
+      setUTCDate: proc (x: int)
+      setUTCFullYear: proc (x: int)
+      setUTCHours: proc (x: int)
+      setUTCMilliseconds: proc (x: int)
+      setUTCMinutes: proc (x: int)
+      setUTCMonth: proc (x: int)
+      setUTCSeconds: proc (x: int)
+      setYear: proc (x: int)
+      toGMTString: proc (): cstring
+      toLocaleString: proc (): cstring
+      UTC: proc (): int
 
-  TTimeInfo* = record         ## represents a time in different parts
+
+  TTimeInfo* = object of TObject ## represents a time in different parts
     second*: range[0..61]     ## The number of seconds after the minute,
                               ## normally in the range 0 to 59, but can
                               ## be up to 61 to allow for leap seconds.
@@ -38,6 +79,7 @@ type
     weekday*: TWeekDay        ## The current day of the week.
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
+                              ## Always 0 if the target is ECMAScript.
 
 proc getTime*(): TTime ## gets the current calendar time
 proc getLocalTime*(t: TTime): TTimeInfo
@@ -54,7 +96,7 @@ proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime
   ## them from the other information in the broken-down time structure.
 
 proc `$` *(timeInfo: TTimeInfo): string
-  ## converts a `TTimeInfo` record to a
+  ## converts a `TTimeInfo` object to a
   ## string representation.
 proc `$` *(time: TTime): string
   ## converts a calendar time to a
@@ -72,92 +114,149 @@ proc `-` *(a, b: TTime): int64
 proc getStartMilsecs*(): int
   ## get the miliseconds from the start of the program
 
-#implementation
 
-# C wrapper:
-type
-  structTM {.importc: "struct tm".} = record
-    second {.importc: "tm_sec".},
-      minute {.importc: "tm_min".},
-      hour {.importc: "tm_hour".},
-      monthday {.importc: "tm_mday".},
-      month {.importc: "tm_mon".},
-      year {.importc: "tm_year".},
-      weekday {.importc: "tm_wday".},
-      yearday {.importc: "tm_yday".},
-      isdst {.importc: "tm_isdst".}: cint
+when not defined(ECMAScript):
+  
+  # C wrapper:
+  type
+    structTM {.importc: "struct tm", final.} = object
+      second {.importc: "tm_sec".},
+        minute {.importc: "tm_min".},
+        hour {.importc: "tm_hour".},
+        monthday {.importc: "tm_mday".},
+        month {.importc: "tm_mon".},
+        year {.importc: "tm_year".},
+        weekday {.importc: "tm_wday".},
+        yearday {.importc: "tm_yday".},
+        isdst {.importc: "tm_isdst".}: cint
+  
+    PTimeInfo = ptr structTM
+    PTime = ptr TTime
+  
+    TClock {.importc: "clock_t".} = range[low(int)..high(int)]
+  
+  proc localtime(timer: PTime): PTimeInfo {.
+    importc: "localtime", header: "<time.h>".}
+  proc gmtime(timer: PTime): PTimeInfo {.importc: "gmtime", header: "<time.h>".}
+  proc timec(timer: PTime): TTime      {.importc: "time", header: "<time.h>".}
+  proc mktime(t: structTM): TTime      {.importc: "mktime", header: "<time.h>".}
+  proc asctime(tblock: structTM): CString {.
+    importc: "asctime", header: "<time.h>".}
+  proc ctime(time: PTime): CString     {.importc: "ctime", header: "<time.h>".}
+  #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
+  #    importc: "strftime", header: "<time.h>".}
+  proc clock(): TClock {.importc: "clock", header: "<time.h>".}
+  proc difftime(a, b: TTime): float {.importc: "difftime", header: "<time.h>".}
+  
+  var
+    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
+  
+  
+  # our own procs on top of that:
+  proc tmToTimeInfo(tm: structTM): TTimeInfo =
+    const
+      weekDays: array [0..6, TWeekDay] = [
+        dSun, dMon, dTue, dWed, dThu, dFri, dSat]
+    result.second = int(tm.second)
+    result.minute = int(tm.minute)
+    result.hour = int(tm.hour)
+    result.monthday = int(tm.monthday)
+    result.month = TMonth(tm.month)
+    result.year = tm.year + 1900
+    result.weekday = weekDays[int(tm.weekDay)]
+    result.yearday = int(tm.yearday)
+  
+  proc timeInfoToTM(t: TTimeInfo): structTM =
+    const
+      weekDays: array [TWeekDay, int] = [1, 2, 3, 4, 5, 6, 0]
+    result.second = t.second
+    result.minute = t.minute
+    result.hour = t.hour
+    result.monthday = t.monthday
+    result.month = ord(t.month)
+    result.year = t.year - 1900
+    result.weekday = weekDays[t.weekDay]
+    result.yearday = t.yearday
+    result.isdst = -1
+  
+  proc `-` (a, b: TTime): int64 =
+    return toInt(difftime(a, b)) # XXX: toBiggestInt is needed here, but
+                                 # Nim does not support it!
+  
+  proc getStartMilsecs(): int = return clock() div (clocksPerSec div 1000)
+  proc getTime(): TTime = return timec(nil)
+  proc getLocalTime(t: TTime): TTimeInfo =
+    var a = t
+    result = tmToTimeInfo(localtime(addr(a))^)
+    # copying is needed anyway to provide reentrancity; thus
+    # the convertion is not expensive
+  
+  proc getGMTime(t: TTime): TTimeInfo =
+    var a = t
+    result = tmToTimeInfo(gmtime(addr(a))^)
+    # copying is needed anyway to provide reentrancity; thus
+    # the convertion is not expensive
+  
+  proc TimeInfoToTime(timeInfo: TTimeInfo): TTime =
+    var cTimeInfo = timeInfo # for C++ we have to make a copy,
+    # because the header of mktime is broken in my version of libc
+    return mktime(timeInfoToTM(cTimeInfo))
+    
+  proc `$`(timeInfo: TTimeInfo): string =
+    return $asctime(timeInfoToTM(timeInfo))
+  
+  proc `$`(time: TTime): string =
+    var a = time
+    return $ctime(addr(a))
 
-  PTimeInfo = ptr structTM
-  PTime = ptr TTime
+else:
+  proc getTime(): TTime {.importc: "new Date", nodecl.}
 
-  TClock {.importc: "clock_t".} = range[low(int)..high(int)]
-
-proc localtime(timer: PTime): PTimeInfo {.
-  importc: "localtime", header: "<time.h>".}
-proc gmtime(timer: PTime): PTimeInfo {.importc: "gmtime", header: "<time.h>".}
-proc timec(timer: PTime): TTime      {.importc: "time", header: "<time.h>".}
-proc mktime(t: structTM): TTime      {.importc: "mktime", header: "<time.h>".}
-proc asctime(tblock: structTM): CString {.
-  importc: "asctime", header: "<time.h>".}
-proc ctime(time: PTime): CString     {.importc: "ctime", header: "<time.h>".}
-#  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
-#    importc: "strftime", header: "<time.h>".}
-proc clock(): TClock {.importc: "clock", header: "<time.h>".}
-proc difftime(a, b: TTime): float {.importc: "difftime", header: "<time.h>".}
-
-var
-  clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-
-
-# our own procs on top of that:
-proc tmToTimeInfo(tm: structTM): TTimeInfo =
   const
     weekDays: array [0..6, TWeekDay] = [
       dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-  result.second = int(tm.second)
-  result.minute = int(tm.minute)
-  result.hour = int(tm.hour)
-  result.monthday = int(tm.monthday)
-  result.month = TMonth(tm.month)
-  result.year = tm.year + 1900
-  result.weekday = weekDays[int(tm.weekDay)]
-  result.yearday = int(tm.yearday)
+  
+  proc getLocalTime(t: TTime): TTimeInfo =
+    result.second = t.getSeconds()
+    result.minute = t.getMinutes()
+    result.hour = t.getHours()
+    result.monthday = t.getDate()
+    result.month = TMonth(t.getMonth())
+    result.year = t.getFullYear()
+    result.weekday = weekDays[t.getDay()]
+    result.yearday = 0
 
-proc timeInfoToTM(t: TTimeInfo): structTM =
-  const
-    weekDays: array [TWeekDay, int] = [1, 2, 3, 4, 5, 6, 0]
-  result.second = t.second
-  result.minute = t.minute
-  result.hour = t.hour
-  result.monthday = t.monthday
-  result.month = ord(t.month)
-  result.year = t.year - 1900
-  result.weekday = weekDays[t.weekDay]
-  result.yearday = t.yearday
-  result.isdst = -1
-
-proc `-` (a, b: TTime): int64 =
-  return toInt(difftime(a, b)) # XXX: toBiggestInt is needed here, but
-                               # Nim does not support it!
-
-proc getStartMilsecs(): int = return clock() div (clocksPerSec div 1000)
-proc getTime(): TTime = return timec(nil)
-proc getLocalTime(t: TTime): TTimeInfo =
-  var a = t
-  result = tmToTimeInfo(localtime(addr(a))^)
-  # copying is needed anyway to provide reentrancity; thus
-  # the convertion is not expensive
-
-proc getGMTime(t: TTime): TTimeInfo =
-  var a = t
-  result = tmToTimeInfo(gmtime(addr(a))^)
-  # copying is needed anyway to provide reentrancity; thus
-  # the convertion is not expensive
-
-proc TimeInfoToTime(timeInfo: TTimeInfo): TTime =
-  var cTimeInfo = timeInfo # for C++ we have to make a copy,
-  # because the header of mktime is broken in my version of libc
-  return mktime(timeInfoToTM(cTimeInfo))
+  proc getGMTime(t: TTime): TTimeInfo =
+    result.second = t.getUTCSeconds()
+    result.minute = t.getUTCMinutes()
+    result.hour = t.getUTCHours()
+    result.monthday = t.getUTCDate()
+    result.month = TMonth(t.getUTCMonth())
+    result.year = t.getUTCFullYear()
+    result.weekday = weekDays[t.getDay()]
+    result.yearday = 0
+  
+  proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime =
+    result = getTime()
+    result.setSeconds(timeInfo.second)
+    result.setMinutes(timeInfo.minute)
+    result.setHours(timeInfo.hour)
+    result.setMonth(ord(timeInfo.month))
+    result.setFullYear(timeInfo.year)
+    result.setDate(timeInfo.monthday)
+  
+  proc `$`(timeInfo: TTimeInfo): string = return $(TimeInfoToTIme(timeInfo))
+  proc `$`(time: TTime): string = $time.toLocaleString()
+    
+  proc `-` (a, b: TTime): int64 = 
+    return a.getTime() - b.getTime()
+  
+  var
+    startMilsecs = getTime()
+  
+  proc getStartMilsecs(): int =
+    ## get the miliseconds from the start of the program
+    return int(getTime() - startMilsecs)
 
 proc getDateStr(): string =
   var ti = getLocalTime(getTime())
@@ -168,12 +267,5 @@ proc getClockStr(): string =
   var ti = getLocalTime(getTime())
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
     ':' & intToStr(ti.second, 2)
-
-proc `$`(timeInfo: TTimeInfo): string =
-  return $asctime(timeInfoToTM(timeInfo))
-
-proc `$`(time: TTime): string =
-  var a = time
-  return $ctime(addr(a))
 
 {.pop.}

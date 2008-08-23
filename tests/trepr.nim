@@ -1,10 +1,7 @@
 # test the new "repr" built-in proc
 
-import
-  io
-
 type
-  TPoint = record
+  TPoint {.final.} = object
     x, y, z: int
     s: array [0..1, string]
 

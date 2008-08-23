@@ -1,8 +1,5 @@
 # test variables of type proc
 
-import
-  io
-
 var
   x: proc (a, b: int): int {.cdecl.}
 

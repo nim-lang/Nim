@@ -8,7 +8,7 @@
 #
 #       NetBIOS 3.0 interface unit 
 
-# This unit contains the definitions for portable NetBIOS 3.0 support. 
+# This module contains the definitions for portable NetBIOS 3.0 support. 
 
 import                        # Data structure templates 
   Windows
@@ -20,8 +20,8 @@ const
 type                          # Network Control Block
   PNCB* = ptr TNCB
   TNCBPostProc* = proc (P: PNCB)
-  TNCB* = record # Structure returned to the NCB command NCBASTAT is ADAPTER_STATUS followed
-                 # by an array of NAME_BUFFER structures.
+  TNCB* {.final.} = object # Structure returned to the NCB command NCBASTAT is ADAPTER_STATUS followed
+                           # by an array of NAME_BUFFER structures.
     ncb_command*: Char        # command code
     ncb_retcode*: Char        # return code
     ncb_lsn*: Char            # local session number
@@ -42,7 +42,7 @@ type                          # Network Control Block
                               # completes
   
   PAdapterStatus* = ptr TAdapterStatus
-  TAdapterStatus* = record 
+  TAdapterStatus* {.final.} = object 
     adapter_address*: array[0..5, Char]
     rev_major*: Char
     reserved0*: Char
@@ -72,7 +72,7 @@ type                          # Network Control Block
     name_count*: int16
 
   PNameBuffer* = ptr TNameBuffer
-  TNameBuffer* = record 
+  TNameBuffer* {.final.} = object 
     name*: array[0..NCBNAMSZ - 1, Char]
     name_num*: Char
     name_flags*: Char
@@ -93,14 +93,14 @@ type # Structure returned to the NCB command NCBSSTAT is SESSION_HEADER followed
      # asterisk then an array of these structures is returned containing the
      # status for all names.
   PSessionHeader* = ptr TSessionHeader
-  TSessionHeader* = record 
+  TSessionHeader* {.final.} = object 
     sess_name*: Char
     num_sess*: Char
     rcv_dg_outstanding*: Char
     rcv_any_outstanding*: Char
 
   PSessionBuffer* = ptr TSessionBuffer
-  TSessionBuffer* = record 
+  TSessionBuffer* {.final.} = object 
     lsn*: Char
     state*: Char
     local_name*: array[0..NCBNAMSZ - 1, Char]
@@ -121,20 +121,20 @@ type # Structure returned to the NCB command NCBENUM.
      # On a system containing lana's 0, 2 and 3, a structure with
      # length =3, lana[0]=0, lana[1]=2 and lana[2]=3 will be returned.
   PLanaEnum* = ptr TLanaEnum
-  TLanaEnum* = record # Structure returned to the NCB command NCBFINDNAME is FIND_NAME_HEADER followed
-                      # by an array of FIND_NAME_BUFFER structures.
+  TLanaEnum* {.final.} = object # Structure returned to the NCB command NCBFINDNAME is FIND_NAME_HEADER followed
+                                # by an array of FIND_NAME_BUFFER structures.
     len*: Char                #  Number of valid entries in lana[]
     lana*: array[0..MAX_LANA, Char]
 
   PFindNameHeader* = ptr TFindNameHeader
-  TFindNameHeader* = record 
+  TFindNameHeader* {.final.} = object 
     node_count*: int16
     reserved*: Char
     unique_group*: Char
 
   PFindNameBuffer* = ptr TFindNameBuffer
-  TFindNameBuffer* = record # Structure provided with NCBACTION. The purpose of NCBACTION is to provide
-                            # transport specific extensions to netbios.
+  TFindNameBuffer* {.final.} = object # Structure provided with NCBACTION. The purpose of NCBACTION is to provide
+                                      # transport specific extensions to netbios.
     len*: Char
     access_control*: Char
     frame_control*: Char
@@ -143,7 +143,7 @@ type # Structure returned to the NCB command NCBENUM.
     routing_info*: array[0..17, Char]
 
   PActionHeader* = ptr TActionHeader
-  TActionHeader* = record 
+  TActionHeader* {.final.} = object 
     transport_id*: int32
     action_code*: int16
     reserved*: int16

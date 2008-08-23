@@ -62,7 +62,7 @@ function getStrOrChar(a: PNode): string;
 begin
   case a.kind of
     nkStrLit..nkTripleStrLit: result := a.strVal;
-    nkCharLit, nkRCharLit: result := chr(int(a.intVal))+'';
+    nkCharLit: result := chr(int(a.intVal))+'';
     else begin internalError(a.info, 'getStrOrChar'); result := '' end;
   end
 end;
@@ -81,11 +81,11 @@ begin
     mBitnotI, mBitnotI64: result := newIntNodeT(not getInt(a), n);
 
     mLengthStr: result := newIntNodeT(length(getStr(a)), n);
-    mLengthSeq, mLengthArray, 
+    mLengthSeq, mLengthArray,
     mLengthOpenArray: result := newIntNodeT(lengthOrd(a.typ), n);
-    
+
     mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: result := a; // throw `+` away
-    mToFloat, mToBiggestFloat: 
+    mToFloat, mToBiggestFloat:
       result := newFloatNodeT(toFloat(int(getInt(a))), n);
     mToInt, mToBiggestInt: result := newIntNodeT(nsystem.toInt(getFloat(a)), n);
     mAbsF64: result := newFloatNodeT(abs(getFloat(a)), n);
@@ -93,11 +93,13 @@ begin
       if getInt(a) >= 0 then result := a
       else result := newIntNodeT(-getInt(a), n);
     end;
-    mZe, mZe64:
+    mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64: begin
+      // byte(-128) = 1...1..1000_0000'64 --> 0...0..1000_0000'64
       result := newIntNodeT(getInt(a) and (1 shl a.typ.size*8 - 1), n);
+    end;
     mToU8:  result := newIntNodeT(getInt(a) and $ff, n);
     mToU16: result := newIntNodeT(getInt(a) and $ffff, n);
-    mToU32: result := newIntNodeT(getInt(a) and $ffffffff, n);
+    mToU32: result := newIntNodeT(getInt(a) and $00000000ffffffff, n);
 
     mSucc: result := newIntNodeT(getOrdValue(a)+getInt(b), n);
     mPred: result := newIntNodeT(getOrdValue(a)-getInt(b), n);
@@ -121,7 +123,16 @@ begin
     mAddF64: result := newFloatNodeT(getFloat(a)+getFloat(b), n);
     mSubF64: result := newFloatNodeT(getFloat(a)-getFloat(b), n);
     mMulF64: result := newFloatNodeT(getFloat(a)*getFloat(b), n);
-    mDivF64: result := newFloatNodeT(getFloat(a)/getFloat(b), n);
+    mDivF64: begin
+      if getFloat(b) = 0.0 then begin
+        if getFloat(a) = 0.0 then
+          result := newFloatNodeT(NaN, n)
+        else
+          result := newFloatNodeT(Inf, n);
+      end
+      else
+        result := newFloatNodeT(getFloat(a)/getFloat(b), n);
+    end;
     mMaxF64: begin
       if getFloat(a) > getFloat(b) then result := newFloatNodeT(getFloat(a), n)
       else result := newFloatNodeT(getFloat(b), n);
@@ -130,7 +141,7 @@ begin
       if getFloat(a) > getFloat(b) then result := newFloatNodeT(getFloat(b), n)
       else result := newFloatNodeT(getFloat(a), n);
     end;
-
+    mIsNil: result := newIntNodeT(ord(a.kind = nkNilLit), n);
     mLtI, mLtI64, mLtB, mLtEnum, mLtCh:
       result := newIntNodeT(ord(getOrdValue(a) < getOrdValue(b)), n);
     mLeI, mLeI64, mLeB, mLeEnum, mLeCh:
@@ -185,9 +196,15 @@ begin
     end;
     mInSet: result := newIntNodeT(Ord(inSet(a, b)), n);
     mConStrStr: result := newStrNodeT(getStrOrChar(a)+{&}getStrOrChar(b), n);
-    mExit, mInc, ast.mDec, mAssert, mSwap, 
+    mRepr: result := newStrNodeT(renderTree(a, {@set}[renderNoComments]), n);
+    mIntToStr, mInt64ToStr, mBoolToStr, mCharToStr:
+      result := newStrNodeT(toString(getOrdValue(a)), n);
+    mFloatToStr: result := newStrNodeT(toStringF(getFloat(a)), n);
+    mCStrToStr: result := newStrNodeT(getStrOrChar(a), n);
+    mStrToStr: result := a;
+    mExit, mInc, ast.mDec, mAssert, mSwap,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq,
-    mSetLengthStr, mSetLengthSeq: begin end;
+    mSetLengthStr, mSetLengthSeq, mNLen..mNError: begin end;
     else InternalError(a.info, 'evalOp(' +{&} magicToStr[m] +{&} ')');
   end
 end;
@@ -228,13 +245,13 @@ begin
   a := getConstExpr(c, n.sons[1]);
   b := getConstExpr(c, n.sons[2]);
   if a <> nil then begin
-    assert(a.kind in [nkIntLit..nkInt64Lit]); 
+    assert(a.kind in [nkIntLit..nkInt64Lit]);
     if a.intVal = 0 then result := a
-    else if b <> nil then result := b 
+    else if b <> nil then result := b
     else result := n.sons[2]
   end
   else if b <> nil then begin
-    assert(b.kind in [nkIntLit..nkInt64Lit]); 
+    assert(b.kind in [nkIntLit..nkInt64Lit]);
     if b.intVal = 0 then result := b
     else result := n.sons[1]
   end
@@ -249,15 +266,35 @@ begin
   a := getConstExpr(c, n.sons[1]);
   b := getConstExpr(c, n.sons[2]);
   if a <> nil then begin
-    assert(a.kind in [nkIntLit..nkInt64Lit]); 
+    assert(a.kind in [nkIntLit..nkInt64Lit]);
     if a.intVal <> 0 then result := a
     else if b <> nil then result := b
     else result := n.sons[2]
   end
   else if b <> nil then begin
-    assert(b.kind in [nkIntLit..nkInt64Lit]); 
+    assert(b.kind in [nkIntLit..nkInt64Lit]);
     if b.intVal <> 0 then result := b
     else result := n.sons[1]
+  end
+end;
+
+function leValueConv(a, b: PNode): Boolean;
+begin
+  result := false;
+  case a.kind of
+    nkCharLit..nkInt64Lit:
+      case b.kind of
+        nkCharLit..nkInt64Lit: result := a.intVal <= b.intVal;
+        nkFloatLit..nkFloat64Lit: result := a.intVal <= round(b.floatVal);
+        else InternalError(a.info, 'leValueConv');
+      end;
+    nkFloatLit..nkFloat64Lit:
+      case b.kind of
+        nkFloatLit..nkFloat64Lit: result := a.floatVal <= b.floatVal;
+        nkCharLit..nkInt64Lit: result := a.floatVal <= toFloat(int(b.intVal));
+        else InternalError(a.info, 'leValueConv');
+      end;
+    else InternalError(a.info, 'leValueConv');
   end
 end;
 
@@ -271,7 +308,7 @@ begin
   case n.kind of
     nkSym: begin
       s := n.sym;
-      if s.kind = skEnumField then 
+      if s.kind = skEnumField then
         result := newIntNodeT(s.position, n)
       else if (s.kind = skConst) then begin
         case s.magic of
@@ -282,6 +319,9 @@ begin
           mNimrodMinor:   result := newIntNodeT(VersionMinor, n);
           mNimrodPatch:   result := newIntNodeT(VersionPatch, n);
           mCpuEndian:     result := newIntNodeT(ord(CPU[targetCPU].endian), n);
+          mNaN:           result := newFloatNodeT(NaN, n);
+          mInf:           result := newFloatNodeT(Inf, n);
+          mNegInf:        result := newFloatNodeT(NegInf, n);
           else            result := copyTree(s.ast); // BUGFIX
         end
       end
@@ -301,17 +341,17 @@ begin
           mSizeOf: begin
             a := n.sons[1];
             if computeSize(a.typ) < 0 then
-              liMessage(a.info, errCannotEvalXBecauseIncompletelyDefined, 
+              liMessage(a.info, errCannotEvalXBecauseIncompletelyDefined,
                         'sizeof');
-            if a.typ.kind in [tyArray, tyRecord, tyObject, tyTuple] then
-              result := nil // XXX: size computation for complex types 
+            if a.typ.kind in [tyArray, tyObject, tyTuple] then
+              result := nil // XXX: size computation for complex types
                             // is still wrong
             else
               result := newIntNodeT(a.typ.size, n);
           end;
           mLow:  result := newIntNodeT(firstOrd(n.sons[1].typ), n);
           mHigh: begin
-            if not (skipVarGeneric(n.sons[1].typ).kind in [tyOpenArray, 
+            if not (skipVarGeneric(n.sons[1].typ).kind in [tyOpenArray,
                                      tySequence, tyString]) then
               result := newIntNodeT(lastOrd(skipVarGeneric(n.sons[1].typ)), n);
           end;
@@ -337,60 +377,72 @@ begin
         result := n;
         n.sons[0] := a
       end;
-    end;(*
-    nkHiddenSubConv: begin
-      // subtype conversion is ok:
-      // XXX: range check!
-      result := getConstExpr(c, n.sons[0]);
-      if result <> nil then
-        result.typ := n.typ;
-    end;*)
-    nkArrayConstr, nkConstArrayConstr: begin
+    end;
+    nkBracket: begin
       result := copyTree(n);
       for i := 0 to sonsLen(n)-1 do begin
         a := getConstExpr(c, n.sons[i]);
         if a = nil then begin result := nil; exit end;
         result.sons[i] := a;
       end;
-      result.kind := nkConstArrayConstr;
+      include(result.flags, nfAllConst);
     end;
     nkRange: begin
       a := getConstExpr(c, n.sons[0]);
       if a = nil then exit;
       b := getConstExpr(c, n.sons[1]);
-      if b = nil then exit;      
+      if b = nil then exit;
       result := copyNode(n);
       addSon(result, a);
       addSon(result, b);
     end;
-    nkSetConstr, nkConstSetConstr: begin
+    nkCurly: begin
       result := copyTree(n);
       for i := 0 to sonsLen(n)-1 do begin
         a := getConstExpr(c, n.sons[i]);
         if a = nil then begin result := nil; exit end;
         result.sons[i] := a;
       end;
-      result.kind := nkConstSetConstr;
+      include(result.flags, nfAllConst);
     end;
     nkPar: begin // tuple constructor
       result := copyTree(n);
-      for i := 0 to sonsLen(n)-1 do begin
-        a := getConstExpr(c, n.sons[i]);
-        if a = nil then begin result := nil; exit end;
-        result.sons[i] := a;
+      if (sonsLen(n) > 0) and (n.sons[0].kind = nkExprColonExpr) then begin
+        for i := 0 to sonsLen(n)-1 do begin
+          a := getConstExpr(c, n.sons[i].sons[1]);
+          if a = nil then begin result := nil; exit end;
+          result.sons[i].sons[1] := a;
+        end
+      end
+      else begin
+        for i := 0 to sonsLen(n)-1 do begin
+          a := getConstExpr(c, n.sons[i]);
+          if a = nil then begin result := nil; exit end;
+          result.sons[i] := a;
+        end
       end;
+      include(result.flags, nfAllConst);
     end;
-    nkRecordConstr: begin
-      result := copyTree(n);
-      for i := 0 to sonsLen(n)-1 do begin
-        a := getConstExpr(c, n.sons[i].sons[1]);
-        if a = nil then begin result := nil; exit end;
-        result.sons[i].sons[1] := a;
-      end;
-      result.kind := nkConstRecordConstr;
+    nkChckRangeF, nkChckRange64, nkChckRange: begin
+      a := getConstExpr(c, n.sons[0]);
+      if a = nil then exit;
+      if leValueConv(n.sons[1], a) and leValueConv(a, n.sons[2]) then begin
+        result := a; // a <= x and x <= b
+        result.typ := n.typ
+      end
+      else
+        liMessage(n.info, errGenerated,
+          format(msgKindToString(errIllegalConvFromXtoY),
+            [typeToString(n.sons[0].typ), typeToString(n.typ)]));
+    end;
+    nkStringToCString, nkCStringToString: begin
+      a := getConstExpr(c, n.sons[0]);
+      if a = nil then exit;
+      result := a;
+      result.typ := n.typ;
     end;
     nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: begin
-      a := getConstExpr(c, n.sons[0]);
+      a := getConstExpr(c, n.sons[1]);
       if a = nil then exit;
       case skipRange(n.typ).kind of
         tyInt..tyInt64: begin
@@ -430,14 +482,14 @@ function semConstExpr(c: PContext; n: PNode): PNode;
 var
   e: PNode;
 begin
-  e := semExprWithType(c, n, false);
+  e := semExprWithType(c, n);
   if e = nil then begin
     liMessage(n.info, errConstExprExpected);
     result := nil; exit
   end;
   result := getConstExpr(c, e);
-  if result = nil then begin  
+  if result = nil then begin
     //writeln(output, renderTree(n));
-    liMessage(n.info, errConstExprExpected);  
+    liMessage(n.info, errConstExprExpected);
   end
 end;

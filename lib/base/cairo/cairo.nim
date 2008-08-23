@@ -149,13 +149,13 @@ type
       cdecl.}
   cairo_read_func_t* = proc (closure: Pointer, data: PByte, len: int32): cairo_status_t{.
       cdecl.}
-  cairo_t* = record           #OPAQUE
-  cairo_surface_t* = record   #OPAQUE
-  cairo_pattern_t* = record   #OPAQUE
-  cairo_scaled_font_t* = record #OPAQUE
-  cairo_font_face_t* = record #OPAQUE
-  cairo_font_options_t* = record #OPAQUE
-  cairo_matrix_t* = record
+  cairo_t* {.final.} = object           #OPAQUE
+  cairo_surface_t* {.final.} = object   #OPAQUE
+  cairo_pattern_t* {.final.} = object   #OPAQUE
+  cairo_scaled_font_t* {.final.} = object #OPAQUE
+  cairo_font_face_t* {.final.} = object #OPAQUE
+  cairo_font_options_t* {.final.} = object #OPAQUE
+  cairo_matrix_t* {.final.} = object
     xx: float64
     yx: float64
     xy: float64
@@ -163,15 +163,15 @@ type
     x0: float64
     y0: float64
 
-  cairo_user_data_key_t* = record
+  cairo_user_data_key_t* {.final.} = object
     unused: int32
 
-  cairo_glyph_t* = record
+  cairo_glyph_t* {.final.} = object
     index: int32
     x: float64
     y: float64
 
-  cairo_text_extents_t* = record
+  cairo_text_extents_t* {.final.} = object
     x_bearing: float64
     y_bearing: float64
     width: float64
@@ -179,28 +179,28 @@ type
     x_advance: float64
     y_advance: float64
 
-  cairo_font_extents_t* = record
+  cairo_font_extents_t* {.final.} = object
     ascent: float64
     descent: float64
     height: float64
     max_x_advance: float64
     max_y_advance: float64
 
-  cairo_path_data_t* = record #* _type : cairo_path_data_type_t;
-                              #       length : LongInt;
-                              #    end
+  cairo_path_data_t* {.final.} = object #* _type : cairo_path_data_type_t;
+                                        #       length : LongInt;
+                                        #    end
     x: float64
     y: float64
 
-  cairo_path_t* = record
+  cairo_path_t* {.final.} = object
     status: cairo_status_t
     data: Pcairo_path_data_t
     num_data: int32
 
-  cairo_rectangle_t* = record
+  cairo_rectangle_t* {.final.} = object
     x, y, width, height: float64
 
-  cairo_rectangle_list_t* = record
+  cairo_rectangle_list_t* {.final.} = object
     status: cairo_status_t
     rectangles: Pcairo_rectangle_t
     num_rectangles: int32

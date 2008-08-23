@@ -96,12 +96,9 @@ function typeRel(var mapping: TIdTable; f, a: PType): TTypeRelation; overload;
 function concreteType(t: PType): PType;
 begin
   case t.kind of
-    tyRecordConstr: begin
-      result := newType(tyRecord, t.owner);
-      // XXX semantic checking for the type?
-    end;
-    tyArrayConstr: begin  // make it an open array
-      result := newType(tyOpenArray, t.owner);
+    tyArrayConstr: begin  // make it an array
+      result := newType(tyArray, t.owner);
+      addSon(result, t.sons[0]); // XXX: t.owner is wrong for ID!
       addSon(result, t.sons[1]); // XXX: semantic checking for the type?
     end;
     tyEmptySet, tyNil: result := nil; // what should it be?
@@ -140,97 +137,33 @@ begin
   if a <= b then result := a else result := b
 end;
 
-function recordRelAux(var mapping: TIdTable; f, a: PType;
-                      var fields: TIntSet): TTypeRelation;
-var
-  i, j: int;
-  field: PSym;
-  found: bool;
-begin
-  result := isEqual;
-  if (f.kind <> tyRecordConstr) and (f.sons[0] <> nil) then begin
-    // basetype of object
-    result := recordRelAux(mapping, f.sons[0], a, fields);
-    if result = isNone then exit;
-  end;
-  for i := 0 to sonsLen(f.n)-1 do begin
-    if f.n.sons[i].kind = nkSym then begin
-      found := false;
-      for j := 0 to sonsLen(a.n)-1 do begin
-        field := a.n.sons[j].sym;
-        if field.name.id = f.n.sons[i].sym.name.id then begin
-          found := true;
-          if IntSetContainsOrIncl(fields, field.name.id) then begin
-            result := isNone; exit
-          end;
-          result := minRel(result, typeRel(mapping, f.n.sons[i].typ,
-                                           field.typ));
-          if result = isNone then exit
-        end
-      end;
-      if not found and (f.n.sons[i].sym.ast = nil) then begin
-        // needs default value, but has none
-        result := isNone; exit
-      end
-    end
-    else begin
-      // case in record?
-      result := isNone; exit
-    end
-  end;
-  for i := 0 to sonsLen(a.n)-1 do begin
-    if not IntSetContainsOrIncl(fields, a.n.sons[i].sym.name.id) then begin
-      result := isNone; exit
-    end
-  end
-end;
-
-function recordRel(var mapping: TIdTable; f, a: PType): TTypeRelation;
-var
-  fields: TIntSet;
-begin
-  assert(a.kind = tyRecordConstr);
-  IntSetInit(fields);
-  result := recordRelAux(mapping, f, a, fields);
-end;
-
-function tupleRelAux(var mapping: TIdTable; f, a: PType;
-                     var start: int): TTypeRelation;
-var
-  i: int;
-begin
-  result := isEqual;
-  assert(a.kind = tyTuple);
-  if f.sons[0] <> nil then begin // basetype of object
-    result := tupleRelAux(mapping, f.sons[0], a, start);
-    if result = isNone then exit;
-  end;
-  for i := 0 to sonsLen(f.n)-1 do begin
-    if f.n.sons[i].kind = nkSym then begin
-      if i+start < sonsLen(a) then begin
-        result := minRel(result, typeRel(mapping, f.n.sons[i].typ,
-                                         a.sons[i+start]));
-        if result = isNone then exit
-      end
-      else if f.n.sons[i].sym.ast = nil then begin
-        // needs default value, but has none
-        result := isNone; exit
-      end
-    end
-    else begin
-      // case in record?
-      result := isNone; exit
-    end
-  end;
-  inc(start, sonsLen(f));
-end;
-
 function tupleRel(var mapping: TIdTable; f, a: PType): TTypeRelation;
 var
-  start: int;
+  i: int;
+  x, y: PSym;
+  m: TTypeRelation;
 begin
-  start := 0;
-  result := tupleRelAux(mapping, f, a, start);
+  result := isNone;
+  if sonsLen(a) = sonsLen(f) then begin
+    result := isEqual;
+    for i := 0 to sonsLen(f)-1 do begin
+      m := typeRel(mapping, f.sons[i], a.sons[i]);
+      if m < isSubtype then begin result := isNone; exit end;
+      result := minRel(result, m);
+    end;
+    if (f.n <> nil) and (a.n <> nil) then begin
+      for i := 0 to sonsLen(f.n)-1 do begin
+        // check field names:
+        if f.n.sons[i].kind <> nkSym then InternalError(f.n.info, 'tupleRel');
+        if a.n.sons[i].kind <> nkSym then InternalError(a.n.info, 'tupleRel');
+        x := f.n.sons[i].sym;
+        y := a.n.sons[i].sym;
+        if x.name.id <> y.name.id then begin
+          result := isNone; exit
+        end
+      end
+    end
+  end
 end;
 
 function typeRel(var mapping: TIdTable; f, a: PType): TTypeRelation;
@@ -242,7 +175,7 @@ begin // is a subtype of f?
   result := isNone;
   assert(f <> nil);
   assert(a <> nil);
-  if (a.kind = tyGenericInst) and (f.kind <> tyGeneric) then begin
+  if (a.kind = tyGenericInst) and (skipVar(f).kind <> tyGeneric) then begin
     result := typeRel(mapping, f, lastSon(a));
     exit
   end;
@@ -280,7 +213,7 @@ begin // is a subtype of f?
     tyVar: begin
       if (a.kind = f.kind) then
         result := typeRel(mapping, base(f), base(a))
-      else //if tfAssignable in a.flags then
+      else
         result := typeRel(mapping, base(f), a)
     end;
     tyArray, tyArrayConstr: begin // tyArrayConstr cannot happen really, but
@@ -347,64 +280,12 @@ begin // is a subtype of f?
       if a.kind = f.kind then result := isEqual
     end;
     tyTuple: begin
-      case a.kind of
-        tyTuple: begin
-          if sonsLen(a) >= sonsLen(f) then begin
-            result := isEqual;
-            for i := 0 to sonsLen(f)-1 do begin
-              m := typeRel(mapping, f.sons[i], a.sons[i]);
-              if m < isGeneric then begin result := isNone; exit end;
-              result := minRel(result, m);
-            end;
-            if sonsLen(a) > sonsLen(f) then result := isSubtype;
-          end
-        end;
-        tyRecord, tyRecordConstr: begin
-          if sonsLen(a.n) >= sonsLen(f) then begin
-            result := isEqual;
-            for i := 0 to sonsLen(f)-1 do begin
-              m := typeRel(mapping, f.sons[i], a.n.sons[i].sym.typ);
-              if m < isGeneric then begin result := isNone; exit end;
-              result := minRel(result, m);
-            end;
-            if sonsLen(a.n) > sonsLen(f) then result := isSubtype;
-          end
-        end;
-        else begin end
-      end
-    end;
-    tyRecordConstr: begin // can happen for array constr of record constr
-      case a.kind of
-        tyRecord, tyRecordConstr: result := recordRel(mapping, f, a);
-        tyTuple: result := tupleRel(mapping, f, a);
-        else begin end
-      end
-    end;
-    tyRecord: begin
-      // structural equivalence is enough for constructors!
-      case a.kind of
-        tyRecord: begin
-          if a.id = f.id then result := isEqual
-        end;
-        tyRecordConstr: begin
-          result := recordRel(mapping, f, a);
-        end;
-        tyTuple: begin
-          result := tupleRel(mapping, f, a);
-        end;
-        else begin end
-      end
+      if a.kind = tyTuple then result := tupleRel(mapping, f, a);
     end;
     tyObject: begin
-      // easy:
-      case a.kind of
-        tyObject: begin
-          if a.id = f.id then result := isEqual
-          else if isObjectSubtype(a, f) then result := isSubtype
-        end;
-        tyRecordConstr: result := recordRel(mapping, f, a);
-        tyTuple: result := tupleRel(mapping, f, a);
-        else begin end
+      if a.kind = tyObject then begin
+        if a.id = f.id then result := isEqual
+        else if isObjectSubtype(a, f) then result := isSubtype
       end
     end;
     tySet: begin
@@ -414,7 +295,7 @@ begin // is a subtype of f?
         end;
         tySet: begin
           result := typeRel(mapping, base(f), base(a));
-          if result <= isConvertible then result := isEqual
+          if result <= isConvertible then result := isNone // BUGFIX!
         end;
         else begin end
       end
@@ -519,15 +400,16 @@ begin // is a subtype of f?
         else begin end
       end
     end;
-    tyGenericInst:
+    tyGenericInst: begin
       result := typeRel(mapping, lastSon(f), a);
+    end;
     tyGeneric: begin
       x := PType(idTableGet(mapping, f));
       if x = nil then begin
         assert(f.containerID <> 0);
-        if (f.containerID = a.containerID) and
-           (sonsLen(a) >= sonsLen(f)) then begin
-          // >= for partial generic matching!
+        assert(lastSon(f) = nil);
+        if (a.kind = tyGenericInst) and (f.containerID = a.containerID) and
+           (sonsLen(a) = sonsLen(f)) then begin
           for i := 0 to sonsLen(f)-2 do begin
             if typeRel(mapping, f.sons[i], a.sons[i]) < isGeneric then exit;
           end;
@@ -583,21 +465,23 @@ function getInstantiatedType(c: PContext; arg: PNode; const m: TCandidate;
                              f: PType): PType;
 begin
   result := PType(idTableGet(m.bindings, f));
-  if result = nil then
+  if result = nil then begin
     result := generateTypeInstance(c, m.bindings, arg.info, f);
+  end;
   if result = nil then InternalError(arg.info, 'getInstantiatedType');
 end;
 
-function implicitConv(kind: TNodeKind; f: PType; arg: PNode; 
+function implicitConv(kind: TNodeKind; f: PType; arg: PNode;
                       const m: TCandidate; c: PContext): PNode;
 begin
-  result := newNode(kind);
-  result.info := arg.info;
-  if containsGenericType(f) then 
+  result := newNodeI(kind, arg.info);
+  if containsGenericType(f) then
     result.typ := getInstantiatedType(c, arg, m, f)
   else
     result.typ := f;
-  addSon(result, copyTree(arg));
+  if result.typ = nil then InternalError(arg.info, 'implicitConv');
+  addSon(result, nil);
+  addSon(result, arg);
 end;
 
 function userConvMatch(c: PContext; var m: TCandidate; f, a: PType;
@@ -613,11 +497,10 @@ begin
     dest := c.converters[i].typ.sons[0];
     if (typeRel(m.bindings, f, dest) = isEqual) and
        (typeRel(m.bindings, src, a) = isEqual) then begin
-      result := newNode(nkHiddenCallConv);
-      result.info := arg.info;
       s := newSymNode(c.converters[i]);
       s.typ := c.converters[i].typ;
       s.info := arg.info;
+      result := newNodeIT(nkHiddenCallConv, arg.info, s.typ.sons[0]);
       addSon(result, s);
       addSon(result, copyTree(arg));
       inc(m.convMatches);
@@ -635,44 +518,44 @@ begin
   case r of
     isConvertible: begin
       inc(m.convMatches);
-      result := implicitConv(nkHiddenStdConv, f, arg, m, c);
+      result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
     end;
     isSubtype: begin
       inc(m.subtypeMatches);
-      result := implicitConv(nkHiddenSubConv, f, arg, m, c);
+      result := implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c);
     end;
     isGeneric: begin
       inc(m.genericMatches);
       result := copyTree(arg);
       result.typ := getInstantiatedType(c, arg, m, f);
       // BUG: f may not be the right key!
+      if (skipVarGeneric(f).kind in [tyTuple, tyOpenArray]) then
+        // BUGFIX: must pass length implicitely
+        result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
     end;
     isEqual: begin
       inc(m.exactMatches);
       result := copyTree(arg);
-      if (skipVarGeneric(f).kind = tyOpenArray) then 
+      if (skipVarGeneric(f).kind in [tyTuple, tyOpenArray]) then
         // BUGFIX: must pass length implicitely
-        result := implicitConv(nkHiddenStdConv, f, arg, m, c);
+        result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
     end;
     isNone: begin
       result := userConvMatch(c, m, f, a, arg);
       // check for a base type match, which supports openarray[T] without []
       // constructor in a call:
-      (*
-      if (result = nil) and
-          ((f.kind = tyOpenArray) or (f.kind = tySequence)) then begin
+      if (result = nil) and (f.kind = tyOpenArray) then begin
         r := typeRel(m.bindings, base(f), a);
-        if r > isGeneric then begin
+        if r >= isGeneric then begin
           inc(m.convMatches);
           result := copyTree(arg);
           if r = isGeneric then
             result.typ := getInstantiatedType(c, arg, m, base(f));
           m.baseTypeMatch := true;
-          exit
         end
         else
           result := userConvMatch(c, m, base(f), a, arg);
-      end *)
+      end
     end
   end
 end;
@@ -711,6 +594,7 @@ begin
   addSon(m.call, copyTree(n.sons[0]));
   IntSetInit(marker);
   container := nil;
+  formal := nil;
   while a < sonsLen(n) do begin
     if n.sons[a].kind = nkExprEqExpr then begin
       // named param
@@ -733,13 +617,12 @@ begin
         exit
       end;
       m.baseTypeMatch := false;
-      arg := ParamTypesMatch(c, m, formal.typ, n.sons[a].typ, 
+      arg := ParamTypesMatch(c, m, formal.typ, n.sons[a].typ,
                              n.sons[a].sons[1]);
       if (arg = nil) then begin m.state := csNoMatch; exit end;
       if m.baseTypeMatch then begin
         assert(container = nil);
-        container := newNode(nkBracket);
-        container.info := n.sons[a].info;
+        container := newNodeI(nkBracket, n.sons[a].info);
         addSon(container, arg);
         setSon(m.call, formal.position+1, container);
         if f <> formalLen-1 then container := nil;
@@ -753,14 +636,14 @@ begin
       if f >= formalLen then begin // too many arguments?
         if tfVarArgs in m.callee.flags then begin
           // is ok... but don't increment any counters...
-          if skipVarGeneric(n.sons[a].typ).kind = tyString then 
+          if skipVarGeneric(n.sons[a].typ).kind = tyString then
             // conversion to cstring
-            addSon(m.call, implicitConv(nkHiddenStdConv, 
-              getSysType(tyCString), n.sons[a], m, c))
+            addSon(m.call, implicitConv(nkHiddenStdConv,
+              getSysType(tyCString), copyTree(n.sons[a]), m, c))
           else
             addSon(m.call, copyTree(n.sons[a]));
         end
-        else begin
+        else if formal <> nil then begin
           m.baseTypeMatch := false;
           arg := ParamTypesMatch(c, m, formal.typ, n.sons[a].typ, n.sons[a]);
           if (arg <> nil) and m.baseTypeMatch and (container <> nil) then begin
@@ -771,9 +654,14 @@ begin
             exit
           end;
         end
+        else begin
+          m.state := csNoMatch;
+          exit
+        end
       end
       else begin
-        assert(m.callee.n.sons[f].kind = nkSym);
+        if m.callee.n.sons[f].kind <> nkSym then
+          InternalError(n.sons[a].info, 'matches');
         formal := m.callee.n.sons[f].sym;
         if IntSetContainsOrIncl(marker, formal.position) then begin
           // already in namedParams:
@@ -786,10 +674,10 @@ begin
         if (arg = nil) then begin m.state := csNoMatch; exit end;
         if m.baseTypeMatch then begin
           assert(container = nil);
-          container := newNode(nkBracket);
-          container.info := n.sons[a].info;
+          container := newNodeI(nkBracket, n.sons[a].info);
           addSon(container, arg);
-          setSon(m.call, formal.position+1, container);
+          setSon(m.call, formal.position+1,
+            implicitConv(nkHiddenStdConv, formal.typ, container, m, c));
           if f <> formalLen-1 then container := nil;
         end
         else begin
@@ -825,6 +713,8 @@ var
   cmp: int;
 begin
   sym := initOverloadIter(o, c, n.sons[0]);
+  result := nil;
+  if sym = nil then exit;
   initCandidate(x, sym.typ);
   x.calleeSym := sym;
   initCandidate(y, sym.typ);
@@ -848,14 +738,14 @@ begin
     end;
     sym := nextOverloadIter(o, c, n.sons[0])
   end;
-  result := nil;
   if x.state = csEmpty then begin
     // no overloaded proc found
     // do not generate an error yet; the semantic checking will check for
     // an overloaded () operator
   end
   else if (y.state = csMatch) and (cmpCandidates(x, y) = 0) then begin
-    assert((x.state = csMatch));
+    if x.state <> csMatch then
+      InternalError(n.info, 'x.state is not csMatch');
     //writeMatches(x);
     //writeMatches(y);
     liMessage(n.Info, errGenerated,

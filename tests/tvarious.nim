@@ -1,16 +1,16 @@
 # Test various aspects
 
 import
-  mvarious, io
+  mvarious
 
 type
   PA = ref TA
   PB = ref TB
 
-  TB = record
+  TB = object
     a: PA
 
-  TA = record
+  TA = object
     b: TB
     x: int
 

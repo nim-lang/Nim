@@ -21,7 +21,7 @@ function getMagic(op: PNode): TMagic;
 
 // function getConstExpr(const t: TNode; out res: TNode): Boolean;
 
-function isConstExpr(node: PNode): Boolean;
+function isConstExpr(n: PNode): Boolean;
 
 
 function flattenTree(root: PNode; op: TMagic): PNode;
@@ -36,8 +36,43 @@ function getProcSym(call: PNode): PSym;
 function ExprStructuralEquivalent(a, b: PNode): Boolean;
 
 function sameTree(a, b: PNode): boolean;
+function cyclicTree(n: PNode): boolean;
 
 implementation
+
+function hasSon(father, son: PNode): boolean;
+var
+  i: int;
+begin
+  for i := 0 to sonsLen(father)-1 do 
+    if father.sons[i] = son then begin result := true; exit end;
+  result := false
+end;
+
+function cyclicTreeAux(n, s: PNode): boolean;
+var
+  i, m: int;
+begin
+  if n = nil then begin result := false; exit end;
+  if hasSon(s, n) then begin result := true; exit end;
+  m := sonsLen(s);
+  addSon(s, n);
+  if not (n.kind in [nkEmpty..nkNilLit]) then 
+    for i := 0 to sonsLen(n)-1 do 
+      if cyclicTreeAux(n.sons[i], s) then begin  
+        result := true; exit 
+      end;
+  result := false;
+  delSon(s, m);
+end;
+
+function cyclicTree(n: PNode): boolean;
+var
+  s: PNode;
+begin
+  s := newNode(nkEmpty);
+  result := cyclicTreeAux(n, s);
+end;
 
 function ExprStructuralEquivalent(a, b: PNode): Boolean;
 var
@@ -77,7 +112,7 @@ begin
     result := true
   end
   else if (a <> nil) and (b <> nil) and (a.kind = b.kind) then begin
-    if a.base <> b.base then exit;
+    if a.flags <> b.flags then exit;
     if a.info.line <> int(b.info.line) then exit;
     if a.info.col <> int(b.info.col) then exit;
     //if a.info.fileIndex <> b.info.fileIndex then exit;
@@ -109,7 +144,7 @@ end;
 
 function getOpSym(op: PNode): PSym;
 begin
-  if not (op.kind in [nkCall, nkGenericCall]) then
+  if not (op.kind in [nkCall, nkGenericCall, nkHiddenCallConv]) then
     result := nil
   else begin
     assert(sonsLen(op) > 0);
@@ -123,7 +158,7 @@ end;
 function getMagic(op: PNode): TMagic;
 begin
   case op.kind of
-    nkCall: begin
+    nkCall, nkHiddenCallConv: begin
       case op.sons[0].Kind of
         nkSym, nkQualified: begin
           assert(op.sons[0].sym <> nil); // BUGFIX
@@ -145,12 +180,10 @@ begin
   result := t.sym
 end;
 
-function isConstExpr(node: PNode): Boolean;
+function isConstExpr(n: PNode): Boolean;
 begin
-  result := (node.kind in [nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-                           nkFloatLit..nkFloat64Lit,
-                           nkConstSetConstr,
-                           nkConstArrayConstr, nkConstRecordConstr])
+  result := (n.kind in [nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
+                       nkFloatLit..nkFloat64Lit]) or (nfAllConst in n.flags)
 end;
 
 procedure flattenTreeAux(d, a: PNode; op: TMagic);

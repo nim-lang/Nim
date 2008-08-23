@@ -1,7 +1,7 @@
 # test the new strutils module
 
 import
-  strutils, io
+  strutils
 
 proc testStrip() =
   write(stdout, strip("  ha  "))

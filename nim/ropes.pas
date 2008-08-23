@@ -111,9 +111,9 @@ function writeRopeIfNotEqual(r: PRope; const filename: string): boolean;
 
 function ropeToStr(p: PRope): string;
 
-function ropeFormat(const frmt: TFormatStr; const args: array of PRope): PRope;
+function ropef(const frmt: TFormatStr; const args: array of PRope): PRope;
 
-procedure appRopeFormat(var c: PRope; const frmt: TFormatStr;
+procedure appf(var c: PRope; const frmt: TFormatStr;
   const args: array of PRope);
 
 procedure RopeSeqInsert(var rs: TRopeSeq; r: PRope; at: Natural);
@@ -122,6 +122,9 @@ function getCacheStats: string;
 
 function RopeEqualsFile(r: PRope; const f: string): Boolean;
 // returns true if the rope r is the same as the contents of file f
+
+function RopeInvariant(r: PRope): Boolean;
+// exported for debugging
 
 implementation
 
@@ -137,8 +140,10 @@ begin
   {@ignore}
   fillChar(result^, sizeof(TRope), 0);
   {@emit}
-  result.len := length(data);
-  result.data := data;
+  if data <> snil then begin
+    result.len := length(data);
+    result.data := data;
+  end
 end;
 
 // -------------- leaf cache: ---------------------------------------
@@ -221,6 +226,23 @@ begin
   end
 end;
 
+function RopeInvariant(r: PRope): Boolean;
+begin
+  if r = nil then
+    result := true
+  else begin
+    result := true
+  (*
+    if r.data <> snil then
+      result := true
+    else begin
+      result := (r.left <> nil) and (r.right <> nil);
+      if result then result := ropeInvariant(r.left);
+      if result then result := ropeInvariant(r.right);
+    end *)
+  end
+end;
+
 function toRope(const s: string): PRope;
 begin
   if s = '' then
@@ -230,7 +252,8 @@ begin
     cache := result;
   end
   else
-    result := newRope(s)
+    result := newRope(s);
+  assert(RopeInvariant(result));
 end;
 
 // ------------------------------------------------------------------
@@ -249,14 +272,6 @@ begin
   for i := len downto at+1 do
     rs[i] := rs[i-1]; // this is correct, I used pen and paper to validate it
   rs[at] := r
-end;
-
-function RopeInvariant(r: PRope): Boolean;
-begin
-  if r = nil then
-    result := true
-  else
-    result := true
 end;
 
 function con(a, b: PRope): PRope; overload;
@@ -325,7 +340,8 @@ var
   i: int;
 begin
   result := nil;
-  for i := 0 to high(a) do result := con(result, a[i])
+  for i := 0 to high(a) do result := con(result, a[i]);
+  assert(RopeInvariant(result));
 end;
 
 function toRope(i: BiggestInt): PRope;
@@ -340,17 +356,45 @@ end;
 
 procedure app(var a: PRope; b: PRope); overload;
 begin
-  a := con(a, b)
+  a := con(a, b);
+  assert(RopeInvariant(a));
 end;
 
 procedure app(var a: PRope; const b: string); overload;
 begin
   a := con(a, b);
+  assert(RopeInvariant(a));
 end;
 
 procedure prepend(var a: PRope; b: PRope);
 begin
-  a := con(b, a)
+  a := con(b, a);
+  assert(RopeInvariant(a));
+end;
+
+procedure InitStack(var stack: TRopeSeq);
+begin
+  {@ignore}
+  setLength(stack, 0);
+  {@emit stack := [];}
+end;
+
+procedure push(var stack: TRopeSeq; r: PRope);
+var
+  len: int;
+begin
+  len := length(stack);
+  setLength(stack, len+1);
+  stack[len] := r;
+end;
+
+function pop(var stack: TRopeSeq): PRope;
+var
+  len: int;
+begin
+  len := length(stack);
+  result := stack[len-1];
+  setLength(stack, len-1);
 end;
 
 procedure WriteRopeRec(var f: TTextFile; c: PRope);
@@ -367,12 +411,32 @@ begin
   end
 end;
 
+procedure newWriteRopeRec(var f: TTextFile; c: PRope);
+var
+  stack: TRopeSeq;
+  it: PRope;
+begin
+  assert(RopeInvariant(c));
+  initStack(stack);
+  push(stack, c);
+  while length(stack) > 0 do begin
+    it := pop(stack);
+    while it.data = snil do begin
+      push(stack, it.right);
+      it := it.left;
+      assert(it <> nil);
+    end;
+    assert(it.data <> snil);
+    nimWrite(f, it.data);
+  end
+end;
+
 procedure WriteRope(head: PRope; const filename: string);
 var
   f: TTextFile; // we use a textfile for automatic buffer handling
 begin
   if OpenFile(f, filename, fmWrite) then begin
-    writeRopeRec(f, head);
+    if head <> nil then newWriteRopeRec(f, head);
     nimCloseFile(f);
   end
 end;
@@ -391,17 +455,42 @@ begin
   end
 end;
 
+procedure newRecRopeToStr(var result: string; var resultLen: int;
+                          r: PRope);
+var
+  stack: TRopeSeq;
+  it: PRope;
+begin
+  initStack(stack);
+  push(stack, r);
+  while length(stack) > 0 do begin
+    it := pop(stack);
+    while it.data = snil do begin
+      push(stack, it.right);
+      it := it.left;
+    end;
+    assert(it.data <> snil);
+    CopyMem(@result[resultLen+StrStart], @it.data[strStart], it.len);
+    Inc(resultLen, it.len);
+    assert(resultLen <= length(result));
+  end
+end;
+
 function ropeToStr(p: PRope): string;
 var
   resultLen: int;
 begin
   assert(RopeInvariant(p));
-  result := newString(p.len);
-  resultLen := 0;
-  recRopeToStr(result, resultLen, p);
+  if p = nil then
+    result := ''
+  else begin
+    result := newString(p.len);
+    resultLen := 0;
+    newRecRopeToStr(result, resultLen, p);
+  end
 end;
 
-function ropeFormat(const frmt: TFormatStr; const args: array of PRope): PRope;
+function ropef(const frmt: TFormatStr; const args: array of PRope): PRope;
 var
   i, j, len, start: int;
 begin
@@ -424,7 +513,7 @@ begin
           app(result, args[j-1]);
         end;
         'N', 'n': begin app(result, tnl); inc(i); end;
-        else InternalError('ropes: invalid format string$' + frmt[i]);
+        else InternalError('ropes: invalid format string $' + frmt[i]);
       end
     end;
     start := i;
@@ -435,10 +524,10 @@ begin
   assert(RopeInvariant(result));
 end;
 
-procedure appRopeFormat(var c: PRope; const frmt: TFormatStr;
+procedure appf(var c: PRope; const frmt: TFormatStr;
   const args: array of PRope);
 begin
-  app(c, ropeformat(frmt, args))
+  app(c, ropef(frmt, args))
 end;
 
 const
@@ -495,9 +584,30 @@ begin
   end
 end;
 
+function newCrcFromRopeAux(r: PRope; startVal: TCrc32): TCrc32;
+var
+  stack: TRopeSeq;
+  it: PRope;
+  i: int;
+begin
+  initStack(stack);
+  push(stack, r);
+  result := startVal;
+  while length(stack) > 0 do begin
+    it := pop(stack);
+    while it.data = snil do begin
+      push(stack, it.right);
+      it := it.left;
+    end;
+    assert(it.data <> snil);
+    for i := strStart to length(it.data)+strStart-1 do
+      result := updateCrc32(it.data[i], result);
+  end
+end;
+
 function crcFromRope(r: PRope): TCrc32;
 begin
-  result := crcFromRopeAux(r, initCrc32)
+  result := newCrcFromRopeAux(r, initCrc32)
 end;
 
 function writeRopeIfNotEqual(r: PRope; const filename: string): boolean;

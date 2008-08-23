@@ -240,6 +240,9 @@ begin
 end;
 
 function parseSymbol(var p: TParser): PNode;
+var
+  s: string;
+  id: PIdent;
 begin
   case p.tok.tokType of
     tkSymbol: begin
@@ -251,9 +254,31 @@ begin
       getTok(p);
       case p.tok.tokType of
         tkBracketLe: begin
-          addSon(result, newIdentNodeP(getIdent('[]'), p));
+          s := '['+'';
           getTok(p);
+          if (p.tok.tokType = tkOpr) and (p.tok.ident.s = '$'+'') then begin
+            s := s + '$..';
+            getTok(p);
+            eat(p, tkDotDot);
+            if (p.tok.tokType = tkOpr) and (p.tok.ident.s = '$'+'') then begin
+              s := s + '$'+'';
+              getTok(p);          
+            end;
+          end
+          else if p.tok.tokType = tkDotDot then begin
+            s := s + '..';
+            getTok(p);
+            if (p.tok.tokType = tkOpr) and (p.tok.ident.s = '$'+'') then begin
+              s := s + '$'+'';
+              getTok(p);
+            end;
+          end;
           eat(p, tkBracketRi);
+          s := s + ']'+'';
+          if p.tok.tokType = tkEquals then begin
+            s := s + '='; getTok(p);
+          end;
+          addSon(result, newIdentNodeP(getIdent(s), p));
         end;
         tkParLe: begin
           addSon(result, newIdentNodeP(getIdent('()'), p));
@@ -261,8 +286,14 @@ begin
           eat(p, tkParRi);
         end;
         tokKeywordLow..tokKeywordHigh, tkSymbol, tkOpr: begin
-          addSon(result, newIdentNodeP(p.tok.ident, p));
+          id := p.tok.ident;
           getTok(p);
+          if p.tok.tokType = tkEquals then begin
+            addSon(result, newIdentNodeP(getIdent(id.s + '='), p));
+            getTok(p);
+          end
+          else
+            addSon(result, newIdentNodeP(id, p));
         end;
         else begin
           parMessage(p, errIdentifierExpected, tokToStr(p.tok));
@@ -350,7 +381,7 @@ var
 begin
   case p.tok.tokType of
     tkDotDot: result := dotdotExpr(p);
-    tkVar, tkRef, tkPtr, tkProc, tkType: result := parseTypeDescK(p);
+    tkVar, tkRef, tkPtr, tkProc, tkTuple, tkType: result := parseTypeDescK(p);
     else begin
       a := parseExpr(p);
       case p.tok.tokType of
@@ -519,6 +550,16 @@ begin
   eat(p, tkParRi);
 end;
 
+procedure setBaseFlags(n: PNode; base: TNumericalBase);
+begin
+  case base of
+    base10: begin end;
+    base2: include(n.flags, nfBase2);
+    base8: include(n.flags, nfBase8);
+    base16: include(n.flags, nfBase16);
+  end
+end;
+
 function identOrLiteral(var p: TParser): PNode;
 begin
   case p.tok.tokType of
@@ -530,42 +571,42 @@ begin
     // literals
     tkIntLit: begin
       result := newIntNodeP(nkIntLit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkInt8Lit: begin
       result := newIntNodeP(nkInt8Lit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkInt16Lit: begin
       result := newIntNodeP(nkInt16Lit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkInt32Lit: begin
       result := newIntNodeP(nkInt32Lit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkInt64Lit: begin
       result := newIntNodeP(nkInt64Lit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkFloatLit: begin
       result := newFloatNodeP(nkFloatLit, p.tok.fNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkFloat32Lit: begin
       result := newFloatNodeP(nkFloat32Lit, p.tok.fNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkFloat64Lit: begin
       result := newFloatNodeP(nkFloat64Lit, p.tok.fNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     tkStrLit: begin
@@ -584,10 +625,6 @@ begin
       result := newIntNodeP(nkCharLit, ord(p.tok.literal[strStart]), p);
       getTok(p);
     end;
-    tkRCharLit: begin
-      result := newIntNodeP(nkRCharLit, ord(p.tok.literal[strStart]), p);
-      getTok(p);
-    end;
     tkNil: begin
       result := newNodeP(nkNilLit, p);
       getTok(p);
@@ -598,8 +635,7 @@ begin
                                     tkColon);
     end;
     tkCurlyLe: begin // {} constructor
-      result := exprColonEqExprList(p, nkCurly, nkRange, tkCurlyRi,
-                                    tkDotDot);
+      result := exprColonEqExprList(p, nkCurly, nkRange, tkCurlyRi, tkDotDot);
     end;
     tkBracketLe: begin // [] constructor
       result := exprColonEqExprList(p, nkBracket, nkExprColonExpr, tkBracketRi,
@@ -1278,6 +1314,8 @@ begin
 end;
 
 function parseTypeDescK(var p: TParser): PNode;
+var
+  a: PNode;
 begin
   case p.tok.tokType of
     tkVar: result := parseTypeDescKAux(p, nkVarTy);
@@ -1298,7 +1336,25 @@ begin
         addSon(result, parsePragma(p))
       else
         addSon(result, nil);
-    end
+    end;
+    tkTuple: begin
+      result := newNodeP(nkTupleTy, p);
+      getTok(p);
+      eat(p, tkBracketLe);
+      optInd(p, result);
+      while true do begin
+        case p.tok.tokType of
+          tkSymbol, tkAccent: a := parseIdentColonEquals(p, false);
+          tkBracketRi: begin getTok(p); break end;
+          else begin parMessage(p, errTokenExpected, ']'+''); break; end;
+        end;
+        optInd(p, a);
+        if p.tok.tokType = tkComma then begin
+          getTok(p); optInd(p, a)
+        end;
+        addSon(result, a);
+      end;
+    end;
     else begin
       InternalError(parLineInfo(p), 'pnimsyn.parseTypeDescK');
       result := nil
@@ -1309,7 +1365,7 @@ end;
 function parseTypeDesc(var p: TParser): PNode;
 begin
   case p.tok.tokType of
-    tkVar, tkRef, tkPtr, tkProc, tkType:
+    tkVar, tkRef, tkPtr, tkProc, tkType, tkTuple:
       result := parseTypeDescK(p);
     else result := primary(p)
   end
@@ -1599,7 +1655,7 @@ begin
     if kind = nkObjectTy then
       addSon(result, a)
     else
-      parMessage(p, errInheritanceOnlyWithObjects);
+      parMessage(p, errInheritanceOnlyWithNonFinalObjects);
   end
   else addSon(result, nil);
   skipComment(p, result);
@@ -1617,7 +1673,6 @@ begin
   if p.tok.tokType = tkEquals then begin
     getTok(p); optInd(p, result);
     case p.tok.tokType of
-      tkRecord: a := parseRecordOrObject(p, nkRecordTy);
       tkObject: a := parseRecordOrObject(p, nkObjectTy);
       tkEnum: a := parseEnum(p);
       else a := parseTypeDesc(p);
@@ -1660,22 +1715,23 @@ end;
 function complexOrSimpleStmt(var p: TParser): PNode;
 begin
   case p.tok.tokType of
-    tkIf:       result := parseIfOrWhen(p, nkIfStmt);
-    tkWhile:    result := parseWhile(p);
-    tkCase:     result := parseCase(p);
-    tkTry:      result := parseTry(p);
-    tkFor:      result := parseFor(p);
-    tkBlock:    result := parseBlock(p);
-    tkAsm:      result := parseAsm(p);
-    tkProc:     result := parseRoutine(p, nkProcDef);
-    tkIterator: result := parseRoutine(p, nkIteratorDef);
-    tkMacro:    result := parseRoutine(p, nkMacroDef);
-    tkTemplate: result := parseRoutine(p, nkTemplateDef);
-    tkType:     result := parseSection(p, nkTypeSection, parseTypeDef);
-    tkConst:    result := parseSection(p, nkConstSection, parseConstant);
-    tkWhen:     result := parseIfOrWhen(p, nkWhenStmt);
-    tkVar:      result := parseSection(p, nkVarSection, parseVariable);
-    else        result := simpleStmt(p);
+    tkIf:        result := parseIfOrWhen(p, nkIfStmt);
+    tkWhile:     result := parseWhile(p);
+    tkCase:      result := parseCase(p);
+    tkTry:       result := parseTry(p);
+    tkFor:       result := parseFor(p);
+    tkBlock:     result := parseBlock(p);
+    tkAsm:       result := parseAsm(p);
+    tkProc:      result := parseRoutine(p, nkProcDef);
+    tkIterator:  result := parseRoutine(p, nkIteratorDef);
+    tkMacro:     result := parseRoutine(p, nkMacroDef);
+    tkTemplate:  result := parseRoutine(p, nkTemplateDef);
+    tkConverter: result := parseRoutine(p, nkConverterDef);
+    tkType:      result := parseSection(p, nkTypeSection, parseTypeDef);
+    tkConst:     result := parseSection(p, nkConstSection, parseConstant);
+    tkWhen:      result := parseIfOrWhen(p, nkWhenStmt);
+    tkVar:       result := parseSection(p, nkVarSection, parseVariable);
+    else         result := simpleStmt(p);
   end
 end;
 

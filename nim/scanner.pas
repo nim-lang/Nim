@@ -62,15 +62,15 @@ type
     tkMacro, tkMethod, tkMod, tkNil, 
     tkNot, tkNotin, tkObject, tkOf, 
     tkOr, tkOut, tkProc, tkPtr, 
-    tkRaise, tkRecord, tkRef, tkReturn, 
-    tkShl, tkShr, tkTemplate, tkTry, 
+    tkRaise, tkRef, tkReturn, tkShl, 
+    tkShr, tkTemplate, tkTry, tkTuple, 
     tkType, tkVar, tkWhen, tkWhere, 
     tkWhile, tkWith, tkWithout, tkXor, 
     tkYield, 
     //[[[end]]]
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
     tkFloatLit, tkFloat32Lit, tkFloat64Lit,
-    tkStrLit, tkRStrLit, tkTripleStrLit, tkCharLit, tkRCharLit,
+    tkStrLit, tkRStrLit, tkTripleStrLit, tkCharLit,
     tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
     tkBracketDotLe, tkBracketDotRi, // [. and  .]
     tkCurlyDotLe, tkCurlyDotRi, // {.  and  .}
@@ -106,15 +106,15 @@ const
     'macro', 'method', 'mod', 'nil', 
     'not', 'notin', 'object', 'of', 
     'or', 'out', 'proc', 'ptr', 
-    'raise', 'record', 'ref', 'return', 
-    'shl', 'shr', 'template', 'try', 
+    'raise', 'ref', 'return', 'shl', 
+    'shr', 'template', 'try', 'tuple', 
     'type', 'var', 'when', 'where', 
     'while', 'with', 'without', 'xor', 
     'yield', 
     //[[[end]]]
     'tkIntLit', 'tkInt8Lit', 'tkInt16Lit', 'tkInt32Lit', 'tkInt64Lit',
     'tkFloatLit', 'tkFloat32Lit', 'tkFloat64Lit',
-    'tkStrLit', 'tkRStrLit', 'tkTripleStrLit', 'tkCharLit', 'tkRCharLit',
+    'tkStrLit', 'tkRStrLit', 'tkTripleStrLit', 'tkCharLit',
     '('+'', ')'+'', '['+'', ']'+'', '{'+'', '}'+'',
     '[.', '.]', '{.', '.}', '(.', '.)', ','+'', ';'+'', ':'+'',
     '='+'', '.'+'', '..', '^'+'', 'tkOpr',
@@ -124,6 +124,11 @@ const
   );
 
 type
+  TNumericalBase = (base10, // base10 is listed as the first element,
+                            // so that it is the correct default value
+                    base2,
+                    base8,
+                    base16);
   PToken = ^TToken;
   TToken = object          // a Nimrod token
     tokType: TTokType;     // the type of the token
@@ -210,7 +215,7 @@ begin
       result := toString(tok.iNumber);
     tkFloatLit..tkFloat64Lit:
       result := toStringF(tok.fNumber);
-    tkInvalid, tkStrLit..tkRCharLit, tkComment:
+    tkInvalid, tkStrLit..tkCharLit, tkComment:
       result := tok.literal;
     tkParLe..tkColon, tkEof, tkInd, tkSad, tkDed, tkAccent:
       result := tokTypeToStr[tok.tokType];
@@ -510,7 +515,13 @@ begin
       if result.tokType = tkIntLit then result.tokType := tkFloatLit;
     end
     else begin
-      result.iNumber := ParseInt(result.literal)
+      result.iNumber := ParseBiggestInt(result.literal);
+      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)) then
+      begin
+        if result.tokType = tkIntLit then result.tokType := tkInt64Lit
+        else if result.tokType <> tkInt64Lit then
+          lexMessage(L, errInvalidNumber, result.literal);
+      end
     end;
   except
     on EInvalidValue do
@@ -682,7 +693,7 @@ begin
   end
 end;
 
-procedure getCharacter(var L: TLexer; var tok: TToken; rawMode: Boolean);
+procedure getCharacter(var L: TLexer; var tok: TToken);
 var
   c: Char;
 begin
@@ -690,13 +701,7 @@ begin
   c := L.buf[L.bufpos];
   case c of
     #0..Pred(' '), '''': lexMessage(L, errInvalidCharacterConstant);
-    '\': begin
-      if not rawMode then
-        getEscapedChar(L, tok)
-      else begin
-        tok.literal := '\'+''; Inc(L.bufpos);
-      end
-    end
+    '\': getEscapedChar(L, tok);
     else begin
       tok.literal := c + '';
       Inc(L.bufpos);
@@ -923,18 +928,11 @@ begin
         getSymbol(L, tok);
       end;
       'r', 'R': begin
-        case L.buf[L.bufPos+1] of
-          '''': begin
-            Inc(L.bufPos);
-            getCharacter(L, tok, true);
-            tok.tokType := tkRCharLit;
-          end;
-          '"': begin
-            Inc(L.bufPos);
-            getString(L, tok, true);
-          end;
-          else getSymbol(L, tok);
+        if L.buf[L.bufPos+1] = '"' then begin
+          Inc(L.bufPos);
+          getString(L, tok, true);
         end
+        else getSymbol(L, tok);
       end;
       '(': begin
         Inc(L.bufpos);
@@ -1004,7 +1002,7 @@ begin
       end;
       '"': getString(L, tok, false);
       '''': begin
-        getCharacter(L, tok, false);
+        getCharacter(L, tok);
         tok.tokType := tkCharLit;
       end;
       lexbase.EndOfFile: tok.toktype := tkEof;

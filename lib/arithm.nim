@@ -18,13 +18,13 @@ proc raiseDivByZero {.exportc: "raiseDivByZero".} =
   raise newException(EDivByZero, "divison by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
-  result = a + b
+  result = a +% b
   if (result xor a) >= int64(0) or (result xor b) >= int64(0):
     return result
   raiseOverflow()
 
 proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
-  result = a - b
+  result = a -% b
   if (result xor a) >= int64(0) or (result xor not b) >= int64(0):
     return result
   raiseOverflow()
@@ -74,7 +74,7 @@ proc modInt64(a, b: int64): int64 {.compilerProc, inline.} =
 proc mulInt64(a, b: int64): int64 {.compilerproc.} =
   var
     resAsFloat, floatProd: float64
-  result = a * b
+  result = a *% b
   floatProd = float64(a) # conversion
   floatProd = floatProd * float64(b)
   resAsFloat = float64(result)
@@ -211,7 +211,7 @@ when defined(asmVersion) and not defined(gcc):
     """
 
 elif defined(asmVersion) and defined(gcc):
-  proc addInt(a, b: int): int = 
+  proc addInt(a, b: int): int =
     asm """ "addl %1,%%eax\n"
              "jno 1\n"
              "call _raiseOverflow\n"
@@ -219,7 +219,7 @@ elif defined(asmVersion) and defined(gcc):
             :"=a"(`a`)
             :"a"(`a`), "r"(`b`)
     """
-    
+
   proc subInt(a, b: int): int =
     asm """ "subl %1,%%eax\n"
              "jno 1\n"
@@ -228,7 +228,7 @@ elif defined(asmVersion) and defined(gcc):
             :"=a"(`a`)
             :"a"(`a`), "r"(`b`)
     """
-    
+
   proc negInt(a: int): int =
     asm """  "negl %%eax\n"
              "jno 1\n"
@@ -237,7 +237,7 @@ elif defined(asmVersion) and defined(gcc):
             :"=a"(`a`)
             :"a"(`a`)
     """
-  
+
   proc divInt(a, b: int): int =
     asm """  "xorl %%edx, %%edx\n"
              "idivl %%ecx\n"
@@ -276,13 +276,13 @@ else:
   # Platform independant versions of the above (slower!)
 
   proc addInt(a, b: int): int =
-    result = a + b
+    result = a +% b
     if (result xor a) >= 0 or (result xor b) >= 0:
       return result
     raiseOverflow()
 
   proc subInt(a, b: int): int =
-    result = a - b
+    result = a -% b
     if (result xor a) >= 0 or (result xor not b) >= 0:
       return result
     raiseOverflow()
@@ -327,7 +327,7 @@ else:
     var
       resAsFloat, floatProd: float
 
-    result = a * b
+    result = a *% b
     floatProd = toFloat(a) * toFloat(b)
     resAsFloat = toFloat(result)
 

@@ -12,8 +12,7 @@
 function getSymRepr(s: PSym): string;
 begin
   case s.kind of
-    skProc, skConverter, skIterator:
-      result := getProcHeader(s);
+    skProc, skConverter, skIterator: result := getProcHeader(s);
     else result := s.name.s
   end
 end;
@@ -24,7 +23,7 @@ var
   s: PSym;
 begin
   // check if all symbols have been used and defined:
-  assert(tab.tos <= length(tab.stack));
+  if (tab.tos > length(tab.stack)) then InternalError('CloseScope');
   s := InitTabIter(it, tab.stack[tab.tos-1]);
   while s <> nil do begin
     if sfForward in s.flags then
@@ -59,7 +58,8 @@ procedure addOverloadableSymAt(c: PContext; fn: PSym; at: Natural);
 var
   check: PSym;
 begin
-  assert(fn.kind in OverloadableSyms);
+  if not (fn.kind in OverloadableSyms) then
+    InternalError(fn.info, 'addOverloadableSymAt');
   check := StrTableGet(c.tab.stack[at], fn.name);
   if (check <> nil) and (check.Kind <> fn.kind) then
     liMessage(fn.info, errAttemptToRedefine, fn.Name.s);
@@ -70,7 +70,7 @@ procedure AddInterfaceDeclAux(c: PContext; sym: PSym);
 begin
   if (sfInInterface in sym.flags) then begin
     // add to interface:
-    assert(c.module <> nil);
+    if c.module = nil then InternalError(sym.info, 'AddInterfaceDeclAux');
     StrTableAdd(c.module.tab, sym);
   end;
   if getCurrOwner(c).kind = skModule then
@@ -92,12 +92,21 @@ end;
 function lookUp(c: PContext; n: PNode): PSym;
 // Looks up a symbol. Generates an error in case of nil.
 begin
-  if n.kind = nkAccQuoted then result := lookup(c, n.sons[0])
-  else begin
-    assert(n.kind = nkIdent);
-    result := SymtabGet(c.Tab, n.ident);
-    if result = nil then liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
-    include(result.flags, sfUsed);
+  case n.kind of
+    nkAccQuoted: result := lookup(c, n.sons[0]);
+    nkSym: begin
+      result := SymtabGet(c.Tab, n.sym.name);
+      if result = nil then
+        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s);
+      include(result.flags, sfUsed);
+    end;
+    nkIdent: begin
+      result := SymtabGet(c.Tab, n.ident);
+      if result = nil then
+        liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
+      include(result.flags, sfUsed);
+    end
+    else InternalError(n.info, 'lookUp');
   end
 end;
 
@@ -115,6 +124,14 @@ begin
           and StrTableContains(c.AmbigiousSymbols, result) then
         liMessage(n.info, errUseQualifier, n.ident.s)
     end;
+    nkSym: begin
+      result := SymtabGet(c.Tab, n.sym.name);
+      if result = nil then
+        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s)
+      else if ambigiousCheck
+          and StrTableContains(c.AmbigiousSymbols, result) then
+        liMessage(n.info, errUseQualifier, n.sym.name.s)
+    end;    
     nkDotExpr, nkQualified: begin
       result := nil;
       m := qualifiedLookUp(c, n.sons[0], false);
@@ -165,6 +182,15 @@ begin
         result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident);
       end;
     end;
+    nkSym: begin
+      o.stackPtr := c.tab.tos;
+      o.mode := oimNoQualifier;
+      while (result = nil) do begin
+        dec(o.stackPtr);
+        if o.stackPtr < 0 then break;
+        result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name);
+      end;
+    end;
     nkDotExpr, nkQualified: begin
       o.mode := oimOtherModule;
       o.m := qualifiedLookUp(c, n.sons[0], false);
@@ -199,7 +225,8 @@ begin
         while (result = nil) do begin
           dec(o.stackPtr);
           if o.stackPtr < 0 then break;
-          result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident);
+          result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name);
+          // BUGFIX: o.it.name <-> n.ident
         end
       end
       else result := nil;

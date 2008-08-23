@@ -26,10 +26,9 @@ begin
       if (it.kind = nkExprColonExpr) and (it.sons[0].kind = nkIdent) then begin
         case whichKeyword(it.sons[0].ident) of
           wAsmQuote: begin
-            case it.sons[1].kind of
-              nkCharLit, nkRCharLit: result := chr(int(it.sons[1].intVal));
-              else invalidPragma(it)
-            end
+            if it.sons[1].kind = nkCharLit then
+              result := chr(int(it.sons[1].intVal))
+            else invalidPragma(it)
           end
           else
             invalidPragma(it)
@@ -246,6 +245,8 @@ begin
     sw := whichKeyword(n.sons[0].ident);
     case sw of
       wChecks: OnOff(c, n, checksOptions);
+      wObjChecks: OnOff(c, n, {@set}[optObjCheck]);
+      wFieldchecks: OnOff(c, n, {@set}[optFieldCheck]);
       wRangechecks: OnOff(c, n, {@set}[optRangeCheck]);
       wBoundchecks: OnOff(c, n, {@set}[optBoundsCheck]);
       wOverflowchecks: OnOff(c, n, {@set}[optOverflowCheck]);
@@ -373,12 +374,12 @@ begin
   end
 end;
 
-procedure Breakpoint(c: PContext; n: PNode);
+procedure PragmaBreakpoint(c: PContext; n: PNode);
 begin
   {@discard} getOptionalStr(c, n, '');
 end;
 
-procedure Checkpoint(c: PContext; n: PNode);
+procedure PragmaCheckpoint(c: PContext; n: PNode);
 // checkpoints can be used to debug the compiler; they are not documented
 var
   info: TLineInfo;
@@ -427,7 +428,10 @@ begin
               liMessage(it.info, errPowerOfTwoExpected);
           end;
           wNodecl: begin noVal(it); Include(sym.loc.Flags, lfNoDecl); end;
-          wPure: begin noVal(it); include(sym.flags, sfPure); end;
+          wPure: begin
+            noVal(it);
+            if sym <> nil then include(sym.flags, sfPure);
+          end;
           wVolatile: begin noVal(it); Include(sym.flags, sfVolatile); end;
           wRegister: begin noVal(it); include(sym.flags, sfRegister); end;
           wMagic: processMagic(c, it, sym);
@@ -444,7 +448,6 @@ begin
           wNosideeffect: begin noVal(it); Include(sym.flags, sfNoSideEffect); end;
           wNoReturn: begin noVal(it); Include(sym.flags, sfNoReturn); end;
           wDynLib: processDynLib(c, it, sym);
-          wReturnsNew: begin noVal(it); Include(sym.flags, sfReturnsNew); end;
           wCompilerProc: begin
             noVal(it); // compilerproc may not get a string!
             makeExternExport(sym, sym.name.s);
@@ -464,6 +467,14 @@ begin
             noVal(it);
             include(sym.typ.flags, tfVarargs);
           end;
+          wFinal: begin
+            noVal(it);
+            include(sym.typ.flags, tfFinal);
+          end;
+          wTypeCheck: begin
+            noVal(it);
+            include(sym.flags, sfTypeCheck);
+          end;
 
           // statement pragmas:
           wHint: liMessage(it.info, hintUser, expectStrLit(c, it));
@@ -478,6 +489,9 @@ begin
           wCompile: processCompile(c, it);
           wLink: processCommonLink(c, it, linkNormal);
           wLinkSys: processCommonLink(c, it, linkSys);
+          wPassL: extccomp.addLinkOption(expectStrLit(c, it));
+          wPassC: extccomp.addCompileOption(expectStrLit(c, it));
+
           // fixupSystem not even documented:
           wFixupSystem: begin
             if c.module = magicSys.SystemModule then
@@ -485,12 +499,13 @@ begin
             else
               invalidPragma(it)
           end;
-          wBreakpoint: Breakpoint(c, it);
-          wCheckpoint: Checkpoint(c, it);
+          wBreakpoint: PragmaBreakpoint(c, it);
+          wCheckpoint: PragmaCheckpoint(c, it);
 
           wPush: begin processPush(c, n, i+1); break end;
           wPop: processPop(c, it);
-          wChecks, wRangechecks, wBoundchecks, wOverflowchecks, wNilchecks,
+          wChecks, wObjChecks, wFieldChecks,
+          wRangechecks, wBoundchecks, wOverflowchecks, wNilchecks,
           wAssertions, wWarnings, wHints, wLinedir, wStacktrace,
           wLinetrace, wOptimization, wByRef, wCallConv, wDebugger:
             processOption(c, it);
@@ -528,20 +543,28 @@ begin
     wCppMethod, wDeprecated, wVarargs]);
 end;
 
+procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
+begin
+  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
+    wImportc, wExportc, wNostatic, wNodecl, wMagic, wNosideEffect,
+    wCompilerProc, wDeprecated, wTypeCheck]);
+end;
+
 procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
          wImportc, wExportc, wNodecl, wMagic, wDeprecated]);
 end;
 
-procedure pragmaStmt(c: PContext; n: PNode);
+procedure pragmaStmt(c: PContext; s: PSym; n: PNode);
 begin
-  pragma(c, nil, n, {@set}[wChecks, wRangechecks, wBoundchecks,
-      wOverflowchecks, wNilchecks, wAssertions, wWarnings,
+  pragma(c, s, n, {@set}[wChecks, wObjChecks, wFieldChecks, wRangechecks,
+      wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings,
       wHints, wLinedir, wStacktrace, wLinetrace, wOptimization,
       wHint, wWarning, wError, wFatal, wDefine, wUndef,
-      wCompile, wLink, wLinkSys,
-      wPush, wPop, wFixupSystem, wBreakpoint, wCheckpoint]);
+      wCompile, wLink, wLinkSys, wPure,
+      wPush, wPop, wFixupSystem, wBreakpoint, wCheckpoint,
+      wPassL, wPassC]);
 end;
 
 procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
@@ -554,7 +577,7 @@ end;
 procedure pragmaType(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[wImportc, wExportc, wDeprecated, wMagic,
-                         wNodecl, wPure, wHeader, wCompilerProc]);
+                         wNodecl, wPure, wHeader, wCompilerProc, wFinal]);
 end;
 
 procedure pragmaField(c: PContext; s: PSym; n: PNode);

@@ -74,10 +74,6 @@ type
     errTokenExpected,
     errStringAfterIncludeExpected,
     errRecursiveInclude,
-    errAtIfExpected,
-    errAtIfExpectedBeforeElse,
-    errAtIfExpectedBeforeElif,
-    errAtEndExpected,
     errOnOrOffExpected,
     errNoneSpeedOrSizeExpected,
     errInvalidPragma,
@@ -186,7 +182,7 @@ type
     errSizeTooBig,
     errSetTooBig,
     errBaseTypeMustBeOrdinal,
-    errInheritanceOnlyWithObjects,
+    errInheritanceOnlyWithNonFinalObjects,
     errInheritanceOnlyWithEnums,
     errIllegalRecursionInTypeX,
     errCannotInstantiateX,
@@ -267,6 +263,20 @@ type
     errWhitespaceExpected,
     errXisNoValidIndexFile,
     errCannotRenderX,
+    errVarVarTypeNotAllowed,
+    errIsExpectsTwoArguments,
+    errIsExpectsObjectTypes,
+    errXcanNeverBeOfThisSubtype,
+    errTooManyIterations,
+    errCannotInterpretNodeX,
+    errFieldXNotFound,
+    errInvalidConversionFromTypeX,
+    errAssertionFailed,
+    errCannotGenerateCodeForX,
+    errXNeedsReturnType,
+    errXRequiresOneArgument,
+    errUnhandledExceptionX,
+    errCyclicTree,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape,
@@ -291,6 +301,8 @@ type
     hintMo2FileInvalid,
     hintModuleHasChanged,
     hintCannotOpenMo2File,
+    hintQuitCalled,
+    hintProcessing,
     hintUser);
 
 const
@@ -310,7 +322,7 @@ const
     'invalid token: $1',
     'line too long',
     '$1 is not a valid number',
-    '$1 is too large or too small',
+    'number $1 out of valid range',
     '\n not allowed in character literal',
     'closing '']'' expected, but end of file reached',
     'missing final ''',
@@ -319,10 +331,6 @@ const
     '''$1'' expected',
     'string after ''include'' expected',
     'recursive include file: ''$1''',
-    '''@if'' expected',
-    '''@if'' expected before ''@else''',
-    '''@if'' expected before ''@elif''',
-    '''@end'' expected',
     '''on'' or ''off'' expected',
     '''none'', ''speed'' or ''size'' expected',
     'invalid pragma',
@@ -431,12 +439,12 @@ const
     'computing the type''s size produced an overflow',
     'set is too large',
     'base type of a set must be an ordinal',
-    'inheritance only works with an object',
+    'inheritance only works non-final objects',
     'inheritance only works with an enum',
     'illegal recursion in type ''$1''',
     'cannot instantiate: ''$1''',
     'expression has no address',
-    'to an out parameter a variable needs to be passed',
+    'for a ''var'' type a variable needs to be passed',
     'type mismatch',
     'type mismatch: got (',
     'but expected one of: ',
@@ -512,6 +520,20 @@ const
     'whitespace expected, got ''$1''',
     '''$1'' is no valid index file',
     'cannot render reStructuredText element ''$1''',
+    'type ''var var'' is not allowed',
+    '''is'' expects two arguments',
+    '''is'' expects object types',
+    '''$1'' can never be of this subtype',
+    'interpretation requires too many iterations',
+    'cannot interpret node kind ''$1''',
+    'field ''$1'' cannot be found',
+    'invalid conversion from type ''$1''',
+    'assertion failed',
+    'cannot generate code for ''$1''',
+    'converter needs return type',
+    'converter requires one parameter',
+    'unhandled exception: $1',
+    'macro returned a cyclic abstract syntax tree',
     '$1',
     'cannot open ''$1'' [CannotOpenFile]',
     'octal escape sequences do not exist; leading zero is ignored [OctalEscape]',
@@ -536,6 +558,8 @@ const
     'mo2 file ''$1'' is invalid [Mo2FileInvalid]',
     'module ''$1'' has been changed [ModuleHasChanged]',
     'mo2 file ''$1'' does not exist [CannotOpenMo2File]',
+    'quit() called [QuitCalled]',
+    'processing [Processing]',
     '$1 [User]'
   );
 const
@@ -556,7 +580,7 @@ const
     'User'
   );
 const
-  HintsToStr: array [0..9] of string = (
+  HintsToStr: array [0..11] of string = (
     'Success',
     'LineTooLong',
     'XDeclaredButNotUsed',
@@ -566,6 +590,8 @@ const
     'Mo2FileInvalid',
     'ModuleHasChanged',
     'CannotOpenMo2File',
+    'QuitCalled',
+    'Processing',
     'User'
   );
 //[[[end]]]
@@ -593,12 +619,7 @@ type
     fileIndex: int32;
   end;
 
-const
-  UnknownLineInfo: TLineInfo = (
-    line: -1;
-    col: -1;
-    fileIndex: -1;
-  );
+function UnknownLineInfo(): TLineInfo;
 
 var
   gNotes: TNoteKinds = [low(TNoteKind)..high(TNoteKind)];
@@ -648,6 +669,13 @@ procedure pushInfoContext(const info: TLineInfo);
 procedure popInfoContext;
 
 implementation
+
+function UnknownLineInfo(): TLineInfo;
+begin
+  result.line := -1;
+  result.col := -1;
+  result.fileIndex := -1;
+end;
 
 {@ignore}
 var
@@ -781,13 +809,14 @@ end;
 
 procedure handleError(const msg: TMsgKind);
 begin
-  if (msg >= fatalMin) and (msg <= fatalMax) then begin 
-    assert(false); halt(1) 
+  if (msg >= fatalMin) and (msg <= fatalMax) then begin
+    if optVerbose in gGlobalOptions then assert(false);
+    halt(1)
   end;
   if (msg >= errMin) and (msg <= errMax) then begin
     inc(gErrorCounter);
     if gErrorCounter >= gErrorMax then begin
-      assert(false); // stack trace for debugging
+      if optVerbose in gGlobalOptions then assert(false);
       halt(1) // one error stops the compiler
     end
   end
@@ -797,7 +826,7 @@ procedure writeContext;
 var
   i: int;
 begin
-  for i := length(msgContext)-1 downto 0 do begin
+  for i := 0 to length(msgContext)-1 do begin
     MessageOut(Format(posErrorFormat, [toFilename(msgContext[i]),
                              coordToStr(msgContext[i].line),
                              coordToStr(msgContext[i].col),

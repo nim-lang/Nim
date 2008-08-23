@@ -49,17 +49,20 @@ end;
 
 procedure BitSetIncl(var x: TBitSet; const elem: BiggestInt);
 begin
-  x[int(elem div ElemSize)] := x[int(elem div ElemSize)] or (1 shl (elem mod ElemSize))
+  assert(elem >= 0);
+  x[int(elem div ElemSize)] := toU8(x[int(elem div ElemSize)] or 
+    int(1 shl (elem mod ElemSize)))
 end;
 
 procedure BitSetExcl(var x: TBitSet; const elem: BiggestInt);
 begin
-  x[int(elem div ElemSize)] := x[int(elem div ElemSize)] and
-                          not (1 shl (elem mod ElemSize))
+  x[int(elem div ElemSize)] := toU8(x[int(elem div ElemSize)] and
+                          not int(1 shl (elem mod ElemSize)))
 end;
 
 procedure BitSetInit(out b: TBitSet; len: int);
 begin
+  {@emit b := [];}
   setLength(b, len);
 {@ignore}
   fillChar(b[0], length(b)*sizeof(b[0]), 0);
@@ -70,28 +73,28 @@ procedure BitSetUnion(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := x[i] or int(y[i])
+  for i := 0 to high(x) do x[i] := toU8(x[i] or int(y[i]))
 end;
 
 procedure BitSetDiff(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := x[i] and not int(y[i])
+  for i := 0 to high(x) do x[i] := toU8(x[i] and not int(y[i]))
 end;
 
 procedure BitSetSymDiff(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := x[i] xor int(y[i])
+  for i := 0 to high(x) do x[i] := toU8(x[i] xor int(y[i]))
 end;
 
 procedure BitSetIntersect(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := x[i] and int(y[i])
+  for i := 0 to high(x) do x[i] := toU8(x[i] and int(y[i]))
 end;
 
 function BitSetEquals(const x, y: TBitSet): Boolean;

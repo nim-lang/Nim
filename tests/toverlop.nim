@@ -1,8 +1,5 @@
 # Test operator overloading
 
-import
-  io
-
 proc % (a, b: int): int =
   return a mod b
 

@@ -60,7 +60,9 @@ type
 function nextPowerOfTwo(x: int): int;
 begin
   result := x -{%} 1;
-  result := result or (result shr 32);
+  // complicated, to make it a nop if sizeof(int) == 4,
+  // because shifting more than 31 bits is undefined in C
+  result := result or (result shr ((sizeof(int)-4)* 32));
   result := result or (result shr 16);
   result := result or (result shr 8);
   result := result or (result shr 4);
@@ -115,7 +117,7 @@ var
   h: TUnsignedHash;
   i: int;
 begin
-  h := 0; 
+  h := 0;
   i := 0;
   while str[i] <> #0 do begin
     h := h +{%} ord(str[i]);
@@ -134,7 +136,7 @@ var
   h: TUnsignedHash;
   i: int;
 begin
-  h := 0; 
+  h := 0;
   for i := 1 to Length(s) do begin
     h := h +{%} ord(s[i]);
     h := h +{%} h shl 10;
@@ -152,7 +154,7 @@ var
   c: Char;
   i: int;
 begin
-  h := 0; 
+  h := 0;
   for i := strStart to length(s)+strStart-1 do begin
     c := s[i];
     if c = '_' then continue; // skip _
@@ -173,7 +175,7 @@ var
   c: Char;
   i: int;
 begin
-  h := 0; 
+  h := 0;
   for i := strStart to length(s)+strStart-1 do begin
     c := s[i];
     if c in ['A'..'Z'] then c := chr(ord(c) + (ord('a')-ord('A'))); // toLower()
@@ -194,7 +196,7 @@ var
   i: int;
 begin
   h := 0;
-  i := 0; 
+  i := 0;
   while str[i] <> #0 do begin
     c := str[i];
     if c in ['A'..'Z'] then c := chr(ord(c) + (ord('a')-ord('A'))); // toLower()

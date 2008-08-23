@@ -33,10 +33,6 @@ var
   IOFBF {.importc: "_IOFBF", nodecl.}: cint
   IONBF {.importc: "_IONBF", nodecl.}: cint
 
-# copied here to remove dependancy on strutils:
-#proc toNimstr(x: Cstring, len: int): string {.
-#  noSideEffect, importc: "toNimStr".}
-
 proc rawReadLine(f: TFile, result: var string) {.noStatic.} =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
@@ -81,6 +77,8 @@ proc write(f: TFile, b: bool) =
   else: write(f, "false")
 proc write(f: TFile, r: float) = fprintf(f, "%g", r)
 proc write(f: TFile, c: Char) = putc(c, f)
+proc write(f: TFile, a: openArray[string]) =
+  for x in items(a): write(f, x)
 
 proc EndOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
@@ -93,6 +91,11 @@ proc EndOfFile(f: TFile): bool =
 proc writeln[Ty](f: TFile, x: Ty) =
   write(f, x)
   write(f, "\n")
+
+proc writeln[Ty](f: TFile, x: openArray[Ty]) =
+  write(f, x)
+  write(f, "\n")
+
 proc echo[Ty](x: Ty) = writeln(stdout, x)
 
 # interface to the C procs:
@@ -128,7 +131,6 @@ proc ftell(f: TFile): int {.importc: "ftell", noDecl.}
 
 proc fwrite(buf: Pointer, size, n: int, f: TFile): int {.
   importc: "fwrite", noDecl.}
-# size_t fwrite(const void *ptr, size_t size, size_t n, FILE *stream);
 
 proc readBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fread(buffer, 1, len, f)
@@ -140,9 +142,11 @@ proc ReadChars(f: TFile, a: var openarray[char], start, len: int): int =
   result = readBuffer(f, addr(a[start]), len)
 
 proc writeBytes(f: TFile, a: openarray[byte], start, len: int): int =
-  result = writeBuffer(f, addr(a[start]), len)
+  var x = cast[ptr array[0..1000_000_000, byte]](a)
+  result = writeBuffer(f, addr(x[start]), len)
 proc writeChars(f: TFile, a: openarray[char], start, len: int): int =
-  result = writeBuffer(f, addr(a[start]), len)
+  var x = cast[ptr array[0..1000_000_000, byte]](a)
+  result = writeBuffer(f, addr(x[start]), len)
 proc writeBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fwrite(buffer, 1, len, f)
 

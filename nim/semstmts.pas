@@ -50,7 +50,7 @@ begin
     case it.kind of
       nkElifBranch: begin
         checkSonsLen(it, 2);
-        it.sons[0] := semExpr(c, it.sons[0]);
+        it.sons[0] := semExprWithType(c, it.sons[0]);
         checkBool(it.sons[0]);
         it.sons[1] := semStmtScope(c, it.sons[1])
       end;
@@ -66,12 +66,9 @@ end;
 function semDiscard(c: PContext; n: PNode): PNode;
 begin
   result := n;
-  if sonsLen(n) = 1 then begin
-    n.sons[0] := semExpr(c, n.sons[0]);
-    if n.sons[0].typ = nil then liMessage(n.info, errInvalidDiscard);
-  end
-  else
-    illFormedAst(n);
+  checkSonsLen(n, 1);
+  n.sons[0] := semExprWithType(c, n.sons[0]);
+  if n.sons[0].typ = nil then liMessage(n.info, errInvalidDiscard);
 end;
 
 function semBreakOrContinue(c: PContext; n: PNode): PNode;
@@ -80,32 +77,29 @@ var
   x: PNode;
 begin
   result := n;
-  if sonsLen(n) = 1 then begin
-    if n.sons[0] <> nil then begin
-      if n.sons[0].kind = nkIdent then begin
-        // lookup the symbol:
-        s := SymtabGet(c.Tab, n.sons[0].ident);
-        if s <> nil then begin
-          if (s.kind = skLabel) and (s.owner.id = c.p.owner.id) then begin
-            x := newSymNode(s);
-            x.info := n.info;
-            include(s.flags, sfUsed);
-            n.sons[0] := x
-          end
-          else
-            liMessage(n.info, errInvalidControlFlowX, s.name.s)
+  checkSonsLen(n, 1);
+  if n.sons[0] <> nil then begin
+    if n.sons[0].kind = nkIdent then begin
+      // lookup the symbol:
+      s := SymtabGet(c.Tab, n.sons[0].ident);
+      if s <> nil then begin
+        if (s.kind = skLabel) and (s.owner.id = c.p.owner.id) then begin
+          x := newSymNode(s);
+          x.info := n.info;
+          include(s.flags, sfUsed);
+          n.sons[0] := x
         end
         else
-          liMessage(n.info, errUndeclaredIdentifier, n.sons[0].ident.s);
+          liMessage(n.info, errInvalidControlFlowX, s.name.s)
       end
-      else illFormedAst(n)
+      else
+        liMessage(n.info, errUndeclaredIdentifier, n.sons[0].ident.s);
     end
-    else if (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0) then
-      liMessage(n.info, errInvalidControlFlowX,
-               renderTree(n, {@set}[renderNoComments]))
+    else illFormedAst(n)
   end
-  else
-    illFormedAst(n);
+  else if (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0) then
+    liMessage(n.info, errInvalidControlFlowX,
+              renderTree(n, {@set}[renderNoComments]))
 end;
 
 function semBlock(c: PContext; n: PNode): PNode;
@@ -114,18 +108,15 @@ var
 begin
   result := n;
   Inc(c.p.nestedBlockCounter);
-  if sonsLen(n) = 2 then begin
-    openScope(c.tab); // BUGFIX: label is in the scope of block!
-    if n.sons[0] <> nil then begin
-      labl := newSymS(skLabel, n.sons[0], c);
-      addDecl(c, labl);
-      n.sons[0] := newSymNode(labl); // BUGFIX
-    end;
-    n.sons[1] := semStmt(c, n.sons[1]);
-    closeScope(c.tab);
-  end
-  else
-    illFormedAst(n);
+  checkSonsLen(n, 2);
+  openScope(c.tab); // BUGFIX: label is in the scope of block!
+  if n.sons[0] <> nil then begin
+    labl := newSymS(skLabel, n.sons[0], c);
+    addDecl(c, labl);
+    n.sons[0] := newSymNode(labl); // BUGFIX
+  end;
+  n.sons[1] := semStmt(c, n.sons[1]);
+  closeScope(c.tab);
   Dec(c.p.nestedBlockCounter);
 end;
 
@@ -137,59 +128,55 @@ var
   marker: Char;
 begin
   result := n;
-  if sonsLen(n) = 2 then begin
-    marker := pragmaAsm(con, n.sons[0]);
-    if marker = #0 then marker := '`'; // default marker
-    case n.sons[1].kind of
-      nkStrLit, nkRStrLit, nkTripleStrLit: begin
-        result := copyNode(n);
-        str := n.sons[1].strVal;
-        if str = '' then liMessage(n.info, errEmptyAsm);
-        // now parse the string literal and substitute symbols:
-        a := strStart;
-        repeat
-          b := findSubStr(marker, str, a);
-          if b < strStart then
-            sub := ncopy(str, a)
-          else
-            sub := ncopy(str, a, b-1);
-          if sub = '' then break;
+  checkSonsLen(n, 2);
+  marker := pragmaAsm(con, n.sons[0]);
+  if marker = #0 then marker := '`'; // default marker
+  case n.sons[1].kind of
+    nkStrLit, nkRStrLit, nkTripleStrLit: begin
+      result := copyNode(n);
+      str := n.sons[1].strVal;
+      if str = '' then liMessage(n.info, errEmptyAsm);
+      // now parse the string literal and substitute symbols:
+      a := strStart;
+      repeat
+        b := findSubStr(marker, str, a);
+        if b < strStart then
+          sub := ncopy(str, a)
+        else
+          sub := ncopy(str, a, b-1);
+        if sub <> '' then
           addSon(result, newStrNode(nkStrLit, sub));
 
-          if b < strStart then break;
-          c := findSubStr(marker, str, b+1);
-          if c < strStart then
-            sub := ncopy(str, b+1)
-          else
-            sub := ncopy(str, b+1, c-1);
+        if b < strStart then break;
+        c := findSubStr(marker, str, b+1);
+        if c < strStart then
+          sub := ncopy(str, b+1)
+        else
+          sub := ncopy(str, b+1, c-1);
+        if sub <> '' then begin
           e := SymtabGet(con.tab, getIdent(sub));
           if e <> nil then
             addSon(result, newSymNode(e))
           else
             addSon(result, newStrNode(nkStrLit, sub));
-          if c < strStart then break;
-          a := c+1;
-        until false;
-      end;
-      else illFormedAst(n)
-    end
+        end;
+        if c < strStart then break;
+        a := c+1;
+      until false;
+    end;
+    else illFormedAst(n)
   end
-  else
-    illFormedAst(n);
 end;
 
 function semWhile(c: PContext; n: PNode): PNode;
 begin
   result := n;
-  if sonsLen(n) = 2 then begin
-    n.sons[0] := semExpr(c, n.sons[0]);
-    CheckBool(n.sons[0]);
-    inc(c.p.nestedLoopCounter);
-    n.sons[1] := semStmtScope(c, n.sons[1]);
-    dec(c.p.nestedLoopCounter);
-  end
-  else
-    illFormedAst(n);
+  checkSonsLen(n, 2);
+  n.sons[0] := semExprWithType(c, n.sons[0]);
+  CheckBool(n.sons[0]);
+  inc(c.p.nestedLoopCounter);
+  n.sons[1] := semStmtScope(c, n.sons[1]);
+  dec(c.p.nestedLoopCounter);
 end;
 
 function semCase(c: PContext; n: PNode): PNode;
@@ -202,7 +189,8 @@ var
 begin
   // check selector:
   result := n;
-  n.sons[0] := semExprWithType(c, n.sons[0], false);
+  checkMinSonsLen(n, 2);
+  n.sons[0] := semExprWithType(c, n.sons[0]);
   chckCovered := false;
   covered := 0;
   case skipVarGenericRange(n.sons[0].Typ).Kind of
@@ -214,6 +202,7 @@ begin
     x := n.sons[i];
     case x.kind of
       nkOfBranch: begin
+        checkMinSonsLen(x, 2);
         semCaseBranch(c, n, x, i, covered);
         len := sonsLen(x);
         x.sons[len-1] := semStmtScope(c, x.sons[len-1]);
@@ -221,14 +210,14 @@ begin
       nkElifBranch: begin
         chckCovered := false;
         checkSonsLen(n, 2);
-        x.sons[0] := semExpr(c, x.sons[0]);
+        x.sons[0] := semExprWithType(c, x.sons[0]);
         checkBool(x.sons[0]);
         x.sons[1] := semStmtScope(c, x.sons[1])
       end;
       nkElse: begin
         chckCovered := false;
-        if sonsLen(x) = 1 then x.sons[0] := semStmtScope(c, x.sons[0])
-        else illFormedAst(x)
+        checkSonsLen(x, 1);
+        x.sons[0] := semStmtScope(c, x.sons[0])
       end;
       else illFormedAst(x);
     end;
@@ -240,19 +229,75 @@ end;
 function semAsgn(c: PContext; n: PNode): PNode;
 var
   le: PType;
+  a: PNode;
+  id: PIdent;
 begin
-  result := n;
-  n.sons[0] := semExprWithType(c, n.sons[0], false);
-  n.sons[1] := semExprWithType(c, n.sons[1], false);
+  checkSonsLen(n, 2);
+  a := n.sons[0];
+  case a.kind of
+    nkDotExpr, nkQualified: begin
+      // r.f = x
+      // --> `f=` (r, x)
+      checkSonsLen(a, 2);
+      id := considerAcc(a.sons[1]);
+      result := newNodeI(nkCall, n.info);
+      addSon(result, newIdentNode(getIdent(id.s+'='), n.info));
+      addSon(result, semExpr(c, a.sons[0]));
+      addSon(result, semExpr(c, n.sons[1]));
+      result := semDirectCall(c, result);
+      if result <> nil then begin
+        fixAbstractType(c, result);
+        analyseIfAddressTakenInCall(c, result);
+        exit;
+      end
+    end;
+    nkBracketExpr: begin
+      // a[i..j] = x
+      // --> `[..]=`(a, i, j, x)
+      result := newNodeI(nkCall, n.info);
+      checkSonsLen(a, 2);
+      if a.sons[1].kind = nkRange then begin
+        checkSonsLen(a.sons[1], 2);
+        addSon(result, newIdentNode(getIdent(whichSliceOpr(a.sons[1])+'='),
+                                    n.info));
+        addSon(result, semExpr(c, a.sons[0]));
+        addSonIfNotNil(result, semExpr(c, a.sons[1].sons[0]));
+        addSonIfNotNil(result, semExpr(c, a.sons[1].sons[1]));
+        addSon(result, semExpr(c, n.sons[1]));
+        result := semDirectCall(c, result);
+        if result <> nil then begin
+          fixAbstractType(c, result);
+          analyseIfAddressTakenInCall(c, result);
+          exit;
+        end
+      end
+      else begin
+        addSon(result, newIdentNode(getIdent('[]='), n.info));
+        addSon(result, semExpr(c, a.sons[0]));
+        addSon(result, semExpr(c, a.sons[1]));
+        addSon(result, semExpr(c, n.sons[1]));
+        result := semDirectCall(c, result);
+        if result <> nil then begin
+          fixAbstractType(c, result);
+          analyseIfAddressTakenInCall(c, result);
+          exit;
+        end
+      end;
+    end;
+    else begin end;
+  end;
+  n.sons[0] := semExprWithType(c, n.sons[0], {@set}[efLValue]);
+  n.sons[1] := semExprWithType(c, n.sons[1]);
   le := n.sons[0].typ;
-  if not (tfAssignable in le.flags) and (le.kind <> tyVar) then begin
+  if (skipGeneric(le).kind <> tyVar) and not IsAssignable(n.sons[0]) then begin
     liMessage(n.sons[0].info, errXCannotBeAssignedTo,
               renderTree(n.sons[0], {@set}[renderNoComments]));
   end
   else begin
     n.sons[1] := fitNode(c, le, n.sons[1]);
-    fixAbstractType(c, n); 
-  end
+    fixAbstractType(c, n);
+  end;
+  result := n;
 end;
 
 function SemReturn(c: PContext; n: PNode): PNode;
@@ -261,10 +306,11 @@ var
   a: PNode; // temporary assignment for code generator
 begin
   result := n;
-  if not (c.p.owner.kind in [skConverter, skProc]) then
+  checkSonsLen(n, 1);
+  if not (c.p.owner.kind in [skConverter, skProc, skMacro]) then
     liMessage(n.info, errReturnNotAllowedHere);
   if (n.sons[0] <> nil) then begin
-    n.sons[0] := SemExprWithType(c, n.sons[0], false);
+    n.sons[0] := SemExprWithType(c, n.sons[0]);
     // check for type compatibility:
     restype := c.p.owner.typ.sons[0];
     if (restype <> nil) then begin
@@ -280,7 +326,7 @@ begin
       end
       else begin
         assert(c.p.resultSym <> nil);
-        addSon(a, semExprWithType(c, newSymNode(c.p.resultSym), false));
+        addSon(a, semExprWithType(c, newSymNode(c.p.resultSym)));
         addSon(a, n.sons[0]);
         n.sons[0] := a;
       end
@@ -295,10 +341,11 @@ var
   restype: PType;
 begin
   result := n;
+  checkSonsLen(n, 1);
   if (c.p.owner = nil) or (c.p.owner.kind <> skIterator) then
     liMessage(n.info, errYieldNotAllowedHere);
   if (n.sons[0] <> nil) then begin
-    n.sons[0] := SemExprWithType(c, n.sons[0], false);
+    n.sons[0] := SemExprWithType(c, n.sons[0]);
     // check for type compatibility:
     restype := c.p.owner.typ.sons[0];
     if (restype <> nil) then begin
@@ -311,11 +358,11 @@ begin
 end;
 
 function fitRemoveHiddenConv(c: PContext; typ: Ptype; n: PNode): PNode;
-begin 
+begin
   result := fitNode(c, typ, n);
   if (result.kind in [nkHiddenStdConv, nkHiddenSubConv]) then begin
-    changeType(result.sons[0], typ);
-    result := result.sons[0];
+    changeType(result.sons[1], typ);
+    result := result.sons[1];
   end
   else if not sameType(result.typ, typ) then
     changeType(result, typ)
@@ -332,22 +379,21 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    assert(a.kind = nkIdentDefs);
+    if (a.kind <> nkIdentDefs) then IllFormedAst(a);
+    checkMinSonsLen(a, 3);
     len := sonsLen(a);
     if a.sons[len-2] <> nil then
       typ := semTypeNode(c, a.sons[len-2], nil)
     else
       typ := nil;
     if a.sons[len-1] <> nil then begin
-      def := semExprWithType(c, a.sons[len-1], false);
+      def := semExprWithType(c, a.sons[len-1]);
       // check type compability between def.typ and typ:
       if (typ <> nil) then def := fitRemoveHiddenConv(c, typ, def)
       else typ := def.typ;
     end
     else
       def := nil;
-    typ := copyType(typ, typ.owner);
-    include(typ.flags, tfAssignable);
     for j := 0 to len-3 do begin
       if (c.p.owner = nil) then begin
         v := semIdentWithPragma(c, skVar, a.sons[j], {@set}[sfStar, sfMinus]);
@@ -366,7 +412,7 @@ begin
       addSon(b, copyTree(def));
       addSon(result, b);
     end
-  end;
+  end
 end;
 
 function semConst(c: PContext; n: PNode): PNode;
@@ -380,8 +426,8 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    assert(a.kind = nkConstDef);
-    assert(sonsLen(a) = 3);
+    if (a.kind <> nkConstDef) then IllFormedAst(a);
+    checkSonsLen(a, 3);
     if (c.p.owner = nil) then begin
       v := semIdentWithPragma(c, skConst, a.sons[0], {@set}[sfStar, sfMinus]);
       include(v.flags, sfGlobal);
@@ -420,8 +466,10 @@ var
   countupNode, m: PNode;
 begin
   result := n;
+  checkMinSonsLen(n, 3);
   len := sonsLen(n);
   if n.sons[len-2].kind = nkRange then begin
+    checkSonsLen(n.sons[len-2], 2);
     // convert ``in 3..5`` to ``in countup(3, 5)``
     // YYY: if the programmer overrides system.countup in a local scope
     // this leads to wrong code. This is extremely hard to fix! But it may
@@ -430,18 +478,16 @@ begin
     newSons(countupNode, 3);
     countupNode.sons[0] := newNodeI(nkQualified, n.sons[len-2].info);
     newSons(countupNode.sons[0], 2);
-    m := newIdentNode(getIdent('system'));
-    m.info := n.sons[len-2].info;
+    m := newIdentNode(getIdent('system'), n.sons[len-2].info);
     countupNode.sons[0].sons[0] := m;
-    m := newIdentNode(getIdent('countup'));
-    m.info := n.sons[len-2].info;
+    m := newIdentNode(getIdent('countup'), n.sons[len-2].info);
     countupNode.sons[0].sons[1] := m;
     countupNode.sons[1] := n.sons[len-2].sons[0];
     countupNode.sons[2] := n.sons[len-2].sons[1];
     n.sons[len-2] := countupNode;
   end;
-  n.sons[len-2] := semExprWithType(c, n.sons[len-2], false);
-  iter := n.sons[len-2].typ;
+  n.sons[len-2] := semExprWithType(c, n.sons[len-2]);
+  iter := skipGeneric(n.sons[len-2].typ);
   openScope(c.tab);
   if iter.kind <> tyTuple then begin
     if len <> 3 then liMessage(n.info, errWrongNumberOfLoopVariables);
@@ -472,8 +518,9 @@ var
   typ: PType;
 begin
   result := n;
+  checkSonsLen(n, 1);
   if n.sons[0] <> nil then begin
-    n.sons[0] := semExprWithType(c, n.sons[0], false);
+    n.sons[0] := semExprWithType(c, n.sons[0]);
     typ := n.sons[0].typ;
     if (typ.kind <> tyRef) or (typ.sons[0].kind <> tyObject) then
       liMessage(n.info, errExprCannotBeRaised)
@@ -488,10 +535,12 @@ var
   check: TIntSet;
 begin
   result := n;
+  checkMinSonsLen(n, 2);
   n.sons[0] := semStmtScope(c, n.sons[0]);
   IntSetInit(check);
   for i := 1 to sonsLen(n)-1 do begin
     a := n.sons[i];
+    checkMinSonsLen(a, 1);
     len := sonsLen(a);
     if a.kind = nkExceptBranch then begin
       for j := 0 to len-2 do begin
@@ -504,7 +553,9 @@ begin
         if IntSetContainsOrIncl(check, typ.id) then
           liMessage(a.sons[j].info, errExceptionAlreadyHandled);
       end
-    end;
+    end
+    else if a.kind <> nkFinally then
+      illFormedAst(n);
     // last child of an nkExcept/nkFinally branch is a statement:
     a.sons[len-1] := semStmtScope(c, a.sons[len-1]);
   end;
@@ -534,7 +585,6 @@ end;
 
 function resolveGenericParams(c: PContext; n: PNode): PNode;
 begin
-  //result := resolveTemplateParams(c, n); // we can use the same algorithm
   result := n;
 end;
 
@@ -551,8 +601,8 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    assert(a.kind = nkTypeDef);
-    assert(sonsLen(a) = 3);
+    if (a.kind <> nkTypeDef) then IllFormedAst(a);
+    checkSonsLen(a, 3);
     if (c.p.owner = nil) then begin
       s := semIdentWithPragma(c, skType, a.sons[0], {@set}[sfStar, sfMinus]);
       include(s.flags, sfGlobal);
@@ -563,6 +613,8 @@ begin
       include(s.flags, sfInInterface);
     s.typ := newTypeS(tyForward, c);
     s.typ.sym := s;
+    // process pragmas:
+    if a.sons[0].kind = nkPragmaExpr then pragmaType(c, s, a.sons[0].sons[1]);
     // add it here, so that recursive types are possible:
     addInterfaceDecl(c, s);
     a.sons[0] := newSymNode(s);
@@ -572,9 +624,9 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    assert(a.kind = nkTypeDef);
-    assert(a.sons[0].kind = nkSym);
-    assert(sonsLen(a) = 3);
+    if (a.kind <> nkTypeDef) then IllFormedAst(a);
+    checkSonsLen(a, 3);
+    if (a.sons[0].kind <> nkSym) then IllFormedAst(a);
     s := a.sons[0].sym;
     if (s.magic = mNone) and (a.sons[2] = nil) then
       liMessage(a.info, errTypeXNeedsImplementation, s.name.s);
@@ -583,9 +635,11 @@ begin
       // type's body:
       openScope(c.tab);
       pushOwner(c, s);
+      s.typ.kind := tyGeneric;
       semGenericParamList(c, a.sons[1]);
-      // process the type body for symbol lookup of generic params:
-      a.sons[2] := resolveGenericParams(c, a.sons[2]);
+      // process the type body for symbol lookup of generic params
+      // we can use the same algorithm as for template parameters:
+      a.sons[2] := resolveTemplateParams(c, a.sons[2]);
       s.ast := a;
       assert(s.typ.containerID = 0);
       s.typ.containerID := getID();
@@ -617,7 +671,7 @@ var
   i: int;
 begin
   for i := 1 to sonsLen(n)-1 do begin
-    assert(n.sons[i].kind = nkSym);
+    if (n.sons[i].kind <> nkSym) then InternalError(n.info, 'addParams');
     addDecl(c, n.sons[i].sym);
   end
 end;
@@ -628,6 +682,7 @@ var
   oldP: PProcCon;
 begin
   result := n;
+  checkSonsLen(n, codePos+1);
   if c.p.owner <> nil then
     liMessage(n.info, errIteratorNotAllowed);
   oldP := c.p; // restore later
@@ -682,7 +737,7 @@ begin
   if t <> nil then begin
     s := newSym(skVar, getIdent('result'), getCurrOwner(c));
     s.info := info;
-    s.typ := inheritAssignable(t, true);
+    s.typ := t;
     Include(s.flags, sfResult);
     addDecl(c, s);
     c.p.resultSym := s;
@@ -700,6 +755,7 @@ var
   oldP: PProcCon;
 begin
   result := n;
+  checkSonsLen(n, codePos+1);
   s := newSym(skProc, getIdent(genPrefix + 'anonymous'), getCurrOwner(c));
   s.info := n.info;
 
@@ -744,18 +800,19 @@ begin
   c.p := oldP; // restore
 end;
 
-function semProc(c: PContext; n: PNode): PNode;
+function semProcAux(c: PContext; n: PNode; kind: TSymKind): PNode;
 var
   s, proto: PSym;
   oldP: PProcCon;
 begin
   result := n;
+  checkSonsLen(n, codePos+1);
   if c.p.owner = nil then begin
-    s := semIdentVis(c, skProc, n.sons[0], {@set}[sfStar]);
+    s := semIdentVis(c, kind, n.sons[0], {@set}[sfStar]);
     include(s.flags, sfGlobal);
   end
   else
-    s := semIdentVis(c, skProc, n.sons[0], {@set}[]);
+    s := semIdentVis(c, kind, n.sons[0], {@set}[]);
   n.sons[namePos] := newSymNode(s);
   oldP := c.p; // restore later
   if sfStar in s.flags then include(s.flags, sfInInterface);
@@ -784,9 +841,13 @@ begin
       s.typ.callConv := lastOptionEntry(c).defaultCC;
     // add it here, so that recursive procs are possible:
     // -2 because we have a scope open for parameters
-    addInterfaceOverloadableSymAt(c, s, c.tab.tos-2);
+    if kind in OverloadableSyms then
+      addInterfaceOverloadableSymAt(c, s, c.tab.tos-2)
+    else
+      addDeclAt(c, s, c.tab.tos-2);
     if n.sons[pragmasPos] <> nil then
-      pragmaProc(c, s, n.sons[pragmasPos]);
+      if kind = skMacro then pragmaMacro(c, s, n.sons[pragmasPos])
+      else pragmaProc(c, s, n.sons[pragmasPos]);
   end
   else begin
     if n.sons[pragmasPos] <> nil then
@@ -825,12 +886,16 @@ begin
   else begin
     if proto <> nil then
       liMessage(n.info, errImplOfXexpected, proto.name.s);
-    if not (sfImportc in s.flags) then
-      Include(s.flags, sfForward);
+    if not (sfImportc in s.flags) then Include(s.flags, sfForward);
   end;
   closeScope(c.tab); // close scope for parameters
   popOwner(c);
   c.p := oldP; // restore
+end;
+
+function semProc(c: PContext; n: PNode): PNode;
+begin
+  result := semProcAux(c, n, skProc);
 end;
 
 function isTopLevel(c: PContext): bool;
@@ -838,35 +903,47 @@ begin
   result := c.tab.tos <= 2
 end;
 
-{$include 'importer.pas'}
-(*
-function isConcreteStmt(n: PNode): bool;
+function semConverterDef(c: PContext; n: PNode): PNode;
+var
+  t: PType;
+  s: PSym;
 begin
-  case n.kind of
-    nkProcDef, nkIteratorDef: result := n.sons[genericParamsPos] = nil;
-    nkCommentStmt, nkTemplateDef, nkMacroDef: result := false;
-    else result := true
-  end
+  checkSonsLen(n, codePos+1);
+  if n.sons[genericParamsPos] <> nil then
+    liMessage(n.info, errNoGenericParamsAllowedForX, 'converter');
+  result := semProcAux(c, n, skConverter);
+  s := result.sons[namePos].sym;
+  t := s.typ;
+  if t.sons[0] = nil then
+    liMessage(n.info, errXNeedsReturnType, 'converter');
+  if sonsLen(t) <> 2 then
+    liMessage(n.info, errXRequiresOneArgument, 'converter');
+  addConverter(c, s);
 end;
 
-function TopLevelEvent(c: PContext; n: PNode): PNode;
+function semMacroDef(c: PContext; n: PNode): PNode;
+var
+  t: PType;
+  s: PSym;
 begin
-  result := n;
-  if isTopLevel(c) and (eTopLevel in c.b.eventMask) then begin
-    if isConcreteStmt(result) then begin
-      if optVerbose in gGlobalOptions then
-        MessageOut('compiling: ' + renderTree(result, {@set}[renderNoBody,
-                                                        renderNoComments]));
-      result := transform(c, result);
-      result := c.b.topLevelEvent(c.b, result);
-    end
-  end
-end; *)
+  checkSonsLen(n, codePos+1);
+  if n.sons[genericParamsPos] <> nil then
+    liMessage(n.info, errNoGenericParamsAllowedForX, 'macro');
+  result := semProcAux(c, n, skMacro);
+  s := result.sons[namePos].sym;
+  t := s.typ;
+  if t.sons[0] = nil then
+    liMessage(n.info, errXNeedsReturnType, 'macro');
+  if sonsLen(t) <> 2 then
+    liMessage(n.info, errXRequiresOneArgument, 'macro');
+end;
+
+{$include 'importer.pas'}
 
 function SemStmt(c: PContext; n: PNode): PNode;
 const
   // must be last statements in a block:
-  LastBlockStmts = {@set}[nkRaiseStmt, nkReturnStmt, nkBreakStmt, 
+  LastBlockStmts = {@set}[nkRaiseStmt, nkReturnStmt, nkBreakStmt,
                           nkContinueStmt];
 var
   len, i, j: int;
@@ -910,9 +987,11 @@ begin
     nkReturnStmt: result := semReturn(c, n);
     nkAsmStmt: result := semAsm(c, n);
     nkYieldStmt: result := SemYield(c, n);
-    nkPragma: pragmaStmt(c, n);
+    nkPragma: pragmaStmt(c, c.p.owner, n);
     nkIteratorDef: result := semIterator(c, n);
     nkProcDef: result := semProc(c, n);
+    nkConverterDef: result := semConverterDef(c, n);
+    nkMacroDef: result := semMacroDef(c, n);
     nkTemplateDef: result := semTemplateDef(c, n);
     nkImportStmt: begin
       if not isTopLevel(c) then
@@ -930,7 +1009,8 @@ begin
       result := evalInclude(c, n);
     end;
     else liMessage(n.info, errStmtExpected);
-  end
+  end;
+  if result = nil then InternalError(n.info, 'SemStmt: result = nil');
 end;
 
 function semStmtScope(c: PContext; n: PNode): PNode;

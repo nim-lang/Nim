@@ -1,11 +1,8 @@
 # this tests the new overflow literals
 
-import
-  io
-
 var
   i: int
-i = cast[int](0xffffffff)
+i = int(0xffffffff)
 when defined(cpu64):
   if i == 4294967295:
     write(stdout, "works!\n")

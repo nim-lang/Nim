@@ -56,6 +56,7 @@ function toUpper(c: Char): Char; overload;
 function toUpper(s: string): string; overload;
 
 function parseInt(const s: string): int;
+function parseBiggestInt(const s: string): BiggestInt;
 function ParseFloat(const s: string; checkEnd: Boolean = True): Real;
 
 function repeatChar(count: int; c: Char = ' '): string;
@@ -74,7 +75,17 @@ const
 function strip(const s: string; const chars: TCharSet = WhiteSpace): string;
 function allCharsInSet(const s: string; const theSet: TCharSet): bool;
 
+function quoteIfSpaceExists(const s: string): string;
+
 implementation
+
+function quoteIfSpaceExists(const s: string): string;
+begin
+  if (findSubStr(' ', s) >= strStart) and (s[strStart] <> '"') then
+    result := '"' +{&} s +{&} '"'
+  else
+    result := s
+end;
 
 function allCharsInSet(const s: string; const theSet: TCharSet): bool;
 var
@@ -511,7 +522,7 @@ begin
           while (j <= length(f)) and (f[j] in PatternChars) do inc(j);
           x := find(ncopy(f, i+1, j-1), args);
           if (x >= 0) and (x < high(args)) then result := result + args[x+1]
-          else raise EInvalidFormatStr.create('');
+          else raise EInvalidFormatStr.create(ncopy(f, i+1, j-1));
           i := j
         end
         else raise EInvalidFormatStr.create('');
@@ -582,6 +593,16 @@ begin
 {$endif}
   else
     result := int(res) // convert to smaller int type
+end;
+
+function parseBiggestInt(const s: string): BiggestInt;
+var
+  index: int;
+  res: BiggestInt;
+begin
+  index := strStart;
+  result := rawParseInt(s, index);
+  if index = -1 then raise EInvalidValue.create('')
 end;
 
 {@ignore}

@@ -22,8 +22,8 @@ uses
 {$ifdef mswindows}
   windows,
 {$else}
-  unix,
   dos,
+  unix,
 {$endif}
   strutils,
   nsystem;
@@ -83,6 +83,14 @@ function sameFile(const path1, path2: string): boolean;
 
 implementation
 
+function UnixToNativePath(const path: string): string;
+begin
+  if dirSep <> '/' then
+    result := replaceStr(path, '/', dirSep)
+  else
+    result := path;
+end;
+
 function expandFilename(filename: string): string;
 begin
   result := sysutils.expandFilename(filename)
@@ -90,16 +98,8 @@ end;
 
 function sameFile(const path1, path2: string): boolean;
 begin
-  result := cmpIgnoreCase(expandFilename(path1),
-                          expandFilename(path2)) = 0;
-end;
-
-function UnixToNativePath(const path: string): string;
-begin
-  if dirSep <> '/' then
-    result := replaceStr(path, '/', dirSep)
-  else
-    result := path;
+  result := cmpIgnoreCase(expandFilename(UnixToNativePath(path1)),
+                          expandFilename(UnixToNativePath(path2))) = 0;
 end;
 
 procedure createDir(dir: string);
@@ -417,8 +417,9 @@ begin
   SI.hStdError := GetStdHandle(STD_ERROR_HANDLE);
   SI.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
   SI.hStdOutput := GetStdHandle(STD_OUTPUT_HANDLE);
-  if not Windows.CreateProcess(nil, PChar(cmd), nil, nil, true,
-    NORMAL_PRIORITY_CLASS, Windows.GetEnvironmentStrings(), nil, SI, ProcInfo)
+  if not Windows.CreateProcess(nil, PChar(cmd), nil, nil, false,
+    NORMAL_PRIORITY_CLASS, nil {Windows.GetEnvironmentStrings()},
+    nil, SI, ProcInfo)
   then
     result := getLastError()
   else begin
@@ -435,11 +436,19 @@ begin
 end;
 
 {$else}
+  {$ifdef windows}
+function executeProcess(const cmd: string): int;
+begin
+  result := dos.Exec(cmd, '')
+end;
+//C:\Eigenes\compiler\MinGW\bin;
+  {$else}
 // fpc has a portable function for this
 function executeProcess(const cmd: string): int;
 begin
   result := shell(cmd);
 end;
+  {$endif}
 {$endif}
 
 {$ifdef windows}

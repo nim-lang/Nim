@@ -16,20 +16,20 @@ unit rnimsyn;
 interface
 
 uses
-  nsystem, charsets, lexbase, scanner, options, idents, strutils, ast, msgs, 
+  nsystem, charsets, lexbase, scanner, options, idents, strutils, ast, msgs,
   lists;
 
 type
   TRenderFlag = (renderNone, renderNoBody, renderNoComments,
                  renderNoPragmas, renderIds);
   TRenderFlags = set of TRenderFlag;
-  
+
   TRenderTok = record
     kind: TTokType;
     len: int16;
   end;
   TRenderTokSeq = array of TRenderTok;
-  
+
   TSrcGen = record
     indent: int;
     lineLen: int;
@@ -390,16 +390,10 @@ function lsub(n: PNode): int; forward;
 
 function litAux(n: PNode; x: biggestInt; size: int): string;
 begin
-  case n.base of
-    base10: result := toString(x);
-    base2:  result := '0b' + toBin(x, size*8);
-    base8:  result := '0o' + toOct(x, size*3);
-    base16: result := '0x' + toHex(x, size*2);
-    else begin
-      assert(false);
-      result := toString(x);
-    end
-  end
+  if nfBase2 in n.flags then result := '0b' + toBin(x, size*8)
+  else if nfBase8 in n.flags then result := '0o' + toOct(x, size*3)
+  else if nfBase16 in n.flags then result := '0x' + toHex(x, size*2)
+  else result := toString(x)
 end;
 
 function atom(n: PNode): string;
@@ -414,18 +408,19 @@ begin
     nkRStrLit:      result := 'r"' + n.strVal + '"';
     nkTripleStrLit: result := '"""' + n.strVal + '"""';
     nkCharLit:      result := '''' + toNimChar(chr(int(n.intVal))) + '''';
-    nkRCharLit:     result := 'r''' + chr(int(n.intVal)) + '''';
     nkIntLit:       result := litAux(n, n.intVal, 4);
     nkInt8Lit:      result := litAux(n, n.intVal, 1) + '''i8';
     nkInt16Lit:     result := litAux(n, n.intVal, 2) + '''i16';
     nkInt32Lit:     result := litAux(n, n.intVal, 4) + '''i32';
     nkInt64Lit:     result := litAux(n, n.intVal, 8) + '''i64';
     nkFloatLit:     begin
-      if n.base = base10 then result := toStringF(n.floatVal)
-      else result := litAux(n, ({@cast}PInt64(addr(n.floatVal)))^, 8);
+      if n.flags * [nfBase2, nfBase8, nfBase16] = [] then
+        result := toStringF(n.floatVal)
+      else
+        result := litAux(n, ({@cast}PInt64(addr(n.floatVal)))^, 8);
     end;
     nkFloat32Lit:   begin
-      if n.base = base10 then
+      if n.flags * [nfBase2, nfBase8, nfBase16] = [] then
         result := toStringF(n.floatVal) + '''f32'
       else begin
         f := n.floatVal;
@@ -433,7 +428,7 @@ begin
       end;
     end;
     nkFloat64Lit:   begin
-      if n.base = base10 then
+      if n.flags * [nfBase2, nfBase8, nfBase16] = [] then
         result := toStringF(n.floatVal) + '''f64'
       else
         result := litAux(n, ({@cast}PInt64(addr(n.floatVal)))^, 8) + '''f64';
@@ -474,43 +469,49 @@ end;
 function lsub(n: PNode): int;
 // computes the length of a tree
 var
-  len: int;
+  L: int;
 begin
   if n = nil then begin result := 0; exit end;
   if n.comment <> snil then begin result := maxLineLen+1; exit end;
-  len := sonsLen(n);
   case n.kind of
     nkTripleStrLit: begin
       if containsNL(n.strVal) then result := maxLineLen+1
       else result := length(atom(n));
     end;
-    nkEmpty..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit: 
+    nkEmpty..pred(nkTripleStrLit), succ(nkTripleStrLit)..nkNilLit:
       result := length(atom(n));
     nkCall, nkBracketExpr, nkConv: result := lsub(n.sons[0])+lcomma(n, 1)+2;
     nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: begin
-      result := lsub(n.sons[0]);
+      result := lsub(n.sons[1]);
     end;
-    nkCast: begin
-      if sonsLen(n) = 2 then
-        result := lsub(n.sons[0])+lsub(n.sons[1])+length('cast[]()')
-      else
-        result := lsub(n.sons[0]) + length('cast()');
-    end;
+    nkCast: result := lsub(n.sons[0])+lsub(n.sons[1])+length('cast[]()');
     nkAddr: result := lsub(n.sons[0])+length('addr()');
+    nkHiddenAddr, nkHiddenDeref: result := lsub(n.sons[0]);
     nkCommand: result := lsub(n.sons[0])+lcomma(n, 1)+1;
-    nkExprEqExpr, nkDefaultTypeParam, nkAsgn:
-      result := lsons(n)+3;
-    nkPar, nkRecordConstr, nkConstRecordConstr,
-    nkCurly, nkSetConstr, nkConstSetConstr,
-    nkBracket, nkArrayConstr, nkConstArrayConstr: result := lcomma(n)+2;
+    nkExprEqExpr, nkDefaultTypeParam, nkAsgn: result := lsons(n)+3;
+    nkPar, nkCurly, nkBracket: result := lcomma(n)+2;
+    nkTupleTy: result := lcomma(n)+length('tuple[]');
     nkQualified, nkDotExpr: result := lsons(n)+1;
+    nkCheckedFieldExpr: result := lsub(n.sons[0]);
     nkLambda: result := lsons(n)+length('lambda__=_');
     nkConstDef, nkIdentDefs: begin
       result := lcomma(n, 0, -3);
-      if n.sons[len-2] <> nil then
-        result := result + lsub(n.sons[len-2]) + 2;
-      if n.sons[len-1] <> nil then
-        result := result + lsub(n.sons[len-1]) + 3;
+      L := sonsLen(n);
+      if n.sons[L-2] <> nil then
+        result := result + lsub(n.sons[L-2]) + 2;
+      if n.sons[L-1] <> nil then
+        result := result + lsub(n.sons[L-1]) + 3;
+    end;
+    nkChckRangeF: result := length('chckRangeF') + 2 + lcomma(n);
+    nkChckRange64: result := length('chckRange64') + 2 + lcomma(n);
+    nkChckRange: result := length('chckRange') + 2 + lcomma(n);
+    
+    nkObjDownConv, nkObjUpConv, 
+    nkStringToCString, nkCStringToString, nkPassAsOpenArray: begin
+      result := 2;
+      if sonsLen(n) >= 1 then
+        result := result + lsub(n.sons[0]);
+      result := result + lcomma(n, 1);
     end;
     nkExprColonExpr:  result := lsons(n) + 2;
     nkInfix:          result := lsons(n) + 2;
@@ -539,7 +540,7 @@ begin
     nkEnumTy:         result := lsub(n.sons[0])+lcomma(n,1)+length('enum_');
     nkEnumFieldDef:   result := lsons(n)+3;
 
-    nkVarSection:     if len > 1 then result := maxLineLen+1
+    nkVarSection:     if sonsLen(n) > 1 then result := maxLineLen+1
                       else result := lsons(n) + length('var_');
     nkReturnStmt:     result := lsub(n.sons[0])+length('return_');
     nkRaiseStmt:      result := lsub(n.sons[0])+length('raise_');
@@ -550,7 +551,7 @@ begin
     nkPragma:         result := lcomma(n) + 4;
     nkCommentStmt:    result := length(n.comment);
 
-    nkOfBranch:       result := lcomma(n, 0, -2) + lsub(n.sons[len-1])
+    nkOfBranch:       result := lcomma(n, 0, -2) + lsub(lastSon(n))
                               + length('of_:_');
     nkElifBranch:     result := lsons(n)+length('elif_:_');
     nkElse:           result := lsub(n.sons[0]) + length('else:_');
@@ -560,7 +561,7 @@ begin
       result := lcomma(n, 1) + 2;
       if n.sons[0] <> nil then result := result + lsub(n.sons[0]) + 2
     end;
-    nkExceptBranch:   result := lcomma(n, 0, -2) + lsub(n.sons[len-1])
+    nkExceptBranch:   result := lcomma(n, 0, -2) + lsub(lastSon(n))
                               + length('except_:_');
     else result := maxLineLen+1
   end
@@ -576,7 +577,7 @@ end;
 type
   TSubFlag = (rfLongMode, rfNoIndent, rfInConstExpr);
   TSubFlags = set of TSubFlag;
-  TContext = record
+  TContext = record{@tuple}
     spacing: int;
     flags: TSubFlags;
   end;
@@ -895,7 +896,7 @@ procedure gident(var g: TSrcGen; n: PNode);
 var
   s: string;
   t: TTokType;
-begin 
+begin
   s := atom(n);
   if (s[strStart] in scanner.SymChars) then begin
     if (n.kind = nkIdent) then begin
@@ -917,12 +918,11 @@ end;
 
 procedure gsub(var g: TSrcGen; n: PNode; const c: TContext);
 var
-  len, i: int;
+  L, i: int;
   a: TContext;
 begin
   if n = nil then exit;
   if n.comment <> snil then pushCom(g, n);
-  len := sonsLen(n);
   case n.kind of
     // atoms:
     nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal);
@@ -939,11 +939,10 @@ begin
     nkStrLit: put(g, tkStrLit, atom(n));
     nkRStrLit: put(g, tkRStrLit, atom(n));
     nkCharLit: put(g, tkCharLit, atom(n));
-    nkRCharLit: put(g, tkRCharLit, atom(n));
     nkNilLit: put(g, tkNil, atom(n));
     // complex expressions
     nkCall, nkConv, nkDotCall: begin
-      if sonsLen(n) >= 1 then 
+      if sonsLen(n) >= 1 then
         gsub(g, n.sons[0]);
       put(g, tkParLe, '('+'');
       gcomma(g, n, 1);
@@ -955,14 +954,10 @@ begin
     nkCast: begin
       put(g, tkCast, 'cast');
       put(g, tkBracketLe, '['+'');
-      if sonsLen(n) = 2 then begin
-        gsub(g, n.sons[0]);
-        put(g, tkBracketRi, ']'+'');
-        put(g, tkParLe, '('+'');
-        gsub(g, n.sons[1]);
-      end
-      else
-        gsub(g, n.sons[0]);
+      gsub(g, n.sons[0]);
+      put(g, tkBracketRi, ']'+'');
+      put(g, tkParLe, '('+'');
+      gsub(g, n.sons[1]);
       put(g, tkParRi, ')'+'');
     end;
     nkAddr: begin
@@ -992,17 +987,43 @@ begin
       putWithSpace(g, tkEquals, '='+'');
       gsub(g, n.sons[1]);
     end;
-    nkPar, nkRecordConstr, nkConstRecordConstr: begin
+    nkChckRangeF: begin
+      put(g, tkSymbol, 'chckRangeF');
+      put(g, tkParLe, '('+'');
+      gcomma(g, n);
+      put(g, tkParRi, ')'+'');
+    end;
+    nkChckRange64: begin
+      put(g, tkSymbol, 'chckRange64');
+      put(g, tkParLe, '('+'');
+      gcomma(g, n);
+      put(g, tkParRi, ')'+'');    
+    end;
+    nkChckRange: begin
+      put(g, tkSymbol, 'chckRange');
+      put(g, tkParLe, '('+'');
+      gcomma(g, n);
+      put(g, tkParRi, ')'+'');
+    end;
+    nkObjDownConv, nkObjUpConv, 
+    nkStringToCString, nkCStringToString, nkPassAsOpenArray: begin
+      if sonsLen(n) >= 1 then
+        gsub(g, n.sons[0]);
+      put(g, tkParLe, '('+'');
+      gcomma(g, n, 1);
+      put(g, tkParRi, ')'+'');      
+    end;
+    nkPar: begin
       put(g, tkParLe, '('+'');
       gcomma(g, n, c);
       put(g, tkParRi, ')'+'');
     end;
-    nkCurly, nkSetConstr, nkConstSetConstr: begin
+    nkCurly: begin
       put(g, tkCurlyLe, '{'+'');
       gcomma(g, n, c);
       put(g, tkCurlyRi, '}'+'');
     end;
-    nkBracket, nkArrayConstr, nkConstArrayConstr: begin
+    nkBracket: begin
       put(g, tkBracketLe, '['+'');
       gcomma(g, n, c);
       put(g, tkBracketRi, ']'+'');
@@ -1012,6 +1033,7 @@ begin
       put(g, tkDot, '.'+'');
       gsub(g, n.sons[1]);
     end;
+    nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref: gsub(g, n.sons[0]);
     nkLambda: begin
       assert(n.sons[genericParamsPos] = nil);
       putWithSpace(g, tkLambda, 'lambda');
@@ -1023,14 +1045,15 @@ begin
     end;
     nkConstDef, nkIdentDefs: begin
       gcomma(g, n, 0, -3);
-      if n.sons[len-2] <> nil then begin
+      L := sonsLen(n);
+      if n.sons[L-2] <> nil then begin
         putWithSpace(g, tkColon, ':'+'');
-        gsub(g, n.sons[len-2])
+        gsub(g, n.sons[L-2])
       end;
-      if n.sons[len-1] <> nil then begin
+      if n.sons[L-1] <> nil then begin
         put(g, tkSpaces, Space);
         putWithSpace(g, tkEquals, '='+'');
-        gsub(g, n.sons[len-1], c)
+        gsub(g, n.sons[L-1], c)
       end;
     end;
     nkExprColonExpr: begin
@@ -1063,7 +1086,7 @@ begin
     end;
     nkDerefExpr: begin
       gsub(g, n.sons[0]);
-      putWithSpace(g, tkHat, '^'+''); 
+      putWithSpace(g, tkHat, '^'+'');
       // unfortunately this requires a space, because ^. would be
       // only one operator
     end;
@@ -1128,13 +1151,6 @@ begin
         gsub(g, n.sons[2]);
       end
     end;
-    nkRecordTy: begin
-      putWithSpace(g, tkRecord, 'record');
-      gsub(g, n.sons[0]);
-      gsub(g, n.sons[1]);
-      gcoms(g);
-      gsub(g, n.sons[2]);
-    end;
     nkObjectTy: begin
       putWithSpace(g, tkObject, 'object');
       gsub(g, n.sons[0]);
@@ -1144,7 +1160,7 @@ begin
     end;
     nkRecList: begin
       indentNL(g);
-      for i := 0 to len-1 do begin
+      for i := 0 to sonsLen(n)-1 do begin
         optNL(g);
         gsub(g, n.sons[i], c);
         gcoms(g);
@@ -1214,12 +1230,13 @@ begin
       gsection(g, n, a, tkConst, 'const')
     end;
     nkVarSection: begin
-      if len = 0 then exit;
+      L := sonsLen(n);
+      if L = 0 then exit;
       putWithSpace(g, tkVar, 'var');
-      if len > 1 then begin
+      if L > 1 then begin
         gcoms(g);
         indentNL(g);
-        for i := 0 to len-1 do begin
+        for i := 0 to L-1 do begin
           optNL(g);
           gsub(g, n.sons[i]);
           gcoms(g);
@@ -1294,7 +1311,7 @@ begin
       gcomma(g, n, c, 0, -2);
       putWithSpace(g, tkColon, ':'+'');
       gcoms(g);
-      gstmts(g, n.sons[len-1], c);
+      gstmts(g, lastSon(n), c);
     end;
     nkElifBranch: begin
       optNL(g);
@@ -1324,7 +1341,7 @@ begin
       gcomma(g, n, 0, -2);
       putWithSpace(g, tkColon, ':'+'');
       gcoms(g);
-      gstmts(g, n.sons[len-1], c)
+      gstmts(g, lastSon(n), c)
     end;
     nkGenericParams: begin
       put(g, tkBracketLe, '['+'');
@@ -1340,6 +1357,13 @@ begin
         gsub(g, n.sons[0]);
       end;
       // XXX: gcomma(g, n, 1, -2);
+    end;
+    nkTupleTy: begin
+      put(g, tkTuple, 'tuple');
+      put(g, tkBracketLe, '['+'');
+      assert(n.sons[0].kind = nkIdentDefs);
+      gcomma(g, n);
+      put(g, tkBracketRi, ']'+'');
     end;
     else begin
       InternalError(n.info, 'rnimsyn.gsub(' +{&} nodeKindToStr[n.kind] +{&} ')')

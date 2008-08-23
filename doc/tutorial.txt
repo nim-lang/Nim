@@ -85,13 +85,13 @@ We start the tour with a modified "hallo world" program:
 
 Save this code to the file "greeting.nim". Now compile and run it::
 
-  nimrod run greeting.nim
+  nimrod compile --run greeting.nim
 
-As you see, with the ``run`` command Nimrod executes the file automatically
+As you see, with the ``--run`` switch Nimrod executes the file automatically
 after compilation. You can even give your program command line arguments by
 appending them after the filename that is to be compiled and run::
 
-  nimrod run greeting.nim arg1 arg2
+  nimrod compile --run greeting.nim arg1 arg2
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: Statements which are not indented are executed when the program
@@ -198,7 +198,7 @@ An example showing the most common statement types:
   
   .. code-block:: Nimrod
     type
-      TMyRecord = record
+      TMyRecord = object
         x, y: int
   
   

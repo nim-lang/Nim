@@ -3,7 +3,7 @@
 type
   PSym = ref TSym
 
-  TSym = record
+  TSym = object
     next: PSym
 
 var s: PSym

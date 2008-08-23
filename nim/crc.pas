@@ -19,7 +19,7 @@ type
   TCrc32 = int32;
 
 const
-  InitCrc32 = TCrc32($ffffffff);
+  InitCrc32 = TCrc32(-1);
 
 function updateCrc32(val: Byte; crc: TCrc32): TCrc32; overload;
 function updateCrc32(val: Char; crc: TCrc32): TCrc32; overload;

@@ -2,12 +2,37 @@
          Questions and Answers
 ===========================================
 
-`How is Nimrod licensed?`:Q:
+General
+=======
 
-The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed. 
-This means that you can use any license for your own programs developed with 
-Nimrod. If I receive enough requests with good arguments, I may change the 
+`What is Nimrod?`:Q:
+**Nimrod** is a new statically typed, imperative
+programming language, that supports procedural, functional, object oriented and
+generic programming styles while remaining simple and efficient. A special
+feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
+(*AST*) is part of the specification - this allows a powerful macro system which
+can be used to create domain specific languages.
+
+`How is Nimrod licensed?`:Q:
+The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed.
+This means that you can use any license for your own programs developed with
+Nimrod. If I receive enough requests with good arguments, I may change the
 license of Nimrod to the BSD license.
+
+
+Installation
+============
+
+`Is bootstrapping without Python possible?`:Q:
+Yes. You then have to compile by hand. It is not difficult (but it is not
+easy either). Please read the code in the ``koch.py`` script how this is can
+be accomplished (look for the ``cmd_boot`` routine).
+
+
+`A source-based download depending on the platform?`:Q:
+The reason is that the C code *generated* by Nimrod is not
+portable (the compiler itself is, of course!). The generated C
+code is used for the installation, so you have to pick the right package.
 
 
 `Why is compilation so slow?`:Q:
@@ -22,23 +47,18 @@ Especially GCC's compile times are a bad joke. On Linux you may be able to get
 compile times. You should not use TCC for producing the release version
 though, as it has no optimizer.
 
-An experimental feature is the *C file cache*. It is not
-activated. To activate, add to your ``nimrod.cfg`` file the following
-line::
-
-  --c_file_cache:on
-
 
 `Which version of Freepascal is needed to compile Nimrod?`:Q:
 
 Version 2.0.0 or later. Earlier development versions like 1.9.6 may work,
 but 1.0.10 won't. Note that I have never compiled Nimrod with FPC's
-optimizer turned on; it may break things due to bugs in FPC.
+optimizer turned on; it may break things due to bugs in FPC (yes, this has
+happend!).
 
 
 `How do I build a shared library?`:Q:
 
-This is currently not supported. The GC that makes trouble.
+This is currently not supported.
 
 
 `How do I use a different C compiler than the default one?`:Q:
@@ -50,13 +70,13 @@ Change the value of the ``cc`` variable to one of the following:
 Abbreviation    C/C++ Compiler
 ==============  ============================================
 ``dmc``         Digital Mars C++
-``wcc``         Watcom C++
+``wcc``         Watcom C++ (now unsupported!)
 ``bcc``         Borland C++ (including Borland C++Builder)
 ``vcc``         Microsoft's Visual C++
 ``gcc``         Gnu C
-``pcc``         Pelles C
-``lcc``         Lcc-win32
-``tcc``         Tiny C
+``pcc``         Pelles C (now unsupported!)
+``lcc``         Lcc-win32 (now unsupported!)
+``tcc``         Tiny C (now unsupported!)
 ``llvm_gcc``    LLVM-GCC compiler
 ``icc``         Intel C++ compiler
 ``ucc``         Generic UNIX C compiler
@@ -64,17 +84,20 @@ Abbreviation    C/C++ Compiler
 
 If your C compiler is not in the above list, try using the
 *generic UNIX C compiler* (``ucc``). If the C compiler needs
-different command line arguments you have to edit the ``extccomp``
-module to add support for it and recompile the compiler. Please
-contribute a patch in this case.
+different command line arguments try the ``--passc`` and ``--passl`` switches.
 
 `The linker outputs strange errors about missing symbols`:Q:
 
-I have seen this bug only with the GNU linker. The reason for this unknown. 
+I have seen this bug only with the GNU linker. The reason for this unknown.
 Try recompiling your code with the ``--c_file_cache:off`` command line switch.
 
 
 `Calling the C compiler fails - what's wrong?`:Q:
+
+First try to edit the path to your C compiler in the
+``config/nimrod.cfg`` file. For the Windows version bundled with
+LLVM search for the line containing ``llvm_gcc.path``. Set this
+variable to the ``bin`` directory of LLVM.
 
 Many C compilers need special environment variables to work
 properly. Although Nimrod tries hard to set them correctly (see
@@ -97,6 +120,9 @@ Try to call the C compiler directly by doing the following::
   sh ./your_path/rod_gen/compile_your_file.sh
 
 
+Questions about the Nimrod language
+===================================
+
 `How to overload the ``in`` operator?`:Q:
 
 The ``in`` and ``not_in`` operators are implemented as templates. The reason is
@@ -108,5 +134,5 @@ simple ``in_Operator`` proc where the arguments are the other way round::
     for x in items(s):
       if x == c: return True
     return False
-    
+
   writeln(stdout, 'z' in "abcdz") # now works!

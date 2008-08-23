@@ -17,7 +17,8 @@ interface
 uses
   nsystem, strutils, ast, astalgo, scanner, pnimsyn, rnimsyn, options, msgs,
   nos, lists, condsyms, paslex, pasparse, rodgen, ropes, trees,
-  wordrecg, sem, idents, magicsys, backends, docgen, extccomp, cgen;
+  wordrecg, sem, idents, magicsys, backends, docgen, extccomp, cgen,
+  platform, ecmasgen;
 
 procedure MainCommand(const cmd, filename: string);
 
@@ -109,7 +110,9 @@ begin
     // compile the module
     // XXX: here caching could be implemented
     result := compileModule(filename, backend, false, false);
-  end;
+  end
+  else if sfSystemModule in result.flags then
+    liMessage(result.info, errAttemptToRedefine, result.Name.s);
 end;
 
 function CompileModule(const filename: string; backend: PBackend;
@@ -131,8 +134,8 @@ begin
   openScope(c.tab); // scope for imported symbols
   SymTabAdd(c.tab, result);
   if not isSystemFile then begin
-    importAllSymbols(c, magicsys.SystemModule);
     SymTabAdd(c.tab, magicsys.SystemModule); // import the "System" identifier
+    importAllSymbols(c, magicsys.SystemModule);
     SymTabAdd(c.tab, newIsMainModuleSym(result, isMainFile));
   end
   else begin
@@ -142,7 +145,6 @@ begin
   end;
   {@discard} semModule(c, ast);
   rawCloseScope(c.tab); // imported symbols; don't check for unused ones!
-  // XXX: compile the generated generic procs!
   msgCompiled(result.name.s);
 end;
 
@@ -161,8 +163,8 @@ var
 
 procedure addDependencyAux(importing, imported: PSym);
 begin
-  appRopeFormat(gDotGraph, '$1 -> $2;$n', [toRope(importing.name.s),
-                                           toRope(imported.name.s)]);
+  appf(gDotGraph, '$1 -> $2;$n', [toRope(importing.name.s),
+                                  toRope(imported.name.s)]);
   //    s1 -> s2_4 [label="[0-9]"];
 end;
 
@@ -193,7 +195,7 @@ end;
 procedure generateDot(const project: string);
 begin
   writeRope(
-    ropeFormat('digraph $1 {$n$2}$n', [
+    ropef('digraph $1 {$n$2}$n', [
       toRope(changeFileExt(extractFileName(project), '')), gDotGraph]),
     changeFileExt(project, 'dot') );
 end;
@@ -257,13 +259,21 @@ begin
   extccomp.CallCCompiler(changeFileExt(filename, ''));
 end;
 
+procedure CommandCompileToEcmaScript(const filename: string);
+begin
+  include(gGlobalOptions, optSafeCode);
+  setTarget(osEcmaScript, cpuEcmaScript);
+  initDefines();
+  compileProject(filename, EcmasBackend(nil, nil, filename));
+end;
+
 // --------------------------------------------------------------------------
 
 procedure exSymbols(n: PNode);
 var
   i: int;
 begin
-  case n.kind of 
+  case n.kind of
     nkEmpty..nkNilLit: begin end; // atoms
     nkProcDef..nkIteratorDef: begin
       exSymbol(n.sons[namePos]);
@@ -279,7 +289,7 @@ begin
       for i := 0 to sonsLen(n)-1 do begin
         exSymbol(n.sons[i].sons[0]);
         if (n.sons[i].sons[2] <> nil) and
-            (n.sons[i].sons[2].kind in [nkRecordTy, nkObjectTy]) then
+            (n.sons[i].sons[2].kind = nkObjectTy) then
           fixRecordDef(n.sons[i].sons[2])
       end
     end;
@@ -405,6 +415,11 @@ begin
       gCmd := cmdCompileToCpp;
       wantFile(filename);
       CommandCompileToC(filename);
+    end;
+    wCompileToEcmaScript: begin
+      gCmd := cmdCompileToEcmaScript;
+      wantFile(filename);
+      CommandCompileToEcmaScript(filename);
     end;
     wPretty: begin
       // compile means compileToC currently

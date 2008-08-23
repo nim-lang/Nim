@@ -1,8 +1,5 @@
 # test the new pragmas
 
-import
-  io
-
 {.push warnings: off, hints: off.}
 proc noWarning() =
   var

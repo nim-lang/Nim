@@ -2,7 +2,7 @@
 # For further documentation see koch.txt or koch.html.
 # (c) 2007 Andreas Rumpf
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 import os, os.path, inspect, re, shutil, glob, cPickle, zlib, string, \
   getopt, sys
@@ -17,6 +17,25 @@ _FINGERPRINTS_FILE = "koch.dat"
   # in this file all the fingerprints are kept to allow recognizing when a file
   # has changed. This works reliably, which cannot be said from just taking
   # filetime-stamps.
+
+# -----------------------------------------------------------------------------
+
+def FileCmp(filenameA, filenameB):
+  SIZE = 4096*2
+  result = True
+  a = file(filenameA, "rb")
+  b = file(filenameB, "rb")
+  while True:
+    x = a.read(SIZE)
+    y = b.read(SIZE)
+    if x != y:
+      result = False
+      break
+    elif len(x) < SIZE: # EOF?
+      break
+  a.close()
+  b.close()
+  return result
 
 # ---------------- C Compilers ------------------------------------------------
 
@@ -185,6 +204,9 @@ def Subs(frmt, **substitution):
   else:
     return tuple([string.Template(x).substitute(substitution) for x in frmt])
 
+def SafeSubs(frmt, **substitution):
+  return string.Template(frmt).safe_substitute(substitution)
+
 _baseDir = os.getcwd()
 BaseDir = _baseDir
 
@@ -284,7 +306,7 @@ def Glob(pattern): # needed because glob.glob() is buggy on Windows 95:
     os.chdir(_baseDir)
   return result
 
-def FilenameNoExt(f): 
+def FilenameNoExt(f):
   return os.path.splitext(os.path.basename(f))[0]
 
 def _Ext(trunc, posixFormat, winFormat):

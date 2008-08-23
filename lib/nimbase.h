@@ -1,7 +1,7 @@
 /*
 
             Nimrod's Runtime Library
-        (c) Copyright 2006 Andreas Rumpf
+        (c) Copyright 2008 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -11,7 +11,8 @@
 #define NIMBASE_H
 
 /* calling convention mess ----------------------------------------------- */
-#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__)
+#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
+                      || defined(__TINYC__)
   /* these should support C99's inline */
   /* the test for __POCC__ has to come before the test for _MSC_VER,
      because PellesC defines _MSC_VER too. This is brain-dead. */
@@ -30,8 +31,16 @@
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
-#if defined(_MSC_VER)
+#if defined(__POCC__) || defined(_MSC_VER)
 #  define HAVE_LRINT 1
+#endif
+
+#if defined(__POCC__)
+#  define NIM_CONST /* PCC is really picky with const modifiers */
+#elif defined(__cplusplus)
+#  define NIM_CONST /* C++ is picky with const modifiers */
+#else
+#  define NIM_CONST  const
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */
@@ -136,8 +145,7 @@
 **		long int lrint  (double x);
 */
 
-#if defined(__LCC__) || defined(__POCC__) \
-                     || (defined(__GNUC__) && defined(WIN32))
+#if defined(__LCC__) || (defined(__GNUC__) && defined(WIN32))
 /* Linux' GCC does not seem to have these. Why? */
 #  define HAVE_LRINT
 #  define HAVE_LRINTF
@@ -159,7 +167,7 @@
 #  include  <math.h>
 
 #elif (defined(WIN32) || defined(_WIN32) || defined(__WIN32__)) \
-   && !defined(__BORLANDC__)
+   && !defined(__BORLANDC__) && !defined(__POCC__)
 
 #  include  <math.h>
 
@@ -206,6 +214,17 @@ static N_INLINE(long int, lrintf)(float flt) {
 #include <signal.h>
 #include <setjmp.h>
 
+#ifndef NAN
+static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
+#  define NAN (*(double*) nimNaN)
+#endif
+
+/*
+#ifndef INF
+static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
+#  define INF (*(double*) nimInf)
+#endif */
+
 /* compiler symbols:
 __BORLANDC__
 _MSC_VER
@@ -214,6 +233,7 @@ __LCC__
 __GNUC__
 __DMC__
 __POCC__
+__TINYC__
 */
 
 /* C99 compiler? */
@@ -250,48 +270,39 @@ __POCC__
 #endif
 
 #define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
-  the generated code does not rely on it anymore */
+                              the generated code does not rely on it anymore */
 
 #if defined(HAVE_STDINT_H)
 #  include <stdint.h>
-typedef int8_t NS8;
-typedef int16_t NS16;
-typedef int32_t NS32;
-typedef int64_t NS64;
+typedef int8_t NI8;
+typedef int16_t NI16;
+typedef int32_t NI32;
+typedef int64_t NI64;
 typedef uint64_t NU64;
 typedef uint8_t NU8;
 typedef uint16_t NU16;
 typedef uint32_t NU32;
 #elif defined(__BORLANDC__) || defined(__DMC__) \
    || defined(__WATCOMC__) || defined(_MSC_VER)
-typedef signed char NS8;
-typedef signed short int NS16;
-typedef signed int NS32;
+typedef signed char NI8;
+typedef signed short int NI16;
+typedef signed int NI32;
 /* XXX: Float128? */
 typedef unsigned char NU8;
 typedef unsigned short int NU16;
 typedef unsigned __int64 NU64;
-typedef __int64 NS64;
+typedef __int64 NI64;
 typedef unsigned int NU32;
 #else
-typedef signed char NS8;
-typedef signed short int NS16;
-typedef signed int NS32;
+typedef signed char NI8;
+typedef signed short int NI16;
+typedef signed int NI32;
 /* XXX: Float128? */
 typedef unsigned char NU8;
 typedef unsigned short int NU16;
 typedef unsigned long long int NU64;
-typedef long long int NS64;
+typedef long long int NI64;
 typedef unsigned int NU32;
-#endif
-
-#if defined(_MSC_VER) && (defined(AMD64) || defined(_M_AMD64))
-/* Microsoft C is brain-dead in this case; long is still not an int64 */
-typedef unsigned long long int NU;
-typedef signed long long int NS;
-#else
-typedef unsigned long int NU; /* note: int would be wrong for AMD64 */
-typedef signed long int NS;
 #endif
 
 typedef float NF32;
@@ -307,13 +318,13 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NS32, float64ToInt32)(double val) {
+static N_INLINE(NI32, float64ToInt32)(double val) {
   val = val + 68719476736.0*1.5;
   /* 2^36 * 1.5,  (52-_shiftamt=36) uses limited precisicion to floor */
-  return ((NS32*)&val)[NIM_IMAN] >> 16; /* 16.16 fixed point representation */
+  return ((NI32*)&val)[NIM_IMAN] >> 16; /* 16.16 fixed point representation */
 }
 
-static N_INLINE(NS32, float32ToInt32)(float val) {
+static N_INLINE(NI32, float32ToInt32)(float val) {
   return float64ToInt32((double)val);
 }
 
@@ -322,7 +333,7 @@ static N_INLINE(NS32, float32ToInt32)(float val) {
 
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
-    NS len, space;                        \
+    NI len, space;                        \
     NIM_CHAR data[length + 1];            \
   } name = {length, length, str}
 
@@ -357,7 +368,7 @@ typedef struct TStringDesc* string;
 /*
 typedef struct TSafePoint TSafePoint;
 struct TSafePoint {
-  NS exc;
+  NI exc;
   NCSTRING excname;
   NCSTRING msg;
   TSafePoint* prev;
@@ -368,19 +379,19 @@ typedef struct TFrame TFrame;
 struct TFrame {
   TFrame* prev;
   NCSTRING procname;
-  NS line;
+  NI line;
   NCSTRING filename;
-  NS len;
+  NI len;
 };
 
-extern TFrame* volatile framePtr;
-/*extern TSafePoint* volatile excHandler; */
+extern TFrame* framePtr;
+/*extern TSafePoint* excHandler; */
 
 #if defined(__cplusplus)
 struct NimException {
   TSafePoint sp;
 
-  NimException(NS aExc, NCSTRING aExcname, NCSTRING aMsg) {
+  NimException(NI aExc, NCSTRING aExcname, NCSTRING aMsg) {
     sp.exc = aExc; sp.excname = aExcname; sp.msg = aMsg;
     sp.prev = excHandler;
     excHandler = &sp;
@@ -389,13 +400,13 @@ struct NimException {
 #endif
 
 typedef struct TStringDesc {
-  NS len;
-  NS space;
+  NI len;
+  NI space;
   NIM_CHAR data[1]; /* SEQ_DECL_SIZE]; */
 } TStringDesc;
 
 typedef struct {
-  NS len, space;
+  NI len, space;
 } TGenericSeq;
 
 typedef TGenericSeq* PGenericSeq;

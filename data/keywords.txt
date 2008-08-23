@@ -10,9 +10,9 @@ macro method mod
 nil not notin
 object of or out
 proc ptr
-raise record ref return
+raise ref return
 shl shr
-template try type
+template try tuple type
 var
 when where while with without
 xor

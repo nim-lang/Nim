@@ -10,32 +10,34 @@
 
 // this module does the semantic checking for expressions
 
-function semDotExpr(c: PContext; n: PNode; typeAllowed: bool): PNode; forward;
+function semDotExpr(c: PContext; n: PNode;
+                    flags: TExprFlags = {@set}[]): PNode; forward;
 
 function semExprWithType(c: PContext; n: PNode;
-                         typeAllowed: bool): PNode;
+                         flags: TExprFlags = {@set}[]): PNode;
+var
+  d: PNode;
 begin
-  result := semExpr(c, n, typeAllowed);
+  result := semExpr(c, n, flags);
   if result.typ = nil then
     liMessage(n.info, errExprXHasNoType,
               renderTree(result, {@set}[renderNoComments]));
+  if result.typ.kind = tyVar then begin
+    d := newNodeIT(nkHiddenDeref, result.info, result.typ.sons[0]);
+    addSon(d, result);
+    result := d
+  end
 end;
 
 procedure checkConversionBetweenObjects(const info: TLineInfo;
                                         castDest, src: PType);
 var
-  d, s: PType;
+  diff: int;
 begin
-  // conversion to superclass?
-  d := castDest;
-  while (d <> src) and (d <> nil) do d := base(d);
-  if d = src then exit; // is ok
-  // conversion to baseclass?
-  s := src;
-  while (castDest <> s) and (s <> nil) do s := base(s);
-  if (castDest = s) then
+  diff := inheritanceDiff(castDest, src);
+  if diff = 0 then
     liMessage(info, hintConvToBaseNotNeeded)
-  else
+  else if diff = high(int) then
     liMessage(info, errGenerated,
       format(MsgKindToString(errIllegalConvFromXtoY),
         [typeToString(src), typeToString(castDest)]));
@@ -95,35 +97,29 @@ begin
   else if ss < 0 then result := false
   else
     result := (ds >= ss) or
-      (castDest.kind in [tyInt..tyFloat128]) and // BUGFIX
+      (castDest.kind in [tyInt..tyFloat128]) or
       (src.kind in [tyInt..tyFloat128])
 end;
 
 function semConv(c: PContext; n: PNode; s: PSym): PNode;
 begin
-  if sonsLen(n) = 2 then begin
-    result := newNode(nkConv);
-    result.info := n.info;
-    result.typ := semTypeNode(c, n.sons[0], nil);
-    addSon(result, semExprWithType(c, n.sons[1], false));
-    checkConvertible(result.info, result.typ, result.sons[0].typ);
-  end
-  else begin
-    liMessage(n.info, errConvNeedsOneArg);
-    result := nil
-  end
+  if sonsLen(n) <> 2 then liMessage(n.info, errConvNeedsOneArg);
+  result := newNodeI(nkConv, n.info);
+  result.typ := semTypeNode(c, n.sons[0], nil);
+  addSon(result, copyTree(n.sons[0]));
+  addSon(result, semExprWithType(c, n.sons[1]));
+  checkConvertible(result.info, result.typ, result.sons[1].typ);
 end;
 
 function semCast(c: PContext; n: PNode): PNode;
 begin
-  if optSafeCode in gGlobalOptions then
-    liMessage(n.info, errCastNotInSafeMode);
-  assert(sonsLen(n) = 2);
-  result := newNode(nkCast);
-  result.info := n.info;
+  if optSafeCode in gGlobalOptions then liMessage(n.info, errCastNotInSafeMode);
+  checkSonsLen(n, 2);
+  result := newNodeI(nkCast, n.info);
   result.typ := semTypeNode(c, n.sons[0], nil);
-  addSon(result, semExprWithType(c, n.sons[1], false));
-  if not isCastable(result.typ, result.sons[0].Typ) then
+  addSon(result, copyTree(n.sons[0]));
+  addSon(result, semExprWithType(c, n.sons[1]));
+  if not isCastable(result.typ, result.sons[1].Typ) then
     liMessage(result.info, errExprCannotBeCastedToX, typeToString(result.Typ));
 end;
 
@@ -136,7 +132,7 @@ begin
   if sonsLen(n) <> 2 then
     liMessage(n.info, errXExpectsTypeOrValue, opToStr[m])
   else begin
-    n.sons[1] := semExprWithType(c, n.sons[1], true);
+    n.sons[1] := semExprWithType(c, n.sons[1], {@set}[efAllowType]);
     typ := skipVarGenericRange(n.sons[1].typ);
     case typ.Kind of
       tySequence, tyString, tyOpenArray: begin
@@ -160,9 +156,29 @@ begin
   if sonsLen(n) <> 2 then
     liMessage(n.info, errXExpectsTypeOrValue, 'sizeof')
   else
-    n.sons[1] := semExprWithType(c, n.sons[1], true);
+    n.sons[1] := semExprWithType(c, n.sons[1], {@set}[efAllowType]);
   n.typ := getSysType(tyInt);
   result := n
+end;
+
+function semIs(c: PContext; n: PNode): PNode;
+var
+  a, b: PType;
+begin
+  if sonsLen(n) = 3 then begin
+    n.sons[1] := semExprWithType(c, n.sons[1], {@set}[efAllowType]);
+    n.sons[2] := semExprWithType(c, n.sons[2], {@set}[efAllowType]);
+    a := n.sons[1].typ;
+    b := n.sons[2].typ;
+    if (b.kind <> tyObject) or (a.kind <> tyObject) then
+      liMessage(n.info, errIsExpectsObjectTypes);
+    while (b <> nil) and (b.id <> a.id) do b := b.sons[0];
+    if b = nil then
+      liMessage(n.info, errXcanNeverBeOfThisSubtype, typeToString(a));
+  end
+  else
+    liMessage(n.info, errIsExpectsTwoArguments);
+  result := n;
 end;
 
 procedure semOpAux(c: PContext; n: PNode);
@@ -174,14 +190,14 @@ begin
   for i := 1 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkExprEqExpr then begin
+      checkSonsLen(a, 2);
       info := a.sons[0].info;
-      a.sons[0] := newIdentNode(considerAcc(a.sons[0]));
-      a.sons[0].info := info;
-      a.sons[1] := semExprWithType(c, a.sons[1], false);
+      a.sons[0] := newIdentNode(considerAcc(a.sons[0]), info);
+      a.sons[1] := semExprWithType(c, a.sons[1]);
       a.typ := a.sons[1].typ;
     end
     else
-      n.sons[i] := semExprWithType(c, a, false);
+      n.sons[i] := semExprWithType(c, a);
   end
 end;
 
@@ -196,9 +212,8 @@ begin
     result := nil
   end
   else begin
-    result := newNode(nkCall);
-    result.info := n.info;
-    addSon(result, newIdentNode(par));
+    result := newNodeI(nkCall, n.info);
+    addSon(result, newIdentNode(par, n.info));
     for i := 0 to sonsLen(n)-1 do addSon(result, n.sons[i]);
     result := semExpr(c, result)
   end
@@ -208,43 +223,72 @@ procedure changeType(n: PNode; newType: PType);
 var
   i: int;
   f: PSym;
-  m: PNode;
+  a, m: PNode;
 begin
   case n.kind of
-    nkSetConstr, nkConstSetConstr,
-    nkArrayConstr, nkConstArrayConstr: begin
-      for i := 0 to sonsLen(n)-1 do
-        changeType(n.sons[i], elemType(newType));
-    end;
-    nkRecordConstr, nkConstRecordConstr: begin
-      for i := 0 to sonsLen(n)-1 do begin
-        m := n.sons[i].sons[0];
-        if m.kind <> nkSym then
-          internalError(m.info, 'changeType(): invalid record constr');
-        if not (newType.kind in [tyRecord, tyObject]) then
-          internalError(m.info, 'changeType(): invalid type');
-        f := lookupInRecord(newType.n, m.sym.name);
-        if f = nil then
-          internalError(m.info, 'changeType(): invalid identifier');
-        changeType(n.sons[i].sons[1], f.typ);
-      end
+    nkCurly, nkBracket: begin
+      for i := 0 to sonsLen(n)-1 do changeType(n.sons[i], elemType(newType));
     end;
     nkPar: begin
       if newType.kind <> tyTuple then
-        internalError(n.info, 'changeType(): no tuple type');
-      for i := 0 to sonsLen(n)-1 do
-        changeType(n.sons[i], newType.sons[i]);
+        InternalError(n.info, 'changeType: no tuple type for constructor');
+      if newType.n = nil then
+        InternalError(n.info, 'changeType: no tuple fields');
+      if (sonsLen(n) > 0) and (n.sons[0].kind = nkExprColonExpr) then begin
+        for i := 0 to sonsLen(n)-1 do begin
+          m := n.sons[i].sons[0];
+          if m.kind <> nkSym then
+            internalError(m.info, 'changeType(): invalid tuple constr');
+          f := getSymFromList(newType.n, m.sym.name);
+          if f = nil then
+            internalError(m.info, 'changeType(): invalid identifier');
+          changeType(n.sons[i].sons[1], f.typ);
+        end
+      end
+      else begin
+        for i := 0 to sonsLen(n)-1 do begin
+          m := n.sons[i];
+          a := newNodeIT(nkExprColonExpr, m.info, newType.sons[i]);
+          addSon(a, newSymNode(newType.n.sons[i].sym));
+          addSon(a, m);
+          changeType(m, newType.sons[i]);
+          n.sons[i] := a;
+        end;
+      end
     end;
     else begin end
   end;
   n.typ := newType;
 end;
 
+function semArrayConstr(c: PContext; n: PNode): PNode;
+var
+  typ: PType;
+  i: int;
+begin
+  result := newNode(nkBracket);
+  result.info := n.info;
+  result.typ := newTypeS(tyArrayConstr, c);
+  addSon(result.typ, nil); // index type
+  if sonsLen(n) = 0 then
+    // empty array
+    addSon(result.typ, nil) // needs an empty basetype!
+  else begin
+    addSon(result, semExprWithType(c, n.sons[0]));
+    typ := skipVar(result.sons[0].typ);
+    for i := 1 to sonsLen(n)-1 do begin
+      n.sons[i] := semExprWithType(c, n.sons[i]);
+      addSon(result, fitNode(c, typ, n.sons[i]));
+    end;
+    addSon(result.typ, typ)
+  end;
+  result.typ.sons[0] := makeRangeType(c, 0, sonsLen(result)-1);
+end;
+
 const
   ConstAbstractTypes = {@set}[tyNil, tyChar, tyInt..tyInt64,
                               tyFloat..tyFloat128,
-                              tyArrayConstr, tyRecordConstr, tyTuple,
-                              tyEmptySet, tySet];
+                              tyArrayConstr, tyTuple, tyEmptySet, tySet];
 
 procedure fixAbstractType(c: PContext; n: PNode);
 var
@@ -254,29 +298,161 @@ var
 begin
   for i := 1 to sonsLen(n)-1 do begin
     it := n.sons[i];
-    if it.kind in [nkHiddenStdConv, nkHiddenSubConv] then begin
-      if skipVarGeneric(it.typ).kind = tyOpenArray then begin
-        s := skipVarGeneric(it.sons[0].typ);
-        if (s.kind = tyArrayConstr) and (s.sons[1] = nil) then begin
-          s := copyType(s, getCurrOwner(c));
-          s.id := getID();
-          skipVarGeneric(s).sons[1] := elemType(skipVarGeneric(it.typ));
-          it.sons[0].typ := s;
+    case it.kind of
+      nkHiddenStdConv, nkHiddenSubConv: begin
+        if it.sons[1].kind = nkBracket then
+          it.sons[1] := semArrayConstr(c, it.sons[1]);
+        if skipVarGeneric(it.typ).kind = tyOpenArray then begin
+          s := skipVarGeneric(it.sons[1].typ);
+          if (s.kind = tyArrayConstr) and (s.sons[1] = nil) then begin
+            s := copyType(s, getCurrOwner(c));
+            s.id := getID();
+            skipVarGeneric(s).sons[1] := elemType(skipVarGeneric(it.typ));
+            it.sons[1].typ := s;
+          end
         end
-      end
-      else if skipVarGeneric(it.sons[0].typ).kind in [tyNil, tyArrayConstr,
-                                                 tyRecordConstr, tyTuple,
-                                                 tyEmptySet, tySet] then begin
-        s := skipVarGeneric(it.typ);
-        if s.kind = tyEmptySet then InternalError(it.info, 'fixAbstractType');
-        changeType(it.sons[0], s);
-        n.sons[i] := it.sons[0];
-      end
+        else if skipVarGeneric(it.sons[1].typ).kind in [tyNil, tyArrayConstr,
+                      tyTuple, tyEmptySet, tySet] then begin
+          s := skipVarGeneric(it.typ);
+          if s.kind = tyEmptySet then InternalError(it.info, 'fixAbstractType');
+          changeType(it.sons[1], s);
+          n.sons[i] := it.sons[1];
+        end
+      end;
+      nkBracket: begin
+        // an implicitely constructed array (passed to an open array):
+        n.sons[i] := semArrayConstr(c, it);
+      end;
+      else if (it.typ = nil) or (it.typ.kind = tyEmptySet) then
+        InternalError(it.info, 'fixAbstractType: ' + renderTree(it));
     end
-    else if it.typ.kind = tyEmptySet then
-      InternalError(it.info, 'fixAbstractType: 2');
   end
 end;
+
+function skipObjConv(n: PNode): PNode;
+begin
+  case n.kind of
+    nkHiddenStdConv, nkHiddenSubConv, nkConv: begin
+      if skipPtrsGeneric(n.sons[1].typ).kind in [tyTuple, tyObject] then
+        result := n.sons[1]
+      else
+        result := n
+    end;
+    nkObjUpConv, nkObjDownConv: result := n.sons[0];
+    else result := n
+  end
+end;
+
+function isAssignable(n: PNode): bool;
+begin
+  result := false;
+  case n.kind of
+    nkSym: result := n.sym.kind in [skVar, skTemp];
+    nkDotExpr, nkQualified, nkBracketExpr: begin
+      checkMinSonsLen(n, 1);
+      if skipGeneric(n.sons[0].typ).kind in [tyVar, tyPtr, tyRef] then
+        result := true
+      else
+        result := isAssignable(n.sons[0]);
+    end;
+    nkHiddenStdConv, nkHiddenSubConv, nkConv: begin
+      // Object and tuple conversions are still addressable, so we skip them
+      if skipPtrsGeneric(n.sons[1].typ).kind in [tyOpenArray,
+                                                 tyTuple, tyObject] then
+        result := isAssignable(n.sons[1])
+    end;
+    nkHiddenDeref, nkDerefExpr: result := true;
+    nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
+      result := isAssignable(n.sons[0]);
+    else begin end
+  end
+end;
+
+function newHiddenAddrTaken(c: PContext; n: PNode): PNode;
+begin
+  if n.kind = nkHiddenDeref then begin
+    checkSonsLen(n, 1);
+    result := n.sons[0]
+  end
+  else begin
+    result := newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ));
+    addSon(result, n);
+    if not isAssignable(n) then liMessage(n.info, errVarForOutParamNeeded);
+  end
+end;
+
+function analyseIfAddressTaken(c: PContext; n: PNode): PNode;
+begin
+  result := n;
+  case n.kind of
+    nkSym: begin
+      if skipGeneric(n.sym.typ).kind <> tyVar then begin
+        include(n.sym.flags, sfAddrTaken);
+        result := newHiddenAddrTaken(c, n);
+      end
+    end;
+    nkDotExpr, nkQualified: begin
+      checkSonsLen(n, 2);
+      if n.sons[1].kind <> nkSym then
+        internalError(n.info, 'analyseIfAddressTaken');
+      if skipGeneric(n.sons[1].sym.typ).kind <> tyVar then begin
+        include(n.sons[1].sym.flags, sfAddrTaken);
+        result := newHiddenAddrTaken(c, n);
+      end
+    end;
+    nkBracketExpr: begin
+      checkMinSonsLen(n, 1);
+      if skipGeneric(n.sons[0].typ).kind <> tyVar then begin
+        if n.sons[0].kind = nkSym then
+          include(n.sons[0].sym.flags, sfAddrTaken);
+        result := newHiddenAddrTaken(c, n);
+      end
+    end;
+    else result := newHiddenAddrTaken(c, n);  // BUGFIX!
+  end
+end;
+
+procedure analyseIfAddressTakenInCall(c: PContext; n: PNode);
+const
+  FakeVarParams = {@set}[mNew, mNewFinalize, mInc, mDec, mIncl,
+                         mExcl, mSetLengthStr, mSetLengthSeq,
+                         mAppendStrCh, mAppendStrStr, mSwap,
+                         mAppendSeqElem, mAppendSeqSeq];
+var
+  i: int;
+  t: PType;
+begin
+  checkMinSonsLen(n, 1);
+  t := n.sons[0].typ;
+  if (n.sons[0].kind = nkSym)
+      and (n.sons[0].sym.magic in FakeVarParams) then exit;
+  for i := 1 to sonsLen(n)-1 do
+    if (i < sonsLen(t)) and (skipGeneric(t.sons[i]).kind = tyVar) then
+      n.sons[i] := analyseIfAddressTaken(c, n.sons[i]);
+end;
+(*
+function lastPassOverArg(c: PContext; n: PNode; fakeVar: bool): PNode;
+// this pass does various things:
+// - it checks whether an address has been taken (needed for the ECMAScript
+//   code generator)
+// - it changes the type of the argument (if it is not a concrete type)
+begin
+
+end;
+
+procedure lastPassOverCall(c: PContext; n: PNode);
+var
+  i: int;
+  fakeVar: bool;
+begin
+  checkMinSonsLen(n, 1);
+  t := n.sons[0].typ;
+  fakeVar := (n.sons[0].kind = nkSym)
+      and (n.sons[0].sym.magic in FakeVarParams);
+  for i := 1 to sonsLen(n)-1 do begin
+    n.sons[i] := lastPassOverArg(c, n);
+  end
+end;*)
 
 function semIndirectOp(c: PContext; n: PNode): PNode;
 var
@@ -285,19 +461,21 @@ var
   i: int;
 begin
   result := nil;
+  checkMinSonsLen(n, 1);
   case n.sons[0].kind of
     nkDotExpr, nkQualified: begin
-      n.sons[0] := semDotExpr(c, n.sons[0], false);
+      checkSonsLen(n.sons[0], 2);
+      n.sons[0] := semDotExpr(c, n.sons[0]);
       if n.sons[0].kind = nkDotCall then begin // it is a static call!
         result := n.sons[0];
         result.kind := nkCall;
         for i := 1 to sonsLen(n)-1 do
           addSon(result, n.sons[i]);
-        result := semExpr(c, result, false);
+        result := semExpr(c, result);
         exit
       end
     end;
-    else n.sons[0] := semExpr(c, n.sons[0], false);
+    else n.sons[0] := semExpr(c, n.sons[0]);
   end;
   if n.sons[0].typ = nil then
     liMessage(n.sons[0].info, errExprXHasNoType,
@@ -325,6 +503,7 @@ begin
     if result = nil then liMessage(n.info, errExprCannotBeCalled);
   end;
   fixAbstractType(c, result);
+  analyseIfAddressTakenInCall(c, result);
 end;
 
 function semDirectOp(c: PContext; n: PNode): PNode;
@@ -337,6 +516,7 @@ begin
       liMessage(n.Info, errGenerated, getNotFoundError(c, n))
   end;
   fixAbstractType(c, result);
+  analyseIfAddressTakenInCall(c, result);
 end;
 
 function semIncSucc(c: PContext; n: PNode; const opr: string): PNode;
@@ -345,14 +525,14 @@ var
   a: PNode;
   typ: PType;
 begin
-  n.sons[1] := semExprWithType(c, n.sons[1], false);
+  checkMinSonsLen(n, 1);
+  n.sons[1] := semExprWithType(c, n.sons[1]);
   typ := skipVar(n.sons[1].Typ);
   if not isOrdinalType(typ) or enumHasWholes(typ) then
     liMessage(n.sons[1].Info, errOrdinalTypeExpected);
   if sonsLen(n) = 3 then begin
-    n.sons[2] := semExprWithType(c, n.sons[2], false);
-    a := IndexTypesMatch(c, getSysType(tyInt), n.sons[2].typ,
-                                 n.sons[2]);
+    n.sons[2] := semExprWithType(c, n.sons[2]);
+    a := IndexTypesMatch(c, getSysType(tyInt), n.sons[2].typ, n.sons[2]);
     if a = nil then
       typeMismatch(n.sons[2], getSysType(tyInt), n.sons[2].typ);
     n.sons[2] := a;
@@ -370,7 +550,8 @@ end;
 
 function semOrd(c: PContext; n: PNode): PNode;
 begin
-  n.sons[1] := semExprWithType(c, n.sons[1], false);
+  checkSonsLen(n, 2);
+  n.sons[1] := semExprWithType(c, n.sons[1]);
   if not isOrdinalType(skipVar(n.sons[1].Typ)) then
     liMessage(n.Info, errOrdinalTypeExpected);
   n.typ := getSysType(tyInt);
@@ -385,6 +566,7 @@ begin
   case n.kind of
     nkIdent: result := SymtabGet(c.Tab, n.ident);
     nkDotExpr, nkQualified: begin
+      checkSonsLen(n, 2);
       result := nil;
       m := LookupForDefined(c, n.sons[0]);
       if (m <> nil) and (m.kind = skModule) then begin
@@ -400,10 +582,12 @@ begin
           liMessage(n.sons[1].info, errIdentifierExpected, '');
       end
     end;
-    nkAccQuoted:
+    nkAccQuoted: begin
+      checkSonsLen(n, 1);
       result := lookupForDefined(c, n.sons[0]);
+    end
     else begin
-      liMessage(n.info, errIdentifierExpected, '');
+      liMessage(n.info, errIdentifierExpected, renderTree(n));
       result := nil;
     end
   end
@@ -411,6 +595,7 @@ end;
 
 function semDefined(c: PContext; n: PNode): PNode;
 begin
+  checkSonsLen(n, 2);
   result := newIntNode(nkIntLit, 0);
   // we replace this node by a 'true' or 'false' node
   if LookUpForDefined(c, n.sons[1]) <> nil then
@@ -437,6 +622,7 @@ begin
     mLow:     result := semLowHigh(c, setMs(n, s), mLow);
     mHigh:    result := semLowHigh(c, setMs(n, s), mHigh);
     mSizeOf:  result := semSizeof(c, setMs(n, s));
+    mIs:      result := semIs(c, setMs(n, s));
     mSucc:    begin
       result := semIncSucc(c, setMs(n, s), 'succ');
       result.typ := n.sons[1].typ;
@@ -452,13 +638,13 @@ begin
   end;
 end;
 
-function semSym(c: PContext; n: PNode; s: PSym; typeAllowed: bool): PNode;
+function semSym(c: PContext; n: PNode; s: PSym; flags: TExprFlags): PNode;
 begin
   result := newSymNode(s);
   result.info := n.info;
   result.typ := s.typ;
   include(s.flags, sfUsed);
-  if (s.kind = skType) and not typeAllowed then
+  if (s.kind = skType) and not (efAllowType in flags) then
     liMessage(n.info, errATypeHasNoValue);
   case s.kind of
     skProc, skIterator, skConverter:
@@ -496,17 +682,115 @@ begin
   end
 end;
 
-function semFieldAccess(c: PContext; n: PNode; typeAllowed: bool): PNode;
+function lookupInRecordAndBuildCheck(c: PContext; n, r: PNode;
+                                     field: PIdent;
+                                     var check: PNode): PSym;
+// transform in a node that contains the runtime check for the
+// field, if it is in a case-part...
+var
+  i, j: int;
+  s, it, inExpr, notExpr: PNode;
+begin
+  result := nil;
+  case r.kind of
+    nkRecList: begin
+      for i := 0 to sonsLen(r)-1 do begin
+        result := lookupInRecordAndBuildCheck(c, n, r.sons[i], field, check);
+        if result <> nil then exit
+      end
+    end;
+    nkRecCase: begin
+      checkMinSonsLen(r, 2);
+      if (r.sons[0].kind <> nkSym) then IllFormedAst(r);
+      result := lookupInRecordAndBuildCheck(c, n, r.sons[0], field, check);
+      if result <> nil then exit;
+      s := newNodeI(nkCurly, r.info);
+      for i := 1 to sonsLen(r)-1 do begin
+        it := r.sons[i];
+        case it.kind of
+          nkOfBranch: begin
+            result := lookupInRecordAndBuildCheck(c, n, lastSon(it),
+                                                  field, check);
+            if result = nil then begin
+              for j := 0 to sonsLen(it)-2 do addSon(s, copyTree(it.sons[j]));
+            end
+            else begin
+              if check = nil then begin
+                check := newNodeI(nkCheckedFieldExpr, n.info);
+                addSon(check, nil); // make space for access node
+              end;
+              s := newNodeI(nkCurly, n.info);
+              for j := 0 to sonsLen(it)-2 do addSon(s, copyTree(it.sons[j]));
+              inExpr := newNodeI(nkCall, n.info);
+              addSon(inExpr, newIdentNode(getIdent('in'), n.info));
+              addSon(inExpr, copyTree(r.sons[0]));
+              addSon(inExpr, s);
+              //writeln(output, renderTree(inExpr));
+              addSon(check, semExpr(c, inExpr));
+              exit
+            end
+          end;
+          nkElse: begin
+            result := lookupInRecordAndBuildCheck(c, n, lastSon(it),
+                                                  field, check);
+            if result <> nil then begin
+              if check = nil  then begin
+                check := newNodeI(nkCheckedFieldExpr, n.info);
+                addSon(check, nil); // make space for access node
+              end;
+              inExpr := newNodeI(nkCall, n.info);
+              addSon(inExpr, newIdentNode(getIdent('in'), n.info));
+              addSon(inExpr, copyTree(r.sons[0]));
+              addSon(inExpr, s);
+              notExpr := newNodeI(nkCall, n.info);
+              addSon(notExpr, newIdentNode(getIdent('not'), n.info));
+              addSon(notExpr, inExpr);
+              addSon(check, semExpr(c, notExpr));
+              exit
+            end
+          end;
+          else
+            illFormedAst(it);
+        end
+      end
+    end;
+    nkSym: begin
+      if r.sym.name.id = field.id then result := r.sym;
+    end;
+    else illFormedAst(n);
+  end
+end;
+
+function makeDeref(n: PNode): PNode;
+var
+  t: PType;
+  a: PNode;
+begin
+  t := n.typ;
+  result := n;
+  if t.kind = tyVar then begin
+    result := newNodeIT(nkHiddenDeref, n.info, t.sons[0]);
+    addSon(result, n);
+    t := t.sons[0];
+  end;
+  if t.kind in [tyPtr, tyRef] then begin
+    a := result;
+    result := newNodeIT(nkDerefExpr, n.info, t.sons[0]);
+    addSon(result, a);
+  end
+end;
+
+function semFieldAccess(c: PContext; n: PNode; flags: TExprFlags): PNode;
 var
   f: PSym;
   ty: PType;
   i: PIdent;
-  asgn: bool;
+  check: PNode;
 begin
-  asgn := false;
   // this is difficult, because the '.' is used in many different contexts
   // in Nimrod. We first allow types in the semantic checking.
-  n.sons[0] := semExprWithType(c, n.sons[0], true);
+  checkSonsLen(n, 2);
+  n.sons[0] := semExprWithType(c, n.sons[0], [efAllowType]+flags);
   i := considerAcc(n.sons[1]);
   ty := n.sons[0].Typ;
   f := nil;
@@ -527,33 +811,46 @@ begin
       liMessage(n.sons[1].info, errEnumHasNoValueX, i.s);
     exit;
   end
-  else if not typeAllowed and isTypeExpr(n.sons[0]) then begin
+  else if not (efAllowType in flags) and isTypeExpr(n.sons[0]) then begin
     liMessage(n.sons[0].info, errATypeHasNoValue);
     exit
   end;
 
-  while ty.kind = tyVar do begin ty := ty.sons[0]; asgn := true; end;
-  if ty.Kind in [tyRef, tyPtr] then begin ty := ty.sons[0]; asgn := true; end;
-  if (ty.kind in [tyRecord, tyObject]) then begin
-    while ty <> nil do begin
-      f := lookupInRecord(ty.n, i);
+  ty := skipPtrsGeneric(ty);
+  if ty.kind = tyObject then begin
+    while true do begin
+      check := nil;
+      f := lookupInRecordAndBuildCheck(c, n, ty.n, i, check);
+      //f := lookupInRecord(ty.n, i);
       if f <> nil then break;
-      ty := ty.sons[0];
+      if ty.sons[0] = nil then break;
+      ty := skipGeneric(ty.sons[0]);
     end;
     if f <> nil then begin
       if ([sfStar, sfMinus] * f.flags <> [])
       or (getModule(f).id = c.module.id) then begin
         // is the access to a public field or in the same module?
-        if not asgn then begin
-          if not (sfMinus in f.flags) or (getModule(f).id = c.module.id) then
-            asgn := tfAssignable in ty.flags;
-        end;
-
+        n.sons[0] := makeDeref(n.sons[0]);
         n.sons[1] := newSymNode(f); // we now have the correct field
-        n.typ := inheritAssignable(f.typ, asgn);
-        result := n;
+        n.typ := f.typ;
+        if check = nil then result := n
+        else begin
+          check.sons[0] := n;
+          check.typ := n.typ;
+          result := check
+        end;
         exit
       end
+    end
+  end
+  else if ty.kind = tyTuple then begin
+    f := getSymFromList(ty.n, i);
+    if f <> nil then begin
+      n.sons[0] := makeDeref(n.sons[0]);
+      n.sons[1] := newSymNode(f);
+      n.typ := f.typ;
+      result := n;
+      exit
     end
   end;
   // allow things like "".replace(...)
@@ -563,7 +860,7 @@ begin
     result := newNode(nkDotCall);
     // This special node kind is to merge with the call handler in `semExpr`.
     result.info := n.info;
-    addSon(result, newIdentNode(i));
+    addSon(result, newIdentNode(i, n.info));
     addSon(result, copyTree(n.sons[0]));
   end
   else begin
@@ -571,28 +868,32 @@ begin
   end
 end;
 
-function semArrayAccess(c: PContext; n: PNode): PNode;
+function whichSliceOpr(n: PNode): string;
+begin
+  if (n.sons[0] = nil) then
+    if (n.sons[1] = nil) then result := '[..]'
+    else result := '[..$]'
+  else if (n.sons[1] = nil) then result := '[$..]'
+  else result := '[$..$]'
+end;
+
+function semArrayAccess(c: PContext; n: PNode; flags: TExprFlags): PNode;
 var
   arr, indexType: PType;
   i: int;
-  asgn: bool;
   arg: PNode;
   idx: biggestInt;
 begin
-  asgn := false;
   // check if array type:
-  n.sons[0] := semExprWithType(c, n.sons[0], false);
-  arr := n.sons[0].typ;
-  while arr.kind = tyVar do begin arr := arr.sons[0]; asgn := true; end;
-  if arr.kind in [tyRef, tyPtr] then begin
-    arr := arr.sons[0]; asgn := true
-  end;
+  checkMinSonsLen(n, 2);
+  n.sons[0] := semExprWithType(c, n.sons[0], flags-[efAllowType]);
+  arr := skipPtrsGeneric(n.sons[0].typ);
   case arr.kind of
     tyArray, tyOpenArray, tyArrayConstr, tySequence, tyString,
     tyCString: begin
-      asgn := asgn or (tfAssignable in arr.flags) or (arr.kind = tyCString);
+      n.sons[0] := makeDeref(n.sons[0]);
       for i := 1 to sonsLen(n)-1 do
-        n.sons[i] := semExprWithType(c, n.sons[i], false);
+        n.sons[i] := semExprWithType(c, n.sons[i], flags-[efAllowType]);
       if arr.kind = tyArray then indexType := arr.sons[0]
       else indexType := getSysType(tyInt);
       arg := IndexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1]);
@@ -601,9 +902,10 @@ begin
       else
         liMessage(n.info, errIndexTypesDoNotMatch);
       result := n;
-      result.typ := inheritAssignable(elemType(arr), asgn); // BUGFIX
+      result.typ := elemType(arr);
     end;
     tyTuple: begin
+      n.sons[0] := makeDeref(n.sons[0]);
       // [] operator for tuples requires constant expression
       n.sons[1] := semConstExpr(c, n.sons[1]);
       if skipRange(n.sons[1].typ).kind in [tyInt..tyInt64] then begin
@@ -618,40 +920,22 @@ begin
       result := n;
     end
     else begin // overloaded [] operator:
-      result := newNode(nkCall);
-      if n.sons[1].kind = nkRange then
-        addSon(result, newIdentNode(getIdent('[..]')))
-      else
-        addSon(result, newIdentNode(getIdent('[]')));
-      for i := 0 to sonsLen(n)-1 do
-        addSon(result, n.sons[i]);
+      result := newNodeI(nkCall, n.info);
+      if n.sons[1].kind = nkRange then begin
+        checkSonsLen(n.sons[1], 2);
+        addSon(result, newIdentNode(getIdent(whichSliceOpr(n.sons[1])), n.info));
+        addSon(result, n.sons[0]);
+        addSonIfNotNil(result, n.sons[1].sons[0]);
+        addSonIfNotNil(result, n.sons[1].sons[1]);
+      end
+      else begin
+        addSon(result, newIdentNode(getIdent('[]'), n.info));
+        addSon(result, n.sons[0]);
+        addSon(result, n.sons[1]);
+      end;
       result := semExpr(c, result);
     end
   end
-end;
-
-function semArrayConstr(c: PContext; n: PNode): PNode;
-var
-  typ: PType;
-  i: int;
-begin
-  result := newNode(nkArrayConstr);
-  result.info := n.info;
-  result.typ := newTypeS(tyArrayConstr, c);
-  addSon(result.typ, nil); // index type
-  if sonsLen(n) = 0 then
-    // empty array
-    addSon(result.typ, nil) // needs an empty basetype!
-  else begin
-    addSon(result, semExprWithType(c, n.sons[0], false));
-    typ := skipVar(result.sons[0].typ);
-    for i := 1 to sonsLen(n)-1 do begin
-      n.sons[i] := semExprWithType(c, n.sons[i], false);
-      addSon(result, fitNode(c, typ, n.sons[i]));
-    end;
-    addSon(result.typ, typ)
-  end;
-  result.typ.sons[0] := makeRangeType(c, 0, sonsLen(result)-1);
 end;
 
 function semIfExpr(c: PContext; n: PNode): PNode;
@@ -661,23 +945,26 @@ var
   it: PNode;
 begin
   result := n;
+  checkSonsLen(n, 2);
   typ := nil;
   for i := 0 to sonsLen(n) - 1 do begin
     it := n.sons[i];
     case it.kind of
       nkElifExpr: begin
-        it.sons[0] := semExprWithType(c, it.sons[0], false);
+        checkSonsLen(it, 2);
+        it.sons[0] := semExprWithType(c, it.sons[0]);
         checkBool(it.sons[0]);
-        it.sons[1] := semExprWithType(c, it.sons[1], false);
+        it.sons[1] := semExprWithType(c, it.sons[1]);
         if typ = nil then typ := it.sons[1].typ
         else it.sons[1] := fitNode(c, typ, it.sons[1])
       end;
       nkElseExpr: begin
-        it.sons[0] := semExprWithType(c, it.sons[0], false);
+        checkSonsLen(it, 1);
+        it.sons[0] := semExprWithType(c, it.sons[0]);
         assert(typ <> nil);
         it.sons[0] := fitNode(c, typ, it.sons[0]);
       end;
-      else internalError(it.info, 'semIfExpr()');
+      else illFormedAst(n);
     end
   end;
   result.typ := typ;
@@ -689,7 +976,7 @@ var
   i: int;
   m: PNode;
 begin
-  result := newNode(nkSetConstr);
+  result := newNode(nkCurly);
   result.info := n.info;
   if sonsLen(n) = 0 then
     result.typ := newTypeS(tyEmptySet, c)
@@ -698,13 +985,14 @@ begin
     typ := nil;
     for i := 0 to sonsLen(n)-1 do begin
       if n.sons[i].kind = nkRange then begin
-        n.sons[i].sons[0] := semExprWithType(c, n.sons[i].sons[0], false);
-        n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1], false);
+        checkSonsLen(n.sons[i], 2);
+        n.sons[i].sons[0] := semExprWithType(c, n.sons[i].sons[0]);
+        n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1]);
         if typ = nil then typ := skipVar(n.sons[i].sons[0].typ);
         n.sons[i].typ := n.sons[i].sons[1].typ; // range node needs type too
       end
       else begin
-        n.sons[i] := semExprWithType(c, n.sons[i], false);
+        n.sons[i] := semExprWithType(c, n.sons[i]);
         if typ = nil then typ := skipVar(n.sons[i].typ)
       end
     end;
@@ -734,20 +1022,20 @@ begin
 end;
 
 type
-  TParKind = (paNone, paSingle, paRecord, paTuple);
+  TParKind = (paNone, paSingle, paTupleFields, paTuplePositions);
 
 function checkPar(n: PNode): TParKind;
 var
   i, len: int;
 begin
   len := sonsLen(n);
-  if len = 0 then result := paTuple // ()
+  if len = 0 then result := paTuplePositions // ()
   else if len = 1 then result := paSingle // (expr)
   else begin
-    if n.sons[0].kind = nkExprColonExpr then result := paRecord
-    else result := paTuple;
+    if n.sons[0].kind = nkExprColonExpr then result := paTupleFields
+    else result := paTuplePositions;
     for i := 0 to len-1 do begin
-      if result = paRecord then begin
+      if result = paTupleFields then begin
         if (n.sons[i].kind <> nkExprColonExpr)
         or (n.sons[i].sons[0].kind <> nkIdent) then begin
           liMessage(n.sons[i].info, errNamedExprExpected);
@@ -764,7 +1052,7 @@ begin
   end
 end;
 
-function semRecordConstr(c: PContext; n: PNode): PNode;
+function semTupleFieldsConstr(c: PContext; n: PNode): PNode;
 var
   i: int;
   typ: PType;
@@ -772,9 +1060,9 @@ var
   id: PIdent;
   f: PSym;
 begin
-  result := newNode(nkRecordConstr);
+  result := newNode(nkPar);
   result.info := n.info;
-  typ := newTypeS(tyRecordConstr, c);
+  typ := newTypeS(tyTuple, c);
   typ.n := newNode(nkRecList); // nkIdentDefs
   IntSetInit(ids);
   for i := 0 to sonsLen(n)-1 do begin
@@ -784,9 +1072,10 @@ begin
     id := n.sons[i].sons[0].ident;
     if IntSetContainsOrIncl(ids, id.id) then
       liMessage(n.sons[i].info, errFieldInitTwice, id.s);
-    n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1], false);
+    n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1]);
     f := newSymS(skField, n.sons[i].sons[0], c);
     f.typ := n.sons[i].sons[1].typ;
+    addSon(typ, f.typ);
     addSon(typ.n, newSymNode(f));
     n.sons[i].sons[0] := newSymNode(f);
     addSon(result, n.sons[i]);
@@ -794,15 +1083,16 @@ begin
   result.typ := typ;
 end;
 
-function semTupleConstr(c: PContext; n: PNode): PNode;
+function semTuplePositionsConstr(c: PContext; n: PNode): PNode;
 var
   i: int;
   typ: PType;
 begin
   result := n; // we don't modify n, but compute the type:
   typ := newTypeS(tyTuple, c);
+  // leave typ.n nil!
   for i := 0 to sonsLen(n)-1 do begin
-    n.sons[i] := semExprWithType(c, n.sons[i], false);
+    n.sons[i] := semExprWithType(c, n.sons[i]);
     addSon(typ, n.sons[i].typ);
   end;
   result.typ := typ;
@@ -813,12 +1103,13 @@ var
   len, i: int;
 begin
   result := n;
+  checkMinSonsLen(n, 1);
   len := sonsLen(n);
   for i := 0 to len-2 do begin
     n.sons[i] := semStmt(c, n.sons[i]);
   end;
   if len > 0 then begin
-    n.sons[len-1] := semExprWithType(c, n.sons[len-1], false);
+    n.sons[len-1] := semExprWithType(c, n.sons[len-1]);
     n.typ := n.sons[len-1].typ
   end
 end;
@@ -827,51 +1118,49 @@ function semBlockExpr(c: PContext; n: PNode): PNode;
 begin
   result := n;
   Inc(c.p.nestedBlockCounter);
-  if sonsLen(n) = 2 then begin
-    openScope(c.tab); // BUGFIX: label is in the scope of block!
-    if n.sons[0] <> nil then begin
-      addDecl(c, newSymS(skLabel, n.sons[0], c))
-    end;
-    n.sons[1] := semStmtListExpr(c, n.sons[1]);
-    n.typ := n.sons[1].typ;
-    closeScope(c.tab);
-  end
-  else
-    illFormedAst(n);
+  checkSonsLen(n, 2);
+  openScope(c.tab); // BUGFIX: label is in the scope of block!
+  if n.sons[0] <> nil then begin
+    addDecl(c, newSymS(skLabel, n.sons[0], c))
+  end;
+  n.sons[1] := semStmtListExpr(c, n.sons[1]);
+  n.typ := n.sons[1].typ;
+  closeScope(c.tab);
   Dec(c.p.nestedBlockCounter);
 end;
 
-function semDotExpr(c: PContext; n: PNode; typeAllowed: bool): PNode;
+function semDotExpr(c: PContext; n: PNode; flags: TExprFlags): PNode;
 var
   s: PSym;
 begin
   s := qualifiedLookup(c, n, true); // check for ambiguity
   if s <> nil then
-    result := semSym(c, n, s, typeAllowed)
+    result := semSym(c, n, s, flags)
   else
-    // record access: if the field does not exist, check for a proc:
-    result := semFieldAccess(c, n, typeAllowed);
+    // test!
+    result := semFieldAccess(c, n, flags);
 end;
 
-function semExpr(c: PContext; n: PNode; typeAllowed: bool = false): PNode;
+function semMacroExpr(c: PContext; n: PNode; sym: PSym): PNode; forward;
+
+function semExpr(c: PContext; n: PNode; flags: TExprFlags = {@set}[]): PNode;
 var
   s: PSym;
 begin
   result := n;
   if n = nil then exit;
-  embeddedDbg(c, n);
   case n.kind of
     // atoms:
     nkIdent: begin
       // lookup the symbol:
       s := SymtabGet(c.Tab, n.ident);
-      if s <> nil then result := semSym(c, n, s, typeAllowed)
+      if s <> nil then result := semSym(c, n, s, flags)
       else liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
     end;
     nkSym: begin
       s := n.sym;
       include(s.flags, sfUsed);
-      if (s.kind = skType) and not typeAllowed then
+      if (s.kind = skType) and not (efAllowType in flags) then
         liMessage(n.info, errATypeHasNoValue);
       if s.magic <> mNone then
         liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
@@ -879,30 +1168,32 @@ begin
     nkEmpty, nkNone: begin end;
     nkNilLit: result.typ := getSysType(tyNil);
     nkType: begin
-      if not typeAllowed then liMessage(n.info, errATypeHasNoValue);
+      if not (efAllowType in flags) then liMessage(n.info, errATypeHasNoValue);
       n.typ := semTypeNode(c, n, nil);
     end;
-    nkIntLit: result.typ := getSysType(tyInt);
-    nkInt8Lit: result.typ := getSysType(tyInt8);
-    nkInt16Lit: result.typ := getSysType(tyInt16);
-    nkInt32Lit: result.typ := getSysType(tyInt32);
-    nkInt64Lit: result.typ := getSysType(tyInt64);
-    nkFloatLit: result.typ := getSysType(tyFloat);
-    nkFloat32Lit: result.typ := getSysType(tyFloat32);
-    nkFloat64Lit: result.typ := getSysType(tyFloat64);
-    nkStrLit..nkTripleStrLit: result.typ := getSysType(tyString);
-    nkCharLit, nkRCharLit: result.typ := getSysType(tyChar);
-
+    nkIntLit: if result.typ = nil then result.typ := getSysType(tyInt);
+    nkInt8Lit: if result.typ = nil then result.typ := getSysType(tyInt8);
+    nkInt16Lit: if result.typ = nil then result.typ := getSysType(tyInt16);
+    nkInt32Lit: if result.typ = nil then result.typ := getSysType(tyInt32);
+    nkInt64Lit: if result.typ = nil then result.typ := getSysType(tyInt64);
+    nkFloatLit: if result.typ = nil then result.typ := getSysType(tyFloat);
+    nkFloat32Lit: if result.typ = nil then result.typ := getSysType(tyFloat32);
+    nkFloat64Lit: if result.typ = nil then result.typ := getSysType(tyFloat64);
+    nkStrLit..nkTripleStrLit:
+      if result.typ = nil then result.typ := getSysType(tyString);
+    nkCharLit:
+      if result.typ = nil then result.typ := getSysType(tyChar);
     nkQualified, nkDotExpr: begin
-      result := semDotExpr(c, n, typeAllowed);
+      result := semDotExpr(c, n, flags);
       if result.kind = nkDotCall then begin
         result.kind := nkCall;
-        result := semExpr(c, result, typeAllowed)
+        result := semExpr(c, result, flags)
       end;
     end;
     // complex expressions
     nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       // check if it is an expression macro:
+      checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
       if (s <> nil) then begin
         case s.kind of
@@ -918,9 +1209,9 @@ begin
           end;
           skType: begin
             include(s.flags, sfUsed);
-            result := semConv(c, n, s);
             if n.kind <> nkCall then
-              liMessage(n.info, errXisNotCallable, s.name.s)
+              liMessage(n.info, errXisNotCallable, s.name.s);
+            result := semConv(c, n, s);
           end;
           skProc, skConverter, skIterator: begin
             if s.magic = mNone then result := semDirectOp(c, n)
@@ -932,6 +1223,7 @@ begin
       else result := semIndirectOp(c, n);
     end;
     nkBracketExpr: begin
+      checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
       if (s <> nil) and (s.kind in [skProc, skConverter, skIterator]) then begin
         // type parameters: partial generic specialization
@@ -940,7 +1232,7 @@ begin
         result := partialSpecialization(c, n, s);
       end
       else begin
-        result := semArrayAccess(c, n);
+        result := semArrayAccess(c, n, flags);
       end
     end;
     nkPragmaExpr: begin
@@ -948,53 +1240,45 @@ begin
       internalError(n.info, 'semExpr() to implement');
       // XXX: to implement
     end;
-    nkPar, nkRecordConstr, nkConstRecordConstr: begin
+    nkPar: begin
       case checkPar(n) of
         paNone: result := nil;
-        paTuple:  result := semTupleConstr(c, n);
-        paRecord: result := semRecordConstr(c, n);
-        paSingle: result := semExpr(c, n.sons[0], typeAllowed);
+        paTuplePositions:  result := semTuplePositionsConstr(c, n);
+        paTupleFields: result := semTupleFieldsConstr(c, n);
+        paSingle: result := semExpr(c, n.sons[0]);
       end;
     end;
-    nkCurly, nkSetConstr, nkConstSetConstr: begin
-      result := semSetConstr(c, n);
-    end;
-    nkBracket, nkArrayConstr, nkConstArrayConstr: begin
-      result := semArrayConstr(c, n);
-    end;
-    nkLambda: begin
-      result := semLambda(c, n); // handled in semstmts
-    end;
+    nkCurly: result := semSetConstr(c, n);
+    nkBracket: result := semArrayConstr(c, n);
+    nkLambda: result := semLambda(c, n); // handled in semstmts
     nkExprColonExpr: begin
       internalError(n.info, 'semExpr() to implement');
       // XXX: to implement for array constructors!
     end;
     nkDerefExpr: begin
-      if sonsLen(n) = 1 then begin
-        n.sons[0] := semExprWithType(c, n.sons[0], typeAllowed);
-        result := n;
-        case n.sons[0].typ.kind of
-          tyRef, tyPtr: n.typ := n.sons[0].typ.sons[0];
-          else liMessage(n.sons[0].info, errCircumNeedsPointer);
-        end;
-        result := n;
-        result.typ := inheritAssignable(result.typ, true);
-      end
-      else
-        illFormedAst(n)
+      checkSonsLen(n, 1);
+      n.sons[0] := semExprWithType(c, n.sons[0]);
+      result := n;
+      case skipVarGeneric(n.sons[0].typ).kind of
+        tyRef, tyPtr: n.typ := n.sons[0].typ.sons[0];
+        else liMessage(n.sons[0].info, errCircumNeedsPointer);
+      end;
+      result := n;
     end;
     nkAddr: begin
       result := n;
-      n.sons[0] := semExprWithType(c, n.sons[0], false);
-      //if not (tfAssignable in n.sons[0].typ.flags) then
-      //  liMessage(n.info, errExprHasNoAddress);
-      // XXX: the above check is not correct for parameters
+      checkSonsLen(n, 1);
+      n.sons[0] := semExprWithType(c, n.sons[0]);
+      if not isAssignable(n.sons[0]) then liMessage(n.info, errExprHasNoAddress);
       n.typ := makePtrType(c, n.sons[0].typ);
     end;
-    nkCast: begin
-      result := semCast(c, n);
+    nkHiddenAddr, nkHiddenDeref: begin
+      checkSonsLen(n, 1);
+      n.sons[0] := semExpr(c, n.sons[0], flags);
     end;
+    nkCast: result := semCast(c, n);
     nkAccQuoted: begin
+      checkSonsLen(n, 1);
       result := semExpr(c, n.sons[0]);
     end;
     nkHeaderQuoted: begin
@@ -1002,16 +1286,20 @@ begin
       internalError(n.info, 'semExpr() to implement');
       // XXX: to implement
     end;
-    nkIfExpr: begin
-      result := semIfExpr(c, n);
-    end;
-    nkStmtListExpr: begin
-      result := semStmtListExpr(c, n);
-    end;
-    nkBlockExpr: begin
-      result := semBlockExpr(c, n);
-    end;
+    nkIfExpr: result := semIfExpr(c, n);
+    nkStmtListExpr: result := semStmtListExpr(c, n);
+    nkBlockExpr: result := semBlockExpr(c, n);
+    nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv:
+      checkSonsLen(n, 2);
+    nkStringToCString, nkCStringToString, nkPassAsOpenArray, nkObjDownConv,
+    nkObjUpConv:
+      checkSonsLen(n, 1);
+    nkChckRangeF, nkChckRange64, nkChckRange:
+      checkSonsLen(n, 3);
+    nkCheckedFieldExpr:
+      checkMinSonsLen(n, 2);
     else begin
+      //InternalError(n.info, nodeKindToStr[n.kind]);
       liMessage(n.info, errInvalidExpressionX,
                 renderTree(n, {@set}[renderNoComments]));
       result := nil

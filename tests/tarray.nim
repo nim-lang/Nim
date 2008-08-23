@@ -1,13 +1,8 @@
 # simple check for one dimensional arrays
 
-import
-  io
-
 type
   TMyArray = array[0..2, int]
-  TMyRecord = record
-    x, y: int
-
+  TMyRecord = tuple[x, y: int]
 
 proc sum(a: TMyarray): int =
   result = 0

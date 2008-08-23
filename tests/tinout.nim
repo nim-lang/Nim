@@ -1,6 +1,6 @@
 # Test in out checking for parameters
 
-proc abc(x: out int) =
+proc abc(x: var int) =
     x = 0
 
 proc b() =

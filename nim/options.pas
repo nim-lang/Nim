@@ -13,12 +13,14 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, nos, lists, strutils;
+  nsystem, nos, lists, strutils, strtabs;
 
 type
   // please make sure we have under 32 options
   // (improves code efficiency a lot!)
-  TOption = (optNone, optRangeCheck,
+  TOption = (optNone,
+    optObjCheck,
+    optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
     optWarns, optHints,
     optOptimizeSpeed,
@@ -56,6 +58,7 @@ type
     cmdNone,
     cmdCompileToC,
     cmdCompileToCpp,
+    cmdCompileToEcmaScript,
     cmdInterpret,
     cmdPretty,
     cmdDoc,
@@ -69,32 +72,27 @@ type
     cmdDebugTrans, // debug a transformation pass
     cmdRst2html    // convert a reStructuredText file to HTML
   );
-
-  TNumericalBase = (base10, // base10 is listed as the first element,
-                            // so that it is the correct default value
-                    base2,
-                    base8,
-                    base16);
-
+  TStringSeq = array of string;
 
 const
-  ChecksOptions = {@set}[optRangeCheck, optNilCheck, optOverflowCheck,
-                         optBoundsCheck, optAssert];
+  ChecksOptions = {@set}[optObjCheck, optFieldCheck, optRangeCheck,
+                         optNilCheck, optOverflowCheck, optBoundsCheck,
+                         optAssert];
   optionToStr: array [TOption] of string = (
-    'optNone', 'optRangeCheck',
+    'optNone', 'optObjCheck', 'optFieldCheck', 'optRangeCheck',
     'optBoundsCheck', 'optOverflowCheck', 'optNilCheck', 'optAssert',
     'optLineDir', 'optWarns', 'optHints', 'optOptimizeSpeed',
     'optOptimizeSize', 'optStackTrace', 'optLineTrace', 'optEmdb',
     'optByRef', 'optCheckpoints'
   );
 var
-  gOptions: TOptions = {@set}[optRangeCheck, optBoundsCheck, optOverflowCheck,
+  gOptions: TOptions = {@set}[optObjCheck, optFieldCheck, optRangeCheck,
+                              optBoundsCheck, optOverflowCheck,
                               optAssert, optWarns, optHints, optLineDir,
                               optStackTrace, optLineTrace];
 
   gGlobalOptions: TGlobalOptions = {@set}[optRefcGC];
 
-  compilerArgs: int;
   gExitcode: Byte;
   searchPaths: TLinkedList;
   outFile: string = '';
@@ -124,22 +122,15 @@ function getPrefixDir: string;
 // gets the application directory
 
 // additional configuration variables:
-type
-  TPair = record
-    key, val: string;
-  end;
-  TPairs = array of TPair;
-
-  TStringSeq = array of string;
 var
-  gConfigVars: TPairs = {@ignore} nil {@emit []};
+  gConfigVars: PStringTable;
   libpath: string = '';
   gKeepComments: boolean = true; // whether the parser needs to keep comments
   gImplicitMods: TStringSeq = {@ignore} nil {@emit []};
     // modules that are to be implicitly imported
 
-procedure setConfigVar(const key, val: string);
 function getConfigVar(const key: string): string;
+procedure setConfigVar(const key, val: string);
 
 procedure addImplicitMod(const filename: string);
 
@@ -148,6 +139,16 @@ function getOutFile(const filename, ext: string): string;
 function binaryStrSearch(const x: array of string; const y: string): int;
 
 implementation
+
+function getConfigVar(const key: string): string;
+begin
+  result := strtabs.get(gConfigVars, key);
+end;
+
+procedure setConfigVar(const key, val: string);
+begin
+  strtabs.put(gConfigVars, key, val);
+end;
 
 function getOutFile(const filename, ext: string): string;
 begin
@@ -170,38 +171,6 @@ var
 begin
   appdir := getApplicationDir();
   SplitPath(appdir, result, bin);
-end;
-
-function getConfigIdx(const key: string): int;
-var
-  i: int;
-begin
-  for i := 0 to high(gConfigVars) do
-    if cmpIgnoreStyle(gConfigVars[i].key, key) = 0 then begin
-      result := i; exit end;
-  result := -1
-end;
-
-function getConfigVar(const key: string): string;
-var
-  i: int;
-begin
-  i := getConfigIdx(key);
-  if i >= 0 then result := gConfigVars[i].val
-  else result := ''
-end;
-
-procedure setConfigVar(const key, val: string);
-var
-  i: int;
-begin
-  i := getConfigIdx(key);
-  if i < 0 then begin
-    i := length(gConfigVars);
-    setLength(gConfigVars, i+1);
-    gConfigVars[i].key := key
-  end;
-  gConfigVars[i].val := val
 end;
 
 function toGeneratedFile(const path, ext: string): string;
@@ -261,4 +230,6 @@ begin
   result := -1
 end;
 
+initialization
+  gConfigVars := newStringTable([], modeStyleInsensitive);
 end.

@@ -58,10 +58,10 @@ proc new*[T](a: var ref T) {.magic: "New".}
 proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.magic: "NewFinalize".}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``. When the garbage collector frees the object,
-  ## `finalizer` is called. The `finalizer` may not keep a reference to the 
+  ## `finalizer` is called. The `finalizer` may not keep a reference to the
   ## object pointed to by `x`. The `finalizer` cannot prevent the GC from
   ## freeing the object. Note: The `finalizer` refers to the type `T`, not to
-  ## the object! This means that for each object of type `T` the finalizer 
+  ## the object! This means that for each object of type `T` the finalizer
   ## will be called!
 
 # for low and high the return type T may not be correct, but
@@ -86,7 +86,6 @@ type
                                        ## length field.
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
-  tuple*{.magic: "Tuple".}[T]  ## Generic type to construct tuple types.
 
   Byte* = Int8 ## this is an alias for ``int8``, that is a signed
                ## int 8 bits wide.
@@ -104,14 +103,15 @@ type
                     ## objects that have no ancestor are allowed.
   PObject* = ref TObject ## reference to TObject
 
-  E_Base* {.compilerproc.} = object of TObject ## base exception class; 
+  E_Base* {.compilerproc.} = object of TObject ## base exception class;
                                                ## each exception has to
                                                ## inherit from `E_Base`.
     name*: cstring            ## The exception's name is its Nimrod identifier.
                               ## This field is filled automatically in the
                               ## ``raise`` statement.
-    msg*: cstring             ## the exception's message. Not providing an
-                              ## exception message is bad style.
+    msg* {.exportc: "message".}: cstring ## the exception's message. Not
+                                         ## providing an
+                                         ## exception message is bad style.
 
   EAsynch* = object of E_Base ## Abstract exception class for
                               ## *asynchronous exceptions* (interrupts).
@@ -129,18 +129,21 @@ type
                                            ## could not be fullfilled.
   EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
                                         ## error occured.
-  EDivByZero* = object of EArithmetic   ## is the exception class for integer
-                                        ## divide-by-zero errors.
-  EOverflow* = object of EArithmetic    ## is the exception class for integer
-                                        ## calculations whose results are too
-                                        ## large to fit in the provided bits.
+  EDivByZero* {.compilerproc.} =
+    object of EArithmetic ## is the exception class for integer divide-by-zero
+                          ## errors.
+  EOverflow* {.compilerproc.} =
+    object of EArithmetic  ## is the exception class for integer calculations
+                           ## whose results are too large to fit in the
+                           ## provided bits.
 
-  EAccessViolation* = object of ESynch  ## the exception class for
-                                        ## invalid memory access errors
+  EAccessViolation* {.compilerproc.} =
+    object of ESynch ## the exception class for invalid memory access errors
 
-  EAssertionFailed* = object of ESynch  ## is the exception class for Assert
-                                        ## procedures that is raised if the
-                                        ## assertion proves wrong
+  EAssertionFailed* {.compilerproc.} =
+    object of ESynch  ## is the exception class for Assert
+                      ## procedures that is raised if the
+                      ## assertion proves wrong
 
   EControlC* = object of EAsynch        ## is the exception class for Ctrl+C
                                         ## key presses in console applications.
@@ -154,6 +157,9 @@ type
 
   EInvalidIndex* = object of ESynch     ## is raised if an array index is out
                                         ## of bounds.
+  EInvalidField* = object of ESynch     ## is raised if a record field is not
+                                        ## accessible because its dicriminant's
+                                        ## value does not fit.
 
   EOutOfRange* = object of ESynch       ## is raised if a range check error
                                         ## occured.
@@ -164,13 +170,13 @@ type
   ENoExceptionToReraise* = object of ESynch ## is raised if there is no
                                             ## exception to reraise.
 
-  EInvalidObjectAssignment* = object of ESynch ## is raised if an object
-                                               ## gets assigned to its
-                                               ## farther's object.
+  EInvalidObjectAssignment* =
+    object of ESynch ## is raised if an object gets assigned to its
+                     ## farther's object.
 
-  EInvalidObjectConversion* = object of ESynch ## is raised if an object is
-                                               ## converted to an incompatible
-                                               ## object type.
+  EInvalidObjectConversion* =
+    object of ESynch ## is raised if an object is converted to an incompatible
+                     ## object type.
 
   TResult* = enum Failure, Success
 
@@ -394,7 +400,7 @@ proc in_Operator*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ##   writeln(stdout, 'b' in s)
   ##
   ## If ``in`` had been declared as ``[T](elem: T, s: set[T])`` then ``T`` would
-  ## have been bound to ``char``. But ``s`` is not compatible with type
+  ## have been bound to ``char``. But ``s`` is not compatible to type
   ## ``set[char]``! The solution is to bind ``T`` to ``range['a'..'z']``. This
   ## is achieved by reversing the parameters for ``in_operator``; ``in`` then
   ## passes its arguments in reverse order.
@@ -418,25 +424,31 @@ proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
 
 # concat operator:
-proc `&` * (x: string, y: char): string {.
-  magic: "ConStrStr", noSideEffect, returnsNew.}
-proc `&` * (x: char, y: char): string {.
-  magic: "ConStrStr", noSideEffect, returnsNew.}
-proc `&` * (x, y: string): string {.
-  magic: "ConStrStr", noSideEffect, returnsNew.}
-proc `&` * (x: char, y: string): string {.
-  magic: "ConStrStr", noSideEffect, returnsNew.}
-  ## is the `concatenation operator`. It
-  ## concatenates `x` and `y`.
+proc `&` * (x: string, y: char): string {.magic: "ConStrStr", noSideEffect.}
+proc `&` * (x: char, y: char): string {.magic: "ConStrStr", noSideEffect.}
+proc `&` * (x, y: string): string {.magic: "ConStrStr", noSideEffect.}
+proc `&` * (x: char, y: string): string {.magic: "ConStrStr", noSideEffect.}
+  ## is the `concatenation operator`. It concatenates `x` and `y`.
 
 proc add * (x: var string, y: char) {.magic: "AppendStrCh".}
 proc add * (x: var string, y: string) {.magic: "AppendStrStr".}
 
-proc add* (x: var string, y: cstring) =
-  var i = 0
-  while y[i] != '\0':
-    add(x, y[i])
-    inc(i)
+when not defined(ECMAScript):
+  proc add* (x: var string, y: cstring) =
+    var i = 0
+    while y[i] != '\0':
+      add(x, y[i])
+      inc(i)
+else:
+  proc add* (x: var string, y: cstring) {.pure.} =
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem".}
 proc add *[T](x: var seq[T], y: seq[T]) {.magic: "AppendSeqSeq".}
@@ -493,7 +505,7 @@ type # these work for most platforms:
 
   TEndian* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
-    
+
   PFloat32* = ptr Float32 ## an alias for ``ptr float32``
   PFloat64* = ptr Float64 ## an alias for ``ptr float64``
   PInt64* = ptr Int64 ## an alias for ``ptr int64``
@@ -675,20 +687,27 @@ proc swap*[T](a, b: var T) {.magic: "Swap".}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
 
-proc ze*(x: int8): int {.magic: "Ze", noSideEffect.}
+proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
   ## zero extends a smaller integer type to ``int``. This treats `x` as
   ## unsigned.
-proc ze*(x: int16): int {.magic: "Ze", noSideEffect.}
+proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
   ## zero extends a smaller integer type to ``int``. This treats `x` as
   ## unsigned.
 
-proc ze64*(x: int32): int64 {.magic: "Ze64", noSideEffect.}
+proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
   ## zero extends a smaller integer type to ``int64``. This treats `x` as
   ## unsigned.
-proc ze*(x: int): int64 {.magic: "Ze", noDecl, noSideEffect.}
+proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned.
+
+proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned.
+proc ze64*(x: int): int64 {.magic: "ZeIToI64", noDecl, noSideEffect.}
   ## zero extends a smaller integer type to ``int64``. This treats `x` as
   ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
-  ## (This is the case an 64 bit processors.)
+  ## (This is the case on 64 bit processors.)
 
 proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
   ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
@@ -749,39 +768,39 @@ template `>%` *(x, y: expr): expr = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
-proc `$` *(x: int): string {.noSideEffect.}
+proc `$` *(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stingify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$` *(x: int64): string {.noSideEffect.}
+proc `$` *(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stingify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$` *(x: float): string {.noSideEffect.}
+proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## The stingify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$` *(x: bool): string {.noSideEffect.}
+proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stingify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc `$` *(x: char): string {.noSideEffect.}
+proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stingify operator for a character argument. Returns `x`
   ## converted to a string.
 
-proc `$` *(x: Cstring): string {.noSideEffect, importc: "cstrToNimstr".}
+proc `$` *(x: Cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## The stingify operator for a CString argument. Returns `x`
   ## converted to a string.
 
-proc `$` *(x: string): string {.noSideEffect.}
+proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stingify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` works if ``expr`` is already a string.
+  ## that ``$expr`` also works if ``expr`` is already a string.
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount".}
   ## retrieves the reference count of an heap-allocated object. The
-  ## value is implementation-dependant. 
+  ## value is implementation-dependant.
 
 #proc writeStackTrace() {.export: "writeStackTrace".}
 proc getCurrentExceptionMsg*(): string {.exportc.}
@@ -790,10 +809,12 @@ proc getCurrentExceptionMsg*(): string {.exportc.}
 
 # new constants:
 const
-  inf* = 1.0 / 0.0
+  inf* {.magic: "Inf".} = 0.0
     ## contains the IEEE floating point value of positive infinity.
-  nan* = 0.0 / 0.0
-    ## contains the IEEE floating point value of *Not A Number*. Note
+  neginf* {.magic: "NegInf".} = 0.0
+    ## contains the IEEE floating point value of negative infinity.
+  nan* {.magic: "NaN".} = 0.0
+    ## contains an IEEE floating point value of *Not A Number*. Note
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
@@ -805,18 +826,18 @@ var
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
 
 # GC interface:
-when defined(Unix) and not defined(macosX) and not defined(linux): 
+when defined(Unix) and not defined(macosX) and not defined(linux):
   # BUGFIX for macosX
   {.define: nativeDL.}
 
 when defined(useDL) or defined(nativeDL):
   proc getOccupiedMem*(): int
     ## returns the number of bytes that are owned by the process and hold data.
-  
+
   proc getFreeMem*(): int
     ## returns the number of bytes that are owned by the process, but do not
     ## hold any meaningful data.
-  
+
   proc getTotalMem*(): int
     ## returns the number of bytes that are owned by the process.
 
@@ -885,11 +906,22 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+
+proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
+  ## Fast check whether `x` is nil. This is sometimes more efficient than
+  ## ``== nil``.
+
+
 # Fixup some magic symbols here:
 {.fixup_system.} # This is an undocumented pragma that can only be used
                  # once in the system module.
 
-proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect, returnsNew.} =
+proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   result = []
   setLen(result, x.len + y.len)
   for i in 0..x.len-1:
@@ -897,34 +929,82 @@ proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect, returnsNew.} =
   for i in 0..y.len-1:
     result[i] = y[i]
 
-proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect, returnsNew.} =
+proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
   result = []
   setLen(x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
-proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect, returnsNew.} =
+proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   result = []
   setLen(y.len + 1)
   for i in 0..y.len-1:
     result[i] = y[i]
   result[y.len] = x
 
-proc `&` *[T](x, y: T): seq[T] {.noSideEffect, returnsNew.} =
+proc `&` *[T](x, y: T): seq[T] {.noSideEffect.} =
   return [x, y]
+
+when not defined(ECMAScript): # XXX make this local procs
+  proc seqToPtr*[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+    result = cast[pointer](x)
+else:
+  proc seqToPtr*[T](x: seq[T]): pointer {.pure, nosideeffect.} =
+    asm """return `x`"""
 
 proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
-  if cast[pointer](x) == cast[pointer](y):
+  if seqToPtr(x) == seqToPtr(y):
     result = true
-  elif cast[pointer](x) == nil or cast[pointer](y) == nil:
+  elif seqToPtr(x) == nil or seqToPtr(y) == nil:
     result = false
   elif x.len == y.len:
     for i in 0..x.len-1:
       if x[i] != y[i]: return false
     result = true
+
+# ----------------- FPU ------------------------------------------------------
+
+#proc disableFPUExceptions*()
+# disables all floating point unit exceptions
+
+#proc enableFPUExceptions*()
+# enables all floating point unit exceptions
+
+# ----------------- GC interface ---------------------------------------------
+
+proc GC_disable*()
+  ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
+  ## reactivate the GC. Note that in most circumstances one should only disable
+  ## the mark and sweep phase with `GC_disableMarkAndSweep`.
+
+proc GC_enable*()
+  ## enables the GC again.
+
+proc GC_fullCollect*()
+  ## forces a full garbage collection pass.
+  ## Ordinary code does not need to call this.
+
+type
+  TGC_Strategy* = enum ## the strategy the GC should use for the application
+    gcThroughput,      ## optimize for throughput
+    gcResponsiveness,  ## optimize for responsiveness (default)
+    gcOptimizeTime,    ## optimize for speed
+    gcOptimizeSpace    ## optimize for memory footprint
+
+proc GC_setStrategy*(strategy: TGC_Strategy)
+  ## tells the GC the desired strategy for the application.
+
+proc GC_enableMarkAndSweep*()
+proc GC_disableMarkAndSweep*()
+  ## the current implementation uses a reference counting garbage collector
+  ## with a seldomly run mark and sweep phase to free cycles. The mark and
+  ## sweep phase may take a long time and is not needed if the application
+  ## does not create cycles. Thus the mark and sweep phase can be deactivated
+  ## and activated separately from the rest of the GC.
+
 
 {.push checks: off, line_dir: off, debugger: off,
   assertions: on.}  # obviously we cannot generate checking operations here :-)
@@ -932,41 +1012,9 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
                     # however, stack-traces are available for most parts
                     # of the code
 
-include hti
-
-proc initGC()
-
-var
-  strDesc: TNimType
-
-strDesc.size = sizeof(string)
-strDesc.kind = tyString
-initGC() # BUGFIX: need to be called here!
-
-{.push stack_trace: off.}
-
-include ansi_c
-
-proc cmp(x, y: string): int =
-  return c_strcmp(x, y)
-
-when defined(windows):
-  # work-around C's sucking abstraction:
-  # BUGFIX: stdin and stdout should be binary files!
-  const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
-  proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
-                                    header: "<io.h>".}
-  proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
-                                        header: "<fcntl.h>".}
-  var
-    O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
-
-  # we use binary mode in Windows:
-  setmode(fileno(c_stdin), O_BINARY)
-  setmode(fileno(c_stdout), O_BINARY)
-
-when defined(endb):
-  proc endbStep()
+proc echo*[Ty](x: Ty) {.inline.}
+  ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
+  ## available for the ECMAScript target too!
 
 
 template newException(exceptn, message: expr): expr =
@@ -976,209 +1024,223 @@ template newException(exceptn, message: expr): expr =
     new(e)
     e.msg = message
     e
-    
-# ----------------- GC interface ---------------------------------------------
 
-proc GC_disable*() 
-  ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
-  ## reactivate the GC. Note that in most circumstances one should only disable
-  ## the mark and sweep phase with `GC_disableMarkAndSweep`. 
+when not defined(EcmaScript):
 
-proc GC_enable*() 
-  ## enables the GC again.
-  
-proc GC_fullCollect*()
-  ## forces a full garbage collection pass. 
-  ## Ordinary code does not need to call this.
+  include hti
 
-type
-  TGC_Strategy* = enum ## the strategy the GC should use for the application
-    gcThroughput ,     ## optimize for throughput
-    gcResponsiveness,  ## optimize for responsiveness (default)
-    gcOptimizeTime,    ## optimize for speed
-    gcOptimizeSpace    ## optimize for memory footprint
+  proc initGC()
 
-proc GC_setStrategy*(strategy: TGC_Strategy)
-  ## tells the GC the desired strategy for the application.
-  
-proc GC_enableMarkAndSweep*()
-proc GC_disableMarkAndSweep*()
-  ## the current implementation uses a reference counting garbage collector
-  ## with a seldomly run mark and sweep phase to free cycles. The mark and
-  ## sweep phase may take a long time and is not needed if the application
-  ## does not create cycles. Thus the mark and sweep phase can be deactivated
-  ## and activated separately from the rest of the GC.
-
-    
-# ----------------- IO Part --------------------------------------------------
-
-type
-  CFile {.importc: "FILE", nodecl.} = record  # empty record for
-                                              # data hiding
-  TFile* = ptr CFile ## The type representing a file handle.
-
-  TFileMode* = enum           ## The file mode when opening a file.
-    fmRead,                   ## Open the file for read access only.
-    fmWrite,                  ## Open the file for write access only.
-    fmReadWrite,              ## Open the file for read and write access.
-                              ## If the file does not exist, it will be
-                              ## created.
-    fmReadWriteExisting,      ## Open the file for read and write access.
-                              ## If the file does not exist, it will not be
-                              ## created.
-    fmAppend                  ## Open the file for writing only; append data
-                              ## at the end.
-
-# text file handling:
-var
-  stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
-  stdout* {.importc: "stdout", noDecl.}: TFile ## The standard output stream.
-  stderr* {.importc: "stderr", noDecl.}: TFile
-    ## The standard error stream.
-    ##
-    ## Note: In my opinion, this should not be used -- the concept of a
-    ## separate error stream is a design flaw of UNIX. A seperate *message
-    ## stream* is a good idea, but since it is named ``stderr`` there are few
-    ## programs out there that distinguish properly between ``stdout`` and
-    ## ``stderr``. So, that's what you get if you don't name your variables
-    ## appropriately. It also annoys people if redirection via ``>output.txt``
-    ## does not work because the program writes to ``stderr``.
-
-proc OpenFile*(f: var TFile, filename: string,
-               mode: TFileMode = fmRead, bufSize: int = -1): Bool
-  ## Opens a file named `filename` with given `mode`.
-  ##
-  ## Default mode is readonly. Returns true iff the file could be opened.
-  ## This throws no exception if the file could not be opened. The reason is
-  ## that the programmer needs to provide an appropriate error message anyway
-  ## (yes, even in scripts).
-
-proc CloseFile*(f: TFile) {.importc: "fclose", nodecl.}
-  ## Closes the file.
-proc EndOfFile*(f: TFile): Bool
-  ## Returns true iff `f` is at the end.
-proc readChar*(f: TFile): char {.importc: "fgetc", nodecl.}
-  ## Reads a single character from the stream `f`. If the stream
-  ## has no more characters, `EEndOfFile` is raised.
-proc FlushFile*(f: TFile) {.importc: "fflush", noDecl.}
-  ## Flushes `f`'s buffer.
-
-proc readFile*(filename: string): string
-  ## Opens a file name `filename` for reading. Then reads the
-  ## file's content completely into a string and
-  ## closes the file afterwards. Returns the string. Returns nil if there was
-  ## an error. Does not throw an IO exception.
-
-proc write*(f: TFile, r: float)
-proc write*(f: TFile, i: int)
-proc write*(f: TFile, s: string)
-proc write*(f: TFile, b: Bool)
-proc write*(f: TFile, c: char)
-proc write*(f: TFile, c: cstring)
-  ## Writes a value to the file `f`. May throw an IO exception.
-
-proc readLine*(f: TFile): string
-  ## reads a line of text from the file `f`. May throw an IO exception.
-  ## Reading from an empty file buffer, does not throw an exception, but
-  ## returns nil. A line of text may be delimited by ``CR``, ``LF`` or
-  ## ``CRLF``. The newline character(s) are not part of the returned string.
-
-proc writeln*[Ty](f: TFile, x: Ty) {.inline.}
-  ## writes a value `x` to `f` and then writes "\n". May throw an IO exception.
-proc echo*[Ty](x: Ty) {.inline.}
-  ## equivalent to ``writeln(stdout, x); flush(stdout)``.
-
-proc getFileSize*(f: TFile): int64
-  ## retrieves the file size (in bytes) of `f`.
-
-proc ReadBytes*(f: TFile, a: var openarray[byte], start, len: int): int
-  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-  ## the actual number of bytes that have been read which may be less than
-  ## `len` (if not as many bytes are remaining), but not greater.
-
-proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int
-  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-  ## the actual number of bytes that have been read which may be less than
-  ## `len` (if not as many bytes are remaining), but not greater.
-
-proc readBuffer*(f: TFile, buffer: pointer, len: int): int
-  ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
-  ## the actual number of bytes that have been read which may be less than
-  ## `len` (if not as many bytes are remaining), but not greater.
-
-proc writeBytes*(f: TFile, a: openarray[byte], start, len: int): int
-  ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-  ## the number of actual written bytes, which may be less than `len` in case
-  ## of an error.
-
-proc writeChars*(f: tFile, a: openarray[char], start, len: int): int
-  ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-  ## the number of actual written bytes, which may be less than `len` in case
-  ## of an error.
-
-proc writeBuffer*(f: TFile, buffer: pointer, len: int): int
-  ## writes the bytes of buffer pointed to by the parameter `buffer` to the
-  ## file `f`. Returns the number of actual written bytes, which may be less
-  ## than `len` in case of an error.
-
-proc setFilePos*(f: TFile, pos: int64)
-  ## sets the position of the file pointer that is used for read/write
-  ## operations. The file's first byte has the index zero.
-
-proc getFilePos*(f: TFile): int64
-  ## retrieves the current position of the file pointer that is used to
-  ## read from the file `f`. The file's first byte has the index zero.
-
-include sysio
-
-iterator lines*(filename: string): string =
-  ## Iterate over any line in the file named `filename`.
-  ## If the file does not exist `EIO` is raised.
   var
-    f: TFile
-  if not openFile(f, filename):
-    raise newException(EIO, "cannot open: " & filename)
-  var res = ""
-  while not endOfFile(f):
-    rawReadLine(f, res)
-    yield res
-  CloseFile(f)
+    strDesc: TNimType
 
-# ----------------------------------------------------------------------------
+  strDesc.size = sizeof(string)
+  strDesc.kind = tyString
+  initGC() # BUGFIX: need to be called here!
 
-include excpt
-# we cannot compile this with stack tracing on
-# as it would recurse endlessly!
-include arithm
-{.pop.} # stack trace
+  {.push stack_trace: off.}
 
-# sequence type declarations here because the GC needs them too:
-type
-  TGenericSeq {.importc, nodecl.} = record
-    len, space: int
+  include ansi_c
 
-  PGenericSeq {.importc, nodecl.} = ptr TGenericSeq
+  proc cmp(x, y: string): int =
+    return c_strcmp(x, y)
 
-const
-  GenericSeqSize = (2 * sizeof(int))
+  when defined(windows):
+    # work-around C's sucking abstraction:
+    # BUGFIX: stdin and stdout should be binary files!
+    const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
+    proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
+                                      header: "<io.h>".}
+    proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
+                                          header: "<fcntl.h>".}
+    var
+      O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
 
-when not defined(boehmgc) and not defined(nogc):
-  include gc
+    # we use binary mode in Windows:
+    setmode(fileno(c_stdin), O_BINARY)
+    setmode(fileno(c_stdout), O_BINARY)
 
-include sysstr
-include assign
-include dyncalls
-include repr
+  when defined(endb):
+    proc endbStep()
 
-# we have to implement it here after gentostr for the cstrToNimStrDummy proc
-proc getCurrentExceptionMsg(): string =
-  if excHandler == nil: return ""
-  return $excHandler.exc.msg
+  # ----------------- IO Part --------------------------------------------------
 
-{.push stack_trace: off.}
-when defined(endb):
-  include debugger
-{.pop.} # stacktrace
+  type
+    CFile {.importc: "FILE", nodecl, final.} = object  # empty record for
+                                                       # data hiding
+    TFile* = ptr CFile ## The type representing a file handle.
+
+    TFileMode* = enum           ## The file mode when opening a file.
+      fmRead,                   ## Open the file for read access only.
+      fmWrite,                  ## Open the file for write access only.
+      fmReadWrite,              ## Open the file for read and write access.
+                                ## If the file does not exist, it will be
+                                ## created.
+      fmReadWriteExisting,      ## Open the file for read and write access.
+                                ## If the file does not exist, it will not be
+                                ## created.
+      fmAppend                  ## Open the file for writing only; append data
+                                ## at the end.
+
+  # text file handling:
+  var
+    stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
+    stdout* {.importc: "stdout", noDecl.}: TFile ## The standard output stream.
+    stderr* {.importc: "stderr", noDecl.}: TFile
+      ## The standard error stream.
+      ##
+      ## Note: In my opinion, this should not be used -- the concept of a
+      ## separate error stream is a design flaw of UNIX. A seperate *message
+      ## stream* is a good idea, but since it is named ``stderr`` there are few
+      ## programs out there that distinguish properly between ``stdout`` and
+      ## ``stderr``. So, that's what you get if you don't name your variables
+      ## appropriately. It also annoys people if redirection via ``>output.txt``
+      ## does not work because the program writes to ``stderr``.
+
+  proc OpenFile*(f: var TFile, filename: string,
+                 mode: TFileMode = fmRead, bufSize: int = -1): Bool
+    ## Opens a file named `filename` with given `mode`.
+    ##
+    ## Default mode is readonly. Returns true iff the file could be opened.
+    ## This throws no exception if the file could not be opened. The reason is
+    ## that the programmer needs to provide an appropriate error message anyway
+    ## (yes, even in scripts).
+
+  proc CloseFile*(f: TFile) {.importc: "fclose", nodecl.}
+    ## Closes the file.
+  proc EndOfFile*(f: TFile): Bool
+    ## Returns true iff `f` is at the end.
+  proc readChar*(f: TFile): char {.importc: "fgetc", nodecl.}
+    ## Reads a single character from the stream `f`. If the stream
+    ## has no more characters, `EEndOfFile` is raised.
+  proc FlushFile*(f: TFile) {.importc: "fflush", noDecl.}
+    ## Flushes `f`'s buffer.
+
+  proc readFile*(filename: string): string
+    ## Opens a file name `filename` for reading. Then reads the
+    ## file's content completely into a string and
+    ## closes the file afterwards. Returns the string. Returns nil if there was
+    ## an error. Does not throw an IO exception.
+
+  proc write*(f: TFile, r: float)
+  proc write*(f: TFile, i: int)
+  proc write*(f: TFile, s: string)
+  proc write*(f: TFile, b: Bool)
+  proc write*(f: TFile, c: char)
+  proc write*(f: TFile, c: cstring)
+  proc write*(f: TFile, a: openArray[string])
+    ## Writes a value to the file `f`. May throw an IO exception.
+
+  proc readLine*(f: TFile): string
+    ## reads a line of text from the file `f`. May throw an IO exception.
+    ## Reading from an empty file buffer, does not throw an exception, but
+    ## returns nil. A line of text may be delimited by ``CR``, ``LF`` or
+    ## ``CRLF``. The newline character(s) are not part of the returned string.
+
+  proc writeln*[Ty](f: TFile, x: Ty) {.inline.}
+    ## writes a value `x` to `f` and then writes "\n".
+    ## May throw an IO exception.
+
+  proc writeln*[Ty](f: TFile, x: openArray[Ty]) {.inline.}
+    ## writes a value `x` to `f` and then writes "\n".
+    ## May throw an IO exception.
+
+  proc getFileSize*(f: TFile): int64
+    ## retrieves the file size (in bytes) of `f`.
+
+  proc ReadBytes*(f: TFile, a: var openarray[byte], start, len: int): int
+    ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+    ## the actual number of bytes that have been read which may be less than
+    ## `len` (if not as many bytes are remaining), but not greater.
+
+  proc ReadChars*(f: TFile, a: var openarray[char], start, len: int): int
+    ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+    ## the actual number of bytes that have been read which may be less than
+    ## `len` (if not as many bytes are remaining), but not greater.
+
+  proc readBuffer*(f: TFile, buffer: pointer, len: int): int
+    ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
+    ## the actual number of bytes that have been read which may be less than
+    ## `len` (if not as many bytes are remaining), but not greater.
+
+  proc writeBytes*(f: TFile, a: openarray[byte], start, len: int): int
+    ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+    ## the number of actual written bytes, which may be less than `len` in case
+    ## of an error.
+
+  proc writeChars*(f: tFile, a: openarray[char], start, len: int): int
+    ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+    ## the number of actual written bytes, which may be less than `len` in case
+    ## of an error.
+
+  proc writeBuffer*(f: TFile, buffer: pointer, len: int): int
+    ## writes the bytes of buffer pointed to by the parameter `buffer` to the
+    ## file `f`. Returns the number of actual written bytes, which may be less
+    ## than `len` in case of an error.
+
+  proc setFilePos*(f: TFile, pos: int64)
+    ## sets the position of the file pointer that is used for read/write
+    ## operations. The file's first byte has the index zero.
+
+  proc getFilePos*(f: TFile): int64
+    ## retrieves the current position of the file pointer that is used to
+    ## read from the file `f`. The file's first byte has the index zero.
+
+  include sysio
+
+  iterator lines*(filename: string): string =
+    ## Iterate over any line in the file named `filename`.
+    ## If the file does not exist `EIO` is raised.
+    var
+      f: TFile
+    if not openFile(f, filename):
+      raise newException(EIO, "cannot open: " & filename)
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
+    CloseFile(f)
+
+  # ----------------------------------------------------------------------------
+
+  include excpt
+  # we cannot compile this with stack tracing on
+  # as it would recurse endlessly!
+  include arithm
+  {.pop.} # stack trace
+
+  # sequence type declarations here because the GC needs them too:
+  type
+    TGenericSeq {.importc, nodecl, final.} = object
+      len, space: int
+
+    PGenericSeq {.importc, nodecl.} = ptr TGenericSeq
+
+  const
+    GenericSeqSize = (2 * sizeof(int))
+
+  when not defined(boehmgc) and not defined(nogc):
+    include gc
+
+  include sysstr
+  include assign
+  include dyncalls
+  include repr
+
+  # we have to implement it here after gentostr for the cstrToNimStrDummy proc
+  proc getCurrentExceptionMsg(): string =
+    if excHandler == nil: return ""
+    return $excHandler.exc.msg
+
+  {.push stack_trace: off.}
+  when defined(endb):
+    include debugger
+  {.pop.} # stacktrace
+
+else:
+  include ecmasys
+
+include macros
+
 {.pop.} # checks
-
 {.pop.} # hints

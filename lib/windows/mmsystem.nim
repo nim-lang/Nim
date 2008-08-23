@@ -980,7 +980,7 @@ const
                         #/////////////////////////////////////////////////////////
 
 type
-  mmtime* = record
+  mmtime* {.final.} = object
     wType*: UINT
     hour*, min*, sec*, frame*, fps*, dummy*: int8
     pad*: array[0..1, int8]
@@ -990,7 +990,7 @@ type
   LPMMTIME* = ptr mmtime
   PWAVEHDR* = ptr wavehdr
   TMMTime* = mmtime
-  wavehdr* = record
+  wavehdr* {.final.} = object
     lpData*: cstring
     dwBufferLength*: DWORD
     dwBytesRecorded*: DWORD
@@ -1003,7 +1003,7 @@ type
   TWAVEHDR* = WAVEHDR
   NPWAVEHDR* = ptr wavehdr
   LPWAVEHDR* = ptr wavehdr
-  WAVEOUTCAPSA* = record
+  WAVEOUTCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1017,7 +1017,7 @@ type
   PWAVEOUTCAPSA* = ptr WAVEOUTCAPSA
   NPWAVEOUTCAPSA* = ptr WAVEOUTCAPSA
   LPWAVEOUTCAPSA* = ptr WAVEOUTCAPSA
-  WAVEOUTCAPSW* = record
+  WAVEOUTCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1046,7 +1046,7 @@ else:
     LPWAVEOUTCAPS* = LPWAVEOUTCAPSA
 type
   TWAVEOUTCAPS* = WAVEOUTCAPS
-  WAVEINCAPSA* = record
+  WAVEINCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1059,7 +1059,7 @@ type
   NPWAVEINCAPSA* = ptr WAVEINCAPSA
   LPWAVEINCAPSA* = ptr WAVEINCAPSA
   TWAVEINCAPSA* = WAVEINCAPSA
-  WAVEINCAPSW* = record
+  WAVEINCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1087,7 +1087,7 @@ else:
     LPWAVEINCAPS* = LPWAVEINCAPSA
 type
   TWAVEINCAPS* = WAVEINCAPS
-  waveformat* = record
+  waveformat* {.final.} = object
     wFormatTag*: int16
     nChannels*: int16
     nSamplesPerSec*: DWORD
@@ -1103,7 +1103,7 @@ const
   WAVE_FORMAT_PCM* = 1
 
 type
-  pcmwaveformat* = record
+  pcmwaveformat* {.final.} = object
     wf*: WAVEFORMAT
     wBitsPerSample*: int16
 
@@ -1111,7 +1111,7 @@ type
   NPPCMWAVEFORMAT* = ptr pcmwaveformat
   LPPCMWAVEFORMAT* = ptr pcmwaveformat
   TPCMWAVEFORMAT* = PCMWAVEFORMAT
-  WAVEFORMATEX* = record
+  WAVEFORMATEX* {.final.} = object
     wFormatTag*: int16
     nChannels*: int16
     nSamplesPerSec*: DWORD
@@ -1143,7 +1143,7 @@ type
   LPPATCHARRAY* = ptr int16
   KEYARRAY* = array[0..Pred(MIDIPATCHSIZE), int16]
   LPKEYARRAY* = ptr int16
-  MIDIOUTCAPSA* = record
+  MIDIOUTCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1158,7 +1158,7 @@ type
   NPMIDIOUTCAPSA* = ptr MIDIOUTCAPSA
   LPMIDIOUTCAPSA* = ptr MIDIOUTCAPSA
   TMIDIOUTCAPSA* = MIDIOUTCAPSA
-  MIDIOUTCAPSW* = record
+  MIDIOUTCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1173,7 +1173,7 @@ type
   NPMIDIOUTCAPSW* = ptr MIDIOUTCAPSW
   LPMIDIOUTCAPSW* = ptr MIDIOUTCAPSW
   TMIDIOUTCAPSW* = MIDIOUTCAPSW
-  MIDIINCAPSA* = record
+  MIDIINCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1184,7 +1184,7 @@ type
   NPMIDIINCAPSA* = ptr MIDIINCAPSA
   LPMIDIINCAPSA* = ptr MIDIINCAPSA
   TMIDIINCAPSA* = MIDIINCAPSA
-  MIDIINCAPSW* = record
+  MIDIINCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1219,7 +1219,7 @@ else:
 type
   TMIDIINCAPS* = MIDIINCAPS
   PMIDIHDR* = ptr midihdr
-  midihdr* = record
+  midihdr* {.final.} = object
     lpData*: cstring
     dwBufferLength*: DWORD
     dwBytesRecorded*: DWORD
@@ -1233,30 +1233,30 @@ type
   NPMIDIHDR* = ptr midihdr
   LPMIDIHDR* = ptr midihdr
   TMIDIHDR* = MIDIHDR
-  midievent* = record
+  midievent* {.final.} = object
     dwDeltaTime*: DWORD
     dwStreamID*: DWORD
     dwEvent*: DWORD
     dwParms*: array[0..Pred(1), DWORD]
 
   TMIDIEVENT* = MIDIEVENT
-  midistrmbuffver* = record
+  midistrmbuffver* {.final.} = object
     dwVersion*: DWORD
     dwMid*: DWORD
     dwOEMVersion*: DWORD
 
   TMIDISTRMBUFFVER* = MIDISTRMBUFFVER
-  Tmidiproptimediv* = record
+  Tmidiproptimediv* {.final.} = object
     cbStruct*: DWORD
     dwTimeDiv*: DWORD
 
   LPMIDIPROPTIMEDIV* = ptr Tmidiproptimediv
-  Tmidiproptempo* = record
+  Tmidiproptempo* {.final.} = object
     cbStruct*: DWORD
     dwTempo*: DWORD
 
   LPMIDIPROPTEMPO* = ptr Tmidiproptempo
-  AUXCAPSA* = record
+  AUXCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1269,7 +1269,7 @@ type
   NPAUXCAPSA* = ptr AUXCAPSA
   LPAUXCAPSA* = ptr AUXCAPSA
   TAUXCAPSA* = AUXCAPSA
-  AUXCAPSW* = record
+  AUXCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1305,7 +1305,7 @@ type
 proc mixerGetNumDevs*(): UINT{.stdcall, dynlib: "winmm.dll",
                                importc: "mixerGetNumDevs".}
 type
-  MIXERCAPSA* = record
+  MIXERCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1316,7 +1316,7 @@ type
   PMIXERCAPSA* = ptr MIXERCAPSA
   LPMIXERCAPSA* = ptr MIXERCAPSA
   TMIXERCAPSA* = MIXERCAPSA
-  MIXERCAPSW* = record
+  MIXERCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     vDriverVersion*: MMVERSION
@@ -1340,7 +1340,7 @@ else:
     LPMIXERCAPS* = LPMIXERCAPSA
 type
   TMIXERCAPS* = MIXERCAPS
-  MIXERLINEA* = record
+  MIXERLINEA* {.final.} = object
     cbStruct*: DWORD
     dwDestination*: DWORD
     dwSource*: DWORD
@@ -1361,7 +1361,7 @@ type
   PMIXERLINEA* = ptr MIXERLINEA
   LPMIXERLINEA* = ptr MIXERLINEA
   TMIXERLINEA* = MIXERLINEA
-  MIXERLINEW* = record
+  MIXERLINEW* {.final.} = object
     cbStruct*: DWORD
     dwDestination*: DWORD
     dwSource*: DWORD
@@ -1395,7 +1395,7 @@ else:
     LPMIXERLINE* = LPMIXERLINEA
 type
   TMIXERLINE* = MIXERLINE
-  MIXERCONTROLA* = record
+  MIXERCONTROLA* {.final.} = object
     cbStruct*: DWORD
     dwControlID*: DWORD
     dwControlType*: DWORD
@@ -1411,7 +1411,7 @@ type
   PMIXERCONTROLA* = ptr MIXERCONTROLA
   LPMIXERCONTROLA* = ptr MIXERCONTROLA
   TMIXERCONTROLA* = MIXERCONTROLA
-  MIXERCONTROLW* = record
+  MIXERCONTROLW* {.final.} = object
     cbStruct*: DWORD
     dwControlID*: DWORD
     dwControlType*: DWORD
@@ -1440,7 +1440,7 @@ else:
     LPMIXERCONTROL* = LPMIXERCONTROLA
 type
   TMIXERCONTROL* = MIXERCONTROL
-  MIXERLINECONTROLSA* = record
+  MIXERLINECONTROLSA* {.final.} = object
     cbStruct*: DWORD
     dwLineID*: DWORD
     dwControlType*, cControls*, cbmxctrl*: DWORD
@@ -1449,7 +1449,7 @@ type
   PMIXERLINECONTROLSA* = ptr MIXERLINECONTROLSA
   LPMIXERLINECONTROLSA* = ptr MIXERLINECONTROLSA
   TMIXERLINECONTROLSA* = MIXERLINECONTROLSA
-  MIXERLINECONTROLSW* = record
+  MIXERLINECONTROLSW* {.final.} = object
     cbStruct*: DWORD
     dwLineID*: DWORD
     dwControlType*, cControls*, cbmxctrl*: DWORD
@@ -1471,7 +1471,7 @@ else:
     LPMIXERLINECONTROLS* = LPMIXERLINECONTROLSA
 type
   TMIXERLINECONTROLS* = MIXERLINECONTROLS
-  TMIXERCONTROLDETAILS* = record
+  TMIXERCONTROLDETAILS* {.final.} = object
     cbStruct*: DWORD
     dwControlID*: DWORD
     cChannels*: DWORD
@@ -1481,7 +1481,7 @@ type
   MIXERCONTROLDETAILS* = tMIXERCONTROLDETAILS
   PMIXERCONTROLDETAILS* = ptr tMIXERCONTROLDETAILS
   LPMIXERCONTROLDETAILS* = ptr tMIXERCONTROLDETAILS
-  MIXERCONTROLDETAILS_LISTTEXTA* = record
+  MIXERCONTROLDETAILS_LISTTEXTA* {.final.} = object
     dwParam1*: DWORD
     dwParam2*: DWORD
     szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), CHAR]
@@ -1489,7 +1489,7 @@ type
   PMIXERCONTROLDETAILS_LISTTEXTA* = ptr MIXERCONTROLDETAILS_LISTTEXTA
   LPMIXERCONTROLDETAILS_LISTTEXTA* = ptr MIXERCONTROLDETAILS_LISTTEXTA
   TMIXERCONTROLDETAILS_LISTTEXTA* = MIXERCONTROLDETAILS_LISTTEXTA
-  MIXERCONTROLDETAILS_LISTTEXTW* = record
+  MIXERCONTROLDETAILS_LISTTEXTW* {.final.} = object
     dwParam1*: DWORD
     dwParam2*: DWORD
     szName*: array[0..Pred(MIXER_LONG_NAME_CHARS), WCHAR]
@@ -1510,19 +1510,19 @@ else:
     LPMIXERCONTROLDETAILS_LISTTEXT* = LPMIXERCONTROLDETAILS_LISTTEXTA
 type
   TMIXERCONTROLDETAILS_LISTTEXT* = MIXERCONTROLDETAILS_LISTTEXT
-  MIXERCONTROLDETAILS_BOOLEAN* = record
+  MIXERCONTROLDETAILS_BOOLEAN* {.final.} = object
     fValue*: int32
 
   PMIXERCONTROLDETAILS_BOOLEAN* = ptr MIXERCONTROLDETAILS_BOOLEAN
   LPMIXERCONTROLDETAILS_BOOLEAN* = ptr MIXERCONTROLDETAILS_BOOLEAN
   TMIXERCONTROLDETAILS_BOOLEAN* = MIXERCONTROLDETAILS_BOOLEAN
-  MIXERCONTROLDETAILS_SIGNED* = record
+  MIXERCONTROLDETAILS_SIGNED* {.final.} = object
     lValue*: int32
 
   PMIXERCONTROLDETAILS_SIGNED* = ptr MIXERCONTROLDETAILS_SIGNED
   LPMIXERCONTROLDETAILS_SIGNED* = ptr MIXERCONTROLDETAILS_SIGNED
   TMIXERCONTROLDETAILS_SIGNED* = MIXERCONTROLDETAILS_SIGNED
-  MIXERCONTROLDETAILS_UNSIGNED* = record
+  MIXERCONTROLDETAILS_UNSIGNED* {.final.} = object
     dwValue*: DWORD
 
   PMIXERCONTROLDETAILS_UNSIGNED* = ptr MIXERCONTROLDETAILS_UNSIGNED
@@ -1531,7 +1531,7 @@ type
   LPTIMECALLBACK* = proc (uTimerID, uMsg: UINT, dwUser, dw1, dw2: DWORD){.
       stdcall.}
   TTIMECALLBACK* = LPTIMECALLBACK
-  timecaps* = record
+  timecaps* {.final.} = object
     wPeriodMin*: UINT
     wPeriodMax*: UINT
 
@@ -1539,7 +1539,7 @@ type
   NPTIMECAPS* = ptr timecaps
   LPTIMECAPS* = ptr timecaps
   TTIMECAS* = TIMECAPS
-  JOYCAPSA* = record
+  JOYCAPSA* {.final.} = object
     wMid*: int16
     wPid*: int16
     szPname*: array[0..Pred(MAXPNAMELEN), CHAR]
@@ -1569,7 +1569,7 @@ type
   NPJOYCAPSA* = ptr JOYCAPSA
   LPJOYCAPSA* = ptr JOYCAPSA
   TJOYCAPSA* = JOYCAPSA
-  JOYCAPSW* = record
+  JOYCAPSW* {.final.} = object
     wMid*: int16
     wPid*: int16
     szPname*: array[0..Pred(MAXPNAMELEN), WCHAR]
@@ -1614,7 +1614,7 @@ else:
     LPJOYCAPS* = LPJOYCAPSA
 type
   TJOYCAPS* = JOYCAPS
-  joyinfo* = record
+  joyinfo* {.final.} = object
     wXpos*: UINT
     wYpos*: UINT
     wZpos*: UINT
@@ -1624,7 +1624,7 @@ type
   NPJOYINFO* = ptr joyinfo
   LPJOYINFO* = ptr joyinfo
   TJOYINFO* = JOYINFO
-  joyinfoex* = record
+  joyinfoex* {.final.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
     wXpos*: UINT
@@ -1648,7 +1648,7 @@ type
   HMMIO* = THandle
   LPMMIOPROC* = proc (x1: LPSTR, x2: UINT, x3, x4: LPARAM): LRESULT{.stdcall.}
   TMMIOPROC* = LPMMIOPROC
-  MMIOINFO* = record
+  MMIOINFO* {.final.} = object
     dwFlags*: DWORD
     fccIOProc*: FOURCC
     pIOProc*: LPMMIOPROC
@@ -1671,7 +1671,7 @@ type
   LPMMIOINFO* = ptr MMIOINFO
   LPCMMIOINFO* = ptr MMIOINFO
   TMMIOINFO* = MMIOINFO
-  MMCKINFO* = record
+  MMCKINFO* {.final.} = object
     ckid*: FOURCC
     cksize*: DWORD
     fccType*: FOURCC
@@ -1687,13 +1687,13 @@ type
   MCIDEVICEID* = UINT
   YIELDPROC* = proc (mciId: MCIDEVICEID, dwYieldData: DWORD): UINT{.stdcall.}
   TYIELDPROC* = YIELDPROC
-  MCI_GENERIC_PARMS* = record
+  MCI_GENERIC_PARMS* {.final.} = object
     dwCallback*: DWORD
 
   PMCI_GENERIC_PARMS* = ptr MCI_GENERIC_PARMS
   LPMCI_GENERIC_PARMS* = ptr MCI_GENERIC_PARMS
   TMCI_GENERIC_PARMS* = MCI_GENERIC_PARMS
-  MCI_OPEN_PARMSA* = record
+  MCI_OPEN_PARMSA* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCSTR
@@ -1703,7 +1703,7 @@ type
   PMCI_OPEN_PARMSA* = ptr MCI_OPEN_PARMSA
   LPMCI_OPEN_PARMSA* = ptr MCI_OPEN_PARMSA
   TMCI_OPEN_PARMSA* = MCI_OPEN_PARMSA
-  MCI_OPEN_PARMSW* = record
+  MCI_OPEN_PARMSW* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCWSTR
@@ -1726,7 +1726,7 @@ else:
     LPMCI_OPEN_PARMS* = LPMCI_OPEN_PARMSA
 type
   TMCI_OPEN_PARMS* = MCI_OPEN_PARMS
-  MCI_PLAY_PARMS* = record
+  MCI_PLAY_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrom*: DWORD
     dwTo*: DWORD
@@ -1734,14 +1734,14 @@ type
   PMCI_PLAY_PARMS* = ptr MCI_PLAY_PARMS
   LPMCI_PLAY_PARMS* = ptr MCI_PLAY_PARMS
   TMCI_PLAY_PARMS* = MCI_PLAY_PARMS
-  MCI_SEEK_PARMS* = record
+  MCI_SEEK_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwTo*: DWORD
 
   PMCI_SEEK_PARMS* = ptr MCI_SEEK_PARMS
   LPMCI_SEEK_PARMS* = ptr MCI_SEEK_PARMS
   TMCI_SEEK_PARMS* = MCI_SEEK_PARMS
-  MCI_STATUS_PARMS* = record
+  MCI_STATUS_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwReturn*: DWORD
     dwItem*: DWORD
@@ -1750,14 +1750,14 @@ type
   PMCI_STATUS_PARMS* = ptr MCI_STATUS_PARMS
   LPMCI_STATUS_PARMS* = ptr MCI_STATUS_PARMS
   TMCI_STATUS_PARMS* = MCI_STATUS_PARMS
-  MCI_INFO_PARMSA* = record
+  MCI_INFO_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpstrReturn*: cstring
     dwRetSize*: DWORD
 
   LPMCI_INFO_PARMSA* = ptr MCI_INFO_PARMSA
   TMCI_INFO_PARMSA* = MCI_INFO_PARMSA
-  MCI_INFO_PARMSW* = record
+  MCI_INFO_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpstrReturn*: LPWSTR
     dwRetSize*: DWORD
@@ -1775,7 +1775,7 @@ else:
     LPMCI_INFO_PARMS* = LPMCI_INFO_PARMSA
 type
   TMCI_INFO_PARMS* = MCI_INFO_PARMS
-  MCI_GETDEVCAPS_PARMS* = record
+  MCI_GETDEVCAPS_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwReturn*: DWORD
     dwItem*: DWORD
@@ -1783,7 +1783,7 @@ type
   PMCI_GETDEVCAPS_PARMS* = ptr MCI_GETDEVCAPS_PARMS
   LPMCI_GETDEVCAPS_PARMS* = ptr MCI_GETDEVCAPS_PARMS
   TMCI_GETDEVCAPS_PARMS* = MCI_GETDEVCAPS_PARMS
-  MCI_SYSINFO_PARMSA* = record
+  MCI_SYSINFO_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpstrReturn*: cstring
     dwRetSize*: DWORD
@@ -1793,7 +1793,7 @@ type
   PMCI_SYSINFO_PARMSA* = ptr MCI_SYSINFO_PARMSA
   LPMCI_SYSINFO_PARMSA* = ptr MCI_SYSINFO_PARMSA
   TMCI_SYSINFO_PARMSA* = MCI_SYSINFO_PARMSA
-  MCI_SYSINFO_PARMSW* = record
+  MCI_SYSINFO_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpstrReturn*: LPWSTR
     dwRetSize*: DWORD
@@ -1816,7 +1816,7 @@ else:
     LPMCI_SYSINFO_PARMS* = LPMCI_SYSINFO_PARMSA
 type
   TMCI_SYSINFO_PARMS* = MCI_SYSINFO_PARMS
-  MCI_SET_PARMS* = record
+  MCI_SET_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwTimeFormat*: DWORD
     dwAudio*: DWORD
@@ -1824,7 +1824,7 @@ type
   PMCI_SET_PARMS* = ptr MCI_SET_PARMS
   LPMCI_SET_PARMS* = ptr MCI_SET_PARMS
   TMCI_SET_PARMS* = MCI_SET_PARMS
-  MCI_BREAK_PARMS* = record
+  MCI_BREAK_PARMS* {.final.} = object
     dwCallback*: DWORD
     nVirtKey*: int32
     hwndBreak*: HWND
@@ -1832,14 +1832,14 @@ type
   PMCI_BREAK_PARMS* = ptr MCI_BREAK_PARMS
   LPMCI_BREAK_PARMS* = ptr MCI_BREAK_PARMS
   TMCI_BREAK_PARMS* = MCI_BREAK_PARMS
-  MCI_SAVE_PARMSA* = record
+  MCI_SAVE_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCSTR
 
   PMCI_SAVE_PARMSA* = ptr MCI_SAVE_PARMSA
   LPMCI_SAVE_PARMSA* = ptr MCI_SAVE_PARMSA
   TMCI_SAVE_PARMSA* = MCI_SAVE_PARMSA
-  MCI_SAVE_PARMSW* = record
+  MCI_SAVE_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCWSTR
 
@@ -1859,14 +1859,14 @@ else:
     LPMCI_SAVE_PARMS* = LPMCI_SAVE_PARMSA
 type
   TMCI_SAVE_PARMS* = MCI_SAVE_PARMS
-  MCI_LOAD_PARMSA* = record
+  MCI_LOAD_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCSTR
 
   PMCI_LOAD_PARMSA* = ptr MCI_LOAD_PARMSA
   LPMCI_LOAD_PARMSA* = ptr MCI_LOAD_PARMSA
   TMCI_LOAD_PARMSA* = MCI_LOAD_PARMSA
-  MCI_LOAD_PARMSW* = record
+  MCI_LOAD_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCWSTR
 
@@ -1886,14 +1886,14 @@ else:
     LPMCI_LOAD_PARMS* = LPMCI_LOAD_PARMSA
 type
   TMCI_LOAD_PARMS* = MCI_LOAD_PARMS
-  MCI_RECORD_PARMS* = record
+  MCI_RECORD_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrom*: DWORD
     dwTo*: DWORD
 
   LPMCI_RECORD_PARMS* = ptr MCI_RECORD_PARMS
   TMCI_RECORD_PARMS* = MCI_RECORD_PARMS
-  MCI_VD_PLAY_PARMS* = record
+  MCI_VD_PLAY_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrom*: DWORD
     dwTo*: DWORD
@@ -1902,20 +1902,20 @@ type
   PMCI_VD_PLAY_PARMS* = ptr MCI_VD_PLAY_PARMS
   LPMCI_VD_PLAY_PARMS* = ptr MCI_VD_PLAY_PARMS
   TMCI_VD_PLAY_PARMS* = MCI_VD_PLAY_PARMS
-  MCI_VD_STEP_PARMS* = record
+  MCI_VD_STEP_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrames*: DWORD
 
   PMCI_VD_STEP_PARMS* = ptr MCI_VD_STEP_PARMS
   LPMCI_VD_STEP_PARMS* = ptr MCI_VD_STEP_PARMS
-  MCI_VD_ESCAPE_PARMSA* = record
+  MCI_VD_ESCAPE_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpstrCommand*: LPCSTR
 
   PMCI_VD_ESCAPE_PARMSA* = ptr MCI_VD_ESCAPE_PARMSA
   LPMCI_VD_ESCAPE_PARMSA* = ptr MCI_VD_ESCAPE_PARMSA
   TMCI_VD_ESCAPE_PARMSA* = MCI_VD_ESCAPE_PARMSA
-  MCI_VD_ESCAPE_PARMSW* = record
+  MCI_VD_ESCAPE_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpstrCommand*: LPCWSTR
 
@@ -1935,7 +1935,7 @@ else:
     LPMCI_VD_ESCAPE_PARMS* = LPMCI_VD_ESCAPE_PARMSA
 type
   TMCI_VD_ESCAPE_PARMS* = MCI_VD_ESCAPE_PARMS
-  MCI_WAVE_OPEN_PARMSA* = record
+  MCI_WAVE_OPEN_PARMSA* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCSTR
@@ -1946,7 +1946,7 @@ type
   PMCI_WAVE_OPEN_PARMSA* = ptr MCI_WAVE_OPEN_PARMSA
   LPMCI_WAVE_OPEN_PARMSA* = ptr MCI_WAVE_OPEN_PARMSA
   TMCI_WAVE_OPEN_PARMSA* = MCI_WAVE_OPEN_PARMSA
-  MCI_WAVE_OPEN_PARMSW* = record
+  MCI_WAVE_OPEN_PARMSW* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCWSTR
@@ -1970,7 +1970,7 @@ else:
     LPMCI_WAVE_OPEN_PARMS* = LPMCI_WAVE_OPEN_PARMSA
 type
   TMCI_WAVE_OPEN_PARMS* = MCI_WAVE_OPEN_PARMS
-  MCI_WAVE_DELETE_PARMS* = record
+  MCI_WAVE_DELETE_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrom*: DWORD
     dwTo*: DWORD
@@ -1978,7 +1978,7 @@ type
   PMCI_WAVE_DELETE_PARMS* = ptr MCI_WAVE_DELETE_PARMS
   LPMCI_WAVE_DELETE_PARMS* = ptr MCI_WAVE_DELETE_PARMS
   TMCI_WAVE_DELETE_PARMS* = MCI_WAVE_DELETE_PARMS
-  MCI_WAVE_SET_PARMS* = record
+  MCI_WAVE_SET_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwTimeFormat*: DWORD
     dwAudio*: DWORD
@@ -1998,7 +1998,7 @@ type
   PMCI_WAVE_SET_PARMS* = ptr MCI_WAVE_SET_PARMS
   LPMCI_WAVE_SET_PARMS* = ptr MCI_WAVE_SET_PARMS
   TMCI_WAVE_SET_PARMS* = MCI_WAVE_SET_PARMS
-  MCI_SEQ_SET_PARMS* = record
+  MCI_SEQ_SET_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwTimeFormat*: DWORD
     dwAudio*: DWORD
@@ -2011,7 +2011,7 @@ type
   PMCI_SEQ_SET_PARMS* = ptr MCI_SEQ_SET_PARMS
   LPMCI_SEQ_SET_PARMS* = ptr MCI_SEQ_SET_PARMS
   TMCI_SEQ_SET_PARMS* = MCI_SEQ_SET_PARMS
-  MCI_ANIM_OPEN_PARMSA* = record
+  MCI_ANIM_OPEN_PARMSA* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCSTR
@@ -2023,7 +2023,7 @@ type
   PMCI_ANIM_OPEN_PARMSA* = ptr MCI_ANIM_OPEN_PARMSA
   LPMCI_ANIM_OPEN_PARMSA* = ptr MCI_ANIM_OPEN_PARMSA
   TMCI_ANIM_OPEN_PARMSA* = MCI_ANIM_OPEN_PARMSA
-  MCI_ANIM_OPEN_PARMSW* = record
+  MCI_ANIM_OPEN_PARMSW* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCWSTR
@@ -2047,7 +2047,7 @@ else:
     LPMCI_ANIM_OPEN_PARMS* = LPMCI_ANIM_OPEN_PARMSA
 type
   TMCI_ANIM_OPEN_PARMS* = MCI_ANIM_OPEN_PARMS
-  MCI_ANIM_WINDOW_PARMSW* = record
+  MCI_ANIM_WINDOW_PARMSW* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
     nCmdShow*: UINT
@@ -2056,14 +2056,14 @@ type
   PMCI_ANIM_WINDOW_PARMSW* = ptr MCI_ANIM_WINDOW_PARMSW
   LPMCI_ANIM_WINDOW_PARMSW* = ptr MCI_ANIM_WINDOW_PARMSW
   TMCI_ANIM_WINDOW_PARMSW* = MCI_ANIM_WINDOW_PARMSW
-  MCI_ANIM_STEP_PARMS* = record
+  MCI_ANIM_STEP_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrames*: DWORD
 
   PMCI_ANIM_STEP_PARMS* = ptr MCI_ANIM_STEP_PARMS
   LPMCI_ANIM_STEP_PARMS* = ptr MCI_ANIM_STEP_PARMS
   TMCI_ANIM_STEP_PARMS* = MCI_ANIM_STEP_PARMS
-  MCI_ANIM_WINDOW_PARMSA* = record
+  MCI_ANIM_WINDOW_PARMSA* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
     nCmdShow*: UINT
@@ -2072,7 +2072,7 @@ type
   PMCI_ANIM_WINDOW_PARMSA* = ptr MCI_ANIM_WINDOW_PARMSA
   LPMCI_ANIM_WINDOW_PARMSA* = ptr MCI_ANIM_WINDOW_PARMSA
   TMCI_ANIM_WINDOW_PARMSA* = MCI_ANIM_WINDOW_PARMSA
-  MCI_ANIM_PLAY_PARMS* = record
+  MCI_ANIM_PLAY_PARMS* {.final.} = object
     dwCallback*: DWORD
     dwFrom*: DWORD
     dwTo*: DWORD
@@ -2092,14 +2092,14 @@ else:
     PMCI_ANIM_WINDOW_PARMS* = PMCI_ANIM_WINDOW_PARMSA
     LPMCI_ANIM_WINDOW_PARMS* = LPMCI_ANIM_WINDOW_PARMSA
 type
-  MCI_ANIM_RECT_PARMS* = record
+  MCI_ANIM_RECT_PARMS* {.final.} = object
     dwCallback*: DWORD
     rc*: TRECT
 
   PMCI_ANIM_RECT_PARMS* = ptr MCI_ANIM_RECT_PARMS
   LPMCI_ANIM_RECT_PARMS* = ptr MCI_ANIM_RECT_PARMS
   TMCI_ANIM_RECT_PARMS* = MCI_ANIM_RECT_PARMS
-  MCI_ANIM_UPDATE_PARMS* = record
+  MCI_ANIM_UPDATE_PARMS* {.final.} = object
     dwCallback*: DWORD
     rc*: TRECT
     hDC*: HDC
@@ -2107,7 +2107,7 @@ type
   PMCI_ANIM_UPDATE_PARMS* = ptr MCI_ANIM_UPDATE_PARMS
   LPMCI_ANIM_UPDATE_PARMS* = ptr MCI_ANIM_UPDATE_PARMS
   TMCI_ANIM_UPDATE_PARMS* = MCI_ANIM_UPDATE_PARMS
-  MCI_OVLY_OPEN_PARMSA* = record
+  MCI_OVLY_OPEN_PARMSA* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCSTR
@@ -2119,7 +2119,7 @@ type
   PMCI_OVLY_OPEN_PARMSA* = ptr MCI_OVLY_OPEN_PARMSA
   LPMCI_OVLY_OPEN_PARMSA* = ptr MCI_OVLY_OPEN_PARMSA
   TMCI_OVLY_OPEN_PARMSA* = MCI_OVLY_OPEN_PARMSA
-  MCI_OVLY_OPEN_PARMSW* = record
+  MCI_OVLY_OPEN_PARMSW* {.final.} = object
     dwCallback*: DWORD
     wDeviceID*: MCIDEVICEID
     lpstrDeviceType*: LPCWSTR
@@ -2144,7 +2144,7 @@ else:
     LPMCI_OVLY_OPEN_PARMS* = LPMCI_OVLY_OPEN_PARMSA
 type
   TMCI_OVLY_OPEN_PARMS* = MCI_OVLY_OPEN_PARMS
-  MCI_OVLY_WINDOW_PARMSA* = record
+  MCI_OVLY_WINDOW_PARMSA* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
     nCmdShow*: UINT
@@ -2153,7 +2153,7 @@ type
   PMCI_OVLY_WINDOW_PARMSA* = ptr MCI_OVLY_WINDOW_PARMSA
   LPMCI_OVLY_WINDOW_PARMSA* = ptr MCI_OVLY_WINDOW_PARMSA
   TMCI_OVLY_WINDOW_PARMSA* = MCI_OVLY_WINDOW_PARMSA
-  MCI_OVLY_WINDOW_PARMSW* = record
+  MCI_OVLY_WINDOW_PARMSW* {.final.} = object
     dwCallback*: DWORD
     hWnd*: HWND
     nCmdShow*: UINT
@@ -2175,14 +2175,14 @@ else:
     LPMCI_OVLY_WINDOW_PARMS* = LPMCI_OVLY_WINDOW_PARMSA
 type
   TMCI_OVLY_WINDOW_PARMS* = MCI_OVLY_WINDOW_PARMSW
-  MCI_OVLY_RECT_PARMS* = record
+  MCI_OVLY_RECT_PARMS* {.final.} = object
     dwCallback*: DWORD
     rc*: TRECT
 
   PMCI_OVLY_RECT_PARMS* = ptr MCI_OVLY_RECT_PARMS
   LPMCI_OVLY_RECT_PARMS* = ptr MCI_OVLY_RECT_PARMS
   TMCI_OVLY_RECT_PARMS* = MCI_OVLY_RECT_PARMS
-  MCI_OVLY_SAVE_PARMSA* = record
+  MCI_OVLY_SAVE_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCSTR
     rc*: TRECT
@@ -2190,7 +2190,7 @@ type
   PMCI_OVLY_SAVE_PARMSA* = ptr MCI_OVLY_SAVE_PARMSA
   LPMCI_OVLY_SAVE_PARMSA* = ptr MCI_OVLY_SAVE_PARMSA
   TMCI_OVLY_SAVE_PARMSA* = MCI_OVLY_SAVE_PARMSA
-  MCI_OVLY_SAVE_PARMSW* = record
+  MCI_OVLY_SAVE_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCWSTR
     rc*: TRECT
@@ -2211,7 +2211,7 @@ else:
     LPMCI_OVLY_SAVE_PARMS* = LPMCI_OVLY_SAVE_PARMSA
 type
   TMCI_OVLY_SAVE_PARMS* = MCI_OVLY_SAVE_PARMS
-  MCI_OVLY_LOAD_PARMSA* = record
+  MCI_OVLY_LOAD_PARMSA* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCSTR
     rc*: TRECT
@@ -2219,7 +2219,7 @@ type
   PMCI_OVLY_LOAD_PARMSA* = ptr MCI_OVLY_LOAD_PARMSA
   LPMCI_OVLY_LOAD_PARMSA* = ptr MCI_OVLY_LOAD_PARMSA
   TMCI_OVLY_LOAD_PARMSA* = MCI_OVLY_LOAD_PARMSA
-  MCI_OVLY_LOAD_PARMSW* = record
+  MCI_OVLY_LOAD_PARMSW* {.final.} = object
     dwCallback*: DWORD
     lpfilename*: LPCWSTR
     rc*: TRECT

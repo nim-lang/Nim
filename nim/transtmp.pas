@@ -9,7 +9,8 @@
 
 // This module implements a transformator. It transforms the syntax tree 
 // to ease the work of the code generators. Does the transformation to 
-// introduce temporaries to split up complex expressions. 
+// introduce temporaries to split up complex expressions.
+// THIS MODULE IS NOT USED!
 
 procedure transInto(c: PContext; var dest: PNode; father, src: PNode); forward;
 // transforms the expression `src` into the destination `dest`. Uses `father`

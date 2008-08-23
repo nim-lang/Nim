@@ -1,6 +1,0 @@
-digraph thallo {
-times -> strutils;
-os -> strutils;
-os -> times;
-thallo -> os;
-}
