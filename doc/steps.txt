@@ -1,0 +1,24 @@
+==============================
+First steps after installation
+==============================
+
+This document explains how to *use* the Nimrod compiler.
+Open your favourite text editor and type (or download it
+`here <download/code/hallo.nim>`_):
+
+.. code-block:: nimrod
+   :file: ../tests/hallo.nim
+
+Save this file as ``hallo.nim`` somewhere (I refer to the location as
+``$yourloc``). Now open a console and call the Nimrod compiler::
+
+  nimrod compile --run $yourloc/hallo
+
+The ``--run`` switch tells Nimrod that it should run the generated
+executable after successful compilation. If things don't work,
+check if Nimrod's ``bin`` directory is in your path environment
+variable. On Windows the directory ``dist\llvm-gcc4.2\bin`` may
+also be required in your path.
+
+Note that Nimrod produced a standalone native executable in
+``$yourloc`` that you can run without the Nimrod compiler.
