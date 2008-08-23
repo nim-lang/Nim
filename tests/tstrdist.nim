@@ -1,8 +1,5 @@
 # compute the edit distance between two strings
 
-import
-  io
-
 proc editDistance(a, b: string): int =
   var c: seq[int] = []
   var

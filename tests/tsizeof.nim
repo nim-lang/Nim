@@ -1,10 +1,7 @@
 # Test the sizeof proc
 
-import
-  io
-
 type
-  TMyRecord = record
+  TMyRecord {.final.} = object
     x, y: int
     b: bool
     r: float

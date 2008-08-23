@@ -40,7 +40,7 @@ type
   TRodReaderFlags = set of TRodReaderFlag;
 
 const
-  FileVersion = '02'; // modify this if the MO2-format changes!
+  FileVersion = '04'; // modify this if the rod-format changes!
 
 procedure generateRod(module: PNode; const filename: string);
 function readRod(const filename: string; const flags: TRodReaderFlags): PNode;
@@ -191,7 +191,7 @@ begin
   if n.comment <> snil then begin
     com := encode(n.comment);
     if ropeLen(com) >= 128 then
-      appRopeFormat(result, '@$1$2', [toBase62(ropeLen(com)), com])
+      appf(result, '@$1$2', [toBase62(ropeLen(com)), com])
     else
       result := com
     // do not emit comments to the string table as this would only increase
@@ -200,33 +200,31 @@ begin
   // Line information takes easily 50% or more of the filesize! Therefore we
   // omit line information if it is the same as the father's line information:
   if (finfo.line <> int(n.info.line)) then
-    appRopeFormat(result, '?$1,$2', [toBase62(n.info.col),
+    appf(result, '?$1,$2', [toBase62(n.info.col),
                                      toBase62(n.info.line)])
   else if (finfo.col <> int(n.info.col)) then
-    appRopeFormat(result, '?$1', [toBase62(n.info.col)]);
+    appf(result, '?$1', [toBase62(n.info.col)]);
     // No need to output the file index, as this is the serialization of one
     // file.
-  if n.base <> base10 then
-    appRopeFormat(result, '$$$1', [toBase62(ord(n.base))]);
+  if n.flags <> {@set}[] then
+    appf(result, '$$$1', [toBase62({@cast}int(n.flags))]);
   case n.kind of
     nkCharLit..nkInt64Lit:
-      appRopeFormat(result, '!$1', [toBase62(n.intVal)]);
+      appf(result, '!$1', [toBase62(n.intVal)]);
     nkFloatLit..nkFloat64Lit:
-      appRopeFormat(result, '!$1', [toRopeF(n.floatVal)]);
+      appf(result, '!$1', [toRopeF(n.floatVal)]);
     nkStrLit..nkTripleStrLit:
-      appRopeFormat(result, '!$1', [encode(n.strVal)]);
+      appf(result, '!$1', [encode(n.strVal)]);
     nkSym: assert(false);
     nkIdent:
-      appRopeFormat(result, '!$1', [encodeIdent(g, n.ident)]);
+      appf(result, '!$1', [encodeIdent(g, n.ident)]);
     else begin
       for i := 0 to sonsLen(n)-1 do
         app(result, encodeNode(g, n.info, n.sons[i]));
     end
   end;
   len := ropeLen(result);
-  result := ropeFormat('$1$2$3', [toRope(chr(ord(n.kind)+128)+''), 
-                                  toBase62(len), result]);
-  assert(ord(n.kind)+128 < 256);
+  result := ropef('$1$2$3', [toBase62(ord(n.kind)), toBase62(len), result]);
 end;
 
 procedure generateRod(module: PNode; const filename: string);
@@ -235,16 +233,15 @@ var
   ast: PRope;
   info: TLineInfo;
 begin
-  assert(ord(high(TNodeKind))+1 < 127);
   initTable(g.identTab);
   g.idents := nil;
   info := newLineInfo(changeFileExt(filename, '.nim'), -1, -1);
   ast := encodeNode(g, info, module);
 
-  writeRope(ropeFormat('AA02 $1 $2,$3 $4 $5',
-                       [toRope(FileVersion),
-                        toBase62(ropeLen(g.idents)), toBase62(ropeLen(ast)),
-                        g.idents, ast]), filename);
+  writeRope(ropef('AA02 $1 $2,$3 $4 $5',
+                 [toRope(FileVersion),
+                  toBase62(ropeLen(g.idents)), toBase62(ropeLen(ast)),
+                  g.idents, ast]), filename);
 end;
 
 // ----------------------- reader ---------------------------------------------
@@ -344,8 +341,8 @@ begin
   if r.s[i] = #255 then begin
     inc(r.pos); exit // nil node
   end;
-  assert(r.s[i] >= #128);
-  kind := TNodeKind(ord(r.s[i])-int(128));
+  i := fromBase62i(r.s, i, x);
+  kind := TNodeKind(x);
   assert((kind >= low(TNodeKind)) and (kind <= high(TNodeKind)));
   inc(i); // skip kind
   i := fromBase62i(r.s, i, len);
@@ -386,7 +383,7 @@ begin
     if r.s[i] = '$' then begin
       inc(i);
       i := fromBase62i(r.s, i, x);
-      result.base := TNumericalBase(x);
+      result.flags := {@cast}TNodeFlags(x);
     end;
     // atom:
     if r.s[i] = '!' then begin
@@ -413,7 +410,7 @@ begin
     end
     else if r.s[i] >= #128 then begin
       case kind of
-        nkCharLit..nkInt64Lit, nkFloatLit..nkFloat64Lit, 
+        nkCharLit..nkInt64Lit, nkFloatLit..nkFloat64Lit,
         nkStrLit..nkTripleStrLit, nkSym, nkIdent: assert(false);
         else begin end;
       end;

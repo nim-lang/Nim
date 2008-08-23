@@ -37,24 +37,24 @@ const
   realFli = MaxFli - fliOffset
   
 type
-  TFreePtr = record
+  TFreePtr {.final.} = object
     prev, next: PBhdr
   Pbhdr = ptr Tbhdr
-  Tbhdr = record
+  Tbhdr {.final.} = object
     prevHdr: Pbhdr # this is just valid if the first bit of size is set
     size: int # the size is stored in bytes 
               # bit 0 indicates whether the block is used and
               # bit 1 allows to know whether the previous block is free
     freePtr: TFreePtr # at this offset bhdr.buffer starts (was a union in the
                       # C version)
-  TAreaInfo = record  # This structure is embedded at the beginning of each
-                      # area, giving us enough information to cope with a set
-                      # of areas
+  TAreaInfo  {.final.} = object  # This structure is embedded at the beginning
+                                 # of each area, giving us enough information 
+                                 # to cope with a set of areas
     theEnd: Pbhdr
     next: PAreaInfo
   PAreaInfo = ptr TAreaInfo
 
-  TLSF = record    
+  TLSF {.final.} = object
     tlsf_signature: int32 # the TLSF's structure signature
     usedSize, maxSize: int
     areaHead: PAreaInfo # A linked list holding all the existing areas
@@ -147,6 +147,7 @@ elif defined(windows):
     if result == nil: raiseOutOfMem()
 
 else: 
+  {.warning: "Generic code for allocating pages is used".}
   # generic implementation relying on malloc:
   proc malloc(size: int): pointer {.nodecl, importc.}
   
@@ -154,6 +155,124 @@ else:
     size = roundup(size, PageSize)
     result = malloc(size)
     if result == nil: raiseOutOfMem()
+
+# ---------------------------------------------------------------------------
+# small fixed size allocator:
+
+# Design: We manage pages. A page is of constant size, but not necessarily
+# the OS's page size. Pages are managed in a hash table taking advantage of
+# the fact that the OS is likely to give us pages with contingous numbers. 
+# A page contains either small fixed size objects of the same size or 
+# variable length objects. An object's size is always aligned at 16 byte
+# boundry. Huge objects are dealt with the TLSF algorithm. 
+# The design supports iterating over any object in a fast way. 
+
+# A bitset contains any page that starts an allocated page. The page may be
+# empty however. This bitset can be used to quickly determine if a given
+# page belongs to the GC heap. The design of the memory allocator makes it 
+# simple to return unused pages back to the OS.
+
+
+# Small bocks 
+# -----------
+#
+# If we use a list in the free object's space. Allocation and deallocation are
+# O(1). Since any object is of the same size, iteration is quite efficient too.
+# However, pointer detection is easy too: Just check if the type-field is nil.
+# Deallocation sets it to nil.
+# Algorithm:
+
+# i = 0
+# f = b.f # first free address
+# while i < max: 
+#  if a[i] == f: # not a valid block
+#    f = f.next  # next free address
+#  else:
+#    a[i] is a valid object of size s
+#  inc(i)
+
+# The zero count table is an array. Since we know that the RC is zero, we can
+# use the bits for an index into this array. Thus multiple ZCT tables are not
+# difficult to support and insertion and removal is O(1). We use negative
+# indexes for this. This makes it even fast enough (and necessary!) to do a ZCT
+# removal if the RC is incremented. 
+# 
+
+# Huge blocks
+# -----------
+#
+# Huge blocks are always rounded up to a multiple of the page size. These are
+# called *strides*. We also need to keep an index structure 
+# of (stridesize, pagelist). 
+# 
+
+const
+  MemAlign = 8
+  PageShift = if sizeof(int) == 4: 12 else: 13
+  PageSize = 1 shl PageShift
+type
+  TFreeList {.final.} = object
+    next, prev: ptr TFreeList
+
+  TPageDesc {.final.} = object  # the start of a stride always starts with this!
+    size: int                   # lowest bit is set, if it is a huge block
+    free: ptr TFreeList         # only used if it manages multiple cells
+    snext, sprev: ptr TPageDesc # next and prev pagedescs with the same size
+
+  TCellArray {.final.} = object
+    i: int # length
+    d: ptr array [0..1000_000, TCell]
+
+  TPageManager = table[page, ptr TPageDesc]
+
+  TGcHeap {.final.} = object
+    # structure that manages the garbage collected heap
+    zct: TCellArray
+    stackCells: TCellArray
+    smallBlocks: array [PageSize div MemAlign, ptr TPageDesc]
+    pages: TPageManager
+    usedPages: TPageList
+    freePages: TPageList
+
+# small blocks: 
+proc allocSmall(var h: TGcHeap, size: int): pointer = 
+  var s = align(size)
+  var p = h.smallBlocks[s]
+  if p == nil or p.free == nil:
+    p = newSmallBlock(s, p)
+    h.smallBlocks[s] = p
+  
+
+
+proc decRef(cell: PCell) {.inline.} =
+  assert(cell in ct.AT)
+  assert(cell.refcount > 0) # this should be the case!
+  assert(seqCheck(cell))
+  dec(cell.refcount)
+  if cell.refcount == 0:
+    # add to zero count table:
+    zct.d[zct.i] = cell
+    cell.recfcount = -zct.i
+    inc(zct.i)
+
+proc incRef(cell: PCell) {.inline.} =
+  assert(seqCheck(cell))
+  if cell.refcount < 0: 
+    # remove from zero count table:
+    zct.d[-cell.refcount] = zct.d[zct.i-1]
+    dec(zct.i) 
+    cell.refcount = 1
+  else:
+    inc(cell.refcount)
+
+proc asgnRef(dest: ppointer, src: pointer) =
+  # the code generator calls this proc!
+  assert(not isOnStack(dest))
+  # BUGFIX: first incRef then decRef!
+  if src != nil: incRef(usrToCell(src))
+  if dest^ != nil: decRef(usrToCell(dest^))
+  dest^ = src
+
 
 # ----------------------------------------------------------------------------
 #     helpers
@@ -261,7 +380,7 @@ proc extractBlock(b: Pbhdr, t: var TLSF, fl, sl: int) {.inline.} =
 proc insertBlock(b: Pbhdr, t: var TLSF, fl, sl: int) {.inline.} = 
   b.freePtr.prev = nil
   b.freePtr.next = t.matrix[fl][sl] 
-  if t.matrix[fl][sl] != 0:
+  if t.matrix[fl][sl] != nil:
     t.matrix[fl][sl].freePtr.prev = b		
   t.matrix[fl][sl] = b
   set_bit(sl, t.slBitmap[fl])
@@ -295,9 +414,6 @@ proc processArea(area: pointer, size: int): Pbhdr =
 # ----------------------------------------------------------------------------
 #                  Begin of the allocator code
 
-var
-  mp: pointer # default memory pool.
-
 proc initMemoryPool(memPoolSize: int, memPool: pointer): int = 
   var
     t: PLSF
@@ -307,16 +423,14 @@ proc initMemoryPool(memPoolSize: int, memPool: pointer): int =
     writeToStdErr("initMemoryPool(): memory_pool invalid\n")
     return -1
 
-  if (memPool and ptrMask) != 0:
+  if (cast[TAddress](memPool) and ptrMask) != 0:
     writeToStdErr("initMemoryPool(): memPool must be aligned to a word\n")
     return -1
   t = cast[PLSF](memPool)
   # Check if already initialised
   if t.signature == tlsfSignature:
-    mp = memPool
-    b = getNextBlock(mp, roundupSize(sizeof(TLSF)))
+    b = getNextBlock(memPool, roundupSize(sizeof(TLSF)))
     return b.size and blockSize
-  mp = memPool
   zeroMem(memPool, sizeof(TLSF))
 
   t.signature = tlsfSignature
@@ -456,7 +570,7 @@ proc freeEx(p: pointer, t: var TLSF) =
   b.freePtr.prev = nil
   b.freePtr.next = nil
   tmpB = getNextBlock(getBuffer(b), b.size and blockSize)
-  if tmpB.size and freeBlock != 0:
+  if (tmpB.size and freeBlock) != 0:
     mappingInsert(tmpB.size and blockSize, fl, sl)
     extractBlock(tmpB, t, fl, sl)
     inc(b.size, (tmpB.size and blockSize) + bhdrOverhead)
@@ -549,51 +663,30 @@ proc ansiCrealloc(p: pointer, newSize: int, t: var TLSF): pointer =
   else:
     result = reallocEx(p, newSize, t)
 
+proc InitTLSF(t: var TLSF) = 
+  var areaSize = sizeof(TLSF) + BHDR_OVERHEAD * 8 # Just a safety constant
+  areaSize = max(areaSize, DEFAULT_areaSize)
+  var area = getNewArea(areaSize)
+  
+  
+  initMemoryPool(areaSize, area)
 
-void *tlsf_malloc(size_t size)
-{
-  void *ret
+  var
+    t: PLSF
+    b, ib: Pbhdr
 
-#if USE_MMAP || USE_SBRK
-  if (!mp) {
-    size_t areaSize
-    void *area
+  t = cast[PLSF](memPool)
+  
+  zeroMem(area, areaSize)
 
-    areaSize = sizeof(tlsf_t) + BHDR_OVERHEAD * 8 # Just a safety constant
-    areaSize = (areaSize > DEFAULT_areaSize) ? areaSize : DEFAULT_areaSize
-    area = get_new_area(&areaSize)
-    if (area == ((void *) ~0))
-      return NULL        # Not enough system memory 
-    initMemoryPool(areaSize, area)
-  }
-#endif
+  t.signature = tlsfSignature
+  var ib = processArea(getNextBlock(memPool, roundupSize(sizeof(TLSF))), 
+                   rounddownSize(memPoolSize - sizeof(TLSF)))
+  var b = getNextBlock(getBuffer(ib), ib.size and blockSize)
+  freeEx(getBuffer(b), t)
+  t.areaHead = cast[PAreaInfo](getBuffer(ib))
 
-  TLSF_ACQUIRE_LOCK(&((tlsf_t *)mp)->lock)
+  t.used_size = memPoolSize - (b.size and blockSize)
+  t.max_size = t.used_size
 
-  ret = malloc_ex(size, mp)
-
-  TLSF_RELEASE_LOCK(&((tlsf_t *)mp)->lock)
-
-  return ret
-}
-
-void tlsf_free(void *p)
-{
-  TLSF_ACQUIRE_LOCK(&((tlsf_t *)mp)->lock)
-  free_ex(p, mp)
-  TLSF_RELEASE_LOCK(&((tlsf_t *)mp)->lock)
-}
-
-void *tlsf_realloc(void *p, size_t size)
-{
-  void *ret
-#if USE_MMAP || USE_SBRK
-  if (!mp) {
-    return tlsf_malloc(size)
-  }
-#endif
-  TLSF_ACQUIRE_LOCK(&((tlsf_t *)mp)->lock)
-  ret = realloc_ex(p, size, mp)
-  TLSF_RELEASE_LOCK(&((tlsf_t *)mp)->lock)
-  return ret
-}
+  # XXX

@@ -155,17 +155,17 @@ type
   TGtkSignalFunc* = proc (para1: TGtkSignalFuncProc){.cdecl.}
   PGtkSignalMarshaller* = ptr TGtkSignalMarshaller
   TGtkSignalMarshaller* = TGSignalCMarshaller
-  TGtkArgSignalData* = record
+  TGtkArgSignalData* {.final.} = object
     f*: TGtkSignalFunc
     d*: gpointer
 
-  TGtkArg* = record
+  TGtkArg* {.final.} = object
     `type`*: TGtkType
     name*: cstring
     d*: gdouble               # was a union type
 
   PGtkTypeInfo* = ptr TGtkTypeInfo
-  TGtkTypeInfo* = record
+  TGtkTypeInfo* {.final.} = object
     type_name*: cstring
     object_size*: guint
     class_size*: guint
@@ -188,7 +188,7 @@ type
   TGtkAllocation* = TGdkRectangle
   TGtkCallback* = proc (widget: PGtkWidget, data: gpointer){.cdecl.}
   PGtkRequisition* = ptr TGtkRequisition
-  TGtkRequisition* = record
+  TGtkRequisition* {.final.} = object
     width*: gint
     height*: gint
 
@@ -323,7 +323,7 @@ type
     gtk_reserved8*: proc (){.cdecl.}
 
   PGtkWidgetAuxInfo* = ptr TGtkWidgetAuxInfo
-  TGtkWidgetAuxInfo* = record
+  TGtkWidgetAuxInfo* {.final.} = object
     x*: gint
     y*: gint
     width*: gint
@@ -331,7 +331,7 @@ type
     flag0*: guint16
 
   PGtkWidgetShapeInfo* = ptr TGtkWidgetShapeInfo
-  TGtkWidgetShapeInfo* = record
+  TGtkWidgetShapeInfo* {.final.} = object
     offset_x*: gint16
     offset_y*: gint16
     shape_mask*: PGdkBitmap
@@ -370,12 +370,12 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkAccelKey* = ptr TGtkAccelKey
-  TGtkAccelKey* = record
+  TGtkAccelKey* {.final.} = object
     accel_key*: guint
     accel_mods*: TGdkModifierType
     flag0*: guint16
 
-  TGtkAccelGroupEntry* = record
+  TGtkAccelGroupEntry* {.final.} = object
     key*: TGtkAccelKey
     closure*: PGClosure
     accel_path_quark*: TGQuark
@@ -595,7 +595,7 @@ type
   PGtkBindingSignal* = ptr TGtkBindingSignal
   PGtkBindingArg* = ptr TGtkBindingArg
   PGtkBindingSet* = ptr TGtkBindingSet
-  TGtkBindingSet* = record
+  TGtkBindingSet* {.final.} = object
     set_name*: cstring
     priority*: gint
     widget_path_pspecs*: PGSList
@@ -605,7 +605,7 @@ type
     current*: PGtkBindingEntry
     flag0*: guint16
 
-  TGtkBindingEntry* = record
+  TGtkBindingEntry* {.final.} = object
     keyval*: guint
     modifiers*: TGdkModifierType
     binding_set*: PGtkBindingSet
@@ -614,13 +614,13 @@ type
     hash_next*: PGtkBindingEntry
     signals*: PGtkBindingSignal
 
-  TGtkBindingSignal* = record
+  TGtkBindingSignal* {.final.} = object
     next*: PGtkBindingSignal
     signal_name*: cstring
     n_args*: guint
     args*: PGtkBindingArg
 
-  TGtkBindingArg* = record
+  TGtkBindingArg* {.final.} = object
     arg_type*: TGtkType
     d*: gdouble
 
@@ -634,7 +634,7 @@ type
   TGtkBoxClass* = object of TGtkContainerClass
 
   PGtkBoxChild* = ptr TGtkBoxChild
-  TGtkBoxChild* = record
+  TGtkBoxChild* {.final.} = object
     widget*: PGtkWidget
     padding*: guint16
     flag0*: guint16
@@ -906,12 +906,12 @@ type
   TGtkCListCompareFunc* = proc (clist: PGtkCList, ptr1: gconstpointer,
                                 ptr2: gconstpointer): gint{.cdecl.}
   PGtkCListCellInfo* = ptr TGtkCListCellInfo
-  TGtkCListCellInfo* = record
+  TGtkCListCellInfo* {.final.} = object
     row*: gint
     column*: gint
 
   PGtkCListDestInfo* = ptr TGtkCListDestInfo
-  TGtkCListDestInfo* = record
+  TGtkCListDestInfo* {.final.} = object
     cell*: TGtkCListCellInfo
     insert_pos*: TGtkCListDragPos
 
@@ -1014,7 +1014,7 @@ type
 
   PGPtrArray = pointer
   PGArray = pointer
-  TGtkCListColumn* = record
+  TGtkCListColumn* {.final.} = object
     title*: cstring
     area*: TGdkRectangle
     button*: PGtkWidget
@@ -1025,7 +1025,7 @@ type
     justification*: TGtkJustification
     flag0*: guint16
 
-  TGtkCListRow* = record
+  TGtkCListRow* {.final.} = object
     cell*: PGtkCell
     state*: TGtkStateType
     foreground*: TGdkColor
@@ -1036,7 +1036,7 @@ type
     flag0*: guint16
 
   PGtkCellText* = ptr TGtkCellText
-  TGtkCellText* = record
+  TGtkCellText* {.final.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1044,7 +1044,7 @@ type
     text*: cstring
 
   PGtkCellPixmap* = ptr TGtkCellPixmap
-  TGtkCellPixmap* = record
+  TGtkCellPixmap* {.final.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1053,7 +1053,7 @@ type
     mask*: PGdkBitmap
 
   PGtkCellPixText* = ptr TGtkCellPixText
-  TGtkCellPixText* = record
+  TGtkCellPixText* {.final.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1064,14 +1064,14 @@ type
     mask*: PGdkBitmap
 
   PGtkCellWidget* = ptr TGtkCellWidget
-  TGtkCellWidget* = record
+  TGtkCellWidget* {.final.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
     style*: PGtkStyle
     widget*: PGtkWidget
 
-  TGtkCell* = record
+  TGtkCell* {.final.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1212,7 +1212,7 @@ type
                                        action: TGtkCTreeExpansionType){.cdecl.}
 
   PGtkCTreeRow* = ptr TGtkCTreeRow
-  TGtkCTreeRow* = record
+  TGtkCTreeRow* {.final.} = object
     row*: TGtkCListRow
     parent*: PGtkCTreeNode
     sibling*: PGtkCTreeNode
@@ -1224,7 +1224,7 @@ type
     level*: guint16
     GtkCTreeRow_flag0*: guint16
 
-  TGtkCTreeNode* = record
+  TGtkCTreeNode* {.final.} = object
     list*: TGList
 
   PGtkDrawingArea* = ptr TGtkDrawingArea
@@ -1479,7 +1479,7 @@ type
   TGtkFixedClass* = object of TGtkContainerClass
 
   PGtkFixedChild* = ptr TGtkFixedChild
-  TGtkFixedChild* = record
+  TGtkFixedChild* {.final.} = object
     widget*: PGtkWidget
     x*: gint
     y*: gint
@@ -1632,7 +1632,7 @@ type
     gtk_reserved363: proc (){.cdecl.}
     gtk_reserved364: proc (){.cdecl.}
 
-  TGtkRulerMetric* = record
+  TGtkRulerMetric* {.final.} = object
     metric_name*: cstring
     abbrev*: cstring
     pixels_per_unit*: gdouble
@@ -1657,7 +1657,7 @@ type
   TGtkSettingsClass* = object of TGObjectClass
 
   PGtkSettingsValue* = ptr TGtkSettingsValue
-  TGtkSettingsValue* = record
+  TGtkSettingsValue* {.final.} = object
     origin*: cstring
     value*: TGValue
 
@@ -1708,7 +1708,7 @@ type
     GTK_RC_TOKEN_IM_MODULE_FILE, GTK_RC_TOKEN_STOCK, GTK_RC_TOKEN_LTR,
     GTK_RC_TOKEN_RTL, GTK_RC_TOKEN_LAST
   PGtkRcProperty* = ptr TGtkRcProperty
-  TGtkRcProperty* = record
+  TGtkRcProperty* {.final.} = object
     type_name*: TGQuark
     property_name*: TGQuark
     origin*: cstring
@@ -1877,7 +1877,7 @@ type
     gtk_reserved3812: proc (){.cdecl.}
 
   PGtkBorder* = ptr TGtkBorder
-  TGtkBorder* = record
+  TGtkBorder* {.final.} = object
     left*: gint
     right*: gint
     top*: gint
@@ -1978,27 +1978,27 @@ type
 
   PGtkIconSet* = pointer
   PGtkImagePixmapData* = ptr TGtkImagePixmapData
-  TGtkImagePixmapData* = record
+  TGtkImagePixmapData* {.final.} = object
     pixmap*: PGdkPixmap
 
   PGtkImageImageData* = ptr TGtkImageImageData
-  TGtkImageImageData* = record
+  TGtkImageImageData* {.final.} = object
     image*: PGdkImage
 
   PGtkImagePixbufData* = ptr TGtkImagePixbufData
-  TGtkImagePixbufData* = record
+  TGtkImagePixbufData* {.final.} = object
     pixbuf*: PGdkPixbuf
 
   PGtkImageStockData* = ptr TGtkImageStockData
-  TGtkImageStockData* = record
+  TGtkImageStockData* {.final.} = object
     stock_id*: cstring
 
   PGtkImageIconSetData* = ptr TGtkImageIconSetData
-  TGtkImageIconSetData* = record
+  TGtkImageIconSetData* {.final.} = object
     icon_set*: PGtkIconSet
 
   PGtkImageAnimationData* = ptr TGtkImageAnimationData
-  TGtkImageAnimationData* = record
+  TGtkImageAnimationData* {.final.} = object
     anim*: PGdkPixbufAnimation
     iter*: PGdkPixbufAnimationIter
     frame_timeout*: guint
@@ -2111,7 +2111,7 @@ type
     gtk_reserved474: proc (){.cdecl.}
 
   PGtkItemFactoryEntry* = ptr TGtkItemFactoryEntry
-  TGtkItemFactoryEntry* = record
+  TGtkItemFactoryEntry* {.final.} = object
     path*: cstring
     accelerator*: cstring
     callback*: TGtkItemFactoryCallback
@@ -2120,7 +2120,7 @@ type
     extra_data*: gconstpointer
 
   PGtkItemFactoryItem* = ptr TGtkItemFactoryItem
-  TGtkItemFactoryItem* = record
+  TGtkItemFactoryItem* {.final.} = object
     path*: cstring
     widgets*: PGSList
 
@@ -2173,7 +2173,7 @@ type
       cdecl.}
   PGtkTreeModelFlags* = ptr TGtkTreeModelFlags
   TGtkTreeModelFlags* = int32
-  TGtkTreeIter* = record
+  TGtkTreeIter* {.final.} = object
     stamp*: gint
     user_data*: gpointer
     user_data2*: gpointer
@@ -2435,12 +2435,12 @@ type
     GtkPreview_flag0*: guint16
 
   PGtkPreviewInfo* = ptr TGtkPreviewInfo
-  TGtkPreviewInfo* = record
+  TGtkPreviewInfo* {.final.} = object
     lookup*: Pguchar
     gamma*: gdouble
 
   PGtkDitherInfo* = ptr TGtkDitherInfo
-  TGtkDitherInfo* = record
+  TGtkDitherInfo* {.final.} = object
     c*: array[0..3, guchar]
 
   PGtkPreviewClass* = ptr TGtkPreviewClass
@@ -2533,7 +2533,7 @@ type
     gtk_reserved603: proc (){.cdecl.}
     gtk_reserved604: proc (){.cdecl.}
 
-  TGtkSelectionData* = record
+  TGtkSelectionData* {.final.} = object
     selection*: TGdkAtom
     target*: TGdkAtom
     thetype*: TGdkAtom
@@ -2543,18 +2543,18 @@ type
     display*: PGdkDisplay
 
   PGtkTargetEntry* = ptr TGtkTargetEntry
-  TGtkTargetEntry* = record
+  TGtkTargetEntry* {.final.} = object
     target*: cstring
     flags*: guint
     info*: guint
 
   PGtkTargetList* = ptr TGtkTargetList
-  TGtkTargetList* = record
+  TGtkTargetList* {.final.} = object
     list*: PGList
     ref_count*: guint
 
   PGtkTargetPair* = ptr TGtkTargetPair
-  TGtkTargetPair* = record
+  TGtkTargetPair* {.final.} = object
     target*: TGdkAtom
     flags*: guint
     info*: guint
@@ -2635,7 +2635,7 @@ type
     gtk_reserved634: proc (){.cdecl.}
 
   PGtkStockItem* = ptr TGtkStockItem
-  TGtkStockItem* = record
+  TGtkStockItem* {.final.} = object
     stock_id*: cstring
     label*: cstring
     modifier*: TGdkModifierType
@@ -2681,7 +2681,7 @@ type
   TGtkTableClass* = object of TGtkContainerClass
 
   PGtkTableChild* = ptr TGtkTableChild
-  TGtkTableChild* = record
+  TGtkTableChild* {.final.} = object
     widget*: PGtkWidget
     left_attach*: guint16
     right_attach*: guint16
@@ -2691,7 +2691,7 @@ type
     ypadding*: guint16
     GtkTableChild_flag0*: guint16
 
-  TGtkTableRowCol* = record
+  TGtkTableRowCol* {.final.} = object
     requisition*: guint16
     allocation*: guint16
     spacing*: guint16
@@ -2710,7 +2710,7 @@ type
 
   PGtkTextFont* = pointer
   PGtkPropertyMark* = ptr TGtkPropertyMark
-  TGtkPropertyMark* = record
+  TGtkPropertyMark* {.final.} = object
     `property`*: PGList
     offset*: guint
     index*: guint
@@ -2764,7 +2764,7 @@ type
   PGtkTextSearchFlags* = ptr TGtkTextSearchFlags
   TGtkTextSearchFlags* = int32
   PGtkTextIter* = ptr TGtkTextIter
-  TGtkTextIter* = record
+  TGtkTextIter* {.final.} = object
     dummy1*: gpointer
     dummy2*: gpointer
     dummy3*: gint
@@ -2802,7 +2802,7 @@ type
     gtk_reserved664: proc (){.cdecl.}
 
   PGtkTextAppearance* = ptr TGtkTextAppearance
-  TGtkTextAppearance* = record
+  TGtkTextAppearance* {.final.} = object
     bg_color*: TGdkColor
     fg_color*: TGdkColor
     bg_stipple*: PGdkBitmap
@@ -2811,7 +2811,7 @@ type
     padding1*: gpointer
     flag0*: guint16
 
-  TGtkTextAttributes* = record
+  TGtkTextAttributes* {.final.} = object
     refcount*: guint
     appearance*: TGtkTextAppearance
     justification*: TGtkJustification
@@ -2860,7 +2860,7 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextMarkBody* = ptr TGtkTextMarkBody
-  TGtkTextMarkBody* = record
+  TGtkTextMarkBody* {.final.} = object
     obj*: PGtkTextMark
     name*: cstring
     tree*: PGtkTextBTree
@@ -2879,11 +2879,11 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextPixbuf* = ptr TGtkTextPixbuf
-  TGtkTextPixbuf* = record
+  TGtkTextPixbuf* {.final.} = object
     pixbuf*: PGdkPixbuf
 
   PGtkTextChildBody* = ptr TGtkTextChildBody
-  TGtkTextChildBody* = record
+  TGtkTextChildBody* {.final.} = object
     obj*: PGtkTextChildAnchor
     widgets*: PGSList
     tree*: PGtkTextBTree
@@ -2892,17 +2892,17 @@ type
   PGtkTextLineSegment* = ptr TGtkTextLineSegment
   PGtkTextLineSegmentClass* = ptr TGtkTextLineSegmentClass
   PGtkTextTagInfo* = ptr TGtkTextTagInfo
-  TGtkTextTagInfo* = record
+  TGtkTextTagInfo* {.final.} = object
     tag*: PGtkTextTag
     tag_root*: PGtkTextBTreeNode
     toggle_count*: gint
 
   PGtkTextToggleBody* = ptr TGtkTextToggleBody
-  TGtkTextToggleBody* = record
+  TGtkTextToggleBody* {.final.} = object
     info*: PGtkTextTagInfo
     inNodeCounts*: gboolean
 
-  TGtkTextLineSegment* = record
+  TGtkTextLineSegment* {.final.} = object
     `type`*: PGtkTextLineSegmentClass
     next*: PGtkTextLineSegment
     char_count*: int32
@@ -2919,7 +2919,7 @@ type
                                      line: PGtkTextLine){.cdecl.}
   TGtkTextSegCheckFunc* = proc (seg: PGtkTextLineSegment, line: PGtkTextLine){.
       cdecl.}
-  TGtkTextLineSegmentClass* = record
+  TGtkTextLineSegmentClass* {.final.} = object
     name*: cstring
     leftGravity*: gboolean
     splitFunc*: TGtkTextSegSplitFunc
@@ -2929,13 +2929,13 @@ type
     checkFunc*: TGtkTextSegCheckFunc
 
   PGtkTextLineData* = ptr TGtkTextLineData
-  TGtkTextLineData* = record
+  TGtkTextLineData* {.final.} = object
     view_id*: gpointer
     next*: PGtkTextLineData
     height*: gint
     flag0*: int32
 
-  TGtkTextLine* = record
+  TGtkTextLine* {.final.} = object
     parent*: PGtkTextBTreeNode
     next*: PGtkTextLine
     segments*: PGtkTextLineSegment
@@ -3020,18 +3020,18 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextAttrAppearance* = ptr TGtkTextAttrAppearance
-  TGtkTextAttrAppearance* = record
+  TGtkTextAttrAppearance* {.final.} = object
     attr*: TPangoAttribute
     appearance*: TGtkTextAppearance
 
   PGtkTextCursorDisplay* = ptr TGtkTextCursorDisplay
-  TGtkTextCursorDisplay* = record
+  TGtkTextCursorDisplay* {.final.} = object
     x*: gint
     y*: gint
     height*: gint
     flag0*: guint16
 
-  TGtkTextLineDisplay* = record
+  TGtkTextLineDisplay* {.final.} = object
     layout*: PPangoLayout
     cursors*: PGSList
     shaped_objects*: PGSList
@@ -3152,7 +3152,7 @@ type
 
   PGtkTooltips* = ptr TGtkTooltips
   PGtkTooltipsData* = ptr TGtkTooltipsData
-  TGtkTooltipsData* = record
+  TGtkTooltipsData* {.final.} = object
     tooltips*: PGtkTooltips
     widget*: PGtkWidget
     tip_text*: cstring
@@ -3184,7 +3184,7 @@ type
   TGtkToolbarSpaceStyle* = enum
     GTK_TOOLBAR_SPACE_EMPTY, GTK_TOOLBAR_SPACE_LINE
   PGtkToolbarChild* = ptr TGtkToolbarChild
-  TGtkToolbarChild* = record
+  TGtkToolbarChild* {.final.} = object
     `type`*: TGtkToolbarChildType
     widget*: PGtkWidget
     icon*: PGtkWidget
@@ -3365,13 +3365,13 @@ type
   PGtkRBNode* = ptr TGtkRBNode
   TGtkRBTreeTraverseFunc* = proc (tree: PGtkRBTree, node: PGtkRBNode,
                                   data: gpointer){.cdecl.}
-  TGtkRBTree* = record
+  TGtkRBTree* {.final.} = object
     root*: PGtkRBNode
     `nil`*: PGtkRBNode
     parent_tree*: PGtkRBTree
     parent_node*: PGtkRBNode
 
-  TGtkRBNode* = record
+  TGtkRBNode* {.final.} = object
     flag0*: guint16
     left*: PGtkRBNode
     right*: PGtkRBNode
@@ -3386,14 +3386,14 @@ type
   TGtkTreeViewSearchDialogPositionFunc* = proc (tree_view: PGtkTreeView,
       search_dialog: PGtkWidget){.cdecl.}
   PGtkTreeViewColumnReorder* = ptr TGtkTreeViewColumnReorder
-  TGtkTreeViewColumnReorder* = record
+  TGtkTreeViewColumnReorder* {.final.} = object
     left_align*: gint
     right_align*: gint
     left_column*: PGtkTreeViewColumn
     right_column*: PGtkTreeViewColumn
 
   PGtkTreeViewPrivate* = ptr TGtkTreeViewPrivate
-  TGtkTreeViewPrivate* = record
+  TGtkTreeViewPrivate* {.final.} = object
     model*: PGtkTreeModel
     flags*: guint
     tree*: PGtkRBTree
@@ -11304,96 +11304,127 @@ proc GTK_FUNDAMENTAL_TYPE*(thetype: GType): GType =
   result = G_TYPE_FUNDAMENTAL(thetype)
 
 proc GTK_VALUE_CHAR*(a: TGtkArg): gchar =
+  var a = a
   Result = cast[ptr gchar](addr(a.d))^
 
 proc GTK_VALUE_UCHAR*(a: TGtkArg): guchar =
+  var a = a
   Result = cast[ptr guchar](addr(a.d))^
 
 proc GTK_VALUE_BOOL*(a: TGtkArg): gboolean =
+  var a = a
   Result = cast[ptr gboolean](addr(a.d))^
 
 proc GTK_VALUE_INT*(a: TGtkArg): gint =
+  var a = a
   Result = cast[ptr gint](addr(a.d))^
 
 proc GTK_VALUE_UINT*(a: TGtkArg): guint =
+  var a = a
   Result = cast[ptr guint](addr(a.d))^
 
 proc GTK_VALUE_LONG*(a: TGtkArg): glong =
+  var a = a
   Result = cast[ptr glong](addr(a.d))^
 
 proc GTK_VALUE_ULONG*(a: TGtkArg): gulong =
+  var a = a
   Result = cast[ptr gulong](addr(a.d))^
 
 proc GTK_VALUE_FLOAT*(a: TGtkArg): gfloat =
+  var a = a
   Result = cast[ptr gfloat](addr(a.d))^
 
 proc GTK_VALUE_DOUBLE*(a: TGtkArg): gdouble =
+  var a = a
   Result = cast[ptr gdouble](addr(a.d))^
 
 proc GTK_VALUE_STRING*(a: TGtkArg): cstring =
+  var a = a
   Result = cast[ptr cstring](addr(a.d))^
 
 proc GTK_VALUE_ENUM*(a: TGtkArg): gint =
+  var a = a
   Result = cast[ptr gint](addr(a.d))^
 
 proc GTK_VALUE_FLAGS*(a: TGtkArg): guint =
+  var a = a
   Result = cast[ptr guint](addr(a.d))^
 
 proc GTK_VALUE_BOXED*(a: TGtkArg): gpointer =
+  var a = a
   Result = cast[ptr gpointer](addr(a.d))^
 
 proc GTK_VALUE_OBJECT*(a: TGtkArg): PGtkObject =
+  var a = a
   Result = cast[ptr PGtkObject](addr(a.d))^
 
 proc GTK_VALUE_POINTER*(a: TGtkArg): GPointer =
+  var a = a
   Result = cast[ptr gpointer](addr(a.d))^
 
 proc GTK_VALUE_SIGNAL*(a: TGtkArg): TGtkArgSignalData =
+  var a = a
   Result = cast[ptr TGtkArgSignalData](addr(a.d))^
 
 proc GTK_RETLOC_CHAR*(a: TGtkArg): cstring =
+  var a = a
   Result = cast[ptr cstring](addr(a.d))^
 
 proc GTK_RETLOC_UCHAR*(a: TGtkArg): Pguchar =
+  var a = a
   Result = cast[ptr pguchar](addr(a.d))^
 
 proc GTK_RETLOC_BOOL*(a: TGtkArg): Pgboolean =
+  var a = a
   Result = cast[ptr pgboolean](addr(a.d))^
 
 proc GTK_RETLOC_INT*(a: TGtkArg): Pgint =
+  var a = a
   Result = cast[ptr pgint](addr(a.d))^
 
 proc GTK_RETLOC_UINT*(a: TGtkArg): Pguint =
+  var a = a
   Result = cast[ptr pguint](addr(a.d))^
 
 proc GTK_RETLOC_LONG*(a: TGtkArg): Pglong =
+  var a = a
   Result = cast[ptr pglong](addr(a.d))^
 
 proc GTK_RETLOC_ULONG*(a: TGtkArg): Pgulong =
+  var a = a
   Result = cast[ptr pgulong](addr(a.d))^
 
 proc GTK_RETLOC_FLOAT*(a: TGtkArg): Pgfloat =
+  var a = a
   Result = cast[ptr pgfloat](addr(a.d))^
 
 proc GTK_RETLOC_DOUBLE*(a: TGtkArg): Pgdouble =
+  var a = a
   Result = cast[ptr pgdouble](addr(a.d))^
 
 proc GTK_RETLOC_STRING*(a: TGtkArg): Ppgchar =
+  var a = a
   Result = cast[ptr Ppgchar](addr(a.d))^
 
 proc GTK_RETLOC_ENUM*(a: TGtkArg): Pgint =
+  var a = a
   Result = cast[ptr Pgint](addr(a.d))^
 
 proc GTK_RETLOC_FLAGS*(a: TGtkArg): Pguint =
+  var a = a
   Result = cast[ptr pguint](addr(a.d))^
 
 proc GTK_RETLOC_BOXED*(a: TGtkArg): Pgpointer =
+  var a = a
   Result = cast[ptr pgpointer](addr(a.d))^
 
 proc GTK_RETLOC_OBJECT*(a: TGtkArg): PPGtkObject =
+  var a = a
   Result = cast[ptr ppgtkobject](addr(a.d))^
 
 proc GTK_RETLOC_POINTER*(a: TGtkArg): Pgpointer =
+  var a = a
   Result = cast[ptr pgpointer](addr(a.d))^
 
 proc GTK_TYPE_WIDGET*(): GType =
@@ -15108,7 +15139,7 @@ proc gtk_signal_handler_pending_by_func*(anObject: PGtkObject, signal_id: guint,
       G_SIGNAL_MATCH_DATA)
   if not may_be_blocked:
     t = t or cast[int](G_SIGNAL_MATCH_UNBLOCKED)
-  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, addr(func_),
+  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, func_,
                                  data) != 0
 
 proc GTK_TYPE_SIZE_GROUP*(): GType =
@@ -17045,7 +17076,7 @@ type
     GTK_FILE_FILTER_FILENAME = 1 shl 0, GTK_FILE_FILTER_URI = 1 shl 1, 
     GTK_FILE_FILTER_DISPLAY_NAME = 1 shl 2, GTK_FILE_FILTER_MIME_TYPE = 1 shl 3
   PGtkFileFilterInfo* = ref TGtkFileFilterInfo
-  TGtkFileFilterInfo* = record 
+  TGtkFileFilterInfo* {.final.} = object 
     contains*: TGtkFileFilterFlags
     filename*: cstring
     uri*: cstring

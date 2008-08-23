@@ -43,13 +43,28 @@ type
     cfsProcHeaders,    // section for C procs prototypes
     cfsProcs,          // section for C procs that are not inline
     cfsTypeInit1,      // section 1 for declarations of type information
-    cfsTypeInit2,      // section A for initialization of type information
-    cfsTypeInit3,      // section B for init of type information
+    cfsTypeInit2,      // section 2 for initialization of type information
+    cfsTypeInit3,      // section 3 for init of type information
     cfsDebugInit,      // section for initialization of debug information
     cfsDynLibInit,     // section for initialization of dynamic library binding
     cfsDynLibDeinit    // section for deinitialization of dynamic libraries
   );
 
+  TCTypeKind = (       // describes the type kind of a C type
+    ctVoid,
+    ctChar,
+    ctBool,
+    ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64,
+    ctInt, ctInt8, ctInt16, ctInt32, ctInt64,
+    ctFloat, ctFloat32, ctFloat64, ctFloat128,
+    ctArray,
+    ctStruct,
+    ctPtr,
+    ctNimStr,
+    ctNimSeq,
+    ctProc,
+    ctCString
+  );
 
   TCFileSections = array [TCFileSection] of PRope;
     // TCFileSections represents a generated C file
@@ -66,15 +81,20 @@ type
   BModule = ^TCGen;
   BProc = ^TCProc;
 
+  TBlock = record
+    id: int;  // the ID of the label; positive means that it
+              // has been used (i.e. the label should be emitted)
+    nestedTryStmts: int; // how many try statements is it nested into
+  end;
+
   TCProc = record            // represents C proc that is currently generated
     s: TCProcSections;       // the procs sections; short name for readability
     prc: PSym;               // the Nimrod proc that this C proc belongs to
     BeforeRetNeeded: bool;   // true iff 'BeforeRet' label for proc is needed
-    inTryStmt: Natural;      // wether we are in a try statement
+    nestedTryStmts: Natural; // in how many nested try statements we are
                              // (the vars must be volatile then)
-    unique: Natural;         // for generating unique names in the C proc
-    blocks: array of int;    // the ID of the label; positive means that it
-                             // has been used (i.e. the label should be emitted)
+    labels: Natural;         // for generating unique labels in the C proc
+    blocks: array of TBlock; // nested blocks
     locals: array of TLoc;   // locNone means slot is free again
     options: TOptions;       // options that should be used for code
                              // generation; this is the same as prc.options
@@ -82,8 +102,9 @@ type
     frameLen: int;           // current length of frame descriptor
     sendClosure: PType;      // closure record type that we pass
     receiveClosure: PType;   // closure record type that we get
+    module: BModule;         // used to prevent excessive parameter passing
   end;
-
+  TTypeSeq = array of PType;
   TCGen = object(TBackend)   // represents a C source file
     s: TCFileSections;       // sections of the C file
     cfilename: string;       // filename of the module (including path,
@@ -93,55 +114,48 @@ type
     declaredThings: TIntSet; // things we have declared in this .c file
     debugDeclared: TIntSet;  // for debugging purposes
     headerFiles: TLinkedList; // needed headers to include
-    unique: Natural;         // for generating unique names
+    //unique: Natural;         // for generating unique names
     typeInfoMarker: TIntSet; // needed for generating type information
     initProc: BProc;         // code for init procedure
+    typeStack: TTypeSeq;     // used for type generation
   end;
 
 var
-  currMod: BModule; // currently compiled module
-                    // a global so that this needs not to be
-                    // passed to every proc
+  gUnique: Natural;
   mainModProcs, mainModInit: PRope; // parts of the main module
   gMapping: PRope;  // the generated mapping file (if requested)
 
-  constTok: PRope; // either 'const ' or nil depending on gCmd
-
-function initLoc(k: TLocKind; typ: PType): TLoc;
+function initLoc(k: TLocKind; typ: PType; s: TStorageLoc): TLoc;
 begin
   result.k := k;
-  result.t := typ;
+  result.s := s;
+  result.t := GetUniqueType(typ);
   result.r := nil;
   result.a := -1;
-  result.indirect := 0;
   result.flags := {@set}[]
 end;
 
 procedure fillLoc(var a: TLoc; k: TLocKind; typ: PType; r: PRope;
-                  flags: TLocFlags);
+                  s: TStorageLoc);
 begin
   // fills the loc if it is not already initialized
   if a.k = locNone then begin
     a.k := k;
-    if typ.kind = tyGenericInst then a.t := lastSon(typ) else a.t := typ;
+    a.t := getUniqueType(typ);
     a.a := -1;
+    a.s := s;
     if a.r = nil then a.r := r;
-    a.flags := a.flags + flags
   end
 end;
 
-procedure inheritStorage(var dest: TLoc; const src: TLoc);
-begin
-  dest.flags := src.flags * [lfOnStack, lfOnHeap, lfOnData, lfOnUnknown]
-end;
-
-function newProc(prc: PSym): BProc;
+function newProc(prc: PSym; module: BModule): BProc;
 begin
   new(result);
 {@ignore}
   fillChar(result^, sizeof(result^), 0);
 {@emit}
   result.prc := prc;
+  result.module := module;
   if prc <> nil then
     result.options := prc.options
   else
@@ -157,20 +171,19 @@ end;
 
 function isSimpleConst(typ: PType): bool;
 begin
-  result := not (skipAbstract(typ).kind in [tyRecord, tyRecordConstr,
-                                            tyObject, tyArray,
+  result := not (skipVarGeneric(typ).kind in [tyTuple, tyObject, tyArray,
                                             tyArrayConstr, tySet, tySequence])
 end;
 
-procedure useHeader(sym: PSym);
+procedure useHeader(m: BModule; sym: PSym);
 begin
   if lfHeader in sym.loc.Flags then begin
     assert(sym.annex <> nil);
-    {@discard} lists.IncludeStr(currMod.headerFiles, PLib(sym.annex).path)
+    {@discard} lists.IncludeStr(m.headerFiles, PLib(sym.annex).path)
   end
 end;
 
-procedure UseMagic(const name: string); forward;
+procedure UseMagic(m: BModule; const name: string); forward;
 
 // ----------------------------- name mangling
 // +++++++++++++++++++++++++++++ type generation
@@ -182,14 +195,14 @@ procedure UseMagic(const name: string); forward;
 function beEqualTypes(a, b: PType): bool;
 begin
   // returns whether two type are equal for the backend
-  result := sameType(skipAbstract(a), skipAbstract(b))
+  result := sameType(skipGenericRange(a), skipGenericRange(b))
 end;
 
 function getTemp(p: BProc; t: PType): TLoc;
 var
   i, index: int;
   name: PRope;
-begin
+begin (*
   for i := 0 to high(p.locals) do begin
     assert(i = p.locals[i].a);
     if (p.locals[i].k = locNone) and beEqualTypes(p.locals[i].t, t) then begin
@@ -198,41 +211,41 @@ begin
       result := p.locals[i];
       exit
     end
-  end;
+  end; *)
   // not found:
   index := length(p.locals);
   setLength(p.locals, index+1);
   // declare the new temporary:
   name := con('Loc', toRope(index));
-  appRopeFormat(p.s[cpsLocals], '$1 $2; /* temporary */$n',
-                [getTypeDesc(t), name]);
+  appf(p.s[cpsLocals], '$1 $2; /* temporary */$n',
+       [getTypeDesc(p.module, t), name]);
   p.locals[index].k := locTemp;
   p.locals[index].a := index;
   p.locals[index].r := name;
-  p.locals[index].t := t;
-  p.locals[index].flags := {@set}[lfOnStack];
+  p.locals[index].t := getUniqueType(t);
+  p.locals[index].s := OnStack;
+  p.locals[index].flags := {@set}[];
   result := p.locals[index] // BUGFIX!
 end;
 
 procedure freeTemp(p: BProc; const temp: TLoc);
-begin
+begin (*
   if (temp.a >= 0) and (temp.a < length(p.locals)) and
                     (p.locals[temp.a].k = locTemp) then
-    p.locals[temp.a].k := locNone
+    p.locals[temp.a].k := locNone *)
 end;
 
 // -------------------------- Variable manager ----------------------------
 
-procedure declareGlobalVar(s: PSym);
+procedure declareGlobalVar(m: BModule; s: PSym);
 begin
-  if not IntSetContainsOrIncl(currMod.declaredThings, s.id) then begin
-    app(currMod.s[cfsVars], getTypeDesc(s.loc.t));
+  if not IntSetContainsOrIncl(m.declaredThings, s.id) then begin
+    app(m.s[cfsVars], getTypeDesc(m, s.loc.t));
     if sfRegister in s.flags then
-      app(currMod.s[cfsVars], ' register');
+      app(m.s[cfsVars], ' register');
     if sfVolatile in s.flags then
-      app(currMod.s[cfsVars], ' volatile');
-    appRopeFormat(currMod.s[cfsVars], ' $1; /* $2 */$n',
-      [s.loc.r, toRope(s.name.s)])
+      app(m.s[cfsVars], ' volatile');
+    appf(m.s[cfsVars], ' $1;$n', [s.loc.r])
   end
 end;
 
@@ -241,39 +254,38 @@ begin
   //assert(s.loc.k == locNone) // not yet assigned
   // this need not be fullfilled for inline procs; they are regenerated
   // for each module that uses them!
-  fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), {@set}[lfOnStack]);
-  app(p.s[cpsLocals], getTypeDesc(s.loc.t));
+  fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack);
+  app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t));
   if sfRegister in s.flags then
     app(p.s[cpsLocals], ' register');
-  if (sfVolatile in s.flags) or (p.inTryStmt > 0) then
+  if (sfVolatile in s.flags) or (p.nestedTryStmts > 0) then
     app(p.s[cpsLocals], ' volatile');
 
-  appRopeFormat(p.s[cpsLocals], ' $1; /* $2 */$n',
-    [s.loc.r, toRope(s.name.s)]);
+  appf(p.s[cpsLocals], ' $1;$n', [s.loc.r]);
   // if debugging we need a new slot for the local variable:
   if [optStackTrace, optEndb] * p.Options = [optStackTrace, optEndb] then begin
-    appRopeFormat(p.s[cpsInit],
+    appf(p.s[cpsInit],
       'F.s[$1].name = $2; F.s[$1].address = (void*)&$3; F.s[$1].typ = $4;$n',
       [toRope(p.frameLen), makeCString(normalize(s.name.s)), s.loc.r,
-      genTypeInfo(currMod, s.loc.t)]);
+      genTypeInfo(p.module, s.loc.t)]);
     inc(p.frameLen);
   end
 end;
 
-procedure assignGlobalVar(s: PSym);
+procedure assignGlobalVar(m: BModule; s: PSym);
 begin
-  fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), {@set}[lfOnData]);
-  useHeader(s);
+  fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap);
+  useHeader(m, s);
   if lfNoDecl in s.loc.flags then exit;
-  if sfImportc in s.flags then app(currMod.s[cfsVars], 'extern ');
-  declareGlobalVar(s);
-  if [optStackTrace, optEndb] * currMod.module.options =
+  if sfImportc in s.flags then app(m.s[cfsVars], 'extern ');
+  declareGlobalVar(m, s);
+  if [optStackTrace, optEndb] * m.module.options =
      [optStackTrace, optEndb] then begin
-    useMagic('dbgRegisterGlobal');
-    appRopeFormat(currMod.s[cfsDebugInit],
+    useMagic(m, 'dbgRegisterGlobal');
+    appf(m.s[cfsDebugInit],
       'dbgRegisterGlobal($1, &$2, $3);$n',
       [makeCString(normalize(s.owner.name.s + '.' +{&} s.name.s)), s.loc.r,
-      genTypeInfo(currMod, s.typ)])
+      genTypeInfo(m, s.typ)])
   end;
 end;
 
@@ -286,12 +298,12 @@ procedure assignParam(p: BProc; s: PSym);
 begin
   assert(s.loc.r <> nil);
   if [optStackTrace, optEndb] * p.options = [optStackTrace, optEndb] then begin
-    appRopeFormat(p.s[cpsInit],
+    appf(p.s[cpsInit],
       'F.s[$1].name = $2; F.s[$1].address = (void*)$3; ' +
       'F.s[$1].typ = $4;$n',
       [toRope(p.frameLen), makeCString(normalize(s.name.s)),
-      iff(usePtrPassing(s), s.loc.r, con('&'+'', s.loc.r)),
-      genTypeInfo(currMod, s.loc.t)]);
+      iff(ccgIntroducedPtr(s), s.loc.r, con('&'+'', s.loc.r)),
+      genTypeInfo(p.module, s.loc.t)]);
     inc(p.frameLen)
   end
 end;
@@ -301,19 +313,19 @@ end;
 // note that a label is a location too
 function getLabel(p: BProc): TLabel;
 begin
-  inc(p.unique);
-  result := con('L'+'', toRope(p.unique))
+  inc(p.labels);
+  result := con('L'+'', toRope(p.labels))
 end;
 
 procedure fixLabel(p: BProc; labl: TLabel);
 begin
-  appRopeFormat(p.s[cpsStmts], '$1: ;$n', [labl])
+  appf(p.s[cpsStmts], '$1: ;$n', [labl])
 end;
 
-procedure genProcPrototype(sym: PSym); forward;
-procedure genVarPrototype(sym: PSym); forward;
-procedure genConstPrototype(sym: PSym); forward;
-procedure genProc(prc: PSym); forward;
+procedure genProcPrototype(m: BModule; sym: PSym); forward;
+procedure genVarPrototype(m: BModule; sym: PSym); forward;
+procedure genConstPrototype(m: BModule; sym: PSym); forward;
+procedure genProc(m: BModule; prc: PSym); forward;
 procedure genStmts(p: BProc; t: PNode); forward;
 
 {$include 'ccgexprs.pas'}
@@ -323,76 +335,76 @@ procedure genStmts(p: BProc; t: PNode); forward;
 
 // We don't finalize dynamic libs as this does the OS for us.
 
-procedure loadDynamicLib(lib: PLib);
+procedure loadDynamicLib(m: BModule; lib: PLib);
 var
   tmp: PRope;
 begin
   assert(lib <> nil);
   if lib.kind = libDynamic then begin
     lib.kind := libDynamicGenerated;
-    useMagic('nimLoadLibrary');
-    useMagic('nimUnloadLibrary');
+    useMagic(m, 'nimLoadLibrary');
+    useMagic(m, 'nimUnloadLibrary');
     tmp := getTempName();
-    appRopeFormat(currMod.s[cfsVars], 'static void* $1;$n', [tmp]);
-    appRopeFormat(currMod.s[cfsDynLibInit],
+    appf(m.s[cfsVars], 'static void* $1;$n', [tmp]);
+    appf(m.s[cfsDynLibInit],
       '$1 = nimLoadLibrary((string) &$2);$n',
-      [tmp, getStrLit(lib.path)]);
-    appRopeFormat(currMod.s[cfsDynLibDeinit],
+      [tmp, getStrLit(m, lib.path)]);
+    appf(m.s[cfsDynLibDeinit],
       'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
     assert(lib.name = nil);
     lib.name := tmp
   end
 end;
 
-procedure SymInDynamicLib(sym: PSym);
+procedure SymInDynamicLib(m: BModule; sym: PSym);
 var
   lib: PLib;
   extname, tmp: PRope;
 begin
   lib := PLib(sym.annex);
   extname := sym.loc.r;
-  loadDynamicLib(lib);
-  useMagic('nimGetProcAddr');
-  tmp := ropeFormat('Dl_$1', [toRope(sym.id)]);
+  loadDynamicLib(m, lib);
+  useMagic(m, 'nimGetProcAddr');
+  tmp := ropef('Dl_$1', [toRope(sym.id)]);
   sym.loc.r := tmp; // from now on we only need the internal name
   sym.typ.sym := nil; // generate a new name
-  appRopeFormat(currMod.s[cfsDynLibInit],
+  appf(m.s[cfsDynLibInit],
     '$1 = ($2) nimGetProcAddr($3, $4);$n',
-    [tmp, getTypeDesc(sym.typ), lib.name,
+    [tmp, getTypeDesc(m, sym.typ), lib.name,
     makeCString(ropeToStr(extname))]);
-  declareGlobalVar(sym)
+  declareGlobalVar(m, sym)
 end;
 
 // ----------------------------- sections ---------------------------------
 
-procedure UseMagic(const name: string);
+procedure UseMagic(m: BModule; const name: string);
 var
   sym: PSym;
 begin
-  if (sfSystemModule in currMod.module.flags) then exit;
+  if (sfSystemModule in m.module.flags) then exit;
   // we don't know the magic symbols in the system module, but they will be
   // there anyway, because that is the way the code generator works
   sym := magicsys.getCompilerProc(name);
   case sym.kind of
-    skProc: genProcPrototype(sym);
-    skVar: genVarPrototype(sym);
-    skType: {@discard} getTypeDesc(sym.typ);
+    skProc, skConverter: genProcPrototype(m, sym);
+    skVar: genVarPrototype(m, sym);
+    skType: {@discard} getTypeDesc(m, sym.typ);
     else InternalError('useMagic: ' + name)
   end
 end;
 
-procedure generateHeaders();
+procedure generateHeaders(m: BModule);
 var
   it: PStrEntry;
 begin
-  app(currMod.s[cfsHeaders], '#include "nimbase.h"' +{&} tnl +{&} tnl);
-  it := PStrEntry(currMod.headerFiles.head);
+  app(m.s[cfsHeaders], '#include "nimbase.h"' +{&} tnl +{&} tnl);
+  it := PStrEntry(m.headerFiles.head);
   while it <> nil do begin
     if not (it.data[strStart] in ['"', '<']) then
-      appRopeFormat(currMod.s[cfsHeaders],
+      appf(m.s[cfsHeaders],
         '#include "$1"$n', [toRope(it.data)])
     else
-      appRopeFormat(currMod.s[cfsHeaders], '#include $1$n', [toRope(it.data)]);
+      appf(m.s[cfsHeaders], '#include $1$n', [toRope(it.data)]);
     it := PStrEntry(it.Next)
   end
 end;
@@ -402,15 +414,15 @@ var
   slots: PRope;
 begin
   if p.frameLen > 0 then begin
-    useMagic('TVarSlot');
-    slots := ropeFormat('  TVarSlot s[$1];$n', [toRope(p.frameLen)])
+    useMagic(p.module, 'TVarSlot');
+    slots := ropef('  TVarSlot s[$1];$n', [toRope(p.frameLen)])
   end
   else
     slots := nil;
-  appRopeFormat(p.s[cpsLocals], 'volatile struct {TFrame* prev;' +
-    'NCSTRING procname;NS line;NCSTRING filename;' +
-    'NS len;$n$1} F;$n', [slots]);
-  prepend(p.s[cpsInit], ropeFormat('F.len = $1;$n', [toRope(p.frameLen)]))
+  appf(p.s[cpsLocals], 'volatile struct {TFrame* prev;' +
+    'NCSTRING procname;NI line;NCSTRING filename;' +
+    'NI len;$n$1} F;$n', [slots]);
+  prepend(p.s[cpsInit], ropef('F.len = $1;$n', [toRope(p.frameLen)]))
 end;
 
 function retIsNotVoid(s: PSym): bool;
@@ -418,27 +430,27 @@ begin
   result := (s.typ.sons[0] <> nil) and not isInvalidReturnType(s.typ.sons[0])
 end;
 
-procedure genProc(prc: PSym);
+procedure genProc(m: BModule; prc: PSym);
 var
   p: BProc;
   generatedProc, header, returnStmt: PRope;
   i: int;
   res, param: PSym;
 begin
-  useHeader(prc);
-  fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), {@set}[lfOnData]);
+  useHeader(m, prc);
+  fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnStack);
   if (lfNoDecl in prc.loc.Flags) then exit;
   if lfDynamicLib in prc.loc.flags then
-    SymInDynamicLib(prc)
+    SymInDynamicLib(m, prc)
   else if not (sfImportc in prc.flags) then begin
     // we have a real proc here:
-    p := newProc(prc);
-    header := genProcHeader(prc);
+    p := newProc(prc, m);
+    header := genProcHeader(m, prc);
     if (sfCompilerProc in prc.flags)
-    and (sfSystemModule in currMod.module.flags)
-    and not IntSetContains(currMod.declaredThings, prc.id) then
-      appRopeFormat(currMod.s[cfsProcHeaders], '$1;$n', [header]);
-    intSetIncl(currMod.declaredThings, prc.id);
+    and (sfSystemModule in m.module.flags)
+    and not IntSetContains(m.declaredThings, prc.id) then
+      appf(m.s[cfsProcHeaders], '$1;$n', [header]);
+    intSetIncl(m.declaredThings, prc.id);
     returnStmt := nil;
     assert(prc.ast <> nil);
 
@@ -450,7 +462,7 @@ begin
         assert(res.loc.r <> nil);
         initVariable(p, res);
         genObjectInit(p, res);
-        returnStmt := ropeFormat('return $1;$n', [rdLoc(res.loc)]);
+        returnStmt := ropef('return $1;$n', [rdLoc(res.loc)]);
       end
       else if (prc.typ.sons[0] <> nil) then begin
         res := prc.ast.sons[resultPos].sym; // get result symbol
@@ -465,13 +477,13 @@ begin
 
     genStmts(p, prc.ast.sons[codePos]); // modifies p.locals, p.init, etc.
     if sfPure in prc.flags then
-      generatedProc := ropeFormat('$1 {$n$2$3$4}$n',
+      generatedProc := ropef('$1 {$n$2$3$4}$n',
         [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
     else begin
       generatedProc := con(header, '{' + tnl);
       if optStackTrace in prc.options then begin
         getFrameDecl(p);
-        prepend(p.s[cpsInit], ropeFormat(
+        prepend(p.s[cpsInit], ropef(
           'F.procname = $1;$n' +
           'F.prev = framePtr;$n' +
           'F.filename = $2;$n' +
@@ -491,86 +503,93 @@ begin
       //if prc.typ.callConv <> ccInline then
       //  prc.ast.sons[codePos] := nil;
     end;
-    app(currMod.s[cfsProcs], generatedProc);
+    app(m.s[cfsProcs], generatedProc);
   end
 end;
 
-procedure genVarPrototype(sym: PSym);
+procedure genVarPrototype(m: BModule; sym: PSym);
 begin
   assert(sfGlobal in sym.flags);
-  useHeader(sym);
-  fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), {@set}[lfOnData]);
+  useHeader(m, sym);
+  fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap);
   if (lfNoDecl in sym.loc.Flags) or
-      intSetContainsOrIncl(currMod.declaredThings, sym.id) then
+      intSetContainsOrIncl(m.declaredThings, sym.id) then
     exit;
-  if sym.owner.id <> currMod.module.id then begin
+  if sym.owner.id <> m.module.id then begin
     // else we already have the symbol generated!
     assert(sym.loc.r <> nil);
-    app(currMod.s[cfsVars], 'extern ');
-    app(currMod.s[cfsVars], getTypeDesc(sym.loc.t));
+    app(m.s[cfsVars], 'extern ');
+    app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
     if sfRegister in sym.flags then
-      app(currMod.s[cfsVars], ' register');
+      app(m.s[cfsVars], ' register');
     if sfVolatile in sym.flags then
-      app(currMod.s[cfsVars], ' volatile');
-    appRopeFormat(currMod.s[cfsVars], ' $1; /* $2 */$n',
-      [sym.loc.r, toRope(sym.name.s)])
+      app(m.s[cfsVars], ' volatile');
+    appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
   end
 end;
 
-procedure genConstPrototype(sym: PSym);
+procedure genConstPrototype(m: BModule; sym: PSym);
 begin
-  useHeader(sym);
-  fillLoc(sym.loc, locData, sym.typ, mangleName(sym), {@set}[lfOnData]);
+  useHeader(m, sym);
+  fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown);
   if (lfNoDecl in sym.loc.Flags) or
-      intSetContainsOrIncl(currMod.declaredThings, sym.id) then
+      intSetContainsOrIncl(m.declaredThings, sym.id) then
     exit;
-  if sym.owner.id <> currMod.module.id then begin
+  if sym.owner.id <> m.module.id then begin
     // else we already have the symbol generated!
     assert(sym.loc.r <> nil);
-    app(currMod.s[cfsData], 'extern ');
-    appRopeFormat(currMod.s[cfsData], '$1$2 $3; /* $4 */$n',
-      [constTok, getTypeDesc(sym.loc.t), sym.loc.r, toRope(sym.name.s)])
+    app(m.s[cfsData], 'extern ');
+    appf(m.s[cfsData], 'NIM_CONST $1 $2;$n',
+      [getTypeDesc(m, sym.loc.t), sym.loc.r])
   end
 end;
 
-procedure genProcPrototype(sym: PSym);
+procedure genProcPrototype(m: BModule; sym: PSym);
 begin
-  useHeader(sym);
-  fillLoc(sym.loc, locProc, sym.typ, mangleName(sym), {@set}[lfOnData]);
+  useHeader(m, sym);
+  fillLoc(sym.loc, locProc, sym.typ, mangleName(sym), OnStack);
   if lfDynamicLib in sym.loc.Flags then begin
     // it is a proc variable!
-    if (sym.owner.id <> currMod.module.id) and
-        not intSetContainsOrIncl(currMod.declaredThings, sym.id) then begin
-      app(currMod.s[cfsVars], 'extern ');
+    if (sym.owner.id <> m.module.id) and
+        not intSetContainsOrIncl(m.declaredThings, sym.id) then begin
+      app(m.s[cfsVars], 'extern ');
       // BUGFIX: declareGlobalVar() inlined, because of intSetContainsOrIncl
       // check
-      app(currMod.s[cfsVars], getTypeDesc(sym.loc.t));
-      appRopeFormat(currMod.s[cfsVars], ' $1; /* $2 */$n',
-        [sym.loc.r, toRope(sym.name.s)])
+      app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
+      appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
     end
   end
   else begin
     // it is a proc:
     if (lfNoDecl in sym.loc.Flags) then exit;
-    if intSetContainsOrIncl(currMod.declaredThings, sym.id) then exit;
-    appRopeFormat(currMod.s[cfsProcHeaders], '$1;$n', [genProcHeader(sym)]);
+    if intSetContainsOrIncl(m.declaredThings, sym.id) then exit;
+    appf(m.s[cfsProcHeaders], '$1;$n', [genProcHeader(m, sym)]);
     if (sym.typ.callConv = ccInline)
-    and (sym.owner.id <> currMod.module.id) then
-      genProc(sym) // generate the code again!
-//    else
-//      IntSetIncl(currMod.declaredThings, sym.id)
+    and (sym.owner.id <> m.module.id) then
+      genProc(m, sym) // generate the code again!
   end
 end;
 
-function getFileHeader: PRope;
+function getFileHeader(const cfilenoext: string): PRope;
 begin
-  result := ropeFormat(
+  result := ropef(
     '/* Generated by the Nimrod Compiler v$1 */$n' +
     '/*   (c) 2008 Andreas Rumpf */$n' +
-    '/* Compiled for: $2, $3, $4 */$n',
+    '/* Compiled for: $2, $3, $4 */$n' +
+    '/* Command for C compiler:$n   $5 */$n',
     [toRope(versionAsString), toRope(platform.OS[targetOS].name),
     toRope(platform.CPU[targetCPU].name),
-    toRope(extccomp.CC[extccomp.ccompiler].name)])
+    toRope(extccomp.CC[extccomp.ccompiler].name),
+    toRope(getCompileCFileCmd(cfilenoext))]);
+  case platform.CPU[targetCPU].intSize of
+    16: appf(result, '$ntypedef short int NI;$n' +
+                       'typedef unsigned short int NU;$n', []); 
+    32: appf(result, '$ntypedef long int NI;$n' +
+                       'typedef unsigned long int NU;$n', []); 
+    64: appf(result, '$ntypedef long long int NI;$n' +
+                       'typedef unsigned long long int NU;$n', []); 
+    else begin end
+  end
 end;
 
 procedure genMainProc(m: BModule);
@@ -581,13 +600,13 @@ const
     '$1' +
     '$2';
   PosixMain =
-    'NS cmdCount;$n' +
+    'NI cmdCount;$n' +
     'char** cmdLine;$n' +
     'char** gEnv;$n' +
     'int main(int argc, char** args, char** env) {$n' +
     '  int dummy[8];$n' +
     '  cmdLine = args;$n' +
-    '  cmdCount = (NS)argc;$n' +
+    '  cmdCount = (NI)argc;$n' +
     '  gEnv = env;$n' +{&}
     CommonMainBody +{&}
     '  return 0;$n' +
@@ -610,7 +629,7 @@ const
 var
   frmt: TFormatStr;
 begin
-  useMagic('setStackBottom');
+  useMagic(m, 'setStackBottom');
   if (platform.targetOS = osWindows) and
       (gGlobalOptions * [optGenGuiApp, optGenDynLib] <> []) then begin
     if optGenGuiApp in gGlobalOptions then
@@ -622,8 +641,8 @@ begin
   else
     frmt := PosixMain;
   if gBreakpoints <> nil then
-    useMagic('dbgRegisterBreakpoint');
-  appRopeFormat(m.s[cfsProcs], frmt, [gBreakpoints, mainModInit])
+    useMagic(m, 'dbgRegisterBreakpoint');
+  appf(m.s[cfsProcs], frmt, [gBreakpoints, mainModInit])
 end;
 
 procedure genInitCode(m: BModule);
@@ -631,16 +650,16 @@ var
   initname, prc: PRope;
 begin
   initname := con(m.module.name.s, toRope('Init'));
-  appRopeFormat(mainModProcs, 'N_NIMCALL(void, $1)(void);$n',
+  appf(mainModProcs, 'N_NIMCALL(void, $1)(void);$n',
     [initname]);
   if not (sfSystemModule in m.module.flags) then
-    appRopeFormat(mainModInit, '$1();$n', [initname]);
-  prc := ropeFormat('N_NIMCALL(void, $1)(void) {$n', [initname]);
+    appf(mainModInit, '$1();$n', [initname]);
+  prc := ropef('N_NIMCALL(void, $1)(void) {$n', [initname]);
   if optStackTrace in m.initProc.options then begin
     prepend(m.initProc.s[cpsLocals], toRope('volatile TFrame F;' + tnl));
     app(prc, m.initProc.s[cpsLocals]);
     app(prc, m.s[cfsTypeInit1]);
-    appRopeFormat(prc,
+    appf(prc,
       'F.len = 0;$n' + // IMPORTANT: else the debugger crashes!
       'F.procname = $1;$n' +
       'F.prev = framePtr;$n' +
@@ -666,12 +685,12 @@ begin
   app(m.s[cfsProcs], prc)
 end;
 
-function genModule(m: BModule): PRope;
+function genModule(m: BModule; const cfilenoext: string): PRope;
 var
   i: TCFileSection;
 begin
-  result := getFileHeader();
-  generateHeaders();
+  result := getFileHeader(cfilenoext);
+  generateHeaders(m);
   for i := low(TCFileSection) to cfsProcs do app(result, m.s[i])
 end;
 
@@ -688,11 +707,10 @@ begin
   initIdTable(result.typeCache);
   initIdTable(result.forwTypeCache);
   result.module := module;
-  if gCmd <> cmdCompileToCpp then
-    constTok := toRope('const ');
   intSetInit(result.typeInfoMarker);
-  result.initProc := newProc(nil);
+  result.initProc := newProc(nil, result);
   result.initProc.options := gOptions;
+{@emit result.typeStack := [];}
 end;
 
 function shouldRecompile(code: PRope; const cfile, cfilenoext: string): bool;
@@ -717,28 +735,27 @@ var
   code: PRope;
 begin
   m := BModule(b);
-  currMod := m;
-  currMod.initProc.options := gOptions;
-  genStmts(currMod.initProc, n);
+  m.initProc.options := gOptions;
+  genStmts(m.initProc, n);
   // generate code for the init statements of the module:
   genInitCode(m);
+  finishTypeDescriptions(m);
   if sfMainModule in m.module.flags then begin
     // generate mapping file (if requested):
     if gMapping <> nil then
       WriteRope(gMapping, ChangeFileExt(cfile + '_map', 'txt'));
 
     // generate main file:
-    app(currMod.s[cfsProcHeaders], mainModProcs);
-    genMainProc(currMod);
+    app(m.s[cfsProcHeaders], mainModProcs);
+    genMainProc(m);
   end;
   cfile := completeCFilePath(m.cfilename);
   cfilenoext := changeFileExt(cfile, '');
-  code := genModule(m);
+  code := genModule(m, cfilenoext);
   if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext) then begin
     addFileToCompile(cfilenoext); // is to compile
   end;
   addFileToLink(cfilenoext);
-  currMod := nil // free the memory
 end;
 
 function CBackend(b: PBackend; module: PSym; const filename: string): PBackend;
@@ -749,7 +766,6 @@ begin
   g.backendCreator := CBackend;
   g.eventMask := {@set}[eAfterModule];
   g.afterModuleEvent := finishModule;
-  currMod := g;
   result := g;
 end;
 

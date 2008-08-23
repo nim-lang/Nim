@@ -1,8 +1,5 @@
 # Test the new iterators
 
-import
-  io
-
 iterator xrange(fromm, to: int, step = 1): (a: int) =
   a = fromm
   while a <= to:

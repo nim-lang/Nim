@@ -136,6 +136,10 @@ procedure debug(n: PNode); overload;
 function IdTableGet(const t: TIdTable; key: PIdObj): PObject;
 procedure IdTablePut(var t: TIdTable; key: PIdObj; val: PObject);
 
+function IdTableHasObjectAsKey(const t: TIdTable; key: PIdObj): bool;
+// checks if `t` contains the `key` (compared by the pointer value, not only
+// `key`'s id)
+
 function IdNodeTableGet(const t: TIdNodeTable; key: PIdObj): PNode;
 procedure IdNodeTablePut(var t: TIdNodeTable; key: PIdObj; val: PNode);
 
@@ -180,8 +184,6 @@ function nextTry(h, maxHash: THash): THash;
 implementation
 
 function lookupInRecord(n: PNode; field: PIdent): PSym;
-// XXX: transform in a node that contains the runtime check for the
-// field, if it is in a case-part...
 var
   i: int;
 begin
@@ -194,7 +196,7 @@ begin
       end
     end;
     nkRecCase: begin
-      assert(n.sons[0].kind = nkSym);
+      if (n.sons[0].kind <> nkSym) then InternalError(n.info, 'lookupInRecord');
       result := lookupInRecord(n.sons[0], field);
       if result <> nil then exit;
       for i := 1 to sonsLen(n)-1 do begin
@@ -203,7 +205,7 @@ begin
             result := lookupInRecord(lastSon(n.sons[i]), field);
             if result <> nil then exit;
           end;
-          else internalError('lookupInRecord(record case branch)');
+          else internalError(n.info, 'lookupInRecord(record case branch)');
         end
       end
     end;
@@ -226,7 +228,8 @@ var
   i: int;
 begin
   for i := start to sonsLen(list)-1 do begin
-    assert(list.sons[i].kind = nkSym);
+    if list.sons[i].kind <> nkSym then
+      InternalError(list.info, 'getSymFromList');
     result := list.sons[i].sym;
     if result.name.id = ident.id then exit
   end;
@@ -342,7 +345,7 @@ end;
 
 function lineInfoToStr(const info: TLineInfo): PRope;
 begin
-  result := ropeFormat('[$1, $2, $3]', [makeYamlString(toFilename(info)),
+  result := ropef('[$1, $2, $3]', [makeYamlString(toFilename(info)),
               toRope(toLinenumber(info)), toRope(toColumn(info))]);
 end;
 
@@ -367,11 +370,11 @@ begin
   for i := 0 to high(n.data) do
     if n.data[i] <> nil then begin
       if mycount > 0 then app(result, ','+'');
-      appRopeFormat(result, '$n$1$2',
+      appf(result, '$n$1$2',
         [istr, symToYamlAux(n.data[i], marker, indent+2, maxRecDepth-1)]);
       inc(mycount)
     end;
-  if mycount > 0 then appRopeFormat(result, '$n$1', [spaces(indent)]);
+  if mycount > 0 then appf(result, '$n$1', [spaces(indent)]);
   app(result, ']'+'');
   assert(mycount = n.counter);
 end;
@@ -387,10 +390,10 @@ begin
   i := 0;
   while i <= high(c) do begin
     if i > 0 then app(result, ','+'');
-    appRopeFormat(result, '$n$1"$2": $3', [istr, c[i], c[i+1]]);
+    appf(result, '$n$1"$2": $3', [istr, c[i], c[i+1]]);
     inc(i, 2)
   end;
-  appRopeFormat(result, '$n$1}', [spaces(indent)]);
+  appf(result, '$n$1}', [spaces(indent)]);
 end;
 
 function symToYamlAux(n: PSym; var marker: TObjectSet;
@@ -401,7 +404,7 @@ begin
   if n = nil then
     result := toRope('null')
   else if ObjectSetContainsOrIncl(marker, n) then
-    result := ropeFormat('"$1 @$2"', [
+    result := ropef('"$1 @$2"', [
       toRope(n.name.s),
       toRope(strutils.toHex({@cast}TAddress(n), sizeof(n)*2))])
   else begin
@@ -427,7 +430,7 @@ begin
   if n = nil then
     result := toRope('null')
   else if objectSetContainsOrIncl(marker, n) then
-    result := ropeFormat('"$1 @$2"', [
+    result := ropef('"$1 @$2"', [
       toRope(typeKindToStr[n.kind]),
       toRope(strutils.toHex({@cast}TAddress(n), sizeof(n)*2))])
   else begin
@@ -453,48 +456,48 @@ begin
     result := toRope('null')
   else begin
     istr := spaces(indent+2);
-    result := ropeFormat('{$n$1"kind": $2',
+    result := ropef('{$n$1"kind": $2',
                          [istr, makeYamlString(nodeKindToStr[n.kind])]);
     if maxRecDepth <> 0 then begin
-      appRopeFormat(result, ',$n$1"typ": $2',
-        [istr, typeToYamlAux(n.typ, marker, indent+2, maxRecDepth)]);
-      appRopeFormat(result, ',$n$1"info": $2',
+      appf(result, ',$n$1"info": $2',
         [istr, lineInfoToStr(n.info)]);
       case n.kind of
         nkCharLit..nkInt64Lit:
-          appRopeFormat(result, '$n$1"intVal": $2', [istr, toRope(n.intVal)]);
+          appf(result, '$n$1"intVal": $2', [istr, toRope(n.intVal)]);
         nkFloatLit, nkFloat32Lit, nkFloat64Lit:
-          appRopeFormat(result, '$n$1"floatVal": $2',
+          appf(result, '$n$1"floatVal": $2',
                         [istr, toRopeF(n.floatVal)]);
         nkStrLit..nkTripleStrLit:
-          appRopeFormat(result, '$n$1"strVal": $2',
+          appf(result, '$n$1"strVal": $2',
                         [istr, makeYamlString(n.strVal)]);
         nkSym:
-          appRopeFormat(result, ',$n$1"sym": $2',
+          appf(result, ',$n$1"sym": $2',
             [istr, symToYamlAux(n.sym, marker, indent+2, maxRecDepth)]);
 
         nkIdent: begin
           if n.ident <> nil then
-            appRopeFormat(result, '$n$1"ident": $2',
+            appf(result, '$n$1"ident": $2',
                           [istr, makeYamlString(n.ident.s)])
           else
-            appRopeFormat(result, '$n$1"ident": null', [istr])
+            appf(result, '$n$1"ident": null', [istr])
         end
         else begin
           if sonsLen(n) > 0 then begin
-            appRopeFormat(result, ',$n$1"sons": [', [istr]);
+            appf(result, ',$n$1"sons": [', [istr]);
             for i := 0 to sonsLen(n)-1 do begin
               if i > 0 then app(result, ','+'');
-              appRopeFormat(result, '$n$1$2',
+              appf(result, '$n$1$2',
                 [spaces(indent+4),
                  treeToYamlAux(n.sons[i], marker, indent + 4, maxRecDepth-1)]);
             end;
-            appRopeFormat(result, '$n$1]', [istr]);
+            appf(result, '$n$1]', [istr]);
           end
         end
-      end
+      end;
+      appf(result, ',$n$1"typ": $2',
+        [istr, typeToYamlAux(n.typ, marker, indent+2, maxRecDepth)]);
     end;
-    appRopeFormat(result, '$n$1}', [spaces(indent)]);
+    appf(result, '$n$1}', [spaces(indent)]);
   end
 end;
 
@@ -523,19 +526,88 @@ begin
 end;
 
 // these are for debugging only:
+function debugType(n: PType): PRope;
+var
+  i: int;
+begin
+  if n = nil then
+    result := toRope('null')
+  else begin
+    result := toRope(typeKindToStr[n.kind]);
+    app(result, '('+'');
+    for i := 0 to sonsLen(n)-1 do begin
+      if i > 0 then app(result, ', ');
+      if n.sons[i] = nil then app(result, 'null')
+      else app(result, debugType(n.sons[i]));
+       //  app(result, typeKindToStr[n.sons[i].kind]);
+    end;
+    app(result, ')'+'');
+  end
+end;
+
+function debugTree(n: PNode; indent: int; maxRecDepth: int): PRope;
+var
+  istr: PRope;
+  i: int;
+begin
+  if n = nil then
+    result := toRope('null')
+  else begin
+    istr := spaces(indent+2);
+    result := ropef('{$n$1"kind": $2',
+                         [istr, makeYamlString(nodeKindToStr[n.kind])]);
+    if maxRecDepth <> 0 then begin
+      case n.kind of
+        nkCharLit..nkInt64Lit:
+          appf(result, '$n$1"intVal": $2', [istr, toRope(n.intVal)]);
+        nkFloatLit, nkFloat32Lit, nkFloat64Lit:
+          appf(result, '$n$1"floatVal": $2',
+                        [istr, toRopeF(n.floatVal)]);
+        nkStrLit..nkTripleStrLit:
+          appf(result, '$n$1"strVal": $2',
+                        [istr, makeYamlString(n.strVal)]);
+        nkSym:
+          appf(result, ',$n$1"sym": $2_$3',
+            [istr, toRope(n.sym.name.s), toRope(n.sym.id)]);
+
+        nkIdent: begin
+          if n.ident <> nil then
+            appf(result, '$n$1"ident": $2',
+                          [istr, makeYamlString(n.ident.s)])
+          else
+            appf(result, '$n$1"ident": null', [istr])
+        end
+        else begin
+          if sonsLen(n) > 0 then begin
+            appf(result, ',$n$1"sons": [', [istr]);
+            for i := 0 to sonsLen(n)-1 do begin
+              if i > 0 then app(result, ','+'');
+              appf(result, '$n$1$2',
+                [spaces(indent+4),
+                 debugTree(n.sons[i], indent + 4, maxRecDepth-1)]);
+            end;
+            appf(result, '$n$1]', [istr]);
+          end
+        end
+      end;
+    end;
+    appf(result, '$n$1}', [spaces(indent)]);
+  end
+end;
+
 procedure debug(n: PSym); overload;
 begin
-  writeln(output, ropeToStr(symToYaml(n, 0, 3)));
+  writeln(output, ropeToStr(ropef('$1_$2', [toRope(n.name.s), toRope(n.id)])));
 end;
 
 procedure debug(n: PType); overload;
 begin
-  writeln(output, ropeToStr(typeToYaml(n, 0, 3)));
+  writeln(output, ropeToStr(debugType(n)));
 end;
 
 procedure debug(n: PNode); overload;
 begin
-  writeln(output, ropeToStr(treeToYaml(n, 0, -1)));
+  writeln(output, ropeToStr(debugTree(n, 0, 100)));
 end;
 
 // -------------------- node sets --------------------------------------------
@@ -748,7 +820,8 @@ var
 begin
   h := n.name.h and high(data);
   while data[h] <> nil do begin
-    assert(data[h] <> n);
+    if data[h] = n then
+      InternalError(n.info, 'StrTableRawInsert: ' + n.name.s);
     h := nextTry(h, high(data))
   end;
   assert(data[h] = nil);
@@ -963,6 +1036,15 @@ begin
   result := -1
 end;
 
+function IdTableHasObjectAsKey(const t: TIdTable; key: PIdObj): bool;
+var
+  index: int;
+begin
+  index := IdTableRawGet(t, key);
+  if index >= 0 then result := t.data[index].key = key
+  else result := false
+end;
+
 function IdTableGet(const t: TIdTable; key: PIdObj): PObject;
 var
   index: int;
@@ -999,6 +1081,7 @@ begin
   end
   else begin
     if mustRehash(length(t.data), t.counter) then begin
+      {@emit n := [];}
       setLength(n, length(t.data) * growthFactor);
     {@ignore}
       fillChar(n[0], length(n)*sizeof(n[0]), 0);
@@ -1083,6 +1166,7 @@ begin
   end
   else begin
     if mustRehash(length(t.data), t.counter) then begin
+      {@emit n := [];}
       setLength(n, length(t.data) * growthFactor);
     {@ignore}
       fillChar(n[0], length(n)*sizeof(n[0]), 0);

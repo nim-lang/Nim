@@ -162,7 +162,7 @@ type
   # Data passed back in callouts  
   # Const before type ignored 
   # Pointer to character tables  
-  Tpcre_extra* = record
+  Tpcre_extra* {.final.} = object
     flags: cuint
     study_data: pointer
     match_limit: cuint
@@ -189,7 +189,7 @@ type
   # Offset to next item in the pattern  
   # Length of next item in the pattern  
   # ------------------------------------------------------------------  
-  TPcre_callout_block* = record
+  TPcre_callout_block* {.final.} = object
     version: cint
     callout_number: cint
     offset_vector: ptr cint

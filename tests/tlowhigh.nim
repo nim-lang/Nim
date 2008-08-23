@@ -1,8 +1,5 @@
 # Test the magic low() and high() procs
 
-import
-  io
-
 type
   myEnum = enum e1, e2, e3, e4, e5
 

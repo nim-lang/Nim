@@ -10,33 +10,34 @@ Index
      `system.html#235 <system.html#235>`_
 
    `$`:idx:
-     * `system.html#326 <system.html#326>`_
-     * `system.html#327 <system.html#327>`_
      * `system.html#328 <system.html#328>`_
      * `system.html#329 <system.html#329>`_
      * `system.html#330 <system.html#330>`_
      * `system.html#331 <system.html#331>`_
      * `system.html#332 <system.html#332>`_
+     * `system.html#333 <system.html#333>`_
+     * `system.html#334 <system.html#334>`_
      * `times.html#109 <times.html#109>`_
      * `times.html#110 <times.html#110>`_
 
    `%`:idx:
-     * `strutils.html#128 <strutils.html#128>`_
      * `strutils.html#129 <strutils.html#129>`_
+     * `strutils.html#130 <strutils.html#130>`_
+     * `strtabs.html#112 <strtabs.html#112>`_
 
    `%%`:idx:
-     * `system.html#318 <system.html#318>`_
-     * `system.html#319 <system.html#319>`_
+     * `system.html#320 <system.html#320>`_
+     * `system.html#321 <system.html#321>`_
 
    `&`:idx:
      * `system.html#245 <system.html#245>`_
      * `system.html#246 <system.html#246>`_
      * `system.html#247 <system.html#247>`_
      * `system.html#248 <system.html#248>`_
-     * `system.html#349 <system.html#349>`_
-     * `system.html#350 <system.html#350>`_
-     * `system.html#351 <system.html#351>`_
-     * `system.html#352 <system.html#352>`_
+     * `system.html#358 <system.html#358>`_
+     * `system.html#359 <system.html#359>`_
+     * `system.html#360 <system.html#360>`_
+     * `system.html#361 <system.html#361>`_
 
    `*`:idx:
      * `system.html#159 <system.html#159>`_
@@ -46,8 +47,8 @@ Index
      * `complex.html#107 <complex.html#107>`_
 
    `*%`:idx:
-     * `system.html#314 <system.html#314>`_
-     * `system.html#315 <system.html#315>`_
+     * `system.html#316 <system.html#316>`_
+     * `system.html#317 <system.html#317>`_
 
    `+`:idx:
      * `system.html#154 <system.html#154>`_
@@ -60,8 +61,8 @@ Index
      * `complex.html#103 <complex.html#103>`_
 
    `+%`:idx:
-     * `system.html#310 <system.html#310>`_
-     * `system.html#311 <system.html#311>`_
+     * `system.html#312 <system.html#312>`_
+     * `system.html#313 <system.html#313>`_
 
    `-`:idx:
      * `system.html#155 <system.html#155>`_
@@ -76,8 +77,8 @@ Index
      * `times.html#113 <times.html#113>`_
 
    `-%`:idx:
-     * `system.html#312 <system.html#312>`_
-     * `system.html#313 <system.html#313>`_
+     * `system.html#314 <system.html#314>`_
+     * `system.html#315 <system.html#315>`_
 
    `-+-`:idx:
      `system.html#210 <system.html#210>`_
@@ -88,8 +89,8 @@ Index
      * `complex.html#106 <complex.html#106>`_
 
    `/%`:idx:
-     * `system.html#316 <system.html#316>`_
-     * `system.html#317 <system.html#317>`_
+     * `system.html#318 <system.html#318>`_
+     * `system.html#319 <system.html#319>`_
 
    `/../`:idx:
      `os.html#121 <os.html#121>`_
@@ -108,8 +109,8 @@ Index
      * `system.html#234 <system.html#234>`_
 
    `<%`:idx:
-     * `system.html#322 <system.html#322>`_
-     * `system.html#323 <system.html#323>`_
+     * `system.html#324 <system.html#324>`_
+     * `system.html#325 <system.html#325>`_
 
    `<=`:idx:
      * `system.html#168 <system.html#168>`_
@@ -124,8 +125,8 @@ Index
      * `system.html#226 <system.html#226>`_
 
    `<=%`:idx:
-     * `system.html#320 <system.html#320>`_
-     * `system.html#321 <system.html#321>`_
+     * `system.html#322 <system.html#322>`_
+     * `system.html#323 <system.html#323>`_
 
    `==`:idx:
      * `system.html#167 <system.html#167>`_
@@ -140,29 +141,95 @@ Index
      * `system.html#217 <system.html#217>`_
      * `system.html#218 <system.html#218>`_
      * `system.html#219 <system.html#219>`_
-     * `system.html#353 <system.html#353>`_
+     * `system.html#363 <system.html#363>`_
      * `complex.html#102 <complex.html#102>`_
 
    `>`:idx:
      `system.html#237 <system.html#237>`_
 
    `>%`:idx:
-     `system.html#325 <system.html#325>`_
+     `system.html#327 <system.html#327>`_
 
    `>=`:idx:
      `system.html#236 <system.html#236>`_
 
    `>=%`:idx:
-     `system.html#324 <system.html#324>`_
+     `system.html#326 <system.html#326>`_
+
+   `[]`:idx:
+     `strtabs.html#107 <strtabs.html#107>`_
+
+   `[]=`:idx:
+     `strtabs.html#106 <strtabs.html#106>`_
 
    `[ESC]`:idx:
      `manual.html#134 <manual.html#134>`_
+
+   `ABDAY_1`:idx:
+     `posix.html#400 <posix.html#400>`_
+
+   `ABDAY_2`:idx:
+     `posix.html#401 <posix.html#401>`_
+
+   `ABDAY_3`:idx:
+     `posix.html#402 <posix.html#402>`_
+
+   `ABDAY_4`:idx:
+     `posix.html#403 <posix.html#403>`_
+
+   `ABDAY_5`:idx:
+     `posix.html#404 <posix.html#404>`_
+
+   `ABDAY_6`:idx:
+     `posix.html#405 <posix.html#405>`_
+
+   `ABDAY_7`:idx:
+     `posix.html#406 <posix.html#406>`_
+
+   `ABMON_1`:idx:
+     `posix.html#419 <posix.html#419>`_
+
+   `ABMON_10`:idx:
+     `posix.html#428 <posix.html#428>`_
+
+   `ABMON_11`:idx:
+     `posix.html#429 <posix.html#429>`_
+
+   `ABMON_12`:idx:
+     `posix.html#430 <posix.html#430>`_
+
+   `ABMON_2`:idx:
+     `posix.html#420 <posix.html#420>`_
+
+   `ABMON_3`:idx:
+     `posix.html#421 <posix.html#421>`_
+
+   `ABMON_4`:idx:
+     `posix.html#422 <posix.html#422>`_
+
+   `ABMON_5`:idx:
+     `posix.html#423 <posix.html#423>`_
+
+   `ABMON_6`:idx:
+     `posix.html#424 <posix.html#424>`_
+
+   `ABMON_7`:idx:
+     `posix.html#425 <posix.html#425>`_
+
+   `ABMON_8`:idx:
+     `posix.html#426 <posix.html#426>`_
+
+   `ABMON_9`:idx:
+     `posix.html#427 <posix.html#427>`_
 
    `abs`:idx:
      * `system.html#170 <system.html#170>`_
      * `system.html#189 <system.html#189>`_
      * `system.html#201 <system.html#201>`_
      * `complex.html#108 <complex.html#108>`_
+
+   `access`:idx:
+     `posix.html#959 <posix.html#959>`_
 
    `add`:idx:
      * `system.html#249 <system.html#249>`_
@@ -174,11 +241,44 @@ Index
    `addQuitProc`:idx:
      `system.html#287 <system.html#287>`_
 
+   `AIO_ALLDONE`:idx:
+     `posix.html#204 <posix.html#204>`_
+
+   `aio_cancel`:idx:
+     `posix.html#778 <posix.html#778>`_
+
+   `AIO_CANCELED`:idx:
+     `posix.html#205 <posix.html#205>`_
+
+   `aio_error`:idx:
+     `posix.html#779 <posix.html#779>`_
+
+   `aio_fsync`:idx:
+     `posix.html#780 <posix.html#780>`_
+
+   `AIO_NOTCANCELED`:idx:
+     `posix.html#206 <posix.html#206>`_
+
+   `aio_read`:idx:
+     `posix.html#781 <posix.html#781>`_
+
+   `aio_return`:idx:
+     `posix.html#782 <posix.html#782>`_
+
+   `aio_suspend`:idx:
+     `posix.html#783 <posix.html#783>`_
+
+   `aio_write`:idx:
+     `posix.html#784 <posix.html#784>`_
+
+   `alarm`:idx:
+     `posix.html#960 <posix.html#960>`_
+
    `alert`:idx:
      `manual.html#131 <manual.html#131>`_
 
    `allCharsInSet`:idx:
-     `strutils.html#133 <strutils.html#133>`_
+     `strutils.html#134 <strutils.html#134>`_
 
    `alloc`:idx:
      `system.html#296 <system.html#296>`_
@@ -186,8 +286,14 @@ Index
    `alloc0`:idx:
      `system.html#297 <system.html#297>`_
 
+   `ALT_DIGITS`:idx:
+     `posix.html#435 <posix.html#435>`_
+
    `AltSep`:idx:
      `os.html#104 <os.html#104>`_
+
+   `AM_STR`:idx:
+     `posix.html#391 <posix.html#391>`_
 
    `and`:idx:
      * `system.html#164 <system.html#164>`_
@@ -201,16 +307,16 @@ Index
      `os.html#127 <os.html#127>`_
 
    `arccos`:idx:
-     `math.html#110 <math.html#110>`_
+     `math.html#115 <math.html#115>`_
 
    `arcsin`:idx:
-     `math.html#111 <math.html#111>`_
+     `math.html#116 <math.html#116>`_
 
    `arctan`:idx:
-     `math.html#112 <math.html#112>`_
+     `math.html#117 <math.html#117>`_
 
    `arctan2`:idx:
-     `math.html#113 <math.html#113>`_
+     `math.html#118 <math.html#118>`_
 
    `array`:idx:
      `system.html#108 <system.html#108>`_
@@ -218,8 +324,14 @@ Index
    `Arrays`:idx:
      `manual.html#153 <manual.html#153>`_
 
+   `asctime`:idx:
+     `posix.html#1085 <posix.html#1085>`_
+
+   `asctime_r`:idx:
+     `posix.html#1086 <posix.html#1086>`_
+
    `assembler`:idx:
-     `manual.html#198 <manual.html#198>`_
+     `manual.html#197 <manual.html#197>`_
 
    `assert`:idx:
      `system.html#301 <system.html#301>`_
@@ -234,6 +346,9 @@ Index
    `backspace`:idx:
      `manual.html#132 <manual.html#132>`_
 
+   `basename`:idx:
+     `posix.html#838 <posix.html#838>`_
+
    `BiggestFloat`:idx:
      `system.html#257 <system.html#257>`_
 
@@ -241,25 +356,28 @@ Index
      `system.html#256 <system.html#256>`_
 
    `block`:idx:
-     `manual.html#194 <manual.html#194>`_
+     `manual.html#193 <manual.html#193>`_
 
    `boolean`:idx:
      `manual.html#147 <manual.html#147>`_
 
    `break`:idx:
-     `manual.html#195 <manual.html#195>`_
+     `manual.html#194 <manual.html#194>`_
 
    `breakpoint`:idx:
      `endb.html#103 <endb.html#103>`_
 
+   `bsd_signal`:idx:
+     `posix.html#1115 <posix.html#1115>`_
+
    `Byte`:idx:
-     `system.html#113 <system.html#113>`_
+     `system.html#112 <system.html#112>`_
 
    `C`:idx:
      `manual.html#136 <manual.html#136>`_
 
    `calling conventions`:idx:
-     `manual.html#164 <manual.html#164>`_
+     `manual.html#163 <manual.html#163>`_
 
    `capitalize`:idx:
      `strutils.html#110 <strutils.html#110>`_
@@ -271,13 +389,22 @@ Index
      `manual.html#122 <manual.html#122>`_
 
    `case`:idx:
-     `manual.html#182 <manual.html#182>`_
+     `manual.html#181 <manual.html#181>`_
+
+   `catclose`:idx:
+     `posix.html#1142 <posix.html#1142>`_
+
+   `catgets`:idx:
+     `posix.html#1143 <posix.html#1143>`_
+
+   `catopen`:idx:
+     `posix.html#1144 <posix.html#1144>`_
 
    `cchar`:idx:
      `system.html#258 <system.html#258>`_
 
    `cdecl`:idx:
-     `manual.html#166 <manual.html#166>`_
+     `manual.html#165 <manual.html#165>`_
 
    `cdouble`:idx:
      `system.html#265 <system.html#265>`_
@@ -297,8 +424,29 @@ Index
    `character with hex value HH`:idx:
      `manual.html#135 <manual.html#135>`_
 
+   `chdir`:idx:
+     `posix.html#961 <posix.html#961>`_
+
    `checked runtime error`:idx:
      `manual.html#110 <manual.html#110>`_
+
+   `chmod`:idx:
+     `posix.html#1051 <posix.html#1051>`_
+
+   `ChooseDir`:idx:
+     `dialogs.html#108 <dialogs.html#108>`_
+
+   `ChooseFilesToOpen`:idx:
+     `dialogs.html#106 <dialogs.html#106>`_
+
+   `ChooseFileToOpen`:idx:
+     `dialogs.html#105 <dialogs.html#105>`_
+
+   `ChooseFileToSave`:idx:
+     `dialogs.html#107 <dialogs.html#107>`_
+
+   `chown`:idx:
+     `posix.html#962 <posix.html#962>`_
 
    `chr`:idx:
      `system.html#153 <system.html#153>`_
@@ -306,8 +454,101 @@ Index
    `cint`:idx:
      `system.html#261 <system.html#261>`_
 
+   `C_IRGRP`:idx:
+     `posix.html#104 <posix.html#104>`_
+
+   `C_IROTH`:idx:
+     `posix.html#107 <posix.html#107>`_
+
+   `C_IRUSR`:idx:
+     `posix.html#101 <posix.html#101>`_
+
+   `C_ISBLK`:idx:
+     `posix.html#116 <posix.html#116>`_
+
+   `C_ISCHR`:idx:
+     `posix.html#117 <posix.html#117>`_
+
+   `C_ISCTG`:idx:
+     `posix.html#118 <posix.html#118>`_
+
+   `C_ISDIR`:idx:
+     `posix.html#113 <posix.html#113>`_
+
+   `C_ISFIFO`:idx:
+     `posix.html#114 <posix.html#114>`_
+
+   `C_ISGID`:idx:
+     `posix.html#111 <posix.html#111>`_
+
+   `C_ISLNK`:idx:
+     `posix.html#119 <posix.html#119>`_
+
+   `C_ISREG`:idx:
+     `posix.html#115 <posix.html#115>`_
+
+   `C_ISSOCK`:idx:
+     `posix.html#120 <posix.html#120>`_
+
+   `C_ISUID`:idx:
+     `posix.html#110 <posix.html#110>`_
+
+   `C_ISVTX`:idx:
+     `posix.html#112 <posix.html#112>`_
+
+   `C_IWGRP`:idx:
+     `posix.html#105 <posix.html#105>`_
+
+   `C_IWOTH`:idx:
+     `posix.html#108 <posix.html#108>`_
+
+   `C_IWUSR`:idx:
+     `posix.html#102 <posix.html#102>`_
+
+   `C_IXGRP`:idx:
+     `posix.html#106 <posix.html#106>`_
+
+   `C_IXOTH`:idx:
+     `posix.html#109 <posix.html#109>`_
+
+   `C_IXUSR`:idx:
+     `posix.html#103 <posix.html#103>`_
+
    `classify`:idx:
-     `math.html#123 <math.html#123>`_
+     `math.html#102 <math.html#102>`_
+
+   `clock`:idx:
+     `posix.html#1087 <posix.html#1087>`_
+
+   `clock_getcpuclockid`:idx:
+     `posix.html#1088 <posix.html#1088>`_
+
+   `clock_getres`:idx:
+     `posix.html#1089 <posix.html#1089>`_
+
+   `clock_gettime`:idx:
+     `posix.html#1090 <posix.html#1090>`_
+
+   `CLOCK_MONOTONIC`:idx:
+     `posix.html#697 <posix.html#697>`_
+
+   `clock_nanosleep`:idx:
+     `posix.html#1091 <posix.html#1091>`_
+
+   `CLOCK_PROCESS_CPUTIME_ID`:idx:
+     `posix.html#693 <posix.html#693>`_
+
+   `CLOCK_REALTIME`:idx:
+     `posix.html#695 <posix.html#695>`_
+
+   `clock_settime`:idx:
+     `posix.html#1092 <posix.html#1092>`_
+
+   `CLOCKS_PER_SEC`:idx:
+     `posix.html#692 <posix.html#692>`_
+
+   `CLOCK_THREAD_CPUTIME_ID`:idx:
+     `posix.html#694 <posix.html#694>`_
 
    `clong`:idx:
      `system.html#262 <system.html#262>`_
@@ -318,11 +559,18 @@ Index
    `clonglong`:idx:
      `system.html#263 <system.html#263>`_
 
+   `close`:idx:
+     * `parsecfg.html#106 <parsecfg.html#106>`_
+     * `posix.html#963 <posix.html#963>`_
+
+   `closedir`:idx:
+     `posix.html#794 <posix.html#794>`_
+
    `CloseFile`:idx:
-     `system.html#367 <system.html#367>`_
+     `system.html#378 <system.html#378>`_
 
    `closure`:idx:
-     `manual.html#171 <manual.html#171>`_
+     `manual.html#170 <manual.html#170>`_
 
    `cmp`:idx:
      * `system.html#243 <system.html#243>`_
@@ -337,6 +585,9 @@ Index
    `cmpPaths`:idx:
      `os.html#126 <os.html#126>`_
 
+   `CODESET`:idx:
+     `posix.html#386 <posix.html#386>`_
+
    `comment pieces`:idx:
      `manual.html#115 <manual.html#115>`_
 
@@ -350,10 +601,13 @@ Index
      `system.html#276 <system.html#276>`_
 
    `complex statements`:idx:
-     `manual.html#176 <manual.html#176>`_
+     `manual.html#175 <manual.html#175>`_
+
+   `confstr`:idx:
+     `posix.html#964 <posix.html#964>`_
 
    `const`:idx:
-     `manual.html#180 <manual.html#180>`_
+     `manual.html#179 <manual.html#179>`_
 
    `constant expressions`:idx:
      `manual.html#108 <manual.html#108>`_
@@ -362,7 +616,7 @@ Index
      `manual.html#140 <manual.html#140>`_
 
    `continue`:idx:
-     `manual.html#197 <manual.html#197>`_
+     `manual.html#196 <manual.html#196>`_
 
    `copy`:idx:
      * `system.html#288 <system.html#288>`_
@@ -375,25 +629,34 @@ Index
      `system.html#293 <system.html#293>`_
 
    `cos`:idx:
-     `math.html#114 <math.html#114>`_
+     `math.html#119 <math.html#119>`_
 
    `cosh`:idx:
-     `math.html#115 <math.html#115>`_
+     `math.html#120 <math.html#120>`_
 
    `countBits`:idx:
-     `math.html#103 <math.html#103>`_
+     `math.html#105 <math.html#105>`_
 
    `countdown`:idx:
-     `system.html#341 <system.html#341>`_
+     `system.html#344 <system.html#344>`_
 
    `countup`:idx:
-     `system.html#342 <system.html#342>`_
+     `system.html#345 <system.html#345>`_
 
    `cpuEndian`:idx:
      `system.html#281 <system.html#281>`_
 
+   `creat`:idx:
+     `posix.html#805 <posix.html#805>`_
+
    `createDir`:idx:
      `os.html#135 <os.html#135>`_
+
+   `CRNCYSTR`:idx:
+     `posix.html#440 <posix.html#440>`_
+
+   `crypt`:idx:
+     `posix.html#965 <posix.html#965>`_
 
    `cschar`:idx:
      `system.html#259 <system.html#259>`_
@@ -401,17 +664,95 @@ Index
    `cshort`:idx:
      `system.html#260 <system.html#260>`_
 
+   `cSIG_HOLD`:idx:
+     `posix.html#718 <posix.html#718>`_
+
+   `CS_PATH`:idx:
+     `posix.html#479 <posix.html#479>`_
+
+   `CS_POSIX_V6_ILP32_OFF32_CFLAGS`:idx:
+     `posix.html#480 <posix.html#480>`_
+
+   `CS_POSIX_V6_ILP32_OFF32_LDFLAGS`:idx:
+     `posix.html#481 <posix.html#481>`_
+
+   `CS_POSIX_V6_ILP32_OFF32_LIBS`:idx:
+     `posix.html#482 <posix.html#482>`_
+
+   `CS_POSIX_V6_ILP32_OFFBIG_CFLAGS`:idx:
+     `posix.html#483 <posix.html#483>`_
+
+   `CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS`:idx:
+     `posix.html#484 <posix.html#484>`_
+
+   `CS_POSIX_V6_ILP32_OFFBIG_LIBS`:idx:
+     `posix.html#485 <posix.html#485>`_
+
+   `CS_POSIX_V6_LP64_OFF64_CFLAGS`:idx:
+     `posix.html#486 <posix.html#486>`_
+
+   `CS_POSIX_V6_LP64_OFF64_LDFLAGS`:idx:
+     `posix.html#487 <posix.html#487>`_
+
+   `CS_POSIX_V6_LP64_OFF64_LIBS`:idx:
+     `posix.html#488 <posix.html#488>`_
+
+   `CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS`:idx:
+     `posix.html#489 <posix.html#489>`_
+
+   `CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS`:idx:
+     `posix.html#490 <posix.html#490>`_
+
+   `CS_POSIX_V6_LPBIG_OFFBIG_LIBS`:idx:
+     `posix.html#491 <posix.html#491>`_
+
+   `CS_POSIX_V6_WIDTH_RESTRICTED_ENVS`:idx:
+     `posix.html#492 <posix.html#492>`_
+
    `cstringArray`:idx:
      `system.html#267 <system.html#267>`_
+
+   `ctermid`:idx:
+     `posix.html#966 <posix.html#966>`_
+
+   `ctime`:idx:
+     `posix.html#1093 <posix.html#1093>`_
+
+   `ctime_r`:idx:
+     `posix.html#1094 <posix.html#1094>`_
 
    `CurDir`:idx:
      `os.html#101 <os.html#101>`_
 
    `dangling else problem`:idx:
-     `manual.html#177 <manual.html#177>`_
+     `manual.html#176 <manual.html#176>`_
+
+   `DAY_1`:idx:
+     `posix.html#393 <posix.html#393>`_
+
+   `DAY_2`:idx:
+     `posix.html#394 <posix.html#394>`_
+
+   `DAY_3`:idx:
+     `posix.html#395 <posix.html#395>`_
+
+   `DAY_4`:idx:
+     `posix.html#396 <posix.html#396>`_
+
+   `DAY_5`:idx:
+     `posix.html#397 <posix.html#397>`_
+
+   `DAY_6`:idx:
+     `posix.html#398 <posix.html#398>`_
+
+   `DAY_7`:idx:
+     `posix.html#399 <posix.html#399>`_
+
+   `daylight`:idx:
+     `posix.html#698 <posix.html#698>`_
 
    `dbgLineHook`:idx:
-     `system.html#337 <system.html#337>`_
+     `system.html#340 <system.html#340>`_
 
    `dealloc`:idx:
      `system.html#299 <system.html#299>`_
@@ -423,60 +764,185 @@ Index
      `system.html#144 <system.html#144>`_
 
    `define`:idx:
-     `manual.html#224 <manual.html#224>`_
+     `manual.html#223 <manual.html#223>`_
 
    `defined`:idx:
      `system.html#101 <system.html#101>`_
 
+   `deinitBaseLexer`:idx:
+     `lexbase.html#106 <lexbase.html#106>`_
+
    `deleteStr`:idx:
      `strutils.html#115 <strutils.html#115>`_
+
+   `D_FMT`:idx:
+     `posix.html#388 <posix.html#388>`_
+
+   `difftime`:idx:
+     `posix.html#1095 <posix.html#1095>`_
+
+   `dirname`:idx:
+     `posix.html#839 <posix.html#839>`_
 
    `DirSep`:idx:
      `os.html#103 <os.html#103>`_
 
    `discard`:idx:
-     `manual.html#178 <manual.html#178>`_
+     `manual.html#177 <manual.html#177>`_
 
    `div`:idx:
      * `system.html#160 <system.html#160>`_
      * `system.html#179 <system.html#179>`_
 
+   `dlclose`:idx:
+     `posix.html#801 <posix.html#801>`_
+
+   `dlerror`:idx:
+     `posix.html#802 <posix.html#802>`_
+
+   `dlopen`:idx:
+     `posix.html#803 <posix.html#803>`_
+
+   `dlsym`:idx:
+     `posix.html#804 <posix.html#804>`_
+
+   `dom`:idx:
+     `nimrodc.html#116 <nimrodc.html#116>`_
+
    `domain specific languages`:idx:
-     `manual.html#213 <manual.html#213>`_
+     `manual.html#212 <manual.html#212>`_
+
+   `D_T_FMT`:idx:
+     `posix.html#387 <posix.html#387>`_
+
+   `dup`:idx:
+     `posix.html#967 <posix.html#967>`_
+
+   `dup2`:idx:
+     `posix.html#968 <posix.html#968>`_
 
    `dynamic type`:idx:
      `manual.html#104 <manual.html#104>`_
 
+   `E2BIG`:idx:
+     `posix.html#217 <posix.html#217>`_
+
+   `EACCES`:idx:
+     `posix.html#218 <posix.html#218>`_
+
    `EAccessViolation`:idx:
-     `system.html#128 <system.html#128>`_
+     `system.html#127 <system.html#127>`_
+
+   `EADDRINUSE`:idx:
+     `posix.html#219 <posix.html#219>`_
+
+   `EADDRNOTAVAIL`:idx:
+     `posix.html#220 <posix.html#220>`_
+
+   `EAFNOSUPPORT`:idx:
+     `posix.html#221 <posix.html#221>`_
+
+   `EAGAIN`:idx:
+     `posix.html#222 <posix.html#222>`_
+
+   `EALREADY`:idx:
+     `posix.html#223 <posix.html#223>`_
 
    `EArithmetic`:idx:
-     `system.html#125 <system.html#125>`_
+     `system.html#124 <system.html#124>`_
 
    `EAssertionFailed`:idx:
-     `system.html#129 <system.html#129>`_
+     `system.html#128 <system.html#128>`_
 
    `EAsynch`:idx:
-     `system.html#119 <system.html#119>`_
-
-   `E_Base`:idx:
      `system.html#118 <system.html#118>`_
 
+   `EBADF`:idx:
+     `posix.html#224 <posix.html#224>`_
+
+   `EBADMSG`:idx:
+     `posix.html#225 <posix.html#225>`_
+
+   `E_Base`:idx:
+     `system.html#117 <system.html#117>`_
+
+   `EBUSY`:idx:
+     `posix.html#226 <posix.html#226>`_
+
+   `ECANCELED`:idx:
+     `posix.html#227 <posix.html#227>`_
+
+   `ECHILD`:idx:
+     `posix.html#228 <posix.html#228>`_
+
    `echo`:idx:
-     `system.html#380 <system.html#380>`_
+     `system.html#371 <system.html#371>`_
+
+   `ECMAScript`:idx:
+     `nimrodc.html#111 <nimrodc.html#111>`_
+
+   `ECONNABORTED`:idx:
+     `posix.html#229 <posix.html#229>`_
+
+   `ECONNREFUSED`:idx:
+     `posix.html#230 <posix.html#230>`_
+
+   `ECONNRESET`:idx:
+     `posix.html#231 <posix.html#231>`_
 
    `EControlC`:idx:
-     `system.html#130 <system.html#130>`_
+     `system.html#129 <system.html#129>`_
+
+   `EDEADLK`:idx:
+     `posix.html#232 <posix.html#232>`_
+
+   `EDESTADDRREQ`:idx:
+     `posix.html#233 <posix.html#233>`_
 
    `EDivByZero`:idx:
-     `system.html#126 <system.html#126>`_
+     `system.html#125 <system.html#125>`_
 
-   `EInvalidIndex`:idx:
+   `EDOM`:idx:
+     `posix.html#234 <posix.html#234>`_
+
+   `EDQUOT`:idx:
+     `posix.html#235 <posix.html#235>`_
+
+   `EEXIST`:idx:
+     `posix.html#236 <posix.html#236>`_
+
+   `EFAULT`:idx:
+     `posix.html#237 <posix.html#237>`_
+
+   `EFBIG`:idx:
+     `posix.html#238 <posix.html#238>`_
+
+   `EHOSTUNREACH`:idx:
+     `posix.html#239 <posix.html#239>`_
+
+   `EIDRM`:idx:
+     `posix.html#240 <posix.html#240>`_
+
+   `EILSEQ`:idx:
+     `posix.html#241 <posix.html#241>`_
+
+   `EINPROGRESS`:idx:
+     `posix.html#242 <posix.html#242>`_
+
+   `EINTR`:idx:
+     `posix.html#243 <posix.html#243>`_
+
+   `EINVAL`:idx:
+     `posix.html#244 <posix.html#244>`_
+
+   `EInvalidField`:idx:
      `system.html#133 <system.html#133>`_
 
+   `EInvalidIndex`:idx:
+     `system.html#132 <system.html#132>`_
+
    `EInvalidObjectAssignment`:idx:
-     * `manual.html#157 <manual.html#157>`_
-     * `system.html#137 <system.html#137>`_
+     `system.html#137 <system.html#137>`_
 
    `EInvalidObjectConversion`:idx:
      `system.html#138 <system.html#138>`_
@@ -486,51 +952,204 @@ Index
 
    `EInvalidValue`:idx:
      * `manual.html#146 <manual.html#146>`_
-     * `system.html#131 <system.html#131>`_
+     * `system.html#130 <system.html#130>`_
 
    `EIO`:idx:
-     `system.html#122 <system.html#122>`_
+     * `system.html#121 <system.html#121>`_
+     * `posix.html#245 <posix.html#245>`_
+
+   `EISCONN`:idx:
+     `posix.html#246 <posix.html#246>`_
+
+   `EISDIR`:idx:
+     `posix.html#247 <posix.html#247>`_
+
+   `ELOOP`:idx:
+     `posix.html#248 <posix.html#248>`_
 
    `Embedded Nimrod Debugger`:idx:
      `endb.html#101 <endb.html#101>`_
 
+   `EMFILE`:idx:
+     `posix.html#249 <posix.html#249>`_
+
+   `EMLINK`:idx:
+     `posix.html#250 <posix.html#250>`_
+
+   `EMSGSIZE`:idx:
+     `posix.html#251 <posix.html#251>`_
+
+   `EMULTIHOP`:idx:
+     `posix.html#252 <posix.html#252>`_
+
+   `ENAMETOOLONG`:idx:
+     `posix.html#253 <posix.html#253>`_
+
+   `encrypt`:idx:
+     `posix.html#969 <posix.html#969>`_
+
    `ENDB`:idx:
      `endb.html#102 <endb.html#102>`_
 
+   `endgrent`:idx:
+     `posix.html#832 <posix.html#832>`_
+
    `EndOfFile`:idx:
-     `system.html#368 <system.html#368>`_
+     * `system.html#379 <system.html#379>`_
+     * `lexbase.html#101 <lexbase.html#101>`_
+
+   `endpwent`:idx:
+     `posix.html#856 <posix.html#856>`_
 
    `endsWith`:idx:
-     `strutils.html#132 <strutils.html#132>`_
+     `strutils.html#133 <strutils.html#133>`_
+
+   `ENETDOWN`:idx:
+     `posix.html#254 <posix.html#254>`_
+
+   `ENETRESET`:idx:
+     `posix.html#255 <posix.html#255>`_
+
+   `ENETUNREACH`:idx:
+     `posix.html#256 <posix.html#256>`_
+
+   `ENFILE`:idx:
+     `posix.html#257 <posix.html#257>`_
+
+   `ENOBUFS`:idx:
+     `posix.html#258 <posix.html#258>`_
+
+   `ENODATA`:idx:
+     `posix.html#259 <posix.html#259>`_
+
+   `ENODEV`:idx:
+     `posix.html#260 <posix.html#260>`_
+
+   `ENOENT`:idx:
+     `posix.html#261 <posix.html#261>`_
 
    `ENoExceptionToReraise`:idx:
-     * `manual.html#186 <manual.html#186>`_
+     * `manual.html#185 <manual.html#185>`_
      * `system.html#136 <system.html#136>`_
+
+   `ENOEXEC`:idx:
+     `posix.html#262 <posix.html#262>`_
+
+   `ENOLCK`:idx:
+     `posix.html#263 <posix.html#263>`_
+
+   `ENOLINK`:idx:
+     `posix.html#264 <posix.html#264>`_
+
+   `ENOMEM`:idx:
+     `posix.html#265 <posix.html#265>`_
+
+   `ENOMSG`:idx:
+     `posix.html#266 <posix.html#266>`_
+
+   `ENOPROTOOPT`:idx:
+     `posix.html#267 <posix.html#267>`_
+
+   `ENOSPC`:idx:
+     `posix.html#268 <posix.html#268>`_
+
+   `ENOSR`:idx:
+     `posix.html#269 <posix.html#269>`_
+
+   `ENOSTR`:idx:
+     `posix.html#270 <posix.html#270>`_
+
+   `ENOSYS`:idx:
+     `posix.html#271 <posix.html#271>`_
+
+   `ENOTCONN`:idx:
+     `posix.html#272 <posix.html#272>`_
+
+   `ENOTDIR`:idx:
+     `posix.html#273 <posix.html#273>`_
+
+   `ENOTEMPTY`:idx:
+     `posix.html#274 <posix.html#274>`_
+
+   `ENOTSOCK`:idx:
+     `posix.html#275 <posix.html#275>`_
+
+   `ENOTSUP`:idx:
+     `posix.html#276 <posix.html#276>`_
+
+   `ENOTTY`:idx:
+     `posix.html#277 <posix.html#277>`_
 
    `Enumeration`:idx:
      `manual.html#149 <manual.html#149>`_
 
+   `ENXIO`:idx:
+     `posix.html#278 <posix.html#278>`_
+
+   `EOPNOTSUPP`:idx:
+     `posix.html#279 <posix.html#279>`_
+
    `EOS`:idx:
-     `system.html#123 <system.html#123>`_
+     `system.html#122 <system.html#122>`_
 
    `EOutOfMemory`:idx:
-     `system.html#132 <system.html#132>`_
+     `system.html#131 <system.html#131>`_
 
    `EOutOfRange`:idx:
      `system.html#134 <system.html#134>`_
 
    `EOverflow`:idx:
-     `system.html#127 <system.html#127>`_
+     `system.html#126 <system.html#126>`_
+
+   `EOVERFLOW`:idx:
+     `posix.html#280 <posix.html#280>`_
+
+   `EPERM`:idx:
+     `posix.html#281 <posix.html#281>`_
+
+   `EPIPE`:idx:
+     `posix.html#282 <posix.html#282>`_
+
+   `EPROTO`:idx:
+     `posix.html#283 <posix.html#283>`_
+
+   `EPROTONOSUPPORT`:idx:
+     `posix.html#284 <posix.html#284>`_
+
+   `EPROTOTYPE`:idx:
+     `posix.html#285 <posix.html#285>`_
 
    `equalMem`:idx:
      `system.html#295 <system.html#295>`_
 
+   `ERA`:idx:
+     `posix.html#431 <posix.html#431>`_
+
+   `ERA_D_FMT`:idx:
+     `posix.html#432 <posix.html#432>`_
+
+   `ERA_D_T_FMT`:idx:
+     `posix.html#433 <posix.html#433>`_
+
+   `ERANGE`:idx:
+     `posix.html#286 <posix.html#286>`_
+
+   `ERA_T_FMT`:idx:
+     `posix.html#434 <posix.html#434>`_
+
    `ERessourceExhausted`:idx:
-     `system.html#124 <system.html#124>`_
+     `system.html#123 <system.html#123>`_
+
+   `EROFS`:idx:
+     `posix.html#287 <posix.html#287>`_
+
+   `errno`:idx:
+     `posix.html#216 <posix.html#216>`_
 
    `error`:idx:
-     * `manual.html#223 <manual.html#223>`_
-     * `manual.html#226 <manual.html#226>`_
+     * `manual.html#222 <manual.html#222>`_
+     * `manual.html#225 <manual.html#225>`_
+     * `dialogs.html#104 <dialogs.html#104>`_
 
    `escape`:idx:
      `manual.html#133 <manual.html#133>`_
@@ -538,29 +1157,71 @@ Index
    `escape sequences`:idx:
      `manual.html#120 <manual.html#120>`_
 
+   `ESPIPE`:idx:
+     `posix.html#288 <posix.html#288>`_
+
+   `ESRCH`:idx:
+     `posix.html#289 <posix.html#289>`_
+
    `EStackOverflow`:idx:
      `system.html#135 <system.html#135>`_
 
+   `ESTALE`:idx:
+     `posix.html#290 <posix.html#290>`_
+
    `ESynch`:idx:
-     `system.html#120 <system.html#120>`_
+     `system.html#119 <system.html#119>`_
 
    `ESystem`:idx:
-     `system.html#121 <system.html#121>`_
+     `system.html#120 <system.html#120>`_
+
+   `ETIME`:idx:
+     `posix.html#291 <posix.html#291>`_
+
+   `ETIMEDOUT`:idx:
+     `posix.html#292 <posix.html#292>`_
+
+   `ETXTBSY`:idx:
+     `posix.html#293 <posix.html#293>`_
+
+   `EWOULDBLOCK`:idx:
+     `posix.html#294 <posix.html#294>`_
 
    `except`:idx:
-     `manual.html#189 <manual.html#189>`_
+     `manual.html#188 <manual.html#188>`_
 
    `exception handlers`:idx:
-     `manual.html#188 <manual.html#188>`_
+     `manual.html#187 <manual.html#187>`_
 
    `excl`:idx:
      `system.html#150 <system.html#150>`_
+
+   `EXDEV`:idx:
+     `posix.html#295 <posix.html#295>`_
+
+   `execl`:idx:
+     `posix.html#970 <posix.html#970>`_
+
+   `execle`:idx:
+     `posix.html#971 <posix.html#971>`_
+
+   `execlp`:idx:
+     `posix.html#972 <posix.html#972>`_
 
    `executeProcess`:idx:
      `os.html#129 <os.html#129>`_
 
    `executeShellCommand`:idx:
      `os.html#130 <os.html#130>`_
+
+   `execv`:idx:
+     `posix.html#973 <posix.html#973>`_
+
+   `execve`:idx:
+     `posix.html#974 <posix.html#974>`_
+
+   `execvp`:idx:
+     `posix.html#975 <posix.html#975>`_
 
    `existsDir`:idx:
      `os.html#136 <os.html#136>`_
@@ -572,7 +1233,7 @@ Index
      `os.html#115 <os.html#115>`_
 
    `exp`:idx:
-     `math.html#108 <math.html#108>`_
+     `math.html#112 <math.html#112>`_
 
    `expandFilename`:idx:
      `os.html#114 <os.html#114>`_
@@ -587,10 +1248,124 @@ Index
      `os.html#107 <os.html#107>`_
 
    `fastcall`:idx:
-     `manual.html#169 <manual.html#169>`_
+     `manual.html#168 <manual.html#168>`_
 
    `fatal`:idx:
-     `manual.html#227 <manual.html#227>`_
+     `manual.html#226 <manual.html#226>`_
+
+   `fchdir`:idx:
+     `posix.html#977 <posix.html#977>`_
+
+   `fchmod`:idx:
+     `posix.html#1052 <posix.html#1052>`_
+
+   `fchown`:idx:
+     `posix.html#976 <posix.html#976>`_
+
+   `fcntl`:idx:
+     `posix.html#806 <posix.html#806>`_
+
+   `fdatasync`:idx:
+     `posix.html#978 <posix.html#978>`_
+
+   `FD_CLOEXEC`:idx:
+     `posix.html#306 <posix.html#306>`_
+
+   `FD_CLR`:idx:
+     `posix.html#1154 <posix.html#1154>`_
+
+   `FD_ISSET`:idx:
+     `posix.html#1155 <posix.html#1155>`_
+
+   `FD_SET`:idx:
+     `posix.html#1156 <posix.html#1156>`_
+
+   `FD_SETSIZE`:idx:
+     `posix.html#771 <posix.html#771>`_
+
+   `F_DUPFD`:idx:
+     `posix.html#296 <posix.html#296>`_
+
+   `FD_ZERO`:idx:
+     `posix.html#1157 <posix.html#1157>`_
+
+   `FE_ALL_EXCEPT`:idx:
+     `posix.html#334 <posix.html#334>`_
+
+   `feclearexcept`:idx:
+     `posix.html#810 <posix.html#810>`_
+
+   `FE_DFL_ENV`:idx:
+     `posix.html#339 <posix.html#339>`_
+
+   `FE_DIVBYZERO`:idx:
+     `posix.html#329 <posix.html#329>`_
+
+   `FE_DOWNWARD`:idx:
+     `posix.html#335 <posix.html#335>`_
+
+   `fegetenv`:idx:
+     `posix.html#817 <posix.html#817>`_
+
+   `fegetexceptflag`:idx:
+     `posix.html#811 <posix.html#811>`_
+
+   `fegetround`:idx:
+     `posix.html#815 <posix.html#815>`_
+
+   `feholdexcept`:idx:
+     `posix.html#818 <posix.html#818>`_
+
+   `FE_INEXACT`:idx:
+     `posix.html#330 <posix.html#330>`_
+
+   `FE_INVALID`:idx:
+     `posix.html#331 <posix.html#331>`_
+
+   `FE_OVERFLOW`:idx:
+     `posix.html#332 <posix.html#332>`_
+
+   `feraiseexcept`:idx:
+     `posix.html#812 <posix.html#812>`_
+
+   `fesetenv`:idx:
+     `posix.html#819 <posix.html#819>`_
+
+   `fesetexceptflag`:idx:
+     `posix.html#813 <posix.html#813>`_
+
+   `fesetround`:idx:
+     `posix.html#816 <posix.html#816>`_
+
+   `fetestexcept`:idx:
+     `posix.html#814 <posix.html#814>`_
+
+   `FE_TONEAREST`:idx:
+     `posix.html#336 <posix.html#336>`_
+
+   `FE_TOWARDZERO`:idx:
+     `posix.html#337 <posix.html#337>`_
+
+   `FE_UNDERFLOW`:idx:
+     `posix.html#333 <posix.html#333>`_
+
+   `feupdateenv`:idx:
+     `posix.html#820 <posix.html#820>`_
+
+   `FE_UPWARD`:idx:
+     `posix.html#338 <posix.html#338>`_
+
+   `F_GETFD`:idx:
+     `posix.html#297 <posix.html#297>`_
+
+   `F_GETFL`:idx:
+     `posix.html#299 <posix.html#299>`_
+
+   `F_GETLK`:idx:
+     `posix.html#301 <posix.html#301>`_
+
+   `F_GETOWN`:idx:
+     `posix.html#304 <posix.html#304>`_
 
    `fileNewer`:idx:
      `os.html#138 <os.html#138>`_
@@ -599,7 +1374,7 @@ Index
      `os.html#106 <os.html#106>`_
 
    `finally`:idx:
-     `manual.html#190 <manual.html#190>`_
+     `manual.html#189 <manual.html#189>`_
 
    `find`:idx:
      * `regexprs.html#109 <regexprs.html#109>`_
@@ -609,50 +1384,167 @@ Index
      * `strutils.html#112 <strutils.html#112>`_
      * `strutils.html#113 <strutils.html#113>`_
 
+   `F_LOCK`:idx:
+     `posix.html#493 <posix.html#493>`_
+
    `FlushFile`:idx:
-     `system.html#370 <system.html#370>`_
+     `system.html#381 <system.html#381>`_
+
+   `fmtmsg`:idx:
+     `posix.html#821 <posix.html#821>`_
+
+   `fnmatch`:idx:
+     `posix.html#822 <posix.html#822>`_
+
+   `FNM_NOESCAPE`:idx:
+     `posix.html#362 <posix.html#362>`_
+
+   `FNM_NOMATCH`:idx:
+     `posix.html#359 <posix.html#359>`_
+
+   `FNM_NOSYS`:idx:
+     `posix.html#363 <posix.html#363>`_
+
+   `FNM_PATHNAME`:idx:
+     `posix.html#360 <posix.html#360>`_
+
+   `FNM_PERIOD`:idx:
+     `posix.html#361 <posix.html#361>`_
+
+   `F_OK`:idx:
+     `posix.html#475 <posix.html#475>`_
 
    `for`:idx:
-     `manual.html#205 <manual.html#205>`_
+     `manual.html#204 <manual.html#204>`_
+
+   `fork`:idx:
+     `posix.html#979 <posix.html#979>`_
 
    `form feed`:idx:
      `manual.html#124 <manual.html#124>`_
 
    `forward`:idx:
-     `manual.html#202 <manual.html#202>`_
+     `manual.html#201 <manual.html#201>`_
+
+   `fpathconf`:idx:
+     `posix.html#980 <posix.html#980>`_
+
+   `F_RDLCK`:idx:
+     `posix.html#307 <posix.html#307>`_
 
    `frexp`:idx:
-     `math.html#109 <math.html#109>`_
+     `math.html#113 <math.html#113>`_
+
+   `F_SETFD`:idx:
+     `posix.html#298 <posix.html#298>`_
+
+   `F_SETFL`:idx:
+     `posix.html#300 <posix.html#300>`_
+
+   `F_SETLK`:idx:
+     `posix.html#302 <posix.html#302>`_
+
+   `F_SETLKW`:idx:
+     `posix.html#303 <posix.html#303>`_
+
+   `F_SETOWN`:idx:
+     `posix.html#305 <posix.html#305>`_
+
+   `fstat`:idx:
+     `posix.html#1053 <posix.html#1053>`_
+
+   `fstatvfs`:idx:
+     `posix.html#1050 <posix.html#1050>`_
+
+   `fsync`:idx:
+     `posix.html#981 <posix.html#981>`_
+
+   `F_TEST`:idx:
+     `posix.html#494 <posix.html#494>`_
+
+   `F_TLOCK`:idx:
+     `posix.html#495 <posix.html#495>`_
+
+   `ftok`:idx:
+     `posix.html#1048 <posix.html#1048>`_
+
+   `ftruncate`:idx:
+     `posix.html#982 <posix.html#982>`_
+
+   `ftw`:idx:
+     `posix.html#823 <posix.html#823>`_
+
+   `FTW_CHDIR`:idx:
+     `posix.html#374 <posix.html#374>`_
+
+   `FTW_D`:idx:
+     `posix.html#365 <posix.html#365>`_
+
+   `FTW_DEPTH`:idx:
+     `posix.html#373 <posix.html#373>`_
+
+   `FTW_DNR`:idx:
+     `posix.html#366 <posix.html#366>`_
+
+   `FTW_DP`:idx:
+     `posix.html#367 <posix.html#367>`_
+
+   `FTW_F`:idx:
+     `posix.html#364 <posix.html#364>`_
+
+   `FTW_MOUNT`:idx:
+     `posix.html#372 <posix.html#372>`_
+
+   `FTW_NS`:idx:
+     `posix.html#368 <posix.html#368>`_
+
+   `FTW_PHYS`:idx:
+     `posix.html#371 <posix.html#371>`_
+
+   `FTW_SL`:idx:
+     `posix.html#369 <posix.html#369>`_
+
+   `FTW_SLN`:idx:
+     `posix.html#370 <posix.html#370>`_
+
+   `F_ULOCK`:idx:
+     `posix.html#496 <posix.html#496>`_
 
    `functional`:idx:
-     `manual.html#163 <manual.html#163>`_
+     `manual.html#162 <manual.html#162>`_
+
+   `F_UNLCK`:idx:
+     `posix.html#308 <posix.html#308>`_
 
    `funtions`:idx:
-     `manual.html#200 <manual.html#200>`_
+     `manual.html#199 <manual.html#199>`_
+
+   `F_WRLCK`:idx:
+     `posix.html#309 <posix.html#309>`_
 
    `GC_disable`:idx:
-     `system.html#354 <system.html#354>`_
+     `system.html#364 <system.html#364>`_
 
    `GC_disableMarkAndSweep`:idx:
-     `system.html#360 <system.html#360>`_
+     `system.html#370 <system.html#370>`_
 
    `GC_enable`:idx:
-     `system.html#355 <system.html#355>`_
+     `system.html#365 <system.html#365>`_
 
    `GC_enableMarkAndSweep`:idx:
-     `system.html#359 <system.html#359>`_
+     `system.html#369 <system.html#369>`_
 
    `GC_fullCollect`:idx:
-     `system.html#356 <system.html#356>`_
+     `system.html#366 <system.html#366>`_
 
    `GC_setStrategy`:idx:
-     `system.html#358 <system.html#358>`_
+     `system.html#368 <system.html#368>`_
 
    `generic character types`:idx:
      `regexprs.html#102 <regexprs.html#102>`_
 
    `Generics`:idx:
-     `manual.html#209 <manual.html#209>`_
+     `manual.html#208 <manual.html#208>`_
 
    `getApplicationDir`:idx:
      `os.html#108 <os.html#108>`_
@@ -663,48 +1555,145 @@ Index
    `getClockStr`:idx:
      `times.html#112 <times.html#112>`_
 
+   `getColNumber`:idx:
+     `lexbase.html#108 <lexbase.html#108>`_
+
+   `getColumn`:idx:
+     `parsecfg.html#108 <parsecfg.html#108>`_
+
    `getConfigDir`:idx:
      `os.html#113 <os.html#113>`_
+
+   `getcontext`:idx:
+     `posix.html#1181 <posix.html#1181>`_
 
    `getCurrentDir`:idx:
      `os.html#110 <os.html#110>`_
 
    `getCurrentExceptionMsg`:idx:
-     * `manual.html#184 <manual.html#184>`_
-     * `system.html#334 <system.html#334>`_
+     * `manual.html#183 <manual.html#183>`_
+     * `system.html#336 <system.html#336>`_
+
+   `getCurrentLine`:idx:
+     `lexbase.html#107 <lexbase.html#107>`_
+
+   `getcwd`:idx:
+     `posix.html#983 <posix.html#983>`_
+
+   `getdate`:idx:
+     `posix.html#1096 <posix.html#1096>`_
 
    `getDateStr`:idx:
      `times.html#111 <times.html#111>`_
 
+   `getegid`:idx:
+     `posix.html#984 <posix.html#984>`_
+
    `getEnv`:idx:
      `os.html#140 <os.html#140>`_
 
+   `geteuid`:idx:
+     `posix.html#985 <posix.html#985>`_
+
+   `getFilename`:idx:
+     `parsecfg.html#110 <parsecfg.html#110>`_
+
    `getFilePos`:idx:
-     `system.html#389 <system.html#389>`_
+     `system.html#401 <system.html#401>`_
 
    `getFileSize`:idx:
-     `system.html#381 <system.html#381>`_
+     `system.html#393 <system.html#393>`_
 
    `getFreeMem`:idx:
-     `system.html#339 <system.html#339>`_
+     `system.html#342 <system.html#342>`_
+
+   `getgid`:idx:
+     `posix.html#986 <posix.html#986>`_
 
    `getGMTime`:idx:
      `times.html#107 <times.html#107>`_
 
+   `getgrent`:idx:
+     `posix.html#831 <posix.html#831>`_
+
+   `getgrgid`:idx:
+     `posix.html#827 <posix.html#827>`_
+
+   `getgrgid_r`:idx:
+     `posix.html#829 <posix.html#829>`_
+
+   `getgrnam`:idx:
+     `posix.html#828 <posix.html#828>`_
+
+   `getgrnam_r`:idx:
+     `posix.html#830 <posix.html#830>`_
+
+   `getgroups`:idx:
+     `posix.html#987 <posix.html#987>`_
+
    `getHomeDir`:idx:
      `os.html#112 <os.html#112>`_
+
+   `gethostid`:idx:
+     `posix.html#988 <posix.html#988>`_
+
+   `gethostname`:idx:
+     `posix.html#989 <posix.html#989>`_
 
    `getLastModificationTime`:idx:
      `os.html#137 <os.html#137>`_
 
+   `getLine`:idx:
+     `parsecfg.html#109 <parsecfg.html#109>`_
+
    `getLocalTime`:idx:
      `times.html#106 <times.html#106>`_
 
+   `getlogin`:idx:
+     `posix.html#990 <posix.html#990>`_
+
+   `getlogin_r`:idx:
+     `posix.html#991 <posix.html#991>`_
+
    `getOccupiedMem`:idx:
-     `system.html#338 <system.html#338>`_
+     `system.html#341 <system.html#341>`_
+
+   `getopt`:idx:
+     * `parseopt.html#106 <parseopt.html#106>`_
+     * `posix.html#992 <posix.html#992>`_
+
+   `getpgid`:idx:
+     `posix.html#993 <posix.html#993>`_
+
+   `getpgrp`:idx:
+     `posix.html#994 <posix.html#994>`_
+
+   `getpid`:idx:
+     `posix.html#995 <posix.html#995>`_
+
+   `getppid`:idx:
+     `posix.html#996 <posix.html#996>`_
+
+   `getpwent`:idx:
+     `posix.html#857 <posix.html#857>`_
+
+   `getpwnam`:idx:
+     `posix.html#853 <posix.html#853>`_
+
+   `getpwuid`:idx:
+     `posix.html#854 <posix.html#854>`_
+
+   `getpwuid_r`:idx:
+     `posix.html#855 <posix.html#855>`_
 
    `getRefcount`:idx:
-     `system.html#333 <system.html#333>`_
+     `system.html#335 <system.html#335>`_
+
+   `getRestOfCommandLine`:idx:
+     `parseopt.html#105 <parseopt.html#105>`_
+
+   `getsid`:idx:
+     `posix.html#997 <posix.html#997>`_
 
    `getStartMilsecs`:idx:
      `times.html#114 <times.html#114>`_
@@ -713,7 +1702,83 @@ Index
      `times.html#105 <times.html#105>`_
 
    `getTotalMem`:idx:
-     `system.html#340 <system.html#340>`_
+     `system.html#343 <system.html#343>`_
+
+   `getuid`:idx:
+     `posix.html#998 <posix.html#998>`_
+
+   `getwd`:idx:
+     `posix.html#999 <posix.html#999>`_
+
+   `glob`:idx:
+     `posix.html#825 <posix.html#825>`_
+
+   `GLOB_ABORTED`:idx:
+     `posix.html#382 <posix.html#382>`_
+
+   `GLOB_APPEND`:idx:
+     `posix.html#375 <posix.html#375>`_
+
+   `GLOB_DOOFFS`:idx:
+     `posix.html#376 <posix.html#376>`_
+
+   `GLOB_ERR`:idx:
+     `posix.html#377 <posix.html#377>`_
+
+   `globfree`:idx:
+     `posix.html#826 <posix.html#826>`_
+
+   `GLOB_MARK`:idx:
+     `posix.html#378 <posix.html#378>`_
+
+   `GLOB_NOCHECK`:idx:
+     `posix.html#379 <posix.html#379>`_
+
+   `GLOB_NOESCAPE`:idx:
+     `posix.html#380 <posix.html#380>`_
+
+   `GLOB_NOMATCH`:idx:
+     `posix.html#383 <posix.html#383>`_
+
+   `GLOB_NOSORT`:idx:
+     `posix.html#381 <posix.html#381>`_
+
+   `GLOB_NOSPACE`:idx:
+     `posix.html#384 <posix.html#384>`_
+
+   `GLOB_NOSYS`:idx:
+     `posix.html#385 <posix.html#385>`_
+
+   `gmtime`:idx:
+     `posix.html#1097 <posix.html#1097>`_
+
+   `gmtime_r`:idx:
+     `posix.html#1098 <posix.html#1098>`_
+
+   `HandleCR`:idx:
+     `lexbase.html#109 <lexbase.html#109>`_
+
+   `HandleLF`:idx:
+     `lexbase.html#110 <lexbase.html#110>`_
+
+   `hash`:idx:
+     * `hashes.html#103 <hashes.html#103>`_
+     * `hashes.html#104 <hashes.html#104>`_
+     * `hashes.html#105 <hashes.html#105>`_
+     * `hashes.html#106 <hashes.html#106>`_
+     * `hashes.html#107 <hashes.html#107>`_
+
+   `hashData`:idx:
+     `hashes.html#102 <hashes.html#102>`_
+
+   `hashIgnoreCase`:idx:
+     `hashes.html#109 <hashes.html#109>`_
+
+   `hashIgnoreStyle`:idx:
+     `hashes.html#108 <hashes.html#108>`_
+
+   `hasKey`:idx:
+     `strtabs.html#108 <strtabs.html#108>`_
 
    `header`:idx:
      `nimrodc.html#103 <nimrodc.html#103>`_
@@ -722,11 +1787,26 @@ Index
      `system.html#105 <system.html#105>`_
 
    `hint`:idx:
-     * `manual.html#221 <manual.html#221>`_
-     * `manual.html#229 <manual.html#229>`_
+     * `manual.html#220 <manual.html#220>`_
+     * `manual.html#228 <manual.html#228>`_
+
+   `htonl`:idx:
+     `posix.html#786 <posix.html#786>`_
+
+   `htons`:idx:
+     `posix.html#787 <posix.html#787>`_
 
    `hypot`:idx:
-     `math.html#116 <math.html#116>`_
+     `math.html#121 <math.html#121>`_
+
+   `iconv`:idx:
+     `posix.html#835 <posix.html#835>`_
+
+   `iconv_close`:idx:
+     `posix.html#836 <posix.html#836>`_
+
+   `iconv_open`:idx:
+     `posix.html#834 <posix.html#834>`_
 
    `identifier`:idx:
      `manual.html#105 <manual.html#105>`_
@@ -735,13 +1815,13 @@ Index
      `manual.html#116 <manual.html#116>`_
 
    `if`:idx:
-     `manual.html#181 <manual.html#181>`_
+     `manual.html#180 <manual.html#180>`_
 
    `implicit block`:idx:
-     `manual.html#207 <manual.html#207>`_
+     `manual.html#206 <manual.html#206>`_
 
    `import`:idx:
-     `manual.html#217 <manual.html#217>`_
+     `manual.html#216 <manual.html#216>`_
 
    `in`:idx:
      `system.html#239 <system.html#239>`_
@@ -755,14 +1835,38 @@ Index
    `indentation sensitive`:idx:
      `manual.html#113 <manual.html#113>`_
 
+   `inet_addr`:idx:
+     `posix.html#790 <posix.html#790>`_
+
+   `inet_ntoa`:idx:
+     `posix.html#791 <posix.html#791>`_
+
+   `inet_ntop`:idx:
+     `posix.html#792 <posix.html#792>`_
+
+   `inet_pton`:idx:
+     `posix.html#793 <posix.html#793>`_
+
    `inf`:idx:
-     `system.html#335 <system.html#335>`_
+     `system.html#337 <system.html#337>`_
+
+   `info`:idx:
+     `dialogs.html#102 <dialogs.html#102>`_
 
    `information hiding`:idx:
-     `manual.html#215 <manual.html#215>`_
+     `manual.html#214 <manual.html#214>`_
+
+   `init`:idx:
+     `parseopt.html#103 <parseopt.html#103>`_
+
+   `initBaseLexer`:idx:
+     `lexbase.html#104 <lexbase.html#104>`_
+
+   `initBaseLexerFromBuffer`:idx:
+     `lexbase.html#105 <lexbase.html#105>`_
 
    `inline`:idx:
-     `manual.html#168 <manual.html#168>`_
+     `manual.html#167 <manual.html#167>`_
 
    `in_Operator`:idx:
      * `strutils.html#121 <strutils.html#121>`_
@@ -774,28 +1878,63 @@ Index
    `intToStr`:idx:
      `strutils.html#124 <strutils.html#124>`_
 
+   `IPC_CREAT`:idx:
+     `posix.html#639 <posix.html#639>`_
+
+   `IPC_EXCL`:idx:
+     `posix.html#640 <posix.html#640>`_
+
+   `IPC_NOWAIT`:idx:
+     `posix.html#641 <posix.html#641>`_
+
+   `IPC_PRIVATE`:idx:
+     `posix.html#642 <posix.html#642>`_
+
+   `IPC_RMID`:idx:
+     `posix.html#643 <posix.html#643>`_
+
+   `IPC_SET`:idx:
+     `posix.html#644 <posix.html#644>`_
+
+   `IPC_STAT`:idx:
+     `posix.html#645 <posix.html#645>`_
+
    `is`:idx:
      `system.html#241 <system.html#241>`_
+
+   `isatty`:idx:
+     `posix.html#1000 <posix.html#1000>`_
+
+   `isNil`:idx:
+     * `system.html#352 <system.html#352>`_
+     * `system.html#353 <system.html#353>`_
+     * `system.html#354 <system.html#354>`_
+     * `system.html#355 <system.html#355>`_
+     * `system.html#356 <system.html#356>`_
+     * `system.html#357 <system.html#357>`_
 
    `is_not`:idx:
      `system.html#242 <system.html#242>`_
 
    `isPowerOfTwo`:idx:
-     `math.html#102 <math.html#102>`_
+     `math.html#103 <math.html#103>`_
 
    `items`:idx:
-     * `system.html#343 <system.html#343>`_
-     * `system.html#344 <system.html#344>`_
-     * `system.html#345 <system.html#345>`_
      * `system.html#346 <system.html#346>`_
      * `system.html#347 <system.html#347>`_
      * `system.html#348 <system.html#348>`_
+     * `system.html#349 <system.html#349>`_
+     * `system.html#350 <system.html#350>`_
+     * `system.html#351 <system.html#351>`_
 
    `iterator`:idx:
-     `manual.html#206 <manual.html#206>`_
+     `manual.html#205 <manual.html#205>`_
 
    `iterOverEnvironment`:idx:
      `os.html#145 <os.html#145>`_
+
+   `JavaScript`:idx:
+     `nimrodc.html#112 <nimrodc.html#112>`_
 
    `JoinPath`:idx:
      * `os.html#116 <os.html#116>`_
@@ -804,14 +1943,45 @@ Index
    `keywords`:idx:
      `manual.html#117 <manual.html#117>`_
 
+   `kill`:idx:
+     `posix.html#1116 <posix.html#1116>`_
+
+   `killpg`:idx:
+     `posix.html#1117 <posix.html#1117>`_
+
    `l-values`:idx:
      `manual.html#107 <manual.html#107>`_
+
+   `LC_ALL`:idx:
+     `posix.html#441 <posix.html#441>`_
+
+   `LC_COLLATE`:idx:
+     `posix.html#442 <posix.html#442>`_
+
+   `LC_CTYPE`:idx:
+     `posix.html#443 <posix.html#443>`_
+
+   `lchown`:idx:
+     `posix.html#1001 <posix.html#1001>`_
+
+   `LC_MESSAGES`:idx:
+     `posix.html#444 <posix.html#444>`_
+
+   `LC_MONETARY`:idx:
+     `posix.html#445 <posix.html#445>`_
+
+   `LC_NUMERIC`:idx:
+     `posix.html#446 <posix.html#446>`_
+
+   `LC_TIME`:idx:
+     `posix.html#447 <posix.html#447>`_
 
    `len`:idx:
      * `system.html#145 <system.html#145>`_
      * `system.html#146 <system.html#146>`_
      * `system.html#147 <system.html#147>`_
      * `system.html#148 <system.html#148>`_
+     * `strtabs.html#109 <strtabs.html#109>`_
 
    `line feed`:idx:
      `manual.html#123 <manual.html#123>`_
@@ -820,28 +1990,85 @@ Index
      `nimrodc.html#105 <nimrodc.html#105>`_
 
    `lines`:idx:
-     `system.html#390 <system.html#390>`_
+     `system.html#402 <system.html#402>`_
 
    `line_trace`:idx:
      `nimrodc.html#107 <nimrodc.html#107>`_
+
+   `link`:idx:
+     `posix.html#1002 <posix.html#1002>`_
+
+   `lio_listio`:idx:
+     `posix.html#785 <posix.html#785>`_
+
+   `LIO_NOP`:idx:
+     `posix.html#207 <posix.html#207>`_
+
+   `LIO_NOWAIT`:idx:
+     `posix.html#208 <posix.html#208>`_
+
+   `LIO_READ`:idx:
+     `posix.html#209 <posix.html#209>`_
+
+   `LIO_WAIT`:idx:
+     `posix.html#210 <posix.html#210>`_
+
+   `LIO_WRITE`:idx:
+     `posix.html#211 <posix.html#211>`_
 
    `Literal strings`:idx:
      `manual.html#119 <manual.html#119>`_
 
    `ln`:idx:
-     `math.html#107 <math.html#107>`_
+     `math.html#109 <math.html#109>`_
+
+   `localeconv`:idx:
+     `posix.html#840 <posix.html#840>`_
+
+   `localtime`:idx:
+     `posix.html#1099 <posix.html#1099>`_
+
+   `localtime_r`:idx:
+     `posix.html#1100 <posix.html#1100>`_
 
    `locations`:idx:
      `manual.html#101 <manual.html#101>`_
 
+   `lockf`:idx:
+     `posix.html#1003 <posix.html#1003>`_
+
    `log10`:idx:
-     `math.html#117 <math.html#117>`_
+     `math.html#110 <math.html#110>`_
+
+   `log2`:idx:
+     `math.html#111 <math.html#111>`_
 
    `low`:idx:
      `system.html#106 <system.html#106>`_
 
+   `lseek`:idx:
+     `posix.html#1004 <posix.html#1004>`_
+
+   `lstat`:idx:
+     `posix.html#1054 <posix.html#1054>`_
+
    `Macros`:idx:
-     `manual.html#212 <manual.html#212>`_
+     `manual.html#211 <manual.html#211>`_
+
+   `makecontext`:idx:
+     `posix.html#1182 <posix.html#1182>`_
+
+   `MAP_FAILED`:idx:
+     `posix.html#683 <posix.html#683>`_
+
+   `MAP_FIXED`:idx:
+     `posix.html#677 <posix.html#677>`_
+
+   `MAP_PRIVATE`:idx:
+     `posix.html#676 <posix.html#676>`_
+
+   `MAP_SHARED`:idx:
+     `posix.html#675 <posix.html#675>`_
 
    `match`:idx:
      * `regexprs.html#106 <regexprs.html#106>`_
@@ -849,6 +2076,9 @@ Index
 
    `matchLen`:idx:
      `regexprs.html#108 <regexprs.html#108>`_
+
+   `math`:idx:
+     `nimrodc.html#114 <nimrodc.html#114>`_
 
    `max`:idx:
      * `system.html#172 <system.html#172>`_
@@ -858,20 +2088,161 @@ Index
    `MaxSubpatterns`:idx:
      `regexprs.html#105 <regexprs.html#105>`_
 
+   `MCL_CURRENT`:idx:
+     `posix.html#681 <posix.html#681>`_
+
+   `MCL_FUTURE`:idx:
+     `posix.html#682 <posix.html#682>`_
+
    `methods`:idx:
-     `manual.html#199 <manual.html#199>`_
+     `manual.html#198 <manual.html#198>`_
 
    `min`:idx:
      * `system.html#171 <system.html#171>`_
      * `system.html#190 <system.html#190>`_
      * `system.html#202 <system.html#202>`_
 
+   `MINSIGSTKSZ`:idx:
+     `posix.html#763 <posix.html#763>`_
+
+   `mkdir`:idx:
+     `posix.html#1055 <posix.html#1055>`_
+
+   `mkfifo`:idx:
+     `posix.html#1056 <posix.html#1056>`_
+
+   `mknod`:idx:
+     `posix.html#1057 <posix.html#1057>`_
+
+   `mktime`:idx:
+     `posix.html#1101 <posix.html#1101>`_
+
+   `mlock`:idx:
+     `posix.html#1071 <posix.html#1071>`_
+
+   `mlockall`:idx:
+     `posix.html#1072 <posix.html#1072>`_
+
+   `mmap`:idx:
+     `posix.html#1073 <posix.html#1073>`_
+
+   `MM_APPL`:idx:
+     `posix.html#343 <posix.html#343>`_
+
+   `MM_CONSOLE`:idx:
+     `posix.html#354 <posix.html#354>`_
+
+   `MM_ERROR`:idx:
+     `posix.html#349 <posix.html#349>`_
+
+   `MM_FIRM`:idx:
+     `posix.html#342 <posix.html#342>`_
+
+   `MM_HALT`:idx:
+     `posix.html#348 <posix.html#348>`_
+
+   `MM_HARD`:idx:
+     `posix.html#340 <posix.html#340>`_
+
+   `MM_INFO`:idx:
+     `posix.html#351 <posix.html#351>`_
+
+   `MM_NOCON`:idx:
+     `posix.html#358 <posix.html#358>`_
+
+   `MM_NOMSG`:idx:
+     `posix.html#357 <posix.html#357>`_
+
+   `MM_NOSEV`:idx:
+     `posix.html#352 <posix.html#352>`_
+
+   `MM_NOTOK`:idx:
+     `posix.html#356 <posix.html#356>`_
+
+   `MM_NRECOV`:idx:
+     `posix.html#347 <posix.html#347>`_
+
+   `MM_NULLACT`:idx:
+     `posix.html#125 <posix.html#125>`_
+
+   `MM_NULLLBL`:idx:
+     `posix.html#121 <posix.html#121>`_
+
+   `MM_NULLMC`:idx:
+     `posix.html#123 <posix.html#123>`_
+
+   `MM_NULLSEV`:idx:
+     `posix.html#122 <posix.html#122>`_
+
+   `MM_NULLTAG`:idx:
+     `posix.html#126 <posix.html#126>`_
+
+   `MM_NULLTXT`:idx:
+     `posix.html#124 <posix.html#124>`_
+
+   `MM_OK`:idx:
+     `posix.html#355 <posix.html#355>`_
+
+   `MM_OPSYS`:idx:
+     `posix.html#345 <posix.html#345>`_
+
+   `MM_PRINT`:idx:
+     `posix.html#353 <posix.html#353>`_
+
+   `MM_RECOVER`:idx:
+     `posix.html#346 <posix.html#346>`_
+
+   `MM_SOFT`:idx:
+     `posix.html#341 <posix.html#341>`_
+
+   `MM_UTIL`:idx:
+     `posix.html#344 <posix.html#344>`_
+
+   `MM_WARNING`:idx:
+     `posix.html#350 <posix.html#350>`_
+
    `mod`:idx:
      * `system.html#161 <system.html#161>`_
      * `system.html#180 <system.html#180>`_
 
    `module`:idx:
-     `manual.html#214 <manual.html#214>`_
+     `manual.html#213 <manual.html#213>`_
+
+   `MON_1`:idx:
+     `posix.html#407 <posix.html#407>`_
+
+   `MON_10`:idx:
+     `posix.html#416 <posix.html#416>`_
+
+   `MON_11`:idx:
+     `posix.html#417 <posix.html#417>`_
+
+   `MON_12`:idx:
+     `posix.html#418 <posix.html#418>`_
+
+   `MON_2`:idx:
+     `posix.html#408 <posix.html#408>`_
+
+   `MON_3`:idx:
+     `posix.html#409 <posix.html#409>`_
+
+   `MON_4`:idx:
+     `posix.html#410 <posix.html#410>`_
+
+   `MON_5`:idx:
+     `posix.html#411 <posix.html#411>`_
+
+   `MON_6`:idx:
+     `posix.html#412 <posix.html#412>`_
+
+   `MON_7`:idx:
+     `posix.html#413 <posix.html#413>`_
+
+   `MON_8`:idx:
+     `posix.html#414 <posix.html#414>`_
+
+   `MON_9`:idx:
+     `posix.html#415 <posix.html#415>`_
 
    `moveFile`:idx:
      `os.html#132 <os.html#132>`_
@@ -879,11 +2250,71 @@ Index
    `moveMem`:idx:
      `system.html#294 <system.html#294>`_
 
+   `mprotect`:idx:
+     `posix.html#1074 <posix.html#1074>`_
+
+   `mq_close`:idx:
+     `posix.html#843 <posix.html#843>`_
+
+   `mq_getattr`:idx:
+     `posix.html#844 <posix.html#844>`_
+
+   `mq_notify`:idx:
+     `posix.html#845 <posix.html#845>`_
+
+   `mq_open`:idx:
+     `posix.html#846 <posix.html#846>`_
+
+   `mq_receive`:idx:
+     `posix.html#847 <posix.html#847>`_
+
+   `mq_send`:idx:
+     `posix.html#848 <posix.html#848>`_
+
+   `mq_setattr`:idx:
+     `posix.html#849 <posix.html#849>`_
+
+   `mq_timedreceive`:idx:
+     `posix.html#850 <posix.html#850>`_
+
+   `mq_timedsend`:idx:
+     `posix.html#851 <posix.html#851>`_
+
+   `mq_unlink`:idx:
+     `posix.html#852 <posix.html#852>`_
+
+   `MS_ASYNC`:idx:
+     `posix.html#678 <posix.html#678>`_
+
+   `MS_INVALIDATE`:idx:
+     `posix.html#680 <posix.html#680>`_
+
+   `MS_SYNC`:idx:
+     `posix.html#679 <posix.html#679>`_
+
+   `msync`:idx:
+     `posix.html#1075 <posix.html#1075>`_
+
+   `munlock`:idx:
+     `posix.html#1076 <posix.html#1076>`_
+
+   `munlockall`:idx:
+     `posix.html#1077 <posix.html#1077>`_
+
+   `munmap`:idx:
+     `posix.html#1078 <posix.html#1078>`_
+
    `nan`:idx:
-     `system.html#336 <system.html#336>`_
+     `system.html#339 <system.html#339>`_
+
+   `nanosleep`:idx:
+     `posix.html#1102 <posix.html#1102>`_
 
    `Natural`:idx:
-     `system.html#114 <system.html#114>`_
+     `system.html#113 <system.html#113>`_
+
+   `neginf`:idx:
+     `system.html#338 <system.html#338>`_
 
    `new`:idx:
      * `system.html#103 <system.html#103>`_
@@ -892,14 +2323,31 @@ Index
    `newline`:idx:
      `manual.html#121 <manual.html#121>`_
 
+   `NewLines`:idx:
+     `lexbase.html#102 <lexbase.html#102>`_
+
    `newString`:idx:
      `system.html#291 <system.html#291>`_
 
+   `newStringTable`:idx:
+     * `strtabs.html#104 <strtabs.html#104>`_
+     * `strtabs.html#105 <strtabs.html#105>`_
+
+   `next`:idx:
+     * `parseopt.html#104 <parseopt.html#104>`_
+     * `parsecfg.html#107 <parsecfg.html#107>`_
+
    `nextPowerOfTwo`:idx:
-     `math.html#101 <math.html#101>`_
+     `math.html#104 <math.html#104>`_
+
+   `nftw`:idx:
+     `posix.html#824 <posix.html#824>`_
+
+   `nice`:idx:
+     `posix.html#1005 <posix.html#1005>`_
 
    `nimcall`:idx:
-     `manual.html#170 <manual.html#170>`_
+     `manual.html#169 <manual.html#169>`_
 
    `NimrodMajor`:idx:
      `system.html#278 <system.html#278>`_
@@ -916,11 +2364,23 @@ Index
    `nl`:idx:
      `strutils.html#104 <strutils.html#104>`_
 
+   `NL_CAT_LOCALE`:idx:
+     `posix.html#766 <posix.html#766>`_
+
+   `nl_langinfo`:idx:
+     `posix.html#837 <posix.html#837>`_
+
+   `NL_SETD`:idx:
+     `posix.html#765 <posix.html#765>`_
+
    `noconv`:idx:
-     `manual.html#173 <manual.html#173>`_
+     `manual.html#172 <manual.html#172>`_
 
    `no_decl`:idx:
      `nimrodc.html#101 <nimrodc.html#101>`_
+
+   `NOEXPR`:idx:
+     `posix.html#439 <posix.html#439>`_
 
    `normalize`:idx:
      `strutils.html#111 <strutils.html#111>`_
@@ -936,23 +2396,62 @@ Index
    `not_in`:idx:
      `system.html#240 <system.html#240>`_
 
+   `ntohl`:idx:
+     `posix.html#788 <posix.html#788>`_
+
+   `ntohs`:idx:
+     `posix.html#789 <posix.html#789>`_
+
    `Numerical constants`:idx:
      `manual.html#137 <manual.html#137>`_
+
+   `O_ACCMODE`:idx:
+     `posix.html#319 <posix.html#319>`_
+
+   `O_APPEND`:idx:
+     `posix.html#314 <posix.html#314>`_
 
    `object`:idx:
      `manual.html#156 <manual.html#156>`_
 
+   `O_CREAT`:idx:
+     `posix.html#310 <posix.html#310>`_
+
+   `O_DSYNC`:idx:
+     `posix.html#315 <posix.html#315>`_
+
+   `O_EXCL`:idx:
+     `posix.html#311 <posix.html#311>`_
+
+   `O_NOCTTY`:idx:
+     `posix.html#312 <posix.html#312>`_
+
+   `O_NONBLOCK`:idx:
+     `posix.html#316 <posix.html#316>`_
+
+   `open`:idx:
+     `posix.html#807 <posix.html#807>`_
+
+   `Open`:idx:
+     `parsecfg.html#104 <parsecfg.html#104>`_
+
    `openarray`:idx:
      `system.html#109 <system.html#109>`_
 
+   `opendir`:idx:
+     `posix.html#795 <posix.html#795>`_
+
    `OpenFile`:idx:
-     `system.html#366 <system.html#366>`_
+     `system.html#377 <system.html#377>`_
+
+   `OpenFromBuffer`:idx:
+     `parsecfg.html#105 <parsecfg.html#105>`_
 
    `operator`:idx:
      `manual.html#139 <manual.html#139>`_
 
    `Operators`:idx:
-     `manual.html#204 <manual.html#204>`_
+     `manual.html#203 <manual.html#203>`_
 
    `or`:idx:
      * `system.html#165 <system.html#165>`_
@@ -964,6 +2463,30 @@ Index
 
    `Ordinal types`:idx:
      `manual.html#142 <manual.html#142>`_
+
+   `O_RDONLY`:idx:
+     `posix.html#320 <posix.html#320>`_
+
+   `O_RDWR`:idx:
+     `posix.html#321 <posix.html#321>`_
+
+   `O_RSYNC`:idx:
+     `posix.html#317 <posix.html#317>`_
+
+   `O_SYNC`:idx:
+     `posix.html#318 <posix.html#318>`_
+
+   `O_TRUNC`:idx:
+     `posix.html#313 <posix.html#313>`_
+
+   `O_WRONLY`:idx:
+     `posix.html#322 <posix.html#322>`_
+
+   `pairs`:idx:
+     `strtabs.html#110 <strtabs.html#110>`_
+
+   `P_ALL`:idx:
+     `posix.html#713 <posix.html#713>`_
 
    `paramCount`:idx:
      `os.html#142 <os.html#142>`_
@@ -977,14 +2500,80 @@ Index
    `parentDir`:idx:
      `os.html#120 <os.html#120>`_
 
-   `ParseFloat`:idx:
+   `ParseBiggestInt`:idx:
      `strutils.html#126 <strutils.html#126>`_
+
+   `ParseFloat`:idx:
+     `strutils.html#127 <strutils.html#127>`_
 
    `ParseInt`:idx:
      `strutils.html#125 <strutils.html#125>`_
 
+   `pathconf`:idx:
+     `posix.html#1006 <posix.html#1006>`_
+
    `PathSep`:idx:
      `os.html#105 <os.html#105>`_
+
+   `pause`:idx:
+     `posix.html#1007 <posix.html#1007>`_
+
+   `PC_2_SYMLINKS`:idx:
+     `posix.html#497 <posix.html#497>`_
+
+   `PC_ALLOC_SIZE_MIN`:idx:
+     `posix.html#498 <posix.html#498>`_
+
+   `PC_ASYNC_IO`:idx:
+     `posix.html#499 <posix.html#499>`_
+
+   `PC_CHOWN_RESTRICTED`:idx:
+     `posix.html#500 <posix.html#500>`_
+
+   `PC_FILESIZEBITS`:idx:
+     `posix.html#501 <posix.html#501>`_
+
+   `PC_LINK_MAX`:idx:
+     `posix.html#502 <posix.html#502>`_
+
+   `PC_MAX_CANON`:idx:
+     `posix.html#503 <posix.html#503>`_
+
+   `PC_MAX_INPUT`:idx:
+     `posix.html#504 <posix.html#504>`_
+
+   `PC_NAME_MAX`:idx:
+     `posix.html#505 <posix.html#505>`_
+
+   `PC_NO_TRUNC`:idx:
+     `posix.html#506 <posix.html#506>`_
+
+   `PC_PATH_MAX`:idx:
+     `posix.html#507 <posix.html#507>`_
+
+   `PC_PIPE_BUF`:idx:
+     `posix.html#508 <posix.html#508>`_
+
+   `PC_PRIO_IO`:idx:
+     `posix.html#509 <posix.html#509>`_
+
+   `PC_REC_INCR_XFER_SIZE`:idx:
+     `posix.html#510 <posix.html#510>`_
+
+   `PC_REC_MIN_XFER_SIZE`:idx:
+     `posix.html#511 <posix.html#511>`_
+
+   `PC_REC_XFER_ALIGN`:idx:
+     `posix.html#512 <posix.html#512>`_
+
+   `PC_SYMLINK_MAX`:idx:
+     `posix.html#513 <posix.html#513>`_
+
+   `PC_SYNC_IO`:idx:
+     `posix.html#514 <posix.html#514>`_
+
+   `PC_VDISABLE`:idx:
+     `posix.html#515 <posix.html#515>`_
 
    `PFloat32`:idx:
      `system.html#269 <system.html#269>`_
@@ -998,32 +2587,596 @@ Index
    `PInt64`:idx:
      `system.html#271 <system.html#271>`_
 
+   `pipe`:idx:
+     `posix.html#1008 <posix.html#1008>`_
+
+   `PM_STR`:idx:
+     `posix.html#392 <posix.html#392>`_
+
    `PObject`:idx:
-     `system.html#117 <system.html#117>`_
+     `system.html#116 <system.html#116>`_
 
    `pointers`:idx:
-     `manual.html#159 <manual.html#159>`_
+     `manual.html#158 <manual.html#158>`_
 
    `Positive`:idx:
-     `system.html#115 <system.html#115>`_
+     `system.html#114 <system.html#114>`_
+
+   `POSIX_ASYNC_IO`:idx:
+     `posix.html#472 <posix.html#472>`_
+
+   `POSIX_FADV_DONTNEED`:idx:
+     `posix.html#327 <posix.html#327>`_
+
+   `posix_fadvise`:idx:
+     `posix.html#808 <posix.html#808>`_
+
+   `POSIX_FADV_NOREUSE`:idx:
+     `posix.html#328 <posix.html#328>`_
+
+   `POSIX_FADV_NORMAL`:idx:
+     `posix.html#323 <posix.html#323>`_
+
+   `POSIX_FADV_RANDOM`:idx:
+     `posix.html#325 <posix.html#325>`_
+
+   `POSIX_FADV_SEQUENTIAL`:idx:
+     `posix.html#324 <posix.html#324>`_
+
+   `POSIX_FADV_WILLNEED`:idx:
+     `posix.html#326 <posix.html#326>`_
+
+   `posix_fallocate`:idx:
+     `posix.html#809 <posix.html#809>`_
+
+   `POSIX_MADV_DONTNEED`:idx:
+     `posix.html#688 <posix.html#688>`_
+
+   `posix_madvise`:idx:
+     `posix.html#1079 <posix.html#1079>`_
+
+   `POSIX_MADV_NORMAL`:idx:
+     `posix.html#684 <posix.html#684>`_
+
+   `POSIX_MADV_RANDOM`:idx:
+     `posix.html#686 <posix.html#686>`_
+
+   `POSIX_MADV_SEQUENTIAL`:idx:
+     `posix.html#685 <posix.html#685>`_
+
+   `POSIX_MADV_WILLNEED`:idx:
+     `posix.html#687 <posix.html#687>`_
+
+   `posix_mem_offset`:idx:
+     `posix.html#1080 <posix.html#1080>`_
+
+   `POSIX_PRIO_IO`:idx:
+     `posix.html#473 <posix.html#473>`_
+
+   `posix_spawn`:idx:
+     `posix.html#1160 <posix.html#1160>`_
+
+   `posix_spawnattr_destroy`:idx:
+     `posix.html#1166 <posix.html#1166>`_
+
+   `posix_spawnattr_getflags`:idx:
+     `posix.html#1168 <posix.html#1168>`_
+
+   `posix_spawnattr_getpgroup`:idx:
+     `posix.html#1169 <posix.html#1169>`_
+
+   `posix_spawnattr_getschedparam`:idx:
+     `posix.html#1170 <posix.html#1170>`_
+
+   `posix_spawnattr_getschedpolicy`:idx:
+     `posix.html#1171 <posix.html#1171>`_
+
+   `posix_spawnattr_getsigdefault`:idx:
+     `posix.html#1167 <posix.html#1167>`_
+
+   `posix_spawnattr_getsigmask`:idx:
+     `posix.html#1172 <posix.html#1172>`_
+
+   `posix_spawnattr_init`:idx:
+     `posix.html#1173 <posix.html#1173>`_
+
+   `posix_spawnattr_setflags`:idx:
+     `posix.html#1175 <posix.html#1175>`_
+
+   `posix_spawnattr_setpgroup`:idx:
+     `posix.html#1176 <posix.html#1176>`_
+
+   `posix_spawnattr_setschedparam`:idx:
+     `posix.html#1177 <posix.html#1177>`_
+
+   `posix_spawnattr_setschedpolicy`:idx:
+     `posix.html#1178 <posix.html#1178>`_
+
+   `posix_spawnattr_setsigdefault`:idx:
+     `posix.html#1174 <posix.html#1174>`_
+
+   `posix_spawnattr_setsigmask`:idx:
+     `posix.html#1179 <posix.html#1179>`_
+
+   `posix_spawn_file_actions_addclose`:idx:
+     `posix.html#1161 <posix.html#1161>`_
+
+   `posix_spawn_file_actions_adddup2`:idx:
+     `posix.html#1162 <posix.html#1162>`_
+
+   `posix_spawn_file_actions_addopen`:idx:
+     `posix.html#1163 <posix.html#1163>`_
+
+   `posix_spawn_file_actions_destroy`:idx:
+     `posix.html#1164 <posix.html#1164>`_
+
+   `posix_spawn_file_actions_init`:idx:
+     `posix.html#1165 <posix.html#1165>`_
+
+   `posix_spawnp`:idx:
+     `posix.html#1180 <posix.html#1180>`_
+
+   `POSIX_SPAWN_RESETIDS`:idx:
+     `posix.html#772 <posix.html#772>`_
+
+   `POSIX_SPAWN_SETPGROUP`:idx:
+     `posix.html#773 <posix.html#773>`_
+
+   `POSIX_SPAWN_SETSCHEDPARAM`:idx:
+     `posix.html#774 <posix.html#774>`_
+
+   `POSIX_SPAWN_SETSCHEDULER`:idx:
+     `posix.html#775 <posix.html#775>`_
+
+   `POSIX_SPAWN_SETSIGDEF`:idx:
+     `posix.html#776 <posix.html#776>`_
+
+   `POSIX_SPAWN_SETSIGMASK`:idx:
+     `posix.html#777 <posix.html#777>`_
+
+   `POSIX_SYNC_IO`:idx:
+     `posix.html#474 <posix.html#474>`_
+
+   `POSIX_TYPED_MEM_ALLOCATE`:idx:
+     `posix.html#689 <posix.html#689>`_
+
+   `POSIX_TYPED_MEM_ALLOCATE_CONTIG`:idx:
+     `posix.html#690 <posix.html#690>`_
+
+   `posix_typed_mem_get_info`:idx:
+     `posix.html#1081 <posix.html#1081>`_
+
+   `POSIX_TYPED_MEM_MAP_ALLOCATABLE`:idx:
+     `posix.html#691 <posix.html#691>`_
+
+   `posix_typed_mem_open`:idx:
+     `posix.html#1082 <posix.html#1082>`_
 
    `pow`:idx:
-     `math.html#121 <math.html#121>`_
+     `math.html#125 <math.html#125>`_
+
+   `P_PGID`:idx:
+     `posix.html#715 <posix.html#715>`_
+
+   `P_PID`:idx:
+     `posix.html#714 <posix.html#714>`_
+
+   `pread`:idx:
+     `posix.html#1009 <posix.html#1009>`_
 
    `pred`:idx:
      `system.html#142 <system.html#142>`_
 
    `procedural type`:idx:
-     `manual.html#162 <manual.html#162>`_
+     `manual.html#161 <manual.html#161>`_
 
    `procedures`:idx:
-     `manual.html#201 <manual.html#201>`_
+     `manual.html#200 <manual.html#200>`_
+
+   `PROT_EXEC`:idx:
+     `posix.html#673 <posix.html#673>`_
+
+   `PROT_NONE`:idx:
+     `posix.html#674 <posix.html#674>`_
+
+   `PROT_READ`:idx:
+     `posix.html#671 <posix.html#671>`_
+
+   `PROT_WRITE`:idx:
+     `posix.html#672 <posix.html#672>`_
+
+   `pselect`:idx:
+     `posix.html#1158 <posix.html#1158>`_
+
+   `PStringTable`:idx:
+     `strtabs.html#103 <strtabs.html#103>`_
+
+   `pthread_atfork`:idx:
+     `posix.html#860 <posix.html#860>`_
+
+   `pthread_attr_destroy`:idx:
+     `posix.html#861 <posix.html#861>`_
+
+   `pthread_attr_getdetachstate`:idx:
+     `posix.html#862 <posix.html#862>`_
+
+   `pthread_attr_getguardsize`:idx:
+     `posix.html#863 <posix.html#863>`_
+
+   `pthread_attr_getinheritsched`:idx:
+     `posix.html#864 <posix.html#864>`_
+
+   `pthread_attr_getschedparam`:idx:
+     `posix.html#865 <posix.html#865>`_
+
+   `pthread_attr_getschedpolicy`:idx:
+     `posix.html#866 <posix.html#866>`_
+
+   `pthread_attr_getscope`:idx:
+     `posix.html#867 <posix.html#867>`_
+
+   `pthread_attr_getstack`:idx:
+     `posix.html#868 <posix.html#868>`_
+
+   `pthread_attr_getstackaddr`:idx:
+     `posix.html#869 <posix.html#869>`_
+
+   `pthread_attr_getstacksize`:idx:
+     `posix.html#870 <posix.html#870>`_
+
+   `pthread_attr_init`:idx:
+     `posix.html#871 <posix.html#871>`_
+
+   `pthread_attr_setdetachstate`:idx:
+     `posix.html#872 <posix.html#872>`_
+
+   `pthread_attr_setguardsize`:idx:
+     `posix.html#873 <posix.html#873>`_
+
+   `pthread_attr_setinheritsched`:idx:
+     `posix.html#874 <posix.html#874>`_
+
+   `pthread_attr_setschedparam`:idx:
+     `posix.html#875 <posix.html#875>`_
+
+   `pthread_attr_setschedpolicy`:idx:
+     `posix.html#876 <posix.html#876>`_
+
+   `pthread_attr_setscope`:idx:
+     `posix.html#877 <posix.html#877>`_
+
+   `pthread_attr_setstack`:idx:
+     `posix.html#878 <posix.html#878>`_
+
+   `pthread_attr_setstackaddr`:idx:
+     `posix.html#879 <posix.html#879>`_
+
+   `pthread_attr_setstacksize`:idx:
+     `posix.html#880 <posix.html#880>`_
+
+   `pthread_barrierattr_destroy`:idx:
+     `posix.html#884 <posix.html#884>`_
+
+   `pthread_barrierattr_getpshared`:idx:
+     `posix.html#885 <posix.html#885>`_
+
+   `pthread_barrierattr_init`:idx:
+     `posix.html#886 <posix.html#886>`_
+
+   `pthread_barrierattr_setpshared`:idx:
+     `posix.html#887 <posix.html#887>`_
+
+   `pthread_barrier_destroy`:idx:
+     `posix.html#881 <posix.html#881>`_
+
+   `pthread_barrier_init`:idx:
+     `posix.html#882 <posix.html#882>`_
+
+   `PTHREAD_BARRIER_SERIAL_THREAD`:idx:
+     `posix.html#448 <posix.html#448>`_
+
+   `pthread_barrier_wait`:idx:
+     `posix.html#883 <posix.html#883>`_
+
+   `pthread_cancel`:idx:
+     `posix.html#888 <posix.html#888>`_
+
+   `PTHREAD_CANCEL_ASYNCHRONOUS`:idx:
+     `posix.html#449 <posix.html#449>`_
+
+   `PTHREAD_CANCEL_DEFERRED`:idx:
+     `posix.html#451 <posix.html#451>`_
+
+   `PTHREAD_CANCEL_DISABLE`:idx:
+     `posix.html#452 <posix.html#452>`_
+
+   `PTHREAD_CANCELED`:idx:
+     `posix.html#453 <posix.html#453>`_
+
+   `PTHREAD_CANCEL_ENABLE`:idx:
+     `posix.html#450 <posix.html#450>`_
+
+   `pthread_cleanup_pop`:idx:
+     `posix.html#890 <posix.html#890>`_
+
+   `pthread_cleanup_push`:idx:
+     `posix.html#889 <posix.html#889>`_
+
+   `pthread_condattr_destroy`:idx:
+     `posix.html#897 <posix.html#897>`_
+
+   `pthread_condattr_getclock`:idx:
+     `posix.html#898 <posix.html#898>`_
+
+   `pthread_condattr_getpshared`:idx:
+     `posix.html#899 <posix.html#899>`_
+
+   `pthread_condattr_init`:idx:
+     `posix.html#900 <posix.html#900>`_
+
+   `pthread_condattr_setclock`:idx:
+     `posix.html#901 <posix.html#901>`_
+
+   `pthread_condattr_setpshared`:idx:
+     `posix.html#902 <posix.html#902>`_
+
+   `pthread_cond_broadcast`:idx:
+     `posix.html#891 <posix.html#891>`_
+
+   `pthread_cond_destroy`:idx:
+     `posix.html#892 <posix.html#892>`_
+
+   `pthread_cond_init`:idx:
+     `posix.html#893 <posix.html#893>`_
+
+   `PTHREAD_COND_INITIALIZER`:idx:
+     `posix.html#454 <posix.html#454>`_
+
+   `pthread_cond_signal`:idx:
+     `posix.html#894 <posix.html#894>`_
+
+   `pthread_cond_timedwait`:idx:
+     `posix.html#895 <posix.html#895>`_
+
+   `pthread_cond_wait`:idx:
+     `posix.html#896 <posix.html#896>`_
+
+   `pthread_create`:idx:
+     `posix.html#903 <posix.html#903>`_
+
+   `PTHREAD_CREATE_DETACHED`:idx:
+     `posix.html#455 <posix.html#455>`_
+
+   `PTHREAD_CREATE_JOINABLE`:idx:
+     `posix.html#456 <posix.html#456>`_
+
+   `pthread_detach`:idx:
+     `posix.html#904 <posix.html#904>`_
+
+   `pthread_equal`:idx:
+     `posix.html#905 <posix.html#905>`_
+
+   `pthread_exit`:idx:
+     `posix.html#906 <posix.html#906>`_
+
+   `PTHREAD_EXPLICIT_SCHED`:idx:
+     `posix.html#457 <posix.html#457>`_
+
+   `pthread_getconcurrency`:idx:
+     `posix.html#907 <posix.html#907>`_
+
+   `pthread_getcpuclockid`:idx:
+     `posix.html#908 <posix.html#908>`_
+
+   `pthread_getschedparam`:idx:
+     `posix.html#909 <posix.html#909>`_
+
+   `pthread_getspecific`:idx:
+     `posix.html#910 <posix.html#910>`_
+
+   `PTHREAD_INHERIT_SCHED`:idx:
+     `posix.html#458 <posix.html#458>`_
+
+   `pthread_join`:idx:
+     `posix.html#911 <posix.html#911>`_
+
+   `pthread_key_create`:idx:
+     `posix.html#912 <posix.html#912>`_
+
+   `pthread_key_delete`:idx:
+     `posix.html#913 <posix.html#913>`_
+
+   `pthread_kill`:idx:
+     `posix.html#1118 <posix.html#1118>`_
+
+   `pthread_mutexattr_destroy`:idx:
+     `posix.html#922 <posix.html#922>`_
+
+   `pthread_mutexattr_getprioceiling`:idx:
+     `posix.html#923 <posix.html#923>`_
+
+   `pthread_mutexattr_getprotocol`:idx:
+     `posix.html#924 <posix.html#924>`_
+
+   `pthread_mutexattr_getpshared`:idx:
+     `posix.html#925 <posix.html#925>`_
+
+   `pthread_mutexattr_gettype`:idx:
+     `posix.html#926 <posix.html#926>`_
+
+   `pthread_mutexattr_init`:idx:
+     `posix.html#927 <posix.html#927>`_
+
+   `pthread_mutexattr_setprioceiling`:idx:
+     `posix.html#928 <posix.html#928>`_
+
+   `pthread_mutexattr_setprotocol`:idx:
+     `posix.html#929 <posix.html#929>`_
+
+   `pthread_mutexattr_setpshared`:idx:
+     `posix.html#930 <posix.html#930>`_
+
+   `pthread_mutexattr_settype`:idx:
+     `posix.html#931 <posix.html#931>`_
+
+   `PTHREAD_MUTEX_DEFAULT`:idx:
+     `posix.html#459 <posix.html#459>`_
+
+   `pthread_mutex_destroy`:idx:
+     `posix.html#914 <posix.html#914>`_
+
+   `PTHREAD_MUTEX_ERRORCHECK`:idx:
+     `posix.html#460 <posix.html#460>`_
+
+   `pthread_mutex_getprioceiling`:idx:
+     `posix.html#915 <posix.html#915>`_
+
+   `pthread_mutex_init`:idx:
+     `posix.html#916 <posix.html#916>`_
+
+   `PTHREAD_MUTEX_INITIALIZER`:idx:
+     `posix.html#461 <posix.html#461>`_
+
+   `pthread_mutex_lock`:idx:
+     `posix.html#917 <posix.html#917>`_
+
+   `PTHREAD_MUTEX_NORMAL`:idx:
+     `posix.html#462 <posix.html#462>`_
+
+   `PTHREAD_MUTEX_RECURSIVE`:idx:
+     `posix.html#463 <posix.html#463>`_
+
+   `pthread_mutex_setprioceiling`:idx:
+     `posix.html#918 <posix.html#918>`_
+
+   `pthread_mutex_timedlock`:idx:
+     `posix.html#919 <posix.html#919>`_
+
+   `pthread_mutex_trylock`:idx:
+     `posix.html#920 <posix.html#920>`_
+
+   `pthread_mutex_unlock`:idx:
+     `posix.html#921 <posix.html#921>`_
+
+   `pthread_once`:idx:
+     `posix.html#932 <posix.html#932>`_
+
+   `PTHREAD_ONCE_INIT`:idx:
+     `posix.html#464 <posix.html#464>`_
+
+   `PTHREAD_PRIO_INHERIT`:idx:
+     `posix.html#465 <posix.html#465>`_
+
+   `PTHREAD_PRIO_NONE`:idx:
+     `posix.html#466 <posix.html#466>`_
+
+   `PTHREAD_PRIO_PROTECT`:idx:
+     `posix.html#467 <posix.html#467>`_
+
+   `PTHREAD_PROCESS_PRIVATE`:idx:
+     `posix.html#469 <posix.html#469>`_
+
+   `PTHREAD_PROCESS_SHARED`:idx:
+     `posix.html#468 <posix.html#468>`_
+
+   `pthread_rwlockattr_destroy`:idx:
+     `posix.html#942 <posix.html#942>`_
+
+   `pthread_rwlockattr_getpshared`:idx:
+     `posix.html#943 <posix.html#943>`_
+
+   `pthread_rwlockattr_init`:idx:
+     `posix.html#944 <posix.html#944>`_
+
+   `pthread_rwlockattr_setpshared`:idx:
+     `posix.html#945 <posix.html#945>`_
+
+   `pthread_rwlock_destroy`:idx:
+     `posix.html#933 <posix.html#933>`_
+
+   `pthread_rwlock_init`:idx:
+     `posix.html#934 <posix.html#934>`_
+
+   `pthread_rwlock_rdlock`:idx:
+     `posix.html#935 <posix.html#935>`_
+
+   `pthread_rwlock_timedrdlock`:idx:
+     `posix.html#936 <posix.html#936>`_
+
+   `pthread_rwlock_timedwrlock`:idx:
+     `posix.html#937 <posix.html#937>`_
+
+   `pthread_rwlock_tryrdlock`:idx:
+     `posix.html#938 <posix.html#938>`_
+
+   `pthread_rwlock_trywrlock`:idx:
+     `posix.html#939 <posix.html#939>`_
+
+   `pthread_rwlock_unlock`:idx:
+     `posix.html#940 <posix.html#940>`_
+
+   `pthread_rwlock_wrlock`:idx:
+     `posix.html#941 <posix.html#941>`_
+
+   `PTHREAD_SCOPE_PROCESS`:idx:
+     `posix.html#470 <posix.html#470>`_
+
+   `PTHREAD_SCOPE_SYSTEM`:idx:
+     `posix.html#471 <posix.html#471>`_
+
+   `pthread_self`:idx:
+     `posix.html#946 <posix.html#946>`_
+
+   `pthread_setcancelstate`:idx:
+     `posix.html#947 <posix.html#947>`_
+
+   `pthread_setcanceltype`:idx:
+     `posix.html#948 <posix.html#948>`_
+
+   `pthread_setconcurrency`:idx:
+     `posix.html#949 <posix.html#949>`_
+
+   `pthread_setschedparam`:idx:
+     `posix.html#950 <posix.html#950>`_
+
+   `pthread_setschedprio`:idx:
+     `posix.html#951 <posix.html#951>`_
+
+   `pthread_setspecific`:idx:
+     `posix.html#952 <posix.html#952>`_
+
+   `pthread_sigmask`:idx:
+     `posix.html#1119 <posix.html#1119>`_
+
+   `pthread_spin_destroy`:idx:
+     `posix.html#953 <posix.html#953>`_
+
+   `pthread_spin_init`:idx:
+     `posix.html#954 <posix.html#954>`_
+
+   `pthread_spin_lock`:idx:
+     `posix.html#955 <posix.html#955>`_
+
+   `pthread_spin_trylock`:idx:
+     `posix.html#956 <posix.html#956>`_
+
+   `pthread_spin_unlock`:idx:
+     `posix.html#957 <posix.html#957>`_
+
+   `pthread_testcancel`:idx:
+     `posix.html#958 <posix.html#958>`_
 
    `push/pop`:idx:
-     `manual.html#230 <manual.html#230>`_
+     `manual.html#229 <manual.html#229>`_
 
    `putEnv`:idx:
      `os.html#139 <os.html#139>`_
+
+   `PWindow`:idx:
+     `dialogs.html#101 <dialogs.html#101>`_
+
+   `pwrite`:idx:
+     `posix.html#1010 <posix.html#1010>`_
 
    `quit`:idx:
      `system.html#286 <system.html#286>`_
@@ -1037,44 +3190,62 @@ Index
    `quotation mark`:idx:
      `manual.html#128 <manual.html#128>`_
 
+   `quoteIfSpaceExists`:idx:
+     `strutils.html#135 <strutils.html#135>`_
+
+   `RADIXCHAR`:idx:
+     `posix.html#436 <posix.html#436>`_
+
+   `raise`:idx:
+     `posix.html#1120 <posix.html#1120>`_
+
    `random`:idx:
-     `math.html#104 <math.html#104>`_
+     `math.html#106 <math.html#106>`_
 
    `randomize`:idx:
-     `math.html#105 <math.html#105>`_
+     `math.html#107 <math.html#107>`_
 
    `range`:idx:
      `system.html#107 <system.html#107>`_
 
    `re-raised`:idx:
-     `manual.html#185 <manual.html#185>`_
+     `manual.html#184 <manual.html#184>`_
+
+   `read`:idx:
+     `posix.html#1011 <posix.html#1011>`_
 
    `readBuffer`:idx:
-     `system.html#384 <system.html#384>`_
+     `system.html#396 <system.html#396>`_
 
    `ReadBytes`:idx:
-     `system.html#382 <system.html#382>`_
+     `system.html#394 <system.html#394>`_
 
    `readChar`:idx:
-     `system.html#369 <system.html#369>`_
+     `system.html#380 <system.html#380>`_
 
    `ReadChars`:idx:
-     `system.html#383 <system.html#383>`_
+     `system.html#395 <system.html#395>`_
+
+   `readdir`:idx:
+     `posix.html#796 <posix.html#796>`_
+
+   `readdir_r`:idx:
+     `posix.html#797 <posix.html#797>`_
 
    `readFile`:idx:
-     `system.html#371 <system.html#371>`_
+     `system.html#382 <system.html#382>`_
 
    `readLine`:idx:
-     `system.html#378 <system.html#378>`_
+     `system.html#390 <system.html#390>`_
+
+   `readlink`:idx:
+     `posix.html#1012 <posix.html#1012>`_
 
    `realloc`:idx:
      `system.html#298 <system.html#298>`_
 
-   `record`:idx:
-     `manual.html#155 <manual.html#155>`_
-
    `Recursive module dependancies`:idx:
-     `manual.html#218 <manual.html#218>`_
+     `manual.html#217 <manual.html#217>`_
 
    `register`:idx:
      `nimrodc.html#110 <nimrodc.html#110>`_
@@ -1086,7 +3257,7 @@ Index
      `os.html#133 <os.html#133>`_
 
    `repeatChar`:idx:
-     `strutils.html#130 <strutils.html#130>`_
+     `strutils.html#131 <strutils.html#131>`_
 
    `replaceStr`:idx:
      `strutils.html#114 <strutils.html#114>`_
@@ -1095,30 +3266,519 @@ Index
      `system.html#254 <system.html#254>`_
 
    `result`:idx:
-     * `manual.html#192 <manual.html#192>`_
-     * `manual.html#203 <manual.html#203>`_
+     * `manual.html#191 <manual.html#191>`_
+     * `manual.html#202 <manual.html#202>`_
 
    `return`:idx:
-     `manual.html#191 <manual.html#191>`_
+     `manual.html#190 <manual.html#190>`_
+
+   `rewinddir`:idx:
+     `posix.html#798 <posix.html#798>`_
+
+   `rmdir`:idx:
+     `posix.html#1013 <posix.html#1013>`_
+
+   `R_OK`:idx:
+     `posix.html#476 <posix.html#476>`_
+
+   `round`:idx:
+     `math.html#114 <math.html#114>`_
+
+   `RTLD_GLOBAL`:idx:
+     `posix.html#214 <posix.html#214>`_
+
+   `RTLD_LAZY`:idx:
+     `posix.html#212 <posix.html#212>`_
+
+   `RTLD_LOCAL`:idx:
+     `posix.html#215 <posix.html#215>`_
+
+   `RTLD_NOW`:idx:
+     `posix.html#213 <posix.html#213>`_
 
    `safe`:idx:
      `manual.html#112 <manual.html#112>`_
 
    `safecall`:idx:
-     `manual.html#167 <manual.html#167>`_
+     `manual.html#166 <manual.html#166>`_
 
    `sameFile`:idx:
      `os.html#144 <os.html#144>`_
 
+   `SA_NOCLDSTOP`:idx:
+     `posix.html#751 <posix.html#751>`_
+
+   `SA_NOCLDWAIT`:idx:
+     `posix.html#759 <posix.html#759>`_
+
+   `SA_NODEFER`:idx:
+     `posix.html#760 <posix.html#760>`_
+
+   `SA_ONSTACK`:idx:
+     `posix.html#755 <posix.html#755>`_
+
+   `SA_RESETHAND`:idx:
+     `posix.html#756 <posix.html#756>`_
+
+   `SA_RESTART`:idx:
+     `posix.html#757 <posix.html#757>`_
+
+   `SA_SIGINFO`:idx:
+     `posix.html#758 <posix.html#758>`_
+
+   `SC_2_C_BIND`:idx:
+     `posix.html#516 <posix.html#516>`_
+
+   `SC_2_C_DEV`:idx:
+     `posix.html#517 <posix.html#517>`_
+
+   `SC_2_CHAR_TERM`:idx:
+     `posix.html#518 <posix.html#518>`_
+
+   `SC_2_FORT_DEV`:idx:
+     `posix.html#519 <posix.html#519>`_
+
+   `SC_2_FORT_RUN`:idx:
+     `posix.html#520 <posix.html#520>`_
+
+   `SC_2_LOCALEDEF`:idx:
+     `posix.html#521 <posix.html#521>`_
+
+   `SC_2_PBS`:idx:
+     `posix.html#522 <posix.html#522>`_
+
+   `SC_2_PBS_ACCOUNTING`:idx:
+     `posix.html#523 <posix.html#523>`_
+
+   `SC_2_PBS_CHECKPOINT`:idx:
+     `posix.html#524 <posix.html#524>`_
+
+   `SC_2_PBS_LOCATE`:idx:
+     `posix.html#525 <posix.html#525>`_
+
+   `SC_2_PBS_MESSAGE`:idx:
+     `posix.html#526 <posix.html#526>`_
+
+   `SC_2_PBS_TRACK`:idx:
+     `posix.html#527 <posix.html#527>`_
+
+   `SC_2_SW_DEV`:idx:
+     `posix.html#528 <posix.html#528>`_
+
+   `SC_2_UPE`:idx:
+     `posix.html#529 <posix.html#529>`_
+
+   `SC_2_VERSION`:idx:
+     `posix.html#530 <posix.html#530>`_
+
+   `SC_ADVISORY_INFO`:idx:
+     `posix.html#531 <posix.html#531>`_
+
+   `SC_AIO_LISTIO_MAX`:idx:
+     `posix.html#532 <posix.html#532>`_
+
+   `SC_AIO_MAX`:idx:
+     `posix.html#533 <posix.html#533>`_
+
+   `SC_AIO_PRIO_DELTA_MAX`:idx:
+     `posix.html#534 <posix.html#534>`_
+
+   `SC_ARG_MAX`:idx:
+     `posix.html#535 <posix.html#535>`_
+
+   `SC_ASYNCHRONOUS_IO`:idx:
+     `posix.html#536 <posix.html#536>`_
+
+   `SC_ATEXIT_MAX`:idx:
+     `posix.html#537 <posix.html#537>`_
+
+   `SC_BARRIERS`:idx:
+     `posix.html#538 <posix.html#538>`_
+
+   `SC_BC_BASE_MAX`:idx:
+     `posix.html#539 <posix.html#539>`_
+
+   `SC_BC_DIM_MAX`:idx:
+     `posix.html#540 <posix.html#540>`_
+
+   `SC_BC_SCALE_MAX`:idx:
+     `posix.html#541 <posix.html#541>`_
+
+   `SC_BC_STRING_MAX`:idx:
+     `posix.html#542 <posix.html#542>`_
+
+   `SC_CHILD_MAX`:idx:
+     `posix.html#543 <posix.html#543>`_
+
+   `SC_CLK_TCK`:idx:
+     `posix.html#544 <posix.html#544>`_
+
+   `SC_CLOCK_SELECTION`:idx:
+     `posix.html#545 <posix.html#545>`_
+
+   `SC_COLL_WEIGHTS_MAX`:idx:
+     `posix.html#546 <posix.html#546>`_
+
+   `SC_CPUTIME`:idx:
+     `posix.html#547 <posix.html#547>`_
+
+   `SC_DELAYTIMER_MAX`:idx:
+     `posix.html#548 <posix.html#548>`_
+
+   `SC_EXPR_NEST_MAX`:idx:
+     `posix.html#549 <posix.html#549>`_
+
+   `SC_FSYNC`:idx:
+     `posix.html#550 <posix.html#550>`_
+
+   `SC_GETGR_R_SIZE_MAX`:idx:
+     `posix.html#551 <posix.html#551>`_
+
+   `SC_GETPW_R_SIZE_MAX`:idx:
+     `posix.html#552 <posix.html#552>`_
+
+   `SCHED_FIFO`:idx:
+     `posix.html#767 <posix.html#767>`_
+
+   `sched_getparam`:idx:
+     `posix.html#1147 <posix.html#1147>`_
+
+   `sched_get_priority_max`:idx:
+     `posix.html#1145 <posix.html#1145>`_
+
+   `sched_get_priority_min`:idx:
+     `posix.html#1146 <posix.html#1146>`_
+
+   `sched_getscheduler`:idx:
+     `posix.html#1148 <posix.html#1148>`_
+
+   `SCHED_OTHER`:idx:
+     `posix.html#770 <posix.html#770>`_
+
+   `SCHED_RR`:idx:
+     `posix.html#768 <posix.html#768>`_
+
+   `sched_rr_get_interval`:idx:
+     `posix.html#1149 <posix.html#1149>`_
+
+   `sched_setparam`:idx:
+     `posix.html#1150 <posix.html#1150>`_
+
+   `sched_setscheduler`:idx:
+     `posix.html#1151 <posix.html#1151>`_
+
+   `SCHED_SPORADIC`:idx:
+     `posix.html#769 <posix.html#769>`_
+
+   `sched_yield`:idx:
+     `posix.html#1152 <posix.html#1152>`_
+
+   `SC_HOST_NAME_MAX`:idx:
+     `posix.html#553 <posix.html#553>`_
+
+   `SC_IOV_MAX`:idx:
+     `posix.html#554 <posix.html#554>`_
+
+   `SC_IPV6`:idx:
+     `posix.html#555 <posix.html#555>`_
+
+   `SC_JOB_CONTROL`:idx:
+     `posix.html#556 <posix.html#556>`_
+
+   `SC_LINE_MAX`:idx:
+     `posix.html#557 <posix.html#557>`_
+
+   `SC_LOGIN_NAME_MAX`:idx:
+     `posix.html#558 <posix.html#558>`_
+
+   `SC_MAPPED_FILES`:idx:
+     `posix.html#559 <posix.html#559>`_
+
+   `SC_MEMLOCK`:idx:
+     `posix.html#560 <posix.html#560>`_
+
+   `SC_MEMLOCK_RANGE`:idx:
+     `posix.html#561 <posix.html#561>`_
+
+   `SC_MEMORY_PROTECTION`:idx:
+     `posix.html#562 <posix.html#562>`_
+
+   `SC_MESSAGE_PASSING`:idx:
+     `posix.html#563 <posix.html#563>`_
+
+   `SC_MONOTONIC_CLOCK`:idx:
+     `posix.html#564 <posix.html#564>`_
+
+   `SC_MQ_OPEN_MAX`:idx:
+     `posix.html#565 <posix.html#565>`_
+
+   `SC_MQ_PRIO_MAX`:idx:
+     `posix.html#566 <posix.html#566>`_
+
+   `SC_NGROUPS_MAX`:idx:
+     `posix.html#567 <posix.html#567>`_
+
    `scope`:idx:
      * `manual.html#106 <manual.html#106>`_
-     * `manual.html#219 <manual.html#219>`_
+     * `manual.html#218 <manual.html#218>`_
+
+   `SC_OPEN_MAX`:idx:
+     `posix.html#568 <posix.html#568>`_
+
+   `SC_PAGE_SIZE`:idx:
+     `posix.html#569 <posix.html#569>`_
+
+   `SC_PRIORITIZED_IO`:idx:
+     `posix.html#570 <posix.html#570>`_
+
+   `SC_PRIORITY_SCHEDULING`:idx:
+     `posix.html#571 <posix.html#571>`_
+
+   `SC_RAW_SOCKETS`:idx:
+     `posix.html#572 <posix.html#572>`_
+
+   `SC_READER_WRITER_LOCKS`:idx:
+     `posix.html#574 <posix.html#574>`_
+
+   `SC_REALTIME_SIGNALS`:idx:
+     `posix.html#575 <posix.html#575>`_
+
+   `SC_RE_DUP_MAX`:idx:
+     `posix.html#573 <posix.html#573>`_
+
+   `SC_REGEXP`:idx:
+     `posix.html#576 <posix.html#576>`_
+
+   `SC_RTSIG_MAX`:idx:
+     `posix.html#577 <posix.html#577>`_
+
+   `SC_SAVED_IDS`:idx:
+     `posix.html#578 <posix.html#578>`_
+
+   `SC_SEMAPHORES`:idx:
+     `posix.html#581 <posix.html#581>`_
+
+   `SC_SEM_NSEMS_MAX`:idx:
+     `posix.html#579 <posix.html#579>`_
+
+   `SC_SEM_VALUE_MAX`:idx:
+     `posix.html#580 <posix.html#580>`_
+
+   `SC_SHARED_MEMORY_OBJECTS`:idx:
+     `posix.html#582 <posix.html#582>`_
+
+   `SC_SHELL`:idx:
+     `posix.html#583 <posix.html#583>`_
+
+   `SC_SIGQUEUE_MAX`:idx:
+     `posix.html#584 <posix.html#584>`_
+
+   `SC_SPAWN`:idx:
+     `posix.html#585 <posix.html#585>`_
+
+   `SC_SPIN_LOCKS`:idx:
+     `posix.html#586 <posix.html#586>`_
+
+   `SC_SPORADIC_SERVER`:idx:
+     `posix.html#587 <posix.html#587>`_
+
+   `SC_SS_REPL_MAX`:idx:
+     `posix.html#588 <posix.html#588>`_
+
+   `SC_STREAM_MAX`:idx:
+     `posix.html#589 <posix.html#589>`_
+
+   `SC_SYMLOOP_MAX`:idx:
+     `posix.html#590 <posix.html#590>`_
+
+   `SC_SYNCHRONIZED_IO`:idx:
+     `posix.html#591 <posix.html#591>`_
+
+   `SC_THREAD_ATTR_STACKADDR`:idx:
+     `posix.html#592 <posix.html#592>`_
+
+   `SC_THREAD_ATTR_STACKSIZE`:idx:
+     `posix.html#593 <posix.html#593>`_
+
+   `SC_THREAD_CPUTIME`:idx:
+     `posix.html#594 <posix.html#594>`_
+
+   `SC_THREAD_DESTRUCTOR_ITERATIONS`:idx:
+     `posix.html#595 <posix.html#595>`_
+
+   `SC_THREAD_KEYS_MAX`:idx:
+     `posix.html#596 <posix.html#596>`_
+
+   `SC_THREAD_PRIO_INHERIT`:idx:
+     `posix.html#597 <posix.html#597>`_
+
+   `SC_THREAD_PRIO_PROTECT`:idx:
+     `posix.html#598 <posix.html#598>`_
+
+   `SC_THREAD_PRIORITY_SCHEDULING`:idx:
+     `posix.html#599 <posix.html#599>`_
+
+   `SC_THREAD_PROCESS_SHARED`:idx:
+     `posix.html#600 <posix.html#600>`_
+
+   `SC_THREADS`:idx:
+     `posix.html#605 <posix.html#605>`_
+
+   `SC_THREAD_SAFE_FUNCTIONS`:idx:
+     `posix.html#601 <posix.html#601>`_
+
+   `SC_THREAD_SPORADIC_SERVER`:idx:
+     `posix.html#602 <posix.html#602>`_
+
+   `SC_THREAD_STACK_MIN`:idx:
+     `posix.html#603 <posix.html#603>`_
+
+   `SC_THREAD_THREADS_MAX`:idx:
+     `posix.html#604 <posix.html#604>`_
+
+   `SC_TIMEOUTS`:idx:
+     `posix.html#606 <posix.html#606>`_
+
+   `SC_TIMER_MAX`:idx:
+     `posix.html#607 <posix.html#607>`_
+
+   `SC_TIMERS`:idx:
+     `posix.html#608 <posix.html#608>`_
+
+   `SC_TRACE`:idx:
+     `posix.html#609 <posix.html#609>`_
+
+   `SC_TRACE_EVENT_FILTER`:idx:
+     `posix.html#610 <posix.html#610>`_
+
+   `SC_TRACE_EVENT_NAME_MAX`:idx:
+     `posix.html#611 <posix.html#611>`_
+
+   `SC_TRACE_INHERIT`:idx:
+     `posix.html#612 <posix.html#612>`_
+
+   `SC_TRACE_LOG`:idx:
+     `posix.html#613 <posix.html#613>`_
+
+   `SC_TRACE_NAME_MAX`:idx:
+     `posix.html#614 <posix.html#614>`_
+
+   `SC_TRACE_SYS_MAX`:idx:
+     `posix.html#615 <posix.html#615>`_
+
+   `SC_TRACE_USER_EVENT_MAX`:idx:
+     `posix.html#616 <posix.html#616>`_
+
+   `SC_TTY_NAME_MAX`:idx:
+     `posix.html#617 <posix.html#617>`_
+
+   `SC_TYPED_MEMORY_OBJECTS`:idx:
+     `posix.html#618 <posix.html#618>`_
+
+   `SC_TZNAME_MAX`:idx:
+     `posix.html#619 <posix.html#619>`_
+
+   `SC_V6_ILP32_OFF32`:idx:
+     `posix.html#620 <posix.html#620>`_
+
+   `SC_V6_ILP32_OFFBIG`:idx:
+     `posix.html#621 <posix.html#621>`_
+
+   `SC_V6_LP64_OFF64`:idx:
+     `posix.html#622 <posix.html#622>`_
+
+   `SC_V6_LPBIG_OFFBIG`:idx:
+     `posix.html#623 <posix.html#623>`_
+
+   `SC_VERSION`:idx:
+     `posix.html#624 <posix.html#624>`_
+
+   `SC_XBS5_ILP32_OFF32`:idx:
+     `posix.html#625 <posix.html#625>`_
+
+   `SC_XBS5_ILP32_OFFBIG`:idx:
+     `posix.html#626 <posix.html#626>`_
+
+   `SC_XBS5_LP64_OFF64`:idx:
+     `posix.html#627 <posix.html#627>`_
+
+   `SC_XBS5_LPBIG_OFFBIG`:idx:
+     `posix.html#628 <posix.html#628>`_
+
+   `SC_XOPEN_CRYPT`:idx:
+     `posix.html#629 <posix.html#629>`_
+
+   `SC_XOPEN_ENH_I18N`:idx:
+     `posix.html#630 <posix.html#630>`_
+
+   `SC_XOPEN_LEGACY`:idx:
+     `posix.html#631 <posix.html#631>`_
+
+   `SC_XOPEN_REALTIME`:idx:
+     `posix.html#632 <posix.html#632>`_
+
+   `SC_XOPEN_REALTIME_THREADS`:idx:
+     `posix.html#633 <posix.html#633>`_
+
+   `SC_XOPEN_SHM`:idx:
+     `posix.html#634 <posix.html#634>`_
+
+   `SC_XOPEN_STREAMS`:idx:
+     `posix.html#635 <posix.html#635>`_
+
+   `SC_XOPEN_UNIX`:idx:
+     `posix.html#636 <posix.html#636>`_
+
+   `SC_XOPEN_VERSION`:idx:
+     `posix.html#637 <posix.html#637>`_
+
+   `seekdir`:idx:
+     `posix.html#799 <posix.html#799>`_
+
+   `select`:idx:
+     `posix.html#1159 <posix.html#1159>`_
+
+   `sem_close`:idx:
+     `posix.html#1038 <posix.html#1038>`_
+
+   `sem_destroy`:idx:
+     `posix.html#1039 <posix.html#1039>`_
+
+   `SEM_FAILED`:idx:
+     `posix.html#638 <posix.html#638>`_
+
+   `sem_getvalue`:idx:
+     `posix.html#1040 <posix.html#1040>`_
+
+   `sem_init`:idx:
+     `posix.html#1041 <posix.html#1041>`_
+
+   `sem_open`:idx:
+     `posix.html#1042 <posix.html#1042>`_
+
+   `sem_post`:idx:
+     `posix.html#1043 <posix.html#1043>`_
+
+   `sem_timedwait`:idx:
+     `posix.html#1044 <posix.html#1044>`_
+
+   `sem_trywait`:idx:
+     `posix.html#1045 <posix.html#1045>`_
+
+   `sem_unlink`:idx:
+     `posix.html#1046 <posix.html#1046>`_
+
+   `sem_wait`:idx:
+     `posix.html#1047 <posix.html#1047>`_
 
    `separate compilation`:idx:
-     `manual.html#216 <manual.html#216>`_
+     `manual.html#215 <manual.html#215>`_
 
    `seq`:idx:
      `system.html#110 <system.html#110>`_
+
+   `seqToPtr`:idx:
+     `system.html#362 <system.html#362>`_
 
    `Sequences`:idx:
      `manual.html#154 <manual.html#154>`_
@@ -1127,37 +3787,352 @@ Index
      `system.html#111 <system.html#111>`_
 
    `set type`:idx:
-     `manual.html#158 <manual.html#158>`_
+     `manual.html#157 <manual.html#157>`_
+
+   `setcontext`:idx:
+     `posix.html#1183 <posix.html#1183>`_
 
    `setCurrentDir`:idx:
      `os.html#111 <os.html#111>`_
 
+   `setegid`:idx:
+     `posix.html#1014 <posix.html#1014>`_
+
+   `seteuid`:idx:
+     `posix.html#1015 <posix.html#1015>`_
+
    `setFilePos`:idx:
-     `system.html#388 <system.html#388>`_
+     `system.html#400 <system.html#400>`_
+
+   `setgid`:idx:
+     `posix.html#1016 <posix.html#1016>`_
+
+   `setgrent`:idx:
+     `posix.html#833 <posix.html#833>`_
 
    `setLen`:idx:
      * `system.html#290 <system.html#290>`_
      * `system.html#300 <system.html#300>`_
 
+   `setlocale`:idx:
+     `posix.html#841 <posix.html#841>`_
+
+   `setpgid`:idx:
+     `posix.html#1017 <posix.html#1017>`_
+
+   `setpgrp`:idx:
+     `posix.html#1018 <posix.html#1018>`_
+
+   `setpwent`:idx:
+     `posix.html#858 <posix.html#858>`_
+
+   `setregid`:idx:
+     `posix.html#1019 <posix.html#1019>`_
+
+   `setreuid`:idx:
+     `posix.html#1020 <posix.html#1020>`_
+
+   `setsid`:idx:
+     `posix.html#1021 <posix.html#1021>`_
+
+   `setuid`:idx:
+     `posix.html#1022 <posix.html#1022>`_
+
    `shl`:idx:
      * `system.html#163 <system.html#163>`_
      * `system.html#182 <system.html#182>`_
+
+   `shm_open`:idx:
+     `posix.html#1083 <posix.html#1083>`_
+
+   `shm_unlink`:idx:
+     `posix.html#1084 <posix.html#1084>`_
 
    `shr`:idx:
      * `system.html#162 <system.html#162>`_
      * `system.html#181 <system.html#181>`_
 
+   `S_IFBLK`:idx:
+     `posix.html#647 <posix.html#647>`_
+
+   `S_IFCHR`:idx:
+     `posix.html#648 <posix.html#648>`_
+
+   `S_IFDIR`:idx:
+     `posix.html#651 <posix.html#651>`_
+
+   `S_IFIFO`:idx:
+     `posix.html#649 <posix.html#649>`_
+
+   `S_IFLNK`:idx:
+     `posix.html#652 <posix.html#652>`_
+
+   `S_IFMT`:idx:
+     `posix.html#646 <posix.html#646>`_
+
+   `S_IFREG`:idx:
+     `posix.html#650 <posix.html#650>`_
+
+   `S_IFSOCK`:idx:
+     `posix.html#653 <posix.html#653>`_
+
+   `SIGABRT`:idx:
+     `posix.html#723 <posix.html#723>`_
+
+   `sigaction`:idx:
+     `posix.html#1121 <posix.html#1121>`_
+
+   `sigaddset`:idx:
+     `posix.html#1122 <posix.html#1122>`_
+
+   `SIGALRM`:idx:
+     `posix.html#724 <posix.html#724>`_
+
+   `sigaltstack`:idx:
+     `posix.html#1123 <posix.html#1123>`_
+
+   `SIG_BLOCK`:idx:
+     `posix.html#752 <posix.html#752>`_
+
+   `SIGBUS`:idx:
+     `posix.html#725 <posix.html#725>`_
+
+   `SIGCHLD`:idx:
+     `posix.html#726 <posix.html#726>`_
+
+   `SIGCONT`:idx:
+     `posix.html#727 <posix.html#727>`_
+
+   `sigdelset`:idx:
+     `posix.html#1124 <posix.html#1124>`_
+
+   `SIG_DFL`:idx:
+     `posix.html#716 <posix.html#716>`_
+
+   `sigemptyset`:idx:
+     `posix.html#1125 <posix.html#1125>`_
+
+   `SIG_ERR`:idx:
+     `posix.html#717 <posix.html#717>`_
+
+   `SIGEV_NONE`:idx:
+     `posix.html#720 <posix.html#720>`_
+
+   `SIGEV_SIGNAL`:idx:
+     `posix.html#721 <posix.html#721>`_
+
+   `SIGEV_THREAD`:idx:
+     `posix.html#722 <posix.html#722>`_
+
+   `sigfillset`:idx:
+     `posix.html#1126 <posix.html#1126>`_
+
+   `SIGFPE`:idx:
+     `posix.html#728 <posix.html#728>`_
+
+   `sighold`:idx:
+     `posix.html#1127 <posix.html#1127>`_
+
+   `SIGHUP`:idx:
+     `posix.html#729 <posix.html#729>`_
+
+   `SIG_IGN`:idx:
+     `posix.html#719 <posix.html#719>`_
+
+   `sigignore`:idx:
+     `posix.html#1128 <posix.html#1128>`_
+
+   `SIGILL`:idx:
+     `posix.html#730 <posix.html#730>`_
+
+   `SIGINT`:idx:
+     `posix.html#731 <posix.html#731>`_
+
+   `siginterrupt`:idx:
+     `posix.html#1129 <posix.html#1129>`_
+
+   `sigismember`:idx:
+     `posix.html#1130 <posix.html#1130>`_
+
+   `SIGKILL`:idx:
+     `posix.html#732 <posix.html#732>`_
+
+   `signal`:idx:
+     `posix.html#1131 <posix.html#1131>`_
+
+   `sigpause`:idx:
+     `posix.html#1132 <posix.html#1132>`_
+
+   `sigpending`:idx:
+     `posix.html#1133 <posix.html#1133>`_
+
+   `SIGPIPE`:idx:
+     `posix.html#733 <posix.html#733>`_
+
+   `SIGPOLL`:idx:
+     `posix.html#743 <posix.html#743>`_
+
+   `sigprocmask`:idx:
+     `posix.html#1134 <posix.html#1134>`_
+
+   `SIGPROF`:idx:
+     `posix.html#744 <posix.html#744>`_
+
+   `sigqueue`:idx:
+     `posix.html#1135 <posix.html#1135>`_
+
+   `SIGQUIT`:idx:
+     `posix.html#734 <posix.html#734>`_
+
+   `sigrelse`:idx:
+     `posix.html#1136 <posix.html#1136>`_
+
+   `SIGSEGV`:idx:
+     `posix.html#735 <posix.html#735>`_
+
+   `sigset`:idx:
+     `posix.html#1137 <posix.html#1137>`_
+
+   `SIG_SETMASK`:idx:
+     `posix.html#754 <posix.html#754>`_
+
+   `SIGSTKSZ`:idx:
+     `posix.html#764 <posix.html#764>`_
+
+   `SIGSTOP`:idx:
+     `posix.html#736 <posix.html#736>`_
+
+   `sigsuspend`:idx:
+     `posix.html#1138 <posix.html#1138>`_
+
+   `SIGSYS`:idx:
+     `posix.html#745 <posix.html#745>`_
+
+   `SIGTERM`:idx:
+     `posix.html#737 <posix.html#737>`_
+
+   `sigtimedwait`:idx:
+     `posix.html#1139 <posix.html#1139>`_
+
+   `SIGTRAP`:idx:
+     `posix.html#746 <posix.html#746>`_
+
+   `SIGTSTP`:idx:
+     `posix.html#738 <posix.html#738>`_
+
+   `SIGTTIN`:idx:
+     `posix.html#739 <posix.html#739>`_
+
+   `SIGTTOU`:idx:
+     `posix.html#740 <posix.html#740>`_
+
+   `SIG_UNBLOCK`:idx:
+     `posix.html#753 <posix.html#753>`_
+
+   `SIGURG`:idx:
+     `posix.html#747 <posix.html#747>`_
+
+   `SIGUSR1`:idx:
+     `posix.html#741 <posix.html#741>`_
+
+   `SIGUSR2`:idx:
+     `posix.html#742 <posix.html#742>`_
+
+   `SIGVTALRM`:idx:
+     `posix.html#748 <posix.html#748>`_
+
+   `sigwait`:idx:
+     `posix.html#1140 <posix.html#1140>`_
+
+   `sigwaitinfo`:idx:
+     `posix.html#1141 <posix.html#1141>`_
+
+   `SIGXCPU`:idx:
+     `posix.html#749 <posix.html#749>`_
+
+   `SIGXFSZ`:idx:
+     `posix.html#750 <posix.html#750>`_
+
    `simple assertions`:idx:
      `regexprs.html#103 <regexprs.html#103>`_
 
    `simple statements`:idx:
-     `manual.html#175 <manual.html#175>`_
+     `manual.html#174 <manual.html#174>`_
 
    `sinh`:idx:
-     `math.html#118 <math.html#118>`_
+     `math.html#122 <math.html#122>`_
+
+   `S_IRGRP`:idx:
+     `posix.html#659 <posix.html#659>`_
+
+   `S_IROTH`:idx:
+     `posix.html#663 <posix.html#663>`_
+
+   `S_IRUSR`:idx:
+     `posix.html#655 <posix.html#655>`_
+
+   `S_IRWXG`:idx:
+     `posix.html#658 <posix.html#658>`_
+
+   `S_IRWXO`:idx:
+     `posix.html#662 <posix.html#662>`_
+
+   `S_IRWXU`:idx:
+     `posix.html#654 <posix.html#654>`_
+
+   `S_ISBLK`:idx:
+     `posix.html#1060 <posix.html#1060>`_
+
+   `S_ISCHR`:idx:
+     `posix.html#1061 <posix.html#1061>`_
+
+   `S_ISDIR`:idx:
+     `posix.html#1062 <posix.html#1062>`_
+
+   `S_ISFIFO`:idx:
+     `posix.html#1063 <posix.html#1063>`_
+
+   `S_ISGID`:idx:
+     `posix.html#667 <posix.html#667>`_
+
+   `S_ISLNK`:idx:
+     `posix.html#1065 <posix.html#1065>`_
+
+   `S_ISREG`:idx:
+     `posix.html#1064 <posix.html#1064>`_
+
+   `S_ISSOCK`:idx:
+     `posix.html#1066 <posix.html#1066>`_
+
+   `S_ISUID`:idx:
+     `posix.html#666 <posix.html#666>`_
+
+   `S_ISVTX`:idx:
+     `posix.html#668 <posix.html#668>`_
+
+   `S_IWGRP`:idx:
+     `posix.html#660 <posix.html#660>`_
+
+   `S_IWOTH`:idx:
+     `posix.html#664 <posix.html#664>`_
+
+   `S_IWUSR`:idx:
+     `posix.html#656 <posix.html#656>`_
+
+   `S_IXGRP`:idx:
+     `posix.html#661 <posix.html#661>`_
+
+   `S_IXOTH`:idx:
+     `posix.html#665 <posix.html#665>`_
+
+   `S_IXUSR`:idx:
+     `posix.html#657 <posix.html#657>`_
 
    `sizeof`:idx:
      `system.html#140 <system.html#140>`_
+
+   `sleep`:idx:
+     `posix.html#1023 <posix.html#1023>`_
 
    `split`:idx:
      `strutils.html#117 <strutils.html#117>`_
@@ -1172,17 +4147,26 @@ Index
      `strutils.html#118 <strutils.html#118>`_
 
    `sqrt`:idx:
-     * `math.html#106 <math.html#106>`_
+     * `math.html#108 <math.html#108>`_
      * `complex.html#109 <complex.html#109>`_
+
+   `SS_DISABLE`:idx:
+     `posix.html#762 <posix.html#762>`_
+
+   `SS_ONSTACK`:idx:
+     `posix.html#761 <posix.html#761>`_
 
    `stack_trace`:idx:
      `nimrodc.html#106 <nimrodc.html#106>`_
 
    `startsWith`:idx:
-     `strutils.html#131 <strutils.html#131>`_
+     `strutils.html#132 <strutils.html#132>`_
+
+   `stat`:idx:
+     `posix.html#1058 <posix.html#1058>`_
 
    `Statements`:idx:
-     `manual.html#174 <manual.html#174>`_
+     `manual.html#173 <manual.html#173>`_
 
    `static error`:idx:
      `manual.html#109 <manual.html#109>`_
@@ -1190,17 +4174,35 @@ Index
    `static type`:idx:
      `manual.html#103 <manual.html#103>`_
 
+   `statvfs`:idx:
+     `posix.html#1049 <posix.html#1049>`_
+
    `stdcall`:idx:
-     `manual.html#165 <manual.html#165>`_
+     `manual.html#164 <manual.html#164>`_
 
    `stderr`:idx:
-     `system.html#365 <system.html#365>`_
+     `system.html#376 <system.html#376>`_
 
    `stdin`:idx:
-     `system.html#363 <system.html#363>`_
+     `system.html#374 <system.html#374>`_
 
    `stdout`:idx:
-     `system.html#364 <system.html#364>`_
+     `system.html#375 <system.html#375>`_
+
+   `ST_NOSUID`:idx:
+     `posix.html#670 <posix.html#670>`_
+
+   `ST_RDONLY`:idx:
+     `posix.html#669 <posix.html#669>`_
+
+   `strerror`:idx:
+     `posix.html#1153 <posix.html#1153>`_
+
+   `strfmon`:idx:
+     `posix.html#842 <posix.html#842>`_
+
+   `strftime`:idx:
+     `posix.html#1103 <posix.html#1103>`_
 
    `string`:idx:
      `manual.html#151 <manual.html#151>`_
@@ -1208,14 +4210,32 @@ Index
    `strip`:idx:
      `strutils.html#105 <strutils.html#105>`_
 
+   `strptime`:idx:
+     `posix.html#1104 <posix.html#1104>`_
+
    `strStart`:idx:
      `strutils.html#103 <strutils.html#103>`_
 
    `structured type`:idx:
      `manual.html#152 <manual.html#152>`_
 
+   `strutils`:idx:
+     `nimrodc.html#113 <nimrodc.html#113>`_
+
    `style-insensitive`:idx:
      `manual.html#118 <manual.html#118>`_
+
+   `S_TYPEISMQ`:idx:
+     `posix.html#1067 <posix.html#1067>`_
+
+   `S_TYPEISSEM`:idx:
+     `posix.html#1068 <posix.html#1068>`_
+
+   `S_TYPEISSHM`:idx:
+     `posix.html#1069 <posix.html#1069>`_
+
+   `S_TYPEISTMO`:idx:
+     `posix.html#1070 <posix.html#1070>`_
 
    `subrange`:idx:
      `manual.html#150 <manual.html#150>`_
@@ -1223,14 +4243,29 @@ Index
    `succ`:idx:
      `system.html#141 <system.html#141>`_
 
+   `swab`:idx:
+     `posix.html#1024 <posix.html#1024>`_
+
    `swap`:idx:
      `system.html#302 <system.html#302>`_
 
+   `swapcontext`:idx:
+     `posix.html#1184 <posix.html#1184>`_
+
+   `symlink`:idx:
+     `posix.html#1025 <posix.html#1025>`_
+
+   `sync`:idx:
+     `posix.html#1026 <posix.html#1026>`_
+
    `syscall`:idx:
-     `manual.html#172 <manual.html#172>`_
+     `manual.html#171 <manual.html#171>`_
+
+   `sysconf`:idx:
+     `posix.html#1027 <posix.html#1027>`_
 
    `system`:idx:
-     `manual.html#220 <manual.html#220>`_
+     `manual.html#219 <manual.html#219>`_
 
    `tabulator`:idx:
      `manual.html#125 <manual.html#125>`_
@@ -1238,41 +4273,203 @@ Index
    `TAddress`:idx:
      `system.html#255 <system.html#255>`_
 
+   `Taiocb`:idx:
+     `posix.html#127 <posix.html#127>`_
+
    `tan`:idx:
-     `math.html#119 <math.html#119>`_
+     `math.html#123 <math.html#123>`_
 
    `tanh`:idx:
-     `math.html#120 <math.html#120>`_
+     `math.html#124 <math.html#124>`_
+
+   `TBaseLexer`:idx:
+     `lexbase.html#103 <lexbase.html#103>`_
+
+   `Tblkcnt`:idx:
+     `posix.html#141 <posix.html#141>`_
+
+   `Tblksize`:idx:
+     `posix.html#142 <posix.html#142>`_
+
+   `TCfgEvent`:idx:
+     `parsecfg.html#102 <parsecfg.html#102>`_
+
+   `TCfgEventKind`:idx:
+     `parsecfg.html#101 <parsecfg.html#101>`_
+
+   `TCfgParser`:idx:
+     `parsecfg.html#103 <parsecfg.html#103>`_
+
+   `tcgetpgrp`:idx:
+     `posix.html#1028 <posix.html#1028>`_
 
    `TCharSet`:idx:
      `strutils.html#101 <strutils.html#101>`_
 
+   `TClock`:idx:
+     `posix.html#143 <posix.html#143>`_
+
+   `TClockId`:idx:
+     `posix.html#144 <posix.html#144>`_
+
+   `TCmdLineKind`:idx:
+     `parseopt.html#101 <parseopt.html#101>`_
+
    `TComplex`:idx:
      `complex.html#101 <complex.html#101>`_
 
+   `tcsetpgrp`:idx:
+     `posix.html#1029 <posix.html#1029>`_
+
+   `TDev`:idx:
+     `posix.html#145 <posix.html#145>`_
+
+   `TDIR`:idx:
+     `posix.html#128 <posix.html#128>`_
+
+   `Tdirent`:idx:
+     `posix.html#129 <posix.html#129>`_
+
+   `telldir`:idx:
+     `posix.html#800 <posix.html#800>`_
+
    `template`:idx:
-     `manual.html#211 <manual.html#211>`_
+     `manual.html#210 <manual.html#210>`_
 
    `TEndian`:idx:
      `system.html#268 <system.html#268>`_
 
+   `Tfd_set`:idx:
+     `posix.html#199 <posix.html#199>`_
+
+   `Tfenv`:idx:
+     `posix.html#131 <posix.html#131>`_
+
+   `Tfexcept`:idx:
+     `posix.html#132 <posix.html#132>`_
+
    `TFile`:idx:
-     `system.html#361 <system.html#361>`_
+     `system.html#372 <system.html#372>`_
 
    `TFileMode`:idx:
-     `system.html#362 <system.html#362>`_
+     `system.html#373 <system.html#373>`_
 
    `TFloatClass`:idx:
-     `math.html#122 <math.html#122>`_
+     `math.html#101 <math.html#101>`_
+
+   `Tflock`:idx:
+     `posix.html#130 <posix.html#130>`_
+
+   `T_FMT`:idx:
+     `posix.html#389 <posix.html#389>`_
+
+   `T_FMT_AMPM`:idx:
+     `posix.html#390 <posix.html#390>`_
+
+   `TFormatFlag`:idx:
+     `strtabs.html#111 <strtabs.html#111>`_
+
+   `Tfsblkcnt`:idx:
+     `posix.html#146 <posix.html#146>`_
+
+   `Tfsfilcnt`:idx:
+     `posix.html#147 <posix.html#147>`_
+
+   `TFTW`:idx:
+     `posix.html#133 <posix.html#133>`_
 
    `TGC_Strategy`:idx:
-     `system.html#357 <system.html#357>`_
+     `system.html#367 <system.html#367>`_
+
+   `TGid`:idx:
+     `posix.html#148 <posix.html#148>`_
+
+   `TGlob`:idx:
+     `posix.html#134 <posix.html#134>`_
+
+   `TGroup`:idx:
+     `posix.html#135 <posix.html#135>`_
+
+   `THash`:idx:
+     `hashes.html#101 <hashes.html#101>`_
+
+   `THOUSEP`:idx:
+     `posix.html#437 <posix.html#437>`_
+
+   `Ticonv`:idx:
+     `posix.html#136 <posix.html#136>`_
+
+   `Tid`:idx:
+     `posix.html#149 <posix.html#149>`_
+
+   `time`:idx:
+     `posix.html#1105 <posix.html#1105>`_
 
    `TimeInfoToTime`:idx:
      `times.html#108 <times.html#108>`_
 
+   `TIMER_ABSTIME`:idx:
+     `posix.html#696 <posix.html#696>`_
+
+   `timer_create`:idx:
+     `posix.html#1106 <posix.html#1106>`_
+
+   `timer_delete`:idx:
+     `posix.html#1107 <posix.html#1107>`_
+
+   `timer_getoverrun`:idx:
+     `posix.html#1109 <posix.html#1109>`_
+
+   `timer_gettime`:idx:
+     `posix.html#1108 <posix.html#1108>`_
+
+   `timer_settime`:idx:
+     `posix.html#1110 <posix.html#1110>`_
+
+   `times`:idx:
+     `nimrodc.html#115 <nimrodc.html#115>`_
+
+   `timezone`:idx:
+     `posix.html#699 <posix.html#699>`_
+
+   `Tino`:idx:
+     `posix.html#150 <posix.html#150>`_
+
+   `Tipc_perm`:idx:
+     `posix.html#180 <posix.html#180>`_
+
+   `titimerspec`:idx:
+     `posix.html#186 <posix.html#186>`_
+
+   `TKey`:idx:
+     `posix.html#151 <posix.html#151>`_
+
+   `Tlconv`:idx:
+     `posix.html#137 <posix.html#137>`_
+
+   `Tmcontext`:idx:
+     `posix.html#202 <posix.html#202>`_
+
+   `TMode`:idx:
+     `posix.html#152 <posix.html#152>`_
+
    `TMonth`:idx:
      `times.html#101 <times.html#101>`_
+
+   `TMqAttr`:idx:
+     `posix.html#139 <posix.html#139>`_
+
+   `TMqd`:idx:
+     `posix.html#138 <posix.html#138>`_
+
+   `Tnl_catd`:idx:
+     `posix.html#196 <posix.html#196>`_
+
+   `TNlink`:idx:
+     `posix.html#153 <posix.html#153>`_
+
+   `Tnl_item`:idx:
+     `posix.html#195 <posix.html#195>`_
 
    `toBiggestFloat`:idx:
      `system.html#283 <system.html#283>`_
@@ -1281,10 +4478,13 @@ Index
      `system.html#285 <system.html#285>`_
 
    `toBin`:idx:
-     `strutils.html#135 <strutils.html#135>`_
+     `strutils.html#137 <strutils.html#137>`_
 
    `TObject`:idx:
-     `system.html#116 <system.html#116>`_
+     `system.html#115 <system.html#115>`_
+
+   `TOff`:idx:
+     `posix.html#154 <posix.html#154>`_
 
    `toFloat`:idx:
      `system.html#282 <system.html#282>`_
@@ -1300,35 +4500,143 @@ Index
      * `strutils.html#107 <strutils.html#107>`_
 
    `toOct`:idx:
-     `strutils.html#134 <strutils.html#134>`_
+     `strutils.html#136 <strutils.html#136>`_
 
    `toOctal`:idx:
      `strutils.html#116 <strutils.html#116>`_
 
+   `TOptParser`:idx:
+     `parseopt.html#102 <parseopt.html#102>`_
+
    `toString`:idx:
-     `strutils.html#127 <strutils.html#127>`_
+     `strutils.html#128 <strutils.html#128>`_
 
    `toU16`:idx:
-     `system.html#308 <system.html#308>`_
+     `system.html#310 <system.html#310>`_
 
    `toU32`:idx:
-     `system.html#309 <system.html#309>`_
+     `system.html#311 <system.html#311>`_
 
    `toU8`:idx:
-     `system.html#307 <system.html#307>`_
+     `system.html#309 <system.html#309>`_
 
    `toUpper`:idx:
      * `strutils.html#108 <strutils.html#108>`_
      * `strutils.html#109 <strutils.html#109>`_
 
+   `TPasswd`:idx:
+     `posix.html#140 <posix.html#140>`_
+
+   `TPid`:idx:
+     `posix.html#155 <posix.html#155>`_
+
+   `Tposix_spawnattr`:idx:
+     `posix.html#200 <posix.html#200>`_
+
+   `Tposix_spawn_file_actions`:idx:
+     `posix.html#201 <posix.html#201>`_
+
+   `Tposix_typed_mem_info`:idx:
+     `posix.html#183 <posix.html#183>`_
+
+   `Tpthread`:idx:
+     `posix.html#168 <posix.html#168>`_
+
+   `Tpthread_attr`:idx:
+     `posix.html#156 <posix.html#156>`_
+
+   `Tpthread_barrier`:idx:
+     `posix.html#157 <posix.html#157>`_
+
+   `Tpthread_barrierattr`:idx:
+     `posix.html#158 <posix.html#158>`_
+
+   `Tpthread_cond`:idx:
+     `posix.html#159 <posix.html#159>`_
+
+   `Tpthread_condattr`:idx:
+     `posix.html#160 <posix.html#160>`_
+
+   `Tpthread_key`:idx:
+     `posix.html#161 <posix.html#161>`_
+
+   `Tpthread_mutex`:idx:
+     `posix.html#162 <posix.html#162>`_
+
+   `Tpthread_mutexattr`:idx:
+     `posix.html#163 <posix.html#163>`_
+
+   `Tpthread_once`:idx:
+     `posix.html#164 <posix.html#164>`_
+
+   `Tpthread_rwlock`:idx:
+     `posix.html#165 <posix.html#165>`_
+
+   `Tpthread_rwlockattr`:idx:
+     `posix.html#166 <posix.html#166>`_
+
+   `Tpthread_spinlock`:idx:
+     `posix.html#167 <posix.html#167>`_
+
    `traced`:idx:
-     `manual.html#160 <manual.html#160>`_
+     `manual.html#159 <manual.html#159>`_
 
    `TResult`:idx:
      `system.html#139 <system.html#139>`_
 
+   `truncate`:idx:
+     `posix.html#1030 <posix.html#1030>`_
+
    `try`:idx:
-     `manual.html#187 <manual.html#187>`_
+     `manual.html#186 <manual.html#186>`_
+
+   `Tsched_param`:idx:
+     `posix.html#197 <posix.html#197>`_
+
+   `TSem`:idx:
+     `posix.html#179 <posix.html#179>`_
+
+   `TSigaction`:idx:
+     `posix.html#191 <posix.html#191>`_
+
+   `Tsig_atomic`:idx:
+     `posix.html#187 <posix.html#187>`_
+
+   `TsigEvent`:idx:
+     `posix.html#189 <posix.html#189>`_
+
+   `TsigInfo`:idx:
+     `posix.html#194 <posix.html#194>`_
+
+   `Tsigset`:idx:
+     `posix.html#188 <posix.html#188>`_
+
+   `TSigStack`:idx:
+     `posix.html#193 <posix.html#193>`_
+
+   `TsigVal`:idx:
+     `posix.html#190 <posix.html#190>`_
+
+   `TStack`:idx:
+     `posix.html#192 <posix.html#192>`_
+
+   `TStat`:idx:
+     `posix.html#181 <posix.html#181>`_
+
+   `TStatvfs`:idx:
+     `posix.html#182 <posix.html#182>`_
+
+   `TStringTable`:idx:
+     `strtabs.html#102 <strtabs.html#102>`_
+
+   `TStringTableMode`:idx:
+     `strtabs.html#101 <strtabs.html#101>`_
+
+   `Tsuseconds`:idx:
+     `posix.html#169 <posix.html#169>`_
+
+   `Ttime`:idx:
+     `posix.html#170 <posix.html#170>`_
 
    `TTime`:idx:
      `times.html#103 <times.html#103>`_
@@ -1336,8 +4644,50 @@ Index
    `TTimeInfo`:idx:
      `times.html#104 <times.html#104>`_
 
+   `Ttimer`:idx:
+     `posix.html#171 <posix.html#171>`_
+
+   `Ttimespec`:idx:
+     `posix.html#185 <posix.html#185>`_
+
+   `Ttimeval`:idx:
+     `posix.html#198 <posix.html#198>`_
+
+   `Ttm`:idx:
+     `posix.html#184 <posix.html#184>`_
+
+   `Ttrace_attr`:idx:
+     `posix.html#172 <posix.html#172>`_
+
+   `Ttrace_event_id`:idx:
+     `posix.html#173 <posix.html#173>`_
+
+   `Ttrace_event_set`:idx:
+     `posix.html#174 <posix.html#174>`_
+
+   `Ttrace_id`:idx:
+     `posix.html#175 <posix.html#175>`_
+
+   `ttyname`:idx:
+     `posix.html#1031 <posix.html#1031>`_
+
+   `ttyname_r`:idx:
+     `posix.html#1032 <posix.html#1032>`_
+
+   `Tucontext`:idx:
+     `posix.html#203 <posix.html#203>`_
+
+   `Tuid`:idx:
+     `posix.html#176 <posix.html#176>`_
+
    `tuple`:idx:
-     `system.html#112 <system.html#112>`_
+     `manual.html#155 <manual.html#155>`_
+
+   `Tuseconds`:idx:
+     `posix.html#177 <posix.html#177>`_
+
+   `Tutsname`:idx:
+     `posix.html#178 <posix.html#178>`_
 
    `TWeekDay`:idx:
      `times.html#102 <times.html#102>`_
@@ -1345,22 +4695,37 @@ Index
    `type`:idx:
      * `manual.html#102 <manual.html#102>`_
      * `manual.html#141 <manual.html#141>`_
-     * `manual.html#208 <manual.html#208>`_
+     * `manual.html#207 <manual.html#207>`_
 
    `type parameters`:idx:
-     `manual.html#210 <manual.html#210>`_
+     `manual.html#209 <manual.html#209>`_
 
    `type suffix`:idx:
      `manual.html#138 <manual.html#138>`_
+
+   `tzset`:idx:
+     `posix.html#1111 <posix.html#1111>`_
+
+   `ualarm`:idx:
+     `posix.html#1033 <posix.html#1033>`_
+
+   `umask`:idx:
+     `posix.html#1059 <posix.html#1059>`_
+
+   `uname`:idx:
+     `posix.html#859 <posix.html#859>`_
 
    `unchecked runtime error`:idx:
      `manual.html#111 <manual.html#111>`_
 
    `undef`:idx:
-     `manual.html#225 <manual.html#225>`_
+     `manual.html#224 <manual.html#224>`_
 
    `UnixToNativePath`:idx:
      `os.html#122 <os.html#122>`_
+
+   `unlink`:idx:
+     `posix.html#1034 <posix.html#1034>`_
 
    `unsigned integer`:idx:
      `manual.html#143 <manual.html#143>`_
@@ -1369,10 +4734,13 @@ Index
      `manual.html#144 <manual.html#144>`_
 
    `untraced`:idx:
-     `manual.html#161 <manual.html#161>`_
+     `manual.html#160 <manual.html#160>`_
+
+   `usleep`:idx:
+     `posix.html#1035 <posix.html#1035>`_
 
    `Var`:idx:
-     `manual.html#179 <manual.html#179>`_
+     `manual.html#178 <manual.html#178>`_
 
    `varargs`:idx:
      `nimrodc.html#102 <nimrodc.html#102>`_
@@ -1380,60 +4748,126 @@ Index
    `vertical tabulator`:idx:
      `manual.html#126 <manual.html#126>`_
 
+   `vfork`:idx:
+     `posix.html#1036 <posix.html#1036>`_
+
    `volatile`:idx:
      `nimrodc.html#109 <nimrodc.html#109>`_
+
+   `wait`:idx:
+     `posix.html#1112 <posix.html#1112>`_
+
+   `waitid`:idx:
+     `posix.html#1113 <posix.html#1113>`_
+
+   `waitpid`:idx:
+     `posix.html#1114 <posix.html#1114>`_
 
    `walkFiles`:idx:
      `os.html#146 <os.html#146>`_
 
    `warning`:idx:
-     * `manual.html#222 <manual.html#222>`_
-     * `manual.html#228 <manual.html#228>`_
+     * `manual.html#221 <manual.html#221>`_
+     * `manual.html#227 <manual.html#227>`_
+     * `dialogs.html#103 <dialogs.html#103>`_
+
+   `WCONTINUED`:idx:
+     `posix.html#711 <posix.html#711>`_
+
+   `WEXITED`:idx:
+     `posix.html#709 <posix.html#709>`_
+
+   `WEXITSTATUS`:idx:
+     `posix.html#702 <posix.html#702>`_
 
    `when`:idx:
-     `manual.html#183 <manual.html#183>`_
+     `manual.html#182 <manual.html#182>`_
 
    `while`:idx:
-     `manual.html#196 <manual.html#196>`_
+     `manual.html#195 <manual.html#195>`_
 
    `Whitespace`:idx:
      `strutils.html#102 <strutils.html#102>`_
 
+   `WIFCONTINUED`:idx:
+     `posix.html#703 <posix.html#703>`_
+
+   `WIFEXITED`:idx:
+     `posix.html#704 <posix.html#704>`_
+
+   `WIFSIGNALED`:idx:
+     `posix.html#705 <posix.html#705>`_
+
+   `WIFSTOPPED`:idx:
+     `posix.html#706 <posix.html#706>`_
+
+   `WNOHANG`:idx:
+     `posix.html#700 <posix.html#700>`_
+
+   `WNOWAIT`:idx:
+     `posix.html#712 <posix.html#712>`_
+
+   `W_OK`:idx:
+     `posix.html#477 <posix.html#477>`_
+
    `write`:idx:
-     * `system.html#372 <system.html#372>`_
-     * `system.html#373 <system.html#373>`_
-     * `system.html#374 <system.html#374>`_
-     * `system.html#375 <system.html#375>`_
-     * `system.html#376 <system.html#376>`_
-     * `system.html#377 <system.html#377>`_
+     * `system.html#383 <system.html#383>`_
+     * `system.html#384 <system.html#384>`_
+     * `system.html#385 <system.html#385>`_
+     * `system.html#386 <system.html#386>`_
+     * `system.html#387 <system.html#387>`_
+     * `system.html#388 <system.html#388>`_
+     * `system.html#389 <system.html#389>`_
+     * `posix.html#1037 <posix.html#1037>`_
 
    `writeBuffer`:idx:
-     `system.html#387 <system.html#387>`_
+     `system.html#399 <system.html#399>`_
 
    `writeBytes`:idx:
-     `system.html#385 <system.html#385>`_
+     `system.html#397 <system.html#397>`_
 
    `writeChars`:idx:
-     `system.html#386 <system.html#386>`_
+     `system.html#398 <system.html#398>`_
 
    `writeln`:idx:
-     `system.html#379 <system.html#379>`_
+     * `system.html#391 <system.html#391>`_
+     * `system.html#392 <system.html#392>`_
+
+   `WSTOPPED`:idx:
+     `posix.html#710 <posix.html#710>`_
+
+   `WSTOPSIG`:idx:
+     `posix.html#707 <posix.html#707>`_
+
+   `WTERMSIG`:idx:
+     `posix.html#708 <posix.html#708>`_
+
+   `WUNTRACED`:idx:
+     `posix.html#701 <posix.html#701>`_
+
+   `X_OK`:idx:
+     `posix.html#478 <posix.html#478>`_
 
    `xor`:idx:
      * `system.html#166 <system.html#166>`_
      * `system.html#185 <system.html#185>`_
      * `system.html#206 <system.html#206>`_
 
+   `YESEXPR`:idx:
+     `posix.html#438 <posix.html#438>`_
+
    `yield`:idx:
-     `manual.html#193 <manual.html#193>`_
+     `manual.html#192 <manual.html#192>`_
 
    `ze`:idx:
      * `system.html#303 <system.html#303>`_
      * `system.html#304 <system.html#304>`_
-     * `system.html#306 <system.html#306>`_
 
    `ze64`:idx:
-     `system.html#305 <system.html#305>`_
+     * `system.html#305 <system.html#305>`_
+     * `system.html#306 <system.html#306>`_
+     * `system.html#307 <system.html#307>`_
+     * `system.html#308 <system.html#308>`_
 
    `zeroMem`:idx:
      `system.html#292 <system.html#292>`_

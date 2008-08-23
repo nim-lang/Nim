@@ -18,17 +18,25 @@ begin
   line := toLinenumber(t.info); // BUGFIX
   if line < 0 then line := 0; // negative numbers are not allowed in #line
   if optLineDir in p.Options then
-    appRopeFormat(p.s[cpsStmts], '#line $2 "$1"$n',
+    appf(p.s[cpsStmts], '#line $2 "$1"$n',
       [toRope(toFilename(t.info)), toRope(line)]);
   if ([optStackTrace, optEndb] * p.Options = [optStackTrace, optEndb]) and
       ((p.prc = nil) or not (sfPure in p.prc.flags)) then begin
-    useMagic('endb');      // new: endb support
-    appRopeFormat(p.s[cpsStmts], 'endb($1);$n', [toRope(line)])
+    useMagic(p.module, 'endb');      // new: endb support
+    appf(p.s[cpsStmts], 'endb($1);$n', [toRope(line)])
   end
   else if ([optLineTrace, optStackTrace] * p.Options =
         [optLineTrace, optStackTrace]) and ((p.prc = nil) or
       not (sfPure in p.prc.flags)) then
-    appRopeFormat(p.s[cpsStmts], 'F.line = $1;$n', [toRope(line)])
+    appf(p.s[cpsStmts], 'F.line = $1;$n', [toRope(line)])
+end;
+
+procedure finishTryStmt(p: BProc; howMany: int);
+var
+  i: int;
+begin
+  for i := 1 to howMany do
+    app(p.s[cpsStmts], 'excHandler = excHandler->prev;' + tnl);
 end;
 
 procedure genReturnStmt(p: BProc; t: PNode);
@@ -36,15 +44,16 @@ begin
   p.beforeRetNeeded := true;
   genLineDir(p, t);
   if (t.sons[0] <> nil) then genStmts(p, t.sons[0]);
+  finishTryStmt(p, p.nestedTryStmts);
   app(p.s[cpsStmts], 'goto BeforeRet;' + tnl)
 end;
 
 procedure genObjectInit(p: BProc; sym: PSym);
 begin
   if containsObject(sym.typ) then begin
-    useMagic('objectInit');
-    appRopeFormat(p.s[cpsInit], 'objectInit($1, $2);$n',
-      [addrLoc(sym.loc), genTypeInfo(currMod, sym.typ)])
+    useMagic(p.module, 'objectInit');
+    appf(p.s[cpsInit], 'objectInit($1, $2);$n',
+      [addrLoc(sym.loc), genTypeInfo(p.module, sym.typ)])
   end
 end;
 
@@ -52,11 +61,11 @@ procedure initVariable(p: BProc; v: PSym);
 begin
   if containsGarbageCollectedRef(v.typ) or (v.ast = nil) then
     // Language change: always initialize variables if v.ast == nil!
-    if not (skipAbstract(v.typ).Kind in [tyArray, tyArrayConstr, tySet,
-                                         tyRecord, tyTuple, tyObject]) then
-      appRopeFormat(p.s[cpsInit], '$1 = 0;$n', [v.loc.r])
+    if not (skipVarGenericRange(v.typ).Kind in [tyArray, tyArrayConstr, tySet,
+                                                tyTuple, tyObject]) then
+      appf(p.s[cpsStmts], '$1 = 0;$n', [v.loc.r])
     else
-      appRopeFormat(p.s[cpsInit], 'memset((void*)&$1, 0, sizeof($1));$n',
+      appf(p.s[cpsStmts], 'memset((void*)&$1, 0, sizeof($1));$n',
         [v.loc.r])
 end;
 
@@ -73,7 +82,7 @@ begin
     assert(a.sons[0].kind = nkSym);
     v := a.sons[0].sym;
     if sfGlobal in v.flags then
-      assignGlobalVar(v)
+      assignGlobalVar(p.module, v)
     else begin
       assignLocalVar(p, v);
       initVariable(p, v) // XXX: this is not required if a.sons[2] != nil,
@@ -95,19 +104,20 @@ var
 begin
   for i := 0 to sonsLen(t)-1 do begin
     if t.sons[i].kind = nkCommentStmt then continue;
-    assert(t.sons[i].kind = nkConstDef);
+    if t.sons[i].kind <> nkConstDef then InternalError(t.info, 'genConstStmt');
     c := t.sons[i].sons[0].sym;
     // This can happen for forward consts:
     if (c.ast <> nil) and (c.typ.kind in ConstantDataTypes) and
            not (lfNoDecl in c.loc.flags) then begin
       // generate the data:
-      fillLoc(c.loc, locData, c.typ, mangleName(c), {@set}[lfOnData]);
+      fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown);
       if sfImportc in c.flags then
-        appRopeFormat(currMod.s[cfsData], 'extern $1$2 $3;$n',
-          [constTok, getTypeDesc(c.typ), c.loc.r])
+        appf(p.module.s[cfsData], 'extern NIM_CONST $1 $2;$n',
+          [getTypeDesc(p.module, c.typ), c.loc.r])
       else
-        appRopeFormat(currMod.s[cfsData], '$1$2 $3 = $4;$n',
-          [constTok, getTypeDesc(c.typ), c.loc.r, genConstExpr(p, c.ast)])
+        appf(p.module.s[cfsData], 'NIM_CONST $1 $2 = $3;$n',
+          [getTypeDesc(p.module, c.typ), c.loc.r,
+          genConstExpr(p, c.ast)])
     end
   end
 end;
@@ -139,11 +149,11 @@ begin
       nkElifBranch: begin
         a := initLocExpr(p, it.sons[0]);
         Lelse := getLabel(p);
-        appRopeFormat(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
+        appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
         freeTemp(p, a);
         genStmts(p, it.sons[1]);
         if sonsLen(n) > 1 then
-          appRopeFormat(p.s[cpsStmts], 'goto $1;$n', [Lend]);
+          appf(p.s[cpsStmts], 'goto $1;$n', [Lend]);
         fixLabel(p, Lelse);
       end;
       nkElse: begin
@@ -166,17 +176,18 @@ var
 begin
   genLineDir(p, t);
   assert(sonsLen(t) = 2);
-  inc(p.unique);
-  Labl := con('L'+'', toRope(p.unique));
+  inc(p.labels);
+  Labl := con('L'+'', toRope(p.labels));
   len := length(p.blocks);
   setLength(p.blocks, len+1);
-  p.blocks[len] := p.unique; // positive because we use it right away:
+  p.blocks[len].id := p.labels; // positive because we use it right away:
+  p.blocks[len].nestedTryStmts := p.nestedTryStmts;
   app(p.s[cpsStmts], 'while (1) {' + tnl);
   a := initLocExpr(p, t.sons[0]);
-  appRopeFormat(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Labl]);
+  appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Labl]);
   freeTemp(p, a);
   genStmts(p, t.sons[1]);
-  appRopeFormat(p.s[cpsStmts], '} $1: ;$n', [Labl]);
+  appf(p.s[cpsStmts], '} $1: ;$n', [Labl]);
   setLength(p.blocks, length(p.blocks)-1)
 end;
 
@@ -185,7 +196,7 @@ var
   idx: int;
   sym: PSym;
 begin
-  inc(p.unique);
+  inc(p.labels);
   idx := length(p.blocks);
   if t.sons[0] <> nil then begin // named block?
     assert(t.sons[0].kind = nkSym);
@@ -194,13 +205,21 @@ begin
     sym.loc.a := idx
   end;
   setLength(p.blocks, idx+1);
-  p.blocks[idx] := -p.unique; // negative because it isn't used yet
+  p.blocks[idx].id := -p.labels; // negative because it isn't used yet
+  p.blocks[idx].nestedTryStmts := p.nestedTryStmts;
   if t.kind = nkBlockExpr then genStmtListExpr(p, t.sons[1], d)
   else genStmts(p, t.sons[1]);
-  if p.blocks[idx] > 0 then // label has been used:
-    appRopeFormat(p.s[cpsStmts], 'L$1: ;$n', [toRope(p.blocks[idx])]);
+  if p.blocks[idx].id > 0 then // label has been used:
+    appf(p.s[cpsStmts], 'L$1: ;$n', [toRope(p.blocks[idx].id)]);
   setLength(p.blocks, idx)
 end;
+
+// try:
+//   while:
+//     try:
+//       if ...:
+//         break # we need to finish only one try statement here!
+// finally:
 
 procedure genBreakStmt(p: BProc; t: PNode);
 var
@@ -215,8 +234,9 @@ begin
     assert(sym.loc.k = locOther);
     idx := sym.loc.a
   end;
-  p.blocks[idx] := abs(p.blocks[idx]); // label is used
-  appRopeFormat(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.blocks[idx])])
+  p.blocks[idx].id := abs(p.blocks[idx].id); // label is used
+  finishTryStmt(p, p.nestedTryStmts - p.blocks[idx].nestedTryStmts);
+  appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.blocks[idx].id)])
 end;
 
 procedure genAsmStmt(p: BProc; t: PNode);
@@ -245,15 +265,15 @@ begin
         InternalError(t.sons[i].info, 'genAsmStmt()')
     end
   end;
-  appRopeFormat(p.s[cpsStmts], CC[ccompiler].asmStmtFrmt, [s]);
+  appf(p.s[cpsStmts], CC[ccompiler].asmStmtFrmt, [s]);
 end;
 
-function getRaiseFrmt(): string;
+function getRaiseFrmt(p: BProc): string;
 begin
   if gCmd = cmdCompileToCpp then
     result := 'throw nimException($1, $2);$n'
-  else begin  
-    useMagic('E_Base');
+  else begin
+    useMagic(p.module, 'E_Base');
     result := 'raiseException((E_Base*)$1, $2);$n'
   end
 end;
@@ -266,14 +286,13 @@ var
 begin
   genLineDir(p, t);
   if t.sons[0] <> nil then begin
-    if gCmd <> cmdCompileToCpp then
-      useMagic('raiseException');
+    if gCmd <> cmdCompileToCpp then useMagic(p.module, 'raiseException');
     a := InitLocExpr(p, t.sons[0]);
     e := rdLoc(a);
     freeTemp(p, a);
     typ := t.sons[0].typ;
     while typ.kind in [tyVar, tyRef, tyPtr] do typ := typ.sons[0];
-    appRopeFormat(p.s[cpsStmts], getRaiseFrmt(),
+    appf(p.s[cpsStmts], getRaiseFrmt(p),
       [e, makeCString(typ.sym.name.s)])
   end
   else begin
@@ -281,7 +300,7 @@ begin
     if gCmd = cmdCompileToCpp then
       app(p.s[cpsStmts], 'throw;' + tnl)
     else begin
-      useMagic('reraiseException');
+      useMagic(p.module, 'reraiseException');
       app(p.s[cpsStmts], 'reraiseException();' + tnl)
     end
   end
@@ -309,13 +328,13 @@ begin
       y := initLocExpr(p, b.sons[i].sons[1]);
       freeTemp(p, x);
       freeTemp(p, y);
-      appRopeFormat(p.s[cpsStmts], rangeFormat,
+      appf(p.s[cpsStmts], rangeFormat,
         [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
     end
     else begin
       x := initLocExpr(p, b.sons[i]);
       freeTemp(p, x);
-      appRopeFormat(p.s[cpsStmts], eqFormat,
+      appf(p.s[cpsStmts], eqFormat,
         [rdCharLoc(e), rdCharLoc(x), labl])
     end
   end
@@ -328,11 +347,11 @@ var
 begin
   Lend := getLabel(p);
   for i := 1 to sonsLen(t) - 1 do begin
-    appRopeFormat(p.s[cpsStmts], 'L$1: ;$n', [toRope(labId+i)]);
+    appf(p.s[cpsStmts], 'L$1: ;$n', [toRope(labId+i)]);
     if t.sons[i].kind = nkOfBranch then begin
       len := sonsLen(t.sons[i]);
       genStmts(p, t.sons[i].sons[len-1]);
-      appRopeFormat(p.s[cpsStmts], 'goto $1;$n', [Lend])
+      appf(p.s[cpsStmts], 'goto $1;$n', [Lend])
     end
     else // else statement
       genStmts(p, t.sons[i].sons[0])
@@ -349,15 +368,15 @@ var
 begin
   a := initLocExpr(p, t.sons[0]);
   // fist pass: gnerate ifs+goto:
-  labId := p.unique;
+  labId := p.labels;
   for i := 1 to sonsLen(t) - 1 do begin
-    inc(p.unique);
+    inc(p.labels);
     if t.sons[i].kind = nkOfBranch then
       genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat,
-        con('L'+'', toRope(p.unique)))
+        con('L'+'', toRope(p.labels)))
     else
       // else statement
-      appRopeFormat(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.unique)]);
+      appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.labels)]);
   end;
   // second pass: generate statements
   genCaseSecondPass(p, t, labId);
@@ -435,7 +454,7 @@ begin
     freeTemp(p, x);
     assert(b.sons[i].kind in [nkStrLit..nkTripleStrLit]);
     j := int(hashString(b.sons[i].strVal) and high(branches));
-    appRopeFormat(branches[j], 'if (eqStrings($1, $2)) goto $3;$n',
+    appf(branches[j], 'if (eqStrings($1, $2)) goto $3;$n',
       [rdLoc(e), rdLoc(x), labl])
   end
 end;
@@ -446,38 +465,39 @@ var
   a: TLoc;
   branches: TRopeSeq;
 begin
-  useMagic('eqStrings');
+  useMagic(p.module, 'eqStrings');
   // count how many constant strings there are in the case:
   strings := 0;
   for i := 1 to sonsLen(t)-1 do
     if t.sons[i].kind = nkOfBranch then inc(strings, sonsLen(t.sons[i])-1);
   if strings > stringCaseThreshold then begin
-    useMagic('hashString');
+    useMagic(p.module, 'hashString');
     bitMask := nmath.nextPowerOfTwo(strings)-1;
     setLength(branches, bitMask+1);
     a := initLocExpr(p, t.sons[0]);
     // fist pass: gnerate ifs+goto:
-    labId := p.unique;
+    labId := p.labels;
     for i := 1 to sonsLen(t) - 1 do begin
-      inc(p.unique);
+      inc(p.labels);
       if t.sons[i].kind = nkOfBranch then
-        genCaseStringBranch(p, t.sons[i], a, con('L'+'', toRope(p.unique)),
+        genCaseStringBranch(p, t.sons[i], a, con('L'+'', toRope(p.labels)),
                             branches)
-      else begin end
+      else begin
         // else statement: nothing to do yet
         // but we reserved a label, which we use later
+      end
     end;
     // second pass: generate switch statement based on hash of string:
-    appRopeFormat(p.s[cpsStmts], 'switch (hashString($1) & $2) {$n',
+    appf(p.s[cpsStmts], 'switch (hashString($1) & $2) {$n',
       [rdLoc(a), toRope(bitMask)]);
     for j := 0 to high(branches) do
       if branches[j] <> nil then
-        appRopeFormat(p.s[cpsStmts], 'case $1: $n$2break;$n',
+        appf(p.s[cpsStmts], 'case $1: $n$2break;$n',
           [intLiteral(j), branches[j]]);
     app(p.s[cpsStmts], '}' + tnl);
     // else statement:
     if t.sons[sonsLen(t)-1].kind <> nkOfBranch then
-      appRopeFormat(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.unique)]);
+      appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.labels)]);
     // third pass: generate statements
     genCaseSecondPass(p, t, labId);
     freeTemp(p, a);
@@ -521,7 +541,7 @@ begin
       end;
   if canGenerateSwitch then begin
     a := initLocExpr(p, t.sons[0]);
-    appRopeFormat(p.s[cpsStmts], 'switch ($1) {$n', [rdCharLoc(a)]);
+    appf(p.s[cpsStmts], 'switch ($1) {$n', [rdCharLoc(a)]);
     freeTemp(p, a);
     for i := 1 to sonsLen(t)-1 do begin
       if t.sons[i].kind = nkOfBranch then begin
@@ -529,19 +549,19 @@ begin
         for j := 0 to len-2 do begin
           if t.sons[i].sons[j].kind = nkRange then begin // a range
             if hasSwitchRange in CC[ccompiler].props then
-              appRopeFormat(p.s[cpsStmts], 'case $1 ... $2:$n',
+              appf(p.s[cpsStmts], 'case $1 ... $2:$n',
                 [genLiteral(p, t.sons[i].sons[j].sons[0]),
                  genLiteral(p, t.sons[i].sons[j].sons[1])])
             else begin
               v := copyNode(t.sons[i].sons[j].sons[0]);
               while (v.intVal <= t.sons[i].sons[j].sons[1].intVal) do begin
-                appRopeFormat(p.s[cpsStmts], 'case $1:$n', [genLiteral(p, v)]);
+                appf(p.s[cpsStmts], 'case $1:$n', [genLiteral(p, v)]);
                 Inc(v.intVal)
               end
             end;
           end
           else
-            appRopeFormat(p.s[cpsStmts], 'case $1:$n',
+            appf(p.s[cpsStmts], 'case $1:$n',
               [genLiteral(p, t.sons[i].sons[j])]);
         end;
         genStmts(p, t.sons[i].sons[len-1])
@@ -563,7 +583,7 @@ end;
 procedure genCaseStmt(p: BProc; t: PNode);
 begin
   genLineDir(p, t);
-  case skipAbstract(t.sons[0].typ).kind of
+  case skipVarGenericRange(t.sons[0].typ).kind of
     tyString: genStringCase(p, t);
     tyFloat..tyFloat128:
       genCaseGeneric(p, t, 'if ($1 >= $2 && $1 <= $3) goto $4;$n',
@@ -622,21 +642,20 @@ begin
   exc := getTempName();
   if not hasGeneralExceptSection(t) then begin
     rethrowFlag := getTempName();
-    appRopeFormat(p.s[cpsLocals], 'volatile NIM_BOOL $1 = NIM_FALSE;$n',
+    appf(p.s[cpsLocals], 'volatile NIM_BOOL $1 = NIM_FALSE;$n',
       [rethrowFlag])
   end;
   if optStackTrace in p.Options then
     app(p.s[cpsStmts], 'framePtr = (TFrame*)&F;' + tnl);
   app(p.s[cpsStmts], 'try {' + tnl);
-  inc(p.inTryStmt);
+  inc(p.nestedTryStmts);
   genStmts(p, t.sons[0]);
-  dec(p.inTryStmt);
   len := sonsLen(t);
   if t.sons[1].kind = nkExceptBranch then begin
-    appRopeFormat(p.s[cpsStmts], '} catch (NimException& $1) {$n', [exc]);
+    appf(p.s[cpsStmts], '} catch (NimException& $1) {$n', [exc]);
     if rethrowFlag <> nil then
-      appRopeFormat(p.s[cpsStmts], '$1 = NIM_TRUE;$n', [rethrowFlag]);
-    appRopeFormat(p.s[cpsStmts], 'if ($1.sp.exc) {$n', [exc])
+      appf(p.s[cpsStmts], '$1 = NIM_TRUE;$n', [rethrowFlag]);
+    appf(p.s[cpsStmts], 'if ($1.sp.exc) {$n', [exc])
   end; // XXX: this is not correct!
   i := 1;
   while (i < len) and (t.sons[i].kind = nkExceptBranch) do begin
@@ -648,24 +667,25 @@ begin
     else begin
       for j := 0 to blen - 2 do begin
         assert(t.sons[i].sons[j].kind = nkType);
-        appRopeFormat(p.s[cpsStmts], 'case $1:$n',
+        appf(p.s[cpsStmts], 'case $1:$n',
           [toRope(t.sons[i].sons[j].typ.id)])
       end;
       genStmts(p, t.sons[i].sons[blen - 1])
     end;
     // code to clear the exception:
     if rethrowFlag <> nil then
-      appRopeFormat(p.s[cpsStmts], '$1 = NIM_FALSE;  ', [rethrowFlag]);
+      appf(p.s[cpsStmts], '$1 = NIM_FALSE;  ', [rethrowFlag]);
     app(p.s[cpsStmts], 'break;' + tnl);
     inc(i);
   end;
   if t.sons[1].kind = nkExceptBranch then // BUGFIX
     app(p.s[cpsStmts], '}}' + tnl); // end of catch-switch statement
+  dec(p.nestedTryStmts);
   app(p.s[cpsStmts], 'excHandler = excHandler->prev;' + tnl);
   if (i < len) and (t.sons[i].kind = nkFinally) then begin
     genStmts(p, t.sons[i].sons[0]);
     if rethrowFlag <> nil then
-      appRopeFormat(p.s[cpsStmts], 'if ($1) { throw; }$n', [rethrowFlag])
+      appf(p.s[cpsStmts], 'if ($1) { throw; }$n', [rethrowFlag])
   end
 end;
 
@@ -698,21 +718,21 @@ begin
   genLineDir(p, t);
 
   safePoint := getTempName();
-  useMagic('TSafePoint');
-  useMagic('E_Base');
-  useMagic('excHandler');
-  appRopeFormat(p.s[cpsLocals], 'volatile TSafePoint $1;$n', [safePoint]);
-  appRopeFormat(p.s[cpsStmts], '$1.prev = excHandler;$n' +
-                               'excHandler = &$1;$n' +
-                               '$1.status = setjmp($1.context);$n' +
-                               'if ($1.status == 0) {$n', [safePoint]);
+  useMagic(p.module, 'TSafePoint');
+  useMagic(p.module, 'E_Base');
+  useMagic(p.module, 'excHandler');
+  appf(p.s[cpsLocals], 'TSafePoint $1;$n', [safePoint]);
+  appf(p.s[cpsStmts], '$1.prev = excHandler;$n' +
+                      'excHandler = &$1;$n' +
+                      '$1.status = setjmp($1.context);$n',
+                      [safePoint]);
   if optStackTrace in p.Options then
     app(p.s[cpsStmts], 'framePtr = (TFrame*)&F;' + tnl);
+  appf(p.s[cpsStmts], 'if ($1.status == 0) {$n', [safePoint]);
   len := sonsLen(t);
-  inc(p.inTryStmt);
+  inc(p.nestedTryStmts);
   genStmts(p, t.sons[0]);
   app(p.s[cpsStmts], '} else {' + tnl);
-  dec(p.inTryStmt);
   i := 1;
   while (i < len) and (t.sons[i].kind = nkExceptBranch) do begin
     blen := sonsLen(t.sons[i]);
@@ -720,7 +740,7 @@ begin
       // general except section:
       if i > 1 then app(p.s[cpsStmts], 'else {' + tnl);
       genStmts(p, t.sons[i].sons[0]);
-      appRopeFormat(p.s[cpsStmts], '$1.status = 0;$n', [safePoint]);
+      appf(p.s[cpsStmts], '$1.status = 0;$n', [safePoint]);
       if i > 1 then app(p.s[cpsStmts], '}' + tnl);
     end
     else begin
@@ -728,24 +748,25 @@ begin
       for j := 0 to blen - 2 do begin
         assert(t.sons[i].sons[j].kind = nkType);
         if orExpr <> nil then app(orExpr, '||');
-        appRopeFormat(orExpr, '($1.exc->Sup.m_type == $2)',
-          [safePoint, genTypeInfo(currMod, t.sons[i].sons[j].typ)])
+        appf(orExpr, '($1.exc->Sup.m_type == $2)',
+          [safePoint, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       end;
       if i > 1 then app(p.s[cpsStmts], 'else ');
-      appRopeFormat(p.s[cpsStmts], 'if ($1) {$n', [orExpr]);
+      appf(p.s[cpsStmts], 'if ($1) {$n', [orExpr]);
       genStmts(p, t.sons[i].sons[blen - 1]);
       // code to clear the exception:
-      appRopeFormat(p.s[cpsStmts], '$1.status = 0;}$n', [safePoint]);
+      appf(p.s[cpsStmts], '$1.status = 0;}$n', [safePoint]);
     end;
     inc(i)
   end;
   app(p.s[cpsStmts], '}' + tnl); // end of if statement
-  app(p.s[cpsStmts], 'excHandler = excHandler->prev;' + tnl);
+  finishTryStmt(p, p.nestedTryStmts);
+  dec(p.nestedTryStmts);
   if (i < len) and (t.sons[i].kind = nkFinally) then begin
     genStmts(p, t.sons[i].sons[0]);
-    useMagic('raiseException');
-    appRopeFormat(p.s[cpsStmts], 'if ($1.status != 0) { ' +
-      'raiseException($1.exc, $1.exc->Name); }$n', [safePoint])
+    useMagic(p.module, 'raiseException');
+    appf(p.s[cpsStmts], 'if ($1.status != 0) { ' +
+      'raiseException($1.exc, $1.exc->name); }$n', [safePoint])
   end
 end;
 
@@ -767,7 +788,7 @@ begin
       name := 'bp' + toString(breakPointId)
     end;
     genLineDir(p, t); // BUGFIX
-    appRopeFormat(gBreakpoints,
+    appf(gBreakpoints,
       'dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n',
       [toRope(toLinenumber(t.info)), makeCString(toFilename(t.info)),
       makeCString(name)])
@@ -852,15 +873,15 @@ begin
     nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, nkImportStmt,
     nkFromStmt, nkTemplateDef, nkMacroDef: begin end;
     nkPragma: genPragma(p, t);
-    nkProcDef: begin
+    nkProcDef, nkConverterDef: begin
       if (t.sons[genericParamsPos] = nil) then begin
         prc := t.sons[namePos].sym;
-        if (t.sons[codePos] <> nil) 
+        if (t.sons[codePos] <> nil)
         or (lfDynamicLib in prc.loc.flags) then begin // BUGFIX
-          if IntSetContainsOrIncl(currMod.debugDeclared, prc.id) then begin
+          if IntSetContainsOrIncl(p.module.debugDeclared, prc.id) then begin
             internalError(t.info, 'genProc()'); // XXX: remove this check!
           end;
-          genProc(prc)
+          genProc(p.module, prc)
         end
         //else if sfCompilerProc in prc.flags then genProcPrototype(prc);
       end

@@ -38,6 +38,7 @@ begin
   base := nil;
   result := newOrPrevType(tyEnum, prev, c);
   result.n := newNode(nkEnumTy);
+  checkMinSonsLen(n, 1);
   if n.sons[0] <> nil then begin
     base := semTypeNode(c, n.sons[0].sons[0], nil);
     if base.kind <> tyEnum then
@@ -71,7 +72,7 @@ begin
       StrTableAdd(c.module.tab, e); // BUGFIX
     end;
     addSon(result.n, newSymNode(e));
-    addOverloadableSymAt(c, e, c.tab.tos-1);
+    addDeclAt(c, e, c.tab.tos-1);
     inc(counter);
   end;
 end;
@@ -123,11 +124,26 @@ begin
     liMessage(n.info, errXExpectsOneTypeParam, kindStr);
 end;
 
+function semVarType(c: PContext; n: PNode; prev: PType): PType;
+var
+  base: PType;
+begin
+  result := newOrPrevType(tyVar, prev, c);
+  if sonsLen(n) = 1 then begin
+    base := semTypeNode(c, n.sons[0], nil);
+    if base.kind = tyVar then liMessage(n.info, errVarVarTypeNotAllowed);
+    addSon(result, base);
+  end
+  else
+    liMessage(n.info, errXExpectsOneTypeParam, 'var');
+end;
+
 function semRangeAux(c: PContext; n: PNode; prev: PType): PType;
 var
   a, b: PNode;
 begin
   assert(n.kind = nkRange);
+  checkSonsLen(n, 2);
   result := newOrPrevType(tyRange, prev, c);
   result.n := copyTree(n);
   result.n := newNode(nkRange);
@@ -197,13 +213,37 @@ end;
 
 function semTuple(c: PContext; n: PNode; prev: PType): PType;
 var
-  i: int;
-  elem: PType;
+  i, j, len, counter: int;
+  typ: PType;
+  check: TIntSet;
+  a: PNode;
+  field: PSym;
 begin
   result := newOrPrevType(tyTuple, prev, c);
-  for i := 1 to sonsLen(n)-1 do begin // BUGFIX: start from 1
-    elem := semTypeNode(c, n.sons[i], nil);
-    addSon(result, elem);
+  result.n := newNodeI(nkRecList, n.info);
+  IntSetInit(check);
+  counter := 0;
+  for i := 0 to sonsLen(n)-1 do begin
+    a := n.sons[i];
+    if (a.kind <> nkIdentDefs) then IllFormedAst(a);
+    checkMinSonsLen(a, 3);
+    len := sonsLen(a);
+    if a.sons[len-2] <> nil then
+      typ := semTypeNode(c, a.sons[len-2], nil)
+    else
+      liMessage(a.info, errTypeExpected);
+    if a.sons[len-1] <> nil then
+      liMessage(a.sons[len-1].info, errInitHereNotAllowed);
+    for j := 0 to len-3 do begin
+      field := newSymS(skField, a.sons[j], c);
+      field.typ := typ;
+      field.position := counter;
+      inc(counter);
+      if IntSetContainsOrIncl(check, field.name.id) then
+        liMessage(a.sons[j].info, errAttemptToRedefine, field.name.s);
+      addSon(result.n, newSymNode(field));
+      addSon(result, typ);
+    end
   end
 end;
 
@@ -212,6 +252,7 @@ function instGenericAux(c: PContext; templ, actual: PNode;
 var
   i: int;
 begin
+  if templ = nil then begin result := nil; exit end;
   case templ.kind of
     nkSym: begin
       if (templ.sym.kind = skTypeParam)
@@ -237,20 +278,27 @@ var
   elem: PType;
   inst: PNode;
 begin
-  if (s.typ = nil) or (s.typ.kind <> tyGeneric) then
+  if (s.typ = nil) or (s.typ.kind <> tyGeneric) then 
     liMessage(n.info, errCannotInstantiateX, s.name.s);
   result := newOrPrevType(tyGenericInst, prev, c);
   result.containerID := s.typ.containerID;
+  result.sym := s;
   assert(s.typ.containerID <> 0);
   for i := 1 to sonsLen(n)-1 do begin
     elem := semTypeNode(c, n.sons[i], nil);
+    if elem.kind = tyGenericParam then result.kind := tyGeneric;
     addSon(result, elem);
   end;
   if s.ast <> nil then begin
     inst := instGenericAux(c, s.ast.sons[2], n, s);
-    elem := semTypeNode(c, inst, nil);
-    // does checking of instantiated type for us!
-    addSon(result, elem);
+    if result.kind = tyGenericInst then begin
+      // does checking of instantiated type for us:
+      elem := semTypeNode(c, inst, nil);
+      elem.id := result.containerID;
+      addSon(result, elem);
+    end
+    else
+      addSon(result, nil);
   end
   else
     liMessage(n.info, errCannotInstantiateX, s.name.s);
@@ -285,9 +333,12 @@ function semIdentWithPragma(c: PContext; kind: TSymKind;
                             n: PNode; const allowed: TSymFlags): PSym;
 begin
   if n.kind = nkPragmaExpr then begin
+    checkSonsLen(n, 2);
     result := semIdentVis(c, kind, n.sons[0], allowed);
     case kind of
-      skType: pragmaType(c, result, n.sons[1]);
+      skType: begin
+        // process pragmas later, because result.typ has not been set yet
+      end;
       skField: pragmaField(c, result, n.sons[1]);
       skVar: pragmaVar(c, result, n.sons[1]);
       skConst: pragmaConst(c, result, n.sons[1]);
@@ -311,6 +362,7 @@ end;
 procedure semBranchExpr(c: PContext; t: PNode; var ex: PNode);
 begin
   ex := semConstExpr(c, ex);
+  checkMinSonsLen(t, 1);
   if (cmpTypes(t.sons[0].typ, ex.typ) <= isConvertible) then begin
     typeMismatch(ex, t.sons[0].typ, ex.typ);
   end;
@@ -325,6 +377,7 @@ begin
   for i := 0 to sonsLen(branch)-2 do begin
     b := branch.sons[i];
     if b.kind = nkRange then begin
+      checkSonsLen(b, 2);
       semBranchExpr(c, t, b.sons[0]);
       semBranchExpr(c, t, b.sons[1]);
       if emptyRange(b.sons[0], b.sons[1]) then
@@ -341,11 +394,12 @@ end;
 
 procedure semRecordNodeAux(c: PContext; n: PNode;
                            var check: TIntSet;
-                           var pos: int; father: PNode); forward;
+                           var pos: int; father: PNode;
+                           rectype: PSym); forward;
 
 procedure semRecordCase(c: PContext; n: PNode;
                         var check: TIntSet;
-                        var pos: int; father: PNode);
+                        var pos: int; father: PNode; rectype: PSym);
 var
   i: int;
   covered: biggestint;
@@ -354,7 +408,8 @@ var
   typ: PType;
 begin
   a := copyNode(n);
-  semRecordNodeAux(c, n.sons[0], check, pos, a);
+  checkMinSonsLen(n, 2);
+  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype);
   if a.sons[0].kind <> nkSym then
     internalError('semRecordCase: dicriminant is no symbol');
   include(a.sons[0].sym.flags, sfDiscriminant);
@@ -370,12 +425,18 @@ begin
   for i := 1 to sonsLen(n)-1 do begin
     b := copyTree(n.sons[i]);
     case n.sons[i].kind of
-      nkOfBranch: semCaseBranch(c, a, b, i, covered);
-      nkElse: chckCovered := false;
-      else internalError(n.info, 'semRecordAux(record case branch)');
+      nkOfBranch: begin
+        checkMinSonsLen(b, 2);
+        semCaseBranch(c, a, b, i, covered);
+      end;
+      nkElse: begin
+        chckCovered := false;
+        checkSonsLen(b, 1);
+      end;
+      else illFormedAst(n);
     end;
     delSon(b, sonsLen(b)-1);
-    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b);
+    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype);
     addSon(a, b);
   end;
   if chckCovered and (covered <> lengthOrd(a.sons[0].typ)) then
@@ -385,7 +446,7 @@ end;
 
 procedure semRecordNodeAux(c: PContext; n: PNode;
                            var check: TIntSet;
-                           var pos: int; father: PNode);
+                           var pos: int; father: PNode; rectype: PSym);
 var
   i, len: int;
   f: PSym; // new field
@@ -416,22 +477,23 @@ begin
         end
       end;
       if branch <> nil then
-        semRecordNodeAux(c, branch, check, pos, father);
+        semRecordNodeAux(c, branch, check, pos, father, rectype);
     end;
     nkRecCase: begin
-      semRecordCase(c, n, check, pos, father);
+      semRecordCase(c, n, check, pos, father, rectype);
     end;
     nkRecList: begin
       // attempt to keep the nesting at a sane level:
       if father.kind = nkRecList then a := father
       else a := copyNode(n);
       for i := 0 to sonsLen(n)-1 do begin
-        semRecordNodeAux(c, n.sons[i], check, pos, a);
+        semRecordNodeAux(c, n.sons[i], check, pos, a, rectype);
       end;
       if a <> father then
         addSon(father, a);
     end;
     nkIdentDefs: begin
+      checkMinSonsLen(n, 3);
       len := sonsLen(n);
       if (father.kind <> nkRecList) and (len >= 4) then a := newNode(nkRecList)
       else a := nil;
@@ -444,6 +506,12 @@ begin
         f := semIdentWithPragma(c, skField, n.sons[i], {@set}[sfStar, sfMinus]);
         f.typ := typ;
         f.position := pos;
+        if (rectype <> nil)
+        and ([sfImportc, sfExportc] * rectype.flags <> [])
+        and (f.loc.r = nil) then begin
+          f.loc.r := toRope(f.name.s);
+          f.flags := f.flags + ([sfImportc, sfExportc] * rectype.flags);
+        end;
         inc(pos);
         if IntSetContainsOrIncl(check, f.name.id) then
           liMessage(n.sons[i].info, errAttemptToRedefine, f.name.s);
@@ -452,9 +520,7 @@ begin
       end;
       if a <> nil then addSon(father, a);
     end;
-    else begin
-      InternalError(n.info, 'semRecordAux(' +{&} nodeKindToStr[n.kind] +{&} ')')
-    end
+    else illFormedAst(n);
   end
 end;
 
@@ -508,22 +574,25 @@ begin
   IntSetInit(check);
   pos := 0;
   // n.sons[0] contains the pragmas (if any). We process these later...
+  checkSonsLen(n, 3);
   if n.sons[1] <> nil then begin
     base := semTypeNode(c, n.sons[1].sons[0], nil);
     if base.kind = tyObject then
       addInheritedFields(c, check, pos, base)
     else
-      liMessage(n.sons[1].info, errInheritanceOnlyWithObjects);
+      liMessage(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects);
   end
   else
     base := nil;
   if n.kind = nkObjectTy then
     result := newOrPrevType(tyObject, prev, c)
   else
-    result := newOrPrevType(tyRecord, prev, c);
+    InternalError(n.info, 'semObjectNode');
   addSon(result, base);
   result.n := newNode(nkRecList);
-  semRecordNodeAux(c, n.sons[2], check, pos, result.n);
+  semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym);
+  if (tfFinal in result.flags) and (base <> nil) then
+    liMessage(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects);
 end;
 
 function semProcTypeNode(c: PContext; n: PNode; prev: PType): PType;
@@ -534,6 +603,7 @@ var
   arg: PSym;
   check: TIntSet;
 begin
+  checkMinSonsLen(n, 1);
   result := newOrPrevType(tyProc, prev, c);
   result.callConv := lastOptionEntry(c).defaultCC;
   result.n := newNode(nkFormalParams);
@@ -551,17 +621,18 @@ begin
   counter := 0;
   for i := 1 to sonsLen(n)-1 do begin
     a := n.sons[i];
-    assert(a.kind = nkIdentDefs);
+    if (a.kind <> nkIdentDefs) then IllFormedAst(a);
+    checkMinSonsLen(a, 3);
     len := sonsLen(a);
     if a.sons[len-2] <> nil then
       typ := semTypeNode(c, a.sons[len-2], nil)
     else
       typ := nil;
     if a.sons[len-1] <> nil then begin
-      def := semExprWithType(c, a.sons[len-1], false);
+      def := semExprWithType(c, a.sons[len-1]);
       // check type compability between def.typ and typ:
       if (typ <> nil) then begin
-        if (cmpTypes(typ, def.typ) <= isConvertible) then begin
+        if (cmpTypes(typ, def.typ) < isConvertible) then begin
           typeMismatch(a.sons[len-1], typ, def.typ);
         end;
         def := fitNode(c, typ, def);
@@ -593,15 +664,15 @@ begin
   embeddedDbg(c, n);
   case n.kind of
     nkTypeOfExpr: begin
-      result := semExprWithType(c, n, true).typ;
+      result := semExprWithType(c, n, {@set}[efAllowType]).typ;
     end;
     nkBracketExpr: begin
+      checkMinSonsLen(n, 2);
       s := semTypeIdent(c, n.sons[0]);
       case s.magic of
         mArray: result := semArray(c, n, prev);
         mOpenArray: result := semContainer(c, n, tyOpenArray, 'openarray', prev);
         mRange: result := semRange(c, n, prev);
-        mTuple: result := semTuple(c, n, prev);
         mSet: result := semSet(c, n, prev);
         mSeq: result := semContainer(c, n, tySequence, 'seq', prev);
         else result := semGeneric(c, n, s, prev);
@@ -617,7 +688,6 @@ begin
         assignType(prev, s.typ);
         result := prev;
       end
-      // result :=  copyType(s.typ, s.owner);
     end;
     nkSym: begin
       if (n.sym.kind in [skTypeParam, skType]) and (n.sym.typ <> nil) then begin
@@ -627,22 +697,21 @@ begin
           assignType(prev, s.typ);
           result := prev;
         end;
-        //  result := copyType(n.sym.typ, n.sym.owner);
         include(n.sym.flags, sfUsed); // BUGFIX
       end
       else
         liMessage(n.info, errTypeExpected);
     end;
-    nkRecordTy, nkObjectTy: begin
-      result := semObjectNode(c, n, prev);
-    end;
+    nkObjectTy: result := semObjectNode(c, n, prev);
+    nkTupleTy: result := semTuple(c, n, prev);
     nkRefTy: result := semAnyRef(c, n, tyRef, 'ref', prev);
     nkPtrTy: result := semAnyRef(c, n, tyPtr, 'ptr', prev);
-    nkVarTy: result := semAnyRef(c, n, tyVar, 'var', prev);
+    nkVarTy: result := semVarType(c, n, prev);
     nkProcTy: begin
+      checkSonsLen(n, 2);
       result := semProcTypeNode(c, n.sons[0], prev);
       // dummy symbol for `pragma`:
-      s := newSymS(skProc, newIdentNode(getIdent('dummy')), c);
+      s := newSymS(skProc, newIdentNode(getIdent('dummy'), n.info), c);
       s.typ := result;
       pragmaProcType(c, s, n.sons[1]);
     end;

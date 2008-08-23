@@ -33,7 +33,7 @@ type
   DWORD_PTR* = ptr DWORD
   pHICON* = ptr HICON
   pBool* = ptr BOOL
-  STARTUPINFOW* = record      # a guess. Omission should get fixed in Windows.
+  STARTUPINFOW* {.final.} = object      # a guess. Omission should get fixed in Windows.
     cb*: DWORD
     lpReserved*: LPTSTR
     lpDesktop*: LPTSTR
@@ -122,7 +122,7 @@ proc ExtractIcon*(hInst: HINST, lpszExeFileName: LPCWSTR, nIconIndex: UINT): HIC
     stdcall, dynlib: "shell32.dll", importc: "ExtractIconW".}
   # if(WINVER >= 0x0400)
 type                          # init with sizeof(DRAGINFO)
-  DRAGINFOA* = record
+  DRAGINFOA* {.final.} = object
     uSize*: UINT
     pt*: POINT
     fNC*: BOOL
@@ -131,7 +131,7 @@ type                          # init with sizeof(DRAGINFO)
 
   TDRAGINFOA* = DRAGINFOA
   LPDRAGINFOA* = ptr DRAGINFOA # init with sizeof(DRAGINFO)
-  DRAGINFOW* = record
+  DRAGINFOW* {.final.} = object
     uSize*: UINT
     pt*: POINT
     fNC*: BOOL
@@ -178,7 +178,7 @@ const
   ABE_BOTTOM* = 3
 
 type
-  AppBarData* = record
+  AppBarData* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
     uCallbackMessage*: UINT
@@ -286,7 +286,7 @@ type
                            # only used if FOF_SIMPLEPROGRESS
 
 type
-  SHFILEOPSTRUCTA* = record
+  SHFILEOPSTRUCTA* {.final.} = object
     hwnd*: HWND
     wFunc*: UINT
     pFrom*: LPCSTR
@@ -298,7 +298,7 @@ type
 
   TSHFILEOPSTRUCTA* = SHFILEOPSTRUCTA
   LPSHFILEOPSTRUCTA* = ptr SHFILEOPSTRUCTA
-  SHFILEOPSTRUCTW* = record
+  SHFILEOPSTRUCTW* {.final.} = object
     hwnd*: HWND
     wFunc*: UINT
     pFrom*: LPCWSTR
@@ -332,7 +332,7 @@ proc SHFileOperation*(lpFileOp: LPSHFILEOPSTRUCTW): int32{.stdcall,
 proc SHFreeNameMappings*(hNameMappings: THandle){.stdcall,
     dynlib: "shell32.dll", importc: "SHFreeNameMappings".}
 type
-  SHNAMEMAPPINGA* = record
+  SHNAMEMAPPINGA* {.final.} = object
     pszOldPath*: LPSTR
     pszNewPath*: LPSTR
     cchOldPath*: int32
@@ -340,7 +340,7 @@ type
 
   TSHNAMEMAPPINGA* = SHNAMEMAPPINGA
   LPSHNAMEMAPPINGA* = ptr SHNAMEMAPPINGA
-  SHNAMEMAPPINGW* = record
+  SHNAMEMAPPINGW* {.final.} = object
     pszOldPath*: LPWSTR
     pszNewPath*: LPWSTR
     cchOldPath*: int32
@@ -404,7 +404,7 @@ const
                                         # (_WIN32_IE >= 0x560)
 
 type
-  SHELLEXECUTEINFOA* = record
+  SHELLEXECUTEINFOA* {.final.} = object
     cbSize*: DWORD
     fMask*: ULONG
     hwnd*: HWND
@@ -423,7 +423,7 @@ type
 
   TSHELLEXECUTEINFOA* = SHELLEXECUTEINFOA
   LPSHELLEXECUTEINFOA* = ptr SHELLEXECUTEINFOA
-  SHELLEXECUTEINFOW* = record
+  SHELLEXECUTEINFOW* {.final.} = object
     cbSize*: DWORD
     fMask*: ULONG
     hwnd*: HWND
@@ -474,7 +474,7 @@ proc WinExecError*(HWND: hwnd, error: int32, lpstrFileName: LPCWSTR,
                    lpstrTitle: LPCWSTR){.stdcall, dynlib: "shell32.dll",
     importc: "WinExecErrorW".}
 type
-  SHCREATEPROCESSINFOW* = record
+  SHCREATEPROCESSINFOW* {.final.} = object
     cbSize*: DWORD
     fMask*: ULONG
     hwnd*: HWND
@@ -502,7 +502,7 @@ proc SHCreateProcessAsUserW*(pscpi: PSHCREATEPROCESSINFOW): Bool{.stdcall,
   #
   # struct for query recycle bin info
 type
-  SHQUERYRBINFO* = record
+  SHQUERYRBINFO* {.final.} = object
     cbSize*: DWORD
     i64Size*: int64
     i64NumItems*: int64
@@ -538,7 +538,7 @@ proc SHEmptyRecycleBin*(hwnd: HWND, pszRootPath: LPCWSTR, dwFlags: DWORD): HRESU
   # Tray notification definitions
   #
 type
-  NOTIFYICONDATAA* = record
+  NOTIFYICONDATAA* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
     uID*: UINT
@@ -556,7 +556,7 @@ type
 
   TNOTIFYICONDATAA* = NOTIFYICONDATAA
   PNOTIFYICONDATAA* = ptr NOTIFYICONDATAA
-  NOTIFYICONDATAW* = record
+  NOTIFYICONDATAW* {.final.} = object
     cbSize*: DWORD
     hWnd*: HWND
     uID*: UINT
@@ -645,7 +645,7 @@ proc Shell_NotifyIcon*(dwMessage: Dword, lpData: PNOTIFYICONDATAW): Bool{.
   # out: display name (or path)
   # out: type name
 type
-  SHFILEINFOA* = record
+  SHFILEINFOA* {.final.} = object
     hIcon*: HICON             # out: icon
     iIcon*: int32             # out: icon index
     dwAttributes*: DWORD      # out: SFGAO_ flags
@@ -654,7 +654,7 @@ type
 
   TSHFILEINFOA* = SHFILEINFOA
   pSHFILEINFOA* = ptr SHFILEINFOA
-  SHFILEINFOW* = record
+  SHFILEINFOW* {.final.} = object
     hIcon*: HICON             # out: icon
     iIcon*: int32             # out: icon index
     dwAttributes*: DWORD      # out: SFGAO_ flags

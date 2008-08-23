@@ -49,7 +49,7 @@ function inSet(s: PNode; const elem: PNode): Boolean;
 var
   i: int;
 begin
-  assert(s.kind in [nkSetConstr, nkConstSetConstr]);
+  if s.kind <> nkCurly then InternalError(s.info, 'inSet');
   for i := 0 to sonsLen(s)-1 do
     if s.sons[i].kind = nkRange then begin
       if leValue(s.sons[i].sons[0], elem)
@@ -95,7 +95,7 @@ function SomeInSet(s: PNode; const a, b: PNode): Boolean;
 var
   i: int;
 begin
-  assert(s.kind in [nkSetConstr, nkConstSetConstr]);
+  if s.kind <> nkCurly then InternalError(s.info, 'SomeInSet');
   for i := 0 to sonsLen(s)-1 do
     if s.sons[i].kind = nkRange then begin
       if leValue(s.sons[i].sons[0], b)     
@@ -142,7 +142,7 @@ var
 begin
   elemType := settype.sons[0];
   first := firstOrd(elemType);
-  result := newNode(nkConstSetConstr);
+  result := newNode(nkCurly);
   result.typ := settype;
   result.info := info;
 
@@ -244,7 +244,7 @@ function SetHasRange(s: PNode): Boolean;
 var
   i: int;
 begin
-  assert(s.kind in [nkSetConstr, nkConstSetConstr]);
+  if s.kind <> nkCurly then InternalError(s.info, 'SetHasRange');
   for i := 0 to sonsLen(s)-1 do
     if s.sons[i].kind = nkRange then begin
       result := true; exit

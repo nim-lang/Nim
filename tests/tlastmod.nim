@@ -1,7 +1,7 @@
 # test the new LastModificationTime() proc
 
 import
-  io, os, times
+  os, times
 
 proc main() =
   var

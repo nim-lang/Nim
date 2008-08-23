@@ -1,7 +1,7 @@
 # iterate over all files with a given filter:
 
 import
-  io, os, times
+  os, times
 
 proc main(filter: string) =
   for filename in walkFiles(filter):
@@ -10,4 +10,4 @@ proc main(filter: string) =
   for key, val in iterOverEnvironment():
     writeln(stdout, key & '=' & val)
 
-main("*.mor")
+main("*.nim")

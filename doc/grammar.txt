@@ -78,6 +78,7 @@ typeDescK ::= VAR typeDesc
             | REF typeDesc
             | PTR typeDesc
             | TYPE expr
+            | TUPLE tupleDesc
             | PROC paramList [pragma]
 
 typeDesc ::= typeDescK | primary
@@ -157,23 +158,23 @@ colonAndEquals ::= [COLON typeDesc] EQUALS expr
 constDecl ::= symbol ["*"] [pragma] colonAndEquals [COMMENT | IND COMMENT]
             | COMMENT
 constSection ::= CONST indPush constDecl (SAD constDecl)* DED
-typeDef ::= typeDesc | recordDef | objectDef | enumDef
+typeDef ::= typeDesc | objectDef | enumDef
 
-recordIdentPart ::=
+objectIdentPart ::=
    (symbol ["*" | "-"] [pragma] optComma)+ COLON typeDesc [COMMENT | IND COMMENT]
 
-recordWhen ::= WHEN expr COLON [COMMENT] recordPart
-              (ELIF expr COLON [COMMENT] recordPart)*
-              [ELSE COLON [COMMENT] recordPart]
-recordCase ::= CASE expr COLON typeDesc [COMMENT]
-              (OF sliceList COLON [COMMENT] recordPart)*
-              [ELSE COLON [COMMENT] recordPart]
+objectWhen ::= WHEN expr COLON [COMMENT] objectPart
+              (ELIF expr COLON [COMMENT] objectPart)*
+              [ELSE COLON [COMMENT] objectPart]
+objectCase ::= CASE expr COLON typeDesc [COMMENT]
+              (OF sliceList COLON [COMMENT] objectPart)*
+              [ELSE COLON [COMMENT] objectPart]
 
-recordPart ::= recordWhen | recordCase | recordIdentPart
-             | indPush recordPart (SAD recordPart)* DED
-recordDef ::= RECORD [pragma] recordPart
+objectPart ::= objectWhen | objectCase | objectIdentPart
+             | indPush objectPart (SAD objectPart)* DED
+tupleDesc ::= BRACKET_LE optInd ((symbol optComma)+ COLON typeDesc optComma)* BRACKET_RI
 
-objectDef ::= OBJECT [pragma] [OF typeDesc] recordPart
+objectDef ::= OBJECT [pragma] [OF typeDesc] objectPart
 enumDef ::= ENUM [OF typeDesc] (symbol [EQUALS expr] optComma [COMMENT | IND COMMENT])+
 
 typeDecl ::= COMMENT

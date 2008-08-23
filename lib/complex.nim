@@ -19,10 +19,8 @@ import
   math
 
 type
-  TComplex* = record ## a complex number, consisting of a real and an
-                     ## imaginary part
-    re*: float       ## real part of the complex number
-    im*: float       ## imarginary part of the complex number
+  TComplex* = tuple[re, im: float] 
+    ## a complex number, consisting of a real and an imaginary part
 
 proc `==` *(x, y: TComplex): bool =
   ## Compare two complex numbers `x` and `y` for equality.

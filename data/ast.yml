@@ -9,7 +9,7 @@
 
 {
 'SymFlag': [          # already 32 flags!
-  'sfGeneric',        # whether an operator, proc or type is generic
+  'sfTypeCheck',      # wether macro parameters should be type checked
   'sfForward',        # symbol is forward directed
   'sfImportc',        # symbol is external; imported
   'sfExportc',        # symbol is exported (under a specified name)
@@ -26,7 +26,7 @@
   'sfMainModule',     # module is the main module
   'sfSystemModule',   # module is the system module
   'sfNoReturn',       # proc never returns (an exit proc)
-  'sfReturnsNew',     # proc returns new allocated thing (allows optimizations)
+  'sfAddrTaken',      # the variable's address is taken (ex- or implicitely)
   'sfInInterface',    # symbol is in interface section declared
   'sfNoStatic',       # symbol is used within an iterator (needed for codegen)
                       # so it cannot be 'static' in the C code
@@ -56,32 +56,40 @@
                       # is used to speed up semantic checking a bit
   'tfEnumHasWholes',  # enum cannot be mapped into a range
   'tfVarargs',        # procedure has C styled varargs
-  'tfAssignable'      # can the type be assigned to?
+  'tfFinal'           # is the object final?
 ],
 
 'TypeKind': [        # order is important!
                      # Don't forget to change hti.nim if you make a change here
-   'tyNone', 'tyBool', 'tyChar',
-   'tyEmptySet', 'tyArrayConstr', 'tyNil', 'tyRecordConstr',
-   'tyGeneric',
-   'tyGenericInst', # instantiated generic type
-   'tyGenericParam',
-   'tyEnum', 'tyAnyEnum',
-   'tyArray',
-   'tyRecord',
-   'tyObject',
-   'tyTuple',
-   'tySet',
-   'tyRange',
-   'tyPtr', 'tyRef',
-   'tyVar',
-   'tySequence',
-   'tyProc',
-   'tyPointer', 'tyOpenArray',
-   'tyString', 'tyCString', 'tyForward',
-   # numerical types:
-   'tyInt', 'tyInt8', 'tyInt16', 'tyInt32', 'tyInt64', # signed integers
-   'tyFloat', 'tyFloat32', 'tyFloat64', 'tyFloat128'
+  'tyNone', 'tyBool', 'tyChar',
+  'tyEmptySet', 'tyArrayConstr', 'tyNil', 
+  'tyGeneric',
+  'tyGenericInst', # instantiated generic type
+  'tyGenericParam',
+  'tyEnum',
+  'tyAnyEnum',
+  'tyArray',
+  'tyObject',
+  'tyTuple',
+  'tySet',
+  'tyRange',
+  'tyPtr', 'tyRef',
+  'tyVar',
+  'tySequence',
+  'tyProc',
+  'tyPointer', 'tyOpenArray',
+  'tyString', 'tyCString', 'tyForward',
+  # numerical types:
+  'tyInt', 'tyInt8', 'tyInt16', 'tyInt32', 'tyInt64', # signed integers
+  'tyFloat', 'tyFloat32', 'tyFloat64', 'tyFloat128'
+],
+
+'NodeFlag': [ # keep this number under 16 for performance reasons!
+  'nfNone',
+  'nfBase2', # nfBase10 is default, so not needed
+  'nfBase8',
+  'nfBase16',
+  'nfAllConst' # used to mark complex expressions constant
 ],
 
 'NodeKind': [  # these are pure nodes
@@ -97,7 +105,6 @@
   'nkType',               # node is used for its typ field
 
   'nkCharLit',            # a character literal ''
-  'nkRCharLit',           # a raw character literal r''
 
   'nkIntLit',             # an integer literal
   'nkInt8Lit',
@@ -110,6 +117,8 @@
   'nkStrLit',             # a string literal ""
   'nkRStrLit',            # a raw string literal r""
   'nkTripleStrLit',       # a triple string literal """
+  'nkMetaNode',           # difficult to explan; represents itself
+                          # (used for macros)
   'nkNilLit',             # the nil literal
   # end of atoms
   'nkDotCall',            # used to temporarily flag a nkCall node; this is used
@@ -126,7 +135,7 @@
   'nkInfix',              # a call like (a + b)
   'nkPrefix',             # a call like !a
   'nkPostfix',            # something like a! (also used for visibility)
-  'nkPar',                # syntactic ()
+  'nkPar',                # syntactic (); may be a tuple constructor
   'nkCurly',              # syntactic {}
   'nkBracket',            # syntactic []
   'nkBracketExpr',        # an expression like a[i..j, k]
@@ -142,14 +151,7 @@
   'nkAccQuoted',          # `a` as a node
   'nkHeaderQuoted',       # `a(x: int)` as a node
 
-  'nkSetConstr',          # a set constructor {}
-  'nkConstSetConstr',     # a set constructor with only constant expressions
-  'nkArrayConstr',        # an array constructor []
-  'nkConstArrayConstr',   # an array constructor with only constant expressions
-  'nkRecordConstr',       # a record constructor []
-  'nkConstRecordConstr',  # a record constructor with only constant expressions
   'nkTableConstr',        # a table constructor {expr: expr}
-  'nkConstTableConstr',   # a table constructor with only constant expressions
   'nkQualified',          # describes a.b for qualified identifiers
   'nkHiddenStdConv',      # an implicit standard type conversion
   'nkHiddenSubConv',      # an implicit type conversion from a subtype
@@ -158,6 +160,16 @@
   'nkConv',               # a type conversion
   'nkCast',               # a type cast
   'nkAddr',               # a addr expression
+  'nkHiddenAddr',         # implicit address operator
+  'nkHiddenDeref',        # implicit ^ operator
+  'nkObjDownConv',        # down conversion between object types
+  'nkObjUpConv',          # up conversion between object types
+  'nkChckRangeF',         # range check for floats
+  'nkChckRange64',        # range check for 64 bit ints
+  'nkChckRange',          # range check for ints
+  'nkStringToCString',    # string to cstring
+  'nkCStringToString',    # cstring to string
+  'nkPassAsOpenArray',    # thing is passed as an open array
   # end of expressions
 
   'nkAsgn',               # a = b
@@ -198,8 +210,6 @@
   'nkBreakStmt',          # a break statement
   'nkContinueStmt',       # a continue statement
   'nkBlockStmt',          # a block statement
-  'nkGotoStmt',           # used by the transformation pass; first son is a sym
-                          # node containing a label
   'nkDiscardStmt',        # a discard statement
   'nkStmtList',           # a list of statements
   'nkImportStmt',         # an import statement
@@ -218,8 +228,8 @@
 
   # types as syntactic trees:
   'nkTypeOfExpr',
-  'nkRecordTy',
   'nkObjectTy',
+  'nkTupleTy',
   'nkRecList',            # list of record/object parts
   'nkRecCase',            # case section of record/object
   'nkRecWhen',            # when section of record/object
@@ -228,8 +238,9 @@
   'nkVarTy',
   'nkProcTy',
   'nkEnumTy',
-  'nkEnumFieldDef'        # `ident = expr` in an enumeration
-], 
+  'nkEnumFieldDef',       # `ident = expr` in an enumeration
+  'nkReturnToken',        # token used for interpretation
+],
 
 'SymKind': [
   # the different symbols (start with the prefix sk);

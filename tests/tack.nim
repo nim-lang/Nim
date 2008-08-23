@@ -1,8 +1,5 @@
 # the Ackermann function
 
-import
-  io
-
 proc ack(x, y: int): int =
   if x != 0:
     if y != 0:

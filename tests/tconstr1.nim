@@ -1,14 +1,12 @@
 # Test array, record constructors
 
-import
-  io
-
 type
-  TComplexRecord = record
-    s: string
-    x, y: int
-    z: float
+  TComplexRecord = tuple[
+    s: string,
+    x, y: int,
+    z: float,
     chars: set[Char]
+  ]
 
 proc testSem =
   var

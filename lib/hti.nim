@@ -10,29 +10,38 @@
 type # This should be he same as ast.TTypeKind
      # some enum fields are not used at runtime
   TNimKind = enum
-    tyNone, tyBool, tyChar,
-    tyEmptySet, tyArrayConstr, tyNil, tyRecordConstr,
-    tyGeneric,
-    tyGenericInst,
-    tyGenericParam,
-    tyEnum, tyAnyEnum,
-    tyArray,
-    tyRecord,
-    tyObject,
-    tyTuple,
-    tySet,
-    tyRange,
-    tyPtr, tyRef,
-    tyVar,
-    tySequence,
-    tyProc,
-    tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
+    tyNone, # 0 
+    tyBool, # 1 
+    tyChar, # 2
+    tyEmptySet, # 3
+    tyArrayConstr, # 4
+    tyNil, # 5
+    tyGeneric, # 6
+    tyGenericInst, # 7
+    tyGenericParam, # 8
+    tyEnum, # 9
+    tyAnyEnum, # 10
+    tyArray, # 11
+    tyObject, # 12 
+    tyTuple, # 13
+    tySet, # 14
+    tyRange, # 15
+    tyPtr, # 16
+    tyRef, # 17
+    tyVar, # 18
+    tySequence, # 19
+    tyProc, # 20
+    tyPointer, # 21
+    tyOpenArray, # 22
+    tyString, # 23
+    tyCString, # 24
+    tyForward, # 25
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-    tyFloat, tyFloat32, tyFloat64, tyFloat128
+    tyFloat, tyFloat32, tyFloat64, tyFloat128,
+    tyPureObject # 35: signals that object has no `n_type` field
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.compilerproc.} = record
+  TNimNode {.compilerproc, final.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
@@ -40,7 +49,7 @@ type # This should be he same as ast.TTypeKind
     len: int
     sons: ptr array [0..0x7fff, ptr TNimNode]
 
-  TNimType {.compilerproc.} = record
+  TNimType {.compilerproc, final.} = object
     size: int
     kind: TNimKind
     base: ptr TNimType

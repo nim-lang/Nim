@@ -1,6 +1,3 @@
-import
-  io
-
 type
   TBase = object
     x, y: int

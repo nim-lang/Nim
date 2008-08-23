@@ -113,8 +113,13 @@
 'UnaryPlusF64',
 'UnaryMinusF64',
 'AbsF64',
-'Ze',
-'Ze64',
+'Ze8ToI',
+'Ze8ToI64',
+'Ze16ToI',
+'Ze16ToI64',
+'Ze32ToI64',
+'ZeIToI64',
+
 'ToU8',
 'ToU16',
 'ToU32',
@@ -122,6 +127,14 @@
 'ToBiggestFloat',
 'ToInt',
 'ToBiggestInt',
+
+'CharToStr',
+'BoolToStr',
+'IntToStr',  # $ for ints
+'Int64ToStr',
+'FloatToStr',
+'CStrToStr',
+'StrToStr',
 
 # special ones:
 'And',
@@ -156,12 +169,12 @@
 'SetLengthSeq',
 'Assert',
 'Swap',
+'IsNil',
 
 # magic type constructors:
 'Array',
 'OpenArray',
 'Range',
-'Tuple',
 'Set',
 'Seq',
 
@@ -172,5 +185,38 @@
 'NimrodMajor',
 'NimrodMinor',
 'NimrodPatch',
-'CpuEndian'
+'CpuEndian',
+'NaN',
+'Inf',
+'NegInf',
+
+# magics for modifying the AST (macro support)
+'NLen',
+'NChild',
+'NSetChild',
+'NAdd',
+'NAddMultiple',
+'NDel',
+'NKind',
+'NIntVal',
+'NFloatVal',
+'NSymbol',
+'NIdent',
+'NGetType',
+'NStrVal',
+'NSetIntVal',
+'NSetFloatVal',
+'NSetSymbol',
+'NSetIdent',
+'NSetType',
+'NSetStrVal',
+'NNewNimNode',
+'NCopyNimNode',
+'NCopyNimTree',
+'StrToIdent',
+'IdentToStr',
+'EqIdent',
+'NHint',
+'NWarning',
+'NError'
 ]

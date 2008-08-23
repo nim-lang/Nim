@@ -86,8 +86,8 @@ the C code. Thus it makes the following possible, for example:
 
 .. code-block:: Nimrod
   var
-    EOF {.import: "EOF", no_decl.}: cint # pretend EOF was a variable, as
-                                         # Nimrod does not know its value
+    EOF {.importc: "EOF", no_decl.}: cint # pretend EOF was a variable, as
+                                          # Nimrod does not know its value
 
 Varargs Pragma
 ~~~~~~~~~~~~~~
@@ -110,7 +110,7 @@ declared but also that it leads to the inclusion of a given header file:
 
 .. code-block:: Nimrod
   type
-    PFile {.import: "FILE*", header: "<stdio.h>".} = pointer
+    PFile {.importc: "FILE*", header: "<stdio.h>".} = pointer
       # import C's FILE* type; Nimrod will treat it as a new pointer type
 
 The ``header`` pragma expects always a string constant. The string contant
@@ -149,7 +149,7 @@ is raised.
 
 Debugger Option
 ~~~~~~~~~~~~~~~
-The `debugger`:idx: option enables or disables the *Embedded Nimrod Debugger*. 
+The `debugger`:idx: option enables or disables the *Embedded Nimrod Debugger*.
 See the documentation of endb_ for further information.
 
 
@@ -239,3 +239,28 @@ However it is not efficient to do:
 String case statements are optimized too. A hashing scheme is used for them
 if several different string constants are used. This is likely to be more
 efficient than any hand-coded scheme.
+
+
+The ECMAScript code generator
+=============================
+
+Note: I use the term `ECMAScript`:idx: here instead of `JavaScript`:idx:, since
+it is the proper term.
+
+Nimrod targets ECMAScript 1.5 which is supported by any widely used browser.
+Since ECMAScript does not have a portable means to include another module,
+Nimrod just generate a long ``.js`` file.
+
+Features or modules that the ECMAScript platform does not support are not
+available. This includes:
+
+* manual memory management (``alloc``, etc.)
+* casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
+* file management (``openfile``, etc.)
+* most modules of the Standard library
+* proper 64 bit integer arithmetic
+* proper unsigned integer arithmetic
+
+However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
+available! To access the DOM, use the `dom`:idx: module that is only available
+for the ECMAScript platform.

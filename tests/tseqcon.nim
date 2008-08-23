@@ -1,10 +1,7 @@
 # Test the &= operator for sequences and strings
 
-import
-  io
-
 type
-  TRec = record
+  TRec {.final.} = object
     x, y: int
     s: string
     seq: seq[string]

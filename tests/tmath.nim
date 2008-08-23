@@ -1,8 +1,5 @@
 # tests for the interpreter
 
-import
-  io
-
 proc loops(a: out int) =
   nil
   #var

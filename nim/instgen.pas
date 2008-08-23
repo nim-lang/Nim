@@ -21,11 +21,12 @@ type
     newOwner: PSym;
     instantiator: TLineInfo;
   end;
-  PInstClosure = ^TInstantiateClosure;
+  PInstantiateClosure = ^TInstantiateClosure;
+  PInstClosure = PInstantiateClosure;
 
-function instantiateTree(var c: TInstantiateClosure; t: PNode): PNode; forward;
-
-function instantiateSym(var c: TInstantiateClosure; sym: PSym): PSym; forward;
+function instantiateTree(c: PInstantiateClosure; t: PNode): PNode; forward;
+function instantiateSym(c: PInstantiateClosure; sym: PSym): PSym; forward;
+function instantiateType(c: PInstantiateClosure; typ: PType): PType; forward;
 
 function containsGenericTypeIter(t: PType; closure: PObject): bool;
 begin
@@ -37,35 +38,58 @@ begin
   result := iterOverType(t, containsGenericTypeIter, nil);
 end;
 
-
-function instantiateTypeMutator(typ: PType; c: PObject): PType;
+function instTypeNode(c: PInstantiateClosure; n: PNode): PNode;
+var
+  i: int;
 begin
-  result := PType(idTableGet(PInstClosure(c).mapping, typ));
+  result := nil;
+  if n <> nil then begin
+    result := copyNode(n);
+    result.typ := instantiateType(c, n.typ);
+    case n.kind of
+      nkNone..nkNilLit: begin // a leaf
+      end;
+      else begin
+        for i := 0 to sonsLen(n)-1 do
+          addSon(result, instTypeNode(c, n.sons[i]));
+      end
+    end
+  end
+end;
+
+function instantiateType(c: PInstantiateClosure; typ: PType): PType;
+var 
+  i: int;
+begin
+  result := PType(idTableGet(c.mapping, typ));
   if result <> nil then exit;
   if containsGenericType(typ) then begin
-    result := copyType(typ, PInstClosure(c).newOwner);
-    idTablePut(PInstClosure(c).mapping, typ, result)
+    result := copyType(typ, c.newOwner);
+    idTablePut(c.mapping, typ, result); // to avoid cycles
+    for i := 0 to sonsLen(result)-1 do 
+      result.sons[i] := instantiateType(c, result.sons[i]);
+    if result.n <> nil then
+      result.n := instTypeNode(c, result.n);
   end
   else
     result := typ;
   if result.Kind in GenericTypes then begin
-    liMessage(PInstClosure(c).instantiator, errCannotInstantiateX,
+    liMessage(c.instantiator, errCannotInstantiateX, 
               TypeToString(typ, preferName));
+  end
+  else if result.kind = tyVar then begin
+    if result.sons[0].kind = tyVar then
+      liMessage(c.instantiator, errVarVarTypeNotAllowed);
   end;
 end;
 
-function instantiateType(var c: TInstantiateClosure; typ: PType): PType;
-begin
-  result := mutateType(typ, instantiateTypeMutator, {@cast}PObject(addr(c)));
-end;
-
-function instantiateSym(var c: TInstantiateClosure; sym: PSym): PSym;
+function instantiateSym(c: PInstantiateClosure; sym: PSym): PSym;
 begin
   if sym = nil then begin result := nil; exit end; // BUGFIX
   result := PSym(idTableGet(c.mapping, sym));
   if (result = nil) then begin
     if (sym.owner.id = c.fn.id) or (sym.id = c.fn.id) then begin
-      result := copySym(sym, nil);
+      result := copySym(sym);
       if sym.id = c.fn.id then c.newOwner := result;
       include(result.flags, sfIsCopy);
       idTablePut(c.mapping, sym, result); // BUGFIX
@@ -83,7 +107,7 @@ begin
   end
 end;
 
-function instantiateTree(var c: TInstantiateClosure; t: PNode): PNode;
+function instantiateTree(c: PInstantiateClosure; t: PNode): PNode;
 var
   len, i: int;
 begin
@@ -124,7 +148,8 @@ begin
     q := n.sons[i].sym;
     s := newSym(skType, q.name, getCurrOwner(c));
     t := PType(IdTableGet(pt, q.typ));
-    if t = nil then liMessage(n.sons[i].info, errCannotInstantiateX, s.name.s);
+    if t = nil then
+      liMessage(n.sons[i].info, errCannotInstantiateX, s.name.s);
     assert(t.kind <> tyGenericParam);
     s.typ := t;
     addDecl(c, s);
@@ -138,7 +163,8 @@ var
 begin
   result := nil;
   for i := 0 to sonsLen(c.generics)-1 do begin
-    assert(c.generics.sons[i].kind = nkExprEqExpr);
+    if c.generics.sons[i].kind <> nkExprEqExpr then
+      InternalError(genericSym.info, 'GenericCacheGet');
     a := c.generics.sons[i].sons[0].sym;
     if genericSym.id = a.id then begin
       b := c.generics.sons[i].sons[1].sym;
@@ -173,8 +199,8 @@ var
   n: PNode;
 begin
   oldP := c.p; // restore later
-  result := copySym(fn, getCurrOwner(c));
-  result.id := getId();
+  result := copySym(fn);
+  result.owner := getCurrOwner(c);
   n := copyTree(fn.ast);
   result.ast := n;
   pushOwner(c, result);
@@ -202,7 +228,7 @@ begin
     addDecl(c, result);
     if n.sons[codePos] <> nil then begin
       c.p := newProcCon(result);
-      if result.kind = skProc then begin
+      if result.kind in [skProc, skConverter] then begin
         addResult(c, result.typ.sons[0], n.info);
         addResultNode(c, n);
       end;
@@ -221,8 +247,12 @@ end;
 function generateTypeInstance(p: PContext; const pt: TIdTable;
                               const instantiator: TLineInfo; t: PType): PType;
 var
-  c: TInstantiateClosure;
+  c: PInstantiateClosure;
 begin
+  new(c);
+{@ignore}
+  fillChar(c^, sizeof(c^), 0);
+{@emit}
   c.mapping := pt; // making a copy is not necessary
   c.fn := nil;
   c.instantiator := instantiator;

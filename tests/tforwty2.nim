@@ -6,14 +6,14 @@
 when defined(windows):
   type
     PSDL_semaphore = ptr TSDL_semaphore
-    TSDL_semaphore = record
+    TSDL_semaphore {.final.} = object
       id: uint32
       count: UInt32
 
 elif defined(linux):
   type
     PSDL_semaphore = ptr TSDL_semaphore
-    TSDL_semaphore = record
+    TSDL_semaphore {.final.} = object
       sem: Pointer             #PSem_t;
       when not defined(USE_NAMED_SEMAPHORES):
         sem_data: int

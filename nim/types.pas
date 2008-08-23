@@ -48,7 +48,7 @@ function mutateType(t: PType; iter: TTypeMutator; closure: PObject): PType;
 
 
 
-function SameType(a, b: PType): Boolean;
+function SameType(x, y: PType): Boolean;
 function SameTypeOrNil(a, b: PType): Boolean;
 
 type
@@ -67,15 +67,14 @@ function isOrdinalType(t: PType): Boolean;
 function enumHasWholes(t: PType): Boolean;
 
 function skipRange(t: PType): PType;
-function skipAbstract(t: PType): PType;
 function skipGeneric(t: PType): PType;
+function skipGenericRange(t: PType): PType;
 function skipVar(t: PType): PType;
 function skipVarGeneric(t: PType): PType;
 function skipVarGenericRange(t: PType): PType;
+function skipPtrsGeneric(t: PType): PType;
 
 function elemType(t: PType): PType;
-
-function inheritAssignable(toCopy: PType; isAssignable: bool): PType;
 
 function containsObject(t: PType): bool;
 function containsGarbageCollectedRef(typ: PType): Boolean;
@@ -89,7 +88,56 @@ function getOrdValue(n: PNode): biggestInt;
 function computeSize(typ: PType): biggestInt;
 function getSize(typ: PType): biggestInt;
 
+function isPureObject(typ: PType): boolean;
+
+function inheritanceDiff(a, b: PType): int;
+// | returns: 0 iff `a` == `b`
+// | returns: -x iff `a` is the x'th direct superclass of `b`
+// | returns: +x iff `a` is the x'th direct subclass of `b`
+// | returns: `maxint` iff `a` and `b` are not compatible at all
+
+
+function InvalidGenericInst(f: PType): bool;
+// for debugging
+
 implementation
+
+function InvalidGenericInst(f: PType): bool;
+begin
+  result := (f.kind = tyGenericInst) and (lastSon(f) = nil);
+end;
+
+function inheritanceDiff(a, b: PType): int;
+var
+  x, y: PType;
+begin
+  // conversion to superclass?
+  x := a;
+  result := 0;
+  while (x <> nil) do begin
+    if x.id = b.id then exit;
+    x := x.sons[0];
+    dec(result);
+  end;
+  // conversion to baseclass?
+  y := b;
+  result := 0;
+  while (y <> nil) do begin
+    if y.id = a.id then exit;
+    y := y.sons[0];
+    inc(result);
+  end;
+  result := high(int);
+end;
+
+function isPureObject(typ: PType): boolean;
+var
+  t: PType;
+begin
+  t := typ;
+  while t.sons[0] <> nil do t := t.sons[0];
+  result := (t.sym <> nil) and (sfPure in t.sym.flags);
+end;
 
 function getOrdValue(n: PNode): biggestInt;
 begin
@@ -131,24 +179,11 @@ begin
     result := result +{&} ': ' +{&} typeToString(n.sons[0].typ);
 end;
 
-function inheritAssignable(toCopy: PType; isAssignable: bool): PType;
-begin
-  if isAssignable then begin
-    if tfAssignable in toCopy.flags then result := toCopy
-    else begin
-      result := copyType(toCopy, toCopy.owner); // same ID!
-      include(result.flags, tfAssignable);
-    end
-  end
-  else
-    result := toCopy // no need to copy
-end;
-
 function elemType(t: PType): PType;
 begin
   assert(t <> nil);
   case t.kind of
-    tyGenericInst: result := lastSon(t);
+    tyGenericInst: result := elemType(lastSon(t));
     tyArray, tyArrayConstr: result := t.sons[1];
     else result := t.sons[0];
   end;
@@ -186,7 +221,21 @@ begin
   while result.kind in [tyGenericInst, tyVar] do result := lastSon(result);
 end;
 
+function skipPtrsGeneric(t: PType): PType;
+begin
+  result := t;
+  while result.kind in [tyGenericInst, tyVar, tyPtr, tyRef] do
+    result := lastSon(result);
+end;
+
 function skipVarGenericRange(t: PType): PType;
+begin
+  result := t;
+  while result.kind in [tyGenericInst, tyVar, tyRange] do
+    result := lastSon(result);
+end;
+
+function skipGenericRange(t: PType): PType;
 begin
   result := t;
   while result.kind in [tyGenericInst, tyVar, tyRange] do
@@ -309,13 +358,13 @@ begin
   result := Predicate(t);
   if result then exit;
   case t.kind of
-    tyObject, tyRecord: begin
+    tyObject: begin
       result := searchTypeForAux(t.sons[0], predicate, marker);
       if not result then
         result := searchTypeNodeForAux(t.n, predicate, marker);
     end;
     tyGenericInst: result := searchTypeForAux(lastSon(t), predicate, marker);
-    tyArray, tyArrayConstr, tyTuple, tySet: begin
+    tyArray, tyArrayConstr, tySet, tyTuple: begin
       for i := 0 to sonsLen(t)-1 do begin
         result := searchTypeForAux(t.sons[i], predicate, marker);
         if result then exit
@@ -400,11 +449,14 @@ begin
   result := iter(t, closure);
   if not IntSetContainsOrIncl(marker, t.id) then begin
     for i := 0 to sonsLen(t)-1 do begin
-      result.sons[i] := mutateTypeAux(marker, t.sons[i], iter, closure);
+      result.sons[i] := mutateTypeAux(marker, result.sons[i], iter, closure);
+      if (result.sons[i] = nil) and (result.kind = tyGenericInst) then
+        assert(false);
     end;
     if t.n <> nil then
       result.n := mutateNode(marker, t.n, iter, closure)
-  end
+  end;
+  assert(result <> nil);
 end;
 
 function mutateType(t: PType; iter: TTypeMutator; closure: PObject): PType;
@@ -425,9 +477,9 @@ function TypeToString(typ: PType; prefer: TPreferedDesc = preferName): string;
 const
   typeToStr: array [TTypeKind] of string = (
     'None', 'bool', 'Char', '{}', 'Array Constructor [$1]', 'nil',
-    'Record Constructor [$1]', 'Generic', 'GenericInst', 'GenericParam',
+    'Generic', 'GenericInst', 'GenericParam',
     'enum', 'anyenum',
-    'array[$1, $2]', 'record', 'object', 'tuple', 'set[$1]', 'range[$1]',
+    'array[$1, $2]', 'object', 'tuple', 'set[$1]', 'range[$1]',
     'ptr ', 'ref ', 'var ', 'seq[$1]', 'proc', 'pointer',
     'OpenArray[$1]', 'string', 'CString', 'Forward',
     'int', 'int8', 'int16', 'int32', 'int64',
@@ -462,21 +514,22 @@ begin
     tySet: result := 'set[' +{&} typeToString(t.sons[0]) +{&} ']';
     tyOpenArray: result := 'openarray[' +{&} typeToString(t.sons[0]) +{&} ']';
     tyTuple: begin
-      assert(t.n = nil);
+      // we iterate over t.sons here, because t.n may be nil
       result := 'tuple[';
-      for i := 0 to sonsLen(t)-1 do begin
-        result := result +{&} typeToString(t.sons[i]);
-        if i < sonsLen(t)-1 then result := result +{&} ', ';
-      end;
-      addChar(result, ']')
-    end;
-    tyRecordConstr: begin
-      assert(t.n <> nil);
-      result := 'record[';
-      for i := 0 to sonsLen(t.n)-1 do begin
-        result := result +{&} t.n.sons[i].sym.name.s +{&} ': '
-                         +{&} typeToString(t.n.sons[i].sym.typ);
-        if i < sonsLen(t.n)-1 then result := result +{&} ', ';
+      if t.n <> nil then begin
+        assert(sonsLen(t.n) = sonsLen(t));
+        for i := 0 to sonsLen(t.n)-1 do begin
+          assert(t.n.sons[i].kind = nkSym);
+          result := result +{&} t.n.sons[i].sym.name.s +{&} ': '
+                  +{&} typeToString(t.sons[i]);
+          if i < sonsLen(t.n)-1 then result := result +{&} ', ';
+        end
+      end
+      else begin
+        for i := 0 to sonsLen(t)-1 do begin
+          result := result +{&} typeToString(t.sons[i]);
+          if i < sonsLen(t)-1 then result := result +{&} ', ';
+        end
       end;
       addChar(result, ']')
     end;
@@ -545,6 +598,7 @@ begin
         result := t.n.sons[0].sym.position;
       end;
     end;
+    tyGenericInst: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for first(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -580,6 +634,7 @@ begin
       assert(t.n.sons[sonsLen(t.n)-1].kind = nkSym);
       result := t.n.sons[sonsLen(t.n)-1].sym.position;
     end;
+    tyGenericInst: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for last(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -680,46 +735,67 @@ begin
     SameLiteral(a.sons[1], b.sons[1])
 end;
 
-function sameRecordConstr(a, b: PType): Boolean;
+function sameTuple(a, b: PType): boolean;
+// two tuples are equivalent iff the names, types and positions are the same;
+// however, both types may not have any field names (t.n may be nil) which
+// complicates the matter a bit.
 var
   i: int;
   x, y: PSym;
 begin
-  if sonsLen(a.n) <> sonsLen(b.n) then begin
-    result := false; exit
-  end;
-  for i := 0 to sonsLen(a.n)-1 do begin
-    x := a.n.sons[i].sym;
-    y := getSymFromList(b.n, x.name);
-    if (y = nil) or not SameType(x.typ, y.typ) then begin
-      result := false; exit
+  if sonsLen(a) = sonsLen(b) then begin
+    result := true;
+    for i := 0 to sonsLen(a)-1 do begin
+      result := SameType(a.sons[i], b.sons[i]);
+      if not result then exit
+    end;
+    if (a.n <> nil) and (b.n <> nil) then begin
+      for i := 0 to sonsLen(a.n)-1 do begin
+        // check field names: 
+        if a.n.sons[i].kind <> nkSym then InternalError(a.n.info, 'sameTuple');
+        if b.n.sons[i].kind <> nkSym then InternalError(b.n.info, 'sameTuple');
+        x := a.n.sons[i].sym;
+        y := b.n.sons[i].sym;
+        result := x.name.id = y.name.id;
+        if not result then break
+      end
     end
-  end;
-  result := true
+  end
+  else
+    result := false;
 end;
 
-function SameType(a, b: PType): Boolean;
+function SameType(x, y: PType): Boolean;
 var
   i: int;
+  a, b: PType;
 begin
+  a := skipGeneric(x);
+  b := skipGeneric(y);
   assert(a <> nil);
   assert(b <> nil);
   if a.kind <> b.kind then begin result := false; exit end;
   case a.Kind of
-    tyRecord, tyEnum, tyForward, tyObject:
+    tyEnum, tyForward, tyObject:
       result := (a.id = b.id);
-    tyGenericParam, tyGeneric, tyGenericInst, tySequence,
+    tyTuple: 
+      result := sameTuple(a, b);
+    tyGenericInst:
+      result := sameType(lastSon(a), lastSon(b));
+    tyGenericParam, tyGeneric, tySequence,
     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
-    tyArray, tyTuple, tyProc: begin
+    tyArray, tyProc: begin
       if sonsLen(a) = sonsLen(b) then begin
         result := true;
         for i := 0 to sonsLen(a)-1 do begin
           result := SameTypeOrNil(a.sons[i], b.sons[i]); // BUGFIX
           if not result then exit
-        end
+        end;
+        if result and (a.kind = tyProc) then 
+          result := a.callConv = b.callConv // BUGFIX
       end
       else
-        result := false
+        result := false;
     end;
     tyRange: begin
       result := SameTypeOrNil(a.sons[0], b.sons[0])
@@ -728,7 +804,6 @@ begin
     end;
     tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, tyInt..tyFloat128:
       result := true;
-    tyRecordConstr: result := sameRecordConstr(a, b); // BUGFIX
     else begin
       InternalError('sameType(' +{&} typeKindToStr[a.kind] +{&} ', '
         +{&} typeKindToStr[b.kind] +{&} ')');
@@ -833,10 +908,10 @@ begin
       if firstOrd(typ) < 0 then
         result := 4 // use signed int32
       else begin
-        len := lengthOrd(typ);
-        if len < 2 shl 8 then result := 1
-        else if len < 2 shl 16 then result := 2
-        else if len < 2 shl 32 then result := 4
+        len := lastOrd(typ); // BUGFIX: use lastOrd!
+        if len+1 < 1 shl 8 then result := 1
+        else if len+1 < 1 shl 16 then result := 2
+        else if len+1 < 1 shl 32 then result := 4
         else result := 8;
       end;
       a := result;
@@ -863,7 +938,7 @@ begin
       result := align(result, maxAlign);
       a := maxAlign;
     end;
-    tyRecord, tyObject: begin
+    tyObject: begin
       if typ.sons[0] <> nil then begin
         result := computeSizeAux(typ.sons[0], a);
         maxAlign := a
@@ -879,7 +954,7 @@ begin
       if a < maxAlign then a := maxAlign;
       result := align(result, a);
     end;
-    tyGeneric: begin
+    tyGenericInst: begin
       result := computeSizeAux(lastSon(typ), a);
     end;
     else begin

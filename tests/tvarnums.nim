@@ -1,7 +1,7 @@
 # Test variable length binary integers
 
 import
-  io, strutils
+  strutils
 
 type
   TBuffer = array [0..10, int8]

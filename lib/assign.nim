@@ -55,7 +55,8 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
     dstseq.space = seq.len
-  of tyRecord, tyObject, tyTuple:
+  of tyObject, tyTuple, tyPureObject: 
+    # we don't need to copy m_type field for tyObject, as they are equal anyway
     genericAssignAux(dest, src, mt.node)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
@@ -75,6 +76,7 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
     copyMem(dest, src, mt.size) # copy raw bits
 
 proc genericSeqAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+  var src = src # ugly, but I like to stress the parser sometimes :-)
   genericAssign(dest, addr(src), mt)
 
 proc genericAssignOpenArray(dest, src: pointer, len: int,
@@ -110,7 +112,7 @@ proc objectInit(dest: Pointer, typ: PNimType) =
     var pint = cast[ptr PNimType](dest)
     pint^ = typ
     objectInitAux(dest, typ.node)
-  of tyRecord:
+  of tyTuple, tyPureObject:
     objectInitAux(dest, typ.node)
   of tyArray, tyArrayConstr:
     for i in 0..(typ.size div typ.base.size)-1:

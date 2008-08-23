@@ -7,16 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-
-
 ## This module contains various string utility routines.
 ## See the module `regexprs` for regular expression support.
+## All the routines here are avaiable for the EMCAScript target
+## too!
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
 # copied from excpt.nim, because I don't want to make this template public
-template newException(exceptn, message: expr): expr = 
+template newException(exceptn, message: expr): expr =
   block: # open a new scope
     var
       e: ref exceptn
@@ -153,6 +153,10 @@ proc ParseInt*(s: string): int {.noSideEffect.}
   ## a valid integer, `EInvalidValue` is raised.
   # XXX: make this biggestint!
 
+proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect.}
+  ## Parses a decimal integer value contained in `s`. If `s` is not
+  ## a valid integer, `EInvalidValue` is raised.
+
 proc ParseFloat*(s: string): float {.noSideEffect.}
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised.
@@ -187,7 +191,7 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ##
   ##   "The cat eats fish."
   ##
-  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is 
+  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
 
 proc `%` *(formatstr, a: string): string {.noSideEffect.}
@@ -213,7 +217,13 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
     if not (c in theSet): return false
   return true
 
-proc c_strcmp(a, b: CString): int {.importc: "strcmp", nodecl.}
+proc quoteIfSpaceExists*(s: string): string =
+  ## returns ``'"' & s & '"'`` if `s` contains a space and does not
+  ## start with a quote, else returns `s`
+  if findSubStr(' ', s) >= 0 and s[0] != '"':
+    result = '"' & s & '"'
+  else:
+    result = s
 
 proc startsWith(s, prefix: string): bool =
   var i = 0
@@ -262,7 +272,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
     inc(i, 2) # incrementing by 1 would probably result in a
-    # security whole ...
+              # security whole ...
   return -1
 
 proc `%`(formatstr: string, a: openarray[string]): string =
@@ -306,11 +316,9 @@ proc `%`(formatstr: string, a: openarray[string]): string =
 
 proc cmpIgnoreCase(a, b: string): int =
   # makes usage of the fact that strings are zero-terminated
-  var
-    aa, bb: char
   for i in 0..len(a)-1:
-    aa = toLower(a[i])
-    bb = toLower(b[i])
+    var aa = toLower(a[i])
+    var bb = toLower(b[i])
     result = ord(aa) - ord(bb)
     if result != 0: break
 
@@ -319,14 +327,13 @@ proc cmpIgnoreCase(a, b: string): int =
 
 proc cmpIgnoreStyle(a, b: string): int =
   var
-    aa, bb: char
     i = 0
     j = 0
   while True:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
-    aa = toLower(a[i])
-    bb = toLower(b[j])
+    var aa = toLower(a[i])
+    var bb = toLower(b[j])
     result = ord(aa) - ord(bb)
     if result != 0 or aa == '\0': break
     inc(i)
@@ -475,15 +482,12 @@ proc deleteStr(s: var string, first, last: int) =
 
 # parsing numbers:
 
-proc sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs.}
-
 proc toHex(x: BiggestInt, len: int): string =
   const
     HexChars = "0123456789ABCDEF"
   var
     shift: BiggestInt
   result = newString(len)
-  shift = 0
   for j in countdown(len-1, 0):
     result[j] = HexChars[toU32(x shr shift) and 0xF]
     shift = shift + 4
@@ -497,11 +501,8 @@ proc rawParseInt(s: string, index: var int): BiggestInt =
   # one more valid negative than prositive integer. Thus we perform the
   # computation as a negative number and then change the sign at the end.
   var
-    i: int
-    sign: BiggestInt
-  i = index
-  # a local i is more efficient than accessing an in out parameter
-  sign = -1
+    i: int = index # a local i is more efficient than accessing a var parameter
+    sign: BiggestInt = -1
   if s[i] == '+':
     inc(i)
   elif s[i] == '-':
@@ -523,10 +524,8 @@ proc rawParseInt(s: string, index: var int): BiggestInt =
 
 proc parseInt(s: string): int =
   var
-    index: int
-    res: BiggestInt
-  index = strStart
-  res = rawParseInt(s, index)
+    index: int = 0
+    res = rawParseInt(s, index)
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)
   elif (sizeof(int) <= 4) and
@@ -535,17 +534,20 @@ proc parseInt(s: string): int =
   else:
     result = int(res) # convert to smaller integer type
 
+proc ParseBiggestInt(s: string): biggestInt =
+  var
+    index: int = 0
+  result = rawParseInt(s, index)
+  if index == -1:
+    raise newException(EInvalidValue, "invalid integer: " & s)
+
 proc ParseFloat(s: string): float =
   var
-    hd, esign, sign: float
+    esign = 1.0
+    sign = 1.0
     exponent, i: int
     flags: int
   result = 0.0
-  i = 0
-  exponent = 0
-  esign = 1.0
-  flags = 0
-  sign = 1.0
   if s[i] == '+': inc(i)
   elif s[i] == '-':
     sign = -1.0
@@ -558,7 +560,7 @@ proc ParseFloat(s: string): float =
     while s[i] == '_': inc(i)
   # Decimal?
   if s[i] == '.':
-    hd = 1.0
+    var hd = 1.0
     inc(i)
     while s[i] in {'0'..'9'}:
       # Read fractional part
@@ -579,14 +581,14 @@ proc ParseFloat(s: string): float =
     elif s[i] == '-':
       esign = -1.0
       inc(i)
-    if s[i] notin {'0'..'9'}: 
+    if s[i] notin {'0'..'9'}:
       raise newException(EInvalidValue, "invalid float: " & s)
     while s[i] in {'0'..'9'}:
       exponent = exponent * 10 + ord(s[i]) - ord('0')
       inc(i)
       while s[i] == '_': inc(i)
   # Calculate Exponent
-  hd = 1.0
+  var hd = 1.0
   for j in 1..exponent:
     hd = hd * 10.0
   if esign > 0.0: result = result * hd
@@ -600,11 +602,10 @@ proc toOct*(x: BiggestInt, len: int): string =
   ## converts `x` into its octal representation. The resulting string is
   ## always `len` characters long. No leading ``0c`` prefix is generated.
   var
-    mask, shift: BiggestInt
+    mask: BiggestInt = 7
+    shift: BiggestInt = 0
   assert(len > 0)
   result = newString(len)
-  mask = 7
-  shift = 0
   for j in countdown(len-1, 0):
     result[j] = chr(int((x and mask) shr shift) + ord('0'))
     shift = shift + 3
@@ -614,11 +615,10 @@ proc toBin*(x: BiggestInt, len: int): string =
   ## converts `x` into its binary representation. The resulting string is
   ## always `len` characters long. No leading ``0b`` prefix is generated.
   var
-    mask, shift: BiggestInt
+    mask: BiggestInt = 1
+    shift: BiggestInt = 0
   assert(len > 0)
   result = newString(len)
-  mask = 1
-  shift = 0
   for j in countdown(len-1, 0):
     result[j] = chr(int((x and mask) shr shift) + ord('0'))
     shift = shift + 1

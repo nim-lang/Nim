@@ -90,10 +90,11 @@ type
   TAddress = longint;
 {$endif}
 
+var
+  NaN: float;
+  inf: float;
+  NegInf: float;
 {$ifdef fpc}
-const
-  inf = math.Infinity;
-  NegInf = -inf;
 {$else}
   {$ifopt Q+}
     {$define Q_on}
@@ -150,6 +151,10 @@ function shlU(a, b: biggestInt): biggestInt;
 function shrU(a, b: biggestInt): biggestInt;
 function ltU(a, b: biggestInt): bool;
 function leU(a, b: biggestInt): bool;
+
+function toU8(a: biggestInt): byte;
+function toU32(a: biggestInt): int32;
+function ze64(a: byte): biggestInt;
 {@emit}
 
 function alloc(size: int): Pointer;
@@ -256,6 +261,23 @@ end;
 function leU(a, b: biggestInt): bool;
 begin
   result := biggestUInt(a) < biggestUInt(b);
+end;
+
+function toU8(a: biggestInt): byte;
+begin
+  assert(a >= 0);
+  assert(a <= 255);
+  result := a;
+end;
+
+function toU32(a: biggestInt): int32;
+begin
+  result := int32(a and $ffffffff);
+end;
+
+function ze64(a: byte): biggestInt;
+begin
+  result := a
 end;
 {@emit}
 
@@ -486,4 +508,21 @@ end;
 
 {$ifdef I_on} {$undef I_on} {$I+} {$endif}
 
+{$ifopt R+} {$R-,Q-} {$define R_on} {$endif}
+var
+  zero: float;
+  Saved8087CW: Word;
+initialization
+  Saved8087CW := Default8087CW;
+  Set8087CW($133f); // Disable all fpu exceptions
+
+  zero := 0.0;
+  NaN := 0.0 / zero;
+  inf := 1.0 / zero;
+  NegInf := -inf;
+finalization
+  Set8087CW(Saved8087CW);
+{$ifdef R_on}
+  {$R+,Q+}
+{$endif}
 end.

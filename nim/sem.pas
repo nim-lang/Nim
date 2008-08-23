@@ -21,7 +21,7 @@ uses
   extccomp, nmath, magicsys, nversion, nimsets, pnimsyn, ntime, backends;
 
 const
-  genPrefix = '::'+''; // prefix for generated names
+  genPrefix = '::'; // prefix for generated names
 
 type
   TOptionEntry = object(lists.TListEntry)
@@ -48,6 +48,7 @@ type
     owner: PSym;        // current owner
     forStmt: PNode;    // current for stmt
     next: PTransCon;
+    params: TNodeSeq;  // parameters passed to the proc
   end;
 
   PContext = ^TContext;
@@ -65,6 +66,7 @@ type
     b: PBackend;
     p: PProcCon; // procedure context
     transCon: PTransCon; // top of a TransCon stack
+    lastException: PNode; // last exception
     importModule: function (const filename: string; backend: PBackend): PSym;
     includeFile: function (const filename: string): PNode;
   end;
@@ -87,6 +89,7 @@ begin
   fillChar(result^, sizeof(result^), 0);
 {@emit}
   initIdNodeTable(result.mapping);
+{@emit result.params := [];}
 end;
 
 procedure pushTransCon(c: PContext; t: PTransCon);
@@ -140,13 +143,26 @@ begin
   append(result.optionStack, newOptionEntry());
   result.module := nil;
   result.generics := newNode(nkStmtList);
+{@emit result.converters := [];}
+end;
+
+procedure addConverter(c: PContext; conv: PSym);
+var
+  i, L: int;
+begin
+  L := length(c.converters);
+  for i := 0 to L-1 do
+    if c.converters[i].id = conv.id then exit;
+  setLength(c.converters, L+1);
+  c.converters[L] := conv;
 end;
 
 // -------------------- embedded debugger ------------------------------------
 
 procedure embeddedDbg(c: PContext; n: PNode);
 begin
-  {@discard} inCheckpoint(n.info)
+  if optVerbose in gGlobalOptions then liMessage(n.info, hintProcessing);
+  //{@discard} inCheckpoint(n.info)
 end;
 
 // ---------------------------------------------------------------------------
@@ -207,10 +223,13 @@ var
 begin
   x := n;
   if x.kind = nkAccQuoted then x := x.sons[0];
-  if x.kind = nkIdent then result := x.ident
-  else begin
-    liMessage(n.info, errIdentifierExpected);
-    result := nil
+  case x.kind of
+    nkIdent: result := x.ident;
+    nkSym: result := x.sym.name;
+    else begin
+      liMessage(n.info, errIdentifierExpected, renderTree(n));
+      result := nil
+    end
   end
 end;
 
@@ -251,6 +270,13 @@ begin
   addSon(result, baseType);
 end;
 
+function makeVarType(c: PContext; baseType: PType): PType;
+begin
+  assert(baseType <> nil);
+  result := newTypeS(tyVar, c);
+  addSon(result, baseType);
+end;
+
 {$include 'lookup.pas'}
 
 function semIdentVis(c: PContext; kind: TSymKind; n: PNode;
@@ -261,10 +287,15 @@ function semIdentWithPragma(c: PContext; kind: TSymKind;
 
 function semStmt(c: PContext; n: PNode): PNode; forward;
 function semStmtScope(c: PContext; n: PNode): PNode; forward;
+
+type
+  TExprFlag = (efAllowType, efLValue);
+  TExprFlags = set of TExprFlag;
+
 function semExpr(c: PContext; n: PNode;
-                 typeAllowed: bool = false): PNode; forward;
+                 flags: TExprFlags = {@set}[]): PNode; forward;
 function semExprWithType(c: PContext; n: PNode;
-                         typeAllowed: bool): PNode; forward;
+                         flags: TExprFlags = {@set}[]): PNode; forward;
 function semLambda(c: PContext; n: PNode): PNode; forward;
 function semTypeNode(c: PContext; n: PNode; prev: PType): PType; forward;
 
@@ -274,6 +305,11 @@ function semConstExpr(c: PContext; n: PNode): PNode; forward;
 function getConstExpr(c: PContext; n: PNode): PNode; forward;
   // evaluates the constant expression or returns nil if it is no constant
   // expression
+
+function eval(c: PContext; n: PNode): PNode; forward;
+// eval never returns nil! This simplifies the code a lot and
+// makes it faster too.
+
 
 {$include 'semtempl.pas'}
 {$include 'instgen.pas'}
@@ -303,6 +339,11 @@ begin
   if (n = nil) or (sonsLen(n) <> len) then illFormedAst(n);
 end;
 
+procedure checkMinSonsLen(n: PNode; len: int);
+begin
+  if (n = nil) or (sonsLen(n) < len) then illFormedAst(n);
+end;
+
 procedure typeMismatch(n: PNode; formal, actual: PType);
 begin
   liMessage(n.Info, errGenerated,
@@ -315,6 +356,7 @@ end;
 {$include 'transf.pas'}
 {$include 'semstmts.pas'}
 {$include 'semfold.pas'}
+{$include 'eval.pas'}
 
 function semp(c: PContext; n: PNode): PNode;
 begin
@@ -329,7 +371,7 @@ begin
   for i := 0 to sonsLen(c.generics)-1 do begin
     assert(c.generics.sons[i].sons[1].kind = nkSym);
     prc := c.generics.sons[i].sons[1].sym;
-    if (prc.kind = skProc) and (prc.magic = mNone) then begin
+    if (prc.kind in [skProc, skConverter]) and (prc.magic = mNone) then begin
       addSon(n, prc.ast);
     end
   end
@@ -350,4 +392,7 @@ begin
   c.p := nil;
 end;
 
+initialization
+  new(emptyNode);
+  emptyNode.kind := nkEmpty;
 end.

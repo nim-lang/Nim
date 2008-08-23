@@ -1,8 +1,5 @@
 # Tests the object implementation
 
-import
-  io
-
 type
   TPoint2d = object
     x, y: int

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -35,35 +35,34 @@ proc chckNil(p: pointer) {.inline, compilerproc.}
 
 type
   PSafePoint = ptr TSafePoint
-  TSafePoint {.compilerproc.} = record
+  TSafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point ON THE STACK
     exc: ref E_Base
     status: int
     context: C_JmpBuf
 
 var
-  excHandler {.compilerproc, volatile.}: PSafePoint = nil
+  excHandler {.compilerproc.}: PSafePoint = nil
     # list of exception handlers
     # a global variable for the root of all try blocks
 
 proc reraiseException() =
-  if excHandler != nil:
+  if excHandler == nil:
     raise newException(ENoExceptionToReraise, "no exception to reraise")
   else:
     c_longjmp(excHandler.context, 1)
 
 type
   PFrame = ptr TFrame
-  TFrame {.importc, nodecl.} = record
+  TFrame {.importc, nodecl, final.} = object
     prev: PFrame
     procname: CString
     line: int # current line number
     filename: CString
     len: int  # length of slots (when not debugging always zero)
 
-  TTempFrame = record # used for recursion elimination in WriteStackTrace
-    procname: CString
-    line: int
+  TTempFrame = tuple[ # used for recursion elimination in WriteStackTrace
+    procname: CString, line: int]
 
 var
   buf: string       # cannot be allocated on the stack!
@@ -71,7 +70,7 @@ var
                     # assert, as it raises an exception and
                     # exception handler needs the buffer too
 
-  framePtr {.exportc, volatile.}: PFrame
+  framePtr {.exportc.}: PFrame
 
   tempFrames: array [0..255, TTempFrame] # cannot be allocated
                                          # on the stack!
@@ -82,8 +81,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     i = 0
     total = 0
   while it != nil and i <= high(tempFrames):
-    tempFrames[i].procname = it.procname
-    tempFrames[i].line = it.line
+    tempFrames[i] = (it.procname, it.line)
     inc(i)
     inc(total)
     it = it.prev
@@ -110,10 +108,10 @@ proc rawWriteStackTrace(s: var string) =
     auxWriteStackTrace(framePtr, s)
 
 proc quitOrDebug() {.inline.} =
-  when not defined(emdb):
+  when not defined(endb):
     quit(1)
   else:
-    emdbStep() # call the debugger
+    endbStep() # call the debugger
 
 proc raiseException(e: ref E_Base, ename: CString) =
   GC_disable() # a bad thing is an error in the GC while raising an exception
@@ -122,7 +120,7 @@ proc raiseException(e: ref E_Base, ename: CString) =
     excHandler.exc = e
     c_longjmp(excHandler.context, 1)
   else:
-    if cast[pointer](buf) != nil:
+    if not isNil(buf):
       setLen(buf, 0)
       rawWriteStackTrace(buf)
       if e.msg != nil and e.msg[0] != '\0':
@@ -135,9 +133,7 @@ proc raiseException(e: ref E_Base, ename: CString) =
       add(buf, "]\n")
       writeToStdErr(buf)
     else:
-      writeToStdErr("*** FATAL ERROR *** ")
       writeToStdErr(ename)
-      writeToStdErr("\n")
     quitOrDebug()
   GC_enable()
 
@@ -147,7 +143,8 @@ var
 proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
   if not cond:
     GC_disable() # BUGFIX: `$` allocates a new string object!
-    if cast[pointer](assertBuf) != nil: # BUGFIX: when debugging the GC, assertBuf may be nil
+    if not isNil(assertBuf):
+      # BUGFIX: when debugging the GC, assertBuf may be nil
       setLen(assertBuf, 0)
       add(assertBuf, "[Assertion failure] file: ")
       add(assertBuf, file)
@@ -164,6 +161,11 @@ proc WriteStackTrace() =
   rawWriteStackTrace(s)
   writeToStdErr(s)
 
+#proc stackTraceWrapper {.noconv.} =
+#  writeStackTrace()
+
+#addQuitProc(stackTraceWrapper)
+
 var
   dbgAborting: bool # whether the debugger wants to abort
 
@@ -171,6 +173,7 @@ proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
   # print stack trace and quit
   var
     s = int(sig)
+  GC_disable()
   setLen(buf, 0)
   rawWriteStackTrace(buf)
 
@@ -185,6 +188,7 @@ proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
   else: add(buf, "unknown signal\n")
   writeToStdErr(buf)
   dbgAborting = True # play safe here...
+  GC_enable()
   quit(1) # always quit when SIGABRT
 
 proc registerSignalHandler() =
@@ -195,8 +199,8 @@ proc registerSignalHandler() =
   c_signal(SIGILL, signalHandler)
   c_signal(SIGBUS, signalHandler)
 
-registerSignalHandler() # call it in initialization section 
-# for easier debugging of the GC, this memory is only allocated after the 
+registerSignalHandler() # call it in initialization section
+# for easier debugging of the GC, this memory is only allocated after the
 # signal handlers have been registered
 new(gAssertionFailed)
 buf = newString(2048)
@@ -204,11 +208,14 @@ assertBuf = newString(2048)
 setLen(buf, 0)
 setLen(assertBuf, 0)
 
-proc raiseRangeError() {.compilerproc, noreturn.} =
-  raise newException(EOutOfRange, "value out of range")
+proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn.} =
+  raise newException(EOutOfRange, "value " & $val & " out of range")
 
 proc raiseIndexError() {.compilerproc, noreturn.} =
   raise newException(EInvalidIndex, "index out of bounds")
+
+proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
+  raise newException(EInvalidField, f & " is not accessible")
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
@@ -220,19 +227,19 @@ proc chckRange(i, a, b: int): int =
   if i >= a and i <= b:
     return i
   else:
-    raiseRangeError()
+    raiseRangeError(i)
 
 proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
   if i >= a and i <= b:
     return i
   else:
-    raiseRangeError()
+    raiseRangeError(i)
 
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
     return x
   else:
-    raiseRangeError()
+    raise newException(EOutOfRange, "value " & $x & " out of range")
 
 proc chckNil(p: pointer) =
   if p == nil: c_raise(SIGSEGV)

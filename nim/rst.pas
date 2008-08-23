@@ -102,17 +102,17 @@ type
   );
 const
   rstnodekindToStr: array [TRstNodeKind] of string = (
-    'Inner', 'Headline', 'Overline', 'Transition', 'Paragraph', 
-    'BulletList', 'BulletItem', 'EnumList', 'EnumItem', 'DefList', 'DefItem', 
-    'DefName', 'DefBody', 'FieldList', 'Field', 'FieldName', 'FieldBody', 
-    'OptionList', 'OptionListItem', 'OptionGroup', 'Option', 'OptionString', 
-    'OptionArgument', 'Description', 'LiteralBlock', 'QuotedLiteralBlock', 
-    'LineBlock', 'LineBlockItem', 'BlockQuote', 'Table', 'GridTable', 
-    'TableRow', 'TableHeaderCell', 'TableDataCell', 'Label', 'Footnote', 
-    'Citation', 'StandaloneHyperlink', 'Hyperlink', 'Ref', 'Directive', 
-    'DirArg', 'Raw', 'Title', 'Contents', 'Image', 'Figure', 'CodeBlock', 
+    'Inner', 'Headline', 'Overline', 'Transition', 'Paragraph',
+    'BulletList', 'BulletItem', 'EnumList', 'EnumItem', 'DefList', 'DefItem',
+    'DefName', 'DefBody', 'FieldList', 'Field', 'FieldName', 'FieldBody',
+    'OptionList', 'OptionListItem', 'OptionGroup', 'Option', 'OptionString',
+    'OptionArgument', 'Description', 'LiteralBlock', 'QuotedLiteralBlock',
+    'LineBlock', 'LineBlockItem', 'BlockQuote', 'Table', 'GridTable',
+    'TableRow', 'TableHeaderCell', 'TableDataCell', 'Label', 'Footnote',
+    'Citation', 'StandaloneHyperlink', 'Hyperlink', 'Ref', 'Directive',
+    'DirArg', 'Raw', 'Title', 'Contents', 'Image', 'Figure', 'CodeBlock',
     'Index', 'SubstitutionDef', 'GeneralRole', 'Sub', 'Sup', 'Idx',
-    'Emphasis', 'StrongEmphasis', 'InterpretedText', 'InlineLiteral', 
+    'Emphasis', 'StrongEmphasis', 'InterpretedText', 'InlineLiteral',
     'SubstitutionReferences', 'Leaf'
   );
 
@@ -144,7 +144,7 @@ function rstnodeToRefname(n: PRstNode): string;
 function getFieldValue(n: PRstNode; const fieldname: string): string;
 function getArgument(n: PRstNode): string;
 
-// index handling: 
+// index handling:
 procedure setIndexPair(index, key, val: PRstNode);
 procedure sortIndex(a: PRstNode);
 procedure clearIndex(index: PRstNode; const filename: string);
@@ -329,7 +329,7 @@ begin
   end;
   if tokens[0].kind = tkWhite then begin // BUGFIX
     tokens[0].ival := length(tokens[0].symbol);
-    tokens[0].kind := tkIndent 
+    tokens[0].kind := tkIndent
   end
 end;
 
@@ -359,7 +359,9 @@ begin
   new(result);
 {@ignore}
   fillChar(result^, sizeof(result^), 0);
-{@emit}
+{@emit
+  result.sons := [];
+}
   result.kind := kind;
 end;
 
@@ -457,6 +459,10 @@ begin
   p.indentStack := [0];}
   {@emit
   p.tok := [];}
+  p.idx := 0;
+  p.filename := '';
+  p.hasToc := false;
+  p.col := 0;
   p.line := 1;
   p.s := sharedState;
 end;
@@ -581,7 +587,7 @@ end;
 
 procedure sortIndex(a: PRstNode);
 // we use shellsort here; fast and simple
-var 
+var
   N, i, j, h: int;
   v: PRstNode;
 begin
@@ -589,7 +595,7 @@ begin
   N := rsonsLen(a);
   h := 1; repeat h := 3*h+1; until h > N;
   repeat
-    h := h div 3; 
+    h := h div 3;
     for i := h to N-1 do begin
       v := a.sons[i]; j := i;
       while cmpNodes(a.sons[j-h], v) >= 0 do begin
@@ -607,11 +613,11 @@ var
 begin
   result := false;
   if a.kind <> b.kind then exit;
-  if a.kind = rnLeaf then 
+  if a.kind = rnLeaf then
     result := a.text = b.text
   else begin
     if rsonsLen(a) <> rsonsLen(b) then exit;
-    for i := 0 to rsonsLen(a)-1 do 
+    for i := 0 to rsonsLen(a)-1 do
       if not eqRstNodes(a.sons[i], b.sons[i]) then exit;
     result := true
   end
@@ -627,7 +633,7 @@ begin
   end
   else if h.kind = rnHyperlink then begin
     s := addNodes(h.sons[1]);
-    if startsWith(s, filename) and (s[length(filename)+strStart] = '#') then 
+    if startsWith(s, filename) and (s[length(filename)+strStart] = '#') then
       result := true
     else
       result := false
@@ -650,7 +656,7 @@ begin
       items := rsonsLen(val);
       lastItem := -1; // save the last valid item index
       for j := 0 to rsonsLen(val)-1 do begin
-        if val.sons[j] = nil then 
+        if val.sons[j] = nil then
           dec(items)
         else if matchesHyperlink(val.sons[j].sons[0], filename) then begin
           val.sons[j] := nil;
@@ -663,7 +669,7 @@ begin
       else if items = 0 then
         index.sons[i] := nil
     end
-    else if matchesHyperlink(val, filename) then 
+    else if matchesHyperlink(val, filename) then
       index.sons[i] := nil
   end;
   // remove nil nodes:
@@ -702,14 +708,14 @@ begin
       b := newRstNode(rnBulletItem);
       addSon(b, val);
       addSon(e, b);
-      
+
       exit // key already exists
     end
   end;
   e := newRstNode(rnDefItem);
   assert(val.kind <> rnDefBody);
   b := newRstNode(rnDefBody);
-  addSon(b, val); 
+  addSon(b, val);
   addSon(e, a);
   addSon(e, b);
   addSon(index, e);
@@ -730,7 +736,7 @@ begin
   while true do begin
     case p.tok[p.idx].kind of
       tkWord, tkOther, tkWhite: addSon(res, newLeaf(p));
-      tkPunct: 
+      tkPunct:
         if p.tok[p.idx].symbol = endStr then begin inc(p.idx); break end
         else addSon(res, newLeaf(p));
       else begin
@@ -746,13 +752,13 @@ end;
 function untilEol(var p: TRstParser): PRstNode;
 begin
   result := newRstNode(rnInner);
-  while not (p.tok[p.idx].kind in [tkIndent, tkEof]) do begin 
+  while not (p.tok[p.idx].kind in [tkIndent, tkEof]) do begin
     addSon(result, newLeaf(p)); inc(p.idx);
   end
 end;
 
 procedure expect(var p: TRstParser; const tok: string);
-begin 
+begin
   if p.tok[p.idx].symbol = tok then inc(p.idx)
   else rstMessage(p, errXexpected, tok)
 end;
@@ -953,7 +959,7 @@ begin
   end
   else if match(p, p.idx, ':w:') then begin
     // a role:
-    if p.tok[p.idx+1].symbol = 'idx' then 
+    if p.tok[p.idx+1].symbol = 'idx' then
       n.kind := rnIdx
     else if p.tok[p.idx+1].symbol = 'literal' then
       n.kind := rnInlineLiteral
@@ -1345,14 +1351,14 @@ var
   j: int;
 begin
   j := tokenAfterNewline(p);
-  result := (p.tok[p.idx].col < p.tok[j].col) 
+  result := (p.tok[p.idx].col < p.tok[j].col)
     and (p.tok[j].kind in [tkWord, tkOther, tkPunct])
     and (p.tok[j-2].symbol <> '::');
 end;
 
 function whichSection(const p: TRstParser): TRstNodeKind;
 begin
-  case p.tok[p.idx].kind of 
+  case p.tok[p.idx].kind of
     tkAdornment: begin
       if match(p, p.idx+1, 'ii') then result := rnTransition
       else if match(p, p.idx+1, ' a') then result := rnTable
@@ -1362,21 +1368,21 @@ begin
     tkPunct: begin
       if match(p, tokenAfterNewLine(p), 'ai') then
         result := rnHeadline
-      else if p.tok[p.idx].symbol = '::' then 
+      else if p.tok[p.idx].symbol = '::' then
         result := rnLiteralBlock
       else if predNL(p)
           and ((p.tok[p.idx].symbol = '+'+'') or
           (p.tok[p.idx].symbol = '*'+'') or
-          (p.tok[p.idx].symbol = '-'+'')) 
-          and (p.tok[p.idx+1].kind = tkWhite) then 
+          (p.tok[p.idx].symbol = '-'+''))
+          and (p.tok[p.idx+1].kind = tkWhite) then
         result := rnBulletList
       else if (p.tok[p.idx].symbol = '|'+'') and isLineBlock(p) then
         result := rnLineBlock
-      else if (p.tok[p.idx].symbol = '..') and predNL(p) then 
+      else if (p.tok[p.idx].symbol = '..') and predNL(p) then
         result := rnDirective
-      else if (p.tok[p.idx].symbol = ':'+'') and predNL(p) then 
+      else if (p.tok[p.idx].symbol = ':'+'') and predNL(p) then
         result := rnFieldList
-      else if match(p, p.idx, '(e) ') then 
+      else if match(p, p.idx, '(e) ') then
         result := rnEnumList
       else if match(p, p.idx, '+a+') then begin
         result := rnGridTable;
@@ -1384,14 +1390,14 @@ begin
       end
       else if isDefList(p) then
         result := rnDefList
-      else if match(p, p.idx, '-w') or match(p, p.idx, '--w') 
-           or match(p, p.idx, '/w') then 
+      else if match(p, p.idx, '-w') or match(p, p.idx, '--w')
+           or match(p, p.idx, '/w') then
         result := rnOptionList
       else
         result := rnParagraph
     end;
     tkWord, tkOther, tkWhite: begin
-      if match(p, tokenAfterNewLine(p), 'ai') then 
+      if match(p, tokenAfterNewLine(p), 'ai') then
         result := rnHeadline
       else if isDefList(p) then
         result := rnDefList
@@ -1440,7 +1446,7 @@ begin
         else if (p.tok[p.idx].ival = currInd(p)) then begin
           inc(p.idx);
           case whichSection(p) of
-            rnParagraph, rnLeaf, rnHeadline, rnOverline, rnDirective: 
+            rnParagraph, rnLeaf, rnHeadline, rnOverline, rnDirective:
               addSon(result, newRstNode(rnLeaf, ' '+''));
             rnLineBlock: addSonIfNotNil(result, parseLineBlock(p));
             else break;
@@ -1509,7 +1515,7 @@ begin
     if p.tok[p.idx].kind <> tkAdornment then break
   end;
   if p.tok[p.idx].kind = tkIndent then inc(p.idx);
-  // last column has no limit: 
+  // last column has no limit:
   cols[L-1] := 32000;
 end;
 
@@ -1543,12 +1549,12 @@ begin
       end;
       getColumns(p, cols);
       setLength(row, length(cols));
-      if a <> nil then 
+      if a <> nil then
         for j := 0 to rsonsLen(a)-1 do a.sons[j].kind := rnTableHeaderCell;
     end;
     if p.tok[p.idx].kind = tkEof then break;
     for j := 0 to high(row) do row[j] := '';
-    // the following while loop iterates over the lines a single cell may span: 
+    // the following while loop iterates over the lines a single cell may span:
     line := p.tok[p.idx].line;
     while true do begin
       i := 0;
@@ -1602,7 +1608,7 @@ begin
     parseLine(p, result);
     if p.tok[p.idx].kind = tkIndent then begin
       inc(p.idx);
-      if p.tok[p.idx-1].ival > currInd(p) then 
+      if p.tok[p.idx-1].ival > currInd(p) then
         addSon(result, newRstNode(rnLeaf, ' '+''))
       else
         break
@@ -1649,22 +1655,22 @@ var
 begin
   result := newRstNode(rnOptionList);
   while true do begin
-    if match(p, p.idx, '-w')  
-    or match(p, p.idx, '--w')  
+    if match(p, p.idx, '-w')
+    or match(p, p.idx, '--w')
     or match(p, p.idx, '/w') then begin
       a := newRstNode(rnOptionGroup);
       b := newRstNode(rnDescription);
       c := newRstNode(rnOptionListItem);
       while not (p.tok[p.idx].kind in [tkIndent, tkEof]) do begin
-        if (p.tok[p.idx].kind = tkWhite) 
-        and (length(p.tok[p.idx].symbol) > 1) then begin 
-          inc(p.idx); break 
+        if (p.tok[p.idx].kind = tkWhite)
+        and (length(p.tok[p.idx].symbol) > 1) then begin
+          inc(p.idx); break
         end;
         addSon(a, newLeaf(p));
         inc(p.idx);
       end;
       j := tokenAfterNewline(p);
-      if (j > 0) and (p.tok[j-1].kind = tkIndent) 
+      if (j > 0) and (p.tok[j-1].kind = tkIndent)
       and (p.tok[j-1].ival > currInd(p)) then begin
         pushInd(p, p.tok[j-1].ival);
         parseSection(p, b);
@@ -1719,8 +1725,8 @@ begin
         inc(p.idx);
         j := tokenAfterNewLine(p)-1;
         if (j >= 1) and (p.tok[j].kind = tkIndent)
-        and (p.tok[j].ival > col) 
-        and (p.tok[j-1].symbol <> '::') 
+        and (p.tok[j].ival > col)
+        and (p.tok[j-1].symbol <> '::')
         and (p.tok[j+1].kind <> tkIndent) then begin end
         else break
       end
@@ -1784,6 +1790,7 @@ var
 begin
   while true do begin
     leave := false;
+    assert(p.idx >= 0);
     while p.tok[p.idx].kind = tkIndent do begin
       if currInd(p) = p.tok[p.idx].ival then begin
         inc(p.idx);
@@ -1837,12 +1844,12 @@ begin
     addSonIfNotNil(result, a);
   end;
   //if (result.kind in [rnBulletItem]) and
-  if (sonKind(result, 0) = rnParagraph) 
-  and (sonKind(result, 1) <> rnParagraph) then 
+  if (sonKind(result, 0) = rnParagraph)
+  and (sonKind(result, 1) <> rnParagraph) then
     result.sons[0].kind := rnInner;
   (*
   if (result.kind <> rnInner) and (rsonsLen(result) = 1)
-  and (result.sons[0].kind = rnParagraph) then 
+  and (result.sons[0].kind = rnParagraph) then
     result.sons[0].kind := rnInner; *)
 end;
 
@@ -1857,7 +1864,7 @@ end;
 function parseDoc(var p: TRstParser): PRstNode;
 begin
   result := parseSectionWrapper(p);
-  if p.tok[p.idx].kind <> tkEof then 
+  if p.tok[p.idx].kind <> tkEof then
     rstMessage(p, errGeneralParseError);
 end;
 
@@ -1865,14 +1872,14 @@ type
   TDirFlag = (hasArg, hasOptions, argIsFile);
   TDirFlags = set of TDirFlag;
   TSectionParser = function (var p: TRstParser): PRstNode;
-  
+
 {@emit
 function assigned(contentParser: TSectionParser): bool;
 begin
   result := contentParser <> nil;
 end;
 }
-  
+
 function parseDirective(var p: TRstParser; flags: TDirFlags;
                         contentParser: TSectionParser): PRstNode;
 var
@@ -1905,7 +1912,7 @@ begin
       options := parseFields(p);
   end;
   addSon(result, options);
-  if (assigned(contentParser)) and (p.tok[p.idx].kind = tkIndent) 
+  if (assigned(contentParser)) and (p.tok[p.idx].kind = tkIndent)
   and (p.tok[p.idx].ival > currInd(p)) then begin
     pushInd(p, p.tok[p.idx].ival);
     //while p.tok[p.idx].kind = tkIndent do inc(p.idx);
@@ -1985,7 +1992,7 @@ end;
 
 function dirFigure(var p: TRstParser): PRstNode;
 begin
-  result := parseDirective(p, {@set}[hasOptions, hasArg, argIsFile], 
+  result := parseDirective(p, {@set}[hasOptions, hasArg, argIsFile],
                            parseSectionWrapper);
   result.kind := rnFigure
 end;

@@ -1,8 +1,5 @@
 # test nested ifs
 
-import
-  io
-
 var
     x, y: int
 x = 2

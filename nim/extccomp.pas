@@ -15,10 +15,12 @@ interface
 {$include 'config.inc'}
 
 uses
-  nimconf, msgs; // some things are read in from the configuration file
+  nsystem, nimconf, msgs;
+
+// some things are read in from the configuration file
 
 type
-  TSystemCC = (ccNone, ccGcc, ccLLVM_Gcc, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, 
+  TSystemCC = (ccNone, ccGcc, ccLLVM_Gcc, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
                ccTcc, ccPcc, ccUcc, ccIcc, ccGpp);
 
   TInfoCCProp = ( // properties of the C compiler:
@@ -27,15 +29,17 @@ type
     hasCpp           // CC is/contains a C++ compiler
   );
   TInfoCCProps = set of TInfoCCProp;
-  TInfoCC = record
+  TInfoCC = record{@tuple}
     name: string;            // the short name of the compiler
     objExt: string;          // the compiler's object file extenstion
     optSpeed: string;        // the options for optimization for speed
     optSize: string;         // the options for optimization for size
-    compile: string;         // the compile command template
+    compilerExe: string;     // the compiler's executable
+    compileTmpl: string;     // the compile command template
     buildGui: string;        // command to build a GUI application
     buildDll: string;        // command to build a shared library
-    link: string;            // command to link files to produce an executable
+    linkerExe: string;       // the linker's executable
+    linkTmpl: string;        // command to link files to produce an executable
     includeCmd: string;      // command to add an include directory path
     debug: string;           // flags for debug build
     pic: string;             // command for position independent code
@@ -50,10 +54,12 @@ const
       objExt: 'o'+'';
       optSpeed: ' -O3 -ffast-math ';
       optSize: ' -Os -ffast-math ';
-      compile: 'gcc -c $options $include -o $objfile $file';
+      compilerExe: 'gcc';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: ' -mwindows';
       buildDll: ' -mdll';
-      link: 'gcc $options $buildgui $builddll -o $exefile $objfiles';
+      linkerExe: 'gcc';
+      linkTmpl: '$options $buildgui $builddll -o $exefile $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '-fPIC';
@@ -65,10 +71,12 @@ const
       objExt: 'o'+'';
       optSpeed: ' -O3 -ffast-math ';
       optSize: ' -Os -ffast-math ';
-      compile: 'llvm-gcc -c $options $include -o $objfile $file';
+      compilerExe: 'llvm-gcc';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: ' -mwindows';
       buildDll: ' -mdll';
-      link: 'llvm-gcc $options $buildgui $builddll -o $exefile $objfiles';
+      linkerExe: 'llvm-gcc';
+      linkTmpl: '$options $buildgui $builddll -o $exefile $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '-fPIC';
@@ -80,10 +88,12 @@ const
       objExt: 'obj';
       optSpeed: ' -O -p6 ';
       optSize: ' -O -p6 ';
-      compile: 'lcc -e1 $options $include -Fo$objfile $file';
+      compilerExe: 'lcc';
+      compileTmpl: '-e1 $options $include -Fo$objfile $file';
       buildGui: ' -subsystem windows';
       buildDll: ' -dll';
-      link: 'lcclnk $options $buildgui $builddll -O $exefile $objfiles';
+      linkerExe: 'lcclnk';
+      linkTmpl: '$options $buildgui $builddll -O $exefile $objfiles';
       includeCmd: ' -I';
       debug: ' -g5 ';
       pic: '';
@@ -95,10 +105,12 @@ const
       objExt: 'obj';
       optSpeed: ' -O2 -6 ';
       optSize: ' -O1 -6 ';
-      compile: 'bcc32 -c $options $include -o$objfile $file';
+      compilerExe: 'bcc32';
+      compileTmpl: '-c $options $include -o$objfile $file';
       buildGui: ' -tW';
       buildDll: ' -tWD';
-      link: 'bcc32 $options $buildgui $builddll -e$exefile $objfiles';
+      linkerExe: 'bcc32';
+      linkTmpl: '$options $buildgui $builddll -e$exefile $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '';
@@ -110,14 +122,16 @@ const
       objExt: 'obj';
       optSpeed: ' -ff -o -6 ';
       optSize: ' -ff -o -6 ';
-      compile: 'dmc -c $options $include -o$objfile $file';
+      compilerExe: 'dmc';
+      compileTmpl: '-c $options $include -o$objfile $file';
       buildGui: ' -L/exet:nt/su:windows';
       buildDll: ' -WD';
-      link: 'dmc $options $buildgui $builddll -o$exefile $objfiles';
+      linkerExe: 'dmc';
+      linkTmpl: '$options $buildgui $builddll -o$exefile $objfiles';
       includeCmd: ' -I';
       debug: ' -g ';
       pic: '';
-      asmStmtFrmt: '__asm{$n$1$n}$n';      
+      asmStmtFrmt: '__asm{$n$1$n}$n';
       props: {@set}[hasCpp];
     ),
     (
@@ -125,14 +139,16 @@ const
       objExt: 'obj';
       optSpeed: ' -ox -on -6 -d0 -fp6 -zW ';
       optSize: '';
-      compile: 'wcl386 -c $options $include -fo=$objfile $file';
+      compilerExe: 'wcl386';
+      compileTmpl: '-c $options $include -fo=$objfile $file';
       buildGui: ' -bw';
       buildDll: ' -bd';
-      link: 'wcl386 $options $buildgui $builddll -fe=$exefile $objfiles ';
+      linkerExe: 'wcl386';
+      linkTmpl: '$options $buildgui $builddll -fe=$exefile $objfiles ';
       includeCmd: ' -i=';
       debug: ' -d2 ';
       pic: '';
-      asmStmtFrmt: '__asm{$n$1$n}$n';      
+      asmStmtFrmt: '__asm{$n$1$n}$n';
       props: {@set}[hasCpp];
     ),
     (
@@ -140,10 +156,12 @@ const
       objExt: 'obj';
       optSpeed: ' /Ogityb2 /G7 /arch:SSE2 ';
       optSize: ' /O1 /G7 ';
-      compile: 'cl /c $options $include /Fo$objfile $file';
+      compilerExe: 'cl';
+      compileTmpl: '/c $options $include /Fo$objfile $file';
       buildGui: ' /link /SUBSYSTEM:WINDOWS ';
       buildDll: ' /LD';
-      link: 'cl $options $builddll /Fe$exefile $objfiles $buildgui';
+      linkerExe: 'cl';
+      linkTmpl: '$options $builddll /Fe$exefile $objfiles $buildgui';
       includeCmd: ' /I';
       debug: ' /GZ /Zi ';
       pic: '';
@@ -155,10 +173,12 @@ const
       objExt: 'o'+'';
       optSpeed: '';
       optSize: '';
-      compile: 'tcc -c $options $include -o $objfile $file';
+      compilerExe: 'tcc';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: 'UNAVAILABLE!';
       buildDll: ' -shared';
-      link: 'tcc -o $exefile $options $buildgui $builddll $objfiles';
+      linkerExe: 'tcc';
+      linkTmpl: '-o $exefile $options $buildgui $builddll $objfiles';
       includeCmd: ' -I';
       debug: ' -g ';
       pic: '';
@@ -170,10 +190,12 @@ const
       objExt: 'obj';
       optSpeed: ' -Ox ';
       optSize: ' -Os ';
-      compile: 'cc -c $options $include -Fo$objfile $file';
+      compilerExe: 'cc';
+      compileTmpl: '-c $options $include -Fo$objfile $file';
       buildGui: ' -SUBSYSTEM:WINDOWS';
       buildDll: ' -DLL';
-      link: 'cc $options $buildgui $builddll -OUT:$exefile $objfiles';
+      linkerExe: 'cc';
+      linkTmpl: '$options $buildgui $builddll -OUT:$exefile $objfiles';
       includeCmd: ' -I';
       debug: ' -Zi ';
       pic: '';
@@ -185,10 +207,12 @@ const
       objExt: 'o'+'';
       optSpeed: ' -O3 ';
       optSize: ' -O1 ';
-      compile: 'cc -c $options $include -o $objfile $file';
+      compilerExe: 'cc';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: '';
       buildDll: ' -shared ';
-      link: 'cc -o $exefile $options $buildgui $builddll $objfiles';
+      linkerExe: 'cc';
+      linkTmpl: '-o $exefile $options $buildgui $builddll $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '';
@@ -199,10 +223,12 @@ const
       objExt: 'o'+'';
       optSpeed: ' -O3 ';
       optSize: ' -Os ';
-      compile: 'icc -c $options $include -o $objfile $file';
+      compilerExe: 'icc';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: ' -mwindows';
       buildDll: ' -mdll';
-      link: 'icc $options $buildgui $builddll -o $exefile $objfiles';
+      linkerExe: 'icc';
+      linkTmpl: '$options $buildgui $builddll -o $exefile $objfiles';
       includeCmd: ' -I';
       debug: '';
       pic: '-fPIC';
@@ -213,10 +239,12 @@ const
       objExt: 'o'+'';
       optSpeed: ' -O3 -ffast-math ';
       optSize: ' -Os -ffast-math ';
-      compile: 'g++ -c $options $include -o $objfile $file';
+      compilerExe: 'g++';
+      compileTmpl: '-c $options $include -o $objfile $file';
       buildGui: ' -mwindows';
       buildDll: ' -mdll';
-      link: 'g++ $options $buildgui $builddll -o $exefile $objfiles';
+      linkerExe: 'g++';
+      linkTmpl: '$options $buildgui $builddll -o $exefile $objfiles';
       includeCmd: ' -I';
       debug: ' -g ';
       pic: '-fPIC';
@@ -237,6 +265,9 @@ var
 
 function completeCFilePath(const cfile: string;
   createSubDir: Boolean = true): string;
+
+function getCompileCFileCmd(const cfilename: string;
+                            isExternal: bool = false): string;
 
 procedure addFileToCompile(const filename: string);
 procedure addExternalFileToCompile(const filename: string);
@@ -260,7 +291,7 @@ procedure setCC(const ccname: string);
 implementation
 
 uses
-  nsystem, charsets,
+  charsets,
   lists, options, ropes, nos, strutils, platform, condsyms;
 
 var
@@ -389,16 +420,13 @@ begin
     result := cc[c].optSize // use default settings from this file
 end;
 
-procedure CompileCFile(const list: TLinkedList;
-                       var script: PRope; isExternal: Boolean);
+function getCompileCFileCmd(const cfilename: string;
+                            isExternal: bool = false): string;
 var
-  it: PStrEntry;
-  compileCmd, cfile, objfile, options, includeCmd, compilePattern: string;
+  cfile, objfile, options, includeCmd, compilePattern: string;
   c: TSystemCC; // an alias to ccompiler
 begin
   c := ccompiler;
-  it := PStrEntry(list.head);
-
   options := compileOptions;
   if optCDebug in gGlobalOptions then addStr(options, ' ' + getDebug(c));
   if optOptimizeSpeed in gOptions then addStr(options, ' ' + getOptSpeed(c))
@@ -413,31 +441,43 @@ begin
     includeCmd := cc[c].includeCmd; // this is more complex than needed, but
     // a workaround of a FPC bug...
     addStr(includeCmd, libpath);
-    compilePattern := JoinPath(ccompilerpath, cc[c].compile);
+    compilePattern := quoteIfSpaceExists(
+      JoinPath(ccompilerpath, cc[c].compilerExe));
   end
   else begin
     includeCmd := '';
-    compilePattern := cc[c].compile
+    compilePattern := cc[c].compilerExe
   end;
+  if targetOS = hostOS then
+    cfile := cfilename
+  else
+    cfile := extractFileName(cfilename);
 
+  if not isExternal or (targetOS <> hostOS) then
+    objfile := toObjFile(cfile)
+  else
+    objfile := completeCFilePath(toObjFile(cfile));
+
+  result := compilePattern +{&} ' ' +{&} format(cc[c].compileTmpl,
+    ['file', AppendFileExt(cfile, cExt),
+     'objfile', objfile,
+     'options', options,
+     'include', includeCmd,
+     'nimrod', getPrefixDir(),
+     'lib', libpath
+    ]);
+end;
+
+procedure CompileCFile(const list: TLinkedList;
+                       var script: PRope; isExternal: Boolean);
+var
+  it: PStrEntry;
+  compileCmd: string;
+begin
+  it := PStrEntry(list.head);
   while it <> nil do begin
     // call the C compiler for the .c file:
-    if targetOS = hostOS then
-      cfile := it.data
-    else
-      cfile := extractFileName(it.data);
-
-    if not isExternal or (targetOS <> hostOS) then
-      objfile := toObjFile(cfile)
-    else
-      objfile := completeCFilePath(toObjFile(cfile));
-
-    compileCmd := format(compilePattern,
-      ['file', AppendFileExt(cfile, cExt),
-       'objfile', objfile,
-       'options', options,
-       'include', includeCmd
-      ]);
+    compileCmd := getCompileCFileCmd(it.data, isExternal);
     if not (optCompileOnly in gGlobalOptions) then
       execExternalProgram(compileCmd);
     if (optGenScript in gGlobalOptions) then begin
@@ -469,9 +509,9 @@ begin
   if not (optNoLinking in gGlobalOptions) then begin
     // call the linker:
     if (hostOS <> targetOS) then
-      linkCmd := cc[c].link
+      linkCmd := cc[c].linkerExe
     else
-      linkCmd := JoinPath(ccompilerpath, cc[c].link);
+      linkCmd := quoteIfSpaceExists(JoinPath(ccompilerpath, cc[c].linkerExe));
 
     if optGenDynLib in gGlobalOptions then
       buildDll := cc[c].buildDll
@@ -506,12 +546,14 @@ begin
       it := PStrEntry(it.next);
     end;
 
-    linkCmd := format(linkCmd, [
+    linkCmd := linkCmd +{&} ' ' +{&} format(cc[c].linkTmpl, [
       'builddll', builddll,
       'buildgui', buildgui,
       'options', linkOptions,
       'objfiles', objfiles,
-      'exefile', exefile
+      'exefile', exefile,
+      'nimrod', getPrefixDir(),
+      'lib', libpath
     ]);
     if not (optCompileOnly in gGlobalOptions) then
       execExternalProgram(linkCmd);

@@ -1,7 +1,7 @@
 # Test the features that used to belong to the preprocessor
 
 import
-  io, times
+  times
 
 {.warning: "This is only a test warning!".}
 

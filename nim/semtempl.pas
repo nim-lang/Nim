@@ -15,7 +15,7 @@ begin
   if n = nil then begin result := false; exit end;
   case n.kind of
     nkIdent..nkNilLit: result := true;
-    nkCall..nkCast: begin
+    nkCall..nkPassAsOpenArray: begin
       for i := 0 to sonsLen(n)-1 do
         if not isExpr(n.sons[i]) then begin
           result := false; exit
@@ -27,7 +27,7 @@ begin
 end;
 
 function isTypeDesc(n: PNode): bool;
-// returns true if ``n`` looks like an type desc
+// returns true if ``n`` looks like a type desc
 var
   i: int;
 begin
@@ -44,15 +44,6 @@ begin
     nkTypeOfExpr..nkEnumTy: result := true;
     else result := false
   end
-end;
-
-function semMacroExpr(c: PContext; n: PNode; sym: PSym): PNode;
-begin
-  // macros can be overloaded by the number of arguments?
-  // no: would make variable number of arguments more
-  // complicated!
-  // XXX
-  result := n;
 end;
 
 function evalTemplateAux(c: PContext; templ, actual: PNode;
@@ -88,7 +79,7 @@ var
   r: PNode;
 begin
   inc(evalTemplateCounter);
-  if evalTemplateCounter > 100 then 
+  if evalTemplateCounter > 100 then
     liMessage(n.info, errTemplateInstantiationTooNested);
   // replace each param by the corresponding node:
   r := sym.ast.sons[paramsPos].sons[0];
@@ -156,7 +147,7 @@ begin
           end
         end
       end;
-      if realStmt >= 0 then 
+      if realStmt >= 0 then
         result := transformToExpr(n.sons[realStmt])
       else
         n.kind := nkStmtListExpr;
@@ -213,7 +204,7 @@ begin
     n.sons[codePos] := transformToExpr(n.sons[codePos]);
 
   // only parameters are resolved, no type checking is performed
-  closeScope(c.tab);  
+  closeScope(c.tab);
   popOwner(c);
   s.ast := n;
 

@@ -2,7 +2,7 @@
 # which is based on the PCRE library
 
 import
-  regexprs, io
+  regexprs
 
 if "Username" =~ "[A-Za-z]+":
   echo("Yes!")

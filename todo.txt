@@ -1,8 +1,6 @@
 TO IMPLEMENT
 ============
 
-BPbRchqU
-
 RST
 ---
 - footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
@@ -10,39 +8,50 @@ RST
 - don't generate <p></p> if it is not allowed by the HTML standard; switch to
   <br /> for those parts; this is pretty easy to fix
 
+Bugs
+----
+- BUG: bootstrapping does not work with LCC, PCC
+- BUG: aliasing of object types does not work properly (easy?)
+- BUG: lookup rules for overloadable symbols are wrong
+- BUG: addr/deref does not work when interpreting
+- BUG: Check that pure procs only consist of asm statements (and comments)
+- ``repr`` for ECMAScript target; other known bugs for the ECMAScript target
+
+
 High priority
 -------------
-- BUG: aliasing of record/object types does not work properly
-- BUG: repr from seq[string]
-- replace ``seq = []; setLen(seq, x)`` by something more efficient
-- disallow ``var var T``
-- replace appropriate asserts by internal errors!
-- type generation for tuples in the C code generator is difficult!
-- also check code generator for var-types
-- better code generation for const data
-- code generation for sets is wrong: &63
-- implement field checks for case records
-- evaluation + macros
+- implement two-phase lookup for generics (this is hard...): This is useful
+  for macros too!
+- replace ``seq = []; setLen(seq, x)`` by
+  built-in ``newSeq[T](s: var seq[T], len: int)``
+  or ``repeat[T](len: int, initVal: T): seq[T]``
 - ``is`` operator is missing
-- get assignable right!
+- implement closures for the C code generator; ECMAScript already has it
+
 
 Low priority
 ------------
-- macros: ``check`` pragma; this is really a good idea! This allows
+
+- ``nkTempAsgn``-node as optimization
+- better code generation for const data
+- make set optimizations part of the transformation (--> all backends profit
+  from it)
+- macros: ``typecheck`` pragma; this is really a good idea! This allows
   transformations based on types!
 - make callconv a set
 - pasparse.nim: fixVarSection() loses its comment!
 - partial generic instantation is missing
-- commas are not optional any longer as this may lead to bugs
+- commas are not optional any longer as this may lead to bugs (which?)
 - get code generation for C++ exception handling right!
 - implement the simple and cheap to implement module cache (default: disabled!)
-- remove r'c': it is pointless!
-- nkConv is not well-defined for rnimsyn; as are other node kinds;
-  separate them? But this way lies madness! Better make them consistent!
 - find a way for easy constructors and destructors; though constructors are
   flawed... destructors are not, however!
 - multiple dispatch
 - LIB: stream implementation - the compiler should use it too!
+- stress testing of ECMAScript code generator
+- rewrite sigmatch or fix it; generics and macros are somehow dumb. Who needs
+  generics if the power of macros lie at our feet?
+- replace appropriate asserts by internal errors!
 
 
 Changelog
@@ -58,14 +67,133 @@ Changelog
 - implicit conversion from pointer to other pointer type disallowed
 - $ifdef implemented for Pascal parser
 - fixed bug in types.pas concerning computation of set size (div rounds down!)
-- fixed a bug in ``sameFile`` in ``nos.pas``
+- fixed a bug in `sameFile` in ``nos.pas``
 - BUGFIX: Conversion from string to cstring
+- implemented field checks for case records
+- fixed code generation for sets of size 8
+- eliminated recursion in the ropes module; this increases efficiency a lot
+  and fixes the huge stack usage
+- fixed a bug in the exception handling; stack tracing
+- bugfix: mRepr was forgotten in semfold; we could evaluate this at compile
+  time!
+- BUGFIX: repr from seq[string]
+- implemented the `release` switch in the config file
+- change in extccomp.pas to provide `getCompileCFileCmd`. This is used by
+  the cgen module to include the used command. Thus a change in the C compiler
+  switches triggers a recompilation.
+- BUGFIX: returning from within a ``try`` context now works, thus we get a
+  proper stack trace again!
+- eliminated `skipAbstract`
+- disallowed ``var var T``
+- implemented checks for object conversions
+- renamed ``appRopeFormat`` to ``appf`` and ``ropeFormat`` to ``ropef``
+- field names are not mangled any longer if the containing record/object type
+  is ``importc``'ed or ``exportc``'ed
+- the engine now supports up to 254 node kinds; this is needed for future
+  enhancements
+- changed assignable handling
+- implemented better compile-time range checking and conv-transformation
+- object checks now work for ptr/ref
+- math and time library for the ECMAScript target
+- BUGFIX for long standing bug in semantic checking of asm statements
+- BUGFIX for long standing bug in reraiseException
+- removed r'c': it is pointless
+- cleaned up the AST
+- reworked tuple handling
+- implemented type converters
+- evaluation + macros
+- made nkConv and nkCast format consistent
+- syms are not copied any longer when importing them as this does not quite work
+  for the code generators
+- semantic checking now does lots of checks to prevent crashing with illegal
+  syntax trees caused by buggy macros
+- ``$`` is now magical
+- ccg: name mangling generates shorter names
+- r.a rewritten to r^.a if necessary (same for arrays); this should eliminate
+  some bugs and the C code generator already depends on it
+- fixed bugs in transf concerning inlining of iterators; tgeneric now works!
+- fixed enum symbol bug: enum symbols are not overloadable!
+- conversion transformation is now done in the semantic pass
+- conversion transformation is now done in the transf pass again
+- object conversions now may be addressable
+- removed addr(TClosure) hack in instgen module
+- fixed type description bugs in ccgtypes; should now be correct
+- added ``passl`` and ``passc`` pragmas and used it in the ``math`` module
+- changed handling of ZCT in the GC
+- added an optimization for arrays in forAllChildrenAux
+- fixed a bug in sigmatch; formal may be nil!
+- fixed a bug in the C code generator concerning the ``$`` operator
+- many commands of the debugger are now named as in GDB
+- fixed the GC: gctest now works again
+- fixed typedesc generation in the C code generator once again
+- BUGFIX: chckObj needs nil check if pointers are converted
+- BUGFIX: In lookup.pas: n.ident was accessed even though invalid
+- BUGFIX: loc.s was not initialized for temporaries
+- BUGFIX: index checking was not performed for openarr[const]
+  and sequence[const]
+- now no "intelligent" reuse of temporaries is done any longer; this should
+  avoid subtle bugs that may have been in the code generator
+- BUGFIX: int64 literals for the Pascal parser; this fixes the bug in the
+  generation of ``types.nim``
+- Finally long standing bug in mOrd of ccgexprs has been fixed!
+- BUGFIX: sonsLen is not attempted always in ``lsub`` and ``gsub``
+- BUGFIX: This code yielded invalid Nimrod code::
+
+    s := qualifiedLookup(c, n, true); // check for ambiguity
+    if s <> nil then
+      result := semSym(c, n, s, flags)
+    else
+      // THE COMMENT HERE IS INVALID!
+      result := semFieldAccess(c, n, flags);
+
+- bootstrapping now writes a diff.log file for easier debugging; first line is
+  ignored in the diff computation
+- ``volatile`` removed in ``excpt.nim`` to avoid VCC warnings
+- changed ``genAddr`` in ``ccgexprs`` module
+- BUGFIX: sameFile for ``os`` module under Windows was not working
+- BUGFIX: importing ``system`` as a module now generates a proper error
+- BUGFIX: ``ze`` built-in needs to be done differently
+- CHANGE: Do not include clock time in the executable! Otherwise bootstrapping
+  check does not work.
+- fixed the RstParser; initialization back to zero is not done in loop;
+  documentation generator now also work in the Nimrod version
+- BUGFIX: ``semExpr`` replaced by ``semExprWithType`` in semstmts
+- finally got tuples and objects right
+- BUGFIX: typo in sigmatch: tySet branch
+- BUGFIX: enums with 256 elements do not fit into a byte, because otherwise
+  overflow detection does not work!
+- 2008/8/14  first bootstrap with new tuple semantics
+- BUGFIX in repr; gctest now works again
+- tuned the GC
+- BUGFIX the scanner now accepts 64 bit integer literals
+- BUGFIX: ``getApplicationFilename`` on Mac OS X fixed; installation on
+  Mac OS X should work now
+- BUGFIX: reversed order of ``fixAbstractType`` and
+  ``analyseIfAddressTakenInCall`` again, because codegen otherwise
+  screws up
+- removed tfAssignable; this does not belong to a type!
+- ccgutils: merge types with the same ID in the code generators
+- ccgtypes: tySet now unsigned
+- fixed arith.nim overflow handling
+- implemented NIM_CONST for the C code generator, because it always made
+  problems with picky compilers like PCC
+- some fixes for Pelles C
+- BUGFIX: do not remove nkConv even if no range check is needed!
+- BUGFIX: genRangeCheck needs to cast!
+- BUGFIX: code generation for mInc, mDec, mChr
+- BUGFIX: spaces in the C compiler's path are finally possible
+- new strtabs module
+- new parseopt module used for parsing of command line
+- got rid of NU and NI in ``nimbase.h``; now the code generator deals with it
+  appropriately
+- parseopt, hashes, strtabs and parsecfg in the Standard library
+- introduced splitting for long entries in TOC
 
 
 For the next versions
 =====================
 
-- separate compilation
+- separate compilation!
 - multi-processor support
 - tuple assignment
 - more Parser/Renderer combinations
@@ -75,40 +203,11 @@ For the next versions
 - support for dynamic libraries
 
 
-Language features to be implemented
-===================================
-
-- sets of a basetype that is not starting at zero are broken
-- bit fields for ordinal types: {.bits: 9}
-- properties are the way to mimic OOP methods::
-
-  type
-    TFile = object
-      fx, fy: int
-      prop x: int in fx out fx
-      proc open
-
-  f.open(filename) is the same as open(f, filename)
-
-  open(f, filename)
-
-- this is the way to go::
-  type
-    TFile = object
-      ...
-  method open(f: TFile, mode: TFileMode) = # belongs to TFile!
-    ...
-  f.open(mode)
-
-- profiling support
-- yield statement warning/error
-
-
 Documentation to be written
 ===========================
 - document generics
 - document (anonymous) procs
-- cookbook: a[i|j] for example
+
 
 Implementation details
 ======================
@@ -119,14 +218,11 @@ Implementation details
 Optimizations
 =============
 
-- acyclic type detection; not needed; GC optimization does not work!
 - optimization of GC: types that cannot be involved in cycles should
   not be stored in the AT; this does not work because the AT is needed
   for stack checking!
 - better: generational GC for cycles
-- optimization for the GC: merge the refcount with the type info field
 - optimize range checks away (and out of bounds checks!)
-- merge set;string data (not critical; does C compiler for us)
 
 
 Further ideas/nice to have
@@ -138,8 +234,7 @@ Further ideas/nice to have
   to be executed, the command should end with #
 - multi-threaded programming
 - support for Boehm's GC
-- do finalizers right and add the built-in 'finalize'
-- built-in ``fast_assign``
+- add the built-in 'finalize'
 - implement packed arrays (bit arrays)/ packed records
 - implement tables (implement as library? - no! Builtin because of
   constructor syntax is nice to have)
@@ -154,14 +249,13 @@ Planned libraries
 - An Unicode library (UTF8)
 - Binding for Opengl library (should be easy)
 - Binding for Sockets library (which one?)
-- xml parser; cgi module; fast cgi module
+- XML parser; cgi module; fast cgi module
 - a good/extensive math library
 - neuronal network library; genetic algorithms
-- html parser
+- HTML parser
 - URL library
 - mySQL, sqlite interface
 - extensive platform independant AdvancedOS library
-- Lua, Python interface (almost done)
 - code generator for SQL-Schemes? ("Hibernate" done right)
 - mathematical expression parser (with lookup table for identifiers)
 - YAML parser (use generic AST for this)

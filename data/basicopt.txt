@@ -4,7 +4,8 @@ Command::
   compile                   compile project with default code generator (C)
   compile_to_c              compile project with C code generator
   compile_to_cpp            compile project with C++ code generator
-  doc                       generate the documentation for inputfile; 
+  compile_to_ecmascript     compile project to ECMAScript code (experimental)
+  doc                       generate the documentation for inputfile;
                             with --run switch opens it with $BROWSER
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
@@ -18,6 +19,8 @@ Options:
   --line_trace:on|off       code generation for line trace ON|OFF
   --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF
   -x, --checks:on|off       code generation for all runtime checks ON|OFF
+  --obj_checks:on|off       code generation for obj conversion checks ON|OFF
+  --field_checks:on|off     code generation for case record fields ON|OFF
   --range_checks:on|off     code generation for range checks ON|OFF
   --bound_checks:on|off     code generation for bound checks ON|OFF
   --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF

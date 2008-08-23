@@ -50,7 +50,7 @@ type
   PPangoGlyph* = ptr TPangoGlyph
   TPangoGlyph* = guint32
   PPangoRectangle* = ptr TPangoRectangle
-  TPangoRectangle* = record 
+  TPangoRectangle* {.final.} = object 
     x*: int32
     y*: int32
     width*: int32
@@ -61,7 +61,7 @@ type
     PANGO_DIRECTION_LTR, PANGO_DIRECTION_RTL, PANGO_DIRECTION_TTB_LTR, 
     PANGO_DIRECTION_TTB_RTL
   PPangoColor* = ptr TPangoColor
-  TPangoColor* = record 
+  TPangoColor* {.final.} = object 
     red*: guint16
     green*: guint16
     blue*: guint16
@@ -72,12 +72,12 @@ type
   TPangoUnderline* = int32
   PPangoAttribute* = ptr TPangoAttribute
   PPangoAttrClass* = ptr TPangoAttrClass
-  TPangoAttribute* = record 
+  TPangoAttribute* {.final.} = object 
     klass*: PPangoAttrClass
     start_index*: int
     end_index*: int
 
-  TPangoAttrClass* = record 
+  TPangoAttrClass* {.final.} = object 
     `type`*: TPangoAttrType
     copy*: proc (attr: PPangoAttribute): PPangoAttribute{.cdecl.}
     destroy*: proc (attr: PPangoAttribute){.cdecl.}
@@ -85,43 +85,43 @@ type
         cdecl.}
 
   PPangoAttrString* = ptr TPangoAttrString
-  TPangoAttrString* = record 
+  TPangoAttrString* {.final.} = object 
     attr*: TPangoAttribute
     value*: cstring
 
   PPangoAttrLanguage* = ptr TPangoAttrLanguage
-  TPangoAttrLanguage* = record 
+  TPangoAttrLanguage* {.final.} = object 
     attr*: TPangoAttribute
     value*: PPangoLanguage
 
   PPangoAttrInt* = ptr TPangoAttrInt
-  TPangoAttrInt* = record 
+  TPangoAttrInt* {.final.} = object 
     attr*: TPangoAttribute
     value*: int32
 
   PPangoAttrFloat* = ptr TPangoAttrFloat
-  TPangoAttrFloat* = record 
+  TPangoAttrFloat* {.final.} = object 
     attr*: TPangoAttribute
     value*: gdouble
 
   PPangoAttrColor* = ptr TPangoAttrColor
-  TPangoAttrColor* = record 
+  TPangoAttrColor* {.final.} = object 
     attr*: TPangoAttribute
     color*: TPangoColor
 
   PPangoAttrShape* = ptr TPangoAttrShape
-  TPangoAttrShape* = record 
+  TPangoAttrShape* {.final.} = object 
     attr*: TPangoAttribute
     ink_rect*: TPangoRectangle
     logical_rect*: TPangoRectangle
 
   PPangoAttrFontDesc* = ptr TPangoAttrFontDesc
-  TPangoAttrFontDesc* = record 
+  TPangoAttrFontDesc* {.final.} = object 
     attr*: TPangoAttribute
     desc*: PPangoFontDescription
 
   PPangoLogAttr* = ptr TPangoLogAttr
-  TPangoLogAttr* = record 
+  TPangoLogAttr* {.final.} = object 
     flag0*: guint16
 
   PPangoCoverageLevel* = ptr TPangoCoverageLevel
@@ -129,25 +129,25 @@ type
     PANGO_COVERAGE_NONE, PANGO_COVERAGE_FALLBACK, PANGO_COVERAGE_APPROXIMATE, 
     PANGO_COVERAGE_EXACT
   PPangoBlockInfo* = ptr TPangoBlockInfo
-  TPangoBlockInfo* = record 
+  TPangoBlockInfo* {.final.} = object 
     data*: Pguchar
     level*: TPangoCoverageLevel
 
   PPangoCoverage* = ptr TPangoCoverage
-  TPangoCoverage* = record 
+  TPangoCoverage* {.final.} = object 
     ref_count*: int
     n_blocks*: int32
     data_size*: int32
     blocks*: PPangoBlockInfo
 
   PPangoEngineRange* = ptr TPangoEngineRange
-  TPangoEngineRange* = record 
+  TPangoEngineRange* {.final.} = object 
     start*: int32
     theEnd*: int32
     langs*: cstring
 
   PPangoEngineInfo* = ptr TPangoEngineInfo
-  TPangoEngineInfo* = record 
+  TPangoEngineInfo* {.final.} = object 
     id*: cstring
     engine_type*: cstring
     render_type*: cstring
@@ -155,7 +155,7 @@ type
     n_ranges*: gint
 
   PPangoEngine* = ptr TPangoEngine
-  TPangoEngine* = record 
+  TPangoEngine* {.final.} = object 
     id*: cstring
     `type`*: cstring
     length*: gint
@@ -165,7 +165,7 @@ type
                                        attrs: PPangoLogAttr, attrs_len: int32){.
       cdecl.}
   PPangoEngineLang* = ptr TPangoEngineLang
-  TPangoEngineLang* = record 
+  TPangoEngineLang* {.final.} = object 
     engine*: TPangoEngine
     script_break*: TPangoEngineLangScriptBreak
 
@@ -176,7 +176,7 @@ type
                                         language: PPangoLanguage): PPangoCoverage{.
       cdecl.}
   PPangoEngineShape* = ptr TPangoEngineShape
-  TPangoEngineShape* = record 
+  TPangoEngineShape* {.final.} = object 
     engine*: TPangoEngine
     script_shape*: TPangoEngineShapeScript
     get_coverage*: TPangoEngineShapeGetCoverage
@@ -194,28 +194,28 @@ type
   PPangoGlyphUnit* = ptr TPangoGlyphUnit
   TPangoGlyphUnit* = gint32
   PPangoGlyphGeometry* = ptr TPangoGlyphGeometry
-  TPangoGlyphGeometry* = record 
+  TPangoGlyphGeometry* {.final.} = object 
     width*: TPangoGlyphUnit
     x_offset*: TPangoGlyphUnit
     y_offset*: TPangoGlyphUnit
 
   PPangoGlyphVisAttr* = ptr TPangoGlyphVisAttr
-  TPangoGlyphVisAttr* = record 
+  TPangoGlyphVisAttr* {.final.} = object 
     flag0*: int16
 
   PPangoGlyphInfo* = ptr TPangoGlyphInfo
-  TPangoGlyphInfo* = record 
+  TPangoGlyphInfo* {.final.} = object 
     glyph*: TPangoGlyph
     geometry*: TPangoGlyphGeometry
     attr*: TPangoGlyphVisAttr
 
-  TPangoGlyphString* = record 
+  TPangoGlyphString* {.final.} = object 
     num_glyphs*: gint
     glyphs*: PPangoGlyphInfo
     log_clusters*: Pgint
     space*: gint
 
-  TPangoAnalysis* = record 
+  TPangoAnalysis* {.final.} = object 
     shape_engine*: PPangoEngineShape
     lang_engine*: PPangoEngineLang
     font*: PPangoFont
@@ -223,7 +223,7 @@ type
     language*: PPangoLanguage
     extra_attrs*: PGSList
 
-  TPangoItem* = record 
+  TPangoItem* {.final.} = object 
     offset*: gint
     length*: gint
     num_chars*: gint
@@ -236,14 +236,14 @@ type
   TPangoWrapMode* = enum 
     PANGO_WRAP_WORD, PANGO_WRAP_CHAR
   PPangoLayoutLine* = ptr TPangoLayoutLine
-  TPangoLayoutLine* = record 
+  TPangoLayoutLine* {.final.} = object 
     layout*: PPangoLayout
     start_index*: gint
     length*: gint
     runs*: PGSList
 
   PPangoLayoutRun* = ptr TPangoLayoutRun
-  TPangoLayoutRun* = record 
+  TPangoLayoutRun* {.final.} = object 
     item*: PPangoItem
     glyphs*: PPangoGlyphString
 

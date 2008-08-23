@@ -3,6 +3,9 @@
 
 The documentation consists of several documents:
 
+- | `First steps after installation <steps.html>`_
+  | Read this after installation for a quick introduction.
+
 - | `Nimrod manual <manual.html>`_
   | Read this to get to know the Nimrod programming system.
 
@@ -21,6 +24,5 @@ The documentation consists of several documents:
     this if you want to hack the compiler or develop advanced macros.
 
 - | `Index <theindex.html>`_
-  | The generated index. Often the quickest way to find the piece of 
+  | The generated index. Often the quickest way to find the piece of
     information you need.
-

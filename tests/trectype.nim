@@ -6,7 +6,7 @@ type
   TA = array [0..2, PA]
 
   PRec = ref TRec
-  TRec = record
+  TRec {.final.} = object
     a, b: TA
 
   P1 = ref T1

@@ -1,11 +1,12 @@
 # Test array, record constructors
 
 type
-  TComplexRecord = record
-    s: string
-    x, y: int
-    z: float
-    chars: set[char]
+  TComplexRecord = tuple[
+    s: string,
+    x, y: int,
+    z: float,
+    chars: set[char],
+  ]
 
 const
   things: array [0.., TComplexRecord] = [

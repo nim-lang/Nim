@@ -12,7 +12,7 @@ type
     regMN,
     regNewline
   
-  TRegex = record
+  TRegex = object of TObject
     case kind: TRegexKind
     of regChar: c: char
     of regSet: s: ref set[char]

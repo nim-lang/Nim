@@ -25,23 +25,24 @@ type
     dbQuiting,    # debugger wants to quit
     dbBreakpoints # debugger is only interested in breakpoints
 
-  TDbgBreakpoint = record
+  TDbgBreakpoint {.final.} = object
     low, high: int   # range from low to high; if disabled
                      # both low and high are set to their negative values
                      # this makes the check faster and safes memory
     filename: string
     name: string     # name of breakpoint
 
-  TVarSlot {.compilerproc.} = record # variable slots used for debugger:
+  TVarSlot {.compilerproc, final.} = object # variable slots used for debugger:
     address: pointer
     typ: PNimType
     name: cstring   # for globals this is "module.name"
 
   PExtendedFrame = ptr TExtendedFrame
-  TExtendedFrame = record  # If the debugger is enabled the compiler provides 
-                           # an extended frame. Of course only slots that are
-                           # needed are allocated and not 10_000, except for
-                           # the global data description.
+  TExtendedFrame {.final.} = object  # If the debugger is enabled the compiler
+                                     # provides an extended frame. Of course
+                                     # only slots that are
+                                     # needed are allocated and not 10_000,
+                                     # except for the global data description.
     f: TFrame
     slots: array[0..10_000, TVarSlot]
 
@@ -69,7 +70,7 @@ proc findBreakpoint(name: string): int =
   return -1
 
 proc ListBreakPoints() =
-  write(stdout, "*** emdb| Breakpoints:\n")
+  write(stdout, "*** endb| Breakpoints:\n")
   for i in 0 .. dbgBPlen-1:
     write(stdout, dbgBP[i].name & ": " & $abs(dbgBP[i].low) & ".." &
                   $abs(dbgBP[i].high) & dbgBP[i].filename)
@@ -101,13 +102,13 @@ proc writeVariable(stream: TFile, slot: TVarSlot) =
   writeln(stream, dbgRepr(slot.address, slot.typ))
 
 proc ListFrame(stream: TFile, f: PExtendedFrame) =
-  write(stream, "*** emdb| Frame (" & $f.f.len &  " slots):\n")
+  write(stream, "*** endb| Frame (" & $f.f.len &  " slots):\n")
   for i in 0 .. f.f.len-1:
     writeVariable(stream, f.slots[i])
   write(stream, "***\n")
 
 proc ListVariables(stream: TFile, f: PExtendedFrame) =
-  write(stream, "*** emdb| Frame (" & $f.f.len & " slots):\n")
+  write(stream, "*** endb| Frame (" & $f.f.len & " slots):\n")
   for i in 0 .. f.f.len-1:
     writeln(stream, f.slots[i].name)
   write(stream, "***\n")
@@ -115,7 +116,7 @@ proc ListVariables(stream: TFile, f: PExtendedFrame) =
 proc debugOut(msg: cstring) =
   # the *** *** markers are for easy recognition of debugger
   # output for external frontends.
-  write(stdout, "*** emdb| ")
+  write(stdout, "*** endb| ")
   write(stdout, msg)
   write(stdout, "***\n")
 
@@ -131,14 +132,14 @@ proc findVariable(frame: PExtendedFrame, varname: cstring): int =
 
 proc dbgShowCurrentProc(dbgFramePointer: PFrame) =
   if dbgFramePointer != nil:
-    write(stdout, "*** emdb| now in proc: ")
+    write(stdout, "*** endb| now in proc: ")
     write(stdout, dbgFramePointer.procname)
     write(stdout, " ***\n")
   else:
-    write(stdout, "*** emdb| (procedure name not available) ***\n")
+    write(stdout, "*** endb| (procedure name not available) ***\n")
 
 proc dbgShowExecutionPoint() =
-  write(stdout, "*** emdb| " & $framePtr.filename & "(" & $framePtr.line &
+  write(stdout, "*** endb| " & $framePtr.filename & "(" & $framePtr.line &
                 ") " & $framePtr.procname & " ***\n")
 
 when defined(windows) or defined(dos) or defined(os2):
@@ -219,26 +220,26 @@ h, help                 display this help message
 q, quit                 quit the debugger and the program
 <ENTER>                 repeat the previous debugger command
               EXECUTING
-s, stepinto             single step, stepping into routine calls
-n, stepover             single step, without stepping into routine calls
+s, step                 single step, stepping into routine calls
+n, next                 single step, without stepping into routine calls
 f, skipcurrent          continue execution until the current routine finishes
 c, continue             continue execution until the next breakpoint
 i, ignore               continue execution, ignore all breakpoints
               BREAKPOINTS
-b, setbreak  <name> [fromline [toline]] [file]
+b, break <name> [fromline [toline]] [file]
                         set a new breakpoint named 'name' for line and file
                         if line or file are omitted the current one is used
 breakpoints             display the entire breakpoint list
 disable <name>          disable a breakpoint
 enable  <name>          enable a breakpoint
               DATA DISPLAY
-e, eval <exp>           evaluate the expression <exp>
-o, out <file> <exp>     evaluate <exp> and write it to <file>
+e, eval <expr>          evaluate the expression <expr>
+o, out <file> <expr>    evaluate <expr> and write it to <file>
 w, where                display the current execution point
 stackframe [file]       display current stack frame [and write it to file]
 u, up                   go up in the call stack
 d, down                 go down in the call stack
-callstack               display the entire call stack
+bt, backtrace           display the entire call stack
 l, locals               display available local variables
 g, globals              display available global variables
 maxdisplay <integer>    set the display's recursion maximum
@@ -352,7 +353,7 @@ proc CommandPrompt() =
     dbgDown: int = 0 # how often we did go down
 
   while again:
-    write(stdout, "*** emdb| >>")
+    write(stdout, "*** endb| >>")
     var tmp = readLine(stdin)
     if tmp.len > 0: dbgUser = tmp
     # now look what we have to do:
@@ -360,10 +361,10 @@ proc CommandPrompt() =
     var i = scanWord(dbgUser, dbgTemp, 0)
     case dbgTemp
     of "": InvalidCommand()
-    of "s", "stepinto":
+    of "s", "step":
       dbgState = dbStepInto
       again = false
-    of "n", "stepover":
+    of "n", "next":
       dbgState = dbStepOver
       dbgSkipToFrame = framePtr
       again = false
@@ -412,9 +413,9 @@ proc CommandPrompt() =
         dbgShowCurrentProc(dbgFramePtr)
       else:
         debugOut("[Warning] cannot go down any further ")
-    of "callstack":
+    of "bt", "backtrace":
       WriteStackTrace()
-    of "b", "setbreak":
+    of "b", "break":
       setBreakPoint(dbgUser, i)
     of "breakpoints":
       ListBreakPoints()
@@ -443,7 +444,7 @@ proc endbStep() =
 proc checkForBreakpoint() =
   var i = dbgBreakpointReached(framePtr.line)
   if i >= 0:
-    write(stdout, "*** emdb| reached ")
+    write(stdout, "*** endb| reached ")
     write(stdout, dbgBP[i].name)
     write(stdout, " in ")
     write(stdout, framePtr.filename)

@@ -18,7 +18,7 @@ type
   PPointer = ptr pointer
 
   TCollectorData = int
-  TCell = record
+  TCell {.final.} = object
     refcount: TCollectorData  # the refcount and bit flags
     typ: PNimType                  
     stackcount: int           # stack counter for debugging
@@ -67,18 +67,18 @@ type
 
   TBitIndex = range[0..UnitsPerPage-1]
 
-  TPageDesc = record
+  TPageDesc {.final.} = object
     next: PPageDesc # all nodes are connected with this pointer
     key: TAddress   # start address at bit 0
     bits: array[TBitIndex, int] # a bit vector
 
   PPageDescArray = ptr array[0..1000_000, PPageDesc]
-  TCellSet = record
+  TCellSet {.final.} = object
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
     
-  TSetNode = record
+  TSetNode {.final.} = object
     n: array[0.. (1 shl bitsPerNode)-1, PSetNode]
   PSetNode = ptr TSetNode
 

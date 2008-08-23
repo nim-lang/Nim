@@ -322,6 +322,10 @@ begin
     result := newNodeP(nkPtrTy, p);
     getTok(p); eat(p, pxCurlyDirRi);
   end
+  else if p.tok.ident.id = getIdent('tuple').id then begin
+    result := newNodeP(nkTupleTy, p);
+    getTok(p); eat(p, pxCurlyDirRi);
+  end
   else begin
     parMessage(p, errUnknownDirective, pasTokToStr(p.tok));
     while true do begin
@@ -481,6 +485,16 @@ begin
   exprListAux(p, elemKind, endTok, sepTok, result);
 end;
 
+procedure setBaseFlags(n: PNode; base: TNumericalBase);
+begin
+  case base of
+    base10: begin end;
+    base2: include(n.flags, nfBase2);
+    base8: include(n.flags, nfBase8);
+    base16: include(n.flags, nfBase16);
+  end
+end;
+
 function identOrLiteral(var p: TPasParser): PNode;
 var
   a: PNode;
@@ -493,12 +507,17 @@ begin
     // literals
     pxIntLit: begin
       result := newIntNodeP(nkIntLit, p.tok.iNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
+      getTok(p);
+    end;
+    pxInt64Lit: begin
+      result := newIntNodeP(nkInt64Lit, p.tok.iNumber, p);
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     pxFloatLit: begin
       result := newFloatNodeP(nkFloatLit, p.tok.fNumber, p);
-      result.base := p.tok.base;
+      setBaseFlags(result, p.tok.base);
       getTok(p);
     end;
     pxStrLit: begin
@@ -683,8 +702,9 @@ begin
     end
     else begin end
   end;
-  for i := 0 to sonsLen(n)-1 do
-    result.sons[i] := fixExpr(n.sons[i])
+  if not (n.kind in [nkEmpty..nkNilLit]) then
+    for i := 0 to sonsLen(n)-1 do
+      result.sons[i] := fixExpr(n.sons[i])
 end;
 
 function parseExpr(var p: TPasParser): PNode;
@@ -948,6 +968,7 @@ begin
       if p.tok.xkind <> pxIf then begin
         // ordinary else part:
         branch := newNodeP(nkElse, p);
+        skipCom(p, result); // BUGFIX
         addSon(branch, parseStmt(p));
         addSon(result, branch);
         break
@@ -1235,6 +1256,14 @@ begin
         noBody := true;
         getTok(p); opt(p, pxSemicolon);
       end;
+      wNoConv: begin
+        // This is a fake for platform module. There is no ``noconv``
+        // directive in Pascal.
+        if result = nil then result := newNodeP(nkPragma, p);
+        addSon(result, newIdentNodeP(getIdent('noconv'), p));
+        noBody := true;
+        getTok(p); opt(p, pxSemicolon);
+      end;
       wVarargs: begin
         if result = nil then result := newNodeP(nkPragma, p);
         addSon(result, newIdentNodeP(getIdent('varargs'), p));
@@ -1464,7 +1493,7 @@ begin
     nkIdent, nkAccQuoted: begin
       a := newNode(nkPostFix);
       a.info := n.info;
-      addSon(a, newIdentNode(getIdent('*'+'')));
+      addSon(a, newIdentNode(getIdent('*'+''), n.info));
       addSon(a, n);
       n := a
     end;
@@ -1486,7 +1515,7 @@ begin
       end
     end;
     nkRecList, nkRecWhen, nkElse, nkOfBranch, nkElifBranch,
-    nkRecordTy, nkObjectTy: begin
+    nkObjectTy: begin
       for i := 0 to sonsLen(n)-1 do fixRecordDef(n.sons[i])
     end;
     nkIdentDefs: begin
@@ -1495,6 +1524,19 @@ begin
     //nkIdent: exSymbol(n);
     else internalError(n.info, 'fixRecordDef(): ' + nodekindtostr[n.kind]);
   end
+end;
+
+procedure parseRecordBody(var p: TPasParser; result: PNode);
+var
+  a: PNode;
+begin
+  skipCom(p, result);
+  a := parseRecordPart(p);
+  if result.kind <> nkTupleTy then fixRecordDef(a);
+  addSon(result, a);
+  eat(p, pxEnd);
+  opt(p, pxSemicolon);
+  skipCom(p, result);  
 end;
 
 function parseRecordOrObject(var p: TPasParser; kind: TNodeKind): PNode;
@@ -1512,19 +1554,14 @@ begin
     eat(p, pxParRi);
   end
   else addSon(result, nil);
-  skipCom(p, result);
-  a := parseRecordPart(p);
-  fixRecordDef(a);
-  addSon(result, a);
-  eat(p, pxEnd);
-  opt(p, pxSemicolon);
-  skipCom(p, result);
+  parseRecordBody(p, result);
 end;
 
 function parseTypeDesc(var p: TPasParser): PNode;
 var
   oldcontext: TPasContext;
   a, r: PNode;
+  i: int;
 begin
   oldcontext := p.context;
   p.context := conTypeDesc;
@@ -1532,7 +1569,28 @@ begin
   case p.tok.xkind of
     pxCommand: result := parseCommand(p);
     pxProcedure, pxFunction: result := parseRoutineType(p);
-    pxRecord: result := parseRecordOrObject(p, nkRecordTy);
+    pxRecord: begin
+      getTok(p);
+      if p.tok.xkind = pxCommand then begin
+        result := parseCommand(p);
+        if result.kind <> nkTupleTy then 
+          InternalError(result.info, 'parseTypeDesc');
+        parseRecordBody(p, result);
+        a := lastSon(result);
+        // embed nkRecList directly into nkTupleTy
+        for i := 0 to sonsLen(a)-1 do
+          if i = 0 then result.sons[sonsLen(result)-1] := a.sons[0]
+          else addSon(result, a.sons[i]);
+      end
+      else begin
+        result := newNodeP(nkReturnToken, p); 
+        // we use nkReturnToken to signal that this object should be marked as
+        // final
+        addSon(result, nil);
+        addSon(result, nil);
+        parseRecordBody(p, result);
+      end;
+    end;
     pxObject: result := parseRecordOrObject(p, nkObjectTy);
     pxParLe: result := parseEnum(p);
     pxArray: begin
@@ -1591,13 +1649,29 @@ begin
 end;
 
 function parseTypeDef(var p: TPasParser): PNode;
+var
+  a, e, pragmasNode: PNode;
 begin
   result := newNodeP(nkTypeDef, p);
   addSon(result, identVis(p));
   addSon(result, nil); // generic params
   if p.tok.xkind = pxEquals then begin
     getTok(p); skipCom(p, result);
-    addSon(result, parseTypeDesc(p));
+    a := parseTypeDesc(p);
+    addSon(result, a);
+    if a.kind = nkReturnToken then begin // a `final` object?
+      a.kind := nkObjectTy;
+      if result.sons[0].kind <> nkPragmaExpr then begin
+        e := newNodeP(nkPragmaExpr, p);
+        pragmasNode := newNodeP(nkPragma, p);
+        addSon(e, result.sons[0]);
+        addSon(e, pragmasNode);
+        result.sons[0] := e;
+      end
+      else
+        pragmasNode := result.sons[1];
+      addSon(pragmasNode, newIdentNodeP(getIdent('final'), p));
+    end
   end
   else
     addSon(result, nil);

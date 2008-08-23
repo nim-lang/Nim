@@ -1,8 +1,5 @@
 # Tests emc's ability to detect overflows
 
-import
-  io
-
 {.push overflowChecks: on.}
 
 var

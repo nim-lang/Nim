@@ -1,8 +1,5 @@
 # Test nested loops and some other things
 
-import
-  io
-
 proc andTest() =
   var a = 0 == 5 and 6 == 6
 
@@ -60,7 +57,7 @@ proc Foo(n: int): int =
     while b:
         a = a + 3
     a = a + 5
-    io.write(stdout, "Hallo!")
+    write(stdout, "Hallo!")
 
 
 # We should come till here :-)

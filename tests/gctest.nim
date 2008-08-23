@@ -6,31 +6,40 @@ import
 
 type
   PNode = ref TNode
-  TNode = record
+  TNode {.final.} = object
     le, ri: PNode
     data: string
 
-  TTable = record
+  TTable {.final.} = object
     counter, max: int
     data: seq[string]
 
-  TBNode = record
+  TBNode {.final.} = object
     other: PNode  # a completely different tree
     data: string
     sons: seq[TBNode] # directly embedded!
     t: TTable
     
-  TCaseKind = enum nkStr, nkList
+  TCaseKind = enum nkStr, nkWhole, nkList
   PCaseNode = ref TCaseNode
-  TCaseNode = record
+  TCaseNode {.final.} = object
     case kind: TCaseKind
     of nkStr: data: string
     of nkList: sons: seq[PCaseNode]
+    else: unused: seq[string]
+
+var
+  flip: int
 
 proc newCaseNode(data: string): PCaseNode =
   new(result)
-  result.kind = nkStr
-  result.data = data
+  if flip == 0:
+    result.kind = nkStr
+    result.data = data
+  else:
+    result.kind = nkWhole
+    result.unused = ["", "abc", "abdc"]
+  flip = 1 - flip
   
 proc newCaseNode(a, b: PCaseNode): PCaseNode =
   new(result)
@@ -44,7 +53,8 @@ proc caseTree(lvl: int = 0): PCaseNode =
 proc finalizeBNode(n: TBNode) = writeln(stdout, n.data)
 proc finalizeNode(n: PNode) =
   assert(n != nil)
-  writeln(stdout, n.data)
+  if isNil(n.data): writeln(stdout, "nil!")
+  else: writeln(stdout, n.data)
 
 var
   id: int = 1

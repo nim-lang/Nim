@@ -227,7 +227,7 @@ begin
   L.linenumber := 1; // lines start at 1
   L.fileOpened := false;
   if L.bufLen > 0 then begin
-    copyMem(L.buf, addr(buffer[strStart]), L.bufLen);
+    copyMem(L.buf, {@cast}pointer(buffer), L.bufLen);
     L.buf[L.bufLen-1] := EndOfFile;
   end
   else

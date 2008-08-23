@@ -1,8 +1,5 @@
 # test this particular function
 
-import
-  io
-
 proc mypos(sub, s: string, start: int = 0): int =
   var
     i, j, M, N: int

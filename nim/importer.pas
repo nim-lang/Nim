@@ -40,10 +40,11 @@ procedure rawImportSymbol(c: PContext; s: PSym);
 var
   check, copy, e: PSym;
   j: int;
-  etyp: PType; // enumeration type  
+  etyp: PType; // enumeration type
 begin
-  copy := copySym(s, s.owner);
-  copy.ast := s.ast; // BUGFIX
+  //copy := copySym(s, true);
+  //copy.ast := s.ast;
+  copy := s; // do not copy symbols when importing!
   // check if we have already a symbol of the same name:
   check := StrTableGet(c.tab.stack[importTablePos], s.name);
   if check <> nil then begin
@@ -55,17 +56,17 @@ begin
   end;
   StrTableAdd(c.tab.stack[importTablePos], copy);
   if s.kind = skType then begin
-    // types are special: we need to copy types but need to
-    // consider private fields
     etyp := s.typ;
     if etyp.kind = tyEnum then begin
       for j := 0 to sonsLen(etyp.n)-1 do begin
         e := etyp.n.sons[j].sym;
-        assert(e.Kind = skEnumField);
-        rawImportSymbol(c, e)
+        if (e.Kind = skEnumField) then rawImportSymbol(c, e)
+        else InternalError(s.info, 'rawImportSymbol');
       end
     end
-  end;
+  end
+  else if s.kind = skConverter then
+    addConverter(c, s);
 end;
 
 procedure importSymbol(c: PContext; ident: PNode; fromMod: PSym);
@@ -73,18 +74,20 @@ var
   s, e: PSym;
   it: TIdentIter;
 begin
-  assert(ident.kind = nkIdent);
+  if (ident.kind <> nkIdent) then InternalError(ident.info, 'importSymbol');
   s := StrTableGet(fromMod.tab, ident.ident);
   if s = nil then
     liMessage(ident.info, errUndeclaredIdentifier, ident.ident.s);
-  assert(s.Kind in ExportableSymKinds);
+  if not (s.Kind in ExportableSymKinds) then
+    InternalError(ident.info, 'importSymbol: 2');
   // for an enumeration we have to add all identifiers
   case s.Kind of
-    skProc, skIterator, skMacro, skTemplate: begin
-    // for a overloadable syms add all overloaded routines
+    skProc, skIterator, skMacro, skTemplate, skConverter: begin
+      // for a overloadable syms add all overloaded routines
       e := InitIdentIter(it, fromMod.tab, s.name);
       while e <> nil do begin
-        assert(e.name.id = s.Name.id);
+        if (e.name.id <> s.Name.id) then
+          InternalError(ident.info, 'importSymbol: 3');
         rawImportSymbol(c, e);
         e := NextIdentIter(it, fromMod.tab);
       end
@@ -101,8 +104,11 @@ begin
   s := InitTabIter(i, fromMod.tab);
   while s <> nil do begin
     if s.kind <> skModule then begin
-      assert(s.Kind in ExportableSymKinds);
-      rawImportSymbol(c, s); // this is correct!
+      if s.kind <> skEnumField then begin
+        if not (s.Kind in ExportableSymKinds) then
+          InternalError(s.info, 'importAllSymbols');
+        rawImportSymbol(c, s); // this is correct!
+      end
     end;
     s := NextIter(i, fromMod.tab)
   end
@@ -129,6 +135,7 @@ var
   i: int;
 begin
   result := n;
+  checkMinSonsLen(n, 2);
   m := c.ImportModule(getModuleFile(n.sons[0]), c.b);
   n.sons[0] := newSymNode(m);
   addDecl(c, m); // add symbol to symbol table of module
@@ -140,7 +147,7 @@ var
   i: int;
   x: PNode;
 begin
-  result := newNode(nkStmtList);
+  result := newNodeI(nkStmtList, n.info);
   for i := 0 to sonsLen(n)-1 do begin
     x := c.includeFile(getModuleFile(n.sons[i]));
     x := semStmt(c, x);
