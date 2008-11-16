@@ -71,9 +71,9 @@ begin
   g.comStack := nil;
   g.tokens := nil;
 {@emit
-  g.comStack := [];}
+  g.comStack := @[];}
 {@emit
-  g.tokens := [];}
+  g.tokens := @[];}
   g.indent := 0;
   g.lineLen := 0;
   g.pos := 0;
@@ -1183,6 +1183,7 @@ begin
       gcoms(g);
       indentNL(g);
       gcommaAux(g, n, g.indent, 1);
+      gcoms(g); // BUGFIX: comment for the last enum field
       dedent(g);
     end;
     nkEnumFieldDef: begin

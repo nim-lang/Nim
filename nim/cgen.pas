@@ -6,7 +6,6 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-
 unit cgen;
 
 // This is the new C code generator; much cleaner and faster
@@ -19,10 +18,10 @@ interface
 uses
   nsystem, ast, astalgo, strutils, hashes, trees, platform, magicsys,
   extccomp, options, nversion, nimsets, msgs, crc, bitsets, idents,
-  lists, types, ccgutils, nos, ntime, ropes, nmath, backends,
-  wordrecg, rnimsyn;
-
-function CBackend(b: PBackend; module: PSym; const filename: string): PBackend;
+  lists, types, ccgutils, nos, ntime, ropes, nmath, passes, rodread,
+  wordrecg, rnimsyn, treetab;
+  
+function cgenPass(): TPass;
 
 implementation
 
@@ -95,7 +94,6 @@ type
                              // (the vars must be volatile then)
     labels: Natural;         // for generating unique labels in the C proc
     blocks: array of TBlock; // nested blocks
-    locals: array of TLoc;   // locNone means slot is free again
     options: TOptions;       // options that should be used for code
                              // generation; this is the same as prc.options
                              // unless prc == nil
@@ -105,7 +103,9 @@ type
     module: BModule;         // used to prevent excessive parameter passing
   end;
   TTypeSeq = array of PType;
-  TCGen = object(TBackend)   // represents a C source file
+  TCGen = object(TPassContext) // represents a C source file
+    module: PSym;
+    filename: string;
     s: TCFileSections;       // sections of the C file
     cfilename: string;       // filename of the module (including path,
                              // without extension)
@@ -114,18 +114,21 @@ type
     declaredThings: TIntSet; // things we have declared in this .c file
     debugDeclared: TIntSet;  // for debugging purposes
     headerFiles: TLinkedList; // needed headers to include
-    //unique: Natural;         // for generating unique names
     typeInfoMarker: TIntSet; // needed for generating type information
     initProc: BProc;         // code for init procedure
     typeStack: TTypeSeq;     // used for type generation
+    dataCache: TNodeTable;
+    typeNodes, nimTypes: int;// used for type info generation
+    typeNodesName, nimTypesName: PRope;    // used for type info generation
   end;
 
 var
-  gUnique: Natural;
   mainModProcs, mainModInit: PRope; // parts of the main module
   gMapping: PRope;  // the generated mapping file (if requested)
+  gProcProfile: Natural; // proc profile counter
 
-function initLoc(k: TLocKind; typ: PType; s: TStorageLoc): TLoc;
+
+procedure initLoc(var result: TLoc; k: TLocKind; typ: PType; s: TStorageLoc);
 begin
   result.k := k;
   result.s := s;
@@ -162,11 +165,8 @@ begin
     result.options := gOptions;
 {@ignore}
   setLength(result.blocks, 0);
-  setLength(result.locals, 0);
 {@emit
-  result.blocks := [];}
-{@emit
-  result.locals := [];}
+  result.blocks := @[];}
 end;
 
 function isSimpleConst(typ: PType): bool;
@@ -179,15 +179,12 @@ procedure useHeader(m: BModule; sym: PSym);
 begin
   if lfHeader in sym.loc.Flags then begin
     assert(sym.annex <> nil);
-    {@discard} lists.IncludeStr(m.headerFiles, PLib(sym.annex).path)
+    {@discard} lists.IncludeStr(m.headerFiles, sym.annex.path)
   end
 end;
 
 procedure UseMagic(m: BModule; const name: string); forward;
 
-// ----------------------------- name mangling
-// +++++++++++++++++++++++++++++ type generation
-// +++++++++++++++++++++++++++++ type info generation
 {$include 'ccgtypes.pas'}
 
 // ------------------------------ Manager of temporaries ------------------
@@ -198,41 +195,20 @@ begin
   result := sameType(skipGenericRange(a), skipGenericRange(b))
 end;
 
-function getTemp(p: BProc; t: PType): TLoc;
-var
-  i, index: int;
-  name: PRope;
-begin (*
-  for i := 0 to high(p.locals) do begin
-    assert(i = p.locals[i].a);
-    if (p.locals[i].k = locNone) and beEqualTypes(p.locals[i].t, t) then begin
-      // free slot of the appropriate type?
-      p.locals[i].k := locTemp; // is filled again
-      result := p.locals[i];
-      exit
-    end
-  end; *)
-  // not found:
-  index := length(p.locals);
-  setLength(p.locals, index+1);
-  // declare the new temporary:
-  name := con('Loc', toRope(index));
-  appf(p.s[cpsLocals], '$1 $2; /* temporary */$n',
-       [getTypeDesc(p.module, t), name]);
-  p.locals[index].k := locTemp;
-  p.locals[index].a := index;
-  p.locals[index].r := name;
-  p.locals[index].t := getUniqueType(t);
-  p.locals[index].s := OnStack;
-  p.locals[index].flags := {@set}[];
-  result := p.locals[index] // BUGFIX!
+procedure getTemp(p: BProc; t: PType; var result: TLoc);
+begin
+  inc(p.labels);
+  result.r := con('LOC', toRope(p.labels));
+  appf(p.s[cpsLocals], '$1 $2;$n', [getTypeDesc(p.module, t), result.r]);
+  result.k := locTemp;
+  result.a := -1;
+  result.t := getUniqueType(t);
+  result.s := OnStack;
+  result.flags := {@set}[];
 end;
 
 procedure freeTemp(p: BProc; const temp: TLoc);
-begin (*
-  if (temp.a >= 0) and (temp.a < length(p.locals)) and
-                    (p.locals[temp.a].k = locTemp) then
-    p.locals[temp.a].k := locNone *)
+begin
 end;
 
 // -------------------------- Variable manager ----------------------------
@@ -245,6 +221,8 @@ begin
       app(m.s[cfsVars], ' register');
     if sfVolatile in s.flags then
       app(m.s[cfsVars], ' volatile');
+    if sfThreadVar in s.flags then
+      app(m.s[cfsVars], ' NIM_THREADVAR');
     appf(m.s[cfsVars], ' $1;$n', [s.loc.r])
   end
 end;
@@ -314,7 +292,7 @@ end;
 function getLabel(p: BProc): TLabel;
 begin
   inc(p.labels);
-  result := con('L'+'', toRope(p.labels))
+  result := con('LA', toRope(p.labels))
 end;
 
 procedure fixLabel(p: BProc; labl: TLabel);
@@ -344,10 +322,11 @@ begin
     lib.kind := libDynamicGenerated;
     useMagic(m, 'nimLoadLibrary');
     useMagic(m, 'nimUnloadLibrary');
+    useMagic(m, 'NimStringDesc');
     tmp := getTempName();
     appf(m.s[cfsVars], 'static void* $1;$n', [tmp]);
     appf(m.s[cfsDynLibInit],
-      '$1 = nimLoadLibrary((string) &$2);$n',
+      '$1 = nimLoadLibrary((NimStringDesc*) &$2);$n',
       [tmp, getStrLit(m, lib.path)]);
     appf(m.s[cfsDynLibDeinit],
       'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
@@ -361,7 +340,7 @@ var
   lib: PLib;
   extname, tmp: PRope;
 begin
-  lib := PLib(sym.annex);
+  lib := sym.annex;
   extname := sym.loc.r;
   loadDynamicLib(m, lib);
   useMagic(m, 'nimGetProcAddr');
@@ -434,7 +413,7 @@ procedure genProc(m: BModule; prc: PSym);
 var
   p: BProc;
   generatedProc, header, returnStmt: PRope;
-  i: int;
+  i, profileId: int;
   res, param: PSym;
 begin
   useHeader(m, prc);
@@ -454,21 +433,20 @@ begin
     returnStmt := nil;
     assert(prc.ast <> nil);
 
-    if not (sfPure in prc.flags) then begin
+    if not (sfPure in prc.flags) and (prc.typ.sons[0] <> nil) then begin
+      res := prc.ast.sons[resultPos].sym; // get result symbol
       if not isInvalidReturnType(prc.typ.sons[0]) then begin
-        res := prc.ast.sons[resultPos].sym; // get result symbol
         // declare the result symbol:
         assignLocalVar(p, res);
         assert(res.loc.r <> nil);
-        initVariable(p, res);
-        genObjectInit(p, res);
         returnStmt := ropef('return $1;$n', [rdLoc(res.loc)]);
       end
-      else if (prc.typ.sons[0] <> nil) then begin
-        res := prc.ast.sons[resultPos].sym; // get result symbol
+      else begin
         fillResult(res);
-        assignParam(p, res)
-      end
+        assignParam(p, res);
+      end;
+      initVariable(p, res);
+      genObjectInit(p, res.typ, res.loc, true);
     end;
     for i := 1 to sonsLen(prc.typ.n)-1 do begin
       param := prc.typ.n.sons[i].sym;
@@ -492,16 +470,31 @@ begin
           [makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s),
           makeCString(toFilename(prc.info))]));
       end;
+      if optProfiler in prc.options then begin
+        if gProcProfile >= 64*1024 then // XXX: hard coded value!
+          InternalError(prc.info, 'too many procedures for profiling');
+        useMagic(m, 'profileData');
+        app(p.s[cpsLocals], 'ticks NIM_profilingStart;'+tnl);
+        if prc.loc.a < 0 then begin
+          appf(m.s[cfsDebugInit], 'profileData[$1].procname = $2;$n',
+              [toRope(gProcProfile),
+               makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s)]);
+          prc.loc.a := gProcProfile;
+          inc(gProcProfile);
+        end;
+        prepend(p.s[cpsInit], toRope('NIM_profilingStart = getticks();' + tnl));
+      end;
       app(generatedProc, con(p.s));
       if p.beforeRetNeeded then
         app(generatedProc, 'BeforeRet: ;' + tnl);
       if optStackTrace in prc.options then
         app(generatedProc, 'framePtr = framePtr->prev;' + tnl);
+      if optProfiler in prc.options then
+        appf(generatedProc,
+          'profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n',
+          [toRope(prc.loc.a)]);
       app(generatedProc, returnStmt);
       app(generatedProc, '}' + tnl);
-      // only now we can free the syntax tree:
-      //if prc.typ.callConv <> ccInline then
-      //  prc.ast.sons[codePos] := nil;
     end;
     app(m.s[cfsProcs], generatedProc);
   end
@@ -524,6 +517,8 @@ begin
       app(m.s[cfsVars], ' register');
     if sfVolatile in sym.flags then
       app(m.s[cfsVars], ' volatile');
+    if sfThreadVar in sym.flags then
+      app(m.s[cfsVars], ' NIM_THREADVAR');
     appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
   end
 end;
@@ -572,22 +567,28 @@ end;
 
 function getFileHeader(const cfilenoext: string): PRope;
 begin
-  result := ropef(
-    '/* Generated by the Nimrod Compiler v$1 */$n' +
-    '/*   (c) 2008 Andreas Rumpf */$n' +
-    '/* Compiled for: $2, $3, $4 */$n' +
-    '/* Command for C compiler:$n   $5 */$n',
-    [toRope(versionAsString), toRope(platform.OS[targetOS].name),
-    toRope(platform.CPU[targetCPU].name),
-    toRope(extccomp.CC[extccomp.ccompiler].name),
-    toRope(getCompileCFileCmd(cfilenoext))]);
+  if optCompileOnly in gGlobalOptions then
+    result := ropef(
+      '/* Generated by the Nimrod Compiler v$1 */$n' +
+      '/*   (c) 2008 Andreas Rumpf */$n',
+      [toRope(versionAsString)])
+  else
+    result := ropef(
+      '/* Generated by the Nimrod Compiler v$1 */$n' +
+      '/*   (c) 2008 Andreas Rumpf */$n' +
+      '/* Compiled for: $2, $3, $4 */$n' +
+      '/* Command for C compiler:$n   $5 */$n',
+      [toRope(versionAsString), toRope(platform.OS[targetOS].name),
+      toRope(platform.CPU[targetCPU].name),
+      toRope(extccomp.CC[extccomp.ccompiler].name),
+      toRope(getCompileCFileCmd(cfilenoext))]);
   case platform.CPU[targetCPU].intSize of
     16: appf(result, '$ntypedef short int NI;$n' +
-                       'typedef unsigned short int NU;$n', []); 
+                     'typedef unsigned short int NU;$n', []);
     32: appf(result, '$ntypedef long int NI;$n' +
-                       'typedef unsigned long int NU;$n', []); 
+                     'typedef unsigned long int NU;$n', []);
     64: appf(result, '$ntypedef long long int NI;$n' +
-                       'typedef unsigned long long int NU;$n', []); 
+                     'typedef unsigned long long int NU;$n', []);
     else begin end
   end
 end;
@@ -645,18 +646,43 @@ begin
   appf(m.s[cfsProcs], frmt, [gBreakpoints, mainModInit])
 end;
 
+function getInitName(m: PSym): PRope;
+begin
+  result := con(m.name.s, toRope('Init'));
+end;
+
+procedure registerModuleToMain(m: PSym);
+var
+  initname: PRope;
+begin
+  initname := getInitName(m);
+  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n',
+      [initname]);
+  if not (sfSystemModule in m.flags) then
+    appf(mainModInit, '$1();$n', [initname]);
+end;
+
 procedure genInitCode(m: BModule);
 var
   initname, prc: PRope;
 begin
-  initname := con(m.module.name.s, toRope('Init'));
-  appf(mainModProcs, 'N_NIMCALL(void, $1)(void);$n',
-    [initname]);
-  if not (sfSystemModule in m.module.flags) then
-    appf(mainModInit, '$1();$n', [initname]);
-  prc := ropef('N_NIMCALL(void, $1)(void) {$n', [initname]);
+  if optProfiler in m.initProc.options then begin
+    // This does not really belong here, but there is no good place for this
+    // code. I don't want to put this to the proc generation as the
+    // ``IncludeStr`` call is quite slow.
+    {@discard} lists.IncludeStr(m.headerFiles, '<cycle.h>');
+  end;
+  initname := getInitName(m.module);
+  registerModuleToMain(m.module);
+  prc := ropef('N_NOINLINE(void, $1)(void) {$n', [initname]);
+  if m.typeNodes > 0 then 
+    appf(m.s[cfsTypeInit1], 'static TNimNode $1[$2];$n', 
+         [m.typeNodesName, toRope(m.typeNodes)]);  
+  if m.nimTypes > 0 then 
+    appf(m.s[cfsTypeInit1], 'static TNimType $1[$2];$n', 
+         [m.nimTypesName, toRope(m.nimTypes)]);
   if optStackTrace in m.initProc.options then begin
-    prepend(m.initProc.s[cpsLocals], toRope('volatile TFrame F;' + tnl));
+    getFrameDecl(m.initProc);
     app(prc, m.initProc.s[cpsLocals]);
     app(prc, m.s[cfsTypeInit1]);
     appf(prc,
@@ -704,13 +730,42 @@ begin
   intSetInit(result.declaredThings);
   intSetInit(result.debugDeclared);
   result.cfilename := filename;
+  result.filename := filename;
   initIdTable(result.typeCache);
   initIdTable(result.forwTypeCache);
   result.module := module;
   intSetInit(result.typeInfoMarker);
   result.initProc := newProc(nil, result);
   result.initProc.options := gOptions;
-{@emit result.typeStack := [];}
+  initNodeTable(result.dataCache);
+{@emit result.typeStack := @[];}
+  result.typeNodesName := getTempName();
+  result.nimTypesName := getTempName();
+end;
+
+function myOpen(module: PSym; const filename: string): PPassContext;
+begin
+  result := newModule(module, filename);
+end;
+
+function myOpenCached(module: PSym; const filename: string;
+                      rd: PRodReader): PPassContext;
+var
+  cfile, cfilenoext, objFile: string;
+begin
+  //MessageOut('cgen.myOpenCached has been called ' + filename);
+  cfile := changeFileExt(completeCFilePath(filename), cExt);
+  cfilenoext := changeFileExt(cfile, '');
+  (*
+  objFile := toObjFile(cfilenoext);
+  if ExistsFile(objFile) and nos.FileNewer(objFile, cfile) then begin
+  end
+  else begin
+    addFileToCompile(cfilenoext); // is to compile
+  end; *)
+  addFileToLink(cfilenoext);
+  registerModuleToMain(module);
+  result := nil;
 end;
 
 function shouldRecompile(code: PRope; const cfile, cfilenoext: string): bool;
@@ -718,7 +773,7 @@ var
   objFile: string;
 begin
   result := true;
-  if optCFileCache in gGlobalOptions then begin
+  if not (optForceFullMake in gGlobalOptions) then begin
     objFile := toObjFile(cfilenoext);
     if writeRopeIfNotEqual(code, cfile) then exit;
     if ExistsFile(objFile) and nos.FileNewer(objFile, cfile) then
@@ -728,47 +783,57 @@ begin
     writeRope(code, cfile);
 end;
 
-procedure finishModule(b: PBackend; n: PNode);
+function myProcess(b: PPassContext; n: PNode): PNode;
+var
+  m: BModule;
+begin
+  result := n;
+  if b = nil then exit;
+  m := BModule(b);
+  m.initProc.options := gOptions;
+  genStmts(m.initProc, n);
+end;
+
+function myClose(b: PPassContext; n: PNode): PNode;
 var
   cfile, cfilenoext: string;
   m: BModule;
   code: PRope;
 begin
+  result := n;
+  if b = nil then exit;
   m := BModule(b);
-  m.initProc.options := gOptions;
-  genStmts(m.initProc, n);
+  if n <> nil then begin
+    m.initProc.options := gOptions;
+    genStmts(m.initProc, n);
+  end;
   // generate code for the init statements of the module:
   genInitCode(m);
   finishTypeDescriptions(m);
+  cfile := completeCFilePath(m.cfilename);
+  cfilenoext := changeFileExt(cfile, '');
   if sfMainModule in m.module.flags then begin
-    // generate mapping file (if requested):
-    if gMapping <> nil then
-      WriteRope(gMapping, ChangeFileExt(cfile + '_map', 'txt'));
-
     // generate main file:
     app(m.s[cfsProcHeaders], mainModProcs);
     genMainProc(m);
   end;
-  cfile := completeCFilePath(m.cfilename);
-  cfilenoext := changeFileExt(cfile, '');
   code := genModule(m, cfilenoext);
   if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext) then begin
     addFileToCompile(cfilenoext); // is to compile
   end;
   addFileToLink(cfilenoext);
+  if sfMainModule in m.module.flags then writeMapping(cfile, gMapping);
 end;
 
-function CBackend(b: PBackend; module: PSym; const filename: string): PBackend;
-var
-  g: BModule;
+function cgenPass(): TPass;
 begin
-  g := newModule(module, filename);
-  g.backendCreator := CBackend;
-  g.eventMask := {@set}[eAfterModule];
-  g.afterModuleEvent := finishModule;
-  result := g;
+  initPass(result);
+  result.open := myOpen;
+  result.openCached := myOpenCached;
+  result.process := myProcess;
+  result.close := myClose;
 end;
 
 initialization
-  intSetInit(gTypeInfoGenerated);
+  InitIiTable(gToTypeInfoId);
 end.

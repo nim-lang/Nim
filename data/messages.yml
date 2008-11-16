@@ -153,7 +153,8 @@
 {'errSizeTooBig': "computing the type's size produced an overflow"},
 {'errSetTooBig': 'set is too large'},
 {'errBaseTypeMustBeOrdinal': 'base type of a set must be an ordinal'},
-{'errInheritanceOnlyWithNonFinalObjects': 'inheritance only works non-final objects'},
+{'errInheritanceOnlyWithNonFinalObjects':
+  'inheritance only works with non-final objects'},
 {'errInheritanceOnlyWithEnums': 'inheritance only works with an enum'},
 {'errIllegalRecursionInTypeX': "illegal recursion in type '$1'"},
 {'errCannotInstantiateX': "cannot instantiate: '$1'"},
@@ -278,16 +279,17 @@
 
 # hints:
 {'hintSuccess': 'operation successful'},
+{'hintSuccessX': 'operation successful ($1 lines compiled; $2 sec total)'},
 {'hintLineTooLong': 'line too long'},
 {'hintXDeclaredButNotUsed': "'$1' is declared but not used"},
 {'hintConvToBaseNotNeeded': 'conversion to base object is not needed'},
 {'hintConvFromXtoItselfNotNeeded': 'conversion from $1 to itself is pointless'},
 {'hintExprAlwaysX': "expression evaluates always to '$1'"},
-{'hintMo2FileInvalid': "mo2 file '$1' is invalid"},
-{'hintModuleHasChanged': "module '$1' has been changed"},
-{'hintCannotOpenMo2File': "mo2 file '$1' does not exist"},
 {'hintQuitCalled': "quit() called"},
-{'hintProcessing': "processing"},
+{'hintProcessing': "processing $1"},
+{'hintCodeBegin': "generated code listing:"},
+{'hintCodeEnd': "end of listing"},
+{'hintConf': "used config file '$1'"},
 
 # user hint message:
 {'hintUser': '$1'}

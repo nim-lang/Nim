@@ -24,6 +24,7 @@ template newException(exceptn, message: expr): expr =
     e.msg = message
     e
 
+
 type
   TCharSet* = set[char] # for compability for Nim
 
@@ -73,6 +74,9 @@ proc findSubStr*(sub: char, s: string, start: int = 0): int {.noSideEffect.}
 proc replaceStr*(s, sub, by: string): string {.noSideEffect.}
   ## Replaces `sub` in `s` by the string `by`.
 
+proc replaceStr*(s: string, sub, by: char): string {.noSideEffect.}
+  ## optimized version for characters.
+
 proc deleteStr*(s: var string, first, last: int)
   ## Deletes in `s` the characters at position `first`..`last`. This modifies
   ## `s` itself, it does not return a copy.
@@ -112,6 +116,43 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
     first = last
     while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
     yield copy(s, first, last-1)
+
+iterator splitLines*(s: string): string =
+  ## Splits the string `s` into its containing lines. Each newline
+  ## combination (CR, LF, CR-LF) is supported. The result strings contain
+  ## no trailing ``\n``.
+  ##
+  ## Example::
+  ##
+  ##   for line in lines("\nthis\nis\nan\n\nexample\n"):
+  ##     writeln(stdout, line)
+  ##
+  ## Results in::
+  ##
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  var first = 0
+  var last = 0
+  while true:
+    while s[last] notin {'\0', '\c', '\l'}: inc(last)
+    yield copy(s, first, last-1)
+    # skip newlines:
+    if s[last] == '\l': inc(last)
+    elif s[last] == '\c':
+      inc(last)
+      if s[last] == '\l': inc(last)
+    else: break # was '\0'
+    first = last
+
+proc splitLinesSeq*(s: string): seq[string] {.noSideEffect.} =
+  ## The same as `split`, but is a proc that returns a sequence of substrings.
+  result = @[]
+  for line in splitLines(s): add(result, line)
 
 proc splitSeq*(s: string, seps: set[char] = Whitespace): seq[string] {.
   noSideEffect.}
@@ -159,7 +200,8 @@ proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect.}
 
 proc ParseFloat*(s: string): float {.noSideEffect.}
   ## Parses a decimal floating point value contained in `s`. If `s` is not
-  ## a valid floating point number, `EInvalidValue` is raised.
+  ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
+  ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
   # XXX: make this biggestfloat.
 
 # the stringify and format operators:
@@ -344,7 +386,7 @@ proc cmpIgnoreStyle(a, b: string): int =
 # ---------- splitting -----------------------------------------------------
 
 proc splitSeq(s: string, seps: set[char]): seq[string] =
-  result = []
+  result = @[]
   for sub in split(s, seps): add result, sub
 
 # ---------------------------------------------------------------------------
@@ -469,6 +511,14 @@ proc replaceStr(s, sub, by: string): string =
   # copy the rest:
   add result, copy(s, i)
 
+proc replaceStr(s: string, sub, by: char): string =
+  result = newString(s.len)
+  var i = 0
+  while i < s.len:
+    if s[i] == sub: result[i] = by
+    else: result[i] = s[i]
+    inc(i)
+
 proc deleteStr(s: var string, first, last: int) =
   # example: "abc___uvwxyz\0"  (___ is to be deleted)
   # --> first == 3, last == 5
@@ -489,7 +539,7 @@ proc toHex(x: BiggestInt, len: int): string =
     shift: BiggestInt
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[toU32(x shr shift) and 0xF]
+    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
     shift = shift + 4
 
 {.push overflowChecks: on.}
@@ -552,6 +602,16 @@ proc ParseFloat(s: string): float =
   elif s[i] == '-':
     sign = -1.0
     inc(i)
+  if s[i] == 'N' or s[i] == 'n':
+    if s[i+1] == 'A' or s[i+1] == 'a':
+      if s[i+2] == 'N' or s[i+2] == 'n':
+        if s[i+3] == '\0': return NaN
+    raise newException(EInvalidValue, "invalid float: " & s)
+  if s[i] == 'I' or s[i] == 'i':
+    if s[i+1] == 'N' or s[i+1] == 'n':
+      if s[i+2] == 'F' or s[i+2] == 'f':
+        if s[i+3] == '\0': return Inf*sign
+    raise newException(EInvalidValue, "invalid float: " & s)
   while s[i] in {'0'..'9'}:
     # Read integer part
     flags = flags or 1
@@ -572,7 +632,7 @@ proc ParseFloat(s: string): float =
     result = result / hd # this complicated way preserves precision
   # Again, read integer and fractional part
   if flags == 0:
-    raise newException(EInvalidValue, "invalid float:" & s)
+    raise newException(EInvalidValue, "invalid float: " & s)
   # Exponent?
   if s[i] in {'e', 'E'}:
     inc(i)
@@ -623,5 +683,114 @@ proc toBin*(x: BiggestInt, len: int): string =
     result[j] = chr(int((x and mask) shr shift) + ord('0'))
     shift = shift + 1
     mask = mask shl 1
+
+proc escape*(s: string, prefix, suffix = "\""): string =
+  ## Escapes a string `s`. This does these operations (at the same time):
+  ## * replaces any ``\`` by ``\\``
+  ## * replaces any ``'`` by ``\'``
+  ## * replaces any ``"`` by ``\"``
+  ## * replaces any other character in the set ``{'\0'..'\31', '\128'..'\255'}``
+  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes. The resulting string is prefixed with
+  ## ``prefix`` and suffixed with ``suffix``. Both may be empty strings.
+  result = prefix
+  for c in items(s):
+    case c
+    of '\0'..'\31', '\128'..'\255':
+      add(result, '\\')
+      add(result, toHex(ord(c), 2))
+    of '\\': add(result, "\\\\")
+    of '\'': add(result, "\\'")
+    of '\"': add(result, "\\\"")
+    else: add(result, c)
+  add(result, suffix)
+
+proc editDistance*(a, b: string): int =
+  ## returns the edit distance between `s` and `t`. This uses the Levenshtein
+  ## distance algorithm with only a linear memory overhead. This implementation
+  ## is highly optimized!
+  var len1 = a.len
+  var len2 = b.len
+  if len1 > len2:
+    # make `b` the longer string
+    return editDistance(b, a)
+
+  # strip common prefix:
+  var s = 0
+  while a[s] == b[s] and a[s] != '\0':
+    inc(s)
+    dec(len1)
+    dec(len2)
+  # strip common suffix:
+  while len1 > 0 and len2 > 0 and a[s+len1-1] == b[s+len2-1]:
+    dec(len1)
+    dec(len2)
+  # trivial cases:
+  if len1 == 0: return len2
+  if len2 == 0: return len1
+
+  # another special case:
+  if len1 == 1:
+    for j in s..len2-1:
+      if a[s] == b[j]: return len2 - 1
+    return len2
+
+  inc(len1)
+  inc(len2)
+  var half = len1 shr 1
+  # initalize first row:
+  #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2 * sizeof(int)))
+  var row: seq[int]
+  newSeq(row, len2)
+  var e = s + len2 - 1 # end marker
+  for i in 1..len2 - half - 1: row[i] = i
+  row[0] = len1 - half - 1
+  for i in 1 .. len1 - 1:
+    var char1 = a[i + s - 1]
+    var char2p: int
+    var D, x: int
+    var p: int
+    if i >= len1 - half:
+      # skip the upper triangle:
+      var offset = i - len1 + half
+      char2p = offset
+      p = offset
+      var c3 = row[p] + ord(char1 != b[s + char2p])
+      inc(p)
+      inc(char2p)
+      x = row[p] + 1
+      D = x
+      if x > c3: x = c3
+      row[p] = x
+      inc(p)
+    else:
+      p = 1
+      char2p = 0
+      D = i
+      x = i
+    if i <= half + 1:
+      # skip the lower triangle:
+      e = len2 + i - half - 2
+    # main:
+    while p <= e:
+      dec(D)
+      var c3 = D + ord(char1 != b[char2p + s])
+      inc(char2p)
+      inc(x)
+      if x > c3: x = c3
+      D = row[p] + 1
+      if x > D: x = D
+      row[p] = x
+      inc(p)
+    # lower triangle sentinel:
+    if i <= half:
+      dec(D)
+      var c3 = D + ord(char1 != b[char2p + s])
+      inc(x)
+      if x > c3: x = c3
+      row[p] = x
+  result = row[e]
+  #dealloc(row)
 
 {.pop.}

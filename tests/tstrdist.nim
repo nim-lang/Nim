@@ -1,11 +1,11 @@
 # compute the edit distance between two strings
 
 proc editDistance(a, b: string): int =
-  var c: seq[int] = []
   var
+    c: seq[int]
     n = a.len
     m = b.len
-  setLength(c, (n+1)*(m+1))
+  newSeq(c, (n+1)*(m+1))
   for i in 0..n:
     c[i*n] = i # [i,0]
   for j in 0..m:

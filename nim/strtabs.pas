@@ -79,12 +79,11 @@ begin
   new(result);
   result.mode := mode;
   result.counter := 0;
-{@emit
-  result.data := []; }
-  setLength(result.data, startSize);
 {@ignore}
+  setLength(result.data, startSize);
   fillChar(result.data[0], length(result.data)*sizeof(result.data[0]), 0);
-{@emit}
+{@emit
+  newSeq(result.data, startSize); }
   i := 0;
   while i < high(keyValuePairs) do begin
     put(result, keyValuePairs[i], keyValuePairs[i+1]);
@@ -184,11 +183,12 @@ var
   n: TKeyValuePairSeq;
   i: int;
 begin
+{@ignore}
   n := emptySeq;
   setLength(n, length(t.data) * growthFactor);
-{@ignore}
   fillChar(n[0], length(n)*sizeof(n[0]), 0);
-{@emit}
+{@emit
+  newSeq(n, length(t.data) * growthFactor); }
   for i := 0 to high(t.data) do
     if not isNil(t.data[i].key) then
       RawInsert(t, n, t.data[i].key, t.data[i].val);

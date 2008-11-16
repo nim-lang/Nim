@@ -7,24 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-
-#
 # This file implements the ability to call native procs from libraries.
 # It is not possible to do this in a platform independant way, unfortunately.
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
-#
-# interface
 
 type
   EInvalidLibrary = object of EOS
-
-when defined(windows) or defined(dos):
-  {.define: USE_DLL.}
-elif defined(posix):
-  {.define: USE_DLOPEN.}
-elif defined(mac):
-  {.define: USE_DYLD.}
 
 type
   TLibHandle = pointer       # private type
@@ -37,15 +26,13 @@ proc nimLoadLibrary(path: string): TLibHandle {.compilerproc.}
 proc nimUnloadLibrary(lib: TLibHandle) {.compilerproc.}
 proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
 
-#implementation
-
 # this code was inspired from Lua's source code:
 # Lua - An Extensible Extension Language
 # Tecgraf: Computer Graphics Technology Group, PUC-Rio, Brazil
 # http://www.lua.org
 # mailto:info@lua.org
 
-when defined(USE_DLOPEN):
+when defined(posix):
   #
   # =========================================================================
   # This is an implementation based on the dlfcn interface.
@@ -76,7 +63,7 @@ when defined(USE_DLOPEN):
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)
 
-elif defined(USE_DLL):
+elif defined(windows) or defined(dos):
   #
   # =======================================================================
   # Native Windows Implementation
@@ -96,13 +83,13 @@ elif defined(USE_DLL):
 
   proc nimLoadLibrary(path: string): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
-    if result == nil: 
+    if result == nil:
       raise newException(EInvalidLibrary, "could not load: " & path)
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = GetProcAddress(cast[THINSTANCE](lib), name)
 
-elif defined(USE_DYLD):
+elif defined(mac):
   #
   # =======================================================================
   # Native Mac OS X / Darwin Implementation

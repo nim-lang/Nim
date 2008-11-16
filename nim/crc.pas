@@ -21,6 +21,8 @@ type
 const
   InitCrc32 = TCrc32(-1);
 
+  InitAdler32 = int32(1);
+
 function updateCrc32(val: Byte; crc: TCrc32): TCrc32; overload;
 function updateCrc32(val: Char; crc: TCrc32): TCrc32; overload;
 
@@ -28,6 +30,9 @@ function crcFromBuf(buf: Pointer; len: int): TCrc32;
 function strCrc32(const s: string): TCrc32;
 
 function crcFromFile(const filename: string): TCrc32;
+
+function updateAdler32(adler: int32; buf: pointer; len: int): int32;
+
 
 implementation
 
@@ -121,12 +126,12 @@ const
 
 function updateCrc32(val: Byte; crc: TCrc32): TCrc32; overload;
 begin
-  result := crc32Table[(int(crc) xor val) and $ff] xor (crc shr 8);
+  result := crc32Table[(int(crc) xor (int(val) and $ff)) and $ff] xor (int(crc) shr 8);
 end;
 
 function updateCrc32(val: Char; crc: TCrc32): TCrc32; overload;
 begin
-  result := updateCrc32(ord(val), crc);
+  result := updateCrc32(byte(ord(val)), crc);
 end;
 
 function strCrc32(const s: string): TCrc32;
@@ -171,6 +176,39 @@ begin
   end;
   dealloc(buf);
   CloseFile(bin);
+end;
+
+
+const
+  base = int32(65521); { largest prime smaller than 65536 }
+  {NMAX = 5552; original code with unsigned 32 bit integer }
+  { NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 }
+  nmax = 3854;        { code with signed 32 bit integer }
+  { NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^31-1 }
+  { The penalty is the time loss in the extra MOD-calls. }
+
+function updateAdler32(adler: int32; buf: pointer; len: int): int32;
+var
+  s1, s2: int32;
+  L, k, b: int;
+begin
+  s1 := adler and int32($ffff);
+  s2 := (adler shr int32(16)) and int32($ffff);
+  L := len;
+  b := 0;
+  while (L > 0) do begin
+    if L < nmax then k := L
+    else k := nmax;
+    dec(L, k);
+    while (k > 0) do begin
+      s1 := s1 +{%} int32(({@cast}cstring(buf))[b]);
+      s2 := s2 +{%} s1;
+      inc(b); dec(k);
+    end;
+    s1 := modu(s1, base);
+    s2 := modu(s2, base);
+  end;
+  result := (s2 shl int32(16)) or s1;
 end;
 
 {@ignore}

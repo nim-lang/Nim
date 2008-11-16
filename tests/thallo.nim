@@ -42,7 +42,7 @@ var `name` = readLine(stdin)
 echo("Hi " & thallo.name & "!\n")
 debug(name)
 
-var testseq: seq[string] = [ "a", "b", "c", "d"]
+var testseq: seq[string] = @[ "a", "b", "c", "d", "e"]
 echo(repr(testseq))
 
 var dummy = "hallo"

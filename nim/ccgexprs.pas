@@ -24,7 +24,7 @@ end;
 
 function int32Literal(i: Int): PRope;
 begin
-  if i = low(int32) then
+  if i = int(low(int32)) then
     // Nimrod has the same bug for the same reasons :-)
     result := toRope('(-2147483647 -1)')
   else
@@ -32,7 +32,7 @@ begin
 end;
 
 function genHexLiteral(v: PNode): PRope;
-// in C hex literals are unsigned (at least I think so)
+// hex literals are unsigned in C (at least I think so)
 // so we don't generate hex literals any longer.
 begin
   if not (v.kind in [nkIntLit..nkInt64Lit]) then
@@ -42,15 +42,16 @@ end;
 
 function getStrLit(m: BModule; const s: string): PRope;
 begin
-  inc(gunique);
-  result := con('Str', toRope(gunique));
+  useMagic(m, 'TGenericSeq');
+  result := con('TMP', toRope(getID()));
   appf(m.s[cfsData], 'STRING_LITERAL($1, $2, $3);$n',
-    [result, makeCString(s), ToRope(length(s))])
+    [result, makeCString(s), ToRope(length(s))]);
 end;
 
 function genLiteral(p: BProc; v: PNode; ty: PType): PRope; overload;
 var
   f: biggestFloat;
+  id: int;
 begin
   if ty = nil then internalError(v.info, 'genLiteral: ty is nil');
   case v.kind of
@@ -75,8 +76,18 @@ begin
     nkNilLit:
       result := toRope('0'+'');
     nkStrLit..nkTripleStrLit: begin
-      if skipVarGenericRange(ty).kind = tyString then
-        result := ropef('((string) &$1)', [getStrLit(p.module, v.strVal)])
+      if skipVarGenericRange(ty).kind = tyString then begin
+        id := NodeTableTestOrSet(p.module.dataCache, v, gid);
+        if id = gid then begin
+          // string literal not found in the cache:
+          useMagic(p.module, 'NimStringDesc');
+          result := ropef('((NimStringDesc*) &$1)',
+                          [getStrLit(p.module, v.strVal)])
+        end
+        else
+          result := ropef('((NimStringDesc*) &TMP$1)',
+                          [toRope(id)]);
+      end
       else
         result := makeCString(v.strVal)
     end;
@@ -138,21 +149,27 @@ begin
     end
   end
   else
-    result := toRope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
+    result := intLiteral(bitSetToWord(cs, size))
+  //  result := toRope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
 end;
 
 function genSetNode(p: BProc; n: PNode): PRope;
 var
   cs: TBitSet;
-  size: int;
+  size, id: int;
 begin
   size := int(getSize(n.typ));
   toBitSet(n, cs);
   if size > 8 then begin
-    result := getTempName();
-    appf(p.module.s[cfsData],
-      'static NIM_CONST $1 $2 = $3;',
-      [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
+    id := NodeTableTestOrSet(p.module.dataCache, n, gid);
+    result := con('TMP', toRope(id));
+    if id = gid then begin
+      // not found in cache:
+      inc(gid);
+      appf(p.module.s[cfsData],
+        'static NIM_CONST $1 $2 = $3;',
+        [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
+    end
   end
   else
     result := genRawSetData(cs, size)
@@ -209,15 +226,48 @@ begin
     result := ropef('((NU8)($1))', [result])
 end;
 
-procedure genRefAssign(p: BProc; const dest, src: TLoc);
+type
+  TAssignmentFlag = (needToCopy, needForSubtypeCheck,
+                     afDestIsNil, afDestIsNotNil,
+                     afSrcIsNil, afSrcIsNotNil);
+  TAssignmentFlags = set of TAssignmentFlag;
+
+procedure genRefAssign(p: BProc; const dest, src: TLoc;
+                       flags: TAssignmentFlags);
 begin
   if (dest.s = OnStack) or not (optRefcGC in gGlobalOptions) then
     // location is on hardware stack
     appf(p.s[cpsStmts], '$1 = $2;$n', [rdLoc(dest), rdLoc(src)])
   else if dest.s = OnHeap then begin // location is on heap
-    UseMagic(p.module, 'asgnRef');
-    appf(p.s[cpsStmts], 'asgnRef((void**) $1, $2);$n',
-      [addrLoc(dest), rdLoc(src)])
+    // now the writer barrier is inlined for performance:
+    (*
+    if afSrcIsNotNil in flags then begin
+      UseMagic(p.module, 'nimGCref');
+      appf(p.s[cpsStmts], 'nimGCref($1);$n', [rdLoc(src)]);
+    end
+    else if not (afSrcIsNil in flags) then begin
+      UseMagic(p.module, 'nimGCref');
+      appf(p.s[cpsStmts], 'if ($1) nimGCref($1);$n', [rdLoc(src)]);
+    end;
+    if afDestIsNotNil in flags then begin
+      UseMagic(p.module, 'nimGCunref');
+      appf(p.s[cpsStmts], 'nimGCunref($1);$n', [rdLoc(dest)]);
+    end
+    else if not (afDestIsNil in flags) then begin
+      UseMagic(p.module, 'nimGCunref');
+      appf(p.s[cpsStmts], 'if ($1) nimGCunref($1);$n', [rdLoc(dest)]);
+    end;
+    appf(p.s[cpsStmts], '$1 = $2;$n', [rdLoc(dest), rdLoc(src)]); *)
+    if canFormAcycle(dest.t) then begin
+      UseMagic(p.module, 'asgnRef');
+      appf(p.s[cpsStmts], 'asgnRef((void**) $1, $2);$n',
+                         [addrLoc(dest), rdLoc(src)])
+    end
+    else begin
+      UseMagic(p.module, 'asgnRefNoCycle');
+      appf(p.s[cpsStmts], 'asgnRefNoCycle((void**) $1, $2);$n',
+                         [addrLoc(dest), rdLoc(src)])    
+    end
   end
   else begin
     UseMagic(p.module, 'unsureAsgnRef');
@@ -225,10 +275,6 @@ begin
       [addrLoc(dest), rdLoc(src)])
   end
 end;
-
-type
-  TAssignmentFlag = (needToCopy, needForSubtypeCheck);
-  TAssignmentFlags = set of TAssignmentFlag;
 
 procedure genAssignment(p: BProc; const dest, src: TLoc;
                         flags: TAssignmentFlags); overload;
@@ -240,10 +286,10 @@ begin;
   ty := skipVarGenericRange(dest.t);
   case ty.kind of
     tyRef:
-      genRefAssign(p, dest, src);
+      genRefAssign(p, dest, src, flags);
     tySequence: begin
       if not (needToCopy in flags) then
-        genRefAssign(p, dest, src)
+        genRefAssign(p, dest, src, flags)
       else begin
         useMagic(p.module, 'genericSeqAssign'); // BUGFIX
         appf(p.s[cpsStmts], 'genericSeqAssign($1, $2, $3);$n',
@@ -252,16 +298,16 @@ begin;
     end;
     tyString: begin
       if not (needToCopy in flags) then
-        genRefAssign(p, dest, src)
+        genRefAssign(p, dest, src, flags)
       else begin
         useMagic(p.module, 'copyString');
         if (dest.s = OnStack) or not (optRefcGC in gGlobalOptions) then
           appf(p.s[cpsStmts], '$1 = copyString($2);$n',
             [rdLoc(dest), rdLoc(src)])
         else if dest.s = OnHeap then begin
-          useMagic(p.module, 'asgnRef');
+          useMagic(p.module, 'asgnRefNoCycle');
           useMagic(p.module, 'copyString'); // BUGFIX
-          appf(p.s[cpsStmts], 'asgnRef((void**) $1, copyString($2));$n',
+          appf(p.s[cpsStmts], 'asgnRefNoCycle((void**) $1, copyString($2));$n',
             [addrLoc(dest), rdLoc(src)])
         end
         else begin
@@ -337,15 +383,15 @@ end;
 
 procedure expr(p: BProc; e: PNode; var d: TLoc); forward;
 
-function initLocExpr(p: BProc; e: PNode): TLoc;
+procedure initLocExpr(p: BProc; e: PNode; var result: TLoc);
 begin
-  result := initLoc(locNone, getUniqueType(e.typ), OnUnknown);
+  initLoc(result, locNone, getUniqueType(e.typ), OnUnknown);
   expr(p, e, result)
 end;
 
 procedure getDestLoc(p: BProc; var d: TLoc; typ: PType);
 begin
-  if d.k = locNone then d := getTemp(p, typ)
+  if d.k = locNone then getTemp(p, typ, d)
 end;
 
 procedure putLocIntoDest(p: BProc; var d: TLoc; const s: TLoc);
@@ -364,7 +410,7 @@ var
   a: TLoc;
 begin
   if d.k <> locNone then begin // need to generate an assignment here
-    a := initLoc(locExpr, getUniqueType(t), OnUnknown);
+    initLoc(a, locExpr, getUniqueType(t), OnUnknown);
     a.r := r;
     if lfNoDeepCopy in d.flags then
       genAssignment(p, d, a, {@set}[])
@@ -387,11 +433,23 @@ var
 begin
   if (d.k <> locNone) then InternalError(e.info, 'binaryStmt');
   if magic <> '' then useMagic(p.module, magic);
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   appf(p.s[cpsStmts], frmt, [rdLoc(a), rdLoc(b)]);
   freeTemp(p, a);
   freeTemp(p, b)
+end;
+
+procedure unaryStmt(p: BProc; e: PNode; var d: TLoc;
+                    const magic, frmt: string);
+var
+  a: TLoc;
+begin
+  if (d.k <> locNone) then InternalError(e.info, 'unaryStmt');
+  if magic <> '' then useMagic(p.module, magic);
+  InitLocExpr(p, e.sons[1], a);
+  appf(p.s[cpsStmts], frmt, [rdLoc(a)]);
+  freeTemp(p, a);
 end;
 
 procedure binaryStmtChar(p: BProc; e: PNode; var d: TLoc;
@@ -401,8 +459,8 @@ var
 begin
   if (d.k <> locNone) then InternalError(e.info, 'binaryStmtChar');
   if magic <> '' then useMagic(p.module, magic);
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   appf(p.s[cpsStmts], frmt, [rdCharLoc(a), rdCharLoc(b)]);
   freeTemp(p, a);
   freeTemp(p, b)
@@ -416,9 +474,10 @@ begin
   if magic <> '' then useMagic(p.module, magic);
   assert(e.sons[1].typ <> nil);
   assert(e.sons[2].typ <> nil);
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
-  putIntoDest(p, d, e.typ, ropef(frmt, [rdLoc(a), rdLoc(b)]));
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
+  putIntoDest(p, d, e.typ, 
+              ropef(frmt, [rdLoc(a), rdLoc(b), getTypeDesc(p.module, e.typ)]));
   if d.k <> locExpr then begin // BACKPORT
     freeTemp(p, a);
     freeTemp(p, b)
@@ -433,8 +492,8 @@ begin
   if magic <> '' then useMagic(p.module, magic);
   assert(e.sons[1].typ <> nil);
   assert(e.sons[2].typ <> nil);
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   putIntoDest(p, d, e.typ, ropef(frmt, [rdCharLoc(a), rdCharLoc(b)]));
   if d.k <> locExpr then begin // BACKPORT
     freeTemp(p, a);
@@ -448,8 +507,9 @@ var
   a: TLoc;
 begin
   if magic <> '' then useMagic(p.module, magic);
-  a := InitLocExpr(p, e.sons[1]);
-  putIntoDest(p, d, e.typ, ropef(frmt, [rdLoc(a)]));
+  InitLocExpr(p, e.sons[1], a);
+  putIntoDest(p, d, e.typ, ropef(frmt, 
+             [rdLoc(a), getTypeDesc(p.module, e.typ)]));
   if d.k <> locExpr then // BACKPORT
     freeTemp(p, a)
 end;
@@ -460,7 +520,7 @@ var
   a: TLoc;
 begin
   if magic <> '' then useMagic(p.module, magic);
-  a := InitLocExpr(p, e.sons[1]);
+  InitLocExpr(p, e.sons[1], a);
   putIntoDest(p, d, e.typ, ropef(frmt, [rdCharLoc(a)]));
   if d.k <> locExpr then // BACKPORT
     freeTemp(p, a)
@@ -472,15 +532,16 @@ const
     'addInt64', 'subInt64', 'mulInt64', 'divInt64', 'modInt64'
   );
   binWoOverflowTab: array [mAddi..mModi64] of string = (
-    '($1 + $2)', '($1 - $2)', '($1 * $2)', '($1 / $2)', '($1 % $2)',
+    '($3)($1 + $2)', '($3)($1 - $2)', '($3)($1 * $2)', '($3)($1 / $2)', 
+    '($3)($1 % $2)',
     '($1 + $2)', '($1 - $2)', '($1 * $2)', '($1 / $2)', '($1 % $2)'
   );
   binArithTab: array [mShrI..mXor] of string = (
-    '(NI)((NU)($1) >> (NU)($2))', // ShrI
-    '(NI)((NU)($1) << (NU)($2))', // ShlI
-    '($1 & $2)', // BitandI
-    '($1 | $2)', // BitorI
-    '($1 ^ $2)', // BitxorI
+    '($3)((NU)($1) >> (NU)($2))', // ShrI
+    '($3)((NU)($1) << (NU)($2))', // ShlI
+    '($3)($1 & $2)', // BitandI
+    '($3)($1 | $2)', // BitorI
+    '($3)($1 ^ $2)', // BitxorI
     '(($1 <= $2) ? $1 : $2)', // MinI
     '(($1 >= $2) ? $1 : $2)', // MaxI
     '(NI64)((NU64)($1) >> (NU64)($2))', // ShrI64
@@ -498,11 +559,11 @@ const
     '(($1 <= $2) ? $1 : $2)', // MinF64
     '(($1 >= $2) ? $1 : $2)', // MaxF64
 
-    '(NI)((NU)($1) + (NU)($2))', // AddU
-    '(NI)((NU)($1) - (NU)($2))', // SubU
-    '(NI)((NU)($1) * (NU)($2))', // MulU
-    '(NI)((NU)($1) / (NU)($2))', // DivU
-    '(NI)((NU)($1) % (NU)($2))', // ModU
+    '($3)((NU)($1) + (NU)($2))', // AddU
+    '($3)((NU)($1) - (NU)($2))', // SubU
+    '($3)((NU)($1) * (NU)($2))', // MulU
+    '($3)((NU)($1) / (NU)($2))', // DivU
+    '($3)((NU)($1) % (NU)($2))', // ModU
     '(NI64)((NU64)($1) + (NU64)($2))', // AddU64
     '(NI64)((NU64)($1) - (NU64)($2))', // SubU64
     '(NI64)((NU64)($1) * (NU64)($2))', // MulU64
@@ -545,8 +606,8 @@ const
   );
   unArithTab: array [mNot..mToBiggestInt] of string = (
     '!($1)',  // Not
-    '+($1)',  // UnaryPlusI
-    '~($1)',  // BitnotI
+    '$1',  // UnaryPlusI
+    '(($2) ~($1))',  // BitnotI
     '+($1)',  // UnaryPlusI64
     '~($1)',  // BitnotI64
     '+($1)',  // UnaryPlusF64
@@ -576,9 +637,9 @@ const
     'absInt64'  // AbsI64
   );
   unWoOverflowTab: array [mUnaryMinusI..mAbsI64] of string = (
-    '-($1)', // UnaryMinusI
+    '(($2)-($1))', // UnaryMinusI
     '-($1)', // UnaryMinusI64
-    'abs($1)', // AbsI
+    '($2)abs($1)', // AbsI
     '($1 > 0? ($1) : -($1))' // AbsI64
   );
 
@@ -588,11 +649,38 @@ begin
 end;
 
 procedure binaryArithOverflow(p: BProc; e: PNode; var d: TLoc; op: TMagic);
+var
+  a, b: TLoc;
 begin
-  if optOverflowCheck in p.options then
-    binaryExpr(p, e, d, binOverflowTab[op], binOverflowTab[op] + '($1, $2)')
-  else
+  if not (optOverflowCheck in p.options) then
     binaryExpr(p, e, d, '', binWoOverflowTab[op])
+  else begin  
+    case op of
+      mAddi..mModi: begin
+        if (skipGeneric(e.typ).kind = tyInt) then
+          binaryExpr(p, e, d, binOverflowTab[op], 
+                     binOverflowTab[op] + '($1, $2)')
+        else begin
+          InitLocExpr(p, e.sons[1], a);
+          InitLocExpr(p, e.sons[2], b);
+          UseMagic(p.module, binOverflowTab[op]);
+          UseMagic(p.module, 'raiseOverflow');
+          a.r := ropef(binOverflowTab[op] + '($1, $2)',
+                      [rdLoc(a), rdLoc(b)]);
+          if d.k = locNone then getTemp(p, getSysType(tyInt), d);
+          genAssignment(p, d, a, {@set}[]);
+          appf(p.s[cpsStmts], 'if ($1 < $2 || $1 > $3) raiseOverflow();$n',
+               [rdLoc(d), intLiteral(firstOrd(e.typ)), 
+                          intLiteral(lastOrd(e.typ))]);
+          d.t := e.typ;
+          d.r := ropef('($1)($2)', [getTypeDesc(p.module, e.typ), rdLoc(d)]);
+        end
+      end;
+      mAddi64..mModi64: 
+        binaryExpr(p, e, d, binOverflowTab[op], binOverflowTab[op] + '($1, $2)');
+      else InternalError(e.info, 'binaryArithOverflow');
+    end
+  end
 end;
 
 procedure unaryArith(p: BProc; e: PNode; var d: TLoc; op: TMagic);
@@ -603,7 +691,7 @@ end;
 procedure unaryArithOverflow(p: BProc; e: PNode; var d: TLoc; op: TMagic);
 begin
   if optOverflowCheck in p.options then
-    unaryExpr(p, e, d, unOverflowTab[op], unOverflowTab[op] + '($1)')
+    unaryExpr(p, e, d, unOverflowTab[op], '($2)' + unOverflowTab[op] + '($1)')
   else
     unaryExpr(p, e, d, '', unWoOverflowTab[op])
 end;
@@ -615,7 +703,7 @@ begin
   if mapType(e.sons[0].typ) = ctArray then
     expr(p, e.sons[0], d)
   else begin
-    a := initLocExpr(p, e.sons[0]);
+    initLocExpr(p, e.sons[0], a);
     case skipGeneric(a.t).kind of
       tyRef: d.s := OnHeap;
       tyVar: d.s := OnUnknown;
@@ -633,7 +721,7 @@ begin
   if mapType(e.sons[0].typ) = ctArray then
     expr(p, e.sons[0], d)
   else begin
-    a := InitLocExpr(p, e.sons[0]);
+    InitLocExpr(p, e.sons[0], a);
     putIntoDest(p, d, e.typ, addrLoc(a));
     if d.k <> locExpr then freeTemp(p, a)
   end
@@ -641,7 +729,7 @@ end;
 
 function genRecordFieldAux(p: BProc; e: PNode; var d, a: TLoc): PType;
 begin
-  a := initLocExpr(p, e.sons[0]);
+  initLocExpr(p, e.sons[0], a);
   if (e.sons[1].kind <> nkSym) then InternalError(e.info, 'genRecordFieldAux');
   if d.k = locNone then d.s := a.s;
   {@discard} getTypeDesc(p.module, a.t); // fill the record's fields.loc
@@ -679,12 +767,13 @@ var
   a, u, v, test: TLoc;
   f, field, op: PSym;
   ty: PType;
-  r: PRope;
-  i: int;
+  r, strLit: PRope;
+  i, id: int;
   it: PNode;
 begin
   if optFieldCheck in p.options then begin
     useMagic(p.module, 'raiseFieldError');
+    useMagic(p.module, 'NimStringDesc');
     ty := genRecordFieldAux(p, e.sons[0], d, a);
     r := rdLoc(a);
     f := e.sons[0].sons[1].sym;
@@ -706,19 +795,26 @@ begin
       op := it.sons[0].sym;
       if op.magic = mNot then it := it.sons[1];
       assert(it.sons[2].kind = nkSym);
-      test := initLoc(locNone, it.typ, OnStack);
-      u := InitLocExpr(p, it.sons[1]);
-      v := initLoc(locExpr, it.sons[2].typ, OnUnknown);
+      initLoc(test, locNone, it.typ, OnStack);
+      InitLocExpr(p, it.sons[1], u);
+      initLoc(v, locExpr, it.sons[2].typ, OnUnknown);
       v.r := ropef('$1.$2', [r, it.sons[2].sym.loc.r]);
       genInExprAux(p, it, u, v, test);
+
+      id := NodeTableTestOrSet(p.module.dataCache,
+                               newStrNode(nkStrLit, field.name.s), gid);
+      if id = gid then
+        strLit := getStrLit(p.module, field.name.s)
+      else
+        strLit := con('TMP', toRope(id));
       if op.magic = mNot then
         appf(p.s[cpsStmts],
-          'if ($1) raiseFieldError(((string) &$2));$n',
-          [rdLoc(test), getStrLit(p.module, field.name.s)])
+          'if ($1) raiseFieldError(((NimStringDesc*) &$2));$n',
+          [rdLoc(test), strLit])
       else
         appf(p.s[cpsStmts],
-          'if (!($1)) raiseFieldError(((string) &$2));$n',
-          [rdLoc(test), getStrLit(p.module, field.name.s)])
+          'if (!($1)) raiseFieldError(((NimStringDesc*) &$2));$n',
+          [rdLoc(test), strLit])
     end;
     appf(r, '.$1', [field.loc.r]);
     putIntoDest(p, d, field.typ, r);
@@ -733,17 +829,24 @@ var
   ty: PType;
   first: PRope;
 begin
-  a := initLocExpr(p, e.sons[0]);
-  b := initLocExpr(p, e.sons[1]);
+  initLocExpr(p, e.sons[0], a);
+  initLocExpr(p, e.sons[1], b);
   ty := skipPtrsGeneric(skipVarGenericRange(a.t));
   first := intLiteral(firstOrd(ty));
   // emit range check:
-  if optBoundsCheck in p.options then
+  if (optBoundsCheck in p.options) then
     if b.k <> locImmediate then begin // semantic pass has already checked:
       useMagic(p.module, 'raiseIndexError');
-      appf(p.s[cpsStmts],
-               'if ($1 < $2 || $1 > $3) raiseIndexError();$n',
-               [rdCharLoc(b), first, intLiteral(lastOrd(ty))])
+      if firstOrd(ty) = 0 then begin
+        if lastOrd(b.t) > lastOrd(ty) then
+          appf(p.s[cpsStmts],
+             'if ((NU)($1) > (NU)($2)) raiseIndexError();$n',
+               [rdCharLoc(b), intLiteral(lastOrd(ty))])
+      end
+      else
+        appf(p.s[cpsStmts],
+             'if ($1 < $2 || $1 > $3) raiseIndexError();$n',
+             [rdCharLoc(b), first, intLiteral(lastOrd(ty))])
     end;
   if d.k = locNone then d.s := a.s;
   putIntoDest(p, d, elemType(skipVarGeneric(ty)), ropef('$1[($2)-$3]',
@@ -757,8 +860,8 @@ var
   a, b: TLoc;
   ty: PType;
 begin
-  a := initLocExpr(p, e.sons[0]);
-  b := initLocExpr(p, e.sons[1]);
+  initLocExpr(p, e.sons[0], a);
+  initLocExpr(p, e.sons[1], b);
   ty := skipVarGenericRange(a.t);
   if d.k = locNone then d.s := a.s;
   putIntoDest(p, d, elemType(skipVarGeneric(ty)), ropef('$1[$2]',
@@ -771,13 +874,13 @@ procedure genOpenArrayElem(p: BProc; e: PNode; var d: TLoc);
 var
   a, b: TLoc;
 begin
-  a := initLocExpr(p, e.sons[0]);
-  b := initLocExpr(p, e.sons[1]);
+  initLocExpr(p, e.sons[0], a);
+  initLocExpr(p, e.sons[1], b);
   // emit range check:
-  if optBoundsCheck in p.options then begin
+  if (optBoundsCheck in p.options) then begin
     useMagic(p.module, 'raiseIndexError');
     appf(p.s[cpsStmts],
-      'if ((NU)($1) > (NU)($2Len0)) raiseIndexError();$n', [rdLoc(b), a.r])
+      'if ((NU)($1) > (NU)($2Len0)) raiseIndexError();$n', [rdLoc(b), rdLoc(a)])
   end;
   if d.k = locNone then d.s := a.s;
   putIntoDest(p, d, elemType(skipVarGeneric(a.t)), ropef('$1[$2]',
@@ -791,20 +894,20 @@ var
   a, b: TLoc;
   ty: PType;
 begin
-  a := initLocExpr(p, e.sons[0]);
-  b := initLocExpr(p, e.sons[1]);
+  initLocExpr(p, e.sons[0], a);
+  initLocExpr(p, e.sons[1], b);
   ty := skipVarGenericRange(a.t);
   if ty.kind in [tyRef, tyPtr] then ty := skipVarGenericRange(ty.sons[0]);
   // emit range check:
-  if optBoundsCheck in p.options then begin
+  if (optBoundsCheck in p.options) then begin
     useMagic(p.module, 'raiseIndexError');
     if ty.kind = tyString then
       appf(p.s[cpsStmts],
-        'if ((NU)($1) > (NU)($2->len)) raiseIndexError();$n',
+        'if ((NU)($1) > (NU)($2->Sup.len)) raiseIndexError();$n',
         [rdLoc(b), rdLoc(a)])
     else
       appf(p.s[cpsStmts],
-        'if ((NU)($1) >= (NU)($2->len)) raiseIndexError();$n',
+        'if ((NU)($1) >= (NU)($2->Sup.len)) raiseIndexError();$n',
         [rdLoc(b), rdLoc(a)])
   end;
   if d.k = locNone then d.s := OnHeap;
@@ -841,7 +944,7 @@ var
   L: TLabel;
   tmp: TLoc;
 begin
-  tmp := getTemp(p, e.typ); // force it into a temp!
+  getTemp(p, e.typ, tmp); // force it into a temp!
   expr(p, e.sons[1], tmp);
   L := getLabel(p);
   if m = mOr then
@@ -877,13 +980,13 @@ var
   a, tmp: TLoc;
   Lend, Lelse: TLabel;
 begin
-  tmp := getTemp(p, n.typ); // force it into a temp!
+  getTemp(p, n.typ, tmp); // force it into a temp!
   Lend := getLabel(p);
   for i := 0 to sonsLen(n)-1 do begin
     it := n.sons[i];
     case it.kind of
       nkElifExpr: begin
-        a := initLocExpr(p, it.sons[0]);
+        initLocExpr(p, it.sons[0], a);
         Lelse := getLabel(p);
         appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
         freeTemp(p, a);
@@ -909,55 +1012,51 @@ end;
 procedure genCall(p: BProc; t: PNode; var d: TLoc);
 var
   param: PSym;
-  a: array of TLoc;
   invalidRetType: bool;
   typ: PType;
   pl: PRope; // parameter list
-  op, list: TLoc;
+  op, list, a: TLoc;
   len, i: int;
 begin
-{@emit
-  a := [];
-}
-  op := initLocExpr(p, t.sons[0]);
+  // this is a hotspot in the compiler
+  initLocExpr(p, t.sons[0], op);
   pl := con(op.r, '('+'');
-  typ := getUniqueType(t.sons[0].typ);
+  //typ := getUniqueType(t.sons[0].typ);
+  typ := t.sons[0].typ; // getUniqueType() is too expensive here!
   assert(typ.kind = tyProc);
   invalidRetType := isInvalidReturnType(typ.sons[0]);
   len := sonsLen(t);
-  setLength(a, len-1);
   for i := 1 to len-1 do begin
-    a[i-1] := initLocExpr(p, t.sons[i]); // generate expression for param
+    initLocExpr(p, t.sons[i], a); // generate expression for param
     assert(sonsLen(typ) = sonsLen(typ.n));
     if (i < sonsLen(typ)) then begin
       assert(typ.n.sons[i].kind = nkSym);
       param := typ.n.sons[i].sym;
-      if ccgIntroducedPtr(param) then app(pl, addrLoc(a[i-1]))
-      else                            app(pl, rdLoc(a[i-1]));
+      if ccgIntroducedPtr(param) then app(pl, addrLoc(a))
+      else                            app(pl, rdLoc(a));
     end
     else
-      app(pl, rdLoc(a[i-1]));
+      app(pl, rdLoc(a));
     if (i < len-1) or (invalidRetType and (typ.sons[0] <> nil)) then
       app(pl, ', ')
   end;
   if (typ.sons[0] <> nil) and invalidRetType then begin
-    if d.k = locNone then d := getTemp(p, typ.sons[0]);
+    if d.k = locNone then getTemp(p, typ.sons[0], d);
     app(pl, addrLoc(d));
   end;
   app(pl, ')'+'');
-  for i := 0 to high(a) do
-    freeTemp(p, a[i]); // important to free the temporaries
-  freeTemp(p, op);
   if (typ.sons[0] <> nil) and not invalidRetType then begin
-    if d.k = locNone then d := getTemp(p, typ.sons[0]);
+    if d.k = locNone then getTemp(p, typ.sons[0], d);
     assert(d.t <> nil);
     // generate an assignment to d:
-    list := initLoc(locCall, nil, OnUnknown);
+    initLoc(list, locCall, nil, OnUnknown);
     list.r := pl;
     genAssignment(p, d, list, {@set}[]) // no need for deep copying
   end
-  else
-    appf(p.s[cpsStmts], '$1;$n', [pl])
+  else begin
+    app(p.s[cpsStmts], pl);
+    app(p.s[cpsStmts], ';' + tnl)
+  end
 end;
 
 procedure genStrConcat(p: BProc; e: PNode; var d: TLoc);
@@ -984,17 +1083,17 @@ var
   L, i: int;
 begin
   useMagic(p.module, 'rawNewString');
-  tmp := getTemp(p, e.typ);
+  getTemp(p, e.typ, tmp);
   L := 0;
   appends := nil;
   lens := nil;
-{@emit
-  a := [];
-}
+{@ignore}
   setLength(a, sonsLen(e)-1);
+{@emit
+  newSeq(a, sonsLen(e)-1); }
   for i := 0 to sonsLen(e)-2 do begin
     // compute the length expression:
-    a[i] := initLocExpr(p, e.sons[i+1]);
+    initLocExpr(p, e.sons[i+1], a[i]);
     if skipVarGenericRange(e.sons[i+1].Typ).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
@@ -1004,7 +1103,7 @@ begin
       if e.sons[i+1].kind in [nkStrLit..nkTripleStrLit] then  // string literal?
         Inc(L, length(e.sons[i+1].strVal))
       else
-        appf(lens, '$1->len + ', [rdLoc(a[i])]);
+        appf(lens, '$1->Sup.len + ', [rdLoc(a[i])]);
       useMagic(p.module, 'appendString');
       appf(appends, 'appendString($1, $2);$n', [tmp.r, rdLoc(a[i])])
     end
@@ -1044,14 +1143,14 @@ begin
   L := 0;
   appends := nil;
   lens := nil;
-{@emit
-  a := [];
-}
+{@ignore}
   setLength(a, sonsLen(e)-1);
+{@emit
+  newSeq(a, sonsLen(e)-1); }
   expr(p, e.sons[1], a[0]);
   for i := 0 to sonsLen(e)-3 do begin
     // compute the length expression:
-    a[i+1] := initLocExpr(p, e.sons[i+2]);
+    initLocExpr(p, e.sons[i+2], a[i+1]);
     if skipVarGenericRange(e.sons[i+2].Typ).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
@@ -1062,7 +1161,7 @@ begin
       if e.sons[i+2].kind in [nkStrLit..nkTripleStrLit] then  // string literal?
         Inc(L, length(e.sons[i+2].strVal))
       else
-        appf(lens, '$1->len + ', [rdLoc(a[i+1])]);
+        appf(lens, '$1->Sup.len + ', [rdLoc(a[i+1])]);
       useMagic(p.module, 'appendString');
       appf(appends, 'appendString($1, $2);$n',
         [rdLoc(a[0]), rdLoc(a[i+1])])
@@ -1077,23 +1176,50 @@ end;
 
 procedure genSeqElemAppend(p: BProc; e: PNode; var d: TLoc);
 // seq &= x  -->
-//    seq = (typeof seq) incrSeq( (TGenericSeq*) seq, sizeof(x));
+//    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
 //    seq->data[seq->len-1] = x;
 var
   a, b, dest: TLoc;
 begin
   useMagic(p.module, 'incrSeq');
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   appf(p.s[cpsStmts],
-    '$1 = ($2) incrSeq((TGenericSeq*) $1, sizeof($3));$n',
+    '$1 = ($2) incrSeq(&($1)->Sup, sizeof($3));$n',
     [rdLoc(a), getTypeDesc(p.module, skipVarGeneric(e.sons[1].typ)),
     getTypeDesc(p.module, skipVarGeneric(e.sons[2].Typ))]);
-  dest := initLoc(locExpr, b.t, OnHeap);
-  dest.r := ropef('$1->data[$1->len-1]', [rdLoc(a)]);
-  genAssignment(p, dest, b, {@set}[needToCopy]);
-  freeTemp(p, a);
-  freeTemp(p, b)
+  initLoc(dest, locExpr, b.t, OnHeap);
+  dest.r := ropef('$1->data[$1->Sup.len-1]', [rdLoc(a)]);
+  genAssignment(p, dest, b, {@set}[needToCopy, afDestIsNil]);
+end;
+
+procedure genObjectInit(p: BProc; t: PType; const a: TLoc; takeAddr: bool);
+var
+  r: PRope;
+  s: PType;
+begin
+  case analyseObjectWithTypeField(t) of
+    frNone: begin end;
+    frHeader: begin
+      r := rdLoc(a);
+      if not takeAddr then r := ropef('(*$1)', [r]);
+      s := t;
+      while (s.kind = tyObject) and (s.sons[0] <> nil) do begin
+        app(r, '.Sup');
+        s := skipGeneric(s.sons[0]);
+      end;    
+      appf(p.s[cpsStmts], '$1.m_type = $2;$n',
+          [r, genTypeInfo(p.module, t)])
+    end;
+    frEmbedded: begin 
+      // worst case for performance:
+      useMagic(p.module, 'objectInit');
+      if takeAddr then r := addrLoc(a)
+      else r := rdLoc(a);
+      appf(p.s[cpsStmts], 'objectInit($1, $2);$n',
+          [r, genTypeInfo(p.module, t)])
+    end
+  end
 end;
 
 procedure genNew(p: BProc; e: PNode);
@@ -1103,20 +1229,63 @@ var
 begin
   useMagic(p.module, 'newObj');
   refType := skipVarGenericRange(e.sons[1].typ);
-  a := InitLocExpr(p, e.sons[1]);
-  b := initLoc(locExpr, a.t, OnHeap);
+  InitLocExpr(p, e.sons[1], a);
+  initLoc(b, locExpr, a.t, OnHeap);
   b.r := ropef('($1) newObj($2, sizeof($3))',
     [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
     getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
   bt := skipGenericRange(refType.sons[0]);
-  if containsObject(bt) then begin
-    useMagic(p.module, 'objectInit');
-    appf(p.s[cpsStmts], 'objectInit($1, $2);$n',
-        [rdLoc(a), genTypeInfo(p.module, bt)])
+  genObjectInit(p, bt, a, false);
+end;
+
+procedure genNewSeq(p: BProc; e: PNode);
+var
+  a, b, c: TLoc;
+  seqtype: PType;
+begin
+  useMagic(p.module, 'newSeq');
+  seqType := skipVarGenericRange(e.sons[1].typ);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
+  initLoc(c, locExpr, a.t, OnHeap);
+  c.r := ropef('($1) newSeq($2, $3)',
+    [getTypeDesc(p.module, seqtype),
+     genTypeInfo(p.module, seqType),
+     rdLoc(b)]);
+  genAssignment(p, a, c, {@set}[]);
+end;
+
+procedure genIs(p: BProc; n: PNode; var d: TLoc);
+var
+  a: TLoc;
+  dest, t: PType;
+  r, nilcheck: PRope;
+begin
+  initLocExpr(p, n.sons[1], a);
+  dest := skipPtrsGeneric(n.sons[2].typ);
+  useMagic(p.module, 'isObj');
+  r := rdLoc(a);
+  nilCheck := nil;
+  t := skipGeneric(a.t);
+  while t.kind in [tyVar, tyPtr, tyRef] do begin
+    if t.kind <> tyVar then nilCheck := r;
+    r := ropef('(*$1)', [r]);
+    t := skipGeneric(t.sons[0])
   end;
-  freeTemp(p, a)
+  if gCmd <> cmdCompileToCpp then
+    while (t.kind = tyObject) and (t.sons[0] <> nil) do begin
+      app(r, '.Sup');
+      t := skipGeneric(t.sons[0]);
+    end;
+  if nilCheck <> nil then
+    r := ropef('(($1) && isObj($2.m_type, $3))',
+      [nilCheck, r, genTypeInfo(p.module, dest)])
+  else
+    r := ropef('isObj($1.m_type, $2)',
+      [r, genTypeInfo(p.module, dest)]);
+  putIntoDest(p, d, n.typ, r);
 end;
 
 procedure genNewFinalize(p: BProc; e: PNode);
@@ -1127,9 +1296,9 @@ var
 begin
   useMagic(p.module, 'newObj');
   refType := skipVarGenericRange(e.sons[1].typ);
-  a := InitLocExpr(p, e.sons[1]);
-  f := InitLocExpr(p, e.sons[2]);
-  b := initLoc(locExpr, a.t, OnHeap);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], f);
+  initLoc(b, locExpr, a.t, OnHeap);
   ti := genTypeInfo(p.module, refType);
   appf(p.module.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
     ti, rdLoc(f)]);
@@ -1139,13 +1308,7 @@ begin
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
   bt := skipGenericRange(refType.sons[0]);
-  if containsObject(bt) then begin
-    useMagic(p.module, 'objectInit');
-    appf(p.s[cpsStmts], 'objectInit($1, $2);$n',
-                  [rdLoc(a), genTypeInfo(p.module, bt)])
-  end;
-  freeTemp(p, a);
-  freeTemp(p, f)
+  genObjectInit(p, bt, a, false);
 end;
 
 procedure genRepr(p: BProc; e: PNode; var d: TLoc);
@@ -1153,7 +1316,7 @@ var
   a: TLoc;
   t: PType;
 begin
-  a := InitLocExpr(p, e.sons[1]);
+  InitLocExpr(p, e.sons[1], a);
   t := skipVarGenericRange(e.sons[1].typ);
   case t.kind of
     tyInt..tyInt64: begin
@@ -1192,7 +1355,7 @@ begin
         tyOpenArray:
           putIntoDest(p, d, e.typ, ropef('$1, $1Len0', [rdLoc(a)]));
         tyString, tySequence:
-          putIntoDest(p, d, e.typ, ropef('$1->data, $1->len', [rdLoc(a)]));
+          putIntoDest(p, d, e.typ, ropef('$1->data, $1->Sup.len', [rdLoc(a)]));
         tyArray, tyArrayConstr:
           putIntoDest(p, d, e.typ, ropef('$1, $2',
             [rdLoc(a), toRope(lengthOrd(a.t))]));
@@ -1221,9 +1384,11 @@ procedure genDollar(p: BProc; n: PNode; var d: TLoc; const magic, frmt: string);
 var
   a: TLoc;
 begin
-  a := InitLocExpr(p, n.sons[1]);
+  InitLocExpr(p, n.sons[1], a);
   UseMagic(p.module, magic);
-  putIntoDest(p, d, n.typ, ropef(frmt, [rdLoc(a)]))
+  a.r := ropef(frmt, [rdLoc(a)]);
+  if d.k = locNone then getTemp(p, n.typ, d);
+  genAssignment(p, d, a, {@set}[]);
 end;
 
 procedure genArrayLen(p: BProc; e: PNode; var d: TLoc; op: TMagic);
@@ -1238,13 +1403,18 @@ begin
       if op = mHigh then
         unaryExpr(p, e, d, '', '($1Len0-1)')
       else
-        unaryExpr(p, e, d, '', '$1Len0/*len*/');
+        unaryExpr(p, e, d, '', '$1Len0');
     end;
+    tyCstring:
+      if op = mHigh then
+        unaryExpr(p, e, d, '', '(strlen($1)-1)')
+      else
+        unaryExpr(p, e, d, '', 'strlen($1)');
     tyString, tySequence:
       if op = mHigh then
-        unaryExpr(p, e, d, '', '($1->len-1)')
+        unaryExpr(p, e, d, '', '($1->Sup.len-1)')
       else
-        unaryExpr(p, e, d, '', '$1->len');
+        unaryExpr(p, e, d, '', '$1->Sup.len');
     tyArray, tyArrayConstr: begin
       // YYY: length(sideeffect) is optimized away incorrectly?
       if op = mHigh then
@@ -1264,11 +1434,11 @@ var
 begin
   assert(d.k = locNone);
   useMagic(p.module, 'setLengthSeq');
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   t := skipVarGeneric(e.sons[1].typ);
   appf(p.s[cpsStmts],
-    '$1 = ($3) setLengthSeq((TGenericSeq*) ($1), sizeof($4), $2);$n',
+    '$1 = ($3) setLengthSeq(&($1)->Sup, sizeof($4), $2);$n',
     [rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
     getTypeDesc(p.module, t.sons[0])]);
   freeTemp(p, a);
@@ -1288,9 +1458,9 @@ procedure genSwap(p: BProc; e: PNode; var d: TLoc);
 var
   a, b, tmp: TLoc;
 begin
-  tmp := getTemp(p, skipVarGeneric(e.sons[1].typ));
-  a := InitLocExpr(p, e.sons[1]); // eval a
-  b := InitLocExpr(p, e.sons[2]); // eval b
+  getTemp(p, skipVarGeneric(e.sons[1].typ), tmp);
+  InitLocExpr(p, e.sons[1], a); // eval a
+  InitLocExpr(p, e.sons[2], b); // eval b
   genAssignment(p, tmp, a, {@set}[]);
   genAssignment(p, a, b, {@set}[]);
   genAssignment(p, b, tmp, {@set}[]);
@@ -1348,8 +1518,8 @@ var
   a, b: TLoc;
 begin
   assert(d.k = locNone);
-  a := InitLocExpr(p, e.sons[1]);
-  b := InitLocExpr(p, e.sons[2]);
+  InitLocExpr(p, e.sons[1], a);
+  InitLocExpr(p, e.sons[2], b);
   appf(p.s[cpsStmts], frmt, [rdLoc(a), rdSetElemLoc(b, a.t)]);
   freeTemp(p, a);
   freeTemp(p, b)
@@ -1364,22 +1534,22 @@ begin
   if (e.sons[1].Kind = nkCurly) and fewCmps(e.sons[1]) then begin
     // a set constructor but not a constant set:
     // do not emit the set, but generate a bunch of comparisons
-    a := initLocExpr(p, e.sons[2]);
-    b := initLoc(locExpr, e.typ, OnUnknown);
+    initLocExpr(p, e.sons[2], a);
+    initLoc(b, locExpr, e.typ, OnUnknown);
     b.r := toRope('('+'');
     len := sonsLen(e.sons[1]);
-    {@emit c := [];}
+    {@emit c := @[];}
     for i := 0 to len-1 do begin
       if e.sons[1].sons[i].Kind = nkRange then begin
         setLength(c, length(c)+2);
-        c[high(c)-1] := InitLocExpr(p, e.sons[1].sons[i].sons[0]);
-        c[high(c)] := InitLocExpr(p, e.sons[1].sons[i].sons[1]);
+        InitLocExpr(p, e.sons[1].sons[i].sons[0], c[high(c)-1]);
+        InitLocExpr(p, e.sons[1].sons[i].sons[1], c[high(c)]);
         appf(b.r, '$1 >= $2 && $1 <= $3',
           [rdCharLoc(a), rdCharLoc(c[high(c)-1]), rdCharLoc(c[high(c)])])
       end
       else begin
         setLength(c, length(c)+1);
-        c[high(c)] := InitLocExpr(p, e.sons[1].sons[i]);
+        InitLocExpr(p, e.sons[1].sons[i], c[high(c)]);
         appf(b.r, '$1 == $2', [rdCharLoc(a), rdCharLoc(c[high(c)])])
       end;
       if i < len - 1 then
@@ -1395,8 +1565,8 @@ begin
   else begin
     assert(e.sons[1].typ <> nil);
     assert(e.sons[2].typ <> nil);
-    a := InitLocExpr(p, e.sons[1]);
-    b := InitLocExpr(p, e.sons[2]);
+    InitLocExpr(p, e.sons[1], a);
+    InitLocExpr(p, e.sons[2], b);
     genInExprAux(p, e, a, b, d);
   end
 end;
@@ -1459,11 +1629,10 @@ begin
         mCard: unaryExprChar(p, e, d, 'countBitsVar',
                                   'countBitsVar($1, ' + ToString(size) + ')');
         mLtSet, mLeSet: begin
-          i := getTemp(p, getSysType(tyInt)); // our counter
-          a := initLocExpr(p, e.sons[1]);
-          b := initLocExpr(p, e.sons[2]);
-          if d.k = locNone then
-            d := getTemp(p, a.t);
+          getTemp(p, getSysType(tyInt), i); // our counter
+          initLocExpr(p, e.sons[1], a);
+          initLocExpr(p, e.sons[2], b);
+          if d.k = locNone then getTemp(p, a.t, d);
           appf(p.s[cpsStmts], lookupOpr[op], [rdLoc(i), toRope(size),
             rdLoc(d), rdLoc(a), rdLoc(b)]);
           freeTemp(p, a);
@@ -1475,11 +1644,10 @@ begin
                          '(memcmp($1, $2, ' + ToString(size) + ')==0)');
         mMulSet, mPlusSet, mMinusSet, mSymDiffSet: begin
           // we inline the simple for loop for better code generation:
-          i := getTemp(p, getSysType(tyInt)); // our counter
-          a := initLocExpr(p, e.sons[1]);
-          b := initLocExpr(p, e.sons[2]);
-          if d.k = locNone then
-            d := getTemp(p, a.t);
+          getTemp(p, getSysType(tyInt), i); // our counter
+          initLocExpr(p, e.sons[1], a);
+          initLocExpr(p, e.sons[2], b);
+          if d.k = locNone then getTemp(p, a.t, d);
           appf(p.s[cpsStmts],
             'for ($1 = 0; $1 < $2; $1++) $n' +
             '  $3[$1] = $4[$1] $6 $5[$1];$n', [rdLoc(i), toRope(size),
@@ -1510,7 +1678,7 @@ const
 var
   a: TLoc;
 begin
-  a := InitLocExpr(p, e.sons[1]);
+  InitLocExpr(p, e.sons[1], a);
   if (skipGenericRange(e.typ).kind in ValueTypes)
   and not (lfIndirect in a.flags) then
     putIntoDest(p, d, e.typ, ropef('(*($1*) ($2))',
@@ -1528,12 +1696,12 @@ var
 begin
   dest := skipVarGeneric(n.typ);
   if not (optRangeCheck in p.options) then begin
-    a := InitLocExpr(p, n.sons[0]);
+    InitLocExpr(p, n.sons[0], a);
     putIntoDest(p, d, n.typ, ropef('(($1) ($2))',
       [getTypeDesc(p.module, dest), rdCharLoc(a)]));
   end
   else begin
-    a := InitLocExpr(p, n.sons[0]);
+    InitLocExpr(p, n.sons[0], a);
     useMagic(p.module, magic);
     putIntoDest(p, d, dest,
       ropef('(($1)' +{&} magic +{&} '($2, $3, $4))',
@@ -1555,16 +1723,16 @@ var
   dest: PType;
 begin
   dest := skipVarGeneric(n.typ);
-  a := initLocExpr(p, n.sons[0]);
-  case a.t.kind of
+  initLocExpr(p, n.sons[0], a);
+  case skipVarGeneric(a.t).kind of
     tyOpenArray:
       putIntoDest(p, d, dest, ropef('$1, $1Len0', [rdLoc(a)]));
     tyString, tySequence:
-      putIntoDest(p, d, dest, ropef('$1->data, $1->len', [rdLoc(a)]));
+      putIntoDest(p, d, dest, ropef('$1->data, $1->Sup.len', [rdLoc(a)]));
     tyArray, tyArrayConstr:
       putIntoDest(p, d, dest, ropef('$1, $2',
         [rdLoc(a), toRope(lengthOrd(a.t))]));
-    else InternalError(n.sons[0].info, 'passToOpenArray()')
+    else InternalError(n.sons[0].info, 'passToOpenArray: ' + typeToString(a.t))
   end;
   if d.k <> locExpr then freeTemp(p, a)
 end;
@@ -1573,7 +1741,7 @@ procedure convStrToCStr(p: BProc; n: PNode; var d: TLoc);
 var
   a: TLoc;
 begin
-  a := initLocExpr(p, n.sons[0]);
+  initLocExpr(p, n.sons[0], a);
   putIntoDest(p, d, skipVarGeneric(n.typ), ropef('$1->data', [rdLoc(a)]));
   if d.k <> locExpr then freeTemp(p, a)
 end;
@@ -1583,10 +1751,83 @@ var
   a: TLoc;
 begin
   useMagic(p.module, 'cstrToNimstr');
-  a := initLocExpr(p, n.sons[0]);
+  initLocExpr(p, n.sons[0], a);
   putIntoDest(p, d, skipVarGeneric(n.typ),
               ropef('cstrToNimstr($1)', [rdLoc(a)]));
   if d.k <> locExpr then freeTemp(p, a)
+end;
+
+procedure genStrEquals(p: BProc; e: PNode; var d: TLoc);
+var
+  a, b: PNode;
+  x: TLoc;
+begin
+  a := e.sons[1];
+  b := e.sons[2];
+  if (a.kind = nkNilLit) or (b.kind = nkNilLit) then
+    binaryExpr(p, e, d, '', '($1 == $2)')
+  else if (a.kind in [nkStrLit..nkTripleStrLit]) and (a.strVal = '') then begin
+    initLocExpr(p, e.sons[2], x);
+    putIntoDest(p, d, e.typ, ropef('(($1) && ($1)->Sup.len == 0)', [rdLoc(x)]));
+  end
+  else if (b.kind in [nkStrLit..nkTripleStrLit]) and (b.strVal = '') then begin
+    initLocExpr(p, e.sons[1], x);
+    putIntoDest(p, d, e.typ, ropef('(($1) && ($1)->Sup.len == 0)', [rdLoc(x)]));
+  end
+  else
+    binaryExpr(p, e, d, 'eqStrings', 'eqStrings($1, $2)');
+end;
+
+procedure genSeqConstr(p: BProc; t: PNode; var d: TLoc);
+var
+  newSeq, arr: TLoc;
+  i: int;
+begin
+  useMagic(p.module, 'newSeq');
+  if d.k = locNone then getTemp(p, t.typ, d);
+  // generate call to newSeq before adding the elements per hand:
+
+  initLoc(newSeq, locExpr, t.typ, OnHeap);
+  newSeq.r := ropef('($1) newSeq($2, $3)',
+    [getTypeDesc(p.module, t.typ),
+    genTypeInfo(p.module, t.typ), intLiteral(sonsLen(t))]);
+  genAssignment(p, d, newSeq, {@set}[afSrcIsNotNil]);
+  for i := 0 to sonsLen(t)-1 do begin
+    initLoc(arr, locExpr, elemType(skipGeneric(t.typ)), OnHeap);
+    arr.r := ropef('$1->data[$2]', [rdLoc(d), intLiteral(i)]);
+    arr.s := OnHeap; // we know that sequences are on the heap
+    expr(p, t.sons[i], arr)
+  end
+end;
+
+procedure genArrToSeq(p: BProc; t: PNode; var d: TLoc);
+var
+  newSeq, elem, a, arr: TLoc;
+  L, i: int;
+begin
+  if t.kind = nkBracket then begin
+    t.sons[1].typ := t.typ;
+    genSeqConstr(p, t.sons[1], d);
+    exit
+  end;
+  useMagic(p.module, 'newSeq');
+  if d.k = locNone then getTemp(p, t.typ, d);
+  // generate call to newSeq before adding the elements per hand:
+  L := int(lengthOrd(t.sons[1].typ));
+  initLoc(newSeq, locExpr, t.typ, OnHeap);
+  newSeq.r := ropef('($1) newSeq($2, $3)',
+    [getTypeDesc(p.module, t.typ),
+    genTypeInfo(p.module, t.typ), intLiteral(L)]);
+  genAssignment(p, d, newSeq, {@set}[afSrcIsNotNil]);
+  initLocExpr(p, t.sons[1], a);
+  for i := 0 to L-1 do begin
+    initLoc(elem, locExpr, elemType(skipGeneric(t.typ)), OnHeap);
+    elem.r := ropef('$1->data[$2]', [rdLoc(d), intLiteral(i)]);
+    elem.s := OnHeap; // we know that sequences are on the heap
+    initLoc(arr, locExpr, elemType(skipGeneric(t.sons[1].typ)), a.s);
+    arr.r := ropef('$1[$2]', [rdLoc(a), intLiteral(i)]);
+    genAssignment(p, elem, arr, {@set}[afDestIsNil, needToCopy]);
+  end
 end;
 
 procedure genMagicExpr(p: BProc; e: PNode; var d: TLoc; op: TMagic);
@@ -1602,7 +1843,7 @@ begin
     mAddi..mModi64: binaryArithOverflow(p, e, d, op);
     mRepr: genRepr(p, e, d);
     mAsgn: begin
-      a := InitLocExpr(p, e.sons[1]);
+      InitLocExpr(p, e.sons[1], a);
       assert(a.t <> nil);
       expr(p, e.sons[2], a);
       freeTemp(p, a)
@@ -1616,7 +1857,7 @@ begin
     end;
     mSucc: begin // XXX: range checking?
       if not (optOverflowCheck in p.Options) then
-        binaryExpr(p, e, d, '', '$1 - $2')
+        binaryExpr(p, e, d, '', '$1 + $2')
       else
         binaryExpr(p, e, d, 'addInt', 'addInt($1, $2)')
     end;
@@ -1624,7 +1865,7 @@ begin
     mAppendStrCh: binaryStmt(p, e, d, 'addChar', '$1 = addChar($1, $2);$n');
     mAppendStrStr: genStrAppend(p, e, d);
     mAppendSeqElem: genSeqElemAppend(p, e, d);
-    mEqStr: binaryExpr(p, e, d, 'eqStrings', 'eqStrings($1, $2)');
+    mEqStr: genStrEquals(p, e, d);
     mLeStr: binaryExpr(p, e, d, 'cmpStrings', '(cmpStrings($1, $2) <= 0)');
     mLtStr: binaryExpr(p, e, d, 'cmpStrings', '(cmpStrings($1, $2) < 0)');
     mIsNil: unaryExpr(p, e, d, '', '$1 == 0');
@@ -1645,11 +1886,13 @@ begin
                       [filen, line, rdLoc(d)])
       end
     end;
+    mIs: genIs(p, e, d);
     mNew: genNew(p, e);
     mNewFinalize: genNewFinalize(p, e);
+    mNewSeq: genNewSeq(p, e);
     mSizeOf:
       putIntoDest(p, d, e.typ,
-        ropef('sizeof($1)', [getTypeDesc(p.module, e.sons[1].typ)]));
+        ropef('((NI)sizeof($1))', [getTypeDesc(p.module, e.sons[1].typ)]));
     mChr: genCast(p, e, d); // expr(p, e.sons[1], d);
     mOrd: genOrd(p, e, d);
     mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -1670,15 +1913,43 @@ begin
       else
         binaryStmt(p, e, d, 'subInt', '$1 = subInt($1, $2);$n')
     end;
+    mGCref: unaryStmt(p, e, d, 'nimGCref', 'nimGCref($1);$n');
+    mGCunref: unaryStmt(p, e, d, 'nimGCunref', 'nimGCunref($1);$n');
     mSetLengthStr: genSetLengthStr(p, e, d);
     mSetLengthSeq: genSetLengthSeq(p, e, d);
     mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet,
     mMinusSet, mInSet: genSetOp(p, e, d, op);
     mExit: genCall(p, e, d);
+    mArrToSeq: genArrToSeq(p, e, d);
     mNLen..mNError:
       liMessage(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s);
     else internalError(e.info, 'genMagicExpr: ' + magicToStr[op]);
   end
+end;
+
+function genConstExpr(p: BProc; n: PNode): PRope; forward;
+
+function handleConstExpr(p: BProc; n: PNode; var d: TLoc): bool;
+var
+  id: int;
+  t: PType;
+begin
+  if (nfAllConst in n.flags) and (d.k = locNone)
+      and (sonsLen(n) > 0) then begin
+    t := getUniqueType(n.typ);
+    {@discard} getTypeDesc(p.module, t); // so that any fields are initialized
+    id := NodeTableTestOrSet(p.module.dataCache, n, gid);
+    fillLoc(d, locData, t, con('TMP', toRope(id)), OnHeap);
+    if id = gid then begin
+      // expression not found in the cache:
+      inc(gid);
+      appf(p.module.s[cfsData], 'NIM_CONST $1 $2 = $3;$n',
+          [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)]);
+    end;
+    result := true
+  end
+  else
+    result := false
 end;
 
 procedure genSetConstr(p: BProc; e: PNode; var d: TLoc);
@@ -1694,14 +1965,14 @@ begin
   if nfAllConst in e.flags then
     putIntoDest(p, d, e.typ, genSetNode(p, e))
   else begin
-    if d.k = locNone then d := getTemp(p, e.typ);
+    if d.k = locNone then getTemp(p, e.typ, d);
     if getSize(e.typ) > 8 then begin // big set:
       appf(p.s[cpsStmts], 'memset($1, 0, sizeof($1));$n', [rdLoc(d)]);
       for i := 0 to sonsLen(e)-1 do begin
         if e.sons[i].kind = nkRange then begin
-          idx := getTemp(p, getSysType(tyInt)); // our counter
-          a := initLocExpr(p, e.sons[i].sons[1]);
-          b := initLocExpr(p, e.sons[i].sons[2]);
+          getTemp(p, getSysType(tyInt), idx); // our counter
+          initLocExpr(p, e.sons[i].sons[0], a);
+          initLocExpr(p, e.sons[i].sons[1], b);
           appf(p.s[cpsStmts],
             'for ($1 = $3; $1 <= $4; $1++) $n' +
             '$2[$1/8] |=(1<<($1%8));$n',
@@ -1712,7 +1983,7 @@ begin
           freeTemp(p, idx)
         end
         else begin
-          a := initLocExpr(p, e.sons[i]);
+          initLocExpr(p, e.sons[i], a);
           appf(p.s[cpsStmts], '$1[$2/8] |=(1<<($2%8));$n',
                        [rdLoc(d), rdSetElemLoc(a, e.typ)]);
           freeTemp(p, a)
@@ -1724,9 +1995,9 @@ begin
       appf(p.s[cpsStmts], '$1 = 0;$n', [rdLoc(d)]);
       for i := 0 to sonsLen(e) - 1 do begin
         if e.sons[i].kind = nkRange then begin
-          idx := getTemp(p, getSysType(tyInt)); // our counter
-          a := initLocExpr(p, e.sons[i].sons[1]);
-          b := initLocExpr(p, e.sons[i].sons[2]);
+          getTemp(p, getSysType(tyInt), idx); // our counter
+          initLocExpr(p, e.sons[i].sons[0], a);
+          initLocExpr(p, e.sons[i].sons[1], b);
           appf(p.s[cpsStmts],
             'for ($1 = $3; $1 <= $4; $1++) $n' +{&}
             '$2 |=(1<<((' +{&} ts +{&} ')($1)%(sizeof(' +{&}ts+{&}')*8)));$n',
@@ -1737,7 +2008,7 @@ begin
           freeTemp(p, idx)
         end
         else begin
-          a := initLocExpr(p, e.sons[i]);
+          initLocExpr(p, e.sons[i], a);
           appf(p.s[cpsStmts],
                         '$1 |=(1<<((' +{&} ts +{&} ')($2)%(sizeof(' +{&}ts+{&}
                         ')*8)));$n',
@@ -1758,20 +2029,22 @@ var
 begin
   // the code generator assumes that there are only tuple constructors with
   // field names!
-  t := getUniqueType(n.typ);
-  {@discard} getTypeDesc(p.module, t); // so that any fields are initialized
-  if d.k = locNone then d := getTemp(p, t);
-  if t.n = nil then InternalError(n.info, 'genTupleConstr');
-  if sonsLen(t.n) <> sonsLen(n) then
-    InternalError(n.info, 'genTupleConstr');
-  for i := 0 to sonsLen(n)-1 do begin
-    it := n.sons[i];
-    if it.kind <> nkExprColonExpr then InternalError(n.info, 'genTupleConstr');
-    rec := initLoc(locExpr, it.sons[1].typ, d.s);
-    if (t.n.sons[i].kind <> nkSym) then
+  if not handleConstExpr(p, n, d) then begin
+    t := getUniqueType(n.typ);
+    {@discard} getTypeDesc(p.module, t); // so that any fields are initialized
+    if d.k = locNone then getTemp(p, t, d);
+    if t.n = nil then InternalError(n.info, 'genTupleConstr');
+    if sonsLen(t.n) <> sonsLen(n) then
       InternalError(n.info, 'genTupleConstr');
-    rec.r := ropef('$1.$2', [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)]);
-    expr(p, it.sons[1], rec);
+    for i := 0 to sonsLen(n)-1 do begin
+      it := n.sons[i];
+      if it.kind <> nkExprColonExpr then InternalError(n.info, 'genTupleConstr');
+      initLoc(rec, locExpr, it.sons[1].typ, d.s);
+      if (t.n.sons[i].kind <> nkSym) then
+        InternalError(n.info, 'genTupleConstr');
+      rec.r := ropef('$1.$2', [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)]);
+      expr(p, it.sons[1], rec);
+    end
   end
 end;
 
@@ -1780,34 +2053,13 @@ var
   arr: TLoc;
   i: int;
 begin
-  if d.k = locNone then d := getTemp(p, n.typ);
-  for i := 0 to sonsLen(n)-1 do begin
-    arr := initLoc(locExpr, elemType(skipGeneric(n.typ)), d.s);
-    arr.r := ropef('$1[$2]', [rdLoc(d), intLiteral(i)]);
-    expr(p, n.sons[i], arr)
-  end
-end;
-
-procedure genSeqConstr(p: BProc; t: PNode; var d: TLoc);
-var
-  newSeq, arr: TLoc;
-  i: int;
-begin
-  useMagic(p.module, 'newSeq');
-  if d.k = locNone then
-    d := getTemp(p, t.typ);
-  // generate call to newSeq before adding the elements per hand:
-
-  newSeq := initLoc(locExpr, t.typ, OnHeap);
-  newSeq.r := ropef('($1) newSeq($2, $3)',
-    [getTypeDesc(p.module, t.typ),
-    genTypeInfo(p.module, t.typ), toRope(sonsLen(t))]);
-  genAssignment(p, d, newSeq, {@set}[]);
-  for i := 0 to sonsLen(t)-1 do begin
-    arr := initLoc(locExpr, elemType(skipGeneric(t.typ)), OnHeap);
-    arr.r := ropef('$1->data[$2]', [rdLoc(d), intLiteral(i)]);
-    arr.s := OnHeap; // we know that sequences are on the heap
-    expr(p, t.sons[i], arr)
+  if not handleConstExpr(p, n, d) then begin
+    if d.k = locNone then getTemp(p, n.typ, d);
+    for i := 0 to sonsLen(n)-1 do begin
+      initLoc(arr, locExpr, elemType(skipGeneric(n.typ)), d.s);
+      arr.r := ropef('$1[$2]', [rdLoc(d), intLiteral(i)]);
+      expr(p, n.sons[i], arr)
+    end
   end
 end;
 
@@ -1833,7 +2085,7 @@ var
   dest, t: PType;
   r, nilCheck: PRope;
 begin
-  a := initLocExpr(p, n.sons[0]);
+  initLocExpr(p, n.sons[0], a);
   dest := skipPtrsGeneric(n.typ);
   if (optObjCheck in p.options) and not (isPureObject(dest)) then begin
     useMagic(p.module, 'chckObj');
@@ -1877,7 +2129,7 @@ begin
   else begin
     dest := skipPtrsGeneric(n.typ);
     src := skipPtrsGeneric(n.sons[0].typ);
-    a := initLocExpr(p, n.sons[0]);
+    initLocExpr(p, n.sons[0], a);
     r := rdLoc(a);
     if skipGeneric(n.sons[0].typ).kind in [tyRef, tyPtr, tyVar] then begin
       app(r, '->Sup');
@@ -1941,7 +2193,7 @@ begin
       putIntoDest(p, d, e.typ, genLiteral(p, e));
       d.k := locImmediate // for removal of index checks
     end;
-    nkCall, nkHiddenCallConv: begin
+    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       if (e.sons[0].kind = nkSym) and
          (e.sons[0].sym.magic <> mNone) then
         genMagicExpr(p, e, d, e.sons[0].sym.magic)
@@ -2016,8 +2268,6 @@ begin
     result.sons[field.position] := copyTree(n.sons[i].sons[1]);
   end;
 end;
-
-function genConstExpr(p: BProc; n: PNode): PRope; forward;
 
 function genConstSimpleList(p: BProc; n: PNode): PRope;
 var

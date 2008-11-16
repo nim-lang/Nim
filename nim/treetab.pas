@@ -17,8 +17,10 @@ interface
 uses
   nsystem, hashes, ast, astalgo, types;
 
-function NodeTableGet(const t: TNodeTable; key: PNode): PNode;
-procedure NodeTablePut(var t: TNodeTable; key, val: PNode);
+function NodeTableGet(const t: TNodeTable; key: PNode): int;
+procedure NodeTablePut(var t: TNodeTable; key: PNode; val: int);
+
+function NodeTableTestOrSet(var t: TNodeTable; key: PNode; val: int): int;
 
 implementation
 
@@ -29,7 +31,7 @@ begin
   result := 0;
   if n = nil then exit;
   result := ord(n.kind);
-  case n.kind of 
+  case n.kind of
     nkEmpty, nkNilLit, nkType: begin end;
     nkIdent: result := concHash(result, n.ident.h);
     nkSym: result := concHash(result, n.sym.name.h);
@@ -44,7 +46,7 @@ begin
     nkStrLit..nkTripleStrLit:
       result := concHash(result, GetHashStr(n.strVal));
     else begin
-      for i := 0 to sonsLen(n)-1 do 
+      for i := 0 to sonsLen(n)-1 do
         result := concHash(result, hashTree(n.sons[i]));
     end
   end
@@ -95,17 +97,17 @@ begin
   result := -1
 end;
 
-function NodeTableGet(const t: TNodeTable; key: PNode): PNode;
+function NodeTableGet(const t: TNodeTable; key: PNode): int;
 var
   index: int;
 begin
   index := NodeTableRawGet(t, hashTree(key), key);
   if index >= 0 then result := t.data[index].val
-  else result := nil
+  else result := low(int)
 end;
 
 procedure NodeTableRawInsert(var data: TNodePairSeq; k: THash;
-                             key, val: PNode);
+                             key: PNode; val: int);
 var
   h: THash;
 begin
@@ -117,7 +119,7 @@ begin
   data[h].val := val;
 end;
 
-procedure NodeTablePut(var t: TNodeTable; key, val: PNode);
+procedure NodeTablePut(var t: TNodeTable; key: PNode; val: int);
 var
   index, i: int;
   n: TNodePairSeq;
@@ -131,10 +133,11 @@ begin
   end
   else begin
     if mustRehash(length(t.data), t.counter) then begin
-      setLength(n, length(t.data) * growthFactor);
     {@ignore}
+      setLength(n, length(t.data) * growthFactor);
       fillChar(n[0], length(n)*sizeof(n[0]), 0);
-    {@emit}
+    {@emit
+      newSeq(n, length(t.data) * growthFactor); }
       for i := 0 to high(t.data) do
         if t.data[i].key <> nil then
           NodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val);
@@ -145,6 +148,40 @@ begin
     }
     end;
     NodeTableRawInsert(t.data, k, key, val);
+    inc(t.counter)
+  end;
+end;
+
+function NodeTableTestOrSet(var t: TNodeTable; key: PNode; val: int): int;
+var
+  index, i: int;
+  n: TNodePairSeq;
+  k: THash;
+begin
+  k := hashTree(key);
+  index := NodeTableRawGet(t, k, key);
+  if index >= 0 then begin
+    assert(t.data[index].key <> nil);
+    result := t.data[index].val
+  end
+  else begin
+    if mustRehash(length(t.data), t.counter) then begin
+    {@ignore}
+      setLength(n, length(t.data) * growthFactor);
+      fillChar(n[0], length(n)*sizeof(n[0]), 0);
+    {@emit
+      newSeq(n, length(t.data) * growthFactor); }
+      for i := 0 to high(t.data) do
+        if t.data[i].key <> nil then
+          NodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val);
+    {@ignore}
+      t.data := n;
+    {@emit
+      swap(t.data, n);
+    }
+    end;
+    NodeTableRawInsert(t.data, k, key, val);
+    result := val;
     inc(t.counter)
   end;
 end;

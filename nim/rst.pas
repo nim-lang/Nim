@@ -8,7 +8,7 @@
 //
 unit rst;
 
-// This module implements a *reStructuredText* parser. Currently, only a small
+// This module implements a *reStructuredText* parser. Currently, only a
 // subset is provided. Later, there will be additions.
 
 interface
@@ -126,7 +126,7 @@ type
                        // the document or the section
     level: int;        // valid for some node kinds
     sons: TRstNodeSeq; // the node's sons
-  end;
+  end {@acyclic};
 
 
 function rstParse(const text: string; // the text to be parsed
@@ -360,7 +360,7 @@ begin
 {@ignore}
   fillChar(result^, sizeof(result^), 0);
 {@emit
-  result.sons := [];
+  result.sons := @[];
 }
   result.kind := kind;
 end;
@@ -407,9 +407,9 @@ begin
   fillChar(result^, sizeof(result^), 0);
 {@emit}
   {@emit
-  result.subs := [];}
+  result.subs := @[];}
   {@emit
-  result.refs := [];}
+  result.refs := @[];}
 end;
 
 function tokInfo(const p: TRstParser; const tok: TToken): TLineInfo;
@@ -456,9 +456,9 @@ begin
   p.indentStack := nil;
   pushInd(p, 0);
   {@emit
-  p.indentStack := [0];}
+  p.indentStack := @[0];}
   {@emit
-  p.tok := [];}
+  p.tok := @[];}
   p.idx := 0;
   p.filename := '';
   p.hasToc := false;
@@ -1535,9 +1535,9 @@ begin
   cols := nil;
   row := nil;
 {@emit
-  cols := [];}
+  cols := @[];}
 {@emit
-  row := [];}
+  row := @[];}
   a := nil;
   c := p.tok[p.idx].symbol[strStart];
   while true do begin
@@ -1872,13 +1872,6 @@ type
   TDirFlag = (hasArg, hasOptions, argIsFile);
   TDirFlags = set of TDirFlag;
   TSectionParser = function (var p: TRstParser): PRstNode;
-
-{@emit
-function assigned(contentParser: TSectionParser): bool;
-begin
-  result := contentParser <> nil;
-end;
-}
 
 function parseDirective(var p: TRstParser; flags: TDirFlags;
                         contentParser: TSectionParser): PRstNode;

@@ -48,25 +48,16 @@ begin
   app(p.s[cpsStmts], 'goto BeforeRet;' + tnl)
 end;
 
-procedure genObjectInit(p: BProc; sym: PSym);
-begin
-  if containsObject(sym.typ) then begin
-    useMagic(p.module, 'objectInit');
-    appf(p.s[cpsInit], 'objectInit($1, $2);$n',
-      [addrLoc(sym.loc), genTypeInfo(p.module, sym.typ)])
-  end
-end;
-
 procedure initVariable(p: BProc; v: PSym);
 begin
   if containsGarbageCollectedRef(v.typ) or (v.ast = nil) then
     // Language change: always initialize variables if v.ast == nil!
     if not (skipVarGenericRange(v.typ).Kind in [tyArray, tyArrayConstr, tySet,
                                                 tyTuple, tyObject]) then
-      appf(p.s[cpsStmts], '$1 = 0;$n', [v.loc.r])
+      appf(p.s[cpsStmts], '$1 = 0;$n', [rdLoc(v.loc)])
     else
-      appf(p.s[cpsStmts], 'memset((void*)&$1, 0, sizeof($1));$n',
-        [v.loc.r])
+      appf(p.s[cpsStmts], 'memset((void*)$1, 0, sizeof($2));$n',
+        [addrLoc(v.loc), rdLoc(v.loc)])
 end;
 
 procedure genVarStmt(p: BProc; n: PNode);
@@ -93,7 +84,7 @@ begin
       genLineDir(p, a);
       expr(p, a.sons[2], v.loc);
     end;
-    genObjectInit(p, v); // XXX: correct position?
+    genObjectInit(p, v.typ, v.loc, true); // correct position
   end
 end;
 
@@ -147,7 +138,7 @@ begin
     it := n.sons[i];
     case it.kind of
       nkElifBranch: begin
-        a := initLocExpr(p, it.sons[0]);
+        initLocExpr(p, it.sons[0], a);
         Lelse := getLabel(p);
         appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
         freeTemp(p, a);
@@ -177,17 +168,23 @@ begin
   genLineDir(p, t);
   assert(sonsLen(t) = 2);
   inc(p.labels);
-  Labl := con('L'+'', toRope(p.labels));
+  Labl := con('LA', toRope(p.labels));
   len := length(p.blocks);
   setLength(p.blocks, len+1);
-  p.blocks[len].id := p.labels; // positive because we use it right away:
+  p.blocks[len].id := -p.labels; // negative because it isn't used yet
   p.blocks[len].nestedTryStmts := p.nestedTryStmts;
   app(p.s[cpsStmts], 'while (1) {' + tnl);
-  a := initLocExpr(p, t.sons[0]);
-  appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Labl]);
+  initLocExpr(p, t.sons[0], a);
+  if (t.sons[0].kind <> nkIntLit) or (t.sons[0].intVal = 0) then begin
+    p.blocks[len].id := abs(p.blocks[len].id);
+    appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Labl]);
+  end;
   freeTemp(p, a);
   genStmts(p, t.sons[1]);
-  appf(p.s[cpsStmts], '} $1: ;$n', [Labl]);
+  if p.blocks[len].id > 0 then
+    appf(p.s[cpsStmts], '} $1: ;$n', [Labl])
+  else
+    app(p.s[cpsStmts], '}'+tnl);
   setLength(p.blocks, length(p.blocks)-1)
 end;
 
@@ -210,7 +207,7 @@ begin
   if t.kind = nkBlockExpr then genStmtListExpr(p, t.sons[1], d)
   else genStmts(p, t.sons[1]);
   if p.blocks[idx].id > 0 then // label has been used:
-    appf(p.s[cpsStmts], 'L$1: ;$n', [toRope(p.blocks[idx].id)]);
+    appf(p.s[cpsStmts], 'LA$1: ;$n', [toRope(p.blocks[idx].id)]);
   setLength(p.blocks, idx)
 end;
 
@@ -236,7 +233,7 @@ begin
   end;
   p.blocks[idx].id := abs(p.blocks[idx].id); // label is used
   finishTryStmt(p, p.nestedTryStmts - p.blocks[idx].nestedTryStmts);
-  appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.blocks[idx].id)])
+  appf(p.s[cpsStmts], 'goto LA$1;$n', [toRope(p.blocks[idx].id)])
 end;
 
 procedure genAsmStmt(p: BProc; t: PNode);
@@ -287,7 +284,7 @@ begin
   genLineDir(p, t);
   if t.sons[0] <> nil then begin
     if gCmd <> cmdCompileToCpp then useMagic(p.module, 'raiseException');
-    a := InitLocExpr(p, t.sons[0]);
+    InitLocExpr(p, t.sons[0], a);
     e := rdLoc(a);
     freeTemp(p, a);
     typ := t.sons[0].typ;
@@ -324,15 +321,15 @@ begin
   len := sonsLen(b);
   for i := 0 to len - 2 do begin
     if b.sons[i].kind = nkRange then begin
-      x := initLocExpr(p, b.sons[i].sons[0]);
-      y := initLocExpr(p, b.sons[i].sons[1]);
+      initLocExpr(p, b.sons[i].sons[0], x);
+      initLocExpr(p, b.sons[i].sons[1], y);
       freeTemp(p, x);
       freeTemp(p, y);
       appf(p.s[cpsStmts], rangeFormat,
         [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
     end
     else begin
-      x := initLocExpr(p, b.sons[i]);
+      initLocExpr(p, b.sons[i], x);
       freeTemp(p, x);
       appf(p.s[cpsStmts], eqFormat,
         [rdCharLoc(e), rdCharLoc(x), labl])
@@ -347,7 +344,7 @@ var
 begin
   Lend := getLabel(p);
   for i := 1 to sonsLen(t) - 1 do begin
-    appf(p.s[cpsStmts], 'L$1: ;$n', [toRope(labId+i)]);
+    appf(p.s[cpsStmts], 'LA$1: ;$n', [toRope(labId+i)]);
     if t.sons[i].kind = nkOfBranch then begin
       len := sonsLen(t.sons[i]);
       genStmts(p, t.sons[i].sons[len-1]);
@@ -366,17 +363,17 @@ var
   a: TLoc;
   i, labId: int;
 begin
-  a := initLocExpr(p, t.sons[0]);
+  initLocExpr(p, t.sons[0], a);
   // fist pass: gnerate ifs+goto:
   labId := p.labels;
   for i := 1 to sonsLen(t) - 1 do begin
     inc(p.labels);
     if t.sons[i].kind = nkOfBranch then
       genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat,
-        con('L'+'', toRope(p.labels)))
+        con('LA', toRope(p.labels)))
     else
       // else statement
-      appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.labels)]);
+      appf(p.s[cpsStmts], 'goto LA$1;$n', [toRope(p.labels)]);
   end;
   // second pass: generate statements
   genCaseSecondPass(p, t, labId);
@@ -416,13 +413,13 @@ begin
   else begin
     a := 0;
     for i := 0 to Length(s)-1 do begin
-      a := a +{%} Ord(s[i]);
-      a := a +{%} a shl 10;
-      a := a xor (a shr 6);
+      a := a +{%} int32(Ord(s[i]));
+      a := a +{%} a shl int32(10);
+      a := a xor (a shr int32(6));
     end;
-    a := a +{%} a shl 3;
-    a := a xor (a shr 11);
-    a := a +{%} a shl 15;
+    a := a +{%} a shl int32(3);
+    a := a xor (a shr int32(11));
+    a := a +{%} a shl int32(15);
     result := a
   end
 end;
@@ -450,7 +447,7 @@ begin
   len := sonsLen(b);
   for i := 0 to len - 2 do begin
     assert(b.sons[i].kind <> nkRange);
-    x := initLocExpr(p, b.sons[i]);
+    initLocExpr(p, b.sons[i], x);
     freeTemp(p, x);
     assert(b.sons[i].kind in [nkStrLit..nkTripleStrLit]);
     j := int(hashString(b.sons[i].strVal) and high(branches));
@@ -473,14 +470,16 @@ begin
   if strings > stringCaseThreshold then begin
     useMagic(p.module, 'hashString');
     bitMask := nmath.nextPowerOfTwo(strings)-1;
+  {@ignore}
     setLength(branches, bitMask+1);
-    a := initLocExpr(p, t.sons[0]);
+  {@emit newSeq(branches, bitMask+1);}
+    initLocExpr(p, t.sons[0], a);
     // fist pass: gnerate ifs+goto:
     labId := p.labels;
     for i := 1 to sonsLen(t) - 1 do begin
       inc(p.labels);
       if t.sons[i].kind = nkOfBranch then
-        genCaseStringBranch(p, t.sons[i], a, con('L'+'', toRope(p.labels)),
+        genCaseStringBranch(p, t.sons[i], a, con('LA', toRope(p.labels)),
                             branches)
       else begin
         // else statement: nothing to do yet
@@ -497,7 +496,7 @@ begin
     app(p.s[cpsStmts], '}' + tnl);
     // else statement:
     if t.sons[sonsLen(t)-1].kind <> nkOfBranch then
-      appf(p.s[cpsStmts], 'goto L$1;$n', [toRope(p.labels)]);
+      appf(p.s[cpsStmts], 'goto LA$1;$n', [toRope(p.labels)]);
     // third pass: generate statements
     genCaseSecondPass(p, t, labId);
     freeTemp(p, a);
@@ -540,7 +539,7 @@ begin
         break
       end;
   if canGenerateSwitch then begin
-    a := initLocExpr(p, t.sons[0]);
+    initLocExpr(p, t.sons[0], a);
     appf(p.s[cpsStmts], 'switch ($1) {$n', [rdCharLoc(a)]);
     freeTemp(p, a);
     for i := 1 to sonsLen(t)-1 do begin
@@ -821,7 +820,7 @@ var
   a: TLoc;
 begin
   genLineDir(p, e); // BUGFIX
-  a := InitLocExpr(p, e.sons[0]);
+  InitLocExpr(p, e.sons[0], a);
   assert(a.t <> nil);
   expr(p, e.sons[1], a);
   freeTemp(p, a)
@@ -837,10 +836,10 @@ begin
   if inCheckpoint(t.info) then
     MessageOut(renderTree(t));
   case t.kind of
-    nkEmpty:       begin end; // nothing to do!
-    nkStmtList:
-      for i := 0 to sonsLen(t) - 1 do
-        genStmts(p, t.sons[i]);
+    nkEmpty: begin end; // nothing to do!
+    nkStmtList: begin
+      for i := 0 to sonsLen(t)-1 do genStmts(p, t.sons[i]);
+    end;
     nkBlockStmt:   genBlock(p, t, a);
     nkIfStmt:      genIfStmt(p, t);
     nkWhileStmt:   genWhileStmt(p, t);
@@ -852,23 +851,25 @@ begin
     nkBreakStmt:   genBreakStmt(p, t);
     nkCall: begin
       genLineDir(p, t);
-      a := initLocExpr(p, t);
+      initLocExpr(p, t, a);
       freeTemp(p, a);
     end;
     nkAsgn: genAsgn(p, t);
     nkDiscardStmt: begin
       genLineDir(p, t);
-      a := initLocExpr(p, t.sons[0]);
+      initLocExpr(p, t.sons[0], a);
       freeTemp(p, a)
     end;
     nkAsmStmt: genAsmStmt(p, t);
-    nkTryStmt:
+    nkTryStmt: begin
       if gCmd = cmdCompileToCpp then genTryStmtCpp(p, t)
       else genTryStmt(p, t);
+    end;
     nkRaiseStmt: genRaiseStmt(p, t);
     nkTypeSection: begin
-      // nothing to do:
-      // we generate only when the symbol is accessed
+      // we have to emit the type information for object types here to support
+      // seperate compilation:
+      genTypeSection(p.module, t);
     end;
     nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, nkImportStmt,
     nkFromStmt, nkTemplateDef, nkMacroDef: begin end;

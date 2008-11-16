@@ -15,6 +15,7 @@ type
   TCandidate = record
     exactMatches: int;
     subtypeMatches: int;
+    intConvMatches: int; // conversions to int are not as expensive
     convMatches: int;
     genericMatches: int;
     state: TCandidateState;
@@ -25,7 +26,8 @@ type
     baseTypeMatch: bool; // needed for conversions from T to openarray[T]
                          // for example
   end;
-  TTypeRelation = (isNone, isConvertible, isSubtype, isGeneric, isEqual);
+  TTypeRelation = (isNone, isConvertible, isIntConv, isSubtype, 
+                   isGeneric, isEqual);
   // order is important!
 
 procedure initCandidate(out c: TCandidate; callee: PType);
@@ -33,6 +35,7 @@ begin
   c.exactMatches := 0;
   c.subtypeMatches := 0;
   c.convMatches := 0;
+  c.intConvMatches := 0;
   c.genericMatches := 0;
   c.state := csEmpty;
   c.callee := callee;
@@ -51,6 +54,8 @@ begin
   if result <> 0 then exit;
   result := a.subtypeMatches - b.subtypeMatches;
   if result <> 0 then exit;
+  result := a.intConvMatches - b.intConvMatches;
+  if result <> 0 then exit;
   result := a.convMatches - b.convMatches;
 end;
 
@@ -59,6 +64,7 @@ begin
   Writeln(output, 'exact matches: ' + toString(c.exactMatches));
   Writeln(output, 'subtype matches: ' + toString(c.subtypeMatches));
   Writeln(output, 'conv matches: ' + toString(c.convMatches));
+  Writeln(output, 'intconv matches: ' + toString(c.intConvMatches));
   Writeln(output, 'generic matches: ' + toString(c.genericMatches));
 end;
 
@@ -77,7 +83,7 @@ begin
     result := result +{&} typeToString(n.sons[i].typ);
     if i <> sonsLen(n)-1 then result := result + ', ';
   end;
-  result := result + ')';
+  addChar(result, ')');
   candidates := '';
   sym := initOverloadIter(o, c, n.sons[0]);
   while sym <> nil do begin
@@ -101,8 +107,8 @@ begin
       addSon(result, t.sons[0]); // XXX: t.owner is wrong for ID!
       addSon(result, t.sons[1]); // XXX: semantic checking for the type?
     end;
-    tyEmptySet, tyNil: result := nil; // what should it be?
-    else result := t
+    tyNil: result := nil; // what should it be?
+    else result := t // Note: empty is valid here
   end
 end;
 
@@ -116,7 +122,26 @@ begin
     k := skipRange(a).kind;
     if k = f.kind then
       result := isSubtype
-    else if (k >= min) and (k <= max) or (k = tyInt) then
+    else if (f.kind = tyInt) and (k in [tyInt..tyInt32]) then 
+      result := isIntConv
+    else if (k >= min) and (k <= max) then
+      result := isConvertible
+    else
+      result := isNone
+  end
+end;
+
+function handleFloatRange(f, a: PType): TTypeRelation;
+var
+  k: TTypeKind;
+begin
+  if a.kind = f.kind then
+    result := isEqual
+  else begin
+    k := skipRange(a).kind;
+    if k = f.kind then
+      result := isSubtype
+    else if (k >= tyFloat) and (k <= tyFloat128) then
       result := isConvertible
     else
       result := isNone
@@ -201,14 +226,14 @@ begin // is a subtype of f?
         result := isConvertible // a convertible to f
     end;
     tyInt:   result := handleRange(f, a, tyInt8, tyInt32);
-    tyInt8:  result := handleRange(f, a, tyInt, tyInt64);
-    tyInt16: result := handleRange(f, a, tyInt, tyInt64);
-    tyInt32: result := handleRange(f, a, tyInt, tyInt64);
+    tyInt8:  result := handleRange(f, a, tyInt8, tyInt8);
+    tyInt16: result := handleRange(f, a, tyInt8, tyInt16);
+    tyInt32: result := handleRange(f, a, tyInt, tyInt32);
     tyInt64: result := handleRange(f, a, tyInt, tyInt64);
-    tyFloat: result := handleRange(f, a, tyFloat, tyFloat128);
-    tyFloat32: result := handleRange(f, a, tyFloat, tyFloat128);
-    tyFloat64: result := handleRange(f, a, tyFloat, tyFloat128);
-    tyFloat128: result := handleRange(f, a, tyFloat, tyFloat128);
+    tyFloat: result := handleFloatRange(f, a);
+    tyFloat32: result := handleFloatRange(f, a);
+    tyFloat64: result := handleFloatRange(f, a);
+    tyFloat128: result := handleFloatRange(f, a);
 
     tyVar: begin
       if (a.kind = f.kind) then
@@ -226,13 +251,14 @@ begin // is a subtype of f?
         end;
         tyArrayConstr: begin
           result := typeRel(mapping, f.sons[1], a.sons[1]);
-          if result < isGeneric then result := isNone
+          if result < isGeneric then 
+            result := isNone
           else begin
             if (result <> isGeneric) and (lengthOrd(f) <> lengthOrd(a)) then
               result := isNone
             else if f.sons[0].kind in GenericTypes then
               result := minRel(result, typeRel(mapping, f.sons[0], a.sons[0]));
-          end;
+          end
         end;
         else begin end
       end
@@ -244,16 +270,24 @@ begin // is a subtype of f?
           if result < isGeneric then result := isNone
         end;
         tyArrayConstr: begin
-          if (a.sons[1] = nil) then
+          if (f.sons[0].kind <> tyGenericParam) and
+              (a.sons[1].kind = tyEmpty) then 
             result := isSubtype // [] is allowed here
           else if typeRel(mapping, base(f), a.sons[1]) >= isGeneric then
             result := isSubtype;
         end;
-        tyArray:
-          if typeRel(mapping, base(f), a.sons[1]) >= isGeneric then
-            result := isConvertible;
+        tyArray: begin
+          if (f.sons[0].kind <> tyGenericParam) and
+              (a.sons[1].kind = tyEmpty) then 
+            result := isSubtype
+          else if typeRel(mapping, base(f), a.sons[1]) >= isGeneric then
+            result := isConvertible
+        end;
         tySequence: begin
-          if typeRel(mapping, base(f), a.sons[0]) >= isGeneric then
+          if (f.sons[0].kind <> tyGenericParam) and
+              (a.sons[0].kind = tyEmpty) then 
+            result := isConvertible
+          else if typeRel(mapping, base(f), a.sons[0]) >= isGeneric then
             result := isConvertible;
         end
         else begin end
@@ -262,21 +296,20 @@ begin // is a subtype of f?
     tySequence: begin
       case a.Kind of
         tyNil: result := isSubtype;
-        tyArrayConstr: begin
-          if (a.sons[1] = nil) then // [] is allowed here
-            result := isConvertible
-          else if typeRel(mapping, f.sons[0], a.sons[1]) >= isGeneric then
-            result := isConvertible
-        end;
         tySequence: begin
-          result := typeRel(mapping, f.sons[0], a.sons[0]);
-          if result < isGeneric then result := isNone
+          if (f.sons[0].kind <> tyGenericParam) and
+              (a.sons[0].kind = tyEmpty) then 
+            result := isSubtype
+          else begin
+            result := typeRel(mapping, f.sons[0], a.sons[0]);
+            if result < isGeneric then result := isNone
+          end
         end;
         else begin end
       end
     end;
     tyForward: InternalError('forward type in typeRel()');
-    tyNil, tyEmptySet: begin
+    tyNil: begin
       if a.kind = f.kind then result := isEqual
     end;
     tyTuple: begin
@@ -289,15 +322,14 @@ begin // is a subtype of f?
       end
     end;
     tySet: begin
-      case a.kind of
-        tyEmptySet: begin
-          result := isSubtype;
-        end;
-        tySet: begin
-          result := typeRel(mapping, base(f), base(a));
+      if a.kind = tySet then begin
+        if (f.sons[0].kind <> tyGenericParam) and
+            (a.sons[0].kind = tyEmpty) then 
+          result := isSubtype
+        else begin
+          result := typeRel(mapping, f.sons[0], a.sons[0]);
           if result <= isConvertible then result := isNone // BUGFIX!
-        end;
-        else begin end
+        end
       end
     end;
     tyPtr: begin
@@ -338,7 +370,7 @@ begin // is a subtype of f?
                 // allow ``f.son`` as subtype of ``a.son``!
                 result := isConvertible;
               end
-              else if m < isGeneric then begin
+              else if m < isSubtype then begin
                 result := isNone; exit
               end
               else result := minRel(m, result)
@@ -393,6 +425,9 @@ begin // is a subtype of f?
       end
     end;
 
+    tyEmpty: begin
+      if a.kind = tyEmpty then result := isEqual;
+    end;
     tyAnyEnum: begin
       case a.kind of
         tyRange: result := typeRel(mapping, f, base(a));
@@ -445,6 +480,8 @@ begin // is a subtype of f?
           end
         end
       end
+      else if a.kind = tyEmpty then
+        result := isGeneric
       else begin
         result := typeRel(mapping, x, a); // check if it fits
       end
@@ -520,6 +557,10 @@ begin
       inc(m.convMatches);
       result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
     end;
+    isIntConv: begin
+      inc(m.intConvMatches);
+      result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
+    end;
     isSubtype: begin
       inc(m.subtypeMatches);
       result := implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c);
@@ -587,9 +628,8 @@ begin
   f := 1;
   a := 1;
   m.state := csMatch; // until proven otherwise
-  m.call := newNode(nkCall);
+  m.call := newNodeI(nkCall, n.info);
   m.call.typ := base(m.callee); // may be nil
-  m.call.info := n.info;
   formalLen := sonsLen(m.callee.n);
   addSon(m.call, copyTree(n.sons[0]));
   IntSetInit(marker);

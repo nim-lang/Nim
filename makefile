@@ -1,14 +1,13 @@
-# Dummy makefile for people who don't read "readme" files, or automated
+# Dummy makefile for people who don't read "readme" files, or for automated
 # installations
-# (c) 2007  Andreas Rumpf
 
 .PHONY : all
 all:
-	python koch.py all
+	python koch.py boot -d:release
 
 .PHONY : install
 install:
-	python koch.py install
+	sh install.sh /usr/bin
 
 .PHONY : clean
 clean:

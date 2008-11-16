@@ -19,15 +19,17 @@ interface
 uses
   nsystem, ast, astalgo, strutils, hashes, trees, platform, magicsys,
   extccomp, options, nversion, nimsets, msgs, crc, bitsets, idents,
-  lists, types, nos, ntime, ropes, nmath, backends, ccgutils, wordrecg, rnimsyn;
+  lists, types, nos, ntime, ropes, nmath, passes, ccgutils, wordrecg, rnimsyn,
+  rodread;
 
-function EcmasBackend(b: PBackend; module: PSym;
-                      const filename: string): PBackend;
+function ecmasgenPass(): TPass;
 
 implementation
 
 type
-  TEcmasGen = object(TBackend)
+  TEcmasGen = object(TPassContext)
+    filename: string;
+    module: PSym;
   end;
   BModule = ^TEcmasGen;
 
@@ -93,7 +95,7 @@ begin
 {@ignore}
   fillChar(p, sizeof(p), 0);
 {@emit
-  p.blocks := [];}
+  p.blocks := @[];}
   p.options := options;
   p.module := module;
   p.procDef := procDef;
@@ -103,8 +105,7 @@ end;
 
 const
   MappedToObject = {@set}[tyObject, tyArray, tyArrayConstr, tyTuple,
-                          tyEmptySet, tyOpenArray, tySet, tyVar,
-                          tyRef, tyPtr];
+                          tyOpenArray, tySet, tyVar, tyRef, tyPtr];
 
 function mapType(typ: PType): TEcmasTypeKind;
 begin
@@ -129,10 +130,10 @@ begin
     end;
     tyString, tySequence:
       result := etyInt; // little hack to get the right semantics
-    tyObject, tyArray, tyArrayConstr, tyTuple, tyEmptySet, tyOpenArray:
+    tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray:
       result := etyObject;
     tyNil: result := etyNull;
-    tyGenericInst, tyGenericParam, tyGeneric, tyNone, tyForward:
+    tyGenericInst, tyGenericParam, tyGeneric, tyNone, tyForward, tyEmpty:
       result := etyNone;
     tyProc: result := etyProc;
     tyCString: result := etyString;
@@ -1832,38 +1833,56 @@ begin
   end
 end;
 
-procedure finishModule(b: PBackend; n: PNode);
+function myProcess(b: PPassContext; n: PNode): PNode;
 var
   m: BModule;
-  outfile: string;
   p: TProc;
   r: TCompRes;
-  code: PRope;
 begin
+  result := n;
   m := BModule(b);
-  if m.module = nil then InternalError(n.info, 'finishModule');
+  if m.module = nil then InternalError(n.info, 'myProcess');
   initProc(p, globals, m, nil, m.module.options);
   genModule(p, n, r);
   app(p.globals.code, p.data);
   app(p.globals.code, mergeStmt(r));
-  if sfMainModule in m.module.flags then begin
-    // write the file:
-    code := con(p.globals.typeInfo, p.globals.code);
-    outfile := changeFileExt(completeCFilePath(m.filename), 'js');
-    {@discard} writeRopeIfNotEqual(con(genHeader(), code), outfile);
-  end;
 end;
 
-function EcmasBackend(b: PBackend; module: PSym;
-                      const filename: string): PBackend;
+function myClose(b: PPassContext; n: PNode): PNode;
 var
-  g: BModule;
+  m: BModule;
+  code: PRope;
+  outfile: string;
 begin
-  g := newModule(module, filename);
-  g.backendCreator := EcmasBackend;
-  g.eventMask := {@set}[eAfterModule];
-  g.afterModuleEvent := finishModule;
-  result := g;
+  result := myProcess(b, n);
+  m := BModule(b);
+  if sfMainModule in m.module.flags then begin
+    // write the file:
+    code := con(globals.typeInfo, globals.code);
+    outfile := changeFileExt(completeCFilePath(m.filename), 'js');
+    {@discard} writeRopeIfNotEqual(con(genHeader(), code), outfile);
+  end
+end;
+
+function myOpenCached(s: PSym; const filename: string;
+                      rd: PRodReader): PPassContext;
+begin
+  InternalError('symbol files are not possible with the Ecmas code generator');
+  result := nil;
+end;
+
+function myOpen(s: PSym; const filename: string): PPassContext;
+begin
+  result := newModule(s, filename);
+end;
+
+function ecmasgenPass(): TPass;
+begin
+  InitPass(result);
+  result.open := myOpen;
+  result.close := myClose;
+  result.openCached := myOpenCached;
+  result.process := myProcess;
 end;
 
 end.

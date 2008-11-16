@@ -16,7 +16,7 @@ unit lexbase;
 interface
 
 uses
-  nsystem, charsets, strutils;
+  nsystem, llstream, charsets, strutils;
 
 {@emit
 const
@@ -44,25 +44,21 @@ const
 type
   TBaseLexer = object(NObject)
     bufpos: int;
-    buf: PChar;      // NOT zero terminated!
+    buf: PChar;
     bufLen: int;     // length of buffer in characters
-    f: TBinaryFile;  // we use a binary file here for efficiency
+    stream: PLLStream; // we read from this stream
     LineNumber: int; // the current line number
     // private data:
     sentinel: int;
     lineStart: int;     // index of last line start in buffer
-    fileOpened: boolean;
   end;
 
-function initBaseLexer(out L: TBaseLexer;
-                       const filename: string;
-                       bufLen: int = 8192): boolean;
+procedure openBaseLexer(out L: TBaseLexer;
+                        inputstream: PLLStream;
+                        bufLen: int = 8192);
     // 8K is a reasonable buffer size
 
-procedure initBaseLexerFromBuffer(out L: TBaseLexer;
-                                  const buffer: string);
-
-procedure deinitBaseLexer(var L: TBaseLexer);
+procedure closeBaseLexer(var L: TBaseLexer);
 
 function getCurrentLine(const L: TBaseLexer; marker: boolean = true): string;
 function getColNumber(const L: TBaseLexer; pos: int): int;
@@ -82,10 +78,10 @@ implementation
 const
   chrSize = sizeof(char);
 
-procedure deinitBaseLexer(var L: TBaseLexer);
+procedure closeBaseLexer(var L: TBaseLexer);
 begin
   dealloc(L.buf);
-  if L.fileOpened then closeFile(L.f);
+  LLStreamClose(L.stream);
 end;
 
 {@ignore}
@@ -119,8 +115,8 @@ begin
   if toCopy > 0 then
     MoveMem(L.buf, addr(L.buf[L.sentinel+1]), toCopy * chrSize);
     // "moveMem" handles overlapping regions
-  charsRead := ReadBuffer(L.f, addr(L.buf[toCopy]), (L.sentinel+1) * chrSize)
-                 div chrSize;
+  charsRead := LLStreamRead(L.stream, addr(L.buf[toCopy]), 
+                            (L.sentinel+1) * chrSize) div chrSize;
   s := toCopy + charsRead;
   if charsRead < L.sentinel+1 then begin
     L.buf[s] := EndOfFile; // set end marker
@@ -144,8 +140,8 @@ begin
         L.bufLen := L.BufLen * 2;
         L.buf := {@cast}PChar(realloc(L.buf, L.bufLen*chrSize));
         assert(L.bufLen - oldBuflen = oldBufLen);
-        charsRead := ReadBuffer(L.f, addr(L.buf[oldBufLen]), oldBufLen*chrSize)
-                      div chrSize;
+        charsRead := LLStreamRead(L.stream, addr(L.buf[oldBufLen]), 
+                                  oldBufLen*chrSize) div chrSize;
         if charsRead < oldBufLen then begin
           L.buf[oldBufLen+charsRead] := EndOfFile;
           L.sentinel := oldBufLen+charsRead;
@@ -198,8 +194,8 @@ begin
   end
 end;
 
-function initBaseLexer(out L: TBaseLexer; const filename: string;
-                       bufLen: int = 8192): boolean;
+procedure openBaseLexer(out L: TBaseLexer; inputstream: PLLStream;
+                        bufLen: int = 8192);
 begin
   assert(bufLen > 0);
   L.bufpos := 0;
@@ -208,30 +204,8 @@ begin
   L.sentinel := bufLen-1;
   L.lineStart := 0;
   L.linenumber := 1; // lines start at 1
-  L.fileOpened := openFile(L.f, filename);
-  result := L.fileOpened;
-  if result then begin
-    fillBuffer(L);
-    skip_UTF_8_BOM(L)
-  end;
-end;
-
-procedure initBaseLexerFromBuffer(out L: TBaseLexer;
-                                  const buffer: string);
-begin
-  L.bufpos := 0;
-  L.bufLen := length(buffer)+1;
-  L.buf := {@cast}PChar(alloc(L.bufLen * chrSize));
-  L.sentinel := L.bufLen-1;
-  L.lineStart := 0;
-  L.linenumber := 1; // lines start at 1
-  L.fileOpened := false;
-  if L.bufLen > 0 then begin
-    copyMem(L.buf, {@cast}pointer(buffer), L.bufLen);
-    L.buf[L.bufLen-1] := EndOfFile;
-  end
-  else
-    L.buf[0] := EndOfFile;
+  L.stream := inputstream;
+  fillBuffer(L);
   skip_UTF_8_BOM(L);
 end;
 

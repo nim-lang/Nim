@@ -7,14 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-## Basic operating system facilities like retrieving environment variables,
-## reading command line arguments, working with directories, running shell
-## commands, etc. This module is -- like any other basic library --
-## platform independant. However, the ECMAScript target is not supported,
-## as there is no way to perform these operations in ECMAScript portably
-## or at all.
+## This module contains basic operating system facilities like
+## retrieving environment variables, reading command line arguments,
+## working with directories, running shell commands, etc.
+## This module is -- like any other basic library -- platform independant.
 
-{.push debugger:off.}
+{.push debugger: off.}
 
 import
   strutils, times
@@ -28,8 +26,9 @@ template newException(exceptn, message: expr): expr =
     e.msg = message
     e
 
-when defined(windows) or defined(OS2) or defined(DOS):
-  {.define: doslike.} # DOS-like filesystem
+const
+  doslike = defined(windows) or defined(OS2) or defined(DOS)
+    # DOS-like filesystem
 
 when defined(Nimdoc): # only for proper documentation:
   const
@@ -69,6 +68,14 @@ when defined(Nimdoc): # only for proper documentation:
       ## True if the file system is case sensitive, false otherwise. Used by
       ## `cmpPaths` to compare filenames properly.
 
+    ExeExt* = ""
+      ## The file extension of native executables. For example:
+      ## "" on UNIX, "exe" on Windows.
+
+    ScriptExt* = ""
+      ## The file extension of a script file. For example: "" on UNIX,
+      ## "bat" on Windows.
+
 elif defined(macos):
   const
     curdir* = ':'
@@ -77,6 +84,8 @@ elif defined(macos):
     altsep* = dirsep
     pathsep* = ','
     FileSystemCaseSensitive* = false
+    ExeExt* = ""
+    ScriptExt* = ""
 
   #  MacOS paths
   #  ===========
@@ -96,7 +105,7 @@ elif defined(macos):
   #  waterproof. In case of equal names the first volume found will do.
   #  Two colons "::" are the relative path to the parent. Three is to the
   #  grandparent etc.
-elif defined(doslike):
+elif doslike:
   const
     curdir* = '.'
     pardir* = ".."
@@ -104,6 +113,8 @@ elif defined(doslike):
     altsep* = '/'
     pathSep* = ';' # seperator between paths
     FileSystemCaseSensitive* = false
+    ExeExt* = "exe"
+    ScriptExt* = "bat"
 elif defined(PalmOS) or defined(MorphOS):
   const
     dirsep* = '/'
@@ -111,6 +122,8 @@ elif defined(PalmOS) or defined(MorphOS):
     PathSep* = ';'
     pardir* = ".."
     FileSystemCaseSensitive* = false
+    ExeExt* = ""
+    ScriptExt* = ""
 elif defined(RISCOS):
   const
     dirsep* = '.'
@@ -118,6 +131,8 @@ elif defined(RISCOS):
     pardir* = ".." # is this correct?
     pathSep* = ','
     FileSystemCaseSensitive* = true
+    ExeExt* = ""
+    ScriptExt* = ""
 else: # UNIX-like operating system
   const
     curdir* = '.'
@@ -126,6 +141,8 @@ else: # UNIX-like operating system
     altsep* = dirsep
     pathSep* = ':'
     FileSystemCaseSensitive* = true
+    ExeExt* = ""
+    ScriptExt* = ""
 
 const
   ExtSep* = '.'
@@ -133,26 +150,26 @@ const
     ## for example, the '.' in ``os.nim``.
 
 proc getApplicationDir*(): string {.noSideEffect.}
-  ## Gets the directory of the application's executable.
+  ## Returns the directory of the application's executable.
 
 proc getApplicationFilename*(): string {.noSideEffect.}
-  ## Gets the filename of the application's executable.
+  ## Returns the filename of the application's executable.
 
 proc getCurrentDir*(): string {.noSideEffect.}
-  ## Gets the current working directory.
+  ## Returns the current working directory.
 
 proc setCurrentDir*(newDir: string) {.inline.}
   ## Sets the current working directory; `EOS` is raised if
   ## `newDir` cannot been set.
 
 proc getHomeDir*(): string {.noSideEffect.}
-  ## Gets the home directory of the current user.
+  ## Returns the home directory of the current user.
 
 proc getConfigDir*(): string {.noSideEffect.}
-  ## Gets the config directory of the current user for applications.
+  ## Returns the config directory of the current user for applications.
 
 proc expandFilename*(filename: string): string
-  ## Returns the full path of `filename`, "" on error.
+  ## Returns the full path of `filename`, raises EOS in case of an error.
 
 proc ExistsFile*(filename: string): bool
   ## Returns true if the file exists, false otherwise.
@@ -216,13 +233,26 @@ proc SplitFilename*(filename: string, name, extension: var string) {.
   ## It the file has no extension, extention is the empty string.
 
 proc extractDir*(path: string): string {.noSideEffect.}
-  ## Extracts the directory of a given path. This is the `head`
-  ## result of `splitPath`.
+  ## Extracts the directory of a given path. This is almost the
+  ## same as the `head` result of `splitPath`, except that
+  ## ``extractDir("/usr/lib/") == "/usr/lib/"``.
 
 proc extractFilename*(path: string): string {.noSideEffect.}
-  ## Extracts the filename of a given `path`. This the the `tail`
-  ## result of `splitPath`.
-  # XXX: this is not true: /usr/lib/ --> filename should be empty!
+  ## Extracts the filename of a given `path`. This is almost the
+  ## same as the `tail` result of `splitPath`, except that
+  ## ``extractFilename("/usr/lib/") == ""``.
+
+proc extractFileExt*(filename: string): string {.noSideEffect.} =
+  ## Extracts the file extension of a given `filename`. This is the
+  ## same as the `extension` result of `splitFilename`.
+  var dummy: string
+  splitFilename(filename, dummy, result)
+
+proc extractFileTrunk*(filename: string): string {.noSideEffect.} =
+  ## Extracts the file name of a given `filename`. This removes any
+  ## directory information and the file extension.
+  var dummy: string
+  splitFilename(extractFilename(filename), result, dummy)
 
 proc cmpPaths*(pathA, pathB: string): int {.noSideEffect.}
   ## Compares two paths.
@@ -251,28 +281,23 @@ proc ChangeFileExt*(filename, ext: string): string {.noSideEffect.}
   ## filesystems may use a different character. (Although I know
   ## of none such beast.)
 
-# procs dealing with processes:
-proc executeProcess*(command: string): int
-  ## Executes a process.
-  ##
-  ## Command has the form 'program args' where args are the command
-  ## line arguments given to program. The proc returns the error code
-  ## of the process when it has finished. The proc does not return
-  ## until the process has finished.
-
 proc executeShellCommand*(command: string): int
   ## Executes a shell command.
   ##
-  ## The syntax of the command is unspecified and depends on the used
-  ## shell. The proc returns the error code of the shell when it has finished.
+  ## Command has the form 'program args' where args are the command
+  ## line arguments given to program. The proc returns the error code
+  ## of the shell when it has finished. The proc does not return until
+  ## the process has finished. To execute a program without having a
+  ## shell involved, use the `executeProcess` proc of the `osproc`
+  ## module.
 
 # procs operating on a high level for files:
 proc copyFile*(dest, source: string)
-  ## Copies a file from `dest` to `source`. If this fails,
+  ## Copies a file from `source` to `dest`. If this fails,
   ## `EOS` is raised.
 
 proc moveFile*(dest, source: string)
-  ## Moves a file from `dest` to `source`. If this fails, `EOS` is raised.
+  ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
 
 proc removeFile*(file: string)
   ## Removes the `file`. If this fails, `EOS` is raised.
@@ -294,10 +319,10 @@ proc existsDir*(dir: string): bool
   ## is returned.
 
 proc getLastModificationTime*(file: string): TTime
-  ## Gets the time of the `file`'s last modification.
+  ## Returns the time of the `file`'s last modification.
 
 proc fileNewer*(a, b: string): bool
-  ## returns true if the file `a` is newer than file `b`, i.e. if `a`'s
+  ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
 
 # procs dealing with environment variables:
@@ -306,7 +331,7 @@ proc putEnv*(key, val: string)
   ## If an error occurs, `EInvalidEnvVar` is raised.
 
 proc getEnv*(key: string): string
-  ## Gets the value of the environment variable named `key`.
+  ## Returns the value of the environment variable named `key`.
   ##
   ## If the variable does not exist, "" is returned. To distinguish
   ## whether a variable exists or it's value is just "", call
@@ -328,6 +353,43 @@ proc paramStr*(i: int): string
   ## `i` should be in the range `1..paramCount()`, else
   ## the `EOutOfIndex` exception is raised.
 
+when defined(windows):
+  proc GetLastError(): int32 {.importc, stdcall, dynlib: "kernel32".}
+  proc FormatMessageA(dwFlags: int32, lpSource: pointer,
+                      dwMessageId, dwLanguageId: int32,
+                      lpBuffer: pointer, nSize: int32,
+                      Arguments: pointer): int32 {.
+                      importc, stdcall, dynlib: "kernel32".}
+  proc LocalFree(p: pointer) {.importc, stdcall, dynlib: "kernel32".}
+
+var errno {.importc, header: "<errno.h>".}: cint ## error variable
+proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
+
+proc OSError*(msg: string = "") {.noinline.} =
+  ## raises an EOS exception with the given message ``msg``.
+  ## If ``msg == ""``, the operating system's error flag
+  ## (``errno``) is converted to a readable error message. On Windows
+  ## ``GetLastError`` is checked before ``errno``.
+  ## If no error flag is set, the message ``unknown OS error`` is used.
+  if len(msg) == 0:
+    when defined(Windows):
+      var err = GetLastError()
+      if err != 0'i32:
+        # sigh, why is this is so difficult?
+        var msgbuf: cstring
+        if FormatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
+          var m = $msgbuf
+          if msgbuf != nil:
+            LocalFree(msgbuf)
+          raise newException(EOS, m)
+    if errno != 0'i32:
+      raise newException(EOS, $strerror(errno))
+    else:
+      raise newException(EOS, "unknown OS error")
+  else:
+    raise newException(EOS, msg)
+
 # implementation
 
 proc UnixToNativePath(path: string): string =
@@ -337,7 +399,7 @@ proc UnixToNativePath(path: string): string =
     var start: int
     if path[0] == '/':
       # an absolute path
-      when defined(doslike):
+      when doslike:
         result = r"C:\"
       elif defined(macos):
         result = "" # must not start with ':'
@@ -368,7 +430,7 @@ proc UnixToNativePath(path: string): string =
         add result, dirSep
         inc(i)
       else:
-        add result, $path[i]
+        add result, path[i]
         inc(i)
 
 # interface to C library:
@@ -377,7 +439,8 @@ const
   cunder = if defined(pcc): "_" else: ""
 
 type
-  TStat {.importc: "struct " & cunder & "stat", final.} = object
+  TStat {.importc: "struct " & cunder & "stat",
+          header: "<sys/stat.h>", pure.} = object
     st_dev: int16
     st_ino: int16
     st_mode: int16
@@ -390,60 +453,56 @@ type
     st_mtime: TTime
     st_ctime: TTime
 
-var
-  errno {.importc: "errno", header: "<errno.h>".}: cint
-  EEXIST {.importc: "EEXIST", header: "<errno.h>".}: cint
 
 when defined(unix):
-  const dirHeader = "<sys/stat.h>"
-elif defined(windows):
-  const dirHeader = "<direct.h>"
-else:
-  {.error: "os library not ported to your OS. Please help!".}
+  var
+    EEXIST {.importc: "EEXIST", header: "<errno.h>".}: cint
 
-
-proc chdir(path: CString): cint {.
-  importc: cunder & "chdir", header: dirHeader.}
-
-when defined(unix):
   proc mkdir(dir: CString, theAccess: cint): cint {.
-    importc: "mkdir", header: dirHeader.}
+    importc: "mkdir", header: "<sys/stat.h>".}
   proc realpath(name, resolved: CString): CString {.
     importc: "realpath", header: "<stdlib.h>".}
   proc getcwd(buf: CString, buflen: cint): CString {.
     importc: "getcwd", header: "<unistd.h>".}
-elif defined(windows):
-  proc mkdir(dir: CString): cint {.
-    importc: "mkdir", header: dirHeader.}
-  proc fullpath(buffer, file: CString, size: int): CString {.
-    importc: "_fullpath", header: "<stdlib.h>".}
-  proc getcwd(buf: CString, buflen: cint): CString {.
-    importc: cunder & "getcwd", header: "<direct.h>".}
+  proc chdir(path: CString): cint {.
+    importc: "chdir", header: "<unistd.h>".}
+  proc rmdir(dir: CString): cint {.
+    importc: "rmdir", header: "<unistd.h>".}
 
-  proc CreateDirectory(pathName: cstring, security: Pointer): cint {.
-    importc: "CreateDirectory", header: "<windows.h>".}
-  proc GetLastError(): cint {.importc, header: "<windows.h>".}
+  # is in <stdlib.h>:
+  proc cputenv(env: CString): cint {.importc: "putenv", noDecl.}
+
+elif defined(windows):
+  proc GetCurrentDirectoryA(nBufferLength: int32, lpBuffer: cstring): int32 {.
+    importc, dynlib: "kernel32", stdcall.}
+  proc SetCurrentDirectoryA(lpPathName: cstring): int32 {.
+    importc, dynlib: "kernel32", stdcall.}
+  proc CreateDirectoryA(pathName: cstring, security: Pointer): int32 {.
+    importc: "CreateDirectoryA", dynlib: "kernel32", stdcall.}
+  proc RemoveDirectoryA(lpPathName: cstring): int32 {.
+    importc, dynlib: "kernel32", stdcall.}
+  proc SetEnvironmentVariableA(lpName, lpValue: cstring): int32 {.
+    stdcall, dynlib: "kernel32", importc.}
 else:
   {.error: "os library not ported to your OS. Please help!".}
 
 
-proc rmdir(dir: CString): cint {.
-  importc: cunder & "rmdir", header: "<time.h>".}
-  # rmdir is of course in ``dirHeader``, but we check here to include
-  # time.h which is needed for stat(). stat() needs time.h and
-  # sys/stat.h; we workaround a C library issue here.
 
-proc free(c: cstring) {.importc: "free", nodecl.}
-  # some C procs return a buffer that has to be freed with free(),
-  # so we define it here
-proc strlen(str: CString): int {.importc: "strlen", nodecl.}
+when defined(unix):
+  proc free(c: cstring) {.importc: "free", nodecl.}
+    # some C procs return a buffer that has to be freed with free(),
+    # so we define it here
+  proc strlen(str: CString): int {.importc: "strlen", nodecl.}
 
 proc stat(f: CString, res: var TStat): cint {.
-  importc: cunder & "stat", header: "<sys/stat.h>".}
+  importc: cunder & "stat", header: "<time.h>".}
+  # stat is of course in ``<sys/stat.h>``, but I include
+  # time.h which is needed for stat() too. stat() needs both time.h and
+  # sys/stat.h.
 
 when defined(windows):
-  proc getModuleFilename(handle: int32, buf: CString, size: int32): int32 {.
-    importc: "GetModuleFileName", header: "<windows.h>".}
+  proc GetModuleFileNameA(handle: int32, buf: CString, size: int32): int32 {.
+    importc, dynlib: "kernel32", stdcall.}
 
 proc getLastModificationTime(file: string): TTime =
   var
@@ -452,11 +511,12 @@ proc getLastModificationTime(file: string): TTime =
   return res.st_mtime
 
 proc setCurrentDir(newDir: string) =
-  if chdir(newDir) != 0:
-    raise newException(EOS, "cannot change the working directory to '$1'" %
-      newDir)
+  when defined(Windows):
+    if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
+  else:
+    if chdir(newDir) != 0'i32: OSError()
 
-when defined(linux) or defined(solaris) or defined(bsd):
+when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
   proc readlink(link, buf: cstring, size: int): int {.
     header: "<unistd.h>", cdecl.}
 
@@ -487,14 +547,14 @@ proc getApplicationFilename(): string =
   # /proc/<pid>/file
   when defined(windows):
     result = newString(256)
-    var len = getModuleFileName(0, result, 256)
+    var len = getModuleFileNameA(0, result, 256)
     setlen(result, int(len))
-  elif defined(linux):
+  elif defined(linux) or defined(aix):
     result = getApplAux("/proc/self/exe")
   elif defined(solaris):
     result = getApplAux("/proc/" & $getpid() & "/path/a.out")
   elif defined(bsd):
-    result = getApplAux("/proc/" & $getpid() & "file")
+    result = getApplAux("/proc/" & $getpid() & "/file")
   elif defined(macosx):
     var size: int32
     getExecPath1(nil, size)
@@ -513,20 +573,22 @@ proc getApplicationFilename(): string =
           var x = joinPath(p, result)
           if ExistsFile(x): return x
 
-{.push warnings: off.}
 proc getApplicationDir(): string =
   var tail: string
   splitPath(getApplicationFilename(), result, tail)
-{.pop.}
 
 proc getCurrentDir(): string =
-  const
-    bufsize = 512 # should be enough
+  const bufsize = 512 # should be enough
   result = newString(bufsize)
-  if getcwd(result, bufsize) != nil:
-    setlen(result, strlen(result))
+  when defined(windows):
+    var L = GetCurrentDirectoryA(bufsize, result)
+    if L == 0'i32: OSError()
+    setLen(result, L)
   else:
-    raise newException(EOS, "getcwd failed")
+    if getcwd(result, bufsize) != nil:
+      setlen(result, strlen(result))
+    else:
+      OSError()
 
 proc JoinPath(head, tail: string): string =
   if len(head) == 0:
@@ -617,46 +679,65 @@ proc AppendFileExt(filename, ext: string): string =
 proc csystem(cmd: CString): cint {.importc: "system", noDecl.}
   # is in <stdlib.h>!
 
-when defined(wcc):
-  # everywhere it is in <stdlib.h>, except for Watcom C ...
-  proc cputenv(env: CString): cint {.importc: "putenv", header: "<process.h>".}
-
-else: # is in <stdlib.h>
-  proc cputenv(env: CString): cint {.importc: cunder & "putenv", noDecl.}
-
 proc cgetenv(env: CString): CString {.importc: "getenv", noDecl.}
 
-#long  _findfirst(char *, struct _finddata_t *);
-#int  _findnext(long, struct _finddata_t *);
-#int  _findclose(long);
 when defined(windows):
+  const
+    FILE_ATTRIBUTE_DIRECTORY = 16
+    MAX_PATH = 260
   type
-    TFindData {.importc: "struct _finddata_t", final.} = object
-      attrib {.importc: "attrib".}: cint
-      time_create {.importc: "time_create".}: cint
-      time_access {.importc: "time_access".}: cint
-      time_write {.importc: "time_write".}: cint
-      size {.importc: "size".}: cint
-      name {.importc: "name".}: array[0..259, char]
+    HANDLE = int
+    FILETIME {.pure.} = object
+      dwLowDateTime: int32
+      dwHighDateTime: int32
+    TWIN32_FIND_DATA {.pure.} = object
+      dwFileAttributes: int32
+      ftCreationTime: FILETIME
+      ftLastAccessTime: FILETIME
+      ftLastWriteTime: FILETIME
+      nFileSizeHigh: int32
+      nFileSizeLow: int32
+      dwReserved0: int32
+      dwReserved1: int32
+      cFileName: array[0..(MAX_PATH) - 1, char]
+      cAlternateFileName: array[0..13, char]
+  proc FindFirstFileA(lpFileName: cstring,
+                      lpFindFileData: var TWIN32_FIND_DATA): HANDLE {.
+      stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
+  proc FindNextFileA(hFindFile: HANDLE,
+                     lpFindFileData: var TWIN32_FIND_DATA): int32 {.
+      stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
+  proc FindClose(hFindFile: HANDLE) {.stdcall, dynlib: "kernel32",
+    importc: "FindClose".}
 
-  proc findfirst(pathname: CString, f: ptr TFindData): cint {.
-    importc: "_findfirst", header: "<io.h>".}
-  proc findnext(handle: cint, f: ptr TFindData): cint {.
-    importc: "_findnext", header: "<io.h>".}
-  proc findclose(handle: cint) {.importc: "_findclose", header: "<io.h>".}
+  proc GetFullPathNameA(lpFileName: cstring, nBufferLength: int32,
+                        lpBuffer: cstring, lpFilePart: var cstring): int32 {.
+                        stdcall, dynlib: "kernel32", importc.}
+  proc GetFileAttributesA(lpFileName: cstring): int32 {.
+                          stdcall, dynlib: "kernel32", importc.}
+
 else:
   type
-    TFindData {.importc: "glob_t", final.} = object
+    TDIR {.importc: "DIR", header: "<dirent.h>", pure.} = object
+    TDirent {.importc: "struct dirent", header: "<dirent.h>", pure.} = object
+      d_name: array [0..255, char]
+
+  proc opendir(dir: cstring): ptr TDIR {.importc, header: "<dirent.h>".}
+  proc closedir(dir: ptr TDIR) {.importc, header: "<dirent.h>".}
+  proc readdir(dir: ptr TDIR): ptr TDirent {.importc, header: "<dirent.h>".}
+
+  type
+    TGlob {.importc: "glob_t", header: "<glob.h>", final, pure.} = object
       gl_pathc: int     # count of paths matched by pattern
-      gl_pathv: ptr array[0..1000_000, CString] # list of matched path names
+      gl_pathv: cstringArray # list of matched path names
       gl_offs: int      # slots to reserve at beginning of gl_pathv
-    PFindData = ptr TFindData
+    PGlob = ptr TGlob
 
   proc glob(pattern: cstring, flags: cint, errfunc: pointer,
-            pglob: PFindData): cint {.
+            pglob: PGlob): cint {.
     importc: "glob", header: "<glob.h>".}
 
-  proc globfree(pglob: PFindData) {.
+  proc globfree(pglob: PGlob) {.
     importc: "globfree", header: "<glob.h>".}
 
 proc sameFile*(path1, path2: string): bool =
@@ -665,132 +746,149 @@ proc sameFile*(path1, path2: string): bool =
   ## Raises an exception if an os.stat() call on either pathname fails.
   when defined(Windows):
     var
-      a, b: TFindData
-    var resA = findfirst(path1, addr(a))
-    var resB = findfirst(path2, addr(b))
+      a, b: TWin32FindData
+    var resA = findfirstFileA(path1, a)
+    var resB = findfirstFileA(path2, b)
     if resA != -1 and resB != -1:
-      result = $a.name == $b.name
+      result = $a.cFileName == $b.cFileName
     else:
-      # work around some ``findfirst`` bugs
+      # work around some ``findfirstFileA`` bugs
       result = cmpPaths(path1, path2) == 0
     if resA != -1: findclose(resA)
     if resB != -1: findclose(resB)
   else:
     var
       a, b: TStat
-    if stat(path1, a) < 0 or stat(path2, b) < 0:
+    if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
       result = cmpPaths(path1, path2) == 0 # be consistent with Windows
     else:
-      result = int(a.st_dev) == b.st_dev and int(a.st_ino) == b.st_ino
+      result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
+proc sameFileContent*(path1, path2: string): bool =
+  ## Returns True if both pathname arguments refer to files with identical
+  ## content. Content is compared byte for byte.
+  const
+    bufSize = 8192 # 8K buffer
+  var
+    a, b: TFile
+  if not openFile(a, path1): return false
+  if not openFile(b, path2):
+    closeFile(a)
+    return false
+  var bufA = alloc(bufsize)
+  var bufB = alloc(bufsize)
+  while True:
+    var readA = readBuffer(a, bufA, bufsize)
+    var readB = readBuffer(b, bufB, bufsize)
+    if readA != readB:
+      result = false
+      break
+    if readA == 0:
+      result = true
+      break
+    result = equalMem(bufA, bufB, readA)
+    if not result: break
+    if readA != bufSize: break # end of file
+  dealloc(bufA)
+  dealloc(bufB)
+  closeFile(a)
+  closeFile(b)
+
+# Ansi C has these:
 proc cremove(filename: CString): cint {.importc: "remove", noDecl.}
 proc crename(oldname, newname: CString): cint {.importc: "rename", noDecl.}
 
 when defined(Windows):
-  proc cCopyFile(lpExistingFileName, lpNewFileName: CString,
+  proc CopyFileA(lpExistingFileName, lpNewFileName: CString,
                  bFailIfExists: cint): cint {.
-    importc: "CopyFile", header: "<windows.h>".}
-  #  cMoveFile(lpExistingFileName, lpNewFileName: CString): int
-  #    {.importc: "MoveFile", noDecl, header: "<winbase.h>".}
-  #  cRemoveFile(filename: CString, cmo: int)
-  #    {.importc: "DeleteFile", noDecl, header: "<winbase.h>".}
+    importc, stdcall, dynlib: "kernel32".}
+  proc copyFile(dest, source: string) =
+    if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
+
 else:
-  # generic version of cCopyFile which works for any platform:
-  proc cCopyFile(lpExistingFileName, lpNewFileName: CString,
-            bFailIfExists: cint): cint =
+  # generic version of copyFile which works for any platform:
+  proc copyFile(dest, source: string) =
     const
       bufSize = 8192 # 8K buffer
     var
-      dest, src: TFile
-    if not openFile(src, $lpExistingFilename): return -1
-    if not openFile(dest, $lpNewFilename, fmWrite):
-      closeFile(src)
-      return -1
+      d, s: TFile
+    if not openFile(s, source): OSError()
+    if not openFile(d, dest, fmWrite):
+      closeFile(s)
+      OSError()
     var
       buf: Pointer = alloc(bufsize)
       bytesread, byteswritten: int
     while True:
-      bytesread = readBuffer(src, buf, bufsize)
-      byteswritten = writeBuffer(dest, buf, bytesread)
+      bytesread = readBuffer(s, buf, bufsize)
+      byteswritten = writeBuffer(d, buf, bytesread)
       if bytesread != bufSize: break
-    if byteswritten == bytesread: result = 0
-    else: result = -1
+      if bytesread != bytesWritten: OSError()
     dealloc(buf)
-    closeFile(src)
-    closeFile(dest)
-
+    closeFile(s)
+    closeFile(d)
 
 proc moveFile(dest, source: string) =
-  if crename(source, dest) != 0:
-    raise newException(EOS, "cannot move file from '$1' to '$2'" %
-      [source, dest])
-
-proc copyFile(dest, source: string) =
-  if cCopyFile(source, dest, 0) != 0:
-    raise newException(EOS, "cannot copy file from '$1' to '$2'" %
-      [source, dest])
+  if crename(source, dest) != 0'i32: OSError()
 
 proc removeFile(file: string) =
-  if cremove(file) != 0:
-    raise newException(EOS, "cannot remove file '$1'" % file)
+  if cremove(file) != 0'i32: OSError()
 
 proc removeDir(dir: string) =
-  if rmdir(dir) != 0:
-    raise newException(EOS, "cannot remove directory '$1'" % dir)
+  when defined(windows):
+    if RemoveDirectoryA(dir) == 0'i32: OSError()
+  else:
+    if rmdir(dir) != 0'i32: OSError()
+
+proc rawCreateDir(dir: string) =
+  when defined(unix):
+    if mkdir(dir, 0o711) != 0'i32 and errno != EEXIST:
+      OSError()
+  else:
+    if CreateDirectoryA(dir, nil) == 0'i32 and GetLastError() != 183'i32:
+      OSError()
 
 proc createDir(dir: string) =
-  when defined(unix):
-    if mkdir(dir, 0o711) != 0 and int(errno) != EEXIST:
-      raise newException(EOS, "cannot create directory '$1'" % dir)
-  else:
-    if CreateDirectory(dir, nil) == 0 and GetLastError() != 183:
-      raise newException(EOS, "cannot create directory '$1'" % dir)
-
-proc existsDir(dir: string): bool =
-  var safe = getCurrentDir()
-  # just try to set the current dir to dir; if it works, it must exist:
-  result = chdir(dir) == 0
-  if result:
-    setCurrentDir(safe) # set back to the old working directory
-
-proc executeProcess(command: string): int =
-  return csystem(command) # XXX: do this without shell
+  for i in 0.. dir.len-1:
+    if dir[i] in {dirsep, altsep}: rawCreateDir(copy(dir, 0, i-1))
+  rawCreateDir(dir)
 
 proc executeShellCommand(command: string): int =
   return csystem(command)
 
 var
   envComputed: bool = false
-  environment {.noStatic.}: seq[string] = []
+  environment: seq[string] = @[]
 
 when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
-  proc GetEnvironmentStrings(): Pointer {.
-    importc: "GetEnvironmentStrings", header: "<windows.h>".}
-  proc FreeEnvironmentStrings(env: Pointer) {.
-    importc: "FreeEnvironmentStrings", header: "<windows.h>".}
+  proc GetEnvironmentStringsA*(): cstring {.
+    stdcall, dynlib: "kernel32", importc.}
+  proc FreeEnvironmentStringsA*(para1: cstring): int32 {.
+    stdcall, dynlib: "kernel32", importc.}
+
   proc strEnd(cstr: CString, c = 0): CString {.importc: "strchr", nodecl.}
 
-  proc getEnvVarsC() {.noStatic.} =
+  proc getEnvVarsC() =
     if not envComputed:
       var
-        env = cast[CString](getEnvironmentStrings())
+        env = getEnvironmentStringsA()
         e = env
       if e == nil: return # an error occured
       while True:
         var eend = strEnd(e)
-        add environment, $e
+        add(environment, $e)
         e = cast[CString](cast[TAddress](eend)+1)
         if eend[1] == '\0': break
       envComputed = true
-      FreeEnvironmentStrings(env)
+      discard FreeEnvironmentStringsA(env)
 
 else:
   var
     gEnv {.importc: "gEnv".}: ptr array [0..10_000, CString]
 
-  proc getEnvVarsC() {.noStatic.} =
+  proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
       var
@@ -840,8 +938,12 @@ proc putEnv(key, val: string) =
   else:
     add environment, (key & '=' & val)
     indx = high(environment)
-  if cputenv(environment[indx]) != 0:
-    raise newException(EOS, "attempt to set an invalid environment variable")
+  when defined(unix):
+    if cputenv(environment[indx]) != 0'i32:
+      OSError()
+  else:
+    if SetEnvironmentVariableA(key, val) == 0'i32:
+      OSError()
 
 iterator walkFiles*(pattern: string): string =
   ## Iterate over all the files that match the `pattern`.
@@ -850,34 +952,108 @@ iterator walkFiles*(pattern: string): string =
   ## notation is supported.
   when defined(windows):
     var
-      f: TFindData
+      f: TWin32FindData
       res: int
-    res = findfirst(pattern, addr(f))
+    res = findfirstFileA(pattern, f)
     if res != -1:
       while true:
-        yield $f.name
-        if int(findnext(res, addr(f))) == -1: break
+        if f.cFileName[0] != '.':
+          yield extractDir(pattern) / extractFilename($f.cFileName)
+        if findnextFileA(res, f) == 0'i32: break
       findclose(res)
   else: # here we use glob
     var
-      f: TFindData
+      f: TGlob
       res: int
     f.gl_offs = 0
     f.gl_pathc = 0
     f.gl_pathv = nil
     res = glob(pattern, 0, nil, addr(f))
-    if res != 0: raise newException(EOS, "walkFiles() failed")
-    for i in 0.. f.gl_pathc - 1:
-      assert(f.gl_pathv[i] != nil)
-      yield $f.gl_pathv[i]
+    if res == 0:
+      for i in 0.. f.gl_pathc - 1:
+        assert(f.gl_pathv[i] != nil)
+        yield $f.gl_pathv[i]
     globfree(addr(f))
 
-{.push warnings:off.}
+type
+  TPathComponent* = enum  ## Enumeration specifying a path component.
+    pcFile,               ## path refers to a file
+    pcLinkToFile,         ## path refers to a symbolic link to a file
+    pcDirectory,          ## path refers to a directory
+    pcLinkToDirectory     ## path refers to a symbolic link to a directory
+
+when defined(posix):
+  proc S_ISDIR(m: int16): bool {.importc, header: "<sys/stat.h>".}
+  proc S_ISLNK(m: int16): bool {.importc, header: "<sys/stat.h>".}
+  proc S_ISREG(m: int16): bool {.importc, header: "<sys/stat.h>".}
+
+iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
+  ## walks over the directory `dir` and yields for each directory or file in
+  ## `dir`. The component type and full path for each item is returned.
+  ## Walking is not recursive.
+  ## Example: Assuming this directory structure::
+  ##   dirA / dirB / fileB1.txt
+  ##        / dirC
+  ##        / fileA1.txt
+  ##        / fileA2.txt
+  ##
+  ## and this code:
+  ##
+  ## .. code-block:: Nimrod
+  ##     for kind, path in walkDir("dirA"):
+  ##       echo(path)
+  ##
+  ## produces this output (though not necessarily in this order!)::
+  ##   dirA/dirB
+  ##   dirA/dirC
+  ##   dirA/fileA1.txt
+  ##   dirA/fileA2.txt
+  when defined(windows):
+    var f: TWIN32_Find_Data
+    var h = findfirstFileA(dir / "*", f)
+    if h != -1:
+      while true:
+        var k = pcFile
+        if f.cFilename[0] != '.':
+          if (int(f.dwFileAttributes) and FILE_ATTRIBUTE_DIRECTORY) != 0:
+            k = pcDirectory
+          yield (k, dir / extractFilename($f.cFilename))
+        if findnextFileA(h, f) == 0'i32: break
+      findclose(h)
+  else:
+    var d = openDir(dir)
+    if d != nil:
+      while true:
+        var x = readDir(d)
+        if x == nil: break
+        var y = $x.d_name
+        if y != "." and y != "..":
+          var s: TStat
+          y = dir / y
+          if stat(y, s) < 0'i32: break
+          var k = pcFile
+          if S_ISDIR(s.st_mode): k = pcDirectory
+          if S_ISLNK(s.st_mode): k = succ(k)
+          yield (k, y)
+      closeDir(d)
+
 proc ExistsFile(filename: string): bool =
-  var
-    res: TStat
-  return stat(filename, res) >= 0
-{.pop.}
+  when defined(windows):
+    var a = GetFileAttributesA(filename)
+    if a != -1:
+      result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0
+  else:
+    var res: TStat
+    return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
+
+proc existsDir(dir: string): bool =
+  when defined(windows):
+    var a = GetFileAttributesA(dir)
+    if a != -1:
+      result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0
+  else:
+    var res: TStat
+    return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc cmpPaths(pathA, pathB: string): int =
   if FileSystemCaseSensitive:
@@ -886,28 +1062,55 @@ proc cmpPaths(pathA, pathB: string): int =
     result = cmpIgnoreCase(pathA, pathB)
 
 proc extractDir(path: string): string =
-  var
-    tail: string
-  splitPath(path, result, tail)
+  if path[path.len-1] in {dirSep, altSep}:
+    result = path
+  else:
+    var tail: string
+    splitPath(path, result, tail)
 
 proc extractFilename(path: string): string =
-  var
-    head: string
-  splitPath(path, head, result)
+  if path[path.len-1] in {dirSep, altSep}:
+    result = ""
+  else:
+    var head: string
+    splitPath(path, head, result)
 
 proc expandFilename(filename: string): string =
   # returns the full path of 'filename'; "" on error
-  var
-    res: CString
-  when defined(unix):
-    res = realpath(filename, nil)
+  when defined(windows):
+    var unused: cstring
+    result = newString(3072)
+    var L = GetFullPathNameA(filename, 3072'i32, result, unused)
+    if L <= 0'i32 or L >= 3072'i32: OSError()
+    setLen(result, L)
   else:
-    res = fullpath(nil, filename, 0)
-  if res == nil:
-    result = "" # an error occured
-  else:
+    var res = realpath(filename, nil)
+    if res == nil: OSError()
     result = $res
     free(res)
+
+proc parseCmdLine*(c: string): seq[string] =
+  ## Splits a command line into several components; components are separated by
+  ## whitespace or are quoted with the ``"`` or ``'`` characters. This proc is
+  ## only occassionally useful, better use the `parseopt` module.
+  result = @[]
+  var i = 0
+  while c[i] != '\0':
+    var a = ""
+    while c[i] >= '\1' and c[i] <= ' ': inc(i) # skip whitespace
+    case c[i]
+    of '\'', '\"':
+      var delim = c[i]
+      inc(i) # skip ' or "
+      while c[i] != '\0' and c[i] != delim:
+        add a, c[i]
+        inc(i)
+      if c[i] != '\0': inc(i)
+    else:
+      while c[i] > ' ':
+        add(a, c[i])
+        inc(i)
+    add(result, a)
 
 when defined(windows):
   proc GetHomeDir(): string = return getEnv("USERPROFILE") & "\\"
@@ -918,51 +1121,22 @@ when defined(windows):
   # command line arguments. The way to get them differs. Thus we parse them
   # ourselves. This has the additional benefit that the program's behaviour
   # is always the same -- independent of the used C compiler.
-  proc GetCommandLine(): CString {.
-    importc: "GetCommandLine", header: "<windows.h>".}
+  proc GetCommandLineA(): CString {.importc, stdcall, dynlib: "kernel32".}
 
   var
-    ownArgc: int = -1
-    ownArgv: seq[string] = []
-
-  proc parseCmdLine() =
-    if ownArgc != -1: return # already processed
-    var
-      i = 0
-      j = 0
-      c = getCommandLine()
-    ownArgc = 0
-    while c[i] != '\0':
-      var a = ""
-      while c[i] >= '\1' and c[i] <= ' ': inc(i) # skip whitespace
-      case c[i]
-      of '\'', '\"':
-        var delim = c[i]
-        inc(i) # skip ' or "
-        while c[i] != '\0' and c[i] != delim:
-          add a, c[i]
-          inc(i)
-        if c[i] != '\0': inc(i)
-      else:
-        while c[i] > ' ':
-          add a, c[i]
-          inc(i)
-      add ownArgv, a
-      inc(ownArgc)
+    ownArgv: seq[string]
 
   proc paramStr(i: int): string =
-    parseCmdLine()
-    if i < ownArgc and i >= 0:
-      return ownArgv[i]
-    raise newException(EInvalidIndex, "invalid index")
+    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
+    return ownArgv[i]
 
   proc paramCount(): int =
-    parseCmdLine()
-    result = ownArgc-1
+    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
+    result = ownArgv.len-1
 
 else:
   proc GetHomeDir(): string = return getEnv("HOME") & "/"
-  proc GetConfigDir(): string = return getEnv("HOME") & "/"
+  proc GetConfigDir(): string = return getEnv("HOME") & "/.config/"
 
   var
     cmdCount {.importc: "cmdCount".}: int

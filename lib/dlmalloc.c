@@ -1,12 +1,15 @@
-#define USE_DL_PREFIX
 
+#define USE_DL_PREFIX
+#define ASSEMBLY_VERSION
+
+/*
 #define FOOTERS 1
 #define DEBUG 1
-/*
+
 #define ABORT_ON_ASSERT_FAILURE 0
 */
 
-#define ABORT do { printf("abort was called\n"); abort(); } while (0)
+#define ABORT do { /*printf("abort was called\n");*/ abort(); } while (0)
 
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by
@@ -2210,7 +2213,7 @@ static size_t traverse_and_check(mstate m);
 #define treebin_at(M,i)     (&((M)->treebins[i]))
 
 /* assign tree index for size S to variable I */
-#if defined(__GNUC__) && defined(i386)
+#if defined(__GNUC__) && defined(i386) && defined(ASSEMBLY_VERSION)
 #define compute_tree_index(S, I)\
 {\
   size_t X = S >> TREEBIN_SHIFT;\
@@ -2275,7 +2278,7 @@ static size_t traverse_and_check(mstate m);
 
 /* index corresponding to given bit */
 
-#if defined(__GNUC__) && defined(i386)
+#if defined(__GNUC__) && defined(i386) && defined(ASSEMBLY_VERSION)
 #define compute_bit2idx(X, I)\
 {\
   unsigned int J;\

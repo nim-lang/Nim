@@ -19,7 +19,7 @@
 proc fputs(c: cstring, f: TFile) {.importc: "fputs", noDecl.}
 proc fgets(c: cstring, n: int, f: TFile): cstring {.importc: "fgets", noDecl.}
 proc fgetc(stream: TFile): int {.importc: "fgetc", nodecl.}
-proc ungetc(c: int, f: TFile) {.importc: "ungetc", nodecl.}
+proc ungetc(c: cint, f: TFile) {.importc: "ungetc", nodecl.}
 proc putc(c: Char, stream: TFile) {.importc: "putc", nodecl.}
 proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", nodecl, varargs.}
 proc strlen(c: cstring): int {.importc: "strlen", nodecl.}
@@ -33,7 +33,7 @@ var
   IOFBF {.importc: "_IOFBF", nodecl.}: cint
   IONBF {.importc: "_IONBF", nodecl.}: cint
 
-proc rawReadLine(f: TFile, result: var string) {.noStatic.} =
+proc rawReadLine(f: TFile, result: var string) =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
   var
@@ -41,13 +41,11 @@ proc rawReadLine(f: TFile, result: var string) {.noStatic.} =
   setLen(result, 0) # reuse the buffer!
   while True:
     c = fgetc(f)
-    if c < 0:
-      result = nil
-      break # EOF
-    if c == 10: break # LF
-    if c == 13:  # CR
+    if c < 0'i32: break # EOF
+    if c == 10'i32: break # LF
+    if c == 13'i32:  # CR
       c = fgetc(f) # is the next char LF?
-      if c != 10: ungetc(c, f) # no, put the character back
+      if c != 10'i32: ungetc(c, f) # no, put the character back
       break
     add result, chr(int(c))
 
@@ -72,7 +70,7 @@ proc readFile(filename: string): string =
 
 proc write(f: TFile, s: string) = fputs(s, f)
 proc write(f: TFile, i: int) = fprintf(f, "%ld", i)
-proc write(f: TFile, b: bool) = 
+proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
 proc write(f: TFile, r: float) = fprintf(f, "%g", r)
@@ -117,10 +115,17 @@ proc OpenFile(f: var TFile, filename: string,
   result = (p != nil)
   f = cast[TFile](p)
   if bufSize > 0:
-    if setvbuf(f, nil, IOFBF, bufSize) != 0:
+    if setvbuf(f, nil, IOFBF, bufSize) != 0'i32:
       raise newException(EOutOfMemory, "out of memory")
   elif bufSize == 0:
     discard setvbuf(f, nil, IONBF, 0)
+
+proc fdopen(filehandle: TFileHandle, mode: cstring): TFile {.
+  importc: pccHack & "fdopen", header: "<stdio.h>".}
+
+proc openFile(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
+  f = fdopen(filehandle, FormatOpen[mode])
+  result = f != nil
 
 # C routine that is used here:
 proc fread(buf: Pointer, size, n: int, f: TFile): int {.

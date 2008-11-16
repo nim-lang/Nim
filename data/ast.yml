@@ -8,61 +8,52 @@
 #
 
 {
-'SymFlag': [          # already 32 flags!
-  'sfTypeCheck',      # wether macro parameters should be type checked
+'SymFlag': [          # already 26 flags!
+  'sfUsed',           # read access of sym (for warnings) or simply used
+  'sfStar',           # symbol has * visibility
+  'sfMinus',          # symbol has - visibility
+  'sfInInterface',    # symbol is in interface section declared
+  'sfFromGeneric',    # symbol is instantiation of a generic; this is needed 
+                      # for symbol file generation; such symbols should always
+                      # be written into the ROD file
+  'sfGlobal',         # symbol is at global scope
+
   'sfForward',        # symbol is forward directed
   'sfImportc',        # symbol is external; imported
   'sfExportc',        # symbol is exported (under a specified name)
   'sfVolatile',       # variable is volatile
-  'sfUsed',           # read access of sym (for warnings) or simply used
-  'sfWrite',          # write access of variable (for hints)
   'sfRegister',       # variable should be placed in a register
   'sfPure',           # object is "pure" that means it has no type-information
-  'sfCodeGenerated',  # wether we have already code generated for the proc
-  'sfPrivate',        # symbol should be made private after module compilation
-  'sfGlobal',         # symbol is at global scope
+  
   'sfResult',         # variable is 'result' in proc
   'sfNoSideEffect',   # proc has no side effects
   'sfMainModule',     # module is the main module
   'sfSystemModule',   # module is the system module
   'sfNoReturn',       # proc never returns (an exit proc)
   'sfAddrTaken',      # the variable's address is taken (ex- or implicitely)
-  'sfInInterface',    # symbol is in interface section declared
-  'sfNoStatic',       # symbol is used within an iterator (needed for codegen)
-                      # so it cannot be 'static' in the C code
-                      # this is called 'nostatic' in the pragma section
   'sfCompilerProc',   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
-  'sfCppMethod',      # proc is a C++ method
+  'sfCppMethod',      # proc is a C++ method (not implemented yet)
   'sfDiscriminant',   # field is a discriminant in a record/object
   'sfDeprecated',     # symbol is deprecated
   'sfInClosure',      # variable is accessed by a closure
-  'sfIsCopy',         # symbol is a copy; needed for proper name mangling
-  'sfStar',           # symbol has * visibility
-  'sfMinus'           # symbol has - visibility
+  'sfTypeCheck',      # wether macro parameters should be type checked
+  'sfCompileTime',    # proc can be evaluated at compile time
+  'sfThreadVar',      # variable is a thread variable
+  'sfMerge',          # proc can be merged with itself
 ],
 
 'TypeFlag': [
-  'tfIsDistinct',     # better use this flag to make it easier for accessing
-                      # typeKind in the code generators
-  'tfGeneric',        # type is a generic one
-  'tfExternal',       # type is external
-  'tfImported',       # type is imported from C
-  'tfInfoGenerated',  # whether we have generated type information for this type
-  'tfSemChecked',     # used to mark types that's semantic has been checked;
-                      # used to prevend endless loops during semantic checking
-  'tfHasOutParams',   # for a proc or iterator p:
-                      # it indicates that p has out or in out parameters: this
-                      # is used to speed up semantic checking a bit
-  'tfEnumHasWholes',  # enum cannot be mapped into a range
   'tfVarargs',        # procedure has C styled varargs
-  'tfFinal'           # is the object final?
+  'tfFinal',          # is the object final?
+  'tfAcyclic',        # type is acyclic (for GC optimization)
+  'tfEnumHasWholes'   # enum cannot be mapped into a range
 ],
 
 'TypeKind': [        # order is important!
                      # Don't forget to change hti.nim if you make a change here
   'tyNone', 'tyBool', 'tyChar',
-  'tyEmptySet', 'tyArrayConstr', 'tyNil', 
+  'tyEmpty', 'tyArrayConstr', 'tyNil', 
   'tyGeneric',
   'tyGenericInst', # instantiated generic type
   'tyGenericParam',
@@ -89,7 +80,9 @@
   'nfBase2', # nfBase10 is default, so not needed
   'nfBase8',
   'nfBase16',
-  'nfAllConst' # used to mark complex expressions constant
+  'nfAllConst', # used to mark complex expressions constant
+  'nfTransf',   # node has been transformed
+  'nfSem',      # node has been checked for semantics
 ],
 
 'NodeKind': [  # these are pure nodes
@@ -223,6 +216,8 @@
   'nkBlockExpr',          # a statement block ending in an expr; this is used
                           # to allowe powerful multi-line templates that open a
                           # temporary scope
+  'nkStmtListType',       # a statement list ending in a type; for macros
+  'nkBlockType',          # a statement block ending in a type; for macros
   'nkVm',                 # indicates a virtual instruction; integer field is
                           # used for the concrete opcode
 
@@ -264,6 +259,8 @@
   'skEnumField',          # an identifier in an enum
   'skForVar',             # a for loop variable
   'skModule',             # module identifier
-  'skLabel'               # a label (for block statement)
+  'skLabel',              # a label (for block statement)
+  'skStub'                # symbol is a stub and not yet loaded from the ROD
+                          # file (it is loaded on demand, which may mean: never)
 ]
 }

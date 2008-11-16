@@ -19,6 +19,30 @@
 
 {.push hints: off.}
 
+type
+  int* {.magic: Int.} ## default integer type; bitwidth depends on
+                      ## architecture, but is always the same as a pointer
+  int8* {.magic: Int8.} ## signed 8 bit integer type
+  int16* {.magic: Int16.} ## signed 16 bit integer type
+  int32* {.magic: Int32.} ## signed 32 bit integer type
+  int64* {.magic: Int64.} ## signed 64 bit integer type
+  float* {.magic: Float.} ## default floating point type
+  float32* {.magic: Float32.} ## 32 bit floating point type
+  float64* {.magic: Float64.} ## 64 bit floating point type
+type # we need to start a new type section here, so that ``0`` can have a type
+  bool* {.magic: Bool.} = enum ## built-in boolean type
+    false = 0, true = 1
+
+type
+  char* {.magic: Char.} ## built-in 8 bit character type (unsigned)
+  string* {.magic: String.} ## built-in string type
+  cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
+  pointer* {.magic: Pointer.} ## built-in pointer type
+  TAnyEnum {.magic: AnyEnum.}
+
+type
+  `nil` {.magic: "Nil".}
+
 proc defined*[T] (x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special comile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
@@ -29,23 +53,6 @@ proc defined*[T] (x: T): bool {.magic: "Defined", noSideEffect.}
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
-
-when defined(macosX):
-  {.define: useDL.}
-
-when defined(linux):
-  {.define: useDL.}
-
-when defined(unix):
-  # This may seem strange, but we cannot write "when not defined"
-  # here, because ``not`` has not been defined yet.
-  {.hint: "unix is defined".}
-else:
-  {.define: useDL.}
-  {.hint: "unix is not defined".}
-  # use Doug Lea's memory allocator; you can undefine it if you
-  # know that your system uses this library anyway (smaller code) or if
-  # your malloc() doesn't suck (most systems use it anyway)
 
 # these require compiler magic:
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
@@ -98,9 +105,10 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  TObject* = object ## the root of Nimrod's object hierarchy. Objects should
-                    ## inherit from TObject or one of its descendants. However,
-                    ## objects that have no ancestor are allowed.
+  TObject* {.exportc: "TNimObject".} =
+    object ## the root of Nimrod's object hierarchy. Objects should
+           ## inherit from TObject or one of its descendants. However,
+           ## objects that have no ancestor are allowed.
   PObject* = ref TObject ## reference to TObject
 
   E_Base* {.compilerproc.} = object of TObject ## base exception class;
@@ -206,8 +214,14 @@ proc dec*[T](x: var T, y = 1) {.magic: "Dec".}
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
 
+proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq".}
+  ## creates a new sequence of type ``seq[T]`` with length ``len``.
+  ## This is equivalent to ``s = []; setlen(s, len)``, but more
+  ## efficient since no relocation is needed.
+
 proc len*[T](x: openarray[T]): int {.magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, a sequence or a string.
@@ -236,79 +250,241 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # --------------------------------------------------------------------------
 # built-in operators
 
+proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+  ## zero extends a smaller integer type to ``int``. This treats `x` as
+  ## unsigned.
+proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+  ## zero extends a smaller integer type to ``int``. This treats `x` as
+  ## unsigned.
+
+proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned.
+proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned.
+
+proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned.
+proc ze64*(x: int): int64 {.magic: "ZeIToI64", noDecl, noSideEffect.}
+  ## zero extends a smaller integer type to ``int64``. This treats `x` as
+  ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
+  ## (This is the case on 64 bit processors.)
+
+proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
+  ## from `x`.
+proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+  ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
+  ## 16 bits from `x`.
+proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+  ## treats `x` as unsigned and converts it to an ``int32`` by taking the
+  ## last 32 bits from `x`.
+
+
 # integer calculations:
 proc `+` *(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
+proc `+` *(x: int8): int8 {.magic: "UnaryPlusI", noSideEffect.}
+proc `+` *(x: int16): int16 {.magic: "UnaryPlusI", noSideEffect.}
+proc `+` *(x: int32): int32 {.magic: "UnaryPlusI", noSideEffect.}
+proc `+` *(x: int64): int64 {.magic: "UnaryPlusI64", noSideEffect.}
   ## Unary `+` operator for an integer. Has no effect.
 
 proc `-` *(x: int): int {.magic: "UnaryMinusI", noSideEffect.}
+proc `-` *(x: int8): int8 {.magic: "UnaryMinusI", noSideEffect.}
+proc `-` *(x: int16): int16 {.magic: "UnaryMinusI", noSideEffect.}
+proc `-` *(x: int32): int32 {.magic: "UnaryMinusI", noSideEffect.}
+proc `-` *(x: int64): int64 {.magic: "UnaryMinusI64", noSideEffect.}
   ## Unary `-` operator for an integer. Negates `x`.
 
 proc `not` *(x: int): int {.magic: "BitnotI", noSideEffect.}
+proc `not` *(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
+proc `not` *(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
+proc `not` *(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
+proc `not` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
 proc `+` *(x, y: int): int {.magic: "AddI", noSideEffect.}
+proc `+` *(x, y: int8): int8 {.magic: "AddI", noSideEffect.}
+proc `+` *(x, y: int16): int16 {.magic: "AddI", noSideEffect.}
+proc `+` *(x, y: int32): int32 {.magic: "AddI", noSideEffect.}
+proc `+` *(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
+  ## Binary `+` operator for an integer.
+
 proc `-` *(x, y: int): int {.magic: "SubI", noSideEffect.}
+proc `-` *(x, y: int8): int8 {.magic: "SubI", noSideEffect.}
+proc `-` *(x, y: int16): int16 {.magic: "SubI", noSideEffect.}
+proc `-` *(x, y: int32): int32 {.magic: "SubI", noSideEffect.}
+proc `-` *(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
+  ## Binary `-` operator for an integer.
+
 proc `*` *(x, y: int): int {.magic: "MulI", noSideEffect.}
+proc `*` *(x, y: int8): int8 {.magic: "MulI", noSideEffect.}
+proc `*` *(x, y: int16): int16 {.magic: "MulI", noSideEffect.}
+proc `*` *(x, y: int32): int32 {.magic: "MulI", noSideEffect.}
+proc `*` *(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
+  ## Binary `*` operator for an integer.
+
 proc `div` *(x, y: int): int {.magic: "DivI", noSideEffect.}
+proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
+proc `div` *(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
+proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
+proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+
 proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
+proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
+proc `mod` *(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
+proc `mod` *(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
+proc `mod` *(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
   ## computes the integer modulo operation. This is the same as
   ## ``x - (x div y) * y``.
 
 proc `shr` *(x, y: int): int {.magic: "ShrI", noSideEffect.}
-  ## computes the `shift right` operation of `x` and `y`.
-proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
-  ## computes the `shift left` operation of `x` and `y`.
-proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
-  ## computes the `bitwise and` of numbers `x` and `y`.
-proc `or` *(x, y: int): int {.magic: "BitorI", noSideEffect.}
-  ## computes the `bitwise or` of numbers `x` and `y`.
-proc `xor` *(x, y: int): int {.magic: "BitxorI", noSideEffect.}
-  ## computes the `bitwise xor` of numbers `x` and `y`.
-
-proc `==` *(x, y: int): bool {.magic: "EqI", noSideEffect.}
-proc `<=` *(x, y: int): bool {.magic: "LeI", noSideEffect.}
-proc `<`  *(x, y: int): bool {.magic: "LtI", noSideEffect.}
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.}
-proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
-proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
-
-proc `+` *(x: int64): int64 {.magic: "UnaryPlusI64", noSideEffect.}
-proc `-` *(x: int64): int64 {.magic: "UnaryMinusI64", noSideEffect.}
-proc `not` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
-  ## computes the `bitwise complement` of the integer `x`.
-
-proc `+` *(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
-  ## Unary `+` operator for an integer. Has no effect.
-proc `-` *(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
-  ## Unary `-` operator for an int64. Negates `x`.
-proc `*` *(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
-proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
-  ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
-proc `mod` *(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
-  ## ``x - (x div y) * y``.
+proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
+
+proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int64): int64 {.magic: "ShlI64", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
+
+proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
+proc `and` *(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
+proc `and` *(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
+proc `and` *(x, y: int32): int32 {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int64): int64 {.magic: "BitandI64", noSideEffect.}
   ## computes the `bitwise and` of numbers `x` and `y`.
+
+proc `or` *(x, y: int): int {.magic: "BitorI", noSideEffect.}
+proc `or` *(x, y: int8): int8 {.magic: "BitorI", noSideEffect.}
+proc `or` *(x, y: int16): int16 {.magic: "BitorI", noSideEffect.}
+proc `or` *(x, y: int32): int32 {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int64): int64 {.magic: "BitorI64", noSideEffect.}
   ## computes the `bitwise or` of numbers `x` and `y`.
+
+proc `xor` *(x, y: int): int {.magic: "BitxorI", noSideEffect.}
+proc `xor` *(x, y: int8): int8 {.magic: "BitxorI", noSideEffect.}
+proc `xor` *(x, y: int16): int16 {.magic: "BitxorI", noSideEffect.}
+proc `xor` *(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int64): int64 {.magic: "BitxorI64", noSideEffect.}
   ## computes the `bitwise xor` of numbers `x` and `y`.
 
+proc `==` *(x, y: int): bool {.magic: "EqI", noSideEffect.}
+proc `==` *(x, y: int8): bool {.magic: "EqI", noSideEffect.}
+proc `==` *(x, y: int16): bool {.magic: "EqI", noSideEffect.}
+proc `==` *(x, y: int32): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int64): bool {.magic: "EqI64", noSideEffect.}
-proc `<=` *(x, y: int64): bool {.magic: "LeI64", noSideEffect.}
-proc `<`  *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
-proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
-proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
-proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
+  ## Compares two integers for equality.
 
-# same for floating point:
+proc `<=` *(x, y: int): bool {.magic: "LeI", noSideEffect.}
+proc `<=` *(x, y: int8): bool {.magic: "LeI", noSideEffect.}
+proc `<=` *(x, y: int16): bool {.magic: "LeI", noSideEffect.}
+proc `<=` *(x, y: int32): bool {.magic: "LeI", noSideEffect.}
+proc `<=` *(x, y: int64): bool {.magic: "LeI64", noSideEffect.}
+  ## Returns true iff `x` is less than or equal to `y`.
+
+proc `<`  *(x, y: int): bool {.magic: "LtI", noSideEffect.}
+proc `<`  *(x, y: int8): bool {.magic: "LtI", noSideEffect.}
+proc `<`  *(x, y: int16): bool {.magic: "LtI", noSideEffect.}
+proc `<`  *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
+proc `<`  *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
+  ## Returns true iff `x` is less than `y`.
+
+proc abs*(x: int): int {.magic: "AbsI", noSideEffect.}
+proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.}
+proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.}
+proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.}
+proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
+  ## returns the absolute value of `x`. If `x` is ``low(x)`` (that is
+  ## -MININT for its type), an overflow exception is thrown (if overflow
+  ## checking is turned on).
+
+proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
+  ## The minimum value of two integers.
+
+proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
+  ## The maximum value of two integers.
+
+proc `+%` *(x, y: int): int {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int8): int8 {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int16): int16 {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int32): int32 {.magic: "AddU", noSideEffect.}
+proc `+%` *(x, y: int64): int64 {.magic: "AddU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and adds them. The result is truncated to
+  ## fit into the result. This implements modulo arithmetic. No overflow
+  ## errors are possible.
+
+proc `-%` *(x, y: int): int {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int8): int8 {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int16): int16 {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int32): int32 {.magic: "SubU", noSideEffect.}
+proc `-%` *(x, y: int64): int64 {.magic: "SubU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and subtracts them. The result is
+  ## truncated to fit into the result. This implements modulo arithmetic.
+  ## No overflow errors are possible.
+
+proc `*%` *(x, y: int): int {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int8): int8 {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int16): int16 {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int32): int32 {.magic: "MulU", noSideEffect.}
+proc `*%` *(x, y: int64): int64 {.magic: "MulU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and multiplies them. The result is
+  ## truncated to fit into the result. This implements modulo arithmetic.
+  ## No overflow errors are possible.
+
+proc `/%` *(x, y: int): int {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int8): int8 {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int16): int16 {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int32): int32 {.magic: "DivU", noSideEffect.}
+proc `/%` *(x, y: int64): int64 {.magic: "DivU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and divides them. The result is
+  ## truncated to fit into the result. This implements modulo arithmetic.
+  ## No overflow errors are possible.
+
+proc `%%` *(x, y: int): int {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int8): int8 {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int16): int16 {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int32): int32 {.magic: "ModU", noSideEffect.}
+proc `%%` *(x, y: int64): int64 {.magic: "ModU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic.
+  ## No overflow errors are possible.
+
+proc `<=%` *(x, y: int): bool {.magic: "LeU", noSideEffect.}
+proc `<=%` *(x, y: int8): bool {.magic: "LeU", noSideEffect.}
+proc `<=%` *(x, y: int16): bool {.magic: "LeU", noSideEffect.}
+proc `<=%` *(x, y: int32): bool {.magic: "LeU", noSideEffect.}
+proc `<=%` *(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and compares them.
+  ## Returns true iff ``unsigned(x) <= unsigned(y)``.
+
+proc `<%` *(x, y: int): bool {.magic: "LtU", noSideEffect.}
+proc `<%` *(x, y: int8): bool {.magic: "LtU", noSideEffect.}
+proc `<%` *(x, y: int16): bool {.magic: "LtU", noSideEffect.}
+proc `<%` *(x, y: int32): bool {.magic: "LtU", noSideEffect.}
+proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
+  ## treats `x` and `y` as unsigned and compares them.
+  ## Returns true iff ``unsigned(x) < unsigned(y)``.
+
+
+# floating point operations:
 proc `+` *(x: float): float {.magic: "UnaryPlusF64", noSideEffect.}
 proc `-` *(x: float): float {.magic: "UnaryMinusF64", noSideEffect.}
 proc `+` *(x, y: float): float {.magic: "AddF64", noSideEffect.}
@@ -423,11 +599,21 @@ proc cmp*[T](x, y: T): int =
 proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
 
+proc `@` * [IDX, T](a: array[IDX, T]): seq[T] {.
+  magic: "ArrToSeq", nosideeffect.}
+  ## turns an array into a sequence. This most often useful for constructing
+  ## sequences with the array constructor: ``@[1, 2, 3]`` has the type 
+  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``. 
+
 # concat operator:
-proc `&` * (x: string, y: char): string {.magic: "ConStrStr", noSideEffect.}
-proc `&` * (x: char, y: char): string {.magic: "ConStrStr", noSideEffect.}
-proc `&` * (x, y: string): string {.magic: "ConStrStr", noSideEffect.}
-proc `&` * (x: char, y: string): string {.magic: "ConStrStr", noSideEffect.}
+proc `&` * (x: string, y: char): string {.
+  magic: "ConStrStr", noSideEffect, merge.}
+proc `&` * (x: char, y: char): string {.
+  magic: "ConStrStr", noSideEffect, merge.}
+proc `&` * (x, y: string): string {.
+  magic: "ConStrStr", noSideEffect, merge.}
+proc `&` * (x: char, y: string): string {.
+  magic: "ConStrStr", noSideEffect, merge.}
   ## is the `concatenation operator`. It concatenates `x` and `y`.
 
 proc add * (x: var string, y: char) {.magic: "AppendStrCh".}
@@ -466,7 +652,7 @@ proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
 type
   TAddress* = int
     ## is the signed integer type that should be used for converting
-    ## pointers to integer addresses.
+    ## pointers to integer addresses for readability.
 
 type
   BiggestInt* = int64
@@ -500,7 +686,7 @@ type # these work for most platforms:
     ## This is the same as the type ``long double`` in *C*.
     ## This C type is not supported by Nimrod's code generator
 
-  cstringArray* {.importc: "char**", nodecl.} = array [0..50_000, cstring]
+  cstringArray* {.importc: "char**", nodecl.} = ptr array [0..50_000, cstring]
     ## This is the same as the type ``char**`` in *C*.
 
   TEndian* = enum ## is a type describing the endianness of a processor.
@@ -512,50 +698,49 @@ type # these work for most platforms:
   PInt32* = ptr Int32 ## an alias for ``ptr int32``
 
 const
-  QuitSuccess* = 0
-    ## is the value that should be passed to ``quit`` to indicate
-    ## success.
-
-  QuitFailure* = 1
-    ## is the value that should be passed to ``quit`` to indicate
-    ## failure.
+  isMainModule* {.magic: "IsMainModule".}: bool = false
+    ## is true only when accessed in the main module. This works thanks to
+    ## compiler magic. It is useful to embed testing code in a module.
 
   CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
     ## is the date of compilation as a string of the form
-    ## ``YYYY-MM-DD``.
+    ## ``YYYY-MM-DD``. This works thanks to compiler magic.
 
   CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
     ## is the time of compilation as a string of the form
-    ## ``HH:MM:SS``.
+    ## ``HH:MM:SS``. This works thanks to compiler magic.
 
   NimrodVersion* {.magic: "NimrodVersion"}: string = "0.0.0"
     ## is the version of Nimrod as a string.
+    ## This works thanks to compiler magic.
 
   NimrodMajor* {.magic: "NimrodMajor"}: int = 0
     ## is the major number of Nimrod's version.
+    ## This works thanks to compiler magic.
 
   NimrodMinor* {.magic: "NimrodMinor"}: int = 0
     ## is the minor number of Nimrod's version.
+    ## This works thanks to compiler magic.
 
   NimrodPatch* {.magic: "NimrodPatch"}: int = 0
     ## is the patch number of Nimrod's version.
+    ## This works thanks to compiler magic.
 
   cpuEndian* {.magic: "CpuEndian"}: TEndian = littleEndian
-    ## is the endianness of the target CPU. This is a valuable information
-    ## for low-level code only.
-
+    ## is the endianness of the target CPU. This is a valuable piece of
+    ## information for low-level code only. This works thanks to compiler magic.
 
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
-  ## fails, `EInvalidValue` is raised. Note that on most platforms the
-  ## conversion cannot fail, however.
+  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## conversion cannot fail.
 
 proc toBiggestFloat*(i: biggestint): biggestfloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
-  ## fails, `EInvalidValue` is raised. Note that on most platforms the
-  ## conversion cannot fail, however.
+  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
   magic: "ToInt", noSideEffect, importc: "toInt".}
@@ -568,15 +753,6 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
-
-proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", noDecl, noReturn.}
-  ## stops the program immediately; before stopping the program the
-  ## "quit procedures" are called in the opposite order they were added
-  ## with ``addQuitProc``. ``quit`` never returns and ignores any
-  ## exception that may have been raised by the quit procedures.
-  ## It does *not* call the garbage collector to free all the memory,
-  ## unless a quit procedure calls ``GC_collect``.
 
 proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
@@ -636,33 +812,29 @@ proc equalMem*(a, b: Pointer, size: int): bool {.
   ## *unsafe*.
 
 const
-  mallocHeader = if defined(useDL): "dlmalloc.h" else: "<stdlib.h>"
+  mallocHeader = "<stdlib.h>"
 
 proc alloc*(size: int): pointer {.
-  importc: if defined(useDL): "dlmalloc" else: "malloc",
-  header: mallocHeader, noconv.}
+  importc: "malloc", header: mallocHeader, noconv.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is not initialized, so reading
   ## from it before writing to it is undefined behaviour!
 proc alloc0*(size: int): pointer {.
-  importc: if defined(useDL): "DL_ALLOC_0" else: "ALLOC_0",
-  header: mallocHeader, noconv.}
+  importc: "ALLOC_0", header: mallocHeader, noconv.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is initialized with all bytes
   ## containing zero, so it is somewhat safer than ``alloc``.
 proc realloc*(p: Pointer, newsize: int): pointer {.
-  importc: if defined(useDL): "dlrealloc" else: "realloc",
-  header: mallocHeader, noconv.}
+  importc: "realloc", header: mallocHeader, noconv.}
   ## grows or shrinks a given memory block. If p is **nil** then a new
   ## memory block is returned. In either way the block has at least
   ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
   ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
   ## be freed with ``dealloc``.
 proc dealloc*(p: Pointer) {.
-  importc: if defined(useDL): "dlfree" else: "free",
-  header: mallocHeader, noconv.}
+  importc: "free", header: mallocHeader, noconv.}
   ## frees the memory allocated with ``alloc``, ``alloc0`` or
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
@@ -686,79 +858,6 @@ proc assert*(cond: bool) {.magic: "Assert".}
 proc swap*[T](a, b: var T) {.magic: "Swap".}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
-
-proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
-proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
-  ## zero extends a smaller integer type to ``int``. This treats `x` as
-  ## unsigned.
-
-proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-
-proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned.
-proc ze64*(x: int): int64 {.magic: "ZeIToI64", noDecl, noSideEffect.}
-  ## zero extends a smaller integer type to ``int64``. This treats `x` as
-  ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
-  ## (This is the case on 64 bit processors.)
-
-proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
-  ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
-  ## from `x`.
-proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
-  ## 16 bits from `x`.
-proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
-  ## treats `x` as unsigned and converts it to an ``int32`` by taking the
-  ## last 32 bits from `x`.
-
-proc `+%` *(x, y: int): int {.magic: "AddU", noSideEffect.}
-proc `+%` *(x, y: int64): int64 {.magic: "AddU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and adds them. The result is truncated to
-  ## fit into the result. This implements modulo arithmetic. No overflow
-  ## errors are possible.
-
-proc `-%` *(x, y: int): int {.magic: "SubU", noSideEffect.}
-proc `-%` *(x, y: int64): int64 {.magic: "SubU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and subtracts them. The result is
-  ## truncated to fit into the result. This implements modulo arithmetic.
-  ## No overflow errors are possible.
-
-proc `*%` *(x, y: int): int {.magic: "MulU", noSideEffect.}
-proc `*%` *(x, y: int64): int64 {.magic: "MulU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and multiplies them. The result is
-  ## truncated to fit into the result. This implements modulo arithmetic.
-  ## No overflow errors are possible.
-
-proc `/%` *(x, y: int): int {.magic: "DivU", noSideEffect.}
-proc `/%` *(x, y: int64): int64 {.magic: "DivU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and divides them. The result is
-  ## truncated to fit into the result. This implements modulo arithmetic.
-  ## No overflow errors are possible.
-
-proc `%%` *(x, y: int): int {.magic: "ModU", noSideEffect.}
-proc `%%` *(x, y: int64): int64 {.magic: "ModU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic.
-  ## No overflow errors are possible.
-
-proc `<=%` *(x, y: int): bool {.magic: "LeU", noSideEffect.}
-proc `<=%` *(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) <= unsigned(y)``.
-
-proc `<%` *(x, y: int): bool {.magic: "LtU", noSideEffect.}
-proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
-  ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
 template `>=%` *(x, y: expr): expr = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
@@ -803,17 +902,19 @@ proc getRefcount*[T](x: ref T): int {.importc: "getRefcount".}
   ## value is implementation-dependant.
 
 #proc writeStackTrace() {.export: "writeStackTrace".}
-proc getCurrentExceptionMsg*(): string {.exportc.}
-  ## retrieves the error message that was attached to the current
-  ## exception; if there is none, "" is returned.
+
+when not defined(NimrodVM):
+  proc getCurrentExceptionMsg*(): string {.exportc.}
+    ## retrieves the error message that was attached to the current
+    ## exception; if there is none, "" is returned.
 
 # new constants:
 const
-  inf* {.magic: "Inf".} = 0.0
+  inf* {.magic: "Inf".} = 1.0 / 0.0
     ## contains the IEEE floating point value of positive infinity.
-  neginf* {.magic: "NegInf".} = 0.0
+  neginf* {.magic: "NegInf".} = -inf
     ## contains the IEEE floating point value of negative infinity.
-  nan* {.magic: "NaN".} = 0.0
+  nan* {.magic: "NaN".} = 0.0 / 0.0
     ## contains an IEEE floating point value of *Not A Number*. Note
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
@@ -826,20 +927,16 @@ var
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
 
 # GC interface:
-when defined(Unix) and not defined(macosX) and not defined(linux):
-  # BUGFIX for macosX
-  {.define: nativeDL.}
 
-when defined(useDL) or defined(nativeDL):
-  proc getOccupiedMem*(): int
-    ## returns the number of bytes that are owned by the process and hold data.
+proc getOccupiedMem*(): int
+  ## returns the number of bytes that are owned by the process and hold data.
 
-  proc getFreeMem*(): int
-    ## returns the number of bytes that are owned by the process, but do not
-    ## hold any meaningful data.
+proc getFreeMem*(): int
+  ## returns the number of bytes that are owned by the process, but do not
+  ## hold any meaningful data.
 
-  proc getTotalMem*(): int
-    ## returns the number of bytes that are owned by the process.
+proc getTotalMem*(): int
+  ## returns the number of bytes that are owned by the process.
 
 
 iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
@@ -906,7 +1003,6 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
-
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
@@ -922,23 +1018,20 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
                  # once in the system module.
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
-  result = []
-  setLen(result, x.len + y.len)
+  newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
   for i in 0..y.len-1:
     result[i] = y[i]
 
 proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
-  result = []
-  setLen(x.len + 1)
+  newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
 proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
-  result = []
-  setLen(y.len + 1)
+  newSeq(result, y.len + 1)
   for i in 0..y.len-1:
     result[i] = y[i]
   result[y.len] = x
@@ -946,24 +1039,35 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
 proc `&` *[T](x, y: T): seq[T] {.noSideEffect.} =
   return [x, y]
 
-when not defined(ECMAScript): # XXX make this local procs
-  proc seqToPtr*[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-    result = cast[pointer](x)
-else:
-  proc seqToPtr*[T](x: seq[T]): pointer {.pure, nosideeffect.} =
-    asm """return `x`"""
+when not defined(NimrodVM):
+  when not defined(ECMAScript):
+    # XXX make this local procs
+    proc seqToPtr*[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+      result = cast[pointer](x)
+  else:
+    proc seqToPtr*[T](x: seq[T]): pointer {.pure, nosideeffect.} =
+      asm """return `x`"""
+  
+  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
+    ## Generic equals operator for sequences: relies on a equals operator for
+    ## the element type `T`.
+    if seqToPtr(x) == seqToPtr(y):
+      result = true
+    elif seqToPtr(x) == nil or seqToPtr(y) == nil:
+      result = false
+    elif x.len == y.len:
+      for i in 0..x.len-1:
+        if x[i] != y[i]: return false
+      result = true
 
-proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
-  ## Generic equals operator for sequences: relies on a equals operator for
-  ## the element type `T`.
-  if seqToPtr(x) == seqToPtr(y):
-    result = true
-  elif seqToPtr(x) == nil or seqToPtr(y) == nil:
-    result = false
-  elif x.len == y.len:
-    for i in 0..x.len-1:
-      if x[i] != y[i]: return false
-    result = true
+proc find*[T, S](a: T, item: S): int {.inline.} =
+  ## Returns the first index of `item` in `a` or -1 if not found. This requires
+  ## appropriate `==` and `items` procs to work.
+  result = 0
+  for i in items(a):
+    if i == item: return
+    inc(result)
+  result = -1
 
 # ----------------- FPU ------------------------------------------------------
 
@@ -985,7 +1089,7 @@ proc GC_enable*()
 
 proc GC_fullCollect*()
   ## forces a full garbage collection pass.
-  ## Ordinary code does not need to call this.
+  ## Ordinary code does not need to call this (and should not).
 
 type
   TGC_Strategy* = enum ## the strategy the GC should use for the application
@@ -1005,12 +1109,28 @@ proc GC_disableMarkAndSweep*()
   ## does not create cycles. Thus the mark and sweep phase can be deactivated
   ## and activated separately from the rest of the GC.
 
+proc GC_getStatistics*(): string
+  ## returns an informative string about the GC's activity. This may be useful
+  ## for tweaking.
+  
+proc GC_ref*[T](x: ref T) {.magic: "GCref".}
+proc GC_ref*[T](x: seq[T]) {.magic: "GCref".}
+proc GC_ref*(x: string) {.magic: "GCref".}
+  ## marks the object `x` as referenced, so that it will not be freed until
+  ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
+  ## n calls to `GC_unref` are needed to unmark `x`. 
+  
+proc GC_unref*[T](x: ref T) {.magic: "GCunref".}
+proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
+proc GC_unref*(x: string) {.magic: "GCunref".}
+  ## see the documentation of `GC_ref`.
 
-{.push checks: off, line_dir: off, debugger: off,
-  assertions: on.}  # obviously we cannot generate checking operations here :-)
-                    # because it would yield into an endless recursion
-                    # however, stack-traces are available for most parts
-                    # of the code
+
+{.push checks: off, line_dir: off, debugger: off.}  
+# obviously we cannot generate checking operations here :-)
+# because it would yield into an endless recursion
+# however, stack-traces are available for most parts
+# of the code
 
 proc echo*[Ty](x: Ty) {.inline.}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
@@ -1025,7 +1145,29 @@ template newException(exceptn, message: expr): expr =
     e.msg = message
     e
 
-when not defined(EcmaScript):
+const
+  QuitSuccess* = 0
+    ## is the value that should be passed to ``quit`` to indicate
+    ## success.
+
+  QuitFailure* = 1
+    ## is the value that should be passed to ``quit`` to indicate
+    ## failure.
+
+proc quit*(errorcode: int = QuitSuccess) {.
+  magic: "Exit", importc: "exit", noDecl, noReturn.}
+  ## stops the program immediately; before stopping the program the
+  ## "quit procedures" are called in the opposite order they were added
+  ## with ``addQuitProc``. ``quit`` never returns and ignores any
+  ## exception that may have been raised by the quit procedures.
+  ## It does *not* call the garbage collector to free all the memory,
+  ## unless a quit procedure calls ``GC_collect``.
+
+when not defined(EcmaScript) and not defined(NimrodVM): 
+  proc quit*(errormsg: string) {.noReturn.}
+    ## a shorthand for ``echo(errormsg); quit(quitFailure)``.
+
+when not defined(EcmaScript) and not defined(NimrodVM):
 
   include hti
 
@@ -1036,6 +1178,7 @@ when not defined(EcmaScript):
 
   strDesc.size = sizeof(string)
   strDesc.kind = tyString
+  strDesc.flags = {ntfAcyclic}
   initGC() # BUGFIX: need to be called here!
 
   {.push stack_trace: off.}
@@ -1043,12 +1186,12 @@ when not defined(EcmaScript):
   include ansi_c
 
   proc cmp(x, y: string): int =
-    return c_strcmp(x, y)
+    return int(c_strcmp(x, y))
 
+  const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
   when defined(windows):
     # work-around C's sucking abstraction:
     # BUGFIX: stdin and stdout should be binary files!
-    const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
     proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
                                       header: "<io.h>".}
     proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
@@ -1082,6 +1225,9 @@ when not defined(EcmaScript):
       fmAppend                  ## Open the file for writing only; append data
                                 ## at the end.
 
+    TFileHandle* = cint ## type that represents an OS file handle; this is
+                        ## useful for low-level file access
+
   # text file handling:
   var
     stdin* {.importc: "stdin", noDecl.}: TFile   ## The standard input stream.
@@ -1105,6 +1251,12 @@ when not defined(EcmaScript):
     ## This throws no exception if the file could not be opened. The reason is
     ## that the programmer needs to provide an appropriate error message anyway
     ## (yes, even in scripts).
+
+  proc OpenFile*(f: var TFile, filehandle: TFileHandle,
+                 mode: TFileMode = fmRead): Bool
+    ## Creates a ``TFile`` from a `filehandle` with given `mode`.
+    ##
+    ## Default mode is readonly. Returns true iff the file could be opened.
 
   proc CloseFile*(f: TFile) {.importc: "fclose", nodecl.}
     ## Closes the file.
@@ -1201,6 +1353,15 @@ when not defined(EcmaScript):
       yield res
     CloseFile(f)
 
+  proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
+                                            header: "<stdio.h>"}
+    ## returns the OS file handle of the file ``f``. This is only useful for
+    ## platform specific programming.
+
+  proc quit(errormsg: string) =
+    echo(errormsg)
+    quit(quitFailure)
+
   # ----------------------------------------------------------------------------
 
   include excpt
@@ -1211,10 +1372,10 @@ when not defined(EcmaScript):
 
   # sequence type declarations here because the GC needs them too:
   type
-    TGenericSeq {.importc, nodecl, final.} = object
+    TGenericSeq {.compilerproc, pure.} = object
       len, space: int
 
-    PGenericSeq {.importc, nodecl.} = ptr TGenericSeq
+    PGenericSeq {.exportc.} = ptr TGenericSeq
 
   const
     GenericSeqSize = (2 * sizeof(int))
@@ -1235,10 +1396,32 @@ when not defined(EcmaScript):
   {.push stack_trace: off.}
   when defined(endb):
     include debugger
+
+  when defined(profiler):
+    include profiler
   {.pop.} # stacktrace
 
-else:
+elif defined(ecmaScript):
   include ecmasys
+elif defined(NimrodVM):
+  # Stubs for the GC interface:
+  proc GC_disable() = nil
+  proc GC_enable() = nil
+  proc GC_fullCollect() = nil
+  proc GC_setStrategy(strategy: TGC_Strategy) = nil
+  proc GC_enableMarkAndSweep() = nil
+  proc GC_disableMarkAndSweep() = nil
+  proc GC_getStatistics(): string = return ""
+  
+  proc getOccupiedMem(): int = return -1
+  proc getFreeMem(): int = return -1
+  proc getTotalMem(): int = return -1
+  proc echo[Ty](x: Ty) = nil
+  
+  proc cmp(x, y: string): int =
+    if x == y: return 0
+    if x < y: return -1
+    return 1
 
 include macros
 

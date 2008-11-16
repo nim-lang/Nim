@@ -16,7 +16,7 @@ program nimrod;
 {@emit}
 
 uses
-  nsystem,
+  nsystem, ntime,
   charsets, sysutils, commands, scanner, condsyms, options, msgs, nversion,
   nimconf, ropes, extccomp, strutils, nos, platform, main, parseopt;
 
@@ -54,10 +54,17 @@ begin
   end
 end;
 
+{@ignore}
+type
+  TTime = int;
+{@emit}
+
 procedure HandleCmdLine;
 var
   command, filename: string;
+  start: TTime;
 begin
+  {@emit start := getTime(); }
   if paramCount() = 0 then
     writeCommandLineUsage()
   else begin
@@ -65,19 +72,26 @@ begin
     command := '';
     filename := '';
     ProcessCmdLine(passCmd1, command, filename);
-    if filename <> '' then begin
-      if gCmd = cmdInterpret then DefineSymbol('interpreting');
-      nimconf.LoadConfig(filename); // load the right config file
-      // now process command line arguments again, because some options in the
-      // command line can overwite the config file's settings
-      extccomp.initVars();
-      command := '';
-      filename := '';
-      ProcessCmdLine(passCmd2, command, filename);
-    end;
+    if filename <> '' then options.projectPath := extractDir(filename);
+    nimconf.LoadConfig(filename); // load the right config file
+    // now process command line arguments again, because some options in the
+    // command line can overwite the config file's settings
+    extccomp.initVars();
+
+    command := '';
+    filename := '';
+    ProcessCmdLine(passCmd2, command, filename);
     MainCommand(command, filename);
-    if (gCmd <> cmdInterpret) and (msgs.gErrorCounter = 0) then
+  {@emit
+    if gVerbosity >= 2 then echo(GC_getStatistics()); }
+    if (gCmd <> cmdInterpret) and (msgs.gErrorCounter = 0) then begin
+    {@ignore}
       rawMessage(hintSuccess);
+    {@emit
+      rawMessage(hintSuccessX, [toString(gLinesCompiled), 
+                                toString(getTime() - start)]);
+    }
+    end;
     if optRun in gGlobalOptions then
       execExternalProgram(changeFileExt(filename, '') +{&} ' ' +{&} arguments)
   end

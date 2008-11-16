@@ -6,8 +6,8 @@ proc putEnv(key, val: string) =
   # documentation)
   var
     env: ptr array[0..500000, char]
-  env = alloc(length(key) + length(val) + 2)
-  for i in 0..length(key)-1: env[i] = key[i]
-  env[length(key)] = '='
-  for i in 0..length(val)-1:
-    env[length(key)+1+i] = val[i]
+  env = cast[ptr array[0..500000, char]](alloc(len(key) + len(val) + 2))
+  for i in 0..len(key)-1: env[i] = key[i]
+  env[len(key)] = '='
+  for i in 0..len(val)-1:
+    env[len(key)+1+i] = val[i]

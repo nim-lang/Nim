@@ -34,8 +34,15 @@ Advanced command line switches are:
 
 Configuration file
 ------------------
-The ``nimrod`` executable loads the configuration file ``config/nimrod.cfg``
-unless this is suppressed by the ``--skip_cfg`` command line option.
+The default configuration file is ``nimrod.cfg``. The ``nimrod`` executable
+looks for it in the following directories (in this order):
+
+1. ``/home/$user/.config/nimrod.cfg`` (UNIX) or ``$APPDATA/nimrod.cfg`` (Windows)
+2. ``$nimrod/config/nimrod.cfg`` (UNIX, Windows)
+3. ``/etc/nimrod.cfg`` (UNIX)
+
+The search stops as soon as a configuration file has been found. The reading 
+of ``nimrod.cfg`` can be suppressed by the ``--skip_cfg`` command line option.
 Configuration settings can be overwritten in a project specific
 configuration file that is read automatically. This specific file has to
 be in the same directory as the project and be of the same name, except
@@ -47,11 +54,10 @@ Command line settings have priority over configuration file settings.
 Nimrod's directory structure
 ----------------------------
 The generated files that Nimrod produces all go into a subdirectory called
-``rod_gen``. This makes it easy to write a script that deletes all generated
-files. For example the generated C code for the module ``path/modA.nim``
-will become ``path/rod_gen/modA.c``.
+``nimcache`` in your project directory. This makes it easy to delete all 
+generated files.
 
-However, the generated C code is not platform independant! C code generated for
+However, the generated C code is not platform independant. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
 
@@ -77,10 +83,46 @@ Because Nimrod generates C code it needs some "red tape" to work properly.
 Thus lots of options and pragmas for tweaking the generated C code are
 available.
 
+Importc Pragma
+~~~~~~~~~~~~~~
+The `importc`:idx: pragma provides a means to import a type, a variable, or a
+procedure from C. The optional argument is a string containing the C 
+identifier. If the argument is missing, the C name is the Nimrod 
+identifier *exactly as spelled*:
+
+.. code-block::
+  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+
+
+Exportc Pragma
+~~~~~~~~~~~~~~
+The `exportc`:idx: pragma provides a means to export a type, a variable, or a
+procedure to C. The optional argument is a string containing the C 
+identifier. If the argument is missing, the C name is the Nimrod 
+identifier *exactly as spelled*:
+
+.. code-block:: Nimrod
+  proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}
+
+
+Dynlib Pragma
+~~~~~~~~~~~~~
+With the `dynlib`:idx: pragma a procedure or a variable can be imported from
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
+non-optional argument has to be the name of the dynamic library: 
+
+.. code-block:: Nimrod
+  proc gtk_image_new(): PGtkWidget {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
+
+In general, importing a dynamic library does not require any special linker
+options or linking with import libraries. This also
+implies that no *devel* packages need to be installed.
+
+
 No_decl Pragma
 ~~~~~~~~~~~~~~
 The `no_decl`:idx: pragma can be applied to almost any symbol (variable, proc,
-type, etc.) and is one of the most important for interoperability with C:
+type, etc.) and is sometimes useful for interoperability with C:
 It tells Nimrod that it should not generate a declaration for the symbol in
 the C code. Thus it makes the following possible, for example:
 
@@ -89,17 +131,7 @@ the C code. Thus it makes the following possible, for example:
     EOF {.importc: "EOF", no_decl.}: cint # pretend EOF was a variable, as
                                           # Nimrod does not know its value
 
-Varargs Pragma
-~~~~~~~~~~~~~~
-The `varargs`:idx: pragma can be applied to procedures only. It tells Nimrod
-that the proc can take a variable number of parameters after the last
-specified parameter. Nimrod string values will be converted to C
-strings automatically:
-
-.. code-block:: Nimrod
-  proc printf(formatstr: cstring) {.nodecl, varargs.}
-
-  printf("hallo %s", "world") # "world" will be passed as C string
+However, the ``header`` pragma is often the better alternative.
 
 
 Header Pragma
@@ -119,12 +151,25 @@ in angle brackets: ``<>``. If no angle brackets are given, Nimrod
 encloses the header file in ``""`` in the generated C code.
 
 
+Varargs Pragma
+~~~~~~~~~~~~~~
+The `varargs`:idx: pragma can be applied to procedures only. It tells Nimrod
+that the proc can take a variable number of parameters after the last
+specified parameter. Nimrod string values will be converted to C
+strings automatically:
+
+.. code-block:: Nimrod
+  proc printf(formatstr: cstring) {.nodecl, varargs.}
+
+  printf("hallo %s", "world") # "world" will be passed as C string
+
+
 No_static Pragma
 ~~~~~~~~~~~~~~~~
 The `no_static`:idx: pragma can be applied to almost any symbol and specifies
 that it shall not be declared ``static`` in the generated C code. Note that
 symbols in the interface part of a module never get declared ``static``, so
-only in special cases is this pragma necessary.
+only in very special cases this pragma is necessary.
 
 
 Line_dir Option
@@ -171,8 +216,29 @@ The `register`:idx: pragma is for variables only. It declares the variable as
 in a hardware register for faster access. C compilers usually ignore this
 though and for good reason: Often they do a better job without it anyway.
 
-In highly specific cases (a dispatch loop of interpreters for example) it
-may provide benefits, though.
+In highly specific cases (a dispatch loop of an bytecode interpreter for 
+example) it may provide benefits, though.
+
+
+Acyclic Pragma
+~~~~~~~~~~~~~~
+The `acyclic`:idx: pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage 
+collector to not consider objects of this type as part of a cycle::
+
+  type
+    PNode = ref TNode
+    TNode {.acyclic, final.} = object
+      left, right: PNode
+      data: string
+      
+In the example a tree structure is declared with the ``TNode`` type. Note that
+the type definition is recursive thus the GC has to assume that objects of 
+this type may form a cyclic graph. The ``acyclic`` pragma passes the 
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
+memory, but nothing worse happens.
+
 
 
 Disabling certain messages
@@ -244,12 +310,17 @@ efficient than any hand-coded scheme.
 The ECMAScript code generator
 =============================
 
+Note: As of version 0.7.0 the ECMAScript code generator is not maintained any
+longer. Help if you are interested.
+
 Note: I use the term `ECMAScript`:idx: here instead of `JavaScript`:idx:, since
 it is the proper term.
 
+The ECMAScript code generator is experimental!
+
 Nimrod targets ECMAScript 1.5 which is supported by any widely used browser.
 Since ECMAScript does not have a portable means to include another module,
-Nimrod just generate a long ``.js`` file.
+Nimrod just generates a long ``.js`` file.
 
 Features or modules that the ECMAScript platform does not support are not
 available. This includes:

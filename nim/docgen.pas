@@ -114,11 +114,11 @@ begin
 {@ignore}
   fillChar(result^, sizeof(result^), 0);
 {@emit
-  result.tocPart := [];
+  result.tocPart := @[];
 }
   result.filename := filename;
   result.id := 100;
-  result.splitAfter := 25;
+  result.splitAfter := 20;
   s := getConfigVar('split.item.toc');
   if s <> '' then
     result.splitAfter := parseInt(s);
@@ -212,19 +212,51 @@ begin
     '&': dest := dest + '&amp;';
     '<': dest := dest + '&lt;';
     '>': dest := dest + '&gt;';
+    '"': dest := dest + '&quot;';
     else addChar(dest, c)
   end
 end;
 
-function toXml(const s: string; splitAfter: int = -1): string;
+function nextSplitPoint(const s: string; start: int): int;
 var
   i: int;
 begin
+  result := start;
+  while result < length(s)+strStart do begin
+    case s[result] of
+      '_': exit;
+      'a'..'z': begin
+        if result+1 < length(s)+strStart then
+          if s[result+1] in ['A'..'Z'] then exit;      
+      end;
+      else begin end;
+    end;
+    inc(result);
+  end;
+  dec(result); // last valid index
+end;
+
+function toXml(const s: string; splitAfter: int = -1): string;
+var
+  i, j, k, partLen: int;
+begin
   result := '';
-  for i := strStart to length(s)+strStart-1 do begin
-    if (splitAfter >= 0) and ((i-strStart+1) mod splitAfter = 0) then 
-      addChar(result, ' ');
-    addXmlChar(result, s[i])
+  if splitAfter >= 0 then begin
+    partLen := 0;
+    j := strStart;
+    while j < length(s)+strStart do begin
+      k := nextSplitPoint(s, j);
+      if partLen + k - j + 1 > splitAfter then begin
+        partLen := 0;
+        addChar(result, ' ');
+      end;
+      for i := j to k do addXmlChar(result, s[i]);
+      inc(partLen, k - j + 1);
+      j := k+1;
+    end;
+  end
+  else begin
+    for i := strStart to length(s)+strStart-1 do addXmlChar(result, s[i])
   end
 end;
 

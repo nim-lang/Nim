@@ -3,4 +3,4 @@
 var
   a: int
 
-a()  #ERROR
+a()  #ERROR_MSG expression cannot be called

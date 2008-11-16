@@ -3,4 +3,4 @@
 import
   times
 
-write(stdout, TimeToString(getTime()) )
+write(stdout, $getTime())

@@ -31,7 +31,7 @@ proc searchInner(r: PRadixNode, a: int): PRadixNode =
   case r.kind
   of rnLinear:
     var x = cast[ptr TRadixNodeLinear](r)
-    for i in 0..x.len-1: 
+    for i in 0..ze(x.len)-1: 
       if ze(x.keys[i]) == a: return x.vals[i]
   of rnFull: 
     var x = cast[ptr TRadixNodeFull](r)
@@ -59,7 +59,7 @@ proc searchLeaf(r: PRadixNode, a: int): bool =
     return testBit(x.b[a /% BitsPerUnit], a)
   of rnLeafLinear:
     var x = cast[ptr TRadixNodeLeafLinear](r)
-    for i in 0..x.len-1: 
+    for i in 0..ze(x.len)-1: 
       if ze(x.keys[i]) == a: return true
   else: assert(false)
 
@@ -103,7 +103,7 @@ proc addLeaf(r: var PRadixNode, a: int): bool =
     # a linear node:
     var x = cast[ptr TRadixNodeLinear](alloc(sizeof(TRadixNodeLinear)))
     x.kind = rnLeafLinear
-    x.len = 1
+    x.len = 1'i8
     x.keys[0] = toU8(a)
     r = x
     return false # not already in set
@@ -123,7 +123,7 @@ proc addLeaf(r: var PRadixNode, a: int): bool =
       # transform into a full node:
       var y = cast[ptr TRadixNodeLeafBits](alloc0(sizeof(TRadixNodeLeafBits)))
       y.kind = rnLeafBits
-      for i in 0..x.len-1: 
+      for i in 0..ze(x.len)-1: 
         var u = ze(x.keys[i])
         setBit(y.b[u /% BitsPerUnit], u)
       setBit(y.b[a /% BitsPerUnit], a)
@@ -139,7 +139,7 @@ proc addInner(r: var PRadixNode, a: int, d: int): bool =
     # a linear node:
     var x = cast[ptr TRadixNodeLinear](alloc(sizeof(TRadixNodeLinear)))
     x.kind = rnLinear
-    x.len = 1
+    x.len = 1'i8
     x.keys[0] = toU8(k)
     r = x
     return addInner(x.vals[0], a, d-8)

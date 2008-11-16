@@ -6,8 +6,33 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
+unit pragmas;
 
 // This module implements semantic checking for pragmas
+
+interface
+
+{$include 'config.inc'}
+
+uses
+  nsystem, nos, platform, condsyms, ast, astalgo, idents, semdata, msgs,
+  rnimsyn, wordrecg, ropes, options, strutils, lists, extccomp, nmath,
+  magicsys;
+
+procedure pragmaProc(c: PContext; s: PSym; n: PNode);
+procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
+procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
+procedure pragmaStmt(c: PContext; s: PSym; n: PNode);
+procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
+procedure pragmaType(c: PContext; s: PSym; n: PNode);
+procedure pragmaField(c: PContext; s: PSym; n: PNode);
+procedure pragmaVar(c: PContext; s: PSym; n: PNode);
+procedure pragmaConst(c: PContext; s: PSym; n: PNode);
+procedure pragmaProcType(c: PContext; s: PSym; n: PNode);
+
+function pragmaAsm(c: PContext; n: PNode): char;
+
+implementation
 
 procedure invalidPragma(n: PNode);
 begin
@@ -25,7 +50,7 @@ begin
       it := n.sons[i];
       if (it.kind = nkExprColonExpr) and (it.sons[0].kind = nkIdent) then begin
         case whichKeyword(it.sons[0].ident) of
-          wAsmQuote: begin
+          wSubsChar: begin
             if it.sons[1].kind = nkCharLit then
               result := chr(int(it.sons[1].intVal))
             else invalidPragma(it)
@@ -51,14 +76,12 @@ procedure MakeExternImport(s: PSym; const extname: string);
 begin
   s.loc.r := toRope(extname);
   Include(s.flags, sfImportc);
-  Include(s.flags, sfNoStatic);
   Exclude(s.flags, sfForward);
 end;
 
 procedure MakeExternExport(s: PSym; const extname: string);
 begin
   s.loc.r := toRope(extname);
-  Include(s.flags, sfNoStatic);
   Include(s.flags, sfExportc);
 end;
 
@@ -69,7 +92,7 @@ begin
     result := ''
   end
   else begin
-    n.sons[1] := semConstExpr(c, n.sons[1]);
+    n.sons[1] := c.semConstExpr(c, n.sons[1]);
     case n.sons[1].kind of
       nkStrLit, nkRStrLit, nkTripleStrLit: result := n.sons[1].strVal;
       else begin
@@ -87,7 +110,7 @@ begin
     result := 0
   end
   else begin
-    n.sons[1] := semConstExpr(c, n.sons[1]);
+    n.sons[1] := c.semConstExpr(c, n.sons[1]);
     case n.sons[1].kind of
       nkIntLit..nkInt64Lit: result := int(n.sons[1].intVal);
       else begin
@@ -114,7 +137,10 @@ var
 begin
   if not (sfSystemModule in c.module.flags) then
     liMessage(n.info, errMagicOnlyInSystem);
-  v := expectStrLit(c, n);
+  if n.kind <> nkExprColonExpr then
+    liMessage(n.info, errStringLiteralExpected);
+  if n.sons[1].kind = nkIdent then v := n.sons[1].ident.s
+  else v := expectStrLit(c, n);
   Include(s.flags, sfImportc); // magics don't need an implementation, so we
   // treat them as imported, instead of modifing a lot of working code
   Include(s.loc.Flags, lfNoDecl); // magics don't need to be declared!
@@ -260,6 +286,7 @@ begin
       wStacktrace: OnOff(c, n, {@set}[optStackTrace]);
       wLinetrace: OnOff(c, n, {@set}[optLineTrace]);
       wDebugger: OnOff(c, n, {@set}[optEndb]);
+      wProfiler: OnOff(c, n, {@set}[optProfiler]);
       wByRef: OnOff(c, n, {@set}[optByRef]);
       wDynLib: processDynLib(c, n, nil);
       // -------------------------------------------------------
@@ -323,16 +350,20 @@ end;
 
 procedure processDefine(c: PContext; n: PNode);
 begin
-  if (n.kind = nkExprColonExpr) and (n.sons[1].kind = nkIdent) then
-    DefineSymbol(n.sons[1].ident.s)
+  if (n.kind = nkExprColonExpr) and (n.sons[1].kind = nkIdent) then begin
+    DefineSymbol(n.sons[1].ident.s);
+    liMessage(n.info, warnDeprecated, 'define');
+  end
   else
     invalidPragma(n)
 end;
 
 procedure processUndef(c: PContext; n: PNode);
 begin
-  if (n.kind = nkExprColonExpr) and (n.sons[1].kind = nkIdent) then
-    UndefSymbol(n.sons[1].ident.s)
+  if (n.kind = nkExprColonExpr) and (n.sons[1].kind = nkIdent) then begin
+    UndefSymbol(n.sons[1].ident.s);
+    liMessage(n.info, warnDeprecated, 'undef');
+  end
   else
     invalidPragma(n)
 end;
@@ -366,9 +397,8 @@ begin
   case feature of
     linkNormal: extccomp.addFileToLink(found);
     linkSys: begin
-      if not (optCompileSys in gGlobalOptions) then
-        extccomp.addFileToLink(joinPath(libpath,
-          completeCFilePath(found, false)));
+      extccomp.addFileToLink(joinPath(libpath,
+        completeCFilePath(found, false)));
     end
     else internalError(n.info, 'processCommonLink');
   end
@@ -423,6 +453,7 @@ begin
             makeExternImport(sym, getOptionalStr(c, it, sym.name.s));
           end;
           wAlign: begin
+            if sym.typ = nil then invalidPragma(it);
             sym.typ.align := expectIntLit(c, it);
             if not IsPowerOfTwo(sym.typ.align) and (sym.typ.align <> 0) then
               liMessage(it.info, errPowerOfTwoExpected);
@@ -434,8 +465,17 @@ begin
           end;
           wVolatile: begin noVal(it); Include(sym.flags, sfVolatile); end;
           wRegister: begin noVal(it); include(sym.flags, sfRegister); end;
+          wThreadVar: begin noVal(it); include(sym.flags, sfThreadVar); end;
           wMagic: processMagic(c, it, sym);
-          wNostatic: begin noVal(it); include(sym.flags, sfNoStatic); end;
+          wCompileTime: begin
+            noVal(it);
+            include(sym.flags, sfCompileTime);
+            include(sym.loc.Flags, lfNoDecl);
+          end;
+          wMerge: begin
+            noval(it);
+            include(sym.flags, sfMerge);
+          end;
           wHeader: begin
             lib := getLib(c, libHeader, expectStrLit(c, it));
             addToLib(lib, sym);
@@ -453,7 +493,7 @@ begin
             makeExternExport(sym, sym.name.s);
             include(sym.flags, sfCompilerProc);
             include(sym.flags, sfUsed); // suppress all those stupid warnings
-            StrTableAdd(magicsys.compilerprocs, sym);
+            registerCompilerProc(sym);
           end;
           wCppMethod: begin
             makeExternImport(sym, getOptionalStr(c, it, sym.name.s));
@@ -465,11 +505,18 @@ begin
           end;
           wVarargs: begin
             noVal(it);
+            if sym.typ = nil then invalidPragma(it);
             include(sym.typ.flags, tfVarargs);
           end;
           wFinal: begin
             noVal(it);
+            if sym.typ = nil then invalidPragma(it);
             include(sym.typ.flags, tfFinal);
+          end;
+          wAcyclic: begin
+            noVal(it);
+            if sym.typ = nil then invalidPragma(it);
+            include(sym.typ.flags, tfAcyclic);
           end;
           wTypeCheck: begin
             noVal(it);
@@ -507,11 +554,12 @@ begin
           wChecks, wObjChecks, wFieldChecks,
           wRangechecks, wBoundchecks, wOverflowchecks, wNilchecks,
           wAssertions, wWarnings, wHints, wLinedir, wStacktrace,
-          wLinetrace, wOptimization, wByRef, wCallConv, wDebugger:
+          wLinetrace, wOptimization, wByRef, wCallConv, wDebugger, wProfiler:
             processOption(c, it);
           // calling conventions (boring...):
           firstCallConv..lastCallConv: begin
             assert(sym <> nil);
+            if sym.typ = nil then invalidPragma(it);
             sym.typ.callConv := wordToCallConv(k)
           end
           else invalidPragma(it);
@@ -538,15 +586,15 @@ end;
 procedure pragmaProc(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNostatic, wNodecl, wMagic, wNosideEffect,
-    wNoreturn, wDynLib, wHeader, wReturnsNew, wCompilerProc, wPure,
-    wCppMethod, wDeprecated, wVarargs]);
+    wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
+    wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
+    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge]);
 end;
 
 procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNostatic, wNodecl, wMagic, wNosideEffect,
+    wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
     wCompilerProc, wDeprecated, wTypeCheck]);
 end;
 
@@ -570,13 +618,13 @@ end;
 procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNostatic, wNodecl, wNosideEffect,
-    wNoreturn, wDynLib, wHeader, wReturnsNew, wPure, wDeprecated]);
+    wImportc, wExportc, wNodecl, wNosideEffect,
+    wNoreturn, wDynLib, wHeader, wPure, wDeprecated]);
 end;
 
 procedure pragmaType(c: PContext; s: PSym; n: PNode);
 begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wDeprecated, wMagic,
+  pragma(c, s, n, {@set}[wImportc, wExportc, wDeprecated, wMagic, wAcyclic,
                          wNodecl, wPure, wHeader, wCompilerProc, wFinal]);
 end;
 
@@ -587,9 +635,9 @@ end;
 
 procedure pragmaVar(c: PContext; s: PSym; n: PNode);
 begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wVolatile, wRegister,
-                         wNodecl, wMagic, wNostatic, wHeader,
-                         wDeprecated, wCompilerProc, wDynLib]);
+  pragma(c, s, n, {@set}[wImportc, wExportc, wVolatile, wRegister, wThreadVar,
+                         wNodecl, wMagic, wHeader, wDeprecated, wCompilerProc,
+                         wDynLib]);
 end;
 
 procedure pragmaConst(c: PContext; s: PSym; n: PNode);
@@ -602,3 +650,5 @@ procedure pragmaProcType(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, [FirstCallConv..LastCallConv, wVarargs]);
 end;
+
+end.

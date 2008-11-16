@@ -12,27 +12,43 @@
 ## Abstract syntax trees should be modified in macros.
 
 #[[[cog
-#def toEnum(name, elems, prefix):
+#def toEnum(name, elems):
 #  body = ""
 #  counter = 0
 #  for e in elems:
 #    if counter % 4 == 0: p = "\n    "
 #    else: p = ""
-#    body += p + prefix + e[2:] + ', '
-#    counter += 1
+#    body = body + p + 'n' + e + ', '
+#    counter = counter + 1
 #
-#  return "  TNimrod%s* = enum%s\n  TNim%ss* = set[TNimrod%s]\n" \
-#            % (name, body.rstrip(", "), name, name)
+#  return ("  TNimrod%s* = enum%s\n  TNim%ss* = set[TNimrod%s]\n" %
+#            (name, body[:-2], name, name))
 #
-#enums = eval(file("data/ast.yml").read())
+#enums = eval(open("data/ast.yml").read())
 #cog.out("type\n")
-#i = 0
-#for key, val in enums.iteritems():
-#  if key.endswith("Flag"): continue
-#  cog.out(toEnum(key, val, ["nnk", "nty", "nsk"][i]))
-#  i += 1
+#for key, val in enums.items():
+#  if key[-4:] == "Flag": continue
+#  cog.out(toEnum(key, val))
 #]]]
 type
+  TNimrodTypeKind* = enum
+    ntyNone, ntyBool, ntyChar, ntyEmpty, 
+    ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
+    ntyGenericParam, ntyEnum, ntyAnyEnum, ntyArray, 
+    ntyObject, ntyTuple, ntySet, ntyRange, 
+    ntyPtr, ntyRef, ntyVar, ntySequence, 
+    ntyProc, ntyPointer, ntyOpenArray, ntyString, 
+    ntyCString, ntyForward, ntyInt, ntyInt8, 
+    ntyInt16, ntyInt32, ntyInt64, ntyFloat, 
+    ntyFloat32, ntyFloat64, ntyFloat128
+  TNimTypeKinds* = set[TNimrodTypeKind]
+  TNimrodSymKind* = enum
+    nskUnknownSym, nskConditional, nskDynLib, nskParam, 
+    nskTypeParam, nskTemp, nskType, nskConst, 
+    nskVar, nskProc, nskIterator, nskConverter, 
+    nskMacro, nskTemplate, nskField, nskEnumField, 
+    nskForVar, nskModule, nskLabel, nskStub
+  TNimSymKinds* = set[TNimrodSymKind]
   TNimrodNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym, 
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
@@ -61,29 +77,12 @@ type
     nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkDiscardStmt, 
     nnkStmtList, nnkImportStmt, nnkFromStmt, nnkImportAs, 
     nnkIncludeStmt, nnkAccessStmt, nnkCommentStmt, nnkStmtListExpr, 
-    nnkBlockExpr, nnkVm, nnkTypeOfExpr, nnkObjectTy, 
-    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
-    nnkRefTy, nnkPtrTy, nnkVarTy, nnkProcTy, 
-    nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
+    nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkVm, 
+    nnkTypeOfExpr, nnkObjectTy, nnkTupleTy, nnkRecList, 
+    nnkRecCase, nnkRecWhen, nnkRefTy, nnkPtrTy, 
+    nnkVarTy, nnkProcTy, nnkEnumTy, nnkEnumFieldDef, 
+    nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
-  TNimrodTypeKind* = enum
-    ntyNone, ntyBool, ntyChar, ntyEmptySet, 
-    ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
-    ntyGenericParam, ntyEnum, ntyAnyEnum, ntyArray, 
-    ntyObject, ntyTuple, ntySet, ntyRange, 
-    ntyPtr, ntyRef, ntyVar, ntySequence, 
-    ntyProc, ntyPointer, ntyOpenArray, ntyString, 
-    ntyCString, ntyForward, ntyInt, ntyInt8, 
-    ntyInt16, ntyInt32, ntyInt64, ntyFloat, 
-    ntyFloat32, ntyFloat64, ntyFloat128
-  TNimTypeKinds* = set[TNimrodTypeKind]
-  TNimrodSymKind* = enum
-    nskUnknownSym, nskConditional, nskDynLib, nskParam, 
-    nskTypeParam, nskTemp, nskType, nskConst, 
-    nskVar, nskProc, nskIterator, nskConverter, 
-    nskMacro, nskTemplate, nskField, nskEnumField, 
-    nskForVar, nskModule, nskLabel
-  TNimSymKinds* = set[TNimrodSymKind]
 #[[[end]]]
 
 type
@@ -142,33 +141,33 @@ proc error*(msg: string) {.magic: "NError".}
 proc warning*(msg: string) {.magic: "NWarning".}
 proc hint*(msg: string) {.magic: "NHint".}
 
-proc newStrLitNode*(s: string): PNimrodNode {.nodecl.} = 
+proc newStrLitNode*(s: string): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc newIntLitNode*(i: biggestInt): PNimrodNode {.nodecl.} = 
+proc newIntLitNode*(i: biggestInt): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkIntLit)
   result.intVal = i
 
-proc newIntLitNode*(f: biggestFloat): PNimrodNode {.nodecl.} = 
+proc newIntLitNode*(f: biggestFloat): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: TNimrodIdent): PNimrodNode {.nodecl.} = 
+proc newIdentNode*(i: TNimrodIdent): PNimrodNode {.compileTime.} =
   result = newNimNode(nnkIdent)
   result.ident = i
 
-proc toStrLit*(n: PNimrodNode): PNimrodNode {.nodecl.} = 
+proc toStrLit*(n: PNimrodNode): PNimrodNode {.compileTime.} =
   return newStrLitNode(repr(n))
 
-proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.nodecl.} =
+proc expectKind*(n: PNimrodNode, k: TNimrodNodeKind) {.compileTime.} =
   if n.kind != k: error("macro expects a node of kind: " & repr(k))
 
-proc expectMinLen*(n: PNimrodNode, min: int) {.nodecl.} =
+proc expectMinLen*(n: PNimrodNode, min: int) {.compileTime.} =
   if n.len < min: error("macro expects a node with " & $min & " children")
 
 proc newCall*(theProc: TNimrodIdent,
-              args: openArray[PNimrodNode]): PNimrodNode {.nodecl.} =
+              args: openArray[PNimrodNode]): PNimrodNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
   result = newNimNode(nnkCall)

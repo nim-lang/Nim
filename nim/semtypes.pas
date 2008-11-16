@@ -17,12 +17,11 @@ end;
 
 function newOrPrevType(kind: TTypeKind; prev: PType; c: PContext): PType;
 begin
-  assert((prev = nil) or (prev.Kind = tyForward));
   if prev = nil then
     result := newTypeS(kind, c)
   else begin
     result := prev;
-    result.kind := kind
+    if result.kind = tyForward then result.kind := kind
   end
 end;
 
@@ -37,7 +36,7 @@ begin
   counter := 0;
   base := nil;
   result := newOrPrevType(tyEnum, prev, c);
-  result.n := newNode(nkEnumTy);
+  result.n := newNodeI(nkEnumTy, n.info);
   checkMinSonsLen(n, 1);
   if n.sons[0] <> nil then begin
     base := semTypeNode(c, n.sons[0].sons[0], nil);
@@ -69,6 +68,7 @@ begin
     e.position := int(counter);
     if (result.sym <> nil) and (sfInInterface in result.sym.flags) then begin
       include(e.flags, sfUsed); // BUGFIX
+      include(e.flags, sfInInterface); // BUGFIX
       StrTableAdd(c.module.tab, e); // BUGFIX
     end;
     addSon(result.n, newSymNode(e));
@@ -142,11 +142,12 @@ function semRangeAux(c: PContext; n: PNode; prev: PType): PType;
 var
   a, b: PNode;
 begin
-  assert(n.kind = nkRange);
+  if (n.kind <> nkRange) then InternalError(n.info, 'semRangeAux');
   checkSonsLen(n, 2);
   result := newOrPrevType(tyRange, prev, c);
-  result.n := copyTree(n);
-  result.n := newNode(nkRange);
+  result.n := newNodeI(nkRange, n.info);
+  if (n.sons[0] = nil) or (n.sons[1] = nil) then
+    liMessage(n.Info, errRangeIsEmpty);
   a := semConstExpr(c, n.sons[0]);
   b := semConstExpr(c, n.sons[1]);
   if not sameType(a.typ, b.typ) then
@@ -278,12 +279,13 @@ var
   elem: PType;
   inst: PNode;
 begin
-  if (s.typ = nil) or (s.typ.kind <> tyGeneric) then 
+  if (s.typ = nil) or (s.typ.kind <> tyGeneric) then
     liMessage(n.info, errCannotInstantiateX, s.name.s);
-  result := newOrPrevType(tyGenericInst, prev, c);
-  result.containerID := s.typ.containerID;
+  result := newOrPrevType(tyGenericInst, prev, c); // new ID...
+  result.containerID := s.typ.containerID; // ... but the same containerID
   result.sym := s;
-  assert(s.typ.containerID <> 0);
+  if (s.typ.containerID = 0) then
+    InternalError(n.info, 'semGeneric');  
   for i := 1 to sonsLen(n)-1 do begin
     elem := semTypeNode(c, n.sons[i], nil);
     if elem.kind = tyGenericParam then result.kind := tyGeneric;
@@ -355,8 +357,10 @@ var
 begin
   for i := 1 to branchIndex-1 do
     for j := 0 to sonsLen(t.sons[i])-2 do
-      if overlap(t.sons[i].sons[j], ex) then
+      if overlap(t.sons[i].sons[j], ex) then begin
+        //MessageOut(renderTree(t));
         liMessage(ex.info, errDuplicateCaseLabel);
+      end
 end;
 
 procedure semBranchExpr(c: PContext; t: PNode; var ex: PNode);
@@ -380,8 +384,10 @@ begin
       checkSonsLen(b, 2);
       semBranchExpr(c, t, b.sons[0]);
       semBranchExpr(c, t, b.sons[1]);
-      if emptyRange(b.sons[0], b.sons[1]) then
+      if emptyRange(b.sons[0], b.sons[1]) then begin
+        //MessageOut(renderTree(t));
         liMessage(b.info, errRangeIsEmpty);
+      end;
       covered := covered + getOrdValue(b.sons[1]) - getOrdValue(b.sons[0]) + 1;
     end
     else begin
@@ -444,8 +450,7 @@ begin
   addSon(father, a);
 end;
 
-procedure semRecordNodeAux(c: PContext; n: PNode;
-                           var check: TIntSet;
+procedure semRecordNodeAux(c: PContext; n: PNode; var check: TIntSet;
                            var pos: int; father: PNode; rectype: PSym);
 var
   i, len: int;
@@ -465,7 +470,8 @@ begin
             checkSonsLen(it, 2);
             e := semConstExpr(c, it.sons[0]);
             checkBool(e);
-            assert(e.kind = nkIntLit);
+            if (e.kind <> nkIntLit) then
+              InternalError(e.info, 'semRecordNodeAux');
             if (e.intVal <> 0) and (branch = nil) then
               branch := it.sons[1]
           end;
@@ -482,6 +488,10 @@ begin
     nkRecCase: begin
       semRecordCase(c, n, check, pos, father, rectype);
     end;
+    nkNilLit: begin
+      if father.kind <> nkRecList then
+        addSon(father, newNodeI(nkRecList, n.info));
+    end;
     nkRecList: begin
       // attempt to keep the nesting at a sane level:
       if father.kind = nkRecList then a := father
@@ -495,8 +505,10 @@ begin
     nkIdentDefs: begin
       checkMinSonsLen(n, 3);
       len := sonsLen(n);
-      if (father.kind <> nkRecList) and (len >= 4) then a := newNode(nkRecList)
-      else a := nil;
+      if (father.kind <> nkRecList) and (len >= 4) then 
+        a := newNodeI(nkRecList, n.info)
+      else 
+        a := nil;
       if n.sons[len-1] <> nil then
         liMessage(n.sons[len-1].info, errInitHereNotAllowed);
       if n.sons[len-2] = nil then
@@ -531,7 +543,8 @@ var
 begin
   case n.kind of
     nkRecCase: begin
-      assert(n.sons[0].kind = nkSym);
+      if (n.sons[0].kind <> nkSym) then
+        InternalError(n.info, 'addInheritedFieldsAux');
       addInheritedFieldsAux(c, check, pos, n.sons[0]);
       for i := 1 to sonsLen(n)-1 do begin
         case n.sons[i].kind of
@@ -589,9 +602,9 @@ begin
   else
     InternalError(n.info, 'semObjectNode');
   addSon(result, base);
-  result.n := newNode(nkRecList);
+  result.n := newNodeI(nkRecList, n.info);
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym);
-  if (tfFinal in result.flags) and (base <> nil) then
+  if (base <> nil) and (tfFinal in base.flags) then
     liMessage(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects);
 end;
 
@@ -606,14 +619,14 @@ begin
   checkMinSonsLen(n, 1);
   result := newOrPrevType(tyProc, prev, c);
   result.callConv := lastOptionEntry(c).defaultCC;
-  result.n := newNode(nkFormalParams);
+  result.n := newNodeI(nkFormalParams, n.info);
   if n.sons[0] = nil then begin
     addSon(result, nil); // return type
-    addSon(result.n, newNode(nkType)); // BUGFIX: nkType-Node must be present!
+    addSon(result.n, newNodeI(nkType, n.info)); // BUGFIX: nkType must exist!
   end
   else begin
     addSon(result, semTypeNode(c, n.sons[0], nil)); // return type
-    res := newNode(nkType);
+    res := newNodeI(nkType, n.info);
     res.typ := result.sons[0];
     addSon(result.n, res);
   end;
@@ -655,13 +668,45 @@ begin
   end
 end;
 
+function semStmtListType(c: PContext; n: PNode; prev: PType): PType;
+var
+  len, i: int;
+begin
+  checkMinSonsLen(n, 1);
+  len := sonsLen(n);
+  for i := 0 to len-2 do begin
+    n.sons[i] := semStmt(c, n.sons[i]);
+  end;
+  if len > 0 then begin
+    result := semTypeNode(c, n.sons[len-1], prev);
+    n.typ := result;
+    n.sons[len-1].typ := result
+  end
+  else
+    result := nil;
+end;
+
+function semBlockType(c: PContext; n: PNode; prev: PType): PType;
+begin
+  Inc(c.p.nestedBlockCounter);
+  checkSonsLen(n, 2);
+  openScope(c.tab);
+  if n.sons[0] <> nil then begin
+    addDecl(c, newSymS(skLabel, n.sons[0], c))
+  end;
+  result := semStmtListType(c, n.sons[1], prev);
+  n.sons[1].typ := result;
+  n.typ := result;
+  closeScope(c.tab);
+  Dec(c.p.nestedBlockCounter);
+end;
+
 function semTypeNode(c: PContext; n: PNode; prev: PType): PType;
 var
   s: PSym;
 begin
   result := nil;
   if n = nil then exit;
-  embeddedDbg(c, n);
   case n.kind of
     nkTypeOfExpr: begin
       result := semExprWithType(c, n, {@set}[efAllowType]).typ;
@@ -686,6 +731,7 @@ begin
         result := s.typ
       else begin
         assignType(prev, s.typ);
+        prev.id := s.typ.id;
         result := prev;
       end
     end;
@@ -717,7 +763,56 @@ begin
     end;
     nkEnumTy: result := semEnum(c, n, prev);
     nkType: result := n.typ;
+    nkStmtListType: result := semStmtListType(c, n, prev);
+    nkBlockType: result := semBlockType(c, n, prev);
     else liMessage(n.info, errTypeExpected);
     //internalError(n.info, 'semTypeNode(' +{&} nodeKindToStr[n.kind] +{&} ')');
   end
+end;
+
+procedure setMagicType(m: PSym; kind: TTypeKind; size: int);
+begin
+  m.typ.kind := kind;
+  m.typ.align := size;
+  m.typ.size := size;
+  //m.typ.sym := nil;
+end;
+
+procedure processMagicType(c: PContext; m: PSym);
+begin
+  case m.magic of
+    mInt:     setMagicType(m, tyInt, intSize);
+    mInt8:    setMagicType(m, tyInt8, 1);
+    mInt16:   setMagicType(m, tyInt16, 2);
+    mInt32:   setMagicType(m, tyInt32, 4);
+    mInt64:   setMagicType(m, tyInt64, 8);
+    mFloat:   setMagicType(m, tyFloat, floatSize);
+    mFloat32: setMagicType(m, tyFloat32, 4);
+    mFloat64: setMagicType(m, tyFloat64, 8);
+    mBool:    setMagicType(m, tyBool, 1);
+    mChar:    setMagicType(m, tyChar, 1);
+    mString:  begin
+      setMagicType(m, tyString, ptrSize);
+      addSon(m.typ, getSysType(tyChar));
+    end;
+    mCstring: begin
+      setMagicType(m, tyCString, ptrSize);
+      addSon(m.typ, getSysType(tyChar));
+    end;
+    mPointer: setMagicType(m, tyPointer, ptrSize);
+    mAnyEnum: setMagicType(m, tyAnyEnum, 1);
+    mEmptySet: begin
+      setMagicType(m, tySet, 1);
+      addSon(m.typ, newTypeS(tyEmpty, c));
+    end;
+    mIntSetBaseType: begin
+      setMagicType(m, tyRange, intSize);
+      //intSetBaseType := m.typ;
+      exit
+    end;
+    mNil: setMagicType(m, tyNil, ptrSize);
+    mArray, mOpenArray, mRange, mSet, mSeq: exit;
+    else liMessage(m.info, errTypeExpected);
+  end;
+  //registerSysType(m.typ);
 end;

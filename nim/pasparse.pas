@@ -18,7 +18,7 @@ unit pasparse;
 interface
 
 uses
-  nsystem, nos, charsets, scanner, paslex, idents, wordrecg, strutils,
+  nsystem, nos, llstream, charsets, scanner, paslex, idents, wordrecg, strutils,
   ast, astalgo, msgs, options;
 
 type
@@ -62,7 +62,7 @@ const
     ('len',          'length'),
     ('setlength',    'setlen')
   );
-  nimReplacements: array [1..29] of TReplaceTuple = (
+  nimReplacements: array [1..30] of TReplaceTuple = (
     ('nimread',      'read'),
     ('nimwrite',     'write'),
     ('nimclosefile', 'closeFile'),
@@ -88,6 +88,7 @@ const
     ('leu', '`<=%`'),
     ('shlu', '`shl`'),
     ('shru', '`shr`'),
+    ('assigned',     'not isNil'),
 
     ('eintoverflow', 'EOverflow'),
     ('format', '`%`'),
@@ -108,7 +109,8 @@ const
 
 function ParseUnit(var p: TPasParser): PNode;
 
-function openPasParser(var p: TPasParser; const filename: string): TResult;
+procedure openPasParser(var p: TPasParser; const filename: string;
+                        inputStream: PLLStream);
 procedure closePasParser(var p: TPasParser);
 
 procedure exSymbol(var n: PNode);
@@ -117,14 +119,15 @@ procedure fixRecordDef(var n: PNode);
 
 implementation
 
-function OpenPasParser(var p: TPasParser; const filename: string): TResult;
+procedure OpenPasParser(var p: TPasParser; const filename: string;
+                        inputStream: PLLStream);
 var
   i: int;
 begin
 {@ignore}
   FillChar(p, sizeof(p), 0);
 {@emit}
-  result := OpenLexer(p.lex, filename);
+  OpenLexer(p.lex, filename, inputStream);
   initIdTable(p.repl);
   for i := low(stdReplacements) to high(stdReplacements) do
     IdTablePut(p.repl, getIdent(stdReplacements[i][0]),
@@ -191,8 +194,7 @@ end;
 
 function newNodeP(kind: TNodeKind; const p: TPasParser): PNode;
 begin
-  result := newNode(kind);
-  result.info := getLineInfo(p.lex);
+  result := newNodeI(kind, getLineInfo(p.lex));
 end;
 
 function newIntNodeP(kind: TNodeKind; const intVal: BiggestInt;
@@ -236,9 +238,10 @@ end;
 
 function parseExpr(var p: TPasParser): PNode; forward;
 function parseStmt(var p: TPasParser): PNode; forward;
-function parseTypeDesc(var p: TPasParser): PNode; forward;
+function parseTypeDesc(var p: TPasParser;
+                       definition: PNode=nil): PNode; forward;
 
-function parseEmit(var p: TPasParser): PNode;
+function parseEmit(var p: TPasParser; definition: PNode): PNode;
 var
   a: PNode;
 begin
@@ -258,12 +261,12 @@ begin
           end
         end
       end;
-      conTypeDesc: result := parseTypeDesc(p);
+      conTypeDesc: result := parseTypeDesc(p, definition);
     end;
   eat(p, pxCurlyDirRi);
 end;
 
-function parseCommand(var p: TPasParser): PNode;
+function parseCommand(var p: TPasParser; definition: PNode=nil): PNode;
 var
   a: PNode;
 begin
@@ -294,7 +297,7 @@ begin
     end
   end
   else if p.tok.ident.id = getIdent('emit').id then begin
-    result := parseEmit(p);
+    result := parseEmit(p, definition);
   end
   else if p.tok.ident.id = getIdent('ignore').id then begin
     getTok(p); eat(p, pxCurlyDirRi);
@@ -304,12 +307,11 @@ begin
         pxCommand: begin
           getTok(p);
           if p.tok.ident.id = getIdent('emit').id then begin
-            result := parseEmit(p);
+            result := parseEmit(p, definition);
             break
           end
           else begin
-            while (p.tok.xkind <> pxCurlyDirRi)
-                and (p.tok.xkind <> pxEof) do
+            while (p.tok.xkind <> pxCurlyDirRi) and (p.tok.xkind <> pxEof) do
               getTok(p);
             eat(p, pxCurlyDirRi);
           end;
@@ -324,6 +326,10 @@ begin
   end
   else if p.tok.ident.id = getIdent('tuple').id then begin
     result := newNodeP(nkTupleTy, p);
+    getTok(p); eat(p, pxCurlyDirRi);
+  end
+  else if p.tok.ident.id = getIdent('acyclic').id then begin
+    result := newIdentNodeP(p.tok.ident, p);
     getTok(p); eat(p, pxCurlyDirRi);
   end
   else begin
@@ -445,8 +451,7 @@ begin
     skipCom(p, result);
     if p.tok.xkind = pxSymbol then begin
       a := result;
-      result := newNode(nkQualified);
-      result.info := a.info;
+      result := newNodeI(nkQualified, a.info);
       addSon(result, a);
       addSon(result, createIdentNodeP(p.tok.ident, p));
       getTok(p);
@@ -583,8 +588,15 @@ begin
   end
   else if p.tok.xkind = pxAt then begin
     result := newNodeP(nkAddr, p);
+    a := newIdentNodeP(getIdent(pasTokToStr(p.tok)), p);
     getTok(p);
-    addSon(result, primary(p));
+    if p.tok.xkind = pxBracketLe then begin
+      result := newNodeP(nkPrefix, p);
+      addSon(result, a);
+      addSon(result, identOrLiteral(p));
+    end
+    else
+      addSon(result, primary(p));
     exit
   end;
   result := identOrLiteral(p);
@@ -737,8 +749,7 @@ begin
     getTok(p);
     skipCom(p, a);
     b := parseExpr(p);
-    result := newNode(nkAsgn);
-    result.info := info;
+    result := newNodeI(nkAsgn, info);
     addSon(result, a);
     addSon(result, b);
   end
@@ -837,7 +848,7 @@ end;
 function parseStmtList(var p: TPasParser): PNode;
 begin
   result := newNodeP(nkStmtList, p);
-  while true do begin 
+  while true do begin
     case p.tok.xkind of
       pxEof: break;
       pxCurlyDirLe, pxStarDirLe: begin
@@ -847,7 +858,7 @@ begin
     end;
     addSon(result, parseStmt(p))
   end;
-  if sonsLen(result) = 1 then result := result.sons[0];      
+  if sonsLen(result) = 1 then result := result.sons[0];
 end;
 
 procedure parseIfDirAux(var p: TPasParser; result: PNode);
@@ -1278,7 +1289,6 @@ begin
         addSon(e, parseExpr(p));
         addSon(result, e);
         opt(p, pxSemicolon);
-
         if (p.tok.xkind = pxSymbol)
         and (p.tok.ident.id = getIdent('name').id) then begin
           e := newNodeP(nkExprColonExpr, p);
@@ -1286,7 +1296,9 @@ begin
           addSon(e, newIdentNodeP(getIdent('importc'), p));
           addSon(e, parseExpr(p));
           addSon(result, e);
-        end;
+        end
+        else
+          addSon(result, newIdentNodeP(getIdent('importc'), p));
         opt(p, pxSemicolon);
       end
       else begin
@@ -1453,7 +1465,8 @@ begin
     end;
     eat(p, pxParRi);
     opt(p, pxSemicolon);
-    skipCom(p, lastSon(c));
+    if sonsLen(c) > 0 then skipCom(p, lastSon(c))
+    else addSon(c, newNodeP(nkNilLit, p));
     addSon(b, c);
     addSon(result, b);
     if b.kind = nkElse then break;
@@ -1491,8 +1504,7 @@ begin
     nkPostfix: begin end; // already an export marker
     nkPragmaExpr: exSymbol(n.sons[0]);
     nkIdent, nkAccQuoted: begin
-      a := newNode(nkPostFix);
-      a.info := n.info;
+      a := newNodeI(nkPostFix, n.info);
       addSon(a, newIdentNode(getIdent('*'+''), n.info));
       addSon(a, n);
       n := a
@@ -1521,12 +1533,32 @@ begin
     nkIdentDefs: begin
       for i := 0 to sonsLen(n)-3 do exSymbol(n.sons[i])
     end;
+    nkNilLit: begin end;
     //nkIdent: exSymbol(n);
     else internalError(n.info, 'fixRecordDef(): ' + nodekindtostr[n.kind]);
   end
 end;
 
-procedure parseRecordBody(var p: TPasParser; result: PNode);
+procedure addPragmaToIdent(var ident: PNode; pragma: PNode);
+var
+  e, pragmasNode: PNode;
+begin
+  if ident.kind <> nkPragmaExpr then begin
+    pragmasNode := newNodeI(nkPragma, ident.info);
+    e := newNodeI(nkPragmaExpr, ident.info);
+    addSon(e, ident);
+    addSon(e, pragmasNode);
+    ident := e;
+  end
+  else begin
+    pragmasNode := ident.sons[1];
+    if pragmasNode.kind <> nkPragma then
+      InternalError(ident.info, 'addPragmaToIdent');
+  end;
+  addSon(pragmasNode, pragma);
+end;
+
+procedure parseRecordBody(var p: TPasParser; result, definition: PNode);
 var
   a: PNode;
 begin
@@ -1535,11 +1567,32 @@ begin
   if result.kind <> nkTupleTy then fixRecordDef(a);
   addSon(result, a);
   eat(p, pxEnd);
+  case p.tok.xkind of
+    pxSymbol: begin
+      if (p.tok.ident.id = getIdent('acyclic').id) then begin
+        if definition <> nil then
+          addPragmaToIdent(definition.sons[0], newIdentNodeP(p.tok.ident, p))
+        else
+          InternalError(result.info, 'anonymous record is not supported');
+        getTok(p);
+      end
+      else
+        InternalError(result.info, 'parseRecordBody');
+    end;
+    pxCommand: begin
+      if definition <> nil then
+        addPragmaToIdent(definition.sons[0], parseCommand(p))
+      else
+        InternalError(result.info, 'anonymous record is not supported');
+    end;
+    else begin end
+  end;
   opt(p, pxSemicolon);
-  skipCom(p, result);  
+  skipCom(p, result);
 end;
 
-function parseRecordOrObject(var p: TPasParser; kind: TNodeKind): PNode;
+function parseRecordOrObject(var p: TPasParser; kind: TNodeKind;
+                             definition: PNode): PNode;
 var
   a: PNode;
 begin
@@ -1554,10 +1607,10 @@ begin
     eat(p, pxParRi);
   end
   else addSon(result, nil);
-  parseRecordBody(p, result);
+  parseRecordBody(p, result, definition);
 end;
 
-function parseTypeDesc(var p: TPasParser): PNode;
+function parseTypeDesc(var p: TPasParser; definition: PNode=nil): PNode;
 var
   oldcontext: TPasContext;
   a, r: PNode;
@@ -1567,15 +1620,15 @@ begin
   p.context := conTypeDesc;
   if p.tok.xkind = pxPacked then getTok(p);
   case p.tok.xkind of
-    pxCommand: result := parseCommand(p);
+    pxCommand: result := parseCommand(p, definition);
     pxProcedure, pxFunction: result := parseRoutineType(p);
     pxRecord: begin
       getTok(p);
       if p.tok.xkind = pxCommand then begin
         result := parseCommand(p);
-        if result.kind <> nkTupleTy then 
+        if result.kind <> nkTupleTy then
           InternalError(result.info, 'parseTypeDesc');
-        parseRecordBody(p, result);
+        parseRecordBody(p, result, definition);
         a := lastSon(result);
         // embed nkRecList directly into nkTupleTy
         for i := 0 to sonsLen(a)-1 do
@@ -1583,15 +1636,18 @@ begin
           else addSon(result, a.sons[i]);
       end
       else begin
-        result := newNodeP(nkReturnToken, p); 
-        // we use nkReturnToken to signal that this object should be marked as
-        // final
+        result := newNodeP(nkObjectTy, p);
         addSon(result, nil);
         addSon(result, nil);
-        parseRecordBody(p, result);
+        parseRecordBody(p, result, definition);
+        if definition <> nil then
+          addPragmaToIdent(definition.sons[0],
+                           newIdentNodeP(getIdent('final'), p))
+        else
+          InternalError(result.info, 'anonymous record is not supported');
       end;
     end;
-    pxObject: result := parseRecordOrObject(p, nkObjectTy);
+    pxObject: result := parseRecordOrObject(p, nkObjectTy, definition);
     pxParLe: result := parseEnum(p);
     pxArray: begin
       result := newNodeP(nkBracketExpr, p);
@@ -1622,8 +1678,10 @@ begin
       getTok(p);
       if p.tok.xkind = pxCommand then
         result := parseCommand(p)
+      else if gCmd = cmdBoot then
+        result := newNodeP(nkRefTy, p)
       else
-        result := newNodeP(nkRefTy, p);
+        result := newNodeP(nkPtrTy, p);
       addSon(result, parseTypeDesc(p))
     end;
     pxType: begin
@@ -1650,28 +1708,15 @@ end;
 
 function parseTypeDef(var p: TPasParser): PNode;
 var
-  a, e, pragmasNode: PNode;
+  a: PNode;
 begin
   result := newNodeP(nkTypeDef, p);
   addSon(result, identVis(p));
   addSon(result, nil); // generic params
   if p.tok.xkind = pxEquals then begin
     getTok(p); skipCom(p, result);
-    a := parseTypeDesc(p);
+    a := parseTypeDesc(p, result);
     addSon(result, a);
-    if a.kind = nkReturnToken then begin // a `final` object?
-      a.kind := nkObjectTy;
-      if result.sons[0].kind <> nkPragmaExpr then begin
-        e := newNodeP(nkPragmaExpr, p);
-        pragmasNode := newNodeP(nkPragma, p);
-        addSon(e, result.sons[0]);
-        addSon(e, pragmasNode);
-        result.sons[0] := e;
-      end
-      else
-        pragmasNode := result.sons[1];
-      addSon(pragmasNode, newIdentNodeP(getIdent('final'), p));
-    end
   end
   else
     addSon(result, nil);

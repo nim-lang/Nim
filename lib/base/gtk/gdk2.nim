@@ -1,13 +1,12 @@
-import 
+import
   glib2, gdk2pixbuf, pango
 
-when defined(win32): 
-  {.define: GDK_WINDOWING_WIN32.}
-  const 
+when defined(win32):
+  const
     gdklib = "libgdk-win32-2.0-0.dll"
     GDK_HAVE_WCHAR_H = 1
     GDK_HAVE_WCTYPE_H = 1
-elif defined(darwin): 
+elif defined(darwin):
   #    linklib gtk-x11-2.0
   #    linklib gdk-x11-2.0
   #    linklib pango-1.0.0
@@ -15,16 +14,16 @@ elif defined(darwin):
   #    linklib gobject-2.0.0
   #    linklib gdk_pixbuf-2.0.0
   #    linklib atk-1.0.0
-  const 
+  const
     gdklib = "gdk-x11-2.0"
-else: 
-  const 
+else:
+  const
     gdklib = "libgdk-x11-2.0.so"
-const 
+const
   NUMPTSTOBUFFER* = 200
   GDK_MAX_TIMECOORD_AXES* = 128
 
-type 
+type
   PGdkDeviceClass* = ptr TGdkDeviceClass
   TGdkDeviceClass* = object of TGObjectClass
 
@@ -32,7 +31,7 @@ type
   TGdkVisualClass* = object of TGObjectClass
 
   PGdkColor* = ptr TGdkColor
-  TGdkColor* {.final.} = object 
+  TGdkColor* {.final.} = object
     pixel*: guint32
     red*: guint16
     green*: guint16
@@ -49,37 +48,37 @@ type
   PGdkBitmap* = ptr TGdkBitmap
   TGdkBitmap* = TGdkDrawable
   PGdkFontType* = ptr TGdkFontType
-  TGdkFontType* = enum 
+  TGdkFontType* = enum
     GDK_FONT_FONT, GDK_FONT_FONTSET
   PGdkFont* = ptr TGdkFont
-  TGdkFont* {.final.} = object 
+  TGdkFont* {.final.} = object
     `type`*: TGdkFontType
     ascent*: gint
     descent*: gint
 
   PGdkFunction* = ptr TGdkFunction
-  TGdkFunction* = enum 
-    GDK_COPY, GDK_INVERT, GDK_XOR, GDK_CLEAR, GDK_AND, GDK_AND_REVERSE, 
-    GDK_AND_INVERT, GDK_NOOP, GDK_OR, GDK_EQUIV, GDK_OR_REVERSE, 
+  TGdkFunction* = enum
+    GDK_COPY, GDK_INVERT, GDK_XOR, GDK_CLEAR, GDK_AND, GDK_AND_REVERSE,
+    GDK_AND_INVERT, GDK_NOOP, GDK_OR, GDK_EQUIV, GDK_OR_REVERSE,
     GDK_COPY_INVERT, GDK_OR_INVERT, GDK_NAND, GDK_NOR, GDK_SET
   PGdkCapStyle* = ptr TGdkCapStyle
-  TGdkCapStyle* = enum 
+  TGdkCapStyle* = enum
     GDK_CAP_NOT_LAST, GDK_CAP_BUTT, GDK_CAP_ROUND, GDK_CAP_PROJECTING
   PGdkFill* = ptr TGdkFill
-  TGdkFill* = enum 
+  TGdkFill* = enum
     GDK_SOLID, GDK_TILED, GDK_STIPPLED, GDK_OPAQUE_STIPPLED
   PGdkJoinStyle* = ptr TGdkJoinStyle
-  TGdkJoinStyle* = enum 
+  TGdkJoinStyle* = enum
     GDK_JOIN_MITER, GDK_JOIN_ROUND, GDK_JOIN_BEVEL
   PGdkLineStyle* = ptr TGdkLineStyle
-  TGdkLineStyle* = enum 
+  TGdkLineStyle* = enum
     GDK_LINE_SOLID, GDK_LINE_ON_OFF_DASH, GDK_LINE_DOUBLE_DASH
   PGdkSubwindowMode* = ptr TGdkSubwindowMode
   TGdkSubwindowMode* = int
   PGdkGCValuesMask* = ptr TGdkGCValuesMask
   TGdkGCValuesMask* = int32
   PGdkGCValues* = ptr TGdkGCValues
-  TGdkGCValues* {.final.} = object 
+  TGdkGCValues* {.final.} = object
     foreground*: TGdkColor
     background*: TGdkColor
     font*: PGdkFont
@@ -108,14 +107,14 @@ type
     colormap*: PGdkColormap
 
   PGdkImageType* = ptr TGdkImageType
-  TGdkImageType* = enum 
+  TGdkImageType* = enum
     GDK_IMAGE_NORMAL, GDK_IMAGE_SHARED, GDK_IMAGE_FASTEST
   PGdkImage* = ptr TGdkImage
   PGdkDevice* = ptr TGdkDevice
   PGdkTimeCoord* = ptr TGdkTimeCoord
   PPGdkTimeCoord* = ptr PGdkTimeCoord
   PGdkRgbDither* = ptr TGdkRgbDither
-  TGdkRgbDither* = enum 
+  TGdkRgbDither* = enum
     GDK_RGB_DITHER_NONE, GDK_RGB_DITHER_NORMAL, GDK_RGB_DITHER_MAX
   PGdkDisplay* = ptr TGdkDisplay
   PGdkScreen* = ptr TGdkScreen
@@ -125,7 +124,7 @@ type
   TGdkInputCondition* = int32
   PGdkStatus* = ptr TGdkStatus
   TGdkStatus* = int32
-  TGdkPoint* {.final.} = object 
+  TGdkPoint* {.final.} = object
     x*: gint
     y*: gint
 
@@ -135,14 +134,14 @@ type
   PGdkWChar* = ptr TGdkWChar
   TGdkWChar* = guint32
   PGdkSegment* = ptr TGdkSegment
-  TGdkSegment* {.final.} = object 
+  TGdkSegment* {.final.} = object
     x1*: gint
     y1*: gint
     x2*: gint
     y2*: gint
 
   PGdkRectangle* = ptr TGdkRectangle
-  TGdkRectangle* {.final.} = object 
+  TGdkRectangle* {.final.} = object
     x*: gint
     y*: gint
     width*: gint
@@ -151,13 +150,13 @@ type
   PGdkAtom* = ptr TGdkAtom
   TGdkAtom* = gulong
   PGdkByteOrder* = ptr TGdkByteOrder
-  TGdkByteOrder* = enum 
+  TGdkByteOrder* = enum
     GDK_LSB_FIRST, GDK_MSB_FIRST
   PGdkModifierType* = ptr TGdkModifierType
   TGdkModifierType* = gint
   PGdkVisualType* = ptr TGdkVisualType
-  TGdkVisualType* = enum 
-    GDK_VISUAL_STATIC_GRAY, GDK_VISUAL_GRAYSCALE, GDK_VISUAL_STATIC_COLOR, 
+  TGdkVisualType* = enum
+    GDK_VISUAL_STATIC_GRAY, GDK_VISUAL_GRAYSCALE, GDK_VISUAL_STATIC_COLOR,
     GDK_VISUAL_PSEUDO_COLOR, GDK_VISUAL_TRUE_COLOR, GDK_VISUAL_DIRECT_COLOR
   PGdkVisual* = ptr TGdkVisual
   TGdkVisual* = object of TGObject
@@ -190,16 +189,16 @@ type
   PGdkCursorType* = ptr TGdkCursorType
   TGdkCursorType* = gint
   PGdkCursor* = ptr TGdkCursor
-  TGdkCursor* {.final.} = object 
+  TGdkCursor* {.final.} = object
     `type`*: TGdkCursorType
     ref_count*: guint
 
   PGdkDragAction* = ptr TGdkDragAction
   TGdkDragAction* = int32
   PGdkDragProtocol* = ptr TGdkDragProtocol
-  TGdkDragProtocol* = enum 
-    GDK_DRAG_PROTO_MOTIF, GDK_DRAG_PROTO_XDND, GDK_DRAG_PROTO_ROOTWIN, 
-    GDK_DRAG_PROTO_NONE, GDK_DRAG_PROTO_WIN32_DROPFILES, GDK_DRAG_PROTO_OLE2, 
+  TGdkDragProtocol* = enum
+    GDK_DRAG_PROTO_MOTIF, GDK_DRAG_PROTO_XDND, GDK_DRAG_PROTO_ROOTWIN,
+    GDK_DRAG_PROTO_NONE, GDK_DRAG_PROTO_WIN32_DROPFILES, GDK_DRAG_PROTO_OLE2,
     GDK_DRAG_PROTO_LOCAL
   PGdkDragContext* = ptr TGdkDragContext
   TGdkDragContext* = object of TGObject
@@ -220,46 +219,46 @@ type
   PGdkRegionBox* = ptr TGdkRegionBox
   TGdkRegionBox* = TGdkSegment
   PGdkRegion* = ptr TGdkRegion
-  TGdkRegion* {.final.} = object 
+  TGdkRegion* {.final.} = object
     size*: int32
     numRects*: int32
     rects*: PGdkRegionBox
     extents*: TGdkRegionBox
 
   PPOINTBLOCK* = ptr TPOINTBLOCK
-  TPOINTBLOCK* {.final.} = object 
+  TPOINTBLOCK* {.final.} = object
     pts*: array[0..(NUMPTSTOBUFFER) - 1, TGdkPoint]
     next*: PPOINTBLOCK
 
   PGdkDrawableClass* = ptr TGdkDrawableClass
   TGdkDrawableClass* = object of TGObjectClass
-    create_gc*: proc (drawable: PGdkDrawable, values: PGdkGCValues, 
+    create_gc*: proc (drawable: PGdkDrawable, values: PGdkGCValues,
                       mask: TGdkGCValuesMask): PGdkGC{.cdecl.}
-    draw_rectangle*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint, 
+    draw_rectangle*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint,
                            x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_arc*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint, x: gint, 
-                     y: gint, width: gint, height: gint, angle1: gint, 
+    draw_arc*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint, x: gint,
+                     y: gint, width: gint, height: gint, angle1: gint,
                      angle2: gint){.cdecl.}
-    draw_polygon*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint, 
+    draw_polygon*: proc (drawable: PGdkDrawable, gc: PGdkGC, filled: gint,
                          points: PGdkPoint, npoints: gint){.cdecl.}
-    draw_text*: proc (drawable: PGdkDrawable, font: PGdkFont, gc: PGdkGC, 
+    draw_text*: proc (drawable: PGdkDrawable, font: PGdkFont, gc: PGdkGC,
                       x: gint, y: gint, text: cstring, text_length: gint){.cdecl.}
-    draw_text_wc*: proc (drawable: PGdkDrawable, font: PGdkFont, gc: PGdkGC, 
+    draw_text_wc*: proc (drawable: PGdkDrawable, font: PGdkFont, gc: PGdkGC,
                          x: gint, y: gint, text: PGdkWChar, text_length: gint){.
         cdecl.}
-    draw_drawable*: proc (drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable, 
-                          xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
+    draw_drawable*: proc (drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable,
+                          xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
                           width: gint, height: gint){.cdecl.}
-    draw_points*: proc (drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint, 
+    draw_points*: proc (drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint,
                         npoints: gint){.cdecl.}
-    draw_segments*: proc (drawable: PGdkDrawable, gc: PGdkGC, segs: PGdkSegment, 
+    draw_segments*: proc (drawable: PGdkDrawable, gc: PGdkGC, segs: PGdkSegment,
                           nsegs: gint){.cdecl.}
-    draw_lines*: proc (drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint, 
+    draw_lines*: proc (drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint,
                        npoints: gint){.cdecl.}
-    draw_glyphs*: proc (drawable: PGdkDrawable, gc: PGdkGC, font: PPangoFont, 
+    draw_glyphs*: proc (drawable: PGdkDrawable, gc: PGdkGC, font: PPangoFont,
                         x: gint, y: gint, glyphs: PPangoGlyphString){.cdecl.}
-    draw_image*: proc (drawable: PGdkDrawable, gc: PGdkGC, image: PGdkImage, 
-                       xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
+    draw_image*: proc (drawable: PGdkDrawable, gc: PGdkGC, image: PGdkImage,
+                       xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
                        width: gint, height: gint){.cdecl.}
     get_depth*: proc (drawable: PGdkDrawable): gint{.cdecl.}
     get_size*: proc (drawable: PGdkDrawable, width: Pgint, height: Pgint){.cdecl.}
@@ -267,22 +266,22 @@ type
     get_colormap*: proc (drawable: PGdkDrawable): PGdkColormap{.cdecl.}
     get_visual*: proc (drawable: PGdkDrawable): PGdkVisual{.cdecl.}
     get_screen*: proc (drawable: PGdkDrawable): PGdkScreen{.cdecl.}
-    get_image*: proc (drawable: PGdkDrawable, x: gint, y: gint, width: gint, 
+    get_image*: proc (drawable: PGdkDrawable, x: gint, y: gint, width: gint,
                       height: gint): PGdkImage{.cdecl.}
     get_clip_region*: proc (drawable: PGdkDrawable): PGdkRegion{.cdecl.}
     get_visible_region*: proc (drawable: PGdkDrawable): PGdkRegion{.cdecl.}
-    get_composite_drawable*: proc (drawable: PGdkDrawable, x: gint, y: gint, 
-                                   width: gint, height: gint, 
-                                   composite_x_offset: Pgint, 
+    get_composite_drawable*: proc (drawable: PGdkDrawable, x: gint, y: gint,
+                                   width: gint, height: gint,
+                                   composite_x_offset: Pgint,
                                    composite_y_offset: Pgint): PGdkDrawable{.
         cdecl.}
-    `draw_pixbuf`*: proc (drawable: PGdkDrawable, gc: PGdkGC, 
-                          pixbuf: PGdkPixbuf, src_x: gint, src_y: gint, 
-                          dest_x: gint, dest_y: gint, width: gint, height: gint, 
+    `draw_pixbuf`*: proc (drawable: PGdkDrawable, gc: PGdkGC,
+                          pixbuf: PGdkPixbuf, src_x: gint, src_y: gint,
+                          dest_x: gint, dest_y: gint, width: gint, height: gint,
                           dither: TGdkRgbDither, x_dither: gint, y_dither: gint){.
         cdecl.}
-    `copy_to_image`*: proc (drawable: PGdkDrawable, image: PGdkImage, 
-                            src_x: gint, src_y: gint, dest_x: gint, 
+    `copy_to_image`*: proc (drawable: PGdkDrawable, image: PGdkImage,
+                            src_x: gint, src_y: gint, dest_x: gint,
                             dest_y: gint, width: gint, height: gint): PGdkImage{.
         cdecl.}
     `gdk_reserved1`: proc (){.cdecl.}
@@ -306,7 +305,7 @@ type
   PGdkXEvent* = ptr TGdkXEvent
   TGdkXEvent* = proc ()
   PGdkFilterReturn* = ptr TGdkFilterReturn
-  TGdkFilterReturn* = enum 
+  TGdkFilterReturn* = enum
     GDK_FILTER_CONTINUE, GDK_FILTER_TRANSLATE, GDK_FILTER_REMOVE
   TGdkFilterFunc* = proc (xevent: PGdkXEvent, event: PGdkEvent, data: gpointer): TGdkFilterReturn{.
       cdecl.}
@@ -315,34 +314,34 @@ type
   PGdkEventMask* = ptr TGdkEventMask
   TGdkEventMask* = gint32
   PGdkVisibilityState* = ptr TGdkVisibilityState
-  TGdkVisibilityState* = enum 
-    GDK_VISIBILITY_UNOBSCURED, GDK_VISIBILITY_PARTIAL, 
+  TGdkVisibilityState* = enum
+    GDK_VISIBILITY_UNOBSCURED, GDK_VISIBILITY_PARTIAL,
     GDK_VISIBILITY_FULLY_OBSCURED
   PGdkScrollDirection* = ptr TGdkScrollDirection
-  TGdkScrollDirection* = enum 
+  TGdkScrollDirection* = enum
     GDK_SCROLL_UP, GDK_SCROLL_DOWN, GDK_SCROLL_LEFT, GDK_SCROLL_RIGHT
   PGdkNotifyType* = ptr TGdkNotifyType
   TGdkNotifyType* = int
   PGdkCrossingMode* = ptr TGdkCrossingMode
-  TGdkCrossingMode* = enum 
+  TGdkCrossingMode* = enum
     GDK_CROSSING_NORMAL, GDK_CROSSING_GRAB, GDK_CROSSING_UNGRAB
   PGdkPropertyState* = ptr TGdkPropertyState
-  TGdkPropertyState* = enum 
+  TGdkPropertyState* = enum
     GDK_PROPERTY_NEW_VALUE, GDK_PROPERTY_STATE_DELETE
   PGdkWindowState* = ptr TGdkWindowState
   TGdkWindowState* = gint
   PGdkSettingAction* = ptr TGdkSettingAction
-  TGdkSettingAction* = enum 
-    GDK_SETTING_ACTION_NEW, GDK_SETTING_ACTION_CHANGED, 
+  TGdkSettingAction* = enum
+    GDK_SETTING_ACTION_NEW, GDK_SETTING_ACTION_CHANGED,
     GDK_SETTING_ACTION_DELETED
   PGdkEventAny* = ptr TGdkEventAny
-  TGdkEventAny* {.final.} = object 
+  TGdkEventAny* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
 
   PGdkEventExpose* = ptr TGdkEventExpose
-  TGdkEventExpose* {.final.} = object 
+  TGdkEventExpose* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -351,20 +350,20 @@ type
     count*: gint
 
   PGdkEventNoExpose* = ptr TGdkEventNoExpose
-  TGdkEventNoExpose* {.final.} = object 
+  TGdkEventNoExpose* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
 
   PGdkEventVisibility* = ptr TGdkEventVisibility
-  TGdkEventVisibility* {.final.} = object 
+  TGdkEventVisibility* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
     state*: TGdkVisibilityState
 
   PGdkEventMotion* = ptr TGdkEventMotion
-  TGdkEventMotion* {.final.} = object 
+  TGdkEventMotion* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -379,7 +378,7 @@ type
     y_root*: gdouble
 
   PGdkEventButton* = ptr TGdkEventButton
-  TGdkEventButton* {.final.} = object 
+  TGdkEventButton* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -394,7 +393,7 @@ type
     y_root*: gdouble
 
   PGdkEventScroll* = ptr TGdkEventScroll
-  TGdkEventScroll* {.final.} = object 
+  TGdkEventScroll* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -408,7 +407,7 @@ type
     y_root*: gdouble
 
   PGdkEventKey* = ptr TGdkEventKey
-  TGdkEventKey* {.final.} = object 
+  TGdkEventKey* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -421,7 +420,7 @@ type
     group*: guint8
 
   PGdkEventCrossing* = ptr TGdkEventCrossing
-  TGdkEventCrossing* {.final.} = object 
+  TGdkEventCrossing* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -437,14 +436,14 @@ type
     state*: guint
 
   PGdkEventFocus* = ptr TGdkEventFocus
-  TGdkEventFocus* {.final.} = object 
+  TGdkEventFocus* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
     `in`*: gint16
 
   PGdkEventConfigure* = ptr TGdkEventConfigure
-  TGdkEventConfigure* {.final.} = object 
+  TGdkEventConfigure* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -454,7 +453,7 @@ type
     height*: gint
 
   PGdkEventProperty* = ptr TGdkEventProperty
-  TGdkEventProperty* {.final.} = object 
+  TGdkEventProperty* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -464,7 +463,7 @@ type
 
   TGdkNativeWindow* = pointer
   PGdkEventSelection* = ptr TGdkEventSelection
-  TGdkEventSelection* {.final.} = object 
+  TGdkEventSelection* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -475,7 +474,7 @@ type
     requestor*: TGdkNativeWindow
 
   PGdkEventProximity* = ptr TGdkEventProximity
-  TGdkEventProximity* {.final.} = object 
+  TGdkEventProximity* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -483,11 +482,11 @@ type
     device*: PGdkDevice
 
   PmatDUMMY* = ptr TmatDUMMY
-  TmatDUMMY* {.final.} = object 
+  TmatDUMMY* {.final.} = object
     b*: array[0..19, char]
 
   PGdkEventClient* = ptr TGdkEventClient
-  TGdkEventClient* {.final.} = object 
+  TGdkEventClient* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -496,7 +495,7 @@ type
     b*: array[0..19, char]
 
   PGdkEventSetting* = ptr TGdkEventSetting
-  TGdkEventSetting* {.final.} = object 
+  TGdkEventSetting* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -504,7 +503,7 @@ type
     name*: cstring
 
   PGdkEventWindowState* = ptr TGdkEventWindowState
-  TGdkEventWindowState* {.final.} = object 
+  TGdkEventWindowState* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -512,7 +511,7 @@ type
     new_window_state*: TGdkWindowState
 
   PGdkEventDND* = ptr TGdkEventDND
-  TGdkEventDND* {.final.} = object 
+  TGdkEventDND* {.final.} = object
     `type`*: TGdkEventType
     window*: PGdkWindow
     send_event*: gint8
@@ -521,13 +520,13 @@ type
     x_root*: gshort
     y_root*: gshort
 
-  TGdkEvent* {.final.} = object 
+  TGdkEvent* {.final.} = object
     data*: array[0..255, char] # union of
                                # `type`: TGdkEventType
                                #  any: TGdkEventAny
-                               #  expose: TGdkEventExpose 
-                               #  no_expose: TGdkEventNoExpose 
-                               #  visibility: TGdkEventVisibility 
+                               #  expose: TGdkEventExpose
+                               #  no_expose: TGdkEventNoExpose
+                               #  visibility: TGdkEventVisibility
                                #  motion: TGdkEventMotion
                                #  button: TGdkEventButton
                                #  scroll: TGdkEventScroll
@@ -542,13 +541,13 @@ type
                                #  dnd: TGdkEventDND
                                #  window_state: TGdkEventWindowState
                                #  setting: TGdkEventSetting
-  
+
   PGdkGCClass* = ptr TGdkGCClass
   TGdkGCClass* = object of TGObjectClass
     get_values*: proc (gc: PGdkGC, values: PGdkGCValues){.cdecl.}
     set_values*: proc (gc: PGdkGC, values: PGdkGCValues, mask: TGdkGCValuesMask){.
         cdecl.}
-    set_dashes*: proc (gc: PGdkGC, dash_offset: gint, 
+    set_dashes*: proc (gc: PGdkGC, dash_offset: gint,
                        dash_list: openarray[gint8]){.cdecl.}
     `gdk_reserved1`*: proc (){.cdecl.}
     `gdk_reserved2`*: proc (){.cdecl.}
@@ -573,24 +572,24 @@ type
     windowing_data*: gpointer
 
   PGdkExtensionMode* = ptr TGdkExtensionMode
-  TGdkExtensionMode* = enum 
-    GDK_EXTENSION_EVENTS_NONE, GDK_EXTENSION_EVENTS_ALL, 
+  TGdkExtensionMode* = enum
+    GDK_EXTENSION_EVENTS_NONE, GDK_EXTENSION_EVENTS_ALL,
     GDK_EXTENSION_EVENTS_CURSOR
   PGdkInputSource* = ptr TGdkInputSource
-  TGdkInputSource* = enum 
+  TGdkInputSource* = enum
     GDK_SOURCE_MOUSE, GDK_SOURCE_PEN, GDK_SOURCE_ERASER, GDK_SOURCE_CURSOR
   PGdkInputMode* = ptr TGdkInputMode
-  TGdkInputMode* = enum 
+  TGdkInputMode* = enum
     GDK_MODE_DISABLED, GDK_MODE_SCREEN, GDK_MODE_WINDOW
   PGdkAxisUse* = ptr TGdkAxisUse
   TGdkAxisUse* = int32
   PGdkDeviceKey* = ptr TGdkDeviceKey
-  TGdkDeviceKey* {.final.} = object 
+  TGdkDeviceKey* {.final.} = object
     keyval*: guint
     modifiers*: TGdkModifierType
 
   PGdkDeviceAxis* = ptr TGdkDeviceAxis
-  TGdkDeviceAxis* {.final.} = object 
+  TGdkDeviceAxis* {.final.} = object
     use*: TGdkAxisUse
     min*: gdouble
     max*: gdouble
@@ -605,12 +604,12 @@ type
     num_keys*: gint
     keys*: PGdkDeviceKey
 
-  TGdkTimeCoord* {.final.} = object 
+  TGdkTimeCoord* {.final.} = object
     time*: guint32
     axes*: array[0..(GDK_MAX_TIMECOORD_AXES) - 1, gdouble]
 
   PGdkKeymapKey* = ptr TGdkKeymapKey
-  TGdkKeymapKey* {.final.} = object 
+  TGdkKeymapKey* {.final.} = object
     keycode*: guint
     group*: gint
     level*: gint
@@ -624,12 +623,12 @@ type
     direction_changed*: proc (keymap: PGdkKeymap){.cdecl.}
 
   PGdkPangoAttrStipple* = ptr TGdkPangoAttrStipple
-  TGdkPangoAttrStipple* {.final.} = object 
+  TGdkPangoAttrStipple* {.final.} = object
     attr*: TPangoAttribute
     stipple*: PGdkBitmap
 
   PGdkPangoAttrEmbossed* = ptr TGdkPangoAttrEmbossed
-  TGdkPangoAttrEmbossed* {.final.} = object 
+  TGdkPangoAttrEmbossed* {.final.} = object
     attr*: TPangoAttribute
     embossed*: gboolean
 
@@ -642,18 +641,18 @@ type
   TGdkPixmapObjectClass* = object of TGdkDrawableClass
 
   PGdkPropMode* = ptr TGdkPropMode
-  TGdkPropMode* = enum 
+  TGdkPropMode* = enum
     GDK_PROP_MODE_REPLACE, GDK_PROP_MODE_PREPEND, GDK_PROP_MODE_APPEND
   PGdkFillRule* = ptr TGdkFillRule
-  TGdkFillRule* = enum 
+  TGdkFillRule* = enum
     GDK_EVEN_ODD_RULE, GDK_WINDING_RULE
   PGdkOverlapType* = ptr TGdkOverlapType
-  TGdkOverlapType* = enum 
-    GDK_OVERLAP_RECTANGLE_IN, GDK_OVERLAP_RECTANGLE_OUT, 
+  TGdkOverlapType* = enum
+    GDK_OVERLAP_RECTANGLE_IN, GDK_OVERLAP_RECTANGLE_OUT,
     GDK_OVERLAP_RECTANGLE_PART
   TGdkSpanFunc* = proc (span: PGdkSpan, data: gpointer){.cdecl.}
   PGdkRgbCmap* = ptr TGdkRgbCmap
-  TGdkRgbCmap* {.final.} = object 
+  TGdkRgbCmap* {.final.} = object
     colors*: array[0..255, guint32]
     n_colors*: gint
     info_list*: PGSList
@@ -690,33 +689,33 @@ type
     get_window_at_pointer*: proc (screen: PGdkScreen, win_x: Pgint, win_y: Pgint): PGdkWindow{.
         cdecl.}
     get_n_monitors*: proc (screen: PGdkScreen): gint{.cdecl.}
-    get_monitor_geometry*: proc (screen: PGdkScreen, monitor_num: gint, 
+    get_monitor_geometry*: proc (screen: PGdkScreen, monitor_num: gint,
                                  dest: PGdkRectangle){.cdecl.}
 
   PGdkGrabStatus* = ptr TGdkGrabStatus
   TGdkGrabStatus* = int
-  TGdkInputFunction* = proc (data: gpointer, source: gint, 
+  TGdkInputFunction* = proc (data: gpointer, source: gint,
                              condition: TGdkInputCondition){.cdecl.}
   TGdkDestroyNotify* = proc (data: gpointer){.cdecl.}
-  TGdkSpan* {.final.} = object 
+  TGdkSpan* {.final.} = object
     x*: gint
     y*: gint
     width*: gint
 
   PGdkWindowClass* = ptr TGdkWindowClass
-  TGdkWindowClass* = enum 
+  TGdkWindowClass* = enum
     GDK_INPUT_OUTPUT, GDK_INPUT_ONLY
   PGdkWindowType* = ptr TGdkWindowType
-  TGdkWindowType* = enum 
-    GDK_WINDOW_ROOT, GDK_WINDOW_TOPLEVEL, GDK_WINDOW_CHILD, GDK_WINDOW_DIALOG, 
+  TGdkWindowType* = enum
+    GDK_WINDOW_ROOT, GDK_WINDOW_TOPLEVEL, GDK_WINDOW_CHILD, GDK_WINDOW_DIALOG,
     GDK_WINDOW_TEMP, GDK_WINDOW_FOREIGN
   PGdkWindowAttributesType* = ptr TGdkWindowAttributesType
   TGdkWindowAttributesType* = int32
   PGdkWindowHints* = ptr TGdkWindowHints
   TGdkWindowHints* = int32
   PGdkWindowTypeHint* = ptr TGdkWindowTypeHint
-  TGdkWindowTypeHint* = enum 
-    GDK_WINDOW_TYPE_HINT_NORMAL, GDK_WINDOW_TYPE_HINT_DIALOG, 
+  TGdkWindowTypeHint* = enum
+    GDK_WINDOW_TYPE_HINT_NORMAL, GDK_WINDOW_TYPE_HINT_DIALOG,
     GDK_WINDOW_TYPE_HINT_MENU, GDK_WINDOW_TYPE_HINT_TOOLBAR
   PGdkWMDecoration* = ptr TGdkWMDecoration
   TGdkWMDecoration* = int32
@@ -725,13 +724,13 @@ type
   PGdkGravity* = ptr TGdkGravity
   TGdkGravity* = int
   PGdkWindowEdge* = ptr TGdkWindowEdge
-  TGdkWindowEdge* = enum 
-    GDK_WINDOW_EDGE_NORTH_WEST, GDK_WINDOW_EDGE_NORTH, 
-    GDK_WINDOW_EDGE_NORTH_EAST, GDK_WINDOW_EDGE_WEST, GDK_WINDOW_EDGE_EAST, 
-    GDK_WINDOW_EDGE_SOUTH_WEST, GDK_WINDOW_EDGE_SOUTH, 
+  TGdkWindowEdge* = enum
+    GDK_WINDOW_EDGE_NORTH_WEST, GDK_WINDOW_EDGE_NORTH,
+    GDK_WINDOW_EDGE_NORTH_EAST, GDK_WINDOW_EDGE_WEST, GDK_WINDOW_EDGE_EAST,
+    GDK_WINDOW_EDGE_SOUTH_WEST, GDK_WINDOW_EDGE_SOUTH,
     GDK_WINDOW_EDGE_SOUTH_EAST
   PGdkWindowAttr* = ptr TGdkWindowAttr
-  TGdkWindowAttr* {.final.} = object 
+  TGdkWindowAttr* {.final.} = object
     title*: cstring
     event_mask*: gint
     x*: gint
@@ -748,7 +747,7 @@ type
     override_redirect*: gboolean
 
   PGdkGeometry* = ptr TGdkGeometry
-  TGdkGeometry* {.final.} = object 
+  TGdkGeometry* {.final.} = object
     min_width*: gint
     min_height*: gint
     max_width*: gint
@@ -762,8 +761,8 @@ type
     win_gravity*: TGdkGravity
 
   PGdkPointerHooks* = ptr TGdkPointerHooks
-  TGdkPointerHooks* {.final.} = object 
-    get_pointer*: proc (window: PGdkWindow, x: Pgint, y: Pgint, 
+  TGdkPointerHooks* {.final.} = object
+    get_pointer*: proc (window: PGdkWindow, x: Pgint, y: Pgint,
                         mask: PGdkModifierType): PGdkWindow{.cdecl.}
     window_at_pointer*: proc (screen: PGdkScreen, win_x: Pgint, win_y: Pgint): PGdkWindow{.
         cdecl.}
@@ -793,7 +792,7 @@ type
   PGdkWindowObjectClass* = ptr TGdkWindowObjectClass
   TGdkWindowObjectClass* = object of TGdkDrawableClass
 
-  gdk_window_invalidate_maybe_recurse_child_func* = proc (para1: PGdkWindow, 
+  gdk_window_invalidate_maybe_recurse_child_func* = proc (para1: PGdkWindow,
       para2: gpointer): gboolean
 
 proc GDK_TYPE_COLORMAP*(): GType
@@ -803,38 +802,38 @@ proc GDK_IS_COLORMAP*(anObject: pointer): bool
 proc GDK_IS_COLORMAP_CLASS*(klass: pointer): bool
 proc GDK_COLORMAP_GET_CLASS*(obj: pointer): PGdkColormapClass
 proc GDK_TYPE_COLOR*(): GType
-proc gdk_colormap_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_colormap_get_type*(): GType{.cdecl, dynlib: gdklib,
                                       importc: "gdk_colormap_get_type".}
 proc gdk_colormap_new*(visual: PGdkVisual, allocate: gboolean): PGdkColormap{.
     cdecl, dynlib: gdklib, importc: "gdk_colormap_new".}
-proc gdk_colormap_alloc_colors*(colormap: PGdkColormap, colors: PGdkColor, 
-                                ncolors: gint, writeable: gboolean, 
+proc gdk_colormap_alloc_colors*(colormap: PGdkColormap, colors: PGdkColor,
+                                ncolors: gint, writeable: gboolean,
                                 best_match: gboolean, success: Pgboolean): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_colormap_alloc_colors".}
-proc gdk_colormap_alloc_color*(colormap: PGdkColormap, color: PGdkColor, 
+proc gdk_colormap_alloc_color*(colormap: PGdkColormap, color: PGdkColor,
                                writeable: gboolean, best_match: gboolean): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_colormap_alloc_color".}
-proc gdk_colormap_free_colors*(colormap: PGdkColormap, colors: PGdkColor, 
-                               ncolors: gint){.cdecl, dynlib: gdklib, 
+proc gdk_colormap_free_colors*(colormap: PGdkColormap, colors: PGdkColor,
+                               ncolors: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_colormap_free_colors".}
-proc gdk_colormap_query_color*(colormap: PGdkColormap, pixel: gulong, 
-                               result: PGdkColor){.cdecl, dynlib: gdklib, 
+proc gdk_colormap_query_color*(colormap: PGdkColormap, pixel: gulong,
+                               result: PGdkColor){.cdecl, dynlib: gdklib,
     importc: "gdk_colormap_query_color".}
-proc gdk_colormap_get_visual*(colormap: PGdkColormap): PGdkVisual{.cdecl, 
+proc gdk_colormap_get_visual*(colormap: PGdkColormap): PGdkVisual{.cdecl,
     dynlib: gdklib, importc: "gdk_colormap_get_visual".}
-proc gdk_color_copy*(color: PGdkColor): PGdkColor{.cdecl, dynlib: gdklib, 
+proc gdk_color_copy*(color: PGdkColor): PGdkColor{.cdecl, dynlib: gdklib,
     importc: "gdk_color_copy".}
-proc gdk_color_free*(color: PGdkColor){.cdecl, dynlib: gdklib, 
+proc gdk_color_free*(color: PGdkColor){.cdecl, dynlib: gdklib,
                                         importc: "gdk_color_free".}
-proc gdk_color_parse*(spec: cstring, color: PGdkColor): gint{.cdecl, 
+proc gdk_color_parse*(spec: cstring, color: PGdkColor): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_color_parse".}
-proc gdk_color_hash*(colora: PGdkColor): guint{.cdecl, dynlib: gdklib, 
+proc gdk_color_hash*(colora: PGdkColor): guint{.cdecl, dynlib: gdklib,
     importc: "gdk_color_hash".}
-proc gdk_color_equal*(colora: PGdkColor, colorb: PGdkColor): gboolean{.cdecl, 
+proc gdk_color_equal*(colora: PGdkColor, colorb: PGdkColor): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_color_equal".}
-proc gdk_color_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_color_get_type*(): GType{.cdecl, dynlib: gdklib,
                                    importc: "gdk_color_get_type".}
-const 
+const
   GDK_CURSOR_IS_PIXMAP* = - (1)
   GDK_X_CURSOR* = 0
   GDK_ARROW* = 2
@@ -916,20 +915,20 @@ const
   GDK_LAST_CURSOR* = GDK_XTERM + 1
 
 proc GDK_TYPE_CURSOR*(): GType
-proc gdk_cursor_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_cursor_get_type*(): GType{.cdecl, dynlib: gdklib,
                                     importc: "gdk_cursor_get_type".}
 proc gdk_cursor_new_for_screen*(screen: PGdkScreen, cursor_type: TGdkCursorType): PGdkCursor{.
     cdecl, dynlib: gdklib, importc: "gdk_cursor_new_for_screen".}
-proc gdk_cursor_new_from_pixmap*(source: PGdkPixmap, mask: PGdkPixmap, 
+proc gdk_cursor_new_from_pixmap*(source: PGdkPixmap, mask: PGdkPixmap,
                                  fg: PGdkColor, bg: PGdkColor, x: gint, y: gint): PGdkCursor{.
     cdecl, dynlib: gdklib, importc: "gdk_cursor_new_from_pixmap".}
-proc gdk_cursor_get_screen*(cursor: PGdkCursor): PGdkScreen{.cdecl, 
+proc gdk_cursor_get_screen*(cursor: PGdkCursor): PGdkScreen{.cdecl,
     dynlib: gdklib, importc: "gdk_cursor_get_screen".}
-proc gdk_cursor_ref*(cursor: PGdkCursor): PGdkCursor{.cdecl, dynlib: gdklib, 
+proc gdk_cursor_ref*(cursor: PGdkCursor): PGdkCursor{.cdecl, dynlib: gdklib,
     importc: "gdk_cursor_ref".}
-proc gdk_cursor_unref*(cursor: PGdkCursor){.cdecl, dynlib: gdklib, 
+proc gdk_cursor_unref*(cursor: PGdkCursor){.cdecl, dynlib: gdklib,
     importc: "gdk_cursor_unref".}
-const 
+const
   GDK_ACTION_DEFAULT* = 1 shl 0
   GDK_ACTION_COPY* = 1 shl 1
   GDK_ACTION_MOVE* = 1 shl 2
@@ -943,45 +942,45 @@ proc GDK_DRAG_CONTEXT_CLASS*(klass: Pointer): PGdkDragContextClass
 proc GDK_IS_DRAG_CONTEXT*(anObject: Pointer): bool
 proc GDK_IS_DRAG_CONTEXT_CLASS*(klass: Pointer): bool
 proc GDK_DRAG_CONTEXT_GET_CLASS*(obj: Pointer): PGdkDragContextClass
-proc gdk_drag_context_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_drag_context_get_type*(): GType{.cdecl, dynlib: gdklib,
     importc: "gdk_drag_context_get_type".}
-proc gdk_drag_context_new*(): PGdkDragContext{.cdecl, dynlib: gdklib, 
+proc gdk_drag_context_new*(): PGdkDragContext{.cdecl, dynlib: gdklib,
     importc: "gdk_drag_context_new".}
-proc gdk_drag_status*(context: PGdkDragContext, action: TGdkDragAction, 
-                      time: guint32){.cdecl, dynlib: gdklib, 
+proc gdk_drag_status*(context: PGdkDragContext, action: TGdkDragAction,
+                      time: guint32){.cdecl, dynlib: gdklib,
                                       importc: "gdk_drag_status".}
 proc gdk_drop_reply*(context: PGdkDragContext, ok: gboolean, time: guint32){.
     cdecl, dynlib: gdklib, importc: "gdk_drop_reply".}
 proc gdk_drop_finish*(context: PGdkDragContext, success: gboolean, time: guint32){.
     cdecl, dynlib: gdklib, importc: "gdk_drop_finish".}
-proc gdk_drag_get_selection*(context: PGdkDragContext): TGdkAtom{.cdecl, 
+proc gdk_drag_get_selection*(context: PGdkDragContext): TGdkAtom{.cdecl,
     dynlib: gdklib, importc: "gdk_drag_get_selection".}
 proc gdk_drag_begin*(window: PGdkWindow, targets: PGList): PGdkDragContext{.
     cdecl, dynlib: gdklib, importc: "gdk_drag_begin".}
-proc gdk_drag_get_protocol_for_display*(display: PGdkDisplay, xid: guint32, 
+proc gdk_drag_get_protocol_for_display*(display: PGdkDisplay, xid: guint32,
                                         protocol: PGdkDragProtocol): guint32{.
     cdecl, dynlib: gdklib, importc: "gdk_drag_get_protocol_for_display".}
-proc gdk_drag_find_window*(context: PGdkDragContext, drag_window: PGdkWindow, 
-                           x_root: gint, y_root: gint, w: var PGdkWindow, 
-                           protocol: PGdkDragProtocol){.cdecl, dynlib: gdklib, 
+proc gdk_drag_find_window*(context: PGdkDragContext, drag_window: PGdkWindow,
+                           x_root: gint, y_root: gint, w: var PGdkWindow,
+                           protocol: PGdkDragProtocol){.cdecl, dynlib: gdklib,
     importc: "gdk_drag_find_window".}
-proc gdk_drag_motion*(context: PGdkDragContext, dest_window: PGdkWindow, 
-                      protocol: TGdkDragProtocol, x_root: gint, y_root: gint, 
-                      suggested_action: TGdkDragAction, 
+proc gdk_drag_motion*(context: PGdkDragContext, dest_window: PGdkWindow,
+                      protocol: TGdkDragProtocol, x_root: gint, y_root: gint,
+                      suggested_action: TGdkDragAction,
                       possible_actions: TGdkDragAction, time: guint32): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_drag_motion".}
-proc gdk_drag_drop*(context: PGdkDragContext, time: guint32){.cdecl, 
+proc gdk_drag_drop*(context: PGdkDragContext, time: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_drag_drop".}
-proc gdk_drag_abort*(context: PGdkDragContext, time: guint32){.cdecl, 
+proc gdk_drag_abort*(context: PGdkDragContext, time: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_drag_abort".}
 proc gdkregion_EXTENTCHECK*(r1, r2: PGdkRegionBox): bool
 proc gdkregion_EXTENTS*(r: PGdkRegionBox, idRect: PGdkRegion)
 proc gdkregion_MEMCHECK*(reg: PGdkRegion, ARect, firstrect: var PGdkRegionBox): bool
-proc gdkregion_CHECK_PREVIOUS*(Reg: PGdkRegion, R: PGdkRegionBox, 
+proc gdkregion_CHECK_PREVIOUS*(Reg: PGdkRegion, R: PGdkRegionBox,
                                Rx1, Ry1, Rx2, Ry2: gint): bool
-proc gdkregion_ADDRECT*(reg: PGdkRegion, r: PGdkRegionBox, 
+proc gdkregion_ADDRECT*(reg: PGdkRegion, r: PGdkRegionBox,
                         rx1, ry1, rx2, ry2: gint)
-proc gdkregion_ADDRECTNOX*(reg: PGdkRegion, r: PGdkRegionBox, 
+proc gdkregion_ADDRECTNOX*(reg: PGdkRegion, r: PGdkRegionBox,
                            rx1, ry1, rx2, ry2: gint)
 proc gdkregion_EMPTY_REGION*(pReg: PGdkRegion): bool
 proc gdkregion_REGION_NOT_EMPTY*(pReg: PGdkRegion): bool
@@ -992,79 +991,79 @@ proc GDK_DRAWABLE_CLASS*(klass: Pointer): PGdkDrawableClass
 proc GDK_IS_DRAWABLE*(anObject: Pointer): bool
 proc GDK_IS_DRAWABLE_CLASS*(klass: Pointer): bool
 proc GDK_DRAWABLE_GET_CLASS*(obj: Pointer): PGdkDrawableClass
-proc gdk_drawable_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_drawable_get_type*(): GType{.cdecl, dynlib: gdklib,
                                       importc: "gdk_drawable_get_type".}
 proc gdk_drawable_get_size*(drawable: PGdkDrawable, width: Pgint, height: Pgint){.
     cdecl, dynlib: gdklib, importc: "gdk_drawable_get_size".}
 proc gdk_drawable_set_colormap*(drawable: PGdkDrawable, colormap: PGdkColormap){.
     cdecl, dynlib: gdklib, importc: "gdk_drawable_set_colormap".}
-proc gdk_drawable_get_colormap*(drawable: PGdkDrawable): PGdkColormap{.cdecl, 
+proc gdk_drawable_get_colormap*(drawable: PGdkDrawable): PGdkColormap{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_colormap".}
-proc gdk_drawable_get_visual*(drawable: PGdkDrawable): PGdkVisual{.cdecl, 
+proc gdk_drawable_get_visual*(drawable: PGdkDrawable): PGdkVisual{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_visual".}
-proc gdk_drawable_get_depth*(drawable: PGdkDrawable): gint{.cdecl, 
+proc gdk_drawable_get_depth*(drawable: PGdkDrawable): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_depth".}
-proc gdk_drawable_get_screen*(drawable: PGdkDrawable): PGdkScreen{.cdecl, 
+proc gdk_drawable_get_screen*(drawable: PGdkDrawable): PGdkScreen{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_screen".}
-proc gdk_drawable_get_display*(drawable: PGdkDrawable): PGdkDisplay{.cdecl, 
+proc gdk_drawable_get_display*(drawable: PGdkDrawable): PGdkDisplay{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_display".}
 proc gdk_draw_point*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint){.
     cdecl, dynlib: gdklib, importc: "gdk_draw_point".}
-proc gdk_draw_line*(drawable: PGdkDrawable, gc: PGdkGC, x1: gint, y1: gint, 
-                    x2: gint, y2: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_line*(drawable: PGdkDrawable, gc: PGdkGC, x1: gint, y1: gint,
+                    x2: gint, y2: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_line".}
-proc gdk_draw_rectangle*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint, 
-                         x: gint, y: gint, width: gint, height: gint){.cdecl, 
+proc gdk_draw_rectangle*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint,
+                         x: gint, y: gint, width: gint, height: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_draw_rectangle".}
-proc gdk_draw_arc*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint, x: gint, 
-                   y: gint, width: gint, height: gint, angle1: gint, 
+proc gdk_draw_arc*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint, x: gint,
+                   y: gint, width: gint, height: gint, angle1: gint,
                    angle2: gint){.cdecl, dynlib: gdklib, importc: "gdk_draw_arc".}
-proc gdk_draw_polygon*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint, 
-                       points: PGdkPoint, npoints: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_polygon*(drawable: PGdkDrawable, gc: PGdkGC, filled: gint,
+                       points: PGdkPoint, npoints: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_polygon".}
-proc gdk_draw_drawable*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable, 
-                        xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
-                        width: gint, height: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_drawable*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable,
+                        xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
+                        width: gint, height: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_drawable".}
-proc gdk_draw_image*(drawable: PGdkDrawable, gc: PGdkGC, image: PGdkImage, 
-                     xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
-                     width: gint, height: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_image*(drawable: PGdkDrawable, gc: PGdkGC, image: PGdkImage,
+                     xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
+                     width: gint, height: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_image".}
-proc gdk_draw_points*(drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint, 
-                      npoints: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_points*(drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint,
+                      npoints: gint){.cdecl, dynlib: gdklib,
                                       importc: "gdk_draw_points".}
-proc gdk_draw_segments*(drawable: PGdkDrawable, gc: PGdkGC, segs: PGdkSegment, 
-                        nsegs: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_segments*(drawable: PGdkDrawable, gc: PGdkGC, segs: PGdkSegment,
+                        nsegs: gint){.cdecl, dynlib: gdklib,
                                       importc: "gdk_draw_segments".}
-proc gdk_draw_lines*(drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint, 
-                     npoints: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_lines*(drawable: PGdkDrawable, gc: PGdkGC, points: PGdkPoint,
+                     npoints: gint){.cdecl, dynlib: gdklib,
                                      importc: "gdk_draw_lines".}
-proc gdk_draw_glyphs*(drawable: PGdkDrawable, gc: PGdkGC, font: PPangoFont, 
-                      x: gint, y: gint, glyphs: PPangoGlyphString){.cdecl, 
+proc gdk_draw_glyphs*(drawable: PGdkDrawable, gc: PGdkGC, font: PPangoFont,
+                      x: gint, y: gint, glyphs: PPangoGlyphString){.cdecl,
     dynlib: gdklib, importc: "gdk_draw_glyphs".}
-proc gdk_draw_layout_line*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint, 
-                           line: PPangoLayoutLine){.cdecl, dynlib: gdklib, 
+proc gdk_draw_layout_line*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint,
+                           line: PPangoLayoutLine){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_layout_line".}
-proc gdk_draw_layout*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint, 
-                      layout: PPangoLayout){.cdecl, dynlib: gdklib, 
+proc gdk_draw_layout*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint,
+                      layout: PPangoLayout){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_layout".}
-proc gdk_draw_layout_line_with_colors*(drawable: PGdkDrawable, gc: PGdkGC, 
-                                       x: gint, y: gint, line: PPangoLayoutLine, 
-                                       foreground: PGdkColor, 
-                                       background: PGdkColor){.cdecl, 
+proc gdk_draw_layout_line_with_colors*(drawable: PGdkDrawable, gc: PGdkGC,
+                                       x: gint, y: gint, line: PPangoLayoutLine,
+                                       foreground: PGdkColor,
+                                       background: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_draw_layout_line_with_colors".}
-proc gdk_draw_layout_with_colors*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, 
-                                  y: gint, layout: PPangoLayout, 
+proc gdk_draw_layout_with_colors*(drawable: PGdkDrawable, gc: PGdkGC, x: gint,
+                                  y: gint, layout: PPangoLayout,
                                   foreground: PGdkColor, background: PGdkColor){.
     cdecl, dynlib: gdklib, importc: "gdk_draw_layout_with_colors".}
-proc gdk_drawable_get_image*(drawable: PGdkDrawable, x: gint, y: gint, 
-                             width: gint, height: gint): PGdkImage{.cdecl, 
+proc gdk_drawable_get_image*(drawable: PGdkDrawable, x: gint, y: gint,
+                             width: gint, height: gint): PGdkImage{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_image".}
-proc gdk_drawable_get_clip_region*(drawable: PGdkDrawable): PGdkRegion{.cdecl, 
+proc gdk_drawable_get_clip_region*(drawable: PGdkDrawable): PGdkRegion{.cdecl,
     dynlib: gdklib, importc: "gdk_drawable_get_clip_region".}
 proc gdk_drawable_get_visible_region*(drawable: PGdkDrawable): PGdkRegion{.
     cdecl, dynlib: gdklib, importc: "gdk_drawable_get_visible_region".}
-const 
+const
   GDK_NOTHING* = - (1)
   GDK_DELETE* = 0
   GDK_DESTROY* = 1
@@ -1108,7 +1107,7 @@ const
   GDK_NOTIFY_UNKNOWN* = 5
 
 proc GDK_TYPE_EVENT*(): GType
-const 
+const
   G_PRIORITY_DEFAULT* = 0
   GDK_PRIORITY_EVENTS* = G_PRIORITY_DEFAULT
     #GDK_PRIORITY_REDRAW* = G_PRIORITY_HIGH_IDLE + 20
@@ -1139,96 +1138,96 @@ const
   GDK_WINDOW_STATE_MAXIMIZED* = 1 shl 2
   GDK_WINDOW_STATE_STICKY* = 1 shl 3
 
-proc gdk_event_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_event_get_type*(): GType{.cdecl, dynlib: gdklib,
                                    importc: "gdk_event_get_type".}
-proc gdk_events_pending*(): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_events_pending*(): gboolean{.cdecl, dynlib: gdklib,
                                       importc: "gdk_events_pending".}
-proc gdk_event_get*(): PGdkEvent{.cdecl, dynlib: gdklib, 
+proc gdk_event_get*(): PGdkEvent{.cdecl, dynlib: gdklib,
                                   importc: "gdk_event_get".}
-proc gdk_event_peek*(): PGdkEvent{.cdecl, dynlib: gdklib, 
+proc gdk_event_peek*(): PGdkEvent{.cdecl, dynlib: gdklib,
                                    importc: "gdk_event_peek".}
-proc gdk_event_get_graphics_expose*(window: PGdkWindow): PGdkEvent{.cdecl, 
+proc gdk_event_get_graphics_expose*(window: PGdkWindow): PGdkEvent{.cdecl,
     dynlib: gdklib, importc: "gdk_event_get_graphics_expose".}
-proc gdk_event_put*(event: PGdkEvent){.cdecl, dynlib: gdklib, 
+proc gdk_event_put*(event: PGdkEvent){.cdecl, dynlib: gdklib,
                                        importc: "gdk_event_put".}
-proc gdk_event_copy*(event: PGdkEvent): PGdkEvent{.cdecl, dynlib: gdklib, 
+proc gdk_event_copy*(event: PGdkEvent): PGdkEvent{.cdecl, dynlib: gdklib,
     importc: "gdk_event_copy".}
-proc gdk_event_free*(event: PGdkEvent){.cdecl, dynlib: gdklib, 
+proc gdk_event_free*(event: PGdkEvent){.cdecl, dynlib: gdklib,
                                         importc: "gdk_event_free".}
-proc gdk_event_get_time*(event: PGdkEvent): guint32{.cdecl, dynlib: gdklib, 
+proc gdk_event_get_time*(event: PGdkEvent): guint32{.cdecl, dynlib: gdklib,
     importc: "gdk_event_get_time".}
 proc gdk_event_get_state*(event: PGdkEvent, state: PGdkModifierType): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_event_get_state".}
 proc gdk_event_get_coords*(event: PGdkEvent, x_win: Pgdouble, y_win: Pgdouble): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_event_get_coords".}
-proc gdk_event_get_root_coords*(event: PGdkEvent, x_root: Pgdouble, 
-                                y_root: Pgdouble): gboolean{.cdecl, 
+proc gdk_event_get_root_coords*(event: PGdkEvent, x_root: Pgdouble,
+                                y_root: Pgdouble): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_event_get_root_coords".}
-proc gdk_event_get_axis*(event: PGdkEvent, axis_use: TGdkAxisUse, 
-                         value: Pgdouble): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_event_get_axis*(event: PGdkEvent, axis_use: TGdkAxisUse,
+                         value: Pgdouble): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_event_get_axis".}
-proc gdk_event_handler_set*(func: TGdkEventFunc, data: gpointer, 
-                            notify: TGDestroyNotify){.cdecl, dynlib: gdklib, 
+proc gdk_event_handler_set*(func: TGdkEventFunc, data: gpointer,
+                            notify: TGDestroyNotify){.cdecl, dynlib: gdklib,
     importc: "gdk_event_handler_set".}
-proc gdk_set_show_events*(show_events: gboolean){.cdecl, dynlib: gdklib, 
+proc gdk_set_show_events*(show_events: gboolean){.cdecl, dynlib: gdklib,
     importc: "gdk_set_show_events".}
-proc gdk_get_show_events*(): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_get_show_events*(): gboolean{.cdecl, dynlib: gdklib,
                                        importc: "gdk_get_show_events".}
 proc GDK_TYPE_FONT*(): GType
-proc gdk_font_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_font_get_type*(): GType{.cdecl, dynlib: gdklib,
                                   importc: "gdk_font_get_type".}
 proc gdk_font_load_for_display*(display: PGdkDisplay, font_name: cstring): PGdkFont{.
     cdecl, dynlib: gdklib, importc: "gdk_font_load_for_display".}
 proc gdk_fontset_load_for_display*(display: PGdkDisplay, fontset_name: cstring): PGdkFont{.
     cdecl, dynlib: gdklib, importc: "gdk_fontset_load_for_display".}
-proc gdk_font_from_description_for_display*(display: PGdkDisplay, 
-    font_desc: PPangoFontDescription): PGdkFont{.cdecl, dynlib: gdklib, 
+proc gdk_font_from_description_for_display*(display: PGdkDisplay,
+    font_desc: PPangoFontDescription): PGdkFont{.cdecl, dynlib: gdklib,
     importc: "gdk_font_from_description_for_display".}
-proc gdk_font_ref*(font: PGdkFont): PGdkFont{.cdecl, dynlib: gdklib, 
+proc gdk_font_ref*(font: PGdkFont): PGdkFont{.cdecl, dynlib: gdklib,
     importc: "gdk_font_ref".}
-proc gdk_font_unref*(font: PGdkFont){.cdecl, dynlib: gdklib, 
+proc gdk_font_unref*(font: PGdkFont){.cdecl, dynlib: gdklib,
                                       importc: "gdk_font_unref".}
-proc gdk_font_id*(font: PGdkFont): gint{.cdecl, dynlib: gdklib, 
+proc gdk_font_id*(font: PGdkFont): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_font_id".}
-proc gdk_font_equal*(fonta: PGdkFont, fontb: PGdkFont): gboolean{.cdecl, 
+proc gdk_font_equal*(fonta: PGdkFont, fontb: PGdkFont): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_font_equal".}
-proc gdk_string_width*(font: PGdkFont, `string`: cstring): gint{.cdecl, 
+proc gdk_string_width*(font: PGdkFont, `string`: cstring): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_string_width".}
 proc gdk_text_width*(font: PGdkFont, text: cstring, text_length: gint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_text_width".}
 proc gdk_text_width_wc*(font: PGdkFont, text: PGdkWChar, text_length: gint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_text_width_wc".}
-proc gdk_char_width*(font: PGdkFont, character: gchar): gint{.cdecl, 
+proc gdk_char_width*(font: PGdkFont, character: gchar): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_char_width".}
-proc gdk_char_width_wc*(font: PGdkFont, character: TGdkWChar): gint{.cdecl, 
+proc gdk_char_width_wc*(font: PGdkFont, character: TGdkWChar): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_char_width_wc".}
-proc gdk_string_measure*(font: PGdkFont, `string`: cstring): gint{.cdecl, 
+proc gdk_string_measure*(font: PGdkFont, `string`: cstring): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_string_measure".}
 proc gdk_text_measure*(font: PGdkFont, text: cstring, text_length: gint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_text_measure".}
-proc gdk_char_measure*(font: PGdkFont, character: gchar): gint{.cdecl, 
+proc gdk_char_measure*(font: PGdkFont, character: gchar): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_char_measure".}
-proc gdk_string_height*(font: PGdkFont, `string`: cstring): gint{.cdecl, 
+proc gdk_string_height*(font: PGdkFont, `string`: cstring): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_string_height".}
 proc gdk_text_height*(font: PGdkFont, text: cstring, text_length: gint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_text_height".}
-proc gdk_char_height*(font: PGdkFont, character: gchar): gint{.cdecl, 
+proc gdk_char_height*(font: PGdkFont, character: gchar): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_char_height".}
-proc gdk_text_extents*(font: PGdkFont, text: cstring, text_length: gint, 
-                       lbearing: Pgint, rbearing: Pgint, width: Pgint, 
-                       ascent: Pgint, descent: Pgint){.cdecl, dynlib: gdklib, 
+proc gdk_text_extents*(font: PGdkFont, text: cstring, text_length: gint,
+                       lbearing: Pgint, rbearing: Pgint, width: Pgint,
+                       ascent: Pgint, descent: Pgint){.cdecl, dynlib: gdklib,
     importc: "gdk_text_extents".}
-proc gdk_text_extents_wc*(font: PGdkFont, text: PGdkWChar, text_length: gint, 
-                          lbearing: Pgint, rbearing: Pgint, width: Pgint, 
-                          ascent: Pgint, descent: Pgint){.cdecl, dynlib: gdklib, 
+proc gdk_text_extents_wc*(font: PGdkFont, text: PGdkWChar, text_length: gint,
+                          lbearing: Pgint, rbearing: Pgint, width: Pgint,
+                          ascent: Pgint, descent: Pgint){.cdecl, dynlib: gdklib,
     importc: "gdk_text_extents_wc".}
-proc gdk_string_extents*(font: PGdkFont, `string`: cstring, lbearing: Pgint, 
-                         rbearing: Pgint, width: Pgint, ascent: Pgint, 
-                         descent: Pgint){.cdecl, dynlib: gdklib, 
+proc gdk_string_extents*(font: PGdkFont, `string`: cstring, lbearing: Pgint,
+                         rbearing: Pgint, width: Pgint, ascent: Pgint,
+                         descent: Pgint){.cdecl, dynlib: gdklib,
     importc: "gdk_string_extents".}
-proc gdk_font_get_display*(font: PGdkFont): PGdkDisplay{.cdecl, dynlib: gdklib, 
+proc gdk_font_get_display*(font: PGdkFont): PGdkDisplay{.cdecl, dynlib: gdklib,
     importc: "gdk_font_get_display".}
-const 
+const
   GDK_GC_FOREGROUND* = 1 shl 0
   GDK_GC_BACKGROUND* = 1 shl 1
   GDK_GC_FONT* = 1 shl 2
@@ -1256,65 +1255,65 @@ proc GDK_GC_CLASS*(klass: Pointer): PGdkGCClass
 proc GDK_IS_GC*(anObject: Pointer): bool
 proc GDK_IS_GC_CLASS*(klass: Pointer): bool
 proc GDK_GC_GET_CLASS*(obj: Pointer): PGdkGCClass
-proc gdk_gc_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_gc_get_type*(): GType{.cdecl, dynlib: gdklib,
                                 importc: "gdk_gc_get_type".}
-proc gdk_gc_new*(drawable: PGdkDrawable): PGdkGC{.cdecl, dynlib: gdklib, 
+proc gdk_gc_new*(drawable: PGdkDrawable): PGdkGC{.cdecl, dynlib: gdklib,
     importc: "gdk_gc_new".}
-proc gdk_gc_new_with_values*(drawable: PGdkDrawable, values: PGdkGCValues, 
-                             values_mask: TGdkGCValuesMask): PGdkGC{.cdecl, 
+proc gdk_gc_new_with_values*(drawable: PGdkDrawable, values: PGdkGCValues,
+                             values_mask: TGdkGCValuesMask): PGdkGC{.cdecl,
     dynlib: gdklib, importc: "gdk_gc_new_with_values".}
-proc gdk_gc_get_values*(gc: PGdkGC, values: PGdkGCValues){.cdecl, 
+proc gdk_gc_get_values*(gc: PGdkGC, values: PGdkGCValues){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_get_values".}
-proc gdk_gc_set_values*(gc: PGdkGC, values: PGdkGCValues, 
-                        values_mask: TGdkGCValuesMask){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_values*(gc: PGdkGC, values: PGdkGCValues,
+                        values_mask: TGdkGCValuesMask){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_values".}
-proc gdk_gc_set_foreground*(gc: PGdkGC, color: PGdkColor){.cdecl, 
+proc gdk_gc_set_foreground*(gc: PGdkGC, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_foreground".}
-proc gdk_gc_set_background*(gc: PGdkGC, color: PGdkColor){.cdecl, 
+proc gdk_gc_set_background*(gc: PGdkGC, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_background".}
-proc gdk_gc_set_function*(gc: PGdkGC, `function`: TGdkFunction){.cdecl, 
+proc gdk_gc_set_function*(gc: PGdkGC, `function`: TGdkFunction){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_function".}
-proc gdk_gc_set_fill*(gc: PGdkGC, fill: TGdkFill){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_fill*(gc: PGdkGC, fill: TGdkFill){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_fill".}
-proc gdk_gc_set_tile*(gc: PGdkGC, tile: PGdkPixmap){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_tile*(gc: PGdkGC, tile: PGdkPixmap){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_tile".}
-proc gdk_gc_set_stipple*(gc: PGdkGC, stipple: PGdkPixmap){.cdecl, 
+proc gdk_gc_set_stipple*(gc: PGdkGC, stipple: PGdkPixmap){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_stipple".}
-proc gdk_gc_set_ts_origin*(gc: PGdkGC, x: gint, y: gint){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_ts_origin*(gc: PGdkGC, x: gint, y: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_ts_origin".}
-proc gdk_gc_set_clip_origin*(gc: PGdkGC, x: gint, y: gint){.cdecl, 
+proc gdk_gc_set_clip_origin*(gc: PGdkGC, x: gint, y: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_clip_origin".}
-proc gdk_gc_set_clip_mask*(gc: PGdkGC, mask: PGdkBitmap){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_clip_mask*(gc: PGdkGC, mask: PGdkBitmap){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_clip_mask".}
-proc gdk_gc_set_clip_rectangle*(gc: PGdkGC, rectangle: PGdkRectangle){.cdecl, 
+proc gdk_gc_set_clip_rectangle*(gc: PGdkGC, rectangle: PGdkRectangle){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_clip_rectangle".}
-proc gdk_gc_set_clip_region*(gc: PGdkGC, region: PGdkRegion){.cdecl, 
+proc gdk_gc_set_clip_region*(gc: PGdkGC, region: PGdkRegion){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_clip_region".}
-proc gdk_gc_set_subwindow*(gc: PGdkGC, mode: TGdkSubwindowMode){.cdecl, 
+proc gdk_gc_set_subwindow*(gc: PGdkGC, mode: TGdkSubwindowMode){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_subwindow".}
-proc gdk_gc_set_exposures*(gc: PGdkGC, exposures: gboolean){.cdecl, 
+proc gdk_gc_set_exposures*(gc: PGdkGC, exposures: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_exposures".}
-proc gdk_gc_set_line_attributes*(gc: PGdkGC, line_width: gint, 
-                                 line_style: TGdkLineStyle, 
-                                 cap_style: TGdkCapStyle, 
-                                 join_style: TGdkJoinStyle){.cdecl, 
+proc gdk_gc_set_line_attributes*(gc: PGdkGC, line_width: gint,
+                                 line_style: TGdkLineStyle,
+                                 cap_style: TGdkCapStyle,
+                                 join_style: TGdkJoinStyle){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_line_attributes".}
-proc gdk_gc_set_dashes*(gc: PGdkGC, dash_offset: gint, 
-                        dash_list: openarray[gint8]){.cdecl, dynlib: gdklib, 
+proc gdk_gc_set_dashes*(gc: PGdkGC, dash_offset: gint,
+                        dash_list: openarray[gint8]){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_set_dashes".}
-proc gdk_gc_offset*(gc: PGdkGC, x_offset: gint, y_offset: gint){.cdecl, 
+proc gdk_gc_offset*(gc: PGdkGC, x_offset: gint, y_offset: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_offset".}
-proc gdk_gc_copy*(dst_gc: PGdkGC, src_gc: PGdkGC){.cdecl, dynlib: gdklib, 
+proc gdk_gc_copy*(dst_gc: PGdkGC, src_gc: PGdkGC){.cdecl, dynlib: gdklib,
     importc: "gdk_gc_copy".}
-proc gdk_gc_set_colormap*(gc: PGdkGC, colormap: PGdkColormap){.cdecl, 
+proc gdk_gc_set_colormap*(gc: PGdkGC, colormap: PGdkColormap){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_colormap".}
-proc gdk_gc_get_colormap*(gc: PGdkGC): PGdkColormap{.cdecl, dynlib: gdklib, 
+proc gdk_gc_get_colormap*(gc: PGdkGC): PGdkColormap{.cdecl, dynlib: gdklib,
     importc: "gdk_gc_get_colormap".}
-proc gdk_gc_set_rgb_fg_color*(gc: PGdkGC, color: PGdkColor){.cdecl, 
+proc gdk_gc_set_rgb_fg_color*(gc: PGdkGC, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_rgb_fg_color".}
-proc gdk_gc_set_rgb_bg_color*(gc: PGdkGC, color: PGdkColor){.cdecl, 
+proc gdk_gc_set_rgb_bg_color*(gc: PGdkGC, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_gc_set_rgb_bg_color".}
-proc gdk_gc_get_screen*(gc: PGdkGC): PGdkScreen{.cdecl, dynlib: gdklib, 
+proc gdk_gc_get_screen*(gc: PGdkGC): PGdkScreen{.cdecl, dynlib: gdklib,
     importc: "gdk_gc_get_screen".}
 proc GDK_TYPE_IMAGE*(): GType
 proc GDK_IMAGE*(anObject: Pointer): PGdkImage
@@ -1322,20 +1321,20 @@ proc GDK_IMAGE_CLASS*(klass: Pointer): PGdkImageClass
 proc GDK_IS_IMAGE*(anObject: Pointer): bool
 proc GDK_IS_IMAGE_CLASS*(klass: Pointer): bool
 proc GDK_IMAGE_GET_CLASS*(obj: Pointer): PGdkImageClass
-proc gdk_image_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_image_get_type*(): GType{.cdecl, dynlib: gdklib,
                                    importc: "gdk_image_get_type".}
-proc gdk_image_new*(`type`: TGdkImageType, visual: PGdkVisual, width: gint, 
-                    height: gint): PGdkImage{.cdecl, dynlib: gdklib, 
+proc gdk_image_new*(`type`: TGdkImageType, visual: PGdkVisual, width: gint,
+                    height: gint): PGdkImage{.cdecl, dynlib: gdklib,
     importc: "gdk_image_new".}
 proc gdk_image_put_pixel*(image: PGdkImage, x: gint, y: gint, pixel: guint32){.
     cdecl, dynlib: gdklib, importc: "gdk_image_put_pixel".}
-proc gdk_image_get_pixel*(image: PGdkImage, x: gint, y: gint): guint32{.cdecl, 
+proc gdk_image_get_pixel*(image: PGdkImage, x: gint, y: gint): guint32{.cdecl,
     dynlib: gdklib, importc: "gdk_image_get_pixel".}
-proc gdk_image_set_colormap*(image: PGdkImage, colormap: PGdkColormap){.cdecl, 
+proc gdk_image_set_colormap*(image: PGdkImage, colormap: PGdkColormap){.cdecl,
     dynlib: gdklib, importc: "gdk_image_set_colormap".}
-proc gdk_image_get_colormap*(image: PGdkImage): PGdkColormap{.cdecl, 
+proc gdk_image_get_colormap*(image: PGdkImage): PGdkColormap{.cdecl,
     dynlib: gdklib, importc: "gdk_image_get_colormap".}
-const 
+const
   GDK_AXIS_IGNORE* = 0
   GDK_AXIS_X* = 1
   GDK_AXIS_Y* = 2
@@ -1351,33 +1350,33 @@ proc GDK_DEVICE_CLASS*(klass: Pointer): PGdkDeviceClass
 proc GDK_IS_DEVICE*(anObject: Pointer): bool
 proc GDK_IS_DEVICE_CLASS*(klass: Pointer): bool
 proc GDK_DEVICE_GET_CLASS*(obj: Pointer): PGdkDeviceClass
-proc gdk_device_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_device_get_type*(): GType{.cdecl, dynlib: gdklib,
                                     importc: "gdk_device_get_type".}
-proc gdk_device_set_source*(device: PGdkDevice, source: TGdkInputSource){.cdecl, 
+proc gdk_device_set_source*(device: PGdkDevice, source: TGdkInputSource){.cdecl,
     dynlib: gdklib, importc: "gdk_device_set_source".}
 proc gdk_device_set_mode*(device: PGdkDevice, mode: TGdkInputMode): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_device_set_mode".}
-proc gdk_device_set_key*(device: PGdkDevice, index: guint, keyval: guint, 
-                         modifiers: TGdkModifierType){.cdecl, dynlib: gdklib, 
+proc gdk_device_set_key*(device: PGdkDevice, index: guint, keyval: guint,
+                         modifiers: TGdkModifierType){.cdecl, dynlib: gdklib,
     importc: "gdk_device_set_key".}
 proc gdk_device_set_axis_use*(device: PGdkDevice, index: guint, use: TGdkAxisUse){.
     cdecl, dynlib: gdklib, importc: "gdk_device_set_axis_use".}
-proc gdk_device_get_state*(device: PGdkDevice, window: PGdkWindow, 
-                           axes: Pgdouble, mask: PGdkModifierType){.cdecl, 
+proc gdk_device_get_state*(device: PGdkDevice, window: PGdkWindow,
+                           axes: Pgdouble, mask: PGdkModifierType){.cdecl,
     dynlib: gdklib, importc: "gdk_device_get_state".}
-proc gdk_device_get_history*(device: PGdkDevice, window: PGdkWindow, 
-                             start: guint32, stop: guint32, 
+proc gdk_device_get_history*(device: PGdkDevice, window: PGdkWindow,
+                             start: guint32, stop: guint32,
                              s: var PPGdkTimeCoord, n_events: Pgint): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_device_get_history".}
-proc gdk_device_free_history*(events: PPGdkTimeCoord, n_events: gint){.cdecl, 
+proc gdk_device_free_history*(events: PPGdkTimeCoord, n_events: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_device_free_history".}
-proc gdk_device_get_axis*(device: PGdkDevice, axes: Pgdouble, use: TGdkAxisUse, 
-                          value: Pgdouble): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_device_get_axis*(device: PGdkDevice, axes: Pgdouble, use: TGdkAxisUse,
+                          value: Pgdouble): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_device_get_axis".}
-proc gdk_input_set_extension_events*(window: PGdkWindow, mask: gint, 
-                                     mode: TGdkExtensionMode){.cdecl, 
+proc gdk_input_set_extension_events*(window: PGdkWindow, mask: gint,
+                                     mode: TGdkExtensionMode){.cdecl,
     dynlib: gdklib, importc: "gdk_input_set_extension_events".}
-proc gdk_device_get_core_pointer*(): PGdkDevice{.cdecl, dynlib: gdklib, 
+proc gdk_device_get_core_pointer*(): PGdkDevice{.cdecl, dynlib: gdklib,
     importc: "gdk_device_get_core_pointer".}
 proc GDK_TYPE_KEYMAP*(): GType
 proc GDK_KEYMAP*(anObject: Pointer): PGdkKeymap
@@ -1385,45 +1384,45 @@ proc GDK_KEYMAP_CLASS*(klass: Pointer): PGdkKeymapClass
 proc GDK_IS_KEYMAP*(anObject: Pointer): bool
 proc GDK_IS_KEYMAP_CLASS*(klass: Pointer): bool
 proc GDK_KEYMAP_GET_CLASS*(obj: Pointer): PGdkKeymapClass
-proc gdk_keymap_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_keymap_get_type*(): GType{.cdecl, dynlib: gdklib,
                                     importc: "gdk_keymap_get_type".}
-proc gdk_keymap_get_for_display*(display: PGdkDisplay): PGdkKeymap{.cdecl, 
+proc gdk_keymap_get_for_display*(display: PGdkDisplay): PGdkKeymap{.cdecl,
     dynlib: gdklib, importc: "gdk_keymap_get_for_display".}
 proc gdk_keymap_lookup_key*(keymap: PGdkKeymap, key: PGdkKeymapKey): guint{.
     cdecl, dynlib: gdklib, importc: "gdk_keymap_lookup_key".}
-proc gdk_keymap_translate_keyboard_state*(keymap: PGdkKeymap, 
-    hardware_keycode: guint, state: TGdkModifierType, group: gint, 
-    keyval: Pguint, effective_group: Pgint, level: Pgint, 
-    consumed_modifiers: PGdkModifierType): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_keymap_translate_keyboard_state*(keymap: PGdkKeymap,
+    hardware_keycode: guint, state: TGdkModifierType, group: gint,
+    keyval: Pguint, effective_group: Pgint, level: Pgint,
+    consumed_modifiers: PGdkModifierType): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_keymap_translate_keyboard_state".}
-proc gdk_keymap_get_entries_for_keyval*(keymap: PGdkKeymap, keyval: guint, 
+proc gdk_keymap_get_entries_for_keyval*(keymap: PGdkKeymap, keyval: guint,
                                         s: var PGdkKeymapKey, n_keys: Pgint): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_keymap_get_entries_for_keyval".}
-proc gdk_keymap_get_entries_for_keycode*(keymap: PGdkKeymap, 
-    hardware_keycode: guint, s: var PGdkKeymapKey, sasdf: var Pguint, 
-    n_entries: Pgint): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_keymap_get_entries_for_keycode*(keymap: PGdkKeymap,
+    hardware_keycode: guint, s: var PGdkKeymapKey, sasdf: var Pguint,
+    n_entries: Pgint): gboolean{.cdecl, dynlib: gdklib,
                                  importc: "gdk_keymap_get_entries_for_keycode".}
-proc gdk_keymap_get_direction*(keymap: PGdkKeymap): TPangoDirection{.cdecl, 
+proc gdk_keymap_get_direction*(keymap: PGdkKeymap): TPangoDirection{.cdecl,
     dynlib: gdklib, importc: "gdk_keymap_get_direction".}
-proc gdk_keyval_name*(keyval: guint): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_name*(keyval: guint): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_name".}
-proc gdk_keyval_from_name*(keyval_name: cstring): guint{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_from_name*(keyval_name: cstring): guint{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_from_name".}
 proc gdk_keyval_convert_case*(symbol: guint, lower: Pguint, upper: Pguint){.
     cdecl, dynlib: gdklib, importc: "gdk_keyval_convert_case".}
-proc gdk_keyval_to_upper*(keyval: guint): guint{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_to_upper*(keyval: guint): guint{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_to_upper".}
-proc gdk_keyval_to_lower*(keyval: guint): guint{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_to_lower*(keyval: guint): guint{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_to_lower".}
-proc gdk_keyval_is_upper*(keyval: guint): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_is_upper*(keyval: guint): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_is_upper".}
-proc gdk_keyval_is_lower*(keyval: guint): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_is_lower*(keyval: guint): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_is_lower".}
-proc gdk_keyval_to_unicode*(keyval: guint): guint32{.cdecl, dynlib: gdklib, 
+proc gdk_keyval_to_unicode*(keyval: guint): guint32{.cdecl, dynlib: gdklib,
     importc: "gdk_keyval_to_unicode".}
-proc gdk_unicode_to_keyval*(wc: guint32): guint{.cdecl, dynlib: gdklib, 
+proc gdk_unicode_to_keyval*(wc: guint32): guint{.cdecl, dynlib: gdklib,
     importc: "gdk_unicode_to_keyval".}
-const 
+const
   GDK_KEY_VoidSymbol* = 0x00FFFFFF
   GDK_KEY_BackSpace* = 0x0000FF08
   GDK_KEY_Tab* = 0x0000FF09
@@ -2760,50 +2759,50 @@ const
 
 proc gdk_pango_context_get_for_screen*(screen: PGdkScreen): PPangoContext{.
     cdecl, dynlib: gdklib, importc: "gdk_pango_context_get_for_screen".}
-proc gdk_pango_context_set_colormap*(context: PPangoContext, 
-                                     colormap: PGdkColormap){.cdecl, 
+proc gdk_pango_context_set_colormap*(context: PPangoContext,
+                                     colormap: PGdkColormap){.cdecl,
     dynlib: gdklib, importc: "gdk_pango_context_set_colormap".}
-proc gdk_pango_layout_line_get_clip_region*(line: PPangoLayoutLine, 
+proc gdk_pango_layout_line_get_clip_region*(line: PPangoLayoutLine,
     x_origin: gint, y_origin: gint, index_ranges: Pgint, n_ranges: gint): PGdkRegion{.
     cdecl, dynlib: gdklib, importc: "gdk_pango_layout_line_get_clip_region".}
-proc gdk_pango_layout_get_clip_region*(layout: PPangoLayout, x_origin: gint, 
-                                       y_origin: gint, index_ranges: Pgint, 
-                                       n_ranges: gint): PGdkRegion{.cdecl, 
+proc gdk_pango_layout_get_clip_region*(layout: PPangoLayout, x_origin: gint,
+                                       y_origin: gint, index_ranges: Pgint,
+                                       n_ranges: gint): PGdkRegion{.cdecl,
     dynlib: gdklib, importc: "gdk_pango_layout_get_clip_region".}
-proc gdk_pango_attr_stipple_new*(stipple: PGdkBitmap): PPangoAttribute{.cdecl, 
+proc gdk_pango_attr_stipple_new*(stipple: PGdkBitmap): PPangoAttribute{.cdecl,
     dynlib: gdklib, importc: "gdk_pango_attr_stipple_new".}
-proc gdk_pango_attr_embossed_new*(embossed: gboolean): PPangoAttribute{.cdecl, 
+proc gdk_pango_attr_embossed_new*(embossed: gboolean): PPangoAttribute{.cdecl,
     dynlib: gdklib, importc: "gdk_pango_attr_embossed_new".}
-proc gdk_pixbuf_render_threshold_alpha*(pixbuf: PGdkPixbuf, bitmap: PGdkBitmap, 
-                                        src_x: int32, src_y: int32, 
-                                        dest_x: int32, dest_y: int32, 
-                                        width: int32, height: int32, 
-                                        alpha_threshold: int32){.cdecl, 
+proc gdk_pixbuf_render_threshold_alpha*(pixbuf: PGdkPixbuf, bitmap: PGdkBitmap,
+                                        src_x: int32, src_y: int32,
+                                        dest_x: int32, dest_y: int32,
+                                        width: int32, height: int32,
+                                        alpha_threshold: int32){.cdecl,
     dynlib: gdklib, importc: "gdk_pixbuf_render_threshold_alpha".}
-proc gdk_pixbuf_render_to_drawable*(pixbuf: PGdkPixbuf, drawable: PGdkDrawable, 
-                                    gc: PGdkGC, src_x: int32, src_y: int32, 
-                                    dest_x: int32, dest_y: int32, width: int32, 
-                                    height: int32, dither: TGdkRgbDither, 
-                                    x_dither: int32, y_dither: int32){.cdecl, 
+proc gdk_pixbuf_render_to_drawable*(pixbuf: PGdkPixbuf, drawable: PGdkDrawable,
+                                    gc: PGdkGC, src_x: int32, src_y: int32,
+                                    dest_x: int32, dest_y: int32, width: int32,
+                                    height: int32, dither: TGdkRgbDither,
+                                    x_dither: int32, y_dither: int32){.cdecl,
     dynlib: gdklib, importc: "gdk_pixbuf_render_to_drawable".}
-proc gdk_pixbuf_render_to_drawable_alpha*(pixbuf: PGdkPixbuf, 
-    drawable: PGdkDrawable, src_x: int32, src_y: int32, dest_x: int32, 
-    dest_y: int32, width: int32, height: int32, alpha_mode: TGdkPixbufAlphaMode, 
-    alpha_threshold: int32, dither: TGdkRgbDither, x_dither: int32, 
-    y_dither: int32){.cdecl, dynlib: gdklib, 
+proc gdk_pixbuf_render_to_drawable_alpha*(pixbuf: PGdkPixbuf,
+    drawable: PGdkDrawable, src_x: int32, src_y: int32, dest_x: int32,
+    dest_y: int32, width: int32, height: int32, alpha_mode: TGdkPixbufAlphaMode,
+    alpha_threshold: int32, dither: TGdkRgbDither, x_dither: int32,
+    y_dither: int32){.cdecl, dynlib: gdklib,
                       importc: "gdk_pixbuf_render_to_drawable_alpha".}
-proc gdk_pixbuf_render_pixmap_and_mask_for_colormap*(pixbuf: PGdkPixbuf, 
-    colormap: PGdkColormap, n: var PGdkPixmap, nasdfdsafw4e: var PGdkBitmap, 
+proc gdk_pixbuf_render_pixmap_and_mask_for_colormap*(pixbuf: PGdkPixbuf,
+    colormap: PGdkColormap, n: var PGdkPixmap, nasdfdsafw4e: var PGdkBitmap,
     alpha_threshold: int32){.cdecl, dynlib: gdklib, importc: "gdk_pixbuf_render_pixmap_and_mask_for_colormap".}
-proc gdk_pixbuf_get_from_drawable*(dest: PGdkPixbuf, src: PGdkDrawable, 
-                                   cmap: PGdkColormap, src_x: int32, 
-                                   src_y: int32, dest_x: int32, dest_y: int32, 
+proc gdk_pixbuf_get_from_drawable*(dest: PGdkPixbuf, src: PGdkDrawable,
+                                   cmap: PGdkColormap, src_x: int32,
+                                   src_y: int32, dest_x: int32, dest_y: int32,
                                    width: int32, height: int32): PGdkPixbuf{.
     cdecl, dynlib: gdklib, importc: "gdk_pixbuf_get_from_drawable".}
-proc gdk_pixbuf_get_from_image*(dest: PGdkPixbuf, src: PGdkImage, 
-                                cmap: PGdkColormap, src_x: int32, src_y: int32, 
-                                dest_x: int32, dest_y: int32, width: int32, 
-                                height: int32): PGdkPixbuf{.cdecl, 
+proc gdk_pixbuf_get_from_image*(dest: PGdkPixbuf, src: PGdkImage,
+                                cmap: PGdkColormap, src_x: int32, src_y: int32,
+                                dest_x: int32, dest_y: int32, width: int32,
+                                height: int32): PGdkPixbuf{.cdecl,
     dynlib: gdklib, importc: "gdk_pixbuf_get_from_image".}
 proc GDK_TYPE_PIXMAP*(): GType
 proc GDK_PIXMAP*(anObject: Pointer): PGdkPixmap
@@ -2812,85 +2811,85 @@ proc GDK_IS_PIXMAP*(anObject: Pointer): bool
 proc GDK_IS_PIXMAP_CLASS*(klass: Pointer): bool
 proc GDK_PIXMAP_GET_CLASS*(obj: Pointer): PGdkPixmapObjectClass
 proc GDK_PIXMAP_OBJECT*(anObject: Pointer): PGdkPixmapObject
-proc gdk_pixmap_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_pixmap_get_type*(): GType{.cdecl, dynlib: gdklib,
                                     importc: "gdk_pixmap_get_type".}
 proc gdk_pixmap_new*(window: PGdkWindow, width: gint, height: gint, depth: gint): PGdkPixmap{.
     cdecl, dynlib: gdklib, importc: "gdk_pixmap_new".}
-proc gdk_bitmap_create_from_data*(window: PGdkWindow, data: cstring, width: gint, 
-                                  height: gint): PGdkBitmap{.cdecl, 
+proc gdk_bitmap_create_from_data*(window: PGdkWindow, data: cstring, width: gint,
+                                  height: gint): PGdkBitmap{.cdecl,
     dynlib: gdklib, importc: "gdk_bitmap_create_from_data".}
-proc gdk_pixmap_create_from_data*(window: PGdkWindow, data: cstring, width: gint, 
-                                  height: gint, depth: gint, fg: PGdkColor, 
-                                  bg: PGdkColor): PGdkPixmap{.cdecl, 
+proc gdk_pixmap_create_from_data*(window: PGdkWindow, data: cstring, width: gint,
+                                  height: gint, depth: gint, fg: PGdkColor,
+                                  bg: PGdkColor): PGdkPixmap{.cdecl,
     dynlib: gdklib, importc: "gdk_pixmap_create_from_data".}
-proc gdk_pixmap_create_from_xpm*(window: PGdkWindow, k: var PGdkBitmap, 
+proc gdk_pixmap_create_from_xpm*(window: PGdkWindow, k: var PGdkBitmap,
                                  transparent_color: PGdkColor, filename: cstring): PGdkPixmap{.
     cdecl, dynlib: gdklib, importc: "gdk_pixmap_create_from_xpm".}
-proc gdk_pixmap_colormap_create_from_xpm*(window: PGdkWindow, 
-    colormap: PGdkColormap, k: var PGdkBitmap, transparent_color: PGdkColor, 
+proc gdk_pixmap_colormap_create_from_xpm*(window: PGdkWindow,
+    colormap: PGdkColormap, k: var PGdkBitmap, transparent_color: PGdkColor,
     filename: cstring): PGdkPixmap{.cdecl, dynlib: gdklib, importc: "gdk_pixmap_colormap_create_from_xpm".}
-proc gdk_pixmap_create_from_xpm_d*(window: PGdkWindow, k: var PGdkBitmap, 
+proc gdk_pixmap_create_from_xpm_d*(window: PGdkWindow, k: var PGdkBitmap,
                                    transparent_color: PGdkColor, data: PPgchar): PGdkPixmap{.
     cdecl, dynlib: gdklib, importc: "gdk_pixmap_create_from_xpm_d".}
-proc gdk_pixmap_colormap_create_from_xpm_d*(window: PGdkWindow, 
-    colormap: PGdkColormap, k: var PGdkBitmap, transparent_color: PGdkColor, 
+proc gdk_pixmap_colormap_create_from_xpm_d*(window: PGdkWindow,
+    colormap: PGdkColormap, k: var PGdkBitmap, transparent_color: PGdkColor,
     data: PPgchar): PGdkPixmap{.cdecl, dynlib: gdklib, importc: "gdk_pixmap_colormap_create_from_xpm_d".}
-proc gdk_pixmap_foreign_new_for_display*(display: PGdkDisplay, 
-    anid: TGdkNativeWindow): PGdkPixmap{.cdecl, dynlib: gdklib, 
+proc gdk_pixmap_foreign_new_for_display*(display: PGdkDisplay,
+    anid: TGdkNativeWindow): PGdkPixmap{.cdecl, dynlib: gdklib,
     importc: "gdk_pixmap_foreign_new_for_display".}
 proc gdk_pixmap_lookup_for_display*(display: PGdkDisplay, anid: TGdkNativeWindow): PGdkPixmap{.
     cdecl, dynlib: gdklib, importc: "gdk_pixmap_lookup_for_display".}
 proc gdk_atom_intern*(atom_name: cstring, only_if_exists: gboolean): TGdkAtom{.
     cdecl, dynlib: gdklib, importc: "gdk_atom_intern".}
-proc gdk_atom_name*(atom: TGdkAtom): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_atom_name*(atom: TGdkAtom): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_atom_name".}
-proc gdk_property_get*(window: PGdkWindow, `property`: TGdkAtom, 
-                       `type`: TGdkAtom, offset: gulong, length: gulong, 
-                       pdelete: gint, actual_property_type: PGdkAtom, 
-                       actual_format: Pgint, actual_length: Pgint, 
-                       data: PPguchar): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_property_get*(window: PGdkWindow, `property`: TGdkAtom,
+                       `type`: TGdkAtom, offset: gulong, length: gulong,
+                       pdelete: gint, actual_property_type: PGdkAtom,
+                       actual_format: Pgint, actual_length: Pgint,
+                       data: PPguchar): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_property_get".}
-proc gdk_property_change*(window: PGdkWindow, `property`: TGdkAtom, 
-                          `type`: TGdkAtom, format: gint, mode: TGdkPropMode, 
-                          data: Pguchar, nelements: gint){.cdecl, 
+proc gdk_property_change*(window: PGdkWindow, `property`: TGdkAtom,
+                          `type`: TGdkAtom, format: gint, mode: TGdkPropMode,
+                          data: Pguchar, nelements: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_property_change".}
-proc gdk_property_delete*(window: PGdkWindow, `property`: TGdkAtom){.cdecl, 
+proc gdk_property_delete*(window: PGdkWindow, `property`: TGdkAtom){.cdecl,
     dynlib: gdklib, importc: "gdk_property_delete".}
-proc gdk_text_property_to_text_list_for_display*(display: PGdkDisplay, 
-    encoding: TGdkAtom, format: gint, text: Pguchar, length: gint, 
+proc gdk_text_property_to_text_list_for_display*(display: PGdkDisplay,
+    encoding: TGdkAtom, format: gint, text: Pguchar, length: gint,
     t: var PPgchar): gint{.cdecl, dynlib: gdklib, importc: "gdk_text_property_to_text_list_for_display".}
-proc gdk_text_property_to_utf8_list_for_display*(display: PGdkDisplay, 
-    encoding: TGdkAtom, format: gint, text: Pguchar, length: gint, 
+proc gdk_text_property_to_utf8_list_for_display*(display: PGdkDisplay,
+    encoding: TGdkAtom, format: gint, text: Pguchar, length: gint,
     t: var PPgchar): gint{.cdecl, dynlib: gdklib, importc: "gdk_text_property_to_utf8_list_for_display".}
-proc gdk_utf8_to_string_target*(str: cstring): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_utf8_to_string_target*(str: cstring): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_utf8_to_string_target".}
-proc gdk_string_to_compound_text_for_display*(display: PGdkDisplay, str: cstring, 
+proc gdk_string_to_compound_text_for_display*(display: PGdkDisplay, str: cstring,
     encoding: PGdkAtom, format: Pgint, ctext: PPguchar, length: Pgint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_string_to_compound_text_for_display".}
-proc gdk_utf8_to_compound_text_for_display*(display: PGdkDisplay, str: cstring, 
+proc gdk_utf8_to_compound_text_for_display*(display: PGdkDisplay, str: cstring,
     encoding: PGdkAtom, format: Pgint, ctext: PPguchar, length: Pgint): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_utf8_to_compound_text_for_display".}
-proc gdk_free_text_list*(list: PPgchar){.cdecl, dynlib: gdklib, 
+proc gdk_free_text_list*(list: PPgchar){.cdecl, dynlib: gdklib,
     importc: "gdk_free_text_list".}
-proc gdk_free_compound_text*(ctext: Pguchar){.cdecl, dynlib: gdklib, 
+proc gdk_free_compound_text*(ctext: Pguchar){.cdecl, dynlib: gdklib,
     importc: "gdk_free_compound_text".}
-proc gdk_region_new*(): PGdkRegion{.cdecl, dynlib: gdklib, 
+proc gdk_region_new*(): PGdkRegion{.cdecl, dynlib: gdklib,
                                     importc: "gdk_region_new".}
-proc gdk_region_polygon*(points: PGdkPoint, npoints: gint, 
-                         fill_rule: TGdkFillRule): PGdkRegion{.cdecl, 
+proc gdk_region_polygon*(points: PGdkPoint, npoints: gint,
+                         fill_rule: TGdkFillRule): PGdkRegion{.cdecl,
     dynlib: gdklib, importc: "gdk_region_polygon".}
-proc gdk_region_copy*(region: PGdkRegion): PGdkRegion{.cdecl, dynlib: gdklib, 
+proc gdk_region_copy*(region: PGdkRegion): PGdkRegion{.cdecl, dynlib: gdklib,
     importc: "gdk_region_copy".}
-proc gdk_region_rectangle*(rectangle: PGdkRectangle): PGdkRegion{.cdecl, 
+proc gdk_region_rectangle*(rectangle: PGdkRectangle): PGdkRegion{.cdecl,
     dynlib: gdklib, importc: "gdk_region_rectangle".}
-proc gdk_region_destroy*(region: PGdkRegion){.cdecl, dynlib: gdklib, 
+proc gdk_region_destroy*(region: PGdkRegion){.cdecl, dynlib: gdklib,
     importc: "gdk_region_destroy".}
 proc gdk_region_get_clipbox*(region: PGdkRegion, rectangle: PGdkRectangle){.
     cdecl, dynlib: gdklib, importc: "gdk_region_get_clipbox".}
-proc gdk_region_get_rectangles*(region: PGdkRegion, s: var PGdkRectangle, 
-                                n_rectangles: Pgint){.cdecl, dynlib: gdklib, 
+proc gdk_region_get_rectangles*(region: PGdkRegion, s: var PGdkRectangle,
+                                n_rectangles: Pgint){.cdecl, dynlib: gdklib,
     importc: "gdk_region_get_rectangles".}
-proc gdk_region_empty*(region: PGdkRegion): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_region_empty*(region: PGdkRegion): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_region_empty".}
 proc gdk_region_equal*(region1: PGdkRegion, region2: PGdkRegion): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_region_equal".}
@@ -2898,62 +2897,62 @@ proc gdk_region_point_in*(region: PGdkRegion, x: int32, y: int32): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_region_point_in".}
 proc gdk_region_rect_in*(region: PGdkRegion, rect: PGdkRectangle): TGdkOverlapType{.
     cdecl, dynlib: gdklib, importc: "gdk_region_rect_in".}
-proc gdk_region_offset*(region: PGdkRegion, dx: gint, dy: gint){.cdecl, 
+proc gdk_region_offset*(region: PGdkRegion, dx: gint, dy: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_region_offset".}
-proc gdk_region_shrink*(region: PGdkRegion, dx: gint, dy: gint){.cdecl, 
+proc gdk_region_shrink*(region: PGdkRegion, dx: gint, dy: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_region_shrink".}
 proc gdk_region_union_with_rect*(region: PGdkRegion, rect: PGdkRectangle){.
     cdecl, dynlib: gdklib, importc: "gdk_region_union_with_rect".}
-proc gdk_region_intersect*(source1: PGdkRegion, source2: PGdkRegion){.cdecl, 
+proc gdk_region_intersect*(source1: PGdkRegion, source2: PGdkRegion){.cdecl,
     dynlib: gdklib, importc: "gdk_region_intersect".}
-proc gdk_region_union*(source1: PGdkRegion, source2: PGdkRegion){.cdecl, 
+proc gdk_region_union*(source1: PGdkRegion, source2: PGdkRegion){.cdecl,
     dynlib: gdklib, importc: "gdk_region_union".}
-proc gdk_region_subtract*(source1: PGdkRegion, source2: PGdkRegion){.cdecl, 
+proc gdk_region_subtract*(source1: PGdkRegion, source2: PGdkRegion){.cdecl,
     dynlib: gdklib, importc: "gdk_region_subtract".}
-proc gdk_region_xor*(source1: PGdkRegion, source2: PGdkRegion){.cdecl, 
+proc gdk_region_xor*(source1: PGdkRegion, source2: PGdkRegion){.cdecl,
     dynlib: gdklib, importc: "gdk_region_xor".}
-proc gdk_region_spans_intersect_foreach*(region: PGdkRegion, spans: PGdkSpan, 
+proc gdk_region_spans_intersect_foreach*(region: PGdkRegion, spans: PGdkSpan,
     n_spans: int32, sorted: gboolean, `function`: TGdkSpanFunc, data: gpointer){.
     cdecl, dynlib: gdklib, importc: "gdk_region_spans_intersect_foreach".}
-proc gdk_rgb_find_color*(colormap: PGdkColormap, color: PGdkColor){.cdecl, 
+proc gdk_rgb_find_color*(colormap: PGdkColormap, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_rgb_find_color".}
-proc gdk_draw_rgb_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint, 
-                         width: gint, height: gint, dith: TGdkRgbDither, 
-                         rgb_buf: Pguchar, rowstride: gint){.cdecl, 
+proc gdk_draw_rgb_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint,
+                         width: gint, height: gint, dith: TGdkRgbDither,
+                         rgb_buf: Pguchar, rowstride: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_draw_rgb_image".}
-proc gdk_draw_rgb_image_dithalign*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, 
-                                   y: gint, width: gint, height: gint, 
-                                   dith: TGdkRgbDither, rgb_buf: Pguchar, 
+proc gdk_draw_rgb_image_dithalign*(drawable: PGdkDrawable, gc: PGdkGC, x: gint,
+                                   y: gint, width: gint, height: gint,
+                                   dith: TGdkRgbDither, rgb_buf: Pguchar,
                                    rowstride: gint, xdith: gint, ydith: gint){.
     cdecl, dynlib: gdklib, importc: "gdk_draw_rgb_image_dithalign".}
-proc gdk_draw_rgb_32_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, 
-                            y: gint, width: gint, height: gint, 
+proc gdk_draw_rgb_32_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint,
+                            y: gint, width: gint, height: gint,
                             dith: TGdkRgbDither, buf: Pguchar, rowstride: gint){.
     cdecl, dynlib: gdklib, importc: "gdk_draw_rgb_32_image".}
-proc gdk_draw_rgb_32_image_dithalign*(drawable: PGdkDrawable, gc: PGdkGC, 
-                                      x: gint, y: gint, width: gint, 
-                                      height: gint, dith: TGdkRgbDither, 
-                                      buf: Pguchar, rowstride: gint, 
-                                      xdith: gint, ydith: gint){.cdecl, 
+proc gdk_draw_rgb_32_image_dithalign*(drawable: PGdkDrawable, gc: PGdkGC,
+                                      x: gint, y: gint, width: gint,
+                                      height: gint, dith: TGdkRgbDither,
+                                      buf: Pguchar, rowstride: gint,
+                                      xdith: gint, ydith: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_draw_rgb_32_image_dithalign".}
-proc gdk_draw_gray_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint, 
-                          width: gint, height: gint, dith: TGdkRgbDither, 
-                          buf: Pguchar, rowstride: gint){.cdecl, dynlib: gdklib, 
+proc gdk_draw_gray_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, y: gint,
+                          width: gint, height: gint, dith: TGdkRgbDither,
+                          buf: Pguchar, rowstride: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_gray_image".}
-proc gdk_draw_indexed_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint, 
-                             y: gint, width: gint, height: gint, 
-                             dith: TGdkRgbDither, buf: Pguchar, rowstride: gint, 
-                             cmap: PGdkRgbCmap){.cdecl, dynlib: gdklib, 
+proc gdk_draw_indexed_image*(drawable: PGdkDrawable, gc: PGdkGC, x: gint,
+                             y: gint, width: gint, height: gint,
+                             dith: TGdkRgbDither, buf: Pguchar, rowstride: gint,
+                             cmap: PGdkRgbCmap){.cdecl, dynlib: gdklib,
     importc: "gdk_draw_indexed_image".}
-proc gdk_rgb_cmap_new*(colors: Pguint32, n_colors: gint): PGdkRgbCmap{.cdecl, 
+proc gdk_rgb_cmap_new*(colors: Pguint32, n_colors: gint): PGdkRgbCmap{.cdecl,
     dynlib: gdklib, importc: "gdk_rgb_cmap_new".}
-proc gdk_rgb_cmap_free*(cmap: PGdkRgbCmap){.cdecl, dynlib: gdklib, 
+proc gdk_rgb_cmap_free*(cmap: PGdkRgbCmap){.cdecl, dynlib: gdklib,
     importc: "gdk_rgb_cmap_free".}
-proc gdk_rgb_set_verbose*(verbose: gboolean){.cdecl, dynlib: gdklib, 
+proc gdk_rgb_set_verbose*(verbose: gboolean){.cdecl, dynlib: gdklib,
     importc: "gdk_rgb_set_verbose".}
-proc gdk_rgb_set_install*(install: gboolean){.cdecl, dynlib: gdklib, 
+proc gdk_rgb_set_install*(install: gboolean){.cdecl, dynlib: gdklib,
     importc: "gdk_rgb_set_install".}
-proc gdk_rgb_set_min_colors*(min_colors: gint){.cdecl, dynlib: gdklib, 
+proc gdk_rgb_set_min_colors*(min_colors: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_rgb_set_min_colors".}
 proc GDK_TYPE_DISPLAY*(): GType
 proc GDK_DISPLAY_OBJECT*(anObject: pointer): PGdkDisplay
@@ -2961,46 +2960,46 @@ proc GDK_DISPLAY_CLASS*(klass: pointer): PGdkDisplayClass
 proc GDK_IS_DISPLAY*(anObject: pointer): bool
 proc GDK_IS_DISPLAY_CLASS*(klass: pointer): bool
 proc GDK_DISPLAY_GET_CLASS*(obj: pointer): PGdkDisplayClass
-proc gdk_display_open*(display_name: cstring): PGdkDisplay{.cdecl, 
+proc gdk_display_open*(display_name: cstring): PGdkDisplay{.cdecl,
     dynlib: gdklib, importc: "gdk_display_open".}
-proc gdk_display_get_name*(display: PGdkDisplay): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_display_get_name*(display: PGdkDisplay): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_display_get_name".}
-proc gdk_display_get_n_screens*(display: PGdkDisplay): gint{.cdecl, 
+proc gdk_display_get_n_screens*(display: PGdkDisplay): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_display_get_n_screens".}
 proc gdk_display_get_screen*(display: PGdkDisplay, screen_num: gint): PGdkScreen{.
     cdecl, dynlib: gdklib, importc: "gdk_display_get_screen".}
-proc gdk_display_get_default_screen*(display: PGdkDisplay): PGdkScreen{.cdecl, 
+proc gdk_display_get_default_screen*(display: PGdkDisplay): PGdkScreen{.cdecl,
     dynlib: gdklib, importc: "gdk_display_get_default_screen".}
-proc gdk_display_pointer_ungrab*(display: PGdkDisplay, time: guint32){.cdecl, 
+proc gdk_display_pointer_ungrab*(display: PGdkDisplay, time: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_display_pointer_ungrab".}
-proc gdk_display_keyboard_ungrab*(display: PGdkDisplay, time: guint32){.cdecl, 
+proc gdk_display_keyboard_ungrab*(display: PGdkDisplay, time: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_display_keyboard_ungrab".}
-proc gdk_display_pointer_is_grabbed*(display: PGdkDisplay): gboolean{.cdecl, 
+proc gdk_display_pointer_is_grabbed*(display: PGdkDisplay): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_display_pointer_is_grabbed".}
-proc gdk_display_beep*(display: PGdkDisplay){.cdecl, dynlib: gdklib, 
+proc gdk_display_beep*(display: PGdkDisplay){.cdecl, dynlib: gdklib,
     importc: "gdk_display_beep".}
-proc gdk_display_sync*(display: PGdkDisplay){.cdecl, dynlib: gdklib, 
+proc gdk_display_sync*(display: PGdkDisplay){.cdecl, dynlib: gdklib,
     importc: "gdk_display_sync".}
-proc gdk_display_close*(display: PGdkDisplay){.cdecl, dynlib: gdklib, 
+proc gdk_display_close*(display: PGdkDisplay){.cdecl, dynlib: gdklib,
     importc: "gdk_display_close".}
-proc gdk_display_list_devices*(display: PGdkDisplay): PGList{.cdecl, 
+proc gdk_display_list_devices*(display: PGdkDisplay): PGList{.cdecl,
     dynlib: gdklib, importc: "gdk_display_list_devices".}
-proc gdk_display_get_event*(display: PGdkDisplay): PGdkEvent{.cdecl, 
+proc gdk_display_get_event*(display: PGdkDisplay): PGdkEvent{.cdecl,
     dynlib: gdklib, importc: "gdk_display_get_event".}
-proc gdk_display_peek_event*(display: PGdkDisplay): PGdkEvent{.cdecl, 
+proc gdk_display_peek_event*(display: PGdkDisplay): PGdkEvent{.cdecl,
     dynlib: gdklib, importc: "gdk_display_peek_event".}
-proc gdk_display_put_event*(display: PGdkDisplay, event: PGdkEvent){.cdecl, 
+proc gdk_display_put_event*(display: PGdkDisplay, event: PGdkEvent){.cdecl,
     dynlib: gdklib, importc: "gdk_display_put_event".}
-proc gdk_display_add_client_message_filter*(display: PGdkDisplay, 
-    message_type: TGdkAtom, func: TGdkFilterFunc, data: gpointer){.cdecl, 
+proc gdk_display_add_client_message_filter*(display: PGdkDisplay,
+    message_type: TGdkAtom, func: TGdkFilterFunc, data: gpointer){.cdecl,
     dynlib: gdklib, importc: "gdk_display_add_client_message_filter".}
 proc gdk_display_set_double_click_time*(display: PGdkDisplay, msec: guint){.
     cdecl, dynlib: gdklib, importc: "gdk_display_set_double_click_time".}
 proc gdk_display_set_sm_client_id*(display: PGdkDisplay, sm_client_id: cstring){.
     cdecl, dynlib: gdklib, importc: "gdk_display_set_sm_client_id".}
-proc gdk_set_default_display*(display: PGdkDisplay){.cdecl, dynlib: gdklib, 
+proc gdk_set_default_display*(display: PGdkDisplay){.cdecl, dynlib: gdklib,
     importc: "gdk_set_default_display".}
-proc gdk_get_default_display*(): PGdkDisplay{.cdecl, dynlib: gdklib, 
+proc gdk_get_default_display*(): PGdkDisplay{.cdecl, dynlib: gdklib,
     importc: "gdk_get_default_display".}
 proc GDK_TYPE_SCREEN*(): GType
 proc GDK_SCREEN*(anObject: Pointer): PGdkScreen
@@ -3008,45 +3007,45 @@ proc GDK_SCREEN_CLASS*(klass: Pointer): PGdkScreenClass
 proc GDK_IS_SCREEN*(anObject: Pointer): bool
 proc GDK_IS_SCREEN_CLASS*(klass: Pointer): bool
 proc GDK_SCREEN_GET_CLASS*(obj: Pointer): PGdkScreenClass
-proc gdk_screen_get_default_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl, 
+proc gdk_screen_get_default_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_default_colormap".}
 proc gdk_screen_set_default_colormap*(screen: PGdkScreen, colormap: PGdkColormap){.
     cdecl, dynlib: gdklib, importc: "gdk_screen_set_default_colormap".}
-proc gdk_screen_get_system_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl, 
+proc gdk_screen_get_system_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_system_colormap".}
-proc gdk_screen_get_system_visual*(screen: PGdkScreen): PGdkVisual{.cdecl, 
+proc gdk_screen_get_system_visual*(screen: PGdkScreen): PGdkVisual{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_system_visual".}
-proc gdk_screen_get_rgb_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl, 
+proc gdk_screen_get_rgb_colormap*(screen: PGdkScreen): PGdkColormap{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_rgb_colormap".}
-proc gdk_screen_get_rgb_visual*(screen: PGdkScreen): PGdkVisual{.cdecl, 
+proc gdk_screen_get_rgb_visual*(screen: PGdkScreen): PGdkVisual{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_rgb_visual".}
-proc gdk_screen_get_root_window*(screen: PGdkScreen): PGdkWindow{.cdecl, 
+proc gdk_screen_get_root_window*(screen: PGdkScreen): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_root_window".}
-proc gdk_screen_get_display*(screen: PGdkScreen): PGdkDisplay{.cdecl, 
+proc gdk_screen_get_display*(screen: PGdkScreen): PGdkDisplay{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_display".}
-proc gdk_screen_get_number*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib, 
+proc gdk_screen_get_number*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_screen_get_number".}
-proc gdk_screen_get_window_at_pointer*(screen: PGdkScreen, win_x: Pgint, 
-                                       win_y: Pgint): PGdkWindow{.cdecl, 
+proc gdk_screen_get_window_at_pointer*(screen: PGdkScreen, win_x: Pgint,
+                                       win_y: Pgint): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_window_at_pointer".}
-proc gdk_screen_get_width*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib, 
+proc gdk_screen_get_width*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_screen_get_width".}
-proc gdk_screen_get_height*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib, 
+proc gdk_screen_get_height*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_screen_get_height".}
-proc gdk_screen_get_width_mm*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib, 
+proc gdk_screen_get_width_mm*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_screen_get_width_mm".}
-proc gdk_screen_get_height_mm*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib, 
+proc gdk_screen_get_height_mm*(screen: PGdkScreen): gint{.cdecl, dynlib: gdklib,
     importc: "gdk_screen_get_height_mm".}
-proc gdk_screen_close*(screen: PGdkScreen){.cdecl, dynlib: gdklib, 
+proc gdk_screen_close*(screen: PGdkScreen){.cdecl, dynlib: gdklib,
     importc: "gdk_screen_close".}
-proc gdk_screen_list_visuals*(screen: PGdkScreen): PGList{.cdecl, 
+proc gdk_screen_list_visuals*(screen: PGdkScreen): PGList{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_list_visuals".}
-proc gdk_screen_get_toplevel_windows*(screen: PGdkScreen): PGList{.cdecl, 
+proc gdk_screen_get_toplevel_windows*(screen: PGdkScreen): PGList{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_toplevel_windows".}
-proc gdk_screen_get_n_monitors*(screen: PGdkScreen): gint{.cdecl, 
+proc gdk_screen_get_n_monitors*(screen: PGdkScreen): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_n_monitors".}
-proc gdk_screen_get_monitor_geometry*(screen: PGdkScreen, monitor_num: gint, 
-                                      dest: PGdkRectangle){.cdecl, 
+proc gdk_screen_get_monitor_geometry*(screen: PGdkScreen, monitor_num: gint,
+                                      dest: PGdkRectangle){.cdecl,
     dynlib: gdklib, importc: "gdk_screen_get_monitor_geometry".}
 proc gdk_screen_get_monitor_at_point*(screen: PGdkScreen, x: gint, y: gint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_screen_get_monitor_at_point".}
@@ -3054,7 +3053,7 @@ proc gdk_screen_get_monitor_at_window*(screen: PGdkScreen, window: PGdkWindow): 
     cdecl, dynlib: gdklib, importc: "gdk_screen_get_monitor_at_window".}
 proc gdk_screen_broadcast_client_message*(screen: PGdkScreen, event: PGdkEvent){.
     cdecl, dynlib: gdklib, importc: "gdk_screen_broadcast_client_message".}
-proc gdk_get_default_screen*(): PGdkScreen{.cdecl, dynlib: gdklib, 
+proc gdk_get_default_screen*(): PGdkScreen{.cdecl, dynlib: gdklib,
     importc: "gdk_get_default_screen".}
 proc gdk_screen_get_setting*(screen: PGdkScreen, name: cstring, value: PGValue): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_screen_get_setting".}
@@ -3074,22 +3073,22 @@ proc GDK_SELECTION_TYPE_INTEGER*(): TGdkAtom
 proc GDK_SELECTION_TYPE_PIXMAP*(): TGdkAtom
 proc GDK_SELECTION_TYPE_WINDOW*(): TGdkAtom
 proc GDK_SELECTION_TYPE_STRING*(): TGdkAtom
-proc gdk_selection_owner_set_for_display*(display: PGdkDisplay, 
+proc gdk_selection_owner_set_for_display*(display: PGdkDisplay,
     owner: PGdkWindow, selection: TGdkAtom, time: guint32, send_event: gboolean): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_selection_owner_set_for_display".}
-proc gdk_selection_owner_get_for_display*(display: PGdkDisplay, 
+proc gdk_selection_owner_get_for_display*(display: PGdkDisplay,
     selection: TGdkAtom): PGdkWindow{.cdecl, dynlib: gdklib, importc: "gdk_selection_owner_get_for_display".}
-proc gdk_selection_convert*(requestor: PGdkWindow, selection: TGdkAtom, 
-                            target: TGdkAtom, time: guint32){.cdecl, 
+proc gdk_selection_convert*(requestor: PGdkWindow, selection: TGdkAtom,
+                            target: TGdkAtom, time: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_selection_convert".}
-proc gdk_selection_property_get*(requestor: PGdkWindow, data: PPguchar, 
+proc gdk_selection_property_get*(requestor: PGdkWindow, data: PPguchar,
                                  prop_type: PGdkAtom, prop_format: Pgint): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_selection_property_get".}
-proc gdk_selection_send_notify_for_display*(display: PGdkDisplay, 
-    requestor: guint32, selection: TGdkAtom, target: TGdkAtom, 
-    `property`: TGdkAtom, time: guint32){.cdecl, dynlib: gdklib, 
+proc gdk_selection_send_notify_for_display*(display: PGdkDisplay,
+    requestor: guint32, selection: TGdkAtom, target: TGdkAtom,
+    `property`: TGdkAtom, time: guint32){.cdecl, dynlib: gdklib,
     importc: "gdk_selection_send_notify_for_display".}
-const 
+const
   GDK_CURRENT_TIME* = 0
   GDK_PARENT_RELATIVE* = 1
   GDK_OK* = 0
@@ -3131,9 +3130,9 @@ proc GDK_VISUAL_CLASS*(klass: Pointer): PGdkVisualClass
 proc GDK_IS_VISUAL*(anObject: Pointer): bool
 proc GDK_IS_VISUAL_CLASS*(klass: Pointer): bool
 proc GDK_VISUAL_GET_CLASS*(obj: Pointer): PGdkVisualClass
-proc gdk_visual_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_visual_get_type*(): GType{.cdecl, dynlib: gdklib,
                                     importc: "gdk_visual_get_type".}
-const 
+const
   GDK_WA_TITLE* = 1 shl 1
   GDK_WA_X* = 1 shl 2
   GDK_WA_Y* = 1 shl 3
@@ -3182,776 +3181,776 @@ proc GDK_IS_WINDOW*(anObject: Pointer): bool
 proc GDK_IS_WINDOW_CLASS*(klass: Pointer): bool
 proc GDK_WINDOW_GET_CLASS*(obj: Pointer): PGdkWindowObjectClass
 proc GDK_WINDOW_OBJECT*(anObject: Pointer): PGdkWindowObject
-const 
-  bm_TGdkWindowObject_guffaw_gravity* = 0x00000001
-  bp_TGdkWindowObject_guffaw_gravity* = 0
-  bm_TGdkWindowObject_input_only* = 0x00000002
-  bp_TGdkWindowObject_input_only* = 1
-  bm_TGdkWindowObject_modal_hint* = 0x00000004
-  bp_TGdkWindowObject_modal_hint* = 2
-  bm_TGdkWindowObject_destroyed* = 0x00000018
-  bp_TGdkWindowObject_destroyed* = 3
+const
+  bm_TGdkWindowObject_guffaw_gravity* = 0x00000001'i16
+  bp_TGdkWindowObject_guffaw_gravity* = 0'i16
+  bm_TGdkWindowObject_input_only* = 0x00000002'i16
+  bp_TGdkWindowObject_input_only* = 1'i16
+  bm_TGdkWindowObject_modal_hint* = 0x00000004'i16
+  bp_TGdkWindowObject_modal_hint* = 2'i16
+  bm_TGdkWindowObject_destroyed* = 0x00000018'i16
+  bp_TGdkWindowObject_destroyed* = 3'i16
 
 proc GdkWindowObject_guffaw_gravity*(a: var TGdkWindowObject): guint
-proc GdkWindowObject_set_guffaw_gravity*(a: var TGdkWindowObject, 
+proc GdkWindowObject_set_guffaw_gravity*(a: var TGdkWindowObject,
     `guffaw_gravity`: guint)
 proc GdkWindowObject_input_only*(a: var TGdkWindowObject): guint
-proc GdkWindowObject_set_input_only*(a: var TGdkWindowObject, 
+proc GdkWindowObject_set_input_only*(a: var TGdkWindowObject,
                                      `input_only`: guint)
 proc GdkWindowObject_modal_hint*(a: var TGdkWindowObject): guint
-proc GdkWindowObject_set_modal_hint*(a: var TGdkWindowObject, 
+proc GdkWindowObject_set_modal_hint*(a: var TGdkWindowObject,
                                      `modal_hint`: guint)
 proc GdkWindowObject_destroyed*(a: var TGdkWindowObject): guint
 proc GdkWindowObject_set_destroyed*(a: var TGdkWindowObject, `destroyed`: guint)
-proc gdk_window_object_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_window_object_get_type*(): GType{.cdecl, dynlib: gdklib,
     importc: "gdk_window_object_get_type".}
-proc gdk_window_new*(parent: PGdkWindow, attributes: PGdkWindowAttr, 
-                     attributes_mask: gint): PGdkWindow{.cdecl, dynlib: gdklib, 
+proc gdk_window_new*(parent: PGdkWindow, attributes: PGdkWindowAttr,
+                     attributes_mask: gint): PGdkWindow{.cdecl, dynlib: gdklib,
     importc: "gdk_window_new".}
-proc gdk_window_destroy*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_destroy*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_destroy".}
-proc gdk_window_get_window_type*(window: PGdkWindow): TGdkWindowType{.cdecl, 
+proc gdk_window_get_window_type*(window: PGdkWindow): TGdkWindowType{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_window_type".}
-proc gdk_window_at_pointer*(win_x: Pgint, win_y: Pgint): PGdkWindow{.cdecl, 
+proc gdk_window_at_pointer*(win_x: Pgint, win_y: Pgint): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_window_at_pointer".}
-proc gdk_window_show*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_show*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_show".}
-proc gdk_window_hide*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_hide*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_hide".}
-proc gdk_window_withdraw*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_withdraw*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_withdraw".}
-proc gdk_window_show_unraised*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_show_unraised*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_show_unraised".}
-proc gdk_window_move*(window: PGdkWindow, x: gint, y: gint){.cdecl, 
+proc gdk_window_move*(window: PGdkWindow, x: gint, y: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_move".}
-proc gdk_window_resize*(window: PGdkWindow, width: gint, height: gint){.cdecl, 
+proc gdk_window_resize*(window: PGdkWindow, width: gint, height: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_resize".}
-proc gdk_window_move_resize*(window: PGdkWindow, x: gint, y: gint, width: gint, 
-                             height: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_move_resize*(window: PGdkWindow, x: gint, y: gint, width: gint,
+                             height: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_move_resize".}
-proc gdk_window_reparent*(window: PGdkWindow, new_parent: PGdkWindow, x: gint, 
-                          y: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_reparent*(window: PGdkWindow, new_parent: PGdkWindow, x: gint,
+                          y: gint){.cdecl, dynlib: gdklib,
                                     importc: "gdk_window_reparent".}
-proc gdk_window_clear*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_clear*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_clear".}
-proc gdk_window_clear_area*(window: PGdkWindow, x: gint, y: gint, width: gint, 
-                            height: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_clear_area*(window: PGdkWindow, x: gint, y: gint, width: gint,
+                            height: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_clear_area".}
-proc gdk_window_clear_area_e*(window: PGdkWindow, x: gint, y: gint, width: gint, 
-                              height: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_clear_area_e*(window: PGdkWindow, x: gint, y: gint, width: gint,
+                              height: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_clear_area_e".}
-proc gdk_window_raise*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_raise*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_raise".}
-proc gdk_window_lower*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_lower*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_lower".}
-proc gdk_window_focus*(window: PGdkWindow, timestamp: guint32){.cdecl, 
+proc gdk_window_focus*(window: PGdkWindow, timestamp: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_window_focus".}
-proc gdk_window_set_user_data*(window: PGdkWindow, user_data: gpointer){.cdecl, 
+proc gdk_window_set_user_data*(window: PGdkWindow, user_data: gpointer){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_user_data".}
-proc gdk_window_set_override_redirect*(window: PGdkWindow, 
-                                       override_redirect: gboolean){.cdecl, 
+proc gdk_window_set_override_redirect*(window: PGdkWindow,
+                                       override_redirect: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_override_redirect".}
-proc gdk_window_add_filter*(window: PGdkWindow, `function`: TGdkFilterFunc, 
-                            data: gpointer){.cdecl, dynlib: gdklib, 
+proc gdk_window_add_filter*(window: PGdkWindow, `function`: TGdkFilterFunc,
+                            data: gpointer){.cdecl, dynlib: gdklib,
     importc: "gdk_window_add_filter".}
-proc gdk_window_remove_filter*(window: PGdkWindow, `function`: TGdkFilterFunc, 
-                               data: gpointer){.cdecl, dynlib: gdklib, 
+proc gdk_window_remove_filter*(window: PGdkWindow, `function`: TGdkFilterFunc,
+                               data: gpointer){.cdecl, dynlib: gdklib,
     importc: "gdk_window_remove_filter".}
-proc gdk_window_scroll*(window: PGdkWindow, dx: gint, dy: gint){.cdecl, 
+proc gdk_window_scroll*(window: PGdkWindow, dx: gint, dy: gint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_scroll".}
-proc gdk_window_shape_combine_mask*(window: PGdkWindow, mask: PGdkBitmap, 
-                                    x: gint, y: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_shape_combine_mask*(window: PGdkWindow, mask: PGdkBitmap,
+                                    x: gint, y: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_shape_combine_mask".}
-proc gdk_window_shape_combine_region*(window: PGdkWindow, 
-                                      shape_region: PGdkRegion, offset_x: gint, 
-                                      offset_y: gint){.cdecl, dynlib: gdklib, 
+proc gdk_window_shape_combine_region*(window: PGdkWindow,
+                                      shape_region: PGdkRegion, offset_x: gint,
+                                      offset_y: gint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_shape_combine_region".}
-proc gdk_window_set_child_shapes*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_set_child_shapes*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_set_child_shapes".}
-proc gdk_window_merge_child_shapes*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_merge_child_shapes*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_merge_child_shapes".}
-proc gdk_window_is_visible*(window: PGdkWindow): gboolean{.cdecl, 
+proc gdk_window_is_visible*(window: PGdkWindow): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_window_is_visible".}
-proc gdk_window_is_viewable*(window: PGdkWindow): gboolean{.cdecl, 
+proc gdk_window_is_viewable*(window: PGdkWindow): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_window_is_viewable".}
-proc gdk_window_get_state*(window: PGdkWindow): TGdkWindowState{.cdecl, 
+proc gdk_window_get_state*(window: PGdkWindow): TGdkWindowState{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_state".}
 proc gdk_window_set_static_gravities*(window: PGdkWindow, use_static: gboolean): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_window_set_static_gravities".}
-proc gdk_window_foreign_new_for_display*(display: PGdkDisplay, 
-    anid: TGdkNativeWindow): PGdkWindow{.cdecl, dynlib: gdklib, 
+proc gdk_window_foreign_new_for_display*(display: PGdkDisplay,
+    anid: TGdkNativeWindow): PGdkWindow{.cdecl, dynlib: gdklib,
     importc: "gdk_window_foreign_new_for_display".}
 proc gdk_window_lookup_for_display*(display: PGdkDisplay, anid: TGdkNativeWindow): PGdkWindow{.
     cdecl, dynlib: gdklib, importc: "gdk_window_lookup_for_display".}
 proc gdk_window_set_type_hint*(window: PGdkWindow, hint: TGdkWindowTypeHint){.
     cdecl, dynlib: gdklib, importc: "gdk_window_set_type_hint".}
-proc gdk_window_set_modal_hint*(window: PGdkWindow, modal: gboolean){.cdecl, 
+proc gdk_window_set_modal_hint*(window: PGdkWindow, modal: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_modal_hint".}
-proc gdk_window_set_geometry_hints*(window: PGdkWindow, geometry: PGdkGeometry, 
-                                    geom_mask: TGdkWindowHints){.cdecl, 
+proc gdk_window_set_geometry_hints*(window: PGdkWindow, geometry: PGdkGeometry,
+                                    geom_mask: TGdkWindowHints){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_geometry_hints".}
-proc gdk_set_sm_client_id*(sm_client_id: cstring){.cdecl, dynlib: gdklib, 
+proc gdk_set_sm_client_id*(sm_client_id: cstring){.cdecl, dynlib: gdklib,
     importc: "gdk_set_sm_client_id".}
 proc gdk_window_begin_paint_rect*(window: PGdkWindow, rectangle: PGdkRectangle){.
     cdecl, dynlib: gdklib, importc: "gdk_window_begin_paint_rect".}
 proc gdk_window_begin_paint_region*(window: PGdkWindow, region: PGdkRegion){.
     cdecl, dynlib: gdklib, importc: "gdk_window_begin_paint_region".}
-proc gdk_window_end_paint*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_end_paint*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_end_paint".}
-proc gdk_window_set_title*(window: PGdkWindow, title: cstring){.cdecl, 
+proc gdk_window_set_title*(window: PGdkWindow, title: cstring){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_title".}
-proc gdk_window_set_role*(window: PGdkWindow, role: cstring){.cdecl, 
+proc gdk_window_set_role*(window: PGdkWindow, role: cstring){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_role".}
 proc gdk_window_set_transient_for*(window: PGdkWindow, parent: PGdkWindow){.
     cdecl, dynlib: gdklib, importc: "gdk_window_set_transient_for".}
-proc gdk_window_set_background*(window: PGdkWindow, color: PGdkColor){.cdecl, 
+proc gdk_window_set_background*(window: PGdkWindow, color: PGdkColor){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_background".}
-proc gdk_window_set_back_pixmap*(window: PGdkWindow, pixmap: PGdkPixmap, 
-                                 parent_relative: gboolean){.cdecl, 
+proc gdk_window_set_back_pixmap*(window: PGdkWindow, pixmap: PGdkPixmap,
+                                 parent_relative: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_back_pixmap".}
-proc gdk_window_set_cursor*(window: PGdkWindow, cursor: PGdkCursor){.cdecl, 
+proc gdk_window_set_cursor*(window: PGdkWindow, cursor: PGdkCursor){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_cursor".}
-proc gdk_window_get_user_data*(window: PGdkWindow, data: gpointer){.cdecl, 
+proc gdk_window_get_user_data*(window: PGdkWindow, data: gpointer){.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_user_data".}
-proc gdk_window_get_geometry*(window: PGdkWindow, x: Pgint, y: Pgint, 
-                              width: Pgint, height: Pgint, depth: Pgint){.cdecl, 
+proc gdk_window_get_geometry*(window: PGdkWindow, x: Pgint, y: Pgint,
+                              width: Pgint, height: Pgint, depth: Pgint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_geometry".}
-proc gdk_window_get_position*(window: PGdkWindow, x: Pgint, y: Pgint){.cdecl, 
+proc gdk_window_get_position*(window: PGdkWindow, x: Pgint, y: Pgint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_position".}
 proc gdk_window_get_origin*(window: PGdkWindow, x: Pgint, y: Pgint): gint{.
     cdecl, dynlib: gdklib, importc: "gdk_window_get_origin".}
-proc gdk_window_get_root_origin*(window: PGdkWindow, x: Pgint, y: Pgint){.cdecl, 
+proc gdk_window_get_root_origin*(window: PGdkWindow, x: Pgint, y: Pgint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_root_origin".}
 proc gdk_window_get_frame_extents*(window: PGdkWindow, rect: PGdkRectangle){.
     cdecl, dynlib: gdklib, importc: "gdk_window_get_frame_extents".}
-proc gdk_window_get_pointer*(window: PGdkWindow, x: Pgint, y: Pgint, 
-                             mask: PGdkModifierType): PGdkWindow{.cdecl, 
+proc gdk_window_get_pointer*(window: PGdkWindow, x: Pgint, y: Pgint,
+                             mask: PGdkModifierType): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_pointer".}
-proc gdk_window_get_parent*(window: PGdkWindow): PGdkWindow{.cdecl, 
+proc gdk_window_get_parent*(window: PGdkWindow): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_parent".}
-proc gdk_window_get_toplevel*(window: PGdkWindow): PGdkWindow{.cdecl, 
+proc gdk_window_get_toplevel*(window: PGdkWindow): PGdkWindow{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_toplevel".}
-proc gdk_window_get_children*(window: PGdkWindow): PGList{.cdecl, 
+proc gdk_window_get_children*(window: PGdkWindow): PGList{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_children".}
-proc gdk_window_peek_children*(window: PGdkWindow): PGList{.cdecl, 
+proc gdk_window_peek_children*(window: PGdkWindow): PGList{.cdecl,
     dynlib: gdklib, importc: "gdk_window_peek_children".}
-proc gdk_window_get_events*(window: PGdkWindow): TGdkEventMask{.cdecl, 
+proc gdk_window_get_events*(window: PGdkWindow): TGdkEventMask{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_events".}
 proc gdk_window_set_events*(window: PGdkWindow, event_mask: TGdkEventMask){.
     cdecl, dynlib: gdklib, importc: "gdk_window_set_events".}
-proc gdk_window_set_icon_list*(window: PGdkWindow, pixbufs: PGList){.cdecl, 
+proc gdk_window_set_icon_list*(window: PGdkWindow, pixbufs: PGList){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_icon_list".}
-proc gdk_window_set_icon*(window: PGdkWindow, icon_window: PGdkWindow, 
-                          pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl, 
+proc gdk_window_set_icon*(window: PGdkWindow, icon_window: PGdkWindow,
+                          pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_icon".}
-proc gdk_window_set_icon_name*(window: PGdkWindow, name: cstring){.cdecl, 
+proc gdk_window_set_icon_name*(window: PGdkWindow, name: cstring){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_icon_name".}
-proc gdk_window_set_group*(window: PGdkWindow, leader: PGdkWindow){.cdecl, 
+proc gdk_window_set_group*(window: PGdkWindow, leader: PGdkWindow){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_group".}
-proc gdk_window_set_decorations*(window: PGdkWindow, 
-                                 decorations: TGdkWMDecoration){.cdecl, 
+proc gdk_window_set_decorations*(window: PGdkWindow,
+                                 decorations: TGdkWMDecoration){.cdecl,
     dynlib: gdklib, importc: "gdk_window_set_decorations".}
-proc gdk_window_get_decorations*(window: PGdkWindow, 
+proc gdk_window_get_decorations*(window: PGdkWindow,
                                  decorations: PGdkWMDecoration): gboolean{.
     cdecl, dynlib: gdklib, importc: "gdk_window_get_decorations".}
 proc gdk_window_set_functions*(window: PGdkWindow, functions: TGdkWMFunction){.
     cdecl, dynlib: gdklib, importc: "gdk_window_set_functions".}
-proc gdk_window_iconify*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_iconify*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_iconify".}
-proc gdk_window_deiconify*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_deiconify*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_deiconify".}
-proc gdk_window_stick*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_stick*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_stick".}
-proc gdk_window_unstick*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_unstick*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_unstick".}
-proc gdk_window_maximize*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_maximize*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_maximize".}
-proc gdk_window_unmaximize*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_unmaximize*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_unmaximize".}
-proc gdk_window_register_dnd*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_register_dnd*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_register_dnd".}
-proc gdk_window_begin_resize_drag*(window: PGdkWindow, edge: TGdkWindowEdge, 
-                                   button: gint, root_x: gint, root_y: gint, 
-                                   timestamp: guint32){.cdecl, dynlib: gdklib, 
+proc gdk_window_begin_resize_drag*(window: PGdkWindow, edge: TGdkWindowEdge,
+                                   button: gint, root_x: gint, root_y: gint,
+                                   timestamp: guint32){.cdecl, dynlib: gdklib,
     importc: "gdk_window_begin_resize_drag".}
-proc gdk_window_begin_move_drag*(window: PGdkWindow, button: gint, root_x: gint, 
-                                 root_y: gint, timestamp: guint32){.cdecl, 
+proc gdk_window_begin_move_drag*(window: PGdkWindow, button: gint, root_x: gint,
+                                 root_y: gint, timestamp: guint32){.cdecl,
     dynlib: gdklib, importc: "gdk_window_begin_move_drag".}
-proc gdk_window_invalidate_rect*(window: PGdkWindow, rect: PGdkRectangle, 
-                                 invalidate_children: gboolean){.cdecl, 
+proc gdk_window_invalidate_rect*(window: PGdkWindow, rect: PGdkRectangle,
+                                 invalidate_children: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_window_invalidate_rect".}
-proc gdk_window_invalidate_region*(window: PGdkWindow, region: PGdkRegion, 
-                                   invalidate_children: gboolean){.cdecl, 
+proc gdk_window_invalidate_region*(window: PGdkWindow, region: PGdkRegion,
+                                   invalidate_children: gboolean){.cdecl,
     dynlib: gdklib, importc: "gdk_window_invalidate_region".}
-proc gdk_window_invalidate_maybe_recurse*(window: PGdkWindow, 
-    region: PGdkRegion, 
-    child_func: gdk_window_invalidate_maybe_recurse_child_func, 
-    user_data: gpointer){.cdecl, dynlib: gdklib, 
+proc gdk_window_invalidate_maybe_recurse*(window: PGdkWindow,
+    region: PGdkRegion,
+    child_func: gdk_window_invalidate_maybe_recurse_child_func,
+    user_data: gpointer){.cdecl, dynlib: gdklib,
                           importc: "gdk_window_invalidate_maybe_recurse".}
-proc gdk_window_get_update_area*(window: PGdkWindow): PGdkRegion{.cdecl, 
+proc gdk_window_get_update_area*(window: PGdkWindow): PGdkRegion{.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_update_area".}
-proc gdk_window_freeze_updates*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_freeze_updates*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_freeze_updates".}
-proc gdk_window_thaw_updates*(window: PGdkWindow){.cdecl, dynlib: gdklib, 
+proc gdk_window_thaw_updates*(window: PGdkWindow){.cdecl, dynlib: gdklib,
     importc: "gdk_window_thaw_updates".}
 proc gdk_window_process_all_updates*(){.cdecl, dynlib: gdklib, importc: "gdk_window_process_all_updates".}
 proc gdk_window_process_updates*(window: PGdkWindow, update_children: gboolean){.
     cdecl, dynlib: gdklib, importc: "gdk_window_process_updates".}
-proc gdk_window_set_debug_updates*(setting: gboolean){.cdecl, dynlib: gdklib, 
+proc gdk_window_set_debug_updates*(setting: gboolean){.cdecl, dynlib: gdklib,
     importc: "gdk_window_set_debug_updates".}
-proc gdk_window_constrain_size*(geometry: PGdkGeometry, flags: guint, 
-                                width: gint, height: gint, new_width: Pgint, 
-                                new_height: Pgint){.cdecl, dynlib: gdklib, 
+proc gdk_window_constrain_size*(geometry: PGdkGeometry, flags: guint,
+                                width: gint, height: gint, new_width: Pgint,
+                                new_height: Pgint){.cdecl, dynlib: gdklib,
     importc: "gdk_window_constrain_size".}
-proc gdk_window_get_internal_paint_info*(window: PGdkWindow, 
-    e: var PGdkDrawable, x_offset: Pgint, y_offset: Pgint){.cdecl, 
+proc gdk_window_get_internal_paint_info*(window: PGdkWindow,
+    e: var PGdkDrawable, x_offset: Pgint, y_offset: Pgint){.cdecl,
     dynlib: gdklib, importc: "gdk_window_get_internal_paint_info".}
 proc gdk_set_pointer_hooks*(new_hooks: PGdkPointerHooks): PGdkPointerHooks{.
     cdecl, dynlib: gdklib, importc: "gdk_set_pointer_hooks".}
-proc gdk_get_default_root_window*(): PGdkWindow{.cdecl, dynlib: gdklib, 
+proc gdk_get_default_root_window*(): PGdkWindow{.cdecl, dynlib: gdklib,
     importc: "gdk_get_default_root_window".}
-proc gdk_parse_args*(argc: Pgint, v: var PPgchar){.cdecl, dynlib: gdklib, 
+proc gdk_parse_args*(argc: Pgint, v: var PPgchar){.cdecl, dynlib: gdklib,
     importc: "gdk_parse_args".}
-proc gdk_init*(argc: Pgint, v: var PPgchar){.cdecl, dynlib: gdklib, 
+proc gdk_init*(argc: Pgint, v: var PPgchar){.cdecl, dynlib: gdklib,
     importc: "gdk_init".}
-proc gdk_init_check*(argc: Pgint, v: var PPgchar): gboolean{.cdecl, 
+proc gdk_init_check*(argc: Pgint, v: var PPgchar): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_init_check".}
-when not defined(GDK_DISABLE_DEPRECATED): 
-  proc gdk_exit(error_code: gint){.cdecl, dynlib: gdklib, importc: "gdk_exit".}
+when not defined(GDK_DISABLE_DEPRECATED):
+  proc gdk_exit*(error_code: gint){.cdecl, dynlib: gdklib, importc: "gdk_exit".}
 proc gdk_set_locale*(): cstring{.cdecl, dynlib: gdklib, importc: "gdk_set_locale".}
-proc gdk_get_program_class*(): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_get_program_class*(): cstring{.cdecl, dynlib: gdklib,
                                         importc: "gdk_get_program_class".}
-proc gdk_set_program_class*(program_class: cstring){.cdecl, dynlib: gdklib, 
+proc gdk_set_program_class*(program_class: cstring){.cdecl, dynlib: gdklib,
     importc: "gdk_set_program_class".}
-proc gdk_error_trap_push*(){.cdecl, dynlib: gdklib, 
+proc gdk_error_trap_push*(){.cdecl, dynlib: gdklib,
                              importc: "gdk_error_trap_push".}
-proc gdk_error_trap_pop*(): gint{.cdecl, dynlib: gdklib, 
+proc gdk_error_trap_pop*(): gint{.cdecl, dynlib: gdklib,
                                   importc: "gdk_error_trap_pop".}
-when not defined(GDK_DISABLE_DEPRECATED): 
-  proc gdk_set_use_xshm(use_xshm: gboolean){.cdecl, dynlib: gdklib, 
+when not defined(GDK_DISABLE_DEPRECATED):
+  proc gdk_set_use_xshm*(use_xshm: gboolean){.cdecl, dynlib: gdklib,
       importc: "gdk_set_use_xshm".}
-  proc gdk_get_use_xshm(): gboolean{.cdecl, dynlib: gdklib, 
+  proc gdk_get_use_xshm*(): gboolean{.cdecl, dynlib: gdklib,
                                      importc: "gdk_get_use_xshm".}
-proc gdk_get_display*(): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_get_display*(): cstring{.cdecl, dynlib: gdklib,
                                  importc: "gdk_get_display".}
-proc gdk_get_display_arg_name*(): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_get_display_arg_name*(): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_get_display_arg_name".}
-when not defined(GDK_DISABLE_DEPRECATED): 
-  proc gdk_input_add_full(source: gint, condition: TGdkInputCondition, 
-                          `function`: TGdkInputFunction, data: gpointer, 
-                          destroy: TGdkDestroyNotify): gint{.cdecl, 
+when not defined(GDK_DISABLE_DEPRECATED):
+  proc gdk_input_add_full*(source: gint, condition: TGdkInputCondition,
+                          `function`: TGdkInputFunction, data: gpointer,
+                          destroy: TGdkDestroyNotify): gint{.cdecl,
       dynlib: gdklib, importc: "gdk_input_add_full".}
-  proc gdk_input_add(source: gint, condition: TGdkInputCondition, 
+  proc gdk_input_add*(source: gint, condition: TGdkInputCondition,
                      `function`: TGdkInputFunction, data: gpointer): gint{.
       cdecl, dynlib: gdklib, importc: "gdk_input_add".}
-  proc gdk_input_remove(tag: gint){.cdecl, dynlib: gdklib, 
+  proc gdk_input_remove*(tag: gint){.cdecl, dynlib: gdklib,
                                     importc: "gdk_input_remove".}
-proc gdk_pointer_grab*(window: PGdkWindow, owner_events: gboolean, 
-                       event_mask: TGdkEventMask, confine_to: PGdkWindow, 
+proc gdk_pointer_grab*(window: PGdkWindow, owner_events: gboolean,
+                       event_mask: TGdkEventMask, confine_to: PGdkWindow,
                        cursor: PGdkCursor, time: guint32): TGdkGrabStatus{.
     cdecl, dynlib: gdklib, importc: "gdk_pointer_grab".}
-proc gdk_keyboard_grab*(window: PGdkWindow, owner_events: gboolean, 
-                        time: guint32): TGdkGrabStatus{.cdecl, dynlib: gdklib, 
+proc gdk_keyboard_grab*(window: PGdkWindow, owner_events: gboolean,
+                        time: guint32): TGdkGrabStatus{.cdecl, dynlib: gdklib,
     importc: "gdk_keyboard_grab".}
-when not defined(GDK_MULTIHEAD_SAFE): 
-  proc gdk_pointer_ungrab(time: guint32){.cdecl, dynlib: gdklib, 
+when not defined(GDK_MULTIHEAD_SAFE):
+  proc gdk_pointer_ungrab*(time: guint32){.cdecl, dynlib: gdklib,
       importc: "gdk_pointer_ungrab".}
-  proc gdk_keyboard_ungrab(time: guint32){.cdecl, dynlib: gdklib, 
+  proc gdk_keyboard_ungrab*(time: guint32){.cdecl, dynlib: gdklib,
       importc: "gdk_keyboard_ungrab".}
-  proc gdk_pointer_is_grabbed(): gboolean{.cdecl, dynlib: gdklib, 
+  proc gdk_pointer_is_grabbed*(): gboolean{.cdecl, dynlib: gdklib,
       importc: "gdk_pointer_is_grabbed".}
-  proc gdk_screen_width(): gint{.cdecl, dynlib: gdklib, 
+  proc gdk_screen_width*(): gint{.cdecl, dynlib: gdklib,
                                  importc: "gdk_screen_width".}
-  proc gdk_screen_height(): gint{.cdecl, dynlib: gdklib, 
+  proc gdk_screen_height*(): gint{.cdecl, dynlib: gdklib,
                                   importc: "gdk_screen_height".}
-  proc gdk_screen_width_mm(): gint{.cdecl, dynlib: gdklib, 
+  proc gdk_screen_width_mm*(): gint{.cdecl, dynlib: gdklib,
                                     importc: "gdk_screen_width_mm".}
-  proc gdk_screen_height_mm(): gint{.cdecl, dynlib: gdklib, 
+  proc gdk_screen_height_mm*(): gint{.cdecl, dynlib: gdklib,
                                      importc: "gdk_screen_height_mm".}
-  proc gdk_beep(){.cdecl, dynlib: gdklib, importc: "gdk_beep".}
+  proc gdk_beep*(){.cdecl, dynlib: gdklib, importc: "gdk_beep".}
 proc gdk_flush*(){.cdecl, dynlib: gdklib, importc: "gdk_flush".}
-when not defined(GDK_MULTIHEAD_SAFE): 
-  proc gdk_set_double_click_time(msec: guint){.cdecl, dynlib: gdklib, 
+when not defined(GDK_MULTIHEAD_SAFE):
+  proc gdk_set_double_click_time*(msec: guint){.cdecl, dynlib: gdklib,
       importc: "gdk_set_double_click_time".}
-proc gdk_rectangle_intersect*(src1: PGdkRectangle, src2: PGdkRectangle, 
-                              dest: PGdkRectangle): gboolean{.cdecl, 
+proc gdk_rectangle_intersect*(src1: PGdkRectangle, src2: PGdkRectangle,
+                              dest: PGdkRectangle): gboolean{.cdecl,
     dynlib: gdklib, importc: "gdk_rectangle_intersect".}
-proc gdk_rectangle_union*(src1: PGdkRectangle, src2: PGdkRectangle, 
-                          dest: PGdkRectangle){.cdecl, dynlib: gdklib, 
+proc gdk_rectangle_union*(src1: PGdkRectangle, src2: PGdkRectangle,
+                          dest: PGdkRectangle){.cdecl, dynlib: gdklib,
     importc: "gdk_rectangle_union".}
-proc gdk_rectangle_get_type*(): GType{.cdecl, dynlib: gdklib, 
+proc gdk_rectangle_get_type*(): GType{.cdecl, dynlib: gdklib,
                                        importc: "gdk_rectangle_get_type".}
 proc GDK_TYPE_RECTANGLE*(): GType
-proc gdk_wcstombs*(src: PGdkWChar): cstring{.cdecl, dynlib: gdklib, 
+proc gdk_wcstombs*(src: PGdkWChar): cstring{.cdecl, dynlib: gdklib,
     importc: "gdk_wcstombs".}
-proc gdk_mbstowcs*(dest: PGdkWChar, src: cstring, dest_max: gint): gint{.cdecl, 
+proc gdk_mbstowcs*(dest: PGdkWChar, src: cstring, dest_max: gint): gint{.cdecl,
     dynlib: gdklib, importc: "gdk_mbstowcs".}
-when not defined(GDK_MULTIHEAD_SAFE): 
-  proc gdk_event_send_client_message(event: PGdkEvent, xid: guint32): gboolean{.
+when not defined(GDK_MULTIHEAD_SAFE):
+  proc gdk_event_send_client_message*(event: PGdkEvent, xid: guint32): gboolean{.
       cdecl, dynlib: gdklib, importc: "gdk_event_send_client_message".}
-  proc gdk_event_send_clientmessage_toall(event: PGdkEvent){.cdecl, 
+  proc gdk_event_send_clientmessage_toall*(event: PGdkEvent){.cdecl,
       dynlib: gdklib, importc: "gdk_event_send_clientmessage_toall".}
-proc gdk_event_send_client_message_for_display*(display: PGdkDisplay, 
-    event: PGdkEvent, xid: guint32): gboolean{.cdecl, dynlib: gdklib, 
+proc gdk_event_send_client_message_for_display*(display: PGdkDisplay,
+    event: PGdkEvent, xid: guint32): gboolean{.cdecl, dynlib: gdklib,
     importc: "gdk_event_send_client_message_for_display".}
 proc gdk_threads_enter*(){.cdecl, dynlib: gdklib, importc: "gdk_threads_enter".}
 proc gdk_threads_leave*(){.cdecl, dynlib: gdklib, importc: "gdk_threads_leave".}
 proc gdk_threads_init*(){.cdecl, dynlib: gdklib, importc: "gdk_threads_init".}
 
-proc GDK_TYPE_RECTANGLE*(): GType = 
+proc GDK_TYPE_RECTANGLE*(): GType =
   result = gdk_rectangle_get_type()
 
-proc GDK_TYPE_COLORMAP*(): GType = 
+proc GDK_TYPE_COLORMAP*(): GType =
   result = gdk_colormap_get_type()
 
-proc GDK_COLORMAP*(anObject: pointer): PGdkColormap = 
+proc GDK_COLORMAP*(anObject: pointer): PGdkColormap =
   result = cast[PGdkColormap](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_COLORMAP()))
 
-proc GDK_COLORMAP_CLASS*(klass: pointer): PGdkColormapClass = 
+proc GDK_COLORMAP_CLASS*(klass: pointer): PGdkColormapClass =
   result = cast[PGdkColormapClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_COLORMAP()))
 
-proc GDK_IS_COLORMAP*(anObject: pointer): bool = 
+proc GDK_IS_COLORMAP*(anObject: pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_COLORMAP())
 
-proc GDK_IS_COLORMAP_CLASS*(klass: pointer): bool = 
+proc GDK_IS_COLORMAP_CLASS*(klass: pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_COLORMAP())
 
-proc GDK_COLORMAP_GET_CLASS*(obj: pointer): PGdkColormapClass = 
+proc GDK_COLORMAP_GET_CLASS*(obj: pointer): PGdkColormapClass =
   result = cast[PGdkColormapClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_COLORMAP()))
 
-proc GDK_TYPE_COLOR*(): GType = 
+proc GDK_TYPE_COLOR*(): GType =
   result = gdk_color_get_type()
 
-proc gdk_cursor_destroy*(cursor: PGdkCursor) = 
+proc gdk_cursor_destroy*(cursor: PGdkCursor) =
   gdk_cursor_unref(cursor)
 
-proc GDK_TYPE_CURSOR*(): GType = 
+proc GDK_TYPE_CURSOR*(): GType =
   result = gdk_cursor_get_type()
 
-proc GDK_TYPE_DRAG_CONTEXT*(): GType = 
+proc GDK_TYPE_DRAG_CONTEXT*(): GType =
   result = gdk_drag_context_get_type()
 
-proc GDK_DRAG_CONTEXT*(anObject: Pointer): PGdkDragContext = 
-  result = cast[PGdkDragContext](G_TYPE_CHECK_INSTANCE_CAST(anObject, 
+proc GDK_DRAG_CONTEXT*(anObject: Pointer): PGdkDragContext =
+  result = cast[PGdkDragContext](G_TYPE_CHECK_INSTANCE_CAST(anObject,
       GDK_TYPE_DRAG_CONTEXT()))
 
-proc GDK_DRAG_CONTEXT_CLASS*(klass: Pointer): PGdkDragContextClass = 
-  result = cast[PGdkDragContextClass](G_TYPE_CHECK_CLASS_CAST(klass, 
+proc GDK_DRAG_CONTEXT_CLASS*(klass: Pointer): PGdkDragContextClass =
+  result = cast[PGdkDragContextClass](G_TYPE_CHECK_CLASS_CAST(klass,
       GDK_TYPE_DRAG_CONTEXT()))
 
-proc GDK_IS_DRAG_CONTEXT*(anObject: Pointer): bool = 
+proc GDK_IS_DRAG_CONTEXT*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_DRAG_CONTEXT())
 
-proc GDK_IS_DRAG_CONTEXT_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_DRAG_CONTEXT_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_DRAG_CONTEXT())
 
-proc GDK_DRAG_CONTEXT_GET_CLASS*(obj: Pointer): PGdkDragContextClass = 
-  result = cast[PGdkDragContextClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
+proc GDK_DRAG_CONTEXT_GET_CLASS*(obj: Pointer): PGdkDragContextClass =
+  result = cast[PGdkDragContextClass](G_TYPE_INSTANCE_GET_CLASS(obj,
       GDK_TYPE_DRAG_CONTEXT()))
 
-proc gdkregion_EXTENTCHECK*(r1, r2: PGdkRegionBox): bool = 
-  result = (int(r1.x2) > r2.x1) and (int(r1.x1) < r2.x2) and
-      (int(r1.y2) > r2.y1) and (int(r1.y1) < r2.y2)
+proc gdkregion_EXTENTCHECK*(r1, r2: PGdkRegionBox): bool =
+  result = ((r1.x2) > r2.x1) and ((r1.x1) < r2.x2) and
+      ((r1.y2) > r2.y1) and ((r1.y1) < r2.y2)
 
-proc gdkregion_EXTENTS*(r: PGdkRegionBox, idRect: PGdkRegion) = 
-  if (int(r.x1) < idRect.extents.x1): 
+proc gdkregion_EXTENTS*(r: PGdkRegionBox, idRect: PGdkRegion) =
+  if ((r.x1) < idRect.extents.x1):
     idRect.extents.x1 = r.x1
-  if int(r.y1) < idRect.extents.y1: 
+  if (r.y1) < idRect.extents.y1:
     idRect.extents.y1 = r.y1
-  if int(r.x2) > idRect.extents.x2: 
+  if (r.x2) > idRect.extents.x2:
     idRect.extents.x2 = r.x2
 
-proc gdkregion_MEMCHECK*(reg: PGdkRegion, ARect, firstrect: var PGdkRegionBox): bool = 
-  nil
+proc gdkregion_MEMCHECK*(reg: PGdkRegion, ARect, firstrect: var PGdkRegionBox): bool =
+  assert(false) # to implement
 
-proc gdkregion_CHECK_PREVIOUS*(Reg: PGdkRegion, R: PGdkRegionBox, 
-                               Rx1, Ry1, Rx2, Ry2: gint): bool = 
-  nil
+proc gdkregion_CHECK_PREVIOUS*(Reg: PGdkRegion, R: PGdkRegionBox,
+                               Rx1, Ry1, Rx2, Ry2: gint): bool =
+  assert(false) # to implement
 
-proc gdkregion_ADDRECT*(reg: PGdkRegion, r: PGdkRegionBox, 
-                        rx1, ry1, rx2, ry2: gint) = 
-  if ((int(rx1) < rx2) and (int(ry1) < ry2) and
-      gdkregion_CHECK_PREVIOUS(reg, r, rx1, ry1, rx2, ry2)): 
+proc gdkregion_ADDRECT*(reg: PGdkRegion, r: PGdkRegionBox,
+                        rx1, ry1, rx2, ry2: gint) =
+  if (((rx1) < rx2) and ((ry1) < ry2) and
+      gdkregion_CHECK_PREVIOUS(reg, r, rx1, ry1, rx2, ry2)):
     r.x1 = rx1
     r.y1 = ry1
     r.x2 = rx2
     r.y2 = ry2
 
-proc gdkregion_ADDRECTNOX*(reg: PGdkRegion, r: PGdkRegionBox, 
-                           rx1, ry1, rx2, ry2: gint) = 
-  if ((int(rx1) < rx2) and (int(ry1) < ry2) and
-      gdkregion_CHECK_PREVIOUS(reg, r, rx1, ry1, rx2, ry2)): 
+proc gdkregion_ADDRECTNOX*(reg: PGdkRegion, r: PGdkRegionBox,
+                           rx1, ry1, rx2, ry2: gint) =
+  if (((rx1) < rx2) and ((ry1) < ry2) and
+      gdkregion_CHECK_PREVIOUS(reg, r, rx1, ry1, rx2, ry2)):
     r.x1 = rx1
     r.y1 = ry1
     r.x2 = rx2
     r.y2 = ry2
     inc(reg . numRects)
 
-proc gdkregion_EMPTY_REGION*(pReg: PGdkRegion): bool = 
-  result = pReg.numRects == 0
+proc gdkregion_EMPTY_REGION*(pReg: PGdkRegion): bool =
+  result = pReg.numRects == 0'i32
 
-proc gdkregion_REGION_NOT_EMPTY*(pReg: PGdkRegion): bool = 
-  result = pReg.numRects != 0
+proc gdkregion_REGION_NOT_EMPTY*(pReg: PGdkRegion): bool =
+  result = pReg.numRects != 0'i32
 
-proc gdkregion_INBOX*(r: TGdkRegionBox, x, y: gint): bool = 
-  result = (((int(r.x2) > x) and (int(r.x1) <= x)) and 
-            (int(r.y2) > y)) and (int(r.y1) <= y)
+proc gdkregion_INBOX*(r: TGdkRegionBox, x, y: gint): bool =
+  result = ((((r.x2) > x) and ((r.x1) <= x)) and
+            ((r.y2) > y)) and ((r.y1) <= y)
 
-proc GDK_TYPE_DRAWABLE*(): GType = 
+proc GDK_TYPE_DRAWABLE*(): GType =
   result = gdk_drawable_get_type()
 
-proc GDK_DRAWABLE*(anObject: Pointer): PGdkDrawable = 
+proc GDK_DRAWABLE*(anObject: Pointer): PGdkDrawable =
   result = cast[PGdkDrawable](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_DRAWABLE()))
 
-proc GDK_DRAWABLE_CLASS*(klass: Pointer): PGdkDrawableClass = 
+proc GDK_DRAWABLE_CLASS*(klass: Pointer): PGdkDrawableClass =
   result = cast[PGdkDrawableClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_DRAWABLE()))
 
-proc GDK_IS_DRAWABLE*(anObject: Pointer): bool = 
+proc GDK_IS_DRAWABLE*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_DRAWABLE())
 
-proc GDK_IS_DRAWABLE_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_DRAWABLE_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_DRAWABLE())
 
-proc GDK_DRAWABLE_GET_CLASS*(obj: Pointer): PGdkDrawableClass = 
+proc GDK_DRAWABLE_GET_CLASS*(obj: Pointer): PGdkDrawableClass =
   result = cast[PGdkDrawableClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_DRAWABLE()))
 
-proc gdk_draw_pixmap*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable, 
-                      xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
-                      width: gint, height: gint) = 
+proc gdk_draw_pixmap*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable,
+                      xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
+                      width: gint, height: gint) =
   gdk_draw_drawable(drawable, gc, src, xsrc, ysrc, xdest, ydest, width, height)
 
-proc gdk_draw_bitmap*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable, 
-                      xsrc: gint, ysrc: gint, xdest: gint, ydest: gint, 
-                      width: gint, height: gint) = 
+proc gdk_draw_bitmap*(drawable: PGdkDrawable, gc: PGdkGC, src: PGdkDrawable,
+                      xsrc: gint, ysrc: gint, xdest: gint, ydest: gint,
+                      width: gint, height: gint) =
   gdk_draw_drawable(drawable, gc, src, xsrc, ysrc, xdest, ydest, width, height)
 
-proc GDK_TYPE_EVENT*(): GType = 
+proc GDK_TYPE_EVENT*(): GType =
   result = gdk_event_get_type()
 
-proc GDK_TYPE_FONT*(): GType = 
+proc GDK_TYPE_FONT*(): GType =
   result = gdk_font_get_type()
 
-proc GDK_TYPE_GC*(): GType = 
+proc GDK_TYPE_GC*(): GType =
   result = gdk_gc_get_type()
 
-proc GDK_GC*(anObject: Pointer): PGdkGC = 
+proc GDK_GC*(anObject: Pointer): PGdkGC =
   result = cast[PGdkGC](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_GC()))
 
-proc GDK_GC_CLASS*(klass: Pointer): PGdkGCClass = 
+proc GDK_GC_CLASS*(klass: Pointer): PGdkGCClass =
   result = cast[PGdkGCClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_GC()))
 
-proc GDK_IS_GC*(anObject: Pointer): bool = 
+proc GDK_IS_GC*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_GC())
 
-proc GDK_IS_GC_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_GC_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_GC())
 
-proc GDK_GC_GET_CLASS*(obj: Pointer): PGdkGCClass = 
+proc GDK_GC_GET_CLASS*(obj: Pointer): PGdkGCClass =
   result = cast[PGdkGCClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_GC()))
 
-proc gdk_gc_destroy*(gc: PGdkGC) = 
+proc gdk_gc_destroy*(gc: PGdkGC) =
   g_object_unref(G_OBJECT(gc))
 
-proc GDK_TYPE_IMAGE*(): GType = 
+proc GDK_TYPE_IMAGE*(): GType =
   result = gdk_image_get_type()
 
-proc GDK_IMAGE*(anObject: Pointer): PGdkImage = 
+proc GDK_IMAGE*(anObject: Pointer): PGdkImage =
   result = cast[PGdkImage](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_IMAGE()))
 
-proc GDK_IMAGE_CLASS*(klass: Pointer): PGdkImageClass = 
+proc GDK_IMAGE_CLASS*(klass: Pointer): PGdkImageClass =
   result = cast[PGdkImageClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_IMAGE()))
 
-proc GDK_IS_IMAGE*(anObject: Pointer): bool = 
+proc GDK_IS_IMAGE*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_IMAGE())
 
-proc GDK_IS_IMAGE_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_IMAGE_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_IMAGE())
 
-proc GDK_IMAGE_GET_CLASS*(obj: Pointer): PGdkImageClass = 
+proc GDK_IMAGE_GET_CLASS*(obj: Pointer): PGdkImageClass =
   result = cast[PGdkImageClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_IMAGE()))
 
-proc gdk_image_destroy*(image: PGdkImage) = 
+proc gdk_image_destroy*(image: PGdkImage) =
   g_object_unref(G_OBJECT(image))
 
-proc GDK_TYPE_DEVICE*(): GType = 
+proc GDK_TYPE_DEVICE*(): GType =
   result = gdk_device_get_type()
 
-proc GDK_DEVICE*(anObject: Pointer): PGdkDevice = 
+proc GDK_DEVICE*(anObject: Pointer): PGdkDevice =
   result = cast[PGdkDevice](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_DEVICE()))
 
-proc GDK_DEVICE_CLASS*(klass: Pointer): PGdkDeviceClass = 
+proc GDK_DEVICE_CLASS*(klass: Pointer): PGdkDeviceClass =
   result = cast[PGdkDeviceClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_DEVICE()))
 
-proc GDK_IS_DEVICE*(anObject: Pointer): bool = 
+proc GDK_IS_DEVICE*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_DEVICE())
 
-proc GDK_IS_DEVICE_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_DEVICE_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_DEVICE())
 
-proc GDK_DEVICE_GET_CLASS*(obj: Pointer): PGdkDeviceClass = 
+proc GDK_DEVICE_GET_CLASS*(obj: Pointer): PGdkDeviceClass =
   result = cast[PGdkDeviceClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_DEVICE()))
 
-proc GDK_TYPE_KEYMAP*(): GType = 
+proc GDK_TYPE_KEYMAP*(): GType =
   result = gdk_keymap_get_type()
 
-proc GDK_KEYMAP*(anObject: Pointer): PGdkKeymap = 
+proc GDK_KEYMAP*(anObject: Pointer): PGdkKeymap =
   result = cast[PGdkKeymap](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_KEYMAP()))
 
-proc GDK_KEYMAP_CLASS*(klass: Pointer): PGdkKeymapClass = 
+proc GDK_KEYMAP_CLASS*(klass: Pointer): PGdkKeymapClass =
   result = cast[PGdkKeymapClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_KEYMAP()))
 
-proc GDK_IS_KEYMAP*(anObject: Pointer): bool = 
+proc GDK_IS_KEYMAP*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_KEYMAP())
 
-proc GDK_IS_KEYMAP_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_KEYMAP_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_KEYMAP())
 
-proc GDK_KEYMAP_GET_CLASS*(obj: Pointer): PGdkKeymapClass = 
+proc GDK_KEYMAP_GET_CLASS*(obj: Pointer): PGdkKeymapClass =
   result = cast[PGdkKeymapClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_KEYMAP()))
 
-proc GDK_TYPE_PIXMAP*(): GType = 
+proc GDK_TYPE_PIXMAP*(): GType =
   result = gdk_pixmap_get_type()
 
-proc GDK_PIXMAP*(anObject: Pointer): PGdkPixmap = 
+proc GDK_PIXMAP*(anObject: Pointer): PGdkPixmap =
   result = cast[PGdkPixmap](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_PIXMAP()))
 
-proc GDK_PIXMAP_CLASS*(klass: Pointer): PGdkPixmapObjectClass = 
+proc GDK_PIXMAP_CLASS*(klass: Pointer): PGdkPixmapObjectClass =
   result = cast[PGdkPixmapObjectClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_PIXMAP()))
 
-proc GDK_IS_PIXMAP*(anObject: Pointer): bool = 
+proc GDK_IS_PIXMAP*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_PIXMAP())
 
-proc GDK_IS_PIXMAP_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_PIXMAP_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_PIXMAP())
 
-proc GDK_PIXMAP_GET_CLASS*(obj: Pointer): PGdkPixmapObjectClass = 
+proc GDK_PIXMAP_GET_CLASS*(obj: Pointer): PGdkPixmapObjectClass =
   result = cast[PGdkPixmapObjectClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_PIXMAP()))
 
-proc GDK_PIXMAP_OBJECT*(anObject: Pointer): PGdkPixmapObject = 
+proc GDK_PIXMAP_OBJECT*(anObject: Pointer): PGdkPixmapObject =
   result = cast[PGdkPixmapObject](GDK_PIXMAP(anObject))
 
-proc gdk_bitmap_ref*(drawable: PGdkDrawable): PGdkDrawable = 
+proc gdk_bitmap_ref*(drawable: PGdkDrawable): PGdkDrawable =
   result = GDK_DRAWABLE(g_object_ref(G_OBJECT(drawable)))
 
-proc gdk_bitmap_unref*(drawable: PGdkDrawable) = 
+proc gdk_bitmap_unref*(drawable: PGdkDrawable) =
   g_object_unref(G_OBJECT(drawable))
 
-proc gdk_pixmap_ref*(drawable: PGdkDrawable): PGdkDrawable = 
+proc gdk_pixmap_ref*(drawable: PGdkDrawable): PGdkDrawable =
   result = GDK_DRAWABLE(g_object_ref(G_OBJECT(drawable)))
 
-proc gdk_pixmap_unref*(drawable: PGdkDrawable) = 
+proc gdk_pixmap_unref*(drawable: PGdkDrawable) =
   g_object_unref(G_OBJECT(drawable))
 
-proc gdk_rgb_get_cmap*(): PGdkColormap = 
+proc gdk_rgb_get_cmap*(): PGdkColormap =
   result = nil #gdk_rgb_get_colormap()
 
-proc GDK_TYPE_DISPLAY*(): GType = 
+proc GDK_TYPE_DISPLAY*(): GType =
   nil
   #result = nil
 
-proc GDK_DISPLAY_OBJECT*(anObject: pointer): PGdkDisplay = 
+proc GDK_DISPLAY_OBJECT*(anObject: pointer): PGdkDisplay =
   result = cast[PGdkDisplay](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_DISPLAY()))
 
-proc GDK_DISPLAY_CLASS*(klass: pointer): PGdkDisplayClass = 
+proc GDK_DISPLAY_CLASS*(klass: pointer): PGdkDisplayClass =
   result = cast[PGdkDisplayClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_DISPLAY()))
 
-proc GDK_IS_DISPLAY*(anObject: pointer): bool = 
+proc GDK_IS_DISPLAY*(anObject: pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_DISPLAY())
 
-proc GDK_IS_DISPLAY_CLASS*(klass: pointer): bool = 
+proc GDK_IS_DISPLAY_CLASS*(klass: pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_DISPLAY())
 
-proc GDK_DISPLAY_GET_CLASS*(obj: pointer): PGdkDisplayClass = 
+proc GDK_DISPLAY_GET_CLASS*(obj: pointer): PGdkDisplayClass =
   result = cast[PGdkDisplayClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_DISPLAY()))
 
-proc GDK_TYPE_SCREEN*(): GType = 
+proc GDK_TYPE_SCREEN*(): GType =
   nil
 
-proc GDK_SCREEN*(anObject: Pointer): PGdkScreen = 
+proc GDK_SCREEN*(anObject: Pointer): PGdkScreen =
   result = cast[PGdkScreen](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_SCREEN()))
 
-proc GDK_SCREEN_CLASS*(klass: Pointer): PGdkScreenClass = 
+proc GDK_SCREEN_CLASS*(klass: Pointer): PGdkScreenClass =
   result = cast[PGdkScreenClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_SCREEN()))
 
-proc GDK_IS_SCREEN*(anObject: Pointer): bool = 
+proc GDK_IS_SCREEN*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_SCREEN())
 
-proc GDK_IS_SCREEN_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_SCREEN_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_SCREEN())
 
-proc GDK_SCREEN_GET_CLASS*(obj: Pointer): PGdkScreenClass = 
+proc GDK_SCREEN_GET_CLASS*(obj: Pointer): PGdkScreenClass =
   result = cast[PGdkScreenClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_SCREEN()))
 
-proc GDK_SELECTION_PRIMARY*(): TGdkAtom = 
+proc GDK_SELECTION_PRIMARY*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(1)
 
-proc GDK_SELECTION_SECONDARY*(): TGdkAtom = 
+proc GDK_SELECTION_SECONDARY*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(2)
 
-proc GDK_SELECTION_CLIPBOARD*(): TGdkAtom = 
+proc GDK_SELECTION_CLIPBOARD*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(69)
 
-proc GDK_TARGET_BITMAP*(): TGdkAtom = 
+proc GDK_TARGET_BITMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(5)
 
-proc GDK_TARGET_COLORMAP*(): TGdkAtom = 
+proc GDK_TARGET_COLORMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(7)
 
-proc GDK_TARGET_DRAWABLE*(): TGdkAtom = 
+proc GDK_TARGET_DRAWABLE*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(17)
 
-proc GDK_TARGET_PIXMAP*(): TGdkAtom = 
+proc GDK_TARGET_PIXMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(20)
 
-proc GDK_TARGET_STRING*(): TGdkAtom = 
+proc GDK_TARGET_STRING*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(31)
 
-proc GDK_SELECTION_TYPE_ATOM*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_ATOM*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(4)
 
-proc GDK_SELECTION_TYPE_BITMAP*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_BITMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(5)
 
-proc GDK_SELECTION_TYPE_COLORMAP*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_COLORMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(7)
 
-proc GDK_SELECTION_TYPE_DRAWABLE*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_DRAWABLE*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(17)
 
-proc GDK_SELECTION_TYPE_INTEGER*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_INTEGER*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(19)
 
-proc GDK_SELECTION_TYPE_PIXMAP*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_PIXMAP*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(20)
 
-proc GDK_SELECTION_TYPE_WINDOW*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_WINDOW*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(33)
 
-proc GDK_SELECTION_TYPE_STRING*(): TGdkAtom = 
+proc GDK_SELECTION_TYPE_STRING*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(31)
 
-proc GDK_ATOM_TO_POINTER*(atom: TGdkAtom): pointer = 
+proc GDK_ATOM_TO_POINTER*(atom: TGdkAtom): pointer =
   result = cast[Pointer](atom)
 
-proc GDK_POINTER_TO_ATOM*(p: Pointer): TGdkAtom = 
+proc GDK_POINTER_TO_ATOM*(p: Pointer): TGdkAtom =
   result = cast[TGdkAtom](p)
 
-proc `GDK_MAKE_ATOM`*(val: guint): TGdkAtom = 
+proc `GDK_MAKE_ATOM`*(val: guint): TGdkAtom =
   result = cast[TGdkAtom](val)
 
-proc GDK_NONE*(): TGdkAtom = 
+proc GDK_NONE*(): TGdkAtom =
   result = `GDK_MAKE_ATOM`(0)
 
-proc GDK_TYPE_VISUAL*(): GType = 
+proc GDK_TYPE_VISUAL*(): GType =
   result = gdk_visual_get_type()
 
-proc GDK_VISUAL*(anObject: Pointer): PGdkVisual = 
+proc GDK_VISUAL*(anObject: Pointer): PGdkVisual =
   result = cast[PGdkVisual](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_VISUAL()))
 
-proc GDK_VISUAL_CLASS*(klass: Pointer): PGdkVisualClass = 
+proc GDK_VISUAL_CLASS*(klass: Pointer): PGdkVisualClass =
   result = cast[PGdkVisualClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_VISUAL()))
 
-proc GDK_IS_VISUAL*(anObject: Pointer): bool = 
+proc GDK_IS_VISUAL*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_VISUAL())
 
-proc GDK_IS_VISUAL_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_VISUAL_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_VISUAL())
 
-proc GDK_VISUAL_GET_CLASS*(obj: Pointer): PGdkVisualClass = 
+proc GDK_VISUAL_GET_CLASS*(obj: Pointer): PGdkVisualClass =
   result = cast[PGdkVisualClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_VISUAL()))
 
-proc gdk_visual_ref*(v: PGdkVisual) = 
+proc gdk_visual_ref*(v: PGdkVisual) =
   discard g_object_ref(v)
 
-proc gdk_visual_unref*(v: PGdkVisual) = 
+proc gdk_visual_unref*(v: PGdkVisual) =
   g_object_unref(v)
 
-proc GDK_TYPE_WINDOW*(): GType = 
+proc GDK_TYPE_WINDOW*(): GType =
   result = gdk_window_object_get_type()
 
-proc GDK_WINDOW*(anObject: Pointer): PGdkWindow = 
+proc GDK_WINDOW*(anObject: Pointer): PGdkWindow =
   result = cast[PGdkWindow](G_TYPE_CHECK_INSTANCE_CAST(anObject, GDK_TYPE_WINDOW()))
 
-proc GDK_WINDOW_CLASS*(klass: Pointer): PGdkWindowObjectClass = 
+proc GDK_WINDOW_CLASS*(klass: Pointer): PGdkWindowObjectClass =
   result = cast[PGdkWindowObjectClass](G_TYPE_CHECK_CLASS_CAST(klass, GDK_TYPE_WINDOW()))
 
-proc GDK_IS_WINDOW*(anObject: Pointer): bool = 
+proc GDK_IS_WINDOW*(anObject: Pointer): bool =
   result = G_TYPE_CHECK_INSTANCE_TYPE(anObject, GDK_TYPE_WINDOW())
 
-proc GDK_IS_WINDOW_CLASS*(klass: Pointer): bool = 
+proc GDK_IS_WINDOW_CLASS*(klass: Pointer): bool =
   result = G_TYPE_CHECK_CLASS_TYPE(klass, GDK_TYPE_WINDOW())
 
-proc GDK_WINDOW_GET_CLASS*(obj: Pointer): PGdkWindowObjectClass = 
+proc GDK_WINDOW_GET_CLASS*(obj: Pointer): PGdkWindowObjectClass =
   result = cast[PGdkWindowObjectClass](G_TYPE_INSTANCE_GET_CLASS(obj, GDK_TYPE_WINDOW()))
 
-proc GDK_WINDOW_OBJECT*(anObject: Pointer): PGdkWindowObject = 
+proc GDK_WINDOW_OBJECT*(anObject: Pointer): PGdkWindowObject =
   result = cast[PGdkWindowObject](GDK_WINDOW(anObject))
 
-proc GdkWindowObject_guffaw_gravity*(a: var TGdkWindowObject): guint = 
+proc GdkWindowObject_guffaw_gravity*(a: var TGdkWindowObject): guint =
   result = (a.flag0 and bm_TGdkWindowObject_guffaw_gravity) shr
       bp_TGdkWindowObject_guffaw_gravity
 
-proc GdkWindowObject_set_guffaw_gravity*(a: var TGdkWindowObject, 
-    `guffaw_gravity`: guint) = 
+proc GdkWindowObject_set_guffaw_gravity*(a: var TGdkWindowObject,
+    `guffaw_gravity`: guint) =
   a.flag0 = a.flag0 or
-      ((`guffaw_gravity` shl bp_TGdkWindowObject_guffaw_gravity) and
+      (int16(`guffaw_gravity` shl bp_TGdkWindowObject_guffaw_gravity) and
       bm_TGdkWindowObject_guffaw_gravity)
 
-proc GdkWindowObject_input_only*(a: var TGdkWindowObject): guint = 
+proc GdkWindowObject_input_only*(a: var TGdkWindowObject): guint =
   result = (a.flag0 and bm_TGdkWindowObject_input_only) shr
       bp_TGdkWindowObject_input_only
 
-proc GdkWindowObject_set_input_only*(a: var TGdkWindowObject, 
-                                     `input_only`: guint) = 
+proc GdkWindowObject_set_input_only*(a: var TGdkWindowObject,
+                                     `input_only`: guint) =
   a.flag0 = a.flag0 or
-      ((`input_only` shl bp_TGdkWindowObject_input_only) and
+      (int16(`input_only` shl bp_TGdkWindowObject_input_only) and
       bm_TGdkWindowObject_input_only)
 
-proc GdkWindowObject_modal_hint*(a: var TGdkWindowObject): guint = 
+proc GdkWindowObject_modal_hint*(a: var TGdkWindowObject): guint =
   result = (a.flag0 and bm_TGdkWindowObject_modal_hint) shr
       bp_TGdkWindowObject_modal_hint
 
-proc GdkWindowObject_set_modal_hint*(a: var TGdkWindowObject, 
-                                     `modal_hint`: guint) = 
+proc GdkWindowObject_set_modal_hint*(a: var TGdkWindowObject,
+                                     `modal_hint`: guint) =
   a.flag0 = a.flag0 or
-      ((`modal_hint` shl bp_TGdkWindowObject_modal_hint) and
+      (int16(`modal_hint` shl bp_TGdkWindowObject_modal_hint) and
       bm_TGdkWindowObject_modal_hint)
 
-proc GdkWindowObject_destroyed*(a: var TGdkWindowObject): guint = 
+proc GdkWindowObject_destroyed*(a: var TGdkWindowObject): guint =
   result = (a.flag0 and bm_TGdkWindowObject_destroyed) shr
       bp_TGdkWindowObject_destroyed
 
-proc GdkWindowObject_set_destroyed*(a: var TGdkWindowObject, `destroyed`: guint) = 
+proc GdkWindowObject_set_destroyed*(a: var TGdkWindowObject, `destroyed`: guint) =
   a.flag0 = a.flag0 or
-      ((`destroyed` shl bp_TGdkWindowObject_destroyed) and
+      (int16(`destroyed` shl bp_TGdkWindowObject_destroyed) and
       bm_TGdkWindowObject_destroyed)
 
-proc GDK_ROOT_PARENT*(): PGdkWindow = 
+proc GDK_ROOT_PARENT*(): PGdkWindow =
   result = gdk_get_default_root_window()
 
-proc gdk_window_get_size*(drawable: PGdkDrawable, width: Pgint, height: Pgint) = 
+proc gdk_window_get_size*(drawable: PGdkDrawable, width: Pgint, height: Pgint) =
   gdk_drawable_get_size(drawable, width, height)
 
-proc gdk_window_get_type*(window: PGdkWindow): TGdkWindowType = 
+proc gdk_window_get_type*(window: PGdkWindow): TGdkWindowType =
   result = gdk_window_get_window_type(window)
 
-proc gdk_window_get_colormap*(drawable: PGdkDrawable): PGdkColormap = 
+proc gdk_window_get_colormap*(drawable: PGdkDrawable): PGdkColormap =
   result = gdk_drawable_get_colormap(drawable)
 
-proc gdk_window_set_colormap*(drawable: PGdkDrawable, colormap: PGdkColormap) = 
+proc gdk_window_set_colormap*(drawable: PGdkDrawable, colormap: PGdkColormap) =
   gdk_drawable_set_colormap(drawable, colormap)
 
-proc gdk_window_get_visual*(drawable: PGdkDrawable): PGdkVisual = 
+proc gdk_window_get_visual*(drawable: PGdkDrawable): PGdkVisual =
   result = gdk_drawable_get_visual(drawable)
 
-proc gdk_window_ref*(drawable: PGdkDrawable): PGdkDrawable = 
+proc gdk_window_ref*(drawable: PGdkDrawable): PGdkDrawable =
   result = GDK_DRAWABLE(g_object_ref(G_OBJECT(drawable)))
 
-proc gdk_window_unref*(drawable: PGdkDrawable) = 
+proc gdk_window_unref*(drawable: PGdkDrawable) =
   g_object_unref(G_OBJECT(drawable))
 
-proc gdk_window_copy_area*(drawable: PGdkDrawable, gc: PGdkGC, x, y: gint, 
-                           source_drawable: PGdkDrawable, 
-                           source_x, source_y: gint, width, height: gint) = 
-  gdk_draw_pixmap(drawable, gc, source_drawable, source_x, source_y, x, y, 
+proc gdk_window_copy_area*(drawable: PGdkDrawable, gc: PGdkGC, x, y: gint,
+                           source_drawable: PGdkDrawable,
+                           source_x, source_y: gint, width, height: gint) =
+  gdk_draw_pixmap(drawable, gc, source_drawable, source_x, source_y, x, y,
                   width, height)

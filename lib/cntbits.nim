@@ -17,4 +17,4 @@ proc population16(a: int): int {.inline.} =
   return x
 
 proc countBits(n: int32): int =
-  result = population16(n and 0xffff) + population16(n shr 16)
+  result = population16(n and 0xffff'i32) + population16(n shr 16'i32)

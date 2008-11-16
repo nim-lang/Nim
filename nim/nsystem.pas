@@ -155,6 +155,7 @@ function leU(a, b: biggestInt): bool;
 function toU8(a: biggestInt): byte;
 function toU32(a: biggestInt): int32;
 function ze64(a: byte): biggestInt;
+function ze(a: byte): int;
 {@emit}
 
 function alloc(size: int): Pointer;
@@ -173,9 +174,15 @@ type
 
 function OpenFile(out f: tTextFile; const filename: string;
                   mode: TFileMode = fmRead): Boolean; overload;
+function endofFile(var f: tBinaryFile): boolean; overload;
+function endofFile(var f: textFile): boolean; overload;
+
 function readChar(var f: tTextFile): char;
-function readLine(var f: tTextFile): string;
-procedure nimWrite(var f: tTextFile; const str: string);
+function readLine(var f: tTextFile): string; overload;
+function readLine(var f: tBinaryFile): string; overload;
+function readLine(var f: textFile): string; overload;
+
+procedure nimWrite(var f: tTextFile; const str: string); overload;
 procedure nimCloseFile(var f: tTextFile); overload;
 
 // binary file handling:
@@ -196,6 +203,8 @@ function getFilePos(var f: tBinaryFile): int;
 procedure setFilePos(var f: tBinaryFile; pos: int64);
 
 function readFile(const filename: string): string;
+
+procedure nimWrite(var f: tBinaryFile; const str: string); overload;
 
 
 implementation
@@ -276,6 +285,11 @@ begin
 end;
 
 function ze64(a: byte): biggestInt;
+begin
+  result := a
+end;
+
+function ze(a: byte): int;
 begin
   result := a
 end;
@@ -400,7 +414,7 @@ end;
 
 function readChar(var f: tTextFile): char;
 begin
-  Readln(f.sysFile, result);
+  Read(f.sysFile, result);
 end;
 
 procedure nimWrite(var f: tTextFile; const str: string);
@@ -411,6 +425,16 @@ end;
 function readLine(var f: tTextFile): string;
 begin
   Readln(f.sysFile, result);
+end;
+
+function endofFile(var f: tBinaryFile): boolean;
+begin
+  result := eof(f)
+end;
+
+function endofFile(var f: textFile): boolean;
+begin
+  result := eof(f)
 end;
 
 procedure nimCloseFile(var f: tTextFile);
@@ -455,6 +479,35 @@ function readBuffer(var f: tBinaryFile; buffer: pointer; len: int): int;
 begin
   result := 0;
   BlockRead(f, buffer^, len, result)
+end;
+
+procedure nimWrite(var f: tBinaryFile; const str: string); overload;
+begin
+  writeBuffer(f, addr(str[1]), length(str));
+end;
+
+function readLine(var f: tBinaryFile): string; overload;
+var
+  c: char;
+begin
+  result := '';
+  while readBuffer(f, addr(c), 1) = 1 do begin
+    case c of
+      #13: begin
+        readBuffer(f, addr(c), 1); // skip #10
+        break;
+      end;
+      #10: break;
+      else begin end
+    end;
+    addChar(result, c);
+  end
+end;
+
+function readLine(var f: textFile): string; overload;
+begin
+  result := '';
+  readln(f, result);
 end;
 
 function readBuffer(var f: tBinaryFile): string; overload;

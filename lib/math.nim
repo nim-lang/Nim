@@ -18,6 +18,10 @@
 when defined(Posix): 
   {.passl: "-lm".}
 
+const
+  PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
+  E* = 2.71828182845904523536028747 ## Euler's number
+
 type
   TFloatClass* = enum ## describes the class a floating point value belongs to.
                       ## This is the type that is returned by `classify`.
@@ -35,7 +39,7 @@ proc classify*(x: float): TFloatClass =
     
   # ECMAScript and most C compilers have no classify:
   if x == 0.0:
-    if 1.0/x == 1.0/0.0:
+    if 1.0/x == Inf:
       return fcZero
     else:
       return fcNegZero
@@ -129,7 +133,7 @@ when not defined(ECMAScript):
   proc rand(): cint {.importc: "rand", nodecl.}
     
   proc randomize() = srand(gettime(nil))
-  proc random(max: int): int = return rand() mod max
+  proc random(max: int): int = return int(rand()) mod max
 
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}

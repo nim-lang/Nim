@@ -30,6 +30,7 @@ type
     ccSafeCall,  // safecall
     ccSysCall,   // system call
     ccInline,    // proc should be inlined
+    ccNoInline,  // proc should not be inlined
     ccFastCall,  // fastcall (pass parameters in registers)
     ccClosure,   // proc has a closure
     ccNoConvention // needed for generating proper C procs sometimes
@@ -37,8 +38,8 @@ type
 
 const
   CallingConvToStr: array [TCallingConvention] of string = (
-    '', 'stdcall', 'cdecl', 'safecall', 'syscall', 'inline', 'fastcall',
-    'closure', 'noconv');
+    '', 'stdcall', 'cdecl', 'safecall', 'syscall', 'inline', 'noinline',
+    'fastcall', 'closure', 'noconv');
 
 (*[[[cog
 def toEnum(name, elems, prefixlen=0):
@@ -49,21 +50,94 @@ def toEnum(name, elems, prefixlen=0):
   for e in elems:
     if counter % 4 == 0: prefix = "\n    "
     else: prefix = ""
-    body += prefix + e + ', '
-    strs += prefix + "'%s', " % e[prefixlen:]
-    counter += 1
+    body = body + prefix + e + ', '
+    strs = strs + prefix + "'%s', " % e[prefixlen:]
+    counter = counter + 1
 
   return ("type\n  T%s = (%s);\n  T%ss = set of T%s;\n"
-            % (name, body.rstrip(", "), name, name),
+            % (name, body[:-2], name, name),
           "const\n  %sToStr: array [T%s] of string = (%s);\n"
-            % (name, name, strs.rstrip(", ")))
+            % (name, name, strs[:-2]))
 
-enums = eval(file("data/ast.yml").read())
-for key, val in enums.iteritems():
+enums = eval(open("data/ast.yml").read())
+for key, val in enums.items():
   (a, b) = toEnum(key, val)
   cog.out(a)
   cog.out(b)
 ]]]*)
+type
+  TTypeFlag = (
+    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
+  TTypeFlags = set of TTypeFlag;
+const
+  TypeFlagToStr: array [TTypeFlag] of string = (
+    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
+type
+  TTypeKind = (
+    tyNone, tyBool, tyChar, tyEmpty, 
+    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
+    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
+    tyObject, tyTuple, tySet, tyRange, 
+    tyPtr, tyRef, tyVar, tySequence, 
+    tyProc, tyPointer, tyOpenArray, tyString, 
+    tyCString, tyForward, tyInt, tyInt8, 
+    tyInt16, tyInt32, tyInt64, tyFloat, 
+    tyFloat32, tyFloat64, tyFloat128);
+  TTypeKinds = set of TTypeKind;
+const
+  TypeKindToStr: array [TTypeKind] of string = (
+    'tyNone', 'tyBool', 'tyChar', 'tyEmpty', 
+    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
+    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
+    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
+    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
+    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
+    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
+    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
+    'tyFloat32', 'tyFloat64', 'tyFloat128');
+type
+  TSymFlag = (
+    sfUsed, sfStar, sfMinus, sfInInterface, 
+    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
+    sfExportc, sfVolatile, sfRegister, sfPure, 
+    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
+    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
+    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
+    sfCompileTime, sfThreadVar, sfMerge);
+  TSymFlags = set of TSymFlag;
+const
+  SymFlagToStr: array [TSymFlag] of string = (
+    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
+    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
+    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
+    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
+    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
+    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
+    'sfCompileTime', 'sfThreadVar', 'sfMerge');
+type
+  TNodeFlag = (
+    nfNone, nfBase2, nfBase8, nfBase16, 
+    nfAllConst, nfTransf, nfSem);
+  TNodeFlags = set of TNodeFlag;
+const
+  NodeFlagToStr: array [TNodeFlag] of string = (
+    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
+    'nfAllConst', 'nfTransf', 'nfSem');
+type
+  TSymKind = (
+    skUnknownSym, skConditional, skDynLib, skParam, 
+    skTypeParam, skTemp, skType, skConst, 
+    skVar, skProc, skIterator, skConverter, 
+    skMacro, skTemplate, skField, skEnumField, 
+    skForVar, skModule, skLabel, skStub);
+  TSymKinds = set of TSymKind;
+const
+  SymKindToStr: array [TSymKind] of string = (
+    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
+    'skTypeParam', 'skTemp', 'skType', 'skConst', 
+    'skVar', 'skProc', 'skIterator', 'skConverter', 
+    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
+    'skForVar', 'skModule', 'skLabel', 'skStub');
 type
   TNodeKind = (
     nkNone, nkEmpty, nkIdent, nkSym, 
@@ -93,10 +167,11 @@ type
     nkBreakStmt, nkContinueStmt, nkBlockStmt, nkDiscardStmt, 
     nkStmtList, nkImportStmt, nkFromStmt, nkImportAs, 
     nkIncludeStmt, nkAccessStmt, nkCommentStmt, nkStmtListExpr, 
-    nkBlockExpr, nkVm, nkTypeOfExpr, nkObjectTy, 
-    nkTupleTy, nkRecList, nkRecCase, nkRecWhen, 
-    nkRefTy, nkPtrTy, nkVarTy, nkProcTy, 
-    nkEnumTy, nkEnumFieldDef, nkReturnToken);
+    nkBlockExpr, nkStmtListType, nkBlockType, nkVm, 
+    nkTypeOfExpr, nkObjectTy, nkTupleTy, nkRecList, 
+    nkRecCase, nkRecWhen, nkRefTy, nkPtrTy, 
+    nkVarTy, nkProcTy, nkEnumTy, nkEnumFieldDef, 
+    nkReturnToken);
   TNodeKinds = set of TNodeKind;
 const
   NodeKindToStr: array [TNodeKind] of string = (
@@ -127,132 +202,60 @@ const
     'nkBreakStmt', 'nkContinueStmt', 'nkBlockStmt', 'nkDiscardStmt', 
     'nkStmtList', 'nkImportStmt', 'nkFromStmt', 'nkImportAs', 
     'nkIncludeStmt', 'nkAccessStmt', 'nkCommentStmt', 'nkStmtListExpr', 
-    'nkBlockExpr', 'nkVm', 'nkTypeOfExpr', 'nkObjectTy', 
-    'nkTupleTy', 'nkRecList', 'nkRecCase', 'nkRecWhen', 
-    'nkRefTy', 'nkPtrTy', 'nkVarTy', 'nkProcTy', 
-    'nkEnumTy', 'nkEnumFieldDef', 'nkReturnToken');
-type
-  TSymFlag = (
-    sfTypeCheck, sfForward, sfImportc, sfExportc, 
-    sfVolatile, sfUsed, sfWrite, sfRegister, 
-    sfPure, sfCodeGenerated, sfPrivate, sfGlobal, 
-    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
-    sfNoReturn, sfAddrTaken, sfInInterface, sfNoStatic, 
-    sfCompilerProc, sfCppMethod, sfDiscriminant, sfDeprecated, 
-    sfInClosure, sfIsCopy, sfStar, sfMinus);
-  TSymFlags = set of TSymFlag;
-const
-  SymFlagToStr: array [TSymFlag] of string = (
-    'sfTypeCheck', 'sfForward', 'sfImportc', 'sfExportc', 
-    'sfVolatile', 'sfUsed', 'sfWrite', 'sfRegister', 
-    'sfPure', 'sfCodeGenerated', 'sfPrivate', 'sfGlobal', 
-    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
-    'sfNoReturn', 'sfAddrTaken', 'sfInInterface', 'sfNoStatic', 
-    'sfCompilerProc', 'sfCppMethod', 'sfDiscriminant', 'sfDeprecated', 
-    'sfInClosure', 'sfIsCopy', 'sfStar', 'sfMinus');
-type
-  TTypeKind = (
-    tyNone, tyBool, tyChar, tyEmptySet, 
-    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
-    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
-    tyObject, tyTuple, tySet, tyRange, 
-    tyPtr, tyRef, tyVar, tySequence, 
-    tyProc, tyPointer, tyOpenArray, tyString, 
-    tyCString, tyForward, tyInt, tyInt8, 
-    tyInt16, tyInt32, tyInt64, tyFloat, 
-    tyFloat32, tyFloat64, tyFloat128);
-  TTypeKinds = set of TTypeKind;
-const
-  TypeKindToStr: array [TTypeKind] of string = (
-    'tyNone', 'tyBool', 'tyChar', 'tyEmptySet', 
-    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
-    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
-    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
-    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
-    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
-    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
-    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
-    'tyFloat32', 'tyFloat64', 'tyFloat128');
-type
-  TNodeFlag = (
-    nfNone, nfBase2, nfBase8, nfBase16, 
-    nfAllConst);
-  TNodeFlags = set of TNodeFlag;
-const
-  NodeFlagToStr: array [TNodeFlag] of string = (
-    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
-    'nfAllConst');
-type
-  TTypeFlag = (
-    tfIsDistinct, tfGeneric, tfExternal, tfImported, 
-    tfInfoGenerated, tfSemChecked, tfHasOutParams, tfEnumHasWholes, 
-    tfVarargs, tfFinal);
-  TTypeFlags = set of TTypeFlag;
-const
-  TypeFlagToStr: array [TTypeFlag] of string = (
-    'tfIsDistinct', 'tfGeneric', 'tfExternal', 'tfImported', 
-    'tfInfoGenerated', 'tfSemChecked', 'tfHasOutParams', 'tfEnumHasWholes', 
-    'tfVarargs', 'tfFinal');
-type
-  TSymKind = (
-    skUnknownSym, skConditional, skDynLib, skParam, 
-    skTypeParam, skTemp, skType, skConst, 
-    skVar, skProc, skIterator, skConverter, 
-    skMacro, skTemplate, skField, skEnumField, 
-    skForVar, skModule, skLabel);
-  TSymKinds = set of TSymKind;
-const
-  SymKindToStr: array [TSymKind] of string = (
-    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
-    'skTypeParam', 'skTemp', 'skType', 'skConst', 
-    'skVar', 'skProc', 'skIterator', 'skConverter', 
-    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
-    'skForVar', 'skModule', 'skLabel');
+    'nkBlockExpr', 'nkStmtListType', 'nkBlockType', 'nkVm', 
+    'nkTypeOfExpr', 'nkObjectTy', 'nkTupleTy', 'nkRecList', 
+    'nkRecCase', 'nkRecWhen', 'nkRefTy', 'nkPtrTy', 
+    'nkVarTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 
+    'nkReturnToken');
 {[[[end]]]}
 
 type
   // symbols that require compiler magic:
   TMagic = (
     //[[[cog
-    //magics = eval(file("data/magic.yml").read())
+    //magics = eval(open("data/magic.yml").read())
     //for i in range(0, len(magics)-1):
     //  cog.out("m" + magics[i] + ", ")
     //  if (i+1) % 6 == 0: cog.outl("")
     //cog.outl("m" + magics[-1])
     //]]]
-    mNone, mDefined, mNew, mNewFinalize, mLow, mHigh, 
-    mSizeOf, mRegisterFinalizer, mSucc, mPred, mInc, mDec, 
-    mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, 
-    mCard, mOrd, mChr, mAddI, mSubI, mMulI, 
-    mDivI, mModI, mAddI64, mSubI64, mMulI64, mDivI64, 
-    mModI64, mShrI, mShlI, mBitandI, mBitorI, mBitxorI, 
-    mMinI, mMaxI, mShrI64, mShlI64, mBitandI64, mBitorI64, 
-    mBitxorI64, mMinI64, mMaxI64, mAddF64, mSubF64, mMulF64, 
-    mDivF64, mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
-    mDivU, mModU, mAddU64, mSubU64, mMulU64, mDivU64, 
-    mModU64, mEqI, mLeI, mLtI, mEqI64, mLeI64, 
-    mLtI64, mEqF64, mLeF64, mLtF64, mLeU, mLtU, 
-    mLeU64, mLtU64, mEqEnum, mLeEnum, mLtEnum, mEqCh, 
-    mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef, 
-    mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, 
-    mUnaryMinusI, mUnaryMinusI64, mAbsI, mAbsI64, mNot, mUnaryPlusI, 
-    mBitnotI, mUnaryPlusI64, mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, 
-    mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, 
-    mToU8, mToU16, mToU32, mToFloat, mToBiggestFloat, mToInt, 
-    mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, 
-    mCStrToStr, mStrToStr, mAnd, mOr, mEqStr, mLeStr, 
-    mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, 
-    mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, mConTArr, 
-    mConTT, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, 
-    mInRange, mInSet, mIs, mAsgn, mRepr, mExit, 
-    mSetLengthStr, mSetLengthSeq, mAssert, mSwap, mIsNil, mArray, 
-    mOpenArray, mRange, mSet, mSeq, mCompileDate, mCompileTime, 
-    mNimrodVersion, mNimrodMajor, mNimrodMinor, mNimrodPatch, mCpuEndian, mNaN, 
-    mInf, mNegInf, mNLen, mNChild, mNSetChild, mNAdd, 
-    mNAddMultiple, mNDel, mNKind, mNIntVal, mNFloatVal, mNSymbol, 
-    mNIdent, mNGetType, mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, 
-    mNSetIdent, mNSetType, mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, 
-    mStrToIdent, mIdentToStr, mEqIdent, mNHint, mNWarning, mNError
+    mNone, mDefined, mLow, mHigh, mSizeOf, mIs, 
+    mSucc, mPred, mInc, mDec, mOrd, mNew, 
+    mNewFinalize, mNewSeq, mRegisterFinalizer, mLengthOpenArray, mLengthStr, mLengthArray, 
+    mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
+    mGCunref, mAddI, mSubI, mMulI, mDivI, mModI, 
+    mAddI64, mSubI64, mMulI64, mDivI64, mModI64, mShrI, 
+    mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI, 
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, 
+    mMaxI64, mAddF64, mSubF64, mMulF64, mDivF64, mMinF64, 
+    mMaxF64, mAddU, mSubU, mMulU, mDivU, mModU, 
+    mAddU64, mSubU64, mMulU64, mDivU64, mModU64, mEqI, 
+    mLeI, mLtI, mEqI64, mLeI64, mLtI64, mEqF64, 
+    mLeF64, mLtF64, mLeU, mLtU, mLeU64, mLtU64, 
+    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, 
+    mEqB, mLeB, mLtB, mEqRef, mEqProc, mEqUntracedRef, 
+    mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI, mUnaryMinusI64, 
+    mAbsI, mAbsI64, mNot, mUnaryPlusI, mBitnotI, mUnaryPlusI64, 
+    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64, 
+    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, 
+    mToU32, mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, 
+    mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, 
+    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, 
+    mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet, 
+    mConStrStr, mConArrArr, mConArrT, mConTArr, mConTT, mSlice, 
+    mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, mInRange, mInSet, 
+    mAsgn, mRepr, mExit, mSetLengthStr, mSetLengthSeq, mAssert, 
+    mSwap, mIsNil, mArrToSeq, mArray, mOpenArray, mRange, 
+    mSet, mSeq, mInt, mInt8, mInt16, mInt32, 
+    mInt64, mFloat, mFloat32, mFloat64, mBool, mChar, 
+    mString, mCstring, mPointer, mAnyEnum, mEmptySet, mIntSetBaseType, 
+    mNil, mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, 
+    mNimrodMinor, mNimrodPatch, mCpuEndian, mNaN, mInf, mNegInf, 
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, 
+    mNKind, mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, 
+    mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, 
+    mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
+    mEqIdent, mNHint, mNWarning, mNError
     //[[[end]]]
   );
 
@@ -264,8 +267,7 @@ type
   PType = ^TType;
   PSym = ^TSym;
 
-  TNode = {@ignore} record // keep this below 32 bytes;
-                           // otherwise the AST grows too much
+  TNode = {@ignore} record
     typ: PType;
     strVal: string;
     comment: string;
@@ -282,7 +284,7 @@ type
       nkMetaNode: (nodePtr: PNodePtr);
   end;
   {@emit
-  record // keep this below 32 bytes; otherwise the AST grows too much
+  record // on a 32bit machine, this takes 32 bytes
     typ: PType;
     comment: string;
     info: TLineInfo;
@@ -298,7 +300,7 @@ type
       nkIdent: (ident: PIdent);
       nkMetaNode: (nodePtr: PNodePtr);
       else (sons: TNodeSeq);
-  end; }
+  end acyclic; }
 
   TSymSeq = array of PSym;
   TStrTable = object           // a table[PIdent] of PSym
@@ -323,7 +325,7 @@ type
     locCall,       // location is a call expression
     locOther       // location is something other
   );
-  
+
   TLocFlag = (
     lfIndirect,    // backend introduced a pointer
     lfNoDeepCopy,  // no need for a deep copy
@@ -349,16 +351,24 @@ type
   end;
 
 // ---------------- end of backend information ------------------------------
+  TLibKind = (libHeader, libDynamic, libDynamicGenerated);
+  TLib = object(lists.TListEntry) // also misused for headers!
+    kind: TLibKind;
+    // needed for the backends:
+    name: PRope;
+    path: string;
+  end;
+  PLib = ^TLib;
 
   TSym = object(TIdObj)      // symbols are identical iff they have the same
                              // id!
     kind: TSymKind;
+    magic: TMagic;
     typ: PType;
     name: PIdent;
     info: TLineInfo;
     owner: PSym;
     flags: TSymFlags;
-    magic: TMagic;
     tab: TStrTable;          // interface table for modules
     ast: PNode;              // syntax tree of proc, iterator, etc.:
                              // the whole proc including header; this is used
@@ -375,16 +385,16 @@ type
                              // (or not in symbol table)
     offset: int;             // offset of record field
     loc: TLoc;
-    annex: PObject;          // additional fields (seldom used, so we use a
+    annex: PLib;             // additional fields (seldom used, so we use a
                              // reference to another object to safe space)
   end;
 
-  PTypeSeq = array of PType;
+  TTypeSeq = array of PType;
   TType = object(TIdObj)     // types are identical iff they have the
                              // same id; there may be multiple copies of a type
                              // in memory!
     kind: TTypeKind;         // kind of type
-    sons: PTypeSeq;          // base types, etc.
+    sons: TTypeSeq;          // base types, etc.
     n: PNode;                // node for types:
                              // for range types a nkRange node
                              // for record types a nkRecord node
@@ -438,11 +448,11 @@ type
   TNodePair = record
     h: THash;   // because it is expensive to compute!
     key: PNode;
-    val: PNode;
+    val: int;
   end;
   TNodePairSeq = array of TNodePair;
 
-  TNodeTable = record // the same as table[PNode] of PNode;
+  TNodeTable = record // the same as table[PNode] of int;
                       // nodes are compared by structure!
     counter: int;
     data: TNodePairSeq;
@@ -454,15 +464,6 @@ type
     counter: int;
     data: TObjectSeq;
   end;
-  TLibKind = (libHeader, libDynamic, libDynamicGenerated);
-  TLib = object(lists.TListEntry) // also misused for headers!
-    kind: TLibKind;
-    // needed for the backends:
-    name: PRope;
-    path: string;
-    syms: TObjectSet;
-  end;
-  PLib = ^TLib;
 
 const
   OverloadableSyms = {@set}[skProc, skIterator, skConverter];
@@ -475,39 +476,43 @@ const // "MagicToStr" array:
     //  if (i+1) % 6 == 0: cog.outl("")
     //cog.outl("'%s'" % magics[-1])
     //]]]
-    'None', 'Defined', 'New', 'NewFinalize', 'Low', 'High', 
-    'SizeOf', 'RegisterFinalizer', 'Succ', 'Pred', 'Inc', 'Dec', 
-    'LengthOpenArray', 'LengthStr', 'LengthArray', 'LengthSeq', 'Incl', 'Excl', 
-    'Card', 'Ord', 'Chr', 'AddI', 'SubI', 'MulI', 
-    'DivI', 'ModI', 'AddI64', 'SubI64', 'MulI64', 'DivI64', 
-    'ModI64', 'ShrI', 'ShlI', 'BitandI', 'BitorI', 'BitxorI', 
-    'MinI', 'MaxI', 'ShrI64', 'ShlI64', 'BitandI64', 'BitorI64', 
-    'BitxorI64', 'MinI64', 'MaxI64', 'AddF64', 'SubF64', 'MulF64', 
-    'DivF64', 'MinF64', 'MaxF64', 'AddU', 'SubU', 'MulU', 
-    'DivU', 'ModU', 'AddU64', 'SubU64', 'MulU64', 'DivU64', 
-    'ModU64', 'EqI', 'LeI', 'LtI', 'EqI64', 'LeI64', 
-    'LtI64', 'EqF64', 'LeF64', 'LtF64', 'LeU', 'LtU', 
-    'LeU64', 'LtU64', 'EqEnum', 'LeEnum', 'LtEnum', 'EqCh', 
-    'LeCh', 'LtCh', 'EqB', 'LeB', 'LtB', 'EqRef', 
-    'EqProc', 'EqUntracedRef', 'LePtr', 'LtPtr', 'EqCString', 'Xor', 
-    'UnaryMinusI', 'UnaryMinusI64', 'AbsI', 'AbsI64', 'Not', 'UnaryPlusI', 
-    'BitnotI', 'UnaryPlusI64', 'BitnotI64', 'UnaryPlusF64', 'UnaryMinusF64', 'AbsF64', 
-    'Ze8ToI', 'Ze8ToI64', 'Ze16ToI', 'Ze16ToI64', 'Ze32ToI64', 'ZeIToI64', 
-    'ToU8', 'ToU16', 'ToU32', 'ToFloat', 'ToBiggestFloat', 'ToInt', 
-    'ToBiggestInt', 'CharToStr', 'BoolToStr', 'IntToStr', 'Int64ToStr', 'FloatToStr', 
-    'CStrToStr', 'StrToStr', 'And', 'Or', 'EqStr', 'LeStr', 
-    'LtStr', 'EqSet', 'LeSet', 'LtSet', 'MulSet', 'PlusSet', 
-    'MinusSet', 'SymDiffSet', 'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 
-    'ConTT', 'Slice', 'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 
-    'InRange', 'InSet', 'Is', 'Asgn', 'Repr', 'Exit', 
-    'SetLengthStr', 'SetLengthSeq', 'Assert', 'Swap', 'IsNil', 'Array', 
-    'OpenArray', 'Range', 'Set', 'Seq', 'CompileDate', 'CompileTime', 
-    'NimrodVersion', 'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'NaN', 
-    'Inf', 'NegInf', 'NLen', 'NChild', 'NSetChild', 'NAdd', 
-    'NAddMultiple', 'NDel', 'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 
-    'NIdent', 'NGetType', 'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 
-    'NSetIdent', 'NSetType', 'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 
-    'StrToIdent', 'IdentToStr', 'EqIdent', 'NHint', 'NWarning', 'NError'
+    'None', 'Defined', 'Low', 'High', 'SizeOf', 'Is', 
+    'Succ', 'Pred', 'Inc', 'Dec', 'Ord', 'New', 
+    'NewFinalize', 'NewSeq', 'RegisterFinalizer', 'LengthOpenArray', 'LengthStr', 'LengthArray', 
+    'LengthSeq', 'Incl', 'Excl', 'Card', 'Chr', 'GCref', 
+    'GCunref', 'AddI', 'SubI', 'MulI', 'DivI', 'ModI', 
+    'AddI64', 'SubI64', 'MulI64', 'DivI64', 'ModI64', 'ShrI', 
+    'ShlI', 'BitandI', 'BitorI', 'BitxorI', 'MinI', 'MaxI', 
+    'ShrI64', 'ShlI64', 'BitandI64', 'BitorI64', 'BitxorI64', 'MinI64', 
+    'MaxI64', 'AddF64', 'SubF64', 'MulF64', 'DivF64', 'MinF64', 
+    'MaxF64', 'AddU', 'SubU', 'MulU', 'DivU', 'ModU', 
+    'AddU64', 'SubU64', 'MulU64', 'DivU64', 'ModU64', 'EqI', 
+    'LeI', 'LtI', 'EqI64', 'LeI64', 'LtI64', 'EqF64', 
+    'LeF64', 'LtF64', 'LeU', 'LtU', 'LeU64', 'LtU64', 
+    'EqEnum', 'LeEnum', 'LtEnum', 'EqCh', 'LeCh', 'LtCh', 
+    'EqB', 'LeB', 'LtB', 'EqRef', 'EqProc', 'EqUntracedRef', 
+    'LePtr', 'LtPtr', 'EqCString', 'Xor', 'UnaryMinusI', 'UnaryMinusI64', 
+    'AbsI', 'AbsI64', 'Not', 'UnaryPlusI', 'BitnotI', 'UnaryPlusI64', 
+    'BitnotI64', 'UnaryPlusF64', 'UnaryMinusF64', 'AbsF64', 'Ze8ToI', 'Ze8ToI64', 
+    'Ze16ToI', 'Ze16ToI64', 'Ze32ToI64', 'ZeIToI64', 'ToU8', 'ToU16', 
+    'ToU32', 'ToFloat', 'ToBiggestFloat', 'ToInt', 'ToBiggestInt', 'CharToStr', 
+    'BoolToStr', 'IntToStr', 'Int64ToStr', 'FloatToStr', 'CStrToStr', 'StrToStr', 
+    'And', 'Or', 'EqStr', 'LeStr', 'LtStr', 'EqSet', 
+    'LeSet', 'LtSet', 'MulSet', 'PlusSet', 'MinusSet', 'SymDiffSet', 
+    'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 'ConTT', 'Slice', 
+    'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 'InRange', 'InSet', 
+    'Asgn', 'Repr', 'Exit', 'SetLengthStr', 'SetLengthSeq', 'Assert', 
+    'Swap', 'IsNil', 'ArrToSeq', 'Array', 'OpenArray', 'Range', 
+    'Set', 'Seq', 'Int', 'Int8', 'Int16', 'Int32', 
+    'Int64', 'Float', 'Float32', 'Float64', 'Bool', 'Char', 
+    'String', 'Cstring', 'Pointer', 'AnyEnum', 'EmptySet', 'IntSetBaseType', 
+    'Nil', 'IsMainModule', 'CompileDate', 'CompileTime', 'NimrodVersion', 'NimrodMajor', 
+    'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'NaN', 'Inf', 'NegInf', 
+    'NLen', 'NChild', 'NSetChild', 'NAdd', 'NAddMultiple', 'NDel', 
+    'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 'NIdent', 'NGetType', 
+    'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 'NSetIdent', 'NSetType', 
+    'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 'StrToIdent', 'IdentToStr', 
+    'EqIdent', 'NHint', 'NWarning', 'NError'
     //[[[end]]]
   );
 
@@ -515,7 +520,7 @@ const
   GenericTypes: TTypeKinds = {@set}[tyGeneric, tyGenericParam];
 
   StructuralEquivTypes: TTypeKinds = {@set}[
-    tyEmptySet, tyArrayConstr, tyNil, tyTuple,
+    tyArrayConstr, tyNil, tyTuple,
     tyArray,
     tySet,
     tyRange,
@@ -537,7 +542,10 @@ const
   ];
   ConstantDataTypes: TTypeKinds = {@set}[tyArray, tySet, tyTuple];
   ExportableSymKinds = {@set}[skVar, skConst, skProc, skType,
-                              skIterator, skMacro, skTemplate, skConverter];
+                              skIterator, skMacro, skTemplate, skConverter,
+                              skStub];
+  PersistentNodeFlags: TNodeFlags = {@set}[
+    nfBase2, nfBase8, nfBase16, nfAllConst];
   namePos = 0;
   genericParamsPos = 1;
   paramsPos = 2;
@@ -545,8 +553,12 @@ const
   codePos = 4;
   resultPos = 5;
 
+var
+  gId: int;
+
 function getID: int;
 procedure setID(id: int);
+procedure IDsynchronizationPoint(idRange: int);
 
 // creator procs:
 function NewSym(symKind: TSymKind; Name: PIdent; owner: PSym): PSym;
@@ -572,16 +584,17 @@ procedure initIdNodeTable(out x: TIdNodeTable);
 procedure initNodeTable(out x: TNodeTable);
 
 // copy procs:
-function copyType(t: PType; owner: PSym): PType;
+function copyType(t: PType; owner: PSym; keepId: bool): PType;
 function copySym(s: PSym; keepId: bool = false): PSym;
 procedure assignType(dest, src: PType);
 
 procedure copyStrTable(out dest: TStrTable; const src: TStrTable);
 procedure copyTable(out dest: TTable; const src: TTable);
 procedure copyObjectSet(out dest: TObjectSet; const src: TObjectSet);
+procedure copyIdTable(var dest: TIdTable; const src: TIdTable);
 
-function sonsLen(n: PNode): int; overload;
-function sonsLen(n: PType): int; overload;
+function sonsLen(n: PNode): int; overload; 
+function sonsLen(n: PType): int; overload; 
 
 function lastSon(n: PNode): PNode; overload;
 function lastSon(n: PType): PType; overload;
@@ -615,20 +628,101 @@ function leValue(a, b: PNode): Boolean; // a <= b? a, b are literals
 
 function ValueToString(a: PNode): string;
 
+// ------------- efficient integer sets -------------------------------------
+const
+  IntsPerTrunk = 8;
+  InitIntSetSize = 8; // must be a power of two!
+  BitsPerTrunk = IntsPerTrunk * sizeof(int) * 8;
+  BitsPerInt = sizeof(int) * 8;
+
+type
+  PTrunk = ^TTrunk;
+  TTrunk = record
+    next: PTrunk; // all nodes are connected with this pointer
+    key: int;    // start address at bit 0
+    bits: array [0..IntsPerTrunk-1] of int; // a bit vector
+  end;
+  TTrunkSeq = array of PTrunk;
+  TIntSet = record
+    counter, max: int;
+    head: PTrunk;
+    data: TTrunkSeq;
+  end;
+
+function IntSetContains(const s: TIntSet; key: int): bool;
+procedure IntSetIncl(var s: TIntSet; key: int);
+procedure IntSetInit(var s: TIntSet);
+
+function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
+
+
+const
+  debugIds = false;
+
+procedure registerID(id: PIdObj);
+
+// owner handling:
+function getCurrOwner(): PSym;
+procedure PushOwner(owner: PSym);
+procedure PopOwner;
+
 implementation
 
 var
-  gId: int;
+  gOwners: array of PSym; // owner stack (used for initializing the
+                          // owner field of syms)
+                          // the documentation comment always gets
+                          // assigned to the current owner
+                          // BUGFIX: global array is needed!
+{@emit gOwners := @[]; }
+
+function getCurrOwner(): PSym;
+begin
+  result := gOwners[high(gOwners)];
+end;
+
+procedure PushOwner(owner: PSym);
+var
+  len: int;
+begin
+  len := length(gOwners);
+  setLength(gOwners, len+1);
+  gOwners[len] := owner;
+end;
+
+procedure PopOwner;
+var
+  len: int;
+begin
+  len := length(gOwners);
+  if (len <= 0) then InternalError('popOwner');
+  setLength(gOwners, len - 1);
+end;
+
+var
+  usedIds: TIntSet;
+
+procedure registerID(id: PIdObj);
+begin
+  if debugIDs then
+    if (id.id = -1) or IntSetContainsOrIncl(usedIds, id.id) then
+      InternalError('ID already used: ' + toString(id.id));
+end;
 
 function getID: int;
 begin
-  inc(gId);
-  result := gId
+  result := gId;
+  inc(gId)
 end;
 
 procedure setId(id: int);
 begin
-  gId := max(gId, id)
+  gId := max(gId, id+1);
+end;
+
+procedure IDsynchronizationPoint(idRange: int);
+begin
+  gId := (gId div IdRange +1) * IdRange + 1;
 end;
 
 function leValue(a, b: PNode): Boolean; // a <= b?
@@ -696,6 +790,22 @@ begin
     dest.data[i] := src.data[i];
 end;
 
+procedure copyIdTable(var dest: TIdTable; const src: TIdTable);
+var
+  i: int;
+begin
+  dest.counter := src.counter;
+{@emit
+  if isNil(src.data) then exit;
+}
+{@ignore}
+  setLength(dest.data, length(src.data));
+{@emit
+  newSeq(dest.data, length(src.data)); }
+  for i := 0 to high(src.data) do
+    dest.data[i] := src.data[i];
+end;
+
 procedure copyTable(out dest: TTable; const src: TTable);
 var
   i: int;
@@ -734,7 +844,10 @@ begin
   FillChar(result^, sizeof(result^), 0);
 {@emit}
   result.kind := kind;
-  result.info := UnknownLineInfo();
+  //result.info := UnknownLineInfo(); inlined:
+  result.info.fileIndex := int32(-1);
+  result.info.col := int16(-1);
+  result.info.line := int16(-1);
 end;
 
 function newIntNode(kind: TNodeKind; const intVal: BiggestInt): PNode;
@@ -800,7 +913,10 @@ begin
   result.owner := owner;
   result.size := -1;
   result.align := 2; // default alignment
-  result.id := getID()
+  result.id := getID();
+  if debugIds then RegisterId(result);
+  //if result.id < 2000 then
+  //  MessageOut(typeKindToStr[kind] +{&} ' has id: ' +{&} toString(result.id));
 end;
 
 procedure assignType(dest, src: PType);
@@ -815,16 +931,19 @@ begin
   dest.align := src.align;
   dest.containerID := src.containerID;
   newSons(dest, sonsLen(src));
-  for i := 0 to sonsLen(src)-1 do 
+  for i := 0 to sonsLen(src)-1 do
     dest.sons[i] := src.sons[i];
 end;
 
-function copyType(t: PType; owner: PSym): PType;
+function copyType(t: PType; owner: PSym; keepId: bool): PType;
 begin
   result := newType(t.Kind, owner);
   assignType(result, t);
-  if owner = t.owner then result.id := t.id
-  else result.id := getID();
+  if keepId then result.id := t.id
+  else begin
+    result.id := getID();
+    if debugIds then RegisterId(result);
+  end;
   result.sym := t.sym;
   // backend-info should not be copied
 end;
@@ -835,7 +954,11 @@ begin
   result.ast := nil; // BUGFIX; was: s.ast which made problems
   result.info := s.info;
   result.typ := s.typ;
-  if keepId then result.id := s.id else result.id := getID();
+  if keepId then result.id := s.id
+  else begin
+    result.id := getID();
+    if debugIds then RegisterId(result);
+  end;
   result.flags := s.flags;
   result.magic := s.magic;
   copyStrTable(result.tab, s.tab);
@@ -859,16 +982,19 @@ begin
   result.options := gOptions;
   result.owner := owner;
   result.offset := -1;
-  result.id := getID()
+  result.id := getID();
+  if debugIds then RegisterId(result);
+  //if result.id < 2000 then
+  //  MessageOut(name.s +{&} ' has id: ' +{&} toString(result.id));
 end;
 
 procedure initStrTable(out x: TStrTable);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
@@ -877,9 +1003,9 @@ procedure initTable(out x: TTable);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
@@ -888,9 +1014,9 @@ procedure initIdTable(out x: TIdTable);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
@@ -899,9 +1025,9 @@ procedure initObjectSet(out x: TObjectSet);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
@@ -910,9 +1036,9 @@ procedure initIdNodeTable(out x: TIdNodeTable);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
@@ -921,17 +1047,20 @@ procedure initNodeTable(out x: TNodeTable);
 begin
   x.counter := 0;
 {@emit
-  x.data := []; }
-  setLength(x.data, startSize);
+  newSeq(x.data, startSize); }
 {@ignore}
+  setLength(x.data, startSize);
   fillChar(x.data[0], length(x.data)*sizeof(x.data[0]), 0);
 {@emit}
 end;
 
 function sonsLen(n: PType): int;
 begin
-  if n.sons = nil then result := 0
-  else result := length(n.sons)
+{@ignore}
+  result := length(n.sons);
+{@emit
+  if isNil(n.sons) then result := 0
+  else result := length(n.sons); }
 end;
 
 procedure newSons(father: PType; len: int);
@@ -939,7 +1068,7 @@ var
   i, L: int;
 begin
 {@emit
-  if father.sons = nil then father.sons := []; }
+  if isNil(father.sons) then father.sons := @[]; }
   L := length(father.sons);
   setLength(father.sons, L + len);
 {@ignore}
@@ -951,17 +1080,22 @@ procedure addSon(father, son: PType);
 var
   L: int;
 begin
-{@emit
-  if father.sons = nil then father.sons := []; }
+{@ignore}
   L := length(father.sons);
   setLength(father.sons, L+1);
   father.sons[L] := son;
+{@emit
+  if isNil(father.sons) then father.sons := @[]; }
+{@emit add(father.sons, son); }
 end;
 
 function sonsLen(n: PNode): int;
 begin
-  if n.sons = nil then result := 0
-  else result := length(n.sons)
+{@ignore}
+  result := length(n.sons);
+{@emit
+  if isNil(n.sons) then result := 0
+  else result := length(n.sons); }
 end;
 
 procedure newSons(father: PNode; len: int);
@@ -969,7 +1103,7 @@ var
   i, L: int;
 begin
 {@emit
-  if father.sons = nil then father.sons := []; }
+  if isNil(father.sons) then father.sons := @[]; }
   L := length(father.sons);
   setLength(father.sons, L + len);
 {@ignore}
@@ -981,11 +1115,13 @@ procedure addSon(father, son: PNode);
 var
   L: int;
 begin
-{@emit
-  if father.sons = nil then father.sons := []; }
+{@ignore}
   L := length(father.sons);
   setLength(father.sons, L+1);
   father.sons[L] := son;
+{@emit
+  if isNil(father.sons) then father.sons := @[]; }
+{@emit add(father.sons, son); }
 end;
 
 procedure delSon(father: PNode; idx: int);
@@ -993,7 +1129,7 @@ var
   len, i: int;
 begin
 {@emit
-  if father.sons = nil then exit; }
+  if isNil(father.sons) then exit; }
   len := sonsLen(father);
   for i := idx to len-2 do
     father.sons[i] := father.sons[i+1];
@@ -1007,7 +1143,7 @@ begin
   result := newNode(src.kind);
   result.info := src.info;
   result.typ := src.typ;
-  result.flags := src.flags;
+  result.flags := src.flags * PersistentNodeFlags;
   case src.Kind of
     nkCharLit..nkInt64Lit:
       result.intVal := src.intVal;
@@ -1034,7 +1170,7 @@ begin
   result := newNode(src.kind);
   result.info := src.info;
   result.typ := src.typ;
-  result.flags := src.flags;
+  result.flags := src.flags * PersistentNodeFlags;
   case src.Kind of
     nkCharLit..nkInt64Lit:
       result.intVal := src.intVal;
@@ -1119,4 +1255,172 @@ begin
   if n <> nil then addSon(father, n)
 end;
 
+// ---------------- efficient integer sets ----------------------------------
+// Same algorithm as the one the GC uses
+
+function mustRehash(len, counter: int): bool;
+begin
+  assert(len > counter);
+  result := (len * 2 < counter * 3) or (len-counter < 4);
+end;
+
+function nextTry(h, maxHash: THash): THash;
+begin
+  result := ((5*h) + 1) and maxHash;
+  // For any initial h in range(maxHash), repeating that maxHash times
+  // generates each int in range(maxHash) exactly once (see any text on
+  // random-number generation for proof).
+end;
+
+procedure IntSetInit(var s: TIntSet);
+begin
+{@ignore}
+  fillChar(s, sizeof(s), 0);
+{@emit}
+{@ignore}
+  setLength(s.data, InitIntSetSize);
+  fillChar(s.data[0], length(s.data)*sizeof(s.data[0]), 0);
+{@emit
+  newSeq(s.data, InitIntSetSize); }
+  s.max := InitIntSetSize-1;
+  s.counter := 0;
+  s.head := nil
+end;
+
+function IntSetGet(const t: TIntSet; key: int): PTrunk;
+var
+  h: int;
+begin
+  h := key and t.max;
+  while t.data[h] <> nil do begin
+    if t.data[h].key = key then begin
+      result := t.data[h]; exit
+    end;
+    h := nextTry(h, t.max)
+  end;
+  result := nil
+end;
+
+procedure IntSetRawInsert(const t: TIntSet; var data: TTrunkSeq;
+                          desc: PTrunk);
+var
+  h: int;
+begin
+  h := desc.key and t.max;
+  while data[h] <> nil do begin
+    assert(data[h] <> desc);
+    h := nextTry(h, t.max)
+  end;
+  assert(data[h] = nil);
+  data[h] := desc
+end;
+
+procedure IntSetEnlarge(var t: TIntSet);
+var
+  n: TTrunkSeq;
+  i, oldMax: int;
+begin
+  oldMax := t.max;
+  t.max := ((t.max+1)*2)-1;
+{@ignore}
+  setLength(n, t.max + 1);
+  fillChar(n[0], length(n)*sizeof(n[0]), 0);
+{@emit
+  newSeq(n, t.max+1); }
+  for i := 0 to oldmax do
+    if t.data[i] <> nil then
+      IntSetRawInsert(t, n, t.data[i]);
+{@ignore}
+  t.data := n;
+{@emit
+  swap(t.data, n); }
+end;
+
+function IntSetPut(var t: TIntSet; key: int): PTrunk;
+var
+  h: int;
+begin
+  h := key and t.max;
+  while t.data[h] <> nil do begin
+    if t.data[h].key = key then begin
+      result := t.data[h]; exit
+    end;
+    h := nextTry(h, t.max)
+  end;
+
+  if mustRehash(t.max+1, t.counter) then IntSetEnlarge(t);
+  inc(t.counter);
+  h := key and t.max;
+  while t.data[h] <> nil do h := nextTry(h, t.max);
+  assert(t.data[h] = nil);
+  new(result);
+{@ignore}
+  fillChar(result^, sizeof(result^), 0);
+{@emit}
+  result.next := t.head;
+  result.key := key;
+  t.head := result;
+  t.data[h] := result;
+end;
+
+// ---------- slightly higher level procs ----------------------------------
+
+function transform(key: int): int;
+begin
+  if key < 0 then result := 1000000000 + key // avoid negative numbers!
+  else result := key
+end;
+
+function IntSetContains(const s: TIntSet; key: int): bool;
+var
+  u: int;
+  t: PTrunk;
+begin
+  u := transform(key);
+  t := IntSetGet(s, u div BitsPerTrunk);
+  if t <> nil then begin
+    u := u mod BitsPerTrunk;
+    result := (t.bits[u div BitsPerInt]
+      and (1 shl (u mod BitsPerInt))) <> 0
+  end
+  else
+    result := false
+end;
+
+procedure IntSetIncl(var s: TIntSet; key: int);
+var
+  u: int;
+  t: PTrunk;
+begin
+  u := transform(key);
+  t := IntSetPut(s, u div BitsPerTrunk);
+  u := u mod BitsPerTrunk;
+  t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
+                            or (1 shl (u mod BitsPerInt));
+end;
+
+function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
+var
+  u: int;
+  t: PTrunk;
+begin
+  u := transform(key);
+  t := IntSetGet(s, u div BitsPerTrunk);
+  if t <> nil then begin
+    u := u mod BitsPerTrunk;
+    result := (t.bits[u div BitsPerInt]
+          and (1 shl (u mod BitsPerInt))) <> 0;
+    if not result then
+      t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
+                                or (1 shl (u mod BitsPerInt));
+  end
+  else begin
+    IntSetIncl(s, key);
+    result := false
+  end
+end;
+
+
+initialization
+  if debugIDs then IntSetInit(usedIds);
 end.

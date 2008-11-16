@@ -6,7 +6,6 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-
 unit pnimsyn;
 
 // This module implements the parser of the standard Nimrod representation.
@@ -21,15 +20,14 @@ unit pnimsyn;
 interface
 
 uses
-  nsystem, scanner, idents, strutils, ast, msgs;
+  nsystem, llstream, scanner, idents, strutils, ast, msgs;
 
 function ParseFile(const filename: string): PNode;
 
 type
   TParser = record               // a TParser object represents a module that
                                  // is being parsed
-    lex: PLexer;                 // we need a stack of lexers because
-                                 // of support for the `include` command
+    lex: PLexer;                 // the lexer that is used for parsing
     tok: PToken;                 // the current token
   end;
 
@@ -38,22 +36,26 @@ function ParseModule(var p: TParser): PNode;
 function parseExpr(var p: TParser): PNode;
 function parseStmt(var p: TParser): PNode;
 
-function openParser(var p: TParser; const filename: string): TResult;
-procedure bufferParser(var p: TParser; const buffer: string);
-  // the same as `openParser`, but does use a buffer and does not read from
-  // a file
+procedure openParser(var p: TParser; const filename: string;
+                     inputstream: PLLStream);
 procedure closeParser(var p: TParser);
+
+function parseTopLevelStmt(var p: TParser): PNode;
+// implements an iterator. Returns the next top-level statement or nil if end
+// of stream.
 
 implementation
 
 function ParseFile(const filename: string): PNode;
 var
   p: TParser;
+  f: TBinaryFile;
 begin
-  if OpenParser(p, filename) = failure then begin
+  if not OpenFile(f, filename) then begin
     rawMessage(errCannotOpenFile, filename);
     exit
   end;
+  OpenParser(p, filename, LLStreamOpen(f));
   result := ParseModule(p);
   CloseParser(p);
 end;
@@ -73,16 +75,17 @@ begin
 {@emit}
 end;
 
-procedure bufferParser(var p: TParser; const buffer: string);
+procedure getTok(var p: TParser);
 begin
-  initParser(p);
-  bufferLexer(p.lex^, buffer);
+  rawGetTok(p.lex^, p.tok^);
 end;
 
-function OpenParser(var p: TParser; const filename: string): TResult;
+procedure OpenParser(var p: TParser; const filename: string;
+                     inputStream: PLLStream);
 begin
   initParser(p);
-  result := OpenLexer(p.lex^, filename);
+  OpenLexer(p.lex^, filename, inputstream);
+  getTok(p); // read the first token
 end;
 
 procedure CloseParser(var p: TParser);
@@ -94,12 +97,6 @@ begin
 end;
 
 // ---------------- parser helpers --------------------------------------------
-
-procedure getTok(var p: TParser);
-begin
-  rawGetTok(p.lex^, p.tok^);
-  //printTok(p.tok); // DEBUG
-end;
 
 procedure skipComment(var p: TParser; node: PNode);
 begin
@@ -177,8 +174,7 @@ end;
 
 function newNodeP(kind: TNodeKind; const p: TParser): PNode;
 begin
-  result := newNode(kind);
-  result.info := getLineInfo(p.lex^);
+  result := newNodeI(kind, getLineInfo(p.lex^));
 end;
 
 function newIntNodeP(kind: TNodeKind; const intVal: BiggestInt;
@@ -261,22 +257,22 @@ begin
             getTok(p);
             eat(p, tkDotDot);
             if (p.tok.tokType = tkOpr) and (p.tok.ident.s = '$'+'') then begin
-              s := s + '$'+'';
-              getTok(p);          
+              addChar(s, '$');
+              getTok(p);
             end;
           end
           else if p.tok.tokType = tkDotDot then begin
             s := s + '..';
             getTok(p);
             if (p.tok.tokType = tkOpr) and (p.tok.ident.s = '$'+'') then begin
-              s := s + '$'+'';
+              addChar(s, '$');
               getTok(p);
             end;
           end;
           eat(p, tkBracketRi);
-          s := s + ']'+'';
+          addChar(s, ']');
           if p.tok.tokType = tkEquals then begin
-            s := s + '='; getTok(p);
+            addChar(s, '='); getTok(p);
           end;
           addSon(result, newIdentNodeP(getIdent(s), p));
         end;
@@ -485,8 +481,7 @@ begin
     getTok(p);
     optInd(p, result);
     a := result;
-    result := newNode(nkQualified);
-    result.info := a.info;
+    result := newNodeI(nkQualified, a.info);
     addSon(result, a);
     addSon(result, parseSymbol(p));
   end;
@@ -809,8 +804,7 @@ begin
     getTok(p);
     optInd(p, result);
     b := parseExpr(p);
-    result := newNode(nkAsgn);
-    result.info := a.info;
+    result := newNodeI(nkAsgn, a.info);
     addSon(result, a);
     addSon(result, b);
   end
@@ -1449,6 +1443,12 @@ begin
   end
 end;
 
+function newCommentStmt(var p: TParser): PNode;
+begin
+  result := newNodeP(nkCommentStmt, p);
+  result.info.line := result.info.line - int16(1);
+end;
+
 type
   TDefParser = function (var p: TParser): PNode;
 
@@ -1475,7 +1475,7 @@ begin
           tkDed: begin getTok(p); break end;
           tkEof: break; // BUGFIX
           tkComment: begin
-            a := newNodeP(nkCommentStmt, p);
+            a := newCommentStmt(p);
             skipComment(p, a);
             addSon(result, a);
           end;
@@ -1618,7 +1618,7 @@ begin
       while true do begin
         case p.tok.tokType of
           tkSad: getTok(p);
-          tkCase, tkWhen, tkSymbol, tkAccent: begin
+          tkCase, tkWhen, tkSymbol, tkAccent, tkNil: begin
             addSon(result, parseRecordPart(p));
           end;
           tkDed: begin getTok(p); break end;
@@ -1635,6 +1635,10 @@ begin
     tkSymbol, tkAccent: begin
       result := parseIdentColonEquals(p, true);
       skipComment(p, result);
+    end;
+    tkNil: begin
+      result := newNodeP(nkNilLit, p);
+      getTok(p);
     end;
     else result := nil
   end
@@ -1681,13 +1685,13 @@ begin
   end
   else
     addSon(result, nil);
-  indAndComment(p, result); // XXX: special extension!
+  indAndComment(p, result); // special extension!
 end;
 
 function parseVariable(var p: TParser): PNode;
 begin
   result := parseIdentColonEquals(p, true);
-  indAndComment(p, result); // XXX: special extension!
+  indAndComment(p, result); // special extension!
 end;
 
 function simpleStmt(var p: TParser): PNode;
@@ -1703,13 +1707,11 @@ begin
     tkImport: result := parseImportStmt(p);
     tkFrom: result := parseFromStmt(p);
     tkInclude: result := parseIncludeStmt(p);
-    tkComment: begin
-      result := newNodeP(nkCommentStmt, p);
-    end;
+    tkComment: result := newCommentStmt(p);
     //tkSad, tkInd, tkDed: assert(false);
     else result := parseExprStmt(p)
   end;
-  skipComment(p, result);  
+  skipComment(p, result);
 end;
 
 function complexOrSimpleStmt(var p: TParser): PNode;
@@ -1770,13 +1772,31 @@ end;
 function parseModule(var p: TParser): PNode;
 begin
   result := newNodeP(nkStmtList, p);
-  getTok(p); // read first token
   while true do begin
     case p.tok.tokType of
       tkSad: getTok(p);
       tkDed, tkInd: parMessage(p, errInvalidIndentation);
       tkEof: break;
       else addSon(result, complexOrSimpleStmt(p));
+    end
+  end
+end;
+
+function parseTopLevelStmt(var p: TParser): PNode;
+begin
+  result := nil;
+  while true do begin
+    case p.tok.tokType of
+      tkSad: getTok(p);
+      tkDed, tkInd: begin
+        parMessage(p, errInvalidIndentation);
+        break;
+      end;
+      tkEof: break;
+      else begin
+        result := complexOrSimpleStmt(p);
+        break
+      end
     end
   end
 end;

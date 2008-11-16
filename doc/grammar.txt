@@ -23,16 +23,15 @@ namedTypeOrExpr ::=
   | expr [EQUALS (expr [DOTDOT expr] | typeDescK | DOTDOT [expr] )
                  | DOTDOT [expr]]
   | typeDescK
-               
-castExpr ::= CAST BRACKET_LE optInd typeDesc BRACKERT_RI 
+
+castExpr ::= CAST BRACKET_LE optInd typeDesc BRACKERT_RI
                   PAR_LE optInd expr PAR_RI
 addrExpr ::= ADDR PAR_LE optInd expr PAR_RI
 symbol ::= ACC (KEYWORD | IDENT | operator | PAR_LE PAR_RI
-               | BRACKET_LE BRACKET_RI) ACC | IDENT
-accExpr ::= KEYWORD | IDENT | operator [DOT KEYWORD | IDENT | operator]
-              paramList
-primary ::= ( prefixOperator optInd )* ( IDENT | literal | ACC accExpr ACC
-                                               | castExpr | addrExpr ) (
+               | BRACKET_LE BRACKET_RI | EQUALS | literal )+ ACC
+         | IDENT
+primary ::= ( prefixOperator optInd )* ( symbol | constructor |
+                                                | castExpr | addrExpr ) (
                DOT optInd symbol
              #| CURLY_LE namedTypeDescList CURLY_RI
              | PAR_LE optInd
@@ -49,10 +48,11 @@ literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
           | CHAR_LIT | RCHAR_LIT
           | NIL
+
+constructor ::= literal
           | BRACKET_LE optInd (expr [COLON expr] optComma )* BRACKET_RI # []-Constructor
           | CURLY_LE optInd (expr [DOTDOT expr] optComma )* CURLY_RI    # {}-Constructor
           | PAR_LE optInd (expr [COLON expr] optComma )* PAR_RI         # ()-Constructor
-
 
 exprList ::= ( expr optComma )*
 
@@ -170,7 +170,7 @@ objectCase ::= CASE expr COLON typeDesc [COMMENT]
               (OF sliceList COLON [COMMENT] objectPart)*
               [ELSE COLON [COMMENT] objectPart]
 
-objectPart ::= objectWhen | objectCase | objectIdentPart
+objectPart ::= objectWhen | objectCase | objectIdentPart | NIL
              | indPush objectPart (SAD objectPart)* DED
 tupleDesc ::= BRACKET_LE optInd ((symbol optComma)+ COLON typeDesc optComma)* BRACKET_RI
 
@@ -179,9 +179,9 @@ enumDef ::= ENUM [OF typeDesc] (symbol [EQUALS expr] optComma [COMMENT | IND COM
 
 typeDecl ::= COMMENT
            | symbol ["*"] [genericParams] [EQUALS typeDef] [COMMENT | IND COMMENT]
-           
+
 typeSection ::= TYPE indPush typeDecl (SAD typeDecl)* DED
-         
+
 colonOrEquals ::= COLON typeDesc [EQUALS expr] | EQUALS expr
 varPart ::= (symbol ["*" | "-"] [pragma] optComma)+ colonOrEquals [COMMENT | IND COMMENT]
 varSection ::= VAR (varPart | indPush (COMMENT|varPart) (SAD (COMMENT|varPart))* DED)

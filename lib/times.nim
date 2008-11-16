@@ -23,8 +23,8 @@ type
   TWeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-  TTime* {.importc: "time_t", final.} = object ## abstract type that 
-                                               ## represents a time
+  TTime* {.importc: "time_t", header: "<time.h>", final.} = object ## abstract type that 
+                                                                   ## represents a time
     when defined(ECMAScript):
       getDay: proc (): int
       getFullYear: proc (): int
@@ -96,11 +96,9 @@ proc TimeInfoToTime*(timeInfo: TTimeInfo): TTime
   ## them from the other information in the broken-down time structure.
 
 proc `$` *(timeInfo: TTimeInfo): string
-  ## converts a `TTimeInfo` object to a
-  ## string representation.
+  ## converts a `TTimeInfo` object to a string representation.
 proc `$` *(time: TTime): string
-  ## converts a calendar time to a
-  ## string representation.
+  ## converts a calendar time to a string representation.
 
 proc getDateStr*(): string
   ## gets the current date as a string of the format
@@ -110,6 +108,14 @@ proc getClockStr*(): string
 
 proc `-` *(a, b: TTime): int64
   ## computes the difference of two calendar times. Result is in seconds.
+
+proc `<` * (a, b: TTime): bool = 
+  ## returns true iff ``a < b``, that is iff a happened before b.
+  result = a - b < 0
+  
+proc `<=` * (a, b: TTime): bool = 
+  ## returns true iff ``a <= b``.
+  result = a - b <= 0
 
 proc getStartMilsecs*(): int
   ## get the miliseconds from the start of the program
@@ -162,7 +168,7 @@ when not defined(ECMAScript):
     result.hour = int(tm.hour)
     result.monthday = int(tm.monthday)
     result.month = TMonth(tm.month)
-    result.year = tm.year + 1900
+    result.year = tm.year + 1900'i32
     result.weekday = weekDays[int(tm.weekDay)]
     result.yearday = int(tm.yearday)
   
@@ -180,8 +186,7 @@ when not defined(ECMAScript):
     result.isdst = -1
   
   proc `-` (a, b: TTime): int64 =
-    return toInt(difftime(a, b)) # XXX: toBiggestInt is needed here, but
-                                 # Nim does not support it!
+    return toBiggestInt(difftime(a, b))
   
   proc getStartMilsecs(): int = return clock() div (clocksPerSec div 1000)
   proc getTime(): TTime = return timec(nil)
@@ -202,12 +207,23 @@ when not defined(ECMAScript):
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
     
+  proc toStringTillNL(p: cstring): string = 
+    result = ""
+    var i = 0
+    while p[i] != '\0' and p[i] != '\10' and p[i] != '\13': 
+      add(result, p[i])
+      inc(i)
+    return result
+    
   proc `$`(timeInfo: TTimeInfo): string =
-    return $asctime(timeInfoToTM(timeInfo))
+    # BUGFIX: asctime returns a newline at the end!
+    var p = asctime(timeInfoToTM(timeInfo))
+    result = toStringTillNL(p)
   
   proc `$`(time: TTime): string =
+    # BUGFIX: ctime returns a newline at the end!
     var a = time
-    return $ctime(addr(a))
+    return toStringTillNL(ctime(addr(a)))
 
 else:
   proc getTime(): TTime {.importc: "new Date", nodecl.}

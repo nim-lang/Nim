@@ -77,8 +77,10 @@ function skipPtrsGeneric(t: PType): PType;
 function elemType(t: PType): PType;
 
 function containsObject(t: PType): bool;
+
 function containsGarbageCollectedRef(typ: PType): Boolean;
 function containsHiddenPointer(typ: PType): Boolean;
+function canFormAcycle(typ: PType): boolean;
 
 function isCompatibleToCString(a: PType): bool;
 
@@ -99,6 +101,19 @@ function inheritanceDiff(a, b: PType): int;
 
 function InvalidGenericInst(f: PType): bool;
 // for debugging
+
+
+type
+  TTypeFieldResult = (
+    frNone,    // type has no object type field 
+    frHeader,  // type has an object type field only in the header
+    frEmbedded // type has an object type field somewhere embedded
+  );
+
+function analyseObjectWithTypeField(t: PType): TTypeFieldResult;
+// this does a complex analysis whether a call to ``objectInit`` needs to be
+// made or intializing of the type field suffices or if there is no type field
+// at all in this type.
 
 implementation
 
@@ -392,6 +407,54 @@ begin
   result := searchTypeFor(t, isObjectPredicate);
 end;
 
+function isObjectWithTypeFieldPredicate(t: PType): bool;
+begin
+  result := (t.kind = tyObject) and (t.sons[0] = nil) 
+    and not (sfPure in t.sym.flags) 
+    and not (tfFinal in t.flags);
+end;
+
+function analyseObjectWithTypeFieldAux(t: PType; 
+                                      var marker: TIntSet): TTypeFieldResult;
+var 
+  res: TTypeFieldResult;
+  i: int;
+begin
+  result := frNone;
+  if t = nil then exit;
+  case t.kind of
+    tyObject: begin
+      if (t.n <> nil) then 
+        if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker) then begin
+          result := frEmbedded; exit
+        end;
+      for i := 0 to sonsLen(t)-1 do begin
+        res := analyseObjectWithTypeFieldAux(t.sons[i], marker);
+        if res = frEmbedded then begin result := frEmbedded; exit end;
+        if res = frHeader then result := frHeader; 
+      end;
+      if result = frNone then
+        if isObjectWithTypeFieldPredicate(t) then result := frHeader
+    end;
+    tyGenericInst: result := analyseObjectWithTypeFieldAux(lastSon(t), marker);
+    tyArray, tyArrayConstr, tyTuple: begin
+      for i := 0 to sonsLen(t)-1 do begin
+        res := analyseObjectWithTypeFieldAux(t.sons[i], marker);
+        if res <> frNone then begin result := frEmbedded; exit end;
+      end
+    end
+    else begin end
+  end
+end;
+
+function analyseObjectWithTypeField(t: PType): TTypeFieldResult;
+var
+  marker: TIntSet;
+begin
+  IntSetInit(marker);
+  result := analyseObjectWithTypeFieldAux(t, marker);
+end;
+
 function isGBCRef(t: PType): bool;
 begin
   result := t.kind in [tyRef, tySequence, tyString];
@@ -414,6 +477,61 @@ function containsHiddenPointer(typ: PType): Boolean;
 // that need to be copied deeply)
 begin
   result := searchTypeFor(typ, isHiddenPointer);
+end;
+
+function canFormAcycleAux(var marker: TIntSet; t: PType; 
+                          startId: int): bool; forward;
+
+function canFormAcycleNode(var marker: TIntSet; n: PNode; startId: int): bool;
+var
+  i: int;
+begin
+  result := false;
+  if n <> nil then begin
+    result := canFormAcycleAux(marker, n.typ, startId);
+    if not result then 
+      case n.kind of
+        nkNone..nkNilLit: begin end;
+        else begin
+          for i := 0 to sonsLen(n)-1 do begin
+            result := canFormAcycleNode(marker, n.sons[i], startId);
+            if result then exit
+          end
+        end
+      end
+  end
+end;
+
+function canFormAcycleAux(var marker: TIntSet; t: PType; startId: int): bool;
+var
+  i: int;
+begin
+  result := false;
+  if t = nil then exit;
+  if tfAcyclic in t.flags then exit;
+  case skipGeneric(t).kind of 
+    tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr,
+    tyOpenArray: begin
+      if not IntSetContainsOrIncl(marker, t.id) then begin
+        for i := 0 to sonsLen(t)-1 do begin
+          result := canFormAcycleAux(marker, t.sons[i], startId);
+          if result then exit
+        end;
+        if t.n <> nil then result := canFormAcycleNode(marker, t.n, startId)
+      end
+      else 
+        result := t.id = startId;
+    end
+    else begin end
+  end
+end;
+
+function canFormAcycle(typ: PType): boolean;
+var 
+  marker: TIntSet; 
+begin
+  IntSetInit(marker);
+  result := canFormAcycleAux(marker, typ, typ.id);
 end;
 
 function mutateTypeAux(var marker: TIntSet; t: PType; iter: TTypeMutator;
@@ -476,7 +594,7 @@ end;
 function TypeToString(typ: PType; prefer: TPreferedDesc = preferName): string;
 const
   typeToStr: array [TTypeKind] of string = (
-    'None', 'bool', 'Char', '{}', 'Array Constructor [$1]', 'nil',
+    'None', 'bool', 'Char', 'empty', 'Array Constructor [$1]', 'nil',
     'Generic', 'GenericInst', 'GenericParam',
     'enum', 'anyenum',
     'array[$1, $2]', 'object', 'tuple', 'set[$1]', 'range[$1]',
@@ -770,12 +888,16 @@ var
   i: int;
   a, b: PType;
 begin
+  if x = y then begin result := true; exit end;
   a := skipGeneric(x);
   b := skipGeneric(y);
   assert(a <> nil);
   assert(b <> nil);
   if a.kind <> b.kind then begin result := false; exit end;
   case a.Kind of
+    tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
+    tyInt..tyFloat128: 
+      result := true;
     tyEnum, tyForward, tyObject:
       result := (a.id = b.id);
     tyTuple: 
@@ -802,16 +924,9 @@ begin
         and SameValue(a.n.sons[0], b.n.sons[0])
         and SameValue(a.n.sons[1], b.n.sons[1])
     end;
-    tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, tyInt..tyFloat128:
-      result := true;
-    else begin
-      InternalError('sameType(' +{&} typeKindToStr[a.kind] +{&} ', '
-        +{&} typeKindToStr[b.kind] +{&} ')');
-      result := false
-    end
+    tyNone, tyAnyEnum: result := false;
   end
 end;
-
 
 function align(address, alignment: biggestInt): biggestInt;
 begin

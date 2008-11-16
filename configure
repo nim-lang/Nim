@@ -1,5 +1,5 @@
 #! /usr/bin/env sh
 
-python koch.py $@ configure
+echo "there is nothing to configure"
 
 

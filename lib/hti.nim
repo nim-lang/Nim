@@ -13,7 +13,7 @@ type # This should be he same as ast.TTypeKind
     tyNone, # 0 
     tyBool, # 1 
     tyChar, # 2
-    tyEmptySet, # 3
+    tyEmpty, # 3
     tyArrayConstr, # 4
     tyNil, # 5
     tyGeneric, # 6
@@ -49,9 +49,13 @@ type # This should be he same as ast.TTypeKind
     len: int
     sons: ptr array [0..0x7fff, ptr TNimNode]
 
+  TNimTypeFlag = enum 
+    ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString
+    ntfAcyclic = 1     # type cannot form a cycle
   TNimType {.compilerproc, final.} = object
     size: int
     kind: TNimKind
+    flags: set[TNimTypeFlag]
     base: ptr TNimType
     node: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
     finalizer: pointer # the finalizer for the type

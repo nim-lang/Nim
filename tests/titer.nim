@@ -1,15 +1,13 @@
 # Test the new iterators
 
-iterator xrange(fromm, to: int, step = 1): (a: int) =
-  a = fromm
+iterator xrange(fromm, to: int, step = 1): int =
+  var a = fromm
   while a <= to:
     yield a
     inc(a, step)
 
-iterator interval[T](a, b: T): (x: T)
-
-iterator interval[T](a, b: T): (x: T) =
-  x = a
+iterator interval[T](a, b: T): T =
+  var x = a
   while x <= b:
     yield x
     inc(x)

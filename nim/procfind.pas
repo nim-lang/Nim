@@ -6,9 +6,23 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
+unit procfind;
 
 // This module implements the searching for procs and iterators.
 // This is needed for proper handling of forward declarations.
+
+interface
+
+{$include 'config.inc'}
+
+uses 
+  nsystem, ast, astalgo, msgs, semdata, types;
+
+function SearchForProc(c: PContext; fn: PSym; tos: int): PSym;
+// Searchs for the fn in the symbol table. If the parameter lists are exactly
+// the same the sym in the symbol table is returned, else nil.
+
+implementation
 
 function equalGenericParams(procA, procB: PNode): Boolean;
 var
@@ -21,8 +35,10 @@ begin
   
   if sonsLen(procA) <> sonsLen(procB) then exit;
   for i := 0 to sonsLen(procA)-1 do begin
-    assert(procA.sons[i].kind = nkSym);
-    assert(procB.sons[i].kind = nkSym);
+    if procA.sons[i].kind <> nkSym then
+      InternalError(procA.info, 'equalGenericParams');
+    if procB.sons[i].kind <> nkSym then
+      InternalError(procB.info, 'equalGenericParams');
     a := procA.sons[i].sym;
     b := procB.sons[i].sym;
     if (a.name.id <> b.name.id) or not sameType(a.typ, b.typ) then exit;
@@ -31,8 +47,6 @@ begin
 end;
 
 function SearchForProc(c: PContext; fn: PSym; tos: int): PSym;
-// Searchs for the fn in the symbol table. If the parameter lists are exactly
-// the same the sym in the symbol table is returned, else nil.
 var
   it: TIdentIter;
 begin
@@ -54,3 +68,5 @@ begin
     result := NextIdentIter(it, c.tab.stack[tos])
   end
 end;
+
+end.

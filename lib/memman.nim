@@ -164,7 +164,7 @@ else:
 # the fact that the OS is likely to give us pages with contingous numbers. 
 # A page contains either small fixed size objects of the same size or 
 # variable length objects. An object's size is always aligned at 16 byte
-# boundry. Huge objects are dealt with the TLSF algorithm. 
+# boundary. Huge objects are dealt with the TLSF algorithm. 
 # The design supports iterating over any object in a fast way. 
 
 # A bitset contains any page that starts an allocated page. The page may be
@@ -230,6 +230,7 @@ type
     zct: TCellArray
     stackCells: TCellArray
     smallBlocks: array [PageSize div MemAlign, ptr TPageDesc]
+    freeLists: array [PageSize div MemAlign, ptr TFreeList]
     pages: TPageManager
     usedPages: TPageList
     freePages: TPageList
@@ -237,6 +238,11 @@ type
 # small blocks: 
 proc allocSmall(var h: TGcHeap, size: int): pointer = 
   var s = align(size)
+  var f = h.freeLists[s]
+  if f != nil: 
+    f.prev = f.next # remove from list
+    f.next.prev = f.prev
+    return f
   var p = h.smallBlocks[s]
   if p == nil or p.free == nil:
     p = newSmallBlock(s, p)

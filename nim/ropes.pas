@@ -14,7 +14,7 @@ unit ropes;
   efficiently; especially concatenation is done in O(1) instead of O(N).
   Ropes make use a lazy evaluation: They are essentially concatenation
   trees that are only flattened when converting to a native Nimrod
-  string or when written to disk. The empty string is represented by a
+  string or when written to disk. The empty string is represented with a
   nil pointer.
   A little picture makes everything clear:
 
@@ -57,10 +57,6 @@ unit ropes;
   To cache them they are inserted in another tree, a splay tree for best
   performance. But for the caching tree we use the leafs' left and right
   pointers.
-
-  Experiments show that for bootstrapping the whole compiler needs
-  ~1 MB less space because of this optimization. For bigger programs
-  this is likely to increase even further.
 }
 
 interface
@@ -71,7 +67,7 @@ uses
   nsystem, msgs, strutils, platform, hashes, crc;
 
 const
-  CacheLeafs = True;
+  CacheLeafs = true;
   countCacheMisses = False; // see what our little optimization gives
 
 type
@@ -85,7 +81,7 @@ type
     left, right: PRope;
     len: int;
     data: string; // != nil if a leaf
-  end;
+  end {@acyclic};
   // the empty rope is represented by nil to safe space
 
   TRopeSeq = array of PRope;
@@ -157,7 +153,7 @@ begin
   if hits+misses <> 0 then
     result := 'Misses: ' +{&} ToString(misses) +{&}
               ' total: ' +{&} toString(hits+misses) +{&}
-              ' quot: '  +{&} toStringF(misses / (hits+misses))
+              ' quot: '  +{&} toStringF(toFloat(misses) / toFloat(hits+misses))
   else
     result := ''
 end;
@@ -376,7 +372,7 @@ procedure InitStack(var stack: TRopeSeq);
 begin
   {@ignore}
   setLength(stack, 0);
-  {@emit stack := [];}
+  {@emit stack := @[];}
 end;
 
 procedure push(var stack: TRopeSeq; r: PRope);
@@ -439,6 +435,8 @@ begin
     if head <> nil then newWriteRopeRec(f, head);
     nimCloseFile(f);
   end
+  else
+    rawMessage(errCannotOpenFile, filename);
 end;
 
 procedure recRopeToStr(var result: string; var resultLen: int; p: PRope);
@@ -519,7 +517,9 @@ begin
     start := i;
     while (i <= len + StrStart - 1) do
       if (frmt[i] <> '$') then inc(i) else break;
-    if i-1 >= start then app(result, ncopy(frmt, start, i-1));
+    if i-1 >= start then begin
+      app(result, ncopy(frmt, start, i-1));
+    end
   end;
   assert(RopeInvariant(result));
 end;
@@ -588,7 +588,7 @@ function newCrcFromRopeAux(r: PRope; startVal: TCrc32): TCrc32;
 var
   stack: TRopeSeq;
   it: PRope;
-  i: int;
+  L, i: int;
 begin
   initStack(stack);
   push(stack, r);
@@ -600,8 +600,12 @@ begin
       it := it.left;
     end;
     assert(it.data <> snil);
-    for i := strStart to length(it.data)+strStart-1 do
+    i := strStart;
+    L := length(it.data)+strStart;
+    while i < L do begin
       result := updateCrc32(it.data[i], result);
+      inc(i);
+    end
   end
 end;
 
@@ -616,7 +620,7 @@ var
   c: TCrc32;
 begin
   c := crcFromFile(filename);
-  if int(c) <> crcFromRope(r) then begin
+  if c <> crcFromRope(r) then begin
     writeRope(r, filename);
     result := true
   end

@@ -6,7 +6,6 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-
 unit condsyms;
 
 // This module handles the conditional symbols.
@@ -16,7 +15,7 @@ unit condsyms;
 interface
 
 uses
-  ast, astalgo, msgs, hashes, platform, strutils, idents;
+  nsystem, ast, astalgo, msgs, hashes, platform, strutils, idents;
 
 var
   gSymbols: TStrTable;
@@ -29,6 +28,8 @@ procedure UndefSymbol(const symbol: string);
 function isDefined(symbol: PIdent): Boolean;
 procedure ListSymbols;
 
+function countDefinedSymbols: int;
+
 implementation
 
 procedure DefineSymbol(const symbol: string);
@@ -39,7 +40,12 @@ begin
   i := getIdent(symbol);
   sym := StrTableGet(gSymbols, i);
   if sym = nil then begin
-    sym := NewSym(skConditional, i, nil);
+    new(sym); // circumvent the ID mechanism
+  {@ignore}
+    fillChar(sym^, sizeof(sym^), 0);
+  {@emit}
+    sym.kind := skConditional;
+    sym.name := i;
     StrTableAdd(gSymbols, sym);
   end;
   sym.position := 1;
@@ -75,6 +81,19 @@ begin
   MessageOut('-- End of list --');
 end;
 
+function countDefinedSymbols: int;
+var
+  it: TTabIter;
+  s: PSym;
+begin
+  s := InitTabIter(it, gSymbols);
+  result := 0;
+  while s <> nil do begin
+    if s.position = 1 then inc(result);
+    s := nextIter(it, gSymbols);
+  end;
+end;
+
 procedure InitDefines;
 begin
   initStrTable(gSymbols);
@@ -92,7 +111,7 @@ begin
       DefineSymbol('win32');
     end;
     osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX,
-    osAtari: begin
+    osAtari, osAix: begin
       // these are all 'unix-like'
       DefineSymbol('unix');
       DefineSymbol('posix');

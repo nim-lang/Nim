@@ -6,9 +6,36 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
+unit semfold;
 
 // this module folds constants; used by semantic checking phase
 // and evaluation phase
+
+interface
+
+{$include 'config.inc'}
+
+uses
+  sysutils, nsystem, charsets, strutils,
+  lists, options, ast, astalgo, trees, treetab, nimsets, ntime, nversion,
+  platform, nmath, msgs, nos, condsyms, idents, rnimsyn, types;
+
+function getConstExpr(module: PSym; n: PNode): PNode;
+  // evaluates the constant expression or returns nil if it is no constant
+  // expression
+
+function evalOp(m: TMagic; n, a, b: PNode): PNode; 
+function leValueConv(a, b: PNode): Boolean;
+
+function newIntNodeT(const intVal: BiggestInt; n: PNode): PNode;
+function newFloatNodeT(const floatVal: BiggestFloat; n: PNode): PNode;
+function newStrNodeT(const strVal: string; n: PNode): PNode;
+function getInt(a: PNode): biggestInt;
+function getFloat(a: PNode): biggestFloat;
+function getStr(a: PNode): string;
+function getStrOrChar(a: PNode): string;
+
+implementation
 
 function newIntNodeT(const intVal: BiggestInt; n: PNode): PNode;
 begin
@@ -194,14 +221,22 @@ begin
       result := nimsets.symdiffSets(a, b);
       result.info := n.info;
     end;
-    mInSet: result := newIntNodeT(Ord(inSet(a, b)), n);
     mConStrStr: result := newStrNodeT(getStrOrChar(a)+{&}getStrOrChar(b), n);
-    mRepr: result := newStrNodeT(renderTree(a, {@set}[renderNoComments]), n);
+    mInSet: result := newIntNodeT(Ord(inSet(a, b)), n);
+    mRepr: begin
+      // BUGFIX: we cannot eval mRepr here. But this means that it is not 
+      // available for interpretation. I don't know how to fix this.
+      //result := newStrNodeT(renderTree(a, {@set}[renderNoComments]), n);      
+    end;
     mIntToStr, mInt64ToStr, mBoolToStr, mCharToStr:
       result := newStrNodeT(toString(getOrdValue(a)), n);
     mFloatToStr: result := newStrNodeT(toStringF(getFloat(a)), n);
     mCStrToStr: result := newStrNodeT(getStrOrChar(a), n);
     mStrToStr: result := a;
+    mArrToSeq: begin
+      result := copyTree(a);
+      result.typ := n.typ;
+    end;
     mExit, mInc, ast.mDec, mAssert, mSwap,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq,
     mSetLengthStr, mSetLengthSeq, mNLen..mNError: begin end;
@@ -209,7 +244,7 @@ begin
   end
 end;
 
-function getConstIfExpr(c: PContext; n: PNode): PNode;
+function getConstIfExpr(c: PSym; n: PNode): PNode;
 var
   i: int;
   it, e: PNode;
@@ -236,7 +271,7 @@ begin
   end
 end;
 
-function partialAndExpr(c: PContext; n: PNode): PNode;
+function partialAndExpr(c: PSym; n: PNode): PNode;
 // partial evaluation
 var
   a, b: PNode;
@@ -245,19 +280,17 @@ begin
   a := getConstExpr(c, n.sons[1]);
   b := getConstExpr(c, n.sons[2]);
   if a <> nil then begin
-    assert(a.kind in [nkIntLit..nkInt64Lit]);
-    if a.intVal = 0 then result := a
+    if getInt(a) = 0 then result := a
     else if b <> nil then result := b
     else result := n.sons[2]
   end
   else if b <> nil then begin
-    assert(b.kind in [nkIntLit..nkInt64Lit]);
-    if b.intVal = 0 then result := b
+    if getInt(b) = 0 then result := b
     else result := n.sons[1]
   end
 end;
 
-function partialOrExpr(c: PContext; n: PNode): PNode;
+function partialOrExpr(c: PSym; n: PNode): PNode;
 // partial evaluation
 var
   a, b: PNode;
@@ -266,14 +299,12 @@ begin
   a := getConstExpr(c, n.sons[1]);
   b := getConstExpr(c, n.sons[2]);
   if a <> nil then begin
-    assert(a.kind in [nkIntLit..nkInt64Lit]);
-    if a.intVal <> 0 then result := a
+    if getInt(a) <> 0 then result := a
     else if b <> nil then result := b
     else result := n.sons[2]
   end
   else if b <> nil then begin
-    assert(b.kind in [nkIntLit..nkInt64Lit]);
-    if b.intVal <> 0 then result := b
+    if getInt(b) <> 0 then result := b
     else result := n.sons[1]
   end
 end;
@@ -298,7 +329,7 @@ begin
   end
 end;
 
-function getConstExpr(c: PContext; n: PNode): PNode;
+function getConstExpr(module: PSym; n: PNode): PNode;
 var
   s: PSym;
   a, b: PNode;
@@ -312,6 +343,8 @@ begin
         result := newIntNodeT(s.position, n)
       else if (s.kind = skConst) then begin
         case s.magic of
+          mIsMainModule:  
+            result := newIntNodeT(ord(sfMainModule in module.flags), n);
           mCompileDate:   result := newStrNodeT(ntime.getDateStr(), n);
           mCompileTime:   result := newStrNodeT(ntime.getClockStr(), n);
           mNimrodVersion: result := newStrNodeT(VersionAsString, n);
@@ -327,7 +360,7 @@ begin
       end
     end;
     nkCharLit..nkNilLit: result := copyNode(n);
-    nkIfExpr: result := getConstIfExpr(c, n);
+    nkIfExpr: result := getConstIfExpr(module, n);
     nkCall: begin
       if (n.sons[0].kind <> nkSym) then exit;
       s := n.sons[0].sym;
@@ -356,10 +389,10 @@ begin
               result := newIntNodeT(lastOrd(skipVarGeneric(n.sons[1].typ)), n);
           end;
           else begin
-            a := getConstExpr(c, n.sons[1]);
+            a := getConstExpr(module, n.sons[1]);
             if a = nil then exit;
             if sonsLen(n) > 2 then begin
-              b := getConstExpr(c, n.sons[2]);
+              b := getConstExpr(module, n.sons[2]);
               if b = nil then exit
             end
             else b := nil;
@@ -372,7 +405,7 @@ begin
       end
     end;
     nkAddr: begin
-      a := getConstExpr(c, n.sons[0]);
+      a := getConstExpr(module, n.sons[0]);
       if a <> nil then begin
         result := n;
         n.sons[0] := a
@@ -381,16 +414,16 @@ begin
     nkBracket: begin
       result := copyTree(n);
       for i := 0 to sonsLen(n)-1 do begin
-        a := getConstExpr(c, n.sons[i]);
+        a := getConstExpr(module, n.sons[i]);
         if a = nil then begin result := nil; exit end;
         result.sons[i] := a;
       end;
       include(result.flags, nfAllConst);
     end;
     nkRange: begin
-      a := getConstExpr(c, n.sons[0]);
+      a := getConstExpr(module, n.sons[0]);
       if a = nil then exit;
-      b := getConstExpr(c, n.sons[1]);
+      b := getConstExpr(module, n.sons[1]);
       if b = nil then exit;
       result := copyNode(n);
       addSon(result, a);
@@ -399,7 +432,7 @@ begin
     nkCurly: begin
       result := copyTree(n);
       for i := 0 to sonsLen(n)-1 do begin
-        a := getConstExpr(c, n.sons[i]);
+        a := getConstExpr(module, n.sons[i]);
         if a = nil then begin result := nil; exit end;
         result.sons[i] := a;
       end;
@@ -409,14 +442,14 @@ begin
       result := copyTree(n);
       if (sonsLen(n) > 0) and (n.sons[0].kind = nkExprColonExpr) then begin
         for i := 0 to sonsLen(n)-1 do begin
-          a := getConstExpr(c, n.sons[i].sons[1]);
+          a := getConstExpr(module, n.sons[i].sons[1]);
           if a = nil then begin result := nil; exit end;
           result.sons[i].sons[1] := a;
         end
       end
       else begin
         for i := 0 to sonsLen(n)-1 do begin
-          a := getConstExpr(c, n.sons[i]);
+          a := getConstExpr(module, n.sons[i]);
           if a = nil then begin result := nil; exit end;
           result.sons[i] := a;
         end
@@ -424,7 +457,7 @@ begin
       include(result.flags, nfAllConst);
     end;
     nkChckRangeF, nkChckRange64, nkChckRange: begin
-      a := getConstExpr(c, n.sons[0]);
+      a := getConstExpr(module, n.sons[0]);
       if a = nil then exit;
       if leValueConv(n.sons[1], a) and leValueConv(a, n.sons[2]) then begin
         result := a; // a <= x and x <= b
@@ -436,13 +469,13 @@ begin
             [typeToString(n.sons[0].typ), typeToString(n.typ)]));
     end;
     nkStringToCString, nkCStringToString: begin
-      a := getConstExpr(c, n.sons[0]);
+      a := getConstExpr(module, n.sons[0]);
       if a = nil then exit;
       result := a;
       result.typ := n.typ;
     end;
     nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: begin
-      a := getConstExpr(c, n.sons[1]);
+      a := getConstExpr(module, n.sons[1]);
       if a = nil then exit;
       case skipRange(n.typ).kind of
         tyInt..tyInt64: begin
@@ -478,18 +511,4 @@ begin
   end
 end;
 
-function semConstExpr(c: PContext; n: PNode): PNode;
-var
-  e: PNode;
-begin
-  e := semExprWithType(c, n);
-  if e = nil then begin
-    liMessage(n.info, errConstExprExpected);
-    result := nil; exit
-  end;
-  result := getConstExpr(c, e);
-  if result = nil then begin
-    //writeln(output, renderTree(n));
-    liMessage(n.info, errConstExprExpected);
-  end
-end;
+end.

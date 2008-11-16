@@ -7,14 +7,14 @@ type
 proc sum(a: TMyarray): int =
   result = 0
   var i = 0
-  while i < length(a):
+  while i < len(a):
     inc(result, a[i])
     inc(i)
 
 proc sum(a: openarray[int]): int =
   result = 0
   var i = 0
-  while i < length(a):
+  while i < len(a):
     inc(result, a[i])
     inc(i)
 

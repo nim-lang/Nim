@@ -47,7 +47,7 @@ else:
       # only Mac OS X has this shit
 
 proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.nodecl, importc: "longjmp".}
-proc c_setjmp(jmpb: var C_JmpBuf) {.nodecl, importc: "setjmp".}
+proc c_setjmp(jmpb: var C_JmpBuf): cint {.nodecl, importc: "setjmp".}
 
 proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}

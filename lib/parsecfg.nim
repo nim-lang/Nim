@@ -25,7 +25,7 @@
 
 
 import 
-  hashes, strutils, lexbase
+  hashes, strutils, lexbase, streams
 
 type 
   TCfgEventKind* = enum ## enumation of all events that may occur when parsing
@@ -37,7 +37,7 @@ type
     
   TCfgEvent* = object of TObject ## describes a parsing event
     case kind*: TCfgEventKind    ## the kind of the event
-    of cfgEof: dummy: string
+    of cfgEof: nil
     of cfgSectionStart: 
       section*: string           ## `section` contains the name of the 
                                  ## parsed section start (syntax: ``[section]``)
@@ -59,21 +59,18 @@ type
     literal: string          # the parsed (string) literal
   
   TParserState = enum 
-    startState, commaState
+    startState # , commaState # not yet used
   TCfgParser* = object of TBaseLexer ## the parser object.
     tok: TToken
     state: TParserState
     filename: string
 
-proc Open*(c: var TCfgParser, filename: string): bool
-  ## initializes the parser, open the file for reading and returns true if
-  ## successful (the file has been found).
-
-proc OpenFromBuffer*(c: var TCfgParser, buf: string)
-  ## initializes the parser with a buffer. This cannot fail.
+proc open*(c: var TCfgParser, input: PStream, filename: string)
+  ## initializes the parser with an input stream. `Filename` is only used
+  ## for nice error messages.
 
 proc close*(c: var TCfgParser)
-  ## closes the parser `c`.
+  ## closes the parser `c` and its associated input stream.
 
 proc next*(c: var TCfgParser): TCfgEvent
   ## retrieves the first/next event. This controls the parser.
@@ -87,6 +84,10 @@ proc getLine*(c: TCfgParser): int
 proc getFilename*(c: TCfgParser): string
   ## get the filename of the file that the parser processes.
 
+proc errorStr*(c: TCfgParser, msg: string): string
+  ## returns a properly formated error message containing current line and
+  ## column information.
+
 
 # implementation
 
@@ -94,24 +95,16 @@ const
   SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'} 
   
 proc rawGetTok(c: var TCfgParser, tok: var TToken)
-proc open(c: var TCfgParser, filename: string): bool = 
-  result = initBaseLexer(c, filename)
+proc open(c: var TCfgParser, input: PStream, filename: string) = 
+  lexbase.open(c, input)
   c.filename = filename
   c.state = startState
   c.tok.kind = tkInvalid
   c.tok.literal = ""
-  if result: rawGetTok(c, c.tok)
-  
-proc openFromBuffer(c: var TCfgParser, buf: string) = 
-  initBaseLexerFromBuffer(c, buf)
-  c.filename = "buffer"
-  c.state = startState
-  c.tok.kind = tkInvalid
-  c.tok.literal = ""
   rawGetTok(c, c.tok)
-
+  
 proc close(c: var TCfgParser) = 
-  deinitBaseLexer(c)
+  lexbase.close(c)
 
 proc getColumn(c: TCfgParser): int = 
   result = getColNumber(c, c.bufPos)
@@ -285,6 +278,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
   of '=': 
     tok.kind = tkEquals
     inc(c.bufpos)
+    tok.literal = "="
   of '-': 
     inc(c.bufPos)
     if c.buf[c.bufPos] == '-': inc(c.bufPos)
@@ -312,6 +306,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     getString(c, tok, false)
   of lexbase.EndOfFile: 
     tok.kind = tkEof
+    tok.literal = "[EOF]"
   else: getSymbol(c, tok)
   
 proc errorStr(c: TCfgParser, msg: string): string = 

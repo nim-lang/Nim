@@ -15,6 +15,7 @@ proc GC_fullCollect() = nil
 proc GC_setStrategy(strategy: TGC_Strategy) = nil
 proc GC_enableMarkAndSweep() = nil
 proc GC_disableMarkAndSweep() = nil
+proc GC_getStatistics(): string = return ""
 
 proc getOccupiedMem(): int = return -1
 proc getFreeMem(): int = return -1

@@ -18,7 +18,8 @@ uses
 type
   // please make sure we have under 32 options
   // (improves code efficiency a lot!)
-  TOption = (optNone,
+  TOption = (  // **keep binary compatible**
+    optNone,
     optObjCheck,
     optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
@@ -29,28 +30,23 @@ type
     optLineTrace,      // line tracing support (includes stack tracing)
     optEndb,           // embedded debugger
     optByRef,          // use pass by ref for records (for interfacing with C)
-    optCheckpoints     // check for checkpoints (used for debugging)
+    optCheckpoints,    // check for checkpoints (used for debugging)
+    optProfiler        // profiler turned on
   );
   TOptions = set of TOption;
 
   TGlobalOption = (gloptNone, optForceFullMake, optBoehmGC,
     optRefcGC, optDeadCodeElim, optListCmd, optCompileOnly, optNoLinking,
     optSafeCode,       // only allow safe code
-                       // a new comment line
     optCDebug,         // turn on debugging information
-    optGenDynLib,
-    optGenGuiApp,
-    optVerbose,        // be verbose
+    optGenDynLib,      // generate a dynamic library
+    optGenGuiApp,      // generate a GUI application
     optGenScript,      // generate a script file to compile the *.c files
     optGenMapping,     // generate a mapping file
     optRun,            // run the compiled project
-    optCompileSys,     // compile system files
-
-    optMergeOutput,    // generate only one C output file
+    optSymbolFiles,    // use symbol files for speeding up compilation
     optSkipConfigFile, // skip the general config file
-    optSkipProjConfigFile, // skip the project's config file
-    optAstCache,
-    optCFileCache
+    optSkipProjConfigFile // skip the project's config file
   );
   TGlobalOptions = set of TGlobalOption;
 
@@ -70,7 +66,8 @@ type
     cmdParse,      // parse a single file (for debugging)
     cmdScan,       // scan a single file (for debugging)
     cmdDebugTrans, // debug a transformation pass
-    cmdRst2html    // convert a reStructuredText file to HTML
+    cmdRst2html,   // convert a reStructuredText file to HTML
+    cmdInteractive // start interactive session
   );
   TStringSeq = array of string;
 
@@ -83,12 +80,12 @@ const
     'optBoundsCheck', 'optOverflowCheck', 'optNilCheck', 'optAssert',
     'optLineDir', 'optWarns', 'optHints', 'optOptimizeSpeed',
     'optOptimizeSize', 'optStackTrace', 'optLineTrace', 'optEmdb',
-    'optByRef', 'optCheckpoints'
+    'optByRef', 'optCheckpoints', 'optProfiler'
   );
 var
   gOptions: TOptions = {@set}[optObjCheck, optFieldCheck, optRangeCheck,
                               optBoundsCheck, optOverflowCheck,
-                              optAssert, optWarns, optHints, optLineDir,
+                              optAssert, optWarns, optHints,
                               optStackTrace, optLineTrace];
 
   gGlobalOptions: TGlobalOptions = {@set}[optRefcGC];
@@ -100,35 +97,40 @@ var
 
   gCmd: TCommands = cmdNone; // the command
 
-  debugState: int; // a global switch used for better debugging...
-                   // not used for any program logic
-
+  gVerbosity: int; // how verbose the compiler is
 
 function FindFile(const f: string): string;
 
 const
-  genSubDir = 'rod_gen';
+  genSubDir = 'nimcache';
   NimExt = 'nim';
   RodExt = 'rod';
   HtmlExt = 'html';
+  IniExt = 'ini';
+  TmplExt = 'tmpl';
+  DocConfig = 'nimdoc.cfg';
 
 function completeGeneratedFilePath(const f: string;
                                    createSubDir: bool = true): string;
 
 function toGeneratedFile(const path, ext: string): string;
-// converts "/home/a/mymodule.nim", "rod" to "/home/a/rod_gen/mymodule.rod"
+// converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
 
 function getPrefixDir: string;
 // gets the application directory
+
+function getFileTrunk(const filename: string): string;
 
 // additional configuration variables:
 var
   gConfigVars: PStringTable;
   libpath: string = '';
+  projectPath: string = '';
   gKeepComments: boolean = true; // whether the parser needs to keep comments
-  gImplicitMods: TStringSeq = {@ignore} nil {@emit []};
+  gImplicitMods: TStringSeq = {@ignore} nil {@emit @[]};
     // modules that are to be implicitly imported
 
+function existsConfigVar(const key: string): bool;
 function getConfigVar(const key: string): string;
 procedure setConfigVar(const key, val: string);
 
@@ -139,6 +141,11 @@ function getOutFile(const filename, ext: string): string;
 function binaryStrSearch(const x: array of string; const y: string): int;
 
 implementation
+
+function existsConfigVar(const key: string): bool;
+begin
+  result := hasKey(gConfigVars, key)
+end;
 
 function getConfigVar(const key: string): string;
 begin
@@ -173,12 +180,37 @@ begin
   SplitPath(appdir, result, bin);
 end;
 
+function getFileTrunk(const filename: string): string;
+var
+  f, e, dir: string;
+begin
+  splitPath(filename, dir, f);
+  splitFilename(f, result, e);
+end;
+
+function shortenDir(const dir: string): string;
+var 
+  prefix: string;
+begin
+  // returns the interesting part of a dir
+  prefix := getPrefixDir() +{&} dirSep;
+  if startsWith(dir, prefix) then begin
+    result := ncopy(dir, length(prefix) + strStart); exit
+  end;
+  prefix := getCurrentDir() +{&} dirSep;
+  if startsWith(dir, prefix) then begin
+    result := ncopy(dir, length(prefix) + strStart); exit
+  end;
+  result := dir
+end;
+
 function toGeneratedFile(const path, ext: string): string;
 var
   head, tail: string;
 begin
   splitPath(path, head, tail);
-  result := joinPath([head, genSubDir, changeFileExt(tail, ext)])
+  result := joinPath([projectPath, genSubDir, shortenDir(head), 
+                      changeFileExt(tail, ext)])
 end;
 
 function completeGeneratedFilePath(const f: string;
@@ -187,13 +219,13 @@ var
   head, tail, subdir: string;
 begin
   splitPath(f, head, tail);
-  subdir := joinPath(head, genSubDir);
+  subdir := joinPath([projectPath, genSubDir, shortenDir(head)]);
   if createSubDir then
     createDir(subdir);
   result := joinPath(subdir, tail)
 end;
 
-function FindFile(const f: string): string;
+function rawFindFile(const f: string): string;
 var
   it: PStrEntry;
 begin
@@ -207,6 +239,13 @@ begin
     end;
     result := ''
   end
+end;
+
+function FindFile(const f: string): string;
+begin
+  result := rawFindFile(f);
+  if length(result) = 0 then
+    result := rawFindFile(toLower(f));
 end;
 
 function binaryStrSearch(const x: array of string; const y: string): int;

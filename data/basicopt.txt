@@ -1,12 +1,10 @@
 Usage::
   nimrod command [options] inputfile [arguments]
 Command::
-  compile                   compile project with default code generator (C)
-  compile_to_c              compile project with C code generator
-  compile_to_cpp            compile project with C++ code generator
-  compile_to_ecmascript     compile project to ECMAScript code (experimental)
-  doc                       generate the documentation for inputfile;
-                            with --run switch opens it with $BROWSER
+  compile, c                compile project with default code generator (C)
+  compile_to_c, cc          compile project with C code generator
+  doc                       generate the documentation for inputfile
+  rst2html                  converts a reStructuredText file to HTML
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:
@@ -14,7 +12,8 @@ Options:
   -o, --out:FILE            set the output filename
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
-  -b, --force_build         force rebuilding of all modules
+  -f, --force_build         force rebuilding of all modules
+  --symbol_files:on|off     use symbol files to speed up compilation (buggy!)
   --stack_trace:on|off      code generation for stack trace ON|OFF
   --line_trace:on|off       code generation for line trace ON|OFF
   --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF

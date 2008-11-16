@@ -70,7 +70,7 @@ function cyclicTree(n: PNode): boolean;
 var
   s: PNode;
 begin
-  s := newNode(nkEmpty);
+  s := newNodeI(nkEmpty, n.info);
   result := cyclicTreeAux(n, s);
 end;
 
@@ -113,8 +113,8 @@ begin
   end
   else if (a <> nil) and (b <> nil) and (a.kind = b.kind) then begin
     if a.flags <> b.flags then exit;
-    if a.info.line <> int(b.info.line) then exit;
-    if a.info.col <> int(b.info.col) then exit;
+    if a.info.line <> b.info.line then exit;
+    if a.info.col <> b.info.col then exit;
     //if a.info.fileIndex <> b.info.fileIndex then exit;
     case a.kind of
       nkSym: // don't go nuts here: same symbol as string is enough:
@@ -147,7 +147,7 @@ begin
   if not (op.kind in [nkCall, nkGenericCall, nkHiddenCallConv]) then
     result := nil
   else begin
-    assert(sonsLen(op) > 0);
+    if (sonsLen(op) <= 0) then InternalError(op.info, 'getOpSym');
     case op.sons[0].Kind of
       nkSym, nkQualified: result := op.sons[0].sym;
       else result := nil
@@ -160,8 +160,7 @@ begin
   case op.kind of
     nkCall, nkHiddenCallConv: begin
       case op.sons[0].Kind of
-        nkSym, nkQualified: begin
-          assert(op.sons[0].sym <> nil); // BUGFIX
+        nkSym: begin
           result := op.sons[0].sym.magic;
         end;
         else result := mNone
@@ -183,7 +182,8 @@ end;
 function isConstExpr(n: PNode): Boolean;
 begin
   result := (n.kind in [nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-                       nkFloatLit..nkFloat64Lit]) or (nfAllConst in n.flags)
+                       nkFloatLit..nkFloat64Lit, nkNilLit]) 
+                       or (nfAllConst in n.flags)
 end;
 
 procedure flattenTreeAux(d, a: PNode; op: TMagic);

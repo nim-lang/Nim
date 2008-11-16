@@ -9,15 +9,15 @@
 unit parsecfg;
 
 // A HIGH-PERFORMANCE configuration file parser;
-// the Nimrod version of this file will become part
-// of the standard library.
+// the Nimrod version of this file is part of the
+// standard library.
 
 interface
 
 {$include 'config.inc'}
 
 uses
-  charsets, nsystem, sysutils, hashes, strutils, lexbase;
+  nsystem, charsets, llstream, sysutils, hashes, strutils, lexbase;
 
 type
   TCfgEventKind = (
@@ -25,7 +25,7 @@ type
     cfgSectionStart, // a ``[section]`` has been parsed
     cfgKeyValuePair, // a ``key=value`` pair has been detected
     cfgOption, // a ``--key=value`` command line option
-    cfgError   // an error ocurred during parsing; msg contains the 
+    cfgError   // an error ocurred during parsing; msg contains the
                // error message
   );
   TCfgEvent = {@ignore} record
@@ -36,7 +36,8 @@ type
   end;
   {@emit object(NObject)
     case kind: TCfgEventKind of
-      cfgSection: (section: string);
+      cfgEof: ();
+      cfgSectionStart: (section: string);
       cfgKeyValuePair, cfgOption: (key, value: string);
       cfgError: (msg: string);
   end;}
@@ -44,9 +45,9 @@ type
     tkSymbol, tkEquals, tkColon,
     tkBracketLe, tkBracketRi, tkDashDash
   );
-  TToken = record          // a token
+  TToken = record       // a token
     kind: TTokKind;     // the type of the token
-    literal: string;       // the parsed (string) literal
+    literal: string;    // the parsed (string) literal
   end;
   TParserState = (startState, commaState);
   TCfgParser = object(TBaseLexer)
@@ -55,8 +56,8 @@ type
     filename: string;
   end;
 
-function Open(var c: TCfgParser; const filename: string): bool;
-procedure OpenFromBuffer(var c: TCfgParser; const buf: string);
+procedure Open(var c: TCfgParser; const filename: string;
+               inputStream: PLLStream);
 procedure Close(var c: TCfgParser);
 
 function next(var c: TCfgParser): TCfgEvent;
@@ -64,6 +65,8 @@ function next(var c: TCfgParser): TCfgEvent;
 function getColumn(const c: TCfgParser): int;
 function getLine(const c: TCfgParser): int;
 function getFilename(const c: TCfgParser): string;
+
+function errorStr(const c: TCfgParser; const msg: string): string;
 
 implementation
 
@@ -73,26 +76,14 @@ const
 // ----------------------------------------------------------------------------
 procedure rawGetTok(var c: TCfgParser; var tok: TToken); forward;
 
-function open(var c: TCfgParser; const filename: string): bool;
+procedure open(var c: TCfgParser; const filename: string;
+               inputStream: PLLStream);
 begin
 {@ignore}
-  FillChar(c, sizeof(c), 0); // work around Delphi/fpc bug
+  FillChar(c, sizeof(c), 0);
 {@emit}
-  result := initBaseLexer(c, filename);
+  openBaseLexer(c, inputStream);
   c.filename := filename;
-  c.state := startState;
-  c.tok.kind := tkInvalid;
-  c.tok.literal := '';
-  if result then rawGetTok(c, c.tok);
-end;
-
-procedure openFromBuffer(var c: TCfgParser; const buf: string);
-begin
-{@ignore}
-  FillChar(c, sizeof(c), 0); // work around Delphi/fpc bug
-{@emit}
-  initBaseLexerFromBuffer(c, buf);
-  c.filename := 'buffer';
   c.state := startState;
   c.tok.kind := tkInvalid;
   c.tok.literal := '';
@@ -101,7 +92,7 @@ end;
 
 procedure close(var c: TCfgParser);
 begin
-  deinitBaseLexer(c);
+  closeBaseLexer(c);
 end;
 
 function getColumn(const c: TCfgParser): int;
@@ -285,7 +276,7 @@ begin
   repeat
     case buf[pos] of
       ' ': Inc(pos);
-      Tabulator: inc(pos); 
+      Tabulator: inc(pos);
       '#', ';': while not (buf[pos] in [CR, LF, lexbase.EndOfFile]) do inc(pos);
       CR, LF: pos := HandleCRLF(c, pos);
       else break // EndOfFile also leaves the loop
@@ -321,7 +312,7 @@ begin
         Inc(c.bufPos);
         getString(c, tok, true);
       end
-      else 
+      else
         getSymbol(c, tok);
     end;
     '[': begin
@@ -343,7 +334,7 @@ end;
 function errorStr(const c: TCfgParser; const msg: string): string;
 begin
   result := format('$1($2, $3) Error: $4', [
-    c.filename, toString(getLine(c)), toString(getColumn(c)), 
+    c.filename, toString(getLine(c)), toString(getColumn(c)),
     msg
   ]);
 end;
@@ -355,6 +346,20 @@ begin
     result.key := c.tok.literal;
     result.value := '';
     rawGetTok(c, c.tok);
+    while c.tok.literal = '.'+'' do begin
+      addChar(result.key, '.');
+      rawGetTok(c, c.tok);
+      if c.tok.kind = tkSymbol then begin
+        result.key := result.key +{&} c.tok.literal;
+        rawGetTok(c, c.tok);
+      end
+      else begin
+        result.kind := cfgError;
+        result.msg := errorStr(c, 'symbol expected, but found: ' +
+                               c.tok.literal);
+        break
+      end
+    end;
     if c.tok.kind in [tkEquals, tkColon] then begin
       rawGetTok(c, c.tok);
       if c.tok.kind = tkSymbol then begin
@@ -362,7 +367,7 @@ begin
       end
       else begin
         result.kind := cfgError;
-        result.msg := errorStr(c, 'symbol expected, but found: ' 
+        result.msg := errorStr(c, 'symbol expected, but found: '
                                + c.tok.literal);
       end;
       rawGetTok(c, c.tok);
@@ -400,10 +405,10 @@ begin
       if c.tok.kind = tkBracketRi then rawGetTok(c, c.tok)
       else begin
         result.kind := cfgError;
-        result.msg := errorStr(c, ''']'' expected, but found: ' + c.tok.literal);      
+        result.msg := errorStr(c, ''']'' expected, but found: ' + c.tok.literal);
       end
     end;
-    tkInvalid, tkEquals, tkColon: begin
+    tkInvalid, tkBracketRi, tkEquals, tkColon: begin
       result.kind := cfgError;
       result.msg := errorStr(c, 'invalid token: ' + c.tok.literal);
       rawGetTok(c, c.tok);
