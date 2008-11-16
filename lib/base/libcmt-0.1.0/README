@@ -1,0 +1,116 @@
+
+Introduction
+============
+
+LibCMT is a library implementing the ideas given on Simon Peyton Jones
+et al's paper "Composable Memory Transactions".
+
+The two distinctive characteristics of this approach to concurrency are:
+
+ - The model is deadlock-free.
+
+ - The transactions are composable.
+
+The reason for deadlock-free property is simple: there are simply no
+locks, so a thread cannot die waiting for a lock. Instead of the usual
+lock based mechanism for thread synchronization, a commit/rollback model
+is used to meet the concurrency requirements.
+
+The transactions are composable because small transactions can be glued
+together to form larger transactions.  This modularity property is
+preserved even on the presence of blocking transactions.
+
+The two ways of composition are:
+ - Sequencing: given two transactions, the first is performed and after
+  completion, the second is performed as well, and this entire sequence
+  is performed as a transaction (even when any of the given transactions
+  may block).
+ - 'orElse' alternative: given two transactions, if the first completes
+  execution successfully, it commits. If instead it completes execution
+  but with an inconsistent view of the memory, it rollbacks. BUT,
+  if the first transaction blocks, the second is performed. If this
+  second transaction blocks, the entire composition blocks. In short,
+  the second is run if the first blocks.  This give threads the ability
+  to wait for many things at once.
+
+It must be noted that blocking here is compositional, in the sense
+that the programmer must not identify the conditions under which the
+transaction can run to completion, it just make a function call to block
+the transaction, and the library takes care of wake up the thread when
+the conditions are (possibly) meet.
+
+How to use it
+=============
+
+Every program's variable shared among different threads, is encapsulated
+into a transactional variable representing it (a TVar). Every thread
+creates a GTransaction variable for every transaction on which it wants
+to be engaged. Each of these GTransactions contains a list of the TVars
+that will be accessed when the transaction is performed.
+
+The actions performed by the transaction are that of a function which
+is set on the GTransaction variable. This function does not access the
+shared variables directly, but instead it access the TVars representing
+that shared variables.  For this reason, this function, which makes the
+concurrent work desired by the programmer, mustn't worry about obtaining
+exclusive access to shared resources, it just read and write TVars,
+without fear, and it can block if some conditions on these variables
+are not meet, with the guarantee that it will be wake up when the
+TVars involved on these conditions are changed (because other thread
+has committed).
+
+The library takes care of determine whether the transaction have
+seen a consistent state of the memory during the ENTIRE transaction,
+and if this is the case, takes care of commit the changes to the real
+shared variables, possibly waking up other threads interested on these
+changes. Otherwise, if the memory state seen was not consistent, the
+library rollbacks the transaction (all the changes proposed by the
+transaction are discarded and the memory is readed again) and retry it.
+
+For a detailed description of how to do this actions using LibCMT,
+refer to the online documentation at http://libcmt.sourceforge.net/docs/
+
+Pros and Cons
+=============
+
+ - Pros: easy to use, modular, scalable, conceptually elegant.
+
+ - Cons: higher memory footprint than a lock based mechanism. This is true
+  for small programs, but on big systems, the added complexity of
+  using lock based mechanisms, leads in general to over-serialization
+  of concurrent processes and inefficient allocation/deallocation of
+  resources. The latter is not the case with CMT's approach, because
+  allocation is isolated on one or two places, and is easy to manage,
+  and could be very efficient with a simple preallocation/caching.
+
+Limitations
+===========
+
+Of course LibCMT has limitations, and lock based mechanisms will still
+in use for many years.
+
+One of these limitations is that LibCMT's transactions can perform only
+revocable actions, because the library cannot rollback things such
+as I/O operations and the like.
+
+Other limitation is that LibCMT is best suited for procedural languages
+like C. It can be called from object oriented languages, such as C++,
+but not all features of these kind of languages could be used in a
+safe manner. I.e. it's not safe to raise exceptions from whithin a
+transaction function.
+
+Finally, the library doesn't prevent starvation of one thread (although
+it guarantees livelock freedom for the *whole* process).
+
+Locks are good for some situations. In fact LibCMT use locks
+internally. But STM, specially the composable form implemented on LibCMT,
+performs better than direct use of locks on some domains, like big apps
+with particular patterns and prototyping of multithreaded apps.
+
+On these domains, LibCMT doesn't avoid the use of locks, it just hides
+that use behind a uniform interface that does the job as good as lock
+mechanisms, but that way it hides the associated problems, like deadlock.
+
+
+Duilio Protti.
+

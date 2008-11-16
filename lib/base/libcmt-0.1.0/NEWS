@@ -1,0 +1,50 @@
+
+If you want to subscribe to LibCMT's RSS feed for new file releases,
+you can find at:
+
+http://sourceforge.net/export/rss2_projfiles.php?group_id=150843
+
+
+2006-03-11 LibCMT 0.1.0
+
+Added new C# binding. Now LibCMT could be used within the .Net 
+framework. Added a solution to the producers-consumers problem to
+the C examples.
+
+2006-01-13 LibCMT 0.0.5
+
+Major problem fixed: lack of isolation property. On a transactional
+model, every separate transaction must be isolated from each other,
+that is, it mustn't see partial results of another transactions.
+Previous releases doesn't accomplish this requirement in the presence
+of an 'orElse' composition where the first transaction blocks.
+
+2005-12-3 LibCMT 0.0.4
+
+g_transaction_do() signature changed, now it has a gpointer argument
+to pass data in/out from the transaction function on execution. Added
+g_transaction_abort() function. Also added a solution to the dinning
+philosophers problem to the test suite. Thanks to the spec file
+provided by Dries Verachtert now there are binary packages available
+for Fedora Core 4.
+
+2005-11-18 LibCMT 0.0.3
+
+Fixed many errors, added options to configure, changed signature of
+g_transaction_new(), removed g_transaction_set_func(). Added macros for
+manipulation of transaction's private field. Also g_transaction_do()
+and g_transaction_retry() are more efficient now and GTransaction data
+type occupies far less memory.
+
+2005-11-9 LibCMT 0.0.2
+
+Now blocking transactions goes to sleep only on tvar's that were already
+readed from the beginning of the transaction. It also includes a new
+configure option useful for developers. In fact, this release was done
+because the previous Sourceforge.net package available for download
+(0.0.1) became corrupted.
+
+2005-11-3 LibCMT 0.0.1
+
+First alpha release.
+

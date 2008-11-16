@@ -1,0 +1,9 @@
+prefix=@prefix@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+
+
+Name: LibCMT
+Description: LibCMT .NET Binding
+Version: 0.0.1.0
+Libs: -r:${libdir}/mono/LibCMT/LibCMT.dll

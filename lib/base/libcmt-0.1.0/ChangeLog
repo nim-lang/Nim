@@ -1,0 +1,275 @@
+2006-03-11  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	==================== Release 0.1.0 ====================
+	
+	* src/bindings/csharp/LibCMT/LibCMT.cs: added copyright notice and
+	assembly attributes, like version (0.0.1.0) and description.
+	* INSTALL: added section `Building the C# binding'.
+	* configure.ac: added AC_PREFIX_PROGRAM(mcs). Some clean up.
+	* libcmt-sharp.pc.in: now the assembly (its link if use gacutil) is
+	installed in {libdir}/mono/lib/LibCMT/.
+
+2006-03-10  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/bindings/csharp/LibCMT/LibCMT.cs: next_object_id access is
+	protected with a 'lock' statement.
+	* src/bindings/csharp/tests/Philosophers.cs: added.
+	* src/bindings/csharp/LibCMT/libcmt-sharp.snk: added strong name
+	keyfile.
+	* configure.ac: fixed --enable-gacutil argument. Version bumped to
+	0.1.0. The new C# binding justify a new minor serie.
+
+2006-02-19  Duilio Protti  <dprotti@users.sourceforge.net>
+
+ 	* src/bindings/csharp/LibCMT/LibCMT.cs: added GTransaction.Abort()
+	and inheritance from ICloneable interface for GTransaction.
+	GTVar() throw NotImplementedException if the client want to
+	encapsulate a primitive type. GTVar.DefaultDestroy() doesn't treat
+	the object as IDisposable, just removed its reference from the table.
+	GTVar.Read() made internal (the client use GTransaction.ReadTVar()).
+	Documented ILibCMTCommittable.Commit().
+	* src/bindings/csharp/LibCMT/MainPage.cs: added. Contains the main
+	section of the Doxygen-generated docs.
+	* libcmt-sharp.pc.in: The assembly get installed in {libdir}/ instead
+	of {libdir}/mono/LibCMT/.
+	* src/bindings/csharp/LibCMT/Doxyfile: added generation of PDF's.
+
+2006-02-18  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/bindings/csharp/LibCMT/LibCMT.cs: Added argument sanity
+	checks. Moved a little to Mono coding style. Made some method's
+	access more restricted. Added initial XML documentation tags.
+	Removed IDisposable from the ancestors of ILibCMTCommittable.
+	* src/bindings/csharp/LibCMT/Doxyfile: added.
+
+2006-02-9  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/bindings/csharp/LibCMT/LibCMT.cs: added GTransaction::OrElse()
+	GTransaction::Retry() and a new constructor to build the
+	concatenation (sequence) of two transactions.
+	* src/bindings/csharp/tests/Test[3-6].cs: added new tests to check
+	the above methods.
+	
+2006-02-8  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac, src/bindings/csharp/LibCMT/Makefile.am: added
+	support for conditional compilation of C# binding and installation
+	without gacutil tool.
+	
+2006-02-7  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac: added initial support for C# binding related
+	stuff.
+	* Makefile.am: added libcmt-sharp.pc to pkgconfig_DATA. Added
+	new DISTCLEANFILES target.
+	* libcmt-csharp.pc.in: added.
+	* src/bindings/csharp/LibCMT/LibCMT.cs: added initial fragments 
+	of code for the C# binding.
+	* src/bindings/csharp/tests/Test[12].cs: the two first C# 
+	programs to use LibCMT.
+	
+2006-01-26  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* tests/classic/philo.c: now LibCMT headers are included as <cmt.h>,
+	not <gtransaction.h>.
+	* tests/classic/prod-cons.c: added Producers-Consumers cannonical
+	example.
+
+2006-01-13  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	==================== Release 0.0.5 ====================
+	
+	* src/gtransaction.c: added g_transaction_soft_reset() to
+	restore the original values read by the transaction, without
+	looking for them in the shared variables itself.
+	This is used on g_transaction_do_impl() to fix a major problem:
+	the lack of the Isolation property. This issue is so important
+	as to justify a new release.
+
+2005-12-3  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/cmt.h: added new top level header.
+
+	* libcmt.pc.in: headers get installed on {includedir}/cmt
+
+2005-12-3  Duilio Protti  <dprotti@users.sourceforge.net>
+
+        ==================== Release 0.0.4 ====================
+
+	* src/gtransaction.c: g_transaction_do() and
+	g_transaction_timed_do() manage G_TRANSACTION_WAS_ABORTED
+	flag. Updated Doxygen comments.
+
+	* tests/one-tvar/test2c.c: added.
+
+2005-12-2  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac: version bumped to 0.0.4. Debug disabled by
+	default.  Added check for siglongjmp().
+
+	* src/gtransaction.h: added g_transaction_was_aborted() macro.
+
+2005-12-1  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.[ch]: added g_transaction_abort().
+	g_transaction_do() now returns gboolean.
+
+2005-11-30  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.[ch]: g_transaction_do() signature changed:
+	added new 'user_data' gpointer to pass data in/out from the
+	transaction function on execution. Updated Doxygen comments.
+
+	* tests/classic/philo.c: added sample solution to the dinning
+	philosophers problem.
+
+2005-11-29  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: g_transaction_do_impl() calls itself
+	recursively to walk through a sequence (this make it far more
+	readable).
+
+	* src/gtransaction.h: removed GTVar's Doxygen group.
+
+2005-11-27  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.[ch]: g_tvar_new() moved to
+	g_transaction_var_new().
+
+2005-11-26  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* libcmt.spec: added. Maintained by Dries Verachtert. The
+	last version of the file can be find online at
+	http://svn.rpmforge.net/svn/trunk/rpms/libcmt/libcmt.spec
+
+	I will try to keep LibCMT's spec file in sync with that file.
+
+2005-11-18  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	==================== Release 0.0.3 ====================
+
+2005-11-16  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.h: added 'flags' field to GTransaction.
+
+	* src/gtransaction.c: removed use of 'enclosing' field, previously
+	used to access enclosing transaction's sigjmp_buf.
+
+	* README: added 'Limitations' section.
+
+2005-11-15  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: g_transaction_or_else() reimplemented
+	to handle correctly the case ((A ; B) orElse C). Before, this
+	composition was executed as (A ; (B orElse C)) on runtime. Also,
+	now a sequence is leaved if one of the transactions blocks and
+	there is an orElse part.
+
+2005-11-13  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: added reference count for GTLog. This way
+	g_transaction_destroy() works the right way. The composition of
+	a transaction with a subset of itself is not allowed anymore
+	(a copy is required).  g_tlog_wait() doesn't create a dummy
+	mutex every time is called, instead it sets a thread-specific
+	one the first time it's called.
+
+	* configure.ac: version bumped to 0.0.3. Glib required version
+	bumped to 2.4.0, because of g_atomic_* functions used for
+	reference count.
+
+2005-11-12  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.h: sigjmp_buf buffer removed from GTransaction.
+
+	* src/gtransaction.c: sigjmp_buf buffer now is managed as
+	thread-specific data (this removes 129 bytes from GTransaction!).
+
+2005-11-11  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: fixed memory leak on
+	g_transaction_copy_node().  g_tvar_entry_list_union_fast()
+	now free repeated tvar_entries as it should be.  Removed
+	g_transaction_set_func(). Now transaction function is set on
+	creation.
+
+	* src/gtransaction.h: GTVarWaitQueue and GTVarEntry declarations
+	moved to gtransaction.c. Removed g_transaction_set_func(). Added
+	g_transaction_get/set_private() macros.
+
+	* configure.ac: added --enable-save-signal-mask option. Fixed
+	many errors on other configure options.
+
+2005-11-10  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: g_transaction_do(): the transaction is
+	reset before to begin, to get more possibilities of success.
+	g_transaction_copy() fixed, now it really creates a new tlog.
+	Fixed g_tlog_new() and g_transaction_new() initialization errors.
+
+2005-11-9  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	==================== Release 0.0.2 ====================
+
+	(In fact, this release was done because the Sourceforge.net
+	package available for download became corrupted (??). Thanks
+	Guido!)
+
+2005-11-8  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: now blocking transactions goes to sleep
+	only on tvar's that were already readed from the beginning of
+	the transaction.
+
+2005-11-7  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac: added --disable-checks option.
+
+2005-11-3  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	==================== Release 0.0.1 ====================
+
+	* src/gtransaction.*: updated Doxygen comments.  * Doxyfile:
+	removed generation of inline sources.
+
+2005-11-2  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: removed g_transaction_write_tvar().
+	g_transaction_do() finally seems to work well with orElse
+	composition.  Protected the critical section at tvars' wait queue.
+
+2005-10-31  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* src/gtransaction.c: removed GTransactionHookEntry and related
+	stuff.	Every transaction of a composed transaction now use
+	the unified tlog, not his own tlog with the unified list of
+	tvar_entries.  This way, larger compositions are created much
+	faster (because update for the whole set of transactions is
+	constant instead of the previous linear time).	Implemented
+	g_transaction_copy().  g_transaction_sequence() works with
+	the composition of a transaction with itself.  Fixed error
+	on g_transaction_or_else() (enclosing not correctly set).
+	g_transaction_do() is working better for orElse composition.
+
+2005-10-28  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac: Debug activated by default. This will be
+	turned off on beta stage.  * src/gtransaction.c: added Doxygen
+	comments. 'compare' function moved to use the right semantic.
+	Defined g_transaction_debug().	g_transaction_do() reimplemented
+	to work with mixed sequence/orElse compositions. Sequence
+	is working good, orElse remains unfinished.  Added
+	g_transaction_timed_do().  * src/gtransaction.h: removed
+	g_transaction_sequence_fast().	* src/mainpage.h: added to
+	contain the Doxygen's main page.
+
+2005-10-27  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* configure.ac: Added --enable-gc-friendly option.  Added
+	pkg-config related portion for generation of libcmt.pc.  *
+	libcmt.pc.in: added.  * src/Makefile.am: removed gcc-specific
+	flags.
+
+2005-10-27  Duilio Protti  <dprotti@users.sourceforge.net>
+
+	* Initial import to CVS repository at Sourceforge.net.

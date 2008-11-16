@@ -1,0 +1,19 @@
+
+Core
+
+* Look for memory leaks.
+* Think about limit conditions.
+* Think about removing the giant lock 'transaction_lock'.
+* Unify management of mem pools.
+* Move C code style to Glib conventions.
+* Finish g_transaction_destroy().
+* Add FAQ file.
+* Build a windows binary (and installer).
+
+C# binding
+
+* Implement more examples.
+* Move tests to NUnit tests.
+* Implement handling of userData on GTransaction.
+* Find the problem with the Philosophers example.
+
