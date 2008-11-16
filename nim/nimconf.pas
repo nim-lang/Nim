@@ -17,10 +17,12 @@ unit nimconf;
 interface
 
 uses
-  nsystem, nversion, commands, nos, strutils, msgs, platform, condsyms,
-  scanner, options, idents, wordrecg;
+  nsystem, llstream, nversion, commands, nos, strutils, msgs, platform, 
+  condsyms, scanner, options, idents, wordrecg;
   
 procedure LoadConfig(const project: string);
+
+procedure LoadSpecialConfig(const configfilename: string);
 
 implementation
 
@@ -96,7 +98,7 @@ var
   condStack: array of bool;
   
 {@emit
-  condStack := [];
+  condStack := @[];
 }
 
 procedure doEnd(var L: TLexer; tok: PToken);
@@ -276,14 +278,13 @@ begin
     checkSymbol(L, tok);
     val := val +{&} tokToStr(tok);
     confTok(L, tok); // skip symbol
-    while tok.ident.id = getIdent('&'+'').id do begin
+    while (tok.ident <> nil) and (tok.ident.id = getIdent('&'+'').id) do begin
       confTok(L, tok);
       checkSymbol(L, tok);
       val := val +{&} tokToStr(tok);
       confTok(L, tok)
     end
   end;
-  //writeln(stdout,  "##" & s & "##" & val & "##")
   processSwitch(s, val, passPP, info)
 end;
 
@@ -291,24 +292,48 @@ procedure readConfigFile(const filename: string);
 var
   L: TLexer;
   tok: PToken;
+  stream: PLLStream;
 begin
   new(tok);
 {@ignore}
   fillChar(tok^, sizeof(tok^), 0);
   fillChar(L, sizeof(L), 0);
 {@emit}
-  if openLexer(L, filename) = Success then begin
+  stream := LLStreamOpen(filename, fmRead);
+  if stream <> nil then begin
+    openLexer(L, filename, stream);
     tok.tokType := tkEof; // to avoid a pointless warning
     confTok(L, tok); // read in the first token
     while tok.tokType <> tkEof do
       parseAssignment(L, tok);
     if length(condStack) > 0 then
       lexMessage(L, errTokenExpected, '@end');
-    closeLexer(L)
+    closeLexer(L);
+    if gVerbosity >= 1 then rawMessage(hintConf, filename);
   end
 end;
 
 // ------------------------------------------------------------------------
+
+function getConfigPath(const filename: string): string;
+begin
+  // try local configuration file:
+  result := joinPath(getConfigDir(), filename);
+  if not ExistsFile(result) then begin
+    // try standard configuration file (installation did not distribute files
+    // the UNIX way)
+    result := joinPath([getPrefixDir(), 'config', filename]);
+    if not ExistsFile(result) then begin
+      result := '/etc/' +{&} filename    
+    end
+  end
+end;
+
+procedure LoadSpecialConfig(const configfilename: string);
+begin
+  if not (optSkipConfigFile in gGlobalOptions) then 
+    readConfigFile(getConfigPath(configfilename));
+end;
 
 procedure LoadConfig(const project: string);
 var
@@ -319,12 +344,9 @@ begin
     // choose default libpath:
     libpath := joinPath(getPrefixDir(), 'lib');
   // read default config file:
-  if not (optSkipConfigFile in gGlobalOptions) then begin
-    readConfigFile(joinPath([getPrefixDir(), 'config', 'nimrod.cfg']));
-    readConfigFile(joinPath([getPrefixDir(), 'config', 'doctempl.cfg']));
-  end;
+  LoadSpecialConfig('nimrod.cfg');
   // read project config file:
-  if not (optSkipProjConfigFile in gGlobalOptions) then begin
+  if not (optSkipProjConfigFile in gGlobalOptions) and (project <> '') then begin
     conffile := changeFileExt(project, 'cfg');
     if existsFile(conffile) then
       readConfigFile(conffile)

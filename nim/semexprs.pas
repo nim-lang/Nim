@@ -19,7 +19,8 @@ var
   d: PNode;
 begin
   result := semExpr(c, n, flags);
-  if result.typ = nil then
+  if result = nil then InternalError('semExprWithType');
+  if (result.typ = nil) then
     liMessage(n.info, errExprXHasNoType,
               renderTree(result, {@set}[renderNoComments]));
   if result.typ.kind = tyVar then begin
@@ -175,6 +176,7 @@ begin
     while (b <> nil) and (b.id <> a.id) do b := b.sons[0];
     if b = nil then
       liMessage(n.info, errXcanNeverBeOfThisSubtype, typeToString(a));
+    n.typ := getSysType(tyBool);
   end
   else
     liMessage(n.info, errIsExpectsTwoArguments);
@@ -266,13 +268,11 @@ var
   typ: PType;
   i: int;
 begin
-  result := newNode(nkBracket);
-  result.info := n.info;
+  result := newNodeI(nkBracket, n.info);
   result.typ := newTypeS(tyArrayConstr, c);
   addSon(result.typ, nil); // index type
   if sonsLen(n) = 0 then
-    // empty array
-    addSon(result.typ, nil) // needs an empty basetype!
+    addSon(result.typ, newTypeS(tyEmpty, c)) // needs an empty basetype!
   else begin
     addSon(result, semExprWithType(c, n.sons[0]));
     typ := skipVar(result.sons[0].typ);
@@ -282,13 +282,13 @@ begin
     end;
     addSon(result.typ, typ)
   end;
-  result.typ.sons[0] := makeRangeType(c, 0, sonsLen(result)-1);
+  result.typ.sons[0] := makeRangeType(c, 0, sonsLen(result)-1, n.info);
 end;
 
 const
   ConstAbstractTypes = {@set}[tyNil, tyChar, tyInt..tyInt64,
                               tyFloat..tyFloat128,
-                              tyArrayConstr, tyTuple, tyEmptySet, tySet];
+                              tyArrayConstr, tyTuple, tySet];
 
 procedure fixAbstractType(c: PContext; n: PNode);
 var
@@ -304,17 +304,15 @@ begin
           it.sons[1] := semArrayConstr(c, it.sons[1]);
         if skipVarGeneric(it.typ).kind = tyOpenArray then begin
           s := skipVarGeneric(it.sons[1].typ);
-          if (s.kind = tyArrayConstr) and (s.sons[1] = nil) then begin
-            s := copyType(s, getCurrOwner(c));
-            s.id := getID();
+          if (s.kind = tyArrayConstr) and (s.sons[1].kind = tyEmpty) then begin
+            s := copyType(s, getCurrOwner(), false);
             skipVarGeneric(s).sons[1] := elemType(skipVarGeneric(it.typ));
             it.sons[1].typ := s;
           end
         end
         else if skipVarGeneric(it.sons[1].typ).kind in [tyNil, tyArrayConstr,
-                      tyTuple, tyEmptySet, tySet] then begin
+                      tyTuple, tySet] then begin
           s := skipVarGeneric(it.typ);
-          if s.kind = tyEmptySet then InternalError(it.info, 'fixAbstractType');
           changeType(it.sons[1], s);
           n.sons[i] := it.sons[1];
         end
@@ -323,7 +321,7 @@ begin
         // an implicitely constructed array (passed to an open array):
         n.sons[i] := semArrayConstr(c, it);
       end;
-      else if (it.typ = nil) or (it.typ.kind = tyEmptySet) then
+      else if (it.typ = nil) then
         InternalError(it.info, 'fixAbstractType: ' + renderTree(it));
     end
   end
@@ -357,8 +355,9 @@ begin
     end;
     nkHiddenStdConv, nkHiddenSubConv, nkConv: begin
       // Object and tuple conversions are still addressable, so we skip them
-      if skipPtrsGeneric(n.sons[1].typ).kind in [tyOpenArray,
-                                                 tyTuple, tyObject] then
+      //if skipPtrsGeneric(n.sons[1].typ).kind in [tyOpenArray,
+      //                                           tyTuple, tyObject] then
+      if skipPtrsGeneric(n.typ).kind in [tyOpenArray, tyTuple, tyObject] then
         result := isAssignable(n.sons[1])
     end;
     nkHiddenDeref, nkDerefExpr: result := true;
@@ -377,7 +376,9 @@ begin
   else begin
     result := newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ));
     addSon(result, n);
-    if not isAssignable(n) then liMessage(n.info, errVarForOutParamNeeded);
+    if not isAssignable(n) then begin
+      liMessage(n.info, errVarForOutParamNeeded);
+    end
   end
 end;
 
@@ -414,10 +415,11 @@ end;
 
 procedure analyseIfAddressTakenInCall(c: PContext; n: PNode);
 const
-  FakeVarParams = {@set}[mNew, mNewFinalize, mInc, mDec, mIncl,
+  FakeVarParams = {@set}[mNew, mNewFinalize, mInc, ast.mDec, mIncl,
                          mExcl, mSetLengthStr, mSetLengthSeq,
                          mAppendStrCh, mAppendStrStr, mSwap,
-                         mAppendSeqElem, mAppendSeqSeq];
+                         mAppendSeqElem, mAppendSeqSeq,
+                         mNewSeq];
 var
   i: int;
   t: PType;
@@ -430,29 +432,6 @@ begin
     if (i < sonsLen(t)) and (skipGeneric(t.sons[i]).kind = tyVar) then
       n.sons[i] := analyseIfAddressTaken(c, n.sons[i]);
 end;
-(*
-function lastPassOverArg(c: PContext; n: PNode; fakeVar: bool): PNode;
-// this pass does various things:
-// - it checks whether an address has been taken (needed for the ECMAScript
-//   code generator)
-// - it changes the type of the argument (if it is not a concrete type)
-begin
-
-end;
-
-procedure lastPassOverCall(c: PContext; n: PNode);
-var
-  i: int;
-  fakeVar: bool;
-begin
-  checkMinSonsLen(n, 1);
-  t := n.sons[0].typ;
-  fakeVar := (n.sons[0].kind = nkSym)
-      and (n.sons[0].sym.magic in FakeVarParams);
-  for i := 1 to sonsLen(n)-1 do begin
-    n.sons[i] := lastPassOverArg(c, n);
-  end
-end;*)
 
 function semIndirectOp(c: PContext; n: PNode): PNode;
 var
@@ -500,6 +479,7 @@ begin
   end
   else begin
     result := overloadedCallOpr(c, n);
+    if result = nil then result := semDirectCall(c, n);
     if result = nil then liMessage(n.info, errExprCannotBeCalled);
   end;
   fixAbstractType(c, result);
@@ -508,6 +488,7 @@ end;
 
 function semDirectOp(c: PContext; n: PNode): PNode;
 begin
+  // this seems to be a hotspot in the compiler!
   semOpAux(c, n);
   result := semDirectCall(c, n);
   if result = nil then begin
@@ -564,7 +545,7 @@ var
   ident: PIdent;
 begin
   case n.kind of
-    nkIdent: result := SymtabGet(c.Tab, n.ident);
+    nkIdent: result := SymtabGet(c.Tab, n.ident); // no need for stub loading
     nkDotExpr, nkQualified: begin
       checkSonsLen(n, 2);
       result := nil;
@@ -615,6 +596,7 @@ begin
 end;
 
 function semMagic(c: PContext; n: PNode; s: PSym): PNode;
+// this is a hotspot in the compiler!
 begin
   result := n;
   case s.magic of // magics that need special treatment
@@ -632,7 +614,7 @@ begin
       result.typ := n.sons[1].typ;
     end;
     mInc:     result := semIncSucc(c, setMs(n, s), 'inc');
-    mDec:     result := semIncSucc(c, setMs(n, s), 'dec');
+    ast.mDec: result := semIncSucc(c, setMs(n, s), 'dec');
     mOrd:     result := semOrd(c, setMs(n, s));
     else      result := semDirectOp(c, n);
   end;
@@ -683,8 +665,7 @@ begin
 end;
 
 function lookupInRecordAndBuildCheck(c: PContext; n, r: PNode;
-                                     field: PIdent;
-                                     var check: PNode): PSym;
+                                     field: PIdent; var check: PNode): PSym;
 // transform in a node that contains the runtime check for the
 // field, if it is in a case-part...
 var
@@ -856,10 +837,10 @@ begin
   // allow things like "".replace(...)
   // --> replace("", ...)
   f := SymTabGet(c.tab, i);
+  if (f <> nil) and (f.kind = skStub) then loadStub(f);
   if (f <> nil) and (f.kind in [skProc, skIterator]) then begin
-    result := newNode(nkDotCall);
+    result := newNodeI(nkDotCall, n.info);
     // This special node kind is to merge with the call handler in `semExpr`.
-    result.info := n.info;
     addSon(result, newIdentNode(i, n.info));
     addSon(result, copyTree(n.sons[0]));
   end
@@ -961,7 +942,7 @@ begin
       nkElseExpr: begin
         checkSonsLen(it, 1);
         it.sons[0] := semExprWithType(c, it.sons[0]);
-        assert(typ <> nil);
+        if (typ = nil) then InternalError(it.info, 'semIfExpr');
         it.sons[0] := fitNode(c, typ, it.sons[0]);
       end;
       else illFormedAst(n);
@@ -976,10 +957,10 @@ var
   i: int;
   m: PNode;
 begin
-  result := newNode(nkCurly);
-  result.info := n.info;
-  if sonsLen(n) = 0 then
-    result.typ := newTypeS(tyEmptySet, c)
+  result := newNodeI(nkCurly, n.info);
+  result.typ := newTypeS(tySet, c);
+  if sonsLen(n) = 0 then 
+    addSon(result.typ, newTypeS(tyEmpty, c))
   else begin
     // only semantic checking for all elements, later type checking:
     typ := nil;
@@ -996,20 +977,17 @@ begin
         if typ = nil then typ := skipVar(n.sons[i].typ)
       end
     end;
-
-    result.typ := newTypeS(tySet, c);
     if not isOrdinalType(typ) then begin
       liMessage(n.info, errOrdinalTypeExpected);
       exit
     end;
     if lengthOrd(typ) > MaxSetElements then
-      typ := makeRangeType(c, 0, MaxSetElements-1);
+      typ := makeRangeType(c, 0, MaxSetElements-1, n.info);
     addSon(result.typ, typ);
 
     for i := 0 to sonsLen(n)-1 do begin
       if n.sons[i].kind = nkRange then begin
-        m := newNode(nkRange);
-        m.info := n.sons[i].info;
+        m := newNodeI(nkRange, n.sons[i].info);
         addSon(m, fitNode(c, typ, n.sons[i].sons[0]));
         addSon(m, fitNode(c, typ, n.sons[i].sons[1]));
       end
@@ -1037,7 +1015,7 @@ begin
     for i := 0 to len-1 do begin
       if result = paTupleFields then begin
         if (n.sons[i].kind <> nkExprColonExpr)
-        or (n.sons[i].sons[0].kind <> nkIdent) then begin
+        or not (n.sons[i].sons[0].kind in [nkSym, nkIdent]) then begin
           liMessage(n.sons[i].info, errNamedExprExpected);
           result := paNone; exit
         end
@@ -1060,16 +1038,18 @@ var
   id: PIdent;
   f: PSym;
 begin
-  result := newNode(nkPar);
-  result.info := n.info;
+  result := newNodeI(nkPar, n.info);
   typ := newTypeS(tyTuple, c);
-  typ.n := newNode(nkRecList); // nkIdentDefs
+  typ.n := newNodeI(nkRecList, n.info); // nkIdentDefs
   IntSetInit(ids);
   for i := 0 to sonsLen(n)-1 do begin
     if (n.sons[i].kind <> nkExprColonExpr)
-    or (n.sons[i].sons[0].kind <> nkIdent) then
+    or not (n.sons[i].sons[0].kind in [nkSym, nkIdent]) then
       illFormedAst(n.sons[i]);
-    id := n.sons[i].sons[0].ident;
+    if n.sons[i].sons[0].kind = nkIdent then
+      id := n.sons[i].sons[0].ident
+    else
+      id := n.sons[i].sons[0].sym.name;
     if IntSetContainsOrIncl(ids, id.id) then
       liMessage(n.sons[i].info, errFieldInitTwice, id.s);
     n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1]);
@@ -1141,28 +1121,26 @@ begin
     result := semFieldAccess(c, n, flags);
 end;
 
-function semMacroExpr(c: PContext; n: PNode; sym: PSym): PNode; forward;
-
 function semExpr(c: PContext; n: PNode; flags: TExprFlags = {@set}[]): PNode;
 var
   s: PSym;
 begin
   result := n;
   if n = nil then exit;
+  if nfSem in n.flags then exit;
   case n.kind of
     // atoms:
     nkIdent: begin
-      // lookup the symbol:
-      s := SymtabGet(c.Tab, n.ident);
-      if s <> nil then result := semSym(c, n, s, flags)
-      else liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
+      s := lookUp(c, n);
+      result := semSym(c, n, s, flags);
     end;
     nkSym: begin
       s := n.sym;
       include(s.flags, sfUsed);
       if (s.kind = skType) and not (efAllowType in flags) then
         liMessage(n.info, errATypeHasNoValue);
-      if s.magic <> mNone then
+      if (s.magic <> mNone) and
+          (s.kind in [skProc, skIterator, skConverter]) then
         liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
     end;
     nkEmpty, nkNone: begin end;
@@ -1304,5 +1282,6 @@ begin
                 renderTree(n, {@set}[renderNoComments]));
       result := nil
     end
-  end
+  end;
+  include(result.flags, nfSem);
 end;

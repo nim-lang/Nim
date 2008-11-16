@@ -9,18 +9,19 @@ Note:
   A C compiler is required - knowledge of C is not!
 
 The GNU C Compiler is fully supported, other compilers may work. The C compiler
-should be in your ``$PATH`` (most likely the case). Note that some Linux
+should be in your ``$PATH`` (most likely the case). Note that some few Linux
 distributions do not ship with a GCC compiler preinstalled - then you have to
 install it.
 
-After you have made sure that a C compiler is available, install Nimrod
-by downloading the appropriate ``.zip`` file and extracting it to a
-directory of your choice. The Nimrod Compiler will stay in this
-directory; do not use a temporary one! Good choices are ``/opt/nimrod`` or -
-if you don't have root access - ``~/programs/nimrod``.
+Install Nimrod by downloading the appropriate ``.zip`` file and extracting it 
+to a directory of your choice. The Nimrod Compiler will stay in this
+directory (unless you copy it somewhere else). The compiler does not need 
+write access to its directory anymore, so copying the nimrod folder to ``/opt`` 
+does work.
+
 Then run the following command::
 
-  python koch.py install
+  sh build.sh
 
 Unlike other software, Nimrod does not distribute its files over the whole file
 hierarchy. This has the advantage that you can deinstall it by just deleting
@@ -39,48 +40,26 @@ need to install Apple's developer's tools for the GNU Compiler Collection
 though.
 
 
-Installation on Windows - the easy way
---------------------------------------
+Installation on Windows
+-----------------------
 
 Install Nimrod by downloading and running
-the ``nimrod_windows_$version.exe`` file. The installation procedure detects
-which C compilers are installed and writes the ``config/nimrod.cfg`` file
-for you. If no installed C compiler is found, the ``LLVM-GCC`` compiler is
-used that is bundled with this installer. So it should just work.
+the ``nimrod_$version.exe`` file. As default, the ``LLVM-GCC`` 
+compiler is used that is bundled with this installer. You can change
+the configuration file to use another C compiler.
 
-
-Installation on Windows - the hard way
---------------------------------------
-
-Windows does not ship with a C compiler; you have to install one. The
-following C compilers are supported under Windows:
+Currently, the following C compilers are supported under Windows:
 
 - | Microsoft's Visual C++
   | http://msdn.microsoft.com/visualc
-  | (You may need the SDK too - but not the full one: Essential are only
+  | (You need the SDK too - but not the full one: Essential are only
     the win32api header files and import libraries.)
-- | Borland C++ (5.5 or above; including Borland C++Builder)
-  | http://www.borland.com/downloads/download_cbuilder.html
-  | (Download the package under "compiler" - this requires registration though.)
 - | Gnu C Compiler (the mingw version; the cygwin version has not been tested!)
   | http://www.mingw.org/download.shtml
 - | LLVM with GNU C/C++ frontend
   | http://llvm.org/releases/download.html#2.2
 - | Digital Mars C++
   | http://www.digitalmars.com/download/freecompiler.html
-- | Pelles C Compiler (bootstrapping does not work with PCC!)
-  | http://www.smorgasbordet.com/pellesc
-- | Lcc-win32 (bootstrapping does not work with LCC!)
-  | http://www.cs.virginia.edu/~lcc-win32
 
-All of the above compilers are available for free!
-(The first three are the easiest to install.) If you want a small download,
-choose Digital Mars C++ -- it is easy to install and only about 3 MB.
-If you want the highest possible performance, go for Microsoft's Visual C++ or
-LLVM.
-
-After you have made sure that a C compiler is available, install
-Nimrod by downloading the appropriate .zip file and extracting it to a
-directory of your choice. The Nimrod Compiler will stay in this
-directory; do not use a temporary one! Then adapt the ``config/nimrod.cfg``
-file appropriately. You should add Nimrod to your ``$PATH``.
+For faster compile times I recommend Digital Mars C++ -- it is easy to install
+and a small package.

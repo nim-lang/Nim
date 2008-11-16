@@ -104,8 +104,7 @@ const
   growthFactor = 2 # must be power of two
 
 proc init*[TKey, TValue](t: var TTable[TKey, TValue], capacity: natural = 32) =
-  t.d = [] # XXX
-  setLen(t.d, capacity)
+  newSeq(t.d, capacity)
 
 proc len*[TKey, TValue](t: TTable[TKey, TValue]): natural = return t.counter
 
@@ -136,8 +135,8 @@ proc TableRawInsert[TKey, TValue](data: var seq[TPair[TKey, TValue]],
   data[h].val = val
 
 proc TableEnlarge[TKey, TValue](t: var TTable[TKey, TValue]) =
-  var n: seq[TPair[TKey,TValue]] = []
-  setLen(n, len(t.d) * growthFactor) # XXX
+  var n: seq[TPair[TKey,TValue]]
+  newSeq(n, len(t.d) * growthFactor)
   for i in 0..high(t.d):
     if not isNil(t.d[i].key):
       TableRawInsert(n, t.d[i].key, t.d[i].val)

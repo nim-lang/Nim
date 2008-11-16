@@ -85,7 +85,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   else:
     var a = cast[pbyteArray](p)
     for i in 0 .. typ.size*8-1:
-      if (a[i div 8] and (1 shl (i mod 8))) != 0:
+      if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)

@@ -358,7 +358,7 @@ begin
     end
   end;
   g.len := pos - g.pos;
-  assert((g.kind = gtEof) or (g.len > 0));
+  if (g.kind <> gtEof) and (g.len <= 0) then InternalError('nimNextToken');
   g.pos := pos;
 end;
 
@@ -633,7 +633,7 @@ begin
     end
   end;
   g.len := pos - g.pos;
-  assert((g.kind = gtEof) or (g.len > 0));
+  if (g.kind <> gtEof) and (g.len <= 0) then InternalError('clikeNextToken');
   g.pos := pos;
 end;
 
@@ -711,7 +711,7 @@ begin
     langCsharp: csharpNextToken(g);
     langC: cNextToken(g);
     langJava: javaNextToken(g);
-    else assert(false);
+    else InternalError('getNextToken');
   end
 end;
 

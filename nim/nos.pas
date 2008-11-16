@@ -10,8 +10,6 @@ unit nos;
 
 // This module provides Nimrod's os module in Pascal
 // Note: Only implement what is really needed here!
-// This is not portable! It only works on Windows and Linux! But
-// it does not matter since this is only needed for bootstraping.
 
 interface
 
@@ -45,7 +43,7 @@ const
   sep = dirsep; // alternative name
   extsep = '.';
 
-function executeProcess(const cmd: string): int;
+function executeShellCommand(const cmd: string): int;
 // like exec, but gets a command
 
 function FileNewer(const a, b: string): Boolean;
@@ -67,6 +65,9 @@ function extractFilename(const f: string): string;
 function getApplicationDir(): string;
 function getApplicationFilename(): string;
 
+function getCurrentDir: string;
+function GetConfigDir(): string;
+
 
 procedure SplitFilename(const filename: string; out name, extension: string);
 
@@ -74,7 +75,7 @@ function ExistsFile(const filename: string): Boolean;
 function AppendFileExt(const filename, ext: string): string;
 function ChangeFileExt(const filename, ext: string): string;
 
-procedure createDir(dir: string);
+procedure createDir(const dir: string);
 function expandFilename(filename: string): string;
 
 function UnixToNativePath(const path: string): string;
@@ -82,6 +83,20 @@ function UnixToNativePath(const path: string): string;
 function sameFile(const path1, path2: string): boolean;
 
 implementation
+
+function GetConfigDir(): string;
+begin
+{$ifdef windows}
+  result := getEnv('APPDATA') + '\';
+{$else}
+  result := getEnv('HOME') + '/.config/';
+{$endif}
+end;
+
+function getCurrentDir: string;
+begin
+  result := sysutils.GetCurrentDir();
+end;
 
 function UnixToNativePath(const path: string): string;
 begin
@@ -102,9 +117,14 @@ begin
                           expandFilename(UnixToNativePath(path2))) = 0;
 end;
 
-procedure createDir(dir: string);
+procedure createDir(const dir: string);
+var
+  i: int;
 begin
-  sysutils.CreateDir(Dir);
+  for i := 1 to length(dir) do begin
+    if dir[i] in [sep, altsep] then sysutils.createDir(ncopy(dir, 1, i-1));
+  end;
+  sysutils.createDir(dir);
 end;
 
 function searchExtPos(const s: string): int;
@@ -157,7 +177,7 @@ begin
   extPos := searchExtPos(filename);
   if extPos > 0 then begin
     name := ncopy(filename, 1, extPos-1);
-    extension := ncopy(filename, extPos+1);
+    extension := ncopy(filename, extPos);
   end
   else begin
     name := filename;
@@ -405,7 +425,7 @@ end;
 
 {$ifdef windows}
 
-function ExecuteProcess(const cmd: string): int;
+function executeShellCommand(const cmd: string): int;
 var
   SI: TStartupInfo;
   ProcInfo: TProcessInformation;
@@ -437,14 +457,14 @@ end;
 
 {$else}
   {$ifdef windows}
-function executeProcess(const cmd: string): int;
+function executeShellCommand(const cmd: string): int;
 begin
   result := dos.Exec(cmd, '')
 end;
 //C:\Eigenes\compiler\MinGW\bin;
   {$else}
 // fpc has a portable function for this
-function executeProcess(const cmd: string): int;
+function executeShellCommand(const cmd: string): int;
 begin
   result := shell(cmd);
 end;

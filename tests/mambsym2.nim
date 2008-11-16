@@ -1,2 +1,3 @@
 type
-  TExport* = enum x, y, z # exactly the same type!
+  TExport* = enum a, b, c
+  

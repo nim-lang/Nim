@@ -40,15 +40,15 @@ Basic libraries
   The ``times`` module contains basic support for working with time.
 
 * `parseopt <parseopt.html>`_
-  The ``parseopt`` module implements a command line option parser. This 
+  The ``parseopt`` module implements a command line option parser. This
   supports long and short command options with optional values and command line
   arguments.
 
 * `parsecfg <parsecfg.html>`_
-  The ``parsecfg`` module implements a high performance configuration file 
-  parser. The configuration file's syntax is similar to the Windows ``.ini`` 
-  format, but much more powerful, as it is not a line based parser. String 
-  literals, raw string literals and triple quote string literals are supported 
+  The ``parsecfg`` module implements a high performance configuration file
+  parser. The configuration file's syntax is similar to the Windows ``.ini``
+  format, but much more powerful, as it is not a line based parser. String
+  literals, raw string literals and triple quote string literals are supported
   as in the Nimrod programming language.
 
 * `strtabs <strtabs.html>`_
@@ -57,12 +57,18 @@ Basic libraries
   style-insensitive mode. An efficient string substitution operator  ``%``
   for the string table is also provided.
 
+* `streams <streams.html>`_
+  This module provides a stream interface and two implementations thereof:
+  the `PFileStream` and the `PStringStream` which implement the stream
+  interface for Nimrod file objects (`TFile`) and strings. Other modules
+  may provide other implementations for this standard stream interface.
+
 * `hashes <hashes.html>`_
   This module implements efficient computations of hash values for diverse
   Nimrod types.
 
 * `lexbase <lexbase.html>`_
-  This is a low leve module that implements an extremely efficent buffering
+  This is a low level module that implements an extremely efficent buffering
   scheme for lexers and parsers. This is used by the ``parsecfg`` module.
 
 
@@ -74,10 +80,12 @@ Advanced libaries
   expressions.
 
 * `dialogs <dialogs.html>`_
-  This module implements portable dialogs for Nimrod; the implementation 
+  This module implements portable dialogs for Nimrod; the implementation
   builds on the GTK interface. On Windows, native dialogs are shown if
   appropriate.
-  
+
+* `zipfiles <zipfiles.html>`_
+  This module implements a zip archive creator/reader/modifier.
 
 Wrappers
 ========
@@ -98,7 +106,7 @@ not contained in the distribution. You can then find them on the website.
 * `ole2 <ole2.html>`_
   Contains GUIDs for OLE2 automation support.
 * `nb30 <nb30.html>`_
-  This module contains the definitions for portable NetBIOS 3.0 support. 
+  This module contains the definitions for portable NetBIOS 3.0 support.
 * `cairo <cairo.html>`_
   Wrapper for the cairo library.
 * `cairoft <cairoft.html>`_
@@ -129,3 +137,80 @@ not contained in the distribution. You can then find them on the website.
   Wrapper for the pango library.
 * `pangoutils <pangoutils.html>`_
   Wrapper for the pangoutils library.
+* `gl <gl.html>`_
+  Part of the wrapper for OpenGL.
+* `glext <glext.html>`_
+  Part of the wrapper for OpenGL.
+* `glu <glu.html>`_
+  Part of the wrapper for OpenGL.
+* `glut <glut.html>`_
+  Part of the wrapper for OpenGL.
+* `glx <glx.html>`_
+  Part of the wrapper for OpenGL.
+* `wingl <wingl.html>`_
+  Part of the wrapper for OpenGL.
+* `lua <lua.html>`_
+  Part of the wrapper for Lua.
+* `lualib <lualib.html>`_
+  Part of the wrapper for Lua.
+* `lauxlib <lauxlib.html>`_
+  Part of the wrapper for Lua.
+* `odbcsql <odbcsql.nim>`_
+  interface to the ODBC driver. 
+* `zlib <zlib.nim>`_
+  Wrapper for the zlib library. 
+* `sdl <sdl.html>`_
+  Part of the wrapper for SDL.
+* `sdl_gfx <sdl_gfx.html>`_
+  Part of the wrapper for SDL.
+* `sdl_image <sdl_image.html>`_
+  Part of the wrapper for SDL.
+* `sdl_mixer <sdl_mixer.html>`_
+  Part of the wrapper for SDL.
+* `sdl_net <sdl_net.html>`_
+  Part of the wrapper for SDL.
+* `sdl_ttf <sdl_ttf.html>`_
+  Part of the wrapper for SDL.
+* `smpeg <smpeg.html>`_
+  Part of the wrapper for SDL.
+* `cursorfont <cursorfont.html>`_
+  Part of the wrapper for X11.
+* `keysym <keysym.html>`_
+  Part of the wrapper for X11.
+* `x <x.html>`_
+  Part of the wrapper for X11.
+* `xatom <xatom.html>`_
+  Part of the wrapper for X11.
+* `xcms <xcms.html>`_
+  Part of the wrapper for X11.
+* `xf86dga <xf86dga.html>`_
+  Part of the wrapper for X11.
+* `xf86vmode <xf86vmode.html>`_
+  Part of the wrapper for X11.
+* `xi <xi.html>`_
+  Part of the wrapper for X11.
+* `xinerama <xinerama.html>`_
+  Part of the wrapper for X11.
+* `xkb <xkb.html>`_
+  Part of the wrapper for X11.
+* `xkblib <xkblib.html>`_
+  Part of the wrapper for X11.
+* `xlib <xlib.html>`_
+  Part of the wrapper for X11.
+* `xrandr <xrandr.html>`_
+  Part of the wrapper for X11.
+* `xrender <xrender.html>`_
+  Part of the wrapper for X11.
+* `xresource <xresource.html>`_
+  Part of the wrapper for X11.
+* `xshm <xshm.html>`_
+  Part of the wrapper for X11.
+* `xutil <xutil.html>`_
+  Part of the wrapper for X11.
+* `xv <xv.html>`_
+  Part of the wrapper for X11.
+* `xvlib <xvlib.html>`_
+  Part of the wrapper for X11.
+* `libzip <libzip.html>`_
+  Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
+  Dieter Baron and Thomas Klausner. 

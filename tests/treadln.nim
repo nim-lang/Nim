@@ -2,7 +2,7 @@
 # Macintosh, Unix or Windows text format.
 
 var
-  inp: tTextFile
+  inp: TFile
   line: string
 
 if openFile(inp, "readme.txt"):

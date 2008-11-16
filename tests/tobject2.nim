@@ -7,7 +7,7 @@ type
   TPoint3d = object of TPoint2d
     z: int # added a field
 
-proc getPoint(var p: TPoint2d) =
+proc getPoint( p: var TPoint2d) =
   {.breakpoint.}
   writeln(stdout, p.x)
 

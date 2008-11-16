@@ -4,7 +4,7 @@
 import
   regexprs
 
-if "Username" =~ "[A-Za-z]+":
+if "Username".match("[A-Za-z]+"):
   echo("Yes!")
 else:
   echo("Bug!")

@@ -1,3 +1,67 @@
+Make-like functionality for Nimrod via macros
+=============================================
+
+The idea is to provide a library that implements macros for this. The syntax
+should be::
+
+  task(name="doc"):
+    filedeps: ["doc/fileA.nim", "doc/fileB.nim"]
+    taskdeps: "nimrod"
+    action: 
+      for d in items(filedeps):
+        exec("nimrod doc -o $1 $2" % [f, "doc" /../ changeFileExt(f, "html")])
+  
+  task(name="web"):
+    ...
+
+
+Improved generics
+=================
+
+type
+  TElem = generic with
+    iterator items(c: container[TElem]): TElem
+    proc eq(a, b: TElem): bool
+    
+proc find[TElem]{eq = `==`}(container: Container[TElem], e: TElem): int = 
+  for x in items(container): 
+    if eq(x, e): return
+    inc(result)
+  return -1
+
+template find(container, element: expr, eq: expr = `==`): expr = 
+  block: # open a new scope
+    proc f[T](c: container[T], element: T): int =
+      for x in items(c):
+        if eq(x, e): return
+        inc(result)
+      result = -1
+    f(container, element)
+
+find(mystrSeq, "hallo", eqIgnoreCase)
+
+template shellSort(container: expr, cmp: expr = cmp): expr = 
+  block: # open a new scope
+    proc sort[T](a: var containr[T]) =
+      var h = 1
+      while true: 
+        h = 3 * h + 1
+        if h > N: break 
+      while true: 
+        h = h div 3
+        for i in countup(h, N - 1): 
+          var v = a[i]
+          var j = i
+          while cmp(a[j-h], v) <= 0: 
+            a[j] = a[j-h]
+            j = j-h
+            if j < h: break 
+          a[j] = v
+        if h == 1: break
+    sort(container)
+
+
+
 Data structures for the GC
 ==========================
 

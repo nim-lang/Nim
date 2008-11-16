@@ -16,6 +16,7 @@ uses
   nsystem, options, strutils, nos;
 
 //[[[cog
+//from string import replace
 //enum = "type\n  TMsgKind = (\n"
 //msgs = "const\n  MsgKindToStr: array [TMsgKind] of string = (\n"
 //warns = "const\n  WarningsToStr: array [0..%d] of string = (\n"
@@ -23,20 +24,20 @@ uses
 //w = 0 # counts the warnings
 //h = 0 # counts the hints
 //
-//for elem in eval(file('data/messages.yml').read()):
-//  for key, val in elem.iteritems():
-//    enum += '    %s,\n' % key
-//    v = val.replace("'", "''")
-//    if key.startswith('warn'):
-//      msgs +=  "    '%s [%s]',\n" % (v, key[4:])
-//      warns += "    '%s',\n" % key[4:]
-//      w += 1
-//    elif key.startswith('hint'):
-//      msgs +=  "    '%s [%s]',\n" % (v, key[4:])
-//      hints += "    '%s',\n" % key[4:]
-//      h += 1
+//for elem in eval(open('data/messages.yml').read()):
+//  for key, val in elem.items():
+//    enum = enum + '    %s,\n' % key
+//    v = replace(val, "'", "''")
+//    if key[0:4] == 'warn':
+//      msgs = msgs +  "    '%s [%s]',\n" % (v, key[4:])
+//      warns = warns + "    '%s',\n" % key[4:]
+//      w = w + 1
+//    elif key[0:4] == 'hint':
+//      msgs = msgs + "    '%s [%s]',\n" % (v, key[4:])
+//      hints = hints + "    '%s',\n" % key[4:]
+//      h = h + 1
 //    else:
-//      msgs +=  "    '%s',\n" % v
+//      msgs = msgs + "    '%s',\n" % v
 //
 //enum = enum[:-2] + ');\n\n'
 //msgs = msgs[:-2] + '\n  );\n'
@@ -293,16 +294,17 @@ type
     warnCommentXIgnored,
     warnUser,
     hintSuccess,
+    hintSuccessX,
     hintLineTooLong,
     hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded,
     hintExprAlwaysX,
-    hintMo2FileInvalid,
-    hintModuleHasChanged,
-    hintCannotOpenMo2File,
     hintQuitCalled,
     hintProcessing,
+    hintCodeBegin,
+    hintCodeEnd,
+    hintConf,
     hintUser);
 
 const
@@ -439,7 +441,7 @@ const
     'computing the type''s size produced an overflow',
     'set is too large',
     'base type of a set must be an ordinal',
-    'inheritance only works non-final objects',
+    'inheritance only works with non-final objects',
     'inheritance only works with an enum',
     'illegal recursion in type ''$1''',
     'cannot instantiate: ''$1''',
@@ -550,16 +552,17 @@ const
     'comment ''$1'' ignored [CommentXIgnored]',
     '$1 [User]',
     'operation successful [Success]',
+    'operation successful ($1 lines compiled; $2 sec total) [SuccessX]',
     'line too long [LineTooLong]',
     '''$1'' is declared but not used [XDeclaredButNotUsed]',
     'conversion to base object is not needed [ConvToBaseNotNeeded]',
     'conversion from $1 to itself is pointless [ConvFromXtoItselfNotNeeded]',
     'expression evaluates always to ''$1'' [ExprAlwaysX]',
-    'mo2 file ''$1'' is invalid [Mo2FileInvalid]',
-    'module ''$1'' has been changed [ModuleHasChanged]',
-    'mo2 file ''$1'' does not exist [CannotOpenMo2File]',
     'quit() called [QuitCalled]',
-    'processing [Processing]',
+    'processing $1 [Processing]',
+    'generated code listing: [CodeBegin]',
+    'end of listing [CodeEnd]',
+    'used config file ''$1'' [Conf]',
     '$1 [User]'
   );
 const
@@ -580,18 +583,19 @@ const
     'User'
   );
 const
-  HintsToStr: array [0..11] of string = (
+  HintsToStr: array [0..12] of string = (
     'Success',
+    'SuccessX',
     'LineTooLong',
     'XDeclaredButNotUsed',
     'ConvToBaseNotNeeded',
     'ConvFromXtoItselfNotNeeded',
     'ExprAlwaysX',
-    'Mo2FileInvalid',
-    'ModuleHasChanged',
-    'CannotOpenMo2File',
     'QuitCalled',
     'Processing',
+    'CodeBegin',
+    'CodeEnd',
+    'Conf',
     'User'
   );
 //[[[end]]]
@@ -640,7 +644,9 @@ const // this format is understood by many text editors: it is the same that
 
 procedure MessageOut(const s: string);
 
-procedure rawMessage(const msg: TMsgKind; const arg: string = '');
+procedure rawMessage(const msg: TMsgKind; const arg: string = ''); overload;
+procedure rawMessage(const msg: TMsgKind; const args: array of string); overload;
+
 procedure liMessage(const info: TLineInfo; const msg: TMsgKind;
                     const arg: string = '');
 
@@ -672,8 +678,8 @@ implementation
 
 function UnknownLineInfo(): TLineInfo;
 begin
-  result.line := -1;
-  result.col := -1;
+  result.line := int16(-1);
+  result.col := int16(-1);
   result.fileIndex := -1;
 end;
 
@@ -683,8 +689,8 @@ var
   msgContext: array of TLineInfo;
 {@emit
 var
-  filenames: array of string = [];
-  msgContext: array of TLineInfo = [];
+  filenames: array of string = @[];
+  msgContext: array of TLineInfo = @[];
 }
 
 procedure pushInfoContext(const info: TLineInfo);
@@ -718,7 +724,7 @@ end;
 function checkpoint(const info: TLineInfo; const filename: string;
                     line: int): boolean;
 begin
-  result := (info.line = line) and (
+  result := (int(info.line) = line) and (
     ChangeFileExt(extractFilename(filenames[info.fileIndex]), '') = filename);
 end;
 
@@ -728,7 +734,7 @@ var
   checkPoints: array of TLineInfo;
 {@emit
 var
-  checkPoints: array of TLineInfo = [];
+  checkPoints: array of TLineInfo = @[];
 }
 
 procedure addCheckpoint(const info: TLineInfo); overload;
@@ -796,8 +802,8 @@ begin
   result := false;
   if not (optCheckpoints in gOptions) then exit; // ignore all checkpoints
   for i := 0 to high(checkPoints) do begin
-    if (current.line = int(checkPoints[i].line)) and
-       (current.fileIndex = int(checkPoints[i].fileIndex)) then begin
+    if (current.line = checkPoints[i].line) and
+       (current.fileIndex = (checkPoints[i].fileIndex)) then begin
       MessageOut(Format('$1($2, $3) Checkpoint: ', [toFilename(current),
                            coordToStr(current.line),
                            coordToStr(current.col)]));
@@ -809,14 +815,15 @@ end;
 
 procedure handleError(const msg: TMsgKind);
 begin
+  if msg = errInternal then assert(false); // we want a stack trace here
   if (msg >= fatalMin) and (msg <= fatalMax) then begin
-    if optVerbose in gGlobalOptions then assert(false);
+    if gVerbosity >= 3 then assert(false);
     halt(1)
   end;
   if (msg >= errMin) and (msg <= errMax) then begin
     inc(gErrorCounter);
     if gErrorCounter >= gErrorMax then begin
-      if optVerbose in gGlobalOptions then assert(false);
+      if gVerbosity >= 3 then assert(false);
       halt(1) // one error stops the compiler
     end
   end
@@ -834,7 +841,7 @@ begin
   end;
 end;
 
-procedure rawMessage(const msg: TMsgKind; const arg: string = '');
+procedure rawMessage(const msg: TMsgKind; const args: array of string);
 var
   frmt: string;
 begin
@@ -857,8 +864,13 @@ begin
     end;
     else assert(false) // cannot happen
   end;
-  MessageOut(Format(frmt, [getMessageStr(msg, arg)]));
+  MessageOut(Format(frmt, format(msgKindToString(msg), args)));
   handleError(msg);
+end;
+
+procedure rawMessage(const msg: TMsgKind; const arg: string = '');
+begin
+  rawMessage(msg, [arg]);
 end;
 
 procedure liMessage(const info: TLineInfo; const msg: TMsgKind;

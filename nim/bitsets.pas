@@ -8,7 +8,7 @@
 //
 unit bitsets;
 
-// this unit handles Nimrod sets; it implements symbolic sets
+// this unit handles Nimrod sets; it implements bit sets
 // the code here should be reused in the Nimrod standard library
 
 interface
@@ -44,57 +44,58 @@ implementation
 
 function BitSetIn(const x: TBitSet; const e: BiggestInt): Boolean;
 begin
-  result := (x[int(e div ElemSize)] and (1 shl (e mod ElemSize))) <> 0
+  result := (x[int(e div ElemSize)] and toU8(int(1 shl (e mod ElemSize)))) <> toU8(0)
 end;
 
 procedure BitSetIncl(var x: TBitSet; const elem: BiggestInt);
 begin
   assert(elem >= 0);
-  x[int(elem div ElemSize)] := toU8(x[int(elem div ElemSize)] or 
-    int(1 shl (elem mod ElemSize)))
+  x[int(elem div ElemSize)] := x[int(elem div ElemSize)] or 
+    toU8(int(1 shl (elem mod ElemSize)))
 end;
 
 procedure BitSetExcl(var x: TBitSet; const elem: BiggestInt);
 begin
-  x[int(elem div ElemSize)] := toU8(x[int(elem div ElemSize)] and
-                          not int(1 shl (elem mod ElemSize)))
+  x[int(elem div ElemSize)] := x[int(elem div ElemSize)] and
+                          not toU8(int(1 shl (elem mod ElemSize)))
 end;
 
 procedure BitSetInit(out b: TBitSet; len: int);
 begin
-  {@emit b := [];}
-  setLength(b, len);
 {@ignore}
+  setLength(b, len);
   fillChar(b[0], length(b)*sizeof(b[0]), 0);
-{@emit}
+{@emit
+  newSeq(b, len);
+}
 end;
 
 procedure BitSetUnion(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := toU8(x[i] or int(y[i]))
+  for i := 0 to high(x) do x[i] := x[i] or y[i]
 end;
 
 procedure BitSetDiff(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := toU8(x[i] and not int(y[i]))
+  for i := 0 to high(x) do x[i] := x[i] and not y[i]
 end;
 
 procedure BitSetSymDiff(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := toU8(x[i] xor int(y[i]))
+  for i := 0 to high(x) do x[i] := x[i] xor y[i]
 end;
 
 procedure BitSetIntersect(var x: TBitSet; const y: TBitSet);
 var
   i: int;
 begin
-  for i := 0 to high(x) do x[i] := toU8(x[i] and int(y[i]))
+  for i := 0 to high(x) do x[i] := x[i] and y[i]
 end;
 
 function BitSetEquals(const x, y: TBitSet): Boolean;
@@ -102,7 +103,7 @@ var
   i: int;
 begin
   for i := 0 to high(x) do
-    if (x[i] <> int(y[i])) then begin
+    if x[i] <> y[i] then begin
       result := false; exit;
     end;
   result := true
@@ -113,7 +114,7 @@ var
   i: int;
 begin
   for i := 0 to high(x) do
-    if (x[i] and not int(y[i])) <> 0 then begin
+    if (x[i] and not y[i]) <> byte(0) then begin
       result := false; exit;
     end;
   result := true

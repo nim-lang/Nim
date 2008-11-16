@@ -1,3 +1,3 @@
 # Test 3
 
-true #ERROR_MSG statement has no effect
+1+4 #ERROR_MSG value returned by statement has to be discarded

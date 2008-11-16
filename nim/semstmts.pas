@@ -9,6 +9,11 @@
 
 // this module does the semantic checking of statements
 
+function isTopLevel(c: PContext): bool;
+begin
+  result := c.tab.tos <= 2
+end;
+
 function semWhen(c: PContext; n: PNode): PNode;
 var
   i: int;
@@ -23,7 +28,7 @@ begin
         checkSonsLen(it, 2);
         e := semConstExpr(c, it.sons[0]);
         checkBool(e);
-        assert(e.kind = nkIntLit);
+        if (e.kind <> nkIntLit) then InternalError(n.info, 'semWhen');
         if (e.intVal <> 0) and (result = nil) then
           result := semStmt(c, it.sons[1]); // do not open a new scope!
       end;
@@ -35,7 +40,11 @@ begin
       else illFormedAst(n)
     end
   end;
-  if result = nil then result := newNode(nkNilLit);
+  if result = nil then result := newNodeI(nkNilLit, n.info);
+  // The ``when`` statement implements the mechanism for platform dependant
+  // code. Thus we try to ensure here consistent ID distribution after the
+  // ``when`` statement.
+  IDsynchronizationPoint(200);
 end;
 
 function semIf(c: PContext; n: PNode): PNode;
@@ -81,19 +90,15 @@ begin
   if n.sons[0] <> nil then begin
     if n.sons[0].kind = nkIdent then begin
       // lookup the symbol:
-      s := SymtabGet(c.Tab, n.sons[0].ident);
-      if s <> nil then begin
-        if (s.kind = skLabel) and (s.owner.id = c.p.owner.id) then begin
-          x := newSymNode(s);
-          x.info := n.info;
-          include(s.flags, sfUsed);
-          n.sons[0] := x
-        end
-        else
-          liMessage(n.info, errInvalidControlFlowX, s.name.s)
+      s := lookUp(c, n.sons[0]);
+      if (s.kind = skLabel) and (s.owner.id = c.p.owner.id) then begin
+        x := newSymNode(s);
+        x.info := n.info;
+        include(s.flags, sfUsed);
+        n.sons[0] := x
       end
       else
-        liMessage(n.info, errUndeclaredIdentifier, n.sons[0].ident.s);
+        liMessage(n.info, errInvalidControlFlowX, s.name.s)
     end
     else illFormedAst(n)
   end
@@ -155,8 +160,10 @@ begin
           sub := ncopy(str, b+1, c-1);
         if sub <> '' then begin
           e := SymtabGet(con.tab, getIdent(sub));
-          if e <> nil then
+          if e <> nil then begin
+            if e.kind = skStub then loadStub(e);
             addSon(result, newSymNode(e))
+          end
           else
             addSon(result, newStrNode(nkStrLit, sub));
         end;
@@ -314,8 +321,7 @@ begin
     // check for type compatibility:
     restype := c.p.owner.typ.sons[0];
     if (restype <> nil) then begin
-      a := newNode(nkAsgn);
-      a.info := n.sons[0].info;
+      a := newNodeI(nkAsgn, n.sons[0].info);
 
       n.sons[0] := fitNode(c, restype, n.sons[0]);
       // optimize away ``return result``, because it would be transferred
@@ -325,7 +331,7 @@ begin
         n.sons[0] := nil;
       end
       else begin
-        assert(c.p.resultSym <> nil);
+        if (c.p.resultSym = nil) then InternalError(n.info, 'semReturn');
         addSon(a, semExprWithType(c, newSymNode(c.p.resultSym)));
         addSon(a, n.sons[0]);
         n.sons[0] := a;
@@ -350,7 +356,7 @@ begin
     restype := c.p.owner.typ.sons[0];
     if (restype <> nil) then begin
       n.sons[0] := fitNode(c, restype, n.sons[0]);
-      assert(n.sons[0].typ <> nil);
+      if (n.sons[0].typ = nil) then InternalError(n.info, 'semYield');
     end
     else
       liMessage(n.info, errCannotReturnExpr);
@@ -388,8 +394,9 @@ begin
       typ := nil;
     if a.sons[len-1] <> nil then begin
       def := semExprWithType(c, a.sons[len-1]);
+      // BUGFIX: ``fitNode`` is needed here!
       // check type compability between def.typ and typ:
-      if (typ <> nil) then def := fitRemoveHiddenConv(c, typ, def)
+      if (typ <> nil) then def := fitNode(c, typ, def)
       else typ := def.typ;
     end
     else
@@ -405,8 +412,7 @@ begin
       if v.flags * [sfStar, sfMinus] <> {@set}[] then
         include(v.flags, sfInInterface);
       addInterfaceDecl(c, v);
-      b := newNode(nkIdentDefs);
-      b.info := a.info;
+      b := newNodeI(nkIdentDefs, a.info);
       addSon(b, newSymNode(v));
       addSon(b, nil); // no type description
       addSon(b, copyTree(def));
@@ -449,8 +455,7 @@ begin
     if v.flags * [sfStar, sfMinus] <> {@set}[] then
       include(v.flags, sfInInterface);
     addInterfaceDecl(c, v);
-    b := newNode(nkConstDef);
-    b.info := a.info;
+    b := newNodeI(nkConstDef, a.info);
     addSon(b, newSymNode(v));
     addSon(b, nil); // no type description
     addSon(b, copyTree(def));
@@ -548,7 +553,7 @@ begin
         if typ.kind = tyRef then typ := typ.sons[0];
         if (typ.kind <> tyObject) then
           liMessage(a.sons[j].info, errExprCannotBeRaised);
-        a.sons[j] := newNode(nkType);
+        a.sons[j] := newNodeI(nkType, a.sons[j].info);
         a.sons[j].typ := typ;
         if IntSetContainsOrIncl(check, typ.id) then
           liMessage(a.sons[j].info, errExceptionAlreadyHandled);
@@ -566,7 +571,8 @@ var
   i: int;
   s: PSym;
 begin
-  assert(n.kind = nkGenericParams);
+  if n.kind <> nkGenericParams then
+    InternalError(n.info, 'semGenericParamList');
   for i := 0 to sonsLen(n)-1 do begin
     if n.sons[i].kind = nkDefaultTypeParam then begin
       internalError(n.sons[i].info, 'semGenericParamList() to implement');
@@ -579,6 +585,21 @@ begin
     end;
     s.position := i;
     n.sons[i] := newSymNode(s);
+    addDecl(c, s);
+  end
+end;
+
+procedure addGenericParamListToScope(c: PContext; n: PNode);
+var
+  i: int;
+  s: PSym;
+begin
+  if n.kind <> nkGenericParams then
+    InternalError(n.info, 'addGenericParamListToScope');
+  for i := 0 to sonsLen(n)-1 do begin
+    if n.sons[i].kind <> nkSym then
+      InternalError(n.sons[i].info, 'addGenericParamListToScope');
+    s := n.sons[i].sym;
     addDecl(c, s);
   end
 end;
@@ -630,35 +651,60 @@ begin
     s := a.sons[0].sym;
     if (s.magic = mNone) and (a.sons[2] = nil) then
       liMessage(a.info, errTypeXNeedsImplementation, s.name.s);
+    if s.magic <> mNone then processMagicType(c, s);
     if a.sons[1] <> nil then begin
       // we have a generic type declaration here, so we don't process the
       // type's body:
       openScope(c.tab);
-      pushOwner(c, s);
+      pushOwner(s);
       s.typ.kind := tyGeneric;
       semGenericParamList(c, a.sons[1]);
       // process the type body for symbol lookup of generic params
       // we can use the same algorithm as for template parameters:
       a.sons[2] := resolveTemplateParams(c, a.sons[2]);
       s.ast := a;
-      assert(s.typ.containerID = 0);
+      if s.typ.containerID <> 0 then
+        InternalError(a.info, 'semTypeSection: containerID');
       s.typ.containerID := getID();
-      popOwner(c);
+      popOwner();
       closeScope(c.tab);
     end
-    else begin
+    else if a.sons[2] <> nil then begin
       // process the type's body:
-      pushOwner(c, s);
+      pushOwner(s);
       t := semTypeNode(c, a.sons[2], s.typ);
-      if (t <> s.typ) then internalError(a.info, 'semTypeSection()');
+      if (t <> s.typ) and (s.typ <> nil) then
+        internalError(a.info, 'semTypeSection()');
       s.typ := t;
       s.ast := a;
-      popOwner(c);
-      // compute the type's size and check for illegal recursions:
-      if computeSize(s.typ) < 0 then
-        liMessage(s.info, errIllegalRecursionInTypeX, s.name.s);
+      popOwner();
+      if (tfAcyclic in t.flags) and (t.kind <> tyObject) then
+        liMessage(s.info, errInvalidPragmaX, 'acyclic');
     end;
   end;
+  // unfortunately we need another pass over the section for checking of
+  // illegal recursions and type aliases:
+  for i := 0 to sonsLen(n)-1 do begin
+    a := n.sons[i];
+    if a.kind = nkCommentStmt then continue;
+    if (a.sons[0].kind <> nkSym) then IllFormedAst(a);
+    s := a.sons[0].sym;
+    // compute the type's size and check for illegal recursions:
+    if a.sons[1] = nil then begin
+      if (a.sons[2] <> nil)
+      and (a.sons[2].kind in [nkSym, nkIdent, nkAccQuoted]) then begin
+        // type aliases are hard:
+        //MessageOut('for type ' + typeToString(s.typ));
+        t := semTypeNode(c, a.sons[2], nil);
+        if t.kind in [tyObject, tyEnum] then begin
+          assignType(s.typ, t);
+          s.typ.id := t.id; // same id
+        end
+      end;
+      if computeSize(s.typ) < 0 then
+        liMessage(s.info, errIllegalRecursionInTypeX, s.name.s);
+    end
+  end
 end;
 
 procedure semParamList(c: PContext; n: PNode; s: PSym);
@@ -691,7 +737,7 @@ begin
   include(s.flags, sfGlobal);
   if sfStar in s.flags then include(s.flags, sfInInterface);
   s.ast := n;
-  pushOwner(c, s);
+  pushOwner(s);
   if n.sons[genericParamsPos] <> nil then begin
     // we have a generic type declaration here, so we don't process the
     // type's body:
@@ -721,24 +767,23 @@ begin
   else
     liMessage(n.info, errIteratorNeedsImplementation);
   closeScope(c.tab);
-  popOwner(c);
+  popOwner();
   c.p := oldP;
   // add it here, so that recursive iterators are impossible:
   addInterfaceOverloadableSymAt(c, s, c.tab.tos-1);
   //writeln(renderTree(n.sons[codePos], {@set}[renderIds]));
 end;
 
-{$include 'procfind.pas'}
-
 procedure addResult(c: PContext; t: PType; const info: TLineInfo);
 var
   s: PSym;
 begin
   if t <> nil then begin
-    s := newSym(skVar, getIdent('result'), getCurrOwner(c));
+    s := newSym(skVar, getIdent('result'), getCurrOwner());
     s.info := info;
     s.typ := t;
     Include(s.flags, sfResult);
+    Include(s.flags, sfUsed);
     addDecl(c, s);
     c.p.resultSym := s;
   end
@@ -756,16 +801,16 @@ var
 begin
   result := n;
   checkSonsLen(n, codePos+1);
-  s := newSym(skProc, getIdent(genPrefix + 'anonymous'), getCurrOwner(c));
+  s := newSym(skProc, getIdent(':anonymous'), getCurrOwner());
   s.info := n.info;
 
   oldP := c.p; // restore later
   s.ast := n;
   n.sons[namePos] := newSymNode(s);
 
-  pushOwner(c, s);
+  pushOwner(s);
   openScope(c.tab);
-  assert(n.sons[genericParamsPos] = nil);
+  if (n.sons[genericParamsPos] <> nil) then InternalError(n.info, 'semLambda');
   // process parameters:
   if n.sons[paramsPos] <> nil then begin
     semParamList(c, n.sons[ParamsPos], s);
@@ -790,13 +835,10 @@ begin
     n.sons[codePos] := semStmtScope(c, n.sons[codePos]);
     addResultNode(c, n);
   end
-  else begin
+  else
     liMessage(n.info, errImplOfXexpected, s.name.s);
-    if not (sfImportc in s.flags) then
-      Include(s.flags, sfForward);
-  end;
   closeScope(c.tab); // close scope for parameters
-  popOwner(c);
+  popOwner();
   c.p := oldP; // restore
 end;
 
@@ -818,7 +860,7 @@ begin
   if sfStar in s.flags then include(s.flags, sfInInterface);
   s.ast := n;
 
-  pushOwner(c, s);
+  pushOwner(s);
   openScope(c.tab);
   if n.sons[genericParamsPos] <> nil then
     semGenericParamList(c, n.sons[genericParamsPos]);
@@ -855,21 +897,24 @@ begin
     if not (sfForward in proto.flags) then
       liMessage(n.info, errAttemptToRedefineX, proto.name.s);
     exclude(proto.flags, sfForward);
+    closeScope(c.tab); // close scope with wrong parameter symbols
+    openScope(c.tab); // open scope for old (correct) parameter symbols
+    if proto.ast.sons[genericParamsPos] <> nil then
+      addGenericParamListToScope(c, proto.ast.sons[genericParamsPos]);
+    addParams(c, proto.typ.n);
     proto.info := s.info; // more accurate line information
-    s.typ.callConv := proto.typ.callConv;
-    s.typ.flags := proto.typ.flags;
-
-    proto.typ := s.typ;
+    s.typ := proto.typ;
     s := proto;
-    proto.ast := n; // needed for code generation
-    assert(n.sons[namePos].kind = nkSym);
+    n.sons[genericParamsPos] := proto.ast.sons[genericParamsPos];
+    n.sons[paramsPos] := proto.ast.sons[paramsPos];
+    if (n.sons[namePos].kind <> nkSym) then InternalError(n.info, 'semProcAux');
     n.sons[namePos].sym := proto;
-    popOwner(c);
-    pushOwner(c, s);
+    proto.ast := n; // needed for code generation
+    popOwner();
+    pushOwner(s);
   end;
 
   s.options := gOptions;
-  //writeln(s.name.s, '  ', ropeToStr(optionsToStr(s.options)));
   if n.sons[codePos] <> nil then begin
     if sfImportc in s.flags then
       liMessage(n.sons[codePos].info, errImportedProcCannotHaveImpl);
@@ -881,7 +926,7 @@ begin
     end
     else begin
       n.sons[codePos] := resolveGenericParams(c, n.sons[codePos]);
-    end
+    end;
   end
   else begin
     if proto <> nil then
@@ -889,18 +934,13 @@ begin
     if not (sfImportc in s.flags) then Include(s.flags, sfForward);
   end;
   closeScope(c.tab); // close scope for parameters
-  popOwner(c);
+  popOwner();
   c.p := oldP; // restore
 end;
 
 function semProc(c: PContext; n: PNode): PNode;
 begin
   result := semProcAux(c, n, skProc);
-end;
-
-function isTopLevel(c: PContext): bool;
-begin
-  result := c.tab.tos <= 2
 end;
 
 function semConverterDef(c: PContext; n: PNode): PNode;
@@ -938,7 +978,31 @@ begin
     liMessage(n.info, errXRequiresOneArgument, 'macro');
 end;
 
-{$include 'importer.pas'}
+function evalInclude(c: PContext; n: PNode): PNode;
+var
+  i: int;
+  x: PNode;
+  f, name, ext: string;
+begin
+  result := newNodeI(nkStmtList, n.info);
+  addSon(result, n); // the rodwriter needs include information!
+  for i := 0 to sonsLen(n)-1 do begin
+    f := getModuleFile(n.sons[i]);
+    SplitFilename(f, name, ext);
+    if cmpIgnoreCase(ext, '.'+TmplExt) = 0 then
+      x := gIncludeTmplFile(f)
+    else
+      x := gIncludeFile(f);
+    x := semStmt(c, x);
+    addSon(result, x);
+  end;
+end;
+
+function semCommand(c: PContext; n: PNode): PNode;
+begin
+  result := semExpr(c, n);
+  if result.typ <> nil then liMessage(n.info, errDiscardValue);
+end;
 
 function SemStmt(c: PContext; n: PNode): PNode;
 const
@@ -950,13 +1014,11 @@ var
 begin
   result := n;
   if n = nil then exit;
-  embeddedDbg(c, n);
+  if nfSem in n.flags then exit;
   case n.kind of
     nkAsgn: result := semAsgn(c, n);
-    nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
-      result := semExpr(c, n);
-      if result.typ <> nil then liMessage(n.info, errDiscardValue);
-    end;
+    nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand:
+      result := semCommand(c, n);
     nkEmpty, nkCommentStmt, nkNilLit: begin end;
     nkBlockStmt: result := semBlock(c, n);
     nkStmtList: begin
@@ -969,24 +1031,25 @@ begin
               nkPragma, nkCommentStmt, nkNilLit, nkEmpty: begin end;
               else liMessage(n.sons[j].info, errStmtInvalidAfterReturn);
             end
-        end;
-      end;
+        end
+      end
     end;
     nkRaiseStmt: result := semRaise(c, n);
-    nkVarSection: result := SemVar(c, n);
-    nkConstSection: result := SemConst(c, n);
+    nkVarSection: result := semVar(c, n);
+    nkConstSection: result := semConst(c, n);
     nkTypeSection: result := SemTypeSection(c, n);
     nkIfStmt: result := SemIf(c, n);
     nkWhenStmt: result := semWhen(c, n);
     nkDiscardStmt: result := semDiscard(c, n);
     nkWhileStmt: result := semWhile(c, n);
     nkTryStmt: result := semTry(c, n);
-    nkBreakStmt, nkContinueStmt: result := semBreakOrContinue(c, n);
+    nkBreakStmt, nkContinueStmt:
+      result := semBreakOrContinue(c, n);
     nkForStmt: result := semFor(c, n);
     nkCaseStmt: result := semCase(c, n);
     nkReturnStmt: result := semReturn(c, n);
     nkAsmStmt: result := semAsm(c, n);
-    nkYieldStmt: result := SemYield(c, n);
+    nkYieldStmt: result := semYield(c, n);
     nkPragma: pragmaStmt(c, c.p.owner, n);
     nkIteratorDef: result := semIterator(c, n);
     nkProcDef: result := semProc(c, n);
@@ -1011,6 +1074,7 @@ begin
     else liMessage(n.info, errStmtExpected);
   end;
   if result = nil then InternalError(n.info, 'SemStmt: result = nil');
+  include(result.flags, nfSem);
 end;
 
 function semStmtScope(c: PContext; n: PNode): PNode;

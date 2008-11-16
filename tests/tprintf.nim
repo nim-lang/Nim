@@ -1,6 +1,6 @@
 # Test a printf proc
 
-proc printf(file: TTextFile, args: openarray[string]) =
+proc printf(file: TFile, args: openarray[string]) =
   var i = 0
   while i < args.len:
     write(file, args[i])

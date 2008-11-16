@@ -1,11 +1,11 @@
 
 import
-  os, parsecfg, strutils
+  os, parsecfg, strutils, streams
   
-var 
-  p: TCfgParser
-  
-if open(p, paramStr(1)): 
+var f = newFileStream(paramStr(1), fmRead)
+if f != nil:
+  var p: TCfgParser
+  open(p, f, paramStr(1))
   while true:
     var e = next(p)
     case e.kind

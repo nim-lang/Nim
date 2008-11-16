@@ -171,8 +171,7 @@ var
 
 proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
   # print stack trace and quit
-  var
-    s = int(sig)
+  var s = sig
   GC_disable()
   setLen(buf, 0)
   rawWriteStackTrace(buf)
@@ -199,7 +198,8 @@ proc registerSignalHandler() =
   c_signal(SIGILL, signalHandler)
   c_signal(SIGBUS, signalHandler)
 
-registerSignalHandler() # call it in initialization section
+when not defined(noSignalHandler):
+  registerSignalHandler() # call it in initialization section
 # for easier debugging of the GC, this memory is only allocated after the
 # signal handlers have been registered
 new(gAssertionFailed)
@@ -256,3 +256,12 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
 proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
   if a != b:
     raise newException(EInvalidObjectAssignment, "invalid object assignment")
+
+proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
+  # checks if obj is of type subclass:
+  var x = obj
+  if x == subclass: return true # optimized fast path
+  while x != subclass:
+    if x == nil: return false
+    x = x.base
+  return true

@@ -133,7 +133,8 @@ procedure debug(n: PNode); overload;
 
 // --------------------------- ident tables ----------------------------------
 
-function IdTableGet(const t: TIdTable; key: PIdObj): PObject;
+function IdTableGet(const t: TIdTable; key: PIdObj): PObject; overload;
+function IdTableGet(const t: TIdTable; key: int): PObject; overload;
 procedure IdTablePut(var t: TIdTable; key: PIdObj; val: PObject);
 
 function IdTableHasObjectAsKey(const t: TIdTable; key: PIdObj): bool;
@@ -145,33 +146,6 @@ procedure IdNodeTablePut(var t: TIdNodeTable; key: PIdObj; val: PNode);
 
 procedure writeIdNodeTable(const t: TIdNodeTable);
 
-// ------------- efficient integer sets -------------------------------------
-const
-  IntsPerTrunk = 8;
-  InitIntSetSize = 8; // must be a power of two!
-  BitsPerTrunk = IntsPerTrunk * sizeof(int) * 8;
-  BitsPerInt = sizeof(int) * 8;
-
-type
-  PTrunk = ^TTrunk;
-  TTrunk = record
-    next: PTrunk; // all nodes are connected with this pointer
-    key: int;    // start address at bit 0
-    bits: array [0..IntsPerTrunk-1] of int; // a bit vector
-  end;
-  TTrunkSeq = array of PTrunk;
-  TIntSet = record
-    counter, max: int;
-    head: PTrunk;
-    data: TTrunkSeq;
-  end;
-
-function IntSetContains(const s: TIntSet; key: int): bool;
-procedure IntSetIncl(var s: TIntSet; key: int);
-procedure IntSetInit(var s: TIntSet);
-
-function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
-
 // ---------------------------------------------------------------------------
 function getSymFromList(list: PNode; ident: PIdent; start: int = 0): PSym;
 function lookupInRecord(n: PNode; field: PIdent): PSym;
@@ -180,6 +154,24 @@ function getModule(s: PSym): PSym;
 
 function mustRehash(len, counter: int): bool;
 function nextTry(h, maxHash: THash): THash;
+
+// ------------- table[int, int] ---------------------------------------------
+const
+  InvalidKey = low(int);
+
+type
+  TIIPair = record
+    key, val: int;
+  end;
+  TIIPairSeq = array of TIIPair;
+  TIITable = record // table[int, int]
+    counter: int;
+    data: TIIPairSeq;
+  end;
+
+procedure initIITable(out x: TIITable);
+function IITableGet(const t: TIITable; key: int): int;
+procedure IITablePut(var t: TIITable; key, val: int);
 
 implementation
 
@@ -281,14 +273,14 @@ begin
   result := nil;
   res := '"' + '';
   for i := strStart to length(s)+strStart-1 do begin
-    if i mod MaxLineLength = 0 then begin
+    if (i-strStart+1) mod MaxLineLength = 0 then begin
       res := res +{&} '"' +{&} nl;
       app(result, toRope(res));
       res := '"'+''; // reset
     end;
     res := res +{&} toYamlChar(s[i]);
   end;
-  res := res + '"';
+  addChar(res, '"');
   app(result, toRope(res));
 end;
 
@@ -349,16 +341,16 @@ begin
               toRope(toLinenumber(info)), toRope(toColumn(info))]);
 end;
 
-function treeToYamlAux(n: PNode; var marker: TObjectSet;
+function treeToYamlAux(n: PNode; var marker: TIntSet;
                        indent: int; maxRecDepth: int): PRope;
 forward;
 
-function symToYamlAux(n: PSym; var marker: TObjectSet;
+function symToYamlAux(n: PSym; var marker: TIntSet;
                       indent: int; maxRecDepth: int): PRope; forward;
-function typeToYamlAux(n: PType; var marker: TObjectSet;
+function typeToYamlAux(n: PType; var marker: TIntSet;
                       indent: int; maxRecDepth: int): PRope; forward;
 
-function strTableToYaml(const n: TStrTable; var marker: TObjectSet;
+function strTableToYaml(const n: TStrTable; var marker: TIntSet;
                         indent: int; maxRecDepth: int): PRope;
 var
   istr: PRope;
@@ -396,14 +388,14 @@ begin
   appf(result, '$n$1}', [spaces(indent)]);
 end;
 
-function symToYamlAux(n: PSym; var marker: TObjectSet;
+function symToYamlAux(n: PSym; var marker: TIntSet;
                       indent: int; maxRecDepth: int): PRope;
 var
   ast: PRope;
 begin
   if n = nil then
     result := toRope('null')
-  else if ObjectSetContainsOrIncl(marker, n) then
+  else if IntSetContainsOrIncl(marker, n.id) then
     result := ropef('"$1 @$2"', [
       toRope(n.name.s),
       toRope(strutils.toHex({@cast}TAddress(n), sizeof(n)*2))])
@@ -424,12 +416,12 @@ begin
   // YYY: backend info?
 end;
 
-function typeToYamlAux(n: PType; var marker: TObjectSet;
+function typeToYamlAux(n: PType; var marker: TIntSet;
                        indent: int; maxRecDepth: int): PRope;
 begin
   if n = nil then
     result := toRope('null')
-  else if objectSetContainsOrIncl(marker, n) then
+  else if intSetContainsOrIncl(marker, n.id) then
     result := ropef('"$1 @$2"', [
       toRope(typeKindToStr[n.kind]),
       toRope(strutils.toHex({@cast}TAddress(n), sizeof(n)*2))])
@@ -446,7 +438,7 @@ begin
   end
 end;
 
-function treeToYamlAux(n: PNode; var marker: TObjectSet; indent: int;
+function treeToYamlAux(n: PNode; var marker: TIntSet; indent: int;
                        maxRecDepth: int): PRope;
 var
   istr: PRope;
@@ -503,25 +495,25 @@ end;
 
 function treeToYaml(n: PNode; indent: int = 0; maxRecDepth: int = -1): PRope;
 var
-  marker: TObjectSet;
+  marker: TIntSet;
 begin
-  initObjectSet(marker);
+  IntSetInit(marker);
   result := treeToYamlAux(n, marker, indent, maxRecDepth)
 end;
 
 function typeToYaml(n: PType; indent: int = 0; maxRecDepth: int = -1): PRope;
 var
-  marker: TObjectSet;
+  marker: TIntSet;
 begin
-  initObjectSet(marker);
+  IntSetInit(marker);
   result := typeToYamlAux(n, marker, indent, maxRecDepth)
 end;
 
 function symToYaml(n: PSym; indent: int = 0; maxRecDepth: int = -1): PRope;
 var
-  marker: TObjectSet;
+  marker: TIntSet;
 begin
-  initObjectSet(marker);
+  IntSetInit(marker);
   result := symToYamlAux(n, marker, indent, maxRecDepth)
 end;
 
@@ -617,7 +609,7 @@ const
   EmptySeq = nil;
 {@emit
 const
-  EmptySeq = [];
+  EmptySeq = @[];
 }
 
 function nextTry(h, maxHash: THash): THash;
@@ -661,11 +653,12 @@ var
   n: TObjectSeq;
   i: int;
 begin
+{@ignore}
   n := emptySeq;
   setLength(n, length(t.data) * growthFactor);
-{@ignore}
   fillChar(n[0], length(n)*sizeof(n[0]), 0);
-{@emit}
+{@emit
+  newSeq(n, length(t.data) * growthFactor); }
   for i := 0 to high(t.data) do
     if t.data[i] <> nil then objectSetRawInsert(n, t.data[i]);
 {@ignore}
@@ -769,11 +762,12 @@ var
   n: TPairSeq;
   i: int;
 begin
+{@ignore}
   n := emptySeq;
   setLength(n, length(t.data) * growthFactor);
-{@ignore}
   fillChar(n[0], length(n)*sizeof(n[0]), 0);
-{@emit}
+{@emit
+  newSeq(n, length(t.data) * growthFactor); }
   for i := 0 to high(t.data) do
     if t.data[i].key <> nil then
       TableRawInsert(n, t.data[i].key, t.data[i].val);
@@ -833,11 +827,12 @@ var
   n: TSymSeq;
   i: int;
 begin
+{@ignore}
   n := emptySeq;
   setLength(n, length(t.data) * growthFactor);
-{@ignore}
   fillChar(n[0], length(n)*sizeof(n[0]), 0);
-{@emit}
+{@emit
+  newSeq(n, length(t.data) * growthFactor); }
   for i := 0 to high(t.data) do
     if t.data[i] <> nil then StrTableRawInsert(n, t.data[i]);
 {@ignore}
@@ -1022,13 +1017,13 @@ begin
   result := false
 end;
 
-function IdTableRawGet(const t: TIdTable; key: PIdObj): int;
+function IdTableRawGet(const t: TIdTable; key: int): int;
 var
   h: THash;
 begin
-  h := key.id and high(t.data); // start with real hash value
+  h := key and high(t.data); // start with real hash value
   while t.data[h].key <> nil do begin
-    if (t.data[h].key.id = key.id) then begin
+    if (t.data[h].key.id = key) then begin
       result := h; exit
     end;
     h := nextTry(h, high(t.data))
@@ -1040,12 +1035,21 @@ function IdTableHasObjectAsKey(const t: TIdTable; key: PIdObj): bool;
 var
   index: int;
 begin
-  index := IdTableRawGet(t, key);
+  index := IdTableRawGet(t, key.id);
   if index >= 0 then result := t.data[index].key = key
   else result := false
 end;
 
 function IdTableGet(const t: TIdTable; key: PIdObj): PObject;
+var
+  index: int;
+begin
+  index := IdTableRawGet(t, key.id);
+  if index >= 0 then result := t.data[index].val
+  else result := nil
+end;
+
+function IdTableGet(const t: TIdTable; key: int): PObject;
 var
   index: int;
 begin
@@ -1074,18 +1078,18 @@ var
   index, i: int;
   n: TIdPairSeq;
 begin
-  index := IdTableRawGet(t, key);
+  index := IdTableRawGet(t, key.id);
   if index >= 0 then begin
     assert(t.data[index].key <> nil);
     t.data[index].val := val
   end
   else begin
     if mustRehash(length(t.data), t.counter) then begin
-      {@emit n := [];}
-      setLength(n, length(t.data) * growthFactor);
     {@ignore}
+      setLength(n, length(t.data) * growthFactor);
       fillChar(n[0], length(n)*sizeof(n[0]), 0);
-    {@emit}
+    {@emit
+      newSeq(n, length(t.data) * growthFactor); }
       for i := 0 to high(t.data) do
         if t.data[i].key <> nil then
           IdTableRawInsert(n, t.data[i].key, t.data[i].val);
@@ -1166,11 +1170,11 @@ begin
   end
   else begin
     if mustRehash(length(t.data), t.counter) then begin
-      {@emit n := [];}
-      setLength(n, length(t.data) * growthFactor);
     {@ignore}
+      setLength(n, length(t.data) * growthFactor);
       fillChar(n[0], length(n)*sizeof(n[0]), 0);
-    {@emit}
+    {@emit
+      newSeq(n, length(t.data) * growthFactor); }
       for i := 0 to high(t.data) do
         if t.data[i].key <> nil then
           IdNodeTableRawInsert(n, t.data[i].key, t.data[i].val);
@@ -1185,156 +1189,86 @@ begin
   end;
 end;
 
-// ---------------- efficient integer sets ----------------------------------
-// Same algorithm as the one the GC uses
+// ------------- int-to-int-mapping ------------------------------------------
 
-procedure IntSetInit(var s: TIntSet);
+procedure initIITable(out x: TIITable);
+var
+  i: int;
 begin
+  x.counter := 0;
 {@ignore}
-  fillChar(s, sizeof(s), 0);
+  setLength(x.data, startSize);
 {@emit
-  s.data := []; }
-  setLength(s.data, InitIntSetSize);
-{@ignore}
-  fillChar(s.data[0], length(s.data)*sizeof(s.data[0]), 0);
-{@emit}
-  s.max := InitIntSetSize-1;
-  s.counter := 0;
-  s.head := nil
+  newSeq(x.data, startSize); }
+  for i := 0 to startSize-1 do x.data[i].key := InvalidKey;
 end;
 
-function IntSetGet(const t: TIntSet; key: int): PTrunk;
+function IITableRawGet(const t: TIITable; key: int): int;
 var
-  h: int;
+  h: THash;
 begin
-  h := key and t.max;
-  while t.data[h] <> nil do begin
-    if t.data[h].key = key then begin
-      result := t.data[h]; exit
+  h := key and high(t.data); // start with real hash value
+  while t.data[h].key <> InvalidKey do begin
+    if (t.data[h].key = key) then begin
+      result := h; exit
     end;
-    h := nextTry(h, t.max)
+    h := nextTry(h, high(t.data))
   end;
-  result := nil
+  result := -1
 end;
 
-procedure IntSetRawInsert(const t: TIntSet; var data: TTrunkSeq;
-                          desc: PTrunk);
+function IITableGet(const t: TIITable; key: int): int;
 var
-  h: int;
+  index: int;
 begin
-  h := desc.key and t.max;
-  while data[h] <> nil do begin
-    assert(data[h] <> desc);
-    h := nextTry(h, t.max)
+  index := IITableRawGet(t, key);
+  if index >= 0 then result := t.data[index].val
+  else result := InvalidKey
+end;
+
+procedure IITableRawInsert(var data: TIIPairSeq;
+                           key, val: int);
+var
+  h: THash;
+begin
+  h := key and high(data);
+  while data[h].key <> InvalidKey do begin
+    assert(data[h].key <> key);
+    h := nextTry(h, high(data))
   end;
-  assert(data[h] = nil);
-  data[h] := desc
+  assert(data[h].key = InvalidKey);
+  data[h].key := key;
+  data[h].val := val;
 end;
 
-procedure IntSetEnlarge(var t: TIntSet);
+procedure IITablePut(var t: TIITable; key, val: int);
 var
-  n: TTrunkSeq;
-  i, oldMax: int;
+  index, i: int;
+  n: TIIPairSeq;
 begin
-  oldMax := t.max;
-  t.max := ((t.max+1)*2)-1;
-  {@emit n := []}
-  setLength(n, t.max + 1);
-{@ignore}
-  fillChar(n[0], length(n)*sizeof(n[0]), 0);
-{@emit}
-  for i := 0 to oldmax do
-    if t.data[i] <> nil then
-      IntSetRawInsert(t, n, t.data[i]);
-{@ignore}
-  t.data := n;
-{@emit
-  swap(t.data, n);
-}
-end;
-
-function IntSetPut(var t: TIntSet; key: int): PTrunk;
-var
-  h: int;
-begin
-  h := key and t.max;
-  while t.data[h] <> nil do begin
-    if t.data[h].key = key then begin
-      result := t.data[h]; exit
-    end;
-    h := nextTry(h, t.max)
-  end;
-
-  if mustRehash(t.max+1, t.counter) then IntSetEnlarge(t);
-  inc(t.counter);
-  h := key and t.max;
-  while t.data[h] <> nil do h := nextTry(h, t.max);
-  assert(t.data[h] = nil);
-  new(result);
-{@ignore}
-  fillChar(result^, sizeof(result^), 0);
-{@emit}
-  result.next := t.head;
-  result.key := key;
-  t.head := result;
-  t.data[h] := result;
-end;
-
-// ---------- slightly higher level procs ----------------------------------
-
-function transform(key: int): int;
-begin
-  if key < 0 then result := 1000000000 + key // avoid negative numbers!
-  else result := key
-end;
-
-function IntSetContains(const s: TIntSet; key: int): bool;
-var
-  u: int;
-  t: PTrunk;
-begin
-  u := transform(key);
-  t := IntSetGet(s, u div BitsPerTrunk);
-  if t <> nil then begin
-    u := u mod BitsPerTrunk;
-    result := (t.bits[u div BitsPerInt]
-      and (1 shl (u mod BitsPerInt))) <> 0
-  end
-  else
-    result := false
-end;
-
-procedure IntSetIncl(var s: TIntSet; key: int);
-var
-  u: int;
-  t: PTrunk;
-begin
-  u := transform(key);
-  t := IntSetPut(s, u div BitsPerTrunk);
-  u := u mod BitsPerTrunk;
-  t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
-                            or (1 shl (u mod BitsPerInt));
-end;
-
-function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
-var
-  u: int;
-  t: PTrunk;
-begin
-  u := transform(key);
-  t := IntSetGet(s, u div BitsPerTrunk);
-  if t <> nil then begin
-    u := u mod BitsPerTrunk;
-    result := (t.bits[u div BitsPerInt]
-          and (1 shl (u mod BitsPerInt))) <> 0;
-    if not result then
-      t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
-                                or (1 shl (u mod BitsPerInt));
+  index := IITableRawGet(t, key);
+  if index >= 0 then begin
+    assert(t.data[index].key <> InvalidKey);
+    t.data[index].val := val
   end
   else begin
-    IntSetIncl(s, key);
-    result := false
-  end
+    if mustRehash(length(t.data), t.counter) then begin
+    {@ignore}
+      setLength(n, length(t.data) * growthFactor);
+    {@emit
+      newSeq(n, length(t.data) * growthFactor); }
+      for i := 0 to high(n) do n[i].key := InvalidKey;
+      for i := 0 to high(t.data) do
+        if t.data[i].key <> InvalidKey then
+          IITableRawInsert(n, t.data[i].key, t.data[i].val);
+    {@ignore}
+      t.data := n;
+    {@emit
+      swap(t.data, n); }
+    end;
+    IITableRawInsert(t.data, key, val);
+    inc(t.counter)
+  end;
 end;
 
 end.

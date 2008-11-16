@@ -90,7 +90,7 @@ proc ChooseFileToOpen*(window: PWindow, root: string = ""): string =
                 GTK_STOCK_OPEN, GTK_RESPONSE_OK, nil))
     if root.len > 0:
       discard gtk_file_chooser_set_current_folder(chooser, root)
-    if gtk_dialog_run(chooser) == GTK_RESPONSE_OK:
+    if gtk_dialog_run(chooser) == cint(GTK_RESPONSE_OK):
       var x = gtk_file_chooser_get_filename(chooser)
       result = $x
       g_free(x)
@@ -99,7 +99,7 @@ proc ChooseFileToOpen*(window: PWindow, root: string = ""): string =
     gtk_widget_destroy(chooser)
 
 proc ChooseFilesToOpen*(window: PWindow, root: string = ""): seq[string] =
-  ## Opens a dialog that requests filenames from the user. Returns []
+  ## Opens a dialog that requests filenames from the user. Returns ``@[]``
   ## if the user closed the dialog without selecting a file. On Windows,
   ## the native dialog is used, else the GTK dialog is used.
   when defined(Windows):
@@ -114,7 +114,7 @@ proc ChooseFilesToOpen*(window: PWindow, root: string = ""): seq[string] =
     opf.lpstrFile = buf
     opf.nMaxFile = sizeof(buf)
     var res = GetOpenFileName(addr(opf))
-    result = []
+    result = @[]
     if res != 0:
       # parsing the result is horrible:
       var
@@ -145,8 +145,8 @@ proc ChooseFilesToOpen*(window: PWindow, root: string = ""): seq[string] =
     if root.len > 0:
       discard gtk_file_chooser_set_current_folder(chooser, root)
     gtk_file_chooser_set_select_multiple(chooser, true)
-    result = []
-    if gtk_dialog_run(chooser) == GTK_RESPONSE_OK:
+    result = @[]
+    if gtk_dialog_run(chooser) == cint(GTK_RESPONSE_OK):
       var L = gtk_file_chooser_get_filenames(chooser)
       var it = L
       while it != nil:
@@ -187,7 +187,7 @@ proc ChooseFileToSave*(window: PWindow, root: string = ""): string =
     if root.len > 0:
       discard gtk_file_chooser_set_current_folder(chooser, root)
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, true)
-    if gtk_dialog_run(chooser) == GTK_RESPONSE_OK:
+    if gtk_dialog_run(chooser) == cint(GTK_RESPONSE_OK):
       var x = gtk_file_chooser_get_filename(chooser)
       result = $x
       g_free(x)
@@ -224,7 +224,7 @@ proc ChooseDir*(window: PWindow, root: string = ""): string =
                 GTK_STOCK_OPEN, GTK_RESPONSE_OK, nil))
     if root.len > 0:
       discard gtk_file_chooser_set_current_folder(chooser, root)
-    if gtk_dialog_run(chooser) == GTK_RESPONSE_OK:
+    if gtk_dialog_run(chooser) == cint(GTK_RESPONSE_OK):
       var x = gtk_file_chooser_get_filename(chooser)
       result = $x
       g_free(x)

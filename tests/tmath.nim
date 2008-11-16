@@ -1,6 +1,6 @@
 # tests for the interpreter
 
-proc loops(a: out int) =
+proc loops(a: var int) =
   nil
   #var
   #  b: int
@@ -81,9 +81,5 @@ proc main() =
   of "Rumpf": write(stdout, "Du bist in der Familie meines Meisters!\n")
   else: write(stdout, "ich kenne dich nicht!\n")
   write(stdout, "Du heisst " & s & "\n")
-# [[
-proc main2() =
-  main()
 
 main()
-#]]

@@ -8,6 +8,8 @@
 //
 unit hashes;
 
+{$include 'config.inc'}
+
 interface
 
 uses

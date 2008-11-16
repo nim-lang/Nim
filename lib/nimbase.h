@@ -10,6 +10,8 @@
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+#include  <math.h>
+
 /* calling convention mess ----------------------------------------------- */
 #if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
                       || defined(__TINYC__)
@@ -37,11 +39,15 @@
 
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
+#  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
+                     not that compatible. Well done. */
 #elif defined(__cplusplus)
 #  define NIM_CONST /* C++ is picky with const modifiers */
 #else
 #  define NIM_CONST  const
 #endif
+
+#define NIM_THREADVAR __thread
 
 /* --------------- how int64 constants should be declared: ----------- */
 #if defined(__GNUC__) || defined(__LCC__) || \
@@ -49,6 +55,14 @@
 #  define IL64(x) x##LL
 #else /* works only without LL */
 #  define IL64(x) x
+#endif
+
+/* ---------------- casting without correct aliasing rules ----------- */
+
+#if defined(__GNUCC__)
+#  define NIM_CAST(type, ptr) (((union{type __x__;}*)(ptr))->__x__)
+#else
+#  define NIM_CAST(type, ptr) ((type)(ptr))
 #endif
 
 /* ------------------------------------------------------------------- */
@@ -93,6 +107,16 @@
 /* specify no calling convention */
 #define N_CLOSURE_PTR(rettype, name) rettype (*name)
 
+
+#if defined(__GNUC__) || defined(__ICC__)
+#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#elif defined(_MSC_VER)
+#  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
+#else
+#  define N_NOINLINE(rettype, name) rettype name
+#endif
+
+#define N_NOINLINE_PTR(rettype, name) rettype (*name)
 
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
     defined(__POCC__) || defined(_MSC_VER)
@@ -164,12 +188,9 @@
 #  define  _ISOC99_SOURCE  1
 #  define  __USE_ISOC9X  1
 #  define  __USE_ISOC99  1
-#  include  <math.h>
 
 #elif (defined(WIN32) || defined(_WIN32) || defined(__WIN32__)) \
    && !defined(__BORLANDC__) && !defined(__POCC__)
-
-#  include  <math.h>
 
 /*  Win32 doesn't seem to have these functions.
 **  Therefore implement inline versions of these functions here.
@@ -194,8 +215,6 @@ static N_INLINE(long int, lrintf)(float flt) {
 
 #else
 
-#  include <math.h>
-
 #  ifndef lrint
 #    define  lrint(dbl)   ((long int)(dbl))
 #  endif
@@ -213,11 +232,6 @@ static N_INLINE(long int, lrintf)(float flt) {
 #include <stddef.h>
 #include <signal.h>
 #include <setjmp.h>
-
-#ifndef NAN
-static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
-#  define NAN (*(double*) nimNaN)
-#endif
 
 /*
 #ifndef INF
@@ -241,8 +255,7 @@ __TINYC__
 #  define HAVE_STDINT_H
 #endif
 
-#if defined(__LCC__) || defined(__GNUC__) || defined(__DMC__) \
- || defined(__POCC__)
+#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__)
 #  define HAVE_STDINT_H
 #endif
 
@@ -328,14 +341,16 @@ static N_INLINE(NI32, float32ToInt32)(float val) {
   return float64ToInt32((double)val);
 }
 
+#define float64ToInt64(x) ((NI64) (x))
+
 #define zeroMem(a, size) memset(a, 0, size)
 #define equalMem(a, b, size) (memcmp(a, b, size) == 0)
 
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
-    NI len, space;                        \
+    TGenericSeq Sup;                      \
     NIM_CHAR data[length + 1];            \
-  } name = {length, length, str}
+  } name = {{length, length}, str}
 
 typedef struct TStringDesc* string;
 
@@ -343,7 +358,7 @@ typedef struct TStringDesc* string;
 #if defined(__GNUC__)
 #  define SEQ_DECL_SIZE /* empty is correct! */
 #else
-#  define SEQ_DECL_SIZE  1000000
+#  define SEQ_DECL_SIZE 1000000
 #endif
 
 #define ALLOC_0(size)  calloc(1, size)
@@ -351,6 +366,13 @@ typedef struct TStringDesc* string;
 
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__i386__)
+#  ifndef NAN
+static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
+#    define NAN (*(double*) nimNaN)
+#  endif
+#endif
 
 #ifndef NAN
 #  define NAN (0.0 / 0.0)
@@ -399,6 +421,7 @@ struct NimException {
 };
 #endif
 
+#if 0
 typedef struct TStringDesc {
   NI len;
   NI space;
@@ -410,5 +433,6 @@ typedef struct {
 } TGenericSeq;
 
 typedef TGenericSeq* PGenericSeq;
+#endif
 
 #endif

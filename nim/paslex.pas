@@ -34,15 +34,18 @@ type
   TPasTokKind = (pxInvalid, pxEof,
     // keywords:
     //[[[cog
-    //keywords = eval(file("data/pas_keyw.yml").read())
+    //from string import capitalize
+    //keywords = eval(open("data/pas_keyw.yml").read())
     //idents = ""
     //strings = ""
     //i = 1
     //for k in keywords:
-    //  idents += "px" + k.capitalize() + ", "
-    //  strings += "'" + k + "', "
-    //  if i % 4 == 0: idents += "\n"; strings += "\n"
-    //  i += 1
+    //  idents = idents + "px" + capitalize(k) + ", "
+    //  strings = strings + "'" + k + "', "
+    //  if i % 4 == 0:
+    //    idents = idents + "\n"
+    //    strings = strings + "\n"
+    //  i = i + 1
     //cog.out(idents)
     //]]]
     pxAnd, pxArray, pxAs, pxAsm, 
@@ -164,7 +167,7 @@ begin
   case tok.ident.id of
     //[[[cog
     //for k in keywords:
-    //  m = k.capitalize()
+    //  m = capitalize(k)
     //  cog.outl("ord(w%s):%s tok.xkind := px%s;" % (m, ' '*(18-len(m)), m))
     //]]]
     ord(wAnd):                tok.xkind := pxAnd;

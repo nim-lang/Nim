@@ -83,7 +83,7 @@ begin
     liMessage(n.info, errTemplateInstantiationTooNested);
   // replace each param by the corresponding node:
   r := sym.ast.sons[paramsPos].sons[0];
-  assert(r.kind = nkIdent);
+  if (r.kind <> nkIdent) then InternalError(r.info, 'evalTemplate');
   result := evalTemplateAux(c, sym.ast.sons[codePos], n, sym);
   if r.ident.id = ord(wExpr) then result := semExpr(c, result)
   else result := semStmt(c, result);
@@ -172,7 +172,7 @@ begin
     s := semIdentVis(c, skTemplate, n.sons[0], {@set}[]);
   if sfStar in s.flags then include(s.flags, sfInInterface);
   // check parameter list:
-  pushOwner(c, s);
+  pushOwner(s);
   openScope(c.tab);
   params := n.sons[paramsPos];
   counter := 0;
@@ -191,6 +191,7 @@ begin
     end;
   end;
   params.sons[0] := semTemplateParamKind(c, params, params.sons[0]);
+  n.sons[namePos] := newSymNode(s);
 
   // check that no pragmas exist:
   if n.sons[pragmasPos] <> nil then
@@ -205,7 +206,7 @@ begin
 
   // only parameters are resolved, no type checking is performed
   closeScope(c.tab);
-  popOwner(c);
+  popOwner();
   s.ast := n;
 
   result := n;

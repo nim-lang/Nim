@@ -33,27 +33,27 @@ const
     ## defines the maximum number of subpatterns that can be captured.
     ## More subpatterns cannot be captured!
 
-proc match*(s, pattern: string, substrs: var openarray[string],
+proc match*(s, pattern: string, matches: var openarray[string],
             start: int = 0): bool
   ## returns ``true`` if ``s`` matches the ``pattern[start..]`` and
-  ## the captured substrings in the array ``substrs``. If it does not
-  ## match, nothing is written into ``substrs`` and ``false`` is
+  ## the captured substrings in the array ``matches``. If it does not
+  ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
 
 proc match*(s, pattern: string, start: int = 0): bool
-  ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``. 
+  ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
 
-proc matchLen*(s, pattern: string, substrs: var openarray[string],
+proc matchLen*(s, pattern: string, matches: var openarray[string],
                start: int = 0): int
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen.
 
-proc find*(s, pattern: string, substrs: var openarray[string],
+proc find*(s, pattern: string, matches: var openarray[string],
            start: int = 0): bool
   ## returns ``true`` if ``pattern`` occurs in ``s`` and the captured
-  ## substrings in the array ``substrs``. If it does not match, nothing
-  ## is written into ``substrs``.
+  ## substrings in the array ``matches``. If it does not match, nothing
+  ## is written into ``matches``.
 proc find*(s, pattern: string, start: int = 0): bool
   ## returns ``true`` if ``pattern`` occurs in ``s``.
 
@@ -61,7 +61,7 @@ proc find*(s, pattern: string, start: int = 0): bool
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: CString
-    offset: cint
+    offset: int
     com = pcreCompile(pattern, flags, addr(msg), addr(offset), nil)
   if com == nil:
     var e: ref EInvalidRegEx
@@ -70,45 +70,46 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
     raise e
   return com
 
-proc matchOrFind(s: string, pattern: PPcre, substrs: var openarray[string],
+proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
                  start: cint): cint =
   var
     rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = int(pcreExec(pattern, nil, s, length(s), start, 0,
-      cast[pint](addr(rawMatches)), maxSubpatterns * 3))
+    res = int(pcreExec(pattern, nil, s, len(s), start, 0,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3))
   dealloc(pattern)
   if res < 0: return res
   for i in 0..res-1:
     var
-      a = rawMatches[i * 3]
-      b = rawMatches[i * 3 + 1]
-    if a >= 0: substrs[i] = copy(s, a, b)
-    else: substrs[i] = ""
+      a = rawMatches[i * 2]
+      b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i] = copy(s, a, int(b)-1)
+    else: matches[i] = ""
   return res
 
 proc matchOrFind(s: string, pattern: PPcre, start: cint): cint =
   var
     rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = pcreExec(pattern, nil, s, length(s), start, 0,
-                   cast[pint](addr(rawMatches)), maxSubpatterns * 3)
+    res = pcreExec(pattern, nil, s, len(s), start, 0,
+                   cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   dealloc(pattern)
   return res
 
-proc match(s, pattern: string, substrs: var openarray[string],
+proc match(s, pattern: string, matches: var openarray[string],
            start: int = 0): bool =
   return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED),
-                     substrs, start) >= 0
+                     matches, start) >= 0'i32
 
-proc matchLen(s, pattern: string, substrs: var openarray[string],
+proc matchLen(s, pattern: string, matches: var openarray[string],
               start: int = 0): int =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), substrs, start)
+  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), matches, start)
 
-proc find(s, pattern: string, substrs: var openarray[string],
+proc find(s, pattern: string, matches: var openarray[string],
           start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, 0), substrs, start) >= 0
+  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE),
+                     matches, start) >= 0'i32
 
 proc match(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), start) >= 0
+  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), start) >= 0'i32
 
 proc find(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, 0), start) >= 0
+  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE), start) >= 0'i32

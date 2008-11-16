@@ -4,7 +4,7 @@
 # updated to version 1.4 by Luiz Américo Pereira Câmara 2007
 #
 
-import  Cairo, freetypeh
+import cairo, freetypeh
 
 #todo: properly define FcPattern:
 #It will require translate FontConfig header
@@ -20,17 +20,17 @@ import  Cairo, freetypeh
 
 type 
   FcPattern* = Pointer
-  PFcPattern* = ref FcPattern
+  PFcPattern* = ptr FcPattern
 
-proc cairo_ft_font_face_create_for_pattern*(pattern: PFcPattern): Pcairo_font_face_t{.
+proc cairo_ft_font_face_create_for_pattern*(pattern: PFcPattern): PCairoFontFace{.
     cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_ft_font_options_substitute*(options: Pcairo_font_options_t, 
+proc cairo_ft_font_options_substitute*(options: PCairoFontOptions, 
                                        pattern: PFcPattern){.cdecl, importc, 
     dynlib: LIB_CAIRO.}
 proc cairo_ft_font_face_create_for_ft_face*(face: TFT_Face, 
-       load_flags: int32): Pcairo_font_face_t {.cdecl, importc, dynlib: LIB_CAIRO.}
+       load_flags: int32): PCairoFontFace {.cdecl, importc, dynlib: LIB_CAIRO.}
 proc cairo_ft_scaled_font_lock_face*(
-  scaled_font: Pcairo_scaled_font_t): TFT_Face{.cdecl, importc, dynlib: LIB_CAIRO.}
+  scaled_font: PCairoScaledFont): TFT_Face{.cdecl, importc, dynlib: LIB_CAIRO.}
 proc cairo_ft_scaled_font_unlock_face*(
-  scaled_font: Pcairo_scaled_font_t){.cdecl, importc, dynlib: LIB_CAIRO.}
+  scaled_font: PCairoScaledFont){.cdecl, importc, dynlib: LIB_CAIRO.}
 

@@ -1,6 +1,6 @@
 # Test operator overloading
 
-proc % (a, b: int): int =
+proc `%` (a, b: int): int =
   return a mod b
 
 var x, y: int

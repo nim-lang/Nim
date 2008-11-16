@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,7 +9,7 @@
 
 type
   TUniChar* = int32 ## type that can hold any Unicode character
-  TUniChar16* = int16 ##
+  TUniChar16* = int16 ## 16 bit Unicode character
   
 template ones(n) = ((1 shl n)-1)
 

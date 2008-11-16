@@ -19,10 +19,10 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
   of nkSlot:
     genericAssign(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
                   n.typ)
-  of nkList: 
-    for i in 0..n.len-1: 
+  of nkList:
+    for i in 0..n.len-1:
       genericAssignAux(dest, src, n.sons[i])
-  of nkCase: 
+  of nkCase:
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
     var m = selectBranch(src, n)
@@ -43,7 +43,7 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
       x^ = nil
       return
     assert(dest != nil)
-    unsureAsgnRef(cast[ppointer](dest), 
+    unsureAsgnRef(cast[ppointer](dest),
                   newObj(mt, seq.len * mt.base.size + GenericSeqSize))
     var dst = cast[taddress](cast[ppointer](dest)^)
     for i in 0..seq.len-1:
@@ -55,7 +55,7 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
     dstseq.space = seq.len
-  of tyObject, tyTuple, tyPureObject: 
+  of tyObject, tyTuple, tyPureObject:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
     genericAssignAux(dest, src, mt.node)
   of tyArray, tyArrayConstr:
@@ -65,7 +65,7 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
   of tyString: # a leaf
     var s2 = cast[ppointer](s)^
     if s2 != nil: # nil strings are possible!
-      unsureAsgnRef(cast[ppointer](dest), copyString(cast[mstring](s2)))
+      unsureAsgnRef(cast[ppointer](dest), copyString(cast[NimString](s2)))
     else:
       var x = cast[ppointer](dest)
       x^ = nil
@@ -94,12 +94,12 @@ proc objectInitAux(dest: Pointer, n: ptr TNimNode) =
   case n.kind
   of nkNone: assert(false)
   of nkSLot: objectInit(cast[pointer](d +% n.offset), n.typ)
-  of nkList: 
+  of nkList:
     for i in 0..n.len-1:
       objectInitAux(dest, n.sons[i])
-  of nkCase: 
+  of nkCase:
     var m = selectBranch(dest, n)
-    if m != nil: objectInitAux(dest, m)   
+    if m != nil: objectInitAux(dest, m)
 
 proc objectInit(dest: Pointer, typ: PNimType) =
   # the generic init proc that takes care of initialization of complex

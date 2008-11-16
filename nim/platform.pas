@@ -12,8 +12,7 @@ unit platform;
 // and operating systems.
 // Note: Unfortunately if an OS or CPU is listed here this does not mean that
 // Nimrod has been tested on this platform or that the RTL has been ported.
-// Feel free to test for your exentric platform! (Windows on I386 and Linux
-// on I386 have been tested, though.)
+// Feel free to test for your exentric platform!
 
 interface
 
@@ -24,7 +23,6 @@ uses
 
 type
   TSystemOS = (
-    // This enumeration is stored in rod files, so append new OSes at the end!
     // Also add OS for in initialization section and alias conditionals to
     // condsyms (end of module).
     osNone,
@@ -39,6 +37,7 @@ type
     osNetbsd,
     osFreebsd,
     osOpenbsd,
+    osAix,
     osPalmos,
     osQnx,
     osAmiga,
@@ -46,7 +45,8 @@ type
     osNetware,
     osMacos,
     osMacosx,
-    osEcmaScript
+    osEcmaScript,
+    osNimrodVM
   );
 type
   TInfoOSProp = (
@@ -251,6 +251,22 @@ const
     props: {@set}[ospNeedsPIC, ospPosix];
   ),
   (
+    name: 'AIX';
+    parDir: '..';
+    dllExt: '.so';
+    altDirSep: '/'+'';
+    dllPrefix: 'lib';
+    objExt: '.o';
+    newLine: #10+'';
+    pathSep: ':'+'';
+    dirSep: '/'+'';
+    scriptExt: '.sh';
+    curDir: '.'+'';
+    exeExt: '';
+    extSep: '.'+'';
+    props: {@set}[ospNeedsPIC, ospPosix];    
+  ),  
+  (
     name: 'PalmOS';
     parDir: '..';
     dllExt: '.so';
@@ -377,11 +393,26 @@ const
     exeExt: '';
     extSep: '.'+'';
     props: {@set}[];
+  ),
+  (
+    name: 'NimrodVM';
+    parDir: '..';
+    dllExt: '.so';
+    altDirSep: '/'+'';
+    dllPrefix: 'lib';
+    objExt: '.o';
+    newLine: #10+'';
+    pathSep: ':'+'';
+    dirSep: '/'+'';
+    scriptExt: '.sh';
+    curDir: '.'+'';
+    exeExt: '';
+    extSep: '.'+'';
+    props: {@set}[];
   )
 );
 type
   TSystemCPU = (
-    // This enumeration is stored in rod files, so append new CPUs at the end!
     // Also add CPU for in initialization section and alias conditionals to
     // condsyms (end of module).
     cpuNone,
@@ -395,7 +426,8 @@ type
     cpuAmd64,
     cpuMips,
     cpuArm,
-    cpuEcmaScript
+    cpuEcmaScript,
+    cpuNimrodVM
   );
 type
   TEndian = (littleEndian, bigEndian);
@@ -481,6 +513,13 @@ const
   ),
   (
     name: 'ecmascript';
+    intSize: 32;
+    endian: bigEndian;
+    floatSize: 64;
+    bit: 32;
+  ),
+  (
+    name: 'nimrodvm';
     intSize: 32;
     endian: bigEndian;
     floatSize: 64;

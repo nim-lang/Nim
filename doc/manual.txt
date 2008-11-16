@@ -160,8 +160,8 @@ case-sensitive and even underscores are ignored:
 this is that this allows programmers to use their own prefered spelling style
 and libraries written by different programmers cannot use incompatible
 conventions. The editors or IDE can show the identifiers as preferred. Another
-advantage is that it frees the programmer from remembering the spelling of an
-identifier.
+advantage is that it frees the programmer from remembering the exact spelling
+of an identifier.
 
 
 Literal strings
@@ -601,19 +601,19 @@ Array and sequence types
 has the same type. Arrays always have a fixed length which is specified at
 compile time (except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
-integers from 0 to ``len(A)-1``.
+integers from 0 to ``len(A)-1``. An array expression may be constructed by the
+array constructor ``[]``.
 
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
 during runtime (like strings). A sequence ``S`` is always indexed by integers
-from 0 to ``len(S)-1`` and its bounds are checked. Sequences can also be
-constructed by the array constructor ``[]``.
+from 0 to ``len(S)-1`` and its bounds are checked. Sequences can be
+constructed by the array constructor ``[]`` in conjunction with the array to
+sequence operator ``@``. Another way to allocate space for a sequence is to
+call the built-in ``newSeq`` procedure.
 
 A sequence may be passed to a parameter that is of type *open array*, but
 not to a multi-dimensional open array, because it is impossible to do so in an
 efficient manner.
-
-An array expression may be constructed by the array constructor ``[]``.
-A constructed array is assignment compatible to a sequence.
 
 Example:
 
@@ -625,13 +625,13 @@ Example:
   var
     x: TIntArray
     y: TIntSeq
-  x = [1, 2, 3, 4, 5, 6] # [] this is the array constructor that is compatible
-                         # with arrays, open arrays and
-  y = [1, 2, 3, 4, 5, 6] # sequences
+  x = [1, 2, 3, 4, 5, 6]  # [] this is the array constructor
+  y = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
 
-The lower bound of an array may be received by the built-in proc
+The lower bound of an array or sequence may be received by the built-in proc
 ``low()``, the higher bound by ``high()``. The length may be
-received by ``len()``.
+received by ``len()``. ``low()`` for a sequence or an open array always returns
+0, as this is the first valid index.
 
 Arrays are always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
@@ -644,15 +644,15 @@ A variable of a `tuple`:idx: or `object`:idx: type is a heterogenous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple defines an
 *order* of the fields additionally. Tuples are meant for heterogenous storage
-types with no overhead and few abstraction possibilities. The constructor ``()`` 
-can be used to construct tuples. The order of the fields in the constructor 
-must match the order of the tuple's definition. Different tuple-types are 
-*equivalent* if they specify the same fields of the same type in the same 
-order. 
+types with no overhead and few abstraction possibilities. The constructor ``()``
+can be used to construct tuples. The order of the fields in the constructor
+must match the order of the tuple's definition. Different tuple-types are
+*equivalent* if they specify the same fields of the same type in the same
+order.
 
-The assignment operator for tuples copies each component. 
-The default assignment operator for objects is not defined. The programmer may 
-provide one, however. 
+The assignment operator for tuples copies each component.
+The default assignment operator for objects is not defined. The programmer may
+provide one, however.
 
 .. code-block:: nimrod
 
@@ -662,7 +662,7 @@ provide one, however.
                                             # and an age
   var
     person: TPerson
-  person = (name: "Peter", age: 30) 
+  person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
 
@@ -670,8 +670,8 @@ The implementation aligns the fields for best access performance. The alignment
 is done in a way that is compatible the way the C compiler does it.
 
 Objects provide many features that tuples do not. Object provide inheritance
-and information hiding. Objects have access to their type at runtime, so that 
-the ``is`` operator can be used to determine the object's type. 
+and information hiding. Objects have access to their type at runtime, so that
+the ``is`` operator can be used to determine the object's type.
 
 .. code-block:: nimrod
 
@@ -689,8 +689,50 @@ the ``is`` operator can be used to determine the object's type.
   assert(student is TStudent) # is true
 
 Object fields that should be visible outside from the defining module, have to
-marked by ``*``. In contrast to tuples, different object types are 
+marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*.
+
+Object variants
+~~~~~~~~~~~~~~~
+Often an object hierarchy is overkill in certain situations where simple
+`variant`:idx: types are needed.
+
+An example:
+
+.. code-block:: nimrod
+
+  # This is an example how an abstract syntax tree could be modelled in Nimrod
+  type
+    TNodeKind = enum  # the different node types
+      nkInt,          # a leaf with an integer value
+      nkFloat,        # a leaf with a float value
+      nkString,       # a leaf with a string value
+      nkAdd,          # an addition
+      nkSub,          # a subtraction
+      nkIf            # an if statement
+    PNode = ref TNode
+    TNode = object
+      case kind: TNodeKind  # the ``kind`` field is the discriminator
+      of nkInt: intVal: int
+      of nkFloat: floavVal: float
+      of nkString: strVal: string
+      of nkAdd, nkSub:
+        leftOp, rightOp: PNode
+      of nkIf:
+        condition, thenPart, elsePart: PNode
+
+  var
+    n: PNode
+  new(n)  # creates a new node
+  n.kind = nkFloat
+  n.floatVal = 0.0 # valid, because ``n.kind==nkFloat``, so that it fits
+  # the following statement raises an `EInvalidField` exception, because
+  # n.kind's value does not fit:
+  n.strVal = ""
+
+As can been seen from the example, an advantage to an object hierarchy is that
+no casting between different object types is needed. Yet, access to invalid
+object fields raises an exception.
 
 
 Set type
@@ -749,7 +791,7 @@ The ``^`` operator can be used to derefer a reference, the ``addr`` procedure
 returns the address of an item. An address is always an untraced reference.
 Thus the usage of ``addr`` is an *unsafe* feature.
 
-The ``.`` (access a tuple/object field operator) 
+The ``.`` (access a tuple/object field operator)
 and ``[]`` (array/string/sequence index operator) operators perform implicit
 dereferencing operations for reference types:
 
@@ -773,7 +815,7 @@ further information.
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: In order to free everything properly,
-the built-in procedure ``finalize`` has to be called before freeing the
+the built-in procedure ``GCunref`` has to be called before freeing the
 untraced memory manually!
 
 .. XXX finalizers for traced objects
@@ -867,7 +909,7 @@ statement.
 
 Statements are separated into `simple statements`:idx: and
 `complex statements`:idx:.
-Simple statements are statements that cannot contain other statements, like
+Simple statements are statements that cannot contain other statements like
 assignments, calls or the ``return`` statement; complex statements can
 contain other statements. To avoid the `dangling else problem`:idx:, complex
 statements always have to be intended::
@@ -1028,10 +1070,10 @@ Example:
 The `case`:idx: statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is
 evaluated and if its value is in a *vallist* the corresponding statements
-(after the ``of`` keyword) are executed. If the value is no given *vallist*
-the ``else`` part is executed. If there is no ``else`` part and not all
-possible values that ``expr`` can hold occur in a ``vallist``, a static
-error is given. This holds only for expressions of ordinal types.
+(after the ``of`` keyword) are executed. If the value is not in any 
+given *slicelist* the ``else`` part is executed. If there is no ``else`` 
+part and not all possible values that ``expr`` can hold occur in a ``vallist``, 
+a static error is given. This holds only for expressions of ordinal types.
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control just passes after the ``case`` statement.
 
@@ -1331,10 +1373,8 @@ is used if the caller does not provide a value for this parameter. Example:
 `Operators`:idx: are procedures with a special operator symbol as identifier:
 
 .. code-block:: nimrod
-  proc `$` (x: int): string =     # converts an integer to a string;
-                                  # since it has one parameter this is a prefix
-                                  # operator. With two parameters it would be
-                                  # an infix operator.
+  proc `$` (x: int): string =
+    # converts an integer to a string; this is a prefix operator.
     return intToStr(x)
 
 Calling a procedure can be done in many different ways:
@@ -1544,7 +1584,7 @@ own file. Modules enable `information hiding`:idx: and
 `separate compilation`:idx:. A module may gain access to symbols of another
 module by the `import`:idx: statement. `Recursive module dependancies`:idx: are
 allowed, but slightly subtle. Only top-level symbols that are marked with an
-asterisk (``*``) are exported. 
+asterisk (``*``) are exported.
 
 The algorithm for compiling modules is:
 
@@ -1557,8 +1597,8 @@ This is best illustrated by an example:
 .. code-block:: nimrod
   # Module A
   type
-    T1* = int
-  import B # the compiler starts parsing B
+    T1* = int  # Module A exports the type ``T1``
+  import B     # the compiler starts parsing B
 
   proc main() =
     var i = p(3) # works because B has been parsed completely here
@@ -1660,11 +1700,18 @@ Nimrod source code. The conditional symbols go into a special symbol table.
 The compiler defines the target processor and the target operating
 system as conditional symbols.
 
+Warning: The ``define`` pragma is deprecated as it conflicts with separate
+compilation! One should use boolean constants as a replacement - this is 
+cleaner anyway.
+
 
 undef pragma
 ------------
 The `undef`:idx: pragma the counterpart to the define pragma. It undefines a
 conditional symbol.
+
+Warning: The ``undef`` pragma is deprecated as it conflicts with separate
+compilation!
 
 
 error pragma

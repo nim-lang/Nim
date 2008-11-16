@@ -639,6 +639,28 @@ begin
       inc(code);
     end;
   end;
+  
+  if (s[code] = 'N') or (s[code] = 'n') then begin
+    inc(code);
+    if (s[code] = 'A') or (s[code] = 'a') then begin
+      inc(code);
+      if (s[code] = 'N') or (s[code] = 'n') then begin
+        if code = length(s) then begin result:= NaN; exit end;
+      end
+    end;
+    raise EInvalidValue.create('invalid float: ' + s)
+  end;
+  if (s[code] = 'I') or (s[code] = 'i') then begin
+    inc(code);
+    if (s[code] = 'N') or (s[code] = 'n') then begin
+      inc(code);
+      if (s[code] = 'F') or (s[code] = 'f') then begin
+        if code = length(s) then begin result:= Inf*sign; exit end;
+      end
+    end;
+    raise EInvalidValue.create('invalid float: ' + s)
+  end;
+  
   while (code <= Length(s)) and (s[code] in ['0'..'9']) do begin
    { Read int part }
     flags := flags or 1;
@@ -662,7 +684,7 @@ begin
   end;
   { Again, read int and fractional part }
   if flags = 0 then
-    raise EInvalidValue.create('');
+    raise EInvalidValue.create('invalid float: ' + s);
  { Exponent ? }
   if (length(s) >= code) and (upcase(s[code]) = 'E') then begin
     inc(code);
@@ -692,7 +714,7 @@ begin
     result := result / hd;
   { Not all characters are read ? }
   if checkEnd and (length(s) >= code) then
-    raise EInvalidValue.create('');
+    raise EInvalidValue.create('invalid float: ' + s);
   { evaluate sign }
   result := result * sign;
 end;

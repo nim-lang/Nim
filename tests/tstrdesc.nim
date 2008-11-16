@@ -9,6 +9,6 @@ type
     data: array [0..0, char] # for the '\0' character
 
 var
-  emptyString {.export: "emptyString".}: TStringDesc 
+  emptyString {.exportc: "emptyString".}: TStringDesc 
 
 

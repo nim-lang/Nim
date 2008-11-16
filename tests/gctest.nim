@@ -38,13 +38,13 @@ proc newCaseNode(data: string): PCaseNode =
     result.data = data
   else:
     result.kind = nkWhole
-    result.unused = ["", "abc", "abdc"]
+    result.unused = @["", "abc", "abdc"]
   flip = 1 - flip
   
 proc newCaseNode(a, b: PCaseNode): PCaseNode =
   new(result)
   result.kind = nkList
-  result.sons = [a, b]
+  result.sons = @[a, b]
   
 proc caseTree(lvl: int = 0): PCaseNode =
   if lvl == 3: result = newCaseNode("data item")
@@ -53,6 +53,7 @@ proc caseTree(lvl: int = 0): PCaseNode =
 proc finalizeBNode(n: TBNode) = writeln(stdout, n.data)
 proc finalizeNode(n: PNode) =
   assert(n != nil)
+  write(stdout, "finalizing: ")
   if isNil(n.data): writeln(stdout, "nil!")
   else: writeln(stdout, n.data)
 
@@ -101,17 +102,17 @@ proc unsureNew(result: var PNode) =
   new(result, finalizeNode)
   result.data = $id
   new(result.le, finalizeNode)
-  result.le.data = $id & ".1"
+  result.le.data = $id & ".a"
   new(result.ri, finalizeNode)
-  result.ri.data = $id & ".2"
+  result.ri.data = $id & ".b"
   inc(id)
 
 proc setSons(n: var TBNode) =
-  n.sons = [] # free memory of the sons
-  n.t.data = []
+  n.sons = @[] # free memory of the sons
+  n.t.data = @[]
   var
     m: seq[string]
-  m = []
+  m = @[]
   setLen(m, len(n.t.data) * 2)
   for i in 0..high(m):
     m[i] = "..."
@@ -120,16 +121,17 @@ proc setSons(n: var TBNode) =
 proc buildBTree(father: var TBNode) =
   father.data = "father"
   father.other = nil
-  father.sons = []
+  father.sons = @[]
   for i in 1..10:
+    write(stdout, "next iteration!\n")
     var n: TBNode
     n.other = returnTree()
     n.data = "B node: " & $i
-    if i mod 1 == 0: n.sons = [] # nil and [] need to be handled correctly!
+    if i mod 2 == 0: n.sons = @[] # nil and [] need to be handled correctly!
     add father.sons, n
     father.t.counter = 0
     father.t.max = 3
-    father.t.data = ["ha", "lets", "stress", "it"]
+    father.t.data = @["ha", "lets", "stress", "it"]
   setSons(father)
 
 proc main() =
@@ -148,7 +150,7 @@ proc main() =
     t2 = buildTree()
   printTree(t2)
   write(stdout, "now test sequences of strings:")
-  var s: seq[string] = []
+  var s: seq[string] = @[]
   for i in 1..100:
     add s, "hohoho" # test reallocation
   writeln(stdout, s[89])
@@ -157,15 +159,22 @@ proc main() =
 #main()
 
 #GC_disable()
-writeln(stdout, repr(caseTree()))
-
 var
     father: TBNode
-buildBTree(father)
-write(stdout, repr(father))
+    s: string
+s = ""
+s = ""
+writeln(stdout, repr(caseTree()))
+father.t.data = @["ha", "lets", "stress", "it"]
+father.t.data = @["ha", "lets", "stress", "it"]
 var t = buildTree()
 write(stdout, repr(t^))
+buildBTree(father)
+write(stdout, repr(father))
 
 write(stdout, "starting main...\n")
 main()
 write(stdout, "finished\n")
+GC_fullCollect()
+GC_fullCollect()
+write(stdout, GC_getStatistics())

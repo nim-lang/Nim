@@ -1,16 +1,16 @@
 when defined(windows):
-  {.define: gtkwin.}
   const
     gliblib = "libglib-2.0-0.dll"
-    gthreadlib = "libgthread-2.0-0.dll"
     gmodulelib = "libgmodule-2.0-0.dll"
     gobjectlib = "libgobject-2.0-0.dll"
 else:
   const
     gliblib = "libglib-2.0.so"
-    gthreadlib = "libgthread-2.0.so"
     gmodulelib = "libgmodule-2.0.so"
     gobjectlib = "libgobject-2.0.so"
+    
+# gthreadlib = "libgthread-2.0.so"
+
 type
   PGTypePlugin* = pointer
   PGParamSpecPool* = pointer
@@ -19,29 +19,29 @@ type
   PPPgchar* = ptr PPgchar
   PPgchar* = ptr cstring
   gchar* = char
-  Pgshort* = ptr gshort
   gshort* = cshort
-  Pglong* = ptr glong
   glong* = clong
-  Pgint* = ptr gint
-  PPgint* = ptr Pgint
   gint* = cint
-  Pgboolean* = ptr gboolean
   gboolean* = bool
-  Pguchar* = ptr guchar
-  PPguchar* = ptr Pguchar
   guchar* = char
-  Pgushort* = ptr gushort
   gushort* = int16
-  Pgulong* = ptr gulong
   gulong* = int
   guint* = cint
-  Pguint* = ptr guint
   gfloat* = cfloat
-  Pgfloat* = ptr gfloat
   gdouble* = cdouble
-  Pgdouble* = ptr gdouble
   gpointer* = pointer
+  Pgshort* = ptr gshort
+  Pglong* = ptr glong
+  Pgint* = ptr gint
+  PPgint* = ptr Pgint
+  Pgboolean* = ptr gboolean
+  Pguchar* = ptr guchar
+  PPguchar* = ptr Pguchar
+  Pgushort* = ptr gushort
+  Pgulong* = ptr gulong
+  Pguint* = ptr guint
+  Pgfloat* = ptr gfloat
+  Pgdouble* = ptr gdouble
   pgpointer* = ptr gpointer
   gconstpointer* = pointer
   PGCompareFunc* = ptr TGCompareFunc
@@ -118,8 +118,8 @@ type
     g_type*: GType
     data*: array[0..1, gdouble]
 
-  PPGData* = ptr PGData
   PGData* = pointer
+  PPGData* = ptr PGData
   PGSList* = ptr TGSList
   PPGSList* = ptr PGSList
   TGSList* {.final.} = object
@@ -132,8 +132,8 @@ type
     next*: PGList
     prev*: PGList
 
-  PGParamFlags* = ptr TGParamFlags
   TGParamFlags* = int32
+  PGParamFlags* = ptr TGParamFlags
   PGParamSpec* = ptr TGParamSpec
   PPGParamSpec* = ptr PGParamSpec
   TGParamSpec* {.final.} = object
@@ -194,7 +194,7 @@ const
   G_TYPE_PARAM* = GType(19 shl G_TYPE_FUNDAMENTAL_SHIFT)
   G_TYPE_OBJECT* = GType(20 shl G_TYPE_FUNDAMENTAL_SHIFT)
 
-proc G_TYPE_MAKE_FUNDAMENTAL*(x: int32): GType
+proc G_TYPE_MAKE_FUNDAMENTAL*(x: int): GType
 const
   G_TYPE_RESERVED_GLIB_FIRST* = 21
   G_TYPE_RESERVED_GLIB_LAST* = 31
@@ -226,8 +226,8 @@ proc G_TYPE_FROM_INSTANCE*(instance: Pointer): GType
 proc G_TYPE_FROM_CLASS*(g_class: Pointer): GType
 proc G_TYPE_FROM_INTERFACE*(g_iface: Pointer): GType
 type
-  PGTypeDebugFlags* = ptr TGTypeDebugFlags
   TGTypeDebugFlags* = int32
+  PGTypeDebugFlags* = ptr TGTypeDebugFlags
 
 const
   G_TYPE_DEBUG_NONE* = 0
@@ -296,8 +296,8 @@ const
   G_TYPE_FLAG_DEEP_DERIVABLE* = 1 shl 3
 
 type
-  PGTypeFlags* = ptr TGTypeFlags
   TGTypeFlags* = int32
+  PGTypeFlags* = ptr TGTypeFlags
 
 const
   G_TYPE_FLAG_ABSTRACT* = 1 shl 4
@@ -562,8 +562,8 @@ proc g_strdup_value_contents*(value: PGValue): cstring{.cdecl,
 proc g_value_set_string_take_ownership*(value: PGValue, v_string: cstring){.
     cdecl, dynlib: gobjectlib, importc: "g_value_set_string_take_ownership".}
 type
-  Pgchararray* = ptr Tgchararray
   Tgchararray* = gchar
+  Pgchararray* = ptr Tgchararray
 
 proc G_TYPE_IS_PARAM*(theType: GType): bool
 proc G_PARAM_SPEC*(pspec: Pointer): PGParamSpec
@@ -692,26 +692,26 @@ proc G_CLOSURE_N_NOTIFIERS*(cl: PGClosure): int32
 proc G_CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32
 proc G_CALLBACK*(f: pointer): TGCallback
 const
-  bm_TGClosure_ref_count* = 0x00007FFF
-  bp_TGClosure_ref_count* = 0
-  bm_TGClosure_meta_marshal* = 0x00008000
-  bp_TGClosure_meta_marshal* = 15
-  bm_TGClosure_n_guards* = 0x00010000
-  bp_TGClosure_n_guards* = 16
-  bm_TGClosure_n_fnotifiers* = 0x00060000
-  bp_TGClosure_n_fnotifiers* = 17
-  bm_TGClosure_n_inotifiers* = 0x07F80000
-  bp_TGClosure_n_inotifiers* = 19
-  bm_TGClosure_in_inotify* = 0x08000000
-  bp_TGClosure_in_inotify* = 27
-  bm_TGClosure_floating* = 0x10000000
-  bp_TGClosure_floating* = 28
-  bm_TGClosure_derivative_flag* = 0x20000000
-  bp_TGClosure_derivative_flag* = 29
-  bm_TGClosure_in_marshal* = 0x40000000
-  bp_TGClosure_in_marshal* = 30
-  bm_TGClosure_is_invalid* = 0x80000000
-  bp_TGClosure_is_invalid* = 31
+  bm_TGClosure_ref_count* = 0x00007FFF'i32
+  bp_TGClosure_ref_count* = 0'i32
+  bm_TGClosure_meta_marshal* = 0x00008000'i32
+  bp_TGClosure_meta_marshal* = 15'i32
+  bm_TGClosure_n_guards* = 0x00010000'i32
+  bp_TGClosure_n_guards* = 16'i32
+  bm_TGClosure_n_fnotifiers* = 0x00060000'i32
+  bp_TGClosure_n_fnotifiers* = 17'i32
+  bm_TGClosure_n_inotifiers* = 0x07F80000'i32
+  bp_TGClosure_n_inotifiers* = 19'i32
+  bm_TGClosure_in_inotify* = 0x08000000'i32
+  bp_TGClosure_in_inotify* = 27'i32
+  bm_TGClosure_floating* = 0x10000000'i32
+  bp_TGClosure_floating* = 28'i32
+  bm_TGClosure_derivative_flag* = 0x20000000'i32
+  bp_TGClosure_derivative_flag* = 29'i32
+  bm_TGClosure_in_marshal* = 0x40000000'i32
+  bp_TGClosure_in_marshal* = 30'i32
+  bm_TGClosure_is_invalid* = 0x80000000'i32
+  bp_TGClosure_is_invalid* = 31'i32
 
 proc ref_count*(a: var TGClosure): guint
 proc set_ref_count*(a: var TGClosure, ref_count: guint)
@@ -2061,16 +2061,16 @@ type
   TGHookFlagMask* = int
 
 const
-  G_HOOK_FLAG_ACTIVE* = 1 shl 0
-  G_HOOK_FLAG_IN_CALL* = 1 shl 1
-  G_HOOK_FLAG_MASK* = 0x0000000F
+  G_HOOK_FLAG_ACTIVE* = 1'i32 shl 0'i32
+  G_HOOK_FLAG_IN_CALL* = 1'i32 shl 1'i32
+  G_HOOK_FLAG_MASK* = 0x0000000F'i32
 
 const
-  G_HOOK_FLAG_USER_SHIFT* = 4
-  bm_TGHookList_hook_size* = 0x0000FFFF
-  bp_TGHookList_hook_size* = 0
-  bm_TGHookList_is_setup* = 0x00010000
-  bp_TGHookList_is_setup* = 16
+  G_HOOK_FLAG_USER_SHIFT* = 4'i32
+  bm_TGHookList_hook_size* = 0x0000FFFF'i32
+  bp_TGHookList_hook_size* = 0'i32
+  bm_TGHookList_is_setup* = 0x00010000'i32
+  bp_TGHookList_is_setup* = 16'i32
 
 proc TGHookList_hook_size*(a: var TGHookList): guint
 proc TGHookList_set_hook_size*(a: var TGHookList, `hook_size`: guint)
@@ -2502,18 +2502,18 @@ type
 
 
 const
-  bm_TGIOChannel_use_buffer* = 0x00000001
-  bp_TGIOChannel_use_buffer* = 0
-  bm_TGIOChannel_do_encode* = 0x00000002
-  bp_TGIOChannel_do_encode* = 1
-  bm_TGIOChannel_close_on_unref* = 0x00000004
-  bp_TGIOChannel_close_on_unref* = 2
-  bm_TGIOChannel_is_readable* = 0x00000008
-  bp_TGIOChannel_is_readable* = 3
-  bm_TGIOChannel_is_writeable* = 0x00000010
-  bp_TGIOChannel_is_writeable* = 4
-  bm_TGIOChannel_is_seekable* = 0x00000020
-  bp_TGIOChannel_is_seekable* = 5
+  bm_TGIOChannel_use_buffer* = 0x00000001'i16
+  bp_TGIOChannel_use_buffer* = 0'i16
+  bm_TGIOChannel_do_encode* = 0x00000002'i16
+  bp_TGIOChannel_do_encode* = 1'i16
+  bm_TGIOChannel_close_on_unref* = 0x00000004'i16
+  bp_TGIOChannel_close_on_unref* = 2'i16
+  bm_TGIOChannel_is_readable* = 0x00000008'i16
+  bp_TGIOChannel_is_readable* = 3'i16
+  bm_TGIOChannel_is_writeable* = 0x00000010'i16
+  bp_TGIOChannel_is_writeable* = 4'i16
+  bm_TGIOChannel_is_seekable* = 0x00000020'i16
+  bp_TGIOChannel_is_seekable* = 5'i16
 
 proc TGIOChannel_use_buffer*(a: var TGIOChannel): guint
 proc TGIOChannel_set_use_buffer*(a: var TGIOChannel, `use_buffer`: guint)
@@ -3046,48 +3046,48 @@ const
   G_CSET_DIGITS* = "0123456789"
 
 const
-  bm_TGScannerConfig_case_sensitive* = 0x00000001
-  bp_TGScannerConfig_case_sensitive* = 0
-  bm_TGScannerConfig_skip_comment_multi* = 0x00000002
-  bp_TGScannerConfig_skip_comment_multi* = 1
-  bm_TGScannerConfig_skip_comment_single* = 0x00000004
-  bp_TGScannerConfig_skip_comment_single* = 2
-  bm_TGScannerConfig_scan_comment_multi* = 0x00000008
-  bp_TGScannerConfig_scan_comment_multi* = 3
-  bm_TGScannerConfig_scan_identifier* = 0x00000010
-  bp_TGScannerConfig_scan_identifier* = 4
-  bm_TGScannerConfig_scan_identifier_1char* = 0x00000020
-  bp_TGScannerConfig_scan_identifier_1char* = 5
-  bm_TGScannerConfig_scan_identifier_NULL* = 0x00000040
-  bp_TGScannerConfig_scan_identifier_NULL* = 6
-  bm_TGScannerConfig_scan_symbols* = 0x00000080
-  bp_TGScannerConfig_scan_symbols* = 7
-  bm_TGScannerConfig_scan_binary* = 0x00000100
-  bp_TGScannerConfig_scan_binary* = 8
-  bm_TGScannerConfig_scan_octal* = 0x00000200
-  bp_TGScannerConfig_scan_octal* = 9
-  bm_TGScannerConfig_scan_float* = 0x00000400
-  bp_TGScannerConfig_scan_float* = 10
-  bm_TGScannerConfig_scan_hex* = 0x00000800
-  bp_TGScannerConfig_scan_hex* = 11
-  bm_TGScannerConfig_scan_hex_dollar* = 0x00001000
-  bp_TGScannerConfig_scan_hex_dollar* = 12
-  bm_TGScannerConfig_scan_string_sq* = 0x00002000
-  bp_TGScannerConfig_scan_string_sq* = 13
-  bm_TGScannerConfig_scan_string_dq* = 0x00004000
-  bp_TGScannerConfig_scan_string_dq* = 14
-  bm_TGScannerConfig_numbers_2_int* = 0x00008000
-  bp_TGScannerConfig_numbers_2_int* = 15
-  bm_TGScannerConfig_int_2_float* = 0x00010000
-  bp_TGScannerConfig_int_2_float* = 16
-  bm_TGScannerConfig_identifier_2_string* = 0x00020000
-  bp_TGScannerConfig_identifier_2_string* = 17
-  bm_TGScannerConfig_char_2_token* = 0x00040000
-  bp_TGScannerConfig_char_2_token* = 18
-  bm_TGScannerConfig_symbol_2_token* = 0x00080000
-  bp_TGScannerConfig_symbol_2_token* = 19
-  bm_TGScannerConfig_scope_0_fallback* = 0x00100000
-  bp_TGScannerConfig_scope_0_fallback* = 20
+  bm_TGScannerConfig_case_sensitive* = 0x00000001'i32
+  bp_TGScannerConfig_case_sensitive* = 0'i32
+  bm_TGScannerConfig_skip_comment_multi* = 0x00000002'i32
+  bp_TGScannerConfig_skip_comment_multi* = 1'i32
+  bm_TGScannerConfig_skip_comment_single* = 0x00000004'i32
+  bp_TGScannerConfig_skip_comment_single* = 2'i32
+  bm_TGScannerConfig_scan_comment_multi* = 0x00000008'i32
+  bp_TGScannerConfig_scan_comment_multi* = 3'i32
+  bm_TGScannerConfig_scan_identifier* = 0x00000010'i32
+  bp_TGScannerConfig_scan_identifier* = 4'i32
+  bm_TGScannerConfig_scan_identifier_1char* = 0x00000020'i32
+  bp_TGScannerConfig_scan_identifier_1char* = 5'i32
+  bm_TGScannerConfig_scan_identifier_NULL* = 0x00000040'i32
+  bp_TGScannerConfig_scan_identifier_NULL* = 6'i32
+  bm_TGScannerConfig_scan_symbols* = 0x00000080'i32
+  bp_TGScannerConfig_scan_symbols* = 7'i32
+  bm_TGScannerConfig_scan_binary* = 0x00000100'i32
+  bp_TGScannerConfig_scan_binary* = 8'i32
+  bm_TGScannerConfig_scan_octal* = 0x00000200'i32
+  bp_TGScannerConfig_scan_octal* = 9'i32
+  bm_TGScannerConfig_scan_float* = 0x00000400'i32
+  bp_TGScannerConfig_scan_float* = 10'i32
+  bm_TGScannerConfig_scan_hex* = 0x00000800'i32
+  bp_TGScannerConfig_scan_hex* = 11'i32
+  bm_TGScannerConfig_scan_hex_dollar* = 0x00001000'i32
+  bp_TGScannerConfig_scan_hex_dollar* = 12'i32
+  bm_TGScannerConfig_scan_string_sq* = 0x00002000'i32
+  bp_TGScannerConfig_scan_string_sq* = 13'i32
+  bm_TGScannerConfig_scan_string_dq* = 0x00004000'i32
+  bp_TGScannerConfig_scan_string_dq* = 14'i32
+  bm_TGScannerConfig_numbers_2_int* = 0x00008000'i32
+  bp_TGScannerConfig_numbers_2_int* = 15'i32
+  bm_TGScannerConfig_int_2_float* = 0x00010000'i32
+  bp_TGScannerConfig_int_2_float* = 16'i32
+  bm_TGScannerConfig_identifier_2_string* = 0x00020000'i32
+  bp_TGScannerConfig_identifier_2_string* = 17'i32
+  bm_TGScannerConfig_char_2_token* = 0x00040000'i32
+  bp_TGScannerConfig_char_2_token* = 18'i32
+  bm_TGScannerConfig_symbol_2_token* = 0x00080000'i32
+  bp_TGScannerConfig_symbol_2_token* = 19'i32
+  bm_TGScannerConfig_scope_0_fallback* = 0x00100000'i32
+  bp_TGScannerConfig_scope_0_fallback* = 20'i32
 
 proc TGScannerConfig_case_sensitive*(a: var TGScannerConfig): guint
 proc TGScannerConfig_set_case_sensitive*(a: var TGScannerConfig,
@@ -3439,19 +3439,21 @@ proc g_cclosure_marshal_BOOL__FLAGS*(closure: PGClosure, return_value: PGValue,
                                      marshal_data: GPointer){.cdecl,
     dynlib: gliblib, importc: "g_cclosure_marshal_BOOLEAN__FLAGS".}
 proc GUINT16_SWAP_LE_BE_CONSTANT*(val: guint16): guint16 =
-  Result = ((val and 0x000000FF) shl 8) or ((val and 0x0000FF00) shr 8)
+  Result = ((val and 0x00FF'i16) shl 8'i16) or ((val and 0xFF00'i16) shr 8'i16)
 
 proc GUINT32_SWAP_LE_BE_CONSTANT*(val: guint32): guint32 =
-  Result = ((val and 0x000000FF) shl 24) or ((val and 0x0000FF00) shl 8) or
-      ((val and 0x00FF0000) shr 8) or ((val and 0xFF000000) shr 24)
+  Result = ((val and 0x000000FF'i32) shl 24'i32) or ((val and 0x0000FF00'i32) shl 8'i32) or
+      ((val and 0x00FF0000'i32) shr 8'i32) or ((val and 0xFF000000'i32) shr 24'i32)
 
 proc GUINT_TO_POINTER*(i: guint): pointer =
   Result = cast[Pointer](TAddress(i))
 
-type
-  PGArray = pointer
 
 when false:
+
+  type
+    PGArray* = pointer
+
   proc g_array_append_val*(a: PGArray, v: gpointer): PGArray =
     result = g_array_append_vals(a, addr(v), 1)
 
@@ -3678,17 +3680,17 @@ proc G_HOOK_FLAGS*(hook: PGHook): guint =
   result = hook.flags
 
 proc G_HOOK_ACTIVE*(hook: PGHook): bool =
-  result = (hook.flags and G_HOOK_FLAG_ACTIVE) != 0
+  result = (hook.flags and G_HOOK_FLAG_ACTIVE) != 0'i32
 
 proc G_HOOK_IN_CALL*(hook: PGHook): bool =
-  result = (hook.flags and G_HOOK_FLAG_IN_CALL) != 0
+  result = (hook.flags and G_HOOK_FLAG_IN_CALL) != 0'i32
 
 proc G_HOOK_IS_VALID*(hook: PGHook): bool =
   result = (hook.hook_id != 0) and G_HOOK_ACTIVE(hook)
 
 proc G_HOOK_IS_UNLINKED*(hook: PGHook): bool =
   result = (hook.next == nil) and (hook.prev == nil) and
-      (hook.hook_id == 0) and (hook.ref_count == 0)
+      (hook.hook_id == 0) and (hook.ref_count == 0'i32)
 
 proc g_hook_append*(hook_list: PGHookList, hook: PGHook) =
   g_hook_insert_before(hook_list, nil, hook)
@@ -3702,7 +3704,7 @@ proc TGIOChannel_use_buffer*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_use_buffer*(a: var TGIOChannel, `use_buffer`: guint) =
   a.flag0 = a.flag0 or
-      ((`use_buffer` shl bp_TGIOChannel_use_buffer) and
+      (int16(`use_buffer` shl bp_TGIOChannel_use_buffer) and
       bm_TGIOChannel_use_buffer)
 
 proc TGIOChannel_do_encode*(a: var TGIOChannel): guint =
@@ -3711,7 +3713,7 @@ proc TGIOChannel_do_encode*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_do_encode*(a: var TGIOChannel, `do_encode`: guint) =
   a.flag0 = a.flag0 or
-      ((`do_encode` shl bp_TGIOChannel_do_encode) and
+      (int16(`do_encode` shl bp_TGIOChannel_do_encode) and
       bm_TGIOChannel_do_encode)
 
 proc TGIOChannel_close_on_unref*(a: var TGIOChannel): guint =
@@ -3720,7 +3722,7 @@ proc TGIOChannel_close_on_unref*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_close_on_unref*(a: var TGIOChannel, `close_on_unref`: guint) =
   a.flag0 = a.flag0 or
-      ((`close_on_unref` shl bp_TGIOChannel_close_on_unref) and
+      (int16(`close_on_unref` shl bp_TGIOChannel_close_on_unref) and
       bm_TGIOChannel_close_on_unref)
 
 proc TGIOChannel_is_readable*(a: var TGIOChannel): guint =
@@ -3729,7 +3731,7 @@ proc TGIOChannel_is_readable*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_is_readable*(a: var TGIOChannel, `is_readable`: guint) =
   a.flag0 = a.flag0 or
-      ((`is_readable` shl bp_TGIOChannel_is_readable) and
+      (int16(`is_readable` shl bp_TGIOChannel_is_readable) and
       bm_TGIOChannel_is_readable)
 
 proc TGIOChannel_is_writeable*(a: var TGIOChannel): guint =
@@ -3738,7 +3740,7 @@ proc TGIOChannel_is_writeable*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_is_writeable*(a: var TGIOChannel, `is_writeable`: guint) =
   a.flag0 = a.flag0 or
-      ((`is_writeable` shl bp_TGIOChannel_is_writeable) and
+      (int16(`is_writeable` shl bp_TGIOChannel_is_writeable) and
       bm_TGIOChannel_is_writeable)
 
 proc TGIOChannel_is_seekable*(a: var TGIOChannel): guint =
@@ -3747,7 +3749,7 @@ proc TGIOChannel_is_seekable*(a: var TGIOChannel): guint =
 
 proc TGIOChannel_set_is_seekable*(a: var TGIOChannel, `is_seekable`: guint) =
   a.flag0 = a.flag0 or
-      ((`is_seekable` shl bp_TGIOChannel_is_seekable) and
+      (int16(`is_seekable` shl bp_TGIOChannel_is_seekable) and
       bm_TGIOChannel_is_seekable)
 
 proc g_utf8_next_char*(p: pguchar): pguchar =
@@ -3816,10 +3818,10 @@ proc g_node_first_child*(node: PGNode): PGNode =
     result = nil
 
 proc g_rand_boolean*(rand: PGRand): gboolean =
-  result = ((g_rand_int(rand)) and (1 shl 15)) != 0
+  result = (int(g_rand_int(rand)) and (1 shl 15)) != 0
 
 proc g_random_boolean*(): gboolean =
-  result = (g_random_int() and (1 shl 15)) != 0
+  result = (int(g_random_int()) and (1 shl 15)) != 0
 
 proc TGScannerConfig_case_sensitive*(a: var TGScannerConfig): guint =
   result = (a.flag0 and bm_TGScannerConfig_case_sensitive) shr
@@ -4077,7 +4079,7 @@ when false:
   proc g_strstrip*(str: cstring): cstring =
     result = g_strchomp(g_strchug(str))
 
-proc G_TYPE_MAKE_FUNDAMENTAL*(x: int32): GType =
+proc G_TYPE_MAKE_FUNDAMENTAL*(x: int): GType =
   result = GType(x shl G_TYPE_FUNDAMENTAL_SHIFT)
 
 proc G_TYPE_IS_FUNDAMENTAL*(theType: GType): bool =
@@ -4202,7 +4204,7 @@ proc G_CLOSURE_NEEDS_MARSHAL*(closure: Pointer): bool =
   result = cast[PGClosure](closure).marshal == nil
 
 proc G_CLOSURE_N_NOTIFIERS*(cl: PGClosure): int32 =
-  result = ((meta_marshal(cl) + ((n_guards(cl)) shl 1)) + (n_fnotifiers(cl))) +
+  result = ((meta_marshal(cl) + ((n_guards(cl)) shl 1'i32)) + (n_fnotifiers(cl))) +
       (n_inotifiers(cl))
 
 proc G_CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32 =

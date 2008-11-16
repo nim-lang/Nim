@@ -2,7 +2,6 @@ import
   glib2
 
 when defined(windows):
-  {.define: atkwin.}
   const
     atklib = "libatk-1.0-0.dll"
 else:

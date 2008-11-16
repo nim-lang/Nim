@@ -3,9 +3,8 @@
 
 proc main =
   block endLess:
-    break endLess
     write(stdout, "Muaahh!\N")
-
+    break endLess
 
   break ha #ERROR
 

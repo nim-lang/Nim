@@ -24,36 +24,36 @@ include cntbits
 
 proc unionSets(res: var TNimSet, a, b: TNimSet, len: int) {.
     compilerproc, inline.} =
-  for i in countup(0, len-1): res[i] = toU8(ze(a[i]) or ze(b[i]))
+  for i in countup(0, len-1): res[i] = a[i] or b[i]
 
 proc diffSets(res: var TNimSet, a, b: TNimSet, len: int) {.
     compilerproc, inline.} =
-  for i in countup(0, len-1): res[i] = toU8(ze(a[i]) and not ze(b[i]))
+  for i in countup(0, len-1): res[i] = a[i] and not b[i]
 
 proc intersectSets(res: var TNimSet, a, b: TNimSet, len: int) {.
     compilerproc, inline.} =
-  for i in countup(0, len-1): res[i] = toU8(ze(a[i]) and ze(b[i]))
+  for i in countup(0, len-1): res[i] = a[i] and b[i]
 
 proc symdiffSets(res: var TNimSet, a, b: TNimSet, len: int) {.
     compilerproc, inline.} =
-  for i in countup(0, len-1): res[i] = toU8(ze(a[i]) xor ze(b[i]))
+  for i in countup(0, len-1): res[i] = a[i] xor b[i]
 
 proc containsSets(a, b: TNimSet, len: int): bool {.compilerproc, inline.} =
   # s1 <= s2 ?
   for i in countup(0, len-1):
-    if (ze(a[i]) and not ze(b[i])) != 0: return false
+    if (a[i] and not b[i]) != 0'i8: return false
   return true
 
 proc containsSubsets(a, b: TNimSet, len: int): bool {.compilerproc, inline.} =
   # s1 < s2 ?
   result = false # assume they are equal
   for i in countup(0, len-1):
-    if (ze(a[i]) and not ze(b[i])) != 0: return false
-    if ze(a[i]) != ze(b[i]): result = true # they are not equal
+    if (a[i]) and not b[i]) != 0'i32: return false
+    if a[i] != b[i]: result = true # they are not equal
 
 proc equalSets(a, b: TNimSet, len: int): bool {.compilerproc, inline.} =
   for i in countup(0, len-1):
-    if ze(a[i]) != ze(b[i]): return false
+    if a[i] != b[i]: return false
   return true
 
 proc cardSet(s: TNimSet, len: int): int {.compilerproc, inline.} =
@@ -68,7 +68,7 @@ proc inSet(s: TNimSet, elem: int): bool {.compilerproc, inline.} =
   return (s[elem /% WORD_SIZE] and (1 shl (elem %% WORD_SIZE))) != 0
 
 proc inclSets(s: var TNimSet, e: int) {.compilerproc, inline.} =
-  s[e /% WORD_SIZE] = toU8(s[e /% WORD_SIZE] or (1 shl (e %% WORD_SIZE)))
+  s[e /% WORD_SIZE] = s[e /% WORD_SIZE] or toU8(1 shl (e %% WORD_SIZE))
 
 proc inclRange(s: var TNimSet, first, last: int) {.compilerproc.} =
   # not very fast, but it is seldom used
@@ -80,8 +80,8 @@ proc smallInclRange(s: var int, first, last: int) {.compilerproc.} =
     s = s or (1 shl (i %% sizeof(int)*8))
 
 proc exclSets(s: var TNimSet, e: int) {.compilerproc, inline.} =
-  s[e /% WORD_SIZE] = toU8(s[e /% WORD_SIZE] and
-    not (1 shl (e %% WORD_SIZE)))
+  s[e /% WORD_SIZE] = s[e /% WORD_SIZE] and
+    not toU8(1 shl (e %% WORD_SIZE))
 
 proc smallContainsSubsets(a, b: int): bool {.compilerProc, inline.} =
   # not used by new code generator

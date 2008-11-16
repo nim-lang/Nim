@@ -30,7 +30,7 @@ type
     s: string;
     next: PIdent;  // for hash-table chaining
     h: THash;      // hash value of s
-  end;
+  end {@acyclic};
 
 function getIdent(const identifier: string): PIdent; overload;
 function getIdent(const identifier: string; h: THash): PIdent; overload;

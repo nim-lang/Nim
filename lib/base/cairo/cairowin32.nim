@@ -7,30 +7,30 @@
 import 
   Cairo, windows
 
-proc cairo_win32_surface_create*(hdc: HDC): Pcairo_surface_t{.cdecl, importc, 
+proc cairo_win32_surface_create*(hdc: HDC): PCairoSurface{.cdecl, importc, 
     dynlib: LIB_CAIRO.}
-proc cairo_win32_surface_create_with_ddb*(hdc: HDC, format: cairo_format_t, 
-    width, height: int32): Pcairo_surface_t{.cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_surface_create_with_dib*(format: cairo_format_t, 
-    width, height: int32): Pcairo_surface_t{.cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_surface_get_dc*(surface: pcairo_surface_t): HDC{.cdecl, importc, 
+proc cairo_win32_surface_create_with_ddb*(hdc: HDC, format: TCairoFormat, 
+    width, height: int32): PCairoSurface{.cdecl, importc, dynlib: LIB_CAIRO.}
+proc cairo_win32_surface_create_with_dib*(format: TCairoFormat, 
+    width, height: int32): PCairoSurface{.cdecl, importc, dynlib: LIB_CAIRO.}
+proc cairo_win32_surface_get_dc*(surface: PCairoSurface): HDC{.cdecl, importc, 
     dynlib: LIB_CAIRO.}
-proc cairo_win32_surface_get_image*(surface: pcairo_surface_t): Pcairo_surface_t{.
+proc cairo_win32_surface_get_image*(surface: PCairoSurface): PCairoSurface{.
     cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_font_face_create_for_logfontw*(logfont: pLOGFONTW): Pcairo_font_face_t{.
+proc cairo_win32_font_face_create_for_logfontw*(logfont: pLOGFONTW): PCairoFontFace{.
     cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_font_face_create_for_hfont*(font: HFONT): Pcairo_font_face_t{.
+proc cairo_win32_font_face_create_for_hfont*(font: HFONT): PCairoFontFace{.
     cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_scaled_font_select_font*(scaled_font: pcairo_scaled_font_t, 
-    hdc: HDC): cairo_status_t{.cdecl, importc, dynlib: LIB_CAIRO.}
-proc cairo_win32_scaled_font_done_font*(scaled_font: pcairo_scaled_font_t){.
+proc cairo_win32_scaled_font_select_font*(scaled_font: PCairoScaledFont, 
+    hdc: HDC): TCairoStatus{.cdecl, importc, dynlib: LIB_CAIRO.}
+proc cairo_win32_scaled_font_done_font*(scaled_font: PCairoScaledFont){.
     cdecl, importc, dynlib: LIB_CAIRO.}
 proc cairo_win32_scaled_font_get_metrics_factor*(
-    scaled_font: pcairo_scaled_font_t): float64{.cdecl, importc, dynlib: LIB_CAIRO.}
+    scaled_font: PCairoScaledFont): float64{.cdecl, importc, dynlib: LIB_CAIRO.}
 proc cairo_win32_scaled_font_get_logical_to_device*(
-    scaled_font: pcairo_scaled_font_t, logical_to_device: pcairo_matrix_t){.
+    scaled_font: PCairoScaledFont, logical_to_device: PCairoMatrix){.
     cdecl, importc, dynlib: LIB_CAIRO.}
 proc cairo_win32_scaled_font_get_device_to_logical*(
-    scaled_font: pcairo_scaled_font_t, device_to_logical: pcairo_matrix_t){.
+    scaled_font: PCairoScaledFont, device_to_logical: PCairoMatrix){.
     cdecl, importc, dynlib: LIB_CAIRO.}
 # implementation

@@ -6,7 +6,6 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-
 unit ccgutils;
 
 interface
@@ -35,21 +34,28 @@ var
   t: PType;
   h: THash;
 begin
+  // this was a hotspot in the compiler!
   result := key;
   if key = nil then exit;
-  assert(key.kind <> tyForward);
-  if key.kind = tyGenericInst then begin
-    result := GetUniqueType(lastSon(key));
-    exit
+  case key.Kind of
+    tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
+    tyInt..tyFloat128, tyProc, tyEnum, tyObject, tyAnyEnum: begin end;
+    tyNone, tyForward: 
+      InternalError('GetUniqueType: ' + typeToString(key));
+    tyGenericParam, tyGeneric, tySequence,
+    tyOpenArray, tySet, tyVar, tyRef, tyPtr, tyArrayConstr,
+    tyArray, tyTuple, tyRange: begin
+      // we have to do a slow linear search because types may need
+      // to be compared by their structure:
+      if IdTableHasObjectAsKey(gTypeTable, key) then exit;
+      for h := 0 to high(gTypeTable.data) do begin
+        t := PType(gTypeTable.data[h].key);
+        if (t <> nil) and sameType(t, key) then begin result := t; exit end
+      end;
+      IdTablePut(gTypeTable, key, key);
+    end;
+    tyGenericInst: result := GetUniqueType(lastSon(key));
   end;
-  if IdTableHasObjectAsKey(gTypeTable, key) then exit;
-  // we have to do a slow linear search because types may need
-  // to be compared by their structure:
-  for h := 0 to high(gTypeTable.data) do begin
-    t := PType(gTypeTable.data[h].key);
-    if (t <> nil) and sameType(t, key) then begin result := t; exit end
-  end;
-  IdTablePut(gTypeTable, key, key);
 end;
 
 function TableGetType(const tab: TIdTable; key: PType): PObject;
@@ -102,7 +108,7 @@ begin
     end;
     res := res +{&} toCChar(s[i]);
   end;
-  res := res +{&} '"'+'';
+  addChar(res, '"');
   app(result, toRope(res));
 end;
 

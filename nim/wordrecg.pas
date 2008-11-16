@@ -25,15 +25,18 @@ type
   TSpecialWord = (wInvalid,
     // these are mapped to Nimrod keywords:
     //[[[cog
-    //keywords = (file("data/keywords.txt").read()).split()
+    //from string import split, capitalize
+    //keywords = split(open("data/keywords.txt").read())
     //idents = ""
     //strings = ""
     //i = 1
     //for k in keywords:
-    //  idents += "w" + k.capitalize() + ", "
-    //  strings += "'" + k + "', "
-    //  if i % 4 == 0: idents += "\n"; strings += "\n"
-    //  i += 1
+    //  idents = idents + "w" + capitalize(k) + ", "
+    //  strings = strings + "'" + k + "', "
+    //  if i % 4 == 0:
+    //    idents = idents + "\n"
+    //    strings = strings + "\n"
+    //  i = i + 1
     //cog.out(idents)
     //]]]
     wAddr, wAnd, wAs, wAsm, 
@@ -57,34 +60,34 @@ type
     wColon, wEquals, wDot, wDotDot, wHat,
     wStar, wMinus,
     // pragmas and command line options:
-    wMagic, wTypeCheck, wFinal, wPostfix,
+    wMagic, wTypeCheck, wFinal, wProfiler,
     wObjChecks, wImportc, wExportc, wAlign, wNodecl, wPure,
     wVolatile, wRegister, wNostatic, wHeader, wNosideeffect, wNoreturn,
-    wLib, wDynlib, wReturnsnew, wCompilerproc, wCppmethod, wFatal,
+    wMerge, wLib, wDynlib, wCompilerproc, wCppmethod, wFatal,
     wError, wWarning, wHint, wLine, wPush, wPop,
     wDefine, wUndef, wLinedir, wStacktrace, wLinetrace, wPragma,
     wLink, wCompile, wLinksys, wFixupsystem, wDeprecated, wVarargs,
     wByref, wCallconv, wBreakpoint, wDebugger, wNimcall, wStdcall,
-    wCdecl, wSafecall, wSyscall, wInline, wFastcall, wClosure,
+    wCdecl, wSafecall, wSyscall, wInline, wNoInline, wFastcall, wClosure,
     wNoconv, wOn, wOff, wChecks, wRangechecks, wBoundchecks,
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wW, wHints,
     wOptimization, wSpeed, wSize, wNone, wPath, wP,
     wD, wU, wDebuginfo, wCompileonly, wNolinking, wForcebuild,
-    wF, wDeadelim, wSafecode, wSyntaxcheck, wY,
+    wF, wDeadelim, wSafecode, wCompileTime,
     wGc, wRefc, wBoehm, wA, wOpt, wO,
     wApp, wConsole, wGui, wPassc, wT, wPassl,
     wL, wListcmd, wGendoc, wGenmapping,
     wOs, wCpu, wGenerate, wG, wC, wCpp,
-    wYaml, wRun, wR, wVerbose, wV, wHelp,
-    wH, wCompilesys, wFieldChecks, wX, wVersion, wAdvanced, wMergeoutput,
+    wYaml, wRun, wR, wVerbosity, wV, wHelp,
+    wH, wSymbolFiles, wFieldChecks, wX, wVersion, wAdvanced,
     wSkipcfg, wSkipProjCfg, wCc, wGenscript, wCheckPoint, wCheckPoints,
     wMaxErr, wExpr, wStmt, wTypeDesc,
-    wAsmQuote, wAstCache, wCFileCache, wIndex,
+    wSubsChar, wAstCache, wAcyclic, wIndex,
     // commands:
     wCompileToC, wCompileToCpp, wCompileToEcmaScript,
     wPretty, wDoc, wPas,
     wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wDebugTrans,
-    wRst2html,
+    wRst2html, wI,
     // special for the preprocessor of configuration files:
     wWrite, wPutEnv, wPrependEnv, wAppendEnv,
     // additional Pascal keywords:
@@ -131,34 +134,33 @@ const
     ':'+'', '='+'', '.'+'', '..', '^'+'',
     '*'+'', '-'+'',
     // pragmas and command line options:
-    'magic', 'typecheck', 'final', 'postfix',
+    'magic', 'typecheck', 'final', 'profiler',
     'objchecks', 'importc', 'exportc', 'align', 'nodecl', 'pure',
     'volatile', 'register', 'nostatic', 'header', 'nosideeffect', 'noreturn',
-    'lib', 'dynlib', 'returnsnew', 'compilerproc', 'cppmethod', 'fatal',
+    'merge', 'lib', 'dynlib', 'compilerproc', 'cppmethod', 'fatal',
     'error', 'warning', 'hint', 'line', 'push', 'pop',
     'define', 'undef', 'linedir', 'stacktrace', 'linetrace', 'pragma',
     'link', 'compile', 'linksys', 'fixupsystem', 'deprecated', 'varargs',
     'byref', 'callconv', 'breakpoint', 'debugger', 'nimcall', 'stdcall',
-    'cdecl', 'safecall', 'syscall', 'inline', 'fastcall', 'closure',
+    'cdecl', 'safecall', 'syscall', 'inline', 'noinline', 'fastcall', 'closure',
     'noconv', 'on', 'off', 'checks', 'rangechecks', 'boundchecks',
     'overflowchecks', 'nilchecks', 'assertions', 'warnings', 'w'+'', 'hints',
     'optimization', 'speed', 'size', 'none', 'path', 'p'+'',
     'd'+'', 'u'+'', 'debuginfo', 'compileonly', 'nolinking', 'forcebuild',
-    'f'+'', 'deadelim', 'safecode', 'syntaxcheck', 'y'+'',
+    'f'+'', 'deadelim', 'safecode', 'compiletime',
     'gc', 'refc', 'boehm', 'a'+'', 'opt', 'o'+'',
     'app', 'console', 'gui', 'passc', 't'+'', 'passl',
     'l'+'', 'listcmd', 'gendoc', 'genmapping',
     'os', 'cpu', 'generate', 'g'+'', 'c'+'', 'cpp',
-    'yaml', 'run', 'r'+'', 'verbose', 'v'+'', 'help',
-    'h'+'', 'compilesys', 'fieldchecks', 'x'+'', 'version', 'advanced',
-    'mergeoutput',
+    'yaml', 'run', 'r'+'', 'verbosity', 'v'+'', 'help',
+    'h'+'', 'symbolfiles', 'fieldchecks', 'x'+'', 'version', 'advanced',
     'skipcfg', 'skipprojcfg', 'cc', 'genscript', 'checkpoint', 'checkpoints',
     'maxerr', 'expr', 'stmt', 'typedesc',
-    'asmquote', 'astcache', 'cfilecache', 'index',
+    'subschar', 'astcache', 'acyclic', 'index',
     // commands:
     'compiletoc', 'compiletocpp', 'compiletoecmascript',
     'pretty', 'doc', 'pas', 'gendepend', 'listdef', 'check', 'parse',
-    'scan', 'boot', 'debugtrans', 'rst2html',
+    'scan', 'boot', 'debugtrans', 'rst2html', 'i'+'',
 
     // special for the preprocessor of configuration files:
     'write', 'putenv', 'prependenv', 'appendenv',

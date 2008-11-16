@@ -1,5 +1,7 @@
+# The beginning of an IDE for Nimrod
+#  (c) 2008 Andreas Rumpf
 
-import glib2, gtk2, libglade2, dialogs
+import glib2, gtk2, libglade2, dialogs, parseopt
 
 proc on_window_destroy(obj: PGtkObject, data: pointer) {.cdecl.} =
   gtk_main_quit()

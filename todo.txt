@@ -5,53 +5,63 @@ RST
 ---
 - footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
   __ anonymous: www.nimrod.org
-- don't generate <p></p> if it is not allowed by the HTML standard; switch to
-  <br /> for those parts; this is pretty easy to fix
 
 Bugs
 ----
-- BUG: bootstrapping does not work with LCC, PCC
-- BUG: aliasing of object types does not work properly (easy?)
-- BUG: lookup rules for overloadable symbols are wrong
+- BUG: sigmatch for ``len`` matches the open array too often... *sigh*
+- BUG:
+    for j in 0 .. a.len + b.len - 1: nil
+  where a and b are open arrays does not compile
+
+- BUG: ["sh", "-c", someProcWithOpenArray(openArr)] produces wrong C code
+- BUG: bootstrapping does not work with Borland C
 - BUG: addr/deref does not work when interpreting
 - BUG: Check that pure procs only consist of asm statements (and comments)
-- ``repr`` for ECMAScript target; other known bugs for the ECMAScript target
+- BUG: tlastmod returns wrong results on BSD (Linux, MacOS X: works)
+- BUG: the parser allows empty statements/object case branches
+- BUG: when optmizing cgen.c with Visual C++, GCC, LLVM (O3), it breaks.
+- BUG: ``-cc:bcc`` command line option does not error
+- BUG: symbol files still do not work
 
 
 High priority
 -------------
+
+- documentation: var types, ``[]`` overloading, ``cast`` and type convertions,
+  ``if`` expresssions, (anonymous) procs
 - implement two-phase lookup for generics (this is hard...): This is useful
-  for macros too!
-- replace ``seq = []; setLen(seq, x)`` by
-  built-in ``newSeq[T](s: var seq[T], len: int)``
-  or ``repeat[T](len: int, initVal: T): seq[T]``
-- ``is`` operator is missing
-- implement closures for the C code generator; ECMAScript already has it
+  for macros too! Alternative: Explicit early name binding. Both is hard to
+  implement
+- implement closures for the C code generator
+- get rid of ``nkHiddenStdConv`` in several places: this mechanism caused more
+  bugs than it ever solved!
+
+
+Library
+-------
+- xml, html, url, cgi, fastcgi: implement from scratch
+- unicode library
+- socket library (does SDL for us?)
+- osproc for Windows
+- bignums
+- python
 
 
 Low priority
 ------------
 
+- use `` notation for identifier concatenation?
+- Visual C++: emit ``default: __assume(0);`` for optimization
 - ``nkTempAsgn``-node as optimization
-- better code generation for const data
-- make set optimizations part of the transformation (--> all backends profit
-  from it)
 - macros: ``typecheck`` pragma; this is really a good idea! This allows
   transformations based on types!
 - make callconv a set
-- pasparse.nim: fixVarSection() loses its comment!
 - partial generic instantation is missing
 - commas are not optional any longer as this may lead to bugs (which?)
 - get code generation for C++ exception handling right!
-- implement the simple and cheap to implement module cache (default: disabled!)
 - find a way for easy constructors and destructors; though constructors are
   flawed... destructors are not, however!
 - multiple dispatch
-- LIB: stream implementation - the compiler should use it too!
-- stress testing of ECMAScript code generator
-- rewrite sigmatch or fix it; generics and macros are somehow dumb. Who needs
-  generics if the power of macros lie at our feet?
-- replace appropriate asserts by internal errors!
 
 
 Changelog
@@ -188,41 +198,146 @@ Changelog
   appropriately
 - parseopt, hashes, strtabs and parsecfg in the Standard library
 - introduced splitting for long entries in TOC
+- implemented profiling support
+- removed cfilecache switch (-f does the same)
+- implemented acyclic pragma (even for the Pascal parser)
+- implemented thread local variables
+- improved cycle detection in types module
+- huge optimization of GC
+- added ``c`` and ``cc`` short commands
+- zlib binding added
+- SDL binding added
+- Xlib binding added
+- OpenGL binding added
+- ODBC binding added
+- Lua binding added
+- BUGFIX: ``len`` for cstring now works as expected
+- changed type names in the Cairo binding
+- implemented ``noinline`` calling convention
+- BUGFIX in sigmatch concerning compability of proc types
+- BUGFIX: some C compiler optimzed the ``setjmp`` call in the GC away
+  with horrible consequences!
+- BUGFIX: $vars work in the C compiler path again
+- ``compileTime`` pragma
+- ``nkStmtListType`` node for macros
+- removed ``nostatic`` pragma
+- separate compilation!
+- BUGFIX: aliasing of object types now works properly
+- BUGFIX: ccgtypes: generation for var-types was not correct
+- BUGFIX: debugger now works again
+- nil for variant objects
+- BUGFIX: posix module was broken for Mac OS X, because it lacks realtime
+  support
+- BUGFIX: docgen now replaces ``"`` by ``&quote;``
+- BUGFIX: ccgexprs: passToOpenArray
+- BUGFIX: regexprs module compiles again
+- BUGFIX: Bug in ``isAssignable`` need to check dest type, not source type
+- BUGFIX: ccgtypes: isInvalidReturnType
+- streams module
+- BUGFIX: rawReadLine should not return nil for EOF
+- BUGFIX: ``lookup`` did not check for ambigious identifiers
+- BUGFIX: ``isMainModule`` is not ambigious any longer
+- overloading resolution now takes place in a few more cases; see
+  tests/tambsym2 for an example
+- implemented ``is`` operator
+- improved error messages if an OS request failes
+- BUGFIX: ``extractFilename``, ``extractDir``
+- implemented ``newSeq``, compiler already uses it
+- changed integer conversion handling; breaks code compability again! (For the
+  last time, I promise)
+- now all magics are kept in the system module
+- ported to FreeBSD
+- the ``koch.py`` script now should be more portable to 1.5.2 Python
+- BUGFIX: lookup: `opr` now supported
+- changed the installation scheme
+- improved the ID mechanism; too difficult to explain here
+- BUGFIX: ``--cc`` now resets compile and link options
+- Finally found the bug that keeps Visual C++ from compiling a working
+  executable with its optimizer: index checks for strings and sequences
+  need to be turned on, otherwise it breaks. This has probably to do
+  with C aliasing rules.
+- BUGFIX: aliasing rules for strings and sequence should now be respected;
+  they both inherit from ``TGenericSeq`` now. This still does not fix
+  the serious Visual C bug.
+- BUGFIX: inheritance from final objects is forbidden, not the other way
+  round
+- ccgexprs: special cases for string ``==``
+- ccgstmts: ``while true`` generates less C code
+- C code generator: Merged constant data, otherwise too much code is
+  generated
+- C code generator: fixed a long-standing bug in ``genObjectInit``.
+- extccomp: C optimization can be disabled for certain files.
+- BUGFIX: cgen: result sometimes not initialized (?)
+- ``define`` and ``undef`` pragmas are now deprecated
+- ``isMainModule`` now in system module and works via compiler magic
+- implemented simple and powerful template engine; built into the Nimrod
+  compiler
+- BUGFIX: tuple constructor did not always work
+- BUGFIX: wrong C code generated for ``openarray[array[]]``
+- now much more efficient C code is generated for constant expressions
+- BUGFIX: sometimes the C generator generated conflicting names
+- optimization of string concatenations
+- BUGFIX: docgen: last enum field may lose its comment
+- the compiler now uses streams internally
+- changed the style of the generated documentation
+- BUGFIX: rodgen: stacks would not be properly processed
+- cggexprs: string literals for field checks are reused
+- ccgtypes: typeNameOrLiteral takes care of magics
+- ccgtypes: support for incremental compilation
+- The C code generator now uses the ast.gid for ID generation. This is needed
+  for proper incremental compilation.
+- ccgtypes: new change for incremental compilation
+- polished templ system
+- BUGFIX: walkFiles does not error if no matching files found
+- BUGFIX: ``os.copyFile``
+- reworked integer conversions
+- added ``GC_ref`` and ``GC_unref`` procs
+- implemented `zipfiles` module
+- BUGFIX: ``$`` now generates efficient code
+- BUGFIX: C's ``sizeof`` returns an unsigned, the generated code now casts
+- BUGFIX: trectype never worked, now at the least the compiler does not crash
+- BUGFIX: times module returned a newline for the `$` operator
+- sequences now need to be constructed with ``@[]``
+- changed the ``rod_gen`` to the ``nimcache`` mechanism, so the compiler does
+  not need to have write access to its directory
+- BUGFIX: createDir now works for sub directories
+- changed configuration file handling, so that UNIX-like installations are
+  possible
+- BUGFIX: ``ParseFloat`` now supports ``inf`` and ``nan``
+- the type information code is now smaller (helps GCC's compile times!)
+- BUGFIX: constant evaluation for mRepr is not possible
+- refactored the semantic phase into separate modules
+- BUGFIX: wrong indexing in ``genSetConstr``
+- used a node flag to avoid multiple transformation passes over the same tree:
+  this flag is cleared when copying nodes
+- special case for ``sameType``
+- changed order for optimization of ``semMagic``
+- optimized ``semexprs.genCall``
+- implemented a new passes manager which saves a lot of memory
+- OPT: GC now MUCH faster, still room for improvement though
+- OPT: ``system.objectInit`` is now only called iff strictly necessary
+- OPT: the write barrier can now be inlined by GCC
+- OPT: Nimrod version of ``addSon`` optimized
+- parsecfg, lexbase now use streams
+- the config file now supports ``ccname.exe`` and ``ccname.linkerExe``
+  configuration for changing the GGC version
+- BUGFIX: typo for ``succ`` code generation without checks
+- fixed many bugs in ``os`` module for Windows
+- bug in ``semVar`` removed standard convertions
+- BUGFIX: ``setLen`` for sequences may lead to memory leaks
 
 
 For the next versions
 =====================
 
-- separate compilation!
 - multi-processor support
 - tuple assignment
-- more Parser/Renderer combinations
 - IDE
-- better support for GDB
-- support for Boehm's GC
-- support for dynamic libraries
-
-
-Documentation to be written
-===========================
-- document generics
-- document (anonymous) procs
-
-
-Implementation details
-======================
-
-- {a} can lead to an memory overwrite if a is not in range of
-  set basetype?
-
-Optimizations
-=============
-
-- optimization of GC: types that cannot be involved in cycles should
-  not be stored in the AT; this does not work because the AT is needed
-  for stack checking!
-- better: generational GC for cycles
-- optimize range checks away (and out of bounds checks!)
+- better support for GDB?
+- support for generation of dynamic libraries
+- better code generator: skip ropes datastructure, it uses too much memory
+- make set optimizations part of the transformation (--> all backends profit
+  from it), but this really needs a more abstract code generator
 
 
 Further ideas/nice to have
@@ -232,30 +347,7 @@ Further ideas/nice to have
 - CLR code generator; better use XYZ? --> Version 1.2?
 - provide an interactive shell: if the user wants his commands
   to be executed, the command should end with #
-- multi-threaded programming
-- support for Boehm's GC
 - add the built-in 'finalize'
 - implement packed arrays (bit arrays)/ packed records
 - implement tables (implement as library? - no! Builtin because of
   constructor syntax is nice to have)
-- each compilation unit (proc, top-level-statement, etc.)
-  needs the options stored with them (for procs already done)
-
-
-Planned libraries
-=================
-
-- generic algorithm library (trees, tables, etc.)
-- An Unicode library (UTF8)
-- Binding for Opengl library (should be easy)
-- Binding for Sockets library (which one?)
-- XML parser; cgi module; fast cgi module
-- a good/extensive math library
-- neuronal network library; genetic algorithms
-- HTML parser
-- URL library
-- mySQL, sqlite interface
-- extensive platform independant AdvancedOS library
-- code generator for SQL-Schemes? ("Hibernate" done right)
-- mathematical expression parser (with lookup table for identifiers)
-- YAML parser (use generic AST for this)

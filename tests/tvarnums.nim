@@ -6,7 +6,7 @@ import
 type
   TBuffer = array [0..10, int8]
 
-proc toVarNum(x: int32, b: out TBuffer) =
+proc toVarNum(x: int32, b: var TBuffer) =
   # encoding: first bit indicates end of number (0 if at end)
   # second bit of the first byte denotes the sign (1 --> negative)
   var a = x
@@ -18,15 +18,15 @@ proc toVarNum(x: int32, b: out TBuffer) =
     # anyway
     a = abs(x)
   # first 6 bits:
-  b[0] = toU8(ord(a >% 63) shl 7 or (ord(x < 0) shl 6) or (a and 63))
-  a = a shr 6 # skip first 6 bits
+  b[0] = toU8(ord(a >% 63'i32) shl 7 or (ord(x < 0'i32) shl 6) or (int(a) and 63))
+  a = a shr 6'i32 # skip first 6 bits
   var i = 1
-  while a != 0:
-    b[i] = toU8(ord(a >% 127) shl 7 or (a and 127))
+  while a != 0'i32:
+    b[i] = toU8(ord(a >% 127'i32) shl 7 or (int(a) and 127))
     inc(i)
-    a = a shr 7
+    a = a shr 7'i32
 
-proc toVarNum64(x: int64, b: out TBuffer) =
+proc toVarNum64(x: int64, b: var TBuffer) =
   # encoding: first bit indicates end of number (0 if at end)
   # second bit of the first byte denotes the sign (1 --> negative)
   var a = x
@@ -38,20 +38,20 @@ proc toVarNum64(x: int64, b: out TBuffer) =
     # anyway
     a = abs(x)
   # first 6 bits:
-  b[0] = toU8(ord(a >% 63) shl 7 or (ord(x < 0) shl 6) or int(a and 63))
+  b[0] = toU8(ord(a >% 63'i64) shl 7 or (ord(x < 0'i64) shl 6) or int(a and 63))
   a = a shr 6 # skip first 6 bits
   var i = 1
-  while a != 0:
-    b[i] = toU8(ord(a >% 127) shl 7 or int(a and 127))
+  while a != 0'i64:
+    b[i] = toU8(ord(a >% 127'i64) shl 7 or int(a and 127))
     inc(i)
     a = a shr 7
 
 proc toNum64(b: TBuffer): int64 =
   # treat first byte different:
-  result = ze(b[0]) and 63
+  result = ze64(b[0]) and 63
   var
     i = 0
-    Shift: int64 = 6
+    Shift = 6'i64
   while (ze(b[i]) and 128) != 0:
     inc(i)
     result = result or ((ze64(b[i]) and 127) shl Shift)
@@ -69,17 +69,17 @@ proc toNum(b: TBuffer): int32 =
     Shift = 6
   while (ze(b[i]) and 128) != 0:
     inc(i)
-    result = result or ((ze(b[i]) and 127) shl Shift)
+    result = result or int32((ze(b[i]) and 127) shl Shift)
     inc(Shift, 7)
   if (ze(b[0]) and (1 shl 6)) != 0: # sign bit set?
-    result = not result +% 1
+    result = not int(result) +% 1
     # this is the same as ``- result``
     # but gives no overflow error for low(int)
 
 proc toBinary(x: int64): string =
   result = newString(64)
   for i in 0..63:
-    result[63-i] = chr((int32(x shr i) and 1) + ord('0'))
+    result[63-i] = chr((int(x shr i) and 1) + ord('0'))
 
 proc t64(i: int64) =
   var
@@ -133,4 +133,4 @@ tm(100_000)
 tm(low(int32))
 tm(high(int32))
 
-writeln(stdout, "Success!")
+writeln(stdout, "Success!") #OUT Success!

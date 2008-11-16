@@ -142,7 +142,7 @@ var
 begin
   elemType := settype.sons[0];
   first := firstOrd(elemType);
-  result := newNode(nkCurly);
+  result := newNodeI(nkCurly, info);
   result.typ := settype;
   result.info := info;
 
@@ -157,7 +157,7 @@ begin
       if a = b then // a single element:
         addSon(result, newIntTypeNode(nkIntLit, a + first, elemType))
       else begin
-        n := newNode(nkRange);
+        n := newNodeI(nkRange, info);
         n.typ := elemType;
         addSon(n, newIntTypeNode(nkIntLit, a + first, elemType));
         addSon(n, newIntTypeNode(nkIntLit, b + first, elemType));

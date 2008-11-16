@@ -6,28 +6,80 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
+unit transf;
 
 // This module implements the transformator. It transforms the syntax tree
 // to ease the work of the code generators. Does some transformations:
 //
 // * inlines iterators
-// * looks up constants
+// * inlines constants
+// * performes contant folding
+
+interface
+
+{$include 'config.inc'}
+
+uses
+  sysutils, nsystem, charsets, strutils,
+  lists, options, ast, astalgo, trees, treetab, 
+  msgs, nos, idents, rnimsyn, types, passes, semfold;
+
+const
+  genPrefix = ':tmp'; // prefix for generated names
+  
+function transfPass(): TPass;
+
+implementation
+
+type
+  PTransCon = ^TTransCon;
+  TTransCon = record   // part of TContext; stackable
+    mapping: TIdNodeTable; // mapping from symbols to nodes
+    owner: PSym;        // current owner
+    forStmt: PNode;    // current for stmt
+    next: PTransCon;   // for stacking
+  end;
+  
+  TTransfContext = object(passes.TPassContext)
+    module: PSym;
+    transCon: PTransCon; // top of a TransCon stack
+  end;
+  PTransf = ^TTransfContext;
+
+function newTransCon(): PTransCon;
+begin
+  new(result);
+{@ignore}
+  fillChar(result^, sizeof(result^), 0);
+{@emit}
+  initIdNodeTable(result.mapping);
+end;
+
+procedure pushTransCon(c: PTransf; t: PTransCon);
+begin
+  t.next := c.transCon;
+  c.transCon := t;
+end;
+
+procedure popTransCon(c: PTransf);
+begin
+  if (c.transCon = nil) then InternalError('popTransCon');
+  c.transCon := c.transCon.next;
+end;
 
 // ------------ helpers -----------------------------------------------------
 
-var
-  gTmpId: int;
-
-function newTemp(c: PContext; typ: PType; const info: TLineInfo): PSym;
+function newTemp(c: PTransf; typ: PType; const info: TLineInfo): PSym;
 begin
-  inc(gTmpId);
-  result := newSym(skTemp, getIdent(genPrefix +{&} ToString(gTmpId)),
-                   c.transCon.owner);
+  result := newSym(skTemp, getIdent(genPrefix), getCurrOwner());
   result.info := info;
   result.typ := skipGeneric(typ);
+  include(result.flags, sfFromGeneric);
 end;
 
 // --------------------------------------------------------------------------
+
+function transform(c: PTransf; n: PNode): PNode; forward;
 
 (*
 
@@ -79,17 +131,14 @@ More efficient, but not implementable:
       label1: inc(c.i)
 *)
 
-
-function transform(c: PContext; n: PNode): PNode; forward;
-
-function newAsgnStmt(c: PContext; le, ri: PNode): PNode;
+function newAsgnStmt(c: PTransf; le, ri: PNode): PNode;
 begin
   result := newNodeI(nkAsgn, ri.info);
   addSon(result, le);
   addSon(result, ri);
 end;
 
-function transformSym(c: PContext; n: PNode): PNode;
+function transformSym(c: PTransf; n: PNode): PNode;
 var
   tc: PTransCon;
 begin
@@ -107,7 +156,7 @@ begin
   case n.sym.kind of
     skConst, skEnumField: begin // BUGFIX: skEnumField was missing
       if not (skipGeneric(n.sym.typ).kind in ConstantDataTypes) then begin
-        result := getConstExpr(c, n);
+        result := getConstExpr(c.module, n);
         if result = nil then InternalError(n.info, 'transformSym: const');
       end
     end
@@ -115,7 +164,7 @@ begin
   end
 end;
 
-procedure transformContinueAux(c: PContext; n: PNode; labl: PSym;
+procedure transformContinueAux(c: PTransf; n: PNode; labl: PSym;
                                var counter: int);
 var
   i: int;
@@ -135,7 +184,7 @@ begin
   end
 end;
 
-function transformContinue(c: PContext; n: PNode): PNode;
+function transformContinue(c: PTransf; n: PNode): PNode;
 // we transform the continue statement into a block statement
 var
   i, counter: int;
@@ -146,9 +195,8 @@ begin
   for i := 0 to sonsLen(n)-1 do
     result.sons[i] := transform(c, n.sons[i]);
   counter := 0;
-  inc(gTmpId);
-  labl := newSym(skLabel, getIdent(genPrefix +{&} ToString(gTmpId)),
-                 getCurrOwner(c));
+  labl := newSym(skLabel, nil, getCurrOwner());
+  labl.name := getIdent(genPrefix +{&} ToString(labl.id));
   labl.info := result.info;
   transformContinueAux(c, result, labl, counter);
   if counter > 0 then begin
@@ -170,7 +218,7 @@ begin
   end
 end;
 
-function transformYield(c: PContext; n: PNode): PNode;
+function transformYield(c: PTransf; n: PNode): PNode;
 var
   e: PNode;
   i: int;
@@ -198,7 +246,7 @@ begin
   addSon(result, transform(c, lastSon(c.transCon.forStmt)));
 end;
 
-function inlineIter(c: PContext; n: PNode): PNode;
+function inlineIter(c: PTransf; n: PNode): PNode;
 var
   i: int;
   it: PNode;
@@ -219,9 +267,11 @@ begin
         if (it.kind <> nkIdentDefs) or (it.sons[0].kind <> nkSym) then
           InternalError(it.info, 'inlineIter');
         newVar := copySym(it.sons[0].sym);
-        newVar.owner := getCurrOwner(c);
-        IdNodeTablePut(c.transCon.mapping, it.sons[0].sym,
-                       newSymNode(newVar));
+        include(newVar.flags, sfFromGeneric);
+        // fixes a strange bug for rodgen:
+        //include(it.sons[0].sym.flags, sfFromGeneric);
+        newVar.owner := getCurrOwner();
+        IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar));
         it.sons[0] := newSymNode(newVar);
         it.sons[2] := transform(c, it.sons[2]);
       end
@@ -245,7 +295,7 @@ begin
   addSon(father, vpart);
 end;
 
-function transformAddrDeref(c: PContext; n: PNode; a, b: TNodeKind): PNode;
+function transformAddrDeref(c: PTransf; n: PNode; a, b: TNodeKind): PNode;
 var
   m: PNode;
 begin
@@ -281,7 +331,7 @@ begin
   result := n;
 end;
 
-function transformConv(c: PContext; n: PNode): PNode;
+function transformConv(c: PTransf; n: PNode): PNode;
 var
   source, dest: PType;
   diff: int;
@@ -370,7 +420,7 @@ begin
   end;
 end;
 
-function transformFor(c: PContext; n: PNode): PNode;
+function transformFor(c: PTransf; n: PNode): PNode;
 // generate access statements for the parameters (unless they are constant)
 // put mapping from formal parameters to actual parameters
 var
@@ -379,7 +429,7 @@ var
   newC: PTransCon;
   temp, formal: PSym;
 begin
-  assert(n.kind = nkForStmt);
+  if (n.kind <> nkForStmt) then InternalError(n.info, 'transformFor');
   result := newNodeI(nkStmtList, n.info);
   len := sonsLen(n);
   n.sons[len-1] := transformContinue(c, n.sons[len-1]);
@@ -388,15 +438,16 @@ begin
   addSon(result, v);
   newC := newTransCon();
   call := n.sons[len-2];
-  assert(call.kind = nkCall);
-  assert(call.sons[0].kind = nkSym);
+  if (call.kind <> nkCall) or (call.sons[0].kind <> nkSym) then
+    InternalError(call.info, 'transformFor');
   newC.owner := call.sons[0].sym;
   newC.forStmt := n;
-  assert(newC.owner.kind = skIterator);
+  if (newC.owner.kind <> skIterator) then 
+    InternalError(call.info, 'transformFor');
   // generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC);
   for i := 1 to sonsLen(call)-1 do begin
-    e := getConstExpr(c, call.sons[i]);
+    e := getConstExpr(c.module, call.sons[i]);
     formal := skipGeneric(newC.owner.typ).n.sons[i].sym;
     if e <> nil then
       IdNodeTablePut(newC.mapping, formal, e)
@@ -414,7 +465,9 @@ begin
     end
   end;
   body := newC.owner.ast.sons[codePos];
+  pushInfoContext(n.info);
   addSon(result, inlineIter(c, body));
+  popInfoContext();
   popTransCon(c);
 end;
 
@@ -427,7 +480,7 @@ begin
     result := mNone
 end;
 
-procedure gatherVars(c: PContext; n: PNode; var marked: TIntSet;
+procedure gatherVars(c: PTransf; n: PNode; var marked: TIntSet;
                      owner: PSym; container: PNode);
 // gather used vars for closure generation
 var
@@ -542,7 +595,7 @@ begin
   result.typ := y.typ;
 end;
 
-function transformLambda(c: PContext; n: PNode): PNode;
+function transformLambda(c: PTransf; n: PNode): PNode;
 var
   marked: TIntSet;
   closure: PNode;
@@ -553,7 +606,8 @@ var
 begin
   result := n;
   IntSetInit(marked);
-  assert(n.sons[namePos].kind = nkSym);
+  if (n.sons[namePos].kind <> nkSym) then
+    InternalError(n.info, 'transformLambda');
   s := n.sons[namePos].sym;
   closure := newNodeI(nkRecList, n.sons[codePos].info);
   gatherVars(c, n.sons[codePos], marked, s, closure);
@@ -582,7 +636,7 @@ begin
   // the outer routine!
 end;
 
-function transformCase(c: PContext; n: PNode): PNode;
+function transformCase(c: PTransf; n: PNode): PNode;
 // removes `elif` branches of a case stmt
 var
   len, i, j: int;
@@ -593,7 +647,8 @@ begin
   if n.sons[i].kind = nkElse then dec(i);
   if n.sons[i].kind = nkElifBranch then begin
     while n.sons[i].kind = nkElifBranch do dec(i);
-    assert(n.sons[i].kind = nkOfBranch);
+    if (n.sons[i].kind <> nkOfBranch) then 
+      InternalError(n.sons[i].info, 'transformCase');
     ifs := newNodeI(nkIfStmt, n.sons[i+1].info);
     for j := i+1 to len-1 do addSon(ifs, n.sons[j]);
     setLength(n.sons, i+2);
@@ -603,7 +658,7 @@ begin
   for j := 0 to sonsLen(n)-1 do result.sons[j] := transform(c, n.sons[j]);
 end;
 
-function transformArrayAccess(c: PContext; n: PNode): PNode;
+function transformArrayAccess(c: PTransf; n: PNode): PNode;
 var
   i: int;
 begin
@@ -614,16 +669,85 @@ begin
     result.sons[i] := transform(c, result.sons[i]);
 end;
 
-function transform(c: PContext; n: PNode): PNode;
+function getMergeOp(n: PNode): PSym;
+begin
+  result := nil;
+  case n.kind of
+    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix: begin
+      if (n.sons[0].Kind = nkSym) and (n.sons[0].sym.kind = skProc) 
+      and (sfMerge in n.sons[0].sym.flags) then 
+        result := n.sons[0].sym;
+    end
+    else begin end
+  end
+end;
+
+procedure flattenTreeAux(d, a: PNode; op: PSym);
+var
+  i: int;
+  op2: PSym;
+begin
+  op2 := getMergeOp(a);
+  if (op2 <> nil) and ((op2.id = op.id) 
+                   or (op.magic <> mNone) and (op2.magic = op.magic)) then
+    for i := 1 to sonsLen(a)-1 do
+      flattenTreeAux(d, a.sons[i], op)
+  else
+    // a is a "leaf", so add it:
+    addSon(d, copyTree(a))
+end;
+
+function flattenTree(root: PNode): PNode;
+var
+  op: PSym;
+begin
+  op := getMergeOp(root);
+  if op <> nil then begin
+    result := copyNode(root);
+    addSon(result, copyTree(root.sons[0]));
+    flattenTreeAux(result, root, op)
+  end
+  else 
+    result := root
+end;
+
+function transformCall(c: PTransf; n: PNode): PNode;
+var
+  i, j: int;
+  m, a: PNode;
+  op: PSym;
+begin
+  result := flattenTree(n);
+  for i := 0 to sonsLen(result)-1 do
+    result.sons[i] := transform(c, result.sons[i]);
+  op := getMergeOp(result);
+  if (op <> nil) and (op.magic <> mNone) and (sonsLen(result) >= 3) then begin
+    m := result;
+    result := newNodeIT(nkCall, m.info, m.typ);
+    addSon(result, copyTree(m.sons[0]));
+    j := 1;
+    while j < sonsLen(m) do begin
+      a := m.sons[j];
+      inc(j);
+      if isConstExpr(a) then 
+        while (j < sonsLen(m)) and isConstExpr(m.sons[j]) do begin
+          a := evalOp(op.magic, m, a, m.sons[j]);
+          inc(j)
+        end;
+      addSon(result, a);
+    end;
+    if sonsLen(result) = 2 then
+      result := result.sons[1];
+  end;
+end;
+
+function transform(c: PTransf; n: PNode): PNode;
 var
   i: int;
   cnst: PNode;
 begin
   result := n;
   if n = nil then exit;
-  //result := getConstExpr(c, n); // try to evaluate the expressions
-  //if result <> nil then exit;
-  //result := n; // reset the result node
   case n.kind of
     nkSym: begin
       result := transformSym(c, n);
@@ -636,28 +760,60 @@ begin
     nkLambda: result := transformLambda(c, n);
     nkForStmt: result := transformFor(c, n);
     nkCaseStmt: result := transformCase(c, n);
-    nkProcDef, nkIteratorDef: begin
+    nkProcDef, nkIteratorDef, nkMacroDef: begin
       if n.sons[genericParamsPos] = nil then
         n.sons[codePos] := transform(c, n.sons[codePos]);
     end;
     nkWhileStmt: begin
-      assert(sonsLen(n) = 2);
+      if (sonsLen(n) <> 2) then InternalError(n.info, 'transform');
       n.sons[0] := transform(c, n.sons[0]);
       n.sons[1] := transformContinue(c, n.sons[1]);
     end;
+    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix:
+      result := transformCall(c, result);
     nkAddr, nkHiddenAddr:
       result := transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref);
     nkDerefExpr, nkHiddenDeref:
       result := transformAddrDeref(c, n, nkAddr, nkHiddenAddr);
     nkHiddenStdConv, nkHiddenSubConv, nkConv:
       result := transformConv(c, n);
-    nkCommentStmt, nkTemplateDef, nkMacroDef: exit;
+    nkCommentStmt, nkTemplateDef: exit;
     nkConstSection: exit; // do not replace ``const c = 3`` with ``const 3 = 3``
     else begin
       for i := 0 to sonsLen(n)-1 do
         result.sons[i] := transform(c, n.sons[i]);
     end
   end;
-  cnst := getConstExpr(c, result);
+  cnst := getConstExpr(c.module, result);
   if cnst <> nil then result := cnst; // do not miss an optimization
 end;
+
+function processTransf(context: PPassContext; n: PNode): PNode;
+var
+  c: PTransf;
+begin
+  c := PTransf(context);
+  result := transform(c, n);
+end;
+
+function openTransf(module: PSym; const filename: string): PPassContext;
+var
+  n: PTransf;
+begin
+  new(n);
+{@ignore}
+  fillChar(n^, sizeof(n^), 0);
+{@emit}
+  n.module := module;
+  result := n;
+end;
+
+function transfPass(): TPass;
+begin
+  initPass(result);
+  result.open := openTransf;
+  result.process := processTransf;
+  result.close := processTransf; // we need to process generics too!
+end;
+
+end.

@@ -16,7 +16,8 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, charsets, msgs;
+  nsystem, charsets, nos, msgs, options, nversion, condsyms, strutils, extccomp, 
+  platform, lists, wordrecg;
 
 procedure writeCommandLineUsage;
 
@@ -32,10 +33,6 @@ procedure processSwitch(const switch, arg: string; pass: TCmdlinePass;
                         const info: TLineInfo);
 
 implementation
-
-uses
-  options, nversion, condsyms, strutils, extccomp, platform, nos, lists,
-  wordrecg;
 
 {@ignore}
 const
@@ -54,19 +51,18 @@ const
 const
   Usage = ''
 //[[[cog
-//def f(x): return "+{&} '" + x.replace("'", "''")[:-1] + "' +{&} nl"
-//for line in file("data/basicopt.txt"):
+//from string import replace
+//def f(x): return "+{&} '" + replace(x, "'", "''")[:-1] + "' +{&} nl"
+//for line in open("data/basicopt.txt").readlines():
 //  cog.outl(f(line))
 //]]]
 +{&} 'Usage::' +{&} nl
 +{&} '  nimrod command [options] inputfile [arguments]' +{&} nl
 +{&} 'Command::' +{&} nl
-+{&} '  compile                   compile project with default code generator (C)' +{&} nl
-+{&} '  compile_to_c              compile project with C code generator' +{&} nl
-+{&} '  compile_to_cpp            compile project with C++ code generator' +{&} nl
-+{&} '  compile_to_ecmascript     compile project to ECMAScript code (experimental)' +{&} nl
-+{&} '  doc                       generate the documentation for inputfile;' +{&} nl
-+{&} '                            with --run switch opens it with $BROWSER' +{&} nl
++{&} '  compile, c                compile project with default code generator (C)' +{&} nl
++{&} '  compile_to_c, cc          compile project with C code generator' +{&} nl
++{&} '  doc                       generate the documentation for inputfile' +{&} nl
++{&} '  rst2html                  converts a reStructuredText file to HTML' +{&} nl
 +{&} 'Arguments:' +{&} nl
 +{&} '  arguments are passed to the program being run (if --run option is selected)' +{&} nl
 +{&} 'Options:' +{&} nl
@@ -74,7 +70,8 @@ const
 +{&} '  -o, --out:FILE            set the output filename' +{&} nl
 +{&} '  -d, --define:SYMBOL       define a conditional symbol' +{&} nl
 +{&} '  -u, --undef:SYMBOL        undefine a conditional symbol' +{&} nl
-+{&} '  -b, --force_build         force rebuilding of all modules' +{&} nl
++{&} '  -f, --force_build         force rebuilding of all modules' +{&} nl
++{&} '  --symbol_files:on|off     use symbol files to speed up compilation (buggy!)' +{&} nl
 +{&} '  --stack_trace:on|off      code generation for stack trace ON|OFF' +{&} nl
 +{&} '  --line_trace:on|off       code generation for line trace ON|OFF' +{&} nl
 +{&} '  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF' +{&} nl
@@ -95,7 +92,7 @@ const
 
   AdvancedUsage = ''
 //[[[cog
-//for line in file("data/advopt.txt"):
+//for line in open("data/advopt.txt").readlines():
 //  cog.outl(f(line))
 //]]]
 +{&} 'Advanced commands::' +{&} nl
@@ -104,21 +101,17 @@ const
 +{&} '  gen_depend                generate a DOT file containing the' +{&} nl
 +{&} '                            module dependency graph' +{&} nl
 +{&} '  list_def                  list all defined conditionals and exit' +{&} nl
-+{&} '  rst2html                  converts a reStructuredText file to HTML' +{&} nl
 +{&} '  check                     checks the project for syntax and semantic' +{&} nl
 +{&} '  parse                     parses a single file (for debugging Nimrod)' +{&} nl
-+{&} '  scan                      tokenizes a single file (for debugging Nimrod)' +{&} nl
-+{&} '  debugtrans                for debugging the transformation pass' +{&} nl
 +{&} 'Advanced options:' +{&} nl
 +{&} '  -w, --warnings:on|off     warnings ON|OFF' +{&} nl
 +{&} '  --warning[X]:on|off       specific warning X ON|OFF' +{&} nl
 +{&} '  --hints:on|off            hints ON|OFF' +{&} nl
 +{&} '  --hint[X]:on|off          specific hint X ON|OFF' +{&} nl
-+{&} '  --cc:C_COMPILER           set the C/C++ compiler to use' +{&} nl
 +{&} '  --lib:PATH                set the system library path' +{&} nl
 +{&} '  -c, --compile_only        compile only; do not assemble or link' +{&} nl
 +{&} '  --no_linking              compile but do not link' +{&} nl
-+{&} '  --gen_script              generate a compile script (in the ''rod_gen''' +{&} nl
++{&} '  --gen_script              generate a compile script (in the ''nimcache''' +{&} nl
 +{&} '                            subdirectory named ''compile_$project$scriptext'')' +{&} nl
 +{&} '  --os:SYMBOL               set the target operating system (cross-compilation)' +{&} nl
 +{&} '  --cpu:SYMBOL              set the target processor (cross-compilation)' +{&} nl
@@ -127,50 +120,16 @@ const
 +{&} '  -l, --passl:OPTION        pass an option to the linker' +{&} nl
 +{&} '  --gen_mapping             generate a mapping file containing' +{&} nl
 +{&} '                            (Nimrod, mangled) identifier pairs' +{&} nl
-+{&} '  --merge_output            generate only one C output file' +{&} nl
 +{&} '  --line_dir:on|off         generation of #line directive ON|OFF' +{&} nl
 +{&} '  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod' +{&} nl
 +{&} '  --skip_cfg                do not read the general configuration file' +{&} nl
 +{&} '  --skip_proj_cfg           do not read the project''s configuration file' +{&} nl
 +{&} '  --import:MODULE_FILE      import the given module implicitly for each module' +{&} nl
-+{&} '  --maxerr:NUMBER           stop compilation after NUMBER errors; broken!' +{&} nl
-+{&} '  --ast_cache:on|off        caching of ASTs ON|OFF (default: OFF)' +{&} nl
-+{&} '  --c_file_cache:on|off     caching of generated C files ON|OFF (default: OFF)' +{&} nl
 +{&} '  --index:FILE              use FILE to generate a documenation index file' +{&} nl
 +{&} '  --putenv:key=value        set an environment variable' +{&} nl
 +{&} '  --list_cmd                list the commands used to execute external programs' +{&} nl
-+{&} '  -v, --verbose             show what Nimrod is doing' +{&} nl
-+{&} '  --version                 show detailed version information' +{&} nl
-//[[[end]]]
-  ;
-
-  VersionInformation = ''
-//[[[cog
-//for line in file("data/changes.txt"):
-//  cog.outl(f(line))
-//]]]
-+{&} '0.1.0' +{&} nl
-+{&} '* new config system' +{&} nl
-+{&} '* new build system' +{&} nl
-+{&} '* source renderer' +{&} nl
-+{&} '* pas2nim integrated' +{&} nl
-+{&} '* support for C++' +{&} nl
-+{&} '* local variables are always initialized' +{&} nl
-+{&} '* Rod file reader and writer' +{&} nl
-+{&} '* new --out, -o command line options' +{&} nl
-+{&} '* fixed bug in nimconf.pas: we now have several' +{&} nl
-+{&} '  string token types' +{&} nl
-+{&} '* changed nkIdentDef to nkIdentDefs' +{&} nl
-+{&} '* added type(expr) in the parser and the grammer' +{&} nl
-+{&} '* added template' +{&} nl
-+{&} '* added command calls' +{&} nl
-+{&} '* added case in records/objects' +{&} nl
-+{&} '* added --skip_proj_cfg switch for nim.dpr' +{&} nl
-+{&} '* added missing features to pasparse' +{&} nl
-+{&} '* rewrote the source generator' +{&} nl
-+{&} '* ``addr`` and ``cast`` are now keywords; grammar updated' +{&} nl
-+{&} '* implemented ` notation; grammar updated' +{&} nl
-+{&} '* specification replaced by a manual' +{&} nl
++{&} '  --verbosity:0|1|2|3       set Nimrod''s verbosity level (0 is default)' +{&} nl
++{&} '  -v, --version             show detailed version information' +{&} nl
 //[[[end]]]
   ;
 
@@ -212,7 +171,7 @@ begin
     versionWritten := true;
     helpWritten := true;
     messageOut(format(HelpMessage, [VersionAsString, platform.os[hostOS].name,
-                             cpu[hostCPU].name]) +{&} VersionInformation)
+                      cpu[hostCPU].name]))
   end
 end;
 
@@ -378,14 +337,10 @@ begin
       if pass in {@set}[passCmd2, passPP] then
         addFileToLink(arg);
     end;
-    wDebuginfo:
-      include(gGlobalOptions, optCDebug);
-    wCompileOnly, wC:
-      include(gGlobalOptions, optCompileOnly);
-    wNoLinking:
-      include(gGlobalOptions, optNoLinking);
-    wForceBuild, wF:
-      include(gGlobalOptions, optForceFullMake);
+    wDebuginfo: include(gGlobalOptions, optCDebug);
+    wCompileOnly, wC: include(gGlobalOptions, optCompileOnly);
+    wNoLinking: include(gGlobalOptions, optNoLinking);
+    wForceBuild, wF: include(gGlobalOptions, optForceFullMake);
     wGC: begin
       case whichKeyword(arg) of
         wBoehm: begin
@@ -406,20 +361,13 @@ begin
           liMessage(info, errNoneBoehmRefcExpectedButXFound, arg)
       end
     end;
-    wWarnings, wW:
-      ProcessOnOffSwitch({@set}[optWarns], arg, pass, info);
-    wWarning:
-      ProcessSpecificNote(arg, wWarning, pass, info);
-    wHint:
-      ProcessSpecificNote(arg, wHint, pass, info);
-    wHints:
-      ProcessOnOffSwitch({@set}[optHints], arg, pass, info);
-    wCheckpoints:
-      ProcessOnOffSwitch({@set}[optCheckpoints], arg, pass, info);
-    wStackTrace:
-      ProcessOnOffSwitch({@set}[optStackTrace], arg, pass, info);
-    wLineTrace:
-      ProcessOnOffSwitch({@set}[optLineTrace], arg, pass, info);
+    wWarnings, wW: ProcessOnOffSwitch({@set}[optWarns], arg, pass, info);
+    wWarning: ProcessSpecificNote(arg, wWarning, pass, info);
+    wHint: ProcessSpecificNote(arg, wHint, pass, info);
+    wHints: ProcessOnOffSwitch({@set}[optHints], arg, pass, info);
+    wCheckpoints: ProcessOnOffSwitch({@set}[optCheckpoints], arg, pass, info);
+    wStackTrace: ProcessOnOffSwitch({@set}[optStackTrace], arg, pass, info);
+    wLineTrace: ProcessOnOffSwitch({@set}[optLineTrace], arg, pass, info);
     wDebugger: begin
       ProcessOnOffSwitch({@set}[optEndb], arg, pass, info);
       if optEndb in gOptions then
@@ -427,26 +375,19 @@ begin
       else
         UndefSymbol('endb')
     end;
-    wChecks, wX:
-      ProcessOnOffSwitch(checksOptions, arg, pass, info);
-    wObjChecks:
-      ProcessOnOffSwitch({@set}[optObjCheck], arg, pass, info);
-    wFieldChecks:
-      ProcessOnOffSwitch({@set}[optFieldCheck], arg, pass, info);
-    wRangeChecks:
-      ProcessOnOffSwitch({@set}[optRangeCheck], arg, pass, info);
-    wBoundChecks:
-      ProcessOnOffSwitch({@set}[optBoundsCheck], arg, pass, info);
-    wOverflowChecks:
-      ProcessOnOffSwitch({@set}[optOverflowCheck], arg, pass, info);
-    wLineDir:
-      ProcessOnOffSwitch({@set}[optLineDir], arg, pass, info);
-    wAssertions, wA:
-      ProcessOnOffSwitch({@set}[optAssert], arg, pass, info);
-    wCFileCache:
-      ProcessOnOffSwitchG({@set}[optCFileCache], arg, pass, info);
-    wAstCache:
-      ProcessOnOffSwitchG({@set}[optAstCache], arg, pass, info);
+    wProfiler: begin
+      ProcessOnOffSwitch({@set}[optProfiler], arg, pass, info);
+      if optProfiler in gOptions then DefineSymbol('profiler')
+      else UndefSymbol('profiler')
+    end;
+    wChecks, wX: ProcessOnOffSwitch(checksOptions, arg, pass, info);
+    wObjChecks: ProcessOnOffSwitch({@set}[optObjCheck], arg, pass, info);
+    wFieldChecks: ProcessOnOffSwitch({@set}[optFieldCheck], arg, pass, info);
+    wRangeChecks: ProcessOnOffSwitch({@set}[optRangeCheck], arg, pass, info);
+    wBoundChecks: ProcessOnOffSwitch({@set}[optBoundsCheck], arg, pass, info);
+    wOverflowChecks: ProcessOnOffSwitch({@set}[optOverflowCheck], arg, pass, info);
+    wLineDir: ProcessOnOffSwitch({@set}[optLineDir], arg, pass, info);
+    wAssertions, wA: ProcessOnOffSwitch({@set}[optAssert], arg, pass, info);
     wOpt: begin
       case whichKeyword(arg) of
         wSpeed: begin
@@ -505,10 +446,8 @@ begin
       expectArg(switch, arg, pass, info);
       options.addImplicitMod(arg);
     end;
-    wListCmd:
-      include(gGlobalOptions, optListCmd);
-    wGenMapping:
-      include(gGlobalOptions, optGenMapping);
+    wListCmd: include(gGlobalOptions, optListCmd);
+    wGenMapping: include(gGlobalOptions, optGenMapping);
     wOS: begin
       if (pass = passCmd1) then begin
         theOS := platform.NameToOS(arg);
@@ -533,26 +472,18 @@ begin
         end
       end
     end;
-    wRun, wR:
-      include(gGlobalOptions, optRun);
-    wVerbose, wV:
-      include(gGlobalOptions, optVerbose);
-    wMergeOutput:
-      include(gGlobalOptions, optMergeOutput);
-    wVersion:
-      writeVersionInfo(pass);
-    wAdvanced:
-      writeAdvancedUsage(pass);
-    wHelp, wH:
-      helpOnError(pass);
-    wCompileSys:
-      include(gGlobalOptions, optCompileSys);
-    wSkipCfg:
-      include(gGlobalOptions, optSkipConfigFile);
-    wSkipProjCfg:
-      include(gGlobalOptions, optSkipProjConfigFile);
-    wGenScript:
-      include(gGlobalOptions, optGenScript);
+    wRun, wR: include(gGlobalOptions, optRun);
+    wVerbosity: begin
+      expectArg(switch, arg, pass, info);
+      gVerbosity := parseInt(arg);
+    end;
+    wVersion, wV: writeVersionInfo(pass);
+    wAdvanced: writeAdvancedUsage(pass);
+    wHelp, wH: helpOnError(pass);
+    wSymbolFiles: ProcessOnOffSwitchG({@set}[optSymbolFiles], arg, pass, info);
+    wSkipCfg: include(gGlobalOptions, optSkipConfigFile);
+    wSkipProjCfg: include(gGlobalOptions, optSkipProjConfigFile);
+    wGenScript: include(gGlobalOptions, optGenScript);
     wLib: begin
       expectArg(switch, arg, pass, info);
       libpath := processPath(arg)

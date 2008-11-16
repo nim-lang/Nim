@@ -24,7 +24,7 @@ interface
 uses
   charsets, nsystem, sysutils,
   hashes, options, msgs, strutils, platform, idents,
-  lexbase, wordrecg;
+  lexbase, llstream, wordrecg;
 
 const
   MaxLineLength = 80; // lines longer than this lead to a warning
@@ -40,15 +40,18 @@ type
     tkSymbol,
     // keywords:
     //[[[cog
-    //keywords = (file("data/keywords.txt").read()).split()
+    //from string import split, capitalize
+    //keywords = split(open("data/keywords.txt").read())
     //idents = ""
     //strings = ""
     //i = 1
     //for k in keywords:
-    //  idents += "tk" + k.capitalize() + ", "
-    //  strings += "'" + k + "', "
-    //  if i % 4 == 0: idents += "\n"; strings += "\n"
-    //  i += 1
+    //  idents = idents + "tk" + capitalize(k) + ", "
+    //  strings = strings + "'" + k + "', "
+    //  if i % 4 == 0:
+    //    idents = idents + "\n"
+    //    strings = strings + "\n"
+    //  i = i + 1
     //cog.out(idents)
     //]]]
     tkAddr, tkAnd, tkAs, tkAsm, 
@@ -156,11 +159,14 @@ type
                              // needs so much look-ahead
   end;
 
+var
+  gLinesCompiled: int; // all lines that have been compiled
+
 procedure pushInd(var L: TLexer; indent: int);
 function isKeyword(kind: TTokType): boolean;
 
-function openLexer(out lex: TLexer; const filename: string): TResult;
-procedure bufferLexer(out lex: TLexer; const buf: string);
+procedure openLexer(out lex: TLexer; const filename: string;
+                    inputstream: PLLStream);
 
 procedure rawGetTok(var L: TLexer; var tok: TToken);
 // reads in the next token into tok and skips it
@@ -194,8 +200,10 @@ var
 begin
   len := length(L.indentStack);
   setLength(L.indentStack, len+1);
-  assert(indent > L.indentStack[len-1]);
-  L.indentstack[len] := indent;
+  if (indent > L.indentStack[len-1]) then
+    L.indentstack[len] := indent
+  else
+    InternalError('pushInd');
   //writeln('push indent ', indent);
 end;
 
@@ -222,7 +230,7 @@ begin
     else if (tok.ident <> nil) then
       result := tok.ident.s
     else begin
-      assert(false);
+      InternalError('tokToStr');
       result := ''
     end
   end
@@ -251,40 +259,25 @@ begin
   L.ident := dummyIdent; // this prevents many bugs!
 end;
 
-function openLexer(out lex: TLexer; const filename: string): TResult;
+procedure openLexer(out lex: TLexer; const filename: string;
+                    inputstream: PLLStream);
 begin
 {@ignore}
-  FillChar(lex, sizeof(lex), 0); // work around Delphi/fpc bug
+  FillChar(lex, sizeof(lex), 0);
 {@emit}
-  if initBaseLexer(lex, filename) then
-    result := Success
-  else
-    result := Failure;
+  openBaseLexer(lex, inputstream);
 {@ignore}
   setLength(lex.indentStack, 1);
   lex.indentStack[0] := 0;
-{@emit lex.indentStack := [0]; }
+{@emit lex.indentStack := @[0]; }
   lex.filename := filename;
-  lex.indentAhead := -1;
-end;
-
-procedure bufferLexer(out lex: TLexer; const buf: string);
-begin
-{@ignore}
-  FillChar(lex, sizeof(lex), 0); // work around Delphi/fpc bug
-{@emit}
-  initBaseLexerFromBuffer(lex, buf);
-{@ignore}
-  setLength(lex.indentStack, 1);
-  lex.indentStack[0] := 0;
-{@emit lex.indentStack := [0]; }
-  lex.filename := 'buffer';
   lex.indentAhead := -1;
 end;
 
 procedure closeLexer(var lex: TLexer);
 begin
-  deinitBaseLexer(lex);
+  inc(gLinesCompiled, lex.LineNumber);
+  closeBaseLexer(lex);
 end;
 
 function getColumn(const L: TLexer): int;
@@ -493,7 +486,7 @@ begin
             end
           end
         end;
-        else assert(false);
+        else InternalError(getLineInfo(L), 'getNumber');
       end;
       // now look at the optional type suffix:
       case result.tokType of
@@ -505,7 +498,7 @@ begin
           // XXX: Test this on big endian machine!
         tkFloat64Lit:
           result.fNumber := ({@cast}PFloat64(addr(xi)))^;
-        else assert(false);
+        else InternalError(getLineInfo(L), 'getNumber');
       end
     end
     else if isFloatLiteral(result.literal)

@@ -15,7 +15,8 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, nimconf, msgs;
+  nsystem, charsets, lists, ropes, nos, strutils, platform, condsyms, options,
+  msgs;
 
 // some things are read in from the configuration file
 
@@ -89,7 +90,7 @@ const
       optSpeed: ' -O -p6 ';
       optSize: ' -O -p6 ';
       compilerExe: 'lcc';
-      compileTmpl: '-e1 $options $include -Fo$objfile $file';
+      compileTmpl: '$options $include -Fo$objfile $file';
       buildGui: ' -subsystem windows';
       buildDll: ' -dll';
       linkerExe: 'lcclnk';
@@ -287,12 +288,9 @@ function NameToCC(const name: string): TSystemCC;
 procedure initVars;
 
 procedure setCC(const ccname: string);
+procedure writeMapping(const cfile: string; gSymbolMapping: PRope);
 
 implementation
-
-uses
-  charsets,
-  lists, options, ropes, nos, strutils, platform, condsyms;
 
 var
   toLink, toCompile, externalToCompile: TLinkedList;
@@ -301,16 +299,31 @@ var
 
   ccompilerpath: string = '';
 
-procedure initVars;
+procedure setCC(const ccname: string);
+var
+  i: TSystemCC;
 begin
-  // BUGFIX: '.' forgotten
+  linkOptions := '';
+  ccompiler := nameToCC(ccname);
+  if ccompiler = ccNone then rawMessage(errUnknownCcompiler, ccname);
   compileOptions := getConfigVar(CC[ccompiler].name + '.options.always');
-  // have the variables not been initialized?
   ccompilerpath := getConfigVar(CC[ccompiler].name + '.path');
+  for i := low(CC) to high(CC) do undefSymbol(CC[i].name);
+  defineSymbol(CC[ccompiler].name);
+end;
+
+procedure initVars;
+var
+  i: TSystemCC;
+begin
   // we need to define the symbol here, because ``CC`` may have never been set!
-  setCC(CC[ccompiler].name);
+  for i := low(CC) to high(CC) do undefSymbol(CC[i].name);
+  defineSymbol(CC[ccompiler].name);
   if gCmd = cmdCompileToCpp then
     cExt := '.cpp';
+  addCompileOption(getConfigVar(CC[ccompiler].name + '.options.always'));
+  if length(ccompilerPath) = 0 then
+    ccompilerpath := getConfigVar(CC[ccompiler].name + '.path');
 end;
 
 function completeCFilePath(const cfile: string;
@@ -331,28 +344,28 @@ begin
 end;
 
 
-procedure setCC(const ccname: string);
-var
-  i: TSystemCC;
+procedure addStr(var dest: string; const src: string);
 begin
-  ccompiler := nameToCC(ccname);
-  if ccompiler = ccNone then
-    rawMessage(errUnknownCcompiler, ccname);
-  for i := low(CC) to high(CC) do
-    undefSymbol(CC[i].name);
-  defineSymbol(CC[ccompiler].name)
+  dest := dest +{&} src;
+end;
+
+procedure addOpt(var dest: string; const src: string);
+begin
+  if (length(dest) = 0) or (dest[length(dest)-1+strStart] <> ' ') then
+    addStr(dest, ' '+'');
+  addStr(dest, src);
 end;
 
 procedure addCompileOption(const option: string);
 begin
   if strutils.findSubStr(option, compileOptions, strStart) < strStart then
-    compileOptions := compileOptions + ' ' +{&} option
+    addOpt(compileOptions, option)
 end;
 
 procedure addLinkOption(const option: string);
 begin
   if findSubStr(option, linkOptions, strStart) < strStart then
-    linkOptions := linkOptions + ' ' +{&} option
+    addOpt(linkOptions, option)
 end;
 
 function toObjFile(const filenameWithoutExt: string): string;
@@ -378,9 +391,9 @@ end;
 
 procedure execExternalProgram(const cmd: string);
 begin
-  if optListCmd in gGlobalOptions then
+  if (optListCmd in gGlobalOptions) or (gVerbosity > 0) then
     MessageOut('Executing: ' +{&} nl +{&} cmd);
-  if ExecuteProcess(cmd) <> 0 then
+  if executeShellCommand(cmd) <> 0 then
     rawMessage(errExecutionOfProgramFailed);
 end;
 
@@ -391,12 +404,7 @@ begin
   splitPath(projectFile, path, scriptname);
   SplitFilename(scriptname, name, ext);
   name := appendFileExt('compile_' + name, platform.os[targetOS].scriptExt);
-  WriteRope(script, joinPath([path, genSubDir, name]));
-end;
-
-procedure addStr(var dest: string; const src: string);
-begin
-  dest := dest +{&} src;
+  WriteRope(script, joinPath(path, name));
 end;
 
 function getOptSpeed(c: TSystemCC): string;
@@ -420,17 +428,51 @@ begin
     result := cc[c].optSize // use default settings from this file
 end;
 
+const
+  specialFileA = 42;
+  specialFileB = 42;
+var
+  fileCounter: int;
+
 function getCompileCFileCmd(const cfilename: string;
                             isExternal: bool = false): string;
 var
-  cfile, objfile, options, includeCmd, compilePattern: string;
+  cfile, objfile, options, includeCmd, compilePattern, key, trunk, exe: string;
   c: TSystemCC; // an alias to ccompiler
 begin
   c := ccompiler;
   options := compileOptions;
-  if optCDebug in gGlobalOptions then addStr(options, ' ' + getDebug(c));
-  if optOptimizeSpeed in gOptions then addStr(options, ' ' + getOptSpeed(c))
-  else if optOptimizeSize in gOptions then addStr(options, ' ' + getOptSize(c));
+  trunk := getFileTrunk(cfilename);
+  if optCDebug in gGlobalOptions then begin
+    key := trunk + '.debug';
+    if existsConfigVar(key) then
+      addOpt(options, getConfigVar(key))
+    else
+      addOpt(options, getDebug(c))
+  end;
+  if (optOptimizeSpeed in gOptions) then begin
+    //if ((fileCounter >= specialFileA) and (fileCounter <= specialFileB)) then
+    key := trunk + '.speed';
+    if existsConfigVar(key) then
+      addOpt(options, getConfigVar(key))
+    else
+      addOpt(options, getOptSpeed(c))
+  end
+  else if optOptimizeSize in gOptions then begin
+    key := trunk + '.size';
+    if existsConfigVar(key) then
+      addOpt(options, getConfigVar(key))
+    else
+      addOpt(options, getOptSize(c))
+  end;
+  key := trunk + '.always';
+  if existsConfigVar(key) then
+    addOpt(options, getConfigVar(key));
+
+  exe := cc[c].compilerExe;
+  key := cc[c].name + '.exe';
+  if existsConfigVar(key) then
+    exe := getConfigVar(key);
 
   if (optGenDynLib in gGlobalOptions)
   and (ospNeedsPIC in platform.OS[targetOS].props) then
@@ -441,8 +483,7 @@ begin
     includeCmd := cc[c].includeCmd; // this is more complex than needed, but
     // a workaround of a FPC bug...
     addStr(includeCmd, libpath);
-    compilePattern := quoteIfSpaceExists(
-      JoinPath(ccompilerpath, cc[c].compilerExe));
+    compilePattern := quoteIfSpaceExists(JoinPath(ccompilerpath, exe));
   end
   else begin
     includeCmd := '';
@@ -458,7 +499,7 @@ begin
   else
     objfile := completeCFilePath(toObjFile(cfile));
 
-  result := compilePattern +{&} ' ' +{&} format(cc[c].compileTmpl,
+  result := format(compilePattern +{&} ' ' +{&} cc[c].compileTmpl,
     ['file', AppendFileExt(cfile, cExt),
      'objfile', objfile,
      'options', options,
@@ -476,6 +517,7 @@ var
 begin
   it := PStrEntry(list.head);
   while it <> nil do begin
+    inc(fileCounter);
     // call the C compiler for the .c file:
     compileCmd := getCompileCFileCmd(it.data, isExternal);
     if not (optCompileOnly in gGlobalOptions) then
@@ -491,16 +533,15 @@ end;
 procedure CallCCompiler(const projectfile: string);
 var
   it: PStrEntry;
-  linkCmd, objfiles, exefile, buildgui, builddll: string;
+  linkCmd, objfiles, exefile, buildgui, builddll, linkerExe: string;
   c: TSystemCC; // an alias to ccompiler
   script: PRope;
 begin
   if (gGlobalOptions * [optCompileOnly, optGenScript] = [optCompileOnly]) then
     exit; // speed up that call if only compiling and no script shall be
   // generated
-  initVars();
   if (toCompile.head = nil) and (externalToCompile.head = nil) then exit;
-  //initVars();
+  fileCounter := 0;
   c := ccompiler;
   script := nil;
   CompileCFile(toCompile, script, false);
@@ -508,10 +549,13 @@ begin
 
   if not (optNoLinking in gGlobalOptions) then begin
     // call the linker:
+    linkerExe := getConfigVar(cc[c].name + '.linkerexe');
+    if length(linkerExe) = 0 then linkerExe := cc[c].linkerExe;
+
     if (hostOS <> targetOS) then
-      linkCmd := cc[c].linkerExe
+      linkCmd := linkerExe
     else
-      linkCmd := quoteIfSpaceExists(JoinPath(ccompilerpath, cc[c].linkerExe));
+      linkCmd := quoteIfSpaceExists(JoinPath(ccompilerpath, linkerExe));
 
     if optGenDynLib in gGlobalOptions then
       buildDll := cc[c].buildDll
@@ -546,7 +590,7 @@ begin
       it := PStrEntry(it.next);
     end;
 
-    linkCmd := linkCmd +{&} ' ' +{&} format(cc[c].linkTmpl, [
+    linkCmd := format(linkCmd +{&} ' ' +{&} cc[c].linkTmpl, [
       'builddll', builddll,
       'buildgui', buildgui,
       'options', linkOptions,
@@ -565,6 +609,30 @@ begin
     app(script, tnl);
     generateScript(projectFile, script)
   end
+end;
+
+function genMappingFiles(const list: TLinkedList): PRope;
+var
+  it: PStrEntry;
+begin
+  result := nil;
+  it := PStrEntry(list.head);
+  while it <> nil do begin
+    appf(result, '--file:"$1"$n', [toRope(AppendFileExt(it.data, cExt))]);
+    it := PStrEntry(it.next);
+  end;
+end;
+
+procedure writeMapping(const cfile: string; gSymbolMapping: PRope);
+var
+  code: PRope;
+begin
+  if not (optGenMapping in gGlobalOptions) then exit;
+  code := toRope('[C_Files]'+nl);
+  app(code, genMappingFiles(toCompile));
+  app(code, genMappingFiles(externalToCompile));
+  appf(code, '[Symbols]$n$1', [gSymbolMapping]);
+  WriteRope(code, joinPath(projectPath, 'mapping.txt'));
 end;
 
 end.

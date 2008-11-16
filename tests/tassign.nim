@@ -14,14 +14,14 @@ proc test() =
   a.x = 1
   a.y = 2
   a.s = "Hallo!"
-  a.seq = ["abc", "def", "ghi", "jkl"]
-  a.arr = []
+  a.seq = @["abc", "def", "ghi", "jkl"]
+  a.arr = @[]
   setLen(a.arr, 4)
-  a.arr[0] = []
-  a.arr[1] = []
+  a.arr[0] = @[]
+  a.arr[1] = @[]
 
   b = a # perform a deep copy here!
-  b.seq = ["xyz", "huch", "was", "soll"]
+  b.seq = @["xyz", "huch", "was", "soll"]
   writeln(stdout, len(a.seq))
   writeln(stdout, a.seq[3])
   writeln(stdout, len(b.seq))

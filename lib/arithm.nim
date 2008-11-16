@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2008 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,11 +10,11 @@
 
 # simple integer arithmetic with overflow checking
 
-proc raiseOverflow {.exportc: "raiseOverflow".} =
+proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
   raise newException(EOverflow, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero".} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noinline.} =
   raise newException(EDivByZero, "divison by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
@@ -75,9 +75,9 @@ proc mulInt64(a, b: int64): int64 {.compilerproc.} =
   var
     resAsFloat, floatProd: float64
   result = a *% b
-  floatProd = float64(a) # conversion
-  floatProd = floatProd * float64(b)
-  resAsFloat = float64(result)
+  floatProd = toBiggestFloat(a) # conversion
+  floatProd = floatProd * toBiggestFloat(b)
+  resAsFloat = toBiggestFloat(result)
 
   # Fast path for normal case: small multiplicands, and no info
   # is lost in either method.
@@ -101,16 +101,14 @@ proc absInt(a: int): int {.compilerProc, inline.} =
     else: return -a
   raiseOverflow()
 
-when defined(I386) and (defined(vcc) or defined(wcc) or defined(dmc)):
-  # or defined(gcc)):
-  {.define: asmVersion.}
-  # my Version of Borland C++Builder does not have
-  # tasm32, which is needed for assembler blocks
-  # this is why Borland is not included in the 'when'
-else:
-  {.define: useInline.}
+const
+  asmVersion = defined(I386) and (defined(vcc) or defined(wcc) or defined(dmc))
+    # my Version of Borland C++Builder does not have
+    # tasm32, which is needed for assembler blocks
+    # this is why Borland is not included in the 'when'
+  useInline = not asmVersion
 
-when defined(asmVersion) and defined(gcc):
+when asmVersion and defined(gcc):
   proc addInt(a, b: int): int {.compilerProc, pure, inline.}
   proc subInt(a, b: int): int {.compilerProc, pure, inline.}
   proc mulInt(a, b: int): int {.compilerProc, pure, inline.}
@@ -118,7 +116,7 @@ when defined(asmVersion) and defined(gcc):
   proc modInt(a, b: int): int {.compilerProc, pure, inline.}
   proc negInt(a: int): int {.compilerProc, pure, inline.}
 
-elif defined(asmVersion):
+elif asmVersion:
   proc addInt(a, b: int): int {.compilerProc, pure.}
   proc subInt(a, b: int): int {.compilerProc, pure.}
   proc mulInt(a, b: int): int {.compilerProc, pure.}
@@ -126,7 +124,7 @@ elif defined(asmVersion):
   proc modInt(a, b: int): int {.compilerProc, pure.}
   proc negInt(a: int): int {.compilerProc, pure.}
 
-elif defined(useInline):
+elif useInline:
   proc addInt(a, b: int): int {.compilerProc, inline.}
   proc subInt(a, b: int): int {.compilerProc, inline.}
   proc mulInt(a, b: int): int {.compilerProc.}
@@ -145,7 +143,7 @@ else:
 
 # implementation:
 
-when defined(asmVersion) and not defined(gcc):
+when asmVersion and not defined(gcc):
   # assembler optimized versions for compilers that
   # have an intel syntax assembler:
   proc addInt(a, b: int): int =
@@ -210,7 +208,7 @@ when defined(asmVersion) and not defined(gcc):
       theEnd:
     """
 
-elif defined(asmVersion) and defined(gcc):
+elif asmVersion and defined(gcc):
   proc addInt(a, b: int): int =
     asm """ "addl %1,%%eax\n"
              "jno 1\n"
