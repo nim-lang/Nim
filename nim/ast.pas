@@ -66,6 +66,79 @@ for key, val in enums.items():
   cog.out(b)
 ]]]*)
 type
+  TTypeFlag = (
+    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
+  TTypeFlags = set of TTypeFlag;
+const
+  TypeFlagToStr: array [TTypeFlag] of string = (
+    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
+type
+  TTypeKind = (
+    tyNone, tyBool, tyChar, tyEmpty, 
+    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
+    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
+    tyObject, tyTuple, tySet, tyRange, 
+    tyPtr, tyRef, tyVar, tySequence, 
+    tyProc, tyPointer, tyOpenArray, tyString, 
+    tyCString, tyForward, tyInt, tyInt8, 
+    tyInt16, tyInt32, tyInt64, tyFloat, 
+    tyFloat32, tyFloat64, tyFloat128);
+  TTypeKinds = set of TTypeKind;
+const
+  TypeKindToStr: array [TTypeKind] of string = (
+    'tyNone', 'tyBool', 'tyChar', 'tyEmpty', 
+    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
+    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
+    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
+    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
+    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
+    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
+    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
+    'tyFloat32', 'tyFloat64', 'tyFloat128');
+type
+  TSymFlag = (
+    sfUsed, sfStar, sfMinus, sfInInterface, 
+    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
+    sfExportc, sfVolatile, sfRegister, sfPure, 
+    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
+    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
+    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
+    sfCompileTime, sfThreadVar, sfMerge);
+  TSymFlags = set of TSymFlag;
+const
+  SymFlagToStr: array [TSymFlag] of string = (
+    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
+    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
+    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
+    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
+    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
+    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
+    'sfCompileTime', 'sfThreadVar', 'sfMerge');
+type
+  TNodeFlag = (
+    nfNone, nfBase2, nfBase8, nfBase16, 
+    nfAllConst, nfTransf, nfSem);
+  TNodeFlags = set of TNodeFlag;
+const
+  NodeFlagToStr: array [TNodeFlag] of string = (
+    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
+    'nfAllConst', 'nfTransf', 'nfSem');
+type
+  TSymKind = (
+    skUnknownSym, skConditional, skDynLib, skParam, 
+    skTypeParam, skTemp, skType, skConst, 
+    skVar, skProc, skIterator, skConverter, 
+    skMacro, skTemplate, skField, skEnumField, 
+    skForVar, skModule, skLabel, skStub);
+  TSymKinds = set of TSymKind;
+const
+  SymKindToStr: array [TSymKind] of string = (
+    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
+    'skTypeParam', 'skTemp', 'skType', 'skConst', 
+    'skVar', 'skProc', 'skIterator', 'skConverter', 
+    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
+    'skForVar', 'skModule', 'skLabel', 'skStub');
+type
   TNodeKind = (
     nkNone, nkEmpty, nkIdent, nkSym, 
     nkType, nkCharLit, nkIntLit, nkInt8Lit, 
@@ -134,79 +207,6 @@ const
     'nkRecCase', 'nkRecWhen', 'nkRefTy', 'nkPtrTy', 
     'nkVarTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 
     'nkReturnToken');
-type
-  TSymFlag = (
-    sfUsed, sfStar, sfMinus, sfInInterface, 
-    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
-    sfExportc, sfVolatile, sfRegister, sfPure, 
-    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
-    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
-    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
-    sfCompileTime, sfThreadVar, sfMerge);
-  TSymFlags = set of TSymFlag;
-const
-  SymFlagToStr: array [TSymFlag] of string = (
-    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
-    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
-    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
-    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
-    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
-    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
-    'sfCompileTime', 'sfThreadVar', 'sfMerge');
-type
-  TTypeKind = (
-    tyNone, tyBool, tyChar, tyEmpty, 
-    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
-    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
-    tyObject, tyTuple, tySet, tyRange, 
-    tyPtr, tyRef, tyVar, tySequence, 
-    tyProc, tyPointer, tyOpenArray, tyString, 
-    tyCString, tyForward, tyInt, tyInt8, 
-    tyInt16, tyInt32, tyInt64, tyFloat, 
-    tyFloat32, tyFloat64, tyFloat128);
-  TTypeKinds = set of TTypeKind;
-const
-  TypeKindToStr: array [TTypeKind] of string = (
-    'tyNone', 'tyBool', 'tyChar', 'tyEmpty', 
-    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
-    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
-    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
-    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
-    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
-    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
-    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
-    'tyFloat32', 'tyFloat64', 'tyFloat128');
-type
-  TNodeFlag = (
-    nfNone, nfBase2, nfBase8, nfBase16, 
-    nfAllConst, nfTransf, nfSem);
-  TNodeFlags = set of TNodeFlag;
-const
-  NodeFlagToStr: array [TNodeFlag] of string = (
-    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
-    'nfAllConst', 'nfTransf', 'nfSem');
-type
-  TTypeFlag = (
-    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
-  TTypeFlags = set of TTypeFlag;
-const
-  TypeFlagToStr: array [TTypeFlag] of string = (
-    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
-type
-  TSymKind = (
-    skUnknownSym, skConditional, skDynLib, skParam, 
-    skTypeParam, skTemp, skType, skConst, 
-    skVar, skProc, skIterator, skConverter, 
-    skMacro, skTemplate, skField, skEnumField, 
-    skForVar, skModule, skLabel, skStub);
-  TSymKinds = set of TSymKind;
-const
-  SymKindToStr: array [TSymKind] of string = (
-    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
-    'skTypeParam', 'skTemp', 'skType', 'skConst', 
-    'skVar', 'skProc', 'skIterator', 'skConverter', 
-    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
-    'skForVar', 'skModule', 'skLabel', 'skStub');
 {[[[end]]]}
 
 type

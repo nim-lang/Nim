@@ -750,7 +750,7 @@ proc collectCycles(gch: var TGcHeap) =
   CellSetDeinit(gch.cycleRoots)
   gch.cycleRoots = newRoots
 
-proc gcMark(p: pointer) {.fastcall.} =
+proc gcMark(p: pointer) = # {.fastcall.} =
   # the addresses are not as objects on the stack, so turn them to objects:
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)

@@ -31,6 +31,24 @@
 #  cog.out(toEnum(key, val))
 #]]]
 type
+  TNimrodTypeKind* = enum
+    ntyNone, ntyBool, ntyChar, ntyEmpty, 
+    ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
+    ntyGenericParam, ntyEnum, ntyAnyEnum, ntyArray, 
+    ntyObject, ntyTuple, ntySet, ntyRange, 
+    ntyPtr, ntyRef, ntyVar, ntySequence, 
+    ntyProc, ntyPointer, ntyOpenArray, ntyString, 
+    ntyCString, ntyForward, ntyInt, ntyInt8, 
+    ntyInt16, ntyInt32, ntyInt64, ntyFloat, 
+    ntyFloat32, ntyFloat64, ntyFloat128
+  TNimTypeKinds* = set[TNimrodTypeKind]
+  TNimrodSymKind* = enum
+    nskUnknownSym, nskConditional, nskDynLib, nskParam, 
+    nskTypeParam, nskTemp, nskType, nskConst, 
+    nskVar, nskProc, nskIterator, nskConverter, 
+    nskMacro, nskTemplate, nskField, nskEnumField, 
+    nskForVar, nskModule, nskLabel, nskStub
+  TNimSymKinds* = set[TNimrodSymKind]
   TNimrodNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym, 
     nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
@@ -65,24 +83,6 @@ type
     nnkVarTy, nnkProcTy, nnkEnumTy, nnkEnumFieldDef, 
     nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
-  TNimrodTypeKind* = enum
-    ntyNone, ntyBool, ntyChar, ntyEmpty, 
-    ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
-    ntyGenericParam, ntyEnum, ntyAnyEnum, ntyArray, 
-    ntyObject, ntyTuple, ntySet, ntyRange, 
-    ntyPtr, ntyRef, ntyVar, ntySequence, 
-    ntyProc, ntyPointer, ntyOpenArray, ntyString, 
-    ntyCString, ntyForward, ntyInt, ntyInt8, 
-    ntyInt16, ntyInt32, ntyInt64, ntyFloat, 
-    ntyFloat32, ntyFloat64, ntyFloat128
-  TNimTypeKinds* = set[TNimrodTypeKind]
-  TNimrodSymKind* = enum
-    nskUnknownSym, nskConditional, nskDynLib, nskParam, 
-    nskTypeParam, nskTemp, nskType, nskConst, 
-    nskVar, nskProc, nskIterator, nskConverter, 
-    nskMacro, nskTemplate, nskField, nskEnumField, 
-    nskForVar, nskModule, nskLabel, nskStub
-  TNimSymKinds* = set[TNimrodSymKind]
 #[[[end]]]
 
 type
