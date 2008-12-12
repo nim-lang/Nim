@@ -1,9 +1,0 @@
-# There used to be a bug in agrep where the record delimiter was
-# considered to be part of the record, causing '$' at the end of the
-# regexp to work in an unexpected way.
-^foobar$
-foobar$
-^foobar
-foobar
--d X ^xyzzy$
--d X -M ^xyzzy$
