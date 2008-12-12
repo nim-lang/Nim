@@ -14,7 +14,7 @@ proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
   raise newException(EOverflow, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noinline.} =
+proc raiseDivByZero {.compilerproc, noinline.} =
   raise newException(EDivByZero, "divison by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =

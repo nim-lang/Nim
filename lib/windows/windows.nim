@@ -7362,8 +7362,6 @@ when defined(x86_64):
 
     TXmmSaveArea* = XMM_SAVE_AREA32
     PXmmSaveArea* = ptr TXmmSaveArea
-  const
-    LEGACY_SAVE_AREA_LENGTH* = sizeof(XMM_SAVE_AREA32)
   type
     CONTEXT* {.final, pure.} = object
       P1Home*: DWORD64

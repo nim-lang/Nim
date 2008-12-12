@@ -1,0 +1,812 @@
+Sat Dec  9 23:11:49 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for 0.7.5.
+
+    M ./NEWS +3
+    M ./README -93 +107
+    M ./po/fi.po -18 +20
+    M ./po/sv.po -18 +20
+
+Sat Dec  9 22:44:07 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Skip localization tests on OpenBSD.
+  Thanks to Matthias Kilian for letting me know of the test failures.
+
+    M ./THANKS +1
+    M ./tests/retest.c -2 +2
+
+Sat Dec  9 22:34:55 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Added support for the -q command line option.
+
+    M ./doc/agrep.1.in +4
+    M ./src/agrep.c -2 +13
+
+Sat Dec  9 22:16:27 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed handling of agrep record buffer size with short reads.
+  Merged patch from Peter D. Gray, thanks!
+  
+  The old code was not properly taking into account the possibility that
+  read() may return less bytes than what was requested even when not at
+  end of file.  If the buffer was not filled the buffer size was anyway
+  increased.  With files where short reads happen (often with pipes)
+  this sometimes lead to "out of memory" errors.
+
+    M ./src/agrep.c -46 +54
+
+Sat Dec  9 21:29:48 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Update for latest gnulib.
+
+    M ./README.darcs -1 +1
+    M ./configure.ac -1 +1
+
+Sun Dec  3 10:45:37 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Don't force static linking for test programs.
+  IIRC, this was causing compilation problems on OS X.
+
+    M ./tests/Makefile.am -3
+
+Sun Dec  3 10:36:07 EET 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed some warnings with the Intel C/C++ compiler.
+  The Intel compiler gives warnings for shadowing other identifiers in
+  scope.
+
+    M ./lib/tre-compile.c -14 +14
+    M ./lib/tre-stack.h -4 +4
+
+Sun Sep 24 09:20:54 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed include directories for release builds.
+  Thanks to Samets Anton for reporting the problem.
+
+    M ./win32/tre.dsp -1 +1
+
+Fri Sep 22 14:31:16 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for 0.7.5.
+
+    M ./THANKS +1
+
+Wed Sep 20 14:22:13 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed linking of test programs.
+  The test programs weren't linked agains all possibly needde libraries.
+  Builds were failing on OS X and FreeBSD because of this.  Also, the
+  `bench' program is not needed during "make check" so don't build it.
+  
+  Thanks to Bob Carlitz for reporting the problems.
+
+    M ./lib/Makefile.am -1 +1
+    M ./tests/Makefile.am -4 +5
+
+Sat Jul 29 14:31:28 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Sorted command line parameter lists.
+
+    M ./src/agrep.c -29 +29
+
+Sat Jul 29 14:07:08 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated line numbers.
+
+    M ./po/fi.po -10 +10
+    M ./po/sv.po -10 +10
+
+Sat Jul 29 14:05:05 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Changed using * and + after another repetition operator to an error.
+  The use of * and + after another repetition operator is now reserved
+  for future extension.
+  
+  Thanks to Bram Matthys for letting me know of the performance problems
+  when using "++" and back references in the same regex.
+
+    M ./NEWS +12
+    M ./THANKS +1
+    M ./doc/tre-api.html -1 +2
+    M ./lib/regerror.c -14 +14
+    M ./lib/regex.h -1 +1
+    M ./lib/tre-parse.c -7 +23
+    M ./po/fi.po -3 +3
+    M ./po/sv.po -3 +3
+    M ./tests/retest.c +8
+
+Sat Jul 29 11:40:39 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Documentation updates.
+  Thanks to Dominick Meglio for sending these!
+
+    M ./NEWS +2
+    M ./doc/tre-api.html -2 +8
+    M ./doc/tre-syntax.html -5 +32
+
+Sat Jul 29 09:51:23 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed handling of + and ? in BREs.
+  + and ? were considered special even in the obsolete "basic" regex
+  (BRE) mode.  In BRE mode + and ? are ordinary characters.  I added
+  some tests for these.
+  
+  Thanks to Rich Felker for reporting the bug.
+
+    M ./THANKS +1
+    M ./lib/tre-parse.c -1 +3
+    M ./tests/retest.c +5
+
+Fri Jul 28 17:24:45 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed regex parser on big-endian 64 bit architectures.
+  This bug was not about 64 bit clean code as such.  The bug just
+  doesn't cause any trouble on little-endian 64 bit machines (x86_64) or
+  32 bit machines, but causes a lot of trouble on big-endian 64 bit
+  machines (sparc, powerpc).   I added an assert to catch similar bugs
+  in the future.
+  
+  Thanks to Peter D. Gray for notifying me about the problem and helping
+  in debugging it.
+
+    M ./NEWS +3
+    M ./lib/tre-parse.c -1 +4
+
+Wed Jul 26 11:02:09 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed agrep exit status when no matches found.
+  `agrep' always returned 0 even when no matches were found.  Thanks to
+  Peter D. Gray for letting me know.
+  
+  Added tests for agrep exit status.
+
+    M ./NEWS +3
+    M ./THANKS +1
+    M ./src/agrep.c -1 +3
+    M ./tests/agrep/basic.ok +100
+    M ./tests/agrep/delimiters.ok +120
+    A ./tests/agrep/exitstatus.args
+    A ./tests/agrep/exitstatus.input
+    A ./tests/agrep/exitstatus.ok
+    M ./tests/agrep/records.ok +100
+    M ./tests/agrep/run-tests.sh -2 +14
+
+Sat Jul 22 14:57:51 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for 0.7.5.
+
+    M ./NEWS +5
+    M ./configure.ac -1 +1
+
+Tue Jul 25 09:13:46 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed two makefile bugs.
+  The file `agrep.1' was included in the source tarball, although it is
+  generated by the configure script.
+  
+  A `make clean' in tests/agrep accidentally removed `Makefile.in'.
+  
+  Thanks to Santiago Vila for pointing these out.
+  
+  Added some consistency checks to `build-sources.sh' so similar bugs
+  won't happen in the future.
+
+    M ./doc/Makefile.am -1 +1
+    M ./tests/agrep/Makefile.am -1 +1
+    M ./utils/build-sources.sh +22
+
+Sat Jul 22 19:11:55 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed %doc usage.
+  Thanks to Dirk for pointing this out.
+
+    M ./tre.spec.in -2 +5
+
+Sat Jul 22 15:17:17 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for latest gnulib.
+
+    M ./utils/autogen.sh -1 +2
+
+Sat Jul 22 14:59:47 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Removed guessing of best optimizing CFLAGS.
+  With old versions of GCC "-O1 -fomit-frame-pointer" produced the best
+  code for x86 systems, but with GCC 4.x this is no longer the case.
+  
+  With GCC 4.1.0, building with "-O1 -fomit-frame-pointer" makes TRE
+  about 15% slower than when built with "-O2 -g" (the default).
+  Removing the "-g" has a negligible positive effect, so it's better to
+  leave it in so the result is actually debuggable.
+
+    M ./configure.ac -3
+    M ./m4/Makefile.am -1
+    R ./m4/tre_prog_cc_optimizations.m4
+
+Wed May 24 19:29:40 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed spacing in help texts and translations.
+
+    M ./po/fi.po -4 +4
+    M ./po/sv.po -18 +14
+    M ./src/agrep.c -2 +2
+
+Wed May 24 17:50:22 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Swedish translation of TRE from Daniel Nylander.
+
+    M ./THANKS +1
+    M ./po/LINGUAS +1
+    A ./po/sv.po
+
+Mon May 22 08:17:10 EEST 2006  Ville Laurikari <vl@iki.fi>
+  tagged TRE 0.7.4
+
+
+Sun May 21 22:48:28 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated agrep help texts and documentation.
+
+    M ./THANKS +1
+    M ./doc/agrep.1.in -3 +15
+    M ./po/fi.po -9 +20
+    M ./src/agrep.c -2 +6
+
+Sun May 21 22:27:44 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added instructions for building from darcs repo sources.
+
+    A ./README.darcs
+
+Sun May 21 22:23:56 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated win32 stuff to work again.
+
+    M ./win32/config.h +4
+    M ./win32/retest.dsp -4 +4
+    M ./win32/tre.dsp -6 +6
+
+Sun May 21 21:24:06 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added LGPL file to repo.
+  I would prefer this to be pulled in by `automake --add-missing' but it
+  seems it only knows how to pull the GPL, not the LGPL.
+
+    A ./COPYING.LESSER
+
+Sun May 21 20:59:15 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for 0.7.4.
+
+    M ./NEWS -1 +22
+
+Sun May 21 19:12:49 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added special handling for MinGW.
+  MinGW seems to have broken versions of wcsrtombs() and wcstombs(), so
+  I turned off wchar support completely on MinGW.
+  
+  Additionally, agrep seems to output \r\n newlines on MinGW which was
+  causing problems with the agrep test suite.  Now they are filtered out
+  before comparing with reference results.
+
+    M ./configure.ac +10
+    M ./tests/agrep/Makefile.am -1 +3
+    M ./tests/agrep/run-tests.sh +8
+
+Sun May 21 18:39:21 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Cosmetic changes.
+
+    M ./configure.ac -2 +2
+    M ./lib/regexec.c -1 +1
+    M ./lib/tre-match-backtrack.c -3 +3
+    M ./lib/tre-parse.c -4 +4
+    M ./lib/tre-stack.c -1 +1
+    M ./tests/retest.c -3 +3
+
+Sun May 21 15:36:49 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Replaced %Zd with %lu and a cast.
+  Unfortunately, %Zd is not available on all platforms.  The z modifier
+  seems to be introduced in C99.  So, replaced these with `unsigned long'
+  (`size_t' cannot be wider than `unsigned long') which is more
+  portable.
+
+    M ./lib/tre-match-parallel.c -1 +1
+    M ./tests/test-str-source.c -3 +5
+
+Sun May 21 11:58:28 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed some compiler warnings.
+
+    M ./lib/regcomp.c -1 +1
+    M ./lib/tre-internal.h -1 +1
+    M ./lib/tre-parse.c -1 +1
+
+Sun May 21 10:30:44 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed approximate and backtracking matcher to work better with reguexec().
+  Previously, the user-provided tre_str_source had to give a zero as the
+  last character.  Now the return value of get_next_char() is properly
+  checked also in the approximate and backtracking matchers.
+
+    M ./lib/tre-match-approx.c -1 +6
+    M ./lib/tre-match-backtrack.c -1 +6
+
+Sun May 21 10:17:26 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixes for --enable-system-abi.
+  Fixed to work when REG_BASIC is already defined, also fixed to work
+  when one of REG_NOSPEC or REG_LITERAL is already defined.
+
+    M ./lib/regex.h -2 +4
+
+Sun May 21 10:12:33 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Simplified tre_expand_macro.
+  This avoids using btowc() which doesn't seem to exist on HP-UX 11.00
+  and makes the code a lot simpler.
+
+    M ./lib/tre-parse.c -34 +19
+
+Sun May 21 10:04:35 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed printf arguments when regoff_t is not of type int.
+  When configured with --enable-system-abi the `rm_so' and `rm_eo'
+  fields of `struct regmatch_t' may not be of type `int'.  This was
+  actually causing agrep and the test programs to crash on some
+  platforms.
+
+    M ./src/agrep.c -3 +3
+    M ./tests/bench.c -2 +2
+    M ./tests/retest.c -3 +3
+    M ./tests/test-str-source.c -1 +1
+
+Sun May 21 10:04:00 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed a number of bugs in agrep.
+  The record delimiter was included in the record.  This meant that
+    echo foo | agrep 'foo$'
+  did not match, even though it obviously should.
+  
+  When --show-position and -v were combined, the positions shown were
+  incorrect.  Now the entire record is indicated as the match.
+  
+  When --color and -v were combined, spurious coloring was printed for
+  an empty string.
+
+    M ./po/fi.po -9 +9
+    M ./src/agrep.c -19 +35
+
+Sun May 21 09:52:08 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed backtracking matcher to work if malloc(0) returns NULL.
+  When configured with --without-alloca, the backtracking matches uses
+  malloc() to allocate memory.  On some platforms, at least Digital UNIX
+  V4.0, trying to allocate a zero length block with malloc() gives NULL
+  (i.e. an error), instead of some pointer.
+
+    M ./lib/tre-match-backtrack.c -12 +21
+
+Sun May 21 09:43:18 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added regression tests for agrep.
+  These are quite rudimentary, but test the agrep specific functionality
+  pretty well.  Actual regex matching functionality is already covered
+  by `retest.c' so that stuff shouldn't be repeated here.
+
+    M ./configure.ac +1
+    M ./tests/Makefile.am +2
+    A ./tests/agrep/
+    A ./tests/agrep/Makefile.am
+    A ./tests/agrep/basic.args
+    A ./tests/agrep/basic.input
+    A ./tests/agrep/basic.ok
+    A ./tests/agrep/delimiters.args
+    A ./tests/agrep/delimiters.input
+    A ./tests/agrep/delimiters.ok
+    A ./tests/agrep/records.args
+    A ./tests/agrep/records.input
+    A ./tests/agrep/records.ok
+    A ./tests/agrep/run-tests.sh
+
+Sun May 21 09:32:17 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Included GNU getopt implementation from gnulib.
+  Many systems don't have getopt_long().  This is unfortunate, because
+  it makes agrep behave differently on different systems.  Now the
+  getopt implementation from gnulib is used if the system does not
+  already have a usable getopt_long().  As a result, agrep command line
+  parsing always works in the same way on all platforms.
+  
+  See http://www.gnu.org/software/gnulib/ for more information on
+  gnulib.
+
+    M ./Makefile.am -2 +2
+    M ./configure.ac -10 +21
+    A ./gnulib/
+    A ./gnulib/Makefile.am
+    M ./lib/Makefile.am -2 +3
+    M ./src/Makefile.am -2 +3
+    M ./src/agrep.c -17 +2
+    M ./tests/Makefile.am -1 +1
+    M ./utils/autogen.sh -5 +10
+
+Sun May 21 09:17:41 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added test cases for a suspected bug in \D.
+  It turned out \D works fine.
+
+    M ./tests/retest.c -1 +4
+
+Sun May 21 08:47:27 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed not to build agrep if --disable-approx is used.
+  agrep uses the approximate matching API and fails to compile if it
+  isn't available.
+
+    M ./configure.ac -5 +9
+    M ./src/Makefile.am -1 +1
+
+Thu May 18 20:49:30 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Removed automatically generated file from repository.
+
+    R ./po/tre.pot
+
+Mon May 15 12:35:52 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed agrep to handle interruptions and errors from read().
+
+    M ./po/fi.po -10 +15
+    M ./po/tre.pot -10 +15
+    M ./src/agrep.c -4 +20
+
+Sun May 14 21:39:37 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Declaring public functions `extern' for clarity.
+
+    M ./lib/regex.h -30 +59
+
+Fri May 12 15:00:49 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated email address for bug reports.
+
+    M ./configure.ac -1 +1
+    M ./doc/agrep.1.in -2 +2
+    M ./po/Makevars -1 +1
+    M ./po/fi.po -14 +14
+    M ./po/tre.pot -13 +13
+    M ./src/agrep.c -1 +2
+    M ./tre.spec.in -1 +1
+
+Fri May 12 13:26:07 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed params array signedness inconsistencies.
+
+    M ./lib/tre-ast.h -2 +2
+    M ./lib/tre-compile.c -1 +1
+    M ./lib/tre-parse.c -1 +1
+
+Fri May 12 13:22:35 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Merged spec file patch from Jan Kasprzak.
+
+    M ./THANKS +1
+    M ./tre.spec.in -3 +8
+
+Fri May 12 10:58:35 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed setting direction of tags after union nodes.
+  Thanks to Nikolai Weibull for spotting this.
+
+    M ./THANKS +1
+    M ./lib/tre-compile.c -2 +2
+
+Wed May 10 21:34:04 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added things needed for building DLLs on Cygwin and MinGW.
+  Surprisingly, libtool requires these magic incantations in order to
+  make in build DLLs on Cygwin and MinGW.
+
+    M ./configure.ac +1
+    M ./lib/Makefile.am -1 +1
+
+Wed May 10 16:18:34 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added requirement for automake 1.9.
+
+    M ./configure.ac -1 +1
+
+Wed May 10 15:11:30 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed a (harmless) compiler warning in 64 bit builds.
+
+    M ./lib/xmalloc.c -1 +1
+
+Wed May 10 15:07:14 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed printf format string and argument types for 64 bit builds.
+
+    M ./lib/tre-compile.c -1 +1
+    M ./lib/tre-match-parallel.c -1 +1
+    M ./lib/tre-parse.c -52 +45
+    M ./tests/test-str-source.c -3 +3
+
+Wed May 10 14:51:06 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed tre_stack to handle sizeof(int) != sizeof(void*)
+  This gets rid of most compiler warnings of x86_64.  The old code was
+  casting small ints to void pointers.  Now the stack uses a union to
+  store items on the stack, and the stack API has separate functions for
+  pushing and popping integers and pointers.
+
+    M ./lib/tre-compile.c -114 +114
+    M ./lib/tre-parse.c -39 +39
+    M ./lib/tre-stack.c -8 +25
+    M ./lib/tre-stack.h -15 +22
+
+Wed May 10 14:33:04 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Don't build test code until "make check".
+
+    M ./tests/Makefile.am -2 +2
+
+Wed May 10 14:29:22 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Removed unused tre_filter code.
+  This was just something I experimented with and never got finished
+  up.  The files are still in the repository, but aren't included in the
+  source code distributions or builds.
+
+    M ./lib/Makefile.am -2
+    M ./lib/regexec.c -14
+    M ./win32/tre.dsp -8
+
+Sun Apr  2 17:01:34 EEST 2006  Ville Laurikari <vl@iki.fi>
+  tagged TRE 0.7.3
+
+
+Sun Apr  2 16:56:15 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed to work with shared home directories.
+
+    M ./tests/build-run.sh -4 +8
+
+Sun Apr  2 15:57:26 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated for 0.7.3.
+
+    M ./NEWS +4
+
+Sun Apr  2 15:44:25 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed some remaining GPL references to LGPL.
+
+    M ./README -4 +4
+    M ./lib/tre-compile.c -1 +1
+    M ./lib/tre-stack.c -1 +1
+    M ./po/fi.po -1 +1
+    M ./po/tre.pot -1 +1
+    M ./python/setup.py.in -11 +13
+    M ./tre.spec.in -1 +1
+
+Sun Apr  2 15:26:32 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * ChangeLog is now generated by darcs.
+
+    R ./ChangeLog
+    A ./ChangeLog.old
+    M ./utils/autogen.sh +3
+
+Sun Apr  2 15:22:20 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Fixed DOS newlines to UNIX newlines.
+
+    M ./python/example.py -13 +13
+
+Sun Apr  2 15:20:27 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * The Python language bindings are now LGPL as well.
+  I received permission from Nikolai Saoukh, the author of the Python
+  language bindings for TRE, to change the license to anything I like.
+
+    M ./LICENSE -4
+    R ./python/COPYING
+    M ./python/tre-python.c -10 +11
+
+Sun Apr  2 14:19:03 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Test script now waits for jobs to finish.
+
+    M ./tests/build-on-hosts.sh -3 +5
+    M ./tests/build-tests.sh -1 +3
+
+Sun Apr  2 13:34:28 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated test hosts.
+
+    A ./tests/build-hosts/earthquake
+    R ./tests/build-hosts/hutcs
+
+Sun Apr  2 14:18:18 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Updated localization files.
+
+    M ./po/fi.po -35 +35
+    M ./po/tre.pot -32 +32
+
+Sun Apr  2 14:17:07 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Added missing flags when TRE_USE_SYSTEM_REGEX_H is defined.
+
+    M ./lib/regex.h +2
+
+Sun Apr  2 11:44:06 EEST 2006  Ville Laurikari <vl@iki.fi>
+  * Changed license from GPL to LGPL.
+  Due to numerous requests, and the absence of the not-so-expected
+  onslaught of proprietary software turning free because of the TRE
+  license, I've decided to change the license to LGPL.
+
+    M ./LICENSE -5 +18
+    M ./NEWS +5
+    M ./configure.ac -1 +1
+    M ./lib/regcomp.c -10 +11
+    M ./lib/regerror.c -10 +11
+    M ./lib/regex.h -10 +11
+    M ./lib/regexec.c -10 +11
+    M ./lib/tre-ast.c -10 +11
+    M ./lib/tre-ast.h -10 +12
+    M ./lib/tre-compile.c -10 +11
+    M ./lib/tre-compile.h -10 +12
+    M ./lib/tre-filter.c -10 +11
+    M ./lib/tre-internal.h -10 +11
+    M ./lib/tre-match-approx.c -10 +11
+    M ./lib/tre-match-backtrack.c -10 +11
+    M ./lib/tre-match-parallel.c -10 +11
+    M ./lib/tre-match-utils.h -11 +11
+    M ./lib/tre-mem.c -10 +11
+    M ./lib/tre-mem.h -10 +11
+    M ./lib/tre-parse.c -10 +12
+    M ./lib/tre-parse.h -10 +12
+    M ./lib/tre-stack.c -10 +12
+    M ./lib/tre-stack.h -10 +12
+    M ./lib/xmalloc.c -11 +12
+    M ./lib/xmalloc.h -11 +12
+    A ./python/COPYING
+    M ./src/agrep.c -11 +12
+    M ./tests/bench.c -10 +11
+    M ./tests/randtest.c -10 +11
+    M ./tests/retest.c -10 +11
+    M ./tests/test-str-source.c -10 +11
+
+Mon Mar 28 22:33:39 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Added support for "(?#text)" comment syntax.
+  Thanks to Dominick Meglio <codemstr@ptd.net> for contributing this
+  patch.
+
+    M ./lib/tre-parse.c +17
+    M ./tests/retest.c +4
+
+Mon Mar 28 22:24:45 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Added REG_UNGREEDY cflag and 'U' pattern modifier.
+  The REG_UNGREEDY regex compilation flag reverses the normal situation
+  where repetition operators are greedy unless a '?' is appended.  With
+  the REG_UNGREEDY flag in effect, repetition operators are non-greedy
+  unless a '?' is appended.
+  
+  The 'U' pattern modifier, as in "(?U)" and "(?U:pattern)", turns on
+  the REG_UNGREEDY flag for a selected part of the regex.
+  
+  Thanks to Dominick Meglio <codemstr@ptd.net> for contributing the
+  original version of this patch.
+
+    M ./lib/regex.h -1 +2
+    M ./lib/tre-parse.c -7 +26
+    M ./tests/retest.c -2 +11
+
+Mon Mar 28 18:31:22 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Added comments.
+
+    M ./configure.ac -5 +23
+
+Mon Aug 22 09:55:18 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Added "record-number" alias for "line-number" option.
+
+    M ./src/agrep.c +1
+
+Mon Aug 22 09:50:43 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Added --show-position command line flag.
+  The flag causes the match start and end positions to be printed for
+  each output record.  The start and end positions are separated by a
+  dash.  For example:
+  
+    $ agrep --help | agrep --show-position -2 descrpition --show-cost
+    2:26-37:See tre(7) for a complete description.
+  
+
+    M ./src/agrep.c -3 +11
+
+Mon Mar 28 22:06:07 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Updated `autogen.sh' to use autopoint to set up gettext.
+
+    M ./configure.ac +1
+    M ./utils/autogen.sh +6
+
+Mon Mar 28 22:02:45 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Removed `config.h.in' from repository.
+  This file is automatically generated by autoconf, no need to keep this
+  in the repository.
+
+    R ./config.h.in
+
+Mon Mar 28 21:56:03 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Fix bug in parsing \E.
+  There was a bug in parsing the part of a regexp that comes after \E.
+  For example, "\Qabc\E.*" was parsed to be equivalent to  "abc." (or
+  "abc.(?:)*" to be exact), which is obviously incorrect.
+  
+  Thanks to Bill Yerazunis <wsy@merl.com> for reporting the bug.
+
+    M ./lib/tre-parse.c -2 +2
+    M ./tests/retest.c -1 +6
+
+Mon Mar 28 19:41:19 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Indented EXTRA_DIST lists consistently.
+
+    M ./Makefile.am -1 +2
+    M ./doc/Makefile.am -1 +5
+    M ./m4/Makefile.am -6 +6
+    M ./utils/Makefile.am -1 +4
+
+Mon Mar 28 18:15:01 EEST 2005  Ville Laurikari <vl@iki.fi>
+  * Import from TRE 0.7.2 CVS tree.
+  I'm starting to use darcs for revision control in the TRE project.
+  This patch contains the CVS tree of the 0.7.2 release of TRE (more or
+  less).
+  
+  Previously I was using CVS which was OK, but with darcs I get
+  rid of some problems I've been having with CVS:
+  
+    - Renaming or moving files and directories does not work in CVS.
+  
+    - With CVS it's difficult to commit patches as a logical whole,
+      because there's no way to choose which parts of changes to a
+      file I want to include in a change.
+  
+    - With CVS, I used to use a ChangeLog file and leave all CVS
+      commit logs empty.  I've now realized that was stupid.  I
+      intend to get rid of the ChangeLog file in favor of patch
+      summary logs generated by darcs.
+  
+    - Making a CVS repository public is a big hassle compared to
+      doing the same with a darcs repository.
+
+    A ./AUTHORS
+    A ./ChangeLog
+    A ./LICENSE
+    A ./Makefile.am
+    A ./NEWS
+    A ./README
+    A ./THANKS
+    A ./TODO
+    A ./config.h.in
+    A ./configure.ac
+    A ./doc/
+    A ./doc/Makefile.am
+    A ./doc/agrep.1.in
+    A ./doc/default.css
+    A ./doc/tre-api.html
+    A ./doc/tre-syntax.html
+    A ./lib/
+    A ./lib/Makefile.am
+    A ./lib/README
+    A ./lib/regcomp.c
+    A ./lib/regerror.c
+    A ./lib/regex.h
+    A ./lib/regexec.c
+    A ./lib/tre-ast.c
+    A ./lib/tre-ast.h
+    A ./lib/tre-compile.c
+    A ./lib/tre-compile.h
+    A ./lib/tre-config.h.in
+    A ./lib/tre-filter.c
+    A ./lib/tre-filter.h
+    A ./lib/tre-internal.h
+    A ./lib/tre-match-approx.c
+    A ./lib/tre-match-backtrack.c
+    A ./lib/tre-match-parallel.c
+    A ./lib/tre-match-utils.h
+    A ./lib/tre-mem.c
+    A ./lib/tre-mem.h
+    A ./lib/tre-parse.c
+    A ./lib/tre-parse.h
+    A ./lib/tre-stack.c
+    A ./lib/tre-stack.h
+    A ./lib/xmalloc.c
+    A ./lib/xmalloc.h
+    A ./m4/
+    A ./m4/Makefile.am
+    A ./m4/ac_libtool_tags.m4
+    A ./m4/ax_check_funcs_comp.m4
+    A ./m4/ax_check_sign.m4
+    A ./m4/ax_decl_wchar_max.m4
+    A ./m4/tre_prog_cc_optimizations.m4
+    A ./m4/vl_prog_cc_warnings.m4
+    A ./po/
+    A ./po/LINGUAS
+    A ./po/Makevars
+    A ./po/POTFILES.in
+    A ./po/fi.po
+    A ./po/tre.pot
+    A ./python/
+    A ./python/example.py
+    A ./python/setup.py.in
+    A ./python/tre-python.c
+    A ./src/
+    A ./src/Makefile.am
+    A ./src/agrep.c
+    A ./tests/
+    A ./tests/Makefile.am
+    A ./tests/bench.c
+    A ./tests/build-hosts/
+    A ./tests/build-hosts/ahma
+    A ./tests/build-hosts/hemuli
+    A ./tests/build-hosts/hutcs
+    A ./tests/build-hosts/jolly
+    A ./tests/build-on-hosts.sh
+    A ./tests/build-run.sh
+    A ./tests/build-tests.sh
+    A ./tests/randtest.c
+    A ./tests/retest.c
+    A ./tests/test-str-source.c
+    A ./tre.pc.in
+    A ./tre.spec.in
+    A ./utils/
+    A ./utils/Makefile.am
+    A ./utils/autogen.sh
+    A ./utils/build-release.sh
+    A ./utils/build-rpm.sh
+    A ./utils/build-sources.sh
+    A ./utils/replace-vars.sh
+    A ./win32/
+    A ./win32/config.h
+    A ./win32/retest.dsp
+    A ./win32/tre-config.h.in
+    A ./win32/tre.def
+    A ./win32/tre.dsp
+    A ./win32/tre.dsw

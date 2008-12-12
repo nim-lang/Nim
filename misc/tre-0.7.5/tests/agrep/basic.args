@@ -1,0 +1,6 @@
+# Very basic tests with simple string searches.
+random
+-v random
+-i extra
+-e -ding
+-w micro

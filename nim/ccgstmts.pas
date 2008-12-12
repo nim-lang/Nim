@@ -141,7 +141,6 @@ begin
         initLocExpr(p, it.sons[0], a);
         Lelse := getLabel(p);
         appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
-        freeTemp(p, a);
         genStmts(p, it.sons[1]);
         if sonsLen(n) > 1 then
           appf(p.s[cpsStmts], 'goto $1;$n', [Lend]);
@@ -179,7 +178,6 @@ begin
     p.blocks[len].id := abs(p.blocks[len].id);
     appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Labl]);
   end;
-  freeTemp(p, a);
   genStmts(p, t.sons[1]);
   if p.blocks[len].id > 0 then
     appf(p.s[cpsStmts], '} $1: ;$n', [Labl])
@@ -286,7 +284,6 @@ begin
     if gCmd <> cmdCompileToCpp then useMagic(p.module, 'raiseException');
     InitLocExpr(p, t.sons[0], a);
     e := rdLoc(a);
-    freeTemp(p, a);
     typ := t.sons[0].typ;
     while typ.kind in [tyVar, tyRef, tyPtr] do typ := typ.sons[0];
     appf(p.s[cpsStmts], getRaiseFrmt(p),
@@ -306,10 +303,11 @@ end;
 // ---------------- case statement generation -----------------------------
 
 const
-  stringCaseThreshold = 1000; //4; // above X strings a hash-switch for strings
-                          // is generated
-  // this version sets it too high to avoid hashing, because the hashing
-  // algorithm won't be the same; I don't know why
+  stringCaseThreshold = 100000; 
+  // above X strings a hash-switch for strings is generated
+  // this version sets it too high to avoid hashing, because this has not
+  // been tested for a long time
+  // XXX test and enable this optimization!
 
 procedure genCaseGenericBranch(p: BProc; b: PNode; const e: TLoc;
                                const rangeFormat, eqFormat: TFormatStr;
@@ -323,14 +321,11 @@ begin
     if b.sons[i].kind = nkRange then begin
       initLocExpr(p, b.sons[i].sons[0], x);
       initLocExpr(p, b.sons[i].sons[1], y);
-      freeTemp(p, x);
-      freeTemp(p, y);
       appf(p.s[cpsStmts], rangeFormat,
         [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
     end
     else begin
       initLocExpr(p, b.sons[i], x);
-      freeTemp(p, x);
       appf(p.s[cpsStmts], eqFormat,
         [rdCharLoc(e), rdCharLoc(x), labl])
     end
@@ -377,7 +372,6 @@ begin
   end;
   // second pass: generate statements
   genCaseSecondPass(p, t, labId);
-  freeTemp(p, a)
 end;
 
 {@ignore}
@@ -402,24 +396,24 @@ begin
     b := 0;
     for i := 0 to Length(s)-1 do begin
       b := b +{%} Ord(s[i]);
-      b := b +{%} b shl 10;
-      b := b xor (b shr 6)
+      b := b +{%} shlu(b, 10);
+      b := b xor shru(b, 6)
     end;
-    b := b +{%} b shl 3;
-    b := b xor (b shr 11);
-    b := b +{%} b shl 15;
+    b := b +{%} shlu(b, 3);
+    b := b xor shru(b, 11);
+    b := b +{%} shlu(b, 15);
     result := b
   end
   else begin
     a := 0;
     for i := 0 to Length(s)-1 do begin
       a := a +{%} int32(Ord(s[i]));
-      a := a +{%} a shl int32(10);
-      a := a xor (a shr int32(6));
+      a := a +{%} shlu(a, int32(10));
+      a := a xor shru(a, int32(6));
     end;
-    a := a +{%} a shl int32(3);
-    a := a xor (a shr int32(11));
-    a := a +{%} a shl int32(15);
+    a := a +{%} shlu(a, int32(3));
+    a := a xor shru(a, int32(11));
+    a := a +{%} shlu(a, int32(15));
     result := a
   end
 end;
@@ -448,7 +442,6 @@ begin
   for i := 0 to len - 2 do begin
     assert(b.sons[i].kind <> nkRange);
     initLocExpr(p, b.sons[i], x);
-    freeTemp(p, x);
     assert(b.sons[i].kind in [nkStrLit..nkTripleStrLit]);
     j := int(hashString(b.sons[i].strVal) and high(branches));
     appf(branches[j], 'if (eqStrings($1, $2)) goto $3;$n',
@@ -499,7 +492,6 @@ begin
       appf(p.s[cpsStmts], 'goto LA$1;$n', [toRope(p.labels)]);
     // third pass: generate statements
     genCaseSecondPass(p, t, labId);
-    freeTemp(p, a);
   end
   else
     genCaseGeneric(p, t, '', 'if (eqStrings($1, $2)) goto $3;$n')
@@ -541,7 +533,6 @@ begin
   if canGenerateSwitch then begin
     initLocExpr(p, t.sons[0], a);
     appf(p.s[cpsStmts], 'switch ($1) {$n', [rdCharLoc(a)]);
-    freeTemp(p, a);
     for i := 1 to sonsLen(t)-1 do begin
       if t.sons[i].kind = nkOfBranch then begin
         len := sonsLen(t.sons[i]);
@@ -823,7 +814,6 @@ begin
   InitLocExpr(p, e.sons[0], a);
   assert(a.t <> nil);
   expr(p, e.sons[1], a);
-  freeTemp(p, a)
 end;
 
 procedure genStmts(p: BProc; t: PNode);
@@ -852,13 +842,11 @@ begin
     nkCall: begin
       genLineDir(p, t);
       initLocExpr(p, t, a);
-      freeTemp(p, a);
     end;
     nkAsgn: genAsgn(p, t);
     nkDiscardStmt: begin
       genLineDir(p, t);
       initLocExpr(p, t.sons[0], a);
-      freeTemp(p, a)
     end;
     nkAsmStmt: genAsmStmt(p, t);
     nkTryStmt: begin
@@ -880,8 +868,11 @@ begin
         if (t.sons[codePos] <> nil)
         or (lfDynamicLib in prc.loc.flags) then begin // BUGFIX
           if IntSetContainsOrIncl(p.module.debugDeclared, prc.id) then begin
-            internalError(t.info, 'genProc()'); // XXX: remove this check!
+            internalError(t.info, 'genStmts(): ' + toString(prc.id)); 
+            // XXX: remove this check!
           end;
+          //if IntSetContains(p.module.debugDeclared, 2642) then 
+          //  InternalError(t.info, 'this sucks '  + toString(prc.id));
           genProc(p.module, prc)
         end
         //else if sfCompilerProc in prc.flags then genProcPrototype(prc);

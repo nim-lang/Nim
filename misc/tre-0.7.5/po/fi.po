@@ -1,0 +1,264 @@
+# Finnish translations for TRE package.
+# Copyright (c) 2002-2006 Ville Laurikari
+# This file is distributed under the same license as the TRE package.
+# Ville Laurikari <vl@iki.fi>, 2006.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: TRE 0.7.4\n"
+"Report-Msgid-Bugs-To: tre-general@lists.laurikari.net\n"
+"POT-Creation-Date: 2006-12-09 22:48+0200\n"
+"PO-Revision-Date: 2002-07-29 23:46+0300\n"
+"Last-Translator: Ville Laurikari <vl@iki.fi>\n"
+"Language-Team: Finnish <translation-team-fi@lists.sourceforge.net>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/regerror.c:43
+msgid "No error"
+msgstr "Ei virhettä"
+
+#: lib/regerror.c:44
+msgid "No match"
+msgstr "Hakulausekkeen esiintymää ei löytynyt"
+
+#: lib/regerror.c:45
+msgid "Invalid regexp"
+msgstr "Virheellinen lauseke"
+
+#: lib/regerror.c:46
+msgid "Unknown collating element"
+msgstr "Tuntematon lajittuva merkki"
+
+#: lib/regerror.c:47
+msgid "Unknown character class name"
+msgstr "Tuntematon merkkiluokka"
+
+#: lib/regerror.c:48
+msgid "Trailing backslash"
+msgstr "Lauseke loppuu kenoviivaan"
+
+#: lib/regerror.c:49
+msgid "Invalid back reference"
+msgstr "Virheellinen osalausekeviittaus"
+
+#: lib/regerror.c:50
+msgid "Missing ']'"
+msgstr "Puuttuva ']'"
+
+#: lib/regerror.c:51
+msgid "Missing ')'"
+msgstr "Puuttuva ')'"
+
+#: lib/regerror.c:52
+msgid "Missing '}'"
+msgstr "Puuttuva '}'"
+
+#: lib/regerror.c:53
+msgid "Invalid contents of {}"
+msgstr "Virhe {} sisällä"
+
+#: lib/regerror.c:54
+msgid "Invalid character range"
+msgstr "Virheellinen merkkialue"
+
+#: lib/regerror.c:55 src/agrep.c:230 src/agrep.c:300 src/agrep.c:325
+#: src/agrep.c:674 src/agrep.c:713
+msgid "Out of memory"
+msgstr "Muisti loppu"
+
+#: lib/regerror.c:56
+msgid "Invalid use of repetition operators"
+msgstr "Virheellinen toisto-operaattorin käyttö"
+
+#: lib/regerror.c:69
+msgid "Unknown error"
+msgstr "Tuntematon virhe"
+
+#: src/agrep.c:97 src/agrep.c:104
+#, c-format
+msgid "Usage: %s [OPTION]... PATTERN [FILE]...\n"
+msgstr "Käyttö: %s [VALITSIN]... HAKULAUSEKE [TIEDOSTO]...\n"
+
+#: src/agrep.c:99
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr "Kokeile `%s --help' saadaksesi lisää tietoa.\n"
+
+#: src/agrep.c:105
+#, c-format
+msgid ""
+"Searches for approximate matches of PATTERN in each FILE or standard input.\n"
+"Example: `%s -2 optimize foo.txt' outputs all lines in file `foo.txt' that\n"
+"match \"optimize\" within two errors.  E.g. lines which contain \"optimise"
+"\",\n"
+"\"optmise\", and \"opitmize\" all match.\n"
+msgstr ""
+"Etsii hakulausekkeen likimääräisiä esiintymiä tiedostoista tai "
+"vakiosyötteestä.\n"
+"Esimerkki: `%s -2 lähteä foo.txt' palauttaa kaikki rivit tiedostossa\n"
+"`foo.txt' joihin hakukaava \"lähteä\" sopii enintään kahdella virheellä.\n"
+"Esimerkiksi rivit jotka sisältävät \"lähtee\" tai \"lähtö\" palautetaan.\n"
+
+#: src/agrep.c:111
+#, c-format
+msgid ""
+"Regexp selection and interpretation:\n"
+"  -e, --regexp=PATTERN\t    use PATTERN as a regular expression\n"
+"  -i, --ignore-case\t    ignore case distinctions\n"
+"  -k, --literal\t\t    PATTERN is a literal string\n"
+"  -w, --word-regexp\t    force PATTERN to match only whole words\n"
+"\n"
+"Approximate matching settings:\n"
+"  -D, --delete-cost=NUM\t    set cost of missing characters\n"
+"  -I, --insert-cost=NUM\t    set cost of extra characters\n"
+"  -S, --substitute-cost=NUM set cost of wrong characters\n"
+"  -E, --max-errors=NUM\t    select records that have at most NUM errors\n"
+"  -#\t\t\t    select records that have at most # errors (# is a\n"
+"\t\t\t    digit between 0 and 9)\n"
+"\n"
+"Miscellaneous:\n"
+"  -d, --delimiter=PATTERN   set the record delimiter regular expression\n"
+"  -v, --invert-match\t    select non-matching records\n"
+"  -V, --version\t\t    print version information and exit\n"
+"  -y, --nothing\t\t    does nothing (for compatibility with the non-free\n"
+"\t\t\t    agrep program)\n"
+"      --help\t\t    display this help and exit\n"
+"\n"
+"Output control:\n"
+"  -B, --best-match\t    only output records with least errors\n"
+"  -c, --count\t\t    only print a count of matching records per FILE\n"
+"  -h, --no-filename\t    suppress the prefixing filename on output\n"
+"  -H, --with-filename\t    print the filename for each match\n"
+"  -l, --files-with-matches  only print FILE names containing matches\n"
+"  -M, --delimiter-after     print record delimiter after record if -d is "
+"used\n"
+"  -n, --record-number\t    print record number with output\n"
+"      --line-number         same as -n\n"
+"  -q, --quiet, --silent\t    suppress all normal output\n"
+"  -s, --show-cost\t    print match cost with output\n"
+"      --colour, --color     use markers to distinguish the matching strings\n"
+"      --show-position       prefix each output record with start and end\n"
+"                            position of the first match within the record\n"
+msgstr ""
+"Hakulausekkeen valinta ja tulkinta:\n"
+"  -e, --regexp=HAKULAUSEKE  käytä HAKULAUSEKEtta säännöllisenä lausekkeena\n"
+"  -i, --ignore-case         älä erottele isoja ja pieniä kirjaimia\n"
+"  -k, --literal             HAKULAUSEKE on kiinteä merkkijono\n"
+"  -w, --word-regexp         anna hakulausekkeen sopia vain kokonaisiin "
+"sanoihin\n"
+"\n"
+"Likimääräisen sovittamisen asetukset:\n"
+"  -D, --delete-cost=N       aseta puuttuvien merkkien hinnaksi N\n"
+"  -I, --insert-cost=N       aseta ylimääräisten merkkien hinnaksi N\n"
+"  -S, --substitute-cost=N   aseta väärien merkkien hinnaksi N\n"
+"  -E, --max-errors=N        valitse tietueet joissa on enintään N virhettä\n"
+"  -#                        valitse tietueet joissa on enintään # virhettä "
+"(# on\n"
+"                            kokonaisluku väliltä 0-9)\n"
+"\n"
+"Sekalaista:\n"
+"  -d, --delimiter=LAUSEKE   aseta LAUSEKE tietueiden erotinlausekkeeksi\n"
+"  -v, --invert-match        valitse tietueet jotka eivät sovi "
+"hakulausekkeeseen\n"
+"  -V, --version             tulosta versiotieto ja lopeta\n"
+"  -y, --nothing             ei tee mitään (yhteensopivuudeksi ei-vapaan\n"
+"                            agrep -ohjelman kanssa)\n"
+"      --help                tulosta tämä ohje ja lopeta\n"
+"\n"
+"Tulostuksen asetukset:\n"
+"  -B, --best-match          valitse tietueet joissa on vähiten virheitä\n"
+"  -c, --count               tulosta vain sopivien tietueiden määrä per "
+"TIEDOSTO\n"
+"  -h, --no-filename         älä lisää tiedoston nimeä tietueen alkuun\n"
+"  -H, --with-filename       lisää aina tiedoston nimi tietueen alkuun\n"
+"  -l, --files-with-matches  tulosta vain niiden TIEDOSTOjen nimet, joissa "
+"on\n"
+"                            sopivia tietueita\n"
+"  -M, --delimiter-after     tulosta erotin tietueen jälkeen jos -d on "
+"käytössä\n"
+"  -n, --record-number       tulosta tietuenumerot\n"
+"      --line-number         sama kuin -n\n"
+"  -q, --quiet, --silent     älä tulosta mitään\n"
+"  -s, --show-cost           tulosta virheiden määrä\n"
+"      --colour, --color     korosta tulostetuista tietueista osat jotka\n"
+"                            sopivat hakulausekkeeseen\n"
+"      --show-position       lisää tulostettujen tietueiden alkuun haku-\n"
+"                            lausekkeeseen sopivan osamerkkijonon alku- ja\n"
+"                            loppusijainti tietueessa\n"
+
+#: src/agrep.c:150
+#, c-format
+msgid ""
+"With no FILE, or when FILE is -, reads standard input.  If less than two\n"
+"FILEs are given, -h is assumed.  Exit status is 0 if a match is found, 1 "
+"for\n"
+"no match, and 2 if there were errors.  If -E or -# is not specified, only\n"
+"exact matches are selected.\n"
+msgstr ""
+"Jos TIEDOSTOja ei ole annettu, tai jos TIEDOSTO on -, luetaan "
+"vakiosyötteestä.\n"
+"Jos TIEDOSTOja on annettu vähemmän kuin kaksi, valitsin -h otetaan käyttöön\n"
+"automaattisesti.  Paluukoodi on 0 jos hakukaavan esiintymiä löytyi, 1 jos\n"
+"niitä ei löytynyt ja 2 jos tapahtui virhe.  Jos -E tai -# ei ole annettu,\n"
+"vain tietueet jotka sopivat tarkasti hakulausekkeeseen valitaan.\n"
+
+#: src/agrep.c:156
+#, c-format
+msgid ""
+"PATTERN is a POSIX extended regular expression (ERE) with the TRE "
+"extensions.\n"
+"See tre(7) for a complete description.\n"
+msgstr ""
+"HAKULAUSEKE on POSIXin määrittelemä laajennettu säännöllinen lauseke "
+"(engl. \n"
+"extended regular expression).  Lisäksi voidaan käyttää TRE:n laajennuksia.\n"
+"Hakulausekkeiden täysimittainen kuvaus on tre(7):ssä.\n"
+
+#: src/agrep.c:160
+#, c-format
+msgid "Report bugs to: "
+msgstr "Raportoi virheistä osoitteeseen: "
+
+#: src/agrep.c:245
+#, c-format
+msgid "Error reading from %s: %s\n"
+msgstr "Ei voi lukea kohteesta %s: %s\n"
+
+#: src/agrep.c:340
+msgid "Cannot use -B when reading from standard input."
+msgstr "Vakiosyötteestä luettaessa -B ei ole sallittu."
+
+#: src/agrep.c:344
+msgid "(standard input)"
+msgstr "(vakiosyöte)"
+
+#: src/agrep.c:597
+#, c-format
+msgid "Copyright (c) 2002-2006 Ville Laurikari.\n"
+msgstr "Tekijänoikeus © 2002-2006 Ville Laurikari.\n"
+
+#: src/agrep.c:598
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions. There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+"Tämä ohjelma on vapaa ohjelmisto; tarkista jakeluehdot lähdekoodista.\n"
+"Tälle ohjelmalle ei anneta minkäänlaista takuuta; ei edes takuuta\n"
+"kaupallisesti hyväksyttävästä laadusta tai soveltuvuudesta tiettyyn\n"
+"tarkoitukseen.\n"
+
+#: src/agrep.c:728
+msgid "Error in search pattern"
+msgstr "Virhe hakulausekkeessa"
+
+#: src/agrep.c:739
+msgid "Error in record delimiter pattern"
+msgstr "Virhe tietueiden erotinlausekkeessa"
+
+#: src/agrep.c:746
+msgid "Record delimiter pattern must not match an empty string"
+msgstr "Tietueiden erotinlauseke ei saa sopia tyhjään merkkijonoon"

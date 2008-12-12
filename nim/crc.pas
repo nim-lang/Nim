@@ -126,7 +126,8 @@ const
 
 function updateCrc32(val: Byte; crc: TCrc32): TCrc32; overload;
 begin
-  result := crc32Table[(int(crc) xor (int(val) and $ff)) and $ff] xor (int(crc) shr 8);
+  result := TCrc32(crc32Table[(int(crc) xor (int(val) and $ff)) and $ff]) xor
+                  (crc shr TCrc32(8));
 end;
 
 function updateCrc32(val: Char; crc: TCrc32): TCrc32; overload;

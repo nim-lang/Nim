@@ -44,9 +44,6 @@ function finishHash(h: THash): THash;
 
 implementation
 
-type
-  TUnsignedHash = cardinal;
-
 {@ignore}
 {$ifopt Q+} { we need Q- here! }
   {$define Q_on}
@@ -89,7 +86,7 @@ end;
 
 function GetDataHash(Data: Pointer; Size: int): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   p: PChar;
   i, s: int;
 begin
@@ -116,7 +113,7 @@ end;
 
 function GetHash(str: PChar): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   i: int;
 begin
   h := 0;
@@ -135,7 +132,7 @@ end;
 
 function GetHashStr(const s: string): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   i: int;
 begin
   h := 0;
@@ -152,7 +149,7 @@ end;
 
 function getNormalizedHash(const s: string): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   c: Char;
   i: int;
 begin
@@ -173,7 +170,7 @@ end;
 
 function GetHashStrCI(const s: string): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   c: Char;
   i: int;
 begin
@@ -193,7 +190,7 @@ end;
 
 function GetHashCI(str: PChar): THash;
 var
-  h: TUnsignedHash;
+  h: THash;
   c: Char;
   i: int;
 begin

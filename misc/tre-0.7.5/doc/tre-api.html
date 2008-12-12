@@ -1,0 +1,806 @@
+<h1>TRE API reference manual</h1>
+
+<h2>The <tt>regcomp()</tt> functions</h2>
+<a name="regcomp"></a>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="type">int</font>
+<font class="func">regcomp</font>(<font
+class="type">regex_t</font> *<font class="arg">preg</font>,
+<font class="qual">const</font> <font class="type">char</font>
+*<font class="arg">regex</font>, <font class="type">int</font>
+<font class="arg">cflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regncomp</font>(<font class="type">regex_t</font>
+*<font class="arg">preg</font>, <font class="qual">const</font>
+<font class="type">char</font> *<font class="arg">regex</font>,
+<font class="type">size_t</font> <font class="arg">len</font>,
+<font class="type">int</font> <font class="arg">cflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regwcomp</font>(<font class="type">regex_t</font>
+*<font class="arg">preg</font>, <font class="qual">const</font>
+<font class="type">wchar_t</font> *<font
+class="arg">regex</font>, <font class="type">int</font> <font
+class="arg">cflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regwncomp</font>(<font class="type">regex_t</font>
+*<font class="arg">preg</font>, <font class="qual">const</font>
+<font class="type">wchar_t</font> *<font
+class="arg">regex</font>, <font class="type">size_t</font>
+<font class="arg">len</font>, <font class="type">int</font>
+<font class="arg">cflags</font>);
+<br>
+</code>
+</div>
+
+<p>
+The <tt><font class="func">regcomp</font>()</tt> function compiles
+the regex string pointed to by <tt><font
+class="arg">regex</font></tt> to an internal representation and
+stores the result in the pattern buffer structure pointed to by
+<tt><font class="arg">preg</font></tt>.  The <tt><font
+class="func">regncomp</font>()</tt> function is like <tt><font
+class="func">regcomp</font>()</tt>, but <tt><font
+class="arg">regex</font></tt> is not terminated with the null
+byte.  Instead, the <tt><font class="arg">len</font></tt> argument
+is used to give the length of the string, and the string may contain
+null bytes.  The <tt><font class="func">regwcomp</font>()</tt> and
+<tt><font class="func">regwncomp</font>()</tt> functions work like
+<tt><font class="func">regcomp</font>()</tt> and <tt><font
+class="func">regncomp</font>()</tt>, respectively, but take a wide
+character (<tt><font class="type">wchar_t</font></tt>) string
+instead of a byte string.
+</p>
+
+<p>
+The <tt><font class="arg">cflags</font></tt> argument is a the
+bitwise inclusive OR of zero or more of the following flags (defined
+in the header <tt>&lt;tre/regex.h&gt;</tt>):
+</p>
+
+<blockquote>
+<dl>
+<dt><tt>REG_EXTENDED</tt></dt>
+<dd>Use POSIX Extended Regular Expression (ERE) compatible syntax when
+compiling <tt><font class="arg">regex</font></tt>.  The default
+syntax is the POSIX Basic Regular Expression (BRE) syntax, but it is
+considered obsolete.</dd>
+
+<dt><tt>REG_ICASE</tt></dt>
+<dd>Ignore case.  Subsequent searches with the <a
+href="#regexec"<tt>regexec</tt></a> family of functions using this
+pattern buffer will be case insensitive.</dd>
+
+<dt><tt>REG_NOSUB</tt></dt>
+<dd>Do not report submatches.  Subsequent searches with the <a
+href="#regexec"><tt>regexec</tt></a> family of functions will only
+report whether a match was found or not and will not fill the submatch
+array.</dd>
+
+<dt><tt>REG_NEWLINE</tt></dt>
+<dd>Normally the newline character is treated as an ordinary
+character.  When this flag is used, the newline character
+(<tt>'\n'</tt>, ASCII code 10) is treated specially as follows:
+<ol>
+<li>The match-any-character operator (dot <tt>"."</tt> outside a
+bracket expression) does not match a newline.</li>
+<li>A non-matching list (<tt>[^...]</tt>) not containing a newline
+does not match a newline.</li>
+<li>The match-beginning-of-line operator <tt>^</tt> matches the empty
+string immediately after a newline as well as the empty string at the
+beginning of the string (but see the <code>REG_NOTBOL</code>
+<code>regexec()</code> flag below).
+<li>The match-end-of-line operator <tt>$</tt> matches the empty
+string immediately before a newline as well as the empty string at the
+end of the string (but see the <code>REG_NOTEOL</code>
+<code>regexec()</code> flag below).
+</ol>
+</dd>
+
+<dt><tt>REG_LITERAL</tt></dt>
+<dd>Interpret the entire <tt><font class="arg">regex</font></tt>
+argument as a literal string, that is, all characters will be
+considered ordinary.  This is a nonstandard extension, compatible with
+but not specified by POSIX.</dd>
+
+<dt><tt>REG_NOSPEC</tt></dt>
+<dd>Same as <tt>REG_LITERAL</tt>.  This flag is provided for
+compatibility with BSD.</dd>
+
+<dt><tt>REG_RIGHT_ASSOC</tt></dt>
+<dd>By default, concatenation is left associative in TRE, as per
+the grammar given in the <a
+href="http://www.opengroup.org/onlinepubs/007904975/basedefs/xbd_chap09.html">base
+specifications on regular expressions</a> of Std 1003.1-2001 (POSIX).
+This flag flips associativity of concatenation to right associative.
+Associativity can have an effect on how a match is divided into
+submatches, but does not change what is matched by the entire regexp.
+</dd>
+
+<dt><tt>REG_UNGREEDY</tt></dt>
+<dd>By default, repetition operators are greedy in TRE as per Std 1003.1-2001 (POSIX) and
+can be forced to be non-greedy by appending a <tt>?</tt> character. This flag reverses this behavior
+by making the operators non-greedy by default and greedy when a <tt>?</tt> is specified.</dd>
+</dl>
+</blockquote>
+
+<p>
+The <tt><font class="type">regex_t</font></tt> structure has the
+following fields that the application can read:
+</p>
+<blockquote>
+<dl>
+<dt><tt><font class="type">size_t</font> <font
+class="arg">re_nsub</font></tt></dt>
+<dd>Number of parenthesized subexpressions in <tt><font
+class="arg">regex</font></tt>.
+</dd>
+</dl>
+</blockquote>
+
+<p>
+The <tt><font class="func">regcomp</font></tt> function returns
+zero if the compilation was successful, or one of the following error
+codes if there was an error:
+</p>
+<blockquote>
+<dl>
+<dt><tt>REG_BADPAT</tt></dt>
+<dd>Invalid regexp.  TRE returns this only if a multibyte character
+set is used in the current locale, and <tt><font
+class="arg">regex</font></tt> contained an invalid multibyte
+sequence.</dd>
+<dt><tt>REG_ECOLLATE</tt></dt>
+<dd>Invalid collating element referenced.  TRE returns this whenever
+equivalence classes or multicharacter collating elements are used in
+bracket expressions (they are not supported yet).</dd>
+<dt><tt>REG_ECTYPE</tt></dt>
+<dd>Unknown character class name in <tt>[[:<i>name</i>:]]</tt>.</dd>
+<dt><tt>REG_EESCAPE</tt></dt>
+<dd>The last character of <tt><font class="arg">regex</font></tt>
+was a backslash (<tt>\</tt>).</dd>
+<dt><tt>REG_ESUBREG</tt></dt>
+<dd>Invalid back reference; number in <tt>\<i>digit</i></tt>
+invalid.</dd>
+<dt><tt>REG_EBRACK</tt></dt>
+<dd><tt>[]</tt> imbalance.</dd>
+<dt><tt>REG_EPAREN</tt></dt>
+<dd><tt>\(\)</tt> or <tt>()</tt> imbalance.</dd>
+<dt><tt>REG_EBRACE</tt></dt>
+<dd><tt>\{\}</tt> or <tt>{}</tt> imbalance.</dd>
+<dt><tt>REG_BADBR</tt></dt>
+<dd><tt>{}</tt> content invalid: not a number, more than two numbers,
+first larger than second, or number too large.
+<dt><tt>REG_ERANGE</tt></dt>
+<dd>Invalid character range, e.g. ending point is earlier in the
+collating order than the starting point.</dd>
+<dt><tt>REG_ERANGE</tt></dt>
+<dd>Out of memory.</dd>
+<dt><tt>REG_BADRPT</tt></dt>
+<dd>Invalid use of repetition operators: two or more repetition operators have
+been chained in an undefined way.</dd>
+</dl>
+</blockquote>
+
+
+<h2>The <tt>regexec()</tt> functions</h2>
+<a name="regexec"></a>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="type">int</font> <font
+class="func">regexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">char</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font
+class="arg">nmatch</font>,
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regmatch_t</font> <font
+class="arg">pmatch</font>[], <font class="type">int</font>
+<font class="arg">eflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regnexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">char</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font class="arg">len</font>,
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">size_t</font> <font
+class="arg">nmatch</font>, <font class="type">regmatch_t</font>
+<font class="arg">pmatch</font>[], <font
+class="type">int</font> <font class="arg">eflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regwexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">wchar_t</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font
+class="arg">nmatch</font>,
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regmatch_t</font> <font
+class="arg">pmatch</font>[], <font class="type">int</font>
+<font class="arg">eflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regwnexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">wchar_t</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font class="arg">len</font>,
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">size_t</font> <font
+class="arg">nmatch</font>, <font class="type">regmatch_t</font>
+<font class="arg">pmatch</font>[], <font
+class="type">int</font> <font class="arg">eflags</font>);
+</code>
+</div>
+
+<p>
+The <tt><font class="func">regexec</font>()</tt> function matches
+the null-terminated string against the compiled regexp <tt><font
+class="arg">preg</font></tt>, initialized by a previous call to
+any one of the <a href="#regcomp"><tt>regcomp</tt></a> functions.  The
+<tt><font class="func">regnexec</font>()</tt> function is like
+<tt><font class="func">regexec</font>()</tt>, but <tt><font
+class="arg">string</font></tt> is not terminated with a null byte.
+Instead, the <tt><font class="arg">len</font></tt> argument is used
+to give the length of the string, and the string may contain null
+bytes.  The <tt><font class="func">regwexec</font>()</tt> and
+<tt><font class="func">regwnexec</font>()</tt> functions work like
+<tt><font class="func">regexec</font>()</tt> and <tt><font
+class="func">regnexec</font>()</tt>, respectively, but take a wide
+character (<tt><font class="type">wchar_t</font></tt>) string
+instead of a byte string. The <tt><font
+class="arg">eflags</font></tt> argument is a bitwise OR of zero or
+more of the following flags:
+</p>
+<blockquote>
+<dl>
+<dt><code>REG_NOTBOL</code></dt>
+<dd>
+<p>
+When this flag is used, the match-beginning-of-line operator
+<tt>^</tt> does not match the empty string at the beginning of
+<tt><font class="arg">string</font></tt>.  If
+<code>REG_NEWLINE</code> was used when compiling
+<tt><font class="arg">preg</font></tt> the empty string
+immediately after a newline character will still be matched.
+</p>
+</dd>
+
+<dt><code>REG_NOTEOL</code></dt>
+<dd>
+<p>
+When this flag is used, the match-end-of-line operator
+<tt>$</tt> does not match the empty string at the end of
+<tt><font class="arg">string</font></tt>.  If
+<code>REG_NEWLINE</code> was used when compiling
+<tt><font class="arg">preg</font></tt> the empty string
+immediately before a newline character will still be matched.
+</p>
+
+</dl>
+
+<p>
+These flags are useful when different portions of a string are passed
+to <code>regexec</code> and the beginning or end of the partial string
+should not be interpreted as the beginning or end of a line.
+</p>
+
+</blockquote>
+
+<p>
+If <code>REG_NOSUB</code> was used when compiling <tt><font
+class="arg">preg</font></tt>, <tt><font
+class="arg">nmatch</font></tt> is zero, or <tt><font
+class="arg">pmatch</font></tt> is <code>NULL</code>, then the
+<tt><font class="arg">pmatch</font></tt> argument is ignored.
+Otherwise, the submatches corresponding to the parenthesized
+subexpressions are filled in the elements of <tt><font
+class="arg">pmatch</font></tt>, which must be dimensioned to have
+at least <tt><font class="arg">nmatch</font></tt> elements.
+</p>
+
+<p>
+The <tt><font class="type">regmatch_t</font></tt> structure contains
+at least the following fields:
+</p>
+<blockquote>
+<dl>
+<dt><tt><font class="type">regoff_t</font> <font
+class="arg">rm_so</font></tt></dt>
+<dd>Byte offset from start of <tt><font class="arg">string</font></tt>
+to start of substring.  </dd>
+<dt><tt><font class="type">regoff_t</font> <font
+class="arg">rm_eo</font></tt></dt>
+<dd>Byte offset from start of <tt><font class="arg">string</font></tt>
+to the first character after the substring.  </dd>
+</dl>
+</blockquote>
+
+<p>
+The length of a submatch in bytes can be computed by subtracting
+<code>rm_eo</code> and <code>rm_so</code>.
+If a parenthesized subexpression did not participate in a match, the
+<code>rm_so</code> and <code>rm_eo</code> fields for the corresponding
+<code>pmatch</code> element are set to <code>-1</code>.
+When a multibyte character set is in effect, the submatch offsets are
+given as byte offsets, not character offsets.
+</p>
+
+<p>
+The <code>regexec()</code> functions return zero if a match was found,
+otherwise they return <code>REG_NOMATCH</code> to indicate no match,
+or <code>REG_ESPACE</code> to indicate that enough temporary memory
+could not be allocated to complete the matching operation.
+</p>
+
+
+
+<h3>reguexec()</h3>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="qual">typedef struct</font> {
+<br>
+&nbsp;&nbsp;<font class="type">int</font> (*get_next_char)(<font
+class="type">tre_char_t</font> *<font class="arg">c</font>, <font
+class="type">unsigned int</font> *<font class="arg">pos_add</font>,
+<font class="type">void</font> *<font class="arg">context</font>);
+<br>
+&nbsp;&nbsp;<font class="type">void</font> (*rewind)(<font
+class="type">size_t</font> <font class="arg">pos</font>, <font
+class="type">void</font> *<font class="arg">context</font>);
+<br>
+&nbsp;&nbsp;<font class="type">int</font> (*compare)(<font
+class="type">size_t</font> <font class="arg">pos1</font>, <font
+class="type">size_t</font> <font class="arg">pos2</font>, <font
+class="type">size_t</font> <font class="arg">len</font>, <font
+class="type">void</font> *<font class="arg">context</font>);
+<br>
+&nbsp;&nbsp;<font class="type">void</font> *<font
+class="arg">context</font>;
+<br>
+} <font class="type">tre_str_source</font>;
+<br>
+<br>
+<font class="type">int</font> <font
+class="func">reguexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">tre_str_source</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font class="arg">nmatch</font>,
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regmatch_t</font> <font
+class="arg">pmatch</font>[], <font class="type">int</font>
+<font class="arg">eflags</font>);
+</code>
+</div>
+
+<p>
+The <tt><font class="func">reguexec</font>()</tt> function works just
+like the other <tt>regexec()</tt> functions, except that the input
+string is read from user specified callback functions instead of a
+character array.  This makes it possible, for example, to match
+regexps over arbitrary user specified data structures.
+</p>
+
+<p>
+The <tt><font class="type">tre_str_source</font></tt> structure
+contains the following fields:
+</p>
+<blockquote>
+<dl>
+<dt><tt>get_next_char</tt></dt>
+<dd>This function must retrieve the next available character.  If a
+character is not available, this must return a nonzero value.  If a
+character is available, it must be stored to the space pointed to by
+<tt><font class="arg">c</font></tt>, and the integer pointer to by
+<tt><font class="arg">pos_add</font></tt> must be set to the
+number of units advanced in the input (the value must be
+<tt>&gt;=1</tt>), and zero must be returned.</dd>
+
+<dt><tt>rewind</tt></dt>
+<dd>This function must rewind the input stream to the position
+specified by <tt><font class="arg">pos</font></tt>.  Unless the regexp
+uses back references, <tt>rewind</tt> is not needed and can be set to
+<tt>NULL</tt>.</dd>
+
+<dt><tt>compare</tt></dt>
+<dd>This function compares two substrings in the input streams
+starting at the positions specified by <tt><font
+class="arg">pos1</font></tt> and <tt><font
+class="arg">pos2</font></tt> of length <tt><font
+class="arg">len</font></tt>.  If the substrings are equal,
+<tt>compare</tt> must return zero, otherwise a nonzero value must be
+returned.  Unless the regexp uses back references, <tt>compare</tt> is
+not needed and can be set to <tt>NULL</tt>.</dd>
+
+<dt><tt>context</tt></dt>
+<dd>This is a context variable, passed as the last argument to
+all of the above functions for keeping track of the internal state of
+the users code.</dd>
+
+</dl>
+</blockquote>
+
+<p>
+The position in the input stream is measured in <tt><font
+class="type">size_t</font></tt> units.  The current position is the
+sum of the increments gotten from <tt><font
+class="arg">pos_add</font></tt> (plus the position of the last
+<tt>rewind</tt>, if any).  The starting position is zero.  Submatch
+positions filled in the <tt><font class="arg">pmatch</font>[]</tt>
+array are, of course, given using positions computed in this way.
+</p>
+
+<p>
+For an example of how to use <tt>reguexec()</tt>, see the
+<tt>tests/test-str-source.c</tt> file in the TRE source code
+distribution.
+</p>
+
+<h2>The approximate matching functions</h2>
+<a name="regaexec"></a>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="qual">typedef struct</font> {<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">cost_ins</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">cost_del</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">cost_subst</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">max_cost</font>;<br><br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">max_ins</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">max_del</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">max_subst</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">max_err</font>;<br>
+} <font class="type">regaparams_t</font>;<br>
+<br>
+<font class="qual">typedef struct</font> {<br>
+&nbsp;&nbsp;<font class="type">size_t</font>
+<font class="arg">nmatch</font>;<br>
+&nbsp;&nbsp;<font class="type">regmatch_t</font>
+*<font class="arg">pmatch</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">cost</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">num_ins</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">num_del</font>;<br>
+&nbsp;&nbsp;<font class="type">int</font>
+<font class="arg">num_subst</font>;<br>
+} <font class="type">regamatch_t</font>;<br>
+<br>
+<font class="type">int</font> <font
+class="func">regaexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">char</font> *<font class="arg">string</font>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regamatch_t</font>
+*<font class="arg">match</font>,
+<font class="type">regaparams_t</font>
+<font class="arg">params</font>,
+<font class="type">int</font>
+<font class="arg">eflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">reganexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">char</font> *<font class="arg">string</font>,
+<font class="type">size_t</font> <font class="arg">len</font>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regamatch_t</font>
+*<font class="arg">match</font>,
+<font class="type">regaparams_t</font>
+<font class="arg">params</font>,
+<font class="type">int</font> <font class="arg">eflags</font>);
+<br>
+<font class="type">int</font> <font
+class="func">regawexec</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font
+class="arg">preg</font>, <font class="qual">const</font> <font
+class="type">wchar_t</font> *<font class="arg">string</font>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regamatch_t</font>
+*<font class="arg">match</font>,
+<font class="type">regaparams_t</font>
+<font class="arg">params</font>,
+<font class="type">int</font>
+<font class="arg">eflags</font>);
+<br>
+<font class="type">int</font>
+<font class="func">regawnexec</font>(
+<font class="qual">const</font>
+<font class="type">regex_t</font>
+*<font class="arg">preg</font>,
+<font class="qual">const</font>
+<font class="type">wchar_t</font>
+*<font class="arg">string</font>,
+<font class="type">size_t</font>
+<font class="arg">len</font>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<font class="type">regamatch_t</font>
+*<font class="arg">match</font>,
+<font class="type">regaparams_t</font>
+<font class="arg">params</font>,
+<font class="type">int</font>
+<font class="arg">eflags</font>);
+<br>
+</code>
+</div>
+
+<p>
+The <tt><font class="func">regaexec</font>()</tt> function searches for
+the best match in <tt><font class="arg">string</font></tt>
+against the compiled regexp <tt><font
+class="arg">preg</font></tt>, initialized by a previous call to
+any one of the <a href="#regcomp"><tt>regcomp</tt></a> functions.
+</p>
+
+<p>
+The <tt><font class="func">reganexec</font>()</tt> function is like
+<tt><font class="func">regaexec</font>()</tt>, but <tt><font
+class="arg">string</font></tt> is not terminated by a null byte.
+Instead, the <tt><font class="arg">len</font></tt> argument is used to
+tell the length of the string, and the string may contain null
+bytes. The <tt><font class="func">regawexec</font>()</tt> and
+<tt><font class="func">regawnexec</font>()</tt> functions work like
+<tt><font class="func">regaexec</font>()</tt> and <tt><font
+class="func">reganexec</font>()</tt>, respectively, but take a wide
+character (<tt><font class="type">wchar_t</font></tt>) string instead
+of a byte string.
+</p>
+
+<p>
+The <tt><font class="arg">eflags</font></tt> argument is like for
+the regexec() functions.
+</p>
+
+<p>
+The <tt><font class="arg">params</font></tt> struct controls the
+approximate matching parameters:
+<blockquote>
+<dl>
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">cost_ins</font></tt></dt>
+  <dd>The default cost of an inserted character, that is, an extra
+      character in <tt><font class="arg">string</font></tt>.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">cost_del</font></tt></dt>
+  <dd>The default cost of a deleted character, that is, a character
+      missing from <tt><font class="arg">string</font></tt>.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">cost_subst</font></tt></dt>
+  <dd>The default cost of a substituted character.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">max_cost</font></tt></dt>
+  <dd>The maximum allowed cost of a match.  If this is set to zero,
+      an exact matching is searched for, and results equivalent to
+      those returned by the <tt>regexec()</tt> functions are
+      returned.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">max_ins</font></tt></dt>
+  <dd>Maximum allowed number of inserted characters.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">max_del</font></tt></dt>
+  <dd>Maximum allowed number of deleted characters.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">max_subst</font></tt></dt>
+  <dd>Maximum allowed number of substituted characters.</dd>
+
+  <dt><tt><font class="type">int</font></tt>
+      <tt><font class="arg">max_err</font></tt></dt>
+  <dd>Maximum allowed number of errors (inserts + deletes +
+      substitutes).</dd>
+</dl>
+</blockquote>
+
+<p>
+The <tt><font class="arg">match</font></tt> argument points to a
+<tt><font class="type">regamatch_t</font></tt> structure.  The
+<tt><font class="arg">nmatch</font></tt> and <tt><font
+class="arg">pmatch</font></tt> field must be filled by the caller.  If
+<code>REG_NOSUB</code> was used when compiling the regexp, or
+<code>match-&gt;nmatch</code> is zero, or
+<code>match-&gt;pmatch</code> is <code>NULL</code>, the
+<code>match-&gt;pmatch</code> argument is ignored.  Otherwise, the
+submatches corresponding to the parenthesized subexpressions are
+filled in the elements of <code>match-&gt;pmatch</code>, which must be
+dimensioned to have at least <code>match-&gt;nmatch</code> elements.
+The <code>match-&gt;cost</code> field is set to the cost of the match
+found, and the <code>match-&gt;num_ins</code>,
+<code>match-&gt;num_del</code>, and <code>match-&gt;num_subst</code>
+fields are set to the number of inserts, deletes, and substitutes in
+the match, respectively.
+</p>
+
+<p>
+The <tt>regaexec()</tt> functions return zero if a match with cost
+smaller than <code>params-&gt;max_cost</code> was found, otherwise
+they return <code>REG_NOMATCH</code> to indicate no match, or
+<code>REG_ESPACE</code> to indicate that enough temporary memory could
+not be allocated to complete the matching operation.
+</p>
+
+<h2>Miscellaneous</h2>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="type">int</font> <font
+class="func">tre_have_backrefs</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font class="arg">preg</font>);
+<br>
+<font class="type">int</font> <font
+class="func">tre_have_approx</font>(<font class="qual">const</font>
+<font class="type">regex_t</font> *<font class="arg">preg</font>);
+<br>
+</code>
+</div>
+
+<p>
+The <tt><font class="func">tre_have_backrefs</font>()</tt> and
+<tt><font class="func">tre_have_approx</font>()</tt> functions return
+1 if the compiled pattern has back references or uses approximate
+matching, respectively, and 0 if not.
+</p>
+
+
+<h2>Checking build time options</h2>
+
+<div class="code">
+<code>
+#include &lt;tre/regex.h&gt;
+<br>
+<br>
+<font class="type">char</font> *<font
+class="func">tre_version</font>(<font class="type">void</font>);
+<br>
+<font class="type">int</font> <font
+class="func">tre_config</font>(<font class="type">int</font> <font
+class="arg">query</font>, <font class="type">void</font> *<font
+class="arg">result</font>);
+<br>
+</code>
+</div>
+
+<p>
+The <tt><font class="func">tre_config</font>()</tt> function can be
+used to retrieve information of which optional features have been
+compiled into the TRE library and information of other parameters that
+may change between releases.
+</p>
+
+<p>
+The <tt><font class="arg">query</font></tt> argument is an integer
+telling what information is requested for.  The <tt><font
+class="arg">result</font></tt> argument is a pointer to a variable
+where the information is returned.  The return value of a call to
+<tt><font class="func">tre_config</font>()</tt> is zero if <tt><font
+class="arg">query</font></tt> was recognized, REG_NOMATCH otherwise.
+</p>
+
+<p>
+The following values are recognized for <tt><font
+class="arg">query</font></tt>:
+
+<blockquote>
+<dl>
+<dt><tt>TRE_CONFIG_APPROX</tt></dt>
+<dd>The result is an integer that is set to one if approximate
+matching support is available, zero if not.</dd>
+<dt><tt>TRE_CONFIG_WCHAR</tt></dt>
+<dd>The result is an integer that is set to one if wide character
+support is available, zero if not.</dd>
+<dt><tt>TRE_CONFIG_MULTIBYTE</tt></dt>
+<dd>The result is an integer that is set to one if multibyte character
+set support is available, zero if not.</dd>
+<dt><tt>TRE_CONFIG_SYSTEM_ABI</tt></dt>
+<dd>The result is an integer that is set to one if TRE has been
+compiled to be compatible with the system regex ABI, zero if not.</dd>
+<dt><tt>TRE_CONFIG_VERSION</tt></dt>
+<dd>The result is a pointer to a static character string that gives
+the version of the TRE library.</dd>
+</dl>
+</blockquote>
+
+
+<p>
+The <tt><font class="func">tre_version</font>()</tt> function returns
+a short human readable character string which shows the software name,
+version, and license.
+
+<h2>Preprocessor definitions</h2>
+
+<p>The header <tt>&lt;tre/regex.h&gt;</tt> defines certain
+C preprocessor symbols.
+
+<h3>Version information</h3>
+
+<p>The following definitions may be useful for checking whether a new
+enough version is being used.  Note that it is recommended to use the
+<tt>pkg-config</tt> tool for version and other checks in Autoconf
+scripts.</p>
+
+<blockquote>
+<dl>
+<dt><tt>TRE_VERSION</tt></dt>
+<dd>The version string. </dd>
+
+<dt><tt>TRE_VERSION_1</tt></dt>
+<dd>The major version number (first part of version string).</dd>
+
+<dt><tt>TRE_VERSION_2</tt></dt>
+<dd>The minor version number (second part of version string).</dd>
+
+<dt><tt>TRE_VERSION_3</tt></dt>
+<dd>The micro version number (third part of version string).</dd>
+
+</dl>
+</blockquote>
+
+<h3>Features</h3>
+
+<p>The following definitions may be useful for checking whether all
+necessary features are enabled.  Use these only if compile time
+checking suffices (linking statically with TRE).  When linking
+dynamically <a href="#tre_config"><tt>tre_config()</tt></a> should be used
+instead.</p>
+
+<blockquote>
+<dl>
+<dt><tt>TRE_APPROX</tt></dt>
+<dd>This is defined if approximate matching support is enabled.  The
+prototypes for approximate matching functions are defined only if
+<tt>TRE_APPROX</tt> is defined.</dd>
+
+<dt><tt>TRE_WCHAR</tt></dt>
+<dd>This is defined if wide character support is enabled.  The
+prototypes for wide character matching functions are defined only if
+<tt>TRE_WCHAR</tt> is defined.</dd>
+
+<dt><tt>TRE_MULTIBYTE</tt></dt>
+<dd>This is defined if multibyte character set support is enabled.
+If this is not set any locale settings are ignored, and the default
+locale is used when parsing regexps and matching strings.</dd>
+
+</dl>
+</blockquote>

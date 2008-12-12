@@ -1,0 +1,114 @@
+Name:		tre
+Version:	@PACKAGE_VERSION@
+Release:	1
+License:	LGPL
+Group:		System Environment/Libraries
+Source0:        http://laurikari.net/tre/tre-@PACKAGE_VERSION@.tar.bz2
+Summary:	POSIX compatible regexp library with approximate matching.
+Packager:	Ville Laurikari <tre-general@lists.laurikari.net>
+URL:            http://laurikari.net/tre/
+Buildroot:	%{_tmppath}/%{name}-%{version}-%{release}
+
+Requires(post):   /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description
+TRE is a lightweight, robust, and efficient POSIX compatible regexp
+matching library with some exciting features such as approximate
+matching.
+
+%post
+/sbin/ldconfig
+
+%postun
+/sbin/ldconfig
+
+%package devel
+Requires: tre = @PACKAGE_VERSION@
+Summary: Development files for use with the tre package.
+Group: Development/Libraries
+
+%description devel
+This package contains header files and static libraries for use when
+building applications which use the TRE library.
+
+
+%package agrep
+Requires: tre >= @PACKAGE_VERSION@
+Summary: Approximate grep utility.
+Group: Applications/Text
+
+%description agrep
+The agrep tool is similar to the commonly used grep utility, but agrep
+can be used to search for approximate matches.
+
+The agrep tool searches text input for lines (or records separated by
+strings matching arbitrary regexps) that contain an approximate, or
+fuzzy, match to a specified regexp, and prints the matching lines.
+Limits can be set on how many errors of each kind are allowed, or
+only the best matching lines can be output.
+
+Unlike other agrep implementations, TRE agrep allows full POSIX
+regexps of any length, any number of errors, and non-uniform costs.
+
+%prep
+%setup -q
+
+%build
+./configure --prefix=/usr --libdir=%{_libdir} --mandir=%{_mandir} --enable-static
+make
+
+%install
+
+make install DESTDIR=$RPM_BUILD_ROOT
+
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files
+%defattr (-, root, root)
+%{_datadir}/*
+%{_libdir}/libtre.so.*
+%doc doc/*.css
+%doc doc/*.html
+
+%files devel
+%defattr (-, root, root)
+%{_includedir}/*
+%{_libdir}/libtre.a
+%{_libdir}/libtre.la
+%{_libdir}/libtre.so
+%{_libdir}/pkgconfig/*
+
+%files agrep
+%defattr (-, root, root)
+%{_bindir}/agrep
+%{_mandir}/man1/agrep.1.gz
+
+%changelog
+* Sat Jul 22 2006 Ville Laurikari <vl@iki.fi>
+- fixed %doc macro and moved to correct place
+
+* Fri May 12 2006 Ville Laurikari <vl@iki.fi>
+- fixed to work with recent rpmbuild versions (unpackaged files)
+- handling for multilib environments
+
+* Sun Nov 21 2004 Ville Laurikari <vl@iki.fi>
+- added agrep man page
+
+* Sun Mar 21 2004 Ville Laurikari <vl@iki.fi>
+- added %doc doc
+
+* Wed Feb 25 2004 Ville Laurikari <vl@iki.fi>
+- removed the .la file from devel package
+
+* Mon Dec 22 2003 Ville Laurikari <vl@iki.fi>
+- added %post/%postun ldconfig scriplets.
+
+* Fri Oct 03 2003 Ville Laurikari <vl@iki.fi>
+- included in the TRE source tree as `tre.spec.in'.
+
+* Tue Sep 30 2003 Matthew Berg <mberg@synacor.com>
+- tagged release 1
+- initial build

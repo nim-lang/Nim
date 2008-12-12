@@ -10,4 +10,7 @@ doc/*.html
 *.zip
 *.tar.gz
 dist
-dist
+web
+lib/base/devel
+lib/base/devel/*
+

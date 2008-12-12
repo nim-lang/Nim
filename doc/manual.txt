@@ -223,7 +223,7 @@ A character is not an Unicode character but a single byte. The reason for this
 is efficiency: For the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
 this.
-Another reason is that Nimrod should support ``array[char, int]`` or
+Another reason is that Nimrod can thus support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature.
 
 
@@ -363,9 +363,9 @@ constant declaration at compile time.
 Types
 -----
 
-All expressions have a `type`:idx: which is known at compile time. Thus Nimrod
-is statically typed. One can declare new types, which is in
-essence defining an identifier that can be used to denote this custom type.
+All expressions have a `type`:idx: which is known at compile time. Nimrod
+is statically typed. One can declare new types, which is in essence defining
+an identifier that can be used to denote this custom type.
 
 These are the major type classes:
 
@@ -386,9 +386,9 @@ Ordinal types
 - Ordinal types are countable and ordered. This property allows
   the operation of functions as ``Inc``, ``Ord``, ``Dec`` on ordinal types to
   be defined.
-- Ordinal values have a smallest possible value. Trying to count farther
+- Ordinal values have a smallest possible value. Trying to count further
   down than the smallest value gives a checked runtime or static error.
-- Ordinal values have a largest possible value. Trying to count farther
+- Ordinal values have a largest possible value. Trying to count further
   than the largest value gives a checked runtime or static error.
 
 Integers, bool, characters and enumeration types (and subrange of these
@@ -453,16 +453,16 @@ floatXX
   implementation supports ``float32`` and ``float64``. Literals of these types
   have the suffix 'fXX.
 
-`Automatic type conversion`:idx: in expressions where different kinds
-of integer types are used is performed. However, if the type conversion
-loses information, the `EInvalidValue`:idx: exception is raised. Certain cases
-of the convert error are detected at compile time.
+`Automatic type conversion`:idx: is performed in expressions where different 
+kinds of integer types are used. However, if the type conversion
+loses information, the `EOutOfRange`:idx: exception is raised (if the error
+cannot be detected at compile time).
 
 Automatic type conversion in expressions with different kinds
 of floating point types is performed: The smaller type is
 converted to the larger. Arithmetic performed on floating point types
-follows the IEEE standard. Only the ``int`` type is converted to a floating
-point type automatically, other integer types are not.
+follows the IEEE standard. Integer types are not converted to floating point
+types automatically and vice versa.
 
 
 Boolean type
@@ -475,7 +475,7 @@ This condition holds::
 
   ord(false) == 0 and ord(true) == 1
 
-The operators ``not, and, or, xor, implies, <, <=, >, >=, !=, ==`` are defined
+The operators ``not, and, or, xor, <, <=, >, >=, !=, ==`` are defined
 for the bool type. The ``and`` and ``or`` operators perform short-cut
 evaluation. Example:
 
@@ -633,6 +633,8 @@ The lower bound of an array or sequence may be received by the built-in proc
 received by ``len()``. ``low()`` for a sequence or an open array always returns
 0, as this is the first valid index.
 
+The notation ``x[i]`` can be used to access the i-th element of ``x``. 
+
 Arrays are always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--bound_checks:off`` command line switch.
@@ -642,8 +644,8 @@ Tuples and object types
 ~~~~~~~~~~~~~~~~~~~~~~~
 A variable of a `tuple`:idx: or `object`:idx: type is a heterogenous storage
 container.
-A tuple or object defines various named *fields* of a type. A tuple defines an
-*order* of the fields additionally. Tuples are meant for heterogenous storage
+A tuple or object defines various named *fields* of a type. A tuple also 
+defines an *order* of the fields. Tuples are meant for heterogenous storage
 types with no overhead and few abstraction possibilities. The constructor ``()``
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
@@ -651,8 +653,9 @@ must match the order of the tuple's definition. Different tuple-types are
 order.
 
 The assignment operator for tuples copies each component.
-The default assignment operator for objects is not defined. The programmer may
-provide one, however.
+The default assignment operator for objects copies each component. Overloading
+of the assignment operator for objects is not possible, but this may change in
+future versions of the compiler.
 
 .. code-block:: nimrod
 
@@ -667,7 +670,7 @@ provide one, however.
   person = ("Peter", 30)
 
 The implementation aligns the fields for best access performance. The alignment
-is done in a way that is compatible the way the C compiler does it.
+is compatible with the way the C compiler does it.
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
@@ -677,7 +680,7 @@ the ``is`` operator can be used to determine the object's type.
 
   type
     TPerson = object
-      name*: string   # the * means that `name` is accessible from the outside
+      name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
     TStudent = object of TPerson # a student is a person
@@ -691,6 +694,7 @@ the ``is`` operator can be used to determine the object's type.
 Object fields that should be visible outside from the defining module, have to
 marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*.
+
 
 Object variants
 ~~~~~~~~~~~~~~~
@@ -726,6 +730,7 @@ An example:
   new(n)  # creates a new node
   n.kind = nkFloat
   n.floatVal = 0.0 # valid, because ``n.kind==nkFloat``, so that it fits
+  
   # the following statement raises an `EInvalidField` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
@@ -739,9 +744,7 @@ Set type
 ~~~~~~~~
 The `set type`:idx: models the mathematical notion of a set. The set's
 basetype can only be an ordinal type. The reason is that sets are implemented
-as bit vectors. Sets are designed for high performance computing.
-
-Note: The sets module can be used for sets of other types.
+as high performance bit vectors.
 
 Sets can be constructed via the set constructor: ``{}`` is the empty set. The
 empty set is type combatible with any special set type. The constructor
@@ -767,22 +770,23 @@ operation             meaning
 ``e in A``            set membership (A contains element e)
 ``A -+- B``           symmetric set difference (= (A - B) + (B - A))
 ``card(A)``           the cardinality of A (number of elements in A)
-``incl(A, elem)``     same as A = A + {elem}, but may be faster
-``excl(A, elem)``     same as A = A - {elem}, but may be faster
+``incl(A, elem)``     same as A = A + {elem}
+``excl(A, elem)``     same as A = A - {elem}
 ==================    ========================================================
 
-Reference type
-~~~~~~~~~~~~~~
+
+Reference and pointer types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 References (similiar to `pointers`:idx: in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
-point to and modify the same location in memory. References should be used
-sparingly in a program. They are only needed for constructing graphs.
+point to and modify the same location in memory.
 
 Nimrod distinguishes between `traced`:idx: and `untraced`:idx: references.
-Untraced references are also called *pointers*. The difference between them is
-that traced references are garbage collected, untraced are not. Thus untraced
-references are *unsafe*. However for certain low-level operations (accessing
-the hardware) untraced references are unavoidable.
+Untraced references are also called *pointers*. Traced references point to
+objects of a garbage collected heap, untraced references point to 
+manually allocated objects or to objects somewhere else in memory. Thus 
+untraced references are *unsafe*. However for certain low-level operations
+(accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
@@ -806,12 +810,14 @@ dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 # no need to write n^.data
+  n.data = 9 # no need to write n^ .data
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 ``realloc`` can be used. The documentation of the system module contains
 further information.
+
+If a reference points to *nothing*, it has the value ``nil``. 
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: In order to free everything properly,
@@ -822,7 +828,7 @@ untraced memory manually!
 
 Procedural type
 ~~~~~~~~~~~~~~~
-A `procedural type`:idx: is internally a pointer to procedure. ``nil`` is
+A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is
 an allowed value for variables of a procedural type. Nimrod uses procedural
 types to achieve `functional`:idx: programming techniques. Dynamic dispatch
 for OOP constructs can also be implemented with procedural types.
@@ -928,7 +934,7 @@ statements always have to be intended::
   complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
                    | blockStmt | asmStmt
                    | procDecl | iteratorDecl | macroDecl | templateDecl
-                   | constDecl | typeDecl | whenStmt | varStmt
+                   | constSection | typeSection | whenStmt | varSection
 
 
 
@@ -957,8 +963,10 @@ Var statement
 Syntax::
 
   colonOrEquals ::= COLON typeDesc [EQUALS expr] | EQUALS expr
-  varPart ::= (symbol ["*" | "-"] [pragma] optComma)+ colonOrEquals [COMMENT]
-  varStmt ::= VAR (varPart | indPush varPart (SAD varPart)* DED)
+  varField ::= symbol ["*"] [pragma]
+  varPart ::= symbol (comma symbol)* [comma] colonOrEquals [COMMENT | IND COMMENT]
+  varSection ::= VAR (varPart
+                     | indPush (COMMENT|varPart) (SAD (COMMENT|varPart))* DED)
 
 `Var`:idx: statements declare new local and global variables and
 initialize them. A comma seperated list of variables can be used to specify
@@ -1126,14 +1134,12 @@ Syntax::
 Example:
 
 .. code-block:: nimrod
-  raise EOS("operating system failed")
+  raise newEOS("operating system failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
-the ``raise`` statement is the only way to raise an exception. The
-identifier has to be the name of a previously declared exception. A
-comma followed by an expression may follow; the expression must be of type
-``string`` or ``cstring``; this is an error message that can be extracted
-with the `getCurrentExceptionMsg`:idx: procedure in the module ``system``.
+the ``raise`` statement is the only way to raise an exception. 
+
+.. XXX document this better!
 
 If no exception name is given, the current exception is `re-raised`:idx:. The
 `ENoExceptionToReraise`:idx: exception is raised if there is no exception to
@@ -1146,10 +1152,11 @@ Try statement
 
 Syntax::
 
-  exceptList ::= (qualifiedIdent optComma)*
+  exceptList ::= [qualifiedIdent (comma qualifiedIdent)* [comma]]
   tryStmt ::= TRY COLON stmt
-             (EXCEPT exceptList COLON stmt)*
-             [FINALLY COLON stmt]
+            (EXCEPT exceptList COLON stmt)*
+            [FINALLY COLON stmt]
+             
 
 Example:
 
@@ -1209,10 +1216,15 @@ sugar for:
 
 .. code-block:: nimrod
   result = expr
-  return
+  return result
 
-The `result`:idx: variable is always the return value of the procedure. It is
-automatically declared by the compiler.
+``return`` without an expression is a short notation for ``return result`` if
+the proc has a return type. The `result`:idx: variable is always the return 
+value of the procedure. It is automatically declared by the compiler. As all
+variables, ``result`` is initialized to (binary) zero::
+
+.. code-block:: nimrod
+    proc returnZero(): int = nil # implicitely returns 0
 
 
 Yield statement
@@ -1274,7 +1286,7 @@ Example:
 
 The `break`:idx: statement is used to leave a block immediately. If ``symbol``
 is given, it is the name of the enclosing block that is to leave. If it is
-absent, the innermost block is leaved.
+absent, the innermost block is left.
 
 
 While statement
@@ -1343,14 +1355,16 @@ called `procedures`:idx: in Nimrod (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
 of code. A procedure may call itself recursively. The syntax is::
 
-  paramList ::= [PAR_LE ((symbol optComma)+ COLON typeDesc optComma)* PAR_RI]
-                [COLON typeDesc]
+  param ::= symbol (comma symbol)* [comma] COLON typeDesc
+  paramList ::= [PAR_LE [param (comma param)* [comma]] PAR_RI] [COLON typeDesc]
+  
   genericParams ::= BRACKET_LE (symbol [EQUALS typeDesc] )* BRACKET_RI
-
-  procDecl ::= PROC symbol ["*"] [genericParams] paramList [pragma]
+  
+  procDecl ::= PROC symbol ["*"] [genericParams]
+               paramList [pragma]
                [EQUALS stmt]
-
-If the ``EQUALS stms`` part is missing, it is a `forward`:idx: declaration. If
+               
+If the ``EQUALS stmt`` part is missing, it is a `forward`:idx: declaration. If
 the proc returns a value, the procedure body can access an implicit declared
 variable named `result`:idx: that represents the return value. Procs can be
 overloaded. The overloading resolution algorithm tries to find the proc that is
@@ -1388,8 +1402,8 @@ Calling a procedure can be done in many different ways:
   callme(y=1, x=0, "abd", '\t')   # (x=0, y=1, s="abd", c='\t', b=false)
   # call with named arguments (order is not relevant):
   callme(c='\t', y=1, x=0)        # (x=0, y=1, s="", c='\t', b=false)
-  # call as a command statement: no () or , needed:
-  callme 0 1 "abc" '\t'
+  # call as a command statement: no () needed:
+  callme 0, 1, "abc", '\t'
 
 
 Iterators and the for statement
@@ -1397,12 +1411,13 @@ Iterators and the for statement
 
 Syntax::
 
-  forStmt ::= FOR (symbol optComma)+ IN expr [DOTDOT expr] COLON stmt
+  forStmt ::= FOR symbol (comma symbol)* [comma] IN expr [DOTDOT expr] COLON stmt
 
-  paramList ::= [PAR_LE ((symbol optComma)+ COLON typeDesc optComma)* PAR_RI]
-                [COLON typeDesc]
+  param ::= symbol (comma symbol)* [comma] COLON typeDesc
+  paramList ::= [PAR_LE [param (comma param)* [comma]] PAR_RI] [COLON typeDesc]
+  
   genericParams ::= BRACKET_LE (symbol [EQUALS typeDesc] )* BRACKET_RI
-
+  
   iteratorDecl ::= ITERATOR symbol ["*"] [genericParams] paramList [pragma]
                [EQUALS stmt]
 
@@ -1482,7 +1497,7 @@ Example:
 
 A `type`:idx: section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions
-can be recursive or even mutually recursive. Mutually Recursive types are only
+can be recursive or even mutually recursive. Mutually recursive types are only
 possible within a single ``type`` section.
 
 
@@ -1579,17 +1594,16 @@ macros.
 Modules
 -------
 Nimrod supports splitting a program into pieces by a `module`:idx: concept.
-Modules make separate compilation possible. Each module needs to be in its
-own file. Modules enable `information hiding`:idx: and
-`separate compilation`:idx:. A module may gain access to symbols of another
-module by the `import`:idx: statement. `Recursive module dependancies`:idx: are
-allowed, but slightly subtle. Only top-level symbols that are marked with an
-asterisk (``*``) are exported.
+Each module needs to be in its own file. Modules enable 
+`information hiding`:idx: and `separate compilation`:idx:. A module may gain
+access to symbols of another module by the `import`:idx: statement. 
+`Recursive module dependancies`:idx: are allowed, but slightly subtle. Only 
+top-level symbols that are marked with an asterisk (``*``) are exported.
 
 The algorithm for compiling modules is:
 
 - Compile the whole module as usual, following import statements recursively
-- if we have a cycle only import the already parsed symbols (that are
+- if there is a cycle only import the already parsed symbols (that are
   exported); if an unknown identifier occurs then abort
 
 This is best illustrated by an example:
@@ -1684,7 +1698,10 @@ Pragmas
 
 Syntax::
 
-  pragma ::= CURLYDOT_LE (expr [COLON expr] optComma)+ (CURLYDOT_RI | CURLY_RI)
+  colonExpr ::= expr [COLON expr]
+  colonExprList ::= [ colonExpr (comma colonExpr)* [comma] ]
+
+  pragma ::= CURLYDOT_LE colonExprList (CURLYDOT_RI | CURLY_RI)
 
 Pragmas are Nimrod's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
@@ -1770,7 +1787,6 @@ hints            on|off           Turns the hint messages of the compiler
 optimization     none|speed|size  Optimize the code for speed or size, or
                                   disable optimization. For non-optimizing
                                   compilers this option has no effect.
-                                  Neverless they must parse it properly.
 callconv         cdecl|...        Specifies the default calling convention for
                                   all procedures (and procedure types) that
                                   follow.

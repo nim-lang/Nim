@@ -47,7 +47,7 @@ type
   PPangoGlyph* = ptr TPangoGlyph
   TPangoGlyph* = guint32
   PPangoRectangle* = ptr TPangoRectangle
-  TPangoRectangle* {.final.} = object
+  TPangoRectangle* {.final, pure.} = object
     x*: int32
     y*: int32
     width*: int32
@@ -58,7 +58,7 @@ type
     PANGO_DIRECTION_LTR, PANGO_DIRECTION_RTL, PANGO_DIRECTION_TTB_LTR,
     PANGO_DIRECTION_TTB_RTL
   PPangoColor* = ptr TPangoColor
-  TPangoColor* {.final.} = object
+  TPangoColor* {.final, pure.} = object
     red*: guint16
     green*: guint16
     blue*: guint16
@@ -69,12 +69,12 @@ type
   TPangoUnderline* = int32
   PPangoAttribute* = ptr TPangoAttribute
   PPangoAttrClass* = ptr TPangoAttrClass
-  TPangoAttribute* {.final.} = object
+  TPangoAttribute* {.final, pure.} = object
     klass*: PPangoAttrClass
     start_index*: int
     end_index*: int
 
-  TPangoAttrClass* {.final.} = object
+  TPangoAttrClass* {.final, pure.} = object
     `type`*: TPangoAttrType
     copy*: proc (attr: PPangoAttribute): PPangoAttribute{.cdecl.}
     destroy*: proc (attr: PPangoAttribute){.cdecl.}
@@ -82,43 +82,43 @@ type
         cdecl.}
 
   PPangoAttrString* = ptr TPangoAttrString
-  TPangoAttrString* {.final.} = object
+  TPangoAttrString* {.final, pure.} = object
     attr*: TPangoAttribute
     value*: cstring
 
   PPangoAttrLanguage* = ptr TPangoAttrLanguage
-  TPangoAttrLanguage* {.final.} = object
+  TPangoAttrLanguage* {.final, pure.} = object
     attr*: TPangoAttribute
     value*: PPangoLanguage
 
   PPangoAttrInt* = ptr TPangoAttrInt
-  TPangoAttrInt* {.final.} = object
+  TPangoAttrInt* {.final, pure.} = object
     attr*: TPangoAttribute
     value*: int32
 
   PPangoAttrFloat* = ptr TPangoAttrFloat
-  TPangoAttrFloat* {.final.} = object
+  TPangoAttrFloat* {.final, pure.} = object
     attr*: TPangoAttribute
     value*: gdouble
 
   PPangoAttrColor* = ptr TPangoAttrColor
-  TPangoAttrColor* {.final.} = object
+  TPangoAttrColor* {.final, pure.} = object
     attr*: TPangoAttribute
     color*: TPangoColor
 
   PPangoAttrShape* = ptr TPangoAttrShape
-  TPangoAttrShape* {.final.} = object
+  TPangoAttrShape* {.final, pure.} = object
     attr*: TPangoAttribute
     ink_rect*: TPangoRectangle
     logical_rect*: TPangoRectangle
 
   PPangoAttrFontDesc* = ptr TPangoAttrFontDesc
-  TPangoAttrFontDesc* {.final.} = object
+  TPangoAttrFontDesc* {.final, pure.} = object
     attr*: TPangoAttribute
     desc*: PPangoFontDescription
 
   PPangoLogAttr* = ptr TPangoLogAttr
-  TPangoLogAttr* {.final.} = object
+  TPangoLogAttr* {.final, pure.} = object
     flag0*: guint16
 
   PPangoCoverageLevel* = ptr TPangoCoverageLevel
@@ -126,25 +126,25 @@ type
     PANGO_COVERAGE_NONE, PANGO_COVERAGE_FALLBACK, PANGO_COVERAGE_APPROXIMATE,
     PANGO_COVERAGE_EXACT
   PPangoBlockInfo* = ptr TPangoBlockInfo
-  TPangoBlockInfo* {.final.} = object
+  TPangoBlockInfo* {.final, pure.} = object
     data*: Pguchar
     level*: TPangoCoverageLevel
 
   PPangoCoverage* = ptr TPangoCoverage
-  TPangoCoverage* {.final.} = object
+  TPangoCoverage* {.final, pure.} = object
     ref_count*: int
     n_blocks*: int32
     data_size*: int32
     blocks*: PPangoBlockInfo
 
   PPangoEngineRange* = ptr TPangoEngineRange
-  TPangoEngineRange* {.final.} = object
+  TPangoEngineRange* {.final, pure.} = object
     start*: int32
     theEnd*: int32
     langs*: cstring
 
   PPangoEngineInfo* = ptr TPangoEngineInfo
-  TPangoEngineInfo* {.final.} = object
+  TPangoEngineInfo* {.final, pure.} = object
     id*: cstring
     engine_type*: cstring
     render_type*: cstring
@@ -152,7 +152,7 @@ type
     n_ranges*: gint
 
   PPangoEngine* = ptr TPangoEngine
-  TPangoEngine* {.final.} = object
+  TPangoEngine* {.final, pure.} = object
     id*: cstring
     `type`*: cstring
     length*: gint
@@ -162,7 +162,7 @@ type
                                        attrs: PPangoLogAttr, attrs_len: int32){.
       cdecl.}
   PPangoEngineLang* = ptr TPangoEngineLang
-  TPangoEngineLang* {.final.} = object
+  TPangoEngineLang* {.final, pure.} = object
     engine*: TPangoEngine
     script_break*: TPangoEngineLangScriptBreak
 
@@ -173,7 +173,7 @@ type
                                         language: PPangoLanguage): PPangoCoverage{.
       cdecl.}
   PPangoEngineShape* = ptr TPangoEngineShape
-  TPangoEngineShape* {.final.} = object
+  TPangoEngineShape* {.final, pure.} = object
     engine*: TPangoEngine
     script_shape*: TPangoEngineShapeScript
     get_coverage*: TPangoEngineShapeGetCoverage
@@ -191,28 +191,28 @@ type
   PPangoGlyphUnit* = ptr TPangoGlyphUnit
   TPangoGlyphUnit* = gint32
   PPangoGlyphGeometry* = ptr TPangoGlyphGeometry
-  TPangoGlyphGeometry* {.final.} = object
+  TPangoGlyphGeometry* {.final, pure.} = object
     width*: TPangoGlyphUnit
     x_offset*: TPangoGlyphUnit
     y_offset*: TPangoGlyphUnit
 
   PPangoGlyphVisAttr* = ptr TPangoGlyphVisAttr
-  TPangoGlyphVisAttr* {.final.} = object
+  TPangoGlyphVisAttr* {.final, pure.} = object
     flag0*: int16
 
   PPangoGlyphInfo* = ptr TPangoGlyphInfo
-  TPangoGlyphInfo* {.final.} = object
+  TPangoGlyphInfo* {.final, pure.} = object
     glyph*: TPangoGlyph
     geometry*: TPangoGlyphGeometry
     attr*: TPangoGlyphVisAttr
 
-  TPangoGlyphString* {.final.} = object
+  TPangoGlyphString* {.final, pure.} = object
     num_glyphs*: gint
     glyphs*: PPangoGlyphInfo
     log_clusters*: Pgint
     space*: gint
 
-  TPangoAnalysis* {.final.} = object
+  TPangoAnalysis* {.final, pure.} = object
     shape_engine*: PPangoEngineShape
     lang_engine*: PPangoEngineLang
     font*: PPangoFont
@@ -220,7 +220,7 @@ type
     language*: PPangoLanguage
     extra_attrs*: PGSList
 
-  TPangoItem* {.final.} = object
+  TPangoItem* {.final, pure.} = object
     offset*: gint
     length*: gint
     num_chars*: gint
@@ -233,14 +233,14 @@ type
   TPangoWrapMode* = enum
     PANGO_WRAP_WORD, PANGO_WRAP_CHAR
   PPangoLayoutLine* = ptr TPangoLayoutLine
-  TPangoLayoutLine* {.final.} = object
+  TPangoLayoutLine* {.final, pure.} = object
     layout*: PPangoLayout
     start_index*: gint
     length*: gint
     runs*: PGSList
 
   PPangoLayoutRun* = ptr TPangoLayoutRun
-  TPangoLayoutRun* {.final.} = object
+  TPangoLayoutRun* {.final, pure.} = object
     item*: PPangoItem
     glyphs*: PPangoGlyphString
 

@@ -197,10 +197,10 @@ begin
   while it <> nil do begin
     if it.kind = kind then begin
       if ospCaseInsensitive in platform.OS[targetOS].props then begin
-        if it.path = path then begin result := it; exit end;
+        if cmpIgnoreCase(it.path, path) = 0 then begin result := it; exit end;
       end
       else begin
-        if cmpIgnoreCase(it.path, path) = 0 then begin result := it; exit end;
+        if it.path = path then begin result := it; exit end;
       end
     end;
     it := PLib(it.next)

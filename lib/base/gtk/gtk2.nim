@@ -155,17 +155,17 @@ type
   TGtkSignalFunc* = proc (para1: TGtkSignalFuncProc){.cdecl.}
   PGtkSignalMarshaller* = ptr TGtkSignalMarshaller
   TGtkSignalMarshaller* = TGSignalCMarshaller
-  TGtkArgSignalData* {.final.} = object
+  TGtkArgSignalData* {.final, pure.} = object
     f*: TGtkSignalFunc
     d*: gpointer
 
-  TGtkArg* {.final.} = object
+  TGtkArg* {.final, pure.} = object
     `type`*: TGtkType
     name*: cstring
     d*: gdouble               # was a union type
 
   PGtkTypeInfo* = ptr TGtkTypeInfo
-  TGtkTypeInfo* {.final.} = object
+  TGtkTypeInfo* {.final, pure.} = object
     type_name*: cstring
     object_size*: guint
     class_size*: guint
@@ -188,7 +188,7 @@ type
   TGtkAllocation* = TGdkRectangle
   TGtkCallback* = proc (widget: PGtkWidget, data: gpointer){.cdecl.}
   PGtkRequisition* = ptr TGtkRequisition
-  TGtkRequisition* {.final.} = object
+  TGtkRequisition* {.final, pure.} = object
     width*: gint
     height*: gint
 
@@ -323,7 +323,7 @@ type
     gtk_reserved8*: proc (){.cdecl.}
 
   PGtkWidgetAuxInfo* = ptr TGtkWidgetAuxInfo
-  TGtkWidgetAuxInfo* {.final.} = object
+  TGtkWidgetAuxInfo* {.final, pure.} = object
     x*: gint
     y*: gint
     width*: gint
@@ -331,7 +331,7 @@ type
     flag0*: guint16
 
   PGtkWidgetShapeInfo* = ptr TGtkWidgetShapeInfo
-  TGtkWidgetShapeInfo* {.final.} = object
+  TGtkWidgetShapeInfo* {.final, pure.} = object
     offset_x*: gint16
     offset_y*: gint16
     shape_mask*: PGdkBitmap
@@ -370,12 +370,12 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkAccelKey* = ptr TGtkAccelKey
-  TGtkAccelKey* {.final.} = object
+  TGtkAccelKey* {.final, pure.} = object
     accel_key*: guint
     accel_mods*: TGdkModifierType
     flag0*: guint16
 
-  TGtkAccelGroupEntry* {.final.} = object
+  TGtkAccelGroupEntry* {.final, pure.} = object
     key*: TGtkAccelKey
     closure*: PGClosure
     accel_path_quark*: TGQuark
@@ -595,7 +595,7 @@ type
   PGtkBindingSignal* = ptr TGtkBindingSignal
   PGtkBindingArg* = ptr TGtkBindingArg
   PGtkBindingSet* = ptr TGtkBindingSet
-  TGtkBindingSet* {.final.} = object
+  TGtkBindingSet* {.final, pure.} = object
     set_name*: cstring
     priority*: gint
     widget_path_pspecs*: PGSList
@@ -605,7 +605,7 @@ type
     current*: PGtkBindingEntry
     flag0*: guint16
 
-  TGtkBindingEntry* {.final.} = object
+  TGtkBindingEntry* {.final, pure.} = object
     keyval*: guint
     modifiers*: TGdkModifierType
     binding_set*: PGtkBindingSet
@@ -614,13 +614,13 @@ type
     hash_next*: PGtkBindingEntry
     signals*: PGtkBindingSignal
 
-  TGtkBindingSignal* {.final.} = object
+  TGtkBindingSignal* {.final, pure.} = object
     next*: PGtkBindingSignal
     signal_name*: cstring
     n_args*: guint
     args*: PGtkBindingArg
 
-  TGtkBindingArg* {.final.} = object
+  TGtkBindingArg* {.final, pure.} = object
     arg_type*: TGtkType
     d*: gdouble
 
@@ -634,7 +634,7 @@ type
   TGtkBoxClass* = object of TGtkContainerClass
 
   PGtkBoxChild* = ptr TGtkBoxChild
-  TGtkBoxChild* {.final.} = object
+  TGtkBoxChild* {.final, pure.} = object
     widget*: PGtkWidget
     padding*: guint16
     flag0*: guint16
@@ -906,12 +906,12 @@ type
   TGtkCListCompareFunc* = proc (clist: PGtkCList, ptr1: gconstpointer,
                                 ptr2: gconstpointer): gint{.cdecl.}
   PGtkCListCellInfo* = ptr TGtkCListCellInfo
-  TGtkCListCellInfo* {.final.} = object
+  TGtkCListCellInfo* {.final, pure.} = object
     row*: gint
     column*: gint
 
   PGtkCListDestInfo* = ptr TGtkCListDestInfo
-  TGtkCListDestInfo* {.final.} = object
+  TGtkCListDestInfo* {.final, pure.} = object
     cell*: TGtkCListCellInfo
     insert_pos*: TGtkCListDragPos
 
@@ -1014,7 +1014,7 @@ type
 
   PGPtrArray = pointer
   PGArray = pointer
-  TGtkCListColumn* {.final.} = object
+  TGtkCListColumn* {.final, pure.} = object
     title*: cstring
     area*: TGdkRectangle
     button*: PGtkWidget
@@ -1025,7 +1025,7 @@ type
     justification*: TGtkJustification
     flag0*: guint16
 
-  TGtkCListRow* {.final.} = object
+  TGtkCListRow* {.final, pure.} = object
     cell*: PGtkCell
     state*: TGtkStateType
     foreground*: TGdkColor
@@ -1036,7 +1036,7 @@ type
     flag0*: guint16
 
   PGtkCellText* = ptr TGtkCellText
-  TGtkCellText* {.final.} = object
+  TGtkCellText* {.final, pure.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1044,7 +1044,7 @@ type
     text*: cstring
 
   PGtkCellPixmap* = ptr TGtkCellPixmap
-  TGtkCellPixmap* {.final.} = object
+  TGtkCellPixmap* {.final, pure.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1053,7 +1053,7 @@ type
     mask*: PGdkBitmap
 
   PGtkCellPixText* = ptr TGtkCellPixText
-  TGtkCellPixText* {.final.} = object
+  TGtkCellPixText* {.final, pure.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1064,14 +1064,14 @@ type
     mask*: PGdkBitmap
 
   PGtkCellWidget* = ptr TGtkCellWidget
-  TGtkCellWidget* {.final.} = object
+  TGtkCellWidget* {.final, pure.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
     style*: PGtkStyle
     widget*: PGtkWidget
 
-  TGtkCell* {.final.} = object
+  TGtkCell* {.final, pure.} = object
     `type`*: TGtkCellType
     vertical*: gint16
     horizontal*: gint16
@@ -1212,7 +1212,7 @@ type
                                        action: TGtkCTreeExpansionType){.cdecl.}
 
   PGtkCTreeRow* = ptr TGtkCTreeRow
-  TGtkCTreeRow* {.final.} = object
+  TGtkCTreeRow* {.final, pure.} = object
     row*: TGtkCListRow
     parent*: PGtkCTreeNode
     sibling*: PGtkCTreeNode
@@ -1224,7 +1224,7 @@ type
     level*: guint16
     GtkCTreeRow_flag0*: guint16
 
-  TGtkCTreeNode* {.final.} = object
+  TGtkCTreeNode* {.final, pure.} = object
     list*: TGList
 
   PGtkDrawingArea* = ptr TGtkDrawingArea
@@ -1479,7 +1479,7 @@ type
   TGtkFixedClass* = object of TGtkContainerClass
 
   PGtkFixedChild* = ptr TGtkFixedChild
-  TGtkFixedChild* {.final.} = object
+  TGtkFixedChild* {.final, pure.} = object
     widget*: PGtkWidget
     x*: gint
     y*: gint
@@ -1632,7 +1632,7 @@ type
     gtk_reserved363: proc (){.cdecl.}
     gtk_reserved364: proc (){.cdecl.}
 
-  TGtkRulerMetric* {.final.} = object
+  TGtkRulerMetric* {.final, pure.} = object
     metric_name*: cstring
     abbrev*: cstring
     pixels_per_unit*: gdouble
@@ -1657,7 +1657,7 @@ type
   TGtkSettingsClass* = object of TGObjectClass
 
   PGtkSettingsValue* = ptr TGtkSettingsValue
-  TGtkSettingsValue* {.final.} = object
+  TGtkSettingsValue* {.final, pure.} = object
     origin*: cstring
     value*: TGValue
 
@@ -1708,7 +1708,7 @@ type
     GTK_RC_TOKEN_IM_MODULE_FILE, GTK_RC_TOKEN_STOCK, GTK_RC_TOKEN_LTR,
     GTK_RC_TOKEN_RTL, GTK_RC_TOKEN_LAST
   PGtkRcProperty* = ptr TGtkRcProperty
-  TGtkRcProperty* {.final.} = object
+  TGtkRcProperty* {.final, pure.} = object
     type_name*: TGQuark
     property_name*: TGQuark
     origin*: cstring
@@ -1877,7 +1877,7 @@ type
     gtk_reserved3812: proc (){.cdecl.}
 
   PGtkBorder* = ptr TGtkBorder
-  TGtkBorder* {.final.} = object
+  TGtkBorder* {.final, pure.} = object
     left*: gint
     right*: gint
     top*: gint
@@ -1978,27 +1978,27 @@ type
 
   PGtkIconSet* = pointer
   PGtkImagePixmapData* = ptr TGtkImagePixmapData
-  TGtkImagePixmapData* {.final.} = object
+  TGtkImagePixmapData* {.final, pure.} = object
     pixmap*: PGdkPixmap
 
   PGtkImageImageData* = ptr TGtkImageImageData
-  TGtkImageImageData* {.final.} = object
+  TGtkImageImageData* {.final, pure.} = object
     image*: PGdkImage
 
   PGtkImagePixbufData* = ptr TGtkImagePixbufData
-  TGtkImagePixbufData* {.final.} = object
+  TGtkImagePixbufData* {.final, pure.} = object
     pixbuf*: PGdkPixbuf
 
   PGtkImageStockData* = ptr TGtkImageStockData
-  TGtkImageStockData* {.final.} = object
+  TGtkImageStockData* {.final, pure.} = object
     stock_id*: cstring
 
   PGtkImageIconSetData* = ptr TGtkImageIconSetData
-  TGtkImageIconSetData* {.final.} = object
+  TGtkImageIconSetData* {.final, pure.} = object
     icon_set*: PGtkIconSet
 
   PGtkImageAnimationData* = ptr TGtkImageAnimationData
-  TGtkImageAnimationData* {.final.} = object
+  TGtkImageAnimationData* {.final, pure.} = object
     anim*: PGdkPixbufAnimation
     iter*: PGdkPixbufAnimationIter
     frame_timeout*: guint
@@ -2111,7 +2111,7 @@ type
     gtk_reserved474: proc (){.cdecl.}
 
   PGtkItemFactoryEntry* = ptr TGtkItemFactoryEntry
-  TGtkItemFactoryEntry* {.final.} = object
+  TGtkItemFactoryEntry* {.final, pure.} = object
     path*: cstring
     accelerator*: cstring
     callback*: TGtkItemFactoryCallback
@@ -2120,7 +2120,7 @@ type
     extra_data*: gconstpointer
 
   PGtkItemFactoryItem* = ptr TGtkItemFactoryItem
-  TGtkItemFactoryItem* {.final.} = object
+  TGtkItemFactoryItem* {.final, pure.} = object
     path*: cstring
     widgets*: PGSList
 
@@ -2173,7 +2173,7 @@ type
       cdecl.}
   PGtkTreeModelFlags* = ptr TGtkTreeModelFlags
   TGtkTreeModelFlags* = int32
-  TGtkTreeIter* {.final.} = object
+  TGtkTreeIter* {.final, pure.} = object
     stamp*: gint
     user_data*: gpointer
     user_data2*: gpointer
@@ -2435,12 +2435,12 @@ type
     GtkPreview_flag0*: guint16
 
   PGtkPreviewInfo* = ptr TGtkPreviewInfo
-  TGtkPreviewInfo* {.final.} = object
+  TGtkPreviewInfo* {.final, pure.} = object
     lookup*: Pguchar
     gamma*: gdouble
 
   PGtkDitherInfo* = ptr TGtkDitherInfo
-  TGtkDitherInfo* {.final.} = object
+  TGtkDitherInfo* {.final, pure.} = object
     c*: array[0..3, guchar]
 
   PGtkPreviewClass* = ptr TGtkPreviewClass
@@ -2533,7 +2533,7 @@ type
     gtk_reserved603: proc (){.cdecl.}
     gtk_reserved604: proc (){.cdecl.}
 
-  TGtkSelectionData* {.final.} = object
+  TGtkSelectionData* {.final, pure.} = object
     selection*: TGdkAtom
     target*: TGdkAtom
     thetype*: TGdkAtom
@@ -2543,18 +2543,18 @@ type
     display*: PGdkDisplay
 
   PGtkTargetEntry* = ptr TGtkTargetEntry
-  TGtkTargetEntry* {.final.} = object
+  TGtkTargetEntry* {.final, pure.} = object
     target*: cstring
     flags*: guint
     info*: guint
 
   PGtkTargetList* = ptr TGtkTargetList
-  TGtkTargetList* {.final.} = object
+  TGtkTargetList* {.final, pure.} = object
     list*: PGList
     ref_count*: guint
 
   PGtkTargetPair* = ptr TGtkTargetPair
-  TGtkTargetPair* {.final.} = object
+  TGtkTargetPair* {.final, pure.} = object
     target*: TGdkAtom
     flags*: guint
     info*: guint
@@ -2635,7 +2635,7 @@ type
     gtk_reserved634: proc (){.cdecl.}
 
   PGtkStockItem* = ptr TGtkStockItem
-  TGtkStockItem* {.final.} = object
+  TGtkStockItem* {.final, pure.} = object
     stock_id*: cstring
     label*: cstring
     modifier*: TGdkModifierType
@@ -2681,7 +2681,7 @@ type
   TGtkTableClass* = object of TGtkContainerClass
 
   PGtkTableChild* = ptr TGtkTableChild
-  TGtkTableChild* {.final.} = object
+  TGtkTableChild* {.final, pure.} = object
     widget*: PGtkWidget
     left_attach*: guint16
     right_attach*: guint16
@@ -2691,7 +2691,7 @@ type
     ypadding*: guint16
     GtkTableChild_flag0*: guint16
 
-  TGtkTableRowCol* {.final.} = object
+  TGtkTableRowCol* {.final, pure.} = object
     requisition*: guint16
     allocation*: guint16
     spacing*: guint16
@@ -2710,7 +2710,7 @@ type
 
   PGtkTextFont* = pointer
   PGtkPropertyMark* = ptr TGtkPropertyMark
-  TGtkPropertyMark* {.final.} = object
+  TGtkPropertyMark* {.final, pure.} = object
     `property`*: PGList
     offset*: guint
     index*: guint
@@ -2764,7 +2764,7 @@ type
   PGtkTextSearchFlags* = ptr TGtkTextSearchFlags
   TGtkTextSearchFlags* = int32
   PGtkTextIter* = ptr TGtkTextIter
-  TGtkTextIter* {.final.} = object
+  TGtkTextIter* {.final, pure.} = object
     dummy1*: gpointer
     dummy2*: gpointer
     dummy3*: gint
@@ -2802,7 +2802,7 @@ type
     gtk_reserved664: proc (){.cdecl.}
 
   PGtkTextAppearance* = ptr TGtkTextAppearance
-  TGtkTextAppearance* {.final.} = object
+  TGtkTextAppearance* {.final, pure.} = object
     bg_color*: TGdkColor
     fg_color*: TGdkColor
     bg_stipple*: PGdkBitmap
@@ -2811,7 +2811,7 @@ type
     padding1*: gpointer
     flag0*: guint16
 
-  TGtkTextAttributes* {.final.} = object
+  TGtkTextAttributes* {.final, pure.} = object
     refcount*: guint
     appearance*: TGtkTextAppearance
     justification*: TGtkJustification
@@ -2860,7 +2860,7 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextMarkBody* = ptr TGtkTextMarkBody
-  TGtkTextMarkBody* {.final.} = object
+  TGtkTextMarkBody* {.final, pure.} = object
     obj*: PGtkTextMark
     name*: cstring
     tree*: PGtkTextBTree
@@ -2879,11 +2879,11 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextPixbuf* = ptr TGtkTextPixbuf
-  TGtkTextPixbuf* {.final.} = object
+  TGtkTextPixbuf* {.final, pure.} = object
     pixbuf*: PGdkPixbuf
 
   PGtkTextChildBody* = ptr TGtkTextChildBody
-  TGtkTextChildBody* {.final.} = object
+  TGtkTextChildBody* {.final, pure.} = object
     obj*: PGtkTextChildAnchor
     widgets*: PGSList
     tree*: PGtkTextBTree
@@ -2892,17 +2892,17 @@ type
   PGtkTextLineSegment* = ptr TGtkTextLineSegment
   PGtkTextLineSegmentClass* = ptr TGtkTextLineSegmentClass
   PGtkTextTagInfo* = ptr TGtkTextTagInfo
-  TGtkTextTagInfo* {.final.} = object
+  TGtkTextTagInfo* {.final, pure.} = object
     tag*: PGtkTextTag
     tag_root*: PGtkTextBTreeNode
     toggle_count*: gint
 
   PGtkTextToggleBody* = ptr TGtkTextToggleBody
-  TGtkTextToggleBody* {.final.} = object
+  TGtkTextToggleBody* {.final, pure.} = object
     info*: PGtkTextTagInfo
     inNodeCounts*: gboolean
 
-  TGtkTextLineSegment* {.final.} = object
+  TGtkTextLineSegment* {.final, pure.} = object
     `type`*: PGtkTextLineSegmentClass
     next*: PGtkTextLineSegment
     char_count*: int32
@@ -2919,7 +2919,7 @@ type
                                      line: PGtkTextLine){.cdecl.}
   TGtkTextSegCheckFunc* = proc (seg: PGtkTextLineSegment, line: PGtkTextLine){.
       cdecl.}
-  TGtkTextLineSegmentClass* {.final.} = object
+  TGtkTextLineSegmentClass* {.final, pure.} = object
     name*: cstring
     leftGravity*: gboolean
     splitFunc*: TGtkTextSegSplitFunc
@@ -2929,13 +2929,13 @@ type
     checkFunc*: TGtkTextSegCheckFunc
 
   PGtkTextLineData* = ptr TGtkTextLineData
-  TGtkTextLineData* {.final.} = object
+  TGtkTextLineData* {.final, pure.} = object
     view_id*: gpointer
     next*: PGtkTextLineData
     height*: gint
     flag0*: int32
 
-  TGtkTextLine* {.final.} = object
+  TGtkTextLine* {.final, pure.} = object
     parent*: PGtkTextBTreeNode
     next*: PGtkTextLine
     segments*: PGtkTextLineSegment
@@ -3020,18 +3020,18 @@ type
     gtk_reserved4: proc (){.cdecl.}
 
   PGtkTextAttrAppearance* = ptr TGtkTextAttrAppearance
-  TGtkTextAttrAppearance* {.final.} = object
+  TGtkTextAttrAppearance* {.final, pure.} = object
     attr*: TPangoAttribute
     appearance*: TGtkTextAppearance
 
   PGtkTextCursorDisplay* = ptr TGtkTextCursorDisplay
-  TGtkTextCursorDisplay* {.final.} = object
+  TGtkTextCursorDisplay* {.final, pure.} = object
     x*: gint
     y*: gint
     height*: gint
     flag0*: guint16
 
-  TGtkTextLineDisplay* {.final.} = object
+  TGtkTextLineDisplay* {.final, pure.} = object
     layout*: PPangoLayout
     cursors*: PGSList
     shaped_objects*: PGSList
@@ -3152,7 +3152,7 @@ type
 
   PGtkTooltips* = ptr TGtkTooltips
   PGtkTooltipsData* = ptr TGtkTooltipsData
-  TGtkTooltipsData* {.final.} = object
+  TGtkTooltipsData* {.final, pure.} = object
     tooltips*: PGtkTooltips
     widget*: PGtkWidget
     tip_text*: cstring
@@ -3184,7 +3184,7 @@ type
   TGtkToolbarSpaceStyle* = enum
     GTK_TOOLBAR_SPACE_EMPTY, GTK_TOOLBAR_SPACE_LINE
   PGtkToolbarChild* = ptr TGtkToolbarChild
-  TGtkToolbarChild* {.final.} = object
+  TGtkToolbarChild* {.final, pure.} = object
     `type`*: TGtkToolbarChildType
     widget*: PGtkWidget
     icon*: PGtkWidget
@@ -3365,13 +3365,13 @@ type
   PGtkRBNode* = ptr TGtkRBNode
   TGtkRBTreeTraverseFunc* = proc (tree: PGtkRBTree, node: PGtkRBNode,
                                   data: gpointer){.cdecl.}
-  TGtkRBTree* {.final.} = object
+  TGtkRBTree* {.final, pure.} = object
     root*: PGtkRBNode
     `nil`*: PGtkRBNode
     parent_tree*: PGtkRBTree
     parent_node*: PGtkRBNode
 
-  TGtkRBNode* {.final.} = object
+  TGtkRBNode* {.final, pure.} = object
     flag0*: guint16
     left*: PGtkRBNode
     right*: PGtkRBNode
@@ -3386,14 +3386,14 @@ type
   TGtkTreeViewSearchDialogPositionFunc* = proc (tree_view: PGtkTreeView,
       search_dialog: PGtkWidget){.cdecl.}
   PGtkTreeViewColumnReorder* = ptr TGtkTreeViewColumnReorder
-  TGtkTreeViewColumnReorder* {.final.} = object
+  TGtkTreeViewColumnReorder* {.final, pure.} = object
     left_align*: gint
     right_align*: gint
     left_column*: PGtkTreeViewColumn
     right_column*: PGtkTreeViewColumn
 
   PGtkTreeViewPrivate* = ptr TGtkTreeViewPrivate
-  TGtkTreeViewPrivate* {.final.} = object
+  TGtkTreeViewPrivate* {.final, pure.} = object
     model*: PGtkTreeModel
     flags*: guint
     tree*: PGtkRBTree
@@ -4236,7 +4236,7 @@ proc GTK_IS_WINDOW_GROUP_CLASS*(klass: pointer): bool
 proc GTK_WINDOW_GROUP_GET_CLASS*(obj: pointer): PGtkWindowGroupClass
 proc gtk_window_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_window_get_type".}
-proc gtk_window_new*(thetype: TGtkWindowType): PGtkWidget{.cdecl,
+proc gtk_window_new*(thetype: TGtkWindowType): PGtkWindow {.cdecl,
     dynlib: gtklib, importc: "gtk_window_new".}
 proc gtk_window_set_title*(window: PGtkWindow, title: cstring){.cdecl,
     dynlib: gtklib, importc: "gtk_window_set_title".}
@@ -4389,6 +4389,8 @@ proc gtk_window_group_add_window*(window_group: PGtkWindowGroup,
 proc gtk_window_group_remove_window*(window_group: PGtkWindowGroup,
                                      window: PGtkWindow){.cdecl, dynlib: gtklib,
     importc: "gtk_window_group_remove_window".}
+proc gtk_window_set_default_icon_name*(name: cstring) {.
+    cdecl, dynlib: gtklib, importc.}
 proc gtk_window_internal_set_focus*(window: PGtkWindow, focus: PGtkWidget){.
     cdecl, dynlib: gtklib, importc: "_gtk_window_internal_set_focus".}
 proc gtk_window_remove_embedded_xid*(window: PGtkWindow, xid: guint){.cdecl,
@@ -4437,9 +4439,9 @@ proc use_markup*(a: var TGtkLabel): guint
 proc set_use_markup*(a: var TGtkLabel, `use_markup`: guint)
 proc gtk_label_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_label_get_type".}
-proc gtk_label_new*(str: cstring): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_label_new*(str: cstring): PGtkLabel {.cdecl, dynlib: gtklib,
     importc: "gtk_label_new".}
-proc gtk_label_new_with_mnemonic*(str: cstring): PGtkWidget{.cdecl,
+proc gtk_label_new_with_mnemonic*(str: cstring): PGtkLabel {.cdecl,
     dynlib: gtklib, importc: "gtk_label_new_with_mnemonic".}
 proc gtk_label_set_text*(`label`: PGtkLabel, str: cstring){.cdecl,
     dynlib: gtklib, importc: "gtk_label_set_text".}
@@ -4511,7 +4513,7 @@ proc latin1_to_char*(a: var TGtkAccelLabelClass): guint
 proc set_latin1_to_char*(a: var TGtkAccelLabelClass, `latin1_to_char`: guint)
 proc gtk_accel_label_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_accel_label_get_type".}
-proc gtk_accel_label_new*(`string`: cstring): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_accel_label_new*(`string`: cstring): PGtkAccelLabel {.cdecl, dynlib: gtklib,
     importc: "gtk_accel_label_new".}
 proc gtk_accel_label_get_accel_widget*(accel_label: PGtkAccelLabel): PGtkWidget{.
     cdecl, dynlib: gtklib, importc: "gtk_accel_label_get_accel_widget".}
@@ -4579,7 +4581,7 @@ proc gtk_adjustment_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_adjustment_get_type".}
 proc gtk_adjustment_new*(value: gdouble, lower: gdouble, upper: gdouble,
                          step_increment: gdouble, page_increment: gdouble,
-                         page_size: gdouble): PGtkObject{.cdecl, dynlib: gtklib,
+                         page_size: gdouble): PGtkAdjustment {.cdecl, dynlib: gtklib,
     importc: "gtk_adjustment_new".}
 proc gtk_adjustment_changed*(adjustment: PGtkAdjustment){.cdecl, dynlib: gtklib,
     importc: "gtk_adjustment_changed".}
@@ -4601,7 +4603,7 @@ proc GTK_ALIGNMENT_GET_CLASS*(obj: pointer): PGtkAlignmentClass
 proc gtk_alignment_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_alignment_get_type".}
 proc gtk_alignment_new*(xalign: gfloat, yalign: gfloat, xscale: gfloat,
-                        yscale: gfloat): PGtkWidget{.cdecl, dynlib: gtklib,
+                        yscale: gfloat): PGtkAlignment {.cdecl, dynlib: gtklib,
     importc: "gtk_alignment_new".}
 proc gtk_alignment_set*(alignment: PGtkAlignment, xalign: gfloat,
                         yalign: gfloat, xscale: gfloat, yscale: gfloat){.cdecl,
@@ -4614,7 +4616,7 @@ proc GTK_IS_FRAME_CLASS*(klass: pointer): bool
 proc GTK_FRAME_GET_CLASS*(obj: pointer): PGtkFrameClass
 proc gtk_frame_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_frame_get_type".}
-proc gtk_frame_new*(`label`: cstring): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_frame_new*(`label`: cstring): PGtkFrame {.cdecl, dynlib: gtklib,
     importc: "gtk_frame_new".}
 proc gtk_frame_set_label*(frame: PGtkFrame, `label`: cstring){.cdecl,
     dynlib: gtklib, importc: "gtk_frame_set_label".}
@@ -4642,7 +4644,7 @@ proc GTK_ASPECT_FRAME_GET_CLASS*(obj: pointer): PGtkAspectFrameClass
 proc gtk_aspect_frame_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_aspect_frame_get_type".}
 proc gtk_aspect_frame_new*(`label`: cstring, xalign: gfloat, yalign: gfloat,
-                           ratio: gfloat, obey_child: gboolean): PGtkWidget{.
+                           ratio: gfloat, obey_child: gboolean): PGtkAspectFrame {.
     cdecl, dynlib: gtklib, importc: "gtk_aspect_frame_new".}
 proc gtk_aspect_frame_set*(aspect_frame: PGtkAspectFrame, xalign: gfloat,
                            yalign: gfloat, ratio: gfloat, obey_child: gboolean){.
@@ -4655,7 +4657,7 @@ proc GTK_IS_ARROW_CLASS*(klass: pointer): bool
 proc GTK_ARROW_GET_CLASS*(obj: pointer): PGtkArrowClass
 proc gtk_arrow_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_arrow_get_type".}
-proc gtk_arrow_new*(arrow_type: TGtkArrowType, shadow_type: TGtkShadowType): PGtkWidget{.
+proc gtk_arrow_new*(arrow_type: TGtkArrowType, shadow_type: TGtkShadowType): PGtkArrow{.
     cdecl, dynlib: gtklib, importc: "gtk_arrow_new".}
 proc gtk_arrow_set*(arrow: PGtkArrow, arrow_type: TGtkArrowType,
                     shadow_type: TGtkShadowType){.cdecl, dynlib: gtklib,
@@ -4831,13 +4833,13 @@ proc depress_on_activate*(a: var TGtkButton): guint
 proc set_depress_on_activate*(a: var TGtkButton, `depress_on_activate`: guint)
 proc gtk_button_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_button_get_type".}
-proc gtk_button_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_button_new*(): PGtkButton {.cdecl, dynlib: gtklib,
                                     importc: "gtk_button_new".}
-proc gtk_button_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_button_new_with_label*(`label`: cstring): PGtkButton {.cdecl,
     dynlib: gtklib, importc: "gtk_button_new_with_label".}
-proc gtk_button_new_from_stock*(stock_id: cstring): PGtkWidget{.cdecl,
+proc gtk_button_new_from_stock*(stock_id: cstring): PGtkButton {.cdecl,
     dynlib: gtklib, importc: "gtk_button_new_from_stock".}
-proc gtk_button_new_with_mnemonic*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_button_new_with_mnemonic*(`label`: cstring): PGtkButton {.cdecl,
     dynlib: gtklib, importc: "gtk_button_new_with_mnemonic".}
 proc gtk_button_pressed*(button: PGtkButton){.cdecl, dynlib: gtklib,
     importc: "gtk_button_pressed".}
@@ -4871,6 +4873,11 @@ proc gtk_button_paint*(button: PGtkButton, area: PGdkRectangle,
                          state_type: TGtkStateType, shadow_type: TGtkShadowType,
                          main_detail: cstring, default_detail: cstring){.cdecl,
     dynlib: gtklib, importc: "_gtk_button_paint".}
+proc gtk_button_set_image*(button: PGtkButton, image: PGtkWidget) {.cdecl,
+    dynlib: gtklib, importc.}
+proc gtk_button_get_image*(button: PGtkButton): PGtkWidget {.cdecl, 
+    dynlib: gtklib, importc.}
+    
 const
   GTK_CALENDAR_SHOW_HEADING* = 1 shl 0
   GTK_CALENDAR_SHOW_DAY_NAMES* = 1 shl 1
@@ -4886,7 +4893,7 @@ proc GTK_IS_CALENDAR_CLASS*(klass: pointer): bool
 proc GTK_CALENDAR_GET_CLASS*(obj: pointer): PGtkCalendarClass
 proc gtk_calendar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_calendar_get_type".}
-proc gtk_calendar_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_calendar_new*(): PGtkCalendar {.cdecl, dynlib: gtklib,
                                       importc: "gtk_calendar_new".}
 proc gtk_calendar_select_month*(calendar: PGtkCalendar, month: guint,
                                 year: guint): gboolean{.cdecl, dynlib: gtklib,
@@ -5139,11 +5146,11 @@ proc hide_on_activate*(a: var TGtkMenuItemClass): guint
 proc set_hide_on_activate*(a: var TGtkMenuItemClass, `hide_on_activate`: guint)
 proc gtk_menu_item_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_menu_item_get_type".}
-proc gtk_menu_item_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_menu_item_new*(): PGtkMenuItem {.cdecl, dynlib: gtklib,
                                        importc: "gtk_menu_item_new".}
-proc gtk_menu_item_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_menu_item_new_with_label*(`label`: cstring): PGtkMenuItem {.cdecl,
     dynlib: gtklib, importc: "gtk_menu_item_new_with_label".}
-proc gtk_menu_item_new_with_mnemonic*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_menu_item_new_with_mnemonic*(`label`: cstring): PGtkMenuItem {.cdecl,
     dynlib: gtklib, importc: "gtk_menu_item_new_with_mnemonic".}
 proc gtk_menu_item_set_submenu*(menu_item: PGtkMenuItem, submenu: PGtkWidget){.
     cdecl, dynlib: gtklib, importc: "gtk_menu_item_set_submenu".}
@@ -5197,11 +5204,11 @@ proc inconsistent*(a: var TGtkToggleButton): guint
 proc set_inconsistent*(a: var TGtkToggleButton, `inconsistent`: guint)
 proc gtk_toggle_button_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_toggle_button_get_type".}
-proc gtk_toggle_button_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_toggle_button_new*(): PGtkToggleButton {.cdecl, dynlib: gtklib,
     importc: "gtk_toggle_button_new".}
-proc gtk_toggle_button_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_toggle_button_new_with_label*(`label`: cstring): PGtkToggleButton {.cdecl,
     dynlib: gtklib, importc: "gtk_toggle_button_new_with_label".}
-proc gtk_toggle_button_new_with_mnemonic*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_toggle_button_new_with_mnemonic*(`label`: cstring): PGtkToggleButton {.cdecl,
     dynlib: gtklib, importc: "gtk_toggle_button_new_with_mnemonic".}
 proc gtk_toggle_button_set_mode*(toggle_button: PGtkToggleButton,
                                  draw_indicator: gboolean){.cdecl,
@@ -5228,11 +5235,11 @@ proc GTK_IS_CHECK_BUTTON_CLASS*(klass: pointer): bool
 proc GTK_CHECK_BUTTON_GET_CLASS*(obj: pointer): PGtkCheckButtonClass
 proc gtk_check_button_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_check_button_get_type".}
-proc gtk_check_button_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_check_button_new*(): PGtkCheckButton{.cdecl, dynlib: gtklib,
     importc: "gtk_check_button_new".}
-proc gtk_check_button_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_check_button_new_with_label*(`label`: cstring): PGtkCheckButton{.cdecl,
     dynlib: gtklib, importc: "gtk_check_button_new_with_label".}
-proc gtk_check_button_new_with_mnemonic*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_check_button_new_with_mnemonic*(`label`: cstring): PGtkCheckButton {.cdecl,
     dynlib: gtklib, importc: "gtk_check_button_new_with_mnemonic".}
 proc gtk_check_button_get_props*(check_button: PGtkCheckButton,
                                    indicator_size: Pgint,
@@ -5391,7 +5398,7 @@ proc selectable*(a: var TGtkCListRow): guint
 proc set_selectable*(a: var TGtkCListRow, `selectable`: guint)
 proc gtk_clist_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_clist_get_type".}
-proc gtk_clist_new*(columns: gint): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_clist_new*(columns: gint): PGtkCList {.cdecl, dynlib: gtklib,
     importc: "gtk_clist_new".}
 proc gtk_clist_set_hadjustment*(clist: PGtkCList, adjustment: PGtkAdjustment){.
     cdecl, dynlib: gtklib, importc: "gtk_clist_set_hadjustment".}
@@ -5572,7 +5579,7 @@ proc GTK_IS_DIALOG_CLASS*(klass: pointer): bool
 proc GTK_DIALOG_GET_CLASS*(obj: pointer): PGtkDialogClass
 proc gtk_dialog_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_dialog_get_type".}
-proc gtk_dialog_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_dialog_new*(): PGtkDialog {.cdecl, dynlib: gtklib,
                                     importc: "gtk_dialog_new".}
 proc gtk_dialog_add_action_widget*(dialog: PGtkDialog, child: PGtkWidget,
                                    response_id: gint){.cdecl, dynlib: gtklib,
@@ -5593,6 +5600,9 @@ proc gtk_dialog_response*(dialog: PGtkDialog, response_id: gint){.cdecl,
     dynlib: gtklib, importc: "gtk_dialog_response".}
 proc gtk_dialog_run*(dialog: PGtkDialog): gint{.cdecl, dynlib: gtklib,
     importc: "gtk_dialog_run".}
+proc gtk_show_about_dialog*(parent: PGtkWindow, firstPropertyName: cstring) {.
+    cdecl, dynlib: gtklib, importc: "gtk_show_about_dialog", varargs.}
+    
 proc GTK_TYPE_VBOX*(): GType
 proc GTK_VBOX*(obj: pointer): PGtkVBox
 proc GTK_VBOX_CLASS*(klass: pointer): PGtkVBoxClass
@@ -5601,7 +5611,7 @@ proc GTK_IS_VBOX_CLASS*(klass: pointer): bool
 proc GTK_VBOX_GET_CLASS*(obj: pointer): PGtkVBoxClass
 proc gtk_vbox_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_vbox_get_type".}
-proc gtk_vbox_new*(homogeneous: gboolean, spacing: gint): PGtkWidget{.cdecl,
+proc gtk_vbox_new*(homogeneous: gboolean, spacing: gint): PGtkVBox {.cdecl,
     dynlib: gtklib, importc: "gtk_vbox_new".}
 proc GTK_TYPE_COLOR_SELECTION*(): GType
 proc GTK_COLOR_SELECTION*(obj: pointer): PGtkColorSelection
@@ -5611,7 +5621,7 @@ proc GTK_IS_COLOR_SELECTION_CLASS*(klass: pointer): bool
 proc GTK_COLOR_SELECTION_GET_CLASS*(obj: pointer): PGtkColorSelectionClass
 proc gtk_color_selection_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_color_selection_get_type".}
-proc gtk_color_selection_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_color_selection_new*(): PGtkColorSelection {.cdecl, dynlib: gtklib,
     importc: "gtk_color_selection_new".}
 proc gtk_color_selection_get_has_opacity_control*(colorsel: PGtkColorSelection): gboolean{.
     cdecl, dynlib: gtklib,
@@ -5664,7 +5674,7 @@ proc GTK_IS_COLOR_SELECTION_DIALOG_CLASS*(klass: pointer): bool
 proc GTK_COLOR_SELECTION_DIALOG_GET_CLASS*(obj: pointer): PGtkColorSelectionDialogClass
 proc gtk_color_selection_dialog_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_color_selection_dialog_get_type".}
-proc gtk_color_selection_dialog_new*(title: cstring): PGtkWidget{.cdecl,
+proc gtk_color_selection_dialog_new*(title: cstring): PGtkColorSelectionDialog {.cdecl,
     dynlib: gtklib, importc: "gtk_color_selection_dialog_new".}
 proc GTK_TYPE_HBOX*(): GType
 proc GTK_HBOX*(obj: pointer): PGtkHBox
@@ -5674,7 +5684,7 @@ proc GTK_IS_HBOX_CLASS*(klass: pointer): bool
 proc GTK_HBOX_GET_CLASS*(obj: pointer): PGtkHBoxClass
 proc gtk_hbox_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_hbox_get_type".}
-proc gtk_hbox_new*(homogeneous: gboolean, spacing: gint): PGtkWidget{.cdecl,
+proc gtk_hbox_new*(homogeneous: gboolean, spacing: gint): PGtkHBox {.cdecl,
     dynlib: gtklib, importc: "gtk_hbox_new".}
 const
   bm_TGtkCombo_value_in_list* = 0x00000001'i16
@@ -5706,7 +5716,7 @@ proc use_arrows_always*(a: var TGtkCombo): guint
 proc set_use_arrows_always*(a: var TGtkCombo, `use_arrows_always`: guint)
 proc gtk_combo_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_combo_get_type".}
-proc gtk_combo_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_combo_new*(): PGtkCombo {.cdecl, dynlib: gtklib,
                                    importc: "gtk_combo_new".}
 proc gtk_combo_set_value_in_list*(combo: PGtkCombo, val: gboolean,
                                   ok_if_empty: gboolean){.cdecl, dynlib: gtklib,
@@ -5760,7 +5770,7 @@ proc expanded*(a: var TGtkCTreeRow): guint
 proc set_expanded*(a: var TGtkCTreeRow, `expanded`: guint)
 proc gtk_ctree_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_ctree_get_type".}
-proc gtk_ctree_new*(columns: gint, tree_column: gint): PGtkWidget{.cdecl,
+proc gtk_ctree_new*(columns: gint, tree_column: gint): PGtkCTree {.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_new".}
 proc gtk_ctree_insert_node*(ctree: PGtkCTree, parent: PGtkCTreeNode,
                             sibling: PGtkCTreeNode, text: openarray[cstring],
@@ -5947,7 +5957,7 @@ proc GTK_IS_DRAWING_AREA_CLASS*(klass: pointer): bool
 proc GTK_DRAWING_AREA_GET_CLASS*(obj: pointer): PGtkDrawingAreaClass
 proc gtk_drawing_area_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_drawing_area_get_type".}
-proc gtk_drawing_area_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_drawing_area_new*(): PGtkDrawingArea {.cdecl, dynlib: gtklib,
     importc: "gtk_drawing_area_new".}
 proc GTK_TYPE_CURVE*(): GType
 proc GTK_CURVE*(obj: pointer): PGtkCurve
@@ -5957,7 +5967,7 @@ proc GTK_IS_CURVE_CLASS*(klass: pointer): bool
 proc GTK_CURVE_GET_CLASS*(obj: pointer): PGtkCurveClass
 proc gtk_curve_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_curve_get_type".}
-proc gtk_curve_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_curve_new*(): PGtkCurve {.cdecl, dynlib: gtklib,
                                    importc: "gtk_curve_new".}
 proc gtk_curve_reset*(curve: PGtkCurve){.cdecl, dynlib: gtklib,
     importc: "gtk_curve_reset".}
@@ -6222,7 +6232,7 @@ proc lower_arrow_prelight*(a: var TGtkMenu): guint
 proc set_lower_arrow_prelight*(a: var TGtkMenu, `lower_arrow_prelight`: guint)
 proc gtk_menu_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_menu_get_type".}
-proc gtk_menu_new*(): PGtkWidget{.cdecl, dynlib: gtklib, importc: "gtk_menu_new".}
+proc gtk_menu_new*(): PGtkMenu {.cdecl, dynlib: gtklib, importc: "gtk_menu_new".}
 proc gtk_menu_popup*(menu: PGtkMenu, parent_menu_shell: PGtkWidget,
                      parent_menu_item: PGtkWidget, func_: TGtkMenuPositionFunc,
                      data: gpointer, button: guint, activate_time: guint32){.
@@ -6323,7 +6333,7 @@ proc mouse_cursor_obscured*(a: var TGtkEntry): guint
 proc set_mouse_cursor_obscured*(a: var TGtkEntry, `mouse_cursor_obscured`: guint)
 proc gtk_entry_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_entry_get_type".}
-proc gtk_entry_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_entry_new*(): PGtkEntry {.cdecl, dynlib: gtklib,
                                    importc: "gtk_entry_new".}
 proc gtk_entry_set_visibility*(entry: PGtkEntry, visible: gboolean){.cdecl,
     dynlib: gtklib, importc: "gtk_entry_set_visibility".}
@@ -6536,8 +6546,8 @@ proc GTK_IS_EVENT_BOX_CLASS*(klass: pointer): bool
 proc GTK_EVENT_BOX_GET_CLASS*(obj: pointer): PGtkEventBoxClass
 proc gtk_event_box_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_event_box_get_type".}
-proc gtk_event_box_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
-                                       importc: "gtk_event_box_new".}
+proc gtk_event_box_new*(): PGtkEventBox {.cdecl, dynlib: gtklib,
+                                          importc: "gtk_event_box_new".}
 const
   FNM_PATHNAME* = 1 shl 0
   FNM_NOESCAPE* = 1 shl 1
@@ -6561,7 +6571,7 @@ proc GTK_IS_FILE_SELECTION_CLASS*(klass: pointer): bool
 proc GTK_FILE_SELECTION_GET_CLASS*(obj: pointer): PGtkFileSelectionClass
 proc gtk_file_selection_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_file_selection_get_type".}
-proc gtk_file_selection_new*(title: cstring): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_file_selection_new*(title: cstring): PGtkFileSelection {.cdecl, dynlib: gtklib,
     importc: "gtk_file_selection_new".}
 proc gtk_file_selection_set_filename*(filesel: PGtkFileSelection,
                                       filename: cstring){.cdecl, dynlib: gtklib,
@@ -6588,7 +6598,7 @@ proc GTK_IS_FIXED_CLASS*(klass: pointer): bool
 proc GTK_FIXED_GET_CLASS*(obj: pointer): PGtkFixedClass
 proc gtk_fixed_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_fixed_get_type".}
-proc gtk_fixed_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_fixed_new*(): PGtkFixed {.cdecl, dynlib: gtklib,
                                    importc: "gtk_fixed_new".}
 proc gtk_fixed_put*(fixed: PGtkFixed, widget: PGtkWidget, x: gint, y: gint){.
     cdecl, dynlib: gtklib, importc: "gtk_fixed_put".}
@@ -6612,7 +6622,7 @@ proc GTK_IS_FONT_SELECTION_DIALOG_CLASS*(klass: pointer): bool
 proc GTK_FONT_SELECTION_DIALOG_GET_CLASS*(obj: pointer): PGtkFontSelectionDialogClass
 proc gtk_font_selection_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_font_selection_get_type".}
-proc gtk_font_selection_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_font_selection_new*(): PGtkFontSelection{.cdecl, dynlib: gtklib,
     importc: "gtk_font_selection_new".}
 proc gtk_font_selection_get_font_name*(fontsel: PGtkFontSelection): cstring{.
     cdecl, dynlib: gtklib, importc: "gtk_font_selection_get_font_name".}
@@ -6626,7 +6636,7 @@ proc gtk_font_selection_set_preview_text*(fontsel: PGtkFontSelection,
                    importc: "gtk_font_selection_set_preview_text".}
 proc gtk_font_selection_dialog_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_font_selection_dialog_get_type".}
-proc gtk_font_selection_dialog_new*(title: cstring): PGtkWidget{.cdecl,
+proc gtk_font_selection_dialog_new*(title: cstring): PGtkFontSelectionDialog{.cdecl,
     dynlib: gtklib, importc: "gtk_font_selection_dialog_new".}
 proc gtk_font_selection_dialog_get_font_name*(fsd: PGtkFontSelectionDialog): cstring{.
     cdecl, dynlib: gtklib, importc: "gtk_font_selection_dialog_get_font_name".}
@@ -6645,7 +6655,7 @@ proc GTK_IS_GAMMA_CURVE_CLASS*(klass: pointer): bool
 proc GTK_GAMMA_CURVE_GET_CLASS*(obj: pointer): PGtkGammaCurveClass
 proc gtk_gamma_curve_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_gamma_curve_get_type".}
-proc gtk_gamma_curve_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_gamma_curve_new*(): PGtkGammaCurve{.cdecl, dynlib: gtklib,
     importc: "gtk_gamma_curve_new".}
 proc gtk_gc_get*(depth: gint, colormap: PGdkColormap, values: PGdkGCValues,
                  values_mask: TGdkGCValuesMask): PGdkGC{.cdecl, dynlib: gtklib,
@@ -6686,7 +6696,7 @@ proc snap_edge*(a: var TGtkHandleBox): gint
 proc set_snap_edge*(a: var TGtkHandleBox, `snap_edge`: gint)
 proc gtk_handle_box_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_handle_box_get_type".}
-proc gtk_handle_box_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_handle_box_new*(): PGtkHandleBox{.cdecl, dynlib: gtklib,
                                         importc: "gtk_handle_box_new".}
 proc gtk_handle_box_set_shadow_type*(handle_box: PGtkHandleBox,
                                      thetype: TGtkShadowType){.cdecl,
@@ -6774,7 +6784,7 @@ proc GTK_IS_HBUTTON_BOX_CLASS*(klass: pointer): bool
 proc GTK_HBUTTON_BOX_GET_CLASS*(obj: pointer): PGtkHButtonBoxClass
 proc gtk_hbutton_box_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_hbutton_box_get_type".}
-proc gtk_hbutton_box_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_hbutton_box_new*(): PGtkHButtonBox{.cdecl, dynlib: gtklib,
     importc: "gtk_hbutton_box_new".}
 proc GTK_TYPE_HPANED*(): GType
 proc GTK_HPANED*(obj: pointer): PGtkHPaned
@@ -6784,7 +6794,7 @@ proc GTK_IS_HPANED_CLASS*(klass: pointer): bool
 proc GTK_HPANED_GET_CLASS*(obj: pointer): PGtkHPanedClass
 proc gtk_hpaned_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_hpaned_get_type".}
-proc gtk_hpaned_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_hpaned_new*(): PGtkHPaned{.cdecl, dynlib: gtklib,
                                     importc: "gtk_hpaned_new".}
 proc GTK_TYPE_RULER*(): GType
 proc GTK_RULER*(obj: pointer): PGtkRuler
@@ -6816,7 +6826,7 @@ proc GTK_IS_HRULER_CLASS*(klass: pointer): bool
 proc GTK_HRULER_GET_CLASS*(obj: pointer): PGtkHRulerClass
 proc gtk_hruler_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_hruler_get_type".}
-proc gtk_hruler_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_hruler_new*(): PGtkHRuler{.cdecl, dynlib: gtklib,
                                     importc: "gtk_hruler_new".}
 proc GTK_TYPE_SETTINGS*(): GType
 proc GTK_SETTINGS*(obj: pointer): PGtkSettings
@@ -7212,9 +7222,9 @@ proc GTK_IS_HSCALE_CLASS*(klass: pointer): bool
 proc GTK_HSCALE_GET_CLASS*(obj: pointer): PGtkHScaleClass
 proc gtk_hscale_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_hscale_get_type".}
-proc gtk_hscale_new*(adjustment: PGtkAdjustment): PGtkWidget{.cdecl,
+proc gtk_hscale_new*(adjustment: PGtkAdjustment): PGtkHScale{.cdecl,
     dynlib: gtklib, importc: "gtk_hscale_new".}
-proc gtk_hscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkWidget{.
+proc gtk_hscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkHScale{.
     cdecl, dynlib: gtklib, importc: "gtk_hscale_new_with_range".}
 proc GTK_TYPE_SCROLLBAR*(): GType
 proc GTK_SCROLLBAR*(obj: pointer): PGtkScrollbar
@@ -7232,7 +7242,7 @@ proc GTK_IS_HSCROLLBAR_CLASS*(klass: pointer): bool
 proc GTK_HSCROLLBAR_GET_CLASS*(obj: pointer): PGtkHScrollbarClass
 proc gtk_hscrollbar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_hscrollbar_get_type".}
-proc gtk_hscrollbar_new*(adjustment: PGtkAdjustment): PGtkWidget{.cdecl,
+proc gtk_hscrollbar_new*(adjustment: PGtkAdjustment): PGtkHScrollbar{.cdecl,
     dynlib: gtklib, importc: "gtk_hscrollbar_new".}
 proc GTK_TYPE_SEPARATOR*(): GType
 proc GTK_SEPARATOR*(obj: pointer): PGtkSeparator
@@ -7250,7 +7260,7 @@ proc GTK_IS_HSEPARATOR_CLASS*(klass: pointer): bool
 proc GTK_HSEPARATOR_GET_CLASS*(obj: pointer): PGtkHSeparatorClass
 proc gtk_hseparator_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_hseparator_get_type".}
-proc gtk_hseparator_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_hseparator_new*(): PGtkHSeparator{.cdecl, dynlib: gtklib,
                                         importc: "gtk_hseparator_new".}
 proc GTK_TYPE_ICON_FACTORY*(): GType
 proc GTK_ICON_FACTORY*(anObject: pointer): PGtkIconFactory
@@ -7363,21 +7373,21 @@ proc GTK_IS_IMAGE_CLASS*(klass: pointer): bool
 proc GTK_IMAGE_GET_CLASS*(obj: pointer): PGtkImageClass
 proc gtk_image_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_image_get_type".}
-proc gtk_image_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_image_new*(): PGtkImage{.cdecl, dynlib: gtklib,
                                    importc: "gtk_image_new".}
-proc gtk_image_new_from_pixmap*(pixmap: PGdkPixmap, mask: PGdkBitmap): PGtkWidget{.
+proc gtk_image_new_from_pixmap*(pixmap: PGdkPixmap, mask: PGdkBitmap): PGtkImage{.
     cdecl, dynlib: gtklib, importc: "gtk_image_new_from_pixmap".}
-proc gtk_image_new_from_image*(image: PGdkImage, mask: PGdkBitmap): PGtkWidget{.
+proc gtk_image_new_from_image*(image: PGdkImage, mask: PGdkBitmap): PGtkImage{.
     cdecl, dynlib: gtklib, importc: "gtk_image_new_from_image".}
-proc gtk_image_new_from_file*(filename: cstring): PGtkWidget{.cdecl,
+proc gtk_image_new_from_file*(filename: cstring): PGtkImage{.cdecl,
     dynlib: gtklib, importc: "gtk_image_new_from_file".}
-proc gtk_image_new_from_pixbuf*(pixbuf: PGdkPixbuf): PGtkWidget{.cdecl,
+proc gtk_image_new_from_pixbuf*(pixbuf: PGdkPixbuf): PGtkImage{.cdecl,
     dynlib: gtklib, importc: "gtk_image_new_from_pixbuf".}
-proc gtk_image_new_from_stock*(stock_id: cstring, size: TGtkIconSize): PGtkWidget{.
+proc gtk_image_new_from_stock*(stock_id: cstring, size: TGtkIconSize): PGtkImage{.
     cdecl, dynlib: gtklib, importc: "gtk_image_new_from_stock".}
-proc gtk_image_new_from_icon_set*(icon_set: PGtkIconSet, size: TGtkIconSize): PGtkWidget{.
+proc gtk_image_new_from_icon_set*(icon_set: PGtkIconSet, size: TGtkIconSize): PGtkImage{.
     cdecl, dynlib: gtklib, importc: "gtk_image_new_from_icon_set".}
-proc gtk_image_new_from_animation*(animation: PGdkPixbufAnimation): PGtkWidget{.
+proc gtk_image_new_from_animation*(animation: PGdkPixbufAnimation): PGtkImage{.
     cdecl, dynlib: gtklib, importc: "gtk_image_new_from_animation".}
 proc gtk_image_set_from_pixmap*(image: PGtkImage, pixmap: PGdkPixmap,
                                 mask: PGdkBitmap){.cdecl, dynlib: gtklib,
@@ -7415,14 +7425,14 @@ proc GTK_IS_IMAGE_MENU_ITEM_CLASS*(klass: pointer): bool
 proc GTK_IMAGE_MENU_ITEM_GET_CLASS*(obj: pointer): PGtkImageMenuItemClass
 proc gtk_image_menu_item_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_image_menu_item_get_type".}
-proc gtk_image_menu_item_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_image_menu_item_new*(): PGtkImageMenuItem{.cdecl, dynlib: gtklib,
     importc: "gtk_image_menu_item_new".}
-proc gtk_image_menu_item_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_image_menu_item_new_with_label*(`label`: cstring): PGtkImageMenuItem{.cdecl,
     dynlib: gtklib, importc: "gtk_image_menu_item_new_with_label".}
-proc gtk_image_menu_item_new_with_mnemonic*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_image_menu_item_new_with_mnemonic*(`label`: cstring): PGtkImageMenuItem{.cdecl,
     dynlib: gtklib, importc: "gtk_image_menu_item_new_with_mnemonic".}
 proc gtk_image_menu_item_new_from_stock*(stock_id: cstring,
-    accel_group: PGtkAccelGroup): PGtkWidget{.cdecl, dynlib: gtklib,
+    accel_group: PGtkAccelGroup): PGtkImageMenuItem{.cdecl, dynlib: gtklib,
     importc: "gtk_image_menu_item_new_from_stock".}
 proc gtk_image_menu_item_set_image*(image_menu_item: PGtkImageMenuItem,
                                     image: PGtkWidget){.cdecl, dynlib: gtklib,
@@ -7470,7 +7480,7 @@ proc GTK_IS_INPUT_DIALOG_CLASS*(klass: pointer): bool
 proc GTK_INPUT_DIALOG_GET_CLASS*(obj: pointer): PGtkInputDialogClass
 proc gtk_input_dialog_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_input_dialog_get_type".}
-proc gtk_input_dialog_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_input_dialog_new*(): PGtkInputDialog{.cdecl, dynlib: gtklib,
     importc: "gtk_input_dialog_new".}
 proc GTK_TYPE_INVISIBLE*(): GType
 proc GTK_INVISIBLE*(obj: pointer): PGtkInvisible
@@ -7480,9 +7490,9 @@ proc GTK_IS_INVISIBLE_CLASS*(klass: pointer): bool
 proc GTK_INVISIBLE_GET_CLASS*(obj: pointer): PGtkInvisibleClass
 proc gtk_invisible_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_invisible_get_type".}
-proc gtk_invisible_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_invisible_new*(): PGtkInvisible{.cdecl, dynlib: gtklib,
                                        importc: "gtk_invisible_new".}
-proc gtk_invisible_new_for_screen*(screen: PGdkScreen): PGtkWidget{.cdecl,
+proc gtk_invisible_new_for_screen*(screen: PGdkScreen): PGtkInvisible{.cdecl,
     dynlib: gtklib, importc: "gtk_invisible_new_for_screen".}
 proc gtk_invisible_set_screen*(invisible: PGtkInvisible, screen: PGdkScreen){.
     cdecl, dynlib: gtklib, importc: "gtk_invisible_set_screen".}
@@ -7561,7 +7571,7 @@ proc GTK_IS_LAYOUT_CLASS*(klass: pointer): bool
 proc GTK_LAYOUT_GET_CLASS*(obj: pointer): PGtkLayoutClass
 proc gtk_layout_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_layout_get_type".}
-proc gtk_layout_new*(hadjustment: PGtkAdjustment, vadjustment: PGtkAdjustment): PGtkWidget{.
+proc gtk_layout_new*(hadjustment: PGtkAdjustment, vadjustment: PGtkAdjustment): PGtkLayout{.
     cdecl, dynlib: gtklib, importc: "gtk_layout_new".}
 proc gtk_layout_put*(layout: PGtkLayout, child_widget: PGtkWidget, x: gint,
                      y: gint){.cdecl, dynlib: gtklib, importc: "gtk_layout_put".}
@@ -7602,7 +7612,7 @@ proc add_mode*(a: var TGtkList): guint
 proc set_add_mode*(a: var TGtkList, `add_mode`: guint)
 proc gtk_list_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_list_get_type".}
-proc gtk_list_new*(): PGtkWidget{.cdecl, dynlib: gtklib, importc: "gtk_list_new".}
+proc gtk_list_new*(): PGtkList{.cdecl, dynlib: gtklib, importc: "gtk_list_new".}
 proc gtk_list_insert_items*(list: PGtkList, items: PGList, position: gint){.
     cdecl, dynlib: gtklib, importc: "gtk_list_insert_items".}
 proc gtk_list_append_items*(list: PGtkList, items: PGList){.cdecl,
@@ -7994,7 +8004,7 @@ proc GTK_IS_MENU_BAR_CLASS*(klass: pointer): bool
 proc GTK_MENU_BAR_GET_CLASS*(obj: pointer): PGtkMenuBarClass
 proc gtk_menu_bar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_menu_bar_get_type".}
-proc gtk_menu_bar_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_menu_bar_new*(): PGtkMenuBar{.cdecl, dynlib: gtklib,
                                       importc: "gtk_menu_bar_new".}
 proc gtk_menu_bar_cycle_focus*(menubar: PGtkMenuBar, dir: TGtkDirectionType){.
     cdecl, dynlib: gtklib, importc: "_gtk_menu_bar_cycle_focus".}
@@ -8064,7 +8074,7 @@ proc focus_out*(a: var TGtkNotebook): guint
 proc set_focus_out*(a: var TGtkNotebook, `focus_out`: guint)
 proc gtk_notebook_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_notebook_get_type".}
-proc gtk_notebook_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_notebook_new*(): PGtkNotebook{.cdecl, dynlib: gtklib,
                                       importc: "gtk_notebook_new".}
 proc gtk_notebook_append_page*(notebook: PGtkNotebook, child: PGtkWidget,
                                tab_label: PGtkWidget): gint{.cdecl,
@@ -8091,6 +8101,8 @@ proc gtk_notebook_remove_page*(notebook: PGtkNotebook, page_num: gint){.cdecl,
     dynlib: gtklib, importc: "gtk_notebook_remove_page".}
 proc gtk_notebook_get_current_page*(notebook: PGtkNotebook): gint{.cdecl,
     dynlib: gtklib, importc: "gtk_notebook_get_current_page".}
+proc gtk_notebook_get_n_pages*(notebook: PGtkNotebook): gint {.cdecl, 
+    dynlib: gtklib, importc.}
 proc gtk_notebook_get_nth_page*(notebook: PGtkNotebook, page_num: gint): PGtkWidget{.
     cdecl, dynlib: gtklib, importc: "gtk_notebook_get_nth_page".}
 proc gtk_notebook_page_num*(notebook: PGtkNotebook, child: PGtkWidget): gint{.
@@ -8186,7 +8198,7 @@ proc GTK_IS_OPTION_MENU_CLASS*(klass: pointer): bool
 proc GTK_OPTION_MENU_GET_CLASS*(obj: pointer): PGtkOptionMenuClass
 proc gtk_option_menu_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_option_menu_get_type".}
-proc gtk_option_menu_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_option_menu_new*(): PGtkOptionMenu{.cdecl, dynlib: gtklib,
     importc: "gtk_option_menu_new".}
 proc gtk_option_menu_get_menu*(option_menu: PGtkOptionMenu): PGtkWidget{.cdecl,
     dynlib: gtklib, importc: "gtk_option_menu_get_menu".}
@@ -8212,7 +8224,7 @@ proc build_insensitive*(a: var TGtkPixmap): guint
 proc set_build_insensitive*(a: var TGtkPixmap, `build_insensitive`: guint)
 proc gtk_pixmap_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_pixmap_get_type".}
-proc gtk_pixmap_new*(pixmap: PGdkPixmap, mask: PGdkBitmap): PGtkWidget{.cdecl,
+proc gtk_pixmap_new*(pixmap: PGdkPixmap, mask: PGdkBitmap): PGtkPixmap{.cdecl,
     dynlib: gtklib, importc: "gtk_pixmap_new".}
 proc gtk_pixmap_set*(pixmap: PGtkPixmap, val: PGdkPixmap, mask: PGdkBitmap){.
     cdecl, dynlib: gtklib, importc: "gtk_pixmap_set".}
@@ -8238,7 +8250,7 @@ proc gtk_plug_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
 proc gtk_plug_construct_for_display*(plug: PGtkPlug, display: PGdkDisplay,
                                      socket_id: TGdkNativeWindow){.cdecl,
     dynlib: gtklib, importc: "gtk_plug_construct_for_display".}
-proc gtk_plug_new_for_display*(display: PGdkDisplay, socket_id: TGdkNativeWindow): PGtkWidget{.
+proc gtk_plug_new_for_display*(display: PGdkDisplay, socket_id: TGdkNativeWindow): PGtkPlug{.
     cdecl, dynlib: gtklib, importc: "gtk_plug_new_for_display".}
 proc gtk_plug_get_id*(plug: PGtkPlug): TGdkNativeWindow{.cdecl, dynlib: gtklib,
     importc: "gtk_plug_get_id".}
@@ -8265,7 +8277,7 @@ proc set_expand*(a: var TGtkPreview, `expand`: guint)
 proc gtk_preview_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                         importc: "gtk_preview_get_type".}
 proc gtk_preview_uninit*(){.cdecl, dynlib: gtklib, importc: "gtk_preview_uninit".}
-proc gtk_preview_new*(thetype: TGtkPreviewClass): PGtkWidget{.cdecl,
+proc gtk_preview_new*(thetype: TGtkPreviewClass): PGtkPreview{.cdecl,
     dynlib: gtklib, importc: "gtk_preview_new".}
 proc gtk_preview_size*(preview: PGtkPreview, width: gint, height: gint){.cdecl,
     dynlib: gtklib, importc: "gtk_preview_size".}
@@ -8320,7 +8332,7 @@ proc activity_dir*(a: var TGtkProgressBar): guint
 proc set_activity_dir*(a: var TGtkProgressBar, `activity_dir`: guint)
 proc gtk_progress_bar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_progress_bar_get_type".}
-proc gtk_progress_bar_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_progress_bar_new*(): PGtkProgressBar{.cdecl, dynlib: gtklib,
     importc: "gtk_progress_bar_new".}
 proc gtk_progress_bar_pulse*(pbar: PGtkProgressBar){.cdecl, dynlib: gtklib,
     importc: "gtk_progress_bar_pulse".}
@@ -8349,18 +8361,18 @@ proc GTK_IS_RADIO_BUTTON_CLASS*(klass: pointer): bool
 proc GTK_RADIO_BUTTON_GET_CLASS*(obj: pointer): PGtkRadioButtonClass
 proc gtk_radio_button_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_radio_button_get_type".}
-proc gtk_radio_button_new*(group: PGSList): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_radio_button_new*(group: PGSList): PGtkRadioButton{.cdecl, dynlib: gtklib,
     importc: "gtk_radio_button_new".}
-proc gtk_radio_button_new_from_widget*(group: PGtkRadioButton): PGtkWidget{.
+proc gtk_radio_button_new_from_widget*(group: PGtkRadioButton): PGtkRadioButton{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_from_widget".}
-proc gtk_radio_button_new_with_label*(group: PGSList, `label`: cstring): PGtkWidget{.
+proc gtk_radio_button_new_with_label*(group: PGSList, `label`: cstring): PGtkRadioButton{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_label".}
 proc gtk_radio_button_new_with_label_from_widget*(group: PGtkRadioButton,
-    `label`: cstring): PGtkWidget{.cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_label_from_widget".}
-proc gtk_radio_button_new_with_mnemonic*(group: PGSList, `label`: cstring): PGtkWidget{.
+    `label`: cstring): PGtkRadioButton{.cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_label_from_widget".}
+proc gtk_radio_button_new_with_mnemonic*(group: PGSList, `label`: cstring): PGtkRadioButton{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_mnemonic".}
 proc gtk_radio_button_new_with_mnemonic_from_widget*(group: PGtkRadioButton,
-    `label`: cstring): PGtkWidget{.cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_mnemonic_from_widget".}
+    `label`: cstring): PGtkRadioButton{.cdecl, dynlib: gtklib, importc: "gtk_radio_button_new_with_mnemonic_from_widget".}
 proc gtk_radio_button_get_group*(radio_button: PGtkRadioButton): PGSList{.cdecl,
     dynlib: gtklib, importc: "gtk_radio_button_get_group".}
 proc gtk_radio_button_set_group*(radio_button: PGtkRadioButton, group: PGSList){.
@@ -8373,11 +8385,11 @@ proc GTK_IS_RADIO_MENU_ITEM_CLASS*(klass: pointer): bool
 proc GTK_RADIO_MENU_ITEM_GET_CLASS*(obj: pointer): PGtkRadioMenuItemClass
 proc gtk_radio_menu_item_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_radio_menu_item_get_type".}
-proc gtk_radio_menu_item_new*(group: PGSList): PGtkWidget{.cdecl,
+proc gtk_radio_menu_item_new*(group: PGSList): PGtkRadioMenuItem{.cdecl,
     dynlib: gtklib, importc: "gtk_radio_menu_item_new".}
-proc gtk_radio_menu_item_new_with_label*(group: PGSList, `label`: cstring): PGtkWidget{.
+proc gtk_radio_menu_item_new_with_label*(group: PGSList, `label`: cstring): PGtkRadioMenuItem{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_menu_item_new_with_label".}
-proc gtk_radio_menu_item_new_with_mnemonic*(group: PGSList, `label`: cstring): PGtkWidget{.
+proc gtk_radio_menu_item_new_with_mnemonic*(group: PGSList, `label`: cstring): PGtkRadioMenuItem{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_menu_item_new_with_mnemonic".}
 proc gtk_radio_menu_item_get_group*(radio_menu_item: PGtkRadioMenuItem): PGSList{.
     cdecl, dynlib: gtklib, importc: "gtk_radio_menu_item_get_group".}
@@ -8423,7 +8435,7 @@ proc set_focus_out*(a: var TGtkScrolledWindow, `focus_out`: guint)
 proc gtk_scrolled_window_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_scrolled_window_get_type".}
 proc gtk_scrolled_window_new*(hadjustment: PGtkAdjustment,
-                              vadjustment: PGtkAdjustment): PGtkWidget{.cdecl,
+                              vadjustment: PGtkAdjustment): PGtkScrolledWindow{.cdecl,
     dynlib: gtklib, importc: "gtk_scrolled_window_new".}
 proc gtk_scrolled_window_set_hadjustment*(scrolled_window: PGtkScrolledWindow,
     hadjustment: PGtkAdjustment){.cdecl, dynlib: gtklib, importc: "gtk_scrolled_window_set_hadjustment".}
@@ -8525,7 +8537,7 @@ proc GTK_IS_SEPARATOR_MENU_ITEM_CLASS*(klass: pointer): bool
 proc GTK_SEPARATOR_MENU_ITEM_GET_CLASS*(obj: pointer): PGtkSeparatorMenuItemClass
 proc gtk_separator_menu_item_get_type*(): GType{.cdecl, dynlib: gtklib,
     importc: "gtk_separator_menu_item_get_type".}
-proc gtk_separator_menu_item_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_separator_menu_item_new*(): PGtkSeparatorMenuItem{.cdecl, dynlib: gtklib,
     importc: "gtk_separator_menu_item_new".}
 const
   bm_TGtkSizeGroup_have_width* = 0x00000001'i16
@@ -8589,7 +8601,7 @@ proc need_map*(a: var TGtkSocket): guint
 proc set_need_map*(a: var TGtkSocket, `need_map`: guint)
 proc is_mapped*(a: var TGtkSocket): guint
 proc set_is_mapped*(a: var TGtkSocket, `is_mapped`: guint)
-proc gtk_socket_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_socket_new*(): PGtkSocket {.cdecl, dynlib: gtklib,
                                     importc: "gtk_socket_new".}
 proc gtk_socket_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_socket_get_type".}
@@ -8649,9 +8661,9 @@ proc gtk_spin_button_configure*(spin_button: PGtkSpinButton,
                                 digits: guint){.cdecl, dynlib: gtklib,
     importc: "gtk_spin_button_configure".}
 proc gtk_spin_button_new*(adjustment: PGtkAdjustment, climb_rate: gdouble,
-                          digits: guint): PGtkWidget{.cdecl, dynlib: gtklib,
+                          digits: guint): PGtkSpinButton{.cdecl, dynlib: gtklib,
     importc: "gtk_spin_button_new".}
-proc gtk_spin_button_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkWidget{.
+proc gtk_spin_button_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkSpinButton{.
     cdecl, dynlib: gtklib, importc: "gtk_spin_button_new_with_range".}
 proc gtk_spin_button_set_adjustment*(spin_button: PGtkSpinButton,
                                      adjustment: PGtkAdjustment){.cdecl,
@@ -8724,6 +8736,7 @@ const
   GTK_STOCK_COPY* = "gtk-copy"
   GTK_STOCK_CUT* = "gtk-cut"
   GTK_STOCK_DELETE* = "gtk-delete"
+  GTK_STOCK_EDIT* = "gtk-edit"
   GTK_STOCK_EXECUTE* = "gtk-execute"
   GTK_STOCK_FIND* = "gtk-find"
   GTK_STOCK_FIND_AND_REPLACE* = "gtk-find-and-replace"
@@ -8812,7 +8825,7 @@ proc has_resize_grip*(a: var TGtkStatusbar): guint
 proc set_has_resize_grip*(a: var TGtkStatusbar, `has_resize_grip`: guint)
 proc gtk_statusbar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_statusbar_get_type".}
-proc gtk_statusbar_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_statusbar_new*(): PGtkStatusbar{.cdecl, dynlib: gtklib,
                                        importc: "gtk_statusbar_new".}
 proc gtk_statusbar_get_context_id*(statusbar: PGtkStatusbar,
                                    context_description: cstring): guint{.cdecl,
@@ -8888,7 +8901,7 @@ proc empty*(a: var TGtkTableRowCol): guint
 proc set_empty*(a: var TGtkTableRowCol, `empty`: guint)
 proc gtk_table_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                       importc: "gtk_table_get_type".}
-proc gtk_table_new*(rows: guint, columns: guint, homogeneous: gboolean): PGtkWidget{.
+proc gtk_table_new*(rows: guint, columns: guint, homogeneous: gboolean): PGtkTable{.
     cdecl, dynlib: gtklib, importc: "gtk_table_new".}
 proc gtk_table_resize*(table: PGtkTable, rows: guint, columns: guint){.cdecl,
     dynlib: gtklib, importc: "gtk_table_resize".}
@@ -8936,7 +8949,7 @@ proc torn_off*(a: var TGtkTearoffMenuItem): guint
 proc set_torn_off*(a: var TGtkTearoffMenuItem, `torn_off`: guint)
 proc gtk_tearoff_menu_item_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_tearoff_menu_item_get_type".}
-proc gtk_tearoff_menu_item_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_tearoff_menu_item_new*(): PGtkTearoffMenuItem{.cdecl, dynlib: gtklib,
     importc: "gtk_tearoff_menu_item_new".}
 const
   bm_TGtkText_line_wrap* = 0x00000001'i16
@@ -8960,7 +8973,7 @@ proc use_wchar*(a: PGtkText): gboolean
 proc set_use_wchar*(a: PGtkText, `use_wchar`: gboolean)
 proc gtk_text_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_text_get_type".}
-proc gtk_text_new*(hadj: PGtkAdjustment, vadj: PGtkAdjustment): PGtkWidget{.
+proc gtk_text_new*(hadj: PGtkAdjustment, vadj: PGtkAdjustment): PGtkText{.
     cdecl, dynlib: gtklib, importc: "gtk_text_new".}
 proc gtk_text_set_editable*(text: PGtkText, editable: gboolean){.cdecl,
     dynlib: gtklib, importc: "gtk_text_set_editable".}
@@ -10056,9 +10069,9 @@ proc set_mouse_cursor_obscured*(a: var TGtkTextView,
                                 `mouse_cursor_obscured`: guint)
 proc gtk_text_view_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_text_view_get_type".}
-proc gtk_text_view_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_text_view_new*(): PGtkTextView{.cdecl, dynlib: gtklib,
                                        importc: "gtk_text_view_new".}
-proc gtk_text_view_new_with_buffer*(buffer: PGtkTextBuffer): PGtkWidget{.cdecl,
+proc gtk_text_view_new_with_buffer*(buffer: PGtkTextBuffer): PGtkTextView{.cdecl,
     dynlib: gtklib, importc: "gtk_text_view_new_with_buffer".}
 proc gtk_text_view_set_buffer*(text_view: PGtkTextView, buffer: PGtkTextBuffer){.
     cdecl, dynlib: gtklib, importc: "gtk_text_view_set_buffer".}
@@ -10210,7 +10223,7 @@ proc in_query*(a: var TGtkTipsQuery): guint
 proc set_in_query*(a: var TGtkTipsQuery, `in_query`: guint)
 proc gtk_tips_query_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_tips_query_get_type".}
-proc gtk_tips_query_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_tips_query_new*(): PGtkTipsQuery{.cdecl, dynlib: gtklib,
                                         importc: "gtk_tips_query_new".}
 proc gtk_tips_query_start_query*(tips_query: PGtkTipsQuery){.cdecl,
     dynlib: gtklib, importc: "gtk_tips_query_start_query".}
@@ -10280,7 +10293,7 @@ proc icon_size_set*(a: var TGtkToolbar): guint
 proc set_icon_size_set*(a: var TGtkToolbar, `icon_size_set`: guint)
 proc gtk_toolbar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                         importc: "gtk_toolbar_get_type".}
-proc gtk_toolbar_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_toolbar_new*(): PGtkToolbar{.cdecl, dynlib: gtklib,
                                      importc: "gtk_toolbar_new".}
 proc gtk_toolbar_append_item*(toolbar: PGtkToolbar, text: cstring,
                               tooltip_text: cstring,
@@ -10394,7 +10407,7 @@ proc view_line*(a: var TGtkTree): guint
 proc set_view_line*(a: var TGtkTree, `view_line`: guint)
 proc gtk_tree_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_tree_get_type".}
-proc gtk_tree_new*(): PGtkWidget{.cdecl, dynlib: gtklib, importc: "gtk_tree_new".}
+proc gtk_tree_new*(): PGtkTree{.cdecl, dynlib: gtklib, importc: "gtk_tree_new".}
 proc gtk_tree_append*(tree: PGtkTree, tree_item: PGtkWidget){.cdecl,
     dynlib: gtklib, importc: "gtk_tree_append".}
 proc gtk_tree_prepend*(tree: PGtkTree, tree_item: PGtkWidget){.cdecl,
@@ -10466,9 +10479,9 @@ proc expanded*(a: var TGtkTreeItem): guint
 proc set_expanded*(a: var TGtkTreeItem, `expanded`: guint)
 proc gtk_tree_item_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_tree_item_get_type".}
-proc gtk_tree_item_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_tree_item_new*(): PGtkTreeItem{.cdecl, dynlib: gtklib,
                                        importc: "gtk_tree_item_new".}
-proc gtk_tree_item_new_with_label*(`label`: cstring): PGtkWidget{.cdecl,
+proc gtk_tree_item_new_with_label*(`label`: cstring): PGtkTreeItem{.cdecl,
     dynlib: gtklib, importc: "gtk_tree_item_new_with_label".}
 proc gtk_tree_item_set_subtree*(tree_item: PGtkTreeItem, subtree: PGtkWidget){.
     cdecl, dynlib: gtklib, importc: "gtk_tree_item_set_subtree".}
@@ -10973,9 +10986,9 @@ proc GTK_IS_TREE_VIEW_CLASS*(klass: pointer): bool
 proc GTK_TREE_VIEW_GET_CLASS*(obj: pointer): PGtkTreeViewClass
 proc gtk_tree_view_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_tree_view_get_type".}
-proc gtk_tree_view_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_tree_view_new*(): PGtkTreeView{.cdecl, dynlib: gtklib,
                                        importc: "gtk_tree_view_new".}
-proc gtk_tree_view_new_with_model*(model: PGtkTreeModel): PGtkWidget{.cdecl,
+proc gtk_tree_view_new_with_model*(model: PGtkTreeModel): PGtkTreeView{.cdecl,
     dynlib: gtklib, importc: "gtk_tree_view_new_with_model".}
 proc gtk_tree_view_get_model*(tree_view: PGtkTreeView): PGtkTreeModel{.cdecl,
     dynlib: gtklib, importc: "gtk_tree_view_get_model".}
@@ -11137,7 +11150,7 @@ proc GTK_IS_VBUTTON_BOX_CLASS*(klass: pointer): bool
 proc GTK_VBUTTON_BOX_GET_CLASS*(obj: pointer): PGtkVButtonBoxClass
 proc gtk_vbutton_box_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_vbutton_box_get_type".}
-proc gtk_vbutton_box_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_vbutton_box_new*(): PGtkVButtonBox{.cdecl, dynlib: gtklib,
     importc: "gtk_vbutton_box_new".}
 proc GTK_TYPE_VIEWPORT*(): GType
 proc GTK_VIEWPORT*(obj: pointer): PGtkViewport
@@ -11147,7 +11160,7 @@ proc GTK_IS_VIEWPORT_CLASS*(klass: pointer): bool
 proc GTK_VIEWPORT_GET_CLASS*(obj: pointer): PGtkViewportClass
 proc gtk_viewport_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_viewport_get_type".}
-proc gtk_viewport_new*(hadjustment: PGtkAdjustment, vadjustment: PGtkAdjustment): PGtkWidget{.
+proc gtk_viewport_new*(hadjustment: PGtkAdjustment, vadjustment: PGtkAdjustment): PGtkViewport{.
     cdecl, dynlib: gtklib, importc: "gtk_viewport_new".}
 proc gtk_viewport_get_hadjustment*(viewport: PGtkViewport): PGtkAdjustment{.
     cdecl, dynlib: gtklib, importc: "gtk_viewport_get_hadjustment".}
@@ -11172,7 +11185,7 @@ proc GTK_IS_VPANED_CLASS*(klass: pointer): bool
 proc GTK_VPANED_GET_CLASS*(obj: pointer): PGtkVPanedClass
 proc gtk_vpaned_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_vpaned_get_type".}
-proc gtk_vpaned_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_vpaned_new*(): PGtkVPaned{.cdecl, dynlib: gtklib,
                                     importc: "gtk_vpaned_new".}
 proc GTK_TYPE_VRULER*(): GType
 proc GTK_VRULER*(obj: pointer): PGtkVRuler
@@ -11182,7 +11195,7 @@ proc GTK_IS_VRULER_CLASS*(klass: pointer): bool
 proc GTK_VRULER_GET_CLASS*(obj: pointer): PGtkVRulerClass
 proc gtk_vruler_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_vruler_get_type".}
-proc gtk_vruler_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_vruler_new*(): PGtkVRuler{.cdecl, dynlib: gtklib,
                                     importc: "gtk_vruler_new".}
 proc GTK_TYPE_VSCALE*(): GType
 proc GTK_VSCALE*(obj: pointer): PGtkVScale
@@ -11192,9 +11205,9 @@ proc GTK_IS_VSCALE_CLASS*(klass: pointer): bool
 proc GTK_VSCALE_GET_CLASS*(obj: pointer): PGtkVScaleClass
 proc gtk_vscale_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                        importc: "gtk_vscale_get_type".}
-proc gtk_vscale_new*(adjustment: PGtkAdjustment): PGtkWidget{.cdecl,
+proc gtk_vscale_new*(adjustment: PGtkAdjustment): PGtkVScale{.cdecl,
     dynlib: gtklib, importc: "gtk_vscale_new".}
-proc gtk_vscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkWidget{.
+proc gtk_vscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PGtkVScale{.
     cdecl, dynlib: gtklib, importc: "gtk_vscale_new_with_range".}
 proc GTK_TYPE_VSCROLLBAR*(): GType
 proc GTK_VSCROLLBAR*(obj: pointer): PGtkVScrollbar
@@ -11204,7 +11217,7 @@ proc GTK_IS_VSCROLLBAR_CLASS*(klass: pointer): bool
 proc GTK_VSCROLLBAR_GET_CLASS*(obj: pointer): PGtkVScrollbarClass
 proc gtk_vscrollbar_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_vscrollbar_get_type".}
-proc gtk_vscrollbar_new*(adjustment: PGtkAdjustment): PGtkWidget{.cdecl,
+proc gtk_vscrollbar_new*(adjustment: PGtkAdjustment): PGtkVScrollbar{.cdecl,
     dynlib: gtklib, importc: "gtk_vscrollbar_new".}
 proc GTK_TYPE_VSEPARATOR*(): GType
 proc GTK_VSEPARATOR*(obj: pointer): PGtkVSeparator
@@ -11214,7 +11227,7 @@ proc GTK_IS_VSEPARATOR_CLASS*(klass: pointer): bool
 proc GTK_VSEPARATOR_GET_CLASS*(obj: pointer): PGtkVSeparatorClass
 proc gtk_vseparator_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
     importc: "gtk_vseparator_get_type".}
-proc gtk_vseparator_new*(): PGtkWidget{.cdecl, dynlib: gtklib,
+proc gtk_vseparator_new*(): PGtkVSeparator{.cdecl, dynlib: gtklib,
                                         importc: "gtk_vseparator_new".}
 proc GTK_TYPE_OBJECT*(): GType =
   result = gtk_object_get_type()
@@ -16902,7 +16915,7 @@ proc gtk_binding_entry_add_signal*(binding_set: PGtkBindingSet, keyval: guint,
                                    modifiers: TGdkModifierType, 
                                    signal_name: cstring, n_args: guint){.varargs, 
     importc, cdecl, dynlib: gtklib.}
-proc gtk_clist_new_with_titles*(columns: gint): PGtkWidget{.varargs, cdecl, 
+proc gtk_clist_new_with_titles*(columns: gint): PGtkCList{.varargs, cdecl, 
     importc, dynlib: gtklib.}
 proc gtk_clist_prepend*(clist: PGtkCList): gint{.importc, varargs, cdecl, dynlib: gtklib.}
 proc gtk_clist_append*(clist: PGtkCList): gint{.importc, varargs, cdecl, dynlib: gtklib.}
@@ -16929,7 +16942,7 @@ proc gtk_container_child_get_valist*(container: PGtkContainer,
                                      child: PGtkWidget, 
                                      first_property_name: cstring){.varargs, 
     importc, cdecl, dynlib: gtklib.}
-proc gtk_ctree_new_with_titles*(columns: gint, tree_column: gint): PGtkWidget{.
+proc gtk_ctree_new_with_titles*(columns: gint, tree_column: gint): PGtkCTree{.
     importc, varargs, cdecl, dynlib: gtklib.}
 proc gtk_curve_get_vector*(curve: PGtkCurve, veclen: int32){.varargs, cdecl, 
     importc, dynlib: gtklib.}
@@ -16939,7 +16952,7 @@ proc gtk_dialog_add_buttons*(dialog: PGtkDialog, first_button_text: cstring){.
     varargs, cdecl, importc, dynlib: gtklib.}
 proc gtk_dialog_new_with_buttons*(title: cstring, parent: PGtkWindow, 
                                   flags: TGtkDialogFlags, 
-                                  first_button_text: cstring): PGtkWidget{.
+                                  first_button_text: cstring): PGtkDialog{.
     varargs, cdecl, importc, dynlib: gtklib.}
 proc gtk_list_store_new*(n_columns: gint): PGtkListStore{.varargs, cdecl, 
     importc, dynlib: gtklib.}
@@ -16949,7 +16962,7 @@ proc gtk_list_store_set_valist*(list_store: PGtkListStore, iter: PGtkTreeIter){.
     varargs, cdecl, importc, dynlib: gtklib.}
 proc gtk_message_dialog_new*(parent: PGtkWindow, flags: TGtkDialogFlags, 
                              thetype: TGtkMessageType, buttons: TGtkButtonsType, 
-                             message_format: cstring): PGtkWidget{.varargs, 
+                             message_format: cstring): PGtkMessageDialog{.varargs, 
     cdecl, importc, dynlib: gtklib.}
 proc gtk_signal_new*(name: cstring, signal_flags: TGtkSignalRunType, 
                      object_type: TGtkType, function_offset: guint, 
@@ -17014,11 +17027,11 @@ proc gtk_widget_style_get*(widget: PGtkWidget, first_property_name: cstring){.
     varargs, cdecl, importc, dynlib: gtklib.}
 proc gtk_file_chooser_dialog_new*(title: cstring, parent: PGtkWindow, 
                                   action: TGtkFileChooserAction, 
-                                  first_button_text: cstring): PGtkWidget{.cdecl, 
+                                  first_button_text: cstring): PGtkDialog {.cdecl, 
     varargs, dynlib: gtklib, importc: "gtk_file_chooser_dialog_new".}
 proc gtk_file_chooser_dialog_new_with_backend*(title: cstring, 
     parent: PGtkWindow, action: TGtkFileChooserAction, backend: cstring, 
-    first_button_text: cstring): PGtkWidget{.varargs, cdecl, dynlib: gtklib, 
+    first_button_text: cstring): PGtkDialog {.varargs, cdecl, dynlib: gtklib, 
     importc: "gtk_file_chooser_dialog_new_with_backend".}
 proc gtk_object_ref*(anObject: PGtkObject): PGtkObject{.cdecl,importc,  dynlib: gtklib.}
 proc gtk_object_unref*(anObject: PGtkObject){.cdecl, importc, dynlib: gtklib.}
@@ -17075,7 +17088,7 @@ type
     GTK_FILE_FILTER_FILENAME = 1 shl 0, GTK_FILE_FILTER_URI = 1 shl 1, 
     GTK_FILE_FILTER_DISPLAY_NAME = 1 shl 2, GTK_FILE_FILTER_MIME_TYPE = 1 shl 3
   PGtkFileFilterInfo* = ref TGtkFileFilterInfo
-  TGtkFileFilterInfo* {.final.} = object 
+  TGtkFileFilterInfo* {.final, pure.} = object 
     contains*: TGtkFileFilterFlags
     filename*: cstring
     uri*: cstring

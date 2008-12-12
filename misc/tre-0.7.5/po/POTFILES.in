@@ -1,0 +1,7 @@
+# List of source files containing translatable strings.
+
+# Library files
+lib/regerror.c
+
+# agrep files
+src/agrep.c

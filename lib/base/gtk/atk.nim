@@ -55,7 +55,7 @@ type
     ATK_LAYER_INVALID, ATK_LAYER_BACKGROUND, ATK_LAYER_CANVAS, ATK_LAYER_WIDGET,
     ATK_LAYER_MDI, ATK_LAYER_POPUP, ATK_LAYER_OVERLAY
   PAtkPropertyValues* = ptr TAtkPropertyValues
-  TAtkPropertyValues* {.final.} = object
+  TAtkPropertyValues* {.final, pure.} = object
     property_name*: cstring
     old_value*: TGValue
     new_value*: TGValue
@@ -378,7 +378,7 @@ type
 
   TAtkAttributeSet* = TGSList
   PAtkAttribute* = ptr TAtkAttribute
-  TAtkAttribute* {.final.} = object
+  TAtkAttribute* {.final, pure.} = object
     name*: cstring
     value*: cstring
 
@@ -452,7 +452,7 @@ type
   TAtkEventListenerInitProc* = proc ()
   TAtkEventListenerInit* = proc (para1: TAtkEventListenerInitProc){.cdecl.}
   PAtkKeyEventStruct* = ptr TAtkKeyEventStruct
-  TAtkKeyEventStruct* {.final.} = object
+  TAtkKeyEventStruct* {.final, pure.} = object
     `type`*: gint
     state*: guint
     keyval*: guint

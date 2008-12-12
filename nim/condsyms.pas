@@ -102,6 +102,7 @@ begin
   case targetCPU of
     cpuI386: DefineSymbol('x86');
     cpuIa64: DefineSymbol('itanium');
+    cpuAmd64: DefineSymbol('x8664');
     else begin end
   end;
   case targetOS of

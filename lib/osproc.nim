@@ -1,0 +1,395 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2008 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module implements an advanced facility for executing OS processes.
+## On Windows this module is currently broken. Please help!
+
+import
+  os, strtabs, streams
+
+when defined(windows):
+  import windows
+
+type
+  TProcess = object of TObject
+    when defined(windows):
+      FProcessHandle: Thandle
+      FThreadHandle: Thandle
+      inputHandle, outputHandle, errorHandle: TFileHandle
+    else:
+      inputHandle, outputHandle, errorHandle: TFileHandle
+    id: cint
+    exitCode: cint
+
+  PProcess* = ref TProcess ## represents an operating system process
+
+  TProcessOption* = enum ## options that can be passed `startProcess`
+    poNone,              ## none option
+    poUseShell,          ## use the shell to execute the command; NOTE: This
+                         ## often creates a security whole!
+    poStdErrToStdOut     ## merge stdout and stderr to the stdout stream
+
+proc executeProcess*(command: string,
+                     options: set[TProcessOption] = {poStdErrToStdOut,
+                                                     poUseShell}): string
+  ## A convience procedure that executes ``command`` with ``startProcess``
+  ## and returns its output as a string.
+
+proc startProcess*(command: string,
+                   workingDir: string = "",
+                   args: openarray[string] = [],
+                   env: PStringTable = nil,
+                   options: set[TProcessOption] = {poStdErrToStdOut}): PProcess
+  ## Starts a process. `Command` is the executable file, `workingDir` is the
+  ## process's working directory. If ``workingDir == ""`` the current directory
+  ## is used. `args` are the command line arguments that are passed to the
+  ## process. On many operating systems, the first command line argument is the
+  ## name of the executable. `args` should not contain this argument!
+  ## `startProcess` takes care of that. `env` is the environment that will be
+  ## passed to the process. If ``env == nil`` the environment is inherited of
+  ## the parent process. `options` are additional flags that may be passed
+  ## to `startProcess`. See the documentation of ``TProcessOption`` for the
+  ## meaning of these flags.
+  ## Return value: The newly created process object. Nil is never returned,
+  ## but ``EOS`` is raised in case of an error.
+
+when true:
+  nil
+else:
+  proc startGUIProcess*(command: string,
+                     workingDir: string = "",
+                     args: openarray[string] = [],
+                     env: PStringTable = nil,
+                     x = -1,
+                     y = -1,
+                     width = -1,
+                     height = -1): PProcess
+
+proc suspend*(p: PProcess)
+  ## Suspends the process `p`.
+
+proc resume*(p: PProcess)
+  ## Resumes the process `p`.
+
+proc terminate*(p: PProcess)
+  ## Terminates the process `p`.
+
+proc running*(p: PProcess): bool
+  ## Returns true iff the process `p` is still running. Returns immediately.
+
+proc processID*(p: PProcess): int =
+  ## returns `p`'s process ID.
+  return p.id
+
+proc waitForExit*(p: PProcess): int
+  ## waits for the process to finish and returns `p`'s error code.
+
+proc inputStream*(p: PProcess): PStream
+  ## returns ``p``'s input stream for writing to
+
+proc outputStream*(p: PProcess): PStream
+  ## returns ``p``'s output stream for reading from
+
+proc errorStream*(p: PProcess): PStream
+  ## returns ``p``'s output stream for reading from
+
+proc executeProcess*(command: string,
+                     options: set[TProcessOption] = {poStdErrToStdOut,
+                                                     poUseShell}): string =
+  var c = parseCmdLine(command)
+  var a: seq[string] = @[] # slicing is not yet implemented :-(
+  for i in 1 .. c.len-1: add(a, c[i])
+  var p = startProcess(command=c[0], args=a, options=options)
+  var outp = outputStream(p)
+  result = ""
+  while running(p) or not outp.atEnd(outp):
+    result.add(outp.readLine())
+    result.add("\n")
+
+when false:
+  proc deallocCStringArray(a: cstringArray) =
+    var i = 0
+    while a[i] != nil:
+      dealloc(a[i])
+      inc(i)
+    dealloc(a)
+
+when defined(Windows):
+  # We need to implement a handle stream for Windows:
+  type
+    PFileHandleStream = ref TFileHandleStream
+    TFileHandleStream = object of TStream
+      handle: THandle
+      atTheEnd: bool
+
+  proc hsClose(s: PFileHandleStream) = nil # nothing to do here
+  proc hsAtEnd(s: PFileHandleStream): bool = return true
+
+  proc hsReadData(s: PFileHandleStream, buffer: pointer, bufLen: int): int =
+    var br: int32
+    var a = windows.ReadFile(s.handle, buffer, bufLen, br, nil)
+    if a == 0: OSError()
+    result = br
+    #atEnd = bytesRead < bufLen
+
+  proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) =
+    var bytesWritten: int32
+    var a = windows.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
+    if a == 0: OSError()
+
+  proc newFileHandleStream(handle: THandle): PFileHandleStream =
+    new(result)
+    result.handle = handle
+    result.close = hsClose
+    result.atEnd = hsAtEnd
+    result.readData = hsReadData
+    result.writeData = hsWriteData
+
+  proc buildCommandLine(a: string, args: openarray[string]): cstring =
+    var L = a.len
+    for i in 0..high(args): inc(L, args[i].len+1)
+    result = cast[cstring](alloc0(L+1))
+    copyMem(result, cstring(a), a.len)
+    L = a.len
+    for i in 0..high(args):
+      result[L] = ' '
+      inc(L)
+      copyMem(addr(result[L]), cstring(args[i]), args[i].len)
+      inc(L, args[i].len)
+
+  proc buildEnv(env: PStringTable): cstring =
+    var L = 0
+    for key, val in pairs(env): inc(L, key.len + val.len + 2)
+    result = cast[cstring](alloc0(L+2))
+    L = 0
+    for key, val in pairs(env):
+      var x = key & "=" & val
+      copyMem(addr(result[L]), cstring(x), x.len+1) # copy \0
+      inc(L, x.len+1)
+
+  #proc open_osfhandle(osh: THandle, mode: int): int {.
+  #  importc: "_open_osfhandle", header: "<fcntl.h>".}
+
+  #var
+  #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
+  #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
+
+  proc CreatePipeHandles(Inhandle, OutHandle: ptr THandle) =
+    var piInheritablePipe: TSecurityAttributes
+    piInheritablePipe.nlength = SizeOF(TSecurityAttributes)
+    piInheritablePipe.lpSecurityDescriptor = Nil
+    piInheritablePipe.Binherithandle = 1
+    if CreatePipe(Inhandle, Outhandle, addr(piInheritablePipe), 0) == 0'i32:
+      OSError()
+
+  proc startProcess*(command: string,
+                 workingDir: string = "",
+                 args: openarray[string] = [],
+                 env: PStringTable = nil,
+                 options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
+    new(result)
+    var
+      SI: TStartupInfo
+      ProcInfo: TProcessInformation
+      success: int
+      hi, ho, he: THandle
+    SI.cb = SizeOf(SI)
+    SI.dwFlags = STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES
+    CreatePipeHandles(addr(SI.hStdInput), addr(HI))
+    CreatePipeHandles(addr(HO), addr(Si.hStdOutput))
+    #SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE())
+    #SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE())
+    if poStdErrToStdOut in options:
+      SI.hStdError = SI.hStdOutput
+      HE = HO
+    else:
+      CreatePipeHandles(addr(HE), addr(Si.hStdError))
+      #SI.hStdError = GetStdHandle(STD_ERROR_HANDLE())
+    #result.inputHandle = open_osfhandle(HI, O_WRONLY)
+    #if result.inputHandle == -1'i32: OSError()
+    result.inputHandle = hi
+    result.outputHandle = ho
+    result.errorHandle = he
+    #result.outputHandle = open_osfhandle(HO, O_RDONLY)
+    #if result.outputHandle == -1'i32: OSError()
+    #result.errorHandle = open_osfhandle(HE, O_RDONLY)
+    #if result.errorHandle == -1'i32: OSError()
+    var cmdl = buildCommandLine(command, args)
+    var wd: cstring = nil
+    if len(workingDir) > 0: wd = workingDir
+    if env == nil:
+      success = Windows.CreateProcess(nil,
+        cmdl, nil, nil, 0,
+        NORMAL_PRIORITY_CLASS, nil, wd,
+        addr(SI), addr(ProcInfo))
+    else:
+      var e = buildEnv(env)
+      success = Windows.CreateProcess(nil,
+        cmdl, nil, nil, 0,
+        NORMAL_PRIORITY_CLASS, e, wd,
+        addr(SI), addr(ProcInfo))
+      dealloc(e)
+    dealloc(cmdl)
+    if success == 0:
+      OSError()
+    result.FProcessHandle = procInfo.hProcess
+    result.FThreadHandle = procInfo.hThread
+    result.id = procInfo.dwProcessID
+
+  proc suspend(p: PProcess) =
+    discard SuspendThread(p.FThreadHandle)
+
+  proc resume(p: PProcess) =
+    discard ResumeThread(p.FThreadHandle)
+
+  proc running(p: PProcess): bool =
+    var x = waitForSingleObject(p.FThreadHandle, 50)
+    return x == WAIT_TIMEOUT
+
+  proc terminate(p: PProcess) =
+    if running(p):
+      discard TerminateProcess(p.FProcessHandle, 0)
+
+  proc waitForExit(p: PProcess): int =
+    discard WaitForSingleObject(p.FThreadHandle, Infinite)
+    var res: dword
+    discard GetExitCodeProcess(p.FProcessHandle, res)
+    result = res
+    discard CloseHandle(p.FThreadHandle)
+    discard CloseHandle(p.FProcessHandle)
+
+  proc inputStream(p: PProcess): PStream =
+    result = newFileHandleStream(p.inputHandle)
+
+  proc outputStream(p: PProcess): PStream =
+    result = newFileHandleStream(p.outputHandle)
+
+  proc errorStream(p: PProcess): PStream =
+    result = newFileHandleStream(p.errorHandle)
+
+else:
+  import posix
+
+  const
+    readIdx = 0
+    writeIdx = 1
+
+  proc addCmdArgs(command: string, args: openarray[string]): string =
+    result = command
+    for i in 0 .. high(args):
+      add(result, " ")
+      add(result, args[i])
+
+  proc toCStringArray(b, a: openarray[string]): cstringArray =
+    result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
+    for i in 0..high(b):
+      result[i] = cast[cstring](alloc(b[i].len+1))
+      copyMem(result[i], cstring(b[i]), b[i].len+1)
+    for i in 0..high(a):
+      result[i+b.len] = cast[cstring](alloc(a[i].len+1))
+      copyMem(result[i+b.len], cstring(a[i]), a[i].len+1)
+
+  proc ToCStringArray(t: PStringTable): cstringArray =
+    result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
+    var i = 0
+    for key, val in pairs(t):
+      var x = key & "=" & val
+      result[i] = cast[cstring](alloc(x.len+1))
+      copyMem(result[i], addr(x[0]), x.len+1)
+      inc(i)
+
+  proc startProcess*(command: string,
+                 workingDir: string = "",
+                 args: openarray[string] = [],
+                 env: PStringTable = nil,
+                 options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
+    new(result)
+    var
+      p_stdin, p_stdout, p_stderr: array [0..1, cint]
+    if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32:
+      OSError("failed to create a pipe")
+    var Pid = fork()
+    if Pid < 0:
+      OSError("failed to fork process")
+
+    if pid == 0:
+      ## child process:
+      discard close(p_stdin[writeIdx])
+      discard dup2(p_stdin[readIdx], readIdx)
+      discard close(p_stdout[readIdx])
+      discard dup2(p_stdout[writeIdx], writeIdx)
+      if poStdErrToStdOut in options:
+        discard dup2(p_stdout[writeIdx], 2)
+      else:
+        if pipe(p_stderr) != 0'i32: OSError("failed to create a pipe")
+        discard close(p_stderr[readIdx])
+        discard dup2(p_stderr[writeIdx], 2)
+
+      if workingDir.len > 0:
+        os.setCurrentDir(workingDir)
+      if poUseShell notin options:
+        var a = toCStringArray([extractFilename(command)], args)
+        if env == nil:
+          discard execv(command, a)
+        else:
+          discard execve(command, a, ToCStringArray(env))
+      else:
+        var x = addCmdArgs(command, args)
+        var a = toCStringArray(["sh", "-c"], [x])
+        if env == nil:
+          discard execv("/bin/sh", a)
+        else:
+          discard execve("/bin/sh", a, ToCStringArray(env))
+      # too risky to raise an exception here:
+      echo("execve call failed: " & $strerror(errno))
+      quit(1)
+    # Parent process. Copy process information.
+    result.id = pid
+
+    result.inputHandle = p_stdin[writeIdx]
+    result.outputHandle = p_stdout[readIdx]
+    if poStdErrToStdOut in options:
+      result.errorHandle = result.outputHandle
+    else:
+      result.errorHandle = p_stderr[readIdx]
+      discard close(p_stderr[writeIdx])
+    discard close(p_stdin[readIdx])
+    discard close(p_stdout[writeIdx])
+
+  proc suspend(p: PProcess) =
+    discard kill(p.id, SIGSTOP)
+
+  proc resume(p: PProcess) =
+    discard kill(p.id, SIGCONT)
+
+  proc running(p: PProcess): bool =
+    result = waitPid(p.id, p.exitCode, WNOHANG) == int(p.id)
+
+  proc terminate(p: PProcess) =
+    if kill(p.id, SIGTERM) == 0'i32:
+      if running(p): discard kill(p.id, SIGKILL)
+
+  proc waitForExit(p: PProcess): int =
+    if waitPid(p.id, p.exitCode, 0) == int(p.id):
+      result = p.exitCode
+
+  proc inputStream(p: PProcess): PStream =
+    var f: TFile
+    if not openFile(f, p.inputHandle, fmWrite): OSError()
+    result = newFileStream(f)
+
+  proc outputStream(p: PProcess): PStream =
+    var f: TFile
+    if not openFile(f, p.outputHandle, fmRead): OSError()
+    result = newFileStream(f)
+
+  proc errorStream(p: PProcess): PStream =
+    var f: TFile
+    if not openFile(f, p.errorHandle, fmRead): OSError()
+    result = newFileStream(f)

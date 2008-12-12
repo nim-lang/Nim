@@ -1,0 +1,69 @@
+This code is structured roughly as follows:
+
+xmalloc.c:
+  - Wrappers for the malloc() functions, for error generation and
+    memory leak checking purposes.
+
+tre-mem.c:
+  - A simple and efficient memory allocator.
+
+tre-stack.c:
+  - Implements a simple stack data structure.
+
+tre-ast.c:
+  - Abstract syntax tree (AST) definitions.
+
+tre-parse.c:
+  - Regexp parser.  Parses a POSIX regexp (with TRE extensions) into
+    an abstract syntax tree (AST).
+
+tre-compile.c:
+  - Compiles ASTs to ready-to-use regex objects.  Comprised of two parts:
+    * Routine to convert an AST to a tagged AST.  A tagged AST has
+      appropriate minimized or maximized tags added to keep track of
+      submatches.
+    * Routine to convert tagged ASTs to tagged nondeterministic state
+      machines (TNFAs) without epsilon transitions (transitions on
+      empty strings).
+
+tre-match-parallel.c:
+  - Parallel TNFA matcher.
+    * The matcher basically takes a string and a TNFA and finds the
+      leftmost longest match and submatches in one pass over the input
+      string.  Only the beginning of the input string is scanned until
+      a leftmost match and longest match is found.
+    * The matcher cannot handle back references, but the worst case
+      time consumption is O(l) where l is the length of the input
+      string.  The space consumption is constant.
+
+tre-match-backtrack.c:
+  - A traditional backtracking matcher.
+    * Like the parallel matcher, takes a string and a TNFA and finds
+      the leftmost longest match and submatches.  Portions of the
+      input string may (and usually are) scanned multiple times.
+    * Can handle back references.  The worst case time consumption,
+      however, is O(k^l) where k is some constant and l is the length
+      of the input string.  The worst case space consumption is O(l).
+
+tre-match-approx.c:
+  - Approximate parallel TNFA matcher.
+    * Finds the leftmost and longest match and submatches in one pass
+      over the input string.  The match may contain errors.  Each
+      missing, substituted, or extra character in the match increases
+      the cost of the match.  A maximum cost for the returned match
+      can be given.  The cost of the found match is returned.
+    * Cannot handle back references.  The space and time consumption
+      bounds are the same as for the parallel exact matcher, but
+      in general this matcher is slower than the exact matcher.
+
+regcomp.c:
+  - Implementation of the regcomp() family of functions as simple
+    wrappers for tre_compile().
+
+regexec.c:
+  - Implementation of the regexec() family of functions.
+    * The appropriate matcher is dispatched according to the
+      features used in the compiled regex object.
+
+regerror.c:
+  - Implements the regerror() function.

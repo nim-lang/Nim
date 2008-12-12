@@ -8,20 +8,15 @@ RST
 
 Bugs
 ----
-- BUG: sigmatch for ``len`` matches the open array too often... *sigh*
-- BUG:
-    for j in 0 .. a.len + b.len - 1: nil
-  where a and b are open arrays does not compile
 
-- BUG: ["sh", "-c", someProcWithOpenArray(openArr)] produces wrong C code
-- BUG: bootstrapping does not work with Borland C
-- BUG: addr/deref does not work when interpreting
-- BUG: Check that pure procs only consist of asm statements (and comments)
-- BUG: tlastmod returns wrong results on BSD (Linux, MacOS X: works)
+- BUG: addr/deref may not work when interpreting
 - BUG: the parser allows empty statements/object case branches
+- BUG: the parser allows to omit commas
 - BUG: when optmizing cgen.c with Visual C++, GCC, LLVM (O3), it breaks.
 - BUG: ``-cc:bcc`` command line option does not error
 - BUG: symbol files still do not work
+- BUG: tlastmod returns wrong results on BSD (Linux, MacOS X: works)
+- BUG: sigmatch for ``len`` matches the open array too often... (?)
 
 
 High priority
@@ -30,7 +25,7 @@ High priority
 - documentation: var types, ``[]`` overloading, ``cast`` and type convertions,
   ``if`` expresssions, (anonymous) procs
 - implement two-phase lookup for generics (this is hard...): This is useful
-  for macros too! Alternative: Explicit early name binding. Both is hard to
+  for macros too! Alternative: Explicit early name binding. Both are hard to
   implement
 - implement closures for the C code generator
 - get rid of ``nkHiddenStdConv`` in several places: this mechanism caused more
@@ -39,7 +34,7 @@ High priority
 
 Library
 -------
-- xml, html, url, cgi, fastcgi: implement from scratch
+- xml, html, url, fastcgi: implement from scratch
 - unicode library
 - socket library (does SDL for us?)
 - osproc for Windows
@@ -325,6 +320,28 @@ Changelog
 - fixed many bugs in ``os`` module for Windows
 - bug in ``semVar`` removed standard convertions
 - BUGFIX: ``setLen`` for sequences may lead to memory leaks
+0.7.1
+- gtk2: cleaned up return types for ``Gtk_*_new`` constructors
+- gtk2: added ``pure`` to ``final`` objects
+- BUGFIX: ``genTypeSection`` uses ``isPureObject`` now
+- BUGFIX: ``GetUniqueType`` was wrong
+- BUGFIX: count references from untraced heap to traced heap!
+- BUGFIX: fixed owner handling bug; only accessible in semantic checking phase  
+- BUGFIX: ``ParamTypesMatch`` generics resulting in openarray now generate the
+  nkHiddenStdConv tree
+- BUGFIX: dynamic libraries are reused again -> much smaller C code is produced
+- small corrections in the manual
+- BUGFIX: the build script did not detect 64 bit Linux
+- BUGFIX: the Pascal version did not compile for 64 bit (TUnsignedHash!)
+- several bugfixes for 64bit version
+- BUGFIX: no index checking was generated for some code that should be checked!
+- BUGFIX: docgen did not escape tokens from highlite module
+- BUGFIX: fixed seldom integer operations
+- BUGFIX: illegal type recursion detection
+- BUGFIX: ``for j in 0 .. a.len`` where a is an open array did not transform
+          correctly
+0.7.2
+- small performance improvements for the RST parser
 
 
 For the next versions

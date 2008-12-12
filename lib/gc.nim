@@ -54,19 +54,6 @@ proc getTotalMem(): int = return tlsfMax()
 
 # ---------------------------------------------------------------------------
 
-# After several attempts, we now use a novel approach for cycle detection:
-# increments/decrements of the reference counters are enqued into a buffer
-# and not immediately performed. The reason is that increments may introduce
-# new garbage cycles. The cycle detector only scans the changed subgraph. This
-# provides superior performance. Of course only cells that may be part of
-# a cycle are considered. However, reallocation does not work with this scheme!
-# Because the queue may contain references to the old cell.
-# The queue is thread-local storage, so that no synchronization is needed for
-# reference counting.
-
-# With this scheme, the entire heap is never searched and there is no need for
-# the AT.
-
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
@@ -89,7 +76,7 @@ const
                       # this seems to be a good value
 
 const
-  MemAlignment = sizeof(pointer)*2 # minimal memory block that can be allocated
+  MemAlignment = 8 # BUGFIX: on AMD64, dlmalloc aligns at 8 byte boundary
   BitsPerUnit = sizeof(int)*8
     # a "unit" is a word, i.e. 4 bytes
     # on a 32 bit system; I do not use the term "word" because under 32-bit
@@ -255,8 +242,14 @@ proc inOperator(s: TCellSeq, c: PCell): bool {.inline.} =
 proc add(s: var TCellSeq, c: PCell) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
-    s.d = cast[PCellArray](tlsf_realloc(s.d, s.cap * sizeof(PCell)))
-    if s.d == nil: raiseOutOfMem()
+    var d = cast[PCellArray](tlsf_malloc(s.cap * sizeof(PCell)))
+    if d == nil: raiseOutOfMem()
+    copyMem(d, s.d, s.len * sizeof(PCell))
+    tlsf_free(s.d)
+    s.d = d
+    # BUGFIX: realloc failes on AMD64, sigh...
+    #s.d = cast[PCellArray](tlsf_realloc(s.d, s.cap * sizeof(PCell)))
+    #if s.d == nil: raiseOutOfMem()
   s.d[s.len] = c
   inc(s.len)
 
@@ -383,7 +376,7 @@ iterator elements(t: TCellSet): PCell {.inline.} =
 
 # --------------- end of Cellset routines -------------------------------------
 
-when logGC or traceGC:
+when debugGC:
   proc writeCell(msg: CString, c: PCell) =
     var kind = -1
     if c.typ != nil: kind = ord(c.typ.kind)
@@ -707,7 +700,6 @@ proc collectCycles(gch: var TGcHeap) =
   var tabSize = 0
   for c in elements(gch.cycleRoots):
     inc(tabSize)
-    assert(c.typ != nil)
     forallChildren(c, waCycleDecRef)
   gch.cycleTableSize = max(gch.cycleTableSize, tabSize)
 

@@ -1,0 +1,430 @@
+<h1>TRE Regexp Syntax</h1>
+
+<p>
+This document describes the POSIX 1003.2 extended RE (ERE) syntax and
+the basic RE (BRE) syntax as implemented by TRE, and the TRE extensions
+to the ERE syntax.  A simple Extended Backus-Naur Form (EBNF) style
+notation is used to describe the grammar.
+</p>
+
+<h2>ERE Syntax</h2>
+
+<h3>Alternation operator</h3>
+<a name="alternation"></a>
+<a name="extended-regexp"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>extended-regexp</i> ::= <a href="#branch"><i>branch</i></a>
+                |   <i>extended-regexp</i> <b>"|"</b> <a href="#branch"><i>branch</i></a>
+</pre>
+</td></tr>
+</table>
+<p>
+An extended regexp (ERE) is one or more <i>branches</i>, separated by
+<tt>|</tt>.  An ERE matches anything that matches one or more of the
+branches.
+</p>
+
+<h3>Catenation of REs</h3>
+<a name="catenation"></a>
+<a name="branch"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>branch</i> ::= <i>piece</i>
+       |   <i>branch</i> <i>piece</i>
+</pre>
+</td></tr>
+</table>
+<p>
+A branch is one or more <i>pieces</i> concatenated.  It matches a
+match for the first piece, followed by a match for the second piece,
+and so on.
+</p>
+
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>piece</i> ::= <i>atom</i>
+      |   <i>atom</i> <a href="#repeat-operator"><i>repeat-operator</i></a>
+      |   <i>atom</i> <a href="#approx-settings"><i>approx-settings</i></a>
+</pre>
+</td></tr>
+</table>
+<p>
+A piece is an <i>atom</i> possibly followed by a repeat operator or an
+expression controlling approximate matching parameters for the <i>atom</i>.
+</p>
+
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>atom</i> ::= <b>"("</b> <i>extended-regexp</i> <b>")"</b>
+     |   <a href="#bracket-expression"><i>bracket-expression</i></a>
+     |   <b>"."</b>
+     |   <a href="#assertion"><i>assertion</i></a>
+     |   <a href="#literal"><i>literal</i></a>
+     |   <a href="#backref"><i>back-reference</i></a>
+     |   <b>"(?#"</b> <i>comment-text</i> <b>")"</b>
+     |   <b>"(?"</b> <a href="#options"><i>options</i></a> <b>")"</b> <i>extended-regexp</i>
+     |   <b>"(?"</b> <a href="#options"><i>options</i></a> <b>":"</b> <i>extended-regexp</i> <b>")"</b>
+</pre>
+</td></tr>
+</table>
+<p>
+An atom is either an ERE enclosed in parenthesis, a bracket
+expression, a <tt>.</tt> (period), an assertion, or a literal.
+</p>
+
+<p>
+The dot (<tt>.</tt>) matches any single character.
+If the <code>REG_NEWLINE</code> compilation flag (see <a
+href="api.html">API manual</a>) is specified, the newline
+character is not matched.
+</p>
+
+<p>
+<tt>Comment-text</tt> can contain any characters except for a closing parenthesis <tt>)</tt>. The text in the comment is
+completely ignored by the regex parser and it used solely for readability purposes.
+</p>
+
+<h3>Repeat operators</h3>
+<a name="repeat-operator"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>repeat-operator</i> ::= <b>"*"</b>
+                |   <b>"+"</b>
+                |   <b>"?"</b>
+                |   <i>bound</i>
+                |   <b>"*?"</b>
+                |   <b>"+?"</b>
+                |   <b>"??"</b>
+                |   <i>bound</i> <b>?</b>
+</pre>
+</td></tr>
+</table>
+
+<p>
+An atom followed by <tt>*</tt> matches a sequence of 0 or more matches
+of the atom.  <tt>+</tt> is similar to <tt>*</tt>, matching a sequence
+of 1 or more matches of the atom.  An atom followed by <tt>?</tt>
+matches a sequence of 0 or 1 matches of the atom.
+</p>
+
+<p>
+A <i>bound</i> is one of the following, where <i>m</i> and <i>m</i>
+are unsigned decimal integers between <tt>0</tt> and
+<tt>RE_DUP_MAX</tt>:
+</p>
+
+<ol>
+<li><tt>{</tt><i>m</i><tt>,</tt><i>n</i><tt>}</tt></li>
+<li><tt>{</tt><i>m</i><tt>,}</tt></li>
+<li><tt>{</tt><i>m</i><tt>}</tt></li>
+</ol>
+
+<p>
+An atom followed by [1] matches a sequence of <i>m</i> through <i>n</i>
+(inclusive) matches of the atom.  An atom followed by [2]
+matches a sequence of <i>m</i> or more matches of the atom.  An atom
+followed by [3] matches a sequence of exactly <i>m</i> matches of the
+atom.
+</p>
+
+
+<p>
+Adding a <tt>?</tt> to a repeat operator makes the subexpression
+minimal, or non-greedy.  Normally a repeated expression is greedy,
+that is, it matches as many characters as possible.  A non-greedy
+subexpression matches as few characters as possible.  Note that this
+does not (always) mean the same thing as matching as many or few
+repetitions as possible.
+</p>
+
+<h3>Approximate matching settings</h3>
+<a name="approx-settings"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>approx-settings</i> ::= <b>"{"</b> <i>count-limits</i>* <b>","</b>? <i>cost-equation</i>? <b>"}"</b>
+
+<i>count-limits</i> ::= <b>"+"</b> <i>number</i>?
+             |   <b>"-"</b> <i>number</i>?
+             |   <b>"#"</b> <i>number</i>?
+             |   <b>"~"</b> <i>number</i>?
+
+<i>cost-equation</i> ::= ( <i>cost-term</i> "+"? " "? )+ <b>"&lt;"</b> <i>number</i>
+
+<i>cost-term</i> ::= <i>number</i> <b>"i"</b>
+          |   <i>number</i> <b>"d"</b>
+          |   <i>number</i> <b>"s"</b>
+
+</pre>
+</td></tr>
+</table>
+
+<p>
+The approximate matching settings for a subpattern can be changed
+by appending <i>approx-settings</i> to the subpattern.  Limits for
+the number of errors can be set and an expression for specifying and
+limiting the costs can be given.
+</p>
+
+<p>
+The <i>count-limits</i> can be used to set limits for the number of
+insertions (<tt>+</tt>), deletions (<tt>-</tt>), substitutions
+(<tt>#</tt>), and total number of errors (<tt>~</tt>).  If the
+<i>number</i> part is omitted, the specified error count will be
+unlimited.
+</p>
+
+<p>
+The <i>cost-equation</i> can be thought of as a mathematical equation,
+where <tt>i</tt>, <tt>d</tt>, and <tt>s</tt> stand for the number of
+insertions, deletions, and substitutions, respectively.  The equation
+can have a multiplier for each of <tt>i</tt>, <tt>d</tt>, and
+<tt>s</tt>.  The multiplier is the cost of the error, and the number
+after <tt>&lt;</tt> is the maximum allowed cost of a match.  Spaces
+and pluses can be inserted to make the equation readable.
+</p>
+
+<p>
+Examples:
+<dl>
+<dt><tt>{~}</tt></dt>
+<dd>Sets the maximum number of errors to unlimited.</dd>
+<dt><tt>{~3}</tt></dt>
+<dd>Sets the maximum number of errors to three.</dd>
+<dt><tt>{+2~5}</tt></dt>
+<dd>Sets the maximum number of errors to five, and the maximum number
+of insertions to two.</dd>
+<dt><tt>{&lt;3}</tt></dt>
+<dd>Sets the maximum cost to three.
+<dt><tt>{2i + d + 2s &lt; 5}</tt></dt>
+<dd>Sets the cost of an insertion to two, a deletion to one, a
+substitution to two, and the maximum cost to five.
+</dl>
+
+
+<h3>Bracket expressions</h3>
+<a name="bracket-expression"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>bracket-expression</i> ::= <b>"["</b> <i>item</i>+ <b>"]"</b>
+                   |   <b>"[^"</b> <i>item</i>+ <b>"]"</b>
+</pre>
+</td></tr>
+</table>
+
+<p>
+A bracket expression specifies a set of characters by enclosing a
+nonempty list of items in brackets.  Normally anything matching any
+item in the list is matched.  If the list begins with <tt>^</tt> the
+meaning is negated; any character matching no item in the list is
+matched.
+</p>
+
+<p>
+An item is any of the following:
+</p>
+<ul>
+<li>A single character, matching that character.</li>
+<li>Two characters separated by <tt>-</tt>.  This is shorthand for the
+full range of characters  between those two (inclusive) in the
+collating sequence.  For example, <tt>[0-9]</tt> in ASCII matches any
+decimal digit.</li>
+<li>A collating element enclosed in <tt>[.</tt> and <tt>.]</tt>,
+matching the collating element.  This can be used to include a literal
+<tt>-</tt> or a multi-character collating element in the list.</li>
+<li>A collating element enclosed in <tt>[=</tt> and <tt>=]</tt> (an
+equivalence class), matching all collating elements with the same
+primary collation weight as that element, including the element
+itself.</li>
+<li>The name of a character class enclosed in <tt>[:</tt> and
+<tt>:]</tt>, matching any character belonging to the class.  The set
+of valid names depends on the <code>LC_CTYPE</code> category of the
+current locale, but the following names are valid in all locales:
+<ul>
+<li><tt>alnum</tt> - alphanumeric characters</li>
+<li><tt>alpha</tt> - alphabetic characters</li>
+<li><tt>blank</tt> - blank characters</li>
+<li><tt>cntrl</tt> - control characters</li>
+<li><tt>digit</tt> - decimal digits (0 through 9)</li>
+<li><tt>graph</tt> - all printable characters except space</li>
+<li><tt>lower</tt> - lower-case letters</li>
+<li><tt>print</tt> - printable characters including space</li>
+<li><tt>punct</tt> - printable characters not space or alphanumeric</li>
+<li><tt>space</tt> - white-space characters</li>
+<li><tt>upper</tt> - upper case letters</li>
+<li><tt>xdigit</tt> - hexadecimal digits</li>
+</ul>
+</ul>
+<p>
+To include a literal <tt>-</tt> in the list, make it either the first
+or last item, the second endpoint of a range, or enclose it in
+<tt>[.</tt> and <tt>.]</tt> to make it a collating element.  To
+include a literal <tt>]</tt> in the list, make it either the first
+item, the second endpoint of a range, or enclose it in <tt>[.</tt> and
+<tt>.]</tt>.  To use a literal <tt>-</tt> as the first
+endpoint of a range, enclose it in <tt>[.</tt> and <tt>.]</tt>.
+</p>
+
+
+<h3>Assertions</h3>
+<a name="assertion"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>assertion</i> ::= <b>"^"</b>
+          |   <b>"$"</b>
+          |   <b>"\"</b> <i>assertion-character</i>
+</pre>
+</td></tr>
+</table>
+
+<p>
+The expressions <tt>^</tt> and <tt>$</tt> are called "left anchor" and
+"right anchor", respectively.  The left anchor matches the empty
+string at the beginning of the string.  The right anchor matches the
+empty string at the end of the string.  The behaviour of both anchors
+can be varied by specifying certain execution and compilation flags;
+see the <a href="api.html">API manual</a>.
+</p>
+
+<p>
+An assertion-character can be any of the following:
+</p>
+
+<ul>
+<li><tt>&lt;</tt> - Beginning of word
+<li><tt>&gt;</tt> - End of word
+<li><tt>b</tt> - Word boundary
+<li><tt>B</tt> - Non-word boundary
+<li><tt>d</tt> - Digit character (equivalent to <tt>[[:digit:]]</tt>)</li>
+<li><tt>D</tt> - Non-digit character (equivalent to <tt>[^[:digit:]]</tt>)</li>
+<li><tt>s</tt> - Space character (equivalent to <tt>[[:space:]]</tt>)</li>
+<li><tt>S</tt> - Non-space character (equivalent to <tt>[^[:space:]]</tt>)</li>
+<li><tt>w</tt> - Word character (equivalent to <tt>[[:alnum:]_]</tt>)</li>
+<li><tt>W</tt> - Non-word character (equivalent to <tt>[^[:alnum:]_]</tt>)</li>
+</ul>
+
+
+<h3>Literals</h3>
+<a name="literal"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>literal</i> ::= <i>ordinary-character</i>
+        |   <b>"\x"</b> [<b>"1"</b>-<b>"9"</b> <b>"a"-<b>"f"</b> <b>"A"</b>-<b>"F"</b>]{0,2}
+        |   <b>"\x{"</b> [<b>"1"</b>-<b>"9"</b> <b>"a"-<b>"f"</b> <b>"A"</b>-<b>"F"</b>]* <b>"}"</b>
+        |   <b>"\"</b> <i>character</i>
+</pre>
+</td></tr>
+</table>
+<p>
+A literal is either an ordinary character (a character that has no
+other significance in the context), an 8 bit hexadecimal encoded
+character (e.g. <tt>\x1B</tt>), a wide hexadecimal encoded character
+(e.g. <tt>\x{263a}</tt>), or an escaped character.  An escaped
+character is a <tt>\</tt> followed by any character, and matches that
+character.  Escaping can be used to match characters which have a
+special meaning in regexp syntax.  A <tt>\</tt> cannot be the last
+character of an ERE.  Escaping also allows you to include a few
+non-printable characters in the regular expression.  These special
+escape sequences include:
+</p>
+
+<ul>
+<li><tt>\a</tt> - Bell character (ASCII code 7)
+<li><tt>\e</tt> - Escape character (ASCII code 27)
+<li><tt>\f</tt> - Form-feed character (ASCII code 12)
+<li><tt>\n</tt> - New-line/line-feed character (ASCII code 10)
+<li><tt>\r</tt> - Carriage return character (ASCII code 13)
+<li><tt>\t</tt> - Horizontal tab character (ASCII code 9)
+</ul>
+
+<p>
+An ordinary character is just a single character with no other
+significance, and matches that character.  A <tt>{</tt> followed by
+something else than a digit is considered an ordinary character.
+</p>
+
+
+<h3>Back references</h3>
+<a name="backref"></a>
+
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>back-reference</i> ::= <b>"\"</b> [<b>"1"</b>-<b>"9"</b>]
+</pre>
+</td></tr>
+</table>
+<p>
+A back reference is a backslash followed by a single non-zero decimal
+digit <i>d</i>.  It matches the same sequence of characters
+matched by the <i>d</i>th parenthesized subexpression.
+</p>
+
+<p>
+Back references are not defined for POSIX EREs (for BREs they are),
+but many matchers, including TRE, implement back references for both
+EREs and BREs.
+</p>
+
+<h3>Options</h3>
+<a name="options"></a>
+<table bgcolor="#e0e0f0" cellpadding="10">
+<tr><td>
+<pre>
+<i>options</i> ::= [<b>"i" "n" "r" "U"</b>]* (<b>"-"</b> [<b>"i" "n" "r" "U"</b>]*)?
+</pre>
+</td></tr>
+</table>
+
+Options allow compile time options to be turned on/off for particular parts of the 
+regular expression. The options equate to several compile time options specified to
+the regcomp API function. If the option is specified in the first section, it is
+turned on. If it is specified in the second section (after the <tt>-</tt>), it is
+turned off.
+<ul>
+<li>i - Case insensitive.
+<li>n - Forces special handling of the new line character. See the REG_NEWLINE flag in 
+the <a href="tre-api.html">API Manual</a>.
+<li>r - Causes the regex to be matched in a right associative manner rather than the normal
+left associative manner.
+<li>U - Forces repetition operators to be non-greedy unless a <tt>?</tt> is appended.
+</ul>
+<h2>BRE Syntax</h2>
+
+<p>
+The obsolete basic regexp (BRE) syntax differs from the ERE syntax as
+follows:
+</p>
+
+<ul>
+<li><tt>|</tt> is an ordinary character, and there is no equivalent
+for its functionality.  <tt>+</tt>, and <tt>?</tt> are ordinary
+characters.</li>
+<li>The delimiters for bounds are <tt>\{</tt> and <tt>\}</tt>, with
+<tt>{</tt> and <tt>}</tt> by themselves ordinary characters.</li>
+<li>The parentheses for nested subexpressions are <tt>\(</tt> and
+<tt>\)</tt>, with <tt>(</tt> and <tt>)</tt> by themselves ordinary
+characters.</li>
+<li><tt>^</tt> is an ordinary character except at the beginning of the
+RE or the beginning of a parenthesized subexpression.  Similarly,
+<tt>$</tt> is an ordinary character except at the end of the
+RE or the end of a parenthesized subexpression.</li>
+</ul>

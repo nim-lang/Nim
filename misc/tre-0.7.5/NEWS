@@ -1,0 +1,224 @@
+Version 0.7.5
+  - Swedish translation added.
+
+  - Makefile and source code distribution problems fixed.
+
+  - Documentation updates.
+
+  - Adding a "+" or "*" after another repetition operator is now an
+    error instead of an application of that operator and gives the
+    REG_BADRPT error.  Adding a "?" means matching as few characters
+    as possible and is still allowed.
+
+    This change was made to avoid confusion with "possessive"
+    (non-backtracking) quantifiers.  In Java (and .NET?) adding a "+"
+    means that the matcher doesn't backtrack over that point.  In
+    previous versions of TRE adding a "+" or "*" caused the
+    backtracking matcher to backtrack a lot more instead of less.  In
+    some cases this caused very slow execution.
+
+  - New agrep command line option -q (--quiet, --silent).
+
+  - Bug fixes:
+    - agrep now correctly returns exit code 1 when no matches found.
+    - Fixed regexp parser bug affecting big-endian 64 bit
+      architectures (sparc, ppc).  The bug caused all regexps to match
+      an empty string and nothing else.
+    - Fixed agrep memory usage problems when reading from pipes.
+
+Version 0.7.4
+
+  - TRE now builds cleanly on x86_64 and other 64 bit platforms.
+    There was a large number of (basically harmless) compiler warnings
+    in previous versions.
+
+  - Now builds and works on Cygwin and MinGW.  Libtool was updated to
+    a version which works on these platforms, and the Makefiles and
+    configure scripts were adjusted so that DLLs are now built on
+    these platforms.
+
+  - agrep now handles long command line options on all platforms.
+
+  - Bug report email address is now tre-general@lists.laurikari.net.
+
+  - Many bug fixes, including:
+    - The RPM spec file now works with recent rpmbuild versions
+    - agrep no longer includes record delimiters in records, so for
+      example "echo foo | agrep 'foo$'" works as expected.
+    - agrep help texts and man page updated.
+
+Version 0.7.3
+  - The license has been changed from GPL to LGPL.
+
+  - New command line option to agrep: --show-position
+
+  - New REG_UNGREEDY cflags and 'U' pattern modifier.
+
+  - Bug fixes.
+
+Version 0.7.2
+  - Bug fixes.
+
+Version 0.7.1
+  - New command line options to agrep: --delimiter-after, --color
+
+  - Man page for agrep added.
+
+  - Some bugs fixed.
+
+Version 0.7.0
+  - reguexec() added.
+
+  - tre_have_backrefs() and tre_have_approx() added.
+
+  - New syntax: \Q, \E, \x1B, \x{263a}, (?inr-inr), (?inr-inr:regex).
+
+  - New compilation flag REG_RIGHT_ASSOC.
+
+  - New execution flags REG_APPROX_MATCHER and REG_BACKTRACKING_MATCHER.
+
+  - Included Python language bindings contributed by Nikolai SAOUKH.
+
+  - Several bugs and compilation problems fixed.
+
+Version 0.6.8
+  - Fixed to use iswctype() if found instead of always using
+    iswalpha() and friends.  Now [[:blank:]] should work again on
+    systems where iswctype() is available.
+
+Version 0.6.7
+  - Fixed the -h (--no-filename) option of agrep to work again.
+
+  - Added the -y option to agrep.  It does nothing, and exists only
+    for compatibility with the non-free version of agrep.
+
+  - Fixed bugs: handling null bytes in multibyte mode, exponential
+    memory usage problem when using lots of macros (e.g. \s or \d) in
+    a regexp, and bugs in expanding {m,n} repeats (still!).
+
+  - wctype() and iswctype() are no longer required for wchar support,
+    iswalpha() and friends will be used instead if wctype() and
+    iswctype() are not found.
+
+  - Added support for compiling against libutf8.
+
+  - Added the tre_config() function to get information about the
+    optional features compiled in the TRE library.  Also added
+    tre_version().
+
+  - Some documentation updates.
+
+Version 0.6.6
+  - Fixed bugs which occurred sometimes when "{m,n}" repeats were used
+    in conjunction with "*", "+", or "?".
+
+  - Added the -H (--with-filename) option to agrep.
+
+Version 0.6.5
+  - Fixed bug which occurred whine several "{m,n}" repeats were used
+    in one regex.
+
+  - Fixed several bugs related to REG_NOSUB or NULL pmatch[] arrays
+    being used for regexec().
+
+  - C++ or Fortran compilers no longer checked by the configure
+    script.
+
+  - Some documentation additions.
+
+Version 0.6.4
+  - Fixed bug in handling iterations (like "+" and "*") inside "{m,n}"
+    repeats.  This should get rid of performance problems and
+    incorrect results with certain regexps involving "{m,n}" repeats.
+
+Version 0.6.3
+  - Fixed back references when REG_NOSUB is used.
+
+  - Compilation errors and warnings fixed.  Now this should compile on
+    systems that don't have wide character support, like OpenBSD, and
+    works on 64 bit machines.
+
+Version 0.6.2
+  - Bug fixes.
+
+Version 0.6.1
+  - Bug fixes.
+
+  - Some documentation updates.
+
+Version 0.6.0
+  - The doc/ directory is now actually included in source
+    distributions (oops).
+
+  - Bug fixes.
+
+  - alloca() is no longer a requirement.  The configure script still
+    looks for it, and it is used if found.
+
+  - New approximate matching syntax.  The new syntax allows
+    approximate matching to be done even using the standard regex API
+    (match costs are only available when the regaexec() API is used).
+
+  - REG_LITERAL implemented.
+
+Version 0.5.3
+  - Bug fixes and compilation fixes.
+
+  - Best match mode (-B) for agrep.
+
+Version 0.5.2
+  - System ABI support.  TRE is now by default configured to be
+    compatible with the system regex binary interface (by including
+    the system regex.h and using the definitions there instead of
+    TRE's own).  This can be disabled with --disable-system-abi.
+
+  - Added a pkg-config file `tre.pc'.
+
+  - Added support for minimal (non-greedy) repetition operators
+    "*?", "+?", "??", and "{m,n}?".  They work similarly to the ones
+    in Perl, except the number of characters matched is minimized
+    instead of the number of repetitions.
+
+  - Added some documentation in the doc/ subdirectory.
+
+  - Bug fixes.
+
+Version 0.5.1
+  - Bug fixes.
+
+Version 0.5.0
+  - Approximate matching functions now fill the pmatch[] array of
+    submatches if wanted.
+
+  - Support for back referencing (not for approximate matching).
+
+  - Changed approximate matching API to be more easily extendible in
+    the future.  The match cost is now returned.
+
+  - Bug fixes.
+
+  - Windows project files (original versions contributed by Aymeric
+    Moizard <jack@atosc.org>, thanks!).
+
+Version 0.4.1
+  - Fixed installed headers.
+
+  - Fixed compilation problems.
+
+Version 0.4.0
+  - The name of the package changed to TRE.
+
+  - New API for approximate regexp matching.
+
+  - New command line utility `agrep' for approximate regexp matching
+    in the style of grep.
+
+  - New translation for Finnish (fi) has been added.
+
+  - Optimizations in regexec.
+
+  - Wide character support and multibyte character set support can be
+    turned off with --disable-wchar and --disable-multibyte,
+    respectively.
+
+  - Lots of bugfixes.

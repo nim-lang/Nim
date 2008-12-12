@@ -400,7 +400,7 @@ Index
      `posix.html#1093 <posix.html#1093>`_
 
    `assembler`:idx:
-     `manual.html#198 <manual.html#198>`_
+     `manual.html#197 <manual.html#197>`_
 
    `assert`:idx:
      `system.html#416 <system.html#416>`_
@@ -425,7 +425,7 @@ Index
      `system.html#373 <system.html#373>`_
 
    `block`:idx:
-     `manual.html#194 <manual.html#194>`_
+     `manual.html#193 <manual.html#193>`_
 
    `bool`:idx:
      `system.html#109 <system.html#109>`_
@@ -434,7 +434,7 @@ Index
      `manual.html#147 <manual.html#147>`_
 
    `break`:idx:
-     `manual.html#195 <manual.html#195>`_
+     `manual.html#194 <manual.html#194>`_
 
    `breakpoint`:idx:
      `endb.html#103 <endb.html#103>`_
@@ -702,7 +702,7 @@ Index
      `libzip.html#169 <libzip.html#169>`_
 
    `continue`:idx:
-     `manual.html#197 <manual.html#197>`_
+     `manual.html#196 <manual.html#196>`_
 
    `copy`:idx:
      * `system.html#403 <system.html#403>`_
@@ -857,7 +857,7 @@ Index
      `system.html#157 <system.html#157>`_
 
    `define`:idx:
-     `manual.html#224 <manual.html#224>`_
+     `manual.html#223 <manual.html#223>`_
 
    `defined`:idx:
      `system.html#114 <system.html#114>`_
@@ -933,7 +933,7 @@ Index
      `nimrodc.html#120 <nimrodc.html#120>`_
 
    `domain specific languages`:idx:
-     `manual.html#213 <manual.html#213>`_
+     `manual.html#212 <manual.html#212>`_
 
    `D_T_FMT`:idx:
      `posix.html#390 <posix.html#390>`_
@@ -1083,8 +1083,7 @@ Index
      `regexprs.html#104 <regexprs.html#104>`_
 
    `EInvalidValue`:idx:
-     * `manual.html#146 <manual.html#146>`_
-     * `system.html#143 <system.html#143>`_
+     `system.html#143 <system.html#143>`_
 
    `EIO`:idx:
      * `system.html#134 <system.html#134>`_
@@ -1161,7 +1160,7 @@ Index
      `posix.html#264 <posix.html#264>`_
 
    `ENoExceptionToReraise`:idx:
-     * `manual.html#186 <manual.html#186>`_
+     * `manual.html#185 <manual.html#185>`_
      * `system.html#149 <system.html#149>`_
 
    `ENOEXEC`:idx:
@@ -1228,7 +1227,8 @@ Index
      `system.html#144 <system.html#144>`_
 
    `EOutOfRange`:idx:
-     `system.html#147 <system.html#147>`_
+     * `manual.html#146 <manual.html#146>`_
+     * `system.html#147 <system.html#147>`_
 
    `EOVERFLOW`:idx:
      `posix.html#283 <posix.html#283>`_
@@ -1279,8 +1279,8 @@ Index
      `posix.html#219 <posix.html#219>`_
 
    `error`:idx:
-     * `manual.html#223 <manual.html#223>`_
-     * `manual.html#226 <manual.html#226>`_
+     * `manual.html#222 <manual.html#222>`_
+     * `manual.html#225 <manual.html#225>`_
      * `dialogs.html#104 <dialogs.html#104>`_
 
    `errorStr`:idx:
@@ -1324,10 +1324,10 @@ Index
      `posix.html#297 <posix.html#297>`_
 
    `except`:idx:
-     `manual.html#189 <manual.html#189>`_
+     `manual.html#188 <manual.html#188>`_
 
    `exception handlers`:idx:
-     `manual.html#188 <manual.html#188>`_
+     `manual.html#187 <manual.html#187>`_
 
    `excl`:idx:
      `system.html#165 <system.html#165>`_
@@ -1396,7 +1396,7 @@ Index
      `manual.html#169 <manual.html#169>`_
 
    `fatal`:idx:
-     `manual.html#227 <manual.html#227>`_
+     `manual.html#226 <manual.html#226>`_
 
    `fchdir`:idx:
      `posix.html#984 <posix.html#984>`_
@@ -1522,7 +1522,7 @@ Index
      `os.html#106 <os.html#106>`_
 
    `finally`:idx:
-     `manual.html#190 <manual.html#190>`_
+     `manual.html#189 <manual.html#189>`_
 
    `find`:idx:
      * `system.html#456 <system.html#456>`_
@@ -1573,7 +1573,7 @@ Index
      `posix.html#478 <posix.html#478>`_
 
    `for`:idx:
-     `manual.html#205 <manual.html#205>`_
+     `manual.html#204 <manual.html#204>`_
 
    `fork`:idx:
      `posix.html#986 <posix.html#986>`_
@@ -1582,7 +1582,7 @@ Index
      `manual.html#124 <manual.html#124>`_
 
    `forward`:idx:
-     `manual.html#202 <manual.html#202>`_
+     `manual.html#201 <manual.html#201>`_
 
    `fpathconf`:idx:
      `posix.html#987 <posix.html#987>`_
@@ -1678,7 +1678,7 @@ Index
      `posix.html#311 <posix.html#311>`_
 
    `funtions`:idx:
-     `manual.html#200 <manual.html#200>`_
+     `manual.html#199 <manual.html#199>`_
 
    `F_WRLCK`:idx:
      `posix.html#312 <posix.html#312>`_
@@ -1718,7 +1718,7 @@ Index
      `regexprs.html#102 <regexprs.html#102>`_
 
    `Generics`:idx:
-     `manual.html#209 <manual.html#209>`_
+     `manual.html#208 <manual.html#208>`_
 
    `getApplicationDir`:idx:
      `os.html#110 <os.html#110>`_
@@ -1748,8 +1748,7 @@ Index
      `os.html#112 <os.html#112>`_
 
    `getCurrentExceptionMsg`:idx:
-     * `manual.html#184 <manual.html#184>`_
-     * `system.html#428 <system.html#428>`_
+     `system.html#428 <system.html#428>`_
 
    `getCurrentLine`:idx:
      `lexbase.html#106 <lexbase.html#106>`_
@@ -2027,8 +2026,8 @@ Index
      `system.html#118 <system.html#118>`_
 
    `hint`:idx:
-     * `manual.html#221 <manual.html#221>`_
-     * `manual.html#229 <manual.html#229>`_
+     * `manual.html#220 <manual.html#220>`_
+     * `manual.html#228 <manual.html#228>`_
 
    `htonl`:idx:
      `posix.html#792 <posix.html#792>`_
@@ -2058,10 +2057,10 @@ Index
      `manual.html#181 <manual.html#181>`_
 
    `implicit block`:idx:
-     `manual.html#207 <manual.html#207>`_
+     `manual.html#206 <manual.html#206>`_
 
    `import`:idx:
-     `manual.html#217 <manual.html#217>`_
+     `manual.html#216 <manual.html#216>`_
 
    `importc`:idx:
      `nimrodc.html#101 <nimrodc.html#101>`_
@@ -2127,7 +2126,7 @@ Index
      `dialogs.html#102 <dialogs.html#102>`_
 
    `information hiding`:idx:
-     `manual.html#215 <manual.html#215>`_
+     `manual.html#214 <manual.html#214>`_
 
    `init`:idx:
      `parseopt.html#103 <parseopt.html#103>`_
@@ -2213,7 +2212,7 @@ Index
      * `system.html#443 <system.html#443>`_
 
    `iterator`:idx:
-     `manual.html#206 <manual.html#206>`_
+     `manual.html#205 <manual.html#205>`_
 
    `iterOverEnvironment`:idx:
      `os.html#152 <os.html#152>`_
@@ -2339,7 +2338,7 @@ Index
      `posix.html#1061 <posix.html#1061>`_
 
    `Macros`:idx:
-     `manual.html#212 <manual.html#212>`_
+     `manual.html#211 <manual.html#211>`_
 
    `makecontext`:idx:
      `posix.html#1189 <posix.html#1189>`_
@@ -2384,7 +2383,7 @@ Index
      `posix.html#685 <posix.html#685>`_
 
    `methods`:idx:
-     `manual.html#199 <manual.html#199>`_
+     `manual.html#198 <manual.html#198>`_
 
    `min`:idx:
      * `system.html#263 <system.html#263>`_
@@ -2501,7 +2500,7 @@ Index
      * `system.html#217 <system.html#217>`_
 
    `module`:idx:
-     `manual.html#214 <manual.html#214>`_
+     `manual.html#213 <manual.html#213>`_
 
    `MON_1`:idx:
      `posix.html#410 <posix.html#410>`_
@@ -2775,7 +2774,7 @@ Index
      `manual.html#139 <manual.html#139>`_
 
    `Operators`:idx:
-     `manual.html#204 <manual.html#204>`_
+     `manual.html#203 <manual.html#203>`_
 
    `or`:idx:
      * `system.html#233 <system.html#233>`_
@@ -3122,7 +3121,7 @@ Index
      `manual.html#162 <manual.html#162>`_
 
    `procedures`:idx:
-     `manual.html#201 <manual.html#201>`_
+     `manual.html#200 <manual.html#200>`_
 
    `PROT_EXEC`:idx:
      `posix.html#676 <posix.html#676>`_
@@ -3563,7 +3562,7 @@ Index
      `zlib.html#104 <zlib.html#104>`_
 
    `push/pop`:idx:
-     `manual.html#230 <manual.html#230>`_
+     `manual.html#229 <manual.html#229>`_
 
    `putEnv`:idx:
      `os.html#142 <os.html#142>`_
@@ -3624,7 +3623,7 @@ Index
      `system.html#120 <system.html#120>`_
 
    `re-raised`:idx:
-     `manual.html#185 <manual.html#185>`_
+     `manual.html#184 <manual.html#184>`_
 
    `read`:idx:
      `posix.html#1018 <posix.html#1018>`_
@@ -3686,7 +3685,7 @@ Index
      `system.html#413 <system.html#413>`_
 
    `Recursive module dependancies`:idx:
-     `manual.html#218 <manual.html#218>`_
+     `manual.html#217 <manual.html#217>`_
 
    `register`:idx:
      `nimrodc.html#113 <nimrodc.html#113>`_
@@ -3708,11 +3707,11 @@ Index
      `system.html#371 <system.html#371>`_
 
    `result`:idx:
-     * `manual.html#192 <manual.html#192>`_
-     * `manual.html#203 <manual.html#203>`_
+     * `manual.html#191 <manual.html#191>`_
+     * `manual.html#202 <manual.html#202>`_
 
    `return`:idx:
-     `manual.html#191 <manual.html#191>`_
+     `manual.html#190 <manual.html#190>`_
 
    `rewinddir`:idx:
      `posix.html#804 <posix.html#804>`_
@@ -3965,7 +3964,7 @@ Index
 
    `scope`:idx:
      * `manual.html#106 <manual.html#106>`_
-     * `manual.html#219 <manual.html#219>`_
+     * `manual.html#218 <manual.html#218>`_
 
    `SC_OPEN_MAX`:idx:
      `posix.html#571 <posix.html#571>`_
@@ -4229,7 +4228,7 @@ Index
      `posix.html#1054 <posix.html#1054>`_
 
    `separate compilation`:idx:
-     `manual.html#216 <manual.html#216>`_
+     `manual.html#215 <manual.html#215>`_
 
    `seq`:idx:
      `system.html#123 <system.html#123>`_
@@ -6355,7 +6354,7 @@ Index
      `posix.html#1034 <posix.html#1034>`_
 
    `system`:idx:
-     `manual.html#220 <manual.html#220>`_
+     `manual.html#219 <manual.html#219>`_
 
    `tabulator`:idx:
      `manual.html#125 <manual.html#125>`_
@@ -6427,7 +6426,7 @@ Index
      `posix.html#806 <posix.html#806>`_
 
    `template`:idx:
-     `manual.html#211 <manual.html#211>`_
+     `manual.html#210 <manual.html#210>`_
 
    `TEndian`:idx:
      `system.html#385 <system.html#385>`_
@@ -6696,7 +6695,7 @@ Index
      `posix.html#1037 <posix.html#1037>`_
 
    `try`:idx:
-     `manual.html#187 <manual.html#187>`_
+     `manual.html#186 <manual.html#186>`_
 
    `Tsched_param`:idx:
      `posix.html#199 <posix.html#199>`_
@@ -6854,10 +6853,10 @@ Index
    `type`:idx:
      * `manual.html#102 <manual.html#102>`_
      * `manual.html#141 <manual.html#141>`_
-     * `manual.html#208 <manual.html#208>`_
+     * `manual.html#207 <manual.html#207>`_
 
    `type parameters`:idx:
-     `manual.html#210 <manual.html#210>`_
+     `manual.html#209 <manual.html#209>`_
 
    `type suffix`:idx:
      `manual.html#138 <manual.html#138>`_
@@ -6908,7 +6907,7 @@ Index
      `zlib.html#156 <zlib.html#156>`_
 
    `undef`:idx:
-     `manual.html#225 <manual.html#225>`_
+     `manual.html#224 <manual.html#224>`_
 
    `UnixToNativePath`:idx:
      `os.html#124 <os.html#124>`_
@@ -6963,8 +6962,8 @@ Index
      * `zipfiles.html#110 <zipfiles.html#110>`_
 
    `warning`:idx:
-     * `manual.html#222 <manual.html#222>`_
-     * `manual.html#228 <manual.html#228>`_
+     * `manual.html#221 <manual.html#221>`_
+     * `manual.html#227 <manual.html#227>`_
      * `dialogs.html#103 <dialogs.html#103>`_
 
    `WCONTINUED`:idx:
@@ -6980,7 +6979,7 @@ Index
      `manual.html#183 <manual.html#183>`_
 
    `while`:idx:
-     `manual.html#196 <manual.html#196>`_
+     `manual.html#195 <manual.html#195>`_
 
    `Whitespace`:idx:
      `strutils.html#102 <strutils.html#102>`_
@@ -7058,7 +7057,7 @@ Index
      `posix.html#441 <posix.html#441>`_
 
    `yield`:idx:
-     `manual.html#193 <manual.html#193>`_
+     `manual.html#192 <manual.html#192>`_
 
    `Z_ASCII`:idx:
      `zlib.html#138 <zlib.html#138>`_

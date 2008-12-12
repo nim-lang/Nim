@@ -1,0 +1,9 @@
+# Find words which contain the letter 'a'.
+-d \s+ a
+# Find words which contain a capital letter.
+-d \s+ [A-Z]
+# Find sentences which contain certain words.
+-d \.\s+ -M error
+-d \.\s+ -M default
+# Find paragraphs which contain "PATTERN".
+-d \n\n -M PATTERN

@@ -157,7 +157,7 @@ begin
     liMessage(n.info, errOrdinalTypeExpected);
   if enumHasWholes(a.typ) then
     liMessage(n.info, errEnumXHasWholes, a.typ.sym.name.s);
-  if not leValue(a, b) then
+  if not leValue(a, b) then 
     liMessage(n.Info, errRangeIsEmpty);
   addSon(result.n, a);
   addSon(result.n, b);

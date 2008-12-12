@@ -1,0 +1,200 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Ville Laurikari
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: tre-general@lists.laurikari.net\n"
+"POT-Creation-Date: 2006-12-09 22:48+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: lib/regerror.c:43
+msgid "No error"
+msgstr ""
+
+#: lib/regerror.c:44
+msgid "No match"
+msgstr ""
+
+#: lib/regerror.c:45
+msgid "Invalid regexp"
+msgstr ""
+
+#: lib/regerror.c:46
+msgid "Unknown collating element"
+msgstr ""
+
+#: lib/regerror.c:47
+msgid "Unknown character class name"
+msgstr ""
+
+#: lib/regerror.c:48
+msgid "Trailing backslash"
+msgstr ""
+
+#: lib/regerror.c:49
+msgid "Invalid back reference"
+msgstr ""
+
+#: lib/regerror.c:50
+msgid "Missing ']'"
+msgstr ""
+
+#: lib/regerror.c:51
+msgid "Missing ')'"
+msgstr ""
+
+#: lib/regerror.c:52
+msgid "Missing '}'"
+msgstr ""
+
+#: lib/regerror.c:53
+msgid "Invalid contents of {}"
+msgstr ""
+
+#: lib/regerror.c:54
+msgid "Invalid character range"
+msgstr ""
+
+#: lib/regerror.c:55 src/agrep.c:230 src/agrep.c:300 src/agrep.c:325
+#: src/agrep.c:674 src/agrep.c:713
+msgid "Out of memory"
+msgstr ""
+
+#: lib/regerror.c:56
+msgid "Invalid use of repetition operators"
+msgstr ""
+
+#: lib/regerror.c:69
+msgid "Unknown error"
+msgstr ""
+
+#: src/agrep.c:97 src/agrep.c:104
+#, c-format
+msgid "Usage: %s [OPTION]... PATTERN [FILE]...\n"
+msgstr ""
+
+#: src/agrep.c:99
+#, c-format
+msgid "Try `%s --help' for more information.\n"
+msgstr ""
+
+#: src/agrep.c:105
+#, c-format
+msgid ""
+"Searches for approximate matches of PATTERN in each FILE or standard input.\n"
+"Example: `%s -2 optimize foo.txt' outputs all lines in file `foo.txt' that\n"
+"match \"optimize\" within two errors.  E.g. lines which contain \"optimise"
+"\",\n"
+"\"optmise\", and \"opitmize\" all match.\n"
+msgstr ""
+
+#: src/agrep.c:111
+#, c-format
+msgid ""
+"Regexp selection and interpretation:\n"
+"  -e, --regexp=PATTERN\t    use PATTERN as a regular expression\n"
+"  -i, --ignore-case\t    ignore case distinctions\n"
+"  -k, --literal\t\t    PATTERN is a literal string\n"
+"  -w, --word-regexp\t    force PATTERN to match only whole words\n"
+"\n"
+"Approximate matching settings:\n"
+"  -D, --delete-cost=NUM\t    set cost of missing characters\n"
+"  -I, --insert-cost=NUM\t    set cost of extra characters\n"
+"  -S, --substitute-cost=NUM set cost of wrong characters\n"
+"  -E, --max-errors=NUM\t    select records that have at most NUM errors\n"
+"  -#\t\t\t    select records that have at most # errors (# is a\n"
+"\t\t\t    digit between 0 and 9)\n"
+"\n"
+"Miscellaneous:\n"
+"  -d, --delimiter=PATTERN   set the record delimiter regular expression\n"
+"  -v, --invert-match\t    select non-matching records\n"
+"  -V, --version\t\t    print version information and exit\n"
+"  -y, --nothing\t\t    does nothing (for compatibility with the non-free\n"
+"\t\t\t    agrep program)\n"
+"      --help\t\t    display this help and exit\n"
+"\n"
+"Output control:\n"
+"  -B, --best-match\t    only output records with least errors\n"
+"  -c, --count\t\t    only print a count of matching records per FILE\n"
+"  -h, --no-filename\t    suppress the prefixing filename on output\n"
+"  -H, --with-filename\t    print the filename for each match\n"
+"  -l, --files-with-matches  only print FILE names containing matches\n"
+"  -M, --delimiter-after     print record delimiter after record if -d is "
+"used\n"
+"  -n, --record-number\t    print record number with output\n"
+"      --line-number         same as -n\n"
+"  -q, --quiet, --silent\t    suppress all normal output\n"
+"  -s, --show-cost\t    print match cost with output\n"
+"      --colour, --color     use markers to distinguish the matching strings\n"
+"      --show-position       prefix each output record with start and end\n"
+"                            position of the first match within the record\n"
+msgstr ""
+
+#: src/agrep.c:150
+#, c-format
+msgid ""
+"With no FILE, or when FILE is -, reads standard input.  If less than two\n"
+"FILEs are given, -h is assumed.  Exit status is 0 if a match is found, 1 "
+"for\n"
+"no match, and 2 if there were errors.  If -E or -# is not specified, only\n"
+"exact matches are selected.\n"
+msgstr ""
+
+#: src/agrep.c:156
+#, c-format
+msgid ""
+"PATTERN is a POSIX extended regular expression (ERE) with the TRE "
+"extensions.\n"
+"See tre(7) for a complete description.\n"
+msgstr ""
+
+#: src/agrep.c:160
+#, c-format
+msgid "Report bugs to: "
+msgstr ""
+
+#: src/agrep.c:245
+#, c-format
+msgid "Error reading from %s: %s\n"
+msgstr ""
+
+#: src/agrep.c:340
+msgid "Cannot use -B when reading from standard input."
+msgstr ""
+
+#: src/agrep.c:344
+msgid "(standard input)"
+msgstr ""
+
+#: src/agrep.c:597
+#, c-format
+msgid "Copyright (c) 2002-2006 Ville Laurikari.\n"
+msgstr ""
+
+#: src/agrep.c:598
+#, c-format
+msgid ""
+"This is free software; see the source for copying conditions. There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+msgstr ""
+
+#: src/agrep.c:728
+msgid "Error in search pattern"
+msgstr ""
+
+#: src/agrep.c:739
+msgid "Error in record delimiter pattern"
+msgstr ""
+
+#: src/agrep.c:746
+msgid "Record delimiter pattern must not match an empty string"
+msgstr ""

@@ -219,7 +219,7 @@ const
   DvLed* = int(1) shl 4
   DvLedMode* = int(1) shl 5
   DvKey* = int(1) shl 6
-  DvAutoRepeatMode* = int(1) shl 7
+  DvAutoRepeatMode* = 1 shl 7
 
 const 
   DvString* = int(1) shl 0

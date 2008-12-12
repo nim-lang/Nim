@@ -469,17 +469,22 @@ end;
 
 // ---------------------------------------------------------------
 
-function addNodes(n: PRstNode): string;
+procedure addNodesAux(n: PRstNode; var result: string);
 var
   i: int;
 begin
   if n.kind = rnLeaf then
-    result := n.text
+    add(result, n.text)
   else begin
-    result := '';
     for i := 0 to rsonsLen(n)-1 do
-      result := result +{&} addNodes(n.sons[i])
+      addNodesAux(n.sons[i], result)
   end
+end;
+
+function addNodes(n: PRstNode): string;
+begin
+  result := '';
+  addNodesAux(n, result);
 end;
 
 procedure rstnodeToRefnameAux(n: PRstNode; var r: string; var b: bool);
@@ -1118,7 +1123,7 @@ begin
     inc(p.idx);
     while p.tok[p.idx].kind in [tkWord, tkPunct, tkAdornment, tkOther] do begin
       if p.tok[p.idx].symbol = '::' then break;
-      result := result +{&} p.tok[p.idx].symbol;
+      add(result, p.tok[p.idx].symbol);
       inc(p.idx);
     end;
     if (p.tok[p.idx].kind = tkWhite) then inc(p.idx);
@@ -1287,12 +1292,13 @@ begin
             break;
           end
           else begin
-            n.text := n.text +{&} nl +{&} repeatChar(p.tok[p.idx].ival - indent);
+            add(n.text, nl);
+            add(n.text, repeatChar(p.tok[p.idx].ival - indent));
             inc(p.idx)
           end
         end
         else begin
-          n.text := n.text +{&} p.tok[p.idx].symbol;
+          add(n.text, p.tok[p.idx].symbol);
           inc(p.idx)
         end
       end
@@ -1300,7 +1306,7 @@ begin
   end
   else begin
     while not (p.tok[p.idx].kind in [tkIndent, tkEof]) do begin
-      n.text := n.text +{&} p.tok[p.idx].symbol;
+      add(n.text, p.tok[p.idx].symbol);
       inc(p.idx)
     end
   end;
@@ -1560,7 +1566,7 @@ begin
       i := 0;
       while not (p.tok[p.idx].kind in [tkIndent, tkEof]) do begin
         if (tokEnd(p) <= cols[i]) then begin
-          row[i] := row[i] +{&} p.tok[p.idx].symbol;
+          add(row[i], p.tok[p.idx].symbol);
           inc(p.idx);
         end
         else begin

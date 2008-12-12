@@ -1,0 +1,50 @@
+TODO:
+
+ * Documentation
+
+   - Finish the reference manual of the API.
+   - Finish the manual describing the syntax and semantics of regexps.
+   - Write a description of the algorithms used.  There's already my
+     Master's Thesis, but it's not TRE-specific, and it's a
+     thesis, not an algorithm description.
+   - Write man page for tre regexp syntax.
+
+ * POSIX required features
+
+   - Support for collating elements and equivalence classes.  This
+     requires some level of integration with libc.
+
+ * New features
+
+   - Support for GNU regex extensions.
+     - word boundary syntax [[:<:]] and [[:>:]]
+     - beginning and end of buffer assertions ("\`" and "\'")
+     - is there something else missing?
+   - Better system ABI support for non-glibc systems?
+   - Transposition operation for the approximate matcher?
+
+ * Extend API
+
+   - Real-time interface?
+      - design API
+      - return if not finished after a certain amount of work
+      - easy for regexec(), more work for regcomp().
+
+
+ * Optimizations
+
+   - Make specialized versions of matcher loops for REG_NOSUB.
+
+   - Find out the longest string that must occur in any match, and
+     search for it first (with a fast Boyer-Moore search, or maybe
+     just strstr).  Then match both ways to see if it was part of
+     match.
+
+   - Some kind of a pessimistic histogram filter might speed up
+     searching for approximate matching.
+
+   - Optimize tre_tnfa_run_parallel to be faster (swap instead of
+     copying everything?  Assembler optimizations?)
+
+   - Write a benchmark suite to see whan effects different
+     optimizations have in different situations.

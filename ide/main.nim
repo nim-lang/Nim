@@ -1,13 +1,13 @@
 # The beginning of an IDE for Nimrod
 #  (c) 2008 Andreas Rumpf
 
-import glib2, gtk2, libglade2, dialogs, parseopt
+import os, glib2, gtk2, libglade2, dialogs, parseopt
 
 proc on_window_destroy(obj: PGtkObject, data: pointer) {.cdecl.} =
   gtk_main_quit()
 
 const
-  GuiTemplate = "/media/hda4/nimrod/ide/nimide.glade"
+  GuiTemplate = "/media/hda1/Eigenes/nimrod/ide/nimide.glade"
 
 type
   TTab = object of TObject
@@ -35,19 +35,19 @@ proc on_about_menu_item_activate(menuItem: PGtkMenuItem,
 
 proc load_file(e: var TMyTextEditor, filename: string) =
   var
-    err: ptr GError
+    err: pointer
     status: cstring
     text: cstring
     result: bool
     buffer: PGtkTextBuffer
-  gtk_statusbar_push(e.statusbar, e.statusbar_context_id, "Loading...")
-  while gtk_events_pending(): gtk_main_iteration()
+  discard gtk_statusbar_push(e.statusbar, e.statusbar_context_id, "Loading...")
+  while gtk_events_pending() != 0: discard gtk_main_iteration()
 
   # get the file contents
   result = g_file_get_contents(filename, addr(text), nil, addr(err))
   if not result:
-    error_message("Cannot load file")
-    g_error_free(err)
+    error(e.window, "Cannot load file")
+    #g_error_free(err)
 
   # disable the text view while loading the buffer with the text
   gtk_widget_set_sensitive(e.text_view, false)
@@ -103,7 +103,8 @@ proc check_for_save(e: var TMyTextEditor): bool =
     GtkWidget       *dialog;
     const gchar *msg  = "Do you want to save the changes you have made?";
     dialog = gtk_message_dialog_new (nil,
-                                     GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+                                     GTK_DIALOG_MODAL or
+                                       GTK_DIALOG_DESTROY_WITH_PARENT,
                                      GTK_MESSAGE_QUESTION,
                                      GTK_BUTTONS_YES_NO,
                                      msg);
@@ -146,14 +147,12 @@ proc main() =
   var
     editor: TMyTextEditor
 
-  gtk_nimrod_init()
   initApp(editor)
   gtk_widget_show(editor.window)
   gtk_main()
 
+gtk_nimrod_init()
 main()
-
-
 
 proc on_window_delete_event(widget: PGtkWidget, event: PGdkEvent,
                        e: TMyTextEditor): bool {.cdecl.} =

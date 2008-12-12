@@ -127,7 +127,6 @@ begin
   registerPass(verbosePass());
   registerPass(sem.semPass());
   registerPass(transf.transfPass());
-  registerPass(rodwrite.rodwritePass());
 end;
 
 procedure CommandGenDepend(const filename: string);
@@ -152,6 +151,7 @@ procedure CommandCompileToC(const filename: string);
 begin
   semanticPasses();
   registerPass(cgen.cgenPass());
+  registerPass(rodwrite.rodwritePass());
   registerPass(cleanupPass());
   compileProject(filename);
   //for i := low(TTypeKind) to high(TTypeKind) do
