@@ -570,9 +570,10 @@ begin
       result := copyTree(arg);
       result.typ := getInstantiatedType(c, arg, m, f);
       // BUG: f may not be the right key!
-      if (skipVarGeneric(f).kind in [tyTuple, tyOpenArray]) then
+      if (skipVarGeneric(result.typ).kind in [tyTuple, tyOpenArray]) then
         // BUGFIX: must pass length implicitely
         result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
+      // BUGFIX: use ``result.typ`` and not `f` here
     end;
     isEqual: begin
       inc(m.exactMatches);

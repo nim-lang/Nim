@@ -122,7 +122,7 @@ begin
     end;
     mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64: begin
       // byte(-128) = 1...1..1000_0000'64 --> 0...0..1000_0000'64
-      result := newIntNodeT(getInt(a) and (1 shl a.typ.size*8 - 1), n);
+      result := newIntNodeT(getInt(a) and (shlu(1, getSize(a.typ)*8) - 1), n);
     end;
     mToU8:  result := newIntNodeT(getInt(a) and $ff, n);
     mToU16: result := newIntNodeT(getInt(a) and $ffff, n);
@@ -142,8 +142,26 @@ begin
       if getInt(a) > getInt(b) then result := newIntNodeT(getInt(a), n)
       else result := newIntNodeT(getInt(b), n);
     end;
-    mShlI, mShlI64: result := newIntNodeT(getInt(a) shl getInt(b), n);
-    mShrI, mShrI64: result := newIntNodeT(getInt(a) shr getInt(b), n);
+    mShlI, mShlI64: begin
+      case skipGenericRange(n.typ).kind of
+        tyInt8:  result := newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n);
+        tyInt16: result := newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n);
+        tyInt32: result := newIntNodeT(int32(getInt(a)) shl int32(getInt(b)), n);
+        tyInt64, tyInt:
+          result := newIntNodeT(shlu(getInt(a), getInt(b)), n);
+        else InternalError(n.info, 'constant folding for shl');
+      end
+    end;
+    mShrI, mShrI64: begin
+      case skipGenericRange(n.typ).kind of
+        tyInt8:  result := newIntNodeT(int8(getInt(a)) shr int8(getInt(b)), n);
+        tyInt16: result := newIntNodeT(int16(getInt(a)) shr int16(getInt(b)), n);
+        tyInt32: result := newIntNodeT(int32(getInt(a)) shr int32(getInt(b)), n);
+        tyInt64, tyInt:
+          result := newIntNodeT(shru(getInt(a), getInt(b)), n);
+        else InternalError(n.info, 'constant folding for shl');
+      end
+    end;
     mDivI, mDivI64: result := newIntNodeT(getInt(a) div getInt(b), n);
     mModI, mModI64: result := newIntNodeT(getInt(a) mod getInt(b), n);
 
@@ -380,7 +398,7 @@ begin
               result := nil // XXX: size computation for complex types
                             // is still wrong
             else
-              result := newIntNodeT(a.typ.size, n);
+              result := newIntNodeT(getSize(a.typ), n);
           end;
           mLow:  result := newIntNodeT(firstOrd(n.sons[1].typ), n);
           mHigh: begin

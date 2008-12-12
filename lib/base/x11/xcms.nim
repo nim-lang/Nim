@@ -350,31 +350,31 @@ proc XcmsVisualOfCCC*(para1: TXcmsCCC): PVisual{.cdecl, dynlib: libX11, importc.
 # implementation
 
 proc XcmsUndefinedFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000000)
+  result = 0x00000000'i32
 
 proc XcmsCIEXYZFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000001)
+  result = 0x00000001'i32
 
 proc XcmsCIEuvYFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000002)
+  result = 0x00000002'i32
 
 proc XcmsCIExyYFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000003)
+  result = 0x00000003'i32
 
 proc XcmsCIELabFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000004)
+  result = 0x00000004'i32
 
 proc XcmsCIELuvFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000005)
+  result = 0x00000005'i32
 
 proc XcmsTekHVCFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x00000006)
+  result = 0x00000006'i32
 
 proc XcmsRGBFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x80000000)
+  result = 0x80000000'i32
 
 proc XcmsRGBiFormat(): TXcmsColorFormat = 
-  result = TXcmsColorFormat(0x80000001)
+  result = 0x80000001'i32
 
 when defined(MACROS): 
   proc DisplayOfCCC(ccc: int32): int32 = 

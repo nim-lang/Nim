@@ -66,79 +66,6 @@ for key, val in enums.items():
   cog.out(b)
 ]]]*)
 type
-  TTypeFlag = (
-    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
-  TTypeFlags = set of TTypeFlag;
-const
-  TypeFlagToStr: array [TTypeFlag] of string = (
-    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
-type
-  TTypeKind = (
-    tyNone, tyBool, tyChar, tyEmpty, 
-    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
-    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
-    tyObject, tyTuple, tySet, tyRange, 
-    tyPtr, tyRef, tyVar, tySequence, 
-    tyProc, tyPointer, tyOpenArray, tyString, 
-    tyCString, tyForward, tyInt, tyInt8, 
-    tyInt16, tyInt32, tyInt64, tyFloat, 
-    tyFloat32, tyFloat64, tyFloat128);
-  TTypeKinds = set of TTypeKind;
-const
-  TypeKindToStr: array [TTypeKind] of string = (
-    'tyNone', 'tyBool', 'tyChar', 'tyEmpty', 
-    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
-    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
-    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
-    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
-    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
-    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
-    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
-    'tyFloat32', 'tyFloat64', 'tyFloat128');
-type
-  TSymFlag = (
-    sfUsed, sfStar, sfMinus, sfInInterface, 
-    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
-    sfExportc, sfVolatile, sfRegister, sfPure, 
-    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
-    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
-    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
-    sfCompileTime, sfThreadVar, sfMerge);
-  TSymFlags = set of TSymFlag;
-const
-  SymFlagToStr: array [TSymFlag] of string = (
-    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
-    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
-    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
-    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
-    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
-    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
-    'sfCompileTime', 'sfThreadVar', 'sfMerge');
-type
-  TNodeFlag = (
-    nfNone, nfBase2, nfBase8, nfBase16, 
-    nfAllConst, nfTransf, nfSem);
-  TNodeFlags = set of TNodeFlag;
-const
-  NodeFlagToStr: array [TNodeFlag] of string = (
-    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
-    'nfAllConst', 'nfTransf', 'nfSem');
-type
-  TSymKind = (
-    skUnknownSym, skConditional, skDynLib, skParam, 
-    skTypeParam, skTemp, skType, skConst, 
-    skVar, skProc, skIterator, skConverter, 
-    skMacro, skTemplate, skField, skEnumField, 
-    skForVar, skModule, skLabel, skStub);
-  TSymKinds = set of TSymKind;
-const
-  SymKindToStr: array [TSymKind] of string = (
-    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
-    'skTypeParam', 'skTemp', 'skType', 'skConst', 
-    'skVar', 'skProc', 'skIterator', 'skConverter', 
-    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
-    'skForVar', 'skModule', 'skLabel', 'skStub');
-type
   TNodeKind = (
     nkNone, nkEmpty, nkIdent, nkSym, 
     nkType, nkCharLit, nkIntLit, nkInt8Lit, 
@@ -207,6 +134,79 @@ const
     'nkRecCase', 'nkRecWhen', 'nkRefTy', 'nkPtrTy', 
     'nkVarTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 
     'nkReturnToken');
+type
+  TSymFlag = (
+    sfUsed, sfStar, sfMinus, sfInInterface, 
+    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
+    sfExportc, sfVolatile, sfRegister, sfPure, 
+    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
+    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
+    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
+    sfCompileTime, sfThreadVar, sfMerge);
+  TSymFlags = set of TSymFlag;
+const
+  SymFlagToStr: array [TSymFlag] of string = (
+    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
+    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
+    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
+    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
+    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
+    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
+    'sfCompileTime', 'sfThreadVar', 'sfMerge');
+type
+  TTypeKind = (
+    tyNone, tyBool, tyChar, tyEmpty, 
+    tyArrayConstr, tyNil, tyGeneric, tyGenericInst, 
+    tyGenericParam, tyEnum, tyAnyEnum, tyArray, 
+    tyObject, tyTuple, tySet, tyRange, 
+    tyPtr, tyRef, tyVar, tySequence, 
+    tyProc, tyPointer, tyOpenArray, tyString, 
+    tyCString, tyForward, tyInt, tyInt8, 
+    tyInt16, tyInt32, tyInt64, tyFloat, 
+    tyFloat32, tyFloat64, tyFloat128);
+  TTypeKinds = set of TTypeKind;
+const
+  TypeKindToStr: array [TTypeKind] of string = (
+    'tyNone', 'tyBool', 'tyChar', 'tyEmpty', 
+    'tyArrayConstr', 'tyNil', 'tyGeneric', 'tyGenericInst', 
+    'tyGenericParam', 'tyEnum', 'tyAnyEnum', 'tyArray', 
+    'tyObject', 'tyTuple', 'tySet', 'tyRange', 
+    'tyPtr', 'tyRef', 'tyVar', 'tySequence', 
+    'tyProc', 'tyPointer', 'tyOpenArray', 'tyString', 
+    'tyCString', 'tyForward', 'tyInt', 'tyInt8', 
+    'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
+    'tyFloat32', 'tyFloat64', 'tyFloat128');
+type
+  TNodeFlag = (
+    nfNone, nfBase2, nfBase8, nfBase16, 
+    nfAllConst, nfTransf, nfSem);
+  TNodeFlags = set of TNodeFlag;
+const
+  NodeFlagToStr: array [TNodeFlag] of string = (
+    'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
+    'nfAllConst', 'nfTransf', 'nfSem');
+type
+  TTypeFlag = (
+    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
+  TTypeFlags = set of TTypeFlag;
+const
+  TypeFlagToStr: array [TTypeFlag] of string = (
+    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
+type
+  TSymKind = (
+    skUnknownSym, skConditional, skDynLib, skParam, 
+    skTypeParam, skTemp, skType, skConst, 
+    skVar, skProc, skIterator, skConverter, 
+    skMacro, skTemplate, skField, skEnumField, 
+    skForVar, skModule, skLabel, skStub);
+  TSymKinds = set of TSymKind;
+const
+  SymKindToStr: array [TSymKind] of string = (
+    'skUnknownSym', 'skConditional', 'skDynLib', 'skParam', 
+    'skTypeParam', 'skTemp', 'skType', 'skConst', 
+    'skVar', 'skProc', 'skIterator', 'skConverter', 
+    'skMacro', 'skTemplate', 'skField', 'skEnumField', 
+    'skForVar', 'skModule', 'skLabel', 'skStub');
 {[[[end]]]}
 
 type
@@ -319,10 +319,10 @@ type
     locField,      // location is a record field
     locArrayElem,  // location is an array element
     locExpr,       // "location" is really an expression
-    locImmediate,  // location is an immediate value
     locProc,       // location is a proc (an address of a procedure)
     locData,       // location is a constant
     locCall,       // location is a call expression
+    locImmediate,  // location is an immediate value
     locOther       // location is something other
   );
 
@@ -351,9 +351,10 @@ type
   end;
 
 // ---------------- end of backend information ------------------------------
-  TLibKind = (libHeader, libDynamic, libDynamicGenerated);
+  TLibKind = (libHeader, libDynamic);
   TLib = object(lists.TListEntry) // also misused for headers!
     kind: TLibKind;
+    generated: bool;
     // needed for the backends:
     name: PRope;
     path: string;
@@ -629,18 +630,29 @@ function leValue(a, b: PNode): Boolean; // a <= b? a, b are literals
 function ValueToString(a: PNode): string;
 
 // ------------- efficient integer sets -------------------------------------
+{@ignore}
+type
+  TBitScalar = int32; // FPC produces wrong code for ``int``
+{@emit
+type
+  TBitScalar = int; }
+
 const
-  IntsPerTrunk = 8;
   InitIntSetSize = 8; // must be a power of two!
-  BitsPerTrunk = IntsPerTrunk * sizeof(int) * 8;
-  BitsPerInt = sizeof(int) * 8;
+  TrunkShift = 9;
+  BitsPerTrunk = 1 shl TrunkShift; 
+    // needs to be a power of 2 and divisible by 64
+  TrunkMask = BitsPerTrunk-1;
+  IntsPerTrunk = BitsPerTrunk div (sizeof(TBitScalar)*8);
+  IntShift = 5+ord(sizeof(TBitScalar)=8); // 5 or 6, depending on int width
+  IntMask = 1 shl IntShift -1;
 
 type
   PTrunk = ^TTrunk;
   TTrunk = record
     next: PTrunk; // all nodes are connected with this pointer
     key: int;    // start address at bit 0
-    bits: array [0..IntsPerTrunk-1] of int; // a bit vector
+    bits: array [0..IntsPerTrunk-1] of TBitScalar; // a bit vector
   end;
   TTrunkSeq = array of PTrunk;
   TIntSet = record
@@ -661,43 +673,7 @@ const
 
 procedure registerID(id: PIdObj);
 
-// owner handling:
-function getCurrOwner(): PSym;
-procedure PushOwner(owner: PSym);
-procedure PopOwner;
-
 implementation
-
-var
-  gOwners: array of PSym; // owner stack (used for initializing the
-                          // owner field of syms)
-                          // the documentation comment always gets
-                          // assigned to the current owner
-                          // BUGFIX: global array is needed!
-{@emit gOwners := @[]; }
-
-function getCurrOwner(): PSym;
-begin
-  result := gOwners[high(gOwners)];
-end;
-
-procedure PushOwner(owner: PSym);
-var
-  len: int;
-begin
-  len := length(gOwners);
-  setLength(gOwners, len+1);
-  gOwners[len] := owner;
-end;
-
-procedure PopOwner;
-var
-  len: int;
-begin
-  len := length(gOwners);
-  if (len <= 0) then InternalError('popOwner');
-  setLength(gOwners, len - 1);
-end;
 
 var
   usedIds: TIntSet;
@@ -1301,8 +1277,7 @@ begin
   result := nil
 end;
 
-procedure IntSetRawInsert(const t: TIntSet; var data: TTrunkSeq;
-                          desc: PTrunk);
+procedure IntSetRawInsert(const t: TIntSet; var data: TTrunkSeq; desc: PTrunk);
 var
   h: int;
 begin
@@ -1365,23 +1340,15 @@ end;
 
 // ---------- slightly higher level procs ----------------------------------
 
-function transform(key: int): int;
-begin
-  if key < 0 then result := 1000000000 + key // avoid negative numbers!
-  else result := key
-end;
-
 function IntSetContains(const s: TIntSet; key: int): bool;
 var
   u: int;
   t: PTrunk;
 begin
-  u := transform(key);
-  t := IntSetGet(s, u div BitsPerTrunk);
+  t := IntSetGet(s, key shr TrunkShift);
   if t <> nil then begin
-    u := u mod BitsPerTrunk;
-    result := (t.bits[u div BitsPerInt]
-      and (1 shl (u mod BitsPerInt))) <> 0
+    u := key and TrunkMask;
+    result := (t.bits[u shr IntShift] and (1 shl (u and IntMask))) <> 0
   end
   else
     result := false
@@ -1392,11 +1359,10 @@ var
   u: int;
   t: PTrunk;
 begin
-  u := transform(key);
-  t := IntSetPut(s, u div BitsPerTrunk);
-  u := u mod BitsPerTrunk;
-  t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
-                            or (1 shl (u mod BitsPerInt));
+  t := IntSetPut(s, key shr TrunkShift);
+  u := key and TrunkMask;
+  t.bits[u shr IntShift] := t.bits[u shr IntShift]
+                            or (1 shl (u and IntMask));
 end;
 
 function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
@@ -1404,22 +1370,35 @@ var
   u: int;
   t: PTrunk;
 begin
-  u := transform(key);
-  t := IntSetGet(s, u div BitsPerTrunk);
+  t := IntSetGet(s, key shr TrunkShift);
   if t <> nil then begin
-    u := u mod BitsPerTrunk;
-    result := (t.bits[u div BitsPerInt]
-          and (1 shl (u mod BitsPerInt))) <> 0;
+    u := key and TrunkMask;
+    result := (t.bits[u shr IntShift] and (1 shl (u and IntMask))) <> 0;
     if not result then
-      t.bits[u div BitsPerInt] := t.bits[u div BitsPerInt]
-                                or (1 shl (u mod BitsPerInt));
+      t.bits[u shr IntShift] := t.bits[u shr IntShift]
+                                or (1 shl (u and IntMask));
   end
   else begin
     IntSetIncl(s, key);
     result := false
   end
 end;
-
+(*
+procedure IntSetDebug(const s: TIntSet);
+var
+  it: PTrunk;
+  i, j: int;
+begin
+  it := s.head;
+  while it <> nil do begin
+    for i := 0 to high(it.bits) do 
+      for j := 0 to BitsPerInt-1 do begin
+        if (it.bits[j] and (1 shl j)) <> 0 then
+          MessageOut('Contains key: ' + toString(it.key + i * BitsPerInt + j));
+      end;
+    it := it.next
+  end
+end;*)
 
 initialization
   if debugIDs then IntSetInit(usedIds);

@@ -61,5 +61,6 @@ Currently, the following C compilers are supported under Windows:
 - | Digital Mars C++
   | http://www.digitalmars.com/download/freecompiler.html
 
-For faster compile times I recommend Digital Mars C++ -- it is easy to install
+For better compile times I recommend Digital Mars C++ -- it is easy to install
 and a small package.
+

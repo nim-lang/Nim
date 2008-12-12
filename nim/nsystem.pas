@@ -41,6 +41,8 @@ type
   EOverflow = class(Exception)
   end;
 {$endif}
+  EOutOfRange = class(Exception)
+  end;
 
   float32 = single;
   float64 = double;
@@ -153,6 +155,7 @@ function ltU(a, b: biggestInt): bool;
 function leU(a, b: biggestInt): bool;
 
 function toU8(a: biggestInt): byte;
+function toU16(a: biggestInt): int16;
 function toU32(a: biggestInt): int32;
 function ze64(a: byte): biggestInt;
 function ze(a: byte): int;
@@ -206,8 +209,24 @@ function readFile(const filename: string): string;
 
 procedure nimWrite(var f: tBinaryFile; const str: string); overload;
 
+procedure add(var x: string; const y: string);
+// Pascal version of string appending. Terminating zero is ignored.
 
 implementation
+
+{@ignore}
+procedure add(var x: string; const y: string);
+// Pascal version of string appending. Terminating zero is ignored.
+var
+  L: int;
+begin
+  L := length(y);
+  if L > 0 then begin
+    if y[L] = #0 then x := x + copy(y, 1, L-1)
+    else x := x + y;
+  end
+end;
+{@emit}
 
 function alloc(size: int): Pointer;
 begin
@@ -282,6 +301,11 @@ end;
 function toU32(a: biggestInt): int32;
 begin
   result := int32(a and $ffffffff);
+end;
+
+function toU16(a: biggestInt): int16;
+begin
+  result := int16(a and $ffff);  
 end;
 
 function ze64(a: byte): biggestInt;
@@ -565,16 +589,30 @@ end;
 var
   zero: float;
   Saved8087CW: Word;
+  savedExcMask: TFPUExceptionMask;
 initialization
+{$ifdef cpu64}
+  savedExcMask := SetExceptionMask([exInvalidOp,
+	exDenormalized,
+	exPrecision,
+	exZeroDivide,
+	exOverflow,
+	exUnderflow
+	]);
+{$else}
   Saved8087CW := Default8087CW;
   Set8087CW($133f); // Disable all fpu exceptions
-
+{$endif}
   zero := 0.0;
   NaN := 0.0 / zero;
   inf := 1.0 / zero;
   NegInf := -inf;
 finalization
+{$ifdef cpu64}
+  SetExceptionMask(savedExcMask); // set back exception mask
+{$else}
   Set8087CW(Saved8087CW);
+{$endif}
 {$ifdef R_on}
   {$R+,Q+}
 {$endif}

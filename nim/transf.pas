@@ -69,9 +69,15 @@ end;
 
 // ------------ helpers -----------------------------------------------------
 
+function getCurrOwner(c: PTransf): PSym;
+begin
+  if c.transCon <> nil then result := c.transCon.owner
+  else result := c.module;
+end;
+
 function newTemp(c: PTransf; typ: PType; const info: TLineInfo): PSym;
 begin
-  result := newSym(skTemp, getIdent(genPrefix), getCurrOwner());
+  result := newSym(skTemp, getIdent(genPrefix), getCurrOwner(c));
   result.info := info;
   result.typ := skipGeneric(typ);
   include(result.flags, sfFromGeneric);
@@ -195,7 +201,7 @@ begin
   for i := 0 to sonsLen(n)-1 do
     result.sons[i] := transform(c, n.sons[i]);
   counter := 0;
-  labl := newSym(skLabel, nil, getCurrOwner());
+  labl := newSym(skLabel, nil, getCurrOwner(c));
   labl.name := getIdent(genPrefix +{&} ToString(labl.id));
   labl.info := result.info;
   transformContinueAux(c, result, labl, counter);
@@ -270,7 +276,7 @@ begin
         include(newVar.flags, sfFromGeneric);
         // fixes a strange bug for rodgen:
         //include(it.sons[0].sym.flags, sfFromGeneric);
-        newVar.owner := getCurrOwner();
+        newVar.owner := getCurrOwner(c);
         IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar));
         it.sons[0] := newSymNode(newVar);
         it.sons[2] := transform(c, it.sons[2]);
@@ -460,7 +466,9 @@ begin
       // generate a temporary and produce an assignment statement:
       temp := newTemp(c, formal.typ, formal.info);
       addVar(v, newSymNode(temp));
-      addSon(result, newAsgnStmt(c, newSymNode(temp), copyTree(call.sons[i])));
+      // BUGFIX: do not copy call.sons[i], but transform it!
+      addSon(result, newAsgnStmt(c, newSymNode(temp),
+                                 transform(c, call.sons[i])));
       IdNodeTablePut(newC.mapping, formal, newSymNode(temp)); // BUGFIX
     end
   end;

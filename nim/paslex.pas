@@ -298,7 +298,7 @@ begin
       end;
       '_': inc(pos);
       '0', '1': begin
-        xi := (xi shl 1) or (ord(L.buf[pos]) - ord('0'));
+        xi := shlu(xi, 1) or (ord(L.buf[pos]) - ord('0'));
         inc(pos);
         inc(bits);
       end;
@@ -330,17 +330,17 @@ begin
       end;
       '_': inc(pos);
       '0'..'9': begin
-        xi := (xi shl 4) or (ord(L.buf[pos]) - ord('0'));
+        xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('0'));
         inc(pos);
         inc(bits, 4);
       end;
       'a'..'f': begin
-        xi := (xi shl 4) or (ord(L.buf[pos]) - ord('a') + 10);
+        xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10);
         inc(pos);
         inc(bits, 4);
       end;
       'A'..'F': begin
-        xi := (xi shl 4) or (ord(L.buf[pos]) - ord('A') + 10);
+        xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10);
         inc(pos);
         inc(bits, 4);
       end;

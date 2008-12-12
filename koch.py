@@ -18,7 +18,7 @@ False = 0 == 1
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.7.0'
+NIMROD_VERSION = '0.7.2'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**
@@ -405,8 +405,10 @@ Possible Commands:
   clean                    cleans Nimrod project; removes generated files
   boot [options]           bootstraps with given command line options
   rodsrc                   generates Nimrod version from Pascal version
-  web                      generates the website (requires Cheetah)
+  web                      generates the website
   profile                  profile the Nimrod compiler
+  zip                      build the installation ZIP package
+  inno                     build the Inno Setup installer
 """ % (NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)), sys.version)
 
 def main(args):
@@ -440,7 +442,19 @@ def main(args):
     elif cmd == "rodsrc": cmd_rodsrc()
     elif cmd == "web": cmd_web()
     elif cmd == "profile": cmd_profile()
+    elif cmd == "zip": cmd_zip()
+    elif cmd == "inno": cmd_inno()
     else: Error("illegal command: " + cmd)
+
+def cmd_zip():
+  Exec("nimrod cc -r tools/niminst --var:version=%s csource rod/nimrod" %
+       NIMROD_VERSION)
+  Exec("nimrod cc -r tools/niminst --var:version=%s zip rod/nimrod" %
+       NIMROD_VERSION)
+  
+def cmd_inno():
+  Exec("nimrod cc -r tools/niminst --var:version=%s inno rod/nimrod" %
+       NIMROD_VERSION)
 
 # -------------------------- bootstrap ----------------------------------------
 
@@ -678,6 +692,8 @@ def getOSandProcessor():
   else: processor = os.uname()[4]
   if lower(processor) in ("i686", "i586", "i468", "i386"):
     processor = "i386"
+  if lower(processor) in ("x86_64", "x86-64", "amd64"):
+    processor = "amd64" 
   if find(lower(processor), "sparc") >= 0:
     processor = "sparc"
   return (host, processor)

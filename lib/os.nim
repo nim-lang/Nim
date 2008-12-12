@@ -1062,14 +1062,14 @@ proc cmpPaths(pathA, pathB: string): int =
     result = cmpIgnoreCase(pathA, pathB)
 
 proc extractDir(path: string): string =
-  if path[path.len-1] in {dirSep, altSep}:
+  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
     result = path
   else:
     var tail: string
     splitPath(path, result, tail)
 
 proc extractFilename(path: string): string =
-  if path[path.len-1] in {dirSep, altSep}:
+  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
     result = ""
   else:
     var head: string

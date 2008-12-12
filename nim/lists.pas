@@ -8,7 +8,7 @@
 //
 unit lists;
 
-// This unit implements a generic doubled linked list.
+// This module implements a generic doubled linked list.
 
 interface
 

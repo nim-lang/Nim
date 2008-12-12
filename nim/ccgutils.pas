@@ -39,7 +39,7 @@ begin
   if key = nil then exit;
   case key.Kind of
     tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-    tyInt..tyFloat128, tyProc, tyEnum, tyObject, tyAnyEnum: begin end;
+    tyInt..tyFloat128, tyProc, tyAnyEnum: begin end;
     tyNone, tyForward: 
       InternalError('GetUniqueType: ' + typeToString(key));
     tyGenericParam, tyGeneric, tySequence,
@@ -53,6 +53,13 @@ begin
         if (t <> nil) and sameType(t, key) then begin result := t; exit end
       end;
       IdTablePut(gTypeTable, key, key);
+    end;
+    tyObject, tyEnum: begin
+      result := PType(IdTableGet(gTypeTable, key));
+      if result = nil then begin
+        IdTablePut(gTypeTable, key, key);
+        result := key;
+      end
     end;
     tyGenericInst: result := GetUniqueType(lastSon(key));
   end;
@@ -102,11 +109,14 @@ begin
   res := '"'+'';
   for i := strStart to length(s)+strStart-1 do begin
     if (i-strStart+1) mod MaxLineLength = 0 then begin
-      res := res +{&} '"' +{&} nl;
-      app(result, toRope(res));
-      res := '"'+''; // reset
+      add(res, '"');
+      add(res, nl);
+      app(result, toRope(res)); 
+      // reset:
+      setLength(res, 1);
+      res[strStart] := '"';
     end;
-    res := res +{&} toCChar(s[i]);
+    add(res, toCChar(s[i]));
   end;
   addChar(res, '"');
   app(result, toRope(res));

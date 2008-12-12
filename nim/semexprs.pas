@@ -637,7 +637,7 @@ begin
         Consider::
           const x = []
           proc p(a: openarray[int], i: int)
-          proc q(a: sequence[char], c: char)
+          proc q(a: openarray[char], c: char)
           p(x, 0)
           q(x, '\0')
 

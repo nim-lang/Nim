@@ -930,7 +930,7 @@ end;
 
 function align(address, alignment: biggestInt): biggestInt;
 begin
-  result := address + (alignment-1) and not (alignment-1);
+  result := (address + (alignment-1)) and not (alignment-1);
 end;
 
 // we compute the size of types lazily:
@@ -951,6 +951,7 @@ begin
         case n.sons[i].kind of
           nkOfBranch, nkElse: begin
             res := computeRecSizeAux(lastSon(n.sons[i]), b, currOffset);
+            if res < 0 then begin result := res; exit end;
             maxSize := max(maxSize, res);
             maxAlign := max(maxAlign, b);
           end;
@@ -966,6 +967,7 @@ begin
       maxAlign := 1;
       for i := 0 to sonsLen(n)-1 do begin
         res := computeRecSizeAux(n.sons[i], b, currOffset);
+        if res < 0 then begin result := res; exit end;
         currOffset := align(currOffset, b) + res;
         result := align(result, b) + res;
         if b > maxAlign then maxAlign := b;
@@ -1024,9 +1026,9 @@ begin
         result := 4 // use signed int32
       else begin
         len := lastOrd(typ); // BUGFIX: use lastOrd!
-        if len+1 < 1 shl 8 then result := 1
-        else if len+1 < 1 shl 16 then result := 2
-        else if len+1 < 1 shl 32 then result := 4
+        if len+1 < shlu(1, 8) then result := 1
+        else if len+1 < shlu(1, 16) then result := 2
+        else if len+1 < shlu(biggestInt(1), 32) then result := 4
         else result := 8;
       end;
       a := result;
@@ -1047,6 +1049,7 @@ begin
       maxAlign := 1;
       for i := 0 to sonsLen(typ)-1 do begin
         res := computeSizeAux(typ.sons[i], a);
+        if res < 0 then begin result := res; exit end;
         maxAlign := max(maxAlign, a);
         result := align(result, a) + res;
       end;
@@ -1056,6 +1059,7 @@ begin
     tyObject: begin
       if typ.sons[0] <> nil then begin
         result := computeSizeAux(typ.sons[0], a);
+        if result < 0 then exit;
         maxAlign := a
       end
       else if typ.kind = tyObject then begin
@@ -1066,6 +1070,7 @@ begin
       end;
       currOffset := result;
       result := computeRecSizeAux(typ.n, a, currOffset);
+      if result < 0 then exit;
       if a < maxAlign then a := maxAlign;
       result := align(result, a);
     end;
@@ -1097,4 +1102,3 @@ begin
 end;
 
 end.
-

@@ -1,6 +1,6 @@
 module ::= ([COMMENT] [SAD] stmt)*
 
-optComma ::= [ ',' ] [COMMENT] [IND]
+comma ::= ',' [COMMENT] [IND]
 operator ::= OP0 | OR | XOR | AND | OP3 | OP4 | OP5 | IS | ISNOT | IN | NOTIN
            | OP6 | DIV | MOD | SHL | SHR | OP7 | NOT
 
@@ -34,11 +34,9 @@ primary ::= ( prefixOperator optInd )* ( symbol | constructor |
                                                 | castExpr | addrExpr ) (
                DOT optInd symbol
              #| CURLY_LE namedTypeDescList CURLY_RI
-             | PAR_LE optInd
-               namedExprList
-               PAR_RI
+             | PAR_LE optInd namedExprList PAR_RI
              | BRACKET_LE optInd
-               (namedTypeOrExpr optComma)*
+               [ namedTypeOrExpr (comma namedTypeOrExpr)* [comma] ]
                BRACKET_RI
              | CIRCUM
              | pragma )*
@@ -50,17 +48,20 @@ literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | NIL
 
 constructor ::= literal
-          | BRACKET_LE optInd (expr [COLON expr] optComma )* BRACKET_RI # []-Constructor
-          | CURLY_LE optInd (expr [DOTDOT expr] optComma )* CURLY_RI    # {}-Constructor
-          | PAR_LE optInd (expr [COLON expr] optComma )* PAR_RI         # ()-Constructor
+          | BRACKET_LE optInd colonExprList BRACKET_RI # []-Constructor
+          | CURLY_LE optInd sliceExprList CURLY_RI     # {}-Constructor
+          | PAR_LE optInd colonExprList PAR_RI         # ()-Constructor
 
-exprList ::= ( expr optComma )*
+exprList ::= [ expr (comma expr)* [comma] ]
+
+colonExpr ::= expr [COLON expr]
+colonExprList ::= [ colonExpr (comma colonExpr)* [comma] ]
 
 namedExpr ::= expr [EQUALS expr] # actually this is symbol EQUALS expr|expr
-namedExprList ::= ( namedExpr optComma )*
+namedExprList ::= [ namedExpr (comma namedExpr)* [comma] ]
 
-exprOrSlice ::= expr [ DOTDOT expr ]
-sliceList ::= ( exprOrSlice optComma )+
+sliceExpr ::= expr [ DOTDOT expr ]
+sliceExprList ::= [ sliceExpr (comma sliceExpr)* [comma] ]
 
 anonymousProc ::= LAMBDA paramList [pragma] EQUALS stmt
 expr ::= lowestExpr
@@ -70,7 +71,7 @@ expr ::= lowestExpr
        ELSE COLON expr
 
 namedTypeDesc ::= typeDescK | expr [EQUALS (typeDescK | expr)]
-namedTypeDescList ::= ( namedTypeDesc optComma )*
+namedTypeDescList ::= [ namedTypeDesc (comma namedTypeDesc)* [comma] ]
 
 qualifiedIdent ::= symbol [ DOT symbol ]
 
@@ -85,7 +86,7 @@ typeDesc ::= typeDescK | primary
 
 optSemicolon ::= [SEMICOLON]
 
-macroStmt ::= COLON [stmt] (OF [sliceList] COLON stmt
+macroStmt ::= COLON [stmt] (OF [sliceExprList] COLON stmt
                            | ELIF expr COLON stmt
                            | EXCEPT exceptList COLON stmt )*
                            [ELSE COLON stmt]
@@ -112,7 +113,7 @@ stmt ::= simpleStmt [SAD]
   ([SAD] (complexStmt | simpleStmt) )*
    DED
 
-exprStmt ::= lowestExpr [EQUALS expr | (expr optComma)* [macroStmt]]
+exprStmt ::= lowestExpr [EQUALS expr | [expr (comma expr)* [comma]] [macroStmt]]
 returnStmt ::= RETURN [expr]
 yieldStmt ::= YIELD expr
 discardStmt ::= DISCARD expr
@@ -121,25 +122,27 @@ breakStmt ::= BREAK [symbol]
 continueStmt ::= CONTINUE
 ifStmt ::= IF expr COLON stmt (ELIF expr COLON stmt)* [ELSE COLON stmt]
 whenStmt ::= WHEN expr COLON stmt (ELIF expr COLON stmt)* [ELSE COLON stmt]
-caseStmt ::= CASE expr (OF sliceList COLON stmt)*
+caseStmt ::= CASE expr (OF sliceExprList COLON stmt)*
                        (ELIF expr COLON stmt)*
                        [ELSE COLON stmt]
 whileStmt ::= WHILE expr COLON stmt
-forStmt ::= FOR (symbol optComma)+ IN expr [DOTDOT expr] COLON stmt
-exceptList ::= (qualifiedIdent optComma)*
+forStmt ::= FOR symbol (comma symbol)* [comma] IN expr [DOTDOT expr] COLON stmt
+exceptList ::= [qualifiedIdent (comma qualifiedIdent)* [comma]]
 
 tryStmt ::= TRY COLON stmt
           (EXCEPT exceptList COLON stmt)*
           [FINALLY COLON stmt]
 asmStmt ::= ASM [pragma] (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
 blockStmt ::= BLOCK [symbol] COLON stmt
-importStmt ::= IMPORT ((symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) [AS symbol] optComma)+
-includeStmt ::= INCLUDE ((symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) optComma)+
-fromStmt ::= FROM (symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT) IMPORT (symbol optComma)+
+filename ::= symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
+importStmt ::= IMPORT filename (comma filename)* [comma]
+includeStmt ::= INCLUDE filename (comma filename)* [comma]
+fromStmt ::= FROM filename IMPORT symbol (comma symbol)* [comma]
 
-pragma ::= CURLYDOT_LE (expr [COLON expr] optComma)+ (CURLYDOT_RI | CURLY_RI)
+pragma ::= CURLYDOT_LE colonExprList (CURLYDOT_RI | CURLY_RI)
 
-paramList ::= [PAR_LE ((symbol optComma)+ COLON typeDesc optComma)* PAR_RI] [COLON typeDesc]
+param ::= symbol (comma symbol)* [comma] COLON typeDesc
+paramList ::= [PAR_LE [param (comma param)* [comma]] PAR_RI] [COLON typeDesc]
 
 genericParams ::= BRACKET_LE (symbol [EQUALS typeDesc] )* BRACKET_RI
 
@@ -160,22 +163,24 @@ constDecl ::= symbol ["*"] [pragma] colonAndEquals [COMMENT | IND COMMENT]
 constSection ::= CONST indPush constDecl (SAD constDecl)* DED
 typeDef ::= typeDesc | objectDef | enumDef
 
+objectField ::= symbol ["*"] [pragma]
 objectIdentPart ::=
-   (symbol ["*" | "-"] [pragma] optComma)+ COLON typeDesc [COMMENT | IND COMMENT]
+  objectField (comma objectField)* [comma] COLON typeDesc [COMMENT|IND COMMENT]
 
 objectWhen ::= WHEN expr COLON [COMMENT] objectPart
               (ELIF expr COLON [COMMENT] objectPart)*
               [ELSE COLON [COMMENT] objectPart]
 objectCase ::= CASE expr COLON typeDesc [COMMENT]
-              (OF sliceList COLON [COMMENT] objectPart)*
+              (OF sliceExprList COLON [COMMENT] objectPart)*
               [ELSE COLON [COMMENT] objectPart]
 
 objectPart ::= objectWhen | objectCase | objectIdentPart | NIL
              | indPush objectPart (SAD objectPart)* DED
-tupleDesc ::= BRACKET_LE optInd ((symbol optComma)+ COLON typeDesc optComma)* BRACKET_RI
+tupleDesc ::= BRACKET_LE optInd [param (comma param)* [comma]] BRACKET_RI
 
 objectDef ::= OBJECT [pragma] [OF typeDesc] objectPart
-enumDef ::= ENUM [OF typeDesc] (symbol [EQUALS expr] optComma [COMMENT | IND COMMENT])+
+enumField ::= symbol [EQUALS expr]
+enumDef ::= ENUM [OF typeDesc] (enumField [comma | COMMENT | IND COMMENT])+
 
 typeDecl ::= COMMENT
            | symbol ["*"] [genericParams] [EQUALS typeDef] [COMMENT | IND COMMENT]
@@ -183,5 +188,7 @@ typeDecl ::= COMMENT
 typeSection ::= TYPE indPush typeDecl (SAD typeDecl)* DED
 
 colonOrEquals ::= COLON typeDesc [EQUALS expr] | EQUALS expr
-varPart ::= (symbol ["*" | "-"] [pragma] optComma)+ colonOrEquals [COMMENT | IND COMMENT]
-varSection ::= VAR (varPart | indPush (COMMENT|varPart) (SAD (COMMENT|varPart))* DED)
+varField ::= symbol ["*"] [pragma]
+varPart ::= symbol (comma symbol)* [comma] colonOrEquals [COMMENT | IND COMMENT]
+varSection ::= VAR (varPart
+                   | indPush (COMMENT|varPart) (SAD (COMMENT|varPart))* DED)

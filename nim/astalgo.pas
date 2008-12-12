@@ -274,11 +274,12 @@ begin
   res := '"' + '';
   for i := strStart to length(s)+strStart-1 do begin
     if (i-strStart+1) mod MaxLineLength = 0 then begin
-      res := res +{&} '"' +{&} nl;
+      addChar(res, '"');
+      add(res, nl);
       app(result, toRope(res));
       res := '"'+''; // reset
     end;
-    res := res +{&} toYamlChar(s[i]);
+    add(res, toYamlChar(s[i]));
   end;
   addChar(res, '"');
   app(result, toRope(res));

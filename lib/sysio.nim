@@ -53,6 +53,16 @@ proc readLine(f: TFile): string =
   result = ""
   rawReadLine(f, result)
 
+proc write(f: TFile, s: string) = fputs(s, f)
+proc write(f: TFile, i: int) = fprintf(f, "%ld", i)
+proc write(f: TFile, b: bool) =
+  if b: write(f, "true")
+  else: write(f, "false")
+proc write(f: TFile, r: float) = fprintf(f, "%g", r)
+proc write(f: TFile, c: Char) = putc(c, f)
+proc write(f: TFile, a: openArray[string]) =
+  for x in items(a): write(f, x)
+
 proc readFile(filename: string): string =
   var f: TFile
   try:
@@ -67,16 +77,6 @@ proc readFile(filename: string): string =
       result = nil
   except EIO:
     result = nil
-
-proc write(f: TFile, s: string) = fputs(s, f)
-proc write(f: TFile, i: int) = fprintf(f, "%ld", i)
-proc write(f: TFile, b: bool) =
-  if b: write(f, "true")
-  else: write(f, "false")
-proc write(f: TFile, r: float) = fprintf(f, "%g", r)
-proc write(f: TFile, c: Char) = putc(c, f)
-proc write(f: TFile, a: openArray[string]) =
-  for x in items(a): write(f, x)
 
 proc EndOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged

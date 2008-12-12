@@ -207,10 +207,6 @@ begin
   result.flags := {@set}[];
 end;
 
-procedure freeTemp(p: BProc; const temp: TLoc);
-begin
-end;
-
 // -------------------------- Variable manager ----------------------------
 
 procedure declareGlobalVar(m: BModule; s: PSym);
@@ -318,8 +314,8 @@ var
   tmp: PRope;
 begin
   assert(lib <> nil);
-  if lib.kind = libDynamic then begin
-    lib.kind := libDynamicGenerated;
+  if not lib.generated then begin
+    lib.generated := true;
     useMagic(m, 'nimLoadLibrary');
     useMagic(m, 'nimUnloadLibrary');
     useMagic(m, 'NimStringDesc');

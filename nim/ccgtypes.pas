@@ -33,7 +33,10 @@ begin
       'A'..'Z': addChar(result, chr(ord(name[i]) - ord('A') + ord('a')));
       '_': begin end;
       'a'..'z', '0'..'9': addChar(result, name[i]);
-      else result := result + 'HEX' +{&} toHex(ord(name[i]), 2);
+      else begin
+        add(result, 'HEX');
+        add(result, toHex(ord(name[i]), 2))
+      end
     end
   end
 end;
@@ -92,6 +95,7 @@ begin
           1: result := ctUInt8;
           2: result := ctUInt16;
           4: result := ctInt32;
+          8: result := ctInt64;
           else internalError('mapType');
         end
       end
@@ -284,8 +288,10 @@ begin
           1: result := typeNameOrLiteral(typ, 'NU8');
           2: result := typeNameOrLiteral(typ, 'NU16');
           4: result := typeNameOrLiteral(typ, 'NI32');
+          8: result := typeNameOrLiteral(typ, 'NI64');
           else begin
-            internalError('getSimpleTypeDesc()');
+            internalError(typ.sym.info,
+                          'getSimpleTypeDesc: ' + toString(getSize(typ)));
             result := nil
           end
         end
@@ -885,7 +891,7 @@ begin
         dataGen := true
       end;
       tyObject: begin
-        if sfPure in t.sym.flags then
+        if isPureObject(t) then
           id := getID()
         else begin
           id := t.id;
@@ -943,7 +949,7 @@ begin
             genEnumInfo(m, t, ropef('NTI$1', [toRope(t.id)]));
           end;
           tyObject: begin
-            if not (sfPure in t.sym.flags) then begin
+            if not isPureObject(t) then begin
               useMagic(m, 'TNimType');
               useMagic(m, 'TNimNode');
               genObjectInfo(m, t, ropef('NTI$1', [toRope(t.id)]));

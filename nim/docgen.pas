@@ -209,10 +209,10 @@ end;
 procedure addXmlChar(var dest: string; c: Char);
 begin
   case c of
-    '&': dest := dest + '&amp;';
-    '<': dest := dest + '&lt;';
-    '>': dest := dest + '&gt;';
-    '"': dest := dest + '&quot;';
+    '&': add(dest, '&amp;');
+    '<': add(dest, '&lt;');
+    '>': add(dest, '&gt;');
+    '"': add(dest, '&quot;');
     else addChar(dest, c)
   end
 end;
@@ -292,8 +292,7 @@ var
   a, h: PRstNode;
 begin
   inc(d.id);
-  result := ropef('<em id="$1">$2</em>',
-                       [toRope(d.id), renderAux(d, n)]);
+  result := ropef('<em id="$1">$2</em>', [toRope(d.id), renderAux(d, n)]);
   h := newRstNode(rnHyperlink);
   a := newRstNode(rnLeaf, d.indexValFilename +{&} '#' +{&} toString(d.id));
   addSon(h, a);
@@ -709,8 +708,8 @@ begin
                             g.len+g.start-1+strStart));
         else
           appf(result, '<span class="$2">$1</span>',
-            [toRope(ncopy(m.text, g.start+strStart,
-                          g.len+g.start-1+strStart)),
+            [toRope(toXml(ncopy(m.text, g.start+strStart,
+                                g.len+g.start-1+strStart))),
              toRope(tokenClassToStr[g.kind])]);
       end;
     end;

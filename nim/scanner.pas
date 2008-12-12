@@ -10,12 +10,11 @@ unit scanner;
 
 // This scanner is handwritten for efficiency. I used an elegant buffering
 // scheme which I have not seen anywhere else:
-// We guarantee that a hole line is in the buffer (too long lines are reported
-// as an error). Thus only when scanning the \n or \r character we have
-// to check wether we need to read in the next chunk. (\n or \r already need
-// special handling for incrementing the line counter; choosing both \n and \r
-// allows the scanner to properly read Unix, DOS or Macintosh text files, even
-// when it is not the native format.
+// We guarantee that a whole line is in the buffer. Thus only when scanning
+// the \n or \r character we have to check wether we need to read in the next 
+// chunk. (\n or \r already need special handling for incrementing the line
+// counter; choosing both \n and \r allows the scanner to properly read Unix,
+// DOS or Macintosh text files, even when it is not the native format.
 
 interface
 
@@ -29,7 +28,7 @@ uses
 const
   MaxLineLength = 80; // lines longer than this lead to a warning
 
-  numChars: TCharSet = ['0'..'9','a'..'z','A'..'Z']; // we support up to base 36
+  numChars: TCharSet = ['0'..'9','a'..'z','A'..'Z'];
   SymChars: TCharSet = ['a'..'z', 'A'..'Z', '0'..'9', #128..#255];
   SymStartChars: TCharSet = ['a'..'z', 'A'..'Z', #128..#255];
   OpChars: TCharSet = ['+', '-', '*', '/', '<', '>', '!', '?', '^', '.',
@@ -436,7 +435,7 @@ begin
               end;
               '_': inc(pos);
               '0', '1': begin
-                xi := (xi shl 1) or (ord(L.buf[pos]) - ord('0'));
+                xi := shlu(xi, 1) or (ord(L.buf[pos]) - ord('0'));
                 inc(pos);
               end;
               else break;
@@ -453,7 +452,7 @@ begin
               end;
               '_': inc(pos);
               '0'..'7': begin
-                xi := (xi shl 3) or (ord(L.buf[pos]) - ord('0'));
+                xi := shlu(xi, 3) or (ord(L.buf[pos]) - ord('0'));
                 inc(pos);
               end;
               else break;
@@ -471,15 +470,15 @@ begin
               end;
               '_': inc(pos);
               '0'..'9': begin
-                xi := (xi shl 4) or (ord(L.buf[pos]) - ord('0'));
+                xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('0'));
                 inc(pos);
               end;
               'a'..'f': begin
-                xi := (xi shl 4) or (ord(L.buf[pos]) - ord('a') + 10);
+                xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10);
                 inc(pos);
               end;
               'A'..'F': begin
-                xi := (xi shl 4) or (ord(L.buf[pos]) - ord('A') + 10);
+                xi := shlu(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10);
                 inc(pos);
               end;
               else break;
@@ -490,8 +489,14 @@ begin
       end;
       // now look at the optional type suffix:
       case result.tokType of
-        tkIntLit..tkInt64Lit:
+        tkIntLit, tkInt64Lit:
           result.iNumber := xi;
+        tkInt8Lit:
+          result.iNumber := biggestInt(int8(toU8(int(xi))));
+        tkInt16Lit:
+          result.iNumber := biggestInt(toU16(int(xi)));
+        tkInt32Lit:
+          result.iNumber := biggestInt(toU32(xi));
         tkFloat32Lit:
           result.fNumber := ({@cast}PFloat32(addr(xi)))^;
           // note: this code is endian neutral!
@@ -525,6 +530,8 @@ begin
   {@emit}
     on EOverflow do
       lexMessage(L, errNumberOutOfRange, result.literal);
+    on EOutOfRange do
+      lexMessage(L, errNumberOutOfRange, result.literal);      
   end;
   L.bufpos := endpos;
 end;
