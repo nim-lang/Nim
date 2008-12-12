@@ -11,6 +11,7 @@ doc/*.html
 *.tar.gz
 dist
 web
+misc
 lib/base/devel
 lib/base/devel/*
 
