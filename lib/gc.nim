@@ -13,11 +13,10 @@
 # * incremental
 # * non-recursive
 # * generational
-# * excellent performance
 
 # Future Improvements:
 # * Both dlmalloc and TLSF lack zero-overhead object allocation. Thus, for
-#   small objects we will should use our own allocator.
+#   small objects we should use our own allocator.
 # * Support for multi-threading. However, locks for the reference counting
 #   might turn out to be too slow.
 
@@ -332,7 +331,7 @@ proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
 
 # ---------- slightly higher level procs --------------------------------------
 
-proc in_Operator(s: TCellSet, cell: PCell): bool =
+proc contains(s: TCellSet, cell: PCell): bool =
   var u = cast[TAddress](cell)
   var t = CellSetGet(s, u shr PageShift)
   if t != nil:
@@ -468,23 +467,6 @@ proc prepareDealloc(cell: PCell) =
 proc setStackBottom(theStackBottom: pointer) {.compilerproc.} =
   stackBottom = theStackBottom
 
-proc initGC() =
-  when traceGC:
-    for i in low(TCellState)..high(TCellState): CellSetInit(states[i])
-  gch.stackScans = 0
-  gch.cycleCollections = 0
-  gch.maxThreshold = 0
-  gch.maxStackSize = 0
-  gch.maxStackPages = 0
-  gch.cycleTableSize = 0
-  # init the rt
-  init(gch.zct)
-  init(gch.tempStack)
-  CellSetInit(gch.cycleRoots)
-  CellSetInit(gch.stackCells)
-  gch.mask = 0
-  new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
-
 proc PossibleRoot(gch: var TGcHeap, c: PCell) {.inline.} =
   if canbeCycleRoot(c): incl(gch.cycleRoots, c)
 
@@ -534,6 +516,23 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) =
     if src != nil: incRef(usrToCell(src))
     if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
+
+proc initGC() =
+  when traceGC:
+    for i in low(TCellState)..high(TCellState): CellSetInit(states[i])
+  gch.stackScans = 0
+  gch.cycleCollections = 0
+  gch.maxThreshold = 0
+  gch.maxStackSize = 0
+  gch.maxStackPages = 0
+  gch.cycleTableSize = 0
+  # init the rt
+  init(gch.zct)
+  init(gch.tempStack)
+  CellSetInit(gch.cycleRoots)
+  CellSetInit(gch.stackCells)
+  gch.mask = 0
+  new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
 
 proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)

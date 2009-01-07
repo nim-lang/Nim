@@ -66,12 +66,93 @@ for key, val in enums.items():
   cog.out(b)
 ]]]*)
 type
-  TTypeFlag = (
-    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
-  TTypeFlags = set of TTypeFlag;
+  TNodeKind = (
+    nkNone, nkEmpty, nkIdent, nkSym, 
+    nkType, nkCharLit, nkIntLit, nkInt8Lit, 
+    nkInt16Lit, nkInt32Lit, nkInt64Lit, nkFloatLit, 
+    nkFloat32Lit, nkFloat64Lit, nkStrLit, nkRStrLit, 
+    nkTripleStrLit, nkMetaNode, nkNilLit, nkDotCall, 
+    nkCommand, nkCall, nkGenericCall, nkExplicitTypeListCall, 
+    nkExprEqExpr, nkExprColonExpr, nkIdentDefs, nkVarTuple, 
+    nkInfix, nkPrefix, nkPostfix, nkPar, 
+    nkCurly, nkBracket, nkBracketExpr, nkPragmaExpr, 
+    nkRange, nkDotExpr, nkCheckedFieldExpr, nkDerefExpr, 
+    nkIfExpr, nkElifExpr, nkElseExpr, nkLambda, 
+    nkAccQuoted, nkHeaderQuoted, nkTableConstr, nkQualified, 
+    nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv, nkConv, 
+    nkCast, nkAddr, nkHiddenAddr, nkHiddenDeref, 
+    nkObjDownConv, nkObjUpConv, nkChckRangeF, nkChckRange64, 
+    nkChckRange, nkStringToCString, nkCStringToString, nkPassAsOpenArray, 
+    nkAsgn, nkFastAsgn, nkDefaultTypeParam, nkGenericParams, 
+    nkFormalParams, nkOfInherit, nkModule, nkProcDef, 
+    nkConverterDef, nkMacroDef, nkTemplateDef, nkIteratorDef, 
+    nkOfBranch, nkElifBranch, nkExceptBranch, nkElse, 
+    nkMacroStmt, nkAsmStmt, nkPragma, nkIfStmt, 
+    nkWhenStmt, nkForStmt, nkWhileStmt, nkCaseStmt, 
+    nkVarSection, nkConstSection, nkConstDef, nkTypeSection, 
+    nkTypeDef, nkYieldStmt, nkTryStmt, nkFinally, 
+    nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt, 
+    nkBlockStmt, nkDiscardStmt, nkStmtList, nkImportStmt, 
+    nkFromStmt, nkImportAs, nkIncludeStmt, nkAccessStmt, 
+    nkCommentStmt, nkStmtListExpr, nkBlockExpr, nkStmtListType, 
+    nkBlockType, nkVm, nkTypeOfExpr, nkObjectTy, 
+    nkTupleTy, nkRecList, nkRecCase, nkRecWhen, 
+    nkRefTy, nkPtrTy, nkVarTy, nkProcTy, 
+    nkEnumTy, nkEnumFieldDef, nkReturnToken);
+  TNodeKinds = set of TNodeKind;
 const
-  TypeFlagToStr: array [TTypeFlag] of string = (
-    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
+  NodeKindToStr: array [TNodeKind] of string = (
+    'nkNone', 'nkEmpty', 'nkIdent', 'nkSym', 
+    'nkType', 'nkCharLit', 'nkIntLit', 'nkInt8Lit', 
+    'nkInt16Lit', 'nkInt32Lit', 'nkInt64Lit', 'nkFloatLit', 
+    'nkFloat32Lit', 'nkFloat64Lit', 'nkStrLit', 'nkRStrLit', 
+    'nkTripleStrLit', 'nkMetaNode', 'nkNilLit', 'nkDotCall', 
+    'nkCommand', 'nkCall', 'nkGenericCall', 'nkExplicitTypeListCall', 
+    'nkExprEqExpr', 'nkExprColonExpr', 'nkIdentDefs', 'nkVarTuple', 
+    'nkInfix', 'nkPrefix', 'nkPostfix', 'nkPar', 
+    'nkCurly', 'nkBracket', 'nkBracketExpr', 'nkPragmaExpr', 
+    'nkRange', 'nkDotExpr', 'nkCheckedFieldExpr', 'nkDerefExpr', 
+    'nkIfExpr', 'nkElifExpr', 'nkElseExpr', 'nkLambda', 
+    'nkAccQuoted', 'nkHeaderQuoted', 'nkTableConstr', 'nkQualified', 
+    'nkHiddenStdConv', 'nkHiddenSubConv', 'nkHiddenCallConv', 'nkConv', 
+    'nkCast', 'nkAddr', 'nkHiddenAddr', 'nkHiddenDeref', 
+    'nkObjDownConv', 'nkObjUpConv', 'nkChckRangeF', 'nkChckRange64', 
+    'nkChckRange', 'nkStringToCString', 'nkCStringToString', 'nkPassAsOpenArray', 
+    'nkAsgn', 'nkFastAsgn', 'nkDefaultTypeParam', 'nkGenericParams', 
+    'nkFormalParams', 'nkOfInherit', 'nkModule', 'nkProcDef', 
+    'nkConverterDef', 'nkMacroDef', 'nkTemplateDef', 'nkIteratorDef', 
+    'nkOfBranch', 'nkElifBranch', 'nkExceptBranch', 'nkElse', 
+    'nkMacroStmt', 'nkAsmStmt', 'nkPragma', 'nkIfStmt', 
+    'nkWhenStmt', 'nkForStmt', 'nkWhileStmt', 'nkCaseStmt', 
+    'nkVarSection', 'nkConstSection', 'nkConstDef', 'nkTypeSection', 
+    'nkTypeDef', 'nkYieldStmt', 'nkTryStmt', 'nkFinally', 
+    'nkRaiseStmt', 'nkReturnStmt', 'nkBreakStmt', 'nkContinueStmt', 
+    'nkBlockStmt', 'nkDiscardStmt', 'nkStmtList', 'nkImportStmt', 
+    'nkFromStmt', 'nkImportAs', 'nkIncludeStmt', 'nkAccessStmt', 
+    'nkCommentStmt', 'nkStmtListExpr', 'nkBlockExpr', 'nkStmtListType', 
+    'nkBlockType', 'nkVm', 'nkTypeOfExpr', 'nkObjectTy', 
+    'nkTupleTy', 'nkRecList', 'nkRecCase', 'nkRecWhen', 
+    'nkRefTy', 'nkPtrTy', 'nkVarTy', 'nkProcTy', 
+    'nkEnumTy', 'nkEnumFieldDef', 'nkReturnToken');
+type
+  TSymFlag = (
+    sfUsed, sfStar, sfMinus, sfInInterface, 
+    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
+    sfExportc, sfVolatile, sfRegister, sfPure, 
+    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
+    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
+    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
+    sfCompileTime, sfThreadVar, sfMerge, sfDeadCodeElim);
+  TSymFlags = set of TSymFlag;
+const
+  SymFlagToStr: array [TSymFlag] of string = (
+    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
+    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
+    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
+    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
+    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
+    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
+    'sfCompileTime', 'sfThreadVar', 'sfMerge', 'sfDeadCodeElim');
 type
   TTypeKind = (
     tyNone, tyBool, tyChar, tyEmpty, 
@@ -96,25 +177,6 @@ const
     'tyInt16', 'tyInt32', 'tyInt64', 'tyFloat', 
     'tyFloat32', 'tyFloat64', 'tyFloat128');
 type
-  TSymFlag = (
-    sfUsed, sfStar, sfMinus, sfInInterface, 
-    sfFromGeneric, sfGlobal, sfForward, sfImportc, 
-    sfExportc, sfVolatile, sfRegister, sfPure, 
-    sfResult, sfNoSideEffect, sfMainModule, sfSystemModule, 
-    sfNoReturn, sfAddrTaken, sfCompilerProc, sfCppMethod, 
-    sfDiscriminant, sfDeprecated, sfInClosure, sfTypeCheck, 
-    sfCompileTime, sfThreadVar, sfMerge);
-  TSymFlags = set of TSymFlag;
-const
-  SymFlagToStr: array [TSymFlag] of string = (
-    'sfUsed', 'sfStar', 'sfMinus', 'sfInInterface', 
-    'sfFromGeneric', 'sfGlobal', 'sfForward', 'sfImportc', 
-    'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
-    'sfResult', 'sfNoSideEffect', 'sfMainModule', 'sfSystemModule', 
-    'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 'sfCppMethod', 
-    'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 'sfTypeCheck', 
-    'sfCompileTime', 'sfThreadVar', 'sfMerge');
-type
   TNodeFlag = (
     nfNone, nfBase2, nfBase8, nfBase16, 
     nfAllConst, nfTransf, nfSem);
@@ -123,6 +185,13 @@ const
   NodeFlagToStr: array [TNodeFlag] of string = (
     'nfNone', 'nfBase2', 'nfBase8', 'nfBase16', 
     'nfAllConst', 'nfTransf', 'nfSem');
+type
+  TTypeFlag = (
+    tfVarargs, tfFinal, tfAcyclic, tfEnumHasWholes);
+  TTypeFlags = set of TTypeFlag;
+const
+  TypeFlagToStr: array [TTypeFlag] of string = (
+    'tfVarargs', 'tfFinal', 'tfAcyclic', 'tfEnumHasWholes');
 type
   TSymKind = (
     skUnknownSym, skConditional, skDynLib, skParam, 
@@ -138,75 +207,6 @@ const
     'skVar', 'skProc', 'skIterator', 'skConverter', 
     'skMacro', 'skTemplate', 'skField', 'skEnumField', 
     'skForVar', 'skModule', 'skLabel', 'skStub');
-type
-  TNodeKind = (
-    nkNone, nkEmpty, nkIdent, nkSym, 
-    nkType, nkCharLit, nkIntLit, nkInt8Lit, 
-    nkInt16Lit, nkInt32Lit, nkInt64Lit, nkFloatLit, 
-    nkFloat32Lit, nkFloat64Lit, nkStrLit, nkRStrLit, 
-    nkTripleStrLit, nkMetaNode, nkNilLit, nkDotCall, 
-    nkCommand, nkCall, nkGenericCall, nkExplicitTypeListCall, 
-    nkExprEqExpr, nkExprColonExpr, nkIdentDefs, nkInfix, 
-    nkPrefix, nkPostfix, nkPar, nkCurly, 
-    nkBracket, nkBracketExpr, nkPragmaExpr, nkRange, 
-    nkDotExpr, nkCheckedFieldExpr, nkDerefExpr, nkIfExpr, 
-    nkElifExpr, nkElseExpr, nkLambda, nkAccQuoted, 
-    nkHeaderQuoted, nkTableConstr, nkQualified, nkHiddenStdConv, 
-    nkHiddenSubConv, nkHiddenCallConv, nkConv, nkCast, 
-    nkAddr, nkHiddenAddr, nkHiddenDeref, nkObjDownConv, 
-    nkObjUpConv, nkChckRangeF, nkChckRange64, nkChckRange, 
-    nkStringToCString, nkCStringToString, nkPassAsOpenArray, nkAsgn, 
-    nkDefaultTypeParam, nkGenericParams, nkFormalParams, nkOfInherit, 
-    nkModule, nkProcDef, nkConverterDef, nkMacroDef, 
-    nkTemplateDef, nkIteratorDef, nkOfBranch, nkElifBranch, 
-    nkExceptBranch, nkElse, nkMacroStmt, nkAsmStmt, 
-    nkPragma, nkIfStmt, nkWhenStmt, nkForStmt, 
-    nkWhileStmt, nkCaseStmt, nkVarSection, nkConstSection, 
-    nkConstDef, nkTypeSection, nkTypeDef, nkYieldStmt, 
-    nkTryStmt, nkFinally, nkRaiseStmt, nkReturnStmt, 
-    nkBreakStmt, nkContinueStmt, nkBlockStmt, nkDiscardStmt, 
-    nkStmtList, nkImportStmt, nkFromStmt, nkImportAs, 
-    nkIncludeStmt, nkAccessStmt, nkCommentStmt, nkStmtListExpr, 
-    nkBlockExpr, nkStmtListType, nkBlockType, nkVm, 
-    nkTypeOfExpr, nkObjectTy, nkTupleTy, nkRecList, 
-    nkRecCase, nkRecWhen, nkRefTy, nkPtrTy, 
-    nkVarTy, nkProcTy, nkEnumTy, nkEnumFieldDef, 
-    nkReturnToken);
-  TNodeKinds = set of TNodeKind;
-const
-  NodeKindToStr: array [TNodeKind] of string = (
-    'nkNone', 'nkEmpty', 'nkIdent', 'nkSym', 
-    'nkType', 'nkCharLit', 'nkIntLit', 'nkInt8Lit', 
-    'nkInt16Lit', 'nkInt32Lit', 'nkInt64Lit', 'nkFloatLit', 
-    'nkFloat32Lit', 'nkFloat64Lit', 'nkStrLit', 'nkRStrLit', 
-    'nkTripleStrLit', 'nkMetaNode', 'nkNilLit', 'nkDotCall', 
-    'nkCommand', 'nkCall', 'nkGenericCall', 'nkExplicitTypeListCall', 
-    'nkExprEqExpr', 'nkExprColonExpr', 'nkIdentDefs', 'nkInfix', 
-    'nkPrefix', 'nkPostfix', 'nkPar', 'nkCurly', 
-    'nkBracket', 'nkBracketExpr', 'nkPragmaExpr', 'nkRange', 
-    'nkDotExpr', 'nkCheckedFieldExpr', 'nkDerefExpr', 'nkIfExpr', 
-    'nkElifExpr', 'nkElseExpr', 'nkLambda', 'nkAccQuoted', 
-    'nkHeaderQuoted', 'nkTableConstr', 'nkQualified', 'nkHiddenStdConv', 
-    'nkHiddenSubConv', 'nkHiddenCallConv', 'nkConv', 'nkCast', 
-    'nkAddr', 'nkHiddenAddr', 'nkHiddenDeref', 'nkObjDownConv', 
-    'nkObjUpConv', 'nkChckRangeF', 'nkChckRange64', 'nkChckRange', 
-    'nkStringToCString', 'nkCStringToString', 'nkPassAsOpenArray', 'nkAsgn', 
-    'nkDefaultTypeParam', 'nkGenericParams', 'nkFormalParams', 'nkOfInherit', 
-    'nkModule', 'nkProcDef', 'nkConverterDef', 'nkMacroDef', 
-    'nkTemplateDef', 'nkIteratorDef', 'nkOfBranch', 'nkElifBranch', 
-    'nkExceptBranch', 'nkElse', 'nkMacroStmt', 'nkAsmStmt', 
-    'nkPragma', 'nkIfStmt', 'nkWhenStmt', 'nkForStmt', 
-    'nkWhileStmt', 'nkCaseStmt', 'nkVarSection', 'nkConstSection', 
-    'nkConstDef', 'nkTypeSection', 'nkTypeDef', 'nkYieldStmt', 
-    'nkTryStmt', 'nkFinally', 'nkRaiseStmt', 'nkReturnStmt', 
-    'nkBreakStmt', 'nkContinueStmt', 'nkBlockStmt', 'nkDiscardStmt', 
-    'nkStmtList', 'nkImportStmt', 'nkFromStmt', 'nkImportAs', 
-    'nkIncludeStmt', 'nkAccessStmt', 'nkCommentStmt', 'nkStmtListExpr', 
-    'nkBlockExpr', 'nkStmtListType', 'nkBlockType', 'nkVm', 
-    'nkTypeOfExpr', 'nkObjectTy', 'nkTupleTy', 'nkRecList', 
-    'nkRecCase', 'nkRecWhen', 'nkRefTy', 'nkPtrTy', 
-    'nkVarTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 
-    'nkReturnToken');
 {[[[end]]]}
 
 type
@@ -240,22 +240,23 @@ type
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, 
     mToU32, mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, 
     mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, 
-    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, 
-    mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet, 
-    mConStrStr, mConArrArr, mConArrT, mConTArr, mConTT, mSlice, 
-    mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, mInRange, mInSet, 
-    mAsgn, mRepr, mExit, mSetLengthStr, mSetLengthSeq, mAssert, 
-    mSwap, mIsNil, mArrToSeq, mArray, mOpenArray, mRange, 
-    mSet, mSeq, mInt, mInt8, mInt16, mInt32, 
-    mInt64, mFloat, mFloat32, mFloat64, mBool, mChar, 
-    mString, mCstring, mPointer, mAnyEnum, mEmptySet, mIntSetBaseType, 
-    mNil, mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, 
-    mNimrodMinor, mNimrodPatch, mCpuEndian, mNaN, mInf, mNegInf, 
-    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, 
-    mNKind, mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, 
-    mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, 
-    mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
-    mEqIdent, mNHint, mNWarning, mNError
+    mEnumToStr, mAnd, mOr, mEqStr, mLeStr, mLtStr, 
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, 
+    mSymDiffSet, mConStrStr, mConArrArr, mConArrT, mConTArr, mConTT, 
+    mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, mInRange, 
+    mInSet, mAsgn, mRepr, mExit, mSetLengthStr, mSetLengthSeq, 
+    mAssert, mSwap, mIsNil, mArrToSeq, mArray, mOpenArray, 
+    mRange, mSet, mSeq, mInt, mInt8, mInt16, 
+    mInt32, mInt64, mFloat, mFloat32, mFloat64, mBool, 
+    mChar, mString, mCstring, mPointer, mAnyEnum, mEmptySet, 
+    mIntSetBaseType, mNil, mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, 
+    mNimrodMajor, mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, 
+    mNaN, mInf, mNegInf, mNLen, mNChild, mNSetChild, 
+    mNAdd, mNAddMultiple, mNDel, mNKind, mNIntVal, mNFloatVal, 
+    mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, mNSetFloatVal, 
+    mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNNewNimNode, mNCopyNimNode, 
+    mNCopyNimTree, mStrToIdent, mIdentToStr, mEqIdent, mNHint, mNWarning, 
+    mNError
     //[[[end]]]
   );
 
@@ -322,7 +323,6 @@ type
     locProc,       // location is a proc (an address of a procedure)
     locData,       // location is a constant
     locCall,       // location is a call expression
-    locImmediate,  // location is an immediate value
     locOther       // location is something other
   );
 
@@ -498,22 +498,23 @@ const // "MagicToStr" array:
     'Ze16ToI', 'Ze16ToI64', 'Ze32ToI64', 'ZeIToI64', 'ToU8', 'ToU16', 
     'ToU32', 'ToFloat', 'ToBiggestFloat', 'ToInt', 'ToBiggestInt', 'CharToStr', 
     'BoolToStr', 'IntToStr', 'Int64ToStr', 'FloatToStr', 'CStrToStr', 'StrToStr', 
-    'And', 'Or', 'EqStr', 'LeStr', 'LtStr', 'EqSet', 
-    'LeSet', 'LtSet', 'MulSet', 'PlusSet', 'MinusSet', 'SymDiffSet', 
-    'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 'ConTT', 'Slice', 
-    'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 'InRange', 'InSet', 
-    'Asgn', 'Repr', 'Exit', 'SetLengthStr', 'SetLengthSeq', 'Assert', 
-    'Swap', 'IsNil', 'ArrToSeq', 'Array', 'OpenArray', 'Range', 
-    'Set', 'Seq', 'Int', 'Int8', 'Int16', 'Int32', 
-    'Int64', 'Float', 'Float32', 'Float64', 'Bool', 'Char', 
-    'String', 'Cstring', 'Pointer', 'AnyEnum', 'EmptySet', 'IntSetBaseType', 
-    'Nil', 'IsMainModule', 'CompileDate', 'CompileTime', 'NimrodVersion', 'NimrodMajor', 
-    'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'NaN', 'Inf', 'NegInf', 
-    'NLen', 'NChild', 'NSetChild', 'NAdd', 'NAddMultiple', 'NDel', 
-    'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 'NIdent', 'NGetType', 
-    'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 'NSetIdent', 'NSetType', 
-    'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 'StrToIdent', 'IdentToStr', 
-    'EqIdent', 'NHint', 'NWarning', 'NError'
+    'EnumToStr', 'And', 'Or', 'EqStr', 'LeStr', 'LtStr', 
+    'EqSet', 'LeSet', 'LtSet', 'MulSet', 'PlusSet', 'MinusSet', 
+    'SymDiffSet', 'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 'ConTT', 
+    'Slice', 'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 'InRange', 
+    'InSet', 'Asgn', 'Repr', 'Exit', 'SetLengthStr', 'SetLengthSeq', 
+    'Assert', 'Swap', 'IsNil', 'ArrToSeq', 'Array', 'OpenArray', 
+    'Range', 'Set', 'Seq', 'Int', 'Int8', 'Int16', 
+    'Int32', 'Int64', 'Float', 'Float32', 'Float64', 'Bool', 
+    'Char', 'String', 'Cstring', 'Pointer', 'AnyEnum', 'EmptySet', 
+    'IntSetBaseType', 'Nil', 'IsMainModule', 'CompileDate', 'CompileTime', 'NimrodVersion', 
+    'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'HostOS', 'HostCPU', 
+    'NaN', 'Inf', 'NegInf', 'NLen', 'NChild', 'NSetChild', 
+    'NAdd', 'NAddMultiple', 'NDel', 'NKind', 'NIntVal', 'NFloatVal', 
+    'NSymbol', 'NIdent', 'NGetType', 'NStrVal', 'NSetIntVal', 'NSetFloatVal', 
+    'NSetSymbol', 'NSetIdent', 'NSetType', 'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 
+    'NCopyNimTree', 'StrToIdent', 'IdentToStr', 'EqIdent', 'NHint', 'NWarning', 
+    'NError'
     //[[[end]]]
   );
 
@@ -1342,13 +1343,13 @@ end;
 
 function IntSetContains(const s: TIntSet; key: int): bool;
 var
-  u: int;
+  u: TBitScalar;
   t: PTrunk;
 begin
-  t := IntSetGet(s, key shr TrunkShift);
+  t := IntSetGet(s, shru(key, TrunkShift));
   if t <> nil then begin
     u := key and TrunkMask;
-    result := (t.bits[u shr IntShift] and (1 shl (u and IntMask))) <> 0
+    result := (t.bits[shru(u, IntShift)] and shlu(1, u and IntMask)) <> 0
   end
   else
     result := false
@@ -1356,27 +1357,27 @@ end;
 
 procedure IntSetIncl(var s: TIntSet; key: int);
 var
-  u: int;
+  u: TBitScalar;
   t: PTrunk;
 begin
-  t := IntSetPut(s, key shr TrunkShift);
+  t := IntSetPut(s, shru(key, TrunkShift));
   u := key and TrunkMask;
-  t.bits[u shr IntShift] := t.bits[u shr IntShift]
-                            or (1 shl (u and IntMask));
+  t.bits[shru(u, IntShift)] := t.bits[shru(u, IntShift)]
+                            or shlu(1, u and IntMask);
 end;
 
 function IntSetContainsOrIncl(var s: TIntSet; key: int): bool;
 var
-  u: int;
+  u: TBitScalar;
   t: PTrunk;
 begin
-  t := IntSetGet(s, key shr TrunkShift);
+  t := IntSetGet(s, shru(key, TrunkShift));
   if t <> nil then begin
     u := key and TrunkMask;
-    result := (t.bits[u shr IntShift] and (1 shl (u and IntMask))) <> 0;
+    result := (t.bits[shru(u, IntShift)] and shlu(1, u and IntMask)) <> 0;
     if not result then
-      t.bits[u shr IntShift] := t.bits[u shr IntShift]
-                                or (1 shl (u and IntMask));
+      t.bits[shru(u, IntShift)] := t.bits[shru(u, IntShift)]
+                                or shlu(1, u and IntMask);
   end
   else begin
     IntSetIncl(s, key);

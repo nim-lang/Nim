@@ -326,6 +326,9 @@ proc echo*(x: cstring) = ewriteln(x)
 proc echo[Ty](x: Ty) =
   echo(x)
 
+proc echo[Ty](x: openArray[Ty]) =
+  for a in items(x): echo(a)
+
 # Arithmetic:
 proc addInt(a, b: int): int {.pure, compilerproc.} =
   asm """

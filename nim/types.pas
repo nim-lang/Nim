@@ -638,15 +638,15 @@ begin
         assert(sonsLen(t.n) = sonsLen(t));
         for i := 0 to sonsLen(t.n)-1 do begin
           assert(t.n.sons[i].kind = nkSym);
-          result := result +{&} t.n.sons[i].sym.name.s +{&} ': '
-                  +{&} typeToString(t.sons[i]);
-          if i < sonsLen(t.n)-1 then result := result +{&} ', ';
+          add(result, t.n.sons[i].sym.name.s +{&} ': '
+                  +{&} typeToString(t.sons[i]));
+          if i < sonsLen(t.n)-1 then add(result, ', ');
         end
       end
       else begin
         for i := 0 to sonsLen(t)-1 do begin
-          result := result +{&} typeToString(t.sons[i]);
-          if i < sonsLen(t)-1 then result := result +{&} ', ';
+          add(result, typeToString(t.sons[i]));
+          if i < sonsLen(t)-1 then add(result, ', ');
         end
       end;
       addChar(result, ']')
@@ -659,14 +659,14 @@ begin
     tyProc: begin
       result := 'proc (';
       for i := 1 to sonsLen(t)-1 do begin
-        result := result +{&} typeToString(t.sons[i]);
-        if i < sonsLen(t)-1 then result := result +{&} ', ';
+        add(result, typeToString(t.sons[i]));
+        if i < sonsLen(t)-1 then add(result, ', ');
       end;
       addChar(result, ')');
       if t.sons[0] <> nil then
-        result := result +{&} ': ' +{&} TypeToString(t.sons[0]);
+        add(result, ': ' +{&} TypeToString(t.sons[0]));
       if t.callConv <> ccDefault then
-        result := result +{&} '{.' +{&} CallingConvToStr[t.callConv] +{&} '.}';
+        add(result, '{.' +{&} CallingConvToStr[t.callConv] +{&} '.}');
     end;
     else begin
       result := typeToStr[t.kind]

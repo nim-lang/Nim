@@ -270,7 +270,8 @@
 #
 #
 
-#
+{.deadCodeElim: on.}
+
 when defined(windows):
   const SDLLibName = "SDL.dll"
 elif defined(macosx):

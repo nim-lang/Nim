@@ -8,7 +8,7 @@
 //
 
 //var
-//  newDummyVar: int; // just to check the rodgen mechanism
+//  newDummyVar: int; // just to check the symbol file mechanism
 
 // ------------------------- Name Mangling --------------------------------
 
@@ -461,6 +461,22 @@ begin
   app(result, '};' + tnl);
 end;
 
+function getTupleDesc(m: BModule; typ: PType; name: PRope;
+                      var check: TIntSet): PRope;
+var
+  desc: PRope;
+  i: int;
+begin
+  result := ropef('struct $1 {$n', [name]);
+  desc := nil;
+  for i := 0 to sonsLen(typ)-1 do 
+    appf(desc, '$1 Field$2;$n',
+         [getTypeDescAux(m, typ.sons[i], check), toRope(i)]);
+  if (desc = nil) then app(result, 'char dummy;' + tnl)
+  else app(result, desc);
+  app(result, '};' + tnl);
+end;
+
 procedure pushType(m: BModule; typ: PType);
 var
   L: int;
@@ -571,13 +587,15 @@ begin
       if result = nil then begin
         result := getTypeName(t);
         if not isImportedType(t) then
-          appf(m.s[cfsForwardTypes],
-            getForwardStructFormat(), [result]);
+          appf(m.s[cfsForwardTypes], getForwardStructFormat(), [result]);
         IdTablePut(m.forwTypeCache, t, result)
       end;
       IdTablePut(m.typeCache, t, result);
       // always call for sideeffects:
-      recdesc := getRecordDesc(m, t, result, check);
+      if t.n <> nil then
+        recdesc := getRecordDesc(m, t, result, check)
+      else
+        recdesc := getTupleDesc(m, t, result, check);
       if not isImportedType(t) then app(m.s[cfsTypes], recdesc);
     end;
     tySet: begin
@@ -735,9 +753,11 @@ begin
       assert(n.sons[0].kind = nkSym);
       field := n.sons[0].sym;
       tmp := getTempName();
+      useMagic(m, 'chckNil');
       appf(m.s[cfsTypeInit3], '$1.kind = 3;$n' +
                               '$1.offset = offsetof($2, $3);$n' +
                               '$1.typ = $4;$n' +
+                              'chckNil($1.typ);$n' +
                               '$1.name = $5;$n' +
                               '$1.sons = &$6[0];$n' +
                               '$1.len = $7;$n',
@@ -746,7 +766,7 @@ begin
              makeCString(field.name.s), tmp,
              toRope(lengthOrd(field.typ))]);
       appf(m.s[cfsTypeInit1], 'static TNimNode* $1[$2];$n',
-                                       [tmp, toRope(lengthOrd(field.typ)+1)]);
+           [tmp, toRope(lengthOrd(field.typ)+1)]);
       for i := 1 to len-1 do begin
         b := n.sons[i]; // branch
         tmp2 := getNimNode(m);
@@ -761,18 +781,18 @@ begin
                 y := int(getOrdValue(b.sons[j].sons[1]));
                 while x <= y do begin
                   appf(m.s[cfsTypeInit3], '$1[$2] = &$3;$n',
-                                [tmp, toRope(x), tmp2]);
+                       [tmp, toRope(x), tmp2]);
                   inc(x);
                 end;
               end
               else
                 appf(m.s[cfsTypeInit3], '$1[$2] = &$3;$n',
-                             [tmp, toRope(getOrdValue(b.sons[j])), tmp2])
+                     [tmp, toRope(getOrdValue(b.sons[j])), tmp2])
             end
           end;
           nkElse: begin
             appf(m.s[cfsTypeInit3], '$1[$2] = &$3;$n',
-                          [tmp, toRope(lengthOrd(field.typ)), tmp2]);
+                 [tmp, toRope(lengthOrd(field.typ)), tmp2]);
           end
           else
             internalError(n.info, 'genObjectFields(nkRecCase)');
@@ -781,9 +801,11 @@ begin
     end;
     nkSym: begin
       field := n.sym;
+      useMagic(m, 'chckNil');
       appf(m.s[cfsTypeInit3], '$1.kind = 1;$n' +
                               '$1.offset = offsetof($2, $3);$n' +
                               '$1.typ = $4;$n' +
+                              'chckNil($1.typ);$n' +
                               '$1.name = $5;$n',
                               [expr, getTypeDesc(m, typ), field.loc.r,
                               genTypeInfo(m, field.typ),
@@ -804,6 +826,41 @@ begin
   appf(m.s[cfsTypeInit3], '$1->node = &$2;$n', [name, tmp]);
 end;
 
+procedure genTupleInfo(m: BModule; typ: PType; name: PRope);
+var
+  tmp, expr, tmp2: PRope;
+  i, len: int;
+  a: PType;
+begin
+  genTypeInfoAuxBase(m, typ, name, toRope('0'+''));
+  expr := getNimNode(m);
+  len := sonsLen(typ);
+  if len > 0 then begin
+    tmp := getTempName();
+    appf(m.s[cfsTypeInit1], 'static TNimNode* $1[$2];$n', [tmp, toRope(len)]);
+    for i := 0 to len-1 do begin
+      a := typ.sons[i];
+      tmp2 := getNimNode(m);
+      appf(m.s[cfsTypeInit3], '$1[$2] = &$3;$n', [tmp, toRope(i), tmp2]);
+      useMagic(m, 'chckNil');
+      appf(m.s[cfsTypeInit3], '$1.kind = 1;$n' +
+                              '$1.offset = offsetof($2, Field$3);$n' +
+                              '$1.typ = $4;$n' +
+                              'chckNil($1.typ);$n' +
+                              '$1.name = "Field$3";$n',
+                              [tmp2, getTypeDesc(m, typ), toRope(i),
+                              genTypeInfo(m, a)]);
+    end;
+    appf(m.s[cfsTypeInit3],
+        '$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n', [
+        expr, toRope(len), tmp]);
+  end
+  else
+    appf(m.s[cfsTypeInit3],
+        '$1.len = $2; $1.kind = 2;$n', [expr, toRope(len)]);
+  appf(m.s[cfsTypeInit3], '$1->node = &$2;$n', [name, tmp]);
+end;
+
 procedure genEnumInfo(m: BModule; typ: PType; name: PRope);
 var
   nodePtrs, elemNode, enumNames, enumArray, counter, specialCases: PRope;
@@ -817,7 +874,8 @@ begin
   genTypeInfoAux(m, typ, name);
   nodePtrs := getTempName();
   len := sonsLen(typ.n);
-  appf(m.s[cfsTypeInit1], 'static TNimNode* $1[$2];$n', [nodePtrs, toRope(len)]);
+  appf(m.s[cfsTypeInit1], 'static TNimNode* $1[$2];$n',
+       [nodePtrs, toRope(len)]);
   enumNames := nil;
   specialCases := nil;
   firstNimNode := m.typeNodes;
@@ -879,83 +937,79 @@ function genTypeInfo(m: BModule; typ: PType): PRope;
 var
   t: PType;
   id: int;
-  dataGen: bool;
+  dataGenerated: bool;
 begin
   t := getUniqueType(typ);
   id := IiTableGet(gToTypeInfoId, t.id);
   if id = invalidKey then begin
-    dataGen := false;
-    case t.kind of
-      tyEnum, tyBool: begin
-        id := t.id;
-        dataGen := true
-      end;
-      tyObject: begin
-        if isPureObject(t) then
-          id := getID()
-        else begin
-          id := t.id;
-          dataGen := true
-        end
-      end
-      else
-        id := getID();
-    end;
+    dataGenerated := false;
+    id := t.id; // getID();
     IiTablePut(gToTypeInfoId, t.id, id);
   end
   else
-    dataGen := true;
+    dataGenerated := true;
   result := ropef('NTI$1', [toRope(id)]);
-  if not IntSetContainsOrIncl(m.typeInfoMarker, t.id) then begin
+  if not IntSetContainsOrIncl(m.typeInfoMarker, id) then begin
     // declare type information structures:
     useMagic(m, 'TNimType');
     useMagic(m, 'TNimNode');
-    if dataGen then
-      appf(m.s[cfsVars], 'extern TNimType* $1; /* $2 */$n',
-           [result, toRope(typeToString(t))]);
+    appf(m.s[cfsVars], 'extern TNimType* $1; /* $2 */$n',
+         [result, toRope(typeToString(t))]);
   end;
-  if dataGen then exit;
+  if dataGenerated then exit;
   case t.kind of
     tyPointer, tyProc, tyBool, tyChar, tyCString, tyString,
     tyInt..tyFloat128, tyVar:
-      genTypeInfoAuxBase(m, t, result, toRope('0'+''));
-    tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(m, t, result);
-    tyArrayConstr, tyArray: genArrayInfo(m, t, result);
-    tySet: genSetInfo(m, t, result);
-    tyEnum: genEnumInfo(m, t, result);
-    tyObject, tyTuple: genObjectInfo(m, t, result);
+      genTypeInfoAuxBase(gmti, t, result, toRope('0'+''));
+    tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gmti, t, result);
+    tyArrayConstr, tyArray: genArrayInfo(gmti, t, result);
+    tySet: genSetInfo(gmti, t, result);
+    tyEnum: genEnumInfo(gmti, t, result);
+    tyObject: genObjectInfo(gmti, t, result);
+    tyTuple: begin
+      if t.n <> nil then genObjectInfo(gmti, t, result)
+      else genTupleInfo(gmti, t, result);
+    end;
     else InternalError('genTypeInfo(' + typekindToStr[t.kind] + ')');
   end
 end;
 
+procedure genTypeSection(m: BModule; n: PNode);
+begin
+end;
+
+(*
 procedure genTypeSection(m: BModule; n: PNode);
 var
   i: int;
   a: PNode;
   t: PType;
 begin
-  for i := 0 to sonsLen(n)-1 do begin
-    a := n.sons[i];
-    if a.kind = nkCommentStmt then continue;
-    if (a.sons[0].kind <> nkSym) then InternalError(a.info, 'genTypeSection');
-    t := a.sons[0].sym.typ;
-    if (a.sons[2] = nil)
-    or not (a.sons[2].kind in [nkSym, nkIdent, nkAccQuoted]) then
-      if t <> nil then
-        case t.kind of
-          tyEnum, tyBool: begin
-            useMagic(m, 'TNimType');
-            useMagic(m, 'TNimNode');
-            genEnumInfo(m, t, ropef('NTI$1', [toRope(t.id)]));
-          end;
-          tyObject: begin
-            if not isPureObject(t) then begin
+  if not (optDeadCodeElim in gGlobalOptions) then begin
+    for i := 0 to sonsLen(n)-1 do begin
+      a := n.sons[i];
+      if a.kind = nkCommentStmt then continue;
+      if (a.sons[0].kind <> nkSym) then InternalError(a.info, 'genTypeSection');
+      t := a.sons[0].sym.typ;
+      if (a.sons[2] = nil)
+      or not (a.sons[2].kind in [nkSym, nkIdent, nkAccQuoted]) then
+        if t <> nil then
+          case t.kind of
+            tyEnum, tyBool: begin
               useMagic(m, 'TNimType');
               useMagic(m, 'TNimNode');
-              genObjectInfo(m, t, ropef('NTI$1', [toRope(t.id)]));
+              genEnumInfo(m, t, ropef('NTI$1', [toRope(t.id)]));
+            end;
+            tyObject: begin
+              if not isPureObject(t) then begin
+                useMagic(m, 'TNimType');
+                useMagic(m, 'TNimNode');
+                genObjectInfo(m, t, ropef('NTI$1', [toRope(t.id)]));
+              end
             end
+            else begin end
           end
-          else begin end
-        end
+    end
   end
 end;
+*)

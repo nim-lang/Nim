@@ -1,3 +1,5 @@
+{.deadCodeElim: on.}
+
 import 
   gtk2, glib2, atk, pango, gdk2pixbuf, gdk2
 

@@ -91,10 +91,13 @@ proc writeln[Ty](f: TFile, x: Ty) =
   write(f, "\n")
 
 proc writeln[Ty](f: TFile, x: openArray[Ty]) =
-  write(f, x)
+  for i in items(x): write(f, i)
   write(f, "\n")
 
 proc echo[Ty](x: Ty) = writeln(stdout, x)
+proc echo[Ty](x: openArray[Ty]) = 
+  for i in items(x): write(stdout, i)
+  write(stdout, "\n")
 
 # interface to the C procs:
 proc fopen(filename, mode: CString): pointer {.importc: "fopen", noDecl.}

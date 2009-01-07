@@ -102,51 +102,16 @@ proc absInt(a: int): int {.compilerProc, inline.} =
   raiseOverflow()
 
 const
-  asmVersion = defined(I386) and (defined(vcc) or defined(wcc) or defined(dmc))
+  asmVersion = defined(I386) and (defined(vcc) or defined(wcc) or
+               defined(dmc) or defined(gcc) or defined(llvm_gcc))
     # my Version of Borland C++Builder does not have
     # tasm32, which is needed for assembler blocks
     # this is why Borland is not included in the 'when'
-  useInline = not asmVersion
 
-when asmVersion and defined(gcc):
-  proc addInt(a, b: int): int {.compilerProc, pure, inline.}
-  proc subInt(a, b: int): int {.compilerProc, pure, inline.}
-  proc mulInt(a, b: int): int {.compilerProc, pure, inline.}
-  proc divInt(a, b: int): int {.compilerProc, pure, inline.}
-  proc modInt(a, b: int): int {.compilerProc, pure, inline.}
-  proc negInt(a: int): int {.compilerProc, pure, inline.}
-
-elif asmVersion:
-  proc addInt(a, b: int): int {.compilerProc, pure.}
-  proc subInt(a, b: int): int {.compilerProc, pure.}
-  proc mulInt(a, b: int): int {.compilerProc, pure.}
-  proc divInt(a, b: int): int {.compilerProc, pure.}
-  proc modInt(a, b: int): int {.compilerProc, pure.}
-  proc negInt(a: int): int {.compilerProc, pure.}
-
-elif useInline:
-  proc addInt(a, b: int): int {.compilerProc, inline.}
-  proc subInt(a, b: int): int {.compilerProc, inline.}
-  proc mulInt(a, b: int): int {.compilerProc.}
-      # mulInt is to large for inlining?
-  proc divInt(a, b: int): int {.compilerProc, inline.}
-  proc modInt(a, b: int): int {.compilerProc, inline.}
-  proc negInt(a: int): int {.compilerProc, inline.}
-
-else:
-  proc addInt(a, b: int): int {.compilerProc.}
-  proc subInt(a, b: int): int {.compilerProc.}
-  proc mulInt(a, b: int): int {.compilerProc.}
-  proc divInt(a, b: int): int {.compilerProc.}
-  proc modInt(a, b: int): int {.compilerProc.}
-  proc negInt(a: int): int {.compilerProc.}
-
-# implementation:
-
-when asmVersion and not defined(gcc):
+when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   # assembler optimized versions for compilers that
   # have an intel syntax assembler:
-  proc addInt(a, b: int): int =
+  proc addInt(a, b: int): int {.compilerProc, pure.} =
     # a in eax, and b in edx
     asm """
         mov eax, `a`
@@ -156,7 +121,7 @@ when asmVersion and not defined(gcc):
       theEnd:
     """
 
-  proc subInt(a, b: int): int =
+  proc subInt(a, b: int): int {.compilerProc, pure.} =
     asm """
         mov eax, `a`
         sub eax, `b`
@@ -165,7 +130,7 @@ when asmVersion and not defined(gcc):
       theEnd:
     """
 
-  proc negInt(a: int): int =
+  proc negInt(a: int): int {.compilerProc, pure.} =
     asm """
         mov eax, `a`
         neg eax
@@ -174,7 +139,7 @@ when asmVersion and not defined(gcc):
       theEnd:
     """
 
-  proc divInt(a, b: int): int =
+  proc divInt(a, b: int): int {.compilerProc, pure.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -185,7 +150,7 @@ when asmVersion and not defined(gcc):
       theEnd:
     """
 
-  proc modInt(a, b: int): int =
+  proc modInt(a, b: int): int {.compilerProc, pure.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -197,7 +162,7 @@ when asmVersion and not defined(gcc):
         mov eax, edx
     """
 
-  proc mulInt(a, b: int): int =
+  proc mulInt(a, b: int): int {.compilerProc, pure.} =
     asm """
         mov eax, `a`
         mov ecx, `b`
@@ -208,99 +173,105 @@ when asmVersion and not defined(gcc):
       theEnd:
     """
 
-elif asmVersion and defined(gcc):
-  proc addInt(a, b: int): int =
-    asm """ "addl %1,%%eax\n"
+elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
+  proc addInt(a, b: int): int {.compilerProc, inline.} =
+    # don't use a pure proc here!
+    asm """
+      "addl %%ecx, %%eax\n"
+      "jno 1\n"
+      "call _raiseOverflow\n"
+      "1: \n"
+      :"=a"(`result`)
+      :"a"(`a`), "c"(`b`)
+    """
+
+  proc subInt(a, b: int): int {.compilerProc, inline.} =
+    asm """ "subl %%ecx,%%eax\n"
+            "jno 1\n"
+            "call _raiseOverflow\n"
+            "1: \n"
+           :"=a"(`result`)
+           :"a"(`a`), "c"(`b`)
+    """
+
+  proc mulInt(a, b: int): int {.compilerProc, inline.} =
+    asm """  "xorl %%edx, %%edx\n"
+             "imull %%ecx\n"
              "jno 1\n"
              "call _raiseOverflow\n"
              "1: \n"
-            :"=a"(`a`)
-            :"a"(`a`), "r"(`b`)
+            :"=a"(`result`)
+            :"a"(`a`), "c"(`b`)
+            :"%edx"
     """
 
-  proc subInt(a, b: int): int =
-    asm """ "subl %1,%%eax\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
-            :"=a"(`a`)
-            :"a"(`a`), "r"(`b`)
+  proc negInt(a: int): int {.compilerProc, inline.} =
+    asm """ "negl %%eax\n"
+            "jno 1\n"
+            "call _raiseOverflow\n"
+            "1: \n"
+           :"=a"(`result`)
+           :"a"(`a`)
     """
 
-  proc negInt(a: int): int =
-    asm """  "negl %%eax\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
-            :"=a"(`a`)
-            :"a"(`a`)
-    """
-
-  proc divInt(a, b: int): int =
+  proc divInt(a, b: int): int {.compilerProc, inline.} =
     asm """  "xorl %%edx, %%edx\n"
              "idivl %%ecx\n"
              "jno 1\n"
              "call _raiseOverflow\n"
              "1: \n"
-             :"=a"(`a`)
-             :"a"(`a`), "c"(`b`)
-             :"%edx"
+            :"=a"(`result`)
+            :"a"(`a`), "c"(`b`)
+            :"%edx"
     """
 
-  proc modInt(a, b: int): int =
+  proc modInt(a, b: int): int {.compilerProc, inline.} =
     asm """  "xorl %%edx, %%edx\n"
              "idivl %%ecx\n"
              "jno 1\n"
              "call _raiseOverflow\n"
              "1: \n"
              "movl %%edx, %%eax"
-             :"=a"(`a`)
-             :"a"(`a`), "c"(`b`)
-             :"%edx"
+            :"=a"(`result`)
+            :"a"(`a`), "c"(`b`)
+            :"%edx"
     """
 
-  proc mulInt(a, b: int): int =
-    asm """  "xorl %%edx, %%edx\n"
-             "imull %%ecx\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
-             :"=a"(`a`)
-             :"a"(`a`), "c"(`b`)
-             :"%edx"
-    """
-
-else:
-  # Platform independant versions of the above (slower!)
-
-  proc addInt(a, b: int): int =
+# Platform independant versions of the above (slower!)
+when not defined(addInt):
+  proc addInt(a, b: int): int {.compilerProc, inline.} =
     result = a +% b
     if (result xor a) >= 0 or (result xor b) >= 0:
       return result
     raiseOverflow()
 
-  proc subInt(a, b: int): int =
+when not defined(subInt):
+  proc subInt(a, b: int): int {.compilerProc, inline.} =
     result = a -% b
     if (result xor a) >= 0 or (result xor not b) >= 0:
       return result
     raiseOverflow()
 
-  proc negInt(a: int): int =
+when not defined(negInt):
+  proc negInt(a: int): int {.compilerProc, inline.} =
     if a != low(int): return -a
     raiseOverflow()
 
-  proc divInt(a, b: int): int =
+when not defined(divInt):
+  proc divInt(a, b: int): int {.compilerProc, inline.} =
     if b == 0:
       raiseDivByZero()
     if a == low(int) and b == -1:
       raiseOverflow()
     return a div b
 
-  proc modInt(a, b: int): int =
+when not defined(modInt):
+  proc modInt(a, b: int): int {.compilerProc, inline.} =
     if b == 0:
       raiseDivByZero()
     return a mod b
 
+when not defined(mulInt):
   #
   # This code has been inspired by Python's source code.
   # The native int product x*y is either exactly right or *way* off, being
@@ -321,7 +292,7 @@ else:
   # the only one that can lose catastrophic amounts of information, it's the
   # native int product that must have overflowed.
   #
-  proc mulInt(a, b: int): int =
+  proc mulInt(a, b: int): int {.compilerProc.} =
     var
       resAsFloat, floatProd: float
 

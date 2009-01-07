@@ -83,9 +83,32 @@ begin
     result := nil; exit
   end;
   result := getConstExpr(c.module, e);
+  if result = nil then 
+    liMessage(n.info, errConstExprExpected);
+end;
+
+function semAndEvalConstExpr(c: PContext; n: PNode): PNode;
+var
+  e: PNode;
+  p: PEvalContext;
+  s: PStackFrame;
+begin
+  e := semExprWithType(c, n);
+  if e = nil then begin
+    liMessage(n.info, errConstExprExpected);
+    result := nil; exit
+  end;
+  result := getConstExpr(c.module, e);
   if result = nil then begin
     //writeln(output, renderTree(n));
-    liMessage(n.info, errConstExprExpected);
+    p := newEvalContext(c.module, '');
+    s := newStackFrame();
+    s.call := e;
+    pushStackFrame(p, s);
+    result := eval(p, e);
+    popStackFrame(p);
+    if (result = nil) or (result.kind = nkEmpty) then
+      liMessage(n.info, errConstExprExpected);
   end
 end;
 

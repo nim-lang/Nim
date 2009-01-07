@@ -61,9 +61,6 @@ type
     filename: CString
     len: int  # length of slots (when not debugging always zero)
 
-  TTempFrame = tuple[ # used for recursion elimination in WriteStackTrace
-    procname: CString, line: int]
-
 var
   buf: string       # cannot be allocated on the stack!
   assertBuf: string # we need a different buffer for
@@ -72,33 +69,45 @@ var
 
   framePtr {.exportc.}: PFrame
 
-  tempFrames: array [0..255, TTempFrame] # cannot be allocated
-                                         # on the stack!
+  tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
 
 proc auxWriteStackTrace(f: PFrame, s: var string) =
+  const 
+    firstCalls = 32
   var
     it = f
     i = 0
     total = 0
-  while it != nil and i <= high(tempFrames):
-    tempFrames[i] = (it.procname, it.line)
+  while it != nil and i <= high(tempFrames)-(firstCalls-1):
+    # the (-1) is for a nil entry that marks where the '...' should occur
+    tempFrames[i] = it
     inc(i)
     inc(total)
     it = it.prev
+  var b = it
   while it != nil:
     inc(total)
     it = it.prev
-  # if the buffer overflowed print '...':
+  for j in 1..total-i-(firstCalls-1): 
+    if b != nil: b = b.prev
   if total != i:
-    add(s, "(")
-    add(s, $(total-i))
-    add(s, " calls omitted) ...\n")
+    tempFrames[i] = nil
+    inc(i)
+  while b != nil and i <= high(tempFrames):
+    tempFrames[i] = b
+    inc(i)
+    b = b.prev
   for j in countdown(i-1, 0):
-    add(s, $tempFrames[j].procname)
-    if tempFrames[j].line > 0:
-      add(s, ", line: ")
-      add(s, $tempFrames[j].line)
-    add(s, "\n")
+    if tempFrames[j] == nil: 
+      add(s, "(")
+      add(s, $(total-i-1))
+      add(s, " calls omitted) ...\n")
+    else:
+      add(s, $tempFrames[j].procname)
+      if tempFrames[j].line > 0:
+        add(s, ", line: ")
+        add(s, $tempFrames[j].line)
+      add(s, "\n")
 
 proc rawWriteStackTrace(s: var string) =
   if framePtr == nil:
@@ -156,8 +165,7 @@ proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
     raise gAssertionFailed # newException(EAssertionFailed, assertBuf)
 
 proc WriteStackTrace() =
-  var
-    s: string = ""
+  var s = ""
   rawWriteStackTrace(s)
   writeToStdErr(s)
 
@@ -208,13 +216,13 @@ assertBuf = newString(2048)
 setLen(buf, 0)
 setLen(assertBuf, 0)
 
-proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn.} =
+proc raiseRangeError(val: biggestInt) {.compilerproc, noreturn, noinline.} =
   raise newException(EOutOfRange, "value " & $val & " out of range")
 
-proc raiseIndexError() {.compilerproc, noreturn.} =
+proc raiseIndexError() {.compilerproc, noreturn, noinline.} =
   raise newException(EInvalidIndex, "index out of bounds")
 
-proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
+proc raiseFieldError(f: string) {.compilerproc, noreturn, noinline.} =
   raise newException(EInvalidField, f & " is not accessible")
 
 proc chckIndx(i, a, b: int): int =

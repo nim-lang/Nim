@@ -1,3 +1,5 @@
+{.deadCodeElim: on.}
+
 import 
   Glib2, Gdk2
 

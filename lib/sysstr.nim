@@ -15,13 +15,6 @@
 # we don't use refcounts because that's a behaviour
 # the programmer may not want
 
-type
-  # len and space without counting the terminating zero:
-  NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-    data: array[0..100_000_000, char] # for the '\0' character
-
-  NimString = ptr NimStringDesc
-
 # implementation:
 
 proc resize(old: int): int {.inline.} =

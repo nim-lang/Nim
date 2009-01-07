@@ -1,5 +1,5 @@
 Advanced commands::
-  pas                       convert a Pascal file to Nimrod standard syntax
+  pas                       convert a Pascal file to Nimrod syntax
   pretty                    pretty print the inputfile
   gen_depend                generate a DOT file containing the
                             module dependency graph

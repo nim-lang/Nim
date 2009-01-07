@@ -324,7 +324,7 @@ begin
       a := newNodeI(nkAsgn, n.sons[0].info);
 
       n.sons[0] := fitNode(c, restype, n.sons[0]);
-      // optimize away ``return result``, because it would be transferred
+      // optimize away ``return result``, because it would be transformed
       // to ``result = result; return``:
       if (n.sons[0].kind = nkSym) and (sfResult in n.sons[0].sym.flags) then
       begin
@@ -378,14 +378,14 @@ function semVar(c: PContext; n: PNode): PNode;
 var
   i, j, len: int;
   a, b, def: PNode;
-  typ: PType;
+  typ, tup: PType;
   v: PSym;
 begin
   result := copyNode(n);
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    if (a.kind <> nkIdentDefs) then IllFormedAst(a);
+    if (a.kind <> nkIdentDefs) and (a.kind <> nkVarTuple) then IllFormedAst(a);
     checkMinSonsLen(a, 3);
     len := sonsLen(a);
     if a.sons[len-2] <> nil then
@@ -401,14 +401,21 @@ begin
     end
     else
       def := nil;
+    tup := skipGeneric(typ);
+    if a.kind = nkVarTuple then begin
+      if tup.kind <> tyTuple then liMessage(a.info, errXExpected, 'tuple');
+      if len-2 <> sonsLen(tup) then
+        liMessage(a.info, errWrongNumberOfVariables);
+    end;
     for j := 0 to len-3 do begin
-      if (c.p.owner = nil) then begin
+      if c.p.owner = nil then begin
         v := semIdentWithPragma(c, skVar, a.sons[j], {@set}[sfStar, sfMinus]);
         include(v.flags, sfGlobal);
       end
       else
         v := semIdentWithPragma(c, skVar, a.sons[j], {@set}[]);
-      v.typ := typ;
+      if a.kind <> nkVarTuple then v.typ := typ
+      else v.typ := tup.sons[j];
       if v.flags * [sfStar, sfMinus] <> {@set}[] then
         include(v.flags, sfInInterface);
       addInterfaceDecl(c, v);
@@ -443,7 +450,7 @@ begin
 
     if a.sons[1] <> nil then typ := semTypeNode(c, a.sons[1], nil)
     else typ := nil;
-    def := semConstExpr(c, a.sons[2]);
+    def := semAndEvalConstExpr(c, a.sons[2]);
     // check type compability between def.typ and typ:
     if (typ <> nil) then begin
       def := fitRemoveHiddenConv(c, typ, def);
@@ -495,7 +502,7 @@ begin
   iter := skipGeneric(n.sons[len-2].typ);
   openScope(c.tab);
   if iter.kind <> tyTuple then begin
-    if len <> 3 then liMessage(n.info, errWrongNumberOfLoopVariables);
+    if len <> 3 then liMessage(n.info, errWrongNumberOfVariables);
     v := newSymS(skForVar, n.sons[0], c);
     v.typ := iter;
     n.sons[0] := newSymNode(v);
@@ -503,7 +510,7 @@ begin
   end
   else begin
     if len-2 <> sonsLen(iter) then
-      liMessage(n.info, errWrongNumberOfLoopVariables);
+      liMessage(n.info, errWrongNumberOfVariables);
     for i := 0 to len-3 do begin
       v := newSymS(skForVar, n.sons[i], c);
       v.typ := iter.sons[i];
@@ -840,6 +847,7 @@ begin
   closeScope(c.tab); // close scope for parameters
   popOwner();
   c.p := oldP; // restore
+  result.typ := s.typ;
 end;
 
 function semProcAux(c: PContext; n: PNode; kind: TSymKind): PNode;

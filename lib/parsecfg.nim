@@ -54,7 +54,7 @@ type
   TTokKind = enum 
     tkInvalid, tkEof,        
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  TToken{.final.} = object   # a token
+  TToken {.final.} = object  # a token
     kind: TTokKind           # the type of the token
     literal: string          # the parsed (string) literal
   
@@ -139,7 +139,7 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 
-    tok.literal = tok.literal & nl
+    add(tok.literal, nl)
     Inc(c.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')

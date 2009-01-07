@@ -1,3 +1,5 @@
+{.deadCodeElim: on.}
+
 import
   glib2, gtk2
 

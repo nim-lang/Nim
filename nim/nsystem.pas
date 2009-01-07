@@ -149,8 +149,12 @@ function subU(a, b: biggestInt): biggestInt;
 function mulU(a, b: biggestInt): biggestInt;
 function divU(a, b: biggestInt): biggestInt;
 function modU(a, b: biggestInt): biggestInt;
-function shlU(a, b: biggestInt): biggestInt;
-function shrU(a, b: biggestInt): biggestInt;
+function shlU(a, b: biggestInt): biggestInt; overload;
+function shrU(a, b: biggestInt): biggestInt; overload;
+
+function shlU(a, b: Int32): Int32;overload;
+function shrU(a, b: int32): int32;overload;
+
 function ltU(a, b: biggestInt): bool;
 function leU(a, b: biggestInt): bool;
 
@@ -279,6 +283,16 @@ end;
 function shrU(a, b: biggestInt): biggestInt;
 begin
   result := biggestInt(biggestUInt(a) shr biggestUInt(b));
+end;
+
+function shlU(a, b: Int32): Int32;
+begin
+  result := Int32(UInt32(a) shl UInt32(b));
+end;
+
+function shrU(a, b: int32): int32;
+begin
+  result := Int32(UInt32(a) shr UInt32(b));
 end;
 
 function ltU(a, b: biggestInt): bool;

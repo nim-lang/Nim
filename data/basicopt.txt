@@ -24,6 +24,7 @@ Options:
   --bound_checks:on|off     code generation for bound checks ON|OFF
   --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF
   -a, --assertions:on|off   code generation for assertions ON|OFF
+  --dead_code_elim:on|off   whole program dead code elimination ON|OFF
   --opt:none|speed|size     optimize not at all or for speed|size
   --app:console|gui|lib     generate a console|GUI application or a shared lib
   -r, --run                 run the compiled program with given arguments

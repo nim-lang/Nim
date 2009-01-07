@@ -801,9 +801,16 @@ begin
     assert(key.kind = nkIdent);
     case whichKeyword(key.ident) of
       wBreakpoint: genBreakPoint(p, it);
+      wDeadCodeElim: begin
+        if not (optDeadCodeElim in gGlobalOptions) then begin
+          // we need to keep track of ``deadCodeElim`` pragma
+          if (sfDeadCodeElim in p.module.module.flags) then
+            addPendingModule(p.module)
+        end            
+      end
       else begin end
     end
-  end
+  end;
 end;
 
 procedure genAsgn(p: BProc; e: PNode);
@@ -812,6 +819,17 @@ var
 begin
   genLineDir(p, e); // BUGFIX
   InitLocExpr(p, e.sons[0], a);
+  assert(a.t <> nil);
+  expr(p, e.sons[1], a);
+end;
+
+procedure genFastAsgn(p: BProc; e: PNode);
+var
+  a: TLoc;
+begin
+  genLineDir(p, e); // BUGFIX
+  InitLocExpr(p, e.sons[0], a);
+  include(a.flags, lfNoDeepCopy);
   assert(a.t <> nil);
   expr(p, e.sons[1], a);
 end;
@@ -844,6 +862,7 @@ begin
       initLocExpr(p, t, a);
     end;
     nkAsgn: genAsgn(p, t);
+    nkFastAsgn: genFastAsgn(p, t);
     nkDiscardStmt: begin
       genLineDir(p, t);
       initLocExpr(p, t.sons[0], a);
@@ -865,17 +884,13 @@ begin
     nkProcDef, nkConverterDef: begin
       if (t.sons[genericParamsPos] = nil) then begin
         prc := t.sons[namePos].sym;
-        if (t.sons[codePos] <> nil)
-        or (lfDynamicLib in prc.loc.flags) then begin // BUGFIX
-          if IntSetContainsOrIncl(p.module.debugDeclared, prc.id) then begin
-            internalError(t.info, 'genStmts(): ' + toString(prc.id)); 
-            // XXX: remove this check!
-          end;
-          //if IntSetContains(p.module.debugDeclared, 2642) then 
-          //  InternalError(t.info, 'this sucks '  + toString(prc.id));
-          genProc(p.module, prc)
+        if not (optDeadCodeElim in gGlobalOptions) and
+            not (sfDeadCodeElim in getModule(prc).flags)
+        or ([sfExportc, sfCompilerProc] * prc.flags = [sfExportc]) then begin
+          if (t.sons[codePos] <> nil) or (lfDynamicLib in prc.loc.flags) then begin
+            genProc(p.module, prc)
+          end
         end
-        //else if sfCompilerProc in prc.flags then genProcPrototype(prc);
       end
     end;
     else

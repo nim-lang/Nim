@@ -142,7 +142,7 @@
   'selector must be of an ordinal type'},
 {'errOrdXMustNotBeNegative': 'ord($1) must not be negative'},
 {'errLenXinvalid': 'len($1) must be less than 32768'},
-{'errWrongNumberOfLoopVariables': 'wrong number of loop variables'},
+{'errWrongNumberOfVariables': 'wrong number of variables'},
 {'errExprCannotBeRaised': 'only objects can be raised'},
 {'errBreakOnlyInLoop': "'break' only allowed in loop construct"},
 {'errTypeXhasUnknownSize': "type '$1' has unknown size"},

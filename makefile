@@ -7,7 +7,7 @@ all:
 
 .PHONY : install
 install:
-	sh install.sh /usr/bin
+	sh build.sh
 
 .PHONY : clean
 clean:

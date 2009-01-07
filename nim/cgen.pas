@@ -73,7 +73,6 @@ type
     cpsStmts           // section of local statements for C proc
   );
 
-
   TCProcSections = array [TCProcSection] of PRope;
     // TCProcSections represents a generated C proc
 
@@ -112,21 +111,64 @@ type
     typeCache: TIdTable;     // cache the generated types
     forwTypeCache: TIdTable; // cache for forward declarations of types
     declaredThings: TIntSet; // things we have declared in this .c file
-    debugDeclared: TIntSet;  // for debugging purposes
+    declaredProtos: TIntSet; // prototypes we have declared in this .c file
     headerFiles: TLinkedList; // needed headers to include
     typeInfoMarker: TIntSet; // needed for generating type information
     initProc: BProc;         // code for init procedure
     typeStack: TTypeSeq;     // used for type generation
     dataCache: TNodeTable;
+    forwardedProcs: TSymSeq; // keep forwarded procs here
     typeNodes, nimTypes: int;// used for type info generation
-    typeNodesName, nimTypesName: PRope;    // used for type info generation
+    typeNodesName, nimTypesName: PRope; // used for type info generation
   end;
 
 var
   mainModProcs, mainModInit: PRope; // parts of the main module
   gMapping: PRope;  // the generated mapping file (if requested)
   gProcProfile: Natural; // proc profile counter
+  gGeneratedSyms: TIntSet; // set of ID's of generated symbols
+  gPendingModules: array of BModule = {@ignore} nil {@emit @[]};
+    // list of modules that are not finished with code generation
+  gForwardedProcsCounter: int = 0;
+  gmti: BModule; // generated type info: no need to initialize: defaults fit
 
+procedure addForwardedProc(m: BModule; prc: PSym);
+var
+  L: int;
+begin
+  L := length(m.forwardedProcs);
+  setLength(m.forwardedProcs, L+1);
+  m.forwardedProcs[L] := prc;
+  inc(gForwardedProcsCounter);
+end;
+
+procedure addPendingModule(m: BModule);
+var
+  L, i: int;
+begin
+  for i := 0 to high(gPendingModules) do
+    if gPendingModules[i] = m then
+      InternalError('module already pending: ' + m.module.name.s);
+  L := length(gPendingModules);
+  setLength(gPendingModules, L+1);
+  gPendingModules[L] := m;
+end;
+
+function findPendingModule(m: BModule; s: PSym): BModule;
+var
+  ms: PSym;
+  i: int;
+begin
+  ms := getModule(s);
+  if ms.id = m.module.id then begin
+    result := m; exit
+  end;
+  for i := 0 to high(gPendingModules) do begin
+    result := gPendingModules[i];
+    if result.module.id = ms.id then exit;
+  end;
+  InternalError(s.info, 'no pending module found for: ' + s.name.s);
+end;
 
 procedure initLoc(var result: TLoc; k: TLocKind; typ: PType; s: TStorageLoc);
 begin
@@ -209,26 +251,13 @@ end;
 
 // -------------------------- Variable manager ----------------------------
 
-procedure declareGlobalVar(m: BModule; s: PSym);
-begin
-  if not IntSetContainsOrIncl(m.declaredThings, s.id) then begin
-    app(m.s[cfsVars], getTypeDesc(m, s.loc.t));
-    if sfRegister in s.flags then
-      app(m.s[cfsVars], ' register');
-    if sfVolatile in s.flags then
-      app(m.s[cfsVars], ' volatile');
-    if sfThreadVar in s.flags then
-      app(m.s[cfsVars], ' NIM_THREADVAR');
-    appf(m.s[cfsVars], ' $1;$n', [s.loc.r])
-  end
-end;
-
 procedure assignLocalVar(p: BProc; s: PSym);
 begin
   //assert(s.loc.k == locNone) // not yet assigned
   // this need not be fullfilled for inline procs; they are regenerated
   // for each module that uses them!
-  fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack);
+  if s.loc.k = locNone then
+    fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack);
   app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t));
   if sfRegister in s.flags then
     app(p.s[cpsLocals], ' register');
@@ -248,11 +277,19 @@ end;
 
 procedure assignGlobalVar(m: BModule; s: PSym);
 begin
-  fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap);
+  if s.loc.k = locNone then
+    fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap);
   useHeader(m, s);
   if lfNoDecl in s.loc.flags then exit;
   if sfImportc in s.flags then app(m.s[cfsVars], 'extern ');
-  declareGlobalVar(m, s);
+  app(m.s[cfsVars], getTypeDesc(m, s.loc.t));
+  if sfRegister in s.flags then
+    app(m.s[cfsVars], ' register');
+  if sfVolatile in s.flags then
+    app(m.s[cfsVars], ' volatile');
+  if sfThreadVar in s.flags then
+    app(m.s[cfsVars], ' NIM_THREADVAR');
+  appf(m.s[cfsVars], ' $1;$n', [s.loc.r]);
   if [optStackTrace, optEndb] * m.module.options =
      [optStackTrace, optEndb] then begin
     useMagic(m, 'dbgRegisterGlobal');
@@ -282,6 +319,12 @@ begin
   end
 end;
 
+procedure fillProcLoc(sym: PSym);
+begin
+  if sym.loc.k = locNone then
+    fillLoc(sym.loc, locProc, sym.typ, mangleName(sym), OnStack);
+end;
+
 // -------------------------- label manager -------------------------------
 
 // note that a label is a location too
@@ -296,11 +339,11 @@ begin
   appf(p.s[cpsStmts], '$1: ;$n', [labl])
 end;
 
-procedure genProcPrototype(m: BModule; sym: PSym); forward;
 procedure genVarPrototype(m: BModule; sym: PSym); forward;
 procedure genConstPrototype(m: BModule; sym: PSym); forward;
 procedure genProc(m: BModule; prc: PSym); forward;
 procedure genStmts(p: BProc; t: PNode); forward;
+procedure genProcPrototype(m: BModule; sym: PSym); forward;
 
 {$include 'ccgexprs.pas'}
 {$include 'ccgstmts.pas'}
@@ -343,11 +386,11 @@ begin
   tmp := ropef('Dl_$1', [toRope(sym.id)]);
   sym.loc.r := tmp; // from now on we only need the internal name
   sym.typ.sym := nil; // generate a new name
-  appf(m.s[cfsDynLibInit],
-    '$1 = ($2) nimGetProcAddr($3, $4);$n',
-    [tmp, getTypeDesc(m, sym.typ), lib.name,
-    makeCString(ropeToStr(extname))]);
-  declareGlobalVar(m, sym)
+  appf(m.s[cfsDynLibInit], '$1 = ($2) nimGetProcAddr($3, $4);$n',
+    [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString(ropeToStr(extname))]);
+
+  app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
+  appf(m.s[cfsVars], ' $1;$n', [sym.loc.r]);
 end;
 
 // ----------------------------- sections ---------------------------------
@@ -356,16 +399,16 @@ procedure UseMagic(m: BModule; const name: string);
 var
   sym: PSym;
 begin
-  if (sfSystemModule in m.module.flags) then exit;
-  // we don't know the magic symbols in the system module, but they will be
-  // there anyway, because that is the way the code generator works
   sym := magicsys.getCompilerProc(name);
-  case sym.kind of
-    skProc, skConverter: genProcPrototype(m, sym);
-    skVar: genVarPrototype(m, sym);
-    skType: {@discard} getTypeDesc(m, sym.typ);
-    else InternalError('useMagic: ' + name)
-  end
+  if sym <> nil then 
+    case sym.kind of
+      skProc, skConverter: genProc(m, sym);
+      skVar: genVarPrototype(m, sym);
+      skType: {@discard} getTypeDesc(m, sym.typ);
+      else InternalError('useMagic: ' + name)
+    end
+  else if not (sfSystemModule in m.module.flags) then
+    rawMessage(errSystemNeeds, name); // don't be too picky here
 end;
 
 procedure generateHeaders(m: BModule);
@@ -405,95 +448,131 @@ begin
   result := (s.typ.sons[0] <> nil) and not isInvalidReturnType(s.typ.sons[0])
 end;
 
-procedure genProc(m: BModule; prc: PSym);
+procedure genProcAux(m: BModule; prc: PSym);
 var
   p: BProc;
   generatedProc, header, returnStmt: PRope;
-  i, profileId: int;
+  i: int;
   res, param: PSym;
 begin
-  useHeader(m, prc);
-  fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnStack);
-  if (lfNoDecl in prc.loc.Flags) then exit;
-  if lfDynamicLib in prc.loc.flags then
-    SymInDynamicLib(m, prc)
-  else if not (sfImportc in prc.flags) then begin
-    // we have a real proc here:
-    p := newProc(prc, m);
-    header := genProcHeader(m, prc);
-    if (sfCompilerProc in prc.flags)
-    and (sfSystemModule in m.module.flags)
-    and not IntSetContains(m.declaredThings, prc.id) then
-      appf(m.s[cfsProcHeaders], '$1;$n', [header]);
-    intSetIncl(m.declaredThings, prc.id);
-    returnStmt := nil;
-    assert(prc.ast <> nil);
+  p := newProc(prc, m);
+  header := genProcHeader(m, prc);
+  returnStmt := nil;
+  assert(prc.ast <> nil);
 
-    if not (sfPure in prc.flags) and (prc.typ.sons[0] <> nil) then begin
-      res := prc.ast.sons[resultPos].sym; // get result symbol
-      if not isInvalidReturnType(prc.typ.sons[0]) then begin
-        // declare the result symbol:
-        assignLocalVar(p, res);
-        assert(res.loc.r <> nil);
-        returnStmt := ropef('return $1;$n', [rdLoc(res.loc)]);
-      end
-      else begin
-        fillResult(res);
-        assignParam(p, res);
-      end;
-      initVariable(p, res);
-      genObjectInit(p, res.typ, res.loc, true);
-    end;
-    for i := 1 to sonsLen(prc.typ.n)-1 do begin
-      param := prc.typ.n.sons[i].sym;
-      assignParam(p, param)
-    end;
-
-    genStmts(p, prc.ast.sons[codePos]); // modifies p.locals, p.init, etc.
-    if sfPure in prc.flags then
-      generatedProc := ropef('$1 {$n$2$3$4}$n',
-        [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
+  if not (sfPure in prc.flags) and (prc.typ.sons[0] <> nil) then begin
+    res := prc.ast.sons[resultPos].sym; // get result symbol
+    if not isInvalidReturnType(prc.typ.sons[0]) then begin
+      // declare the result symbol:
+      assignLocalVar(p, res);
+      assert(res.loc.r <> nil);
+      returnStmt := ropef('return $1;$n', [rdLoc(res.loc)]);
+    end
     else begin
-      generatedProc := con(header, '{' + tnl);
-      if optStackTrace in prc.options then begin
-        getFrameDecl(p);
-        prepend(p.s[cpsInit], ropef(
-          'F.procname = $1;$n' +
-          'F.prev = framePtr;$n' +
-          'F.filename = $2;$n' +
-          'F.line = 0;$n' +
-          'framePtr = (TFrame*)&F;$n',
-          [makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s),
-          makeCString(toFilename(prc.info))]));
-      end;
-      if optProfiler in prc.options then begin
-        if gProcProfile >= 64*1024 then // XXX: hard coded value!
-          InternalError(prc.info, 'too many procedures for profiling');
-        useMagic(m, 'profileData');
-        app(p.s[cpsLocals], 'ticks NIM_profilingStart;'+tnl);
-        if prc.loc.a < 0 then begin
-          appf(m.s[cfsDebugInit], 'profileData[$1].procname = $2;$n',
-              [toRope(gProcProfile),
-               makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s)]);
-          prc.loc.a := gProcProfile;
-          inc(gProcProfile);
-        end;
-        prepend(p.s[cpsInit], toRope('NIM_profilingStart = getticks();' + tnl));
-      end;
-      app(generatedProc, con(p.s));
-      if p.beforeRetNeeded then
-        app(generatedProc, 'BeforeRet: ;' + tnl);
-      if optStackTrace in prc.options then
-        app(generatedProc, 'framePtr = framePtr->prev;' + tnl);
-      if optProfiler in prc.options then
-        appf(generatedProc,
-          'profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n',
-          [toRope(prc.loc.a)]);
-      app(generatedProc, returnStmt);
-      app(generatedProc, '}' + tnl);
+      fillResult(res);
+      assignParam(p, res);
     end;
-    app(m.s[cfsProcs], generatedProc);
+    initVariable(p, res);
+    genObjectInit(p, res.typ, res.loc, true);
+  end;
+  for i := 1 to sonsLen(prc.typ.n)-1 do begin
+    param := prc.typ.n.sons[i].sym;
+    assignParam(p, param)
+  end;
+
+  genStmts(p, prc.ast.sons[codePos]); // modifies p.locals, p.init, etc.
+  if sfPure in prc.flags then
+    generatedProc := ropef('$1 {$n$2$3$4}$n',
+      [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
+  else begin
+    generatedProc := con(header, '{' + tnl);
+    if optStackTrace in prc.options then begin
+      getFrameDecl(p);
+      prepend(p.s[cpsInit], ropef(
+        'F.procname = $1;$n' +
+        'F.prev = framePtr;$n' +
+        'F.filename = $2;$n' +
+        'F.line = 0;$n' +
+        'framePtr = (TFrame*)&F;$n',
+        [makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s),
+        makeCString(toFilename(prc.info))]));
+    end;
+    if optProfiler in prc.options then begin
+      if gProcProfile >= 64*1024 then // XXX: hard coded value!
+        InternalError(prc.info, 'too many procedures for profiling');
+      useMagic(m, 'profileData');
+      app(p.s[cpsLocals], 'ticks NIM_profilingStart;'+tnl);
+      if prc.loc.a < 0 then begin
+        appf(m.s[cfsDebugInit], 'profileData[$1].procname = $2;$n',
+            [toRope(gProcProfile),
+             makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s)]);
+        prc.loc.a := gProcProfile;
+        inc(gProcProfile);
+      end;
+      prepend(p.s[cpsInit], toRope('NIM_profilingStart = getticks();' + tnl));
+    end;
+    app(generatedProc, con(p.s));
+    if p.beforeRetNeeded then
+      app(generatedProc, 'BeforeRet: ;' + tnl);
+    if optStackTrace in prc.options then
+      app(generatedProc, 'framePtr = framePtr->prev;' + tnl);
+    if optProfiler in prc.options then
+      appf(generatedProc,
+        'profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n',
+        [toRope(prc.loc.a)]);
+    app(generatedProc, returnStmt);
+    app(generatedProc, '}' + tnl);
+  end;
+  app(m.s[cfsProcs], generatedProc);
+end;
+
+procedure genProcPrototype(m: BModule; sym: PSym);
+begin
+  useHeader(m, sym);
+  if (lfNoDecl in sym.loc.Flags) then exit;
+  if lfDynamicLib in sym.loc.Flags then begin
+    if (sym.owner.id <> m.module.id) and
+        not intSetContainsOrIncl(m.declaredThings, sym.id) then begin
+      appf(m.s[cfsVars], 'extern $1 Dl_$2;$n',
+           [getTypeDesc(m, sym.loc.t), toRope(sym.id)])
+    end
   end
+  else begin
+    if not IntSetContainsOrIncl(m.declaredProtos, sym.id) then
+      appf(m.s[cfsProcHeaders], '$1;$n', [genProcHeader(m, sym)]);
+  end
+end;
+
+procedure genProcNoForward(m: BModule; prc: PSym);
+begin
+  fillProcLoc(prc);
+  useHeader(m, prc);
+  genProcPrototype(m, prc);
+  if (lfNoDecl in prc.loc.Flags) then exit;  
+  if prc.typ.callConv = ccInline then begin
+    // We add inline procs to the calling module to enable C based inlining.
+    // This also means that a check with ``gGeneratedSyms`` is wrong, we need
+    // a check for ``m.declaredThings``.
+    if not intSetContainsOrIncl(m.declaredThings, prc.id) then 
+      genProcAux(m, prc);
+  end
+  else if lfDynamicLib in prc.loc.flags then begin
+    if not IntSetContainsOrIncl(gGeneratedSyms, prc.id) then
+      SymInDynamicLib(findPendingModule(m, prc), prc);
+  end
+  else if not (sfImportc in prc.flags) then begin
+    if not IntSetContainsOrIncl(gGeneratedSyms, prc.id) then 
+      genProcAux(findPendingModule(m, prc), prc);
+  end
+end;
+
+procedure genProc(m: BModule; prc: PSym);
+begin
+  fillProcLoc(prc);
+  if [sfForward, sfFromGeneric] * prc.flags <> [] then 
+    addForwardedProc(m, prc)
+  else
+    genProcNoForward(m, prc)
 end;
 
 procedure genVarPrototype(m: BModule; sym: PSym);
@@ -522,7 +601,8 @@ end;
 procedure genConstPrototype(m: BModule; sym: PSym);
 begin
   useHeader(m, sym);
-  fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown);
+  if sym.loc.k = locNone then
+    fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnUnknown);
   if (lfNoDecl in sym.loc.Flags) or
       intSetContainsOrIncl(m.declaredThings, sym.id) then
     exit;
@@ -532,32 +612,6 @@ begin
     app(m.s[cfsData], 'extern ');
     appf(m.s[cfsData], 'NIM_CONST $1 $2;$n',
       [getTypeDesc(m, sym.loc.t), sym.loc.r])
-  end
-end;
-
-procedure genProcPrototype(m: BModule; sym: PSym);
-begin
-  useHeader(m, sym);
-  fillLoc(sym.loc, locProc, sym.typ, mangleName(sym), OnStack);
-  if lfDynamicLib in sym.loc.Flags then begin
-    // it is a proc variable!
-    if (sym.owner.id <> m.module.id) and
-        not intSetContainsOrIncl(m.declaredThings, sym.id) then begin
-      app(m.s[cfsVars], 'extern ');
-      // BUGFIX: declareGlobalVar() inlined, because of intSetContainsOrIncl
-      // check
-      app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
-      appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
-    end
-  end
-  else begin
-    // it is a proc:
-    if (lfNoDecl in sym.loc.Flags) then exit;
-    if intSetContainsOrIncl(m.declaredThings, sym.id) then exit;
-    appf(m.s[cfsProcHeaders], '$1;$n', [genProcHeader(m, sym)]);
-    if (sym.typ.callConv = ccInline)
-    and (sym.owner.id <> m.module.id) then
-      genProc(m, sym) // generate the code again!
   end
 end;
 
@@ -593,6 +647,7 @@ procedure genMainProc(m: BModule);
 const
   CommonMainBody =
     '  setStackBottom(dummy);$n' +
+    '  nim__datInit();$n' +
     '  systemInit();$n' +
     '$1' +
     '$2';
@@ -652,8 +707,7 @@ var
   initname: PRope;
 begin
   initname := getInitName(m);
-  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n',
-      [initname]);
+  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n', [initname]);
   if not (sfSystemModule in m.flags) then
     appf(mainModInit, '$1();$n', [initname]);
 end;
@@ -669,14 +723,18 @@ begin
     {@discard} lists.IncludeStr(m.headerFiles, '<cycle.h>');
   end;
   initname := getInitName(m.module);
-  registerModuleToMain(m.module);
   prc := ropef('N_NOINLINE(void, $1)(void) {$n', [initname]);
-  if m.typeNodes > 0 then 
+  
+  if m.typeNodes > 0 then begin
+    useMagic(m, 'TNimNode');
     appf(m.s[cfsTypeInit1], 'static TNimNode $1[$2];$n', 
-         [m.typeNodesName, toRope(m.typeNodes)]);  
-  if m.nimTypes > 0 then 
+         [m.typeNodesName, toRope(m.typeNodes)]);
+  end;
+  if m.nimTypes > 0 then begin
+    useMagic(m, 'TNimType');
     appf(m.s[cfsTypeInit1], 'static TNimType $1[$2];$n', 
          [m.nimTypesName, toRope(m.nimTypes)]);
+  end;
   if optStackTrace in m.initProc.options then begin
     getFrameDecl(m.initProc);
     app(prc, m.initProc.s[cpsLocals]);
@@ -716,7 +774,7 @@ begin
   for i := low(TCFileSection) to cfsProcs do app(result, m.s[i])
 end;
 
-function newModule(module: PSym; const filename: string): BModule;
+function rawNewModule(module: PSym; const filename: string): BModule;
 begin
   new(result);
 {@ignore}
@@ -724,7 +782,7 @@ begin
 {@emit}
   InitLinkedList(result.headerFiles);
   intSetInit(result.declaredThings);
-  intSetInit(result.debugDeclared);
+  intSetInit(result.declaredProtos);
   result.cfilename := filename;
   result.filename := filename;
   initIdTable(result.typeCache);
@@ -735,12 +793,36 @@ begin
   result.initProc.options := gOptions;
   initNodeTable(result.dataCache);
 {@emit result.typeStack := @[];}
+{@emit result.forwardedProcs := @[];}
   result.typeNodesName := getTempName();
   result.nimTypesName := getTempName();
 end;
 
+function newModule(module: PSym; const filename: string): BModule;
+begin
+  result := rawNewModule(module, filename);
+  if (optDeadCodeElim in gGlobalOptions) then begin
+    if (sfDeadCodeElim in module.flags) then
+      InternalError('added pending module twice: ' + filename);
+    addPendingModule(result)
+  end;
+end;
+
+procedure registerTypeInfoModule();
+const
+  moduleName = 'nim__dat';
+var
+  s: PSym;
+begin
+  s := NewSym(skModule, getIdent(moduleName), nil);
+  gmti := rawNewModule(s, joinPath(options.projectPath, moduleName)+'.nim');
+  addPendingModule(gmti);
+  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n', [getInitName(s)]);
+end;
+
 function myOpen(module: PSym; const filename: string): PPassContext;
 begin
+  if gmti = nil then registerTypeInfoModule();
   result := newModule(module, filename);
 end;
 
@@ -749,6 +831,7 @@ function myOpenCached(module: PSym; const filename: string;
 var
   cfile, cfilenoext, objFile: string;
 begin
+  if gmti = nil then registerTypeInfoModule();
   //MessageOut('cgen.myOpenCached has been called ' + filename);
   cfile := changeFileExt(completeCFilePath(filename), cExt);
   cfilenoext := changeFileExt(cfile, '');
@@ -761,6 +844,8 @@ begin
   end; *)
   addFileToLink(cfilenoext);
   registerModuleToMain(module);
+  // XXX: this cannot be right here, initalization has to be appended during
+  // the ``myClose`` call
   result := nil;
 end;
 
@@ -790,11 +875,52 @@ begin
   genStmts(m.initProc, n);
 end;
 
-function myClose(b: PPassContext; n: PNode): PNode;
+procedure finishModule(m: BModule);
+var
+  i: int;
+  prc: PSym;
+begin
+  i := 0;
+  while i <= high(m.forwardedProcs) do begin
+    // Note: ``genProc`` may add to ``m.forwardedProcs``, so we cannot use
+    // a for loop here
+    prc := m.forwardedProcs[i];
+    if sfForward in prc.flags then InternalError(prc.info, 'still forwarded');
+    genProcNoForward(m, prc);
+    inc(i);
+  end;
+  assert(gForwardedProcsCounter >= i);
+  dec(gForwardedProcsCounter, i);
+  setLength(m.forwardedProcs, 0);
+end;
+
+procedure writeModule(m: BModule);
 var
   cfile, cfilenoext: string;
-  m: BModule;
   code: PRope;
+begin
+  // generate code for the init statements of the module:
+  genInitCode(m);
+  finishTypeDescriptions(m);
+  
+  cfile := completeCFilePath(m.cfilename);
+  cfilenoext := changeFileExt(cfile, '');
+  if sfMainModule in m.module.flags then begin
+    // generate main file:
+    app(m.s[cfsProcHeaders], mainModProcs);
+  end;
+  code := genModule(m, cfilenoext);
+  if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext) then begin
+    addFileToCompile(cfilenoext);
+  end;
+  addFileToLink(cfilenoext);
+  if sfMainModule in m.module.flags then writeMapping(cfile, gMapping);
+end;
+
+function myClose(b: PPassContext; n: PNode): PNode;
+var
+  m: BModule;
+  i: int;
 begin
   result := n;
   if b = nil then exit;
@@ -803,22 +929,24 @@ begin
     m.initProc.options := gOptions;
     genStmts(m.initProc, n);
   end;
-  // generate code for the init statements of the module:
-  genInitCode(m);
-  finishTypeDescriptions(m);
-  cfile := completeCFilePath(m.cfilename);
-  cfilenoext := changeFileExt(cfile, '');
+  registerModuleToMain(m.module);
+  if not (optDeadCodeElim in gGlobalOptions) and 
+      not (sfDeadCodeElim in m.module.flags) then
+    finishModule(m);
   if sfMainModule in m.module.flags then begin
-    // generate main file:
-    app(m.s[cfsProcHeaders], mainModProcs);
     genMainProc(m);
+    // we need to process the transitive closure because recursive module
+    // deps are allowed (and the system module is processed in the wrong
+    // order anyway)
+    while gForwardedProcsCounter > 0 do
+      for i := 0 to high(gPendingModules) do
+        finishModule(gPendingModules[i]);
+    for i := 0 to high(gPendingModules) do writeModule(gPendingModules[i]);
+    setLength(gPendingModules, 0);
   end;
-  code := genModule(m, cfilenoext);
-  if shouldRecompile(code, changeFileExt(cfile, cExt), cfilenoext) then begin
-    addFileToCompile(cfilenoext); // is to compile
-  end;
-  addFileToLink(cfilenoext);
-  if sfMainModule in m.module.flags then writeMapping(cfile, gMapping);
+  if not (optDeadCodeElim in gGlobalOptions) and 
+      not (sfDeadCodeElim in m.module.flags) then
+    writeModule(m);
 end;
 
 function cgenPass(): TPass;
@@ -832,4 +960,5 @@ end;
 
 initialization
   InitIiTable(gToTypeInfoId);
+  IntSetInit(gGeneratedSyms);
 end.

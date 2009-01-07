@@ -281,7 +281,7 @@ proc getServerSoftware*(): string =
 
 proc setTestData*(keysvalues: openarray[string]) = 
   ## fills the appropriate environment variables to test your CGI application.
-  ## This can only simulate the 'GET' 'REQUEST_METHOD'. `keysvalues` should
+  ## This can only simulate the 'GET' request method. `keysvalues` should
   ## provide embedded (name, value)-pairs. Example:
   ##
   ## .. code-block:: Nimrod
@@ -300,6 +300,7 @@ proc setTestData*(keysvalues: openarray[string]) =
 proc writeContentType*() = 
   ## call this before starting to send your HTML data to `stdout`. This
   ## is just a shorthand for: 
+  ##
   ## .. code-block:: Nimrod
   ##     write(stdout, "Content-type: text/html\n\n")
   write(stdout, "Content-type: text/html\n\n")

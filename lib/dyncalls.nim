@@ -126,5 +126,5 @@ elif defined(mac):
     nss = NSLookupSymbolInModule(NSModule(lib), name)
     result = TProcAddr(NSAddressOfSymbol(nss))
 
-else: # workaround a newly introduced bug :-(
+else:
   {.error: "no implementation for dyncalls".}

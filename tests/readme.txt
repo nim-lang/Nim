@@ -1,7 +1,3 @@
-Note: Most test cases are not up to date to the current Nimrod
-version. Only ``thallo`` is frequently tested! The best test is
-to bootstrap, anyway.
-
 This directory contains the test cases.
 Each test must have a filename of the form: ``t*.nim``
 

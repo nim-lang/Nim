@@ -494,7 +494,13 @@ begin
   if n.kind = rnLeaf then begin
     for i := strStart to length(n.text)+strStart-1 do begin
       case n.text[i] of
-        'a'..'z', '0'..'9': begin
+        '0'..'9': begin
+          if b then begin addChar(r, '-'); b := false; end;
+          // BUGFIX: HTML id's cannot start with a digit
+          if length(r) = 0 then addChar(r, 'Z');
+          addChar(r, n.text[i])
+        end;
+        'a'..'z': begin
           if b then begin addChar(r, '-'); b := false; end;
           addChar(r, n.text[i])
         end;
@@ -1235,7 +1241,7 @@ begin
   result := nil;
   if (p.tok[p.idx].kind = tkIndent)
   and (p.tok[p.idx+1].symbol = ':'+'') then begin
-    col := p.tok[p.idx].col;
+    col := p.tok[p.idx].ival; // BUGFIX!
     result := newRstNode(rnFieldList);
     inc(p.idx);
     while true do begin
@@ -1252,10 +1258,10 @@ var
   i: int;
   f: PRstNode;
 begin
-  assert(n.kind = rnDirective);
   result := '';
   if n.sons[1] = nil then exit;
-  assert(n.sons[1].kind = rnFieldList);
+  if (n.sons[1].kind <> rnFieldList) then
+    InternalError('getFieldValue (2): ' + rstnodeKindToStr[n.sons[1].kind]);
   for i := 0 to rsonsLen(n.sons[1])-1 do begin
     f := n.sons[1].sons[i];
     if cmpIgnoreStyle(addNodes(f.sons[0]), fieldname) = 0 then begin

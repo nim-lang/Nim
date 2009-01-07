@@ -21,7 +21,7 @@ uses
 
 type
   TRenderFlag = (renderNone, renderNoBody, renderNoComments,
-                 renderNoPragmas, renderIds);
+                 renderDocComments, renderNoPragmas, renderIds);
   TRenderFlags = set of TRenderFlag;
 
   TRenderTok = record
@@ -354,12 +354,20 @@ end;
 const
   Space = ' '+'';
 
+function shouldRenderComment(var g: TSrcGen; n: PNode): bool;
+begin
+  result := false;
+  if n.comment <> snil then
+    result := not (renderNoComments in g.flags) or
+      (renderDocComments in g.flags) and startsWith(n.comment, '##');
+end;
+
 procedure gcom(var g: TSrcGen; n: PNode);
 var
   ml: int;
 begin
   assert(n <> nil);
-  if (n.comment <> snil) and not (renderNoComments in g.flags) then begin
+  if shouldRenderComment(g, n) then begin
     if (g.pendingNL < 0) and (length(g.buf) > 0)
     and (g.buf[length(g.buf)] <> ' ') then
       put(g, tkSpaces, Space);
@@ -488,7 +496,7 @@ begin
     nkAddr: result := lsub(n.sons[0])+length('addr()');
     nkHiddenAddr, nkHiddenDeref: result := lsub(n.sons[0]);
     nkCommand: result := lsub(n.sons[0])+lcomma(n, 1)+1;
-    nkExprEqExpr, nkDefaultTypeParam, nkAsgn: result := lsons(n)+3;
+    nkExprEqExpr, nkDefaultTypeParam, nkAsgn, nkFastAsgn: result := lsons(n)+3;
     nkPar, nkCurly, nkBracket: result := lcomma(n)+2;
     nkTupleTy: result := lcomma(n)+length('tuple[]');
     nkQualified, nkDotExpr: result := lsons(n)+1;
@@ -502,11 +510,12 @@ begin
       if n.sons[L-1] <> nil then
         result := result + lsub(n.sons[L-1]) + 3;
     end;
+    nkVarTuple: result := lcomma(n, 0, -3) + length('() = ') + lsub(lastSon(n));
     nkChckRangeF: result := length('chckRangeF') + 2 + lcomma(n);
     nkChckRange64: result := length('chckRange64') + 2 + lcomma(n);
     nkChckRange: result := length('chckRange') + 2 + lcomma(n);
-    
-    nkObjDownConv, nkObjUpConv, 
+
+    nkObjDownConv, nkObjUpConv,
     nkStringToCString, nkCStringToString, nkPassAsOpenArray: begin
       result := 2;
       if sonsLen(n) >= 1 then
@@ -981,7 +990,7 @@ begin
       put(g, tkSpaces, space);
       gcomma(g, n, 1);
     end;
-    nkExprEqExpr, nkDefaultTypeParam, nkAsgn: begin
+    nkExprEqExpr, nkDefaultTypeParam, nkAsgn, nkFastAsgn: begin
       gsub(g, n.sons[0]);
       put(g, tkSpaces, Space);
       putWithSpace(g, tkEquals, '='+'');
@@ -997,7 +1006,7 @@ begin
       put(g, tkSymbol, 'chckRange64');
       put(g, tkParLe, '('+'');
       gcomma(g, n);
-      put(g, tkParRi, ')'+'');    
+      put(g, tkParRi, ')'+'');
     end;
     nkChckRange: begin
       put(g, tkSymbol, 'chckRange');
@@ -1005,13 +1014,13 @@ begin
       gcomma(g, n);
       put(g, tkParRi, ')'+'');
     end;
-    nkObjDownConv, nkObjUpConv, 
+    nkObjDownConv, nkObjUpConv,
     nkStringToCString, nkCStringToString, nkPassAsOpenArray: begin
       if sonsLen(n) >= 1 then
         gsub(g, n.sons[0]);
       put(g, tkParLe, '('+'');
       gcomma(g, n, 1);
-      put(g, tkParRi, ')'+'');      
+      put(g, tkParRi, ')'+'');
     end;
     nkPar: begin
       put(g, tkParLe, '('+'');
@@ -1055,6 +1064,14 @@ begin
         putWithSpace(g, tkEquals, '='+'');
         gsub(g, n.sons[L-1], c)
       end;
+    end;
+    nkVarTuple: begin
+      put(g, tkParLe, '('+'');
+      gcomma(g, n, 0, -3);
+      put(g, tkParRi, ')'+'');
+      put(g, tkSpaces, Space);
+      putWithSpace(g, tkEquals, '='+'');
+      gsub(g, lastSon(n), c);
     end;
     nkExprColonExpr: begin
       gsub(g, n.sons[0]);
@@ -1362,11 +1379,11 @@ begin
     nkTupleTy: begin
       put(g, tkTuple, 'tuple');
       put(g, tkBracketLe, '['+'');
-      assert(n.sons[0].kind = nkIdentDefs);
       gcomma(g, n);
       put(g, tkBracketRi, ']'+'');
     end;
     else begin
+      //nkNone, nkMetaNode, nkTableConstr, nkExplicitTypeListCall: begin
       InternalError(n.info, 'rnimsyn.gsub(' +{&} nodeKindToStr[n.kind] +{&} ')')
     end
   end

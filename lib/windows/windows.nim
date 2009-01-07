@@ -10,6 +10,8 @@
 ## Define ``winUnicode`` before importing this module for the
 ## unicode version.
 
+{.deadCodeElim: on.}
+
 type
   ATOM* = int16
   TAtom* = ATOM

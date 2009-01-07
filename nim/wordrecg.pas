@@ -73,7 +73,7 @@ type
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wW, wHints,
     wOptimization, wSpeed, wSize, wNone, wPath, wP,
     wD, wU, wDebuginfo, wCompileonly, wNolinking, wForcebuild,
-    wF, wDeadelim, wSafecode, wCompileTime,
+    wF, wDeadCodeElim, wSafecode, wCompileTime,
     wGc, wRefc, wBoehm, wA, wOpt, wO,
     wApp, wConsole, wGui, wPassc, wT, wPassl,
     wL, wListcmd, wGendoc, wGenmapping,
@@ -86,7 +86,7 @@ type
     // commands:
     wCompileToC, wCompileToCpp, wCompileToEcmaScript,
     wPretty, wDoc, wPas,
-    wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wDebugTrans,
+    wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy,
     wRst2html, wI,
     // special for the preprocessor of configuration files:
     wWrite, wPutEnv, wPrependEnv, wAppendEnv,
@@ -147,7 +147,7 @@ const
     'overflowchecks', 'nilchecks', 'assertions', 'warnings', 'w'+'', 'hints',
     'optimization', 'speed', 'size', 'none', 'path', 'p'+'',
     'd'+'', 'u'+'', 'debuginfo', 'compileonly', 'nolinking', 'forcebuild',
-    'f'+'', 'deadelim', 'safecode', 'compiletime',
+    'f'+'', 'deadcodeelim', 'safecode', 'compiletime',
     'gc', 'refc', 'boehm', 'a'+'', 'opt', 'o'+'',
     'app', 'console', 'gui', 'passc', 't'+'', 'passl',
     'l'+'', 'listcmd', 'gendoc', 'genmapping',
@@ -160,7 +160,7 @@ const
     // commands:
     'compiletoc', 'compiletocpp', 'compiletoecmascript',
     'pretty', 'doc', 'pas', 'gendepend', 'listdef', 'check', 'parse',
-    'scan', 'boot', 'debugtrans', 'rst2html', 'i'+'',
+    'scan', 'boot', 'lazy', 'rst2html', 'i'+'',
 
     // special for the preprocessor of configuration files:
     'write', 'putenv', 'prependenv', 'appendenv',

@@ -23,7 +23,7 @@ uses
 
 type
   TSystemOS = (
-    // Also add OS for in initialization section and alias conditionals to
+    // Also add OS in initialization section and alias conditionals to
     // condsyms (end of module).
     osNone,
     osDos,
@@ -264,8 +264,8 @@ const
     curDir: '.'+'';
     exeExt: '';
     extSep: '.'+'';
-    props: {@set}[ospNeedsPIC, ospPosix];    
-  ),  
+    props: {@set}[ospNeedsPIC, ospPosix];
+  ),
   (
     name: 'PalmOS';
     parDir: '..';

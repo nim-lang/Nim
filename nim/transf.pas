@@ -22,7 +22,7 @@ interface
 uses
   sysutils, nsystem, charsets, strutils,
   lists, options, ast, astalgo, trees, treetab, 
-  msgs, nos, idents, rnimsyn, types, passes, semfold;
+  msgs, nos, idents, rnimsyn, types, passes, semfold, magicsys;
 
 const
   genPrefix = ':tmp'; // prefix for generated names
@@ -139,7 +139,7 @@ More efficient, but not implementable:
 
 function newAsgnStmt(c: PTransf; le, ri: PNode): PNode;
 begin
-  result := newNodeI(nkAsgn, ri.info);
+  result := newNodeI(nkFastAsgn, ri.info);
   addSon(result, le);
   addSon(result, ri);
 end;
@@ -224,6 +224,28 @@ begin
   end
 end;
 
+function newTupleAccess(tup: PNode; i: int): PNode;
+var
+  lit: PNode;
+begin
+  result := newNodeIT(nkBracketExpr, tup.info, tup.typ.sons[i]);
+  addSon(result, copyTree(tup));
+  lit := newNodeIT(nkIntLit, tup.info, getSysType(tyInt));
+  lit.intVal := i;
+  addSon(result, lit);
+end;
+
+procedure unpackTuple(c: PTransf; n, father: PNode);
+var
+  i: int;
+begin
+  // XXX: BUG: what if `n` is an expression with side-effects?
+  for i := 0 to sonsLen(n)-1 do begin
+    addSon(father, newAsgnStmt(c, c.transCon.forStmt.sons[i],
+           transform(c, newTupleAccess(n, i))));
+  end
+end;
+
 function transformYield(c: PTransf; n: PNode): PNode;
 var
   e: PNode;
@@ -239,10 +261,8 @@ begin
                transform(c, copyTree(e.sons[i]))));
       end
     end
-    else begin
-      // XXX: tuple unpacking:
-      internalError(n.info, 'tuple unpacking is not implemented');
-    end
+    else 
+      unpackTuple(c, e, result);
   end
   else begin
     e := transform(c, copyTree(e));
@@ -523,7 +543,7 @@ end;
 (*
   # example:
   proc map(f: proc (x: int): int {.closure}, a: seq[int]): seq[int] =
-    result = []
+    result = @[]
     for elem in a:
       add result, f(a)
 
@@ -534,12 +554,12 @@ end;
 
   proc map(f: proc(x: int): int, closure: pointer,
            a: seq[int]): seq[int] =
-    result = []
+    result = @[]
     for elem in a:
       add result, f(a, closure)
 
   type
-    PMyClosure = ref record
+    PMyClosure = ref object
       y: var int
 
   proc myLambda(x: int, closure: pointer) =

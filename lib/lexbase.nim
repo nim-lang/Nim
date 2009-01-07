@@ -151,8 +151,7 @@ proc open(L: var TBaseLexer, input: PStream, bufLen: int = 8192) =
   skip_UTF_8_BOM(L)
 
 proc getColNumber(L: TBaseLexer, pos: int): int =
-  result = pos - L.lineStart
-  assert(result >= 0)
+  result = abs(pos - L.lineStart)
 
 proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   var i: int

@@ -36,9 +36,9 @@ var
   diff: int;
 begin
   diff := inheritanceDiff(castDest, src);
-  if diff = 0 then
-    liMessage(info, hintConvToBaseNotNeeded)
-  else if diff = high(int) then
+  //if diff = 0 then
+  //  liMessage(info, hintConvToBaseNotNeeded)
+  if diff = high(int) then
     liMessage(info, errGenerated,
       format(MsgKindToString(errIllegalConvFromXtoY),
         [typeToString(src), typeToString(castDest)]));
@@ -466,11 +466,11 @@ begin
     if m.state <> csMatch then begin
       msg := msgKindToString(errTypeMismatch);
       for i := 1 to sonsLen(n)-1 do begin
-        msg := msg +{&} typeToString(n.sons[i].typ);
-        if i <> sonsLen(n)-1 then msg := msg + ', ';
+        add(msg, typeToString(n.sons[i].typ));
+        if i <> sonsLen(n)-1 then add(msg, ', ');
       end;
-      msg := msg +{&} ')' +{&} nl +{&} msgKindToString(errButExpected) +{&}
-             nl +{&} typeToString(n.sons[0].typ);
+      add(msg, ')' +{&} nl +{&} msgKindToString(errButExpected) +{&}
+             nl +{&} typeToString(n.sons[0].typ));
       liMessage(n.Info, errGenerated, msg);
       result := nil
     end
@@ -1117,7 +1117,7 @@ begin
   if s <> nil then
     result := semSym(c, n, s, flags)
   else
-    // test!
+    // this is a test comment; please don't touch it
     result := semFieldAccess(c, n, flags);
 end;
 

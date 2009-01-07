@@ -11,6 +11,7 @@
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
 ## This module is -- like any other basic library -- platform independant.
+{.deadCodeElim: on.}
 
 {.push debugger: off.}
 
@@ -863,9 +864,9 @@ var
 when defined(windows):
   # because we support Windows GUI applications, things get really
   # messy here...
-  proc GetEnvironmentStringsA*(): cstring {.
+  proc GetEnvironmentStringsA(): cstring {.
     stdcall, dynlib: "kernel32", importc.}
-  proc FreeEnvironmentStringsA*(para1: cstring): int32 {.
+  proc FreeEnvironmentStringsA(para1: cstring): int32 {.
     stdcall, dynlib: "kernel32", importc.}
 
   proc strEnd(cstr: CString, c = 0): CString {.importc: "strchr", nodecl.}
@@ -1091,8 +1092,8 @@ proc expandFilename(filename: string): string =
 
 proc parseCmdLine*(c: string): seq[string] =
   ## Splits a command line into several components; components are separated by
-  ## whitespace or are quoted with the ``"`` or ``'`` characters. This proc is
-  ## only occassionally useful, better use the `parseopt` module.
+  ## whitespace unless the whitespace occurs within ``"`` or ``'`` quotes. 
+  ## This proc is only occassionally useful, better use the `parseopt` module.
   result = @[]
   var i = 0
   while c[i] != '\0':

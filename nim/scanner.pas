@@ -21,9 +21,8 @@ interface
 {$include 'config.inc'}
 
 uses
-  charsets, nsystem, sysutils,
-  hashes, options, msgs, strutils, platform, idents,
-  lexbase, llstream, wordrecg;
+  charsets, nsystem, sysutils, hashes, options, msgs, strutils, platform,
+  idents, lexbase, llstream, wordrecg;
 
 const
   MaxLineLength = 80; // lines longer than this lead to a warning
@@ -31,7 +30,7 @@ const
   numChars: TCharSet = ['0'..'9','a'..'z','A'..'Z'];
   SymChars: TCharSet = ['a'..'z', 'A'..'Z', '0'..'9', #128..#255];
   SymStartChars: TCharSet = ['a'..'z', 'A'..'Z', #128..#255];
-  OpChars: TCharSet = ['+', '-', '*', '/', '<', '>', '!', '?', '^', '.',
+  OpChars: TCharSet = ['+', '-', '*', '/', '\', '<', '>', '!', '?', '^', '.',
     '|', '=', '%', '&', '$', '@', '~', #128..#255];
 
 type
@@ -162,6 +161,8 @@ var
   gLinesCompiled: int; // all lines that have been compiled
 
 procedure pushInd(var L: TLexer; indent: int);
+procedure popInd(var L: TLexer);
+
 function isKeyword(kind: TTokType): boolean;
 
 procedure openLexer(out lex: TLexer; const filename: string;
@@ -204,6 +205,14 @@ begin
   else
     InternalError('pushInd');
   //writeln('push indent ', indent);
+end;
+
+procedure popInd(var L: TLexer);
+var
+  len: int;
+begin
+  len := length(L.indentStack);
+  setLength(L.indentStack, len-1);
 end;
 
 function findIdent(const L: TLexer; indent: int): boolean;
@@ -809,13 +818,11 @@ begin
     end;
     dec(L.dedent);
     tok.tokType := tkDed;
-    if i >= 0 then
-      setLength(L.indentStack, i+1) // pop indentations
-    else begin
+    if i < 0 then begin
       tok.tokType := tkSad; // for the parser it is better as SAD
       lexMessage(L, errInvalidIndentation);
     end
-  end;
+  end
 end;
 
 procedure scanComment(var L: TLexer; var tok: TToken);
