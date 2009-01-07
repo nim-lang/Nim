@@ -28,7 +28,7 @@ type
   TStackFrame = record
     mapping: TIdNodeTable; // mapping from symbols to nodes
     prc: PSym;        // current prc; proc that is evaluated
-    call: PNode;    // current for stmt
+    call: PNode;
     next: PStackFrame;   // for stacking
     params: TNodeSeq;  // parameters passed to the proc
   end;
@@ -127,7 +127,7 @@ begin
     inc(i)
   end;
   if (i < len) and (sonsLen(n.sons[i]) < 2) then // eval else-part
-    result := evalAux(c, n.sons[0])
+    result := evalAux(c, n.sons[i].sons[0])
   else
     result := emptyNode
 end;
@@ -1227,7 +1227,7 @@ begin
     nkDerefExpr, nkHiddenDeref: result := evalDeref(c, n);
     nkAddr, nkHiddenAddr: result := evalAddr(c, n);
     nkHiddenStdConv, nkHiddenSubConv, nkConv: result := evalConv(c, n);
-    nkAsgn: result := evalAsgn(c, n);
+    nkAsgn, nkFastAsgn: result := evalAsgn(c, n);
     nkWhenStmt, nkIfStmt, nkIfExpr: result := evalIf(c, n);
     nkWhileStmt: result := evalWhile(c, n);
     nkCaseStmt: result := evalCase(c, n);
@@ -1259,7 +1259,7 @@ begin
     nkTemplateDef, nkConstSection, nkIteratorDef, nkConverterDef,
     nkIncludeStmt, nkImportStmt, nkFromStmt: begin end;
     nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr,
-    nkQualified, nkLambda, nkContinueStmt:
+    nkQualified, nkLambda, nkContinueStmt, nkIdent:
       stackTrace(c, n, errCannotInterpretNodeX, nodeKindToStr[n.kind]);
     else InternalError(n.info, 'evalAux: ' + nodekindToStr[n.kind]);
   end;

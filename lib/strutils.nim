@@ -12,6 +12,8 @@
 ## All the routines here are avaiable for the EMCAScript target
 ## too!
 
+{.deadCodeElim: on.}
+
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
@@ -41,19 +43,19 @@ proc strip*(s: string): string {.noSideEffect.}
 
 proc toLower*(s: string): string {.noSideEffect.}
   ## Converts `s` into lower case. This works only for the letters A-Z.
-  ## See `charsets.nativeToLower` for a version that is locale-dependant.
+  ## See `unicode.toLower` for a version that works for any Unicode character.
 
 proc toLower*(c: Char): Char {.noSideEffect.}
   ## Converts `c` into lower case. This works only for the letters A-Z.
-  ## See `charsets.nativeToLower()` for a version that is locale-dependant.
+  ## See `unicode.toLower` for a version that works for any Unicode character.
 
 proc toUpper*(s: string): string {.noSideEffect.}
   ## Converts `s` into upper case. This works only for the letters a-z.
-  ## See `charsets.nativeToUpper()` for a version that is locale-dependant.
+  ## See `unicode.toUpper` for a version that works for any Unicode character.
 
 proc toUpper*(c: Char): Char {.noSideEffect.}
   ## Converts `c` into upper case. This works only for the letters a-z.
-  ## See `charsets.nativeToUpper()` for a version that is locale-dependant.
+  ## See `unicode.toUpper` for a version that works for any Unicode character.
 
 proc capitalize*(s: string): string {.noSideEffect.}
   ## Converts the first character of `s` into upper case.
@@ -70,6 +72,10 @@ proc findSubStr*(sub, s: string, start: int = 0): int {.noSideEffect.}
 proc findSubStr*(sub: char, s: string, start: int = 0): int {.noSideEffect.}
   ## Searches for `sub` in `s` starting at position `start`. Searching is
   ## case-sensitive. If `sub` is not in `s`, -1 is returned.
+
+proc findChars*(chars: set[char], s: string, start: int = 0): int {.noSideEffect.}
+  ## Searches for `chars` in `s` starting at position `start`. If `s` contains
+  ## none of the characters in `chars`, -1 is returned.
 
 proc replaceStr*(s, sub, by: string): string {.noSideEffect.}
   ## Replaces `sub` in `s` by the string `by`.
@@ -173,11 +179,14 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect.}
   ## | < 0 iff a < b
   ## | > 0 iff a > b
 
-proc in_Operator*(s: string, c: char): bool {.noSideEffect.}
-  ## Same as `findSubStr(c, s) >= 0`.
+proc contains*(s: string, c: char): bool {.noSideEffect.}
+  ## Same as ``findSubStr(c, s) >= 0``.
 
-proc in_Operator*(s, sub: string): bool {.noSideEffect.}
-  ## Same as `findSubStr(sub, s) >= 0`.
+proc contains*(s, sub: string): bool {.noSideEffect.}
+  ## Same as ``findSubStr(sub, s) >= 0``.
+
+proc contains*(s: string, chars: set[char]): bool {.noSideEffect.}
+  ## Same as ``findChars(s, chars) >= 0``.
 
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect.}
   ## Converts `x` to its hexadecimal representation. The resulting string
@@ -259,10 +268,10 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
     if not (c in theSet): return false
   return true
 
-proc quoteIfSpaceExists*(s: string): string =
+proc quoteIfContainsWhite*(s: string): string =
   ## returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`
-  if findSubStr(' ', s) >= 0 and s[0] != '"':
+  if findChars({' ', '\t'}, s) >= 0 and s[0] != '"':
     result = '"' & s & '"'
   else:
     result = s
@@ -488,11 +497,19 @@ proc findSubStr(sub: char, s: string, start: int = 0): int =
   for i in start..len(s)-1:
     if sub == s[i]: return i
   return -1
+ 
+proc findChars(chars: set[char], s: string, start: int = 0): int =
+  for i in start..s.len-1:
+    if s[i] in chars: return i
+  return -1
+  
+proc contains(s: string, chars: set[char]): bool =
+  return findChars(chars, s) >= 0
 
-proc in_Operator(s: string, c: char): bool =
+proc contains(s: string, c: char): bool =
   return findSubStr(c, s) >= 0
 
-proc in_Operator(s, sub: string): bool =
+proc contains(s, sub: string): bool =
   return findSubStr(sub, s) >= 0
 
 proc replaceStr(s, sub, by: string): string =

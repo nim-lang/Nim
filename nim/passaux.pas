@@ -14,7 +14,7 @@ unit passaux;
 interface
 
 uses
-  nsystem, strutils, ast, passes, msgs, options;
+  nsystem, strutils, ast, astalgo, passes, msgs, options;
 
 function verbosePass: TPass;
 function cleanupPass: TPass;
@@ -50,6 +50,8 @@ var
   s: PSym;
 begin
   result := n;
+  // we cannot clean up if dead code elimination is activated
+  if (optDeadCodeElim in gGlobalOptions) then exit;
   case n.kind of
     nkStmtList: begin
       for i := 0 to sonsLen(n)-1 do {@discard} cleanup(c, n.sons[i]);
@@ -57,7 +59,8 @@ begin
     nkProcDef: begin
       if (n.sons[namePos].kind = nkSym) then begin
         s := n.sons[namePos].sym;
-        if not astNeeded(s) then s.ast.sons[codePos] := nil; // free the memory
+        if not (sfDeadCodeElim in getModule(s).flags) and
+           not astNeeded(s) then s.ast.sons[codePos] := nil; // free the memory
       end
     end
     else begin end;

@@ -32,3 +32,13 @@ for i in xrange(0, 5):
 for j in interval(45, 45):
   write(stdout, "test2!")
   write(stdout, "test3?")
+
+for x in items(["hi", "what's", "your", "name"]):
+  echo(x)
+  
+const
+  stringArray = ["hi", "what's", "your", "name"]
+
+for i in 0..len(stringArray)-1:
+  echo(stringArray[i])
+

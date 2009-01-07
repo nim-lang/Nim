@@ -25,9 +25,9 @@ stackbox = gtk_vbox_new(TRUE, 10)
 button1 = gtk_button_new_with_label("Move mouse over button")
 buttonstyle = gtk_style_copy(gtk_widget_get_style(Button1))
 ButtonStyle.bg[GTK_STATE_PRELIGHT].pixel = 0
-ButtonStyle.bg[GTK_STATE_PRELIGHT].red = 0x0000FFFF
-ButtonStyle.bg[GTK_STATE_PRELIGHT].blue = 0
-ButtonStyle.bg[GTK_STATE_PRELIGHT].green = 0
+ButtonStyle.bg[GTK_STATE_PRELIGHT].red = 0x0000FFFF'i16
+ButtonStyle.bg[GTK_STATE_PRELIGHT].blue = 0'i16
+ButtonStyle.bg[GTK_STATE_PRELIGHT].green = 0'i16
 gtk_widget_set_style(button1, buttonstyle)
 button2 = gtk_button_new()
 ALabel = gtk_label_new(Outside)

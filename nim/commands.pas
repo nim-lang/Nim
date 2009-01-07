@@ -39,14 +39,14 @@ const
 {$ifdef fpc}
   compileDate = {$I %date%};
 {$else}
-  compileDate = '2008-0-0';
+  compileDate = '2009-0-0';
 {$endif}
 {@emit}
 
 const
   HelpMessage = 'Nimrod Compiler Version $1 (' +{&}
     compileDate +{&} ') [$2: $3]' +{&} nl +{&}
-    'Copyright (c) 2004-2008 by Andreas Rumpf' +{&} nl;
+    'Copyright (c) 2004-2009 by Andreas Rumpf' +{&} nl;
 
 const
   Usage = ''
@@ -82,6 +82,7 @@ const
 +{&} '  --bound_checks:on|off     code generation for bound checks ON|OFF' +{&} nl
 +{&} '  --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF' +{&} nl
 +{&} '  -a, --assertions:on|off   code generation for assertions ON|OFF' +{&} nl
++{&} '  --dead_code_elim:on|off   whole program dead code elimination ON|OFF' +{&} nl
 +{&} '  --opt:none|speed|size     optimize not at all or for speed|size' +{&} nl
 +{&} '  --app:console|gui|lib     generate a console|GUI application or a shared lib' +{&} nl
 +{&} '  -r, --run                 run the compiled program with given arguments' +{&} nl
@@ -96,7 +97,7 @@ const
 //  cog.outl(f(line))
 //]]]
 +{&} 'Advanced commands::' +{&} nl
-+{&} '  pas                       convert a Pascal file to Nimrod standard syntax' +{&} nl
++{&} '  pas                       convert a Pascal file to Nimrod syntax' +{&} nl
 +{&} '  pretty                    pretty print the inputfile' +{&} nl
 +{&} '  gen_depend                generate a DOT file containing the' +{&} nl
 +{&} '                            module dependency graph' +{&} nl
@@ -135,8 +136,8 @@ const
 
 function getCommandLineDesc: string;
 begin
-  result := format(HelpMessage, [VersionAsString, platform.os[hostOS].name,
-    cpu[hostCPU].name]) +{&} Usage
+  result := format(HelpMessage, [VersionAsString, 
+    platform.os[platform.hostOS].name, cpu[platform.hostCPU].name]) +{&} Usage
 end;
 
 var
@@ -157,8 +158,10 @@ procedure writeAdvancedUsage(pass: TCmdLinePass);
 begin
   if (pass = passCmd1) and not advHelpWritten then begin
     // BUGFIX 19
-    MessageOut(format(HelpMessage, [VersionAsString, platform.os[hostOS].name,
-                                    cpu[hostCPU].name]) +{&} AdvancedUsage);
+    MessageOut(format(HelpMessage, [VersionAsString, 
+                                    platform.os[platform.hostOS].name,
+                                    cpu[platform.hostCPU].name]) +{&}
+                                    AdvancedUsage);
     advHelpWritten := true;
     helpWritten := true;
     halt(0);
@@ -170,8 +173,9 @@ begin
   if (pass = passCmd1) and not versionWritten then begin
     versionWritten := true;
     helpWritten := true;
-    messageOut(format(HelpMessage, [VersionAsString, platform.os[hostOS].name,
-                      cpu[hostCPU].name]))
+    messageOut(format(HelpMessage, [VersionAsString, 
+                                    platform.os[platform.hostOS].name,
+                                    cpu[platform.hostCPU].name]))
   end
 end;
 
@@ -388,6 +392,7 @@ begin
     wOverflowChecks: ProcessOnOffSwitch({@set}[optOverflowCheck], arg, pass, info);
     wLineDir: ProcessOnOffSwitch({@set}[optLineDir], arg, pass, info);
     wAssertions, wA: ProcessOnOffSwitch({@set}[optAssert], arg, pass, info);
+    wDeadCodeElim: ProcessOnOffSwitchG({@set}[optDeadCodeElim], arg, pass, info);
     wOpt: begin
       case whichKeyword(arg) of
         wSpeed: begin
@@ -453,7 +458,7 @@ begin
         theOS := platform.NameToOS(arg);
         if theOS = osNone then
           liMessage(info, errUnknownOS, arg);
-        if theOS <> hostOS then begin
+        if theOS <> platform.hostOS then begin
           setTarget(theOS, targetCPU);
           include(gGlobalOptions, optCompileOnly);
           condsyms.InitDefines()
@@ -465,7 +470,7 @@ begin
         cpu := platform.NameToCPU(arg);
         if cpu = cpuNone then
           liMessage(info, errUnknownCPU, arg);
-        if cpu <> hostCPU then begin
+        if cpu <> platform.hostCPU then begin
           setTarget(targetOS, cpu);
           include(gGlobalOptions, optCompileOnly);
           condsyms.InitDefines()

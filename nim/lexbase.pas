@@ -64,7 +64,7 @@ function getCurrentLine(const L: TBaseLexer; marker: boolean = true): string;
 function getColNumber(const L: TBaseLexer; pos: int): int;
 
 function HandleCR(var L: TBaseLexer; pos: int): int;
-// Call this if you scanned over CR in the buffer; it returns the the
+// Call this if you scanned over CR in the buffer; it returns the
 // position to continue the scanning from. `pos` must be the position
 // of the CR.
 
@@ -211,8 +211,7 @@ end;
 
 function getColNumber(const L: TBaseLexer; pos: int): int;
 begin
-  result := pos - L.lineStart;
-  assert(result >= 0);
+  result := abs(pos - L.lineStart);
 end;
 
 function getCurrentLine(const L: TBaseLexer; marker: boolean = true): string;

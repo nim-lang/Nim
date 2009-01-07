@@ -43,6 +43,7 @@ type
   PContext = ^TContext;
   TContext = object(TPassContext) // a context represents a module
     module: PSym;            // the module sym belonging to the context
+    filename: string;        // the module's filename
     tab: TSymTab;            // each module has its own symbol table
     AmbigiousSymbols: TIntSet; // contains ids of all ambigious symbols (cannot
                                // store this info in the syms themselves!)
@@ -160,6 +161,7 @@ begin
   result.module := module;
   result.generics := newNode(nkStmtList);
 {@emit result.converters := @[];}
+  result.filename := nimfile;
 end;
 
 procedure addConverter(c: PContext; conv: PSym);

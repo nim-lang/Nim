@@ -135,8 +135,8 @@ var
   v: string;
   m: TMagic;
 begin
-  if not (sfSystemModule in c.module.flags) then
-    liMessage(n.info, errMagicOnlyInSystem);
+  //if not (sfSystemModule in c.module.flags) then
+  //  liMessage(n.info, errMagicOnlyInSystem);
   if n.kind <> nkExprColonExpr then
     liMessage(n.info, errStringLiteralExpected);
   if n.sons[1].kind = nkIdent then v := n.sons[1].ident.s
@@ -165,6 +165,19 @@ begin
     case whichKeyword(n.sons[1].ident) of
       wOn:  gOptions := gOptions + op;
       wOff: gOptions := gOptions - op;
+      else  liMessage(n.info, errOnOrOffExpected)
+    end
+  end
+  else
+    liMessage(n.info, errOnOrOffExpected)
+end;
+
+procedure pragmaDeadCodeElim(c: PContext; n: PNode); 
+begin
+  if (n.kind = nkExprColonExpr) and (n.sons[1].kind = nkIdent) then begin
+    case whichKeyword(n.sons[1].ident) of
+      wOn:  include(c.module.flags, sfDeadCodeElim);
+      wOff: exclude(c.module.flags, sfDeadCodeElim);
       else  liMessage(n.info, errOnOrOffExpected)
     end
   end
@@ -466,6 +479,7 @@ begin
           wVolatile: begin noVal(it); Include(sym.flags, sfVolatile); end;
           wRegister: begin noVal(it); include(sym.flags, sfRegister); end;
           wThreadVar: begin noVal(it); include(sym.flags, sfThreadVar); end;
+          wDeadCodeElim: pragmaDeadCodeElim(c, it);
           wMagic: processMagic(c, it, sym);
           wCompileTime: begin
             noVal(it);
@@ -612,7 +626,7 @@ begin
       wHint, wWarning, wError, wFatal, wDefine, wUndef,
       wCompile, wLink, wLinkSys, wPure,
       wPush, wPop, wFixupSystem, wBreakpoint, wCheckpoint,
-      wPassL, wPassC]);
+      wPassL, wPassC, wDeadCodeElim]);
 end;
 
 procedure pragmaLambda(c: PContext; s: PSym; n: PNode);

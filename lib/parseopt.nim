@@ -53,7 +53,7 @@ proc init(cmdline: string = ""): TOptParser =
   else: 
     result.cmd = ""
     for i in countup(1, ParamCount()): 
-      result.cmd = result.cmd & quoteIfSpaceExists(paramStr(i)) & ' '
+      result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i)) & ' '
   result.kind = cmdEnd
   result.key = ""
   result.val = ""

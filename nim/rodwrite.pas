@@ -503,7 +503,7 @@ end;
 
 function process(c: PPassContext; n: PNode): PNode;
 var
-  i, j: int;
+  i: int;
   w: PRodWriter;
   a: PNode;
   s: PSym;

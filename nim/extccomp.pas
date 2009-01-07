@@ -343,17 +343,11 @@ begin
   result := ccNone
 end;
 
-
-procedure addStr(var dest: string; const src: string);
-begin
-  dest := dest +{&} src;
-end;
-
 procedure addOpt(var dest: string; const src: string);
 begin
   if (length(dest) = 0) or (dest[length(dest)-1+strStart] <> ' ') then
-    addStr(dest, ' '+'');
-  addStr(dest, src);
+    add(dest, ' '+'');
+  add(dest, src);
 end;
 
 procedure addCompileOption(const option: string);
@@ -473,40 +467,52 @@ begin
   key := cc[c].name + '.exe';
   if existsConfigVar(key) then
     exe := getConfigVar(key);
+  if targetOS = osWindows then exe := appendFileExt(exe, 'exe');
 
   if (optGenDynLib in gGlobalOptions)
   and (ospNeedsPIC in platform.OS[targetOS].props) then
-    addStr(options, ' ' + cc[c].pic);
+    add(options, ' ' + cc[c].pic);
 
-  if targetOS = hostOS then begin
+  if targetOS = platform.hostOS then begin
     // compute include paths:
     includeCmd := cc[c].includeCmd; // this is more complex than needed, but
     // a workaround of a FPC bug...
-    addStr(includeCmd, libpath);
-    compilePattern := quoteIfSpaceExists(JoinPath(ccompilerpath, exe));
+    add(includeCmd, quoteIfContainsWhite(libpath));
+    compilePattern := JoinPath(ccompilerpath, exe);
   end
   else begin
     includeCmd := '';
     compilePattern := cc[c].compilerExe
   end;
-  if targetOS = hostOS then
+  if targetOS = platform.hostOS then
     cfile := cfilename
   else
     cfile := extractFileName(cfilename);
 
-  if not isExternal or (targetOS <> hostOS) then
+  if not isExternal or (targetOS <> platform.hostOS) then
     objfile := toObjFile(cfile)
   else
     objfile := completeCFilePath(toObjFile(cfile));
-
-  result := format(compilePattern +{&} ' ' +{&} cc[c].compileTmpl,
-    ['file', AppendFileExt(cfile, cExt),
+  cfile := quoteIfContainsWhite(AppendFileExt(cfile, cExt));
+  objfile := quoteIfContainsWhite(objfile);
+  
+  result := quoteIfContainsWhite(format(compilePattern,
+    ['file', cfile,
      'objfile', objfile,
      'options', options,
      'include', includeCmd,
      'nimrod', getPrefixDir(),
      'lib', libpath
-    ]);
+    ]));
+  add(result, ' ');
+  add(result, format(cc[c].compileTmpl,
+    ['file', cfile,
+     'objfile', objfile,
+     'options', options,
+     'include', includeCmd,
+     'nimrod', quoteIfContainsWhite(getPrefixDir()),
+     'lib', quoteIfContainsWhite(libpath)
+    ]));
 end;
 
 procedure CompileCFile(const list: TLinkedList;
@@ -551,11 +557,12 @@ begin
     // call the linker:
     linkerExe := getConfigVar(cc[c].name + '.linkerexe');
     if length(linkerExe) = 0 then linkerExe := cc[c].linkerExe;
+    if targetOS = osWindows then linkerExe := appendFileExt(linkerExe, 'exe');
 
-    if (hostOS <> targetOS) then
-      linkCmd := linkerExe
+    if (platform.hostOS <> targetOS) then
+      linkCmd := quoteIfContainsWhite(linkerExe)
     else
-      linkCmd := quoteIfSpaceExists(JoinPath(ccompilerpath, linkerExe));
+      linkCmd := quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe));
 
     if optGenDynLib in gGlobalOptions then
       buildDll := cc[c].buildDll
@@ -570,27 +577,29 @@ begin
       exefile := platform.os[targetOS].dllPrefix
     else
       exefile := '';
-    if targetOS = hostOS then
-      addStr(exefile, projectFile)
+    if targetOS = platform.hostOS then
+      add(exefile, projectFile)
     else
-      addStr(exefile, extractFileName(projectFile));
+      add(exefile, extractFileName(projectFile));
     if optGenDynLib in gGlobalOptions then
-      addStr(exefile, platform.os[targetOS].dllExt)
+      add(exefile, platform.os[targetOS].dllExt)
     else
-      addStr(exefile, platform.os[targetOS].exeExt);
+      add(exefile, platform.os[targetOS].exeExt);
+    exefile := quoteIfContainsWhite(exefile);
 
     it := PStrEntry(toLink.head);
     objfiles := '';
     while it <> nil do begin
-      addStr(objfiles, ' '+'');
-      if targetOS = hostOS then
-        addStr(objfiles, toObjfile(it.data))
+      add(objfiles, ' '+'');
+      if targetOS = platform.hostOS then
+        add(objfiles, quoteIfContainsWhite(toObjfile(it.data)))
       else
-        addStr(objfiles, toObjfile(extractFileName(it.data)));
+        add(objfiles, quoteIfContainsWhite(
+                            toObjfile(extractFileName(it.data))));
       it := PStrEntry(it.next);
     end;
 
-    linkCmd := format(linkCmd +{&} ' ' +{&} cc[c].linkTmpl, [
+    linkCmd := quoteIfContainsWhite(format(linkCmd, [
       'builddll', builddll,
       'buildgui', buildgui,
       'options', linkOptions,
@@ -598,7 +607,18 @@ begin
       'exefile', exefile,
       'nimrod', getPrefixDir(),
       'lib', libpath
-    ]);
+    ]));
+    add(linkCmd, ' ');
+    add(linkCmd, format(cc[c].linkTmpl, [
+      'builddll', builddll,
+      'buildgui', buildgui,
+      'options', linkOptions,
+      'objfiles', objfiles,
+      'exefile', exefile,
+      'nimrod', quoteIfContainsWhite(getPrefixDir()),
+      'lib', quoteIfContainsWhite(libpath)
+    ]));
+
     if not (optCompileOnly in gGlobalOptions) then
       execExternalProgram(linkCmd);
   end // end if not noLinking

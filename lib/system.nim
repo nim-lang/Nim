@@ -58,6 +58,17 @@ proc defined*[T] (x: T): bool {.magic: "Defined", noSideEffect.}
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
+proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
+  ## Boolean ``and``; returns true iff ``x == y == true``.
+  ## Evaluation is short-circuited: This means that if ``x`` is false,
+  ## ``y`` will not even be evaluated.
+proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
+  ## Boolean ``or``; returns true iff ``not (not x and not y)``.
+  ## Evaluation is short-circuited: This means that if ``x`` is true,
+  ## ``y`` will not even be evaluated.
+proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
+  ## Boolean `exclusive or`; returns true iff ``x != y``.
+
 proc new*[T](a: var ref T) {.magic: "New".}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
@@ -94,6 +105,19 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
+when not defined(EcmaScript) and not defined(NimrodVM):
+  type
+    TGenericSeq {.compilerproc, pure.} = object
+      len, space: int
+    PGenericSeq {.exportc.} = ptr TGenericSeq
+    # len and space without counting the terminating zero:
+    NimStringDesc {.compilerproc, final.} = object of TGenericSeq
+      data: array[0..100_000_000, char]
+    NimString = ptr NimStringDesc
+
+  include hti
+
+type
   Byte* = Int8 ## this is an alias for ``int8``, that is a signed
                ## int 8 bits wide.
 
@@ -403,8 +427,8 @@ proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.}
 proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.}
 proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.}
 proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
-  ## returns the absolute value of `x`. If `x` is ``low(x)`` (that is
-  ## -MININT for its type), an overflow exception is thrown (if overflow
+  ## returns the absolute value of `x`. If `x` is ``low(x)`` (that 
+  ## is -MININT for its type), an overflow exception is thrown (if overflow
   ## checking is turned on).
 
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
@@ -500,18 +524,6 @@ proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.}
 proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.}
 proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.}
 
-# boolean operators:
-proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
-  ## Boolean ``and``; returns true iff ``x == y == true``.
-  ## Evaluation is short-circuited: This means that if ``x`` is false,
-  ## ``y`` will not even be evaluated.
-proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
-  ## Boolean ``or``; returns true iff ``not (not x and not y)``.
-  ## Evaluation is short-circuited: This means that if ``x`` is true,
-  ## ``y`` will not even be evaluated.
-proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
-  ## Boolean `exclusive or`; returns true iff ``x != y``.
-
 # set operators
 proc `*` *[T](x, y: set[T]): set[T] {.magic: "MulSet", noSideEffect.}
   ## This operator computes the intersection of two sets.
@@ -563,11 +575,12 @@ template `>` * (x, y: expr): expr =
   ## "is greater" operator. This is the same as ``y < x``.
   y < x
 
-proc in_Operator*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
+proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## One should overload this proc if one wants to overload the ``in`` operator.
-  ## The parameters are in reverse order! This is because the unification
-  ## algorithm that Nimrod uses for overload resolution works from left to
-  ## right.
+  ## The parameters are in reverse order! ``a in b`` is a template for
+  ## ``contains(b, a)``.
+  ## This is because the unification algorithm that Nimrod uses for overload
+  ## resolution works from left to right.
   ## But for the ``in`` operator that would be the wrong direction for this
   ## piece of code:
   ##
@@ -578,11 +591,11 @@ proc in_Operator*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## If ``in`` had been declared as ``[T](elem: T, s: set[T])`` then ``T`` would
   ## have been bound to ``char``. But ``s`` is not compatible to type
   ## ``set[char]``! The solution is to bind ``T`` to ``range['a'..'z']``. This
-  ## is achieved by reversing the parameters for ``in_operator``; ``in`` then
+  ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
 
-template `in` * (x, y: expr): expr = in_Operator(y, x)
-template `not_in` * (x, y: expr): expr = not in_Operator(y, x)
+template `in` * (x, y: expr): expr = contains(y, x)
+template `not_in` * (x, y: expr): expr = not contains(y, x)
 
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `is_not` *(x, y: expr): expr = not (x is y)
@@ -616,15 +629,17 @@ proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## is the `concatenation operator`. It concatenates `x` and `y`.
 
-proc add * (x: var string, y: char) {.magic: "AppendStrCh".}
-proc add * (x: var string, y: string) {.magic: "AppendStrStr".}
+proc add*(x: var string, y: char) {.magic: "AppendStrCh".}
+proc add*(x: var string, y: string) {.magic: "AppendStrStr".}
 
 when not defined(ECMAScript):
+  {.push overflow_checks:off}
   proc add* (x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
       inc(i)
+  {.pop.}
 else:
   proc add* (x: var string, y: cstring) {.pure.} =
     asm """
@@ -646,7 +661,7 @@ proc add *[T](x: var seq[T], y: seq[T]) {.magic: "AppendSeqSeq".}
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nimrod variable and returns its string representation. It
-  ## works even for complex data graphs with cycles. This is an invaluable
+  ## works even for complex data graphs with cycles. This is a great
   ## debugging tool.
 
 type
@@ -729,7 +744,16 @@ const
   cpuEndian* {.magic: "CpuEndian"}: TEndian = littleEndian
     ## is the endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler magic.
-
+    
+  hostOS* {.magic: "HostOS"}: string = ""
+    ## a string that describes the host operating system. Possible values:
+    ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
+    ## "aix"
+        
+  hostCPU* {.magic: "HostCPU"}: string = ""
+    ## a string that describes the host CPU. Possible values:
+    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm"
+  
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
@@ -895,6 +919,12 @@ proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stingify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
+
+proc `$` *(x: TAnyEnum): string {.magic: "EnumToStr", noSideEffect.}
+  ## The stingify operator for an enumeration argument. This works for
+  ## any enumeration type thanks to compiler magic. If a
+  ## a ``$`` operator for a concrete enumeration is provided, this is
+  ## used instead. (In other words: *Overwriting* is possible.)
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount".}
@@ -1136,6 +1166,10 @@ proc echo*[Ty](x: Ty) {.inline.}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
   ## available for the ECMAScript target too!
 
+proc echo*[Ty](x: openarray[Ty]) {.inline.}
+  ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
+  ## available for the ECMAScript target too!
+
 
 template newException(exceptn, message: expr): expr =
   block: # open a new scope
@@ -1168,8 +1202,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## a shorthand for ``echo(errormsg); quit(quitFailure)``.
 
 when not defined(EcmaScript) and not defined(NimrodVM):
-
-  include hti
 
   proc initGC()
 
@@ -1370,13 +1402,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include arithm
   {.pop.} # stack trace
 
-  # sequence type declarations here because the GC needs them too:
-  type
-    TGenericSeq {.compilerproc, pure.} = object
-      len, space: int
-
-    PGenericSeq {.exportc.} = ptr TGenericSeq
-
   const
     GenericSeqSize = (2 * sizeof(int))
 
@@ -1417,13 +1442,12 @@ elif defined(NimrodVM):
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
   proc echo[Ty](x: Ty) = nil
+  proc echo[Ty](x: openarray[Ty]) = nil
   
   proc cmp(x, y: string): int =
     if x == y: return 0
     if x < y: return -1
     return 1
-
-include macros
 
 {.pop.} # checks
 {.pop.} # hints

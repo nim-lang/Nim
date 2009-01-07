@@ -27,16 +27,48 @@ function GetUniqueType(key: PType): PType;
 implementation
 
 var
-  gTypeTable: TIdTable;
+  gTypeTable: array [TTypeKind] of TIdTable;
+
+procedure initTypeTables();
+var
+  i: TTypeKind;
+begin
+  for i := low(TTypeKind) to high(TTypeKind) do 
+    InitIdTable(gTypeTable[i]);
+end;
 
 function GetUniqueType(key: PType): PType;
 var
   t: PType;
   h: THash;
+  k: TTypeKind;
 begin
-  // this was a hotspot in the compiler!
+  // this is a hotspot in the compiler!
   result := key;
   if key = nil then exit;
+  k := key.kind;
+  case k of
+    tyObject, tyEnum: begin
+      result := PType(IdTableGet(gTypeTable[k], key));
+      if result = nil then begin
+        IdTablePut(gTypeTable[k], key, key);
+        result := key;
+      end
+    end;
+    tyGenericInst: result := GetUniqueType(lastSon(key));
+    tyProc: begin end;
+    else begin
+      // we have to do a slow linear search because types may need
+      // to be compared by their structure:
+      if IdTableHasObjectAsKey(gTypeTable[k], key) then exit;
+      for h := 0 to high(gTypeTable[k].data) do begin
+        t := PType(gTypeTable[k].data[h].key);
+        if (t <> nil) and sameType(t, key) then begin result := t; exit end
+      end;
+      IdTablePut(gTypeTable[k], key, key);
+    end;
+  end;
+  (*
   case key.Kind of
     tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
     tyInt..tyFloat128, tyProc, tyAnyEnum: begin end;
@@ -62,7 +94,7 @@ begin
       end
     end;
     tyGenericInst: result := GetUniqueType(lastSon(key));
-  end;
+  end; *)
 end;
 
 function TableGetType(const tab: TIdTable; key: PType): PObject;
@@ -122,6 +154,6 @@ begin
   app(result, toRope(res));
 end;
 
-initialization
-  InitIdTable(gTypeTable);
+begin
+  InitTypeTables();
 end.

@@ -1,3 +1,5 @@
+{.deadCodeElim: on.}
+
 when defined(windows):
   const
     gliblib = "libglib-2.0-0.dll"

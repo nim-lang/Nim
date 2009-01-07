@@ -94,6 +94,25 @@ begin
   end
 end;
 
+function enumValToString(a: PNode): string;
+var
+  n: PNode;
+  field: PSym;
+  x: biggestInt;
+  i: int;
+begin
+  x := getInt(a);
+  n := a.typ.n;
+  for i := 0 to sonsLen(n)-1 do begin
+    if n.sons[i].kind <> nkSym then InternalError(a.info, 'enumValToString');
+    field := n.sons[i].sym;
+    if field.position = x then begin
+      result := field.name.s; exit
+    end;
+  end;
+  InternalError(a.info, 'no symbol for ordinal value: ' + toString(x));
+end;
+
 function evalOp(m: TMagic; n, a, b: PNode): PNode;
 // if this is an unary operation, b is nil
 begin
@@ -246,11 +265,18 @@ begin
       // available for interpretation. I don't know how to fix this.
       //result := newStrNodeT(renderTree(a, {@set}[renderNoComments]), n);      
     end;
-    mIntToStr, mInt64ToStr, mBoolToStr, mCharToStr:
+    mIntToStr, mInt64ToStr:
       result := newStrNodeT(toString(getOrdValue(a)), n);
+    mBoolToStr: begin
+      if getOrdValue(a) = 0 then
+        result := newStrNodeT('false', n)
+      else
+        result := newStrNodeT('true', n)
+    end;
     mFloatToStr: result := newStrNodeT(toStringF(getFloat(a)), n);
-    mCStrToStr: result := newStrNodeT(getStrOrChar(a), n);
+    mCStrToStr, mCharToStr: result := newStrNodeT(getStrOrChar(a), n);
     mStrToStr: result := a;
+    mEnumToStr: result := newStrNodeT(enumValToString(a), n);
     mArrToSeq: begin
       result := copyTree(a);
       result.typ := n.typ;
@@ -370,6 +396,10 @@ begin
           mNimrodMinor:   result := newIntNodeT(VersionMinor, n);
           mNimrodPatch:   result := newIntNodeT(VersionPatch, n);
           mCpuEndian:     result := newIntNodeT(ord(CPU[targetCPU].endian), n);
+          mHostOS:        
+            result := newStrNodeT(toLower(platform.OS[targetOS].name), n);
+          mHostCPU:       
+            result := newStrNodeT(toLower(platform.CPU[targetCPU].name),n);
           mNaN:           result := newFloatNodeT(NaN, n);
           mInf:           result := newFloatNodeT(Inf, n);
           mNegInf:        result := newFloatNodeT(NegInf, n);

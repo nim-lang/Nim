@@ -14,7 +14,7 @@ unit ropes;
   efficiently; especially concatenation is done in O(1) instead of O(N).
   Ropes make use a lazy evaluation: They are essentially concatenation
   trees that are only flattened when converting to a native Nimrod
-  string or when written to disk. The empty string is represented with a
+  string or when written to disk. The empty string is represented by a
   nil pointer.
   A little picture makes everything clear:
 
@@ -541,7 +541,6 @@ begin
   if (r.data <> snil) then begin
     if r.len > bufSize then
       // A token bigger than 1 KB? - This cannot happen in reality.
-      // Well, at least I hope so. 1 KB did happen!
       internalError('ropes: token too long');
     readBytes := readBuffer(bin, buf, r.len);
     result := (readBytes = r.len) // BUGFIX

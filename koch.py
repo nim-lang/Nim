@@ -18,7 +18,7 @@ False = 0 == 1
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.7.2'
+NIMROD_VERSION = '0.7.4'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**
@@ -35,38 +35,11 @@ force = False
 
 GENERATE_DIFF = False
 # if set, a diff.log file is generated when bootstrapping
-# this uses quite a good amount of RAM (ca. 12 MB), so it should not be done
-# on underpowered systems.
 
 USE_FPC = True
 
 BOOTCMD = "%s cc --compile:build/platdef.c %s rod/nimrod.nim"
 # the command used for bootstrapping
-
-# --------------------------------------------------------------------------
-
-DOC = split("""endb intern lib manual nimrodc steps overview""")
-SRCDOC = split("""system os strutils base/regexprs math complex times
-            parseopt hashes strtabs lexbase parsecfg base/dialogs
-            posix/posix
-            streams base/odbcsql
-            base/zip/zipfiles base/zip/zlib base/zip/libzip
-         """)
-
-ADD_SRCDOC = split("""
-                base/cairo/cairo  base/cairo/cairoft
-                base/cairo/cairowin32  base/cairo/cairoxlib
-                base/gtk/atk  base/gtk/gdk2 base/gtk/gdk2pixbuf
-                base/gtk/gdkglext base/gtk/glib2  base/gtk/gtk2
-                base/gtk/gtkglext base/gtk/gtkhtml base/gtk/libglade2
-                base/gtk/pango base/gtk/pangoutils
-                windows/windows windows/mmsystem windows/nb30
-                windows/ole2 windows/shellapi windows/shfolder
-                base/x11/*.nim
-                base/opengl/*.nim
-                base/sdl/*.nim
-                base/lua/*.nim
-            """)
 
 # --------------------------------------------------------------------------
 
@@ -140,7 +113,7 @@ BaseDir = _baseDir
 def Path(a):
   # Gets a UNIX like path and converts it to a path on this platform.
   # With UNIX like, I mean: slashes, not backslashes, only relative
-  # paths ('../etc' can be used)
+  # paths ('../etc') can be used
   result = a
   if os.sep != "/": result = replace(result, "/", os.sep)
   if os.pardir != "..": result = replace(result, "..", os.pardir)
@@ -401,12 +374,12 @@ Options:
 Possible Commands:
   nim                      builds the Pascal version of Nimrod
   rod [options]            builds the Nimrod version of Nimrod (with options)
-  doc                      builds the documentation in HTML
   clean                    cleans Nimrod project; removes generated files
   boot [options]           bootstraps with given command line options
   rodsrc                   generates Nimrod version from Pascal version
   web                      generates the website
   profile                  profile the Nimrod compiler
+  csource                  build the C sources for installation
   zip                      build the installation ZIP package
   inno                     build the Inno Setup installer
 """ % (NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)), sys.version)
@@ -436,7 +409,6 @@ def main(args):
     cmd = args[i]
     if cmd == "rod": cmd_rod(join(args[i+1:]))
     elif cmd == "nim": cmd_nim()
-    elif cmd == "doc": cmd_doc()
     elif cmd == "clean": cmd_clean()
     elif cmd == "boot": cmd_boot(join(args[i+1:]))
     elif cmd == "rodsrc": cmd_rodsrc()
@@ -444,11 +416,14 @@ def main(args):
     elif cmd == "profile": cmd_profile()
     elif cmd == "zip": cmd_zip()
     elif cmd == "inno": cmd_inno()
+    elif cmd == "csource": cmd_csource()
     else: Error("illegal command: " + cmd)
-
-def cmd_zip():
+    
+def cmd_csource():
   Exec("nimrod cc -r tools/niminst --var:version=%s csource rod/nimrod" %
        NIMROD_VERSION)
+
+def cmd_zip():
   Exec("nimrod cc -r tools/niminst --var:version=%s zip rod/nimrod" %
        NIMROD_VERSION)
   
@@ -586,50 +561,10 @@ def cmd_profile():
 
 # ------------------ web ------------------------------------------------------
 
-def buildDoc(destPath):
-  # call nim for the documentation:
-  for d in DOC:
-    Exec("nimrod rst2html --putenv:nimrodversion=%s -o:%s/%s.html "
-          "--index=%s/theindex doc/%s" %
-         (NIMROD_VERSION, destPath, d, destPath, d))
-  for d in SRCDOC:
-    Exec("nimrod doc --putenv:nimrodversion=%s -o:%s/%s.html "
-         "--index=%s/theindex lib/%s" %
-         (NIMROD_VERSION, destPath, FilenameNoExt(d), destPath, d))
-  Exec("nimrod rst2html -o:%s/theindex.html %s/theindex" % (destPath, destPath))
-
-def buildAddDoc(destPath):
-  # build additional documentation (without the index):
-  def build(d):
-    c = Changed("web__"+d, ["lib/"+d+".nim"], EXPLAIN)
-    if c.check() or force:
-      Exec("nimrod doc --putenv:nimrodversion=%s -o:%s/%s.html "
-           " lib/%s" % (NIMROD_VERSION, destPath, FilenameNoExt(d), d))
-      c.success()
-  
-  for a in ADD_SRCDOC:
-    if '*' in a: 
-      for d in Glob("lib/" + a): build(d)
-    else:
-      build(a)
-
 def cmd_web():
   Exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=%s" 
        % NIMROD_VERSION)
        
-# ------------------ doc ------------------------------------------------------
-
-def cmd_doc():
-  c = Changed("doc", ["koch.py"] +
-                     Glob("doc/*.txt") + Glob("lib/*.txt") + Glob("lib/*.nim")+
-                     Glob("config/*.cfg"),
-              EXPLAIN)
-  if c.check() or force:
-    cmd_nim() # we need Nimrod for processing the documentation
-    buildDoc("doc")
-    if Exists("doc/overview.html"):
-      c.success()
-
 # -----------------------------------------------------------------------------
 
 def getVersion():

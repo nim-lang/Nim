@@ -9,7 +9,7 @@
 unit pnimsyn;
 
 // This module implements the parser of the standard Nimrod representation.
-// The parser is strictly reflects the grammar ("doc/grammar.txt"); however
+// The parser strictly reflects the grammar ("doc/grammar.txt"); however
 // it uses several helper routines to keep the parser small. A special
 // efficient algorithm is used for the precedence levels. The parser here can
 // be seen as a refinement of the grammar, as it specifies how the AST is build
@@ -98,15 +98,21 @@ end;
 
 // ---------------- parser helpers --------------------------------------------
 
+procedure parMessage(const p: TParser; const msg: TMsgKind;
+                     const arg: string = '');
+begin
+  lexMessage(p.lex^, msg, arg);
+end;
+
 procedure skipComment(var p: TParser; node: PNode);
 begin
   if p.tok.tokType = tkComment then begin
     if node <> nil then begin
       if node.comment = snil then node.comment := '';
-      node.comment := node.comment +{&} p.tok.literal;
+      add(node.comment, p.tok.literal);
     end
     else
-      assert(false);
+      parMessage(p, errInternal, 'skipComment');
     getTok(p);
   end
 end;
@@ -114,6 +120,11 @@ end;
 procedure skipInd(var p: TParser);
 begin
   if p.tok.tokType = tkInd then getTok(p)
+end;
+
+procedure optSad(var p: TParser);
+begin
+  if p.tok.tokType = tkSad then getTok(p)
 end;
 
 procedure optInd(var p: TParser; n: PNode);
@@ -144,12 +155,6 @@ procedure Eat(var p: TParser; TokType: TTokType);
 begin
   if p.tok.TokType = TokType then getTok(p)
   else lexMessage(p.lex^, errTokenExpected, TokTypeToStr[tokType])
-end;
-
-procedure parMessage(const p: TParser; const msg: TMsgKind;
-                     const arg: string = '');
-begin
-  lexMessage(p.lex^, msg, arg);
 end;
 
 function parLineInfo(const p: TParser): TLineInfo;
@@ -385,7 +390,7 @@ begin
           result := newNodeP(nkExprEqExpr, p);
           addSon(result, a);
           getTok(p);
-          optInd(p, result);
+          //optInd(p, result);
           case p.tok.tokType of
             tkVar, tkRef, tkPtr, tkProc:
               addSon(result, parseTypeDescK(p));
@@ -413,21 +418,16 @@ begin
   addSon(result, first);
   getTok(p);
   optInd(p, result);
-  while true do begin
-    if p.tok.tokType = tkBracketRi then begin
-      getTok(p); break
-    end;
-    if p.tok.tokType = tkEof then begin
-      parMessage(p, errTokenExpected, TokTypeToStr[tkBracketRi]); break
-    end;
+  while (p.tok.tokType <> tkBracketRi) and (p.tok.tokType <> tkEof)
+  and (p.tok.tokType <> tkSad) do begin
     a := namedTypeOrExpr(p);
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
+  optSad(p);
+  eat(p, tkBracketRi);
 end;
 
 function exprColonEqExpr(var p: TParser; kind: TNodeKind;
@@ -439,7 +439,7 @@ begin
   if p.tok.tokType = tok then begin
     result := newNodeP(kind, p);
     getTok(p);
-    optInd(p, result);
+    //optInd(p, result);
     addSon(result, a);
     addSon(result, parseExpr(p));
   end
@@ -454,21 +454,14 @@ var
 begin
   getTok(p);
   optInd(p, result);
-  while true do begin
-    if p.tok.tokType = endTok then begin
-      getTok(p); break
-    end;
-    if p.tok.tokType = tkEof then begin
-      parMessage(p, errTokenExpected, TokTypeToStr[endtok]); break
-    end;
+  while (p.tok.tokType <> endTok) and (p.tok.tokType <> tkEof) do begin
     a := exprColonEqExpr(p, elemKind, sepTok);
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
+  eat(p, endTok);
 end;
 
 function qualifiedIdent(var p: TParser): PNode;
@@ -476,7 +469,7 @@ var
   a: PNode;
 begin
   result := parseSymbol(p);
-  optInd(p, result);
+  //optInd(p, result);
   if p.tok.tokType = tkDot then begin
     getTok(p);
     optInd(p, result);
@@ -494,28 +487,41 @@ var
 begin
   getTok(p);
   optInd(p, result);
-  while true do begin
-    if p.tok.tokType = endTok then begin
-      getTok(p); break
-    end;
-    if p.tok.tokType = tkEof then begin
-      parMessage(p, errTokenExpected, TokTypeToStr[endtok]); break
-    end;
+  while (p.tok.tokType <> endTok) and (p.tok.tokType <> tkEof) do begin
     a := qualifiedIdent(p);
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    //optInd(p, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
+  eat(p, endTok);
+end;
+
+procedure exprColonEqExprListAux(var p: TParser; elemKind: TNodeKind;
+                                 endTok, sepTok: TTokType; result: PNode);
+var
+  a: PNode;
+begin
+  getTok(p);
+  optInd(p, result);
+  while (p.tok.tokType <> endTok) and (p.tok.tokType <> tkEof)
+  and (p.tok.tokType <> tkSad) do begin
+    a := exprColonEqExpr(p, elemKind, sepTok);
+    addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
+  end;
+  optSad(p);
+  eat(p, endTok);
 end;
 
 function exprColonEqExprList(var p: TParser; kind, elemKind: TNodeKind;
                              endTok, sepTok: TTokType): PNode;
 begin
   result := newNodeP(kind, p);
-  exprListAux(p, elemKind, endTok, sepTok, result);
+  exprColonEqExprListAux(p, elemKind, endTok, sepTok, result);
 end;
 
 function parseCast(var p: TParser): PNode;
@@ -525,12 +531,12 @@ begin
   eat(p, tkBracketLe);
   optInd(p, result);
   addSon(result, parseTypeDesc(p));
-  optInd(p, result);
+  optSad(p);
   eat(p, tkBracketRi);
   eat(p, tkParLe);
   optInd(p, result);
   addSon(result, parseExpr(p));
-  optInd(p, result);
+  optSad(p);
   eat(p, tkParRi);
 end;
 
@@ -541,7 +547,7 @@ begin
   eat(p, tkParLe);
   optInd(p, result);
   addSon(result, parseExpr(p));
-  optInd(p, result);
+  optSad(p);
   eat(p, tkParRi);
 end;
 
@@ -667,7 +673,7 @@ begin
         a := result;
         result := newNodeP(nkCall, p);
         addSon(result, a);
-        exprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result);
+        exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result);
       end;
       tkDot: begin
         a := result;
@@ -709,8 +715,9 @@ begin
     opNode := newIdentNodeP(op.ident, p);
     // skip operator:
     getTok(p);
-    skipComment(p, opNode);
-    skipInd(p);
+    //skipComment(p, opNode);
+    //skipInd(p);
+    optInd(p, opNode);
 
     // read sub-expression with higher priority
     nextop := lowestExprAux(p, v2, opPred);
@@ -739,12 +746,12 @@ begin
   while true do begin
     getTok(p); // skip `if`, `elif`
     branch := newNodeP(nkElifExpr, p);
-    optInd(p, branch);
+    //optInd(p, branch);
     addSon(branch, parseExpr(p));
     eat(p, tkColon);
-    optInd(p, branch);
+    //optInd(p, branch);
     addSon(branch, parseExpr(p));
-    optInd(p, branch);
+    //optInd(p, branch);
     addSon(result, branch);
     if p.tok.tokType <> tkElif then break
   end;
@@ -770,31 +777,33 @@ var
 begin
   result := newNodeP(nkPragma, p);
   getTok(p);
-  while true do begin
-    skipComment(p, result);
-    skipInd(p);
-    case p.tok.TokType of
-      tkCurlyDotRi, tkCurlyRi: begin
-        getTok(p); // skip } or .}
-        break
-      end;
-      tkEof: begin
-        parMessage(p, errTokenExpected, '.}');
-        break
-      end
-      else begin
-        a := exprColonEqExpr(p, nkExprColonExpr, tkColon);
-        addSon(result, a);
-        if p.tok.tokType = tkComma then begin
-          getTok(p);
-          skipComment(p, a)
-        end
-      end
+  optInd(p, result);
+  while (p.tok.tokType <> tkCurlyDotRi) and (p.tok.tokType <> tkCurlyRi)
+  and (p.tok.tokType <> tkEof) and (p.tok.tokType <> tkSad) do begin
+    a := exprColonEqExpr(p, nkExprColonExpr, tkColon);
+    addSon(result, a);
+    if p.tok.tokType = tkComma then begin
+      getTok(p);
+      optInd(p, a)
     end
-  end
+  end;
+  optSad(p);
+  if (p.tok.tokType = tkCurlyDotRi) or (p.tok.tokType = tkCurlyRi) then
+    getTok(p)
+  else
+    parMessage(p, errTokenExpected, '.}');
 end;
 
 // ---------------------- statement parser ------------------------------------
+function isExprStart(const p: TParser): bool;
+begin
+  case p.tok.tokType of
+    tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkLambda,
+    tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit: result := true;
+    else result := false;
+  end;
+end;
+
 function parseExprStmt(var p: TParser): PNode;
 var
   a, b, e: PNode;
@@ -813,16 +822,16 @@ begin
     result.info := a.info;
     addSon(result, a);
     while true do begin
-      case p.tok.tokType of
+      (*case p.tok.tokType of
         tkColon, tkInd, tkSad, tkDed, tkEof, tkComment: break;
         else begin end
-      end;
+      end;*)
+      if not isExprStart(p) then break;
       e := parseExpr(p);
-      if p.tok.tokType = tkComma then begin
-        getTok(p);
-        skipComment(p, e)
-      end;
       addSon(result, e);
+      if p.tok.tokType <> tkComma then break;
+      getTok(p);
+      optInd(p, a);
     end;
     if sonsLen(result) <= 1 then result := a
     else a := result;
@@ -897,7 +906,7 @@ begin
         break
       end;
     end;
-    optInd(p, a);
+    //optInd(p, a);
     if p.tok.tokType = tkAs then begin
       getTok(p);
       optInd(p, a);
@@ -906,11 +915,10 @@ begin
       addSon(a, b);
       addSon(a, parseSymbol(p));
     end;
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
 end;
 
@@ -942,12 +950,11 @@ begin
         break
       end;
     end;
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    //optInd(p, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
 end;
 
@@ -977,7 +984,7 @@ begin
     end
   end;
   addSon(result, a);
-  optInd(p, a);
+  //optInd(p, a);
   eat(p, tkImport);
   optInd(p, result);
   while true do begin
@@ -989,12 +996,11 @@ begin
         break
       end;
     end;
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
+    //optInd(p, a);
     addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
 end;
 
@@ -1074,6 +1080,7 @@ begin
   result := newNodeP(nkCaseStmt, p);
   getTok(p);
   addSon(result, parseExpr(p));
+  if p.tok.tokType = tkColon then getTok(p);
   skipComment(p, result);
   inElif := false;
   while true do begin
@@ -1145,22 +1152,15 @@ begin
   result := newNodeP(nkForStmt, p);
   getTok(p);
   optInd(p, result);
-  while true do begin
-    if p.tok.tokType = tkIn then begin
-      getTok(p); break
-    end;
-    if p.tok.tokType = tkEof then begin
-      parMessage(p, errTokenExpected, TokTypeToStr[tkIn]); break
-    end;
-
-    a := parseSymbol(p);
-    if a = nil then break;
+  a := parseSymbol(p);
+  addSon(result, a);
+  while p.tok.tokType = tkComma do begin
+    getTok(p);
     optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p); optInd(p, a)
-    end;
-    addSon(result, a);
+    a := parseSymbol(p);
+    addSon(result, a);    
   end;
+  eat(p, tkIn);
   addSon(result, exprColonEqExpr(p, nkRange, tkDotDot));
   eat(p, tkColon);
   skipComment(p, result);
@@ -1246,12 +1246,11 @@ begin
         if a = nil then exit;
       end
     end;
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p);
-      optInd(p, a)
-    end;
     addSon(result, a);
+    //optInd(p, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
   if p.tok.tokType = tkColon then begin
     getTok(p); optInd(p, result);
@@ -1282,15 +1281,17 @@ begin
     while true do begin
       case p.tok.tokType of
         tkSymbol, tkAccent: a := parseIdentColonEquals(p, false);
-        tkParRi: begin getTok(p); break end;
+        tkParRi: break;
         else begin parMessage(p, errTokenExpected, ')'+''); break; end;
       end;
-      optInd(p, a);
-      if p.tok.tokType = tkComma then begin
-        getTok(p); optInd(p, a)
-      end;
+      //optInd(p, a);
       addSon(result, a);
+      if p.tok.tokType <> tkComma then break;
+      getTok(p);
+      optInd(p, a)
     end;
+    optSad(p);
+    eat(p, tkParRi);
   end;
   if p.tok.tokType = tkColon then begin
     getTok(p);
@@ -1336,18 +1337,15 @@ begin
       getTok(p);
       eat(p, tkBracketLe);
       optInd(p, result);
-      while true do begin
-        case p.tok.tokType of
-          tkSymbol, tkAccent: a := parseIdentColonEquals(p, false);
-          tkBracketRi: begin getTok(p); break end;
-          else begin parMessage(p, errTokenExpected, ']'+''); break; end;
-        end;
-        optInd(p, a);
-        if p.tok.tokType = tkComma then begin
-          getTok(p); optInd(p, a)
-        end;
-        addSon(result, a);
+      while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
+        a := parseIdentColonEquals(p, false);
+        addSon(result, a);        
+        if p.tok.tokType <> tkComma then break;
+        getTok(p);
+        optInd(p, a)
       end;
+      optSad(p);
+      eat(p, tkBracketRi);
     end;
     else begin
       InternalError(parLineInfo(p), 'pnimsyn.parseTypeDescK');
@@ -1389,18 +1387,15 @@ begin
   result := newNodeP(nkGenericParams, p);
   getTok(p);
   optInd(p, result);
-  while true do begin
-    case p.tok.tokType of
-      tkSymbol, tkAccent: a := parseGenericParam(p);
-      tkBracketRi: begin getTok(p); break end;
-      else begin parMessage(p, errTokenExpected, ']'+''); break; end;
-    end;
-    optInd(p, a);
-    if p.tok.tokType = tkComma then begin
-      getTok(p); optInd(p, a)
-    end;
+  while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
+    a := parseGenericParam(p);
     addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
   end;
+  optSad(p);
+  eat(p, tkBracketRi);
 end;
 
 function parseRoutine(var p: TParser; kind: TNodeKind): PNode;
@@ -1484,7 +1479,8 @@ begin
             break
           end
         end
-      end
+      end;
+      popInd(p.lex^);
     end;
     tkSymbol, tkAccent: addSon(result, defparser(p));
     else parMessage(p, errIdentifierExpected, tokToStr(p.tok));
@@ -1628,7 +1624,8 @@ begin
             break
           end
         end
-      end
+      end;
+      popInd(p.lex^);
     end;
     tkWhen: result := parseRecordWhen(p);
     tkCase: result := parseRecordCase(p);
@@ -1688,9 +1685,34 @@ begin
   indAndComment(p, result); // special extension!
 end;
 
+function parseVarTuple(var p: TParser): PNode;
+var
+  a: PNode;
+begin
+  result := newNodeP(nkVarTuple, p);
+  getTok(p); // skip '('
+  optInd(p, result);
+  while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
+    a := identWithPragma(p);
+    addSon(result, a);
+    if p.tok.tokType <> tkComma then break;
+    getTok(p);
+    optInd(p, a)
+  end;
+  addSon(result, nil); // no type desc
+  optSad(p);
+  eat(p, tkParRi);
+  eat(p, tkEquals);
+  optInd(p, result);
+  addSon(result, parseExpr(p));
+end;
+
 function parseVariable(var p: TParser): PNode;
 begin
-  result := parseIdentColonEquals(p, true);
+  if p.tok.tokType = tkParLe then 
+    result := parseVarTuple(p)
+  else
+    result := parseIdentColonEquals(p, true);
   indAndComment(p, result); // special extension!
 end;
 
@@ -1708,10 +1730,15 @@ begin
     tkFrom: result := parseFromStmt(p);
     tkInclude: result := parseIncludeStmt(p);
     tkComment: result := newCommentStmt(p);
-    //tkSad, tkInd, tkDed: assert(false);
-    else result := parseExprStmt(p)
+    else begin
+      if isExprStart(p) then 
+        result := parseExprStmt(p)
+      else 
+        result := nil;
+    end
   end;
-  skipComment(p, result);
+  if result <> nil then
+    skipComment(p, result);
 end;
 
 function complexOrSimpleStmt(var p: TParser): PNode;
@@ -1738,6 +1765,8 @@ begin
 end;
 
 function parseStmt(var p: TParser): PNode;
+var
+  a: PNode;
 begin
   if p.tok.tokType = tkInd then begin
     result := newNodeP(nkStmtList, p);
@@ -1748,9 +1777,14 @@ begin
         tkSad: getTok(p);
         tkEof: break;
         tkDed: begin getTok(p); break end;
-        else addSon(result, complexOrSimpleStmt(p));
-      end;
-    end
+        else begin
+          a := complexOrSimpleStmt(p);
+          if a = nil then break;
+          addSon(result, a);
+        end
+      end
+    end;
+    popInd(p.lex^);
   end
   else begin
     // the case statement is only needed for better error messages:
@@ -1762,7 +1796,7 @@ begin
       end
       else begin
         result := simpleStmt(p);
-        skipComment(p, result);
+        if result = nil then parMessage(p, errExprExpected, tokToStr(p.tok));
         if p.tok.tokType = tkSad then getTok(p);
       end
     end
@@ -1770,6 +1804,8 @@ begin
 end;
 
 function parseModule(var p: TParser): PNode;
+var
+  a: PNode;
 begin
   result := newNodeP(nkStmtList, p);
   while true do begin
@@ -1777,7 +1813,11 @@ begin
       tkSad: getTok(p);
       tkDed, tkInd: parMessage(p, errInvalidIndentation);
       tkEof: break;
-      else addSon(result, complexOrSimpleStmt(p));
+      else begin
+        a := complexOrSimpleStmt(p);
+        if a = nil then parMessage(p, errExprExpected, tokToStr(p.tok));
+        addSon(result, a);
+      end
     end
   end
 end;
@@ -1795,6 +1835,7 @@ begin
       tkEof: break;
       else begin
         result := complexOrSimpleStmt(p);
+        if result = nil then parMessage(p, errExprExpected, tokToStr(p.tok));
         break
       end
     end

@@ -201,6 +201,12 @@ begin
   if startsWith(dir, prefix) then begin
     result := ncopy(dir, length(prefix) + strStart); exit
   end;
+  prefix := projectPath +{&} dirSep;
+  //writeln(output, prefix);
+  //writeln(output, dir);
+  if startsWith(dir, prefix) then begin
+    result := ncopy(dir, length(prefix) + strStart); exit
+  end;
   result := dir
 end;
 
@@ -209,7 +215,7 @@ var
   head, tail: string;
 begin
   splitPath(path, head, tail);
-  result := joinPath([projectPath, genSubDir, shortenDir(head), 
+  result := joinPath([projectPath, genSubDir, shortenDir(head +{&} dirSep), 
                       changeFileExt(tail, ext)])
 end;
 
@@ -219,9 +225,11 @@ var
   head, tail, subdir: string;
 begin
   splitPath(f, head, tail);
-  subdir := joinPath([projectPath, genSubDir, shortenDir(head)]);
-  if createSubDir then
+  subdir := joinPath([projectPath, genSubDir, shortenDir(head +{&} dirSep)]);
+  if createSubDir then begin
+    //Writeln(output, subdir);
     createDir(subdir);
+  end;
   result := joinPath(subdir, tail)
 end;
 

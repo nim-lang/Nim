@@ -80,20 +80,23 @@ var
 begin
   result := msgKindToString(errTypeMismatch);
   for i := 1 to sonsLen(n)-1 do begin
-    result := result +{&} typeToString(n.sons[i].typ);
-    if i <> sonsLen(n)-1 then result := result + ', ';
+    debug(n.sons[i].typ);
+    add(result, typeToString(n.sons[i].typ));
+    if i <> sonsLen(n)-1 then add(result, ', ');
   end;
   addChar(result, ')');
   candidates := '';
   sym := initOverloadIter(o, c, n.sons[0]);
   while sym <> nil do begin
-    if sym.kind in [skProc, skIterator, skConverter] then
-      candidates := candidates +{&} getProcHeader(sym) +{&} nl;
+    if sym.kind in [skProc, skIterator, skConverter] then begin
+      add(candidates, getProcHeader(sym));
+      add(candidates, nl)
+    end;
     sym := nextOverloadIter(o, c, n.sons[0]);
   end;
   if candidates <> '' then
-    result := result +{&} nl +{&} msgKindToString(errButExpected) +{&} nl
-            +{&} candidates;
+    add(result, nl +{&} msgKindToString(errButExpected) +{&} nl
+            +{&} candidates);
 end;
 
 function typeRel(var mapping: TIdTable; f, a: PType): TTypeRelation; overload;
@@ -431,7 +434,7 @@ begin // is a subtype of f?
     tyAnyEnum: begin
       case a.kind of
         tyRange: result := typeRel(mapping, f, base(a));
-        tyEnum:  result := isEqual;
+        tyEnum:  result := isSubtype;
         else begin end
       end
     end;

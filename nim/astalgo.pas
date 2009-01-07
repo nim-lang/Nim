@@ -450,29 +450,27 @@ begin
   else begin
     istr := spaces(indent+2);
     result := ropef('{$n$1"kind": $2',
-                         [istr, makeYamlString(nodeKindToStr[n.kind])]);
+                    [istr, makeYamlString(nodeKindToStr[n.kind])]);
     if maxRecDepth <> 0 then begin
       appf(result, ',$n$1"info": $2',
         [istr, lineInfoToStr(n.info)]);
       case n.kind of
         nkCharLit..nkInt64Lit:
-          appf(result, '$n$1"intVal": $2', [istr, toRope(n.intVal)]);
+          appf(result, ',$n$1"intVal": $2', [istr, toRope(n.intVal)]);
         nkFloatLit, nkFloat32Lit, nkFloat64Lit:
-          appf(result, '$n$1"floatVal": $2',
-                        [istr, toRopeF(n.floatVal)]);
+          appf(result, ',$n$1"floatVal": $2', [istr, toRopeF(n.floatVal)]);
         nkStrLit..nkTripleStrLit:
-          appf(result, '$n$1"strVal": $2',
-                        [istr, makeYamlString(n.strVal)]);
+          appf(result, ',$n$1"strVal": $2', [istr, makeYamlString(n.strVal)]);
         nkSym:
           appf(result, ',$n$1"sym": $2',
             [istr, symToYamlAux(n.sym, marker, indent+2, maxRecDepth)]);
 
         nkIdent: begin
           if n.ident <> nil then
-            appf(result, '$n$1"ident": $2',
+            appf(result, ',$n$1"ident": $2',
                           [istr, makeYamlString(n.ident.s)])
           else
-            appf(result, '$n$1"ident": null', [istr])
+            appf(result, ',$n$1"ident": null', [istr])
         end
         else begin
           if sonsLen(n) > 0 then begin
@@ -552,12 +550,12 @@ begin
     if maxRecDepth <> 0 then begin
       case n.kind of
         nkCharLit..nkInt64Lit:
-          appf(result, '$n$1"intVal": $2', [istr, toRope(n.intVal)]);
+          appf(result, ',$n$1"intVal": $2', [istr, toRope(n.intVal)]);
         nkFloatLit, nkFloat32Lit, nkFloat64Lit:
-          appf(result, '$n$1"floatVal": $2',
+          appf(result, ',$n$1"floatVal": $2',
                         [istr, toRopeF(n.floatVal)]);
         nkStrLit..nkTripleStrLit:
-          appf(result, '$n$1"strVal": $2',
+          appf(result, ',$n$1"strVal": $2',
                         [istr, makeYamlString(n.strVal)]);
         nkSym:
           appf(result, ',$n$1"sym": $2_$3',
@@ -565,10 +563,10 @@ begin
 
         nkIdent: begin
           if n.ident <> nil then
-            appf(result, '$n$1"ident": $2',
+            appf(result, ',$n$1"ident": $2',
                           [istr, makeYamlString(n.ident.s)])
           else
-            appf(result, '$n$1"ident": null', [istr])
+            appf(result, ',$n$1"ident": null', [istr])
         end
         else begin
           if sonsLen(n) > 0 then begin

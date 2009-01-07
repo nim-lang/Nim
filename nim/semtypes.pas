@@ -256,8 +256,8 @@ begin
   if templ = nil then begin result := nil; exit end;
   case templ.kind of
     nkSym: begin
-      if (templ.sym.kind = skTypeParam)
-      and (templ.sym.owner.id = sym.id) then
+      if (templ.sym.kind = skTypeParam) then
+      //and (templ.sym.owner.id = sym.id) then 
         result := copyTree(actual.sons[templ.sym.position+1])
       else
         result := copyNode(templ)
@@ -285,15 +285,18 @@ begin
   result.containerID := s.typ.containerID; // ... but the same containerID
   result.sym := s;
   if (s.typ.containerID = 0) then
-    InternalError(n.info, 'semGeneric');  
+    InternalError(n.info, 'semtypes.semGeneric');  
   for i := 1 to sonsLen(n)-1 do begin
     elem := semTypeNode(c, n.sons[i], nil);
-    if elem.kind = tyGenericParam then result.kind := tyGeneric;
+    if elem.kind = tyGenericParam then 
+      result.kind := tyGeneric; // prevend type from instantiation
     addSon(result, elem);
   end;
   if s.ast <> nil then begin
-    inst := instGenericAux(c, s.ast.sons[2], n, s);
-    if result.kind = tyGenericInst then begin
+    if (result.kind = tyGenericInst) then begin
+      inst := instGenericAux(c, s.ast.sons[2], n, s);
+      internalError(n.info, 'Generic containers not implemented');
+      // XXX: implementation does not work this way
       // does checking of instantiated type for us:
       elem := semTypeNode(c, inst, nil);
       elem.id := result.containerID;
@@ -303,7 +306,9 @@ begin
       addSon(result, nil);
   end
   else
-    liMessage(n.info, errCannotInstantiateX, s.name.s);
+    liMessage(n.info, errCannotInstantiateX, s.name.s); 
+  (*if computeSize(result) < 0 then
+    liMessage(s.info, errIllegalRecursionInTypeX, s.name.s);*)
 end;
 
 function semIdentVis(c: PContext; kind: TSymKind; n: PNode;

@@ -126,7 +126,7 @@ var
   j: int;
 begin
   result := 0;
-  if CPU[hostCPU].endian = CPU[targetCPU].endian then begin
+  if CPU[platform.hostCPU].endian = CPU[targetCPU].endian then begin
     for j := 0 to size-1 do
       if j < length(s) then
         result := result or shlu(Ze64(s[j]), j * 8)
@@ -773,6 +773,34 @@ begin
   putIntoDest(p, d, field.typ, r);
 end;
 
+procedure genTupleElem(p: BProc; e: PNode; var d: TLoc);
+var
+  a: TLoc;
+  field: PSym;
+  ty: PType;
+  r: PRope;
+  i: int;
+begin
+  initLocExpr(p, e.sons[0], a);
+  if d.k = locNone then d.s := a.s;
+  {@discard} getTypeDesc(p.module, a.t); // fill the record's fields.loc
+  ty := getUniqueType(a.t);
+  r := rdLoc(a);
+  case e.sons[1].kind of
+    nkIntLit..nkInt64Lit: i := int(e.sons[1].intVal);
+    else internalError(e.info, 'genTupleElem');
+  end;
+  if ty.n <> nil then begin
+    field := ty.n.sons[i].sym;
+    if field = nil then InternalError(e.info, 'genTupleElem');
+    if field.loc.r = nil then InternalError(e.info, 'genTupleElem');
+    appf(r, '.$1', [field.loc.r]);
+  end
+  else
+    appf(r, '.Field$1', [toRope(i)]);
+  putIntoDest(p, d, ty.sons[i], r);
+end;
+
 procedure genInExprAux(p: BProc; e: PNode; var a, b, d: TLoc); forward;
 
 procedure genCheckedRecordField(p: BProc; e: PNode; var d: TLoc);
@@ -848,10 +876,11 @@ begin
   first := intLiteral(firstOrd(ty));
   // emit range check:
   if (optBoundsCheck in p.options) then begin
-    if b.k <> locImmediate then begin // semantic pass has already checked:
+    if not isConstExpr(e.sons[1]) then begin
+      // semantic pass has already checked for const index expressions
       useMagic(p.module, 'raiseIndexError');
       if firstOrd(ty) = 0 then begin
-        if lastOrd(b.t) > lastOrd(ty) then
+        if (firstOrd(b.t) < firstOrd(ty)) or (lastOrd(b.t) > lastOrd(ty)) then
           appf(p.s[cpsStmts],
              'if ((NU)($1) > (NU)($2)) raiseIndexError();$n',
                [rdCharLoc(b), intLiteral(lastOrd(ty))])
@@ -1289,14 +1318,22 @@ var
   a, b, f: TLoc;
   refType, bt: PType;
   ti: PRope;
+  oldModule: BModule;
 begin
   useMagic(p.module, 'newObj');
   refType := skipVarGenericRange(e.sons[1].typ);
   InitLocExpr(p, e.sons[1], a);
+  
+  // This is a little hack:
+  oldModule := p.module;
+  p.module := gmti;
   InitLocExpr(p, e.sons[2], f);
+  p.module := oldModule;
+  
   initLoc(b, locExpr, a.t, OnHeap);
   ti := genTypeInfo(p.module, refType);
-  appf(p.module.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
+  
+  appf(gmti.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
     ti, rdLoc(f)]);
   b.r := ropef('($1) newObj($2, sizeof($3))',
                    [getTypeDesc(p.module, refType), ti,
@@ -1331,7 +1368,7 @@ begin
       UseMagic(p.module, 'reprChar');
       putIntoDest(p, d, e.typ, ropef('reprChar($1)', [rdLoc(a)]))
     end;
-    tyEnum: begin
+    tyEnum, tyAnyEnum: begin
       UseMagic(p.module, 'reprEnum');
       putIntoDest(p, d, e.typ,
         ropef('reprEnum($1, $2)', [rdLoc(a), genTypeInfo(p.module, t)]))
@@ -1853,6 +1890,7 @@ begin
     mFloatToStr: genDollar(p, e, d, 'nimFloatToStr', 'nimFloatToStr($1)');
     mCStrToStr: genDollar(p, e, d, 'cstrToNimstr', 'cstrToNimstr($1)');
     mStrToStr: expr(p, e.sons[1], d);
+    mEnumToStr: genRepr(p, e, d);
     mAssert: begin
       if (optAssert in p.Options) then begin
         useMagic(p.module, 'internalAssert');
@@ -1996,23 +2034,31 @@ var
   it: PNode;
   t: PType;
 begin
-  // the code generator assumes that there are only tuple constructors with
-  // field names!
   if not handleConstExpr(p, n, d) then begin
     t := getUniqueType(n.typ);
     {@discard} getTypeDesc(p.module, t); // so that any fields are initialized
     if d.k = locNone then getTemp(p, t, d);
-    if t.n = nil then InternalError(n.info, 'genTupleConstr');
-    if sonsLen(t.n) <> sonsLen(n) then
-      InternalError(n.info, 'genTupleConstr');
     for i := 0 to sonsLen(n)-1 do begin
       it := n.sons[i];
-      if it.kind <> nkExprColonExpr then InternalError(n.info, 'genTupleConstr');
-      initLoc(rec, locExpr, it.sons[1].typ, d.s);
-      if (t.n.sons[i].kind <> nkSym) then
-        InternalError(n.info, 'genTupleConstr');
-      rec.r := ropef('$1.$2', [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)]);
-      expr(p, it.sons[1], rec);
+      if it.kind = nkExprColonExpr then begin
+        initLoc(rec, locExpr, it.sons[1].typ, d.s);
+        if (t.n.sons[i].kind <> nkSym) then
+          InternalError(n.info, 'genTupleConstr');
+        rec.r := ropef('$1.$2', [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)]);
+        expr(p, it.sons[1], rec);
+      end
+      else if t.n = nil then begin
+        initLoc(rec, locExpr, it.typ, d.s);
+        rec.r := ropef('$1.Field$2', [rdLoc(d), toRope(i)]);
+        expr(p, it, rec);
+      end
+      else begin
+        initLoc(rec, locExpr, it.typ, d.s);
+        if (t.n.sons[i].kind <> nkSym) then
+          InternalError(n.info, 'genTupleConstr: 2');
+        rec.r := ropef('$1.$2', [rdLoc(d), mangleRecFieldName(t.n.sons[i].sym, t)]);
+        expr(p, it, rec);
+      end
     end
   end
 end;
@@ -2123,11 +2169,10 @@ begin
       sym := e.sym;
       case sym.Kind of
         skProc, skConverter: begin
-          // generate prototype if not already declared in this translation unit
-          genProcPrototype(p.module, sym);
+          genProc(p.module, sym);
           if ((sym.loc.r = nil) or (sym.loc.t = nil)) then
             InternalError(e.info, 'expr: proc not init ' + sym.name.s);
-          putLocIntoDest(p, d, sym.loc)
+          putLocIntoDest(p, d, sym.loc);
         end;
         skConst:
           if isSimpleConst(sym.typ) then
@@ -2160,8 +2205,6 @@ begin
     nkStrLit..nkTripleStrLit, nkIntLit..nkInt64Lit,
     nkFloatLit..nkFloat64Lit, nkNilLit, nkCharLit: begin
       putIntoDest(p, d, e.typ, genLiteral(p, e));
-      if d.k in [locNone, locExpr] then
-        d.k := locImmediate // for removal of index checks
     end;
     nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       if (e.sons[0].kind = nkSym) and
@@ -2189,6 +2232,7 @@ begin
         tyOpenArray: genOpenArrayElem(p, e, d);
         tySequence, tyString: genSeqElem(p, e, d);
         tyCString: genCStringElem(p, e, d);
+        tyTuple: genTupleElem(p, e, d);
         else InternalError(e.info,
                'expr(nkBracketExpr, ' + typeKindToStr[ty.kind] + ')');
       end

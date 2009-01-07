@@ -93,7 +93,8 @@ begin
     }
     end;
     if optRun in gGlobalOptions then
-      execExternalProgram(changeFileExt(filename, '') +{&} ' ' +{&} arguments)
+      execExternalProgram(quoteIfContainsWhite(changeFileExt(filename, '')) +{&}
+                         ' ' +{&} arguments)
   end
 end;
 

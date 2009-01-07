@@ -35,9 +35,11 @@ const
 {$ifdef mswindows}
   dirsep = '\'; // seperator within paths
   altsep = '/';
+  exeExt = 'exe';
 {$else}
   dirsep = '/';
   altsep = #0; // work around fpc bug
+  exeExt = '';
 {$endif}
   pathSep = ';'; // seperator between paths
   sep = dirsep; // alternative name

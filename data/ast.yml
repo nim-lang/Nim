@@ -41,6 +41,7 @@
   'sfCompileTime',    # proc can be evaluated at compile time
   'sfThreadVar',      # variable is a thread variable
   'sfMerge',          # proc can be merged with itself
+  'sfDeadCodeElim',   # dead code elimination for the module is turned on
 ],
 
 'TypeFlag': [
@@ -116,7 +117,7 @@
   # end of atoms
   'nkDotCall',            # used to temporarily flag a nkCall node; this is used
                           # for transforming ``s.len`` to ``len(s)``
-  'nkCommand',            # a call like ``p 2 4`` without parenthesis
+  'nkCommand',            # a call like ``p 2, 4`` without parenthesis
   'nkCall',               # a call like p(x, y) or an operation like +(a, b)
   'nkGenericCall',        # a call with given type parameters
   'nkExplicitTypeListCall', # a call with given explicit typelist
@@ -125,6 +126,7 @@
   'nkIdentDefs',          # a definition like `a, b: typeDesc = expr`
                           # either typeDesc or expr may be nil; used in
                           # formal parameters, var statements, etc.
+  'nkVarTuple',           # a ``var (a, b) = expr`` construct
   'nkInfix',              # a call like (a + b)
   'nkPrefix',             # a call like !a
   'nkPostfix',            # something like a! (also used for visibility)
@@ -166,6 +168,7 @@
   # end of expressions
 
   'nkAsgn',               # a = b
+  'nkFastAsgn',           # internal node for a fast ``a = b`` (no string copy) 
   'nkDefaultTypeParam',   # `ident = typeDesc` in generic parameters
   'nkGenericParams',      # generic parameters
   'nkFormalParams',       # formal parameters

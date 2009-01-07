@@ -31,7 +31,7 @@ proc main() =
 
     n = newNode(i, nil, newNode(i + 10000, nil, nil))
     inc(i)
-  #new(p)
+  new(p)
 
   write(stdout, "Simple tree node allocation worked!\n")
   i = 0

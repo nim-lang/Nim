@@ -18,8 +18,7 @@ compatible to the original implementation as one would like.
 
 Even though Nimrod's |rst| parser does not parse all constructs, it is pretty
 usable. The missing features can easily be circumvented. An indication of this
-fact is that Nimrod's 
-*whole* documentation itself (including this document) is
+fact is that Nimrod's *whole* documentation itself (including this document) is
 processed by Nimrod's |rst| parser. (Which is an order of magnitude faster than
 Docutils' parser.)
 

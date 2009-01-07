@@ -31,10 +31,10 @@ const
   //cog.outl('VersionMinor = %s;' % ver[1])
   //cog.outl('VersionPatch = %s;' % ver[2])
   //]]]
-  VersionAsString = '0.7.2';
+  VersionAsString = '0.7.4';
   VersionMajor = 0;
   VersionMinor = 7;
-  VersionPatch = 2;
+  VersionPatch = 4;
   //[[[[end]]]]
 
 implementation

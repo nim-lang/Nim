@@ -31,6 +31,40 @@
 #  cog.out(toEnum(key, val))
 #]]]
 type
+  TNimrodNodeKind* = enum
+    nnkNone, nnkEmpty, nnkIdent, nnkSym, 
+    nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
+    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
+    nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
+    nnkTripleStrLit, nnkMetaNode, nnkNilLit, nnkDotCall, 
+    nnkCommand, nnkCall, nnkGenericCall, nnkExplicitTypeListCall, 
+    nnkExprEqExpr, nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, 
+    nnkInfix, nnkPrefix, nnkPostfix, nnkPar, 
+    nnkCurly, nnkBracket, nnkBracketExpr, nnkPragmaExpr, 
+    nnkRange, nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, 
+    nnkIfExpr, nnkElifExpr, nnkElseExpr, nnkLambda, 
+    nnkAccQuoted, nnkHeaderQuoted, nnkTableConstr, nnkQualified, 
+    nnkHiddenStdConv, nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, 
+    nnkCast, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, 
+    nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, 
+    nnkChckRange, nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, 
+    nnkAsgn, nnkFastAsgn, nnkDefaultTypeParam, nnkGenericParams, 
+    nnkFormalParams, nnkOfInherit, nnkModule, nnkProcDef, 
+    nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, 
+    nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, 
+    nnkMacroStmt, nnkAsmStmt, nnkPragma, nnkIfStmt, 
+    nnkWhenStmt, nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
+    nnkVarSection, nnkConstSection, nnkConstDef, nnkTypeSection, 
+    nnkTypeDef, nnkYieldStmt, nnkTryStmt, nnkFinally, 
+    nnkRaiseStmt, nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, 
+    nnkBlockStmt, nnkDiscardStmt, nnkStmtList, nnkImportStmt, 
+    nnkFromStmt, nnkImportAs, nnkIncludeStmt, nnkAccessStmt, 
+    nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, nnkStmtListType, 
+    nnkBlockType, nnkVm, nnkTypeOfExpr, nnkObjectTy, 
+    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
+    nnkRefTy, nnkPtrTy, nnkVarTy, nnkProcTy, 
+    nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
+  TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty, 
     ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
@@ -49,40 +83,6 @@ type
     nskMacro, nskTemplate, nskField, nskEnumField, 
     nskForVar, nskModule, nskLabel, nskStub
   TNimSymKinds* = set[TNimrodSymKind]
-  TNimrodNodeKind* = enum
-    nnkNone, nnkEmpty, nnkIdent, nnkSym, 
-    nnkType, nnkCharLit, nnkIntLit, nnkInt8Lit, 
-    nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
-    nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
-    nnkTripleStrLit, nnkMetaNode, nnkNilLit, nnkDotCall, 
-    nnkCommand, nnkCall, nnkGenericCall, nnkExplicitTypeListCall, 
-    nnkExprEqExpr, nnkExprColonExpr, nnkIdentDefs, nnkInfix, 
-    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, 
-    nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
-    nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
-    nnkElifExpr, nnkElseExpr, nnkLambda, nnkAccQuoted, 
-    nnkHeaderQuoted, nnkTableConstr, nnkQualified, nnkHiddenStdConv, 
-    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, 
-    nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
-    nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
-    nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, nnkAsgn, 
-    nnkDefaultTypeParam, nnkGenericParams, nnkFormalParams, nnkOfInherit, 
-    nnkModule, nnkProcDef, nnkConverterDef, nnkMacroDef, 
-    nnkTemplateDef, nnkIteratorDef, nnkOfBranch, nnkElifBranch, 
-    nnkExceptBranch, nnkElse, nnkMacroStmt, nnkAsmStmt, 
-    nnkPragma, nnkIfStmt, nnkWhenStmt, nnkForStmt, 
-    nnkWhileStmt, nnkCaseStmt, nnkVarSection, nnkConstSection, 
-    nnkConstDef, nnkTypeSection, nnkTypeDef, nnkYieldStmt, 
-    nnkTryStmt, nnkFinally, nnkRaiseStmt, nnkReturnStmt, 
-    nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkDiscardStmt, 
-    nnkStmtList, nnkImportStmt, nnkFromStmt, nnkImportAs, 
-    nnkIncludeStmt, nnkAccessStmt, nnkCommentStmt, nnkStmtListExpr, 
-    nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkVm, 
-    nnkTypeOfExpr, nnkObjectTy, nnkTupleTy, nnkRecList, 
-    nnkRecCase, nnkRecWhen, nnkRefTy, nnkPtrTy, 
-    nnkVarTy, nnkProcTy, nnkEnumTy, nnkEnumFieldDef, 
-    nnkReturnToken
-  TNimNodeKinds* = set[TNimrodNodeKind]
 #[[[end]]]
 
 type

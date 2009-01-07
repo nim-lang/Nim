@@ -421,18 +421,4 @@ struct NimException {
 };
 #endif
 
-#if 0
-typedef struct TStringDesc {
-  NI len;
-  NI space;
-  NIM_CHAR data[1]; /* SEQ_DECL_SIZE]; */
-} TStringDesc;
-
-typedef struct {
-  NI len, space;
-} TGenericSeq;
-
-typedef TGenericSeq* PGenericSeq;
-#endif
-
 #endif

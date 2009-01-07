@@ -896,7 +896,8 @@ begin
       or (skipGeneric(y.typ).kind in [tyRef, tyPtr, tyVar])
 end;
 
-procedure genAsgnAux(var p: TProc; x, y: PNode; var r: TCompRes);
+procedure genAsgnAux(var p: TProc; x, y: PNode; var r: TCompRes;
+                     noCopyNeeded: bool);
 var
   a, b: TCompRes;
 begin
@@ -906,7 +907,7 @@ begin
     etyObject: begin
       if a.com <> nil then appf(r.com, '$1;$n', [a.com]);
       if b.com <> nil then appf(r.com, '$1;$n', [b.com]);
-      if needsNoCopy(y) then
+      if needsNoCopy(y) or noCopyNeeded then
         appf(r.com, '$1 = $2;$n', [a.res, b.res])
       else begin
         useMagic(p, 'NimCopy');
@@ -930,7 +931,13 @@ end;
 procedure genAsgn(var p: TProc; n: PNode; var r: TCompRes);
 begin
   genLineDir(p, n, r);
-  genAsgnAux(p, n.sons[0], n.sons[1], r);
+  genAsgnAux(p, n.sons[0], n.sons[1], r, false);
+end;
+
+procedure genFastAsgn(var p: TProc; n: PNode; var r: TCompRes);
+begin
+  genLineDir(p, n, r);
+  genAsgnAux(p, n.sons[0], n.sons[1], r, true);
 end;
 
 procedure genSwap(var p: TProc; n: PNode; var r: TCompRes);
@@ -1692,6 +1699,7 @@ begin
     nkReturnStmt:  genReturnStmt(p, n, r);
     nkBreakStmt:   genBreakStmt(p, n, r);
     nkAsgn:        genAsgn(p, n, r);
+    nkFastAsgn:    genFastAsgn(p, n, r);
     nkDiscardStmt: begin
       genLineDir(p, n, r);
       gen(p, n.sons[0], r);

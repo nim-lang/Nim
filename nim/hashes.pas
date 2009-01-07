@@ -61,7 +61,7 @@ begin
   result := x -{%} 1;
   // complicated, to make it a nop if sizeof(int) == 4,
   // because shifting more than 31 bits is undefined in C
-  result := result or (result shr ((sizeof(int)-4)* 32));
+  result := result or (result shr ((sizeof(int)-4)* 8));
   result := result or (result shr 16);
   result := result or (result shr 8);
   result := result or (result shr 4);

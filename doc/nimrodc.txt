@@ -12,7 +12,7 @@ Introduction
 
 This document describes the usage of the *Nimrod compiler*
 on the different supported platforms. It is not a definition of the Nimrod
-programming system (therefore is the Nimrod manual).
+programming language (therefore is the manual).
 
 Nimrod is free software; it is licensed under the
 `GNU General Public License <gpl.html>`_.
@@ -41,7 +41,7 @@ looks for it in the following directories (in this order):
 2. ``$nimrod/config/nimrod.cfg`` (UNIX, Windows)
 3. ``/etc/nimrod.cfg`` (UNIX)
 
-The search stops as soon as a configuration file has been found. The reading 
+The search stops as soon as a configuration file has been found. The reading
 of ``nimrod.cfg`` can be suppressed by the ``--skip_cfg`` command line option.
 Configuration settings can be overwritten in a project specific
 configuration file that is read automatically. This specific file has to
@@ -54,20 +54,12 @@ Command line settings have priority over configuration file settings.
 Nimrod's directory structure
 ----------------------------
 The generated files that Nimrod produces all go into a subdirectory called
-``nimcache`` in your project directory. This makes it easy to delete all 
+``nimcache`` in your project directory. This makes it easy to delete all
 generated files.
 
 However, the generated C code is not platform independant. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
-
-The library lies in ``lib``. Directly in the library directory are essential
-Nimrod modules like the ``system`` and ``os`` modules. Under ``lib/base``
-are additional specialized libraries or interfaces to foreign libraries which
-are included in the standard distribution. The ``lib/extra`` directory is
-initially empty. Third party libraries should go there. In the default
-configuration the compiler always searches for libraries in ``lib``,
-``lib/base`` and ``lib/extra``.
 
 
 Additional Features
@@ -86,8 +78,8 @@ available.
 Importc Pragma
 ~~~~~~~~~~~~~~
 The `importc`:idx: pragma provides a means to import a type, a variable, or a
-procedure from C. The optional argument is a string containing the C 
-identifier. If the argument is missing, the C name is the Nimrod 
+procedure from C. The optional argument is a string containing the C
+identifier. If the argument is missing, the C name is the Nimrod
 identifier *exactly as spelled*:
 
 .. code-block::
@@ -97,8 +89,8 @@ identifier *exactly as spelled*:
 Exportc Pragma
 ~~~~~~~~~~~~~~
 The `exportc`:idx: pragma provides a means to export a type, a variable, or a
-procedure to C. The optional argument is a string containing the C 
-identifier. If the argument is missing, the C name is the Nimrod 
+procedure to C. The optional argument is a string containing the C
+identifier. If the argument is missing, the C name is the Nimrod
 identifier *exactly as spelled*:
 
 .. code-block:: Nimrod
@@ -109,7 +101,7 @@ Dynlib Pragma
 ~~~~~~~~~~~~~
 With the `dynlib`:idx: pragma a procedure or a variable can be imported from
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
-non-optional argument has to be the name of the dynamic library: 
+non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nimrod
   proc gtk_image_new(): PGtkWidget {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
@@ -128,8 +120,8 @@ the C code. Thus it makes the following possible, for example:
 
 .. code-block:: Nimrod
   var
-    EOF {.importc: "EOF", no_decl.}: cint # pretend EOF was a variable, as
-                                          # Nimrod does not know its value
+    EACCES {.importc, no_decl.}: cint # pretend EACCES was a variable, as
+                                      # Nimrod does not know its value
 
 However, the ``header`` pragma is often the better alternative.
 
@@ -162,14 +154,6 @@ strings automatically:
   proc printf(formatstr: cstring) {.nodecl, varargs.}
 
   printf("hallo %s", "world") # "world" will be passed as C string
-
-
-No_static Pragma
-~~~~~~~~~~~~~~~~
-The `no_static`:idx: pragma can be applied to almost any symbol and specifies
-that it shall not be declared ``static`` in the generated C code. Note that
-symbols in the interface part of a module never get declared ``static``, so
-only in very special cases this pragma is necessary.
 
 
 Line_dir Option
@@ -216,14 +200,14 @@ The `register`:idx: pragma is for variables only. It declares the variable as
 in a hardware register for faster access. C compilers usually ignore this
 though and for good reason: Often they do a better job without it anyway.
 
-In highly specific cases (a dispatch loop of an bytecode interpreter for 
+In highly specific cases (a dispatch loop of an bytecode interpreter for
 example) it may provide benefits, though.
 
 
 Acyclic Pragma
 ~~~~~~~~~~~~~~
 The `acyclic`:idx: pragma can be used for object types to mark them as acyclic
-even though they seem to be cyclic. This is an **optimization** for the garbage 
+even though they seem to be cyclic. This is an **optimization** for the garbage
 collector to not consider objects of this type as part of a cycle::
 
   type
@@ -231,14 +215,30 @@ collector to not consider objects of this type as part of a cycle::
     TNode {.acyclic, final.} = object
       left, right: PNode
       data: string
-      
+
 In the example a tree structure is declared with the ``TNode`` type. Note that
-the type definition is recursive thus the GC has to assume that objects of 
-this type may form a cyclic graph. The ``acyclic`` pragma passes the 
+the type definition is recursive thus the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
 information that this cannot happen to the GC. If the programmer uses the
 ``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
 memory, but nothing worse happens.
 
+
+Dead_code_elim Pragma
+~~~~~~~~~~~~~~~~~~~~~
+The `dead_code_elim`:idx: pragma only applies to whole modules: It tells the
+compiler to active (or deactivate) dead code elimination for the module the
+pragma appers in.
+
+The ``--dead_code_elim:on`` command line switch has the same effect as marking
+any module with ``{.dead_code_elim:on}``. However, for some modules such as
+the GTK wrapper it makes sense to *always* turn on dead code elimination -
+no matter if it is globally active or not.
+
+Example:
+
+.. code-block:: nimrod
+  {.dead_code_elim: on.}
 
 
 Disabling certain messages
@@ -280,8 +280,8 @@ However, sometimes one has to optimize. Do it in the following order:
 
 This section can only help you with the last item. Note that rewriting parts
 of your program in C is *never* necessary to speed up your program, because
-everything that can be done in C can be done in Nimrod. Rewriting parts in
-assembler *might*.
+everything that can be done in C can be done in Nimrod.
+
 
 Optimizing string handling
 --------------------------

@@ -22,12 +22,12 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
 
 proc reprStrAux(result: var string, s: string) =
   if cast[pointer](s) == nil:
-    add result "nil"
+    add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
   for c in items(s):
     case c
-    of '"': add result "\\\""
+    of '"': add result, "\\\""
     of '\\': add result, "\\\\" # BUGFIX: forgotten
     of '\10': add result, "\\10\"\n\"" # " \n " # better readability
     of '\128' .. '\255', '\0'..'\9', '\11'..'\31':

@@ -10,8 +10,7 @@ Bugs
 ----
 
 - BUG: addr/deref may not work when interpreting
-- BUG: the parser allows empty statements/object case branches
-- BUG: the parser allows to omit commas
+- BUG: the parser allows empty object case branches
 - BUG: when optmizing cgen.c with Visual C++, GCC, LLVM (O3), it breaks.
 - BUG: ``-cc:bcc`` command line option does not error
 - BUG: symbol files still do not work
@@ -22,12 +21,16 @@ Bugs
 High priority
 -------------
 
-- documentation: var types, ``[]`` overloading, ``cast`` and type convertions,
-  ``if`` expresssions, (anonymous) procs
+- implement tuple unpacking
+- implement closures for the C code generator
+- implement a better memory manager
+- implement stack walking via assembler for horribly advanced optimizers
+
+- documentation: ``[]`` overloading, type convertions,
+  anonymous procs, ``len(s) == s.len``, type converters
 - implement two-phase lookup for generics (this is hard...): This is useful
   for macros too! Alternative: Explicit early name binding. Both are hard to
   implement
-- implement closures for the C code generator
 - get rid of ``nkHiddenStdConv`` in several places: this mechanism caused more
   bugs than it ever solved!
 
@@ -35,7 +38,6 @@ High priority
 Library
 -------
 - xml, html, url, fastcgi: implement from scratch
-- unicode library
 - socket library (does SDL for us?)
 - osproc for Windows
 - bignums
@@ -47,7 +49,6 @@ Low priority
 
 - use `` notation for identifier concatenation?
 - Visual C++: emit ``default: __assume(0);`` for optimization
-- ``nkTempAsgn``-node as optimization
 - macros: ``typecheck`` pragma; this is really a good idea! This allows
   transformations based on types!
 - make callconv a set
@@ -326,7 +327,7 @@ Changelog
 - BUGFIX: ``genTypeSection`` uses ``isPureObject`` now
 - BUGFIX: ``GetUniqueType`` was wrong
 - BUGFIX: count references from untraced heap to traced heap!
-- BUGFIX: fixed owner handling bug; only accessible in semantic checking phase  
+- BUGFIX: fixed owner handling bug; only accessible in semantic checking phase
 - BUGFIX: ``ParamTypesMatch`` generics resulting in openarray now generate the
   nkHiddenStdConv tree
 - BUGFIX: dynamic libraries are reused again -> much smaller C code is produced
@@ -342,13 +343,38 @@ Changelog
           correctly
 0.7.2
 - small performance improvements for the RST parser
+0.7.3
+- (assembler code for GCC, not activated)
+- BUGFIX: docgen: take care of nkCommentStmt in sections
+- docgen: only documentation comments are rendered
+- BUGFIX: rst: getFieldValue(): invalid assertion
+- BUGFIX: rst: parseFields(): more than one field is now correctly parsed
+- BUGFIX: docgen: renderImage(): strip the arguments
+- BUGFIX: ``\`` is allowed for operators like the spec says
+- system: added ``hostOS`` and ``hostCPU`` magics
+- system: echo now accepts multiple arguments
+- added ``nkFastAsgn`` optimization
+- BUGFIX: in rare cases, the index check has been optimized away, even though
+  it would have been necessary
+- added dead code elimination
+- COMP: renamed ``in_Operator`` to ``contains``
+- COMP: renamed ``quoteIfSpaceExists`` to ``quoteIfContainsWhite``
+- added ``EnumToStr`` magic
+0.7.4
+- the parser is now much more picky
+- for the closing parenthesis ``SAD`` token may occur
+- the parser is now responsible for popping from the indendation stack
+- constant evaluation in ``const`` sections
+- removed hintConvToBaseNotNeeded: It is often intended for overloading 
+  resolutions
+- ``macros`` are no longer part of the ``system`` module, to use macros you 
+  have to import the ``macros`` module
 
 
 For the next versions
 =====================
 
 - multi-processor support
-- tuple assignment
 - IDE
 - better support for GDB?
 - support for generation of dynamic libraries
@@ -364,7 +390,6 @@ Further ideas/nice to have
 - CLR code generator; better use XYZ? --> Version 1.2?
 - provide an interactive shell: if the user wants his commands
   to be executed, the command should end with #
-- add the built-in 'finalize'
 - implement packed arrays (bit arrays)/ packed records
 - implement tables (implement as library? - no! Builtin because of
   constructor syntax is nice to have)

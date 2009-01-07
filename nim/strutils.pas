@@ -75,13 +75,14 @@ const
 function strip(const s: string; const chars: TCharSet = WhiteSpace): string;
 function allCharsInSet(const s: string; const theSet: TCharSet): bool;
 
-function quoteIfSpaceExists(const s: string): string;
+function quoteIfContainsWhite(const s: string): string;
 
 implementation
 
-function quoteIfSpaceExists(const s: string): string;
+function quoteIfContainsWhite(const s: string): string;
 begin
-  if (findSubStr(' ', s) >= strStart) and (s[strStart] <> '"') then
+  if ((findSubStr(' ', s) >= strStart)
+  or (findSubStr(#9, s) >= strStart)) and (s[strStart] <> '"') then
     result := '"' +{&} s +{&} '"'
   else
     result := s

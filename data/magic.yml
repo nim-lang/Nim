@@ -140,6 +140,7 @@
 'FloatToStr',
 'CStrToStr',
 'StrToStr',
+'EnumToStr',
 
 # special ones:
 'And',
@@ -209,6 +210,8 @@
 'NimrodMinor',
 'NimrodPatch',
 'CpuEndian',
+'HostOS',
+'HostCPU',
 'NaN',
 'Inf',
 'NegInf',

@@ -80,7 +80,7 @@ proc parseCmdLine(c: var TConfigData) =
 proc walkDirRecursively(s: var seq[string], root, ext: string) =
   for k, f in walkDir(root):
     case k
-    of pcFile, pcLinkToFile: 
+    of pcFile, pcLinkToFile:
       if cmpIgnoreCase(ext, extractFileExt(f)) == 0:
         add(s, f)
     of pcDirectory: walkDirRecursively(s, f, ext)
@@ -122,21 +122,21 @@ proc parseIniFile(c: var TConfigData) =
           of "authors": c.authors = v
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil
-        of "links": add(c.links, (key: k.key, val: v))
-        of "tabs": add(c.tabs, (key: k.key, val: v))
+        of "links": add(c.links, (k.key, v))
+        of "tabs": add(c.tabs, (k.key, v))
         of "ticker": c.ticker = v
-        of "documentation": 
+        of "documentation":
           case normalize(k.key)
-          of "doc": addFiles(c.doc, "doc", "txt" splitSeq(v, {';'}))
-          of "srcdoc": addFiles(c.srcdoc, "lib", "nim", splitSeq(v, {';'}))
-          of "webdoc": addFiles(c.webdoc, "lib", "nim", splitSeq(v, {';'}))
+          of "doc": addFiles(c.doc, "doc", ".txt", splitSeq(v, {';'}))
+          of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", splitSeq(v, {';'}))
+          of "webdoc": addFiles(c.webdoc, "lib", ".nim", splitSeq(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
         else: nil
 
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
     close(p)
-    if c.projectName.len == 0: 
+    if c.projectName.len == 0:
       c.projectName = changeFileExt(extractFilename(c.infile), "")
     if c.outdir.len == 0:
       c.outdir = extractDir(c.infile)
@@ -145,33 +145,33 @@ proc parseIniFile(c: var TConfigData) =
 
 # ------------------- main ----------------------------------------------------
 
-proc Exec(cmd: string) = 
+proc Exec(cmd: string) =
   echo(cmd)
   if os.executeShellCommand(cmd) != 0: quit("external program failed")
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    Exec("nimrod rst2html $1 -o:$2 --index=$3/theindex $4" % 
-      [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"), 
-       destpath, d])
-  for d in items(c.srcdoc):
-    Exec("nimrod doc $1 -o:$2 --index=$3/theindex $4" % 
+    Exec("nimrod rst2html $1 -o:$2 --index=$3/theindex $4" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
        destpath, d])
-  Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" % 
+  for d in items(c.srcdoc):
+    Exec("nimrod doc $1 -o:$2 --index=$3/theindex $4" %
+      [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
+       destpath, d])
+  Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" %
        [c.nimrodArgs, destPath])
 
-proc buildAddDoc(c: var TConfigData, destPath: string) = 
+proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
-    Exec("nimrod doc $1 -o:$2 $3" % 
+    Exec("nimrod doc $1 -o:$2 $3" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"), d])
 
-proc main(c: var TConfigData) = 
+proc main(c: var TConfigData) =
   const
     cmd = "nimrod rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
-  if c.ticker.len > 0: 
+  if c.ticker.len > 0:
     Exec(cmd % [c.nimrodArgs, c.ticker])
     var temp = "web" / changeFileExt(c.ticker, "temp")
     c.ticker = readFile(temp)
@@ -191,7 +191,7 @@ proc main(c: var TConfigData) =
     else:
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)
-  
+
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDoc(c, "doc")

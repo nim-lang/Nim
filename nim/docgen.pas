@@ -218,8 +218,6 @@ begin
 end;
 
 function nextSplitPoint(const s: string; start: int): int;
-var
-  i: int;
 begin
   result := start;
   while result < length(s)+strStart do begin
@@ -227,7 +225,7 @@ begin
       '_': exit;
       'a'..'z': begin
         if result+1 < length(s)+strStart then
-          if s[result+1] in ['A'..'Z'] then exit;      
+          if s[result+1] in ['A'..'Z'] then exit;
       end;
       else begin end;
     end;
@@ -393,7 +391,8 @@ begin
   fillChar(r, sizeof(r), 0);
 {@emit}
   comm := genRecComment(d, n); // call this here for the side-effect!
-  initTokRender(r, n, {@set}[renderNoPragmas, renderNoBody]);
+  initTokRender(r, n, {@set}[renderNoPragmas, renderNoBody, renderNoComments,
+                             renderDocComments]);
   while true do begin
     getNextTok(r, kind, literal);
     case kind of
@@ -579,7 +578,7 @@ begin
     end;
     rnHyperlink: begin
       result := ropef('`$1 <$2>`_', [renderRstToRst(d, n.sons[0]),
-                                          renderRstToRst(d, n.sons[1])]);
+                                     renderRstToRst(d, n.sons[1])]);
     end;
     rnGeneralRole: begin
       result := renderRstToRst(d, n.sons[0]);
@@ -661,21 +660,26 @@ begin
     result := ropef('<ul class="simple">$1</ul>', [result]);
 end;
 
+function fieldAux(const s: string): PRope;
+begin
+  result := toRope(strip(s))
+end;
+
 function renderImage(d: PDoc; n: PRstNode): PRope;
 var
   s: string;
 begin
   result := ropef('<img src="$1"', [toRope(getArgument(n))]);
   s := getFieldValue(n, 'height');
-  if s <> '' then appf(result, ' height="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' height="$1"', [fieldAux(s)]);
   s := getFieldValue(n, 'width');
-  if s <> '' then appf(result, ' width="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' width="$1"', [fieldAux(s)]);
   s := getFieldValue(n, 'scale');
-  if s <> '' then appf(result, ' scale="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' scale="$1"', [fieldAux(s)]);
   s := getFieldValue(n, 'alt');
-  if s <> '' then appf(result, ' alt="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' alt="$1"', [fieldAux(s)]);
   s := getFieldValue(n, 'align');
-  if s <> '' then appf(result, ' align="$1"', [toRope(s)]);
+  if s <> '' then appf(result, ' align="$1"', [fieldAux(s)]);
   app(result, ' />');
   if rsonsLen(n) >= 3 then app(result, renderRstToHtml(d, n.sons[2]))
 end;
@@ -863,15 +867,18 @@ begin
     nkConverterDef: genItem(d, n, n.sons[namePos], skConverter);
     nkVarSection: begin
       for i := 0 to sonsLen(n)-1 do
-        genItem(d, n.sons[i], n.sons[i].sons[0], skVar);
+        if n.sons[i].kind <> nkCommentStmt then
+          genItem(d, n.sons[i], n.sons[i].sons[0], skVar);
     end;
     nkConstSection: begin
       for i := 0 to sonsLen(n)-1 do
-        genItem(d, n.sons[i], n.sons[i].sons[0], skConst);
+        if n.sons[i].kind <> nkCommentStmt then
+          genItem(d, n.sons[i], n.sons[i].sons[0], skConst);
     end;
     nkTypeSection: begin
       for i := 0 to sonsLen(n)-1 do
-        genItem(d, n.sons[i], n.sons[i].sons[0], skType);
+        if n.sons[i].kind <> nkCommentStmt then
+          genItem(d, n.sons[i], n.sons[i].sons[0], skType);
     end;
     nkStmtList: begin
       for i := 0 to sonsLen(n)-1 do generateDoc(d, n.sons[i]);

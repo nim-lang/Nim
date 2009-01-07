@@ -276,8 +276,8 @@ else:
 
 proc getDateStr(): string =
   var ti = getLocalTime(getTime())
-  result = $ti.year & "-" & intToStr(ord(ti.month)+1, 2) &
-    "-" & intToStr(ti.monthDay, 2)
+  result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
+    '-' & intToStr(ti.monthDay, 2)
 
 proc getClockStr(): string =
   var ti = getLocalTime(getTime())

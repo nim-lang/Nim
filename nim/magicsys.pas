@@ -96,9 +96,10 @@ begin
   result := StrTableGet(compilerprocs, ident);
   if result = nil then begin
     result := StrTableGet(rodCompilerProcs, ident);
-    if result = nil then rawMessage(errSystemNeeds, name);
-    strTableAdd(compilerprocs, result);
-    if result.kind = skStub then loadStub(result);
+    if result <> nil then begin 
+      strTableAdd(compilerprocs, result);
+      if result.kind = skStub then loadStub(result);
+    end;
     // A bit hacky that this code is needed here, but it is the easiest 
     // solution in order to avoid special cases for sfCompilerProc in the
     // rodgen module. Another solution would be to always recompile the system

@@ -4,9 +4,19 @@ Short description of Nimrod's modules
 ==============  ==========================================================
 Module          Description
 ==============  ==========================================================
+nimrod          main module: parses the command line and calls
+                ```main.MainCommand``
+main            implements the top-level command dispatching
 lexbase         buffer handling of the lexical analyser
 scanner         lexical analyser
+pnimsyn         Nimrod's parser
+rnimsyn         Nimrod code renderer (AST back to its textual form)
 
+paslex          lexer for Pascal
+pasparse        parser for Pascal; Pascal's advanced OO features are not
+                supported
+
+options         contains global and local compiler options
 ast             type definitions of the abstract syntax tree (AST) and
                 node constructors
 astalgo         algorithms for containers of AST nodes; converting the
@@ -21,17 +31,20 @@ sigmatch        contains the matching algorithm that is used for proc
 semexprs        contains the semantic checking phase for expressions
 semstmts        contains the semantic checking phase for statements
 semtypes        contains the semantic checking phase for types
+semfold         contains code to deal with constant folding
+evals           contains an AST interpreter for compile time evaluation
+pragmas         semantic checking of pragmas
 
 idents          implements a general mapping from identifiers to an internal
                 representation (``PIdent``) that is used, so that a simple
                 id-comparison suffices to say whether two Nimrod identifiers
                 are equivalent
-
-ropes           implements long strings using represented as trees for
+ropes           implements long strings represented as trees for
                 lazy evaluation; used mainly by the code generators
 
-ccgobj          contains type definitions neeeded for C code generation
-                and some helpers
+transf          transformations on the AST that need to be done before
+                code generation
+cgen            main file of the C code generator
 ccgutils        contains helpers for the C code generator
 ccgtypes        the generator for C types
 ccgstmts        the generator for statements

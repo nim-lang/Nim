@@ -51,7 +51,7 @@ begin
   else begin
     result.cmd := '';
     for i := 1 to ParamCount() do
-      result.cmd := result.cmd +{&} quoteIfSpaceExists(paramStr(i)) +{&} ' ';
+      result.cmd := result.cmd +{&} quoteIfContainsWhite(paramStr(i)) +{&} ' ';
   {@ignore}
     result.cmd := result.cmd + #0;
   {@emit}

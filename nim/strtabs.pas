@@ -8,8 +8,7 @@
 //
 unit strtabs;
 
-// A configuration file parser; the Nimrod version of this file
-// will become part of the standard library.
+// String tables.
 
 interface
 
