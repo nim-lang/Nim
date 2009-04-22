@@ -22,6 +22,8 @@ type
     menu: PGtkMenuBar
     notebook: PGtkNotebook
     tabname: int               # used for generating tab names
+    tabs: seq[PTab]
+    currTab: int
   PEditor = ptr TEditor
 
 proc on_window_destroy(obj: PGtkObject, event: PGdkEvent, 
@@ -46,9 +48,50 @@ proc getTabIndex(e: PEditor, tab: PTab): int =
     if tab.hbox == v: return i
     inc(i)
   
+proc getActiveTab(e: PEditor): PTab = 
+  nil
+  
+type
+  TAnswer = enum
+    answerYes, answerNo, answerCancel
+  
+proc askWhetherToSave(e: PEditor): TAnswer = 
+  var dialog = gtk_dialog_new_with_buttons("Should the changes be saved?", 
+    e.window, GTK_DIALOG_MODAL, GTK_STOCK_SAVE, 1,
+                                "gtk-discard", 2,
+                                GTK_STOCK_CANCEL, 3, nil)
+  result = TAnswer(gtk_dialog_run(dialog)+1)
+  gtk_widget_destroy(dialog)
+
+proc saveTab(tab: PTab) = 
+  if tab.untitled: 
+    tab.filename = ChooseFileToSave(tab.e.window, getRoot(tab))
+    tab.untitled = false
+  XXX
+  
 proc OnCloseTab(button: PGtkButton, tab: PTab) {.cdecl.} = 
-  var idx = getTabIndex(tab.e, tab)
-  if idx >= 0: gtk_notebook_remove_page(tab.e.notebook, idx)
+  var idx = -1
+  for i in 0..high(tab.e.tabs): 
+    if tab.e.tabs[i] == tab: 
+      idx = i
+      break
+  if idx >= 0: 
+    if gtk_text_buffer_get_modified(gtk_text_view_get_buffer(tab.textView)):
+      case askWhetherToSave(tab.e)
+      of answerCancel: return
+      of answerYes: saveTab(tab)
+      of answerNo: nil
+    
+    gtk_notebook_remove_page(tab.e.notebook, idx)
+    if idx < high(tab.e.tabs):
+      for i in idx..high(tab.e.tabs)-1:  
+        tab.e.tabs[i] = tab.e.tabs[i+1]
+    else:
+      dec currTab
+    GC_unref(tab.filename)
+    dealloc(tab)
+  #var idx = getTabIndex(tab.e, tab)
+  #if idx >= 0: gtk_notebook_remove_page(tab.e.notebook, idx)
 
 proc createTab(e: PEditor, filename: string, untitled: bool) = 
   var t = cast[PTab](alloc0(sizeof(TTab)))
@@ -78,7 +121,21 @@ proc createTab(e: PEditor, filename: string, untitled: bool) =
   gtk_widget_show(lab)
  
   var idx = gtk_notebook_append_page(e.notebook, scroll, t.hbox)
+  e.currTab = idx
+  add(e.tabs, t)
   gtk_notebook_set_current_page(e.notebook, idx)
+  
+
+proc on_open_menu_item_activate(menuItem: PGtkMenuItem, e: PEditor) {.cdecl.} =
+  var files = ChooseFilesToOpen(e.window, getRoot(getActiveTab(e)))
+  for f in items(files): createTab(e, f, untitled=false)
+
+proc on_save_menu_item_activate(menuItem: PGtkMenuItem, e: PEditor) {.cdecl.} =
+  var cp = gtk_notebook_get_current_page(e.notebook)
+  
+  
+proc on_save_as_menu_item_activate(menuItem: PGtkMenuItem, e: PEditor) {.cdecl.} =
+  nil
 
 proc on_new_menu_item_activate(menuItem: PGtkMenuItem, e: PEditor) {.cdecl.} =
   inc(e.tabname)
@@ -91,6 +148,8 @@ proc main(e: PEditor) =
   e.window = GTK_WINDOW(glade_xml_get_widget(builder, "window"))
   e.statusbar = GTK_STATUSBAR(glade_xml_get_widget(builder, "statusbar"))
   e.notebook = GTK_NOTEBOOK(glade_xml_get_widget(builder, "notebook"))
+  e.tabs = @[]
+  e.currTab = -1
   setHomogeneous(e.notebook^, 1)
 
   # connect the signal handlers:
@@ -107,6 +166,18 @@ proc main(e: PEditor) =
   var quitItem = GTK_MENU_ITEM(glade_xml_get_widget(builder, "quit_menu_item"))
   discard g_signal_connect(quitItem, "activate", 
                            G_CALLBACK(on_window_destroy), e)
+
+  var openItem = GTK_MENU_ITEM(glade_xml_get_widget(builder, "open_menu_item"))
+  discard g_signal_connect(openItem, "activate", 
+                           G_CALLBACK(on_open_menu_item_activate), e)
+  
+  var saveItem = GTK_MENU_ITEM(glade_xml_get_widget(builder, "save_menu_item")) 
+  discard g_signal_connect(saveItem, "activate", 
+                           G_CALLBACK(on_save_menu_item_activate), e)
+  
+  var saveAsItem = GTK_MENU_ITEM(glade_xml_get_widget(builder, "save_as_menu_item")) 
+  discard g_signal_connect(saveAsItem, "activate", 
+                           G_CALLBACK(on_save_as_menu_item_activate), e)
 
   gtk_window_set_default_icon_name(GTK_STOCK_EDIT)
   gtk_widget_show(e.window)

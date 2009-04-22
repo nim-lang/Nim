@@ -19,14 +19,14 @@ Options:
   --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF
   -x, --checks:on|off       code generation for all runtime checks ON|OFF
   --obj_checks:on|off       code generation for obj conversion checks ON|OFF
-  --field_checks:on|off     code generation for case record fields ON|OFF
+  --field_checks:on|off     code generation for case variant fields ON|OFF
   --range_checks:on|off     code generation for range checks ON|OFF
   --bound_checks:on|off     code generation for bound checks ON|OFF
   --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF
   -a, --assertions:on|off   code generation for assertions ON|OFF
   --dead_code_elim:on|off   whole program dead code elimination ON|OFF
   --opt:none|speed|size     optimize not at all or for speed|size
-  --app:console|gui|lib     generate a console|GUI application or a shared lib
+  --app:console|gui         generate a console|GUI application
   -r, --run                 run the compiled program with given arguments
   --advanced                show advanced command line switches
   -h, --help                show this help

@@ -1,11 +1,23 @@
 /*
 
             Nimrod's Runtime Library
-        (c) Copyright 2008 Andreas Rumpf
+        (c) Copyright 2009 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
 */
+
+/* compiler symbols:
+__BORLANDC__
+_MSC_VER
+__WATCOMC__
+__LCC__
+__GNUC__
+__DMC__
+__POCC__
+__TINYC__
+*/
+
 
 #ifndef NIMBASE_H
 #define NIMBASE_H
@@ -238,17 +250,6 @@ static N_INLINE(long int, lrintf)(float flt) {
 static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
 #  define INF (*(double*) nimInf)
 #endif */
-
-/* compiler symbols:
-__BORLANDC__
-_MSC_VER
-__WATCOMC__
-__LCC__
-__GNUC__
-__DMC__
-__POCC__
-__TINYC__
-*/
 
 /* C99 compiler? */
 #if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))

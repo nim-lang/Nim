@@ -228,7 +228,7 @@ procedure processDynLib(c: PContext; n: PNode; sym: PSym);
 var
   lib: PLib;
 begin
-  if sym = nil then
+  if (sym = nil) or (sym.kind = skModule) then
     POptionEntry(c.optionStack.tail).dynlib := getLib(c, libDynamic,
                                                       expectStrLit(c, n))
   else begin
@@ -553,13 +553,6 @@ begin
           wPassL: extccomp.addLinkOption(expectStrLit(c, it));
           wPassC: extccomp.addCompileOption(expectStrLit(c, it));
 
-          // fixupSystem not even documented:
-          wFixupSystem: begin
-            if c.module = magicSys.SystemModule then
-              magicsys.FinishSystem(magicsys.SystemModule.tab)
-            else
-              invalidPragma(it)
-          end;
           wBreakpoint: PragmaBreakpoint(c, it);
           wCheckpoint: PragmaCheckpoint(c, it);
 
@@ -585,7 +578,7 @@ begin
       processNote(c, n)
     end;
   end;
-  if sym <> nil then begin
+  if (sym <> nil) and (sym.kind <> skModule) then begin
     lib := POptionEntry(c.optionstack.tail).dynlib;
     if ([lfDynamicLib, lfHeader] * sym.loc.flags = []) and
          (sfImportc in sym.flags) and
@@ -625,7 +618,7 @@ begin
       wHints, wLinedir, wStacktrace, wLinetrace, wOptimization,
       wHint, wWarning, wError, wFatal, wDefine, wUndef,
       wCompile, wLink, wLinkSys, wPure,
-      wPush, wPop, wFixupSystem, wBreakpoint, wCheckpoint,
+      wPush, wPop, wBreakpoint, wCheckpoint,
       wPassL, wPassC, wDeadCodeElim]);
 end;
 

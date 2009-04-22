@@ -58,7 +58,10 @@ when defined(posix):
   proc nimLoadLibrary(path: string): TLibHandle =
     result = dlopen(path, RTLD_NOW)
     if result == nil:
-      raise newException(EInvalidLibrary, "could not load: " & path)
+      writeToStdErr("could not load: ")
+      writeToStdErr(path)
+      writeToStdErr("\n")
+      #raise newException(EInvalidLibrary, "could not load: " & path)
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)
@@ -84,7 +87,10 @@ elif defined(windows) or defined(dos):
   proc nimLoadLibrary(path: string): TLibHandle =
     result = cast[TLibHandle](winLoadLibrary(path))
     if result == nil:
-      raise newException(EInvalidLibrary, "could not load: " & path)
+      writeToStdErr("could not load: ")
+      writeToStdErr(path)
+      writeToStdErr("\n")
+      #raise newException(EInvalidLibrary, "could not load: " & path)
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = GetProcAddress(cast[THINSTANCE](lib), name)
@@ -118,7 +124,10 @@ elif defined(mac):
         NSDestroyObjectFileImage(img)
         result = TLibHandle(modul)
         if result == nil:
-          raise newException(EInvalidLibrary, "could not load: " & path)
+          writeToStdErr("could not load: ")
+          writeToStdErr(path)
+          writeToStdErr("\n")          
+          #raise newException(EInvalidLibrary, "could not load: " & path)
 
   proc nimGetProcAddr(lib: TLibHandle, cname: string): TProcAddr =
     var

@@ -33,7 +33,8 @@ Object Oriented Programming
 While Nimrod's support for object oriented programming (OOP) is minimalistic, 
 powerful OOP technics can be used. OOP is seen as *one* way to design a 
 program, not *the only* way. Often a procedural approach leads to simpler
-and more efficient code.
+and more efficient code. In particular, prefering aggregation over inheritance
+often yields to a better design.
 
 
 Objects
@@ -196,8 +197,8 @@ for any type:
   stdout.writeln("Hallo") # the same as write(stdout, "Hallo")
 
 If it gives you warm fuzzy feelings, you can even write ``1.`+`(2)`` instead of
-``1 + 2`` and claim that Nimrod is a pure object oriented language. (That 
-would not even be lying: *pure OO* has no meaning anyway. :-)
+``1 + 2`` and claim that Nimrod is a pure object oriented language. (But
+that's not true. :-)
 
 
 Properties
@@ -258,20 +259,24 @@ The example is silly, since a vector is better modelled by a tuple which
 already provides ``v[]`` access.
 
 
-Dynamic binding
----------------
-In Nimrod procedural types are used to implement dynamic binding. The following
-example also shows some more conventions: The ``self`` or ``this`` object 
-is named ``my`` (because it is shorter than the alternatives), each class 
-provides a constructor, etc.
+Dynamic dispatch
+----------------
+In Nimrod procedural types are used to implement dynamic dispatch. The
+following example also shows some more conventions: The ``self`` or ``this``
+object is named ``my`` (because it is shorter than the alternatives), each
+class provides a constructor, etc.
 
 .. code-block:: nimrod
   type
-    TFigure = object of TObject    # abstract base class:
-      draw: proc (my: var TFigure) # concrete classes implement this proc
+    TFigure = object of TObject     # abstract base class:
+      fDraw: proc (my: var TFigure) # concrete classes implement this proc
     
   proc init(f: var TFigure) = 
-    f.draw = nil
+    f.fDraw = nil
+  
+  proc draw(f: var TFigure) =
+    # ``draw`` dispatches dynamically:
+    f.fDraw(f)
   
   type
     TCircle = object of TFigure
@@ -282,7 +287,7 @@ provides a constructor, etc.
   proc init(my: var TCircle) = 
     init(TFigure(my)) # call base constructor
     my.radius = 5
-    my.draw = drawCircle
+    my.fdraw = drawCircle
 
   type
     TRectangle = object of TFigure
@@ -294,50 +299,7 @@ provides a constructor, etc.
     init(TFigure(my)) # call base constructor
     my.width = 5
     my.height = 10
-    my.draw = drawRectangle
-
-  # now use these classes:
-  var
-    r: TRectangle
-    c: TCircle
-  init(r)
-  init(c)
-  r.draw(r)
-  c.draw(c) 
-
-The last line shows the syntactical difference between static and dynamic 
-binding: The ``r.draw(r)`` dynamic call refers to ``r`` twice. This difference
-is not necessarily bad. But if you want to eliminate the somewhat redundant
-``r``, it can be done by using *closures*: 
-
-.. code-block:: nimrod
-  type
-    TFigure = object of TObject    # abstract base class:
-      draw: proc () {.closure.}    # concrete classes implement this proc
-    
-  proc init(f: var TFigure) = 
-    f.draw = nil
-  
-  type
-    TCircle = object of TFigure
-      radius: int
-  
-  proc init(me: var TCircle) = 
-    init(TFigure(me)) # call base constructor
-    me.radius = 5
-    me.draw = lambda () = 
-      echo("o " & $me.radius)
-
-  type
-    TRectangle = object of TFigure
-      width, height: int
-  
-  proc init(me: var TRectangle) = 
-    init(TFigure(me)) # call base constructor
-    me.width = 5
-    me.height = 10
-    me.draw = lambda () =
-      echo("[]")
+    my.fdraw = drawRectangle
 
   # now use these classes:
   var
@@ -348,10 +310,12 @@ is not necessarily bad. But if you want to eliminate the somewhat redundant
   r.draw()
   c.draw() 
 
-The example also introduces `lambda`:idx: expressions: A ``lambda`` expression
-defines a new proc with the ``closure`` calling convention on the fly.
+The code uses a ``draw`` procedure that is bound statically, but inside it
+the dynamic dispatch happens with the help of the ``fdraw`` field. This is
+slightly more inconvienent than in traditional OOP-languages, but has the
+advantage of being much more flexible (and somewhat faster). The above approach
+also allows some form *monkey patching* by modifying the ``fdraw`` field.
 
-`Version 0.7.4: Closures and lambda expressions are not implemented.`:red:
 
 
 Exceptions
@@ -432,7 +396,7 @@ is not executed (if an exception occurs).
 Generics
 ========
 
-`Version 0.7.4: Complex generic types like in the example do not work.`:red:
+`Version 0.7.6: Complex generic types like in the example do not work.`:red:
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types 
 with `type parameters`:idx:. They are most useful for efficient type safe
@@ -458,8 +422,8 @@ containers:
     else:
       var it = root
       while it != nil:
-        # compare the data items; uses the generic ``cmd`` proc that works for
-        # any type that has a ``==`` and ``<`` operator
+        # compare the data items; uses the generic ``cmd`` proc
+        # that works for any type that has a ``==`` and ``<`` operator
         var c = cmp(it.data, n.data) 
         if c < 0:
           if it.le == nil:
@@ -491,7 +455,7 @@ containers:
       
   var
     root: PBinaryTree[string] # instantiate a PBinaryTree with ``string``
-  add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and ``add``
+  add(root, newNode("hallo")) # instantiates ``newNode`` and ``add``
   add(root, "world")          # instantiates the second ``add`` proc
   for str in preorder(root):
     stdout.writeln(str)
@@ -567,6 +531,7 @@ Turning the ``log`` proc into a template solves this problem in an elegant way:
 The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
 ``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
 description*). These are no real types, they just help the compiler parsing.
+In later versions, real types will be supported too.
 
 The template body does not open a new scope. To open a new scope
 use a ``block`` statement:
@@ -585,6 +550,35 @@ use a ``block`` statement:
   
   declareInNewScope(b, int)
   b = 42  # does not work, `b` is unknown
+
+
+If there is a ``stmt`` parameter it should be the last in the template
+declaration. The reason is that statements can be passed to a template
+via a special ``:`` syntax:
+
+.. code-block:: nimrod
+
+  template withFile(f, filename, mode: expr, actions: stmt): stmt =
+    block:
+      var fn = filename
+      var f: TFile
+      if openFile(f, fn, mode):
+        try:
+          actions
+        finally:
+          closeFile(f)
+      else:
+        quit("cannot open: " & fn)
+      
+  withFile(txt, "ttempl3.txt", fmWrite):
+    txt.writeln("line 1")
+    txt.writeln("line 2")
+  
+In the example the two ``writeln`` statements are bound to the ``actions``
+parameter. The ``withFile`` template contains boilerplate code and helps to
+avoid a common bug: To forget to close the file. Note how the
+``var fn = filename`` statement ensures that ``filename`` is evaluated only
+once. 
 
 
 Macros
@@ -657,36 +651,6 @@ The macro call expands to:
   write(stdout, ": ")
   writeln(stdout, x)
 
-
-Lets return to the dynamic binding ``r.draw(r)`` notational "problem". Apart 
-from closures, there is another "solution": Define an infix ``!`` macro 
-operator which hides it: 
-
-.. code-block:: 
-
-  macro `!` (n: expr): expr = 
-    result = newNimNode(nnkCall, n)
-    var dot = newNimNode(nnkDotExpr, n)
-    dot.add(n[1])    # obj
-    if n[2].kind == nnkCall:
-      # transforms ``obj!method(arg1, arg2, ...)`` to
-      # ``(obj.method)(obj, arg1, arg2, ...)``
-      dot.add(n[2][0]) # method
-      result.add(dot)
-      result.add(n[1]) # obj
-      for i in 1..n[2].len-1:
-        result.add(n[2][i])
-    else:
-      # transforms ``obj!method`` to
-      # ``(obj.method)(obj)``
-      dot.add(n[2]) # method
-      result.add(dot)
-      result.add(n[1]) # obj
-  
-  r!draw(a, b, c) # will be transfomed into ``r.draw(r, a, b, c)``
-
-Great! 20 lines of complex code to safe a few keystrokes! Obviously, this is
-exactly you should not do! (But it makes a cool example.)
 
 
 Statement Macros

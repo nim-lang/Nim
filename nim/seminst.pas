@@ -58,10 +58,29 @@ begin
   end
 end;
 
+procedure genericToConcreteTypeKind(t: PType);
+var
+  body: PNode;
+begin
+  if (t.kind = tyGeneric) and (t.sym <> nil) then begin
+    body := t.sym.ast.sons[2];
+    case body.kind of
+      nkObjectTy: t.kind := tyObject;
+      nkTupleTy: t.kind := tyTuple;
+      nkRefTy: t.kind := tyRef;
+      nkPtrTy: t.kind := tyPtr;
+      nkVarTy: t.kind := tyVar;
+      nkProcTy: t.kind := tyProc;
+      else InternalError('genericToConcreteTypeKind');
+    end
+  end
+end;
+
 function instantiateType(c: PInstantiateClosure; typ: PType): PType;
 var
   i: int;
 begin
+  if typ = nil then begin result := nil; exit end;
   result := PType(idTableGet(c.typeMap, typ));
   if result <> nil then exit;
   //if typ.kind = tyOpenArray then
@@ -73,6 +92,7 @@ begin
       result.sons[i] := instantiateType(c, result.sons[i]);
     if result.n <> nil then
       result.n := instTypeNode(c, result.n);
+    genericToConcreteTypeKind(result);
   end
   else
     result := typ;
@@ -270,6 +290,20 @@ begin
   c.instantiator := instantiator;
   c.module := p.module;
   result := instantiateType(c, t);
+end;
+
+function newInstantiateClosure(p: PContext;
+          const instantiator: TLineInfo): PInstantiateClosure;
+begin
+  new(result);
+{@ignore}
+  fillChar(result^, sizeof(result^), 0);
+{@emit}
+  InitIdTable(result.typeMap);
+  InitIdTable(result.symMap);
+  result.fn := nil;
+  result.instantiator := instantiator;
+  result.module := p.module;
 end;
 
 function partialSpecialization(c: PContext; n: PNode; s: PSym): PNode;

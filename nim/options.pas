@@ -55,6 +55,7 @@ type
     cmdCompileToC,
     cmdCompileToCpp,
     cmdCompileToEcmaScript,
+    cmdCompileToLLVM,
     cmdInterpret,
     cmdPretty,
     cmdDoc,
@@ -207,7 +208,15 @@ begin
   if startsWith(dir, prefix) then begin
     result := ncopy(dir, length(prefix) + strStart); exit
   end;
-  result := dir
+  result := dir;
+end;
+
+function removeTrailingDirSep(const path: string): string;
+begin
+  if (length(path) > 0) and (path[length(path)+strStart-1] = dirSep) then
+    result := ncopy(path, strStart, length(path)+strStart-2)
+  else
+    result := path
 end;
 
 function toGeneratedFile(const path, ext: string): string;
@@ -215,7 +224,8 @@ var
   head, tail: string;
 begin
   splitPath(path, head, tail);
-  result := joinPath([projectPath, genSubDir, shortenDir(head +{&} dirSep), 
+  if length(head) > 0 then head := shortenDir(head +{&} dirSep);
+  result := joinPath([projectPath, genSubDir, head, 
                       changeFileExt(tail, ext)])
 end;
 
@@ -225,10 +235,18 @@ var
   head, tail, subdir: string;
 begin
   splitPath(f, head, tail);
-  subdir := joinPath([projectPath, genSubDir, shortenDir(head +{&} dirSep)]);
+  if length(head) > 0 then
+    head := removeTrailingDirSep(shortenDir(head +{&} dirSep));
+  subdir := joinPath([projectPath, genSubDir, head]);
   if createSubDir then begin
-    //Writeln(output, subdir);
-    createDir(subdir);
+    try
+      createDir(subdir);
+    except
+      on EOS do begin
+        writeln(output, 'cannot create directory: ' + subdir);
+        halt(1)
+      end
+    end
   end;
   result := joinPath(subdir, tail)
 end;

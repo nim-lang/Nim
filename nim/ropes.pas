@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -111,8 +111,6 @@ function ropef(const frmt: TFormatStr; const args: array of PRope): PRope;
 
 procedure appf(var c: PRope; const frmt: TFormatStr;
   const args: array of PRope);
-
-procedure RopeSeqInsert(var rs: TRopeSeq; r: PRope; at: Natural);
 
 function getCacheStats: string;
 
@@ -524,8 +522,7 @@ begin
   assert(RopeInvariant(result));
 end;
 
-procedure appf(var c: PRope; const frmt: TFormatStr;
-  const args: array of PRope);
+procedure appf(var c: PRope; const frmt: TFormatStr; const args: array of PRope);
 begin
   app(c, ropef(frmt, args))
 end;

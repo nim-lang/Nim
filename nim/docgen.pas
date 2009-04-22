@@ -40,7 +40,7 @@ type
     modDesc: PRope;     // module description
     dependsOn: PRope;   // dependencies
     id: int;            // for generating IDs
-    splitAfter: int;    // split to long entries in the TOC
+    splitAfter: int;    // split too long entries in the TOC
     tocPart: array of TTocEntry;
     hasToc: bool;
     toc, section: TSections;
@@ -777,7 +777,7 @@ begin
     rnLineBlock: outer := '<p>$1</p>';
     rnLineBlockItem: outer := '$1<br />';
 
-    rnBlockQuote: outer := '<blockquote>$1</blockquote>$n';
+    rnBlockQuote: outer := '<blockquote><p>$1</p></blockquote>$n';
 
     rnTable, rnGridTable:
       outer := '<table border="1" class="docutils">$1</table>';

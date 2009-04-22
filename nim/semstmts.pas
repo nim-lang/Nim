@@ -42,7 +42,7 @@ begin
   end;
   if result = nil then result := newNodeI(nkNilLit, n.info);
   // The ``when`` statement implements the mechanism for platform dependant
-  // code. Thus we try to ensure here consistent ID distribution after the
+  // code. Thus we try to ensure here consistent ID allocation after the
   // ``when`` statement.
   IDsynchronizationPoint(200);
 end;
@@ -59,9 +59,11 @@ begin
     case it.kind of
       nkElifBranch: begin
         checkSonsLen(it, 2);
+        openScope(c.tab);
         it.sons[0] := semExprWithType(c, it.sons[0]);
         checkBool(it.sons[0]);
-        it.sons[1] := semStmtScope(c, it.sons[1])
+        it.sons[1] := semStmt(c, it.sons[1]);
+        closeScope(c.tab);
       end;
       nkElse: begin
         if sonsLen(it) = 1 then it.sons[0] := semStmtScope(c, it.sons[0])
@@ -144,7 +146,7 @@ begin
       // now parse the string literal and substitute symbols:
       a := strStart;
       repeat
-        b := findSubStr(marker, str, a);
+        b := strutils.find(str, marker, a);
         if b < strStart then
           sub := ncopy(str, a)
         else
@@ -153,7 +155,7 @@ begin
           addSon(result, newStrNode(nkStrLit, sub));
 
         if b < strStart then break;
-        c := findSubStr(marker, str, b+1);
+        c := strutils.find(str, marker, b+1);
         if c < strStart then
           sub := ncopy(str, b+1)
         else
@@ -179,11 +181,13 @@ function semWhile(c: PContext; n: PNode): PNode;
 begin
   result := n;
   checkSonsLen(n, 2);
+  openScope(c.tab);
   n.sons[0] := semExprWithType(c, n.sons[0]);
   CheckBool(n.sons[0]);
   inc(c.p.nestedLoopCounter);
-  n.sons[1] := semStmtScope(c, n.sons[1]);
+  n.sons[1] := semStmt(c, n.sons[1]);
   dec(c.p.nestedLoopCounter);
+  closeScope(c.tab);
 end;
 
 function semCase(c: PContext; n: PNode): PNode;
@@ -197,6 +201,7 @@ begin
   // check selector:
   result := n;
   checkMinSonsLen(n, 2);
+  openScope(c.tab);
   n.sons[0] := semExprWithType(c, n.sons[0]);
   chckCovered := false;
   covered := 0;
@@ -216,7 +221,7 @@ begin
       end;
       nkElifBranch: begin
         chckCovered := false;
-        checkSonsLen(n, 2);
+        checkSonsLen(x, 2);
         x.sons[0] := semExprWithType(c, x.sons[0]);
         checkBool(x.sons[0]);
         x.sons[1] := semStmtScope(c, x.sons[1])
@@ -231,6 +236,7 @@ begin
   end;
   if chckCovered and (covered <> lengthOrd(n.sons[0].typ)) then
     liMessage(n.info, errNotAllCasesCovered);
+  closeScope(c.tab);
 end;
 
 function semAsgn(c: PContext; n: PNode): PNode;
@@ -388,7 +394,7 @@ begin
     if (a.kind <> nkIdentDefs) and (a.kind <> nkVarTuple) then IllFormedAst(a);
     checkMinSonsLen(a, 3);
     len := sonsLen(a);
-    if a.sons[len-2] <> nil then
+    if a.sons[len-2] <> nil then 
       typ := semTypeNode(c, a.sons[len-2], nil)
     else
       typ := nil;
@@ -401,6 +407,8 @@ begin
     end
     else
       def := nil;
+    if not typeAllowed(typ, skVar) then
+      liMessage(a.info, errXisNoType, typeToString(typ));
     tup := skipGeneric(typ);
     if a.kind = nkVarTuple then begin
       if tup.kind <> tyTuple then liMessage(a.info, errXExpected, 'tuple');
@@ -408,7 +416,7 @@ begin
         liMessage(a.info, errWrongNumberOfVariables);
     end;
     for j := 0 to len-3 do begin
-      if c.p.owner = nil then begin
+      if (c.p.owner.kind = skModule) then begin
         v := semIdentWithPragma(c, skVar, a.sons[j], {@set}[sfStar, sfMinus]);
         include(v.flags, sfGlobal);
       end
@@ -441,7 +449,7 @@ begin
     if a.kind = nkCommentStmt then continue;
     if (a.kind <> nkConstDef) then IllFormedAst(a);
     checkSonsLen(a, 3);
-    if (c.p.owner = nil) then begin
+    if (c.p.owner.kind = skModule) then begin
       v := semIdentWithPragma(c, skConst, a.sons[0], {@set}[sfStar, sfMinus]);
       include(v.flags, sfGlobal);
     end
@@ -456,6 +464,8 @@ begin
       def := fitRemoveHiddenConv(c, typ, def);
     end
     else typ := def.typ;
+    if not typeAllowed(typ, skConst) then
+      liMessage(a.info, errXisNoType, typeToString(typ));
 
     v.typ := typ;
     v.ast := def; // no need to copy
@@ -480,6 +490,7 @@ begin
   result := n;
   checkMinSonsLen(n, 3);
   len := sonsLen(n);
+  openScope(c.tab);
   if n.sons[len-2].kind = nkRange then begin
     checkSonsLen(n.sons[len-2], 2);
     // convert ``in 3..5`` to ``in countup(3, 5)``
@@ -500,7 +511,6 @@ begin
   end;
   n.sons[len-2] := semExprWithType(c, n.sons[len-2]);
   iter := skipGeneric(n.sons[len-2].typ);
-  openScope(c.tab);
   if iter.kind <> tyTuple then begin
     if len <> 3 then liMessage(n.info, errWrongNumberOfVariables);
     v := newSymS(skForVar, n.sons[0], c);
@@ -573,7 +583,7 @@ begin
   end;
 end;
 
-procedure semGenericParamList(c: PContext; n: PNode);
+procedure semGenericParamList(c: PContext; n: PNode; father: PType = nil);
 var
   i: int;
   s: PSym;
@@ -590,6 +600,7 @@ begin
       s.typ := newTypeS(tyGenericParam, c);
       s.typ.sym := s;
     end;
+    if father <> nil then addSon(father, s.typ);
     s.position := i;
     n.sons[i] := newSymNode(s);
     addDecl(c, s);
@@ -631,7 +642,7 @@ begin
     if a.kind = nkCommentStmt then continue;
     if (a.kind <> nkTypeDef) then IllFormedAst(a);
     checkSonsLen(a, 3);
-    if (c.p.owner = nil) then begin
+    if (c.p.owner.kind = skModule) then begin
       s := semIdentWithPragma(c, skType, a.sons[0], {@set}[sfStar, sfMinus]);
       include(s.flags, sfGlobal);
     end
@@ -665,7 +676,8 @@ begin
       openScope(c.tab);
       pushOwner(s);
       s.typ.kind := tyGeneric;
-      semGenericParamList(c, a.sons[1]);
+      semGenericParamList(c, a.sons[1], s.typ);
+      addSon(s.typ, nil);
       // process the type body for symbol lookup of generic params
       // we can use the same algorithm as for template parameters:
       a.sons[2] := resolveTemplateParams(c, a.sons[2]);
@@ -736,7 +748,7 @@ var
 begin
   result := n;
   checkSonsLen(n, codePos+1);
-  if c.p.owner <> nil then
+  if c.p.owner.kind <> skModule then
     liMessage(n.info, errIteratorNotAllowed);
   oldP := c.p; // restore later
   s := semIdentVis(c, skIterator, n.sons[0], {@set}[sfStar]);
@@ -857,7 +869,7 @@ var
 begin
   result := n;
   checkSonsLen(n, codePos+1);
-  if c.p.owner = nil then begin
+  if c.p.owner.kind = skModule then begin
     s := semIdentVis(c, kind, n.sons[0], {@set}[sfStar]);
     include(s.flags, sfGlobal);
   end
@@ -885,7 +897,7 @@ begin
   proto := SearchForProc(c, s, c.tab.tos-2); // -2 because we have a scope open
                                              // for parameters
   if proto = nil then begin
-    if oldP.owner <> nil then // we are in a nested proc
+    if oldP.owner.kind <> skModule then // we are in a nested proc
       s.typ.callConv := ccClosure
     else
       s.typ.callConv := lastOptionEntry(c).defaultCC;
@@ -1025,7 +1037,7 @@ begin
   if nfSem in n.flags then exit;
   case n.kind of
     nkAsgn: result := semAsgn(c, n);
-    nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand:
+    nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkMacroStmt:
       result := semCommand(c, n);
     nkEmpty, nkCommentStmt, nkNilLit: begin end;
     nkBlockStmt: result := semBlock(c, n);
@@ -1051,8 +1063,7 @@ begin
     nkDiscardStmt: result := semDiscard(c, n);
     nkWhileStmt: result := semWhile(c, n);
     nkTryStmt: result := semTry(c, n);
-    nkBreakStmt, nkContinueStmt:
-      result := semBreakOrContinue(c, n);
+    nkBreakStmt, nkContinueStmt: result := semBreakOrContinue(c, n);
     nkForStmt: result := semFor(c, n);
     nkCaseStmt: result := semCase(c, n);
     nkReturnStmt: result := semReturn(c, n);

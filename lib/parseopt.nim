@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -73,8 +73,7 @@ proc parseWord(s: string, i: int, w: var string,
       inc(result)
 
 proc handleShortOption(p: var TOptParser) = 
-  var i: int
-  i = p.pos
+  var i = p.pos
   p.kind = cmdShortOption
   add(p.key, p.cmd[i])
   inc(i)
@@ -91,8 +90,7 @@ proc handleShortOption(p: var TOptParser) =
   p.pos = i
 
 proc next(p: var TOptParser) = 
-  var i: int
-  i = p.pos
+  var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
   setlen(p.key, 0)

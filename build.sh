@@ -637,8 +637,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -735,7 +735,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -798,7 +798,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -890,8 +890,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -948,8 +948,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/os.c -o build/1_1/os.o"
@@ -988,7 +988,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -1017,7 +1017,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/1_1/os.o \
 build/1_1/nimrod.o \
@@ -1051,7 +1051,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -1080,7 +1080,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/1_1/os.o \
 build/1_1/nimrod.o \
@@ -1653,8 +1653,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -1751,7 +1751,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -1814,7 +1814,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -1906,8 +1906,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -1964,8 +1964,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/os.c -o build/2_1/os.o"
@@ -2004,7 +2004,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -2033,7 +2033,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/2_1/os.o \
 build/1_1/nimrod.o \
@@ -2067,7 +2067,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -2096,7 +2096,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/2_1/os.o \
 build/1_1/nimrod.o \
@@ -2669,8 +2669,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -2767,7 +2767,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -2830,7 +2830,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -2922,8 +2922,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -2980,8 +2980,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -3020,7 +3020,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -3049,7 +3049,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -3083,7 +3083,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -3112,7 +3112,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -3685,8 +3685,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -3783,7 +3783,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -3846,7 +3846,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -3938,8 +3938,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -3996,8 +3996,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -4036,7 +4036,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -4065,7 +4065,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -4099,7 +4099,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -4128,7 +4128,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -4701,8 +4701,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -4799,7 +4799,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -4862,7 +4862,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -4954,8 +4954,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -5012,8 +5012,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -5052,7 +5052,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -5081,7 +5081,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -5115,7 +5115,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -5144,7 +5144,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/3_1/os.o \
 build/1_1/nimrod.o \
@@ -5717,8 +5717,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -5815,7 +5815,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -5878,7 +5878,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -5970,8 +5970,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -6028,8 +6028,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/6_1/os.c -o build/6_1/os.o"
@@ -6068,7 +6068,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -6097,7 +6097,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/6_1/os.o \
 build/1_1/nimrod.o \
@@ -6131,7 +6131,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -6160,7 +6160,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/6_1/os.o \
 build/1_1/nimrod.o \
@@ -6733,8 +6733,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -6831,7 +6831,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -6894,7 +6894,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -6986,8 +6986,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/trees.c -o build/1_1/trees.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/types.c -o build/1_1/types.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/types.c -o build/1_3/types.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/math.c -o build/1_1/math.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/magicsys.c -o build/1_1/magicsys.o"
@@ -7044,8 +7044,8 @@ build/1_1/dlmalloc.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/main.c -o build/1_1/main.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_4/nim__dat.c -o build/1_4/nim__dat.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_3/nim__dat.c -o build/1_3/nim__dat.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/os.c -o build/1_1/os.o"
@@ -7084,7 +7084,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -7113,7 +7113,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/1_1/os.o \
 build/1_1/nimrod.o \
@@ -7147,7 +7147,7 @@ build/1_1/paslex.o \
 build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/trees.o \
-build/1_1/types.o \
+build/1_3/types.o \
 build/1_1/math.o \
 build/1_1/magicsys.o \
 build/1_1/bitsets.o \
@@ -7176,7 +7176,7 @@ build/1_1/depends.o \
 build/1_3/transf.o \
 build/1_1/main.o \
 build/1_1/parseopt.o \
-build/1_4/nim__dat.o \
+build/1_3/nim__dat.o \
 build/1_1/strutils.o \
 build/1_1/os.o \
 build/1_1/nimrod.o \

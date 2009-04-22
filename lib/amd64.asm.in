@@ -5,7 +5,6 @@
 ; that is the only convention any C compiler supports.
 
 \python{
-# as usual I use my own preprocessor :-)
 import os
 
 def c(name): 

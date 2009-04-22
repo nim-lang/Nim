@@ -14,6 +14,7 @@ unit transf;
 // * inlines iterators
 // * inlines constants
 // * performes contant folding
+// * introduces nkHiddenDeref, nkHiddenSubConv, etc.
 
 interface
 
@@ -446,12 +447,51 @@ begin
   end;
 end;
 
+function skipPassAsOpenArray(n: PNode): PNode;
+begin
+  result := n;
+  while result.kind = nkPassAsOpenArray do 
+    result := result.sons[0]
+end;
+
+type 
+  TPutArgInto = (paDirectMapping, paFastAsgn, paVarAsgn);
+
+function putArgInto(arg: PNode; formal: PType): TPutArgInto;
+// This analyses how to treat the mapping "formal <-> arg" in an
+// inline context.
+var
+  i: int;
+begin
+  if skipGeneric(formal).kind = tyOpenArray then begin
+    result := paDirectMapping; // XXX really correct?
+    // what if ``arg`` has side-effects?
+    exit
+  end;
+  case arg.kind of
+    nkEmpty..nkNilLit: result := paDirectMapping;
+    nkPar, nkCurly, nkBracket: begin
+      result := paFastAsgn;
+      for i := 0 to sonsLen(arg)-1 do 
+        if putArgInto(arg.sons[i], formal) <> paDirectMapping then
+          exit;
+      result := paDirectMapping;
+    end;
+    else begin
+      if skipGeneric(formal).kind = tyVar then
+        result := paVarAsgn
+      else
+        result := paFastAsgn
+    end
+  end
+end;
+
 function transformFor(c: PTransf; n: PNode): PNode;
 // generate access statements for the parameters (unless they are constant)
 // put mapping from formal parameters to actual parameters
 var
   i, len: int;
-  call, e, v, body: PNode;
+  call, v, body, arg: PNode;
   newC: PTransCon;
   temp, formal: PSym;
 begin
@@ -473,24 +513,24 @@ begin
   // generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC);
   for i := 1 to sonsLen(call)-1 do begin
-    e := getConstExpr(c.module, call.sons[i]);
+    arg := skipPassAsOpenArray(transform(c, call.sons[i]));
     formal := skipGeneric(newC.owner.typ).n.sons[i].sym;
-    if e <> nil then
-      IdNodeTablePut(newC.mapping, formal, e)
-    else if (skipConv(call.sons[i]).kind = nkSym) then begin
-      // since parameters cannot be modified, we can identify the formal and
-      // the actual params
-      IdNodeTablePut(newC.mapping, formal, call.sons[i]);
-    end
-    else begin
-      // generate a temporary and produce an assignment statement:
-      temp := newTemp(c, formal.typ, formal.info);
-      addVar(v, newSymNode(temp));
-      // BUGFIX: do not copy call.sons[i], but transform it!
-      addSon(result, newAsgnStmt(c, newSymNode(temp),
-                                 transform(c, call.sons[i])));
-      IdNodeTablePut(newC.mapping, formal, newSymNode(temp)); // BUGFIX
-    end
+    //if IdentEq(newc.Owner.name, 'items') then 
+    //  liMessage(arg.info, warnUser, 'items: ' + nodeKindToStr[arg.kind]);
+    case putArgInto(arg, formal.typ) of
+      paDirectMapping: IdNodeTablePut(newC.mapping, formal, arg);
+      paFastAsgn: begin
+        // generate a temporary and produce an assignment statement:
+        temp := newTemp(c, formal.typ, formal.info);
+        addVar(v, newSymNode(temp));
+        addSon(result, newAsgnStmt(c, newSymNode(temp), arg));
+        IdNodeTablePut(newC.mapping, formal, newSymNode(temp));
+      end;
+      paVarAsgn: begin
+        assert(skipGeneric(formal.typ).kind = tyVar);
+        InternalError(arg.info, 'not implemented: pass to var parameter');
+      end;
+    end;
   end;
   body := newC.owner.ast.sons[codePos];
   pushInfoContext(n.info);
@@ -668,7 +708,7 @@ function transformCase(c: PTransf; n: PNode): PNode;
 // removes `elif` branches of a case stmt
 var
   len, i, j: int;
-  ifs: PNode;
+  ifs, elsen: PNode;
 begin
   len := sonsLen(n);
   i := len-1;
@@ -678,9 +718,11 @@ begin
     if (n.sons[i].kind <> nkOfBranch) then 
       InternalError(n.sons[i].info, 'transformCase');
     ifs := newNodeI(nkIfStmt, n.sons[i+1].info);
+    elsen := newNodeI(nkElse, ifs.info);
     for j := i+1 to len-1 do addSon(ifs, n.sons[j]);
     setLength(n.sons, i+2);
-    n.sons[i+1] := ifs;
+    addSon(elsen, ifs);
+    n.sons[i+1] := elsen;
   end;
   result := n;
   for j := 0 to sonsLen(n)-1 do result.sons[j] := transform(c, n.sons[j]);

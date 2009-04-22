@@ -13,5 +13,9 @@ type
   PB = ref TB
   TB = array [0..3, P1]
   T1 = array [0..6, PB]
+
+var
+  x: PA
+new(x)
 #ERROR_MSG internal error: cannot generate C type for: PA
 

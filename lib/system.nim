@@ -14,8 +14,8 @@
 ## explicitly. Because of this there can not be a user-defined module named
 ## ``system``.
 ##
-##   *"The good thing about reinventing the wheel is that you can get a
-##   round one."*
+##   *The good thing about reinventing the wheel is that you can get a
+##   round one.*
 
 {.push hints: off.}
 
@@ -1044,8 +1044,9 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
 
 
 # Fixup some magic symbols here:
-{.fixup_system.} # This is an undocumented pragma that can only be used
-                 # once in the system module.
+#{.fixup_system.} 
+# This is an undocumented pragma that can only be used
+# once in the system module.
 
 proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + y.len)
@@ -1098,6 +1099,13 @@ proc find*[T, S](a: T, item: S): int {.inline.} =
     if i == item: return
     inc(result)
   result = -1
+
+proc pop*[T](s: var seq[T]): T {.inline.} = 
+  ## returns the last item of `s` and decreases ``s.len`` by one. This treats
+  ## `s` as a stack and implements the common *pop* operation.
+  var L = s.len-1
+  result = s[L]
+  setLen(s, L)
 
 # ----------------- FPU ------------------------------------------------------
 
@@ -1401,16 +1409,95 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   # as it would recurse endlessly!
   include arithm
   {.pop.} # stack trace
+  include dyncalls
 
   const
     GenericSeqSize = (2 * sizeof(int))
+    
+  proc reprAny(p: pointer, typ: PNimType): string {.compilerproc.}
 
-  when not defined(boehmgc) and not defined(nogc):
+  proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
+    assert(n.kind == nkCase)
+    var d: int
+    var a = cast[TAddress](aa)
+    case n.typ.size
+    of 1: d = ze(cast[ptr int8](a +% n.offset)^)
+    of 2: d = ze(cast[ptr int16](a +% n.offset)^)
+    of 4: d = int(cast[ptr int32](a +% n.offset)^)
+    else: assert(false)
+    return d
+
+  proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
+    var discr = getDiscriminant(aa, n)
+    if discr <% n.len:
+      result = n.sons[discr]
+      if result == nil: result = n.sons[n.len]
+      # n.sons[n.len] contains the ``else`` part (but may be nil)
+    else:
+      result = n.sons[n.len]
+
+  when defined(boehmgc):
+    const
+      boehmLib = "/opt/lib/libgc.so"
+  
+    proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.} 
+    proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.} 
+    proc boehmGCincremental {.
+      importc: "GC_enable_incremental", dynlib: boehmLib.} 
+    proc boehmGCfullCollect {.importc: "GC_gcollect", dynlib: boehmLib.}  
+    proc boehmAlloc(size: int): pointer {.
+      importc: "GC_malloc", dynlib: boehmLib.}
+    proc boehmAllocAtomic(size: int): pointer {.
+      importc: "GC_malloc_atomic", dynlib: boehmLib.}
+    proc boehmRealloc(p: pointer, size: int): pointer {.
+      importc: "GC_realloc", dynlib: boehmLib.}
+    proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
+      
+  include cellsets
+  
+  when defined(boehmGC):
+    proc initGC() = nil
+    
+    #boehmGCincremental()
+
+    proc GC_disable() = boehmGC_disable()
+    proc GC_enable() = boehmGC_enable()
+    proc GC_fullCollect() = boehmGCfullCollect()
+    proc GC_setStrategy(strategy: TGC_Strategy) = nil
+    proc GC_enableMarkAndSweep() = nil
+    proc GC_disableMarkAndSweep() = nil
+    proc GC_getStatistics(): string = return ""
+    
+    proc getOccupiedMem(): int = return -1
+    proc getFreeMem(): int = return -1
+    proc getTotalMem(): int = return -1
+      
+    proc growObj(old: pointer, newsize: int): pointer {.inline.} = 
+      result = boehmRealloc(old, newsize)
+    proc newObj(size: int): pointer {.compilerproc.} =
+      result = boehmAlloc(size)      
+    proc newSeq(baseSize, len: int): pointer {.compilerproc.} =
+      # XXX: overflow checks!
+      result = newObj(len * baseSize + GenericSeqSize)
+      cast[PGenericSeq](result).len = len
+      cast[PGenericSeq](result).space = len
+
+    proc setStackBottom(theStackBottom: pointer) {.compilerproc.} = nil
+    proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
+    proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
+    
+    proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+      dest^ = src
+    proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+      dest^ = src
+    proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+      dest^ = src
+
+  elif not defined(nogc):
     include gc
 
   include sysstr
   include assign
-  include dyncalls
   include repr
 
   # we have to implement it here after gentostr for the cstrToNimStrDummy proc

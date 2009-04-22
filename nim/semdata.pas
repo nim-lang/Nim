@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -128,6 +128,7 @@ end;
 
 function newProcCon(owner: PSym): PProcCon;
 begin
+  if owner = nil then InternalError('owner is nil');
   new(result);
 {@ignore}
   fillChar(result^, sizeof(result^), 0);

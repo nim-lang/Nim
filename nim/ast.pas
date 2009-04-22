@@ -93,12 +93,12 @@ type
     nkTypeDef, nkYieldStmt, nkTryStmt, nkFinally, 
     nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt, 
     nkBlockStmt, nkDiscardStmt, nkStmtList, nkImportStmt, 
-    nkFromStmt, nkImportAs, nkIncludeStmt, nkAccessStmt, 
-    nkCommentStmt, nkStmtListExpr, nkBlockExpr, nkStmtListType, 
-    nkBlockType, nkVm, nkTypeOfExpr, nkObjectTy, 
-    nkTupleTy, nkRecList, nkRecCase, nkRecWhen, 
-    nkRefTy, nkPtrTy, nkVarTy, nkProcTy, 
-    nkEnumTy, nkEnumFieldDef, nkReturnToken);
+    nkFromStmt, nkImportAs, nkIncludeStmt, nkCommentStmt, 
+    nkStmtListExpr, nkBlockExpr, nkStmtListType, nkBlockType, 
+    nkVm, nkTypeOfExpr, nkObjectTy, nkTupleTy, 
+    nkRecList, nkRecCase, nkRecWhen, nkRefTy, 
+    nkPtrTy, nkVarTy, nkProcTy, nkEnumTy, 
+    nkEnumFieldDef, nkReturnToken);
   TNodeKinds = set of TNodeKind;
 const
   NodeKindToStr: array [TNodeKind] of string = (
@@ -128,12 +128,12 @@ const
     'nkTypeDef', 'nkYieldStmt', 'nkTryStmt', 'nkFinally', 
     'nkRaiseStmt', 'nkReturnStmt', 'nkBreakStmt', 'nkContinueStmt', 
     'nkBlockStmt', 'nkDiscardStmt', 'nkStmtList', 'nkImportStmt', 
-    'nkFromStmt', 'nkImportAs', 'nkIncludeStmt', 'nkAccessStmt', 
-    'nkCommentStmt', 'nkStmtListExpr', 'nkBlockExpr', 'nkStmtListType', 
-    'nkBlockType', 'nkVm', 'nkTypeOfExpr', 'nkObjectTy', 
-    'nkTupleTy', 'nkRecList', 'nkRecCase', 'nkRecWhen', 
-    'nkRefTy', 'nkPtrTy', 'nkVarTy', 'nkProcTy', 
-    'nkEnumTy', 'nkEnumFieldDef', 'nkReturnToken');
+    'nkFromStmt', 'nkImportAs', 'nkIncludeStmt', 'nkCommentStmt', 
+    'nkStmtListExpr', 'nkBlockExpr', 'nkStmtListType', 'nkBlockType', 
+    'nkVm', 'nkTypeOfExpr', 'nkObjectTy', 'nkTupleTy', 
+    'nkRecList', 'nkRecCase', 'nkRecWhen', 'nkRefTy', 
+    'nkPtrTy', 'nkVarTy', 'nkProcTy', 'nkEnumTy', 
+    'nkEnumFieldDef', 'nkReturnToken');
 type
   TSymFlag = (
     sfUsed, sfStar, sfMinus, sfInInterface, 
@@ -328,6 +328,7 @@ type
 
   TLocFlag = (
     lfIndirect,    // backend introduced a pointer
+    lfParamCopy,   // backend introduced a parameter copy (LLVM)
     lfNoDeepCopy,  // no need for a deep copy
     lfNoDecl,      // do not declare it in C
     lfDynamicLib,  // link symbol to dynamic library

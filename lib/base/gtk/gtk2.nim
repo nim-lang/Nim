@@ -17267,5 +17267,5 @@ proc gtk_file_chooser_set_do_overwrite_confirmation*(chooser: PGtkFileChooser,
 proc gtk_nimrod_init*() =
   var
     cmdLine {.importc: "cmdLine".}: array [0..255, cstring]
-    cmdCount {.importc: "cmdCount".}: int
+    cmdCount {.importc: "cmdCount".}: cint
   gtk_init(addr(cmdLine), addr(cmdCount))

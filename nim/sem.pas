@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -183,7 +183,7 @@ begin
   c := newContext(module, filename);
   if (c.p <> nil) then InternalError(module.info, 'sem.myOpen');
   c.semConstExpr := semConstExpr;
-  c.p := newProcCon(nil);
+  c.p := newProcCon(module);
   pushOwner(c.module);
   openScope(c.tab); // scope for imported symbols
   SymTabAdd(c.tab, module); // a module knows itself

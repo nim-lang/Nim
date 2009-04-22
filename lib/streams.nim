@@ -100,7 +100,7 @@ proc readLine*(s: PStream): string =
 type
   PStringStream* = ref TStringStream ## a stream that encapsulates a string
   TStringStream* = object of TStream
-    data: string
+    data*: string
     pos: int
     
 proc ssAtEnd(s: PStringStream): bool = 

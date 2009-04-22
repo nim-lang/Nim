@@ -1011,8 +1011,8 @@ char                            '\0'
 bool                            false
 ref or pointer type             nil
 procedural type                 nil
-sequence                        nil (**not** ``@[]``)
-string                          nil (**not** "")
+sequence                        nil (*not* ``@[]``)
+string                          nil (*not* "")
 tuple[x: A, y: B, ...]          (default(A), default(B), ...)
                                 (analogous for objects)
 array[0..., T]                  [default(T), ...]
@@ -1080,9 +1080,9 @@ Case statement
 
 Syntax::
 
-  caseStmt ::= 'case' expr ('of' sliceExprList ':' stmt)*
-                           ('elif' expr ':' stmt)*
-                           ['else' ':' stmt]
+  caseStmt ::= 'case' expr [':'] ('of' sliceExprList ':' stmt)*
+                                 ('elif' expr ':' stmt)*
+                                 ['else' ':' stmt]
 
 Example:
 
@@ -1241,11 +1241,11 @@ sugar for:
 ``return`` without an expression is a short notation for ``return result`` if
 the proc has a return type. The `result`:idx: variable is always the return
 value of the procedure. It is automatically declared by the compiler. As all
-variables, ``result`` is initialized to (binary) zero::
+variables, ``result`` is initialized to (binary) zero:
 
 .. code-block:: nimrod
-    proc returnZero(): int =
-      # implicitely returns 0
+  proc returnZero(): int =
+    # implicitely returns 0
 
 
 Yield statement
@@ -1649,7 +1649,7 @@ possible within a single ``type`` section.
 Generics
 ~~~~~~~~
 
-`Version 0.7.4: Complex generic types like in the example do not work.`:red:
+`Version 0.7.6: Generic types like in the example do not work.`:red:
 
 Example:
 

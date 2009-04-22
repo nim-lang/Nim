@@ -37,9 +37,9 @@ type
                        // reasons
     cfsFieldInfo,      // section for field information
     cfsTypeInfo,       // section for type information
+    cfsProcHeaders,    // section for C procs prototypes
     cfsData,           // section for C constant data
     cfsVars,           // section for C variable declarations
-    cfsProcHeaders,    // section for C procs prototypes
     cfsProcs,          // section for C procs that are not inline
     cfsTypeInit1,      // section 1 for declarations of type information
     cfsTypeInit2,      // section 2 for initialization of type information
@@ -120,6 +120,7 @@ type
     forwardedProcs: TSymSeq; // keep forwarded procs here
     typeNodes, nimTypes: int;// used for type info generation
     typeNodesName, nimTypesName: PRope; // used for type info generation
+    labels: natural;         // for generating unique module-scope names
   end;
 
 var
@@ -131,6 +132,24 @@ var
     // list of modules that are not finished with code generation
   gForwardedProcsCounter: int = 0;
   gmti: BModule; // generated type info: no need to initialize: defaults fit
+
+function ropeff(const cformat, llvmformat: string; 
+                const args: array of PRope): PRope;
+begin
+  if gCmd = cmdCompileToLLVM then 
+    result := ropef(llvmformat, args)
+  else
+    result := ropef(cformat, args)
+end;
+
+procedure appff(var dest: PRope; const cformat, llvmformat: string; 
+                const args: array of PRope);
+begin
+  if gCmd = cmdCompileToLLVM then 
+    appf(dest, llvmformat, args)
+  else
+    appf(dest, cformat, args);
+end;
 
 procedure addForwardedProc(m: BModule; prc: PSym);
 var
@@ -240,8 +259,12 @@ end;
 procedure getTemp(p: BProc; t: PType; var result: TLoc);
 begin
   inc(p.labels);
-  result.r := con('LOC', toRope(p.labels));
-  appf(p.s[cpsLocals], '$1 $2;$n', [getTypeDesc(p.module, t), result.r]);
+  if gCmd = cmdCompileToLLVM then 
+    result.r := con('%LOC', toRope(p.labels))
+  else begin
+    result.r := con('LOC', toRope(p.labels));
+    appf(p.s[cpsLocals], '$1 $2;$n', [getTypeDesc(p.module, t), result.r]);
+  end;
   result.k := locTemp;
   result.a := -1;
   result.t := getUniqueType(t);
@@ -251,6 +274,86 @@ end;
 
 // -------------------------- Variable manager ----------------------------
 
+function cstringLit(p: BProc; var r: PRope; const s: string): PRope; overload;
+begin
+  if gCmd = cmdCompileToLLVM then begin
+    inc(p.module.labels);
+    inc(p.labels);
+    result := ropef('%LOC$1', [toRope(p.labels)]);
+    appf(p.module.s[cfsData], '@C$1 = private constant [$2 x i8] $3$n', [
+         toRope(p.module.labels), toRope(length(s)), makeLLVMString(s)]);
+    appf(r, '$1 = getelementptr [$2 x i8]* @C$3, %NI 0, %NI 0$n', 
+        [result, toRope(length(s)), toRope(p.module.labels)]);
+  end
+  else
+    result := makeCString(s)
+end;
+
+function cstringLit(m: BModule; var r: PRope; const s: string): PRope; overload;
+begin
+  if gCmd = cmdCompileToLLVM then begin
+    inc(m.labels, 2);
+    result := ropef('%MOC$1', [toRope(m.labels-1)]);
+    appf(m.s[cfsData], '@MOC$1 = private constant [$2 x i8] $3$n', [
+         toRope(m.labels), toRope(length(s)), makeLLVMString(s)]);
+    appf(r, '$1 = getelementptr [$2 x i8]* @MOC$3, %NI 0, %NI 0$n', 
+        [result, toRope(length(s)), toRope(m.labels)]);
+  end
+  else
+    result := makeCString(s)
+end;
+
+procedure allocParam(p: BProc; s: PSym);
+var
+  tmp: PRope;
+begin
+  assert(s.kind = skParam);
+  if not (lfParamCopy in s.loc.flags) then begin
+    inc(p.labels);
+    tmp := con('%LOC', toRope(p.labels));
+    include(s.loc.flags, lfParamCopy);
+    include(s.loc.flags, lfIndirect);
+    appf(p.s[cpsInit], 
+        '$1 = alloca $3$n' +
+        'store $3 $2, $3* $1$n', [tmp, s.loc.r, getTypeDesc(p.module, s.loc.t)]);
+    s.loc.r := tmp
+  end;
+end;
+
+procedure localDebugInfo(p: BProc; s: PSym); 
+var
+  name, a: PRope;
+begin
+  if [optStackTrace, optEndb] * p.options <> [optStackTrace, optEndb] then exit;
+  if gCmd = cmdCompileToLLVM then begin
+    // "address" is the 0th field
+    // "typ" is the 1rst field
+    // "name" is the 2nd field
+    name := cstringLit(p, p.s[cpsInit], normalize(s.name.s));
+    if (s.kind = skParam) and not ccgIntroducedPtr(s) then allocParam(p, s);
+    inc(p.labels, 3);
+    appf(p.s[cpsInit], 
+        '%LOC$6 = getelementptr %TF* %F, %NI 0, $1, %NI 0$n' +
+        '%LOC$7 = getelementptr %TF* %F, %NI 0, $1, %NI 1$n' +
+        '%LOC$8 = getelementptr %TF* %F, %NI 0, $1, %NI 2$n' +
+        'store i8* $2, i8** %LOC$6$n' +
+        'store $3* $4, $3** %LOC$7$n' +
+        'store i8* $5, i8** %LOC$8$n', 
+        [toRope(p.frameLen), s.loc.r, getTypeDesc(p.module, 'TNimType'),
+         genTypeInfo(p.module, s.loc.t), name, toRope(p.labels), 
+         toRope(p.labels-1), toRope(p.labels-2)])
+  end
+  else begin
+    a := con('&'+'', s.loc.r);
+    if (s.kind = skParam) and ccgIntroducedPtr(s) then a := s.loc.r;
+    appf(p.s[cpsInit],
+      'F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n',
+      [toRope(p.frameLen), makeCString(normalize(s.name.s)), a,
+      genTypeInfo(p.module, s.loc.t)]);
+  end;
+  inc(p.frameLen);
+end;
+
 procedure assignLocalVar(p: BProc; s: PSym);
 begin
   //assert(s.loc.k == locNone) // not yet assigned
@@ -258,45 +361,54 @@ begin
   // for each module that uses them!
   if s.loc.k = locNone then
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack);
-  app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t));
-  if sfRegister in s.flags then
-    app(p.s[cpsLocals], ' register');
-  if (sfVolatile in s.flags) or (p.nestedTryStmts > 0) then
-    app(p.s[cpsLocals], ' volatile');
-
-  appf(p.s[cpsLocals], ' $1;$n', [s.loc.r]);
-  // if debugging we need a new slot for the local variable:
-  if [optStackTrace, optEndb] * p.Options = [optStackTrace, optEndb] then begin
-    appf(p.s[cpsInit],
-      'F.s[$1].name = $2; F.s[$1].address = (void*)&$3; F.s[$1].typ = $4;$n',
-      [toRope(p.frameLen), makeCString(normalize(s.name.s)), s.loc.r,
-      genTypeInfo(p.module, s.loc.t)]);
-    inc(p.frameLen);
+  if gCmd = cmdCompileToLLVM then begin
+    appf(p.s[cpsLocals], '$1 = alloca $2$n', 
+         [s.loc.r, getTypeDesc(p.module, s.loc.t)]);
+    include(s.loc.flags, lfIndirect);
   end
+  else begin
+    app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t));
+    if sfRegister in s.flags then
+      app(p.s[cpsLocals], ' register');
+    if (sfVolatile in s.flags) or (p.nestedTryStmts > 0) then
+      app(p.s[cpsLocals], ' volatile');
+
+    appf(p.s[cpsLocals], ' $1;$n', [s.loc.r]);
+  end;
+  // if debugging we need a new slot for the local variable:
+  localDebugInfo(p, s);
 end;
 
-procedure assignGlobalVar(m: BModule; s: PSym);
+procedure assignGlobalVar(p: BProc; s: PSym);
 begin
   if s.loc.k = locNone then
     fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap);
-  useHeader(m, s);
-  if lfNoDecl in s.loc.flags then exit;
-  if sfImportc in s.flags then app(m.s[cfsVars], 'extern ');
-  app(m.s[cfsVars], getTypeDesc(m, s.loc.t));
-  if sfRegister in s.flags then
-    app(m.s[cfsVars], ' register');
-  if sfVolatile in s.flags then
-    app(m.s[cfsVars], ' volatile');
-  if sfThreadVar in s.flags then
-    app(m.s[cfsVars], ' NIM_THREADVAR');
-  appf(m.s[cfsVars], ' $1;$n', [s.loc.r]);
-  if [optStackTrace, optEndb] * m.module.options =
+  if gCmd = cmdCompileToLLVM then begin
+    appf(p.module.s[cfsVars], '$1 = linkonce global $2 zeroinitializer$n', 
+         [s.loc.r, getTypeDesc(p.module, s.loc.t)]);
+    include(s.loc.flags, lfIndirect);
+  end
+  else begin
+    useHeader(p.module, s);
+    if lfNoDecl in s.loc.flags then exit;
+    if sfImportc in s.flags then app(p.module.s[cfsVars], 'extern ');
+    app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t));
+    if sfRegister in s.flags then app(p.module.s[cfsVars], ' register');
+    if sfVolatile in s.flags then app(p.module.s[cfsVars], ' volatile');
+    if sfThreadVar in s.flags then app(p.module.s[cfsVars], ' NIM_THREADVAR');
+    appf(p.module.s[cfsVars], ' $1;$n', [s.loc.r]);
+  end;
+  if [optStackTrace, optEndb] * p.module.module.options =
      [optStackTrace, optEndb] then begin
-    useMagic(m, 'dbgRegisterGlobal');
-    appf(m.s[cfsDebugInit],
+    useMagic(p.module, 'dbgRegisterGlobal');
+    appff(p.module.s[cfsDebugInit], 
       'dbgRegisterGlobal($1, &$2, $3);$n',
-      [makeCString(normalize(s.owner.name.s + '.' +{&} s.name.s)), s.loc.r,
-      genTypeInfo(m, s.typ)])
+      'call void @dbgRegisterGlobal(i8* $1, i8* $2, $4* $3)$n',
+      [cstringLit(p, p.module.s[cfsDebugInit], 
+                  normalize(s.owner.name.s + '.' +{&} s.name.s)),
+       s.loc.r,
+       genTypeInfo(p.module, s.typ),
+       getTypeDesc(p.module, 'TNimType')]);
   end;
 end;
 
@@ -308,15 +420,9 @@ end;
 procedure assignParam(p: BProc; s: PSym);
 begin
   assert(s.loc.r <> nil);
-  if [optStackTrace, optEndb] * p.options = [optStackTrace, optEndb] then begin
-    appf(p.s[cpsInit],
-      'F.s[$1].name = $2; F.s[$1].address = (void*)$3; ' +
-      'F.s[$1].typ = $4;$n',
-      [toRope(p.frameLen), makeCString(normalize(s.name.s)),
-      iff(ccgIntroducedPtr(s), s.loc.r, con('&'+'', s.loc.r)),
-      genTypeInfo(p.module, s.loc.t)]);
-    inc(p.frameLen)
-  end
+  if (sfAddrTaken in s.flags) and (gCmd = cmdCompileToLLVM) then 
+    allocParam(p, s);
+  localDebugInfo(p, s);
 end;
 
 procedure fillProcLoc(sym: PSym);
@@ -359,19 +465,26 @@ begin
   assert(lib <> nil);
   if not lib.generated then begin
     lib.generated := true;
+    tmp := getGlobalTempName();
+    assert(lib.name = nil);
+    lib.name := tmp;
+    // BUGFIX: useMagic has awful side-effects
+    appff(m.s[cfsVars], 'static void* $1;$n', 
+                        '$1 = linkonce global i8* zeroinitializer$n', [tmp]);
+    inc(m.labels);
+    appff(m.s[cfsDynLibInit],
+        '$1 = nimLoadLibrary((NimStringDesc*) &$2);$n',
+        '%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n' +
+        'store i8* %MOC$4, i8** $1$n',
+        [tmp, getStrLit(m, lib.path), getTypeDesc(m, getSysType(tyString)),
+         toRope(m.labels)]);
+    //appf(m.s[cfsDynLibDeinit],
+    //  'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
     useMagic(m, 'nimLoadLibrary');
     useMagic(m, 'nimUnloadLibrary');
     useMagic(m, 'NimStringDesc');
-    tmp := getTempName();
-    appf(m.s[cfsVars], 'static void* $1;$n', [tmp]);
-    appf(m.s[cfsDynLibInit],
-      '$1 = nimLoadLibrary((NimStringDesc*) &$2);$n',
-      [tmp, getStrLit(m, lib.path)]);
-    appf(m.s[cfsDynLibDeinit],
-      'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
-    assert(lib.name = nil);
-    lib.name := tmp
-  end
+  end;
+  if lib.name = nil then InternalError('loadDynamicLib');
 end;
 
 procedure SymInDynamicLib(m: BModule; sym: PSym);
@@ -383,14 +496,25 @@ begin
   extname := sym.loc.r;
   loadDynamicLib(m, lib);
   useMagic(m, 'nimGetProcAddr');
-  tmp := ropef('Dl_$1', [toRope(sym.id)]);
+  if gCmd = cmdCompileToLLVM then include(sym.loc.flags, lfIndirect);
+
+  tmp := ropeff('Dl_$1', '@Dl_$1', [toRope(sym.id)]);
   sym.loc.r := tmp; // from now on we only need the internal name
   sym.typ.sym := nil; // generate a new name
-  appf(m.s[cfsDynLibInit], '$1 = ($2) nimGetProcAddr($3, $4);$n',
-    [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString(ropeToStr(extname))]);
+  inc(m.labels, 2);
+  appff(m.s[cfsDynLibInit], 
+    '$1 = ($2) nimGetProcAddr($3, $4);$n',
+    '%MOC$5 = load i8* $3$n' +
+    '%MOC$6 = call $2 @nimGetProcAddr(i8* %MOC$5, i8* $4)$n' +
+    'store $2 %MOC$6, $2* $1$n',
+    [tmp, getTypeDesc(m, sym.typ), lib.name, 
+    cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname)),
+    toRope(m.labels), toRope(m.labels-1)]);
 
-  app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
-  appf(m.s[cfsVars], ' $1;$n', [sym.loc.r]);
+  appff(m.s[cfsVars], 
+    '$2 $1;$n', 
+    '$1 = linkonce global $2 zeroinitializer$n',
+    [sym.loc.r, getTypeDesc(m, sym.loc.t)]);
 end;
 
 // ----------------------------- sections ---------------------------------
@@ -433,14 +557,23 @@ var
 begin
   if p.frameLen > 0 then begin
     useMagic(p.module, 'TVarSlot');
-    slots := ropef('  TVarSlot s[$1];$n', [toRope(p.frameLen)])
+    slots := ropeff('  TVarSlot s[$1];$n',
+                    ', [$1 x %TVarSlot]', [toRope(p.frameLen)])
   end
   else
     slots := nil;
-  appf(p.s[cpsLocals], 'volatile struct {TFrame* prev;' +
+  appff(p.s[cpsLocals], 
+    'volatile struct {TFrame* prev;' +
     'NCSTRING procname;NI line;NCSTRING filename;' +
-    'NI len;$n$1} F;$n', [slots]);
-  prepend(p.s[cpsInit], ropef('F.len = $1;$n', [toRope(p.frameLen)]))
+    'NI len;$n$1} F;$n', 
+    '%TF = type {%TFrame*, i8*, %NI, %NI$1}$n' + 
+    '%F = alloca %TF$n',
+    [slots]);
+  inc(p.labels);
+  prepend(p.s[cpsInit], ropeff('F.len = $1;$n',
+      '%LOC$2 = getelementptr %TF %F, %NI 4$n' +
+      'store %NI $1, %NI* %LOC$2$n',
+      [toRope(p.frameLen), toRope(p.labels)]))
 end;
 
 function retIsNotVoid(s: PSym): bool;
@@ -448,10 +581,48 @@ begin
   result := (s.typ.sons[0] <> nil) and not isInvalidReturnType(s.typ.sons[0])
 end;
 
+function initFrame(p: BProc; procname, filename: PRope): PRope;
+begin
+  inc(p.labels, 5);
+  result := ropeff(
+    'F.procname = $1;$n' +
+    'F.prev = framePtr;$n' +
+    'F.filename = $2;$n' +
+    'F.line = 0;$n' +
+    'framePtr = (TFrame*)&F;$n',
+    
+    '%LOC$3 = getelementptr %TF %F, %NI 1$n' +
+    '%LOC$4 = getelementptr %TF %F, %NI 0$n' +
+    '%LOC$5 = getelementptr %TF %F, %NI 3$n' +
+    '%LOC$6 = getelementptr %TF %F, %NI 2$n' +
+    
+    'store i8* $1, i8** %LOC$3$n' +
+    'store %TFrame* @framePtr, %TFrame** %LOC$4$n' +
+    'store i8* $2, i8** %LOC$5$n' +
+    'store %NI 0, %NI* %LOC$6$n' +
+    
+    '%LOC$7 = bitcast %TF* %F to %TFrame*$n' +
+    'store %TFrame* %LOC$7, %TFrame** @framePtr$n',
+    [procname, filename, toRope(p.labels), toRope(p.labels-1), 
+     toRope(p.labels-2), toRope(p.labels-3), toRope(p.labels-4)]);
+end;
+
+function deinitFrame(p: BProc): PRope;
+begin
+  inc(p.labels, 3);
+  result := ropeff('framePtr = framePtr->prev;$n',
+    
+                   '%LOC$1 = load %TFrame* @framePtr$n' +
+                   '%LOC$2 = getelementptr %TFrame* %LOC$1, %NI 0$n' +
+                   '%LOC$3 = load %TFrame** %LOC$2$n' +
+                   'store %TFrame* $LOC$3, %TFrame** @framePtr', [
+                   toRope(p.labels), toRope(p.labels-1), toRope(p.labels-2)])
+end;
+
 procedure genProcAux(m: BModule; prc: PSym);
 var
   p: BProc;
-  generatedProc, header, returnStmt: PRope;
+  generatedProc, header, returnStmt, procname, filename: PRope;
   i: int;
   res, param: PSym;
 begin
@@ -466,7 +637,7 @@ begin
       // declare the result symbol:
       assignLocalVar(p, res);
       assert(res.loc.r <> nil);
-      returnStmt := ropef('return $1;$n', [rdLoc(res.loc)]);
+      returnStmt := ropeff('return $1;$n', 'ret $1$n', [rdLoc(res.loc)]);
     end
     else begin
       fillResult(res);
@@ -482,22 +653,21 @@ begin
 
   genStmts(p, prc.ast.sons[codePos]); // modifies p.locals, p.init, etc.
   if sfPure in prc.flags then
-    generatedProc := ropef('$1 {$n$2$3$4}$n',
+    generatedProc := ropeff('$1 {$n$2$3$4}$n', 'define $1 {$n$2$3$4}$n',
       [header, p.s[cpsLocals], p.s[cpsInit], p.s[cpsStmts]])
   else begin
-    generatedProc := con(header, '{' + tnl);
+    generatedProc := ropeff('$1 {$n', 'define $1 {$n', [header]);
     if optStackTrace in prc.options then begin
       getFrameDecl(p);
-      prepend(p.s[cpsInit], ropef(
-        'F.procname = $1;$n' +
-        'F.prev = framePtr;$n' +
-        'F.filename = $2;$n' +
-        'F.line = 0;$n' +
-        'framePtr = (TFrame*)&F;$n',
-        [makeCString(prc.owner.name.s +{&} '.' +{&} prc.name.s),
-        makeCString(toFilename(prc.info))]));
-    end;
-    if optProfiler in prc.options then begin
+      app(generatedProc, p.s[cpsLocals]);
+      procname := CStringLit(p, generatedProc, 
+                             prc.owner.name.s +{&} '.' +{&} prc.name.s);
+      filename := CStringLit(p, generatedProc, toFilename(prc.info));
+      app(generatedProc, initFrame(p, procname, filename));
+    end
+    else
+      app(generatedProc, p.s[cpsLocals]);
+    if (optProfiler in prc.options) and (gCmd <> cmdCompileToLLVM) then begin
       if gProcProfile >= 64*1024 then // XXX: hard coded value!
         InternalError(prc.info, 'too many procedures for profiling');
       useMagic(m, 'profileData');
@@ -511,12 +681,13 @@ begin
       end;
       prepend(p.s[cpsInit], toRope('NIM_profilingStart = getticks();' + tnl));
     end;
-    app(generatedProc, con(p.s));
+    app(generatedProc, p.s[cpsInit]);
+    app(generatedProc, p.s[cpsStmts]);
     if p.beforeRetNeeded then
       app(generatedProc, 'BeforeRet: ;' + tnl);
     if optStackTrace in prc.options then
-      app(generatedProc, 'framePtr = framePtr->prev;' + tnl);
-    if optProfiler in prc.options then
+      app(generatedProc, deinitFrame(p));
+    if (optProfiler in prc.options) and (gCmd <> cmdCompileToLLVM) then 
       appf(generatedProc,
         'profileData[$1].total += elapsed(getticks(), NIM_profilingStart);$n',
         [toRope(prc.loc.a)]);
@@ -533,8 +704,10 @@ begin
   if lfDynamicLib in sym.loc.Flags then begin
     if (sym.owner.id <> m.module.id) and
         not intSetContainsOrIncl(m.declaredThings, sym.id) then begin
-      appf(m.s[cfsVars], 'extern $1 Dl_$2;$n',
-           [getTypeDesc(m, sym.loc.t), toRope(sym.id)])
+      appff(m.s[cfsVars], 'extern $1 Dl_$2;$n',
+           '@Dl_$2 = linkonce global $1 zeroinitializer$n',
+           [getTypeDesc(m, sym.loc.t), toRope(sym.id)]);
+      if gCmd = cmdCompileToLLVM then include(sym.loc.flags, lfIndirect);
     end
   end
   else begin
@@ -586,15 +759,22 @@ begin
   if sym.owner.id <> m.module.id then begin
     // else we already have the symbol generated!
     assert(sym.loc.r <> nil);
-    app(m.s[cfsVars], 'extern ');
-    app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
-    if sfRegister in sym.flags then
-      app(m.s[cfsVars], ' register');
-    if sfVolatile in sym.flags then
-      app(m.s[cfsVars], ' volatile');
-    if sfThreadVar in sym.flags then
-      app(m.s[cfsVars], ' NIM_THREADVAR');
-    appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
+    if gCmd = cmdCompileToLLVM then begin
+      include(sym.loc.flags, lfIndirect);
+      appf(m.s[cfsVars], '$1 = linkonce global $2 zeroinitializer$n', 
+           [sym.loc.r, getTypeDesc(m, sym.loc.t)]);
+    end
+    else begin
+      app(m.s[cfsVars], 'extern ');
+      app(m.s[cfsVars], getTypeDesc(m, sym.loc.t));
+      if sfRegister in sym.flags then
+        app(m.s[cfsVars], ' register');
+      if sfVolatile in sym.flags then
+        app(m.s[cfsVars], ' volatile');
+      if sfThreadVar in sym.flags then
+        app(m.s[cfsVars], ' NIM_THREADVAR');
+      appf(m.s[cfsVars], ' $1;$n', [sym.loc.r])
+    end
   end
 end;
 
@@ -609,8 +789,9 @@ begin
   if sym.owner.id <> m.module.id then begin
     // else we already have the symbol generated!
     assert(sym.loc.r <> nil);
-    app(m.s[cfsData], 'extern ');
-    appf(m.s[cfsData], 'NIM_CONST $1 $2;$n',
+    appff(m.s[cfsData], 
+      'extern NIM_CONST $1 $2;$n',
+      '$1 = linkonce constant $2 zeroinitializer',
       [getTypeDesc(m, sym.loc.t), sym.loc.r])
   end
 end;
@@ -618,27 +799,36 @@ end;
 function getFileHeader(const cfilenoext: string): PRope;
 begin
   if optCompileOnly in gGlobalOptions then
-    result := ropef(
+    result := ropeff(
       '/* Generated by the Nimrod Compiler v$1 */$n' +
       '/*   (c) 2008 Andreas Rumpf */$n',
+      '; Generated by the Nimrod Compiler v$1$n' +
+      ';   (c) 2008 Andreas Rumpf$n',
       [toRope(versionAsString)])
   else
-    result := ropef(
+    result := ropeff(
       '/* Generated by the Nimrod Compiler v$1 */$n' +
       '/*   (c) 2008 Andreas Rumpf */$n' +
       '/* Compiled for: $2, $3, $4 */$n' +
       '/* Command for C compiler:$n   $5 */$n',
+      '; Generated by the Nimrod Compiler v$1$n' +
+      ';   (c) 2008 Andreas Rumpf$n' +
+      '; Compiled for: $2, $3, $4$n' +
+      '; Command for C compiler:$n   $5$n',
       [toRope(versionAsString), toRope(platform.OS[targetOS].name),
       toRope(platform.CPU[targetCPU].name),
       toRope(extccomp.CC[extccomp.ccompiler].name),
       toRope(getCompileCFileCmd(cfilenoext))]);
   case platform.CPU[targetCPU].intSize of
-    16: appf(result, '$ntypedef short int NI;$n' +
-                     'typedef unsigned short int NU;$n', []);
-    32: appf(result, '$ntypedef long int NI;$n' +
-                     'typedef unsigned long int NU;$n', []);
-    64: appf(result, '$ntypedef long long int NI;$n' +
-                     'typedef unsigned long long int NU;$n', []);
+    16: appff(result, '$ntypedef short int NI;$n' +
+                      'typedef unsigned short int NU;$n',
+                      '$n%NI = type i16$n', []);
+    32: appff(result, '$ntypedef long int NI;$n' +
+                      'typedef unsigned long int NU;$n',
+                      '$n%NI = type i32$n', []);
+    64: appff(result, '$ntypedef long long int NI;$n' +
+                      'typedef unsigned long long int NU;$n',
+                      '$n%NI = type i64$n', []);
     else begin end
   end
 end;
@@ -651,17 +841,36 @@ const
     '  systemInit();$n' +
     '$1' +
     '$2';
+  CommonMainBodyLLVM = 
+    '  %MOC$3 = bitcast [8 x %NI]* %dummy to i8*$n' +
+    '  call void @setStackBottom(i8* %MOC$3)$n' +
+    '  call void @nim__datInit()$n' +
+    '  call void systemInit()$n' +
+    '$1' +
+    '$2';    
   PosixMain =
-    'NI cmdCount;$n' +
+    'int cmdCount;$n' +
     'char** cmdLine;$n' +
     'char** gEnv;$n' +
     'int main(int argc, char** args, char** env) {$n' +
     '  int dummy[8];$n' +
     '  cmdLine = args;$n' +
-    '  cmdCount = (NI)argc;$n' +
+    '  cmdCount = argc;$n' +
     '  gEnv = env;$n' +{&}
     CommonMainBody +{&}
     '  return 0;$n' +
+    '}$n';
+  PosixMainLLVM =
+    '@cmdCount = linkonce i32$n' +
+    '@cmdLine = linkonce i8**$n' +
+    '@gEnv = linkonce i8**$n' +
+    'define i32 @main(i32 %argc, i8** %args, i8** %env) {$n' +
+    '  %dummy = alloca [8 x %NI]$n' +
+    '  store i8** %args, i8*** @cmdLine$n' +
+    '  store i32 %argc, i32* @cmdCount$n' +
+    '  store i8** %env, i8*** @gEnv$n' +{&}
+    CommonMainBodyLLVM +{&}
+    '  ret i32 0$n' +
     '}$n';
   WinMain =
     'N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n' +
@@ -671,12 +880,27 @@ const
     CommonMainBody +{&}
     '  return 0;$n' +
     '}$n';
+  WinMainLLVM =
+    'define stdcall i32 @WinMain(i32 %hCurInstance, $n' +
+    '                            i32 %hPrevInstance, $n' +
+    '                            i8* %lpCmdLine, i32 %nCmdShow) {$n' +
+    '  %dummy = alloca [8 x %NI]$n' +{&}
+    CommonMainBodyLLVM +{&}
+    '  ret i32 0$n' +
+    '}$n';
   WinDllMain =
     'BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n' +
     '                    LPVOID lpvReserved) {$n' +
     '  int dummy[8];$n' +{&}
     CommonMainBody +{&}
     '  return 1;$n' +
+    '}$n';
+  WinDllMainLLVM =
+    'define stdcall i32 @DllMain(i32 %hinstDLL, i32 %fwdreason, $n' +
+    '                            i8* %lpvReserved) {$n' +
+    '  %dummy = alloca [8 x %NI]$n' +{&}
+    CommonMainBodyLLVM +{&}
+    '  ret i32 1$n' +
     '}$n';
 var
   frmt: TFormatStr;
@@ -685,21 +909,28 @@ begin
   if (platform.targetOS = osWindows) and
       (gGlobalOptions * [optGenGuiApp, optGenDynLib] <> []) then begin
     if optGenGuiApp in gGlobalOptions then
-      frmt := WinMain
+      if gCmd = cmdCompileToLLVM then frmt := WinMainLLVM else frmt := WinMain
     else
-      frmt := WinDllMain;
+      if gCmd = cmdCompileToLLVM then 
+        frmt := WinDllMainLLVM 
+      else 
+        frmt := WinDllMain;
     {@discard} lists.IncludeStr(m.headerFiles, '<windows.h>')
   end
-  else
-    frmt := PosixMain;
+  else 
+    if gCmd = cmdCompileToLLVM then 
+      frmt := PosixMainLLVM 
+    else 
+      frmt := PosixMain;
   if gBreakpoints <> nil then
     useMagic(m, 'dbgRegisterBreakpoint');
-  appf(m.s[cfsProcs], frmt, [gBreakpoints, mainModInit])
+  inc(m.labels);
+  appf(m.s[cfsProcs], frmt, [gBreakpoints, mainModInit, toRope(m.labels)])
 end;
 
 function getInitName(m: PSym): PRope;
 begin
-  result := con(m.name.s, toRope('Init'));
+  result := ropeff('$1Init', '@$1Init', [toRope(m.name.s)]);
 end;
 
 procedure registerModuleToMain(m: PSym);
@@ -707,14 +938,15 @@ var
   initname: PRope;
 begin
   initname := getInitName(m);
-  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n', [initname]);
+  appff(mainModProcs, 'N_NOINLINE(void, $1)(void);$n',
+                      'declare void $1() noinline$n', [initname]);
   if not (sfSystemModule in m.flags) then
-    appf(mainModInit, '$1();$n', [initname]);
+    appff(mainModInit, '$1();$n', 'call void ()* $1$n', [initname]);
 end;
 
 procedure genInitCode(m: BModule);
 var
-  initname, prc: PRope;
+  initname, prc, procname, filename: PRope;
 begin
   if optProfiler in m.initProc.options then begin
     // This does not really belong here, but there is no good place for this
@@ -723,31 +955,28 @@ begin
     {@discard} lists.IncludeStr(m.headerFiles, '<cycle.h>');
   end;
   initname := getInitName(m.module);
-  prc := ropef('N_NOINLINE(void, $1)(void) {$n', [initname]);
-  
+  prc := ropeff('N_NOINLINE(void, $1)(void) {$n',
+                'define void $1() noinline {$n', [initname]);
   if m.typeNodes > 0 then begin
     useMagic(m, 'TNimNode');
-    appf(m.s[cfsTypeInit1], 'static TNimNode $1[$2];$n', 
+    appff(m.s[cfsTypeInit1], 'static TNimNode $1[$2];$n',
+         '$1 = private alloca [$2 x @TNimNode]$n', 
          [m.typeNodesName, toRope(m.typeNodes)]);
   end;
   if m.nimTypes > 0 then begin
     useMagic(m, 'TNimType');
-    appf(m.s[cfsTypeInit1], 'static TNimType $1[$2];$n', 
+    appff(m.s[cfsTypeInit1], 'static TNimType $1[$2];$n', 
+         '$1 = private alloca [$2 x @TNimType]$n',
          [m.nimTypesName, toRope(m.nimTypes)]);
   end;
   if optStackTrace in m.initProc.options then begin
     getFrameDecl(m.initProc);
     app(prc, m.initProc.s[cpsLocals]);
     app(prc, m.s[cfsTypeInit1]);
-    appf(prc,
-      'F.len = 0;$n' + // IMPORTANT: else the debugger crashes!
-      'F.procname = $1;$n' +
-      'F.prev = framePtr;$n' +
-      'F.filename = $2;$n' +
-      'F.line = 0;$n' +
-      'framePtr = (TFrame*)&F;$n',
-      [makeCString('module ' + m.module.name.s),
-      makeCString(toFilename(m.module.info))])
+    
+    procname := CStringLit(m.initProc, prc, 'module ' +{&} m.module.name.s);
+    filename := CStringLit(m.initProc, prc, toFilename(m.module.info));
+    app(prc, initFrame(m.initProc, procname, filename));
   end
   else begin
     app(prc, m.initProc.s[cpsLocals]);
@@ -760,7 +989,7 @@ begin
   app(prc, m.initProc.s[cpsInit]);
   app(prc, m.initProc.s[cpsStmts]);
   if optStackTrace in m.initProc.options then
-    app(prc, 'framePtr = framePtr->prev;' + tnl);
+    app(prc, deinitFrame(m.initProc));
   app(prc, '}' +{&} tnl +{&} tnl);
   app(m.s[cfsProcs], prc)
 end;
@@ -817,7 +1046,8 @@ begin
   s := NewSym(skModule, getIdent(moduleName), nil);
   gmti := rawNewModule(s, joinPath(options.projectPath, moduleName)+'.nim');
   addPendingModule(gmti);
-  appf(mainModProcs, 'N_NOINLINE(void, $1)(void);$n', [getInitName(s)]);
+  appff(mainModProcs, 'N_NOINLINE(void, $1)(void);$n',
+                      'declare void $1() noinline$n', [getInitName(s)]);
 end;
 
 function myOpen(module: PSym; const filename: string): PPassContext;

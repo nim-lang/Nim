@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -35,7 +35,7 @@ const
 
 proc match*(s, pattern: string, matches: var openarray[string],
             start: int = 0): bool
-  ## returns ``true`` if ``s`` matches the ``pattern[start..]`` and
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
@@ -113,3 +113,42 @@ proc match(s, pattern: string, start: int = 0): bool =
 
 proc find(s, pattern: string, start: int = 0): bool =
   return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE), start) >= 0'i32
+
+template `=~` *(s, pattern: expr): expr = 
+  ## This calls ``match`` with an implicit declared ``matches`` array that 
+  ## can be used in the scope of the ``=~`` call: 
+  ## 
+  ## .. code-block:: nimrod
+  ##
+  ##   if line =~ r"\s*(\w+)\s*\=\s*(\w+)": 
+  ##     # matches a key=value pair:
+  ##     echo("Key: ", matches[1])
+  ##     echo("Value: ", matches[2])
+  ##   elif line =~ r"\s*(\#.*)":
+  ##     # matches a comment
+  ##     # note that the implicit ``matches`` array is different from the
+  ##     # ``matches`` array of the first branch
+  ##     echo("comment: ", matches[1])
+  ##   else:
+  ##     echo("syntax error")
+  ## 
+  var matches: array[0..maxSubPatterns-1, string]
+  match(s, pattern, matches)
+  
+
+const ## common regular expressions
+  reIdentifier* = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"  ## describes an identifier
+  reNatural* = r"\b\d+\b" ## describes a natural number
+  reInteger* = r"\b[-+]?\d+\b" ## describes an integer
+  reHex* = r"\b0[xX][0-9a-fA-F]+\b" ## describes a hexadecimal number
+  reBinary* = r"\b0[bB][01]+\b" ## describes a binary number (example: 0b11101)
+  reOctal* = r"\b0[oO][0-7]+\b" ## describes an octal number (example: 0o777)
+  reFloat* = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
+    ## describes a floating point number
+  reEmail* = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)" &
+             r"*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+(?:[a-zA-Z]{2}|com|org|" &
+             r"net|gov|mil|biz|info|mobi|name|aero|jobs|museum)\b"
+    ## describes a common email address
+  reURL* = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms\-help):" &
+           r"((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
+    ## describes an URL

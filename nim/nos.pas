@@ -123,7 +123,7 @@ procedure createDir(const dir: string);
 var
   i: int;
 begin
-  for i := 1 to length(dir) do begin
+  for i := 2 to length(dir) do begin
     if dir[i] in [sep, altsep] then sysutils.createDir(ncopy(dir, 1, i-1));
   end;
   sysutils.createDir(dir);

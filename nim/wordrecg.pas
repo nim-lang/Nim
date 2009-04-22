@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -66,7 +66,7 @@ type
     wMerge, wLib, wDynlib, wCompilerproc, wCppmethod, wFatal,
     wError, wWarning, wHint, wLine, wPush, wPop,
     wDefine, wUndef, wLinedir, wStacktrace, wLinetrace, wPragma,
-    wLink, wCompile, wLinksys, wFixupsystem, wDeprecated, wVarargs,
+    wLink, wCompile, wLinksys, wDeprecated, wVarargs,
     wByref, wCallconv, wBreakpoint, wDebugger, wNimcall, wStdcall,
     wCdecl, wSafecall, wSyscall, wInline, wNoInline, wFastcall, wClosure,
     wNoconv, wOn, wOff, wChecks, wRangechecks, wBoundchecks,
@@ -84,7 +84,7 @@ type
     wMaxErr, wExpr, wStmt, wTypeDesc,
     wSubsChar, wAstCache, wAcyclic, wIndex,
     // commands:
-    wCompileToC, wCompileToCpp, wCompileToEcmaScript,
+    wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM,
     wPretty, wDoc, wPas,
     wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy,
     wRst2html, wI,
@@ -140,7 +140,7 @@ const
     'merge', 'lib', 'dynlib', 'compilerproc', 'cppmethod', 'fatal',
     'error', 'warning', 'hint', 'line', 'push', 'pop',
     'define', 'undef', 'linedir', 'stacktrace', 'linetrace', 'pragma',
-    'link', 'compile', 'linksys', 'fixupsystem', 'deprecated', 'varargs',
+    'link', 'compile', 'linksys', 'deprecated', 'varargs',
     'byref', 'callconv', 'breakpoint', 'debugger', 'nimcall', 'stdcall',
     'cdecl', 'safecall', 'syscall', 'inline', 'noinline', 'fastcall', 'closure',
     'noconv', 'on', 'off', 'checks', 'rangechecks', 'boundchecks',
@@ -158,7 +158,7 @@ const
     'maxerr', 'expr', 'stmt', 'typedesc',
     'subschar', 'astcache', 'acyclic', 'index',
     // commands:
-    'compiletoc', 'compiletocpp', 'compiletoecmascript',
+    'compiletoc', 'compiletocpp', 'compiletoecmascript', 'compiletollvm',
     'pretty', 'doc', 'pas', 'gendepend', 'listdef', 'check', 'parse',
     'scan', 'boot', 'lazy', 'rst2html', 'i'+'',
 

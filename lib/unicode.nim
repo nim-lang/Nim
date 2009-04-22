@@ -9,6 +9,8 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
+{.deadCodeElim: on.}
+
 type
   TRune* = int ## type that can hold any Unicode character
   TRune16* = int16 ## 16 bit Unicode character

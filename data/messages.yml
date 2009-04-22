@@ -1,5 +1,5 @@
 # This file contains all the messages of the Nimrod compiler
-# (c) 2008 Andreas Rumpf
+# (c) 2009 Andreas Rumpf
 
 [
 # fatal errors:
@@ -208,7 +208,7 @@
 {'errXNotAllowedHere': '$1 here not allowed'},
 {'errInvalidControlFlowX': 'invalid control flow: $1'},
 {'errATypeHasNoValue': 'a type has no value'},
-{'errXisNoType': "'$1' is no type"},
+{'errXisNoType': "invalid type: '$1'"},
 {'errCircumNeedsPointer': "'^' needs a pointer or reference type"},
 {'errInvalidContextForBuiltinX': "invalid context for builtin '$1'"},
 {'errInvalidExpression': 'invalid expression'},
@@ -254,6 +254,7 @@
 {'errXRequiresOneArgument': "converter requires one parameter"},
 {'errUnhandledExceptionX': "unhandled exception: $1"},
 {'errCyclicTree': "macro returned a cyclic abstract syntax tree"},
+{'errXisNoMacroOrTemplate': "'$1' is no macro or template"},
 
 # user error message:
 {'errUser': '$1'},

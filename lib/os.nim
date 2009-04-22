@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -178,12 +178,14 @@ proc ExistsFile*(filename: string): bool
 proc JoinPath*(head, tail: string): string {.noSideEffect.}
   ## Joins two directory names to one.
   ##
-  ## For example on Unix::
+  ## For example on Unix:
   ##
+  ## ..code-block:: nimrod
   ##   JoinPath("usr", "lib")
   ##
-  ## results in::
+  ## results in:
   ##
+  ## ..code-block:: nimrod
   ##   "usr/lib"
   ##
   ## If head is the empty string, tail is returned.
@@ -312,7 +314,7 @@ proc createDir*(dir: string)
   ##
   ## The directory may contain several
   ## subdirectories that do not exist yet. The full path is created. If this
-  ## fails, `EOS` is raised. It does NOT fail if the path already exists
+  ## fails, `EOS` is raised. It does **not** fail if the path already exists
   ## because for most usages this does not indicate an error.
 
 proc existsDir*(dir: string): bool
@@ -650,8 +652,7 @@ proc searchExtPos(s: string): int =
       break # do not skip over path
 
 proc SplitFilename(filename: string, name, extension: var string) =
-  var
-    extPos = searchExtPos(filename)
+  var extPos = searchExtPos(filename)
   if extPos >= 0:
     name = copy(filename, 0, extPos-1)
     extension = copy(filename, extPos)
@@ -664,14 +665,12 @@ proc normExt(ext: string): string =
   else: result = extSep & ext
 
 proc ChangeFileExt(filename, ext: string): string =
-  var
-    extPos = searchExtPos(filename)
+  var extPos = searchExtPos(filename)
   if extPos < 0: result = filename & normExt(ext)
   else: result = copy(filename, 0, extPos-1) & normExt(ext)
 
 proc AppendFileExt(filename, ext: string): string =
-  var
-    extPos = searchExtPos(filename)
+  var extPos = searchExtPos(filename)
   if extPos < 0: result = filename & normExt(ext)
   else: result = filename #make a string copy here
 
@@ -850,12 +849,12 @@ proc rawCreateDir(dir: string) =
       OSError()
 
 proc createDir(dir: string) =
-  for i in 0.. dir.len-1:
+  for i in 1.. dir.len-1:
     if dir[i] in {dirsep, altsep}: rawCreateDir(copy(dir, 0, i-1))
   rawCreateDir(dir)
 
 proc executeShellCommand(command: string): int =
-  return csystem(command)
+  result = csystem(command)
 
 var
   envComputed: bool = false
@@ -892,8 +891,7 @@ else:
   proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
-      var
-        i: int = 0
+      var i = 0
       while True:
         if gEnv[i] == nil: break
         add environment, $gEnv[i]
@@ -904,13 +902,13 @@ proc findEnvVar(key: string): int =
   getEnvVarsC()
   var temp = key & '='
   for i in 0..high(environment):
-    if findSubStr(temp, environment[i]) == 0: return i
+    if startsWith(environment[i], temp): return i
   return -1
 
 proc getEnv(key: string): string =
   var i = findEnvVar(key)
   if i >= 0:
-    return copy(environment[i], findSubStr("=", environment[i])+1)
+    return copy(environment[i], find(environment[i], '=')+1)
   else:
     var env = cgetenv(key)
     if env == nil: return ""
@@ -925,7 +923,7 @@ iterator iterOverEnvironment*(): tuple[key, value: string] =
   ## tuple is the name of the current variable stored, in the second its value.
   getEnvVarsC()
   for i in 0..high(environment):
-    var p = findSubStr("=", environment[i])
+    var p = find(environment[i], '=')
     yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
 
 proc putEnv(key, val: string) =
@@ -1140,7 +1138,7 @@ else:
   proc GetConfigDir(): string = return getEnv("HOME") & "/.config/"
 
   var
-    cmdCount {.importc: "cmdCount".}: int
+    cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
   proc paramStr(i: int): string =

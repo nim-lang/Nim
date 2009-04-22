@@ -428,7 +428,7 @@ begin
     L.bufpos := pos; // restore position
 
   try
-    if (L.buf[pos] = '0') and (L.buf[pos+1] in ['x','X','b','B','o','O'])
+    if (L.buf[pos] = '0') and (L.buf[pos+1] in ['x','X','b','B','o','O','c','C'])
     then begin
       inc(pos, 2);
       xi := 0;
@@ -451,7 +451,7 @@ begin
             end
           end
         end;
-        'o': begin
+        'o', 'c', 'C': begin
           result.base := base8;
           while true do begin
             case L.buf[pos] of

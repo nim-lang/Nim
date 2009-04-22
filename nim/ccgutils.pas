@@ -20,6 +20,7 @@ uses
 
 function toCChar(c: Char): string;
 function makeCString(const s: string): PRope;
+function makeLLVMString(const s: string): PRope;
 
 function TableGetType(const tab: TIdTable; key: PType): PObject;
 function GetUniqueType(key: PType): PType;
@@ -151,6 +152,33 @@ begin
     add(res, toCChar(s[i]));
   end;
   addChar(res, '"');
+  app(result, toRope(res));
+end;
+
+function makeLLVMString(const s: string): PRope;
+const
+  MaxLineLength = 64;
+var
+  i: int;
+  res: string;
+begin
+  result := nil;
+  res := 'c"';
+  for i := strStart to length(s)+strStart-1 do begin
+    if (i-strStart+1) mod MaxLineLength = 0 then begin
+      app(result, toRope(res));
+      setLength(res, 0);
+    end;
+    case s[i] of
+     #0..#31, #128..#255, '"', '\': begin
+       addChar(res, '\');
+       add(res, toHex(ord(s[i]), 2));
+     end
+     else
+       addChar(res, s[i])
+    end;
+  end;
+  add(res, '\00"');
   app(result, toRope(res));
 end;
 

@@ -118,7 +118,7 @@ ifStmt ::= 'if' expr ':' stmt ('elif' expr ':' stmt)* ['else' ':' stmt]
 whenStmt ::= 'when' expr ':' stmt ('elif' expr ':' stmt)* ['else' ':' stmt]
 caseStmt ::= 'case' expr [':'] ('of' sliceExprList ':' stmt)*
                                ('elif' expr ':' stmt)*
-                                ['else' ':' stmt]
+                               ['else' ':' stmt]
 whileStmt ::= 'while' expr ':' stmt
 forStmt ::= 'for' symbol (comma symbol)* 'in' expr ['..' expr] ':' stmt
 exceptList ::= [qualifiedIdent (comma qualifiedIdent)*]

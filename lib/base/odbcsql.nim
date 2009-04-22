@@ -226,8 +226,8 @@ const
   SQL_DRIVER_NOPROMPT* = 0
   SQL_DRIVER_COMPLETE* = 1
   SQL_DRIVER_PROMPT* = 2
-  SQL_DRIVER_COMPLETE_REQUIRED* = 3 # whether an attribute is a pointer or not 
-  SQL_IS_POINTER* = (- 4)
+  SQL_DRIVER_COMPLETE_REQUIRED* = 3 
+  SQL_IS_POINTER* = (- 4)  # whether an attribute is a pointer or not 
   SQL_IS_UINTEGER* = (- 5)
   SQL_IS_INTEGER* = (- 6)
   SQL_IS_USMALLINT* = (- 7)
@@ -737,7 +737,8 @@ proc SQLFreeStmt*(StatementHandle: TSqlHStmt, Option: TSqlUSmallInt): TSqlSmallI
 proc SQLColAttribute*(StatementHandle: TSqlHStmt, ColumnNumber: TSqlUSmallInt, 
                       FieldIdentifier: TSqlUSmallInt, 
                       CharacterAttribute: PSQLCHAR, BufferLength: TSqlSmallInt, 
-                      StringLength: PSQLSMALLINT, NumericAttribute: TSqlPointer): TSqlSmallInt{.
+                      StringLength: PSQLSMALLINT, 
+                      NumericAttribute: TSqlPointer): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLEndTran*(HandleType: TSqlSmallInt, Handle: TSqlHandle, 
                  CompletionType: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib, 
@@ -756,7 +757,8 @@ proc SQLSpecialColumns*(StatementHandle: TSqlHStmt, IdentifierType: TSqlUSmallIn
                         CatalogName: PSQLCHAR, NameLength1: TSqlSmallInt, 
                         SchemaName: PSQLCHAR, NameLength2: TSqlSmallInt, 
                         TableName: PSQLCHAR, NameLength3: TSqlSmallInt, 
-                        Scope: TSqlUSmallInt, Nullable: TSqlUSmallInt): TSqlSmallInt{.
+                        Scope: TSqlUSmallInt, 
+                        Nullable: TSqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLProcedures*(hstmt: TSqlHStmt, szTableQualifier: PSQLCHAR, 
                     cbTableQualifier: TSqlSmallInt, szTableOwner: PSQLCHAR, 
@@ -778,6 +780,7 @@ proc SQLStatistics*(hstmt: TSqlHStmt, CatalogName: PSQLCHAR,
                     NameLength1: TSqlSmallInt, SchemaName: PSQLCHAR, 
                     NameLength2: TSqlSmallInt, TableName: PSQLCHAR, 
                     NameLength3: TSqlSmallInt, Unique: TSqlUSmallInt, 
-                    Reserved: TSqlUSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
+                    Reserved: TSqlUSmallInt): TSqlSmallInt {.
+                    dynlib: odbclib, importc.}
 
 {.pop.}

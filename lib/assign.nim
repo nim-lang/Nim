@@ -43,8 +43,12 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
       x^ = nil
       return
     assert(dest != nil)
-    unsureAsgnRef(cast[ppointer](dest),
-                  newObj(mt, seq.len * mt.base.size + GenericSeqSize))
+    when defined(boehmGC):
+      unsureAsgnRef(cast[ppointer](dest),
+                    newObj(seq.len * mt.base.size + GenericSeqSize))
+    else:
+      unsureAsgnRef(cast[ppointer](dest),
+                    newObj(mt, seq.len * mt.base.size + GenericSeqSize))
     var dst = cast[taddress](cast[ppointer](dest)^)
     for i in 0..seq.len-1:
       genericAssign(

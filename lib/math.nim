@@ -51,6 +51,20 @@ proc classify*(x: float): TFloatClass =
   # XXX: fcSubnormal is not detected!
 
 
+proc binom*(n, k: int): int {.noSideEffect.} = 
+  ## computes the binomial coefficient
+  if k <= 0: return 1
+  if 2*k > n: return binom(n, n-k)
+  result = n
+  for i in countup(2, k):
+    result = (result * (n + 1 - i)) div i
+    
+proc fac*(n: int): int {.noSideEffect.} = 
+  ## computes the faculty function
+  result = 1
+  for i in countup(2, n):
+    result = result * i
+
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## returns true, if x is a power of two, false otherwise.
   ## Negative numbers are not a power of two.
@@ -74,6 +88,25 @@ proc countBits*(n: int32): int {.noSideEffect.}
 
 include cntbits
 
+proc sum*[T](x: openarray[T]): T {.noSideEffect.} = 
+  ## computes the sum of the elements in `x`. 
+  ## If `x` is empty, 0 is returned.
+  for i in items(x): result = result + i
+
+proc mean*(x: openarray[float]): float {.noSideEffect.} = 
+  ## computes the mean of the elements in `x`. 
+  ## If `x` is empty, NaN is returned.
+  result = sum(x) / toFloat(len(x))
+
+proc variance*(x: openarray[float]): float {.noSideEffect.} = 
+  ## computes the mean of the elements in `x`. 
+  ## If `x` is empty, NaN is returned.
+  result = 0.0
+  var m = mean(x)
+  for i in 0 .. high(x):
+    var diff = x[i] - m
+    result = result + diff*diff
+  result = result / toFloat(len(x))
 
 when not defined(ECMAScript):
   proc random*(max: int): int

@@ -61,7 +61,7 @@ type
 
 procedure HandleCmdLine;
 var
-  command, filename: string;
+  command, filename, prog: string;
   start: TTime;
 begin
   {@emit start := getTime(); }
@@ -92,13 +92,21 @@ begin
                                 toString(getTime() - start)]);
     }
     end;
-    if optRun in gGlobalOptions then
-      execExternalProgram(quoteIfContainsWhite(changeFileExt(filename, '')) +{&}
-                         ' ' +{&} arguments)
+    if optRun in gGlobalOptions then begin
+      {$ifdef unix}
+      prog := './' + quoteIfContainsWhite(changeFileExt(filename, ''));
+      {$else}
+      prog := quoteIfContainsWhite(changeFileExt(filename, ''));
+      {$endif}
+      execExternalProgram(prog +{&} ' ' +{&} arguments)
+    end
   end
 end;
 
 begin
+//{@emit
+//  GC_disableMarkAndSweep();
+//}
   cmdLineInfo := newLineInfo('command line', -1, -1);
   condsyms.InitDefines();
   HandleCmdLine();

@@ -1967,6 +1967,10 @@ begin
       initParser(q, p.s);
       q.filename := filename;
       getTokens(readFile(path), false, q.tok);
+      // workaround a GCC bug: 
+      if find(q.tok[high(q.tok)].symbol, #0#1#2) > 0 then begin
+        InternalError('Too many binary zeros in include file');
+      end;
       result := parseDoc(q);
     end
   end

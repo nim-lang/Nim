@@ -27,7 +27,6 @@ Advanced options:
   --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod
   --skip_cfg                do not read the general configuration file
   --skip_proj_cfg           do not read the project's configuration file
-  --import:MODULE_FILE      import the given module implicitly for each module
   --index:FILE              use FILE to generate a documenation index file
   --putenv:key=value        set an environment variable
   --list_cmd                list the commands used to execute external programs

@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -38,7 +38,14 @@ function getIdent(identifier: cstring; len: int; h: THash): PIdent; overload;
   // special version for the scanner; the scanner's buffering scheme makes
   // this horribly efficient. Most of the time no character copying is needed!
 
+function IdentEq(id: PIdent; const name: string): bool;
+
 implementation
+
+function IdentEq(id: PIdent; const name: string): bool;
+begin
+  result := id.id = getIdent(name).id;
+end;
 
 var
   buckets: array [0..4096*2-1] of PIdent;

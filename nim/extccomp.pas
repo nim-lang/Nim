@@ -352,13 +352,13 @@ end;
 
 procedure addCompileOption(const option: string);
 begin
-  if strutils.findSubStr(option, compileOptions, strStart) < strStart then
+  if strutils.find(compileOptions, option, strStart) < strStart then
     addOpt(compileOptions, option)
 end;
 
 procedure addLinkOption(const option: string);
 begin
-  if findSubStr(option, linkOptions, strStart) < strStart then
+  if find(linkOptions, option, strStart) < strStart then
     addOpt(linkOptions, option)
 end;
 

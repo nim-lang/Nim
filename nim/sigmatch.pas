@@ -80,7 +80,7 @@ var
 begin
   result := msgKindToString(errTypeMismatch);
   for i := 1 to sonsLen(n)-1 do begin
-    debug(n.sons[i].typ);
+    //debug(n.sons[i].typ);
     add(result, typeToString(n.sons[i].typ));
     if i <> sonsLen(n)-1 then add(result, ', ');
   end;
@@ -361,9 +361,7 @@ begin // is a subtype of f?
         tyProc: begin
           if (sonsLen(f) = sonsLen(a)) and (f.callconv = a.callconv) then begin
             // Note: We have to do unification for the parameters before the
-            // return type! Otherwise it'd be counter-intuitive for the standard
-            // Nimrod syntax. For the C-based syntax it IS counter-intuitive.
-            // But that is one of the reasons a standard syntax was picked.
+            // return type!
             result := isEqual; // start with maximum; also correct for no
                                // params at all
             for i := 1 to sonsLen(f)-1 do begin
@@ -433,8 +431,9 @@ begin // is a subtype of f?
     end;
     tyAnyEnum: begin
       case a.kind of
-        tyRange: result := typeRel(mapping, f, base(a));
-        tyEnum:  result := isSubtype;
+        tyRange:   result := typeRel(mapping, f, base(a));
+        tyEnum:    result := isSubtype;
+        tyAnyEnum: result := isEqual;
         else begin end
       end
     end;
@@ -726,11 +725,11 @@ begin
         end
         else begin
           setSon(m.call, formal.position+1, arg);
-        end;
-        inc(f);
+        end
       end
     end;
     inc(a);
+    inc(f);
   end;
   // iterate over all formal params and check all are provided:
   f := 1;

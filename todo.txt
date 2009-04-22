@@ -1,6 +1,13 @@
 TO IMPLEMENT
 ============
 
+Plan
+----
+
+* implement new memory manager --> hopefully faster turnaround times
+* implement LLVM backend --> faster turnaround times
+
+
 RST
 ---
 - footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
@@ -9,55 +16,181 @@ RST
 Bugs
 ----
 
+- BUG: check if "break" is valid is not complete: "break" within "for"
+  may be incorrect, if the called iterator is not in a loop
+  --> check that "yield" is inside a loop!
+- BUG: returning an array does not work --> see md5.nim module
+- BUG: if not nodeOfDegree(g, 1) >= 0: inc(counter)
 - BUG: addr/deref may not work when interpreting
 - BUG: the parser allows empty object case branches
 - BUG: when optmizing cgen.c with Visual C++, GCC, LLVM (O3), it breaks.
 - BUG: ``-cc:bcc`` command line option does not error
 - BUG: symbol files still do not work
 - BUG: tlastmod returns wrong results on BSD (Linux, MacOS X: works)
-- BUG: sigmatch for ``len`` matches the open array too often... (?)
 
 
 High priority
 -------------
 
+- typeAllowed() for parameters...
+- implicit conversions from ``ptr/ref T`` to ``var T`` and from
+  ``ptr/ref T`` to ``T``? Yes.
+- implement generic types
 - implement tuple unpacking
 - implement closures for the C code generator
-- implement a better memory manager
-- implement stack walking via assembler for horribly advanced optimizers
-
-- documentation: ``[]`` overloading, type convertions,
-  anonymous procs, ``len(s) == s.len``, type converters
+- documentation: type converters
 - implement two-phase lookup for generics (this is hard...): This is useful
   for macros too! Alternative: Explicit early name binding. Both are hard to
   implement
-- get rid of ``nkHiddenStdConv`` in several places: this mechanism caused more
-  bugs than it ever solved!
+- language change: inheritance should only work with reference types, so that
+  the ``type`` field is not needed for objects! --> zero overhead aggregation
+
+For the next versions
+=====================
+
+- multi-processor support
+- IDE
+- better support for GDB?
+- support for generation of dynamic libraries
+- better code generator: skip ropes datastructure, it uses too much memory
+- make set optimizations part of the transformation (--> all backends profit
+  from it), but this really needs a more abstract code generator
+
+
+Further ideas/nice to have
+==========================
+
+- queues additional to streams: have to positions (read/write) instead of one
+- introduce: refany type???
+- CLR code generator; better use XYZ? --> Version 1.2?
+- provide an interactive shell: if the user wants his commands
+  to be executed, the command should end with #
+- implement packed arrays (bit arrays)/ packed records
+- implement tables (implement as library? - no! Builtin because of
+  constructor syntax is nice to have)
+
+
+Version 2
+---------
+
+- language support for aggregation: 
+  type
+    TMyObject = object 
+      x: TOtherObject
+      
+  --> can be done via type converters elegantly
+  
+
+- type tags: 
+  type
+    sqlString* = type string
+
+  everywhere where a string is expected, a "sqlString" is allowed, but not
+  vice versa. However, this causes problems: 
+  
+  type
+    TDollar = type decimal
+    
+  TDollar * int --> allowed
+  TDollar div int --> allowed
+  TDollar + int --> not allowed
+  TDollar + TEuro --> not allowed, or implicit conversion
+
+  --> Explicit converters are probably flawed
+
+- explicit nil types?
+  * nil seq[int]
+  * nil string
+  * nil ref int
+  * nil ptr THallo
+  * nil proc 
+
+.. code-block:: nimrod
+  var
+    x: string = nil # initialized with invalid value!
+  if not isNil(x):
+    # now x 
+  
+- better for backwards compability: default nilable, but prefix ``!`` operator
+  to specify that null is not allowed
+  
+  type
+    PWindow = ! ref TWindow
+    
 
 
 Library
 -------
-- xml, html, url, fastcgi: implement from scratch
-- socket library (does SDL for us?)
+
+- gui module
+- finish json module: hard
+- socket, http, ftp, email, fastcgi: implement from scratch
+- ncurses bindings
 - osproc for Windows
 - bignums
 - python
+- TCL
+- automate module: expect-like module for Nimrod
+- parsecsv module
+
+- YAML module
 
 
 Low priority
 ------------
 
+- ``when T is int`` for generic code
+- ``when validCode( proc ()  )`` for generic code
+  
+  when compiles:
+    
+  elif compiles: 
+    
+
+- copy more of C++'s object modell?
+- syntactic sugar for OOP: 
+
+  type
+    TObj* = object
+      fx = 0.nat
+      fy = 0.nat
+      s = ""
+      proc setX(var, val: int) = my.fx = val
+      proc getX: int = return my.fx
+
+      `x=`: proc (var, val: int) = setX
+      x: proc: int = getX
+      
+      proc q*(query: int): int = 
+        # implicit "my: TObj" parameter
+        # variables are looked up automatically:
+        return fx
+              
+      proc setEvent(var, e: TEvent): int = 
+        # implicit "my: var TObj" parameter
+        nil
+        
+      proc init(var) = 
+        # constructor
+        nil
+        
+  o.x = 13 # ambigious
+
+- implement stack walking via assembler for horribly advanced optimizers
 - use `` notation for identifier concatenation?
 - Visual C++: emit ``default: __assume(0);`` for optimization
 - macros: ``typecheck`` pragma; this is really a good idea! This allows
   transformations based on types!
 - make callconv a set
 - partial generic instantation is missing
-- commas are not optional any longer as this may lead to bugs (which?)
 - get code generation for C++ exception handling right!
 - find a way for easy constructors and destructors; though constructors are
   flawed... destructors are not, however!
-- multiple dispatch
+- multiple dispatch: no, but provide a proc ``typeId`` to allow the user to
+  implement it efficiently
+- replace ropes with strings in the C code generator: This may yield a HUGE
+  speedup of the compiler! (10%)
+- code generated for type information is wasteful
 
 
 Changelog
@@ -369,27 +502,44 @@ Changelog
   resolutions
 - ``macros`` are no longer part of the ``system`` module, to use macros you 
   have to import the ``macros`` module
+0.7.5
+- GC now uses the simpler "markStackAndRegisters" version
+- fixed a bug that kept the "recursive modules" example from working
+- docgen: changed ``<blockquote>`` to ``<blockquote><p>`` to generate valid
+  HTML
+- BUGFIX: ``nkCommand``, etc. supported by the C code generator for statements
+- ``addf`` for ``strutils``
+- added common regular expressions for regexprs
+- BUGFIX: ``g.show(name="VC", vc)`` 
+  Error: cannot bind parameter 'name' twice
+- BUGFIX: got rid of debug output in sigmatch module
+- implemented ``nkMacroStmt``
+- ``findSubStr``, ``findChars`` deprecated: use ``find`` instead; the library
+  has already been adapted
+- deprecated items are now warned for
+- BUGFIX: octal numbers with the prefix ``0c`` are now properly supported
+- posix module now declares socket stuff
+- new ``terminal`` module
+- BUGFIX: ``parseInt``, ``ParseBiggestInt`` now throw an exception if the
+  string does not end after the parsed number 
+- libcurl wrapper library
+- BUGFIX: ``semEnum``: enumerations now may start with negative values
+- started ``web`` library
+- added ``system.pop`` built-in for sequences
+- added ``parsexml`` module
+- BUGFIX: c.p.owner is now never nil
+- the scoping rules for ``for``, ``while``, ``if``, ``case`` changed
+  in a subtle way to support the new ``=~`` template
+- BUGFIX: generated ``nimcache`` directory never ends in a slash
+- BUGFIX: ``createDir`` now works for global directories under 
+  UNIX "/somepath/here"
+- BUGFIX: now executes the executable with "./" &exe under UNIX
+- added ``strutils.addSep`` proc
+- BUGFIX: constant array of procs
+- BUGFIX: elif in case statements 
+- mysql, sqlite3 interface
+- md5 module
+- BUGFIX: iterators using open arrays
+- BUGFIX: [$anyEnum]
 
 
-For the next versions
-=====================
-
-- multi-processor support
-- IDE
-- better support for GDB?
-- support for generation of dynamic libraries
-- better code generator: skip ropes datastructure, it uses too much memory
-- make set optimizations part of the transformation (--> all backends profit
-  from it), but this really needs a more abstract code generator
-
-
-Further ideas/nice to have
-==========================
-
-- introduce: refany type???
-- CLR code generator; better use XYZ? --> Version 1.2?
-- provide an interactive shell: if the user wants his commands
-  to be executed, the command should end with #
-- implement packed arrays (bit arrays)/ packed records
-- implement tables (implement as library? - no! Builtin because of
-  constructor syntax is nice to have)
