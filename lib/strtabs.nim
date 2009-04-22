@@ -16,10 +16,10 @@ import
   os, hashes, strutils
 
 type
-  TStringTableMode* = enum    # describes the tables operation mode
-    modeCaseSensitive,        # the table is case sensitive
-    modeCaseInsensitive,      # the table is case insensitive
-    modeStyleInsensitive      # the table is style insensitive
+  TStringTableMode* = enum    ## describes the tables operation mode
+    modeCaseSensitive,        ## the table is case sensitive
+    modeCaseInsensitive,      ## the table is case insensitive
+    modeStyleInsensitive      ## the table is style insensitive
   TKeyValuePair = tuple[key, val: string]
   TKeyValuePairSeq = seq[TKeyValuePair]
   TStringTable* = object of TObject
@@ -61,14 +61,14 @@ iterator pairs*(t: PStringTable): tuple[key, value: string] =
       yield (t.data[h].key, t.data[h].val)
 
 type
-  TFormatFlag* = enum         # flags for the `%` operator
-    useEnvironment,           # use environment variable if the ``$key``
-                              # is not found in the table
-    useEmpty,                 # use the empty string as a default, thus it
-                              # won't throw an exception if ``$key`` is not
-                              # in the table
-    useKey                    # do not replace ``$key`` if it is not found
-                              # in the table (or in the environment)
+  TFormatFlag* = enum         ## flags for the `%` operator
+    useEnvironment,           ## use environment variable if the ``$key``
+                              ## is not found in the table
+    useEmpty,                 ## use the empty string as a default, thus it
+                              ## won't throw an exception if ``$key`` is not
+                              ## in the table
+    useKey                    ## do not replace ``$key`` if it is not found
+                              ## in the table (or in the environment)
 
 proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string
   ## The `%` operator for string tables.
@@ -110,9 +110,7 @@ proc mustRehash(length, counter: int): bool =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 proc nextTry(h, maxHash: THash): THash =
-  result = ((5 * h) + 1) and maxHash # For any initial h in range(maxHash), repeating that maxHash times
-                                     # generates each int in range(maxHash) exactly once (see any text on
-                                     # random-number generation for proof).
+  result = ((5 * h) + 1) and maxHash
 
 proc RawGet(t: PStringTable, key: string): int =
   var h: THash
@@ -166,35 +164,30 @@ proc getValue(t: PStringTable, flags: set[TFormatFlag], key: string): string =
   if hasKey(t, key): return t[key]
   if useEnvironment in flags: result = os.getEnv(key)
   else: result = ""
-  if (result == ""):
+  if result.len == 0:
     if useKey in flags: result = '$' & key
     elif not (useEmpty in flags): raiseFormatException(key)
 
 proc `%`(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string =
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
-  var
-    i, j: int
-    key: string
   result = ""
-  i = strStart
-  while i <= len(f) + strStart - 1:
+  var i = 0
+  while i < len(f):
     if f[i] == '$':
-      case f[i + 1]
+      case f[i+1]
       of '$':
         add(result, '$')
         inc(i, 2)
       of '{':
-        j = i + 1
-        while (j <= len(f) + strStart - 1) and (f[j] != '}'): inc(j)
-        key = copy(f, i + 2, j - 1)
-        result = result & getValue(t, flags, key)
+        var j = i + 1
+        while j < f.len and f[j] != '}': inc(j)
+        add(result, getValue(t, flags, copy(f, i+2, j-1)))
         i = j + 1
       of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '_':
-        j = i + 1
-        while (j <= len(f) + strStart - 1) and (f[j] in PatternChars): inc(j)
-        key = copy(f, i+1, j - 1)
-        result = result & getValue(t, flags, key)
+        var j = i + 1
+        while j < f.len and f[j] in PatternChars: inc(j)
+        add(result, getValue(t, flags, copy(f, i+1, j-1)))
         i = j
       else:
         add(result, f[i])

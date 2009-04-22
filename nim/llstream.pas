@@ -22,7 +22,7 @@ type
     llsFile,          // stream encapsulates a file
     llsStdIn);        // stream encapsulates stdin
   TLLStream = object(NObject)
-    kind: TLLStreamKind; // exposed for low-level access (lexbase uses this)
+    kind: TLLStreamKind; // accessible for low-level access (lexbase uses this)
     f: TBinaryFile;
     s: string;
     pos: int; // for string streams

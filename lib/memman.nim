@@ -360,7 +360,7 @@ proc findSuitableBlock(t: var TLSF, fl, sl: var int): Pbhdr =
 
 proc extractBlockHdr(b: Pbhdr, t: var TLSF, fl, sl: int) {.inline.} = 
   t.matrix[fl][sl] = b.freePtr.next
-  if t.matrix[fl][sl] != 0:
+  if t.matrix[fl][sl] != nil:
     t.matrix[fl][sl].freePtr.prev = nil
   else:
     clear_bit(sl, t.slBitmap[fl])

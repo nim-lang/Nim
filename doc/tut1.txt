@@ -46,12 +46,14 @@ The most used commands and switches have abbreviations, so you can also use::
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: Statements which are not indented are executed when the program
-starts. Indentation is Nimrod's way of grouping statements. String literals
-are enclosed in double quotes. The ``var`` statement declares a new variable
-named ``name`` of type ``string`` with the value that is returned by the
-``readline`` procedure. Since the compiler knows that ``readline`` returns
-a string, you can leave out the type in the declaration (this is called
-`local type inference`:idx:). So this will work too:
+starts. Indentation is Nimrod's way of grouping statements. Indentation is
+done with spaces only, tabulators are not allowed.
+
+String literals are enclosed in double quotes. The ``var`` statement declares 
+a new variable named ``name`` of type ``string`` with the value that is 
+returned by the ``readline`` procedure. Since the compiler knows that 
+``readline`` returns a string, you can leave out the type in the declaration 
+(this is called `local type inference`:idx:). So this will work too:
 
 .. code-block:: Nimrod
   var name = readline(stdin)
@@ -73,7 +75,7 @@ keywords, comments, operators, and other punctation marks. Case is
 *insignificant* in Nimrod and even underscores are ignored:
 ``This_is_an_identifier`` and this is the same identifier
 ``ThisIsAnIdentifier``. This feature enables you to use other
-peoples code without bothering about a naming convention that conflicts with
+people's code without bothering about a naming convention that conflicts with
 yours. It also frees you from remembering the exact spelling of an identifier
 (was it ``parseURL`` or ``parseUrl`` or ``parse_URL``?).
 
@@ -129,6 +131,9 @@ the syntax, watch their indentation:
   Echo("Hi!")
     # comment has not the right indentation -> syntax error!
 
+**Note**: To comment out a large piece of code, it is often better to use a
+``when false:`` statement.
+
 
 Numbers
 -------
@@ -137,7 +142,7 @@ Numerical literals are written as in most other languages. As a special twist,
 underscores are allowed for better readability: ``1_000_000`` (one million).
 A number that contains a dot (or 'e' or 'E') is a floating point literal:
 ``1.0e9`` (one million). Hexadecimal literals are prefixed with ``0x``,
-binary literals with ``0b`` and octal literals with ``0c``. A leading zero
+binary literals with ``0b`` and octal literals with ``0o``. A leading zero
 alone does not produce an octal.
 
 
@@ -426,7 +431,11 @@ The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
 
 **Note**: The documentation generator currently always follows the first branch 
-of when statements. 
+of when statements.
+
+**Note**: To comment out a large piece of code, it is often better to use a
+``when false:`` statement than to use real comments. This way nesting is
+possible.
 
 
 Statements and indentation
@@ -440,7 +449,7 @@ statements*. *Simple statements* cannot contain other statements:
 Assignment, procedure calls or the ``return`` statement belong to the simple
 statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can 
 contain other statements. To avoid ambiguities, complex statements always have
-to be intended, but single simple statements do not:
+to be indented, but single simple statements do not:
 
 .. code-block:: nimrod
   # no indentation needed for single assignment statement:
@@ -518,9 +527,11 @@ shorthand for ``return result``. So all tree code snippets are equivalent:
 .. code-block:: nimrod
   return 42
 
+.. code-block:: nimrod
   result = 42
   return
 
+.. code-block:: nimrod
   result = 42
   return result
 
@@ -880,7 +891,7 @@ In Nimrod new types can be defined within a ``type`` statement:
 .. code-block:: nimrod
   type
     biggestInt = int64      # biggest integer type that is available
-    biggestFLoat = float64  # biggest float type that is available
+    biggestFloat = float64  # biggest float type that is available
 
 Enumeration and object types cannot be defined on the fly, but only within a
 ``type`` statement.
@@ -980,7 +991,7 @@ basetype can only be an ordinal type. The reason is that sets are implemented
 as high performance bit vectors.
 
 Sets can be constructed via the set constructor: ``{}`` is the empty set. The
-empty set is type combatible with any concrete set type. The constructor
+empty set is type compatible with any concrete set type. The constructor
 can also be used to include elements (and ranges of elements):
 
 .. code-block:: nimrod
@@ -1013,7 +1024,7 @@ operation             meaning
 ==================    ========================================================
 
 Sets are often used to define a type for the *flags* of a procedure. This is
-much cleaner (and type safe solution) solution than just defining integer 
+much cleaner (and type safe) solution than just defining integer 
 constants that should be ``or``'ed together.
 
 
@@ -1047,36 +1058,6 @@ The built-in ``len`` proc returns the array's length. ``low(a)`` returns the
 lowest valid index for the array `a` and ``high(a)`` the highest valid index.
 
 
-Open arrays
------------
-Often fixed size arrays turn out to be too inflexible; procedures should
-be able to deal with arrays of different sizes. The `openarray`:idx: type
-allows this. Openarrays are always indexed with an ``int`` starting at
-position 0. The ``len``, ``low`` and ``high`` operations are available
-for open arrays too. Any array with a compatible base type can be passed to
-an openarray parameter, the index type does not matter.
-
-The openarray type cannot be nested: Multidimensional openarrays are not
-supported because this is seldom needed and cannot be done efficiently.
-
-An openarray is also a means to implement passing a variable number of
-arguments to a procedure. The compiler converts the list of arguments
-to an array automatically:
-
-.. code-block:: nimrod
-  proc myWriteln(f: TFile, a: openarray[string]) =
-    for s in items(a):
-      write(f, s)
-    write(f, "\n")
-
-  myWriteln(stdout, "abc", "def", "xyz")
-  # is transformed by the compiler to:
-  myWriteln(stdout, ["abc", "def", "xyz"])
-
-This transformation is only done if the openarray parameter is the
-last parameter in the procedure header.
-
-
 Sequences
 ---------
 `Sequences`:idx: are similar to arrays but of dynamic length which may change
@@ -1106,6 +1087,38 @@ operations cannot deal with ``nil`` (leading to an exception being
 raised) for performance reasons. Thus one should use empty sequences ``@[]``
 rather than ``nil`` as the *empty* value. But ``@[]`` creates a sequence
 object on the heap, so there is a trade-off to be made here.
+
+
+Open arrays
+-----------
+**Note**: Openarrays can only be used for parameters.
+
+Often fixed size arrays turn out to be too inflexible; procedures should
+be able to deal with arrays of different sizes. The `openarray`:idx: type
+allows this. Openarrays are always indexed with an ``int`` starting at
+position 0. The ``len``, ``low`` and ``high`` operations are available
+for open arrays too. Any array with a compatible base type can be passed to
+an openarray parameter, the index type does not matter.
+
+The openarray type cannot be nested: Multidimensional openarrays are not
+supported because this is seldom needed and cannot be done efficiently.
+
+An openarray is also a means to implement passing a variable number of
+arguments to a procedure. The compiler converts the list of arguments
+to an array automatically:
+
+.. code-block:: nimrod
+  proc myWriteln(f: TFile, a: openarray[string]) =
+    for s in items(a):
+      write(f, s)
+    write(f, "\n")
+
+  myWriteln(stdout, "abc", "def", "xyz")
+  # is transformed by the compiler to:
+  myWriteln(stdout, ["abc", "def", "xyz"])
+
+This transformation is only done if the openarray parameter is the
+last parameter in the procedure header.
 
 
 Tuples
@@ -1271,7 +1284,18 @@ with an asterisk (``*``) are exported:
     # multiply two int sequences:
     for i in 0..len(a)-1: result[i] = a[i] * b[i]
 
+  when isMainModule: 
+    # test the new ``*`` operator for sequences:
+    assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
+
 The above module exports ``x`` and ``*``, but not ``y``.
+
+The top-level statements of a module are executed at the start of the program.
+This can be used to initalize complex data structures for example.
+
+Each module has a special magic constant ``isMainModule`` that is true if the
+module is compiled as the main file. This is very useful to embed tests within
+the module as shown by the above example.
 
 Modules that depend on each other are possible, but strongly discouraged, 
 because then one module cannot be reused without the other.

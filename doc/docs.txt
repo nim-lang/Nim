@@ -1,28 +1,25 @@
-  "Incorrect documentation is often worse than no documentation."
+  Incorrect documentation is often worse than no documentation.
   -- Bertrand Meyer
 
 The documentation consists of several documents:
 
-- | `Nimrod tutorial (part I) <tut1.html>`_
+- | `Tutorial (part I) <tut1.html>`_
   | The Nimrod tutorial part one deals with the basics.
 
-- | `Nimrod tutorial (part II) <tut2.html>`_
+- | `Tutorial (part II) <tut2.html>`_
   | The Nimrod tutorial part two deals with the advanced language constructs.
 
-- | `Nimrod manual <manual.html>`_
-  | The Nimrod manual is a draft that will evolve into a proper specification.
+- | `Library documentation <lib.html>`_
+  | This document describes Nimrod's standard library.
 
-- | `User guide for the Nimrod Compiler <nimrodc.html>`_
+- | `User guide <nimrodc.html>`_
   | The user guide lists command line arguments, special features of the
     compiler, etc.
 
-- | `User guide for the Embedded Nimrod Debugger <endb.html>`_
-  | This document describes how to use the Embedded Debugger. 
+- | `Manual <manual.html>`_
+  | The Nimrod manual is a draft that will evolve into a proper specification.
 
-- | `Nimrod library documentation <lib.html>`_
-  | This document describes Nimrod's standard library.
-
-- | `Nimrod internal documentation <intern.html>`_
+- | `Internal documentation <intern.html>`_
   | The internal documentation describes how the compiler is implemented. Read
     this if you want to hack the compiler.
 

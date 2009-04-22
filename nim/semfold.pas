@@ -406,6 +406,8 @@ begin
           else            result := copyTree(s.ast); // BUGFIX
         end
       end
+      else if s.kind = skProc then // BUGFIX
+        result := n
     end;
     nkCharLit..nkNilLit: result := copyNode(n);
     nkIfExpr: result := getConstIfExpr(module, n);

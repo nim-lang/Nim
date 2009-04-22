@@ -1,12 +1,11 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-
 unit types;
 
 // this module contains routines for accessing and iterating over types
@@ -45,7 +44,6 @@ function IterOverType(t: PType; iter: TTypeIter; closure: PObject): bool;
 
 function mutateType(t: PType; iter: TTypeMutator; closure: PObject): PType;
 // Returns result of `iter`.
-
 
 
 function SameType(x, y: PType): Boolean;
@@ -114,6 +112,8 @@ function analyseObjectWithTypeField(t: PType): TTypeFieldResult;
 // this does a complex analysis whether a call to ``objectInit`` needs to be
 // made or intializing of the type field suffices or if there is no type field
 // at all in this type.
+
+function typeAllowed(t: PType; kind: TSymKind): bool;
 
 implementation
 
@@ -185,11 +185,13 @@ begin
   n := sym.typ.n;
   for i := 1 to sonsLen(n)-1 do begin
     p := n.sons[i];
-    assert(p.kind = nkSym);
-    result := result +{&} p.sym.name.s +{&} ': ' +{&} typeToString(p.sym.typ);
-    if i <> sonsLen(n)-1 then result := result + ', ';
+    if (p.kind <> nkSym) then InternalError('getProcHeader');
+    add(result, p.sym.name.s);
+    add(result, ': ');
+    add(result, typeToString(p.sym.typ));
+    if i <> sonsLen(n)-1 then add(result, ', ');
   end;
-  result := result + ')';
+  addChar(result, ')');
   if n.sons[0].typ <> nil then
     result := result +{&} ': ' +{&} typeToString(n.sons[0].typ);
 end;
@@ -926,6 +928,96 @@ begin
     end;
     tyNone, tyAnyEnum: result := false;
   end
+end;
+
+function typeAllowedAux(var marker: TIntSet; t: PType; 
+                        kind: TSymKind): bool; forward;
+
+function typeAllowedNode(var marker: TIntSet; n: PNode; kind: TSymKind): bool;
+var
+  i: int;
+begin
+  result := true;
+  if n <> nil then begin
+    result := typeAllowedAux(marker, n.typ, kind);
+    if result then 
+      case n.kind of
+        nkNone..nkNilLit: begin end;
+        else begin
+          for i := 0 to sonsLen(n)-1 do begin
+            result := typeAllowedNode(marker, n.sons[i], kind);
+            if not result then exit
+          end
+        end
+      end
+  end
+end;
+
+function typeAllowedAux(var marker: TIntSet; t: PType; kind: TSymKind): bool;
+var
+  i: int;
+begin
+  assert(kind in [skVar, skConst, skParam]);
+  result := true;
+  if t = nil then exit;
+  // if we have already checked the type, return true, because we stop the
+  // evaluation if something is wrong:
+  if IntSetContainsOrIncl(marker, t.id) then exit;
+  case skipGeneric(t).kind of 
+    tyVar: begin
+      case skipGeneric(t.sons[0]).kind of
+        tyVar: result := false; // ``var var`` is always an invalid type:
+        tyOpenArray: result := (kind = skParam) and 
+                                typeAllowedAux(marker, t.sons[0], kind);
+        else result := (kind <> skConst) and 
+                                typeAllowedAux(marker, t.sons[0], kind);
+      end
+    end;
+    tyProc: begin
+      for i := 1 to sonsLen(t)-1 do begin
+        result := typeAllowedAux(marker, t.sons[i], skParam);
+        if not result then exit;
+      end;
+      if t.sons[0] <> nil then
+        result := typeAllowedAux(marker, t.sons[0], skVar)
+    end;
+    tyGeneric, tyGenericParam, tyForward, tyNone: result := false;
+    tyEmpty, tyNil: result := kind = skConst;
+    tyString, tyBool, tyChar, tyEnum, tyInt..tyFloat128, tyCString, tyPointer: 
+      result := true;
+    tyAnyEnum: result := kind = skParam;
+    tyGenericInst: result := typeAllowedAux(marker, lastSon(t), kind);
+    tyRange: result := skipGeneric(t.sons[0]).kind in 
+                         [tyChar, tyEnum, tyInt..tyFloat128];
+    tyOpenArray: 
+      result := (kind = skParam) and typeAllowedAux(marker, t.sons[0], skVar);
+    tySequence: result := (kind <> skConst) 
+      and typeAllowedAux(marker, t.sons[0], skVar)
+      or (t.sons[0].kind = tyEmpty);
+    tyArray: result := typeAllowedAux(marker, t.sons[1], skVar);
+    tyPtr, tyRef: result := typeAllowedAux(marker, t.sons[0], skVar);
+    tyArrayConstr, tyTuple, tySet: begin
+      for i := 0 to sonsLen(t)-1 do begin
+        result := typeAllowedAux(marker, t.sons[i], kind);
+        if not result then exit
+      end;
+    end;
+    tyObject: begin
+      for i := 0 to sonsLen(t)-1 do begin
+        result := typeAllowedAux(marker, t.sons[i], skVar);
+        if not result then exit
+      end;
+      if t.n <> nil then result := typeAllowedNode(marker, t.n, skVar)
+    end
+  end
+end;
+
+function typeAllowed(t: PType; kind: TSymKind): bool;
+var 
+  marker: TIntSet; 
+begin
+  IntSetInit(marker);
+  result := typeAllowedAux(marker, t, kind);
 end;
 
 function align(address, alignment: biggestInt): biggestInt;

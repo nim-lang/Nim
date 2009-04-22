@@ -1,7 +1,7 @@
 //
 //
 //           The Ethexor Morpork Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -87,19 +87,23 @@ begin
   end
 end;
 
-function isCastable(castDest, src: PType): Boolean;
+function isCastable(dst, src: PType): Boolean;
+//const
+//  castableTypeKinds = {@set}[tyInt, tyPtr, tyRef, tyCstring, tyString, 
+//                             tySequence, tyPointer, tyNil, tyOpenArray,
+//                             tyProc, tySet, tyEnum, tyBool, tyChar];
 var
   ds, ss: biggestInt;
 begin
   // this is very unrestrictive; cast is allowed if castDest.size >= src.size
-  ds := computeSize(castDest);
+  ds := computeSize(dst);
   ss := computeSize(src);
   if ds < 0 then result := false
   else if ss < 0 then result := false
-  else
+  else 
     result := (ds >= ss) or
-      (castDest.kind in [tyInt..tyFloat128]) or
-      (src.kind in [tyInt..tyFloat128])
+      (skipGeneric(dst).kind in [tyInt..tyFloat128]) or
+      (skipGeneric(src).kind in [tyInt..tyFloat128])
 end;
 
 function semConv(c: PContext; n: PNode; s: PSym): PNode;
@@ -620,6 +624,11 @@ begin
   end;
 end;
 
+procedure checkDeprecated(n: PNode; s: PSym);
+begin
+  if sfDeprecated in s.flags then liMessage(n.info, warnDeprecated, s.name.s);  
+end;
+
 function semSym(c: PContext; n: PNode; s: PSym; flags: TExprFlags): PNode;
 begin
   result := newSymNode(s);
@@ -652,7 +661,8 @@ begin
       end
     end
     else begin end
-  end
+  end;
+  checkDeprecated(n, s);
 end;
 
 function isTypeExpr(n: PNode): bool;
@@ -787,6 +797,7 @@ begin
       result := newSymNode(f);
       result.info := n.info;
       result.typ := ty;
+      checkDeprecated(n, f);
     end
     else
       liMessage(n.sons[1].info, errEnumHasNoValueX, i.s);
@@ -814,6 +825,7 @@ begin
         n.sons[0] := makeDeref(n.sons[0]);
         n.sons[1] := newSymNode(f); // we now have the correct field
         n.typ := f.typ;
+        checkDeprecated(n, f);
         if check = nil then result := n
         else begin
           check.sons[0] := n;
@@ -831,14 +843,17 @@ begin
       n.sons[1] := newSymNode(f);
       n.typ := f.typ;
       result := n;
+      checkDeprecated(n, f);
       exit
     end
   end;
   // allow things like "".replace(...)
   // --> replace("", ...)
   f := SymTabGet(c.tab, i);
-  if (f <> nil) and (f.kind = skStub) then loadStub(f);
-  if (f <> nil) and (f.kind in [skProc, skIterator]) then begin
+  //if (f <> nil) and (f.kind = skStub) then loadStub(f);
+  // XXX ``loadStub`` is not correct here as we don't care for ``f`` really
+  if (f <> nil) then begin
+    // BUGFIX: do not check for (f.kind in [skProc, skIterator]) here
     result := newNodeI(nkDotCall, n.info);
     // This special node kind is to merge with the call handler in `semExpr`.
     addSon(result, newIdentNode(i, n.info));
@@ -1121,6 +1136,57 @@ begin
     result := semFieldAccess(c, n, flags);
 end;
 
+function isCallExpr(n: PNode): bool;
+begin
+  result := n.kind in [nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand];
+end;
+
+function semMacroStmt(c: PContext; n: PNode): PNode;
+var
+  s: PSym;
+  a: PNode;
+  i: int;
+begin
+  checkMinSonsLen(n, 2);
+  if isCallExpr(n.sons[0]) then
+    a := n.sons[0].sons[0]
+  else
+    a := n.sons[0];
+  s := qualifiedLookup(c, a, false);
+  if (s <> nil) then begin
+    checkDeprecated(n, s);
+    case s.kind of
+      skMacro: begin
+        include(s.flags, sfUsed);
+        result := semMacroExpr(c, n, s);
+      end;
+      skTemplate: begin
+        include(s.flags, sfUsed);
+        // transform
+        // nkMacroStmt(nkCall(a...), stmt, b...)
+        // to
+        // nkCall(a..., stmt, b...)
+        result := newNodeI(nkCall, n.info);
+        addSon(result, a);
+        if isCallExpr(n.sons[0]) then begin
+          for i := 1 to sonsLen(n.sons[0])-1 do
+            addSon(result, n.sons[0].sons[i]);
+        end;
+        for i := 1 to sonsLen(n)-1 do
+          addSon(result, n.sons[i]);
+        pushInfoContext(n.info);
+        result := evalTemplate(c, result, s);
+        popInfoContext();
+      end;
+      else
+        liMessage(n.info, errXisNoMacroOrTemplate, s.name.s);
+    end
+  end
+  else
+    liMessage(n.info, errInvalidExpressionX,
+              renderTree(a, {@set}[renderNoComments]));
+end;
+
 function semExpr(c: PContext; n: PNode; flags: TExprFlags = {@set}[]): PNode;
 var
   s: PSym;
@@ -1174,6 +1240,7 @@ begin
       checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
       if (s <> nil) then begin
+        checkDeprecated(n, s);
         case s.kind of
           skMacro: begin
             include(s.flags, sfUsed);
@@ -1200,6 +1267,9 @@ begin
       end
       else result := semIndirectOp(c, n);
     end;
+    nkMacroStmt: begin
+      result := semMacroStmt(c, n);
+    end;
     nkBracketExpr: begin
       checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
@@ -1221,7 +1291,7 @@ begin
     nkPar: begin
       case checkPar(n) of
         paNone: result := nil;
-        paTuplePositions:  result := semTuplePositionsConstr(c, n);
+        paTuplePositions: result := semTuplePositionsConstr(c, n);
         paTupleFields: result := semTupleFieldsConstr(c, n);
         paSingle: result := semExpr(c, n.sons[0]);
       end;

@@ -7,8 +7,9 @@
 # $Id: whiteutils.py 110 2005-08-27 22:35:20Z ned $
 # modified to run with Python1.5.2 by Andreas Rumpf
 
-import re, types
-from string import strip, split, replace, join
+import sys, re, types, os, os.path, re, shutil, time, getopt
+import glob, zlib
+from pycompab import *
 
 def whitePrefix(strings):
     """ Determine the whitespace prefix common to all non-blank lines

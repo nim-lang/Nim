@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -45,7 +45,19 @@ function mangleName(s: PSym): PRope;
 begin
   result := s.loc.r;
   if result = nil then begin
-    result := toRope(mangle(s.name.s));
+    if gCmd = cmdCompileToLLVM then begin
+      case s.kind of
+        skProc, skConverter, skConst: result := toRope('@'+'');
+        skVar: begin
+          if (sfGlobal in s.flags) then result := toRope('@'+'')
+          else result := toRope('%'+'');
+        end;
+        skForVar, skTemp, skParam, skType, skEnumField, skModule: 
+          result := toRope('%'+'');
+        else InternalError(s.info, 'mangleName');
+      end;
+    end;
+    app(result, toRope(mangle(s.name.s)));
     app(result, '_'+'');
     app(result, toRope(s.id));
     if optGenMapping in gGlobalOptions then
@@ -58,14 +70,32 @@ end;
 
 function getTypeName(typ: PType): PRope;
 begin
-  if (typ.sym <> nil) and ([sfImportc, sfExportc] * typ.sym.flags <> []) then
+  if (typ.sym <> nil) and ([sfImportc, sfExportc] * typ.sym.flags <> [])
+  and (gCmd <> cmdCompileToLLVM) then
     result := typ.sym.loc.r
   else begin
-    if typ.loc.r = nil then typ.loc.r := con('TY', toRope(typ.id));
+    if typ.loc.r = nil then 
+      typ.loc.r := ropeff('TY$1', '%TY$1', [toRope(typ.id)]);
     result := typ.loc.r
   end;
   if result = nil then InternalError('getTypeName: ' + typeKindToStr[typ.kind]);
 end;
+
+// ----------------------------- other helpers ----------------------------
+(*
+function getSizeof(m: BModule; var labels: int; 
+                   var body: PRope; typ: PType): PRope;
+begin
+  if (gCmd <> cmdCompileToLLVM) then 
+    result := ropef('sizeof($1)', getTypeDesc(m, typ))
+  else begin
+    inc(labels, 2);
+    result := ropef('%UOC$1', [toRope(labels)]);
+    appf(body, '%UOC$1 = getelementptr $3* null, %NI 1$n' +
+               '$2 = cast $3* %UOC$1 to i32$n', 
+               [toRope(labels-1), result, getTypeDesc(m, typ)]);
+  end
+end; *)
 
 // ------------------------------ C type generator ------------------------
 
@@ -104,10 +134,6 @@ begin
     tyPtr, tyVar, tyRef: begin
       case typ.sons[0].kind of
         tyOpenArray, tyArrayConstr, tyArray: result := ctArray;
-        (*tySet: begin
-          if mapType(typ.sons[0]) = ctArray then result := ctArray
-          else result := ctPtr
-        end*)
         else result := ctPtr
       end
     end;
@@ -155,6 +181,10 @@ const
     // but one can //define it to what you want so there will no problem
     'N_INLINE', 'N_NOINLINE', 'N_FASTCALL', 'N_CLOSURE', 'N_NOCONV');
 
+  CallingConvToStrLLVM: array [TCallingConvention] of string = ('fastcc $1',
+    'stdcall $1', 'ccc $1', 'safecall $1', 'syscall $1',
+    '$1 alwaysinline', '$1 noinline', 'fastcc $1', 'ccc $1', '$1');
+
 function CacheGetType(const tab: TIdTable; key: PType): PRope;
 begin
   // returns nil if we need to declare this type
@@ -165,7 +195,13 @@ end;
 
 function getTempName(): PRope;
 begin
-  result := con('TMP', toRope(gId));
+  result := ropeff('TMP$1', '%TMP$1', [toRope(gId)]);
+  inc(gId);
+end;
+
+function getGlobalTempName(): PRope;
+begin
+  result := ropeff('TMP$1', '@TMP$1', [toRope(gId)]);
   inc(gId);
 end;
 
@@ -194,7 +230,8 @@ end;
 
 procedure fillResult(param: PSym);
 begin
-  fillLoc(param.loc, locParam, param.typ, toRope('Result'), OnStack);
+  fillLoc(param.loc, locParam, param.typ, ropeff('Result', '%Result', []), 
+          OnStack);
   if (mapType(param.typ) <> ctArray) and IsInvalidReturnType(param.typ) then
   begin
     include(param.loc.flags, lfIndirect);
@@ -232,7 +269,7 @@ begin
     if arr.kind = tyVar then arr := arr.sons[0];
     j := 0;
     while arr.Kind = tyOpenArray do begin // need to pass hidden parameter:
-      appf(params, ', NI $1Len$2', [param.loc.r, toRope(j)]);
+      appff(params, ', NI $1Len$2', ', @NI $1Len$2', [param.loc.r, toRope(j)]);
       inc(j);
       arr := arr.sons[0]
     end;
@@ -241,8 +278,9 @@ begin
   if (t.sons[0] <> nil) and isInvalidReturnType(t.sons[0]) then begin
     if params <> nil then app(params, ', ');
     app(params, getTypeDescAux(m, t.sons[0], check));
-    if mapType(t.sons[0]) <> ctArray then app(params, '*'+'');
-    app(params, ' Result');
+    if (mapType(t.sons[0]) <> ctArray) or (gCmd = cmdCompileToLLVM) then 
+      app(params, '*'+'');
+    appff(params, ' Result', ' @Result', []);
   end;
   if t.callConv = ccClosure then begin
     if params <> nil then app(params, ', ');
@@ -252,7 +290,7 @@ begin
     if params <> nil then app(params, ', ');
     app(params, '...')
   end;
-  if params = nil then
+  if (params = nil) and (gCmd <> cmdCompileToLLVM) then
     app(params, 'void)')
   else
     app(params, ')'+'');
@@ -621,12 +659,25 @@ begin
   end
 end;
 
-function getTypeDesc(m: BModule; typ: PType): PRope;
+function getTypeDesc(m: BModule; typ: PType): PRope; overload;
 var
   check: TIntSet;
 begin
   IntSetInit(check);
   result := getTypeDescAux(m, typ, check);
+end;
+
+function getTypeDesc(m: BModule; const magic: string): PRope; overload;
+var
+  sym: PSym;
+begin
+  sym := magicsys.getCompilerProc(magic);
+  if sym <> nil then 
+    result := getTypeDesc(m, sym.typ)
+  else begin
+    rawMessage(errSystemNeeds, magic);
+    result := nil
+  end
 end;
 
 procedure finishTypeDescriptions(m: BModule);

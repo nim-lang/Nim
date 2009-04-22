@@ -212,7 +212,6 @@
   'nkFromStmt',           # a from * import statement
   'nkImportAs',           # an `import xyx as abc` section
   'nkIncludeStmt',        # an include statement
-  'nkAccessStmt',         # used internally for iterators
   'nkCommentStmt',        # a comment statement
   'nkStmtListExpr',       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,8 +9,7 @@
 
 ## This module contains various string utility routines.
 ## See the module `regexprs` for regular expression support.
-## All the routines here are avaiable for the EMCAScript target
-## too!
+## All the routines here are avaiable for the EMCAScript target too!
 
 {.deadCodeElim: on.}
 
@@ -33,13 +32,66 @@ type
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace.
+    
+  Letters* = {'A'..'Z', 'a'..'z'}
+    ## the set of letters
+  
+  Digits* = {'0'..'9'}
+    ## the set of digits
+  
+  IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+    ## the set of characters an identifier can consist of
+  
+  IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
+    ## the set of characters an identifier can start with
 
   strStart* = 0 # this is only for bootstraping
                 # XXX: remove this someday
   nl* = "\n"    # this is only for bootstraping XXX: remove this somehow
 
-proc strip*(s: string): string {.noSideEffect.}
-  ## Strips leading and trailing whitespace from `s`.
+proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
+  ## The `substitution`:idx: operator performs string substitutions in
+  ## `formatstr` and returns a modified `formatstr`. This is often called
+  ## `string interpolation`:idx:.
+  ##
+  ## This is best explained by an example:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$1 eats $2." % ["The cat", "fish"]
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "The cat eats fish."
+  ##
+  ## The substitution variables (the thing after the ``$``)
+  ## are enumerated from 1 to 9.
+  ## Substitution variables can also be words (that is
+  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
+  ## indices are keys and with odd indices are the corresponding values.
+  ## An example:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   "The cat eats fish."
+  ##
+  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
+  ## raised if an ill-formed format string has been passed to the `%` operator.
+
+proc `%` *(formatstr, a: string): string {.noSideEffect.}
+  ## This is the same as ``formatstr % [a]``.
+
+proc addf*(s: var string, formatstr: string, a: openarray[string])
+  ## The same as ``add(s, formatstr % a)``, but more efficient.
+
+proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect.}
+  ## Strips whitespace from `s` and returns the resulting string.
+  ## If `leading` is true, leading whitespace is stripped.
+  ## If `trailing` is true, trailing whitespace is stripped.
 
 proc toLower*(s: string): string {.noSideEffect.}
   ## Converts `s` into lower case. This works only for the letters A-Z.
@@ -65,15 +117,36 @@ proc normalize*(s: string): string {.noSideEffect.}
   ## Normalizes the string `s`. That means to convert it to lower case and
   ## remove any '_'. This is needed for Nimrod identifiers for example.
 
-proc findSubStr*(sub, s: string, start: int = 0): int {.noSideEffect.}
+proc findSubStr*(sub, s: string, start: int = 0): int {.
+  noSideEffect, deprecated.}
+  ## Searches for `sub` in `s` starting at position `start`. Searching is
+  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
+  ## this has a different parameter order.
+
+proc findSubStr*(sub: char, s: string, start: int = 0): int {.
+  noSideEffect, deprecated.}
+  ## Searches for `sub` in `s` starting at position `start`. Searching is
+  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
+  ## this has a different parameter order.
+
+proc findChars*(chars: set[char], s: string, start: int = 0): int {.
+  noSideEffect, deprecated.}
+  ## Searches for `chars` in `s` starting at position `start`. If `s` contains
+  ## none of the characters in `chars`, -1 is returned.
+  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
+  ## this has a different parameter order.
+
+proc find*(s, sub: string, start: int = 0): int {.noSideEffect.}
   ## Searches for `sub` in `s` starting at position `start`. Searching is
   ## case-sensitive. If `sub` is not in `s`, -1 is returned.
 
-proc findSubStr*(sub: char, s: string, start: int = 0): int {.noSideEffect.}
+proc find*(s: string, sub: char, start: int = 0): int {.noSideEffect.}
   ## Searches for `sub` in `s` starting at position `start`. Searching is
   ## case-sensitive. If `sub` is not in `s`, -1 is returned.
 
-proc findChars*(chars: set[char], s: string, start: int = 0): int {.noSideEffect.}
+proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect.}
   ## Searches for `chars` in `s` starting at position `start`. If `s` contains
   ## none of the characters in `chars`, -1 is returned.
 
@@ -95,15 +168,15 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ## Splits the string `s` into substrings.
   ##
   ## Substrings are separated by a substring containing only `seps`.
-  ## The seperator substrings are not returned in `sub`, nor are they part
-  ## of `sub`.
-  ## Examples::
+  ## Examples:
   ##
+  ## .. code-block:: nimrod
   ##   for word in split("  this is an  example  "):
   ##     writeln(stdout, word)
   ##
-  ## Results in::
+  ## Results in:
   ##
+  ## .. code-block:: nimrod
   ##   "this"
   ##   "is"
   ##   "an"
@@ -123,18 +196,54 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
     while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
     yield copy(s, first, last-1)
 
+iterator split*(s: string, sep: char): string =
+  ## Splits the string `s` into substrings.
+  ##
+  ## Substrings are separated by the character `sep`.
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ##   for word in split(";;this;is;an;;example;;;", ';'):
+  ##     writeln(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   ""
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##   ""
+  ##   ""
+  ##
+  var last = 0
+  assert('\0' != sep)
+  if len(s) > 0:
+    # `<=` is correct here for the edge cases!
+    while last <= len(s):
+      var first = last
+      while last < len(s) and s[last] != sep: inc(last)
+      yield copy(s, first, last-1)
+      inc(last)
+
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines. Each newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain
   ## no trailing ``\n``.
   ##
-  ## Example::
+  ## Example:
   ##
+  ## .. code-block:: nimrod
   ##   for line in lines("\nthis\nis\nan\n\nexample\n"):
   ##     writeln(stdout, line)
   ##
-  ## Results in::
+  ## Results in:
   ##
+  ## .. code-block:: nimrod
   ##   ""
   ##   "this"
   ##   "is"
@@ -163,6 +272,11 @@ proc splitLinesSeq*(s: string): seq[string] {.noSideEffect.} =
 proc splitSeq*(s: string, seps: set[char] = Whitespace): seq[string] {.
   noSideEffect.}
   ## The same as `split`, but is a proc that returns a sequence of substrings.
+
+proc splitSeq*(s: string, sep: char): seq[string] {.noSideEffect.} =
+  ## The same as `split`, but is a proc that returns a sequence of substrings.
+  result = @[]
+  for sub in split(s, sep): add(result, sub)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect.}
   ## Compares two strings in a case insensitive manner. Returns:
@@ -207,7 +321,7 @@ proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect.}
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
 
-proc ParseFloat*(s: string): float {.noSideEffect.}
+proc ParseFloat*(s: string, start = 0): float {.noSideEffect.}
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
@@ -216,37 +330,6 @@ proc ParseFloat*(s: string): float {.noSideEffect.}
 # the stringify and format operators:
 proc toString*[Ty](x: Ty): string
   ## This generic proc is the same as the stringify operator `$`.
-
-proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
-  ## The substitution operator performs string substitutions in `formatstr`
-  ## and returns the modified `formatstr`.
-  ##
-  ## This is best explained by an example::
-  ##
-  ##   "$1 eats $2." % ["The cat", "fish"]
-  ##
-  ## Results in::
-  ##
-  ##   "The cat eats fish."
-  ##
-  ## The substitution variables (the thing after the ``$``)
-  ## are enumerated from 1 to 9.
-  ## Substitution variables can also be words (that is
-  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
-  ## indices are keys and with odd indices are the corresponding values. Again
-  ## an example::
-  ##
-  ##   "$animal eats $food." % ["animal", "The cat", "food", "fish"]
-  ##
-  ## Results in::
-  ##
-  ##   "The cat eats fish."
-  ##
-  ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
-  ## raised if an ill-formed format string has been passed to the `%` operator.
-
-proc `%` *(formatstr, a: string): string {.noSideEffect.}
-  ## This is the same as `formatstr % [a]`.
 
 proc repeatChar*(count: int, c: Char = ' '): string
   ## Returns a string of length `count` consisting only of
@@ -260,7 +343,25 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect.}
   ## Returns true iff ``s`` ends with ``suffix``.
   ## If ``suffix == ""`` true is returned.
 
-# implementation
+proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
+                                                           inline.} = 
+  ## A shorthand for: 
+  ## 
+  ## .. code-block:: nimrod
+  ##   if dest.len > startLen: add(dest, sep)
+  ## 
+  ## This is often useful for generating some code where the items need to
+  ## be *separated* by `sep`. `sep` is only added if `dest` is longer than
+  ## `startLen`. The following example creates a string describing
+  ## an array of integers:  
+  ## 
+  ## .. code-block:: nimrod
+  ##   var arr = "["
+  ##   for x in items([2, 3, 5, 7, 11]):
+  ##     addSep(arr, startLen=len("["))
+  ##     add(arr, $x)
+  ##   add(arr, "]")
+  if dest.len > startLen: add(dest, sep)
 
 proc allCharsInSet*(s: string, theSet: TCharSet): bool =
   ## returns true iff each character of `s` is in the set `theSet`.
@@ -271,7 +372,7 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
 proc quoteIfContainsWhite*(s: string): string =
   ## returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`
-  if findChars({' ', '\t'}, s) >= 0 and s[0] != '"':
+  if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
     result = '"' & s & '"'
   else:
     result = s
@@ -307,10 +408,8 @@ proc intToStr(x: int, minchars: int = 1): string =
 proc toString[Ty](x: Ty): string = return $x
 
 proc toOctal(c: char): string =
-  var
-    val: int
   result = newString(3)
-  val = ord(c)
+  var val = ord(c)
   for i in countdown(2, 0):
     result[i] = Chr(val mod 8 + ord('0'))
     val = val div 8
@@ -326,18 +425,15 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
               # security whole ...
   return -1
 
-proc `%`(formatstr: string, a: openarray[string]): string =
-  # the format operator
-  const
-    PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
-  result = ""
+proc addf(s: var string, formatstr: string, a: openarray[string]) =
+  const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
   while i < len(formatstr):
     if formatstr[i] == '$':
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '$':
-        add result, '$'
+        add s, '$'
         inc(i, 2)
       of '1'..'9':
         var j = 0
@@ -345,25 +441,29 @@ proc `%`(formatstr: string, a: openarray[string]): string =
         while formatstr[i] in {'0'..'9'}:
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
-        add result, a[j - 1]
+        add s, a[j - 1]
       of '{':
         var j = i+1
         while formatstr[j] notin {'\0', '}'}: inc(j)
         var x = findNormalized(copy(formatstr, i+2, j-1), a)
-        if x >= 0 and x < high(a): add result, a[x+1]
+        if x >= 0 and x < high(a): add s, a[x+1]
         else: raise newException(EInvalidValue, "invalid format string")
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
         while formatstr[j] in PatternChars: inc(j)
         var x = findNormalized(copy(formatstr, i+1, j-1), a)
-        if x >= 0 and x < high(a): add result, a[x+1]
+        if x >= 0 and x < high(a): add s, a[x+1]
         else: raise newException(EInvalidValue, "invalid format string")
         i = j
       else: raise newException(EInvalidValue, "invalid format string")
     else:
-      add result, formatstr[i]
+      add s, formatstr[i]
       inc(i)
+  
+proc `%`(formatstr: string, a: openarray[string]): string =
+  result = ""
+  addf(result, formatstr, a)
 
 proc cmpIgnoreCase(a, b: string): int =
   # makes usage of the fact that strings are zero-terminated
@@ -377,9 +477,8 @@ proc cmpIgnoreCase(a, b: string): int =
                                        # thus we compile without checks here
 
 proc cmpIgnoreStyle(a, b: string): int =
-  var
-    i = 0
-    j = 0
+  var i = 0
+  var j = 0
   while True:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
@@ -400,14 +499,16 @@ proc splitSeq(s: string, seps: set[char]): seq[string] =
 
 # ---------------------------------------------------------------------------
 
-proc strip(s: string): string =
+proc strip(s: string, leading = true, trailing = true): string =
   const
     chars: set[Char] = Whitespace
   var
     first = 0
     last = len(s)-1
-  while s[first] in chars: inc(first)
-  while last >= 0 and s[last] in chars: dec(last)
+  if leading: 
+    while s[first] in chars: inc(first)
+  if trailing:
+    while last >= 0 and s[last] in chars: dec(last)
   result = copy(s, first, last)
 
 proc toLower(c: Char): Char =
@@ -451,7 +552,7 @@ proc preprocessSub(sub: string, a: var TSkipTable) =
   for i in 0..0xff: a[chr(i)] = m+1
   for i in 0..m-1: a[sub[i]] = m-i
 
-proc findSubStrAux(sub, s: string, start: int, a: TSkipTable): int =
+proc findSubStrAux(s, sub: string, start: int, a: TSkipTable): int =
   # fast "quick search" algorithm:
   var
     m = len(sub)
@@ -469,7 +570,7 @@ proc findSubStrAux(sub, s: string, start: int, a: TSkipTable): int =
 proc findSubStr(sub, s: string, start: int = 0): int =
   var a: TSkipTable
   preprocessSub(sub, a)
-  result = findSubStrAux(sub, s, start, a)
+  result = findSubStrAux(s, sub, start, a)
   # slow linear search:
   #var
   #  i, j, M, N: int
@@ -492,6 +593,20 @@ proc findSubStr(sub, s: string, start: int = 0): int =
   #    elif (i >= N):
   #      return -1
 
+proc find(s, sub: string, start: int = 0): int =
+  var a: TSkipTable
+  preprocessSub(sub, a)
+  result = findSubStrAux(s, sub, start, a)
+
+proc find(s: string, sub: char, start: int = 0): int =
+  for i in start..len(s)-1:
+    if sub == s[i]: return i
+  return -1
+ 
+proc find(s: string, chars: set[char], start: int = 0): int =
+  for i in start..s.len-1:
+    if s[i] in chars: return i
+  return -1 
 
 proc findSubStr(sub: char, s: string, start: int = 0): int =
   for i in start..len(s)-1:
@@ -504,23 +619,21 @@ proc findChars(chars: set[char], s: string, start: int = 0): int =
   return -1
   
 proc contains(s: string, chars: set[char]): bool =
-  return findChars(chars, s) >= 0
+  return find(s, chars) >= 0
 
 proc contains(s: string, c: char): bool =
-  return findSubStr(c, s) >= 0
+  return find(s, c) >= 0
 
 proc contains(s, sub: string): bool =
-  return findSubStr(sub, s) >= 0
+  return find(s, sub) >= 0
 
 proc replaceStr(s, sub, by: string): string =
-  var
-    i, j: int
-    a: TSkipTable
+  var a: TSkipTable
   result = ""
   preprocessSub(sub, a)
-  i = 0
+  var i = 0
   while true:
-    j = findSubStrAux(sub, s, i, a)
+    var j = findSubStrAux(s, sub, i, a)
     if j < 0: break
     add result, copy(s, i, j - 1)
     add result, by
@@ -583,7 +696,10 @@ proc rawParseInt(s: string, index: var int): BiggestInt =
       while s[i] == '_':
         inc(i)               # underscores are allowed and ignored
     result = result * sign
-    index = i                # store index back
+    if s[i] == '\0':
+      index = i              # store index back
+    else:
+      index = -1 # BUGFIX: error!
   else:
     index = -1
 
@@ -602,17 +718,17 @@ proc parseInt(s: string): int =
     result = int(res) # convert to smaller integer type
 
 proc ParseBiggestInt(s: string): biggestInt =
-  var
-    index: int = 0
+  var index = 0
   result = rawParseInt(s, index)
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseFloat(s: string): float =
+proc ParseFloat(s: string, start = 0): float =
   var
     esign = 1.0
     sign = 1.0
-    exponent, i: int
+    i = start
+    exponent: int
     flags: int
   result = 0.0
   if s[i] == '+': inc(i)
@@ -677,7 +793,7 @@ proc ParseFloat(s: string): float =
 
 proc toOct*(x: BiggestInt, len: int): string =
   ## converts `x` into its octal representation. The resulting string is
-  ## always `len` characters long. No leading ``0c`` prefix is generated.
+  ## always `len` characters long. No leading ``0o`` prefix is generated.
   var
     mask: BiggestInt = 7
     shift: BiggestInt = 0
@@ -701,7 +817,7 @@ proc toBin*(x: BiggestInt, len: int): string =
     shift = shift + 1
     mask = mask shl 1
 
-proc escape*(s: string, prefix, suffix = "\""): string =
+proc escape*(s: string, prefix = "\"", suffix = "\""): string =
   ## Escapes a string `s`. This does these operations (at the same time):
   ## * replaces any ``\`` by ``\\``
   ## * replaces any ``'`` by ``\'``
@@ -723,8 +839,34 @@ proc escape*(s: string, prefix, suffix = "\""): string =
     else: add(result, c)
   add(result, suffix)
 
+proc validEmailAddress*(s: string): bool = 
+  ## returns true if `s` seems to be a valid e-mail address. 
+  ## The checking also uses a domain list.
+  const
+    chars = Letters + Digits + {'!','#','$','%','&',
+      '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
+  var i = 0
+  if s[i] notin chars or s[i] == '.': return false
+  while s[i] in chars: 
+    if s[i] == '.' and s[i+1] == '.': return false
+    inc(i)
+  if s[i] != '@': return false
+  var j = len(s)-1
+  if s[j] notin letters: return false
+  while j >= i and s[j] in letters: dec(j)
+  inc(i) # skip '@'
+  while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i) 
+  if s[i] != '\0': return false
+  
+  var x = copy(s, j+1)
+  if len(x) == 2 and x[0] in Letters and x[1] in Letters: return true
+  case toLower(x)
+  of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",
+     "aero", "jobs", "museum": return true
+  return false
+  
 proc editDistance*(a, b: string): int =
-  ## returns the edit distance between `s` and `t`. This uses the Levenshtein
+  ## returns the edit distance between `a` and `b`. This uses the Levenshtein
   ## distance algorithm with only a linear memory overhead. This implementation
   ## is highly optimized!
   var len1 = a.len

@@ -1233,16 +1233,14 @@ begin
         app(r, '.Sup');
         s := skipGeneric(s.sons[0]);
       end;    
-      appf(p.s[cpsStmts], '$1.m_type = $2;$n',
-          [r, genTypeInfo(p.module, t)])
+      appf(p.s[cpsStmts], '$1.m_type = $2;$n', [r, genTypeInfo(p.module, t)])
     end;
     frEmbedded: begin 
       // worst case for performance:
       useMagic(p.module, 'objectInit');
       if takeAddr then r := addrLoc(a)
       else r := rdLoc(a);
-      appf(p.s[cpsStmts], 'objectInit($1, $2);$n',
-          [r, genTypeInfo(p.module, t)])
+      appf(p.s[cpsStmts], 'objectInit($1, $2);$n', [r, genTypeInfo(p.module, t)])
     end
   end
 end;
@@ -1256,9 +1254,15 @@ begin
   refType := skipVarGenericRange(e.sons[1].typ);
   InitLocExpr(p, e.sons[1], a);
   initLoc(b, locExpr, a.t, OnHeap);
-  b.r := ropef('($1) newObj($2, sizeof($3))',
-    [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
-    getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
+  
+  if optBoehmGC in gGlobalOptions then 
+    b.r := ropef('($1) newObj(sizeof($2))',
+      [getTypeDesc(p.module, reftype), 
+      getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))])  
+  else
+    b.r := ropef('($1) newObj($2, sizeof($3))',
+      [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
+      getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
   bt := skipGenericRange(refType.sons[0]);
@@ -1275,10 +1279,16 @@ begin
   InitLocExpr(p, e.sons[1], a);
   InitLocExpr(p, e.sons[2], b);
   initLoc(c, locExpr, a.t, OnHeap);
-  c.r := ropef('($1) newSeq($2, $3)',
-    [getTypeDesc(p.module, seqtype),
-     genTypeInfo(p.module, seqType),
-     rdLoc(b)]);
+  if optBoehmGC in gGlobalOptions then 
+    c.r := ropef('($1) newSeq(sizeof($2), $3)',
+      [getTypeDesc(p.module, seqtype), 
+       getTypeDesc(p.module, skipGenericRange(seqtype.sons[0])),
+       rdLoc(b)])
+  else
+    c.r := ropef('($1) newSeq($2, $3)',
+      [getTypeDesc(p.module, seqtype),
+       genTypeInfo(p.module, seqType),
+       rdLoc(b)]);
   genAssignment(p, a, c, {@set}[]);
 end;
 
@@ -1324,7 +1334,8 @@ begin
   refType := skipVarGenericRange(e.sons[1].typ);
   InitLocExpr(p, e.sons[1], a);
   
-  // This is a little hack:
+  // This is a little hack: 
+  // XXX this is also a bug, if the finalizer expression produces side-effects
   oldModule := p.module;
   p.module := gmti;
   InitLocExpr(p, e.sons[2], f);
@@ -2290,7 +2301,7 @@ begin
   len := sonsLen(n);
   result := toRope('{'+'');
   for i := 0 to len - 2 do
-    app(result, ropef('$1,$n', [genConstExpr(p, n.sons[i])]));
+    appf(result, '$1,$n', [genConstExpr(p, n.sons[i])]);
   if len > 0 then app(result, genConstExpr(p, n.sons[len-1]));
   app(result, '}' + tnl)
 end;
@@ -2299,6 +2310,7 @@ function genConstExpr(p: BProc; n: PNode): PRope;
 var
   trans: PNode;
   cs: TBitSet;
+  d: TLoc;
 begin
   case n.Kind of
     nkHiddenStdConv, nkHiddenSubConv: result := genConstExpr(p, n.sons[1]);
@@ -2317,7 +2329,10 @@ begin
         trans := n;
       result := genConstSimpleList(p, trans);
     end
-    else
-      result := genLiteral(p, n)
+    else begin
+      //  result := genLiteral(p, n)
+      initLocExpr(p, n, d);
+      result := rdLoc(d)
+    end
   end
 end;

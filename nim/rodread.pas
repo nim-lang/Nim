@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -123,7 +123,7 @@ type
     files: TStringSeq;
     dataIdx: int;       // offset of start of data section
     convertersIdx: int; // offset of start of converters section
-    initIdx, interfIdx, compilerProcsIdx: int;
+    initIdx, interfIdx, compilerProcsIdx, cgenIdx: int;
     filename: string;
     index, imports: TIndex;
     readerIndex: int;
@@ -839,6 +839,10 @@ begin
     end
     else if section = 'INIT' then begin
       r.initIdx := r.pos+2; // "(\10"
+      skipSection(r);
+    end
+    else if section = 'CGEN' then begin
+      r.cgenIdx := r.pos+2;
       skipSection(r);
     end
     else begin

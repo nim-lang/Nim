@@ -164,7 +164,7 @@ var
   i, j, len, counter: int;
   params, p, paramKind: PNode;
 begin
-  if c.p.owner = nil then begin
+  if c.p.owner.kind = skModule then begin
     s := semIdentVis(c, skTemplate, n.sons[0], {@set}[sfStar]);
     include(s.flags, sfGlobal);
   end

@@ -7,18 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-# This file was created by a complicated procedure which saved me a considerable
-# amount of time: the pcre.h header was converted to modpcre.h by hand, so that
-# h2pas could handle it. Then I used pas2mor to generate a Nimrod binding.
-# Unfortunately, I had to fix some things later on; thus don't do all this
-# again! My manual changes will be lost!
-
-# Converted by Pas2mor v1.37
-#
-#  Automatically converted by H2Pas 0.99.16 from modpcre.h
-#  The following command line parameters were used:
-#    -D -c -l pcre.lib -T modpcre.h
-
 {.compile: "pcre_all.c" .}
 
 type

@@ -9,9 +9,7 @@
 
 unit nimconf;
 
-// This module used to handle the reading of the config file. We now just
-// read environment variables. This is easier to avoid bootstraping issues.
-
+// This module handles the reading of the config file.
 {$include 'config.inc'}
 
 interface
@@ -258,7 +256,7 @@ begin
     addChar(s, '.');
     confTok(L, tok);
     checkSymbol(L, tok);
-    s := s +{&} tokToStr(tok);
+    add(s, tokToStr(tok));
     confTok(L, tok)
   end;
   if tok.tokType = tkBracketLe then begin
@@ -266,7 +264,7 @@ begin
     // BUGFIX: do not copy '['!
     confTok(L, tok);
     checkSymbol(L, tok);
-    val := val +{&} tokToStr(tok);
+    add(val, tokToStr(tok));
     confTok(L, tok);
     if tok.tokType = tkBracketRi then confTok(L, tok)
     else lexMessage(L, errTokenExpected, ''']''');
@@ -276,12 +274,12 @@ begin
     if length(val) > 0 then addChar(val, ':'); // BUGFIX
     confTok(L, tok); // skip ':' or '='
     checkSymbol(L, tok);
-    val := val +{&} tokToStr(tok);
+    add(val, tokToStr(tok));
     confTok(L, tok); // skip symbol
     while (tok.ident <> nil) and (tok.ident.id = getIdent('&'+'').id) do begin
       confTok(L, tok);
       checkSymbol(L, tok);
-      val := val +{&} tokToStr(tok);
+      add(val, tokToStr(tok));
       confTok(L, tok)
     end
   end;

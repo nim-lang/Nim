@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -18,25 +18,41 @@ begin
   line := toLinenumber(t.info); // BUGFIX
   if line < 0 then line := 0; // negative numbers are not allowed in #line
   if optLineDir in p.Options then
-    appf(p.s[cpsStmts], '#line $2 "$1"$n',
+    appff(p.s[cpsStmts], 
+      '#line $2 "$1"$n',
+      '; line $2 "$1"$n',
       [toRope(toFilename(t.info)), toRope(line)]);
   if ([optStackTrace, optEndb] * p.Options = [optStackTrace, optEndb]) and
       ((p.prc = nil) or not (sfPure in p.prc.flags)) then begin
     useMagic(p.module, 'endb');      // new: endb support
-    appf(p.s[cpsStmts], 'endb($1);$n', [toRope(line)])
+    appff(p.s[cpsStmts], 'endb($1);$n', 
+         'call void @endb(%NI $1)$n',
+         [toRope(line)])
   end
   else if ([optLineTrace, optStackTrace] * p.Options =
         [optLineTrace, optStackTrace]) and ((p.prc = nil) or
-      not (sfPure in p.prc.flags)) then
-    appf(p.s[cpsStmts], 'F.line = $1;$n', [toRope(line)])
+      not (sfPure in p.prc.flags)) then begin
+    inc(p.labels);
+    appff(p.s[cpsStmts], 'F.line = $1;$n', 
+         '%LOC$2 = getelementptr %TF %F, %NI 2$n' +
+         'store %NI $1, %NI* %LOC$2$n',
+         [toRope(line), toRope(p.labels)])
+  end
 end;
 
 procedure finishTryStmt(p: BProc; howMany: int);
 var
   i: int;
 begin
-  for i := 1 to howMany do
-    app(p.s[cpsStmts], 'excHandler = excHandler->prev;' + tnl);
+  for i := 1 to howMany do begin
+    inc(p.labels, 3);
+    appff(p.s[cpsStmts], 'excHandler = excHandler->prev;$n',
+          '%LOC$1 = load %TSafePoint** @excHandler$n' +
+          '%LOC$2 = getelementptr %TSafePoint* %LOC$1, %NI 0$n' +
+          '%LOC$3 = load %TSafePoint** %LOC$2$n' +
+          'store %TSafePoint* %LOC$3, %TSafePoint** @excHandler$n', 
+          [toRope(p.labels), toRope(p.labels-1), toRope(p.labels-2)]);
+  end
 end;
 
 procedure genReturnStmt(p: BProc; t: PNode);
@@ -45,7 +61,7 @@ begin
   genLineDir(p, t);
   if (t.sons[0] <> nil) then genStmts(p, t.sons[0]);
   finishTryStmt(p, p.nestedTryStmts);
-  app(p.s[cpsStmts], 'goto BeforeRet;' + tnl)
+  appff(p.s[cpsStmts], 'goto BeforeRet;$n', 'br label %BeforeRet$n', [])
 end;
 
 procedure initVariable(p: BProc; v: PSym);
@@ -53,11 +69,29 @@ begin
   if containsGarbageCollectedRef(v.typ) or (v.ast = nil) then
     // Language change: always initialize variables if v.ast == nil!
     if not (skipVarGenericRange(v.typ).Kind in [tyArray, tyArrayConstr, tySet,
-                                                tyTuple, tyObject]) then
-      appf(p.s[cpsStmts], '$1 = 0;$n', [rdLoc(v.loc)])
-    else
-      appf(p.s[cpsStmts], 'memset((void*)$1, 0, sizeof($2));$n',
-        [addrLoc(v.loc), rdLoc(v.loc)])
+                                                tyTuple, tyObject]) then begin
+      if gCmd = cmdCompileToLLVM then
+        appf(p.s[cpsStmts], 'store $2 0, $2* $1$n', 
+             [addrLoc(v.loc), getTypeDesc(p.module, v.loc.t)])
+      else
+        appf(p.s[cpsStmts], '$1 = 0;$n', [rdLoc(v.loc)])
+    end
+    else begin
+      if gCmd = cmdCompileToLLVM then begin
+        app(p.module.s[cfsProcHeaders], 
+            'declare void @llvm.memset.i32(i8*, i8, i32, i32)' + tnl);
+        inc(p.labels, 2);
+        appf(p.s[cpsStmts], 
+            '%LOC$3 = getelementptr $2* null, %NI 1$n' +
+            '%LOC$4 = cast $2* %LOC$3 to i32$n' +
+            'call void @llvm.memset.i32(i8* $1, i8 0, i32 %LOC$4, i32 0)$n', 
+            [addrLoc(v.loc), getTypeDesc(p.module, v.loc.t), 
+            toRope(p.labels), toRope(p.labels-1)])
+      end
+      else
+        appf(p.s[cpsStmts], 'memset((void*)$1, 0, sizeof($2));$n',
+          [addrLoc(v.loc), rdLoc(v.loc)])
+   end
 end;
 
 procedure genVarStmt(p: BProc; n: PNode);
@@ -73,7 +107,7 @@ begin
     assert(a.sons[0].kind = nkSym);
     v := a.sons[0].sym;
     if sfGlobal in v.flags then
-      assignGlobalVar(p.module, v)
+      assignGlobalVar(p, v)
     else begin
       assignLocalVar(p, v);
       initVariable(p, v) // XXX: this is not required if a.sons[2] != nil,
@@ -140,10 +174,14 @@ begin
       nkElifBranch: begin
         initLocExpr(p, it.sons[0], a);
         Lelse := getLabel(p);
-        appf(p.s[cpsStmts], 'if (!$1) goto $2;$n', [rdLoc(a), Lelse]);
+        inc(p.labels);
+        appff(p.s[cpsStmts], 'if (!$1) goto $2;$n', 
+                             'br i1 $1, label %LOC$3, label %$2$n' +
+                             'LOC$3: $n', 
+                             [rdLoc(a), Lelse, toRope(p.labels)]);
         genStmts(p, it.sons[1]);
         if sonsLen(n) > 1 then
-          appf(p.s[cpsStmts], 'goto $1;$n', [Lend]);
+          appff(p.s[cpsStmts], 'goto $1;$n', 'br label %$1$n', [Lend]);
         fixLabel(p, Lelse);
       end;
       nkElse: begin
@@ -857,7 +895,7 @@ begin
     nkCaseStmt:    genCaseStmt(p, t);
     nkReturnStmt:  genReturnStmt(p, t);
     nkBreakStmt:   genBreakStmt(p, t);
-    nkCall: begin
+    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       genLineDir(p, t);
       initLocExpr(p, t, a);
     end;

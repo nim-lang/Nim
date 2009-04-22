@@ -269,14 +269,14 @@ begin
           j := i+1;
           while (j <= length(f)+strStart-1) and (f[j] <> '}') do inc(j);
           key := ncopy(f, i+2+strStart-1, j-1+strStart-1);
-          result := result +{&} getValue(t, flags, key);
+          add(result, getValue(t, flags, key));
           i := j+1
         end;
         'a'..'z', 'A'..'Z', #128..#255, '_': begin
           j := i+1;
           while (j <= length(f)+strStart-1) and (f[j] in PatternChars) do inc(j);
           key := ncopy(f, i+1+strStart-1, j-1+strStart-1);
-          result := result +{&} getValue(t, flags, key);
+          add(result, getValue(t, flags, key));
           i := j
         end
         else begin

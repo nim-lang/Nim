@@ -5,7 +5,7 @@ Short description of Nimrod's modules
 Module          Description
 ==============  ==========================================================
 nimrod          main module: parses the command line and calls
-                ```main.MainCommand``
+                ``main.MainCommand``
 main            implements the top-level command dispatching
 lexbase         buffer handling of the lexical analyser
 scanner         lexical analyser
@@ -31,6 +31,7 @@ sigmatch        contains the matching algorithm that is used for proc
 semexprs        contains the semantic checking phase for expressions
 semstmts        contains the semantic checking phase for statements
 semtypes        contains the semantic checking phase for types
+seminst         instantiation of generic procs and types
 semfold         contains code to deal with constant folding
 evals           contains an AST interpreter for compile time evaluation
 pragmas         semantic checking of pragmas

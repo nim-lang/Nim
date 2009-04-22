@@ -77,14 +77,14 @@ const
 +{&} '  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF' +{&} nl
 +{&} '  -x, --checks:on|off       code generation for all runtime checks ON|OFF' +{&} nl
 +{&} '  --obj_checks:on|off       code generation for obj conversion checks ON|OFF' +{&} nl
-+{&} '  --field_checks:on|off     code generation for case record fields ON|OFF' +{&} nl
++{&} '  --field_checks:on|off     code generation for case variant fields ON|OFF' +{&} nl
 +{&} '  --range_checks:on|off     code generation for range checks ON|OFF' +{&} nl
 +{&} '  --bound_checks:on|off     code generation for bound checks ON|OFF' +{&} nl
 +{&} '  --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF' +{&} nl
 +{&} '  -a, --assertions:on|off   code generation for assertions ON|OFF' +{&} nl
 +{&} '  --dead_code_elim:on|off   whole program dead code elimination ON|OFF' +{&} nl
 +{&} '  --opt:none|speed|size     optimize not at all or for speed|size' +{&} nl
-+{&} '  --app:console|gui|lib     generate a console|GUI application or a shared lib' +{&} nl
++{&} '  --app:console|gui         generate a console|GUI application' +{&} nl
 +{&} '  -r, --run                 run the compiled program with given arguments' +{&} nl
 +{&} '  --advanced                show advanced command line switches' +{&} nl
 +{&} '  -h, --help                show this help' +{&} nl
@@ -125,7 +125,6 @@ const
 +{&} '  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod' +{&} nl
 +{&} '  --skip_cfg                do not read the general configuration file' +{&} nl
 +{&} '  --skip_proj_cfg           do not read the project''s configuration file' +{&} nl
-+{&} '  --import:MODULE_FILE      import the given module implicitly for each module' +{&} nl
 +{&} '  --index:FILE              use FILE to generate a documenation index file' +{&} nl
 +{&} '  --putenv:key=value        set an environment variable' +{&} nl
 +{&} '  --list_cmd                list the commands used to execute external programs' +{&} nl
@@ -506,7 +505,7 @@ begin
       expectArg(switch, arg, pass, info);
       gErrorMax := parseInt(arg);
     end;
-    else if findSubStr('.', switch) >= strStart then
+    else if strutils.find(switch, '.') >= strStart then
       options.setConfigVar(switch, arg)
     else
       InvalidCmdLineOption(pass, switch, info)

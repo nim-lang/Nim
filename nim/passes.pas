@@ -57,7 +57,7 @@ function astNeeded(s: PSym): bool;
   // appropriate to free the procedure body's memory. This is important
   // to keep memory usage down.
 
-// some passes (the semantic checker) need these:
+// the semantic checker needs these:
 var
   gImportModule: function (const filename: string): PSym;
   gIncludeFile: function (const filename: string): PNode;

@@ -348,9 +348,9 @@ proc dbgStackFrame(s: string, start: int, currFrame: PExtendedFrame) =
 proc CommandPrompt() =
   # if we return from this routine, user code executes again
   var
-    again: bool = True
+    again = True
     dbgFramePtr = framePtr # for going down and up the stack
-    dbgDown: int = 0 # how often we did go down
+    dbgDown = 0 # how often we did go down
 
   while again:
     write(stdout, "*** endb| >>")
@@ -478,10 +478,10 @@ proc dbgRegisterGlobal(name: cstring, address: pointer,
   inc(dbgGlobalData.f.len)
 
 proc endb(line: int) {.compilerproc.} =
-  # This proc is called before any Nimrod code line!
+  # This proc is called before every Nimrod code line!
   # Thus, it must have as few parameters as possible to keep the
   # code size small!
-  # check if we are at an enabled breakpoint or "in the mood"
+  # Check if we are at an enabled breakpoint or "in the mood"
   framePtr.line = line # this is done here for smaller code size!
   if dbgLineHook != nil: dbgLineHook()
   case dbgState

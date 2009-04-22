@@ -1397,34 +1397,34 @@ proc glVertexPointer*(size: TGLint, atype: TGLenum, stride: TGLsizei,
                       pointer: Pointer){.dynlib: dllname, importc.}
 proc glViewport*(x, y: TGLint, width, height: TGLsizei){.dynlib: dllname, importc.}
 type
-  PFNGLARRAYELEMENTEXTPROC* = proc (i: TGLint)
-  PFNGLDRAWARRAYSEXTPROC* = proc (mode: TGLenum, first: TGLint, count: TGLsizei)
-  PFNGLVERTEXPOINTEREXTPROC* = proc (size: TGLint, atype: TGLenum, 
+  PFN_GLARRAY_ELEMENT_EXTPROC* = proc (i: TGLint)
+  PFN_GLDRAW_ARRAYS_EXTPROC* = proc (mode: TGLenum, first: TGLint, count: TGLsizei)
+  PFN_GLVERTEX_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
                                      stride, count: TGLsizei, pointer: Pointer)
-  PFNGLNORMALPOINTEREXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
+  PFN_GLNORMAL_POINTER_EXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
                                      pointer: Pointer)
-  PFNGLCOLORPOINTEREXTPROC* = proc (size: TGLint, atype: TGLenum, 
+  PFN_GLCOLOR_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
                                     stride, count: TGLsizei, pointer: Pointer)
-  PFNGLINDEXPOINTEREXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
+  PFN_GLINDEX_POINTER_EXTPROC* = proc (atype: TGLenum, stride, count: TGLsizei, 
                                     pointer: Pointer)
-  PFNGLTEXCOORDPOINTEREXTPROC* = proc (size: TGLint, atype: TGLenum, 
+  PFN_GLTEXCOORD_POINTER_EXTPROC* = proc (size: TGLint, atype: TGLenum, 
                                        stride, count: TGLsizei, pointer: Pointer)
-  PFNGLEDGEFLAGPOINTEREXTPROC* = proc (stride, count: TGLsizei, 
+  PFN_GLEDGEFLAG_POINTER_EXTPROC* = proc (stride, count: TGLsizei, 
                                        pointer: PGLboolean)
-  PFNGLGETPOINTERVEXTPROC* = proc (pname: TGLenum, params: Pointer)
-  PFNGLARRAYELEMENTARRAYEXTPROC* = proc (mode: TGLenum, count: TGLsizei, 
+  PFN_GLGET_POINTER_VEXT_PROC* = proc (pname: TGLenum, params: Pointer)
+  PFN_GLARRAY_ELEMENT_ARRAY_EXTPROC* = proc (mode: TGLenum, count: TGLsizei, 
       pi: Pointer)            # WIN_swap_hint
-  PFNGLADDSWAPHINTRECTWINPROC* = proc (x, y: TGLint, width, height: TGLsizei)
-  PFNGLCOLORTABLEEXTPROC* = proc (target, internalFormat: TGLenum, 
+  PFN_GLADDSWAPHINT_RECT_WINPROC* = proc (x, y: TGLint, width, height: TGLsizei)
+  PFN_GLCOLOR_TABLE_EXTPROC* = proc (target, internalFormat: TGLenum, 
                                   width: TGLsizei, format, atype: TGLenum, 
                                   data: Pointer)
-  PFNGLCOLORSUBTABLEEXTPROC* = proc (target: TGLenum, start, count: TGLsizei, 
+  PFN_GLCOLOR_SUBTABLE_EXTPROC* = proc (target: TGLenum, start, count: TGLsizei, 
                                      format, atype: TGLenum, data: Pointer)
-  PFNGLGETCOLORTABLEEXTPROC* = proc (target, format, atype: TGLenum, 
+  PFN_GLGETCOLOR_TABLE_EXTPROC* = proc (target, format, atype: TGLenum, 
                                      data: Pointer)
-  PFNGLGETCOLORTABLEPARAMETERIVEXTPROC* = proc (target, pname: TGLenum, 
+  PFN_GLGETCOLOR_TABLE_PARAMETER_IVEXTPROC* = proc (target, pname: TGLenum, 
       params: PGLint)
-  PFNGLGETCOLORTABLEPARAMETERFVEXTPROC* = proc (target, pname: TGLenum, 
+  PFN_GLGETCOLOR_TABLE_PARAMETER_FVEXTPROC* = proc (target, pname: TGLenum, 
       params: PGLfloat)
 
 {.pop.}

@@ -37,16 +37,21 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 8: s = 7
-  result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
-                          (s+1) * sizeof(char)))
-  #result.len = 0
+  when defined(boehmGC):
+    result = cast[NimString](boehmAllocAtomic(
+      sizeof(TGenericSeq) + (s+1) * sizeof(char)))
+    result.len = 0
+    result.data[0] = '\0'
+  else:
+    result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
+                            (s+1) * sizeof(char)))
   result.space = s
-  #result.data[0] = '\0'
 
 proc mnewString(len: int): NimString {.exportc.} =
   result = rawNewString(len)
   result.len = len
-  #result.data[len] = '\0'
+  when defined(boehmGC):
+    result.data[len] = '\0'
 
 proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
@@ -224,10 +229,11 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                                  GenericSeqSize))
     elif newLen < result.len:
       # we need to decref here, otherwise the GC leaks!
-      for i in newLen..result.len-1:
-        forAllChildrenAux(cast[pointer](cast[TAddress](result) +% 
-                          GenericSeqSize +% (i*%elemSize)),
-                          extGetCellType(result).base, waZctDecRef)
+      when not defined(boehmGC):
+        for i in newLen..result.len-1:
+          forAllChildrenAux(cast[pointer](cast[TAddress](result) +% 
+                            GenericSeqSize +% (i*%elemSize)),
+                            extGetCellType(result).base, waZctDecRef)
       # and set the memory to nil:
       zeroMem(cast[pointer](cast[TAddress](result) +% GenericSeqSize +%
              (newLen*%elemSize)), (result.len-%newLen) *% elemSize)

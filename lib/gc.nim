@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,35 +15,8 @@
 # * generational
 
 # Future Improvements:
-# * Both dlmalloc and TLSF lack zero-overhead object allocation. Thus, for
-#   small objects we should use our own allocator.
 # * Support for multi-threading. However, locks for the reference counting
 #   might turn out to be too slow.
-
-# ---------------------------------------------------------------------------
-# Interface to TLSF:
-const
-  useTLSF = false # benchmarking showed that *dlmalloc* is faster than *TLSF*
-
-when useTLSF:
-  {.compile: "tlsf.c".}
-
-  proc tlsfUsed: int {.importc: "TLSF_GET_USED_SIZE", noconv.}
-  proc tlsfMax: int {.importc: "TLSF_GET_MAX_SIZE", noconv.}
-
-  proc tlsf_malloc(size: int): pointer {.importc, noconv.}
-  proc tlsf_free(p: pointer) {.importc, noconv.}
-  proc tlsf_realloc(p: pointer, size: int): pointer {.importc, noconv.}
-else:
-  # use DL malloc
-  {.compile: "dlmalloc.c".}
-  proc tlsfUsed: int {.importc: "dlmalloc_footprint", noconv.}
-  proc tlsfMax: int {.importc: "dlmalloc_max_footprint", noconv.}
-
-  proc tlsf_malloc(size: int): pointer {.importc: "dlmalloc", noconv.}
-  proc tlsf_free(p: pointer) {.importc: "dlfree", noconv.}
-  proc tlsf_realloc(p: pointer, size: int): pointer {.
-    importc: "dlrealloc", noconv.}
 
 # ---------------------------------------------------------------------------
 
@@ -54,38 +27,13 @@ proc getTotalMem(): int = return tlsfMax()
 # ---------------------------------------------------------------------------
 
 const
-  debugGC = false # we wish to debug the GC...
-  logGC = false
-  traceGC = false # extensive debugging
-  reallyDealloc = true # for debugging purposes this can be set to false
-  cycleGC = true # (de)activate the cycle GC
-  stressGC = debugGC
-
-# Guess the page size of the system; if it is the
-# wrong value, performance may be worse (this is not
-# for sure though), but GC still works; must be a power of two!
-const
-  PageShift = if sizeof(pointer) == 4: 12 else: 13
-  PageSize = 1 shl PageShift # on 32 bit systems 4096
   CycleIncrease = 2 # is a multiplicative increase
-
   InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
   ZctThreshold = 256  # we collect garbage if the ZCT's size
                       # reaches this threshold
                       # this seems to be a good value
 
 const
-  MemAlignment = 8 # BUGFIX: on AMD64, dlmalloc aligns at 8 byte boundary
-  BitsPerUnit = sizeof(int)*8
-    # a "unit" is a word, i.e. 4 bytes
-    # on a 32 bit system; I do not use the term "word" because under 32-bit
-    # Windows it is sometimes only 16 bits
-
-  BitsPerPage = PageSize div MemAlignment
-  UnitsPerPage = BitsPerPage div BitsPerUnit
-    # how many units do we need to describe a page:
-    # on 32 bit systems this is only 16 (!)
-
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
   # NOTE: Most colors are currently unused
   rcBlack = 0b000 # cell is colored black; in use or free
@@ -101,40 +49,9 @@ type
   TWalkOp = enum
     waZctDecRef, waPush, waCycleDecRef
 
-  TCell {.pure.} = object
-    refcount: int  # the refcount and some flags
-    typ: PNimType
-    when debugGC:
-      filename: cstring
-      line: int
-
-  PCell = ptr TCell
   TFinalizer {.compilerproc.} = proc (self: pointer)
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
-  PPointer = ptr pointer
-  TByteArray = array[0..1000_0000, byte]
-  PByte = ptr TByteArray
-  PString = ptr string
-
-  PPageDesc = ptr TPageDesc
-  TBitIndex = range[0..UnitsPerPage-1]
-  TPageDesc {.final, pure.} = object
-    next: PPageDesc # all nodes are connected with this pointer
-    key: TAddress   # start address at bit 0
-    bits: array[TBitIndex, int] # a bit vector
-
-  PPageDescArray = ptr array[0..1000_000, PPageDesc]
-  TCellSet {.final, pure.} = object
-    counter, max: int
-    head: PPageDesc
-    data: PPageDescArray
-
-  PCellArray = ptr array[0..100_000_000, PCell]
-  TCellSeq {.final, pure.} = object
-    len, cap: int
-    d: PCellArray
-
   TGcHeap {.final, pure.} = object # this contains the zero count and
                                    # non-zero count table
     mask: TAddress           # mask for fast pointer detection
@@ -152,7 +69,6 @@ type
     tempStack: TCellSeq      # temporary stack for recursion elimination
 
 var
-  gOutOfMem: ref EOutOfMemory
   stackBottom: pointer
   gch: TGcHeap
   cycleThreshold: int = InitialCycleThreshold
@@ -171,12 +87,10 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc.}
 proc newObj(typ: PNimType, size: int): pointer {.compilerproc.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.}
 
-proc raiseOutOfMem() {.noreturn.} =
-  if gOutOfMem == nil:
-    writeToStdErr("out of memory; cannot even throw an exception")
-    quit(1)
-  gOutOfMem.msg = "out of memory"
-  raise gOutOfMem
+proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
+  if (c.refcount and colorMask) != rcZct:
+    c.refcount = c.refcount and not colorMask or rcZct
+    add(s, c)
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
@@ -198,11 +112,6 @@ proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
   if result > 0: result = result shr rcShift
   else: result = 0
 
-proc gcAlloc(size: int): pointer =
-  result = tlsf_malloc(size)
-  if result == nil: raiseOutOfMem()
-  zeroMem(result, size)
-
 proc GC_disable() = inc(recGcLock)
 proc GC_enable() =
   if recGcLock > 0: dec(recGcLock)
@@ -221,159 +130,9 @@ proc GC_disableMarkAndSweep() =
   cycleThreshold = high(cycleThreshold)-1
   # set to the max value to suppress the cycle detector
 
-proc nextTry(h, maxHash: int): int {.inline.} =
-  result = ((5*h) + 1) and maxHash
-  # For any initial h in range(maxHash), repeating that maxHash times
-  # generates each int in range(maxHash) exactly once (see any text on
-  # random-number generation for proof).
-
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod BitsPerUnit != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
-
-# ------------------- cell set handling ---------------------------------------
-
-proc inOperator(s: TCellSeq, c: PCell): bool {.inline.} =
-  for i in 0 .. s.len-1:
-    if s.d[i] == c: return True
-  return False
-
-proc add(s: var TCellSeq, c: PCell) {.inline.} =
-  if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    var d = cast[PCellArray](tlsf_malloc(s.cap * sizeof(PCell)))
-    if d == nil: raiseOutOfMem()
-    copyMem(d, s.d, s.len * sizeof(PCell))
-    tlsf_free(s.d)
-    s.d = d
-    # BUGFIX: realloc failes on AMD64, sigh...
-    #s.d = cast[PCellArray](tlsf_realloc(s.d, s.cap * sizeof(PCell)))
-    #if s.d == nil: raiseOutOfMem()
-  s.d[s.len] = c
-  inc(s.len)
-
-proc addZCT(s: var TCellSeq, c: PCell) =
-  if (c.refcount and colorMask) != rcZct:
-    c.refcount = c.refcount and not colorMask or rcZct
-    add(s, c)
-
-proc init(s: var TCellSeq, cap: int = 1024) =
-  s.len = 0
-  s.cap = cap
-  s.d = cast[PCellArray](gcAlloc(cap * sizeof(PCell)))
-
-const
-  InitCellSetSize = 1024 # must be a power of two!
-
-proc CellSetInit(s: var TCellSet) =
-  s.data = cast[PPageDescArray](gcAlloc(InitCellSetSize * sizeof(PPageDesc)))
-  s.max = InitCellSetSize-1
-  s.counter = 0
-  s.head = nil
-
-proc CellSetDeinit(s: var TCellSet) =
-  var it = s.head
-  while it != nil:
-    var n = it.next
-    tlsf_free(it)
-    it = n
-  s.head = nil # play it safe here
-  tlsf_free(s.data)
-  s.data = nil
-  s.counter = 0
-  
-proc CellSetGet(t: TCellSet, key: TAddress): PPageDesc =
-  var h = cast[int](key) and t.max
-  while t.data[h] != nil:
-    if t.data[h].key == key: return t.data[h]
-    h = nextTry(h, t.max)
-  return nil
-
-proc CellSetRawInsert(t: TCellSet, data: PPageDescArray,
-                      desc: PPageDesc) =
-  var h = cast[int](desc.key) and t.max
-  while data[h] != nil:
-    assert(data[h] != desc)
-    h = nextTry(h, t.max)
-  assert(data[h] == nil)
-  data[h] = desc
-
-proc CellSetEnlarge(t: var TCellSet) =
-  var oldMax = t.max
-  t.max = ((t.max+1)*2)-1
-  var n = cast[PPageDescArray](gcAlloc((t.max + 1) * sizeof(PPageDesc)))
-  for i in 0 .. oldmax:
-    if t.data[i] != nil:
-      CellSetRawInsert(t, n, t.data[i])
-  tlsf_free(t.data)
-  t.data = n
-
-proc CellSetPut(t: var TCellSet, key: TAddress): PPageDesc =
-  var h = cast[int](key) and t.max
-  while true:
-    var x = t.data[h]
-    if x == nil: break
-    if x.key == key: return x
-    h = nextTry(h, t.max)
-
-  if ((t.max+1)*2 < t.counter*3) or ((t.max+1)-t.counter < 4):
-    CellSetEnlarge(t)
-  inc(t.counter)
-  h = cast[int](key) and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
-  assert(t.data[h] == nil)
-  # the new page descriptor goes into result
-  result = cast[PPageDesc](gcAlloc(sizeof(TPageDesc)))
-  result.next = t.head
-  result.key = key
-  t.head = result
-  t.data[h] = result
-
-# ---------- slightly higher level procs --------------------------------------
-
-proc contains(s: TCellSet, cell: PCell): bool =
-  var u = cast[TAddress](cell)
-  var t = CellSetGet(s, u shr PageShift)
-  if t != nil:
-    u = (u %% PageSize) /% MemAlignment
-    result = (t.bits[u /% BitsPerUnit] and (1 shl (u %% BitsPerUnit))) != 0
-  else:
-    result = false
-
-proc incl(s: var TCellSet, cell: PCell) =
-  var u = cast[TAddress](cell)
-  var t = CellSetPut(s, u shr PageShift)
-  u = (u %% PageSize) /% MemAlignment
-  t.bits[u /% BitsPerUnit] = t.bits[u /% BitsPerUnit] or
-    (1 shl (u %% BitsPerUnit))
-
-proc excl(s: var TCellSet, cell: PCell) =
-  var u = cast[TAddress](cell)
-  var t = CellSetGet(s, u shr PageShift)
-  if t != nil:
-    u = (u %% PageSize) /% MemAlignment
-    t.bits[u /% BitsPerUnit] = (t.bits[u /% BitsPerUnit] and
-                                  not (1 shl (u %% BitsPerUnit)))
-
-iterator elements(t: TCellSet): PCell {.inline.} =
-  # while traversing it is forbidden to add pointers to the tree!
-  var r = t.head
-  while r != nil:
-    var i = 0
-    while i <= high(r.bits):
-      var w = r.bits[i] # taking a copy of r.bits[i] here is correct, because
-      # modifying operations are not allowed during traversation
-      var j = 0
-      while w != 0:         # test all remaining bits for zero
-        if (w and 1) != 0:  # the bit is set!
-          yield cast[PCell]((r.key shl PageShift) or # +%
-                              (i*%BitsPerUnit+%j) *% MemAlignment)
-        inc(j)
-        w = w shr 1
-      inc(i)
-    r = r.next
-
-# --------------- end of Cellset routines -------------------------------------
 
 when debugGC:
   proc writeCell(msg: CString, c: PCell) =
@@ -450,7 +209,6 @@ proc IsOnStack(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
-proc reprAny(p: pointer, typ: PNimType): string {.compilerproc.}
 # we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
@@ -479,13 +237,13 @@ proc decRef(c: PCell) {.inline.} =
   if c.refcount <% rcIncrement:
     addZCT(gch.zct, c)
   elif canBeCycleRoot(c):
-    possibleRoot(gch, c) 
+    incl(gch.cycleRoots, c) 
 
 proc incRef(c: PCell) {.inline.} = 
   c.refcount = c.refcount +% rcIncrement
   if canBeCycleRoot(c):
     # OPT: the code generator should special case this
-    possibleRoot(gch, c)
+    incl(gch.cycleRoots, c)
 
 proc nimGCref(p: pointer) {.compilerproc, inline.} = incRef(usrToCell(p))
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = decRef(usrToCell(p))
@@ -533,26 +291,6 @@ proc initGC() =
   CellSetInit(gch.stackCells)
   gch.mask = 0
   new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
-
-proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
-  assert(n.kind == nkCase)
-  var d: int
-  var a = cast[TAddress](aa)
-  case n.typ.size
-  of 1: d = ze(cast[ptr int8](a +% n.offset)^)
-  of 2: d = ze(cast[ptr int16](a +% n.offset)^)
-  of 4: d = int(cast[ptr int32](a +% n.offset)^)
-  else: assert(false)
-  return d
-
-proc selectBranch(aa: Pointer, n: ptr TNimNode): ptr TNimNode =
-  var discr = getDiscriminant(aa, n)
-  if discr <% n.len:
-    result = n.sons[discr]
-    if result == nil: result = n.sons[n.len]
-    # n.sons[n.len] contains the ``else`` part (but may be nil)
-  else:
-    result = n.sons[n.len]
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
@@ -749,7 +487,7 @@ proc collectCycles(gch: var TGcHeap) =
   CellSetDeinit(gch.cycleRoots)
   gch.cycleRoots = newRoots
 
-proc gcMark(p: pointer) = # {.fastcall.} =
+proc gcMark(p: pointer) {.noinline.} =
   # the addresses are not as objects on the stack, so turn them to objects:
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)
@@ -759,7 +497,7 @@ proc gcMark(p: pointer) = # {.fastcall.} =
     incl(gch.stackCells, cell)  # yes: mark it
 
 # ----------------- stack management --------------------------------------
-#  inspired from Smart Eiffel (c)
+#  inspired from Smart Eiffel
 
 proc stackSize(): int {.noinline.} =
   var stackTop: array[0..1, pointer]
@@ -885,7 +623,7 @@ else:
       # in a platform independant way
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
-    when true:
+    when false:
       # new version: several C compilers are too smart here
       var
         max = cast[TAddress](stackBottom)
@@ -910,7 +648,7 @@ else:
         max = stackBottom
         registers: C_JmpBuf # The jmp_buf buffer is in the C stack.
         sp: PPointer        # Used to traverse the stack and registers assuming
-                            # that `setjmp' will save registers in the C stack.
+                            # that 'setjmp' will save registers in the C stack.
       if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
         sp = cast[ppointer](addr(registers))
         while sp <= max:
@@ -937,7 +675,7 @@ proc updateZCT() =
       dec(L)
       d[j] = d[L]
       c.refcount = c.refcount and not colorMask
-      # we have a new cell at position i, so don't increment i
+      # we have a new cell at position j, so don't increment j
     else:
       inc(j)
   gch.zct.len = L

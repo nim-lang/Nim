@@ -10,7 +10,7 @@
 ## The ``parsecfg`` module implements a high performance configuration file 
 ## parser. The configuration file's syntax is similar to the Windows ``.ini`` 
 ## format, but much more powerful, as it is not a line based parser. String 
-## literals, raw string literals and triple quote string literals are supported 
+## literals, raw string literals and triple quoted string literals are supported 
 ## as in the Nimrod programming language.
 
 ## This is an example of how a configuration file may look like:
@@ -135,7 +135,6 @@ proc handleDecChars(c: var TCfgParser, xi: var int) =
     inc(c.bufpos)
 
 proc getEscapedChar(c: var TCfgParser, tok: var TToken) = 
-  var xi: int
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 
@@ -173,12 +172,12 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
     Inc(c.bufpos)
   of 'x', 'X': 
     inc(c.bufpos)
-    xi = 0
+    var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
     add(tok.literal, Chr(xi))
   of '0'..'9': 
-    xi = 0
+    var xi = 0
     handleDecChars(c, xi)
     if (xi <= 255): add(tok.literal, Chr(xi))
     else: tok.kind = tkInvalid
@@ -191,12 +190,8 @@ proc HandleCRLF(c: var TCfgParser, pos: int): int =
   else: result = pos
   
 proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) = 
-  var 
-    pos: int
-    ch: Char
-    buf: cstring
-  pos = c.bufPos + 1          # skip "
-  buf = c.buf                 # put `buf` in a register
+  var pos = c.bufPos + 1          # skip "
+  var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
   if (buf[pos] == '\"') and (buf[pos + 1] == '\"'): 
     # long string literal:
@@ -211,19 +206,18 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
         Inc(pos)
       of '\c', '\L': 
         pos = HandleCRLF(c, pos)
-        tok.literal = tok.literal & nl
+        add(tok.literal, nl)
       of lexbase.EndOfFile: 
         tok.kind = tkInvalid
         break 
       else: 
         add(tok.literal, buf[pos])
         Inc(pos)
-    c.bufpos = pos +
-        3                     # skip the three """
+    c.bufpos = pos + 3       # skip the three """
   else: 
     # ordinary string literal
     while true: 
-      ch = buf[pos]
+      var ch = buf[pos]
       if ch == '\"': 
         inc(pos)              # skip '"'
         break 
@@ -240,11 +234,8 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
     c.bufpos = pos
 
 proc getSymbol(c: var TCfgParser, tok: var TToken) = 
-  var 
-    pos: int
-    buf: cstring
-  pos = c.bufpos
-  buf = c.buf
+  var pos = c.bufpos
+  var buf = c.buf
   while true: 
     add(tok.literal, buf[pos])
     Inc(pos)
@@ -253,11 +244,8 @@ proc getSymbol(c: var TCfgParser, tok: var TToken) =
   tok.kind = tkSymbol
 
 proc skip(c: var TCfgParser) = 
-  var 
-    buf: cstring
-    pos: int
-  pos = c.bufpos
-  buf = c.buf
+  var pos = c.bufpos
+  var buf = c.buf
   while true: 
     case buf[pos]
     of ' ', '\t': 

@@ -530,6 +530,7 @@ begin
     nkVarSection: begin
       for i := 0 to sonsLen(n)-1 do begin
         a := n.sons[i];
+        if a.kind = nkCommentStmt then continue;
         if a.kind <> nkIdentDefs then InternalError(a.info, 'rodwrite.process');
         addInterfaceSym(w, a.sons[0].sym);
       end
@@ -537,6 +538,7 @@ begin
     nkConstSection: begin
       for i := 0 to sonsLen(n)-1 do begin
         a := n.sons[i];
+        if a.kind = nkCommentStmt then continue;
         if a.kind <> nkConstDef then InternalError(a.info, 'rodwrite.process');
         addInterfaceSym(w, a.sons[0].sym);
       end
@@ -544,6 +546,7 @@ begin
     nkTypeSection: begin
       for i := 0 to sonsLen(n)-1 do begin
         a := n.sons[i];
+        if a.kind = nkCommentStmt then continue;
         if a.sons[0].kind <> nkSym then
           InternalError(a.info, 'rodwrite.process');
         s := a.sons[0].sym;

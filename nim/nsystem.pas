@@ -43,6 +43,7 @@ type
 {$endif}
   EOutOfRange = class(Exception)
   end;
+  EOS = class(Exception) end;
 
   float32 = single;
   float64 = double;

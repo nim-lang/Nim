@@ -6,12 +6,15 @@ Nimrod Standard Library
 :Version: |nimrodversion|
 
 Though the Nimrod Standard Library is still evolving, it is already quite
-usable. It is divided into basic libraries that contains modules that virtually
-every program will need and advanced libraries which are more heavy weight.
-Advanced libraries are in the ``lib/base`` directory.
+usable. It is divided into *pure libraries*, *impure libraries* and *wrappers*.
 
-Basic libraries
-===============
+Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary 
+while impure libraries do. A wrapper is an impure library that is a very
+low-level interface to a C library.
+
+
+Pure libraries
+==============
 
 * `system <system.html>`_
   Basic procs and operators that every program needs. It also provides IO
@@ -51,6 +54,12 @@ Basic libraries
   literals, raw string literals and triple quote string literals are supported
   as in the Nimrod programming language.
 
+* `parsexml <parsexml.html>`_
+  The ``parsexml`` module implements a simple high performance XML/HTML parser. 
+  The only encoding that is supported is UTF-8. The parser has been designed
+  to be somewhat error correcting, so that even some "wild HTML" found on the 
+  web can be parsed with it.
+
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
   from strings to strings. Supports a case-sensitive, case-insensitive and
@@ -68,16 +77,30 @@ Basic libraries
   Nimrod types.
 
 * `lexbase <lexbase.html>`_
-  This is a low level module that implements an extremely efficent buffering
+  This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the ``parsecfg`` module.
 
+* `terminal <terminal.html>`_
+  This module contains a few procedures to control the *terminal* 
+  (also called *console*). The implementation simply uses ANSI escape 
+  sequences and does not depend on any other module.
 
-Advanced libaries
-=================
+* `cgi <cgi.html>`_
+  This module implements helper procs for CGI applictions. 
+
+* `unicode <unicode.html>`_ 
+  This module provides support to handle the Unicode UTF-8 encoding.
 
 * `regexprs <regexprs.html>`_
   This module contains procedures and operators for handling regular
   expressions.
+
+* `md5 <md5.html>`_
+  This module implements the MD5 checksum algorithm.
+
+
+Impure libraries
+================
 
 * `dialogs <dialogs.html>`_
   This module implements portable dialogs for Nimrod; the implementation
@@ -86,6 +109,11 @@ Advanced libaries
 
 * `zipfiles <zipfiles.html>`_
   This module implements a zip archive creator/reader/modifier.
+  
+* `web <web.html>`_
+  This module contains simple high-level procedures for dealing with the
+  web like loading the contents of a web page from an URL.
+
 
 Wrappers
 ========
@@ -97,6 +125,12 @@ not contained in the distribution. You can then find them on the website.
   Contains a wrapper for the POSIX standard.
 * `windows <windows.html>`_
   Contains a wrapper for the Win32 API.
+* `mysql <mysql.html>`_
+  Contains a wrapper for the mySQL API.
+* `sqlite3 <sqlite3.html>`_ 
+  Contains a wrapper for SQLite 3 API.
+* `libcurl <libcurl.html>`_
+  Contains a wrapper for the libcurl library.
 * `shellapi <shellapi.html>`_
   Contains a wrapper for the ``shellapi.h`` header.
 * `shfolder <shfolder.html>`_

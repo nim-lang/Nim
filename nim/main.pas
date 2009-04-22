@@ -119,7 +119,7 @@ procedure CompileProject(const filename: string);
 begin
   {@discard} CompileModule(
     JoinPath(options.libpath, appendFileExt('system', nimExt)), false, true);
-  {@discard} CompileModule(filename, true, false);
+  {@discard} CompileModule(appendFileExt(filename, nimExt), true, false);
 end;
 
 procedure semanticPasses;
@@ -351,6 +351,11 @@ begin
       gCmd := cmdCompileToEcmaScript;
       wantFile(filename);
       CommandCompileToEcmaScript(filename);
+    end;
+    wCompileToLLVM: begin
+      gCmd := cmdCompileToLLVM;
+      wantFile(filename);
+      CommandCompileToC(filename);
     end;
     wPretty: begin
       gCmd := cmdPretty;

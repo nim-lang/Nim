@@ -51,10 +51,12 @@ begin
         e := newSymS(skEnumField, n.sons[i].sons[0], c);
         v := semConstExpr(c, n.sons[i].sons[1]);
         x := getOrdValue(v);
-        if (x <> counter) and (i <> 1) then
-          include(result.flags, tfEnumHasWholes);
-        if x < counter then
-          liMessage(n.sons[i].info, errInvalidOrderInEnumX, e.name.s);
+        if i <> 1 then begin
+          if (x <> counter) then
+            include(result.flags, tfEnumHasWholes);
+          if x < counter then
+            liMessage(n.sons[i].info, errInvalidOrderInEnumX, e.name.s);
+        end;
         counter := x;
       end;
       nkSym: e := n.sons[i].sym;
@@ -247,7 +249,7 @@ begin
     end
   end
 end;
-
+(*
 function instGenericAux(c: PContext; templ, actual: PNode;
                         sym: PSym): PNode;
 var
@@ -271,34 +273,48 @@ begin
         result.sons[i] := instGenericAux(c, templ.sons[i], actual, sym);
     end
   end
-end;
+end; *)
 
 function semGeneric(c: PContext; n: PNode; s: PSym; prev: PType): PType;
 var
   i: int;
   elem: PType;
   inst: PNode;
+  cl: PInstantiateClosure;
 begin
   if (s.typ = nil) or (s.typ.kind <> tyGeneric) then
     liMessage(n.info, errCannotInstantiateX, s.name.s);
   result := newOrPrevType(tyGenericInst, prev, c); // new ID...
   result.containerID := s.typ.containerID; // ... but the same containerID
   result.sym := s;
-  if (s.typ.containerID = 0) then
-    InternalError(n.info, 'semtypes.semGeneric');  
+  if (s.typ.containerID = 0) then InternalError(n.info, 'semtypes.semGeneric');
+  cl := newInstantiateClosure(c, n.info);
+  // check the number of supplied arguments suffices:
+  if sonsLen(n) <> sonsLen(s.typ) then begin
+    //MessageOut('n: ' +{&} toString(sonsLen(n)) +{&} ' s: '
+    //           +{&} toString(sonsLen(s.typ)));
+    liMessage(n.info, errWrongNumberOfTypeParams);
+  end;
+  // a generic type should be instantiated with itself:
+  // idTablePut(cl.typeMap, s.typ, result);
+  // iterate over arguments:
   for i := 1 to sonsLen(n)-1 do begin
     elem := semTypeNode(c, n.sons[i], nil);
     if elem.kind = tyGenericParam then 
-      result.kind := tyGeneric; // prevend type from instantiation
+      result.kind := tyGeneric // prevend type from instantiation
+    else
+      idTablePut(cl.typeMap, s.typ.sons[i-1], elem);
     addSon(result, elem);
   end;
   if s.ast <> nil then begin
     if (result.kind = tyGenericInst) then begin
-      inst := instGenericAux(c, s.ast.sons[2], n, s);
+      // inst := instGenericAux(c, s.ast.sons[2], n, s);
       internalError(n.info, 'Generic containers not implemented');
       // XXX: implementation does not work this way
+      // we need to do the following: 
+      // traverse and copy the type and replace any tyGenericParam type
       // does checking of instantiated type for us:
-      elem := semTypeNode(c, inst, nil);
+      elem := instantiateType(cl, s.typ); //semTypeNode(c, inst, nil);
       elem.id := result.containerID;
       addSon(result, elem);
     end

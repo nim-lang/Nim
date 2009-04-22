@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -71,20 +71,40 @@ proc URLdecode*(s: string): string =
     else: add(result, s[i])
     inc(i)
 
+proc addXmlChar(dest: var string, c: Char) {.inline.} = 
+  case c
+  of '&': add(dest, "&amp;")
+  of '<': add(dest, "&lt;")
+  of '>': add(dest, "&gt;")
+  of '\"': add(dest, "&quot;")
+  else: add(dest, c)
+  
+proc XMLencode*(s: string): string = 
+  ## Encodes a value to be XML safe:
+  ## * ``"`` is replaced by ``&quot;``
+  ## * ``<`` is replaced by ``&lt;``
+  ## * ``>`` is replaced by ``&gt;``
+  ## * ``&`` is replaced by ``&amp;``
+  ## * every other character is carried over.
+  result = ""
+  for i in 0..len(s)-1: addXmlChar(result, s[i])
+
 type
   ECgi* = object of EIO  ## the exception that is raised, if a CGI error occurs
   TRequestMethod* = enum ## the used request method
+    methodNone,          ## no REQUEST_METHOD environment variable
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-proc cgiError(msg: string) {.noreturn.} = 
+proc cgiError*(msg: string) {.noreturn.} = 
+  ## raises an ECgi exception with message `msg`.
   var e: ref ECgi
   new(e)
   e.msg = msg
   raise e
 
 proc readData*(allowedMethods: set[TRequestMethod] = 
-               {methodPost, methodGet}): PStringTable = 
+               {methodNone, methodPost, methodGet}): PStringTable = 
   ## Read CGI data. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
@@ -103,7 +123,11 @@ proc readData*(allowedMethods: set[TRequestMethod] =
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
     # read from the QUERY_STRING environment variable:
     enc = getenv("QUERY_STRING")
-  else: cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
+  else: 
+    if methodNone in allowedMethods:
+      return result
+    else:
+      cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
   
   # decode everything in one pass:
   var i = 0
@@ -129,7 +153,6 @@ proc readData*(allowedMethods: set[TRequestMethod] =
     setLen(value, 0) # reuse memory
     while true:
       case enc[i]
-      of '\0': return
       of '%': 
         var x = 0
         handleHexChar(enc[i+1], x)
@@ -137,12 +160,13 @@ proc readData*(allowedMethods: set[TRequestMethod] =
         inc(i, 2)
         add(value, chr(x))
       of '+': add(value, ' ')
-      of '=', '&': break
+      of '&', '\0': break
       else: add(value, enc[i])
       inc(i)
-    if enc[i] != '&': cgiError("'&' expected")
-    inc(i) # skip '='
     result[name] = value
+    if enc[i] == '&': inc(i)
+    elif enc[i] == '\0': break
+    else: cgiError("'&' expected")
 
 proc validateData*(data: PStringTable, validKeys: openarray[string]) = 
   ## validates data; raises `ECgi` if this fails. This checks that each variable

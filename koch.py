@@ -3,26 +3,19 @@
 ##########################################################################
 ##                                                                      ##
 ##             Build script of the Nimrod Compiler                      ##
-##                      (c) 2008 Andreas Rumpf                          ##
+##                      (c) 2009 Andreas Rumpf                          ##
 ##                                                                      ##
 ##########################################################################
 
-import os, os.path, sys, re, shutil, cPickle, time, getopt, glob, zlib
-from string import split, replace, lower, join, find, strip
-
-if sys.version[0] >= "3": # this script does not work with Python 3.0
-  sys.exit("wrong python version: use Python 1.5.2 - 2.6")
-
-True = 0 == 0 # Python 1.5 does not have True and False :-(
-False = 0 == 1
+import sys, os, os.path, re, shutil, time, getopt, glob, zlib, pickle
+from pycompab import *
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.7.4'
+NIMROD_VERSION = '0.7.6'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
-# the build process automatically. It is replaced **everywhere**
-# automatically!
+# the build process automatically. It is replaced **everywhere**!
 # Format is: Major.Minor.Patch
 # Major part: plan is to use number 1 for the first version that is stable;
 #             higher versions may be incompatible with previous versions
@@ -30,39 +23,39 @@ NIMROD_VERSION = '0.7.4'
 #             backwards-compatible)
 # Patch level: is increased for every patch
 
-EXPLAIN = True
-force = False
+EXPLAIN = true
+force = false
 
-GENERATE_DIFF = False
+GENERATE_DIFF = false
 # if set, a diff.log file is generated when bootstrapping
 
-USE_FPC = True
+USE_FPC = true
 
-BOOTCMD = "%s cc --compile:build/platdef.c %s rod/nimrod.nim"
+BOOTCMD = "$1 cc --compile:build/platdef.c $2 rod/nimrod.nim"
 # the command used for bootstrapping
 
 # --------------------------------------------------------------------------
 
 def Error(msg): sys.exit("[Koch] *** ERROR: " + msg)
-def Warn(msg): print "[Koch] *** WARNING: " + msg
-def Echo(msg): print "[Koch] " + msg
-def _Info(msg): print "[Koch] " + msg
+def Warn(msg): print("[Koch] *** WARNING: " + msg)
+def Echo(msg): print("[Koch] " + msg)
+def _Info(msg): print("[Koch] " + msg)
 
 _FINGERPRINTS_FILE = "koch.dat"
   # in this file all the fingerprints are kept to allow recognizing when a file
   # has changed. This works reliably, which cannot be said from just taking
   # filetime-stamps.
 
-def FileCmp(filenameA, filenameB):
+def SameFileContent(filenameA, filenameB):
   SIZE = 4096*2
-  result = True
+  result = true
   a = open(filenameA, "rb")
   b = open(filenameB, "rb")
-  while True:
+  while true:
     x = a.read(SIZE)
     y = b.read(SIZE)
     if x != y:
-      result = False
+      result = false
       break
     elif len(x) < SIZE: # EOF?
       break
@@ -70,41 +63,11 @@ def FileCmp(filenameA, filenameB):
   b.close()
   return result
 
-def Subs(frmt, **substitution):
-  import string
-  chars = string.digits+string.letters+"_"
-  d = substitution
-  result = []
-  i = 0
-  while i < len(frmt):
-    if frmt[i] == '$':
-      i = i+1
-      if frmt[i] == '$':
-        result.append('$')
-        i = i+1
-      elif frmt[i] == '{':
-        i = i+1
-        j = i
-        while frmt[i] != '}': i = i+1
-        i = i+1 # skip }
-        result.append(d[frmt[j:i-1]])
-      elif frmt[i] in string.letters+"_":
-        j = i
-        i = i+1
-        while i < len(frmt) and frmt[i] in chars: i = i + 1
-        result.append(d[frmt[j:i]])
-      else:
-        assert(false)
-    else:
-      result.append(frmt[i])
-      i = i+1
-  return join(result, "")
-
 def SplitArg(s):
   if ':' in s: c = ':'
   elif '=' in s: c = '='
   else: return (s, '')
-  i = s.find(c)
+  i = find(s, c)
   return (s[:i], s[i+1:])
 
 _baseDir = os.getcwd()
@@ -150,7 +113,7 @@ def Remove(f):
   try:
     os.remove(Path(f))
   except OSError:
-    Warn("could not remove: %s" % f)
+    Warn("could not remove: " + f)
 
 def Move(src, dest):
   try:
@@ -164,22 +127,26 @@ def Move(src, dest):
   d = Path(dest)
   try:
     m(s, d)
-  except IOError, OSError:
-    Warn("could not move %s to %s" % (s, d))
+  except IOError:
+    Warn(Subs("could not move $1 to $2", s, d))
+  except OSError:
+    Warn(Subs("could not move $1 to $2", s, d))
 
 def Copy(src, dest):
   s = Path(src)
   d = Path(dest)
   try:
     shutil.copyfile(s, d)
-  except IOError, OSError:
-    Warn("could not copy %s to %s" % (s, d))
+  except IOError:
+    Warn(Subs("could not copy $1 to $2", s, d))
+  except OSError:
+    Warn(Subs("could not copy $1 to $2", s, d))
 
 def RemoveDir(f):
   try:
     shutil.rmtree(Path(f))
   except OSError:
-    Warn("could not remove: %s" % f)
+    Warn("could not remove: " + f)
 
 def Exists(f): return os.path.exists(Path(f))
 
@@ -198,7 +165,7 @@ def Mkdir(dest):
     Warn("could not create directory: " + d)
 
 def Glob(pattern): # needed because glob.glob() is buggy on Windows 95:
-  # things like tests/t*.mor won't work
+  # things like tests/t*.nim won't work
   global _baseDir
   (head, tail) = os.path.split(Path(pattern))
   result = []
@@ -250,14 +217,14 @@ class Changed:
         # a success:
         c.success()
   """
-  def __init__(self, id, files, explain=False,
+  def __init__(self, id, files, explain=false,
                fingerprintsfile=_FINGERPRINTS_FILE):
     # load the fingerprints file:
     # fingerprints is a dict[target, files] where files is a dict[filename, hash]
     self.fingers = {} # default value
     if Exists(fingerprintsfile):
       try:
-        self.fingers = cPickle.load(open(fingerprintsfile))
+        self.fingers = pickle.load(open(fingerprintsfile, "rb"))
       except OSError:
         Error("Cannot read from " + fingerprintsfile)
     self.filename = fingerprintsfile
@@ -267,7 +234,7 @@ class Changed:
     self.explain = explain
 
   def _hashFile(self, f):
-    x = open(f)
+    x = open(f, "rb")
     result = self._hashStr(x.read())
     x.close() # for other Python implementations
     return result
@@ -275,29 +242,29 @@ class Changed:
   def check(self):
     if type(self.files) == type(""):
       self.files = split(self.files)
-    result = False
+    result = false
     target = self.id
-    if not self.fingers.has_key(target):
+    if not has_key(self.fingers, target):
       self.fingers[target] = {}
-      if self.explain: _Info("no entries for target '%s'" % target)
-      result = True
+      if self.explain: _Info(Subs("no entries for target '$1'", target))
+      result = true
     for d in self.files:
       if Exists(d):
         n = self._hashFile(d)
-        if not self.fingers[target].has_key(d) or n != self.fingers[target][d]:
-          result = True
-          if self.explain: _Info("'%s' modified since last build" % d)
+        if not has_key(self.fingers[target], d) or n != self.fingers[target][d]:
+          result = true
+          if self.explain: _Info(Subs("'$1' modified since last build", d))
           self.fingers[target][d] = n
       else:
-        Warn("'%s' does not exist!" % d)
-        result = True
+        Warn(Subs("'$1' does not exist!", d))
+        result = true
     return result
 
   def update(self, filename):
     self.fingers[self.id][filename] = self._hashFile(filename)
 
   def success(self):
-    cPickle.dump(self.fingers, open(self.filename, "w+"))
+    pickle.dump(self.fingers, open(self.filename, "wb+"))
 
 
 # --------------------------------------------------------------------------
@@ -318,12 +285,12 @@ def CogRule(name, filename, dependson):
 
 _nim_exe = os.path.join(os.getcwd(), "bin", ExeExt("nim"))
 _output_obj = os.path.join(os.getcwd(), "obj")
-FPC_CMD = (r"fpc -Cs16777216  -gl -bl -Crtoi -Sgidh -vw -Se1 -o%s "
-           r"-FU%s %s") % (_nim_exe, _output_obj,
-           os.path.join(os.getcwd(), "nim", "nimrod.pas"))
+FPC_CMD = Subs(r"fpc -Cs16777216  -gl -bl -Crtoi -Sgidh -vw -Se1 -o$1 "
+               r"-FU$2 $3", _nim_exe, _output_obj,
+               os.path.join(os.getcwd(), "nim", "nimrod.pas"))
 
 def buildRod(options):
-  Exec("nim compile --compile:build/platdef.c %s rod/nimrod" % options)
+  Exec(Subs("nim compile --compile:build/platdef.c $1 rod/nimrod", options))
   Move(ExeExt("rod/nimrod"), ExeExt("bin/nimrod"))
 
 def cmd_nim():
@@ -341,8 +308,8 @@ def cmd_nim():
     Exec(FPC_CMD)
     if Exists(ExeExt("bin/nim")):
       c.success()
-    return True
-  return False
+    return true
+  return false
 
 def cmd_rod(options):
   prereqs = Glob("lib/*.nim") + Glob("rod/*.nim") + [
@@ -356,13 +323,13 @@ def cmd_rod(options):
 
 # ------------------- constants -----------------------------------------------
 
-HELP = """\
+HELP = Subs("""\
 +-----------------------------------------------------------------+
 |         Maintenance script for Nimrod                           |
-|             Version %s|
-|             (c) 2008 Andreas Rumpf                              |
+|             Version $1|
+|             (c) 2009 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
-Your Python version: %s
+Your Python version: $2
 
 Usage:
   koch.py [options] command [options for command]
@@ -382,27 +349,27 @@ Possible Commands:
   csource                  build the C sources for installation
   zip                      build the installation ZIP package
   inno                     build the Inno Setup installer
-""" % (NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)), sys.version)
+""", NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)), sys.version)
 
 def main(args):
   if len(args) == 0:
-    print HELP
+    print(HELP)
   else:
     i = 0
     while args[i][:1] == "-":
       a = args[i]
       if a in ("--force", "-f", "-B", "-b"):
         global force
-        force = True
+        force = true
       elif a in ("-h", "--help", "-?"):
-        print HELP
+        print(HELP)
         return
       elif a == "--diff":
         global GENERATE_DIFF
-        GENERATE_DIFF = True
+        GENERATE_DIFF = true
       elif a == "--no_fpc":
         global USE_FPC
-        USE_FPC = False
+        USE_FPC = false
       else:
         Error("illegal option: " + a)
       i = i + 1
@@ -417,19 +384,23 @@ def main(args):
     elif cmd == "zip": cmd_zip()
     elif cmd == "inno": cmd_inno()
     elif cmd == "csource": cmd_csource()
+    elif cmd == "install": cmd_install() # for backwards compability
     else: Error("illegal command: " + cmd)
     
 def cmd_csource():
-  Exec("nimrod cc -r tools/niminst --var:version=%s csource rod/nimrod" %
-       NIMROD_VERSION)
+  Exec(Subs("nimrod cc -r tools/niminst --var:version=$1 csource rod/nimrod",
+       NIMROD_VERSION))
 
 def cmd_zip():
-  Exec("nimrod cc -r tools/niminst --var:version=%s zip rod/nimrod" %
-       NIMROD_VERSION)
+  Exec(Subs("nimrod cc -r tools/niminst --var:version=$1 zip rod/nimrod",
+       NIMROD_VERSION))
   
 def cmd_inno():
-  Exec("nimrod cc -r tools/niminst --var:version=%s inno rod/nimrod" %
-       NIMROD_VERSION)
+  Exec(Subs("nimrod cc -r tools/niminst --var:version=$1 inno rod/nimrod",
+       NIMROD_VERSION))
+
+def cmd_install():
+  Exec("sh ./build.sh")
 
 # -------------------------- bootstrap ----------------------------------------
 
@@ -448,13 +419,13 @@ def genBootDiff(genA, genB):
     return a != b
 
   BOOTLOG = "bootdiff.log"
-  result = False
+  result = false
   for f in Glob("diff/*.c"): Remove(f)
   if Exists(BOOTLOG): Remove(BOOTLOG)
   if GENERATE_DIFF:
     lines = [] # lines of the generated logfile
     if len(genA) != len(genB): Warn("number of generated files differ!")
-    for filename, acontent in genA.iteritems():
+    for filename, acontent in genA.items():
       bcontent = genB[filename]
       if bcontent != acontent:
         lines.append("------------------------------------------------------")
@@ -464,8 +435,8 @@ def genBootDiff(genA, genB):
           la = acontent[i][:-1] # without newline!
           lb = bcontent[i][:-1]
           if interestingDiff(la, lb):
-            lines.append("%6d - %s" % (i, la))
-            lines.append("%6d + %s" % (i, lb))
+            lines.append(Subs("$1 - $2", i, la))
+            lines.append(Subs("$1 + $2", i, lb))
         if len(acontent) > len(bcontent):
           cont = acontent
           marker = "-"
@@ -473,10 +444,10 @@ def genBootDiff(genA, genB):
           cont = bcontent
           marker = "+"
         for i in range(min(len(acontent), len(bcontent)), len(cont)):
-          lines.append("%6d %s %s" % (i, marker, cont[i]))
+          lines.append(Subs("$1 $2 $3", i, marker, cont[i]))
         open(os.path.join("diff", "a_"+filename), "w+").write(join(acontent, ""))
         open(os.path.join("diff", "b_"+filename), "w+").write(join(bcontent, ""))
-    if lines: result = True
+    if lines: result = true
     open(BOOTLOG, "w+").write(join(lines, "\n"))
   return result
 
@@ -488,17 +459,17 @@ def cmd_rodsrc():
     compiler = "nim"
   else:
     compiler = "nimrod"
-  CMD = "%s boot --skip_proj_cfg -o:rod/%s.nim nim/%s"
-  result = False
+  CMD = "$1 boot --skip_proj_cfg -o:rod/$2.nim nim/$3"
+  result = false
   for fi in Glob("nim/*.pas"):
     f = FilenameNoExt(fi)
     if f in PAS_FILES_BLACKLIST: continue
     c = Changed(f+"__rodsrc", fi, EXPLAIN)
     if c.check() or force:
-      Exec(CMD % (compiler, f, f+".pas"))
-      Exec("%s parse rod/%s.nim" % (compiler, f))
+      Exec(Subs(CMD, compiler, f, f+".pas"))
+      Exec(Subs("$1 parse rod/$2.nim", compiler, f))
       c.success()
-      result = True
+      result = true
   return result
 
 def moveExes():
@@ -506,7 +477,7 @@ def moveExes():
 
 def cmd_boot(args):
   def myExec(compiler, args=args):
-    Exec(BOOTCMD % (compiler, args))
+    Exec(Subs(BOOTCMD, compiler, args))
     # some C compilers (PellesC) output the executable to the
     # wrong directory. We work around this bug here:
     if Exists(ExeExt("rod/nimcache/nimrod")):
@@ -515,7 +486,7 @@ def cmd_boot(args):
   writePlatdefC(getNimrodPath())
   d = detect("fpc -h")
   if USE_FPC and d:
-    Echo("'%s' detected" % d)
+    Echo(Subs("'$1' detected", d))
     cmd_nim()
     compiler = "nim"
   else:
@@ -536,34 +507,34 @@ def cmd_boot(args):
   if diff:
     Warn("generated C files are not equal: cycle once again...")
   # check if the executables are the same (they should!):
-  if FileCmp(Path(ExeExt("rod/nimrod")),
-             Path(ExeExt("bin/nimrod"))):
+  if SameFileContent(Path(ExeExt("rod/nimrod")),
+                     Path(ExeExt("bin/nimrod"))):
     Echo("executables are equal: SUCCESS!")
   else:
     Echo("executables are not equal: cycle once again...")
-    diff = True
+    diff = true
   if diff:
     # move the new executable to bin directory:
     moveExes()
     # use the new executable to compile Nimrod:
     myExec("nimrod")
-    if FileCmp(Path(ExeExt("rod/nimrod")),
-               Path(ExeExt("bin/nimrod"))):
+    if SameFileContent(Path(ExeExt("rod/nimrod")),
+                       Path(ExeExt("bin/nimrod"))):
       Echo("executables are equal: SUCCESS!")
     else:
       Warn("executables are still not equal")
 
 # ------------------ profile --------------------------------------------------
 def cmd_profile():
-  Exec(BOOTCMD % ("nimrod", "-d:release --profiler:on"))
+  Exec(Subs(BOOTCMD, "nimrod", "-d:release --profiler:on"))
   moveExes()
-  Exec(BOOTCMD % ("nimrod", "--compile_only"))
+  Exec(Subs(BOOTCMD, "nimrod", "--compile_only"))
 
 # ------------------ web ------------------------------------------------------
 
 def cmd_web():
-  Exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=%s" 
-       % NIMROD_VERSION)
+  Exec(Subs("nimrod cc -r tools/nimweb.nim web/nimrod "
+            "--putenv:nimrodversion=$1", NIMROD_VERSION))
        
 # -----------------------------------------------------------------------------
 
@@ -587,7 +558,7 @@ def cmd_clean(dir = "."):
   for f in Glob("rod/*.nim"): Remove(f) # remove generated source code
   def visit(extRegEx, dirname, names):
     if os.path.split(dirname)[1] == "nimcache":
-      shutil.rmtree(path=dirname, ignore_errors=True)
+      shutil.rmtree(path=dirname, ignore_errors=true)
       del names
     else:
       for name in names:
@@ -637,10 +608,10 @@ def writePlatdefC(nimrodpath):
   import os
   host, processor = getOSandProcessor()
   f = open(os.path.join(nimrodpath, "build/platdef.c"), "w+")
-  f.write('/* Generated by koch.py */\n'
-          'char* nimOS(void) { return "%s"; }\n'
-          'char* nimCPU(void) { return "%s"; }\n'
-          '\n' % (host, processor))
+  f.write(Subs('/* Generated by koch.py */\n'
+               'char* nimOS(void) { return "$1"; }\n'
+               'char* nimCPU(void) { return "$2"; }\n'
+               '\n', host, processor))
   f.close()
 
 def detect(cmd, lookFor="version"):

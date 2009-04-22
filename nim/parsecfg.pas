@@ -350,7 +350,7 @@ begin
       addChar(result.key, '.');
       rawGetTok(c, c.tok);
       if c.tok.kind = tkSymbol then begin
-        result.key := result.key +{&} c.tok.literal;
+        add(result.key, c.tok.literal);
         rawGetTok(c, c.tok);
       end
       else begin

@@ -28,6 +28,7 @@ function cmp(const x, y: string): int;
 function cmpIgnoreCase(const x, y: string): int;
 
 function format(const f: string; const args: array of string): string;
+procedure addf(var result: string; const f: string; args: array of string);
 
 function toHex(x: BiggestInt; len: int): string;
 function toOctal(value: Char): string;
@@ -47,7 +48,7 @@ function ToString(b: Boolean): string; overload;
 
 function IntToStr(i: BiggestInt; minChars: int): string;
 
-function findSubStr(const sub, s: string; start: int = 1): int;
+function find(const s, sub: string; start: int = 1): int; overload;
 function replaceStr(const s, search, by: string): string;
 procedure deleteStr(var s: string; first, last: int);
 
@@ -81,8 +82,8 @@ implementation
 
 function quoteIfContainsWhite(const s: string): string;
 begin
-  if ((findSubStr(' ', s) >= strStart)
-  or (findSubStr(#9, s) >= strStart)) and (s[strStart] <> '"') then
+  if ((find(s, ' ') >= strStart)
+  or (find(s, #9) >= strStart)) and (s[strStart] <> '"') then
     result := '"' +{&} s +{&} '"'
   else
     result := s
@@ -247,7 +248,7 @@ begin
       result := result + s[i]
 end;
 
-function findSubStr(const sub, s: string; start: int = 1): int;
+function find(const s, sub: string; start: int = 1): int;
 var
   i, j, M, N: int;
 begin
@@ -277,7 +278,7 @@ begin
   result := '';
   i := 1;
   repeat
-    j := findSubStr(search, s, i);
+    j := find(s, search, i);
     if j = 0 then begin
       // copy the rest:
       result := result + copy(s, i, length(s) - i + 1);
@@ -475,7 +476,7 @@ begin
   until false
 end;
 
-function find(const x: string; const inArray: array of string): int;
+function find(const x: string; const inArray: array of string): int; overload;
 var
   i: int;
   y: string;
@@ -491,30 +492,29 @@ begin
   result := -1
 end;
 
-function format(const f: string; const args: array of string): string;
+procedure addf(var result: string; const f: string; args: array of string);
 const
   PatternChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', #128..#255];
 var
   i, j, x: int;
 begin
-  result := '';
   i := 1;
   while i <= length(f) do
     if f[i] = '$' then begin
       case f[i+1] of
         '$': begin
-          result := result + '$';
+          addChar(result, '$');
           inc(i, 2);
         end;
         '1'..'9': begin
-          result := result + args[ord(f[i+1]) - ord('0') - 1];
+          add(result, args[ord(f[i+1]) - ord('0') - 1]);
           inc(i, 2);
         end;
         '{': begin
           j := i+1;
           while (j <= length(f)) and (f[j] <> '}') do inc(j);
           x := find(ncopy(f, i+2, j-1), args);
-          if (x >= 0) and (x < high(args)) then result := result + args[x+1]
+          if (x >= 0) and (x < high(args)) then add(result, args[x+1])
           else raise EInvalidFormatStr.create('');
           i := j+1
         end;
@@ -522,7 +522,7 @@ begin
           j := i+1;
           while (j <= length(f)) and (f[j] in PatternChars) do inc(j);
           x := find(ncopy(f, i+1, j-1), args);
-          if (x >= 0) and (x < high(args)) then result := result + args[x+1]
+          if (x >= 0) and (x < high(args)) then add(result, args[x+1])
           else raise EInvalidFormatStr.create(ncopy(f, i+1, j-1));
           i := j
         end
@@ -530,9 +530,15 @@ begin
       end
     end
     else begin
-      result := result + f[i];
+      addChar(result, f[i]);
       inc(i)
     end
+end;
+
+function format(const f: string; const args: array of string): string;
+begin
+  result := '';
+  addf(result, f, args)
 end;
 
 {@ignore}
