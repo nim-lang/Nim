@@ -55,6 +55,7 @@ type
     libs: TLinkedList;       // all libs used by this module
     p: PProcCon;             // procedure context
     fromCache: bool;         // is the module read from a cache?
+    lastGenericIdx: int;     // used for the generics stack
     semConstExpr: function (c: PContext; n: PNode): PNode;
       // for the pragmas module
   end;

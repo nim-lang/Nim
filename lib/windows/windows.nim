@@ -3879,7 +3879,7 @@ const
   SW_SHOWNORMAL* = 1
   WPF_RESTORETOMAXIMIZED* = 2
   WPF_SETMINPOSITION* = 1     # Sleep
-  INFINITE* = 0xFFFFFFFF      # SystemParametersInfo
+  INFINITE* = -1'i32      # SystemParametersInfo
   SPI_GETBEEP* = 1
   SPI_SETBEEP* = 2
   SPI_GETMOUSE* = 3

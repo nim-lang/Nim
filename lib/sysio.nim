@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -54,7 +54,12 @@ proc readLine(f: TFile): string =
   rawReadLine(f, result)
 
 proc write(f: TFile, s: string) = fputs(s, f)
-proc write(f: TFile, i: int) = fprintf(f, "%ld", i)
+proc write(f: TFile, i: int) = 
+  when sizeof(int) == 8:
+    fprintf(f, "%lld", i)
+  else:
+    fprintf(f, "%ld", i)
+    
 proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")

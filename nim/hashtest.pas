@@ -3,7 +3,7 @@ program hashtest;
 {$include 'config.inc'}
 
 uses
-  hashes;
+  nhashes;
 
 begin
   writeln(output, getNormalizedHash(ParamStr(1)));

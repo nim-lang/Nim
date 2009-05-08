@@ -28,6 +28,16 @@ type
     of nkList: sons: seq[PCaseNode]
     else: unused: seq[string]
 
+  TIdObj* = object of TObject
+    id*: int                  # unique id; use this for comparisons and not the pointers
+  
+  PIdObj* = ref TIdObj
+  PIdent* = ref TIdent
+  TIdent*{.acyclic.} = object of TIdObj
+    s*: string
+    next*: PIdent             # for hash-table chaining
+    h*: int                   # hash value of s
+
 var
   flip: int
 
@@ -134,7 +144,17 @@ proc buildBTree(father: var TBNode) =
     father.t.data = @["ha", "lets", "stress", "it"]
   setSons(father)
 
+proc getIdent(identifier: cstring, length: int, h: int): PIdent = 
+  new(result)
+  result.h = h
+  result.s = newString(length)
+
 proc main() =
+  discard getIdent("addr", 4, 0)
+  discard getIdent("hall", 4, 0)
+  discard getIdent("echo", 4, 0)
+  discard getIdent("huch", 4, 0)
+  
   var
     father: TBNode
   for i in 1..1_00:
@@ -156,9 +176,6 @@ proc main() =
   writeln(stdout, s[89])
   write(stdout, "done!\n")
 
-#main()
-
-#GC_disable()
 var
     father: TBNode
     s: string
@@ -177,4 +194,4 @@ main()
 write(stdout, "finished\n")
 GC_fullCollect()
 GC_fullCollect()
-write(stdout, GC_getStatistics())
+writeln(stdout, GC_getStatistics())

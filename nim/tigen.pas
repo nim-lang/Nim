@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, ast, astalgo, strutils, hashes, trees, treetab, platform, magicsys,
+  nsystem, ast, astalgo, strutils, nhashes, trees, treetab, platform, magicsys,
   options, msgs, crc, idents, lists, types, rnimsyn;
   
 function gcWalker(t: PType): PNode;

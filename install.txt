@@ -16,7 +16,7 @@ install it.
 Install Nimrod by downloading the appropriate ``.zip`` file and extracting it 
 to a directory of your choice. The Nimrod Compiler will stay in this
 directory (unless you copy it somewhere else). The compiler does not need 
-write access to its directory anymore, so copying the nimrod folder to ``/opt`` 
+write access to its directory, so copying the nimrod folder to ``/opt`` 
 does work.
 
 Then run the following command::
@@ -44,16 +44,17 @@ Installation on Windows
 -----------------------
 
 Install Nimrod by downloading and running
-the ``nimrod_$version.exe`` file. As default, the ``LLVM-GCC`` 
-compiler is used that is bundled with this installer. You can change
-the configuration file to use another C compiler.
+the ``nimrod_$version.exe`` file. As default, the ``GCC`` 
+compiler is used that is bundled with this installer. **You can change
+the configuration file** ``config/nimrod.cfg`` **to use another C compiler 
+or change the path to GCC.**
 
 Currently, the following C compilers are supported under Windows:
 
 - | Microsoft's Visual C++
   | http://msdn.microsoft.com/visualc
-  | (You need the SDK too - but not the full one: Essential are only
-    the win32api header files and import libraries.)
+  | (You need the SDK too - but not the full one: Only
+    the win32api header files and import libraries are essential.)
 - | Gnu C Compiler (the mingw version; the cygwin version has not been tested!)
   | http://www.mingw.org/download.shtml
 - | LLVM with GNU C/C++ frontend

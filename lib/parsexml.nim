@@ -22,7 +22,7 @@
 ## * Thus the checks would have been very difficult to implement properly with
 ##   little benefit, especially since they are simple to implement in the 
 ##   client. The client should use the `errorMsgExpected` proc to generate
-##   a nice error message that fits to the other error messages this library
+##   a nice error message that fits the other error messages this library
 ##   creates.
 ##
 ##

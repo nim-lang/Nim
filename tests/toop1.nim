@@ -31,7 +31,7 @@ proc init(my: var TRectangle) =
   my.height = 10
   my.draw = drawRectangle
 
-macro `!` (n: expr): expr = 
+macro `!` (n: expr): stmt = 
   result = newNimNode(nnkCall, n)
   var dot = newNimNode(nnkDotExpr, n)
   dot.add(n[1])    # obj

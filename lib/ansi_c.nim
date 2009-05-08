@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -82,3 +82,7 @@ proc c_ferror(stream: C_TextFileStar): bool {.importc: "ferror", nodecl.}
 proc c_fflush(stream: C_TextFileStar) {.importc: "fflush", nodecl.}
 proc c_abort() {.importc: "abort", nodecl.}
 proc c_feof(stream: C_TextFileStar): bool {.importc: "feof", nodecl.}
+
+proc c_malloc(size: int): pointer {.importc: "malloc", nodecl.}
+proc c_free(p: pointer) {.importc: "free", nodecl.}
+proc c_realloc(p: pointer, newsize: int): pointer {.importc: "realloc", nodecl.}

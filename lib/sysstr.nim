@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -37,27 +37,20 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 8: s = 7
-  when defined(boehmGC):
-    result = cast[NimString](boehmAllocAtomic(
-      sizeof(TGenericSeq) + (s+1) * sizeof(char)))
-    result.len = 0
-    result.data[0] = '\0'
-  else:
-    result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
-                            (s+1) * sizeof(char)))
+  result = cast[NimString](newObj(addr(strDesc), sizeof(TGenericSeq) +
+                           (s+1) * sizeof(char)))
   result.space = s
 
 proc mnewString(len: int): NimString {.exportc.} =
+  #c_fprintf(c_stdout, "[NEWSTRING] len: %ld\n", len)
   result = rawNewString(len)
   result.len = len
-  when defined(boehmGC):
-    result.data[len] = '\0'
 
 proc toNimStr(str: CString, len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
   result.len = len
   c_memcpy(result.data, str, (len+1) * sizeof(Char))
-  result.data[len] = '\0' # IO.readline relies on this!
+  result.data[len] = '\0' # readline relies on this!
 
 proc cstrToNimstr(str: CString): NimString {.compilerProc.} =
   return toNimstr(str, c_strlen(str))
@@ -184,9 +177,9 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerProc.} =
 
 proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   # increments the length by one:
-  # this is needed for supporting the &= operator;
+  # this is needed for supporting ``add``;
   #
-  #  add seq x  generates:
+  #  add(seq, x)  generates:
   #  seq = incrSeq(seq, sizeof(x));
   #  seq[seq->len-1] = x;
   when false:
@@ -229,7 +222,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                                  GenericSeqSize))
     elif newLen < result.len:
       # we need to decref here, otherwise the GC leaks!
-      when not defined(boehmGC):
+      when not defined(boehmGC) and not defined(nogc):
         for i in newLen..result.len-1:
           forAllChildrenAux(cast[pointer](cast[TAddress](result) +% 
                             GenericSeqSize +% (i*%elemSize)),

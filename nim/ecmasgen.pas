@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, ast, astalgo, strutils, hashes, trees, platform, magicsys,
+  nsystem, ast, astalgo, strutils, nhashes, trees, platform, magicsys,
   extccomp, options, nversion, nimsets, msgs, crc, bitsets, idents,
   lists, types, nos, ntime, ropes, nmath, passes, ccgutils, wordrecg, rnimsyn,
   rodread;

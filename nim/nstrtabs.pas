@@ -6,7 +6,7 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-unit strtabs;
+unit nstrtabs;
 
 // String tables.
 
@@ -15,7 +15,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, nos, hashes, strutils;
+  nsystem, nos, nhashes, strutils;
 
 type
   TStringTableMode = (
@@ -93,9 +93,9 @@ end;
 function myhash(t: PStringTable; const key: string): THash;
 begin
   case t.mode of
-    modeCaseSensitive: result := hashes.GetHashStr(key);
-    modeCaseInsensitive: result := hashes.GetHashStrCI(key);
-    modeStyleInsensitive: result := hashes.getNormalizedHash(key);
+    modeCaseSensitive: result := nhashes.GetHashStr(key);
+    modeCaseInsensitive: result := nhashes.GetHashStrCI(key);
+    modeStyleInsensitive: result := nhashes.getNormalizedHash(key);
   end
 end;
 

@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Website Generator
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,7 +15,7 @@ type
   TConfigData = object of TObject
     tabs, links: seq[TKeyValPair]
     doc, srcdoc, webdoc: seq[string]
-    authors, projectName, projectTitle, infile, outdir, ticker: string
+    authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
 
@@ -29,6 +29,9 @@ proc initConfigData(c: var TConfigData) =
   c.outdir = ""
   c.nimrodArgs = ""
   c.authors = ""
+  c.projectTitle = ""
+  c.projectName = ""
+  c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
 
@@ -37,7 +40,7 @@ include "sunset.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.5"
+  Version = "0.6"
   Usage = "nimweb - Nimrod Installation Generator Version " & version & """
 
   (c) 2008 Andreas Rumpf
@@ -119,6 +122,7 @@ proc parseIniFile(c: var TConfigData) =
           case normalize(k.key)
           of "name": c.projectName = v
           of "title": c.projectTitle = v
+          of "logo": c.logo = v
           of "authors": c.authors = v
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil

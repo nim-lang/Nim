@@ -1,8 +1,0 @@
-nodes: 2224942
-syms:    39562
-Types:   28189
-
-nodes: 2224942
-syms:    39562
-Types:   29054
-Ropes: 1245961

@@ -16,7 +16,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, nos, msgs, strutils, platform, hashes, ropes, charsets, options;
+  nsystem, nos, msgs, strutils, platform, nhashes, ropes, charsets, options;
 
 type
   TRstNodeKind = (
@@ -79,6 +79,7 @@ type
     rnImage,
     rnFigure,
     rnCodeBlock,
+    rnContainer,   // ``container`` directive
     rnIndex,       // index directve:
                    // .. index::
                    //   key
@@ -111,9 +112,9 @@ const
     'TableRow', 'TableHeaderCell', 'TableDataCell', 'Label', 'Footnote',
     'Citation', 'StandaloneHyperlink', 'Hyperlink', 'Ref', 'Directive',
     'DirArg', 'Raw', 'Title', 'Contents', 'Image', 'Figure', 'CodeBlock',
-    'Index', 'SubstitutionDef', 'GeneralRole', 'Sub', 'Sup', 'Idx',
-    'Emphasis', 'StrongEmphasis', 'InterpretedText', 'InlineLiteral',
-    'SubstitutionReferences', 'Leaf'
+    'Container', 'Index', 'SubstitutionDef', 'GeneralRole', 
+    'Sub', 'Sup', 'Idx', 'Emphasis', 'StrongEmphasis', 'InterpretedText', 
+    'InlineLiteral', 'SubstitutionReferences', 'Leaf'
   );
 
 type
@@ -1178,12 +1179,12 @@ end;
 
 type
   TDirKind = ( // must be ordered alphabetically!
-    dkNone, dkAuthor, dkAuthors, dkCodeBlock,
+    dkNone, dkAuthor, dkAuthors, dkCodeBlock, dkContainer,
     dkContents, dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
   );
 const
-  DirIds: array [0..10] of string = (
-    '', 'author', 'authors', 'code-block',
+  DirIds: array [0..11] of string = (
+    '', 'author', 'authors', 'code-block', 'container',
     'contents', 'figure', 'image', 'include', 'index', 'raw', 'title'
   );
 
@@ -1993,6 +1994,14 @@ begin
   result.kind := rnCodeBlock
 end;
 
+function dirContainer(var p: TRstParser): PRstNode;
+begin
+  result := parseDirective(p, {@set}[hasArg], parseSectionWrapper);
+  assert(result.kind = rnDirective);
+  assert(rsonsLen(result) = 3);
+  result.kind := rnContainer;
+end;
+
 function dirImage(var p: TRstParser): PRstNode;
 begin
   result := parseDirective(p, {@set}[hasOptions, hasArg, argIsFile], nil);
@@ -2071,6 +2080,7 @@ begin
       dkImage:      result := dirImage(p);
       dkFigure:     result := dirFigure(p);
       dkTitle:      result := dirTitle(p);
+      dkContainer:  result := dirContainer(p);
       dkContents:   result := dirContents(p);
       dkRaw:        result := dirRaw(p);
       dkCodeblock:  result := dirCodeBlock(p);

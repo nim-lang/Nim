@@ -70,6 +70,8 @@ var
   framePtr {.exportc.}: PFrame
 
   tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
+  
+  stackTraceNewLine* = "\n" ## undocumented feature
 
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   const 
@@ -101,19 +103,21 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     if tempFrames[j] == nil: 
       add(s, "(")
       add(s, $(total-i-1))
-      add(s, " calls omitted) ...\n")
+      add(s, " calls omitted) ...")
     else:
       add(s, $tempFrames[j].procname)
       if tempFrames[j].line > 0:
         add(s, ", line: ")
         add(s, $tempFrames[j].line)
-      add(s, "\n")
+    add(s, stackTraceNewLine)
 
 proc rawWriteStackTrace(s: var string) =
   if framePtr == nil:
-    add(s, "No stack traceback available\n")
+    add(s, "No stack traceback available")
+    add(s, stackTraceNewLine)
   else:
-    add(s, "Traceback (most recent call last)\n")
+    add(s, "Traceback (most recent call last)")
+    add(s, stackTraceNewLine)
     auxWriteStackTrace(framePtr, s)
 
 proc quitOrDebug() {.inline.} =
@@ -151,6 +155,8 @@ var
 
 proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
   if not cond:
+    #c_fprintf(c_stdout, "Assertion failure: file %s line %ld\n", file, line)
+    #quit(1)
     GC_disable() # BUGFIX: `$` allocates a new string object!
     if not isNil(assertBuf):
       # BUGFIX: when debugging the GC, assertBuf may be nil
@@ -162,7 +168,11 @@ proc internalAssert(file: cstring, line: int, cond: bool) {.compilerproc.} =
       add(assertBuf, "\n")
       gAssertionFailed.msg = assertBuf
     GC_enable()
-    raise gAssertionFailed # newException(EAssertionFailed, assertBuf)
+    if gAssertionFailed != nil:
+      raise gAssertionFailed
+    else:
+      c_fprintf(c_stdout, "Assertion failure: file %s line %ld\n", file, line)
+      quit(1)
 
 proc WriteStackTrace() =
   var s = ""

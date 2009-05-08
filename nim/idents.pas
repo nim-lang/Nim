@@ -17,7 +17,7 @@ unit idents;
 interface
 
 uses
-  hashes, nsystem, strutils;
+  nhashes, nsystem, strutils;
 
 type
   TIdObj = object(NObject)

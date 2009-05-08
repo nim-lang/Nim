@@ -15,7 +15,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, charsets, msgs, hashes,
+  nsystem, charsets, msgs, nhashes,
   nversion, options, strutils, crc, ropes, idents, lists;
 
 const
@@ -245,18 +245,18 @@ type
     mSymDiffSet, mConStrStr, mConArrArr, mConArrT, mConTArr, mConTT, 
     mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq, mInRange, 
     mInSet, mAsgn, mRepr, mExit, mSetLengthStr, mSetLengthSeq, 
-    mAssert, mSwap, mIsNil, mArrToSeq, mArray, mOpenArray, 
-    mRange, mSet, mSeq, mInt, mInt8, mInt16, 
-    mInt32, mInt64, mFloat, mFloat32, mFloat64, mBool, 
-    mChar, mString, mCstring, mPointer, mAnyEnum, mEmptySet, 
-    mIntSetBaseType, mNil, mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, 
-    mNimrodMajor, mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, 
-    mNaN, mInf, mNegInf, mNLen, mNChild, mNSetChild, 
-    mNAdd, mNAddMultiple, mNDel, mNKind, mNIntVal, mNFloatVal, 
-    mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, mNSetFloatVal, 
-    mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNNewNimNode, mNCopyNimNode, 
-    mNCopyNimTree, mStrToIdent, mIdentToStr, mEqIdent, mNHint, mNWarning, 
-    mNError
+    mAssert, mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast, 
+    mNewString, mArray, mOpenArray, mRange, mSet, mSeq, 
+    mInt, mInt8, mInt16, mInt32, mInt64, mFloat, 
+    mFloat32, mFloat64, mBool, mChar, mString, mCstring, 
+    mPointer, mAnyEnum, mEmptySet, mIntSetBaseType, mNil, mIsMainModule, 
+    mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, mNimrodMinor, mNimrodPatch, 
+    mCpuEndian, mHostOS, mHostCPU, mNaN, mInf, mNegInf, 
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, 
+    mNKind, mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, 
+    mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, 
+    mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 
+    mEqIdent, mNHint, mNWarning, mNError
     //[[[end]]]
   );
 
@@ -504,18 +504,18 @@ const // "MagicToStr" array:
     'SymDiffSet', 'ConStrStr', 'ConArrArr', 'ConArrT', 'ConTArr', 'ConTT', 
     'Slice', 'AppendStrCh', 'AppendStrStr', 'AppendSeqElem', 'AppendSeqSeq', 'InRange', 
     'InSet', 'Asgn', 'Repr', 'Exit', 'SetLengthStr', 'SetLengthSeq', 
-    'Assert', 'Swap', 'IsNil', 'ArrToSeq', 'Array', 'OpenArray', 
-    'Range', 'Set', 'Seq', 'Int', 'Int8', 'Int16', 
-    'Int32', 'Int64', 'Float', 'Float32', 'Float64', 'Bool', 
-    'Char', 'String', 'Cstring', 'Pointer', 'AnyEnum', 'EmptySet', 
-    'IntSetBaseType', 'Nil', 'IsMainModule', 'CompileDate', 'CompileTime', 'NimrodVersion', 
-    'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 'CpuEndian', 'HostOS', 'HostCPU', 
-    'NaN', 'Inf', 'NegInf', 'NLen', 'NChild', 'NSetChild', 
-    'NAdd', 'NAddMultiple', 'NDel', 'NKind', 'NIntVal', 'NFloatVal', 
-    'NSymbol', 'NIdent', 'NGetType', 'NStrVal', 'NSetIntVal', 'NSetFloatVal', 
-    'NSetSymbol', 'NSetIdent', 'NSetType', 'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 
-    'NCopyNimTree', 'StrToIdent', 'IdentToStr', 'EqIdent', 'NHint', 'NWarning', 
-    'NError'
+    'Assert', 'Swap', 'IsNil', 'ArrToSeq', 'CopyStr', 'CopyStrLast', 
+    'NewString', 'Array', 'OpenArray', 'Range', 'Set', 'Seq', 
+    'Int', 'Int8', 'Int16', 'Int32', 'Int64', 'Float', 
+    'Float32', 'Float64', 'Bool', 'Char', 'String', 'Cstring', 
+    'Pointer', 'AnyEnum', 'EmptySet', 'IntSetBaseType', 'Nil', 'IsMainModule', 
+    'CompileDate', 'CompileTime', 'NimrodVersion', 'NimrodMajor', 'NimrodMinor', 'NimrodPatch', 
+    'CpuEndian', 'HostOS', 'HostCPU', 'NaN', 'Inf', 'NegInf', 
+    'NLen', 'NChild', 'NSetChild', 'NAdd', 'NAddMultiple', 'NDel', 
+    'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 'NIdent', 'NGetType', 
+    'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 'NSetIdent', 'NSetType', 
+    'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 'StrToIdent', 'IdentToStr', 
+    'EqIdent', 'NHint', 'NWarning', 'NError'
     //[[[end]]]
   );
 

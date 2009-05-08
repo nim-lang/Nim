@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -415,11 +415,11 @@ proc `<=` *(x, y: int32): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int64): bool {.magic: "LeI64", noSideEffect.}
   ## Returns true iff `x` is less than or equal to `y`.
 
-proc `<`  *(x, y: int): bool {.magic: "LtI", noSideEffect.}
-proc `<`  *(x, y: int8): bool {.magic: "LtI", noSideEffect.}
-proc `<`  *(x, y: int16): bool {.magic: "LtI", noSideEffect.}
-proc `<`  *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
-proc `<`  *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
+proc `<` *(x, y: int): bool {.magic: "LtI", noSideEffect.}
+proc `<` *(x, y: int8): bool {.magic: "LtI", noSideEffect.}
+proc `<` *(x, y: int16): bool {.magic: "LtI", noSideEffect.}
+proc `<` *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
+proc `<` *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
   ## Returns true iff `x` is less than `y`.
 
 proc abs*(x: int): int {.magic: "AbsI", noSideEffect.}
@@ -790,9 +790,10 @@ proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
 # In case of an unhandled exeption the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
-proc copy*(s: string, first = 0): string {.importc: "copyStr", noSideEffect.}
-proc copy*(s: string, first, last: int): string {.importc: "copyStrLast",
-                                                  noSideEffect.}
+proc copy*(s: string, first = 0): string {.
+  magic: "CopyStr", importc: "copyStr", noSideEffect.}
+proc copy*(s: string, first, last: int): string {.
+  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect.}
   ## copies a slice of `s` into a new string and returns this new
   ## string. The bounds `first` and `last` denote the indices of
   ## the first and last characters that shall be copied. If ``last``
@@ -803,7 +804,8 @@ proc setLen*(s: var string, newlen: int) {.magic: "SetLengthStr".}
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated.
 
-proc newString*(len: int): string {.importc: "mnewString", noSideEffect.}
+proc newString*(len: int): string {.
+  magic: "NewString", importc: "mnewString", noSideEffect.}
   ## returns a new string of length ``len`` but with uninitialized
   ## content. One needs to fill the string character after character
   ## with the index operator ``s[i]``. This procedure exists only for
@@ -835,30 +837,23 @@ proc equalMem*(a, b: Pointer, size: int): bool {.
   ## otherwise. Like any procedure dealing with raw memory this is
   ## *unsafe*.
 
-const
-  mallocHeader = "<stdlib.h>"
-
-proc alloc*(size: int): pointer {.
-  importc: "malloc", header: mallocHeader, noconv.}
+proc alloc*(size: int): pointer {.noconv.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is not initialized, so reading
   ## from it before writing to it is undefined behaviour!
-proc alloc0*(size: int): pointer {.
-  importc: "ALLOC_0", header: mallocHeader, noconv.}
+proc alloc0*(size: int): pointer {.noconv.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is initialized with all bytes
   ## containing zero, so it is somewhat safer than ``alloc``.
-proc realloc*(p: Pointer, newsize: int): pointer {.
-  importc: "realloc", header: mallocHeader, noconv.}
+proc realloc*(p: Pointer, newsize: int): pointer {.noconv.}
   ## grows or shrinks a given memory block. If p is **nil** then a new
   ## memory block is returned. In either way the block has at least
   ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
   ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
   ## be freed with ``dealloc``.
-proc dealloc*(p: Pointer) {.
-  importc: "free", header: mallocHeader, noconv.}
+proc dealloc*(p: Pointer) {.noconv.}
   ## frees the memory allocated with ``alloc``, ``alloc0`` or
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
@@ -1436,66 +1431,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  when defined(boehmgc):
-    const
-      boehmLib = "/opt/lib/libgc.so"
-  
-    proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.} 
-    proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.} 
-    proc boehmGCincremental {.
-      importc: "GC_enable_incremental", dynlib: boehmLib.} 
-    proc boehmGCfullCollect {.importc: "GC_gcollect", dynlib: boehmLib.}  
-    proc boehmAlloc(size: int): pointer {.
-      importc: "GC_malloc", dynlib: boehmLib.}
-    proc boehmAllocAtomic(size: int): pointer {.
-      importc: "GC_malloc_atomic", dynlib: boehmLib.}
-    proc boehmRealloc(p: pointer, size: int): pointer {.
-      importc: "GC_realloc", dynlib: boehmLib.}
-    proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
-      
-  include cellsets
-  
-  when defined(boehmGC):
-    proc initGC() = nil
-    
-    #boehmGCincremental()
-
-    proc GC_disable() = boehmGC_disable()
-    proc GC_enable() = boehmGC_enable()
-    proc GC_fullCollect() = boehmGCfullCollect()
-    proc GC_setStrategy(strategy: TGC_Strategy) = nil
-    proc GC_enableMarkAndSweep() = nil
-    proc GC_disableMarkAndSweep() = nil
-    proc GC_getStatistics(): string = return ""
-    
-    proc getOccupiedMem(): int = return -1
-    proc getFreeMem(): int = return -1
-    proc getTotalMem(): int = return -1
-      
-    proc growObj(old: pointer, newsize: int): pointer {.inline.} = 
-      result = boehmRealloc(old, newsize)
-    proc newObj(size: int): pointer {.compilerproc.} =
-      result = boehmAlloc(size)      
-    proc newSeq(baseSize, len: int): pointer {.compilerproc.} =
-      # XXX: overflow checks!
-      result = newObj(len * baseSize + GenericSeqSize)
-      cast[PGenericSeq](result).len = len
-      cast[PGenericSeq](result).space = len
-
-    proc setStackBottom(theStackBottom: pointer) {.compilerproc.} = nil
-    proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
-    proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
-    
-    proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-      dest^ = src
-    proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-      dest^ = src
-    proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
-      dest^ = src
-
-  elif not defined(nogc):
-    include gc
-
+  include mm
   include sysstr
   include assign
   include repr

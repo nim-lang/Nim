@@ -22,6 +22,9 @@ Pure libraries
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
+* `macros <macros.html>`_ 
+  Contains the AST API and documentation of Nimrod for writing macros.
+
 * `strutils <strutils.html>`_
   This module contains common string handling operations like converting a
   string into uppercase, splitting a string into substrings, searching for
@@ -32,6 +35,9 @@ Pure libraries
   reading command line arguments, working with directories, running shell
   commands, etc. This module is -- like any other basic library --
   platform independant.
+
+* `osproc <osproc.html>`_
+  Module for process communication beyond ``os.executeShellCommand``.
 
 * `math <math.html>`_
   Mathematical operations like cosine, square root.
@@ -59,6 +65,9 @@ Pure libraries
   The only encoding that is supported is UTF-8. The parser has been designed
   to be somewhat error correcting, so that even some "wild HTML" found on the 
   web can be parsed with it.
+
+* `parsecsv <parsecsv.html>`_ 
+  The ``parsecsv`` module implements a simple high performance CSV parser.
 
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
@@ -97,6 +106,10 @@ Pure libraries
 
 * `md5 <md5.html>`_
   This module implements the MD5 checksum algorithm.
+
+* `xmlgen <xmlgen.html>`_
+  This module implements macros for HTML code generation.
+
 
 
 Impure libraries

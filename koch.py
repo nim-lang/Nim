@@ -12,7 +12,7 @@ from pycompab import *
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.7.6'
+NIMROD_VERSION = '0.7.8'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**!
@@ -33,6 +33,46 @@ USE_FPC = true
 
 BOOTCMD = "$1 cc --compile:build/platdef.c $2 rod/nimrod.nim"
 # the command used for bootstrapping
+
+# ---------------------- compiler detection --------------------------------
+
+def detect(cmd, lookFor="version"):
+  try:
+    pipe = os.popen4(cmd)[1]
+  except AttributeError:
+    pipe = os.popen(cmd)
+  result = None
+  for line in pipe.readlines():
+    if find(lower(line), lookFor) >= 0:
+      result = line[:-1]
+      break
+  pipe.close()
+  if not result:
+    # don't give up yet; it may have written to stderr
+    if os.system(cmd) == 0:
+      result = cmd
+  return result
+
+def detectNimrod():
+  if detect("nimrod"): 
+    return "nimrod"
+  elif detect("bin/nimrod"):
+    return "bin/nimrod"
+  else:
+    Error("could not find a working nimrod executable")
+
+def detectNim():
+  if USE_FPC and detect("fpc -h"):
+    # workaround a bug in the macosx version of nim:
+    if getHost() == "macosx": return "nim" 
+    else: return "bin/nim"
+  return detectNimrod()
+
+def detectAndCompileNim():
+  result = detectNim()
+  if result == "bin/nim" or result == "nim":
+    cmd_nim()
+  return result
 
 # --------------------------------------------------------------------------
 
@@ -453,12 +493,8 @@ def genBootDiff(genA, genB):
 
 def cmd_rodsrc():
   "converts the src/*.pas files into Nimrod syntax"
-  PAS_FILES_BLACKLIST = split("""nsystem nmath nos ntime strutils""")
-  if USE_FPC and detect("fpc -h"):
-    cmd_nim()
-    compiler = "nim"
-  else:
-    compiler = "nimrod"
+  PAS_FILES_BLACKLIST = split("""nsystem nmath nos osproc ntime strutils""")
+  compiler = detectAndCompileNim()
   CMD = "$1 boot --skip_proj_cfg -o:rod/$2.nim nim/$3"
   result = false
   for fi in Glob("nim/*.pas"):
@@ -484,14 +520,7 @@ def cmd_boot(args):
       Move(ExeExt("rod/nimcache/nimrod"), ExeExt("rod/nimrod"))
 
   writePlatdefC(getNimrodPath())
-  d = detect("fpc -h")
-  if USE_FPC and d:
-    Echo(Subs("'$1' detected", d))
-    cmd_nim()
-    compiler = "nim"
-  else:
-    compiler = "nimrod"
-
+  compiler = detectAndCompileNim()
   cmd_rodsrc() # regenerate nimrod version of the files
 
   # move the new executable to bin directory (is done by cmd_rod())
@@ -501,7 +530,7 @@ def cmd_boot(args):
   # move the new executable to bin directory:
   moveExes()
   # compile again and compare:
-  myExec("nimrod")
+  myExec("bin/nimrod") # here we always use the new executable
   genB = readCFiles() # second generation of generated C files
   diff = genBootDiff(genA, genB)
   if diff:
@@ -517,7 +546,7 @@ def cmd_boot(args):
     # move the new executable to bin directory:
     moveExes()
     # use the new executable to compile Nimrod:
-    myExec("nimrod")
+    myExec("bin/nimrod")
     if SameFileContent(Path(ExeExt("rod/nimrod")),
                        Path(ExeExt("bin/nimrod"))):
       Echo("executables are equal: SUCCESS!")
@@ -613,23 +642,6 @@ def writePlatdefC(nimrodpath):
                'char* nimCPU(void) { return "$2"; }\n'
                '\n', host, processor))
   f.close()
-
-def detect(cmd, lookFor="version"):
-  try:
-    pipe = os.popen4(cmd)[1]
-  except AttributeError:
-    pipe = os.popen(cmd)
-  result = None
-  for line in pipe.readlines():
-    if find(lower(line), lookFor) >= 0:
-      result = line[:-1]
-      break
-  pipe.close()
-  if not result:
-    # don't give up yet; it may have written to stderr
-    if os.system(cmd) == 0:
-      result = cmd
-  return result
 
 def getNimrodPath():
   if os.name == "posix":

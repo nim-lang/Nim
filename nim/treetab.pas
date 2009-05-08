@@ -15,7 +15,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, hashes, ast, astalgo, types;
+  nsystem, nhashes, ast, astalgo, types;
 
 function NodeTableGet(const t: TNodeTable; key: PNode): int;
 procedure NodeTablePut(var t: TNodeTable; key: PNode; val: int);

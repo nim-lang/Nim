@@ -103,71 +103,77 @@ proc cgiError*(msg: string) {.noreturn.} =
   e.msg = msg
   raise e
 
+proc getEncodedData(allowedMethods: set[TRequestMethod]): string = 
+  case getenv("REQUEST_METHOD") 
+  of "POST": 
+    if methodPost notin allowedMethods: 
+      cgiError("'REQUEST_METHOD' 'POST' is not supported")
+    var L = parseInt(getenv("CONTENT_LENGTH"))
+    result = newString(L)
+    if readBuffer(stdin, addr(result[0]), L) != L:
+      cgiError("cannot read from stdin")
+  of "GET":
+    if methodGet notin allowedMethods: 
+      cgiError("'REQUEST_METHOD' 'GET' is not supported")
+    result = getenv("QUERY_STRING")
+  else: 
+    if methodNone notin allowedMethods:
+      cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
+
+iterator decodeData*(allowedMethods: set[TRequestMethod] = 
+       {methodNone, methodPost, methodGet}): tuple[key, value: string] = 
+  ## Reads and decodes CGI data and yields the (name, value) pairs the
+  ## data consists of. If the client does not use a method listed in the
+  ## `allowedMethods` set, an `ECgi` exception is raised.
+  var enc = getEncodedData(allowedMethods)
+  if not isNil(enc): 
+    # decode everything in one pass:
+    var i = 0
+    var name = ""
+    var value = ""
+    while enc[i] != '\0':
+      setLen(name, 0) # reuse memory
+      while true:
+        case enc[i]
+        of '\0': break
+        of '%': 
+          var x = 0
+          handleHexChar(enc[i+1], x)
+          handleHexChar(enc[i+2], x)
+          inc(i, 2)
+          add(name, chr(x))
+        of '+': add(name, ' ')
+        of '=', '&': break
+        else: add(name, enc[i])
+        inc(i)
+      if enc[i] != '=': cgiError("'=' expected")
+      inc(i) # skip '='
+      setLen(value, 0) # reuse memory
+      while true:
+        case enc[i]
+        of '%': 
+          var x = 0
+          handleHexChar(enc[i+1], x)
+          handleHexChar(enc[i+2], x)
+          inc(i, 2)
+          add(value, chr(x))
+        of '+': add(value, ' ')
+        of '&', '\0': break
+        else: add(value, enc[i])
+        inc(i)
+      yield (name, value)
+      if enc[i] == '&': inc(i)
+      elif enc[i] == '\0': break
+      else: cgiError("'&' expected")
+
 proc readData*(allowedMethods: set[TRequestMethod] = 
                {methodNone, methodPost, methodGet}): PStringTable = 
   ## Read CGI data. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
-  var enc: string # encoded data
-  case getenv("REQUEST_METHOD") 
-  of "POST": 
-    if methodPost notin allowedMethods: 
-      cgiError("'REQUEST_METHOD' 'POST' is not supported")
-    # read from stdin:
-    var L = parseInt(getenv("CONTENT_LENGTH"))
-    enc = newString(L)
-    if readBuffer(stdin, addr(enc[0]), L) != L:
-      cgiError("cannot read from stdin")
-  of "GET":
-    if methodGet notin allowedMethods: 
-      cgiError("'REQUEST_METHOD' 'GET' is not supported")
-    # read from the QUERY_STRING environment variable:
-    enc = getenv("QUERY_STRING")
-  else: 
-    if methodNone in allowedMethods:
-      return result
-    else:
-      cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
-  
-  # decode everything in one pass:
-  var i = 0
-  var name = ""
-  var value = ""
-  while true:
-    setLen(name, 0) # reuse memory
-    while true:
-      case enc[i]
-      of '\0': return
-      of '%': 
-        var x = 0
-        handleHexChar(enc[i+1], x)
-        handleHexChar(enc[i+2], x)
-        inc(i, 2)
-        add(name, chr(x))
-      of '+': add(name, ' ')
-      of '=', '&': break
-      else: add(name, enc[i])
-      inc(i)
-    if enc[i] != '=': cgiError("'=' expected")
-    inc(i) # skip '='
-    setLen(value, 0) # reuse memory
-    while true:
-      case enc[i]
-      of '%': 
-        var x = 0
-        handleHexChar(enc[i+1], x)
-        handleHexChar(enc[i+2], x)
-        inc(i, 2)
-        add(value, chr(x))
-      of '+': add(value, ' ')
-      of '&', '\0': break
-      else: add(value, enc[i])
-      inc(i)
+  for name, value in decodeData(allowedMethods): 
     result[name] = value
-    if enc[i] == '&': inc(i)
-    elif enc[i] == '\0': break
-    else: cgiError("'&' expected")
-
+  
 proc validateData*(data: PStringTable, validKeys: openarray[string]) = 
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
@@ -323,8 +329,13 @@ proc setTestData*(keysvalues: openarray[string]) =
 
 proc writeContentType*() = 
   ## call this before starting to send your HTML data to `stdout`. This
-  ## is just a shorthand for: 
+  ## implements this part of the CGI protocol: 
   ##
   ## .. code-block:: Nimrod
   ##     write(stdout, "Content-type: text/html\n\n")
+  ## 
+  ## It also modifies the debug stack traces so that they contain
+  ## ``<br />`` and are easily readable in a browser.  
   write(stdout, "Content-type: text/html\n\n")
+  system.stackTraceNewLine = "<br />\n"
+  

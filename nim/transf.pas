@@ -801,7 +801,7 @@ begin
       inc(j);
       if isConstExpr(a) then 
         while (j < sonsLen(m)) and isConstExpr(m.sons[j]) do begin
-          a := evalOp(op.magic, m, a, m.sons[j]);
+          a := evalOp(op.magic, m, a, m.sons[j], nil);
           inc(j)
         end;
       addSon(result, a);

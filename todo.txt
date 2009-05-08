@@ -4,27 +4,17 @@ TO IMPLEMENT
 Plan
 ----
 
-* implement new memory manager --> hopefully faster turnaround times
 * implement LLVM backend --> faster turnaround times
-
-
-RST
----
-- footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
-  __ anonymous: www.nimrod.org
+* implement ``p(.int, int.): string`` notation for resolution of overloaded
+  procs
 
 Bugs
 ----
 
-- BUG: check if "break" is valid is not complete: "break" within "for"
-  may be incorrect, if the called iterator is not in a loop
-  --> check that "yield" is inside a loop!
 - BUG: returning an array does not work --> see md5.nim module
 - BUG: if not nodeOfDegree(g, 1) >= 0: inc(counter)
-- BUG: addr/deref may not work when interpreting
 - BUG: the parser allows empty object case branches
 - BUG: when optmizing cgen.c with Visual C++, GCC, LLVM (O3), it breaks.
-- BUG: ``-cc:bcc`` command line option does not error
 - BUG: symbol files still do not work
 - BUG: tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 
@@ -32,6 +22,12 @@ Bugs
 High priority
 -------------
 
+- new $$ string interpolation operator? 
+  $$"The value is $var &var" -- too hard to implement
+
+- find a way to reindroduce the cleanup() pass for C code generation: this
+  is hard because of partial evaluation --> symbol files will fix this as
+  a side effect
 - typeAllowed() for parameters...
 - implicit conversions from ``ptr/ref T`` to ``var T`` and from
   ``ptr/ref T`` to ``T``? Yes.
@@ -44,15 +40,40 @@ High priority
   implement
 - language change: inheritance should only work with reference types, so that
   the ``type`` field is not needed for objects! --> zero overhead aggregation
+- resizing of strings/sequences could take into account the memory that
+  is allocated
+
+
+Library
+-------
+
+- socket, http, ftp, email, fastcgi: implement from scratch
+- osproc for Windows
+- bignums
+
+- gui module
+- finish json module: hard
+
+- YAML module
+- ncurses bindings
+- python
+- TCL
+- automate module: expect-like module for Nimrod
+
+- for system:
+  proc `@` [T](a: openArray[T]): seq[T] = 
+    newSeq(result, a.len)
+    for i in 0..a.len-1: result[i] = a[i]
+    
+  --> ensure @[] calls the array version!
+
 
 For the next versions
 =====================
 
 - multi-processor support
 - IDE
-- better support for GDB?
 - support for generation of dynamic libraries
-- better code generator: skip ropes datastructure, it uses too much memory
 - make set optimizations part of the transformation (--> all backends profit
   from it), but this really needs a more abstract code generator
 
@@ -60,11 +81,8 @@ For the next versions
 Further ideas/nice to have
 ==========================
 
-- queues additional to streams: have to positions (read/write) instead of one
+- queues additional to streams: have two positions (read/write) instead of one
 - introduce: refany type???
-- CLR code generator; better use XYZ? --> Version 1.2?
-- provide an interactive shell: if the user wants his commands
-  to be executed, the command should end with #
 - implement packed arrays (bit arrays)/ packed records
 - implement tables (implement as library? - no! Builtin because of
   constructor syntax is nice to have)
@@ -119,23 +137,6 @@ Version 2
     
 
 
-Library
--------
-
-- gui module
-- finish json module: hard
-- socket, http, ftp, email, fastcgi: implement from scratch
-- ncurses bindings
-- osproc for Windows
-- bignums
-- python
-- TCL
-- automate module: expect-like module for Nimrod
-- parsecsv module
-
-- YAML module
-
-
 Low priority
 ------------
 
@@ -176,21 +177,23 @@ Low priority
         
   o.x = 13 # ambigious
 
-- implement stack walking via assembler for horribly advanced optimizers
-- use `` notation for identifier concatenation?
+- use `` notation for identifier concatenation
 - Visual C++: emit ``default: __assume(0);`` for optimization
 - macros: ``typecheck`` pragma; this is really a good idea! This allows
   transformations based on types!
 - make callconv a set
 - partial generic instantation is missing
-- get code generation for C++ exception handling right!
 - find a way for easy constructors and destructors; though constructors are
   flawed... destructors are not, however!
 - multiple dispatch: no, but provide a proc ``typeId`` to allow the user to
   implement it efficiently
-- replace ropes with strings in the C code generator: This may yield a HUGE
-  speedup of the compiler! (10%)
 - code generated for type information is wasteful
+
+
+RST
+---
+- footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
+  __ anonymous: www.nimrod.org
 
 
 Changelog
@@ -541,5 +544,40 @@ Changelog
 - md5 module
 - BUGFIX: iterators using open arrays
 - BUGFIX: [$anyEnum]
+
+0.7.6: release
+0.7.7:
+- implemented the "parsecsv" module
+- added ``math.TRunningStat`` object and its methods
+- added ``strutils.validIdentifier``
+- reStructuredText parser: implemented ``.. container ::`` directive
+- updated the website
+- ``cgi.stackTraceNewLine`` functionality
+- added ``cgi.decodeData`` 
+- BUGFIX: evaluation for ``mLengthSeq``, ``mLengthOpenArray``, 
+  ``evalSetLengthSeq``, ``evalNewSeq``
+- ``copy`` and ``newString`` are magics now; thus several more things
+  can be evaluated
+- ``evalAddr`` fixed
+- BUGFIX: generics are now processed earlier in the pipeline; thus 
+  generics can be used within macros
+- new module ``xmlgen``
+- ``macros.error`` now prints a stack trace
+- changed bootstrapping in ``koch.py`` and ``boot.nim`` to fix bug 
+  #369607.
+- implemented the new memory management; the GC does not take advantage of
+  it yet
+- BUGFIX: magics don't imply ``lfNoDecl`` any longer
+- BUGFIX: ``newString`` is not evaluated at compile-time anymore, unless
+  evaluation is requested
+- the GC now relies on the new memory manager
+- BUGFIX: check that "yield" is inside a loop!
+- BUGFIX: ``isAllocatedPtr`` still had a small bug
+- overflow checking for ``newSeq`` now works
+- BUGFIX: ``commands.processSwitch`` no errors if an argument is given to a
+  switch that does not receive one
+
+0.7.8: release
+
 
 

@@ -104,7 +104,7 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerproc.} =
 type
   TReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
-    marked: TCellSeq
+    marked: TCellSet
     recdepth: int       # do not recurse endless
     indent: int         # indentation
 
@@ -171,14 +171,14 @@ proc reprRecord(result: var string, p: pointer, typ: PNimType,
 proc reprRef(result: var string, p: pointer, typ: PNimType,
              cl: var TReprClosure) =
   # we know that p is not nil here:
-  when defined(boehmGC):
+  when defined(boehmGC) or defined(nogc):
     var cell = cast[PCell](p)
   else:
     var cell = usrToCell(p)
   add result, "ref " & reprPointer(p)
   if cell notin cl.marked:
     # only the address is shown:
-    add(cl.marked, cell)
+    incl(cl.marked, cell)
     add result, " --> "
     reprAux(result, p, typ.base, cl)
 
