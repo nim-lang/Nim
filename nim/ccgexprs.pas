@@ -1254,15 +1254,9 @@ begin
   refType := skipVarGenericRange(e.sons[1].typ);
   InitLocExpr(p, e.sons[1], a);
   initLoc(b, locExpr, a.t, OnHeap);
-  
-  if optBoehmGC in gGlobalOptions then 
-    b.r := ropef('($1) newObj(sizeof($2))',
-      [getTypeDesc(p.module, reftype), 
-      getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))])  
-  else
-    b.r := ropef('($1) newObj($2, sizeof($3))',
-      [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
-      getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
+  b.r := ropef('($1) newObj($2, sizeof($3))',
+    [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
+    getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
   bt := skipGenericRange(refType.sons[0]);
@@ -1279,16 +1273,10 @@ begin
   InitLocExpr(p, e.sons[1], a);
   InitLocExpr(p, e.sons[2], b);
   initLoc(c, locExpr, a.t, OnHeap);
-  if optBoehmGC in gGlobalOptions then 
-    c.r := ropef('($1) newSeq(sizeof($2), $3)',
-      [getTypeDesc(p.module, seqtype), 
-       getTypeDesc(p.module, skipGenericRange(seqtype.sons[0])),
-       rdLoc(b)])
-  else
-    c.r := ropef('($1) newSeq($2, $3)',
-      [getTypeDesc(p.module, seqtype),
-       genTypeInfo(p.module, seqType),
-       rdLoc(b)]);
+  c.r := ropef('($1) newSeq($2, $3)', 
+    [getTypeDesc(p.module, seqtype),
+    genTypeInfo(p.module, seqType),
+    rdLoc(b)]);
   genAssignment(p, a, c, {@set}[]);
 end;
 
@@ -1945,6 +1933,7 @@ begin
     mSetLengthSeq: genSetLengthSeq(p, e, d);
     mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet,
     mMinusSet, mInSet: genSetOp(p, e, d, op);
+    mNewString, mCopyStr, mCopyStrLast: genCall(p, e, d);
     mExit: genCall(p, e, d);
     mArrToSeq: genArrToSeq(p, e, d);
     mNLen..mNError:

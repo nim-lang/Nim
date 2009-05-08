@@ -865,6 +865,15 @@ proc validEmailAddress*(s: string): bool =
      "aero", "jobs", "museum": return true
   return false
   
+proc validIdentifier*(s: string): bool = 
+  ## returns true if `s` is a valid identifier. A valid identifier starts
+  ## with a character of the set `IdentStartChars` and is followed by any
+  ## number of characters of the set `IdentChars`.
+  if s[0] in IdentStartChars:
+    for i in 1..s.len-1:
+      if s[i] notin IdentChars: return false
+    return true
+  
 proc editDistance*(a, b: string): int =
   ## returns the edit distance between `a` and `b`. This uses the Levenshtein
   ## distance algorithm with only a linear memory overhead. This implementation

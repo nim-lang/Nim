@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, charsets, llstream, sysutils, hashes, strutils, lexbase;
+  nsystem, charsets, llstream, sysutils, nhashes, strutils, lexbase;
 
 type
   TCfgEventKind = (

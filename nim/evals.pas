@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -157,7 +157,7 @@ begin
 end;
 
 var
-  gWhileCounter: int;  // Use a counter to prevend endless loops!
+  gWhileCounter: int;  // Use a counter to prevent endless loops!
                        // We make this counter global, because otherwise
                        // nested loops could make the compiler extremely slow.
   gNestedEvals: int;   // count the recursive calls to ``evalAux`` to prevent
@@ -390,7 +390,7 @@ begin
         stackTrace(c, n, errIndexOutOfBounds);
     end;
     else
-      stackTrace(c, n, errIndexNoIntType);
+      stackTrace(c, n, errNilAccess);
   end
 end;
 
@@ -506,7 +506,8 @@ begin
       result := emptyNode
     end
   end;
-  if result = nil then InternalError(n.info, 'evalSym: ' + n.sym.name.s);
+  if result = nil then 
+    stackTrace(c, n, errCannotInterpretNodeX, n.sym.name.s);
 end;
 
 function evalIncDec(c: PEvalContext; n: PNode; sign: biggestInt): PNode;
@@ -563,8 +564,12 @@ function evalDeref(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[0]);
   if result.kind = nkExceptBranch then exit;
-  if result.kind <> nkRefTy then InternalError(n.info, 'evalDeref');
-  result := result.sons[0];
+  case result.kind of
+    nkExceptBranch: exit;
+    nkNilLit: stackTrace(c, n, errNilAccess);
+    nkRefTy: result := result.sons[0];
+    else InternalError(n.info, 'evalDeref ' + nodeKindToStr[result.kind]);
+  end;
 end;
 
 function evalAddr(c: PEvalContext; n: PNode): PNode;
@@ -574,7 +579,6 @@ var
 begin
   result := evalAux(c, n.sons[0]);
   if result.kind = nkExceptBranch then exit;
-  if result.kind <> nkRefTy then InternalError(n.info, 'evalDeref');
   a := result;
   t := newType(tyPtr, c.module);
   addSon(t, a.typ);
@@ -732,6 +736,7 @@ end;
 function evalSetLengthSeq(c: PEvalContext; n: PNode): PNode;
 var
   a, b: PNode;
+  newLen, oldLen, i: int;
 begin
   result := evalAux(c, n.sons[1]);
   if result.kind = nkExceptBranch then exit;
@@ -739,8 +744,12 @@ begin
   result := evalAux(c, n.sons[2]);
   if result.kind = nkExceptBranch then exit;
   b := result;
-  if a.kind = nkBracket then setLength(a.sons, int(getOrdValue(b)))
-  else InternalError(n.info, 'evalSetLengthSeq');
+  if a.kind <> nkBracket then InternalError(n.info, 'evalSetLengthSeq');
+  newLen := int(getOrdValue(b));
+  oldLen := sonsLen(a);
+  setLength(a.sons, newLen);
+  for i := oldLen to newLen-1 do
+    a.sons[i] := getNullValue(skipVarGeneric(n.sons[1].typ), n.info);
   result := emptyNode
 end;
 
@@ -758,10 +767,13 @@ begin
   b := result;
 
   t := skipVarGeneric(n.sons[1].typ);
-  result := newNodeIT(nkBracket, n.info, t);
+  if a.kind = nkEmpty then InternalError(n.info, 'first parameter is empty');
+  a.kind := nkBracket;
+  a.info := n.info;
+  a.typ := t;
   for i := 0 to int(getOrdValue(b))-1 do
-    addSon(result, getNullValue(t.sons[0], n.info));
-  // XXX: assign to `a`? result := emptyNode
+    addSon(a, getNullValue(t.sons[0], n.info));
+  result := emptyNode
 end;
 
 function evalAssert(c: PEvalContext; n: PNode): PNode;
@@ -907,7 +919,7 @@ end;
 function evalMagicOrCall(c: PEvalContext; n: PNode): PNode;
 var
   m: TMagic;
-  a, b: PNode;
+  a, b, cc: PNode;
   k: biggestInt;
   i: int;
 begin
@@ -1179,22 +1191,35 @@ begin
     mNError: begin
       result := evalAux(c, n.sons[1]);
       if result.kind = nkExceptBranch then exit;
-      liMessage(n.info, errUser, getStrValue(result));
+      stackTrace(c, n, errUser, getStrValue(result));
       result := emptyNode
     end;
     mConStrStr: result := evalConStrStr(c, n);
     mRepr: result := evalRepr(c, n);
+    mNewString: begin
+      result := evalAux(c, n.sons[1]);
+      if result.kind = nkExceptBranch then exit;
+      a := result;
+      result := newNodeIT(nkStrLit, n.info, n.typ);
+      result.strVal := newString(int(getOrdValue(a)));
+    end;
     else begin
       result := evalAux(c, n.sons[1]);
       if result.kind = nkExceptBranch then exit;
       a := result;
+      b := nil;
+      cc := nil;
       if sonsLen(n) > 2 then begin
         result := evalAux(c, n.sons[2]);
         if result.kind = nkExceptBranch then exit;
-      end
-      else
-        result := nil;
-      result := evalOp(m, n, a, result);
+        b := result;
+        if sonsLen(n) > 3 then begin
+          result := evalAux(c, n.sons[3]);
+          if result.kind = nkExceptBranch then exit;
+          cc := result;
+        end
+      end;
+      result := evalOp(m, n, a, b, cc);
     end
   end
 end;
@@ -1213,7 +1238,7 @@ begin
     nkNilLit: result := n; // end of atoms
 
     nkCall, nkHiddenCallConv, nkMacroStmt: result := evalMagicOrCall(c, n);
-    nkCurly, nkBracket: begin
+    nkCurly, nkBracket, nkRange: begin
       result := copyNode(n);
       for i := 0 to sonsLen(n)-1 do addSon(result, evalAux(c, n.sons[i]));
     end;

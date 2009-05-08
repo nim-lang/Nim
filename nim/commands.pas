@@ -125,6 +125,7 @@ const
 +{&} '  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod' +{&} nl
 +{&} '  --skip_cfg                do not read the general configuration file' +{&} nl
 +{&} '  --skip_proj_cfg           do not read the project''s configuration file' +{&} nl
++{&} '  --gc:refc|boehm           use Nimrod''s native GC|Boehm GC' +{&} nl
 +{&} '  --index:FILE              use FILE to generate a documenation index file' +{&} nl
 +{&} '  --putenv:key=value        set an environment variable' +{&} nl
 +{&} '  --list_cmd                list the commands used to execute external programs' +{&} nl
@@ -244,6 +245,13 @@ begin
     liMessage(info, errCmdLineArgExpected, switch)
 end;
 
+procedure ExpectNoArg(const switch, arg: string; pass: TCmdLinePass;
+                      const info: TLineInfo);
+begin
+  if (arg <> '') then
+    liMessage(info, errCmdLineNoArgExpected, switch)
+end;
+
 procedure ProcessSpecificNote(const arg: string; state: TSpecialWord;
                               pass: TCmdlinePass; const info: TLineInfo);
 var
@@ -340,11 +348,24 @@ begin
       if pass in {@set}[passCmd2, passPP] then
         addFileToLink(arg);
     end;
-    wDebuginfo: include(gGlobalOptions, optCDebug);
-    wCompileOnly, wC: include(gGlobalOptions, optCompileOnly);
-    wNoLinking: include(gGlobalOptions, optNoLinking);
-    wForceBuild, wF: include(gGlobalOptions, optForceFullMake);
+    wDebuginfo: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optCDebug);
+    end;
+    wCompileOnly, wC: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optCompileOnly);
+    end;
+    wNoLinking: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optNoLinking);
+    end;
+    wForceBuild, wF: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optForceFullMake);
+    end;
     wGC: begin
+      expectArg(switch, arg, pass, info);
       case whichKeyword(arg) of
         wBoehm: begin
           include(gGlobalOptions, optBoehmGC);
@@ -393,6 +414,7 @@ begin
     wAssertions, wA: ProcessOnOffSwitch({@set}[optAssert], arg, pass, info);
     wDeadCodeElim: ProcessOnOffSwitchG({@set}[optDeadCodeElim], arg, pass, info);
     wOpt: begin
+      expectArg(switch, arg, pass, info);
       case whichKeyword(arg) of
         wSpeed: begin
           include(gOptions, optOptimizeSpeed);
@@ -411,6 +433,7 @@ begin
       end
     end;
     wApp: begin
+      expectArg(switch, arg, pass, info);
       case whichKeyword(arg) of
         wGui: begin
           include(gGlobalOptions, optGenGuiApp);
@@ -428,6 +451,7 @@ begin
       end
     end;
     wListDef: begin
+      expectNoArg(switch, arg, pass, info);
       if pass in {@set}[passCmd2, passPP] then
         condsyms.listSymbols();
     end;
@@ -450,9 +474,16 @@ begin
       expectArg(switch, arg, pass, info);
       options.addImplicitMod(arg);
     end;
-    wListCmd: include(gGlobalOptions, optListCmd);
-    wGenMapping: include(gGlobalOptions, optGenMapping);
+    wListCmd: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optListCmd);
+    end;
+    wGenMapping: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optGenMapping);
+    end;
     wOS: begin
+      expectArg(switch, arg, pass, info);
       if (pass = passCmd1) then begin
         theOS := platform.NameToOS(arg);
         if theOS = osNone then
@@ -465,6 +496,7 @@ begin
       end
     end;
     wCPU: begin
+      expectArg(switch, arg, pass, info);
       if (pass = passCmd1) then begin
         cpu := platform.NameToCPU(arg);
         if cpu = cpuNone then
@@ -476,18 +508,39 @@ begin
         end
       end
     end;
-    wRun, wR: include(gGlobalOptions, optRun);
+    wRun, wR: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optRun);
+    end;
     wVerbosity: begin
       expectArg(switch, arg, pass, info);
       gVerbosity := parseInt(arg);
     end;
-    wVersion, wV: writeVersionInfo(pass);
-    wAdvanced: writeAdvancedUsage(pass);
-    wHelp, wH: helpOnError(pass);
+    wVersion, wV: begin
+      expectNoArg(switch, arg, pass, info);
+      writeVersionInfo(pass);
+    end;
+    wAdvanced: begin
+      expectNoArg(switch, arg, pass, info);
+      writeAdvancedUsage(pass);
+    end;
+    wHelp, wH: begin
+      expectNoArg(switch, arg, pass, info);
+      helpOnError(pass);
+    end;
     wSymbolFiles: ProcessOnOffSwitchG({@set}[optSymbolFiles], arg, pass, info);
-    wSkipCfg: include(gGlobalOptions, optSkipConfigFile);
-    wSkipProjCfg: include(gGlobalOptions, optSkipProjConfigFile);
-    wGenScript: include(gGlobalOptions, optGenScript);
+    wSkipCfg: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optSkipConfigFile);
+    end;
+    wSkipProjCfg: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optSkipProjConfigFile);
+    end;
+    wGenScript: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optGenScript);
+    end;
     wLib: begin
       expectArg(switch, arg, pass, info);
       libpath := processPath(arg)

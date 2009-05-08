@@ -24,7 +24,7 @@ function getConstExpr(module: PSym; n: PNode): PNode;
   // evaluates the constant expression or returns nil if it is no constant
   // expression
 
-function evalOp(m: TMagic; n, a, b: PNode): PNode; 
+function evalOp(m: TMagic; n, a, b, c: PNode): PNode; 
 function leValueConv(a, b: PNode): Boolean;
 
 function newIntNodeT(const intVal: BiggestInt; n: PNode): PNode;
@@ -113,8 +113,8 @@ begin
   InternalError(a.info, 'no symbol for ordinal value: ' + toString(x));
 end;
 
-function evalOp(m: TMagic; n, a, b: PNode): PNode;
-// if this is an unary operation, b is nil
+function evalOp(m: TMagic; n, a, b, c: PNode): PNode;
+// b and c may be nil
 begin
   result := nil;
   case m of
@@ -127,8 +127,9 @@ begin
     mBitnotI, mBitnotI64: result := newIntNodeT(not getInt(a), n);
 
     mLengthStr: result := newIntNodeT(length(getStr(a)), n);
-    mLengthSeq, mLengthArray,
-    mLengthOpenArray: result := newIntNodeT(lengthOrd(a.typ), n);
+    mLengthArray: result := newIntNodeT(lengthOrd(a.typ), n);
+    mLengthSeq, mLengthOpenArray: 
+      result := newIntNodeT(sonsLen(a), n); // BUGFIX
 
     mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: result := a; // throw `+` away
     mToFloat, mToBiggestFloat:
@@ -273,6 +274,11 @@ begin
       else
         result := newStrNodeT('true', n)
     end;
+    mCopyStr: 
+      result := newStrNodeT(ncopy(getStr(a), int(getOrdValue(b))+strStart), n);
+    mCopyStrLast: 
+      result := newStrNodeT(ncopy(getStr(a), int(getOrdValue(b))+strStart, 
+                                             int(getOrdValue(c))+strStart), n);
     mFloatToStr: result := newStrNodeT(toStringF(getFloat(a)), n);
     mCStrToStr, mCharToStr: result := newStrNodeT(getStrOrChar(a), n);
     mStrToStr: result := a;
@@ -281,7 +287,7 @@ begin
       result := copyTree(a);
       result.typ := n.typ;
     end;
-    mExit, mInc, ast.mDec, mAssert, mSwap,
+    mNewString, mExit, mInc, ast.mDec, mAssert, mSwap,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq,
     mSetLengthStr, mSetLengthSeq, mNLen..mNError: begin end;
     else InternalError(a.info, 'evalOp(' +{&} magicToStr[m] +{&} ')');
@@ -376,7 +382,7 @@ end;
 function getConstExpr(module: PSym; n: PNode): PNode;
 var
   s: PSym;
-  a, b: PNode;
+  a, b, c: PNode;
   i: int;
 begin
   result := nil;
@@ -443,10 +449,14 @@ begin
             if a = nil then exit;
             if sonsLen(n) > 2 then begin
               b := getConstExpr(module, n.sons[2]);
-              if b = nil then exit
+              if b = nil then exit;
+              if sonsLen(n) > 3 then begin
+                c := getConstExpr(module, n.sons[3]);
+                if c = nil then exit;
+              end
             end
             else b := nil;
-            result := evalOp(s.magic, n, a, b);
+            result := evalOp(s.magic, n, a, b, c);
           end
         end
       except

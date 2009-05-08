@@ -17,7 +17,7 @@ interface
 
 uses
   charsets, nsystem, sysutils,
-  hashes, options, msgs, strutils, platform, idents,
+  nhashes, options, msgs, strutils, platform, idents,
   lexbase, wordrecg, scanner;
 
 const

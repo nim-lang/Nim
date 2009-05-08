@@ -546,7 +546,7 @@ proc getApplicationFilename(): string =
   # Solaris:
   # /proc/<pid>/object/a.out (filename only)
   # /proc/<pid>/path/a.out (complete pathname)
-  # *BSD (and maybe Darwing too):
+  # *BSD (and maybe Darwin too):
   # /proc/<pid>/file
   when defined(windows):
     result = newString(256)

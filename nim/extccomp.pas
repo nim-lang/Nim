@@ -15,8 +15,8 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, charsets, lists, ropes, nos, strutils, platform, condsyms, options,
-  msgs;
+  nsystem, charsets, lists, ropes, nos, strutils, osproc, platform, condsyms, 
+  options, msgs;
 
 // some things are read in from the configuration file
 
@@ -387,7 +387,7 @@ procedure execExternalProgram(const cmd: string);
 begin
   if (optListCmd in gGlobalOptions) or (gVerbosity > 0) then
     MessageOut('Executing: ' +{&} nl +{&} cmd);
-  if executeShellCommand(cmd) <> 0 then
+  if executeCommand(cmd) <> 0 then
     rawMessage(errExecutionOfProgramFailed);
 end;
 

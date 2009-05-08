@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -143,7 +143,7 @@ begin
   else v := expectStrLit(c, n);
   Include(s.flags, sfImportc); // magics don't need an implementation, so we
   // treat them as imported, instead of modifing a lot of working code
-  Include(s.loc.Flags, lfNoDecl); // magics don't need to be declared!
+  // BUGFIX: magic does not imply ``lfNoDecl`` anymore!
   for m := low(TMagic) to high(TMagic) do
     if magicToStr[m] = v then begin
       s.magic := m; exit

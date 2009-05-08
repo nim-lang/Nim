@@ -15,7 +15,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, llstream, strutils, charsets, ropes, strtabs, msgs;
+  nsystem, llstream, strutils, charsets, ropes, nstrtabs, msgs;
 
 implementation
 

@@ -176,6 +176,9 @@
 'Swap',
 'IsNil',
 'ArrToSeq',
+'CopyStr',
+'CopyStrLast',
+'NewString',
 
 # magic types:
 'Array',

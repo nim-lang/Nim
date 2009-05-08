@@ -396,7 +396,7 @@ is not executed (if an exception occurs).
 Generics
 ========
 
-`Version 0.7.6: Complex generic types like in the example do not work.`:red:
+`Version 0.7.8: Complex generic types like in the example do not work.`:red:
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types 
 with `type parameters`:idx:. They are most useful for efficient type safe
@@ -596,7 +596,8 @@ Nimrod's syntax is flexible enough anyway.
 `Macros`:idx: can be used to implement `domain specific languages`:idx:. 
 
 To write macros, one needs to know how the Nimrod concrete syntax is converted
-to an abstract syntax tree (AST). (Unfortunately the AST is not documented yet.)
+to an abstract syntax tree (AST). The AST is documented in the 
+`macros <macros.html>`_ module.
 
 There are two ways to invoke a macro:
 (1) invoking a macro like a procedure call (`expression macros`:idx:)

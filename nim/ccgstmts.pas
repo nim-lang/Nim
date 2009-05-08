@@ -878,7 +878,7 @@ var
   i: int;
   prc: PSym;
 begin
-  assert(t <> nil);
+  //assert(t <> nil);
   if inCheckpoint(t.info) then
     MessageOut(renderTree(t));
   case t.kind of
@@ -913,7 +913,7 @@ begin
     nkRaiseStmt: genRaiseStmt(p, t);
     nkTypeSection: begin
       // we have to emit the type information for object types here to support
-      // seperate compilation:
+      // separate compilation:
       genTypeSection(p.module, t);
     end;
     nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, nkImportStmt,

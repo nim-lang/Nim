@@ -354,7 +354,8 @@ var
 begin
   result := n;
   checkSonsLen(n, 1);
-  if (c.p.owner = nil) or (c.p.owner.kind <> skIterator) then
+  if (c.p.owner = nil) or (c.p.owner.kind <> skIterator)
+  or (c.p.nestedLoopCounter <= 0) then
     liMessage(n.info, errYieldNotAllowedHere);
   if (n.sons[0] <> nil) then begin
     n.sons[0] := SemExprWithType(c, n.sons[0]);

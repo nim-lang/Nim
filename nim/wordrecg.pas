@@ -19,7 +19,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, hashes, strutils, idents;
+  nsystem, nhashes, strutils, idents;
 
 type
   TSpecialWord = (wInvalid,

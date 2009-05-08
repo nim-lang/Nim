@@ -152,7 +152,7 @@ begin
   semanticPasses();
   registerPass(cgen.cgenPass());
   registerPass(rodwrite.rodwritePass());
-  registerPass(cleanupPass());
+  //registerPass(cleanupPass());
   compileProject(filename);
   //for i := low(TTypeKind) to high(TTypeKind) do
   //  MessageOut('kind: ' +{&} typeKindToStr[i] +{&} ' = ' +{&} toString(sameTypeA[i]));

@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  charsets, nsystem, sysutils, hashes, options, msgs, strutils, platform,
+  charsets, nsystem, sysutils, nhashes, options, msgs, strutils, platform,
   idents, lexbase, wordrecg, scanner;
 
 type

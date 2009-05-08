@@ -64,7 +64,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, msgs, strutils, platform, hashes, crc;
+  nsystem, msgs, strutils, platform, nhashes, crc;
 
 const
   CacheLeafs = true;

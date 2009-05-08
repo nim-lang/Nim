@@ -7,29 +7,27 @@
 #    distribution, for details about the copyright.
 #
 
-# Low level allocator for Nimrod.
+# Low level allocator for Nimrod. Has been designed to support the GC.
 # TODO: 
 # - eliminate "used" field
 # - make searching for block O(1)
 
-proc raiseOutOfMem {.noinline.} =
-  assert false
-  quit(1)
-
 # ------------ platform specific chunk allocation code -----------------------
 
 when defined(posix): 
-  const # XXX: make these variables for portability?
+  const
     PROT_READ  = 1             # page can be read 
     PROT_WRITE = 2             # page can be written 
     MAP_PRIVATE = 2            # Changes are private 
   
-  when defined(linux):
+  when defined(linux) or defined(aix):
     const MAP_ANONYMOUS = 0x20       # don't use a file
-  elif defined(macosx):
+  elif defined(macosx) or defined(bsd):
     const MAP_ANONYMOUS = 0x1000
+  elif defined(solaris): 
+    const MAP_ANONYMOUS = 0x100
   else:
-    const MAP_ANONYMOUS = 0 # other operating systems may not know about this
+    {.error: "Port memory manager to your platform".}
 
   proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
@@ -43,7 +41,7 @@ when defined(posix):
       raiseOutOfMem()
       
   proc osDeallocPages(p: pointer, size: int) {.inline} =
-    munmap(p, size)
+    when reallyOsDealloc: munmap(p, size)
   
 elif defined(windows): 
   const
@@ -69,7 +67,7 @@ elif defined(windows):
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} = 
     # according to Microsoft, 0 is the only correct value here:
-    VirtualFree(p, 0, MEM_RELEASE)
+    when reallyOsDealloc: VirtualFree(p, 0, MEM_RELEASE)
 
 else: 
   {.error: "Port memory manager to your platform".}
@@ -77,48 +75,14 @@ else:
 # --------------------- end of non-portable code -----------------------------
 
 # We manage *chunks* of memory. Each chunk is a multiple of the page size.
-# The page size may or may not the operating system's page size. Each chunk
-# starts at an address that is divisible by the page size. Chunks that are
-# bigger than ``ChunkOsReturn`` are returned back to the operating system
-# immediately.
-
-
-# Guess the page size of the system; if it is the
-# wrong value, performance may be worse (this is not
-# for sure though), but GC still works; must be a power of two!
-when defined(linux) or defined(windows) or defined(macosx):
-  const
-    PageShift = 12
-    PageSize = 1 shl PageShift # on 32 bit systems 4096
-else:
-  {.error: "unkown page size".}
+# Each chunk starts at an address that is divisible by the page size. Chunks
+# that are bigger than ``ChunkOsReturn`` are returned back to the operating
+# system immediately.
 
 const
-  PageMask = PageSize-1
-  
-  SmallChunkSize = PageSize # * 4
-
-  MemAlign = 8 # minimal memory block that can be allocated
-
-  BitsPerPage = PageSize div MemAlign
-  UnitsPerPage = BitsPerPage div (sizeof(int)*8)
-    # how many ints do we need to describe a page:
-    # on 32 bit systems this is only 16 (!)
-
-  ChunkOsReturn = 64 * PageSize
+  ChunkOsReturn = 256 * PageSize
   InitialMemoryRequest = ChunkOsReturn div 2 # < ChunkOsReturn!
-  
-  # Compile time options:
-  coalescRight = true
-  coalescLeft = true
-
-const
-  TrunkShift = 9
-  BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and divisible by 64
-  TrunkMask = BitsPerTrunk - 1
-  IntsPerTrunk = BitsPerTrunk div (sizeof(int)*8)
-  IntShift = 5 + ord(sizeof(int) == 8) # 5 or 6, depending on int width
-  IntMask = 1 shl IntShift - 1
+  SmallChunkSize = PageSize
 
 type 
   PTrunk = ptr TTrunk
@@ -132,10 +96,11 @@ type
     data: TTrunkBuckets
   
 type
-  TAlignType = float
+  TAlignType = biggestFloat
   TFreeCell {.final, pure.} = object
     next: ptr TFreeCell  # next free cell in chunk (overlaid with refcount)
-    zeroField: pointer   # nil means cell is not used (overlaid with typ field)
+    zeroField: int       # 0 means cell is not used (overlaid with typ field)
+                         # 1 means cell is manually managed pointer
 
   PChunk = ptr TBaseChunk
   PBigChunk = ptr TBigChunk
@@ -155,15 +120,20 @@ type
   TBigChunk = object of TBaseChunk # not necessarily > PageSize!
     next: PBigChunk      # chunks of the same (or bigger) size
     prev: PBigChunk
+    align: int
     data: TAlignType     # start of usable memory
 
 template smallChunkOverhead(): expr = sizeof(TSmallChunk)-sizeof(TAlignType)
 template bigChunkOverhead(): expr = sizeof(TBigChunk)-sizeof(TAlignType)
 
-proc roundup(x, v: int): int {.inline.} = return ((-x) and (v-1)) +% x
+proc roundup(x, v: int): int {.inline.} = 
+  result = (x + (v-1)) and not (v-1)
+  assert(result >= x)
+  #return ((-x) and (v-1)) +% x
 
 assert(roundup(14, PageSize) == PageSize)
 assert(roundup(15, 8) == 16)
+assert(roundup(65, 8) == 72)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk
@@ -180,7 +150,7 @@ type
     
   TAllocator {.final, pure.} = object
     llmem: PLLChunk
-    currMem, maxMem: int  # currently and maximum used memory size (allocated from OS)
+    currMem, maxMem, freeMem: int # memory sizes (allocated from OS)
     freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
     freeChunksList: PBigChunk # XXX make this a datastructure with O(1) access
     chunkStarts: TIntSet
@@ -277,8 +247,10 @@ var lastSize = PageSize
 
 proc requestOsChunks(a: var TAllocator, size: int): PBigChunk = 
   incCurrMem(a, size)
+  inc(a.freeMem, size)
   result = cast[PBigChunk](osAllocPages(size))
   assert((cast[TAddress](result) and PageMask) == 0)
+  #zeroMem(result, size)
   result.next = nil
   result.prev = nil
   result.used = false
@@ -312,11 +284,28 @@ proc freeOsChunks(a: var TAllocator, p: pointer, size: int) =
   excl(a.chunkStarts, pageIndex(p))
   osDeallocPages(p, size)
   decCurrMem(a, size)
+  dec(a.freeMem, size)
+  #c_fprintf(c_stdout, "[Alloc] back to OS: %ld\n", size)
 
 proc isAccessible(p: pointer): bool {.inline.} = 
   result = Contains(allocator.chunkStarts, pageIndex(p))
 
+proc contains[T](list, x: T): bool = 
+  var it = list
+  while it != nil:
+    if it == x: return true
+    it = it.next
+    
+proc writeFreeList(a: TAllocator) =
+  var it = a.freeChunksList
+  c_fprintf(c_stdout, "freeChunksList: %p\n", it)
+  while it != nil: 
+    c_fprintf(c_stdout, "it: %p, next: %p, prev: %p\n", 
+              it, it.next, it.prev)
+    it = it.next
+
 proc ListAdd[T](head: var T, c: T) {.inline.} = 
+  assert(c notin head)
   assert c.prev == nil
   assert c.next == nil
   c.next = head
@@ -326,6 +315,7 @@ proc ListAdd[T](head: var T, c: T) {.inline.} =
   head = c
 
 proc ListRemove[T](head: var T, c: T) {.inline.} =
+  assert(c in head)
   if c == head: 
     head = c.next
     assert c.prev == nil
@@ -344,13 +334,22 @@ proc isSmallChunk(c: PChunk): bool {.inline.} =
 proc chunkUnused(c: PChunk): bool {.inline.} = 
   result = not c.used
   
+proc updatePrevSize(a: var TAllocator, c: PBigChunk, 
+                    prevSize: int) {.inline.} = 
+  var ri = cast[PChunk](cast[TAddress](c) +% c.size)
+  assert((cast[TAddress](ri) and PageMask) == 0)
+  if isAccessible(ri):
+    ri.prevSize = prevSize
+  
 proc freeBigChunk(a: var TAllocator, c: PBigChunk) = 
   var c = c
   assert(c.size >= PageSize)
+  inc(a.freeMem, c.size)
   when coalescRight:
     var ri = cast[PChunk](cast[TAddress](c) +% c.size)
     assert((cast[TAddress](ri) and PageMask) == 0)
     if isAccessible(ri) and chunkUnused(ri):
+      assert(not isSmallChunk(ri))
       if not isSmallChunk(ri):
         ListRemove(a.freeChunksList, cast[PBigChunk](ri))
         inc(c.size, ri.size)
@@ -360,6 +359,7 @@ proc freeBigChunk(a: var TAllocator, c: PBigChunk) =
       var le = cast[PChunk](cast[TAddress](c) -% c.prevSize)
       assert((cast[TAddress](le) and PageMask) == 0)
       if isAccessible(le) and chunkUnused(le):
+        assert(not isSmallChunk(le))
         if not isSmallChunk(le):
           ListRemove(a.freeChunksList, cast[PBigChunk](le))
           inc(le.size, c.size)
@@ -367,6 +367,8 @@ proc freeBigChunk(a: var TAllocator, c: PBigChunk) =
           c = cast[PBigChunk](le)
 
   if c.size < ChunkOsReturn: 
+    incl(a.chunkStarts, pageIndex(c))
+    updatePrevSize(a, c, c.size)
     ListAdd(a.freeChunksList, c)
     c.used = false
   else:
@@ -374,11 +376,16 @@ proc freeBigChunk(a: var TAllocator, c: PBigChunk) =
 
 proc splitChunk(a: var TAllocator, c: PBigChunk, size: int) = 
   var rest = cast[PBigChunk](cast[TAddress](c) +% size)
+  if rest in a.freeChunksList: 
+    c_fprintf(c_stdout, "to add: %p\n", rest)
+    writeFreeList(allocator)
+    assert false
   rest.size = c.size - size
   rest.used = false
-  rest.next = nil # XXX
+  rest.next = nil
   rest.prev = nil
   rest.prevSize = size
+  updatePrevSize(a, c, rest.size)
   c.size = size
   incl(a.chunkStarts, pageIndex(rest))
   ListAdd(a.freeChunksList, rest)
@@ -386,26 +393,32 @@ proc splitChunk(a: var TAllocator, c: PBigChunk, size: int) =
 proc getBigChunk(a: var TAllocator, size: int): PBigChunk = 
   # use first fit for now:
   assert((size and PageMask) == 0)
+  assert(size > 0)
   result = a.freeChunksList
   block search:
     while result != nil:
+      #if not chunkUnused(result): 
+      #  c_fprintf(c_stdout, "%lld\n", int(result.used))
       assert chunkUnused(result)
       if result.size == size: 
         ListRemove(a.freeChunksList, result)
         break search
       elif result.size > size:
-        splitChunk(a, result, size)
+        #c_fprintf(c_stdout, "res size: %lld; size: %lld\n", result.size, size)
         ListRemove(a.freeChunksList, result)
+        splitChunk(a, result, size)
         break search
       result = result.next
+      assert result != a.freeChunksList
     if size < InitialMemoryRequest: 
       result = requestOsChunks(a, InitialMemoryRequest)
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)
-  result.prevSize = 0
+  result.prevSize = 0 # XXX why is this needed?
   result.used = true
   incl(a.chunkStarts, pageIndex(result))
+  dec(a.freeMem, size)
 
 proc getSmallChunk(a: var TAllocator): PSmallChunk = 
   var res = getBigChunk(a, PageSize)
@@ -419,8 +432,11 @@ proc getCellSize(p: pointer): int {.inline.} =
   var c = pageAddr(p)
   result = c.size
   
-proc alloc(a: var TAllocator, requestedSize: int): pointer =
-  var size = roundup(max(requestedSize, sizeof(TFreeCell)), MemAlign)
+proc rawAlloc(a: var TAllocator, requestedSize: int): pointer =
+  assert(roundup(65, 8) == 72)
+  assert requestedSize >= sizeof(TFreeCell)
+  var size = roundup(requestedSize, MemAlign)
+  #c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead(): 
     # allocate a small block: for small chunks, we use only its next pointer
     var s = size div MemAlign
@@ -436,8 +452,11 @@ proc alloc(a: var TAllocator, requestedSize: int): pointer =
       c.prev = nil
       ListAdd(a.freeSmallChunks[s], c)
       result = addr(c.data)
+      assert((cast[TAddress](result) and (MemAlign-1)) == 0)
     else:
       assert c.next != c
+      #if c.size != size:
+      #  c_fprintf(c_stdout, "csize: %lld; size %lld\n", c.size, size)
       assert c.size == size
       if c.freeList == nil:
         assert(c.acc + smallChunkOverhead() + size <= SmallChunkSize) 
@@ -445,9 +464,10 @@ proc alloc(a: var TAllocator, requestedSize: int): pointer =
         inc(c.acc, size)      
       else:
         result = c.freeList
-        assert(c.freeList.zeroField == nil)
+        assert(c.freeList.zeroField == 0)
         c.freeList = c.freeList.next
       dec(c.free, size)
+      assert((cast[TAddress](result) and (MemAlign-1)) == 0)
     if c.free < size: 
       ListRemove(a.freeSmallChunks[s], c)
   else:
@@ -458,16 +478,10 @@ proc alloc(a: var TAllocator, requestedSize: int): pointer =
     assert c.next == nil
     assert c.size == size
     result = addr(c.data)
-  cast[ptr TFreeCell](result).zeroField = cast[ptr TFreeCell](1) # make it != nil
-  #echo("setting to one: ", $cast[TAddress](addr(cast[ptr TFreeCell](result).zeroField)))
+    assert((cast[TAddress](result) and (MemAlign-1)) == 0)
+  assert(isAccessible(result))
 
-proc contains(list, x: PSmallChunk): bool = 
-  var it = list
-  while it != nil:
-    if it == x: return true
-    it = it.next
-
-proc dealloc(a: var TAllocator, p: pointer) = 
+proc rawDealloc(a: var TAllocator, p: pointer) = 
   var c = pageAddr(p)
   if isSmallChunk(c):
     # `p` is within a small chunk:
@@ -475,8 +489,8 @@ proc dealloc(a: var TAllocator, p: pointer) =
     var s = c.size
     var f = cast[ptr TFreeCell](p)
     #echo("setting to nil: ", $cast[TAddress](addr(f.zeroField)))
-    assert(f.zeroField != nil)
-    f.zeroField = nil
+    assert(f.zeroField != 0)
+    f.zeroField = 0
     f.next = c.freeList
     c.freeList = f
     # check if it is not in the freeSmallChunks[s] list:
@@ -495,23 +509,64 @@ proc dealloc(a: var TAllocator, p: pointer) =
     # free big chunk
     freeBigChunk(a, cast[PBigChunk](c))
 
-proc realloc(a: var TAllocator, p: pointer, size: int): pointer = 
-  # could be made faster, but this is unnecessary, the GC does not use it anyway
-  result = alloc(a, size)
-  copyMem(result, p, getCellSize(p))
-  dealloc(a, p)
-
 proc isAllocatedPtr(a: TAllocator, p: pointer): bool = 
   if isAccessible(p):
     var c = pageAddr(p)
     if not chunkUnused(c):
       if isSmallChunk(c):
-        result = (cast[TAddress](p) -% cast[TAddress](c) -%
-                 smallChunkOverhead()) %% c.size == 0 and
-          cast[ptr TFreeCell](p).zeroField != nil
+        var c = cast[PSmallChunk](c)
+        var offset = (cast[TAddress](p) and (PageSize-1)) -% 
+                     smallChunkOverhead()
+        result = (c.acc >% offset) and (offset %% c.size == 0) and
+          (cast[ptr TFreeCell](p).zeroField >% 1)
       else:
         var c = cast[PBigChunk](c)
-        result = p == addr(c.data)
+        result = p == addr(c.data) and cast[ptr TFreeCell](p).zeroField >% 1
+
+# ---------------------- interface to programs -------------------------------
+
+proc alloc(size: int): pointer =
+  result = rawAlloc(allocator, size+sizeof(TFreeCell))
+  cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
+  assert(not isAllocatedPtr(allocator, result))
+  result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
+
+proc alloc0(size: int): pointer =
+  result = alloc(size)
+  zeroMem(result, size)
+
+proc dealloc(p: pointer) =
+  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+  assert(cast[ptr TFreeCell](x).zeroField == 1)
+  rawDealloc(allocator, x)
+  assert(not isAllocatedPtr(allocator, x))
+
+proc ptrSize(p: pointer): int =
+  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+  result = pageAddr(x).size - sizeof(TFreeCell)
+
+proc realloc(p: pointer, newsize: int): pointer =
+  if newsize > 0:
+    result = alloc(newsize)
+    if p != nil:
+      copyMem(result, p, ptrSize(p))
+      dealloc(p)
+  elif p != nil:
+    dealloc(p)
+
+proc countFreeMem(): int =
+  # only used for assertions
+  var it = allocator.freeChunksList
+  while it != nil:
+    inc(result, it.size)
+    it = it.next
+
+proc getFreeMem(): int = 
+  result = allocator.freeMem
+  #assert(result == countFreeMem())
+
+proc getTotalMem(): int = return allocator.currMem
+proc getOccupiedMem(): int = return getTotalMem() - getFreeMem()
 
 when isMainModule:
   const iterations = 4000_000

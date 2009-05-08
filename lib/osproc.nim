@@ -1,20 +1,21 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module implements an advanced facility for executing OS processes.
-## On Windows this module is currently broken. Please help!
+## This module implements an advanced facility for executing OS processes
+## and process communication.
+## **On Windows this module does not work properly. Please help!**
 
 import
   os, strtabs, streams
 
 when defined(windows):
-  import windows
+  import winlean
 
 type
   TProcess = object of TObject
@@ -40,6 +41,10 @@ proc executeProcess*(command: string,
                                                      poUseShell}): string
   ## A convience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
+
+proc executeCommand*(command: string): int
+  ## Executes ``command`` and returns its error code. Standard input, output,
+  ## error streams are inherited from the calling process.
 
 proc startProcess*(command: string,
                    workingDir: string = "",
@@ -133,14 +138,14 @@ when defined(Windows):
 
   proc hsReadData(s: PFileHandleStream, buffer: pointer, bufLen: int): int =
     var br: int32
-    var a = windows.ReadFile(s.handle, buffer, bufLen, br, nil)
+    var a = winlean.ReadFile(s.handle, buffer, bufLen, br, nil)
     if a == 0: OSError()
     result = br
     #atEnd = bytesRead < bufLen
 
   proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) =
     var bytesWritten: int32
-    var a = windows.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
+    var a = winlean.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
     if a == 0: OSError()
 
   proc newFileHandleStream(handle: THandle): PFileHandleStream =
@@ -180,12 +185,12 @@ when defined(Windows):
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
-  proc CreatePipeHandles(Inhandle, OutHandle: ptr THandle) =
+  proc CreatePipeHandles(Inhandle, OutHandle: var THandle) =
     var piInheritablePipe: TSecurityAttributes
     piInheritablePipe.nlength = SizeOF(TSecurityAttributes)
-    piInheritablePipe.lpSecurityDescriptor = Nil
+    piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.Binherithandle = 1
-    if CreatePipe(Inhandle, Outhandle, addr(piInheritablePipe), 0) == 0'i32:
+    if CreatePipe(Inhandle, Outhandle, piInheritablePipe, 0) == 0'i32:
       OSError()
 
   proc startProcess*(command: string,
@@ -201,15 +206,15 @@ when defined(Windows):
       hi, ho, he: THandle
     SI.cb = SizeOf(SI)
     SI.dwFlags = STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES
-    CreatePipeHandles(addr(SI.hStdInput), addr(HI))
-    CreatePipeHandles(addr(HO), addr(Si.hStdOutput))
+    CreatePipeHandles(SI.hStdInput, HI)
+    CreatePipeHandles(HO, Si.hStdOutput)
     #SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE())
     #SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE())
     if poStdErrToStdOut in options:
       SI.hStdError = SI.hStdOutput
       HE = HO
     else:
-      CreatePipeHandles(addr(HE), addr(Si.hStdError))
+      CreatePipeHandles(HE, Si.hStdError)
       #SI.hStdError = GetStdHandle(STD_ERROR_HANDLE())
     #result.inputHandle = open_osfhandle(HI, O_WRONLY)
     #if result.inputHandle == -1'i32: OSError()
@@ -224,16 +229,12 @@ when defined(Windows):
     var wd: cstring = nil
     if len(workingDir) > 0: wd = workingDir
     if env == nil:
-      success = Windows.CreateProcess(nil,
-        cmdl, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, nil, wd,
-        addr(SI), addr(ProcInfo))
+      success = winlean.CreateProcess(nil,
+        cmdl, nil, nil, 0, NORMAL_PRIORITY_CLASS, nil, wd, SI, ProcInfo)
     else:
       var e = buildEnv(env)
-      success = Windows.CreateProcess(nil,
-        cmdl, nil, nil, 0,
-        NORMAL_PRIORITY_CLASS, e, wd,
-        addr(SI), addr(ProcInfo))
+      success = winlean.CreateProcess(nil,
+        cmdl, nil, nil, 0, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
       dealloc(e)
     dealloc(cmdl)
     if success == 0:
@@ -249,7 +250,7 @@ when defined(Windows):
     discard ResumeThread(p.FThreadHandle)
 
   proc running(p: PProcess): bool =
-    var x = waitForSingleObject(p.FThreadHandle, 50)
+    var x = waitForSingleObject(p.FProcessHandle, 50)
     return x == WAIT_TIMEOUT
 
   proc terminate(p: PProcess) =
@@ -257,11 +258,11 @@ when defined(Windows):
       discard TerminateProcess(p.FProcessHandle, 0)
 
   proc waitForExit(p: PProcess): int =
-    discard WaitForSingleObject(p.FThreadHandle, Infinite)
-    var res: dword
+    discard CloseHandle(p.FThreadHandle)
+    discard WaitForSingleObject(p.FProcessHandle, Infinite)
+    var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
     result = res
-    discard CloseHandle(p.FThreadHandle)
     discard CloseHandle(p.FProcessHandle)
 
   proc inputStream(p: PProcess): PStream =
@@ -272,6 +273,29 @@ when defined(Windows):
 
   proc errorStream(p: PProcess): PStream =
     result = newFileHandleStream(p.errorHandle)
+
+  proc executeCommand(command: string): int = 
+    var
+      SI: TStartupInfo
+      ProcInfo: TProcessInformation
+      process: THandle
+      L: int32
+    SI.cb = SizeOf(SI)
+    SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
+    SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
+    SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
+    if winlean.CreateProcess(nil, command, nil, nil, 0,
+        NORMAL_PRIORITY_CLASS, nil, nil, SI, ProcInfo) == 0:
+      OSError()
+    else:
+      Process = ProcInfo.hProcess
+      discard CloseHandle(ProcInfo.hThread)
+      if WaitForSingleObject(Process, INFINITE) != -1:
+        discard GetExitCodeProcess(Process, L)
+        result = int(L)
+      else:
+        result = -1
+      discard CloseHandle(Process)
 
 else:
   import posix
@@ -321,15 +345,15 @@ else:
     if pid == 0:
       ## child process:
       discard close(p_stdin[writeIdx])
-      discard dup2(p_stdin[readIdx], readIdx)
+      if dup2(p_stdin[readIdx], readIdx) < 0: OSError()
       discard close(p_stdout[readIdx])
-      discard dup2(p_stdout[writeIdx], writeIdx)
+      if dup2(p_stdout[writeIdx], writeIdx) < 0: OSError()
       if poStdErrToStdOut in options:
-        discard dup2(p_stdout[writeIdx], 2)
+        if dup2(p_stdout[writeIdx], 2) < 0: OSError()
       else:
         if pipe(p_stderr) != 0'i32: OSError("failed to create a pipe")
         discard close(p_stderr[readIdx])
-        discard dup2(p_stderr[writeIdx], 2)
+        if dup2(p_stderr[writeIdx], 2) < 0: OSError()
 
       if workingDir.len > 0:
         os.setCurrentDir(workingDir)
@@ -347,8 +371,7 @@ else:
         else:
           discard execve("/bin/sh", a, ToCStringArray(env))
       # too risky to raise an exception here:
-      echo("execve call failed: " & $strerror(errno))
-      quit(1)
+      quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
     result.id = pid
 
@@ -376,6 +399,7 @@ else:
       if running(p): discard kill(p.id, SIGKILL)
 
   proc waitForExit(p: PProcess): int =
+    result = 1
     if waitPid(p.id, p.exitCode, 0) == int(p.id):
       result = p.exitCode
 
@@ -393,3 +417,11 @@ else:
     var f: TFile
     if not openFile(f, p.errorHandle, fmRead): OSError()
     result = newFileStream(f)
+
+  proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
+
+  proc executeCommand(command: string): int = 
+    result = csystem(command)
+
+when isMainModule:
+  echo executeCommand("gcc -v")

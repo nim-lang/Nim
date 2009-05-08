@@ -16,7 +16,7 @@ interface
 
 uses
   nsystem,
-  ast, astalgo, hashes, msgs, platform, nversion, ntime, idents, rodread;
+  ast, astalgo, nhashes, msgs, platform, nversion, ntime, idents, rodread;
 
 var // magic symbols in the system module:
   SystemModule: PSym;

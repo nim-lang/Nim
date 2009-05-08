@@ -30,7 +30,7 @@ symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
                | '[' ']' | '=' | literal)+ '`'
          | IDENT
 primary ::= (prefixOperator optInd)* (symbol | constructor |
-                                             | castExpr | addrExpr) (
+                                      castExpr | addrExpr) (
                '.' optInd symbol
              | '(' optInd namedExprList [SAD] ')'
              | '[' optInd

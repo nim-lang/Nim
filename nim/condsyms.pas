@@ -15,7 +15,7 @@ unit condsyms;
 interface
 
 uses
-  nsystem, ast, astalgo, msgs, hashes, platform, strutils, idents;
+  nsystem, ast, astalgo, msgs, nhashes, platform, strutils, idents;
 
 var
   gSymbols: TStrTable;

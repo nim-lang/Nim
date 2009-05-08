@@ -6,7 +6,7 @@
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
-unit hashes;
+unit nhashes;
 
 {$include 'config.inc'}
 

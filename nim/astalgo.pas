@@ -17,7 +17,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, ast, hashes, charsets, strutils, options, msgs, ropes, idents;
+  nsystem, ast, nhashes, charsets, strutils, options, msgs, ropes, idents;
 
 function hashNode(p: PObject): THash;
 

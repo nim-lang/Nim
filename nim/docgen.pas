@@ -18,7 +18,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, charsets, ast, astalgo, strutils, hashes, options, nversion, msgs,
+  nsystem, charsets, ast, astalgo, strutils, nhashes, options, nversion, msgs,
   nos, ropes, idents, wordrecg, nmath, pnimsyn, rnimsyn, scanner, rst, ntime,
   highlite;
 
@@ -722,6 +722,16 @@ begin
   end
 end;
 
+function renderContainer(d: PDoc; n: PRstNode): PRope;
+var
+  arg: PRope;
+begin
+  result := renderRstToHtml(d, n.sons[2]);
+  arg := toRope(strip(getArgument(n)));
+  if arg = nil then result := ropef('<div>$1</div>', [result])
+  else result := ropef('<div class="$1">$2</div>', [arg, result])  
+end;
+
 function renderRstToHtml(d: PDoc; n: PRstNode): PRope;
 var
   outer, inner: string;
@@ -809,6 +819,10 @@ begin
     end;
     rnCodeBlock: begin
       result := renderCodeBlock(d, n);
+      exit
+    end;
+    rnContainer: begin 
+      result := renderContainer(d, n);
       exit
     end;
     rnSubstitutionReferences, rnSubstitutionDef: outer := '|$1|';

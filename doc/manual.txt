@@ -1649,7 +1649,7 @@ possible within a single ``type`` section.
 Generics
 ~~~~~~~~
 
-`Version 0.7.6: Generic types like in the example do not work.`:red:
+`Version 0.7.8: Generic types like in the example do not work.`:red:
 
 Example:
 

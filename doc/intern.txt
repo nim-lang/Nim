@@ -18,6 +18,7 @@ The Nimrod project's directory structure is:
 Path           Purpose
 ============   ==============================================
 ``bin``        binary files go into here
+``build``      generated C code for the installation
 ``nim``        Pascal sources of the Nimrod compiler; this
                should be modified, not the Nimrod version in
                ``rod``!
@@ -28,7 +29,7 @@ Path           Purpose
                code go into here
 ``doc``        the documentation lives here; it is a bunch of
                reStructuredText files
-``dist``       download packages as zip archives go into here
+``dist``       additional packages for the distribution
 ``config``     configuration files for Nimrod go into here
 ``lib``        the Nimrod library lives here; ``rod`` depends
                on it!
@@ -45,8 +46,8 @@ The compiler is written in a subset of Pascal with special annotations so
 that it can be translated to Nimrod code automatically. This conversion is
 done by Nimrod itself via the undocumented ``boot`` command. Thus both Nimrod
 and Free Pascal can compile the Nimrod compiler. However, the Pascal version
-has no garbage collector and leaks memory like crazy! So the Pascal version
-should only be used for bootstrapping.
+has no garbage collector and leaks memory! So the Pascal version should only 
+be used for bootstrapping.
 
 Requirements for bootstrapping:
 
@@ -214,7 +215,7 @@ address within this page. So including a cell is done as follows:
 
 Removing a cell is analogous - the bit has to be set to zero.
 Single page descriptors are never deleted from the hash table. This is not
-needed as the data structures need to be periodically rebuilt anyway.
+needed as the data structures needs to be rebuilt periodically anyway.
 
 Complete traversal is done in this way::
 
@@ -288,11 +289,8 @@ The synax tree consists of nodes which may have an arbitrary number of
 children. Types and symbols are represented by other nodes, because they
 may contain cycles. The AST changes its shape after semantic checking. This
 is needed to make life easier for the code generators. See the "ast" module
-for the type definitions.
-
-I use the notation ``nodeKind(fields, [sons])`` for describing
-nodes. ``nodeKind[sons]`` is a short-cut for ``nodeKind([sons])``.
-XXX: Description of the language's syntax and the corresponding trees.
+for the type definitions. The `macros <macros.html>`_ module contains many
+examples how the AST represents each syntactic structure. 
 
 
 How the RTL is compiled
@@ -309,6 +307,21 @@ needed by the code generator. A ``magic`` proc is not the same as a
 semantic checking, a ``compilerproc`` is a proc that is used by the code
 generator.
 
+
+Debugging Nimrod's memory management
+====================================
+
+The following paragraphs are mostly a reminder for myself. Things to keep
+in mind:
+
+* Segmentation faults can have multiple reasons: One that is frequently
+  forgotten is that *stack overflow* can trigger one!
+* If an assertion in Nimrod's memory manager or GC fails, the stack trace
+  keeps allocating memory! Thus a stack overflow may happen, hiding the
+  real issue. 
+* What seem to be C code generation problems is often a bug resulting from
+  not producing prototypes, so that some types default to ``cint``. Testing
+  without the ``-w`` option helps!
 
 
 Generation of dynamic link libraries

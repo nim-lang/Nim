@@ -16,7 +16,7 @@ interface
 
 uses
   charsets, nsystem,
-  ast, astalgo, ropes, lists, hashes, strutils, types, msgs;
+  ast, astalgo, ropes, lists, nhashes, strutils, types, msgs;
 
 function toCChar(c: Char): string;
 function makeCString(const s: string): PRope;

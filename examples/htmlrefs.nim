@@ -1,7 +1,6 @@
 # Example program to show the new parsexml module
 # This program reads an HTML file and writes all its used links to stdout.
 # Errors and whitespace are ignored.
-# (c) 2009 Andreas Rumpf
 
 import os, streams, parsexml, strutils
 
@@ -15,7 +14,7 @@ if paramCount() < 1:
 var links = 0 # count the number of links
 var filename = appendFileExt(ParamStr(1), "html")
 var s = newFileStream(filename, fmRead)
-if s == nil: quit("cannot open the file" & filename)
+if s == nil: quit("cannot open the file " & filename)
 var x: TXmlParser
 open(x, s, filename)
 next(x) # get first event

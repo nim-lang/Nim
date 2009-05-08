@@ -1,15 +1,17 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 
-## This module contains the interface to the compiler's abstract syntax tree.
-## Abstract syntax trees should be modified in macros.
+## This module contains the interface to the compiler's abstract syntax 
+## tree (`AST`:idx:). Macros operate on this tree.
+
+## .. include:: ../doc/astspec.txt
 
 #[[[cog
 #def toEnum(name, elems):
@@ -234,4 +236,14 @@ proc newCall*(theProc: string,
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
+
+proc nestList*(theProc: TNimrodIdent,  
+               x: PNimrodNode): PNimrodNode {.compileTime.} = 
+  ## nests the list `x` into a tree of call expressions:
+  ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``
+  var L = x.len
+  result = newCall(theProc, x[L-2], x[L-1])
+  var a = result
+  for i in countdown(L-3, 0):
+    a = newCall(theProc, x[i], copyNimTree(a))
 

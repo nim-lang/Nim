@@ -112,6 +112,23 @@ begin
   end
 end;
 
+function semAfterMacroCall(c: PContext; n, p: PNode): PNode;
+begin
+  result := n;
+  if (p = nil) or (p.kind <> nkIdent) then
+    liMessage(n.info, errInvalidParamKindX, renderTree(p))
+  else begin
+    case p.ident.id of
+      ord(wExpr): result := semExprWithType(c, result);
+      ord(wStmt): result := semStmt(c, result);
+      ord(wTypeDesc): 
+        result.typ := semTypeNode(c, result, nil);
+      else
+        liMessage(p.info, errInvalidParamKindX, p.ident.s)
+    end
+  end
+end;
+
 function semMacroExpr(c: PContext; n: PNode; sym: PSym): PNode;
 var
   p: PEvalContext;
@@ -128,7 +145,7 @@ begin
   result := s.params[0];
   popStackFrame(p);
   if cyclicTree(result) then liMessage(n.info, errCyclicTree);
-  result := semStmt(c, result);
+  result := semAfterMacroCall(c, result, sym.ast.sons[paramsPos].sons[0]);
   // now, that was easy ...
   // and we get more flexibility than in any other programming language
 end;
@@ -137,13 +154,11 @@ end;
 {$include 'seminst.pas'}
 {$include 'sigmatch.pas'}
 
-
 procedure CheckBool(t: PNode);
 begin
   if (t.Typ = nil) or (skipVarGeneric(t.Typ).kind <> tyBool) then
     liMessage(t.Info, errExprMustBeBool);
 end;
-
 
 procedure typeMismatch(n: PNode; formal, actual: PType);
 begin
@@ -167,13 +182,17 @@ var
   prc: PSym;
   it: PNode;
 begin
-  for i := 0 to sonsLen(c.generics)-1 do begin
+  for i := c.lastGenericIdx to sonsLen(c.generics)-1 do begin
     it := c.generics.sons[i].sons[1];
     if it.kind <> nkSym then InternalError('addCodeForGenerics');
     prc := it.sym;
-    if (prc.kind in [skProc, skConverter]) and (prc.magic = mNone) then 
+    if (prc.kind in [skProc, skConverter]) and (prc.magic = mNone) then begin
+      if (prc.ast = nil) or (prc.ast.sons[codePos] = nil) then 
+        InternalError(prc.info, 'no code for ' + prc.name.s);
       addSon(n, prc.ast);
+    end
   end;
+  c.lastGenericIdx := sonsLen(c.generics);
 end;
 
 function myOpen(module: PSym; const filename: string): PPassContext;
@@ -212,10 +231,21 @@ end;
 function myProcess(context: PPassContext; n: PNode): PNode;
 var
   c: PContext;
+  a: PNode;
 begin
   result := nil;
   c := PContext(context);
   result := semStmt(c, n);
+  // BUGFIX: process newly generated generics here, not at the end!
+  if sonsLen(c.generics) > 0 then begin
+    a := newNodeI(nkStmtList, n.info);
+    addCodeForGenerics(c, a);
+    if sonsLen(a) > 0 then begin
+      // a generic has been added to `a`:
+      addSonIfNotNil(a, result);
+      result := a
+    end
+  end
 end;
 
 function myClose(context: PPassContext; n: PNode): PNode;
@@ -226,7 +256,8 @@ begin
   closeScope(c.tab);    // close module's scope
   rawCloseScope(c.tab); // imported symbols; don't check for unused ones!
   if n = nil then result := newNode(nkStmtList)
-  else result := n;
+  else InternalError(n.info, 'n is not nil');
+  //result := n;
   addCodeForGenerics(c, result);
   popOwner();
   c.p := nil;

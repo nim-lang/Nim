@@ -208,5 +208,40 @@ else:
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
+
+type
+  TRunningStat* = object  ## an accumulator for statistical data
+    n*: int               ## number of pushed data
+    sum*, min*, max*, mean*: float ## self-explaining
+    oldM, oldS, newS: float
+
+proc push*(s: var TRunningStat, x: float) = 
+  ## pushes a value `x` for processing
+  inc(s.n)
+  # See Knuth TAOCP vol 2, 3rd edition, page 232
+  if s.n == 1:
+    s.oldM = x
+    s.mean = x
+    s.oldS = 0.0
+  else:
+    s.mean = s.oldM + (x - s.oldM)/toFloat(s.n)
+    s.newS = s.oldS + (x - s.oldM)*(x - s.mean)
+
+    # set up for next iteration:
+    s.oldM = s.mean
+    s.oldS = s.newS
+  
+  s.sum = s.sum + x
+  if s.min > x: s.min = x
+  if s.max < x: s.max = x
+
+proc variance*(s: TRunningStat): float = 
+  ## computes the current variance of `s`
+  if s.n > 1: result = s.newS / (toFloat(s.n - 1))
+
+proc standardDeviation*(s: TRunningStat): float = 
+  ## computes the current standard deviation of `s`
+  result = sqrt(variance(s))
+
 {.pop.}
 {.pop.}

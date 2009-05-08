@@ -13,7 +13,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  nsystem, nos, lists, strutils, strtabs;
+  nsystem, nos, lists, strutils, nstrtabs;
 
 type
   // please make sure we have under 32 options
@@ -150,12 +150,12 @@ end;
 
 function getConfigVar(const key: string): string;
 begin
-  result := strtabs.get(gConfigVars, key);
+  result := nstrtabs.get(gConfigVars, key);
 end;
 
 procedure setConfigVar(const key, val: string);
 begin
-  strtabs.put(gConfigVars, key, val);
+  nstrtabs.put(gConfigVars, key, val);
 end;
 
 function getOutFile(const filename, ext: string): string;
