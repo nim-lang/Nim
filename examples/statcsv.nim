@@ -6,7 +6,7 @@
 import os, streams, parsecsv, strutils, math
 
 if paramCount() < 1:
-  quit("Usage: sumcsv filename[.csv]")
+  quit("Usage: statcsv filename[.csv]")
 
 var filename = appendFileExt(ParamStr(1), "csv")
 var s = newFileStream(filename, fmRead)

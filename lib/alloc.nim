@@ -493,6 +493,10 @@ proc rawDealloc(a: var TAllocator, p: pointer) =
     f.zeroField = 0
     f.next = c.freeList
     c.freeList = f
+    when overwriteFree: 
+      # set to 0xff to check for usage after free bugs:
+      c_memset(cast[pointer](cast[int](p) +% sizeof(TFreeCell)), -1'i32, 
+               s -% sizeof(TFreeCell))
     # check if it is not in the freeSmallChunks[s] list:
     if c.free < s:
       assert c notin a.freeSmallChunks[s div memAlign]
@@ -506,6 +510,8 @@ proc rawDealloc(a: var TAllocator, p: pointer) =
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
   else:
+    # set to 0xff to check for usage after free bugs:
+    when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
     # free big chunk
     freeBigChunk(a, cast[PBigChunk](c))
 

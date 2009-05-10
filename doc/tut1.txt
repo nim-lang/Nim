@@ -522,7 +522,7 @@ Result variable
 ---------------
 A procedure that returns a value has an implicit ``result`` variable that
 represents the return value. A ``return`` statement with no expression is a
-shorthand for ``return result``. So all tree code snippets are equivalent:
+shorthand for ``return result``. So all three code snippets are equivalent:
 
 .. code-block:: nimrod
   return 42
@@ -556,7 +556,7 @@ caller, a ``var`` parameter can be used:
 
 In the example, ``res`` and ``remainder`` are `var parameters`.
 Var parameters can be modified by the procedure and the changes are
-visible to the caller. 
+visible to the caller.
 
 
 Discard statement
@@ -952,8 +952,8 @@ Operation             Comment
 ``dec(x, n)``         decrements `x` by `n`; `n` is an integer
 ``succ(x)``           returns the successor of `x`
 ``succ(x, n)``        returns the `n`'th successor of `x`
-``succ(x)``           returns the predecessor of `x`
-``succ(x, n)``        returns the `n`'th predecessor of `x`
+``prec(x)``           returns the predecessor of `x`
+``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
 The ``inc dec succ pred`` operations can fail by raising an `EOutOfRange` or
