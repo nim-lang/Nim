@@ -23,6 +23,7 @@ const
   reallyOsDealloc = true
   coalescRight = true
   coalescLeft = true
+  overwriteFree = false
 
 type
   PPointer = ptr pointer

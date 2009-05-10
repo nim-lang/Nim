@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -45,6 +45,7 @@ function toString(i: BiggestInt): string; overload;
 //function toString(i: int): string; overload;
 function ToStringF(const r: Real): string; overload;
 function ToString(b: Boolean): string; overload;
+function ToString(b: PChar): string; overload;
 
 function IntToStr(i: BiggestInt; minChars: int): string;
 
@@ -413,6 +414,11 @@ end;
 function toString(i: BiggestInt): string; overload;
 begin
   result := sysUtils.intToStr(i);
+end;
+
+function ToString(b: PChar): string; overload;
+begin
+  result := string(b);
 end;
 
 function normalize(const s: string): string;

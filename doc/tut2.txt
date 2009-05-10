@@ -34,7 +34,7 @@ While Nimrod's support for object oriented programming (OOP) is minimalistic,
 powerful OOP technics can be used. OOP is seen as *one* way to design a 
 program, not *the only* way. Often a procedural approach leads to simpler
 and more efficient code. In particular, prefering aggregation over inheritance
-often yields to a better design.
+often results in a better design.
 
 
 Objects
@@ -422,7 +422,7 @@ containers:
     else:
       var it = root
       while it != nil:
-        # compare the data items; uses the generic ``cmd`` proc
+        # compare the data items; uses the generic ``cmp`` proc
         # that works for any type that has a ``==`` and ``<`` operator
         var c = cmp(it.data, n.data) 
         if c < 0:

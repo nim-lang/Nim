@@ -358,7 +358,8 @@ begin
     end
   end;
   g.len := pos - g.pos;
-  if (g.kind <> gtEof) and (g.len <= 0) then InternalError('nimNextToken');
+  if (g.kind <> gtEof) and (g.len <= 0) then 
+    InternalError('nimNextToken: ' + toString(g.buf));
   g.pos := pos;
 end;
 
