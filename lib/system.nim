@@ -438,12 +438,22 @@ proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
   ## The minimum value of two integers.
 
+proc min*[T](x: openarray[T]): T = 
+  ## The minimum value of an openarray.
+  result = x[0]
+  for i in 1..high(x): result = min(result, x[i])
+
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
 proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
   ## The maximum value of two integers.
+
+proc max*[T](x: openarray[T]): T = 
+  ## The maximum value of an openarray.
+  result = x[0]
+  for i in 1..high(x): result = max(result, x[i])
 
 proc `+%` *(x, y: int): int {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: int8): int8 {.magic: "AddU", noSideEffect.}
@@ -1101,6 +1111,13 @@ proc pop*[T](s: var seq[T]): T {.inline.} =
   var L = s.len-1
   result = s[L]
   setLen(s, L)
+
+proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] = 
+  ## The well-known ``map`` operation from functional programming. Applies
+  ## `op` to every item in `data` and returns the result as a sequence.
+  result = @[]
+  for d in items(data): add(result, op(d))
+
 
 # ----------------- FPU ------------------------------------------------------
 
