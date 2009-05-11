@@ -11,6 +11,8 @@ Plan
 Bugs
 ----
 
+- BUG: seq[TLoc] in C code generator always failed --> probably some reference
+  counting is wrong; try to reproduce this in the GC test
 - BUG: returning an array does not work --> see md5.nim module
 - BUG: if not nodeOfDegree(g, 1) >= 0: inc(counter)
 - BUG: the parser allows empty object case branches
