@@ -1108,8 +1108,7 @@ procedure genStrConcat(p: BProc; e: PNode; var d: TLoc);
 //    asgn(s, tmp0);
 //  }
 var
-  tmp: TLoc;
-  a: array of TLoc;
+  a, tmp: TLoc;
   appends, lens: PRope;
   L, i: int;
 begin
@@ -1118,25 +1117,21 @@ begin
   L := 0;
   appends := nil;
   lens := nil;
-{@ignore}
-  setLength(a, sonsLen(e)-1);
-{@emit
-  newSeq(a, sonsLen(e)-1); }
   for i := 0 to sonsLen(e)-2 do begin
     // compute the length expression:
-    initLocExpr(p, e.sons[i+1], a[i]);
+    initLocExpr(p, e.sons[i+1], a);
     if skipVarGenericRange(e.sons[i+1].Typ).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
-      appf(appends, 'appendChar($1, $2);$n', [tmp.r, rdLoc(a[i])])
+      appf(appends, 'appendChar($1, $2);$n', [tmp.r, rdLoc(a)])
     end
     else begin
       if e.sons[i+1].kind in [nkStrLit..nkTripleStrLit] then  // string literal?
         Inc(L, length(e.sons[i+1].strVal))
       else
-        appf(lens, '$1->Sup.len + ', [rdLoc(a[i])]);
+        appf(lens, '$1->Sup.len + ', [rdLoc(a)]);
       useMagic(p.module, 'appendString');
-      appf(appends, 'appendString($1, $2);$n', [tmp.r, rdLoc(a[i])])
+      appf(appends, 'appendString($1, $2);$n', [tmp.r, rdLoc(a)])
     end
   end;
   appf(p.s[cpsStmts], '$1 = rawNewString($2$3);$n',
@@ -1161,7 +1156,7 @@ procedure genStrAppend(p: BProc; e: PNode; var d: TLoc);
 //    appendChar(s, 'z');
 //  }
 var
-  a: array of TLoc;
+  a, dest: TLoc;
   L, i: int;
   appends, lens: PRope;
 begin
@@ -1170,32 +1165,28 @@ begin
   L := 0;
   appends := nil;
   lens := nil;
-{@ignore}
-  setLength(a, sonsLen(e)-1);
-{@emit
-  newSeq(a, sonsLen(e)-1); }
-  expr(p, e.sons[1], a[0]);
+  initLocExpr(p, e.sons[1], dest);
   for i := 0 to sonsLen(e)-3 do begin
     // compute the length expression:
-    initLocExpr(p, e.sons[i+2], a[i+1]);
+    initLocExpr(p, e.sons[i+2], a);
     if skipVarGenericRange(e.sons[i+2].Typ).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
       appf(appends, 'appendChar($1, $2);$n',
-        [rdLoc(a[0]), rdLoc(a[i+1])])
+        [rdLoc(dest), rdLoc(a)])
     end
     else begin
       if e.sons[i+2].kind in [nkStrLit..nkTripleStrLit] then  // string literal?
         Inc(L, length(e.sons[i+2].strVal))
       else
-        appf(lens, '$1->Sup.len + ', [rdLoc(a[i+1])]);
+        appf(lens, '$1->Sup.len + ', [rdLoc(a)]);
       useMagic(p.module, 'appendString');
       appf(appends, 'appendString($1, $2);$n',
-        [rdLoc(a[0]), rdLoc(a[i+1])])
+        [rdLoc(dest), rdLoc(a)])
     end
   end;
   appf(p.s[cpsStmts], '$1 = resizeString($1, $2$3);$n',
-    [rdLoc(a[0]), lens, toRope(L)]);
+    [rdLoc(dest), lens, toRope(L)]);
   app(p.s[cpsStmts], appends);
 end;
 
@@ -1548,8 +1539,7 @@ end;
 
 procedure genInOp(p: BProc; e: PNode; var d: TLoc);
 var
-  a, b: TLoc;
-  c: array of TLoc;  // Generate code for the 'in' operator
+  a, b, x, y: TLoc;
   len, i: int;
 begin
   if (e.sons[1].Kind = nkCurly) and fewCmps(e.sons[1]) then begin
@@ -1559,22 +1549,18 @@ begin
     initLoc(b, locExpr, e.typ, OnUnknown);
     b.r := toRope('('+'');
     len := sonsLen(e.sons[1]);
-    {@emit c := @[];}
     for i := 0 to len-1 do begin
       if e.sons[1].sons[i].Kind = nkRange then begin
-        setLength(c, length(c)+2);
-        InitLocExpr(p, e.sons[1].sons[i].sons[0], c[high(c)-1]);
-        InitLocExpr(p, e.sons[1].sons[i].sons[1], c[high(c)]);
+        InitLocExpr(p, e.sons[1].sons[i].sons[0], x);
+        InitLocExpr(p, e.sons[1].sons[i].sons[1], y);
         appf(b.r, '$1 >= $2 && $1 <= $3',
-          [rdCharLoc(a), rdCharLoc(c[high(c)-1]), rdCharLoc(c[high(c)])])
+          [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
       end
       else begin
-        setLength(c, length(c)+1);
-        InitLocExpr(p, e.sons[1].sons[i], c[high(c)]);
-        appf(b.r, '$1 == $2', [rdCharLoc(a), rdCharLoc(c[high(c)])])
+        InitLocExpr(p, e.sons[1].sons[i], x);
+        appf(b.r, '$1 == $2', [rdCharLoc(a), rdCharLoc(x)])
       end;
-      if i < len - 1 then
-        app(b.r, ' || ')
+      if i < len - 1 then app(b.r, ' || ')
     end;
     app(b.r, ')'+'');
     putIntoDest(p, d, e.typ, b.r);

@@ -103,9 +103,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   result = usrToCell(c).typ
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
-  result = int(usrToCell(p).refcount)
-  if result > 0: result = result shr rcShift
-  else: result = 0
+  result = int(usrToCell(p).refcount) shr rcShift
 
 proc GC_disable() = inc(recGcLock)
 proc GC_enable() =
@@ -488,11 +486,12 @@ proc stackSize(): int {.noinline.} =
   result = abs(cast[int](addr(stackTop[0])) - cast[int](stackBottom))
 
 when defined(sparc): # For SPARC architecture.
-
   proc isOnStack(p: pointer): bool =
-    var
-      stackTop: array[0..1, pointer]
-    result = p >= addr(stackTop[0]) and p <= stackBottom
+    var stackTop: array [0..1, pointer]
+    var b = cast[TAddress](stackBottom)
+    var a = cast[TAddress](addr(stackTop[0]))
+    var x = cast[TAddress](p)
+    result = x >=% a and x <=% b
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
     when defined(sparcv9):
@@ -518,11 +517,12 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------
-
   proc isOnStack(p: pointer): bool =
-    var
-      stackTop: array[0..1, pointer]
-    result = p <= addr(stackTop[0]) and p >= stackBottom
+    var stackTop: array [0..1, pointer]
+    var a = cast[TAddress](stackBottom)
+    var b = cast[TAddress](addr(stackTop[0]))
+    var x = cast[TAddress](p)
+    result = x >=% a and x <=% b
 
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
@@ -530,45 +530,38 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
       # in a platform independant way
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
-    var
-      max = stackBottom
-      registers: C_JmpBuf # The jmp_buf buffer is in the C stack.
-      sp: PPointer        # Used to traverse the stack and registers assuming
-                          # that `setjmp' will save registers in the C stack.
-    if c_setjmp(registers) == 0: # To fill the C stack with registers.
-      sp = cast[ppointer](cast[TAddress](addr(registers)) +%
-             jmpbufSize -% sizeof(pointer))
+    var registers: C_JmpBuf
+    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
+      var max = cast[TAddress](stackBottom)
+      var sp = cast[TAddress](addr(registers)) +% jmpbufSize -% sizeof(pointer)
       # sp will traverse the JMP_BUF as well (jmp_buf size is added,
       # otherwise sp would be below the registers structure).
-      while sp >= max:
-        gcMark(sp^)
-        sp = cast[ppointer](cast[TAddress](sp) -% sizeof(pointer))
+      while sp >=% max:
+        gcMark(cast[ppointer](sp)^)
+        sp = sp -% sizeof(pointer)
 
 else:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses decrease as the stack grows.
   # ---------------------------------------------------------------------------
   proc isOnStack(p: pointer): bool =
-    var
-      stackTop: array [0..1, pointer]
-    result = p >= addr(stackTop[0]) and p <= stackBottom
-
-  var
-    jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
-      # a little hack to get the size of a TJmpBuf in the generated C code
-      # in a platform independant way
+    var stackTop: array [0..1, pointer]
+    var b = cast[TAddress](stackBottom)
+    var a = cast[TAddress](addr(stackTop[0]))
+    var x = cast[TAddress](p)
+    result = x >=% a and x <=% b
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
-    var
-      max = stackBottom
-      registers: C_JmpBuf # The jmp_buf buffer is in the C stack.
-      sp: PPointer        # Used to traverse the stack and registers assuming
-                          # that 'setjmp' will save registers in the C stack.
+    # We use a jmp_buf buffer that is in the C stack.
+    # Used to traverse the stack and registers assuming
+    # that 'setjmp' will save registers in the C stack.
+    var registers: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      sp = cast[ppointer](addr(registers))
-      while sp <= max:
-        gcMark(sp^)
-        sp = cast[ppointer](cast[TAddress](sp) +% sizeof(pointer))
+      var max = cast[TAddress](stackBottom)
+      var sp = cast[TAddress](addr(registers))
+      while sp <=% max:
+        gcMark(cast[ppointer](sp)^)
+        sp = sp +% sizeof(pointer)
 
 # ----------------------------------------------------------------------------
 # end of non-portable code
