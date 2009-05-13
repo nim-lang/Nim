@@ -15,8 +15,8 @@ if SDL_Init(SDL_INIT_VIDEO) == 0:
     greeting = SDL_LoadBmp("backgrnd.bmp")
     if greeting == nil:
       write(stdout, "greeting is nil!")
-    r.x = 0
-    r.y = 0
+    r.x = 0'i16
+    r.y = 0'i16
     discard SDL_blitSurface(greeting, nil, screen, addr(r))
     discard SDL_flip(screen)
     SDL_Delay(3000)

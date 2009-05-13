@@ -148,6 +148,12 @@ begin
   end
 end;
 
+function mapReturnType(typ: PType): TCTypeKind;
+begin
+  if skipGeneric(typ).kind = tyArray then result := ctPtr
+  else result := mapType(typ)
+end;
+
 function getTypeDescAux(m: BModule; typ: PType;
                         var check: TIntSet): PRope; forward;
 
@@ -232,7 +238,8 @@ procedure fillResult(param: PSym);
 begin
   fillLoc(param.loc, locParam, param.typ, ropeff('Result', '%Result', []), 
           OnStack);
-  if (mapType(param.typ) <> ctArray) and IsInvalidReturnType(param.typ) then
+  if (mapReturnType(param.typ) <> ctArray) 
+  and IsInvalidReturnType(param.typ) then
   begin
     include(param.loc.flags, lfIndirect);
     param.loc.s := OnUnknown
@@ -277,8 +284,10 @@ begin
   end;
   if (t.sons[0] <> nil) and isInvalidReturnType(t.sons[0]) then begin
     if params <> nil then app(params, ', ');
-    app(params, getTypeDescAux(m, t.sons[0], check));
-    if (mapType(t.sons[0]) <> ctArray) or (gCmd = cmdCompileToLLVM) then 
+    arr := t.sons[0];
+    //if skipGeneric(arr).kind = tyArray then arr := arr.sons[1];
+    app(params, getTypeDescAux(m, arr, check));
+    if (mapReturnType(t.sons[0]) <> ctArray) or (gCmd = cmdCompileToLLVM) then 
       app(params, '*'+'');
     appff(params, ' Result', ' @Result', []);
   end;

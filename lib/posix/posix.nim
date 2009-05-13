@@ -400,11 +400,6 @@ when hasSpawnH:
                                  header: "<spawn.h>".} = cint 
 
 type
-  Tif_nameindex* {.importc: "struct if_nameindex", final, 
-                   pure, header: "<net/if.h>".} = object ## struct if_nameindex
-    if_index*: cint   ## Numeric index of the interface. 
-    if_name*: cstring ## Null-terminated name of the interface. 
-
   TSocklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
   
@@ -417,6 +412,12 @@ type
                        header: "<sys/socket.h>", 
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: Tsa_family ## Address family. 
+
+  Tif_nameindex* {.importc: "struct if_nameindex", final, 
+                   pure, header: "<net/if.h>".} = object ## struct if_nameindex
+    if_index*: cint   ## Numeric index of the interface. 
+    if_name*: cstring ## Null-terminated name of the interface. 
+
 
   TIOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
@@ -1442,8 +1443,6 @@ var
   SEEK_CUR* {.importc, header: "<unistd.h>".}: cint
   SEEK_END* {.importc, header: "<unistd.h>".}: cint
 
-  IF_NAMESIZE* {.importc, header: "<net/if.h>".}: cint
-
   SCM_RIGHTS* {.importc, header: "<sys/socket.h>".}: cint
     ## Indicates that the data array contains the access rights 
     ## to be sent or received. 
@@ -1525,6 +1524,8 @@ var
     ## Disables further send and receive operations.
   SHUT_WR* {.importc, header: "<sys/socket.h>".}: cint
     ## Disables further send operations. 
+
+  IF_NAMESIZE* {.importc, header: "<net/if.h>".}: cint
     
   IPPROTO_IP* {.importc, header: "<netinet/in.h>".}: cint
     ## Internet protocol.
@@ -2288,11 +2289,6 @@ proc makecontext*(a1: var Tucontext, a4: proc (){.noconv.}, a3: cint) {.
   varargs, importc, header: "<ucontext.h>".}
 proc setcontext*(a1: var Tucontext): cint {.importc, header: "<ucontext.h>".}
 proc swapcontext*(a1, a2: var Tucontext): cint {.importc, header: "<ucontext.h>".}
-proc if_nametoindex*(a1: cstring): cint {.importc, header: "<net/if.h>".}
-proc if_indextoname*(a1: cint, a2: cstring): cstring {.
-  importc, header: "<net/if.h>".}
-proc if_nameindex*(): ptr Tif_nameindex {.importc, header: "<net/if.h>".}
-proc if_freenameindex*(a1: ptr Tif_nameindex) {.importc, header: "<net/if.h>".}
 
 proc readv*(a1: cint, a2: ptr TIOVec, a3: cint): int {.
   importc, header: "<sys/uio.h>".}
@@ -2350,6 +2346,12 @@ proc sockatmark*(a1: cint): cint {.
   importc, header: "<sys/socket.h>".}
 proc socketpair*(a1, a2, a3: cint, a4: var array[0..1, cint]): cint {.
   importc, header: "<sys/socket.h>".}
+
+proc if_nametoindex*(a1: cstring): cint {.importc, header: "<net/if.h>".}
+proc if_indextoname*(a1: cint, a2: cstring): cstring {.
+  importc, header: "<net/if.h>".}
+proc if_nameindex*(): ptr Tif_nameindex {.importc, header: "<net/if.h>".}
+proc if_freenameindex*(a1: ptr Tif_nameindex) {.importc, header: "<net/if.h>".}
 
 proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr TIn6Addr): cint {.
   importc, header: "<netinet/in.h>".}
