@@ -249,12 +249,12 @@ procedure UseMagic(m: BModule; const name: string); forward;
 {$include 'ccgtypes.pas'}
 
 // ------------------------------ Manager of temporaries ------------------
-
+(*
 function beEqualTypes(a, b: PType): bool;
 begin
   // returns whether two type are equal for the backend
   result := sameType(skipGenericRange(a), skipGenericRange(b))
-end;
+end; *)
 
 procedure getTemp(p: BProc; t: PType; var result: TLoc);
 begin
@@ -642,6 +642,10 @@ begin
     else begin
       fillResult(res);
       assignParam(p, res);
+      if skipGeneric(res.typ).kind = tyArray then begin
+        include(res.loc.flags, lfIndirect);
+        res.loc.s := OnUnknown;
+      end;
     end;
     initVariable(p, res);
     genObjectInit(p, res.typ, res.loc, true);
