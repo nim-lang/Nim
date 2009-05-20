@@ -612,11 +612,14 @@ begin
       IdTablePut(m.typeCache, t, con(result, '*'+''));
       if not isImportedType(t) then begin
         useMagic(m, 'TGenericSeq');
-        appf(m.s[cfsSeqTypes],
-          'struct $2 {$n' +
-          '  TGenericSeq Sup;$n' +
-          '  $1 data[SEQ_DECL_SIZE];$n' +
-          '};$n', [getTypeDescAux(m, t.sons[0], check), result]);
+        if skipGeneric(t.sons[0]).kind <> tyEmpty then 
+          appf(m.s[cfsSeqTypes],
+            'struct $2 {$n' +
+            '  TGenericSeq Sup;$n' +
+            '  $1 data[SEQ_DECL_SIZE];$n' +
+            '};$n', [getTypeDescAux(m, t.sons[0], check), result])
+        else
+          result := toRope('TGenericSeq')
       end;
       app(result, '*'+'');
     end;
@@ -1018,6 +1021,7 @@ begin
   end;
   if dataGenerated then exit;
   case t.kind of
+    tyEmpty: result := toRope('0'+'');
     tyPointer, tyProc, tyBool, tyChar, tyCString, tyString,
     tyInt..tyFloat128, tyVar:
       genTypeInfoAuxBase(gmti, t, result, toRope('0'+''));

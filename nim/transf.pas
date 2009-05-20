@@ -440,7 +440,10 @@ begin
         addSon(result, n.sons[1]);
       end
       else result := n.sons[1];
-    end;
+    end; (*
+    tyArray, tySeq: begin
+      if skipGeneric(dest
+    end; *)
     tyGenericParam, tyAnyEnum: result := n.sons[1];
       // happens sometimes for generated assignments, etc.
     else begin end
@@ -450,8 +453,7 @@ end;
 function skipPassAsOpenArray(n: PNode): PNode;
 begin
   result := n;
-  while result.kind = nkPassAsOpenArray do 
-    result := result.sons[0]
+  while result.kind = nkPassAsOpenArray do result := result.sons[0]
 end;
 
 type 
@@ -855,7 +857,7 @@ begin
     end
   end;
   cnst := getConstExpr(c.module, result);
-  if cnst <> nil then result := cnst; // do not miss an optimization
+  if cnst <> nil then result := cnst; // do not miss an optimization  
 end;
 
 function processTransf(context: PPassContext; n: PNode): PNode;

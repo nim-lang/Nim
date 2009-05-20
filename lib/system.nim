@@ -1488,6 +1488,11 @@ elif defined(NimrodVM):
     if x == y: return 0
     if x < y: return -1
     return 1
+    
+  proc dealloc(p: pointer) = nil
+  proc alloc(size: int): pointer = nil
+  proc alloc0(size: int): pointer = nil
+  proc realloc(p: Pointer, newsize: int): pointer = nil
 
 {.pop.} # checks
 {.pop.} # hints

@@ -277,6 +277,7 @@ var
   i: int;
   sym: PSym;
   r, s: PRope;
+  a: TLoc;
 begin
   genLineDir(p, t);
   assert(t.kind = nkAsmStmt);
@@ -286,13 +287,19 @@ begin
       nkStrLit..nkTripleStrLit: app(s, t.sons[i].strVal);
       nkSym: begin
         sym := t.sons[i].sym;
-        r := sym.loc.r;
-        if r = nil then begin // if no name has already been given,
-                     // it doesn't matter much:
-          r := mangleName(sym);
-          sym.loc.r := r; // but be consequent!
-        end;
-        app(s, r)
+        if sym.kind = skProc then begin
+          initLocExpr(p, t.sons[i], a);
+          app(s, rdLoc(a));
+        end
+        else begin
+          r := sym.loc.r;
+          if r = nil then begin // if no name has already been given,
+                       // it doesn't matter much:
+            r := mangleName(sym);
+            sym.loc.r := r; // but be consequent!
+          end;
+          app(s, r)
+        end
       end
       else
         InternalError(t.sons[i].info, 'genAsmStmt()')

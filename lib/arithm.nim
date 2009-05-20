@@ -117,7 +117,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         mov eax, `a`
         add eax, `b`
         jno theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
     """
 
@@ -126,7 +126,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         mov eax, `a`
         sub eax, `b`
         jno theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
     """
 
@@ -135,7 +135,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         mov eax, `a`
         neg eax
         jno theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
     """
 
@@ -146,7 +146,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         xor edx, edx
         idiv ecx
         jno  theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
     """
 
@@ -157,7 +157,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         xor edx, edx
         idiv ecx
         jno theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
         mov eax, edx
     """
@@ -169,7 +169,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         xor edx, edx
         imul ecx
         jno theEnd
-        call raiseOverflow
+        call `raiseOverflow`
       theEnd:
     """
 

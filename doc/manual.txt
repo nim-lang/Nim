@@ -1514,8 +1514,8 @@ above example is equivalent to:
 
 .. code-block:: nimrod
   proc divmod(a, b: int, res, remainder: ptr int) =
-    res = a div b
-    remainder = a mod b
+    res^ = a div b
+    remainder^ = a mod b
 
   var
     x, y: int
