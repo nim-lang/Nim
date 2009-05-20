@@ -287,7 +287,7 @@
 {'hintConvFromXtoItselfNotNeeded': 'conversion from $1 to itself is pointless'},
 {'hintExprAlwaysX': "expression evaluates always to '$1'"},
 {'hintQuitCalled': "quit() called"},
-{'hintProcessing': "processing $1"},
+{'hintProcessing': "$1"},
 {'hintCodeBegin': "generated code listing:"},
 {'hintCodeEnd': "end of listing"},
 {'hintConf': "used config file '$1'"},

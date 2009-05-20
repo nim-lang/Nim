@@ -540,32 +540,35 @@ begin
       case skipRange(n.typ).kind of
         tyInt..tyInt64: begin
           case skipRange(a.typ).kind of
-            tyFloat..tyFloat64: begin
+            tyFloat..tyFloat64: 
               result := newIntNodeT(nsystem.toInt(getFloat(a)), n);
-              exit
-            end;
-            tyChar: begin
+            tyChar: 
               result := newIntNodeT(getOrdValue(a), n);
-              exit
-            end;
-            else begin end
+            else begin 
+              result := a;
+              result.typ := n.typ;
+            end
           end
         end;
         tyFloat..tyFloat64: begin
           case skipRange(a.typ).kind of
-            tyInt..tyInt64, tyEnum, tyBool, tyChar: begin
+            tyInt..tyInt64, tyEnum, tyBool, tyChar: 
               result := newFloatNodeT(toFloat(int(getOrdValue(a))), n);
-              exit
+            else begin
+              result := a;
+              result.typ := n.typ;
             end
-            else begin end
           end
         end;
-        tyOpenArray: exit;
-        else begin end
-      end;
-      result := a;
-      result.typ := n.typ
-    end;
+        tyOpenArray, tyProc: begin end;
+        else begin
+          //n.sons[1] := a;
+          //result := n;
+          result := a;
+          result.typ := n.typ;
+        end
+      end
+    end
     else begin
     end
   end

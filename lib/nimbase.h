@@ -286,17 +286,7 @@ static unsigned long nimInf[2]={0xffffffff, 0x7fffffff};
 #define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
                               the generated code does not rely on it anymore */
 
-#if defined(HAVE_STDINT_H)
-#  include <stdint.h>
-typedef int8_t NI8;
-typedef int16_t NI16;
-typedef int32_t NI32;
-typedef int64_t NI64;
-typedef uint64_t NU64;
-typedef uint8_t NU8;
-typedef uint16_t NU16;
-typedef uint32_t NU32;
-#elif defined(__BORLANDC__) || defined(__DMC__) \
+#if defined(__BORLANDC__) || defined(__DMC__) \
    || defined(__WATCOMC__) || defined(_MSC_VER)
 typedef signed char NI8;
 typedef signed short int NI16;
@@ -307,6 +297,16 @@ typedef unsigned short int NU16;
 typedef unsigned __int64 NU64;
 typedef __int64 NI64;
 typedef unsigned int NU32;
+#elif defined(HAVE_STDINT_H)
+#  include <stdint.h>
+typedef int8_t NI8;
+typedef int16_t NI16;
+typedef int32_t NI32;
+typedef int64_t NI64;
+typedef uint64_t NU64;
+typedef uint8_t NU8;
+typedef uint16_t NU16;
+typedef uint32_t NU32;
 #else
 typedef signed char NI8;
 typedef signed short int NI16;

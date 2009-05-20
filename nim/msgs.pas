@@ -561,7 +561,7 @@ const
     'conversion from $1 to itself is pointless [ConvFromXtoItselfNotNeeded]',
     'expression evaluates always to ''$1'' [ExprAlwaysX]',
     'quit() called [QuitCalled]',
-    'processing $1 [Processing]',
+    '$1 [Processing]',
     'generated code listing: [CodeBegin]',
     'end of listing [CodeEnd]',
     'used config file ''$1'' [Conf]',

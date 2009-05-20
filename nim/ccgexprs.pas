@@ -2243,8 +2243,8 @@ begin
   end
 end;
 
-// ---------------------- generation of complex constants -----------------
-
+// ---------------------- generation of complex constants ---------------------
+(*
 function transformRecordExpr(n: PNode): PNode;
 var
   i: int;
@@ -2263,10 +2263,20 @@ begin
     field := lookupInRecord(t.n, field.name);
     if field = nil then
       InternalError(n.sons[i].info, 'transformRecordExpr: unknown field');
-    if result.sons[field.position] <> nil then
-      InternalError(n.sons[i].info, 'transformRecordExpr: value twice');
+    if result.sons[field.position] <> nil then begin
+      InternalError(n.sons[i].info, 'transformRecordExpr: value twice: ' +
+                    renderTree(n.sons[i]));
+    end;
     result.sons[field.position] := copyTree(n.sons[i].sons[1]);
   end;
+end; *)
+
+function genNamedConstExpr(p: BProc; n: PNode): PRope;
+begin
+  if n.kind = nkExprColonExpr then
+    result := genConstExpr(p, n.sons[1])
+  else
+    result := genConstExpr(p, n);
 end;
 
 function genConstSimpleList(p: BProc; n: PNode): PRope;
@@ -2276,8 +2286,8 @@ begin
   len := sonsLen(n);
   result := toRope('{'+'');
   for i := 0 to len - 2 do
-    appf(result, '$1,$n', [genConstExpr(p, n.sons[i])]);
-  if len > 0 then app(result, genConstExpr(p, n.sons[len-1]));
+    appf(result, '$1,$n', [genNamedConstExpr(p, n.sons[i])]);
+  if len > 0 then app(result, genNamedConstExpr(p, n.sons[len-1]));
   app(result, '}' + tnl)
 end;
 
@@ -2293,16 +2303,9 @@ begin
       toBitSet(n, cs);
       result := genRawSetData(cs, int(getSize(n.typ)))
     end;
-    nkBracket: begin
+    nkBracket, nkPar: begin
       // XXX: tySequence!
       result := genConstSimpleList(p, n);
-    end;
-    nkPar: begin
-      if hasSonWith(n, nkExprColonExpr) then
-        trans := transformRecordExpr(n)
-      else
-        trans := n;
-      result := genConstSimpleList(p, trans);
     end
     else begin
       //  result := genLiteral(p, n)
