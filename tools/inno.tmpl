@@ -17,12 +17,11 @@ ChangesEnvironment=yes
 [Languages]
 Name: english; MessagesFile: compiler:Default.isl
 
-[Files]
-  #for f in items(c.commonFiles):
+[Files] 
+  #for i in low(TFileCategory)..fcWindows:
+  #  for f in items(c.cat[i]):
 Source: ${expandFilename(f)}; DestDir: {app}\${extractDir(f)}; Flags: ignoreversion
-  #end for
-  #for f in items(c.windowsFiles):
-Source: ${expandFilename(f)}; DestDir: {app}\${extractDir(f)}; Flags: ignoreversion
+  #  end for
   #end for
 
 [Icons]

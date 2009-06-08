@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -529,6 +529,7 @@ begin
       addChar(tok.literal, buf[pos]); inc(pos);
     end;
     pos := handleCRLF(L, pos);
+    buf := L.buf;
     indent := 0;
     while buf[pos] = ' ' do begin inc(pos); inc(indent) end;
     if (col = indent) and (buf[pos] = '/') and (buf[pos+1] = '/') then
@@ -552,6 +553,7 @@ begin
     case buf[pos] of
       CR, LF: begin
         pos := HandleCRLF(L, pos);
+        buf := L.buf;
         tok.literal := tok.literal +{&} nl + '#';
       end;
       '}': begin inc(pos); break end;
@@ -578,6 +580,7 @@ begin
     case buf[pos] of
       CR, LF: begin
         pos := HandleCRLF(L, pos);
+        buf := L.buf;
         tok.literal := tok.literal +{&} nl + '#';
       end;
       '*': begin
@@ -606,7 +609,10 @@ begin
     case buf[pos] of
       ' ', Tabulator: Inc(pos);
       // newline is special:
-      CR, LF: pos := HandleCRLF(L, pos);
+      CR, LF: begin
+        pos := HandleCRLF(L, pos);
+        buf := L.buf;
+      end
       else break // EndOfFile also leaves the loop
     end
   until false;

@@ -68,8 +68,8 @@ procedure initVariable(p: BProc; v: PSym);
 begin
   if containsGarbageCollectedRef(v.typ) or (v.ast = nil) then
     // Language change: always initialize variables if v.ast == nil!
-    if not (skipVarGenericRange(v.typ).Kind in [tyArray, tyArrayConstr, tySet,
-                                                tyTuple, tyObject]) then begin
+    if not (skipTypes(v.typ, abstractVarRange).Kind in [tyArray, 
+            tyArrayConstr, tySet, tyTuple, tyObject]) then begin
       if gCmd = cmdCompileToLLVM then
         appf(p.s[cpsStmts], 'store $2 0, $2* $1$n', 
              [addrLoc(v.loc), getTypeDesc(p.module, v.loc.t)])
@@ -618,7 +618,7 @@ end;
 procedure genCaseStmt(p: BProc; t: PNode);
 begin
   genLineDir(p, t);
-  case skipVarGenericRange(t.sons[0].typ).kind of
+  case skipTypes(t.sons[0].typ, abstractVarRange).kind of
     tyString: genStringCase(p, t);
     tyFloat..tyFloat128:
       genCaseGeneric(p, t, 'if ($1 >= $2 && $1 <= $3) goto $4;$n',

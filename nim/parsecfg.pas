@@ -1,7 +1,7 @@
 //
 //
 //            Nimrod's Runtime Library
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -201,6 +201,7 @@ begin
     inc(pos, 2); // skip ""
     // skip leading newline:
     pos := HandleCRLF(c, pos);
+    buf := c.buf;
     repeat
       case buf[pos] of
         '"': begin
@@ -211,6 +212,7 @@ begin
         end;
         CR, LF: begin
           pos := HandleCRLF(c, pos);
+          buf := c.buf;
           tok.literal := tok.literal +{&} nl;
         end;
         lexbase.EndOfFile: begin
@@ -278,7 +280,10 @@ begin
       ' ': Inc(pos);
       Tabulator: inc(pos);
       '#', ';': while not (buf[pos] in [CR, LF, lexbase.EndOfFile]) do inc(pos);
-      CR, LF: pos := HandleCRLF(c, pos);
+      CR, LF: begin
+        pos := HandleCRLF(c, pos);
+        buf := c.buf;
+      end
       else break // EndOfFile also leaves the loop
     end
   until false;

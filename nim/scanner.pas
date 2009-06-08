@@ -52,20 +52,20 @@ type
     //  i = i + 1
     //cog.out(idents)
     //]]]
-    tkAddr, tkAnd, tkAs, tkAsm, 
-    tkBlock, tkBreak, tkCase, tkCast, 
-    tkConst, tkContinue, tkConverter, tkDiscard, 
-    tkDiv, tkElif, tkElse, tkEnd, 
-    tkEnum, tkExcept, tkException, tkFinally, 
-    tkFor, tkFrom, tkGeneric, tkIf, 
-    tkImplies, tkImport, tkIn, tkInclude, 
-    tkIs, tkIsnot, tkIterator, tkLambda, 
-    tkMacro, tkMethod, tkMod, tkNil, 
-    tkNot, tkNotin, tkObject, tkOf, 
-    tkOr, tkOut, tkProc, tkPtr, 
-    tkRaise, tkRef, tkReturn, tkShl, 
-    tkShr, tkTemplate, tkTry, tkTuple, 
-    tkType, tkVar, tkWhen, tkWhere, 
+    tkAbstract, tkAddr, tkAnd, tkAs, 
+    tkAsm, tkBlock, tkBreak, tkCase, 
+    tkCast, tkConst, tkContinue, tkConverter, 
+    tkDiscard, tkDiv, tkElif, tkElse, 
+    tkEnd, tkEnum, tkExcept, tkException, 
+    tkFinally, tkFor, tkFrom, tkGeneric, 
+    tkIf, tkImplies, tkImport, tkIn, 
+    tkInclude, tkIs, tkIsnot, tkIterator, 
+    tkLambda, tkMacro, tkMethod, tkMod, 
+    tkNil, tkNot, tkNotin, tkObject, 
+    tkOf, tkOr, tkOut, tkProc, 
+    tkPtr, tkRaise, tkRef, tkReturn, 
+    tkShl, tkShr, tkTemplate, tkTry, 
+    tkTuple, tkType, tkVar, tkWhen, 
     tkWhile, tkWith, tkWithout, tkXor, 
     tkYield, 
     //[[[end]]]
@@ -96,20 +96,20 @@ const
     //[[[cog
     //cog.out(strings)
     //]]]
-    'addr', 'and', 'as', 'asm', 
-    'block', 'break', 'case', 'cast', 
-    'const', 'continue', 'converter', 'discard', 
-    'div', 'elif', 'else', 'end', 
-    'enum', 'except', 'exception', 'finally', 
-    'for', 'from', 'generic', 'if', 
-    'implies', 'import', 'in', 'include', 
-    'is', 'isnot', 'iterator', 'lambda', 
-    'macro', 'method', 'mod', 'nil', 
-    'not', 'notin', 'object', 'of', 
-    'or', 'out', 'proc', 'ptr', 
-    'raise', 'ref', 'return', 'shl', 
-    'shr', 'template', 'try', 'tuple', 
-    'type', 'var', 'when', 'where', 
+    'abstract', 'addr', 'and', 'as', 
+    'asm', 'block', 'break', 'case', 
+    'cast', 'const', 'continue', 'converter', 
+    'discard', 'div', 'elif', 'else', 
+    'end', 'enum', 'except', 'exception', 
+    'finally', 'for', 'from', 'generic', 
+    'if', 'implies', 'import', 'in', 
+    'include', 'is', 'isnot', 'iterator', 
+    'lambda', 'macro', 'method', 'mod', 
+    'nil', 'not', 'notin', 'object', 
+    'of', 'or', 'out', 'proc', 
+    'ptr', 'raise', 'ref', 'return', 
+    'shl', 'shr', 'template', 'try', 
+    'tuple', 'type', 'var', 'when', 
     'while', 'with', 'without', 'xor', 
     'yield', 
     //[[[end]]]
@@ -648,6 +648,7 @@ begin
     inc(pos, 2); // skip ""
     // skip leading newline:
     pos := HandleCRLF(L, pos);
+    buf := L.buf;
     repeat
       case buf[pos] of
         '"': begin
@@ -658,6 +659,7 @@ begin
         end;
         CR, LF: begin
           pos := HandleCRLF(L, pos);
+          buf := L.buf;
           tok.literal := tok.literal +{&} tnl;
         end;
         lexbase.EndOfFile: begin
@@ -842,6 +844,7 @@ begin
       addChar(tok.literal, buf[pos]); inc(pos);
     end;
     pos := handleCRLF(L, pos);
+    buf := L.buf;
     indent := 0;
     while buf[pos] = ' ' do begin inc(pos); inc(indent) end;
     if (buf[pos] = '#') and (col = indent) then begin
@@ -875,6 +878,7 @@ begin
       // newline is special:
       CR, LF: begin
         pos := HandleCRLF(L, pos);
+        buf := L.buf;
         indent := 0;
         while buf[pos] = ' ' do begin
           Inc(pos); Inc(indent)

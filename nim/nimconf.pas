@@ -335,12 +335,19 @@ end;
 
 procedure LoadConfig(const project: string);
 var
-  conffile: string;
+  conffile, prefix: string;
 begin
   // set default value (can be overwritten):
-  if libpath = '' then
+  if libpath = '' then begin
     // choose default libpath:
-    libpath := joinPath(getPrefixDir(), 'lib');
+    prefix := getPrefixDir();
+    if (prefix = '/usr') then
+      libpath := '/usr/lib/nimrod'
+    else if (prefix = '/usr/local') then
+      libpath := '/usr/local/lib/nimrod'
+    else
+      libpath := joinPath(prefix, 'lib')
+  end;
   // read default config file:
   LoadSpecialConfig('nimrod.cfg');
   // read project config file:

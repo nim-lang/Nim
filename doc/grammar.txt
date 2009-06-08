@@ -155,7 +155,7 @@ colonAndEquals ::= [':' typeDesc] '=' expr
 constDecl ::= symbol ['*'] [pragma] colonAndEquals [COMMENT | IND COMMENT]
             | COMMENT
 constSection ::= 'const' indPush constDecl (SAD constDecl)* DED indPop
-typeDef ::= typeDesc | objectDef | enumDef
+typeDef ::= typeDesc | objectDef | enumDef | 'abstract' typeDesc
 
 objectField ::= symbol ['*'] [pragma]
 objectIdentPart ::=

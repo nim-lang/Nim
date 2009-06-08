@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -56,7 +56,8 @@ begin
         result := key;
       end
     end;
-    tyGenericInst: result := GetUniqueType(lastSon(key));
+    tyGenericInst, tyAbstract, tyOrdinal: 
+      result := GetUniqueType(lastSon(key));
     tyProc: begin end;
     else begin
       // we have to do a slow linear search because types may need
@@ -75,7 +76,7 @@ begin
     tyInt..tyFloat128, tyProc, tyAnyEnum: begin end;
     tyNone, tyForward: 
       InternalError('GetUniqueType: ' + typeToString(key));
-    tyGenericParam, tyGeneric, tySequence,
+    tyGenericParam, tyGeneric, tyAbstract, tySequence,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr, tyArrayConstr,
     tyArray, tyTuple, tyRange: begin
       // we have to do a slow linear search because types may need
@@ -94,7 +95,7 @@ begin
         result := key;
       end
     end;
-    tyGenericInst: result := GetUniqueType(lastSon(key));
+    tyGenericInst, tyAbstract: result := GetUniqueType(lastSon(key));
   end; *)
 end;
 

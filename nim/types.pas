@@ -48,6 +48,7 @@ function mutateType(t: PType; iter: TTypeMutator; closure: PObject): PType;
 
 function SameType(x, y: PType): Boolean;
 function SameTypeOrNil(a, b: PType): Boolean;
+function equalOrAbstractOf(x, y: PType): bool;
 
 type
   TParamsEquality = (paramsNotEqual,      // parameters are not equal
@@ -64,6 +65,7 @@ function equalParams(a, b: PNode): TParamsEquality;
 function isOrdinalType(t: PType): Boolean;
 function enumHasWholes(t: PType): Boolean;
 
+(*
 function skipRange(t: PType): PType;
 function skipGeneric(t: PType): PType;
 function skipGenericRange(t: PType): PType;
@@ -71,6 +73,16 @@ function skipVar(t: PType): PType;
 function skipVarGeneric(t: PType): PType;
 function skipVarGenericRange(t: PType): PType;
 function skipPtrsGeneric(t: PType): PType;
+*)
+
+const
+  abstractPtrs = {@set}[tyVar, tyPtr, tyRef, tyGenericInst, tyAbstract, tyOrdinal];
+  abstractVar = {@set}[tyVar, tyGenericInst, tyAbstract, tyOrdinal];
+  abstractRange = {@set}[tyGenericInst, tyRange, tyAbstract, tyOrdinal];
+  abstractVarRange = {@set}[tyGenericInst, tyRange, tyVar, tyAbstract, tyOrdinal];
+  abstractInst = {@set}[tyGenericInst, tyAbstract, tyOrdinal];
+
+function skipTypes(t: PType; kinds: TTypeKinds): PType;
 
 function elemType(t: PType): PType;
 
@@ -171,7 +183,7 @@ begin
   result := false;
   if a.kind = tyArray then
     if (firstOrd(a.sons[0]) = 0)
-    and (skipRange(a.sons[0]).kind in [tyInt..tyInt64])
+    and (skipTypes(a.sons[0], {@set}[tyRange]).kind in [tyInt..tyInt64])
     and (a.sons[1].kind = tyChar) then
       result := true
 end;
@@ -200,7 +212,7 @@ function elemType(t: PType): PType;
 begin
   assert(t <> nil);
   case t.kind of
-    tyGenericInst: result := elemType(lastSon(t));
+    tyGenericInst, tyAbstract: result := elemType(lastSon(t));
     tyArray, tyArrayConstr: result := t.sons[1];
     else result := t.sons[0];
   end;
@@ -259,11 +271,17 @@ begin
     result := lastSon(result);
 end;
 
+function skipTypes(t: PType; kinds: TTypeKinds): PType;
+begin
+  result := t;
+  while result.kind in kinds do result := lastSon(result);
+end;
+
 function isOrdinalType(t: PType): Boolean;
 begin
   assert(t <> nil);
   result := (t.Kind in [tyChar, tyInt..tyInt64, tyBool, tyEnum])
-    or (t.Kind = tyRange) and isOrdinalType(t.sons[0]);
+    or (t.Kind in [tyRange, tyOrdinal]) and isOrdinalType(t.sons[0]);
 end;
 
 function enumHasWholes(t: PType): Boolean;
@@ -380,7 +398,8 @@ begin
       if not result then
         result := searchTypeNodeForAux(t.n, predicate, marker);
     end;
-    tyGenericInst: result := searchTypeForAux(lastSon(t), predicate, marker);
+    tyGenericInst, tyAbstract:
+      result := searchTypeForAux(lastSon(t), predicate, marker);
     tyArray, tyArrayConstr, tySet, tyTuple: begin
       for i := 0 to sonsLen(t)-1 do begin
         result := searchTypeForAux(t.sons[i], predicate, marker);
@@ -438,7 +457,8 @@ begin
       if result = frNone then
         if isObjectWithTypeFieldPredicate(t) then result := frHeader
     end;
-    tyGenericInst: result := analyseObjectWithTypeFieldAux(lastSon(t), marker);
+    tyGenericInst, tyAbstract: 
+      result := analyseObjectWithTypeFieldAux(lastSon(t), marker);
     tyArray, tyArrayConstr, tyTuple: begin
       for i := 0 to sonsLen(t)-1 do begin
         res := analyseObjectWithTypeFieldAux(t.sons[i], marker);
@@ -511,7 +531,7 @@ begin
   result := false;
   if t = nil then exit;
   if tfAcyclic in t.flags then exit;
-  case skipGeneric(t).kind of 
+  case skipTypes(t, abstractInst).kind of 
     tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr,
     tyOpenArray: begin
       if not IntSetContainsOrIncl(marker, t.id) then begin
@@ -597,8 +617,8 @@ function TypeToString(typ: PType; prefer: TPreferedDesc = preferName): string;
 const
   typeToStr: array [TTypeKind] of string = (
     'None', 'bool', 'Char', 'empty', 'Array Constructor [$1]', 'nil',
-    'Generic', 'GenericInst', 'GenericParam',
-    'enum', 'anyenum',
+    'Generic', 'GenericInst', 'GenericParam', 'abstract $1',
+    'enum', 'ordinal[$1]',
     'array[$1, $2]', 'object', 'tuple', 'set[$1]', 'range[$1]',
     'ptr ', 'ref ', 'var ', 'seq[$1]', 'proc', 'pointer',
     'OpenArray[$1]', 'string', 'CString', 'Forward',
@@ -631,8 +651,10 @@ begin
       result := 'Array constructor[' +{&} rangeToStr(t.sons[0].n) +{&} ', '
                 +{&} typeToString(t.sons[1]) +{&} ']';
     tySequence: result := 'seq[' +{&} typeToString(t.sons[0]) +{&} ']';
+    tyOrdinal: result := 'ordinal[' +{&} typeToString(t.sons[0]) +{&} ']';
     tySet: result := 'set[' +{&} typeToString(t.sons[0]) +{&} ']';
     tyOpenArray: result := 'openarray[' +{&} typeToString(t.sons[0]) +{&} ']';
+    tyAbstract: result := 'abstract ' +{&} typeToString(t.sons[0], preferName);
     tyTuple: begin
       // we iterate over t.sons here, because t.n may be nil
       result := 'tuple[';
@@ -718,7 +740,7 @@ begin
         result := t.n.sons[0].sym.position;
       end;
     end;
-    tyGenericInst: result := firstOrd(lastSon(t));
+    tyGenericInst, tyAbstract: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for first(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -754,7 +776,7 @@ begin
       assert(t.n.sons[sonsLen(t.n)-1].kind = nkSym);
       result := t.n.sons[sonsLen(t.n)-1].sym.position;
     end;
-    tyGenericInst: result := firstOrd(lastSon(t));
+    tyGenericInst, tyAbstract: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for last(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -767,6 +789,7 @@ function lengthOrd(t: PType): biggestInt;
 begin
   case t.kind of
     tyInt64, tyInt32, tyInt: result := lastOrd(t);
+    tyAbstract: result := lengthOrd(t.sons[0]);
     else result := lastOrd(t) - firstOrd(t) + 1;
   end
 end;
@@ -855,7 +878,7 @@ begin
     SameLiteral(a.sons[1], b.sons[1])
 end;
 
-function sameTuple(a, b: PType): boolean;
+function sameTuple(a, b: PType; AbstractOf: bool): boolean;
 // two tuples are equivalent iff the names, types and positions are the same;
 // however, both types may not have any field names (t.n may be nil) which
 // complicates the matter a bit.
@@ -866,7 +889,10 @@ begin
   if sonsLen(a) = sonsLen(b) then begin
     result := true;
     for i := 0 to sonsLen(a)-1 do begin
-      result := SameType(a.sons[i], b.sons[i]);
+      if AbstractOf then 
+        result := equalOrAbstractOf(a.sons[i], b.sons[i])
+      else
+        result := SameType(a.sons[i], b.sons[i]);
       if not result then exit
     end;
     if (a.n <> nil) and (b.n <> nil) then begin
@@ -891,8 +917,8 @@ var
   a, b: PType;
 begin
   if x = y then begin result := true; exit end;
-  a := skipGeneric(x);
-  b := skipGeneric(y);
+  a := skipTypes(x, {@set}[tyGenericInst]);
+  b := skipTypes(y, {@set}[tyGenericInst]);
   assert(a <> nil);
   assert(b <> nil);
   if a.kind <> b.kind then begin result := false; exit end;
@@ -900,13 +926,13 @@ begin
     tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
     tyInt..tyFloat128: 
       result := true;
-    tyEnum, tyForward, tyObject:
+    tyEnum, tyForward, tyObject, tyAbstract:
       result := (a.id = b.id);
     tyTuple: 
-      result := sameTuple(a, b);
+      result := sameTuple(a, b, false);
     tyGenericInst:
       result := sameType(lastSon(a), lastSon(b));
-    tyGenericParam, tyGeneric, tySequence,
+    tyGenericParam, tyGeneric, tySequence, tyOrdinal,
     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
     tyArray, tyProc: begin
       if sonsLen(a) = sonsLen(b) then begin
@@ -926,7 +952,56 @@ begin
         and SameValue(a.n.sons[0], b.n.sons[0])
         and SameValue(a.n.sons[1], b.n.sons[1])
     end;
-    tyNone, tyAnyEnum: result := false;
+    tyNone: result := false;
+  end
+end;
+
+function equalOrAbstractOf(x, y: PType): bool;
+var
+  i: int;
+  a, b: PType;
+begin
+  if x = y then begin result := true; exit end;
+  if (x = nil) or (y = nil) then begin result := false; exit end;
+  a := skipTypes(x, {@set}[tyGenericInst]);
+  b := skipTypes(y, {@set}[tyGenericInst]);
+  assert(a <> nil);
+  assert(b <> nil);
+  if a.kind <> b.kind then begin 
+    if a.kind = tyAbstract then a := a.sons[0];
+    if a.kind <> b.kind then begin result := false; exit end
+  end;
+  case a.Kind of
+    tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
+    tyInt..tyFloat128: 
+      result := true;
+    tyEnum, tyForward, tyObject, tyAbstract:
+      result := (a.id = b.id);
+    tyTuple: 
+      result := sameTuple(a, b, true);
+    tyGenericInst:
+      result := equalOrAbstractOf(lastSon(a), lastSon(b));
+    tyGenericParam, tyGeneric, tySequence, tyOrdinal,
+    tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
+    tyArray, tyProc: begin
+      if sonsLen(a) = sonsLen(b) then begin
+        result := true;
+        for i := 0 to sonsLen(a)-1 do begin
+          result := equalOrAbstractOf(a.sons[i], b.sons[i]);
+          if not result then exit
+        end;
+        if result and (a.kind = tyProc) then 
+          result := a.callConv = b.callConv
+      end
+      else
+        result := false;
+    end;
+    tyRange: begin
+      result := equalOrAbstractOf(a.sons[0], b.sons[0])
+        and SameValue(a.n.sons[0], b.n.sons[0])
+        and SameValue(a.n.sons[1], b.n.sons[1])
+    end;
+    tyNone: result := false;
   end
 end;
 
@@ -963,9 +1038,9 @@ begin
   // if we have already checked the type, return true, because we stop the
   // evaluation if something is wrong:
   if IntSetContainsOrIncl(marker, t.id) then exit;
-  case skipGeneric(t).kind of 
+  case skipTypes(t, abstractInst).kind of 
     tyVar: begin
-      case skipGeneric(t.sons[0]).kind of
+      case skipTypes(t.sons[0], abstractInst).kind of
         tyVar: result := false; // ``var var`` is always an invalid type:
         tyOpenArray: result := (kind = skParam) and 
                                 typeAllowedAux(marker, t.sons[0], kind);
@@ -985,9 +1060,11 @@ begin
     tyEmpty, tyNil: result := kind = skConst;
     tyString, tyBool, tyChar, tyEnum, tyInt..tyFloat128, tyCString, tyPointer: 
       result := true;
-    tyAnyEnum: result := kind = skParam;
-    tyGenericInst: result := typeAllowedAux(marker, lastSon(t), kind);
-    tyRange: result := skipGeneric(t.sons[0]).kind in 
+    tyOrdinal: result := kind = skParam;
+    tyGenericInst, tyAbstract: 
+      result := typeAllowedAux(marker, lastSon(t), kind);
+    tyRange: 
+      result := skipTypes(t.sons[0], abstractInst).kind in
                          [tyChar, tyEnum, tyInt..tyFloat128];
     tyOpenArray: 
       result := (kind = skParam) and typeAllowedAux(marker, t.sons[0], skVar);
@@ -1166,7 +1243,7 @@ begin
       if a < maxAlign then a := maxAlign;
       result := align(result, a);
     end;
-    tyGenericInst: begin
+    tyGenericInst, tyAbstract: begin
       result := computeSizeAux(lastSon(typ), a);
     end;
     else begin

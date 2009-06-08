@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Installation Generator
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,6 +20,8 @@ const
   maxOS = 20 # max number of OSes
   maxCPU = 10 # max number of CPUs
   buildShFile = "build.sh"
+  installShFile = "install.sh"
+  deinstallShFile = "deinstall.sh"
 
 type
   TAppType = enum appConsole, appGUI
@@ -28,10 +30,22 @@ type
     actionCSource # action: create C sources
     actionInno,   # action: create Inno Setup installer
     actionZip     # action: create zip file
+    
+  TFileCategory = enum
+    fcWinBin,     # binaries for Windows
+    fcConfig,     # configuration files
+    fcData,       # data files
+    fcDoc,        # documentation files
+    fcLib,        # library files
+    fcOther,      # other files; will not be copied on UNIX
+    fcWindows,    # files only for Windows
+    fcUnix,       # files only for Unix; must be after ``fcWindows``
+    fcUnixBin     # binaries for Unix
+
   TConfigData = object of TObject
     actions: set[TAction]
-    commonFiles, windowsFiles, unixFiles, binPaths, authors,
-      oses, cpus: seq[string]
+    cat: array[TFileCategory, seq[string]]
+    binPaths, authors, oses, cpus: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
     ccompiler, innosetup: tuple[path, flags: string]
     name, version, description, license, infile, outdir: string
@@ -40,11 +54,14 @@ type
     app: TAppType
     nimrodArgs: string
 
+const
+  unixDirVars: array[fcConfig..fcLib, string] = [
+    "$configdir", "$datadir", "$docdir", "$libdir"
+  ]
+
 proc initConfigData(c: var TConfigData) =
   c.actions = {}
-  c.commonFiles = @[]
-  c.windowsFiles = @[]
-  c.unixFiles = @[]
+  for i in low(TFileCategory)..high(TFileCategory): c.cat[i] = @[]
   c.binPaths = @[]
   c.authors = @[]
   c.oses = @[]
@@ -63,16 +80,26 @@ proc initConfigData(c: var TConfigData) =
   c.uninstallScript = false
   c.vars = newStringTable(modeStyleInsensitive)
 
+proc skipRoot(f: string): string = 
+  var i = 0
+  result = ""
+  for component in split(f, {dirsep, altsep}): 
+    if i > 0: result = result / component
+    inc i
+  if result.len == 0: result = f
+
 include "inno.tmpl"
+include "build.tmpl"
 include "install.tmpl"
+include "deinstall.tmpl"
 
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.5"
+  Version = "0.6"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
-  (c) 2008 Andreas Rumpf
+  (c) 2009 Andreas Rumpf
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
@@ -146,6 +173,19 @@ proc pathFlags(p: var TCfgParser, k, v: string,
   of "flags": t.flags = v
   else: quit(errorStr(p, "unknown variable: " & k))
 
+proc filesOnly(p: var TCfgParser, k, v: string, dest: var seq[string]) =
+  case normalize(k)
+  of "files": addFiles(dest, splitSeq(v, {';'}))
+  else: quit(errorStr(p, "unknown variable: " & k))
+
+proc yesno(p: var TCfgParser, v: string): bool = 
+  case normalize(v)
+  of "yes", "y", "on", "true": 
+    result = true
+  of "no", "n", "off", "false":
+    result = false
+  else: quit(errorStr(p, "unknown value; use: yes|no"))
+
 proc parseIniFile(c: var TConfigData) =
   var
     p: TCfgParser
@@ -159,13 +199,6 @@ proc parseIniFile(c: var TConfigData) =
       of cfgEof: break
       of cfgSectionStart:
         section = normalize(k.section)
-        case section
-        of "innosetup": c.innoSetupFlag = true
-        of "installscript": c.installScript = true
-        of "uninstallscript": c.uninstallScript = true
-        of "var", "project", "common", "ccompiler", "windows", "unix", "7z": nil
-        else: nil # quit(errorStr(p, "invalid section: " & section))
-
       of cfgKeyValuePair:
         var v = k.value % c.vars
         c.vars[k.key] = v
@@ -187,24 +220,28 @@ proc parseIniFile(c: var TConfigData) =
           of "license": c.license = UnixToNativePath(k.value)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": nil
-        of "installscript", "uninstallscript":
-          quit(errorStr(p, "unknown variable: " & k.key))
-        of "common":
-          case normalize(k.key)
-          of "files": addFiles(c.commonFiles, splitSeq(v, {';'}))
-          else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
-        of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
+        of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
+        of "config": filesOnly(p, k.key, v, c.cat[fcConfig])
+        of "data": filesOnly(p, k.key, v, c.cat[fcData])
+        of "documentation": filesOnly(p, k.key, v, c.cat[fcDoc])
+        of "lib": filesOnly(p, k.key, v, c.cat[fcLib])
+        of "other": filesOnly(p, k.key, v, c.cat[fcOther])
         of "windows":
           case normalize(k.key)
-          of "files": addFiles(c.windowsFiles, splitSeq(v, {';'}))
+          of "files": addFiles(c.cat[fcWindows], splitSeq(v, {';'}))
           of "binpath": c.binPaths = splitSeq(v, {';'})
+          of "innosetup": c.innoSetupFlag = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        of "unix":
+        of "unix": 
           case normalize(k.key)
-          of "files": addFiles(c.unixFiles, splitSeq(v, {';'}))
+          of "files": addFiles(c.cat[fcUnix], splitSeq(v, {';'}))
+          of "installscript": c.installScript = yesno(p, v)
+          of "uninstallscript": c.uninstallScript = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
-        else: nil
+        of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
+        of "innosetup": pathFlags(p, k.key, v, c.innoSetup)
+        of "ccompiler": pathFlags(p, k.key, v, c.ccompiler)
+        else: quit(errorStr(p, "invalid section: " & section))
 
       of cfgOption: quit(errorStr(p, "syntax error"))
       of cfgError: quit(errorStr(p, k.msg))
@@ -242,15 +279,24 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
 proc buildDir(os, cpu: int): string =
   return "build" / ($os & "_" & $cpu)
 
+proc writeFile(filename, content: string) =  
+  var f: TFile
+  if openFile(f, filename, fmWrite):
+    writeln(f, content)
+    closeFile(f)
+  else:
+    quit("Cannot open for writing: " & filename)
+
 proc srcdist(c: var TConfigData) =
   for x in walkFiles("lib/*.h"): CopyFile("build" / extractFilename(x), x)
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = buildDir(osA, cpuA)
+      if existsDir(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
-                 "--gen_mapping $1 " &
-                 " --os:$2 --cpu:$3 $4") %
+                 "--gen_mapping " &
+                 " --os:$2 --cpu:$3 $1 $4") %
                  [c.nimrodArgs, c.oses[osA-1], c.cpus[cpuA-1],
                  changeFileExt(c.infile, "nim")]
       echo("Executing: " & cmd)
@@ -276,39 +322,33 @@ proc srcdist(c: var TConfigData) =
                 # file is identical, so delete duplicate:
                 RemoveFile(dup)
                 c.cfiles[osA][cpuA][i] = orig
-  var scrpt = GenerateInstallScript(c)
-  var f: TFile
-  if openFile(f, buildShFile, fmWrite):
-    writeln(f, scrpt)
-    closeFile(f)
-  else:
-    quit("Cannot open for writing: " & buildShFile)
-
+  writeFile(buildShFile, GenerateBuildScript(c))
+  
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
   var scrpt = GenerateInnoSetup(c)
-  var f: TFile
   var n = "build" / "install_$1_$2.iss" % [toLower(c.name), c.version]
-  if openFile(f, n, fmWrite):
-    writeln(f, scrpt)
-    closeFile(f)
-    when defined(windows):
-      if c.innoSetup.path.len == 0:
-        c.innoSetup.path = "iscc.exe"
-      var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-      var cmd = "$1 $2 /O$3 $4" % [c.innoSetup.path, c.innoSetup.flags,
-                                   outcmd, n]
-      Echo("Executing: " & cmd)
-      if executeShellCommand(cmd) == 0:
-        removeFile(n)
-      else:
-        quit("External program failed")
-  else:
-    quit("Cannot open for writing: " & n)
+  writeFile(n, scrpt)
+  when defined(windows):
+    if c.innoSetup.path.len == 0:
+      c.innoSetup.path = "iscc.exe"
+    var outcmd = if c.outdir.len == 0: "build" else: c.outdir
+    var cmd = "$1 $2 /O$3 $4" % [c.innoSetup.path, c.innoSetup.flags,
+                                 outcmd, n]
+    Echo("Executing: " & cmd)
+    if executeShellCommand(cmd) == 0:
+      removeFile(n)
+    else:
+      quit("External program failed")
 
 # ------------------ generate ZIP file ---------------------------------------
 when haveZipLib:
   proc zipDist(c: var TConfigData) =
+    if c.installScript: 
+      writeFile(installShFile, GenerateInstallScript(c))
+    if c.uninstallScript:
+      writeFile(deinstallShFile, GenerateDeinstallScript(c))
+    
     var proj = toLower(c.name)
     var n = "$1_$2.zip" % [proj, c.version]
     if c.outdir.len == 0: n = "build" / n
@@ -316,6 +356,8 @@ when haveZipLib:
     var z: TZipArchive
     if open(z, n, fmWrite):
       addFile(z, proj / buildShFile, buildShFile)
+      addFile(z, proj / installShFile, installShFile)
+      addFile(z, proj / deinstallShFile, deinstallShFile)
       for f in walkFiles("lib/*.h"):
         addFile(z, proj / "build" / extractFilename(f), f)
       for osA in 1..c.oses.len:
@@ -323,8 +365,9 @@ when haveZipLib:
           var dir = buildDir(osA, cpuA)
           for k, f in walkDir(dir):
             if k == pcFile: addFile(z, proj / dir / extractFilename(f), f)
-      for f in items(c.commonFiles): addFile(z, proj / f, f)
-      for f in items(c.unixFiles): addFile(z, proj / f, f)
+
+      for cat in items({fcConfig..fcOther, fcUnix}): 
+        for f in items(c.cat[cat]): addFile(z, proj / f, f)
       close(z)
     else:
       quit("Cannot open for writing: " & n)

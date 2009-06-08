@@ -111,8 +111,7 @@ begin
       DefineSymbol('mswindows');
       DefineSymbol('win32');
     end;
-    osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX,
-    osAtari, osAix: begin
+    osLinux, osMorphOS, osSkyOS, osIrix, osPalmOS, osQNX, osAtari, osAix: begin
       // these are all 'unix-like'
       DefineSymbol('unix');
       DefineSymbol('posix');

@@ -16,7 +16,7 @@ unit rnimsyn;
 interface
 
 uses
-  nsystem, charsets, lexbase, scanner, options, idents, strutils, ast, msgs,
+  nsystem, charsets, scanner, options, idents, strutils, ast, msgs,
   lists;
 
 type
@@ -543,6 +543,7 @@ begin
     nkRefTy:          result := lsub(n.sons[0])+length('ref_');
     nkPtrTy:          result := lsub(n.sons[0])+length('ptr_');
     nkVarTy:          result := lsub(n.sons[0])+length('var_');
+    nkAbstractTy:     result := lsub(n.sons[0])+length('abstract_');
     nkTypeDef:        result := lsons(n)+3;
     nkOfInherit:      result := lsub(n.sons[0])+length('of_');
     nkProcTy:         result := lsons(n)+length('proc_');
@@ -1157,6 +1158,10 @@ begin
     end;
     nkVarTy: begin
       putWithSpace(g, tkVar, 'var');
+      gsub(g, n.sons[0]);
+    end;
+    nkAbstractTy: begin
+      putWithSpace(g, tkAbstract, 'abstract');
       gsub(g, n.sons[0]);
     end;
     nkTypeDef: begin

@@ -1,4 +1,4 @@
-addr and as asm
+abstract addr and as asm
 block break
 case cast const continue converter
 discard div
@@ -14,6 +14,6 @@ raise ref return
 shl shr
 template try tuple type
 var
-when where while with without
+when while with without
 xor
 yield

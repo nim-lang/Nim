@@ -522,6 +522,10 @@ begin
             if sym.typ = nil then invalidPragma(it);
             include(sym.typ.flags, tfVarargs);
           end;
+          wBorrow: begin
+            noVal(it);
+            include(sym.flags, sfBorrow);
+          end;
           wFinal: begin
             noVal(it);
             if sym.typ = nil then invalidPragma(it);
@@ -595,7 +599,8 @@ begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
     wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
     wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
-    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge]);
+    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wBorrow]);
 end;
 
 procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
@@ -608,7 +613,7 @@ end;
 procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-         wImportc, wExportc, wNodecl, wMagic, wDeprecated]);
+         wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow]);
 end;
 
 procedure pragmaStmt(c: PContext; s: PSym; n: PNode);

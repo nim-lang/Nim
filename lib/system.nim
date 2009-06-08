@@ -38,7 +38,7 @@ type
   string* {.magic: String.} ## built-in string type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type
-  TAnyEnum {.magic: AnyEnum.}
+  Ordinal* {.magic: Ordinal.}[T]
 
 type
   `nil` {.magic: "Nil".}
@@ -115,7 +115,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       data: array[0..100_000_000, char]
     NimString = ptr NimStringDesc
 
-  include hti
+  include "system/hti"
 
 type
   Byte* = Int8 ## this is an alias for ``int8``, that is a signed
@@ -157,6 +157,8 @@ type
                               ## system raises.
   EIO* = object of ESystem    ## raised if an IO error occured.
   EOS* = object of ESystem    ## raised if an operating system service failed.
+  EInvalidLibrary* = object of EOS ## raised if a dynamic library
+                                   ## could not be loaded.
   ERessourceExhausted* = object of ESystem ## raised if a ressource request
                                            ## could not be fullfilled.
   EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
@@ -218,26 +220,26 @@ proc sizeof*[T](x: T): natural {.magic: "SizeOf", noSideEffect.}
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
 
-proc succ*[T](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
+proc succ*[T](x: ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc pred*[T](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
+proc pred*[T](x: ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## returns the ``y``-th predecessor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var T, y = 1) {.magic: "Inc".}
+proc inc*[T](x: var ordinal[T], y = 1) {.magic: "Inc".}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var T, y = 1) {.magic: "Dec".}
+proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec".}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
-
+  
 proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq".}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = []; setlen(s, len)``, but more
@@ -546,7 +548,7 @@ proc `-+-` *[T](x, y: set[T]): set[T] {.magic: "SymDiffSet", noSideEffect.}
   ## ``(A - B) + (B - A)``, but more efficient.
 
 # comparison operators:
-proc `==` *(x, y: TAnyEnum): bool {.magic: "EqEnum", noSideEffect.}
+proc `==` *[T](x, y: ordinal[T]): bool {.magic: "EqEnum", noSideEffect.}
 proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
@@ -556,7 +558,7 @@ proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
 proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
 
-proc `<=` *(x, y: TAnyEnum): bool {.magic: "LeEnum", noSideEffect.}
+proc `<=` *[T](x, y: ordinal[T]): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
 proc `<=` *(x, y: char): bool {.magic: "LeCh", noSideEffect.}
 proc `<=` *[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
@@ -564,7 +566,7 @@ proc `<=` *(x, y: bool): bool {.magic: "LeB", noSideEffect.}
 proc `<=` *[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
 proc `<=` *(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
 
-proc `<` *(x, y: TAnyEnum): bool {.magic: "LtEnum", noSideEffect.}
+proc `<` *[T](x, y: ordinal[T]): bool {.magic: "LtEnum", noSideEffect.}
 proc `<` *(x, y: string): bool {.magic: "LtStr", noSideEffect.}
 proc `<` *(x, y: char): bool {.magic: "LtCh", noSideEffect.}
 proc `<` *[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
@@ -925,7 +927,7 @@ proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
-proc `$` *(x: TAnyEnum): string {.magic: "EnumToStr", noSideEffect.}
+proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
   ## The stingify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If a
   ## a ``$`` operator for a concrete enumeration is provided, this is
@@ -1182,14 +1184,9 @@ proc GC_unref*(x: string) {.magic: "GCunref".}
 # however, stack-traces are available for most parts
 # of the code
 
-proc echo*[Ty](x: Ty) {.inline.}
+proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
   ## available for the ECMAScript target too!
-
-proc echo*[Ty](x: openarray[Ty]) {.inline.}
-  ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
-  ## available for the ECMAScript target too!
-
 
 template newException(exceptn, message: expr): expr =
   block: # open a new scope
@@ -1235,7 +1232,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   {.push stack_trace: off.}
 
-  include ansi_c
+  include "system/ansi_c"
 
   proc cmp(x, y: string): int =
     return int(c_strcmp(x, y))
@@ -1390,7 +1387,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## retrieves the current position of the file pointer that is used to
     ## read from the file `f`. The file's first byte has the index zero.
 
-  include sysio
+  include "system/sysio"
 
   iterator lines*(filename: string): string =
     ## Iterate over any line in the file named `filename`.
@@ -1416,12 +1413,12 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   # ----------------------------------------------------------------------------
 
-  include excpt
+  include "system/excpt"
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include arithm
+  include "system/arithm"
   {.pop.} # stack trace
-  include dyncalls
+  include "system/dyncalls"
 
   const
     GenericSeqSize = (2 * sizeof(int))
@@ -1448,10 +1445,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
-  include mm
-  include sysstr
-  include assign
-  include repr
+  include "system/mm"
+  include "system/sysstr"
+  include "system/assign"
+  include "system/repr"
 
   # we have to implement it here after gentostr for the cstrToNimStrDummy proc
   proc getCurrentExceptionMsg(): string =
@@ -1460,14 +1457,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   {.push stack_trace: off.}
   when defined(endb):
-    include debugger
+    include "system/debugger"
 
   when defined(profiler):
-    include profiler
+    include "system/profiler"
   {.pop.} # stacktrace
 
 elif defined(ecmaScript):
-  include ecmasys
+  include "system/ecmasys"
 elif defined(NimrodVM):
   # Stubs for the GC interface:
   proc GC_disable() = nil
@@ -1481,8 +1478,6 @@ elif defined(NimrodVM):
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
-  proc echo[Ty](x: Ty) = nil
-  proc echo[Ty](x: openarray[Ty]) = nil
   
   proc cmp(x, y: string): int =
     if x == y: return 0

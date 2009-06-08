@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -21,6 +21,10 @@ uses
 function SearchForProc(c: PContext; fn: PSym; tos: int): PSym;
 // Searchs for the fn in the symbol table. If the parameter lists are exactly
 // the same the sym in the symbol table is returned, else nil.
+
+function SearchForBorrowProc(c: PContext; fn: PSym; tos: int): PSym;
+// Searchs for the fn in the symbol table. If the parameter lists are suitable
+// for borrowing the sym in the symbol table is returned, else nil.
 
 implementation
 
@@ -66,6 +70,48 @@ begin
       end
     end;
     result := NextIdentIter(it, c.tab.stack[tos])
+  end
+end;
+
+function paramsFitBorrow(a, b: PNode): bool;
+var
+  i, len: int;
+  m, n: PSym;
+begin
+  len := sonsLen(a);
+  result := false;
+  if len = sonsLen(b) then begin
+    for i := 1 to len-1 do begin
+      m := a.sons[i].sym;
+      n := b.sons[i].sym;
+      assert((m.kind = skParam) and (n.kind = skParam));
+      if not equalOrAbstractOf(m.typ, n.typ) then exit;
+    end;
+    // return type:
+    if not equalOrAbstractOf(a.sons[0].typ, b.sons[0].typ) then exit;
+    result := true
+  end
+end;
+
+function SearchForBorrowProc(c: PContext; fn: PSym; tos: int): PSym;
+// Searchs for the fn in the symbol table. If the parameter lists are suitable
+// for borrowing the sym in the symbol table is returned, else nil.
+var
+  it: TIdentIter;
+  scope: int;
+begin
+  for scope := tos downto 0 do begin
+    result := initIdentIter(it, c.tab.stack[scope], fn.Name);
+    while result <> nil do begin
+      // watchout! result must not be the same as fn!
+      if (result.Kind = fn.kind) and (result.id <> fn.id) then begin
+        if equalGenericParams(result.ast.sons[genericParamsPos], 
+                              fn.ast.sons[genericParamsPos]) then begin
+          if paramsFitBorrow(fn.typ.n, result.typ.n) then exit;
+        end
+      end;
+      result := NextIdentIter(it, c.tab.stack[scope])
+    end
   end
 end;
 

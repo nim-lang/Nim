@@ -30,6 +30,10 @@ manually. An alternative is to create a symbolic link in ``/usr/bin``::
 
   [sudo] ln -s $your_install_dir/bin/nimrod  /usr/bin/nimrod
 
+From version 0.7.10 onwards ``install.sh`` and ``deinstall.sh`` scripts are
+provided for distributing the files over the UNIX hierarchy. However, this
+makes updating your Nimrod installation more cumbersome. 
+
 
 Installation on the Macintosh
 -----------------------------

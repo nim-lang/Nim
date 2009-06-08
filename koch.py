@@ -12,7 +12,7 @@ from pycompab import *
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.7.8'
+NIMROD_VERSION = '0.7.10'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**!
@@ -244,9 +244,9 @@ def MakeExecutable(file):
   os.chmod(file, 493)
 
 class Changed:
-  """ Returns a Changed object. This object evals to true if one of the
-      given files has changed, false otherwise in a boolean context. You have
-      to call the object's success() method if the building has been a success.
+  """ Returns a Changed object. check() returns true iff one of the
+      given files has changed. You have to call the object's success() 
+      method if the build has been a success.
 
       Example:
 
@@ -342,7 +342,7 @@ def cmd_nim():
   CogRule("wordrecg", "nim/wordrecg.pas", "data/keywords.txt")
   CogRule("commands", "nim/commands.pas",
           "data/basicopt.txt data/advopt.txt")
-  CogRule("macros", "lib/macros.nim", "koch.py data/ast.yml")
+  CogRule("macros", "lib/pure/macros.nim", "koch.py data/ast.yml")
   c = Changed("nim", Glob("nim/*.pas"), EXPLAIN)
   if c.check() or force:
     Exec(FPC_CMD)
@@ -353,8 +353,7 @@ def cmd_nim():
 
 def cmd_rod(options):
   prereqs = Glob("lib/*.nim") + Glob("rod/*.nim") + [
-    "lib/nimbase.h", "lib/dlmalloc.c", "lib/dlmalloc.h",
-    "config/nimrod.cfg"]
+    "lib/nimbase.h", "config/nimrod.cfg"]
   c = Changed("rod", prereqs, EXPLAIN)
   if c.check() or cmd_nim() or force:
     buildRod(options)
@@ -386,7 +385,7 @@ Possible Commands:
   rodsrc                   generates Nimrod version from Pascal version
   web                      generates the website
   profile                  profile the Nimrod compiler
-  csource                  build the C sources for installation
+  csource [options]        build the C sources for installation
   zip                      build the installation ZIP package
   inno                     build the Inno Setup installer
 """, NIMROD_VERSION + ' ' * (44-len(NIMROD_VERSION)), sys.version)
@@ -423,13 +422,14 @@ def main(args):
     elif cmd == "profile": cmd_profile()
     elif cmd == "zip": cmd_zip()
     elif cmd == "inno": cmd_inno()
-    elif cmd == "csource": cmd_csource()
+    elif cmd == "csource": cmd_csource(join(args[i+1:]))
     elif cmd == "install": cmd_install() # for backwards compability
     else: Error("illegal command: " + cmd)
     
-def cmd_csource():
-  Exec(Subs("nimrod cc -r tools/niminst --var:version=$1 csource rod/nimrod",
-       NIMROD_VERSION))
+def cmd_csource(args):
+  Exec(Subs(
+    "nimrod cc $2 -r tools/niminst --var:version=$1 csource rod/nimrod $2",
+    NIMROD_VERSION, args))
 
 def cmd_zip():
   Exec(Subs("nimrod cc -r tools/niminst --var:version=$1 zip rod/nimrod",

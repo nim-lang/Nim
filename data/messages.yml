@@ -172,10 +172,9 @@
 {'errXCannotBeInParamDecl': '$1 cannot be declared in parameter declaration'},
 {'errPragmaOnlyInHeaderOfProc':
   'pragmas are only in the header of a proc allowed'},
-{'errImportedProcCannotHaveImpl':
-  'an imported proc cannot have an implementation'},
-{'errImplOfXNotAllowed': "implementation of '$1' is not allowed here"},
+{'errImplOfXNotAllowed': "implementation of '$1' is not allowed"},
 {'errImplOfXexpected': "implementation of '$1' expected"},
+{'errNoSymbolToBorrowFromFound': "no symbol to borrow from found"},
 {'errDiscardValue': 'value returned by statement has to be discarded'},
 {'errInvalidDiscard': 'statement returns no value that can be discarded'},
 {'errUnknownPrecedence':

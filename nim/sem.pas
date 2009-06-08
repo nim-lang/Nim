@@ -134,6 +134,7 @@ var
   p: PEvalContext;
   s: PStackFrame;
 begin
+  include(sym.flags, sfUsed);
   p := newEvalContext(c.module, '');
   s := newStackFrame();
   s.call := n;
@@ -156,7 +157,8 @@ end;
 
 procedure CheckBool(t: PNode);
 begin
-  if (t.Typ = nil) or (skipVarGeneric(t.Typ).kind <> tyBool) then
+  if (t.Typ = nil) or (skipTypes(t.Typ, {@set}[tyGenericInst, 
+      tyVar, tyOrdinal]).kind <> tyBool) then
     liMessage(t.Info, errExprMustBeBool);
 end;
 

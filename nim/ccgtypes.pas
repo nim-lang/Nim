@@ -62,7 +62,7 @@ begin
     app(result, toRope(s.id));
     if optGenMapping in gGlobalOptions then
       if s.owner <> nil then
-        appf(gMapping, '"$1.$2": $3$n',
+        appf(gMapping, 'r"$1.$2": $3$n',
           [toRope(s.owner.Name.s), toRope(s.name.s), result]);
     s.loc.r := result;
   end
@@ -116,8 +116,9 @@ begin
     end;
     tyOpenArray, tyArrayConstr, tyArray: result := ctArray;
     tyObject, tyTuple: result := ctStruct;
-    tyGeneric, tyGenericInst, tyGenericParam: result := mapType(lastSon(typ));
-    tyEnum, tyAnyEnum: begin
+    tyGeneric, tyGenericInst, tyGenericParam, tyAbstract, tyOrdinal: 
+      result := mapType(lastSon(typ));
+    tyEnum: begin
       if firstOrd(typ) < 0 then
         result := ctInt32
       else begin
@@ -150,7 +151,7 @@ end;
 
 function mapReturnType(typ: PType): TCTypeKind;
 begin
-  if skipGeneric(typ).kind = tyArray then result := ctPtr
+  if skipTypes(typ, abstractInst).kind = tyArray then result := ctPtr
   else result := mapType(typ)
 end;
 
@@ -173,8 +174,9 @@ begin
   else begin
     case mapType(rettype) of
       ctArray:
-        result := not (skipGeneric(rettype).kind in [tyVar, tyRef, tyPtr]);
-      ctStruct: result := needsComplexAssignment(skipGeneric(rettype));
+        result := not (skipTypes(rettype, abstractInst).kind in [tyVar, tyRef, tyPtr]);
+      ctStruct: 
+        result := needsComplexAssignment(skipTypes(rettype, abstractInst));
       else result := false;
     end
   end
@@ -285,7 +287,6 @@ begin
   if (t.sons[0] <> nil) and isInvalidReturnType(t.sons[0]) then begin
     if params <> nil then app(params, ', ');
     arr := t.sons[0];
-    //if skipGeneric(arr).kind = tyArray then arr := arr.sons[1];
     app(params, getTypeDescAux(m, arr, check));
     if (mapReturnType(t.sons[0]) <> ctArray) or (gCmd = cmdCompileToLLVM) then 
       app(params, '*'+'');
@@ -612,7 +613,7 @@ begin
       IdTablePut(m.typeCache, t, con(result, '*'+''));
       if not isImportedType(t) then begin
         useMagic(m, 'TGenericSeq');
-        if skipGeneric(t.sons[0]).kind <> tyEmpty then 
+        if skipTypes(t.sons[0], abstractInst).kind <> tyEmpty then 
           appf(m.s[cfsSeqTypes],
             'struct $2 {$n' +
             '  TGenericSeq Sup;$n' +
@@ -663,7 +664,8 @@ begin
         end
       end
     end;
-    tyGenericInst: result := getTypeDescAux(m, lastSon(t), check);
+    tyGenericInst, tyAbstract, tyOrdinal: 
+      result := getTypeDescAux(m, lastSon(t), check);
     else begin
       InternalError('getTypeDescAux(' + typeKindToStr[t.kind] + ')');
       result := nil

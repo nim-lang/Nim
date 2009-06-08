@@ -27,32 +27,36 @@
 ## resulting C code will just include <XYZ.h> and *not* define the
 ## symbols declared here.
 
+from times import TTime
+
 const
   hasSpawnH = defined(linux)
   hasAioH = defined(linux)
 
-const
-  C_IRUSR* = 0c000400 ## Read by owner.
-  C_IWUSR* = 0c000200 ## Write by owner.
-  C_IXUSR* = 0c000100 ## Execute by owner.
-  C_IRGRP* = 0c000040 ## Read by group.
-  C_IWGRP* = 0c000020 ## Write by group.
-  C_IXGRP* = 0c000010 ## Execute by group.
-  C_IROTH* = 0c000004 ## Read by others.
-  C_IWOTH* = 0c000002 ## Write by others.
-  C_IXOTH* = 0c000001 ## Execute by others.
-  C_ISUID* = 0c004000 ## Set user ID.
-  C_ISGID* = 0c002000 ## Set group ID.
-  C_ISVTX* = 0c001000 ## On directories, restricted deletion flag.
-  C_ISDIR* = 0c040000 ## Directory.
-  C_ISFIFO* = 0c010000 ##FIFO.
-  C_ISREG* = 0c100000 ## Regular file.
-  C_ISBLK* = 0c060000 ## Block special.
-  C_ISCHR* = 0c020000 ## Character special.
-  C_ISCTG* = 0c110000 ## Reserved.
-  C_ISLNK* = 0c120000 ## Symbolic link.</p>
-  C_ISSOCK* = 0c140000 ## Socket.
+when false:
+  const
+    C_IRUSR = 0c000400 ## Read by owner.
+    C_IWUSR = 0c000200 ## Write by owner.
+    C_IXUSR = 0c000100 ## Execute by owner.
+    C_IRGRP = 0c000040 ## Read by group.
+    C_IWGRP = 0c000020 ## Write by group.
+    C_IXGRP = 0c000010 ## Execute by group.
+    C_IROTH = 0c000004 ## Read by others.
+    C_IWOTH = 0c000002 ## Write by others.
+    C_IXOTH = 0c000001 ## Execute by others.
+    C_ISUID = 0c004000 ## Set user ID.
+    C_ISGID = 0c002000 ## Set group ID.
+    C_ISVTX = 0c001000 ## On directories, restricted deletion flag.
+    C_ISDIR = 0c040000 ## Directory.
+    C_ISFIFO = 0c010000 ##FIFO.
+    C_ISREG = 0c100000 ## Regular file.
+    C_ISBLK = 0c060000 ## Block special.
+    C_ISCHR = 0c020000 ## Character special.
+    C_ISCTG = 0c110000 ## Reserved.
+    C_ISLNK = 0c120000 ## Symbolic link.</p>
+    C_ISSOCK = 0c140000 ## Socket.
 
+const
   MM_NULLLBL* = nil
   MM_NULLSEV* = 0
   MM_NULLMC* = 0
@@ -104,9 +108,9 @@ type
     
   TGlob* {.importc: "glob_t", header: "<glob.h>", 
            final, pure.} = object ## glob_t
-    gl_pathc*: int         ## Count of paths matched by pattern. 
-    gl_pathv*: ptr cstring ## Pointer to a list of matched pathnames. 
-    gl_offs*: int          ## Slots to reserve at the beginning of gl_pathv. 
+    gl_pathc*: int          ## Count of paths matched by pattern. 
+    gl_pathv*: cstringArray ## Pointer to a list of matched pathnames. 
+    gl_offs*: int           ## Slots to reserve at the beginning of gl_pathv. 
   
   TGroup* {.importc: "struct group", header: "<grp.h>", 
             final, pure.} = object ## struct group
@@ -198,7 +202,7 @@ type
                        header: "<sys/types.h>".} = int
   Tpthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
   Tsuseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = int
-  Ttime* {.importc: "time_t", header: "<sys/types.h>".} = int
+  #Ttime* {.importc: "time_t", header: "<sys/types.h>".} = int
   Ttimer* {.importc: "timer_t", header: "<sys/types.h>".} = int
   Ttrace_attr* {.importc: "trace_attr_t", header: "<sys/types.h>".} = int
   Ttrace_event_id* {.importc: "trace_event_id_t", 
@@ -2430,5 +2434,8 @@ proc setservent*(a1: cint) {.importc, header: "<netdb.h>".}
 
 proc poll*(a1: ptr Tpollfd, a2: Tnfds, a3: int): cint {.
   importc, header: "<poll.h>".}
+
+proc realpath*(name, resolved: CString): CString {.
+  importc: "realpath", header: "<stdlib.h>".}
 
 
