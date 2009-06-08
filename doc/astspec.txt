@@ -1,0 +1,572 @@
+The AST in Nimrod
+=================
+This section describes how the AST is modelled with Nimrod's type system.
+The AST consists of nodes (``PNimrodNode``) with a variable number of
+children. Each node has a field named ``kind`` which describes what the node
+contains:
+
+.. code-block:: nimrod
+
+  type
+    TNimrodNodeKind = enum ## kind of a node; only explanatory
+      nnkNone,             ## invalid node kind
+      nnkEmpty,            ## empty node
+      nnkIdent,            ## node contains an identifier
+      nnkIntLit,           ## node contains an int literal (example: 10)
+      nnkStrLit,           ## node contains a string literal (example: "abc")
+      nnkNilLit,           ## node contains a nil literal (example: nil)
+      nnkCaseStmt,         ## node represents a case statement
+      ...                  ## many more
+
+    PNimrodNode = ref TNimrodNode
+    TNimrodNode {.final.} = object
+      case kind                        ## the node's kind
+      of nnkNone, nnkEmpty, nnkNilLit:
+        nil                            ## node contains no additional fields
+      of nnkCharLit..nnkInt64Lit:
+        intVal: biggestInt             ## the int literal
+      of nnkFloatLit..nnkFloat64Lit:
+        floatVal: biggestFloat         ## the float literal
+      of nnkStrLit..nnkTripleStrLit:
+        strVal: string                 ## the string literal
+      of nnkIdent:
+        ident: TNimrodIdent            ## the identifier
+      of nnkSym:
+        symbol: PNimrodSymbol          ## the symbol (after symbol lookup phase)
+      else:
+        sons: seq[PNimrodNode]         ## the node's sons (or children)
+
+For the ``PNimrodNode`` type, the ``[]`` operator has been overloaded:
+``n[i]`` is ``n``'s ``i``-th child.
+
+To specify the AST for the different Nimrod constructs, the notation
+``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
+``nodekind(field=value)`` is used.
+
+
+Leaf nodes/Atoms
+================
+A leaf of the AST often corresponds to a terminal symbol in the concrete 
+syntax.
+
+-----------------                ---------------------------------------------
+Nimrod expression                corresponding AST
+-----------------                ---------------------------------------------
+``42``                           ``nnkIntLit(intVal = 42)``
+``42'i8``                        ``nnkInt8Lit(intVal = 42)``
+``42'i16``                       ``nnkInt16Lit(intVal = 42)``
+``42'i32``                       ``nnkInt32Lit(intVal = 42)``
+``42'i64``                       ``nnkInt64Lit(intVal = 42)``
+``42.0``                         ``nnkFloatLit(floatVal = 42.0)``
+``42.0'f32``                     ``nnkFloat32Lit(floatVal = 42.0)``
+``42.0'f64``                     ``nnkFloat64Lit(floatVal = 42.0)``
+``"abc"``                        ``nnkStrLit(strVal = "abc")``
+``r"abc"``                       ``nnkRStrLit(strVal = "abc")``
+``"""abc"""``                    ``nnkTripleStrLit(strVal = "abc")``
+``' '``                          ``nnkCharLit(intVal = 32)``
+``nil``                          ``nnkNilLit()``
+``myIdentifier``                 ``nnkIdent(ident = !"myIdentifier")``
+``myIdentifier``                 after lookup pass: ``nnkSym(symbol = ...)``
+-----------------                ---------------------------------------------
+
+Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
+get transferred into ``nnkSym`` nodes. However, a macro receives an AST that
+has not been checked for semantics and thus the identifiers have not been
+looked up. Thus macros deal with ``nnkIdent`` nodes. 
+ 
+
+Calls/expressions
+=================
+
+Command call
+------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  echo "abc", "xyz"
+
+AST:
+
+.. code-block:: nimrod
+  nnkCommand(nnkIdent(!"echo"), nnkStrLit("abc"), nnkStrLit("xyz"))
+
+
+Call with ``()``
+----------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  echo("abc", "xyz")
+
+AST:
+
+.. code-block:: nimrod
+  nnkCall(nnkIdent(!"echo"), nnkStrLit("abc"), nnkStrLit("xyz"))
+
+
+Infix operator call
+-------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  "abc" & "xyz"
+
+AST:
+
+.. code-block:: nimrod
+  nnkInfix(nnkIdent(!"&"), nnkStrLit("abc"), nnkStrLit("xyz"))
+
+
+Prefix operator call
+--------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  ? "xyz"
+
+AST:
+
+.. code-block:: nimrod
+  nnkPrefix(nnkIdent(!"?"), nnkStrLit("abc"))
+
+
+Postfix operator call
+---------------------
+
+**Note:** There are no postfix operators in Nimrod. However, the 
+``nnkPostfix`` node is used for the *asterisk export marker* ``*``:
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  identifier*
+
+AST:
+
+.. code-block:: nimrod
+  nnkPostfix(nnkIdent(!"*"), nnkIdent(!"identifier"))
+
+
+Call with named arguments
+-------------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  writeln(file=stdout, "hallo")
+
+AST:
+
+.. code-block:: nimrod
+  nnkCall(nnkIdent(!"writeln"), 
+          nnkExprEqExpr(nnkIdent(!"file"), nnkIdent(!"stdout")), 
+          nnkStrLit("hallo"))
+
+
+Dereference operator ``^``
+--------------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  x^
+
+AST:
+
+.. code-block:: nimrod
+  nnkDerefExpr(nnkIdent(!"x"))
+
+
+Addr operator
+-------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  addr(x)
+
+AST:
+
+.. code-block:: nimrod
+  nnkAddr(nnkIdent(!"x"))
+
+
+Cast operator
+-------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  cast[T](x)
+
+AST:
+
+.. code-block:: nimrod
+  nnkCast(nnkIdent(!"T"), nnkIdent(!"x"))
+
+
+Object access operator ``.``
+----------------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  x.y
+
+AST:
+
+.. code-block:: nimrod
+  nnkDotExpr(nnkIdent(!"x"), nnkIdent(!"y"))
+
+
+Array access operator ``[]``
+----------------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  x[y]
+
+AST:
+
+.. code-block:: nimrod
+  nnkBracketExpr(nnkIdent(!"x"), nnkIdent(!"y"))
+
+
+Parentheses
+-----------
+
+Parentheses for affecting operator precedence or tuple construction 
+are built with the ``nnkPar`` node.
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  (1, 2, (3))
+
+AST:
+
+.. code-block:: nimrod
+  nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
+  
+  
+Curly braces
+------------
+
+Curly braces are used as the set constructor. 
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  {1, 2, 3}
+
+AST:
+
+.. code-block:: nimrod
+  nnkCurly(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+
+
+Brackets
+--------
+
+Brackets are used as the array constructor.  
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  [1, 2, 3]
+
+AST:
+
+.. code-block:: nimrod
+  nnkBracket(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+
+
+Ranges
+------
+
+Ranges occur in set constructors, case statement branches or array slices.
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  1..3
+
+AST:
+
+.. code-block:: nimrod
+  nnkRange(nnkIntLit(1), nnkIntLit(3))
+
+
+If expression
+-------------
+
+The representation of the if expression is subtle, but easy to traverse.
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  if cond1: expr1 elif cond2: expr2 else: expr3
+
+AST:
+
+.. code-block:: nimrod
+  nnkIfExpr(
+    nnkElifExpr(cond1, expr1),
+    nnkElifExpr(cond2, expr2),
+    nnkElseExpr(expr3)
+  )
+
+
+Statements
+==========
+
+If statement
+------------
+
+The representation of the if statement is subtle, but easy to traverse. If
+there is no ``else`` branch, no ``nnkElse`` child exists.
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  if cond1: 
+    stmt1
+  elif cond2:
+    stmt2
+  elif cond3:
+    stmt3
+  else:
+    stmt4
+
+AST:
+
+.. code-block:: nimrod
+  nnkIfStmt(
+    nnkElifBranch(cond1, stmt1),
+    nnkElifBranch(cond2, stmt2),
+    nnkElifBranch(cond3, stmt3),
+    nnkElse(stmt4)
+  )
+
+
+When statement
+--------------
+
+Like the ``if`` statement, but the root has the kind ``nnkWhenStmt``.
+  
+
+Assignment
+----------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  x = 42
+
+AST:
+
+.. code-block:: nimrod
+  nnkAsgn(nnkIdent(!"x"), nnkIntLit(42))
+
+
+Statement list
+--------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  stmt1
+  stmt2
+  stmt3
+
+AST:
+
+.. code-block:: nimrod
+  nnkStmtList(stmt1, stmt2, stmt3)
+
+  
+Case statement
+--------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  case expr1
+  of expr2, expr3..expr4: 
+    stmt1
+  of expr5:
+    stmt2
+  elif cond1:
+    stmt3
+  else:
+    stmt4
+
+AST:
+
+.. code-block:: nimrod
+  nnkCaseStmt(
+    expr1,
+    nnkOfBranch(expr2, nnkRange(expr3, expr4), stmt1),
+    nnkOfBranch(expr5, stmt2),
+    nnkElifBranch(cond1, stmt3),
+    nnkElse(stmt4)
+  )
+
+The ``nnkElifBranch`` and ``nnkElse`` parts may be missing.
+
+
+While statement
+---------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  while expr1:
+    stmt1
+
+AST:
+
+.. code-block:: nimrod
+  nnkWhileStmt(expr1, stmt1)
+
+
+For statement
+-------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  for ident1, ident2 in expr1:
+    stmt1
+
+AST:
+
+.. code-block:: nimrod
+  nnkForStmt(ident1, ident2, expr1, stmt1)
+
+
+Try statement
+-------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  try:
+    stmt1
+  except e1, e2: 
+    stmt2
+  except e3:
+    stmt3
+  except: 
+    stmt4
+  finally:
+    stmt5
+
+AST:
+
+.. code-block:: nimrod
+  nnkTryStmt(
+    stmt1, 
+    nnkExceptBranch(e1, e2, stmt2), 
+    nnkExceptBranch(e3, stmt3), 
+    nnkExceptBranch(stmt4),
+    nnkFinally(stmt5)
+  )
+
+
+Return statement
+----------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  return expr1
+
+AST:
+
+.. code-block:: nimrod
+  nnkReturnStmt(expr1)
+
+
+Yield statement
+---------------
+
+Like ``return``, but with ``nnkYieldStmt`` kind.
+
+
+Discard statement
+-----------------
+
+Like ``return``, but with ``nnkDiscardStmt`` kind.
+
+
+Continue statement
+------------------
+
+Concrete syntax:
+
+.. code-block:: nimrod
+  continue
+
+AST:
+
+.. code-block:: nimrod
+  nnkContinueStmt()
+
+Var section
+-----------
+
+To be written.
+
+
+Const section
+-------------
+
+To be written.
+
+
+Type section
+------------
+
+To be written.
+
+
+Procedure declaration
+---------------------
+
+To be written.
+
+
+Iterator declaration
+--------------------
+
+To be written.
+
+
+Template declaration
+--------------------
+
+To be written.
+
+
+Macro declaration
+-----------------
+
+To be written.
+
+
+Special node kinds
+==================
+
+There are several node kinds that are used for semantic checking or code 
+generation. These are accessible from this module, but should not be used.
+Other node kinds are especially designed to make AST manipulations easier.
+These are explained here. 
+
+To be written.
+
