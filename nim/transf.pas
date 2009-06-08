@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -80,7 +80,8 @@ function newTemp(c: PTransf; typ: PType; const info: TLineInfo): PSym;
 begin
   result := newSym(skTemp, getIdent(genPrefix), getCurrOwner(c));
   result.info := info;
-  result.typ := skipGeneric(typ);
+  result.typ := skipTypes(typ, {@set}[tyGenericInst]);
+  // XXX really correct? maybe we need tyGenericInst for generic instantion?
   include(result.flags, sfFromGeneric);
 end;
 
@@ -148,23 +149,34 @@ end;
 function transformSym(c: PTransf; n: PNode): PNode;
 var
   tc: PTransCon;
+  b: PNode;
 begin
   if (n.kind <> nkSym) then internalError(n.info, 'transformSym');
   tc := c.transCon;
+  if sfBorrow in n.sym.flags then begin
+    // simply exchange the symbol:
+    b := n.sym.ast.sons[codePos];
+    if b.kind <> nkSym then 
+      internalError(n.info, 'wrong AST for borrowed symbol');
+    b := newSymNode(b.sym);
+    b.info := n.info;
+  end
+  else 
+    b := n;
   //writeln('transformSym', n.sym.id : 5);
   while tc <> nil do begin
-    result := IdNodeTableGet(tc.mapping, n.sym);
+    result := IdNodeTableGet(tc.mapping, b.sym);
     if result <> nil then exit;
     //write('not found in: ');
     //writeIdNodeTable(tc.mapping);
     tc := tc.next
   end;
-  result := n;
-  case n.sym.kind of
+  result := b;
+  case b.sym.kind of
     skConst, skEnumField: begin // BUGFIX: skEnumField was missing
-      if not (skipGeneric(n.sym.typ).kind in ConstantDataTypes) then begin
-        result := getConstExpr(c.module, n);
-        if result = nil then InternalError(n.info, 'transformSym: const');
+      if not (skipTypes(b.sym.typ, abstractInst).kind in ConstantDataTypes) then begin
+        result := getConstExpr(c.module, b);
+        if result = nil then InternalError(b.info, 'transformSym: const');
       end
     end
     else begin end
@@ -254,7 +266,7 @@ var
 begin
   result := newNodeI(nkStmtList, n.info);
   e := n.sons[0];
-  if skipGeneric(e.typ).kind = tyTuple then begin
+  if skipTypes(e.typ, {@set}[tyGenericInst]).kind = tyTuple then begin
     e := skipConv(e);
     if e.kind = nkPar then begin
       for i := 0 to sonsLen(e)-1 do begin
@@ -366,8 +378,8 @@ begin
   n.sons[1] := transform(c, n.sons[1]);
   result := n;
   // numeric types need range checks:
-  dest := skipVarGenericRange(n.typ);
-  source := skipVarGenericRange(n.sons[1].typ);
+  dest := skipTypes(n.typ, abstractVarRange);
+  source := skipTypes(n.sons[1].typ, abstractVarRange);
   case dest.kind of
     tyInt..tyInt64, tyEnum, tyChar, tyBool: begin
       if (firstOrd(dest) <= firstOrd(source)) and
@@ -381,16 +393,16 @@ begin
           result := newNodeIT(nkChckRange64, n.info, n.typ)
         else
           result := newNodeIT(nkChckRange, n.info, n.typ);
-        dest := skipVarGeneric(n.typ);
+        dest := skipTypes(n.typ, abstractVar);
         addSon(result, n.sons[1]);
         addSon(result, newIntTypeNode(nkIntLit, firstOrd(dest), source));
         addSon(result, newIntTypeNode(nkIntLit,  lastOrd(dest), source));
       end
     end;
     tyFloat..tyFloat128: begin
-      if skipVarGeneric(n.typ).kind = tyRange then begin
+      if skipTypes(n.typ, abstractVar).kind = tyRange then begin
         result := newNodeIT(nkChckRangeF, n.info, n.typ);
-        dest := skipVarGeneric(n.typ);
+        dest := skipTypes(n.typ, abstractVar);
         addSon(result, n.sons[1]);
         addSon(result, copyTree(dest.n.sons[0]));
         addSon(result, copyTree(dest.n.sons[1]));
@@ -413,8 +425,8 @@ begin
       end;
     end;
     tyRef, tyPtr: begin
-      dest := skipPtrsGeneric(dest);
-      source := skipPtrsGeneric(source);
+      dest := skipTypes(dest, abstractPtrs);
+      source := skipTypes(source, abstractPtrs);
       if source.kind = tyObject then begin
         diff := inheritanceDiff(dest, source);
         if diff < 0 then begin
@@ -444,7 +456,7 @@ begin
     tyArray, tySeq: begin
       if skipGeneric(dest
     end; *)
-    tyGenericParam, tyAnyEnum: result := n.sons[1];
+    tyGenericParam, tyOrdinal: result := n.sons[1];
       // happens sometimes for generated assignments, etc.
     else begin end
   end;
@@ -465,7 +477,7 @@ function putArgInto(arg: PNode; formal: PType): TPutArgInto;
 var
   i: int;
 begin
-  if skipGeneric(formal).kind = tyOpenArray then begin
+  if skipTypes(formal, abstractInst).kind = tyOpenArray then begin
     result := paDirectMapping; // XXX really correct?
     // what if ``arg`` has side-effects?
     exit
@@ -480,7 +492,7 @@ begin
       result := paDirectMapping;
     end;
     else begin
-      if skipGeneric(formal).kind = tyVar then
+      if skipTypes(formal, abstractInst).kind = tyVar then
         result := paVarAsgn
       else
         result := paFastAsgn
@@ -516,7 +528,7 @@ begin
   pushTransCon(c, newC);
   for i := 1 to sonsLen(call)-1 do begin
     arg := skipPassAsOpenArray(transform(c, call.sons[i]));
-    formal := skipGeneric(newC.owner.typ).n.sons[i].sym;
+    formal := skipTypes(newC.owner.typ, abstractInst).n.sons[i].sym;
     //if IdentEq(newc.Owner.name, 'items') then 
     //  liMessage(arg.info, warnUser, 'items: ' + nodeKindToStr[arg.kind]);
     case putArgInto(arg, formal.typ) of
@@ -529,7 +541,7 @@ begin
         IdNodeTablePut(newC.mapping, formal, newSymNode(temp));
       end;
       paVarAsgn: begin
-        assert(skipGeneric(formal.typ).kind = tyVar);
+        assert(skipTypes(formal.typ, abstractInst).kind = tyVar);
         InternalError(arg.info, 'not implemented: pass to var parameter');
       end;
     end;
@@ -820,13 +832,15 @@ var
 begin
   result := n;
   if n = nil then exit;
+  //if ToLinenumber(n.info) = 32 then
+  //  MessageOut(RenderTree(n));
   case n.kind of
     nkSym: begin
       result := transformSym(c, n);
       exit
     end;
     nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: begin
-      // nothing to be done for leafs
+      // nothing to be done for leaves
     end;
     nkBracketExpr: result := transformArrayAccess(c, n);
     nkLambda: result := transformLambda(c, n);

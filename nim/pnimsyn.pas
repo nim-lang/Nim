@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -1663,6 +1663,14 @@ begin
   addSon(result, parseRecordPart(p));
 end;
 
+function parseAbstract(var p: TParser): PNode;
+begin
+  result := newNodeP(nkAbstractTy, p);
+  getTok(p);
+  optInd(p, result);
+  addSon(result, parseTypeDesc(p));
+end;
+
 function parseTypeDef(var p: TParser): PNode;
 var
   a: PNode;
@@ -1676,6 +1684,7 @@ begin
     case p.tok.tokType of
       tkObject: a := parseRecordOrObject(p, nkObjectTy);
       tkEnum: a := parseEnum(p);
+      tkAbstract: a := parseAbstract(p);
       else a := parseTypeDesc(p);
     end;
     addSon(result, a);

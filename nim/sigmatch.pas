@@ -122,7 +122,7 @@ begin
   if a.kind = f.kind then
     result := isEqual
   else begin
-    k := skipRange(a).kind;
+    k := skipTypes(a, {@set}[tyRange]).kind;
     if k = f.kind then
       result := isSubtype
     else if (f.kind = tyInt) and (k in [tyInt..tyInt32]) then 
@@ -141,7 +141,7 @@ begin
   if a.kind = f.kind then
     result := isEqual
   else begin
-    k := skipRange(a).kind;
+    k := skipTypes(a, {@set}[tyRange]).kind;
     if k = f.kind then
       result := isSubtype
     else if (k >= tyFloat) and (k <= tyFloat128) then
@@ -203,7 +203,8 @@ begin // is a subtype of f?
   result := isNone;
   assert(f <> nil);
   assert(a <> nil);
-  if (a.kind = tyGenericInst) and (skipVar(f).kind <> tyGeneric) then begin
+  if (a.kind = tyGenericInst) and 
+      (skipTypes(f, {@set}[tyVar]).kind <> tyGeneric) then begin
     result := typeRel(mapping, f, lastSon(a));
     exit
   end;
@@ -214,18 +215,19 @@ begin // is a subtype of f?
   case f.kind of
     tyEnum: begin
       if (a.kind = f.kind) and (a.id = f.id) then result := isEqual
-      else if (skipRange(a).id = f.id) then result := isSubtype
+      else if (skipTypes(a, {@set}[tyRange]).id = f.id) then result := isSubtype
     end;
     tyBool, tyChar: begin
       if (a.kind = f.kind) then result := isEqual
-      else if skipRange(a).kind = f.kind then result := isSubtype
+      else if skipTypes(a, {@set}[tyRange]).kind = f.kind then 
+        result := isSubtype
     end;
     tyRange: begin
       if (a.kind = f.kind) then begin
         result := typeRel(mapping, base(a), base(f));
         if result < isGeneric then result := isNone
       end
-      else if skipRange(f).kind = a.kind then
+      else if skipTypes(f, {@set}[tyRange]).kind = a.kind then
         result := isConvertible // a convertible to f
     end;
     tyInt:   result := handleRange(f, a, tyInt8, tyInt32);
@@ -311,6 +313,13 @@ begin // is a subtype of f?
         else begin end
       end
     end;
+    tyOrdinal: begin
+      if isOrdinalType(a) then begin
+        if a.kind = tyOrdinal then x := a.sons[0] else x := a;
+        result := typeRel(mapping, f.sons[0], x);
+        if result < isGeneric then result := isNone
+      end
+    end;
     tyForward: InternalError('forward type in typeRel()');
     tyNil: begin
       if a.kind = f.kind then result := isEqual
@@ -323,6 +332,9 @@ begin // is a subtype of f?
         if a.id = f.id then result := isEqual
         else if isObjectSubtype(a, f) then result := isSubtype
       end
+    end;
+    tyAbstract: begin
+      if (a.kind = tyAbstract) and (a.id = f.id) then result := isEqual;
     end;
     tySet: begin
       if a.kind = tySet then begin
@@ -418,8 +430,8 @@ begin // is a subtype of f?
         tyPtr: if a.sons[0].kind = tyChar then result := isConvertible;
         tyArray: begin
           if (firstOrd(a.sons[0]) = 0)
-              and (skipRange(a.sons[0]).kind in [tyInt..tyInt64])
-              and (a.sons[1].kind = tyChar) then
+             and (skipTypes(a.sons[0], {@set}[tyRange]).kind in [tyInt..tyInt64])
+             and (a.sons[1].kind = tyChar) then
             result := isConvertible;
         end
         else begin end
@@ -428,14 +440,6 @@ begin // is a subtype of f?
 
     tyEmpty: begin
       if a.kind = tyEmpty then result := isEqual;
-    end;
-    tyAnyEnum: begin
-      case a.kind of
-        tyRange:   result := typeRel(mapping, f, base(a));
-        tyEnum:    result := isSubtype;
-        tyAnyEnum: result := isEqual;
-        else begin end
-      end
     end;
     tyGenericInst: begin
       result := typeRel(mapping, lastSon(f), a);
@@ -572,7 +576,7 @@ begin
       result := copyTree(arg);
       result.typ := getInstantiatedType(c, arg, m, f);
       // BUG: f may not be the right key!
-      if (skipVarGeneric(result.typ).kind in [tyTuple, tyOpenArray]) then
+      if (skipTypes(result.typ, abstractVar).kind in [tyTuple, tyOpenArray]) then
         // BUGFIX: must pass length implicitely
         result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
       // BUGFIX: use ``result.typ`` and not `f` here
@@ -580,7 +584,7 @@ begin
     isEqual: begin
       inc(m.exactMatches);
       result := copyTree(arg);
-      if (skipVarGeneric(f).kind in [tyTuple, tyOpenArray]) then
+      if (skipTypes(f, abstractVar).kind in [tyTuple, tyOpenArray]) then
         // BUGFIX: must pass length implicitely
         result := implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c);
     end;
@@ -679,7 +683,7 @@ begin
       if f >= formalLen then begin // too many arguments?
         if tfVarArgs in m.callee.flags then begin
           // is ok... but don't increment any counters...
-          if skipVarGeneric(n.sons[a].typ).kind = tyString then
+          if skipTypes(n.sons[a].typ, abstractVar).kind = tyString then
             // conversion to cstring
             addSon(m.call, implicitConv(nkHiddenStdConv,
               getSysType(tyCString), copyTree(n.sons[a]), m, c))

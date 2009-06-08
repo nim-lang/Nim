@@ -1,14 +1,14 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 {
-'SymFlag': [          # already 26 flags!
+'SymFlag': [          # already 28 flags!
   'sfUsed',           # read access of sym (for warnings) or simply used
   'sfStar',           # symbol has * visibility
   'sfMinus',          # symbol has - visibility
@@ -42,6 +42,7 @@
   'sfThreadVar',      # variable is a thread variable
   'sfMerge',          # proc can be merged with itself
   'sfDeadCodeElim',   # dead code elimination for the module is turned on
+  'sfBorrow'          # proc is borrowed
 ],
 
 'TypeFlag': [
@@ -58,8 +59,9 @@
   'tyGeneric',
   'tyGenericInst', # instantiated generic type
   'tyGenericParam',
+  'tyAbstract',    # abstract type
   'tyEnum',
-  'tyAnyEnum',
+  'tyOrdinal',
   'tyArray',
   'tyObject',
   'tyTuple',
@@ -233,6 +235,7 @@
   'nkRefTy',
   'nkPtrTy',
   'nkVarTy',
+  'nkAbstractTy',         # abstract type
   'nkProcTy',
   'nkEnumTy',
   'nkEnumFieldDef',       # `ident = expr` in an enumeration

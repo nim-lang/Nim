@@ -396,7 +396,7 @@ is not executed (if an exception occurs).
 Generics
 ========
 
-`Version 0.7.8: Complex generic types like in the example do not work.`:red:
+`Version 0.7.10: Complex generic types like in the example do not work.`:red:
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types 
 with `type parameters`:idx:. They are most useful for efficient type safe

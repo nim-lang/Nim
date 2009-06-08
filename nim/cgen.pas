@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -232,8 +232,8 @@ end;
 
 function isSimpleConst(typ: PType): bool;
 begin
-  result := not (skipVarGeneric(typ).kind in [tyTuple, tyObject, tyArray,
-                                            tyArrayConstr, tySet, tySequence])
+  result := not (skipTypes(typ, abstractVar).kind in [tyTuple, tyObject, 
+    tyArray, tyArrayConstr, tySet, tySequence])
 end;
 
 procedure useHeader(m: BModule; sym: PSym);
@@ -249,12 +249,6 @@ procedure UseMagic(m: BModule; const name: string); forward;
 {$include 'ccgtypes.pas'}
 
 // ------------------------------ Manager of temporaries ------------------
-(*
-function beEqualTypes(a, b: PType): bool;
-begin
-  // returns whether two type are equal for the backend
-  result := sameType(skipGenericRange(a), skipGenericRange(b))
-end; *)
 
 procedure getTemp(p: BProc; t: PType; var result: TLoc);
 begin
@@ -458,9 +452,35 @@ procedure genProcPrototype(m: BModule; sym: PSym); forward;
 
 // We don't finalize dynamic libs as this does the OS for us.
 
+procedure libCandidates(const s: string; var dest: TStringSeq);
+var
+  prefix, suffix: string;
+  le, ri, i, L: int;
+  temp: TStringSeq;
+begin
+  le := strutils.find(s, '(');
+  ri := strutils.find(s, ')');
+  if (le >= strStart) and (ri > le) then begin
+    prefix := ncopy(s, strStart, le-1);
+    suffix := ncopy(s, ri+1);
+    temp := splitSeq(ncopy(s, le+1, ri-1), {@set}['|']);
+    for i := 0 to high(temp) do 
+      libCandidates(prefix +{&} temp[i] +{&} suffix, dest);
+  end
+  else begin
+    {@ignore} 
+    L := length(dest);
+    setLength(dest, L+1);
+    dest[L] := s;
+    {@emit add(dest, s);}
+  end
+end;
+
 procedure loadDynamicLib(m: BModule; lib: PLib);
 var
-  tmp: PRope;
+  tmp, loadlib: PRope;
+  s: TStringSeq;
+  i: int;
 begin
   assert(lib <> nil);
   if not lib.generated then begin
@@ -471,18 +491,29 @@ begin
     // BUGFIX: useMagic has awful side-effects
     appff(m.s[cfsVars], 'static void* $1;$n', 
                         '$1 = linkonce global i8* zeroinitializer$n', [tmp]);
-    inc(m.labels);
-    appff(m.s[cfsDynLibInit],
-        '$1 = nimLoadLibrary((NimStringDesc*) &$2);$n',
-        '%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n' +
-        'store i8* %MOC$4, i8** $1$n',
-        [tmp, getStrLit(m, lib.path), getTypeDesc(m, getSysType(tyString)),
-         toRope(m.labels)]);
+    {@ignore} s := nil; {@emit s := @[];}
+    libCandidates(lib.path, s);
+    loadlib := nil;
+    for i := 0 to high(s) do begin
+      inc(m.labels);
+      if i > 0 then app(loadlib, '||');
+      appff(loadlib,
+          '($1 = nimLoadLibrary((NimStringDesc*) &$2))$n',
+          '%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n' +
+          'store i8* %MOC$4, i8** $1$n',
+          [tmp, getStrLit(m, s[i]), getTypeDesc(m, getSysType(tyString)),
+           toRope(m.labels)]);
+    end;
+    appff(m.s[cfsDynLibInit], 
+         'if (!($1)) nimLoadLibraryError((NimStringDesc*) &$2);$n', 
+         'XXX too implement',
+         [loadlib, getStrLit(m, lib.path)]);
     //appf(m.s[cfsDynLibDeinit],
     //  'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
     useMagic(m, 'nimLoadLibrary');
     useMagic(m, 'nimUnloadLibrary');
     useMagic(m, 'NimStringDesc');
+    useMagic(m, 'nimLoadLibraryError');
   end;
   if lib.name = nil then InternalError('loadDynamicLib');
 end;
@@ -642,7 +673,7 @@ begin
     else begin
       fillResult(res);
       assignParam(p, res);
-      if skipGeneric(res.typ).kind = tyArray then begin
+      if skipTypes(res.typ, abstractInst).kind = tyArray then begin
         include(res.loc.flags, lfIndirect);
         res.loc.s := OnUnknown;
       end;
@@ -745,6 +776,7 @@ end;
 
 procedure genProc(m: BModule; prc: PSym);
 begin
+  if sfBorrow in prc.flags then exit;
   fillProcLoc(prc);
   if [sfForward, sfFromGeneric] * prc.flags <> [] then 
     addForwardedProc(m, prc)
@@ -1148,7 +1180,6 @@ begin
     addFileToCompile(cfilenoext);
   end;
   addFileToLink(cfilenoext);
-  if sfMainModule in m.module.flags then writeMapping(cfile, gMapping);
 end;
 
 function myClose(b: PPassContext; n: PNode): PNode;
@@ -1177,6 +1208,7 @@ begin
         finishModule(gPendingModules[i]);
     for i := 0 to high(gPendingModules) do writeModule(gPendingModules[i]);
     setLength(gPendingModules, 0);
+    writeMapping(gMapping);
   end;
   if not (optDeadCodeElim in gGlobalOptions) and 
       not (sfDeadCodeElim in m.module.flags) then

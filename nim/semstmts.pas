@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -205,7 +205,7 @@ begin
   n.sons[0] := semExprWithType(c, n.sons[0]);
   chckCovered := false;
   covered := 0;
-  case skipVarGenericRange(n.sons[0].Typ).Kind of
+  case skipTypes(n.sons[0].Typ, abstractVarRange).Kind of
     tyInt..tyInt64, tyChar, tyEnum: chckCovered := true;
     tyFloat..tyFloat128, tyString: begin end
     else liMessage(n.info, errSelectorMustBeOfCertainTypes);
@@ -302,7 +302,8 @@ begin
   n.sons[0] := semExprWithType(c, n.sons[0], {@set}[efLValue]);
   n.sons[1] := semExprWithType(c, n.sons[1]);
   le := n.sons[0].typ;
-  if (skipGeneric(le).kind <> tyVar) and not IsAssignable(n.sons[0]) then begin
+  if (skipTypes(le, {@set}[tyGenericInst]).kind <> tyVar) 
+  and not IsAssignable(n.sons[0]) then begin
     liMessage(n.sons[0].info, errXCannotBeAssignedTo,
               renderTree(n.sons[0], {@set}[renderNoComments]));
   end
@@ -410,7 +411,7 @@ begin
       def := nil;
     if not typeAllowed(typ, skVar) then
       liMessage(a.info, errXisNoType, typeToString(typ));
-    tup := skipGeneric(typ);
+    tup := skipTypes(typ, {@set}[tyGenericInst]);
     if a.kind = nkVarTuple then begin
       if tup.kind <> tyTuple then liMessage(a.info, errXExpected, 'tuple');
       if len-2 <> sonsLen(tup) then
@@ -511,7 +512,7 @@ begin
     n.sons[len-2] := countupNode;
   end;
   n.sons[len-2] := semExprWithType(c, n.sons[len-2]);
-  iter := skipGeneric(n.sons[len-2].typ);
+  iter := skipTypes(n.sons[len-2].typ, {@set}[tyGenericInst]);
   if iter.kind <> tyTuple then begin
     if len <> 3 then liMessage(n.info, errWrongNumberOfVariables);
     v := newSymS(skForVar, n.sons[0], c);
@@ -742,6 +743,17 @@ begin
   end
 end;
 
+procedure semBorrow(c: PContext; n: PNode; s: PSym);
+var
+  b: PSym;
+begin
+  // search for the correct alias:
+  b := SearchForBorrowProc(c, s, c.tab.tos-2);
+  if b = nil then liMessage(n.info, errNoSymbolToBorrowFromFound);
+  // store the alias:
+  n.sons[codePos] := newSymNode(b);
+end;
+
 function semIterator(c: PContext; n: PNode): PNode;
 var
   s: PSym;
@@ -774,6 +786,8 @@ begin
     pragmaIterator(c, s, n.sons[pragmasPos]);
   s.options := gOptions;
   if n.sons[codePos] <> nil then begin
+    if sfBorrow in s.flags then
+      liMessage(n.info, errImplOfXNotAllowed, s.name.s);
     if n.sons[genericParamsPos] = nil then begin
       c.p := newProcCon(s);
       openScope(c.tab);
@@ -784,6 +798,8 @@ begin
       n.sons[codePos] := resolveGenericParams(c, n.sons[codePos]);
     end
   end
+  else if (sfBorrow in s.flags) then
+    semBorrow(c, n, s)
   else
     liMessage(n.info, errIteratorNeedsImplementation);
   closeScope(c.tab);
@@ -849,7 +865,7 @@ begin
   s.options := gOptions;
   if n.sons[codePos] <> nil then begin
     if sfImportc in s.flags then
-      liMessage(n.sons[codePos].info, errImportedProcCannotHaveImpl);
+      liMessage(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s);
     c.p := newProcCon(s);
     addResult(c, s.typ.sons[0], n.info);
     n.sons[codePos] := semStmtScope(c, n.sons[codePos]);
@@ -937,8 +953,8 @@ begin
 
   s.options := gOptions;
   if n.sons[codePos] <> nil then begin
-    if sfImportc in s.flags then
-      liMessage(n.sons[codePos].info, errImportedProcCannotHaveImpl);
+    if [sfImportc, sfBorrow] * s.flags <> [] then
+      liMessage(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s);
     if n.sons[genericParamsPos] = nil then begin
       c.p := newProcCon(s);
       addResult(c, s.typ.sons[0], n.info);
@@ -952,7 +968,9 @@ begin
   else begin
     if proto <> nil then
       liMessage(n.info, errImplOfXexpected, proto.name.s);
-    if not (sfImportc in s.flags) then Include(s.flags, sfForward);
+    if [sfImportc, sfBorrow] * s.flags = [] then Include(s.flags, sfForward)
+    else if sfBorrow in s.flags then 
+      semBorrow(c, n, s);
   end;
   closeScope(c.tab); // close scope for parameters
   popOwner();

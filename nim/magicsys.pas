@@ -76,7 +76,6 @@ begin
       tyString:  result := sysTypeFromName('string');
       tyCstring: result := sysTypeFromName('cstring');
       tyPointer: result := sysTypeFromName('pointer');
-      tyAnyEnum: result := newSysType(tyAnyEnum, 1);
       tyNil: result := newSysType(tyNil, ptrSize);
       else InternalError('request for typekind: ' + typeKindToStr[kind]);
     end;  

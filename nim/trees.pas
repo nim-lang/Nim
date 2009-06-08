@@ -144,7 +144,7 @@ end;
 
 function getOpSym(op: PNode): PSym;
 begin
-  if not (op.kind in [nkCall, nkGenericCall, nkHiddenCallConv]) then
+  if not (op.kind in [nkCall, nkGenericCall, nkHiddenCallConv, nkCommand]) then
     result := nil
   else begin
     if (sonsLen(op) <= 0) then InternalError(op.info, 'getOpSym');
@@ -158,7 +158,7 @@ end;
 function getMagic(op: PNode): TMagic;
 begin
   case op.kind of
-    nkCall, nkHiddenCallConv: begin
+    nkCall, nkHiddenCallConv, nkCommand: begin
       case op.sons[0].Kind of
         nkSym: begin
           result := op.sons[0].sym.magic;

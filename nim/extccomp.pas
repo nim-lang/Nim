@@ -288,7 +288,7 @@ function NameToCC(const name: string): TSystemCC;
 procedure initVars;
 
 procedure setCC(const ccname: string);
-procedure writeMapping(const cfile: string; gSymbolMapping: PRope);
+procedure writeMapping(gSymbolMapping: PRope);
 
 implementation
 
@@ -638,12 +638,12 @@ begin
   result := nil;
   it := PStrEntry(list.head);
   while it <> nil do begin
-    appf(result, '--file:"$1"$n', [toRope(AppendFileExt(it.data, cExt))]);
+    appf(result, '--file:r"$1"$n', [toRope(AppendFileExt(it.data, cExt))]);
     it := PStrEntry(it.next);
   end;
 end;
 
-procedure writeMapping(const cfile: string; gSymbolMapping: PRope);
+procedure writeMapping(gSymbolMapping: PRope);
 var
   code: PRope;
 begin

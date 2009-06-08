@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -39,7 +39,7 @@ implementation
 
 function newIntNodeT(const intVal: BiggestInt; n: PNode): PNode;
 begin
-  if skipVarGenericRange(n.typ).kind = tyChar then
+  if skipTypes(n.typ, abstractVarRange).kind = tyChar then
     result := newIntNode(nkCharLit, intVal)
   else
     result := newIntNode(nkIntLit, intVal);
@@ -102,7 +102,7 @@ var
   i: int;
 begin
   x := getInt(a);
-  n := a.typ.n;
+  n := skipTypes(a.typ, abstractInst).n;
   for i := 0 to sonsLen(n)-1 do begin
     if n.sons[i].kind <> nkSym then InternalError(a.info, 'enumValToString');
     field := n.sons[i].sym;
@@ -163,7 +163,7 @@ begin
       else result := newIntNodeT(getInt(b), n);
     end;
     mShlI, mShlI64: begin
-      case skipGenericRange(n.typ).kind of
+      case skipTypes(n.typ, abstractRange).kind of
         tyInt8:  result := newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n);
         tyInt16: result := newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n);
         tyInt32: result := newIntNodeT(int32(getInt(a)) shl int32(getInt(b)), n);
@@ -173,7 +173,7 @@ begin
       end
     end;
     mShrI, mShrI64: begin
-      case skipGenericRange(n.typ).kind of
+      case skipTypes(n.typ, abstractRange).kind of
         tyInt8:  result := newIntNodeT(int8(getInt(a)) shr int8(getInt(b)), n);
         tyInt16: result := newIntNodeT(int16(getInt(a)) shr int16(getInt(b)), n);
         tyInt32: result := newIntNodeT(int32(getInt(a)) shr int32(getInt(b)), n);
@@ -287,7 +287,7 @@ begin
       result := copyTree(a);
       result.typ := n.typ;
     end;
-    mNewString, mExit, mInc, ast.mDec, mAssert, mSwap,
+    mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq,
     mSetLengthStr, mSetLengthSeq, mNLen..mNError: begin end;
     else InternalError(a.info, 'evalOp(' +{&} magicToStr[m] +{&} ')');
@@ -417,7 +417,7 @@ begin
     end;
     nkCharLit..nkNilLit: result := copyNode(n);
     nkIfExpr: result := getConstIfExpr(module, n);
-    nkCall: begin
+    nkCall, nkCommand: begin
       if (n.sons[0].kind <> nkSym) then exit;
       s := n.sons[0].sym;
       if (s.kind <> skProc) then exit;
@@ -440,9 +440,10 @@ begin
           end;
           mLow:  result := newIntNodeT(firstOrd(n.sons[1].typ), n);
           mHigh: begin
-            if not (skipVarGeneric(n.sons[1].typ).kind in [tyOpenArray,
+            if not (skipTypes(n.sons[1].typ, abstractVar).kind in [tyOpenArray,
                                      tySequence, tyString]) then
-              result := newIntNodeT(lastOrd(skipVarGeneric(n.sons[1].typ)), n);
+              result := newIntNodeT(lastOrd(
+                skipTypes(n.sons[1].typ, abstractVar)), n);
           end;
           else begin
             a := getConstExpr(module, n.sons[1]);
@@ -537,9 +538,9 @@ begin
     nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: begin
       a := getConstExpr(module, n.sons[1]);
       if a = nil then exit;
-      case skipRange(n.typ).kind of
+      case skipTypes(n.typ, abstractRange).kind of
         tyInt..tyInt64: begin
-          case skipRange(a.typ).kind of
+          case skipTypes(a.typ, abstractRange).kind of
             tyFloat..tyFloat64: 
               result := newIntNodeT(nsystem.toInt(getFloat(a)), n);
             tyChar: 
@@ -551,7 +552,7 @@ begin
           end
         end;
         tyFloat..tyFloat64: begin
-          case skipRange(a.typ).kind of
+          case skipTypes(a.typ, abstractRange).kind of
             tyInt..tyInt64, tyEnum, tyBool, tyChar: 
               result := newFloatNodeT(toFloat(int(getOrdValue(a))), n);
             else begin

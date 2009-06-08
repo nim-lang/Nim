@@ -1991,7 +1991,7 @@ begin
     addSon(n, newRstNode(rnLeaf, readFile(path)));
     result.sons[2] := n;
   end;
-  result.kind := rnCodeBlock
+  result.kind := rnCodeBlock;
 end;
 
 function dirContainer(var p: TRstParser): PRstNode;

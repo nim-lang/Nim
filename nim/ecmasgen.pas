@@ -109,7 +109,7 @@ const
 
 function mapType(typ: PType): TEcmasTypeKind;
 begin
-  case skipGeneric(typ).kind of
+  case skipTypes(typ, abstractInst).kind of
     tyVar, tyRef, tyPtr: begin
       if typ.sons[0].kind in mappedToObject then
         result := etyObject
@@ -120,8 +120,8 @@ begin
       // treat a tyPointer like a typed pointer to an array of bytes
       result := etyInt;
     end;
-    tyRange: result := mapType(typ.sons[0]);
-    tyInt..tyInt64, tyEnum, tyAnyEnum, tyChar:
+    tyRange, tyAbstract, tyOrdinal: result := mapType(typ.sons[0]);
+    tyInt..tyInt64, tyEnum, tyChar:
       result := etyInt;
     tyBool: result := etyBool;
     tyFloat..tyFloat128: result := etyFloat;
@@ -298,7 +298,8 @@ begin
   if t.kind = tyGenericInst then t := lastSon(t);
   result := ropef('NTI$1', [toRope(t.id)]);
   if IntSetContainsOrIncl(p.globals.TypeInfoGenerated, t.id) then exit;
-  case t.kind of
+  case t.kind of 
+    tyAbstract: result := genTypeInfo(p, typ.sons[0]);
     tyPointer, tyProc, tyBool, tyChar, tyCString, tyString,
     tyInt..tyFloat128: begin
       s := ropef(
@@ -676,7 +677,7 @@ begin
   if n.sons[0] <> nil then begin
     gen(p, n.sons[0], a);
     if a.com <> nil then appf(r.com, '$1;$n', [a.com]);
-    typ := skipPtrsGeneric(n.sons[0].typ);
+    typ := skipTypes(n.sons[0].typ, abstractPtrs);
     useMagic(p, 'raiseException');
     appf(r.com, 'raiseException($1, $2);$n',
       [a.res, makeCString(typ.sym.name.s)]);
@@ -698,7 +699,7 @@ begin
   gen(p, n.sons[0], cond);
   if cond.com <> nil then
     appf(r.com, '$1;$n', [cond.com]);
-  stringSwitch := skipVarGeneric(n.sons[0].typ).kind = tyString;
+  stringSwitch := skipTypes(n.sons[0].typ, abstractVar).kind = tyString;
   if stringSwitch then begin
     useMagic(p, 'toEcmaStr');
     appf(r.com, 'switch (toEcmaStr($1)) {$n', [cond.res])
@@ -888,12 +889,12 @@ const
                                nkFloatLit..nkFloat64Lit,
                                nkCurly, nkPar, 
                                nkStringToCString, nkCStringToString,
-                               nkCall, nkHiddenCallConv];
+                               nkCall, nkCommand, nkHiddenCallConv];
 
 function needsNoCopy(y: PNode): bool;
 begin
   result := (y.kind in nodeKindsNeedNoCopy)
-      or (skipGeneric(y.typ).kind in [tyRef, tyPtr, tyVar])
+      or (skipTypes(y.typ, abstractInst).kind in [tyRef, tyPtr, tyVar])
 end;
 
 procedure genAsgnAux(var p: TProc; x, y: PNode; var r: TCompRes;
@@ -1014,7 +1015,7 @@ begin
   gen(p, n.sons[0], a);
   gen(p, n.sons[1], b);
   r.com := mergeExpr(a);
-  typ := skipPtrsGeneric(n.sons[0].typ);
+  typ := skipTypes(n.sons[0].typ, abstractPtrs);
   if typ.kind in [tyArray, tyArrayConstr] then first := FirstOrd(typ.sons[0])
   else first := 0;
   if (optBoundsCheck in p.options) and not isConstExpr(n.sons[1]) then begin
@@ -1201,9 +1202,9 @@ var
   i, len, c: int;
   t, e: PType;
 begin
-  t := skipGeneric(typ);
+  t := skipTypes(typ, abstractInst);
   case t.kind of
-    tyInt..tyInt64, tyEnum, tyAnyEnum, tyChar: begin
+    tyInt..tyInt64, tyEnum, tyChar: begin
       result := putToSeq('0'+'', indirect)
     end;
     tyFloat..tyFloat128: result := putToSeq('0.0', indirect);
@@ -1354,15 +1355,15 @@ var
   t: Ptype;
 begin
   gen(p, n.sons[1], a);
-  t := skipVarGeneric(n.sons[1].typ).sons[0];
+  t := skipTypes(n.sons[1].typ, abstractVar).sons[0];
   if a.com <> nil then appf(r.com, '$1;$n', [a.com]);
   appf(r.com, '$1 = $2;$n', [a.res, createVar(p, t, true)]);
 end;
 
 procedure genOrd(var p: TProc; n: PNode; var r: TCompRes);
 begin
-  case skipVarGeneric(n.sons[1].typ).kind of
-    tyEnum, tyAnyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r);
+  case skipTypes(n.sons[1].typ, abstractVar).kind of
+    tyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r);
     tyBool: unaryExpr(p, n, r, '', '($1 ? 1:0)');
     else InternalError(n.info, 'genOrd');
   end
@@ -1375,9 +1376,9 @@ begin
   gen(p, n.sons[1], a);
   gen(p, n.sons[2], b);
   r.com := mergeExpr(a.com, b.com);
-  if skipVarGenericRange(n.sons[1].typ).kind = tyChar then
+  if skipTypes(n.sons[1].typ, abstractVarRange).kind = tyChar then
     a.res := ropef('[$1, 0]', [a.res]);
-  if skipVarGenericRange(n.sons[2].typ).kind = tyChar then
+  if skipTypes(n.sons[2].typ, abstractVarRange).kind = tyChar then
     b.res := ropef('[$1, 0]', [b.res]);
   r.res := ropef('($1.slice(0,-1)).concat($2)', [a.res, b.res]);
 end;
@@ -1435,7 +1436,7 @@ begin
     mLengthSeq, mLengthOpenArray, mLengthArray:
       unaryExpr(p, n, r, '', '$1.length');
     mHigh: begin
-      if skipVarGeneric(n.sons[0].typ).kind = tyString then
+      if skipTypes(n.sons[0].typ, abstractVar).kind = tyString then
         unaryExpr(p, n, r, '', '($1.length-2)')
       else
         unaryExpr(p, n, r, '', '($1.length-1)');
@@ -1535,8 +1536,8 @@ procedure genConv(var p: TProc; n: PNode; var r: TCompRes);
 var
   src, dest: PType;
 begin
-  dest := skipVarGenericRange(n.typ);
-  src := skipVarGenericRange(n.sons[1].typ);
+  dest := skipTypes(n.typ, abstractVarRange);
+  src := skipTypes(n.sons[1].typ, abstractVarRange);
   gen(p, n.sons[1], r);
   if (dest.kind <> src.kind) and (src.kind = tyBool) then
     r.res := ropef('(($1)? 1:0)', [r.res])
@@ -1750,7 +1751,7 @@ begin
         r.res := toRope('null');
     end;
     nkStrLit..nkTripleStrLit: begin
-      if skipVarGenericRange(n.typ).kind = tyString then begin
+      if skipTypes(n.typ, abstractVarRange).kind = tyString then begin
         useMagic(p, 'cstrToNimstr');
         r.res := ropef('cstrToNimstr($1)', [makeCString(n.strVal)])
       end
@@ -1771,7 +1772,7 @@ begin
     end;
     nkBlockExpr: genBlock(p, n, r);
     nkIfExpr: genIfExpr(p, n, r);
-    nkCall, nkHiddenCallConv: begin
+    nkCall, nkHiddenCallConv, nkCommand: begin
       if (n.sons[0].kind = nkSym) and (n.sons[0].sym.magic <> mNone) then
         genMagic(p, n, r)
       else

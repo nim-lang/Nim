@@ -48,6 +48,9 @@ Pure libraries
 * `times <times.html>`_
   The ``times`` module contains basic support for working with time.
 
+* `dynlib <dynlib.html>`_
+  This module implements the ability to access symbols from shared libraries.
+
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser. This
   supports long and short command options with optional values and command line
@@ -202,9 +205,13 @@ not contained in the distribution. You can then find them on the website.
   Part of the wrapper for Lua.
 * `lauxlib <lauxlib.html>`_
   Part of the wrapper for Lua.
-* `odbcsql <odbcsql.nim>`_
-  interface to the ODBC driver. 
-* `zlib <zlib.nim>`_
+* `tcl <tcl.html>`_ 
+  Wrapper for the TCL programming language.
+* `python <python.html>`_
+  Wrapper for the Python programming language.
+* `odbcsql <odbcsql.html>`_
+  interface to the ODBC driver.
+* `zlib <zlib.html>`_
   Wrapper for the zlib library. 
 * `sdl <sdl.html>`_
   Part of the wrapper for SDL.

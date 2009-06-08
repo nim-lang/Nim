@@ -58,8 +58,8 @@ begin
   end;
 
   // common case first (converting of objects)
-  d := skipVarGeneric(castDest);
-  s := skipVarGeneric(src);
+  d := skipTypes(castDest, abstractVar);
+  s := skipTypes(src, abstractVar);
   while (d <> nil) and (d.Kind in [tyPtr, tyRef])
   and (d.Kind = s.Kind) do begin
     d := base(d);
@@ -71,17 +71,20 @@ begin
         [typeToString(src), typeToString(castDest)]));
   if (d.Kind = tyObject) and (s.Kind = tyObject) then
     checkConversionBetweenObjects(info, d, s)
-  else if (skipVarGenericRange(castDest).Kind in IntegralTypes)
-  and (skipVarGenericRange(src).Kind in IntegralTypes) then begin
+  else if (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes)
+  and (skipTypes(src, abstractVarRange).Kind in IntegralTypes) then begin
     // accept conversion between intregral types
   end
-  else begin
+  else begin          
+    // we use d, s here to speed up that operation a bit:
     case cmpTypes(d, s) of
-      isNone, isGeneric:
-        // we use d, s here to speed up that operation a bit
-        liMessage(info, errGenerated,
-          format(MsgKindToString(errIllegalConvFromXtoY),
-            [typeToString(src), typeToString(castDest)]));
+      isNone, isGeneric: begin
+        if not equalOrAbstractOf(castDest, src) and
+           not equalOrAbstractOf(src, castDest) then
+          liMessage(info, errGenerated,
+            format(MsgKindToString(errIllegalConvFromXtoY),
+              [typeToString(src), typeToString(castDest)]));
+      end
       else begin end
     end
   end
@@ -102,8 +105,8 @@ begin
   else if ss < 0 then result := false
   else 
     result := (ds >= ss) or
-      (skipGeneric(dst).kind in [tyInt..tyFloat128]) or
-      (skipGeneric(src).kind in [tyInt..tyFloat128])
+      (skipTypes(dst, abstractInst).kind in [tyInt..tyFloat128]) or
+      (skipTypes(src, abstractInst).kind in [tyInt..tyFloat128])
 end;
 
 function semConv(c: PContext; n: PNode; s: PSym): PNode;
@@ -138,7 +141,7 @@ begin
     liMessage(n.info, errXExpectsTypeOrValue, opToStr[m])
   else begin
     n.sons[1] := semExprWithType(c, n.sons[1], {@set}[efAllowType]);
-    typ := skipVarGenericRange(n.sons[1].typ);
+    typ := skipTypes(n.sons[1].typ, abstractVarRange);
     case typ.Kind of
       tySequence, tyString, tyOpenArray: begin
         n.typ := getSysType(tyInt);
@@ -279,7 +282,8 @@ begin
     addSon(result.typ, newTypeS(tyEmpty, c)) // needs an empty basetype!
   else begin
     addSon(result, semExprWithType(c, n.sons[0]));
-    typ := skipVar(result.sons[0].typ);
+    typ := skipTypes(result.sons[0].typ, 
+                    {@set}[tyGenericInst, tyVar, tyOrdinal]);
     for i := 1 to sonsLen(n)-1 do begin
       n.sons[i] := semExprWithType(c, n.sons[i]);
       addSon(result, fitNode(c, typ, n.sons[i]));
@@ -306,17 +310,18 @@ begin
       nkHiddenStdConv, nkHiddenSubConv: begin
         if it.sons[1].kind = nkBracket then
           it.sons[1] := semArrayConstr(c, it.sons[1]);
-        if skipVarGeneric(it.typ).kind = tyOpenArray then begin
-          s := skipVarGeneric(it.sons[1].typ);
+        if skipTypes(it.typ, abstractVar).kind = tyOpenArray then begin
+          s := skipTypes(it.sons[1].typ, abstractVar);
           if (s.kind = tyArrayConstr) and (s.sons[1].kind = tyEmpty) then begin
             s := copyType(s, getCurrOwner(), false);
-            skipVarGeneric(s).sons[1] := elemType(skipVarGeneric(it.typ));
+            skipTypes(s, abstractVar).sons[1] := elemType(
+              skipTypes(it.typ, abstractVar));
             it.sons[1].typ := s;
           end
         end
-        else if skipVarGeneric(it.sons[1].typ).kind in [tyNil, tyArrayConstr,
-                      tyTuple, tySet] then begin
-          s := skipVarGeneric(it.typ);
+        else if skipTypes(it.sons[1].typ, abstractVar).kind in 
+                  [tyNil, tyArrayConstr, tyTuple, tySet] then begin
+          s := skipTypes(it.typ, abstractVar);
           changeType(it.sons[1], s);
           n.sons[i] := it.sons[1];
         end
@@ -335,7 +340,7 @@ function skipObjConv(n: PNode): PNode;
 begin
   case n.kind of
     nkHiddenStdConv, nkHiddenSubConv, nkConv: begin
-      if skipPtrsGeneric(n.sons[1].typ).kind in [tyTuple, tyObject] then
+      if skipTypes(n.sons[1].typ, abstractPtrs).kind in [tyTuple, tyObject] then
         result := n.sons[1]
       else
         result := n
@@ -352,7 +357,7 @@ begin
     nkSym: result := n.sym.kind in [skVar, skTemp];
     nkDotExpr, nkQualified, nkBracketExpr: begin
       checkMinSonsLen(n, 1);
-      if skipGeneric(n.sons[0].typ).kind in [tyVar, tyPtr, tyRef] then
+      if skipTypes(n.sons[0].typ, abstractInst).kind in [tyVar, tyPtr, tyRef] then
         result := true
       else
         result := isAssignable(n.sons[0]);
@@ -361,7 +366,7 @@ begin
       // Object and tuple conversions are still addressable, so we skip them
       //if skipPtrsGeneric(n.sons[1].typ).kind in [tyOpenArray,
       //                                           tyTuple, tyObject] then
-      if skipPtrsGeneric(n.typ).kind in [tyOpenArray, tyTuple, tyObject] then
+      if skipTypes(n.typ, abstractPtrs).kind in [tyOpenArray, tyTuple, tyObject] then
         result := isAssignable(n.sons[1])
     end;
     nkHiddenDeref, nkDerefExpr: result := true;
@@ -391,7 +396,7 @@ begin
   result := n;
   case n.kind of
     nkSym: begin
-      if skipGeneric(n.sym.typ).kind <> tyVar then begin
+      if skipTypes(n.sym.typ, abstractInst).kind <> tyVar then begin
         include(n.sym.flags, sfAddrTaken);
         result := newHiddenAddrTaken(c, n);
       end
@@ -400,14 +405,14 @@ begin
       checkSonsLen(n, 2);
       if n.sons[1].kind <> nkSym then
         internalError(n.info, 'analyseIfAddressTaken');
-      if skipGeneric(n.sons[1].sym.typ).kind <> tyVar then begin
+      if skipTypes(n.sons[1].sym.typ, abstractInst).kind <> tyVar then begin
         include(n.sons[1].sym.flags, sfAddrTaken);
         result := newHiddenAddrTaken(c, n);
       end
     end;
     nkBracketExpr: begin
       checkMinSonsLen(n, 1);
-      if skipGeneric(n.sons[0].typ).kind <> tyVar then begin
+      if skipTypes(n.sons[0].typ, abstractInst).kind <> tyVar then begin
         if n.sons[0].kind = nkSym then
           include(n.sons[0].sym.flags, sfAddrTaken);
         result := newHiddenAddrTaken(c, n);
@@ -433,7 +438,7 @@ begin
   if (n.sons[0].kind = nkSym)
       and (n.sons[0].sym.magic in FakeVarParams) then exit;
   for i := 1 to sonsLen(n)-1 do
-    if (i < sonsLen(t)) and (skipGeneric(t.sons[i]).kind = tyVar) then
+    if (i < sonsLen(t)) and (skipTypes(t.sons[i], abstractInst).kind = tyVar) then
       n.sons[i] := analyseIfAddressTaken(c, n.sons[i]);
 end;
 
@@ -503,16 +508,16 @@ begin
   fixAbstractType(c, result);
   analyseIfAddressTakenInCall(c, result);
 end;
-
+(*
 function semIncSucc(c: PContext; n: PNode; const opr: string): PNode;
 // handles Inc, Dec, Succ and Pred
 var
   a: PNode;
   typ: PType;
 begin
-  checkMinSonsLen(n, 1);
+  checkMinSonsLen(n, 2);
   n.sons[1] := semExprWithType(c, n.sons[1]);
-  typ := skipVar(n.sons[1].Typ);
+  typ := skipTypes(n.sons[1].Typ, {@set}[tyGenericInst, tyVar]);
   if not isOrdinalType(typ) or enumHasWholes(typ) then
     liMessage(n.sons[1].Info, errOrdinalTypeExpected);
   if sonsLen(n) = 3 then begin
@@ -537,10 +542,27 @@ function semOrd(c: PContext; n: PNode): PNode;
 begin
   checkSonsLen(n, 2);
   n.sons[1] := semExprWithType(c, n.sons[1]);
-  if not isOrdinalType(skipVar(n.sons[1].Typ)) then
+  if not isOrdinalType(skipTypes(n.sons[1].Typ, {@set}[tyGenericInst, tyVar])) then
     liMessage(n.Info, errOrdinalTypeExpected);
   n.typ := getSysType(tyInt);
   result := n
+end; *)
+
+function semEcho(c: PContext; n: PNode): PNode;
+var
+  i: int;
+  call, arg: PNode;
+begin
+  // this really is a macro
+  checkMinSonsLen(n, 1);
+  for i := 1 to sonsLen(n)-1 do begin
+    arg := semExprWithType(c, n.sons[i]);
+    call := newNodeI(nkCall, arg.info);
+    addSon(call, newIdentNode(getIdent('$'+''), n.info));
+    addSon(call, arg);
+    n.sons[i] := semExpr(c, call);
+  end;
+  result := n;
 end;
 
 function LookUpForDefined(c: PContext; n: PNode): PSym;
@@ -609,6 +631,8 @@ begin
     mHigh:    result := semLowHigh(c, setMs(n, s), mHigh);
     mSizeOf:  result := semSizeof(c, setMs(n, s));
     mIs:      result := semIs(c, setMs(n, s));
+    mEcho:    result := semEcho(c, setMs(n, s)); 
+    (*
     mSucc:    begin
       result := semIncSucc(c, setMs(n, s), 'succ');
       result.typ := n.sons[1].typ;
@@ -619,7 +643,7 @@ begin
     end;
     mInc:     result := semIncSucc(c, setMs(n, s), 'inc');
     ast.mDec: result := semIncSucc(c, setMs(n, s), 'dec');
-    mOrd:     result := semOrd(c, setMs(n, s));
+    mOrd:     result := semOrd(c, setMs(n, s)); *)
     else      result := semDirectOp(c, n);
   end;
 end;
@@ -659,7 +683,14 @@ begin
         result.info := n.info;
         result.typ := s.typ;
       end
-    end
+    end;
+    skMacro: result := semMacroExpr(c, n, s);
+    skTemplate: begin
+      // Templates and macros can be invoked without ``()``
+      pushInfoContext(n.info);
+      result := evalTemplate(c, n, s);
+      popInfoContext();
+    end;
     else begin end
   end;
   checkDeprecated(n, s);
@@ -808,7 +839,7 @@ begin
     exit
   end;
 
-  ty := skipPtrsGeneric(ty);
+  ty := skipTypes(ty, {@set}[tyGenericInst, tyVar, tyPtr, tyRef]);
   if ty.kind = tyObject then begin
     while true do begin
       check := nil;
@@ -816,7 +847,7 @@ begin
       //f := lookupInRecord(ty.n, i);
       if f <> nil then break;
       if ty.sons[0] = nil then break;
-      ty := skipGeneric(ty.sons[0]);
+      ty := skipTypes(ty.sons[0], {@set}[tyGenericInst]);
     end;
     if f <> nil then begin
       if ([sfStar, sfMinus] * f.flags <> [])
@@ -883,7 +914,7 @@ begin
   // check if array type:
   checkMinSonsLen(n, 2);
   n.sons[0] := semExprWithType(c, n.sons[0], flags-[efAllowType]);
-  arr := skipPtrsGeneric(n.sons[0].typ);
+  arr := skipTypes(n.sons[0].typ, {@set}[tyGenericInst, tyVar, tyPtr, tyRef]);
   case arr.kind of
     tyArray, tyOpenArray, tyArrayConstr, tySequence, tyString,
     tyCString: begin
@@ -904,7 +935,8 @@ begin
       n.sons[0] := makeDeref(n.sons[0]);
       // [] operator for tuples requires constant expression
       n.sons[1] := semConstExpr(c, n.sons[1]);
-      if skipRange(n.sons[1].typ).kind in [tyInt..tyInt64] then begin
+      if skipTypes(n.sons[1].typ, {@set}[tyGenericInst, tyRange, tyOrdinal]).kind in
+          [tyInt..tyInt64] then begin
         idx := getOrdValue(n.sons[1]);
         if (idx >= 0) and (idx < sonsLen(arr)) then
           n.typ := arr.sons[int(idx)]
@@ -984,12 +1016,15 @@ begin
         checkSonsLen(n.sons[i], 2);
         n.sons[i].sons[0] := semExprWithType(c, n.sons[i].sons[0]);
         n.sons[i].sons[1] := semExprWithType(c, n.sons[i].sons[1]);
-        if typ = nil then typ := skipVar(n.sons[i].sons[0].typ);
+        if typ = nil then 
+          typ := skipTypes(n.sons[i].sons[0].typ, 
+            {@set}[tyGenericInst, tyVar, tyOrdinal]);
         n.sons[i].typ := n.sons[i].sons[1].typ; // range node needs type too
       end
       else begin
         n.sons[i] := semExprWithType(c, n.sons[i]);
-        if typ = nil then typ := skipVar(n.sons[i].typ)
+        if typ = nil then
+          typ := skipTypes(n.sons[i].typ, {@set}[tyGenericInst, tyVar, tyOrdinal])
       end
     end;
     if not isOrdinalType(typ) then begin
@@ -1156,10 +1191,7 @@ begin
   if (s <> nil) then begin
     checkDeprecated(n, s);
     case s.kind of
-      skMacro: begin
-        include(s.flags, sfUsed);
-        result := semMacroExpr(c, n, s);
-      end;
+      skMacro: result := semMacroExpr(c, n, s);
       skTemplate: begin
         include(s.flags, sfUsed);
         // transform
@@ -1234,7 +1266,6 @@ begin
         result := semExpr(c, result, flags)
       end;
     end;
-    // complex expressions
     nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       // check if it is an expression macro:
       checkMinSonsLen(n, 1);
@@ -1242,10 +1273,7 @@ begin
       if (s <> nil) then begin
         checkDeprecated(n, s);
         case s.kind of
-          skMacro: begin
-            include(s.flags, sfUsed);
-            result := semMacroExpr(c, n, s);
-          end;
+          skMacro: result := semMacroExpr(c, n, s);
           skTemplate: begin
             include(s.flags, sfUsed);
             pushInfoContext(n.info);
@@ -1307,7 +1335,7 @@ begin
       checkSonsLen(n, 1);
       n.sons[0] := semExprWithType(c, n.sons[0]);
       result := n;
-      case skipVarGeneric(n.sons[0].typ).kind of
+      case skipTypes(n.sons[0].typ, {@set}[tyGenericInst, tyVar]).kind of
         tyRef, tyPtr: n.typ := n.sons[0].typ.sons[0];
         else liMessage(n.sons[0].info, errCircumNeedsPointer);
       end;

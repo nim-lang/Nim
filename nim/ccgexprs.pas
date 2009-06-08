@@ -56,7 +56,7 @@ begin
   if ty = nil then internalError(v.info, 'genLiteral: ty is nil');
   case v.kind of
     nkCharLit..nkInt64Lit: begin
-      case skipVarGenericRange(ty).kind of
+      case skipTypes(ty, abstractVarRange).kind of
         tyChar, tyInt64, tyNil: result := intLiteral(v.intVal);
         tyInt8:  
           result := ropef('((NI8) $1)', [intLiteral(biggestInt(int8(v.intVal)))]);
@@ -76,13 +76,13 @@ begin
         end;
         else
           result := ropef('(($1) $2)', [getTypeDesc(p.module,
-            skipVarGenericRange(ty)), intLiteral(v.intVal)])
+            skipTypes(ty, abstractVarRange)), intLiteral(v.intVal)])
       end
     end;
     nkNilLit:
       result := toRope('0'+'');
     nkStrLit..nkTripleStrLit: begin
-      if skipVarGenericRange(ty).kind = tyString then begin
+      if skipTypes(ty, abstractVarRange).kind = tyString then begin
         id := NodeTableTestOrSet(p.module.dataCache, v, gid);
         if id = gid then begin
           // string literal not found in the cache:
@@ -228,7 +228,7 @@ function rdCharLoc(const a: TLoc): PRope;
 // read a location that may need a char-cast:
 begin
   result := rdLoc(a);
-  if skipRange(a.t).kind = tyChar then
+  if skipTypes(a.t, abstractRange).kind = tyChar then
     result := ropef('((NU8)($1))', [result])
 end;
 
@@ -289,7 +289,7 @@ procedure genAssignment(p: BProc; const dest, src: TLoc;
 var
   ty: PType;
 begin;
-  ty := skipVarGenericRange(dest.t);
+  ty := skipTypes(dest.t, abstractVarRange);
   case ty.kind of
     tyRef:
       genRefAssign(p, dest, src, flags);
@@ -531,7 +531,7 @@ begin
   assert(e.sons[2].typ <> nil);
   InitLocExpr(p, e.sons[1], a);
   InitLocExpr(p, e.sons[2], b);
-  t := skipGenericRange(e.typ);
+  t := skipTypes(e.typ, abstractRange);
   if getSize(t) >= platform.IntSize then begin
     if optOverflowCheck in p.options then begin
       useMagic(p.module, prc[m]);
@@ -578,7 +578,7 @@ var
 begin
   assert(e.sons[1].typ <> nil);
   InitLocExpr(p, e.sons[1], a);
-  t := skipGenericRange(e.typ);
+  t := skipTypes(e.typ, abstractRange);
   if optOverflowCheck in p.options then begin
     useMagic(p.module, 'raiseOverflow');
     appf(p.s[cpsStmts], 'if ($1 == $2) raiseOverflow();$n', 
@@ -705,7 +705,7 @@ var
 begin
   assert(e.sons[1].typ <> nil);
   InitLocExpr(p, e.sons[1], a);
-  t := skipGenericRange(e.typ);
+  t := skipTypes(e.typ, abstractRange);
   putIntoDest(p, d, e.typ, ropef(unArithTab[op], 
               [rdLoc(a), toRope(getSize(t)*8)]));
 end;
@@ -718,7 +718,7 @@ begin
     expr(p, e.sons[0], d)
   else begin
     initLocExpr(p, e.sons[0], a);
-    case skipGeneric(a.t).kind of
+    case skipTypes(a.t, abstractInst).kind of
       tyRef: d.s := OnHeap;
       tyVar: d.s := OnUnknown;
       tyPtr: d.s := OnUnknown; // BUGFIX!
@@ -872,7 +872,7 @@ var
 begin
   initLocExpr(p, e.sons[0], a);
   initLocExpr(p, e.sons[1], b);
-  ty := skipPtrsGeneric(skipVarGenericRange(a.t));
+  ty := skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs);
   first := intLiteral(firstOrd(ty));
   // emit range check:
   if (optBoundsCheck in p.options) then begin
@@ -892,7 +892,7 @@ begin
     end;
   end;
   if d.k = locNone then d.s := a.s;
-  putIntoDest(p, d, elemType(skipVarGeneric(ty)), ropef('$1[($2)-$3]',
+  putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)), ropef('$1[($2)-$3]',
     [rdLoc(a), rdCharLoc(b), first]));
 end;
 
@@ -903,9 +903,9 @@ var
 begin
   initLocExpr(p, e.sons[0], a);
   initLocExpr(p, e.sons[1], b);
-  ty := skipVarGenericRange(a.t);
+  ty := skipTypes(a.t, abstractVarRange);
   if d.k = locNone then d.s := a.s;
-  putIntoDest(p, d, elemType(skipVarGeneric(ty)), ropef('$1[$2]',
+  putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)), ropef('$1[$2]',
     [rdLoc(a), rdCharLoc(b)]));
 end;
 
@@ -923,7 +923,7 @@ begin
     // BUGFIX: ``>=`` and not ``>``!
   end;
   if d.k = locNone then d.s := a.s;
-  putIntoDest(p, d, elemType(skipVarGeneric(a.t)), ropef('$1[$2]',
+  putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)), ropef('$1[$2]',
     [rdLoc(a), rdCharLoc(b)]));
 end;
 
@@ -934,8 +934,9 @@ var
 begin
   initLocExpr(p, e.sons[0], a);
   initLocExpr(p, e.sons[1], b);
-  ty := skipVarGenericRange(a.t);
-  if ty.kind in [tyRef, tyPtr] then ty := skipVarGenericRange(ty.sons[0]);
+  ty := skipTypes(a.t, abstractVarRange);
+  if ty.kind in [tyRef, tyPtr] then 
+    ty := skipTypes(ty.sons[0], abstractVarRange);
   // emit range check:
   if (optBoundsCheck in p.options) then begin
     useMagic(p.module, 'raiseIndexError');
@@ -949,10 +950,10 @@ begin
         [rdLoc(b), rdLoc(a)])
   end;
   if d.k = locNone then d.s := OnHeap;
-  if skipVarGenericRange(a.t).kind in [tyRef, tyPtr] then
+  if skipTypes(a.t, abstractVar).kind in [tyRef, tyPtr] then
     a.r := ropef('(*$1)', [a.r]);
-  putIntoDest(p, d, elemType(skipVarGeneric(a.t)), ropef('$1->data[$2]',
-    [rdLoc(a), rdCharLoc(b)]));
+  putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)), 
+    ropef('$1->data[$2]', [rdLoc(a), rdCharLoc(b)]));
 end;
 
 procedure genAndOr(p: BProc; e: PNode; var d: TLoc; m: TMagic);
@@ -1040,6 +1041,20 @@ begin
     genAssignment(p, d, tmp, {@set}[]); // no need for deep copying
 end;
 
+procedure genEcho(p: BProc; n: PNode);
+var 
+  i: int;
+  a: TLoc;
+begin
+  useMagic(p.module, 'rawEcho');
+  useMagic(p.module, 'rawEchoNL');
+  for i := 1 to sonsLen(n)-1 do begin
+    initLocExpr(p, n.sons[i], a);
+    appf(p.s[cpsStmts], 'rawEcho($1);$n', [rdLoc(a)]);
+  end;
+  app(p.s[cpsStmts], 'rawEchoNL();' + tnl);
+end;
+
 procedure genCall(p: BProc; t: PNode; var d: TLoc);
 var
   param: PSym;
@@ -1120,7 +1135,7 @@ begin
   for i := 0 to sonsLen(e)-2 do begin
     // compute the length expression:
     initLocExpr(p, e.sons[i+1], a);
-    if skipVarGenericRange(e.sons[i+1].Typ).kind = tyChar then begin
+    if skipTypes(e.sons[i+1].Typ, abstractVarRange).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
       appf(appends, 'appendChar($1, $2);$n', [tmp.r, rdLoc(a)])
@@ -1169,7 +1184,7 @@ begin
   for i := 0 to sonsLen(e)-3 do begin
     // compute the length expression:
     initLocExpr(p, e.sons[i+2], a);
-    if skipVarGenericRange(e.sons[i+2].Typ).kind = tyChar then begin
+    if skipTypes(e.sons[i+2].Typ, abstractVarRange).kind = tyChar then begin
       Inc(L);
       useMagic(p.module, 'appendChar');
       appf(appends, 'appendChar($1, $2);$n',
@@ -1202,8 +1217,8 @@ begin
   InitLocExpr(p, e.sons[2], b);
   appf(p.s[cpsStmts],
     '$1 = ($2) incrSeq(&($1)->Sup, sizeof($3));$n',
-    [rdLoc(a), getTypeDesc(p.module, skipVarGeneric(e.sons[1].typ)),
-    getTypeDesc(p.module, skipVarGeneric(e.sons[2].Typ))]);
+    [rdLoc(a), getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
+    getTypeDesc(p.module, skipTypes(e.sons[2].Typ, abstractVar))]);
   initLoc(dest, locExpr, b.t, OnHeap);
   dest.r := ropef('$1->data[$1->Sup.len-1]', [rdLoc(a)]);
   genAssignment(p, dest, b, {@set}[needToCopy, afDestIsNil]);
@@ -1222,7 +1237,7 @@ begin
       s := t;
       while (s.kind = tyObject) and (s.sons[0] <> nil) do begin
         app(r, '.Sup');
-        s := skipGeneric(s.sons[0]);
+        s := skipTypes(s.sons[0], abstractInst);
       end;    
       appf(p.s[cpsStmts], '$1.m_type = $2;$n', [r, genTypeInfo(p.module, t)])
     end;
@@ -1242,15 +1257,15 @@ var
   reftype, bt: PType;
 begin
   useMagic(p.module, 'newObj');
-  refType := skipVarGenericRange(e.sons[1].typ);
+  refType := skipTypes(e.sons[1].typ, abstractVarRange);
   InitLocExpr(p, e.sons[1], a);
   initLoc(b, locExpr, a.t, OnHeap);
   b.r := ropef('($1) newObj($2, sizeof($3))',
     [getTypeDesc(p.module, reftype), genTypeInfo(p.module, refType),
-    getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
+    getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))]);
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
-  bt := skipGenericRange(refType.sons[0]);
+  bt := skipTypes(refType.sons[0], abstractRange);
   genObjectInit(p, bt, a, false);
 end;
 
@@ -1260,7 +1275,7 @@ var
   seqtype: PType;
 begin
   useMagic(p.module, 'newSeq');
-  seqType := skipVarGenericRange(e.sons[1].typ);
+  seqType := skipTypes(e.sons[1].typ, abstractVarRange);
   InitLocExpr(p, e.sons[1], a);
   InitLocExpr(p, e.sons[2], b);
   initLoc(c, locExpr, a.t, OnHeap);
@@ -1278,20 +1293,20 @@ var
   r, nilcheck: PRope;
 begin
   initLocExpr(p, n.sons[1], a);
-  dest := skipPtrsGeneric(n.sons[2].typ);
+  dest := skipTypes(n.sons[2].typ, abstractPtrs);
   useMagic(p.module, 'isObj');
   r := rdLoc(a);
   nilCheck := nil;
-  t := skipGeneric(a.t);
+  t := skipTypes(a.t, abstractInst);
   while t.kind in [tyVar, tyPtr, tyRef] do begin
     if t.kind <> tyVar then nilCheck := r;
     r := ropef('(*$1)', [r]);
-    t := skipGeneric(t.sons[0])
+    t := skipTypes(t.sons[0], abstractInst)
   end;
   if gCmd <> cmdCompileToCpp then
     while (t.kind = tyObject) and (t.sons[0] <> nil) do begin
       app(r, '.Sup');
-      t := skipGeneric(t.sons[0]);
+      t := skipTypes(t.sons[0], abstractInst)
     end;
   if nilCheck <> nil then
     r := ropef('(($1) && isObj($2.m_type, $3))',
@@ -1310,7 +1325,7 @@ var
   oldModule: BModule;
 begin
   useMagic(p.module, 'newObj');
-  refType := skipVarGenericRange(e.sons[1].typ);
+  refType := skipTypes(e.sons[1].typ, abstractVarRange);
   InitLocExpr(p, e.sons[1], a);
   
   // This is a little hack: 
@@ -1326,11 +1341,11 @@ begin
   appf(gmti.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
     ti, rdLoc(f)]);
   b.r := ropef('($1) newObj($2, sizeof($3))',
-                   [getTypeDesc(p.module, refType), ti,
-                    getTypeDesc(p.module, skipGenericRange(reftype.sons[0]))]);
+           [getTypeDesc(p.module, refType), ti,
+            getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))]);
   genAssignment(p, a, b, {@set}[]);
   // set the object type:
-  bt := skipGenericRange(refType.sons[0]);
+  bt := skipTypes(refType.sons[0], abstractRange);
   genObjectInit(p, bt, a, false);
 end;
 
@@ -1340,7 +1355,7 @@ var
   t: PType;
 begin
   InitLocExpr(p, e.sons[1], a);
-  t := skipVarGenericRange(e.sons[1].typ);
+  t := skipTypes(e.sons[1].typ, abstractVarRange);
   case t.kind of
     tyInt..tyInt64: begin
       UseMagic(p.module, 'reprInt');
@@ -1358,7 +1373,7 @@ begin
       UseMagic(p.module, 'reprChar');
       putIntoDest(p, d, e.typ, ropef('reprChar($1)', [rdLoc(a)]))
     end;
-    tyEnum, tyAnyEnum: begin
+    tyEnum, tyOrdinal: begin
       UseMagic(p.module, 'reprEnum');
       putIntoDest(p, d, e.typ,
         ropef('reprEnum($1, $2)', [rdLoc(a), genTypeInfo(p.module, t)]))
@@ -1416,7 +1431,7 @@ procedure genArrayLen(p: BProc; e: PNode; var d: TLoc; op: TMagic);
 var
   typ: PType;
 begin
-  typ := skipPtrsGeneric(e.sons[1].Typ);
+  typ := skipTypes(e.sons[1].Typ, abstractPtrs);
   case typ.kind of
     tyOpenArray: begin
       while e.sons[1].kind = nkPassAsOpenArray do
@@ -1457,7 +1472,7 @@ begin
   useMagic(p.module, 'setLengthSeq');
   InitLocExpr(p, e.sons[1], a);
   InitLocExpr(p, e.sons[2], b);
-  t := skipVarGeneric(e.sons[1].typ);
+  t := skipTypes(e.sons[1].typ, abstractVar);
   appf(p.s[cpsStmts],
     '$1 = ($3) setLengthSeq(&($1)->Sup, sizeof($4), $2);$n',
     [rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
@@ -1477,7 +1492,7 @@ procedure genSwap(p: BProc; e: PNode; var d: TLoc);
 var
   a, b, tmp: TLoc;
 begin
-  getTemp(p, skipVarGeneric(e.sons[1].typ), tmp);
+  getTemp(p, skipTypes(e.sons[1].typ, abstractVar), tmp);
   InitLocExpr(p, e.sons[1], a); // eval a
   InitLocExpr(p, e.sons[2], b); // eval b
   genAssignment(p, tmp, a, {@set}[]);
@@ -1518,7 +1533,7 @@ end;
 
 procedure genInExprAux(p: BProc; e: PNode; var a, b, d: TLoc);
 begin
-  case int(getSize(skipVarGeneric(e.sons[1].typ))) of
+  case int(getSize(skipTypes(e.sons[1].typ, abstractVar))) of
     1: binaryExprIn(p, e, a, b, d, '(($1 &(1<<(($2)&7)))!=0)');
     2: binaryExprIn(p, e, a, b, d, '(($1 &(1<<(($2)&15)))!=0)');
     4: binaryExprIn(p, e, a, b, d, '(($1 &(1<<(($2)&31)))!=0)');
@@ -1591,7 +1606,7 @@ var
   a, b, i: TLoc;
   ts: string;
 begin
-  setType := skipVarGeneric(e.sons[1].Typ);
+  setType := skipTypes(e.sons[1].Typ, abstractVar);
   size := int(getSize(setType));
   case size of
     1, 2, 4, 8: begin
@@ -1676,7 +1691,7 @@ var
   a: TLoc;
 begin
   InitLocExpr(p, e.sons[1], a);
-  if (skipGenericRange(e.typ).kind in ValueTypes)
+  if (skipTypes(e.typ, abstractRange).kind in ValueTypes)
   and not (lfIndirect in a.flags) then
     putIntoDest(p, d, e.typ, ropef('(*($1*) ($2))',
       [getTypeDesc(p.module, e.typ), addrLoc(a)]))
@@ -1690,7 +1705,7 @@ var
   a: TLoc;
   dest: PType;
 begin
-  dest := skipVarGeneric(n.typ);
+  dest := skipTypes(n.typ, abstractVar);
   if not (optRangeCheck in p.options) then begin
     InitLocExpr(p, n.sons[0], a);
     putIntoDest(p, d, n.typ, ropef('(($1) ($2))',
@@ -1720,8 +1735,8 @@ var
 begin
   while n.sons[0].kind = nkPassAsOpenArray do
     n.sons[0] := n.sons[0].sons[0]; // BUGFIX
-  dest := skipVarGeneric(n.typ);
-  case skipVarGeneric(n.sons[0].typ).kind of
+  dest := skipTypes(n.typ, abstractVar);
+  case skipTypes(n.sons[0].typ, abstractVar).kind of
     tyOpenArray: begin
       initLocExpr(p, n.sons[0], a);
       putIntoDest(p, d, dest, ropef('$1, $1Len0', [rdLoc(a)]));
@@ -1744,7 +1759,8 @@ var
   a: TLoc;
 begin
   initLocExpr(p, n.sons[0], a);
-  putIntoDest(p, d, skipVarGeneric(n.typ), ropef('$1->data', [rdLoc(a)]));
+  putIntoDest(p, d, skipTypes(n.typ, abstractVar), 
+              ropef('$1->data', [rdLoc(a)]));
 end;
 
 procedure convCStrToStr(p: BProc; n: PNode; var d: TLoc);
@@ -1753,7 +1769,7 @@ var
 begin
   useMagic(p.module, 'cstrToNimstr');
   initLocExpr(p, n.sons[0], a);
-  putIntoDest(p, d, skipVarGeneric(n.typ),
+  putIntoDest(p, d, skipTypes(n.typ, abstractVar),
               ropef('cstrToNimstr($1)', [rdLoc(a)]));
 end;
 
@@ -1793,7 +1809,7 @@ begin
     genTypeInfo(p.module, t.typ), intLiteral(sonsLen(t))]);
   genAssignment(p, d, newSeq, {@set}[afSrcIsNotNil]);
   for i := 0 to sonsLen(t)-1 do begin
-    initLoc(arr, locExpr, elemType(skipGeneric(t.typ)), OnHeap);
+    initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap);
     arr.r := ropef('$1->data[$2]', [rdLoc(d), intLiteral(i)]);
     arr.s := OnHeap; // we know that sequences are on the heap
     expr(p, t.sons[i], arr)
@@ -1821,10 +1837,10 @@ begin
   genAssignment(p, d, newSeq, {@set}[afSrcIsNotNil]);
   initLocExpr(p, t.sons[1], a);
   for i := 0 to L-1 do begin
-    initLoc(elem, locExpr, elemType(skipGeneric(t.typ)), OnHeap);
+    initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap);
     elem.r := ropef('$1->data[$2]', [rdLoc(d), intLiteral(i)]);
     elem.s := OnHeap; // we know that sequences are on the heap
-    initLoc(arr, locExpr, elemType(skipGeneric(t.sons[1].typ)), a.s);
+    initLoc(arr, locExpr, elemType(skipTypes(t.sons[1].typ, abstractInst)), a.s);
     arr.r := ropef('$1[$2]', [rdLoc(a), intLiteral(i)]);
     genAssignment(p, elem, arr, {@set}[afDestIsNil, needToCopy]);
   end
@@ -1841,12 +1857,7 @@ begin
     mUnaryMinusI..mAbsI64: unaryArithOverflow(p, e, d, op);
     mShrI..mXor: binaryArith(p, e, d, op);
     mAddi..mModi64: binaryArithOverflow(p, e, d, op);
-    mRepr: genRepr(p, e, d);
-    mAsgn: begin
-      InitLocExpr(p, e.sons[1], a);
-      assert(a.t <> nil);
-      expr(p, e.sons[2], a);
-    end;
+    mRepr: genRepr(p, e, d); 
     mSwap: genSwap(p, e, d);
     mPred: begin // XXX: range checking?
       if not (optOverflowCheck in p.Options) then
@@ -1900,7 +1911,7 @@ begin
     mInc: begin
       if not (optOverflowCheck in p.Options) then
         binaryStmt(p, e, d, '', '$1 += $2;$n')
-      else if skipVarGeneric(e.sons[1].typ).kind = tyInt64 then
+      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
         binaryStmt(p, e, d, 'addInt64', '$1 = addInt64($1, $2);$n')
       else
         binaryStmt(p, e, d, 'addInt', '$1 = addInt($1, $2);$n')
@@ -1908,7 +1919,7 @@ begin
     ast.mDec: begin
       if not (optOverflowCheck in p.Options) then
         binaryStmt(p, e, d, '', '$1 -= $2;$n')
-      else if skipVarGeneric(e.sons[1].typ).kind = tyInt64 then
+      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
         binaryStmt(p, e, d, 'subInt64', '$1 = subInt64($1, $2);$n')
       else
         binaryStmt(p, e, d, 'subInt', '$1 = subInt($1, $2);$n')
@@ -1919,8 +1930,8 @@ begin
     mSetLengthSeq: genSetLengthSeq(p, e, d);
     mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet,
     mMinusSet, mInSet: genSetOp(p, e, d, op);
-    mNewString, mCopyStr, mCopyStrLast: genCall(p, e, d);
-    mExit: genCall(p, e, d);
+    mNewString, mCopyStr, mCopyStrLast, mExit: genCall(p, e, d);
+    mEcho: genEcho(p, e);
     mArrToSeq: genArrToSeq(p, e, d);
     mNLen..mNError:
       liMessage(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s);
@@ -2057,7 +2068,7 @@ begin
   if not handleConstExpr(p, n, d) then begin
     if d.k = locNone then getTemp(p, n.typ, d);
     for i := 0 to sonsLen(n)-1 do begin
-      initLoc(arr, locExpr, elemType(skipGeneric(n.typ)), d.s);
+      initLoc(arr, locExpr, elemType(skipTypes(n.typ, abstractInst)), d.s);
       arr.r := ropef('$1[$2]', [rdLoc(d), intLiteral(i)]);
       expr(p, n.sons[i], arr)
     end
@@ -2087,21 +2098,21 @@ var
   r, nilCheck: PRope;
 begin
   initLocExpr(p, n.sons[0], a);
-  dest := skipPtrsGeneric(n.typ);
+  dest := skipTypes(n.typ, abstractPtrs);
   if (optObjCheck in p.options) and not (isPureObject(dest)) then begin
     useMagic(p.module, 'chckObj');
     r := rdLoc(a);
     nilCheck := nil;
-    t := skipGeneric(a.t);
+    t := skipTypes(a.t, abstractInst);
     while t.kind in [tyVar, tyPtr, tyRef] do begin
       if t.kind <> tyVar then nilCheck := r;
       r := ropef('(*$1)', [r]);
-      t := skipGeneric(t.sons[0])
+      t := skipTypes(t.sons[0], abstractInst)
     end;
     if gCmd <> cmdCompileToCpp then
       while (t.kind = tyObject) and (t.sons[0] <> nil) do begin
         app(r, '.Sup');
-        t := skipGeneric(t.sons[0]);
+        t := skipTypes(t.sons[0], abstractInst);
       end;
     if nilCheck <> nil then
       appf(p.s[cpsStmts], 'if ($1) chckObj($2.m_type, $3);$n',
@@ -2128,11 +2139,12 @@ begin
   if gCmd = cmdCompileToCpp then
     expr(p, n.sons[0], d) // downcast does C++ for us
   else begin
-    dest := skipPtrsGeneric(n.typ);
-    src := skipPtrsGeneric(n.sons[0].typ);
+    dest := skipTypes(n.typ, abstractPtrs);
+    src := skipTypes(n.sons[0].typ, abstractPtrs);
     initLocExpr(p, n.sons[0], a);
     r := rdLoc(a);
-    if skipGeneric(n.sons[0].typ).kind in [tyRef, tyPtr, tyVar] then begin
+    if skipTypes(n.sons[0].typ, abstractInst).kind in [tyRef, tyPtr, tyVar] 
+    then begin
       app(r, '->Sup');
       for i := 2 to abs(inheritanceDiff(dest, src)) do app(r, '.Sup');
       r := con('&'+'', r);
@@ -2201,7 +2213,7 @@ begin
     end;
     nkCurly: genSetConstr(p, e, d);
     nkBracket:
-      if (skipVarGenericRange(e.typ).kind = tySequence) then  // BUGFIX
+      if (skipTypes(e.typ, abstractVarRange).kind = tySequence) then
         genSeqConstr(p, e, d)
       else
         genArrayConstr(p, e, d);
@@ -2211,8 +2223,9 @@ begin
     nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, e, d);
     nkHiddenAddr, nkAddr: genAddr(p, e, d);
     nkBracketExpr: begin
-      ty := skipVarGenericRange(e.sons[0].typ);
-      if ty.kind in [tyRef, tyPtr] then ty := skipVarGenericRange(ty.sons[0]);
+      ty := skipTypes(e.sons[0].typ, abstractVarRange);
+      if ty.kind in [tyRef, tyPtr] then 
+        ty := skipTypes(ty.sons[0], abstractVarRange);
       case ty.kind of
         tyArray, tyArrayConstr: genArrayElem(p, e, d);
         tyOpenArray: genOpenArrayElem(p, e, d);
@@ -2253,7 +2266,7 @@ var
 begin
   result := copyNode(n);
   newSons(result, sonsLen(n));
-  t := getUniqueType(skipVarGenericRange(n.Typ));
+  t := getUniqueType(skipTypes(n.Typ, abstractVarRange));
   if t.n = nil then
     InternalError(n.info, 'transformRecordExpr: invalid type');
   for i := 0 to sonsLen(n)-1 do begin

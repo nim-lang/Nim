@@ -12,10 +12,6 @@ import
   cairowin32, cairoxlib,
   odbcsql,
   gl, glut, glu, glx, glext, wingl,
-  zlib
-
-import "lib/base/lua/lua"
-import "lib/base/lua/lualib"
-import "lib/base/lua/lauxlib"
+  zlib, lua, lualib, lauxlib, mysql, sqlite3, python, tcl
 
 writeln(stdout, "test compilation of binding modules")

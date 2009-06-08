@@ -27,10 +27,10 @@ type
   PStackFrame = ^TStackFrame;
   TStackFrame = record
     mapping: TIdNodeTable; // mapping from symbols to nodes
-    prc: PSym;        // current prc; proc that is evaluated
+    prc: PSym;             // current prc; proc that is evaluated
     call: PNode;
-    next: PStackFrame;   // for stacking
-    params: TNodeSeq;  // parameters passed to the proc
+    next: PStackFrame;     // for stacking
+    params: TNodeSeq;      // parameters passed to the proc
   end;
   
   TEvalContext = object(passes.TPassContext)
@@ -264,7 +264,7 @@ var
   i: int;
   t: PType;
 begin
-  t := skipGenericRange(typ);
+  t := skipTypes(typ, abstractRange);
   result := emptyNode;
   case t.kind of
     tyBool, tyChar, tyInt..tyInt64: result := newNodeIT(nkIntLit, info, t);
@@ -527,6 +527,27 @@ begin
   result := emptyNode
 end;
 
+function getStrValue(n: PNode): string;
+begin
+  case n.kind of
+    nkStrLit..nkTripleStrLit: result := n.strVal;
+    else begin InternalError(n.info, 'getStrValue'); result := '' end;
+  end
+end;
+
+function evalEcho(c: PEvalContext; n: PNode): PNode;
+var
+  i: int;
+begin
+  for i := 1 to sonsLen(n)-1 do begin
+    result := evalAux(c, n.sons[i]);
+    if result.kind = nkExceptBranch then exit;
+    Write(output, getStrValue(result));
+  end;
+  writeln(output, '');
+  result := emptyNode
+end;
+
 function evalExit(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
@@ -555,7 +576,7 @@ function evalNew(c: PEvalContext; n: PNode): PNode;
 var
   t: PType;
 begin
-  t := skipVarGeneric(n.sons[1].typ);
+  t := skipTypes(n.sons[1].typ, abstractVar);
   result := newNodeIT(nkRefTy, n.info, t);
   addSon(result, getNullValue(t.sons[0], n.info));
 end;
@@ -604,8 +625,8 @@ var
 begin
   result := evalAux(c, n.sons[0]);
   if result.kind = nkExceptBranch then exit;
-  dest := skipPtrsGeneric(n.typ);
-  src := skipPtrsGeneric(result.typ);
+  dest := skipTypes(n.typ, abstractPtrs);
+  src := skipTypes(result.typ, abstractPtrs);
   if inheritanceDiff(src, dest) > 0 then
     stackTrace(c, n, errInvalidConversionFromTypeX, typeToString(src));
 end;
@@ -700,7 +721,7 @@ function evalHigh(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
   if result.kind = nkExceptBranch then exit;
-  case skipVarGeneric(n.sons[1].typ).kind of
+  case skipTypes(n.sons[1].typ, abstractVar).kind of
     tyOpenArray, tySequence:
       result := newIntNodeT(sonsLen(result), n);
     tyString:
@@ -749,7 +770,7 @@ begin
   oldLen := sonsLen(a);
   setLength(a.sons, newLen);
   for i := oldLen to newLen-1 do
-    a.sons[i] := getNullValue(skipVarGeneric(n.sons[1].typ), n.info);
+    a.sons[i] := getNullValue(skipTypes(n.sons[1].typ, abstractVar), n.info);
   result := emptyNode
 end;
 
@@ -766,7 +787,7 @@ begin
   if result.kind = nkExceptBranch then exit;
   b := result;
 
-  t := skipVarGeneric(n.sons[1].typ);
+  t := skipTypes(n.sons[1].typ, abstractVar);
   if a.kind = nkEmpty then InternalError(n.info, 'first parameter is empty');
   a.kind := nkBracket;
   a.info := n.info;
@@ -833,14 +854,6 @@ begin
     else InternalError(n.info, 'evalAppendStrCh');
   end;
   result := emptyNode;
-end;
-
-function getStrValue(n: PNode): string;
-begin
-  case n.kind of
-    nkStrLit..nkTripleStrLit: result := n.strVal;
-    else begin InternalError(n.info, 'getStrValue'); result := '' end;
-  end
 end;
 
 function evalConStrStr(c: PEvalContext; n: PNode): PNode;
@@ -936,6 +949,7 @@ begin
     mSwap: result := evalSwap(c, n);
     mInc: result := evalIncDec(c, n, 1);
     ast.mDec: result := evalIncDec(c, n, -1);
+    mEcho: result := evalEcho(c, n);
     mSetLengthStr: result := evalSetLengthStr(c, n);
     mSetLengthSeq: result := evalSetLengthSeq(c, n);
     mIncl: result := evalIncl(c, n);
@@ -1237,7 +1251,8 @@ begin
     nkType..pred(nkNilLit): result := copyNode(n);
     nkNilLit: result := n; // end of atoms
 
-    nkCall, nkHiddenCallConv, nkMacroStmt: result := evalMagicOrCall(c, n);
+    nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand: 
+      result := evalMagicOrCall(c, n);
     nkCurly, nkBracket, nkRange: begin
       result := copyNode(n);
       for i := 0 to sonsLen(n)-1 do addSon(result, evalAux(c, n.sons[i]));

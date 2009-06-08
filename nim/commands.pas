@@ -150,7 +150,8 @@ begin
   if (pass = passCmd1) and not helpWritten then begin
     // BUGFIX 19
     MessageOut(getCommandLineDesc());
-    helpWritten := true
+    helpWritten := true;
+    halt(0);
   end
 end;
 

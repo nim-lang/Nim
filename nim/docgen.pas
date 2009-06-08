@@ -235,6 +235,8 @@ begin
 end;
 
 function toXml(const s: string; splitAfter: int = -1): string;
+const
+  splitter = '<wbr />';
 var
   i, j, k, partLen: int;
 begin
@@ -244,9 +246,9 @@ begin
     j := strStart;
     while j < length(s)+strStart do begin
       k := nextSplitPoint(s, j);
-      if partLen + k - j + 1 > splitAfter then begin
+      if (splitter <> ' '+'') or (partLen + k - j + 1 > splitAfter) then begin
         partLen := 0;
-        addChar(result, ' ');
+        add(result, splitter);
       end;
       for i := j to k do addXmlChar(result, s[i]);
       inc(partLen, k - j + 1);
@@ -691,9 +693,10 @@ var
   langstr: string;
   lang: TSourceLanguage;
 begin
+  result := nil;
+  if n.sons[2] = nil then exit;
   m := n.sons[2].sons[0];
   if (m.kind <> rnLeaf) then InternalError('renderCodeBlock');
-  result := nil;
   langstr := strip(getArgument(n));
   if langstr = '' then lang := langNimrod // default language
   else lang := getSourceLanguage(langstr);
@@ -996,7 +999,6 @@ begin
   rst := rstParse(readFile(filen), false, filen, 0, 1, d.hasToc);
   d.modDesc := renderRstToHtml(d, rst);
   code := genHtmlFile(d);
-  assert(ropeInvariant(code));
   writeRope(code, getOutFile(filename, HtmlExt));
   generateIndex(d);
 end;

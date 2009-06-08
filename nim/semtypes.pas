@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -140,6 +140,15 @@ begin
     liMessage(n.info, errXExpectsOneTypeParam, 'var');
 end;
 
+function semAbstract(c: PContext; n: PNode; prev: PType): PType;
+begin
+  result := newOrPrevType(tyAbstract, prev, c);
+  if sonsLen(n) = 1 then 
+    addSon(result, semTypeNode(c, n.sons[0], nil))
+  else
+    liMessage(n.info, errXExpectsOneTypeParam, 'abstract');
+end;
+
 function semRangeAux(c: PContext; n: PNode; prev: PType): PType;
 var
   a, b: PNode;
@@ -200,6 +209,23 @@ begin
   end
   else
     liMessage(n.info, errArrayExpectsTwoTypeParams);
+end;
+
+function semOrdinal(c: PContext; n: PNode; prev: PType): PType;
+var
+  base: PType;
+begin
+  result := newOrPrevType(tyOrdinal, prev, c);
+  if sonsLen(n) = 2 then begin
+    base := semTypeNode(c, n.sons[1], nil);
+    if base.kind <> tyGenericParam then begin
+      if not isOrdinalType(base) then
+        liMessage(n.sons[1].info, errOrdinalTypeExpected);
+    end;
+    addSon(result, base);
+  end
+  else
+    liMessage(n.info, errXExpectsOneTypeParam, 'ordinal');
 end;
 
 function semTypeIdent(c: PContext; n: PNode): PSym;
@@ -441,7 +467,7 @@ begin
     internalError('semRecordCase: dicriminant is no symbol');
   include(a.sons[0].sym.flags, sfDiscriminant);
   covered := 0;
-  typ := skipVarGeneric(a.sons[0].Typ);
+  typ := skipTypes(a.sons[0].Typ, abstractVar);
   if not isOrdinalType(typ) then
     liMessage(n.info, errSelectorMustBeOrdinal);
   if firstOrd(typ) < 0 then
@@ -740,6 +766,7 @@ begin
         mOpenArray: result := semContainer(c, n, tyOpenArray, 'openarray', prev);
         mRange: result := semRange(c, n, prev);
         mSet: result := semSet(c, n, prev);
+        mOrdinal: result := semOrdinal(c, n, prev);
         mSeq: result := semContainer(c, n, tySequence, 'seq', prev);
         else result := semGeneric(c, n, s, prev);
       end
@@ -774,6 +801,7 @@ begin
     nkRefTy: result := semAnyRef(c, n, tyRef, 'ref', prev);
     nkPtrTy: result := semAnyRef(c, n, tyPtr, 'ptr', prev);
     nkVarTy: result := semVarType(c, n, prev);
+    nkAbstractTy: result := semAbstract(c, n, prev);
     nkProcTy: begin
       checkSonsLen(n, 2);
       result := semProcTypeNode(c, n.sons[0], prev);
@@ -821,7 +849,6 @@ begin
       addSon(m.typ, getSysType(tyChar));
     end;
     mPointer: setMagicType(m, tyPointer, ptrSize);
-    mAnyEnum: setMagicType(m, tyAnyEnum, 1);
     mEmptySet: begin
       setMagicType(m, tySet, 1);
       addSon(m.typ, newTypeS(tyEmpty, c));
@@ -832,7 +859,7 @@ begin
       exit
     end;
     mNil: setMagicType(m, tyNil, ptrSize);
-    mArray, mOpenArray, mRange, mSet, mSeq: exit;
+    mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: exit;
     else liMessage(m.info, errTypeExpected);
   end;
   //registerSysType(m.typ);
