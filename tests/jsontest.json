@@ -1,0 +1,22 @@
+// Simple JSON test file
+// (c) 2009 Andreas Rumpf
+
+/* a long comment */
+
+{
+  "key1": null,
+  "key2": [
+    {},
+    {   },
+    [],
+    
+    [ /* empty array */ ],
+    
+    -1e10 // another comment
+    
+  
+  ]        ,
+  "key3": false
+}
+
+
