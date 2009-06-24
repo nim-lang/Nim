@@ -281,9 +281,9 @@ proc buildDir(os, cpu: int): string =
 
 proc writeFile(filename, content: string) =  
   var f: TFile
-  if openFile(f, filename, fmWrite):
+  if open(f, filename, fmWrite):
     writeln(f, content)
-    closeFile(f)
+    close(f)
   else:
     quit("Cannot open for writing: " & filename)
 
@@ -296,8 +296,8 @@ proc srcdist(c: var TConfigData) =
       createDir(dir)
       var cmd = ("nimrod compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping " &
-                 " --os:$2 --cpu:$3 $1 $4") %
-                 [c.nimrodArgs, c.oses[osA-1], c.cpus[cpuA-1],
+                 " --os:$# --cpu:$# $# $#") %
+                 [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs, 
                  changeFileExt(c.infile, "nim")]
       echo("Executing: " & cmd)
       if executeShellCommand(cmd) != 0:
@@ -327,14 +327,13 @@ proc srcdist(c: var TConfigData) =
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
   var scrpt = GenerateInnoSetup(c)
-  var n = "build" / "install_$1_$2.iss" % [toLower(c.name), c.version]
+  var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
   writeFile(n, scrpt)
   when defined(windows):
     if c.innoSetup.path.len == 0:
       c.innoSetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$1 $2 /O$3 $4" % [c.innoSetup.path, c.innoSetup.flags,
-                                 outcmd, n]
+    var cmd = "$# $# /O$# $#" % [c.innoSetup.path, c.innoSetup.flags, outcmd, n]
     Echo("Executing: " & cmd)
     if executeShellCommand(cmd) == 0:
       removeFile(n)
@@ -350,7 +349,7 @@ when haveZipLib:
       writeFile(deinstallShFile, GenerateDeinstallScript(c))
     
     var proj = toLower(c.name)
-    var n = "$1_$2.zip" % [proj, c.version]
+    var n = "$#_$#.zip" % [proj, c.version]
     if c.outdir.len == 0: n = "build" / n
     else: n = c.outdir / n
     var z: TZipArchive

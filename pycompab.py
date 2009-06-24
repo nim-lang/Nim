@@ -68,11 +68,16 @@ def Subs(frmt, *args, **substitution):
   a = args
   result = []
   i = 0
+  num = 0
   L = len(frmt)
   while i < L:
     if frmt[i] == '$':
       i = i+1
-      if frmt[i] == '$':
+      if frmt[i] == '#':
+        result.append(a[num])
+        num = num+1
+        i = i+1
+      elif frmt[i] == '$':
         result.append('$')
         i = i+1
       elif frmt[i] == '{':
@@ -91,7 +96,8 @@ def Subs(frmt, *args, **substitution):
         while i < len(frmt) and frmt[i] in chars: i = i + 1
         x = frmt[j:i]
         if x[0] in DIGITS:
-          result.append(str(a[int(x)-1]))
+          num = int(x)
+          result.append(str(a[num-1]))
         else:
           result.append(str(d[x]))
       else:

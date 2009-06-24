@@ -1,8 +1,8 @@
 abstract addr and as asm
-block break
+bind block break
 case cast const continue converter
 discard div
-elif else end enum except exception
+elif else end enum except
 finally for from generic
 if implies import in include is isnot iterator
 lambda

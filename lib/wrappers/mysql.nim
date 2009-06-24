@@ -786,7 +786,7 @@ type
     mem_root*: MEM_ROOT       # root allocations
     mysql*: PMYSQL            # connection handle
     params*: PMYSQL_BIND      # input parameters
-    bind*: PMYSQL_BIND        # input parameters
+    `bind`*: PMYSQL_BIND      # input parameters
     fields*: PMYSQL_FIELD     # result set metadata
     result*: MYSQL_DATA       # cached result set
     data_cursor*: PMYSQL_ROWS # current row in cached result
@@ -1042,7 +1042,7 @@ proc mysql_stmt_execute*(stmt: PMYSQL_STMT): cint{.stdcall, dynlib: mysqllib,
     importc: "mysql_stmt_execute".}
 proc mysql_stmt_fetch*(stmt: PMYSQL_STMT): cint{.stdcall, dynlib: mysqllib, 
     importc: "mysql_stmt_fetch".}
-proc mysql_stmt_fetch_column*(stmt: PMYSQL_STMT, bind: PMYSQL_BIND, 
+proc mysql_stmt_fetch_column*(stmt: PMYSQL_STMT, `bind`: PMYSQL_BIND, 
                               column: cuint, offset: int): cint{.stdcall, 
     dynlib: mysqllib, importc: "mysql_stmt_fetch_column".}
 proc mysql_stmt_store_result*(stmt: PMYSQL_STMT): cint{.stdcall, 

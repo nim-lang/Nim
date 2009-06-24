@@ -34,7 +34,7 @@ While Nimrod's support for object oriented programming (OOP) is minimalistic,
 powerful OOP technics can be used. OOP is seen as *one* way to design a 
 program, not *the only* way. Often a procedural approach leads to simpler
 and more efficient code. In particular, prefering aggregation over inheritance
-often results in a better design.
+is often the better design.
 
 
 Objects
@@ -446,8 +446,7 @@ containers:
     # this uses an explicit stack (which is more efficient anyway):
     var stack: seq[PBinaryTree[T]] = @[root]
     while stack.len > 0:
-      var n = stack[stack.len-1]
-      setLen(stack, stack.len-1) # pop `n` of the stack
+      var n = stack.pop()
       while n != nil:
         yield n
         add(stack, n.ri)  # push right subtree onto the stack
@@ -562,11 +561,11 @@ via a special ``:`` syntax:
     block:
       var fn = filename
       var f: TFile
-      if openFile(f, fn, mode):
+      if open(f, fn, mode):
         try:
           actions
         finally:
-          closeFile(f)
+          close(f)
       else:
         quit("cannot open: " & fn)
       
@@ -593,9 +592,7 @@ Macros enable advanced compile-time code tranformations, but they
 cannot change Nimrod's syntax. However, this is no real restriction because
 Nimrod's syntax is flexible enough anyway. 
 
-`Macros`:idx: can be used to implement `domain specific languages`:idx:. 
-
-To write macros, one needs to know how the Nimrod concrete syntax is converted
+To write a macro, one needs to know how the Nimrod concrete syntax is converted
 to an abstract syntax tree (AST). The AST is documented in the 
 `macros <macros.html>`_ module.
 

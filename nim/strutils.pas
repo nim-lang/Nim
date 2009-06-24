@@ -502,18 +502,25 @@ procedure addf(var result: string; const f: string; args: array of string);
 const
   PatternChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', #128..#255];
 var
-  i, j, x: int;
+  i, j, x, num: int;
 begin
   i := 1;
+  num := 0;
   while i <= length(f) do
     if f[i] = '$' then begin
       case f[i+1] of
+        '#': begin
+          inc(i, 2);
+          add(result, args[num]);
+          inc(num);
+        end;
         '$': begin
           addChar(result, '$');
           inc(i, 2);
         end;
         '1'..'9': begin
-          add(result, args[ord(f[i+1]) - ord('0') - 1]);
+          num := ord(f[i+1]) - ord('0');
+          add(result, args[num - 1]);
           inc(i, 2);
         end;
         '{': begin

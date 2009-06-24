@@ -8,7 +8,7 @@
 #
 
 {
-'SymFlag': [          # already 28 flags!
+'SymFlag': [          # already 29 flags!
   'sfUsed',           # read access of sym (for warnings) or simply used
   'sfStar',           # symbol has * visibility
   'sfMinus',          # symbol has - visibility
@@ -27,6 +27,7 @@
   
   'sfResult',         # variable is 'result' in proc
   'sfNoSideEffect',   # proc has no side effects
+  'sfSideEffect',     # proc may have side effects; cannot prove it has none
   'sfMainModule',     # module is the main module
   'sfSystemModule',   # module is the system module
   'sfNoReturn',       # proc never returns (an exit proc)
@@ -47,6 +48,7 @@
 
 'TypeFlag': [
   'tfVarargs',        # procedure has C styled varargs
+  'tfNoSideEffect',   # procedure type does not allow side effects
   'tfFinal',          # is the object final?
   'tfAcyclic',        # type is acyclic (for GC optimization)
   'tfEnumHasWholes'   # enum cannot be mapped into a range
@@ -146,10 +148,11 @@
   'nkElseExpr',
   'nkLambda',             # lambda expression
   'nkAccQuoted',          # `a` as a node
-  'nkHeaderQuoted',       # `a(x: int)` as a node
 
   'nkTableConstr',        # a table constructor {expr: expr}
   'nkQualified',          # describes a.b for qualified identifiers
+  'nkBind',               # ``bind expr`` node
+  'nkSymChoice',          # symbol choice node
   'nkHiddenStdConv',      # an implicit standard type conversion
   'nkHiddenSubConv',      # an implicit type conversion from a subtype
                           # to a supertype

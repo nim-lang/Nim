@@ -139,16 +139,22 @@ function ropeFormatNamedVars(const frmt: TFormatStr;
                              const varnames: array of string;
                              const varvalues: array of PRope): PRope;
 var
-  i, j, L, start, idx: int;
+  i, j, L, start, idx, num: int;
   id: string;
 begin
   i := strStart;
   L := length(frmt);
   result := nil;
+  num := 0;
   while i <= L + StrStart - 1 do begin
     if frmt[i] = '$' then begin
       inc(i);                 // skip '$'
       case frmt[i] of
+        '#': begin
+          app(result, varvalues[num]);
+          inc(num);
+          inc(i);
+        end;
         '$': begin
           app(result, '$'+'');
           inc(i)
@@ -162,6 +168,7 @@ begin
           end;
           if j > high(varvalues) + 1 then
             internalError('ropeFormatNamedVars');
+          num := j;
           app(result, varvalues[j - 1])
         end;
         'A'..'Z', 'a'..'z', #128..#255: begin
@@ -515,17 +522,17 @@ begin
       result := renderRstSons(d, n);
       L := ropeLen(result);
       result := ropef('$n$1$2$n$1$3', [ind, result,
-                           toRope(repeatChar(L, lvlToChar[n.level]))]);
+                      toRope(repeatChar(L, lvlToChar[n.level]))]);
     end;
     rnOverline: begin
       result := renderRstSons(d, n);
       L := ropeLen(result);
       result := ropef('$n$1$3$n$1$2$n$1$3', [ind, result,
-                           toRope(repeatChar(L, lvlToChar[n.level]))]);
+                      toRope(repeatChar(L, lvlToChar[n.level]))]);
     end;
     rnTransition:
       result := ropef('$n$n$1$2$n$n',
-                          [ind, toRope(repeatChar(78-d.indent, '-'))]);
+                     [ind, toRope(repeatChar(78-d.indent, '-'))]);
     rnParagraph: begin
       result := renderRstSons(d, n);
       result := ropef('$n$n$1$2', [ind, result]);
@@ -1002,8 +1009,5 @@ begin
   writeRope(code, getOutFile(filename, HtmlExt));
   generateIndex(d);
 end;
-
-// #FFD700
-// #9f9b75
 
 end.

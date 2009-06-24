@@ -65,16 +65,6 @@ function equalParams(a, b: PNode): TParamsEquality;
 function isOrdinalType(t: PType): Boolean;
 function enumHasWholes(t: PType): Boolean;
 
-(*
-function skipRange(t: PType): PType;
-function skipGeneric(t: PType): PType;
-function skipGenericRange(t: PType): PType;
-function skipVar(t: PType): PType;
-function skipVarGeneric(t: PType): PType;
-function skipVarGenericRange(t: PType): PType;
-function skipPtrsGeneric(t: PType): PType;
-*)
-
 const
   abstractPtrs = {@set}[tyVar, tyPtr, tyRef, tyGenericInst, tyAbstract, tyOrdinal];
   abstractVar = {@set}[tyVar, tyGenericInst, tyAbstract, tyOrdinal];

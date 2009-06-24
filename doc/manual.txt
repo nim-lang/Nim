@@ -336,7 +336,7 @@ Precedence level    Operators                                     First characte
 
 
 The grammar's start symbol is ``module``. The grammar is LL(1) and therefore
-not ambigious.
+not ambiguous.
 
 .. include:: grammar.txt
    :literal:
@@ -920,6 +920,95 @@ each other:
 Most calling conventions exist only for the Windows 32-bit platform.
 
 
+Type relations
+--------------
+
+The following section defines several relations on types that are needed to
+describe the type checking done by the compiler.
+
+
+Type equality
+~~~~~~~~~~~~~
+Nimrod uses structural type equivalence for most types. Only for objects,
+enumerations and abstract types name equivalence is used. The following
+algorithm determines type equality:
+
+.. code-block:: nimrod
+  proc typeEqualsAux(a, b: PType,
+                     s: var set[tuple[PType, PType]]): bool =
+    if (a,b) in s: return true
+    incl(s, (a,b))
+    if a.kind == b.kind: 
+      case a.kind
+      of int, intXX, float, floatXX, char, string, cstring, pointer, bool, nil:
+        # leaf type: kinds identical; nothing more to check
+        result = true
+      of ref, ptr, var, set, seq, openarray:
+        result = typeEqualsAux(a.baseType, b.baseType, s)
+      of range:
+        result = typeEqualsAux(a.baseType, b.baseType, s) and
+          (a.rangeA == b.rangeA) and (a.rangeB == b.rangeB)
+      of array:
+        result = typeEqualsAux(a.baseType, b.baseType, s) and
+                 typeEqualsAux(a.indexType, b.indexType, s)
+      of tuple:
+        if a.tupleLen == b.tupleLen:
+          for i in 0..a.tupleLen-1:
+            if not typeEqualsAux(a[i], b[i], s): return false
+          result = true
+      of object, enum, abstract:
+        result = a == b
+      of proc:
+        result = typeEqualsAux(a.parameterTuple, b.parameterTuple, s) and
+                 typeEqualsAux(a.resultType, b.resultType, s) and
+                 a.callingConvention == b.callingConvention
+
+  proc typeEquals(a, b: PType): bool =
+    var s: set[tuple[PType, PType]] = {}
+    result = typeEqualsAux(a, b, s)
+
+Since types are graphs which can have cycles, the above algorithm needs an
+auxiliary set ``s`` to detect this case.
+
+
+Subtype relation
+~~~~~~~~~~~~~~~~
+If object ``b`` inherits from ``a``, ``b`` is a subtype of ``a``. This subtype
+relation is extended to the types ``var``, ``ref``, ``ptr``:
+
+.. code-block:: nimrod
+  proc isSubtype(a, b: PType): bool = 
+    if a.kind == b.kind:
+      case a.kind
+      of object:
+        var aa = a.baseType
+        while aa != nil and aa != b: aa = aa.baseType
+        result = aa == b
+      of var, ref, ptr:
+        result = isSubtype(a.baseType, b.baseType)
+
+XXX nil is a special value!
+
+
+Convertible relation
+~~~~~~~~~~~~~~~~~~~~
+A type ``a`` is convertible to type ``b`` iff the following algorithm returns
+true:
+
+.. code-block:: nimrod
+  proc isConvertible(a, b: PType): bool =
+    if a.kind == b.kind:
+      case a.kind
+      of proc:
+        var x = a.parameterTuple
+        var y = b.parameterTuple
+        if x.tupleLen == y.tupleLen:
+          for i in 0.. x.tupleLen-1:
+            if not isSubtype(x[i], y[i]): return false
+          result = isSubType(b.resultType, a.resultType)
+
+
+
 
 Statements and expressions
 --------------------------
@@ -927,8 +1016,7 @@ Nimrod uses the common statement/expression paradigm: `Statements`:idx: do not
 produce a value in contrast to expressions. Call expressions are statements.
 If the called procedure returns a value, it is not a valid statement
 as statements do not produce values. To evaluate an expression for
-side-effects and throwing its value away, one can use the ``discard``
-statement.
+side-effects and throw its value away, one can use the ``discard`` statement.
 
 Statements are separated into `simple statements`:idx: and
 `complex statements`:idx:.
@@ -1917,11 +2005,11 @@ iterator in which case the overloading resolution takes place:
 
   # Module C
   import A, B
-  write(stdout, x) # error: x is ambigious
+  write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
 
   var x = 4
-  write(stdout, x) # not ambigious: uses the module C's x
+  write(stdout, x) # not ambiguous: uses the module C's x
 
 
 Messages

@@ -45,7 +45,7 @@ type
     module: PSym;            // the module sym belonging to the context
     filename: string;        // the module's filename
     tab: TSymTab;            // each module has its own symbol table
-    AmbigiousSymbols: TIntSet; // contains ids of all ambigious symbols (cannot
+    AmbiguousSymbols: TIntSet; // contains ids of all ambiguous symbols (cannot
                                // store this info in the syms themselves!)
     generics: PNode;         // a list of the things to compile; list of
                              // nkExprEqExpr nodes which contain the generic
@@ -156,7 +156,7 @@ begin
   fillChar(result^, sizeof(result^), 0);
 {@emit}
   InitSymTab(result.tab);
-  IntSetInit(result.AmbigiousSymbols);
+  IntSetInit(result.AmbiguousSymbols);
   initLinkedList(result.optionStack);
   initLinkedList(result.libs);
   append(result.optionStack, newOptionEntry());

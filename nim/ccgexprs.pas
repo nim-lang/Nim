@@ -220,8 +220,7 @@ end;
 function addrLoc(const a: TLoc): PRope;
 begin
   result := a.r;
-  if not (lfIndirect in a.flags) then
-    result := con('&'+'', result)
+  if not (lfIndirect in a.flags) then result := con('&'+'', result)
 end;
 
 function rdCharLoc(const a: TLoc): PRope;
@@ -2257,32 +2256,6 @@ begin
 end;
 
 // ---------------------- generation of complex constants ---------------------
-(*
-function transformRecordExpr(n: PNode): PNode;
-var
-  i: int;
-  t: PType;
-  field: PSym;
-begin
-  result := copyNode(n);
-  newSons(result, sonsLen(n));
-  t := getUniqueType(skipTypes(n.Typ, abstractVarRange));
-  if t.n = nil then
-    InternalError(n.info, 'transformRecordExpr: invalid type');
-  for i := 0 to sonsLen(n)-1 do begin
-    assert(n.sons[i].kind = nkExprColonExpr);
-    assert(n.sons[i].sons[0].kind = nkSym);
-    field := n.sons[i].sons[0].sym;
-    field := lookupInRecord(t.n, field.name);
-    if field = nil then
-      InternalError(n.sons[i].info, 'transformRecordExpr: unknown field');
-    if result.sons[field.position] <> nil then begin
-      InternalError(n.sons[i].info, 'transformRecordExpr: value twice: ' +
-                    renderTree(n.sons[i]));
-    end;
-    result.sons[field.position] := copyTree(n.sons[i].sons[1]);
-  end;
-end; *)
 
 function genNamedConstExpr(p: BProc; n: PNode): PRope;
 begin

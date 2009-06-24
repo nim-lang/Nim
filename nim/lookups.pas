@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -19,7 +19,8 @@ uses
 {$include 'config.inc'}
 
 type
-  TOverloadIterMode = (oimNoQualifier, oimSelfModule, oimOtherModule);
+  TOverloadIterMode = (oimDone, oimNoQualifier, oimSelfModule, oimOtherModule,
+                       oimSymChoice);
   TOverloadIter = record
     stackPtr: int;
     it: TIdentIter;
@@ -43,7 +44,7 @@ procedure addInterfaceOverloadableSymAt(c: PContext; sym: PSym; at: int);
 function lookUp(c: PContext; n: PNode): PSym;
 // Looks up a symbol. Generates an error in case of nil.
 
-function QualifiedLookUp(c: PContext; n: PNode; ambigiousCheck: bool): PSym;
+function QualifiedLookUp(c: PContext; n: PNode; ambiguousCheck: bool): PSym;
 
 function InitOverloadIter(out o: TOverloadIter; c: PContext; n: PNode): PSym;
 function nextOverloadIter(var o: TOverloadIter; c: PContext; n: PNode): PSym;
@@ -139,22 +140,22 @@ begin
       result := SymtabGet(c.Tab, n.sym.name);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s);
-      include(result.flags, sfUsed);
+      //include(result.flags, sfUsed);
     end;
     nkIdent: begin
       result := SymtabGet(c.Tab, n.ident);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
-      include(result.flags, sfUsed);
+      //include(result.flags, sfUsed);
     end
     else InternalError(n.info, 'lookUp');
   end;
-  if IntSetContains(c.AmbigiousSymbols, result.id) then
+  if IntSetContains(c.AmbiguousSymbols, result.id) then
     liMessage(n.info, errUseQualifier, result.name.s);
   if result.kind = skStub then loadStub(result);
 end;
 
-function QualifiedLookUp(c: PContext; n: PNode; ambigiousCheck: bool): PSym;
+function QualifiedLookUp(c: PContext; n: PNode; ambiguousCheck: bool): PSym;
 var
   m: PSym;
   ident: PIdent;
@@ -164,16 +165,16 @@ begin
       result := SymtabGet(c.Tab, n.ident);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
-      else if ambigiousCheck
-          and IntSetContains(c.AmbigiousSymbols, result.id) then
+      else if ambiguousCheck
+          and IntSetContains(c.AmbiguousSymbols, result.id) then
         liMessage(n.info, errUseQualifier, n.ident.s)
     end;
     nkSym: begin
       result := SymtabGet(c.Tab, n.sym.name);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s)
-      else if ambigiousCheck
-          and IntSetContains(c.AmbigiousSymbols, result.id) then
+      else if ambiguousCheck
+          and IntSetContains(c.AmbiguousSymbols, result.id) then
         liMessage(n.info, errUseQualifier, n.sym.name.s)
     end;
     nkDotExpr, nkQualified: begin
@@ -200,7 +201,7 @@ begin
                     renderTree(n.sons[1]));
       end
     end;
-    nkAccQuoted: result := QualifiedLookup(c, n.sons[0], ambigiousCheck);
+    nkAccQuoted: result := QualifiedLookup(c, n.sons[0], ambiguousCheck);
     else begin
       result := nil;
       //liMessage(n.info, errIdentifierExpected, '')
@@ -224,15 +225,18 @@ begin
         result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident);
       end;
     end;
-    nkSym: begin
+    nkSym: begin 
+      result := n.sym;
+      o.mode := oimDone;
+    (*
       o.stackPtr := c.tab.tos;
       o.mode := oimNoQualifier;
       while (result = nil) do begin
         dec(o.stackPtr);
         if o.stackPtr < 0 then break;
         result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name);
-      end;
-    end;
+      end; *)
+    end; 
     nkDotExpr, nkQualified: begin
       o.mode := oimOtherModule;
       o.m := qualifiedLookUp(c, n.sons[0], false);
@@ -258,6 +262,11 @@ begin
       end
     end;
     nkAccQuoted: result := InitOverloadIter(o, c, n.sons[0]);
+    nkSymChoice: begin
+      o.mode := oimSymChoice;
+      result := n.sons[0].sym;
+      o.stackPtr := 1
+    end;
     else begin end
   end;
   if (result <> nil) and (result.kind = skStub) then loadStub(result);
@@ -266,6 +275,7 @@ end;
 function nextOverloadIter(var o: TOverloadIter; c: PContext; n: PNode): PSym;
 begin
   case o.mode of
+    oimDone: result := nil;
     oimNoQualifier: begin
       if n.kind = nkAccQuoted then 
         result := nextOverloadIter(o, c, n.sons[0]) // BUGFIX
@@ -282,6 +292,14 @@ begin
     end;
     oimSelfModule:  result := nextIdentIter(o.it, c.tab.stack[ModuleTablePos]);
     oimOtherModule: result := nextIdentIter(o.it, o.m.tab);
+    oimSymChoice: begin
+      if o.stackPtr < sonsLen(n) then begin
+        result := n.sons[o.stackPtr].sym;
+        inc(o.stackPtr);
+      end
+      else
+        result := nil
+    end;
   end;
   if (result <> nil) and (result.kind = skStub) then loadStub(result);
 end;

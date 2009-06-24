@@ -1,8 +1,8 @@
-# Test ambigious symbols
+# Test ambiguous symbols
 
 import mambsym1, times
 
 var
-  v = mDec #ERROR_MSG ambigious identifier
+  v = mDec #ERROR_MSG ambiguous identifier
 
 writeln(stdout, ord(v))
