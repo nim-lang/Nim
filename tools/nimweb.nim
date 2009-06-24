@@ -156,11 +156,11 @@ proc Exec(cmd: string) =
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
-    Exec("nimrod rst2html $1 -o:$2 --index=$3/theindex $4" %
+    Exec("nimrod rst2html $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
        destpath, d])
   for d in items(c.srcdoc):
-    Exec("nimrod doc $1 -o:$2 --index=$3/theindex $4" %
+    Exec("nimrod doc $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
        destpath, d])
   Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" %
@@ -169,7 +169,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
-    Exec("nimrod doc $1 -o:$2 $3" %
+    Exec("nimrod doc $# -o:$# $#" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"), d])
 
 proc main(c: var TConfigData) =
@@ -188,10 +188,10 @@ proc main(c: var TConfigData) =
     var content = readFile(temp)
     if isNil(content): quit("[Error] cannot open: " & temp)
     var f: TFile
-    var outfile = "web/upload/$1.html" % file
-    if openFile(f, outfile, fmWrite):
+    var outfile = "web/upload/$#.html" % file
+    if open(f, outfile, fmWrite):
       writeln(f, generateHTMLPage(c, file, content))
-      closeFile(f)
+      close(f)
     else:
       quit("[Error] cannot write file: " & outfile)
     removeFile(temp)

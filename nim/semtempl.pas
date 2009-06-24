@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -90,7 +90,37 @@ begin
   dec(evalTemplateCounter);
 end;
 
-function resolveTemplateParams(c: PContext; n: PNode): PNode;
+function symChoice(c: PContext; n: PNode; s: PSym): PNode;
+var
+  a: PSym;
+  o: TOverloadIter;
+  i: int;
+begin
+  i := 0;
+  a := initOverloadIter(o, c, n);
+  while a <> nil do begin
+    a := nextOverloadIter(o, c, n);
+    inc(i);
+  end;
+  if i <= 1 then begin
+    result := newSymNode(s);
+    result.info := n.info;
+    include(s.flags, sfUsed);
+  end
+  else begin
+    // semantic checking requires a type; ``fitNode`` deal with it
+    // appropriately
+    result := newNodeIT(nkSymChoice, n.info, newTypeS(tyNone, c));
+    a := initOverloadIter(o, c, n);
+    while a <> nil do begin
+      addSon(result, newSymNode(a));
+      a := nextOverloadIter(o, c, n);
+    end
+  end
+end;
+
+function resolveTemplateParams(c: PContext; n: PNode; 
+                               withinBind: bool): PNode;
 var
   i: int;
   s: PSym;
@@ -98,20 +128,27 @@ begin
   if n = nil then begin result := nil; exit end;
   case n.kind of
     nkIdent: begin
-      s := SymTabLocalGet(c.Tab, n.ident);
-      if (s <> nil) then begin
-        result := newSymNode(s);
-        result.info := n.info
+      if not withinBind then begin
+        s := SymTabLocalGet(c.Tab, n.ident);
+        if (s <> nil) then begin
+          result := newSymNode(s);
+          result.info := n.info
+        end
+        else
+          result := n
       end
-      else
-        result := n
+      else begin
+        result := symChoice(c, n, lookup(c, n))
+      end
     end;
     nkSym..nkNilLit: // atom
       result := n;
+    nkBind: 
+      result := resolveTemplateParams(c, n.sons[0], true);
     else begin
       result := n;
       for i := 0 to sonsLen(n)-1 do
-        result.sons[i] := resolveTemplateParams(c, n.sons[i]);
+        result.sons[i] := resolveTemplateParams(c, n.sons[i], withinBind);
     end
   end
 end;
@@ -200,7 +237,7 @@ begin
   if n.sons[genericParamsPos] <> nil then
     liMessage(n.info, errNoGenericParamsAllowedForX, 'template');
   // resolve parameters:
-  n.sons[codePos] := resolveTemplateParams(c, n.sons[codePos]);
+  n.sons[codePos] := resolveTemplateParams(c, n.sons[codePos], false);
   if params.sons[0].ident.id = ord(wExpr) then
     n.sons[codePos] := transformToExpr(n.sons[codePos]);
 

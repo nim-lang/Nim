@@ -81,7 +81,7 @@ proc ListBreakPoints() =
   write(stdout, "***\n")
 
 proc openAppend(filename: string): TFile =
-  if openFile(result, filename, fmAppend):
+  if open(result, filename, fmAppend):
     write(result, "----------------------------------------\n")
 
 proc dbgRepr(p: pointer, typ: PNimType): string =
@@ -329,7 +329,7 @@ proc dbgOut(s: string, start: int, currFrame: PExtendedFrame) =
     debugOut("[Warning] could not open or create file ")
     return
   dbgEvaluate(stream, s, i, currFrame)
-  closeFile(stream)
+  close(stream)
 
 proc dbgStackFrame(s: string, start: int, currFrame: PExtendedFrame) =
   var dbgTemp: string
@@ -343,7 +343,7 @@ proc dbgStackFrame(s: string, start: int, currFrame: PExtendedFrame) =
       debugOut("[Warning] could not open or create file ")
       return
     ListFrame(stream, currFrame)
-    closeFile(stream)
+    close(stream)
 
 proc CommandPrompt() =
   # if we return from this routine, user code executes again

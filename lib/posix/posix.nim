@@ -2311,8 +2311,9 @@ proc CMSG_FIRSTHDR*(mhdr: ptr TMsgHdr): ptr TCMsgHdr {.
 proc accept*(a1: cint, a2: ptr Tsockaddr, a3: ptr Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}
 
-proc bind*(a1: cint, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
-  importc, header: "<sys/socket.h>".}
+proc bindSocket*(a1: cint, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
+  importc: "bind", header: "<sys/socket.h>".}
+  ## is Posix's ``bind``, because ``bind`` is a reserved word
   
 proc connect*(a1: cint, a2: ptr Tsockaddr, a3: Tsocklen): cint {.
   importc, header: "<sys/socket.h>".}

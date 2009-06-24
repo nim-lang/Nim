@@ -313,9 +313,8 @@ end;
 function accExpr(var p: TParser): PNode;
 var
   x, y: PNode;
-  info: TLineInfo;
 begin
-  info := parLineInfo(p);
+  result := newNodeP(nkAccQuoted, p);
   getTok(p); // skip `
   x := nil;
   y := nil;
@@ -343,16 +342,7 @@ begin
       end
     end;
   end;
-  if (p.tok.tokType = tkParLe) or (p.tok.tokType = tkColon) then begin
-    result := newNodeP(nkHeaderQuoted, p);
-    addSon(result, x);
-    addSon(result, parseParamList(p));
-  end
-  else begin
-    result := newNodeP(nkAccQuoted, p);
-    addSon(result, x);
-  end;
-  result.info := info;
+  addSon(result, x);
   eat(p, tkAccent);
 end;
 
@@ -665,6 +655,13 @@ begin
     optInd(p, a);
     addSon(result, primary(p));
     exit
+  end
+  else if p.tok.tokType = tkBind then begin
+    result := newNodeP(nkBind, p);
+    getTok(p);
+    optInd(p, result);
+    addSon(result, primary(p));
+    exit
   end;
   result := identOrLiteral(p);
   while true do begin
@@ -798,7 +795,7 @@ end;
 function isExprStart(const p: TParser): bool;
 begin
   case p.tok.tokType of
-    tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkLambda,
+    tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkLambda, tkBind,
     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit: result := true;
     else result := false;
   end;

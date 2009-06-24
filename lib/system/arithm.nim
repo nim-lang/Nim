@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,11 +10,11 @@
 
 # simple integer arithmetic with overflow checking
 
-proc raiseOverflow {.compilerproc, noinline.} =
+proc raiseOverflow {.compilerproc, noinline, noreturn.} =
   # a single proc to reduce code size to a minimum
   raise newException(EOverflow, "over- or underflow")
 
-proc raiseDivByZero {.compilerproc, noinline.} =
+proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
   raise newException(EDivByZero, "divison by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =

@@ -46,6 +46,21 @@ begin
   assert(c.callee <> nil);
 end;
 
+procedure copyCandidate(var a: TCandidate; const b: TCandidate);
+begin
+  a.exactMatches := b.exactMatches;
+  a.subtypeMatches := b.subtypeMatches;
+  a.convMatches := b.convMatches;
+  a.intConvMatches := b.intConvMatches;
+  a.genericMatches := b.genericMatches;
+  a.state := b.state;
+  a.callee := b.callee;
+  a.calleeSym := b.calleeSym;
+  a.call := copyTree(b.call);
+  a.baseTypeMatch := b.baseTypeMatch;
+  copyIdTable(a.bindings, b.bindings);
+end;
+
 function cmpCandidates(const a, b: TCandidate): int;
 begin
   result := a.exactMatches - b.exactMatches;
@@ -552,8 +567,8 @@ begin
   end
 end;
 
-function ParamTypesMatch(c: PContext; var m: TCandidate; f, a: PType;
-                         arg: PNode): PNode;
+function ParamTypesMatchAux(c: PContext; var m: TCandidate; f, a: PType;
+                            arg: PNode): PNode;
 var
   r: TTypeRelation;
 begin
@@ -604,6 +619,57 @@ begin
         else
           result := userConvMatch(c, m, base(f), a, arg);
       end
+    end
+  end
+end;
+
+function ParamTypesMatch(c: PContext; var m: TCandidate; f, a: PType;
+                         arg: PNode): PNode;
+var
+  i, cmp, best: int;
+  x, y, z: TCandidate;
+  r: TTypeRelation;
+begin
+  if (arg = nil) or (arg.kind <> nkSymChoice) then
+    result := ParamTypesMatchAux(c, m, f, a, arg)
+  else begin
+    // CAUTION: The order depends on the used hashing scheme. Thus it is
+    // incorrect to simply use the first fitting match. However, to implement
+    // this correctly is inefficient. We have to copy `m` here to be able to
+    // roll back the side effects of the unification algorithm.
+    initCandidate(x, m.callee);
+    initCandidate(y, m.callee);
+    initCandidate(z, m.callee);
+    x.calleeSym := m.calleeSym;
+    y.calleeSym := m.calleeSym;
+    z.calleeSym := m.calleeSym;
+    best := -1;
+    for i := 0 to sonsLen(arg)-1 do begin
+      copyCandidate(z, m);
+      r := typeRel(z.bindings, f, arg.sons[i].typ);
+      if r <> isNone then begin
+        case x.state of
+          csEmpty, csNoMatch: begin x := z; best := i; x.state := csMatch; end;
+          csMatch: begin
+            cmp := cmpCandidates(x, z);
+            if cmp < 0 then begin best := i; x := z end // z is better than x
+            else if cmp = 0 then y := z // z is as good as x
+            else begin end // z is worse than x
+          end
+        end
+      end
+    end;
+    if x.state = csEmpty then 
+      result := nil
+    else if (y.state = csMatch) and (cmpCandidates(x, y) = 0) then begin
+      if x.state <> csMatch then InternalError(arg.info, 'x.state is not csMatch');
+      // ambiguous: more than one symbol fits
+      result := nil
+    end
+    else begin
+      // only one valid interpretation found:
+      include(arg.sons[best].sym.flags, sfUsed);
+      result := ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best]);
     end
   end
 end;
@@ -796,7 +862,7 @@ begin
     //writeMatches(x);
     //writeMatches(y);
     liMessage(n.Info, errGenerated,
-      format(msgKindToString(errAmbigiousCallXYZ),
+      format(msgKindToString(errAmbiguousCallXYZ),
         [getProcHeader(x.calleeSym),
         getProcHeader(y.calleeSym), x.calleeSym.Name.s]))
   end

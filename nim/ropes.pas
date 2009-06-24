@@ -488,22 +488,25 @@ end;
 
 function ropef(const frmt: TFormatStr; const args: array of PRope): PRope;
 var
-  i, j, len, start: int;
+  i, j, len, start, num: int;
 begin
   i := strStart;
   len := length(frmt);
   result := nil;
+  num := 0;
   while i <= len + StrStart - 1 do begin
     if frmt[i] = '$' then begin
       inc(i); // skip '$'
       case frmt[i] of
         '$': begin app(result, '$'+''); inc(i); end;
+        '#': begin inc(i); app(result, args[num]); inc(num); end;
         '0'..'9': begin
           j := 0;
           repeat
             j := (j*10) + Ord(frmt[i]) - ord('0');
             inc(i);
           until (i > len + StrStart - 1) or not (frmt[i] in ['0'..'9']);
+          num := j;
           if j > high(args)+1 then
             internalError('ropes: invalid format string $' + toString(j));
           app(result, args[j-1]);

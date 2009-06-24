@@ -257,7 +257,7 @@ begin
       addSon(result, newIdentNode(getIdent(id.s+'='), n.info));
       addSon(result, semExpr(c, a.sons[0]));
       addSon(result, semExpr(c, n.sons[1]));
-      result := semDirectCall(c, result);
+      result := semDirectCallAnalyseEffects(c, result);
       if result <> nil then begin
         fixAbstractType(c, result);
         analyseIfAddressTakenInCall(c, result);
@@ -277,7 +277,7 @@ begin
         addSonIfNotNil(result, semExpr(c, a.sons[1].sons[0]));
         addSonIfNotNil(result, semExpr(c, a.sons[1].sons[1]));
         addSon(result, semExpr(c, n.sons[1]));
-        result := semDirectCall(c, result);
+        result := semDirectCallAnalyseEffects(c, result);
         if result <> nil then begin
           fixAbstractType(c, result);
           analyseIfAddressTakenInCall(c, result);
@@ -289,7 +289,7 @@ begin
         addSon(result, semExpr(c, a.sons[0]));
         addSon(result, semExpr(c, a.sons[1]));
         addSon(result, semExpr(c, n.sons[1]));
-        result := semDirectCall(c, result);
+        result := semDirectCallAnalyseEffects(c, result);
         if result <> nil then begin
           fixAbstractType(c, result);
           analyseIfAddressTakenInCall(c, result);
@@ -322,7 +322,7 @@ begin
   result := n;
   checkSonsLen(n, 1);
   if not (c.p.owner.kind in [skConverter, skProc, skMacro]) then
-    liMessage(n.info, errReturnNotAllowedHere);
+    liMessage(n.info, errXNotAllowedHere, '''return''');
   if (n.sons[0] <> nil) then begin
     n.sons[0] := SemExprWithType(c, n.sons[0]);
     // check for type compatibility:
@@ -624,9 +624,28 @@ begin
   end
 end;
 
-function resolveGenericParams(c: PContext; n: PNode): PNode;
+function resolveGenericParams(c: PContext; n: PNode; 
+                              withinBind: bool = false): PNode;
+var
+  i: int;
+  s: PSym;
 begin
-  result := n;
+  if n = nil then begin result := nil; exit end;
+  case n.kind of
+    nkIdent: begin
+      if not withinBind then 
+        result := n
+      else
+        result := symChoice(c, n, lookup(c, n))
+    end;
+    nkSym..nkNilLit: result := n;
+    nkBind: result := resolveGenericParams(c, n.sons[0], true);
+    else begin
+      result := n;
+      for i := 0 to sonsLen(n)-1 do
+        result.sons[i] := resolveGenericParams(c, n.sons[i], withinBind);
+    end
+  end
 end;
 
 function SemTypeSection(c: PContext; n: PNode): PNode;
@@ -682,7 +701,7 @@ begin
       addSon(s.typ, nil);
       // process the type body for symbol lookup of generic params
       // we can use the same algorithm as for template parameters:
-      a.sons[2] := resolveTemplateParams(c, a.sons[2]);
+      a.sons[2] := resolveTemplateParams(c, a.sons[2], false);
       s.ast := a;
       if s.typ.containerID <> 0 then
         InternalError(a.info, 'semTypeSection: containerID');
@@ -752,6 +771,13 @@ begin
   if b = nil then liMessage(n.info, errNoSymbolToBorrowFromFound);
   // store the alias:
   n.sons[codePos] := newSymNode(b);
+end;
+
+procedure sideEffectsCheck(c: PContext; s: PSym);
+begin
+  if [sfNoSideEffect, sfSideEffect] * s.flags = 
+     [sfNoSideEffect, sfSideEffect] then 
+    liMessage(s.info, errXhasSideEffects, s.name.s);
 end;
 
 function semIterator(c: PContext; n: PNode): PNode;
@@ -972,6 +998,7 @@ begin
     else if sfBorrow in s.flags then 
       semBorrow(c, n, s);
   end;
+  sideEffectsCheck(c, s);
   closeScope(c.tab); // close scope for parameters
   popOwner();
   c.p := oldP; // restore

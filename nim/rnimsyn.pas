@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -498,8 +498,10 @@ begin
     nkCommand: result := lsub(n.sons[0])+lcomma(n, 1)+1;
     nkExprEqExpr, nkDefaultTypeParam, nkAsgn, nkFastAsgn: result := lsons(n)+3;
     nkPar, nkCurly, nkBracket: result := lcomma(n)+2;
+    nkSymChoice: result := lsons(n) + length('()') + sonsLen(n)-1;
     nkTupleTy: result := lcomma(n)+length('tuple[]');
     nkQualified, nkDotExpr: result := lsons(n)+1;
+    nkBind: result := lsons(n)+length('bind_');
     nkCheckedFieldExpr: result := lsub(n.sons[0]);
     nkLambda: result := lsons(n)+length('lambda__=_');
     nkConstDef, nkIdentDefs: begin
@@ -531,7 +533,6 @@ begin
     nkDerefExpr:      result := lsub(n.sons[0])+2;
     nkImportAs:       result := lsons(n) + length('_as_');
     nkAccQuoted:      result := lsub(n.sons[0]) + 2;
-    nkHeaderQuoted:   result := lsub(n.sons[0]) + lsub(n.sons[1]) + 2;
 
     nkIfExpr:         result := lsub(n.sons[0].sons[0])+lsub(n.sons[0].sons[1])
                               + lsons(n, 1) + length('if_:_');
@@ -1023,6 +1024,14 @@ begin
       gcomma(g, n, 1);
       put(g, tkParRi, ')'+'');
     end;
+    nkSymChoice: begin
+      put(g, tkParLe, '('+'');
+      for i := 0 to sonsLen(n)-1 do begin
+        if i > 0 then put(g, tkOpr, '|'+'');
+        gsub(g, n.sons[i], c);
+      end;
+      put(g, tkParRi, ')'+'');      
+    end;
     nkPar: begin
       put(g, tkParLe, '('+'');
       gcomma(g, n, c);
@@ -1042,6 +1051,10 @@ begin
       gsub(g, n.sons[0]);
       put(g, tkDot, '.'+'');
       gsub(g, n.sons[1]);
+    end;
+    nkBind: begin
+      putWithSpace(g, tkBind, 'bind');
+      gsub(g, n.sons[0]);
     end;
     nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref: gsub(g, n.sons[0]);
     nkLambda: begin
@@ -1117,12 +1130,6 @@ begin
     nkAccQuoted: begin
       put(g, tkAccent, '`'+'');
       gsub(g, n.sons[0]);
-      put(g, tkAccent, '`'+'');
-    end;
-    nkHeaderQuoted: begin
-      put(g, tkAccent, '`'+'');
-      gsub(g, n.sons[0]);
-      gsub(g, n.sons[1]);
       put(g, tkAccent, '`'+'');
     end;
     nkIfExpr: begin

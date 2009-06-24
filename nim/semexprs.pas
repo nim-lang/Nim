@@ -1,6 +1,6 @@
 //
 //
-//           The Ethexor Morpork Compiler
+//           The Nimrod Compiler
 //        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
@@ -110,18 +110,33 @@ begin
 end;
 
 function semConv(c: PContext; n: PNode; s: PSym): PNode;
+var
+  op: PNode;
+  i: int;
 begin
   if sonsLen(n) <> 2 then liMessage(n.info, errConvNeedsOneArg);
   result := newNodeI(nkConv, n.info);
   result.typ := semTypeNode(c, n.sons[0], nil);
   addSon(result, copyTree(n.sons[0]));
   addSon(result, semExprWithType(c, n.sons[1]));
-  checkConvertible(result.info, result.typ, result.sons[1].typ);
+  op := result.sons[1];
+  if op.kind <> nkSymChoice then 
+    checkConvertible(result.info, result.typ, op.typ)
+  else begin
+    for i := 0 to sonsLen(op)-1 do begin
+      if sameType(result.typ, op.sons[i].typ) then begin
+        include(op.sons[i].sym.flags, sfUsed);
+        result := op.sons[i]; exit
+      end
+    end;
+    liMessage(n.info, errUseQualifier, op.sons[0].sym.name.s);
+  end
 end;
 
 function semCast(c: PContext; n: PNode): PNode;
 begin
   if optSafeCode in gGlobalOptions then liMessage(n.info, errCastNotInSafeMode);
+  include(c.p.owner.flags, sfSideEffect);
   checkSonsLen(n, 2);
   result := newNodeI(nkCast, n.info);
   result.typ := semTypeNode(c, n.sons[0], nil);
@@ -354,7 +369,7 @@ function isAssignable(n: PNode): bool;
 begin
   result := false;
   case n.kind of
-    nkSym: result := n.sym.kind in [skVar, skTemp];
+    nkSym: result := (n.sym.kind in [skVar, skTemp]);
     nkDotExpr, nkQualified, nkBracketExpr: begin
       checkMinSonsLen(n, 1);
       if skipTypes(n.sons[0].typ, abstractInst).kind in [tyVar, tyPtr, tyRef] then
@@ -373,7 +388,7 @@ begin
     nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
       result := isAssignable(n.sons[0]);
     else begin end
-  end
+  end;
 end;
 
 function newHiddenAddrTaken(c: PContext; n: PNode): PNode;
@@ -442,13 +457,31 @@ begin
       n.sons[i] := analyseIfAddressTaken(c, n.sons[i]);
 end;
 
+function semDirectCallAnalyseEffects(c: PContext; n: PNode): PNode;
+var
+  callee: PSym;
+begin
+  result := semDirectCall(c, n);
+  if result <> nil then begin
+    if result.sons[0].kind <> nkSym then 
+      InternalError('semDirectCallAnalyseEffects');
+    callee := result.sons[0].sym;
+    if not (sfNoSideEffect in callee.flags) then 
+      if (sfForward in callee.flags) 
+      or ([sfImportc, sfSideEffect] * callee.flags <> []) then 
+        include(c.p.owner.flags, sfSideEffect);
+  end
+end;
+
 function semIndirectOp(c: PContext; n: PNode): PNode;
 var
   m: TCandidate;
   msg: string;
   i: int;
+  prc: PNode;
 begin
   result := nil;
+  prc := n.sons[0];
   checkMinSonsLen(n, 1);
   case n.sons[0].kind of
     nkDotExpr, nkQualified: begin
@@ -457,8 +490,7 @@ begin
       if n.sons[0].kind = nkDotCall then begin // it is a static call!
         result := n.sons[0];
         result.kind := nkCall;
-        for i := 1 to sonsLen(n)-1 do
-          addSon(result, n.sons[i]);
+        for i := 1 to sonsLen(n)-1 do addSon(result, n.sons[i]);
         result := semExpr(c, result);
         exit
       end
@@ -475,8 +507,8 @@ begin
     if m.state <> csMatch then begin
       msg := msgKindToString(errTypeMismatch);
       for i := 1 to sonsLen(n)-1 do begin
+        if i > 1 then add(msg, ', ');
         add(msg, typeToString(n.sons[i].typ));
-        if i <> sonsLen(n)-1 then add(msg, ', ');
       end;
       add(msg, ')' +{&} nl +{&} msgKindToString(errButExpected) +{&}
              nl +{&} typeToString(n.sons[0].typ));
@@ -485,11 +517,21 @@ begin
     end
     else
       result := m.call;
+    // we assume that a procedure that calls something indirectly 
+    // has side-effects:
+    include(c.p.owner.flags, sfSideEffect);
   end
   else begin
     result := overloadedCallOpr(c, n);
-    if result = nil then result := semDirectCall(c, n);
-    if result = nil then liMessage(n.info, errExprCannotBeCalled);
+    // Now that nkSym does not imply an iteration over the proc/iterator space,
+    // the old ``prc`` (which is likely an nkIdent) has to be restored:
+    if result = nil then begin
+      n.sons[0] := prc;
+      result := semDirectCallAnalyseEffects(c, n);
+    end;
+    if result = nil then 
+      liMessage(n.info, errExprXCannotBeCalled, 
+                renderTree(n, {@set}[renderNoComments]));
   end;
   fixAbstractType(c, result);
   analyseIfAddressTakenInCall(c, result);
@@ -499,7 +541,7 @@ function semDirectOp(c: PContext; n: PNode): PNode;
 begin
   // this seems to be a hotspot in the compiler!
   semOpAux(c, n);
-  result := semDirectCall(c, n);
+  result := semDirectCallAnalyseEffects(c, n);
   if result = nil then begin
     result := overloadedCallOpr(c, n);
     if result = nil then
@@ -508,45 +550,6 @@ begin
   fixAbstractType(c, result);
   analyseIfAddressTakenInCall(c, result);
 end;
-(*
-function semIncSucc(c: PContext; n: PNode; const opr: string): PNode;
-// handles Inc, Dec, Succ and Pred
-var
-  a: PNode;
-  typ: PType;
-begin
-  checkMinSonsLen(n, 2);
-  n.sons[1] := semExprWithType(c, n.sons[1]);
-  typ := skipTypes(n.sons[1].Typ, {@set}[tyGenericInst, tyVar]);
-  if not isOrdinalType(typ) or enumHasWholes(typ) then
-    liMessage(n.sons[1].Info, errOrdinalTypeExpected);
-  if sonsLen(n) = 3 then begin
-    n.sons[2] := semExprWithType(c, n.sons[2]);
-    a := IndexTypesMatch(c, getSysType(tyInt), n.sons[2].typ, n.sons[2]);
-    if a = nil then
-      typeMismatch(n.sons[2], getSysType(tyInt), n.sons[2].typ);
-    n.sons[2] := a;
-  end
-  else if sonsLen(n) = 2 then begin // default value of 1
-    a := newIntNode(nkIntLit, 1);
-    a.info := n.info;
-    a.typ := getSysType(tyInt);
-    addSon(n, a)
-  end
-  else
-    liMessage(n.info, errInvalidArgForX, opr);
-  result := n;
-end;
-
-function semOrd(c: PContext; n: PNode): PNode;
-begin
-  checkSonsLen(n, 2);
-  n.sons[1] := semExprWithType(c, n.sons[1]);
-  if not isOrdinalType(skipTypes(n.sons[1].Typ, {@set}[tyGenericInst, tyVar])) then
-    liMessage(n.Info, errOrdinalTypeExpected);
-  n.typ := getSysType(tyInt);
-  result := n
-end; *)
 
 function semEcho(c: PContext; n: PNode): PNode;
 var
@@ -632,18 +635,6 @@ begin
     mSizeOf:  result := semSizeof(c, setMs(n, s));
     mIs:      result := semIs(c, setMs(n, s));
     mEcho:    result := semEcho(c, setMs(n, s)); 
-    (*
-    mSucc:    begin
-      result := semIncSucc(c, setMs(n, s), 'succ');
-      result.typ := n.sons[1].typ;
-    end;
-    mPred:    begin
-      result := semIncSucc(c, setMs(n, s), 'pred');
-      result.typ := n.sons[1].typ;
-    end;
-    mInc:     result := semIncSucc(c, setMs(n, s), 'inc');
-    ast.mDec: result := semIncSucc(c, setMs(n, s), 'dec');
-    mOrd:     result := semOrd(c, setMs(n, s)); *)
     else      result := semDirectOp(c, n);
   end;
 end;
@@ -655,16 +646,14 @@ end;
 
 function semSym(c: PContext; n: PNode; s: PSym; flags: TExprFlags): PNode;
 begin
-  result := newSymNode(s);
-  result.info := n.info;
-  result.typ := s.typ;
-  include(s.flags, sfUsed);
   if (s.kind = skType) and not (efAllowType in flags) then
     liMessage(n.info, errATypeHasNoValue);
   case s.kind of
-    skProc, skIterator, skConverter:
+    skProc, skIterator, skConverter: begin
       if (s.magic <> mNone) then
         liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
+      result := symChoice(c, n, s);
+    end;
     skConst: begin
       (*
         Consider::
@@ -678,20 +667,40 @@ begin
         copy `x`'s AST into each context, so that the type fixup phase can
         deal with two different ``[]``.
       *)
+      include(s.flags, sfUsed);
       if s.typ.kind in ConstAbstractTypes then begin
         result := copyTree(s.ast);
         result.info := n.info;
         result.typ := s.typ;
       end
+      else begin
+        result := newSymNode(s);
+        result.info := n.info;      
+      end
     end;
-    skMacro: result := semMacroExpr(c, n, s);
+    skMacro: begin
+      include(s.flags, sfUsed);
+      result := semMacroExpr(c, n, s);
+    end;
     skTemplate: begin
+      include(s.flags, sfUsed);
       // Templates and macros can be invoked without ``()``
       pushInfoContext(n.info);
       result := evalTemplate(c, n, s);
       popInfoContext();
     end;
-    else begin end
+    skVar: begin
+      include(s.flags, sfUsed);
+      // if a proc accesses a global variable, it is not side effect free
+      if sfGlobal in s.flags then include(c.p.owner.flags, sfSideEffect);
+      result := newSymNode(s);
+      result.info := n.info;  
+    end;
+    else begin
+      include(s.flags, sfUsed);
+      result := newSymNode(s);
+      result.info := n.info;
+    end
   end;
   checkDeprecated(n, s);
 end;
@@ -1266,6 +1275,7 @@ begin
         result := semExpr(c, result, flags)
       end;
     end;
+    nkBind: result := semExpr(c, n.sons[0], flags);
     nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
       // check if it is an expression macro:
       checkMinSonsLen(n, 1);
@@ -1326,11 +1336,7 @@ begin
     end;
     nkCurly: result := semSetConstr(c, n);
     nkBracket: result := semArrayConstr(c, n);
-    nkLambda: result := semLambda(c, n); // handled in semstmts
-    nkExprColonExpr: begin
-      internalError(n.info, 'semExpr() to implement');
-      // XXX: to implement for array constructors!
-    end;
+    nkLambda: result := semLambda(c, n);
     nkDerefExpr: begin
       checkSonsLen(n, 1);
       n.sons[0] := semExprWithType(c, n.sons[0]);
@@ -1357,11 +1363,6 @@ begin
       checkSonsLen(n, 1);
       result := semExpr(c, n.sons[0]);
     end;
-    nkHeaderQuoted: begin
-      // look up the proc:
-      internalError(n.info, 'semExpr() to implement');
-      // XXX: to implement
-    end;
     nkIfExpr: result := semIfExpr(c, n);
     nkStmtListExpr: result := semStmtListExpr(c, n);
     nkBlockExpr: result := semBlockExpr(c, n);
@@ -1374,6 +1375,11 @@ begin
       checkSonsLen(n, 3);
     nkCheckedFieldExpr:
       checkMinSonsLen(n, 2);
+    nkSymChoice: begin
+      liMessage(n.info, errExprXAmbiguous,
+                renderTree(n, {@set}[renderNoComments]));
+      result := nil
+    end
     else begin
       //InternalError(n.info, nodeKindToStr[n.kind]);
       liMessage(n.info, errInvalidExpressionX,

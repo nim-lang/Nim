@@ -150,15 +150,18 @@ proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect.}
   ## Searches for `chars` in `s` starting at position `start`. If `s` contains
   ## none of the characters in `chars`, -1 is returned.
 
-proc replaceStr*(s, sub, by: string): string {.noSideEffect.}
+proc replaceStr*(s, sub, by: string): string {.noSideEffect, deprecated.}
   ## Replaces `sub` in `s` by the string `by`.
+  ## **Deprecated since version 0.8.0**: Use `replace` instead.
 
-proc replaceStr*(s: string, sub, by: char): string {.noSideEffect.}
+proc replaceStr*(s: string, sub, by: char): string {.noSideEffect, deprecated.}
   ## optimized version for characters.
+  ## **Deprecated since version 0.8.0**: Use `replace` instead.
 
-proc deleteStr*(s: var string, first, last: int)
+proc deleteStr*(s: var string, first, last: int) {.deprecated.}
   ## Deletes in `s` the characters at position `first`..`last`. This modifies
   ## `s` itself, it does not return a copy.
+  ## **Deprecated since version 0.8.0**: Use `delete` instead.
 
 proc toOctal*(c: char): string
   ## Converts a character `c` to its octal representation. The resulting
@@ -185,7 +188,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   for word in split(";;this;is;an;;example;;;", {';'}):
   ##     writeln(stdout, word)
   ##
-  ## produces in the same output.
+  ## produces the same output.
   var
     first: int = 0
     last: int = 0
@@ -315,17 +318,15 @@ proc intToStr*(x: int, minchars: int = 1): string
 proc ParseInt*(s: string): int {.noSideEffect.}
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
-  # XXX: make this biggestint!
 
 proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect.}
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
 
-proc ParseFloat*(s: string, start = 0): float {.noSideEffect.}
+proc ParseFloat*(s: string): float {.noSideEffect.}
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
-  # XXX: make this biggestfloat.
 
 # the stringify and format operators:
 proc toString*[Ty](x: Ty): string
@@ -439,10 +440,15 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
 proc addf(s: var string, formatstr: string, a: openarray[string]) =
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
+  var num = 0
   while i < len(formatstr):
     if formatstr[i] == '$':
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
+      of '#':
+        add s, a[num]
+        inc i, 2
+        inc num
       of '$':
         add s, '$'
         inc(i, 2)
@@ -452,6 +458,7 @@ proc addf(s: var string, formatstr: string, a: openarray[string]) =
         while formatstr[i] in {'0'..'9'}:
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
+        num = j
         add s, a[j - 1]
       of '{':
         var j = i+1
@@ -509,6 +516,31 @@ proc splitSeq(s: string, seps: set[char]): seq[string] =
   for sub in split(s, seps): add result, sub
 
 # ---------------------------------------------------------------------------
+
+proc join*(a: openArray[string], sep: string): string =
+  ## concatenates all strings in `a` separating them with `sep`.
+  if len(a) > 0:
+    var L = sep.len * (a.len-1)
+    for i in 0..high(a): inc(L, a[i].len)
+    result = newString(L)
+    setLen(result, 0)
+    add(result, a[0])
+    for i in 1..high(a):
+      add(result, sep)
+      add(result, a[i])
+  else:
+    result = ""
+  
+proc join*(a: openArray[string]): string =
+  ## concatenates all strings in `a`.
+  if len(a) > 0:
+    var L = 0
+    for i in 0..high(a): inc(L, a[i].len)
+    result = newString(L)
+    setLen(result, 0)
+    for i in 0..high(a): add(result, a[i])
+  else:
+    result = ""
 
 proc strip(s: string, leading = true, trailing = true): string =
   const
@@ -638,7 +670,8 @@ proc contains(s: string, c: char): bool =
 proc contains(s, sub: string): bool =
   return find(s, sub) >= 0
 
-proc replaceStr(s, sub, by: string): string =
+proc replace*(s, sub, by: string): string =
+  ## Replaces `sub` in `s` by the string `by`.
   var a: TSkipTable
   result = ""
   preprocessSub(sub, a)
@@ -652,7 +685,8 @@ proc replaceStr(s, sub, by: string): string =
   # copy the rest:
   add result, copy(s, i)
 
-proc replaceStr(s: string, sub, by: char): string =
+proc replace*(s: string, sub, by: char): string =
+  ## optimized version for characters.
   result = newString(s.len)
   var i = 0
   while i < s.len:
@@ -660,16 +694,22 @@ proc replaceStr(s: string, sub, by: char): string =
     else: result[i] = s[i]
     inc(i)
 
-proc deleteStr(s: var string, first, last: int) =
+proc delete*(s: var string, first, last: int) =
+  ## Deletes in `s` the characters at position `first`..`last`. This modifies
+  ## `s` itself, it does not return a copy.
+  var
+    i = first
   # example: "abc___uvwxyz\0"  (___ is to be deleted)
   # --> first == 3, last == 5
   # s[first..] = s[last+1..]
-  var
-    i = first
   while last+i+1 < len(s):
     s[i] = s[last+i+1]
     inc(i)
   setlen(s, len(s)-(last-first+1))
+
+proc replaceStr(s, sub, by: string): string = return replace(s, sub, by)
+proc replaceStr(s: string, sub, by: char): string = return replace(s, sub, by)
+proc deleteStr*(s: var string, first, last: int) = delete(s, first, last)
 
 # parsing numbers:
 
@@ -734,11 +774,11 @@ proc ParseBiggestInt(s: string): biggestInt =
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseFloat(s: string, start = 0): float =
+proc ParseFloat(s: string): float =
   var
     esign = 1.0
     sign = 1.0
-    i = start
+    i = 0
     exponent: int
     flags: int
   result = 0.0

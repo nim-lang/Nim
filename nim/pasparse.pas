@@ -40,12 +40,11 @@ const
   ImportBlackList: array [1..3] of string = (
     'nsystem', 'sysutils', 'charsets'
   );
-  stdReplacements: array [1..20] of TReplaceTuple = (
+  stdReplacements: array [1..19] of TReplaceTuple = (
     ('include',      'incl'),
     ('exclude',      'excl'),
     ('pchar',        'cstring'),
-    ('close',        'closeFile'),
-    ('assignfile',   'openFile'),
+    ('assignfile',   'open'),
     ('integer',      'int'),
     ('longword',     'int32'),
     ('cardinal',     'int'),
@@ -62,10 +61,12 @@ const
     ('len',          'length'),
     ('setlength',    'setlen')
   );
-  nimReplacements: array [1..30] of TReplaceTuple = (
+  nimReplacements: array [1..32] of TReplaceTuple = (
     ('nimread',      'read'),
     ('nimwrite',     'write'),
-    ('nimclosefile', 'closeFile'),
+    ('nimclosefile', 'close'),
+    ('closefile',    'close'),
+    ('openfile',     'open'),
     ('nsystem', 'system'),
     ('ntime', 'times'),
     ('nos', 'os'),
@@ -1972,7 +1973,7 @@ begin
         if isHandledDirective(p) then
           addSon(result, parseDirective(p))
         else
-          parMessage(p, errPragmaXHereNotAllowed, p.tok.ident.s)
+          parMessage(p, errXNotAllowedHere, p.tok.ident.s)
       end
       else addSon(result, parseStmt(p))
     end;

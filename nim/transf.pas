@@ -15,6 +15,7 @@ unit transf;
 // * inlines constants
 // * performes contant folding
 // * introduces nkHiddenDeref, nkHiddenSubConv, etc.
+// * aggressive compile-time evaluation based on the side-effect analysis
 
 interface
 
@@ -22,7 +23,7 @@ interface
 
 uses
   sysutils, nsystem, charsets, strutils,
-  lists, options, ast, astalgo, trees, treetab, 
+  lists, options, ast, astalgo, trees, treetab, evals,
   msgs, nos, idents, rnimsyn, types, passes, semfold, magicsys;
 
 const
@@ -822,7 +823,24 @@ begin
     end;
     if sonsLen(result) = 2 then
       result := result.sons[1];
-  end;
+  end
+  (*
+  else if result.sons[0].kind = nkSym then begin
+    // optimization still too aggressive
+    op := result.sons[0].sym;
+    if (op.magic = mNone) and (op.kind = skProc) 
+    and ([sfSideEffect, sfForward, sfNoReturn, sfImportc] * op.flags = [])
+    then begin
+      for i := 1 to sonsLen(result)-1 do
+        if not isConstExpr(result.sons[i]) then exit;
+      // compile-time evaluation:
+      a := evalConstExpr(c.module, result);
+      if (a <> nil) and (a.kind <> nkEmpty) then begin
+        messageout('evaluated at compile time: ' + rendertree(result));
+        result := a
+      end
+    end
+  end *)
 end;
 
 function transform(c: PTransf; n: PNode): PNode;

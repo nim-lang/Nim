@@ -1,15 +1,14 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
 unit nimsets;
 
-// this unit handles Morpork sets; it implements symbolic sets
-// the code here should be reused in the Morpork standard library
+// this unit handles Nimrod sets; it implements symbolic sets
 
 interface
 

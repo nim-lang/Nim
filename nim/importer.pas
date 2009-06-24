@@ -68,8 +68,8 @@ begin
   if (check <> nil) and (check.id <> copy.id) then begin
     if not (s.kind in OverloadableSyms) then begin
       // s and check need to be qualified:
-      IntSetIncl(c.AmbigiousSymbols, copy.id);
-      IntSetIncl(c.AmbigiousSymbols, check.id);
+      IntSetIncl(c.AmbiguousSymbols, copy.id);
+      IntSetIncl(c.AmbiguousSymbols, check.id);
     end
   end;
   StrTableAdd(c.tab.stack[importTablePos], copy);

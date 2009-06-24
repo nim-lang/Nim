@@ -71,13 +71,13 @@ proc write(f: TFile, a: openArray[string]) =
 proc readFile(filename: string): string =
   var f: TFile
   try:
-    if openFile(f, filename):
+    if open(f, filename):
       var len = getFileSize(f)
       if len < high(int):
         result = newString(int(len))
         if readBuffer(f, addr(result[0]), int(len)) != len:
           result = nil
-      closeFile(f)
+      close(f)
     else:
       result = nil
   except EIO:
@@ -112,9 +112,9 @@ const
     # should not be translated.
 
 
-proc OpenFile(f: var TFile, filename: string,
-              mode: TFileMode = fmRead,
-              bufSize: int = -1): Bool =
+proc Open(f: var TFile, filename: string,
+          mode: TFileMode = fmRead,
+          bufSize: int = -1): Bool =
   var
     p: pointer
   p = fopen(filename, FormatOpen[mode])
@@ -129,9 +129,17 @@ proc OpenFile(f: var TFile, filename: string,
 proc fdopen(filehandle: TFileHandle, mode: cstring): TFile {.
   importc: pccHack & "fdopen", header: "<stdio.h>".}
 
-proc openFile(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
+proc open(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
   f = fdopen(filehandle, FormatOpen[mode])
   result = f != nil
+
+proc OpenFile(f: var TFile, filename: string,
+              mode: TFileMode = fmRead,
+              bufSize: int = -1): Bool =
+  result = open(f, filename, mode, bufSize)
+  
+proc openFile(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
+  result = open(f, filehandle, mode)
 
 # C routine that is used here:
 proc fread(buf: Pointer, size, n: int, f: TFile): int {.

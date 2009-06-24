@@ -1,4 +1,4 @@
-# Test ambigious symbols
+# Test ambiguous symbols
 
 import mambsys1, mambsys2
 

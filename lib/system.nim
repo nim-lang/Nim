@@ -69,11 +69,12 @@ proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
 
-proc new*[T](a: var ref T) {.magic: "New".}
+proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.magic: "NewFinalize".}
+proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.
+  magic: "NewFinalize", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``. When the garbage collector frees the object,
   ## `finalizer` is called. The `finalizer` may not keep a reference to the
@@ -230,17 +231,17 @@ proc pred*[T](x: ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc inc*[T](x: var ordinal[T], y = 1) {.magic: "Inc".}
+proc inc*[T](x: var ordinal[T], y = 1) {.magic: "Inc", noSideEffect.}
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
 
-proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec".}
+proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
   
-proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq".}
+proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = []; setlen(s, len)``, but more
   ## efficient since no relocation is needed.
@@ -255,11 +256,11 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## always an int.
 
 # set routines:
-proc incl*[T](x: var set[T], y: T) {.magic: "Incl".}
+proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
 
-proc excl*[T](x: var set[T], y: T) {.magic: "Excl".}
+proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
 
@@ -641,8 +642,8 @@ proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## is the `concatenation operator`. It concatenates `x` and `y`.
 
-proc add*(x: var string, y: char) {.magic: "AppendStrCh".}
-proc add*(x: var string, y: string) {.magic: "AppendStrStr".}
+proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 
 when not defined(ECMAScript):
   {.push overflow_checks:off}
@@ -663,8 +664,8 @@ else:
       `x`[0][len] = 0
     """
 
-proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem".}
-proc add *[T](x: var seq[T], y: seq[T]) {.magic: "AppendSeqSeq".}
+proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+proc add *[T](x: var seq[T], y: seq[T]) {.magic: "AppendSeqSeq", noSideEffect.}
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
@@ -811,7 +812,8 @@ proc copy*(s: string, first, last: int): string {.
   ## the first and last characters that shall be copied. If ``last``
   ## is omitted, it is treated as ``high(s)``.
 
-proc setLen*(s: var string, newlen: int) {.magic: "SetLengthStr".}
+proc setLen*(s: var string, newlen: int) {.
+  magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated.
@@ -873,20 +875,21 @@ proc dealloc*(p: Pointer) {.noconv.}
   ## or other memory may be corrupted. So this procedure is really
   ## *unsafe*.
 
-proc setLen*[T](s: var seq[T], newlen: int) {.magic: "SetLengthSeq".}
+proc setLen*[T](s: var seq[T], newlen: int) {.
+  magic: "SetLengthSeq", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated.
 
-proc assert*(cond: bool) {.magic: "Assert".}
+proc assert*(cond: bool) {.magic: "Assert", noSideEffect.}
   ## provides a means to implement `programming by contracts` in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
   ## Thus one should use ``assert`` for debugging purposes only.
 
-proc swap*[T](a, b: var T) {.magic: "Swap".}
+proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
 
@@ -934,7 +937,7 @@ proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
   ## used instead. (In other words: *Overwriting* is possible.)
 
 # undocumented:
-proc getRefcount*[T](x: ref T): int {.importc: "getRefcount".}
+proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependant.
 
@@ -1107,18 +1110,19 @@ proc find*[T, S](a: T, item: S): int {.inline.} =
     inc(result)
   result = -1
 
-proc pop*[T](s: var seq[T]): T {.inline.} = 
+proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} = 
   ## returns the last item of `s` and decreases ``s.len`` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
   var L = s.len-1
   result = s[L]
   setLen(s, L)
 
-proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] = 
+proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] {.
+    noSideEffect.} = 
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data` and returns the result as a sequence.
-  result = @[]
-  for d in items(data): add(result, op(d))
+  newSeq(result, data.len)
+  for i in 0..data.len-1: result[i] = op(data[i])
 
 
 # ----------------- FPU ------------------------------------------------------
@@ -1293,7 +1297,16 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## does not work because the program writes to ``stderr``.
 
   proc OpenFile*(f: var TFile, filename: string,
-                 mode: TFileMode = fmRead, bufSize: int = -1): Bool
+                 mode: TFileMode = fmRead, 
+                 bufSize: int = -1): Bool {.deprecated.}
+    ## **Deprecated since version 0.8.0**: Use `open` instead.
+
+  proc OpenFile*(f: var TFile, filehandle: TFileHandle,
+                 mode: TFileMode = fmRead): Bool {.deprecated.}
+    ## **Deprecated since version 0.8.0**: Use `open` instead.
+
+  proc Open*(f: var TFile, filename: string,
+             mode: TFileMode = fmRead, bufSize: int = -1): Bool
     ## Opens a file named `filename` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
@@ -1301,14 +1314,19 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## that the programmer needs to provide an appropriate error message anyway
     ## (yes, even in scripts).
 
-  proc OpenFile*(f: var TFile, filehandle: TFileHandle,
-                 mode: TFileMode = fmRead): Bool
+  proc Open*(f: var TFile, filehandle: TFileHandle,
+             mode: TFileMode = fmRead): Bool
     ## Creates a ``TFile`` from a `filehandle` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
 
-  proc CloseFile*(f: TFile) {.importc: "fclose", nodecl.}
+  proc CloseFile*(f: TFile) {.importc: "fclose", nodecl, deprecated.}
     ## Closes the file.
+    ## **Deprecated since version 0.8.0**: Use `close` instead.
+
+  proc Close*(f: TFile) {.importc: "fclose", nodecl.}
+    ## Closes the file.
+
   proc EndOfFile*(f: TFile): Bool
     ## Returns true iff `f` is at the end.
   proc readChar*(f: TFile): char {.importc: "fgetc", nodecl.}
@@ -1394,13 +1412,13 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## If the file does not exist `EIO` is raised.
     var
       f: TFile
-    if not openFile(f, filename):
+    if not open(f, filename):
       raise newException(EIO, "cannot open: " & filename)
     var res = ""
     while not endOfFile(f):
       rawReadLine(f, res)
       yield res
-    CloseFile(f)
+    Close(f)
 
   proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
                                             header: "<stdio.h>"}

@@ -53,10 +53,10 @@ type
     //cog.out(idents)
     //]]]
     tkAbstract, tkAddr, tkAnd, tkAs, 
-    tkAsm, tkBlock, tkBreak, tkCase, 
-    tkCast, tkConst, tkContinue, tkConverter, 
-    tkDiscard, tkDiv, tkElif, tkElse, 
-    tkEnd, tkEnum, tkExcept, tkException, 
+    tkAsm, tkBind, tkBlock, tkBreak, 
+    tkCase, tkCast, tkConst, tkContinue, 
+    tkConverter, tkDiscard, tkDiv, tkElif, 
+    tkElse, tkEnd, tkEnum, tkExcept, 
     tkFinally, tkFor, tkFrom, tkGeneric, 
     tkIf, tkImplies, tkImport, tkIn, 
     tkInclude, tkIs, tkIsnot, tkIterator, 
@@ -97,10 +97,10 @@ const
     //cog.out(strings)
     //]]]
     'abstract', 'addr', 'and', 'as', 
-    'asm', 'block', 'break', 'case', 
-    'cast', 'const', 'continue', 'converter', 
-    'discard', 'div', 'elif', 'else', 
-    'end', 'enum', 'except', 'exception', 
+    'asm', 'bind', 'block', 'break', 
+    'case', 'cast', 'const', 'continue', 
+    'converter', 'discard', 'div', 'elif', 
+    'else', 'end', 'enum', 'except', 
     'finally', 'for', 'from', 'generic', 
     'if', 'implies', 'import', 'in', 
     'include', 'is', 'isnot', 'iterator', 

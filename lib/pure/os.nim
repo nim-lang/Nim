@@ -556,9 +556,9 @@ proc sameFileContent*(path1, path2: string): bool =
     bufSize = 8192 # 8K buffer
   var
     a, b: TFile
-  if not openFile(a, path1): return false
-  if not openFile(b, path2):
-    closeFile(a)
+  if not open(a, path1): return false
+  if not open(b, path2):
+    close(a)
     return false
   var bufA = alloc(bufsize)
   var bufB = alloc(bufsize)
@@ -576,8 +576,8 @@ proc sameFileContent*(path1, path2: string): bool =
     if readA != bufSize: break # end of file
   dealloc(bufA)
   dealloc(bufB)
-  closeFile(a)
-  closeFile(b)
+  close(a)
+  close(b)
 
 proc copyFile*(dest, source: string) =
   ## Copies a file from `source` to `dest`. If this fails,
@@ -590,9 +590,9 @@ proc copyFile*(dest, source: string) =
       bufSize = 8192 # 8K buffer
     var
       d, s: TFile
-    if not openFile(s, source): OSError()
-    if not openFile(d, dest, fmWrite):
-      closeFile(s)
+    if not open(s, source): OSError()
+    if not open(d, dest, fmWrite):
+      close(s)
       OSError()
     var
       buf: Pointer = alloc(bufsize)
@@ -603,8 +603,8 @@ proc copyFile*(dest, source: string) =
       if bytesread != bufSize: break
       if bytesread != bytesWritten: OSError()
     dealloc(buf)
-    closeFile(s)
-    closeFile(d)
+    close(s)
+    close(d)
 
 proc moveFile*(dest, source: string) =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
@@ -954,7 +954,7 @@ proc getHomeDir*(): string =
   when defined(windows): return getEnv("USERPROFILE") & "\\"
   else: return getEnv("HOME") & "/"
 
-proc getConfigDir*(): string {.noSideEffect.} =
+proc getConfigDir*(): string =
   ## Returns the config directory of the current user for applications.
   when defined(windows): return getEnv("APPDATA") & "\\"
   else: return getEnv("HOME") & "/.config/"

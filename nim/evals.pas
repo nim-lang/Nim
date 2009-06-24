@@ -35,8 +35,9 @@ type
   
   TEvalContext = object(passes.TPassContext)
     module: PSym;
-    tos: PStackFrame; // top of a tos tos
+    tos: PStackFrame; // top of stack
     lastException: PNode;
+    optEval: bool; // evaluation done for optimization purposes
   end;
   PEvalContext = ^TEvalContext;
 
@@ -44,11 +45,14 @@ function newStackFrame(): PStackFrame;
 procedure pushStackFrame(c: PEvalContext; t: PStackFrame);
 procedure popStackFrame(c: PEvalContext);
 
-function newEvalContext(module: PSym; const filename: string): PEvalContext;
+function newEvalContext(module: PSym; const filename: string;
+                        optEval: bool): PEvalContext;
 
 function eval(c: PEvalContext; n: PNode): PNode; 
 // eval never returns nil! This simplifies the code a lot and
 // makes it faster too.
+
+function evalConstExpr(module: PSym; e: PNode): PNode;
 
 function evalPass(): TPass;
 
@@ -71,13 +75,15 @@ begin
 {@emit result.params := @[];}
 end;
 
-function newEvalContext(module: PSym; const filename: string): PEvalContext;
+function newEvalContext(module: PSym; const filename: string;
+                        optEval: bool): PEvalContext;
 begin
   new(result);
 {@ignore}
   fillChar(result^, sizeof(result^), 0);
 {@emit}
   result.module := module;
+  result.optEval := optEval;
 end;
 
 procedure pushStackFrame(c: PEvalContext; t: PStackFrame);
@@ -228,32 +234,35 @@ begin
   case result.kind of
     nkBreakStmt, nkReturnToken: begin end;
     nkExceptBranch: begin
-      // exception token!
-      exc := result;
-      i := 1;
-      len := sonsLen(n);
-      while (i < len) and (n.sons[i].kind = nkExceptBranch) do begin
-        blen := sonsLen(n.sons[i]);
-        if blen = 1 then begin
-          // general except section:
-          result := evalAux(c, n.sons[i].sons[0]);
-          exc := result;
-          break
-        end
-        else begin
-          for j := 0 to blen-2 do begin
-            assert(n.sons[i].sons[j].kind = nkType);
-            if exc.typ.id = n.sons[i].sons[j].typ.id then begin
-              result := evalAux(c, n.sons[i].sons[blen-1]);
-              exc := result;
-              break
-            end
+      if sonsLen(result) >= 1 then begin
+        // creating a nkExceptBranch without sons means that it could not be
+        // evaluated
+        exc := result;
+        i := 1;
+        len := sonsLen(n);
+        while (i < len) and (n.sons[i].kind = nkExceptBranch) do begin
+          blen := sonsLen(n.sons[i]);
+          if blen = 1 then begin
+            // general except section:
+            result := evalAux(c, n.sons[i].sons[0]);
+            exc := result;
+            break
           end
+          else begin
+            for j := 0 to blen-2 do begin
+              assert(n.sons[i].sons[j].kind = nkType);
+              if exc.typ.id = n.sons[i].sons[j].typ.id then begin
+                result := evalAux(c, n.sons[i].sons[blen-1]);
+                exc := result;
+                break
+              end
+            end
+          end;
+          inc(i);
         end;
-        inc(i);
-      end;
-      result := evalFinally(c, n, exc);
-    end;
+        result := evalFinally(c, n, exc);
+      end
+    end
     else
       result := evalFinally(c, n, emptyNode);
   end
@@ -339,6 +348,7 @@ begin
   if n.typ <> nil then d.params[0] := getNullValue(n.typ, n.info);
   pushStackFrame(c, d);
   result := evalAux(c, prc);
+  if result.kind = nkExceptBranch then exit;
   if n.typ <> nil then result := d.params[0];
   popStackFrame(c);
 end;
@@ -572,13 +582,24 @@ begin
   if result.intVal <> 0 then result := evalAux(c, n.sons[2])
 end;
 
+function evalNoOpt(c: PEvalContext; n: PNode): PNode;
+begin
+  result := newNodeI(nkExceptBranch, n.info);
+  // creating a nkExceptBranch without sons means that it could not be
+  // evaluated
+end;
+
 function evalNew(c: PEvalContext; n: PNode): PNode;
 var
   t: PType;
 begin
-  t := skipTypes(n.sons[1].typ, abstractVar);
-  result := newNodeIT(nkRefTy, n.info, t);
-  addSon(result, getNullValue(t.sons[0], n.info));
+  if c.optEval then 
+    result := evalNoOpt(c, n)
+  else begin
+    t := skipTypes(n.sons[1].typ, abstractVar);
+    result := newNodeIT(nkRefTy, n.info, t);
+    addSon(result, getNullValue(t.sons[0], n.info));
+  end
 end;
 
 function evalDeref(c: PEvalContext; n: PNode): PNode;
@@ -740,6 +761,7 @@ end;
 function evalSetLengthStr(c: PEvalContext; n: PNode): PNode;
 var
   a, b: PNode;
+  oldLen, newLen: int;
 begin
   result := evalAux(c, n.sons[1]);
   if result.kind = nkExceptBranch then exit;
@@ -748,7 +770,16 @@ begin
   if result.kind = nkExceptBranch then exit;
   b := result;
   case a.kind of
-    nkStrLit..nkTripleStrLit: setLength(a.strVal, int(getOrdValue(b)));
+    nkStrLit..nkTripleStrLit: begin
+    {@ignore}
+      oldLen := length(a.strVal);
+    {@emit}
+      newLen := int(getOrdValue(b));
+      setLength(a.strVal, newLen);
+    {@ignore}
+      FillChar(a.strVal[oldLen+1], newLen-oldLen, 0);
+    {@emit}
+    end
     else InternalError(n.info, 'evalSetLengthStr')
   end;
   result := emptyNode
@@ -1241,6 +1272,7 @@ end;
 function evalAux(c: PEvalContext; n: PNode): PNode;
 var
   i: int;
+  a: PNode;
 begin
   result := emptyNode;
   dec(gNestedEvals);
@@ -1254,13 +1286,22 @@ begin
     nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand: 
       result := evalMagicOrCall(c, n);
     nkCurly, nkBracket, nkRange: begin
-      result := copyNode(n);
-      for i := 0 to sonsLen(n)-1 do addSon(result, evalAux(c, n.sons[i]));
+      a := copyNode(n);
+      for i := 0 to sonsLen(n)-1 do begin
+        result := evalAux(c, n.sons[i]);
+        if result.kind = nkExceptBranch then exit;        
+        addSon(a, result);
+      end;
+      result := a
     end;
     nkPar: begin
-      result := copyTree(n);
-      for i := 0 to sonsLen(n)-1 do
-        result.sons[i].sons[1] := evalAux(c, n.sons[i].sons[1]);
+      a := copyTree(n);
+      for i := 0 to sonsLen(n)-1 do begin
+        result := evalAux(c, n.sons[i].sons[1]);
+        if result.kind = nkExceptBranch then exit;
+        a.sons[i].sons[1] := result;
+      end;
+      result := a
     end;
     nkBracketExpr: result := evalArrayAccess(c, n);
     nkDotExpr: result := evalFieldAccess(c, n);
@@ -1313,15 +1354,30 @@ begin
   gWhileCounter := evalMaxIterations;
   gNestedEvals := evalMaxRecDepth;
   result := evalAux(c, n);
-  if result.kind = nkExceptBranch then
+  if (result.kind = nkExceptBranch) and (sonsLen(result) >= 1) then
     stackTrace(c, n, errUnhandledExceptionX, typeToString(result.typ));
+end;
+
+function evalConstExpr(module: PSym; e: PNode): PNode;
+var
+  p: PEvalContext;
+  s: PStackFrame;
+begin
+  p := newEvalContext(module, '', true);
+  s := newStackFrame();
+  s.call := e;
+  pushStackFrame(p, s);
+  result := eval(p, e);
+  if (result <> nil) and (result.kind = nkExceptBranch) then 
+    result := nil;
+  popStackFrame(p);
 end;
 
 function myOpen(module: PSym; const filename: string): PPassContext;
 var
   c: PEvalContext;
 begin
-  c := newEvalContext(module, filename);
+  c := newEvalContext(module, filename, false);
   pushStackFrame(c, newStackFrame());
   result := c;
 end;

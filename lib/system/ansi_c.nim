@@ -13,10 +13,11 @@
 
 {.push hints:off}
 
-proc c_strcmp(a, b: CString): cint {.nodecl, importc: "strcmp".}
-proc c_memcmp(a, b: CString, size: cint): cint {.nodecl, importc: "memcmp".}
+proc c_strcmp(a, b: CString): cint {.nodecl, noSideEffect, importc: "strcmp".}
+proc c_memcmp(a, b: CString, size: cint): cint {.
+  nodecl, noSideEffect, importc: "memcmp".}
 proc c_memcpy(a, b: CString, size: cint) {.nodecl, importc: "memcpy".}
-proc c_strlen(a: CString): int {.nodecl, importc: "strlen".}
+proc c_strlen(a: CString): int {.nodecl, noSideEffect, importc: "strlen".}
 proc c_memset(p: pointer, value: cint, size: int) {.nodecl, importc: "memset".}
 
 type

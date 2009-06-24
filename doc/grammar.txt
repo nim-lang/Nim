@@ -29,8 +29,8 @@ addrExpr ::= 'addr' '(' optInd expr ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
                | '[' ']' | '=' | literal)+ '`'
          | IDENT
-primary ::= (prefixOperator optInd)* (symbol | constructor |
-                                      castExpr | addrExpr) (
+primary ::= ((prefixOperator | 'bind') optInd)* (symbol | constructor |
+                                                 castExpr | addrExpr) (
                '.' optInd symbol
              | '(' optInd namedExprList [SAD] ')'
              | '[' optInd
@@ -42,7 +42,7 @@ primary ::= (prefixOperator optInd)* (symbol | constructor |
 literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
           | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
-          | CHAR_LIT | RCHAR_LIT
+          | CHAR_LIT
           | NIL
 
 constructor ::= literal

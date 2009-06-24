@@ -499,7 +499,11 @@ begin
             // otherwise header would not make sense
             if sym.loc.r = nil then sym.loc.r := toRope(sym.name.s)
           end;
-          wNosideeffect: begin noVal(it); Include(sym.flags, sfNoSideEffect); end;
+          wNosideeffect: begin 
+            noVal(it); Include(sym.flags, sfNoSideEffect); 
+            if sym.typ <> nil then include(sym.typ.flags, tfNoSideEffect);
+          end;
+          wSideEffect: begin noVal(it); Include(sym.flags, sfSideEffect); end;
           wNoReturn: begin noVal(it); Include(sym.flags, sfNoReturn); end;
           wDynLib: processDynLib(c, it, sym);
           wCompilerProc: begin
@@ -597,7 +601,7 @@ end;
 procedure pragmaProc(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
+    wImportc, wExportc, wNodecl, wMagic, wNosideEffect, wSideEffect,
     wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
     wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow]);
@@ -612,7 +616,8 @@ end;
 
 procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
 begin
-  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
+  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv, 
+         wNosideEffect, wSideEffect,
          wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow]);
 end;
 
@@ -630,7 +635,7 @@ end;
 procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
 begin
   pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNodecl, wNosideEffect,
+    wImportc, wExportc, wNodecl, wNosideEffect, wSideEffect, 
     wNoreturn, wDynLib, wHeader, wPure, wDeprecated]);
 end;
 

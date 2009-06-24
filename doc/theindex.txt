@@ -155,6 +155,9 @@ Index
      * `system.html#314 <system.html#314>`_
 
    `<=`:idx:
+     `times.html#115 <times.html#115>`_
+
+   `<=`:idx:
      * `system.html#253 <system.html#253>`_
      * `system.html#254 <system.html#254>`_
      * `system.html#255 <system.html#255>`_
@@ -168,9 +171,6 @@ Index
      * `system.html#344 <system.html#344>`_
      * `system.html#345 <system.html#345>`_
      * `system.html#346 <system.html#346>`_
-
-   `<=`:idx:
-     `times.html#115 <times.html#115>`_
 
    `<=%`:idx:
      * `system.html#305 <system.html#305>`_
@@ -201,7 +201,7 @@ Index
      * `macros.html#117 <macros.html#117>`_
 
    `=~`:idx:
-     `regexprs.html#111 <regexprs.html#111>`_
+     `regexprs.html#108 <regexprs.html#108>`_
 
    `>`:idx:
      `system.html#357 <system.html#357>`_
@@ -219,16 +219,16 @@ Index
      `system.html#365 <system.html#365>`_
 
    `[]`:idx:
-     `strtabs.html#107 <strtabs.html#107>`_
-
-   `[]`:idx:
      `macros.html#113 <macros.html#113>`_
 
-   `[]=`:idx:
-     `macros.html#114 <macros.html#114>`_
+   `[]`:idx:
+     `strtabs.html#107 <strtabs.html#107>`_
 
    `[]=`:idx:
      `strtabs.html#106 <strtabs.html#106>`_
+
+   `[]=`:idx:
+     `macros.html#114 <macros.html#114>`_
 
    `[ESC]`:idx:
      `manual.html#134 <manual.html#134>`_
@@ -366,8 +366,7 @@ Index
      `xmlgen.html#111 <xmlgen.html#111>`_
 
    `backslash`:idx:
-     * `manual.html#127 <manual.html#127>`_
-     * `regexprs.html#101 <regexprs.html#101>`_
+     `manual.html#127 <manual.html#127>`_
 
    `backspace`:idx:
      `manual.html#132 <manual.html#132>`_
@@ -1228,7 +1227,7 @@ Index
      `system.html#156 <system.html#156>`_
 
    `EInvalidRegEx`:idx:
-     `regexprs.html#104 <regexprs.html#104>`_
+     `regexprs.html#101 <regexprs.html#101>`_
 
    `EInvalidValue`:idx:
      `system.html#148 <system.html#148>`_
@@ -1265,11 +1264,11 @@ Index
    `enum_cursor_type`:idx:
      `mysql.html#237 <mysql.html#237>`_
 
-   `Enumeration`:idx:
-     `manual.html#148 <manual.html#148>`_
-
    `enumeration`:idx:
      `tut1.html#113 <tut1.html#113>`_
+
+   `Enumeration`:idx:
+     `manual.html#148 <manual.html#148>`_
 
    `enum_field_types`:idx:
      `mysql.html#202 <mysql.html#202>`_
@@ -1546,8 +1545,8 @@ Index
      * `strutils.html#124 <strutils.html#124>`_
      * `strutils.html#125 <strutils.html#125>`_
      * `strutils.html#126 <strutils.html#126>`_
-     * `regexprs.html#109 <regexprs.html#109>`_
-     * `regexprs.html#110 <regexprs.html#110>`_
+     * `regexprs.html#106 <regexprs.html#106>`_
+     * `regexprs.html#107 <regexprs.html#107>`_
 
    `findChars`:idx:
      `strutils.html#123 <strutils.html#123>`_
@@ -1630,9 +1629,6 @@ Index
      * `system.html#477 <system.html#477>`_
      * `system.html#478 <system.html#478>`_
      * `system.html#479 <system.html#479>`_
-
-   `generic character types`:idx:
-     `regexprs.html#102 <regexprs.html#102>`_
 
    `Generics`:idx:
      * `manual.html#207 <manual.html#207>`_
@@ -2258,11 +2254,11 @@ Index
      `xmlgen.html#150 <xmlgen.html#150>`_
 
    `match`:idx:
-     * `regexprs.html#106 <regexprs.html#106>`_
-     * `regexprs.html#107 <regexprs.html#107>`_
+     * `regexprs.html#103 <regexprs.html#103>`_
+     * `regexprs.html#104 <regexprs.html#104>`_
 
    `matchLen`:idx:
-     `regexprs.html#108 <regexprs.html#108>`_
+     `regexprs.html#105 <regexprs.html#105>`_
 
    `math`:idx:
      `nimrodc.html#118 <nimrodc.html#118>`_
@@ -2301,7 +2297,7 @@ Index
      `mysql.html#191 <mysql.html#191>`_
 
    `MaxSubpatterns`:idx:
-     `regexprs.html#105 <regexprs.html#105>`_
+     `regexprs.html#102 <regexprs.html#102>`_
 
    `MAX_TINYINT_WIDTH`:idx:
      `mysql.html#190 <mysql.html#190>`_
@@ -3095,11 +3091,11 @@ Index
    `ord`:idx:
      `system.html#172 <system.html#172>`_
 
-   `ordinal`:idx:
-     `tut1.html#114 <tut1.html#114>`_
-
    `Ordinal`:idx:
      `system.html#114 <system.html#114>`_
+
+   `ordinal`:idx:
+     `tut1.html#114 <tut1.html#114>`_
 
    `Ordinal types`:idx:
      `manual.html#141 <manual.html#141>`_
@@ -3623,16 +3619,16 @@ Index
      `system.html#419 <system.html#419>`_
 
    `reBinary`:idx:
-     `regexprs.html#116 <regexprs.html#116>`_
+     `regexprs.html#113 <regexprs.html#113>`_
 
    `Recursive module dependancies`:idx:
      `manual.html#216 <manual.html#216>`_
 
    `reEmail`:idx:
-     `regexprs.html#119 <regexprs.html#119>`_
+     `regexprs.html#116 <regexprs.html#116>`_
 
    `reFloat`:idx:
-     `regexprs.html#118 <regexprs.html#118>`_
+     `regexprs.html#115 <regexprs.html#115>`_
 
    `REFRESH_DES_KEY_FILE`:idx:
      `mysql.html#154 <mysql.html#154>`_
@@ -3680,13 +3676,13 @@ Index
      `nimrodc.html#112 <nimrodc.html#112>`_
 
    `reHex`:idx:
-     `regexprs.html#115 <regexprs.html#115>`_
-
-   `reIdentifier`:idx:
      `regexprs.html#112 <regexprs.html#112>`_
 
+   `reIdentifier`:idx:
+     `regexprs.html#109 <regexprs.html#109>`_
+
    `reInteger`:idx:
-     `regexprs.html#114 <regexprs.html#114>`_
+     `regexprs.html#111 <regexprs.html#111>`_
 
    `removeDir`:idx:
      `os.html#150 <os.html#150>`_
@@ -3695,10 +3691,10 @@ Index
      `os.html#141 <os.html#141>`_
 
    `reNatural`:idx:
-     `regexprs.html#113 <regexprs.html#113>`_
+     `regexprs.html#110 <regexprs.html#110>`_
 
    `reOctal`:idx:
-     `regexprs.html#117 <regexprs.html#117>`_
+     `regexprs.html#114 <regexprs.html#114>`_
 
    `repeatChar`:idx:
      `strutils.html#148 <strutils.html#148>`_
@@ -3724,7 +3720,7 @@ Index
      `manual.html#189 <manual.html#189>`_
 
    `reURL`:idx:
-     `regexprs.html#120 <regexprs.html#120>`_
+     `regexprs.html#117 <regexprs.html#117>`_
 
    `round`:idx:
      `math.html#121 <math.html#121>`_
@@ -3888,9 +3884,6 @@ Index
      * `system.html#225 <system.html#225>`_
      * `system.html#226 <system.html#226>`_
      * `system.html#227 <system.html#227>`_
-
-   `simple assertions`:idx:
-     `regexprs.html#103 <regexprs.html#103>`_
 
    `simple statements`:idx:
      `manual.html#174 <manual.html#174>`_
@@ -5153,6 +5146,9 @@ Index
    `variant`:idx:
      * `manual.html#156 <manual.html#156>`_
      * `tut2.html#103 <tut2.html#103>`_
+
+   `verbose`:idx:
+     `regexprs.html#118 <regexprs.html#118>`_
 
    `vertical tabulator`:idx:
      `manual.html#126 <manual.html#126>`_

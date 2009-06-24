@@ -405,17 +405,17 @@ else:
 
   proc inputStream(p: PProcess): PStream =
     var f: TFile
-    if not openFile(f, p.inputHandle, fmWrite): OSError()
+    if not open(f, p.inputHandle, fmWrite): OSError()
     result = newFileStream(f)
 
   proc outputStream(p: PProcess): PStream =
     var f: TFile
-    if not openFile(f, p.outputHandle, fmRead): OSError()
+    if not open(f, p.outputHandle, fmRead): OSError()
     result = newFileStream(f)
 
   proc errorStream(p: PProcess): PStream =
     var f: TFile
-    if not openFile(f, p.errorHandle, fmRead): OSError()
+    if not open(f, p.errorHandle, fmRead): OSError()
     result = newFileStream(f)
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}

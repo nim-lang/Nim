@@ -253,8 +253,8 @@ class Changed:
       c = Changed("unique_name", "file1.pas file2.pas file3.pas")
       if c.check():
         Exec("fpc file1.pas")
-        # Exec raises an exception if it fails, thus if we get to here, it was
-        # a success:
+        # Exec raises an exception if it fails, thus if we reach the 
+        # next statement, it was a success:
         c.success()
   """
   def __init__(self, id, files, explain=false,

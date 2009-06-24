@@ -144,7 +144,7 @@ type
   TFileStream* = object of TStream
     f: TFile
 
-proc fsClose(s: PFileStream) = closeFile(s.f)
+proc fsClose(s: PFileStream) = close(s.f)
 proc fsAtEnd(s: PFileStream): bool = return EndOfFile(s.f)
 proc fsSetPosition(s: PFileStream, pos: int) = setFilePos(s.f, pos)
 proc fsGetPosition(s: PFileStream): int = return int(getFilePos(s.f))
@@ -171,7 +171,7 @@ proc newFileStream*(filename: string, mode: TFileMode): PFileStream =
   ## creates a new stream from the file named `filename` with the mode `mode`.
   ## If the file cannot be opened, nil is returned.
   var f: TFile
-  if OpenFile(f, filename, mode): result = newFileStream(f)
+  if Open(f, filename, mode): result = newFileStream(f)
 
 
 when true:

@@ -3,7 +3,7 @@
 import
   unicode, cgi, terminal, libcurl, web, 
   parsexml, parseopt, parsecfg,
-  osproc, zipfiles,
+  osproc,
   sdl, smpeg, sdl_gfx, sdl_net, sdl_mixer, sdl_ttf,
   sdl_image, sdl_mixer_nosmpeg,
   cursorfont, xatom, xf86vmode, xkb, xrandr, xshm, xvlib, keysym, xcms, xi,
@@ -12,6 +12,10 @@ import
   cairowin32, cairoxlib,
   odbcsql,
   gl, glut, glu, glx, glext, wingl,
-  zlib, lua, lualib, lauxlib, mysql, sqlite3, python, tcl
+  lua, lualib, lauxlib, mysql, sqlite3, python, tcl
+  
+when defined(linux):
+  import
+    zlib, zipfiles
 
 writeln(stdout, "test compilation of binding modules")

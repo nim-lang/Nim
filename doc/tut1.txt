@@ -264,7 +264,7 @@ For integers or other ordinal types value ranges are also possible:
 However, the above code does not compile: The reason is that you have to cover
 every value that ``n`` may contain, but the code only handles the values
 ``0..8``. Since it is not very practical to list every other possible integer
-(though it is possible thanks to the range notation!), we fix this by telling
+(though it is possible thanks to the range notation), we fix this by telling
 the compiler that for every other value nothing should be done:
 
 .. code-block:: nimrod
@@ -624,7 +624,8 @@ Nimrod provides the ability to overload procedures similar to C++:
 .. code-block:: nimrod
   proc toString(x: int): string = ...
   proc toString(x: bool): string =
-    if x: return "true" else: return "false"
+    if x: return "true" 
+    else: return "false"
 
   Echo(toString(13))   # calls the toString(x: int) proc
   Echo(toString(true)) # calls the toString(x: bool) proc
@@ -634,7 +635,7 @@ The compiler chooses the most appropriate proc for the ``toString`` calls. How
 this overloading resolution algorithm works exactly is not discussed here
 (it will be specified in the manual soon).
 However, it does not lead to nasty suprises and is based on a quite simple
-unification algorithm. Ambigious calls are reported as errors.
+unification algorithm. Ambiguous calls are reported as errors.
 
 
 Operators
@@ -643,7 +644,7 @@ The Nimrod library makes heavy use of overloading - one reason for this is that
 each operator like ``+`` is a just an overloaded proc. The parser lets you
 use operators in `infix notation` (``a + b``) or `prefix notation` (``+ a``).
 An infix operator always receives two arguments, a prefix operator always one.
-Postfix operators are not possible, because this would be ambigious: Does
+Postfix operators are not possible, because this would be ambiguous: Does
 ``a @ @ b`` mean ``(a) @ (@b)`` or ``(a@) @ (b)``? It always means
 ``(a) @ (@b)``, because there are no postfix operators in Nimrod.
 
@@ -1331,7 +1332,7 @@ This is best illustrated by an example:
 
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. If
-the symbol is ambigious, it even *has* to be qualified. A symbol is ambigious 
+the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous 
 if it is defined in two (or more) different modules and both modules are 
 imported by a third one: 
 
@@ -1344,11 +1345,11 @@ imported by a third one:
 
   # Module C
   import A, B
-  write(stdout, x) # error: x is ambigious
+  write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
 
   var x = 4
-  write(stdout, x) # not ambigious: uses the module C's x
+  write(stdout, x) # not ambiguous: uses the module C's x
 
 
 But this rule does not apply to procedures or iterators. Here the overloading
@@ -1367,7 +1368,7 @@ rules apply:
   write(stdout, x(""))  # no error: B.x is called
 
   proc x*(a: int): string = nil
-  write(stdout, x(3))   # ambigious: which `x` is to call?
+  write(stdout, x(3))   # ambiguous: which `x` is to call?
 
 
 From statement

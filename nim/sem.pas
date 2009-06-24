@@ -90,8 +90,6 @@ end;
 function semAndEvalConstExpr(c: PContext; n: PNode): PNode;
 var
   e: PNode;
-  p: PEvalContext;
-  s: PStackFrame;
 begin
   e := semExprWithType(c, n);
   if e = nil then begin
@@ -101,12 +99,7 @@ begin
   result := getConstExpr(c.module, e);
   if result = nil then begin
     //writeln(output, renderTree(n));
-    p := newEvalContext(c.module, '');
-    s := newStackFrame();
-    s.call := e;
-    pushStackFrame(p, s);
-    result := eval(p, e);
-    popStackFrame(p);
+    result := evalConstExpr(c.module, e);
     if (result = nil) or (result.kind = nkEmpty) then
       liMessage(n.info, errConstExprExpected);
   end
@@ -135,7 +128,7 @@ var
   s: PStackFrame;
 begin
   include(sym.flags, sfUsed);
-  p := newEvalContext(c.module, '');
+  p := newEvalContext(c.module, '', false);
   s := newStackFrame();
   s.call := n;
   setLength(s.params, 2);

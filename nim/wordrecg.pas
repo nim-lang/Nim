@@ -40,10 +40,10 @@ type
     //cog.out(idents)
     //]]]
     wAbstract, wAddr, wAnd, wAs, 
-    wAsm, wBlock, wBreak, wCase, 
-    wCast, wConst, wContinue, wConverter, 
-    wDiscard, wDiv, wElif, wElse, 
-    wEnd, wEnum, wExcept, wException, 
+    wAsm, wBind, wBlock, wBreak, 
+    wCase, wCast, wConst, wContinue, 
+    wConverter, wDiscard, wDiv, wElif, 
+    wElse, wEnd, wEnum, wExcept, 
     wFinally, wFor, wFrom, wGeneric, 
     wIf, wImplies, wImport, wIn, 
     wInclude, wIs, wIsnot, wIterator, 
@@ -62,7 +62,7 @@ type
     // pragmas and command line options:
     wMagic, wTypeCheck, wFinal, wProfiler,
     wObjChecks, wImportc, wExportc, wAlign, wNodecl, wPure,
-    wVolatile, wRegister, wNostatic, wHeader, wNosideeffect, wNoreturn,
+    wVolatile, wRegister, wSideeffect, wHeader, wNosideeffect, wNoreturn,
     wMerge, wLib, wDynlib, wCompilerproc, wCppmethod, wFatal,
     wError, wWarning, wHint, wLine, wPush, wPop,
     wDefine, wUndef, wLinedir, wStacktrace, wLinetrace, wPragma,
@@ -114,10 +114,10 @@ const
     //cog.out(strings)
     //]]]
     'abstract', 'addr', 'and', 'as', 
-    'asm', 'block', 'break', 'case', 
-    'cast', 'const', 'continue', 'converter', 
-    'discard', 'div', 'elif', 'else', 
-    'end', 'enum', 'except', 'exception', 
+    'asm', 'bind', 'block', 'break', 
+    'case', 'cast', 'const', 'continue', 
+    'converter', 'discard', 'div', 'elif', 
+    'else', 'end', 'enum', 'except', 
     'finally', 'for', 'from', 'generic', 
     'if', 'implies', 'import', 'in', 
     'include', 'is', 'isnot', 'iterator', 
@@ -136,7 +136,7 @@ const
     // pragmas and command line options:
     'magic', 'typecheck', 'final', 'profiler',
     'objchecks', 'importc', 'exportc', 'align', 'nodecl', 'pure',
-    'volatile', 'register', 'nostatic', 'header', 'nosideeffect', 'noreturn',
+    'volatile', 'register', 'sideeffect', 'header', 'nosideeffect', 'noreturn',
     'merge', 'lib', 'dynlib', 'compilerproc', 'cppmethod', 'fatal',
     'error', 'warning', 'hint', 'line', 'push', 'pop',
     'define', 'undef', 'linedir', 'stacktrace', 'linetrace', 'pragma',

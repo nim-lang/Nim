@@ -152,3 +152,25 @@ const ## common regular expressions
   reURL* = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms\-help):" &
            r"((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
     ## describes an URL
+    
+proc verbose*(pattern: string): string {.noSideEffect.} = 
+  ## deletes whitespace from a pattern that is not escaped or in a character
+  ## class. This is modelled after Perl's ``/x`` modifier. 
+  result = ""
+  var i = 0
+  while i < pattern.len: 
+    case pattern[i]
+    of ' ', '\t': 
+      inc i
+    of '\\': 
+      add result, '\\'
+      add result, pattern[i+1]
+      inc i, 2
+    of '[': 
+      while pattern[i] != ']' and pattern[i] != '\0': 
+        add result, pattern[i]
+        inc i
+    else: 
+      add result, pattern[i]
+      inc i
+
