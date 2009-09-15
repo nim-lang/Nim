@@ -8,6 +8,10 @@ Nimrod Manual
 .. contents::
 
 
+  "Complexity" seems to be a lot like "energy": you can transfer it from the end 
+  user to one/some of the other players, but the total amount seems to remain 
+  pretty much constant for a given task. -- Ran
+
 About this document
 ===================
 
@@ -171,10 +175,10 @@ preferred. Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier.
 
 
-Literal strings
+String literals
 ---------------
 
-`Literal strings`:idx: can be delimited by matching double quotes, and can
+`String literals`:idx: can be delimited by matching double quotes, and can
 contain the following `escape sequences`:idx:\ :
 
 ==================         ===================================================
@@ -202,12 +206,21 @@ contain the following `escape sequences`:idx:\ :
 
 Strings in Nimrod may contain any 8-bit value, except embedded zeros.
 
-Literal strings can also be delimited by three double squotes
+
+Triple quoted string literals
+-----------------------------
+
+String literals can also be delimited by three double quotes
 ``"""`` ... ``"""``.
 Literals in this form may run for several lines, may contain ``"`` and do not
 interpret any escape sequences.
 For convenience, when the opening ``"""`` is immediately followed by a newline, 
 the newline is not included in the string.
+
+
+Raw string literals
+-------------------
+
 There are also `raw string literals` that are preceded with the letter ``r``
 (or ``R``) and are delimited by matching double quotes (just like ordinary
 string literals) and do not interpret the escape sequences. This is especially
@@ -218,7 +231,22 @@ convenient for regular expressions or Windows paths:
   var f = openFile(r"C:\texts\text.txt") # a raw string, so ``\t`` is no tab
 
 
-Literal characters
+Generalized raw string literals
+-------------------------------
+
+The construct ``identifier"string literal"`` (without whitespace between the
+identifier and the opening quotation mark) is a
+`generalized raw string literal`:idx:. It is a shortcut for the construct
+``identifier(r"string literal")``, so it denotes a procedure call with a
+raw string literal as its only argument. Generalized raw string literals
+are especially convenient for embedding mini languages directly into Nimrod
+(for example regular expressions).
+
+The construct ``identifier"""string literal"""`` exists too. It is a shortcut
+for ``identifier("""string literal""")``.
+
+
+Character literals
 ------------------
 
 Character literals are enclosed in single quotes ``''`` and can contain the
@@ -501,7 +529,7 @@ designed for this.
 Another reason is that Nimrod can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
 `TRune` type is used for Unicode characters, it can represent any Unicode
-character. ``TRune`` is declared the ``unicode`` module.
+character. ``TRune`` is declared in the ``unicode`` module.
 
 
 
@@ -548,7 +576,7 @@ Subrange types
 ~~~~~~~~~~~~~~
 A `subrange`:idx: type is a range of values from an ordinal type (the base
 type). To define a subrange type, one must specify it's limiting values: the
-highest and lowest value of the type:
+lowest and highest value of the type:
 
 .. code-block:: nimrod
   type
@@ -764,7 +792,7 @@ basetype can only be an ordinal type. The reason is that sets are implemented
 as high performance bit vectors.
 
 Sets can be constructed via the set constructor: ``{}`` is the empty set. The
-empty set is type combatible with any special set type. The constructor
+empty set is type compatible with any special set type. The constructor
 can also be used to include elements (and ranges of elements) in the set:
 
 .. code-block:: nimrod
@@ -903,9 +931,8 @@ each other:
 
 `closure`:idx:
     indicates that the procedure expects a context, a closure that needs
-    to be passed to the procedure. The implementation is the
-    same as ``cdecl``, but with a hidden pointer parameter (the
-    *closure*). The hidden parameter is always the last one.
+    to be passed to the procedure. The calling convention ``nimcall`` is
+    compatible to ``closure``. 
 
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for
@@ -915,9 +942,106 @@ each other:
     The generated C code will not have any explicit calling convention and thus
     use the C compiler's default calling convention. This is needed because
     Nimrod's default calling convention for procedures is ``fastcall`` to
-    improve speed. This is unlikely to be needed by the user.
+    improve speed.
 
 Most calling conventions exist only for the Windows 32-bit platform.
+
+
+Distinct type
+~~~~~~~~~~~~~
+
+A distinct type is new type derived from a `base type`:idx: that is
+incompatible with its base type. In particular, it is an essential property
+of a distinct type that it **does not** imply a subtype relation between it
+and its base type. Explict type conversions from a distinct type to its
+base type and vice versa are allowed.
+
+A distinct type can be used to model different physical `units`:idx: with a
+numerical base type, for example. The following example models currencies.
+
+Different currencies should not be mixed in monetary calculations. Distinct
+types are a perfect tool to model different currencies: 
+
+.. code-block:: nimrod
+  type
+    TDollar = distinct int
+    TEuro = distinct int
+  
+  var
+    d: TDollar
+    e: TEuro
+    
+  echo d + 12  
+  # Error: cannot add a number with no unit and a ``TDollar``
+
+Unfortunetaly, ``d + 12.TDollar`` is not allowed either, 
+because ``+`` is defined for ``int`` (among others), not for ``TDollar``. So
+a ``+`` for dollars needs to be defined: 
+
+.. code-block::
+  proc `+` (x, y: TDollar): TDollar = 
+    result = TDollar(int(x) + int(y))
+
+It does not make sense to multiply a dollar with a dollar, but with a
+number without unit; and the same holds for division:
+
+.. code-block:: 
+  proc `*` (x: TDollar, y: int): TDollar = 
+    result = TDollar(int(x) * y)
+
+  proc `*` (x: int, y: TDollar): TDollar = 
+    result = TDollar(x * int(y))
+    
+  proc `div` ...
+
+This quickly gets tedious. The implementations are trivial and the compiler 
+should not generate all this code only to optimize it away later - after all
+``+`` for dollars should produce the same binary code as ``+`` for ints. 
+The pragma ``borrow`` has been designed to solve this problem; in principle
+it generates the above trivial implementations:
+
+.. code-block:: nimrod
+  proc `*` (x: TDollar, y: int): TDollar {.borrow.}
+  proc `*` (x: int, y: TDollar): TDollar {.borrow.}
+  proc `div` (x: TDollar, y: int): TDollar {.borrow.}
+
+The ``borrow`` pragma makes the compiler use the same implementation as 
+the proc that deals with the distinct type's base type, so no code is
+generated.
+
+But it seems all this boilerplate code needs to be repeated for the ``TEuro``
+currency. This can be solved with templates_.
+
+.. code-block:: nimrod
+  template Additive(typ: typeDesc): stmt =
+    proc `+` *(x, y: typ): typ {.borrow.}
+    proc `-` *(x, y: typ): typ {.borrow.}
+    
+    # unary operators:
+    proc `+` *(x: typ): typ {.borrow.}
+    proc `-` *(x: typ): typ {.borrow.}
+    
+  template Multiplicative(typ, base: typeDesc): stmt = 
+    proc `*` *(x: typ, y: base): typ {.borrow.}
+    proc `*` *(x: base, y: typ): typ {.borrow.}
+    proc `div` *(x: typ, y: base): typ {.borrow.}
+    proc `mod` *(x: typ, y: base): typ {.borrow.}
+    
+  template Comparable(typ: typeDesc): stmt = 
+    proc `<` * (x, y: typ): bool {.borrow.}
+    proc `<=` * (x, y: typ): bool {.borrow.}
+    proc `==` * (x, y: typ): bool {.borrow.}
+  
+  template DefineCurrency(typ, base: expr): stmt = 
+    type
+      typ* = distinct base
+    Additive(typ)
+    Multiplicative(typ, base)
+    Comparable(typ)
+    
+  DefineCurrency(TDollar, int)
+  DefineCurrency(TEuro, int)
+
 
 
 Type relations
@@ -956,7 +1080,7 @@ algorithm determines type equality:
           for i in 0..a.tupleLen-1:
             if not typeEqualsAux(a[i], b[i], s): return false
           result = true
-      of object, enum, abstract:
+      of object, enum, distinct:
         result = a == b
       of proc:
         result = typeEqualsAux(a.parameterTuple, b.parameterTuple, s) and
@@ -973,7 +1097,7 @@ auxiliary set ``s`` to detect this case.
 
 Subtype relation
 ~~~~~~~~~~~~~~~~
-If object ``b`` inherits from ``a``, ``b`` is a subtype of ``a``. This subtype
+If object ``a`` inherits from ``b``, ``a`` is a subtype of ``b``. This subtype
 relation is extended to the types ``var``, ``ref``, ``ptr``:
 
 .. code-block:: nimrod
@@ -987,27 +1111,70 @@ relation is extended to the types ``var``, ``ref``, ``ptr``:
       of var, ref, ptr:
         result = isSubtype(a.baseType, b.baseType)
 
-XXX nil is a special value!
+.. XXX nil is a special value!
 
 
 Convertible relation
 ~~~~~~~~~~~~~~~~~~~~
-A type ``a`` is convertible to type ``b`` iff the following algorithm returns
-true:
+A type ``a`` is **implicitely** convertible to type ``b`` iff the following
+algorithm returns true:
 
 .. code-block:: nimrod
-  proc isConvertible(a, b: PType): bool =
-    if a.kind == b.kind:
-      case a.kind
-      of proc:
+  # XXX range types?
+  proc isImplicitelyConvertible(a, b: PType): bool =
+    case a.kind
+    of proc:
+      if b.kind == proc:
         var x = a.parameterTuple
         var y = b.parameterTuple
         if x.tupleLen == y.tupleLen:
           for i in 0.. x.tupleLen-1:
             if not isSubtype(x[i], y[i]): return false
           result = isSubType(b.resultType, a.resultType)
+    of int8:    result = b.kind in {int16, int32, int64, int}
+    of int16:   result = b.kind in {int32, int64, int}
+    of int32:   result = b.kind in {int64, int}
+    of float:   result = b.kind in {float32, float64}
+    of float32: result = b.kind in {float64, float}
+    of float64: result = b.kind in {float32, float}
+    of seq:
+      result = b.kind == openArray and typeEquals(a.baseType, b.baseType)
+    of array:
+      result = b.kind == openArray and typeEquals(a.baseType, b.baseType)
+      if a.baseType == char and a.indexType.rangeA == 0:
+        result = b.kind = cstring
+    of cstring, ptr:
+      result = b.kind == pointer
+    of string:
+      result = b.kind == cstring
+    
+A type ``a`` is **explicitely** convertible to type ``b`` iff the following
+algorithm returns true:
+ 
+.. code-block:: nimrod
+  proc isIntegralType(t: PType): bool =
+    result = isOrdinal(t) or t.kind in {float, float32, float64}
+
+  proc isExplicitelyConvertible(a, b: PType): bool =
+    if isImplicitelyConvertible(a, b): return true
+    if isIntegralType(a) and isIntegralType(b): return true
+    if isSubtype(a, b) or isSubtype(b, a): return true
+    if a.kind == distinct and typeEquals(a.baseType, b): return true
+    if b.kind == distinct and typeEquals(b.baseType, a): return true
+    return false
+    
+
+Assignment compability
+~~~~~~~~~~~~~~~~~~~~~~
+
+An expression ``b`` can be assigned to an expression ``a`` iff ``a`` is an
+`l-value` and ``isImplicitelyConvertible(b.typ, a.typ)`` holds.
 
 
+Overloading resolution
+~~~~~~~~~~~~~~~~~~~~~~
+
+To be written.
 
 
 Statements and expressions
@@ -1095,7 +1262,7 @@ Type                            default value
 ============================    ==============================================
 any integer type                0
 any float                       0.0
-char                            '\0'
+char                            '\\0'
 bool                            false
 ref or pointer type             nil
 procedural type                 nil
@@ -1192,8 +1359,8 @@ a static error is given. This holds only for expressions of ordinal types.
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control just passes after the ``case`` statement.
 
-To suppress the static error in the ordinal case the programmer needs
-to write an ``else`` part with a ``nil`` statement.
+To suppress the static error in the ordinal case an ``else`` part with a ``nil``
+statement can be used.
 
 
 When statement
@@ -1271,7 +1438,7 @@ Example:
   # and tries to add them
   var
     f: TFile
-  if openFile(f, "numbers.txt"):
+  if open(f, "numbers.txt"):
     try:
       var a = readLine(f)
       var b = readLine(f)
@@ -1285,7 +1452,7 @@ Example:
     except:
       echo("Unknown exception!")
     finally:
-      closeFile(f)
+      close(f)
 
 The statements after the `try`:idx: are executed in sequential order unless
 an exception ``e`` is raised. If the exception type of ``e`` matches any
@@ -1417,7 +1584,7 @@ Example:
 
 The `while`:idx: statement is executed until the ``expr`` evaluates to false.
 Endless loops are no error. ``while`` statements open an `implicit block`,
-so that they can be leaved with a ``break`` statement.
+so that they can be left with a ``break`` statement.
 
 
 Continue statement
@@ -1562,8 +1729,9 @@ type `var`).
     return intToStr(x)
 
 Operators with one parameter are prefix operators, operators with two
-parameters are infix operators. There is no way to declare postfix
-operators: All postfix operators are built-in and handled by the
+parameters are infix operators. (However, the parser distinguishes these from
+the operators position within an expression.) There is no way to declare
+postfix operators: All postfix operators are built-in and handled by the
 grammar explicitely.
 
 Any operator can be called like an ordinary proc with the '`opr`'
@@ -1622,17 +1790,12 @@ return values. This can be done in a cleaner way by returning a tuple:
   assert t.res == 1
   assert t.remainder = 3
 
-Even more elegant is to use `tuple unpacking` to access the tuple's fields:
+Even more elegant is to use `tuple unpacking`:idx: to access the tuple's fields:
 
 .. code-block:: nimrod
   var (x, y) = divmod(8, 5) # tuple unpacking
   assert x == 1
   assert y == 3
-
-Unfortunately, this form of tuple unpacking is not yet implemented.
-
-..
-  XXX remove this as soon as tuple unpacking is implemented
 
 
 
@@ -1655,7 +1818,7 @@ Syntax::
 The `for`:idx: statement is an abstract mechanism to iterate over the elements
 of a container. It relies on an `iterator`:idx: to do so. Like ``while``
 statements, ``for`` statements open an `implicit block`:idx:, so that they
-can be leaved with a ``break`` statement. The ``for`` loop declares
+can be left with a ``break`` statement. The ``for`` loop declares
 iteration variables (``x`` in the example) - their scope reaches until the
 end of the loop body. The iteration variables' types are inferred by the
 return type of the iterator.
@@ -1737,8 +1900,6 @@ possible within a single ``type`` section.
 Generics
 ~~~~~~~~
 
-`Version 0.7.10: Generic types like in the example do not work.`:red:
-
 Example:
 
 .. code-block:: nimrod
@@ -1778,11 +1939,9 @@ Example:
     # inorder traversal of a binary tree
     # recursive iterators are not yet implemented, so this does not work in
     # the current compiler!
-    if root.le != nil:
-      yield inorder(root.le)
+    if root.le != nil: yield inorder(root.le)
     yield root.data
-    if root.ri != nil:
-      yield inorder(root.ri)
+    if root.ri != nil: yield inorder(root.ri)
 
   var
     root: PBinaryTree[string] # instantiate a PBinaryTree with the type string
@@ -1799,12 +1958,11 @@ introduce type parameters or to instantiate a generic proc, iterator or type.
 Templates
 ~~~~~~~~~
 
-A `template`:idx: is a simple form of a macro. It operates on parse trees and is
-processed in the semantic pass of the compiler. So they integrate well with the
-rest of the language and share none of C's preprocessor macros flaws. However,
-they may lead to code that is harder to understand and maintain. So one ought
-to use them sparingly. The usage of ordinary procs, iterators or generics is
-preferred to the usage of templates.
+A `template`:idx: is a simple form of a macro: It is a simple substitution
+mechanism that operates on Nimrod's abstract syntax trees. It is processed in
+the semantic pass of the compiler.
+
+The syntax to *invoke* a template is the same as calling a procedure.
 
 Example:
 
@@ -1815,20 +1973,86 @@ Example:
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
 
+The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact 
+templates:
+
+| ``a > b`` is transformed into ``b < a``.
+| ``a in b`` is transformed into ``contains(b, a)``. 
+| ``notin`` and ``isnot`` have the obvious meanings.
+
+The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
+``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
+description*). These are no real types, they just help the compiler parsing.
+Real types can be used too; this implies that expressions are expected.
+However, for parameter type checking the arguments are semantically checked
+before being passed to the template. Other arguments are not semantically
+checked before being passed to the template.
+
+The template body does not open a new scope. To open a new scope a ``block``
+statement can be used:
+
+.. code-block:: nimrod
+  template declareInScope(x: expr, t: typeDesc): stmt = 
+    var x: t
+    
+  template declareInNewScope(x: expr, t: typeDesc): stmt = 
+    # open a new scope:
+    block: 
+      var x: t
+
+  declareInScope(a, int)
+  a = 42  # works, `a` is known here
+  
+  declareInNewScope(b, int)
+  b = 42  # does not work, `b` is unknown
+
+
+If there is a ``stmt`` parameter it should be the last in the template
+declaration, because statements are passed to a template via a
+special ``:`` syntax:
+
+.. code-block:: nimrod
+
+  template withFile(f, fn, mode: expr, actions: stmt): stmt =
+    block:
+      var f: TFile
+      if open(f, fn, mode):
+        try:
+          actions
+        finally:
+          close(f)
+      else:
+        quit("cannot open: " & fn)
+      
+  withFile(txt, "ttempl3.txt", fmWrite):
+    txt.writeln("line 1")
+    txt.writeln("line 2")
+  
+In the example the two ``writeln`` statements are bound to the ``actions``
+parameter. 
+
+
+**Style note**: For code readability, it is the best idea to use the least
+powerful programming construct that still suffices. So the "check list" is:
+
+(1) Use an ordinary proc/iterator, if possible.
+(2) Else: Use a generic proc/iterator, if possible.
+(3) Else: Use a template, if possible.
+(4) Else: Use a macro.
+
 
 Macros
 ------
 
 `Macros`:idx: are the most powerful feature of Nimrod. They can be used
-to implement `domain specific languages`:idx:. But they may lead to code
-that is harder to understand and maintain. So one ought to use them sparingly.
+to implement `domain specific languages`:idx:.
 
 While macros enable advanced compile-time code tranformations, they
 cannot change Nimrod's syntax. However, this is no real restriction because
 Nimrod's syntax is flexible enough anyway.
 
 To write macros, one needs to know how the Nimrod concrete syntax is converted
-to an abstract syntax tree. (Unfortunately the AST is not yet documented.)
+to an abstract syntax tree.
 
 There are two ways to invoke a macro:
 (1) invoking a macro like a procedure call (`expression macros`)
@@ -1847,7 +2071,7 @@ variable number of arguments:
   import macros
 
   macro debug(n: expr): stmt =
-    # `n` is a Nimrod AST that contains the whole macro expression
+    # `n` is a Nimrod AST that contains the whole macro invokation
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
@@ -1948,6 +2172,7 @@ This is best illustrated by an example:
   main()
 
 
+.. code-block:: nimrod
   # Module B
   import A  # A is not parsed here! Only the already known symbols
             # of A are imported.
@@ -1981,7 +2206,7 @@ Tuple or object scope
 The field identifiers inside a tuple or object definition are valid in the
 following places:
 
-* To the end of the tuple/object definition
+* To the end of the tuple/object definition.
 * Field designators of a variable of the given tuple/object type.
 * In all descendent types of the object type.
 
@@ -2000,9 +2225,11 @@ iterator in which case the overloading resolution takes place:
   # Module A
   var x*: string
 
+.. code-block:: nimrod
   # Module B
   var x*: int
 
+.. code-block:: nimrod
   # Module C
   import A, B
   write(stdout, x) # error: x is ambiguous
@@ -2035,26 +2262,22 @@ processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets.
 
 
-define pragma
--------------
-The `define`:idx: pragma defines a conditional symbol. This symbol may only be
-used in other pragmas and in the ``defined`` expression and not in ordinary
-Nimrod source code. The conditional symbols go into a special symbol table.
-The compiler defines the target processor and the target operating
-system as conditional symbols.
-
-Warning: The ``define`` pragma is deprecated as it conflicts with separate
-compilation! One should use boolean constants as a replacement - this is
-cleaner anyway.
+noSideEffect pragma
+-------------------
+The `noSideEffect`:idx: pragma is used to mark a proc/iterator to have no side
+effects. This means that the proc/iterator only changes locations that are
+reachable from its parameters and the return value only depends on the
+arguments. If none of its parameters have the type ``var T``
+or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
+error to mark a proc/iterator to have no side effect if the compiler cannot
+verify this.
 
 
-undef pragma
-------------
-The `undef`:idx: pragma the counterpart to the define pragma. It undefines a
-conditional symbol.
-
-Warning: The ``undef`` pragma is deprecated as it conflicts with separate
-compilation!
+compileTime pragma
+------------------
+The `compileTime`:idx: pragma is used to mark a proc to be used at compile
+time only. No code will be generated for it. Compile time procs are useful
+as helpers for macros.
 
 
 error pragma

@@ -57,11 +57,12 @@
 'TypeKind': [        # order is important!
                      # Don't forget to change hti.nim if you make a change here
   'tyNone', 'tyBool', 'tyChar',
-  'tyEmpty', 'tyArrayConstr', 'tyNil', 
-  'tyGeneric',
-  'tyGenericInst', # instantiated generic type
-  'tyGenericParam',
-  'tyAbstract',    # abstract type
+  'tyEmpty', 'tyArrayConstr', 'tyNil', 'tyExpr', 'tyStmt', 'tyTypeDesc',
+  'tyGenericInvokation', # ``T[a, b]`` for types to invoke
+  'tyGenericBody',       # ``T[a, b, body]`` last parameter is the body
+  'tyGenericInst',       # ``T[a, b, realInstance]`` instantiated generic type
+  'tyGenericParam',      # ``a`` in the example
+  'tyDistinct',
   'tyEnum',
   'tyOrdinal',
   'tyArray',
@@ -123,8 +124,9 @@
                           # for transforming ``s.len`` to ``len(s)``
   'nkCommand',            # a call like ``p 2, 4`` without parenthesis
   'nkCall',               # a call like p(x, y) or an operation like +(a, b)
-  'nkGenericCall',        # a call with given type parameters
-  'nkExplicitTypeListCall', # a call with given explicit typelist
+  'nkCallStrLit',         # a call with a string literal 
+                          # x"abc" has two sons: nkIdent, nkRStrLit
+                          # x"""abc""" has two sons: nkIdent, nkTripleStrLit
   'nkExprEqExpr',         # a named parameter with equals: ''expr = expr''
   'nkExprColonExpr',      # a named parameter with colon: ''expr: expr''
   'nkIdentDefs',          # a definition like `a, b: typeDesc = expr`
@@ -174,7 +176,6 @@
 
   'nkAsgn',               # a = b
   'nkFastAsgn',           # internal node for a fast ``a = b`` (no string copy) 
-  'nkDefaultTypeParam',   # `ident = typeDesc` in generic parameters
   'nkGenericParams',      # generic parameters
   'nkFormalParams',       # formal parameters
   'nkOfInherit',          # inherited from symbol
@@ -215,7 +216,6 @@
   'nkStmtList',           # a list of statements
   'nkImportStmt',         # an import statement
   'nkFromStmt',           # a from * import statement
-  'nkImportAs',           # an `import xyx as abc` section
   'nkIncludeStmt',        # an include statement
   'nkCommentStmt',        # a comment statement
   'nkStmtListExpr',       # a statement list followed by an expr; this is used
@@ -225,20 +225,18 @@
                           # temporary scope
   'nkStmtListType',       # a statement list ending in a type; for macros
   'nkBlockType',          # a statement block ending in a type; for macros
-  'nkVm',                 # indicates a virtual instruction; integer field is
-                          # used for the concrete opcode
-
+  
   # types as syntactic trees:
   'nkTypeOfExpr',
   'nkObjectTy',
   'nkTupleTy',
-  'nkRecList',            # list of record/object parts
-  'nkRecCase',            # case section of record/object
-  'nkRecWhen',            # when section of record/object
+  'nkRecList',            # list of object parts
+  'nkRecCase',            # case section of object
+  'nkRecWhen',            # when section of object
   'nkRefTy',
   'nkPtrTy',
   'nkVarTy',
-  'nkAbstractTy',         # abstract type
+  'nkDistinctTy',         # distinct type
   'nkProcTy',
   'nkEnumTy',
   'nkEnumFieldDef',       # `ident = expr` in an enumeration
@@ -248,12 +246,13 @@
 'SymKind': [
   # the different symbols (start with the prefix sk);
   # order is important for the documentation generator!
-  'skUnknownSym',         # unknown symbol: used for parsing assembler blocks
+  'skUnknown',            # unknown symbol: used for parsing assembler blocks
+                          # and first phase symbol lookup in generics
   'skConditional',        # symbol for the preprocessor (may become obsolete)
   'skDynLib',             # symbol represents a dynamic library; this is used
                           # internally; it does not exist in Nimrod code
   'skParam',              # a parameter
-  'skTypeParam',          # a type parameter; example: proc x[T]() <- `T`
+  'skGenericParam',       # a generic parameter; eq in ``proc x[eq=`==`]()``
   'skTemp',               # a temporary variable (introduced by compiler)
   'skType',               # a type
   'skConst',              # a constant

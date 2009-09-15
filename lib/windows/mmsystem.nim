@@ -2605,52 +2605,49 @@ proc PlaySound*(x1: cstring, x2: HMODULE, x3: DWORD): BOOL{.stdcall,
 # implementation
 
 proc MEVT_EVENTTYPE(x: int8): int8 =
-  result = (x shr 24) And 0x000000FF
+  result = toU8(x shr 24)
 
 proc MEVT_EVENTPARM(x: DWORD): DWORD =
   result = x And 0x00FFFFFF
 
-type
-  TFourBytes = array[0..3, int8]
-
 proc MCI_MSF_MINUTE(msf: int32): int8 =
-  result = msf and 0xff
+  result = toU8(msf and 0xff)
 
 proc MCI_TMSF_TRACK(tmsf: int32): int8 =
-  result = tmsf and 0xff
+  result = toU8(tmsf and 0xff)
 
 proc MCI_HMS_HOUR(h: int32): int8 =
-  result = h and 0xff
+  result = toU8(h and 0xff)
 
 proc MCI_MSF_SECOND(msf: int32): int8 =
-  result = msf shr 8 and 0xff
+  result = toU8(msf shr 8)
 
 proc MCI_TMSF_MINUTE(tmsf: int32): int8 =
-  result = tmsf shr 8 and 0xff
+  result = toU8(tmsf shr 8)
 
 proc MCI_HMS_MINUTE(h: int32): int8 =
-  result = h shr 8 and 0xff
+  result = toU8(h shr 8)
 
 proc MCI_MSF_FRAME(msf: int32): int8 =
-  result = msf shr 16 and 0xff
+  result = toU8(msf shr 16)
 
 proc MCI_TMSF_SECOND(tmsf: int32): int8 =
-  result = tmsf shr 16 and 0xff
+  result = toU8(tmsf shr 16)
 
 proc MCI_HMS_SECOND(h: int32): int8 =
-  result = h shr 16 and 0xff
+  result = toU8(h shr 16)
 
 proc MCI_MAKE_MSF(m, s, f: int8): int32 =
-  result = m or s shl 8 or f shl 16
+  result = toU32(ze(m) or ze(s) shl 8 or ze(f) shl 16)
 
 proc MCI_MAKE_HMS(h, m, s: int8): int32 =
-  result = h or m shl 8 or s shl 16
+  result = toU32(ze(h) or ze(m) shl 8 or ze(s) shl 16)
 
 proc MCI_TMSF_FRAME(tmsf: int32): int8 =
-  result = tmsf shr 24 and 0xff
+  result = toU8(tmsf shr 24)
 
 proc mci_Make_TMSF(t, m, s, f: int8): int32 =
-  result = t or m shl 8 or s shl 16 or f shl 24
+  result = ze(t) or ze(m) shl 8 or ze(s) shl 16 or ze(f) shl 24
 
 proc DIBINDEX(n: int32): int32 =
-  result = n Or 0x000010FF shl 16
+  result = n Or 0x000010FF'i32 shl 16'i32

@@ -1,6 +1,6 @@
 #
 #
-#        The Nimrod Website Generator
+#           Nimrod Website Generator
 #        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -131,9 +131,9 @@ proc parseIniFile(c: var TConfigData) =
         of "ticker": c.ticker = v
         of "documentation":
           case normalize(k.key)
-          of "doc": addFiles(c.doc, "doc", ".txt", splitSeq(v, {';'}))
-          of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", splitSeq(v, {';'}))
-          of "webdoc": addFiles(c.webdoc, "lib", ".nim", splitSeq(v, {';'}))
+          of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
+          of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
+          of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
         else: nil
 
@@ -159,6 +159,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     Exec("nimrod rst2html $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
        destpath, d])
+    Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
   for d in items(c.srcdoc):
     Exec("nimrod doc $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),

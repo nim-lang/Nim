@@ -5,6 +5,7 @@ Command::
   compile_to_c, cc          compile project with C code generator
   doc                       generate the documentation for inputfile
   rst2html                  converts a reStructuredText file to HTML
+  rst2tex                   converts a reStructuredText file to TeX
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:

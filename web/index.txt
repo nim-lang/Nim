@@ -1,0 +1,127 @@
+====
+Home
+====
+
+  The most important thing in the programming language is the name. A language
+  will not succeed without a good name. I have recently invented a very good
+  name and now I am looking for a suitable language.
+  -- D. E. Knuth
+
+
+**This page is about the Nimrod programming language, which combines Lisp's
+power with Python's readability and C's performance.**
+
+Welcome to Nimrod
+-----------------
+
+.. container:: snippet
+  *Nimrod looks like this:*
+  
+  .. code-block:: nimrod
+    # Filter key=value pairs
+    import regexprs
+
+    for x in lines("myfile.txt"):
+      if x =~ r"(\w+)=(.*)":
+        echo "Key: ", matches[1], 
+             " Value: ", matches[2]
+
+**Nimrod** is a new statically typed, imperative
+programming language, that supports procedural, object oriented, functional 
+and generic programming styles while remaining simple and efficient. 
+A special feature that Nimrod inherited from Lisp is that Nimrod's abstract 
+syntax tree (*AST*) is part of the specification - this allows a powerful 
+macro system which allows domain specific languages.
+
+Nimrod is a compiled, garbage-collected systems programming language
+which has an excellent productivity/performance ratio. Nimrod's design
+focuses on the 3E: efficiency, expressiveness, elegance (in the order of
+priority).
+
+
+Nimrod is efficient
+===================
+
+* Native code generation (currently via compilation to C), not dependant on a
+  virtual machine: **Nimrod produces small executables without dependencies
+  for easy redistribution.**
+* A fast non-recursive incremental and generational garbage collector that 
+  should be well suited for soft real-time systems (like games).
+* System programming features: Ability to manage your own memory and access the
+  hardware directly. Pointers to garbage collected memory are distinguished
+  from pointers to manually managed memory.
+* Zero-overhead iterators.
+* Cross-module inlining.
+* Compile time evaluation of user-defined functions.
+* Whole program dead code elimination: Only *used functions* are included in 
+  the executable.
+* Value-based datatypes: For instance, objects and arrays can be allocated on 
+  the stack.
+
+
+Nimrod is expressive
+====================
+
+* Built-in high level datatypes: strings, sets, sequences, etc.
+* Modern type system with local type inference, tuples, variants, 
+  generics, etc.
+* User-defineable operators; code with new operators is often easier to read
+  than code which overloads built-in operators. In the code snippet, the 
+  ``=~`` operator is defined in the ``regexprs`` module.
+* Macros can modify the abstract syntax tree at compile time.
+
+
+Nimrod is elegant
+=================
+
+* Macros cannot change Nimrod's syntax because there is no need for it. 
+  Nimrod's syntax is flexible enough.
+* Yet Nimrod can be parsed with an LL(1) parser.
+* Statements are grouped by indentation but can span multiple lines.
+  Indentation must not contain tabulators so **the compiler always sees
+  the code the same way as you do**.
+* Nimrod is a simple language that leads to simple programs. However,
+  the language is not crippled in the name of simplicity.
+
+
+Nimrod plays nice with others
+=============================
+
+* The Nimrod Compiler runs on Windows, Linux, BSD and Mac OS X.
+  Porting to other platforms is easy.
+* **There are bindings to GTK2, the Windows API, the POSIX API, OpenGL, SDL, 
+  Cario, Python, Lua, TCL, X11, libzip, PRCE, ODBC, libcurl, mySQL and SQLite.** 
+  New bindings are easily generated in a semi-automatic way.
+* A Pascal to Nimrod conversion utility: A large subset of Object Pascal
+  can be translated to Nimrod automatically!
+* Nimrod's documentation syntax is a subset of the wonderfully readable plaintext 
+  markup syntax 
+  `reStructuredText <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_.
+  **The documentation generator is very flexible; this website has been generated
+  with it!**
+  
+
+
+Roadmap to 1.0
+==============
+
+Version 0.8.4
+  * general expressions as generic parameters
+  * multimethods
+
+Version 0.9.0
+  * closures and anonymous procs
+  * provide an API for object serialization
+
+Version 1.0.0
+  * stress testing with a better test suite
+  * fix symbol files to make the compiler incremental
+
+
+Planned features beyond 1.0
+===========================
+
+* Threading with a transactional memory modell (the type system may be 
+  enhanced to support extensive compile-time checks for this)
+* Recursive iterators/coroutines
+* Other code generators: LLVM, EcmaScript

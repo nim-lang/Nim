@@ -9,7 +9,7 @@
 import sys
 
 python3 = sys.version[0] >= "3"
-python26 = sys.version[:3] == "2.6"
+python26 = sys.version[0] == "2" and sys.version[2] >= "6"
 
 true, false = 0==0, 0==1
 

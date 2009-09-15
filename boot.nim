@@ -27,9 +27,9 @@ proc exec(cmd: string) =
 
 proc writePlatdefC =
   var f: TFile
-  if openFile(f, "build/platdef.c", fmWrite): 
+  if open(f, "build/platdef.c", fmWrite): 
     write(f, PlatdefcTmpl % [system.hostOS, system.hostCPU])
-    closeFile(f)
+    close(f)
   else:
     quit("Cannot write 'build/platdef.c'\n")
   

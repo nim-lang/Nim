@@ -172,7 +172,7 @@ begin
   res := '';
   for i := strStart to length(s)+strStart-1 do begin
     case s[i] of
-      '0'..'9', 'a'..'z', 'A'..'Z', '_':
+      'a'..'z', 'A'..'Z', '0'..'9', '_':
         addChar(res, s[i]);
       else
         res := res +{&} '\' +{&} toHex(ord(s[i]), 2)
@@ -535,7 +535,7 @@ var
 begin
   i := r.pos;
   sign := -1;
-  assert(r.s[i] in ['0'..'9', 'a'..'z', 'A'..'Z', '-', #128..#255]);
+  assert(r.s[i] in ['a'..'z', 'A'..'Z', '0'..'9', '-', #128..#255]);
   if r.s[i] = '-' then begin
     inc(i);
     sign := 1
@@ -562,7 +562,7 @@ var
 begin
   i := r.pos;
   sign := -1;
-  assert(r.s[i] in ['0'..'9', 'a'..'z', 'A'..'Z', '-', #128..#255]);
+  assert(r.s[i] in ['a'..'z', 'A'..'Z', '0'..'9', '-', #128..#255]);
   if r.s[i] = '-' then begin
     inc(i);
     sign := 1
@@ -606,7 +606,7 @@ begin
         hexChar(r.s[i-1], xi);
         addChar(result, chr(xi));
       end;
-      'a'..'z', '0'..'9', 'A'..'Z', '_': begin
+      'a'..'z', 'A'..'Z', '0'..'9', '_': begin
         addChar(result, r.s[i]);
         inc(i);
       end

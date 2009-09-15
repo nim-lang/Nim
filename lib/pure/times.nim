@@ -25,13 +25,13 @@ type
     
 when defined(posix): 
   type
-    TTime* = abstract int ## abstract type that represents a time
+    TTime* = distinct int ## distinct type that represents a time
 elif defined(windows):
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
-    type TTime* = abstract int64
+    type TTime* = distinct int64
   else:
-    type TTime* = abstract int32
+    type TTime* = distinct int32
 elif defined(ECMAScript):
   type
     TTime* {.final.} = object

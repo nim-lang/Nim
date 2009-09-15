@@ -46,16 +46,17 @@ begin
   end
 end;
 
-function evalTemplateAux(c: PContext; templ, actual: PNode;
-                         sym: PSym): PNode;
+function evalTemplateAux(c: PContext; templ, actual: PNode; sym: PSym): PNode;
 var
   i: int;
+  p: PSym;
 begin
   if templ = nil then begin result := nil; exit end;
   case templ.kind of
     nkSym: begin
-      if (templ.sym.kind = skParam) and (templ.sym.owner.id = sym.id) then
-        result := copyTree(actual.sons[templ.sym.position+1]) // BUGFIX: +1
+      p := templ.sym;
+      if (p.kind = skParam) and (p.owner.id = sym.id) then 
+        result := copyTree(actual.sons[p.position])
       else
         result := copyNode(templ)
     end;
@@ -74,19 +75,45 @@ var
   evalTemplateCounter: int = 0; // to prevend endless recursion in templates
                                 // instantation
 
+function evalTemplateArgs(c: PContext; n: PNode; s: PSym): PNode;
+var
+  f, a, i: int;
+  arg: PNode;
+begin
+  f := sonsLen(s.typ);
+  // if the template has zero arguments, it can be called without ``()``
+  // `n` is then a nkSym or something similar
+  case n.kind of
+    nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
+      a := sonsLen(n);
+    else a := 0
+  end;
+  if a > f then liMessage(n.info, errWrongNumberOfArguments);
+  result := copyNode(n);
+  for i := 1 to f-1 do begin
+    if i < a then 
+      arg := n.sons[i]
+    else 
+      arg := copyTree(s.ast.sons[paramsPos].sons[i-1].sym.ast);
+    if arg = nil then liMessage(n.info, errWrongNumberOfArguments);
+    if not (s.typ.sons[i].kind in [tyTypeDesc, tyStmt, tyExpr]) then begin
+      // concrete type means semantic checking for argument:
+      arg := fitNode(c, s.typ.sons[i], semExprWithType(c, arg));
+    end;
+    addSon(result, arg);
+  end
+end;
+
 function evalTemplate(c: PContext; n: PNode; sym: PSym): PNode;
 var
-  r: PNode;
+  args: PNode;
 begin
   inc(evalTemplateCounter);
   if evalTemplateCounter > 100 then
     liMessage(n.info, errTemplateInstantiationTooNested);
   // replace each param by the corresponding node:
-  r := sym.ast.sons[paramsPos].sons[0];
-  if (r.kind <> nkIdent) then InternalError(r.info, 'evalTemplate');
-  result := evalTemplateAux(c, sym.ast.sons[codePos], n, sym);
-  if r.ident.id = ord(wExpr) then result := semExpr(c, result)
-  else result := semStmt(c, result);
+  args := evalTemplateArgs(c, n, sym);
+  result := evalTemplateAux(c, sym.ast.sons[codePos], args, sym);
   dec(evalTemplateCounter);
 end;
 
@@ -108,19 +135,19 @@ begin
     include(s.flags, sfUsed);
   end
   else begin
-    // semantic checking requires a type; ``fitNode`` deal with it
+    // semantic checking requires a type; ``fitNode`` deals with it
     // appropriately
     result := newNodeIT(nkSymChoice, n.info, newTypeS(tyNone, c));
     a := initOverloadIter(o, c, n);
     while a <> nil do begin
       addSon(result, newSymNode(a));
       a := nextOverloadIter(o, c, n);
-    end
+    end;
+    //liMessage(n.info, warnUser, s.name.s + ' is here symchoice');
   end
 end;
 
-function resolveTemplateParams(c: PContext; n: PNode; 
-                               withinBind: bool): PNode;
+function resolveTemplateParams(c: PContext; n: PNode; withinBind: bool): PNode;
 var
   i: int;
   s: PSym;
@@ -153,20 +180,6 @@ begin
   end
 end;
 
-function semTemplateParamKind(c: PContext; n, p: PNode): PNode;
-begin
-  if (p = nil) or (p.kind <> nkIdent) then
-    liMessage(n.info, errInvalidParamKindX, renderTree(p))
-  else begin
-    case p.ident.id of
-      ord(wExpr), ord(wStmt), ord(wTypeDesc): begin end;
-      else
-        liMessage(p.info, errInvalidParamKindX, p.ident.s)
-    end
-  end;
-  result := p;
-end;
-
 function transformToExpr(n: PNode): PNode;
 var
   i, realStmt: int;
@@ -197,9 +210,7 @@ end;
 
 function semTemplateDef(c: PContext; n: PNode): PNode;
 var
-  s, param: PSym;
-  i, j, len, counter: int;
-  params, p, paramKind: PNode;
+  s: PSym;
 begin
   if c.p.owner.kind = skModule then begin
     s := semIdentVis(c, skTemplate, n.sons[0], {@set}[sfStar]);
@@ -211,23 +222,6 @@ begin
   // check parameter list:
   pushOwner(s);
   openScope(c.tab);
-  params := n.sons[paramsPos];
-  counter := 0;
-  for i := 1 to sonsLen(params)-1 do begin
-    p := params.sons[i];
-    len := sonsLen(p);
-    paramKind := semTemplateParamKind(c, p, p.sons[len-2]);
-    if (p.sons[len-1] <> nil) then
-      liMessage(p.sons[len-1].info, errDefaultArgumentInvalid);
-    for j := 0 to len-3 do begin
-      param := newSymS(skParam, p.sons[j], c);
-      param.position := counter;
-      param.ast := paramKind;
-      inc(counter);
-      addDecl(c, param)
-    end;
-  end;
-  params.sons[0] := semTemplateParamKind(c, params, params.sons[0]);
   n.sons[namePos] := newSymNode(s);
 
   // check that no pragmas exist:
@@ -236,9 +230,26 @@ begin
   // check that no generic parameters exist:
   if n.sons[genericParamsPos] <> nil then
     liMessage(n.info, errNoGenericParamsAllowedForX, 'template');
+  if (n.sons[paramsPos] = nil) then begin
+    // use ``stmt`` as implicit result type
+    s.typ := newTypeS(tyProc, c);
+    s.typ.n := newNodeI(nkFormalParams, n.info);
+    addSon(s.typ, newTypeS(tyStmt, c));
+    addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]));
+  end
+  else begin
+    semParamList(c, n.sons[ParamsPos], nil, s);
+    if n.sons[paramsPos].sons[0] = nil then begin
+      // use ``stmt`` as implicit result type
+      s.typ.sons[0] := newTypeS(tyStmt, c);
+      s.typ.n.sons[0] := newNodeIT(nkType, n.info, s.typ.sons[0]);
+    end
+  end;
+  addParams(c, s.typ.n);
+  
   // resolve parameters:
   n.sons[codePos] := resolveTemplateParams(c, n.sons[codePos], false);
-  if params.sons[0].ident.id = ord(wExpr) then
+  if not (s.typ.sons[0].kind in [tyStmt, tyTypeDesc]) then
     n.sons[codePos] := transformToExpr(n.sons[codePos]);
 
   // only parameters are resolved, no type checking is performed

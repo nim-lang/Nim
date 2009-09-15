@@ -1,12 +1,13 @@
 
-template withOpenFile(f, filename, mode: expr, actions: stmt): stmt =
+template withOpenFile(f: expr, filename: string, mode: TFileMode,
+                      actions: stmt): stmt =
   block:
     var f: TFile
-    if openFile(f, filename, mode):
+    if open(f, filename, mode):
       try:
         actions
       finally:
-        closeFile(f)
+        close(f)
     else:
       quit("cannot open for writing: " & filename)
     

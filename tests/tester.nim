@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod Tester
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -74,28 +74,30 @@ proc callCompiler(filename, options: string): TSpec =
   var p = startProcess(command=c[0], args=a,
                        options={poStdErrToStdOut, poUseShell})
   var outp = p.outputStream
+  var s = ""
   while running(p) or not outp.atEnd(outp):
-    var s = outp.readLine()
-    var matches: array [0..3, string]
-    result.outp = ""
-    result.puremsg = ""
-    result.file = ""
-    result.err = true
-    if match(s, r"(.*)\((\d+), \d+\) Error\: (.*)", matches):
-      result.file = matches[1]
-      result.line = parseInt(matches[2])
-      result.outp = matches[0]
-      result.puremsg = matches[3]
-      break
-    elif match(s, r"Error\: (.*)", matches):
-      result.puremsg = matches[1]
-      result.outp = matches[0]
-      result.line = 1
-      break
-    elif match(s, r"Hint\: operation successful", matches):
-      result.outp = matches[0]
-      result.err = false
-      break
+    var x = outp.readLine()
+    if match(x, r"(.*)\((\d+), \d+\) Error\: (.*)") or
+       match(x, r"Error\: (.*)") or
+       match(x, r"Hint\: operation successful"):
+      # `s` should contain the last error message
+      s = x
+  result.outp = ""
+  result.puremsg = ""
+  result.file = ""
+  result.err = true
+  if s =~ r"(.*)\((\d+), \d+\) Error\: (.*)":
+    result.file = matches[1]
+    result.line = parseInt(matches[2])
+    result.outp = matches[0]
+    result.puremsg = matches[3]
+  elif s =~ r"Error\: (.*)":
+    result.puremsg = matches[1]
+    result.outp = matches[0]
+    result.line = 1
+  elif s =~ r"Hint\: operation successful":
+    result.outp = matches[0]
+    result.err = false
 
 proc cmpResults(filename: string, spec, comp: TSpec): bool =
   # short filename for messages (better readability):
@@ -151,7 +153,16 @@ proc main(options: string) =
     var comp = callCompiler(filename, options)
     if cmpResults(filename, spec, comp): inc(passed)
     inc(total)
-  Echo("[Tester] $1/$2 tests passed\n" % [$passed, $total])
+  # ensure that the examples at least compile
+  for filename in os.walkFiles("examples/*.nim"):
+    if executeShellCommand(cmdTemplate %
+                          ["filename", filename, "options", options]) == 0:
+      inc(passed)
+    else:
+      var shortfile = os.extractFilename(filename)
+      Echo("[Tester] Example '$#' -- FAILED" % shortfile)
+    inc(total)
+  Echo("[Tester] $#/$# tests passed\n" % [$passed, $total])
 
 var
   options = ""

@@ -27,7 +27,7 @@ template newException(exceptn, message: expr): expr =
 
 
 type
-  TCharSet* = set[char] # for compability for Nim
+  TCharSet* = set[char] # for compability with Nim
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -45,9 +45,9 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-  strStart* = 0 # this is only for bootstraping
-                # XXX: remove this someday
-  nl* = "\n"    # this is only for bootstraping XXX: remove this somehow
+  strStart* = 0 ## this is only for bootstraping
+                ## XXX: remove this someday
+  nl* = "\n"    ## this is only for bootstraping XXX: remove this somehow
 
 proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ## The `substitution`:idx: operator performs string substitutions in
@@ -64,8 +64,13 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ## .. code-block:: nimrod
   ##   "The cat eats fish."
   ##
-  ## The substitution variables (the thing after the ``$``)
-  ## are enumerated from 1 to 9.
+  ## The substitution variables (the thing after the ``$``) are enumerated
+  ## from 1 to ``a.len``.
+  ## The notation ``$#`` can be used to refer to the next substitution variable:
+  ##
+  ## .. code-block:: nimrod
+  ##   "$# eats $#." % ["The cat", "fish"]
+  ##
   ## Substitution variables can also be words (that is
   ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
   ## indices are keys and with odd indices are the corresponding values.
@@ -267,19 +272,43 @@ iterator splitLines*(s: string): string =
     else: break # was '\0'
     first = last
 
-proc splitLinesSeq*(s: string): seq[string] {.noSideEffect.} =
-  ## The same as `split`, but is a proc that returns a sequence of substrings.
+template iterToProc(iter: expr): stmt = 
   result = @[]
-  for line in splitLines(s): add(result, line)
+  for x in iter: add(result, x)
+
+proc splitLinesSeq*(s: string): seq[string] {.noSideEffect, deprecated.} =
+  ## The same as `splitLines`, but is a proc that returns a sequence 
+  ## of substrings.
+  ## **Deprecated since version 0.8.0**: Use `splitLines` instead.
+  iterToProc(splitLines(s))
 
 proc splitSeq*(s: string, seps: set[char] = Whitespace): seq[string] {.
-  noSideEffect.}
+  noSideEffect, deprecated.} =
   ## The same as `split`, but is a proc that returns a sequence of substrings.
+  ## **Deprecated since version 0.8.0**: Use `split` instead.
+  iterToProc(split(s, seps))
 
-proc splitSeq*(s: string, sep: char): seq[string] {.noSideEffect.} =
+proc splitSeq*(s: string, sep: char): seq[string] {.noSideEffect, 
+                                                    deprecated.} =
   ## The same as `split`, but is a proc that returns a sequence of substrings.
-  result = @[]
-  for sub in split(s, sep): add(result, sub)
+  ## **Deprecated since version 0.8.0**: Use `split` instead.
+  iterToProc(split(s, sep))
+
+proc splitLines*(s: string): seq[string] {.noSideEffect.} =
+  ## The same as the `splitLines` iterator, but is a proc that returns a 
+  ## sequence of substrings.
+  iterToProc(splitLines(s))
+
+proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
+  noSideEffect.} =
+  ## The same as the `split` iterator, but is a proc that returns a
+  ## sequence of substrings.
+  iterToProc(split(s, seps))
+
+proc split*(s: string, sep: char): seq[string] {.noSideEffect.} =
+  ## The same as the `split` iterator, but is a proc that returns a sequence
+  ## of substrings.
+  iterToProc(split(s, sep))
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect.}
   ## Compares two strings in a case insensitive manner. Returns:
@@ -308,7 +337,7 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.}
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect.}
   ## Converts `x` to its hexadecimal representation. The resulting string
   ## will be exactly `len` characters long. No prefix like ``0x``
-  ## is generated. `x` is treated as unsigned value.
+  ## is generated. `x` is treated as an unsigned value.
 
 proc intToStr*(x: int, minchars: int = 1): string
   ## Converts `x` to its decimal representation. The resulting string
@@ -367,7 +396,7 @@ proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
 proc allCharsInSet*(s: string, theSet: TCharSet): bool =
   ## returns true iff each character of `s` is in the set `theSet`.
   for c in items(s):
-    if not (c in theSet): return false
+    if c notin theSet: return false
   return true
 
 proc quoteIfContainsWhite*(s: string): string =
@@ -397,12 +426,12 @@ proc endsWith(s, suffix: string): bool =
 when false:
   proc abbrev(s: string, possibilities: openarray[string]): int = 
     ## returns the index of the first item in `possibilities` if not
-    ## ambigious; -1 if no item has been found; -2 if multiple items
+    ## ambiguous; -1 if no item has been found; -2 if multiple items
     ## match.
     result = -1 # none found
     for i in 0..possibilities.len-1: 
       if possibilities[i].startsWith(s): 
-        if result >= 0: return -2 # ambigious
+        if result >= 0: return -2 # ambiguous
         result = i
 
 proc repeatChar(count: int, c: Char = ' '): string =
@@ -508,12 +537,6 @@ proc cmpIgnoreStyle(a, b: string): int =
     inc(j)
 
 {.pop.}
-
-# ---------- splitting -----------------------------------------------------
-
-proc splitSeq(s: string, seps: set[char]): seq[string] =
-  result = @[]
-  for sub in split(s, seps): add result, sub
 
 # ---------------------------------------------------------------------------
 
@@ -732,7 +755,7 @@ proc rawParseInt(s: string, index: var int): BiggestInt =
   # one more valid negative than prositive integer. Thus we perform the
   # computation as a negative number and then change the sign at the end.
   var
-    i: int = index # a local i is more efficient than accessing a var parameter
+    i = index # a local i is more efficient than accessing a var parameter
     sign: BiggestInt = -1
   if s[i] == '+':
     inc(i)
@@ -758,7 +781,7 @@ proc rawParseInt(s: string, index: var int): BiggestInt =
 
 proc parseInt(s: string): int =
   var
-    index: int = 0
+    index = 0
     res = rawParseInt(s, index)
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)

@@ -140,13 +140,13 @@ begin
     liMessage(n.info, errXExpectsOneTypeParam, 'var');
 end;
 
-function semAbstract(c: PContext; n: PNode; prev: PType): PType;
+function semDistinct(c: PContext; n: PNode; prev: PType): PType;
 begin
-  result := newOrPrevType(tyAbstract, prev, c);
+  result := newOrPrevType(tyDistinct, prev, c);
   if sonsLen(n) = 1 then 
     addSon(result, semTypeNode(c, n.sons[0], nil))
   else
-    liMessage(n.info, errXExpectsOneTypeParam, 'abstract');
+    liMessage(n.info, errXExpectsOneTypeParam, 'distinct');
 end;
 
 function semRangeAux(c: PContext; n: PNode; prev: PType): PType;
@@ -233,8 +233,7 @@ begin
   result := qualifiedLookup(c, n, true);
   if (result <> nil) then begin
     include(result.flags, sfUsed);
-    if not (result.kind in [skTypeParam, skType]) then
-      liMessage(n.info, errTypeExpected);
+    if result.kind <> skType then liMessage(n.info, errTypeExpected);
   end
   else
     liMessage(n.info, errIdentifierExpected);
@@ -275,87 +274,36 @@ begin
     end
   end
 end;
-(*
-function instGenericAux(c: PContext; templ, actual: PNode;
-                        sym: PSym): PNode;
-var
-  i: int;
-begin
-  if templ = nil then begin result := nil; exit end;
-  case templ.kind of
-    nkSym: begin
-      if (templ.sym.kind = skTypeParam) then
-      //and (templ.sym.owner.id = sym.id) then 
-        result := copyTree(actual.sons[templ.sym.position+1])
-      else
-        result := copyNode(templ)
-    end;
-    nkNone..nkIdent, nkType..nkNilLit: // atom
-      result := copyNode(templ);
-    else begin
-      result := copyNode(templ);
-      newSons(result, sonsLen(templ));
-      for i := 0 to sonsLen(templ)-1 do
-        result.sons[i] := instGenericAux(c, templ.sons[i], actual, sym);
-    end
-  end
-end; *)
 
 function semGeneric(c: PContext; n: PNode; s: PSym; prev: PType): PType;
 var
   i: int;
   elem: PType;
-  inst: PNode;
-  cl: PInstantiateClosure;
+  isConcrete: bool;
 begin
-  if (s.typ = nil) or (s.typ.kind <> tyGeneric) then
+  if (s.typ = nil) or (s.typ.kind <> tyGenericBody) then
     liMessage(n.info, errCannotInstantiateX, s.name.s);
-  result := newOrPrevType(tyGenericInst, prev, c); // new ID...
-  result.containerID := s.typ.containerID; // ... but the same containerID
-  result.sym := s;
+  result := newOrPrevType(tyGenericInvokation, prev, c);
   if (s.typ.containerID = 0) then InternalError(n.info, 'semtypes.semGeneric');
-  cl := newInstantiateClosure(c, n.info);
-  // check the number of supplied arguments suffices:
-  if sonsLen(n) <> sonsLen(s.typ) then begin
-    //MessageOut('n: ' +{&} toString(sonsLen(n)) +{&} ' s: '
-    //           +{&} toString(sonsLen(s.typ)));
-    liMessage(n.info, errWrongNumberOfTypeParams);
-  end;
-  // a generic type should be instantiated with itself:
-  // idTablePut(cl.typeMap, s.typ, result);
+  if sonsLen(n) <> sonsLen(s.typ) then 
+    liMessage(n.info, errWrongNumberOfArguments);
+  addSon(result, s.typ);
+  isConcrete := true;
   // iterate over arguments:
   for i := 1 to sonsLen(n)-1 do begin
     elem := semTypeNode(c, n.sons[i], nil);
-    if elem.kind = tyGenericParam then 
-      result.kind := tyGeneric // prevend type from instantiation
-    else
-      idTablePut(cl.typeMap, s.typ.sons[i-1], elem);
+    if elem.kind = tyGenericParam then isConcrete := false;
     addSon(result, elem);
   end;
-  if s.ast <> nil then begin
-    if (result.kind = tyGenericInst) then begin
-      // inst := instGenericAux(c, s.ast.sons[2], n, s);
-      internalError(n.info, 'Generic containers not implemented');
-      // XXX: implementation does not work this way
-      // we need to do the following: 
-      // traverse and copy the type and replace any tyGenericParam type
-      // does checking of instantiated type for us:
-      elem := instantiateType(cl, s.typ); //semTypeNode(c, inst, nil);
-      elem.id := result.containerID;
-      addSon(result, elem);
-    end
-    else
-      addSon(result, nil);
+  if isConcrete then begin
+    if s.ast = nil then liMessage(n.info, errCannotInstantiateX, s.name.s);
+    result := instGenericContainer(c, n, result);
   end
-  else
-    liMessage(n.info, errCannotInstantiateX, s.name.s); 
-  (*if computeSize(result) < 0 then
-    liMessage(s.info, errIllegalRecursionInTypeX, s.name.s);*)
 end;
 
 function semIdentVis(c: PContext; kind: TSymKind; n: PNode;
                      const allowed: TSymFlags): PSym;
-// identifier with visability
+// identifier with visibility
 var
   v: PIdent;
 begin
@@ -388,9 +336,9 @@ begin
       skType: begin
         // process pragmas later, because result.typ has not been set yet
       end;
-      skField: pragmaField(c, result, n.sons[1]);
-      skVar: pragmaVar(c, result, n.sons[1]);
-      skConst: pragmaConst(c, result, n.sons[1]);
+      skField: pragma(c, result, n.sons[1], fieldPragmas);
+      skVar: pragma(c, result, n.sons[1], varPragmas);
+      skConst: pragma(c, result, n.sons[1], constPragmas);
       else begin end
     end
   end
@@ -546,8 +494,7 @@ begin
       for i := 0 to sonsLen(n)-1 do begin
         semRecordNodeAux(c, n.sons[i], check, pos, a, rectype);
       end;
-      if a <> father then
-        addSon(father, a);
+      if a <> father then addSon(father, a);
     end;
     nkIdentDefs: begin
       checkMinSonsLen(n, 3);
@@ -644,10 +591,8 @@ begin
   end
   else
     base := nil;
-  if n.kind = nkObjectTy then
-    result := newOrPrevType(tyObject, prev, c)
-  else
-    InternalError(n.info, 'semObjectNode');
+  if n.kind <> nkObjectTy then InternalError(n.info, 'semObjectNode');
+  result := newOrPrevType(tyObject, prev, c);
   addSon(result, base);
   result.n := newNodeI(nkRecList, n.info);
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym);
@@ -655,26 +600,75 @@ begin
     liMessage(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects);
 end;
 
-function semProcTypeNode(c: PContext; n: PNode; prev: PType): PType;
+function addTypeVarsOfGenericBody(c: PContext; t: PType; genericParams: PNode;
+                                  var cl: TIntSet): PType;
+var
+  i, L: int;
+  s: PSym;
+begin
+  result := t;
+  if (t = nil) then exit;
+  if IntSetContainsOrIncl(cl, t.id) then exit;
+  case t.kind of
+    tyGenericBody: begin
+      result := newTypeS(tyGenericInvokation, c);
+      addSon(result, t);
+      for i := 0 to sonsLen(t)-2 do begin
+        if t.sons[i].kind <> tyGenericParam then
+          InternalError('addTypeVarsOfGenericBody');
+        s := copySym(t.sons[i].sym);
+        s.position := sonsLen(genericParams);
+        addDecl(c, s);
+        addSon(genericParams, newSymNode(s));
+        addSon(result, t.sons[i]);
+      end;
+    end;
+    tyGenericInst: begin
+      L := sonsLen(t)-1;
+      t.sons[L] := addTypeVarsOfGenericBody(c, t.sons[L], genericParams, cl);
+    end;
+    tyGenericInvokation: begin
+      for i := 1 to sonsLen(t)-1 do
+        t.sons[i] := addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl);
+    end
+    else begin
+      for i := 0 to sonsLen(t)-1 do
+        t.sons[i] := addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl);
+    end
+  end
+end;
+
+function paramType(c: PContext; n, genericParams: PNode;
+                   var cl: TIntSet): PType;
+begin
+  result := semTypeNode(c, n, nil);
+  if (genericParams <> nil) and (sonsLen(genericParams) = 0) then 
+    result := addTypeVarsOfGenericBody(c, result, genericParams, cl);
+end;
+
+function semProcTypeNode(c: PContext; n, genericParams: PNode;
+                         prev: PType): PType;
 var
   i, j, len, counter: int;
   a, def, res: PNode;
   typ: PType;
   arg: PSym;
-  check: TIntSet;
+  check, cl: TIntSet;
 begin
   checkMinSonsLen(n, 1);
   result := newOrPrevType(tyProc, prev, c);
   result.callConv := lastOptionEntry(c).defaultCC;
   result.n := newNodeI(nkFormalParams, n.info);
+  if (genericParams <> nil) and (sonsLen(genericParams) = 0) then
+    IntSetInit(cl);
   if n.sons[0] = nil then begin
     addSon(result, nil); // return type
     addSon(result.n, newNodeI(nkType, n.info)); // BUGFIX: nkType must exist!
+    // XXX but it does not, if n.sons[paramsPos] == nil?
   end
   else begin
-    addSon(result, semTypeNode(c, n.sons[0], nil)); // return type
+    addSon(result, nil);
     res := newNodeI(nkType, n.info);
-    res.typ := result.sons[0];
     addSon(result.n, res);
   end;
   IntSetInit(check);
@@ -685,7 +679,7 @@ begin
     checkMinSonsLen(a, 3);
     len := sonsLen(a);
     if a.sons[len-2] <> nil then
-      typ := semTypeNode(c, a.sons[len-2], nil)
+      typ := paramType(c, a.sons[len-2], genericParams, cl)
     else
       typ := nil;
     if a.sons[len-1] <> nil then begin
@@ -712,6 +706,11 @@ begin
       addSon(result.n, newSymNode(arg));
       addSon(result, typ);
     end
+  end;
+  // NOTE: semantic checking of the result type needs to be done here!
+  if n.sons[0] <> nil then begin
+    result.sons[0] := paramType(c, n.sons[0], genericParams, cl);
+    res.typ := result.sons[0];
   end
 end;
 
@@ -751,6 +750,7 @@ end;
 function semTypeNode(c: PContext; n: PNode; prev: PType): PType;
 var
   s: PSym;
+  t: PType;
 begin
   result := nil;
   if n = nil then exit;
@@ -784,11 +784,12 @@ begin
       end
     end;
     nkSym: begin
-      if (n.sym.kind in [skTypeParam, skType]) and (n.sym.typ <> nil) then begin
+      if (n.sym.kind = skType) and (n.sym.typ <> nil) then begin
+        t := n.sym.typ;
         if prev = nil then
-          result := n.sym.typ
+          result := t
         else begin
-          assignType(prev, s.typ);
+          assignType(prev, t);
           result := prev;
         end;
         include(n.sym.flags, sfUsed); // BUGFIX
@@ -801,14 +802,14 @@ begin
     nkRefTy: result := semAnyRef(c, n, tyRef, 'ref', prev);
     nkPtrTy: result := semAnyRef(c, n, tyPtr, 'ptr', prev);
     nkVarTy: result := semVarType(c, n, prev);
-    nkAbstractTy: result := semAbstract(c, n, prev);
+    nkDistinctTy: result := semDistinct(c, n, prev);
     nkProcTy: begin
       checkSonsLen(n, 2);
-      result := semProcTypeNode(c, n.sons[0], prev);
+      result := semProcTypeNode(c, n.sons[0], nil, prev);
       // dummy symbol for `pragma`:
       s := newSymS(skProc, newIdentNode(getIdent('dummy'), n.info), c);
       s.typ := result;
-      pragmaProcType(c, s, n.sons[1]);
+      pragma(c, s, n.sons[1], procTypePragmas);
     end;
     nkEnumTy: result := semEnum(c, n, prev);
     nkType: result := n.typ;
@@ -859,6 +860,9 @@ begin
       exit
     end;
     mNil: setMagicType(m, tyNil, ptrSize);
+    mExpr: setMagicType(m, tyExpr, 0);
+    mStmt: setMagicType(m, tyStmt, 0);
+    mTypeDesc: setMagicType(m, tyTypeDesc, 0);
     mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: exit;
     else liMessage(m.info, errTypeExpected);
   end;

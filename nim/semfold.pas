@@ -417,7 +417,7 @@ begin
     end;
     nkCharLit..nkNilLit: result := copyNode(n);
     nkIfExpr: result := getConstIfExpr(module, n);
-    nkCall, nkCommand: begin
+    nkCall, nkCommand, nkCallStrLit: begin
       if (n.sons[0].kind <> nkSym) then exit;
       s := n.sons[0].sym;
       if (s.kind <> skProc) then exit;

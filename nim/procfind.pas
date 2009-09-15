@@ -16,7 +16,7 @@ interface
 {$include 'config.inc'}
 
 uses 
-  nsystem, ast, astalgo, msgs, semdata, types;
+  nsystem, ast, astalgo, msgs, semdata, types, trees;
 
 function SearchForProc(c: PContext; fn: PSym; tos: int): PSym;
 // Searchs for the fn in the symbol table. If the parameter lists are exactly
@@ -45,7 +45,9 @@ begin
       InternalError(procB.info, 'equalGenericParams');
     a := procA.sons[i].sym;
     b := procB.sons[i].sym;
-    if (a.name.id <> b.name.id) or not sameType(a.typ, b.typ) then exit;
+    if (a.name.id <> b.name.id) or not sameTypeOrNil(a.typ, b.typ) then exit;
+    if (a.ast <> nil) and (b.ast <> nil) then
+      if not ExprStructuralEquivalent(a.ast, b.ast) then exit;
   end;
   result := true
 end;
@@ -85,10 +87,10 @@ begin
       m := a.sons[i].sym;
       n := b.sons[i].sym;
       assert((m.kind = skParam) and (n.kind = skParam));
-      if not equalOrAbstractOf(m.typ, n.typ) then exit;
+      if not equalOrDistinctOf(m.typ, n.typ) then exit;
     end;
     // return type:
-    if not equalOrAbstractOf(a.sons[0].typ, b.sons[0].typ) then exit;
+    if not equalOrDistinctOf(a.sons[0].typ, b.sons[0].typ) then exit;
     result := true
   end
 end;

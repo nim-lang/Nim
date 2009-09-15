@@ -140,7 +140,7 @@ begin
         addSon(father, newAsgnStmt(dest, src));
       end
     end;
-    nkCall, nkCommand: begin
+    nkCall, nkCommand, nkCallStrLit: begin
     
     end;
     

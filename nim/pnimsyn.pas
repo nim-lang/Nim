@@ -612,6 +612,18 @@ begin
       result := newStrNodeP(nkTripleStrLit, p.tok.literal, p);
       getTok(p);
     end;
+    tkCallRStrLit: begin
+      result := newNodeP(nkCallStrLit, p);
+      addSon(result, newIdentNodeP(p.tok.ident, p));
+      addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p));
+      getTok(p);
+    end;
+    tkCallTripleStrLit: begin
+      result := newNodeP(nkCallStrLit, p);
+      addSon(result, newIdentNodeP(p.tok.ident, p));
+      addSon(result, newStrNodeP(nkTripleStrLit, p.tok.literal, p));
+      getTok(p);
+    end;
     tkCharLit: begin
       result := newIntNodeP(nkCharLit, ord(p.tok.literal[strStart]), p);
       getTok(p);
@@ -885,8 +897,8 @@ begin
   while true do begin
     case p.tok.tokType of
       tkEof, tkSad, tkDed: break;
-      tkSymbol, tkAccent:   a := parseSymbol(p);
-      tkRStrLit:  begin
+      tkSymbol, tkAccent: a := parseSymbol(p);
+      tkRStrLit: begin
         a := newStrNodeP(nkRStrLit, p.tok.literal, p);
         getTok(p)
       end;
@@ -901,16 +913,7 @@ begin
       else begin
         parMessage(p, errIdentifierExpected, tokToStr(p.tok));
         break
-      end;
-    end;
-    //optInd(p, a);
-    if p.tok.tokType = tkAs then begin
-      getTok(p);
-      optInd(p, a);
-      b := a;
-      a := newNodeP(nkImportAs, p);
-      addSon(a, b);
-      addSon(a, parseSymbol(p));
+      end
     end;
     addSon(result, a);
     if p.tok.tokType <> tkComma then break;
@@ -1227,24 +1230,31 @@ begin
     result := a
 end;
 
-function parseIdentColonEquals(var p: TParser; withPragma: bool): PNode;
+type
+  TDeclaredIdentFlag = (
+    withPragma,                // identifier may have pragma
+    withBothOptional           // both ':' and '=' parts are optional
+  );
+  TDeclaredIdentFlags = set of TDeclaredIdentFlag;
+
+function parseIdentColonEquals(var p: TParser;
+                               flags: TDeclaredIdentFlags): PNode;
 var
   a: PNode;
 begin
   result := newNodeP(nkIdentDefs, p);
   while true do begin
     case p.tok.tokType of
-      tkColon, tkEof, tkSad, tkDed, tkParRi, tkEquals: break;
-      else begin
-        if withPragma then
+      tkSymbol, tkAccent: begin
+        if withPragma in flags then
           a := identWithPragma(p)
         else
           a := parseSymbol(p);
         if a = nil then exit;
-      end
+      end;
+      else break;
     end;
     addSon(result, a);
-    //optInd(p, a);
     if p.tok.tokType <> tkComma then break;
     getTok(p);
     optInd(p, a)
@@ -1255,7 +1265,7 @@ begin
   end
   else begin
     addSon(result, nil);
-    if p.tok.tokType <> tkEquals then
+    if (p.tok.tokType <> tkEquals) and not (withBothOptional in flags) then
       parMessage(p, errColonOrEqualsExpected, tokToStr(p.tok))
   end;
   if p.tok.tokType = tkEquals then begin
@@ -1277,7 +1287,7 @@ begin
     optInd(p, result);
     while true do begin
       case p.tok.tokType of
-        tkSymbol, tkAccent: a := parseIdentColonEquals(p, false);
+        tkSymbol, tkAccent: a := parseIdentColonEquals(p, {@set}[]);
         tkParRi: break;
         else begin parMessage(p, errTokenExpected, ')'+''); break; end;
       end;
@@ -1335,7 +1345,7 @@ begin
       eat(p, tkBracketLe);
       optInd(p, result);
       while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
-        a := parseIdentColonEquals(p, false);
+        a := parseIdentColonEquals(p, {@set}[]);
         addSon(result, a);        
         if p.tok.tokType <> tkComma then break;
         getTok(p);
@@ -1360,23 +1370,6 @@ begin
   end
 end;
 
-function parseGenericParam(var p: TParser): PNode;
-var
-  a: PNode;
-begin
-  a := parseSymbol(p);
-  optInd(p, a);
-  if p.tok.tokType = tkEquals then begin
-    result := newNodeP(nkDefaultTypeParam, p);
-    getTok(p);
-    optInd(p, a);
-    addSon(result, a);
-    addSon(result, parseTypeDesc(p));
-  end
-  else
-    result := a
-end;
-
 function parseGenericParamList(var p: TParser): PNode;
 var
   a: PNode;
@@ -1385,7 +1378,7 @@ begin
   getTok(p);
   optInd(p, result);
   while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
-    a := parseGenericParam(p);
+    a := parseIdentColonEquals(p, {@set}[withBothOptional]);
     addSon(result, a);
     if p.tok.tokType <> tkComma then break;
     getTok(p);
@@ -1479,7 +1472,10 @@ begin
       end;
       popInd(p.lex^);
     end;
-    tkSymbol, tkAccent: addSon(result, defparser(p));
+    tkSymbol, tkAccent, tkParLe: begin
+      // tkParLe is allowed for ``var (x, y) = ...`` tuple parsing
+      addSon(result, defparser(p));
+    end
     else parMessage(p, errIdentifierExpected, tokToStr(p.tok));
   end
 end;
@@ -1627,7 +1623,7 @@ begin
     tkWhen: result := parseRecordWhen(p);
     tkCase: result := parseRecordCase(p);
     tkSymbol, tkAccent: begin
-      result := parseIdentColonEquals(p, true);
+      result := parseIdentColonEquals(p, {@set}[withPragma]);
       skipComment(p, result);
     end;
     tkNil: begin
@@ -1660,9 +1656,9 @@ begin
   addSon(result, parseRecordPart(p));
 end;
 
-function parseAbstract(var p: TParser): PNode;
+function parseDistinct(var p: TParser): PNode;
 begin
-  result := newNodeP(nkAbstractTy, p);
+  result := newNodeP(nkDistinctTy, p);
   getTok(p);
   optInd(p, result);
   addSon(result, parseTypeDesc(p));
@@ -1681,7 +1677,7 @@ begin
     case p.tok.tokType of
       tkObject: a := parseRecordOrObject(p, nkObjectTy);
       tkEnum: a := parseEnum(p);
-      tkAbstract: a := parseAbstract(p);
+      tkDistinct: a := parseDistinct(p);
       else a := parseTypeDesc(p);
     end;
     addSon(result, a);
@@ -1718,7 +1714,7 @@ begin
   if p.tok.tokType = tkParLe then 
     result := parseVarTuple(p)
   else
-    result := parseIdentColonEquals(p, true);
+    result := parseIdentColonEquals(p, {@set}[withPragma]);
   indAndComment(p, result); // special extension!
 end;
 

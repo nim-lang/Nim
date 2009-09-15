@@ -96,7 +96,7 @@ include "deinstall.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.6"
+  Version = "0.7"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
   (c) 2009 Andreas Rumpf
@@ -175,7 +175,7 @@ proc pathFlags(p: var TCfgParser, k, v: string,
 
 proc filesOnly(p: var TCfgParser, k, v: string, dest: var seq[string]) =
   case normalize(k)
-  of "files": addFiles(dest, splitSeq(v, {';'}))
+  of "files": addFiles(dest, split(v, {';'}))
   else: quit(errorStr(p, "unknown variable: " & k))
 
 proc yesno(p: var TCfgParser, v: string): bool = 
@@ -208,9 +208,9 @@ proc parseIniFile(c: var TConfigData) =
           case normalize(k.key)
           of "name": c.name = v
           of "version": c.version = v
-          of "os": c.oses = splitSeq(v, {';'})
-          of "cpu": c.cpus = splitSeq(v, {';'})
-          of "authors": c.authors = splitSeq(v, {';'})
+          of "os": c.oses = split(v, {';'})
+          of "cpu": c.cpus = split(v, {';'})
+          of "authors": c.authors = split(v, {';'})
           of "description": c.description = v
           of "app":
             case normalize(v)
@@ -228,13 +228,13 @@ proc parseIniFile(c: var TConfigData) =
         of "other": filesOnly(p, k.key, v, c.cat[fcOther])
         of "windows":
           case normalize(k.key)
-          of "files": addFiles(c.cat[fcWindows], splitSeq(v, {';'}))
-          of "binpath": c.binPaths = splitSeq(v, {';'})
+          of "files": addFiles(c.cat[fcWindows], split(v, {';'}))
+          of "binpath": c.binPaths = split(v, {';'})
           of "innosetup": c.innoSetupFlag = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unix": 
           case normalize(k.key)
-          of "files": addFiles(c.cat[fcUnix], splitSeq(v, {';'}))
+          of "files": addFiles(c.cat[fcUnix], split(v, {';'}))
           of "installscript": c.installScript = yesno(p, v)
           of "uninstallscript": c.uninstallScript = yesno(p, v)
           else: quit(errorStr(p, "unknown variable: " & k.key))
@@ -279,10 +279,12 @@ proc readCFiles(c: var TConfigData, osA, cpuA: int) =
 proc buildDir(os, cpu: int): string =
   return "build" / ($os & "_" & $cpu)
 
-proc writeFile(filename, content: string) =  
+proc writeFile(filename, content, newline: string) =  
   var f: TFile
   if open(f, filename, fmWrite):
-    writeln(f, content)
+    for x in splitLines(content):
+      write(f, x)
+      write(f, newline)
     close(f)
   else:
     quit("Cannot open for writing: " & filename)
@@ -299,7 +301,7 @@ proc srcdist(c: var TConfigData) =
                  " --os:$# --cpu:$# $# $#") %
                  [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs, 
                  changeFileExt(c.infile, "nim")]
-      echo("Executing: " & cmd)
+      echo(cmd)
       if executeShellCommand(cmd) != 0:
         quit("Error: call to nimrod compiler failed")
       readCFiles(c, osA, cpuA)
@@ -322,19 +324,23 @@ proc srcdist(c: var TConfigData) =
                 # file is identical, so delete duplicate:
                 RemoveFile(dup)
                 c.cfiles[osA][cpuA][i] = orig
-  writeFile(buildShFile, GenerateBuildScript(c))
+  writeFile(buildShFile, GenerateBuildScript(c), "\10")
+  if c.installScript: 
+    writeFile(installShFile, GenerateInstallScript(c), "\10")
+  if c.uninstallScript:
+    writeFile(deinstallShFile, GenerateDeinstallScript(c), "\10")
   
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var TConfigData) =
   var scrpt = GenerateInnoSetup(c)
   var n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
-  writeFile(n, scrpt)
+  writeFile(n, scrpt, "\13\10")
   when defined(windows):
     if c.innoSetup.path.len == 0:
       c.innoSetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
     var cmd = "$# $# /O$# $#" % [c.innoSetup.path, c.innoSetup.flags, outcmd, n]
-    Echo("Executing: " & cmd)
+    Echo(cmd)
     if executeShellCommand(cmd) == 0:
       removeFile(n)
     else:
@@ -343,11 +349,6 @@ proc setupDist(c: var TConfigData) =
 # ------------------ generate ZIP file ---------------------------------------
 when haveZipLib:
   proc zipDist(c: var TConfigData) =
-    if c.installScript: 
-      writeFile(installShFile, GenerateInstallScript(c))
-    if c.uninstallScript:
-      writeFile(deinstallShFile, GenerateDeinstallScript(c))
-    
     var proj = toLower(c.name)
     var n = "$#_$#.zip" % [proj, c.version]
     if c.outdir.len == 0: n = "build" / n

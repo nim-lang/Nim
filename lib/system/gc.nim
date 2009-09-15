@@ -468,10 +468,10 @@ proc collectCycles(gch: var TGcHeap) =
   Init(gch.cycleRoots)
 
 proc gcMark(p: pointer) {.inline.} =
-  # the addresses are not as objects on the stack, so turn them to objects:
+  # the addresses are not as cells on the stack, so turn them to cells:
   var cell = usrToCell(p)
   var c = cast[TAddress](cell)
-  if c >% PageSize:
+  if c >% PageSize and (c and (MemAlign-1)) == 0:
     # fast check: does it look like a cell?
     if isAllocatedPtr(allocator, cell): 
       # mark the cell:
@@ -585,7 +585,7 @@ proc CollectZCT(gch: var TGcHeap) =
       # it has not been removed yet from the ZCT. This is because
       # ``incref`` does not bother to remove the cell from the ZCT 
       # as this might be too slow.
-      # In any case,  it should be removed from the ZCT. But not
+      # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
       if canBeCycleRoot(c): excl(gch.cycleRoots, c)
       when logGC: writeCell("zct dealloc cell", c)

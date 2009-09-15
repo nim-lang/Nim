@@ -63,6 +63,7 @@ const
 +{&} '  compile_to_c, cc          compile project with C code generator' +{&} nl
 +{&} '  doc                       generate the documentation for inputfile' +{&} nl
 +{&} '  rst2html                  converts a reStructuredText file to HTML' +{&} nl
++{&} '  rst2tex                   converts a reStructuredText file to TeX' +{&} nl
 +{&} 'Arguments:' +{&} nl
 +{&} '  arguments are passed to the program being run (if --run option is selected)' +{&} nl
 +{&} 'Options:' +{&} nl
@@ -112,6 +113,7 @@ const
 +{&} '  --lib:PATH                set the system library path' +{&} nl
 +{&} '  -c, --compile_only        compile only; do not assemble or link' +{&} nl
 +{&} '  --no_linking              compile but do not link' +{&} nl
++{&} '  --no_main                 do not generate a main procedure' +{&} nl
 +{&} '  --gen_script              generate a compile script (in the ''nimcache''' +{&} nl
 +{&} '                            subdirectory named ''compile_$project$scriptext'')' +{&} nl
 +{&} '  --os:SYMBOL               set the target operating system (cross-compilation)' +{&} nl
@@ -361,6 +363,10 @@ begin
       expectNoArg(switch, arg, pass, info);
       include(gGlobalOptions, optNoLinking);
     end;
+    wNoMain: begin
+      expectNoArg(switch, arg, pass, info);
+      include(gGlobalOptions, optNoMain);    
+    end;
     wForceBuild, wF: begin
       expectNoArg(switch, arg, pass, info);
       include(gGlobalOptions, optForceFullMake);
@@ -554,10 +560,6 @@ begin
     wCC: begin
       expectArg(switch, arg, pass, info);
       setCC(arg)
-    end;
-    wMaxErr: begin
-      expectArg(switch, arg, pass, info);
-      gErrorMax := parseInt(arg);
     end;
     else if strutils.find(switch, '.') >= strStart then
       options.setConfigVar(switch, arg)

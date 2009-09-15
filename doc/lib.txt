@@ -134,7 +134,7 @@ Impure libraries
 Wrappers
 ========
 
-Note that the generated HTML for some of these wrappers is so huge, that it is
+The generated HTML for some of these wrappers is so huge, that it is
 not contained in the distribution. You can then find them on the website.
 
 * `posix <posix.html>`_

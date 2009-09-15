@@ -54,9 +54,9 @@ proc find*(s, pattern: string, matches: var openarray[string],
   ## returns ``true`` if ``pattern`` occurs in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches``.
+
 proc find*(s, pattern: string, start: int = 0): bool
   ## returns ``true`` if ``pattern`` occurs in ``s``.
-
 
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var

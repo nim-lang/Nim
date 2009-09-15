@@ -142,6 +142,8 @@ procedure addSon(father, son: PRstNode);
 
 function rstnodeToRefname(n: PRstNode): string;
 
+function addNodes(n: PRstNode): string;
+
 function getFieldValue(n: PRstNode; const fieldname: string): string;
 function getArgument(n: PRstNode): string;
 
@@ -1834,7 +1836,6 @@ begin
       rnDirective: a := parseDotDot(p);
       rnEnumList: a := parseEnumList(p);
       rnLeaf: begin
-        //writeln(ord(p.tok[p.idx].kind), '  ', p.tok[p.idx].symbol);
         rstMessage(p, errNewSectionExpected);
       end;
       rnParagraph: begin end;
@@ -1856,14 +1857,9 @@ begin
     end;
     addSonIfNotNil(result, a);
   end;
-  //if (result.kind in [rnBulletItem]) and
   if (sonKind(result, 0) = rnParagraph)
   and (sonKind(result, 1) <> rnParagraph) then
     result.sons[0].kind := rnInner;
-  (*
-  if (result.kind <> rnInner) and (rsonsLen(result) = 1)
-  and (result.sons[0].kind = rnParagraph) then
-    result.sons[0].kind := rnInner; *)
 end;
 
 function parseSectionWrapper(var p: TRstParser): PRstNode;
@@ -1921,7 +1917,6 @@ begin
   if (assigned(contentParser)) and (p.tok[p.idx].kind = tkIndent)
   and (p.tok[p.idx].ival > currInd(p)) then begin
     pushInd(p, p.tok[p.idx].ival);
-    //while p.tok[p.idx].kind = tkIndent do inc(p.idx);
     content := contentParser(p);
     popInd(p);
     addSon(result, content)
@@ -2085,7 +2080,7 @@ begin
       dkRaw:        result := dirRaw(p);
       dkCodeblock:  result := dirCodeBlock(p);
       dkIndex:      result := dirIndex(p);
-      else          rstMessage(p, errUnknownDirective, d);
+      else          rstMessage(p, errInvalidDirectiveX, d);
     end;
     popInd(p);
   end
@@ -2112,7 +2107,7 @@ begin
       b := dirImage(p);
     end
     else
-      rstMessage(p, errUnknownDirective, p.tok[p.idx].symbol);
+      rstMessage(p, errInvalidDirectiveX, p.tok[p.idx].symbol);
     setSub(p, addNodes(a), b);
   end
   else if match(p, p.idx, ' [') then begin
@@ -2172,6 +2167,8 @@ function rstParse(const text: string; // the text to be parsed
 var
   p: TRstParser;
 begin
+  if isNil(text) then
+    rawMessage(errCannotOpenFile, filename);
   initParser(p, newSharedState());
   p.filename := filename;
   p.line := line;

@@ -91,7 +91,7 @@ we define our own ``+`` for dollars:
     result = TDollar(int(x) + int(y))
 
 It does not make sense to multiply a dollar with a dollar, but with a
-unit-less number; and the same holds for division:
+number without unit; and the same holds for division:
 
 .. code-block:: 
   proc `*` (x: TDollar, y: int): TDollar = 
@@ -121,7 +121,7 @@ But it seems we still have to repeat all this boilerplate code for
 the ``TEuro`` currency. Fortunately, Nimrod has a template mechanism: 
 
 .. code-block:: nimrod
-  template Additive(typ: typeExpr): stmt =
+  template Additive(typ: typeDesc): stmt =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
     
@@ -129,13 +129,13 @@ the ``TEuro`` currency. Fortunately, Nimrod has a template mechanism:
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
     
-  template Multiplicative(typ, base: typeExpr): stmt = 
+  template Multiplicative(typ, base: typeDesc): stmt = 
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
     
-  template Comparable(typ: typeExpr): stmt = 
+  template Comparable(typ: typeDesc): stmt = 
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}

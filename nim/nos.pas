@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -220,7 +220,7 @@ begin
   if (length(result) > 0) and (result[1] <> '/') then begin
     // not an absolute path?
     // iterate over any path in the $PATH environment variable
-    paths := splitSeq(getEnv('PATH'), [':']);
+    paths := split(getEnv('PATH'), [':']);
     for p := 0 to high(paths) do begin
       tail := joinPath(paths[p], result);
       if ExistsFile(tail) then begin result := tail; exit end

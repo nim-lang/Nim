@@ -278,11 +278,13 @@ begin
   case t.kind of
     tyBool, tyChar, tyInt..tyInt64: result := newNodeIT(nkIntLit, info, t);
     tyFloat..tyFloat128: result := newNodeIt(nkFloatLit, info, t);
-    tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString:
+    tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
+    tyStmt, tyTypeDesc:
       result := newNodeIT(nkNilLit, info, t);
     tyObject: begin
       result := newNodeIT(nkPar, info, t);
       internalError(info, 'init to implement');
+      // XXX
     end;
     tyArray, tyArrayConstr: begin
       result := newNodeIT(nkBracket, info, t);
@@ -1283,7 +1285,7 @@ begin
     nkType..pred(nkNilLit): result := copyNode(n);
     nkNilLit: result := n; // end of atoms
 
-    nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand: 
+    nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit: 
       result := evalMagicOrCall(c, n);
     nkCurly, nkBracket, nkRange: begin
       a := copyNode(n);

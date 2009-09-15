@@ -218,7 +218,7 @@ begin
       ppGetTok(L, tok)
     end
     else
-      lexMessage(L, errUnknownDirective, tokToStr(tok))
+      lexMessage(L, errInvalidDirectiveX, tokToStr(tok))
   end
 end;
 

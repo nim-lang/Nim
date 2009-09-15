@@ -72,7 +72,7 @@ begin
       liMessage(s.info, errImplOfXexpected, getSymRepr(s))
     else if ([sfUsed, sfInInterface] * s.flags = []) and
             (optHints in s.options) then // BUGFIX: check options in s!
-      if not (s.kind in [skForVar, skParam]) then
+      if not (s.kind in [skForVar, skParam, skUnknown]) then
         liMessage(s.info, hintXDeclaredButNotUsed, getSymRepr(s));
     s := NextIter(it, tab.stack[tab.tos-1]);
   end;
@@ -103,7 +103,7 @@ begin
   if not (fn.kind in OverloadableSyms) then
     InternalError(fn.info, 'addOverloadableSymAt');
   check := StrTableGet(c.tab.stack[at], fn.name);
-  if (check <> nil) and (check.Kind <> fn.kind) then
+  if (check <> nil) and not (check.Kind in OverloadableSyms) then
     liMessage(fn.info, errAttemptToRedefine, fn.Name.s);
   SymTabAddAt(c.tab, fn, at);
 end;
@@ -136,17 +136,16 @@ function lookUp(c: PContext; n: PNode): PSym;
 begin
   case n.kind of
     nkAccQuoted: result := lookup(c, n.sons[0]);
-    nkSym: begin
+    nkSym: begin (*
       result := SymtabGet(c.Tab, n.sym.name);
       if result = nil then
-        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s);
-      //include(result.flags, sfUsed);
+        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s); *)
+      result := n.sym;
     end;
     nkIdent: begin
       result := SymtabGet(c.Tab, n.ident);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.ident.s);
-      //include(result.flags, sfUsed);
     end
     else InternalError(n.info, 'lookUp');
   end;
@@ -169,12 +168,13 @@ begin
           and IntSetContains(c.AmbiguousSymbols, result.id) then
         liMessage(n.info, errUseQualifier, n.ident.s)
     end;
-    nkSym: begin
+    nkSym: begin (*
       result := SymtabGet(c.Tab, n.sym.name);
       if result = nil then
         liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s)
-      else if ambiguousCheck
-          and IntSetContains(c.AmbiguousSymbols, result.id) then
+      else *)
+      result := n.sym;
+      if ambiguousCheck and IntSetContains(c.AmbiguousSymbols, result.id) then
         liMessage(n.info, errUseQualifier, n.sym.name.s)
     end;
     nkDotExpr, nkQualified: begin

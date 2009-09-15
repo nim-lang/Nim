@@ -1,0 +1,368 @@
+====
+News
+====
+
+
+2009-09-12 Date Version 0.8.0 released
+======================================
+
+Bugfixes
+--------
+- fixed a small bug that caused the compiler to not report unused
+  overloaded symbols
+- fixed a small bug concerning symbol overloading
+- fixed a typo: it's "ambiguous", not "ambigious" ;-)
+- the compiler now detects recursive include files
+- ``system.card`` should work again
+- ``items`` for ``set[char]`` and ``array[char, T]`` should work now
+
+
+Additions
+---------
+
+- implemented generic types and two phase symbol lookup in generic routines 
+- template parameters can now be real types
+- implemented generalized raw string literals: ``ident"abc"`` is a shortcut for
+  ``ident(r"abc")``
+- in overloading resolution iterators are separated from procs; iterators now
+  can have the same name+signature as procs
+- symbol lookup in templates can be affected by the new ``bind`` keyword
+- the compiler now accepts a ``--no_main`` switch for better link
+  interoperability with other compiled languages
+- implemented tuple unpacking in ``var`` sections
+- the code generator emits ``default: __assume(0);`` for Visual C++
+  (for optimization)
+- the compiler now checks if a proc has side effects; procs that are declared
+  to have no side effects are rejected if the compiler cannot verify this
+- the format operator ``strutils.%`` now supports ``$#`` for automatic argument
+  counting
+- implemented ``strutils.join``
+
+
+Changes affecting backwards compability
+---------------------------------------
+
+- two phase symbol lookup is performed in generic routines
+- ``bind`` is now a reserved word; ``exception`` is no reserved word anymore
+- abstract types have been renamed to distinct types; thus
+  ``distinct`` is now a reserved word; ``abstract`` is no reserved word anymore
+- ``system.openFile`` deprecated: use ``system.open`` instead
+- ``system.closeFile`` deprecated: use ``system.close`` instead
+- ``strutils.replaceStr`` deprecated: use ``strutils.replace`` instead
+- ``strutils.deleteStr`` deprecated: use ``strutils.delete`` instead
+- ``strutils.splitSeq`` deprecated: use ``strutils.split`` instead
+- ``strutils.splitLinesSeq`` deprecated: use ``strutils.splitLines`` instead
+- ``strutils.parseFloat`` does not accept an additional ``start`` parameter 
+  anymore
+
+
+Documentation
+-------------
+
+- the manual has been improved
+
+
+
+2009-06-08 Version 0.7.10 released
+==================================
+
+Nimrod version 0.7.10 has been released! Get it `here <./download.html>`_. 
+
+Bugfixes
+--------
+
+- fixed bug #374441, #376113
+- the posix module works for Mac OS X again
+- returning an array should now work
+- fixed a serious bug in several parsers: the cached buf pointer 
+  must be updated after a reallocation of the buffer
+- fixed a CSS bug that kept Firefox from rendering parts of
+  the generated documentation properly
+- fixed a bug concerning evaluation of command statements
+- overloading of ``inc``, ``dec``, ``pred``, ``succ`` should now work
+- ``removeDir`` now works as the documentation says: it even removes
+  directories that are not empty
+ 
+
+Additions
+---------
+
+* zero argument templates/macros can now be invoked without ``()``,
+  because this is not ambiguous
+* new modules in the library:
+  - ``dynlib``: load symbols from a shared library
+  - ``python``: wrapper for the Python programming language
+  - ``tcl``: wrapper for the TCL programming language
+* added ``system.max``, ``system.min`` for open arrays
+* added ``system.each`` built-in
+* added ``os.getFilePermissions``, ``os.setFilePermissions``, 
+  ``os.inclFilePermissions``, ``os.exclFilePermissions``
+* the ``dynlib`` import mechanism now supports a flexible versioning scheme: 
+
+  .. code-block:: nimrod 
+  
+    proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
+      importc, dynlib: "libtcl(8.5|8.4|8.3|8.2|8.1).so.(1|0)".}
+
+* implemented ``abstract`` types
+
+
+Changes affecting backwards compability
+---------------------------------------
+
+- the organization within the ``lib`` folder now reflects the documentation;
+  as a result old configuration files need to be updated
+- ``abstract`` is now a reserved keyword
+- ``echo`` is now a built-in macro that accepts a variable numer of 
+  arguments of different types (and calls ``$`` for the arguments that need 
+  it); as a result it cannot be overloaded anymore
+- ``where`` is no keyword anymore
+- installation on UNIX produces a release version of the compiler
+
+
+2009-05-08 Version 0.7.8 released
+=================================
+
+Nimrod version 0.7.8 has been released!
+Apart from bugfixes and added libraries the biggest change is that Nimrod
+now has a new memory manager which: 
+
+- interacts much better with the GC
+- uses less memory
+- is faster than the old memory manager (``dlmalloc``)
+- releases memory back to the operating system
+
+
+Bugfixes
+--------
+
+- generics are now processed earlier in the pipeline; thus 
+  generics can be used within macros
+- changed bootstrapping in ``koch.py`` and ``boot.nim`` to fix 
+  bug #369607
+- the compiler now checks that ``yield`` is used inside a loop
+- fixed a bug in the evaluation code for ``system.len``, 
+  ``system.setlen`` and ``system.newSeq``
+- overflow checking for ``newSeq`` fixes a security issue
+
+
+Additions
+---------
+
+- new module: ``parsecsv`` for parsing CSV files
+- new module: ``xmlgen`` for generating XML or HTML
+- new module: ``osproc`` for OS process communication
+- added ``math.TRunningStat`` object and its methods
+- added ``strutils.validIdentifier``
+- the reStructuredText parser now supports the ``container`` directive that
+  translates to the HTML ``div`` element
+- the ``cgi`` module registers a handler, so that stack traces contain the
+  HTML ``<br />`` element making CGI applications easier to debug
+- added the ``cgi.decodeData`` iterator
+- ``copy`` and ``newString`` can now be evaluated at compile time. As a 
+  result more procedures from the ``strutils`` module can be evaluated at
+  compile time.
+- ``macros.error`` now prints a stack trace
+- Nimrod now supports the Boehm-Demers-Weiser conservative garbage collector: 
+  The ``--gc:boehm`` command line switch activates it. However, the native 
+  Nimrod collector is faster!
+  
+
+Documentation
+-------------
+
+- Nimrod's abstract syntax trees are now documented in the 
+  `macros <macros.html>`_ module. Unfortunately the documentation is still
+  incomplete.
+
+
+2009-04-22 Version 0.7.6 released
+=================================
+
+Nimrod version 0.7.6 has been released! 
+This is mostly a bugfix release. Some new features and libraries have 
+also been implemented.
+
+Bugfixes
+--------
+
+- installation on Windows Vista may now work out of the box; please try!
+- fixed a bug that kept the "recursive modules" example from working
+- mixing named and unnamed parameters in a procedure call now works
+- octal numbers with the prefix ``0c`` are now properly supported
+- enumerations now may start with negative values
+- ``parseInt``, ``ParseBiggestInt`` now throw an exception if the
+  string does not end after the parsed number
+- the compiler now handles top-level statements correctly
+- generated ``nimcache`` directory never ends in a slash
+- ``createDir`` now works for global directories under UNIX ("/somepath/here")
+- the compiler now executes the executable with a leading "./" under UNIX
+- the compiler now supports constant arrays of procedure pointers
+- ``elif`` in ``case`` statements now works
+- iterators using an open array parameter now work
+- fixed a bug where in some contexts ``$myEnum`` did not work
+
+
+Additions
+---------
+- implemented the passing of a code-block to the last parameter of a 
+  template/macro:
+  
+  .. code-block:: nimrod
+
+    template withFile(f, filename, mode: expr, 
+                      actions: stmt): stmt =
+      block:
+        var f: TFile
+        if openFile(f, filename, mode):
+          try:
+            actions
+          finally:
+            closeFile(f)
+        else:
+          quit("cannot open: " & filename)
+        
+    withFile(txt, "ttempl3.txt", fmWrite):
+      txt.writeln("line 1")
+      txt.writeln("line 2")
+
+- new pragma ``deprecated`` can be used to mark deprecated identifiers
+- added ``system.pop`` built-in for sequences
+- added ``addf``, ``addSep`` and ``validEmailAddress`` to the
+  ``strutils`` module
+- nice ``=~`` template operator for the ``regexprs`` module
+- the scoping rules for ``for``, ``while``, ``if``, ``case`` changed
+  in a subtle way to support the new ``=~`` template
+- added common regular expressions for regexprs
+- ``posix`` module now declares socket stuff
+- new module: ``cgi`` for creating CGI applications
+- new module: ``terminal`` for simple terminal output customization
+- new module: ``parsexml`` for HTML/XML parsing with some support for
+  parsing *dirty* HTML
+- new module: ``web`` for retrieving web pages
+- new module: ``md5`` for computation of MD5 checksums
+- new wrappers: ``mysql``, ``sqlite3``, ``libcurl``
+
+
+Changes affecting backwards compability
+---------------------------------------
+
+- ``strutils.findSubStr``, ``strutils.findChars`` deprecated: 
+  use ``strutils.find`` instead
+
+
+Documentation
+-------------
+
+- The library is now divided into *pure libraries*, *impure libraries* 
+  and *wrappers*.
+
+
+2009-01-22 Forum added
+======================
+We now have a `forum <http://www.ethexor.com/heimdall>`_ where you can discuss 
+Nimrod. 
+
+
+2009-01-07 Version 0.7.4 released
+=================================
+
+Nimrod version 0.7.4 has been released! 
+
+Bugfixes
+--------
+
+- installation on Windows should work now if the directory contains spaces
+- the documentation generator now only renders documentation comments
+- ``\`` is allowed for operators as the manual says
+- in rare cases, the index check has been optimized away, even though
+  it would have been necessary
+- several bugfixes for tuple types
+
+Additions
+---------
+
+- added an ``unicode`` module for UTF-8 handling
+- added ``hostOS`` and ``hostCPU`` magics to the ``system`` module
+- ``system.echo`` now accepts multiple arguments
+- added optimization: in some cases inlining of iterators now produces 
+  substantially better code
+- added whole program dead code elimination
+- the magic ``$`` operator now works for enumerations
+- in ``const`` sections advanced compile time evaluation is done: 
+
+.. code-block:: nimrod
+  proc fac(n: int): int = 
+    if n <= 1: return 1
+    else: return n*(fac(n-1))
+    
+  const
+    z = fac(3)  # computes 6 at compile time
+
+Changes affecting backwards compability
+---------------------------------------
+
+- renamed ``in_Operator`` to ``contains``: ``in`` is now a template that 
+  translates to ``contains``
+- changed ``strutils.quoteIfSpaceExists`` to ``strutils.quoteIfContainsWhite``
+- the parser is now much more picky about missings commas, etc. If this affects
+  your code too much, try to run your code through the pretty printer.
+- the ``macros`` API is no longer part of the ``system`` module, to use this
+  API you now have to import the ``macros`` module
+
+Documentation
+-------------
+
+- added a tutorial
+
+
+
+2008-12-12 Version 0.7.2 released
+=================================
+
+Nimrod version 0.7.2 has been released! This is a bugfix release. This most 
+important fix is that Nimrod now works again on AMD64 (x86_64) processors. No 
+new features have been implemented.
+
+
+2008-11-16 Version 0.7.0 released
+=================================
+
+Nimrod version 0.7.0 has been released!
+Changes:
+* various bug fixes, too many to list them here
+* the installation for UNIX-based systems does not depend on Python any longer
+* the ``koch.py`` script now works with older Python versions (including 1.5.2)
+* changed integer operations and conversions rules
+* added ``GC_ref`` and ``GC_unref`` procs
+* sequences now need to be constructed with the ``@`` operator. This leads to
+  less ambiguities.
+* the compiler now uses less memory and is much faster
+* the GC is now much faster
+* new bindings: zlib, SDL, Xlib, OpenGL, ODBC, Lua
+* the generated C code is much faster to optimize with GCC
+* new libraries: streams, zipfiles
+* the Nimrod compiler has been ported to FreeBSD: it should work on
+  other BSD's too
+
+
+2008-08-22 Version 0.6.0 released
+=================================
+
+Nimrod version 0.6.0 has been released!
+**This is the first version of the compiler that is able to compile itself!**
+A nice side-effect from this is that a source-based installation does not
+depend on FreePascal any longer.
+
+Changes:
+* various bug fixes, too many to list them here
+* cleaned up the type system: records are now superfluous and not
+  supported anymore
+* improved the performance of the garbage collector
+* new modules in the library:
+  - ``parseopt``: a simple to use command line parser
+  - ``hashes``: efficient computation of hash values
+  - ``strtabs``: efficient mapping from strings to strings
+  - ``parsecfg``: an efficient configuration file parser
+* macros and compile-time evaluation implemented (however, still experimental)
+* generics implemented (however, still experimental)

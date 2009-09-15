@@ -66,7 +66,7 @@ function repeatChar(count: int; c: Char = ' '): string;
 type
   TStringSeq = array of string;
   TCharSet = set of Char;
-function splitSeq(const s: string; const seps: TCharSet): TStringSeq;
+function split(const s: string; const seps: TCharSet): TStringSeq;
 
 function startsWith(const s, prefix: string): bool;
 function endsWith(const s, postfix: string): bool;
@@ -78,8 +78,14 @@ function strip(const s: string; const chars: TCharSet = WhiteSpace): string;
 function allCharsInSet(const s: string; const theSet: TCharSet): bool;
 
 function quoteIfContainsWhite(const s: string): string;
+procedure addSep(var dest: string; sep: string = ', '); 
 
 implementation
+
+procedure addSep(var dest: string; sep: string = ', '); 
+begin
+  if length(dest) > 0 then add(dest, sep)
+end;
 
 function quoteIfContainsWhite(const s: string): string;
 begin
@@ -148,7 +154,7 @@ begin
   end
 end;
 
-function splitSeq(const s: string; const seps: TCharSet): TStringSeq;
+function split(const s: string; const seps: TCharSet): TStringSeq;
 var
   first, last, len: int;
 begin

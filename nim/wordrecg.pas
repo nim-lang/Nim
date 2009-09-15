@@ -39,10 +39,10 @@ type
     //  i = i + 1
     //cog.out(idents)
     //]]]
-    wAbstract, wAddr, wAnd, wAs, 
-    wAsm, wBind, wBlock, wBreak, 
-    wCase, wCast, wConst, wContinue, 
-    wConverter, wDiscard, wDiv, wElif, 
+    wAddr, wAnd, wAs, wAsm, 
+    wBind, wBlock, wBreak, wCase, 
+    wCast, wConst, wContinue, wConverter, 
+    wDiscard, wDistinct, wDiv, wElif, 
     wElse, wEnd, wEnum, wExcept, 
     wFinally, wFor, wFrom, wGeneric, 
     wIf, wImplies, wImport, wIn, 
@@ -81,13 +81,13 @@ type
     wBorrow, wRun, wR, wVerbosity, wV, wHelp,
     wH, wSymbolFiles, wFieldChecks, wX, wVersion, wAdvanced,
     wSkipcfg, wSkipProjCfg, wCc, wGenscript, wCheckPoint, wCheckPoints,
-    wMaxErr, wExpr, wStmt, wTypeDesc,
-    wSubsChar, wAstCache, wAcyclic, wIndex,
+    wNoMain,
+    wSubsChar, wAcyclic, wIndex,
     // commands:
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM,
     wPretty, wDoc, wPas,
     wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy,
-    wRst2html, wI,
+    wRst2html, wRst2tex, wI,
     // special for the preprocessor of configuration files:
     wWrite, wPutEnv, wPrependEnv, wAppendEnv,
     // additional Pascal keywords:
@@ -107,16 +107,15 @@ type
 const
   oprLow = ord(wColon);
   oprHigh = ord(wHat);
-  specialWords: array [low(TSpecialWord)..high(TSpecialWord)]
-                of string = ('',
+  specialWords: array [low(TSpecialWord)..high(TSpecialWord)] of string = ('',
     // keywords:
     //[[[cog
     //cog.out(strings)
     //]]]
-    'abstract', 'addr', 'and', 'as', 
-    'asm', 'bind', 'block', 'break', 
-    'case', 'cast', 'const', 'continue', 
-    'converter', 'discard', 'div', 'elif', 
+    'addr', 'and', 'as', 'asm', 
+    'bind', 'block', 'break', 'case', 
+    'cast', 'const', 'continue', 'converter', 
+    'discard', 'distinct', 'div', 'elif', 
     'else', 'end', 'enum', 'except', 
     'finally', 'for', 'from', 'generic', 
     'if', 'implies', 'import', 'in', 
@@ -155,12 +154,12 @@ const
     'borrow', 'run', 'r'+'', 'verbosity', 'v'+'', 'help',
     'h'+'', 'symbolfiles', 'fieldchecks', 'x'+'', 'version', 'advanced',
     'skipcfg', 'skipprojcfg', 'cc', 'genscript', 'checkpoint', 'checkpoints',
-    'maxerr', 'expr', 'stmt', 'typedesc',
-    'subschar', 'astcache', 'acyclic', 'index',
+    'nomain',
+    'subschar', 'acyclic', 'index',
     // commands:
     'compiletoc', 'compiletocpp', 'compiletoecmascript', 'compiletollvm',
     'pretty', 'doc', 'pas', 'gendepend', 'listdef', 'check', 'parse',
-    'scan', 'boot', 'lazy', 'rst2html', 'i'+'',
+    'scan', 'boot', 'lazy', 'rst2html', 'rst2tex', 'i'+'',
 
     // special for the preprocessor of configuration files:
     'write', 'putenv', 'prependenv', 'appendenv',

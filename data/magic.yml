@@ -3,6 +3,7 @@
 [
 'None',
 'Defined',
+'DefinedInScope',
 'Low',
 'High',
 'SizeOf',
@@ -17,7 +18,6 @@
 'New',
 'NewFinalize',
 'NewSeq',
-'RegisterFinalizer',
 'LengthOpenArray',
 'LengthStr',
 'LengthArray',
@@ -203,6 +203,9 @@
 'EmptySet',
 'IntSetBaseType',
 'Nil',
+'Expr',
+'Stmt',
+'TypeDesc',
 
 # magic constants:
 'IsMainModule',

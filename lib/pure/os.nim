@@ -58,10 +58,6 @@ when defined(Nimdoc): # only for proper documentation:
       ## The character used by the operating system to separate pathname
       ## components, for example, '/' for POSIX or ':' for the classic
       ## Macintosh.
-      ##
-      ## Note that knowing this is not sufficient to be able to parse or
-      ## concatenate pathnames -- use `splitPath` and `joinPath` instead --
-      ## but it is occasionally useful.
 
     AltSep* = '/'
       ## An alternative character used by the operating system to separate
@@ -80,10 +76,10 @@ when defined(Nimdoc): # only for proper documentation:
 
     ExeExt* = ""
       ## The file extension of native executables. For example:
-      ## "" on UNIX, "exe" on Windows.
+      ## "" for POSIX, "exe" on Windows.
 
     ScriptExt* = ""
-      ## The file extension of a script file. For example: "" on UNIX,
+      ## The file extension of a script file. For example: "" for POSIX,
       ## "bat" on Windows.
 
 elif defined(macos):
@@ -111,7 +107,7 @@ elif defined(macos):
   #  In full paths the first name (e g HD above) is the name of a mounted
   #  volume.
   #  These names are not unique, because, for instance, two diskettes with the
-  #  same names could be inserted. This means that paths on MacOS is not
+  #  same names could be inserted. This means that paths on MacOS are not
   #  waterproof. In case of equal names the first volume found will do.
   #  Two colons "::" are the relative path to the parent. Three is to the
   #  grandparent etc.
@@ -551,7 +547,7 @@ proc sameFile*(path1, path2: string): bool =
 
 proc sameFileContent*(path1, path2: string): bool =
   ## Returns True if both pathname arguments refer to files with identical
-  ## content. Content is compared byte for byte.
+  ## binary content.
   const
     bufSize = 8192 # 8K buffer
   var
@@ -712,7 +708,7 @@ proc putEnv*(key, val: string) =
       OSError()
 
 iterator iterOverEnvironment*(): tuple[key, value: string] =
-  ## Iterate over all environments varialbes. In the first component of the
+  ## Iterate over all environments variables. In the first component of the
   ## tuple is the name of the current variable stored, in the second its value.
   getEnvVarsC()
   for i in 0..high(environment):
@@ -760,7 +756,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
   ## walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item is returned.
   ## Walking is not recursive.
-  ## Example: Assuming this directory structure::
+  ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
   ##        / fileA1.txt

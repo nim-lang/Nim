@@ -188,10 +188,8 @@ var
   i: int;
 begin
   result := '"' + '';
-  for i := strStart to length(s)+strStart-1 do begin
-    result := result +{&} toNimChar(s[i]);
-  end;
-  result := result + '"';
+  for i := strStart to length(s)+strStart-1 do add(result, toNimChar(s[i]));
+  addChar(result, '"');
 end;
 
 procedure putComment(var g: TSrcGen; s: string);
@@ -496,7 +494,7 @@ begin
     nkAddr: result := lsub(n.sons[0])+length('addr()');
     nkHiddenAddr, nkHiddenDeref: result := lsub(n.sons[0]);
     nkCommand: result := lsub(n.sons[0])+lcomma(n, 1)+1;
-    nkExprEqExpr, nkDefaultTypeParam, nkAsgn, nkFastAsgn: result := lsons(n)+3;
+    nkExprEqExpr, nkAsgn, nkFastAsgn: result := lsons(n)+3;
     nkPar, nkCurly, nkBracket: result := lcomma(n)+2;
     nkSymChoice: result := lsons(n) + length('()') + sonsLen(n)-1;
     nkTupleTy: result := lcomma(n)+length('tuple[]');
@@ -528,10 +526,10 @@ begin
     nkInfix:          result := lsons(n) + 2;
     nkPrefix:         result := lsons(n) + 1;
     nkPostfix:        result := lsons(n);
+    nkCallStrLit:     result := lsons(n);
     nkPragmaExpr:     result := lsub(n.sons[0])+lcomma(n, 1);
     nkRange:          result := lsons(n) + 2;
     nkDerefExpr:      result := lsub(n.sons[0])+2;
-    nkImportAs:       result := lsons(n) + length('_as_');
     nkAccQuoted:      result := lsub(n.sons[0]) + 2;
 
     nkIfExpr:         result := lsub(n.sons[0].sons[0])+lsub(n.sons[0].sons[1])
@@ -544,7 +542,7 @@ begin
     nkRefTy:          result := lsub(n.sons[0])+length('ref_');
     nkPtrTy:          result := lsub(n.sons[0])+length('ptr_');
     nkVarTy:          result := lsub(n.sons[0])+length('var_');
-    nkAbstractTy:     result := lsub(n.sons[0])+length('abstract_');
+    nkDistinctTy:     result := lsub(n.sons[0])+length('Distinct_');
     nkTypeDef:        result := lsons(n)+3;
     nkOfInherit:      result := lsub(n.sons[0])+length('of_');
     nkProcTy:         result := lsons(n)+length('proc_');
@@ -612,11 +610,6 @@ begin
   gsub(g, n, c);
 end;
 
-function one(b: bool): int;
-begin
-  if b then result := 1 else result := 0
-end;
-
 function hasCom(n: PNode): bool;
 var
   i: int;
@@ -649,7 +642,7 @@ var
 begin
   for i := start to sonsLen(n)+theEnd do begin
     c := i < sonsLen(n)+theEnd;
-    sublen := lsub(n.sons[i])+one(c);
+    sublen := lsub(n.sons[i])+ord(c);
     if not fits(g, sublen) and (ind+sublen < maxLineLen) then optNL(g, ind);
     gsub(g, n.sons[i]);
     if c then begin
@@ -959,6 +952,13 @@ begin
       gcomma(g, n, 1);
       put(g, tkParRi, ')'+'');
     end;
+    nkCallStrLit: begin
+      gsub(g, n.sons[0]);
+      if n.sons[1].kind = nkRStrLit then
+        put(g, tkRStrLit, '"' + n.sons[1].strVal + '"')
+      else
+        gsub(g, n.sons[0]);
+    end;
     nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv: begin
       gsub(g, n.sons[0]);
     end;
@@ -992,7 +992,7 @@ begin
       put(g, tkSpaces, space);
       gcomma(g, n, 1);
     end;
-    nkExprEqExpr, nkDefaultTypeParam, nkAsgn, nkFastAsgn: begin
+    nkExprEqExpr, nkAsgn, nkFastAsgn: begin
       gsub(g, n.sons[0]);
       put(g, tkSpaces, Space);
       putWithSpace(g, tkEquals, '='+'');
@@ -1121,12 +1121,6 @@ begin
       // unfortunately this requires a space, because ^. would be
       // only one operator
     end;
-    nkImportAs: begin
-      gsub(g, n.sons[0]);
-      put(g, tkSpaces, Space);
-      putWithSpace(g, tkAs, 'as');
-      gsub(g, n.sons[1]);
-    end;
     nkAccQuoted: begin
       put(g, tkAccent, '`'+'');
       gsub(g, n.sons[0]);
@@ -1167,8 +1161,8 @@ begin
       putWithSpace(g, tkVar, 'var');
       gsub(g, n.sons[0]);
     end;
-    nkAbstractTy: begin
-      putWithSpace(g, tkAbstract, 'abstract');
+    nkDistinctTy: begin
+      putWithSpace(g, tkDistinct, 'distinct');
       gsub(g, n.sons[0]);
     end;
     nkTypeDef: begin
