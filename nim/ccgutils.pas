@@ -56,7 +56,7 @@ begin
         result := key;
       end
     end;
-    tyGenericInst, tyAbstract, tyOrdinal: 
+    tyGenericInst, tyDistinct, tyOrdinal: 
       result := GetUniqueType(lastSon(key));
     tyProc: begin end;
     else begin

@@ -19,16 +19,45 @@ uses
   rnimsyn, wordrecg, ropes, options, strutils, lists, extccomp, nmath,
   magicsys;
 
-procedure pragmaProc(c: PContext; s: PSym; n: PNode);
-procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
-procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
-procedure pragmaStmt(c: PContext; s: PSym; n: PNode);
-procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
-procedure pragmaType(c: PContext; s: PSym; n: PNode);
-procedure pragmaField(c: PContext; s: PSym; n: PNode);
-procedure pragmaVar(c: PContext; s: PSym; n: PNode);
-procedure pragmaConst(c: PContext; s: PSym; n: PNode);
-procedure pragmaProcType(c: PContext; s: PSym; n: PNode);
+const
+  FirstCallConv = wNimcall;
+  LastCallConv  = wNoconv;
+
+const
+  procPragmas = {@set}[FirstCallConv..LastCallConv,
+    wImportc, wExportc, wNodecl, wMagic, wNosideEffect, wSideEffect,
+    wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
+    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wBorrow];
+  converterPragmas = procPragmas;
+  macroPragmas = {@set}[FirstCallConv..LastCallConv,
+    wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
+    wCompilerProc, wDeprecated, wTypeCheck];
+  iteratorPragmas = {@set}[FirstCallConv..LastCallConv, 
+    wNosideEffect, wSideEffect,
+    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow];
+  stmtPragmas = {@set}[wChecks, wObjChecks, wFieldChecks, wRangechecks,
+    wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings,
+    wHints, wLinedir, wStacktrace, wLinetrace, wOptimization,
+    wHint, wWarning, wError, wFatal, wDefine, wUndef,
+    wCompile, wLink, wLinkSys, wPure,
+    wPush, wPop, wBreakpoint, wCheckpoint,
+    wPassL, wPassC, wDeadCodeElim];
+  lambdaPragmas = {@set}[FirstCallConv..LastCallConv,
+    wImportc, wExportc, wNodecl, wNosideEffect, wSideEffect, 
+    wNoreturn, wDynLib, wHeader, wPure, wDeprecated];
+  typePragmas = {@set}[wImportc, wExportc, wDeprecated, wMagic, wAcyclic,
+                      wNodecl, wPure, wHeader, wCompilerProc, wFinal];
+  fieldPragmas = {@set}[wImportc, wExportc, wDeprecated];
+  varPragmas = {@set}[wImportc, wExportc, wVolatile, wRegister, wThreadVar,
+                      wNodecl, wMagic, wHeader, wDeprecated, wCompilerProc,
+                      wDynLib];
+  constPragmas = {@set}[wImportc, wExportc, wHeader, wDeprecated,
+                        wMagic, wNodecl];
+  procTypePragmas = [FirstCallConv..LastCallConv, wVarargs, wNosideEffect];
+
+procedure pragma(c: PContext; sym: PSym; n: PNode;
+                 const validPragmas: TSpecialWords);
 
 function pragmaAsm(c: PContext; n: PNode): char;
 
@@ -66,9 +95,6 @@ begin
 end;
 
 const
-  FirstCallConv = wNimcall;
-  LastCallConv  = wNoconv;
-
   FirstPragmaWord = wMagic;
   LastPragmaWord = wNoconv;
 
@@ -596,76 +622,6 @@ begin
       if sym.loc.r = nil then sym.loc.r := toRope(sym.name.s)
     end
   end
-end;
-
-procedure pragmaProc(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNodecl, wMagic, wNosideEffect, wSideEffect,
-    wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
-    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
-    wBorrow]);
-end;
-
-procedure pragmaMacro(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
-    wCompilerProc, wDeprecated, wTypeCheck]);
-end;
-
-procedure pragmaIterator(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv, 
-         wNosideEffect, wSideEffect,
-         wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow]);
-end;
-
-procedure pragmaStmt(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[wChecks, wObjChecks, wFieldChecks, wRangechecks,
-      wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings,
-      wHints, wLinedir, wStacktrace, wLinetrace, wOptimization,
-      wHint, wWarning, wError, wFatal, wDefine, wUndef,
-      wCompile, wLink, wLinkSys, wPure,
-      wPush, wPop, wBreakpoint, wCheckpoint,
-      wPassL, wPassC, wDeadCodeElim]);
-end;
-
-procedure pragmaLambda(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[FirstCallConv..LastCallConv,
-    wImportc, wExportc, wNodecl, wNosideEffect, wSideEffect, 
-    wNoreturn, wDynLib, wHeader, wPure, wDeprecated]);
-end;
-
-procedure pragmaType(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wDeprecated, wMagic, wAcyclic,
-                         wNodecl, wPure, wHeader, wCompilerProc, wFinal]);
-end;
-
-procedure pragmaField(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wDeprecated]);
-end;
-
-procedure pragmaVar(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wVolatile, wRegister, wThreadVar,
-                         wNodecl, wMagic, wHeader, wDeprecated, wCompilerProc,
-                         wDynLib]);
-end;
-
-procedure pragmaConst(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, {@set}[wImportc, wExportc, wHeader, wDeprecated,
-                         wMagic, wNodecl]);
-end;
-
-procedure pragmaProcType(c: PContext; s: PSym; n: PNode);
-begin
-  pragma(c, s, n, [FirstCallConv..LastCallConv, wVarargs]);
 end;
 
 end.

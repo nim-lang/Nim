@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -213,8 +213,7 @@ end;
 function rdLoc(const a: TLoc): PRope; // 'read' location (deref if indirect)
 begin
   result := a.r;
-  if lfIndirect in a.flags then
-    result := ropef('(*$1 /*rdLoc*/)', [result])
+  if lfIndirect in a.flags then result := ropef('(*$1)', [result])
 end;
 
 function addrLoc(const a: TLoc): PRope;
@@ -760,7 +759,8 @@ begin
   f := e.sons[1].sym;
   field := nil;
   while ty <> nil do begin
-    assert(ty.kind in [tyTuple, tyObject]);
+    if not (ty.kind in [tyTuple, tyObject]) then
+      InternalError(e.info, 'genRecordField');
     field := lookupInRecord(ty.n, f.name);
     if field <> nil then break;
     if gCmd <> cmdCompileToCpp then app(r, '.Sup');
@@ -1643,8 +1643,8 @@ begin
       case op of
         mIncl: binaryStmtInExcl(p, e, d, '$1[$2/8] |=(1<<($2%8));$n');
         mExcl: binaryStmtInExcl(p, e, d, '$1[$2/8] &= ~(1<<($2%8));$n');
-        mCard: unaryExprChar(p, e, d, 'countBitsVar',
-                                  'countBitsVar($1, ' + ToString(size) + ')');
+        mCard: unaryExprChar(p, e, d, 'cardSet',
+                                  'cardSet($1, ' + ToString(size) + ')');
         mLtSet, mLeSet: begin
           getTemp(p, getSysType(tyInt), i); // our counter
           initLocExpr(p, e.sons[1], a);
@@ -1847,7 +1847,6 @@ end;
 
 procedure genMagicExpr(p: BProc; e: PNode; var d: TLoc; op: TMagic);
 var
-  a: TLoc;
   line, filen: PRope;
 begin
   case op of
@@ -1869,6 +1868,22 @@ begin
         binaryExpr(p, e, d, '', '$1 + $2')
       else
         binaryExpr(p, e, d, 'addInt', 'addInt($1, $2)')
+    end;
+    mInc: begin
+      if not (optOverflowCheck in p.Options) then
+        binaryStmt(p, e, d, '', '$1 += $2;$n')
+      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
+        binaryStmt(p, e, d, 'addInt64', '$1 = addInt64($1, $2);$n')
+      else
+        binaryStmt(p, e, d, 'addInt', '$1 = addInt($1, $2);$n')
+    end;
+    ast.mDec: begin
+      if not (optOverflowCheck in p.Options) then
+        binaryStmt(p, e, d, '', '$1 -= $2;$n')
+      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
+        binaryStmt(p, e, d, 'subInt64', '$1 = subInt64($1, $2);$n')
+      else
+        binaryStmt(p, e, d, 'subInt', '$1 = subInt($1, $2);$n')
     end;
     mConStrStr: genStrConcat(p, e, d);
     mAppendStrCh: binaryStmt(p, e, d, 'addChar', '$1 = addChar($1, $2);$n');
@@ -1907,22 +1922,6 @@ begin
     mOrd: genOrd(p, e, d);
     mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
       genArrayLen(p, e, d, op);
-    mInc: begin
-      if not (optOverflowCheck in p.Options) then
-        binaryStmt(p, e, d, '', '$1 += $2;$n')
-      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
-        binaryStmt(p, e, d, 'addInt64', '$1 = addInt64($1, $2);$n')
-      else
-        binaryStmt(p, e, d, 'addInt', '$1 = addInt($1, $2);$n')
-    end;
-    ast.mDec: begin
-      if not (optOverflowCheck in p.Options) then
-        binaryStmt(p, e, d, '', '$1 -= $2;$n')
-      else if skipTypes(e.sons[1].typ, abstractVar).kind = tyInt64 then
-        binaryStmt(p, e, d, 'subInt64', '$1 = subInt64($1, $2);$n')
-      else
-        binaryStmt(p, e, d, 'subInt', '$1 = subInt($1, $2);$n')
-    end;
     mGCref: unaryStmt(p, e, d, 'nimGCref', 'nimGCref($1);$n');
     mGCunref: unaryStmt(p, e, d, 'nimGCunref', 'nimGCunref($1);$n');
     mSetLengthStr: genSetLengthStr(p, e, d);
@@ -2203,7 +2202,8 @@ begin
     nkFloatLit..nkFloat64Lit, nkNilLit, nkCharLit: begin
       putIntoDest(p, d, e.typ, genLiteral(p, e));
     end;
-    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
+    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
+    nkCallStrLit: begin
       if (e.sons[0].kind = nkSym) and
          (e.sons[0].sym.magic <> mNone) then
         genMagicExpr(p, e, d, e.sons[0].sym.magic)
@@ -2279,7 +2279,6 @@ end;
 
 function genConstExpr(p: BProc; n: PNode): PRope;
 var
-  trans: PNode;
   cs: TBitSet;
   d: TLoc;
 begin

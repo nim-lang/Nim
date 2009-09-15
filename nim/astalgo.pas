@@ -419,6 +419,8 @@ end;
 
 function typeToYamlAux(n: PType; var marker: TIntSet;
                        indent: int; maxRecDepth: int): PRope;
+var
+  i: int;
 begin
   if n = nil then
     result := toRope('null')
@@ -427,6 +429,18 @@ begin
       toRope(typeKindToStr[n.kind]),
       toRope(strutils.toHex({@cast}TAddress(n), sizeof(n)*2))])
   else begin
+    if sonsLen(n) > 0 then begin
+      result := toRope('['+'');
+      for i := 0 to sonsLen(n)-1 do begin
+        if i > 0 then app(result, ','+'');
+        appf(result, '$n$1$2',
+          [spaces(indent+4),
+           typeToYamlAux(n.sons[i], marker, indent + 4, maxRecDepth-1)]);
+      end;
+      appf(result, '$n$1]', [spaces(indent+2)]);
+    end
+    else
+      result := toRope('null');
     result := ropeConstr(indent, [
       toRope('kind'), makeYamlString(typeKindToStr[n.kind]),
       toRope('sym'), symToYamlAux(n.sym, marker, indent+2, maxRecDepth-1),
@@ -434,7 +448,8 @@ begin
       toRope('flags'), typeFlagsToStr(n.flags),
       toRope('callconv'), makeYamlString(CallingConvToStr[n.callConv]),
       toRope('size'), toRope(n.size),
-      toRope('align'), toRope(n.align)
+      toRope('align'), toRope(n.align),
+      toRope('sons'), result
     ]);
   end
 end;
@@ -525,14 +540,20 @@ begin
     result := toRope('null')
   else begin
     result := toRope(typeKindToStr[n.kind]);
-    app(result, '('+'');
-    for i := 0 to sonsLen(n)-1 do begin
-      if i > 0 then app(result, ', ');
-      if n.sons[i] = nil then app(result, 'null')
-      else app(result, debugType(n.sons[i]));
-       //  app(result, typeKindToStr[n.sons[i].kind]);
+    if n.sym <> nil then begin
+      app(result, ' '+'');
+      app(result, n.sym.name.s);
     end;
-    app(result, ')'+'');
+    if (n.kind <> tyString) and (sonsLen(n) > 0) then begin
+      app(result, '('+'');
+      for i := 0 to sonsLen(n)-1 do begin
+        if i > 0 then app(result, ', ');
+        if n.sons[i] = nil then app(result, 'null')
+        else app(result, debugType(n.sons[i]));
+         //  app(result, typeKindToStr[n.sons[i].kind]);
+      end;
+      app(result, ')'+'');
+    end
   end
 end;
 

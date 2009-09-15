@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -42,7 +42,7 @@ proc write*(s: PStream, x: string) =
   s.writeData(s, cstring(x), x.len)
 
 proc read[T](s: PStream, result: var T) = 
-  ## generic write procedure. Reads `result` from the stream `s`.
+  ## generic read procedure. Reads `result` from the stream `s`.
   if s.readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 

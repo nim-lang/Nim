@@ -94,6 +94,42 @@ begin
    end
 end;
 
+procedure genVarTuple(p: BProc; n: PNode);
+var
+  i, L: int;
+  v: PSym;
+  tup, field: TLoc;
+  t: PType;
+begin
+  if n.kind <> nkVarTuple then InternalError(n.info, 'genVarTuple');
+  L := sonsLen(n);
+  genLineDir(p, n);
+  initLocExpr(p, n.sons[L-1], tup);
+  t := tup.t;
+  for i := 0 to L-3 do begin
+    v := n.sons[i].sym;
+    if sfGlobal in v.flags then
+      assignGlobalVar(p, v)
+    else begin
+      assignLocalVar(p, v);
+      initVariable(p, v)
+    end;
+    // generate assignment:
+    initLoc(field, locExpr, t.sons[i], tup.s);
+    if t.n = nil then begin
+      field.r := ropef('$1.Field$2', [rdLoc(tup), toRope(i)]);
+    end
+    else begin
+      if (t.n.sons[i].kind <> nkSym) then
+        InternalError(n.info, 'genVarTuple');
+      field.r := ropef('$1.$2', [rdLoc(tup), 
+        mangleRecFieldName(t.n.sons[i].sym, t)]);
+    end;
+    putLocIntoDest(p, v.loc, field);
+    genObjectInit(p, v.typ, v.loc, true);
+  end
+end;
+
 procedure genVarStmt(p: BProc; n: PNode);
 var
   i: int;
@@ -103,22 +139,25 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     a := n.sons[i];
     if a.kind = nkCommentStmt then continue;
-    assert(a.kind = nkIdentDefs);
-    assert(a.sons[0].kind = nkSym);
-    v := a.sons[0].sym;
-    if sfGlobal in v.flags then
-      assignGlobalVar(p, v)
-    else begin
-      assignLocalVar(p, v);
-      initVariable(p, v) // XXX: this is not required if a.sons[2] != nil,
-                         // unless it is a GC'ed pointer
-    end;
-    // generate assignment:
-    if a.sons[2] <> nil then begin
-      genLineDir(p, a);
-      expr(p, a.sons[2], v.loc);
-    end;
-    genObjectInit(p, v.typ, v.loc, true); // correct position
+    if a.kind = nkIdentDefs then begin
+      assert(a.sons[0].kind = nkSym);
+      v := a.sons[0].sym;
+      if sfGlobal in v.flags then
+        assignGlobalVar(p, v)
+      else begin
+        assignLocalVar(p, v);
+        initVariable(p, v) // XXX: this is not required if a.sons[2] != nil,
+                           // unless it is a GC'ed pointer
+      end;
+      // generate assignment:
+      if a.sons[2] <> nil then begin
+        genLineDir(p, a);
+        expr(p, a.sons[2], v.loc);
+      end;
+      genObjectInit(p, v.typ, v.loc, true); // correct position
+    end
+    else
+      genVarTuple(p, a);
   end
 end;
 
@@ -294,7 +333,7 @@ begin
         else begin
           r := sym.loc.r;
           if r = nil then begin // if no name has already been given,
-                       // it doesn't matter much:
+                                // it doesn't matter much:
             r := mangleName(sym);
             sym.loc.r := r; // but be consequent!
           end;
@@ -561,7 +600,7 @@ procedure genOrdinalCase(p: BProc; t: PNode);
 // we generate an ordinary if statement and rely on the C compiler
 // to produce good code.
 var
-  canGenerateSwitch: bool;
+  canGenerateSwitch, hasDefault: bool;
   i, j, len: int;
   a: TLoc;
   v: PNode;
@@ -578,6 +617,7 @@ begin
   if canGenerateSwitch then begin
     initLocExpr(p, t.sons[0], a);
     appf(p.s[cpsStmts], 'switch ($1) {$n', [rdCharLoc(a)]);
+    hasDefault := false;
     for i := 1 to sonsLen(t)-1 do begin
       if t.sons[i].kind = nkOfBranch then begin
         len := sonsLen(t.sons[i]);
@@ -604,9 +644,12 @@ begin
       else begin // else part of case statement:
         app(p.s[cpsStmts], 'default:' + tnl);
         genStmts(p, t.sons[i].sons[0]);
+        hasDefault := true;
       end;
       app(p.s[cpsStmts], 'break;' + tnl);
     end;
+    if (hasAssume in CC[ccompiler].props) and not hasDefault then 
+      app(p.s[cpsStmts], 'default: __assume(0);' + tnl);      
     app(p.s[cpsStmts], '}' + tnl);
   end
   else
@@ -902,7 +945,8 @@ begin
     nkCaseStmt:    genCaseStmt(p, t);
     nkReturnStmt:  genReturnStmt(p, t);
     nkBreakStmt:   genBreakStmt(p, t);
-    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand: begin
+    nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
+    nkCallStrLit: begin
       genLineDir(p, t);
       initLocExpr(p, t, a);
     end;

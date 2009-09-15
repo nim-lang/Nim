@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -52,10 +52,10 @@ type
     //  i = i + 1
     //cog.out(idents)
     //]]]
-    tkAbstract, tkAddr, tkAnd, tkAs, 
-    tkAsm, tkBind, tkBlock, tkBreak, 
-    tkCase, tkCast, tkConst, tkContinue, 
-    tkConverter, tkDiscard, tkDiv, tkElif, 
+    tkAddr, tkAnd, tkAs, tkAsm, 
+    tkBind, tkBlock, tkBreak, tkCase, 
+    tkCast, tkConst, tkContinue, tkConverter, 
+    tkDiscard, tkDistinct, tkDiv, tkElif, 
     tkElse, tkEnd, tkEnum, tkExcept, 
     tkFinally, tkFor, tkFrom, tkGeneric, 
     tkIf, tkImplies, tkImport, tkIn, 
@@ -71,8 +71,8 @@ type
     //[[[end]]]
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
     tkFloatLit, tkFloat32Lit, tkFloat64Lit,
-    tkStrLit, tkRStrLit, tkTripleStrLit, tkCharLit,
-    tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
+    tkStrLit, tkRStrLit, tkTripleStrLit, tkCallRStrLit, tkCallTripleStrLit,
+    tkCharLit, tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
     tkBracketDotLe, tkBracketDotRi, // [. and  .]
     tkCurlyDotLe, tkCurlyDotRi, // {.  and  .}
     tkParDotLe, tkParDotRi, // (. and .)
@@ -96,10 +96,10 @@ const
     //[[[cog
     //cog.out(strings)
     //]]]
-    'abstract', 'addr', 'and', 'as', 
-    'asm', 'bind', 'block', 'break', 
-    'case', 'cast', 'const', 'continue', 
-    'converter', 'discard', 'div', 'elif', 
+    'addr', 'and', 'as', 'asm', 
+    'bind', 'block', 'break', 'case', 
+    'cast', 'const', 'continue', 'converter', 
+    'discard', 'distinct', 'div', 'elif', 
     'else', 'end', 'enum', 'except', 
     'finally', 'for', 'from', 'generic', 
     'if', 'implies', 'import', 'in', 
@@ -115,7 +115,9 @@ const
     //[[[end]]]
     'tkIntLit', 'tkInt8Lit', 'tkInt16Lit', 'tkInt32Lit', 'tkInt64Lit',
     'tkFloatLit', 'tkFloat32Lit', 'tkFloat64Lit',
-    'tkStrLit', 'tkRStrLit', 'tkTripleStrLit', 'tkCharLit',
+    'tkStrLit', 'tkRStrLit', 'tkTripleStrLit',
+    'tkCallRStrLit', 'tkCallTripleStrLit',
+    'tkCharLit',
     '('+'', ')'+'', '['+'', ']'+'', '{'+'', '}'+'',
     '[.', '.]', '{.', '.}', '(.', '.)', ','+'', ';'+'', ':'+'',
     '='+'', '.'+'', '..', '^'+'', 'tkOpr',
@@ -764,7 +766,12 @@ begin
      (tok.ident.id > ord(tokKeywordHigh)-ord(tkSymbol)) then
     tok.tokType := tkSymbol
   else
-    tok.tokType := TTokType(tok.ident.id+ord(tkSymbol))
+    tok.tokType := TTokType(tok.ident.id+ord(tkSymbol));
+  if buf[pos] = '"' then begin
+    getString(L, tok, true);
+    if tok.tokType = tkRStrLit then tok.tokType := tkCallRStrLit
+    else tok.tokType := tkCallTripleStrLit
+  end
 end;
 
 procedure getOperator(var L: TLexer; var tok: TToken);

@@ -74,13 +74,12 @@ type
     errOperatorExpected,
     errTokenExpected,
     errStringAfterIncludeExpected,
-    errRecursiveInclude,
+    errRecursiveDependencyX,
     errOnOrOffExpected,
     errNoneSpeedOrSizeExpected,
     errInvalidPragma,
     errUnknownPragma,
-    errUnknownDirective,
-    errInvalidDirective,
+    errInvalidDirectiveX,
     errAtPopWithoutPush,
     errEmptyAsm,
     errInvalidIndentation,
@@ -128,8 +127,6 @@ type
     errOverOrUnderflow,
     errCannotEvalXBecauseIncompletelyDefined,
     errChrExpectsRange0_255,
-    errStaticAssertFailed,
-    errStaticAssertCannotBeEval,
     errDotRequiresRecordOrObjectType,
     errUndeclaredFieldX,
     errNilAccess,
@@ -184,7 +181,7 @@ type
     errButExpected,
     errButExpectedX,
     errAmbiguousCallXYZ,
-    errWrongNumberOfTypeParams,
+    errWrongNumberOfArguments,
     errInlineProcHasNoAddress,
     errXCannotBeInParamDecl,
     errPragmaOnlyInHeaderOfProc,
@@ -230,11 +227,9 @@ type
     errInitHereNotAllowed,
     errXCannotBeAssignedTo,
     errIteratorNotAllowed,
-    errIteratorNeedsImplementation,
-    errIteratorNeedsReturnType,
+    errXNeedsReturnType,
     errInvalidCommandX,
     errXOnlyAtModuleScope,
-    errTypeXNeedsImplementation,
     errTemplateInstantiationTooNested,
     errInstantiationFrom,
     errInvalidIndexValueForTuple,
@@ -257,12 +252,12 @@ type
     errInvalidConversionFromTypeX,
     errAssertionFailed,
     errCannotGenerateCodeForX,
-    errXNeedsReturnType,
     errXRequiresOneArgument,
     errUnhandledExceptionX,
     errCyclicTree,
     errXisNoMacroOrTemplate,
     errXhasSideEffects,
+    errIteratorExpected,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape,
@@ -317,15 +312,14 @@ const
     'operator expected, but found ''$1''',
     '''$1'' expected',
     'string after ''include'' expected',
-    'recursive include file: ''$1''',
+    'recursive dependency: ''$1''',
     '''on'' or ''off'' expected',
     '''none'', ''speed'' or ''size'' expected',
     'invalid pragma',
     'unknown pragma: ''$1''',
-    'unknown directive: ''$1''',
-    'invalid directive',
+    'invalid directive: ''$1''',
     '''pop'' without a ''push'' pragma',
-    'empty asm statement makes no sense',
+    'empty asm statement',
     'invalid indentation',
     'exception expected',
     'exception already handled',
@@ -371,8 +365,6 @@ const
     'over- or underflow',
     'cannot evalutate ''$1'' because type is not defined completely',
     '''chr'' expects an int in the range 0..255',
-    '''staticAssert'' failed: condition is false',
-    'argument to ''staticAssert'' cannot be evaluated at compile time',
     '''.'' requires a record or object type',
     'undeclared field: ''$1''',
     'attempt to access a nil address',
@@ -427,7 +419,7 @@ const
     'but expected one of: ',
     'but expected ''$1''',
     'ambiguous call; both $1 and $2 match for: $3',
-    'wrong number of type parameters',
+    'wrong number of arguments',
     'an inline proc has no address',
     '$1 cannot be declared in parameter declaration',
     'pragmas are only in the header of a proc allowed',
@@ -469,15 +461,13 @@ const
     'named expression not allowed here',
     '''$1'' expects one type parameter',
     'array expects two type parameters',
-    'invalid invisibility: ''$1''',
+    'invalid visibility: ''$1''',
     'initialization not allowed here',
     '''$1'' cannot be assigned to',
     'iterators can only be defined at the module''s top level',
-    'iterator needs an implementation',
-    'iterator needs a return type',
+    '$1 needs a return type',
     'invalid command: ''$1''',
     '''$1'' is only allowed at top level',
-    'type ''$1'' needs an implementation',
     'template instantiation too nested',
     'instantiation from here',
     'invalid index value for tuple subscript',
@@ -500,12 +490,12 @@ const
     'invalid conversion from type ''$1''',
     'assertion failed',
     'cannot generate code for ''$1''',
-    'converter needs return type',
-    'converter requires one parameter',
+    '$1 requires one parameter',
     'unhandled exception: $1',
     'macro returned a cyclic abstract syntax tree',
     '''$1'' is no macro or template',
     '''$1'' can have side effects',
+    'iterator within for loop context expected',
     '$1',
     'cannot open ''$1'' [CannotOpenFile]',
     'octal escape sequences do not exist; leading zero is ignored [OctalEscape]',
@@ -643,6 +633,9 @@ function inCheckpoint(const current: TLineInfo): boolean;
 
 procedure pushInfoContext(const info: TLineInfo);
 procedure popInfoContext;
+
+function includeFilename(const f: string): int;
+
 
 implementation
 
@@ -799,15 +792,25 @@ begin
   end
 end;
 
-procedure writeContext;
+function sameLineInfo(const a, b: TLineInfo): bool;
+begin
+  result := (a.line = b.line) and (a.fileIndex = b.fileIndex);
+end;
+
+procedure writeContext(const lastinfo: TLineInfo);
 var
   i: int;
+  info: TLineInfo;
 begin
+  info := lastInfo;
   for i := 0 to length(msgContext)-1 do begin
-    MessageOut(Format(posErrorFormat, [toFilename(msgContext[i]),
-                             coordToStr(msgContext[i].line),
-                             coordToStr(msgContext[i].col),
-                             getMessageStr(errInstantiationFrom, '')]));
+    if not sameLineInfo(msgContext[i], lastInfo)
+    and not sameLineInfo(msgContext[i], info) then
+      MessageOut(Format(posErrorFormat, [toFilename(msgContext[i]),
+                        coordToStr(msgContext[i].line),
+                        coordToStr(msgContext[i].col),
+                        getMessageStr(errInstantiationFrom, '')]));
+    info := msgContext[i];
   end;
 end;
 
@@ -817,7 +820,7 @@ var
 begin
   case msg of
     errMin..errMax: begin
-      writeContext();
+      writeContext(unknownLineInfo());
       frmt := rawErrorFormat;
     end;
     warnMin..warnMax: begin
@@ -850,7 +853,7 @@ var
 begin
   case msg of
     errMin..errMax: begin
-      writeContext();
+      writeContext(info);
       frmt := posErrorFormat;
     end;
     warnMin..warnMax: begin
@@ -876,13 +879,13 @@ end;
 
 procedure InternalError(const info: TLineInfo; const errMsg: string);
 begin
-  writeContext();
+  writeContext(info);
   liMessage(info, errInternal, errMsg);
 end;
 
 procedure InternalError(const errMsg: string); overload;
 begin
-  writeContext();
+  writeContext(UnknownLineInfo());
   rawMessage(errInternal, errMsg);
 end;
 

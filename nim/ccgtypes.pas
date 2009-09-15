@@ -116,7 +116,7 @@ begin
     end;
     tyOpenArray, tyArrayConstr, tyArray: result := ctArray;
     tyObject, tyTuple: result := ctStruct;
-    tyGeneric, tyGenericInst, tyGenericParam, tyAbstract, tyOrdinal: 
+    tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal: 
       result := mapType(lastSon(typ));
     tyEnum: begin
       if firstOrd(typ) < 0 then
@@ -664,7 +664,7 @@ begin
         end
       end
     end;
-    tyGenericInst, tyAbstract, tyOrdinal: 
+    tyGenericInst, tyDistinct, tyOrdinal: 
       result := getTypeDescAux(m, lastSon(t), check);
     else begin
       InternalError('getTypeDescAux(' + typeKindToStr[t.kind] + ')');

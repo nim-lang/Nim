@@ -48,7 +48,7 @@ function mutateType(t: PType; iter: TTypeMutator; closure: PObject): PType;
 
 function SameType(x, y: PType): Boolean;
 function SameTypeOrNil(a, b: PType): Boolean;
-function equalOrAbstractOf(x, y: PType): bool;
+function equalOrDistinctOf(x, y: PType): bool;
 
 type
   TParamsEquality = (paramsNotEqual,      // parameters are not equal
@@ -66,11 +66,11 @@ function isOrdinalType(t: PType): Boolean;
 function enumHasWholes(t: PType): Boolean;
 
 const
-  abstractPtrs = {@set}[tyVar, tyPtr, tyRef, tyGenericInst, tyAbstract, tyOrdinal];
-  abstractVar = {@set}[tyVar, tyGenericInst, tyAbstract, tyOrdinal];
-  abstractRange = {@set}[tyGenericInst, tyRange, tyAbstract, tyOrdinal];
-  abstractVarRange = {@set}[tyGenericInst, tyRange, tyVar, tyAbstract, tyOrdinal];
-  abstractInst = {@set}[tyGenericInst, tyAbstract, tyOrdinal];
+  abstractPtrs = {@set}[tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal];
+  abstractVar = {@set}[tyVar, tyGenericInst, tyDistinct, tyOrdinal];
+  abstractRange = {@set}[tyGenericInst, tyRange, tyDistinct, tyOrdinal];
+  abstractVarRange = {@set}[tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal];
+  abstractInst = {@set}[tyGenericInst, tyDistinct, tyOrdinal];
 
 function skipTypes(t: PType; kinds: TTypeKinds): PType;
 
@@ -202,7 +202,7 @@ function elemType(t: PType): PType;
 begin
   assert(t <> nil);
   case t.kind of
-    tyGenericInst, tyAbstract: result := elemType(lastSon(t));
+    tyGenericInst, tyDistinct: result := elemType(lastSon(t));
     tyArray, tyArrayConstr: result := t.sons[1];
     else result := t.sons[0];
   end;
@@ -317,12 +317,17 @@ begin
   result := iter(t, closure);
   if result then exit;
   if not IntSetContainsOrIncl(marker, t.id) then begin
-    for i := 0 to sonsLen(t)-1 do begin
-      result := iterOverTypeAux(marker, t.sons[i], iter, closure);
-      if result then exit;
-    end;
-    if t.n <> nil then
-      result := iterOverNode(marker, t.n, iter, closure)
+    case t.kind of
+      tyGenericInst, tyGenericBody: 
+        result := iterOverTypeAux(marker, lastSon(t), iter, closure);
+      else begin
+        for i := 0 to sonsLen(t)-1 do begin
+          result := iterOverTypeAux(marker, t.sons[i], iter, closure);
+          if result then exit;
+        end;
+        if t.n <> nil then result := iterOverNode(marker, t.n, iter, closure)
+      end
+    end
   end
 end;
 
@@ -388,7 +393,7 @@ begin
       if not result then
         result := searchTypeNodeForAux(t.n, predicate, marker);
     end;
-    tyGenericInst, tyAbstract:
+    tyGenericInst, tyDistinct:
       result := searchTypeForAux(lastSon(t), predicate, marker);
     tyArray, tyArrayConstr, tySet, tyTuple: begin
       for i := 0 to sonsLen(t)-1 do begin
@@ -421,7 +426,7 @@ end;
 function isObjectWithTypeFieldPredicate(t: PType): bool;
 begin
   result := (t.kind = tyObject) and (t.sons[0] = nil) 
-    and not (sfPure in t.sym.flags) 
+    and not ((t.sym <> nil) and (sfPure in t.sym.flags))
     and not (tfFinal in t.flags);
 end;
 
@@ -447,7 +452,7 @@ begin
       if result = frNone then
         if isObjectWithTypeFieldPredicate(t) then result := frHeader
     end;
-    tyGenericInst, tyAbstract: 
+    tyGenericInst, tyDistinct: 
       result := analyseObjectWithTypeFieldAux(lastSon(t), marker);
     tyArray, tyArrayConstr, tyTuple: begin
       for i := 0 to sonsLen(t)-1 do begin
@@ -491,7 +496,7 @@ begin
   result := searchTypeFor(typ, isHiddenPointer);
 end;
 
-function canFormAcycleAux(var marker: TIntSet; t: PType; 
+function canFormAcycleAux(var marker: TIntSet; typ: PType; 
                           startId: int): bool; forward;
 
 function canFormAcycleNode(var marker: TIntSet; n: PNode; startId: int): bool;
@@ -514,14 +519,17 @@ begin
   end
 end;
 
-function canFormAcycleAux(var marker: TIntSet; t: PType; startId: int): bool;
+function canFormAcycleAux(var marker: TIntSet; typ: PType; startId: int): bool;
 var
   i: int;
+  t: PType;
 begin
   result := false;
-  if t = nil then exit;
+  if typ = nil then exit;
+  if tfAcyclic in typ.flags then exit;
+  t := skipTypes(typ, abstractInst);
   if tfAcyclic in t.flags then exit;
-  case skipTypes(t, abstractInst).kind of 
+  case t.kind of 
     tyTuple, tyObject, tyRef, tySequence, tyArray, tyArrayConstr,
     tyOpenArray: begin
       if not IntSetContainsOrIncl(marker, t.id) then begin
@@ -606,8 +614,10 @@ end;
 function TypeToString(typ: PType; prefer: TPreferedDesc = preferName): string;
 const
   typeToStr: array [TTypeKind] of string = (
-    'None', 'bool', 'Char', 'empty', 'Array Constructor [$1]', 'nil',
-    'Generic', 'GenericInst', 'GenericParam', 'abstract $1',
+    'None', 'bool', 'Char', 'empty', 'Array Constructor [$1]', 'nil', 'expr',
+    'stmt', 'typeDesc',
+    'GenericInvokation',
+    'GenericBody', 'GenericInst', 'GenericParam', 'distinct $1',
     'enum', 'ordinal[$1]',
     'array[$1, $2]', 'object', 'tuple', 'set[$1]', 'range[$1]',
     'ptr ', 'ref ', 'var ', 'seq[$1]', 'proc', 'pointer',
@@ -618,6 +628,7 @@ const
 var
   t: PType;
   i: int;
+  prag: string;
 begin
   t := typ;
   result := '';
@@ -637,6 +648,14 @@ begin
         result := 'array[' +{&} typeToString(t.sons[0]) +{&} ', '
                   +{&} typeToString(t.sons[1]) +{&} ']'
     end;
+    tyGenericInvokation, tyGenericBody: begin
+      result := typeToString(t.sons[0]) + '[';
+      for i := 1 to sonsLen(t)-1 do begin
+        if i > 1 then add(result, ', ');
+        add(result, typeToString(t.sons[i]));
+      end;
+      addChar(result, ']');
+    end;
     tyArrayConstr:
       result := 'Array constructor[' +{&} rangeToStr(t.sons[0].n) +{&} ', '
                 +{&} typeToString(t.sons[1]) +{&} ']';
@@ -644,7 +663,7 @@ begin
     tyOrdinal: result := 'ordinal[' +{&} typeToString(t.sons[0]) +{&} ']';
     tySet: result := 'set[' +{&} typeToString(t.sons[0]) +{&} ']';
     tyOpenArray: result := 'openarray[' +{&} typeToString(t.sons[0]) +{&} ']';
-    tyAbstract: result := 'abstract ' +{&} typeToString(t.sons[0], preferName);
+    tyDistinct: result := 'distinct ' +{&} typeToString(t.sons[0], preferName);
     tyTuple: begin
       // we iterate over t.sons here, because t.n may be nil
       result := 'tuple[';
@@ -679,8 +698,13 @@ begin
       addChar(result, ')');
       if t.sons[0] <> nil then
         add(result, ': ' +{&} TypeToString(t.sons[0]));
-      if t.callConv <> ccDefault then
-        add(result, '{.' +{&} CallingConvToStr[t.callConv] +{&} '.}');
+      if t.callConv <> ccDefault then prag := CallingConvToStr[t.callConv]
+      else prag := '';
+      if tfNoSideEffect in t.flags then begin
+        addSep(prag);
+        add(prag, 'noSideEffect')
+      end;
+      if length(prag) <> 0 then add(result, '{.' +{&} prag +{&} '.}');
     end;
     else begin
       result := typeToStr[t.kind]
@@ -730,7 +754,7 @@ begin
         result := t.n.sons[0].sym.position;
       end;
     end;
-    tyGenericInst, tyAbstract: result := firstOrd(lastSon(t));
+    tyGenericInst, tyDistinct: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for first(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -766,7 +790,7 @@ begin
       assert(t.n.sons[sonsLen(t.n)-1].kind = nkSym);
       result := t.n.sons[sonsLen(t.n)-1].sym.position;
     end;
-    tyGenericInst, tyAbstract: result := firstOrd(lastSon(t));
+    tyGenericInst, tyDistinct: result := firstOrd(lastSon(t));
     else begin
       InternalError('invalid kind for last(' +{&}
         typeKindToStr[t.kind] +{&} ')');
@@ -779,7 +803,7 @@ function lengthOrd(t: PType): biggestInt;
 begin
   case t.kind of
     tyInt64, tyInt32, tyInt: result := lastOrd(t);
-    tyAbstract: result := lengthOrd(t.sons[0]);
+    tyDistinct: result := lengthOrd(t.sons[0]);
     else result := lastOrd(t) - firstOrd(t) + 1;
   end
 end;
@@ -868,7 +892,7 @@ begin
     SameLiteral(a.sons[1], b.sons[1])
 end;
 
-function sameTuple(a, b: PType; AbstractOf: bool): boolean;
+function sameTuple(a, b: PType; DistinctOf: bool): boolean;
 // two tuples are equivalent iff the names, types and positions are the same;
 // however, both types may not have any field names (t.n may be nil) which
 // complicates the matter a bit.
@@ -879,8 +903,8 @@ begin
   if sonsLen(a) = sonsLen(b) then begin
     result := true;
     for i := 0 to sonsLen(a)-1 do begin
-      if AbstractOf then 
-        result := equalOrAbstractOf(a.sons[i], b.sons[i])
+      if DistinctOf then 
+        result := equalOrDistinctOf(a.sons[i], b.sons[i])
       else
         result := SameType(a.sons[i], b.sons[i]);
       if not result then exit
@@ -914,15 +938,15 @@ begin
   if a.kind <> b.kind then begin result := false; exit end;
   case a.Kind of
     tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-    tyInt..tyFloat128: 
+    tyInt..tyFloat128, tyExpr, tyStmt, tyTypeDesc: 
       result := true;
-    tyEnum, tyForward, tyObject, tyAbstract:
+    tyEnum, tyForward, tyObject, tyDistinct:
       result := (a.id = b.id);
     tyTuple: 
       result := sameTuple(a, b, false);
     tyGenericInst:
       result := sameType(lastSon(a), lastSon(b));
-    tyGenericParam, tyGeneric, tySequence, tyOrdinal,
+    tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence, tyOrdinal,
     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
     tyArray, tyProc: begin
       if sonsLen(a) = sonsLen(b) then begin
@@ -946,7 +970,7 @@ begin
   end
 end;
 
-function equalOrAbstractOf(x, y: PType): bool;
+function equalOrDistinctOf(x, y: PType): bool;
 var
   i: int;
   a, b: PType;
@@ -958,26 +982,26 @@ begin
   assert(a <> nil);
   assert(b <> nil);
   if a.kind <> b.kind then begin 
-    if a.kind = tyAbstract then a := a.sons[0];
+    if a.kind = tyDistinct then a := a.sons[0];
     if a.kind <> b.kind then begin result := false; exit end
   end;
   case a.Kind of
     tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString, 
-    tyInt..tyFloat128: 
+    tyInt..tyFloat128, tyExpr, tyStmt, tyTypeDesc: 
       result := true;
-    tyEnum, tyForward, tyObject, tyAbstract:
+    tyEnum, tyForward, tyObject, tyDistinct:
       result := (a.id = b.id);
     tyTuple: 
       result := sameTuple(a, b, true);
     tyGenericInst:
-      result := equalOrAbstractOf(lastSon(a), lastSon(b));
-    tyGenericParam, tyGeneric, tySequence, tyOrdinal,
+      result := equalOrDistinctOf(lastSon(a), lastSon(b));
+    tyGenericParam, tyGenericInvokation, tyGenericBody, tySequence, tyOrdinal,
     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
     tyArray, tyProc: begin
       if sonsLen(a) = sonsLen(b) then begin
         result := true;
         for i := 0 to sonsLen(a)-1 do begin
-          result := equalOrAbstractOf(a.sons[i], b.sons[i]);
+          result := equalOrDistinctOf(a.sons[i], b.sons[i]);
           if not result then exit
         end;
         if result and (a.kind = tyProc) then 
@@ -987,7 +1011,7 @@ begin
         result := false;
     end;
     tyRange: begin
-      result := equalOrAbstractOf(a.sons[0], b.sons[0])
+      result := equalOrDistinctOf(a.sons[0], b.sons[0])
         and SameValue(a.n.sons[0], b.n.sons[0])
         and SameValue(a.n.sons[1], b.n.sons[1])
     end;
@@ -995,7 +1019,7 @@ begin
   end
 end;
 
-function typeAllowedAux(var marker: TIntSet; t: PType; 
+function typeAllowedAux(var marker: TIntSet; typ: PType; 
                         kind: TSymKind): bool; forward;
 
 function typeAllowedNode(var marker: TIntSet; n: PNode; kind: TSymKind): bool;
@@ -1005,6 +1029,7 @@ begin
   result := true;
   if n <> nil then begin
     result := typeAllowedAux(marker, n.typ, kind);
+    if not result then debug(n.typ);
     if result then 
       case n.kind of
         nkNone..nkNilLit: begin end;
@@ -1018,24 +1043,27 @@ begin
   end
 end;
 
-function typeAllowedAux(var marker: TIntSet; t: PType; kind: TSymKind): bool;
+function typeAllowedAux(var marker: TIntSet; typ: PType; kind: TSymKind): bool;
 var
   i: int;
+  t, t2: PType;
 begin
   assert(kind in [skVar, skConst, skParam]);
   result := true;
-  if t = nil then exit;
+  if typ = nil then exit;
   // if we have already checked the type, return true, because we stop the
   // evaluation if something is wrong:
-  if IntSetContainsOrIncl(marker, t.id) then exit;
-  case skipTypes(t, abstractInst).kind of 
+  if IntSetContainsOrIncl(marker, typ.id) then exit;
+  t := skipTypes(typ, abstractInst);
+  case t.kind of 
     tyVar: begin
-      case skipTypes(t.sons[0], abstractInst).kind of
+      t2 := skipTypes(t.sons[0], abstractInst);
+      case t2.kind of
         tyVar: result := false; // ``var var`` is always an invalid type:
         tyOpenArray: result := (kind = skParam) and 
-                                typeAllowedAux(marker, t.sons[0], kind);
+                                typeAllowedAux(marker, t2, kind);
         else result := (kind <> skConst) and 
-                                typeAllowedAux(marker, t.sons[0], kind);
+                                typeAllowedAux(marker, t2, kind);
       end
     end;
     tyProc: begin
@@ -1046,12 +1074,16 @@ begin
       if t.sons[0] <> nil then
         result := typeAllowedAux(marker, t.sons[0], skVar)
     end;
-    tyGeneric, tyGenericParam, tyForward, tyNone: result := false;
+    tyExpr, tyStmt, tyTypeDesc: result := true;
+    tyGenericBody, tyGenericParam, tyForward, tyNone, tyGenericInvokation: begin
+      result := false;
+      //InternalError('shit found');
+    end;
     tyEmpty, tyNil: result := kind = skConst;
     tyString, tyBool, tyChar, tyEnum, tyInt..tyFloat128, tyCString, tyPointer: 
       result := true;
     tyOrdinal: result := kind = skParam;
-    tyGenericInst, tyAbstract: 
+    tyGenericInst, tyDistinct: 
       result := typeAllowedAux(marker, lastSon(t), kind);
     tyRange: 
       result := skipTypes(t.sons[0], abstractInst).kind in
@@ -1074,8 +1106,8 @@ begin
         result := typeAllowedAux(marker, t.sons[i], skVar);
         if not result then exit
       end;
-      if t.n <> nil then result := typeAllowedNode(marker, t.n, skVar)
-    end
+      if t.n <> nil then result := typeAllowedNode(marker, t.n, skVar);
+    end;
   end
 end;
 
@@ -1221,7 +1253,7 @@ begin
         if result < 0 then exit;
         maxAlign := a
       end
-      else if typ.kind = tyObject then begin
+      else if isObjectWithTypeFieldPredicate(typ) then begin
         result := intSize; maxAlign := result;
       end
       else begin
@@ -1233,7 +1265,7 @@ begin
       if a < maxAlign then a := maxAlign;
       result := align(result, a);
     end;
-    tyGenericInst, tyAbstract: begin
+    tyGenericInst, tyDistinct, tyGenericBody: begin
       result := computeSizeAux(lastSon(typ), a);
     end;
     else begin

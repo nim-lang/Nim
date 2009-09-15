@@ -15,7 +15,7 @@ interface
 {$include 'config.inc'}
 
 uses
-  sysutils, nsystem, charsets, strutils,
+  sysutils, nsystem, charsets, strutils, nhashes,
   lists, options, scanner, ast, astalgo, trees, treetab, wordrecg,
   ropes, msgs, nos, condsyms, idents, rnimsyn, types, platform,
   nmath, magicsys, pnimsyn, nversion, nimsets,
@@ -28,8 +28,6 @@ uses
 function semPass(): TPass;
 
 implementation
-
-function semp(c: PContext; n: PNode): PNode; forward;
 
 function considerAcc(n: PNode): PIdent;
 var
@@ -47,6 +45,11 @@ begin
   end
 end;
 
+function isTopLevel(c: PContext): bool;
+begin
+  result := c.tab.tos <= 2
+end;
+
 function newSymS(const kind: TSymKind; n: PNode; c: PContext): PSym;
 begin
   result := newSym(kind, considerAcc(n), getCurrOwner());
@@ -62,27 +65,32 @@ function semIdentWithPragma(c: PContext; kind: TSymKind;
 function semStmtScope(c: PContext; n: PNode): PNode; forward;
 
 type
-  TExprFlag = (efAllowType, efLValue);
+  TExprFlag = (efAllowType, efLValue, efWantIterator);
   TExprFlags = set of TExprFlag;
 
 function semExpr(c: PContext; n: PNode;
                  flags: TExprFlags = {@set}[]): PNode; forward;
 function semExprWithType(c: PContext; n: PNode;
                          flags: TExprFlags = {@set}[]): PNode; forward;
+function fitNode(c: PContext; formal: PType; arg: PNode): PNode; forward;
 function semLambda(c: PContext; n: PNode): PNode; forward;
 function semTypeNode(c: PContext; n: PNode; prev: PType): PType; forward;
 function semStmt(c: PContext; n: PNode): PNode; forward;
+procedure semParamList(c: PContext; n, genericParams: PNode; s: PSym); forward;
+procedure addParams(c: PContext; n: PNode); forward;
+procedure addResult(c: PContext; t: PType; const info: TLineInfo); forward;
+procedure addResultNode(c: PContext; n: PNode); forward;
+
+function instGenericContainer(c: PContext; n: PNode; header: PType): PType; forward;
 
 function semConstExpr(c: PContext; n: PNode): PNode;
-var
-  e: PNode;
 begin
-  e := semExprWithType(c, n);
-  if e = nil then begin
+  result := semExprWithType(c, n);
+  if result = nil then begin
     liMessage(n.info, errConstExprExpected);
-    result := nil; exit
+    exit
   end;
-  result := getConstExpr(c.module, e);
+  result := getConstExpr(c.module, result);
   if result = nil then 
     liMessage(n.info, errConstExprExpected);
 end;
@@ -105,24 +113,19 @@ begin
   end
 end;
 
-function semAfterMacroCall(c: PContext; n, p: PNode): PNode;
+function semAfterMacroCall(c: PContext; n: PNode; s: PSym): PNode;
 begin
   result := n;
-  if (p = nil) or (p.kind <> nkIdent) then
-    liMessage(n.info, errInvalidParamKindX, renderTree(p))
-  else begin
-    case p.ident.id of
-      ord(wExpr): result := semExprWithType(c, result);
-      ord(wStmt): result := semStmt(c, result);
-      ord(wTypeDesc): 
-        result.typ := semTypeNode(c, result, nil);
-      else
-        liMessage(p.info, errInvalidParamKindX, p.ident.s)
-    end
+  case s.typ.sons[0].kind of
+    tyExpr: result := semExprWithType(c, result);
+    tyStmt: result := semStmt(c, result);
+    tyTypeDesc: result.typ := semTypeNode(c, result, nil);
+    else liMessage(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   end
 end;
 
-function semMacroExpr(c: PContext; n: PNode; sym: PSym): PNode;
+function semMacroExpr(c: PContext; n: PNode; sym: PSym;
+                      semCheck: bool = true): PNode;
 var
   p: PEvalContext;
   s: PStackFrame;
@@ -139,9 +142,8 @@ begin
   result := s.params[0];
   popStackFrame(p);
   if cyclicTree(result) then liMessage(n.info, errCyclicTree);
-  result := semAfterMacroCall(c, result, sym.ast.sons[paramsPos].sons[0]);
-  // now, that was easy ...
-  // and we get more flexibility than in any other programming language
+  if semCheck then
+    result := semAfterMacroCall(c, result, sym);
 end;
 
 {$include 'semtempl.pas'}
@@ -164,12 +166,8 @@ end;
 
 {$include 'semtypes.pas'}
 {$include 'semexprs.pas'}
+{$include 'semgnrc.pas'}
 {$include 'semstmts.pas'}
-
-function semp(c: PContext; n: PNode): PNode;
-begin
-  result := semStmt(c, n);
-end;
 
 procedure addCodeForGenerics(c: PContext; n: PNode);
 var

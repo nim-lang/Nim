@@ -1,7 +1,7 @@
-abstract addr and as asm
+addr and as asm
 bind block break
 case cast const continue converter
-discard div
+discard distinct div
 elif else end enum except
 finally for from generic
 if implies import in include is isnot iterator

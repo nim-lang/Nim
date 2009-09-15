@@ -571,6 +571,7 @@ proc getTok(p: var TSqlParser) =
 
 proc sqlError(p: TSqlParser, msg: string) =
   var e: ref EInvalidSql
+  new(e)
   e.msg = errorStr(p, msg)
   raise e
 

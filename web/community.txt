@@ -1,0 +1,6 @@
+Discuss Nimrod in our `forum <http://force7.de/heimdall>`_. 
+
+Visit our project page at Launchpad: https://launchpad.net/nimrod.
+
+Bug reports: https://bugs.launchpad.net/nimrod.
+

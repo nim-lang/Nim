@@ -375,6 +375,12 @@ begin
       wantFile(filename);
       CommandRst2Html(filename);
     end;
+    wRst2tex: begin
+      gCmd := cmdRst2tex;
+      LoadSpecialConfig(DocTexConfig);
+      wantFile(filename);
+      CommandRst2TeX(filename);
+    end;
     wPas: begin
       gCmd := cmdPas;
       wantFile(filename);

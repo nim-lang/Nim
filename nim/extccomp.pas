@@ -27,7 +27,8 @@ type
   TInfoCCProp = ( // properties of the C compiler:
     hasSwitchRange,  // CC allows ranges in switch statements (GNU C extension)
     hasComputedGoto, // CC has computed goto (GNU C extension)
-    hasCpp           // CC is/contains a C++ compiler
+    hasCpp,          // CC is/contains a C++ compiler
+    hasAssume        // CC has __assume (Visual C extension)
   );
   TInfoCCProps = set of TInfoCCProp;
   TInfoCC = record{@tuple}
@@ -167,7 +168,7 @@ const
       debug: ' /GZ /Zi ';
       pic: '';
       asmStmtFrmt: '__asm{$n$1$n}$n';
-      props: {@set}[hasCpp];
+      props: {@set}[hasCpp, hasAssume];
     ),
     (
       name: 'tcc';

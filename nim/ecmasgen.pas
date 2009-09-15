@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -108,10 +108,13 @@ const
                           tyOpenArray, tySet, tyVar, tyRef, tyPtr];
 
 function mapType(typ: PType): TEcmasTypeKind;
+var
+  t: PType;
 begin
-  case skipTypes(typ, abstractInst).kind of
+  t := skipTypes(typ, abstractInst);
+  case t.kind of
     tyVar, tyRef, tyPtr: begin
-      if typ.sons[0].kind in mappedToObject then
+      if skipTypes(t.sons[0], abstractInst).kind in mappedToObject then
         result := etyObject
       else
         result := etyBaseIndex
@@ -120,7 +123,7 @@ begin
       // treat a tyPointer like a typed pointer to an array of bytes
       result := etyInt;
     end;
-    tyRange, tyAbstract, tyOrdinal: result := mapType(typ.sons[0]);
+    tyRange, tyDistinct, tyOrdinal: result := mapType(t.sons[0]);
     tyInt..tyInt64, tyEnum, tyChar:
       result := etyInt;
     tyBool: result := etyBool;
@@ -133,7 +136,8 @@ begin
     tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray:
       result := etyObject;
     tyNil: result := etyNull;
-    tyGenericInst, tyGenericParam, tyGeneric, tyNone, tyForward, tyEmpty:
+    tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation,
+    tyNone, tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc:
       result := etyNone;
     tyProc: result := etyProc;
     tyCString: result := etyString;
@@ -299,7 +303,7 @@ begin
   result := ropef('NTI$1', [toRope(t.id)]);
   if IntSetContainsOrIncl(p.globals.TypeInfoGenerated, t.id) then exit;
   case t.kind of 
-    tyAbstract: result := genTypeInfo(p, typ.sons[0]);
+    tyDistinct: result := genTypeInfo(p, typ.sons[0]);
     tyPointer, tyProc, tyBool, tyChar, tyCString, tyString,
     tyInt..tyFloat128: begin
       s := ropef(
@@ -889,7 +893,8 @@ const
                                nkFloatLit..nkFloat64Lit,
                                nkCurly, nkPar, 
                                nkStringToCString, nkCStringToString,
-                               nkCall, nkCommand, nkHiddenCallConv];
+                               nkCall, nkCommand, nkHiddenCallConv,
+                               nkCallStrLit];
 
 function needsNoCopy(y: PNode): bool;
 begin
@@ -1772,7 +1777,7 @@ begin
     end;
     nkBlockExpr: genBlock(p, n, r);
     nkIfExpr: genIfExpr(p, n, r);
-    nkCall, nkHiddenCallConv, nkCommand: begin
+    nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit: begin
       if (n.sons[0].kind = nkSym) and (n.sons[0].sym.magic <> mNone) then
         genMagic(p, n, r)
       else

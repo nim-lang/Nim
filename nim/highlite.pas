@@ -134,14 +134,19 @@ end;
 
 procedure initGeneralTokenizer(var g: TGeneralTokenizer;
                                const buf: string);
+var
+  pos: int;
 begin
 {@ignore} fillChar(g, sizeof(g), 0); {@emit}
   g.buf := PChar(buf);
   g.kind := low(TTokenClass);
   g.start := 0;
   g.len := 0;
-  g.pos := 0;
   g.state := low(TTokenClass);
+  pos := 0;
+  // skip initial whitespace:
+  while g.buf[pos] in [' ', #9..#13] do inc(pos);
+  g.pos := pos;
 end;
 
 procedure deinitGeneralTokenizer(var g: TGeneralTokenizer);

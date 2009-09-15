@@ -8,38 +8,31 @@
 #
 
 type # This should be he same as ast.TTypeKind
-     # some enum fields are not used at runtime
+     # many enum fields are not used at runtime
   TNimKind = enum
-    tyNone, # 0 
-    tyBool, # 1 
-    tyChar, # 2
-    tyEmpty, # 3
-    tyArrayConstr, # 4
-    tyNil, # 5
-    tyGeneric, # 6
-    tyGenericInst, # 7
-    tyGenericParam, # 8
-    tyAbstract, # 9
-    tyEnum, # 10
-    tyOrdinal, # 11
-    tyArray, # 12
-    tyObject, # 13 
-    tyTuple, # 14
-    tySet, # 15
-    tyRange, # 16
-    tyPtr, # 17
-    tyRef, # 18
-    tyVar, # 19
-    tySequence, # 20
-    tyProc, # 21
-    tyPointer, # 22
-    tyOpenArray, # 23
-    tyString, # 24
-    tyCString, # 25
-    tyForward, # 26
+    tyNone, tyBool, tyChar,
+    tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyGenericInvokation, # ``T[a, b]`` for types to invoke
+    tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
+    tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
+    tyGenericParam,      # ``a`` in the example
+    tyDistinct,          # distinct type
+    tyEnum,
+    tyOrdinal,
+    tyArray,
+    tyObject,
+    tyTuple,
+    tySet,
+    tyRange,
+    tyPtr, tyRef,
+    tyVar,
+    tySequence,
+    tyProc,
+    tyPointer, tyOpenArray,
+    tyString, tyCString, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
-    tyPureObject # 36: signals that object has no `n_type` field
+    tyPureObject # signals that object has no `n_type` field
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
   TNimNode {.compilerproc, final.} = object

@@ -18,7 +18,7 @@
 
 proc fputs(c: cstring, f: TFile) {.importc: "fputs", noDecl.}
 proc fgets(c: cstring, n: int, f: TFile): cstring {.importc: "fgets", noDecl.}
-proc fgetc(stream: TFile): int {.importc: "fgetc", nodecl.}
+proc fgetc(stream: TFile): cint {.importc: "fgetc", nodecl.}
 proc ungetc(c: cint, f: TFile) {.importc: "ungetc", nodecl.}
 proc putc(c: Char, stream: TFile) {.importc: "putc", nodecl.}
 proc fprintf(f: TFile, frmt: CString) {.importc: "fprintf", nodecl, varargs.}
@@ -36,11 +36,9 @@ var
 proc rawReadLine(f: TFile, result: var string) =
   # of course this could be optimized a bit; but IO is slow anyway...
   # and it was difficult to get this CORRECT with Ansi C's methods
-  var
-    c: cint
   setLen(result, 0) # reuse the buffer!
   while True:
-    c = fgetc(f)
+    var c = fgetc(f)
     if c < 0'i32: break # EOF
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
@@ -68,6 +66,8 @@ proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: openArray[string]) =
   for x in items(a): write(f, x)
 
+#{.error: "for debugging.".}
+
 proc readFile(filename: string): string =
   var f: TFile
   try:
@@ -85,11 +85,9 @@ proc readFile(filename: string): string =
 
 proc EndOfFile(f: TFile): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
-  var
-    c: int
-  c = fgetc(f)
+  var c = fgetc(f)
   ungetc(c, f)
-  return c == -1
+  return c == -1'i32
 
 proc writeln[Ty](f: TFile, x: Ty) =
   write(f, x)

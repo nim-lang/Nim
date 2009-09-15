@@ -42,23 +42,28 @@ type
 
   PContext = ^TContext;
   TContext = object(TPassContext) // a context represents a module
-    module: PSym;            // the module sym belonging to the context
-    filename: string;        // the module's filename
-    tab: TSymTab;            // each module has its own symbol table
-    AmbiguousSymbols: TIntSet; // contains ids of all ambiguous symbols (cannot
-                               // store this info in the syms themselves!)
-    generics: PNode;         // a list of the things to compile; list of
-                             // nkExprEqExpr nodes which contain the generic
-                             // symbol and the instantiated symbol
-    converters: TSymSeq;     // sequence of converters
+    module: PSym;                 // the module sym belonging to the context
+    p: PProcCon;                  // procedure context
+    InstCounter: int;             // to prevent endless instantiations
+    generics: PNode;              // a list of the things to compile; list of
+                                  // nkExprEqExpr nodes which contain the
+                                  // generic symbol and the instantiated symbol
+    lastGenericIdx: int;          // used for the generics stack
+    tab: TSymTab;                 // each module has its own symbol table
+    AmbiguousSymbols: TIntSet;    // ids of all ambiguous symbols (cannot
+                                  // store this info in the syms themselves!)
+    converters: TSymSeq;          // sequence of converters
     optionStack: TLinkedList;
-    libs: TLinkedList;       // all libs used by this module
-    p: PProcCon;             // procedure context
-    fromCache: bool;         // is the module read from a cache?
-    lastGenericIdx: int;     // used for the generics stack
+    libs: TLinkedList;            // all libs used by this module
+    fromCache: bool;              // is the module read from a cache?
     semConstExpr: function (c: PContext; n: PNode): PNode;
       // for the pragmas module
+    includedFiles: TIntSet;       // used to detect recursive include files
+    filename: string;             // the module's filename
   end;
+
+var
+  gInstTypes: TIdTable; // map PType to PType
 
 function newContext(module: PSym; const nimfile: string): PContext;
 function newProcCon(owner: PSym): PProcCon;
@@ -164,6 +169,7 @@ begin
   result.generics := newNode(nkStmtList);
 {@emit result.converters := @[];}
   result.filename := nimfile;
+  IntSetInit(result.includedFiles);
 end;
 
 procedure addConverter(c: PContext; conv: PSym);
@@ -255,4 +261,6 @@ begin
   if (n = nil) or (sonsLen(n) < len) then illFormedAst(n);
 end;
 
+initialization
+  initIdTable(gInstTypes);
 end.

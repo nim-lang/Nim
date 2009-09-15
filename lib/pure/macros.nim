@@ -39,38 +39,38 @@ type
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkFloatLit, 
     nnkFloat32Lit, nnkFloat64Lit, nnkStrLit, nnkRStrLit, 
     nnkTripleStrLit, nnkMetaNode, nnkNilLit, nnkDotCall, 
-    nnkCommand, nnkCall, nnkGenericCall, nnkExplicitTypeListCall, 
-    nnkExprEqExpr, nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, 
-    nnkInfix, nnkPrefix, nnkPostfix, nnkPar, 
-    nnkCurly, nnkBracket, nnkBracketExpr, nnkPragmaExpr, 
-    nnkRange, nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, 
-    nnkIfExpr, nnkElifExpr, nnkElseExpr, nnkLambda, 
-    nnkAccQuoted, nnkTableConstr, nnkQualified, nnkBind, 
-    nnkSymChoice, nnkHiddenStdConv, nnkHiddenSubConv, nnkHiddenCallConv, 
-    nnkConv, nnkCast, nnkAddr, nnkHiddenAddr, 
-    nnkHiddenDeref, nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, 
-    nnkChckRange64, nnkChckRange, nnkStringToCString, nnkCStringToString, 
-    nnkPassAsOpenArray, nnkAsgn, nnkFastAsgn, nnkDefaultTypeParam, 
-    nnkGenericParams, nnkFormalParams, nnkOfInherit, nnkModule, 
-    nnkProcDef, nnkConverterDef, nnkMacroDef, nnkTemplateDef, 
-    nnkIteratorDef, nnkOfBranch, nnkElifBranch, nnkExceptBranch, 
-    nnkElse, nnkMacroStmt, nnkAsmStmt, nnkPragma, 
-    nnkIfStmt, nnkWhenStmt, nnkForStmt, nnkWhileStmt, 
-    nnkCaseStmt, nnkVarSection, nnkConstSection, nnkConstDef, 
-    nnkTypeSection, nnkTypeDef, nnkYieldStmt, nnkTryStmt, 
-    nnkFinally, nnkRaiseStmt, nnkReturnStmt, nnkBreakStmt, 
-    nnkContinueStmt, nnkBlockStmt, nnkDiscardStmt, nnkStmtList, 
-    nnkImportStmt, nnkFromStmt, nnkImportAs, nnkIncludeStmt, 
-    nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, nnkStmtListType, 
-    nnkBlockType, nnkVm, nnkTypeOfExpr, nnkObjectTy, 
+    nnkCommand, nnkCall, nnkCallStrLit, nnkExprEqExpr, 
+    nnkExprColonExpr, nnkIdentDefs, nnkVarTuple, nnkInfix, 
+    nnkPrefix, nnkPostfix, nnkPar, nnkCurly, 
+    nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
+    nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
+    nnkElifExpr, nnkElseExpr, nnkLambda, nnkAccQuoted, 
+    nnkTableConstr, nnkQualified, nnkBind, nnkSymChoice, 
+    nnkHiddenStdConv, nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, 
+    nnkCast, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, 
+    nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, 
+    nnkChckRange, nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, 
+    nnkAsgn, nnkFastAsgn, nnkGenericParams, nnkFormalParams, 
+    nnkOfInherit, nnkModule, nnkProcDef, nnkConverterDef, 
+    nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
+    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
+    nnkAsmStmt, nnkPragma, nnkIfStmt, nnkWhenStmt, 
+    nnkForStmt, nnkWhileStmt, nnkCaseStmt, nnkVarSection, 
+    nnkConstSection, nnkConstDef, nnkTypeSection, nnkTypeDef, 
+    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
+    nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
+    nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
+    nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
+    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
     nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
-    nnkRefTy, nnkPtrTy, nnkVarTy, nnkAbstractTy, 
+    nnkRefTy, nnkPtrTy, nnkVarTy, nnkDistinctTy, 
     nnkProcTy, nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty, 
-    ntyArrayConstr, ntyNil, ntyGeneric, ntyGenericInst, 
-    ntyGenericParam, ntyAbstract, ntyEnum, ntyOrdinal, 
+    ntyArrayConstr, ntyNil, ntyExpr, ntyStmt, 
+    ntyTypeDesc, ntyGenericInvokation, ntyGenericBody, ntyGenericInst, 
+    ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal, 
     ntyArray, ntyObject, ntyTuple, ntySet, 
     ntyRange, ntyPtr, ntyRef, ntyVar, 
     ntySequence, ntyProc, ntyPointer, ntyOpenArray, 
@@ -79,8 +79,8 @@ type
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128
   TNimTypeKinds* = set[TNimrodTypeKind]
   TNimrodSymKind* = enum
-    nskUnknownSym, nskConditional, nskDynLib, nskParam, 
-    nskTypeParam, nskTemp, nskType, nskConst, 
+    nskUnknown, nskConditional, nskDynLib, nskParam, 
+    nskGenericParam, nskTemp, nskType, nskConst, 
     nskVar, nskProc, nskIterator, nskConverter, 
     nskMacro, nskTemplate, nskField, nskEnumField, 
     nskForVar, nskModule, nskLabel, nskStub
@@ -91,7 +91,6 @@ type
   TNimrodIdent = object of TObject
     ## represents a Nimrod identifier in the AST
 
-  TNimrodNode {.final.} = object   # hidden
   TNimrodSymbol {.final.} = object # hidden
   TNimrodType {.final.} = object   # hidden
   
@@ -103,12 +102,9 @@ type
     ## represents a Nimrod *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
   
-  PNimrodNode* {.compilerproc.} = ref TNimrodNode
+  PNimrodNode* = expr
     ## represents a Nimrod AST node. Macros operate on this type.
     
-  expr* = PNimrodNode
-  stmt* = PNimrodNode
-
 # Nodes should be reference counted to make the `copy` operation very fast!
 # However, this is difficult to achieve: modify(n[0][1]) should propagate to
 # its father. How to do this without back references?

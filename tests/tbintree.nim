@@ -3,23 +3,23 @@ type
                                # with generic param ``T``
     le, ri: ref TBinaryTree[T] # left and right subtrees; may be nil
     data: T                    # the data stored in a node
-  PBinaryTree*[T] = ref TBinaryTree[T] # type that is exported
+  PBinaryTree*[A] = ref TBinaryTree[A] # type that is exported
 
 proc newNode*[T](data: T): PBinaryTree[T] =
   # constructor for a node
   new(result)
-  result.dat = data
+  result.data = data
 
-proc add*[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
+proc add*[Ty](root: var PBinaryTree[Ty], n: PBinaryTree[Ty]) =
   # insert a node into the tree
   if root == nil:
     root = n
   else:
     var it = root
     while it != nil:
-      # compare the data items; uses the generic ``cmd`` proc that works for
+      # compare the data items; uses the generic ``cmp`` proc that works for
       # any type that has a ``==`` and ``<`` operator
-      var c = cmp(it.data, n.data)
+      var c = cmp(n.data, it.data)
       if c < 0:
         if it.le == nil:
           it.le = n
@@ -31,9 +31,20 @@ proc add*[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
           return
         it = it.ri
 
-proc add*[T](root: var PBinaryTree[T], data: T) =
+proc add*[Ty](root: var PBinaryTree[Ty], data: Ty) =
   # convenience proc:
   add(root, newNode(data))
+
+proc find*[Ty2](b: PBinaryTree[Ty2], data: Ty2): bool = 
+  # for testing this needs to be recursive, so that the
+  # instantiated type is checked for proper tyGenericInst envelopes
+  if b == nil: 
+    result = false
+  else: 
+    var c = cmp(data, b.data)
+    if c < 0: result = find(b.le, data)
+    elif c > 0: result = find(b.ri, data)
+    else: result = true
 
 iterator preorder*[T](root: PBinaryTree[T]): T =
   # Preorder traversal of a binary tree.
@@ -41,19 +52,50 @@ iterator preorder*[T](root: PBinaryTree[T]): T =
   # this uses an explicit stack:
   var stack: seq[PBinaryTree[T]] = @[root]
   while stack.len > 0:
-    var n = stack[stack.len-1]
-    setLen(stack, stack.len-1) # pop `n` of the stack
+    var n = stack.pop()
     while n != nil:
-      yield n
+      yield n.data
       add(stack, n.ri)  # push right subtree onto the stack
       n = n.le          # and follow the left pointer
 
-var
-  root: PBinaryTree[string] # instantiate a PBinaryTree with the type string
-add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and ``add``
-#add(root, "world")          # instantiates the second ``add`` proc
-#for str in preorder(root):
-#  stdout.writeln(str)
+iterator items*[T](root: PBinaryTree[T]): T =
+  ## Inorder traversal of the binary tree.
+  var stack: seq[PBinaryTree[T]] = @[]
+  var n = root
+  while true:
+    while n != nil:
+      add(stack, n)
+      n = n.le
+    if stack.len > 0: 
+      n = stack.pop()
+      yield n.data
+      n = n.ri
+    if stack.len == 0 and n == nil: break
 
-#OUT halloworld
+proc debug[T](a: PBinaryTree[T]) =
+  if a != nil:
+    debug(a.le)
+    echo a.data
+    debug(a.ri)
 
+when isMainModule:
+  var
+    root: PBinaryTree[string]
+    x = newNode("hallo")
+  add(root, x)
+  add(root, "world")
+  if find(root, "world"):
+    for str in items(root):
+      stdout.write(str)
+  else:
+    stdout.writeln("BUG")
+  
+  var
+    r2: PBinaryTree[int]
+  add(r2, newNode(110))
+  add(r2, 223)
+  add(r2, 99)
+  for y in items(r2):
+    stdout.write(y)
+
+#OUT halloworld99110223

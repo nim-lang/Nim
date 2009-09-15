@@ -293,7 +293,7 @@ begin
       addSon(result, a.sons[1]);
     end
     else begin
-      parMessage(p, errInvalidDirective);
+      parMessage(p, errInvalidDirectiveX, pasTokToStr(p.tok));
       result := a
     end
   end
@@ -334,7 +334,7 @@ begin
     getTok(p); eat(p, pxCurlyDirRi);
   end
   else begin
-    parMessage(p, errUnknownDirective, pasTokToStr(p.tok));
+    parMessage(p, errInvalidDirectiveX, pasTokToStr(p.tok));
     while true do begin
       getTok(p);
       if (p.tok.xkind = pxCurlyDirRi) or (p.tok.xkind = pxEof) then break;

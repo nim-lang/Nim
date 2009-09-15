@@ -42,8 +42,12 @@ type
 
 type
   `nil` {.magic: "Nil".}
+  expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
+  stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
+  typeDesc* {.magic: TypeDesc.} ## meta type to denote
+                                ## a type description (for templates)
 
-proc defined*[T] (x: T): bool {.magic: "Defined", noSideEffect.}
+proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ## Special comile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -53,6 +57,12 @@ proc defined*[T] (x: T): bool {.magic: "Defined", noSideEffect.}
   ##   when not defined(strutils.toUpper):
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
+
+proc definedInScope*[T](x: T, scope=0): bool {.
+  magic: "DefinedInScope", noSideEffect.}
+  ## Special comile-time procedure that checks whether `x` is
+  ## defined in the scope `scope`. `x` has to be an identifier.
+  ## 0 means the current scope, 1 means the scope above the current scope, etc.
 
 # these require compiler magic:
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
@@ -434,30 +444,6 @@ proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.}
   ## is -MININT for its type), an overflow exception is thrown (if overflow
   ## checking is turned on).
 
-proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
-proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
-  ## The minimum value of two integers.
-
-proc min*[T](x: openarray[T]): T = 
-  ## The minimum value of an openarray.
-  result = x[0]
-  for i in 1..high(x): result = min(result, x[i])
-
-proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
-proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
-  ## The maximum value of two integers.
-
-proc max*[T](x: openarray[T]): T = 
-  ## The maximum value of an openarray.
-  result = x[0]
-  for i in 1..high(x): result = max(result, x[i])
-
 proc `+%` *(x, y: int): int {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: int8): int8 {.magic: "AddU", noSideEffect.}
 proc `+%` *(x, y: int16): int16 {.magic: "AddU", noSideEffect.}
@@ -613,7 +599,7 @@ template `not_in` * (x, y: expr): expr = not contains(y, x)
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `is_not` *(x, y: expr): expr = not (x is y)
 
-proc cmp*[T](x, y: T): int =
+proc cmp*[T, S: typeDesc](x: T, y: S): int =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
   ## and 0 iff x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
@@ -999,6 +985,32 @@ iterator countup*[T](a, b: T, step = 1): T {.inline.} =
   # we cannot use ``for x in a..b: `` here, because that is not
   # known in the System module
 
+
+proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.}
+proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.}
+  ## The minimum value of two integers.
+
+proc min*[T](x: openarray[T]): T = 
+  ## The minimum value of an openarray.
+  result = x[0]
+  for i in 1..high(x): result = min(result, x[i])
+
+proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.}
+proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.}
+  ## The maximum value of two integers.
+
+proc max*[T](x: openarray[T]): T = 
+  ## The maximum value of an openarray.
+  result = x[0]
+  for i in 1..high(x): result = max(result, x[i])
+
+
 iterator items*[T](a: openarray[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0
@@ -1009,9 +1021,11 @@ iterator items*[T](a: openarray[T]): T {.inline.} =
 iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = low(IX)
-  while i <= high(IX):
-    yield a[i]
-    inc(i)
+  if i <= high(IX):
+    while true:
+      yield a[i]
+      if i >= high(IX): break
+      inc(i)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -1032,9 +1046,11 @@ iterator items*[T](a: set[T]): T {.inline.} =
   ## elements that are really in the set (and not over the ones the set is
   ## able to hold).
   var i = low(T)
-  while i <= high(T):
-    if i in a: yield i
-    inc(i)
+  if i <= high(T):
+    while true:
+      if i in a: yield i
+      if i >= high(T): break
+      inc(i)
 
 iterator items*(a: cstring): char {.inline.} =
   ## iterates over each item of `a`.
@@ -1082,14 +1098,13 @@ proc `&` *[T](x, y: T): seq[T] {.noSideEffect.} =
 
 when not defined(NimrodVM):
   when not defined(ECMAScript):
-    # XXX make this local procs
-    proc seqToPtr*[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:
-    proc seqToPtr*[T](x: seq[T]): pointer {.pure, nosideeffect.} =
+    proc seqToPtr[T](x: seq[T]): pointer {.pure, nosideeffect.} =
       asm """return `x`"""
   
-  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
+  proc `==` *[T: typeDesc](x, y: seq[T]): bool {.noSideEffect.} =
     ## Generic equals operator for sequences: relies on a equals operator for
     ## the element type `T`.
     if seqToPtr(x) == seqToPtr(y):
@@ -1101,10 +1116,9 @@ when not defined(NimrodVM):
         if x[i] != y[i]: return false
       result = true
 
-proc find*[T, S](a: T, item: S): int {.inline.} =
+proc find*[T, S: typeDesc](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
-  ## appropriate `==` and `items` procs to work.
-  result = 0
+  ## appropriate `items` and `==` procs to work.
   for i in items(a):
     if i == item: return
     inc(result)
@@ -1437,6 +1451,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include "system/arithm"
   {.pop.} # stack trace
   include "system/dyncalls"
+  include "system/sets"
 
   const
     GenericSeqSize = (2 * sizeof(int))

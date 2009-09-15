@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -83,10 +83,12 @@ proc nextPowerOfTwo*(x: int): int =
   result = result or (result shr 1)
   Inc(result)
 
-proc countBits*(n: int32): int {.noSideEffect.}
+proc countBits32*(n: int32): int {.noSideEffect.} =
   ## counts the set bits in `n`.
-
-include "system/cntbits"
+  var v = n
+  v = v -% ((v shr 1'i32) and 0x55555555'i32)
+  v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
+  result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
 proc sum*[T](x: openarray[T]): T {.noSideEffect.} = 
   ## computes the sum of the elements in `x`. 

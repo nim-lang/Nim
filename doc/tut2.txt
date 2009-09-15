@@ -311,11 +311,10 @@ class provides a constructor, etc.
   c.draw() 
 
 The code uses a ``draw`` procedure that is bound statically, but inside it
-the dynamic dispatch happens with the help of the ``fdraw`` field. This is
-slightly more inconvienent than in traditional OOP-languages, but has the
-advantage of being much more flexible (and somewhat faster). The above approach
-also allows some form *monkey patching* by modifying the ``fdraw`` field.
-
+the dynamic dispatch happens with the help of the ``fdraw`` field. Even though
+this solution has its advantages compared to traditional OOP-languages, it is
+a **preliminary** solution. Multimethods are a planned language feature that
+provide a more flexible and efficient mechanism. 
 
 
 Exceptions
@@ -323,15 +322,13 @@ Exceptions
 
 In Nimrod `exceptions`:idx: are objects. By convention, exception types are 
 prefixed with an 'E', not 'T'. The ``system`` module defines an exception 
-hierarchy that you should stick to. Reusing an existing exception type is
-often better than defining a new exception type: It avoids a proliferation of
-types. 
+hierarchy that you might want to stick to.
 
 Exceptions should be allocated on the heap because their lifetime is unknown.
 
 A convention is that exceptions should be raised in *exceptional* cases: 
-For example, if a file cannot be opened, this should not raise an exception 
-since this is quite common (the file may have been deleted).
+For example, if a file cannot be opened, this should not raise an
+exception since this is quite common (the file may not exist).
 
 
 Raise statement
@@ -359,7 +356,7 @@ The `try`:idx: statement handles exceptions:
   # and tries to add them
   var
     f: TFile
-  if openFile(f, "numbers.txt"):
+  if open(f, "numbers.txt"):
     try:
       var a = readLine(f)
       var b = readLine(f)
@@ -375,7 +372,7 @@ The `try`:idx: statement handles exceptions:
       # reraise the unknown exception:
       raise
     finally:
-      closeFile(f)
+      close(f)
 
 The statements after the ``try`` are executed unless an exception is 
 raised. Then the appropriate ``except`` part is executed. 
@@ -395,8 +392,6 @@ is not executed (if an exception occurs).
 
 Generics
 ========
-
-`Version 0.7.10: Complex generic types like in the example do not work.`:red:
 
 `Generics`:idx: are Nimrod's means to parametrize procs, iterators or types 
 with `type parameters`:idx:. They are most useful for efficient type safe
@@ -448,7 +443,7 @@ containers:
     while stack.len > 0:
       var n = stack.pop()
       while n != nil:
-        yield n
+        yield n.data
         add(stack, n.ri)  # push right subtree onto the stack
         n = n.le          # and follow the left pointer
       
@@ -472,8 +467,7 @@ Templates
 Templates are a simple substitution mechanism that operates on Nimrod's 
 abstract syntax trees. Templates are processed in the semantic pass of the 
 compiler. They integrate well with the rest of the language and share none 
-of C's preprocessor macros flaws. However, they may lead to code that is harder 
-to understand and maintain. So one should use them sparingly. 
+of C's preprocessor macros flaws.
 
 To *invoke* a template, call it like a procedure.
 
@@ -488,7 +482,8 @@ Example:
 
 The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact 
 templates: This has the benefit that if you overload the ``==`` operator, 
-the ``!=`` operator is available automatically and does the right thing.
+the ``!=`` operator is available automatically and does the right thing. (Except
+for IEEE floating point numbers - NaN breaks basic boolean logic.)
 
 ``a > b`` is transformed into ``b < a``.
 ``a in b`` is transformed into ``contains(b, a)``. 
@@ -513,7 +508,7 @@ This code has a shortcoming: If ``debug`` is set to false someday, the quite
 expensive ``$`` and ``&`` operations are still performed! (The argument 
 evaluation for procedures is said to be *eager*).
 
-Turning the ``log`` proc into a template solves this problem in an elegant way:
+Turning the ``log`` proc into a template solves this problem:
 
 .. code-block:: nimrod
   const
@@ -530,7 +525,7 @@ Turning the ``log`` proc into a template solves this problem in an elegant way:
 The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
 ``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
 description*). These are no real types, they just help the compiler parsing.
-In later versions, real types will be supported too.
+However, real types are supported too.
 
 The template body does not open a new scope. To open a new scope
 use a ``block`` statement:
@@ -557,7 +552,8 @@ via a special ``:`` syntax:
 
 .. code-block:: nimrod
 
-  template withFile(f, filename, mode: expr, actions: stmt): stmt =
+  template withFile(f: expr, filename: string, mode: TFileMode,
+                    actions: stmt): stmt =
     block:
       var fn = filename
       var f: TFile
@@ -583,11 +579,6 @@ once.
 Macros
 ======
 
-If the template mechanism scares you, you will be pleased to hear that 
-templates are not really necessary: Macros can do anything that templates can
-do and much more. Macros are harder to write than templates and even harder 
-to get right :-). Now that you have been warned, lets see what a macro *is*.
-
 Macros enable advanced compile-time code tranformations, but they
 cannot change Nimrod's syntax. However, this is no real restriction because
 Nimrod's syntax is flexible enough anyway. 
@@ -598,7 +589,8 @@ to an abstract syntax tree (AST). The AST is documented in the
 
 There are two ways to invoke a macro:
 (1) invoking a macro like a procedure call (`expression macros`:idx:)
-(2) invoking a macro with the special ``macrostmt`` syntax (`statement macros`:idx:)
+(2) invoking a macro with the special ``macrostmt``
+    syntax (`statement macros`:idx:)
 
 
 Expression Macros

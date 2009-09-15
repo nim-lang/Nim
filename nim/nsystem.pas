@@ -217,7 +217,14 @@ procedure nimWrite(var f: tBinaryFile; const str: string); overload;
 procedure add(var x: string; const y: string);
 // Pascal version of string appending. Terminating zero is ignored.
 
+function isNil(s: string): bool;
+
 implementation
+
+function isNil(s: string): bool;
+begin
+  result := s = '';
+end;
 
 {@ignore}
 procedure add(var x: string; const y: string);

@@ -43,7 +43,7 @@ begin
   c.call := nil;
   c.baseTypeMatch := false;
   initIdTable(c.bindings);
-  assert(c.callee <> nil);
+  //assert(c.callee <> nil);
 end;
 
 procedure copyCandidate(var a: TCandidate; const b: TCandidate);
@@ -117,7 +117,7 @@ end;
 function typeRel(var mapping: TIdTable; f, a: PType): TTypeRelation; overload;
   forward;
 
-function concreteType(t: PType): PType;
+function concreteType(const mapping: TIdTable; t: PType): PType;
 begin
   case t.kind of
     tyArrayConstr: begin  // make it an array
@@ -126,6 +126,14 @@ begin
       addSon(result, t.sons[1]); // XXX: semantic checking for the type?
     end;
     tyNil: result := nil; // what should it be?
+    tyGenericParam: begin
+      result := t;
+      while true do begin
+        result := PType(idTableGet(mapping, t));
+        if result = nil then InternalError('lookup failed');
+        if result.kind <> tyGenericParam then break
+      end
+    end;
     else result := t // Note: empty is valid here
   end
 end;
@@ -218,8 +226,9 @@ begin // is a subtype of f?
   result := isNone;
   assert(f <> nil);
   assert(a <> nil);
-  if (a.kind = tyGenericInst) and 
-      (skipTypes(f, {@set}[tyVar]).kind <> tyGeneric) then begin
+  if (a.kind = tyGenericInst) and not
+      (skipTypes(f, {@set}[tyVar]).kind in [tyGenericBody, tyGenericInvokation])
+  then begin
     result := typeRel(mapping, f, lastSon(a));
     exit
   end;
@@ -348,8 +357,8 @@ begin // is a subtype of f?
         else if isObjectSubtype(a, f) then result := isSubtype
       end
     end;
-    tyAbstract: begin
-      if (a.kind = tyAbstract) and (a.id = f.id) then result := isEqual;
+    tyDistinct: begin
+      if (a.kind = tyDistinct) and (a.id = f.id) then result := isEqual;
     end;
     tySet: begin
       if a.kind = tySet then begin
@@ -415,6 +424,8 @@ begin // is a subtype of f?
                 result := isNone
             end
             else if a.sons[0] <> nil then
+              result := isNone;
+            if (tfNoSideEffect in f.flags) and not (tfNoSideEffect in a.flags) then
               result := isNone
           end
         end
@@ -458,12 +469,11 @@ begin // is a subtype of f?
     end;
     tyGenericInst: begin
       result := typeRel(mapping, lastSon(f), a);
-    end;
-    tyGeneric: begin
+    end; (*
+    tyGenericBody: begin
       x := PType(idTableGet(mapping, f));
       if x = nil then begin
         assert(f.containerID <> 0);
-        assert(lastSon(f) = nil);
         if (a.kind = tyGenericInst) and (f.containerID = a.containerID) and
            (sonsLen(a) = sonsLen(f)) then begin
           for i := 0 to sonsLen(f)-2 do begin
@@ -476,22 +486,64 @@ begin // is a subtype of f?
       else begin
         result := typeRel(mapping, x, a) // check if it fits
       end
+    end; *)
+    tyGenericBody: begin
+      result := typeRel(mapping, lastSon(f), a);
+    end;
+    tyGenericInvokation: begin
+      assert(f.sons[0].kind = tyGenericBody);
+      if a.kind = tyGenericInvokation then begin
+        InternalError('typeRel: tyGenericInvokation -> tyGenericInvokation');
+      end;
+      if (a.kind = tyGenericInst) then begin
+        if (f.sons[0].containerID = a.sons[0].containerID)
+        and (sonsLen(a)-1 = sonsLen(f)) then begin
+          assert(a.sons[0].kind = tyGenericBody);
+          for i := 1 to sonsLen(f)-1 do begin
+            if a.sons[i].kind = tyGenericParam then begin
+              InternalError('wrong instantiated type!');
+            end;
+            if typeRel(mapping, f.sons[i], a.sons[i]) < isGeneric then exit;
+          end;
+          result := isGeneric;
+        end (*
+        else begin
+          MessageOut('came here: ' + toString(sonsLen(f)) + ' ' +
+                        toString(sonsLen(a)) + '  '+
+                        toString(f.sons[0].containerID) + ' '+
+                        toString(a.sons[0].containerID));
+        end *)
+      end 
+      else begin
+        result := typeRel(mapping, f.sons[0], a);
+        if result <> isNone then begin
+          // we steal the generic parameters from the tyGenericBody:
+          for i := 1 to sonsLen(f)-1 do begin
+            x := PType(idTableGet(mapping, f.sons[0].sons[i-1]));
+            if (x = nil) or (x.kind = tyGenericParam) then
+              InternalError('wrong instantiated type!');
+            idTablePut(mapping, f.sons[i], x);
+          end
+        end
+      end 
     end;
     tyGenericParam: begin
       x := PType(idTableGet(mapping, f));
       if x = nil then begin
         if sonsLen(f) = 0 then begin // no constraints
-          concrete := concreteType(a);
+          concrete := concreteType(mapping, a);
           if concrete <> nil then begin
+            //MessageOut('putting: ' + f.sym.name.s);
             idTablePut(mapping, f, concrete);
             result := isGeneric
           end;
         end
         else begin
+          InternalError(f.sym.info, 'has constraints: ' + f.sym.name.s);
           // check constraints:
           for i := 0 to sonsLen(f)-1 do begin
             if typeRel(mapping, f.sons[i], a) >= isSubtype then begin
-              concrete := concreteType(a);
+              concrete := concreteType(mapping, a);
               if concrete <> nil then begin
                 idTablePut(mapping, f, concrete);
                 result := isGeneric
@@ -503,10 +555,20 @@ begin // is a subtype of f?
       end
       else if a.kind = tyEmpty then
         result := isGeneric
-      else begin
-        result := typeRel(mapping, x, a); // check if it fits
-      end
-    end
+      else if x.kind = tyGenericParam then
+        result := isGeneric
+      else 
+        result := typeRel(mapping, x, a) // check if it fits
+    end;
+    tyExpr, tyStmt, tyTypeDesc: begin
+      if a.kind = f.kind then result := isEqual
+      else
+        case a.kind of
+          tyExpr, tyStmt, tyTypeDesc: result := isGeneric;
+          tyNil: result := isSubtype;
+          else begin end
+        end
+    end;
     else internalError('typeRel(' +{&} typeKindToStr[f.kind] +{&} ')');
   end
 end;
@@ -524,7 +586,7 @@ function getInstantiatedType(c: PContext; arg: PNode; const m: TCandidate;
 begin
   result := PType(idTableGet(m.bindings, f));
   if result = nil then begin
-    result := generateTypeInstance(c, m.bindings, arg.info, f);
+    result := generateTypeInstance(c, m.bindings, arg, f);
   end;
   if result = nil then InternalError(arg.info, 'getInstantiatedType');
 end;
@@ -630,8 +692,9 @@ var
   x, y, z: TCandidate;
   r: TTypeRelation;
 begin
-  if (arg = nil) or (arg.kind <> nkSymChoice) then
+  if (arg = nil) or (arg.kind <> nkSymChoice) then begin
     result := ParamTypesMatchAux(c, m, f, a, arg)
+  end
   else begin
     // CAUTION: The order depends on the used hashing scheme. Thus it is
     // incorrect to simply use the first fitting match. However, to implement
@@ -645,16 +708,19 @@ begin
     z.calleeSym := m.calleeSym;
     best := -1;
     for i := 0 to sonsLen(arg)-1 do begin
-      copyCandidate(z, m);
-      r := typeRel(z.bindings, f, arg.sons[i].typ);
-      if r <> isNone then begin
-        case x.state of
-          csEmpty, csNoMatch: begin x := z; best := i; x.state := csMatch; end;
-          csMatch: begin
-            cmp := cmpCandidates(x, z);
-            if cmp < 0 then begin best := i; x := z end // z is better than x
-            else if cmp = 0 then y := z // z is as good as x
-            else begin end // z is worse than x
+      // iterators are not first class yet, so ignore them
+      if arg.sons[i].sym.kind in {@set}[skProc, skConverter] then begin
+        copyCandidate(z, m);
+        r := typeRel(z.bindings, f, arg.sons[i].typ);
+        if r <> isNone then begin
+          case x.state of
+            csEmpty, csNoMatch: begin x := z; best := i; x.state := csMatch; end;
+            csMatch: begin
+              cmp := cmpCandidates(x, z);
+              if cmp < 0 then begin best := i; x := z end // z is better than x
+              else if cmp = 0 then y := z // z is as good as x
+              else begin end // z is worse than x
+            end
           end
         end
       end
@@ -818,13 +884,14 @@ begin
   end
 end;
 
-function semDirectCall(c: PContext; n: PNode): PNode;
+function semDirectCall(c: PContext; n: PNode; filter: TSymKinds): PNode;
 var
   sym: PSym;
   o: TOverloadIter;
   x, y, z: TCandidate;
   cmp: int;
 begin
+  //liMessage(n.info, warnUser, renderTree(n));
   sym := initOverloadIter(o, c, n.sons[0]);
   result := nil;
   if sym = nil then exit;
@@ -833,7 +900,7 @@ begin
   initCandidate(y, sym.typ);
   y.calleeSym := sym;
   while sym <> nil do begin
-    if sym.kind in [skProc, skIterator, skConverter] then begin
+    if sym.kind in filter then begin
       initCandidate(z, sym.typ);
       z.calleeSym := sym;
       matches(c, n, z);

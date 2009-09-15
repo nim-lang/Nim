@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -11,9 +11,9 @@
 # with the application. We should not use dynamic memory here as that
 # would interfere with the GC and trigger ON/OFF errors if the
 # user program corrupts memory. Unfortunately, for dispaying
-# variables we use the system.repr() proc which uses Nimrod
+# variables we use the ``system.repr()`` proc which uses Nimrod
 # strings and thus allocates memory from the heap. Pity, but
-# I do not want to implement repr() twice. We also cannot deactivate
+# I do not want to implement ``repr()`` twice. We also cannot deactivate
 # the GC here as that might run out of memory too quickly...
 
 type

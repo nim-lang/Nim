@@ -14,6 +14,7 @@ Advanced options:
   --lib:PATH                set the system library path
   -c, --compile_only        compile only; do not assemble or link
   --no_linking              compile but do not link
+  --no_main                 do not generate a main procedure
   --gen_script              generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$project$scriptext')
   --os:SYMBOL               set the target operating system (cross-compilation)

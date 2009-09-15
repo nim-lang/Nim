@@ -19,7 +19,7 @@ template Comparable(typ: typeDesc): stmt =
 
 template DefineCurrency(typ, base: expr): stmt =
   type
-    typ* = abstract base
+    typ* = distinct base
   Additive(typ)
   Multiplicative(typ, base)
   Comparable(typ)

@@ -1,0 +1,107 @@
+===========================================
+         Questions and Answers
+===========================================
+
+
+General
+=======
+
+What is Nimrod?
+---------------
+
+Nimrod is a new statically typed, imperative
+programming language, that supports procedural, functional, object oriented and
+generic programming styles while remaining simple and efficient. A special
+feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
+(*AST*) is part of the specification - this allows a powerful macro system which
+can be used to create domain specific languages. Nimrod does not sacrifice
+flexibility for speed. You get both.
+
+How is Nimrod licensed?
+-----------------------
+
+The Nimrod compiler is GPL licensed, the runtime library is LGPL licensed.
+This means that you can use any license for your own programs developed with
+Nimrod. If I receive enough requests with good arguments, I may change the
+license of Nimrod to the BSD license.
+
+How stable is Nimrod?
+---------------------
+
+The compiler is in development and some important features are still missing. 
+However, the compiler is quite stable already: It is able to compile itself 
+and a substantial body of other code. Until version 1.0.0 is released, slight 
+incompabilities with older versions of the compiler may be introduced.
+
+
+Compilation
+===========
+
+Execution of GCC fails (Windows)
+--------------------------------
+
+On Windows the configuration file ``config\nimrod.cfg`` assumes that GCC is in 
+``$nimrod\dist\mingw\bin``: This is where the Windows installer puts GCC.  
+If you delete the line ``gcc.path = r"$nimrod\dist\mingw\bin"``, Nimrod uses 
+the GCC from your ``PATH`` environment variable. 
+
+If you cannot modify ``$nimrod\config\nimrod.cfg``, copy 
+``$nimrod\config\nimrod.cfg`` to ``$APPDATA\nimrod.cfg`` and modify 
+``$APPDATA\nimrod.cfg`` instead. To determine what ``$APPDATA`` means for your
+Windows account, use the shell command::
+
+  echo %APPDATA%
+
+
+
+How do I use a different C compiler than the default one?
+---------------------------------------------------------
+
+Edit the ``config/nimrod.cfg`` file.
+Change the value of the ``cc`` variable to one of the following:
+
+==============  ============================================
+Abbreviation    C/C++ Compiler
+==============  ============================================
+``dmc``         Digital Mars C++
+``wcc``         Watcom C++ (now unsupported!)
+``bcc``         Borland C++ (now unsupported!)
+``vcc``         Microsoft's Visual C++
+``gcc``         Gnu C
+``pcc``         Pelles C (now unsupported!)
+``lcc``         Lcc-win32 (now unsupported!)
+``tcc``         Tiny C
+``llvm_gcc``    LLVM-GCC compiler
+``icc``         Intel C++ compiler
+``ucc``         Generic UNIX C compiler
+==============  ============================================
+
+If your C compiler is not in the above list, try using the
+*generic UNIX C compiler* (``ucc``). If the C compiler needs
+different command line arguments try the ``--passc`` and ``--passl`` switches.
+Unsupported compilers contain serious bugs that keep them from bootstrapping
+Nimrod.
+
+The linker outputs strange errors about missing symbols
+-------------------------------------------------------
+
+I have seen this bug only with the GNU linker. The reason for this unknown.
+Try recompiling your code with the ``--force_build`` command line switch.
+
+
+Why is compilation so slow?
+---------------------------
+
+There are two reasons for this:
+
+(1) Nimrod always recompiles **everything** (but only calls the C compiler for 
+    modules that changed). In a future version, only modules that have changed 
+    will be recompiled.
+(2) The C compiler that is called by Nimrod may be slow.
+    Especially GCC's compile times are not very heady. On Linux you may be able
+    to get `Tiny C <http://bellard.org/tcc/>`_ to work. TCC has excellent 
+    compile times. You should not use TCC for producing the release version 
+    though, as it has no optimizer.
+
+Note that from version 0.7.10 onwards the default build produces an optimized
+binary.

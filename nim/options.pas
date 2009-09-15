@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -46,7 +46,8 @@ type
     optRun,            // run the compiled project
     optSymbolFiles,    // use symbol files for speeding up compilation
     optSkipConfigFile, // skip the general config file
-    optSkipProjConfigFile // skip the project's config file
+    optSkipProjConfigFile, // skip the project's config file
+    optNoMain          // do not generate a "main" proc
   );
   TGlobalOptions = set of TGlobalOption;
 
@@ -68,6 +69,7 @@ type
     cmdScan,       // scan a single file (for debugging)
     cmdDebugTrans, // debug a transformation pass
     cmdRst2html,   // convert a reStructuredText file to HTML
+    cmdRst2tex,    // convert a reStructuredText file to TeX
     cmdInteractive // start interactive session
   );
   TStringSeq = array of string;
@@ -107,9 +109,11 @@ const
   NimExt = 'nim';
   RodExt = 'rod';
   HtmlExt = 'html';
+  TexExt = 'tex';
   IniExt = 'ini';
   TmplExt = 'tmpl';
   DocConfig = 'nimdoc.cfg';
+  DocTexConfig = 'nimdoc.tex.cfg';
 
 function completeGeneratedFilePath(const f: string;
                                    createSubDir: bool = true): string;

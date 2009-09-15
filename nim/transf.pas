@@ -124,7 +124,7 @@ Should be transformed into::
         return a[i]
         block L1: inc(c.i)
 
-More efficient, but not implementable:
+More efficient, but not implementable::
 
   type
     TItemsClosure = record
@@ -288,7 +288,7 @@ end;
 
 function inlineIter(c: PTransf; n: PNode): PNode;
 var
-  i: int;
+  i, j, L: int;
   it: PNode;
   newVar: PSym;
 begin
@@ -304,16 +304,33 @@ begin
       for i := 0 to sonsLen(result)-1 do begin
         it := result.sons[i];
         if it.kind = nkCommentStmt then continue;
-        if (it.kind <> nkIdentDefs) or (it.sons[0].kind <> nkSym) then
-          InternalError(it.info, 'inlineIter');
-        newVar := copySym(it.sons[0].sym);
-        include(newVar.flags, sfFromGeneric);
-        // fixes a strange bug for rodgen:
-        //include(it.sons[0].sym.flags, sfFromGeneric);
-        newVar.owner := getCurrOwner(c);
-        IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar));
-        it.sons[0] := newSymNode(newVar);
-        it.sons[2] := transform(c, it.sons[2]);
+        if it.kind = nkIdentDefs then begin
+          if (it.sons[0].kind <> nkSym) then
+            InternalError(it.info, 'inlineIter');
+          newVar := copySym(it.sons[0].sym);
+          include(newVar.flags, sfFromGeneric);
+          // fixes a strange bug for rodgen:
+          //include(it.sons[0].sym.flags, sfFromGeneric);
+          newVar.owner := getCurrOwner(c);
+          IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar));
+          it.sons[0] := newSymNode(newVar);
+          it.sons[2] := transform(c, it.sons[2]);
+        end
+        else begin
+          if it.kind <> nkVarTuple then
+            InternalError(it.info, 'inlineIter: not nkVarTuple');
+          L := sonsLen(it);
+          for j := 0 to L-3 do begin
+            newVar := copySym(it.sons[j].sym);
+            include(newVar.flags, sfFromGeneric);
+            newVar.owner := getCurrOwner(c);
+            IdNodeTablePut(c.transCon.mapping, it.sons[j].sym,
+                           newSymNode(newVar));
+            it.sons[j] := newSymNode(newVar);
+          end;
+          assert(it.sons[L-2] = nil);
+          it.sons[L-1] := transform(c, it.sons[L-1]);
+        end
       end
     end
     else begin
@@ -758,7 +775,8 @@ function getMergeOp(n: PNode): PSym;
 begin
   result := nil;
   case n.kind of
-    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix: begin
+    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix,
+    nkCallStrLit: begin
       if (n.sons[0].Kind = nkSym) and (n.sons[0].sym.kind = skProc) 
       and (sfMerge in n.sons[0].sym.flags) then 
         result := n.sons[0].sym;
@@ -873,7 +891,8 @@ begin
       n.sons[0] := transform(c, n.sons[0]);
       n.sons[1] := transformContinue(c, n.sons[1]);
     end;
-    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix:
+    nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix,
+    nkCallStrLit:
       result := transformCall(c, result);
     nkAddr, nkHiddenAddr:
       result := transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref);
