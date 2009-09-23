@@ -182,7 +182,7 @@ begin
     addDecl(c, result);
     if n.sons[codePos] <> nil then begin
       c.p := newProcCon(result);
-      if result.kind in [skProc, skConverter] then begin
+      if result.kind in [skProc, skMethod, skConverter] then begin
         addResult(c, result.typ.sons[0], n.info);
         addResultNode(c, n);
       end;

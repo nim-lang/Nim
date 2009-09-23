@@ -1235,6 +1235,10 @@ begin
       putWithSpace(g, tkProc, 'proc');
       gproc(g, n);
     end;
+    nkMethodDef: begin
+      putWithSpace(g, tkMethod, 'method');
+      gproc(g, n);
+    end;
     nkIteratorDef: begin
       putWithSpace(g, tkIterator, 'iterator');
       gproc(g, n);

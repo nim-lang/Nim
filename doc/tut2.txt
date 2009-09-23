@@ -1,6 +1,6 @@
-=============================
-The Nimrod Tutorial (Part II)
-=============================
+=========================
+Nimrod Tutorial (Part II)
+=========================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
@@ -73,9 +73,9 @@ section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``TObject``
-should be used as its ancestor, but this is only a convention.
+can be used as its ancestor, but this is only a convention.
 
-Note that aggregation (*has-a* relation) is often preferable to inheritance
+**Note**: Aggregation (*has-a* relation) is often preferable to inheritance
 (*is-a* relation) for simple code reuse. Since objects are value types in
 Nimrod, aggregation is as efficient as inheritance.
 
@@ -84,9 +84,9 @@ Mutually recursive types
 ------------------------
 
 Objects, tuples and references can model quite complex data structures which
-depend on each other. This is called *mutually recursive types*. In Nimrod 
-these types need to be declared within a single type section. Anything else 
-would require arbitrary symbol lookahead which slows down compilation.
+depend on each other; they are *mutually recursive*. In Nimrod 
+these types can only be declared within a single type section. (Anything else 
+would require arbitrary symbol lookahead which slows down compilation.)
 
 Example:
 
@@ -147,7 +147,7 @@ An example:
     TNode = object
       case kind: TNodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
-      of nkFloat: floavVal: float
+      of nkFloat: floatVal: float
       of nkString: strVal: string
       of nkAdd, nkSub:
         leftOp, rightOp: PNode
@@ -176,18 +176,25 @@ bound to a class. This has disadvantages:
 
 * Adding a method to a class the programmer has no control over is 
   impossible or needs ugly workarounds.
-* Often it is unclear where the procedure should belong to: Is
+* Often it is unclear where the method should belong to: Is
   ``join`` a string method or an array method? Should the complex 
   ``vertexCover`` algorithm really be a method of the ``graph`` class?
 
-Nimrod avoids these problems by not distinguishing between methods and 
-procedures. Methods are just ordinary procedures. However, there is a special 
-syntactic sugar for calling procedures: The syntax ``obj.method(args)`` can be
-used instead of ``method(obj, args)``. If there are no remaining arguments, the
-parentheses can be omitted: ``obj.len`` (instead of ``len(obj)``).
+Nimrod avoids these problems by not assigning methods to a class. All methods
+in Nimrod are `multi-methods`:idx:. As we will see later, multi-methods are
+distinguished from procs only for dynamic binding purposes.
+
+
+Method call syntax
+------------------
+
+There is a syntactic sugar for calling routines:
+The syntax ``obj.method(args)`` can be used instead of ``method(obj, args)``.
+If there are no remaining arguments, the parentheses can be omitted:
+``obj.len`` (instead of ``len(obj)``).
 
 This `method call syntax`:idx: is not restricted to objects, it can be used 
-for any type: 
+for any type:
 
 .. code-block:: nimrod
   
@@ -196,9 +203,17 @@ for any type:
   echo({'a', 'b', 'c'}.card)
   stdout.writeln("Hallo") # the same as write(stdout, "Hallo")
 
-If it gives you warm fuzzy feelings, you can even write ``1.`+`(2)`` instead of
-``1 + 2`` and claim that Nimrod is a pure object oriented language. (But
-that's not true. :-)
+(Another way to look at the method call syntax is that it provides the missing
+postfix notation.)
+
+So code that looks "pure object oriented" is easy to write:
+
+.. code-block:: nimrod
+  import strutils
+  
+  stdout.writeln("Give a list of numbers (separated by spaces): ")
+  stdout.write(stdin.readLine.split.each(parseInt).max.`$`)
+  stdout.writeln(" is the maximum!")
 
 
 Properties
@@ -261,60 +276,75 @@ already provides ``v[]`` access.
 
 Dynamic dispatch
 ----------------
-In Nimrod procedural types are used to implement dynamic dispatch. The
-following example also shows some more conventions: The ``self`` or ``this``
-object is named ``my`` (because it is shorter than the alternatives), each
-class provides a constructor, etc.
+
+Procedures always use static dispatch. To get dynamic dispatch, replace the
+``proc`` keyword by ``method``:
 
 .. code-block:: nimrod
   type
-    TFigure = object of TObject     # abstract base class:
-      fDraw: proc (my: var TFigure) # concrete classes implement this proc
+    TExpr = object ## abstract base class for an expression
+    TLiteral = object of TExpr
+      x: int
+    TPlusExpr = object of TExpr
+      a, b: ref TExpr
+      
+  method eval(e: ref TExpr): int =
+    # override this base method
+    quit "to override!"
+  
+  method eval(e: ref TLiteral): int = return e.x
+
+  method eval(e: ref TPlusExpr): int =
+    # watch out: relies on dynamic binding
+    return eval(e.a) + eval(e.b)
+  
+  proc newLit(x: int): ref TLiteral =
+    new(result)
+    result.x = x
     
-  proc init(f: var TFigure) = 
-    f.fDraw = nil
+  proc newPlus(a, b: ref TExpr): ref TPlusExpr =
+    new(result)
+    result.a = a
+    result.b = b
   
-  proc draw(f: var TFigure) =
-    # ``draw`` dispatches dynamically:
-    f.fDraw(f)
+  echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
   
-  type
-    TCircle = object of TFigure
-      radius: int
-    
-  proc drawCircle(my: var TCircle) = echo("o " & $my.radius)
-  
-  proc init(my: var TCircle) = 
-    init(TFigure(my)) # call base constructor
-    my.radius = 5
-    my.fdraw = drawCircle
+Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
+because they should use static binding, but ``eval`` is a method because it
+requires dynamic binding.
+
+In a multi-method all parameters that have an object type are used for the
+dispatching:
+
+.. code-block:: nimrod
 
   type
-    TRectangle = object of TFigure
-      width, height: int
+    TThing = object
+    TUnit = object of TThing
+      x: int
+      
+  method collide(a, b: TThing) {.inline.} =
+    quit "to override!"
+    
+  method collide(a: TThing, b: TUnit) {.inline.} =
+    echo "1"
   
-  proc drawRectangle(my: var TRectangle) = echo("[]")
+  method collide(a: TUnit, b: TThing) {.inline.} =
+    echo "2"
   
-  proc init(my: var TRectangle) = 
-    init(TFigure(my)) # call base constructor
-    my.width = 5
-    my.height = 10
-    my.fdraw = drawRectangle
-
-  # now use these classes:
   var
-    r: TRectangle
-    c: TCircle
-  init(r)
-  init(c)
-  r.draw()
-  c.draw() 
+    a, b: TUnit
+  collide(a, b) # output: 2
 
-The code uses a ``draw`` procedure that is bound statically, but inside it
-the dynamic dispatch happens with the help of the ``fdraw`` field. Even though
-this solution has its advantages compared to traditional OOP-languages, it is
-a **preliminary** solution. Multimethods are a planned language feature that
-provide a more flexible and efficient mechanism. 
+
+As the example demonstrates, invokation of a multi-method cannot be ambiguous:
+Collide 2 is prefered over collide 1 because the resolution works from left to
+right. Thus ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
+
+**Perfomance note**: Nimrod does not produce a virtual method table, but
+generates dispatch trees. This avoids the expensive indirect branch for method
+calls and enables inlining. However, other optimizations like compile time
+evaluation or dead code elimination do not work with methods.
 
 
 Exceptions
@@ -497,8 +527,7 @@ simple proc for logging:
     debug = True
     
   proc log(msg: string) {.inline.} = 
-    if debug:
-      stdout.writeln(msg)
+    if debug: stdout.writeln(msg)
   
   var
     x = 4
@@ -506,7 +535,7 @@ simple proc for logging:
 
 This code has a shortcoming: If ``debug`` is set to false someday, the quite
 expensive ``$`` and ``&`` operations are still performed! (The argument 
-evaluation for procedures is said to be *eager*).
+evaluation for procedures is *eager*).
 
 Turning the ``log`` proc into a template solves this problem:
 
@@ -514,21 +543,20 @@ Turning the ``log`` proc into a template solves this problem:
   const
     debug = True
     
-  template log(msg: expr): stmt = 
-    if debug:
-      stdout.writeln(msg)
+  template log(msg: string) = 
+    if debug: stdout.writeln(msg)
   
   var
     x = 4
   log("x has the value: " & $x)
 
-The "types" of templates can be the symbols ``expr`` (stands for *expression*), 
-``stmt`` (stands for *statement*) or ``typedesc`` (stands for *type 
-description*). These are no real types, they just help the compiler parsing.
-However, real types are supported too.
+The parameters' types can be ordinary types or the meta types ``expr``
+(stands for *expression*), ``stmt`` (stands for *statement*) or ``typedesc``
+(stands for *type description*). If the template has no explicit return type,
+``stmt`` is used for consistency with procs and methods.
 
-The template body does not open a new scope. To open a new scope
-use a ``block`` statement:
+The template body does not open a new scope. To open a new scope use a ``block``
+statement:
 
 .. code-block:: nimrod
   template declareInScope(x: expr, t: typeDesc): stmt = 
@@ -573,7 +601,7 @@ In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: To forget to close the file. Note how the
 ``var fn = filename`` statement ensures that ``filename`` is evaluated only
-once. 
+once.
 
 
 Macros

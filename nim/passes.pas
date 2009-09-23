@@ -67,7 +67,7 @@ implementation
 
 function astNeeded(s: PSym): bool;
 begin
-  if (s.kind = skProc)
+  if (s.kind in [skMethod, skProc])
   and ([sfCompilerProc, sfCompileTime] * s.flags = [])
   and (s.typ.callConv <> ccInline)
   and (s.ast.sons[genericParamsPos] = nil) then

@@ -13,7 +13,7 @@
 function semTemplateExpr(c: PContext; n: PNode; s: PSym;
                          semCheck: bool = true): PNode;
 begin
-  include(s.flags, sfUsed);
+  markUsed(n, s);
   pushInfoContext(n.info);
   result := evalTemplate(c, n, s);
   if semCheck then
@@ -47,8 +47,6 @@ var
   diff: int;
 begin
   diff := inheritanceDiff(castDest, src);
-  //if diff = 0 then
-  //  liMessage(info, hintConvToBaseNotNeeded)
   if diff = high(int) then
     liMessage(info, errGenerated,
       format(MsgKindToString(errIllegalConvFromXtoY),
@@ -136,7 +134,7 @@ begin
   else begin
     for i := 0 to sonsLen(op)-1 do begin
       if sameType(result.typ, op.sons[i].typ) then begin
-        include(op.sons[i].sym.flags, sfUsed);
+        markUsed(n, op.sons[i].sym);
         result := op.sons[i]; exit
       end
     end;
@@ -453,8 +451,7 @@ const
   FakeVarParams = {@set}[mNew, mNewFinalize, mInc, ast.mDec, mIncl,
                          mExcl, mSetLengthStr, mSetLengthSeq,
                          mAppendStrCh, mAppendStrStr, mSwap,
-                         mAppendSeqElem, mAppendSeqSeq,
-                         mNewSeq];
+                         mAppendSeqElem, mNewSeq];
 var
   i: int;
   t: PType;
@@ -474,7 +471,7 @@ var
   callee: PSym;
 begin
   if not (efWantIterator in flags) then 
-    result := semDirectCall(c, n, {@set}[skProc, skConverter])
+    result := semDirectCall(c, n, {@set}[skProc, skMethod, skConverter])
   else
     result := semDirectCall(c, n, {@set}[skIterator]);
   if result <> nil then begin
@@ -586,17 +583,23 @@ begin
   result := n;
 end;
 
-function LookUpForDefined(c: PContext; n: PNode): PSym;
+function LookUpForDefined(c: PContext; n: PNode; onlyCurrentScope: bool): PSym;
 var
   m: PSym;
   ident: PIdent;
 begin
   case n.kind of
-    nkIdent: result := SymtabGet(c.Tab, n.ident); // no need for stub loading
+    nkIdent: begin
+      if onlyCurrentScope then
+        result := SymtabLocalGet(c.tab, n.ident)
+      else
+        result := SymtabGet(c.Tab, n.ident); // no need for stub loading
+    end;
     nkDotExpr, nkQualified: begin
-      checkSonsLen(n, 2);
       result := nil;
-      m := LookupForDefined(c, n.sons[0]);
+      if onlyCurrentScope then exit;
+      checkSonsLen(n, 2);
+      m := LookupForDefined(c, n.sons[0], onlyCurrentScope);
       if (m <> nil) and (m.kind = skModule) then begin
         if (n.sons[1].kind = nkIdent) then begin
           ident := n.sons[1].ident;
@@ -612,7 +615,7 @@ begin
     end;
     nkAccQuoted: begin
       checkSonsLen(n, 1);
-      result := lookupForDefined(c, n.sons[0]);
+      result := lookupForDefined(c, n.sons[0], onlyCurrentScope);
     end
     else begin
       liMessage(n.info, errIdentifierExpected, renderTree(n));
@@ -621,14 +624,14 @@ begin
   end
 end;
 
-function semDefined(c: PContext; n: PNode): PNode;
+function semDefined(c: PContext; n: PNode; onlyCurrentScope: bool): PNode;
 begin
   checkSonsLen(n, 2);
   result := newIntNode(nkIntLit, 0);
   // we replace this node by a 'true' or 'false' node
-  if LookUpForDefined(c, n.sons[1]) <> nil then
+  if LookUpForDefined(c, n.sons[1], onlyCurrentScope) <> nil then
     result.intVal := 1
-  else if (n.sons[1].kind = nkIdent)
+  else if not onlyCurrentScope and (n.sons[1].kind = nkIdent)
       and condsyms.isDefined(n.sons[1].ident) then
     result.intVal := 1;
   result.info := n.info;
@@ -647,8 +650,8 @@ function semMagic(c: PContext; n: PNode; s: PSym; flags: TExprFlags): PNode;
 begin
   result := n;
   case s.magic of // magics that need special treatment
-    mDefined: result := semDefined(c, setMs(n, s));
-    mDefinedInScope: result := semDefinedInScope(c, setMs(n, s));
+    mDefined: result := semDefined(c, setMs(n, s), false);
+    mDefinedInScope: result := semDefined(c, setMs(n, s), true);
     mLow:     result := semLowHigh(c, setMs(n, s), mLow);
     mHigh:    result := semLowHigh(c, setMs(n, s), mHigh);
     mSizeOf:  result := semSizeof(c, setMs(n, s));
@@ -656,11 +659,6 @@ begin
     mEcho:    result := semEcho(c, setMs(n, s)); 
     else      result := semDirectOp(c, n, flags);
   end;
-end;
-
-procedure checkDeprecated(n: PNode; s: PSym);
-begin
-  if sfDeprecated in s.flags then liMessage(n.info, warnDeprecated, s.name.s);  
 end;
 
 function isTypeExpr(n: PNode): bool;
@@ -795,7 +793,7 @@ begin
       result := newSymNode(f);
       result.info := n.info;
       result.typ := ty;
-      checkDeprecated(n, f);
+      markUsed(n, f);
     end
     else
       liMessage(n.sons[1].info, errEnumHasNoValueX, i.s);
@@ -823,7 +821,7 @@ begin
         n.sons[0] := makeDeref(n.sons[0]);
         n.sons[1] := newSymNode(f); // we now have the correct field
         n.typ := f.typ;
-        checkDeprecated(n, f);
+        markUsed(n, f);
         if check = nil then result := n
         else begin
           check.sons[0] := n;
@@ -841,7 +839,7 @@ begin
       n.sons[1] := newSymNode(f);
       n.typ := f.typ;
       result := n;
-      checkDeprecated(n, f);
+      markUsed(n, f);
       exit
     end
   end;
@@ -851,7 +849,7 @@ begin
   //if (f <> nil) and (f.kind = skStub) then loadStub(f);
   // ``loadStub`` is not correct here as we don't care for ``f`` really
   if (f <> nil) then begin
-    // BUGFIX: do not check for (f.kind in [skProc, skIterator]) here
+    // BUGFIX: do not check for (f.kind in [skProc, skMethod, skIterator]) here
     result := newNodeI(nkDotCall, n.info);
     // This special node kind is to merge with the call handler in `semExpr`.
     addSon(result, newIdentNode(i, n.info));
@@ -1145,7 +1143,6 @@ begin
     a := n.sons[0];
   s := qualifiedLookup(c, a, false);
   if (s <> nil) then begin
-    checkDeprecated(n, s);
     case s.kind of
       skMacro: result := semMacroExpr(c, n, s, semCheck);
       skTemplate: begin
@@ -1176,7 +1173,7 @@ begin
   if (s.kind = skType) and not (efAllowType in flags) then
     liMessage(n.info, errATypeHasNoValue);
   case s.kind of
-    skProc, skIterator, skConverter: begin
+    skProc, skMethod, skIterator, skConverter: begin
       if (s.magic <> mNone) then
         liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
       result := symChoice(c, n, s);
@@ -1194,7 +1191,7 @@ begin
         copy `x`'s AST into each context, so that the type fixup phase can
         deal with two different ``[]``.
       *)
-      include(s.flags, sfUsed);
+      markUsed(n, s);
       if s.typ.kind in ConstAbstractTypes then begin
         result := copyTree(s.ast);
         result.info := n.info;
@@ -1208,7 +1205,7 @@ begin
     skMacro: result := semMacroExpr(c, n, s);
     skTemplate: result := semTemplateExpr(c, n, s);
     skVar: begin
-      include(s.flags, sfUsed);
+      markUsed(n, s);
       // if a proc accesses a global variable, it is not side effect free
       if sfGlobal in s.flags then include(c.p.owner.flags, sfSideEffect);
       result := newSymNode(s);
@@ -1219,12 +1216,11 @@ begin
       result := semExpr(c, s.ast);
     end
     else begin
-      include(s.flags, sfUsed);
+      markUsed(n, s);
       result := newSymNode(s);
       result.info := n.info;
     end
   end;
-  checkDeprecated(n, s);
 end;
 
 function semDotExpr(c: PContext; n: PNode; flags: TExprFlags): PNode;
@@ -1259,7 +1255,7 @@ begin
       if (s.kind = skType) and not (efAllowType in flags) then
         liMessage(n.info, errATypeHasNoValue);
       if (s.magic <> mNone) and
-          (s.kind in [skProc, skIterator, skConverter]) then
+          (s.kind in [skProc, skMethod, skIterator, skConverter]) then
         liMessage(n.info, errInvalidContextForBuiltinX, s.name.s); *)
       // because of the changed symbol binding, this does not mean that we
       // don't have to check the symbol for semantics here again!
@@ -1296,18 +1292,16 @@ begin
       checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
       if (s <> nil) then begin
-        checkDeprecated(n, s);
         case s.kind of
           skMacro: result := semMacroExpr(c, n, s);
           skTemplate: result := semTemplateExpr(c, n, s);
           skType: begin
-            include(s.flags, sfUsed);
             if n.kind <> nkCall then
               liMessage(n.info, errXisNotCallable, s.name.s);
             // XXX does this check make any sense?
             result := semConv(c, n, s);
           end;
-          skProc, skConverter, skIterator: begin
+          skProc, skMethod, skConverter, skIterator: begin
             if s.magic = mNone then result := semDirectOp(c, n, flags)
             else result := semMagic(c, n, s, flags);
           end;
@@ -1328,7 +1322,8 @@ begin
     nkBracketExpr: begin
       checkMinSonsLen(n, 1);
       s := qualifiedLookup(c, n.sons[0], false);
-      if (s <> nil) and (s.kind in [skProc, skConverter, skIterator]) then begin
+      if (s <> nil)
+      and (s.kind in [skProc, skMethod, skConverter, skIterator]) then begin
         // type parameters: partial generic specialization
         // XXX: too implement!
         internalError(n.info, 'explicit generic instantation not implemented');

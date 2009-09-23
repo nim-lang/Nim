@@ -32,21 +32,10 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-proc init*(cmdline: string = ""): TOptParser
+proc initOptParser*(cmdline = ""): TOptParser =
   ## inits the option parser. If ``cmdline == ""``, the real command line
   ## (as provided by the ``OS`` module) is taken.
-
-proc next*(p: var TOptParser)
-  ## parses the first or next option; ``p.kind`` describes what token has been
-  ## parsed. ``p.key`` and ``p.val`` are set accordingly.
-
-proc getRestOfCommandLine*(p: TOptParser): string
-  ## retrieves the rest of the command line that has not been parsed yet.
-
-# implementation
-
-proc init(cmdline: string = ""): TOptParser = 
-  result.pos = strStart
+  result.pos = 0
   result.inShortState = false
   if cmdline != "": 
     result.cmd = cmdline
@@ -57,6 +46,10 @@ proc init(cmdline: string = ""): TOptParser =
   result.kind = cmdEnd
   result.key = ""
   result.val = ""
+
+proc init*(cmdline: string = ""): TOptParser {.deprecated.} = 
+  ## **Deprecated since version 0.8.2**: Use `initOptParser` instead.
+  result = initOptParser(cmdline)
 
 proc parseWord(s: string, i: int, w: var string, 
                delim: TCharSet = {'\x09', ' ', '\0'}): int = 
@@ -89,7 +82,9 @@ proc handleShortOption(p: var TOptParser) =
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
-proc next(p: var TOptParser) = 
+proc next*(p: var TOptParser) = 
+  ## parses the first or next option; ``p.kind`` describes what token has been
+  ## parsed. ``p.key`` and ``p.val`` are set accordingly.
   var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
@@ -121,12 +116,17 @@ proc next(p: var TOptParser) =
     p.kind = cmdArgument
     p.pos = parseWord(p.cmd, i, p.key)
 
-proc getRestOfCommandLine(p: TOptParser): string = 
-  result = strip(copy(p.cmd, p.pos + strStart, len(p.cmd) - 1)) 
+proc cmdLineRest*(p: TOptParser): string = 
+  ## retrieves the rest of the command line that has not been parsed yet.
+  result = strip(copy(p.cmd, p.pos, len(p.cmd) - 1)) 
+
+proc getRestOfCommandLine*(p: TOptParser): string {.deprecated.} = 
+  ## **Deprecated since version 0.8.2**: Use `cmdLineRest` instead.
+  result = cmdLineRest(p) 
 
 iterator getopt*(): tuple[kind: TCmdLineKind, key, val: string] =
-  ##this is an convenience iterator for iterating over the command line.
-  ##This uses the TOptParser object. Example:
+  ## This is an convenience iterator for iterating over the command line.
+  ## This uses the TOptParser object. Example:
   ##
   ## .. code-block:: nimrod
   ##   var
@@ -143,7 +143,7 @@ iterator getopt*(): tuple[kind: TCmdLineKind, key, val: string] =
   ##   if filename == "":
   ##     # no filename has been given, so we show the help:
   ##     writeHelp()
-  var p = init()
+  var p = initOptParser()
   while true:
     next(p)
     if p.kind == cmdEnd: break

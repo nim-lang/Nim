@@ -1357,7 +1357,7 @@ given *slicelist* the ``else`` part is executed. If there is no ``else``
 part and not all possible values that ``expr`` can hold occur in a ``vallist``,
 a static error is given. This holds only for expressions of ordinal types.
 If the expression is not of an ordinal type, and no ``else`` part is
-given, control just passes after the ``case`` statement.
+given, control passes after the ``case`` statement.
 
 To suppress the static error in the ordinal case an ``else`` part with a ``nil``
 statement can be used.
@@ -1604,7 +1604,9 @@ statement is syntactic sugar for a nested block:
     continue
     stmt2
 
-  # is equivalent to:
+Is equivalent to:
+
+.. code-block:: nimrod
   while expr1:
     block myBlockName:
       stmt1
@@ -1669,7 +1671,7 @@ object on the stack and can thus reference a non-existing object.
 
 Procedures
 ~~~~~~~~~~
-What most programming languages call `methods`:idx: or `funtions`:idx: are
+What most programming languages call `methods`:idx: or `functions`:idx: are
 called `procedures`:idx: in Nimrod (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
 of code. A procedure may call itself recursively. The syntax is::

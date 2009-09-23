@@ -51,8 +51,8 @@ that its extension should be ``.cfg``.
 Command line settings have priority over configuration file settings.
 
 
-Nimrod's directory structure
-----------------------------
+Generated C code directory
+--------------------------
 The generated files that Nimrod produces all go into a subdirectory called
 ``nimcache`` in your project directory. This makes it easy to delete all
 generated files.
@@ -116,7 +116,7 @@ No_decl Pragma
 The `no_decl`:idx: pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nimrod that it should not generate a declaration for the symbol in
-the C code. Thus it makes the following possible, for example:
+the C code. For example:
 
 .. code-block:: Nimrod
   var
@@ -129,12 +129,12 @@ However, the ``header`` pragma is often the better alternative.
 Header Pragma
 ~~~~~~~~~~~~~
 The `header`:idx: pragma is very similar to the ``no_decl`` pragma: It can be
-applied to almost any symbol and specifies that not only it should not be
-declared but also that it leads to the inclusion of a given header file:
+applied to almost any symbol and specifies that it should not be declared 
+and instead the generated code should contain an ``#include``:
 
 .. code-block:: Nimrod
   type
-    PFile {.importc: "FILE*", header: "<stdio.h>".} = pointer
+    PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
       # import C's FILE* type; Nimrod will treat it as a new pointer type
 
 The ``header`` pragma expects always a string constant. The string contant
@@ -159,7 +159,7 @@ strings automatically:
 Line_dir Option
 ~~~~~~~~~~~~~~~
 The `line_dir`:idx: option can be turned on or off. If on the generated C code
-contains ``#line`` directives.
+contains ``#line`` directives. This may be helpful for debugging with GDB.
 
 
 Stack_trace Option
@@ -198,7 +198,7 @@ Register Pragma
 The `register`:idx: pragma is for variables only. It declares the variable as
 ``register``, giving the compiler a hint that the variable should be placed
 in a hardware register for faster access. C compilers usually ignore this
-though and for good reason: Often they do a better job without it anyway.
+though and for good reasons: Often they do a better job without it anyway.
 
 In highly specific cases (a dispatch loop of an bytecode interpreter for
 example) it may provide benefits, though.
@@ -228,7 +228,7 @@ memory, but nothing worse happens.
 Dead_code_elim Pragma
 ~~~~~~~~~~~~~~~~~~~~~
 The `dead_code_elim`:idx: pragma only applies to whole modules: It tells the
-compiler to active (or deactivate) dead code elimination for the module the
+compiler to activate (or deactivate) dead code elimination for the module the
 pragma appers in.
 
 The ``--dead_code_elim:on`` command line switch has the same effect as marking
@@ -288,9 +288,9 @@ Optimizing string handling
 String assignments are sometimes expensive in Nimrod: They are required to
 copy the whole string. However, the compiler is often smart enough to not copy
 strings. Due to the argument passing semantics, strings are never copied when
-passed to subroutines. The compiler does not copy strings that are returned by
-a routine, because a routine returns a new string anyway. Thus it is efficient
-to do:
+passed to subroutines. The compiler does not copy strings that are result from
+a procedure call, because the called procedure returns a new string anyway.
+Thus it is efficient to do:
 
 .. code-block:: Nimrod
   var s = procA() # assignment will not copy the string; procA allocates a new

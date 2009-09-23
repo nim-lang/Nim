@@ -36,15 +36,27 @@ type
                          ## often creates a security whole!
     poStdErrToStdOut     ## merge stdout and stderr to the stdout stream
 
-proc executeProcess*(command: string,
-                     options: set[TProcessOption] = {poStdErrToStdOut,
-                                                     poUseShell}): string
+proc execProcess*(command: string,
+                  options: set[TProcessOption] = {poStdErrToStdOut,
+                                                  poUseShell}): string
   ## A convience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
 
-proc executeCommand*(command: string): int
+proc executeProcess*(command: string,
+                     options: set[TProcessOption] = {poStdErrToStdOut,
+                                                     poUseShell}): string {.
+                                                     deprecated.} =
+  ## **Deprecated since version 0.8.2**: Use `execProcess` instead.
+  result = execProcess(command, options)
+
+proc execCmd*(command: string): int
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process.
+
+proc executeCommand*(command: string): int {.deprecated.} =
+  ## **Deprecated since version 0.8.2**: Use `execCmd` instead.
+  result = execCmd(command)
+  
 
 proc startProcess*(command: string,
                    workingDir: string = "",
@@ -56,11 +68,12 @@ proc startProcess*(command: string,
   ## is used. `args` are the command line arguments that are passed to the
   ## process. On many operating systems, the first command line argument is the
   ## name of the executable. `args` should not contain this argument!
-  ## `startProcess` takes care of that. `env` is the environment that will be
-  ## passed to the process. If ``env == nil`` the environment is inherited of
+  ## `env` is the environment that will be passed to the process.
+  ## If ``env == nil`` the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
   ## to `startProcess`. See the documentation of ``TProcessOption`` for the
   ## meaning of these flags.
+  ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
 
@@ -104,9 +117,9 @@ proc outputStream*(p: PProcess): PStream
 proc errorStream*(p: PProcess): PStream
   ## returns ``p``'s output stream for reading from
 
-proc executeProcess*(command: string,
-                     options: set[TProcessOption] = {poStdErrToStdOut,
-                                                     poUseShell}): string =
+proc execProcess(command: string,
+                 options: set[TProcessOption] = {poStdErrToStdOut,
+                                                 poUseShell}): string =
   var c = parseCmdLine(command)
   var a: seq[string] = @[] # slicing is not yet implemented :-(
   for i in 1 .. c.len-1: add(a, c[i])
@@ -208,24 +221,24 @@ when defined(Windows):
     SI.dwFlags = STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES
     CreatePipeHandles(SI.hStdInput, HI)
     CreatePipeHandles(HO, Si.hStdOutput)
-    #SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE())
-    #SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE())
     if poStdErrToStdOut in options:
       SI.hStdError = SI.hStdOutput
       HE = HO
     else:
       CreatePipeHandles(HE, Si.hStdError)
-      #SI.hStdError = GetStdHandle(STD_ERROR_HANDLE())
-    #result.inputHandle = open_osfhandle(HI, O_WRONLY)
-    #if result.inputHandle == -1'i32: OSError()
     result.inputHandle = hi
     result.outputHandle = ho
     result.errorHandle = he
-    #result.outputHandle = open_osfhandle(HO, O_RDONLY)
-    #if result.outputHandle == -1'i32: OSError()
-    #result.errorHandle = open_osfhandle(HE, O_RDONLY)
-    #if result.errorHandle == -1'i32: OSError()
-    var cmdl = buildCommandLine(command, args)
+    var cmdl: cstring
+    if poUseShell in options:
+      var comspec = getEnv("COMSPEC")
+      var a: seq[string] = @[]
+      add(a, "/c")
+      add(a, command)
+      add(a, args)
+      cmdl = buildCommandLine(comspec, a)
+    else:
+      cmdl = buildCommandLine(command, args)
     var wd: cstring = nil
     if len(workingDir) > 0: wd = workingDir
     if env == nil:
@@ -239,6 +252,9 @@ when defined(Windows):
     dealloc(cmdl)
     if success == 0:
       OSError()
+    # NEW:
+    # Close the handles now so anyone waiting is woken.
+    discard closeHandle(procInfo.hThread)
     result.FProcessHandle = procInfo.hProcess
     result.FThreadHandle = procInfo.hThread
     result.id = procInfo.dwProcessID
@@ -258,7 +274,7 @@ when defined(Windows):
       discard TerminateProcess(p.FProcessHandle, 0)
 
   proc waitForExit(p: PProcess): int =
-    discard CloseHandle(p.FThreadHandle)
+    #CloseHandle(p.FThreadHandle)
     discard WaitForSingleObject(p.FProcessHandle, Infinite)
     var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
@@ -274,7 +290,7 @@ when defined(Windows):
   proc errorStream(p: PProcess): PStream =
     result = newFileHandleStream(p.errorHandle)
 
-  proc executeCommand(command: string): int = 
+  proc execCmd(command: string): int = 
     var
       SI: TStartupInfo
       ProcInfo: TProcessInformation
@@ -420,8 +436,8 @@ else:
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
 
-  proc executeCommand(command: string): int = 
+  proc execCmd(command: string): int = 
     result = csystem(command)
 
 when isMainModule:
-  echo executeCommand("gcc -v")
+  echo execCmd("gcc -v")

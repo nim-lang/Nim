@@ -138,7 +138,7 @@ proc getEscapedChar(c: var TCfgParser, tok: var TToken) =
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 
-    add(tok.literal, nl)
+    add(tok.literal, "\n")
     Inc(c.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')
@@ -208,7 +208,7 @@ proc getString(c: var TCfgParser, tok: var TToken, rawMode: bool) =
       of '\c', '\L': 
         pos = HandleCRLF(c, pos)
         buf = c.buf
-        add(tok.literal, nl)
+        add(tok.literal, "\n")
       of lexbase.EndOfFile: 
         tok.kind = tkInvalid
         break 
@@ -302,7 +302,7 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
   
 proc errorStr(c: TCfgParser, msg: string): string = 
   result = `%`("$1($2, $3) Error: $4", 
-               [c.filename, toString(getLine(c)), toString(getColumn(c)), msg])
+               [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent = 
   if c.tok.kind == tkSymbol: 

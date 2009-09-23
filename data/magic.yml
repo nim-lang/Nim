@@ -165,7 +165,6 @@
 'AppendStrCh',
 'AppendStrStr',
 'AppendSeqElem',
-'AppendSeqSeq',
 'InRange',
 'InSet',
 'Repr',

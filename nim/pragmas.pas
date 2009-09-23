@@ -30,6 +30,7 @@ const
     wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow];
   converterPragmas = procPragmas;
+  methodPragmas = procPragmas;
   macroPragmas = {@set}[FirstCallConv..LastCallConv,
     wImportc, wExportc, wNodecl, wMagic, wNosideEffect,
     wCompilerProc, wDeprecated, wTypeCheck];
@@ -42,7 +43,7 @@ const
     wHint, wWarning, wError, wFatal, wDefine, wUndef,
     wCompile, wLink, wLinkSys, wPure,
     wPush, wPop, wBreakpoint, wCheckpoint,
-    wPassL, wPassC, wDeadCodeElim];
+    wPassL, wPassC, wDeadCodeElim, wDeprecated];
   lambdaPragmas = {@set}[FirstCallConv..LastCallConv,
     wImportc, wExportc, wNodecl, wNosideEffect, wSideEffect, 
     wNoreturn, wDynLib, wHeader, wPure, wDeprecated];
@@ -545,7 +546,8 @@ begin
           end;
           wDeprecated: begin
             noVal(it);
-            include(sym.flags, sfDeprecated);
+            if sym <> nil then include(sym.flags, sfDeprecated)
+            else include(c.module.flags, sfDeprecated);
           end;
           wVarargs: begin
             noVal(it);

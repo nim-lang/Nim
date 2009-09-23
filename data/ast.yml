@@ -182,6 +182,7 @@
 
   'nkModule',             # the syntax tree of a module
   'nkProcDef',            # a proc
+  'nkMethodDef',          # a method
   'nkConverterDef',       # a converter
   'nkMacroDef',           # a macro
   'nkTemplateDef',        # a template
@@ -258,6 +259,7 @@
   'skConst',              # a constant
   'skVar',                # a variable
   'skProc',               # a proc
+  'skMethod',             # a method
   'skIterator',           # an iterator
   'skConverter',          # a type converter
   'skMacro',              # a macro

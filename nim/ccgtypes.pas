@@ -47,7 +47,7 @@ begin
   if result = nil then begin
     if gCmd = cmdCompileToLLVM then begin
       case s.kind of
-        skProc, skConverter, skConst: result := toRope('@'+'');
+        skProc, skMethod, skConverter, skConst: result := toRope('@'+'');
         skVar: begin
           if (sfGlobal in s.flags) then result := toRope('@'+'')
           else result := toRope('%'+'');
@@ -1026,15 +1026,15 @@ begin
     tyEmpty: result := toRope('0'+'');
     tyPointer, tyProc, tyBool, tyChar, tyCString, tyString,
     tyInt..tyFloat128, tyVar:
-      genTypeInfoAuxBase(gmti, t, result, toRope('0'+''));
-    tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gmti, t, result);
-    tyArrayConstr, tyArray: genArrayInfo(gmti, t, result);
-    tySet: genSetInfo(gmti, t, result);
-    tyEnum: genEnumInfo(gmti, t, result);
-    tyObject: genObjectInfo(gmti, t, result);
+      genTypeInfoAuxBase(gNimDat, t, result, toRope('0'+''));
+    tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gNimDat, t, result);
+    tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result);
+    tySet: genSetInfo(gNimDat, t, result);
+    tyEnum: genEnumInfo(gNimDat, t, result);
+    tyObject: genObjectInfo(gNimDat, t, result);
     tyTuple: begin
-      if t.n <> nil then genObjectInfo(gmti, t, result)
-      else genTupleInfo(gmti, t, result);
+      if t.n <> nil then genObjectInfo(gNimDat, t, result)
+      else genTupleInfo(gNimDat, t, result);
     end;
     else InternalError('genTypeInfo(' + typekindToStr[t.kind] + ')');
   end

@@ -56,6 +56,12 @@ begin
   result.info := n.info;
 end;
 
+procedure markUsed(n: PNode; s: PSym);
+begin
+  include(s.flags, sfUsed);
+  if sfDeprecated in s.flags then liMessage(n.info, warnDeprecated, s.name.s);  
+end;
+
 function semIdentVis(c: PContext; kind: TSymKind; n: PNode;
                      const allowed: TSymFlags): PSym; forward;
 // identifier with visability
@@ -130,7 +136,7 @@ var
   p: PEvalContext;
   s: PStackFrame;
 begin
-  include(sym.flags, sfUsed);
+  markUsed(n, sym);
   p := newEvalContext(c.module, '', false);
   s := newStackFrame();
   s.call := n;
@@ -179,7 +185,8 @@ begin
     it := c.generics.sons[i].sons[1];
     if it.kind <> nkSym then InternalError('addCodeForGenerics');
     prc := it.sym;
-    if (prc.kind in [skProc, skConverter]) and (prc.magic = mNone) then begin
+    if (prc.kind in [skProc, skMethod, skConverter])
+    and (prc.magic = mNone) then begin
       if (prc.ast = nil) or (prc.ast.sons[codePos] = nil) then 
         InternalError(prc.info, 'no code for ' + prc.name.s);
       addSon(n, prc.ast);

@@ -483,7 +483,7 @@ proc errorStr(L: TSqlLexer, msg: string): string =
 # OR              	left	        logical disjunction
 
 type
-  TSqlNodeKind* = enum
+  TSqlNodeKind* = enum ## kind of SQL abstract syntax tree
     nkNone,
     nkIdent,
     nkStringLit,
@@ -536,17 +536,18 @@ type
     nkEnumDef
     
 type
-  EInvalidSql* = object of EBase    
-  PSqlNode* = ref TSqlNode
-  TSqlNode* = object
-    case kind*: TSqlNodeKind
+  EInvalidSql* = object of EBase  ## Invalid SQL encountered
+  PSqlNode* = ref TSqlNode        ## an SQL abstract syntax tree node
+  TSqlNode* = object              ## an SQL abstract syntax tree node
+    case kind*: TSqlNodeKind      ## kind of syntax tree
     of nkIdent, nkStringLit, nkBitStringLit, nkHexStringLit,
                 nkIntegerLit, nkNumericLit:
-      strVal*: string
+      strVal*: string             ## AST leaf: the identifier, numeric literal
+                                  ## string literal, etc.
     else:
-      sons*: seq[PSqlNode]
+      sons*: seq[PSqlNode]        ## the node's children
 
-  TSqlParser = object of TSqlLexer
+  TSqlParser* = object of TSqlLexer ## SQL parser object
     tok: TToken
 
 proc newNode(k: TSqlNodeKind): PSqlNode =
@@ -1070,7 +1071,17 @@ proc parseStmt(p: var TSqlParser): PSqlNode =
   else:
     sqlError(p, "CREATE expected")
 
-proc parse*(p: var TSqlParser): PSqlNode =
+proc open(p: var TSqlParser, input: PStream, filename: string) =
+  ## opens the parser `p` and assigns the input stream `input` to it.
+  ## `filename` is only used for error messages.
+  open(TSqlLexer(p), input, filename)
+  p.tok.kind = tkInvalid
+  p.tok.literal = ""
+  getTok(p)
+  
+proc parse(p: var TSqlParser): PSqlNode =
+  ## parses the content of `p`'s input stream and returns the SQL AST.
+  ## Syntax errors raise an `EInvalidSql` exception.
   result = newNode(nkStmtList)
   while p.tok.kind != tkEof:
     var s = parseStmt(p)
@@ -1078,21 +1089,21 @@ proc parse*(p: var TSqlParser): PSqlNode =
     result.add(s)
   if result.len == 1:
     result = result.sons[0]
-
-proc open*(p: var TSqlParser, input: PStream, filename: string) =
-  open(TSqlLexer(p), input, filename)
-  p.tok.kind = tkInvalid
-  p.tok.literal = ""
-  getTok(p)
   
-proc close*(p: var TSqlParser) = 
+proc close(p: var TSqlParser) =
+  ## closes the parser `p`. The associated input stream is closed too.
   close(TSqlLexer(p))
 
 proc parseSQL*(input: PStream, filename: string): PSqlNode =
+  ## parses the SQL from `input` into an AST and returns the AST. 
+  ## `filename` is only used for error messages.
+  ## Syntax errors raise an `EInvalidSql` exception.
   var p: TSqlParser
   open(p, input, filename)
-  result = parse(p)
-  close(p)
+  try:
+    result = parse(p)
+  finally:
+    close(p)
 
 proc ra(n: PSqlNode, s: var string, indent: int)
 
@@ -1114,7 +1125,7 @@ proc ra(n: PSqlNode, s: var string, indent: int) =
     if allCharsInSet(n.strVal, {'\33'..'\127'}):
       s.add(n.strVal)
     else:
-      s.add("\"" & replaceStr(n.strVal, "\"", "\"\"") & "\"")
+      s.add("\"" & replace(n.strVal, "\"", "\"\"") & "\"")
   of nkStringLit:
     s.add(escape(n.strVal, "e'", "'"))
   of nkBitStringLit:

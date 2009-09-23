@@ -61,7 +61,7 @@ const
     ('len',          'length'),
     ('setlength',    'setlen')
   );
-  nimReplacements: array [1..32] of TReplaceTuple = (
+  nimReplacements: array [1..34] of TReplaceTuple = (
     ('nimread',      'read'),
     ('nimwrite',     'write'),
     ('nimclosefile', 'close'),
@@ -96,7 +96,10 @@ const
     ('snil', 'nil'),
     ('tostringf', '$'+''),
     ('ttextfile', 'tfile'),
-    ('tbinaryfile', 'tfile') {,
+    ('tbinaryfile', 'tfile'),
+    ('strstart', '0'+''),
+    ('nl', '"\n"')
+    {,
     ('NL', '"\n"'),
     ('tabulator', '''\t'''),
     ('esc', '''\e'''),

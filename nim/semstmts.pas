@@ -316,7 +316,7 @@ var
 begin
   result := n;
   checkSonsLen(n, 1);
-  if not (c.p.owner.kind in [skConverter, skProc, skMacro]) then
+  if not (c.p.owner.kind in [skConverter, skMethod, skProc, skMacro]) then
     liMessage(n.info, errXNotAllowedHere, '''return''');
   if (n.sons[0] <> nil) then begin
     n.sons[0] := SemExprWithType(c, n.sons[0]);
@@ -970,11 +970,20 @@ begin
   result := semProcAux(c, n, skProc, procPragmas);
 end;
 
+function semMethod(c: PContext; n: PNode): PNode;
+begin
+  if not isTopLevel(c) then
+    liMessage(n.info, errXOnlyAtModuleScope, 'method');
+  result := semProcAux(c, n, skMethod, methodPragmas);
+end;
+
 function semConverterDef(c: PContext; n: PNode): PNode;
 var
   t: PType;
   s: PSym;
 begin
+  if not isTopLevel(c) then
+    liMessage(n.info, errXOnlyAtModuleScope, 'converter');
   checkSonsLen(n, codePos+1);
   if n.sons[genericParamsPos] <> nil then
     liMessage(n.info, errNoGenericParamsAllowedForX, 'converter');
@@ -1080,6 +1089,7 @@ begin
     nkPragma: pragma(c, c.p.owner, n, stmtPragmas);
     nkIteratorDef: result := semIterator(c, n);
     nkProcDef: result := semProc(c, n);
+    nkMethodDef: result := semMethod(c, n);
     nkConverterDef: result := semConverterDef(c, n);
     nkMacroDef: result := semMacroDef(c, n);
     nkTemplateDef: result := semTemplateDef(c, n);

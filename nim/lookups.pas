@@ -54,7 +54,7 @@ implementation
 function getSymRepr(s: PSym): string;
 begin
   case s.kind of
-    skProc, skConverter, skIterator: result := getProcHeader(s);
+    skProc, skMethod, skConverter, skIterator: result := getProcHeader(s);
     else result := s.name.s
   end
 end;
@@ -72,7 +72,7 @@ begin
       liMessage(s.info, errImplOfXexpected, getSymRepr(s))
     else if ([sfUsed, sfInInterface] * s.flags = []) and
             (optHints in s.options) then // BUGFIX: check options in s!
-      if not (s.kind in [skForVar, skParam, skUnknown]) then
+      if not (s.kind in [skForVar, skParam, skMethod, skUnknown]) then
         liMessage(s.info, hintXDeclaredButNotUsed, getSymRepr(s));
     s := NextIter(it, tab.stack[tab.tos-1]);
   end;

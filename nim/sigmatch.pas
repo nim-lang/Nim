@@ -103,7 +103,7 @@ begin
   candidates := '';
   sym := initOverloadIter(o, c, n.sons[0]);
   while sym <> nil do begin
-    if sym.kind in [skProc, skIterator, skConverter] then begin
+    if sym.kind in [skProc, skMethod, skIterator, skConverter] then begin
       add(candidates, getProcHeader(sym));
       add(candidates, nl)
     end;
@@ -709,7 +709,7 @@ begin
     best := -1;
     for i := 0 to sonsLen(arg)-1 do begin
       // iterators are not first class yet, so ignore them
-      if arg.sons[i].sym.kind in {@set}[skProc, skConverter] then begin
+      if arg.sons[i].sym.kind in {@set}[skProc, skMethod, skConverter] then begin
         copyCandidate(z, m);
         r := typeRel(z.bindings, f, arg.sons[i].typ);
         if r <> isNone then begin
@@ -734,7 +734,7 @@ begin
     end
     else begin
       // only one valid interpretation found:
-      include(arg.sons[best].sym.flags, sfUsed);
+      markUsed(arg, arg.sons[best].sym);
       result := ParamTypesMatchAux(c, m, f, arg.sons[best].typ, arg.sons[best]);
     end
   end
@@ -884,6 +884,19 @@ begin
   end
 end;
 
+function sameMethodDispatcher(a, b: PSym): bool;
+var
+  aa, bb: PNode;
+begin
+  result := false;
+  if (a.kind = skMethod) and (b.kind = skMethod) then begin
+    aa := lastSon(a.ast);
+    bb := lastSon(b.ast);
+    if (aa.kind = nkSym) and (bb.kind = nkSym) and
+      (aa.sym = bb.sym) then result := true
+  end
+end;
+
 function semDirectCall(c: PContext; n: PNode; filter: TSymKinds): PNode;
 var
   sym: PSym;
@@ -923,7 +936,8 @@ begin
     // do not generate an error yet; the semantic checking will check for
     // an overloaded () operator
   end
-  else if (y.state = csMatch) and (cmpCandidates(x, y) = 0) then begin
+  else if (y.state = csMatch) and (cmpCandidates(x, y) = 0)
+  and not sameMethodDispatcher(x.calleeSym, y.calleeSym) then begin
     if x.state <> csMatch then
       InternalError(n.info, 'x.state is not csMatch');
     //writeMatches(x);
@@ -935,7 +949,7 @@ begin
   end
   else begin
     // only one valid interpretation found:
-    include(x.calleeSym.flags, sfUsed);
+    markUsed(n, x.calleeSym);
     if x.calleeSym.ast = nil then
       internalError(n.info, 'calleeSym.ast is nil'); // XXX: remove this check!
     if x.calleeSym.ast.sons[genericParamsPos] <> nil then begin

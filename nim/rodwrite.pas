@@ -519,7 +519,7 @@ begin
       s := n.sons[namePos].sym;
       addInterfaceSym(w, s);    
     end; 
-    nkProcDef, nkIteratorDef, nkConverterDef: begin
+    nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef: begin
       s := n.sons[namePos].sym;
       if s = nil then InternalError(n.info, 'rodwrite.process');
       if (n.sons[codePos] <> nil) or (s.magic <> mNone)

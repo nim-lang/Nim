@@ -23,7 +23,7 @@
 ## Nimrod shall produce.
 
 import
-  strutils, regexprs, os, osproc, streams
+  strutils, pegs, os, osproc, streams
 
 const
   cmdTemplate = r"nimrod cc --hints:on $options $filename"
@@ -38,7 +38,7 @@ type
 
 proc myExec(cmd: string): string =
   #echo("Executing: " & cmd)
-  result = osproc.executeProcess(cmd)
+  result = osproc.execProcess(cmd)
   #echo("Received: " & result)
 
 proc parseTest(filename: string): TSpec =
@@ -49,23 +49,29 @@ proc parseTest(filename: string): TSpec =
   result.file = filename
   for s in lines(filename):
     inc(i)
-    if find(s, r"\#OUT\s*(.*)", matches):
-      result.outp = matches[1]
+    if contains(s, peg"'#OUT' \s+ {.*}", matches):
+      result.outp = matches[0]
       break
-    if find(s, r"\#ERROR_IN\s*(\S*)\s*(\d+)", matches):
-      result.file = matches[1]
-      result.line = parseInt(matches[2])
+    if contains(s, peg"'#ERROR_IN' \s* {\S*} \s* {\d+}", matches):
+      result.file = matches[0]
+      result.line = parseInt(matches[1])
       result.err = true
       break
-    if find(s, r"\#ERROR_MSG\s*(.*)", matches):
+    if contains(s, peg"'#ERROR_MSG' \s* {.*}", matches):
       result.line = i
-      result.outp = matches[1]
+      result.outp = matches[0]
       result.err = True
       break
-    if find(s, r"\#ERROR$", matches):
+    if contains(s, peg"'#ERROR' \s* !.", matches):
       result.line = i
       result.err = true
       break
+
+var
+  pegLineError = peg"{[^(]*} '(' {\d+} ', ' \d+ ') Error:' \s* {.*}"
+  pegOtherError = peg"'Error:' \s* {.*}"
+  pegSuccess = peg"'Hint: operation successful'.*"
+  pegOfInterest = pegLineError / pegOtherError / pegSuccess
 
 proc callCompiler(filename, options: string): TSpec =
   var c = parseCmdLine(cmdTemplate % ["filename", filename, "options", options])
@@ -77,52 +83,50 @@ proc callCompiler(filename, options: string): TSpec =
   var s = ""
   while running(p) or not outp.atEnd(outp):
     var x = outp.readLine()
-    if match(x, r"(.*)\((\d+), \d+\) Error\: (.*)") or
-       match(x, r"Error\: (.*)") or
-       match(x, r"Hint\: operation successful"):
+    if x =~ pegOfInterest:
       # `s` should contain the last error message
       s = x
   result.outp = ""
   result.puremsg = ""
   result.file = ""
   result.err = true
-  if s =~ r"(.*)\((\d+), \d+\) Error\: (.*)":
-    result.file = matches[1]
-    result.line = parseInt(matches[2])
-    result.outp = matches[0]
-    result.puremsg = matches[3]
-  elif s =~ r"Error\: (.*)":
-    result.puremsg = matches[1]
-    result.outp = matches[0]
+  if s =~ pegLineError:
+    result.file = matches[0]
+    result.line = parseInt(matches[1])
+    result.outp = s
+    result.puremsg = matches[2]
+  elif s =~ pegOtherError:
+    result.puremsg = matches[0]
+    result.outp = s
     result.line = 1
-  elif s =~ r"Hint\: operation successful":
-    result.outp = matches[0]
+  elif s =~ pegSuccess:
+    result.outp = s
     result.err = false
 
-proc cmpResults(filename: string, spec, comp: TSpec): bool =
+proc sameResults(filename: string, spec, comp: TSpec): bool =
   # short filename for messages (better readability):
   var shortfile = os.extractFilename(filename)
 
   if comp.err and comp.outp == "":
     # the compiler did not say "[Error]" nor "operation sucessful"
-    Echo("[Tester] $1 -- FAILED; COMPILER BROKEN" % shortfile)
+    Echo("[Tester] $# -- FAILED; COMPILER BROKEN" % shortfile)
   elif spec.err != comp.err:
-    Echo(("[Tester] $1 -- FAILED\n" &
-         "Compiler says: $2\n" &
-         "But specification says: $3") %
+    Echo(("[Tester] $# -- FAILED\n" &
+         "Compiler says: $#\n" &
+         "But specification says: $#") %
          [shortfile, comp.outp, spec.outp])
   elif spec.err:
     if extractFilename(comp.file) != extractFilename(spec.file):
-      Echo(("[Tester] $1 -- FAILED: file names do not match:\n" &
-           "Compiler: $2\nSpec: $3") % [shortfile, comp.file, spec.file])
+      Echo(("[Tester] $# -- FAILED: file names do not match:\n" &
+           "Compiler: $#\nSpec: $#") % [shortfile, comp.file, spec.file])
     elif strip(spec.outp) notin strip(comp.puremsg):
-      Echo(("[Tester] $1 -- FAILED: error messages do not match:\n" &
-           "Compiler: $2\nSpec: $3") % [shortfile, comp.pureMsg, spec.outp])
+      Echo(("[Tester] $# -- FAILED: error messages do not match:\n" &
+           "Compiler: $#\nSpec: $#") % [shortfile, comp.pureMsg, spec.outp])
     elif comp.line != spec.line:
-      Echo(("[Tester] $1 -- FAILED: line numbers do not match:\n" &
-           "Compiler: $2\nSpec: $3") % [shortfile, $comp.line, $spec.line])
+      Echo(("[Tester] $# -- FAILED: line numbers do not match:\n" &
+           "Compiler: $#\nSpec: $#") % [shortfile, $comp.line, $spec.line])
     else:
-      Echo("[Tester] $1 -- OK" % shortfile)
+      Echo("[Tester] $# -- OK" % shortfile)
       result = true
   else:
     # we have to run the executable and check its output:
@@ -131,17 +135,17 @@ proc cmpResults(filename: string, spec, comp: TSpec): bool =
       if len(spec.outp) == 0:
         # we have no output to validate against, but compilation succeeded,
         # so it's okay:
-        Echo("[Tester] $1 -- OK" % shortfile)
+        Echo("[Tester] $# -- OK" % shortfile)
         result = true
       else:
         var buf = myExec(exeFile)
         result = strip(buf) == strip(spec.outp)
         if result:
-          Echo("[Tester] $1 -- compiled program OK" % shortfile)
+          Echo("[Tester] $# -- compiled program OK" % shortfile)
         else:
-          Echo("[Tester] $1 -- compiled program FAILED" % shortfile)
+          Echo("[Tester] $# -- compiled program FAILED" % shortfile)
     else:
-      Echo("[Tester] $1 -- FAILED; executable not found" % shortfile)
+      Echo("[Tester] $# -- FAILED; executable not found" % shortfile)
 
 proc main(options: string) =
   # runs the complete testsuite
@@ -151,16 +155,17 @@ proc main(options: string) =
     if extractFilename(filename) == "tester.nim": continue
     var spec = parseTest(filename)
     var comp = callCompiler(filename, options)
-    if cmpResults(filename, spec, comp): inc(passed)
+    if sameResults(filename, spec, comp): inc(passed)
     inc(total)
-  # ensure that the examples at least compile
+  # ensure that the examples at least compiles
   for filename in os.walkFiles("examples/*.nim"):
-    if executeShellCommand(cmdTemplate %
-                          ["filename", filename, "options", options]) == 0:
-      inc(passed)
-    else:
-      var shortfile = os.extractFilename(filename)
+    var comp = callCompiler(filename, options)
+    var shortfile = os.extractFilename(filename)
+    if comp.err:
       Echo("[Tester] Example '$#' -- FAILED" % shortfile)
+    else:
+      Echo("[Tester] Example $# -- OK" % shortfile)
+      inc(passed)
     inc(total)
   Echo("[Tester] $#/$# tests passed\n" % [$passed, $total])
 

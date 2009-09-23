@@ -30,6 +30,8 @@ procedure registerCompilerProc(s: PSym);
 procedure InitSystem(var tab: TSymTab);
 procedure FinishSystem(const tab: TStrTable);
 
+function getSysSym(const name: string): PSym;
+
 implementation
 
 var
@@ -48,14 +50,16 @@ begin
   result.align := size;
 end;
 
-function sysTypeFromName(const name: string): PType;
-var
-  s: PSym;
+function getSysSym(const name: string): PSym;
 begin
-  s := StrTableGet(systemModule.tab, getIdent(name));
-  if s = nil then rawMessage(errSystemNeeds, name);
-  if s.kind = skStub then loadStub(s); 
-  result := s.typ;
+  result := StrTableGet(systemModule.tab, getIdent(name));
+  if result = nil then rawMessage(errSystemNeeds, name);
+  if result.kind = skStub then loadStub(result); 
+end;
+
+function sysTypeFromName(const name: string): PType;
+begin
+  result := getSysSym(name).typ;
 end;
 
 function getSysType(const kind: TTypeKind): PType;

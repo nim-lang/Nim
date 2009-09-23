@@ -232,7 +232,7 @@ function semTypeIdent(c: PContext; n: PNode): PSym;
 begin
   result := qualifiedLookup(c, n, true);
   if (result <> nil) then begin
-    include(result.flags, sfUsed);
+    markUsed(n, result);
     if result.kind <> skType then liMessage(n.info, errTypeExpected);
   end
   else
@@ -792,7 +792,7 @@ begin
           assignType(prev, t);
           result := prev;
         end;
-        include(n.sym.flags, sfUsed); // BUGFIX
+        markUsed(n, n.sym);
       end
       else
         liMessage(n.info, errTypeExpected);

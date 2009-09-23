@@ -56,7 +56,7 @@ begin
     nkStmtList: begin
       for i := 0 to sonsLen(n)-1 do {@discard} cleanup(c, n.sons[i]);
     end;
-    nkProcDef: begin
+    nkProcDef, nkMethodDef: begin
       if (n.sons[namePos].kind = nkSym) then begin
         s := n.sons[namePos].sym;
         if not (sfDeadCodeElim in getModule(s).flags) and

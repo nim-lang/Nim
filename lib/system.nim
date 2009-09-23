@@ -13,9 +13,6 @@
 ## Each module implicitly imports the System module; it may not be listed
 ## explicitly. Because of this there can not be a user-defined module named
 ## ``system``.
-##
-##   *The good thing about reinventing the wheel is that you can get a
-##   round one.*
 
 {.push hints: off.}
 
@@ -58,11 +55,10 @@ proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-proc definedInScope*[T](x: T, scope=0): bool {.
+proc definedInScope*[T](x: T): bool {.
   magic: "DefinedInScope", noSideEffect.}
   ## Special comile-time procedure that checks whether `x` is
-  ## defined in the scope `scope`. `x` has to be an identifier.
-  ## 0 means the current scope, 1 means the scope above the current scope, etc.
+  ## defined in the current scope. `x` has to be an identifier.
 
 # these require compiler magic:
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
@@ -617,6 +613,27 @@ proc `@` * [IDX, T](a: array[IDX, T]): seq[T] {.
   ## sequences with the array constructor: ``@[1, 2, 3]`` has the type 
   ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``. 
 
+proc setLen*[T](s: var seq[T], newlen: int) {.
+  magic: "SetLengthSeq", noSideEffect.}
+  ## sets the length of `s` to `newlen`.
+  ## ``T`` may be any sequence type.
+  ## If the current length is greater than the new length,
+  ## ``s`` will be truncated.
+
+proc setLen*(s: var string, newlen: int) {.
+  magic: "SetLengthStr", noSideEffect.}
+  ## sets the length of `s` to `newlen`.
+  ## If the current length is greater than the new length,
+  ## ``s`` will be truncated.
+
+proc newString*(len: int): string {.
+  magic: "NewString", importc: "mnewString", noSideEffect.}
+  ## returns a new string of length ``len`` but with uninitialized
+  ## content. One needs to fill the string character after character
+  ## with the index operator ``s[i]``. This procedure exists only for
+  ## optimization purposes; the same effect can be achieved with the
+  ## ``&`` operator.
+
 # concat operator:
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
@@ -651,12 +668,15 @@ else:
     """
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
-proc add *[T](x: var seq[T], y: seq[T]) {.magic: "AppendSeqSeq", noSideEffect.}
+proc add *[T](x: var seq[T], y: seq[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nimrod naming scheme is
   ## respected.
+  var xl = x.len
+  setLen(x, xl + y.len)
+  for i in 0..high(y): x[xl+i] = y[i]
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nimrod variable and returns its string representation. It
@@ -798,20 +818,6 @@ proc copy*(s: string, first, last: int): string {.
   ## the first and last characters that shall be copied. If ``last``
   ## is omitted, it is treated as ``high(s)``.
 
-proc setLen*(s: var string, newlen: int) {.
-  magic: "SetLengthStr", noSideEffect.}
-  ## sets the length of `s` to `newlen`.
-  ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
-
-proc newString*(len: int): string {.
-  magic: "NewString", importc: "mnewString", noSideEffect.}
-  ## returns a new string of length ``len`` but with uninitialized
-  ## content. One needs to fill the string character after character
-  ## with the index operator ``s[i]``. This procedure exists only for
-  ## optimization purposes; the same effect can be achieved with the
-  ## ``&`` operator.
-
 proc zeroMem*(p: Pointer, size: int) {.importc, noDecl.}
   ## overwrites the contents of the memory at ``p`` with the value 0.
   ## Exactly ``size`` bytes will be overwritten. Like any procedure
@@ -860,13 +866,6 @@ proc dealloc*(p: Pointer) {.noconv.}
   ## memory (or just freeing it twice!) a core dump may happen
   ## or other memory may be corrupted. So this procedure is really
   ## *unsafe*.
-
-proc setLen*[T](s: var seq[T], newlen: int) {.
-  magic: "SetLengthSeq", noSideEffect.}
-  ## sets the length of `s` to `newlen`.
-  ## ``T`` may be any sequence type.
-  ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
 
 proc assert*(cond: bool) {.magic: "Assert", noSideEffect.}
   ## provides a means to implement `programming by contracts` in Nimrod.
@@ -1195,6 +1194,10 @@ proc GC_unref*[T](x: seq[T]) {.magic: "GCunref".}
 proc GC_unref*(x: string) {.magic: "GCunref".}
   ## see the documentation of `GC_ref`.
 
+template accumulateResult*(iter: expr) =
+  ## helps to convert an iterator to a proc.
+  result = @[]
+  for x in iter: add(result, x)
 
 {.push checks: off, line_dir: off, debugger: off.}  
 # obviously we cannot generate checking operations here :-)

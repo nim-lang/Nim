@@ -8,6 +8,8 @@
 
 .. contents::
 
+  Abstraction is layering ignorance on top of reality. -- unknown
+
 
 Directory structure
 ===================
@@ -70,18 +72,6 @@ the same::
 
   nimrod cc boot.nim
   ./boot [-d:release]
-
-
-Coding Guidelines
-=================
-
-* Use CamelCase, not underscored_identifiers.
-* Indent with two spaces.
-* Max line length is 80 characters.
-* Provide spaces around binary operators if that enhances readability.
-* Use a space after a colon, but not before it.
-* Start types with a capital ``T``, unless they are pointers which start with
-  ``P``. 
 
 
 Pascal annotations

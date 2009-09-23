@@ -1285,14 +1285,14 @@ begin
   genAssignment(p, a, c, {@set}[]);
 end;
 
-procedure genIs(p: BProc; n: PNode; var d: TLoc);
+procedure genIs(p: BProc; x: PNode; typ: PType; var d: TLoc); overload;
 var
   a: TLoc;
   dest, t: PType;
   r, nilcheck: PRope;
 begin
-  initLocExpr(p, n.sons[1], a);
-  dest := skipTypes(n.sons[2].typ, abstractPtrs);
+  initLocExpr(p, x, a);
+  dest := skipTypes(typ, abstractPtrs);
   useMagic(p.module, 'isObj');
   r := rdLoc(a);
   nilCheck := nil;
@@ -1313,7 +1313,12 @@ begin
   else
     r := ropef('isObj($1.m_type, $2)',
       [r, genTypeInfo(p.module, dest)]);
-  putIntoDest(p, d, n.typ, r);
+  putIntoDest(p, d, getSysType(tyBool), r);
+end;
+
+procedure genIs(p: BProc; n: PNode; var d: TLoc); overload;
+begin
+  genIs(p, n.sons[1], n.sons[2].typ, d);
 end;
 
 procedure genNewFinalize(p: BProc; e: PNode);
@@ -1330,14 +1335,14 @@ begin
   // This is a little hack: 
   // XXX this is also a bug, if the finalizer expression produces side-effects
   oldModule := p.module;
-  p.module := gmti;
+  p.module := gNimDat;
   InitLocExpr(p, e.sons[2], f);
   p.module := oldModule;
   
   initLoc(b, locExpr, a.t, OnHeap);
   ti := genTypeInfo(p.module, refType);
   
-  appf(gmti.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
+  appf(gNimDat.s[cfsTypeInit3], '$1->finalizer = (void*)$2;$n', [
     ti, rdLoc(f)]);
   b.r := ropef('($1) newObj($2, sizeof($3))',
            [getTypeDesc(p.module, refType), ti,
@@ -2164,6 +2169,16 @@ begin
     nkSym: begin
       sym := e.sym;
       case sym.Kind of
+        skMethod: begin
+          if sym.ast.sons[codePos] = nil then begin
+            // we cannot produce code for the dispatcher yet:
+            fillProcLoc(sym);
+            genProcPrototype(p.module, sym);
+          end
+          else
+            genProc(p.module, sym);
+          putLocIntoDest(p, d, sym.loc);
+        end;
         skProc, skConverter: begin
           genProc(p.module, sym);
           if ((sym.loc.r = nil) or (sym.loc.t = nil)) then

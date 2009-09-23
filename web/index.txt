@@ -52,6 +52,7 @@ Nimrod is efficient
   from pointers to manually managed memory.
 * Zero-overhead iterators.
 * Cross-module inlining.
+* Dynamic method binding with inlining and without virtual method table.
 * Compile time evaluation of user-defined functions.
 * Whole program dead code elimination: Only *used functions* are included in 
   the executable.
@@ -78,10 +79,8 @@ Nimrod is elegant
   Nimrod's syntax is flexible enough.
 * Yet Nimrod can be parsed with an LL(1) parser.
 * Statements are grouped by indentation but can span multiple lines.
-  Indentation must not contain tabulators so **the compiler always sees
-  the code the same way as you do**.
-* Nimrod is a simple language that leads to simple programs. However,
-  the language is not crippled in the name of simplicity.
+  Indentation must not contain tabulators so the compiler always sees
+  the code the same way as you do.
 
 
 Nimrod plays nice with others
@@ -97,10 +96,9 @@ Nimrod plays nice with others
 * Nimrod's documentation syntax is a subset of the wonderfully readable plaintext 
   markup syntax 
   `reStructuredText <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_.
-  **The documentation generator is very flexible; this website has been generated
-  with it!**
+  The documentation generator is very flexible; this website has been generated
+  with it!
   
-
 
 Roadmap to 1.0
 ==============

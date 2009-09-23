@@ -288,7 +288,7 @@ begin
       result.typ := n.typ;
     end;
     mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap,
-    mAppendStrCh, mAppendStrStr, mAppendSeqElem, mAppendSeqSeq,
+    mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mSetLengthStr, mSetLengthSeq, mNLen..mNError: begin end;
     else InternalError(a.info, 'evalOp(' +{&} magicToStr[m] +{&} ')');
   end
@@ -412,7 +412,7 @@ begin
           else            result := copyTree(s.ast); // BUGFIX
         end
       end
-      else if s.kind = skProc then // BUGFIX
+      else if s.kind in [skProc, skMethod] then // BUGFIX
         result := n
     end;
     nkCharLit..nkNilLit: result := copyNode(n);
