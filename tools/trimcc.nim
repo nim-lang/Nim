@@ -2,8 +2,9 @@
 
 import strutils, os
 
-proc newName(f: string): string = 
-  return extractDir(f) / "trim_" & extractFilename(f)
+proc newName(f: string): string =
+  var (dir, name, ext) = splitFile(f)
+  return dir / "trim_" & name & ext
 
 proc walker(dir: string) = 
   for kind, path in walkDir(dir):
@@ -11,7 +12,7 @@ proc walker(dir: string) =
     of pcFile:
       moveFile(newName(path), path)
       # test if installation still works:
-      if executeShellCommand(r"nimrod c --force_build tests\tlastmod") == 0:
+      if execShellCmd(r"nimrod c --force_build tests\tlastmod") == 0:
         echo "Optional: ", path
         removeFile(newName(path))
       else:

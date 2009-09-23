@@ -1717,7 +1717,7 @@ begin
     nkTypeSection, nkCommentStmt, nkIteratorDef,
     nkIncludeStmt, nkImportStmt,
     nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: begin end;
-    nkProcDef, nkConverterDef: begin
+    nkProcDef, nkMethodDef, nkConverterDef: begin
       if (n.sons[genericParamsPos] = nil) then begin
         prc := n.sons[namePos].sym;
         if (n.sons[codePos] <> nil) and not (lfNoDecl in prc.loc.flags) then

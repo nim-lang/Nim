@@ -264,18 +264,37 @@ begin
         while not (g.buf[pos] in [#0, #10, #13]) do inc(pos);
       end;
       'a'..'z', 'A'..'Z', '_', #128..#255: begin
-        if (g.buf[pos+1] = '"') and (g.buf[pos] in ['r', 'R']) then begin
-          g.kind := gtRawData;
-          inc(pos, 2);
-          while not (g.buf[pos] in [#0, '"', #10, #13]) do inc(pos);
-          if g.buf[pos] = '"' then inc(pos);
+        id := '';
+        while g.buf[pos] in scanner.SymChars+['_'] do begin
+          addChar(id, g.buf[pos]);
+          inc(pos)
+        end;
+        if (g.buf[pos] = '"') then begin
+          if (g.buf[pos+1] = '"') and (g.buf[pos+2] = '"') then begin
+            inc(pos, 3);
+            g.kind := gtLongStringLit;
+            while true do begin
+              case g.buf[pos] of
+                #0: break;
+                '"': begin
+                  inc(pos);
+                  if (g.buf[pos] = '"') and (g.buf[pos+1] = '"') then begin
+                    inc(pos, 2);
+                    break
+                  end
+                end;
+                else inc(pos);
+              end
+            end
+          end
+          else begin
+            g.kind := gtRawData;
+            inc(pos);
+            while not (g.buf[pos] in [#0, '"', #10, #13]) do inc(pos);
+            if g.buf[pos] = '"' then inc(pos);
+          end
         end
         else begin
-          id := '';
-          while g.buf[pos] in scanner.SymChars+['_'] do begin
-            addChar(id, g.buf[pos]);
-            inc(pos)
-          end;
           g.kind := nimGetKeyword(id);
         end
       end;

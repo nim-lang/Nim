@@ -1036,6 +1036,7 @@ begin
   case n.kind of
     nkCommentStmt:  app(d.modDesc, genComment(d, n));
     nkProcDef:      genItem(d, n, n.sons[namePos], skProc);
+    nkMethodDef:    genItem(d, n, n.sons[namePos], skMethod);
     nkIteratorDef:  genItem(d, n, n.sons[namePos], skIterator);
     nkMacroDef:     genItem(d, n, n.sons[namePos], skMacro);
     nkTemplateDef:  genItem(d, n, n.sons[namePos], skTemplate);

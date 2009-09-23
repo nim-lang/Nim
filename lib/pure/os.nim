@@ -363,7 +363,24 @@ proc `/` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``joinPath(head, tail)``
   return joinPath(head, tail)
 
-proc SplitPath*(path: string, head, tail: var string) {.noSideEffect.} =
+proc SplitPath*(path: string, head, tail: var string) {.noSideEffect,
+                                                        deprecated.} =
+  ## **Deprecated since version 0.8.2**: use the version that returns a tuple
+  ## instead
+  var
+    sepPos = -1
+  for i in countdown(len(path)-1, 0):
+    if path[i] in {dirsep, altsep}:
+      sepPos = i
+      break
+  if sepPos >= 0:
+    head = copy(path, 0, sepPos-1)
+    tail = copy(path, sepPos+1)
+  else:
+    head = ""
+    tail = path # make a string copy here
+
+proc SplitPath*(path: string): tuple[head, tail: string] {.noSideEffect.} =
   ## Splits a directory into (head, tail), so that
   ## ``JoinPath(head, tail) == path``.
   ##
@@ -378,11 +395,11 @@ proc SplitPath*(path: string, head, tail: var string) {.noSideEffect.} =
       sepPos = i
       break
   if sepPos >= 0:
-    head = copy(path, 0, sepPos-1)
-    tail = copy(path, sepPos+1)
+    result.head = copy(path, 0, sepPos-1)
+    result.tail = copy(path, sepPos+1)
   else:
-    head = ""
-    tail = path # make a string copy here
+    result.head = ""
+    result.tail = path
 
 proc parentDir*(path: string): string {.noSideEffect.} =
   ## Returns the parent directory of `path`.
@@ -422,25 +439,50 @@ proc searchExtPos(s: string): int =
     elif s[i] in {dirsep, altsep}:
       break # do not skip over path
 
-proc extractDir*(path: string): string {.noSideEffect.} =
+proc splitFile*(path: string): tuple[dir, name, ext: string] {.noSideEffect.} =
+  ## Splits a filename into (dir, filename, extension).
+  ## `dir` does not end in `DirSep`.
+  ## `extension` includes the leading dot.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nimrod
+  ## var (dir, name, ext) = splitFile("usr/local/nimrodc.html")
+  ## assert dir == "usr/local"
+  ## assert name == "nimrodc"
+  ## assert ext == ".html"
+  ## If `path` has no extension, `ext` is the empty string.
+  ## If `path` has no directory component, `dir` is the empty string.
+  ## If `path` has no filename component, `name` and `ext` are empty strings.
+  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
+    result = (path, "", "")
+  else:
+    var sepPos = -1
+    var dotPos = path.len
+    for i in countdown(len(path)-1, 0):
+      if path[i] == ExtSep:
+        if dotPos == path.len: dotPos = i
+      elif path[i] in {dirsep, altsep}:
+        sepPos = i
+        break
+    result.dir = copy(path, 0, sepPos-1)
+    result.name = copy(path, sepPos+1, dotPos-1)
+    result.ext = copy(path, dotPos)
+
+proc extractDir*(path: string): string {.noSideEffect, deprecated.} =
   ## Extracts the directory of a given path. This is almost the
   ## same as the `head` result of `splitPath`, except that
   ## ``extractDir("/usr/lib/") == "/usr/lib/"``.
-  if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
-    result = path
-  else:
-    var tail: string
-    splitPath(path, result, tail)
+  ## **Deprecated since version 0.8.2**: Use ``splitFile(path).dir`` instead.
+  result = splitFile(path).dir
 
 proc extractFilename*(path: string): string {.noSideEffect.} =
-  ## Extracts the filename of a given `path`. This is almost the
-  ## same as the `tail` result of `splitPath`, except that
-  ## ``extractFilename("/usr/lib/") == ""``.
+  ## Extracts the filename of a given `path`. This is the same as 
+  ## ``name & ext`` from ``splitFile(path)``.
   if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
     result = ""
   else:
-    var head: string
-    splitPath(path, head, result)
+    result = splitPath(path).tail
 
 proc expandFilename*(filename: string): string =
   ## Returns the full path of `filename`, raises EOS in case of an error.
@@ -457,13 +499,14 @@ proc expandFilename*(filename: string): string =
     c_free(res)
 
 proc SplitFilename*(filename: string, name, extension: var string) {.
-  noSideEffect.} = 
+  noSideEffect, deprecated.} = 
   ## Splits a filename into (name, extension), so that
   ## ``name & extension == filename``.
   ##
   ## Example: After ``SplitFilename("usr/local/nimrodc.html", name, ext)``,
   ## `name` is "usr/local/nimrodc" and `ext` is ".html".
-  ## It the file has no extension, extention is the empty string.
+  ## If the file has no extension, extension is the empty string.
+  ## **Deprecated since version 0.8.2**: Use ``splitFile(filename)`` instead.
   var extPos = searchExtPos(filename)
   if extPos >= 0:
     name = copy(filename, 0, extPos-1)
@@ -472,18 +515,19 @@ proc SplitFilename*(filename: string, name, extension: var string) {.
     name = filename # make a string copy here
     extension = ""
 
-proc extractFileExt*(filename: string): string {.noSideEffect.} =
+proc extractFileExt*(filename: string): string {.noSideEffect, deprecated.} =
   ## Extracts the file extension of a given `filename`. This is the
   ## same as the `extension` result of `splitFilename`.
-  var dummy: string
-  splitFilename(filename, dummy, result)
+  ## **Deprecated since version 0.8.2**: Use ``splitFile(filename).ext``
+  ## instead.
+  result = splitFile(filename).ext
 
-proc extractFileTrunk*(filename: string): string {.noSideEffect.} =
+proc extractFileTrunk*(filename: string): string {.noSideEffect, deprecated.} =
   ## Extracts the file name of a given `filename`. This removes any
   ## directory information and the file extension.
-  var dummy: string
-  splitFilename(extractFilename(filename), result, dummy)
-
+  ## **Deprecated since version 0.8.2**: Use ``splitFile(path).name`` instead.
+  result = splitFile(filename).name
+  
 proc ChangeFileExt*(filename, ext: string): string {.noSideEffect.} =
   ## Changes the file extension to `ext`.
   ##
@@ -496,8 +540,8 @@ proc ChangeFileExt*(filename, ext: string): string {.noSideEffect.} =
   if extPos < 0: result = filename & normExt(ext)
   else: result = copy(filename, 0, extPos-1) & normExt(ext)
 
-proc AppendFileExt*(filename, ext: string): string {.noSideEffect.} =
-  ## Appends the file extension `ext` to `filename`, unless
+proc addFileExt*(filename, ext: string): string {.noSideEffect.} =
+  ## Adds the file extension `ext` to `filename`, unless
   ## `filename` already has an extension.
   ##
   ## `Ext` should be given without the leading '.', because some
@@ -505,7 +549,12 @@ proc AppendFileExt*(filename, ext: string): string {.noSideEffect.} =
   ## (Although I know of none such beast.)
   var extPos = searchExtPos(filename)
   if extPos < 0: result = filename & normExt(ext)
-  else: result = filename #make a string copy here
+  else: result = filename
+
+proc AppendFileExt*(filename, ext: string): string {.
+  noSideEffect, deprecated.} =
+  ## **Deprecated since version 0.8.2**: Use `addFileExt` instead.
+  result = addFileExt(filename, ext)
 
 proc cmpPaths*(pathA, pathB: string): int {.noSideEffect.} =
   ## Compares two paths.
@@ -610,14 +659,18 @@ proc removeFile*(file: string) =
   ## Removes the `file`. If this fails, `EOS` is raised.
   if cremove(file) != 0'i32: OSError()
 
-proc executeShellCommand*(command: string): int =
+proc executeShellCommand*(command: string): int {.deprecated.} =
+  ## **Deprecated since version 0.8.2**: Use `execShellCmd` instead.
+  result = csystem(command)
+
+proc execShellCmd*(command: string): int =
   ## Executes a shell command.
   ##
   ## Command has the form 'program args' where args are the command
   ## line arguments given to program. The proc returns the error code
   ## of the shell when it has finished. The proc does not return until
   ## the process has finished. To execute a program without having a
-  ## shell involved, use the `executeProcess` proc of the `osproc`
+  ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
   result = csystem(command)
 
@@ -707,7 +760,16 @@ proc putEnv*(key, val: string) =
     if SetEnvironmentVariableA(key, val) == 0'i32:
       OSError()
 
-iterator iterOverEnvironment*(): tuple[key, value: string] =
+iterator iterOverEnvironment*(): tuple[key, value: string] {.deprecated.} =
+  ## Iterate over all environments variables. In the first component of the
+  ## tuple is the name of the current variable stored, in the second its value.
+  ## **Deprecated since version 0.8.2**: Use `envPairs` instead.
+  getEnvVarsC()
+  for i in 0..high(environment):
+    var p = find(environment[i], '=')
+    yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
+
+iterator envPairs*(): tuple[key, value: string] =
   ## Iterate over all environments variables. In the first component of the
   ## tuple is the name of the current variable stored, in the second its value.
   getEnvVarsC()
@@ -1039,7 +1101,6 @@ proc getApplicationFilename*(): string =
 
 proc getApplicationDir*(): string =
   ## Returns the directory of the application's executable.
-  var tail: string
-  splitPath(getApplicationFilename(), result, tail)
+  result = splitFile(getApplicationFilename()).dir
 
 {.pop.}

@@ -51,20 +51,21 @@ type
     nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, 
     nnkChckRange, nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, 
     nnkAsgn, nnkFastAsgn, nnkGenericParams, nnkFormalParams, 
-    nnkOfInherit, nnkModule, nnkProcDef, nnkConverterDef, 
-    nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
-    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
-    nnkAsmStmt, nnkPragma, nnkIfStmt, nnkWhenStmt, 
-    nnkForStmt, nnkWhileStmt, nnkCaseStmt, nnkVarSection, 
-    nnkConstSection, nnkConstDef, nnkTypeSection, nnkTypeDef, 
-    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
-    nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
-    nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
-    nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
-    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
-    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
-    nnkRefTy, nnkPtrTy, nnkVarTy, nnkDistinctTy, 
-    nnkProcTy, nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
+    nnkOfInherit, nnkModule, nnkProcDef, nnkMethodDef, 
+    nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, 
+    nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, 
+    nnkMacroStmt, nnkAsmStmt, nnkPragma, nnkIfStmt, 
+    nnkWhenStmt, nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
+    nnkVarSection, nnkConstSection, nnkConstDef, nnkTypeSection, 
+    nnkTypeDef, nnkYieldStmt, nnkTryStmt, nnkFinally, 
+    nnkRaiseStmt, nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, 
+    nnkBlockStmt, nnkDiscardStmt, nnkStmtList, nnkImportStmt, 
+    nnkFromStmt, nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, 
+    nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkTypeOfExpr, 
+    nnkObjectTy, nnkTupleTy, nnkRecList, nnkRecCase, 
+    nnkRecWhen, nnkRefTy, nnkPtrTy, nnkVarTy, 
+    nnkDistinctTy, nnkProcTy, nnkEnumTy, nnkEnumFieldDef, 
+    nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty, 
@@ -81,9 +82,10 @@ type
   TNimrodSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam, 
     nskGenericParam, nskTemp, nskType, nskConst, 
-    nskVar, nskProc, nskIterator, nskConverter, 
-    nskMacro, nskTemplate, nskField, nskEnumField, 
-    nskForVar, nskModule, nskLabel, nskStub
+    nskVar, nskProc, nskMethod, nskIterator, 
+    nskConverter, nskMacro, nskTemplate, nskField, 
+    nskEnumField, nskForVar, nskModule, nskLabel, 
+    nskStub
   TNimSymKinds* = set[TNimrodSymKind]
 #[[[end]]]
 

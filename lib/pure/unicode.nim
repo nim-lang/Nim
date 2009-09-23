@@ -12,9 +12,14 @@
 {.deadCodeElim: on.}
 
 type
-  TRune* = int ## type that can hold any Unicode character
-  TRune16* = int16 ## 16 bit Unicode character
+  irune = int # underlying type of TRune
+  TRune* = distinct irune   ## type that can hold any Unicode character
+  TRune16* = distinct int16 ## 16 bit Unicode character
   
+proc `<=%`*(a, b: TRune): bool {.borrow.}
+proc `<%`*(a, b: TRune): bool {.borrow.}
+proc `==`*(a, b: TRune): bool {.borrow.}
+
 template ones(n: expr): expr = ((1 shl n)-1)
 
 proc runeLen*(s: string): int =
@@ -28,77 +33,71 @@ proc runeLen*(s: string): int =
     else: assert(false)
     inc(result)
 
+proc runeLenAt*(s: string, i: int): int =
+  ## returns the number of bytes the rune starting at ``s[i]`` takes.
+  if ord(s[i]) <=% 127: result = 1
+  elif ord(s[i]) shr 5 == 0b110: result = 2
+  elif ord(s[i]) shr 4 == 0b1110: result = 3
+  elif ord(s[i]) shr 3 == 0b11110: result = 4
+  else: assert(false)
+
+template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
+  ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
+  ## `i` is incremented by the number of bytes that have been processed.
+  when not defined(ones):
+    template ones(n: expr): expr = ((1 shl n)-1)
+
+  if ord(s[i]) <=% 127:
+    result = TRune(ord(s[i]))
+    when doInc: inc(i)
+  elif ord(s[i]) shr 5 == 0b110:
+    assert(ord(s[i+1]) shr 6 == 0b10)
+    result = TRune((ord(s[i]) and ones(5)) shl 6 or (ord(s[i+1]) and ones(6)))
+    when doInc: inc(i, 2)
+  elif ord(s[i]) shr 4 == 0b1110:
+    assert(ord(s[i+1]) shr 6 == 0b10)
+    assert(ord(s[i+2]) shr 6 == 0b10)
+    result = TRune((ord(s[i]) and ones(4)) shl 12 or
+             (ord(s[i+1]) and ones(6)) shl 6 or
+             (ord(s[i+2]) and ones(6)))
+    when doInc: inc(i, 3)
+  elif ord(s[i]) shr 3 == 0b11110:
+    assert(ord(s[i+1]) shr 6 == 0b10)
+    assert(ord(s[i+2]) shr 6 == 0b10)
+    assert(ord(s[i+3]) shr 6 == 0b10)
+    result = TRune((ord(s[i]) and ones(3)) shl 18 or
+             (ord(s[i+1]) and ones(6)) shl 12 or
+             (ord(s[i+2]) and ones(6)) shl 6 or
+             (ord(s[i+3]) and ones(6)))
+    when doInc: inc(i, 4)
+  else:
+    assert(false)
+
 proc runeAt*(s: string, i: int): TRune =
   ## returns the unicode character in `s` at byte index `i`
-  if ord(s[i]) <=% 127:
-    result = ord(s[i])
-  elif ord(s[i]) shr 5 == 0b110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(5)) shl 6 or (ord(s[i+1]) and ones(6))
-  elif ord(s[i]) shr 4 == 0b1110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(4)) shl 12 or
-             (ord(s[i+1]) and ones(6)) shl 6 or
-             (ord(s[i+2]) and ones(6))
-  elif ord(s[i]) shr 3 == 0b11110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    assert(ord(s[i+3]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(3)) shl 18 or
-             (ord(s[i+1]) and ones(6)) shl 12 or
-             (ord(s[i+2]) and ones(6)) shl 6 or
-             (ord(s[i+3]) and ones(6))
-  else:
-    assert(false)
-
-template fastRuneAt(s, i, result: expr): stmt = 
-  if ord(s[i]) <=% 127:
-    result = ord(s[i])
-    inc(i)
-  elif ord(s[i]) shr 5 == 0b110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(5)) shl 6 or (ord(s[i+1]) and ones(6))
-    inc(i, 2)
-  elif ord(s[i]) shr 4 == 0b1110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(4)) shl 12 or
-             (ord(s[i+1]) and ones(6)) shl 6 or
-             (ord(s[i+2]) and ones(6))
-    inc(i, 3)
-  elif ord(s[i]) shr 3 == 0b11110:
-    assert(ord(s[i+1]) shr 6 == 0b10)
-    assert(ord(s[i+2]) shr 6 == 0b10)
-    assert(ord(s[i+3]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(3)) shl 18 or
-             (ord(s[i+1]) and ones(6)) shl 12 or
-             (ord(s[i+2]) and ones(6)) shl 6 or
-             (ord(s[i+3]) and ones(6))
-    inc(i, 4)
-  else:
-    assert(false)
+  fastRuneAt(s, i, result, false)
 
 proc toUTF8*(c: TRune): string = 
-  ## converts a character into its UTF8 representation
-  if c <=% 127:
+  ## converts a rune into its UTF8 representation
+  var i = irune(c)
+  if i <=% 127:
     result = newString(1)
-    result[0] = chr(c)
-  elif c <=% 0x07FF:
+    result[0] = chr(i)
+  elif i <=% 0x07FF:
     result = newString(2)
-    result[0] = chr(c shr 6 or 0b110_0000)
-    result[1] = chr(c and ones(6) or 0b10_000000)
-  elif c <=% 0xFFFF:
+    result[0] = chr(i shr 6 or 0b110_0000)
+    result[1] = chr(i and ones(6) or 0b10_000000)
+  elif i <=% 0xFFFF:
     result = newString(3)
-    result[0] = chr(c shr 12 or 0b1110_0000)
-    result[1] = chr(c shr 6 and ones(6) or 0b10_0000_00)
-    result[2] = chr(c and ones(6) or 0b10_0000_00)
-  elif c <=% 0x0010FFFF:
+    result[0] = chr(i shr 12 or 0b1110_0000)
+    result[1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    result[2] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x0010FFFF:
     result = newString(4)
-    result[0] = chr(c shr 18 or 0b1111_0000)
-    result[1] = chr(c shr 12 and ones(6) or 0b10_0000_00)
-    result[2] = chr(c shr 6 and ones(6) or 0b10_0000_00)
-    result[3] = chr(c and ones(6) or 0b10_0000_00)
+    result[0] = chr(i shr 18 or 0b1111_0000)
+    result[1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    result[2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    result[3] = chr(i and ones(6) or 0b10_0000_00)
   else:
     assert false
 
@@ -1061,7 +1060,7 @@ const
     0x01f1, 501,  # Ǳ ǲ   
     0x01f3, 499]  # ǳ ǲ   
 
-proc binarySearch(c: TRune, tab: openArray[TRune], len, stride: int): int = 
+proc binarySearch(c: irune, tab: openArray[iRune], len, stride: int): int = 
   var n = len
   var t = 0
   while n > 1: 
@@ -1078,32 +1077,39 @@ proc binarySearch(c: TRune, tab: openArray[TRune], len, stride: int): int =
 
 proc toLower*(c: TRune): TRune = 
   ## Converts `c` into lower case. This works for any Unicode character.
+  ## If possible, prefer `toLower` over `toUpper`. 
+  var c = irune(c)
   var p = binarySearch(c, tolowerRanges, len(toLowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
-    return c + tolowerRanges[p+2] - 500
+    return TRune(c + tolowerRanges[p+2] - 500)
   p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
   if p >= 0 and c == toLowerSinglets[p]:
-    return c + toLowerSinglets[p+1] - 500
-  return c
+    return TRune(c + toLowerSinglets[p+1] - 500)
+  return TRune(c)
 
 proc toUpper*(c: TRune): TRune = 
   ## Converts `c` into upper case. This works for any Unicode character.
+  ## If possible, prefer `toLower` over `toUpper`. 
+  var c = irune(c)
   var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
   if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
-    return c + toUpperRanges[p+2] - 500
+    return TRune(c + toUpperRanges[p+2] - 500)
   p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
   if p >= 0 and c == toUpperSinglets[p]:
-    return c + toUpperSinglets[p+1] - 500
-  return c
+    return TRune(c + toUpperSinglets[p+1] - 500)
+  return TRune(c)
 
 proc toTitle*(c: TRune): TRune = 
+  var c = irune(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
   if p >= 0 and c == toTitleSinglets[p]:
-    return c + toTitleSinglets[p+1] - 500
-  return c
+    return TRune(c + toTitleSinglets[p+1] - 500)
+  return TRune(c)
 
 proc isLower*(c: TRune): bool = 
   ## returns true iff `c` is a lower case Unicode character
+  ## If possible, prefer `isLower` over `isUpper`. 
+  var c = irune(c)
   # Note: toUpperRanges is correct here!
   var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
   if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
@@ -1114,6 +1120,8 @@ proc isLower*(c: TRune): bool =
 
 proc isUpper*(c: TRune): bool = 
   ## returns true iff `c` is a upper case Unicode character
+  ## If possible, prefer `isLower` over `isUpper`. 
+  var c = irune(c)
   # Note: toLowerRanges is correct here!
   var p = binarySearch(c, toLowerRanges, len(toLowerRanges) div 3, 3)
   if p >= 0 and c >= toLowerRanges[p] and c <= toLowerRanges[p+1]:
@@ -1126,6 +1134,7 @@ proc isAlpha*(c: TRune): bool =
   ## returns true iff `c` is an *alpha* Unicode character (i.e. a letter)
   if isUpper(c) or isLower(c): 
     return true
+  var c = irune(c)
   var p = binarySearch(c, alphaRanges, len(alphaRanges) div 2, 2)
   if p >= 0 and c >= alphaRanges[p] and c <= alphaRanges[p+1]:
     return true
@@ -1138,6 +1147,7 @@ proc isTitle*(c: TRune): bool =
 
 proc isWhiteSpace*(c: TRune): bool = 
   ## returns true iff `c` is a Unicode whitespace character
+  var c = irune(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
@@ -1148,7 +1158,7 @@ iterator runes*(s: string): TRune =
     i = 0
     result: TRune
   while i < len(s):
-    fastRuneAt(s, i, result)
+    fastRuneAt(s, i, result, true)
     yield result
 
 proc cmpRunesIgnoreCase*(a, b: string): int = 
@@ -1164,7 +1174,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int =
     # slow path:
     fastRuneAt(a, i, ar)
     fastRuneAt(b, j, br)
-    result = toLower(ar) - toLower(br)
+    result = irune(toLower(ar)) - irune(toLower(br))
     if result != 0: return
   result = a.len - b.len
 

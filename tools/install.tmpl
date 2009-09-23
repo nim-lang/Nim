@@ -58,7 +58,7 @@ if [ $# -eq 1 ] ; then
 #var createdDirs = newStringTable()
 #for cat in fcConfig..fcLib:
 #  for f in items(c.cat[cat]):
-#    var mk = extractDir(f.skipRoot)
+#    var mk = splitFile(f.skipRoot).dir
 #    if mk.len > 0:
 #      mk = unixDirVars[cat] & "/" & mk
 #      if not createdDirs.hasKey(mk):

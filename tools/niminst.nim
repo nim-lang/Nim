@@ -116,7 +116,7 @@ Compile_options:
 """
 
 proc parseCmdLine(c: var TConfigData) =
-  var p = init()
+  var p = initOptParser()
   while true:
     next(p)
     var kind = p.kind
@@ -132,8 +132,8 @@ proc parseCmdLine(c: var TConfigData) =
           of "inno": incl(c.actions, actionInno)
           else: quit(Usage)
       else:
-        c.infile = appendFileExt(key, "ini")
-        c.nimrodArgs = getRestOfCommandLine(p)
+        c.infile = addFileExt(key, "ini")
+        c.nimrodArgs = cmdLineRest(p)
         break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
@@ -255,7 +255,7 @@ proc parseIniFile(c: var TConfigData) =
 proc readCFiles(c: var TConfigData, osA, cpuA: int) =
   var cfg: TCfgParser
   var cfilesSection = false
-  var f = extractDir(c.infile) / "mapping.txt"
+  var f = splitFile(c.infile).dir / "mapping.txt"
   c.cfiles[osA][cpuA] = @[]
   var input = newFileStream(f, fmRead)
   if input != nil:
@@ -302,7 +302,7 @@ proc srcdist(c: var TConfigData) =
                  [c.oses[osA-1], c.cpus[cpuA-1], c.nimrodArgs, 
                  changeFileExt(c.infile, "nim")]
       echo(cmd)
-      if executeShellCommand(cmd) != 0:
+      if execShellCmd(cmd) != 0:
         quit("Error: call to nimrod compiler failed")
       readCFiles(c, osA, cpuA)
       for i in 0 .. c.cfiles[osA][cpuA].len-1:

@@ -938,23 +938,6 @@ begin
   result := emptyNode;
 end;
 
-function evalAppendSeqSeq(c: PEvalContext; n: PNode): PNode;
-var
-  a, b: PNode;
-  i: int;
-begin
-  result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
-  a := result;
-  result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
-  b := result;
-  if a.kind = nkBracket then
-    for i := 0 to sonsLen(b)-1 do addSon(a, copyTree(b.sons[i]))
-  else InternalError(n.info, 'evalAppendSeqSeq');
-  result := emptyNode;
-end;
-
 function evalRepr(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
@@ -993,7 +976,6 @@ begin
     mAppendStrCh: result := evalAppendStrCh(c, n);
     mAppendStrStr: result := evalAppendStrStr(c, n);
     mAppendSeqElem: result := evalAppendSeqElem(c, n);
-    mAppendSeqSeq: result := evalAppendSeqSeq(c, n);
 
     mNLen: begin
       result := evalAux(c, n.sons[1]);
@@ -1338,7 +1320,7 @@ begin
         end
       end
     end;
-    nkProcDef, nkMacroDef, nkCommentStmt, nkPragma, nkTypeSection,
+    nkProcDef, nkMethodDef, nkMacroDef, nkCommentStmt, nkPragma, nkTypeSection,
     nkTemplateDef, nkConstSection, nkIteratorDef, nkConverterDef,
     nkIncludeStmt, nkImportStmt, nkFromStmt: begin end;
     nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr,

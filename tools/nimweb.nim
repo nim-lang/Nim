@@ -56,7 +56,7 @@ Compile_options:
 """
 
 proc parseCmdLine(c: var TConfigData) =
-  var p = init()
+  var p = initOptParser()
   while true:
     next(p)
     var kind = p.kind
@@ -64,8 +64,8 @@ proc parseCmdLine(c: var TConfigData) =
     var val = p.val
     case kind
     of cmdArgument:
-      c.infile = appendFileExt(key, "ini")
-      c.nimrodArgs = getRestOfCommandLine(p)
+      c.infile = addFileExt(key, "ini")
+      c.nimrodArgs = cmdLineRest(p)
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
@@ -84,7 +84,7 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
   for k, f in walkDir(root):
     case k
     of pcFile, pcLinkToFile:
-      if cmpIgnoreCase(ext, extractFileExt(f)) == 0:
+      if cmpIgnoreCase(ext, splitFile(f).ext) == 0:
         add(s, f)
     of pcDirectory: walkDirRecursively(s, f, ext)
     of pcLinkToDirectory: nil
@@ -94,7 +94,7 @@ proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
     if existsDir(dir / p):
       walkDirRecursively(s, dir / p, ext)
     else:
-      add(s, dir / appendFileExt(p, ext))
+      add(s, dir / addFileExt(p, ext))
 
 proc parseIniFile(c: var TConfigData) =
   var
@@ -143,7 +143,7 @@ proc parseIniFile(c: var TConfigData) =
     if c.projectName.len == 0:
       c.projectName = changeFileExt(extractFilename(c.infile), "")
     if c.outdir.len == 0:
-      c.outdir = extractDir(c.infile)
+      c.outdir = splitFile(c.infile).dir
   else:
     quit("cannot open: " & c.infile)
 
@@ -151,18 +151,18 @@ proc parseIniFile(c: var TConfigData) =
 
 proc Exec(cmd: string) =
   echo(cmd)
-  if os.executeShellCommand(cmd) != 0: quit("external program failed")
+  if os.execShellCmd(cmd) != 0: quit("external program failed")
 
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   for d in items(c.doc):
     Exec("nimrod rst2html $# -o:$# --index=$#/theindex $#" %
-      [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
        destpath, d])
     Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
   for d in items(c.srcdoc):
     Exec("nimrod doc $# -o:$# --index=$#/theindex $#" %
-      [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"),
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
        destpath, d])
   Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" %
        [c.nimrodArgs, destPath])
@@ -171,7 +171,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
     Exec("nimrod doc $# -o:$# $#" %
-      [c.nimrodArgs, destPath / changeFileExt(extractFileTrunk(d), "html"), d])
+      [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"), d])
 
 proc main(c: var TConfigData) =
   const

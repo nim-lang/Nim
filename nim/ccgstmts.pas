@@ -326,7 +326,7 @@ begin
       nkStrLit..nkTripleStrLit: app(s, t.sons[i].strVal);
       nkSym: begin
         sym := t.sons[i].sym;
-        if sym.kind = skProc then begin
+        if sym.kind in [skProc, skMethod] then begin
           initLocExpr(p, t.sons[i], a);
           app(s, rdLoc(a));
         end
@@ -970,12 +970,13 @@ begin
     nkCommentStmt, nkNilLit, nkIteratorDef, nkIncludeStmt, nkImportStmt,
     nkFromStmt, nkTemplateDef, nkMacroDef: begin end;
     nkPragma: genPragma(p, t);
-    nkProcDef, nkConverterDef: begin
+    nkProcDef, nkMethodDef, nkConverterDef: begin
       if (t.sons[genericParamsPos] = nil) then begin
         prc := t.sons[namePos].sym;
         if not (optDeadCodeElim in gGlobalOptions) and
             not (sfDeadCodeElim in getModule(prc).flags)
-        or ([sfExportc, sfCompilerProc] * prc.flags = [sfExportc]) then begin
+        or ([sfExportc, sfCompilerProc] * prc.flags = [sfExportc])
+        or (prc.kind = skMethod) then begin
           if (t.sons[codePos] <> nil) or (lfDynamicLib in prc.loc.flags) then begin
             genProc(p.module, prc)
           end

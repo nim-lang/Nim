@@ -1,6 +1,6 @@
-============================
-The Nimrod Tutorial (Part I)
-============================
+========================
+Nimrod Tutorial (Part I)
+========================
 
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
@@ -63,7 +63,8 @@ Nimrod: It is a good compromise between brevity and readability.
 
 The "hallo world" program contains several identifiers that are already
 known to the compiler: ``echo``, ``readLine``, etc. These built-in items are
-declared in the system_ module which is implicitly imported by any other module.
+declared in the system_ module which is implicitly imported by any other
+module.
 
 
 Lexical elements
@@ -173,7 +174,7 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-The ``=`` is called the *assignment operator*. The assignment operator cannot
+``=`` is the *assignment operator*. The assignment operator cannot
 be overloaded, overwritten or forbidden, but this might change in a future
 version of Nimrod.
 
@@ -196,7 +197,7 @@ constants:
     x = 1
     # a comment can occur here too
     y = 2
-    z = y + 5 # simple computations are possible
+    z = y + 5 # computations are possible
 
 
 Control flow statements
@@ -277,12 +278,11 @@ the compiler that for every other value nothing should be done:
 The ``nil`` statement is a *do nothing* statement. The compiler knows that a
 case statement with an else part cannot fail and thus the error disappers. Note
 that it is impossible to cover any possible string value: That is why there is
-no such compiler check for string cases.
+no such check for string cases.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible
 value.
-
 
 
 While statement
@@ -327,7 +327,7 @@ the same:
     Echo($i)
     inc(i) # increment i by 1
 
-Counting down can be achieved as easily (but is much less needed):
+Counting down can be achieved as easily (but is less often needed):
 
 .. code-block:: nimrod
   Echo("Counting down from 10 to 1: ")
@@ -372,7 +372,7 @@ Break statement
 ---------------
 A block can be left prematurely with a ``break`` statement. The break statement
 can leave a while, for, or a block statement. It leaves the innermost construct,
-unless the label of a block is given:
+unless a label of a block is given:
 
 .. code-block:: nimrod
   block myblock:
@@ -392,7 +392,7 @@ unless the label of a block is given:
 
 Continue statement
 ------------------
-Like in many other programming languages, a ``continue`` statement leads to
+Like in many other programming languages, a ``continue`` statement starts
 the next iteration immediately:
 
 .. code-block:: nimrod
@@ -512,7 +512,7 @@ the procedure (and therefore the while loop) immediately. The
 parameter named ``question`` of type ``string`` and returns a value of type
 ``bool``. ``Bool`` is a built-in type: The only valid values for ``bool`` are 
 ``true`` and ``false``.
-The conditions in if or while statements need to have the type ``bool``.
+The conditions in if or while statements should be of the type ``bool``.
 
 Some terminology: In the example ``question`` is called a (formal) *parameter*,
 ``"Should I..."`` is called an *argument* that is passed to this parameter.
@@ -614,7 +614,7 @@ Now the call to ``createWindow`` only needs to set the values that differ
 from the defaults.
 
 Note that type inference works for parameters with default values, there is
-no need to specify ``title: string = "unknown"``, for example.
+no need to write ``title: string = "unknown"``, for example.
 
 
 Overloaded procedures
@@ -855,7 +855,6 @@ operation                meaning
 kinds of integer types are used. However, if the type conversion
 loses information, the `EOutOfRange`:idx: exception is raised (if the error
 cannot be detected at compile time).
-
 
 
 Floats
@@ -1232,7 +1231,7 @@ mysterious crashes.
 **Note**: The example only works because the memory is initialized with zero
 (``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
 ``nil`` which the string assignment can handle. You need to know low level
-details like this when mixing garbage collected data with unmanaged memory!
+details like this when mixing garbage collected data with unmanaged memory.
 
 
 Procedural type
@@ -1240,8 +1239,7 @@ Procedural type
 A `procedural type`:idx: is a (somewhat abstract) pointer to a procedure. 
 ``nil`` is an allowed value for a variable of a procedural type. 
 Nimrod uses procedural types to achieve `functional`:idx: programming 
-techniques. Dynamic dispatch for OOP constructs can also be implemented with 
-procedural types (details follow in the OOP section).
+techniques.
 
 Example:
 
@@ -1303,9 +1301,9 @@ because then one module cannot be reused without the other.
 
 The algorithm for compiling modules is:
 
-- Compile the whole module as usual, following import statements recursively
-- if there is a cycle only import the already parsed symbols (that are
-  exported); if an unknown identifier occurs then abort
+- Compile the whole module as usual, following import statements recursively.
+- If there is a cycle only import the already parsed symbols (that are
+  exported); if an unknown identifier occurs then abort.
 
 This is best illustrated by an example:
 

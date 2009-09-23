@@ -94,7 +94,7 @@ begin
     if i < a then 
       arg := n.sons[i]
     else 
-      arg := copyTree(s.ast.sons[paramsPos].sons[i-1].sym.ast);
+      arg := copyTree(s.typ.n.sons[i].sym.ast);
     if arg = nil then liMessage(n.info, errWrongNumberOfArguments);
     if not (s.typ.sons[i].kind in [tyTypeDesc, tyStmt, tyExpr]) then begin
       // concrete type means semantic checking for argument:
@@ -132,7 +132,7 @@ begin
   if i <= 1 then begin
     result := newSymNode(s);
     result.info := n.info;
-    include(s.flags, sfUsed);
+    markUsed(n, s);
   end
   else begin
     // semantic checking requires a type; ``fitNode`` deals with it

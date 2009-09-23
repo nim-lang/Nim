@@ -45,9 +45,9 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-  strStart* = 0 ## this is only for bootstraping
-                ## XXX: remove this someday
-  nl* = "\n"    ## this is only for bootstraping XXX: remove this somehow
+#  strStart* = 0 ## this is only for bootstraping
+#                ## XXX: remove this someday
+#  nl* = "\n"    ## this is only for bootstraping XXX: remove this someday
 
 proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ## The `substitution`:idx: operator performs string substitutions in
@@ -272,43 +272,39 @@ iterator splitLines*(s: string): string =
     else: break # was '\0'
     first = last
 
-template iterToProc(iter: expr): stmt = 
-  result = @[]
-  for x in iter: add(result, x)
-
 proc splitLinesSeq*(s: string): seq[string] {.noSideEffect, deprecated.} =
   ## The same as `splitLines`, but is a proc that returns a sequence 
   ## of substrings.
   ## **Deprecated since version 0.8.0**: Use `splitLines` instead.
-  iterToProc(splitLines(s))
+  accumulateResult(splitLines(s))
 
 proc splitSeq*(s: string, seps: set[char] = Whitespace): seq[string] {.
   noSideEffect, deprecated.} =
   ## The same as `split`, but is a proc that returns a sequence of substrings.
   ## **Deprecated since version 0.8.0**: Use `split` instead.
-  iterToProc(split(s, seps))
+  accumulateResult(split(s, seps))
 
 proc splitSeq*(s: string, sep: char): seq[string] {.noSideEffect, 
                                                     deprecated.} =
   ## The same as `split`, but is a proc that returns a sequence of substrings.
   ## **Deprecated since version 0.8.0**: Use `split` instead.
-  iterToProc(split(s, sep))
+  accumulateResult(split(s, sep))
 
 proc splitLines*(s: string): seq[string] {.noSideEffect.} =
   ## The same as the `splitLines` iterator, but is a proc that returns a 
   ## sequence of substrings.
-  iterToProc(splitLines(s))
+  accumulateResult(splitLines(s))
 
 proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
   noSideEffect.} =
   ## The same as the `split` iterator, but is a proc that returns a
   ## sequence of substrings.
-  iterToProc(split(s, seps))
+  accumulateResult(split(s, seps))
 
 proc split*(s: string, sep: char): seq[string] {.noSideEffect.} =
   ## The same as the `split` iterator, but is a proc that returns a sequence
   ## of substrings.
-  iterToProc(split(s, sep))
+  accumulateResult(split(s, sep))
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect.}
   ## Compares two strings in a case insensitive manner. Returns:
@@ -358,8 +354,10 @@ proc ParseFloat*(s: string): float {.noSideEffect.}
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
 
 # the stringify and format operators:
-proc toString*[Ty](x: Ty): string
+proc toString*[Ty](x: Ty): string {.deprecated.}
   ## This generic proc is the same as the stringify operator `$`.
+  ##
+  ## **Deprecated since version 0.8.2:** Use `$` instead.
 
 proc repeatChar*(count: int, c: Char = ' '): string
   ## Returns a string of length `count` consisting only of

@@ -74,26 +74,16 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h +% h shl 15
   result = h
 
-#  copy(s: string, start = 0): string
-#    {.extern: "copyStr", noDecl, noSideEffect.}
-#  copy(s: string, start, len: int): string
-#    {.extern: "copyStrLen", noDecl, noSideEffect.}
-#
-#  setLength(var s: string, newlen: int)
-#    {.extern: "setLengthStr", noDecl, noSideEffect.}
-
 proc copyStrLast(s: NimString, start, last: int): NimString {.exportc.} =
-  var
-    len: int
-  if start >= s.len: return mnewString(0) # BUGFIX
-  if last >= s.len:
-    len = s.len - start # - 1 + 1
+  var start = max(start, 0)
+  var len = min(last, s.len-1) - start + 1
+  if len > 0:
+    result = rawNewString(len)
+    result.len = len
+    c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
+    result.data[len] = '\0'
   else:
-    len = last - start + 1
-  result = rawNewString(len)
-  result.len = len
-  c_memcpy(result.data, addr(s.data[start]), len * sizeof(Char))
-  result.data[len] = '\0'
+    result = mnewString(0)
 
 proc copyStr(s: NimString, start: int): NimString {.exportc.} =
   return copyStrLast(s, start, s.len-1)

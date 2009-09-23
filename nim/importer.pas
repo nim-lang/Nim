@@ -113,7 +113,7 @@ begin
     InternalError(ident.info, 'importSymbol: 2');
   // for an enumeration we have to add all identifiers
   case s.Kind of
-    skProc, skIterator, skMacro, skTemplate, skConverter: begin
+    skProc, skMethod, skIterator, skMacro, skTemplate, skConverter: begin
       // for a overloadable syms add all overloaded routines
       e := InitIdentIter(it, fromMod.tab, s.name);
       while e <> nil do begin
@@ -155,6 +155,8 @@ begin
   for i := 0 to sonsLen(n)-1 do begin
     f := getModuleFile(n.sons[i]);
     m := gImportModule(f);
+    if sfDeprecated in m.flags then
+      liMessage(n.sons[i].info, warnDeprecated, m.name.s);
     // ``addDecl`` needs to be done before ``importAllSymbols``!
     addDecl(c, m); // add symbol to symbol table of module
     importAllSymbols(c, m);

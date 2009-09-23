@@ -8,6 +8,9 @@
 #
 
 ## Regular expression support for Nimrod.
+## **Deprecated** since version 0.8.2. Use the module `re` instead.
+{.deprecated.}
+
 ## Currently this module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
@@ -131,13 +134,14 @@ template `=~` *(s, pattern: expr): expr =
   ##     echo("comment: ", matches[1])
   ##   else:
   ##     echo("syntax error")
-  ## 
-  var matches: array[0..maxSubPatterns-1, string]
+  ##
+  when not definedInScope(matches):
+    var matches: array[0..maxSubPatterns-1, string]
   match(s, pattern, matches)
   
 
 const ## common regular expressions
-  reIdentifier* = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"  ## describes an identifier
+  reIdentifier* = r"\b[a-zA-Z_][a-zA-Z_0-9]*\b"  ## describes an identifier
   reNatural* = r"\b\d+\b" ## describes a natural number
   reInteger* = r"\b[-+]?\d+\b" ## describes an integer
   reHex* = r"\b0[xX][0-9a-fA-F]+\b" ## describes a hexadecimal number

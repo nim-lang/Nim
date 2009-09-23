@@ -297,7 +297,7 @@ proc parseEntity(my: var TXmlParser, dest: var string) =
   var buf = my.buf
   my.kind = xmlCharData
   if buf[pos] == '#':
-    var r: TRune
+    var r: int
     inc(pos)
     if buf[pos] == 'x': 
       inc(pos)
@@ -312,7 +312,7 @@ proc parseEntity(my: var TXmlParser, dest: var string) =
       while buf[pos] in {'0'..'9'}: 
         r = r * 10 + (ord(buf[pos]) - ord('0'))
         inc(pos)
-    add(dest, toUTF8(r))
+    add(dest, toUTF8(TRune(r)))
   elif buf[pos] == 'l' and buf[pos+1] == 't':
     add(dest, '<')
     inc(pos, 2)

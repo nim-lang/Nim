@@ -889,7 +889,7 @@ end;
 
 function parseImportStmt(var p: TParser): PNode;
 var
-  a, b: PNode;
+  a: PNode;
 begin
   result := newNodeP(nkImportStmt, p);
   getTok(p); // skip `import`
@@ -1535,9 +1535,9 @@ begin
   end
 end;
 
-function parseRecordPart(var p: TParser): PNode; forward;
+function parseObjectPart(var p: TParser): PNode; forward;
 
-function parseRecordWhen(var p: TParser): PNode;
+function parseObjectWhen(var p: TParser): PNode;
 var
   branch: PNode;
 begin
@@ -1549,7 +1549,7 @@ begin
     addSon(branch, parseExpr(p));
     eat(p, tkColon);
     skipComment(p, branch);
-    addSon(branch, parseRecordPart(p));
+    addSon(branch, parseObjectPart(p));
     skipComment(p, branch);
     addSon(result, branch);
     if p.tok.tokType <> tkElif then break
@@ -1558,12 +1558,12 @@ begin
     branch := newNodeP(nkElse, p);
     eat(p, tkElse); eat(p, tkColon);
     skipComment(p, branch);
-    addSon(branch, parseRecordPart(p));
+    addSon(branch, parseObjectPart(p));
     addSon(result, branch);
   end
 end;
 
-function parseRecordCase(var p: TParser): PNode;
+function parseObjectCase(var p: TParser): PNode;
 var
   a, b: PNode;
 begin
@@ -1591,13 +1591,13 @@ begin
       else break;
     end;
     skipComment(p, b);
-    addSon(b, parseRecordPart(p));
+    addSon(b, parseObjectPart(p));
     addSon(result, b);
     if b.kind = nkElse then break;
   end
 end;
 
-function parseRecordPart(var p: TParser): PNode;
+function parseObjectPart(var p: TParser): PNode;
 begin
   case p.tok.tokType of
     tkInd: begin
@@ -1608,7 +1608,7 @@ begin
         case p.tok.tokType of
           tkSad: getTok(p);
           tkCase, tkWhen, tkSymbol, tkAccent, tkNil: begin
-            addSon(result, parseRecordPart(p));
+            addSon(result, parseObjectPart(p));
           end;
           tkDed: begin getTok(p); break end;
           tkEof: break;
@@ -1620,8 +1620,8 @@ begin
       end;
       popInd(p.lex^);
     end;
-    tkWhen: result := parseRecordWhen(p);
-    tkCase: result := parseRecordCase(p);
+    tkWhen: result := parseObjectWhen(p);
+    tkCase: result := parseObjectCase(p);
     tkSymbol, tkAccent: begin
       result := parseIdentColonEquals(p, {@set}[withPragma]);
       skipComment(p, result);
@@ -1634,11 +1634,11 @@ begin
   end
 end;
 
-function parseRecordOrObject(var p: TParser; kind: TNodeKind): PNode;
+function parseObject(var p: TParser): PNode;
 var
   a: PNode;
 begin
-  result := newNodeP(kind, p);
+  result := newNodeP(nkObjectTy, p);
   getTok(p);
   if p.tok.tokType = tkCurlyDotLe then addSon(result, parsePragma(p))
   else addSon(result, nil);
@@ -1646,14 +1646,11 @@ begin
     a := newNodeP(nkOfInherit, p);
     getTok(p);
     addSon(a, parseTypeDesc(p));
-    if kind = nkObjectTy then
-      addSon(result, a)
-    else
-      parMessage(p, errInheritanceOnlyWithNonFinalObjects);
+    addSon(result, a);
   end
   else addSon(result, nil);
   skipComment(p, result);
-  addSon(result, parseRecordPart(p));
+  addSon(result, parseObjectPart(p));
 end;
 
 function parseDistinct(var p: TParser): PNode;
@@ -1675,7 +1672,7 @@ begin
   if p.tok.tokType = tkEquals then begin
     getTok(p); optInd(p, result);
     case p.tok.tokType of
-      tkObject: a := parseRecordOrObject(p, nkObjectTy);
+      tkObject: a := parseObject(p);
       tkEnum: a := parseEnum(p);
       tkDistinct: a := parseDistinct(p);
       else a := parseTypeDesc(p);
@@ -1754,6 +1751,7 @@ begin
     tkBlock:     result := parseBlock(p);
     tkAsm:       result := parseAsm(p);
     tkProc:      result := parseRoutine(p, nkProcDef);
+    tkMethod:    result := parseRoutine(p, nkMethodDef);
     tkIterator:  result := parseRoutine(p, nkIteratorDef);
     tkMacro:     result := parseRoutine(p, nkMacroDef);
     tkTemplate:  result := parseRoutine(p, nkTemplateDef);

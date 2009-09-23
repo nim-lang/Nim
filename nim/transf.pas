@@ -15,7 +15,7 @@ unit transf;
 // * inlines constants
 // * performes contant folding
 // * introduces nkHiddenDeref, nkHiddenSubConv, etc.
-// * aggressive compile-time evaluation based on the side-effect analysis
+// * introduces method dispatchers
 
 interface
 
@@ -24,7 +24,7 @@ interface
 uses
   sysutils, nsystem, charsets, strutils,
   lists, options, ast, astalgo, trees, treetab, evals,
-  msgs, nos, idents, rnimsyn, types, passes, semfold, magicsys;
+  msgs, nos, idents, rnimsyn, types, passes, semfold, magicsys, cgmeth;
 
 const
   genPrefix = ':tmp'; // prefix for generated names
@@ -574,7 +574,7 @@ end;
 function getMagicOp(call: PNode): TMagic;
 begin
   if (call.sons[0].kind = nkSym)
-  and (call.sons[0].sym.kind in [skProc, skConverter]) then
+  and (call.sons[0].sym.kind in [skProc, skMethod, skConverter]) then
     result := call.sons[0].sym.magic
   else
     result := mNone
@@ -842,6 +842,11 @@ begin
     if sonsLen(result) = 2 then
       result := result.sons[1];
   end
+  else if (result.sons[0].kind = nkSym)
+  and (result.sons[0].sym.kind = skMethod) then begin
+    // use the dispatcher for the call:
+    result := methodCall(result);
+  end
   (*
   else if result.sons[0].kind = nkSym then begin
     // optimization still too aggressive
@@ -882,9 +887,12 @@ begin
     nkLambda: result := transformLambda(c, n);
     nkForStmt: result := transformFor(c, n);
     nkCaseStmt: result := transformCase(c, n);
-    nkProcDef, nkIteratorDef, nkMacroDef: begin
-      if n.sons[genericParamsPos] = nil then
+    nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef: begin
+      if n.sons[genericParamsPos] = nil then begin
         n.sons[codePos] := transform(c, n.sons[codePos]);
+        if n.kind = nkMethodDef then
+          methodDef(n.sons[namePos].sym);
+      end
     end;
     nkWhileStmt: begin
       if (sonsLen(n) <> 2) then InternalError(n.info, 'transform');

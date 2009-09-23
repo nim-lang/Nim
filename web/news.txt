@@ -21,7 +21,7 @@ Additions
 ---------
 
 - implemented generic types and two phase symbol lookup in generic routines 
-- template parameters can now be real types
+- template parameters can now have real types
 - implemented generalized raw string literals: ``ident"abc"`` is a shortcut for
   ``ident(r"abc")``
 - in overloading resolution iterators are separated from procs; iterators now
