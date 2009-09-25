@@ -11,7 +11,7 @@
 ## module depends on the compiler. Most of the routines listed here use
 ## special compiler magic.
 ## Each module implicitly imports the System module; it may not be listed
-## explicitly. Because of this there can not be a user-defined module named
+## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 
 {.push hints: off.}
@@ -249,8 +249,8 @@ proc dec*[T](x: var ordinal[T], y = 1) {.magic: "Dec", noSideEffect.}
   
 proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
-  ## This is equivalent to ``s = []; setlen(s, len)``, but more
-  ## efficient since no relocation is needed.
+  ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
+  ## efficient since no reallocation is needed.
 
 proc len*[T](x: openarray[T]): int {.magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
@@ -864,15 +864,14 @@ proc dealloc*(p: Pointer) {.noconv.}
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
   ## memory (or just freeing it twice!) a core dump may happen
-  ## or other memory may be corrupted. So this procedure is really
-  ## *unsafe*.
+  ## or other memory may be corrupted. 
 
 proc assert*(cond: bool) {.magic: "Assert", noSideEffect.}
-  ## provides a means to implement `programming by contracts` in Nimrod.
+  ## provides a means to implement `programming by contracts`:idx: in Nimrod.
   ## ``assert`` evaluates expression ``cond`` and if ``cond`` is false, it
   ## raises an ``EAssertionFailure`` exception. However, the compiler may
   ## not generate any code at all for ``assert`` if it is advised to do so.
-  ## Thus one should use ``assert`` for debugging purposes only.
+  ## Use ``assert`` for debugging purposes only.
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than

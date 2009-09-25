@@ -82,7 +82,6 @@ begin
   result := newSym(skTemp, getIdent(genPrefix), getCurrOwner(c));
   result.info := info;
   result.typ := skipTypes(typ, {@set}[tyGenericInst]);
-  // XXX really correct? maybe we need tyGenericInst for generic instantion?
   include(result.flags, sfFromGeneric);
 end;
 
