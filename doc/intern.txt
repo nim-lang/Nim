@@ -119,6 +119,18 @@ be converted to Nimrod automatically:
     itself.
 
 
+Coding Guidelines
+=================
+
+* Use CamelCase, not underscored_identifiers.
+* Indent with two spaces.
+* Max line length is 80 characters.
+* Provide spaces around binary operators if that enhances readability.
+* Use a space after a colon, but not before it.
+* Start types with a capital ``T``, unless they are pointers which start
+  with ``P``. 
+
+
 Porting to new platforms
 ========================
 

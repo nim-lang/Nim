@@ -41,9 +41,9 @@ include "sunset.tmpl"
 
 const
   Version = "0.6"
-  Usage = "nimweb - Nimrod Installation Generator Version " & version & """
+  Usage = "nimweb - Nimrod Website Generator Version " & version & """
 
-  (c) 2008 Andreas Rumpf
+  (c) 2009 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:
@@ -159,13 +159,18 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     Exec("nimrod rst2html $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
        destpath, d])
-    Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
   for d in items(c.srcdoc):
     Exec("nimrod doc $# -o:$# --index=$#/theindex $#" %
       [c.nimrodArgs, destPath / changeFileExt(splitFile(d).name, "html"),
        destpath, d])
   Exec("nimrod rst2html $1 -o:$2/theindex.html $2/theindex" %
        [c.nimrodArgs, destPath])
+
+proc buildPdfDoc(c: var TConfigData, destPath: string) =
+  for d in items(c.doc):
+    Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+    
+
 
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
