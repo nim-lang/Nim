@@ -358,7 +358,6 @@ begin
 end;
 
 function GetNumber(var L: TLexer): TToken;
-// extremely hard work above us!
 var
   pos, endpos: int;
   xi: biggestInt;
