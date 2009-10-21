@@ -1086,6 +1086,8 @@ begin
       app(pl, ', ')
   end;
   if (typ.sons[0] <> nil) and invalidRetType then begin
+    // XXX (detected by pegs module 64bit): p(result, result) is not
+    // correct here. Thus we always allocate a temporary:
     if d.k = locNone then getTemp(p, typ.sons[0], d);
     app(pl, addrLoc(d));
   end;
@@ -2212,7 +2214,7 @@ begin
                                 '); unknown symbol')
       end
     end;
-    nkQualified: expr(p, e.sons[1], d);
+    //nkQualified: expr(p, e.sons[1], d);
     nkStrLit..nkTripleStrLit, nkIntLit..nkInt64Lit,
     nkFloatLit..nkFloat64Lit, nkNilLit, nkCharLit: begin
       putIntoDest(p, d, e.typ, genLiteral(p, e));

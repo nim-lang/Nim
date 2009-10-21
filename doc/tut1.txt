@@ -1,4 +1,4 @@
-========================
+﻿========================
 Nimrod Tutorial (Part I)
 ========================
 
@@ -10,7 +10,7 @@ Nimrod Tutorial (Part I)
 Introduction
 ============
 
-  "Before you run you must learn to walk."
+  "Der Mensch ist doch ein Augentier -- schöne Dinge wünsch ich mir."
 
 This document is a tutorial for the programming language *Nimrod*. After this
 tutorial you will have a decent knowledge about Nimrod. This tutorial assumes
@@ -34,8 +34,8 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nimrod compile --run greetings.nim
 
-As you see, with the ``--run`` switch Nimrod executes the file automatically
-after compilation. You can even give your program command line arguments by
+With the ``--run`` switch Nimrod executes the file automatically
+after compilation. You can give your program command line arguments by
 appending them after the filename::
 
   nimrod compile --run greetings.nim arg1 arg2

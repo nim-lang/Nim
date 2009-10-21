@@ -72,8 +72,7 @@ New Pragmas and Options
 -----------------------
 
 Because Nimrod generates C code it needs some "red tape" to work properly.
-Thus lots of options and pragmas for tweaking the generated C code are
-available.
+Lots of options and pragmas for tweaking the generated C code are available.
 
 Importc Pragma
 ~~~~~~~~~~~~~~
@@ -137,7 +136,7 @@ and instead the generated code should contain an ``#include``:
     PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
       # import C's FILE* type; Nimrod will treat it as a new pointer type
 
-The ``header`` pragma expects always a string constant. The string contant
+The ``header`` pragma always expects a string constant. The string contant
 contains the header file: As usual for C, a system header file is enclosed
 in angle brackets: ``<>``. If no angle brackets are given, Nimrod
 encloses the header file in ``""`` in the generated C code.
@@ -145,9 +144,9 @@ encloses the header file in ``""`` in the generated C code.
 
 Varargs Pragma
 ~~~~~~~~~~~~~~
-The `varargs`:idx: pragma can be applied to procedures only. It tells Nimrod
-that the proc can take a variable number of parameters after the last
-specified parameter. Nimrod string values will be converted to C
+The `varargs`:idx: pragma can be applied to procedures only (and procedure 
+types). It tells Nimrod that the proc can take a variable number of parameters 
+after the last specified parameter. Nimrod string values will be converted to C
 strings automatically:
 
 .. code-block:: Nimrod
@@ -218,7 +217,7 @@ collector to not consider objects of this type as part of a cycle:
       data: string
 
 In the example a tree structure is declared with the ``TNode`` type. Note that
-the type definition is recursive thus the GC has to assume that objects of
+the type definition is recursive and the GC has to assume that objects of
 this type may form a cyclic graph. The ``acyclic`` pragma passes the
 information that this cannot happen to the GC. If the programmer uses the
 ``acyclic`` pragma for data types that are in reality cyclic, the GC may leak

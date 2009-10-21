@@ -758,6 +758,10 @@ begin
     nkTypeOfExpr: begin
       result := semExprWithType(c, n, {@set}[efAllowType]).typ;
     end;
+    nkPar: begin
+      if sonsLen(n) = 1 then result := semTypeNode(c, n.sons[0], prev)
+      else liMessage(n.info, errTypeExpected);
+    end;
     nkBracketExpr: begin
       checkMinSonsLen(n, 2);
       s := semTypeIdent(c, n.sons[0]);
@@ -771,7 +775,7 @@ begin
         else result := semGeneric(c, n, s, prev);
       end
     end;
-    nkIdent, nkDotExpr, nkQualified, nkAccQuoted: begin
+    nkIdent, nkDotExpr, nkAccQuoted: begin
       s := semTypeIdent(c, n);
       if s.typ = nil then
         liMessage(n.info, errTypeExpected);

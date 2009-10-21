@@ -143,19 +143,16 @@ type
                            // or float literals
     literal: string;       // the parsed (string) literal; and
                            // documentation comments are here too
-    next: PToken;          // next token; used for arbitrary look-ahead
+    next: PToken;          // next token; can be used for arbitrary look-ahead
   end;
 
   PLexer = ^TLexer;
   TLexer = object(TBaseLexer)
-    // lexers can be put into a stack through the next pointer;
-    // this feature is currently unused, however
     filename: string;
-    next: PLexer;
     indentStack: array of int; // the indentation stack
     dedent: int;             // counter for DED token generation
     indentAhead: int;        // if > 0 an indendation has already been read
-                             // this is needed because scanning # comments
+                             // this is needed because scanning comments
                              // needs so much look-ahead
   end;
 
@@ -920,7 +917,6 @@ begin
   // got an documentation comment or tkIndent, return that:
   if tok.toktype <> tkInvalid then exit;
 
-  // to the parser
   c := L.buf[L.bufpos];
   if c in SymStartChars - ['r', 'R', 'l'] then // common case first
     getSymbol(L, tok)

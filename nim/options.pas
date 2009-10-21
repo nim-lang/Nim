@@ -101,6 +101,7 @@ var
   gCmd: TCommands = cmdNone; // the command
 
   gVerbosity: int; // how verbose the compiler is
+  gNumberOfProcessors: int; // number of processors
 
 function FindFile(const f: string): string;
 
@@ -111,7 +112,6 @@ const
   HtmlExt = 'html';
   TexExt = 'tex';
   IniExt = 'ini';
-  TmplExt = 'tmpl';
   DocConfig = 'nimdoc.cfg';
   DocTexConfig = 'nimdoc.tex.cfg';
 
@@ -123,8 +123,6 @@ function toGeneratedFile(const path, ext: string): string;
 
 function getPrefixDir: string;
 // gets the application directory
-
-function getFileTrunk(const filename: string): string;
 
 // additional configuration variables:
 var
@@ -183,14 +181,6 @@ var
 begin
   appdir := getApplicationDir();
   SplitPath(appdir, result, bin);
-end;
-
-function getFileTrunk(const filename: string): string;
-var
-  f, e, dir: string;
-begin
-  splitPath(filename, dir, f);
-  splitFilename(f, result, e);
 end;
 
 function shortenDir(const dir: string): string;

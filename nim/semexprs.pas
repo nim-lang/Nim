@@ -374,15 +374,34 @@ begin
   end
 end;
 
-function isAssignable(n: PNode): bool;
+type
+  TAssignableResult = (
+    arNone,              // no l-value and no discriminant
+    arLValue,            // is an l-value
+    arDiscriminant       // is a discriminant
+  );
+
+function isAssignable(n: PNode): TAssignableResult;
 begin
-  result := false;
+  result := arNone;
   case n.kind of
-    nkSym: result := (n.sym.kind in [skVar, skTemp]);
-    nkDotExpr, nkQualified, nkBracketExpr: begin
+    nkSym: begin
+      if (n.sym.kind in [skVar, skTemp]) then
+        result := arLValue
+    end;
+    nkDotExpr: begin
       checkMinSonsLen(n, 1);
       if skipTypes(n.sons[0].typ, abstractInst).kind in [tyVar, tyPtr, tyRef] then
-        result := true
+        result := arLValue
+      else
+        result := isAssignable(n.sons[0]);
+      if (result = arLValue) and (sfDiscriminant in n.sons[1].sym.flags) then
+        result := arDiscriminant
+    end;
+    nkBracketExpr: begin
+      checkMinSonsLen(n, 1);
+      if skipTypes(n.sons[0].typ, abstractInst).kind in [tyVar, tyPtr, tyRef] then
+        result := arLValue
       else
         result := isAssignable(n.sons[0]);
     end;
@@ -393,7 +412,7 @@ begin
       if skipTypes(n.typ, abstractPtrs).kind in [tyOpenArray, tyTuple, tyObject] then
         result := isAssignable(n.sons[1])
     end;
-    nkHiddenDeref, nkDerefExpr: result := true;
+    nkHiddenDeref, nkDerefExpr: result := arLValue;
     nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
       result := isAssignable(n.sons[0]);
     else begin end
@@ -409,7 +428,7 @@ begin
   else begin
     result := newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ));
     addSon(result, n);
-    if not isAssignable(n) then begin
+    if isAssignable(n) <> arLValue then begin
       liMessage(n.info, errVarForOutParamNeeded);
     end
   end
@@ -425,7 +444,7 @@ begin
         result := newHiddenAddrTaken(c, n);
       end
     end;
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       checkSonsLen(n, 2);
       if n.sons[1].kind <> nkSym then
         internalError(n.info, 'analyseIfAddressTaken');
@@ -499,7 +518,7 @@ begin
   prc := n.sons[0];
   checkMinSonsLen(n, 1);
   case n.sons[0].kind of
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       checkSonsLen(n.sons[0], 2);
       n.sons[0] := semDotExpr(c, n.sons[0]);
       if n.sons[0].kind = nkDotCall then begin // it is a static call!
@@ -595,7 +614,7 @@ begin
       else
         result := SymtabGet(c.Tab, n.ident); // no need for stub loading
     end;
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       result := nil;
       if onlyCurrentScope then exit;
       checkSonsLen(n, 2);
@@ -1174,8 +1193,14 @@ begin
     liMessage(n.info, errATypeHasNoValue);
   case s.kind of
     skProc, skMethod, skIterator, skConverter: begin
-      if (s.magic <> mNone) then
-        liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
+      if not (sfProcVar in s.flags) 
+      and (s.typ.callConv = ccDefault)
+      and (getModule(s).id <> c.module.id) then
+        liMessage(n.info, warnXisPassedToProcVar, s.name.s);
+      // XXX change this to errXCannotBePassedToProcVar after version 0.8.2
+      // TODO VERSION 0.8.4
+      //if (s.magic <> mNone) then
+      //  liMessage(n.info, errInvalidContextForBuiltinX, s.name.s);
       result := symChoice(c, n, s);
     end;
     skConst: begin
@@ -1253,10 +1278,7 @@ begin
       (*s := n.sym;
       include(s.flags, sfUsed);
       if (s.kind = skType) and not (efAllowType in flags) then
-        liMessage(n.info, errATypeHasNoValue);
-      if (s.magic <> mNone) and
-          (s.kind in [skProc, skMethod, skIterator, skConverter]) then
-        liMessage(n.info, errInvalidContextForBuiltinX, s.name.s); *)
+        liMessage(n.info, errATypeHasNoValue);*)
       // because of the changed symbol binding, this does not mean that we
       // don't have to check the symbol for semantics here again!
       result := semSym(c, n, n.sym, flags);
@@ -1279,7 +1301,7 @@ begin
       if result.typ = nil then result.typ := getSysType(tyString);
     nkCharLit:
       if result.typ = nil then result.typ := getSysType(tyChar);
-    nkQualified, nkDotExpr: begin
+    nkDotExpr: begin
       result := semDotExpr(c, n, flags);
       if result.kind = nkDotCall then begin
         result.kind := nkCall;
@@ -1364,7 +1386,8 @@ begin
       result := n;
       checkSonsLen(n, 1);
       n.sons[0] := semExprWithType(c, n.sons[0]);
-      if not isAssignable(n.sons[0]) then liMessage(n.info, errExprHasNoAddress);
+      if isAssignable(n.sons[0]) <> arLValue then 
+        liMessage(n.info, errExprHasNoAddress);
       n.typ := makePtrType(c, n.sons[0].typ);
     end;
     nkHiddenAddr, nkHiddenDeref: begin

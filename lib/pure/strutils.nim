@@ -45,10 +45,6 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-#  strStart* = 0 ## this is only for bootstraping
-#                ## XXX: remove this someday
-#  nl* = "\n"    ## this is only for bootstraping XXX: remove this someday
-
 proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called
@@ -98,50 +94,29 @@ proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect.}
   ## If `leading` is true, leading whitespace is stripped.
   ## If `trailing` is true, trailing whitespace is stripped.
 
-proc toLower*(s: string): string {.noSideEffect.}
+proc toLower*(s: string): string {.noSideEffect, procvar.}
   ## Converts `s` into lower case. This works only for the letters A-Z.
   ## See `unicode.toLower` for a version that works for any Unicode character.
 
-proc toLower*(c: Char): Char {.noSideEffect.}
+proc toLower*(c: Char): Char {.noSideEffect, procvar.}
   ## Converts `c` into lower case. This works only for the letters A-Z.
   ## See `unicode.toLower` for a version that works for any Unicode character.
 
-proc toUpper*(s: string): string {.noSideEffect.}
+proc toUpper*(s: string): string {.noSideEffect, procvar.}
   ## Converts `s` into upper case. This works only for the letters a-z.
   ## See `unicode.toUpper` for a version that works for any Unicode character.
 
-proc toUpper*(c: Char): Char {.noSideEffect.}
+proc toUpper*(c: Char): Char {.noSideEffect, procvar.}
   ## Converts `c` into upper case. This works only for the letters a-z.
   ## See `unicode.toUpper` for a version that works for any Unicode character.
 
-proc capitalize*(s: string): string {.noSideEffect.}
+proc capitalize*(s: string): string {.noSideEffect, procvar.}
   ## Converts the first character of `s` into upper case.
   ## This works only for the letters a-z.
 
-proc normalize*(s: string): string {.noSideEffect.}
+proc normalize*(s: string): string {.noSideEffect, procvar.}
   ## Normalizes the string `s`. That means to convert it to lower case and
   ## remove any '_'. This is needed for Nimrod identifiers for example.
-
-proc findSubStr*(sub, s: string, start: int = 0): int {.
-  noSideEffect, deprecated.}
-  ## Searches for `sub` in `s` starting at position `start`. Searching is
-  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
-  ## this has a different parameter order.
-
-proc findSubStr*(sub: char, s: string, start: int = 0): int {.
-  noSideEffect, deprecated.}
-  ## Searches for `sub` in `s` starting at position `start`. Searching is
-  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
-  ## this has a different parameter order.
-
-proc findChars*(chars: set[char], s: string, start: int = 0): int {.
-  noSideEffect, deprecated.}
-  ## Searches for `chars` in `s` starting at position `start`. If `s` contains
-  ## none of the characters in `chars`, -1 is returned.
-  ## **Deprecated since version 0.7.6**: Use `find` instead, but beware that
-  ## this has a different parameter order.
 
 proc find*(s, sub: string, start: int = 0): int {.noSideEffect.}
   ## Searches for `sub` in `s` starting at position `start`. Searching is
@@ -322,13 +297,13 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect.}
   ## | > 0 iff a > b
 
 proc contains*(s: string, c: char): bool {.noSideEffect.}
-  ## Same as ``findSubStr(c, s) >= 0``.
+  ## Same as ``find(s, c) >= 0``.
 
 proc contains*(s, sub: string): bool {.noSideEffect.}
-  ## Same as ``findSubStr(sub, s) >= 0``.
+  ## Same as ``find(s, sub) >= 0``.
 
 proc contains*(s: string, chars: set[char]): bool {.noSideEffect.}
-  ## Same as ``findChars(s, chars) >= 0``.
+  ## Same as ``find(s, chars) >= 0``.
 
 proc toHex*(x: BiggestInt, len: int): string {.noSideEffect.}
   ## Converts `x` to its hexadecimal representation. The resulting string
@@ -340,15 +315,15 @@ proc intToStr*(x: int, minchars: int = 1): string
   ## will be minimally `minchars` characters long. This is achieved by
   ## adding leading zeros.
 
-proc ParseInt*(s: string): int {.noSideEffect.}
+proc ParseInt*(s: string): int {.noSideEffect, procvar.}
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
 
-proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect.}
+proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar.}
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
 
-proc ParseFloat*(s: string): float {.noSideEffect.}
+proc ParseFloat*(s: string): float {.noSideEffect, procvar.}
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
@@ -616,7 +591,7 @@ proc preprocessSub(sub: string, a: var TSkipTable) =
   for i in 0..0xff: a[chr(i)] = m+1
   for i in 0..m-1: a[sub[i]] = m-i
 
-proc findSubStrAux(s, sub: string, start: int, a: TSkipTable): int =
+proc findAux(s, sub: string, start: int, a: TSkipTable): int =
   # fast "quick search" algorithm:
   var
     m = len(sub)
@@ -631,36 +606,10 @@ proc findSubStrAux(s, sub: string, start: int, a: TSkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
-proc findSubStr(sub, s: string, start: int = 0): int =
-  var a: TSkipTable
-  preprocessSub(sub, a)
-  result = findSubStrAux(s, sub, start, a)
-  # slow linear search:
-  #var
-  #  i, j, M, N: int
-  #M = len(sub)
-  #N = len(s)
-  #i = start
-  #j = 0
-  #if i >= N:
-  #  result = -1
-  #else:
-  #  while True:
-  #    if s[i] == sub[j]:
-  #      Inc(i)
-  #      Inc(j)
-  #    else:
-  #      i = i - j + 1
-  #      j = 0
-  #    if (j >= M):
-  #      return i - M
-  #    elif (i >= N):
-  #      return -1
-
 proc find(s, sub: string, start: int = 0): int =
   var a: TSkipTable
   preprocessSub(sub, a)
-  result = findSubStrAux(s, sub, start, a)
+  result = findAux(s, sub, start, a)
 
 proc find(s: string, sub: char, start: int = 0): int =
   for i in start..len(s)-1:
@@ -672,16 +621,6 @@ proc find(s: string, chars: set[char], start: int = 0): int =
     if s[i] in chars: return i
   return -1 
 
-proc findSubStr(sub: char, s: string, start: int = 0): int =
-  for i in start..len(s)-1:
-    if sub == s[i]: return i
-  return -1
- 
-proc findChars(chars: set[char], s: string, start: int = 0): int =
-  for i in start..s.len-1:
-    if s[i] in chars: return i
-  return -1
-  
 proc contains(s: string, chars: set[char]): bool =
   return find(s, chars) >= 0
 
@@ -698,7 +637,7 @@ proc replace*(s, sub, by: string): string =
   preprocessSub(sub, a)
   var i = 0
   while true:
-    var j = findSubStrAux(s, sub, i, a)
+    var j = findAux(s, sub, i, a)
     if j < 0: break
     add result, copy(s, i, j - 1)
     add result, by

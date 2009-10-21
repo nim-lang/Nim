@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -59,9 +59,8 @@ type
   TInfoOS = record{@tuple}
     name: string;
     parDir: string;
-    dllExt: string;
+    dllFrmt: string;
     altDirSep: string;
-    dllPrefix: string;
     objExt: string;
     newLine: string;
     pathSep: string;
@@ -77,9 +76,8 @@ const
   (
     name: 'DOS';
     parDir: '..';
-    dllExt: '.dll';
+    dllFrmt: '$1.dll';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '.obj';
     newLine: #13#10;
     pathSep: ';'+'';
@@ -93,9 +91,8 @@ const
   (
     name: 'Windows';
     parDir: '..';
-    dllExt: '.dll';
+    dllFrmt: '$1.dll';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '.obj';
     newLine: #13#10;
     pathSep: ';'+'';
@@ -109,9 +106,8 @@ const
   (
     name: 'OS2';
     parDir: '..';
-    dllExt: '.dll';
+    dllFrmt: '$1.dll';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '.obj';
     newLine: #13#10;
     pathSep: ';'+'';
@@ -125,9 +121,8 @@ const
   (
     name: 'Linux';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -141,9 +136,8 @@ const
   (
     name: 'MorphOS';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -157,9 +151,8 @@ const
   (
     name: 'SkyOS';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -173,9 +166,8 @@ const
   (
     name: 'Solaris';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -189,9 +181,8 @@ const
   (
     name: 'Irix';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -205,9 +196,8 @@ const
   (
     name: 'NetBSD';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -221,9 +211,8 @@ const
   (
     name: 'FreeBSD';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -237,9 +226,8 @@ const
   (
     name: 'OpenBSD';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -253,9 +241,8 @@ const
   (
     name: 'AIX';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -269,9 +256,8 @@ const
   (
     name: 'PalmOS';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -285,9 +271,8 @@ const
   (
     name: 'QNX';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -301,9 +286,8 @@ const
   (
     name: 'Amiga';
     parDir: '..';
-    dllExt: '.library';
+    dllFrmt: '$1.library';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -317,9 +301,8 @@ const
   (
     name: 'Atari';
     parDir: '..';
-    dllExt: '.dll';
+    dllFrmt: '$1.dll';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -333,9 +316,8 @@ const
   (
     name: 'Netware';
     parDir: '..';
-    dllExt: '.nlm';
+    dllFrmt: '$1.nlm';
     altDirSep: '/'+'';
-    dllPrefix: '';
     objExt: '';
     newLine: #13#10;
     pathSep: ':'+'';
@@ -349,9 +331,8 @@ const
   (
     name: 'MacOS';
     parDir: '::';
-    dllExt: 'Lib';
+    dllFrmt: '$1Lib';
     altDirSep: ':'+'';
-    dllPrefix: '';
     objExt: '.o';
     newLine: #13+'';
     pathSep: ','+'';
@@ -365,9 +346,8 @@ const
   (
     name: 'MacOSX';
     parDir: '..';
-    dllExt: '.dylib';
+    dllFrmt: 'lib$1.dylib';
     altDirSep: ':'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -381,9 +361,8 @@ const
   (
     name: 'EcmaScript';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';
@@ -397,9 +376,8 @@ const
   (
     name: 'NimrodVM';
     parDir: '..';
-    dllExt: '.so';
+    dllFrmt: 'lib$1.so';
     altDirSep: '/'+'';
-    dllPrefix: 'lib';
     objExt: '.o';
     newLine: #10+'';
     pathSep: ':'+'';

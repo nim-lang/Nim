@@ -314,6 +314,9 @@ begin
   len := length(tokens);
   L.buf := PChar(buffer);
   L.line := 1;
+  // skip UTF-8 BOM
+  if (L.buf[0] = #239) and (L.buf[1] = #187) and (L.buf[2] = #191) then 
+    inc(L.bufpos, 3);
   L.skipPounds := skipPounds;
   if skipPounds then begin
     if L.buf[L.bufpos] = '#' then inc(L.bufpos);

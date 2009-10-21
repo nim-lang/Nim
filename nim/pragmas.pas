@@ -27,7 +27,7 @@ const
   procPragmas = {@set}[FirstCallConv..LastCallConv,
     wImportc, wExportc, wNodecl, wMagic, wNosideEffect, wSideEffect,
     wNoreturn, wDynLib, wHeader, wCompilerProc, wPure,
-    wCppMethod, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow];
   converterPragmas = procPragmas;
   methodPragmas = procPragmas;
@@ -258,11 +258,13 @@ begin
   if (sym = nil) or (sym.kind = skModule) then
     POptionEntry(c.optionStack.tail).dynlib := getLib(c, libDynamic,
                                                       expectStrLit(c, n))
-  else begin
+  else if n.kind = nkExprColonExpr then begin
     lib := getLib(c, libDynamic, expectStrLit(c, n));
     addToLib(lib, sym);
     include(sym.loc.flags, lfDynamicLib)
   end
+  else 
+    include(sym.loc.flags, lfExportLib)
 end;
 
 procedure processNote(c: PContext; n: PNode);
@@ -475,12 +477,7 @@ begin
   if n = nil then exit;
   for i := 0 to sonsLen(n)-1 do begin
     it := n.sons[i];
-    if it.kind = nkExprColonExpr then begin
-      key := it.sons[0];
-    end
-    else begin
-      key := it;
-    end;
+    if it.kind = nkExprColonExpr then key := it.sons[0] else key := it;
     if key.kind = nkIdent then begin
       k := whichKeyword(key.ident);
       if k in validPragmas then begin
@@ -540,9 +537,9 @@ begin
             include(sym.flags, sfUsed); // suppress all those stupid warnings
             registerCompilerProc(sym);
           end;
-          wCppMethod: begin
-            makeExternImport(sym, getOptionalStr(c, it, sym.name.s));
-            include(sym.flags, sfCppMethod);
+          wProcvar: begin
+            noVal(it);
+            include(sym.flags, sfProcVar);
           end;
           wDeprecated: begin
             noVal(it);
@@ -615,6 +612,8 @@ begin
     end;
   end;
   if (sym <> nil) and (sym.kind <> skModule) then begin
+    if (lfExportLib in sym.loc.flags) and not (sfExportc in sym.flags) then
+      liMessage(n.info, errDynlibRequiresExportc);
     lib := POptionEntry(c.optionstack.tail).dynlib;
     if ([lfDynamicLib, lfHeader] * sym.loc.flags = []) and
          (sfImportc in sym.flags) and

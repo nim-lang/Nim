@@ -157,7 +157,7 @@ proc main(options: string) =
     var comp = callCompiler(filename, options)
     if sameResults(filename, spec, comp): inc(passed)
     inc(total)
-  # ensure that the examples at least compiles
+  # ensure that the examples at least compile
   for filename in os.walkFiles("examples/*.nim"):
     var comp = callCompiler(filename, options)
     var shortfile = os.extractFilename(filename)

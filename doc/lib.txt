@@ -66,8 +66,7 @@ Generic Operating System Services
 * `os <os.html>`_
   Basic operating system facilities like retrieving environment variables,
   reading command line arguments, working with directories, running shell
-  commands, etc. This module is -- like any other basic library --
-  platform independant.
+  commands, etc.
 
 * `osproc <osproc.html>`_
   Module for process communication beyond ``os.execShellCmd``.

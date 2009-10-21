@@ -1,0 +1,179 @@
+module ::= stmt*
+
+comma ::= ',' [COMMENT] [IND]
+operator ::= OP0 | OR | XOR | AND | OP3 | OP4 | OP5 | OP6 | OP7
+           | 'is' | 'isnot' | 'in' | 'notin'
+           | 'div' | 'mod' | 'shl' | 'shr' | 'not'
+
+prefixOperator ::= OP0 | OP3 | OP4 | OP5 | OP6 | OP7 | 'not'
+
+optInd ::= [COMMENT] [IND]
+
+
+lowestExpr ::= orExpr (OP0 optInd orExpr)*
+orExpr ::= andExpr (OR | 'xor' optInd andExpr)*
+andExpr ::= cmpExpr ('and' optInd cmpExpr)*
+cmpExpr ::= ampExpr (OP3 | 'is' | 'isnot' | 'in' | 'notin' optInd ampExpr)*
+ampExpr ::= plusExpr (OP4 optInd plusExpr)*
+plusExpr ::= mulExpr (OP5 optInd mulExpr)*
+mulExpr ::= dollarExpr (OP6 | 'div' | 'mod' | 'shl' | 'shr' optInd dollarExpr)*
+dollarExpr ::= primary (OP7 optInd primary)*
+
+indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
+
+castExpr ::= 'cast' '[' optInd typeDesc [SAD] ']' '(' optInd expr [SAD] ')'
+addrExpr ::= 'addr' '(' optInd expr ')'
+symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
+               | '[' ']' | '=' | literal)+ '`'
+         | IDENT
+         
+primaryPrefix ::= (prefixOperator | 'bind') optInd
+primarySuffix ::= '.' optInd symbol
+                | '(' optInd namedExprList [SAD] ')'
+                | '[' optInd [indexExpr (comma indexExpr)* [comma]] [SAD] ']'
+                | '^'
+                | pragma
+
+primary ::= primaryPrefix* (symbol | constructor | castExpr | addrExpr)
+            primarySuffix*
+
+literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
+          | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
+          | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
+          | CHAR_LIT
+          | NIL
+
+constructor ::= literal
+          | '[' optInd colonExprList [SAD] ']'
+          | '{' optInd sliceExprList [SAD] '}'
+          | '(' optInd colonExprList [SAD] ')'
+
+colonExpr ::= expr [':' expr]
+colonExprList ::= [colonExpr (comma colonExpr)* [comma]]
+
+namedExpr ::= expr ['=' expr]
+namedExprList ::= [namedExpr (comma namedExpr)* [comma]]
+
+sliceExpr ::= expr ['..' expr]
+sliceExprList ::= [sliceExpr (comma sliceExpr)* [comma]]
+
+exprOrType ::= lowestExpr
+            | 'if' '(' expr ')' expr ('elif' '(' expr ')' expr)* 'else' expr
+            | 'var' exprOrType
+            | 'ref' exprOrType
+            | 'ptr' exprOrType
+            | 'type' exprOrType
+            | 'tuple' tupleDesc
+
+expr ::= exprOrType
+     | 'proc' paramList [pragma] ['=' stmt] 
+
+qualifiedIdent ::= symbol ['.' symbol]
+
+typeDesc ::= exprOrType
+         | 'proc' paramList [pragma]
+
+macroStmt ::= '{' [stmt] '}' ('of' [sliceExprList] stmt
+                         |'elif' '(' expr ')' stmt
+                         |'except' '(' exceptList ')' stmt )*
+                         ['else' stmt]
+
+simpleStmt ::= returnStmt
+             | yieldStmt
+             | discardStmt
+             | raiseStmt
+             | breakStmt
+             | continueStmt
+             | pragma
+             | importStmt
+             | fromStmt
+             | includeStmt
+             | exprStmt
+complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
+              | blockStmt | asmStmt
+              | procDecl | iteratorDecl | macroDecl | templateDecl | methodDecl
+              | constSection | typeSection | whenStmt | varSection
+
+stmt ::= simpleStmt
+       | indPush (complexStmt | simpleStmt) (';' (complexStmt | simpleStmt))*
+         DED indPop
+
+exprStmt ::= lowestExpr ['=' expr | [expr (comma expr)*] [macroStmt]]
+returnStmt ::= 'return' [expr]
+yieldStmt ::= 'yield' expr
+discardStmt ::= 'discard' expr
+raiseStmt ::= 'raise' [expr]
+breakStmt ::= 'break' [symbol]
+continueStmt ::= 'continue'
+ifStmt ::= 'if' '(' expr ')' stmt ('elif' '(' expr ')' stmt)* ['else' stmt]
+whenStmt ::= 'when' '(' expr ')' stmt ('elif' '(' expr ')' stmt)* ['else' stmt]
+caseStmt ::= 'case' '(' expr ')' ('of' sliceExprList ':' stmt)*
+                               ('elif' '(' expr ')' stmt)*
+                               ['else' stmt]
+whileStmt ::= 'while' '(' expr ')' stmt
+forStmt ::= 'for' '(' symbol (comma symbol)* 'in' expr ['..' expr] ')' stmt
+exceptList ::= [qualifiedIdent (comma qualifiedIdent)*]
+
+tryStmt ::= 'try' stmt
+           ('except' '(' exceptList ')' stmt)*
+           ['finally' stmt]
+asmStmt ::= 'asm' [pragma] (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
+blockStmt ::= 'block' [symbol] stmt
+filename ::= symbol | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
+importStmt ::= 'import' filename (comma filename)*
+includeStmt ::= 'include' filename (comma filename)*
+fromStmt ::= 'from' filename 'import' symbol (comma symbol)*
+
+pragma ::= '{.' optInd (colonExpr [comma])* [SAD] ('.}' | '}')
+
+param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
+paramList ::= ['(' [param (comma param)*] [SAD] ')'] [':' typeDesc]
+
+genericParam ::= symbol [':' typeDesc] ['=' expr]
+genericParams ::= '[' genericParam (comma genericParam)* [SAD] ']'
+
+
+routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
+procDecl ::= 'proc' routineDecl
+macroDecl ::= 'macro' routineDecl
+iteratorDecl ::= 'iterator' routineDecl
+templateDecl ::= 'template' routineDecl
+methodDecl ::= 'method' routineDecl
+
+colonAndEquals ::= [':' typeDesc] '=' expr
+
+constDecl ::= symbol ['*'] [pragma] colonAndEquals ';' [COMMENT]
+constSection ::= 'const' [COMMENT] (constDecl | '{' constDecl+ '}')
+
+typeDef ::= typeDesc | objectDef | enumDef | 'distinct' typeDesc
+
+objectField ::= symbol ['*'] [pragma]
+objectIdentPart ::= objectField (comma objectField)* ':' typeDesc
+                    [COMMENT|IND COMMENT]
+
+objectWhen ::= 'when' expr ':' [COMMENT] objectPart
+              ('elif' expr ':' [COMMENT] objectPart)*
+              ['else' ':' [COMMENT] objectPart]
+objectCase ::= 'case' expr ':' typeDesc [COMMENT]
+              ('of' sliceExprList ':' [COMMENT] objectPart)*
+              ['else' ':' [COMMENT] objectPart]
+
+objectPart ::= objectWhen | objectCase | objectIdentPart | 'nil'
+             | indPush objectPart (SAD objectPart)* DED indPop
+tupleDesc ::= '[' optInd [param (comma param)*] [SAD] ']'
+
+objectDef ::= 'object' [pragma] ['of' typeDesc] objectPart
+enumField ::= symbol ['=' expr]
+enumDef ::= 'enum' ['of' typeDesc] (enumField [comma] [COMMENT | IND COMMENT])+
+
+typeDecl ::= COMMENT
+           | symbol ['*'] [genericParams] ['=' typeDef] [COMMENT | IND COMMENT]
+
+typeSection ::= 'type' indPush typeDecl (SAD typeDecl)* DED indPop
+
+colonOrEquals ::= ':' typeDesc ['=' expr] | '=' expr
+varField ::= symbol ['*'] [pragma]
+varPart ::= symbol (comma symbol)* colonOrEquals [COMMENT | IND COMMENT]
+varSection ::= 'var' (varPart
+                   | indPush (COMMENT|varPart)
+                     (SAD (COMMENT|varPart))* DED indPop)

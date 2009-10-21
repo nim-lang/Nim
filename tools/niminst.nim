@@ -152,8 +152,8 @@ proc walkDirRecursively(s: var seq[string], root: string) =
   for k, f in walkDir(root):
     case k
     of pcFile, pcLinkToFile: add(s, UnixToNativePath(f))
-    of pcDirectory: walkDirRecursively(s, f)
-    of pcLinkToDirectory: nil
+    of pcDir: walkDirRecursively(s, f)
+    of pcLinkToDir: nil
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
@@ -339,9 +339,10 @@ proc setupDist(c: var TConfigData) =
     if c.innoSetup.path.len == 0:
       c.innoSetup.path = "iscc.exe"
     var outcmd = if c.outdir.len == 0: "build" else: c.outdir
-    var cmd = "$# $# /O$# $#" % [c.innoSetup.path, c.innoSetup.flags, outcmd, n]
+    var cmd = "$# $# /O$# $#" % [quoteIfContainsWhite(c.innoSetup.path),
+                                 c.innoSetup.flags, outcmd, n]
     Echo(cmd)
-    if executeShellCommand(cmd) == 0:
+    if execShellCmd(cmd) == 0:
       removeFile(n)
     else:
       quit("External program failed")

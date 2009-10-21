@@ -1,0 +1,232 @@
+===================
+Parsers and Filters
+===================
+
+.. contents::
+
+The Nimrod compiler contains multiple parsers. (The standard is 
+indentation-based.) Two others are available: The `braces`:idx: parser and the
+`endX`:idx: parser. Both parsers use the same lexer as the standard parser.
+
+To use a different parser for a source file the *shebang* notation is used:
+
+.. code-block:: nimrod
+  #! braces
+  if (x == 10) {
+    echo "x is ten"
+  } else {
+    echo "x isn't ten"
+  }
+
+The special ``#!`` comment for specifying a parser needs to be in the first
+line with no leading whitespace, unless an UNIX shebang line is used. Then the
+parser shebang can occur in the second line:
+
+.. code-block:: nimrod
+  #! /usr/bin/env nimrod c -r
+  #! braces
+  if (x == 10) {
+    echo "x is ten"
+  } else {
+    echo "x isn't ten"
+  }
+
+An UNIX shebang line is defined by the pattern ``'#!' \s* '/' .*`` 
+(``#!`` followed by optional whitespace followed by ``/``). 
+
+
+Filters
+=======
+
+Nimrod's shebang also supports the invokation of `source filters`:idx: before
+the source code file is passed to the parser::
+
+  #! stdtmpl(subsChar = '$', metaChar = '#')
+  #proc generateXML(name, age: string): string =
+  #  result = ""
+  <xml>
+    <name>$name</name>
+    <age>$age</age>
+  </xml>
+
+Filters transform the input character stream to an in-memory output stream.
+They are used to provide templating systems or preprocessors. 
+
+As the example shows, passing arguments to a filter (or parser) can be done
+just like an ordinary procedure call with named or positional arguments. The
+available parameters depend on the invoked filter/parser.
+
+
+Pipe operator
+-------------
+
+Filters and parsers can be combined with the ``|`` `pipe operator`:idx:. Only
+the last operand can be a parser because a parser returns an abstract syntax
+tree which a filter cannot process::
+
+  #! strip(startswith="<") | stdtmpl | standard
+  #proc generateXML(name, age: string): string =
+  #  result = ""
+  <xml>
+    <name>$name</name>
+    <age>$age</age>
+  </xml>
+
+
+Available filters
+=================
+
+**Hint:** With ``--verbosity:2`` (or higher) Nimrod lists the processed code
+after each filter application.
+
+Replace filter
+--------------
+
+The `replace`:idx: filter replaces substrings in each line.
+
+Parameters and their defaults:
+
+  ``sub: string = ""``
+    the substring that is searched for
+  
+  ``by: string = ""``
+    the string the substring is replaced with
+
+
+Strip filter
+------------
+
+The `strip`:idx: filter simply removes leading and trailing whitespace from
+each line.
+
+Parameters and their defaults:
+
+  ``startswith: string = ""``
+    strip only the lines that start with *startswith* (ignoring leading
+    whitespace). If empty every line is stripped.
+
+  ``leading: bool = true``
+    strip leading whitespace
+  
+  ``trailing: bool = true``
+    strip trailing whitespace
+
+
+StdTmpl filter
+--------------
+
+The `stdtmpl`:idx: filter provides a simple templating engine for Nimrod. The
+filter uses a line based parser: Lines prefixed with a *meta character*
+(default: ``#``) contain Nimrod code, other lines are verbatim. Because
+indentation-based parsing is not suited for a templating engine, control flow
+statements need ``end X`` delimiters.
+
+Parameters and their defaults:
+
+  ``metaChar: char = '#'``
+    prefix for a line that contains Nimrod code
+  
+  ``subsChar: char = '$'``
+    prefix for a Nimrod expression within a template line
+    
+  ``conc: string = " & "``
+    the operation for concatenation
+    
+  ``emit: string = "result.add"``
+    the operation to emit a string literal
+    
+  ``toString: string = "$"``
+    the operation that is applied to each expression
+
+Example::
+
+  #! stdtmpl | standard
+  #proc generateHTMLPage(title, currentTab, content: string,
+  #                      tabs: openArray[string]): string = 
+  #  result = ""
+  <head><title>$title</title></head>
+  <body>
+    <div id="menu">
+      <ul>
+    #for tab in items(tabs):
+      #if currentTab == tab:
+      <li><a id="selected" 
+      #else:
+      <li><a
+      #end if
+      href="${tab}.html">$tab</a></li>
+    #end for
+      </ul>
+    </div>
+    <div id="content">
+      $content
+      A dollar: $$.
+    </div>
+  </body>
+
+The filter transforms this into:
+
+.. code-block:: nimrod
+  proc generateHTMLPage(title, currentTab, content: string,
+                        tabs: openArray[string]): string = 
+    result = ""
+    result.add("<head><title>" & $(title) & "</title></head>\n" & 
+      "<body>\n" & 
+      "  <div id=\"menu\">\n" & 
+      "    <ul>\n")
+    for tab in items(tabs):
+      if currentTab == tab:
+        result.add("    <li><a id=\"selected\" \n")
+      else:
+        result.add("    <li><a\n")
+      #end
+      result.add("    href=\"" & $(tab) & ".html\">" & $(tab) & "</a></li>\n")
+    #end
+    result.add("    </ul>\n" & 
+      "  </div>\n" & 
+      "  <div id=\"content\">\n" & 
+      "    " & $(content) & "\n" & 
+      "    A dollar: $.\n" & 
+      "  </div>\n" & 
+      "</body>\n")
+
+  
+Each line that does not start with the meta character (ignoring leading
+whitespace) is converted to a string literal that is added to ``result``. 
+
+The substitution character introduces a Nimrod expression *e* within the
+string literal. *e* is converted to a string with the *toString* operation
+which defaults to ``$``. For strong type checking, set ``toString`` to the
+empty string. *e* must match this PEG pattern::
+
+  e <- [a-zA-Z\128-\255][a-zA-Z0-9\128-\255_.]* / '{' x '}'
+  x <- '{' x+ '}' / [^}]*
+
+To produce a single substitution character it has to be doubled: ``$$``
+produces ``$``.
+
+The template engine is quite flexible. It is easy to produce a procedure that
+writes the template code directly to a file::
+
+  #! stdtmpl(emit="f.write") | standard
+  #proc writeHTMLPage(f: TFile, title, currentTab, content: string,
+  #                   tabs: openArray[string]) = 
+  <head><title>$title</title></head>
+  <body>
+    <div id="menu">
+      <ul>
+    #for tab in items(tabs):
+      #if currentTab == tab:
+      <li><a id="selected" 
+      #else:
+      <li><a
+      #end if
+      href="${tab}.html" title = "$title - $tab">$tab</a></li>
+    #end for
+      </ul>
+    </div>
+    <div id="content">
+      $content
+      A dollar: $$.
+    </div>
+  </body>

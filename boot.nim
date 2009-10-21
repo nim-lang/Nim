@@ -23,7 +23,7 @@ char* nimCPU(void) { return "$2"; }
 
 proc exec(cmd: string) =
   echo(cmd)
-  if executeShellCommand(cmd) != 0: quit("FAILURE")
+  if execShellCmd(cmd) != 0: quit("FAILURE")
 
 proc writePlatdefC =
   var f: TFile
@@ -38,19 +38,19 @@ proc rodsrc =
     blacklist = ["nsystem", "nmath", "nos", "osproc", "ntime", "strutils"]
     cmd = "nimrod boot --skip_proj_cfg -o:rod/$1.nim nim/$1"
   for fi in walkFiles("nim/*.pas"):
-    var f = extractFileTrunk(fi)
+    var f = splitFile(fi).name
     if find(blacklist, f) >= 0: continue
-    var r = "rod" / appendFileExt(f, "nim")
+    var r = "rod" / addFileExt(f, "nim")
     if not existsFile(r) or fileNewer(fi, r):
       Exec(cmd % f)
   
 proc boot(args: string) =
   writePlatdefC()
   rodsrc()
-  var newExe = appendFileExt("rod/nimrod", ExeExt)
-  var oldExe = appendFileExt("bin/nimrod", ExeExt)
+  var newExe = addFileExt("rod/nimrod", ExeExt)
+  var oldExe = addFileExt("bin/nimrod", ExeExt)
   for i in 0..1:
-    Echo("iteration: ", $(i+1))
+    Echo("iteration: ", i+1)
     # use the new executable to compile the files in the bootstrap directory:
     Exec(Bootcmd[i] % args)
     if sameFileContent(newExe, oldExe): 

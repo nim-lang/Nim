@@ -177,8 +177,7 @@ bound to a class. This has disadvantages:
 * Adding a method to a class the programmer has no control over is 
   impossible or needs ugly workarounds.
 * Often it is unclear where the method should belong to: Is
-  ``join`` a string method or an array method? Should the complex 
-  ``vertexCover`` algorithm really be a method of the ``graph`` class?
+  ``join`` a string method or an array method?
 
 Nimrod avoids these problems by not assigning methods to a class. All methods
 in Nimrod are `multi-methods`:idx:. As we will see later, multi-methods are
@@ -206,7 +205,7 @@ for any type:
 (Another way to look at the method call syntax is that it provides the missing
 postfix notation.)
 
-So code that looks "pure object oriented" is easy to write:
+So "pure object oriented" code is easy to write:
 
 .. code-block:: nimrod
   import strutils
@@ -277,7 +276,7 @@ already provides ``v[]`` access.
 Dynamic dispatch
 ----------------
 
-Procedures always use static dispatch. To get dynamic dispatch, replace the
+Procedures always use static dispatch. For dynamic dispatch replace the
 ``proc`` keyword by ``method``:
 
 .. code-block:: nimrod

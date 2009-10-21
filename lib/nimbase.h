@@ -92,8 +92,8 @@ __TINYC__
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (__safecall *name)
 
-#  define N_LIB_EXPORT  __declspec(dllexport)
-#  define N_LIB_IMPORT  __declspec(dllimport)
+#  define N_LIB_EXPORT  extern __declspec(dllexport)
+#  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_CDECL(rettype, name) rettype name
 #  define N_STDCALL(rettype, name) rettype name
@@ -107,7 +107,7 @@ __TINYC__
 #  define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (*name)
 
-#  define N_LIB_EXPORT
+#  define N_LIB_EXPORT  extern
 #  define N_LIB_IMPORT  extern
 #endif
 

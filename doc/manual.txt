@@ -342,7 +342,7 @@ Syntax
 ======
 
 This section lists Nimrod's standard syntax in ENBF. How the parser receives
-indentation tokens is already described in the Lexical Analysis section.
+indentation tokens is already described in the `Lexical Analysis`_ section.
 
 Nimrod allows user-definable operators.
 Binary operators have 8 different levels of precedence. For user-defined
@@ -363,8 +363,7 @@ Precedence level    Operators                                     First characte
 ================  ==============================================  ==================  ===============
 
 
-The grammar's start symbol is ``module``. The grammar is LL(1) and therefore
-not ambiguous.
+The grammar's start symbol is ``module``.
 
 .. include:: grammar.txt
    :literal:
@@ -875,8 +874,7 @@ Procedural type
 ~~~~~~~~~~~~~~~
 A `procedural type`:idx: is internally a pointer to a procedure. ``nil`` is
 an allowed value for variables of a procedural type. Nimrod uses procedural
-types to achieve `functional`:idx: programming techniques. Dynamic dispatch
-for OOP constructs can also be implemented with procedural types.
+types to achieve `functional`:idx: programming techniques.
 
 Example:
 
@@ -945,6 +943,16 @@ each other:
     improve speed.
 
 Most calling conventions exist only for the Windows 32-bit platform.
+
+Assigning/passing a procedure to a procedural variable is only allowed if one 
+of the following conditions hold: 
+1) The procedure that is accessed resists in the current module.
+2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
+3) The procedure has a calling convention that differs from ``nimcall``. 
+4) The procedure is anonymous.
+
+These rules should prevent the case that extending a non-``procvar`` 
+procedure with default parameters breaks client code.
 
 
 Distinct type
@@ -1054,7 +1062,7 @@ describe the type checking done by the compiler.
 Type equality
 ~~~~~~~~~~~~~
 Nimrod uses structural type equivalence for most types. Only for objects,
-enumerations and abstract types name equivalence is used. The following
+enumerations and distinct types name equivalence is used. The following
 algorithm determines type equality:
 
 .. code-block:: nimrod
@@ -1800,6 +1808,77 @@ Even more elegant is to use `tuple unpacking`:idx: to access the tuple's fields:
   assert y == 3
 
 
+Multi-methods
+~~~~~~~~~~~~~
+
+Procedures always use static dispatch. Dynamic dispatch is achieved by
+`multi-methods`:idx:. 
+
+.. code-block:: nimrod
+  type
+    TExpr = object ## abstract base class for an expression
+    TLiteral = object of TExpr
+      x: int
+    TPlusExpr = object of TExpr
+      a, b: ref TExpr
+      
+  method eval(e: ref TExpr): int =
+    # override this base method
+    quit "to override!"
+  
+  method eval(e: ref TLiteral): int = return e.x
+
+  method eval(e: ref TPlusExpr): int =
+    # watch out: relies on dynamic binding
+    return eval(e.a) + eval(e.b)
+  
+  proc newLit(x: int): ref TLiteral =
+    new(result)
+    result.x = x
+    
+  proc newPlus(a, b: ref TExpr): ref TPlusExpr =
+    new(result)
+    result.a = a
+    result.b = b
+  
+  echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+  
+In the example the constructors ``newLit`` and ``newPlus`` are procs
+because they should use static binding, but ``eval`` is a method because it
+requires dynamic binding.
+
+In a multi-method all parameters that have an object type are used for the
+dispatching:
+
+.. code-block:: nimrod
+  type
+    TThing = object
+    TUnit = object of TThing
+      x: int
+      
+  method collide(a, b: TThing) {.inline.} =
+    quit "to override!"
+    
+  method collide(a: TThing, b: TUnit) {.inline.} =
+    echo "1"
+  
+  method collide(a: TUnit, b: TThing) {.inline.} =
+    echo "2"
+  
+  var
+    a, b: TUnit
+  collide(a, b) # output: 2
+
+
+Invokation of a multi-method cannot be ambiguous: Collide 2 is prefered over 
+collide 1 because the resolution works from left to right. 
+Thus ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
+
+**Perfomance note**: Nimrod does not produce a virtual method table, but
+generates dispatch trees. This avoids the expensive indirect branch for method
+calls and enables inlining. However, other optimizations like compile time
+evaluation or dead code elimination do not work with methods.
+
 
 Iterators and the for statement
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2273,6 +2352,12 @@ arguments. If none of its parameters have the type ``var T``
 or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
+
+
+procvar pragma
+--------------
+The `procvar`:idx: pragma is used to mark a proc that it can be passed to a 
+procedural variable. 
 
 
 compileTime pragma

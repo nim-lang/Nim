@@ -1324,7 +1324,7 @@ begin
     nkTemplateDef, nkConstSection, nkIteratorDef, nkConverterDef,
     nkIncludeStmt, nkImportStmt, nkFromStmt: begin end;
     nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr,
-    nkQualified, nkLambda, nkContinueStmt, nkIdent:
+    nkLambda, nkContinueStmt, nkIdent:
       stackTrace(c, n, errCannotInterpretNodeX, nodeKindToStr[n.kind]);
     else InternalError(n.info, 'evalAux: ' + nodekindToStr[n.kind]);
   end;

@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -19,7 +19,7 @@ uses
   nsystem, charsets, strutils,
   lists, options, ast, astalgo, llstream,
   msgs, platform, nos, condsyms, idents, rnimsyn, types,
-  extccomp, nmath, magicsys, nversion, nimsets, pnimsyn, ntime, rodread;
+  extccomp, nmath, magicsys, nversion, nimsets, syntaxes, ntime, rodread;
 
 type
   TPassContext = object(NObject) // the pass's context
@@ -61,7 +61,6 @@ function astNeeded(s: PSym): bool;
 var
   gImportModule: function (const filename: string): PSym;
   gIncludeFile: function (const filename: string): PNode;
-  gIncludeTmplFile: function (const filename: string): PNode;
 
 implementation
 
@@ -165,7 +164,7 @@ end;
 procedure processModule(module: PSym; const filename: string;
                         stream: PLLStream; rd: PRodReader);
 var
-  p: TParser;
+  p: TParsers;
   n: PNode;
   a: TPassContextArray;
   s: PLLStream;
@@ -183,13 +182,13 @@ begin
     else
       s := stream;
     while true do begin
-      openParser(p, filename, s); 
+      openParsers(p, filename, s); 
       while true do begin
         n := parseTopLevelStmt(p);
         if n = nil then break;
         processTopLevelStmt(n, a)
       end;
-      closeParser(p);
+      closeParsers(p);
       if s.kind <> llsStdIn then break;
     end;
     closePasses(a);

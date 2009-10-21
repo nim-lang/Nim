@@ -29,9 +29,8 @@ implementation
 function findModule(const info: TLineInfo; const modulename: string): string;
 // returns path to module
 begin
-  result := options.FindFile(AppendFileExt(modulename, nimExt));
-  if result = '' then
-    liMessage(info, errCannotOpenFile, modulename);
+  result := options.FindFile(AddFileExt(modulename, nimExt));
+  if result = '' then liMessage(info, errCannotOpenFile, modulename);
 end;
 
 function getModuleFile(n: PNode): string;

@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2006 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -28,15 +28,27 @@ var
 procedure ProcessCmdLine(pass: TCmdLinePass; var command, filename: string);
 var
   p: TOptParser;
+  bracketLe: int;
+  key, val: string;
 begin
   p := parseopt.init();
   while true do begin
     parseopt.next(p);
     case p.kind of
       cmdEnd: break;
-      cmdLongOption, cmdShortOption:
-        ProcessSwitch(p.key, p.val, pass, cmdLineInfo);
-      cmdArgument: begin
+      cmdLongOption, cmdShortOption: begin
+        // hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
+        // we fix this here
+        bracketLe := strutils.find(p.key, '[');
+        if bracketLe >= strStart then begin
+          key := ncopy(p.key, strStart, bracketLe-1);
+          val := ncopy(p.key, bracketLe+1) +{&} ':' +{&} p.val;
+          ProcessSwitch(key, val, pass, cmdLineInfo);
+        end
+        else
+          ProcessSwitch(p.key, p.val, pass, cmdLineInfo);
+      end;
+      cmdArgument: begin  
         if command = '' then command := p.key
         else if filename = '' then begin
           filename := unixToNativePath(p.key);

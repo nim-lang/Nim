@@ -221,7 +221,8 @@ begin
   assert(not (sfResult in s.flags));
   case pt.Kind of
     tyObject: begin
-      if (optByRef in s.options) or (getSize(pt) > platform.floatSize) then
+      // XXX quick hack floatSize*2 for the pegs module under 64bit
+      if (optByRef in s.options) or (getSize(pt) > platform.floatSize*2) then
         result := true // requested anyway
       else if (tfFinal in pt.flags) and (pt.sons[0] = nil) then
         result := false // no need, because no subtyping possible

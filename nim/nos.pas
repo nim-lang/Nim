@@ -74,7 +74,7 @@ function GetConfigDir(): string;
 procedure SplitFilename(const filename: string; out name, extension: string);
 
 function ExistsFile(const filename: string): Boolean;
-function AppendFileExt(const filename, ext: string): string;
+function AddFileExt(const filename, ext: string): string;
 function ChangeFileExt(const filename, ext: string): string;
 
 procedure createDir(const dir: string);
@@ -84,7 +84,19 @@ function UnixToNativePath(const path: string): string;
 
 function sameFile(const path1, path2: string): boolean;
 
+
+function extractFileTrunk(const filename: string): string;
+
+
 implementation
+
+function extractFileTrunk(const filename: string): string;
+var
+  f, e, dir: string;
+begin
+  splitPath(filename, dir, f);
+  splitFilename(f, result, e);
+end;
 
 function GetConfigDir(): string;
 begin
@@ -103,7 +115,7 @@ end;
 function UnixToNativePath(const path: string): string;
 begin
   if dirSep <> '/' then
-    result := replaceStr(path, '/', dirSep)
+    result := replace(path, '/', dirSep)
   else
     result := path;
 end;
@@ -150,7 +162,7 @@ begin
     result := extSep + ext
 end;
 
-function AppendFileExt(const filename, ext: string): string;
+function AddFileExt(const filename, ext: string): string;
 var
   extPos: int;
 begin

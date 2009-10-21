@@ -66,4 +66,7 @@ function                func
 coordinate              coord
 rectangle               rect
 point                   point
+symbol                  sym
+identifier              ident
+indentation             indent
 -------------------     ------------   --------------------------------------

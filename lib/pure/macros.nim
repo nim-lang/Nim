@@ -45,27 +45,26 @@ type
     nnkBracket, nnkBracketExpr, nnkPragmaExpr, nnkRange, 
     nnkDotExpr, nnkCheckedFieldExpr, nnkDerefExpr, nnkIfExpr, 
     nnkElifExpr, nnkElseExpr, nnkLambda, nnkAccQuoted, 
-    nnkTableConstr, nnkQualified, nnkBind, nnkSymChoice, 
-    nnkHiddenStdConv, nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, 
-    nnkCast, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, 
-    nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, 
-    nnkChckRange, nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, 
-    nnkAsgn, nnkFastAsgn, nnkGenericParams, nnkFormalParams, 
-    nnkOfInherit, nnkModule, nnkProcDef, nnkMethodDef, 
-    nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, 
-    nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, 
-    nnkMacroStmt, nnkAsmStmt, nnkPragma, nnkIfStmt, 
-    nnkWhenStmt, nnkForStmt, nnkWhileStmt, nnkCaseStmt, 
-    nnkVarSection, nnkConstSection, nnkConstDef, nnkTypeSection, 
-    nnkTypeDef, nnkYieldStmt, nnkTryStmt, nnkFinally, 
-    nnkRaiseStmt, nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, 
-    nnkBlockStmt, nnkDiscardStmt, nnkStmtList, nnkImportStmt, 
-    nnkFromStmt, nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, 
-    nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkTypeOfExpr, 
-    nnkObjectTy, nnkTupleTy, nnkRecList, nnkRecCase, 
-    nnkRecWhen, nnkRefTy, nnkPtrTy, nnkVarTy, 
-    nnkDistinctTy, nnkProcTy, nnkEnumTy, nnkEnumFieldDef, 
-    nnkReturnToken
+    nnkTableConstr, nnkBind, nnkSymChoice, nnkHiddenStdConv, 
+    nnkHiddenSubConv, nnkHiddenCallConv, nnkConv, nnkCast, 
+    nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, 
+    nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, 
+    nnkStringToCString, nnkCStringToString, nnkPassAsOpenArray, nnkAsgn, 
+    nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, 
+    nnkModule, nnkProcDef, nnkMethodDef, nnkConverterDef, 
+    nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, 
+    nnkElifBranch, nnkExceptBranch, nnkElse, nnkMacroStmt, 
+    nnkAsmStmt, nnkPragma, nnkIfStmt, nnkWhenStmt, 
+    nnkForStmt, nnkWhileStmt, nnkCaseStmt, nnkVarSection, 
+    nnkConstSection, nnkConstDef, nnkTypeSection, nnkTypeDef, 
+    nnkYieldStmt, nnkTryStmt, nnkFinally, nnkRaiseStmt, 
+    nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, 
+    nnkDiscardStmt, nnkStmtList, nnkImportStmt, nnkFromStmt, 
+    nnkIncludeStmt, nnkCommentStmt, nnkStmtListExpr, nnkBlockExpr, 
+    nnkStmtListType, nnkBlockType, nnkTypeOfExpr, nnkObjectTy, 
+    nnkTupleTy, nnkRecList, nnkRecCase, nnkRecWhen, 
+    nnkRefTy, nnkPtrTy, nnkVarTy, nnkDistinctTy, 
+    nnkProcTy, nnkEnumTy, nnkEnumFieldDef, nnkReturnToken
   TNimNodeKinds* = set[TNimrodNodeKind]
   TNimrodTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty, 
@@ -90,7 +89,7 @@ type
 #[[[end]]]
 
 type
-  TNimrodIdent = object of TObject
+  TNimrodIdent* = object of TObject
     ## represents a Nimrod identifier in the AST
 
   TNimrodSymbol {.final.} = object # hidden
@@ -134,7 +133,7 @@ proc add*(father, child: PNimrodNode) {.magic: "NAdd".}
 
 proc add*(father: PNimrodNode, children: openArray[PNimrodNode]) {.
   magic: "NAddMultiple".}
-  ## adds each `children` to the `father` node
+  ## adds each child of `children` to the `father` node
 
 proc del*(father: PNimrodNode, idx = 0, n = 1) {.magic: "NDel".}
   ## deletes `n` children of `father` starting at index `idx`. 

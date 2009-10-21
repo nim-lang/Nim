@@ -92,7 +92,7 @@
 {'errCannotEvalXBecauseIncompletelyDefined':
   "cannot evalutate '$1' because type is not defined completely"},
 {'errChrExpectsRange0_255': "'chr' expects an int in the range 0..255"},
-{'errDotRequiresRecordOrObjectType': "'.' requires a record or object type"},
+{'errDynlibRequiresExportc': "'dynlib' requires 'exportc'"},
 {'errUndeclaredFieldX': "undeclared field: '$1'"},
 {'errNilAccess': 'attempt to access a nil address'},
 {'errIndexOutOfBounds': 'index out of bounds'},
@@ -152,7 +152,7 @@
 {'errButExpectedX': "but expected '$1'"},
 {'errAmbiguousCallXYZ': 'ambiguous call; both $1 and $2 match for: $3'},
 {'errWrongNumberOfArguments': 'wrong number of arguments'},
-{'errInlineProcHasNoAddress': 'an inline proc has no address'},
+{'errXCannotBePassedToProcVar': "'$1' cannot be passed to a procvar"},
 {'errXCannotBeInParamDecl': '$1 cannot be declared in parameter declaration'},
 {'errPragmaOnlyInHeaderOfProc':
   'pragmas are only in the header of a proc allowed'},
@@ -186,7 +186,6 @@
 {'errATypeHasNoValue': 'a type has no value'},
 {'errXisNoType': "invalid type: '$1'"},
 {'errCircumNeedsPointer': "'^' needs a pointer or reference type"},
-{'errInvalidContextForBuiltinX': "invalid context for builtin '$1'"},
 {'errInvalidExpression': 'invalid expression'},
 {'errInvalidExpressionX': "invalid expression: '$1'"},
 {'errEnumHasNoValueX': "enum has no value '$1'"},
@@ -250,6 +249,8 @@
 {'warnUnknownSubstitutionX': "unknown substitution '$1'"},
 {'warnLanguageXNotSupported': "language '$1' not supported"},
 {'warnCommentXIgnored': "comment '$1' ignored"},
+{'warnXisPassedToProcVar': "'$1' is passed to a procvar; deprecated"},
+
 # user warning message:
 {'warnUser': '$1'},
 

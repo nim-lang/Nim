@@ -48,7 +48,8 @@ proc read[T](s: PStream, result: var T) =
 
 proc readChar*(s: PStream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occured.
-  read(s, result)
+  ## Returns '\0' as an EOF marker.
+  discard s.readData(s, addr(result), sizeof(result))
 
 proc readBool*(s: PStream): bool = 
   ## reads a bool from the stream `s`. Raises `EIO` if an error occured.
@@ -94,7 +95,7 @@ proc readLine*(s: PStream): string =
     if c == '\c': 
       c = readChar(s)
       break
-    elif c == '\L': break
+    elif c == '\L' or c == '\0': break
     result.add(c)
 
 type

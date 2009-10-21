@@ -14,7 +14,7 @@ type
   TKeyValPair = tuple[key, val: string]
   TConfigData = object of TObject
     tabs, links: seq[TKeyValPair]
-    doc, srcdoc, webdoc: seq[string]
+    doc, srcdoc, webdoc, pdf: seq[string]
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: PStringTable
     nimrodArgs: string
@@ -25,9 +25,10 @@ proc initConfigData(c: var TConfigData) =
   c.doc = @[]
   c.srcdoc = @[]
   c.webdoc = @[]
+  c.pdf = @[]
   c.infile = ""
   c.outdir = ""
-  c.nimrodArgs = ""
+  c.nimrodArgs = "--hint[Conf]:off "
   c.authors = ""
   c.projectTitle = ""
   c.projectName = ""
@@ -65,7 +66,7 @@ proc parseCmdLine(c: var TConfigData) =
     case kind
     of cmdArgument:
       c.infile = addFileExt(key, "ini")
-      c.nimrodArgs = cmdLineRest(p)
+      c.nimrodArgs.add(cmdLineRest(p))
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
@@ -86,8 +87,8 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
     of pcFile, pcLinkToFile:
       if cmpIgnoreCase(ext, splitFile(f).ext) == 0:
         add(s, f)
-    of pcDirectory: walkDirRecursively(s, f, ext)
-    of pcLinkToDirectory: nil
+    of pcDir: walkDirRecursively(s, f, ext)
+    of pcLinkToDir: nil
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
@@ -132,6 +133,7 @@ proc parseIniFile(c: var TConfigData) =
         of "documentation":
           case normalize(k.key)
           of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
+          of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
           of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
           of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
           else: quit(errorStr(p, "unknown variable: " & k.key))
@@ -167,11 +169,24 @@ proc buildDoc(c: var TConfigData, destPath: string) =
        [c.nimrodArgs, destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
-  for d in items(c.doc):
-    Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
-    
-
-
+  if os.execShellCmd("pdflatex -version") != 0:
+    echo "pdflatex not found; not PDF documentation generated"
+  else:
+    for d in items(c.pdf):
+      Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
+      # call LaTeX twice to get cross references right:
+      Exec("pdflatex " & changeFileExt(d, "tex"))
+      Exec("pdflatex " & changeFileExt(d, "tex"))
+      # delete all the crappy temporary files:
+      var pdf = extractFileTrunk(d) & ".pdf"
+      moveFile(destPath / pdf, pdf)
+      removeFile(changeFileExt(pdf, "aux"))
+      if existsFile(changeFileExt(pdf, "toc")):
+        removeFile(changeFileExt(pdf, "toc"))
+      removeFile(changeFileExt(pdf, "log"))
+      removeFile(changeFileExt(pdf, "out"))
+      removeFile(changeFileExt(d, "tex"))
+  
 proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   for d in items(c.webdoc):
@@ -205,6 +220,7 @@ proc main(c: var TConfigData) =
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDoc(c, "doc")
+  #buildPdfDoc(c, "doc")
 
 var c: TConfigData
 initConfigData(c)

@@ -498,7 +498,7 @@ begin
     nkPar, nkCurly, nkBracket: result := lcomma(n)+2;
     nkSymChoice: result := lsons(n) + length('()') + sonsLen(n)-1;
     nkTupleTy: result := lcomma(n)+length('tuple[]');
-    nkQualified, nkDotExpr: result := lsons(n)+1;
+    nkDotExpr: result := lsons(n)+1;
     nkBind: result := lsons(n)+length('bind_');
     nkCheckedFieldExpr: result := lsub(n.sons[0]);
     nkLambda: result := lsons(n)+length('lambda__=_');
@@ -1047,7 +1047,7 @@ begin
       gcomma(g, n, c);
       put(g, tkBracketRi, ']'+'');
     end;
-    nkQualified, nkDotExpr: begin
+    nkDotExpr: begin
       gsub(g, n.sons[0]);
       put(g, tkDot, '.'+'');
       gsub(g, n.sons[1]);

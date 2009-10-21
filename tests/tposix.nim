@@ -1,13 +1,16 @@
 # Test Posix interface
 
-import posix
+when not defined(windows):
 
-var
-  u: Tutsname
+  import posix
 
-discard uname(u)
+  var
+    u: Tutsname
 
-writeln(stdout, u.sysname)
-writeln(stdout, u.nodename)
-writeln(stdout, u.release)
-writeln(stdout, u.machine)
+  discard uname(u)
+
+  writeln(stdout, u.sysname)
+  writeln(stdout, u.nodename)
+  writeln(stdout, u.release)
+  writeln(stdout, u.machine)
+
