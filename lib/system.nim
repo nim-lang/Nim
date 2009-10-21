@@ -668,7 +668,7 @@ else:
     """
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
-proc add *[T](x: var seq[T], y: seq[T]) {.noSideEffect.} =
+proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
@@ -721,7 +721,8 @@ type # these work for most platforms:
     ## This C type is not supported by Nimrod's code generator
 
   cstringArray* {.importc: "char**", nodecl.} = ptr array [0..50_000, cstring]
-    ## This is the same as the type ``char**`` in *C*.
+    ## This is binary compatible to the type ``char**`` in *C*. The array's
+    ## high value is large enough to disable bounds checking in practice.
 
   TEndian* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -1072,27 +1073,24 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
 # This is an undocumented pragma that can only be used
 # once in the system module.
 
-proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+proc `&` *[T](x, y: openArray[T]): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
   for i in 0..y.len-1:
-    result[i] = y[i]
+    result[i+x.len] = y[i]
 
-proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+proc `&` *[T](x: openArray[T], y: T): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
-proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+proc `&` *[T](x: T, y: openArray[T]): seq[T] {.noSideEffect.} =
   newSeq(result, y.len + 1)
   for i in 0..y.len-1:
     result[i] = y[i]
   result[y.len] = x
-
-proc `&` *[T](x, y: T): seq[T] {.noSideEffect.} =
-  return [x, y]
 
 when not defined(NimrodVM):
   when not defined(ECMAScript):

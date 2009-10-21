@@ -8,7 +8,8 @@ nimrod          main module: parses the command line and calls
                 ``main.MainCommand``
 main            implements the top-level command dispatching
 nimconf         implements the config file reader
-
+syntaxes        dispatcher for the different parsers and filters
+ptmplsyn        standard template filter (``#! stdtempl``)
 lexbase         buffer handling of the lexical analyser
 scanner         lexical analyser
 pnimsyn         Nimrod's parser

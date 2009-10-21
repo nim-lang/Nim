@@ -1057,8 +1057,7 @@ begin
         // NOTE: we need to process the entire module graph so that no ID will
         // be used twice! However, compilation speed does not suffer much from
         // this, since results are cached.
-        res := checkDep(JoinPath(options.libpath, 
-                        appendFileExt('system', nimExt)));
+        res := checkDep(JoinPath(options.libpath, addFileExt('system', nimExt)));
         if res <> rrNone then result := rrModDeps;
         for i := 0 to high(r.modDeps) do begin
           res := checkDep(r.modDeps[i]);

@@ -19,25 +19,23 @@ plusExpr ::= mulExpr (OP5 optInd mulExpr)*
 mulExpr ::= dollarExpr (OP6 | 'div' | 'mod' | 'shl' | 'shr' optInd dollarExpr)*
 dollarExpr ::= primary (OP7 optInd primary)*
 
-namedTypeOrExpr ::=
-  '..' [expr]
-  | expr ['=' (expr ['..' expr] | typeDescK | '..' [expr]) | '..' [expr]]
-  | typeDescK
+indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
 
 castExpr ::= 'cast' '[' optInd typeDesc [SAD] ']' '(' optInd expr [SAD] ')'
 addrExpr ::= 'addr' '(' optInd expr ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
                | '[' ']' | '=' | literal)+ '`'
          | IDENT
-primary ::= ((prefixOperator | 'bind') optInd)* (symbol | constructor |
-                                                 castExpr | addrExpr) (
-               '.' optInd symbol
-             | '(' optInd namedExprList [SAD] ')'
-             | '[' optInd
-               [namedTypeOrExpr (comma namedTypeOrExpr)* [comma]]
-               [SAD] ']'
-             | '^'
-             | pragma)*
+         
+primaryPrefix ::= (prefixOperator | 'bind') optInd
+primarySuffix ::= '.' optInd symbol
+                | '(' optInd namedExprList [SAD] ')'
+                | '[' optInd [indexExpr (comma indexExpr)* [comma]] [SAD] ']'
+                | '^'
+                | pragma
+
+primary ::= primaryPrefix* (symbol | constructor | castExpr | addrExpr)
+            primarySuffix*
 
 literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
@@ -59,24 +57,21 @@ namedExprList ::= [namedExpr (comma namedExpr)* [comma]]
 sliceExpr ::= expr ['..' expr]
 sliceExprList ::= [sliceExpr (comma sliceExpr)* [comma]]
 
-anonymousProc ::= 'lambda' paramList [pragma] '=' stmt
-expr ::= lowestExpr
-     | anonymousProc
-     | 'if' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
+exprOrType ::= lowestExpr
+            | 'if' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
+            | 'var' exprOrType
+            | 'ref' exprOrType
+            | 'ptr' exprOrType
+            | 'type' exprOrType
+            | 'tuple' tupleDesc
 
-namedTypeDesc ::= typeDescK | expr ['=' (typeDescK | expr)]
-namedTypeDescList ::= [namedTypeDesc (comma namedTypeDesc)* [comma]]
+expr ::= exprOrType
+     | 'proc' paramList [pragma] ['=' stmt] 
 
 qualifiedIdent ::= symbol ['.' symbol]
 
-typeDescK ::= 'var' typeDesc
-            | 'ref' typeDesc
-            | 'ptr' typeDesc
-            | 'type' expr
-            | 'tuple' tupleDesc
-            | 'proc' paramList [pragma]
-
-typeDesc ::= typeDescK | primary
+typeDesc ::= exprOrType
+         | 'proc' paramList [pragma]
 
 macroStmt ::= ':' [stmt] ('of' [sliceExprList] ':' stmt
                          |'elif' expr ':' stmt
@@ -84,20 +79,20 @@ macroStmt ::= ':' [stmt] ('of' [sliceExprList] ':' stmt
                          ['else' ':' stmt]
 
 simpleStmt ::= returnStmt
-           | yieldStmt
-           | discardStmt
-           | raiseStmt
-           | breakStmt
-           | continueStmt
-           | pragma
-           | importStmt
-           | fromStmt
-           | includeStmt
-           | exprStmt
+             | yieldStmt
+             | discardStmt
+             | raiseStmt
+             | breakStmt
+             | continueStmt
+             | pragma
+             | importStmt
+             | fromStmt
+             | includeStmt
+             | exprStmt
 complexStmt ::= ifStmt | whileStmt | caseStmt | tryStmt | forStmt
-                 | blockStmt | asmStmt
-                 | procDecl | iteratorDecl | macroDecl | templateDecl
-                 | constSection | typeSection | whenStmt | varSection
+              | blockStmt | asmStmt
+              | procDecl | iteratorDecl | macroDecl | templateDecl | methodDecl
+              | constSection | typeSection | whenStmt | varSection
 
 indPush ::= IND # and push indentation onto the stack
 indPop ::= # pop indentation from the stack
@@ -141,25 +136,24 @@ paramList ::= ['(' [param (comma param)*] [SAD] ')'] [':' typeDesc]
 genericParam ::= symbol [':' typeDesc] ['=' expr]
 genericParams ::= '[' genericParam (comma genericParam)* [SAD] ']'
 
-procDecl ::= 'proc' symbol ['*'] [genericParams] paramList [pragma]
-             ['=' stmt]
-macroDecl ::= 'macro' symbol ['*'] [genericParams] paramList [pragma]
-             ['=' stmt]
-iteratorDecl ::= 'iterator' symbol ['*'] [genericParams] paramList [pragma]
-             ['=' stmt]
-templateDecl ::= 'template' symbol ['*'] [genericParams] paramList [pragma]
-             ['=' stmt]
+
+routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
+procDecl ::= 'proc' routineDecl
+macroDecl ::= 'macro' routineDecl
+iteratorDecl ::= 'iterator' routineDecl
+templateDecl ::= 'template' routineDecl
+methodDecl ::= 'method' routineDecl
 
 colonAndEquals ::= [':' typeDesc] '=' expr
 
 constDecl ::= symbol ['*'] [pragma] colonAndEquals [COMMENT | IND COMMENT]
             | COMMENT
 constSection ::= 'const' indPush constDecl (SAD constDecl)* DED indPop
-typeDef ::= typeDesc | objectDef | enumDef | 'abstract' typeDesc
+typeDef ::= typeDesc | objectDef | enumDef | 'distinct' typeDesc
 
 objectField ::= symbol ['*'] [pragma]
-objectIdentPart ::=
-  objectField (comma objectField)* ':' typeDesc [COMMENT|IND COMMENT]
+objectIdentPart ::= objectField (comma objectField)* ':' typeDesc
+                    [COMMENT|IND COMMENT]
 
 objectWhen ::= 'when' expr ':' [COMMENT] objectPart
               ('elif' expr ':' [COMMENT] objectPart)*

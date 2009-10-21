@@ -78,27 +78,26 @@ type
     nkBracket, nkBracketExpr, nkPragmaExpr, nkRange, 
     nkDotExpr, nkCheckedFieldExpr, nkDerefExpr, nkIfExpr, 
     nkElifExpr, nkElseExpr, nkLambda, nkAccQuoted, 
-    nkTableConstr, nkQualified, nkBind, nkSymChoice, 
-    nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv, nkConv, 
-    nkCast, nkAddr, nkHiddenAddr, nkHiddenDeref, 
-    nkObjDownConv, nkObjUpConv, nkChckRangeF, nkChckRange64, 
-    nkChckRange, nkStringToCString, nkCStringToString, nkPassAsOpenArray, 
-    nkAsgn, nkFastAsgn, nkGenericParams, nkFormalParams, 
-    nkOfInherit, nkModule, nkProcDef, nkMethodDef, 
-    nkConverterDef, nkMacroDef, nkTemplateDef, nkIteratorDef, 
-    nkOfBranch, nkElifBranch, nkExceptBranch, nkElse, 
-    nkMacroStmt, nkAsmStmt, nkPragma, nkIfStmt, 
-    nkWhenStmt, nkForStmt, nkWhileStmt, nkCaseStmt, 
-    nkVarSection, nkConstSection, nkConstDef, nkTypeSection, 
-    nkTypeDef, nkYieldStmt, nkTryStmt, nkFinally, 
-    nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt, 
-    nkBlockStmt, nkDiscardStmt, nkStmtList, nkImportStmt, 
-    nkFromStmt, nkIncludeStmt, nkCommentStmt, nkStmtListExpr, 
-    nkBlockExpr, nkStmtListType, nkBlockType, nkTypeOfExpr, 
-    nkObjectTy, nkTupleTy, nkRecList, nkRecCase, 
-    nkRecWhen, nkRefTy, nkPtrTy, nkVarTy, 
-    nkDistinctTy, nkProcTy, nkEnumTy, nkEnumFieldDef, 
-    nkReturnToken);
+    nkTableConstr, nkBind, nkSymChoice, nkHiddenStdConv, 
+    nkHiddenSubConv, nkHiddenCallConv, nkConv, nkCast, 
+    nkAddr, nkHiddenAddr, nkHiddenDeref, nkObjDownConv, 
+    nkObjUpConv, nkChckRangeF, nkChckRange64, nkChckRange, 
+    nkStringToCString, nkCStringToString, nkPassAsOpenArray, nkAsgn, 
+    nkFastAsgn, nkGenericParams, nkFormalParams, nkOfInherit, 
+    nkModule, nkProcDef, nkMethodDef, nkConverterDef, 
+    nkMacroDef, nkTemplateDef, nkIteratorDef, nkOfBranch, 
+    nkElifBranch, nkExceptBranch, nkElse, nkMacroStmt, 
+    nkAsmStmt, nkPragma, nkIfStmt, nkWhenStmt, 
+    nkForStmt, nkWhileStmt, nkCaseStmt, nkVarSection, 
+    nkConstSection, nkConstDef, nkTypeSection, nkTypeDef, 
+    nkYieldStmt, nkTryStmt, nkFinally, nkRaiseStmt, 
+    nkReturnStmt, nkBreakStmt, nkContinueStmt, nkBlockStmt, 
+    nkDiscardStmt, nkStmtList, nkImportStmt, nkFromStmt, 
+    nkIncludeStmt, nkCommentStmt, nkStmtListExpr, nkBlockExpr, 
+    nkStmtListType, nkBlockType, nkTypeOfExpr, nkObjectTy, 
+    nkTupleTy, nkRecList, nkRecCase, nkRecWhen, 
+    nkRefTy, nkPtrTy, nkVarTy, nkDistinctTy, 
+    nkProcTy, nkEnumTy, nkEnumFieldDef, nkReturnToken);
   TNodeKinds = set of TNodeKind;
 const
   NodeKindToStr: array [TNodeKind] of string = (
@@ -113,27 +112,26 @@ const
     'nkBracket', 'nkBracketExpr', 'nkPragmaExpr', 'nkRange', 
     'nkDotExpr', 'nkCheckedFieldExpr', 'nkDerefExpr', 'nkIfExpr', 
     'nkElifExpr', 'nkElseExpr', 'nkLambda', 'nkAccQuoted', 
-    'nkTableConstr', 'nkQualified', 'nkBind', 'nkSymChoice', 
-    'nkHiddenStdConv', 'nkHiddenSubConv', 'nkHiddenCallConv', 'nkConv', 
-    'nkCast', 'nkAddr', 'nkHiddenAddr', 'nkHiddenDeref', 
-    'nkObjDownConv', 'nkObjUpConv', 'nkChckRangeF', 'nkChckRange64', 
-    'nkChckRange', 'nkStringToCString', 'nkCStringToString', 'nkPassAsOpenArray', 
-    'nkAsgn', 'nkFastAsgn', 'nkGenericParams', 'nkFormalParams', 
-    'nkOfInherit', 'nkModule', 'nkProcDef', 'nkMethodDef', 
-    'nkConverterDef', 'nkMacroDef', 'nkTemplateDef', 'nkIteratorDef', 
-    'nkOfBranch', 'nkElifBranch', 'nkExceptBranch', 'nkElse', 
-    'nkMacroStmt', 'nkAsmStmt', 'nkPragma', 'nkIfStmt', 
-    'nkWhenStmt', 'nkForStmt', 'nkWhileStmt', 'nkCaseStmt', 
-    'nkVarSection', 'nkConstSection', 'nkConstDef', 'nkTypeSection', 
-    'nkTypeDef', 'nkYieldStmt', 'nkTryStmt', 'nkFinally', 
-    'nkRaiseStmt', 'nkReturnStmt', 'nkBreakStmt', 'nkContinueStmt', 
-    'nkBlockStmt', 'nkDiscardStmt', 'nkStmtList', 'nkImportStmt', 
-    'nkFromStmt', 'nkIncludeStmt', 'nkCommentStmt', 'nkStmtListExpr', 
-    'nkBlockExpr', 'nkStmtListType', 'nkBlockType', 'nkTypeOfExpr', 
-    'nkObjectTy', 'nkTupleTy', 'nkRecList', 'nkRecCase', 
-    'nkRecWhen', 'nkRefTy', 'nkPtrTy', 'nkVarTy', 
-    'nkDistinctTy', 'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 
-    'nkReturnToken');
+    'nkTableConstr', 'nkBind', 'nkSymChoice', 'nkHiddenStdConv', 
+    'nkHiddenSubConv', 'nkHiddenCallConv', 'nkConv', 'nkCast', 
+    'nkAddr', 'nkHiddenAddr', 'nkHiddenDeref', 'nkObjDownConv', 
+    'nkObjUpConv', 'nkChckRangeF', 'nkChckRange64', 'nkChckRange', 
+    'nkStringToCString', 'nkCStringToString', 'nkPassAsOpenArray', 'nkAsgn', 
+    'nkFastAsgn', 'nkGenericParams', 'nkFormalParams', 'nkOfInherit', 
+    'nkModule', 'nkProcDef', 'nkMethodDef', 'nkConverterDef', 
+    'nkMacroDef', 'nkTemplateDef', 'nkIteratorDef', 'nkOfBranch', 
+    'nkElifBranch', 'nkExceptBranch', 'nkElse', 'nkMacroStmt', 
+    'nkAsmStmt', 'nkPragma', 'nkIfStmt', 'nkWhenStmt', 
+    'nkForStmt', 'nkWhileStmt', 'nkCaseStmt', 'nkVarSection', 
+    'nkConstSection', 'nkConstDef', 'nkTypeSection', 'nkTypeDef', 
+    'nkYieldStmt', 'nkTryStmt', 'nkFinally', 'nkRaiseStmt', 
+    'nkReturnStmt', 'nkBreakStmt', 'nkContinueStmt', 'nkBlockStmt', 
+    'nkDiscardStmt', 'nkStmtList', 'nkImportStmt', 'nkFromStmt', 
+    'nkIncludeStmt', 'nkCommentStmt', 'nkStmtListExpr', 'nkBlockExpr', 
+    'nkStmtListType', 'nkBlockType', 'nkTypeOfExpr', 'nkObjectTy', 
+    'nkTupleTy', 'nkRecList', 'nkRecCase', 'nkRecWhen', 
+    'nkRefTy', 'nkPtrTy', 'nkVarTy', 'nkDistinctTy', 
+    'nkProcTy', 'nkEnumTy', 'nkEnumFieldDef', 'nkReturnToken');
 type
   TSymFlag = (
     sfUsed, sfStar, sfMinus, sfInInterface, 
@@ -141,7 +139,7 @@ type
     sfExportc, sfVolatile, sfRegister, sfPure, 
     sfResult, sfNoSideEffect, sfSideEffect, sfMainModule, 
     sfSystemModule, sfNoReturn, sfAddrTaken, sfCompilerProc, 
-    sfCppMethod, sfDiscriminant, sfDeprecated, sfInClosure, 
+    sfProcvar, sfDiscriminant, sfDeprecated, sfInClosure, 
     sfTypeCheck, sfCompileTime, sfThreadVar, sfMerge, 
     sfDeadCodeElim, sfBorrow);
   TSymFlags = set of TSymFlag;
@@ -152,7 +150,7 @@ const
     'sfExportc', 'sfVolatile', 'sfRegister', 'sfPure', 
     'sfResult', 'sfNoSideEffect', 'sfSideEffect', 'sfMainModule', 
     'sfSystemModule', 'sfNoReturn', 'sfAddrTaken', 'sfCompilerProc', 
-    'sfCppMethod', 'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 
+    'sfProcvar', 'sfDiscriminant', 'sfDeprecated', 'sfInClosure', 
     'sfTypeCheck', 'sfCompileTime', 'sfThreadVar', 'sfMerge', 
     'sfDeadCodeElim', 'sfBorrow');
 type
@@ -340,6 +338,7 @@ type
     lfNoDeepCopy,  // no need for a deep copy
     lfNoDecl,      // do not declare it in C
     lfDynamicLib,  // link symbol to dynamic library
+    lfExportLib,   // export symbol for dynamic library generation
     lfHeader       // include header file for symbol
   );
 

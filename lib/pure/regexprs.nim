@@ -8,9 +8,6 @@
 #
 
 ## Regular expression support for Nimrod.
-## **Deprecated** since version 0.8.2. Use the module `re` instead.
-{.deprecated.}
-
 ## Currently this module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE

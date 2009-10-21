@@ -130,17 +130,22 @@ when defined(boehmgc):
 
   include "system/cellsets"
 elif defined(nogc):
-  proc alloc(size: int): pointer =
-    result = c_malloc(size)
-    if result == nil: raiseOutOfMem()
-  proc alloc0(size: int): pointer =
-    result = alloc(size)
-    zeroMem(result, size)
-  proc realloc(p: Pointer, newsize: int): pointer =
-    result = c_realloc(p, newsize)
-    if result == nil: raiseOutOfMem()
-  proc dealloc(p: Pointer) =
-    c_free(p)
+  include "system/alloc"
+
+  when false:
+    proc alloc(size: int): pointer =
+      result = c_malloc(size)
+      if result == nil: raiseOutOfMem()
+    proc alloc0(size: int): pointer =
+      result = alloc(size)
+      zeroMem(result, size)
+    proc realloc(p: Pointer, newsize: int): pointer =
+      result = c_realloc(p, newsize)
+      if result == nil: raiseOutOfMem()
+    proc dealloc(p: Pointer) = c_free(p)
+    proc getOccupiedMem(): int = return -1
+    proc getFreeMem(): int = return -1
+    proc getTotalMem(): int = return -1
 
   proc initGC() = nil
   proc GC_disable() = nil
@@ -151,10 +156,7 @@ elif defined(nogc):
   proc GC_disableMarkAndSweep() = nil
   proc GC_getStatistics(): string = return ""
   
-  proc getOccupiedMem(): int = return -1
-  proc getFreeMem(): int = return -1
-  proc getTotalMem(): int = return -1
-
+  
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
@@ -163,7 +165,6 @@ elif defined(nogc):
     cast[PGenericSeq](result).space = len
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
-    # XXX BUG: we need realloc0 here, but C does not support this...
 
   proc setStackBottom(theStackBottom: pointer) {.compilerproc.} = nil
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil

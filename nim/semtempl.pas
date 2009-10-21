@@ -34,7 +34,7 @@ begin
   if n = nil then begin result := false; exit end;
   case n.kind of
     nkIdent, nkSym, nkType: result := true;
-    nkDotExpr, nkQualified, nkBracketExpr: begin
+    nkDotExpr, nkBracketExpr: begin
       for i := 0 to sonsLen(n)-1 do
         if not isTypeDesc(n.sons[i]) then begin
           result := false; exit

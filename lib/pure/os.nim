@@ -790,7 +790,7 @@ iterator walkFiles*(pattern: string): string =
     if res != -1:
       while true:
         if f.cFileName[0] != '.':
-          yield extractDir(pattern) / extractFilename($f.cFileName)
+          yield splitFile(pattern).dir / extractFilename($f.cFileName)
         if findnextFileA(res, f) == 0'i32: break
       findclose(res)
   else: # here we use glob
@@ -811,8 +811,12 @@ type
   TPathComponent* = enum  ## Enumeration specifying a path component.
     pcFile,               ## path refers to a file
     pcLinkToFile,         ## path refers to a symbolic link to a file
-    pcDirectory,          ## path refers to a directory
-    pcLinkToDirectory     ## path refers to a symbolic link to a directory
+    pcDir,                ## path refers to a directory
+    pcLinkToDir           ## path refers to a symbolic link to a directory
+
+const
+  pcDirectory* {.deprecated.} = pcDir ## deprecated alias 
+  pcLinkToDirectory* {.deprecated.} = pcLinkToDir ## deprecated alias
 
 iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
   ## walks over the directory `dir` and yields for each directory or file in
@@ -843,7 +847,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
         var k = pcFile
         if f.cFilename[0] != '.':
           if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
-            k = pcDirectory
+            k = pcDir
           yield (k, dir / extractFilename($f.cFilename))
         if findnextFileA(h, f) == 0'i32: break
       findclose(h)
@@ -859,10 +863,32 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
           y = dir / y
           if stat(y, s) < 0'i32: break
           var k = pcFile
-          if S_ISDIR(s.st_mode): k = pcDirectory
+          if S_ISDIR(s.st_mode): k = pcDir
           if S_ISLNK(s.st_mode): k = succ(k)
           yield (k, y)
       discard closeDir(d)
+
+iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
+  ## walks over the directory `dir` and yields for each file in `dir`. The 
+  ## full path for each file is returned.
+  ## Walking is recursive. `filter` controls the behaviour of the iterator:
+  ##
+  ## ---------------------   ---------------------------------------------
+  ## filter                  meaning
+  ## ---------------------   ---------------------------------------------
+  ## ``pcFile``              yield real files
+  ## ``pcLinkToFile``        yield symbol links to files
+  ## ``pcDir``               follow real directories
+  ## ``pcLinkToDir``         follow symbol links to directories
+  ## ---------------------   ---------------------------------------------
+  ## 
+  var stack = @[dir]
+  while stack.len > 0:
+    for k,p in walkDir(stack.pop()):
+      if k in filter:
+        case k
+        of pcFile, pcLinkToFile: yield p
+        of pcDir, pcLinkToDir: stack.add(p)
 
 proc rawRemoveDir(dir: string) = 
   when defined(windows):
@@ -871,12 +897,12 @@ proc rawRemoveDir(dir: string) =
     if rmdir(dir) != 0'i32: OSError()
 
 proc removeDir*(dir: string) =
-  ## Removes the directory `dir` including all subdirectories or files
+  ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively). If this fails, `EOS` is raised.
   for kind, path in walkDir(dir): 
     case kind
-    of pcFile, pcLinkToFile, pcLinkToDirectory: removeFile(path)
-    of pcDirectory: removeDir(dir)
+    of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
+    of pcDir: removeDir(dir)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string) =
@@ -935,7 +961,7 @@ type
     fpOthersRead           ## read access for others
 
 proc getFilePermissions*(filename: string): set[TFilePermission] =
-  ## retrives file permissions for `filename`. `OSError` is raised in case of
+  ## retrieves file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
   when defined(posix):
@@ -1102,5 +1128,15 @@ proc getApplicationFilename*(): string =
 proc getApplicationDir*(): string =
   ## Returns the directory of the application's executable.
   result = splitFile(getApplicationFilename()).dir
+
+proc sleep*(milsecs: int) =
+  ## sleeps `milsecs` milliseconds.
+  when defined(windows):
+    winlean.sleep(int32(milsecs))
+  else:
+    var a, b: Ttimespec
+    a.tv_sec = TTime(milsecs div 1000)
+    a.tv_nsec = (milsecs mod 1000) * 1000
+    discard posix.nanosleep(a, b)
 
 {.pop.}

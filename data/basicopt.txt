@@ -27,7 +27,7 @@ Options:
   -a, --assertions:on|off   code generation for assertions ON|OFF
   --dead_code_elim:on|off   whole program dead code elimination ON|OFF
   --opt:none|speed|size     optimize not at all or for speed|size
-  --app:console|gui         generate a console|GUI application
+  --app:console|gui|lib     generate a console|GUI application|dynamic library
   -r, --run                 run the compiled program with given arguments
   --advanced                show advanced command line switches
   -h, --help                show this help

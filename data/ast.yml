@@ -8,7 +8,7 @@
 #
 
 {
-'SymFlag': [          # already 29 flags!
+'SymFlag': [          # already 30 flags!
   'sfUsed',           # read access of sym (for warnings) or simply used
   'sfStar',           # symbol has * visibility
   'sfMinus',          # symbol has - visibility
@@ -34,7 +34,7 @@
   'sfAddrTaken',      # the variable's address is taken (ex- or implicitely)
   'sfCompilerProc',   # proc is a compiler proc, that is a C proc that is
                       # needed for the code generator
-  'sfCppMethod',      # proc is a C++ method (not implemented yet)
+  'sfProcvar',        # proc can be passed to a proc var
   'sfDiscriminant',   # field is a discriminant in a record/object
   'sfDeprecated',     # symbol is deprecated
   'sfInClosure',      # variable is accessed by a closure
@@ -152,7 +152,6 @@
   'nkAccQuoted',          # `a` as a node
 
   'nkTableConstr',        # a table constructor {expr: expr}
-  'nkQualified',          # describes a.b for qualified identifiers
   'nkBind',               # ``bind expr`` node
   'nkSymChoice',          # symbol choice node
   'nkHiddenStdConv',      # an implicit standard type conversion

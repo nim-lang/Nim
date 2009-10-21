@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -85,7 +85,7 @@ const
 +{&} '  -a, --assertions:on|off   code generation for assertions ON|OFF' +{&} nl
 +{&} '  --dead_code_elim:on|off   whole program dead code elimination ON|OFF' +{&} nl
 +{&} '  --opt:none|speed|size     optimize not at all or for speed|size' +{&} nl
-+{&} '  --app:console|gui         generate a console|GUI application' +{&} nl
++{&} '  --app:console|gui|lib     generate a console|GUI application|dynamic library' +{&} nl
 +{&} '  -r, --run                 run the compiled program with given arguments' +{&} nl
 +{&} '  --advanced                show advanced command line switches' +{&} nl
 +{&} '  -h, --help                show this help' +{&} nl
@@ -127,10 +127,12 @@ const
 +{&} '  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod' +{&} nl
 +{&} '  --skip_cfg                do not read the general configuration file' +{&} nl
 +{&} '  --skip_proj_cfg           do not read the project''s configuration file' +{&} nl
-+{&} '  --gc:refc|boehm           use Nimrod''s native GC|Boehm GC' +{&} nl
++{&} '  --gc:refc|boehm|none      use Nimrod''s native GC|Boehm GC|no GC' +{&} nl
 +{&} '  --index:FILE              use FILE to generate a documenation index file' +{&} nl
 +{&} '  --putenv:key=value        set an environment variable' +{&} nl
 +{&} '  --list_cmd                list the commands used to execute external programs' +{&} nl
++{&} '  --parallel_build=0|1|...  perform a parallel build' +{&} nl
++{&} '                            value = number of processors (0 for auto-detect)' +{&} nl
 +{&} '  --verbosity:0|1|2|3       set Nimrod''s verbosity level (0 is default)' +{&} nl
 +{&} '  -v, --version             show detailed version information' +{&} nl
 //[[[end]]]
@@ -522,6 +524,10 @@ begin
     wVerbosity: begin
       expectArg(switch, arg, pass, info);
       gVerbosity := parseInt(arg);
+    end;
+    wParallelBuild: begin
+      expectArg(switch, arg, pass, info);      
+      gNumberOfProcessors := parseInt(arg);
     end;
     wVersion, wV: begin
       expectNoArg(switch, arg, pass, info);

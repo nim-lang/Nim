@@ -9,19 +9,19 @@
 
 ## This module implements an advanced facility for executing OS processes
 ## and process communication.
-## **On Windows this module does not work properly. Please help!**
 
 import
-  os, strtabs, streams
+  strutils, os, strtabs, streams
 
 when defined(windows):
   import winlean
+else:
+  import posix
 
 type
   TProcess = object of TObject
     when defined(windows):
       FProcessHandle: Thandle
-      FThreadHandle: Thandle
       inputHandle, outputHandle, errorHandle: TFileHandle
     else:
       inputHandle, outputHandle, errorHandle: TFileHandle
@@ -31,10 +31,11 @@ type
   PProcess* = ref TProcess ## represents an operating system process
 
   TProcessOption* = enum ## options that can be passed `startProcess`
-    poNone,              ## none option
+    poEchoCmd,           ## echo the command before execution
     poUseShell,          ## use the shell to execute the command; NOTE: This
                          ## often creates a security whole!
-    poStdErrToStdOut     ## merge stdout and stderr to the stdout stream
+    poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
+    poParentStreams      ## use the parent's streams
 
 proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
@@ -77,18 +78,6 @@ proc startProcess*(command: string,
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
 
-when true:
-  nil
-else:
-  proc startGUIProcess*(command: string,
-                     workingDir: string = "",
-                     args: openarray[string] = [],
-                     env: PStringTable = nil,
-                     x = -1,
-                     y = -1,
-                     width = -1,
-                     height = -1): PProcess
-
 proc suspend*(p: PProcess)
   ## Suspends the process `p`.
 
@@ -117,13 +106,108 @@ proc outputStream*(p: PProcess): PStream
 proc errorStream*(p: PProcess): PStream
   ## returns ``p``'s output stream for reading from
 
+when defined(macosx) or defined(bsd):
+  const
+    CTL_HW = 6
+    HW_AVAILCPU = 25
+    HW_NCPU = 3
+  proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
+              a: var int, b: pointer, c: int): cint {.
+             importc: "sysctl", header: "<sys/sysctl.h>".}
+
+proc countProcessors*(): int = 
+  ## returns the numer of the processors/cores the machine has.
+  ## Returns 0 if it cannot be determined.
+  when defined(windows):
+    var x = getenv("NUMBER_OF_PROCESSORS")
+    if x.len > 0: result = parseInt(x)
+  elif defined(macosx) or defined(bsd):
+    var
+      mib: array[0..3, cint]
+      len, numCPU: int
+    mib[0] = CTL_HW
+    mib[1] = HW_AVAILCPU
+    len = sizeof(numCPU)
+    discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
+    if numCPU < 1:
+      mib[1] = HW_NCPU
+      discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
+    result = numCPU
+  elif defined(hpux):
+    result = mpctl(MPC_GETNUMSPUS, nil, nil)
+  elif defined(irix):
+    var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
+    result = sysconf(SC_NPROC_ONLN)
+  else:
+    result = sysconf(SC_NPROCESSORS_ONLN)
+  if result <= 0: result = 1
+
+proc startProcessAux(cmd: string, options: set[TProcessOption]): PProcess =
+  var c = parseCmdLine(cmd)
+  var a: seq[string] = @[] # slicing is not yet implemented :-(
+  for i in 1 .. c.len-1: add(a, c[i])
+  result = startProcess(command=c[0], args=a, options=options)
+
+proc execProcesses*(cmds: openArray[string],
+                    options = {poStdErrToStdOut, poParentStreams},
+                    n = countProcessors()): int =
+  ## executes the commands `cmds` in parallel. Creates `n` processes
+  ## that execute in parallel. The highest return value of all processes
+  ## is returned.
+  assert n > 0
+  if n > 1:
+    var q: seq[PProcess]
+    newSeq(q, n)
+    var m = min(n, cmds.len)
+    for i in 0..m-1:
+      q[i] = startProcessAux(cmds[i], options=options)
+    when defined(noBusyWaiting):
+      var r = 0
+      for i in m..high(cmds):
+        when defined(debugExecProcesses):
+          var err = ""
+          var outp = outputStream(q[r])
+          while running(q[r]) or not outp.atEnd(outp):
+            err.add(outp.readLine())
+            err.add("\n")
+          echo(err)
+        result = max(waitForExit(q[r]), result)
+        q[r] = startProcessAux(cmds[i], options=options)
+        r = (r + 1) mod n
+    else:
+      var i = m
+      while i <= high(cmds):
+        sleep(50)
+        for r in 0..n-1:
+          if not running(q[r]):
+            #echo(outputStream(q[r]).readLine())
+            result = max(waitForExit(q[r]), result)
+            q[r] = startProcessAux(cmds[i], options=options)
+            inc(i)
+            if i > high(cmds): break
+    for i in 0..m-1:
+      result = max(waitForExit(q[i]), result)  
+  else:
+    for i in 0..high(cmds):
+      var p = startProcessAux(cmds[i], options=options)
+      result = max(waitForExit(p), result)
+
+when true:
+  nil
+else:
+  proc startGUIProcess*(command: string,
+                     workingDir: string = "",
+                     args: openarray[string] = [],
+                     env: PStringTable = nil,
+                     x = -1,
+                     y = -1,
+                     width = -1,
+                     height = -1): PProcess
+
 proc execProcess(command: string,
                  options: set[TProcessOption] = {poStdErrToStdOut,
                                                  poUseShell}): string =
-  var c = parseCmdLine(command)
-  var a: seq[string] = @[] # slicing is not yet implemented :-(
-  for i in 1 .. c.len-1: add(a, c[i])
-  var p = startProcess(command=c[0], args=a, options=options)
+  var p = startProcessAux(command, options=options)
   var outp = outputStream(p)
   result = ""
   while running(p) or not outp.atEnd(outp):
@@ -147,15 +231,19 @@ when defined(Windows):
       atTheEnd: bool
 
   proc hsClose(s: PFileHandleStream) = nil # nothing to do here
-  proc hsAtEnd(s: PFileHandleStream): bool = return true
+  proc hsAtEnd(s: PFileHandleStream): bool = return s.atTheEnd
 
   proc hsReadData(s: PFileHandleStream, buffer: pointer, bufLen: int): int =
+    if s.atTheEnd: return 0
     var br: int32
     var a = winlean.ReadFile(s.handle, buffer, bufLen, br, nil)
-    if a == 0: OSError()
+    # TRUE and zero bytes returned (EOF).
+    # TRUE and n (>0) bytes returned (good data).
+    # FALSE and bytes returned undefined (system error).
+    if a == 0 and br != 0: OSError()
+    s.atTheEnd = br < bufLen
     result = br
-    #atEnd = bytesRead < bufLen
-
+  
   proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) =
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
@@ -168,18 +256,14 @@ when defined(Windows):
     result.atEnd = hsAtEnd
     result.readData = hsReadData
     result.writeData = hsWriteData
-
+    
   proc buildCommandLine(a: string, args: openarray[string]): cstring =
-    var L = a.len
-    for i in 0..high(args): inc(L, args[i].len+1)
-    result = cast[cstring](alloc0(L+1))
-    copyMem(result, cstring(a), a.len)
-    L = a.len
-    for i in 0..high(args):
-      result[L] = ' '
-      inc(L)
-      copyMem(addr(result[L]), cstring(args[i]), args[i].len)
-      inc(L, args[i].len)
+    var res = quoteIfContainsWhite(a)
+    for i in 0..high(args): 
+      res.add(' ')
+      res.add(quoteIfContainsWhite(args[i]))
+    result = cast[cstring](alloc0(res.len+1))
+    copyMem(result, cstring(res), res.len)
 
   proc buildEnv(env: PStringTable): cstring =
     var L = 0
@@ -198,72 +282,81 @@ when defined(Windows):
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
-  proc CreatePipeHandles(Inhandle, OutHandle: var THandle) =
+  proc CreatePipeHandles(Rdhandle, WrHandle: var THandle) =
     var piInheritablePipe: TSecurityAttributes
     piInheritablePipe.nlength = SizeOF(TSecurityAttributes)
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.Binherithandle = 1
-    if CreatePipe(Inhandle, Outhandle, piInheritablePipe, 0) == 0'i32:
+    if CreatePipe(Rdhandle, Wrhandle, piInheritablePipe, 1024) == 0'i32:
       OSError()
 
-  proc startProcess*(command: string,
+  proc fileClose(h: THandle) {.inline.} =
+    if h > 4: discard CloseHandle(h)
+
+  proc startProcess(command: string,
                  workingDir: string = "",
                  args: openarray[string] = [],
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
-    new(result)
     var
       SI: TStartupInfo
       ProcInfo: TProcessInformation
       success: int
       hi, ho, he: THandle
+    new(result)
     SI.cb = SizeOf(SI)
-    SI.dwFlags = STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES
-    CreatePipeHandles(SI.hStdInput, HI)
-    CreatePipeHandles(HO, Si.hStdOutput)
-    if poStdErrToStdOut in options:
-      SI.hStdError = SI.hStdOutput
-      HE = HO
+    if poParentStreams notin options:
+      SI.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
+      CreatePipeHandles(SI.hStdInput, HI)
+      CreatePipeHandles(HO, Si.hStdOutput)
+      if poStdErrToStdOut in options:
+        SI.hStdError = SI.hStdOutput
+        HE = HO
+      else:
+        CreatePipeHandles(HE, Si.hStdError)
+      result.inputHandle = hi
+      result.outputHandle = ho
+      result.errorHandle = he
     else:
-      CreatePipeHandles(HE, Si.hStdError)
-    result.inputHandle = hi
-    result.outputHandle = ho
-    result.errorHandle = he
+      SI.hStdError = GetStdHandle(STD_ERROR_HANDLE)
+      SI.hStdInput = GetStdHandle(STD_INPUT_HANDLE)
+      SI.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE)
+      result.inputHandle = si.hStdInput
+      result.outputHandle = si.hStdOutput
+      result.errorHandle = si.hStdError
+    
     var cmdl: cstring
-    if poUseShell in options:
-      var comspec = getEnv("COMSPEC")
-      var a: seq[string] = @[]
-      add(a, "/c")
-      add(a, command)
-      add(a, args)
-      cmdl = buildCommandLine(comspec, a)
+    if false: # poUseShell in options:
+      cmdl = buildCommandLine(getEnv("COMSPEC"), @["/c", command] & args)
     else:
       cmdl = buildCommandLine(command, args)
     var wd: cstring = nil
+    var e: cstring = nil
     if len(workingDir) > 0: wd = workingDir
-    if env == nil:
-      success = winlean.CreateProcess(nil,
-        cmdl, nil, nil, 0, NORMAL_PRIORITY_CLASS, nil, wd, SI, ProcInfo)
-    else:
-      var e = buildEnv(env)
-      success = winlean.CreateProcess(nil,
-        cmdl, nil, nil, 0, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
-      dealloc(e)
+    if env != nil: e = buildEnv(env)
+    if poEchoCmd in options: echo($cmdl)
+    success = winlean.CreateProcess(nil,
+      cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
+    
+    if poParentStreams notin options:
+      FileClose(si.hStdInput)
+      FileClose(si.hStdOutput)
+      if poStdErrToStdOut notin options:
+        FileClose(si.hStdError)
+      
+    if e != nil: dealloc(e)
     dealloc(cmdl)
-    if success == 0:
-      OSError()
-    # NEW:
-    # Close the handles now so anyone waiting is woken.
+    if success == 0: OSError()
+    # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
     result.FProcessHandle = procInfo.hProcess
-    result.FThreadHandle = procInfo.hThread
     result.id = procInfo.dwProcessID
 
   proc suspend(p: PProcess) =
-    discard SuspendThread(p.FThreadHandle)
+    discard SuspendThread(p.FProcessHandle)
 
   proc resume(p: PProcess) =
-    discard ResumeThread(p.FThreadHandle)
+    discard ResumeThread(p.FProcessHandle)
 
   proc running(p: PProcess): bool =
     var x = waitForSingleObject(p.FProcessHandle, 50)
@@ -274,7 +367,6 @@ when defined(Windows):
       discard TerminateProcess(p.FProcessHandle, 0)
 
   proc waitForExit(p: PProcess): int =
-    #CloseHandle(p.FThreadHandle)
     discard WaitForSingleObject(p.FProcessHandle, Infinite)
     var res: int32
     discard GetExitCodeProcess(p.FProcessHandle, res)
@@ -314,17 +406,15 @@ when defined(Windows):
       discard CloseHandle(Process)
 
 else:
-  import posix
-
   const
     readIdx = 0
     writeIdx = 1
 
   proc addCmdArgs(command: string, args: openarray[string]): string =
-    result = command
+    result = quoteIfContainsWhite(command)
     for i in 0 .. high(args):
       add(result, " ")
-      add(result, args[i])
+      add(result, quoteIfContainsWhite(args[i]))
 
   proc toCStringArray(b, a: openarray[string]): cstringArray =
     result = cast[cstringArray](alloc0((a.len + b.len + 1) * sizeof(cstring)))
@@ -344,14 +434,15 @@ else:
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  proc startProcess*(command: string,
+  proc startProcess(command: string,
                  workingDir: string = "",
                  args: openarray[string] = [],
                  env: PStringTable = nil,
                  options: set[TProcessOption] = {poStdErrToStdOut}): PProcess =
-    new(result)
     var
       p_stdin, p_stdout, p_stderr: array [0..1, cint]
+    new(result)
+    result.exitCode = 3 # for ``waitForExit``
     if pipe(p_stdin) != 0'i32 or pipe(p_stdout) != 0'i32:
       OSError("failed to create a pipe")
     var Pid = fork()
@@ -389,6 +480,8 @@ else:
       # too risky to raise an exception here:
       quit("execve call failed: " & $strerror(errno))
     # Parent process. Copy process information.
+    if poEchoCmd in options:
+      echo(command & " " & join(args, " "))
     result.id = pid
 
     result.inputHandle = p_stdin[writeIdx]
@@ -415,9 +508,15 @@ else:
       if running(p): discard kill(p.id, SIGKILL)
 
   proc waitForExit(p: PProcess): int =
-    result = 1
-    if waitPid(p.id, p.exitCode, 0) == int(p.id):
-      result = p.exitCode
+    #if waitPid(p.id, p.exitCode, 0) == int(p.id):
+    # ``waitPid`` fails if the process is not running anymore. But then
+    # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
+    # initialized with 3, wrong success exit codes are prevented.
+    var oldExitCode = p.exitCode
+    if waitPid(p.id, p.exitCode, 0) < 0:
+      # failed, so restore old exitCode
+      p.exitCode = oldExitCode
+    result = int(p.exitCode)
 
   proc inputStream(p: PProcess): PStream =
     var f: TFile
@@ -440,4 +539,5 @@ else:
     result = csystem(command)
 
 when isMainModule:
-  echo execCmd("gcc -v")
+  var x = execProcess("gcc -v")
+  echo "ECHO ", x

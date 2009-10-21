@@ -2,9 +2,70 @@
 News
 ====
 
+2009-10-21 Version 0.8.2 released
+=================================
 
-2009-09-12 Date Version 0.8.0 released
-======================================
+Bugfixes
+--------
+- Passing ``--hint[X]:off`` or ``--warning[X]:off`` as command line arguments 
+  to the compiler now works.
+- Default parameters for templates now work.
+- Fixed security issue in ``system.copy``.
+- String case without an ``else`` part generated wrong code.
+- Various fixes for the ``osproc`` module; it now works on Windows.
+
+
+Additions
+---------
+- Implemented multi-methods.
+- The compiler now detects the number of available processors and
+  executes the C compiler concurrently. This can be adjusted by the
+  ``--parallel_build: number_of_processors`` command line switch.
+- PEG-based pattern matching via the `pegs <pegs.html>`_ module.
+- Added ``system.definedInScope``.
+- Added ``system.accumulateResult``.
+- Added ``os.walkDirRec``.
+- Added ``osproc.countProcessors``.
+- Added ``osproc.execProcesses``.
+- The configuration system now supports ``$cc.options.linker``.
+- Merged ``expr`` and ``typeDesc`` in the grammar/parser: this will allow for
+  anonymous procs without ``lambda``.
+- Many scripts have no need for a GC: The new ``--gc:none`` command line switch
+  can be used to exclude the GC from the executable.
+
+
+Changes affecting backwards compability
+---------------------------------------
+- Taking the address of an object discriminant is now invalid.
+- Passing a proc to a proc var is only allowed for procs marked with 
+  ``procvar`` or a calling convention != ``nimcall``. For now this only causes 
+  a warning, but this will turn into an error soon.
+- ``system.&`` and ``system.add`` now receive ``openArray`` instead of ``seq``
+  parameters.
+- Removed ``strutils.findSubStr`` and ``strutils.findChars``. They have been 
+  deprecated for 3 versions.
+- The unicode module uses a distinct type for ``TRune``.
+- Deprecated ``strutils.toString``: use ``$`` instead.
+- Deprecated ``os.splitPath``: use ``os.splitPath`` that returns a tuple 
+  instead.
+- Deprecated ``os.extractDir``: use ``splitFile(path).dir`` instead.
+- Deprecated ``os.splitFilename``: use ``splitFile`` instead.
+- Deprecated ``os.extractFileExt``: use ``splitFile`` instead.
+- Deprecated ``os.extractFileTrunk``: use ``splitFile`` instead.
+- Deprecated ``os.appendFileExt``: use ``os.addFileExt`` instead.
+- Deprecated ``os.executeShellCommand``: use ``os.execShellCmd`` instead.
+- Deprecated ``os.iterOverEnvironment``: use ``os.envPairs`` instead.
+- Deprecated ``parseopt.init``: use ``parseopt.initOptParser`` instead.
+- Deprecated ``parseopt.getRestOfCommandLine``: use ``parseopt.cmdLineRest``
+  instead.
+- Deprecated ``os.pcDirectory``: use ``os.pcDir`` instead.
+- Deprecated ``os.pcLinkToDirectory``: use ``os.pcLinkToDir`` instead.
+- Deprecated ``osproc.executeProcess``: use ``osproc.execProcess`` instead.
+- Deprecated ``osproc.executeCommand``: use ``osproc.execCmd`` instead.
+
+
+2009-09-12 Version 0.8.0 released
+=================================
 
 Bugfixes
 --------

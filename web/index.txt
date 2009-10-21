@@ -75,9 +75,10 @@ Nimrod is expressive
 Nimrod is elegant
 =================
 
+* Macros can use the imperative paradigm to construct parse trees. Nimrod
+  does not require a different coding style for meta programming.
 * Macros cannot change Nimrod's syntax because there is no need for it. 
   Nimrod's syntax is flexible enough.
-* Yet Nimrod can be parsed with an LL(1) parser.
 * Statements are grouped by indentation but can span multiple lines.
   Indentation must not contain tabulators so the compiler always sees
   the code the same way as you do.
@@ -103,9 +104,8 @@ Nimrod plays nice with others
 Roadmap to 1.0
 ==============
 
-Version 0.8.4
+Version 0.8.x
   * general expressions as generic parameters
-  * multimethods
 
 Version 0.9.0
   * closures and anonymous procs
@@ -120,6 +120,6 @@ Planned features beyond 1.0
 ===========================
 
 * Threading with a transactional memory modell (the type system may be 
-  enhanced to support extensive compile-time checks for this)
-* Recursive iterators/coroutines
-* Other code generators: LLVM, EcmaScript
+  enhanced to support extensive compile-time checks for this).
+* Recursive iterators/coroutines.
+* Other code generators: LLVM, EcmaScript.

@@ -127,7 +127,7 @@ type
     errOverOrUnderflow,
     errCannotEvalXBecauseIncompletelyDefined,
     errChrExpectsRange0_255,
-    errDotRequiresRecordOrObjectType,
+    errDynlibRequiresExportc,
     errUndeclaredFieldX,
     errNilAccess,
     errIndexOutOfBounds,
@@ -182,7 +182,7 @@ type
     errButExpectedX,
     errAmbiguousCallXYZ,
     errWrongNumberOfArguments,
-    errInlineProcHasNoAddress,
+    errXCannotBePassedToProcVar,
     errXCannotBeInParamDecl,
     errPragmaOnlyInHeaderOfProc,
     errImplOfXNotAllowed,
@@ -215,7 +215,6 @@ type
     errATypeHasNoValue,
     errXisNoType,
     errCircumNeedsPointer,
-    errInvalidContextForBuiltinX,
     errInvalidExpression,
     errInvalidExpressionX,
     errEnumHasNoValueX,
@@ -272,6 +271,7 @@ type
     warnUnknownSubstitutionX,
     warnLanguageXNotSupported,
     warnCommentXIgnored,
+    warnXisPassedToProcVar,
     warnUser,
     hintSuccess,
     hintSuccessX,
@@ -365,7 +365,7 @@ const
     'over- or underflow',
     'cannot evalutate ''$1'' because type is not defined completely',
     '''chr'' expects an int in the range 0..255',
-    '''.'' requires a record or object type',
+    '''dynlib'' requires ''exportc''',
     'undeclared field: ''$1''',
     'attempt to access a nil address',
     'index out of bounds',
@@ -420,7 +420,7 @@ const
     'but expected ''$1''',
     'ambiguous call; both $1 and $2 match for: $3',
     'wrong number of arguments',
-    'an inline proc has no address',
+    '''$1'' cannot be passed to a procvar',
     '$1 cannot be declared in parameter declaration',
     'pragmas are only in the header of a proc allowed',
     'implementation of ''$1'' is not allowed',
@@ -453,7 +453,6 @@ const
     'a type has no value',
     'invalid type: ''$1''',
     '''^'' needs a pointer or reference type',
-    'invalid context for builtin ''$1''',
     'invalid expression',
     'invalid expression: ''$1''',
     'enum has no value ''$1''',
@@ -510,6 +509,7 @@ const
     'unknown substitution ''$1'' [UnknownSubstitutionX]',
     'language ''$1'' not supported [LanguageXNotSupported]',
     'comment ''$1'' ignored [CommentXIgnored]',
+    '''$1'' is passed to a procvar; deprecated [XisPassedToProcVar]',
     '$1 [User]',
     'operation successful [Success]',
     'operation successful ($1 lines compiled; $2 sec total) [SuccessX]',
@@ -526,7 +526,7 @@ const
     '$1 [User]'
   );
 const
-  WarningsToStr: array [0..13] of string = (
+  WarningsToStr: array [0..14] of string = (
     'CannotOpenFile',
     'OctalEscape',
     'XIsNeverRead',
@@ -540,6 +540,7 @@ const
     'UnknownSubstitutionX',
     'LanguageXNotSupported',
     'CommentXIgnored',
+    'XisPassedToProcVar',
     'User'
   );
 const

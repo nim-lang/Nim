@@ -12,7 +12,7 @@ from pycompab import *
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.8.1'
+NIMROD_VERSION = '0.8.2'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**!
@@ -327,8 +327,8 @@ def CogRule(name, filename, dependson):
 
 _nim_exe = os.path.join(os.getcwd(), "bin", ExeExt("nim"))
 _output_obj = os.path.join(os.getcwd(), "obj")
-FPC_CMD = Subs(r"fpc -Cs16777216  -gl -bl -Crtoi -Sgidh -vw -Se1 -o$1 "
-               r"-FU$2 $3", _nim_exe, _output_obj,
+FPC_CMD = Subs("fpc -Cs16777216  -gl -bl -Crtoi -Sgidh -vw -Se1 -o\"$1\" "
+               "-FU\"$2\" \"$3\"", _nim_exe, _output_obj,
                os.path.join(os.getcwd(), "nim", "nimrod.pas"))
 
 def buildRod(options):
@@ -586,6 +586,7 @@ def cmd_clean(dir = "."):
   for f in Glob("*.idb"): Remove(f)
   for f in Glob("web/*.html"): Remove(f)
   for f in Glob("doc/*.html"): Remove(f)
+  for f in Glob("doc/*.pdf"): Remove(f)
   for f in Glob("rod/*.nim"): Remove(f) # remove generated source code
   def visit(extRegEx, dirname, names):
     if os.path.split(dirname)[1] == "nimcache":

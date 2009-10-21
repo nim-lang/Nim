@@ -1096,7 +1096,7 @@ begin
       end;
     end;
     nkCheckedFieldExpr: genCheckedFieldAddr(p, n, r);
-    nkDotExpr, nkQualified: genFieldAddr(p, n, r);
+    nkDotExpr: genFieldAddr(p, n, r);
     nkBracketExpr: genArrayAddr(p, n, r);
     else InternalError(n.info, 'genAddr');
   end

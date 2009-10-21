@@ -659,6 +659,8 @@ var
 begin
   p := newProc(prc, m);
   header := genProcHeader(m, prc);
+  if (gCmd <> cmdCompileToLLVM) and (lfExportLib in prc.loc.flags) then
+    header := con('N_LIB_EXPORT ', header);
   returnStmt := nil;
   assert(prc.ast <> nil);
 
@@ -942,7 +944,11 @@ const
     '  call void @NimMain()$n' +
     '  ret i32 0$n' +
     '}$n';
-  WinNimDllMain = WinNimMain;
+  WinNimDllMain =
+    'N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n' +
+    '  int dummy[8];$n' +{&}
+    CommonMainBody +{&}
+    '}$n';
   WinCDllMain =
     'BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n' +
     '                    LPVOID lpvReserved) {$n' +

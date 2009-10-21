@@ -8,13 +8,12 @@ Index
 
    `!`:idx:
      * `pegs.html#114 <pegs.html#114>`_
-     * `macros.html#113 <macros.html#113>`_
+     * `macros.html#114 <macros.html#114>`_
 
    `!=`:idx:
      `system.html#347 <system.html#347>`_
 
    `$`:idx:
-     * `system.html#418 <system.html#418>`_
      * `system.html#419 <system.html#419>`_
      * `system.html#420 <system.html#420>`_
      * `system.html#421 <system.html#421>`_
@@ -22,10 +21,11 @@ Index
      * `system.html#423 <system.html#423>`_
      * `system.html#424 <system.html#424>`_
      * `system.html#425 <system.html#425>`_
+     * `system.html#426 <system.html#426>`_
      * `times.html#109 <times.html#109>`_
      * `times.html#110 <times.html#110>`_
      * `pegs.html#148 <pegs.html#148>`_
-     * `macros.html#114 <macros.html#114>`_
+     * `macros.html#115 <macros.html#115>`_
 
    `%`:idx:
      * `strutils.html#109 <strutils.html#109>`_
@@ -44,7 +44,6 @@ Index
      * `system.html#362 <system.html#362>`_
      * `system.html#363 <system.html#363>`_
      * `system.html#364 <system.html#364>`_
-     * `system.html#461 <system.html#461>`_
      * `system.html#462 <system.html#462>`_
      * `system.html#463 <system.html#463>`_
      * `system.html#464 <system.html#464>`_
@@ -182,14 +181,14 @@ Index
      `times.html#115 <times.html#115>`_
 
    `<=%`:idx:
-     `unicode.html#103 <unicode.html#103>`_
-
-   `<=%`:idx:
      * `system.html#297 <system.html#297>`_
      * `system.html#298 <system.html#298>`_
      * `system.html#299 <system.html#299>`_
      * `system.html#300 <system.html#300>`_
      * `system.html#301 <system.html#301>`_
+
+   `<=%`:idx:
+     `unicode.html#103 <unicode.html#103>`_
 
    `==`:idx:
      * `md5.html#107 <md5.html#107>`_
@@ -211,25 +210,25 @@ Index
      * `system.html#465 <system.html#465>`_
      * `complex.html#102 <complex.html#102>`_
      * `unicode.html#105 <unicode.html#105>`_
-     * `macros.html#115 <macros.html#115>`_
-
-   `=~`:idx:
-     `regexprs.html#111 <regexprs.html#111>`_
+     * `macros.html#116 <macros.html#116>`_
 
    `=~`:idx:
      `pegs.html#138 <pegs.html#138>`_
+
+   `=~`:idx:
+     `regexprs.html#108 <regexprs.html#108>`_
 
    `>`:idx:
      `system.html#349 <system.html#349>`_
 
    `>%`:idx:
-     `system.html#417 <system.html#417>`_
+     `system.html#418 <system.html#418>`_
 
    `>=`:idx:
      `system.html#348 <system.html#348>`_
 
    `>=%`:idx:
-     `system.html#416 <system.html#416>`_
+     `system.html#417 <system.html#417>`_
 
    `?`:idx:
      `pegs.html#110 <pegs.html#110>`_
@@ -241,13 +240,13 @@ Index
      `strtabs.html#107 <strtabs.html#107>`_
 
    `[]`:idx:
-     `macros.html#111 <macros.html#111>`_
+     `macros.html#112 <macros.html#112>`_
+
+   `[]=`:idx:
+     `macros.html#113 <macros.html#113>`_
 
    `[]=`:idx:
      `strtabs.html#106 <strtabs.html#106>`_
-
-   `[]=`:idx:
-     `macros.html#112 <macros.html#112>`_
 
    `[ESC]`:idx:
      `manual.html#134 <manual.html#134>`_
@@ -280,8 +279,8 @@ Index
      * `system.html#368 <system.html#368>`_
      * `system.html#369 <system.html#369>`_
      * `parsesql.html#108 <parsesql.html#108>`_
-     * `macros.html#117 <macros.html#117>`_
      * `macros.html#118 <macros.html#118>`_
+     * `macros.html#119 <macros.html#119>`_
 
    `addf`:idx:
      `strutils.html#111 <strutils.html#111>`_
@@ -301,13 +300,13 @@ Index
      `xmlgen.html#109 <xmlgen.html#109>`_
 
    `addSep`:idx:
-     `strutils.html#152 <strutils.html#152>`_
+     `strutils.html#149 <strutils.html#149>`_
 
    `alert`:idx:
      `manual.html#131 <manual.html#131>`_
 
    `allCharsInSet`:idx:
-     `strutils.html#153 <strutils.html#153>`_
+     `strutils.html#150 <strutils.html#150>`_
 
    `alloc`:idx:
      `system.html#410 <system.html#410>`_
@@ -382,7 +381,7 @@ Index
      `manual.html#199 <manual.html#199>`_
 
    `assert`:idx:
-     `system.html#414 <system.html#414>`_
+     `system.html#415 <system.html#415>`_
 
    `AST`:idx:
      `macros.html#101 <macros.html#101>`_
@@ -404,8 +403,7 @@ Index
      `xmlgen.html#111 <xmlgen.html#111>`_
 
    `backslash`:idx:
-     * `manual.html#127 <manual.html#127>`_
-     * `regexprs.html#101 <regexprs.html#101>`_
+     `manual.html#127 <manual.html#127>`_
 
    `backspace`:idx:
      `manual.html#132 <manual.html#132>`_
@@ -657,10 +655,10 @@ Index
      * `system.html#356 <system.html#356>`_
 
    `cmpIgnoreCase`:idx:
-     `strutils.html#138 <strutils.html#138>`_
+     `strutils.html#135 <strutils.html#135>`_
 
    `cmpIgnoreStyle`:idx:
-     `strutils.html#139 <strutils.html#139>`_
+     `strutils.html#136 <strutils.html#136>`_
 
    `cmpPaths`:idx:
      `os.html#139 <os.html#139>`_
@@ -701,7 +699,7 @@ Index
      `system.html#391 <system.html#391>`_
 
    `compileTime`:idx:
-     `manual.html#227 <manual.html#227>`_
+     `manual.html#229 <manual.html#229>`_
 
    `complex statements`:idx:
      `manual.html#178 <manual.html#178>`_
@@ -718,9 +716,9 @@ Index
 
    `contains`:idx:
      * `system.html#350 <system.html#350>`_
-     * `strutils.html#140 <strutils.html#140>`_
-     * `strutils.html#141 <strutils.html#141>`_
-     * `strutils.html#142 <strutils.html#142>`_
+     * `strutils.html#137 <strutils.html#137>`_
+     * `strutils.html#138 <strutils.html#138>`_
+     * `strutils.html#139 <strutils.html#139>`_
      * `pegs.html#139 <pegs.html#139>`_
      * `pegs.html#140 <pegs.html#140>`_
 
@@ -738,10 +736,10 @@ Index
      `system.html#407 <system.html#407>`_
 
    `copyNimNode`:idx:
-     `macros.html#134 <macros.html#134>`_
+     `macros.html#135 <macros.html#135>`_
 
    `copyNimTree`:idx:
-     `macros.html#135 <macros.html#135>`_
+     `macros.html#136 <macros.html#136>`_
 
    `coreAttr`:idx:
      `xmlgen.html#103 <xmlgen.html#103>`_
@@ -756,16 +754,19 @@ Index
      `math.html#109 <math.html#109>`_
 
    `countdown`:idx:
-     `system.html#435 <system.html#435>`_
+     `system.html#436 <system.html#436>`_
+
+   `countProcessors`:idx:
+     `osproc.html#117 <osproc.html#117>`_
 
    `countup`:idx:
-     `system.html#436 <system.html#436>`_
+     `system.html#437 <system.html#437>`_
 
    `cpuEndian`:idx:
      `system.html#396 <system.html#396>`_
 
    `createDir`:idx:
-     * `os.html#156 <os.html#156>`_
+     * `os.html#159 <os.html#159>`_
      * `zipfiles.html#104 <zipfiles.html#104>`_
 
    `create_random_string`:idx:
@@ -1156,7 +1157,7 @@ Index
      `manual.html#179 <manual.html#179>`_
 
    `dbgLineHook`:idx:
-     `system.html#431 <system.html#431>`_
+     `system.html#432 <system.html#432>`_
 
    `dd`:idx:
      `xmlgen.html#123 <xmlgen.html#123>`_
@@ -1184,23 +1185,23 @@ Index
 
    `del`:idx:
      * `xmlgen.html#124 <xmlgen.html#124>`_
-     * `macros.html#119 <macros.html#119>`_
+     * `macros.html#120 <macros.html#120>`_
 
    `delete`:idx:
-     `strutils.html#159 <strutils.html#159>`_
+     `strutils.html#156 <strutils.html#156>`_
 
    `deleteStr`:idx:
-     * `strutils.html#127 <strutils.html#127>`_
-     * `strutils.html#160 <strutils.html#160>`_
+     * `strutils.html#124 <strutils.html#124>`_
+     * `strutils.html#157 <strutils.html#157>`_
 
    `dfn`:idx:
      `xmlgen.html#125 <xmlgen.html#125>`_
 
-   `Digits`:idx:
-     `strutils.html#104 <strutils.html#104>`_
-
    `digits`:idx:
      `pegs.html#125 <pegs.html#125>`_
+
+   `Digits`:idx:
+     `strutils.html#104 <strutils.html#104>`_
 
    `DirSep`:idx:
      `os.html#103 <os.html#103>`_
@@ -1220,7 +1221,7 @@ Index
      `xmlgen.html#127 <xmlgen.html#127>`_
 
    `domain specific languages`:idx:
-     `manual.html#215 <manual.html#215>`_
+     `manual.html#216 <manual.html#216>`_
 
    `dt`:idx:
      `xmlgen.html#128 <xmlgen.html#128>`_
@@ -1265,7 +1266,7 @@ Index
      `system.html#151 <system.html#151>`_
 
    `editDistance`:idx:
-     `strutils.html#166 <strutils.html#166>`_
+     `strutils.html#163 <strutils.html#163>`_
 
    `EDivByZero`:idx:
      `system.html#147 <system.html#147>`_
@@ -1292,7 +1293,7 @@ Index
      `pegs.html#149 <pegs.html#149>`_
 
    `EInvalidRegEx`:idx:
-     `regexprs.html#104 <regexprs.html#104>`_
+     `regexprs.html#101 <regexprs.html#101>`_
 
    `EInvalidSql`:idx:
      `parsesql.html#103 <parsesql.html#103>`_
@@ -1320,7 +1321,7 @@ Index
      * `lexbase.html#101 <lexbase.html#101>`_
 
    `endsWith`:idx:
-     * `strutils.html#151 <strutils.html#151>`_
+     * `strutils.html#148 <strutils.html#148>`_
      * `pegs.html#142 <pegs.html#142>`_
 
    `ENoExceptionToReraise`:idx:
@@ -1387,9 +1388,9 @@ Index
      `system.html#145 <system.html#145>`_
 
    `error`:idx:
-     * `manual.html#225 <manual.html#225>`_
-     * `manual.html#228 <manual.html#228>`_
-     * `macros.html#136 <macros.html#136>`_
+     * `manual.html#226 <manual.html#226>`_
+     * `manual.html#230 <manual.html#230>`_
+     * `macros.html#137 <macros.html#137>`_
 
    `errorMsg`:idx:
      `parsexml.html#120 <parsexml.html#120>`_
@@ -1405,7 +1406,7 @@ Index
 
    `escape`:idx:
      * `manual.html#133 <manual.html#133>`_
-     * `strutils.html#163 <strutils.html#163>`_
+     * `strutils.html#160 <strutils.html#160>`_
 
    `escape sequences`:idx:
      `manual.html#120 <manual.html#120>`_
@@ -1435,13 +1436,16 @@ Index
      `system.html#174 <system.html#174>`_
 
    `exclFilePermissions`:idx:
-     `os.html#162 <os.html#162>`_
+     `os.html#165 <os.html#165>`_
 
    `execCmd`:idx:
      `osproc.html#105 <osproc.html#105>`_
 
    `execProcess`:idx:
      `osproc.html#103 <osproc.html#103>`_
+
+   `execProcesses`:idx:
+     `osproc.html#118 <osproc.html#118>`_
 
    `execShellCmd`:idx:
      `os.html#146 <os.html#146>`_
@@ -1474,13 +1478,13 @@ Index
      `os.html#132 <os.html#132>`_
 
    `expectKind`:idx:
-     `macros.html#145 <macros.html#145>`_
+     `macros.html#146 <macros.html#146>`_
 
    `expectLen`:idx:
-     `macros.html#147 <macros.html#147>`_
+     `macros.html#148 <macros.html#148>`_
 
    `expectMinLen`:idx:
-     `macros.html#146 <macros.html#146>`_
+     `macros.html#147 <macros.html#147>`_
 
    `exportc`:idx:
      `nimrodc.html#102 <nimrodc.html#102>`_
@@ -1516,7 +1520,7 @@ Index
      `unicode.html#108 <unicode.html#108>`_
 
    `fatal`:idx:
-     `manual.html#229 <manual.html#229>`_
+     `manual.html#231 <manual.html#231>`_
 
    `fieldset`:idx:
      `xmlgen.html#130 <xmlgen.html#130>`_
@@ -1625,20 +1629,13 @@ Index
 
    `find`:idx:
      * `system.html#466 <system.html#466>`_
-     * `strutils.html#122 <strutils.html#122>`_
-     * `strutils.html#123 <strutils.html#123>`_
-     * `strutils.html#124 <strutils.html#124>`_
-     * `regexprs.html#109 <regexprs.html#109>`_
-     * `regexprs.html#110 <regexprs.html#110>`_
-     * `pegs.html#136 <pegs.html#136>`_
-     * `pegs.html#137 <pegs.html#137>`_
-
-   `findChars`:idx:
-     `strutils.html#121 <strutils.html#121>`_
-
-   `findSubStr`:idx:
      * `strutils.html#119 <strutils.html#119>`_
      * `strutils.html#120 <strutils.html#120>`_
+     * `strutils.html#121 <strutils.html#121>`_
+     * `regexprs.html#106 <regexprs.html#106>`_
+     * `regexprs.html#107 <regexprs.html#107>`_
+     * `pegs.html#136 <pegs.html#136>`_
+     * `pegs.html#137 <pegs.html#137>`_
 
    `float`:idx:
      `system.html#106 <system.html#106>`_
@@ -1650,16 +1647,16 @@ Index
      `system.html#108 <system.html#108>`_
 
    `floatVal`:idx:
-     `macros.html#122 <macros.html#122>`_
+     `macros.html#123 <macros.html#123>`_
 
    `floatVal=`:idx:
-     `macros.html#128 <macros.html#128>`_
+     `macros.html#129 <macros.html#129>`_
 
    `FlushFile`:idx:
      `system.html#503 <system.html#503>`_
 
    `for`:idx:
-     * `manual.html#207 <manual.html#207>`_
+     * `manual.html#208 <manual.html#208>`_
      * `tut1.html#105 <tut1.html#105>`_
 
    `form`:idx:
@@ -1718,18 +1715,15 @@ Index
    `generalized raw string literal`:idx:
      `manual.html#136 <manual.html#136>`_
 
-   `generic character types`:idx:
-     `regexprs.html#102 <regexprs.html#102>`_
-
    `Generics`:idx:
-     * `manual.html#211 <manual.html#211>`_
+     * `manual.html#212 <manual.html#212>`_
      * `tut2.html#109 <tut2.html#109>`_
 
    `getApplicationDir`:idx:
-     `os.html#166 <os.html#166>`_
+     `os.html#169 <os.html#169>`_
 
    `getApplicationFilename`:idx:
-     `os.html#165 <os.html#165>`_
+     `os.html#168 <os.html#168>`_
 
    `getClockStr`:idx:
      `times.html#112 <times.html#112>`_
@@ -1742,7 +1736,7 @@ Index
      * `parsexml.html#117 <parsexml.html#117>`_
 
    `getConfigDir`:idx:
-     `os.html#164 <os.html#164>`_
+     `os.html#167 <os.html#167>`_
 
    `getContentLength`:idx:
      `cgi.html#110 <cgi.html#110>`_
@@ -1757,7 +1751,7 @@ Index
      `os.html#120 <os.html#120>`_
 
    `getCurrentExceptionMsg`:idx:
-     `system.html#427 <system.html#427>`_
+     `system.html#428 <system.html#428>`_
 
    `getCurrentLine`:idx:
      `lexbase.html#106 <lexbase.html#106>`_
@@ -1776,7 +1770,7 @@ Index
      * `parsexml.html#119 <parsexml.html#119>`_
 
    `getFilePermissions`:idx:
-     `os.html#159 <os.html#159>`_
+     `os.html#162 <os.html#162>`_
 
    `getFilePos`:idx:
      `system.html#523 <system.html#523>`_
@@ -1785,7 +1779,7 @@ Index
      `system.html#515 <system.html#515>`_
 
    `getFreeMem`:idx:
-     `system.html#433 <system.html#433>`_
+     `system.html#434 <system.html#434>`_
 
    `getGatewayInterface`:idx:
      `cgi.html#113 <cgi.html#113>`_
@@ -1794,7 +1788,7 @@ Index
      `times.html#107 <times.html#107>`_
 
    `getHomeDir`:idx:
-     `os.html#163 <os.html#163>`_
+     `os.html#166 <os.html#166>`_
 
    `getHttpAccept`:idx:
      `cgi.html#114 <cgi.html#114>`_
@@ -1840,7 +1834,7 @@ Index
      `md5.html#106 <md5.html#106>`_
 
    `getOccupiedMem`:idx:
-     `system.html#432 <system.html#432>`_
+     `system.html#433 <system.html#433>`_
 
    `getopt`:idx:
      `parseopt.html#108 <parseopt.html#108>`_
@@ -1855,7 +1849,7 @@ Index
      `cgi.html#125 <cgi.html#125>`_
 
    `getRefcount`:idx:
-     `system.html#426 <system.html#426>`_
+     `system.html#427 <system.html#427>`_
 
    `getRemoteAddr`:idx:
      `cgi.html#126 <cgi.html#126>`_
@@ -1924,7 +1918,7 @@ Index
      `times.html#105 <times.html#105>`_
 
    `getTotalMem`:idx:
-     `system.html#434 <system.html#434>`_
+     `system.html#435 <system.html#435>`_
 
    `get_tty_password`:idx:
      `mysql.html#282 <mysql.html#282>`_
@@ -1991,9 +1985,9 @@ Index
      `system.html#126 <system.html#126>`_
 
    `hint`:idx:
-     * `manual.html#223 <manual.html#223>`_
-     * `manual.html#231 <manual.html#231>`_
-     * `macros.html#138 <macros.html#138>`_
+     * `manual.html#224 <manual.html#224>`_
+     * `manual.html#233 <manual.html#233>`_
+     * `macros.html#139 <macros.html#139>`_
 
    `hostCPU`:idx:
      `system.html#398 <system.html#398>`_
@@ -2040,10 +2034,10 @@ Index
 
    `ident`:idx:
      * `pegs.html#129 <pegs.html#129>`_
-     * `macros.html#124 <macros.html#124>`_
+     * `macros.html#125 <macros.html#125>`_
 
    `ident=`:idx:
-     `macros.html#130 <macros.html#130>`_
+     `macros.html#131 <macros.html#131>`_
 
    `identChars`:idx:
      `pegs.html#127 <pegs.html#127>`_
@@ -2057,11 +2051,11 @@ Index
    `Identifiers`:idx:
      `manual.html#116 <manual.html#116>`_
 
-   `IdentStartChars`:idx:
-     `strutils.html#106 <strutils.html#106>`_
-
    `identStartChars`:idx:
      `pegs.html#128 <pegs.html#128>`_
+
+   `IdentStartChars`:idx:
+     `strutils.html#106 <strutils.html#106>`_
 
    `if`:idx:
      `manual.html#183 <manual.html#183>`_
@@ -2070,10 +2064,10 @@ Index
      `xmlgen.html#142 <xmlgen.html#142>`_
 
    `implicit block`:idx:
-     `manual.html#209 <manual.html#209>`_
+     `manual.html#210 <manual.html#210>`_
 
    `import`:idx:
-     * `manual.html#219 <manual.html#219>`_
+     * `manual.html#220 <manual.html#220>`_
      * `tut1.html#128 <tut1.html#128>`_
 
    `importc`:idx:
@@ -2089,7 +2083,7 @@ Index
      `system.html#173 <system.html#173>`_
 
    `inclFilePermissions`:idx:
-     `os.html#161 <os.html#161>`_
+     `os.html#164 <os.html#164>`_
 
    `include`:idx:
      `tut1.html#129 <tut1.html#129>`_
@@ -2098,10 +2092,10 @@ Index
      `manual.html#113 <manual.html#113>`_
 
    `inf`:idx:
-     `system.html#428 <system.html#428>`_
+     `system.html#429 <system.html#429>`_
 
    `information hiding`:idx:
-     * `manual.html#217 <manual.html#217>`_
+     * `manual.html#218 <manual.html#218>`_
      * `tut1.html#126 <tut1.html#126>`_
 
    `init`:idx:
@@ -2141,13 +2135,13 @@ Index
      `mysql.html#306 <mysql.html#306>`_
 
    `intToStr`:idx:
-     `strutils.html#144 <strutils.html#144>`_
+     `strutils.html#141 <strutils.html#141>`_
 
    `intVal`:idx:
-     `macros.html#121 <macros.html#121>`_
+     `macros.html#122 <macros.html#122>`_
 
    `intVal=`:idx:
-     `macros.html#127 <macros.html#127>`_
+     `macros.html#128 <macros.html#128>`_
 
    `is`:idx:
      `system.html#353 <system.html#353>`_
@@ -2165,12 +2159,12 @@ Index
      `system.html#389 <system.html#389>`_
 
    `isNil`:idx:
-     * `system.html#455 <system.html#455>`_
      * `system.html#456 <system.html#456>`_
      * `system.html#457 <system.html#457>`_
      * `system.html#458 <system.html#458>`_
      * `system.html#459 <system.html#459>`_
      * `system.html#460 <system.html#460>`_
+     * `system.html#461 <system.html#461>`_
 
    `is_not`:idx:
      `system.html#354 <system.html#354>`_
@@ -2203,22 +2197,22 @@ Index
      `mysql.html#255 <mysql.html#255>`_
 
    `items`:idx:
-     * `system.html#449 <system.html#449>`_
      * `system.html#450 <system.html#450>`_
      * `system.html#451 <system.html#451>`_
      * `system.html#452 <system.html#452>`_
      * `system.html#453 <system.html#453>`_
      * `system.html#454 <system.html#454>`_
+     * `system.html#455 <system.html#455>`_
 
    `iterator`:idx:
-     `manual.html#208 <manual.html#208>`_
+     `manual.html#209 <manual.html#209>`_
 
    `iterOverEnvironment`:idx:
      `os.html#150 <os.html#150>`_
 
    `join`:idx:
-     * `strutils.html#155 <strutils.html#155>`_
-     * `strutils.html#156 <strutils.html#156>`_
+     * `strutils.html#152 <strutils.html#152>`_
+     * `strutils.html#153 <strutils.html#153>`_
 
    `JoinPath`:idx:
      * `os.html#122 <os.html#122>`_
@@ -2232,7 +2226,7 @@ Index
 
    `kind`:idx:
      * `parsexml.html#110 <parsexml.html#110>`_
-     * `macros.html#120 <macros.html#120>`_
+     * `macros.html#121 <macros.html#121>`_
 
    `l-values`:idx:
      `manual.html#107 <manual.html#107>`_
@@ -2251,7 +2245,7 @@ Index
      * `system.html#172 <system.html#172>`_
      * `strtabs.html#109 <strtabs.html#109>`_
      * `parsesql.html#107 <parsesql.html#107>`_
-     * `macros.html#116 <macros.html#116>`_
+     * `macros.html#117 <macros.html#117>`_
 
    `Letters`:idx:
      `strutils.html#103 <strutils.html#103>`_
@@ -2326,7 +2320,7 @@ Index
      `system.html#127 <system.html#127>`_
 
    `Macros`:idx:
-     `manual.html#214 <manual.html#214>`_
+     `manual.html#215 <manual.html#215>`_
 
    `make_password_from_salt`:idx:
      `mysql.html#281 <mysql.html#281>`_
@@ -2359,24 +2353,24 @@ Index
      `xmlgen.html#150 <xmlgen.html#150>`_
 
    `match`:idx:
-     * `regexprs.html#106 <regexprs.html#106>`_
-     * `regexprs.html#107 <regexprs.html#107>`_
+     * `regexprs.html#103 <regexprs.html#103>`_
+     * `regexprs.html#104 <regexprs.html#104>`_
      * `pegs.html#132 <pegs.html#132>`_
      * `pegs.html#133 <pegs.html#133>`_
 
    `matchLen`:idx:
-     * `regexprs.html#108 <regexprs.html#108>`_
+     * `regexprs.html#105 <regexprs.html#105>`_
      * `pegs.html#134 <pegs.html#134>`_
      * `pegs.html#135 <pegs.html#135>`_
 
    `max`:idx:
      * `system.html#318 <system.html#318>`_
-     * `system.html#443 <system.html#443>`_
      * `system.html#444 <system.html#444>`_
      * `system.html#445 <system.html#445>`_
      * `system.html#446 <system.html#446>`_
      * `system.html#447 <system.html#447>`_
      * `system.html#448 <system.html#448>`_
+     * `system.html#449 <system.html#449>`_
 
    `MAX_BIGINT_WIDTH`:idx:
      `mysql.html#194 <mysql.html#194>`_
@@ -2403,7 +2397,7 @@ Index
      `mysql.html#191 <mysql.html#191>`_
 
    `MaxSubpatterns`:idx:
-     * `regexprs.html#105 <regexprs.html#105>`_
+     * `regexprs.html#102 <regexprs.html#102>`_
      * `pegs.html#131 <pegs.html#131>`_
 
    `MAX_TINYINT_WIDTH`:idx:
@@ -2441,12 +2435,12 @@ Index
 
    `min`:idx:
      * `system.html#317 <system.html#317>`_
-     * `system.html#437 <system.html#437>`_
      * `system.html#438 <system.html#438>`_
      * `system.html#439 <system.html#439>`_
      * `system.html#440 <system.html#440>`_
      * `system.html#441 <system.html#441>`_
      * `system.html#442 <system.html#442>`_
+     * `system.html#443 <system.html#443>`_
 
    `mod`:idx:
      * `system.html#222 <system.html#222>`_
@@ -2459,7 +2453,7 @@ Index
      `mysql.html#284 <mysql.html#284>`_
 
    `module`:idx:
-     * `manual.html#216 <manual.html#216>`_
+     * `manual.html#217 <manual.html#217>`_
      * `tut1.html#125 <tut1.html#125>`_
 
    `moveFile`:idx:
@@ -2469,7 +2463,8 @@ Index
      `system.html#408 <system.html#408>`_
 
    `multi-methods`:idx:
-     `tut2.html#104 <tut2.html#104>`_
+     * `manual.html#207 <manual.html#207>`_
+     * `tut2.html#104 <tut2.html#104>`_
 
    `MULTIPLE_KEY_FLAG`:idx:
      `mysql.html#127 <mysql.html#127>`_
@@ -2989,7 +2984,7 @@ Index
      `mysql.html#110 <mysql.html#110>`_
 
    `nan`:idx:
-     `system.html#430 <system.html#430>`_
+     `system.html#431 <system.html#431>`_
 
    `Natural`:idx:
      `system.html#134 <system.html#134>`_
@@ -2998,10 +2993,10 @@ Index
      `pegs.html#130 <pegs.html#130>`_
 
    `neginf`:idx:
-     `system.html#429 <system.html#429>`_
+     `system.html#430 <system.html#430>`_
 
    `nestList`:idx:
-     `macros.html#150 <macros.html#150>`_
+     `macros.html#151 <macros.html#151>`_
 
    `NET`:idx:
      `mysql.html#199 <mysql.html#199>`_
@@ -3047,35 +3042,35 @@ Index
      * `system.html#125 <system.html#125>`_
 
    `newCall`:idx:
-     * `macros.html#148 <macros.html#148>`_
      * `macros.html#149 <macros.html#149>`_
+     * `macros.html#150 <macros.html#150>`_
 
    `newFileStream`:idx:
      * `streams.html#120 <streams.html#120>`_
      * `streams.html#121 <streams.html#121>`_
 
    `newFloatLitNode`:idx:
-     `macros.html#141 <macros.html#141>`_
+     `macros.html#142 <macros.html#142>`_
 
    `newIdentNode`:idx:
-     * `macros.html#142 <macros.html#142>`_
      * `macros.html#143 <macros.html#143>`_
+     * `macros.html#144 <macros.html#144>`_
 
    `newIntLitNode`:idx:
-     `macros.html#140 <macros.html#140>`_
-
-   `newLine`:idx:
-     `pegs.html#120 <pegs.html#120>`_
+     `macros.html#141 <macros.html#141>`_
 
    `newline`:idx:
      * `manual.html#121 <manual.html#121>`_
      * `pegs.html#119 <pegs.html#119>`_
 
+   `newLine`:idx:
+     `pegs.html#120 <pegs.html#120>`_
+
    `NewLines`:idx:
      `lexbase.html#102 <lexbase.html#102>`_
 
    `newNimNode`:idx:
-     `macros.html#133 <macros.html#133>`_
+     `macros.html#134 <macros.html#134>`_
 
    `newNonTerminal`:idx:
      `pegs.html#123 <pegs.html#123>`_
@@ -3094,7 +3089,7 @@ Index
      * `strtabs.html#105 <strtabs.html#105>`_
 
    `newStrLitNode`:idx:
-     `macros.html#139 <macros.html#139>`_
+     `macros.html#140 <macros.html#140>`_
 
    `next`:idx:
      * `parseopt.html#105 <parseopt.html#105>`_
@@ -3138,7 +3133,7 @@ Index
      `xmlgen.html#152 <xmlgen.html#152>`_
 
    `noSideEffect`:idx:
-     `manual.html#226 <manual.html#226>`_
+     `manual.html#227 <manual.html#227>`_
 
    `not`:idx:
      * `system.html#120 <system.html#120>`_
@@ -3261,16 +3256,16 @@ Index
      `os.html#127 <os.html#127>`_
 
    `ParseBiggestInt`:idx:
-     `strutils.html#146 <strutils.html#146>`_
+     `strutils.html#143 <strutils.html#143>`_
 
    `parseCmdLine`:idx:
-     `os.html#157 <os.html#157>`_
+     `os.html#160 <os.html#160>`_
 
    `ParseFloat`:idx:
-     `strutils.html#147 <strutils.html#147>`_
+     `strutils.html#144 <strutils.html#144>`_
 
    `ParseInt`:idx:
-     `strutils.html#145 <strutils.html#145>`_
+     `strutils.html#142 <strutils.html#142>`_
 
    `parsePeg`:idx:
      `pegs.html#150 <pegs.html#150>`_
@@ -3284,11 +3279,17 @@ Index
    `PathSep`:idx:
      `os.html#105 <os.html#105>`_
 
+   `pcDirectory`:idx:
+     `os.html#154 <os.html#154>`_
+
    `Pcharacter_set`:idx:
      `mysql.html#350 <mysql.html#350>`_
 
    `Pcharset_info_st`:idx:
      `mysql.html#349 <mysql.html#349>`_
+
+   `pcLinkToDirectory`:idx:
+     `os.html#155 <os.html#155>`_
 
    `PCURL`:idx:
      `libcurl.html#139 <libcurl.html#139>`_
@@ -3495,13 +3496,13 @@ Index
      `mysql.html#200 <mysql.html#200>`_
 
    `PNimrodNode`:idx:
-     `macros.html#110 <macros.html#110>`_
+     `macros.html#111 <macros.html#111>`_
 
    `PNimrodSymbol`:idx:
-     `macros.html#109 <macros.html#109>`_
+     `macros.html#110 <macros.html#110>`_
 
    `PNimrodType`:idx:
-     `macros.html#108 <macros.html#108>`_
+     `macros.html#109 <macros.html#109>`_
 
    `PNonTerminal`:idx:
      `pegs.html#101 <pegs.html#101>`_
@@ -3570,6 +3571,12 @@ Index
 
    `processID`:idx:
      `osproc.html#112 <osproc.html#112>`_
+
+   `procvar`:idx:
+     `manual.html#228 <manual.html#228>`_
+
+   `programming by contracts`:idx:
+     `system.html#414 <system.html#414>`_
 
    `Psockaddr`:idx:
      `mysql.html#250 <mysql.html#250>`_
@@ -3662,7 +3669,7 @@ Index
      `math.html#134 <math.html#134>`_
 
    `push/pop`:idx:
-     `manual.html#232 <manual.html#232>`_
+     `manual.html#234 <manual.html#234>`_
 
    `putEnv`:idx:
      `os.html#149 <os.html#149>`_
@@ -3690,7 +3697,7 @@ Index
      `manual.html#128 <manual.html#128>`_
 
    `quoteIfContainsWhite`:idx:
-     `strutils.html#154 <strutils.html#154>`_
+     `strutils.html#151 <strutils.html#151>`_
 
    `random`:idx:
      `math.html#113 <math.html#113>`_
@@ -3764,16 +3771,16 @@ Index
      `system.html#412 <system.html#412>`_
 
    `reBinary`:idx:
-     `regexprs.html#116 <regexprs.html#116>`_
+     `regexprs.html#113 <regexprs.html#113>`_
 
    `Recursive module dependancies`:idx:
-     `manual.html#220 <manual.html#220>`_
+     `manual.html#221 <manual.html#221>`_
 
    `reEmail`:idx:
-     `regexprs.html#119 <regexprs.html#119>`_
+     `regexprs.html#116 <regexprs.html#116>`_
 
    `reFloat`:idx:
-     `regexprs.html#118 <regexprs.html#118>`_
+     `regexprs.html#115 <regexprs.html#115>`_
 
    `REFRESH_DES_KEY_FILE`:idx:
      `mysql.html#154 <mysql.html#154>`_
@@ -3821,40 +3828,40 @@ Index
      `nimrodc.html#112 <nimrodc.html#112>`_
 
    `reHex`:idx:
-     `regexprs.html#115 <regexprs.html#115>`_
-
-   `reIdentifier`:idx:
      `regexprs.html#112 <regexprs.html#112>`_
 
+   `reIdentifier`:idx:
+     `regexprs.html#109 <regexprs.html#109>`_
+
    `reInteger`:idx:
-     `regexprs.html#114 <regexprs.html#114>`_
+     `regexprs.html#111 <regexprs.html#111>`_
 
    `removeDir`:idx:
-     `os.html#155 <os.html#155>`_
+     `os.html#158 <os.html#158>`_
 
    `removeFile`:idx:
      `os.html#144 <os.html#144>`_
 
    `reNatural`:idx:
-     `regexprs.html#113 <regexprs.html#113>`_
+     `regexprs.html#110 <regexprs.html#110>`_
 
    `renderSQL`:idx:
      `parsesql.html#110 <parsesql.html#110>`_
 
    `reOctal`:idx:
-     `regexprs.html#117 <regexprs.html#117>`_
+     `regexprs.html#114 <regexprs.html#114>`_
 
    `repeatChar`:idx:
-     `strutils.html#149 <strutils.html#149>`_
+     `strutils.html#146 <strutils.html#146>`_
 
    `replace`:idx:
-     * `strutils.html#157 <strutils.html#157>`_
-     * `strutils.html#158 <strutils.html#158>`_
+     * `strutils.html#154 <strutils.html#154>`_
+     * `strutils.html#155 <strutils.html#155>`_
      * `pegs.html#143 <pegs.html#143>`_
 
    `replaceStr`:idx:
-     * `strutils.html#125 <strutils.html#125>`_
-     * `strutils.html#126 <strutils.html#126>`_
+     * `strutils.html#122 <strutils.html#122>`_
+     * `strutils.html#123 <strutils.html#123>`_
 
    `repr`:idx:
      `system.html#370 <system.html#370>`_
@@ -3873,7 +3880,7 @@ Index
      `manual.html#192 <manual.html#192>`_
 
    `reURL`:idx:
-     `regexprs.html#120 <regexprs.html#120>`_
+     `regexprs.html#117 <regexprs.html#117>`_
 
    `round`:idx:
      `math.html#121 <math.html#121>`_
@@ -3910,7 +3917,7 @@ Index
 
    `scope`:idx:
      * `manual.html#106 <manual.html#106>`_
-     * `manual.html#221 <manual.html#221>`_
+     * `manual.html#222 <manual.html#222>`_
 
    `scramble`:idx:
      `mysql.html#278 <mysql.html#278>`_
@@ -3940,7 +3947,7 @@ Index
      `xmlgen.html#163 <xmlgen.html#163>`_
 
    `separate compilation`:idx:
-     * `manual.html#218 <manual.html#218>`_
+     * `manual.html#219 <manual.html#219>`_
      * `tut1.html#127 <tut1.html#127>`_
 
    `seq`:idx:
@@ -4009,7 +4016,7 @@ Index
      `terminal.html#103 <terminal.html#103>`_
 
    `setFilePermissions`:idx:
-     `os.html#160 <os.html#160>`_
+     `os.html#163 <os.html#163>`_
 
    `setFilePos`:idx:
      `system.html#522 <system.html#522>`_
@@ -4041,9 +4048,6 @@ Index
      * `system.html#230 <system.html#230>`_
      * `system.html#231 <system.html#231>`_
 
-   `simple assertions`:idx:
-     `regexprs.html#103 <regexprs.html#103>`_
-
    `simple statements`:idx:
      `manual.html#177 <manual.html#177>`_
 
@@ -4052,6 +4056,9 @@ Index
 
    `sizeof`:idx:
      `system.html#162 <system.html#162>`_
+
+   `sleep`:idx:
+     `os.html#170 <os.html#170>`_
 
    `small`:idx:
      `xmlgen.html#164 <xmlgen.html#164>`_
@@ -4063,10 +4070,10 @@ Index
      `xmlgen.html#165 <xmlgen.html#165>`_
 
    `split`:idx:
-     * `strutils.html#129 <strutils.html#129>`_
-     * `strutils.html#130 <strutils.html#130>`_
-     * `strutils.html#136 <strutils.html#136>`_
-     * `strutils.html#137 <strutils.html#137>`_
+     * `strutils.html#126 <strutils.html#126>`_
+     * `strutils.html#127 <strutils.html#127>`_
+     * `strutils.html#133 <strutils.html#133>`_
+     * `strutils.html#134 <strutils.html#134>`_
      * `pegs.html#146 <pegs.html#146>`_
      * `pegs.html#147 <pegs.html#147>`_
 
@@ -4077,19 +4084,19 @@ Index
      `os.html#133 <os.html#133>`_
 
    `splitLines`:idx:
-     * `strutils.html#131 <strutils.html#131>`_
-     * `strutils.html#135 <strutils.html#135>`_
+     * `strutils.html#128 <strutils.html#128>`_
+     * `strutils.html#132 <strutils.html#132>`_
 
    `splitLinesSeq`:idx:
-     `strutils.html#132 <strutils.html#132>`_
+     `strutils.html#129 <strutils.html#129>`_
 
    `SplitPath`:idx:
      * `os.html#125 <os.html#125>`_
      * `os.html#126 <os.html#126>`_
 
    `splitSeq`:idx:
-     * `strutils.html#133 <strutils.html#133>`_
-     * `strutils.html#134 <strutils.html#134>`_
+     * `strutils.html#130 <strutils.html#130>`_
+     * `strutils.html#131 <strutils.html#131>`_
 
    `sqlite3_aggregate_context`:idx:
      `sqlite3.html#261 <sqlite3.html#261>`_
@@ -4600,11 +4607,10 @@ Index
      `math.html#136 <math.html#136>`_
 
    `startProcess`:idx:
-     * `osproc.html#107 <osproc.html#107>`_
-     * `osproc.html#117 <osproc.html#117>`_
+     `osproc.html#107 <osproc.html#107>`_
 
    `startsWith`:idx:
-     * `strutils.html#150 <strutils.html#150>`_
+     * `strutils.html#147 <strutils.html#147>`_
      * `pegs.html#141 <pegs.html#141>`_
 
    `statement macros`:idx:
@@ -4696,10 +4702,10 @@ Index
      `manual.html#152 <manual.html#152>`_
 
    `strVal`:idx:
-     `macros.html#126 <macros.html#126>`_
+     `macros.html#127 <macros.html#127>`_
 
    `strVal=`:idx:
-     `macros.html#132 <macros.html#132>`_
+     `macros.html#133 <macros.html#133>`_
 
    `st_udf_args`:idx:
      `mysql.html#258 <mysql.html#258>`_
@@ -4739,22 +4745,22 @@ Index
      `osproc.html#108 <osproc.html#108>`_
 
    `swap`:idx:
-     `system.html#415 <system.html#415>`_
+     `system.html#416 <system.html#416>`_
 
    `symAddr`:idx:
      `dynlib.html#104 <dynlib.html#104>`_
 
    `symbol`:idx:
-     `macros.html#123 <macros.html#123>`_
+     `macros.html#124 <macros.html#124>`_
 
    `symbol=`:idx:
-     `macros.html#129 <macros.html#129>`_
+     `macros.html#130 <macros.html#130>`_
 
    `syscall`:idx:
      `manual.html#172 <manual.html#172>`_
 
    `system`:idx:
-     `manual.html#222 <manual.html#222>`_
+     `manual.html#223 <manual.html#223>`_
 
    `table`:idx:
      `xmlgen.html#170 <xmlgen.html#170>`_
@@ -4973,7 +4979,7 @@ Index
      `xmlgen.html#172 <xmlgen.html#172>`_
 
    `template`:idx:
-     `manual.html#213 <manual.html#213>`_
+     `manual.html#214 <manual.html#214>`_
 
    `TEndian`:idx:
      `system.html#384 <system.html#384>`_
@@ -5004,7 +5010,7 @@ Index
      `system.html#490 <system.html#490>`_
 
    `TFilePermission`:idx:
-     `os.html#158 <os.html#158>`_
+     `os.html#161 <os.html#161>`_
 
    `TFileStream`:idx:
      `streams.html#119 <streams.html#119>`_
@@ -5051,6 +5057,9 @@ Index
    `TNimNodeKinds`:idx:
      `macros.html#103 <macros.html#103>`_
 
+   `TNimrodIdent`:idx:
+     `macros.html#108 <macros.html#108>`_
+
    `TNimrodNodeKind`:idx:
      `macros.html#102 <macros.html#102>`_
 
@@ -5073,7 +5082,7 @@ Index
      `system.html#402 <system.html#402>`_
 
    `toBin`:idx:
-     `strutils.html#162 <strutils.html#162>`_
+     `strutils.html#159 <strutils.html#159>`_
 
    `TObject`:idx:
      `system.html#136 <system.html#136>`_
@@ -5082,7 +5091,7 @@ Index
      `system.html#399 <system.html#399>`_
 
    `toHex`:idx:
-     `strutils.html#143 <strutils.html#143>`_
+     `strutils.html#140 <strutils.html#140>`_
 
    `toInt`:idx:
      `system.html#401 <system.html#401>`_
@@ -5093,19 +5102,19 @@ Index
      * `unicode.html#111 <unicode.html#111>`_
 
    `toOct`:idx:
-     `strutils.html#161 <strutils.html#161>`_
+     `strutils.html#158 <strutils.html#158>`_
 
    `toOctal`:idx:
-     `strutils.html#128 <strutils.html#128>`_
+     `strutils.html#125 <strutils.html#125>`_
 
    `TOptParser`:idx:
      `parseopt.html#102 <parseopt.html#102>`_
 
    `toString`:idx:
-     `strutils.html#148 <strutils.html#148>`_
+     `strutils.html#145 <strutils.html#145>`_
 
    `toStrLit`:idx:
-     `macros.html#144 <macros.html#144>`_
+     `macros.html#145 <macros.html#145>`_
 
    `toTitle`:idx:
      `unicode.html#113 <unicode.html#113>`_
@@ -5235,15 +5244,15 @@ Index
      `parsexml.html#106 <parsexml.html#106>`_
 
    `typ`:idx:
-     `macros.html#125 <macros.html#125>`_
+     `macros.html#126 <macros.html#126>`_
 
    `typ=`:idx:
-     `macros.html#131 <macros.html#131>`_
+     `macros.html#132 <macros.html#132>`_
 
    `type`:idx:
      * `manual.html#102 <manual.html#102>`_
      * `manual.html#141 <manual.html#141>`_
-     * `manual.html#210 <manual.html#210>`_
+     * `manual.html#211 <manual.html#211>`_
 
    `type casts`:idx:
      `tut2.html#101 <tut2.html#101>`_
@@ -5252,7 +5261,7 @@ Index
      `tut2.html#102 <tut2.html#102>`_
 
    `type parameters`:idx:
-     * `manual.html#212 <manual.html#212>`_
+     * `manual.html#213 <manual.html#213>`_
      * `tut2.html#110 <tut2.html#110>`_
 
    `type suffix`:idx:
@@ -5331,16 +5340,16 @@ Index
      `cgi.html#109 <cgi.html#109>`_
 
    `validEmailAddress`:idx:
-     `strutils.html#164 <strutils.html#164>`_
+     `strutils.html#161 <strutils.html#161>`_
 
    `validIdentifier`:idx:
-     `strutils.html#165 <strutils.html#165>`_
-
-   `var`:idx:
-     `xmlgen.html#181 <xmlgen.html#181>`_
+     `strutils.html#162 <strutils.html#162>`_
 
    `Var`:idx:
      `manual.html#181 <manual.html#181>`_
+
+   `var`:idx:
+     `xmlgen.html#181 <xmlgen.html#181>`_
 
    `varargs`:idx:
      `nimrodc.html#106 <nimrodc.html#106>`_
@@ -5354,7 +5363,7 @@ Index
      * `tut2.html#103 <tut2.html#103>`_
 
    `verbose`:idx:
-     `regexprs.html#121 <regexprs.html#121>`_
+     `regexprs.html#118 <regexprs.html#118>`_
 
    `vertical tabulator`:idx:
      `manual.html#126 <manual.html#126>`_
@@ -5366,16 +5375,19 @@ Index
      `osproc.html#113 <osproc.html#113>`_
 
    `walkDir`:idx:
-     `os.html#154 <os.html#154>`_
+     `os.html#156 <os.html#156>`_
+
+   `walkDirRec`:idx:
+     `os.html#157 <os.html#157>`_
 
    `walkFiles`:idx:
      * `os.html#152 <os.html#152>`_
      * `zipfiles.html#110 <zipfiles.html#110>`_
 
    `warning`:idx:
-     * `manual.html#224 <manual.html#224>`_
-     * `manual.html#230 <manual.html#230>`_
-     * `macros.html#137 <macros.html#137>`_
+     * `manual.html#225 <manual.html#225>`_
+     * `manual.html#232 <manual.html#232>`_
+     * `macros.html#138 <macros.html#138>`_
 
    `when`:idx:
      * `manual.html#185 <manual.html#185>`_
@@ -5384,11 +5396,11 @@ Index
    `while`:idx:
      `manual.html#197 <manual.html#197>`_
 
-   `whitespace`:idx:
-     `pegs.html#126 <pegs.html#126>`_
-
    `Whitespace`:idx:
      `strutils.html#102 <strutils.html#102>`_
+
+   `whitespace`:idx:
+     `pegs.html#126 <pegs.html#126>`_
 
    `winTimeToUnixTime`:idx:
      `times.html#118 <times.html#118>`_

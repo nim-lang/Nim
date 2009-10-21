@@ -1222,6 +1222,8 @@ var
   SC_XOPEN_STREAMS*{.importc: "_SC_XOPEN_STREAMS", header: "<unistd.h>".}: cint
   SC_XOPEN_UNIX*{.importc: "_SC_XOPEN_UNIX", header: "<unistd.h>".}: cint
   SC_XOPEN_VERSION*{.importc: "_SC_XOPEN_VERSION", header: "<unistd.h>".}: cint
+  SC_NPROCESSORS_ONLN*{.importc: "_SC_NPROCESSORS_ONLN", 
+                        header: "<unistd.h>".}: cint
   
   SEM_FAILED* {.importc, header: "<semaphore.h>".}: pointer
   IPC_CREAT* {.importc, header: "<sys/ipc.h>".}: cint

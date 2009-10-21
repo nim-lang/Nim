@@ -59,6 +59,8 @@ const
   STD_OUTPUT_HANDLE* = -11'i32
   STD_ERROR_HANDLE* = -12'i32
 
+  DETACHED_PROCESS* = 8'i32
+
 proc CloseHandle*(hObject: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
     
@@ -183,4 +185,8 @@ proc GetCommandLineA*(): CString {.importc, stdcall, dynlib: "kernel32".}
 
 proc rdFileTime*(f: FILETIME): int64 = 
   result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
+
+proc Sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
+                                    importc: "Sleep".}
+
 

@@ -50,7 +50,7 @@ function ToString(b: PChar): string; overload;
 function IntToStr(i: BiggestInt; minChars: int): string;
 
 function find(const s, sub: string; start: int = 1): int; overload;
-function replaceStr(const s, search, by: string): string;
+function replace(const s, search, by: string): string;
 procedure deleteStr(var s: string; first, last: int);
 
 function ToLower(const s: string): string;
@@ -63,9 +63,6 @@ function ParseFloat(const s: string; checkEnd: Boolean = True): Real;
 
 function repeatChar(count: int; c: Char = ' '): string;
 
-type
-  TStringSeq = array of string;
-  TCharSet = set of Char;
 function split(const s: string; const seps: TCharSet): TStringSeq;
 
 function startsWith(const s, prefix: string): bool;
@@ -278,7 +275,7 @@ begin
   end
 end;
 
-function replaceStr(const s, search, by: string): string;
+function replace(const s, search, by: string): string;
 var
   i, j: int;
 begin

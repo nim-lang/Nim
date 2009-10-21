@@ -61,7 +61,7 @@ const
     ('len',          'length'),
     ('setlength',    'setlen')
   );
-  nimReplacements: array [1..34] of TReplaceTuple = (
+  nimReplacements: array [1..35] of TReplaceTuple = (
     ('nimread',      'read'),
     ('nimwrite',     'write'),
     ('nimclosefile', 'close'),
@@ -98,7 +98,8 @@ const
     ('ttextfile', 'tfile'),
     ('tbinaryfile', 'tfile'),
     ('strstart', '0'+''),
-    ('nl', '"\n"')
+    ('nl', '"\n"'),
+    ('tostring', '$'+'')
     {,
     ('NL', '"\n"'),
     ('tabulator', '''\t'''),
@@ -455,7 +456,7 @@ begin
     skipCom(p, result);
     if p.tok.xkind = pxSymbol then begin
       a := result;
-      result := newNodeI(nkQualified, a.info);
+      result := newNodeI(nkDotExpr, a.info);
       addSon(result, a);
       addSon(result, createIdentNodeP(p.tok.ident, p));
       getTok(p);
@@ -1277,6 +1278,13 @@ begin
         if result = nil then result := newNodeP(nkPragma, p);
         addSon(result, newIdentNodeP(getIdent('noconv'), p));
         noBody := true;
+        getTok(p); opt(p, pxSemicolon);
+      end;
+      wProcVar: begin
+        // This is a fake for the Nimrod compiler. There is no ``procvar``
+        // directive in Pascal.
+        if result = nil then result := newNodeP(nkPragma, p);
+        addSon(result, newIdentNodeP(getIdent('procvar'), p));
         getTok(p); opt(p, pxSemicolon);
       end;
       wVarargs: begin

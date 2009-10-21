@@ -19,7 +19,7 @@ interface
 
 uses
   nsystem, charsets, ast, astalgo, strutils, nhashes, options, nversion, msgs,
-  nos, ropes, idents, wordrecg, nmath, pnimsyn, rnimsyn, scanner, rst, ntime,
+  nos, ropes, idents, wordrecg, nmath, syntaxes, rnimsyn, scanner, rst, ntime,
   highlite;
 
 procedure CommandDoc(const filename: string);
@@ -85,7 +85,7 @@ var
   dummyHasToc: bool;
 begin
   if gIndexFile = '' then exit;
-  gIndexFile := appendFileExt(gIndexFile, 'txt');
+  gIndexFile := addFileExt(gIndexFile, 'txt');
   d.indexValFilename := changeFileExt(extractFilename(d.filename), HtmlExt);
   if ExistsFile(gIndexFile) then begin
     d.indexFile := rstParse(readFile(gIndexFile), false, gIndexFile, 0, 1,
@@ -1135,7 +1135,7 @@ var
   ast: PNode;
   d: PDoc;
 begin
-  ast := parseFile(appendFileExt(filename, nimExt));
+  ast := parseFile(addFileExt(filename, nimExt));
   if ast = nil then exit;
   d := newDocumentor(filename);
   initIndexFile(d);
@@ -1152,7 +1152,7 @@ var
   rst: PRstNode;
   code: PRope;
 begin
-  filen := appendFileExt(filename, 'txt');
+  filen := addFileExt(filename, 'txt');
   d := newDocumentor(filen);
   initIndexFile(d);
   rst := rstParse(readFile(filen), false, filen, 0, 1, d.hasToc);

@@ -127,7 +127,7 @@ var
   str, sub: string;
   a, b, c: int;
   e: PSym;
-  marker: Char;
+  marker: char;
 begin
   result := n;
   checkSonsLen(n, 2);
@@ -243,7 +243,7 @@ begin
   checkSonsLen(n, 2);
   a := n.sons[0];
   case a.kind of
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       // r.f = x
       // --> `f=` (r, x)
       checkSonsLen(a, 2);
@@ -298,7 +298,8 @@ begin
   n.sons[1] := semExprWithType(c, n.sons[1]);
   le := n.sons[0].typ;
   if (skipTypes(le, {@set}[tyGenericInst]).kind <> tyVar) 
-  and not IsAssignable(n.sons[0]) then begin
+  and (IsAssignable(n.sons[0]) = arNone) then begin
+    // Direct assignment to a discriminant is allowed!
     liMessage(n.sons[0].info, errXCannotBeAssignedTo,
               renderTree(n.sons[0], {@set}[renderNoComments]));
   end
@@ -1014,8 +1015,7 @@ end;
 function evalInclude(c: PContext; n: PNode): PNode;
 var
   i, fileIndex: int;
-  x: PNode;
-  f, name, ext: string;
+  f: string;
 begin
   result := newNodeI(nkStmtList, n.info);
   addSon(result, n); // the rodwriter needs include information!
@@ -1024,13 +1024,7 @@ begin
     fileIndex := includeFilename(f);
     if IntSetContainsOrIncl(c.includedFiles, fileIndex) then
       liMessage(n.info, errRecursiveDependencyX, f);
-    SplitFilename(f, name, ext);
-    if cmpIgnoreCase(ext, '.'+TmplExt) = 0 then
-      x := gIncludeTmplFile(f)
-    else
-      x := gIncludeFile(f);
-    x := semStmt(c, x);
-    addSon(result, x);
+    addSon(result, semStmt(c, gIncludeFile(f)));
     IntSetExcl(c.includedFiles, fileIndex);
   end;
 end;

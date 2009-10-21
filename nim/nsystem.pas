@@ -56,6 +56,11 @@ const
   snil = '';
 
 type
+  TStringSeq = array of string;
+  TCharSet = set of Char;
+
+
+type
   Natural = 0..high(int);
   Positive = 1..high(int);
   NObject = object // base type for all objects, cannot use
@@ -214,8 +219,10 @@ function readFile(const filename: string): string;
 
 procedure nimWrite(var f: tBinaryFile; const str: string); overload;
 
-procedure add(var x: string; const y: string);
+procedure add(var x: string; const y: string); overload;
 // Pascal version of string appending. Terminating zero is ignored.
+
+procedure add(var s: TStringSeq; const y: string); overload;
 
 function isNil(s: string): bool;
 
@@ -237,6 +244,15 @@ begin
     if y[L] = #0 then x := x + copy(y, 1, L-1)
     else x := x + y;
   end
+end;
+
+procedure add(var s: TStringSeq; const y: string); overload;
+var
+  L: int;
+begin
+  L := length(s);
+  setLength(s, L+1);
+  s[L] := y;
 end;
 {@emit}
 

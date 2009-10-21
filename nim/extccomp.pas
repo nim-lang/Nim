@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -304,10 +304,10 @@ procedure setCC(const ccname: string);
 var
   i: TSystemCC;
 begin
-  linkOptions := '';
   ccompiler := nameToCC(ccname);
   if ccompiler = ccNone then rawMessage(errUnknownCcompiler, ccname);
   compileOptions := getConfigVar(CC[ccompiler].name + '.options.always');
+  linkOptions := getConfigVar(CC[ccompiler].name + '.options.linker');
   ccompilerpath := getConfigVar(CC[ccompiler].name + '.path');
   for i := low(CC) to high(CC) do undefSymbol(CC[i].name);
   defineSymbol(CC[ccompiler].name);
@@ -323,6 +323,7 @@ begin
   if gCmd = cmdCompileToCpp then
     cExt := '.cpp';
   addCompileOption(getConfigVar(CC[ccompiler].name + '.options.always'));
+  addLinkOption(getConfigVar(CC[ccompiler].name + '.options.linker'));
   if length(ccompilerPath) = 0 then
     ccompilerpath := getConfigVar(CC[ccompiler].name + '.path');
 end;
@@ -387,8 +388,8 @@ end;
 procedure execExternalProgram(const cmd: string);
 begin
   if (optListCmd in gGlobalOptions) or (gVerbosity > 0) then
-    MessageOut('Executing: ' +{&} nl +{&} cmd);
-  if executeCommand(cmd) <> 0 then
+    MessageOut(cmd);
+  if execCmd(cmd) <> 0 then
     rawMessage(errExecutionOfProgramFailed);
 end;
 
@@ -398,7 +399,7 @@ var
 begin
   splitPath(projectFile, path, scriptname);
   SplitFilename(scriptname, name, ext);
-  name := appendFileExt('compile_' + name, platform.os[targetOS].scriptExt);
+  name := addFileExt('compile_' + name, platform.os[targetOS].scriptExt);
   WriteRope(script, joinPath(path, name));
 end;
 
@@ -437,7 +438,7 @@ var
 begin
   c := ccompiler;
   options := compileOptions;
-  trunk := getFileTrunk(cfilename);
+  trunk := extractFileTrunk(cfilename);
   if optCDebug in gGlobalOptions then begin
     key := trunk + '.debug';
     if existsConfigVar(key) then
@@ -468,7 +469,7 @@ begin
   key := cc[c].name + '.exe';
   if existsConfigVar(key) then
     exe := getConfigVar(key);
-  if targetOS = osWindows then exe := appendFileExt(exe, 'exe');
+  if targetOS = osWindows then exe := addFileExt(exe, 'exe');
 
   if (optGenDynLib in gGlobalOptions)
   and (ospNeedsPIC in platform.OS[targetOS].props) then
@@ -494,7 +495,7 @@ begin
     objfile := toObjFile(cfile)
   else
     objfile := completeCFilePath(toObjFile(cfile));
-  cfile := quoteIfContainsWhite(AppendFileExt(cfile, cExt));
+  cfile := quoteIfContainsWhite(AddFileExt(cfile, cExt));
   objfile := quoteIfContainsWhite(objfile);
   
   result := quoteIfContainsWhite(format(compilePattern,
@@ -517,7 +518,9 @@ begin
 end;
 
 procedure CompileCFile(const list: TLinkedList;
-                       var script: PRope; isExternal: Boolean);
+                       var script: PRope; 
+                       var cmds: TStringSeq;
+                       isExternal: Boolean);
 var
   it: PStrEntry;
   compileCmd: string;
@@ -528,7 +531,7 @@ begin
     // call the C compiler for the .c file:
     compileCmd := getCompileCFileCmd(it.data, isExternal);
     if not (optCompileOnly in gGlobalOptions) then
-      execExternalProgram(compileCmd);
+      add(cmds, compileCmd); //execExternalProgram(compileCmd);
     if (optGenScript in gGlobalOptions) then begin
       app(script, compileCmd);
       app(script, tnl);
@@ -543,6 +546,8 @@ var
   linkCmd, objfiles, exefile, buildgui, builddll, linkerExe: string;
   c: TSystemCC; // an alias to ccompiler
   script: PRope;
+  cmds: TStringSeq;
+  res, i: int;
 begin
   if (gGlobalOptions * [optCompileOnly, optGenScript] = [optCompileOnly]) then
     exit; // speed up that call if only compiling and no script shall be
@@ -551,41 +556,53 @@ begin
   fileCounter := 0;
   c := ccompiler;
   script := nil;
-  CompileCFile(toCompile, script, false);
-  CompileCFile(externalToCompile, script, true);
-
+  cmds := {@ignore} nil {@emit @[]};
+  CompileCFile(toCompile, script, cmds, false);
+  CompileCFile(externalToCompile, script, cmds, true);
+  if not (optCompileOnly in gGlobalOptions) then begin
+    if gNumberOfProcessors = 0 then 
+      gNumberOfProcessors := countProcessors();
+    if gNumberOfProcessors <= 1 then begin
+      res := 0;
+      for i := 0 to high(cmds) do res := max(execCmd(cmds[i]), res);
+    end
+    else if (optListCmd in gGlobalOptions) or (gVerbosity > 0) then
+      res := execProcesses(cmds, {@set}[poEchoCmd, poUseShell, poParentStreams], 
+                           gNumberOfProcessors)
+    else
+      res := execProcesses(cmds, {@set}[poUseShell, poParentStreams],
+                           gNumberOfProcessors);
+    if res <> 0 then
+      rawMessage(errExecutionOfProgramFailed);
+  end;
+  
   if not (optNoLinking in gGlobalOptions) then begin
     // call the linker:
     linkerExe := getConfigVar(cc[c].name + '.linkerexe');
     if length(linkerExe) = 0 then linkerExe := cc[c].linkerExe;
-    if targetOS = osWindows then linkerExe := appendFileExt(linkerExe, 'exe');
+    if targetOS = osWindows then linkerExe := addFileExt(linkerExe, 'exe');
 
     if (platform.hostOS <> targetOS) then
       linkCmd := quoteIfContainsWhite(linkerExe)
     else
       linkCmd := quoteIfContainsWhite(JoinPath(ccompilerpath, linkerExe));
 
-    if optGenDynLib in gGlobalOptions then
-      buildDll := cc[c].buildDll
-    else
-      buildDll := '';
     if optGenGuiApp in gGlobalOptions then
       buildGui := cc[c].buildGui
     else
       buildGui := '';
-
-    if optGenDynLib in gGlobalOptions then
-      exefile := platform.os[targetOS].dllPrefix
-    else
-      exefile := '';
+      
+    if optGenDynLib in gGlobalOptions then begin
+      exefile := format(platform.os[targetOS].dllFrmt,
+                        [extractFileTrunk(projectFile)]);
+      buildDll := cc[c].buildDll;
+    end
+    else begin
+      exefile := extractFileTrunk(projectFile) +{&} platform.os[targetOS].exeExt;
+      buildDll := '';
+    end;
     if targetOS = platform.hostOS then
-      add(exefile, projectFile)
-    else
-      add(exefile, extractFileName(projectFile));
-    if optGenDynLib in gGlobalOptions then
-      add(exefile, platform.os[targetOS].dllExt)
-    else
-      add(exefile, platform.os[targetOS].exeExt);
+      exefile := joinPath(extractDir(projectFile), exefile);
     exefile := quoteIfContainsWhite(exefile);
 
     it := PStrEntry(toLink.head);
@@ -639,7 +656,7 @@ begin
   result := nil;
   it := PStrEntry(list.head);
   while it <> nil do begin
-    appf(result, '--file:r"$1"$n', [toRope(AppendFileExt(it.data, cExt))]);
+    appf(result, '--file:r"$1"$n', [toRope(AddFileExt(it.data, cExt))]);
     it := PStrEntry(it.next);
   end;
 end;

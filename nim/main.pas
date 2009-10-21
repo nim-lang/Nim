@@ -15,10 +15,10 @@ unit main;
 interface
 
 uses
-  nsystem, llstream, strutils, ast, astalgo, scanner, pnimsyn, rnimsyn, 
+  nsystem, llstream, strutils, ast, astalgo, scanner, syntaxes, rnimsyn, 
   options, msgs, nos, lists, condsyms, paslex, pasparse, rodread, rodwrite,
   ropes, trees, wordrecg, sem, semdata, idents, passes, docgen,
-  extccomp, cgen, ecmasgen, platform, ptmplsyn, interact, nimconf, importer,
+  extccomp, cgen, ecmasgen, platform, interact, nimconf, importer,
   passaux, depends, transf, evals, types;
 
 procedure MainCommand(const cmd, filename: string);
@@ -69,7 +69,7 @@ begin
 {@emit}
   result.id := -1; // for better error checking
   result.kind := skModule;
-  result.name := getIdent(getFileTrunk(filename));
+  result.name := getIdent(extractFileTrunk(filename));
   result.owner := result; // a module belongs to itself
   result.info := newLineInfo(filename, 1, 1);
   include(result.flags, sfUsed);
@@ -101,7 +101,7 @@ var
   f: string;
 begin
   rd := nil;
-  f := appendFileExt(filename, nimExt);
+  f := addFileExt(filename, nimExt);
   result := newModule(filename);
   if isMainFile then include(result.flags, sfMainModule);
   if isSystemFile then include(result.flags, sfSystemModule);
@@ -118,8 +118,8 @@ end;
 procedure CompileProject(const filename: string);
 begin
   {@discard} CompileModule(
-    JoinPath(options.libpath, appendFileExt('system', nimExt)), false, true);
-  {@discard} CompileModule(appendFileExt(filename, nimExt), true, false);
+    JoinPath(options.libpath, addFileExt('system', nimExt)), false, true);
+  {@discard} CompileModule(addFileExt(filename, nimExt), true, false);
 end;
 
 procedure semanticPasses;
@@ -137,7 +137,7 @@ begin
   compileProject(filename);
   generateDot(filename);
   execExternalProgram('dot -Tpng -o' +{&} changeFileExt(filename, 'png') +{&}
-                      ' ' +{&} changeFileExt(filename, 'dot'));
+                                 ' ' +{&} changeFileExt(filename, 'dot'));
 end;
 
 procedure CommandCheck(const filename: string);
@@ -185,7 +185,7 @@ begin
   
   // load system module:
   {@discard} CompileModule(
-    JoinPath(options.libpath, appendFileExt('system', nimExt)), false, true);
+    JoinPath(options.libpath, addFileExt('system', nimExt)), false, true);
 
   m := newModule('stdin');
   m.id := getID();
@@ -228,7 +228,7 @@ procedure CommandExportSymbols(const filename: string);
 var
   module: PNode;
 begin
-  module := parseFile(appendFileExt(filename, NimExt));
+  module := parseFile(addFileExt(filename, NimExt));
   if module <> nil then begin
     exSymbols(module);
     renderModule(module, getOutFile(filename, 'pretty.'+NimExt));
@@ -239,7 +239,7 @@ procedure CommandPretty(const filename: string);
 var
   module: PNode;
 begin
-  module := parseFile(appendFileExt(filename, NimExt));
+  module := parseFile(addFileExt(filename, NimExt));
   if module <> nil then
     renderModule(module, getOutFile(filename, 'pretty.'+NimExt));
 end;
@@ -255,7 +255,7 @@ begin
   fillChar(tok, sizeof(tok), 0);
   fillChar(L, sizeof(L), 0);
 {@emit}
-  f := appendFileExt(filename, 'pas');
+  f := addFileExt(filename, 'pas');
   stream := LLStreamOpen(f, fmRead);
   if stream <> nil then begin
     OpenLexer(L, f, stream);
@@ -277,7 +277,7 @@ var
   f: string;
   stream: PLLStream;
 begin
-  f := appendFileExt(filename, 'pas');
+  f := addFileExt(filename, 'pas');
   stream := LLStreamOpen(f, fmRead);
   if stream <> nil then begin
     OpenPasParser(p, f, stream);
@@ -300,7 +300,7 @@ begin
 {@ignore}
   fillChar(tok^, sizeof(tok^), 0);
 {@emit}
-  f := appendFileExt(filename, nimExt);
+  f := addFileExt(filename, nimExt);
   stream := LLStreamOpen(f, fmRead);
   if stream <> nil then begin 
     openLexer(L, f, stream);
@@ -331,8 +331,7 @@ begin
     prependStr(searchPaths, dir);
   end;
   setID(100);
-  passes.gIncludeFile := parseFile;
-  passes.gIncludeTmplFile := ptmplsyn.parseTmplFile;
+  passes.gIncludeFile := syntaxes.parseFile;
   passes.gImportModule := importModule;
 
   case whichKeyword(cmd) of
@@ -408,7 +407,7 @@ begin
     wParse: begin
       gCmd := cmdParse;
       wantFile(filename);
-      {@discard} parseFile(appendFileExt(filename, nimExt));
+      {@discard} parseFile(addFileExt(filename, nimExt));
     end;
     wScan: begin
       gCmd := cmdScan;

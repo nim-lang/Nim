@@ -9,7 +9,7 @@ proc main() =
   var
     a, b: string
     p: int
-  p = findSubStr("=", example)
+  p = find(example, "=")
   a = copy(example, 0, p-1)
   b = copy(example, p+1)
   writeln(stdout, a & '=' & b)

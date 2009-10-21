@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -25,7 +25,7 @@ type
     kind: TLLStreamKind; // accessible for low-level access (lexbase uses this)
     f: TBinaryFile;
     s: string;
-    pos: int; // for string streams
+    rd, wr: int; // for string streams
   end;
   PLLStream = ^TLLStream;
   
@@ -45,6 +45,8 @@ function LLStreamReadAll(s: PLLStream): string;
 procedure LLStreamWrite(s: PLLStream; const data: string); overload;
 procedure LLStreamWrite(s: PLLStream; data: Char); overload;
 procedure LLStreamWrite(s: PLLStream; buf: pointer; buflen: int); overload;
+
+procedure LLStreamWriteln(s: PLLStream; const data: string);
 
 function LLStreamAtEnd(s: PLLStream): bool;
 
@@ -97,7 +99,6 @@ begin
   {@emit}
   result.kind := llsStdIn;
   result.s := '';
-  result.pos := -1;
 end;
 
 procedure LLStreamClose(s: PLLStream);
@@ -114,7 +115,7 @@ var
   L: int;
 begin
   s.s := '';
-  s.pos := 0;
+  s.rd := 0;
   while true do begin
     write(output, 'Nimrod> ');
     line := readLine(input);
@@ -123,10 +124,10 @@ begin
     add(s.s, nl);
     if (L > 0) and (line[L-1+strStart] = '#') then break;
   end;
-  result := min(bufLen, length(s.s)-s.pos);
+  result := min(bufLen, length(s.s)-s.rd);
   if result > 0 then begin
-    copyMem(buf, addr(s.s[strStart+s.pos]), result);
-    inc(s.pos, result)
+    copyMem(buf, addr(s.s[strStart+s.rd]), result);
+    inc(s.rd, result)
   end
 end;
 
@@ -135,10 +136,10 @@ begin
   case s.kind of 
     llsNone: result := 0;
     llsString: begin
-      result := min(bufLen, length(s.s)-s.pos);
+      result := min(bufLen, length(s.s)-s.rd);
       if result > 0 then begin
-        copyMem(buf, addr(s.s[strStart+s.pos]), result);
-        inc(s.pos, result)
+        copyMem(buf, addr(s.s[strStart+s.rd]), result);
+        inc(s.rd, result)
       end
     end;
     llsFile:  result := readBuffer(s.f, buf, bufLen);
@@ -152,20 +153,20 @@ begin
     llsNone: result := '';
     llsString: begin
       result := '';
-      while s.pos < length(s.s) do begin
-        case s.s[s.pos+strStart] of 
+      while s.rd < length(s.s) do begin
+        case s.s[s.rd+strStart] of 
           #13: begin 
-            inc(s.pos); 
-            if s.s[s.pos+strStart] = #10 then inc(s.pos);
+            inc(s.rd); 
+            if s.s[s.rd+strStart] = #10 then inc(s.rd);
             break
           end;
-          #10: begin inc(s.pos); break end;
+          #10: begin inc(s.rd); break end;
           else begin
-            addChar(result, s.s[s.pos+strStart]);
-            inc(s.pos);
+            addChar(result, s.s[s.rd+strStart]);
+            inc(s.rd);
           end
         end
-      end    
+      end
     end;
     llsFile: result := readLine(s.f);
     llsStdIn: result := readLine(input);
@@ -176,7 +177,7 @@ function LLStreamAtEnd(s: PLLStream): bool;
 begin
   case s.kind of
     llsNone: result := true;
-    llsString: result := s.pos < length(s.s);
+    llsString: result := s.rd >= length(s.s);
     llsFile: result := endOfFile(s.f);
     llsStdIn: result := false;
   end
@@ -186,9 +187,15 @@ procedure LLStreamWrite(s: PLLStream; const data: string); overload;
 begin
   case s.kind of 
     llsNone, llsStdIn: begin end;
-    llsString: add(s.s, data);
+    llsString: begin add(s.s, data); inc(s.wr, length(data)) end;
     llsFile: nimWrite(s.f, data);
-  end
+  end;
+end;
+
+procedure LLStreamWriteln(s: PLLStream; const data: string);
+begin
+  LLStreamWrite(s, data);
+  LLStreamWrite(s, nl);
 end;
 
 procedure LLStreamWrite(s: PLLStream; data: Char); overload;
@@ -197,7 +204,7 @@ var
 begin
   case s.kind of 
     llsNone, llsStdIn: begin end;
-    llsString: addChar(s.s, data);
+    llsString: begin addChar(s.s, data); inc(s.wr); end;
     llsFile: begin
       c := data;
       {@discard} writeBuffer(s.f, addr(c), sizeof(c));
@@ -212,8 +219,8 @@ begin
     llsString: begin
       if bufLen > 0 then begin
         setLength(s.s, length(s.s) + bufLen);
-        copyMem(addr(s.s[strStart+s.pos]), buf, bufLen);
-        inc(s.pos, bufLen);
+        copyMem(addr(s.s[strStart+s.wr]), buf, bufLen);
+        inc(s.wr, bufLen);
       end
     end;
     llsFile: {@discard} writeBuffer(s.f, buf, bufLen);
@@ -229,9 +236,9 @@ begin
   case s.kind of 
     llsNone, llsStdIn: result := '';
     llsString: begin
-      if s.pos = 0 then result := s.s
-      else result := ncopy(s.s, s.pos+strStart);
-      s.pos := length(s.s);
+      if s.rd = 0 then result := s.s
+      else result := ncopy(s.s, s.rd+strStart);
+      s.rd := length(s.s);
     end;
     llsFile: begin
       result := newString(bufSize);

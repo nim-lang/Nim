@@ -652,7 +652,7 @@ end;
       f: proc (x: int, c: PClosure): int
 
   proc map(f: PClosure, a: seq[int]): seq[int] =
-    result = []
+    result = @[]
     for elem in a:
       add result, f.f(a, f)
 
@@ -737,6 +737,7 @@ end;
 
 function transformCase(c: PTransf; n: PNode): PNode;
 // removes `elif` branches of a case stmt
+// adds ``else: nil`` if needed for the code generator
 var
   len, i, j: int;
   ifs, elsen: PNode;
@@ -754,6 +755,14 @@ begin
     setLength(n.sons, i+2);
     addSon(elsen, ifs);
     n.sons[i+1] := elsen;
+  end  
+  else if (n.sons[len-1].kind <> nkElse) and 
+           not (skipTypes(n.sons[0].Typ, abstractVarRange).Kind in
+               [tyInt..tyInt64, tyChar, tyEnum]) then begin
+    //MessageOut(renderTree(n));
+    elsen := newNodeI(nkElse, n.info);
+    addSon(elsen, newNodeI(nkNilLit, n.info));
+    addSon(n, elsen)
   end;
   result := n;
   for j := 0 to sonsLen(n)-1 do result.sons[j] := transform(c, n.sons[j]);

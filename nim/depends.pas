@@ -51,12 +51,12 @@ begin
   case n.kind of
     nkImportStmt: begin
       for i := 0 to sonsLen(n)-1 do begin
-        imported := getFileTrunk(getModuleFile(n.sons[i]));
+        imported := extractFileTrunk(getModuleFile(n.sons[i]));
         addDependencyAux(g.module.name.s, imported);
       end
     end;
     nkFromStmt: begin
-      imported := getFileTrunk(getModuleFile(n.sons[0]));
+      imported := extractFileTrunk(getModuleFile(n.sons[0]));
       addDependencyAux(g.module.name.s, imported);
     end;
     nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr: begin

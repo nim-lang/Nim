@@ -177,7 +177,7 @@ begin
       if ambiguousCheck and IntSetContains(c.AmbiguousSymbols, result.id) then
         liMessage(n.info, errUseQualifier, n.sym.name.s)
     end;
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       result := nil;
       m := qualifiedLookUp(c, n.sons[0], false);
       if (m <> nil) and (m.kind = skModule) then begin
@@ -237,7 +237,7 @@ begin
         result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name);
       end; *)
     end; 
-    nkDotExpr, nkQualified: begin
+    nkDotExpr: begin
       o.mode := oimOtherModule;
       o.m := qualifiedLookUp(c, n.sons[0], false);
       if (o.m <> nil) and (o.m.kind = skModule) then begin
