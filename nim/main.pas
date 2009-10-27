@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -69,7 +69,7 @@ begin
 {@emit}
   result.id := -1; // for better error checking
   result.kind := skModule;
-  result.name := getIdent(extractFileTrunk(filename));
+  result.name := getIdent(splitFile(filename).name);
   result.owner := result; // a module belongs to itself
   result.info := newLineInfo(filename, 1, 1);
   include(result.flags, sfUsed);
@@ -321,14 +321,11 @@ begin
 end;
 
 procedure MainCommand(const cmd, filename: string);
-var
-  dir, f: string;
 begin
   appendStr(searchPaths, options.libpath);
   if filename <> '' then begin
-    splitPath(filename, dir, f);
     // current path is always looked first for modules
-    prependStr(searchPaths, dir);
+    prependStr(searchPaths, splitFile(filename).dir);
   end;
   setID(100);
   passes.gIncludeFile := syntaxes.parseFile;

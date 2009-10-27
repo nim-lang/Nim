@@ -29,6 +29,13 @@ uses
 type
   EOSError = class(exception)
   end;
+  
+  TSplitFileResult = record
+    dir, name, ext: string;
+  end;
+  TSplitPathResult = record
+    head, tail: string;
+  end;
 
 const
   curdir = '.';
@@ -59,7 +66,7 @@ procedure putEnv(const name, val: string);
 function JoinPath(const head, tail: string): string; overload;
 function JoinPath(const parts: array of string): string; overload;
 
-procedure SplitPath(const path: string; out head, tail: string);
+procedure SplitPath(const path: string; out head, tail: string); overload;
 
 function extractDir(const f: string): string;
 function extractFilename(const f: string): string;
@@ -87,8 +94,37 @@ function sameFile(const path1, path2: string): boolean;
 
 function extractFileTrunk(const filename: string): string;
 
+function splitFile(const path: string): TSplitFileResult;
+function splitPath(const path: string): TSplitPathResult; overload;
+
 
 implementation
+
+function splitFile(const path: string): TSplitFileResult;
+var
+  sepPos, dotPos, i: int;
+begin
+  if (path = '') or (path[length(path)] in [dirSep, altSep]) then begin
+    result.dir := path;
+    result.name := '';
+    result.ext := '';
+  end
+  else begin
+    sepPos := 0;
+    dotPos := length(path)+1;
+    for i := length(path) downto 1 do begin
+      if path[i] = ExtSep then begin
+        if (dotPos = length(path)+1) and (i > 1) then dotPos := i
+      end
+      else if path[i] in [dirsep, altsep] then begin
+        sepPos := i; break
+      end
+    end;
+    result.dir := ncopy(path, 1, sepPos-1);
+    result.name := ncopy(path, sepPos+1, dotPos-1);
+    result.ext := ncopy(path, dotPos)
+  end
+end;
 
 function extractFileTrunk(const filename: string): string;
 var
@@ -146,7 +182,7 @@ var
   i: int;
 begin
   result := -1;
-  for i := length(s) downto 1 do
+  for i := length(s) downto 2 do
     if s[i] = extsep then begin
       result := i;
       break
@@ -217,6 +253,11 @@ begin
     head := '';
     tail := path
   end
+end;
+
+function SplitPath(const path: string): TSplitPathResult;
+begin
+  SplitPath(path, result.head, result.tail);
 end;
 
 function getApplicationFilename(): string;

@@ -309,11 +309,11 @@ end;
 
 procedure processCompile(const filename: string);
 var
-  found, trunc, ext: string;
+  found, trunc: string;
 begin
   found := findFile(filename);
   if found = '' then found := filename;
-  splitFilename(found, trunc, ext);
+  trunc := changeFileExt(found, '');
   extccomp.addExternalFileToCompile(trunc);
   extccomp.addFileToLink(completeCFilePath(trunc, false));
 end;

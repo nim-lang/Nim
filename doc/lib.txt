@@ -7,7 +7,7 @@ Nimrod Standard Library
 
 ..
 
-  The good thing about reinventing the wheel is that you can get a round one.
+  "The good thing about reinventing the wheel is that you can get a round one."
 
 Though the Nimrod Standard Library is still evolving, it is already quite
 usable. It is divided into *pure libraries*, *impure libraries* and *wrappers*.

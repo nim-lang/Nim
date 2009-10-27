@@ -994,9 +994,11 @@ begin
       result := evalAux(c, n.sons[2]);
       if result.kind = nkExceptBranch then exit;
       k := getOrdValue(result);
-      if (k >= 0) and (k < sonsLen(a))
-      and not (a.kind in [nkEmpty..nkNilLit]) then
-        result := a.sons[int(k)]
+      if not (a.kind in [nkEmpty..nkNilLit]) and (k >= 0) 
+      and (k < sonsLen(a)) then begin
+        result := a.sons[int(k)];
+        if result = nil then result := newNode(nkEmpty)
+      end
       else begin
         stackTrace(c, n, errIndexOutOfBounds);
         result := emptyNode
@@ -1013,8 +1015,10 @@ begin
       if result.kind = nkExceptBranch then exit;
       k := getOrdValue(b);
       if (k >= 0) and (k < sonsLen(a))
-      and not (a.kind in [nkEmpty..nkNilLit]) then
-        a.sons[int(k)] := result
+      and not (a.kind in [nkEmpty..nkNilLit]) then begin
+        if result.kind = nkEmpty then a.sons[int(k)] := nil
+        else a.sons[int(k)] := result
+      end
       else
         stackTrace(c, n, errIndexOutOfBounds);
       result := emptyNode;
@@ -1204,6 +1208,19 @@ begin
       result := newNodeIT(nkIntLit, n.info, n.typ);
       if (a.kind = nkIdent) and (b.kind = nkIdent) then
         if a.ident.id = b.ident.id then result.intVal := 1
+    end;
+    mEqNimrodNode: begin
+      result := evalAux(c, n.sons[1]);
+      if result.kind = nkExceptBranch then exit;
+      a := result;
+      result := evalAux(c, n.sons[2]);
+      if result.kind = nkExceptBranch then exit;
+      b := result;
+      result := newNodeIT(nkIntLit, n.info, n.typ);
+      if (a = b) 
+      or (b.kind in [nkNilLit, nkEmpty]) 
+      and (a.kind in [nkNilLit, nkEmpty]) then
+        result.intVal := 1
     end;
     mNHint: begin
       result := evalAux(c, n.sons[1]);

@@ -467,7 +467,7 @@ const
     '$1 needs a return type',
     'invalid command: ''$1''',
     '''$1'' is only allowed at top level',
-    'template instantiation too nested',
+    'template/macro instantiation too nested',
     'instantiation from here',
     'invalid index value for tuple subscript',
     'command expects a filename argument',

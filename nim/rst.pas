@@ -1,15 +1,15 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
 //
 unit rst;
 
-// This module implements a *reStructuredText* parser. Currently, only a
-// subset is provided. Later, there will be additions.
+// This module implements a *reStructuredText* parser. A larget
+// subset is provided.
 
 interface
 

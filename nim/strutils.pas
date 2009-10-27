@@ -162,9 +162,11 @@ begin
     while (last <= length(s)) and (s[last] in seps) do inc(last);
     first := last;
     while (last <= length(s)) and not (s[last] in seps) do inc(last);
-    len := length(result);
-    setLength(result, len+1);
-    result[len] := ncopy(s, first, last-1);
+    if first >= last-1 then begin
+      len := length(result);
+      setLength(result, len+1);
+      result[len] := ncopy(s, first, last-1);
+    end
   end
 end;
 

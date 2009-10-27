@@ -220,7 +220,7 @@ proc main(c: var TConfigData) =
   buildAddDoc(c, "web/upload")
   buildDoc(c, "web/upload")
   buildDoc(c, "doc")
-  #buildPdfDoc(c, "doc")
+  buildPdfDoc(c, "doc")
 
 var c: TConfigData
 initConfigData(c)

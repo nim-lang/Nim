@@ -84,7 +84,7 @@ begin
     command := '';
     filename := '';
     ProcessCmdLine(passCmd1, command, filename);
-    if filename <> '' then options.projectPath := extractDir(filename);
+    if filename <> '' then options.projectPath := splitFile(filename).dir;
     nimconf.LoadConfig(filename); // load the right config file
     // now process command line arguments again, because some options in the
     // command line can overwite the config file's settings

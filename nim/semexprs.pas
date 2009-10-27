@@ -517,20 +517,19 @@ begin
   result := nil;
   prc := n.sons[0];
   checkMinSonsLen(n, 1);
-  case n.sons[0].kind of
-    nkDotExpr: begin
-      checkSonsLen(n.sons[0], 2);
-      n.sons[0] := semDotExpr(c, n.sons[0]);
-      if n.sons[0].kind = nkDotCall then begin // it is a static call!
-        result := n.sons[0];
-        result.kind := nkCall;
-        for i := 1 to sonsLen(n)-1 do addSon(result, n.sons[i]);
-        result := semExpr(c, result);
-        exit
-      end
-    end;
-    else n.sons[0] := semExpr(c, n.sons[0]);
-  end; 
+  if n.sons[0].kind = nkDotExpr then begin
+    checkSonsLen(n.sons[0], 2);
+    n.sons[0] := semDotExpr(c, n.sons[0]);
+    if n.sons[0].kind = nkDotCall then begin // it is a static call!
+      result := n.sons[0];
+      result.kind := nkCall;
+      for i := 1 to sonsLen(n)-1 do addSon(result, n.sons[i]);
+      result := semExpr(c, result, flags);
+      exit
+    end
+  end
+  else 
+    n.sons[0] := semExpr(c, n.sons[0]);
   semOpAux(c, n);
   if (n.sons[0].typ <> nil) then t := skipTypes(n.sons[0].typ, abstractInst)
   else t := nil;

@@ -94,11 +94,6 @@ Nimrod plays nice with others
   New bindings are easily generated in a semi-automatic way.
 * A Pascal to Nimrod conversion utility: A large subset of Object Pascal
   can be translated to Nimrod automatically!
-* Nimrod's documentation syntax is a subset of the wonderfully readable plaintext 
-  markup syntax 
-  `reStructuredText <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_.
-  The documentation generator is very flexible; this website has been generated
-  with it!
   
 
 Roadmap to 1.0

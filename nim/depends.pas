@@ -1,7 +1,7 @@
 //
 //
 //           The Nimrod Compiler
-//        (c) Copyright 2008 Andreas Rumpf
+//        (c) Copyright 2009 Andreas Rumpf
 //
 //    See the file "copying.txt", included in this
 //    distribution, for details about the copyright.
@@ -51,12 +51,12 @@ begin
   case n.kind of
     nkImportStmt: begin
       for i := 0 to sonsLen(n)-1 do begin
-        imported := extractFileTrunk(getModuleFile(n.sons[i]));
+        imported := splitFile(getModuleFile(n.sons[i])).name;
         addDependencyAux(g.module.name.s, imported);
       end
     end;
     nkFromStmt: begin
-      imported := extractFileTrunk(getModuleFile(n.sons[0]));
+      imported := splitFile(getModuleFile(n.sons[0])).name;
       addDependencyAux(g.module.name.s, imported);
     end;
     nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr: begin

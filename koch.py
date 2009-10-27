@@ -12,7 +12,7 @@ from pycompab import *
 
 # --------------------- constants  ----------------------------------------
 
-NIMROD_VERSION = '0.8.2'
+NIMROD_VERSION = '0.8.3'
 # This string contains Nimrod's version. It is the only place
 # where the version needs to be updated. The rest is done by
 # the build process automatically. It is replaced **everywhere**!
@@ -362,7 +362,7 @@ def cmd_rod(options):
     if Exists(ExeExt("bin/nimrod")):
       c.success()
 
-# ------------------- constants -----------------------------------------------
+# -----------------------------------------------------------------------------
 
 HELP = Subs("""\
 +-----------------------------------------------------------------+
@@ -426,6 +426,7 @@ def main(args):
     elif cmd == "inno": cmd_inno()
     elif cmd == "csource": cmd_csource(join(args[i+1:]))
     elif cmd == "install": cmd_install() # for backwards compability
+    #elif cmd == "llvmdebug": cmd_llvm(debug=true)
     else: Error("illegal command: " + cmd)
     
 def cmd_csource(args):
@@ -443,6 +444,14 @@ def cmd_inno():
 
 def cmd_install():
   Exec("sh ./build.sh")
+  
+def cmd_llvm(debug=true):
+  if not debug: release = "--enable-optimized"
+  else: release = ""
+  Exec(Subs("./configure --enable-bindings $1 --enable-shared" +
+            " --enable-targets=host", release))
+  Exec("make")
+  Echo("Type [sudo] make install!")
 
 # -------------------------- bootstrap ----------------------------------------
 
