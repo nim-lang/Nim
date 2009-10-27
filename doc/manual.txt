@@ -760,7 +760,7 @@ An example:
       nkIf            # an if statement
     PNode = ref TNode
     TNode = object
-      case kind: TNodeKind  # the ``kind`` field is the discriminator
+      case kind: TNodeKind  # the ``kind`` field is the discriminant
       of nkInt: intVal: int
       of nkFloat: floavVal: float
       of nkString: strVal: string
@@ -1648,7 +1648,7 @@ required. ``Elif`` parts are also allowed (but unlikely to be good
 style).
 
 
-Type convertions
+Type conversions
 ~~~~~~~~~~~~~~~~
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always

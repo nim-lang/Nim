@@ -176,11 +176,8 @@ begin
 end;
 
 function getPrefixDir: string;
-var
-  appdir, bin: string;
 begin
-  appdir := getApplicationDir();
-  SplitPath(appdir, result, bin);
+  result := SplitPath(getApplicationDir()).head;
 end;
 
 function shortenDir(const dir: string): string;

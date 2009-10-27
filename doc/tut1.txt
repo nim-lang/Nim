@@ -871,7 +871,7 @@ type:
   var
     x = 0.0      # x is of type ``float``
     y = 0.0'f32  # y is of type ``float32``
-    z = 0.0'f64  # z is of type ``int64``
+    z = 0.0'f64  # z is of type ``float64``
 
 The common operators ``+ - * /  <  <=  ==  !=  >  >=`` are defined for
 floats and follow the IEEE standard.
@@ -1318,7 +1318,7 @@ This is best illustrated by an example:
 
   main()
 
-
+.. code-block:: nimrod
   # Module B
   import A  # A is not parsed here! Only the already known symbols
             # of A are imported.
@@ -1338,9 +1338,11 @@ imported by a third one:
   # Module A
   var x*: string
 
+.. code-block:: nimrod
   # Module B
   var x*: int
 
+.. code-block:: nimrod
   # Module C
   import A, B
   write(stdout, x) # error: x is ambiguous
@@ -1357,9 +1359,11 @@ rules apply:
   # Module A
   proc x*(a: int): string = return $a
 
+.. code-block:: nimrod
   # Module B
   proc x*(a: string): string = return $a
 
+.. code-block:: nimrod
   # Module C
   import A, B
   write(stdout, x(3))   # no error: A.x is called

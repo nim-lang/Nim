@@ -10,7 +10,6 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-## This module is -- like any other basic library -- platform independant.
 {.deadCodeElim: on.}
 
 {.push debugger: off.}
@@ -384,10 +383,13 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.noSideEffect.} =
   ## Splits a directory into (head, tail), so that
   ## ``JoinPath(head, tail) == path``.
   ##
-  ## Example: After ``SplitPath("usr/local/bin", head, tail)``,
-  ## `head` is "usr/local" and `tail` is "bin".
-  ## Example: After ``SplitPath("usr/local/bin/", head, tail)``,
-  ## `head` is "usr/local/bin" and `tail` is "".
+  ## Examples: 
+  ## .. code-block:: nimrod
+  ##   SplitPath("usr/local/bin") -> ("usr/local", "bin")
+  ##   SplitPath("usr/local/bin/") -> ("usr/local/bin", "")
+  ##   SplitPath("bin") -> ("", "bin")
+  ##   SplitPath("/bin") -> ("", "bin")
+  ##   SplitPath("") -> ("", "")
   var
     sepPos = -1
   for i in countdown(len(path)-1, 0):
@@ -431,8 +433,9 @@ proc normExt(ext: string): string =
   else: result = extSep & ext
 
 proc searchExtPos(s: string): int =
+  # BUGFIX: do not search until 0! .DS_Store is no file extension!
   result = -1
-  for i in countdown(len(s)-1, 0):
+  for i in countdown(len(s)-1, 1):
     if s[i] == extsep:
       result = i
       break
@@ -447,10 +450,11 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.noSideEffect.} =
   ## Example:
   ##
   ## .. code-block:: nimrod
-  ## var (dir, name, ext) = splitFile("usr/local/nimrodc.html")
-  ## assert dir == "usr/local"
-  ## assert name == "nimrodc"
-  ## assert ext == ".html"
+  ##   var (dir, name, ext) = splitFile("usr/local/nimrodc.html")
+  ##   assert dir == "usr/local"
+  ##   assert name == "nimrodc"
+  ##   assert ext == ".html"
+  ##
   ## If `path` has no extension, `ext` is the empty string.
   ## If `path` has no directory component, `dir` is the empty string.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
@@ -461,7 +465,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.noSideEffect.} =
     var dotPos = path.len
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
-        if dotPos == path.len: dotPos = i
+        if dotPos == path.len and i > 0: dotPos = i
       elif path[i] in {dirsep, altsep}:
         sepPos = i
         break
@@ -877,9 +881,9 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
   ## filter                  meaning
   ## ---------------------   ---------------------------------------------
   ## ``pcFile``              yield real files
-  ## ``pcLinkToFile``        yield symbol links to files
+  ## ``pcLinkToFile``        yield symbolic links to files
   ## ``pcDir``               follow real directories
-  ## ``pcLinkToDir``         follow symbol links to directories
+  ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ## 
   var stack = @[dir]

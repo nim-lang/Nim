@@ -43,7 +43,7 @@ type
     cfsProcs,          // section for C procs that are not inline
     cfsTypeInit1,      // section 1 for declarations of type information
     cfsTypeInit2,      // section 2 for initialization of type information
-    cfsTypeInit3,      // section 3 for init of type information
+    cfsTypeInit3,      // section 3 for initialization of type information
     cfsDebugInit,      // section for initialization of debug information
     cfsDynLibInit,     // section for initialization of dynamic library binding
     cfsDynLibDeinit    // section for deinitialization of dynamic libraries

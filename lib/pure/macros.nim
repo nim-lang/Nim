@@ -122,8 +122,11 @@ proc `!` *(s: string): TNimrodIdent {.magic: "StrToIdent".}
 proc `$`*(i: TNimrodIdent): string {.magic: "IdentToStr".}
   ## converts a Nimrod identifier to a string
 
-proc `==`* (a, b: TNimrodIdent): bool {.magic: "EqIdent".}
+proc `==`* (a, b: TNimrodIdent): bool {.magic: "EqIdent", noSideEffect.}
   ## compares two Nimrod identifiers
+
+proc `==`* (a, b: PNimrodNode): bool {.magic: "EqNimrodNode", noSideEffect.}
+  ## compares two Nimrod nodes
 
 proc len*(n: PNimrodNode): int {.magic: "NLen".}
   ## returns the number of children of `n`.

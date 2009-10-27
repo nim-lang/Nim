@@ -438,7 +438,7 @@ var
 begin
   c := ccompiler;
   options := compileOptions;
-  trunk := extractFileTrunk(cfilename);
+  trunk := splitFile(cfilename).name;
   if optCDebug in gGlobalOptions then begin
     key := trunk + '.debug';
     if existsConfigVar(key) then
@@ -594,15 +594,15 @@ begin
       
     if optGenDynLib in gGlobalOptions then begin
       exefile := format(platform.os[targetOS].dllFrmt,
-                        [extractFileTrunk(projectFile)]);
+                        [splitFile(projectFile).name]);
       buildDll := cc[c].buildDll;
     end
     else begin
-      exefile := extractFileTrunk(projectFile) +{&} platform.os[targetOS].exeExt;
+      exefile := splitFile(projectFile).name +{&} platform.os[targetOS].exeExt;
       buildDll := '';
     end;
     if targetOS = platform.hostOS then
-      exefile := joinPath(extractDir(projectFile), exefile);
+      exefile := joinPath(splitFile(projectFile).dir, exefile);
     exefile := quoteIfContainsWhite(exefile);
 
     it := PStrEntry(toLink.head);

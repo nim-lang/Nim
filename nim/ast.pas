@@ -262,7 +262,8 @@ type
     mNAddMultiple, mNDel, mNKind, mNIntVal, mNFloatVal, mNSymbol, 
     mNIdent, mNGetType, mNStrVal, mNSetIntVal, mNSetFloatVal, mNSetSymbol, 
     mNSetIdent, mNSetType, mNSetStrVal, mNNewNimNode, mNCopyNimNode, mNCopyNimTree, 
-    mStrToIdent, mIdentToStr, mEqIdent, mNHint, mNWarning, mNError
+    mStrToIdent, mIdentToStr, mEqIdent, mEqNimrodNode, mNHint, mNWarning, 
+    mNError
     //[[[end]]]
   );
 
@@ -521,7 +522,8 @@ const // "MagicToStr" array:
     'NAddMultiple', 'NDel', 'NKind', 'NIntVal', 'NFloatVal', 'NSymbol', 
     'NIdent', 'NGetType', 'NStrVal', 'NSetIntVal', 'NSetFloatVal', 'NSetSymbol', 
     'NSetIdent', 'NSetType', 'NSetStrVal', 'NNewNimNode', 'NCopyNimNode', 'NCopyNimTree', 
-    'StrToIdent', 'IdentToStr', 'EqIdent', 'NHint', 'NWarning', 'NError'
+    'StrToIdent', 'IdentToStr', 'EqIdent', 'EqNimrodNode', 'NHint', 'NWarning', 
+    'NError'
     //[[[end]]]
   );
 

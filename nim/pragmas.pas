@@ -415,24 +415,23 @@ type
 
 procedure processCompile(c: PContext; n: PNode);
 var
-  s, found, trunc, ext: string;
+  s, found, trunc: string;
 begin
   s := expectStrLit(c, n);
   found := findFile(s);
   if found = '' then found := s;
-  splitFilename(found, trunc, ext);
+  trunc := ChangeFileExt(found, '');
   extccomp.addExternalFileToCompile(trunc);
   extccomp.addFileToLink(completeCFilePath(trunc, false));
 end;
 
 procedure processCommonLink(c: PContext; n: PNode; feature: TLinkFeature);
 var
-  f, tmp, ext, found: string;
+  f, found: string;
 begin
   f := expectStrLit(c, n);
-  splitFilename(f, tmp, ext);
-  if (ext = '') then
-    f := toObjFile(tmp);
+  if splitFile(f).ext = '' then
+    f := toObjFile(f);
   found := findFile(f);
   if found = '' then
     found := f; // use the default

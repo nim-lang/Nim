@@ -169,15 +169,14 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##     writeln(stdout, word)
   ##
   ## produces the same output.
-  var
-    first: int = 0
-    last: int = 0
+  var last = 0
   assert(not ('\0' in seps))
   while last < len(s):
     while s[last] in seps: inc(last)
-    first = last
+    var first = last
     while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
-    yield copy(s, first, last-1)
+    if first <= last-1:
+      yield copy(s, first, last-1)
 
 iterator split*(s: string, sep: char): string =
   ## Splits the string `s` into substrings.

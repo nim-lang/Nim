@@ -130,12 +130,17 @@ begin
   end
 end;
 
+{$include 'semtempl.pas'}
+
 function semMacroExpr(c: PContext; n: PNode; sym: PSym;
                       semCheck: bool = true): PNode;
 var
   p: PEvalContext;
   s: PStackFrame;
 begin
+  inc(evalTemplateCounter);
+  if evalTemplateCounter > 100 then
+    liMessage(n.info, errTemplateInstantiationTooNested);
   markUsed(n, sym);
   p := newEvalContext(c.module, '', false);
   s := newStackFrame();
@@ -150,9 +155,9 @@ begin
   if cyclicTree(result) then liMessage(n.info, errCyclicTree);
   if semCheck then
     result := semAfterMacroCall(c, result, sym);
+  dec(evalTemplateCounter);
 end;
 
-{$include 'semtempl.pas'}
 {$include 'seminst.pas'}
 {$include 'sigmatch.pas'}
 
