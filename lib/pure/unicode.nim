@@ -44,15 +44,13 @@ proc runeLenAt*(s: string, i: int): int =
 template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
   ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
   ## `i` is incremented by the number of bytes that have been processed.
-  when not defined(ones):
-    template ones(n: expr): expr = ((1 shl n)-1)
-
   if ord(s[i]) <=% 127:
     result = TRune(ord(s[i]))
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
     assert(ord(s[i+1]) shr 6 == 0b10)
-    result = TRune((ord(s[i]) and ones(5)) shl 6 or (ord(s[i+1]) and ones(6)))
+    result = TRune((ord(s[i]) and (bind ones(5))) shl 6 or 
+                   (ord(s[i+1]) and ones(6)))
     when doInc: inc(i, 2)
   elif ord(s[i]) shr 4 == 0b1110:
     assert(ord(s[i+1]) shr 6 == 0b10)

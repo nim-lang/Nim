@@ -20,7 +20,7 @@ contains:
 
     PNimrodNode = ref TNimrodNode
     TNimrodNode {.final.} = object
-      case kind                        ## the node's kind
+      case kind: TNimrodNodeKind       ## the node's kind
       of nnkNone, nnkEmpty, nnkNilLit:
         nil                            ## node contains no additional fields
       of nnkCharLit..nnkInt64Lit:
@@ -42,6 +42,11 @@ For the ``PNimrodNode`` type, the ``[]`` operator has been overloaded:
 To specify the AST for the different Nimrod constructs, the notation
 ``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
 ``nodekind(field=value)`` is used.
+
+Some child may be missing. Then it is ``nil``. A nil child is equivalent to 
+a node of kind ``nnkEmpty``. This is more or less a (useful) artifact from 
+the implementation. (In the compiler's implementation ``nil`` is of course 
+not the same as ``nnkEmpty``!)
 
 
 Leaf nodes/Atoms
@@ -72,8 +77,9 @@ Nimrod expression                corresponding AST
 Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
 get transferred into ``nnkSym`` nodes. However, a macro receives an AST that
 has not been checked for semantics and thus the identifiers have not been
-looked up. Thus macros deal with ``nnkIdent`` nodes. 
- 
+looked up. Macros should deal with ``nnkIdent`` nodes and do not need to deal
+with ``nnkSym`` nodes.
+
 
 Calls/expressions
 =================

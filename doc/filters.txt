@@ -4,8 +4,8 @@ Parsers and Filters
 
 .. contents::
 
-The Nimrod compiler contains multiple parsers. (The standard is 
-indentation-based.) Two others are available: The `braces`:idx: parser and the
+The Nimrod compiler contains multiple parsers. The standard is 
+indentation-based. Two others are available: The `braces`:idx: parser and the
 `endX`:idx: parser. Both parsers use the same lexer as the standard parser.
 
 To use a different parser for a source file the *shebang* notation is used:

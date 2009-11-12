@@ -17,6 +17,14 @@ feature that Nimrod inherited from Lisp is that Nimrod's abstract syntax tree
 can be used to create domain specific languages. Nimrod does not sacrifice
 flexibility for speed. You get both.
 
+..
+  Don't give me that marketing crap. What is Nimrod?
+  --------------------------------------------------
+
+  Nimrod = Mutable value based datatypes + static binding + sugar to make 
+    this programming modell as convenient as possible
+
+
 How is Nimrod licensed?
 -----------------------
 

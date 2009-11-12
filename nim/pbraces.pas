@@ -146,8 +146,7 @@ begin
   end;
 end;
 
-procedure qualifiedIdentListAux(var p: TParser; endTok: TTokType;
-                                result: PNode);
+procedure qualifiedIdentListAux(var p: TParser; endTok: TTokType; result: PNode);
 var
   a: PNode;
 begin
@@ -214,16 +213,6 @@ begin
   addSon(result, parseExpr(p));
   optSad(p);
   eat(p, tkParRi);
-end;
-
-procedure setBaseFlags(n: PNode; base: TNumericalBase);
-begin
-  case base of
-    base10: begin end;
-    base2: include(n.flags, nfBase2);
-    base8: include(n.flags, nfBase8);
-    base16: include(n.flags, nfBase16);
-  end
 end;
 
 function identOrLiteral(var p: TParser): PNode;
@@ -542,7 +531,7 @@ begin
   optInd(p, result);
   while (p.tok.tokType = tkSymbol) or (p.tok.tokType = tkAccent) do begin
     a := parseIdentColonEquals(p, {@set}[]);
-    addSon(result, a);        
+    addSon(result, a);
     if p.tok.tokType <> tkComma then break;
     getTok(p);
     optInd(p, a)
@@ -729,12 +718,12 @@ begin
   end
 end;
 
-function parseImportStmt(var p: TParser): PNode;
+function parseImportOrIncludeStmt(var p: TParser; kind: TNodeKind): PNode;
 var
   a: PNode;
 begin
-  result := newNodeP(nkImportStmt, p);
-  getTok(p); // skip `import`
+  result := newNodeP(kind, p);
+  getTok(p); // skip `import` or `include`
   optInd(p, result);
   while true do begin
     case p.tok.tokType of
@@ -756,41 +745,6 @@ begin
         parMessage(p, errIdentifierExpected, tokToStr(p.tok));
         break
       end
-    end;
-    addSon(result, a);
-    if p.tok.tokType <> tkComma then break;
-    getTok(p);
-    optInd(p, a)
-  end;
-end;
-
-function parseIncludeStmt(var p: TParser): PNode;
-var
-  a: PNode;
-begin
-  result := newNodeP(nkIncludeStmt, p);
-  getTok(p); // skip `include`
-  optInd(p, result);
-  while true do begin
-    case p.tok.tokType of
-      tkEof, tkSad, tkDed: break;
-      tkSymbol, tkAccent:   a := parseSymbol(p);
-      tkRStrLit:  begin
-        a := newStrNodeP(nkRStrLit, p.tok.literal, p);
-        getTok(p)
-      end;
-      tkStrLit: begin
-        a := newStrNodeP(nkStrLit, p.tok.literal, p);
-        getTok(p);
-      end;
-      tkTripleStrLit: begin
-        a := newStrNodeP(nkTripleStrLit, p.tok.literal, p);
-        getTok(p)
-      end;
-      else begin
-        parMessage(p, errIdentifierExpected, tokToStr(p.tok));
-        break
-      end;
     end;
     addSon(result, a);
     if p.tok.tokType <> tkComma then break;
@@ -1150,6 +1104,24 @@ begin
   indAndComment(p, result); // XXX: special extension!
 end;
 
+function parseConstSection(var p: TParser): PNode;
+begin
+  result := newNodeP(nkConstSection, p);
+  getTok(p);
+  skipComment(p, result);
+  if p.tok.tokType = tkCurlyLe then begin
+    getTok(p);
+    skipComment(p, result);
+    while (p.tok.tokType <> tkCurlyRi) and (p.tok.tokType <> tkEof) do begin
+      addSon(result, parseConstant(p)) 
+    end;
+    eat(p, tkCurlyRi);
+  end
+  else 
+    addSon(result, parseConstant(p));
+end;
+
+
 function parseEnum(var p: TParser): PNode;
 var
   a, b: PNode;
@@ -1379,9 +1351,9 @@ begin
     tkBreak:    result := parseBreakOrContinue(p, nkBreakStmt);
     tkContinue: result := parseBreakOrContinue(p, nkContinueStmt);
     tkCurlyDotLe: result := parsePragma(p);
-    tkImport: result := parseImportStmt(p);
+    tkImport: result := parseImportOrIncludeStmt(p, nkImportStmt);
     tkFrom: result := parseFromStmt(p);
-    tkInclude: result := parseIncludeStmt(p);
+    tkInclude: result := parseImportOrIncludeStmt(p, nkIncludeStmt);
     tkComment: result := newCommentStmt(p);
     else begin
       if isExprStart(p) then 
@@ -1392,6 +1364,24 @@ begin
   end;
   if result <> nil then
     skipComment(p, result);
+end;
+
+function parseType(var p: TParser): PNode;
+begin
+  result := newNodeP(nkTypeSection, p);
+  while true do begin
+    case p.tok.tokType of
+      tkComment: skipComment(p, result);
+      tkType: begin
+        // type alias:
+        
+      end;
+      tkEnum:
+      tkObject:
+      tkTuple:
+      else break;
+    end
+  end
 end;
 
 function complexOrSimpleStmt(var p: TParser): PNode;
@@ -1410,8 +1400,9 @@ begin
     tkMacro:     result := parseRoutine(p, nkMacroDef);
     tkTemplate:  result := parseRoutine(p, nkTemplateDef);
     tkConverter: result := parseRoutine(p, nkConverterDef);
-    tkType:      result := parseSection(p, nkTypeSection, parseTypeDef);
-    tkConst:     result := parseSection(p, nkConstSection, parseConstant);
+    tkType, tkEnum, tkObject, tkTuple:      
+      result := parseTypeAlias(p, nkTypeSection, parseTypeDef);
+    tkConst:     result := parseConstSection(p);
     tkWhen:      result := parseIfOrWhen(p, nkWhenStmt);
     tkVar:       result := parseSection(p, nkVarSection, parseVariable);
     else         result := simpleStmt(p);
@@ -1422,15 +1413,13 @@ function parseStmt(var p: TParser): PNode;
 var
   a: PNode;
 begin
-  if p.tok.tokType = tkInd then begin
+  if p.tok.tokType = tkCurlyLe then begin
     result := newNodeP(nkStmtList, p);
-    pushInd(p.lex^, p.tok.indent);
     getTok(p);
     while true do begin
       case p.tok.tokType of
-        tkSad: getTok(p);
-        tkEof: break;
-        tkDed: begin getTok(p); break end;
+        tkSad, tkInd, tkDed: getTok(p);
+        tkEof, tkCurlyRi: break;
         else begin
           a := complexOrSimpleStmt(p);
           if a = nil then break;
@@ -1438,7 +1427,7 @@ begin
         end
       end
     end;
-    popInd(p.lex^);
+    eat(p, tkCurlyRi);
   end
   else begin
     // the case statement is only needed for better error messages:
@@ -1451,7 +1440,7 @@ begin
       else begin
         result := simpleStmt(p);
         if result = nil then parMessage(p, errExprExpected, tokToStr(p.tok));
-        if p.tok.tokType = tkSad then getTok(p);
+        if p.tok.tokType in [tkInd, tkDed, tkSad] then getTok(p);
       end
     end
   end
@@ -1464,8 +1453,7 @@ begin
   result := newNodeP(nkStmtList, p);
   while true do begin
     case p.tok.tokType of
-      tkSad: getTok(p);
-      tkDed, tkInd: parMessage(p, errInvalidIndentation);
+      tkDed, tkInd, tkSad: getTok(p);
       tkEof: break;
       else begin
         a := complexOrSimpleStmt(p);
@@ -1481,11 +1469,7 @@ begin
   result := nil;
   while true do begin
     case p.tok.tokType of
-      tkSad: getTok(p);
-      tkDed, tkInd: begin
-        parMessage(p, errInvalidIndentation);
-        break;
-      end;
+      tkDed, tkInd, tkSad: getTok(p);
       tkEof: break;
       else begin
         result := complexOrSimpleStmt(p);

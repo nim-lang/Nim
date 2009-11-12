@@ -72,6 +72,7 @@ procedure optSad(var p: TParser);
 procedure optInd(var p: TParser; n: PNode);
 procedure indAndComment(var p: TParser; n: PNode);
 
+procedure setBaseFlags(n: PNode; base: TNumericalBase);
 
 function parseSymbol(var p: TParser): PNode;
 function accExpr(var p: TParser): PNode;
@@ -1069,12 +1070,12 @@ begin
   end
 end;
 
-function parseImportStmt(var p: TParser): PNode;
+function parseImportOrIncludeStmt(var p: TParser; kind: TNodeKind): PNode;
 var
   a: PNode;
 begin
-  result := newNodeP(nkImportStmt, p);
-  getTok(p); // skip `import`
+  result := newNodeP(kind, p);
+  getTok(p); // skip `import` or `include`
   optInd(p, result);
   while true do begin
     case p.tok.tokType of
@@ -1098,42 +1099,6 @@ begin
       end
     end;
     addSon(result, a);
-    if p.tok.tokType <> tkComma then break;
-    getTok(p);
-    optInd(p, a)
-  end;
-end;
-
-function parseIncludeStmt(var p: TParser): PNode;
-var
-  a: PNode;
-begin
-  result := newNodeP(nkIncludeStmt, p);
-  getTok(p); // skip `include`
-  optInd(p, result);
-  while true do begin
-    case p.tok.tokType of
-      tkEof, tkSad, tkDed: break;
-      tkSymbol, tkAccent:   a := parseSymbol(p);
-      tkRStrLit:  begin
-        a := newStrNodeP(nkRStrLit, p.tok.literal, p);
-        getTok(p)
-      end;
-      tkStrLit: begin
-        a := newStrNodeP(nkStrLit, p.tok.literal, p);
-        getTok(p);
-      end;
-      tkTripleStrLit: begin
-        a := newStrNodeP(nkTripleStrLit, p.tok.literal, p);
-        getTok(p)
-      end;
-      else begin
-        parMessage(p, errIdentifierExpected, tokToStr(p.tok));
-        break
-      end;
-    end;
-    addSon(result, a);
-    //optInd(p, a);
     if p.tok.tokType <> tkComma then break;
     getTok(p);
     optInd(p, a)
@@ -1717,9 +1682,9 @@ begin
     tkBreak:    result := parseBreakOrContinue(p, nkBreakStmt);
     tkContinue: result := parseBreakOrContinue(p, nkContinueStmt);
     tkCurlyDotLe: result := parsePragma(p);
-    tkImport: result := parseImportStmt(p);
+    tkImport: result := parseImportOrIncludeStmt(p, nkImportStmt);
     tkFrom: result := parseFromStmt(p);
-    tkInclude: result := parseIncludeStmt(p);
+    tkInclude: result := parseImportOrIncludeStmt(p, nkIncludeStmt);
     tkComment: result := newCommentStmt(p);
     else begin
       if isExprStart(p) then 

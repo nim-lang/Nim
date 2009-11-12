@@ -7,7 +7,7 @@ Index
 
 
    `!`:idx:
-     * `pegs.html#114 <pegs.html#114>`_
+     * `pegs.html#115 <pegs.html#115>`_
      * `macros.html#114 <macros.html#114>`_
 
    `!=`:idx:
@@ -24,7 +24,7 @@ Index
      * `system.html#426 <system.html#426>`_
      * `times.html#109 <times.html#109>`_
      * `times.html#110 <times.html#110>`_
-     * `pegs.html#148 <pegs.html#148>`_
+     * `pegs.html#133 <pegs.html#133>`_
      * `macros.html#115 <macros.html#115>`_
 
    `%`:idx:
@@ -47,7 +47,7 @@ Index
      * `system.html#462 <system.html#462>`_
      * `system.html#463 <system.html#463>`_
      * `system.html#464 <system.html#464>`_
-     * `pegs.html#113 <pegs.html#113>`_
+     * `pegs.html#114 <pegs.html#114>`_
 
    `*`:idx:
      * `system.html#212 <system.html#212>`_
@@ -82,7 +82,7 @@ Index
      * `system.html#309 <system.html#309>`_
      * `system.html#320 <system.html#320>`_
      * `complex.html#103 <complex.html#103>`_
-     * `pegs.html#112 <pegs.html#112>`_
+     * `pegs.html#113 <pegs.html#113>`_
 
    `+%`:idx:
      * `system.html#272 <system.html#272>`_
@@ -153,14 +153,14 @@ Index
      * `times.html#114 <times.html#114>`_
 
    `<%`:idx:
-     `unicode.html#104 <unicode.html#104>`_
-
-   `<%`:idx:
      * `system.html#302 <system.html#302>`_
      * `system.html#303 <system.html#303>`_
      * `system.html#304 <system.html#304>`_
      * `system.html#305 <system.html#305>`_
      * `system.html#306 <system.html#306>`_
+
+   `<%`:idx:
+     `unicode.html#104 <unicode.html#104>`_
 
    `<=`:idx:
      * `system.html#257 <system.html#257>`_
@@ -181,14 +181,14 @@ Index
      `times.html#115 <times.html#115>`_
 
    `<=%`:idx:
+     `unicode.html#103 <unicode.html#103>`_
+
+   `<=%`:idx:
      * `system.html#297 <system.html#297>`_
      * `system.html#298 <system.html#298>`_
      * `system.html#299 <system.html#299>`_
      * `system.html#300 <system.html#300>`_
      * `system.html#301 <system.html#301>`_
-
-   `<=%`:idx:
-     `unicode.html#103 <unicode.html#103>`_
 
    `==`:idx:
      * `md5.html#107 <md5.html#107>`_
@@ -211,12 +211,13 @@ Index
      * `complex.html#102 <complex.html#102>`_
      * `unicode.html#105 <unicode.html#105>`_
      * `macros.html#116 <macros.html#116>`_
+     * `macros.html#117 <macros.html#117>`_
 
    `=~`:idx:
-     `pegs.html#138 <pegs.html#138>`_
+     `regexprs.html#111 <regexprs.html#111>`_
 
    `=~`:idx:
-     `regexprs.html#108 <regexprs.html#108>`_
+     `pegs.html#140 <pegs.html#140>`_
 
    `>`:idx:
      `system.html#349 <system.html#349>`_
@@ -234,13 +235,14 @@ Index
      `pegs.html#110 <pegs.html#110>`_
 
    `@`:idx:
-     `system.html#357 <system.html#357>`_
-
-   `[]`:idx:
-     `strtabs.html#107 <strtabs.html#107>`_
+     * `system.html#357 <system.html#357>`_
+     * `pegs.html#112 <pegs.html#112>`_
 
    `[]`:idx:
      `macros.html#112 <macros.html#112>`_
+
+   `[]`:idx:
+     `strtabs.html#107 <strtabs.html#107>`_
 
    `[]=`:idx:
      `macros.html#113 <macros.html#113>`_
@@ -279,8 +281,8 @@ Index
      * `system.html#368 <system.html#368>`_
      * `system.html#369 <system.html#369>`_
      * `parsesql.html#108 <parsesql.html#108>`_
-     * `macros.html#118 <macros.html#118>`_
      * `macros.html#119 <macros.html#119>`_
+     * `macros.html#120 <macros.html#120>`_
 
    `addf`:idx:
      `strutils.html#111 <strutils.html#111>`_
@@ -332,16 +334,16 @@ Index
      * `system.html#241 <system.html#241>`_
 
    `any`:idx:
-     `pegs.html#116 <pegs.html#116>`_
-
-   `any character`:idx:
-     `pegs.html#115 <pegs.html#115>`_
-
-   `any rune`:idx:
      `pegs.html#117 <pegs.html#117>`_
 
-   `anyRune`:idx:
+   `any character`:idx:
+     `pegs.html#116 <pegs.html#116>`_
+
+   `any rune`:idx:
      `pegs.html#118 <pegs.html#118>`_
+
+   `anyRune`:idx:
+     `pegs.html#119 <pegs.html#119>`_
 
    `apostrophe`:idx:
      `manual.html#129 <manual.html#129>`_
@@ -403,7 +405,8 @@ Index
      `xmlgen.html#111 <xmlgen.html#111>`_
 
    `backslash`:idx:
-     `manual.html#127 <manual.html#127>`_
+     * `manual.html#127 <manual.html#127>`_
+     * `regexprs.html#101 <regexprs.html#101>`_
 
    `backspace`:idx:
      `manual.html#132 <manual.html#132>`_
@@ -476,7 +479,7 @@ Index
      `xmlgen.html#118 <xmlgen.html#118>`_
 
    `capture`:idx:
-     `pegs.html#121 <pegs.html#121>`_
+     `pegs.html#122 <pegs.html#122>`_
 
    `card`:idx:
      `system.html#175 <system.html#175>`_
@@ -695,11 +698,11 @@ Index
    `CompileDate`:idx:
      `system.html#390 <system.html#390>`_
 
-   `CompileTime`:idx:
-     `system.html#391 <system.html#391>`_
-
    `compileTime`:idx:
      `manual.html#229 <manual.html#229>`_
+
+   `CompileTime`:idx:
+     `system.html#391 <system.html#391>`_
 
    `complex statements`:idx:
      `manual.html#178 <manual.html#178>`_
@@ -719,8 +722,8 @@ Index
      * `strutils.html#137 <strutils.html#137>`_
      * `strutils.html#138 <strutils.html#138>`_
      * `strutils.html#139 <strutils.html#139>`_
-     * `pegs.html#139 <pegs.html#139>`_
-     * `pegs.html#140 <pegs.html#140>`_
+     * `pegs.html#141 <pegs.html#141>`_
+     * `pegs.html#142 <pegs.html#142>`_
 
    `continue`:idx:
      `manual.html#198 <manual.html#198>`_
@@ -736,10 +739,10 @@ Index
      `system.html#407 <system.html#407>`_
 
    `copyNimNode`:idx:
-     `macros.html#135 <macros.html#135>`_
+     `macros.html#136 <macros.html#136>`_
 
    `copyNimTree`:idx:
-     `macros.html#136 <macros.html#136>`_
+     `macros.html#137 <macros.html#137>`_
 
    `coreAttr`:idx:
      `xmlgen.html#103 <xmlgen.html#103>`_
@@ -1185,7 +1188,7 @@ Index
 
    `del`:idx:
      * `xmlgen.html#124 <xmlgen.html#124>`_
-     * `macros.html#120 <macros.html#120>`_
+     * `macros.html#121 <macros.html#121>`_
 
    `delete`:idx:
      `strutils.html#156 <strutils.html#156>`_
@@ -1198,7 +1201,7 @@ Index
      `xmlgen.html#125 <xmlgen.html#125>`_
 
    `digits`:idx:
-     `pegs.html#125 <pegs.html#125>`_
+     `pegs.html#126 <pegs.html#126>`_
 
    `Digits`:idx:
      `strutils.html#104 <strutils.html#104>`_
@@ -1290,10 +1293,10 @@ Index
      `system.html#160 <system.html#160>`_
 
    `EInvalidPeg`:idx:
-     `pegs.html#149 <pegs.html#149>`_
+     `pegs.html#150 <pegs.html#150>`_
 
    `EInvalidRegEx`:idx:
-     `regexprs.html#101 <regexprs.html#101>`_
+     `regexprs.html#104 <regexprs.html#104>`_
 
    `EInvalidSql`:idx:
      `parsesql.html#103 <parsesql.html#103>`_
@@ -1322,7 +1325,7 @@ Index
 
    `endsWith`:idx:
      * `strutils.html#148 <strutils.html#148>`_
-     * `pegs.html#142 <pegs.html#142>`_
+     * `pegs.html#144 <pegs.html#144>`_
 
    `ENoExceptionToReraise`:idx:
      * `manual.html#187 <manual.html#187>`_
@@ -1334,11 +1337,11 @@ Index
    `enum_cursor_type`:idx:
      `mysql.html#237 <mysql.html#237>`_
 
-   `Enumeration`:idx:
-     `manual.html#149 <manual.html#149>`_
-
    `enumeration`:idx:
      `tut1.html#113 <tut1.html#113>`_
+
+   `Enumeration`:idx:
+     `manual.html#149 <manual.html#149>`_
 
    `enum_field_types`:idx:
      `mysql.html#202 <mysql.html#202>`_
@@ -1390,7 +1393,7 @@ Index
    `error`:idx:
      * `manual.html#226 <manual.html#226>`_
      * `manual.html#230 <manual.html#230>`_
-     * `macros.html#137 <macros.html#137>`_
+     * `macros.html#138 <macros.html#138>`_
 
    `errorMsg`:idx:
      `parsexml.html#120 <parsexml.html#120>`_
@@ -1478,13 +1481,13 @@ Index
      `os.html#132 <os.html#132>`_
 
    `expectKind`:idx:
-     `macros.html#146 <macros.html#146>`_
+     `macros.html#147 <macros.html#147>`_
 
    `expectLen`:idx:
-     `macros.html#148 <macros.html#148>`_
+     `macros.html#149 <macros.html#149>`_
 
    `expectMinLen`:idx:
-     `macros.html#147 <macros.html#147>`_
+     `macros.html#148 <macros.html#148>`_
 
    `exportc`:idx:
      `nimrodc.html#102 <nimrodc.html#102>`_
@@ -1632,10 +1635,10 @@ Index
      * `strutils.html#119 <strutils.html#119>`_
      * `strutils.html#120 <strutils.html#120>`_
      * `strutils.html#121 <strutils.html#121>`_
-     * `regexprs.html#106 <regexprs.html#106>`_
-     * `regexprs.html#107 <regexprs.html#107>`_
-     * `pegs.html#136 <pegs.html#136>`_
-     * `pegs.html#137 <pegs.html#137>`_
+     * `regexprs.html#109 <regexprs.html#109>`_
+     * `regexprs.html#110 <regexprs.html#110>`_
+     * `pegs.html#138 <pegs.html#138>`_
+     * `pegs.html#139 <pegs.html#139>`_
 
    `float`:idx:
      `system.html#106 <system.html#106>`_
@@ -1647,10 +1650,10 @@ Index
      `system.html#108 <system.html#108>`_
 
    `floatVal`:idx:
-     `macros.html#123 <macros.html#123>`_
+     `macros.html#124 <macros.html#124>`_
 
    `floatVal=`:idx:
-     `macros.html#129 <macros.html#129>`_
+     `macros.html#130 <macros.html#130>`_
 
    `FlushFile`:idx:
      `system.html#503 <system.html#503>`_
@@ -1714,6 +1717,9 @@ Index
 
    `generalized raw string literal`:idx:
      `manual.html#136 <manual.html#136>`_
+
+   `generic character types`:idx:
+     `regexprs.html#102 <regexprs.html#102>`_
 
    `Generics`:idx:
      * `manual.html#212 <manual.html#212>`_
@@ -1987,7 +1993,7 @@ Index
    `hint`:idx:
      * `manual.html#224 <manual.html#224>`_
      * `manual.html#233 <manual.html#233>`_
-     * `macros.html#139 <macros.html#139>`_
+     * `macros.html#140 <macros.html#140>`_
 
    `hostCPU`:idx:
      `system.html#398 <system.html#398>`_
@@ -2001,12 +2007,12 @@ Index
    `hr`:idx:
      `xmlgen.html#140 <xmlgen.html#140>`_
 
+   `html`:idx:
+     `xmlgen.html#139 <xmlgen.html#139>`_
+
    `HTML`:idx:
      * `parsexml.html#102 <parsexml.html#102>`_
      * `xmlgen.html#102 <xmlgen.html#102>`_
-
-   `html`:idx:
-     `xmlgen.html#139 <xmlgen.html#139>`_
 
    `HTTPPOST_BUFFER`:idx:
      `libcurl.html#266 <libcurl.html#266>`_
@@ -2033,14 +2039,14 @@ Index
      `xmlgen.html#141 <xmlgen.html#141>`_
 
    `ident`:idx:
-     * `pegs.html#129 <pegs.html#129>`_
-     * `macros.html#125 <macros.html#125>`_
+     * `pegs.html#130 <pegs.html#130>`_
+     * `macros.html#126 <macros.html#126>`_
 
    `ident=`:idx:
-     `macros.html#131 <macros.html#131>`_
+     `macros.html#132 <macros.html#132>`_
 
    `identChars`:idx:
-     `pegs.html#127 <pegs.html#127>`_
+     `pegs.html#128 <pegs.html#128>`_
 
    `IdentChars`:idx:
      `strutils.html#105 <strutils.html#105>`_
@@ -2052,7 +2058,7 @@ Index
      `manual.html#116 <manual.html#116>`_
 
    `identStartChars`:idx:
-     `pegs.html#128 <pegs.html#128>`_
+     `pegs.html#129 <pegs.html#129>`_
 
    `IdentStartChars`:idx:
      `strutils.html#106 <strutils.html#106>`_
@@ -2138,10 +2144,10 @@ Index
      `strutils.html#141 <strutils.html#141>`_
 
    `intVal`:idx:
-     `macros.html#122 <macros.html#122>`_
+     `macros.html#123 <macros.html#123>`_
 
    `intVal=`:idx:
-     `macros.html#128 <macros.html#128>`_
+     `macros.html#129 <macros.html#129>`_
 
    `is`:idx:
      `system.html#353 <system.html#353>`_
@@ -2226,7 +2232,7 @@ Index
 
    `kind`:idx:
      * `parsexml.html#110 <parsexml.html#110>`_
-     * `macros.html#121 <macros.html#121>`_
+     * `macros.html#122 <macros.html#122>`_
 
    `l-values`:idx:
      `manual.html#107 <manual.html#107>`_
@@ -2245,13 +2251,13 @@ Index
      * `system.html#172 <system.html#172>`_
      * `strtabs.html#109 <strtabs.html#109>`_
      * `parsesql.html#107 <parsesql.html#107>`_
-     * `macros.html#117 <macros.html#117>`_
+     * `macros.html#118 <macros.html#118>`_
 
    `Letters`:idx:
      `strutils.html#103 <strutils.html#103>`_
 
    `letters`:idx:
-     `pegs.html#124 <pegs.html#124>`_
+     `pegs.html#125 <pegs.html#125>`_
 
    `li`:idx:
      `xmlgen.html#148 <xmlgen.html#148>`_
@@ -2353,15 +2359,15 @@ Index
      `xmlgen.html#150 <xmlgen.html#150>`_
 
    `match`:idx:
-     * `regexprs.html#103 <regexprs.html#103>`_
-     * `regexprs.html#104 <regexprs.html#104>`_
-     * `pegs.html#132 <pegs.html#132>`_
-     * `pegs.html#133 <pegs.html#133>`_
-
-   `matchLen`:idx:
-     * `regexprs.html#105 <regexprs.html#105>`_
+     * `regexprs.html#106 <regexprs.html#106>`_
+     * `regexprs.html#107 <regexprs.html#107>`_
      * `pegs.html#134 <pegs.html#134>`_
      * `pegs.html#135 <pegs.html#135>`_
+
+   `matchLen`:idx:
+     * `regexprs.html#108 <regexprs.html#108>`_
+     * `pegs.html#136 <pegs.html#136>`_
+     * `pegs.html#137 <pegs.html#137>`_
 
    `max`:idx:
      * `system.html#318 <system.html#318>`_
@@ -2397,8 +2403,8 @@ Index
      `mysql.html#191 <mysql.html#191>`_
 
    `MaxSubpatterns`:idx:
-     * `regexprs.html#102 <regexprs.html#102>`_
-     * `pegs.html#131 <pegs.html#131>`_
+     * `regexprs.html#105 <regexprs.html#105>`_
+     * `pegs.html#132 <pegs.html#132>`_
 
    `MAX_TINYINT_WIDTH`:idx:
      `mysql.html#190 <mysql.html#190>`_
@@ -2990,13 +2996,13 @@ Index
      `system.html#134 <system.html#134>`_
 
    `natural`:idx:
-     `pegs.html#130 <pegs.html#130>`_
+     `pegs.html#131 <pegs.html#131>`_
 
    `neginf`:idx:
      `system.html#430 <system.html#430>`_
 
    `nestList`:idx:
-     `macros.html#151 <macros.html#151>`_
+     `macros.html#152 <macros.html#152>`_
 
    `NET`:idx:
      `mysql.html#199 <mysql.html#199>`_
@@ -3042,38 +3048,38 @@ Index
      * `system.html#125 <system.html#125>`_
 
    `newCall`:idx:
-     * `macros.html#149 <macros.html#149>`_
      * `macros.html#150 <macros.html#150>`_
+     * `macros.html#151 <macros.html#151>`_
 
    `newFileStream`:idx:
      * `streams.html#120 <streams.html#120>`_
      * `streams.html#121 <streams.html#121>`_
 
    `newFloatLitNode`:idx:
-     `macros.html#142 <macros.html#142>`_
+     `macros.html#143 <macros.html#143>`_
 
    `newIdentNode`:idx:
-     * `macros.html#143 <macros.html#143>`_
      * `macros.html#144 <macros.html#144>`_
+     * `macros.html#145 <macros.html#145>`_
 
    `newIntLitNode`:idx:
-     `macros.html#141 <macros.html#141>`_
+     `macros.html#142 <macros.html#142>`_
+
+   `newLine`:idx:
+     `pegs.html#121 <pegs.html#121>`_
 
    `newline`:idx:
      * `manual.html#121 <manual.html#121>`_
-     * `pegs.html#119 <pegs.html#119>`_
-
-   `newLine`:idx:
-     `pegs.html#120 <pegs.html#120>`_
+     * `pegs.html#120 <pegs.html#120>`_
 
    `NewLines`:idx:
      `lexbase.html#102 <lexbase.html#102>`_
 
    `newNimNode`:idx:
-     `macros.html#134 <macros.html#134>`_
+     `macros.html#135 <macros.html#135>`_
 
    `newNonTerminal`:idx:
-     `pegs.html#123 <pegs.html#123>`_
+     `pegs.html#124 <pegs.html#124>`_
 
    `newSeq`:idx:
      `system.html#167 <system.html#167>`_
@@ -3089,7 +3095,7 @@ Index
      * `strtabs.html#105 <strtabs.html#105>`_
 
    `newStrLitNode`:idx:
-     `macros.html#140 <macros.html#140>`_
+     `macros.html#141 <macros.html#141>`_
 
    `next`:idx:
      * `parseopt.html#105 <parseopt.html#105>`_
@@ -3124,7 +3130,7 @@ Index
      `mysql.html#136 <mysql.html#136>`_
 
    `nonterminal`:idx:
-     `pegs.html#122 <pegs.html#122>`_
+     `pegs.html#123 <pegs.html#123>`_
 
    `normalize`:idx:
      `strutils.html#118 <strutils.html#118>`_
@@ -3238,7 +3244,7 @@ Index
      `strtabs.html#110 <strtabs.html#110>`_
 
    `parallelReplace`:idx:
-     `pegs.html#144 <pegs.html#144>`_
+     `pegs.html#146 <pegs.html#146>`_
 
    `param`:idx:
      `xmlgen.html#158 <xmlgen.html#158>`_
@@ -3268,7 +3274,7 @@ Index
      `strutils.html#142 <strutils.html#142>`_
 
    `parsePeg`:idx:
-     `pegs.html#150 <pegs.html#150>`_
+     `pegs.html#151 <pegs.html#151>`_
 
    `parseSQL`:idx:
      `parsesql.html#109 <parsesql.html#109>`_
@@ -3403,7 +3409,7 @@ Index
      `libcurl.html#122 <libcurl.html#122>`_
 
    `peg`:idx:
-     `pegs.html#151 <pegs.html#151>`_
+     `pegs.html#152 <pegs.html#152>`_
 
    `Pfd_set`:idx:
      `libcurl.html#138 <libcurl.html#138>`_
@@ -3771,16 +3777,16 @@ Index
      `system.html#412 <system.html#412>`_
 
    `reBinary`:idx:
-     `regexprs.html#113 <regexprs.html#113>`_
+     `regexprs.html#116 <regexprs.html#116>`_
 
    `Recursive module dependancies`:idx:
      `manual.html#221 <manual.html#221>`_
 
    `reEmail`:idx:
-     `regexprs.html#116 <regexprs.html#116>`_
+     `regexprs.html#119 <regexprs.html#119>`_
 
    `reFloat`:idx:
-     `regexprs.html#115 <regexprs.html#115>`_
+     `regexprs.html#118 <regexprs.html#118>`_
 
    `REFRESH_DES_KEY_FILE`:idx:
      `mysql.html#154 <mysql.html#154>`_
@@ -3828,13 +3834,13 @@ Index
      `nimrodc.html#112 <nimrodc.html#112>`_
 
    `reHex`:idx:
-     `regexprs.html#112 <regexprs.html#112>`_
+     `regexprs.html#115 <regexprs.html#115>`_
 
    `reIdentifier`:idx:
-     `regexprs.html#109 <regexprs.html#109>`_
+     `regexprs.html#112 <regexprs.html#112>`_
 
    `reInteger`:idx:
-     `regexprs.html#111 <regexprs.html#111>`_
+     `regexprs.html#114 <regexprs.html#114>`_
 
    `removeDir`:idx:
      `os.html#158 <os.html#158>`_
@@ -3843,13 +3849,13 @@ Index
      `os.html#144 <os.html#144>`_
 
    `reNatural`:idx:
-     `regexprs.html#110 <regexprs.html#110>`_
+     `regexprs.html#113 <regexprs.html#113>`_
 
    `renderSQL`:idx:
      `parsesql.html#110 <parsesql.html#110>`_
 
    `reOctal`:idx:
-     `regexprs.html#114 <regexprs.html#114>`_
+     `regexprs.html#117 <regexprs.html#117>`_
 
    `repeatChar`:idx:
      `strutils.html#146 <strutils.html#146>`_
@@ -3857,7 +3863,7 @@ Index
    `replace`:idx:
      * `strutils.html#154 <strutils.html#154>`_
      * `strutils.html#155 <strutils.html#155>`_
-     * `pegs.html#143 <pegs.html#143>`_
+     * `pegs.html#145 <pegs.html#145>`_
 
    `replaceStr`:idx:
      * `strutils.html#122 <strutils.html#122>`_
@@ -3880,7 +3886,7 @@ Index
      `manual.html#192 <manual.html#192>`_
 
    `reURL`:idx:
-     `regexprs.html#117 <regexprs.html#117>`_
+     `regexprs.html#120 <regexprs.html#120>`_
 
    `round`:idx:
      `math.html#121 <math.html#121>`_
@@ -4048,6 +4054,9 @@ Index
      * `system.html#230 <system.html#230>`_
      * `system.html#231 <system.html#231>`_
 
+   `simple assertions`:idx:
+     `regexprs.html#103 <regexprs.html#103>`_
+
    `simple statements`:idx:
      `manual.html#177 <manual.html#177>`_
 
@@ -4074,8 +4083,8 @@ Index
      * `strutils.html#127 <strutils.html#127>`_
      * `strutils.html#133 <strutils.html#133>`_
      * `strutils.html#134 <strutils.html#134>`_
-     * `pegs.html#146 <pegs.html#146>`_
-     * `pegs.html#147 <pegs.html#147>`_
+     * `pegs.html#148 <pegs.html#148>`_
+     * `pegs.html#149 <pegs.html#149>`_
 
    `splitFile`:idx:
      `os.html#129 <os.html#129>`_
@@ -4611,7 +4620,7 @@ Index
 
    `startsWith`:idx:
      * `strutils.html#147 <strutils.html#147>`_
-     * `pegs.html#141 <pegs.html#141>`_
+     * `pegs.html#143 <pegs.html#143>`_
 
    `statement macros`:idx:
      `tut2.html#112 <tut2.html#112>`_
@@ -4702,10 +4711,10 @@ Index
      `manual.html#152 <manual.html#152>`_
 
    `strVal`:idx:
-     `macros.html#127 <macros.html#127>`_
+     `macros.html#128 <macros.html#128>`_
 
    `strVal=`:idx:
-     `macros.html#133 <macros.html#133>`_
+     `macros.html#134 <macros.html#134>`_
 
    `st_udf_args`:idx:
      `mysql.html#258 <mysql.html#258>`_
@@ -4751,10 +4760,10 @@ Index
      `dynlib.html#104 <dynlib.html#104>`_
 
    `symbol`:idx:
-     `macros.html#124 <macros.html#124>`_
+     `macros.html#125 <macros.html#125>`_
 
    `symbol=`:idx:
-     `macros.html#130 <macros.html#130>`_
+     `macros.html#131 <macros.html#131>`_
 
    `syscall`:idx:
      `manual.html#172 <manual.html#172>`_
@@ -5114,7 +5123,7 @@ Index
      `strutils.html#145 <strutils.html#145>`_
 
    `toStrLit`:idx:
-     `macros.html#145 <macros.html#145>`_
+     `macros.html#146 <macros.html#146>`_
 
    `toTitle`:idx:
      `unicode.html#113 <unicode.html#113>`_
@@ -5153,7 +5162,7 @@ Index
      * `tut1.html#121 <tut1.html#121>`_
 
    `transformFile`:idx:
-     `pegs.html#145 <pegs.html#145>`_
+     `pegs.html#147 <pegs.html#147>`_
 
    `TRequestMethod`:idx:
      `cgi.html#105 <cgi.html#105>`_
@@ -5244,10 +5253,10 @@ Index
      `parsexml.html#106 <parsexml.html#106>`_
 
    `typ`:idx:
-     `macros.html#126 <macros.html#126>`_
+     `macros.html#127 <macros.html#127>`_
 
    `typ=`:idx:
-     `macros.html#132 <macros.html#132>`_
+     `macros.html#133 <macros.html#133>`_
 
    `type`:idx:
      * `manual.html#102 <manual.html#102>`_
@@ -5363,7 +5372,7 @@ Index
      * `tut2.html#103 <tut2.html#103>`_
 
    `verbose`:idx:
-     `regexprs.html#118 <regexprs.html#118>`_
+     `regexprs.html#121 <regexprs.html#121>`_
 
    `vertical tabulator`:idx:
      `manual.html#126 <manual.html#126>`_
@@ -5387,7 +5396,7 @@ Index
    `warning`:idx:
      * `manual.html#225 <manual.html#225>`_
      * `manual.html#232 <manual.html#232>`_
-     * `macros.html#138 <macros.html#138>`_
+     * `macros.html#139 <macros.html#139>`_
 
    `when`:idx:
      * `manual.html#185 <manual.html#185>`_
@@ -5400,7 +5409,7 @@ Index
      `strutils.html#102 <strutils.html#102>`_
 
    `whitespace`:idx:
-     `pegs.html#126 <pegs.html#126>`_
+     `pegs.html#127 <pegs.html#127>`_
 
    `winTimeToUnixTime`:idx:
      `times.html#118 <times.html#118>`_

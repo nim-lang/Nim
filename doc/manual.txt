@@ -951,7 +951,7 @@ of the following conditions hold:
 3) The procedure has a calling convention that differs from ``nimcall``. 
 4) The procedure is anonymous.
 
-These rules should prevent the case that extending a non-``procvar`` 
+The rules' purpose is to prevent the case that extending a non-``procvar`` 
 procedure with default parameters breaks client code.
 
 
@@ -1800,7 +1800,7 @@ return values. This can be done in a cleaner way by returning a tuple:
   assert t.res == 1
   assert t.remainder = 3
 
-Even more elegant is to use `tuple unpacking`:idx: to access the tuple's fields:
+One can use `tuple unpacking`:idx: to access the tuple's fields:
 
 .. code-block:: nimrod
   var (x, y) = divmod(8, 5) # tuple unpacking
@@ -1872,7 +1872,7 @@ dispatching:
 
 Invokation of a multi-method cannot be ambiguous: Collide 2 is prefered over 
 collide 1 because the resolution works from left to right. 
-Thus ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
+In the example ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
 
 **Perfomance note**: Nimrod does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -2111,6 +2111,44 @@ special ``:`` syntax:
   
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. 
+
+Symbol binding within templates happens after template instantation: 
+
+.. code-block:: nimrod
+  # Module A
+  var 
+    lastId = 0
+  
+  template genId*: expr =
+    inc(lastId)
+    lastId
+
+.. code-block:: nimrod
+  # Module B
+  import A
+  
+  echo genId() # Error: undeclared identifier: 'lastId'
+
+Exporting a template is a often a leaky abstraction. However, to compensate for
+this case, the ``bind`` operator can be used: All identifiers
+within a ``bind`` context are bound early (i.e. when the template is parsed).
+The affected identifiers are then always bound early even if the other
+occurences are in no ``bind`` context: 
+
+.. code-block:: nimrod
+  # Module A
+  var 
+    lastId = 0
+  
+  template genId*: expr =
+    inc(bind lastId)
+    lastId
+
+.. code-block:: nimrod
+  # Module B
+  import A
+  
+  echo genId() # Works
 
 
 **Style note**: For code readability, it is the best idea to use the least
@@ -2356,7 +2394,7 @@ verify this.
 
 procvar pragma
 --------------
-The `procvar`:idx: pragma is used to mark a proc that it can be passed to a 
+The `procvar`:idx: pragma is used to mark a proc so that it can be passed to a 
 procedural variable. 
 
 

@@ -15,7 +15,7 @@ interface
 
 uses
   nsystem, strutils, llstream, ast, astalgo, idents, scanner, options, msgs, 
-  pnimsyn, ptmplsyn, filters, rnimsyn;
+  pnimsyn, pbraces, ptmplsyn, filters, rnimsyn;
 
 type
   TFilterKind = (filtNone, filtTemplate, filtReplace, filtStrip);
@@ -68,8 +68,8 @@ function parseAll(var p: TParsers): PNode;
 begin
   case p.skin of
     skinStandard: result := pnimsyn.parseAll(p.parser);
-    skinBraces, skinEndX: InternalError('parser to implement');
-    // skinBraces: result := pbraces.parseAll(p.parser);
+    skinBraces: result := pbraces.parseAll(p.parser);
+    skinEndX: InternalError('parser to implement');
     // skinEndX: result := pendx.parseAll(p.parser);
   end
 end;
@@ -78,8 +78,8 @@ function parseTopLevelStmt(var p: TParsers): PNode;
 begin
   case p.skin of
     skinStandard: result := pnimsyn.parseTopLevelStmt(p.parser);
-    skinBraces, skinEndX: InternalError('parser to implement');
-    //skinBraces: result := pbraces.parseTopLevelStmt(p.parser);
+    skinBraces: result := pbraces.parseTopLevelStmt(p.parser); 
+    skinEndX: InternalError('parser to implement');
     //skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   end
 end;
