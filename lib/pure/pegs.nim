@@ -42,7 +42,7 @@ type
     pkSequence,         ## a b c ... --> Internal DSL: peg(a, b, c)
     pkOrderedChoice,    ## a / b / ... --> Internal DSL: a / b or /[a, b, c]
     pkGreedyRep,        ## a*     --> Internal DSL: *a
-                        ## a+     --> Internal DSL: +a; represented as (a a*)
+                        ## a+     --> (a a*)
     pkGreedyRepChar,    ## x* where x is a single character (superop)
     pkGreedyRepSet,     ## [set]* (superop)
     pkGreedyAny,        ## .* or _* (superop)
@@ -50,6 +50,7 @@ type
     pkAndPredicate,     ## &a     --> Internal DSL: &a
     pkNotPredicate,     ## !a     --> Internal DSL: !a
     pkCapture,          ## {a}    --> Internal DSL: capture(a)
+    pkSearch,           ## @a     --> Internal DSL: @a
     pkRule,             ## a <- b
     pkList              ## a, b
   TNonTerminalFlag = enum
@@ -174,7 +175,24 @@ proc `*`*(a: TPeg): TPeg =
   else:
     result.kind = pkGreedyRep
     result.sons = @[a]
+
+proc `@`*(a: TPeg): TPeg =
+  ## constructs a "search" for the PEG `a`
+  result.kind = pkSearch
+  result.sons = @[a]
   
+when false:
+  proc contains(a: TPeg, k: TPegKind): bool =
+    if a.kind == k: return true
+    case a.kind
+    of pkEmpty, pkAny, pkAnyRune, pkGreedyAny, pkNewLine, pkTerminal,
+       pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar, pkGreedyRepChar,
+       pkCharChoice, pkGreedyRepSet: nil
+    of pkNonTerminal: return true
+    else:
+      for i in 0..a.sons.len-1:
+        if contains(a.sons[i], k): return true
+
 proc `+`*(a: TPeg): TPeg =
   ## constructs a "greedy positive repetition" with the PEG `a`
   return sequence(a, *a)
@@ -270,6 +288,125 @@ template natural*: expr =
 const
   MaxSubpatterns* = 10 ## defines the maximum number of subpatterns that
                        ## can be captured. More subpatterns cannot be captured! 
+
+# ------------------------- debugging -----------------------------------------
+
+proc esc(c: char, reserved = {'\0'..'\255'}): string = 
+  case c
+  of '\b': result = "\\b"
+  of '\t': result = "\\t"
+  of '\c': result = "\\c"
+  of '\L': result = "\\l"
+  of '\v': result = "\\v"
+  of '\f': result = "\\f"
+  of '\e': result = "\\e"
+  of '\a': result = "\\a"
+  of '\\': result = "\\\\"
+  of 'a'..'z', 'A'..'Z', '0'..'9', '_': result = $c
+  elif c < ' ' or c >= '\128': result = '\\' & $ord(c)
+  elif c in reserved: result = '\\' & c
+  else: result = $c
+  
+proc singleQuoteEsc(c: Char): string = return "'" & esc(c, {'\''}) & "'"
+
+proc singleQuoteEsc(str: string): string = 
+  result = "'"
+  for c in items(str): add result, esc(c, {'\''})
+  add result, '\''
+  
+proc charSetEscAux(cc: set[char]): string = 
+  const reserved = {'^', '-', ']'}
+  result = ""
+  var c1 = 0
+  while c1 <= 0xff: 
+    if chr(c1) in cc: 
+      var c2 = c1
+      while c2 < 0xff and chr(succ(c2)) in cc: inc(c2)
+      if c1 == c2: 
+        add result, esc(chr(c1), reserved)
+      elif c2 == succ(c1): 
+        add result, esc(chr(c1), reserved) & esc(chr(c2), reserved)
+      else: 
+        add result, esc(chr(c1), reserved) & '-' & esc(chr(c2), reserved)
+      c1 = c2
+    inc(c1)
+  
+proc CharSetEsc(cc: set[char]): string =
+  if card(cc) >= 128+64: 
+    result = "[^" & CharSetEscAux({'\1'..'\xFF'} - cc) & ']'
+  else: 
+    result = '[' & CharSetEscAux(cc) & ']'
+  
+proc toStrAux(r: TPeg, res: var string) = 
+  case r.kind
+  of pkEmpty: add(res, "()")
+  of pkAny: add(res, '.')
+  of pkAnyRune: add(res, '_')
+  of pkNewline: add(res, "\\n")
+  of pkTerminal: add(res, singleQuoteEsc(r.term))
+  of pkTerminalIgnoreCase:
+    add(res, 'i')
+    add(res, singleQuoteEsc(r.term))
+  of pkTerminalIgnoreStyle:
+    add(res, 'y')
+    add(res, singleQuoteEsc(r.term))
+  of pkChar: add(res, singleQuoteEsc(r.ch))
+  of pkCharChoice: add(res, charSetEsc(r.charChoice^))
+  of pkNonTerminal: add(res, r.nt.name)
+  of pkSequence:
+    add(res, '(')
+    toStrAux(r.sons[0], res)
+    for i in 1 .. high(r.sons):
+      add(res, ' ')
+      toStrAux(r.sons[i], res)
+    add(res, ')')
+  of pkOrderedChoice:
+    add(res, '(')
+    toStrAux(r.sons[0], res)
+    for i in 1 .. high(r.sons):
+      add(res, " / ")
+      toStrAux(r.sons[i], res)
+    add(res, ')')
+  of pkGreedyRep:
+    toStrAux(r.sons[0], res)
+    add(res, '*')
+  of pkGreedyRepChar:
+    add(res, singleQuoteEsc(r.ch))
+    add(res, '*')
+  of pkGreedyRepSet:
+    add(res, charSetEsc(r.charChoice^))
+    add(res, '*')
+  of pkGreedyAny:
+    add(res, ".*")
+  of pkOption:
+    toStrAux(r.sons[0], res)
+    add(res, '?')
+  of pkAndPredicate:
+    add(res, '&')
+    toStrAux(r.sons[0], res)
+  of pkNotPredicate:
+    add(res, '!')
+    toStrAux(r.sons[0], res)
+  of pkSearch:
+    add(res, '@')
+    toStrAux(r.sons[0], res)
+  of pkCapture:
+    add(res, '{')
+    toStrAux(r.sons[0], res)    
+    add(res, '}')
+  of pkRule:
+    toStrAux(r.sons[0], res)    
+    add(res, " <- ")
+    toStrAux(r.sons[1], res)
+  of pkList:
+    for i in 0 .. high(r.sons):
+      toStrAux(r.sons[i], res)
+      add(res, "\n")  
+
+proc `$` *(r: TPeg): string =
+  ## converts a PEG to its string representation
+  result = ""
+  toStrAux(r, result)
 
 # --------------------- core engine -------------------------------------------
 
@@ -370,6 +507,17 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
       result = m(s, p.sons[i], start, c)
       if result >= 0: break
       c.ml = oldMl
+  of pkSearch:
+    var oldMl = c.ml
+    result = 0
+    while start+result < s.len:
+      var x = m(s, p.sons[0], start+result, c)
+      if x >= 0:
+        inc(result, x)
+        return
+      inc(result)
+    result = -1
+    c.ml = oldMl
   of pkGreedyRep:
     result = 0
     while true:
@@ -607,123 +755,6 @@ proc split*(s: string, sep: TPeg): seq[string] {.noSideEffect.} =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
 
-# ------------------------- debugging -----------------------------------------
-
-proc esc(c: char, reserved = {'\0'..'\255'}): string = 
-  case c
-  of '\b': result = "\\b"
-  of '\t': result = "\\t"
-  of '\c': result = "\\c"
-  of '\L': result = "\\l"
-  of '\v': result = "\\v"
-  of '\f': result = "\\f"
-  of '\e': result = "\\e"
-  of '\a': result = "\\a"
-  of '\\': result = "\\\\"
-  of 'a'..'z', 'A'..'Z', '0'..'9', '_': result = $c
-  elif c < ' ' or c >= '\128': result = '\\' & $ord(c)
-  elif c in reserved: result = '\\' & c
-  else: result = $c
-  
-proc singleQuoteEsc(c: Char): string = return "'" & esc(c, {'\''}) & "'"
-
-proc singleQuoteEsc(str: string): string = 
-  result = "'"
-  for c in items(str): add result, esc(c, {'\''})
-  add result, '\''
-  
-proc charSetEscAux(cc: set[char]): string = 
-  const reserved = {'^', '-', ']'}
-  result = ""
-  var c1 = 0
-  while c1 <= 0xff: 
-    if chr(c1) in cc: 
-      var c2 = c1
-      while c2 < 0xff and chr(succ(c2)) in cc: inc(c2)
-      if c1 == c2: 
-        add result, esc(chr(c1), reserved)
-      elif c2 == succ(c1): 
-        add result, esc(chr(c1), reserved) & esc(chr(c2), reserved)
-      else: 
-        add result, esc(chr(c1), reserved) & '-' & esc(chr(c2), reserved)
-      c1 = c2
-    inc(c1)
-  
-proc CharSetEsc(cc: set[char]): string =
-  if card(cc) >= 128+64: 
-    result = "[^" & CharSetEscAux({'\1'..'\xFF'} - cc) & ']'
-  else: 
-    result = '[' & CharSetEscAux(cc) & ']'
-  
-proc toStrAux(r: TPeg, res: var string) = 
-  case r.kind
-  of pkEmpty: add(res, "()")
-  of pkAny: add(res, '.')
-  of pkAnyRune: add(res, '_')
-  of pkNewline: add(res, "\\n")
-  of pkTerminal: add(res, singleQuoteEsc(r.term))
-  of pkTerminalIgnoreCase:
-    add(res, 'i')
-    add(res, singleQuoteEsc(r.term))
-  of pkTerminalIgnoreStyle:
-    add(res, 'y')
-    add(res, singleQuoteEsc(r.term))
-  of pkChar: add(res, singleQuoteEsc(r.ch))
-  of pkCharChoice: add(res, charSetEsc(r.charChoice^))
-  of pkNonTerminal: add(res, r.nt.name)
-  of pkSequence:
-    add(res, '(')
-    toStrAux(r.sons[0], res)
-    for i in 1 .. high(r.sons):
-      add(res, ' ')
-      toStrAux(r.sons[i], res)
-    add(res, ')')
-  of pkOrderedChoice:
-    add(res, '(')
-    toStrAux(r.sons[0], res)
-    for i in 1 .. high(r.sons):
-      add(res, " / ")
-      toStrAux(r.sons[i], res)
-    add(res, ')')
-  of pkGreedyRep:
-    toStrAux(r.sons[0], res)
-    add(res, '*')
-  of pkGreedyRepChar:
-    add(res, singleQuoteEsc(r.ch))
-    add(res, '*')
-  of pkGreedyRepSet:
-    add(res, charSetEsc(r.charChoice^))
-    add(res, '*')
-  of pkGreedyAny:
-    add(res, ".*")
-  of pkOption:
-    toStrAux(r.sons[0], res)
-    add(res, '?')
-  of pkAndPredicate:
-    add(res, '&')
-    toStrAux(r.sons[0], res)
-  of pkNotPredicate:
-    add(res, '!')
-    toStrAux(r.sons[0], res)
-  of pkCapture:
-    add(res, '{')
-    toStrAux(r.sons[0], res)    
-    add(res, '}')
-  of pkRule:
-    toStrAux(r.sons[0], res)    
-    add(res, " <- ")
-    toStrAux(r.sons[1], res)
-  of pkList:
-    for i in 0 .. high(r.sons):
-      toStrAux(r.sons[i], res)
-      add(res, "\n")  
-
-proc `$` *(r: TPeg): string =
-  ## converts a PEG to its string representation
-  result = ""
-  toStrAux(r, result)
-
-
 # ------------------- scanner -------------------------------------------------
 
 type
@@ -751,6 +782,7 @@ type
     tkAmp,              ## '&'
     tkNot,              ## '!'
     tkOption,           ## '?'
+    tkAt,               ## '@'
     tkBuiltin,          ## \identifier
     tkEscaped           ## \\
   
@@ -772,7 +804,7 @@ const
   tokKindToStr: array[TTokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
     "character set", "(", ")", "{", "}", "<-", "/", "*", "+", "&", "!", "?",
-    "built-in", "escaped"
+    "@", "built-in", "escaped"
   ]
 
 proc HandleCR(L: var TPegLexer, pos: int): int =
@@ -1063,6 +1095,10 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
     tok.kind = tkAmp
     inc(c.bufpos)
     add(tok.literal, '!')
+  of '@':
+    tok.kind = tkAt
+    inc(c.bufpos)
+    add(tok.literal, '@')
   else:
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
@@ -1118,6 +1154,9 @@ proc primary(p: var TPegParser): TPeg =
   of tkNot:
     getTok(p)
     return !primary(p)
+  of tkAt:
+    getTok(p)
+    return @primary(p)
   else: nil
   case p.tok.kind
   of tkIdentifier:
@@ -1187,7 +1226,7 @@ proc seqExpr(p: var TPegParser): TPeg =
   result = primary(p)
   while true:
     case p.tok.kind
-    of tkAmp, tkNot, tkStringLit, tkCharset, tkParLe, tkCurlyLe,
+    of tkAmp, tkNot, tkAt, tkStringLit, tkCharset, tkParLe, tkCurlyLe,
        tkAny, tkAnyRune, tkBuiltin, tkEscaped:
       result = sequence(result, primary(p))
     of tkIdentifier:
@@ -1261,6 +1300,7 @@ proc peg*(pattern: string): TPeg =
   result = parsePeg(pattern, "pattern")
 
 when isMainModule:
+  assert match("(a b c)", peg"'(' @ ')'")
   assert match("W_HI_Le", peg"\y 'while'")
   assert(not match("W_HI_L", peg"\y 'while'"))
   assert(not match("W_HI_Le", peg"\y v'while'"))
@@ -1315,6 +1355,11 @@ when isMainModule:
               """
   assert($g2 == "((A B) / (C D))")
   assert match("cccccdddddd", g2)
-  echo "var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+         "var1<-keykey; var2<-key2key2")
   assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
+  if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
+    assert matches[0] == "a"
+  else:
+    assert false

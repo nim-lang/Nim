@@ -109,6 +109,21 @@ In general, importing a dynamic library does not require any special linker
 options or linking with import libraries. This also implies that no *devel*
 packages need to be installed.
 
+The ``dynlib`` import mechanism supports a versioning scheme: 
+
+.. code-block:: nimrod 
+  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
+    importc, dynlib: "libtcl(8.5|8.4|8.3).so.(1|0)".}
+
+At runtime the dynamic library is searched for (in this order)::
+  
+  libtcl8.5.so.1
+  libtcl8.4.so.1
+  libtcl8.3.so.1
+  libtcl8.5.so.0
+  libtcl8.4.so.0
+  libtcl8.3.so.0
+
 
 No_decl Pragma
 ~~~~~~~~~~~~~~
@@ -231,7 +246,7 @@ compiler to activate (or deactivate) dead code elimination for the module the
 pragma appers in.
 
 The ``--dead_code_elim:on`` command line switch has the same effect as marking
-any module with ``{.dead_code_elim:on}``. However, for some modules such as
+every module with ``{.dead_code_elim:on}``. However, for some modules such as
 the GTK wrapper it makes sense to *always* turn on dead code elimination -
 no matter if it is globally active or not.
 
@@ -244,7 +259,7 @@ Example:
 Disabling certain messages
 --------------------------
 Nimrod generates some warnings and hints ("line too long") that may annoy the
-user. Thus a mechanism for disabling certain messages is provided: Each hint
+user. A mechanism for disabling certain messages is provided: Each hint
 and warning message contains a symbol in brackets. This is the message's
 identifier that can be used to enable or disable it:
 
@@ -300,9 +315,10 @@ However it is not efficient to do:
 .. code-block:: Nimrod
   var s = varA    # assignment has to copy the whole string into a new buffer!
 
-String case statements are optimized too. A hashing scheme is used for them
-if several different string constants are used. This is likely to be more
-efficient than any hand-coded scheme.
+..
+  String case statements are optimized too. A hashing scheme is used for them
+  if several different string constants are used. This is likely to be more
+  efficient than any hand-coded scheme.
 
 
 ..

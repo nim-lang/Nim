@@ -60,6 +60,8 @@ notation           meaning
 ``_``              Any Unicode character: If there is an UTF-8 character
                    ahead, consume it and indicate success. Otherwise indicate
                    failure.
+``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
+                   pattern `E`.)
 ``A <- E``         Rule: Bind the expression `E` to the *nonterminal symbol*
                    `A`. **Left recursive rules are not possible and crash the
                    matching engine.**
@@ -118,14 +120,15 @@ The PEG parser implements this grammar (written in PEG syntax)::
                             "'" ("\\" . / [^'])* "'")
   builtin <- "\\" identifier / [^\13\10]
   
-  comment <- '#' !\n* \n
+  comment <- '#' @ \n
   ig <- (\s / comment)* # things to ignore
   
   rule <- identifier \s* "<-" expr ig
   identNoArrow <- identifier !(\s* "<-")
-  primary <- (ig '&' / ig '!')* ((ig identNoArrow / ig charset / ig stringlit
-                                / ig builtin / ig '.' / ig '_'
-                                / (ig "(" expr ig ")"))
+  primary <- (ig '&' / ig '!' / ig '@')*
+               ((ig identNoArrow / ig charset / ig stringlit
+                                 / ig builtin / ig '.' / ig '_'
+                                 / (ig "(" expr ig ")"))
              (ig '?' / ig '*' / ig '+')*)
   
   # Concatenation has higher priority than choice:
@@ -153,16 +156,16 @@ Determine the ``#include``'ed files of a C file:
 .. code-block:: nimrod
   for line in lines("myfile.c"):
     if line =~ peg"""s <- ws '#include' ws '"' {[^"]+} '"' ws
-                     comment <- '/*' (!'*/' . )* '*/' / '//' .*
-                     ws <- (comment / \s+)* """:    
+                     comment <- '/*' @ '*/' / '//' .*
+                     ws <- (comment / \s+)* """:
       echo matches[0]
 
 PEG vs regular expression
 -------------------------
-As a regular expression ``\[.*\]`` maches longest possible text between ``'['``
-and ``']'``. As a PEG it never matches anything, because a PEG is
+As a regular expression ``\[.*\]`` matches the longest possible text between
+``'['`` and ``']'``. As a PEG it never matches anything, because a PEG is
 deterministic: ``.*`` consumes the rest of the input, so ``\]`` never matches.
-As a PEG this needs to be written as: ``\[ ( !\] . )* \]``
+As a PEG this needs to be written as: ``\[ ( !\] . )* \]`` (or ``\[ @ \]``).
 
 Note that the regular expression does not behave as intended either:
 ``*`` should not be greedy, so ``\[.*?\]`` should be used.

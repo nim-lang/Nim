@@ -147,7 +147,8 @@ begin
   end
 end;
 
-function resolveTemplateParams(c: PContext; n: PNode; withinBind: bool): PNode;
+function resolveTemplateParams(c: PContext; n: PNode; withinBind: bool;
+                               var toBind: TIntSet): PNode;
 var
   i: int;
   s: PSym;
@@ -155,7 +156,7 @@ begin
   if n = nil then begin result := nil; exit end;
   case n.kind of
     nkIdent: begin
-      if not withinBind then begin
+      if not withinBind and not IntSetContains(toBind, n.ident.id) then begin
         s := SymTabLocalGet(c.Tab, n.ident);
         if (s <> nil) then begin
           result := newSymNode(s);
@@ -165,17 +166,18 @@ begin
           result := n
       end
       else begin
+        IntSetIncl(toBind, n.ident.id);
         result := symChoice(c, n, lookup(c, n))
       end
     end;
     nkSym..nkNilLit: // atom
       result := n;
     nkBind: 
-      result := resolveTemplateParams(c, n.sons[0], true);
+      result := resolveTemplateParams(c, n.sons[0], true, toBind);
     else begin
       result := n;
       for i := 0 to sonsLen(n)-1 do
-        result.sons[i] := resolveTemplateParams(c, n.sons[i], withinBind);
+        result.sons[i] := resolveTemplateParams(c, n.sons[i], withinBind, toBind);
     end
   end
 end;
@@ -211,6 +213,7 @@ end;
 function semTemplateDef(c: PContext; n: PNode): PNode;
 var
   s: PSym;
+  toBind: TIntSet;
 begin
   if c.p.owner.kind = skModule then begin
     s := semIdentVis(c, skTemplate, n.sons[0], {@set}[sfStar]);
@@ -248,7 +251,8 @@ begin
   addParams(c, s.typ.n);
   
   // resolve parameters:
-  n.sons[codePos] := resolveTemplateParams(c, n.sons[codePos], false);
+  IntSetInit(toBind);
+  n.sons[codePos] := resolveTemplateParams(c, n.sons[codePos], false, toBind);
   if not (s.typ.sons[0].kind in [tyStmt, tyTypeDesc]) then
     n.sons[codePos] := transformToExpr(n.sons[codePos]);
 
