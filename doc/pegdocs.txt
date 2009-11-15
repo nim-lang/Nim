@@ -178,6 +178,6 @@ There are two ways to construct a PEG in Nimrod code:
     `peg` proc.
 (2) Constructing the AST directly with proc calls. This method does not
     support constructing rules, only simple expressions and is not as
-    convenient. It's only advantage is that it does not pull in the whole PEG
+    convenient. Its only advantage is that it does not pull in the whole PEG
     parser into your executable.
 

@@ -24,8 +24,8 @@ ast             type definitions of the abstract syntax tree (AST) and
                 node constructors
 astalgo         algorithms for containers of AST nodes; converting the
                 AST to YAML; the symbol table
-passes          implement the passes managemer for passes over the AST
-trees           few algorithms for nodes; this module is less important
+passes          implement the passes manager for passes over the AST
+trees           some algorithms for nodes; this module is less important
 types           module for traversing type graphs; also contain several
                 helpers for dealing with types
 
