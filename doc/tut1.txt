@@ -15,13 +15,13 @@ Introduction
 This document is a tutorial for the programming language *Nimrod*. After this
 tutorial you will have a decent knowledge about Nimrod. This tutorial assumes
 that you are familiar with basic programming concepts like variables, types
-or statements. 
+or statements.
 
 
 The first program
 =================
 
-We start the tour with a modified "hallo world" program:
+We start the tour with a modified "hello world" program:
 
 .. code-block:: Nimrod
   # This is a comment
@@ -45,23 +45,23 @@ The most used commands and switches have abbreviations, so you can also use::
   nimrod c -r greetings.nim
 
 Though it should be pretty obvious what the program does, I will explain the
-syntax: Statements which are not indented are executed when the program
+syntax: statements which are not indented are executed when the program
 starts. Indentation is Nimrod's way of grouping statements. Indentation is
 done with spaces only, tabulators are not allowed.
 
-String literals are enclosed in double quotes. The ``var`` statement declares 
-a new variable named ``name`` of type ``string`` with the value that is 
-returned by the ``readline`` procedure. Since the compiler knows that 
-``readline`` returns a string, you can leave out the type in the declaration 
+String literals are enclosed in double quotes. The ``var`` statement declares
+a new variable named ``name`` of type ``string`` with the value that is
+returned by the ``readline`` procedure. Since the compiler knows that
+``readline`` returns a string, you can leave out the type in the declaration
 (this is called `local type inference`:idx:). So this will work too:
 
 .. code-block:: Nimrod
   var name = readline(stdin)
 
 Note that this is basically the only form of type inference that exists in
-Nimrod: It is a good compromise between brevity and readability.
+Nimrod: it is a good compromise between brevity and readability.
 
-The "hallo world" program contains several identifiers that are already
+The "hello world" program contains several identifiers that are already
 known to the compiler: ``echo``, ``readLine``, etc. These built-in items are
 declared in the system_ module which is implicitly imported by any other
 module.
@@ -70,12 +70,12 @@ module.
 Lexical elements
 ================
 
-Let us look at Nimrod's lexical elements in more detail: Like other
+Let us look at Nimrod's lexical elements in more detail: like other
 programming languages Nimrod consists of (string) literals, identifiers,
-keywords, comments, operators, and other punctation marks. Case is
+keywords, comments, operators, and other punctuation marks. Case is
 *insignificant* in Nimrod and even underscores are ignored:
-``This_is_an_identifier`` and this is the same identifier
-``ThisIsAnIdentifier``. This feature enables you to use other
+``This_is_an_identifier`` and ``ThisIsAnIdentifier`` are the same identifier.
+This feature enables you to use other
 people's code without bothering about a naming convention that conflicts with
 yours. It also frees you from remembering the exact spelling of an identifier
 (was it ``parseURL`` or ``parseUrl`` or ``parse_URL``?).
@@ -86,7 +86,7 @@ String and character literals
 
 String literals are enclosed in double quotes; character literals in single
 quotes. Special characters are escaped with ``\``: ``\n`` means newline, ``\t``
-means tabulator, etc. There exist also *raw* string literals:
+means tabulator, etc. There are also *raw* string literals:
 
 .. code-block:: Nimrod
   r"C:\program files\nim"
@@ -123,11 +123,11 @@ Comments are tokens; they are only allowed at certain places in the input file
 as they belong to the syntax tree! This feature enables perfect source-to-source
 transformations (such as pretty-printing) and superior documentation generators.
 A nice side-effect is that the human reader of the code always knows exactly
-which code snippet the comment refers to. Since comments are a proper part of 
+which code snippet the comment refers to. Since comments are a proper part of
 the syntax, watch their indentation:
 
 .. code-block::
-  Echo("Hallo!")
+  Echo("Hello!")
   # comment has the same indentation as above statement -> fine
   Echo("Hi!")
     # comment has not the right indentation -> syntax error!
@@ -155,7 +155,7 @@ The var statement declares a new local or global variable:
   var x, y: int # declares x and y to have the type ``int``
 
 Indentation can be used after the ``var`` keyword to list a whole section of
-variables: 
+variables:
 
 .. code-block::
   var
@@ -190,7 +190,7 @@ constant declaration at compile time:
   const x = "abc" # the constant x contains the string "abc"
   
 Indentation can be used after the ``const`` keyword to list a whole section of
-constants: 
+constants:
 
 .. code-block::
   const
@@ -204,7 +204,7 @@ Control flow statements
 =======================
 
 The greetings program consists of 3 statements that are executed sequentially.
-Only the most primitive programs can get away with that: Branching and looping
+Only the most primitive programs can get away with that: branching and looping
 are needed too.
 
 
@@ -245,7 +245,7 @@ a multi-branch:
   else:
     Echo("Hi, ", name, "!")
 
-As can be seen, for an ``of`` branch a comma separated list of values is also
+As it can be seen, for an ``of`` branch a comma separated list of values is also
 allowed.
 
 The case statement can deal with integers, other ordinal types and strings.
@@ -262,7 +262,7 @@ For integers or other ordinal types value ranges are also possible:
   of 0..2, 4..7: Echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
   of 3, 8: Echo("The number is 3 or 8")
 
-However, the above code does not compile: The reason is that you have to cover
+However, the above code does not compile: the reason is that you have to cover
 every value that ``n`` may contain, but the code only handles the values
 ``0..8``. Since it is not very practical to list every other possible integer
 (though it is possible thanks to the range notation), we fix this by telling
@@ -276,8 +276,8 @@ the compiler that for every other value nothing should be done:
   else: nil
 
 The ``nil`` statement is a *do nothing* statement. The compiler knows that a
-case statement with an else part cannot fail and thus the error disappers. Note
-that it is impossible to cover any possible string value: That is why there is
+case statement with an else part cannot fail and thus the error disappears. Note
+that it is impossible to cover all possible string values: that is why there is
 no such check for string cases.
 
 In general the case statement is used for subrange types or enumerations where
@@ -306,7 +306,7 @@ he types in nothing (only presses RETURN).
 For statement
 -------------
 
-The `for`:idx: statement is a construct to loop over any elements an *iterator*
+The `for`:idx: statement is a construct to loop over any element an *iterator*
 provides. The example uses the built-in ``countup`` iterator:
 
 .. code-block:: nimrod
@@ -315,7 +315,7 @@ provides. The example uses the built-in ``countup`` iterator:
     Echo($i)
 
 The built-in ``$`` operator turns an integer (``int``) and many other types
-into a string. The variable ``i`` is implicitely declared by the ``for`` loop
+into a string. The variable ``i`` is implicitly declared by the ``for`` loop
 and has the type ``int``, because that is what ``countup`` returns. ``i`` runs
 through the values 1, 2, .., 10. Each value is ``echo``-ed. This code does
 the same:
@@ -335,7 +335,7 @@ Counting down can be achieved as easily (but is less often needed):
     Echo($i)
 
 Since counting up occurs so often in programs, Nimrod has a special syntax that
-calls the ``countup`` iterator implicitely:
+calls the ``countup`` iterator implicitly:
 
 .. code-block:: nimrod
   for i in 1..10:
@@ -347,7 +347,7 @@ The syntax ``for i in 1..10`` is sugar for ``for i in countup(1, 10)``.
 
 Scopes and the block statement
 ------------------------------
-Control flow statements have a feature not covered yet: They open a
+Control flow statements have a feature not covered yet: they open a
 new scope. This means that in the following example, ``x`` is not accessible
 outside the loop:
 
@@ -358,7 +358,7 @@ outside the loop:
 
 A while (for) statement introduces an implicit block. Identifiers
 are only visible within the block they have been declared. The ``block``
-statement can be used to open a new block explicitely:
+statement can be used to open a new block explicitly:
 
 .. code-block:: nimrod
   block myblock:
@@ -430,7 +430,7 @@ differences:
 The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
 
-**Note**: The documentation generator currently always follows the first branch 
+**Note**: The documentation generator currently always follows the first branch
 of when statements.
 
 **Note**: To comment out a large piece of code, it is often better to use a
@@ -442,12 +442,12 @@ Statements and indentation
 ==========================
 
 Now that we covered the basic control flow statements, let's return to Nimrod
-indentation rules. 
+indentation rules.
 
 In Nimrod there is a distinction between *simple statements* and *complex
 statements*. *Simple statements* cannot contain other statements:
 Assignment, procedure calls or the ``return`` statement belong to the simple
-statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can 
+statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can
 contain other statements. To avoid ambiguities, complex statements always have
 to be indented, but single simple statements do not:
 
@@ -456,30 +456,30 @@ to be indented, but single simple statements do not:
   if x: x = false
   
   # indentation needed for nested if statement:
-  if x: 
+  if x:
     if y:
       y = false
     else:
       y = true
   
   # indentation needed, because two statements follow the condition:
-  if x: 
+  if x:
     x = false
     y = false
 
 
 *Expressions* are parts of a statement which usually result in a value. The
 condition in an if statement is an example for an expression. Expressions can
-contain indentation at certain places for better readability: 
+contain indentation at certain places for better readability:
 
 .. code-block:: nimrod
 
   if thisIsaLongCondition() and
-      thisIsAnotherLongCondition(1, 
+      thisIsAnotherLongCondition(1,
          2, 3, 4):
-    x = true 
+    x = true
 
-As a rule of thumb, indentation within expressions is allowed after operators, 
+As a rule of thumb, indentation within expressions is allowed after operators,
 an open parenthesis and after commas.
 
 
@@ -507,14 +507,14 @@ of a `procedure` is needed. (Some languages call them *methods* or
 This example shows a procedure named ``yes`` that asks the user a ``question``
 and returns true if he answered "yes" (or something similar) and returns
 false if he answered "no" (or something similar). A ``return`` statement leaves
-the procedure (and therefore the while loop) immediately. The 
-``(question: string): bool`` syntax describes that the procedure expects a 
+the procedure (and therefore the while loop) immediately. The
+``(question: string): bool`` syntax describes that the procedure expects a
 parameter named ``question`` of type ``string`` and returns a value of type
-``bool``. ``Bool`` is a built-in type: The only valid values for ``bool`` are 
+``bool``. ``Bool`` is a built-in type: the only valid values for ``bool`` are
 ``true`` and ``false``.
 The conditions in if or while statements should be of the type ``bool``.
 
-Some terminology: In the example ``question`` is called a (formal) *parameter*,
+Some terminology: in the example ``question`` is called a (formal) *parameter*,
 ``"Should I..."`` is called an *argument* that is passed to this parameter.
 
 
@@ -540,8 +540,8 @@ Parameters
 ----------
 Parameters are constant in the procedure body. Their value cannot be changed
 because this allows the compiler to implement parameter passing in the most
-efficient way. If the procedure needs to modify the argument for the 
-caller, a ``var`` parameter can be used: 
+efficient way. If the procedure needs to modify the argument for the
+caller, a ``var`` parameter can be used:
 
 .. code-block:: nimrod
   proc divmod(a, b: int, res, remainder: var int) =
@@ -624,7 +624,7 @@ Nimrod provides the ability to overload procedures similar to C++:
 .. code-block:: nimrod
   proc toString(x: int): string = ...
   proc toString(x: bool): string =
-    if x: return "true" 
+    if x: return "true"
     else: return "false"
 
   Echo(toString(13))   # calls the toString(x: int) proc
@@ -634,7 +634,7 @@ Nimrod provides the ability to overload procedures similar to C++:
 The compiler chooses the most appropriate proc for the ``toString`` calls. How
 this overloading resolution algorithm works exactly is not discussed here
 (it will be specified in the manual soon).
-However, it does not lead to nasty suprises and is based on a quite simple
+However, it does not lead to nasty surprises and is based on a quite simple
 unification algorithm. Ambiguous calls are reported as errors.
 
 
@@ -644,7 +644,7 @@ The Nimrod library makes heavy use of overloading - one reason for this is that
 each operator like ``+`` is a just an overloaded proc. The parser lets you
 use operators in `infix notation` (``a + b``) or `prefix notation` (``+ a``).
 An infix operator always receives two arguments, a prefix operator always one.
-Postfix operators are not possible, because this would be ambiguous: Does
+Postfix operators are not possible, because this would be ambiguous: does
 ``a @ @ b`` mean ``(a) @ (@b)`` or ``(a@) @ (b)``? It always means
 ``(a) @ (@b)``, because there are no postfix operators in Nimrod.
 
@@ -693,7 +693,7 @@ However, this cannot be done for mutually recursive procedures:
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
-such a `forward declaration` is simple: Just omit the ``=`` and the procedure's
+such a `forward declaration` is simple: just omit the ``=`` and the procedure's
 body.
 
 
@@ -771,7 +771,7 @@ Characters
 ----------
 The `character type` is named ``char`` in Nimrod. Its size is one byte.
 Thus it cannot represent an UTF-8 character, but a part of it.
-The reason for this is efficiency: For the overwhelming majority of use-cases,
+The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
 Character literals are enclosed in single quotes.
@@ -795,7 +795,8 @@ terminating zero is no error and often leads to simpler code:
     # no need to check whether ``i < len(s)``!
     ...
 
-The assignment operator for strings copies the string.
+The assignment operator for strings copies the string. You can use the ``&``
+operator to concatenate strings.
 
 Strings are compared by their lexicographical order. All comparison operators
 are available. Per convention, all strings are UTF-8 strings, but this is not
@@ -826,7 +827,7 @@ to mark them to be of another integer type:
     y = 0'i8  # y is of type ``int8``
     z = 0'i64 # z is of type ``int64``
 
-Most often integers are used for couting objects that reside in memory, so
+Most often integers are used for counting objects that reside in memory, so
 ``int`` has the same size as a pointer.
 
 The common operators ``+ - * div mod  <  <=  ==  !=  >  >=`` are defined for
@@ -843,7 +844,7 @@ errors. Unsigned operations use the ``%`` suffix as convention:
 operation                meaning
 ======================   ======================================================
 ``a +% b``               unsigned integer addition
-``a -% b``               unsigned integer substraction
+``a -% b``               unsigned integer subtraction
 ``a *% b``               unsigned integer multiplication
 ``a /% b``               unsigned integer division
 ``a %% b``               unsigned integer modulo operation
@@ -877,7 +878,7 @@ The common operators ``+ - * /  <  <=  ==  !=  >  >=`` are defined for
 floats and follow the IEEE standard.
 
 Automatic type conversion in expressions with different kinds
-of floating point types is performed: The smaller type is
+of floating point types is performed: the smaller type is
 converted to the larger. Integer types are **not** converted to floating point
 types automatically and vice versa. The ``toInt`` and ``toFloat`` procs can be
 used for these conversions.
@@ -927,7 +928,7 @@ types can be assigned an explicit ordinal value. However, the ordinal values
 have to be in ascending order. A symbol whose ordinal value is not
 explicitly given is assigned the value of the previous symbol + 1.
 
-An explicit ordered enum can have *wholes*:
+An explicit ordered enum can have *holes*:
 
 .. code-block:: nimrod
   type
@@ -937,7 +938,7 @@ An explicit ordered enum can have *wholes*:
 
 Ordinal types
 -------------
-Enumerations without wholes, integer types, ``char`` and ``bool`` (and
+Enumerations without holes, integer types, ``char`` and ``bool`` (and
 subranges) are called `ordinal`:idx: types. Ordinal types have quite
 a few special operations:
 
@@ -979,7 +980,7 @@ subrange types (and vice versa) are allowed.
 The ``system`` module defines the important ``natural`` type as
 ``range[0..high(int)]`` (``high`` returns the maximal value). Other programming
 languages mandate the usage of unsigned integers for natural numbers. This is
-often **wrong**: You don't want unsigned arithmetic (which wraps around) just
+often **wrong**: you don't want unsigned arithmetic (which wraps around) just
 because the numbers cannot be negative. Nimrod's ``natural`` type helps to
 avoid this common programming error.
 
@@ -1024,7 +1025,7 @@ operation             meaning
 ==================    ========================================================
 
 Sets are often used to define a type for the *flags* of a procedure. This is
-much cleaner (and type safe) solution than just defining integer 
+much cleaner (and type safe) solution than just defining integer
 constants that should be ``or``'ed together.
 
 
@@ -1100,7 +1101,7 @@ position 0. The ``len``, ``low`` and ``high`` operations are available
 for open arrays too. Any array with a compatible base type can be passed to
 an openarray parameter, the index type does not matter.
 
-The openarray type cannot be nested: Multidimensional openarrays are not
+The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
 An openarray is also a means to implement passing a variable number of
@@ -1156,7 +1157,7 @@ integer.
 
 Reference and pointer types
 ---------------------------
-References (similiar to `pointers`:idx: in other programming languages) are a
+References (similar to `pointers`:idx: in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory.
 
@@ -1170,9 +1171,9 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The ``^`` operator can be used to *derefer* a reference, meaning to retrieve 
-the item the reference points to. The ``addr`` procedure returns the address 
-of an item. An address is always an untraced reference: 
+The ``^`` operator can be used to *derefer* a reference, meaning to retrieve
+the item the reference points to. The ``addr`` procedure returns the address
+of an item. An address is always an untraced reference:
 ``addr`` is an *unsafe* feature.
 
 The ``.`` (access a tuple/object field operator)
@@ -1199,7 +1200,7 @@ further information.
 If a reference points to *nothing*, it has the value ``nil``.
 
 Special care has to be taken if an untraced object contains traced objects like
-traced references, strings or sequences: In order to free everything properly,
+traced references, strings or sequences: in order to free everything properly,
 the built-in procedure ``GCunref`` has to be called before freeing the untraced
 memory manually:
 
@@ -1221,11 +1222,11 @@ memory manually:
 
 Without the ``GCunref`` call the memory allocated for the ``d.s`` string would
 never be freed. The example also demonstrates two important features for low
-level programming: The ``sizeof`` proc returns the size of a type or value
-in bytes. The ``cast`` operator can circumvent the type system: The compiler
+level programming: the ``sizeof`` proc returns the size of a type or value
+in bytes. The ``cast`` operator can circumvent the type system: the compiler
 is forced to treat the result of the ``alloc0`` call (which returns an untyped
 pointer) as if it would have the type ``ptr TData``. Casting should only be
-done if it is unavoidable: It breaks type safety and bugs can lead to
+done if it is unavoidable: it breaks type safety and bugs can lead to
 mysterious crashes.
 
 **Note**: The example only works because the memory is initialized with zero
@@ -1236,9 +1237,9 @@ details like this when mixing garbage collected data with unmanaged memory.
 
 Procedural type
 ---------------
-A `procedural type`:idx: is a (somewhat abstract) pointer to a procedure. 
-``nil`` is an allowed value for a variable of a procedural type. 
-Nimrod uses procedural types to achieve `functional`:idx: programming 
+A `procedural type`:idx: is a (somewhat abstract) pointer to a procedure.
+``nil`` is an allowed value for a variable of a procedural type.
+Nimrod uses procedural types to achieve `functional`:idx: programming
 techniques.
 
 Example:
@@ -1248,8 +1249,8 @@ Example:
   type
     TCallback = proc (x: int)
 
-  proc echoItem(x: Int) = echo(x)  
-  
+  proc echoItem(x: Int) = echo(x)
+
   proc forEach(callback: TCallback) =
     const
       data = [2, 3, 5, 7, 11]
@@ -1259,7 +1260,7 @@ Example:
   forEach(echoItem)
 
 A subtle issue with procedural types is that the calling convention of the
-procedure influences the type compability: Procedural types are only compatible
+procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention. The different calling conventions are
 listed in the `user guide <nimrodc.html>`_.
 
@@ -1268,35 +1269,35 @@ Modules
 =======
 Nimrod supports splitting a program into pieces with a `module`:idx: concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
-`separate compilation`:idx:. A module may gain access to symbols of another 
-module by the `import`:idx: statement. Only top-level symbols that are marked 
+`separate compilation`:idx:. A module may gain access to symbols of another
+module by the `import`:idx: statement. Only top-level symbols that are marked
 with an asterisk (``*``) are exported:
 
 .. code-block:: nimrod
   # Module A
   var
     x*, y: int
-  
-  proc `*` *(a, b: seq[int]): seq[int] = 
+
+  proc `*` *(a, b: seq[int]): seq[int] =
     # allocate a new sequence:
     newSeq(result, len(a))
     # multiply two int sequences:
     for i in 0..len(a)-1: result[i] = a[i] * b[i]
 
-  when isMainModule: 
+  when isMainModule:
     # test the new ``*`` operator for sequences:
     assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
 
 The above module exports ``x`` and ``*``, but not ``y``.
 
 The top-level statements of a module are executed at the start of the program.
-This can be used to initalize complex data structures for example.
+This can be used to initialize complex data structures for example.
 
 Each module has a special magic constant ``isMainModule`` that is true if the
 module is compiled as the main file. This is very useful to embed tests within
 the module as shown by the above example.
 
-Modules that depend on each other are possible, but strongly discouraged, 
+Modules that depend on each other are possible, but strongly discouraged,
 because then one module cannot be reused without the other.
 
 The algorithm for compiling modules is:
@@ -1353,7 +1354,7 @@ imported by a third one:
 
 
 But this rule does not apply to procedures or iterators. Here the overloading
-rules apply: 
+rules apply:
 
 .. code-block:: nimrod
   # Module A
@@ -1378,7 +1379,7 @@ From statement
 
 We have already seen the simple ``import`` statement that just imports all
 exported symbols. An alternative that only imports listed symbols is the
-``from import`` statement: 
+``from import`` statement:
 
 .. code-block:: nimrod
   from mymodule import x, y, z
@@ -1386,16 +1387,16 @@ exported symbols. An alternative that only imports listed symbols is the
 
 Include statement
 -----------------
-The `include`:idx: statement does something fundametally different than 
-importing a module: It merely includes the contents of a file. The ``include``
+The `include`:idx: statement does something fundametally different than
+importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
 
 .. code-block:: nimrod
   include fileA, fileB, fileC
 
-**Note**: The documentation generator currently does not follow ``include`` 
+**Note**: The documentation generator currently does not follow ``include``
 statements, so exported symbols in an include file will not show up in the
-generated documentation. 
+generated documentation.
 
 
 Part 2

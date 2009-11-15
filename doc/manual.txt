@@ -8,8 +8,8 @@ Nimrod Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the end 
-  user to one/some of the other players, but the total amount seems to remain 
+  "Complexity" seems to be a lot like "energy": you can transfer it from the end
+  user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
 About this document
@@ -102,7 +102,7 @@ The terminals ``IND`` (indentation), ``DED`` (dedentation) and ``SAD``
 These terminals are only generated for lines that are not empty.
 
 The parser and the scanner communicate over a stack which indentation terminal
-should be generated: The stack consists of integers counting the spaces. The
+should be generated: the stack consists of integers counting the spaces. The
 stack is initialized with a zero on its top. The scanner reads from the stack:
 If the current indentation token consists of more spaces than the entry at the
 top of the stack, a ``IND`` token is generated, else if it consists of the same
@@ -168,10 +168,10 @@ language.
 Nimrod is a `style-insensitive`:idx: language. This means that it is not
 case-sensitive and even underscores are ignored:
 **type** is a reserved word, and so is **TYPE** or **T_Y_P_E**. The idea behind
-this is that this allows programmers to use their own prefered spelling style
+this is that this allows programmers to use their own preferred spelling style
 and libraries written by different programmers cannot use incompatible
 conventions. A Nimrod-aware editor or IDE can show the identifiers as
-preferred. Another advantage is that it frees the programmer from remembering 
+preferred. Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier.
 
 
@@ -214,7 +214,7 @@ String literals can also be delimited by three double quotes
 ``"""`` ... ``"""``.
 Literals in this form may run for several lines, may contain ``"`` and do not
 interpret any escape sequences.
-For convenience, when the opening ``"""`` is immediately followed by a newline, 
+For convenience, when the opening ``"""`` is immediately followed by a newline,
 the newline is not included in the string.
 
 
@@ -253,7 +253,7 @@ Character literals are enclosed in single quotes ``''`` and can contain the
 same escape sequences as strings - with one exception: ``\n`` is not allowed
 as it may be wider than one character (often it is the pair CR/LF for example).
 A character is not an Unicode character but a single byte. The reason for this
-is efficiency: For the overwhelming majority of use-cases, the resulting
+is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
 this.
 Another reason is that Nimrod can thus support ``array[char, int]`` or
@@ -284,13 +284,13 @@ Numerical constants
   FLOAT64_LIT ::= ( FLOAT_LIT | INT_LIT ) '\'' ('f' | 'F') '64'
 
 
-As can be seen in the productions, numerical constants can contain unterscores
+As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal 
+prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
-defined. The suffix starting with an apostophe ('\'') is called a
+defined. The suffix starting with an apostrophe ('\'') is called a
 `type suffix`:idx:. Literals without a type prefix are of the type ``int``,
 unless the literal contains a dot or an ``E`` in which case it is of
 type ``float``.
@@ -385,7 +385,7 @@ have no side-effect can be used in constant expressions too:
 
 .. code-block:: nimrod
   import strutils
-  const 
+  const
     constEval = contains("abc", 'b') # computed at compile time!
 
 
@@ -429,7 +429,7 @@ Pre-defined numerical types
 These integer types are pre-defined:
 
 ``int``
-  the generic signed integer type; its size is platform dependant
+  the generic signed integer type; its size is platform dependent
   (the compiler chooses the processor's fastest integer type)
   this type should be used in general. An integer literal that has no type
   suffix is of this type.
@@ -450,7 +450,7 @@ they cannot lead to over- or underflow errors. Unsigned operations use the
 operation                meaning
 ======================   ======================================================
 ``a +% b``               unsigned integer addition
-``a -% b``               unsigned integer substraction
+``a -% b``               unsigned integer subtraction
 ``a *% b``               unsigned integer multiplication
 ``a /% b``               unsigned integer division
 ``a %% b``               unsigned integer modulo operation
@@ -472,7 +472,7 @@ operation                meaning
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependant
+  the generic floating point type; its size is platform dependent
   (the compiler chooses the processor's fastest floating point type)
   this type should be used in general
 
@@ -488,7 +488,7 @@ loses information, the `EOutOfRange`:idx: exception is raised (if the error
 cannot be detected at compile time).
 
 Automatic type conversion in expressions with different kinds
-of floating point types is performed: The smaller type is
+of floating point types is performed: the smaller type is
 converted to the larger. Arithmetic performed on floating point types
 follows the IEEE standard. Integer types are not converted to floating point
 types automatically and vice versa.
@@ -522,7 +522,7 @@ Character type
 ~~~~~~~~~~~~~~
 The `character type`:idx: is named ``char`` in Nimrod. Its size is one byte.
 Thus it cannot represent an UTF-8 character, but a part of it.
-The reason for this is efficiency: For the overwhelming majority of use-cases,
+The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
 Another reason is that Nimrod can support ``array[char, int]`` or
@@ -559,12 +559,12 @@ types can be assigned an explicit ordinal value. However, the ordinal values
 have to be in ascending order. A field whose ordinal value is not
 explicitly given is assigned the value of the previous field + 1.
 
-An explicit ordered enum can have *wholes*:
+An explicit ordered enum can have *holes*:
 
 .. code-block:: nimrod
   type
     TTokenType = enum
-      a = 2, b = 4, c = 89 # wholes are valid
+      a = 2, b = 4, c = 89 # holes are valid
 
 However, it is then not an ordinal anymore, so it is not possible to use these
 enums as an index type for arrays. The procedures ``inc``, ``dec``, ``succ``
@@ -598,6 +598,7 @@ similar to a sequence of characters. However, strings in Nimrod are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
 The assignment operator for strings always copies the string.
+The ``&`` operator concatenates strings.
 
 Strings are compared by their lexicographical order. All comparison operators
 are available. Strings can be indexed like arrays (lower bound is 0). Unlike
@@ -614,18 +615,18 @@ Per convention, all strings are UTF-8 strings, but this is not enforced. For
 example, when reading strings from binary files, they are merely a sequence of
 bytes. The index operation ``s[i]`` means the i-th *char* of ``s``, not the
 i-th *unichar*. The iterator ``runes`` from the ``unicode``
-module can be used for iteration over all unicode characters.
+module can be used for iteration over all Unicode characters.
 
 
 Structured types
 ~~~~~~~~~~~~~~~~
 A variable of a `structured type`:idx: can hold multiple values at the same
-time. Stuctured types can be nested to unlimited levels. Arrays, sequences,
+time. Structured types can be nested to unlimited levels. Arrays, sequences,
 tuples, objects and sets belong to the structured types.
 
 Array and sequence types
 ~~~~~~~~~~~~~~~~~~~~~~~~
-`Arrays`:idx: are a homogenous type, meaning that each element in the array
+`Arrays`:idx: are a homogeneous type, meaning that each element in the array
 has the same type. Arrays always have a fixed length which is specified at
 compile time (except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
@@ -658,6 +659,8 @@ The lower bound of an array or sequence may be received by the built-in proc
 ``low()``, the higher bound by ``high()``. The length may be
 received by ``len()``. ``low()`` for a sequence or an open array always returns
 0, as this is the first valid index.
+One can append elements to a sequence with the ``add()`` proc or the ``&`` operator,
+and remove (and get) the last element of a sequence with the ``pop()`` proc.
 
 The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
@@ -686,10 +689,10 @@ support nested open arrays.
 
 Tuples and object types
 ~~~~~~~~~~~~~~~~~~~~~~~
-A variable of a `tuple`:idx: or `object`:idx: type is a heterogenous storage
+A variable of a `tuple`:idx: or `object`:idx: type is a heterogeneous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple also
-defines an *order* of the fields. Tuples are meant for heterogenous storage
+defines an *order* of the fields. Tuples are meant for heterogeneous storage
 types with no overhead and few abstraction possibilities. The constructor ``()``
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
@@ -736,7 +739,7 @@ the ``is`` operator can be used to determine the object's type.
   assert(student is TStudent) # is true
 
 Object fields that should be visible from outside the defining module, have to
-marked by ``*``. In contrast to tuples, different object types are
+be marked by ``*``. In contrast to tuples, different object types are
 never *equivalent*.
 
 
@@ -760,9 +763,9 @@ An example:
       nkIf            # an if statement
     PNode = ref TNode
     TNode = object
-      case kind: TNodeKind  # the ``kind`` field is the discriminant
+      case kind: TNodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
-      of nkFloat: floavVal: float
+      of nkFloat: floatVal: float
       of nkString: strVal: string
       of nkAdd, nkSub:
         leftOp, rightOp: PNode
@@ -796,7 +799,7 @@ can also be used to include elements (and ranges of elements) in the set:
 
 .. code-block:: nimrod
 
-  {'a'..'z', '0'..'9'} # This constructs a set that conains the
+  {'a'..'z', '0'..'9'} # This constructs a set that contains the
                        # letters from 'a' to 'z' and the digits
                        # from '0' to '9'
 
@@ -821,7 +824,7 @@ operation             meaning
 
 Reference and pointer types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-References (similiar to `pointers`:idx: in other programming languages) are a
+References (similar to `pointers`:idx: in other programming languages) are a
 way to introduce many-to-one relationships. This means different references can
 point to and modify the same location in memory.
 
@@ -864,7 +867,7 @@ further information.
 If a reference points to *nothing*, it has the value ``nil``.
 
 Special care has to be taken if an untraced object contains traced objects like
-traced references, strings or sequences: In order to free everything properly,
+traced references, strings or sequences: in order to free everything properly,
 the built-in procedure ``GCunref`` has to be called before freeing the
 untraced memory manually!
 
@@ -891,7 +894,7 @@ Example:
   forEach(printItem)  # this will NOT work because calling conventions differ
 
 A subtle issue with procedural types is that the calling convention of the
-procedure influences the type compability: Procedural types are only compatible
+procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention.
 
 Nimrod supports these `calling conventions`:idx:, which are all incompatible to
@@ -916,7 +919,7 @@ each other:
     The inline convention means the the caller should not call the procedure,
     but inline its code directly. Note that Nimrod does not inline, but leaves
     this to the C compiler. Thus it generates ``__inline`` procedures. This is
-    only a hint for the compiler: It may completely ignore it and
+    only a hint for the compiler: it may completely ignore it and
     it may inline procedures that are not marked as ``inline``.
 
 `fastcall`:idx:
@@ -930,7 +933,7 @@ each other:
 `closure`:idx:
     indicates that the procedure expects a context, a closure that needs
     to be passed to the procedure. The calling convention ``nimcall`` is
-    compatible to ``closure``. 
+    compatible to ``closure``.
 
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for
@@ -944,11 +947,11 @@ each other:
 
 Most calling conventions exist only for the Windows 32-bit platform.
 
-Assigning/passing a procedure to a procedural variable is only allowed if one 
-of the following conditions hold: 
+Assigning/passing a procedure to a procedural variable is only allowed if one
+of the following conditions hold:
 1) The procedure that is accessed resists in the current module.
 2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
-3) The procedure has a calling convention that differs from ``nimcall``. 
+3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
 
 The rules' purpose is to prevent the case that extending a non-``procvar`` 
@@ -961,14 +964,14 @@ Distinct type
 A distinct type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
-and its base type. Explict type conversions from a distinct type to its
+and its base type. Explicit type conversions from a distinct type to its
 base type and vice versa are allowed.
 
 A distinct type can be used to model different physical `units`:idx: with a
 numerical base type, for example. The following example models currencies.
 
 Different currencies should not be mixed in monetary calculations. Distinct
-types are a perfect tool to model different currencies: 
+types are a perfect tool to model different currencies:
 
 .. code-block:: nimrod
   type
@@ -978,33 +981,33 @@ types are a perfect tool to model different currencies:
   var
     d: TDollar
     e: TEuro
-    
-  echo d + 12  
+
+  echo d + 12
   # Error: cannot add a number with no unit and a ``TDollar``
 
-Unfortunetaly, ``d + 12.TDollar`` is not allowed either, 
+Unfortunately, ``d + 12.TDollar`` is not allowed either,
 because ``+`` is defined for ``int`` (among others), not for ``TDollar``. So
-a ``+`` for dollars needs to be defined: 
+a ``+`` for dollars needs to be defined:
 
 .. code-block::
-  proc `+` (x, y: TDollar): TDollar = 
+  proc `+` (x, y: TDollar): TDollar =
     result = TDollar(int(x) + int(y))
 
 It does not make sense to multiply a dollar with a dollar, but with a
 number without unit; and the same holds for division:
 
-.. code-block:: 
-  proc `*` (x: TDollar, y: int): TDollar = 
+.. code-block::
+  proc `*` (x: TDollar, y: int): TDollar =
     result = TDollar(int(x) * y)
 
-  proc `*` (x: int, y: TDollar): TDollar = 
+  proc `*` (x: int, y: TDollar): TDollar =
     result = TDollar(x * int(y))
     
   proc `div` ...
 
-This quickly gets tedious. The implementations are trivial and the compiler 
+This quickly gets tedious. The implementations are trivial and the compiler
 should not generate all this code only to optimize it away later - after all
-``+`` for dollars should produce the same binary code as ``+`` for ints. 
+``+`` for dollars should produce the same binary code as ``+`` for ints.
 The pragma ``borrow`` has been designed to solve this problem; in principle
 it generates the above trivial implementations:
 
@@ -1013,7 +1016,7 @@ it generates the above trivial implementations:
   proc `*` (x: int, y: TDollar): TDollar {.borrow.}
   proc `div` (x: TDollar, y: int): TDollar {.borrow.}
 
-The ``borrow`` pragma makes the compiler use the same implementation as 
+The ``borrow`` pragma makes the compiler use the same implementation as
 the proc that deals with the distinct type's base type, so no code is
 generated.
 
@@ -1028,19 +1031,19 @@ currency. This can be solved with templates_.
     # unary operators:
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
-    
-  template Multiplicative(typ, base: typeDesc): stmt = 
+
+  template Multiplicative(typ, base: typeDesc): stmt =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
-    
-  template Comparable(typ: typeDesc): stmt = 
+
+  template Comparable(typ: typeDesc): stmt =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
-  
-  template DefineCurrency(typ, base: expr): stmt = 
+
+  template DefineCurrency(typ, base: expr): stmt =
     type
       typ* = distinct base
     Additive(typ)
@@ -1070,7 +1073,7 @@ algorithm determines type equality:
                      s: var set[tuple[PType, PType]]): bool =
     if (a,b) in s: return true
     incl(s, (a,b))
-    if a.kind == b.kind: 
+    if a.kind == b.kind:
       case a.kind
       of int, intXX, float, floatXX, char, string, cstring, pointer, bool, nil:
         # leaf type: kinds identical; nothing more to check
@@ -1109,7 +1112,7 @@ If object ``a`` inherits from ``b``, ``a`` is a subtype of ``b``. This subtype
 relation is extended to the types ``var``, ``ref``, ``ptr``:
 
 .. code-block:: nimrod
-  proc isSubtype(a, b: PType): bool = 
+  proc isSubtype(a, b: PType): bool =
     if a.kind == b.kind:
       case a.kind
       of object:
@@ -1124,12 +1127,12 @@ relation is extended to the types ``var``, ``ref``, ``ptr``:
 
 Convertible relation
 ~~~~~~~~~~~~~~~~~~~~
-A type ``a`` is **implicitely** convertible to type ``b`` iff the following
+A type ``a`` is **implicitly** convertible to type ``b`` iff the following
 algorithm returns true:
 
 .. code-block:: nimrod
   # XXX range types?
-  proc isImplicitelyConvertible(a, b: PType): bool =
+  proc isImplicitlyConvertible(a, b: PType): bool =
     case a.kind
     of proc:
       if b.kind == proc:
@@ -1155,16 +1158,16 @@ algorithm returns true:
       result = b.kind == pointer
     of string:
       result = b.kind == cstring
-    
-A type ``a`` is **explicitely** convertible to type ``b`` iff the following
+
+A type ``a`` is **explicitly** convertible to type ``b`` iff the following
 algorithm returns true:
  
 .. code-block:: nimrod
   proc isIntegralType(t: PType): bool =
     result = isOrdinal(t) or t.kind in {float, float32, float64}
 
-  proc isExplicitelyConvertible(a, b: PType): bool =
-    if isImplicitelyConvertible(a, b): return true
+  proc isExplicitlyConvertible(a, b: PType): bool =
+    if isImplicitlyConvertible(a, b): return true
     if isIntegralType(a) and isIntegralType(b): return true
     if isSubtype(a, b) or isSubtype(b, a): return true
     if a.kind == distinct and typeEquals(a.baseType, b): return true
@@ -1176,7 +1179,7 @@ Assignment compability
 ~~~~~~~~~~~~~~~~~~~~~~
 
 An expression ``b`` can be assigned to an expression ``a`` iff ``a`` is an
-`l-value` and ``isImplicitelyConvertible(b.typ, a.typ)`` holds.
+`l-value` and ``isImplicitlyConvertible(b.typ, a.typ)`` holds.
 
 
 Overloading resolution
@@ -1251,7 +1254,7 @@ Syntax::
 
 
 `Var`:idx: statements declare new local and global variables and
-initialize them. A comma seperated list of variables can be used to specify
+initialize them. A comma separated list of variables can be used to specify
 variables of the same type:
 
 .. code-block:: nimrod
@@ -1260,7 +1263,7 @@ variables of the same type:
     a: int = 0
     x, y, z: int
 
-If an initializer is given the type can be omitted: The variable is of the
+If an initializer is given the type can be omitted: the variable is of the
 same type as the initializing expression. Variables are always initialized
 with a default value if there is no initializing expression. The default
 value depends on the type and is always a zero in binary.
@@ -1401,7 +1404,7 @@ exceptions:
   semantics! However, each ``expr`` is checked for semantics.
 
 The ``when`` statement enables conditional compilation techniques. As
-a special syntatic extension, the ``when`` construct is also available
+a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
 
@@ -1469,7 +1472,7 @@ The statements following the ``except`` clauses are called
 `exception handlers`:idx:.
 
 The empty `except`:idx: clause is executed if there is an exception that is
-in no list. It is similiar to an ``else`` clause in ``if`` statements.
+in no list. It is similar to an ``else`` clause in ``if`` statements.
 
 If there is a `finally`:idx: clause, it is always executed after the
 exception handlers.
@@ -1508,7 +1511,7 @@ variables, ``result`` is initialized to (binary) zero:
 
 .. code-block:: nimrod
   proc returnZero(): int =
-    # implicitely returns 0
+    # implicitly returns 0
 
 
 Yield statement
@@ -1741,8 +1744,8 @@ type `var`).
 Operators with one parameter are prefix operators, operators with two
 parameters are infix operators. (However, the parser distinguishes these from
 the operators position within an expression.) There is no way to declare
-postfix operators: All postfix operators are built-in and handled by the
-grammar explicitely.
+postfix operators: all postfix operators are built-in and handled by the
+grammar explicitly.
 
 Any operator can be called like an ordinary proc with the '`opr`'
 notation. (Thus an operator can have more than two parameters):
@@ -1870,11 +1873,11 @@ dispatching:
   collide(a, b) # output: 2
 
 
-Invokation of a multi-method cannot be ambiguous: Collide 2 is prefered over 
+Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over 
 collide 1 because the resolution works from left to right. 
 In the example ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
 
-**Perfomance note**: Nimrod does not produce a virtual method table, but
+**Performance note**: Nimrod does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
 calls and enables inlining. However, other optimizations like compile time
 evaluation or dead code elimination do not work with methods.
@@ -2166,7 +2169,7 @@ Macros
 `Macros`:idx: are the most powerful feature of Nimrod. They can be used
 to implement `domain specific languages`:idx:.
 
-While macros enable advanced compile-time code tranformations, they
+While macros enable advanced compile-time code transformations, they
 cannot change Nimrod's syntax. However, this is no real restriction because
 Nimrod's syntax is flexible enough anyway.
 
@@ -2190,7 +2193,7 @@ variable number of arguments:
   import macros
 
   macro debug(n: expr): stmt =
-    # `n` is a Nimrod AST that contains the whole macro invokation
+    # `n` is a Nimrod AST that contains the whole macro invocation
     # this macro returns a list of statements:
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
@@ -2239,14 +2242,14 @@ invoked by an expression following a colon::
                           | 'except' exceptList ':' stmt )*
                            ['else' ':' stmt]
 
-The following example outlines a macro that generates a lexical analyser from
+The following example outlines a macro that generates a lexical analyzer from
 regular expressions:
 
 .. code-block:: nimrod
   import macros
 
   macro case_token(n: stmt): stmt =
-    # creates a lexical analyser from regular expressions
+    # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     nil
 
@@ -2268,7 +2271,7 @@ Nimrod supports splitting a program into pieces by a `module`:idx: concept.
 Each module needs to be in its own file. Modules enable
 `information hiding`:idx: and `separate compilation`:idx:. A module may gain
 access to symbols of another module by the `import`:idx: statement.
-`Recursive module dependancies`:idx: are allowed, but slightly subtle. Only
+`Recursive module dependencies`:idx: are allowed, but slightly subtle. Only
 top-level symbols that are marked with an asterisk (``*``) are exported.
 
 The algorithm for compiling modules is:
@@ -2327,7 +2330,7 @@ following places:
 
 * To the end of the tuple/object definition.
 * Field designators of a variable of the given tuple/object type.
-* In all descendent types of the object type.
+* In all descendant types of the object type.
 
 Module scope
 ~~~~~~~~~~~~
@@ -2336,8 +2339,8 @@ the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every other 
 module.
 
-If a module imports an identifier by two different modules, each occurance of 
-the identifier has to be qualified, unless it is an overloaded procedure or 
+If a module imports an identifier by two different modules, each occurrence of
+the identifier has to be qualified, unless it is an overloaded procedure or
 iterator in which case the overloading resolution takes place:
 
 .. code-block:: nimrod
@@ -2394,8 +2397,8 @@ verify this.
 
 procvar pragma
 --------------
-The `procvar`:idx: pragma is used to mark a proc so that it can be passed to a 
-procedural variable. 
+The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
+procedural variable.
 
 
 compileTime pragma

@@ -11,9 +11,9 @@ Nimrod Tutorial (Part II)
 Introduction
 ============
 
-  "With great power comes great responsibility." -- Spider-man
+  "With great power comes great responsibility." -- Spiderman
 
-This document is a tutorial for the advanced constructs of the *Nimrod* 
+This document is a tutorial for the advanced constructs of the *Nimrod*
 programming language.
 
 
@@ -23,17 +23,17 @@ Pragmas are Nimrod's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
 processed during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly dot brackets. This tutorial does not cover
-pragmas. See the `manual <manual.html>`_ or `user guide <nimrodc.html>`_ for 
+pragmas. See the `manual <manual.html>`_ or `user guide <nimrodc.html>`_ for
 a description of the available pragmas.
 
 
 Object Oriented Programming
 ===========================
 
-While Nimrod's support for object oriented programming (OOP) is minimalistic, 
-powerful OOP technics can be used. OOP is seen as *one* way to design a 
+While Nimrod's support for object oriented programming (OOP) is minimalistic,
+powerful OOP technics can be used. OOP is seen as *one* way to design a
 program, not *the only* way. Often a procedural approach leads to simpler
-and more efficient code. In particular, prefering aggregation over inheritance
+and more efficient code. In particular, prefering composition over inheritance
 is often the better design.
 
 
@@ -84,8 +84,8 @@ Mutually recursive types
 ------------------------
 
 Objects, tuples and references can model quite complex data structures which
-depend on each other; they are *mutually recursive*. In Nimrod 
-these types can only be declared within a single type section. (Anything else 
+depend on each other; they are *mutually recursive*. In Nimrod
+these types can only be declared within a single type section. (Anything else
 would require arbitrary symbol lookahead which slows down compilation.)
 
 Example:
@@ -106,22 +106,22 @@ Example:
 Type conversions
 ----------------
 Nimrod distinguishes between `type casts`:idx: and `type conversions`:idx:.
-Casts are done with the ``cast`` operator and force the compiler to 
-interpret a bit pattern to be of another type. 
+Casts are done with the ``cast`` operator and force the compiler to
+interpret a bit pattern to be of another type.
 
-Type conversions are a much more polite way to convert a type into another: 
+Type conversions are a much more polite way to convert a type into another:
 They preserve the abstract *value*, not necessarily the *bit-pattern*. If a
 type conversion is not possible, the compiler complains or an exception is
-raised. 
+raised.
 
 The syntax for type conversions is ``destination_type(expression_to_convert)``
-(like an ordinary call): 
+(like an ordinary call):
 
 .. code-block:: nimrod
-  proc getID(x: TPerson): int = 
+  proc getID(x: TPerson): int =
     return TStudent(x).id
-  
-The ``EInvalidObjectConversion`` exception is raised if ``x`` is not a 
+
+The ``EInvalidObjectConversion`` exception is raised if ``x`` is not a
 ``TStudent``.
 
 
@@ -134,7 +134,7 @@ An example:
 
 .. code-block:: nimrod
 
-  # This is an example how an abstract syntax tree could be modelled in Nimrod
+  # This is an example how an abstract syntax tree could be modeled in Nimrod
   type
     TNodeKind = enum  # the different node types
       nkInt,          # a leaf with an integer value
@@ -171,12 +171,12 @@ object fields raises an exception.
 
 Methods
 -------
-In ordinary object oriented languages, procedures (also called *methods*) are 
-bound to a class. This has disadvantages: 
+In ordinary object oriented languages, procedures (also called *methods*) are
+bound to a class. This has disadvantages:
 
-* Adding a method to a class the programmer has no control over is 
+* Adding a method to a class the programmer has no control over is
   impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: Is
+* Often it is unclear where the method should belong to: is
   ``join`` a string method or an array method?
 
 Nimrod avoids these problems by not assigning methods to a class. All methods
@@ -192,7 +192,7 @@ The syntax ``obj.method(args)`` can be used instead of ``method(obj, args)``.
 If there are no remaining arguments, the parentheses can be omitted:
 ``obj.len`` (instead of ``len(obj)``).
 
-This `method call syntax`:idx: is not restricted to objects, it can be used 
+This `method call syntax`:idx: is not restricted to objects, it can be used
 for any type:
 
 .. code-block:: nimrod
@@ -217,9 +217,9 @@ So "pure object oriented" code is easy to write:
 
 Properties
 ----------
-As the above example shows, Nimrod has no need for *get-properties*:  
-Ordinary get-procedures that are called with the *method call syntax* achieve 
-the same. But setting a value is different; for this a special setter syntax 
+As the above example shows, Nimrod has no need for *get-properties*:
+Ordinary get-procedures that are called with the *method call syntax* achieve
+the same. But setting a value is different; for this a special setter syntax
 is needed:
 
 .. code-block:: nimrod
@@ -229,23 +229,23 @@ is needed:
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
-                 
-  proc `host=`*(s: var TSocket, value: int) {.inline.} = 
+
+  proc `host=`*(s: var TSocket, value: int) {.inline.} =
     ## setter of hostAddr
     s.FHost = value
   
   proc host*(s: TSocket): int {.inline.} =
     ## getter of hostAddr
     return s.FHost
-    
-  var 
+
+  var
     s: TSocket
   s.host = 34  # same as `host=`(s, 34)
 
 (The example also shows ``inline`` procedures.)
 
 
-The ``[]`` array access operator can be overloaded to provide 
+The ``[]`` array access operator can be overloaded to provide
 `array properties`:idx:\ :
 
 .. code-block:: nimrod
@@ -261,15 +261,15 @@ The ``[]`` array access operator can be overloaded to provide
     of 2: v.z = value
     else: assert(false)
 
-  proc `[]`* (v: TVector, i: int): float = 
+  proc `[]`* (v: TVector, i: int): float =
     # getter
     case i
     of 0: result = v.x
     of 1: result = v.y
     of 2: result = v.z
     else: assert(false)
-   
-The example is silly, since a vector is better modelled by a tuple which 
+
+The example is silly, since a vector is better modelled by a tuple which
 already provides ``v[]`` access.
 
 
@@ -336,9 +336,9 @@ dispatching:
   collide(a, b) # output: 2
 
 
-As the example demonstrates, invokation of a multi-method cannot be ambiguous:
-Collide 2 is prefered over collide 1 because the resolution works from left to
-right. Thus ``TUnit, TThing`` is prefered over ``TThing, TUnit``.
+As the example demonstrates, invocation of a multi-method cannot be ambiguous:
+Collide 2 is preferred over collide 1 because the resolution works from left to
+right. Thus ``TUnit, TThing`` is preferred over ``TThing, TUnit``.
 
 **Perfomance note**: Nimrod does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -349,20 +349,20 @@ evaluation or dead code elimination do not work with methods.
 Exceptions
 ==========
 
-In Nimrod `exceptions`:idx: are objects. By convention, exception types are 
-prefixed with an 'E', not 'T'. The ``system`` module defines an exception 
+In Nimrod `exceptions`:idx: are objects. By convention, exception types are
+prefixed with an 'E', not 'T'. The ``system`` module defines an exception
 hierarchy that you might want to stick to.
 
 Exceptions should be allocated on the heap because their lifetime is unknown.
 
-A convention is that exceptions should be raised in *exceptional* cases: 
+A convention is that exceptions should be raised in *exceptional* cases:
 For example, if a file cannot be opened, this should not raise an
 exception since this is quite common (the file may not exist).
 
 
 Raise statement
 ---------------
-Raising an exception is done with the ``raise`` statement: 
+Raising an exception is done with the ``raise`` statement:
 
 .. code-block:: nimrod
   var
@@ -371,14 +371,14 @@ Raising an exception is done with the ``raise`` statement:
   e.msg = "the request to the OS failed"
   raise e
 
-If the ``raise`` keyword is not followed by an expression, the last exception 
-is *re-raised*. 
+If the ``raise`` keyword is not followed by an expression, the last exception
+is *re-raised*.
 
 
 Try statement
 -------------
 
-The `try`:idx: statement handles exceptions: 
+The `try`:idx: statement handles exceptions:
 
 .. code-block:: nimrod
   # read the first two lines of a text file that should contain numbers
@@ -403,11 +403,11 @@ The `try`:idx: statement handles exceptions:
     finally:
       close(f)
 
-The statements after the ``try`` are executed unless an exception is 
-raised. Then the appropriate ``except`` part is executed. 
+The statements after the ``try`` are executed unless an exception is
+raised. Then the appropriate ``except`` part is executed.
 
 The empty ``except`` part is executed if there is an exception that is
-not explicitely listed. It is similiar to an ``else`` part in ``if`` 
+not explicitly listed. It is similar to an ``else`` part in ``if``
 statements.
 
 If there is a ``finally`` part, it is always executed after the
@@ -422,9 +422,9 @@ is not executed (if an exception occurs).
 Generics
 ========
 
-`Generics`:idx: are Nimrod's means to parametrize procs, iterators or types 
+`Generics`:idx: are Nimrod's means to parametrize procs, iterators or types
 with `type parameters`:idx:. They are most useful for efficient type safe
-containers: 
+containers:
 
 .. code-block:: nimrod
   type
@@ -434,7 +434,7 @@ containers:
       data: T                    # the data stored in a node
     PBinaryTree*[T] = ref TBinaryTree[T] # type that is exported
 
-  proc newNode*[T](data: T): PBinaryTree[T] = 
+  proc newNode*[T](data: T): PBinaryTree[T] =
     # constructor for a node
     new(result)
     result.dat = data
@@ -448,7 +448,7 @@ containers:
       while it != nil:
         # compare the data items; uses the generic ``cmp`` proc
         # that works for any type that has a ``==`` and ``<`` operator
-        var c = cmp(it.data, n.data) 
+        var c = cmp(it.data, n.data)
         if c < 0:
           if it.le == nil:
             it.le = n
@@ -460,13 +460,13 @@ containers:
             return
           it = it.ri
 
-  proc add*[T](root: var PBinaryTree[T], data: T) = 
+  proc add*[T](root: var PBinaryTree[T], data: T) =
     # convenience proc:
     add(root, newNode(data))
 
   iterator preorder*[T](root: PBinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented, 
+    # Since recursive iterators are not yet implemented,
     # this uses an explicit stack (which is more efficient anyway):
     var stack: seq[PBinaryTree[T]] = @[root]
     while stack.len > 0:
@@ -483,19 +483,19 @@ containers:
   for str in preorder(root):
     stdout.writeln(str)
 
-The example shows a generic binary tree. Depending on context, the brackets are 
-used either to introduce type parameters or to instantiate a generic proc, 
-iterator or type. As the example shows, generics work with overloading: The
+The example shows a generic binary tree. Depending on context, the brackets are
+used either to introduce type parameters or to instantiate a generic proc,
+iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
-is not hidden and used in the ``preorder`` iterator. 
+is not hidden and used in the ``preorder`` iterator.
 
 
 Templates
 =========
 
-Templates are a simple substitution mechanism that operates on Nimrod's 
-abstract syntax trees. Templates are processed in the semantic pass of the 
-compiler. They integrate well with the rest of the language and share none 
+Templates are a simple substitution mechanism that operates on Nimrod's
+abstract syntax trees. Templates are processed in the semantic pass of the
+compiler. They integrate well with the rest of the language and share none
 of C's preprocessor macros flaws.
 
 To *invoke* a template, call it like a procedure.
@@ -509,31 +509,31 @@ Example:
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
 
-The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact 
-templates: This has the benefit that if you overload the ``==`` operator, 
+The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact
+templates: this has the benefit that if you overload the ``==`` operator,
 the ``!=`` operator is available automatically and does the right thing. (Except
 for IEEE floating point numbers - NaN breaks basic boolean logic.)
 
 ``a > b`` is transformed into ``b < a``.
-``a in b`` is transformed into ``contains(b, a)``. 
+``a in b`` is transformed into ``contains(b, a)``.
 ``notin`` and ``isnot`` have the obvious meanings.
 
 Templates are especially useful for lazy evaluation purposes. Consider a
-simple proc for logging: 
+simple proc for logging:
 
 .. code-block:: nimrod
   const
     debug = True
-    
-  proc log(msg: string) {.inline.} = 
+
+  proc log(msg: string) {.inline.} =
     if debug: stdout.writeln(msg)
   
   var
     x = 4
   log("x has the value: " & $x)
 
-This code has a shortcoming: If ``debug`` is set to false someday, the quite
-expensive ``$`` and ``&`` operations are still performed! (The argument 
+This code has a shortcoming: if ``debug`` is set to false someday, the quite
+expensive ``$`` and ``&`` operations are still performed! (The argument
 evaluation for procedures is *eager*).
 
 Turning the ``log`` proc into a template solves this problem:
@@ -541,8 +541,8 @@ Turning the ``log`` proc into a template solves this problem:
 .. code-block:: nimrod
   const
     debug = True
-    
-  template log(msg: string) = 
+
+  template log(msg: string) =
     if debug: stdout.writeln(msg)
   
   var
@@ -558,12 +558,12 @@ The template body does not open a new scope. To open a new scope use a ``block``
 statement:
 
 .. code-block:: nimrod
-  template declareInScope(x: expr, t: typeDesc): stmt = 
+  template declareInScope(x: expr, t: typeDesc): stmt =
     var x: t
-    
-  template declareInNewScope(x: expr, t: typeDesc): stmt = 
+
+  template declareInNewScope(x: expr, t: typeDesc): stmt =
     # open a new scope:
-    block: 
+    block:
       var x: t
 
   declareInScope(a, int)
@@ -598,7 +598,7 @@ via a special ``:`` syntax:
   
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. The ``withFile`` template contains boilerplate code and helps to
-avoid a common bug: To forget to close the file. Note how the
+avoid a common bug: to forget to close the file. Note how the
 ``var fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
 
@@ -606,12 +606,12 @@ once.
 Macros
 ======
 
-Macros enable advanced compile-time code tranformations, but they
+Macros enable advanced compile-time code transformations, but they
 cannot change Nimrod's syntax. However, this is no real restriction because
-Nimrod's syntax is flexible enough anyway. 
+Nimrod's syntax is flexible enough anyway.
 
 To write a macro, one needs to know how the Nimrod concrete syntax is converted
-to an abstract syntax tree (AST). The AST is documented in the 
+to an abstract syntax tree (AST). The AST is documented in the
 `macros <macros.html>`_ module.
 
 There are two ways to invoke a macro:
@@ -676,13 +676,13 @@ Statement Macros
 Statement macros are defined just as expression macros. However, they are
 invoked by an expression following a colon.
 
-The following example outlines a macro that generates a lexical analyser from
+The following example outlines a macro that generates a lexical analyzer from
 regular expressions:
 
 .. code-block:: nimrod
 
   macro case_token(n: stmt): stmt =
-    # creates a lexical analyser from regular expressions
+    # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     nil
 
