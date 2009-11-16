@@ -1376,9 +1376,9 @@ begin
         // type alias:
         
       end;
-      tkEnum:
-      tkObject:
-      tkTuple:
+      tkEnum: begin end;
+      tkObject: begin end;
+      tkTuple: begin end;
       else break;
     end
   end
@@ -1401,7 +1401,8 @@ begin
     tkTemplate:  result := parseRoutine(p, nkTemplateDef);
     tkConverter: result := parseRoutine(p, nkConverterDef);
     tkType, tkEnum, tkObject, tkTuple:      
-      result := parseTypeAlias(p, nkTypeSection, parseTypeDef);
+      result := nil;
+      //result := parseTypeAlias(p, nkTypeSection, parseTypeDef);
     tkConst:     result := parseConstSection(p);
     tkWhen:      result := parseIfOrWhen(p, nkWhenStmt);
     tkVar:       result := parseSection(p, nkVarSection, parseVariable);

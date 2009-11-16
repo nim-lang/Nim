@@ -9,7 +9,6 @@
 
 ## This module contains various string utility routines.
 ## See the module `regexprs` for regular expression support.
-## All the routines here are avaiable for the EMCAScript target too!
 
 {.deadCodeElim: on.}
 
@@ -27,7 +26,7 @@ template newException(exceptn, message: expr): expr =
 
 
 type
-  TCharSet* = set[char] # for compability with Nim
+  TCharSet* = set[char] # for compatibility with Nim
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}

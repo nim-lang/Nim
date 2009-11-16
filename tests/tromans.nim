@@ -1,5 +1,5 @@
 import
-  math, strutils
+  strutils
 
 ## Convert an integer to a Roman numeral
 # See http://en.wikipedia.org/wiki/Roman_numerals for reference
@@ -15,7 +15,7 @@ proc raiseInvalidValue(msg: string) {.noreturn.} =
 # --> No. Why introduce additional state into such a simple and nice
 # interface? State is evil. :D
 
-proc ConvertRomanToDecimal(romanVal: string): int =
+proc RomanToDecimal(romanVal: string): int =
   result = 0
   var prevVal = 0
   for i in countdown(romanVal.len - 1, 0):
@@ -36,7 +36,7 @@ proc ConvertRomanToDecimal(romanVal: string): int =
       dec(result, val)
     prevVal = val
 
-proc ConvertDecimalToRoman(decValParam: int): string =
+proc DecimalToRoman(decValParam: int): string =
   # Apparently numbers cannot be above 4000
   # Well, they can be (using overbar or parenthesis notation)
   # but I see little interest (beside coding challenge) in coding them as
@@ -55,10 +55,11 @@ proc ConvertDecimalToRoman(decValParam: int): string =
       dec(decVal, val)
       result.add(key)
 
-randomize()
-for i in 1 .. 10:
-  var rnd = 1 + random(3990)
-  var roman = ConvertDecimalToRoman(rnd)
-  var decimal = ConvertRomanToDecimal(roman)
-  echo("$# => $# => $#" % [ $rnd, roman, $decimal ])
+for i in 1..100:
+  if RomanToDecimal(DecimalToRoman(i)) != i: quit "BUG"
+
+for i in items([1238, 1777, 3830, 2401, 379, 33, 940, 3973]):
+  if RomanToDecimal(DecimalToRoman(i)) != i: quit "BUG"
+ 
+echo "success" #OUT success
 
