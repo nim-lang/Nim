@@ -2276,7 +2276,7 @@ top-level symbols that are marked with an asterisk (``*``) are exported.
 
 The algorithm for compiling modules is:
 
-- Compile the whole module as usual, following import statements recursively
+- compile the whole module as usual, following import statements recursively
 - if there is a cycle only import the already parsed symbols (that are
   exported); if an unknown identifier occurs then abort
 
@@ -2406,6 +2406,11 @@ compileTime pragma
 The `compileTime`:idx: pragma is used to mark a proc to be used at compile
 time only. No code will be generated for it. Compile time procs are useful
 as helpers for macros.
+
+
+noReturn pragma
+---------------
+The `noreturn`:idx: pragma is used to mark a proc that it never returns. 
 
 
 error pragma

@@ -916,6 +916,12 @@ begin
       result := transformAddrDeref(c, n, nkAddr, nkHiddenAddr);
     nkHiddenStdConv, nkHiddenSubConv, nkConv:
       result := transformConv(c, n);
+    nkDiscardStmt: begin
+      for i := 0 to sonsLen(n)-1 do
+        result.sons[i] := transform(c, n.sons[i]);
+      if isConstExpr(result.sons[0]) then
+        result := newNode(nkCommentStmt)
+    end;
     nkCommentStmt, nkTemplateDef: exit;
     nkConstSection: exit; // do not replace ``const c = 3`` with ``const 3 = 3``
     else begin
