@@ -43,7 +43,7 @@ proc close*(z: var TZipArchive) =
   zip_close(z.w)
  
 proc createDir*(z: var TZipArchive, dir: string) = 
-  ## Creates a directory within the `z` archive. This does not fails if the
+  ## Creates a directory within the `z` archive. This does not fail if the
   ## directory already exists. Note that for adding a file like 
   ## ``"path1/path2/filename"`` it is not necessary
   ## to create the ``"path/path2"`` subdirectories - it will be done 

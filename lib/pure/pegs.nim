@@ -148,7 +148,7 @@ proc sequence*(a: openArray[TPeg]): TPeg =
   multipleOp(pkSequence, addSequence)
  
 proc `?`*(a: TPeg): TPeg =
-  ## constructs an optional piece with the PEG `a`
+  ## constructs an optional for the PEG `a`
   if a.kind in {pkOption, pkGreedyRep, pkGreedyAny, pkGreedyRepChar,
                 pkGreedyRepSet}:
     # a* ?  --> a*
@@ -159,7 +159,7 @@ proc `?`*(a: TPeg): TPeg =
     result.sons = @[a]
 
 proc `*`*(a: TPeg): TPeg =
-  ## constructs a "greedy repetition" piece the PEG `a`
+  ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
   of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
     assert false
