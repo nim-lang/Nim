@@ -60,7 +60,7 @@ const
 +{&} '  nimrod command [options] inputfile [arguments]' +{&} nl
 +{&} 'Command::' +{&} nl
 +{&} '  compile, c                compile project with default code generator (C)' +{&} nl
-+{&} '  compile_to_c, cc          compile project with C code generator' +{&} nl
++{&} '  compileToC, cc            compile project with C code generator' +{&} nl
 +{&} '  doc                       generate the documentation for inputfile' +{&} nl
 +{&} '  rst2html                  converts a reStructuredText file to HTML' +{&} nl
 +{&} '  rst2tex                   converts a reStructuredText file to TeX' +{&} nl
@@ -71,19 +71,19 @@ const
 +{&} '  -o, --out:FILE            set the output filename' +{&} nl
 +{&} '  -d, --define:SYMBOL       define a conditional symbol' +{&} nl
 +{&} '  -u, --undef:SYMBOL        undefine a conditional symbol' +{&} nl
-+{&} '  -f, --force_build         force rebuilding of all modules' +{&} nl
-+{&} '  --symbol_files:on|off     use symbol files to speed up compilation (buggy!)' +{&} nl
-+{&} '  --stack_trace:on|off      code generation for stack trace ON|OFF' +{&} nl
-+{&} '  --line_trace:on|off       code generation for line trace ON|OFF' +{&} nl
++{&} '  -f, --forceBuild          force rebuilding of all modules' +{&} nl
++{&} '  --symbolFiles:on|off      use symbol files to speed up compilation (buggy!)' +{&} nl
++{&} '  --stackTrace:on|off       code generation for stack trace ON|OFF' +{&} nl
++{&} '  --lineTrace:on|off        code generation for line trace ON|OFF' +{&} nl
 +{&} '  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF' +{&} nl
 +{&} '  -x, --checks:on|off       code generation for all runtime checks ON|OFF' +{&} nl
-+{&} '  --obj_checks:on|off       code generation for obj conversion checks ON|OFF' +{&} nl
-+{&} '  --field_checks:on|off     code generation for case variant fields ON|OFF' +{&} nl
-+{&} '  --range_checks:on|off     code generation for range checks ON|OFF' +{&} nl
-+{&} '  --bound_checks:on|off     code generation for bound checks ON|OFF' +{&} nl
-+{&} '  --overflow_checks:on|off  code generation for over-/underflow checks ON|OFF' +{&} nl
++{&} '  --objChecks:on|off        code generation for obj conversion checks ON|OFF' +{&} nl
++{&} '  --fieldChecks:on|off      code generation for case variant fields ON|OFF' +{&} nl
++{&} '  --rangeChecks:on|off      code generation for range checks ON|OFF' +{&} nl
++{&} '  --boundChecks:on|off      code generation for bound checks ON|OFF' +{&} nl
++{&} '  --overflowChecks:on|off   code generation for over-/underflow checks ON|OFF' +{&} nl
 +{&} '  -a, --assertions:on|off   code generation for assertions ON|OFF' +{&} nl
-+{&} '  --dead_code_elim:on|off   whole program dead code elimination ON|OFF' +{&} nl
++{&} '  --deadCodeElim:on|off     whole program dead code elimination ON|OFF' +{&} nl
 +{&} '  --opt:none|speed|size     optimize not at all or for speed|size' +{&} nl
 +{&} '  --app:console|gui|lib     generate a console|GUI application|dynamic library' +{&} nl
 +{&} '  -r, --run                 run the compiled program with given arguments' +{&} nl
@@ -100,9 +100,9 @@ const
 +{&} 'Advanced commands::' +{&} nl
 +{&} '  pas                       convert a Pascal file to Nimrod syntax' +{&} nl
 +{&} '  pretty                    pretty print the inputfile' +{&} nl
-+{&} '  gen_depend                generate a DOT file containing the' +{&} nl
++{&} '  genDepend                 generate a DOT file containing the' +{&} nl
 +{&} '                            module dependency graph' +{&} nl
-+{&} '  list_def                  list all defined conditionals and exit' +{&} nl
++{&} '  listDef                   list all defined conditionals and exit' +{&} nl
 +{&} '  check                     checks the project for syntax and semantic' +{&} nl
 +{&} '  parse                     parses a single file (for debugging Nimrod)' +{&} nl
 +{&} 'Advanced options:' +{&} nl
@@ -111,27 +111,27 @@ const
 +{&} '  --hints:on|off            hints ON|OFF' +{&} nl
 +{&} '  --hint[X]:on|off          specific hint X ON|OFF' +{&} nl
 +{&} '  --lib:PATH                set the system library path' +{&} nl
-+{&} '  -c, --compile_only        compile only; do not assemble or link' +{&} nl
-+{&} '  --no_linking              compile but do not link' +{&} nl
-+{&} '  --no_main                 do not generate a main procedure' +{&} nl
-+{&} '  --gen_script              generate a compile script (in the ''nimcache''' +{&} nl
++{&} '  -c, --compileOnly         compile only; do not assemble or link' +{&} nl
++{&} '  --noLinking               compile but do not link' +{&} nl
++{&} '  --noMain                  do not generate a main procedure' +{&} nl
++{&} '  --genScript               generate a compile script (in the ''nimcache''' +{&} nl
 +{&} '                            subdirectory named ''compile_$project$scriptext'')' +{&} nl
 +{&} '  --os:SYMBOL               set the target operating system (cross-compilation)' +{&} nl
 +{&} '  --cpu:SYMBOL              set the target processor (cross-compilation)' +{&} nl
 +{&} '  --debuginfo               enables debug information' +{&} nl
 +{&} '  -t, --passc:OPTION        pass an option to the C compiler' +{&} nl
 +{&} '  -l, --passl:OPTION        pass an option to the linker' +{&} nl
-+{&} '  --gen_mapping             generate a mapping file containing' +{&} nl
++{&} '  --genMapping              generate a mapping file containing' +{&} nl
 +{&} '                            (Nimrod, mangled) identifier pairs' +{&} nl
-+{&} '  --line_dir:on|off         generation of #line directive ON|OFF' +{&} nl
++{&} '  --lineDir:on|off          generation of #line directive ON|OFF' +{&} nl
 +{&} '  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod' +{&} nl
-+{&} '  --skip_cfg                do not read the general configuration file' +{&} nl
-+{&} '  --skip_proj_cfg           do not read the project''s configuration file' +{&} nl
++{&} '  --skipCfg                 do not read the general configuration file' +{&} nl
++{&} '  --skipProjCfg             do not read the project''s configuration file' +{&} nl
 +{&} '  --gc:refc|boehm|none      use Nimrod''s native GC|Boehm GC|no GC' +{&} nl
 +{&} '  --index:FILE              use FILE to generate a documenation index file' +{&} nl
 +{&} '  --putenv:key=value        set an environment variable' +{&} nl
-+{&} '  --list_cmd                list the commands used to execute external programs' +{&} nl
-+{&} '  --parallel_build=0|1|...  perform a parallel build' +{&} nl
++{&} '  --listCmd                 list the commands used to execute external programs' +{&} nl
++{&} '  --parallelBuild=0|1|...   perform a parallel build' +{&} nl
 +{&} '                            value = number of processors (0 for auto-detect)' +{&} nl
 +{&} '  --verbosity:0|1|2|3       set Nimrod''s verbosity level (0 is default)' +{&} nl
 +{&} '  -v, --version             show detailed version information' +{&} nl
@@ -180,7 +180,8 @@ begin
     helpWritten := true;
     messageOut(format(HelpMessage, [VersionAsString, 
                                     platform.os[platform.hostOS].name,
-                                    cpu[platform.hostCPU].name]))
+                                    cpu[platform.hostCPU].name]));
+    halt(0);
   end
 end;
 

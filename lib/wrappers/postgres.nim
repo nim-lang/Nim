@@ -11,7 +11,7 @@ when defined(windows):
 elif defined(macosx):
   const dllName = "libpq.dylib"
 else:
-  const dllName = "libpq.so"
+  const dllName = "libpq.so(.5|)"
   
 type
   POid* = ptr Oid

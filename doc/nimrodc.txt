@@ -12,7 +12,7 @@ Introduction
 
 This document describes the usage of the *Nimrod compiler*
 on the different supported platforms. It is not a definition of the Nimrod
-programming language (therefore is the manual).
+programming language (therefore is the `manual <manual>`_).
 
 Nimrod is free software; it is licensed under the
 `GNU General Public License <gpl.html>`_.
@@ -42,7 +42,7 @@ looks for it in the following directories (in this order):
 3. ``/etc/nimrod.cfg`` (UNIX)
 
 The search stops as soon as a configuration file has been found. The reading
-of ``nimrod.cfg`` can be suppressed by the ``--skip_cfg`` command line option.
+of ``nimrod.cfg`` can be suppressed by the ``--skipCfg`` command line option.
 Configuration settings can be overwritten in a project specific
 configuration file that is read automatically. This specific file has to
 be in the same directory as the project and be of the same name, except
@@ -125,24 +125,24 @@ At runtime the dynamic library is searched for (in this order)::
   libtcl8.3.so.0
 
 
-No_decl Pragma
-~~~~~~~~~~~~~~
-The `no_decl`:idx: pragma can be applied to almost any symbol (variable, proc,
+NoDecl Pragma
+~~~~~~~~~~~~~
+The `noDecl`:idx: pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nimrod that it should not generate a declaration for the symbol in
 the C code. For example:
 
 .. code-block:: Nimrod
   var
-    EACCES {.importc, no_decl.}: cint # pretend EACCES was a variable, as
-                                      # Nimrod does not know its value
+    EACCES {.importc, noDecl.}: cint # pretend EACCES was a variable, as
+                                     # Nimrod does not know its value
 
 However, the ``header`` pragma is often the better alternative.
 
 
 Header Pragma
 ~~~~~~~~~~~~~
-The `header`:idx: pragma is very similar to the ``no_decl`` pragma: It can be
+The `header`:idx: pragma is very similar to the ``noDecl`` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared 
 and instead the generated code should contain an ``#include``:
 
@@ -170,22 +170,23 @@ strings automatically:
   printf("hallo %s", "world") # "world" will be passed as C string
 
 
-Line_dir Option
-~~~~~~~~~~~~~~~
-The `line_dir`:idx: option can be turned on or off. If on the generated C code
-contains ``#line`` directives. This may be helpful for debugging with GDB.
+LineDir Option
+~~~~~~~~~~~~~~
+The `lineDir`:idx: option can be turned on or off. If turned on the 
+generated C code contains ``#line`` directives. This may be helpful for 
+debugging with GDB.
 
 
-Stack_trace Option
-~~~~~~~~~~~~~~~~~~
-If the `stack_trace`:idx: option is turned on, the generated C contains code to
+StackTrace Option
+~~~~~~~~~~~~~~~~~
+If the `stackTrace`:idx: option is turned on, the generated C contains code to
 ensure that proper stack traces are given if the program crashes or an
 uncaught exception is raised.
 
 
-Line_trace Option
-~~~~~~~~~~~~~~~~~
-The `line_trace`:idx: option implies the ``stack_trace`` option. If turned on,
+LineTrace Option
+~~~~~~~~~~~~~~~~
+The `lineTrace`:idx: option implies the ``stackTrace`` option. If turned on,
 the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
@@ -239,21 +240,21 @@ information that this cannot happen to the GC. If the programmer uses the
 memory, but nothing worse happens.
 
 
-Dead_code_elim Pragma
+DeadCodeElim Pragma
 ~~~~~~~~~~~~~~~~~~~~~
-The `dead_code_elim`:idx: pragma only applies to whole modules: It tells the
+The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
 compiler to activate (or deactivate) dead code elimination for the module the
 pragma appers in.
 
-The ``--dead_code_elim:on`` command line switch has the same effect as marking
-every module with ``{.dead_code_elim:on}``. However, for some modules such as
+The ``--deadCodeElim:on`` command line switch has the same effect as marking
+every module with ``{.deadCodeElim:on}``. However, for some modules such as
 the GTK wrapper it makes sense to *always* turn on dead code elimination -
 no matter if it is globally active or not.
 
 Example:
 
 .. code-block:: nimrod
-  {.dead_code_elim: on.}
+  {.deadCodeElim: on.}
 
 
 Disabling certain messages

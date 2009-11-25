@@ -41,10 +41,10 @@ proc writeProfile() {.noconv.} =
   var i = 0
   var f: TFile
   var j = 1
-  while openFile(f, filename & $j & ".txt"):
-    closeFile(f)
+  while open(f, filename & $j & ".txt"):
+    close(f)
     inc(j)
-  if openFile(f, filename & $j & ".txt", fmWrite):
+  if open(f, filename & $j & ".txt", fmWrite):
     var N = 0
     # we have to compute the actual length of the array:
     while profileData[N].procname != nil: inc(N)
@@ -56,6 +56,6 @@ proc writeProfile() {.noconv.} =
       write(f, ": ")
       writeln(f, profileData[i].total)
       inc(i)
-    closeFile(f)
+    close(f)
 
 addQuitProc(writeProfile)

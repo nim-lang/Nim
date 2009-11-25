@@ -117,6 +117,11 @@ begin
   liMessage(n.info, msg, arg);
 end;
 
+function isSpecial(n: PNode): bool;
+begin
+  result := (n.kind = nkExceptBranch) or (n.kind = nkEmpty)
+end;
+
 function evalIf(c: PEvalContext; n: PNode): PNode;
 var
   i, len: int;
@@ -125,7 +130,7 @@ begin
   len := sonsLen(n);
   while (i < len) and (sonsLen(n.sons[i]) >= 2) do begin
     result := evalAux(c, n.sons[i].sons[0]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     if (result.kind = nkIntLit) and (result.intVal <> 0) then begin
       result := evalAux(c, n.sons[i].sons[1]);
       exit
@@ -144,7 +149,7 @@ var
   res: PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   res := result;
   result := emptyNode;
   for i := 1 to sonsLen(n)-1 do begin
@@ -173,7 +178,7 @@ function evalWhile(c: PEvalContext; n: PNode): PNode;
 begin
   while true do begin
     result := evalAux(c, n.sons[0]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     if getOrdValue(result) = 0 then break;
     result := evalAux(c, n.sons[1]);
     case result.kind of
@@ -183,7 +188,7 @@ begin
           break
         end
       end;
-      nkExceptBranch, nkReturnToken: break;
+      nkExceptBranch, nkReturnToken, nkEmpty: break;
       else begin end
     end;
     dec(gWhileCounter);
@@ -314,7 +319,7 @@ begin
     v := a.sons[0].sym;
     if a.sons[2] <> nil then begin
       result := evalAux(c, a.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
     end
     else
       result := getNullValue(a.sons[0].typ, a.sons[0].info);
@@ -330,7 +335,7 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   prc := result;
   // bind the actual params to the local parameter
   // of a new binding
@@ -344,13 +349,13 @@ begin
   setLength(d.params, sonsLen(n));
   for i := 1 to sonsLen(n)-1 do begin
     result := evalAux(c, n.sons[i]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     d.params[i] := result;
   end;
   if n.typ <> nil then d.params[0] := getNullValue(n.typ, n.info);
   pushStackFrame(c, d);
   result := evalAux(c, prc);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   if n.typ <> nil then result := d.params[0];
   popStackFrame(c);
 end;
@@ -380,10 +385,10 @@ var
   idx: biggestInt;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x := result;
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   idx := getOrdValue(result);
   result := emptyNode;
   case x.kind of
@@ -416,7 +421,7 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x := result;
   if x.kind <> nkPar then InternalError(n.info, 'evalFieldAccess');
   field := n.sons[1].sym;
@@ -437,10 +442,10 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x := result;
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x.kind := result.kind;
   x.typ := result.typ;
   case x.kind of
@@ -469,10 +474,10 @@ var
   tmpn: PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x := result;
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   if (x.kind <> result.kind) then
     stackTrace(c, n, errCannotInterpretNodeX, nodeKindToStr[n.kind])
   else begin
@@ -527,10 +532,10 @@ var
   a, b: PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   case a.kind of
     nkCharLit..nkInt64Lit: a.intval := a.intVal + sign * getOrdValue(b);
@@ -553,7 +558,7 @@ var
 begin
   for i := 1 to sonsLen(n)-1 do begin
     result := evalAux(c, n.sons[i]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     Write(output, getStrValue(result));
   end;
   writeln(output, '');
@@ -563,7 +568,7 @@ end;
 function evalExit(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   liMessage(n.info, hintQuitCalled);
   halt(int(getOrdValue(result)));
 end;
@@ -571,7 +576,7 @@ end;
 function evalOr(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   if result.kind <> nkIntLit then InternalError(n.info, 'evalOr');
   if result.intVal = 0 then result := evalAux(c, n.sons[2])
 end;
@@ -579,7 +584,7 @@ end;
 function evalAnd(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   if result.kind <> nkIntLit then InternalError(n.info, 'evalAnd');
   if result.intVal <> 0 then result := evalAux(c, n.sons[2])
 end;
@@ -607,9 +612,8 @@ end;
 function evalDeref(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   case result.kind of
-    nkExceptBranch: exit;
     nkNilLit: stackTrace(c, n, errNilAccess);
     nkRefTy: result := result.sons[0];
     else InternalError(n.info, 'evalDeref ' + nodeKindToStr[result.kind]);
@@ -622,7 +626,7 @@ var
   t: PType;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   t := newType(tyPtr, c.module);
   addSon(t, a.typ);
@@ -647,7 +651,7 @@ var
   dest, src: PType;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   dest := skipTypes(n.typ, abstractPtrs);
   src := skipTypes(result.typ, abstractPtrs);
   if inheritanceDiff(src, dest) > 0 then
@@ -659,13 +663,13 @@ var
   x, a, b: PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   x := result;
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
 
   if leValueConv(a, x) and leValueConv(x, b) then begin
@@ -681,14 +685,14 @@ end;
 function evalConvStrToCStr(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   result.typ := n.typ;
 end;
 
 function evalConvCStrToStr(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[0]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   result.typ := n.typ;
 end;
 
@@ -698,7 +702,7 @@ var
 begin
   if n.sons[0] <> nil then begin
     result := evalAux(c, n.sons[0]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     a := result;
     result := newNodeIT(nkExceptBranch, n.info, a.typ);
     addSon(result, a);
@@ -717,7 +721,7 @@ function evalReturn(c: PEvalContext; n: PNode): PNode;
 begin
   if n.sons[0] <> nil then begin
     result := evalAsgn(c, n.sons[0]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
   end;
   result := newNodeIT(nkReturnToken, n.info, nil);
 end;
@@ -743,7 +747,7 @@ end;
 function evalHigh(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   case skipTypes(n.sons[1].typ, abstractVar).kind of
     tyOpenArray, tySequence:
       result := newIntNodeT(sonsLen(result), n);
@@ -756,7 +760,7 @@ end;
 function evalIs(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   result := newIntNodeT(ord(inheritanceDiff(result.typ, n.sons[2].typ) >= 0), n)
 end;
 
@@ -766,10 +770,10 @@ var
   oldLen, newLen: int;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   case a.kind of
     nkStrLit..nkTripleStrLit: begin
@@ -793,10 +797,10 @@ var
   newLen, oldLen, i: int;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   if a.kind <> nkBracket then InternalError(n.info, 'evalSetLengthSeq');
   newLen := int(getOrdValue(b));
@@ -814,10 +818,10 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
 
   t := skipTypes(n.sons[1].typ, abstractVar);
@@ -833,7 +837,7 @@ end;
 function evalAssert(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   if getOrdValue(result) <> 0 then
     result := emptyNode
   else
@@ -845,10 +849,10 @@ var
   a, b: PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   if not inSet(a, b) then addSon(a, copyTree(b));
   result := emptyNode;
@@ -860,10 +864,10 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := newNodeIT(nkCurly, n.info, n.sons[1].typ);
   addSon(b, result);
   r := diffSets(a, b);
@@ -877,10 +881,10 @@ var
   a, b: PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   case a.kind of
     nkStrLit..nkTripleStrLit: addChar(a.strVal, chr(int(getOrdValue(b))));
@@ -896,11 +900,11 @@ var
   i: int;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   for i := 2 to sonsLen(n)-1 do begin
     result := evalAux(c, n.sons[i]);
-    if result.kind = nkExceptBranch then exit;
+    if isSpecial(result) then exit;
     a.strVal := getStrValue(a) +{&} getStrValue(result);
   end;
   result := a;
@@ -911,10 +915,10 @@ var
   a, b: PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   case a.kind of
     nkStrLit..nkTripleStrLit: a.strVal := a.strVal +{&} getStrValue(b);
@@ -928,10 +932,10 @@ var
   a, b: PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   a := result;
   result := evalAux(c, n.sons[2]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   b := result;
   if a.kind = nkBracket then addSon(a, copyTree(b))
   else InternalError(n.info, 'evalAppendSeqElem');
@@ -941,8 +945,13 @@ end;
 function evalRepr(c: PEvalContext; n: PNode): PNode;
 begin
   result := evalAux(c, n.sons[1]);
-  if result.kind = nkExceptBranch then exit;
+  if isSpecial(result) then exit;
   result := newStrNodeT(renderTree(result, {@set}[renderNoComments]), n);
+end;
+
+function isEmpty(n: PNode): bool;
+begin
+  result := (n <> nil) and (n.kind = nkEmpty)
 end;
 
 function evalMagicOrCall(c: PEvalContext; n: PNode): PNode;
@@ -979,7 +988,7 @@ begin
 
     mNLen: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkIntLit, n.info, n.typ);
       case a.kind of
@@ -989,10 +998,10 @@ begin
     end;
     mNChild: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       k := getOrdValue(result);
       if not (a.kind in [nkEmpty..nkNilLit]) and (k >= 0) 
       and (k < sonsLen(a)) then begin
@@ -1006,13 +1015,13 @@ begin
     end;
     mNSetChild: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       b := result;
       result := evalAux(c, n.sons[3]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       k := getOrdValue(b);
       if (k >= 0) and (k < sonsLen(a))
       and not (a.kind in [nkEmpty..nkNilLit]) then begin
@@ -1025,45 +1034,45 @@ begin
     end;
     mNAdd: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       addSon(a, result);
       result := emptyNode
     end;
     mNAddMultiple: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       for i := 0 to sonsLen(result)-1 do addSon(a, result.sons[i]);
       result := emptyNode
     end;
     mNDel: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       b := result;
       result := evalAux(c, n.sons[3]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       for i := 0 to int(getOrdValue(result))-1 do
         delSon(a, int(getOrdValue(b)));
       result := emptyNode;
     end;
     mNKind: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkIntLit, n.info, n.typ);
       result.intVal := ord(a.kind);
     end;
     mNIntVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkIntLit, n.info, n.typ);
       case a.kind of
@@ -1073,7 +1082,7 @@ begin
     end;
     mNFloatVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkFloatLit, n.info, n.typ);
       case a.kind of
@@ -1083,18 +1092,18 @@ begin
     end;
     mNSymbol: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       if result.kind <> nkSym then InternalError(n.info, 'no symbol')
     end;
     mNIdent: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       if result.kind <> nkIdent then InternalError(n.info, 'no symbol')
     end;
     mNGetType: result := evalAux(c, n.sons[1]);
     mNStrVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkStrLit, n.info, n.typ);
       case a.kind of
@@ -1104,64 +1113,64 @@ begin
     end;
     mNSetIntVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.intVal := result.intVal; // XXX: exception handling?
       result := emptyNode
     end;
     mNSetFloatVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.floatVal := result.floatVal; // XXX: exception handling?
       result := emptyNode
     end;
     mNSetSymbol: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.sym := result.sym; // XXX: exception handling?
       result := emptyNode
     end;
     mNSetIdent: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.ident := result.ident; // XXX: exception handling?
       result := emptyNode
     end;
     mNSetType: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.typ := result.typ; // XXX: exception handling?
       result := emptyNode
     end;
     mNSetStrVal: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a.strVal := result.strVal; // XXX: exception handling?
       result := emptyNode
     end;
     mNNewNimNode: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       k := getOrdValue(result);
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       if (k < 0) or (k > ord(high(TNodeKind))) then
         internalError(n.info, 'request to create a NimNode with invalid kind');
@@ -1172,17 +1181,17 @@ begin
     end;
     mNCopyNimNode: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       result := copyNode(result);
     end;
     mNCopyNimTree: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       result := copyTree(result);
     end;
     mStrToIdent: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       if not (result.kind in [nkStrLit..nkTripleStrLit]) then
         InternalError(n.info, 'no string node');
       a := result;
@@ -1191,7 +1200,7 @@ begin
     end;
     mIdentToStr: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       if result.kind <> nkIdent then
         InternalError(n.info, 'no ident node');
       a := result;
@@ -1200,10 +1209,10 @@ begin
     end;
     mEqIdent: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       b := result;
       result := newNodeIT(nkIntLit, n.info, n.typ);
       if (a.kind = nkIdent) and (b.kind = nkIdent) then
@@ -1211,10 +1220,10 @@ begin
     end;
     mEqNimrodNode: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := evalAux(c, n.sons[2]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       b := result;
       result := newNodeIT(nkIntLit, n.info, n.typ);
       if (a = b) 
@@ -1224,19 +1233,19 @@ begin
     end;
     mNHint: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       liMessage(n.info, hintUser, getStrValue(result));
       result := emptyNode
     end;
     mNWarning: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       liMessage(n.info, warnUser, getStrValue(result));
       result := emptyNode
     end;
     mNError: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       stackTrace(c, n, errUser, getStrValue(result));
       result := emptyNode
     end;
@@ -1244,28 +1253,31 @@ begin
     mRepr: result := evalRepr(c, n);
     mNewString: begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       result := newNodeIT(nkStrLit, n.info, n.typ);
       result.strVal := newString(int(getOrdValue(a)));
     end;
     else begin
       result := evalAux(c, n.sons[1]);
-      if result.kind = nkExceptBranch then exit;
+      if isSpecial(result) then exit;
       a := result;
       b := nil;
       cc := nil;
       if sonsLen(n) > 2 then begin
         result := evalAux(c, n.sons[2]);
-        if result.kind = nkExceptBranch then exit;
+        if isSpecial(result) then exit;
         b := result;
         if sonsLen(n) > 3 then begin
           result := evalAux(c, n.sons[3]);
-          if result.kind = nkExceptBranch then exit;
+          if isSpecial(result) then exit;
           cc := result;
         end
       end;
-      result := evalOp(m, n, a, b, cc);
+      if isEmpty(a) or isEmpty(b) or isEmpty(cc) then
+        result := emptyNode
+      else
+        result := evalOp(m, n, a, b, cc);
     end
   end
 end;
@@ -1290,7 +1302,7 @@ begin
       a := copyNode(n);
       for i := 0 to sonsLen(n)-1 do begin
         result := evalAux(c, n.sons[i]);
-        if result.kind = nkExceptBranch then exit;        
+        if isSpecial(result) then exit;        
         addSon(a, result);
       end;
       result := a
@@ -1299,7 +1311,7 @@ begin
       a := copyTree(n);
       for i := 0 to sonsLen(n)-1 do begin
         result := evalAux(c, n.sons[i].sons[1]);
-        if result.kind = nkExceptBranch then exit;
+        if isSpecial(result) then exit;
         a.sons[i].sons[1] := result;
       end;
       result := a
@@ -1397,9 +1409,5 @@ begin
 end;
 
 initialization
-  new(emptyNode);
-{@ignore}
-  fillChar(emptyNode^, sizeof(emptyNode^), 0);
-{@emit}
-  emptyNode.kind := nkEmpty;
+  emptyNode := newNode(nkEmpty);
 end.
