@@ -22,13 +22,13 @@ Path           Purpose
 ``bin``        generated binary files
 ``build``      generated C code for the installation
 ``nim``        Pascal sources of the Nimrod compiler; this
-               should be modified, not the Nimrod version in
-               ``rod``!
+               has been used for bootstrapping, but new
+               development is done with the Nimrod version.
 ``rod``        Nimrod sources of the Nimrod compiler;
                automatically generated from the Pascal
-               version
+               version.
 ``data``       data files that are used for generating source
-               code
+               code; not used anymore
 ``doc``        the documentation; it is a bunch of
                reStructuredText files
 ``dist``       additional packages for the distribution
@@ -43,79 +43,22 @@ Path           Purpose
 Bootstrapping the compiler
 ==========================
 
-The compiler is written in a subset of Pascal with special annotations so
-that it can be translated to Nimrod code automatically. This conversion is
-done by Nimrod itself via the undocumented ``boot`` command. Thus both Nimrod
-and Free Pascal can compile the Nimrod compiler. However, the Pascal version
-has no garbage collector and leaks memory! So the Pascal version should only 
-be used for bootstrapping.
-
-Requirements for bootstrapping:
-
-- Python (should work with version 1.5 or higher) (optional)
-- supported C compiler
+As of version 0.8.5 the compiler is maintained in Nimrod. (The first versions 
+have been implemented in Object Pascal.) The Python-based build system has 
+been rewritten in Nimrod too.
 
 Compiling the compiler is a simple matter of running::
 
-  koch.py boot
+  nimrod c koch.nim
+  ./koch boot
 
 For a release version use::
 
-  koch.py boot -d:release
+  nimrod c koch.nim
+  ./koch boot -d:release
 
-The ``koch.py`` script is Nimrod's maintainance script. It is a replacement for
+The ``koch`` program is Nimrod's maintainance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
-
-If you don't have Python, there is a ``boot`` Nimrod program which does roughly
-the same::
-
-  nimrod cc boot.nim
-  ./boot [-d:release]
-
-
-Pascal annotations
-==================
-There are some annotations that the Pascal sources use so that they can
-be converted to Nimrod automatically:
-
-``{@discard} <expr>``
-    Tells the compiler that a ``discard`` statement is needed for Nimrod
-    here.
-
-``{@cast}typ(expr)``
-    Tells the compiler that the Pascal conversion is a ``cast`` in Nimrod.
-
-``{@emit <code>}``
-    Emits ``<code>``. The code fragment needs to be in Pascal syntax.
-
-``{@ignore} <codeA> {@emit <codeB>}``
-    Ignores ``<codeA>`` and instead emits ``<codeB>`` which needs to be in
-    Pascal syntax. An empty ``{@emit}`` is possible too (it then only closes
-    the ``<codeA>`` part).
-
-``record {@tuple}``
-    Is used to tell the compiler that the record type should be transformed
-    to a Nimrod tuple type.
-
-``^ {@ptr}``
-    Is used to tell the compiler that the pointer type should be transformed
-    to a Nimrod ``ptr`` type. The default is a ``ref`` type.
-
-``'a' + ''``
-    The idiom ``+''`` is used to tell the compiler that it is a string
-    literal and not a character literal. (Pascal does not distinguish between
-    character literals and string literals of length 1.)
-
-``+{&}``
-    This tells the compiler that Pascal's ``+`` here is a string concatenation
-    and thus should be converted to ``&``. Note that this is not needed if
-    any of the operands is a string literal because the compiler then can
-    figure this out by itself.
-
-``{@set}['a', 'b', 'c']``
-    Tells the compiler that Pascal's ``[]`` constructor is a set and not an
-    array. This is only needed if the compiler cannot figure this out for
-    itself.
 
 
 Coding Guidelines

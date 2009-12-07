@@ -34,8 +34,8 @@ Additions
   can be used to exclude the GC from the executable.
 
 
-Changes affecting backwards compability
----------------------------------------
+Changes affecting backwards compatibility
+-----------------------------------------
 - Taking the address of an object discriminant is now invalid.
 - Passing a proc to a proc var is only allowed for procs marked with 
   ``procvar`` or a calling convention != ``nimcall``. For now this only causes 
@@ -100,8 +100,8 @@ Additions
 - implemented ``strutils.join``
 
 
-Changes affecting backwards compability
----------------------------------------
+Changes affecting backwards compatibility
+-----------------------------------------
 
 - two phase symbol lookup is performed in generic routines
 - ``bind`` is now a reserved word; ``exception`` is no reserved word anymore
@@ -168,8 +168,8 @@ Additions
 * implemented ``abstract`` types
 
 
-Changes affecting backwards compability
----------------------------------------
+Changes affecting backwards compatibility
+-----------------------------------------
 
 - the organization within the ``lib`` folder now reflects the documentation;
   as a result old configuration files need to be updated
@@ -305,8 +305,8 @@ Additions
 - new wrappers: ``mysql``, ``sqlite3``, ``libcurl``
 
 
-Changes affecting backwards compability
----------------------------------------
+Changes affecting backwards compatibility
+-----------------------------------------
 
 - ``strutils.findSubStr``, ``strutils.findChars`` deprecated: 
   use ``strutils.find`` instead
@@ -360,8 +360,8 @@ Additions
   const
     z = fac(3)  # computes 6 at compile time
 
-Changes affecting backwards compability
----------------------------------------
+Changes affecting backwards compatibility
+-----------------------------------------
 
 - renamed ``in_Operator`` to ``contains``: ``in`` is now a template that 
   translates to ``contains``

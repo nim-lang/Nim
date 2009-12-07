@@ -1460,7 +1460,6 @@ begin
   result := newNodeP(nkEnumTy, p);
   a := nil;
   getTok(p);
-  optInd(p, result);
   if p.tok.tokType = tkOf then begin
     a := newNodeP(nkOfInherit, p);
     getTok(p); optInd(p, a);
@@ -1468,6 +1467,7 @@ begin
     addSon(result, a)
   end
   else addSon(result, nil);
+  optInd(p, result);
 
   while true do begin
     case p.tok.tokType of

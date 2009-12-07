@@ -607,7 +607,7 @@ begin
       else invalidPragma(it);
     end
     else begin
-      processNote(c, n)
+      processNote(c, it)
     end;
   end;
   if (sym <> nil) and (sym.kind <> skModule) then begin

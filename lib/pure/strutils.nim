@@ -212,7 +212,7 @@ iterator split*(s: string, sep: char): string =
       inc(last)
 
 iterator splitLines*(s: string): string =
-  ## Splits the string `s` into its containing lines. Each newline
+  ## Splits the string `s` into its containing lines. Every newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain
   ## no trailing ``\n``.
   ##

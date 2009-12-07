@@ -47,7 +47,7 @@ components called `locations`:idx:. A variable is basically a name for a
 location. Each variable and location is of a certain `type`:idx:. The
 variable's type is called `static type`:idx:, the location's type is called
 `dynamic type`:idx:. If the static type is not the same as the dynamic type,
-it is a supertype of the dynamic type.
+it is a supertype or subtype of the dynamic type.
 
 An `identifier`:idx: is a symbol declared as a name for a variable, type,
 procedure, etc. The region of the program over which a declaration applies is
@@ -1066,7 +1066,7 @@ Type equality
 ~~~~~~~~~~~~~
 Nimrod uses structural type equivalence for most types. Only for objects,
 enumerations and distinct types name equivalence is used. The following
-algorithm determines type equality:
+algorithm (in pseudo-code) determines type equality:
 
 .. code-block:: nimrod
   proc typeEqualsAux(a, b: PType,
@@ -1362,11 +1362,12 @@ Example:
 
 The `case`:idx: statement is similar to the if statement, but it represents
 a multi-branch selection. The expression after the keyword ``case`` is
-evaluated and if its value is in a *vallist* the corresponding statements
+evaluated and if its value is in a *slicelist* the corresponding statements
 (after the ``of`` keyword) are executed. If the value is not in any
 given *slicelist* the ``else`` part is executed. If there is no ``else``
-part and not all possible values that ``expr`` can hold occur in a ``vallist``,
-a static error is given. This holds only for expressions of ordinal types.
+part and not all possible values that ``expr`` can hold occur in a 
+``slicelist``, a static error occurs. This holds only for expressions of 
+ordinal types.
 If the expression is not of an ordinal type, and no ``else`` part is
 given, control passes after the ``case`` statement.
 
@@ -1398,7 +1399,7 @@ The `when`:idx: statement is almost identical to the ``if`` statement with some
 exceptions:
 
 * Each ``expr`` has to be a constant expression (of type ``bool``).
-* The statements do not open a new scope if they introduce new identifiers.
+* The statements do not open a new scope.
 * The statements that belong to the expression that evaluated to true are
   translated by the compiler, the other statements are not checked for
   semantics! However, each ``expr`` is checked for semantics.
@@ -1814,8 +1815,8 @@ One can use `tuple unpacking`:idx: to access the tuple's fields:
 Multi-methods
 ~~~~~~~~~~~~~
 
-Procedures always use static dispatch. Dynamic dispatch is achieved by
-`multi-methods`:idx:. 
+Procedures always use static dispatch. `Multi-methods`:idx: use dynamic
+dispatch.
 
 .. code-block:: nimrod
   type
@@ -2133,8 +2134,8 @@ Symbol binding within templates happens after template instantation:
   echo genId() # Error: undeclared identifier: 'lastId'
 
 Exporting a template is a often a leaky abstraction. However, to compensate for
-this case, the ``bind`` operator can be used: All identifiers
-within a ``bind`` context are bound early (i.e. when the template is parsed).
+this case, the ``bind`` operator can be used: All identifiers within a ``bind``
+context are bound early (i.e. when the template is parsed).
 The affected identifiers are then always bound early even if the other
 occurences are in no ``bind`` context: 
 

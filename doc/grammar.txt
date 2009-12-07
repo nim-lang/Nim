@@ -168,7 +168,7 @@ tupleDesc ::= '[' optInd [param (comma param)*] [SAD] ']'
 
 objectDef ::= 'object' [pragma] ['of' typeDesc] objectPart
 enumField ::= symbol ['=' expr]
-enumDef ::= 'enum' ['of' typeDesc] (enumField [comma] [COMMENT | IND COMMENT])+
+enumDef ::= 'enum' (enumField [comma] [COMMENT | IND COMMENT])+
 
 typeDecl ::= COMMENT
            | symbol ['*'] [genericParams] ['=' typeDef] [COMMENT | IND COMMENT]

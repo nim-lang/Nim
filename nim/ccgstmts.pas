@@ -886,19 +886,19 @@ begin
     else begin
       key := it;
     end;
-    assert(key.kind = nkIdent);
-    case whichKeyword(key.ident) of
-      wBreakpoint: genBreakPoint(p, it);
-      wDeadCodeElim: begin
-        if not (optDeadCodeElim in gGlobalOptions) then begin
-          // we need to keep track of ``deadCodeElim`` pragma
-          if (sfDeadCodeElim in p.module.module.flags) then
-            addPendingModule(p.module)
-        end            
+    if key.kind = nkIdent then
+      case whichKeyword(key.ident) of
+        wBreakpoint: genBreakPoint(p, it);
+        wDeadCodeElim: begin
+          if not (optDeadCodeElim in gGlobalOptions) then begin
+            // we need to keep track of ``deadCodeElim`` pragma
+            if (sfDeadCodeElim in p.module.module.flags) then
+              addPendingModule(p.module)
+          end            
+        end
+        else begin end
       end
-      else begin end
-    end
-  end;
+  end
 end;
 
 procedure genAsgn(p: BProc; e: PNode);

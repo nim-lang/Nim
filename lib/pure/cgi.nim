@@ -339,3 +339,37 @@ proc writeContentType*() =
   write(stdout, "Content-type: text/html\n\n")
   system.stackTraceNewLine = "<br />\n"
   
+proc setCookie*(name, value: string) = 
+  ## Sets a cookie.
+  write(stdout, "Set-Cookie: ", name, "=", value, "\n")
+
+var
+  cookies: PStringTable = nil
+
+proc parseCookies(s: string): PStringTable = 
+  result = newStringTable(modeCaseInsensitive)
+  var i = 0
+  while true:
+    while s[i] == ' ' or s[i] == '\t': inc(i)
+    var keystart = i
+    while s[i] != '=' and s[i] != '\0': inc(i)
+    var keyend = i-1
+    if s[i] == '\0': break
+    inc(i) # skip '='
+    var valstart = i
+    while s[i] != ';' and s[i] != '\0': inc(i)
+    result[copy(s, keystart, keyend)] = copy(s, valstart, i-1)
+    if s[i] == '\0': break
+    inc(i) # skip ';'
+    
+proc getCookie*(name: string): string = 
+  ## Gets a cookie. If no cookie of `name` exists, "" is returned.
+  if cookies == nil: cookies = parseCookies(getHttpCookie())
+  result = cookies[name]
+
+proc existsCookie*(name: string): bool = 
+  ## Checks if a cookie of `name` exists.
+  if cookies == nil: cookies = parseCookies(getHttpCookie())
+  result = hasKey(cookies)
+
+

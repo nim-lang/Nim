@@ -906,7 +906,7 @@ proc removeDir*(dir: string) =
   for kind, path in walkDir(dir): 
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(dir)
+    of pcDir: removeDir(path)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string) =
@@ -935,7 +935,7 @@ proc parseCmdLine*(c: string): seq[string] =
   result = @[]
   var i = 0
   var a = ""
-  while c[i] != '\0':
+  while true:
     setLen(a, 0)
     while c[i] >= '\1' and c[i] <= ' ': inc(i) # skip whitespace
     case c[i]
@@ -946,6 +946,7 @@ proc parseCmdLine*(c: string): seq[string] =
         add a, c[i]
         inc(i)
       if c[i] != '\0': inc(i)
+    of '\0': break
     else:
       while c[i] > ' ':
         add(a, c[i])

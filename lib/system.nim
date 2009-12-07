@@ -1120,6 +1120,11 @@ proc find*[T, S: typeDesc](a: T, item: S): int {.inline.}=
     inc(result)
   result = -1
 
+proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
+  ## Returns true if `item` is in `a` or false if not found. This is a shortcut
+  ## for ``find(a, item) >= 0``.
+  return find(a, item) >= 0
+
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} = 
   ## returns the last item of `s` and decreases ``s.len`` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
