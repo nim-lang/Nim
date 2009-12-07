@@ -1,0 +1,422 @@
+#
+#
+#           The Nimrod Compiler
+#        (c) Copyright 2009 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+# This module handles the parsing of command line arguments.
+
+import 
+  os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
+  wordrecg
+
+proc writeCommandLineUsage*()
+
+type 
+  TCmdLinePass* = enum 
+    passCmd1,                 # first pass over the command line
+    passCmd2,                 # second pass over the command line
+    passPP                    # preprocessor called ProcessCommand()
+
+proc ProcessCommand*(switch: string, pass: TCmdLinePass)
+proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
+# implementation
+
+const 
+  HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]" &
+      "\n" & "Copyright (c) 2004-2009 by Andreas Rumpf" & "\n"
+
+const 
+  Usage = """
+Usage::
+  nimrod command [options] inputfile [arguments]
+Command::
+  compile, c                compile project with default code generator (C)
+  compileToC, cc            compile project with C code generator
+  doc                       generate the documentation for inputfile
+  rst2html                  converts a reStructuredText file to HTML
+  rst2tex                   converts a reStructuredText file to TeX
+Arguments:
+  arguments are passed to the program being run (if --run option is selected)
+Options:
+  -p, --path:PATH           add path to search paths
+  -o, --out:FILE            set the output filename
+  -d, --define:SYMBOL       define a conditional symbol
+  -u, --undef:SYMBOL        undefine a conditional symbol
+  -f, --forceBuild          force rebuilding of all modules
+  --symbolFiles:on|off      use symbol files to speed up compilation (buggy!)
+  --stackTrace:on|off       code generation for stack trace ON|OFF
+  --lineTrace:on|off        code generation for line trace ON|OFF
+  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF
+  -x, --checks:on|off       code generation for all runtime checks ON|OFF
+  --objChecks:on|off        code generation for obj conversion checks ON|OFF
+  --fieldChecks:on|off      code generation for case variant fields ON|OFF
+  --rangeChecks:on|off      code generation for range checks ON|OFF
+  --boundChecks:on|off      code generation for bound checks ON|OFF
+  --overflowChecks:on|off   code generation for over-/underflow checks ON|OFF
+  -a, --assertions:on|off   code generation for assertions ON|OFF
+  --deadCodeElim:on|off     whole program dead code elimination ON|OFF
+  --opt:none|speed|size     optimize not at all or for speed|size
+  --app:console|gui|lib     generate a console|GUI application|dynamic library
+  -r, --run                 run the compiled program with given arguments
+  --advanced                show advanced command line switches
+  -h, --help                show this help
+"""
+        
+  AdvancedUsage = """
+Advanced commands::
+  pas                       convert a Pascal file to Nimrod syntax
+  pretty                    pretty print the inputfile
+  genDepend                 generate a DOT file containing the
+                            module dependency graph
+  listDef                   list all defined conditionals and exit
+  check                     checks the project for syntax and semantic
+  parse                     parses a single file (for debugging Nimrod)
+Advanced options:
+  -w, --warnings:on|off     warnings ON|OFF
+  --warning[X]:on|off       specific warning X ON|OFF
+  --hints:on|off            hints ON|OFF
+  --hint[X]:on|off          specific hint X ON|OFF
+  --lib:PATH                set the system library path
+  -c, --compileOnly         compile only; do not assemble or link
+  --noLinking               compile but do not link
+  --noMain                  do not generate a main procedure
+  --genScript               generate a compile script (in the 'nimcache'
+                            subdirectory named 'compile_$project$scriptext')
+  --os:SYMBOL               set the target operating system (cross-compilation)
+  --cpu:SYMBOL              set the target processor (cross-compilation)
+  --debuginfo               enables debug information
+  -t, --passc:OPTION        pass an option to the C compiler
+  -l, --passl:OPTION        pass an option to the linker
+  --genMapping              generate a mapping file containing
+                            (Nimrod, mangled) identifier pairs
+  --lineDir:on|off          generation of #line directive ON|OFF
+  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod
+  --skipCfg                 do not read the general configuration file
+  --skipProjCfg             do not read the project's configuration file
+  --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
+  --index:FILE              use FILE to generate a documenation index file
+  --putenv:key=value        set an environment variable
+  --listCmd                 list the commands used to execute external programs
+  --parallelBuild=0|1|...   perform a parallel build
+                            value = number of processors (0 for auto-detect)
+  --verbosity:0|1|2|3       set Nimrod's verbosity level (0 is default)
+  -v, --version             show detailed version information
+"""
+
+proc getCommandLineDesc(): string = 
+  result = `%`(HelpMessage, [VersionAsString, platform.os[platform.hostOS].name, 
+                             cpu[platform.hostCPU].name]) & Usage
+
+var 
+  helpWritten: bool           # BUGFIX 19
+  versionWritten: bool
+  advHelpWritten: bool
+
+proc HelpOnError(pass: TCmdLinePass) = 
+  if (pass == passCmd1) and not helpWritten: 
+    # BUGFIX 19
+    MessageOut(getCommandLineDesc())
+    helpWritten = true
+    quit(0)
+
+proc writeAdvancedUsage(pass: TCmdLinePass) = 
+  if (pass == passCmd1) and not advHelpWritten: 
+    # BUGFIX 19
+    MessageOut(`%`(HelpMessage, [VersionAsString, 
+                                 platform.os[platform.hostOS].name, 
+                                 cpu[platform.hostCPU].name]) & AdvancedUsage)
+    advHelpWritten = true
+    helpWritten = true
+    quit(0)
+
+proc writeVersionInfo(pass: TCmdLinePass) = 
+  if (pass == passCmd1) and not versionWritten: 
+    versionWritten = true
+    helpWritten = true
+    messageOut(`%`(HelpMessage, [VersionAsString, 
+                                 platform.os[platform.hostOS].name, 
+                                 cpu[platform.hostCPU].name]))
+    quit(0)
+
+proc writeCommandLineUsage() = 
+  if not helpWritten: 
+    messageOut(getCommandLineDesc())
+    helpWritten = true
+
+proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
+  liMessage(info, errInvalidCmdLineOption, switch)
+
+proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
+                 info: TLineInfo) = 
+  var i: int
+  cmd = ""
+  i = 0
+  if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
+  if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
+  while i < len(switch) + 0: 
+    case switch[i]
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
+    else: break 
+    inc(i)
+  if i >= len(switch) + 0: arg = ""
+  elif switch[i] in {':', '=', '['}: arg = copy(switch, i + 1)
+  else: InvalidCmdLineOption(pass, switch, info)
+  
+proc ProcessOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass, 
+                        info: TLineInfo) = 
+  case whichKeyword(arg)
+  of wOn: gOptions = gOptions + op
+  of wOff: gOptions = gOptions - op
+  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  
+proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass, 
+                         info: TLineInfo) = 
+  case whichKeyword(arg)
+  of wOn: gGlobalOptions = gGlobalOptions + op
+  of wOff: gGlobalOptions = gGlobalOptions - op
+  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  
+proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
+  if (arg == ""): liMessage(info, errCmdLineArgExpected, switch)
+  
+proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
+  if (arg != ""): liMessage(info, errCmdLineNoArgExpected, switch)
+  
+proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
+                         info: TLineInfo) = 
+  var 
+    i, x: int
+    n: TNoteKind
+    id: string
+  id = ""                     # arg = "X]:on|off"
+  i = 0
+  n = hintMin
+  while (i < len(arg) + 0) and (arg[i] != ']'): 
+    add(id, arg[i])
+    inc(i)
+  if (i < len(arg) + 0) and (arg[i] == ']'): inc(i)
+  else: InvalidCmdLineOption(pass, arg, info)
+  if (i < len(arg) + 0) and (arg[i] in {':', '='}): inc(i)
+  else: InvalidCmdLineOption(pass, arg, info)
+  if state == wHint: 
+    x = findStr(msgs.HintsToStr, id)
+    if x >= 0: n = TNoteKind(x + ord(hintMin))
+    else: InvalidCmdLineOption(pass, arg, info)
+  else: 
+    x = findStr(msgs.WarningsToStr, id)
+    if x >= 0: n = TNoteKind(x + ord(warnMin))
+    else: InvalidCmdLineOption(pass, arg, info)
+  case whichKeyword(copy(arg, i))
+  of wOn: incl(gNotes, n)
+  of wOff: excl(gNotes, n)
+  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  
+proc processPath(path: string): string = 
+  result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath])
+
+proc processCompile(filename: string) = 
+  var found, trunc: string
+  found = findFile(filename)
+  if found == "": found = filename
+  trunc = changeFileExt(found, "")
+  extccomp.addExternalFileToCompile(trunc)
+  extccomp.addFileToLink(completeCFilePath(trunc, false))
+
+proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
+  var 
+    theOS: TSystemOS
+    cpu: TSystemCPU
+    key, val, path: string
+  case whichKeyword(switch)
+  of wPath, wP: 
+    expectArg(switch, arg, pass, info)
+    path = processPath(arg)
+    discard lists.IncludeStr(options.searchPaths, path)
+  of wOut, wO: 
+    expectArg(switch, arg, pass, info)
+    options.outFile = arg
+  of wDefine, wD: 
+    expectArg(switch, arg, pass, info)
+    DefineSymbol(arg)
+  of wUndef, wU: 
+    expectArg(switch, arg, pass, info)
+    UndefSymbol(arg)
+  of wCompile: 
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: processCompile(arg)
+  of wLink: 
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: addFileToLink(arg)
+  of wDebuginfo: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optCDebug)
+  of wCompileOnly, wC: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optCompileOnly)
+  of wNoLinking: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optNoLinking)
+  of wNoMain: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optNoMain)
+  of wForceBuild, wF: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optForceFullMake)
+  of wGC: 
+    expectArg(switch, arg, pass, info)
+    case whichKeyword(arg)
+    of wBoehm: 
+      incl(gGlobalOptions, optBoehmGC)
+      excl(gGlobalOptions, optRefcGC)
+      DefineSymbol("boehmgc")
+    of wRefc: 
+      excl(gGlobalOptions, optBoehmGC)
+      incl(gGlobalOptions, optRefcGC)
+    of wNone: 
+      excl(gGlobalOptions, optRefcGC)
+      excl(gGlobalOptions, optBoehmGC)
+      defineSymbol("nogc")
+    else: liMessage(info, errNoneBoehmRefcExpectedButXFound, arg)
+  of wWarnings, wW: ProcessOnOffSwitch({optWarns}, arg, pass, info)
+  of wWarning: ProcessSpecificNote(arg, wWarning, pass, info)
+  of wHint: ProcessSpecificNote(arg, wHint, pass, info)
+  of wHints: ProcessOnOffSwitch({optHints}, arg, pass, info)
+  of wCheckpoints: ProcessOnOffSwitch({optCheckpoints}, arg, pass, info)
+  of wStackTrace: ProcessOnOffSwitch({optStackTrace}, arg, pass, info)
+  of wLineTrace: ProcessOnOffSwitch({optLineTrace}, arg, pass, info)
+  of wDebugger: 
+    ProcessOnOffSwitch({optEndb}, arg, pass, info)
+    if optEndb in gOptions: DefineSymbol("endb")
+    else: UndefSymbol("endb")
+  of wProfiler: 
+    ProcessOnOffSwitch({optProfiler}, arg, pass, info)
+    if optProfiler in gOptions: DefineSymbol("profiler")
+    else: UndefSymbol("profiler")
+  of wChecks, wX: ProcessOnOffSwitch(checksOptions, arg, pass, info)
+  of wObjChecks: ProcessOnOffSwitch({optObjCheck}, arg, pass, info)
+  of wFieldChecks: ProcessOnOffSwitch({optFieldCheck}, arg, pass, info)
+  of wRangeChecks: ProcessOnOffSwitch({optRangeCheck}, arg, pass, info)
+  of wBoundChecks: ProcessOnOffSwitch({optBoundsCheck}, arg, pass, info)
+  of wOverflowChecks: ProcessOnOffSwitch({optOverflowCheck}, arg, pass, info)
+  of wLineDir: ProcessOnOffSwitch({optLineDir}, arg, pass, info)
+  of wAssertions, wA: ProcessOnOffSwitch({optAssert}, arg, pass, info)
+  of wDeadCodeElim: ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of wOpt: 
+    expectArg(switch, arg, pass, info)
+    case whichKeyword(arg)
+    of wSpeed: 
+      incl(gOptions, optOptimizeSpeed)
+      excl(gOptions, optOptimizeSize)
+    of wSize: 
+      excl(gOptions, optOptimizeSpeed)
+      incl(gOptions, optOptimizeSize)
+    of wNone: 
+      excl(gOptions, optOptimizeSpeed)
+      excl(gOptions, optOptimizeSize)
+    else: liMessage(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+  of wApp: 
+    expectArg(switch, arg, pass, info)
+    case whichKeyword(arg)
+    of wGui: 
+      incl(gGlobalOptions, optGenGuiApp)
+      defineSymbol("guiapp")
+    of wConsole: 
+      excl(gGlobalOptions, optGenGuiApp)
+    of wLib: 
+      incl(gGlobalOptions, optGenDynLib)
+      excl(gGlobalOptions, optGenGuiApp)
+      defineSymbol("library")
+    else: liMessage(info, errGuiConsoleOrLibExpectedButXFound, arg)
+  of wListDef: 
+    expectNoArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: condsyms.listSymbols()
+  of wPassC, wT: 
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
+  of wPassL, wL: 
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
+  of wIndex: 
+    expectArg(switch, arg, pass, info)
+    if pass in {passCmd2, passPP}: gIndexFile = arg
+  of wImport: 
+    expectArg(switch, arg, pass, info)
+    options.addImplicitMod(arg)
+  of wListCmd: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optListCmd)
+  of wGenMapping: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optGenMapping)
+  of wOS: 
+    expectArg(switch, arg, pass, info)
+    if (pass == passCmd1): 
+      theOS = platform.NameToOS(arg)
+      if theOS == osNone: liMessage(info, errUnknownOS, arg)
+      if theOS != platform.hostOS: 
+        setTarget(theOS, targetCPU)
+        incl(gGlobalOptions, optCompileOnly)
+        condsyms.InitDefines()
+  of wCPU: 
+    expectArg(switch, arg, pass, info)
+    if (pass == passCmd1): 
+      cpu = platform.NameToCPU(arg)
+      if cpu == cpuNone: liMessage(info, errUnknownCPU, arg)
+      if cpu != platform.hostCPU: 
+        setTarget(targetOS, cpu)
+        incl(gGlobalOptions, optCompileOnly)
+        condsyms.InitDefines()
+  of wRun, wR: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optRun)
+  of wVerbosity: 
+    expectArg(switch, arg, pass, info)
+    gVerbosity = parseInt(arg)
+  of wParallelBuild: 
+    expectArg(switch, arg, pass, info)
+    gNumberOfProcessors = parseInt(arg)
+  of wVersion, wV: 
+    expectNoArg(switch, arg, pass, info)
+    writeVersionInfo(pass)
+  of wAdvanced: 
+    expectNoArg(switch, arg, pass, info)
+    writeAdvancedUsage(pass)
+  of wHelp, wH: 
+    expectNoArg(switch, arg, pass, info)
+    helpOnError(pass)
+  of wSymbolFiles: 
+    ProcessOnOffSwitchG({optSymbolFiles}, arg, pass, info)
+  of wSkipCfg: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optSkipConfigFile)
+  of wSkipProjCfg: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optSkipProjConfigFile)
+  of wGenScript: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optGenScript)
+  of wLib: 
+    expectArg(switch, arg, pass, info)
+    libpath = processPath(arg)
+  of wPutEnv: 
+    expectArg(switch, arg, pass, info)
+    splitSwitch(arg, key, val, pass, info)
+    os.putEnv(key, val)
+  of wCC: 
+    expectArg(switch, arg, pass, info)
+    setCC(arg)
+  else: 
+    if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
+    else: InvalidCmdLineOption(pass, switch, info)
+  
+proc ProcessCommand(switch: string, pass: TCmdLinePass) = 
+  var 
+    cmd, arg: string
+    info: TLineInfo
+  info = newLineInfo("command line", 1, 1)
+  splitSwitch(switch, cmd, arg, pass, info)
+  ProcessSwitch(cmd, arg, pass, info)
