@@ -16,7 +16,7 @@ from strutils import addf
 
 type
   TRegExDesc {.pure, final.} = object
-    re_nsub: int # Number of parenthesized subexpressions.
+    re_nsub: int    # Number of parenthesized subexpressions.
     value: pointer  # For internal use only.
   
   TRegEx* = ref TRegExDesc ## a compiled regular expression  
@@ -122,9 +122,8 @@ proc rawmatch(s: string, pattern: TRegEx, matches: var openarray[string],
               s.len-start, maxSubpatterns, addr(rawMatches), cint(0)))
   if res == 0:
     for i in 0..min(matches.len, int(pattern.re_nsub))-1:
-      var
-        a = int(rawMatches[i].so)
-        b = int(rawMatches[i].eo)
+      var a = int(rawMatches[i].so)
+      var b = int(rawMatches[i].eo)
       echo "a: ", a, " b: ", b
       if a >= 0 and b >= 0:
         matches[i] = copy(s, a+start, b - 1 + start)
@@ -224,7 +223,7 @@ proc replace*(s: string, sub: TRegEx, by: string): string =
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nimrod
-  ##   "var1=key; var2=key2".replace(re"{\ident}'='{\ident}", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##
@@ -326,8 +325,10 @@ const ## common regular expressions
   reOctal* = r"\b0[oO][0-7]+\b" ## describes an octal number (example: 0o777)
   reFloat* = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
     ## describes a floating point number
-  reEmail* = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)" &
-             r"*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+(?:[a-zA-Z]{2}|com|org|" &
+  reEmail* = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
+             r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)" &
+             r"*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
+             r"(?:[a-zA-Z]{2}|com|org|" &
              r"net|gov|mil|biz|info|mobi|name|aero|jobs|museum)\b"
     ## describes a common email address
   reURL* = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms\-help):" &

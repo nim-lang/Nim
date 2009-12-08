@@ -305,7 +305,9 @@ type
     mGCunref, mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64, 
     mDivI64, mModI64, mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI, 
     mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64, 
-    mAddF64, mSubF64, mMulF64, mDivF64, mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
+    mAddF64, mSubF64, mMulF64, mDivF64,
+    
+    mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
     mDivU, mModU, mAddU64, mSubU64, mMulU64, mDivU64, mModU64, mEqI, mLeI, mLtI, 
     mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, mLeU, mLtU, mLeU64, mLtU64, 
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef, 
@@ -505,44 +507,6 @@ type
 const 
   OverloadableSyms* = {skProc, skMethod, skIterator, skConverter}
 
-const
-  MagicToStr*: array[TMagic, string] = ["None", "Defined", "DefinedInScope", 
-    "Low", "High", "SizeOf", "Is", "Echo", "Succ", "Pred", "Inc", "Dec", "Ord", 
-    "New", "NewFinalize", "NewSeq", "LengthOpenArray", "LengthStr", 
-    "LengthArray", "LengthSeq", "Incl", "Excl", "Card", "Chr", "GCref", 
-    "GCunref", "AddI", "SubI", "MulI", "DivI", "ModI", "AddI64", "SubI64", 
-    "MulI64", "DivI64", "ModI64", "ShrI", "ShlI", "BitandI", "BitorI", 
-    "BitxorI", "MinI", "MaxI", "ShrI64", "ShlI64", "BitandI64", "BitorI64", 
-    "BitxorI64", "MinI64", "MaxI64", "AddF64", "SubF64", "MulF64", "DivF64", 
-    "MinF64", "MaxF64", "AddU", "SubU", "MulU", "DivU", "ModU", "AddU64", 
-    "SubU64", "MulU64", "DivU64", "ModU64", "EqI", "LeI", "LtI", "EqI64", 
-    "LeI64", "LtI64", "EqF64", "LeF64", "LtF64", "LeU", "LtU", "LeU64", "LtU64", 
-    "EqEnum", "LeEnum", "LtEnum", "EqCh", "LeCh", "LtCh", "EqB", "LeB", "LtB", 
-    "EqRef", "EqProc", "EqUntracedRef", "LePtr", "LtPtr", "EqCString", "Xor", 
-    "UnaryMinusI", "UnaryMinusI64", "AbsI", "AbsI64", "Not", "UnaryPlusI", 
-    "BitnotI", "UnaryPlusI64", "BitnotI64", "UnaryPlusF64", "UnaryMinusF64", 
-    "AbsF64", "Ze8ToI", "Ze8ToI64", "Ze16ToI", "Ze16ToI64", "Ze32ToI64", 
-    "ZeIToI64", "ToU8", "ToU16", "ToU32", "ToFloat", "ToBiggestFloat", "ToInt", 
-    "ToBiggestInt", "CharToStr", "BoolToStr", "IntToStr", "Int64ToStr", 
-    "FloatToStr", "CStrToStr", "StrToStr", "EnumToStr", "And", "Or", "EqStr", 
-    "LeStr", "LtStr", "EqSet", "LeSet", "LtSet", "MulSet", "PlusSet", 
-    "MinusSet", "SymDiffSet", "ConStrStr", "ConArrArr", "ConArrT", "ConTArr", 
-    "ConTT", "Slice", "AppendStrCh", "AppendStrStr", "AppendSeqElem", "InRange", 
-    "InSet", "Repr", "Exit", "SetLengthStr", "SetLengthSeq", "Assert", "Swap", 
-    "IsNil", "ArrToSeq", "CopyStr", "CopyStrLast", "NewString", "Array", 
-    "OpenArray", "Range", "Set", "Seq", "Ordinal", "Int", "Int8", "Int16", 
-    "Int32", "Int64", "Float", "Float32", "Float64", "Bool", "Char", "String", 
-    "Cstring", "Pointer", "EmptySet", "IntSetBaseType", "Nil", "Expr", "Stmt", 
-    "TypeDesc", "IsMainModule", "CompileDate", "CompileTime", "NimrodVersion", 
-    "NimrodMajor", "NimrodMinor", "NimrodPatch", "CpuEndian", "HostOS", 
-    "HostCPU", "NaN", "Inf", "NegInf", "NLen", "NChild", "NSetChild", "NAdd", 
-    "NAddMultiple", "NDel", "NKind", "NIntVal", "NFloatVal", "NSymbol", 
-    "NIdent", "NGetType", "NStrVal", "NSetIntVal", "NSetFloatVal", "NSetSymbol", 
-    "NSetIdent", "NSetType", "NSetStrVal", "NNewNimNode", "NCopyNimNode", 
-    "NCopyNimTree", "StrToIdent", "IdentToStr", "EqIdent", "EqNimrodNode", 
-    "NHint", "NWarning", "NError"] 
-
-const 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}
   StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray, 

@@ -263,23 +263,23 @@ proc ropeConstr(indent: int, c: openarray[PRope]): PRope =
     inc(i, 2)
   appf(result, "$n$1}", [spaces(indent)])
 
-proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int, maxRecDepth: int): PRope = 
-  var ast: PRope
+proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int, 
+                  maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
   elif IntSetContainsOrIncl(marker, n.id): 
     result = ropef("\"$1 @$2\"", [toRope(n.name.s), toRope(
         strutils.toHex(cast[TAddress](n), sizeof(n) * 2))])
   else: 
-    ast = treeToYamlAux(n.ast, marker, indent + 2, maxRecDepth - 1)
+    var ast = treeToYamlAux(n.ast, marker, indent + 2, maxRecDepth - 1)
     result = ropeConstr(indent, [toRope("kind"), 
                                  makeYamlString($n.kind), 
                                  toRope("name"), makeYamlString(n.name.s), 
                                  toRope("typ"), typeToYamlAux(n.typ, marker, 
-        indent + 2, maxRecDepth - 1), toRope("info"), lineInfoToStr(n.info), 
+                                   indent + 2, maxRecDepth - 1), 
+                                 toRope("info"), lineInfoToStr(n.info), 
                                  toRope("flags"), flagsToStr(n.flags), 
-                                 toRope("magic"), 
-                                 makeYamlString(MagicToStr[n.magic]), 
+                                 toRope("magic"), makeYamlString($n.magic), 
                                  toRope("ast"), ast, toRope("options"), 
                                  flagsToStr(n.options), toRope("position"), 
                                  toRope(n.position)])
