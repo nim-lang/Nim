@@ -1119,7 +1119,6 @@ when defined(USE_OLD_FUNCTIONS):
       dynlib: External_library, importc: "mysql_create_db".}
   proc mysql_drop_db*(mysql: PMYSQL, DB: cstring): cint{.stdcall, 
       dynlib: External_library, importc: "mysql_drop_db".}
-  proc mysql_reload*(mysql: PMySQL): cint
 
 proc net_safe_read*(mysql: PMYSQL): cuint{.cdecl, dynlib: mysqllib, 
     importc: "net_safe_read".}
