@@ -164,7 +164,7 @@ proc dbClose*(db: TDbConn) =
   if db != nil: PQfinish(db)
 
 proc dbOpen*(connection, user, password, database: string): TDbConn =
-  ## opens a database connection. Returns nil in case of an error.
+  ## opens a database connection.
   result = PQsetdbLogin(nil, nil, nil, nil, database, user, password)
   if PQStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
