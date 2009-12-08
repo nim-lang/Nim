@@ -34,21 +34,21 @@ type
     cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline
     cfsTypeInit1,             # section 1 for declarations of type information
-    cfsTypeInit2,             # section 2 for initialization of type information
-    cfsTypeInit3,             # section 3 for initialization of type information
-    cfsDebugInit,             # section for initialization of debug information
-    cfsDynLibInit,            # section for initialization of dynamic library binding
+    cfsTypeInit2,             # section 2 for init of type information
+    cfsTypeInit3,             # section 3 for init of type information
+    cfsDebugInit,             # section for init of debug information
+    cfsDynLibInit,            # section for init of dynamic library binding
     cfsDynLibDeinit           # section for deinitialization of dynamic libraries
   TCTypeKind = enum           # describes the type kind of a C type
     ctVoid, ctChar, ctBool, ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64, 
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64, ctFloat, ctFloat32, ctFloat64, 
     ctFloat128, ctArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc, ctCString
-  TCFileSections = array[TCFileSection, PRope] # TCFileSections represents a generated C file
+  TCFileSections = array[TCFileSection, PRope] # represents a generated C file
   TCProcSection = enum        # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
     cpsInit,                  # section for initialization of variables for C proc
     cpsStmts                  # section of local statements for C proc
-  TCProcSections = array[TCProcSection, PRope] # TCProcSections represents a generated C proc
+  TCProcSections = array[TCProcSection, PRope] # represents a generated C proc
   BModule = ref TCGen
   BProc = ref TCProc
   TBlock{.final.} = object 
@@ -99,7 +99,8 @@ var
   gMapping: PRope             # the generated mapping file (if requested)
   gProcProfile: Natural       # proc profile counter
   gGeneratedSyms: TIntSet     # set of ID's of generated symbols
-  gPendingModules: seq[BModule] = @ [] # list of modules that are not finished with code generation
+  gPendingModules: seq[BModule] = @[] # list of modules that are not
+                                      # finished with code generation
   gForwardedProcsCounter: int = 0
   gNimDat: BModule            # generated global data
 
@@ -107,29 +108,27 @@ proc ropeff(cformat, llvmformat: string, args: openarray[PRope]): PRope =
   if gCmd == cmdCompileToLLVM: result = ropef(llvmformat, args)
   else: result = ropef(cformat, args)
   
-proc appff(dest: var PRope, cformat, llvmformat: string, args: openarray[PRope]) = 
+proc appff(dest: var PRope, cformat, llvmformat: string, 
+           args: openarray[PRope]) = 
   if gCmd == cmdCompileToLLVM: appf(dest, llvmformat, args)
   else: appf(dest, cformat, args)
   
 proc addForwardedProc(m: BModule, prc: PSym) = 
-  var L: int
-  L = len(m.forwardedProcs)
+  var L = len(m.forwardedProcs)
   setlen(m.forwardedProcs, L + 1)
   m.forwardedProcs[L] = prc
   inc(gForwardedProcsCounter)
 
 proc addPendingModule(m: BModule) = 
-  var L: int
   for i in countup(0, high(gPendingModules)): 
     if gPendingModules[i] == m: 
       InternalError("module already pending: " & m.module.name.s)
-  L = len(gPendingModules)
+  var L = len(gPendingModules)
   setlen(gPendingModules, L + 1)
   gPendingModules[L] = m
 
 proc findPendingModule(m: BModule, s: PSym): BModule = 
-  var ms: PSym
-  ms = getModule(s)
+  var ms = getModule(s)
   if ms.id == m.module.id: 
     return m
   for i in countup(0, high(gPendingModules)): 
@@ -776,8 +775,8 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = gOptions
   initNodeTable(result.dataCache)
-  result.typeStack = @ []
-  result.forwardedProcs = @ []
+  result.typeStack = @[]
+  result.forwardedProcs = @[]
   result.typeNodesName = getTempName()
   result.nimTypesName = getTempName()
 
@@ -789,10 +788,8 @@ proc newModule(module: PSym, filename: string): BModule =
     addPendingModule(result)
 
 proc registerTypeInfoModule() = 
-  const 
-    moduleName = "nim__dat"
-  var s: PSym
-  s = NewSym(skModule, getIdent(moduleName), nil)
+  const moduleName = "nim__dat"
+  var s = NewSym(skModule, getIdent(moduleName), nil)
   gNimDat = rawNewModule(s, joinPath(options.projectPath, moduleName) & ".nim")
   addPendingModule(gNimDat)
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
@@ -805,41 +802,38 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 proc myOpenCached(module: PSym, filename: string, rd: PRodReader): PPassContext = 
   var cfile, cfilenoext, objFile: string
   if gNimDat == nil: 
-    registerTypeInfoModule()  #MessageOut('cgen.myOpenCached has been called ' + filename);
+    registerTypeInfoModule()  
+    #MessageOut('cgen.myOpenCached has been called ' + filename);
   cfile = changeFileExt(completeCFilePath(filename), cExt)
   cfilenoext = changeFileExt(cfile, "")
   addFileToLink(cfilenoext)
-  registerModuleToMain(module) # XXX: this cannot be right here, initalization has to be appended during
-                               # the ``myClose`` call
+  registerModuleToMain(module) 
+  # XXX: this cannot be right here, initalization has to be appended during
+  # the ``myClose`` call
   result = nil
 
 proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool = 
-  var objFile: string
   result = true
   if not (optForceFullMake in gGlobalOptions): 
-    objFile = toObjFile(cfilenoext)
+    var objFile = toObjFile(cfilenoext)
     if writeRopeIfNotEqual(code, cfile): return 
     if ExistsFile(objFile) and os.FileNewer(objFile, cfile): result = false
   else: 
     writeRope(code, cfile)
   
 proc myProcess(b: PPassContext, n: PNode): PNode = 
-  var m: BModule
   result = n
   if b == nil: return 
-  m = BModule(b)
+  var m = BModule(b)
   m.initProc.options = gOptions
   genStmts(m.initProc, n)
 
 proc finishModule(m: BModule) = 
-  var 
-    i: int
-    prc: PSym
-  i = 0
+  var i = 0
   while i <= high(m.forwardedProcs): 
     # Note: ``genProc`` may add to ``m.forwardedProcs``, so we cannot use
     # a ``for`` loop here
-    prc = m.forwardedProcs[i]
+    var prc = m.forwardedProcs[i]
     if sfForward in prc.flags: InternalError(prc.info, "still forwarded")
     genProcNoForward(m, prc)
     inc(i)
@@ -865,12 +859,9 @@ proc writeModule(m: BModule) =
   addFileToLink(cfilenoext)
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
-  var 
-    m: BModule
-    disp: PNode
   result = n
   if b == nil: return 
-  m = BModule(b)
+  var m = BModule(b)
   if n != nil: 
     m.initProc.options = gOptions
     genStmts(m.initProc, n)
@@ -879,11 +870,12 @@ proc myClose(b: PPassContext, n: PNode): PNode =
       not (sfDeadCodeElim in m.module.flags): 
     finishModule(m)
   if sfMainModule in m.module.flags: 
-    disp = generateMethodDispatchers()
+    var disp = generateMethodDispatchers()
     for i in countup(0, sonsLen(disp) - 1): genProcAux(gNimDat, disp.sons[i].sym)
-    genMainProc(m) # we need to process the transitive closure because recursive module
-                   # deps are allowed (and the system module is processed in the wrong
-                   # order anyway)
+    genMainProc(m) 
+    # we need to process the transitive closure because recursive module
+    # deps are allowed (and the system module is processed in the wrong
+    # order anyway)
     while gForwardedProcsCounter > 0: 
       for i in countup(0, high(gPendingModules)): 
         finishModule(gPendingModules[i])

@@ -63,6 +63,8 @@ Nimrod is efficient
 Nimrod is expressive
 ====================
 
+* **The Nimrod compiler and all of the standard library are implemented in 
+  Nimrod.**
 * Built-in high level datatypes: strings, sets, sequences, etc.
 * Modern type system with local type inference, tuples, variants, 
   generics, etc.

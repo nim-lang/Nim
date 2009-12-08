@@ -66,12 +66,9 @@ proc getTypeName(typ: PType): PRope =
   
 proc mapType(typ: PType): TCTypeKind = 
   case typ.kind
-  of tyNone: 
-    result = ctVoid
-  of tyBool: 
-    result = ctBool
-  of tyChar: 
-    result = ctChar
+  of tyNone: result = ctVoid
+  of tyBool: result = ctBool
+  of tyChar: result = ctChar
   of tySet: 
     case int(getSize(typ))
     of 1: result = ctInt8
@@ -79,10 +76,8 @@ proc mapType(typ: PType): TCTypeKind =
     of 4: result = ctInt32
     of 8: result = ctInt64
     else: result = ctArray
-  of tyOpenArray, tyArrayConstr, tyArray: 
-    result = ctArray
-  of tyObject, tyTuple: 
-    result = ctStruct
+  of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
+  of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal: 
     result = mapType(lastSon(typ))
   of tyEnum: 
@@ -95,23 +90,17 @@ proc mapType(typ: PType): TCTypeKind =
       of 4: result = ctInt32
       of 8: result = ctInt64
       else: internalError("mapType")
-  of tyRange: 
-    result = mapType(typ.sons[0])
+  of tyRange: result = mapType(typ.sons[0])
   of tyPtr, tyVar, tyRef: 
     case typ.sons[0].kind
     of tyOpenArray, tyArrayConstr, tyArray: result = ctArray
     else: result = ctPtr
-  of tyPointer: 
-    result = ctPtr
-  of tySequence: 
-    result = ctNimSeq
-  of tyProc: 
-    result = ctProc
-  of tyString: 
-    result = ctNimStr
-  of tyCString: 
-    result = ctCString
-  of tyInt..tyFloat128: 
+  of tyPointer: result = ctPtr
+  of tySequence: result = ctNimSeq
+  of tyProc: result = ctProc
+  of tyString: result = ctNimStr
+  of tyCString: result = ctCString
+  of tyInt..tyFloat128:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   else: InternalError("mapType")
   
@@ -128,8 +117,7 @@ proc isInvalidReturnType(rettype: PType): bool =
   # such a poor programming language.
   # We exclude records with refs too. This enhances efficiency and
   # is necessary for proper code generation of assignments.
-  if rettype == nil: 
-    result = true
+  if rettype == nil: result = true
   else: 
     case mapType(rettype)
     of ctArray: 
@@ -141,8 +129,9 @@ proc isInvalidReturnType(rettype: PType): bool =
   
 const 
   CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL", 
-    "N_STDCALL", "N_CDECL", "N_SAFECALL", "N_SYSCALL", # this is probably not correct for all platforms,
-                                                       # but one can #define it to what one wants so it will be no problem
+    "N_STDCALL", "N_CDECL", "N_SAFECALL", 
+    "N_SYSCALL", # this is probably not correct for all platforms,
+                 # but one can #define it to what one wants 
     "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_CLOSURE", "N_NOCONV"]
   CallingConvToStrLLVM: array[TCallingConvention, string] = ["fastcc $1", 
     "stdcall $1", "ccc $1", "safecall $1", "syscall $1", "$1 alwaysinline", 
@@ -163,8 +152,7 @@ proc getGlobalTempName(): PRope =
   inc(gId)
 
 proc ccgIntroducedPtr(s: PSym): bool = 
-  var pt: PType
-  pt = s.typ
+  var pt = s.typ
   assert(not (sfResult in s.flags))
   case pt.Kind
   of tyObject: 
@@ -189,10 +177,6 @@ proc fillResult(param: PSym) =
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var PRope, 
                    check: var TIntSet) = 
-  var 
-    j: int
-    param: PSym
-    arr: PType
   params = nil
   if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]): 
     rettype = toRope("void")
@@ -200,7 +184,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     rettype = getTypeDescAux(m, t.sons[0], check)
   for i in countup(1, sonsLen(t.n) - 1): 
     if t.n.sons[i].kind != nkSym: InternalError(t.n.info, "genProcParams")
-    param = t.n.sons[i].sym
+    var param = t.n.sons[i].sym
     fillLoc(param.loc, locParam, param.typ, mangleName(param), OnStack)
     app(params, getTypeDescAux(m, param.typ, check))
     if ccgIntroducedPtr(param): 
@@ -209,9 +193,9 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
       param.loc.s = OnUnknown
     app(params, " ")
     app(params, param.loc.r)  # declare the len field for open arrays:
-    arr = param.typ
+    var arr = param.typ
     if arr.kind == tyVar: arr = arr.sons[0]
-    j = 0
+    var j = 0
     while arr.Kind == tyOpenArray: 
       # need to pass hidden parameter:
       appff(params, ", NI $1Len$2", ", @NI $1Len$2", [param.loc.r, toRope(j)])
@@ -220,7 +204,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var PRope,
     if i < sonsLen(t.n) - 1: app(params, ", ")
   if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]): 
     if params != nil: app(params, ", ")
-    arr = t.sons[0]
+    var arr = t.sons[0]
     app(params, getTypeDescAux(m, arr, check))
     if (mapReturnType(t.sons[0]) != ctArray) or (gCmd == cmdCompileToLLVM): 
       app(params, "*")
@@ -266,23 +250,17 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
   of tyString: 
     useMagic(m, "NimStringDesc")
     result = typeNameOrLiteral(typ, "NimStringDesc*")
-  of tyCstring: 
-    result = typeNameOrLiteral(typ, "NCSTRING")
-  of tyBool: 
-    result = typeNameOrLiteral(typ, "NIM_BOOL")
-  of tyChar: 
-    result = typeNameOrLiteral(typ, "NIM_CHAR")
-  of tyNil: 
-    result = typeNameOrLiteral(typ, "0")
+  of tyCstring: result = typeNameOrLiteral(typ, "NCSTRING")
+  of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
+  of tyChar: result = typeNameOrLiteral(typ, "NIM_CHAR")
+  of tyNil: result = typeNameOrLiteral(typ, "0")
   of tyInt..tyFloat128: 
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.Kind])
-  of tyRange: 
-    result = getSimpleTypeDesc(m, typ.sons[0])
+  of tyRange: result = getSimpleTypeDesc(m, typ.sons[0])
   else: result = nil
   
 proc getTypePre(m: BModule, typ: PType): PRope = 
-  if typ == nil: 
-    result = toRope("void")
+  if typ == nil: result = toRope("void")
   else: 
     result = getSimpleTypeDesc(m, typ)
     if result == nil: result = CacheGetType(m.typeCache, typ)

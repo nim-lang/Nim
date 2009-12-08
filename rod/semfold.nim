@@ -275,7 +275,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, mNLen..mNError: 
     nil
-  else: InternalError(a.info, "evalOp(" & magicToStr[m] & ')')
+  else: InternalError(a.info, "evalOp(" & $m & ')')
   
 proc getConstIfExpr(c: PSym, n: PNode): PNode = 
   var it, e: PNode
