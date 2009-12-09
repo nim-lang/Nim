@@ -326,18 +326,13 @@ include "ccgexprs.nim", "ccgstmts.nim"
 # We don't finalize dynamic libs as this does the OS for us.
 
 proc libCandidates(s: string, dest: var TStringSeq) = 
-  var 
-    prefix, suffix: string
-    le, ri, L: int
-    temp: TStringSeq
-  le = strutils.find(s, '(')
-  ri = strutils.find(s, ')')
-  if (le >= 0) and (ri > le): 
-    prefix = copy(s, 0, le - 1)
-    suffix = copy(s, ri + 1)
-    temp = split(copy(s, le + 1, ri - 1), {'|'})
-    for i in countup(0, high(temp)): 
-      libCandidates(prefix & temp[i] & suffix, dest)
+  var le = strutils.find(s, '(')
+  var ri = strutils.find(s, ')', le+1)
+  if le >= 0 and ri > le: 
+    var prefix = copy(s, 0, le - 1)
+    var suffix = copy(s, ri + 1)
+    for middle in split(copy(s, le + 1, ri - 1), {'|'}):
+      libCandidates(prefix & middle & suffix, dest)
   else: 
     add(dest, s)
 
@@ -353,13 +348,14 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     lib.name = tmp            # BUGFIX: useMagic has awful side-effects
     appff(m.s[cfsVars], "static void* $1;$n", 
           "$1 = linkonce global i8* zeroinitializer$n", [tmp])
-    s = @ []
+    s = @[]
     libCandidates(lib.path, s)
     loadlib = nil
     for i in countup(0, high(s)): 
       inc(m.labels)
       if i > 0: app(loadlib, "||")
-      appff(loadlib, "($1 = nimLoadLibrary((NimStringDesc*) &$2))$n", "%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n" &
+      appff(loadlib, "($1 = nimLoadLibrary((NimStringDesc*) &$2))$n", 
+          "%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n" &
           "store i8* %MOC$4, i8** $1$n", [tmp, getStrLit(m, s[i]), 
           getTypeDesc(m, getSysType(tyString)), toRope(m.labels)])
     appff(m.s[cfsDynLibInit], 
@@ -374,15 +370,12 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   if lib.name == nil: InternalError("loadDynamicLib")
   
 proc SymInDynamicLib(m: BModule, sym: PSym) = 
-  var 
-    lib: PLib
-    extname, tmp: PRope
-  lib = sym.annex
-  extname = sym.loc.r
+  var lib = sym.annex
+  var extname = sym.loc.r
   loadDynamicLib(m, lib)
   useMagic(m, "nimGetProcAddr")
   if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
-  tmp = ropeff("Dl_$1", "@Dl_$1", [toRope(sym.id)])
+  var tmp = ropeff("Dl_$1", "@Dl_$1", [toRope(sym.id)])
   sym.loc.r = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
@@ -392,12 +385,12 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
       "store $2 %MOC$6, $2* $1$n", [tmp, getTypeDesc(m, sym.typ), 
       lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname)), 
       toRope(m.labels), toRope(m.labels - 1)])
-  appff(m.s[cfsVars], "$2 $1;$n", "$1 = linkonce global $2 zeroinitializer$n", 
+  appff(m.s[cfsVars], "$2 $1;$n", 
+      "$1 = linkonce global $2 zeroinitializer$n", 
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc UseMagic(m: BModule, name: string) = 
-  var sym: PSym
-  sym = magicsys.getCompilerProc(name)
+  var sym = magicsys.getCompilerProc(name)
   if sym != nil: 
     case sym.kind
     of skProc, skMethod, skConverter: genProc(m, sym)
@@ -426,11 +419,13 @@ proc getFrameDecl(p: BProc) =
   else: 
     slots = nil
   appff(p.s[cpsLocals], "volatile struct {TFrame* prev;" &
-      "NCSTRING procname;NI line;NCSTRING filename;" & "NI len;$n$1} F;$n", 
-        "%TF = type {%TFrame*, i8*, %NI, %NI$1}$n" & "%F = alloca %TF$n", 
-        [slots])
+      "NCSTRING procname;NI line;NCSTRING filename;" & 
+      "NI len;$n$1} F;$n", 
+      "%TF = type {%TFrame*, i8*, %NI, %NI$1}$n" & 
+      "%F = alloca %TF$n", [slots])
   inc(p.labels)
-  prepend(p.s[cpsInit], ropeff("F.len = $1;$n", "%LOC$2 = getelementptr %TF %F, %NI 4$n" &
+  prepend(p.s[cpsInit], ropeff("F.len = $1;$n", 
+      "%LOC$2 = getelementptr %TF %F, %NI 4$n" &
       "store %NI $1, %NI* %LOC$2$n", [toRope(p.frameLen), toRope(p.labels)]))
 
 proc retIsNotVoid(s: PSym): bool = 
@@ -439,7 +434,8 @@ proc retIsNotVoid(s: PSym): bool =
 proc initFrame(p: BProc, procname, filename: PRope): PRope = 
   inc(p.labels, 5)
   result = ropeff("F.procname = $1;$n" & "F.prev = framePtr;$n" &
-      "F.filename = $2;$n" & "F.line = 0;$n" & "framePtr = (TFrame*)&F;$n", "%LOC$3 = getelementptr %TF %F, %NI 1$n" &
+      "F.filename = $2;$n" & "F.line = 0;$n" & "framePtr = (TFrame*)&F;$n", 
+      "%LOC$3 = getelementptr %TF %F, %NI 1$n" &
       "%LOC$4 = getelementptr %TF %F, %NI 0$n" &
       "%LOC$5 = getelementptr %TF %F, %NI 3$n" &
       "%LOC$6 = getelementptr %TF %F, %NI 2$n" & "store i8* $1, i8** %LOC$3$n" &
@@ -452,7 +448,8 @@ proc initFrame(p: BProc, procname, filename: PRope): PRope =
 
 proc deinitFrame(p: BProc): PRope = 
   inc(p.labels, 3)
-  result = ropeff("framePtr = framePtr->prev;$n", "%LOC$1 = load %TFrame* @framePtr$n" &
+  result = ropeff("framePtr = framePtr->prev;$n", 
+      "%LOC$1 = load %TFrame* @framePtr$n" &
       "%LOC$2 = getelementptr %TFrame* %LOC$1, %NI 0$n" &
       "%LOC$3 = load %TFrame** %LOC$2$n" &
       "store %TFrame* $LOC$3, %TFrame** @framePtr", [toRope(p.labels), 

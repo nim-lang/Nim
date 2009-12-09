@@ -320,17 +320,12 @@ proc noVal(n: PNode) =
   if n.kind == nkExprColonExpr: invalidPragma(n)
   
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) = 
-  var 
-    key, it: PNode
-    k: TSpecialWord
-    lib: PLib
   if n == nil: return 
   for i in countup(0, sonsLen(n) - 1): 
-    it = n.sons[i]
-    if it.kind == nkExprColonExpr: key = it.sons[0]
-    else: key = it
+    var it = n.sons[i]
+    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent: 
-      k = whichKeyword(key.ident)
+      var k = whichKeyword(key.ident)
       if k in validPragmas: 
         case k
         of wExportc: 
@@ -367,7 +362,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           noval(it)
           incl(sym.flags, sfMerge)
         of wHeader: 
-          lib = getLib(c, libHeader, expectStrLit(c, it))
+          var lib = getLib(c, libHeader, expectStrLit(c, it))
           addToLib(lib, sym)
           incl(sym.flags, sfImportc)
           incl(sym.loc.flags, lfHeader)
@@ -417,12 +412,9 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
         of wTypeCheck: 
           noVal(it)
           incl(sym.flags, sfTypeCheck)
-        of wHint: 
-          liMessage(it.info, hintUser, expectStrLit(c, it))
-        of wWarning: 
-          liMessage(it.info, warnUser, expectStrLit(c, it))
-        of wError: 
-          liMessage(it.info, errUser, expectStrLit(c, it))
+        of wHint: liMessage(it.info, hintUser, expectStrLit(c, it))
+        of wWarning: liMessage(it.info, warnUser, expectStrLit(c, it))
+        of wError: liMessage(it.info, errUser, expectStrLit(c, it))
         of wFatal: 
           liMessage(it.info, errUser, expectStrLit(c, it))
           quit(1)
@@ -454,7 +446,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if (sym != nil) and (sym.kind != skModule): 
     if (lfExportLib in sym.loc.flags) and not (sfExportc in sym.flags): 
       liMessage(n.info, errDynlibRequiresExportc)
-    lib = POptionEntry(c.optionstack.tail).dynlib
+    var lib = POptionEntry(c.optionstack.tail).dynlib
     if ({lfDynamicLib, lfHeader} * sym.loc.flags == {}) and
         (sfImportc in sym.flags) and (lib != nil): 
       incl(sym.loc.flags, lfDynamicLib)
