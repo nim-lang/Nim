@@ -98,6 +98,9 @@ procedure InitDefines;
 begin
   initStrTable(gSymbols);
   DefineSymbol('nimrod'); // 'nimrod' is always defined
+{@ignore}
+  DefineSymbol('nim'); // Pascal version defines 'nim' in addition
+{@emit}
   // add platform specific symbols:
   case targetCPU of
     cpuI386: DefineSymbol('x86');
