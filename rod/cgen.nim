@@ -46,7 +46,7 @@ type
   TCFileSections = array[TCFileSection, PRope] # represents a generated C file
   TCProcSection = enum        # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
-    cpsInit,                  # section for initialization of variables for C proc
+    cpsInit,                  # section for init of variables for C proc
     cpsStmts                  # section of local statements for C proc
   TCProcSections = array[TCProcSection, PRope] # represents a generated C proc
   BModule = ref TCGen
@@ -114,18 +114,14 @@ proc appff(dest: var PRope, cformat, llvmformat: string,
   else: appf(dest, cformat, args)
   
 proc addForwardedProc(m: BModule, prc: PSym) = 
-  var L = len(m.forwardedProcs)
-  setlen(m.forwardedProcs, L + 1)
-  m.forwardedProcs[L] = prc
+  m.forwardedProcs.add(prc)
   inc(gForwardedProcsCounter)
 
 proc addPendingModule(m: BModule) = 
   for i in countup(0, high(gPendingModules)): 
     if gPendingModules[i] == m: 
       InternalError("module already pending: " & m.module.name.s)
-  var L = len(gPendingModules)
-  setlen(gPendingModules, L + 1)
-  gPendingModules[L] = m
+  gPendingModules.add(m)
 
 proc findPendingModule(m: BModule, s: PSym): BModule = 
   var ms = getModule(s)
