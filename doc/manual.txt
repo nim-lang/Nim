@@ -1237,7 +1237,7 @@ Example:
 The `discard`:idx: statement evaluates its expression for side-effects and
 throws the expression's resulting value away. If the expression has no
 side-effects, this generates a static error. Ignoring the return value of a
-procedure without using a discard statement is not allowed.
+procedure without using a discard statement is a static error too.
 
 
 Var statement
