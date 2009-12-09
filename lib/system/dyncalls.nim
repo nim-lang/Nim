@@ -60,6 +60,7 @@ when defined(posix):
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)
+    if result == nil: nimLoadLibraryError($name)
 
 elif defined(windows) or defined(dos):
   #
@@ -84,6 +85,7 @@ elif defined(windows) or defined(dos):
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = GetProcAddress(cast[THINSTANCE](lib), name)
+    if result == nil: nimLoadLibraryError($name)
 
 elif defined(mac):
   #
@@ -114,11 +116,12 @@ elif defined(mac):
         NSDestroyObjectFileImage(img)
         result = TLibHandle(modul)
 
-  proc nimGetProcAddr(lib: TLibHandle, cname: string): TProcAddr =
+  proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     var
       nss: NSSymbol
     nss = NSLookupSymbolInModule(NSModule(lib), name)
     result = TProcAddr(NSAddressOfSymbol(nss))
+    if result == nil: nimLoadLibraryError($name)
 
 else:
   {.error: "no implementation for dyncalls".}

@@ -319,11 +319,8 @@ proc genConstPrototype(m: BModule, sym: PSym)
 proc genProc(m: BModule, prc: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc genProcPrototype(m: BModule, sym: PSym)
-include 
-  "ccgexprs.nim"
 
-include 
-  "ccgstmts.nim"
+include "ccgexprs.nim", "ccgstmts.nim"
 
 # ----------------------------- dynamic library handling -----------------
 # We don't finalize dynamic libs as this does the OS for us.
@@ -367,8 +364,9 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
           getTypeDesc(m, getSysType(tyString)), toRope(m.labels)])
     appff(m.s[cfsDynLibInit], 
           "if (!($1)) nimLoadLibraryError((NimStringDesc*) &$2);$n", 
-          "XXX too implement", [loadlib, getStrLit(m, lib.path)]) #appf(m.s[cfsDynLibDeinit],
-                                                                  #  'if ($1 != NIM_NIL) nimUnloadLibrary($1);$n', [tmp]);
+          "XXX too implement", [loadlib, getStrLit(m, lib.path)]) 
+    #appf(m.s[cfsDynLibDeinit], "if ($1 != NIM_NIL) nimUnloadLibrary($1);$n",
+    # [tmp])
     useMagic(m, "nimLoadLibrary")
     useMagic(m, "nimUnloadLibrary")
     useMagic(m, "NimStringDesc")
@@ -388,13 +386,14 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
   sym.loc.r = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
-  appff(m.s[cfsDynLibInit], "$1 = ($2) nimGetProcAddr($3, $4);$n", "%MOC$5 = load i8* $3$n" &
+  appff(m.s[cfsDynLibInit], 
+      "$1 = ($2) nimGetProcAddr($3, $4);$n", "%MOC$5 = load i8* $3$n" &
       "%MOC$6 = call $2 @nimGetProcAddr(i8* %MOC$5, i8* $4)$n" &
-      "store $2 %MOC$6, $2* $1$n", [tmp, getTypeDesc(m, sym.typ), lib.name, cstringLit(
-      m, m.s[cfsDynLibInit], ropeToStr(extname)), toRope(m.labels), 
-                                    toRope(m.labels - 1)])
+      "store $2 %MOC$6, $2* $1$n", [tmp, getTypeDesc(m, sym.typ), 
+      lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname)), 
+      toRope(m.labels), toRope(m.labels - 1)])
   appff(m.s[cfsVars], "$2 $1;$n", "$1 = linkonce global $2 zeroinitializer$n", 
-        [sym.loc.r, getTypeDesc(m, sym.loc.t)])
+      [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc UseMagic(m: BModule, name: string) = 
   var sym: PSym
@@ -409,9 +408,8 @@ proc UseMagic(m: BModule, name: string) =
     rawMessage(errSystemNeeds, name) # don't be too picky here
   
 proc generateHeaders(m: BModule) = 
-  var it: PStrEntry
   app(m.s[cfsHeaders], "#include \"nimbase.h\"" & tnl & tnl)
-  it = PStrEntry(m.headerFiles.head)
+  var it = PStrEntry(m.headerFiles.head)
   while it != nil: 
     if not (it.data[0] in {'\"', '<'}): 
       appf(m.s[cfsHeaders], "#include \"$1\"$n", [toRope(it.data)])
