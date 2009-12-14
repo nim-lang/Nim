@@ -37,16 +37,16 @@
 
 when defined(MACOSX): 
   const 
-    LUA_NAME* = "liblua(5.2|5.1|5.0).dylib"
-    LUA_LIB_NAME* = "liblua(5.2|5.1|5.0).dylib"
+    LUA_NAME* = "liblua(|5.2|5.1|5.0).dylib"
+    LUA_LIB_NAME* = "liblua(|5.2|5.1|5.0).dylib"
 elif defined(UNIX): 
   const 
-    LUA_NAME* = "liblua(5.2|5.1|5.0).so.0"
-    LUA_LIB_NAME* = "liblua(5.2|5.1|5.0).so.0"
+    LUA_NAME* = "liblua(|5.2|5.1|5.0).so.(|0)"
+    LUA_LIB_NAME* = "liblua(|5.2|5.1|5.0).so.(|0)"
 else: 
   const 
-    LUA_NAME* = "lua(5.2|5.1|5.0).dll"
-    LUA_LIB_NAME* = "lua(5.2|5.1|5.0).dll"
+    LUA_NAME* = "lua(|5.2|5.1|5.0).dll"
+    LUA_LIB_NAME* = "lua(|5.2|5.1|5.0).dll"
 type 
   size_t* = int
   Psize_t* = ptr size_t
@@ -56,7 +56,8 @@ const
   LUA_RELEASE* = "Lua 5.1.1"
   LUA_VERSION_NUM* = 501
   LUA_COPYRIGHT* = "Copyright (C) 1994-2006 Lua.org, PUC-Rio"
-  LUA_AUTHORS* = "R. Ierusalimschy, L. H. de Figueiredo & W. Celes" # option for multiple returns in `lua_pcall' and `lua_call' 
+  LUA_AUTHORS* = "R. Ierusalimschy, L. H. de Figueiredo & W. Celes"
+  # option for multiple returns in `lua_pcall' and `lua_call' 
   LUA_MULTRET* = - 1          #
                               #** pseudo-indices
                               #
@@ -74,19 +75,18 @@ const                         # thread status; 0 is OK
 
 type 
   Plua_State* = Pointer
-  lua_CFunction* = proc (L: Plua_State): int{.cdecl.} #
-                                                      #** functions that read/write blocks when loading/dumping Lua chunks
-                                                      #
-
+  lua_CFunction* = proc (L: Plua_State): int{.cdecl.}
+  
+#
+#** functions that read/write blocks when loading/dumping Lua chunks
+#
 type 
   lua_Reader* = proc (L: Plua_State, ud: Pointer, sz: Psize_t): cstring{.cdecl.}
   lua_Writer* = proc (L: Plua_State, p: Pointer, sz: size_t, ud: Pointer): int{.
-      cdecl.}                 #
-                              #** prototype for memory-allocation functions
-                              #
+      cdecl.}
   lua_Alloc* = proc (ud, theptr: Pointer, osize, nsize: size_t){.cdecl.}
 
-const 
+const
   LUA_TNONE* = - 1
   LUA_TNIL* = 0
   LUA_TBOOLEAN* = 1
@@ -218,9 +218,10 @@ proc lua_getallocf*(L: Plua_State, ud: ptr Pointer): lua_Alloc{.cdecl,
     dynlib: LUA_NAME, importc.}
 proc lua_setallocf*(L: Plua_State, f: lua_Alloc, ud: Pointer){.cdecl, 
     dynlib: LUA_NAME, importc.}
-  #
-  #** Garbage-collection functions and options
-  #
+
+#
+#** Garbage-collection functions and options
+#
 const 
   LUA_GCSTOP* = 0
   LUA_GCRESTART* = 1
@@ -229,11 +230,13 @@ const
   LUA_GCCOUNTB* = 4
   LUA_GCSTEP* = 5
   LUA_GCSETPAUSE* = 6
-  LUA_GCSETSTEPMUL* = 7 #
-                        #** ===============================================================
-                        #** some useful macros
-                        #** ===============================================================
-                        #
+  LUA_GCSETSTEPMUL* = 7
+
+#
+#** ===============================================================
+#** some useful macros
+#** ===============================================================
+#
 
 proc lua_pop*(L: Plua_State, n: int)
 proc lua_newtable*(L: Plua_state)
@@ -252,18 +255,20 @@ proc lua_pushliteral*(L: Plua_State, s: cstring)
 proc lua_setglobal*(L: Plua_State, s: cstring)
 proc lua_getglobal*(L: Plua_State, s: cstring)
 proc lua_tostring*(L: Plua_State, i: int): cstring
-  #
-  #** compatibility macros and functions
-  #
+#
+#** compatibility macros and functions
+#
 proc lua_getregistry*(L: Plua_State)
 proc lua_getgccount*(L: Plua_State): int
 type 
   lua_Chunkreader* = lua_Reader
-  lua_Chunkwriter* = lua_Writer #
-                                #** {======================================================================
-                                #** Debug API
-                                #** =======================================================================
-                                #
+  lua_Chunkwriter* = lua_Writer
+  
+#
+#** {======================================================================
+#** Debug API
+#** =======================================================================
+#
 
 const 
   LUA_HOOKCALL* = 0
@@ -297,11 +302,13 @@ type
     i_ci*: int                # active function 
   
   Plua_Debug* = ptr lua_Debug
-  lua_Hook* = proc (L: Plua_State, ar: Plua_Debug){.cdecl.} #
-                                                            #** {======================================================================
-                                                            #** Debug API
-                                                            #** =======================================================================
-                                                            #
+  lua_Hook* = proc (L: Plua_State, ar: Plua_Debug){.cdecl.}
+  
+#
+#** {======================================================================
+#** Debug API
+#** =======================================================================
+#
 
 proc lua_getstack*(L: Plua_State, level: int, ar: Plua_Debug): int{.cdecl, 
     dynlib: LUA_NAME, importc.}

@@ -7,6 +7,10 @@
 
 .. contents::
 
+  "Look at you, hacker. A pathetic creature of meat and bone, panting and
+  sweating as you run through my corridors. How can you challenge a perfect,
+  immortal machine?"
+
 
 Introduction
 ============
@@ -242,7 +246,7 @@ memory, but nothing worse happens.
 
 
 DeadCodeElim Pragma
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
 compiler to activate (or deactivate) dead code elimination for the module the
 pragma appers in.
@@ -304,13 +308,13 @@ Optimizing string handling
 String assignments are sometimes expensive in Nimrod: They are required to
 copy the whole string. However, the compiler is often smart enough to not copy
 strings. Due to the argument passing semantics, strings are never copied when
-passed to subroutines. The compiler does not copy strings that are result from
-a procedure call, because the called procedure returns a new string anyway.
+passed to subroutines. The compiler does not copy strings that are a result from
+a procedure call, because the callee returns a new string anyway.
 Thus it is efficient to do:
 
 .. code-block:: Nimrod
   var s = procA() # assignment will not copy the string; procA allocates a new
-                  # string anyway
+                  # string already
 
 However it is not efficient to do:
 

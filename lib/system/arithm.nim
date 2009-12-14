@@ -314,3 +314,21 @@ when not defined(mulInt):
     if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
       return result
     raiseOverflow()
+
+# We avoid setting the FPU control word here for compatibility with libraries
+# written in other languages.
+
+proc raiseFloatInvalidOp {.noinline, noreturn.} =
+  raise newException(EFloatInvalidOp, "FPU operation caused a NaN result")
+
+proc nanCheck(x: float64) {.compilerProc, inline.} =
+  if x != x: raiseFloatInvalidOp()
+
+proc raiseFloatOverflow(x: float64) {.noinline, noreturn.} =
+  if x > 0.0:
+    raise newException(EFloatOverflow, "FPU operation caused an overflow")
+  else:
+    raise newException(EFloatUnderflow, "FPU operations caused an underflow")
+
+proc infCheck(x: float64) {.compilerProc, inline.} =
+  if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)

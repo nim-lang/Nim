@@ -7,10 +7,10 @@ Advanced commands::
   check                     checks the project for syntax and semantic
   parse                     parses a single file (for debugging Nimrod)
 Advanced options:
-  -w, --warnings:on|off     warnings ON|OFF
-  --warning[X]:on|off       specific warning X ON|OFF
-  --hints:on|off            hints ON|OFF
-  --hint[X]:on|off          specific hint X ON|OFF
+  -w, --warnings:on|off     turn all warnings on|off
+  --warning[X]:on|off       turn specific warning X on|off
+  --hints:on|off            turn all hints on|off
+  --hint[X]:on|off          turn specific hint X on|off
   --lib:PATH                set the system library path
   -c, --compileOnly         compile only; do not assemble or link
   --noLinking               compile but do not link
@@ -24,8 +24,8 @@ Advanced options:
   -l, --passl:OPTION        pass an option to the linker
   --genMapping              generate a mapping file containing
                             (Nimrod, mangled) identifier pairs
-  --lineDir:on|off          generation of #line directive ON|OFF
-  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod
+  --lineDir:on|off          generation of #line directive on|off
+  --checkpoints:on|off      turn checkpoints on|off; for debugging Nimrod
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC

@@ -47,18 +47,20 @@ Options:
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
-  --symbolFiles:on|off      use symbol files to speed up compilation (buggy!)
-  --stackTrace:on|off       code generation for stack trace ON|OFF
-  --lineTrace:on|off        code generation for line trace ON|OFF
-  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF
-  -x, --checks:on|off       code generation for all runtime checks ON|OFF
-  --objChecks:on|off        code generation for obj conversion checks ON|OFF
-  --fieldChecks:on|off      code generation for case variant fields ON|OFF
-  --rangeChecks:on|off      code generation for range checks ON|OFF
-  --boundChecks:on|off      code generation for bound checks ON|OFF
-  --overflowChecks:on|off   code generation for over-/underflow checks ON|OFF
-  -a, --assertions:on|off   code generation for assertions ON|OFF
-  --deadCodeElim:on|off     whole program dead code elimination ON|OFF
+  --stackTrace:on|off       turn stack tracing on|off
+  --lineTrace:on|off        turn line tracing on|off
+  --debugger:on|off         turn Embedded Nimrod Debugger on|off
+  -x, --checks:on|off       turn all runtime checks on|off
+  --objChecks:on|off        turn obj conversion checks on|off
+  --fieldChecks:on|off      turn case variant field checks on|off
+  --rangeChecks:on|off      turn range checks on|off
+  --boundChecks:on|off      turn bound checks on|off
+  --overflowChecks:on|off   turn int over-/underflow checks on|off
+  -a, --assertions:on|off   turn assertions on|off
+  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
+  --nanChecks:on|off        turn NaN checks on|off
+  --infChecks:on|off        turn Inf checks on|off
+  --deadCodeElim:on|off     whole program dead code elimination on|off
   --opt:none|speed|size     optimize not at all or for speed|size
   --app:console|gui|lib     generate a console|GUI application|dynamic library
   -r, --run                 run the compiled program with given arguments
@@ -76,10 +78,10 @@ Advanced commands::
   check                     checks the project for syntax and semantic
   parse                     parses a single file (for debugging Nimrod)
 Advanced options:
-  -w, --warnings:on|off     warnings ON|OFF
-  --warning[X]:on|off       specific warning X ON|OFF
-  --hints:on|off            hints ON|OFF
-  --hint[X]:on|off          specific hint X ON|OFF
+  -w, --warnings:on|off     turn all warnings on|off
+  --warning[X]:on|off       turn specific warning X on|off
+  --hints:on|off            turn all hints on|off
+  --hint[X]:on|off          turn specific hint X on|off
   --lib:PATH                set the system library path
   -c, --compileOnly         compile only; do not assemble or link
   --noLinking               compile but do not link
@@ -93,8 +95,8 @@ Advanced options:
   -l, --passl:OPTION        pass an option to the linker
   --genMapping              generate a mapping file containing
                             (Nimrod, mangled) identifier pairs
-  --lineDir:on|off          generation of #line directive ON|OFF
-  --checkpoints:on|off      turn on|off checkpoints; for debugging Nimrod
+  --lineDir:on|off          generation of #line directive on|off
+  --checkpoints:on|off      turn checkpoints on|off; for debugging Nimrod
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
@@ -152,9 +154,8 @@ proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) =
 
 proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
                  info: TLineInfo) = 
-  var i: int
   cmd = ""
-  i = 0
+  var i = 0
   if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
   if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
   while i < len(switch) + 0: 
@@ -188,13 +189,9 @@ proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   
 proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 
-  var 
-    i, x: int
-    n: TNoteKind
-    id: string
-  id = ""                     # arg = "X]:on|off"
-  i = 0
-  n = hintMin
+  var id = ""  # arg = "X]:on|off"
+  var i = 0
+  var n = hintMin
   while (i < len(arg) + 0) and (arg[i] != ']'): 
     add(id, arg[i])
     inc(i)
@@ -203,11 +200,11 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
   if (i < len(arg) + 0) and (arg[i] in {':', '='}): inc(i)
   else: InvalidCmdLineOption(pass, arg, info)
   if state == wHint: 
-    x = findStr(msgs.HintsToStr, id)
+    var x = findStr(msgs.HintsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
     else: InvalidCmdLineOption(pass, arg, info)
   else: 
-    x = findStr(msgs.WarningsToStr, id)
+    var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: InvalidCmdLineOption(pass, arg, info)
   case whichKeyword(copy(arg, i))
@@ -297,6 +294,10 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     if optProfiler in gOptions: DefineSymbol("profiler")
     else: UndefSymbol("profiler")
   of wChecks, wX: ProcessOnOffSwitch(checksOptions, arg, pass, info)
+  of wFloatChecks:
+    ProcessOnOffSwitch({optNanCheck, optInfCheck}, arg, pass, info)
+  of wInfChecks: ProcessOnOffSwitch({optInfCheck}, arg, pass, info)
+  of wNanChecks: ProcessOnOffSwitch({optNanCheck}, arg, pass, info)
   of wObjChecks: ProcessOnOffSwitch({optObjCheck}, arg, pass, info)
   of wFieldChecks: ProcessOnOffSwitch({optFieldCheck}, arg, pass, info)
   of wRangeChecks: ProcessOnOffSwitch({optRangeCheck}, arg, pass, info)

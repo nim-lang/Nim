@@ -47,7 +47,7 @@ components called `locations`:idx:. A variable is basically a name for a
 location. Each variable and location is of a certain `type`:idx:. The
 variable's type is called `static type`:idx:, the location's type is called
 `dynamic type`:idx:. If the static type is not the same as the dynamic type,
-it is a supertype or subtype of the dynamic type.
+it is a super-type or subtype of the dynamic type.
 
 An `identifier`:idx: is a symbol declared as a name for a variable, type,
 procedure, etc. The region of the program over which a declaration applies is
@@ -424,8 +424,8 @@ Integers, bool, characters and enumeration types (and subrange of these
 types) belong to ordinal types.
 
 
-Pre-defined numerical types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pre-defined integer types
+~~~~~~~~~~~~~~~~~~~~~~~~~
 These integer types are pre-defined:
 
 ``int``
@@ -469,6 +469,14 @@ operation                meaning
                          ``int32`` type)
 ======================   ======================================================
 
+`Automatic type conversion`:idx: is performed in expressions where different
+kinds of integer types are used: the smaller type is converted to the larger.
+For further details, see `Convertible relation`_.
+
+
+Pre-defined floating point types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The following floating point types are pre-defined:
 
 ``float``
@@ -482,16 +490,49 @@ floatXX
   implementation supports ``float32`` and ``float64``. Literals of these types
   have the suffix 'fXX.
 
-`Automatic type conversion`:idx: is performed in expressions where different
-kinds of integer types are used. However, if the type conversion
-loses information, the `EOutOfRange`:idx: exception is raised (if the error
-cannot be detected at compile time).
 
 Automatic type conversion in expressions with different kinds
-of floating point types is performed: the smaller type is
-converted to the larger. Arithmetic performed on floating point types
-follows the IEEE standard. Integer types are not converted to floating point
-types automatically and vice versa.
+of floating point types is performed: See `Convertible relation`_ for further
+details. Arithmetic performed on floating point types follows the IEEE
+standard. Integer types are not converted to floating point types automatically
+and vice versa.
+
+The IEEE standard defines five types of floating-point exceptions:
+
+* Invalid: operations with mathematically invalid operands,
+  for example 0.0/0.0, sqrt(-1.0), and log(-37.8).
+* Division by zero: divisor is zero and dividend is a finite nonzero number,
+  for example 1.0/0.0.
+* Overflow: operation produces a result that exceeds the range of the exponent, 
+  for example MAXDOUBLE+0.0000000000001e308.
+* Underflow: operation produces a result that is too small to be represented 
+  as a normal number, for example, MINDOUBLE * MINDOUBLE.
+* Inexact: operation produces a result that cannot be represented with infinite 
+  precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
+
+The IEEE exceptions are either ignored at runtime or mapped to the 
+Nimrod exceptions: `EFloatInvalidOp`:idx, `EFloatDivByZero`:idx:,
+`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:\. 
+These exceptions inherit from the `EFloatingPoint`:idx: base class.
+
+Nimrod provides the pragmas `NaNChecks`:idx and `InfChecks`:idx:\ to control
+whether the IEEE exceptions are ignored or trap a Nimrod exception:
+
+.. code-block:: nimrod
+  {.NanChecks: on, InfChecks: on.}
+  var a = 1.0
+  var b = 0.0
+  echo b / b # raises EFloatInvalidOp
+  echo a / b # raises EFloatOverflow
+
+In the current implementation ``EFloatDivByZero`` and ``EFloatInexact`` are 
+never raised. ``EFloatOverflow`` is raised instead of ``EFloatDivByZero``.
+There is also a `floatChecks`:idx: pragma that is a short-cut for the 
+combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
+turned off as default.
+
+The only operations that are affected by the ``floatChecks`` pragma are
+the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
 
 
 Boolean type

@@ -14,11 +14,14 @@ type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck, 
-    optOverflowCheck, optNilCheck, optAssert, optLineDir, optWarns, optHints, 
+    optOverflowCheck, optNilCheck,
+    optNaNCheck, optInfCheck,
+    optAssert, optLineDir, optWarns, optHints, 
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
     optEndb,                  # embedded debugger
-    optByRef,  # use pass by ref for objects (for interfacing with C)
+    optByRef,                 # use pass by ref for objects
+                              # (for interfacing with C)
     optCheckpoints,           # check for checkpoints (used for debugging)
     optProfiler               # profiler turned on
   TOptions* = set[TOption]
@@ -50,12 +53,7 @@ type                          # please make sure we have under 32 options
 
 const 
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
-    optOverflowCheck, optBoundsCheck, optAssert}
-  optionToStr*: array[TOption, string] = ["optNone", "optObjCheck", 
-    "optFieldCheck", "optRangeCheck", "optBoundsCheck", "optOverflowCheck", 
-    "optNilCheck", "optAssert", "optLineDir", "optWarns", "optHints", 
-    "optOptimizeSpeed", "optOptimizeSize", "optStackTrace", "optLineTrace", 
-    "optEmdb", "optByRef", "optCheckpoints", "optProfiler"]
+    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck}
 
 var 
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck, 

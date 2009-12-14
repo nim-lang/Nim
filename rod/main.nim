@@ -31,8 +31,7 @@ var compMods: TFileModuleMap = @ []
 
 proc registerModule(filename: string, module: PSym) = 
   # all compiled modules
-  var length: int
-  length = len(compMods)
+  var length = len(compMods)
   setlen(compMods, length + 1)
   compMods[length].filename = filename
   compMods[length].module = module
@@ -50,6 +49,9 @@ proc newModule(filename: string): PSym =
   result.id = - 1             # for better error checking
   result.kind = skModule
   result.name = getIdent(splitFile(filename).name)
+  if not isNimrodIdentifier(result.name.s):
+    rawMessage(errIdentifierExpected, result.name.s)
+  
   result.owner = result       # a module belongs to itself
   result.info = newLineInfo(filename, 1, 1)
   incl(result.flags, sfUsed)
@@ -68,11 +70,8 @@ proc importModule(filename: string): PSym =
     liMessage(result.info, errAttemptToRedefine, result.Name.s)
   
 proc CompileModule(filename: string, isMainFile, isSystemFile: bool): PSym = 
-  var 
-    rd: PRodReader
-    f: string
-  rd = nil
-  f = addFileExt(filename, nimExt)
+  var rd: PRodReader = nil
+  var f = addFileExt(filename, nimExt)
   result = newModule(filename)
   if isMainFile: incl(result.flags, sfMainModule)
   if isSystemFile: incl(result.flags, sfSystemModule)

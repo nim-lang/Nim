@@ -303,10 +303,10 @@ type
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
     mGCunref, mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64, 
-    mDivI64, mModI64, mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI, 
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64, 
+    mDivI64, mModI64,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI, 
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
     mDivU, mModU, mAddU64, mSubU64, mMulU64, mDivU64, mModU64, mEqI, mLeI, mLtI, 
     mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, mLeU, mLtU, mLeU64, mLtU64, 

@@ -139,18 +139,22 @@ proc fillToken*(L: var TToken)
 proc isKeyword(kind: TTokType): bool = 
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
+proc isNimrodIdentifier*(s: string): bool =
+  if s[0] in SymStartChars:
+    for c in items(s):
+      if c notin SymChars: return
+    result = true
+
 proc pushInd(L: var TLexer, indent: int) = 
-  var length: int
-  length = len(L.indentStack)
+  var length = len(L.indentStack)
   setlen(L.indentStack, length + 1)
   if (indent > L.indentStack[length - 1]): 
     L.indentstack[length] = indent
   else: 
-    InternalError("pushInd")  #writeln('push indent ', indent);
+    InternalError("pushInd")
   
 proc popInd(L: var TLexer) = 
-  var length: int
-  length = len(L.indentStack)
+  var length = len(L.indentStack)
   setlen(L.indentStack, length - 1)
 
 proc findIdent(L: TLexer, indent: int): bool = 
@@ -161,12 +165,9 @@ proc findIdent(L: TLexer, indent: int): bool =
 
 proc tokToStr(tok: PToken): string = 
   case tok.tokType
-  of tkIntLit..tkInt64Lit: 
-    result = $(tok.iNumber)
-  of tkFloatLit..tkFloat64Lit: 
-    result = $(tok.fNumber)
-  of tkInvalid, tkStrLit..tkCharLit, tkComment: 
-    result = tok.literal
+  of tkIntLit..tkInt64Lit: result = $tok.iNumber
+  of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
+  of tkInvalid, tkStrLit..tkCharLit, tkComment: result = tok.literal
   of tkParLe..tkColon, tkEof, tkInd, tkSad, tkDed, tkAccent: 
     result = tokTypeToStr[tok.tokType]
   else: 
@@ -194,7 +195,7 @@ proc fillToken(L: var TToken) =
   
 proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
-  lex.indentStack = @ [0]
+  lex.indentStack = @[0]
   lex.filename = filename
   lex.indentAhead = - 1
 
