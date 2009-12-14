@@ -118,7 +118,8 @@ proc genRawSetData(cs: TBitSet, size: int): PRope =
         frmt = "0x$1}$n"
       appf(result, frmt, [toRope(toHex(Ze64(cs[i]), 2))])
   else: 
-    result = intLiteral(bitSetToWord(cs, size)) #  result := toRope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
+    result = intLiteral(bitSetToWord(cs, size))
+    #  result := toRope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
   
 proc genSetNode(p: BProc, n: PNode): PRope = 
   var 
@@ -384,14 +385,12 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       "modInt64"]
     opr: array[mAddi..mModi64, string] = ["+", "-", "*", "/", "%", "+", "-", 
       "*", "/", "%"]
-  var 
-    a, b: TLoc
-    t: PType
+  var a, b: TLoc
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  t = skipTypes(e.typ, abstractRange)
+  var t = skipTypes(e.typ, abstractRange)
   if getSize(t) >= platform.IntSize: 
     if optOverflowCheck in p.options: 
       useMagic(p.module, prc[m])
@@ -437,8 +436,12 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 
 proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) = 
   const 
-    binArithTab: array[mShrI..mXor, string] = ["(NI$3)((NU$3)($1) >> (NU$3)($2))", # 
-                                                                                   # ShrI
+    binArithTab: array[mAddF64..mXor, string] = [
+      "($1 + $2)",            # AddF64
+      "($1 - $2)",            # SubF64
+      "($1 * $2)",            # MulF64
+      "($1 / $2)",            # DivF64
+      "(NI$3)((NU$3)($1) >> (NU$3)($2))", # ShrI
       "(NI$3)((NU$3)($1) << (NU$3)($2))", # ShlI
       "(NI$3)($1 & $2)",      # BitandI
       "(NI$3)($1 | $2)",      # BitorI
@@ -452,10 +455,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 ^ $2)",            # BitxorI64
       "(($1 <= $2) ? $1 : $2)", # MinI64
       "(($1 >= $2) ? $1 : $2)", # MaxI64
-      "($1 + $2)",            # AddF64
-      "($1 - $2)",            # SubF64
-      "($1 * $2)",            # MulF64
-      "($1 / $2)",            # DivF64
       "(($1 <= $2) ? $1 : $2)", # MinF64
       "(($1 >= $2) ? $1 : $2)", # MaxF64
       "(NI$3)((NU$3)($1) + (NU$3)($2))", # AddU
@@ -503,7 +502,8 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   InitLocExpr(p, e.sons[1], a)
-  InitLocExpr(p, e.sons[2], b) # BUGFIX: cannot use result-type here, as it may be a boolean
+  InitLocExpr(p, e.sons[2], b)
+  # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
   putIntoDest(p, d, e.typ, 
               ropef(binArithTab[op], [rdLoc(a), rdLoc(b), toRope(s)]))
@@ -672,14 +672,12 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     genRecordField(p, e.sons[0], d)
   
 proc genArrayElem(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a, b: TLoc
-    ty: PType
-    first: PRope
+  var a, b: TLoc
   initLocExpr(p, e.sons[0], a)
   initLocExpr(p, e.sons[1], b)
-  ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
-  first = intLiteral(firstOrd(ty)) # emit range check:
+  var ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
+  var first = intLiteral(firstOrd(ty))
+  # emit range check:
   if (optBoundsCheck in p.options): 
     if not isConstExpr(e.sons[1]): 
       # semantic pass has already checked for const index expressions
@@ -696,12 +694,10 @@ proc genArrayElem(p: BProc, e: PNode, d: var TLoc) =
               ropef("$1[($2)-$3]", [rdLoc(a), rdCharLoc(b), first]))
 
 proc genCStringElem(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a, b: TLoc
-    ty: PType
+  var a, b: TLoc
   initLocExpr(p, e.sons[0], a)
   initLocExpr(p, e.sons[1], b)
-  ty = skipTypes(a.t, abstractVarRange)
+  var ty = skipTypes(a.t, abstractVarRange)
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)), 
               ropef("$1[$2]", [rdLoc(a), rdCharLoc(b)]))
@@ -719,12 +715,10 @@ proc genOpenArrayElem(p: BProc, e: PNode, d: var TLoc) =
               ropef("$1[$2]", [rdLoc(a), rdCharLoc(b)]))
 
 proc genSeqElem(p: BPRoc, e: PNode, d: var TLoc) = 
-  var 
-    a, b: TLoc
-    ty: PType
+  var a, b: TLoc
   initLocExpr(p, e.sons[0], a)
   initLocExpr(p, e.sons[1], b)
-  ty = skipTypes(a.t, abstractVarRange)
+  var ty = skipTypes(a.t, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}: 
     ty = skipTypes(ty.sons[0], abstractVarRange) # emit range check:
   if (optBoundsCheck in p.options): 
@@ -770,7 +764,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   getTemp(p, e.typ, tmp)      # force it into a temp!
   expr(p, e.sons[1], tmp)
   L = getLabel(p)
-  if m == mOr:                # mAnd:
+  if m == mOr:
     appf(p.s[cpsStmts], "if ($1) goto $2;$n", [rdLoc(tmp), L])
   else: 
     appf(p.s[cpsStmts], "if (!($1)) goto $2;$n", [rdLoc(tmp), L])
@@ -888,15 +882,12 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #    appendChar(tmp0, 'z');
   #    asgn(s, tmp0);
   #  }
-  var 
-    a, tmp: TLoc
-    appends, lens: PRope
-    L: int
+  var a, tmp: TLoc
   useMagic(p.module, "rawNewString")
   getTemp(p, e.typ, tmp)
-  L = 0
-  appends = nil
-  lens = nil
+  var L = 0
+  var appends: PRope = nil
+  var lens: PRope = nil
   for i in countup(0, sonsLen(e) - 2): 
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
@@ -1060,8 +1051,9 @@ proc genNewFinalize(p: BProc, e: PNode) =
     oldModule: BModule
   useMagic(p.module, "newObj")
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
-  InitLocExpr(p, e.sons[1], a) # This is a little hack: 
-                               # XXX this is also a bug, if the finalizer expression produces side-effects
+  InitLocExpr(p, e.sons[1], a)
+  # This is a little hack: 
+  # XXX this is also a bug, if the finalizer expression produces side-effects
   oldModule = p.module
   p.module = gNimDat
   InitLocExpr(p, e.sons[2], f)
@@ -1076,11 +1068,9 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, bt, a, false)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a: TLoc
-    t: PType
+  var a: TLoc
   InitLocExpr(p, e.sons[1], a)
-  t = skipTypes(e.sons[1].typ, abstractVarRange)
+  var t = skipTypes(e.sons[1].typ, abstractVarRange)
   case t.kind
   of tyInt..tyInt64: 
     UseMagic(p.module, "reprInt")
@@ -1108,8 +1098,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   of tyOpenArray: 
     useMagic(p.module, "reprOpenArray")
     case a.t.kind
-    of tyOpenArray: 
-      putIntoDest(p, d, e.typ, ropef("$1, $1Len0", [rdLoc(a)]))
+    of tyOpenArray: putIntoDest(p, d, e.typ, ropef("$1, $1Len0", [rdLoc(a)]))
     of tyString, tySequence: 
       putIntoDest(p, d, e.typ, ropef("$1->data, $1->Sup.len", [rdLoc(a)]))
     of tyArray, tyArrayConstr: 
@@ -1137,8 +1126,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, magic, frmt: string) =
   genAssignment(p, d, a, {})
 
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) = 
-  var typ: PType
-  typ = skipTypes(e.sons[1].Typ, abstractPtrs)
+  var typ = skipTypes(e.sons[1].Typ, abstractPtrs)
   case typ.kind
   of tyOpenArray: 
     while e.sons[1].kind == nkPassAsOpenArray: e.sons[1] = e.sons[1].sons[0]
@@ -1157,14 +1145,12 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   else: InternalError(e.info, "genArrayLen()")
   
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a, b: TLoc
-    t: PType
+  var a, b: TLoc
   assert(d.k == locNone)
   useMagic(p.module, "setLengthSeq")
   InitLocExpr(p, e.sons[1], a)
   InitLocExpr(p, e.sons[2], b)
-  t = skipTypes(e.sons[1].typ, abstractVar)
+  var t = skipTypes(e.sons[1].typ, abstractVar)
   appf(p.s[cpsStmts], "$1 = ($3) setLengthSeq(&($1)->Sup, sizeof($4), $2);$n", [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t), 
       getTypeDesc(p.module, t.sons[0])])
@@ -1202,8 +1188,7 @@ proc fewCmps(s: PNode): bool =
   elif elemType(s.typ).Kind in {tyInt, tyInt16..tyInt64}: 
     result = true             # better not emit the set if int is basetype!
   else: 
-    result = sonsLen(s) <=
-        8                     # 8 seems to be a good value
+    result = sonsLen(s) <= 8  # 8 seems to be a good value
   
 proc binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) = 
   putIntoDest(p, d, e.typ, ropef(frmt, [rdLoc(a), rdSetElemLoc(b, a.t)]))
@@ -1224,16 +1209,14 @@ proc binaryStmtInExcl(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   appf(p.s[cpsStmts], frmt, [rdLoc(a), rdSetElemLoc(b, a.t)])
 
 proc genInOp(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a, b, x, y: TLoc
-    length: int
+  var a, b, x, y: TLoc
   if (e.sons[1].Kind == nkCurly) and fewCmps(e.sons[1]): 
     # a set constructor but not a constant set:
     # do not emit the set, but generate a bunch of comparisons
     initLocExpr(p, e.sons[2], a)
     initLoc(b, locExpr, e.typ, OnUnknown)
     b.r = toRope("(")
-    length = sonsLen(e.sons[1])
+    var length = sonsLen(e.sons[1])
     for i in countup(0, length - 1): 
       if e.sons[1].sons[i].Kind == nkRange: 
         InitLocExpr(p, e.sons[1].sons[i].sons[0], x)
@@ -1255,56 +1238,45 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
 
 proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) = 
   const 
-    lookupOpr: array[mLeSet..mSymDiffSet, string] = ["for ($1 = 0; $1 < $2; $1++) { $n" &
-        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" & "  if (!$3) break;}$n", "for ($1 = 0; $1 < $2; $1++) { $n" &
+    lookupOpr: array[mLeSet..mSymDiffSet, string] = [
+      "for ($1 = 0; $1 < $2; $1++) { $n" &
+        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+        "  if (!$3) break;}$n", "for ($1 = 0; $1 < $2; $1++) { $n" &
         "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" & "  if (!$3) break;}$n" &
-        "if ($3) $3 = (memcmp($4, $5, $2) != 0);$n", "&", "|", "& ~", "^"]
-  var 
-    size: int
-    setType: PType
-    a, b, i: TLoc
-    ts: string
-  setType = skipTypes(e.sons[1].Typ, abstractVar)
-  size = int(getSize(setType))
+        "if ($3) $3 = (memcmp($4, $5, $2) != 0);$n",
+      "&", "|", "& ~", "^"]
+  var a, b, i: TLoc
+  var setType = skipTypes(e.sons[1].Typ, abstractVar)
+  var size = int(getSize(setType))
   case size
   of 1, 2, 4, 8: 
     case op
     of mIncl: 
-      ts = "NI" & $(size * 8)
+      var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d, 
                        "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n")
     of mExcl: 
-      ts = "NI" & $(size * 8)
+      var ts = "NI" & $(size * 8)
       binaryStmtInExcl(p, e, d, "$1 &= ~(1 << ((" & ts & ")($2) % (sizeof(" &
           ts & ")*8)));$n")
     of mCard: 
       if size <= 4: unaryExprChar(p, e, d, "countBits32", "countBits32($1)")
       else: unaryExprChar(p, e, d, "countBits64", "countBits64($1)")
-    of mLtSet: 
-      binaryExprChar(p, e, d, "", "(($1 & ~ $2 ==0)&&($1 != $2))")
-    of mLeSet: 
-      binaryExprChar(p, e, d, "", "(($1 & ~ $2)==0)")
-    of mEqSet: 
-      binaryExpr(p, e, d, "", "($1 == $2)")
-    of mMulSet: 
-      binaryExpr(p, e, d, "", "($1 & $2)")
-    of mPlusSet: 
-      binaryExpr(p, e, d, "", "($1 | $2)")
-    of mMinusSet: 
-      binaryExpr(p, e, d, "", "($1 & ~ $2)")
-    of mSymDiffSet: 
-      binaryExpr(p, e, d, "", "($1 ^ $2)")
+    of mLtSet: binaryExprChar(p, e, d, "", "(($1 & ~ $2 ==0)&&($1 != $2))")
+    of mLeSet: binaryExprChar(p, e, d, "", "(($1 & ~ $2)==0)")
+    of mEqSet: binaryExpr(p, e, d, "", "($1 == $2)")
+    of mMulSet: binaryExpr(p, e, d, "", "($1 & $2)")
+    of mPlusSet: binaryExpr(p, e, d, "", "($1 | $2)")
+    of mMinusSet: binaryExpr(p, e, d, "", "($1 & ~ $2)")
+    of mSymDiffSet: binaryExpr(p, e, d, "", "($1 ^ $2)")
     of mInSet: 
       genInOp(p, e, d)
     else: internalError(e.info, "genSetOp()")
   else: 
     case op
-    of mIncl: 
-      binaryStmtInExcl(p, e, d, "$1[$2/8] |=(1<<($2%8));$n")
-    of mExcl: 
-      binaryStmtInExcl(p, e, d, "$1[$2/8] &= ~(1<<($2%8));$n")
-    of mCard: 
-      unaryExprChar(p, e, d, "cardSet", "cardSet($1, " & $(size) & ')')
+    of mIncl: binaryStmtInExcl(p, e, d, "$1[$2/8] |=(1<<($2%8));$n")
+    of mExcl: binaryStmtInExcl(p, e, d, "$1[$2/8] &= ~(1<<($2%8));$n")
+    of mCard: unaryExprChar(p, e, d, "cardSet", "cardSet($1, " & $size & ')')
     of mLtSet, mLeSet: 
       getTemp(p, getSysType(tyInt), i) # our counter
       initLocExpr(p, e.sons[1], a)
@@ -1324,8 +1296,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
            "for ($1 = 0; $1 < $2; $1++) $n" & "  $3[$1] = $4[$1] $6 $5[$1];$n", [
           rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b), 
           toRope(lookupOpr[op])])
-    of mInSet: 
-      genInOp(p, e, d)
+    of mInSet: genInOp(p, e, d)
     else: internalError(e.info, "genSetOp")
   
 proc genOrd(p: BProc, e: PNode, d: var TLoc) = 
@@ -1347,10 +1318,8 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
                                    [getTypeDesc(p.module, e.typ), rdCharLoc(a)]))
   
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) = 
-  var 
-    a: TLoc
-    dest: PType
-  dest = skipTypes(n.typ, abstractVar)
+  var a: TLoc
+  var dest = skipTypes(n.typ, abstractVar)
   if not (optRangeCheck in p.options): 
     InitLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n.typ, ropef("(($1) ($2))", 
@@ -1367,12 +1336,10 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
   genCast(p, e, d)
 
 proc passToOpenArray(p: BProc, n: PNode, d: var TLoc) = 
-  var 
-    a: TLoc
-    dest: PType
+  var a: TLoc
   while n.sons[0].kind == nkPassAsOpenArray: 
     n.sons[0] = n.sons[0].sons[0] # BUGFIX
-  dest = skipTypes(n.typ, abstractVar)
+  var dest = skipTypes(n.typ, abstractVar)
   case skipTypes(n.sons[0].typ, abstractVar).kind
   of tyOpenArray: 
     initLocExpr(p, n.sons[0], a)
@@ -1398,11 +1365,9 @@ proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
               ropef("cstrToNimstr($1)", [rdLoc(a)]))
 
 proc genStrEquals(p: BProc, e: PNode, d: var TLoc) = 
-  var 
-    a, b: PNode
-    x: TLoc
-  a = e.sons[1]
-  b = e.sons[2]
+  var x: TLoc
+  var a = e.sons[1]
+  var b = e.sons[2]
   if (a.kind == nkNilLit) or (b.kind == nkNilLit): 
     binaryExpr(p, e, d, "", "($1 == $2)")
   elif (a.kind in {nkStrLit..nkTripleStrLit}) and (a.strVal == ""): 
@@ -1431,9 +1396,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
     expr(p, t.sons[i], arr)
 
 proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) = 
-  var 
-    newSeq, elem, a, arr: TLoc
-    L: int
+  var newSeq, elem, a, arr: TLoc
   if t.kind == nkBracket: 
     t.sons[1].typ = t.typ
     genSeqConstr(p, t.sons[1], d)
@@ -1442,7 +1405,7 @@ proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
   if d.k == locNone: 
     getTemp(p, t.typ, d)      
   # generate call to newSeq before adding the elements per hand:
-  L = int(lengthOrd(t.sons[1].typ))
+  var L = int(lengthOrd(t.sons[1].typ))
   initLoc(newSeq, locExpr, t.typ, OnHeap)
   newSeq.r = ropef("($1) newSeq($2, $3)", [getTypeDesc(p.module, t.typ), 
       genTypeInfo(p.module, t.typ), intLiteral(L)])
@@ -1451,10 +1414,29 @@ proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
   for i in countup(0, L - 1): 
     initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
     elem.r = ropef("$1->data[$2]", [rdLoc(d), intLiteral(i)])
-    elem.s = OnHeap           # we know that sequences are on the heap
+    elem.s = OnHeap # we know that sequences are on the heap
     initLoc(arr, locExpr, elemType(skipTypes(t.sons[1].typ, abstractInst)), a.s)
     arr.r = ropef("$1[$2]", [rdLoc(a), intLiteral(i)])
     genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+
+proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
+  if {optNanCheck, optInfCheck} * p.options != {}:
+    const opr: array[mAddF64..mDivF64, string] = ["+", "-", "*", "/"]
+    var a, b: TLoc
+    assert(e.sons[1].typ != nil)
+    assert(e.sons[2].typ != nil)
+    InitLocExpr(p, e.sons[1], a)
+    InitLocExpr(p, e.sons[2], b)
+    putIntoDest(p, d, e.typ, ropef("($2 $1 $3)", [
+                toRope(opr[m]), rdLoc(a), rdLoc(b)]))
+    if optNanCheck in p.options:
+      useMagic(p.module, "nanCheck")
+      appf(p.s[cpsStmts], "nanCheck($1);$n", [rdLoc(d)])
+    if optInfCheck in p.options:
+      useMagic(p.module, "infCheck")
+      appf(p.s[cpsStmts], "infCheck($1);$n", [rdLoc(d)])
+  else:
+    binaryArith(p, e, d, m)
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) = 
   var line, filen: PRope
@@ -1462,6 +1444,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mToBiggestInt: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI64: unaryArithOverflow(p, e, d, op)
+  of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mAddi..mModi64: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)

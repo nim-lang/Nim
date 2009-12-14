@@ -222,10 +222,10 @@ type
   EFloatingPoint* = object of ESynch ## base class for floating point exceptions
   EFloatInvalidOp* {.compilerproc.} = 
     object of EFloatingPoint ## Invalid operation according to IEEE: Raised by 
-                             ## 0.0/0.0, sqrt(-1.0), and log(-37.8) for example.
+                             ## 0.0/0.0, for example.
   EFloatDivByZero* {.compilerproc.} = 
     object of EFloatingPoint ## Division by zero. Divisor is zero and dividend 
-                             ## is a finite nonzero number 
+                             ## is a finite nonzero number.
   EFloatOverflow* {.compilerproc.} = 
     object of EFloatingPoint ## Overflow. Operation produces a result 
                              ## that exceeds the range of the exponent

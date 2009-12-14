@@ -536,7 +536,7 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
     result = ropef("$n$n$1.. index::$n$2", [ind, result])
   of rnContents: 
     result = ropef("$n$n$1.. contents::", [ind])
-  else: rawMessage(errCannotRenderX, rstnodeKindToStr[n.kind])
+  else: rawMessage(errCannotRenderX, $n.kind)
   
 proc renderTocEntry(d: PDoc, e: TTocEntry): PRope = 
   result = dispF("<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>$n", 
@@ -582,16 +582,12 @@ proc renderImage(d: PDoc, n: PRstNode): PRope =
   if rsonsLen(n) >= 3: app(result, renderRstToOut(d, n.sons[2]))
   
 proc renderCodeBlock(d: PDoc, n: PRstNode): PRope = 
-  var 
-    m: PRstNode
-    g: TGeneralTokenizer
-    langstr: string
-    lang: TSourceLanguage
   result = nil
   if n.sons[2] == nil: return 
-  m = n.sons[2].sons[0]
+  var m = n.sons[2].sons[0]
   if (m.kind != rnLeaf): InternalError("renderCodeBlock")
-  langstr = strip(getArgument(n))
+  var langstr = strip(getArgument(n))
+  var lang: TSourceLanguage
   if langstr == "": 
     lang = langNimrod         # default language
   else: 
@@ -600,12 +596,12 @@ proc renderCodeBlock(d: PDoc, n: PRstNode): PRope =
     rawMessage(warnLanguageXNotSupported, langstr)
     result = toRope(m.text)
   else: 
+    var g: TGeneralTokenizer
     initGeneralTokenizer(g, m.text)
     while true: 
       getNextToken(g, lang)
       case g.kind
-      of gtEof: 
-        break 
+      of gtEof: break 
       of gtNone, gtWhitespace: 
         app(result, copy(m.text, g.start + 0, g.length + g.start - 1 + 0))
       else: 

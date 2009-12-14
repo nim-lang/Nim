@@ -69,8 +69,9 @@ proc countDefinedSymbols(): int =
 
 proc InitDefines() = 
   initStrTable(gSymbols)
-  DefineSymbol("nimrod")      # 'nimrod' is always defined
-                              # add platform specific symbols:
+  DefineSymbol("nimrod") # 'nimrod' is always defined
+  
+  # add platform specific symbols:
   case targetCPU
   of cpuI386: DefineSymbol("x86")
   of cpuIa64: DefineSymbol("itanium")
@@ -103,7 +104,7 @@ proc InitDefines() =
     DefineSymbol("posix")
   else: 
     nil
-  DefineSymbol("cpu" & $(cpu[targetCPU].bit))
+  DefineSymbol("cpu" & $cpu[targetCPU].bit)
   DefineSymbol(normalize(endianToStr[cpu[targetCPU].endian]))
   DefineSymbol(cpu[targetCPU].name)
   DefineSymbol(platform.os[targetOS].name)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -37,15 +37,11 @@ proc getModuleFile(n: PNode): string =
     result = ""
 
 proc rawImportSymbol(c: PContext, s: PSym) = 
-  var 
-    check, copy, e: PSym
-    etyp: PType               # enumeration type
-    it: TIdentIter
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
-  copy = s # do not copy symbols when importing!
+  var copy = s # do not copy symbols when importing!
   # check if we have already a symbol of the same name:
-  check = StrTableGet(c.tab.stack[importTablePos], s.name)
+  var check = StrTableGet(c.tab.stack[importTablePos], s.name)
   if (check != nil) and (check.id != copy.id): 
     if not (s.kind in OverloadableSyms): 
       # s and check need to be qualified:
@@ -53,15 +49,16 @@ proc rawImportSymbol(c: PContext, s: PSym) =
       IntSetIncl(c.AmbiguousSymbols, check.id)
   StrTableAdd(c.tab.stack[importTablePos], copy)
   if s.kind == skType: 
-    etyp = s.typ
+    var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}: 
       for j in countup(0, sonsLen(etyp.n) - 1): 
-        e = etyp.n.sons[j].sym
+        var e = etyp.n.sons[j].sym
         if (e.Kind != skEnumField): 
           InternalError(s.info, "rawImportSymbol") 
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
           # BUGFIX: but only iff they are the same symbols!
+        var it: TIdentIter 
         check = InitIdentIter(it, c.tab.stack[importTablePos], e.name)
         while check != nil: 
           if check.id == e.id: 
@@ -74,11 +71,8 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     addConverter(c, s)        # rodgen assures that converters are no stubs
   
 proc importSymbol(c: PContext, ident: PNode, fromMod: PSym) = 
-  var 
-    s, e: PSym
-    it: TIdentIter
   if (ident.kind != nkIdent): InternalError(ident.info, "importSymbol")
-  s = StrTableGet(fromMod.tab, ident.ident)
+  var s = StrTableGet(fromMod.tab, ident.ident)
   if s == nil: liMessage(ident.info, errUndeclaredIdentifier, ident.ident.s)
   if s.kind == skStub: loadStub(s)
   if not (s.Kind in ExportableSymKinds): 
@@ -87,7 +81,8 @@ proc importSymbol(c: PContext, ident: PNode, fromMod: PSym) =
   case s.Kind
   of skProc, skMethod, skIterator, skMacro, skTemplate, skConverter: 
     # for a overloadable syms add all overloaded routines
-    e = InitIdentIter(it, fromMod.tab, s.name)
+    var it: TIdentIter
+    var e = InitIdentIter(it, fromMod.tab, s.name)
     while e != nil: 
       if (e.name.id != s.Name.id): InternalError(ident.info, "importSymbol: 3")
       rawImportSymbol(c, e)

@@ -327,7 +327,7 @@ proc libCandidates(s: string, dest: var TStringSeq) =
   if le >= 0 and ri > le: 
     var prefix = copy(s, 0, le - 1)
     var suffix = copy(s, ri + 1)
-    for middle in split(copy(s, le + 1, ri - 1), {'|'}):
+    for middle in split(copy(s, le + 1, ri - 1), '|'):
       libCandidates(prefix & middle & suffix, dest)
   else: 
     add(dest, s)

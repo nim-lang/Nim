@@ -101,7 +101,7 @@ proc mean*(x: openarray[float]): float {.noSideEffect.} =
   result = sum(x) / toFloat(len(x))
 
 proc variance*(x: openarray[float]): float {.noSideEffect.} = 
-  ## computes the mean of the elements in `x`. 
+  ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
   result = 0.0
   var m = mean(x)

@@ -32,7 +32,8 @@ const
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
     wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop, wBreakpoint, 
-    wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated}
+    wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
+    wInfChecks, wNanChecks}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, wDeprecated}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
@@ -220,6 +221,9 @@ proc processOption(c: PContext, n: PNode) =
     of wBoundchecks: OnOff(c, n, {optBoundsCheck})
     of wOverflowchecks: OnOff(c, n, {optOverflowCheck})
     of wNilchecks: OnOff(c, n, {optNilCheck})
+    of wFloatChecks: OnOff(c, n, {optNanCheck, optInfCheck})
+    of wNaNchecks: OnOff(c, n, {optNanCheck})
+    of wInfChecks: OnOff(c, n, {optInfCheck})
     of wAssertions: OnOff(c, n, {optAssert})
     of wWarnings: OnOff(c, n, {optWarns})
     of wHints: OnOff(c, n, {optHints})
@@ -434,7 +438,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
         of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
            wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
            wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef, wCallConv, 
-           wDebugger, wProfiler: 
+           wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks: 
           processOption(c, it) # calling conventions (boring...):
         of firstCallConv..lastCallConv: 
           assert(sym != nil)

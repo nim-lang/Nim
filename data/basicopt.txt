@@ -14,18 +14,20 @@ Options:
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
-  --symbolFiles:on|off      use symbol files to speed up compilation (buggy!)
-  --stackTrace:on|off       code generation for stack trace ON|OFF
-  --lineTrace:on|off        code generation for line trace ON|OFF
-  --debugger:on|off         turn Embedded Nimrod Debugger ON|OFF
-  -x, --checks:on|off       code generation for all runtime checks ON|OFF
-  --objChecks:on|off        code generation for obj conversion checks ON|OFF
-  --fieldChecks:on|off      code generation for case variant fields ON|OFF
-  --rangeChecks:on|off      code generation for range checks ON|OFF
-  --boundChecks:on|off      code generation for bound checks ON|OFF
-  --overflowChecks:on|off   code generation for over-/underflow checks ON|OFF
-  -a, --assertions:on|off   code generation for assertions ON|OFF
-  --deadCodeElim:on|off     whole program dead code elimination ON|OFF
+  --stackTrace:on|off       turn stack tracing on|off
+  --lineTrace:on|off        turn line tracing on|off
+  --debugger:on|off         turn Embedded Nimrod Debugger on|off
+  -x, --checks:on|off       turn all runtime checks on|off
+  --objChecks:on|off        turn obj conversion checks on|off
+  --fieldChecks:on|off      turn case variant field checks on|off
+  --rangeChecks:on|off      turn range checks on|off
+  --boundChecks:on|off      turn bound checks on|off
+  --overflowChecks:on|off   turn int over-/underflow checks on|off
+  -a, --assertions:on|off   turn assertions on|off
+  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
+  --nanChecks:on|off        turn NaN checks on|off
+  --infChecks:on|off        turn Inf checks on|off
+  --deadCodeElim:on|off     whole program dead code elimination on|off
   --opt:none|speed|size     optimize not at all or for speed|size
   --app:console|gui|lib     generate a console|GUI application|dynamic library
   -r, --run                 run the compiled program with given arguments

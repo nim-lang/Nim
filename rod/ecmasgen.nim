@@ -75,7 +75,7 @@ proc initCompRes(r: var TCompRes) =
 
 proc initProc(p: var TProc, globals: PGlobals, module: BModule, procDef: PNode, 
               options: TOptions) = 
-  p.blocks = @ []
+  p.blocks = @[]
   p.options = options
   p.module = module
   p.procDef = procDef
@@ -87,8 +87,7 @@ const
     tySet, tyVar, tyRef, tyPtr}
 
 proc mapType(typ: PType): TEcmasTypeKind = 
-  var t: PType
-  t = skipTypes(typ, abstractInst)
+  var t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr: 
     if skipTypes(t.sons[0], abstractInst).kind in mappedToObject: 
@@ -98,29 +97,20 @@ proc mapType(typ: PType): TEcmasTypeKind =
   of tyPointer: 
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyInt
-  of tyRange, tyDistinct, tyOrdinal: 
-    result = mapType(t.sons[0])
-  of tyInt..tyInt64, tyEnum, tyChar: 
-    result = etyInt
-  of tyBool: 
-    result = etyBool
-  of tyFloat..tyFloat128: 
-    result = etyFloat
-  of tySet: 
-    result = etyObject        # map a set to a table
-  of tyString, tySequence: 
-    result = etyInt           # little hack to get the right semantics
+  of tyRange, tyDistinct, tyOrdinal: result = mapType(t.sons[0])
+  of tyInt..tyInt64, tyEnum, tyChar: result = etyInt
+  of tyBool: result = etyBool
+  of tyFloat..tyFloat128: result = etyFloat
+  of tySet: result = etyObject # map a set to a table
+  of tyString, tySequence: result = etyInt # little hack to get right semantics
   of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray: 
     result = etyObject
-  of tyNil: 
-    result = etyNull
+  of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvokation, tyNone, 
      tyForward, tyEmpty, tyExpr, tyStmt, tyTypeDesc: 
     result = etyNone
-  of tyProc: 
-    result = etyProc
-  of tyCString: 
-    result = etyString
+  of tyProc: result = etyProc
+  of tyCString: result = etyString
   
 proc mangle(name: string): string = 
   result = ""
@@ -132,7 +122,7 @@ proc mangle(name: string): string =
       nil
     of 'a'..'z', '0'..'9': 
       add(result, name[i])
-    else: result = result & 'X' & toHex(ord(name[i]), 2)
+    else: add(result, 'X' & toHex(ord(name[i]), 2))
   
 proc mangleName(s: PSym): PRope = 
   result = s.loc.r
@@ -199,9 +189,8 @@ proc genObjectFields(p: var TProc, typ: PType, n: PNode): PRope =
   else: internalError(n.info, "genObjectFields")
   
 proc genObjectInfo(p: var TProc, typ: PType, name: PRope) = 
-  var s: PRope
-  s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
-      "finalizer: null};$n", [name, toRope(ord(typ.kind))])
+  var s = ropef("var $1 = {size: 0, kind: $2, base: null, node: null, " &
+                "finalizer: null};$n", [name, toRope(ord(typ.kind))])
   prepend(p.globals.typeInfo, s)
   appf(p.globals.typeInfo, "var NNI$1 = $2;$n", 
        [toRope(typ.id), genObjectFields(p, typ, typ.n)])
@@ -301,9 +290,9 @@ proc genOr(p: var TProc, a, b: PNode, r: var TCompRes) =
 type 
   TMagicFrmt = array[0..3, string]
 
-const                         # magic checked op; magic unchecked op; checked op; unchecked op
-  ops: array[mAddi..mStrToStr, TMagicFrmt] = [["addInt", "", "addInt($1, $2)", 
-      "($1 + $2)"],           # AddI
+const # magic checked op; magic unchecked op; checked op; unchecked op
+  ops: array[mAddi..mStrToStr, TMagicFrmt] = [
+    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # AddI
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # SubI
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
@@ -313,6 +302,10 @@ const                         # magic checked op; magic unchecked op; checked op
     ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
     ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
     ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
+    ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
+    ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
+    ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
+    ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
     ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI
     ["", "", "($1 << $2)", "($1 << $2)"], # ShlI
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI
@@ -327,10 +320,6 @@ const                         # magic checked op; magic unchecked op; checked op
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
-    ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
-    ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
-    ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
-    ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["AddU", "AddU", "AddU($1, $2)", "AddU($1, $2)"], # AddU
@@ -461,8 +450,8 @@ proc genLineDir(p: var TProc, n: PNode, r: var TCompRes) =
     appf(r.com, "F.line = $1;$n", [toRope(line)])
   
 proc finishTryStmt(p: var TProc, r: var TCompRes, howMany: int) = 
-  for i in countup(1, howMany): app(r.com, "excHandler = excHandler.prev;" &
-      tnl)
+  for i in countup(1, howMany):
+    app(r.com, "excHandler = excHandler.prev;" & tnl)
   
 proc genWhileStmt(p: var TProc, n: PNode, r: var TCompRes) = 
   var 
