@@ -13,7 +13,7 @@ import
   ast, astalgo, scanner, msgs, strutils
 
 proc getMagic*(op: PNode): TMagic
-  # function getConstExpr(const t: TNode; out res: TNode): Boolean;
+
 proc isConstExpr*(n: PNode): bool
 proc flattenTree*(root: PNode, op: TMagic): PNode
 proc TreeToSym*(t: PNode): PSym
@@ -32,12 +32,11 @@ proc hasSon(father, son: PNode): bool =
   result = false
 
 proc cyclicTreeAux(n, s: PNode): bool = 
-  var m: int
   if n == nil: 
     return false
   if hasSon(s, n): 
     return true
-  m = sonsLen(s)
+  var m = sonsLen(s)
   addSon(s, n)
   if not (n.kind in {nkEmpty..nkNilLit}): 
     for i in countup(0, sonsLen(n) - 1): 
@@ -47,8 +46,7 @@ proc cyclicTreeAux(n, s: PNode): bool =
   delSon(s, m)
 
 proc cyclicTree(n: PNode): bool = 
-  var s: PNode
-  s = newNodeI(nkEmpty, n.info)
+  var s = newNodeI(nkEmpty, n.info)
   result = cyclicTreeAux(n, s)
 
 proc ExprStructuralEquivalent(a, b: PNode): bool = 
@@ -57,18 +55,14 @@ proc ExprStructuralEquivalent(a, b: PNode): bool =
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind): 
     case a.kind
-    of nkSym:                 # don't go nuts here: same symbol as string is enough:
+    of nkSym: 
+      # don't go nuts here: same symbol as string is enough:
       result = a.sym.name.id == b.sym.name.id
-    of nkIdent: 
-      result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: 
-      result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: 
-      result = a.floatVal == b.floatVal
-    of nkStrLit..nkTripleStrLit: 
-      result = a.strVal == b.strVal
-    of nkEmpty, nkNilLit, nkType: 
-      result = true
+    of nkIdent: result = a.ident.id == b.ident.id
+    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkEmpty, nkNilLit, nkType: result = true
     else: 
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
@@ -85,18 +79,14 @@ proc sameTree(a, b: PNode): bool =
     if a.info.col != b.info.col: 
       return                  #if a.info.fileIndex <> b.info.fileIndex then exit;
     case a.kind
-    of nkSym:                 # don't go nuts here: same symbol as string is enough:
+    of nkSym: 
+      # don't go nuts here: same symbol as string is enough:
       result = a.sym.name.id == b.sym.name.id
-    of nkIdent: 
-      result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: 
-      result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: 
-      result = a.floatVal == b.floatVal
-    of nkStrLit..nkTripleStrLit: 
-      result = a.strVal == b.strVal
-    of nkEmpty, nkNilLit, nkType: 
-      result = true
+    of nkIdent: result = a.ident.id == b.ident.id
+    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkEmpty, nkNilLit, nkType: result = true
     else: 
       if sonsLen(a) == sonsLen(b): 
         for i in countup(0, sonsLen(a) - 1): 
@@ -118,8 +108,7 @@ proc getMagic(op: PNode): TMagic =
   case op.kind
   of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit: 
     case op.sons[0].Kind
-    of nkSym: 
-      result = op.sons[0].sym.magic
+    of nkSym: result = op.sons[0].sym.magic
     else: result = mNone
   else: result = mNone
   
@@ -146,7 +135,6 @@ proc flattenTree(root: PNode, op: TMagic): PNode =
     flattenTreeAux(result, root, op)
 
 proc SwapOperands(op: PNode) = 
-  var tmp: PNode
-  tmp = op.sons[1]
+  var tmp = op.sons[1]
   op.sons[1] = op.sons[2]
   op.sons[2] = tmp

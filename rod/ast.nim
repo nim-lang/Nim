@@ -409,7 +409,8 @@ type
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     name*: PRope
-    path*: string
+    path*: PNode              # can be a string literal!
+    
 
   PLib* = ref TLib
   TSym* = object of TIdObj
@@ -948,6 +949,35 @@ proc sonsNotNil(n: PNode): bool =
 
 proc addSonIfNotNil(father, n: PNode) = 
   if n != nil: addSon(father, n)
+  
+proc getInt*(a: PNode): biggestInt = 
+  case a.kind
+  of nkIntLit..nkInt64Lit: result = a.intVal
+  else: 
+    internalError(a.info, "getInt")
+    result = 0
+
+proc getFloat*(a: PNode): biggestFloat = 
+  case a.kind
+  of nkFloatLit..nkFloat64Lit: result = a.floatVal
+  else: 
+    internalError(a.info, "getFloat")
+    result = 0.0
+
+proc getStr*(a: PNode): string = 
+  case a.kind
+  of nkStrLit..nkTripleStrLit: result = a.strVal
+  else: 
+    internalError(a.info, "getStr")
+    result = ""
+
+proc getStrOrChar*(a: PNode): string = 
+  case a.kind
+  of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkCharLit: result = chr(int(a.intVal)) & ""
+  else: 
+    internalError(a.info, "getStrOrChar")
+    result = ""
   
 proc mustRehash(length, counter: int): bool = 
   assert(length > counter)

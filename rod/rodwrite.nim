@@ -49,11 +49,10 @@ proc encodeStr(w: PRodWriter, s: string): PRope =
   result = encode(s)
 
 proc processStacks(w: PRodWriter)
+
 proc getDefines(): PRope = 
-  var 
-    it: TTabIter
-    s: PSym
-  s = InitTabIter(it, gSymbols)
+  var it: TTabIter
+  var s = InitTabIter(it, gSymbols)
   result = nil
   while s != nil: 
     if s.position == 1: 
@@ -96,39 +95,38 @@ proc addInclDep(w: PRodWriter, dep: string) =
   app(w.inclDeps, rodNL)
 
 proc pushType(w: PRodWriter, t: PType) = 
-  var L: int
   # check so that the stack does not grow too large:
   if IiTableGet(w.index.tab, t.id) == invalidKey: 
-    L = len(w.tstack)
+    var L = len(w.tstack)
     setlen(w.tstack, L + 1)
     w.tstack[L] = t
 
 proc pushSym(w: PRodWriter, s: PSym) = 
-  var L: int
   # check so that the stack does not grow too large:
   if IiTableGet(w.index.tab, s.id) == invalidKey: 
-    L = len(w.sstack)
+    var L = len(w.sstack)
     setlen(w.sstack, L + 1)
     w.sstack[L] = s
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode): PRope = 
-  var f: TNodeFlags
   if n == nil: 
     # nil nodes have to be stored too:
     return toRope("()")
   result = toRope("(")
-  app(result, encodeInt(ord(n.kind))) # we do not write comments for now
-                                      # Line information takes easily 20% or more of the filesize! Therefore we
-                                      # omit line information if it is the same as the father's line information:
+  app(result, encodeInt(ord(n.kind))) 
+  # we do not write comments for now
+  # Line information takes easily 20% or more of the filesize! Therefore we
+  # omit line information if it is the same as the father's line information:
   if (finfo.fileIndex != n.info.fileIndex): 
     appf(result, "?$1,$2,$3", [encodeInt(n.info.col), encodeInt(n.info.line), 
                                encodeInt(fileIdx(w, toFilename(n.info)))])
   elif (finfo.line != n.info.line): 
     appf(result, "?$1,$2", [encodeInt(n.info.col), encodeInt(n.info.line)])
   elif (finfo.col != n.info.col): 
-    appf(result, "?$1", [encodeInt(n.info.col)]) # No need to output the file index, as this is the serialization of one
-                                                 # file.
-  f = n.flags * PersistentNodeFlags
+    appf(result, "?$1", [encodeInt(n.info.col)]) 
+  # No need to output the file index, as this is the serialization of one
+  # file.
+  var f = n.flags * PersistentNodeFlags
   if f != {}: appf(result, "$$$1", [encodeInt(cast[int32](f))])
   if n.typ != nil: 
     appf(result, "^$1", [encodeInt(n.typ.id)])
@@ -191,11 +189,11 @@ proc encodeType(w: PRodWriter, t: PType): PRope =
       appf(result, "^$1", [encodeInt(t.sons[i].id)])
       pushType(w, t.sons[i])
 
-proc encodeLib(w: PRodWriter, lib: PLib): PRope = 
+proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo): PRope = 
   result = nil
   appf(result, "|$1", [encodeInt(ord(lib.kind))])
   appf(result, "|$1", [encodeStr(w, ropeToStr(lib.name))])
-  appf(result, "|$1", [encodeStr(w, lib.path)])
+  appf(result, "|$1", [encodeNode(w, info, lib.path)])
 
 proc encodeSym(w: PRodWriter, s: PSym): PRope = 
   var 
@@ -235,7 +233,7 @@ proc encodeSym(w: PRodWriter, s: PSym): PRope =
   if s.position != 0: appf(result, "%$1", [encodeInt(s.position)])
   if s.offset != - 1: appf(result, "`$1", [encodeInt(s.offset)])
   app(result, encodeLoc(w, s.loc))
-  if s.annex != nil: app(result, encodeLib(w, s.annex))
+  if s.annex != nil: app(result, encodeLib(w, s.annex, s.info))
   
 proc addToIndex(w: var TIndex, key, val: int) = 
   if key - w.lastIdxKey == 1: 
@@ -367,10 +365,11 @@ proc writeRod(w: PRodWriter) =
   app(content, toRope(')' & rodNL))
   app(content, toRope("DATA(" & rodNL))
   app(content, w.data)
-  app(content, toRope(')' & rodNL)) #MessageOut('interf ' + ToString(ropeLen(w.interf)));
-                                    #MessageOut('index ' + ToString(ropeLen(w.indexRope)));
-                                    #MessageOut('init ' + ToString(ropeLen(w.init)));
-                                    #MessageOut('data ' + ToString(ropeLen(w.data)));
+  app(content, toRope(')' & rodNL)) 
+  #MessageOut('interf ' + ToString(ropeLen(w.interf)));
+  #MessageOut('index ' + ToString(ropeLen(w.indexRope)));
+  #MessageOut('init ' + ToString(ropeLen(w.init)));
+  #MessageOut('data ' + ToString(ropeLen(w.data)));
   writeRope(content, completeGeneratedFilePath(changeFileExt(w.filename, "rod")))
 
 proc process(c: PPassContext, n: PNode): PNode = 
@@ -411,16 +410,17 @@ proc process(c: PPassContext, n: PNode): PNode =
       if a.kind == nkCommentStmt: continue 
       if a.sons[0].kind != nkSym: InternalError(a.info, "rodwrite.process")
       s = a.sons[0].sym
-      addInterfaceSym(w, s) # this takes care of enum fields too
-                            # Note: The check for ``s.typ.kind = tyEnum`` is wrong for enum
-                            # type aliasing! Otherwise the same enum symbol would be included
-                            # several times!
-                            #
-                            #        if (a.sons[2] <> nil) and (a.sons[2].kind = nkEnumTy) then begin
-                            #          a := s.typ.n;
-                            #          for j := 0 to sonsLen(a)-1 do 
-                            #            addInterfaceSym(w, a.sons[j].sym);        
-                            #        end 
+      addInterfaceSym(w, s) 
+      # this takes care of enum fields too
+      # Note: The check for ``s.typ.kind = tyEnum`` is wrong for enum
+      # type aliasing! Otherwise the same enum symbol would be included
+      # several times!
+      #
+      #        if (a.sons[2] <> nil) and (a.sons[2].kind = nkEnumTy) then begin
+      #          a := s.typ.n;
+      #          for j := 0 to sonsLen(a)-1 do 
+      #            addInterfaceSym(w, a.sons[j].sym);        
+      #        end 
   of nkImportStmt: 
     for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleFile(n.sons[i]))
     addStmt(w, n)
@@ -435,15 +435,13 @@ proc process(c: PPassContext, n: PNode): PNode =
     nil
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
-  var w: PRodWriter
   if module.id < 0: InternalError("rodwrite: module ID not set")
-  w = newRodWriter(filename, rodread.GetCRC(filename), module)
+  var w = newRodWriter(filename, rodread.GetCRC(filename), module)
   rawAddInterfaceSym(w, module)
   result = w
 
 proc myClose(c: PPassContext, n: PNode): PNode = 
-  var w: PRodWriter
-  w = PRodWriter(c)
+  var w = PRodWriter(c)
   writeRod(w)
   result = n
 

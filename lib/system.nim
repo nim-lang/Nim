@@ -145,12 +145,12 @@ type
   E_Base* {.compilerproc.} = object of TObject ## base exception class;
                                                ## each exception has to
                                                ## inherit from `E_Base`.
-    name*: cstring            ## The exception's name is its Nimrod identifier.
+    name: cstring             ## The exception's name is its Nimrod identifier.
                               ## This field is filled automatically in the
                               ## ``raise`` statement.
-    msg* {.exportc: "message".}: cstring ## the exception's message. Not
-                                         ## providing an
-                                         ## exception message is bad style.
+    msg* {.exportc: "message".}: string ## the exception's message. Not
+                                        ## providing an exception message 
+                                        ## is bad style.
 
   EAsynch* = object of E_Base ## Abstract exception class for
                               ## *asynchronous exceptions* (interrupts).
