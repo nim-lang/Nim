@@ -71,7 +71,7 @@ proc indexExprList(p: var TParser, first: PNode): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
-  optSad(p)
+  optPar(p)
   eat(p, tkBracketRi)
 
 proc exprColonEqExpr(p: var TParser, kind: TNodeKind, tok: TTokType): PNode = 
@@ -133,7 +133,7 @@ proc exprColonEqExprListAux(p: var TParser, elemKind: TNodeKind,
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
-  optSad(p)
+  optPar(p)
   eat(p, endTok)
 
 proc exprColonEqExprList(p: var TParser, kind, elemKind: TNodeKind, 
@@ -147,12 +147,12 @@ proc parseCast(p: var TParser): PNode =
   eat(p, tkBracketLe)
   optInd(p, result)
   addSon(result, parseTypeDesc(p))
-  optSad(p)
+  optPar(p)
   eat(p, tkBracketRi)
   eat(p, tkParLe)
   optInd(p, result)
   addSon(result, parseExpr(p))
-  optSad(p)
+  optPar(p)
   eat(p, tkParRi)
 
 proc parseAddr(p: var TParser): PNode = 
@@ -161,7 +161,7 @@ proc parseAddr(p: var TParser): PNode =
   eat(p, tkParLe)
   optInd(p, result)
   addSon(result, parseExpr(p))
-  optSad(p)
+  optPar(p)
   eat(p, tkParRi)
 
 proc identOrLiteral(p: var TParser): PNode = 
@@ -343,7 +343,7 @@ proc parsePragma(p: var TParser): PNode =
     if p.tok.tokType == tkComma: 
       getTok(p)
       optInd(p, a)
-  optSad(p)
+  optPar(p)
   if (p.tok.tokType == tkCurlyDotRi) or (p.tok.tokType == tkCurlyRi): getTok(p)
   else: parMessage(p, errTokenExpected, ".}")
   
@@ -416,7 +416,7 @@ proc parseTuple(p: var TParser): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
-  optSad(p)
+  optPar(p)
   eat(p, tkBracketRi)
 
 proc parseParamList(p: var TParser): PNode = 
@@ -437,7 +437,7 @@ proc parseParamList(p: var TParser): PNode =
       if p.tok.tokType != tkComma: break 
       getTok(p)
       optInd(p, a)
-    optSad(p)
+    optPar(p)
     eat(p, tkParRi)
   if p.tok.tokType == tkColon: 
     getTok(p)
@@ -801,7 +801,7 @@ proc parseGenericParamList(p: var TParser): PNode =
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
-  optSad(p)
+  optPar(p)
   eat(p, tkBracketRi)
 
 proc parseRoutine(p: var TParser, kind: TNodeKind): PNode = 
@@ -1061,7 +1061,7 @@ proc parseVarTuple(p: var TParser): PNode =
     getTok(p)
     optInd(p, a)
   addSon(result, nil)         # no type desc
-  optSad(p)
+  optPar(p)
   eat(p, tkParRi)
   eat(p, tkEquals)
   optInd(p, result)
