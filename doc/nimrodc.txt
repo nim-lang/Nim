@@ -118,16 +118,36 @@ The ``dynlib`` import mechanism supports a versioning scheme:
 
 .. code-block:: nimrod 
   proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
-    importc, dynlib: "libtcl(8.5|8.4|8.3).so.(1|0)".}
+    importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
 
 At runtime the dynamic library is searched for (in this order)::
   
-  libtcl8.5.so.1
-  libtcl8.4.so.1
-  libtcl8.3.so.1
+  libtcl.so.1  
+  libtcl.so.0
+  libtcl8.5.so.1  
   libtcl8.5.so.0
+  libtcl8.4.so.1
   libtcl8.4.so.0
+  libtcl8.3.so.1
   libtcl8.3.so.0
+
+The ``dynlib`` pragma supports not only constant strings as argument but also
+string expressions in general:
+
+.. code-block:: nimrod
+  import os
+
+  proc getDllName: string = 
+    result = "mylib.dll"
+    if ExistsFile(result): return
+    result = "mylib2.dll"
+    if ExistsFile(result): return
+    quit("could not load dynamic library")
+  
+  proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
+
+**Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
+strings, because they are precompiled.
 
 
 NoDecl Pragma

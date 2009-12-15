@@ -8,7 +8,7 @@ operator ::= OP0 | OR | XOR | AND | OP3 | OP4 | OP5 | OP6 | OP7
 prefixOperator ::= OP0 | OP3 | OP4 | OP5 | OP6 | OP7 | 'not'
 
 optInd ::= [COMMENT] [IND]
-
+optPar ::= [IND] | [SAD]
 
 lowestExpr ::= orExpr (OP0 optInd orExpr)*
 orExpr ::= andExpr (OR | 'xor' optInd andExpr)*
@@ -21,16 +21,16 @@ dollarExpr ::= primary (OP7 optInd primary)*
 
 indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
 
-castExpr ::= 'cast' '[' optInd typeDesc [SAD] ']' '(' optInd expr [SAD] ')'
-addrExpr ::= 'addr' '(' optInd expr ')'
+castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
+addrExpr ::= 'addr' '(' optInd expr optPar ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
                | '[' ']' | '=' | literal)+ '`'
          | IDENT
          
 primaryPrefix ::= (prefixOperator | 'bind') optInd
 primarySuffix ::= '.' optInd symbol
-                | '(' optInd namedExprList [SAD] ')'
-                | '[' optInd [indexExpr (comma indexExpr)* [comma]] [SAD] ']'
+                | '(' optInd namedExprList optPar ')'
+                | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
                 | '^'
                 | pragma
 
@@ -44,9 +44,9 @@ literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | NIL
 
 constructor ::= literal
-          | '[' optInd colonExprList [SAD] ']'
-          | '{' optInd sliceExprList [SAD] '}'
-          | '(' optInd colonExprList [SAD] ')'
+          | '[' optInd colonExprList optPar ']'
+          | '{' optInd sliceExprList optPar '}'
+          | '(' optInd colonExprList optPar ')'
 
 colonExpr ::= expr [':' expr]
 colonExprList ::= [colonExpr (comma colonExpr)* [comma]]
@@ -128,13 +128,13 @@ importStmt ::= 'import' filename (comma filename)*
 includeStmt ::= 'include' filename (comma filename)*
 fromStmt ::= 'from' filename 'import' symbol (comma symbol)*
 
-pragma ::= '{.' optInd (colonExpr [comma])* [SAD] ('.}' | '}')
+pragma ::= '{.' optInd (colonExpr [comma])* optPar ('.}' | '}')
 
 param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
-paramList ::= ['(' [param (comma param)*] [SAD] ')'] [':' typeDesc]
+paramList ::= ['(' [param (comma param)*] optPar ')'] [':' typeDesc]
 
 genericParam ::= symbol [':' typeDesc] ['=' expr]
-genericParams ::= '[' genericParam (comma genericParam)* [SAD] ']'
+genericParams ::= '[' genericParam (comma genericParam)* optPar ']'
 
 
 routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
@@ -164,7 +164,7 @@ objectCase ::= 'case' expr ':' typeDesc [COMMENT]
 
 objectPart ::= objectWhen | objectCase | objectIdentPart | 'nil'
              | indPush objectPart (SAD objectPart)* DED indPop
-tupleDesc ::= '[' optInd [param (comma param)*] [SAD] ']'
+tupleDesc ::= '[' optInd [param (comma param)*] optPar ']'
 
 objectDef ::= 'object' [pragma] ['of' typeDesc] objectPart
 enumField ::= symbol ['=' expr]
