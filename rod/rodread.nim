@@ -146,9 +146,9 @@ proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType
 proc decode(r: PRodReader): string
 proc decodeInt(r: PRodReader): int
 proc decodeBInt(r: PRodReader): biggestInt
+
 proc encode(s: string): PRope = 
-  var res: string
-  res = ""
+  var res = ""
   for i in countup(0, len(s) + 0 - 1): 
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(res, s[i])
@@ -156,29 +156,24 @@ proc encode(s: string): PRope =
   result = toRope(res)
 
 proc encodeIntAux(str: var string, x: BiggestInt) = 
-  const 
-    chars: string = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  var 
-    v, rem: biggestInt
-    d: char
-    idx: int
-  v = x
-  rem = v mod 190
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  var d: char
+  var v = x
+  var rem: biggestInt = v mod 190
   if (rem < 0): 
-    str = str & '-'
+    add(str, '-')
     v = - (v div 190)
     rem = - rem
   else: 
     v = v div 190
-  idx = int(rem)
+  var idx = int(rem)
   if idx < 62: d = chars[idx + 0]
   else: d = chr(idx - 62 + 128)
   if (v != 0): encodeIntAux(str, v)
   add(str, d)
 
 proc encodeInt(x: BiggestInt): PRope = 
-  var res: string
-  res = ""
+  var res = ""
   encodeIntAux(res, x)
   result = toRope(res)
 
@@ -303,8 +298,8 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     if debugIds: registerID(result)
   else: 
     InternalError(info, "decodeType: no id")
-  IdTablePut(gTypeTable, result, result) # here this also
-                                         # avoids endless recursion for recursive type
+  # here this also avoids endless recursion for recursive type
+  IdTablePut(gTypeTable, result, result) 
   if r.s[r.pos] == '(': result.n = decodeNode(r, UnknownLineInfo())
   if r.s[r.pos] == '$': 
     inc(r.pos)
@@ -343,7 +338,7 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
       d = decodeInt(r)
       addSon(result, rrGetType(r, d, info))
 
-proc decodeLib(r: PRodReader): PLib = 
+proc decodeLib(r: PRodReader, info: TLineInfo): PLib = 
   result = nil
   if r.s[r.pos] == '|': 
     new(result)
@@ -354,11 +349,10 @@ proc decodeLib(r: PRodReader): PLib =
     result.name = toRope(decode(r))
     if r.s[r.pos] != '|': InternalError("decodeLib: 2")
     inc(r.pos)
-    result.path = decode(r)
+    result.path = decodeNode(r, info)
 
 proc decodeSym(r: PRodReader, info: TLineInfo): PSym = 
   var 
-    k: TSymKind
     id: int
     ident: PIdent
   result = nil
@@ -367,7 +361,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     if r.s[r.pos] == '}': 
       inc(r.pos)
       return                  # nil sym
-  k = TSymKind(decodeInt(r))
+  var k = TSymKind(decodeInt(r))
   if r.s[r.pos] == '+': 
     inc(r.pos)
     id = decodeInt(r)
@@ -412,22 +406,20 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     inc(r.pos)
     result.position = decodeInt(r)
   else: 
-    result.position = 0       # BUGFIX: this may have been misused as reader index!
+    result.position = 0       
+    # BUGFIX: this may have been misused as reader index!
   if r.s[r.pos] == '`': 
     inc(r.pos)
     result.offset = decodeInt(r)
   else: 
     result.offset = - 1
   decodeLoc(r, result.loc, result.info)
-  result.annex = decodeLib(r)
+  result.annex = decodeLib(r, info)
 
 proc decodeInt(r: PRodReader): int = 
   # base 190 numbers
-  var 
-    i: int
-    sign: int
-  i = r.pos
-  sign = - 1
+  var i = r.pos
+  var sign = - 1
   assert(r.s[i] in {'a'..'z', 'A'..'Z', '0'..'9', '-', '\x80'..'\xFF'})
   if r.s[i] == '-': 
     inc(i)
@@ -445,11 +437,8 @@ proc decodeInt(r: PRodReader): int =
   r.pos = i
 
 proc decodeBInt(r: PRodReader): biggestInt = 
-  var 
-    i: int
-    sign: biggestInt
-  i = r.pos
-  sign = - 1
+  var i = r.pos
+  var sign: biggestInt = - 1
   assert(r.s[i] in {'a'..'z', 'A'..'Z', '0'..'9', '-', '\x80'..'\xFF'})
   if r.s[i] == '-': 
     inc(i)
@@ -471,18 +460,16 @@ proc hexChar(c: char, xi: var int) =
   of '0'..'9': xi = (xi shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': xi = (xi shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': xi = (xi shl 4) or (ord(c) - ord('A') + 10)
-  else: 
-    nil
+  else: nil
 
 proc decode(r: PRodReader): string = 
-  var i, xi: int
-  i = r.pos
+  var i = r.pos
   result = ""
   while true: 
     case r.s[i]
     of '\\': 
       inc(i, 3)
-      xi = 0
+      var xi = 0
       hexChar(r.s[i - 2], xi)
       hexChar(r.s[i - 1], xi)
       add(result, chr(xi))
@@ -493,28 +480,23 @@ proc decode(r: PRodReader): string =
   r.pos = i
 
 proc skipSection(r: PRodReader) = 
-  var c: int
   if r.s[r.pos] == ':': 
     while r.s[r.pos] > '\x0A': inc(r.pos)
   elif r.s[r.pos] == '(': 
-    c = 0                     # count () pairs
+    var c = 0                 # count () pairs
     inc(r.pos)
     while true: 
       case r.s[r.pos]
-      of '\x0A': 
-        inc(r.line)
-      of '(': 
-        inc(c)
+      of '\x0A': inc(r.line)
+      of '(':  inc(c)
       of ')': 
         if c == 0: 
           inc(r.pos)
           break 
         elif c > 0: 
           dec(c)
-      of '\0': 
-        break                 # end of file
-      else: 
-        nil
+      of '\0': break          # end of file
+      else: nil
       inc(r.pos)
   else: 
     InternalError("skipSection " & $(r.line))
@@ -535,18 +517,14 @@ proc newStub(r: PRodReader, name: string, id: int): PSym =
   if debugIds: registerID(result)
   
 proc processInterf(r: PRodReader, module: PSym) = 
-  var 
-    s: PSym
-    w: string
-    key: int
   if r.interfIdx == 0: InternalError("processInterf")
   r.pos = r.interfIdx
   while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
-    w = decode(r)
+    var w = decode(r)
     inc(r.pos)
-    key = decodeInt(r)
+    var key = decodeInt(r)
     inc(r.pos)                # #10
-    s = newStub(r, w, key)
+    var s = newStub(r, w, key)
     s.owner = module
     StrTableAdd(module.tab, s)
     IdTablePut(r.syms, s, s)
@@ -669,8 +647,8 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       skipSection(r)
     elif section == "DATA": 
       r.dataIdx = r.pos + 2 # "(\10"
-                            # We do not read the DATA section here! We read the needed objects on
-                            # demand.
+      # We do not read the DATA section here! We read the needed objects on
+      # demand.
       skipSection(r)
     elif section == "INIT": 
       r.initIdx = r.pos + 2   # "(\10"
@@ -685,14 +663,12 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       inc(r.pos)
       inc(r.line)
 
-proc newRodReader(modfilename: string, crc: TCrc32, readerIndex: int): PRodReader = 
-  var 
-    version: string
-    r: PRodReader
+proc newRodReader(modfilename: string, crc: TCrc32, 
+                  readerIndex: int): PRodReader = 
   new(result)
-  result.files = @ []
-  result.modDeps = @ []
-  r = result
+  result.files = @[]
+  result.modDeps = @[]
+  var r = result
   r.reason = rrNone
   r.pos = 0
   r.line = 1
@@ -704,7 +680,7 @@ proc newRodReader(modfilename: string, crc: TCrc32, readerIndex: int): PRodReade
     initIITable(r.index.tab)
     initIITable(r.imports.tab) # looks like a ROD file
     inc(r.pos, 4)
-    version = ""
+    var version = ""
     while not (r.s[r.pos] in {'\0', '\x0A'}): 
       add(version, r.s[r.pos])
       inc(r.pos)
@@ -719,12 +695,11 @@ proc newRodReader(modfilename: string, crc: TCrc32, readerIndex: int): PRodReade
     result = nil
   
 proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType = 
-  var oldPos, d: int
   result = PType(IdTableGet(gTypeTable, id))
   if result == nil: 
     # load the type:
-    oldPos = r.pos
-    d = IITableGet(r.index.tab, id)
+    var oldPos = r.pos
+    var d = IITableGet(r.index.tab, id)
     if d == invalidKey: InternalError(info, "rrGetType")
     r.pos = d + r.dataIdx
     result = decodeType(r, info)
@@ -739,39 +714,29 @@ type
 
   TFileModuleMap = seq[TFileModuleRec]
 
-var gMods: TFileModuleMap = @ []
+var gMods: TFileModuleMap = @[]
 
 proc decodeSymSafePos(rd: PRodReader, offset: int, info: TLineInfo): PSym = 
   # all compiled modules
-  var oldPos: int
   if rd.dataIdx == 0: InternalError(info, "dataIdx == 0")
-  oldPos = rd.pos
+  var oldPos = rd.pos
   rd.pos = offset + rd.dataIdx
   result = decodeSym(rd, info)
   rd.pos = oldPos
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym = 
-  var 
-    d, moduleID: int
-    rd: PRodReader
   result = PSym(IdTableGet(r.syms, id))
   if result == nil: 
     # load the symbol:
-    d = IITableGet(r.index.tab, id)
+    var d = IITableGet(r.index.tab, id)
     if d == invalidKey: 
-      moduleID = IiTableGet(r.imports.tab, id)
+      var moduleID = IiTableGet(r.imports.tab, id)
       if moduleID < 0: 
         InternalError(info, 
-                      "missing from both indexes: +" & ropeToStr(encodeInt(id))) # 
-                                                                                 # find 
-                                                                                 # the 
-                                                                                 # reader 
-                                                                                 # with 
-                                                                                 # the 
-                                                                                 # correct 
-                                                                                 # moduleID:
+                      "missing from both indexes: +" & ropeToStr(encodeInt(id))) 
+      # find the reader with the correct moduleID:
       for i in countup(0, high(gMods)): 
-        rd = gMods[i].rd
+        var rd = gMods[i].rd
         if (rd != nil): 
           if (rd.moduleID == moduleID): 
             d = IITableGet(rd.index.tab, id)
@@ -792,56 +757,47 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
   if (result != nil) and (result.kind == skStub): loadStub(result)
   
 proc loadInitSection(r: PRodReader): PNode = 
-  var d, oldPos, p: int
   if (r.initIdx == 0) or (r.dataIdx == 0): InternalError("loadInitSection")
-  oldPos = r.pos
+  var oldPos = r.pos
   r.pos = r.initIdx
   result = newNode(nkStmtList)
   while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
-    d = decodeInt(r)
+    var d = decodeInt(r)
     inc(r.pos)                # #10
-    p = r.pos
+    var p = r.pos
     r.pos = d + r.dataIdx
     addSon(result, decodeNode(r, UnknownLineInfo()))
     r.pos = p
   r.pos = oldPos
 
 proc loadConverters(r: PRodReader) = 
-  var d: int
   # We have to ensure that no exported converter is a stub anymore.
   if (r.convertersIdx == 0) or (r.dataIdx == 0): 
     InternalError("importConverters")
   r.pos = r.convertersIdx
   while (r.s[r.pos] > '\x0A'): 
-    d = decodeInt(r)
+    var d = decodeInt(r)
     discard rrGetSym(r, d, UnknownLineInfo())
     if r.s[r.pos] == ' ': inc(r.pos)
   
 proc getModuleIdx(filename: string): int = 
   for i in countup(0, high(gMods)): 
-    if sameFile(gMods[i].filename, filename): 
-      return i
+    if sameFile(gMods[i].filename, filename): return i
   result = len(gMods)
   setlen(gMods, result + 1)
 
 proc checkDep(filename: string): TReasonForRecompile = 
-  var 
-    crc: TCrc32
-    r: PRodReader
-    rodfile: string
-    idx: int
-    res: TReasonForRecompile
-  idx = getModuleIdx(filename)
+  var idx = getModuleIdx(filename)
   if gMods[idx].reason != rrEmpty: 
     # reason has already been computed for this module:
     return gMods[idx].reason
-  crc = crcFromFile(filename)
+  var crc: TCrc32 = crcFromFile(filename)
   gMods[idx].reason = rrNone  # we need to set it here to avoid cycles
   gMods[idx].filename = filename
   gMods[idx].crc = crc
   result = rrNone
-  r = nil
-  rodfile = toGeneratedFile(filename, RodExt)
+  var r: PRodReader = nil
+  var rodfile = toGeneratedFile(filename, RodExt)
   if ExistsFile(rodfile): 
     r = newRodReader(rodfile, crc, idx)
     if r == nil: 
@@ -853,7 +809,7 @@ proc checkDep(filename: string): TReasonForRecompile =
         # NOTE: we need to process the entire module graph so that no ID will
         # be used twice! However, compilation speed does not suffer much from
         # this, since results are cached.
-        res = checkDep(JoinPath(options.libpath, addFileExt("system", nimExt)))
+        var res = checkDep(options.libpath / addFileExt("system", nimExt))
         if res != rrNone: result = rrModDeps
         for i in countup(0, high(r.modDeps)): 
           res = checkDep(r.modDeps[i])
@@ -870,12 +826,11 @@ proc checkDep(filename: string): TReasonForRecompile =
   gMods[idx].reason = result  # now we know better
   
 proc handleSymbolFile(module: PSym, filename: string): PRodReader = 
-  var idx: int
   if not (optSymbolFiles in gGlobalOptions): 
     module.id = getID()
     return nil
   discard checkDep(filename)
-  idx = getModuleIdx(filename)
+  var idx = getModuleIdx(filename)
   if gMods[idx].reason == rrEmpty: InternalError("handleSymbolFile")
   result = gMods[idx].rd
   if result != nil: 
@@ -888,26 +843,22 @@ proc handleSymbolFile(module: PSym, filename: string): PRodReader =
     module.id = getID()
   
 proc GetCRC(filename: string): TCrc32 = 
-  var idx: int
-  idx = getModuleIdx(filename)
+  var idx = getModuleIdx(filename)
   result = gMods[idx].crc
 
 proc loadStub(s: PSym) = 
-  var 
-    rd: PRodReader
-    d, theId: int
-    rs: PSym
   if s.kind != skStub: 
     InternalError("loadStub") #MessageOut('loading stub: ' + s.name.s);
-  rd = gMods[s.position].rd
-  theId = s.id                # used for later check
-  d = IITableGet(rd.index.tab, s.id)
+  var rd = gMods[s.position].rd
+  var theId = s.id                # used for later check
+  var d = IITableGet(rd.index.tab, s.id)
   if d == invalidKey: InternalError("loadStub: invalid key")
-  rs = decodeSymSafePos(rd, d, UnknownLineInfo())
+  var rs = decodeSymSafePos(rd, d, UnknownLineInfo())
   if rs != s: 
     InternalError(rs.info, "loadStub: wrong symbol")
   elif rs.id != theId: 
-    InternalError(rs.info, "loadStub: wrong ID") #MessageOut('loaded stub: ' + s.name.s);
+    InternalError(rs.info, "loadStub: wrong ID") 
+  #MessageOut('loaded stub: ' + s.name.s);
   
 InitIdTable(gTypeTable)
 InitStrTable(rodCompilerProcs)

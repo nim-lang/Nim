@@ -9,8 +9,7 @@
 
 # This module implements the semantic checking pass.
 
-import                        #var
-                              #  point: array [0..3] of int;
+import
   strutils, nhashes, lists, options, scanner, ast, astalgo, trees, treetab, 
   wordrecg, ropes, msgs, os, condsyms, idents, rnimsyn, types, platform, math, 
   magicsys, pnimsyn, nversion, nimsets, semdata, evals, semfold, importer, 
@@ -20,8 +19,7 @@ proc semPass*(): TPass
 # implementation
 
 proc considerAcc(n: PNode): PIdent = 
-  var x: PNode
-  x = n
+  var x = n
   if x.kind == nkAccQuoted: x = x.sons[0]
   case x.kind
   of nkIdent: result = x.ident
@@ -62,6 +60,7 @@ proc addParams(c: PContext, n: PNode)
 proc addResult(c: PContext, t: PType, info: TLineInfo)
 proc addResultNode(c: PContext, n: PNode)
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
+
 proc semConstExpr(c: PContext, n: PNode): PNode = 
   result = semExprWithType(c, n)
   if result == nil: 
@@ -71,8 +70,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   if result == nil: liMessage(n.info, errConstExprExpected)
   
 proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
-  var e: PNode
-  e = semExprWithType(c, n)
+  var e = semExprWithType(c, n)
   if e == nil: 
     liMessage(n.info, errConstExprExpected)
     return nil
@@ -91,19 +89,16 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
   of tyTypeDesc: result.typ = semTypeNode(c, result, nil)
   else: liMessage(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   
-include 
-  "semtempl.nim"
+include "semtempl.nim"
 
-proc semMacroExpr(c: PContext, n: PNode, sym: PSym, semCheck: bool = true): PNode = 
-  var 
-    p: PEvalContext
-    s: PStackFrame
+proc semMacroExpr(c: PContext, n: PNode, sym: PSym, 
+                  semCheck: bool = true): PNode = 
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100: 
     liMessage(n.info, errTemplateInstantiationTooNested)
   markUsed(n, sym)
-  p = newEvalContext(c.module, "", false)
-  s = newStackFrame()
+  var p = newEvalContext(c.module, "", false)
+  var s = newStackFrame()
   s.call = n
   setlen(s.params, 2)
   s.params[0] = newNodeIT(nkNilLit, n.info, sym.typ.sons[0])
@@ -116,11 +111,7 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym, semCheck: bool = true): PNod
   if semCheck: result = semAfterMacroCall(c, result, sym)
   dec(evalTemplateCounter)
 
-include 
-  "seminst.nim"
-
-include 
-  "sigmatch.nim"
+include "seminst.nim", "sigmatch.nim"
 
 proc CheckBool(t: PNode) = 
   if (t.Typ == nil) or
@@ -132,37 +123,27 @@ proc typeMismatch(n: PNode, formal, actual: PType) =
       typeToString(actual) & ") " &
       `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
-include 
-  "semtypes.nim"
-
-include 
-  "semexprs.nim"
-
-include 
-  "semgnrc.nim"
-
-include 
-  "semstmts.nim"
+include "semtypes.nim", "semexprs.nim", "semgnrc.nim", "semstmts.nim"
 
 proc addCodeForGenerics(c: PContext, n: PNode) = 
-  var 
-    prc: PSym
-    it: PNode
   for i in countup(c.lastGenericIdx, sonsLen(c.generics) - 1): 
-    it = c.generics.sons[i].sons[1]
+    var it = c.generics.sons[i].sons[1]
     if it.kind != nkSym: InternalError("addCodeForGenerics")
-    prc = it.sym
+    var prc = it.sym
     if (prc.kind in {skProc, skMethod, skConverter}) and (prc.magic == mNone): 
       if (prc.ast == nil) or (prc.ast.sons[codePos] == nil): 
         InternalError(prc.info, "no code for " & prc.name.s)
       addSon(n, prc.ast)
   c.lastGenericIdx = sonsLen(c.generics)
 
+proc semExprNoFlags(c: PContext, n: PNode): PNode = 
+  result = semExpr(c, n, {})
+
 proc myOpen(module: PSym, filename: string): PPassContext = 
-  var c: PContext
-  c = newContext(module, filename)
+  var c = newContext(module, filename)
   if (c.p != nil): InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
+  c.semExpr = semExprNoFlags
   c.p = newProcCon(module)
   pushOwner(c.module)
   openScope(c.tab)            # scope for imported symbols
@@ -177,20 +158,17 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   result = c
 
 proc myOpenCached(module: PSym, filename: string, rd: PRodReader): PPassContext = 
-  var c: PContext
-  c = PContext(myOpen(module, filename))
+  var c = PContext(myOpen(module, filename))
   c.fromCache = true
   result = c
 
 proc myProcess(context: PPassContext, n: PNode): PNode = 
-  var 
-    c: PContext
-    a: PNode
   result = nil
-  c = PContext(context)
-  result = semStmt(c, n)      # BUGFIX: process newly generated generics here, not at the end!
+  var c = PContext(context)
+  result = semStmt(c, n)      
+  # BUGFIX: process newly generated generics here, not at the end!
   if sonsLen(c.generics) > 0: 
-    a = newNodeI(nkStmtList, n.info)
+    var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
     if sonsLen(a) > 0: 
       # a generic has been added to `a`:
@@ -198,8 +176,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       result = a
 
 proc myClose(context: PPassContext, n: PNode): PNode = 
-  var c: PContext
-  c = PContext(context)
+  var c = PContext(context)
   closeScope(c.tab)           # close module's scope
   rawCloseScope(c.tab)        # imported symbols; don't check for unused ones!
   if n == nil: 

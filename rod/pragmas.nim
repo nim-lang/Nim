@@ -11,7 +11,7 @@
 
 import 
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, rnimsyn, 
-  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys
+  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees
 
 const 
   FirstCallConv* = wNimcall
@@ -78,17 +78,17 @@ proc MakeExternExport(s: PSym, extname: string) =
   s.loc.r = toRope(extname)
   incl(s.flags, sfExportc)
 
-proc expectStrLit(c: PContext, n: PNode): string = 
+proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr: 
     liMessage(n.info, errStringLiteralExpected)
-    result = ""
   else: 
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     case n.sons[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.sons[1].strVal
-    else: 
-      liMessage(n.info, errStringLiteralExpected)
-      result = ""
+    of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.sons[1]
+    else: liMessage(n.info, errStringLiteralExpected)
+
+proc expectStrLit(c: PContext, n: PNode): string = 
+  result = getStrLitNode(c, n).strVal
 
 proc expectIntLit(c: PContext, n: PNode): int = 
   if n.kind != nkExprColonExpr: 
@@ -128,23 +128,22 @@ proc wordToCallConv(sw: TSpecialWord): TCallingConvention =
   # the same
   result = TCallingConvention(ord(ccDefault) + ord(sw) - ord(wNimcall))
 
-proc onOff(c: PContext, n: PNode, op: TOptions) = 
+proc IsTurnedOn(c: PContext, n: PNode): bool = 
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
     case whichKeyword(n.sons[1].ident)
-    of wOn: gOptions = gOptions + op
-    of wOff: gOptions = gOptions - op
+    of wOn: result = true
+    of wOff: result = false
     else: liMessage(n.info, errOnOrOffExpected)
   else: 
     liMessage(n.info, errOnOrOffExpected)
+
+proc onOff(c: PContext, n: PNode, op: TOptions) = 
+  if IsTurnedOn(c, n): gOptions = gOptions + op
+  else: gOptions = gOptions - op
   
 proc pragmaDeadCodeElim(c: PContext, n: PNode) = 
-  if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
-    case whichKeyword(n.sons[1].ident)
-    of wOn: incl(c.module.flags, sfDeadCodeElim)
-    of wOff: excl(c.module.flags, sfDeadCodeElim)
-    else: liMessage(n.info, errOnOrOffExpected)
-  else: 
-    liMessage(n.info, errOnOrOffExpected)
+  if IsTurnedOn(c, n): incl(c.module.flags, sfDeadCodeElim)
+  else: excl(c.module.flags, sfDeadCodeElim)
   
 proc processCallConv(c: PContext, n: PNode) = 
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
@@ -156,27 +155,31 @@ proc processCallConv(c: PContext, n: PNode) =
   else: 
     liMessage(n.info, errCallConvExpected)
   
-proc getLib(c: PContext, kind: TLibKind, path: string): PLib = 
+proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib = 
   var it = PLib(c.libs.head)
   while it != nil: 
     if it.kind == kind: 
-      if ospCaseInsensitive in platform.OS[targetOS].props: 
-        if cmpIgnoreCase(it.path, path) == 0: 
-          return it
-      else: 
-        if it.path == path: 
-          return it
+      if trees.ExprStructuralEquivalent(it.path, path): return it
     it = PLib(it.next)
   result = newLib(kind)
   result.path = path
   Append(c.libs, result)
 
+proc expectDynlibNode(c: PContext, n: PNode): PNode = 
+  if n.kind != nkExprColonExpr: liMessage(n.info, errStringLiteralExpected)
+  else: 
+    result = c.semExpr(c, n.sons[1])
+    if result.typ == nil or result.typ.kind != tyString: 
+      liMessage(n.info, errStringLiteralExpected)
+    if result.kind == nkSym and result.sym.kind == skConst:
+      result = result.sym.ast # look it up
+
 proc processDynLib(c: PContext, n: PNode, sym: PSym) = 
   if (sym == nil) or (sym.kind == skModule): 
     POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic, 
-        expectStrLit(c, n))
+        expectDynlibNode(c, n))
   elif n.kind == nkExprColonExpr: 
-    var lib = getLib(c, libDynamic, expectStrLit(c, n))
+    var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
     addToLib(lib, sym)
     incl(sym.loc.flags, lfDynamicLib)
   else: 
@@ -366,7 +369,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           noval(it)
           incl(sym.flags, sfMerge)
         of wHeader: 
-          var lib = getLib(c, libHeader, expectStrLit(c, it))
+          var lib = getLib(c, libHeader, getStrLitNode(c, it))
           addToLib(lib, sym)
           incl(sym.flags, sfImportc)
           incl(sym.loc.flags, lfHeader)

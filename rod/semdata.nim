@@ -15,7 +15,8 @@ import
   magicsys, nversion, nimsets, pnimsyn, times, passes, rodread
 
 type 
-  TOptionEntry* = object of lists.TListEntry # entries to put on a stack for pragma parsing
+  TOptionEntry* = object of lists.TListEntry # entries to put on a
+                                             # stack for pragma parsing
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
@@ -46,15 +47,16 @@ type
     optionStack*: TLinkedList
     libs*: TLinkedList        # all libs used by this module
     fromCache*: bool          # is the module read from a cache?
-    semConstExpr*: proc (c: PContext, n: PNode): PNode # for the pragmas module
+    semConstExpr*: proc (c: PContext, n: PNode): PNode # for the pragmas
+    semExpr*: proc (c: PContext, n: PNode): PNode      # for the pragmas
     includedFiles*: TIntSet   # used to detect recursive include files
     filename*: string         # the module's filename
   
 
-var gInstTypes*: TIdTable
+var gInstTypes*: TIdTable # map PType to PType
 
 proc newContext*(module: PSym, nimfile: string): PContext
-  # map PType to PType
+
 proc newProcCon*(owner: PSym): PProcCon
 proc lastOptionEntry*(c: PContext): POptionEntry
 proc newOptionEntry*(): POptionEntry
@@ -70,15 +72,15 @@ proc illFormedAst*(n: PNode)
 proc getSon*(n: PNode, indx: int): PNode
 proc checkSonsLen*(n: PNode, length: int)
 proc checkMinSonsLen*(n: PNode, length: int)
-  # owner handling:
+  
+# owner handling:
 proc getCurrOwner*(): PSym
 proc PushOwner*(owner: PSym)
 proc PopOwner*()
 # implementation
 
-var gOwners: seq[PSym]
+var gOwners: seq[PSym] = @[]
 
-gOwners = @ []
 proc getCurrOwner(): PSym = 
   # owner stack (used for initializing the
   # owner field of syms)
@@ -88,14 +90,10 @@ proc getCurrOwner(): PSym =
   result = gOwners[high(gOwners)]
 
 proc PushOwner(owner: PSym) = 
-  var length: int
-  length = len(gOwners)
-  setlen(gOwners, length + 1)
-  gOwners[length] = owner
+  add(gOwners, owner)
 
 proc PopOwner() = 
-  var length: int
-  length = len(gOwners)
+  var length = len(gOwners)
   if (length <= 0): InternalError("popOwner")
   setlen(gOwners, length - 1)
 
@@ -128,8 +126,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   IntSetInit(result.includedFiles)
 
 proc addConverter(c: PContext, conv: PSym) = 
-  var L: int
-  L = len(c.converters)
+  var L = len(c.converters)
   for i in countup(0, L - 1): 
     if c.converters[i].id == conv.id: return 
   setlen(c.converters, L + 1)
@@ -162,9 +159,9 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.owner = getCurrOwner()
   dest.size = - 1
 
-proc makeRangeType(c: PContext, first, last: biggestInt, info: TLineInfo): PType = 
-  var n: PNode
-  n = newNodeI(nkRange, info)
+proc makeRangeType(c: PContext, first, last: biggestInt, 
+                   info: TLineInfo): PType = 
+  var n = newNodeI(nkRange, info)
   addSon(n, newIntNode(nkIntLit, first))
   addSon(n, newIntNode(nkIntLit, last))
   result = newTypeS(tyRange, c)

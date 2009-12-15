@@ -219,8 +219,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) = 
   # This function replaces all other methods for generating
   # the assignment operation in C.
-  var ty: PType
-  ty = skipTypes(dest.t, abstractVarRange)
+  var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
   of tyRef: 
     genRefAssign(p, dest, src, flags)

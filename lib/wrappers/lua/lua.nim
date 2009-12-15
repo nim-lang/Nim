@@ -41,8 +41,8 @@ when defined(MACOSX):
     LUA_LIB_NAME* = "liblua(|5.2|5.1|5.0).dylib"
 elif defined(UNIX): 
   const 
-    LUA_NAME* = "liblua(|5.2|5.1|5.0).so.(|0)"
-    LUA_LIB_NAME* = "liblua(|5.2|5.1|5.0).so.(|0)"
+    LUA_NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
+    LUA_LIB_NAME* = "liblua(|5.2|5.1|5.0).so(|.0)"
 else: 
   const 
     LUA_NAME* = "lua(|5.2|5.1|5.0).dll"

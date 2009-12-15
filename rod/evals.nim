@@ -54,9 +54,10 @@ var emptyNode: PNode
 proc newStackFrame(): PStackFrame = 
   new(result)
   initIdNodeTable(result.mapping)
-  result.params = @ []
+  result.params = @[]
 
-proc newEvalContext(module: PSym, filename: string, optEval: bool): PEvalContext = 
+proc newEvalContext(module: PSym, filename: string, 
+                    optEval: bool): PEvalContext = 
   new(result)
   result.module = module
   result.optEval = optEval
@@ -70,6 +71,7 @@ proc popStackFrame(c: PEvalContext) =
   c.tos = c.tos.next
 
 proc evalAux(c: PEvalContext, n: PNode): PNode
+
 proc stackTraceAux(x: PStackFrame) = 
   if x != nil: 
     stackTraceAux(x.next)
@@ -85,9 +87,8 @@ proc isSpecial(n: PNode): bool =
   result = (n.kind == nkExceptBranch) or (n.kind == nkEmpty)
 
 proc evalIf(c: PEvalContext, n: PNode): PNode = 
-  var i, length: int
-  i = 0
-  length = sonsLen(n)
+  var i = 0
+  var length = sonsLen(n)
   while (i < length) and (sonsLen(n.sons[i]) >= 2): 
     result = evalAux(c, n.sons[i].sons[0])
     if isSpecial(result): return 
@@ -100,10 +101,9 @@ proc evalIf(c: PEvalContext, n: PNode): PNode =
     result = emptyNode
   
 proc evalCase(c: PEvalContext, n: PNode): PNode = 
-  var res: PNode
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  res = result
+  var res = result
   result = emptyNode
   for i in countup(1, sonsLen(n) - 1): 
     if n.sons[i].kind == nkOfBranch: 
@@ -114,11 +114,11 @@ proc evalCase(c: PEvalContext, n: PNode): PNode =
       result = evalAux(c, lastSon(n.sons[i]))
 
 var 
-  gWhileCounter: int          # Use a counter to prevent endless loops!
-                              # We make this counter global, because otherwise
-                              # nested loops could make the compiler extremely slow.
-  gNestedEvals: int # count the recursive calls to ``evalAux`` to prevent
-                    # endless recursion
+  gWhileCounter: int # Use a counter to prevent endless loops!
+                     # We make this counter global, because otherwise
+                     # nested loops could make the compiler extremely slow.
+  gNestedEvals: int  # count the recursive calls to ``evalAux`` to prevent
+                     # endless recursion
 
 proc evalWhile(c: PEvalContext, n: PNode): PNode = 
   while true: 
@@ -152,8 +152,7 @@ proc evalBlock(c: PEvalContext, n: PNode): PNode =
       result = emptyNode      # consume ``break`` token
   
 proc evalFinally(c: PEvalContext, n, exc: PNode): PNode = 
-  var finallyNode: PNode
-  finallyNode = lastSon(n)
+  var finallyNode = lastSon(n)
   if finallyNode.kind == nkFinally: 
     result = evalAux(c, finallyNode)
     if result.kind != nkExceptBranch: result = exc
@@ -161,9 +160,6 @@ proc evalFinally(c: PEvalContext, n, exc: PNode): PNode =
     result = exc
   
 proc evalTry(c: PEvalContext, n: PNode): PNode = 
-  var 
-    exc: PNode
-    i, length, blen: int
   result = evalAux(c, n.sons[0])
   case result.kind
   of nkBreakStmt, nkReturnToken: 
@@ -172,11 +168,11 @@ proc evalTry(c: PEvalContext, n: PNode): PNode =
     if sonsLen(result) >= 1: 
       # creating a nkExceptBranch without sons means that it could not be
       # evaluated
-      exc = result
-      i = 1
-      length = sonsLen(n)
+      var exc = result
+      var i = 1
+      var length = sonsLen(n)
       while (i < length) and (n.sons[i].kind == nkExceptBranch): 
-        blen = sonsLen(n.sons[i])
+        var blen = sonsLen(n.sons[i])
         if blen == 1: 
           # general except section:
           result = evalAux(c, n.sons[i].sons[0])
@@ -194,8 +190,7 @@ proc evalTry(c: PEvalContext, n: PNode): PNode =
   else: result = evalFinally(c, n, emptyNode)
   
 proc getNullValue(typ: PType, info: TLineInfo): PNode = 
-  var t: PType
-  t = skipTypes(typ, abstractRange)
+  var t = skipTypes(typ, abstractRange)
   result = emptyNode
   case t.kind
   of tyBool, tyChar, tyInt..tyInt64: 
@@ -219,15 +214,12 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   else: InternalError("getNullValue")
   
 proc evalVar(c: PEvalContext, n: PNode): PNode = 
-  var 
-    v: PSym
-    a: PNode
   for i in countup(0, sonsLen(n) - 1): 
-    a = n.sons[i]
+    var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     assert(a.kind == nkIdentDefs)
     assert(a.sons[0].kind == nkSym)
-    v = a.sons[0].sym
+    var v = a.sons[0].sym
     if a.sons[2] != nil: 
       result = evalAux(c, a.sons[2])
       if isSpecial(result): return 
@@ -237,14 +229,11 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
   result = emptyNode
 
 proc evalCall(c: PEvalContext, n: PNode): PNode = 
-  var 
-    d: PStackFrame
-    prc: PNode
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  prc = result                # bind the actual params to the local parameter
-                              # of a new binding
-  d = newStackFrame()
+  var prc = result
+  # bind the actual params to the local parameter of a new binding
+  var d = newStackFrame()
   d.call = n
   if prc.kind == nkSym: 
     d.prc = prc.sym
@@ -265,8 +254,7 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
 proc evalVariable(c: PStackFrame, sym: PSym): PNode = 
   # We need to return a node to the actual value,
   # which can be modified.
-  var x: PStackFrame
-  x = c
+  var x = c
   while x != nil: 
     if sfResult in sym.flags: 
       return x.params[0]
@@ -276,15 +264,12 @@ proc evalVariable(c: PStackFrame, sym: PSym): PNode =
   result = emptyNode
 
 proc evalArrayAccess(c: PEvalContext, n: PNode): PNode = 
-  var 
-    x: PNode
-    idx: biggestInt
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  x = result
+  var x = result
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  idx = getOrdValue(result)
+  var idx = getOrdValue(result)
   result = emptyNode
   case x.kind
   of nkBracket, nkPar, nkMetaNode: 
@@ -436,15 +421,14 @@ proc evalAnd(c: PEvalContext, n: PNode): PNode =
   if result.intVal != 0: result = evalAux(c, n.sons[2])
   
 proc evalNoOpt(c: PEvalContext, n: PNode): PNode = 
-  result = newNodeI(nkExceptBranch, n.info) # creating a nkExceptBranch without sons means that it could not be
-                                            # evaluated
+  result = newNodeI(nkExceptBranch, n.info) 
+  # creating a nkExceptBranch without sons means that it could not be evaluated
   
 proc evalNew(c: PEvalContext, n: PNode): PNode = 
-  var t: PType
   if c.optEval: 
     result = evalNoOpt(c, n)
   else: 
-    t = skipTypes(n.sons[1].typ, abstractVar)
+    var t = skipTypes(n.sons[1].typ, abstractVar)
     result = newNodeIT(nkRefTy, n.info, t)
     addSon(result, getNullValue(t.sons[0], n.info))
 
@@ -457,13 +441,10 @@ proc evalDeref(c: PEvalContext, n: PNode): PNode =
   else: InternalError(n.info, "evalDeref " & $result.kind)
   
 proc evalAddr(c: PEvalContext, n: PNode): PNode = 
-  var 
-    a: PNode
-    t: PType
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  a = result
-  t = newType(tyPtr, c.module)
+  var a = result
+  var t = newType(tyPtr, c.module)
   addSon(t, a.typ)
   result = newNodeIT(nkRefTy, n.info, t)
   addSon(result, a)
@@ -477,11 +458,10 @@ proc evalCheckedFieldAccess(c: PEvalContext, n: PNode): PNode =
   result = evalAux(c, n.sons[0])
 
 proc evalUpConv(c: PEvalContext, n: PNode): PNode = 
-  var dest, src: PType
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  dest = skipTypes(n.typ, abstractPtrs)
-  src = skipTypes(result.typ, abstractPtrs)
+  var dest = skipTypes(n.typ, abstractPtrs)
+  var src = skipTypes(result.typ, abstractPtrs)
   if inheritanceDiff(src, dest) > 0: 
     stackTrace(c, n, errInvalidConversionFromTypeX, typeToString(src))
   
@@ -710,48 +690,27 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     k: biggestInt
   m = getMagic(n)
   case m
-  of mNone: 
-    result = evalCall(c, n)
-  of mIs: 
-    result = evalIs(c, n)
-  of mSizeOf: 
-    internalError(n.info, "sizeof() should have been evaluated")
-  of mHigh: 
-    result = evalHigh(c, n)
-  of mAssert: 
-    result = evalAssert(c, n)
-  of mExit: 
-    result = evalExit(c, n)
-  of mNew, mNewFinalize: 
-    result = evalNew(c, n)
-  of mNewSeq: 
-    result = evalNewSeq(c, n)
-  of mSwap: 
-    result = evalSwap(c, n)
-  of mInc: 
-    result = evalIncDec(c, n, 1)
-  of ast.mDec: 
-    result = evalIncDec(c, n, - 1)
-  of mEcho: 
-    result = evalEcho(c, n)
-  of mSetLengthStr: 
-    result = evalSetLengthStr(c, n)
-  of mSetLengthSeq: 
-    result = evalSetLengthSeq(c, n)
-  of mIncl: 
-    result = evalIncl(c, n)
-  of mExcl: 
-    result = evalExcl(c, n)
-  of mAnd: 
-    result = evalAnd(c, n)
-  of mOr: 
-    result = evalOr(c, n)
-  of mAppendStrCh: 
-    result = evalAppendStrCh(c, n)
-  of mAppendStrStr: 
-    result = evalAppendStrStr(c, n)
-  of mAppendSeqElem: 
-    result = evalAppendSeqElem(c, n)
+  of mNone: result = evalCall(c, n)
+  of mIs: result = evalIs(c, n)
+  of mSizeOf: internalError(n.info, "sizeof() should have been evaluated")
+  of mHigh: result = evalHigh(c, n)
+  of mAssert: result = evalAssert(c, n)
+  of mExit: result = evalExit(c, n)
+  of mNew, mNewFinalize: result = evalNew(c, n)
+  of mNewSeq: result = evalNewSeq(c, n)
+  of mSwap: result = evalSwap(c, n)
+  of mInc: result = evalIncDec(c, n, 1)
+  of ast.mDec: result = evalIncDec(c, n, - 1)
+  of mEcho: result = evalEcho(c, n)
+  of mSetLengthStr: result = evalSetLengthStr(c, n)
+  of mSetLengthSeq: result = evalSetLengthSeq(c, n)
+  of mIncl: result = evalIncl(c, n)
+  of mExcl: result = evalExcl(c, n)
+  of mAnd: result = evalAnd(c, n)
+  of mOr: result = evalOr(c, n)
+  of mAppendStrCh: result = evalAppendStrCh(c, n)
+  of mAppendStrStr: result = evalAppendStrStr(c, n)
+  of mAppendSeqElem: result = evalAppendSeqElem(c, n)
   of mNLen: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
@@ -848,8 +807,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
     if result.kind != nkIdent: InternalError(n.info, "no symbol")
-  of mNGetType: 
-    result = evalAux(c, n.sons[1])
+  of mNGetType: result = evalAux(c, n.sons[1])
   of mNStrVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
@@ -1009,14 +967,10 @@ proc evalAux(c: PEvalContext, n: PNode): PNode =
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
   case n.kind                 # atoms:
-  of nkEmpty: 
-    result = n
-  of nkSym: 
-    result = evalSym(c, n)
-  of nkType..pred(nkNilLit): 
-    result = copyNode(n)
-  of nkNilLit: 
-    result = n                # end of atoms
+  of nkEmpty: result = n
+  of nkSym: result = evalSym(c, n)
+  of nkType..pred(nkNilLit): result = copyNode(n)
+  of nkNilLit: result = n                # end of atoms
   of nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit: 
     result = evalMagicOrCall(c, n)
   of nkCurly, nkBracket, nkRange: 
@@ -1033,52 +987,29 @@ proc evalAux(c: PEvalContext, n: PNode): PNode =
       if isSpecial(result): return 
       a.sons[i].sons[1] = result
     result = a
-  of nkBracketExpr: 
-    result = evalArrayAccess(c, n)
-  of nkDotExpr: 
-    result = evalFieldAccess(c, n)
-  of nkDerefExpr, nkHiddenDeref: 
-    result = evalDeref(c, n)
-  of nkAddr, nkHiddenAddr: 
-    result = evalAddr(c, n)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
-    result = evalConv(c, n)
-  of nkAsgn, nkFastAsgn: 
-    result = evalAsgn(c, n)
-  of nkWhenStmt, nkIfStmt, nkIfExpr: 
-    result = evalIf(c, n)
-  of nkWhileStmt: 
-    result = evalWhile(c, n)
-  of nkCaseStmt: 
-    result = evalCase(c, n)
-  of nkVarSection: 
-    result = evalVar(c, n)
-  of nkTryStmt: 
-    result = evalTry(c, n)
-  of nkRaiseStmt: 
-    result = evalRaise(c, n)
-  of nkReturnStmt: 
-    result = evalReturn(c, n)
-  of nkBreakStmt, nkReturnToken: 
-    result = n
-  of nkBlockExpr, nkBlockStmt: 
-    result = evalBlock(c, n)
-  of nkDiscardStmt: 
-    result = evalAux(c, n.sons[0])
-  of nkCheckedFieldExpr: 
-    result = evalCheckedFieldAccess(c, n)
-  of nkObjDownConv: 
-    result = evalAux(c, n.sons[0])
-  of nkObjUpConv: 
-    result = evalUpConv(c, n)
-  of nkChckRangeF, nkChckRange64, nkChckRange: 
-    result = evalRangeChck(c, n)
-  of nkStringToCString: 
-    result = evalConvStrToCStr(c, n)
-  of nkCStringToString: 
-    result = evalConvCStrToStr(c, n)
-  of nkPassAsOpenArray: 
-    result = evalAux(c, n.sons[0])
+  of nkBracketExpr: result = evalArrayAccess(c, n)
+  of nkDotExpr: result = evalFieldAccess(c, n)
+  of nkDerefExpr, nkHiddenDeref: result = evalDeref(c, n)
+  of nkAddr, nkHiddenAddr: result = evalAddr(c, n)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: result = evalConv(c, n)
+  of nkAsgn, nkFastAsgn: result = evalAsgn(c, n)
+  of nkWhenStmt, nkIfStmt, nkIfExpr: result = evalIf(c, n)
+  of nkWhileStmt: result = evalWhile(c, n)
+  of nkCaseStmt: result = evalCase(c, n)
+  of nkVarSection: result = evalVar(c, n)
+  of nkTryStmt: result = evalTry(c, n)
+  of nkRaiseStmt: result = evalRaise(c, n)
+  of nkReturnStmt: result = evalReturn(c, n)
+  of nkBreakStmt, nkReturnToken: result = n
+  of nkBlockExpr, nkBlockStmt: result = evalBlock(c, n)
+  of nkDiscardStmt: result = evalAux(c, n.sons[0])
+  of nkCheckedFieldExpr: result = evalCheckedFieldAccess(c, n)
+  of nkObjDownConv: result = evalAux(c, n.sons[0])
+  of nkObjUpConv: result = evalUpConv(c, n)
+  of nkChckRangeF, nkChckRange64, nkChckRange: result = evalRangeChck(c, n)
+  of nkStringToCString: result = evalConvStrToCStr(c, n)
+  of nkCStringToString: result = evalConvCStrToStr(c, n)
+  of nkPassAsOpenArray: result = evalAux(c, n.sons[0])
   of nkStmtListExpr, nkStmtList, nkModule: 
     for i in countup(0, sonsLen(n) - 1): 
       result = evalAux(c, n.sons[i])
@@ -1106,11 +1037,8 @@ proc eval(c: PEvalContext, n: PNode): PNode =
     stackTrace(c, n, errUnhandledExceptionX, typeToString(result.typ))
   
 proc evalConstExpr(module: PSym, e: PNode): PNode = 
-  var 
-    p: PEvalContext
-    s: PStackFrame
-  p = newEvalContext(module, "", true)
-  s = newStackFrame()
+  var p = newEvalContext(module, "", true)
+  var s = newStackFrame()
   s.call = e
   pushStackFrame(p, s)
   result = eval(p, e)
@@ -1118,8 +1046,7 @@ proc evalConstExpr(module: PSym, e: PNode): PNode =
   popStackFrame(p)
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
-  var c: PEvalContext
-  c = newEvalContext(module, filename, false)
+  var c = newEvalContext(module, filename, false)
   pushStackFrame(c, newStackFrame())
   result = c
 

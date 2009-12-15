@@ -164,11 +164,11 @@ proc isSimpleConst(typ: PType): bool =
 proc useHeader(m: BModule, sym: PSym) = 
   if lfHeader in sym.loc.Flags: 
     assert(sym.annex != nil)
-    discard lists.IncludeStr(m.headerFiles, sym.annex.path)
+    discard lists.IncludeStr(m.headerFiles, getStr(sym.annex.path))
 
 proc UseMagic(m: BModule, name: string)
-include 
-  "ccgtypes.nim"
+
+include "ccgtypes.nim"
 
 # ------------------------------ Manager of temporaries ------------------
 
@@ -333,32 +333,36 @@ proc libCandidates(s: string, dest: var TStringSeq) =
     add(dest, s)
 
 proc loadDynamicLib(m: BModule, lib: PLib) = 
-  var 
-    tmp, loadlib: PRope
-    s: TStringSeq
   assert(lib != nil)
   if not lib.generated: 
     lib.generated = true
-    tmp = getGlobalTempName()
+    var tmp = getGlobalTempName()
     assert(lib.name == nil)
-    lib.name = tmp            # BUGFIX: useMagic has awful side-effects
-    appff(m.s[cfsVars], "static void* $1;$n", 
-          "$1 = linkonce global i8* zeroinitializer$n", [tmp])
-    s = @[]
-    libCandidates(lib.path, s)
-    loadlib = nil
-    for i in countup(0, high(s)): 
-      inc(m.labels)
-      if i > 0: app(loadlib, "||")
-      appff(loadlib, "($1 = nimLoadLibrary((NimStringDesc*) &$2))$n", 
-          "%MOC$4 = call i8* @nimLoadLibrary($3 $2)$n" &
-          "store i8* %MOC$4, i8** $1$n", [tmp, getStrLit(m, s[i]), 
-          getTypeDesc(m, getSysType(tyString)), toRope(m.labels)])
-    appff(m.s[cfsDynLibInit], 
-          "if (!($1)) nimLoadLibraryError((NimStringDesc*) &$2);$n", 
-          "XXX too implement", [loadlib, getStrLit(m, lib.path)]) 
-    #appf(m.s[cfsDynLibDeinit], "if ($1 != NIM_NIL) nimUnloadLibrary($1);$n",
-    # [tmp])
+    lib.name = tmp # BUGFIX: useMagic has awful side-effects
+    appf(m.s[cfsVars], "static void* $1;$n", [tmp])
+    if lib.path.kind in {nkStrLit..nkTripleStrLit}:
+      var s: TStringSeq = @[]
+      libCandidates(lib.path.strVal, s)
+      var loadlib: PRope = nil
+      for i in countup(0, high(s)): 
+        inc(m.labels)
+        if i > 0: app(loadlib, "||")
+        appf(loadlib, "($1 = nimLoadLibrary((NimStringDesc*) &$2))$n", 
+             [tmp, getStrLit(m, s[i])])
+      appf(m.s[cfsDynLibInit], 
+           "if (!($1)) nimLoadLibraryError((NimStringDesc*) &$2);$n", 
+           [loadlib, getStrLit(m, lib.path.strVal)]) 
+    else:
+      var p = newProc(nil, m)
+      var dest: TLoc
+      initLocExpr(p, lib.path, dest)
+      app(m.s[cfsVars], p.s[cpsLocals])
+      app(m.s[cfsDynLibInit], p.s[cpsInit])
+      app(m.s[cfsDynLibInit], p.s[cpsStmts])
+      appf(m.s[cfsDynLibInit], 
+           "if (!($1 = nimLoadLibrary($2))) nimLoadLibraryError($2);$n", 
+           [tmp, rdLoc(dest)])
+      
     useMagic(m, "nimLoadLibrary")
     useMagic(m, "nimUnloadLibrary")
     useMagic(m, "NimStringDesc")
