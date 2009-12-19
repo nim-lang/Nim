@@ -410,8 +410,7 @@ proc renderHeadline(d: PDoc, n: PRstNode): PRope =
         toRope(chr(n.level - 1 + ord('A')) & "")])
   
 proc renderOverline(d: PDoc, n: PRstNode): PRope = 
-  var t: PRope
-  t = nil
+  var t: PRope = nil
   for i in countup(0, rsonsLen(n) - 1): app(t, renderRstToOut(d, n.sons[i]))
   result = nil
   if d.meta[metaTitle] == nil: 
@@ -543,10 +542,9 @@ proc renderTocEntry(d: PDoc, e: TTocEntry): PRope =
                  "\\item\\label{$1_toc} $2\\ref{$1}$n", [e.refname, e.header])
 
 proc renderTocEntries(d: PDoc, j: var int, lvl: int): PRope = 
-  var a: int
   result = nil
   while (j <= high(d.tocPart)): 
-    a = abs(d.tocPart[j].n.level)
+    var a = abs(d.tocPart[j].n.level)
     if (a == lvl): 
       app(result, renderTocEntry(d, d.tocPart[j]))
       inc(j)

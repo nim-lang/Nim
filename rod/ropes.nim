@@ -123,19 +123,17 @@ proc getCacheStats(): string =
     result = ""
   
 proc splay(s: string, tree: PRope, cmpres: var int): PRope = 
-  var 
-    le, r, y, t: PRope
-    c: int
-  t = tree
+  var c: int
+  var t = tree
   N.left = nil
   N.right = nil               # reset to nil
-  le = N
-  r = N
+  var le = N
+  var r = N
   while true: 
     c = cmp(s, t.data)
     if c < 0: 
       if (t.left != nil) and (s < t.left.data): 
-        y = t.left
+        var y = t.left
         t.left = y.right
         y.right = t
         t = y
@@ -145,7 +143,7 @@ proc splay(s: string, tree: PRope, cmpres: var int): PRope =
       t = t.left
     elif c > 0: 
       if (t.right != nil) and (s > t.right.data): 
-        y = t.right
+        var y = t.right
         t.right = y.left
         y.left = t
         t = y
@@ -165,14 +163,12 @@ proc splay(s: string, tree: PRope, cmpres: var int): PRope =
 proc insertInCache(s: string, tree: PRope): PRope = 
   # Insert i into the tree t, unless it's already there.
   # Return a pointer to the resulting tree.
-  var 
-    t: PRope
-    cmp: int
-  t = tree
+  var t = tree
   if t == nil: 
     result = newRope(s)
     if countCacheMisses: inc(misses)
     return 
+  var cmp: int
   t = splay(s, t, cmp)
   if cmp == 0: 
     # We get here if it's already in the Tree
@@ -216,14 +212,13 @@ proc toRope(s: string): PRope =
   assert(RopeInvariant(result))
 
 proc RopeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) = 
-  var length: int
-  length = len(rs)
+  var length = len(rs)
   if at > length: 
     setlen(rs, at + 1)
   else: 
     setlen(rs, length + 1)    # move old rope elements:
   for i in countdown(length, at + 1): 
-    rs[i] = rs[i - 1]         # this is correct, I used pen and paper to validate it
+    rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
   rs[at] = r
 
 proc con(a, b: PRope): PRope = 
@@ -241,12 +236,11 @@ proc con(a, b: PRope): PRope =
   assert(RopeInvariant(result))
 
 proc con(a: PRope, b: string): PRope = 
-  var r: PRope
   assert(RopeInvariant(a))
   if b == "": 
     result = a
   else: 
-    r = toRope(b)
+    var r = toRope(b)
     if a == nil: 
       result = r
     else: 
@@ -257,12 +251,11 @@ proc con(a: PRope, b: string): PRope =
   assert(RopeInvariant(result))
 
 proc con(a: string, b: PRope): PRope = 
-  var r: PRope
   assert(RopeInvariant(b))
   if a == "": 
     result = b
   else: 
-    r = toRope(a)
+    var r = toRope(a)
     if b == nil: 
       result = r
     else: 
@@ -295,21 +288,6 @@ proc prepend(a: var PRope, b: PRope) =
   a = con(b, a)
   assert(RopeInvariant(a))
 
-proc InitStack(stack: var TRopeSeq) = 
-  stack = @ []
-
-proc push(stack: var TRopeSeq, r: PRope) = 
-  var length: int
-  length = len(stack)
-  setlen(stack, length + 1)
-  stack[length] = r
-
-proc pop(stack: var TRopeSeq): PRope = 
-  var length: int
-  length = len(stack)
-  result = stack[length - 1]
-  setlen(stack, length - 1)
-
 proc WriteRopeRec(f: var tfile, c: PRope) = 
   assert(RopeInvariant(c))
   if c == nil: return 
@@ -320,16 +298,11 @@ proc WriteRopeRec(f: var tfile, c: PRope) =
     writeRopeRec(f, c.right)
 
 proc newWriteRopeRec(f: var tfile, c: PRope) = 
-  var 
-    stack: TRopeSeq
-    it: PRope
-  assert(RopeInvariant(c))
-  initStack(stack)
-  push(stack, c)
+  var stack: TRopeSeq = @[c]
   while len(stack) > 0: 
-    it = pop(stack)
+    var it = pop(stack)
     while it.data == nil: 
-      push(stack, it.right)
+      add(stack, it.right)
       it = it.left
       assert(it != nil)
     assert(it.data != nil)
@@ -355,15 +328,11 @@ proc recRopeToStr(result: var string, resultLen: var int, p: PRope) =
     assert(resultLen <= len(result))
 
 proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) = 
-  var 
-    stack: TRopeSeq
-    it: PRope
-  initStack(stack)
-  push(stack, r)
+  var stack: TRopeSeq = @[r]
   while len(stack) > 0: 
-    it = pop(stack)
+    var it = pop(stack)
     while it.data == nil: 
-      push(stack, it.right)
+      add(stack, it.right)
       it = it.left
     assert(it.data != nil)
     CopyMem(addr(result[resultLen + 0]), addr(it.data[0]), it.length)
@@ -371,13 +340,11 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
     assert(resultLen <= len(result))
 
 proc ropeToStr(p: PRope): string = 
-  var resultLen: int
-  assert(RopeInvariant(p))
   if p == nil: 
     result = ""
   else: 
     result = newString(p.length)
-    resultLen = 0
+    var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
 proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope = 
@@ -426,11 +393,10 @@ const
   bufSize = 1024              # 1 KB is reasonable
 
 proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool = 
-  var readBytes: int
   if (r.data != nil): 
     if r.length > bufSize: 
       internalError("ropes: token too long")
-    readBytes = readBuffer(bin, buf, r.length)
+    var readBytes = readBuffer(bin, buf, r.length)
     result = (readBytes == r.length) and
         equalMem(buf, addr(r.data[0]), r.length) # BUGFIX
   else: 
@@ -438,13 +404,11 @@ proc auxRopeEqualsFile(r: PRope, bin: var tfile, buf: Pointer): bool =
     if result: result = auxRopeEqualsFile(r.right, bin, buf)
   
 proc RopeEqualsFile(r: PRope, f: string): bool = 
-  var 
-    bin: tfile
-    buf: Pointer
+  var bin: tfile
   result = open(bin, f)
   if not result: 
     return                    # not equal if file does not exist
-  buf = alloc(BufSize)
+  var buf = alloc(BufSize)
   result = auxRopeEqualsFile(r, bin, buf)
   if result: 
     result = readBuffer(bin, buf, bufSize) == 0 # really at the end of file?
@@ -461,21 +425,16 @@ proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
     result = crcFromRopeAux(r.right, result)
 
 proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 = 
-  var 
-    stack: TRopeSeq
-    it: PRope
-    L, i: int
-  initStack(stack)
-  push(stack, r)
+  var stack: TRopeSeq = @[r]
   result = startVal
   while len(stack) > 0: 
-    it = pop(stack)
+    var it = pop(stack)
     while it.data == nil: 
-      push(stack, it.right)
+      add(stack, it.right)
       it = it.left
     assert(it.data != nil)
-    i = 0
-    L = len(it.data) + 0
+    var i = 0
+    var L = len(it.data)
     while i < L: 
       result = updateCrc32(it.data[i], result)
       inc(i)
@@ -493,5 +452,4 @@ proc writeRopeIfNotEqual(r: PRope, filename: string): bool =
   else: 
     result = false
   
-new(N)
-# init dummy node for splay algorithm
+new(N) # init dummy node for splay algorithm

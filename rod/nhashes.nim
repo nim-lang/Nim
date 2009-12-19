@@ -32,17 +32,6 @@ proc concHash*(h: THash, val: int): THash
 proc finishHash*(h: THash): THash
 # implementation
 
-proc nextPowerOfTwo(x: int): int = 
-  result = x -% 1 # complicated, to make it a nop if sizeof(int) == 4,
-                  # because shifting more than 31 bits is undefined in C
-  result = result or (result shr ((sizeof(int) - 4) * 8))
-  result = result or (result shr 16)
-  result = result or (result shr 8)
-  result = result or (result shr 4)
-  result = result or (result shr 2)
-  result = result or (result shr 1)
-  Inc(result)
-
 proc concHash(h: THash, val: int): THash = 
   result = h +% val
   result = result +% result shl 10
