@@ -845,14 +845,11 @@ proc sonsLen(n: PType): int =
   else: result = len(n.sons)
   
 proc newSons(father: PType, length: int) = 
-  var i, L: int
-  if isNil(father.sons): father.sons = @ []
-  L = len(father.sons)
-  setlen(father.sons, L + length)
+  if isNil(father.sons): father.sons = @[]
+  setlen(father.sons, len(father.sons) + length)
 
 proc addSon(father, son: PType) = 
-  var L: int
-  if isNil(father.sons): father.sons = @ []
+  if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
   assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
 
@@ -861,20 +858,16 @@ proc sonsLen(n: PNode): int =
   else: result = len(n.sons)
   
 proc newSons(father: PNode, length: int) = 
-  var i, L: int
-  if isNil(father.sons): father.sons = @ []
-  L = len(father.sons)
-  setlen(father.sons, L + length)
+  if isNil(father.sons): father.sons = @[]
+  setlen(father.sons, len(father.sons) + length)
 
 proc addSon(father, son: PNode) = 
-  var L: int
-  if isNil(father.sons): father.sons = @ []
+  if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc delSon(father: PNode, idx: int) = 
-  var length: int
   if isNil(father.sons): return 
-  length = sonsLen(father)
+  var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setlen(father.sons, length - 1)
 

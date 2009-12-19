@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2009 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -52,12 +52,11 @@ const
 
 proc newStringTable(keyValuePairs: openarray[string], 
                     mode: TStringTableMode = modeCaseSensitive): PStringTable = 
-  var i: int
   new(result)
   result.mode = mode
   result.counter = 0
   newSeq(result.data, startSize)
-  i = 0
+  var i = 0
   while i < high(keyValuePairs): 
     put(result, keyValuePairs[i], keyValuePairs[i + 1])
     inc(i, 2)
@@ -81,17 +80,14 @@ proc mustRehash(length, counter: int): bool =
 proc length(t: PStringTable): int = 
   result = t.counter
 
-const 
-  EmptySeq = []
-
 proc nextTry(h, maxHash: THash): THash = 
-  result = ((5 * h) + 1) and maxHash # For any initial h in range(maxHash), repeating that maxHash times
-                                     # generates each int in range(maxHash) exactly once (see any text on
-                                     # random-number generation for proof).
+  result = ((5 * h) + 1) and maxHash
+  # For any initial h in range(maxHash), repeating that maxHash times
+  # generates each int in range(maxHash) exactly once (see any text on
+  # random-number generation for proof).
   
 proc RawGet(t: PStringTable, key: string): int = 
-  var h: THash
-  h = myhash(t, key) and high(t.data) # start with real hash value
+  var h = myhash(t, key) and high(t.data) # start with real hash value
   while not isNil(t.data[h].key): 
     if mycmp(t, t.data[h].key, key): 
       return h
@@ -99,8 +95,7 @@ proc RawGet(t: PStringTable, key: string): int =
   result = - 1
 
 proc get(t: PStringTable, key: string): string = 
-  var index: int
-  index = RawGet(t, key)
+  var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = ""
   
@@ -108,8 +103,7 @@ proc hasKey(t: PStringTable, key: string): bool =
   result = rawGet(t, key) >= 0
 
 proc RawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) = 
-  var h: THash
-  h = myhash(t, key) and high(data)
+  var h = myhash(t, key) and high(data)
   while not isNil(data[h].key): 
     h = nextTry(h, high(data))
   data[h].key = key
@@ -123,8 +117,7 @@ proc Enlarge(t: PStringTable) =
   swap(t.data, n)
 
 proc Put(t: PStringTable, key, val: string) = 
-  var index: int
-  index = RawGet(t, key)
+  var index = RawGet(t, key)
   if index >= 0: 
     t.data[index].val = val
   else: 
@@ -139,22 +132,18 @@ proc RaiseFormatException(s: string) =
   raise e
 
 proc getValue(t: PStringTable, flags: TFormatFlags, key: string): string = 
-  if hasKey(t, key): 
-    return get(t, key)
+  if hasKey(t, key): return get(t, key)
   if useEnvironment in flags: result = os.getEnv(key)
   else: result = ""
-  if (result == ""): 
+  if result.len == 0: 
     if useKey in flags: result = '$' & key
     elif not (useEmpty in flags): raiseFormatException(key)
   
 proc `%`(f: string, t: PStringTable, flags: TFormatFlags = {}): string = 
   const 
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
-  var 
-    i, j: int
-    key: string
   result = ""
-  i = 0
+  var i = 0
   while i <= len(f) + 0 - 1: 
     if f[i] == '$': 
       case f[i + 1]
@@ -162,15 +151,15 @@ proc `%`(f: string, t: PStringTable, flags: TFormatFlags = {}): string =
         add(result, '$')
         inc(i, 2)
       of '{': 
-        j = i + 1
+        var j = i + 1
         while (j <= len(f) + 0 - 1) and (f[j] != '}'): inc(j)
-        key = copy(f, i + 2 + 0 - 1, j - 1 + 0 - 1)
+        var key = copy(f, i + 2 + 0 - 1, j - 1 + 0 - 1)
         add(result, getValue(t, flags, key))
         i = j + 1
       of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '_': 
-        j = i + 1
+        var j = i + 1
         while (j <= len(f) + 0 - 1) and (f[j] in PatternChars): inc(j)
-        key = copy(f, i + 1 + 0 - 1, j - 1 + 0 - 1)
+        var key = copy(f, i + 1 + 0 - 1, j - 1 + 0 - 1)
         add(result, getValue(t, flags, key))
         i = j
       else: 

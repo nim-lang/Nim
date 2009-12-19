@@ -203,10 +203,13 @@ proc NameToCPU(name: string): TSystemCPU =
       return i
   result = cpuNone
 
-proc nimCPU(): cstring{.importc, noconv.}
-proc nimOS(): cstring{.importc, noconv.}
+#proc nimCPU(): cstring{.importc, noconv.}
+#proc nimOS(): cstring{.importc, noconv.}
 
-hostCPU = nameToCPU($(nimCPU()))
-hostOS = nameToOS($(nimOS()))
+#hostCPU = nameToCPU($nimCPU())
+#hostOS = nameToOS($nimOS())
+hostCPU = nameToCPU(system.hostCPU)
+hostOS = nameToOS(system.hostOS)
+
 setTarget(hostOS, hostCPU) # assume no cross-compiling
 

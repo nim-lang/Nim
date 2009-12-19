@@ -20,7 +20,7 @@ const
 Build time: $2, $3
 
 Usage:
-  koch.py [options] command [options for command]
+  koch [options] command [options for command]
 Options:
   --help, -h               shows this help and quits
 Possible Commands:
@@ -90,7 +90,7 @@ proc writePlatdefC =
     quit("Cannot write 'build/platdef.c'\n")
 
 const
-  bootOptions = "--compile:build/platdef.c"
+  bootOptions = "" # "--compile:build/platdef.c"
 
 proc findStartNimrod: string = 
   const buildScript = "build.sh"
@@ -118,16 +118,18 @@ proc findStartNimrod: string =
 
 proc bootIteration(args: string): bool = 
   var nimrod1 = "rod" / "nimrod1".exe
+  if not ExistsFile("rod" / "nimrod".exe):
+    quit("no binary has been created! Failed! Try with --forcebuild")
   moveFile nimrod1, "rod" / "nimrod".exe
   exec "rod" / "nimrod1 cc $# $# rod/nimrod.nim" % [bootOptions, args]
-  result = sameFileContent("rod" / "nimrod".exe, "rod" / "nimrod1".exe)
+  result = sameFileContent("rod" / "nimrod".exe, nimrod1)
   if result:
     moveFile "bin" / "nimrod".exe, "rod" / "nimrod".exe
     echo "executables are equal: SUCCESS!"
   removeFile nimrod1
 
 proc boot(args: string) =
-  writePlatdefC()
+  #writePlatdefC()
   echo "iteration: 1"
   exec findStartNimrod() & " cc $# $# rod" / "nimrod.nim" % [bootOptions, args]
   echo "iteration: 2"
