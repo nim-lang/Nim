@@ -408,7 +408,6 @@ proc CallCCompiler(projectfile: string) =
   if (gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}): 
     return # speed up that call if only compiling and no script shall be
            # generated
-  if (toCompile.head == nil) and (externalToCompile.head == nil): return 
   fileCounter = 0
   var c = ccompiler
   var script: PRope = nil

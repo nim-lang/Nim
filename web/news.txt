@@ -2,6 +2,23 @@
 News
 ====
 
+
+2009-XX-XX Version 0.8.6 released
+=================================
+
+Bugfixes
+--------
+
+Additions
+---------
+
+Changes affecting backwards compatibility
+-----------------------------------------
+- The compiler does not skip the linking step anymore even if no file
+  has changed.
+
+
+
 2009-10-21 Version 0.8.2 released
 =================================
 

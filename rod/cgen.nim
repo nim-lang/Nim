@@ -704,8 +704,7 @@ proc getInitName(m: PSym): PRope =
   result = ropeff("$1Init", "@$1Init", [toRope(m.name.s)])
 
 proc registerModuleToMain(m: PSym) = 
-  var initname: PRope
-  initname = getInitName(m)
+  var initname = getInitName(m)
   appff(mainModProcs, "N_NOINLINE(void, $1)(void);$n", 
         "declare void $1() noinline$n", [initname])
   if not (sfSystemModule in m.flags): 

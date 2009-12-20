@@ -14,6 +14,7 @@ import
   os, ropes, idents, ast, pnimsyn, rnimsyn, msgs, wordrecg, syntaxes
 
 proc modifyPragmas(n: PNode, name: string) =
+  if n == nil: return
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     if it.kind == nkIdent and whichKeyword(it.ident) == wImportc:

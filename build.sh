@@ -64,11 +64,6 @@ case $ucpu in
     ;;
 esac
 
-# write ``build/platdef.c`` file
-cat >build/platdef.c <<EOF
-char* nimOS(void) { return "$myos"; }
-char* nimCPU(void) { return "$mycpu"; }
-EOF
 # call the compiler:
 
 case $myos in
@@ -143,6 +138,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/syntaxes.c -o build/1_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pnimsyn.c -o build/1_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/pnimsyn.c -o build/1_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pbraces.c -o build/1_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/pbraces.c -o build/1_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ptmplsyn.c -o build/1_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ptmplsyn.c -o build/1_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rnimsyn.c -o build/1_1/rnimsyn.o"
@@ -213,8 +210,7 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/transf.c -o build/1_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_1/nim__dat.o \
 build/1_1/system.o \
 build/1_1/nimrod.o \
@@ -249,6 +245,7 @@ build/1_1/nimconf.o \
 build/1_1/main.o \
 build/1_1/syntaxes.o \
 build/1_1/pnimsyn.o \
+build/1_1/pbraces.o \
 build/1_1/ptmplsyn.o \
 build/1_1/rnimsyn.o \
 build/1_1/filters.o \
@@ -284,7 +281,7 @@ build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_1/nim__dat.o \
 build/1_1/system.o \
 build/1_1/nimrod.o \
@@ -319,6 +316,7 @@ build/1_1/nimconf.o \
 build/1_1/main.o \
 build/1_1/syntaxes.o \
 build/1_1/pnimsyn.o \
+build/1_1/pbraces.o \
 build/1_1/ptmplsyn.o \
 build/1_1/rnimsyn.o \
 build/1_1/filters.o \
@@ -424,6 +422,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/syntaxes.c -o build/1_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/pnimsyn.c -o build/1_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/pbraces.c -o build/1_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ptmplsyn.c -o build/1_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o"
@@ -494,8 +494,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/transf.c -o build/1_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_2/nim__dat.o \
 build/1_2/system.o \
 build/1_2/nimrod.o \
@@ -530,6 +529,7 @@ build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
 build/1_2/pnimsyn.o \
+build/1_2/pbraces.o \
 build/1_2/ptmplsyn.o \
 build/1_2/rnimsyn.o \
 build/1_2/filters.o \
@@ -565,7 +565,7 @@ build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/1_2/nim__dat.o \
 build/1_2/system.o \
 build/1_2/nimrod.o \
@@ -600,6 +600,7 @@ build/1_2/nimconf.o \
 build/1_2/main.o \
 build/1_2/syntaxes.o \
 build/1_2/pnimsyn.o \
+build/1_2/pbraces.o \
 build/1_2/ptmplsyn.o \
 build/1_2/rnimsyn.o \
 build/1_2/filters.o \
@@ -677,8 +678,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/crc.c -o build/1_1/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ropes.c -o build/2_1/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ropes.c -o build/2_1/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/platform.c -o build/2_1/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/platform.c -o build/2_1/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o"
@@ -709,6 +710,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/syntaxes.c -o build/2_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pnimsyn.c -o build/2_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/pnimsyn.c -o build/2_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/pbraces.c -o build/2_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ptmplsyn.c -o build/2_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ptmplsyn.c -o build/2_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rnimsyn.c -o build/2_1/rnimsyn.o"
@@ -779,8 +782,7 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/transf.c -o build/2_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_1/nim__dat.o \
 build/2_1/system.o \
 build/2_1/nimrod.o \
@@ -799,7 +801,7 @@ build/2_1/condsyms.o \
 build/2_1/ast.o \
 build/1_1/crc.o \
 build/2_1/ropes.o \
-build/1_1/platform.o \
+build/2_1/platform.o \
 build/1_1/idents.o \
 build/2_1/astalgo.o \
 build/2_1/extccomp.o \
@@ -815,6 +817,7 @@ build/2_1/nimconf.o \
 build/2_1/main.o \
 build/2_1/syntaxes.o \
 build/2_1/pnimsyn.o \
+build/2_1/pbraces.o \
 build/2_1/ptmplsyn.o \
 build/2_1/rnimsyn.o \
 build/2_1/filters.o \
@@ -850,7 +853,7 @@ build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_1/nim__dat.o \
 build/2_1/system.o \
 build/2_1/nimrod.o \
@@ -869,7 +872,7 @@ build/2_1/condsyms.o \
 build/2_1/ast.o \
 build/1_1/crc.o \
 build/2_1/ropes.o \
-build/1_1/platform.o \
+build/2_1/platform.o \
 build/1_1/idents.o \
 build/2_1/astalgo.o \
 build/2_1/extccomp.o \
@@ -885,6 +888,7 @@ build/2_1/nimconf.o \
 build/2_1/main.o \
 build/2_1/syntaxes.o \
 build/2_1/pnimsyn.o \
+build/2_1/pbraces.o \
 build/2_1/ptmplsyn.o \
 build/2_1/rnimsyn.o \
 build/2_1/filters.o \
@@ -958,8 +962,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/crc.c -o build/1_2/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ropes.c -o build/2_2/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ropes.c -o build/2_2/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/platform.c -o build/2_2/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/platform.c -o build/2_2/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
@@ -990,6 +994,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/syntaxes.c -o build/2_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/pnimsyn.c -o build/2_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/pbraces.c -o build/2_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ptmplsyn.c -o build/2_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o"
@@ -1060,8 +1066,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/transf.c -o build/2_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_2/nim__dat.o \
 build/2_2/system.o \
 build/2_2/nimrod.o \
@@ -1080,7 +1085,7 @@ build/2_2/condsyms.o \
 build/2_2/ast.o \
 build/1_2/crc.o \
 build/2_2/ropes.o \
-build/1_2/platform.o \
+build/2_2/platform.o \
 build/1_2/idents.o \
 build/2_2/astalgo.o \
 build/2_2/extccomp.o \
@@ -1096,6 +1101,7 @@ build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
 build/2_2/pnimsyn.o \
+build/2_2/pbraces.o \
 build/2_2/ptmplsyn.o \
 build/2_2/rnimsyn.o \
 build/2_2/filters.o \
@@ -1131,7 +1137,7 @@ build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/2_2/nim__dat.o \
 build/2_2/system.o \
 build/2_2/nimrod.o \
@@ -1150,7 +1156,7 @@ build/2_2/condsyms.o \
 build/2_2/ast.o \
 build/1_2/crc.o \
 build/2_2/ropes.o \
-build/1_2/platform.o \
+build/2_2/platform.o \
 build/1_2/idents.o \
 build/2_2/astalgo.o \
 build/2_2/extccomp.o \
@@ -1166,6 +1172,7 @@ build/2_2/nimconf.o \
 build/2_2/main.o \
 build/2_2/syntaxes.o \
 build/2_2/pnimsyn.o \
+build/2_2/pbraces.o \
 build/2_2/ptmplsyn.o \
 build/2_2/rnimsyn.o \
 build/2_2/filters.o \
@@ -1243,8 +1250,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/crc.c -o build/1_1/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/platform.c -o build/3_1/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/platform.c -o build/3_1/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -1275,6 +1282,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o"
@@ -1345,8 +1354,7 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -1365,7 +1373,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/3_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -1381,6 +1389,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -1416,7 +1425,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -1435,7 +1444,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/3_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -1451,6 +1460,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -1524,8 +1534,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/crc.c -o build/1_2/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/platform.c -o build/3_2/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/platform.c -o build/3_2/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -1556,6 +1566,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
@@ -1626,8 +1638,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -1646,7 +1657,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/3_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -1662,6 +1673,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -1697,7 +1709,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -1716,7 +1728,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/3_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -1732,6 +1744,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -1809,8 +1822,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/crc.c -o build/1_1/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/platform.c -o build/4_1/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/platform.c -o build/4_1/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -1841,6 +1854,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o"
@@ -1911,8 +1926,7 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -1931,7 +1945,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/4_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -1947,6 +1961,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -1982,7 +1997,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -2001,7 +2016,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/4_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -2017,6 +2032,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -2090,8 +2106,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/crc.c -o build/1_2/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/platform.c -o build/4_2/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/platform.c -o build/4_2/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -2122,6 +2138,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
@@ -2192,8 +2210,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -2212,7 +2229,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/4_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -2228,6 +2245,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -2263,7 +2281,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -2282,7 +2300,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/4_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -2298,6 +2316,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -2375,8 +2394,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/crc.c -o build/1_1/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_1/platform.c -o build/5_1/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_1/platform.c -o build/5_1/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -2407,6 +2426,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o"
@@ -2477,8 +2498,7 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -2497,7 +2517,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/5_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -2513,6 +2533,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -2548,7 +2569,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/3_1/system.o \
 build/3_1/nimrod.o \
@@ -2567,7 +2588,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/5_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -2583,6 +2604,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -2656,8 +2678,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/crc.c -o build/1_2/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/5_2/platform.c -o build/5_2/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/5_2/platform.c -o build/5_2/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -2688,6 +2710,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
@@ -2758,8 +2782,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -2778,7 +2801,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/5_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -2794,6 +2817,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -2829,7 +2853,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/3_2/system.o \
 build/3_2/nimrod.o \
@@ -2848,7 +2872,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/5_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -2864,6 +2888,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -2941,8 +2966,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/crc.c -o build/1_1/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ropes.c -o build/3_1/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/platform.c -o build/1_1/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/6_1/platform.c -o build/6_1/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/6_1/platform.c -o build/6_1/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
@@ -2973,6 +2998,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/syntaxes.c -o build/3_1/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/pnimsyn.c -o build/3_1/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/pbraces.c -o build/3_1/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ptmplsyn.c -o build/3_1/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o"
@@ -3043,8 +3070,7 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/transf.c -o build/3_1/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/parseopt.c -o build/1_1/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/6_1/system.o \
 build/3_1/nimrod.o \
@@ -3063,7 +3089,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/6_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -3079,6 +3105,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -3114,7 +3141,7 @@ build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
 build/1_1/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_1/nim__dat.o \
 build/6_1/system.o \
 build/3_1/nimrod.o \
@@ -3133,7 +3160,7 @@ build/3_1/condsyms.o \
 build/3_1/ast.o \
 build/1_1/crc.o \
 build/3_1/ropes.o \
-build/1_1/platform.o \
+build/6_1/platform.o \
 build/1_1/idents.o \
 build/3_1/astalgo.o \
 build/3_1/extccomp.o \
@@ -3149,6 +3176,7 @@ build/3_1/nimconf.o \
 build/3_1/main.o \
 build/3_1/syntaxes.o \
 build/3_1/pnimsyn.o \
+build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
@@ -3222,8 +3250,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/crc.c -o build/1_2/crc.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ropes.c -o build/3_2/ropes.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/platform.c -o build/1_2/platform.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/6_2/platform.c -o build/6_2/platform.o"
+    $CC $COMP_FLAGS -Ibuild -c build/6_2/platform.c -o build/6_2/platform.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
@@ -3254,6 +3282,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/syntaxes.c -o build/3_2/syntaxes.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pnimsyn.c -o build/3_2/pnimsyn.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/pbraces.c -o build/3_2/pbraces.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ptmplsyn.c -o build/3_2/ptmplsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o"
@@ -3324,8 +3354,7 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/transf.c -o build/3_2/transf.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/parseopt.c -o build/1_2/parseopt.o || exit 1
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
-    echo "$LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    echo "$LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/6_2/system.o \
 build/3_2/nimrod.o \
@@ -3344,7 +3373,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/6_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -3360,6 +3389,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
@@ -3395,7 +3425,7 @@ build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
 build/1_2/parseopt.o"
-    $LINKER $LINK_FLAGS -o bin/nimrod build/platdef.o \
+    $LINKER $LINK_FLAGS -o bin/nimrod  \
 build/3_2/nim__dat.o \
 build/6_2/system.o \
 build/3_2/nimrod.o \
@@ -3414,7 +3444,7 @@ build/3_2/condsyms.o \
 build/3_2/ast.o \
 build/1_2/crc.o \
 build/3_2/ropes.o \
-build/1_2/platform.o \
+build/6_2/platform.o \
 build/1_2/idents.o \
 build/3_2/astalgo.o \
 build/3_2/extccomp.o \
@@ -3430,6 +3460,7 @@ build/3_2/nimconf.o \
 build/3_2/main.o \
 build/3_2/syntaxes.o \
 build/3_2/pnimsyn.o \
+build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
