@@ -35,38 +35,32 @@ proc getArg(n: PNode, name: string, pos: int): PNode =
       return n.sons[i]
   
 proc charArg(n: PNode, name: string, pos: int, default: Char): Char = 
-  var x: PNode
-  x = getArg(n, name, pos)
+  var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind == nkCharLit: result = chr(int(x.intVal))
   else: invalidPragma(n)
   
 proc strArg(n: PNode, name: string, pos: int, default: string): string = 
-  var x: PNode
-  x = getArg(n, name, pos)
+  var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind in {nkStrLit..nkTripleStrLit}: result = x.strVal
   else: invalidPragma(n)
   
 proc boolArg(n: PNode, name: string, pos: int, default: bool): bool = 
-  var x: PNode
-  x = getArg(n, name, pos)
+  var x = getArg(n, name, pos)
   if x == nil: result = default
   elif (x.kind == nkIdent) and IdentEq(x.ident, "true"): result = true
   elif (x.kind == nkIdent) and IdentEq(x.ident, "false"): result = false
   else: invalidPragma(n)
   
 proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream = 
-  var 
-    line, pattern, stripped: string
-    leading, trailing: bool
-  pattern = strArg(call, "startswith", 1, "")
-  leading = boolArg(call, "leading", 2, true)
-  trailing = boolArg(call, "trailing", 3, true)
+  var pattern = strArg(call, "startswith", 1, "")
+  var leading = boolArg(call, "leading", 2, true)
+  var trailing = boolArg(call, "trailing", 3, true)
   result = LLStreamOpen("")
   while not LLStreamAtEnd(stdin): 
-    line = LLStreamReadLine(stdin)
-    stripped = strip(line, leading, trailing)
+    var line = LLStreamReadLine(stdin)
+    var stripped = strip(line, leading, trailing)
     if (len(pattern) == 0) or startsWith(stripped, pattern): 
       LLStreamWriteln(result, stripped)
     else: 
@@ -74,12 +68,11 @@ proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   LLStreamClose(stdin)
 
 proc filterReplace(stdin: PLLStream, filename: string, call: PNode): PLLStream = 
-  var line, sub, by: string
-  sub = strArg(call, "sub", 1, "")
+  var sub = strArg(call, "sub", 1, "")
   if len(sub) == 0: invalidPragma(call)
-  by = strArg(call, "by", 2, "")
+  var by = strArg(call, "by", 2, "")
   result = LLStreamOpen("")
   while not LLStreamAtEnd(stdin): 
-    line = LLStreamReadLine(stdin)
+    var line = LLStreamReadLine(stdin)
     LLStreamWriteln(result, replace(line, sub, by))
   LLStreamClose(stdin)

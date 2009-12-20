@@ -11,7 +11,7 @@
 ## the diverse wrappers.
 
 import 
-  os, ropes, idents, ast, pnimsyn, rnimsyn, msgs, wordrecg, syntaxes
+  os, ropes, idents, ast, pnimsyn, rnimsyn, msgs, wordrecg, syntaxes, pegs
 
 proc modifyPragmas(n: PNode, name: string) =
   if n == nil: return
@@ -36,17 +36,30 @@ proc processRoutine(n: PNode) =
   var name = getName(n.sons[namePos])
   modifyPragmas(n.sons[pragmasPos], name)
   
-proc processTree(n: PNode) =
+proc processIdent(ident, prefix: string, n: PNode): string =
+  var pattern = sequence(capture(?(termIgnoreCase"T" / termIgnoreCase"P")),
+                         termIgnoreCase(prefix), capture(*any))
+  if ident =~ pattern:
+    result = matches[0] & matches[1]
+  else:
+    result = ident
+  
+proc processTree(n: PNode, prefix: string) =
   if n == nil: return
   case n.kind
-  of nkEmpty..nkNilLit: nil
-  of nkProcDef, nkConverterDef: processRoutine(n)
+  of nkEmpty..pred(nkIdent), succ(nkIdent)..nkNilLit: nil
+  of nkIdent:
+    if prefix.len > 0:
+      n.ident = getIdent(processIdent(n.ident.s, prefix, n))
+  of nkProcDef, nkConverterDef:
+    processRoutine(n)
+    for i in 0..sonsLen(n)-1: processTree(n.sons[i], prefix)
   else:
-    for i in 0..sonsLen(n)-1: processTree(n.sons[i])
+    for i in 0..sonsLen(n)-1: processTree(n.sons[i], prefix)
 
-proc main(infile, outfile: string) =
+proc main(infile, outfile, prefix: string) =
   var module = ParseFile(infile)
-  processTree(module)
+  processTree(module, prefix)
   renderModule(module, outfile)
 
 if paramcount() >= 1:
@@ -54,6 +67,9 @@ if paramcount() >= 1:
   var outfile = changeFileExt(infile, "new.nim")
   if paramCount() >= 2:
     outfile = addFileExt(paramStr(2), "new.nim")
-  main(infile, outfile)
+  var prefix = ""
+  if paramCount() >= 3:
+    prefix = paramStr(3)
+  main(infile, outfile, prefix)
 else:
-  echo "usage: expand_importc filename[.nim] outfilename[.nim]"
+  echo "usage: expand_importc filename[.nim] outfilename[.nim] [prefix]"
