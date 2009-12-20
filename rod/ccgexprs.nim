@@ -1774,13 +1774,11 @@ proc genConstSimpleList(p: BProc, n: PNode): PRope =
   app(result, '}' & tnl)
 
 proc genConstExpr(p: BProc, n: PNode): PRope = 
-  var 
-    cs: TBitSet
-    d: TLoc
   case n.Kind
   of nkHiddenStdConv, nkHiddenSubConv: 
     result = genConstExpr(p, n.sons[1])
   of nkCurly: 
+    var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
   of nkBracket, nkPar: 
@@ -1788,5 +1786,6 @@ proc genConstExpr(p: BProc, n: PNode): PRope =
     result = genConstSimpleList(p, n)
   else: 
     #  result := genLiteral(p, n)
+    var d: TLoc
     initLocExpr(p, n, d)
     result = rdLoc(d)
