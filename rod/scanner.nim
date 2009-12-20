@@ -116,10 +116,10 @@ type
                               # needs so much look-ahead
   
 
-var gLinesCompiled*: int
+var gLinesCompiled*: int  # all lines that have been compiled
 
 proc pushInd*(L: var TLexer, indent: int)
-  # all lines that have been compiled
+
 proc popInd*(L: var TLexer)
 proc isKeyword*(kind: TTokType): bool
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream)
@@ -130,7 +130,7 @@ proc getLineInfo*(L: TLexer): TLineInfo
 proc closeLexer*(lex: var TLexer)
 proc PrintTok*(tok: PToken)
 proc tokToStr*(tok: PToken): string
-  # auxiliary functions:
+  
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg: string = "")
   # the Pascal scanner uses this too:
 proc fillToken*(L: var TToken)
@@ -142,7 +142,7 @@ proc isKeyword(kind: TTokType): bool =
 proc isNimrodIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
     for c in items(s):
-      if c notin SymChars: return
+      if c notin SymChars+{'_'}: return
     result = true
 
 proc pushInd(L: var TLexer, indent: int) = 

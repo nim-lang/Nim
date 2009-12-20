@@ -21,7 +21,7 @@ type
 proc zipError(z: var TZipArchive) = 
   var e: ref EIO
   new(e)
-  e.msg = zip_strerror(z.w)
+  e.msg = $zip_strerror(z.w)
   raise e
   
 proc open*(z: var TZipArchive, filename: string, mode: TFileMode = fmRead): bool =

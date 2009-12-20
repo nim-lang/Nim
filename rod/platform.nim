@@ -184,6 +184,7 @@ var
 proc setTarget*(o: TSystemOS, c: TSystemCPU) = 
   assert(c != cpuNone)
   assert(o != osNone)
+  #echo "new Target: OS: ", o, " CPU: ", c
   targetCPU = c
   targetOS = o
   intSize = cpu[c].intSize div 8
@@ -203,11 +204,6 @@ proc NameToCPU(name: string): TSystemCPU =
       return i
   result = cpuNone
 
-#proc nimCPU(): cstring{.importc, noconv.}
-#proc nimOS(): cstring{.importc, noconv.}
-
-#hostCPU = nameToCPU($nimCPU())
-#hostOS = nameToOS($nimOS())
 hostCPU = nameToCPU(system.hostCPU)
 hostOS = nameToOS(system.hostOS)
 

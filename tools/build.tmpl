@@ -65,11 +65,6 @@ case $ucpu in
     ;;
 esac
 
-#  add(result, "# write ``build/platdef.c`` file\n")
-cat >build/platdef.c <<EOF
-char* nimOS(void) { return "$myos"; }
-char* nimCPU(void) { return "$mycpu"; }
-EOF
 #  add(result, "# call the compiler:\n")
 
 case $myos in
@@ -78,13 +73,12 @@ case $myos in
   case $mycpu in
 #    for cpuA in 1..c.cpus.len:
   ?{c.cpus[cpuA-1]})
-#      var linkCmd = "build/platdef.o"
+#      var linkCmd = ""
 #      for f in items(c.cfiles[osA][cpuA]):
     echo "$CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")}"
     $CC $COMP_FLAGS -Ibuild -c ?{f} -o ?{changeFileExt(f, "o")} || exit 1
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for    
-    $CC $COMP_FLAGS -Ibuild -c build/platdef.c -o build/platdef.o || exit 1
     echo "$LINKER $LINK_FLAGS -o ?{c.binPaths[0]}/?{toLower(c.name)} ?linkCmd"
     $LINKER $LINK_FLAGS -o ?{c.binPaths[0]}/?{toLower(c.name)} ?linkCmd || exit 1
     ;;

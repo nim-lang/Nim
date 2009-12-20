@@ -109,9 +109,9 @@ proc CommandCheck(filename: string) =
 proc CommandCompileToC(filename: string) = 
   semanticPasses()
   registerPass(cgen.cgenPass())
-  registerPass(rodwrite.rodwritePass()) #registerPass(cleanupPass());
-  compileProject(filename)    #for i := low(TTypeKind) to high(TTypeKind) do
-                              #  MessageOut('kind: ' +{&} typeKindToStr[i] +{&} ' = ' +{&} toString(sameTypeA[i]));
+  registerPass(rodwrite.rodwritePass())
+  #registerPass(cleanupPass())
+  compileProject(filename)
   extccomp.CallCCompiler(changeFileExt(filename, ""))
 
 proc CommandCompileToEcmaScript(filename: string) = 
@@ -123,7 +123,6 @@ proc CommandCompileToEcmaScript(filename: string) =
   compileProject(filename)
 
 proc CommandInteractive() = 
-  var m: PSym
   incl(gGlobalOptions, optSafeCode)
   setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
@@ -133,7 +132,7 @@ proc CommandInteractive() =
   registerPass(evals.evalPass()) # load system module:
   discard CompileModule(JoinPath(options.libpath, addFileExt("system", nimExt)), 
                         false, true)
-  m = newModule("stdin")
+  var m = newModule("stdin")
   m.id = getID()
   incl(m.flags, sfMainModule)
   processModule(m, "stdin", LLStreamOpenStdIn(), nil)
@@ -217,7 +216,7 @@ proc CommandScan(filename: string) =
   if stream != nil: 
     openLexer(L, f, stream)
     while true: 
-      rawGetTok(L, tok^ )
+      rawGetTok(L, tok^)
       PrintTok(tok)
       if tok.tokType == tkEof: break 
     CloseLexer(L)

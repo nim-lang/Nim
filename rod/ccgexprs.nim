@@ -1622,8 +1622,7 @@ proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   putLocIntoDest(p, d, sym.loc)
 
 proc genStmtListExpr(p: BProc, n: PNode, d: var TLoc) = 
-  var length: int
-  length = sonsLen(n)
+  var length = sonsLen(n)
   for i in countup(0, length - 2): genStmts(p, n.sons[i])
   if length > 0: expr(p, n.sons[length - 1], d)
   
