@@ -370,6 +370,6 @@ proc getCookie*(name: string): string =
 proc existsCookie*(name: string): bool = 
   ## Checks if a cookie of `name` exists.
   if cookies == nil: cookies = parseCookies(getHttpCookie())
-  result = hasKey(cookies)
+  result = hasKey(cookies, name)
 
 

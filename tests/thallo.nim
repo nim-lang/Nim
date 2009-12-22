@@ -61,11 +61,15 @@ for x, y in items([(1, 2), (3, 4), (6, 1), (5, 2)]):
   echo x
   echo y
   
+proc simpleConst(): int = return 34
+  
 # test constant evaluation: 
-const 
+const  
+  constEval3 = simpleConst()
   constEval = "abc".contains('b')
   constEval2 = fac(7)
 
+echo(constEval3)
 echo(constEval)
 echo(constEval2)
 echo(1.`+`(2))

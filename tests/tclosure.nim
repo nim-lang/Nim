@@ -12,8 +12,8 @@ var
 
 proc testA() =
   var p = 0
-  map(myData, lambda (x: int): int =
-                result = x + 1 shl (lambda (y: int): int =
+  map(myData, proc (x: int): int =
+                result = x + 1 shl (proc (y: int): int =
                   return y + p
                 )(0)
                 inc(p))

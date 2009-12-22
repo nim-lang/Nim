@@ -79,7 +79,6 @@ const
   bootOptions = "" # options to pass to the bootstrap process
 
 proc findStartNimrod: string = 
-  const buildScript = "build.sh"
   # we try several things before giving up:
   # * bin/nimrod
   # * $PATH/nimrod
@@ -95,6 +94,7 @@ proc findStartNimrod: string =
   result = "bin" / "nim".exe
   if ExistsFile(result): return
   when defined(Posix):
+    const buildScript = "build.sh"
     if ExistsFile(buildScript): 
       if tryExec("./" & buildScript): return "bin" / nimrod
   
@@ -102,16 +102,20 @@ proc findStartNimrod: string =
   echo("Found no nimrod compiler and every attempt to build one failed!")
   quit("FAILURE")
 
+proc safeRemove(filename: string) = 
+  if existsFile(filename): removeFile(filename)
+
 proc bootIteration(args: string): bool = 
   var nimrod1 = "rod" / "nimrod1".exe
-  moveFile nimrod1, "rod" / "nimrod".exe
+  safeRemove(nimrod1)
+  moveFile(nimrod1, "rod" / "nimrod".exe)
   exec "rod" / "nimrod1 cc $# $# rod/nimrod.nim" % [bootOptions, args]
   # Nimrod does not produce an executable again if nothing changed. That's ok:
   result = sameFileContent("rod" / "nimrod".exe, nimrod1)
-  if result:
-    moveFile "bin" / "nimrod".exe, "rod" / "nimrod".exe
-    echo "executables are equal: SUCCESS!"
-  removeFile nimrod1
+  safeRemove("bin" / "nimrod".exe)
+  copyFile("bin" / "nimrod".exe, "rod" / "nimrod".exe)
+  safeRemove(nimrod1)
+  if result: echo "executables are equal: SUCCESS!"
 
 proc boot(args: string) =
   echo "iteration: 1"

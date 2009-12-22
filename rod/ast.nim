@@ -355,8 +355,6 @@ type
       sym*: PSym
     of nkIdent: 
       ident*: PIdent
-    of nkMetaNode: 
-      nodePtr*: PNodePtr
     else: 
       sons*: TNodeSeq
   
@@ -885,7 +883,6 @@ proc copyNode(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  of nkMetaNode: result.nodePtr = src.nodePtr
   else: nil
 
 proc copyTree(src: PNode): PNode = 
@@ -902,7 +899,6 @@ proc copyTree(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  of nkMetaNode: result.nodePtr = src.nodePtr
   else: 
     result.sons = nil
     newSons(result, sonsLen(src))
@@ -1018,8 +1014,7 @@ proc IntSetEnlarge(t: var TIntSet) =
   swap(t.data, n)
 
 proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
-  var h: int
-  h = key and t.max
+  var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
       return t.data[h]
