@@ -3,7 +3,7 @@ News
 ====
 
 
-2009-XX-XX Version 0.8.6 released
+2009-12-21 Version 0.8.6 released
 =================================
 
 Version 0.8.6 has been released! Get it `here <download.html>`_. The version
@@ -15,8 +15,6 @@ Bugfixes
 --------
 - The pragmas ``hint[X]:off`` and ``warning[X]:off`` now work.
 - Method call syntax for iterators works again (``for x in lines.split()``).
-- Many bugfixes concerning macro evaluation.
-- Many bugfixes concerning compile-time evaluation.
 - Fixed a typo in ``removeDir`` for POSIX that lead to an infinite recursion.
 - The compiler now checks that module filenames are valid identifiers.
 - Empty patterns for the ``dynlib`` pragma are now possible. 
@@ -34,11 +32,12 @@ Additions
 - Grammar/parser: ``SAD|IND`` is allowed before any kind of closing bracket.
   This allows for more flexible source code formating.
 - The compiler now uses a *bind* table for symbol lookup within a ``bind``
-  context. (See `<manual/#templates>`_ for details.)
+  context. (See `<manual.html#templates>`_ for details.)
 - ``discard """my long comment"""`` is now optimized away.
 - New ``--floatChecks: on|off`` switches and pragmas for better debugging
   of floating point operations. (See
-  `<manual/#pre-defined-floating-point-types>`_ for details.)
+  `<manual.html#pre-defined-floating-point-types>`_ for details.)
+- The manual has been improved. (Many thanks to Philippe Lhoste!)
 
 
 Changes affecting backwards compatibility

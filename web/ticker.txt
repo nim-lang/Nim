@@ -1,6 +1,9 @@
+| `2009-12-21`:newsdate:
+| Nimrod version 0.8.6 has been released! 
+  Get it `here <./download.html>`_. Merry Christmas!
+
 | `2009-10-21`:newsdate:
 | Nimrod version 0.8.2 has been released!
-  Get it `here <./download.html>`_.
 
 | `2009-09-12`:newsdate:
 | Nimrod version 0.8.0 has been released!

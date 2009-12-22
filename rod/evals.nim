@@ -84,7 +84,10 @@ proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg: string = "") =
   liMessage(n.info, msg, arg)
 
 proc isSpecial(n: PNode): bool = 
-  result = (n.kind == nkExceptBranch) or (n.kind == nkEmpty)
+  result = (n.kind == nkExceptBranch) 
+  # or (n.kind == nkEmpty)
+  # XXX this does not work yet! Better to compile too much than to compile to
+  # few programs
 
 proc evalIf(c: PEvalContext, n: PNode): PNode = 
   var i = 0
@@ -131,7 +134,7 @@ proc evalWhile(c: PEvalContext, n: PNode): PNode =
       if result.sons[0] == nil: 
         result = emptyNode    # consume ``break`` token
         break 
-    of nkExceptBranch, nkReturnToken, nkEmpty: 
+    of nkExceptBranch, nkReturnToken: 
       break 
     else: 
       nil
@@ -247,7 +250,7 @@ proc evalCall(c: PEvalContext, n: PNode): PNode =
   if n.typ != nil: d.params[0] = getNullValue(n.typ, n.info)
   pushStackFrame(c, d)
   result = evalAux(c, prc)
-  if isSpecial(result): return 
+  if result.kind == nkExceptBranch: return 
   if n.typ != nil: result = d.params[0]
   popStackFrame(c)
 
@@ -257,7 +260,9 @@ proc evalVariable(c: PStackFrame, sym: PSym): PNode =
   var x = c
   while x != nil: 
     if sfResult in sym.flags: 
-      return x.params[0]
+      result = x.params[0]
+      if result == nil: result = emptyNode
+      return
     result = IdNodeTableGet(x.mapping, sym)
     if result != nil: return 
     x = x.next
@@ -289,14 +294,11 @@ proc evalFieldAccess(c: PEvalContext, n: PNode): PNode =
   # a real field access; proc calls have already been
   # transformed
   # XXX: field checks!
-  var 
-    x: PNode
-    field: PSym
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  x = result
+  var x = result
   if x.kind != nkPar: InternalError(n.info, "evalFieldAccess")
-  field = n.sons[1].sym
+  var field = n.sons[1].sym
   for i in countup(0, sonsLen(n) - 1): 
     if x.sons[i].kind != nkExprColonExpr: 
       InternalError(n.info, "evalFieldAccess")
@@ -306,10 +308,9 @@ proc evalFieldAccess(c: PEvalContext, n: PNode): PNode =
   result = emptyNode
 
 proc evalAsgn(c: PEvalContext, n: PNode): PNode = 
-  var x: PNode
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  x = result
+  var x = result
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
   x.kind = result.kind
@@ -328,15 +329,9 @@ proc evalAsgn(c: PEvalContext, n: PNode): PNode =
   result = emptyNode
 
 proc evalSwap(c: PEvalContext, n: PNode): PNode = 
-  var 
-    x: PNode
-    tmpi: biggestInt
-    tmpf: biggestFloat
-    tmps: string
-    tmpn: PNode
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  x = result
+  var x = result
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
   if (x.kind != result.kind): 
@@ -344,19 +339,19 @@ proc evalSwap(c: PEvalContext, n: PNode): PNode =
   else: 
     case x.kind
     of nkCharLit..nkInt64Lit: 
-      tmpi = x.intVal
+      var tmpi = x.intVal
       x.intVal = result.intVal
       result.intVal = tmpi
     of nkFloatLit..nkFloat64Lit: 
-      tmpf = x.floatVal
+      var tmpf = x.floatVal
       x.floatVal = result.floatVal
       result.floatVal = tmpf
     of nkStrLit..nkTripleStrLit: 
-      tmps = x.strVal
+      var tmps = x.strVal
       x.strVal = result.strVal
       result.strVal = tmps
     else: 
-      tmpn = copyTree(x)
+      var tmpn = copyTree(x)
       discardSons(x)
       for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
       discardSons(result)
@@ -375,13 +370,12 @@ proc evalSym(c: PEvalContext, n: PNode): PNode =
   if result == nil: stackTrace(c, n, errCannotInterpretNodeX, n.sym.name.s)
   
 proc evalIncDec(c: PEvalContext, n: PNode, sign: biggestInt): PNode = 
-  var a, b: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   case a.kind
   of nkCharLit..nkInt64Lit: a.intval = a.intVal + sign * getOrdValue(b)
   else: internalError(n.info, "evalIncDec")
@@ -466,16 +460,15 @@ proc evalUpConv(c: PEvalContext, n: PNode): PNode =
     stackTrace(c, n, errInvalidConversionFromTypeX, typeToString(src))
   
 proc evalRangeChck(c: PEvalContext, n: PNode): PNode = 
-  var x, a, b: PNode
   result = evalAux(c, n.sons[0])
   if isSpecial(result): return 
-  x = result
+  var x = result
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   if leValueConv(a, x) and leValueConv(x, b): 
     result = x                # a <= x and x <= b
     result.typ = n.typ
@@ -494,11 +487,10 @@ proc evalConvCStrToStr(c: PEvalContext, n: PNode): PNode =
   result.typ = n.typ
 
 proc evalRaise(c: PEvalContext, n: PNode): PNode = 
-  var a: PNode
   if n.sons[0] != nil: 
     result = evalAux(c, n.sons[0])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkExceptBranch, n.info, a.typ)
     addSon(result, a)
     c.lastException = result
@@ -516,14 +508,18 @@ proc evalReturn(c: PEvalContext, n: PNode): PNode =
   result = newNodeIT(nkReturnToken, n.info, nil)
 
 proc evalProc(c: PEvalContext, n: PNode): PNode = 
-  var v: PSym
   if n.sons[genericParamsPos] == nil: 
     if (resultPos < sonsLen(n)) and (n.sons[resultPos] != nil): 
-      v = n.sons[resultPos].sym
+      var v = n.sons[resultPos].sym
       result = getNullValue(v.typ, n.info)
       IdNodeTablePut(c.tos.mapping, v, result)
-    result = evalAux(c, n.sons[codePos])
-    if result.kind == nkReturnToken: result = IdNodeTableGet(c.tos.mapping, v)
+      result = evalAux(c, n.sons[codePos])
+      if result.kind == nkReturnToken: 
+        result = IdNodeTableGet(c.tos.mapping, v)
+    else:
+      result = evalAux(c, n.sons[codePos])
+      if result.kind == nkReturnToken: 
+        result = emptyNode
   else: 
     result = emptyNode
   
@@ -541,51 +537,42 @@ proc evalIs(c: PEvalContext, n: PNode): PNode =
   result = newIntNodeT(ord(inheritanceDiff(result.typ, n.sons[2].typ) >= 0), n)
 
 proc evalSetLengthStr(c: PEvalContext, n: PNode): PNode = 
-  var 
-    a, b: PNode
-    oldLen, newLen: int
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   case a.kind
   of nkStrLit..nkTripleStrLit: 
-    newLen = int(getOrdValue(b))
+    var newLen = int(getOrdValue(b))
     setlen(a.strVal, newLen)
   else: InternalError(n.info, "evalSetLengthStr")
   result = emptyNode
 
 proc evalSetLengthSeq(c: PEvalContext, n: PNode): PNode = 
-  var 
-    a, b: PNode
-    newLen, oldLen: int
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   if a.kind != nkBracket: InternalError(n.info, "evalSetLengthSeq")
-  newLen = int(getOrdValue(b))
-  oldLen = sonsLen(a)
+  var newLen = int(getOrdValue(b))
+  var oldLen = sonsLen(a)
   setlen(a.sons, newLen)
   for i in countup(oldLen, newLen - 1): 
     a.sons[i] = getNullValue(skipTypes(n.sons[1].typ, abstractVar), n.info)
   result = emptyNode
 
 proc evalNewSeq(c: PEvalContext, n: PNode): PNode = 
-  var 
-    a, b: PNode
-    t: PType
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
-  t = skipTypes(n.sons[1].typ, abstractVar)
+  var b = result
+  var t = skipTypes(n.sons[1].typ, abstractVar)
   if a.kind == nkEmpty: InternalError(n.info, "first parameter is empty")
   a.kind = nkBracket
   a.info = n.info
@@ -601,38 +588,35 @@ proc evalAssert(c: PEvalContext, n: PNode): PNode =
   else: stackTrace(c, n, errAssertionFailed)
   
 proc evalIncl(c: PEvalContext, n: PNode): PNode = 
-  var a, b: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   if not inSet(a, b): addSon(a, copyTree(b))
   result = emptyNode
 
 proc evalExcl(c: PEvalContext, n: PNode): PNode = 
-  var a, b, r: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = newNodeIT(nkCurly, n.info, n.sons[1].typ)
+  var b = newNodeIT(nkCurly, n.info, n.sons[1].typ)
   addSon(b, result)
-  r = diffSets(a, b)
+  var r = diffSets(a, b)
   discardSons(a)
   for i in countup(0, sonsLen(r) - 1): addSon(a, r.sons[i])
   result = emptyNode
 
 proc evalAppendStrCh(c: PEvalContext, n: PNode): PNode = 
-  var a, b: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   case a.kind
   of nkStrLit..nkTripleStrLit: add(a.strVal, chr(int(getOrdValue(b))))
   else: InternalError(n.info, "evalAppendStrCh")
@@ -640,10 +624,9 @@ proc evalAppendStrCh(c: PEvalContext, n: PNode): PNode =
 
 proc evalConStrStr(c: PEvalContext, n: PNode): PNode = 
   # we cannot use ``evalOp`` for this as we can here have more than 2 arguments
-  var a: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   for i in countup(2, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i])
     if isSpecial(result): return 
@@ -651,26 +634,24 @@ proc evalConStrStr(c: PEvalContext, n: PNode): PNode =
   result = a
 
 proc evalAppendStrStr(c: PEvalContext, n: PNode): PNode = 
-  var a, b: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   case a.kind
   of nkStrLit..nkTripleStrLit: a.strVal = a.strVal & getStrValue(b)
   else: InternalError(n.info, "evalAppendStrStr")
   result = emptyNode
 
 proc evalAppendSeqElem(c: PEvalContext, n: PNode): PNode = 
-  var a, b: PNode
   result = evalAux(c, n.sons[1])
   if isSpecial(result): return 
-  a = result
+  var a = result
   result = evalAux(c, n.sons[2])
   if isSpecial(result): return 
-  b = result
+  var b = result
   if a.kind == nkBracket: addSon(a, copyTree(b))
   else: InternalError(n.info, "evalAppendSeqElem")
   result = emptyNode
@@ -684,11 +665,7 @@ proc isEmpty(n: PNode): bool =
   result = (n != nil) and (n.kind == nkEmpty)
 
 proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode = 
-  var 
-    m: TMagic
-    a, b, cc: PNode
-    k: biggestInt
-  m = getMagic(n)
+  var m = getMagic(n)
   case m
   of mNone: result = evalCall(c, n)
   of mIs: result = evalIs(c, n)
@@ -714,7 +691,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNLen: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     case a.kind
     of nkEmpty..nkNilLit: 
@@ -723,10 +700,10 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNChild: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
-    k = getOrdValue(result)
+    var k = getOrdValue(result)
     if not (a.kind in {nkEmpty..nkNilLit}) and (k >= 0) and (k < sonsLen(a)): 
       result = a.sons[int(k)]
       if result == nil: result = newNode(nkEmpty)
@@ -736,13 +713,13 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetChild: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
-    b = result
+    var b = result
     result = evalAux(c, n.sons[3])
     if isSpecial(result): return 
-    k = getOrdValue(b)
+    var k = getOrdValue(b)
     if (k >= 0) and (k < sonsLen(a)) and not (a.kind in {nkEmpty..nkNilLit}): 
       if result.kind == nkEmpty: a.sons[int(k)] = nil
       else: a.sons[int(k)] = result
@@ -752,7 +729,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNAdd: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     addSon(a, result)
@@ -760,7 +737,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNAddMultiple: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     for i in countup(0, sonsLen(result) - 1): addSon(a, result.sons[i])
@@ -768,10 +745,10 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNDel: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
-    b = result
+    var b = result
     result = evalAux(c, n.sons[3])
     if isSpecial(result): return 
     for i in countup(0, int(getOrdValue(result)) - 1): 
@@ -780,13 +757,13 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNKind: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     result.intVal = ord(a.kind)
   of mNIntVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     case a.kind
     of nkCharLit..nkInt64Lit: result.intVal = a.intVal
@@ -794,7 +771,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNFloatVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkFloatLit, n.info, n.typ)
     case a.kind
     of nkFloatLit..nkFloat64Lit: result.floatVal = a.floatVal
@@ -811,7 +788,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNStrVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
     case a.kind
     of nkStrLit..nkTripleStrLit: result.strVal = a.strVal
@@ -819,7 +796,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetIntVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.intVal = result.intVal  # XXX: exception handling?
@@ -827,7 +804,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetFloatVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.floatVal = result.floatVal # XXX: exception handling?
@@ -835,7 +812,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetSymbol: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.sym = result.sym        # XXX: exception handling?
@@ -843,7 +820,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetIdent: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.ident = result.ident    # XXX: exception handling?
@@ -851,7 +828,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetType: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.typ = result.typ        # XXX: exception handling?
@@ -859,7 +836,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNSetStrVal: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
     a.strVal = result.strVal  # XXX: exception handling?
@@ -867,14 +844,14 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNNewNimNode: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    k = getOrdValue(result)
+    var k = getOrdValue(result)
     result = evalAux(c, n.sons[2])
-    if isSpecial(result): return 
-    a = result
+    if result.kind == nkExceptBranch: return 
+    var a = result
     if (k < 0) or (k > ord(high(TNodeKind))): 
       internalError(n.info, "request to create a NimNode with invalid kind")
-    if a.kind == nkNilLit: result = newNodeI(TNodeKind(int(k)), n.info)
-    else: result = newNodeI(TNodeKind(int(k)), a.info)
+    result = newNodeI(TNodeKind(int(k)), 
+      if a.kind == nkNilLit: n.info else: a.info)
   of mNCopyNimNode: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
@@ -888,33 +865,33 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     if isSpecial(result): return 
     if not (result.kind in {nkStrLit..nkTripleStrLit}): 
       InternalError(n.info, "no string node")
-    a = result
+    var a = result
     result = newNodeIT(nkIdent, n.info, n.typ)
     result.ident = getIdent(a.strVal)
   of mIdentToStr: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
     if result.kind != nkIdent: InternalError(n.info, "no ident node")
-    a = result
+    var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
     result.strVal = a.ident.s
   of mEqIdent: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
-    b = result
+    var b = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     if (a.kind == nkIdent) and (b.kind == nkIdent): 
       if a.ident.id == b.ident.id: result.intVal = 1
   of mEqNimrodNode: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = evalAux(c, n.sons[2])
     if isSpecial(result): return 
-    b = result
+    var b = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     if (a == b) or
         (b.kind in {nkNilLit, nkEmpty}) and (a.kind in {nkNilLit, nkEmpty}): 
@@ -941,15 +918,15 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNewString: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
+    var a = result
     result = newNodeIT(nkStrLit, n.info, n.typ)
     result.strVal = newString(int(getOrdValue(a)))
   else: 
     result = evalAux(c, n.sons[1])
     if isSpecial(result): return 
-    a = result
-    b = nil
-    cc = nil
+    var a = result
+    var b: PNode = nil
+    var cc: PNode = nil
     if sonsLen(n) > 2: 
       result = evalAux(c, n.sons[2])
       if isSpecial(result): return 
@@ -962,7 +939,6 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     else: result = evalOp(m, n, a, b, cc)
   
 proc evalAux(c: PEvalContext, n: PNode): PNode = 
-  var a: PNode
   result = emptyNode
   dec(gNestedEvals)
   if gNestedEvals <= 0: stackTrace(c, n, errTooManyIterations)
@@ -974,14 +950,14 @@ proc evalAux(c: PEvalContext, n: PNode): PNode =
   of nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit: 
     result = evalMagicOrCall(c, n)
   of nkCurly, nkBracket, nkRange: 
-    a = copyNode(n)
+    var a = copyNode(n)
     for i in countup(0, sonsLen(n) - 1): 
       result = evalAux(c, n.sons[i])
       if isSpecial(result): return 
       addSon(a, result)
     result = a
   of nkPar: 
-    a = copyTree(n)
+    var a = copyTree(n)
     for i in countup(0, sonsLen(n) - 1): 
       result = evalAux(c, n.sons[i].sons[1])
       if isSpecial(result): return 
@@ -1015,8 +991,7 @@ proc evalAux(c: PEvalContext, n: PNode): PNode =
       result = evalAux(c, n.sons[i])
       case result.kind
       of nkExceptBranch, nkReturnToken, nkBreakStmt: break 
-      else: 
-        nil
+      else: nil
   of nkProcDef, nkMethodDef, nkMacroDef, nkCommentStmt, nkPragma, nkTypeSection, 
      nkTemplateDef, nkConstSection, nkIteratorDef, nkConverterDef, 
      nkIncludeStmt, nkImportStmt, nkFromStmt: 

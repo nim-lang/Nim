@@ -370,6 +370,7 @@ begin
   while x <> nil do begin
     if sfResult in sym.flags then begin
       result := x.params[0];
+      if result = nil then result := emptyNode;
       exit
     end;
     result := IdNodeTableGet(x.mapping, sym);

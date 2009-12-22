@@ -1,3 +1,4 @@
+import strutils
 
 const
   HelpText = """
@@ -9,7 +10,7 @@ const
 Compiled at: $2, $3
 
 Usage:
-  koch.py [options] command [options for command]
+  koch [options] command [options for command]
 Options:
   --force, -f, -B, -b      forces rebuild
   --help, -h               shows this help and quits
@@ -23,4 +24,5 @@ Possible Commands:
 """ % [NimrodVersion & repeatChar(44-len(NimrodVersion)), 
        CompileDate, CompileTime]
 
+echo helpText
 

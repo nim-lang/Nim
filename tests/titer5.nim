@@ -1,4 +1,6 @@
 # Test method call syntax for iterators:
+import strutils
+
 const lines = """abc  xyz"""
 
 for x in lines.split():

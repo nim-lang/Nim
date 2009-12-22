@@ -1111,7 +1111,7 @@ algorithm (in pseudo-code) determines type equality:
 
 .. code-block:: nimrod
   proc typeEqualsAux(a, b: PType,
-                     s: var set[tuple[PType, PType]]): bool =
+                     s: var set[PType * PType]): bool =
     if (a,b) in s: return true
     incl(s, (a,b))
     if a.kind == b.kind:
@@ -1140,7 +1140,7 @@ algorithm (in pseudo-code) determines type equality:
                  a.callingConvention == b.callingConvention
 
   proc typeEquals(a, b: PType): bool =
-    var s: set[tuple[PType, PType]] = {}
+    var s: set[PType * PType] = {}
     result = typeEqualsAux(a, b, s)
 
 Since types are graphs which can have cycles, the above algorithm needs an
@@ -1216,8 +1216,8 @@ algorithm returns true:
     return false
     
 
-Assignment compability
-~~~~~~~~~~~~~~~~~~~~~~
+Assignment compatibility
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 An expression ``b`` can be assigned to an expression ``a`` iff ``a`` is an
 `l-value` and ``isImplicitlyConvertible(b.typ, a.typ)`` holds.
@@ -1727,23 +1727,26 @@ Procedures
 What most programming languages call `methods`:idx: or `functions`:idx: are
 called `procedures`:idx: in Nimrod (which is the correct terminology). A
 procedure declaration defines an identifier and associates it with a block
-of code. A procedure may call itself recursively. The syntax is::
+of code. 
+A procedure may call itself recursively. A parameter may be given a default
+value that is used if the caller does not provide a value for this parameter.
+The syntax is::
 
-  param ::= symbol (comma symbol)* [comma] ':' typeDesc
-  paramList ::= ['(' [param (comma param)* [comma]] ')'] [':' typeDesc]
+  param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
+  paramList ::= ['(' [param (comma param)*] optPar ')'] [':' typeDesc]
 
-  genericParam ::= symbol [':' typeDesc]
-  genericParams ::= '[' genericParam (comma genericParam)* [comma] ']'
+  genericParam ::= symbol [':' typeDesc] ['=' expr]
+  genericParams ::= '[' genericParam (comma genericParam)* optPar ']'
 
-  procDecl ::= 'proc' symbol ['*'] [genericParams] paramList [pragma]
-               ['=' stmt]
+  routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
+  procDecl ::= 'proc' routineDecl
+
 
 If the ``= stmt`` part is missing, it is a `forward`:idx: declaration. If
-the proc returns a value, the procedure body can access an implicit declared
+the proc returns a value, the procedure body can access an implicitly declared
 variable named `result`:idx: that represents the return value. Procs can be
 overloaded. The overloading resolution algorithm tries to find the proc that is
-the best match for the arguments. A parameter may be given a default value that
-is used if the caller does not provide a value for this parameter. Example:
+the best match for the arguments. Example:
 
 .. code-block:: nimrod
 
@@ -1785,7 +1788,7 @@ type `var`).
 
 Operators with one parameter are prefix operators, operators with two
 parameters are infix operators. (However, the parser distinguishes these from
-the operators position within an expression.) There is no way to declare
+the operator's position within an expression.) There is no way to declare
 postfix operators: all postfix operators are built-in and handled by the
 grammar explicitly.
 
