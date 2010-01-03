@@ -51,7 +51,7 @@ const
   TCL_VERSION_MAJOR* = 0
   TCL_VERSION_MINOR* = 0
   TCL_NO_EVAL* = 0x00010000
-  TCL_EVAL_GLOBAL* = 0x00020000 #* Flag values passed to variable-related procedures. *
+  TCL_EVAL_GLOBAL* = 0x00020000 # Flag values passed to variable-related procedures. *
   TCL_GLOBAL_ONLY* = 1
   TCL_NAMESPACE_ONLY* = 2
   TCL_APPEND_VALUE* = 4
@@ -62,15 +62,15 @@ const
   TCL_TRACE_DESTROYED* = 0x00000080
   TCL_INTERP_DESTROYED* = 0x00000100
   TCL_LEAVE_ERR_MSG* = 0x00000200
-  TCL_PARSE_PART1* = 0x00000400 #* Types for linked variables: *
+  TCL_PARSE_PART1* = 0x00000400 # Types for linked variables: *
   TCL_LINK_INT* = 1
   TCL_LINK_DOUBLE* = 2
   TCL_LINK_BOOLEAN* = 3
   TCL_LINK_STRING* = 4
   TCL_LINK_READ_ONLY* = 0x00000080
-  TCL_SMALL_HASH_TABLE* = 4   #* Hash Table *
+  TCL_SMALL_HASH_TABLE* = 4   # Hash Table *
   TCL_STRING_KEYS* = 0
-  TCL_ONE_WORD_KEYS* = 1      #* Const/enums Tcl_QueuePosition *
+  TCL_ONE_WORD_KEYS* = 1      # Const/enums Tcl_QueuePosition *
                               # typedef enum {
   TCL_QUEUE_TAIL* = 0
   TCL_QUEUE_HEAD* = 1
@@ -80,7 +80,7 @@ const
   TCL_WINDOW_EVENTS* = 1 shl 2
   TCL_FILE_EVENTS* = 1 shl 3
   TCL_TIMER_EVENTS* = 1 shl 4
-  TCL_IDLE_EVENTS* = 1 shl 5  #* WAS 0x10 ???? *
+  TCL_IDLE_EVENTS* = 1 shl 5  # WAS 0x10 ???? *
   TCL_ALL_EVENTS* = not TCL_DONT_WAIT 
 
   TCL_VOLATILE* = 1
@@ -92,7 +92,7 @@ const
   TCL_ENFORCE_MODE* = 1 shl 4
   TCL_READABLE* = 1 shl 1
   TCL_WRITABLE* = 1 shl 2
-  TCL_EXCEPTION* = 1 shl 3    #* POSIX *
+  TCL_EXCEPTION* = 1 shl 3    # POSIX *
   EPERM* = 1 # Operation not permitted; only the owner of the file (or other
              # resource) or processes with special privileges can perform the
              # operation.
@@ -101,277 +101,277 @@ const
               # for ordinary files that are referenced in contexts where they are
               # expected to already exist.
               #
-  ESRCH* = 3                  #* No process matches the specified process ID. *
-  EINTR* = 4 #* Interrupted function call; an asynchronous signal occurred and
-             # * prevented completion of the call.  When this happens, you should
-             # * try the call again.
-             # *
-  EIO* = 5                    #* Input/output error; usually used for physical read or write errors. *
-  ENXIO* = 6 #* No such device or address.  The system tried to use the device
-             # * represented by a file you specified, and it couldn't find the
-             # * device.  This can mean that the device file was installed
-             # * incorrectly, or that the physical device is missing or not
-             # * correctly attached to the computer.
-             # *
-  E2BIG* = 7 #* Argument list too long; used when the arguments passed to a new
-             # * program being executed with one of the `exec' functions (*note
-             # * Executing a File::.) occupy too much memory space.  This condition
-             # * never arises in the GNU system.
-             # *
-  ENOEXEC* = 8 #* Invalid executable file format.  This condition is detected by the
-               # * `exec' functions; see *Note Executing a File::.
-               # *
-  EBADF* = 9 #* Bad file descriptor; for example, I/O on a descriptor that has been
-             # * closed or reading from a descriptor open only for writing (or vice
-             # * versa).
-             # *
-  ECHILD* = 10 #* There are no child processes.  This error happens on operations
-               # * that are supposed to manipulate child processes, when there aren't
-               # * any processes to manipulate.
-               # *
-  EDEADLK* = 11 #* Deadlock avoided; allocating a system resource would have resulted
-                # * in a deadlock situation.  The system does not guarantee that it
-                # * will notice all such situations.  This error means you got lucky
-                # * and the system noticed; it might just hang.  *Note File Locks::,
-                # * for an example.
-                # *
-  ENOMEM* = 12 #* No memory available.  The system cannot allocate more virtual
-               # * memory because its capacity is full.
-               # *
-  EACCES* = 13 #* Permission denied; the file permissions do not allow the attempted
-               # * operation.
-               # *
-  EFAULT* = 14 #* Bad address; an invalid pointer was detected.  In the GNU system,
-               # * this error never happens; you get a signal instead.
-               # *
-  ENOTBLK* = 15 #* A file that isn't a block special file was given in a situation
-                # * that requires one.  For example, trying to mount an ordinary file
-                # * as a file system in Unix gives this error.
-                # *
-  EBUSY* = 16 #* Resource busy; a system resource that can't be shared is already
-              # * in use.  For example, if you try to delete a file that is the root
-              # * of a currently mounted filesystem, you get this error.
-              # *
-  EEXIST* = 17 #* File exists; an existing file was specified in a context where it
-               # * only makes sense to specify a new file.
-               # *
-  EXDEV* = 18 #* An attempt to make an improper link across file systems was
-              # * detected.  This happens not only when you use `link' (*note Hard
-              # * Links::.) but also when you rename a file with `rename' (*note
-              # * Renaming Files::.).
-              # *
-  ENODEV* = 19 #* The wrong type of device was given to a function that expects a
-               # * particular sort of device.
-               # *
-  ENOTDIR* = 20 #* A file that isn't a directory was specified when a directory is
-                # * required.
-                # *
-  EISDIR* = 21 #* File is a directory; you cannot open a directory for writing, or
-               # * create or remove hard links to it.
-               # *
-  EINVAL* = 22 #* Invalid argument.  This is used to indicate various kinds of
-               # * problems with passing the wrong argument to a library function.
-               # *
-  EMFILE* = 24 #* The current process has too many files open and can't open any
-               # * more.  Duplicate descriptors do count toward this limit.
-               # *
-               # * In BSD and GNU, the number of open files is controlled by a
-               # * resource limit that can usually be increased.  If you get this
-               # * error, you might want to increase the `RLIMIT_NOFILE' limit or
-               # * make it unlimited; *note Limits on Resources::..
-               # *
-  ENFILE* = 23 #* There are too many distinct file openings in the entire system.
-               # * Note that any number of linked channels count as just one file
-               # * opening; see *Note Linked Channels::.  This error never occurs in
-               # * the GNU system.
-               # *
-  ENOTTY* = 25 #* Inappropriate I/O control operation, such as trying to set terminal
-               # * modes on an ordinary file.
-               # *
-  ETXTBSY* = 26 #* An attempt to execute a file that is currently open for writing, or
-                # * write to a file that is currently being executed.  Often using a
-                # * debugger to run a program is considered having it open for writing
-                # * and will cause this error.  (The name stands for "text file
-                # * busy".)  This is not an error in the GNU system; the text is
-                # * copied as necessary.
-                # *
-  EFBIG* = 27 #* File too big; the size of a file would be larger than allowed by
-              # * the system.
-              # *
-  ENOSPC* = 28 #* No space left on device; write operation on a file failed because
-               # * the disk is full.
-               # *
-  ESPIPE* = 29                #* Invalid seek operation (such as on a pipe).  *
-  EROFS* = 30                 #* An attempt was made to modify something on a read-only file system.  *
-  EMLINK* = 31 #* Too many links; the link count of a single file would become too
-               # * large.  `rename' can cause this error if the file being renamed
-               # * already has as many links as it can take (*note Renaming Files::.).
-               # *
-  EPIPE* = 32 #* Broken pipe; there is no process reading from the other end of a
-              # * pipe.  Every library function that returns this error code also
-              # * generates a `SIGPIPE' signal; this signal terminates the program
-              # * if not handled or blocked.  Thus, your program will never actually
-              # * see `EPIPE' unless it has handled or blocked `SIGPIPE'.
-              # *
-  EDOM* = 33 #* Domain error; used by mathematical functions when an argument
-             # * value does not fall into the domain over which the function is
-             # * defined.
-             # *
-  ERANGE* = 34 #* Range error; used by mathematical functions when the result value
-               # * is not representable because of overflow or underflow.
-               # *
-  EAGAIN* = 35 #* Resource temporarily unavailable; the call might work if you try
-               # * again later.  The macro `EWOULDBLOCK' is another name for `EAGAIN';
-               # * they are always the same in the GNU C library.
-               # *
-  EWOULDBLOCK* = EAGAIN #* In the GNU C library, this is another name for `EAGAIN' (above).
-                        # * The values are always the same, on every operating system.
-                        # * C libraries in many older Unix systems have `EWOULDBLOCK' as a
-                        # * separate error code.
-                        # *
-  EINPROGRESS* = 36 #* An operation that cannot complete immediately was initiated on an
-                    # * object that has non-blocking mode selected.  Some functions that
-                    # * must always block (such as `connect'; *note Connecting::.) never
-                    # * return `EAGAIN'.  Instead, they return `EINPROGRESS' to indicate
-                    # * that the operation has begun and will take some time.  Attempts to
-                    # * manipulate the object before the call completes return `EALREADY'.
-                    # * You can use the `select' function to find out when the pending
-                    # * operation has completed; *note Waiting for I/O::..
-                    # *
-  EALREADY* = 37 #* An operation is already in progress on an object that has
-                 # * non-blocking mode selected.
-                 # *
-  ENOTSOCK* = 38              #* A file that isn't a socket was specified when a socket is required.  *
-  EDESTADDRREQ* = 39 #* No default destination address was set for the socket.  You get
-                     # * this error when you try to transmit data over a connectionless
-                     # * socket, without first specifying a destination for the data with
-                     # * `connect'.
-                     # *
-  EMSGSIZE* = 40 #* The size of a message sent on a socket was larger than the
-                 # * supported maximum size.
-                 # *
-  EPROTOTYPE* = 41 #* The socket type does not support the requested communications
-                   # * protocol.
-                   # *
-  ENOPROTOOPT* = 42 #* You specified a socket option that doesn't make sense for the
-                    # * particular protocol being used by the socket.  *Note Socket
-                    # * Options::.
-                    # *
-  EPROTONOSUPPORT* = 43 #* The socket domain does not support the requested communications
-                        # * protocol (perhaps because the requested protocol is completely
-                        # * invalid.) *Note Creating a Socket::.
-                        # *
-  ESOCKTNOSUPPORT* = 44       #* The socket type is not supported.  *
-  EOPNOTSUPP* = 45 #* The operation you requested is not supported.  Some socket
-                   # * functions don't make sense for all types of sockets, and others
-                   # * may not be implemented for all communications protocols.  In the
-                   # * GNU system, this error can happen for many calls when the object
-                   # * does not support the particular operation; it is a generic
-                   # * indication that the server knows nothing to do for that call.
-                   # *
-  EPFNOSUPPORT* = 46 #* The socket communications protocol family you requested is not
-                     # * supported.
-                     # *
-  EAFNOSUPPORT* = 47 #* The address family specified for a socket is not supported; it is
-                     # * inconsistent with the protocol being used on the socket.  *Note
-                     # * Sockets::.
-                     # *
-  EADDRINUSE* = 48 #* The requested socket address is already in use.  *Note Socket
-                   # * Addresses::.
-                   # *
-  EADDRNOTAVAIL* = 49 #* The requested socket address is not available; for example, you
-                      # * tried to give a socket a name that doesn't match the local host
-                      # * name.  *Note Socket Addresses::.
-                      # *
-  ENETDOWN* = 50              #* A socket operation failed because the network was down.  *
-  ENETUNREACH* = 51 #* A socket operation failed because the subnet containing the remote
-                    # * host was unreachable.
-                    # *
-  ENETRESET* = 52             #* A network connection was reset because the remote host crashed.  *
-  ECONNABORTED* = 53          #* A network connection was aborted locally. *
-  ECONNRESET* = 54 #* A network connection was closed for reasons outside the control of
-                   # * the local host, such as by the remote machine rebooting or an
-                   # * unrecoverable protocol violation.
-                   # *
-  ENOBUFS* = 55 #* The kernel's buffers for I/O operations are all in use.  In GNU,
-                # * this error is always synonymous with `ENOMEM'; you may get one or
-                # * the other from network operations.
-                # *
-  EISCONN* = 56 #* You tried to connect a socket that is already connected.  *Note
-                # * Connecting::.
-                # *
-  ENOTCONN* = 57 #* The socket is not connected to anything.  You get this error when
-                 # * you try to transmit data over a socket, without first specifying a
-                 # * destination for the data.  For a connectionless socket (for
-                 # * datagram protocols, such as UDP), you get `EDESTADDRREQ' instead.
-                 # *
-  ESHUTDOWN* = 58             #* The socket has already been shut down.  *
-  ETOOMANYREFS* = 59          #* ???  *
-  ETIMEDOUT* = 60 #* A socket operation with a specified timeout received no response
-                  # * during the timeout period.
-                  # *
-  ECONNREFUSED* = 61 #* A remote host refused to allow the network connection (typically
-                     # * because it is not running the requested service).
-                     # *
-  ELOOP* = 62 #* Too many levels of symbolic links were encountered in looking up a
-              # * file name.  This often indicates a cycle of symbolic links.
-              # *
-  ENAMETOOLONG* = 63 #* Filename too long (longer than `PATH_MAX'; *note Limits for
-                     # * Files::.) or host name too long (in `gethostname' or
-                     # * `sethostname'; *note Host Identification::.).
-                     # *
-  EHOSTDOWN* = 64             #* The remote host for a requested network connection is down.  *
-  EHOSTUNREACH* = 65 #* The remote host for a requested network connection is not
-                     # * reachable.
-                     # *
-  ENOTEMPTY* = 66 #* Directory not empty, where an empty directory was expected.
-                  # * Typically, this error occurs when you are trying to delete a
-                  # * directory.
-                  # *
-  EPROCLIM* = 67 #* This means that the per-user limit on new process would be
-                 # * exceeded by an attempted `fork'.  *Note Limits on Resources::, for
-                 # * details on the `RLIMIT_NPROC' limit.
-                 # *
-  EUSERS* = 68                #* The file quota system is confused because there are too many users.  *
-  EDQUOT* = 69                #* The user's disk quota was exceeded.  *
-  ESTALE* = 70 #* Stale NFS file handle.  This indicates an internal confusion in
-               # * the NFS system which is due to file system rearrangements on the
-               # * server host.  Repairing this condition usually requires unmounting
-               # * and remounting the NFS file system on the local host.
-               # *
-  EREMOTE* = 71 #* An attempt was made to NFS-mount a remote file system with a file
-                # * name that already specifies an NFS-mounted file.  (This is an
-                # * error on some operating systems, but we expect it to work properly
-                # * on the GNU system, making this error code impossible.)
-                # *
-  EBADRPC* = 72               #* ???  *
-  ERPCMISMATCH* = 73          #* ???  *
-  EPROGUNAVAIL* = 74          #* ???  *
-  EPROGMISMATCH* = 75         #* ???  *
-  EPROCUNAVAIL* = 76          #* ???  *
-  ENOLCK* = 77 #* No locks available.  This is used by the file locking facilities;
-               # * see *Note File Locks::.  This error is never generated by the GNU
-               # * system, but it can result from an operation to an NFS server
-               # * running another operating system.
-               # *
-  ENOSYS* = 78 #* Function not implemented.  Some functions have commands or options
-               # * defined that might not be supported in all implementations, and
-               # * this is the kind of error you get if you request them and they are
-               # * not supported.
-               # *
-  EFTYPE* = 79 #* Inappropriate file type or format.  The file was the wrong type
-               # * for the operation, or a data file had the wrong format.
-               # * On some systems `chmod' returns this error if you try to set the
-               # * sticky bit on a non-directory file; *note Setting Permissions::..
-               # *
+  ESRCH* = 3                  # No process matches the specified process ID. *
+  EINTR* = 4 # Interrupted function call; an asynchronous signal occurred and
+             # prevented completion of the call.  When this happens, you should
+             # try the call again.
+             #
+  EIO* = 5                    # Input/output error; usually used for physical read or write errors. *
+  ENXIO* = 6 # No such device or address.  The system tried to use the device
+             # represented by a file you specified, and it couldn't find the
+             # device.  This can mean that the device file was installed
+             # incorrectly, or that the physical device is missing or not
+             # correctly attached to the computer.
+             #
+  E2BIG* = 7 # Argument list too long; used when the arguments passed to a new
+             # program being executed with one of the `exec' functions (*note
+             # Executing a File::.) occupy too much memory space.  This condition
+             # never arises in the GNU system.
+             #
+  ENOEXEC* = 8 # Invalid executable file format.  This condition is detected by the
+               # `exec' functions; see *Note Executing a File::.
+               #
+  EBADF* = 9 # Bad file descriptor; for example, I/O on a descriptor that has been
+             # closed or reading from a descriptor open only for writing (or vice
+             # versa).
+             #
+  ECHILD* = 10 # There are no child processes.  This error happens on operations
+               # that are supposed to manipulate child processes, when there aren't
+               # any processes to manipulate.
+               #
+  EDEADLK* = 11 # Deadlock avoided; allocating a system resource would have resulted
+                # in a deadlock situation.  The system does not guarantee that it
+                # will notice all such situations.  This error means you got lucky
+                # and the system noticed; it might just hang.  *Note File Locks::,
+                # for an example.
+                #
+  ENOMEM* = 12 # No memory available.  The system cannot allocate more virtual
+               # memory because its capacity is full.
+               #
+  EACCES* = 13 # Permission denied; the file permissions do not allow the attempted
+               # operation.
+               #
+  EFAULT* = 14 # Bad address; an invalid pointer was detected.  In the GNU system,
+               # this error never happens; you get a signal instead.
+               #
+  ENOTBLK* = 15 # A file that isn't a block special file was given in a situation
+                # that requires one.  For example, trying to mount an ordinary file
+                # as a file system in Unix gives this error.
+                #
+  EBUSY* = 16 # Resource busy; a system resource that can't be shared is already
+              # in use.  For example, if you try to delete a file that is the root
+              # of a currently mounted filesystem, you get this error.
+              #
+  EEXIST* = 17 # File exists; an existing file was specified in a context where it
+               # only makes sense to specify a new file.
+               #
+  EXDEV* = 18 # An attempt to make an improper link across file systems was
+              # detected.  This happens not only when you use `link' (*note Hard
+              # Links::.) but also when you rename a file with `rename' (*note
+              # Renaming Files::.).
+              #
+  ENODEV* = 19 # The wrong type of device was given to a function that expects a
+               # particular sort of device.
+               #
+  ENOTDIR* = 20 # A file that isn't a directory was specified when a directory is
+                # required.
+                #
+  EISDIR* = 21 # File is a directory; you cannot open a directory for writing, or
+               # create or remove hard links to it.
+               #
+  EINVAL* = 22 # Invalid argument.  This is used to indicate various kinds of
+               # problems with passing the wrong argument to a library function.
+               #
+  EMFILE* = 24 # The current process has too many files open and can't open any
+               # more.  Duplicate descriptors do count toward this limit.
+               #
+               # In BSD and GNU, the number of open files is controlled by a
+               # resource limit that can usually be increased.  If you get this
+               # error, you might want to increase the `RLIMIT_NOFILE' limit or
+               # make it unlimited; *note Limits on Resources::..
+               #
+  ENFILE* = 23 # There are too many distinct file openings in the entire system.
+               # Note that any number of linked channels count as just one file
+               # opening; see *Note Linked Channels::.  This error never occurs in
+               # the GNU system.
+               #
+  ENOTTY* = 25 # Inappropriate I/O control operation, such as trying to set terminal
+               # modes on an ordinary file.
+               #
+  ETXTBSY* = 26 # An attempt to execute a file that is currently open for writing, or
+                # write to a file that is currently being executed.  Often using a
+                # debugger to run a program is considered having it open for writing
+                # and will cause this error.  (The name stands for "text file
+                # busy".)  This is not an error in the GNU system; the text is
+                # copied as necessary.
+                #
+  EFBIG* = 27 # File too big; the size of a file would be larger than allowed by
+              # the system.
+              #
+  ENOSPC* = 28 # No space left on device; write operation on a file failed because
+               # the disk is full.
+               #
+  ESPIPE* = 29                # Invalid seek operation (such as on a pipe).  *
+  EROFS* = 30                 # An attempt was made to modify something on a read-only file system.  *
+  EMLINK* = 31 # Too many links; the link count of a single file would become too
+               # large.  `rename' can cause this error if the file being renamed
+               # already has as many links as it can take (*note Renaming Files::.).
+               #
+  EPIPE* = 32 # Broken pipe; there is no process reading from the other end of a
+              # pipe.  Every library function that returns this error code also
+              # generates a `SIGPIPE' signal; this signal terminates the program
+              # if not handled or blocked.  Thus, your program will never actually
+              # see `EPIPE' unless it has handled or blocked `SIGPIPE'.
+              #
+  EDOM* = 33 # Domain error; used by mathematical functions when an argument
+             # value does not fall into the domain over which the function is
+             # defined.
+             #
+  ERANGE* = 34 # Range error; used by mathematical functions when the result value
+               # is not representable because of overflow or underflow.
+               #
+  EAGAIN* = 35 # Resource temporarily unavailable; the call might work if you try
+               # again later.  The macro `EWOULDBLOCK' is another name for `EAGAIN';
+               # they are always the same in the GNU C library.
+               #
+  EWOULDBLOCK* = EAGAIN # In the GNU C library, this is another name for `EAGAIN' (above).
+                        # The values are always the same, on every operating system.
+                        # C libraries in many older Unix systems have `EWOULDBLOCK' as a
+                        # separate error code.
+                        #
+  EINPROGRESS* = 36 # An operation that cannot complete immediately was initiated on an
+                    # object that has non-blocking mode selected.  Some functions that
+                    # must always block (such as `connect'; *note Connecting::.) never
+                    # return `EAGAIN'.  Instead, they return `EINPROGRESS' to indicate
+                    # that the operation has begun and will take some time.  Attempts to
+                    # manipulate the object before the call completes return `EALREADY'.
+                    # You can use the `select' function to find out when the pending
+                    # operation has completed; *note Waiting for I/O::..
+                    #
+  EALREADY* = 37 # An operation is already in progress on an object that has
+                 # non-blocking mode selected.
+                 #
+  ENOTSOCK* = 38              # A file that isn't a socket was specified when a socket is required.  *
+  EDESTADDRREQ* = 39 # No default destination address was set for the socket.  You get
+                     # this error when you try to transmit data over a connectionless
+                     # socket, without first specifying a destination for the data with
+                     # `connect'.
+                     #
+  EMSGSIZE* = 40 # The size of a message sent on a socket was larger than the
+                 # supported maximum size.
+                 #
+  EPROTOTYPE* = 41 # The socket type does not support the requested communications
+                   # protocol.
+                   #
+  ENOPROTOOPT* = 42 # You specified a socket option that doesn't make sense for the
+                    # particular protocol being used by the socket.  *Note Socket
+                    # Options::.
+                    #
+  EPROTONOSUPPORT* = 43 # The socket domain does not support the requested communications
+                        # protocol (perhaps because the requested protocol is completely
+                        # invalid.) *Note Creating a Socket::.
+                        #
+  ESOCKTNOSUPPORT* = 44       # The socket type is not supported.  *
+  EOPNOTSUPP* = 45 # The operation you requested is not supported.  Some socket
+                   # functions don't make sense for all types of sockets, and others
+                   # may not be implemented for all communications protocols.  In the
+                   # GNU system, this error can happen for many calls when the object
+                   # does not support the particular operation; it is a generic
+                   # indication that the server knows nothing to do for that call.
+                   #
+  EPFNOSUPPORT* = 46 # The socket communications protocol family you requested is not
+                     # supported.
+                     #
+  EAFNOSUPPORT* = 47 # The address family specified for a socket is not supported; it is
+                     # inconsistent with the protocol being used on the socket.  *Note
+                     # Sockets::.
+                     #
+  EADDRINUSE* = 48 # The requested socket address is already in use.  *Note Socket
+                   # Addresses::.
+                   #
+  EADDRNOTAVAIL* = 49 # The requested socket address is not available; for example, you
+                      # tried to give a socket a name that doesn't match the local host
+                      # name.  *Note Socket Addresses::.
+                      #
+  ENETDOWN* = 50              # A socket operation failed because the network was down.  *
+  ENETUNREACH* = 51 # A socket operation failed because the subnet containing the remote
+                    # host was unreachable.
+                    #
+  ENETRESET* = 52             # A network connection was reset because the remote host crashed.  *
+  ECONNABORTED* = 53          # A network connection was aborted locally. *
+  ECONNRESET* = 54 # A network connection was closed for reasons outside the control of
+                   # the local host, such as by the remote machine rebooting or an
+                   # unrecoverable protocol violation.
+                   #
+  ENOBUFS* = 55 # The kernel's buffers for I/O operations are all in use.  In GNU,
+                # this error is always synonymous with `ENOMEM'; you may get one or
+                # the other from network operations.
+                #
+  EISCONN* = 56 # You tried to connect a socket that is already connected.  *Note
+                # Connecting::.
+                #
+  ENOTCONN* = 57 # The socket is not connected to anything.  You get this error when
+                 # you try to transmit data over a socket, without first specifying a
+                 # destination for the data.  For a connectionless socket (for
+                 # datagram protocols, such as UDP), you get `EDESTADDRREQ' instead.
+                 #
+  ESHUTDOWN* = 58             # The socket has already been shut down.  *
+  ETOOMANYREFS* = 59          # ???  *
+  ETIMEDOUT* = 60 # A socket operation with a specified timeout received no response
+                  # during the timeout period.
+                  #
+  ECONNREFUSED* = 61 # A remote host refused to allow the network connection (typically
+                     # because it is not running the requested service).
+                     #
+  ELOOP* = 62 # Too many levels of symbolic links were encountered in looking up a
+              # file name.  This often indicates a cycle of symbolic links.
+              #
+  ENAMETOOLONG* = 63 # Filename too long (longer than `PATH_MAX'; *note Limits for
+                     # Files::.) or host name too long (in `gethostname' or
+                     # `sethostname'; *note Host Identification::.).
+                     #
+  EHOSTDOWN* = 64             # The remote host for a requested network connection is down.  *
+  EHOSTUNREACH* = 65 # The remote host for a requested network connection is not
+                     # reachable.
+                     #
+  ENOTEMPTY* = 66 # Directory not empty, where an empty directory was expected.
+                  # Typically, this error occurs when you are trying to delete a
+                  # directory.
+                  #
+  EPROCLIM* = 67 # This means that the per-user limit on new process would be
+                 # exceeded by an attempted `fork'.  *Note Limits on Resources::, for
+                 # details on the `RLIMIT_NPROC' limit.
+                 #
+  EUSERS* = 68                # The file quota system is confused because there are too many users.  *
+  EDQUOT* = 69                # The user's disk quota was exceeded.  *
+  ESTALE* = 70 # Stale NFS file handle.  This indicates an internal confusion in
+               # the NFS system which is due to file system rearrangements on the
+               # server host.  Repairing this condition usually requires unmounting
+               # and remounting the NFS file system on the local host.
+               #
+  EREMOTE* = 71 # An attempt was made to NFS-mount a remote file system with a file
+                # name that already specifies an NFS-mounted file.  (This is an
+                # error on some operating systems, but we expect it to work properly
+                # on the GNU system, making this error code impossible.)
+                #
+  EBADRPC* = 72               # ???  *
+  ERPCMISMATCH* = 73          # ???  *
+  EPROGUNAVAIL* = 74          # ???  *
+  EPROGMISMATCH* = 75         # ???  *
+  EPROCUNAVAIL* = 76          # ???  *
+  ENOLCK* = 77 # No locks available.  This is used by the file locking facilities;
+               # see *Note File Locks::.  This error is never generated by the GNU
+               # system, but it can result from an operation to an NFS server
+               # running another operating system.
+               #
+  ENOSYS* = 78 # Function not implemented.  Some functions have commands or options
+               # defined that might not be supported in all implementations, and
+               # this is the kind of error you get if you request them and they are
+               # not supported.
+               #
+  EFTYPE* = 79 # Inappropriate file type or format.  The file was the wrong type
+               # for the operation, or a data file had the wrong format.
+               # On some systems `chmod' returns this error if you try to set the
+               # sticky bit on a non-directory file; *note Setting Permissions::..
+               #
 
 type 
   Tcl_Argv* = cstringArray
   Tcl_ClientData* = pointer
   Tcl_FreeProc* = proc (theBlock: pointer){.cdecl.}
   PTcl_Interp* = ptr Tcl_Interp
-  Tcl_Interp*{.final.} = object  #*  Event Definitions  *
-    result*: cstring #* Do not access this directly. Use
+  Tcl_Interp*{.final.} = object  #  Event Definitions  *
+    result*: cstring # Do not access this directly. Use
                      #                          * Tcl_GetStringResult since result
                      #                          * may be pointing to an object
                      #                          *
@@ -385,12 +385,12 @@ type
   Tcl_Event*{.final.} = object 
     prc*: TTcl_EventProc
     nextPtr*: PTcl_Event
-    ClientData*: TObject      #* ClientData is just pointer.*
+    ClientData*: TObject      # ClientData is just pointer.*
   
   PTcl_Time* = ptr Tcl_Time
   Tcl_Time*{.final.} = object 
-    sec*: int32               # * Seconds. * 
-    usec*: int32              # * Microseconds. * 
+    sec*: int32               # Seconds. * 
+    usec*: int32              # Microseconds. * 
   
   Tcl_TimerToken* = pointer
   PInteger* = ptr int
@@ -749,7 +749,7 @@ proc Tcl_PushCallFrame*(interp: pTcl_Interp, callFramePtr: var Tcl_CallFrame,
 proc Tcl_PopCallFrame*(interp: pTcl_Interp){.cdecl, dynlib: dllName, importc.}
 proc Tcl_VarEval*(interp: pTcl_Interp): int{.cdecl, varargs, 
     dynlib: dllName, importc.}
-  #* For TkConsole.c *
+  # For TkConsole.c *
 proc Tcl_RecordAndEval*(interp: pTcl_Interp, cmd: cstring, flags: int): int{.
     cdecl, dynlib: dllName, importc.}
 proc Tcl_GlobalEval*(interp: pTcl_Interp, command: cstring): int{.cdecl, 

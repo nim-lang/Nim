@@ -635,22 +635,23 @@ proc copyFile*(dest, source: string) =
     if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
   else:
     # generic version of copyFile which works for any platform:
-    const
-      bufSize = 8192 # 8K buffer
-    var
-      d, s: TFile
+    const bufSize = 8000 # better for memory manager
+    var d, s: TFile
     if not open(s, source): OSError()
     if not open(d, dest, fmWrite):
       close(s)
       OSError()
-    var
-      buf: Pointer = alloc(bufsize)
-      bytesread, byteswritten: int
+    var buf = alloc(bufsize)
     while True:
-      bytesread = readBuffer(s, buf, bufsize)
-      byteswritten = writeBuffer(d, buf, bytesread)
+      var bytesread = readBuffer(s, buf, bufsize)
+      if bytesread > 0:
+        var byteswritten = writeBuffer(d, buf, bytesread)
+        if bytesread != bytesWritten:
+          dealloc(buf)
+          close(s)
+          close(d)
+          OSError()
       if bytesread != bufSize: break
-      if bytesread != bytesWritten: OSError()
     dealloc(buf)
     close(s)
     close(d)

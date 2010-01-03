@@ -155,6 +155,7 @@ type
     dwReserved1: int32
     cFileName*: array[0..(MAX_PATH) - 1, char]
     cAlternateFileName*: array[0..13, char]
+
 proc FindFirstFileA*(lpFileName: cstring,
                     lpFindFileData: var TWIN32_FIND_DATA): THANDLE {.
     stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}

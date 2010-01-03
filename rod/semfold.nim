@@ -44,18 +44,13 @@ proc newStrNodeT(strVal: string, n: PNode): PNode =
   result.info = n.info
 
 proc enumValToString(a: PNode): string = 
-  var 
-    n: PNode
-    field: PSym
-    x: biggestInt
-  x = getInt(a)
-  n = skipTypes(a.typ, abstractInst).n
+  var x = getInt(a)
+  var n = skipTypes(a.typ, abstractInst).n
   for i in countup(0, sonsLen(n) - 1): 
     if n.sons[i].kind != nkSym: InternalError(a.info, "enumValToString")
-    field = n.sons[i].sym
-    if field.position == x: 
-      return field.name.s
-  InternalError(a.info, "no symbol for ordinal value: " & $(x))
+    var field = n.sons[i].sym
+    if field.position == x: return field.name.s
+  InternalError(a.info, "no symbol for ordinal value: " & $x)
 
 proc evalOp(m: TMagic, n, a, b, c: PNode): PNode = 
   # b and c may be nil

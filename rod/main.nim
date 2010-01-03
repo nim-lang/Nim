@@ -13,8 +13,15 @@
 import 
   llstream, strutils, ast, astalgo, scanner, syntaxes, rnimsyn, options, msgs, 
   os, lists, condsyms, paslex, pasparse, rodread, rodwrite, ropes, trees, 
-  wordrecg, sem, semdata, idents, passes, docgen, extccomp, cgen, ecmasgen, 
+  wordrecg, sem, semdata, idents, passes, docgen, extccomp,
+  cgen, ecmasgen,
   platform, interact, nimconf, importer, passaux, depends, transf, evals, types
+
+const
+  has_LLVM_Backend = false
+
+when has_LLVM_Backend:
+  import llvmgen
 
 proc MainCommand*(cmd, filename: string)
 # implementation
@@ -114,6 +121,14 @@ proc CommandCompileToC(filename: string) =
   compileProject(filename)
   extccomp.CallCCompiler(changeFileExt(filename, ""))
 
+when has_LLVM_Backend:
+  proc CommandCompileToLLVM(filename: string) = 
+    semanticPasses()
+    registerPass(llvmgen.llvmgenPass())
+    registerPass(rodwrite.rodwritePass())
+    #registerPass(cleanupPass())
+    compileProject(filename)
+
 proc CommandCompileToEcmaScript(filename: string) = 
   incl(gGlobalOptions, optSafeCode)
   setTarget(osEcmaScript, cpuEcmaScript)
@@ -139,10 +154,8 @@ proc CommandInteractive() =
 
 proc exSymbols(n: PNode) = 
   case n.kind
-  of nkEmpty..nkNilLit: 
-    nil
-  of nkProcDef..nkIteratorDef: 
-    exSymbol(n.sons[namePos])
+  of nkEmpty..nkNilLit: nil
+  of nkProcDef..nkIteratorDef: exSymbol(n.sons[namePos])
   of nkWhenStmt, nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): exSymbols(n.sons[i])
   of nkVarSection, nkConstSection: 
@@ -153,8 +166,7 @@ proc exSymbols(n: PNode) =
       if (n.sons[i].sons[2] != nil) and
           (n.sons[i].sons[2].kind == nkObjectTy): 
         fixRecordDef(n.sons[i].sons[2])
-  else: 
-    nil
+  else: nil
 
 proc CommandExportSymbols(filename: string) = 
   # now unused!
@@ -171,49 +183,40 @@ proc CommandPretty(filename: string) =
     renderModule(module, getOutFile(filename, "pretty." & NimExt))
   
 proc CommandLexPas(filename: string) = 
-  var 
-    L: TPasLex
-    tok: TPasTok
-    f: string
-    stream: PLLStream
-  f = addFileExt(filename, "pas")
-  stream = LLStreamOpen(f, fmRead)
+  var f = addFileExt(filename, "pas")
+  var stream = LLStreamOpen(f, fmRead)
   if stream != nil: 
+    var 
+      L: TPasLex
+      tok: TPasTok
     OpenLexer(L, f, stream)
     getPasTok(L, tok)
     while tok.xkind != pxEof: 
       printPasTok(tok)
       getPasTok(L, tok)
-  else: 
-    rawMessage(errCannotOpenFile, f)
-  closeLexer(L)
+    closeLexer(L)
+  else: rawMessage(errCannotOpenFile, f)
 
 proc CommandPas(filename: string) = 
-  var 
-    p: TPasParser
-    module: PNode
-    f: string
-    stream: PLLStream
-  f = addFileExt(filename, "pas")
-  stream = LLStreamOpen(f, fmRead)
+  var f = addFileExt(filename, "pas")
+  var stream = LLStreamOpen(f, fmRead)
   if stream != nil: 
+    var p: TPasParser
     OpenPasParser(p, f, stream)
-    module = parseUnit(p)
+    var module = parseUnit(p)
     closePasParser(p)
     renderModule(module, getOutFile(filename, NimExt))
   else: 
     rawMessage(errCannotOpenFile, f)
   
 proc CommandScan(filename: string) = 
-  var 
-    L: TLexer
-    tok: PToken
-    f: string
-    stream: PLLStream
-  new(tok)
-  f = addFileExt(filename, nimExt)
-  stream = LLStreamOpen(f, fmRead)
+  var f = addFileExt(filename, nimExt)
+  var stream = LLStreamOpen(f, fmRead)
   if stream != nil: 
+    var 
+      L: TLexer
+      tok: PToken
+    new(tok)
     openLexer(L, f, stream)
     while true: 
       rawGetTok(L, tok^)
@@ -252,7 +255,8 @@ proc MainCommand(cmd, filename: string) =
   of wCompileToLLVM: 
     gCmd = cmdCompileToLLVM
     wantFile(filename)
-    CommandCompileToC(filename)
+    when has_LLVM_Backend:
+      CommandCompileToLLVM(filename)
   of wPretty: 
     gCmd = cmdPretty
     wantFile(filename)        #CommandExportSymbols(filename);

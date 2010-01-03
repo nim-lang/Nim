@@ -2,6 +2,34 @@
 News
 ====
 
+2010-XX-XX Version 0.8.8 released
+=================================
+
+Bugfixes
+--------
+- The Posix version of ``os.copyFile`` has better error handling.
+
+
+Additions
+---------
+- Added ``ropes`` module.
+- Added ``sockets`` module.
+- Added ``httpserver`` module.
+- Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
+  ``lua``). The new wrappers are available in ``lib/newwrap``. Change
+  your configuration file to use these.
+- More extensive subscript operator overloading. See ``_ for further
+  information.
+
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- Overloading of the subscript operator only works if the type does not provide
+  a built-in one.
+
+
+
 
 2009-12-21 Version 0.8.6 released
 =================================

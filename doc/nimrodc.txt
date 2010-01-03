@@ -71,87 +71,12 @@ Additional Features
 ===================
 
 This section describes Nimrod's additional features that are not listed in the
-Nimrod manual.
-
-New Pragmas and Options
------------------------
-
-Because Nimrod generates C code it needs some "red tape" to work properly.
-Lots of options and pragmas for tweaking the generated C code are available.
-
-Importc Pragma
-~~~~~~~~~~~~~~
-The `importc`:idx: pragma provides a means to import a type, a variable, or a
-procedure from C. The optional argument is a string containing the C
-identifier. If the argument is missing, the C name is the Nimrod
-identifier *exactly as spelled*:
-
-.. code-block::
-  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+Nimrod manual. Some of the features here only make sense for the C code
+generator and are subject to change.
 
 
-Exportc Pragma
-~~~~~~~~~~~~~~
-The `exportc`:idx: pragma provides a means to export a type, a variable, or a
-procedure to C. The optional argument is a string containing the C
-identifier. If the argument is missing, the C name is the Nimrod
-identifier *exactly as spelled*:
-
-.. code-block:: Nimrod
-  proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}
-
-
-Dynlib Pragma
-~~~~~~~~~~~~~
-With the `dynlib`:idx: pragma a procedure or a variable can be imported from
-a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
-non-optional argument has to be the name of the dynamic library:
-
-.. code-block:: Nimrod
-  proc gtk_image_new(): PGtkWidget {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
-
-In general, importing a dynamic library does not require any special linker
-options or linking with import libraries. This also implies that no *devel*
-packages need to be installed.
-
-The ``dynlib`` import mechanism supports a versioning scheme: 
-
-.. code-block:: nimrod 
-  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
-    importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
-
-At runtime the dynamic library is searched for (in this order)::
-  
-  libtcl.so.1  
-  libtcl.so.0
-  libtcl8.5.so.1  
-  libtcl8.5.so.0
-  libtcl8.4.so.1
-  libtcl8.4.so.0
-  libtcl8.3.so.1
-  libtcl8.3.so.0
-
-The ``dynlib`` pragma supports not only constant strings as argument but also
-string expressions in general:
-
-.. code-block:: nimrod
-  import os
-
-  proc getDllName: string = 
-    result = "mylib.dll"
-    if ExistsFile(result): return
-    result = "mylib2.dll"
-    if ExistsFile(result): return
-    quit("could not load dynamic library")
-  
-  proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
-
-**Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
-strings, because they are precompiled.
-
-
-NoDecl Pragma
-~~~~~~~~~~~~~
+NoDecl pragma
+-------------
 The `noDecl`:idx: pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nimrod that it should not generate a declaration for the symbol in
@@ -164,9 +89,11 @@ the C code. For example:
 
 However, the ``header`` pragma is often the better alternative.
 
+**Note**: This will not work for the LLVM backend.
 
-Header Pragma
-~~~~~~~~~~~~~
+
+Header pragma
+-------------
 The `header`:idx: pragma is very similar to the ``noDecl`` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared 
 and instead the generated code should contain an ``#include``:
@@ -181,118 +108,48 @@ contains the header file: As usual for C, a system header file is enclosed
 in angle brackets: ``<>``. If no angle brackets are given, Nimrod
 encloses the header file in ``""`` in the generated C code.
 
-
-Varargs Pragma
-~~~~~~~~~~~~~~
-The `varargs`:idx: pragma can be applied to procedures only (and procedure 
-types). It tells Nimrod that the proc can take a variable number of parameters 
-after the last specified parameter. Nimrod string values will be converted to C
-strings automatically:
-
-.. code-block:: Nimrod
-  proc printf(formatstr: cstring) {.nodecl, varargs.}
-
-  printf("hallo %s", "world") # "world" will be passed as C string
+**Note**: This will not work for the LLVM backend.
 
 
-LineDir Option
-~~~~~~~~~~~~~~
+LineDir option
+--------------
 The `lineDir`:idx: option can be turned on or off. If turned on the 
 generated C code contains ``#line`` directives. This may be helpful for 
 debugging with GDB.
 
 
-StackTrace Option
-~~~~~~~~~~~~~~~~~
+StackTrace option
+-----------------
 If the `stackTrace`:idx: option is turned on, the generated C contains code to
 ensure that proper stack traces are given if the program crashes or an
 uncaught exception is raised.
 
 
-LineTrace Option
-~~~~~~~~~~~~~~~~
+LineTrace option
+----------------
 The `lineTrace`:idx: option implies the ``stackTrace`` option. If turned on,
 the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Debugger Option
-~~~~~~~~~~~~~~~
+Debugger option
+---------------
 The `debugger`:idx: option enables or disables the *Embedded Nimrod Debugger*.
 See the documentation of endb_ for further information.
 
 
-Breakpoint Pragma
-~~~~~~~~~~~~~~~~~
+Breakpoint pragma
+-----------------
 The *breakpoint* pragma was specially added for the sake of debugging with
 ENDB. See the documentation of `endb <endb.html>`_ for further information.
 
 
-Volatile Pragma
-~~~~~~~~~~~~~~~
+Volatile pragma
+---------------
 The `volatile`:idx: pragma is for variables only. It declares the variable as
 ``volatile``, whatever that means in C/C++.
 
-Register Pragma
-~~~~~~~~~~~~~~~
-The `register`:idx: pragma is for variables only. It declares the variable as
-``register``, giving the compiler a hint that the variable should be placed
-in a hardware register for faster access. C compilers usually ignore this
-though and for good reasons: Often they do a better job without it anyway.
-
-In highly specific cases (a dispatch loop of an bytecode interpreter for
-example) it may provide benefits, though.
-
-
-Acyclic Pragma
-~~~~~~~~~~~~~~
-The `acyclic`:idx: pragma can be used for object types to mark them as acyclic
-even though they seem to be cyclic. This is an **optimization** for the garbage
-collector to not consider objects of this type as part of a cycle:
-
-.. code-block:: nimrod
-  type
-    PNode = ref TNode
-    TNode {.acyclic, final.} = object
-      left, right: PNode
-      data: string
-
-In the example a tree structure is declared with the ``TNode`` type. Note that
-the type definition is recursive and the GC has to assume that objects of
-this type may form a cyclic graph. The ``acyclic`` pragma passes the
-information that this cannot happen to the GC. If the programmer uses the
-``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
-memory, but nothing worse happens.
-
-
-DeadCodeElim Pragma
-~~~~~~~~~~~~~~~~~~~
-The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
-compiler to activate (or deactivate) dead code elimination for the module the
-pragma appers in.
-
-The ``--deadCodeElim:on`` command line switch has the same effect as marking
-every module with ``{.deadCodeElim:on}``. However, for some modules such as
-the GTK wrapper it makes sense to *always* turn on dead code elimination -
-no matter if it is globally active or not.
-
-Example:
-
-.. code-block:: nimrod
-  {.deadCodeElim: on.}
-
-
-Disabling certain messages
---------------------------
-Nimrod generates some warnings and hints ("line too long") that may annoy the
-user. A mechanism for disabling certain messages is provided: Each hint
-and warning message contains a symbol in brackets. This is the message's
-identifier that can be used to enable or disable it:
-
-.. code-block:: Nimrod
-  {.warning[LineTooLong]: off.} # turn off warning about too long lines
-
-This is often better than disabling all warnings at once.
+**Note**: This pragma will not exist for the LLVM backend.
 
 
 Debugging with Nimrod

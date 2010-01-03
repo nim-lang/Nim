@@ -855,6 +855,17 @@ proc sonsLen(n: PNode): int =
   if isNil(n.sons): result = 0
   else: result = len(n.sons)
   
+proc len*(n: PNode): int {.inline.} =
+  if isNil(n.sons): result = 0
+  else: result = len(n.sons)
+  
+proc add*(father, son: PNode) =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)  
+  
+proc `[]`*(n: PNode, i: int): PNode {.inline.} =
+  result = n.sons[i]
+  
 proc newSons(father: PNode, length: int) = 
   if isNil(father.sons): father.sons = @[]
   setlen(father.sons, len(father.sons) + length)
@@ -985,8 +996,7 @@ proc IntSetInit(s: var TIntSet) =
   s.head = nil
 
 proc IntSetGet(t: TIntSet, key: int): PTrunk = 
-  var h: int
-  h = key and t.max
+  var h = key and t.max
   while t.data[h] != nil: 
     if t.data[h].key == key: 
       return t.data[h]
@@ -994,8 +1004,7 @@ proc IntSetGet(t: TIntSet, key: int): PTrunk =
   result = nil
 
 proc IntSetRawInsert(t: TIntSet, data: var TTrunkSeq, desc: PTrunk) = 
-  var h: int
-  h = desc.key and t.max
+  var h = desc.key and t.max
   while data[h] != nil: 
     assert(data[h] != desc)
     h = nextTry(h, t.max)

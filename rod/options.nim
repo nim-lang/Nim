@@ -92,7 +92,7 @@ var
   libpath*: string = ""
   projectPath*: string = ""
   gKeepComments*: bool = true # whether the parser needs to keep comments
-  gImplicitMods*: TStringSeq = @ [] # modules that are to be implicitly imported
+  gImplicitMods*: TStringSeq = @[] # modules that are to be implicitly imported
 
 proc existsConfigVar*(key: string): bool
 proc getConfigVar*(key: string): string
@@ -128,19 +128,19 @@ proc shortenDir(dir: string): string =
   # returns the interesting part of a dir
   var prefix = getPrefixDir() & dirSep
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix) + 0)
+    return copy(dir, len(prefix))
   prefix = getCurrentDir() & dirSep
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix) + 0)
+    return copy(dir, len(prefix))
   prefix = projectPath & dirSep #writeln(output, prefix);
                                 #writeln(output, dir);
   if startsWith(dir, prefix): 
-    return copy(dir, len(prefix) + 0)
+    return copy(dir, len(prefix))
   result = dir
 
 proc removeTrailingDirSep(path: string): string = 
-  if (len(path) > 0) and (path[len(path) + 0 - 1] == dirSep): 
-    result = copy(path, 0, len(path) + 0 - 2)
+  if (len(path) > 0) and (path[len(path) - 1] == dirSep): 
+    result = copy(path, 0, len(path) - 2)
   else: 
     result = path
   
@@ -162,11 +162,10 @@ proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
 
 proc rawFindFile(f: string): string = 
-  var it: PStrEntry
   if ExistsFile(f): 
     result = f
   else: 
-    it = PStrEntry(SearchPaths.head)
+    var it = PStrEntry(SearchPaths.head)
     while it != nil: 
       result = JoinPath(it.data, f)
       if ExistsFile(result): return 

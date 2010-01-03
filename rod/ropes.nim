@@ -221,75 +221,59 @@ proc RopeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) =
     rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
   rs[at] = r
 
-proc con(a, b: PRope): PRope = 
-  assert(RopeInvariant(a))
-  assert(RopeInvariant(b))
-  if a == nil: 
-    result = b
-  elif b == nil: 
-    result = a
+proc recRopeToStr(result: var string, resultLen: var int, p: PRope) = 
+  if p == nil: 
+    return                    # do not add to result
+  if (p.data == nil): 
+    recRopeToStr(result, resultLen, p.left)
+    recRopeToStr(result, resultLen, p.right)
   else: 
+    CopyMem(addr(result[resultLen + 0]), addr(p.data[0]), p.length)
+    Inc(resultLen, p.length)
+    assert(resultLen <= len(result))
+
+proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) = 
+  var stack = @[r]
+  while len(stack) > 0: 
+    var it = pop(stack)
+    while it.data == nil: 
+      add(stack, it.right)
+      it = it.left
+    assert(it.data != nil)
+    CopyMem(addr(result[resultLen]), addr(it.data[0]), it.length)
+    Inc(resultLen, it.length)
+    assert(resultLen <= len(result))
+
+proc ropeToStr(p: PRope): string = 
+  if p == nil: 
+    result = ""
+  else: 
+    result = newString(p.length)
+    var resultLen = 0
+    newRecRopeToStr(result, resultLen, p)
+
+proc con(a, b: PRope): PRope = 
+  if a == nil: result = b
+  elif b == nil: result = a
+  else:
     result = newRope()
     result.length = a.length + b.length
     result.left = a
     result.right = b
-  assert(RopeInvariant(result))
 
-proc con(a: PRope, b: string): PRope = 
-  assert(RopeInvariant(a))
-  if b == "": 
-    result = a
-  else: 
-    var r = toRope(b)
-    if a == nil: 
-      result = r
-    else: 
-      result = newRope()
-      result.length = a.length + r.length
-      result.left = a
-      result.right = r
-  assert(RopeInvariant(result))
-
-proc con(a: string, b: PRope): PRope = 
-  assert(RopeInvariant(b))
-  if a == "": 
-    result = b
-  else: 
-    var r = toRope(a)
-    if b == nil: 
-      result = r
-    else: 
-      result = newRope()
-      result.length = b.length + r.length
-      result.left = r
-      result.right = b
-  assert(RopeInvariant(result))
+proc con(a: PRope, b: string): PRope = result = con(a, toRope(b))
+proc con(a: string, b: PRope): PRope = result = con(toRope(a), b)
 
 proc con(a: openarray[PRope]): PRope = 
-  result = nil
   for i in countup(0, high(a)): result = con(result, a[i])
-  assert(RopeInvariant(result))
 
-proc toRope(i: BiggestInt): PRope = 
-  result = toRope($(i))
-
-proc toRopeF(r: BiggestFloat): PRope = 
-  result = toRope($(r))
-
-proc app(a: var PRope, b: PRope) = 
-  a = con(a, b)
-  assert(RopeInvariant(a))
-
-proc app(a: var PRope, b: string) = 
-  a = con(a, b)
-  assert(RopeInvariant(a))
-
-proc prepend(a: var PRope, b: PRope) = 
-  a = con(b, a)
-  assert(RopeInvariant(a))
+proc toRope(i: BiggestInt): PRope = result = toRope($i)
+proc toRopeF(r: BiggestFloat): PRope = result = toRope($r)
+proc app(a: var PRope, b: PRope) = a = con(a, b)
+proc app(a: var PRope, b: string) = a = con(a, b)
+proc prepend(a: var PRope, b: PRope) = a = con(b, a)
 
 proc WriteRopeRec(f: var tfile, c: PRope) = 
-  assert(RopeInvariant(c))
   if c == nil: return 
   if (c.data != nil): 
     write(f, c.data)
@@ -298,7 +282,7 @@ proc WriteRopeRec(f: var tfile, c: PRope) =
     writeRopeRec(f, c.right)
 
 proc newWriteRopeRec(f: var tfile, c: PRope) = 
-  var stack: TRopeSeq = @[c]
+  var stack = @[c]
   while len(stack) > 0: 
     var it = pop(stack)
     while it.data == nil: 
@@ -315,37 +299,6 @@ proc WriteRope(head: PRope, filename: string) =
     close(f)
   else: 
     rawMessage(errCannotOpenFile, filename)
-  
-proc recRopeToStr(result: var string, resultLen: var int, p: PRope) = 
-  if p == nil: 
-    return                    # do not add to result
-  if (p.data == nil): 
-    recRopeToStr(result, resultLen, p.left)
-    recRopeToStr(result, resultLen, p.right)
-  else: 
-    CopyMem(addr(result[resultLen + 0]), addr(p.data[0]), p.length)
-    Inc(resultLen, p.length)
-    assert(resultLen <= len(result))
-
-proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) = 
-  var stack: TRopeSeq = @[r]
-  while len(stack) > 0: 
-    var it = pop(stack)
-    while it.data == nil: 
-      add(stack, it.right)
-      it = it.left
-    assert(it.data != nil)
-    CopyMem(addr(result[resultLen + 0]), addr(it.data[0]), it.length)
-    Inc(resultLen, it.length)
-    assert(resultLen <= len(result))
-
-proc ropeToStr(p: PRope): string = 
-  if p == nil: 
-    result = ""
-  else: 
-    result = newString(p.length)
-    var resultLen = 0
-    newRecRopeToStr(result, resultLen, p)
 
 proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope = 
   var i, j, length, start, num: int
@@ -353,7 +306,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
   length = len(frmt)
   result = nil
   num = 0
-  while i <= length + 0 - 1: 
+  while i <= length - 1: 
     if frmt[i] == '$': 
       inc(i)                  # skip '$'
       case frmt[i]
@@ -379,7 +332,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
     start = i
-    while (i <= length + 0 - 1): 
+    while (i <= length - 1): 
       if (frmt[i] != '$'): inc(i)
       else: break 
     if i - 1 >= start: 
@@ -418,7 +371,7 @@ proc RopeEqualsFile(r: PRope, f: string): bool =
 proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 = 
   if r.data != nil: 
     result = startVal
-    for i in countup(0, len(r.data) + 0 - 1): 
+    for i in countup(0, len(r.data) - 1): 
       result = updateCrc32(r.data[i], result)
   else: 
     result = crcFromRopeAux(r.left, startVal)

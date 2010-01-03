@@ -44,6 +44,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSy
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode, 
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode
+
 type 
   TExprFlag = enum 
     efAllowType, efLValue, efWantIterator

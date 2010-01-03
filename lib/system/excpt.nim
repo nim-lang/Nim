@@ -9,8 +9,7 @@
 
 
 # Exception handling code. This is difficult because it has
-# to work if there is no more memory. Thus we have to use
-# a static string. Do not use ``sprintf``, etc. as they are
+# to work if there is no more memory. Do not use ``sprintf``, etc. as they are
 # unsafe!
 
 when not defined(windows) or not defined(guiapp):
