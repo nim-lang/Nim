@@ -46,8 +46,8 @@ Installation on Windows
 
 Install Nimrod by downloading and running the ``nimrod_$version.exe`` file.
 As default, the ``GCC`` compiler is used that is bundled with this installer.
-**You can change the configuration file** ``config/nimrod.cfg`` **to use
-another C compiler or change the path to GCC.**
+You can change the configuration file ``config/nimrod.cfg`` to use
+another C compiler or change the path to GCC.
 
 Currently, the following C compilers are supported under Windows:
 

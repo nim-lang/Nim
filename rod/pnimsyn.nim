@@ -177,19 +177,24 @@ proc parseSymbol(p: var TParser): PNode =
     of tkBracketLe: 
       var s = "["
       getTok(p)
-      if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-        s = s & "$.."
-        getTok(p)
-        eat(p, tkDotDot)
-        if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-          add(s, '$')
+      while true:
+        if p.tok.tokType == tkComma:
+          add(s, ",")
           getTok(p)
-      elif p.tok.tokType == tkDotDot: 
-        s = s & ".."
-        getTok(p)
-        if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
-          add(s, '$')
+        elif (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
+          add(s, "$..")
           getTok(p)
+          eat(p, tkDotDot)
+          if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
+            add(s, '$')
+            getTok(p)
+        elif p.tok.tokType == tkDotDot: 
+          add(s, "..")
+          getTok(p)
+          if (p.tok.tokType == tkOpr) and (p.tok.ident.s == "$"): 
+            add(s, '$')
+            getTok(p)
+        else: break
       eat(p, tkBracketRi)
       add(s, ']')
       if p.tok.tokType == tkEquals: 

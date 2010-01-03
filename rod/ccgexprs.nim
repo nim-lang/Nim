@@ -39,9 +39,6 @@ proc getStrLit(m: BModule, s: string): PRope =
        [result, makeCString(s), ToRope(len(s))])
 
 proc genLiteral(p: BProc, v: PNode, ty: PType): PRope = 
-  var 
-    f: biggestFloat
-    id: int
   if ty == nil: internalError(v.info, "genLiteral: ty is nil")
   case v.kind
   of nkCharLit..nkInt64Lit: 
@@ -69,7 +66,7 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
     result = toRope("0")
   of nkStrLit..nkTripleStrLit: 
     if skipTypes(ty, abstractVarRange).kind == tyString: 
-      id = NodeTableTestOrSet(p.module.dataCache, v, gid)
+      var id = NodeTableTestOrSet(p.module.dataCache, v, gid)
       if id == gid: 
         # string literal not found in the cache:
         useMagic(p.module, "NimStringDesc")
@@ -79,7 +76,7 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
     else: 
       result = makeCString(v.strVal)
   of nkFloatLit..nkFloat64Lit: 
-    f = v.floatVal
+    var f = v.floatVal
     if f != f: 
       result = toRope("NAN")
     elif f == 0.0: 

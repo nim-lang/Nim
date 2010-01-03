@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-##  The ``strtabs`` module implements an efficient hash table that is a mapping
-##  from strings to strings. Supports a case-sensitive, case-insensitive and
-##  style-insensitive mode. An efficient string substitution operator  ``%``
-##  for the string table is also provided.
+## The ``strtabs`` module implements an efficient hash table that is a mapping
+## from strings to strings. Supports a case-sensitive, case-insensitive and
+## style-insensitive mode. An efficient string substitution operator  ``%``
+## for the string table is also provided.
 
 import
   os, hashes, strutils

@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nimrod  
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,7 +15,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nimrod                          |
 |             Version $1|
-|             (c) 2009 Andreas Rumpf                              |
+|             (c) 2010 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -113,7 +113,9 @@ proc bootIteration(args: string): bool =
   # Nimrod does not produce an executable again if nothing changed. That's ok:
   result = sameFileContent("rod" / "nimrod".exe, nimrod1)
   safeRemove("bin" / "nimrod".exe)
-  copyFile("bin" / "nimrod".exe, "rod" / "nimrod".exe)
+  var dest = "bin" / "nimrod".exe
+  copyFile(dest, "rod" / "nimrod".exe)
+  inclFilePermissions(dest, {fpUserExec})
   safeRemove(nimrod1)
   if result: echo "executables are equal: SUCCESS!"
 

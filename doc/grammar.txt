@@ -24,7 +24,8 @@ indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
 symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
-               | '[' ']' | '=' | literal)+ '`'
+               | '[' (',' | ['$'] '..' ['$'])* ']'
+               | '=' | literal)+ '`'
          | IDENT
          
 primaryPrefix ::= (prefixOperator | 'bind') optInd

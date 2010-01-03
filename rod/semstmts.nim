@@ -8,16 +8,20 @@
 #
 # this module does the semantic checking of statements
 
+proc semExprNoType(c: PContext, n: PNode): PNode =
+  result = semExpr(c, n)
+  if result.typ != nil and result.typ.kind != tyStmt:
+    liMessage(n.info, errDiscardValue)
+
 proc semWhen(c: PContext, n: PNode): PNode = 
-  var it, e: PNode
   result = nil
   for i in countup(0, sonsLen(n) - 1): 
-    it = n.sons[i]
+    var it = n.sons[i]
     if it == nil: illFormedAst(n)
     case it.kind
     of nkElifBranch: 
       checkSonsLen(it, 2)
-      e = semConstExpr(c, it.sons[0])
+      var e = semConstExpr(c, it.sons[0])
       checkBool(e)
       if (e.kind != nkIntLit): InternalError(n.info, "semWhen")
       if (e.intVal != 0) and (result == nil): 
@@ -91,35 +95,27 @@ proc semBlock(c: PContext, n: PNode): PNode =
   Dec(c.p.nestedBlockCounter)
 
 proc semAsm(con: PContext, n: PNode): PNode = 
-  var 
-    str, sub: string
-    a, b, c: int
-    e: PSym
-    marker: char
   result = n
   checkSonsLen(n, 2)
-  marker = pragmaAsm(con, n.sons[0])
-  if marker == '\0': 
-    marker = '`'              # default marker
+  var marker = pragmaAsm(con, n.sons[0])
+  if marker == '\0': marker = '`' # default marker
   case n.sons[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit: 
     result = copyNode(n)
-    str = n.sons[1].strVal
-    if str == "": 
-      liMessage(n.info, errEmptyAsm) 
+    var str = n.sons[1].strVal
+    if str == "": liMessage(n.info, errEmptyAsm) 
     # now parse the string literal and substitute symbols:
-    a = 0
+    var a = 0
     while true: 
-      b = strutils.find(str, marker, a)
-      if b < 0: sub = copy(str, a)
-      else: sub = copy(str, a, b - 1)
+      var b = strutils.find(str, marker, a)
+      var sub = if b < 0: copy(str, a) else: copy(str, a, b - 1)
       if sub != "": addSon(result, newStrNode(nkStrLit, sub))
       if b < 0: break 
-      c = strutils.find(str, marker, b + 1)
+      var c = strutils.find(str, marker, b + 1)
       if c < 0: sub = copy(str, b + 1)
       else: sub = copy(str, b + 1, c - 1)
       if sub != "": 
-        e = SymtabGet(con.tab, getIdent(sub))
+        var e = SymtabGet(con.tab, getIdent(sub))
         if e != nil: 
           if e.kind == skStub: loadStub(e)
           addSon(result, newSymNode(e))
@@ -177,66 +173,61 @@ proc semCase(c: PContext, n: PNode): PNode =
     liMessage(n.info, errNotAllCasesCovered)
   closeScope(c.tab)
 
+proc propertyWriteAccess(c: PContext, n, a: PNode): PNode = 
+  var id = considerAcc(a[1])
+  result = newNodeI(nkCall, n.info)
+  addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
+  # a[0] is already checked for semantics, that does ``builtinFieldAccess``
+  # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
+  # nodes!
+  addSon(result, a[0])
+  addSon(result, semExpr(c, n[1]))
+  result = semDirectCallAnalyseEffects(c, result, {})
+  if result != nil:
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+  else:
+    liMessage(n.Info, errUndeclaredFieldX, id.s)
+
 proc semAsgn(c: PContext, n: PNode): PNode = 
-  var 
-    le: PType
-    a: PNode
-    id: PIdent
   checkSonsLen(n, 2)
-  a = n.sons[0]
+  var a = n.sons[0]
   case a.kind
   of nkDotExpr: 
     # r.f = x
     # --> `f=` (r, x)
-    checkSonsLen(a, 2)
-    id = considerAcc(a.sons[1])
-    result = newNodeI(nkCall, n.info)
-    addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
-    addSon(result, semExpr(c, a.sons[0]))
-    addSon(result, semExpr(c, n.sons[1]))
-    result = semDirectCallAnalyseEffects(c, result, {})
-    if result != nil: 
-      fixAbstractType(c, result)
-      analyseIfAddressTakenInCall(c, result)
-      return 
+    a = builtinFieldAccess(c, a, {efLValue})
+    if a == nil: 
+      return propertyWriteAccess(c, n, n[0])
+    when false:
+      checkSonsLen(a, 2)
+      var id = considerAcc(a.sons[1])
+      result = newNodeI(nkCall, n.info)
+      addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
+      addSon(result, semExpr(c, a.sons[0]))
+      addSon(result, semExpr(c, n.sons[1]))
+      result = semDirectCallAnalyseEffects(c, result, {})
+      if result != nil: 
+        fixAbstractType(c, result)
+        analyseIfAddressTakenInCall(c, result)
+        return 
   of nkBracketExpr: 
     # a[i..j] = x
     # --> `[..]=`(a, i, j, x)
-    result = newNodeI(nkCall, n.info)
-    checkSonsLen(a, 2)
-    if a.sons[1].kind == nkRange: 
-      checkSonsLen(a.sons[1], 2)
-      addSon(result, 
-             newIdentNode(getIdent(whichSliceOpr(a.sons[1]) & '='), n.info))
-      addSon(result, semExpr(c, a.sons[0]))
-      addSonIfNotNil(result, semExpr(c, a.sons[1].sons[0]))
-      addSonIfNotNil(result, semExpr(c, a.sons[1].sons[1]))
-      addSon(result, semExpr(c, n.sons[1]))
-      result = semDirectCallAnalyseEffects(c, result, {})
-      if result != nil: 
-        fixAbstractType(c, result)
-        analyseIfAddressTakenInCall(c, result)
-        return 
-    else: 
-      addSon(result, newIdentNode(getIdent("[]="), n.info))
-      addSon(result, semExpr(c, a.sons[0]))
-      addSon(result, semExpr(c, a.sons[1]))
-      addSon(result, semExpr(c, n.sons[1]))
-      result = semDirectCallAnalyseEffects(c, result, {})
-      if result != nil: 
-        fixAbstractType(c, result)
-        analyseIfAddressTakenInCall(c, result)
-        return 
+    a = semSubscript(c, a, {efLValue})
+    if a == nil:
+      result = buildOverloadedSubscripts(n.sons[0], inAsgn=true)
+      add(result, n[1])
+      return semExprNoType(c, result)
   else: 
-    nil
-  n.sons[0] = semExprWithType(c, n.sons[0], {efLValue})
+    a = semExprWithType(c, a, {efLValue})
+  #n.sons[0] = semExprWithType(c, n.sons[0], {efLValue})
+  n.sons[0] = a
   n.sons[1] = semExprWithType(c, n.sons[1])
-  le = n.sons[0].typ
-  if (skipTypes(le, {tyGenericInst}).kind != tyVar) and
-      (IsAssignable(n.sons[0]) == arNone): 
+  var le = a.typ
+  if skipTypes(le, {tyGenericInst}).kind != tyVar and IsAssignable(a) == arNone: 
     # Direct assignment to a discriminant is allowed!
-    liMessage(n.sons[0].info, errXCannotBeAssignedTo, 
-              renderTree(n.sons[0], {renderNoComments}))
+    liMessage(a.info, errXCannotBeAssignedTo, renderTree(a, {renderNoComments}))
   else: 
     n.sons[1] = fitNode(c, le, n.sons[1])
     fixAbstractType(c, n)
@@ -255,8 +246,9 @@ proc SemReturn(c: PContext, n: PNode): PNode =
     restype = c.p.owner.typ.sons[0]
     if (restype != nil): 
       a = newNodeI(nkAsgn, n.sons[0].info)
-      n.sons[0] = fitNode(c, restype, n.sons[0]) # optimize away ``return result``, because it would be transformed
-                                                 # to ``result = result; return``:
+      n.sons[0] = fitNode(c, restype, n.sons[0])
+      # optimize away ``return result``, because it would be transformed
+      # to ``result = result; return``:
       if (n.sons[0].kind == nkSym) and (sfResult in n.sons[0].sym.flags): 
         n.sons[0] = nil
       else: 
@@ -499,12 +491,11 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
   var 
     s: PSym
     t, body: PType
-    a: PNode
   result = n 
   # process the symbols on the left side for the whole type section, before
   # we even look at the type definitions on the right
   for i in countup(0, sonsLen(n) - 1): 
-    a = n.sons[i]
+    var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkTypeDef): IllFormedAst(a)
     checkSonsLen(a, 3)
@@ -522,7 +513,7 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
     addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)
   for i in countup(0, sonsLen(n) - 1): 
-    a = n.sons[i]
+    var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkTypeDef): IllFormedAst(a)
     checkSonsLen(a, 3)
@@ -558,7 +549,7 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
       s.ast = a
       popOwner()
   for i in countup(0, sonsLen(n) - 1): 
-    a = n.sons[i]
+    var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if (a.sons[0].kind != nkSym): IllFormedAst(a)
     s = a.sons[0].sym         
@@ -778,10 +769,8 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     addSon(result, semStmt(c, gIncludeFile(f)))
     IntSetExcl(c.includedFiles, fileIndex)
 
-proc semCommand(c: PContext, n: PNode): PNode = 
-  result = semExpr(c, n)
-  if result.typ != nil and result.typ.kind != tyStmt:
-    liMessage(n.info, errDiscardValue)
+proc semCommand(c: PContext, n: PNode): PNode =
+  result = semExprNoType(c, n)
   
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:

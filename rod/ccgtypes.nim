@@ -344,8 +344,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   if typ.kind == tyObject: 
     useMagic(m, "TNimType")
     if typ.sons[0] == nil: 
-      if (typ.sym != nil) and (sfPure in typ.sym.flags) or
-          (tfFinal in typ.flags): 
+      if typ.sym != nil and sfPure in typ.sym.flags or tfFinal in typ.flags: 
         result = ropef("struct $1 {$n", [name])
       else: 
         result = ropef("struct $1 {$nTNimType* m_type;$n", [name])

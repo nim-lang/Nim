@@ -693,15 +693,16 @@ Example:
   var
     x: TIntArray
     y: TIntSeq
-  x = [1, 2, 3, 4, 5, 6]  # [] this is the array constructor
+  x = [1, 2, 3, 4, 5, 6]  # [] is the array constructor
   y = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
 
 The lower bound of an array or sequence may be received by the built-in proc
 ``low()``, the higher bound by ``high()``. The length may be
 received by ``len()``. ``low()`` for a sequence or an open array always returns
 0, as this is the first valid index.
-One can append elements to a sequence with the ``add()`` proc or the ``&`` operator,
-and remove (and get) the last element of a sequence with the ``pop()`` proc.
+One can append elements to a sequence with the ``add()`` proc or the ``&``
+operator, and remove (and get) the last element of a sequence with the
+``pop()`` proc.
 
 The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
@@ -935,8 +936,8 @@ Example:
   forEach(printItem)  # this will NOT work because calling conventions differ
 
 A subtle issue with procedural types is that the calling convention of the
-procedure influences the type compatibility: procedural types are only compatible
-if they have the same calling convention.
+procedure influences the type compatibility: procedural types are only
+compatible if they have the same calling convention.
 
 Nimrod supports these `calling conventions`:idx:, which are all incompatible to
 each other:
@@ -1304,7 +1305,7 @@ variables of the same type:
     a: int = 0
     x, y, z: int
 
-If an initializer is given the type can be omitted: the variable is of the
+If an initializer is given the type can be omitted: the variable is then of the
 same type as the initializing expression. Variables are always initialized
 with a default value if there is no initializing expression. The default
 value depends on the type and is always a zero in binary.
@@ -1776,8 +1777,8 @@ Calling a procedure can be done in many different ways:
   callme 0, 1, "abc", '\t'
 
 
-A procedure cannot modify its parameters (unless the parameters have the
-type `var`).
+A procedure cannot modify its parameters (unless the parameters have the type
+`var`).
 
 `Operators`:idx: are procedures with a special operator symbol as identifier:
 
@@ -1809,7 +1810,8 @@ Var parameters
 The type of a parameter may be prefixed with the ``var`` keyword:
 
 .. code-block:: nimrod
-  proc divmod(a, b: int, res, remainder: var int) =
+  proc divmod(a, b: int,
+              res, remainder: var int) =
     res = a div b
     remainder = a mod b
 
@@ -1827,7 +1829,8 @@ an l-value. Var parameters are implemented as hidden pointers. The
 above example is equivalent to:
 
 .. code-block:: nimrod
-  proc divmod(a, b: int, res, remainder: ptr int) =
+  proc divmod(a, b: int,
+              res, remainder: ptr int) =
     res^ = a div b
     remainder^ = a mod b
 
@@ -1854,6 +1857,15 @@ One can use `tuple unpacking`:idx: to access the tuple's fields:
   var (x, y) = divmod(8, 5) # tuple unpacking
   assert x == 1
   assert y == 3
+
+
+Overloading of the subscript operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
+Overloading support is only possible if the first parameter has no type that
+already supports the built-in ``[]`` notation. Currently the compiler currently
+does not check this. XXX Multiple indexes
 
 
 Multi-methods
@@ -2313,11 +2325,12 @@ regular expressions:
 Modules
 -------
 Nimrod supports splitting a program into pieces by a `module`:idx: concept.
-Each module needs to be in its own file. Modules enable
-`information hiding`:idx: and `separate compilation`:idx:. A module may gain
-access to symbols of another module by the `import`:idx: statement.
-`Recursive module dependencies`:idx: are allowed, but slightly subtle. Only
-top-level symbols that are marked with an asterisk (``*``) are exported.
+Each module needs to be in its own file and has its own `namespace`:idx:.
+Modules enable `information hiding`:idx: and `separate compilation`:idx:.
+A module may gain access to symbols of another module by the `import`:idx:
+statement. `Recursive module dependencies`:idx: are allowed, but slightly
+subtle. Only top-level symbols that are marked with an asterisk (``*``) are
+exported.
 
 The algorithm for compiling modules is:
 
@@ -2413,6 +2426,7 @@ The Nimrod compiler emits different kinds of messages: `hint`:idx:,
 `warning`:idx:, and `error`:idx: messages. An *error* message is emitted if
 the compiler encounters any static error.
 
+
 Pragmas
 =======
 
@@ -2426,7 +2440,9 @@ Syntax::
 Pragmas are Nimrod's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
 processed on the fly during semantic checking. Pragmas are enclosed in the
-special ``{.`` and ``.}`` curly brackets.
+special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
+first implementation to play with a language feature before a nicer syntax
+to access the feature becomes available.
 
 
 noSideEffect pragma
@@ -2438,6 +2454,12 @@ arguments. If none of its parameters have the type ``var T``
 or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
+
+**Possible future**: ``func`` may become a keyword and syntactic sugar for a
+proc with no side effects:
+
+.. code-block:: nimrod
+  func `+` (x, y: int): int
 
 
 procvar pragma
@@ -2456,6 +2478,53 @@ as helpers for macros.
 noReturn pragma
 ---------------
 The `noreturn`:idx: pragma is used to mark a proc that it never returns. 
+
+
+Acyclic pragma
+--------------
+The `acyclic`:idx: pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage
+collector to not consider objects of this type as part of a cycle:
+
+.. code-block:: nimrod
+  type
+    PNode = ref TNode
+    TNode {.acyclic, final.} = object
+      left, right: PNode
+      data: string
+
+In the example a tree structure is declared with the ``TNode`` type. Note that
+the type definition is recursive and the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
+memory, but nothing worse happens.
+
+**Possible future**: The ``acyclic`` pragma may become a property of a
+``ref`` type:
+
+.. code-block:: nimrod
+  type
+    PNode = acyclic ref TNode
+    TNode = object
+      left, right: PNode
+      data: string
+
+
+Final pragma
+------------
+The `final`:idx: pragma can be used for an object type to specify that it
+cannot be inherited from.
+
+
+Pure pragma
+-----------
+The `pure`:idx: pragma serves two completely different purposes:
+1) To mark a procedure that Nimrod should not generate any exit statements like
+   ``return result;`` in the generated code. This is useful for procs that only
+   consist of an assembler statement.
+2) To mark an object type that Nimrod should omit its type field. This is
+   necessary for compatibility with other compiled languages.
 
 
 error pragma
@@ -2487,8 +2556,8 @@ compilation option pragmas
 The listed pragmas here can be used to override the code generation options
 for a section of code.
 
-The implementation currently provides the following possible options (later
-various others may be added).
+The implementation currently provides the following possible options (various
+others may be added later).
 
 ===============  ===============  ============================================
 pragma           allowed values   description
@@ -2532,3 +2601,142 @@ but are used to override the settings temporarily. Example:
   # speed critical
   # ... some code ...
   {.pop.} # restore old settings
+
+
+Register pragma
+---------------
+The `register`:idx: pragma is for variables only. It declares the variable as
+``register``, giving the compiler a hint that the variable should be placed
+in a hardware register for faster access. C compilers usually ignore this
+though and for good reasons: Often they do a better job without it anyway.
+
+In highly specific cases (a dispatch loop of an bytecode interpreter for
+example) it may provide benefits, though.
+
+
+DeadCodeElim pragma
+-------------------
+The `deadCodeElim`:idx: pragma only applies to whole modules: It tells the
+compiler to activate (or deactivate) dead code elimination for the module the
+pragma appers in.
+
+The ``--deadCodeElim:on`` command line switch has the same effect as marking
+every module with ``{.deadCodeElim:on}``. However, for some modules such as
+the GTK wrapper it makes sense to *always* turn on dead code elimination -
+no matter if it is globally active or not.
+
+Example:
+
+.. code-block:: nimrod
+  {.deadCodeElim: on.}
+
+
+Disabling certain messages
+--------------------------
+Nimrod generates some warnings and hints ("line too long") that may annoy the
+user. A mechanism for disabling certain messages is provided: Each hint
+and warning message contains a symbol in brackets. This is the message's
+identifier that can be used to enable or disable it:
+
+.. code-block:: Nimrod
+  {.warning[LineTooLong]: off.} # turn off warning about too long lines
+
+This is often better than disabling all warnings at once.
+
+
+Foreign function interface
+==========================
+
+Nimrod's `FFI`:idx: (foreign function interface) is extensive and only the
+parts that scale to other future backends (like the LLVM/EcmaScript backends)
+are documented here.
+
+
+Importc pragma
+--------------
+The `importc`:idx: pragma provides a means to import a proc or a variable
+from C. The optional argument is a string containing the C identifier. If
+the argument is missing, the C name is the Nimrod identifier *exactly as
+spelled*:
+
+.. code-block::
+  proc printf(formatstr: cstring) {.importc: "printf", varargs.}
+
+Note that this pragma is somewhat of a misnomer: Other backends will provide
+the same feature under the same name.
+
+
+Exportc pragma
+--------------
+The `exportc`:idx: pragma provides a means to export a type, a variable, or a
+procedure to C. The optional argument is a string containing the C identifier.
+If the argument is missing, the C name is the Nimrod
+identifier *exactly as spelled*:
+
+.. code-block:: Nimrod
+  proc callme(formatstr: cstring) {.exportc: "callMe", varargs.}
+
+Note that this pragma is somewhat of a misnomer: Other backends will provide
+the same feature under the same name.
+
+
+Varargs pragma
+--------------
+The `varargs`:idx: pragma can be applied to procedures only (and procedure 
+types). It tells Nimrod that the proc can take a variable number of parameters 
+after the last specified parameter. Nimrod string values will be converted to C
+strings automatically:
+
+.. code-block:: Nimrod
+  proc printf(formatstr: cstring) {.nodecl, varargs.}
+
+  printf("hallo %s", "world") # "world" will be passed as C string
+
+
+Dynlib pragma
+-------------
+With the `dynlib`:idx: pragma a procedure can be imported from
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
+non-optional argument has to be the name of the dynamic library:
+
+.. code-block:: Nimrod
+  proc gtk_image_new(): PGtkWidget {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
+
+In general, importing a dynamic library does not require any special linker
+options or linking with import libraries. This also implies that no *devel*
+packages need to be installed.
+
+The ``dynlib`` import mechanism supports a versioning scheme: 
+
+.. code-block:: nimrod 
+  proc Tcl_Eval(interp: pTcl_Interp, script: cstring): int {.cdecl, 
+    importc, dynlib: "libtcl(|8.5|8.4|8.3).so.(1|0)".}
+
+At runtime the dynamic library is searched for (in this order)::
+  
+  libtcl.so.1
+  libtcl.so.0
+  libtcl8.5.so.1  
+  libtcl8.5.so.0
+  libtcl8.4.so.1
+  libtcl8.4.so.0
+  libtcl8.3.so.1
+  libtcl8.3.so.0
+
+The ``dynlib`` pragma supports not only constant strings as argument but also
+string expressions in general:
+
+.. code-block:: nimrod
+  import os
+
+  proc getDllName: string = 
+    result = "mylib.dll"
+    if ExistsFile(result): return
+    result = "mylib2.dll"
+    if ExistsFile(result): return
+    quit("could not load dynamic library")
+  
+  proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
+
+**Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
+strings, because they are precompiled.

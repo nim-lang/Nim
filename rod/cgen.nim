@@ -520,7 +520,7 @@ proc genProcAux(m: BModule, prc: PSym) =
            [toRope(prc.loc.a)])
     app(generatedProc, returnStmt)
     app(generatedProc, '}' & tnl)
-  app(m.s[cfsProcs], generatedProc) #if prc.kind = skMethod then addMethodToCompile(gNimDat, prc);
+  app(m.s[cfsProcs], generatedProc)
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
   useHeader(m, sym)
