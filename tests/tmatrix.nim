@@ -21,18 +21,18 @@ proc `[,]`*(m: TMatrix, x, y: int): float {.inline.} =
 proc `[,]=`*(m: var TMatrix, x, y: int, val: float) {.inline.} =
   m.data[x|y] = val
   
-proc `[$..$, $..$]`*(m: TMatrix, a, b, c, d: int): TMatrix =
+proc `[$ .. $, $ .. $]`*(m: TMatrix, a, b, c, d: int): TMatrix =
   result = createMatrix(b-a+1, d-c+1)
   for x in a..b:
     for y in c..d:
       result[x-a, y-c] = m[x, y]
 
-proc `[$..$, $..$]=`*(m: var TMatrix, a, b, c, d: int, val: float) =
+proc `[$ .. $, $ .. $]=`*(m: var TMatrix, a, b, c, d: int, val: float) =
   for x in a..b:
     for y in c..d:
       m[x, y] = val
 
-proc `[$..$, $..$]=`*(m: var TMatrix, a, b, c, d: int, val: TMatrix) =
+proc `[$ .. $, $ .. $]=`*(m: var TMatrix, a, b, c, d: int, val: TMatrix) =
   assert val.width == b-a+1
   assert val.height == d-c+1
   for x in a..b:
@@ -57,4 +57,4 @@ for i in 0..w-1:
   m[i, i] = 1.0
 
 for i in 0..w-1:
-  stdout.write(m[i,i]) #OUT 1.01.01.0
+  stdout.write(m[i,i]) #OUT 111
