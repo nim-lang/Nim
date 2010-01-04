@@ -134,14 +134,6 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
 
 # --------------- Server Setup -----------------------------------------------
 
-proc startup(): tuple[socket: TSocket, port: TPort] =
-  var s = socket(AF_INET)
-  if s == InvalidSocket: OSError()
-  bindAddr(s)
-  listen(s)
-  result.socket = s
-  result.port = getSockName(s)
-
 proc acceptRequest(client: TSocket) =
   var cgi = false
   var query = ""
@@ -181,16 +173,80 @@ proc acceptRequest(client: TSocket) =
     else:
       executeCgi(client, path, query, meth)
 
-proc main =  
-  var (server, port) = startup()
-  echo("httpserver running on port ", int16(port))
+type
+  TServer* = object
+    socket: TSocket
+    port: TPort
+    client*: TSocket      ## the socket to write the file data to
+    path*, query*: string ## path and query the client requested
+    
+proc open*(s: var TServer, port = TPort(0)) = 
+  ## creates a new server at port `port`. If ``port == 0`` a free port is
+  ## aquired that can be accessed later by the ``port`` proc.
+  s.socket = socket(AF_INET)
+  if s.socket == InvalidSocket: OSError()
+  bindAddr(s.socket)
+  listen(s.socket)
+  s.port = getSockName(s.socket)
+  s.client = InvalidSocket
+  s.path = ""
+  s.query = ""
   
-  while true:
-    var client = accept(server)
-    if client == InvalidSocket: OSError()
-    acceptRequest(client)
-    close(client)
-  close(server)
+proc port*(s: var TServer): TPort = 
+  ## get the port number the server has aquired.
+  result = s.port
+  
+proc next*(s: var TServer) = 
+  ## proceed to the first/next request.
+  s.client = accept(s.socket)
+  headers(s.client, "")
+  var buf = ""
+  discard recvLine(s.client, buf)
+  var data = buf.split()
+  if cmpIgnoreCase(data[0], "GET") == 0:
+    var q = find(data[1], '?')
+    if q >= 0:
+      s.query = data[1].copy(q+1)
+      s.path = data[1].copy(0, q-1)
+    else:
+      s.query = ""
+      s.path = data[1]
+  else:
+    unimplemented(s.client)
+
+proc close*(s: TServer) =
+  close(s.socket)
+
+proc run*(handleRequest: proc (client: TSocket, path, query: string): bool, 
+          port = TPort(0)) =
+  ## encapsulates the server object and main loop
+  var s: TServer
+  open(s, port)
+  echo("httpserver running on port ", s.port)
+  while true: 
+    next(s)
+    if handleRequest(s.client, s.path, s.query): break
+    close(s.client)
+  close(s.socket)
+
+when false:
+  proc main =  
+    var (server, port) = startup()
+    echo("httpserver running on port ", int16(port))
+    
+    while true:
+      var client = accept(server)
+      if client == InvalidSocket: OSError()
+      acceptRequest(client)
+      close(client)
+    close(server)
 
 when isMainModule:
-  main()
+  var counter = 0
+  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
+    inc(counter)
+    client.send("Hallo, Andreas for the $#th time." % $counter & wwwNL)
+    return false # do not stop processing
+  
+  run(handleRequest)
+

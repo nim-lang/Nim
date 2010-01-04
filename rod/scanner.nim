@@ -408,7 +408,6 @@ proc handleDecChars(L: var TLexer, xi: var int) =
     inc(L.bufpos)
 
 proc getEscapedChar(L: var TLexer, tok: var TToken) = 
-  var xi: int
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N': 
@@ -447,14 +446,14 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     Inc(L.bufpos)
   of 'x', 'X': 
     inc(L.bufpos)
-    xi = 0
+    var xi = 0
     handleHexChar(L, xi)
     handleHexChar(L, xi)
     add(tok.literal, Chr(xi))
   of '0'..'9': 
     if matchTwoChars(L, '0', {'0'..'9'}): 
       lexMessage(L, warnOctalEscape)
-    xi = 0
+    var xi = 0
     handleDecChars(L, xi)
     if (xi <= 255): add(tok.literal, Chr(xi))
     else: lexMessage(L, errInvalidCharacterConstant)
@@ -505,8 +504,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
       else: 
         add(tok.literal, buf[pos])
         Inc(pos)
-    L.bufpos = pos +
-        3                     # skip the three """
+    L.bufpos = pos + 3 # skip the three """
   else: 
     # ordinary string literal
     if rawMode: tok.tokType = tkRStrLit

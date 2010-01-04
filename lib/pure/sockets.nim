@@ -66,6 +66,8 @@ const
 proc `==`*(a, b: TSocket): bool {.borrow.}
 proc `==`*(a, b: TPort): bool {.borrow.}
 
+proc `$`* (p: TPort): string = result = $ze(int16(p))
+
 proc ToInt(domain: TDomain): cint =
   case domain
   of AF_UNIX:        result = posix.AF_UNIX

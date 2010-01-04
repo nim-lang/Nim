@@ -6,5 +6,5 @@ proc main: int =
   finally: 
     echo "came here"
     
-echo main()
+discard main() #OUT came here
 
