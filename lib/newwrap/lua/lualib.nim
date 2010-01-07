@@ -20,7 +20,7 @@
 #
 
 import 
-  
+  lua
 
 const 
   COLIBNAME* = "coroutine"
@@ -45,30 +45,22 @@ proc open_debug*(L: PState): cint{.cdecl, dynlib: LIB_NAME,
                                    importc: "luaopen_debug".}
 proc open_package*(L: PState): cint{.cdecl, dynlib: LIB_NAME, 
                                      importc: "luaopen_package".}
-proc L_openlibs*(L: PState){.cdecl, dynlib: LIB_NAME, importc: "luaL_openlibs".}
-  # compatibility code 
-proc baselibopen*(L: PState): Bool
-proc tablibopen*(L: PState): Bool
-proc iolibopen*(L: PState): Bool
-proc strlibopen*(L: PState): Bool
-proc mathlibopen*(L: PState): Bool
-proc dblibopen*(L: PState): Bool
-# implementation
+proc openlibs*(L: PState){.cdecl, dynlib: LIB_NAME, importc: "luaL_openlibs".}
 
-proc baselibopen(L: PState): Bool = 
+proc baselibopen*(L: PState): Bool = 
   Result = open_base(L) != 0'i32
 
-proc tablibopen(L: PState): Bool = 
+proc tablibopen*(L: PState): Bool = 
   Result = open_table(L) != 0'i32
 
-proc iolibopen(L: PState): Bool = 
+proc iolibopen*(L: PState): Bool = 
   Result = open_io(L) != 0'i32
 
-proc strlibopen(L: PState): Bool = 
+proc strlibopen*(L: PState): Bool = 
   Result = open_string(L) != 0'i32
 
-proc mathlibopen(L: PState): Bool = 
+proc mathlibopen*(L: PState): Bool = 
   Result = open_math(L) != 0'i32
 
-proc dblibopen(L: PState): Bool = 
+proc dblibopen*(L: PState): Bool = 
   Result = open_debug(L) != 0'i32

@@ -18,7 +18,7 @@
 #
 
 import 
-  
+  sdl
 
 when defined(windows): 
   const 

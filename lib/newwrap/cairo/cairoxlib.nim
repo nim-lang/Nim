@@ -5,7 +5,7 @@
 #
 
 import 
-  , x, xlib, xrender
+  cairo, x, xlib, xrender
 
 proc xlib_surface_create*(dpy: PDisplay, drawable: TDrawable, visual: PVisual, 
                           width, height: int32): PSurface{.cdecl, 

@@ -462,7 +462,7 @@ proc role_register*(name: cstring): TRole{.cdecl, dynlib: lib,
 proc object_get_type*(): GType{.cdecl, dynlib: lib, 
                                 importc: "atk_object_get_type".}
 proc TYPE_OBJECT*(): GType
-proc OBJECT*(obj: pointer): PObject
+proc `OBJECT`*(obj: pointer): PObject
 proc OBJECT_CLASS*(klass: pointer): PObjectClass
 proc IS_OBJECT*(obj: pointer): bool
 proc IS_OBJECT_CLASS*(klass: pointer): bool
@@ -983,7 +983,7 @@ proc value_set_current_value*(obj: PValue, value: PGValue): gboolean{.cdecl,
 proc TYPE_OBJECT*(): GType = 
   result = object_get_type()
 
-proc OBJECT*(obj: pointer): PObject = 
+proc `OBJECT`*(obj: pointer): PObject = 
   result = cast[PObject](G_TYPE_CHECK_INSTANCE_CAST(obj, TYPE_OBJECT()))
 
 proc OBJECT_CLASS*(klass: pointer): PObjectClass = 

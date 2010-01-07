@@ -1,6 +1,6 @@
 {.deadCodeElim: on.}
 import 
-  glib2, 2pixbuf, pango
+  glib2, gdk2pixbuf, pango
 
 when defined(win32): 
   const 
@@ -56,8 +56,9 @@ type
 
   PFunction* = ptr TFunction
   TFunction* = enum 
-    COPY, INVERT, XOR, CLEAR, AND, AND_REVERSE, AND_INVERT, NOOP, OR, EQUIV, 
-    OR_REVERSE, COPY_INVERT, OR_INVERT, NAND, NOR, SET
+    funcCOPY, funcINVERT, funcXOR, funcCLEAR, funcAND, 
+    funcAND_REVERSE, funcAND_INVERT, funcNOOP, funcOR, funcEQUIV, 
+    funcOR_REVERSE, funcCOPY_INVERT, funcOR_INVERT, funcNAND, funcNOR, funcSET
   PCapStyle* = ptr TCapStyle
   TCapStyle* = enum 
     CAP_NOT_LAST, CAP_BUTT, CAP_ROUND, CAP_PROJECTING
@@ -109,7 +110,7 @@ type
   PImage* = ptr TImage
   PDevice* = ptr TDevice
   PTimeCoord* = ptr TTimeCoord
-  PPGdkTimeCoord* = ptr PTimeCoord
+  PPTimeCoord* = ptr PTimeCoord
   PRgbDither* = ptr TRgbDither
   TRgbDither* = enum 
     RGB_DITHER_NONE, RGB_DITHER_NORMAL, RGB_DITHER_MAX
@@ -125,7 +126,7 @@ type
     y*: gint
 
   PPoint* = ptr TPoint
-  PPGdkPoint* = ptr PPoint
+  PPPoint* = ptr PPoint
   PSpan* = ptr TSpan
   PWChar* = ptr TWChar
   TWChar* = guint32
@@ -247,8 +248,8 @@ type
                           nsegs: gint){.cdecl.}
     draw_lines*: proc (drawable: PDrawable, gc: PGC, points: PPoint, 
                        npoints: gint){.cdecl.}
-    draw_glyphs*: proc (drawable: PDrawable, gc: PGC, font: PPangoFont, x: gint, 
-                        y: gint, glyphs: PPangoGlyphString){.cdecl.}
+    draw_glyphs*: proc (drawable: PDrawable, gc: PGC, font: PFont, x: gint, 
+                        y: gint, glyphs: PGlyphString){.cdecl.}
     draw_image*: proc (drawable: PDrawable, gc: PGC, image: PImage, xsrc: gint, 
                        ysrc: gint, xdest: gint, ydest: gint, width: gint, 
                        height: gint){.cdecl.}
@@ -509,25 +510,25 @@ type
 
   TEvent*{.final, pure.} = object 
     data*: array[0..255, char] # union of
-                               # `type`: TGdkEventType
-                               #  any: TGdkEventAny
-                               #  expose: TGdkEventExpose
-                               #  no_expose: TGdkEventNoExpose
-                               #  visibility: TGdkEventVisibility
-                               #  motion: TGdkEventMotion
-                               #  button: TGdkEventButton
-                               #  scroll: TGdkEventScroll
-                               #  key: TGdkEventKey
-                               #  crossing: TGdkEventCrossing
-                               #  focus_change: TGdkEventFocus
-                               #  configure: TGdkEventConfigure
-                               #  `property`: TGdkEventProperty
-                               #  selection: TGdkEventSelection
-                               #  proximity: TGdkEventProximity
-                               #  client: TGdkEventClient
-                               #  dnd: TGdkEventDND
-                               #  window_state: TGdkEventWindowState
-                               #  setting: TGdkEventSetting
+                               # `type`: TEventType
+                               #  any: TEventAny
+                               #  expose: TEventExpose
+                               #  no_expose: TEventNoExpose
+                               #  visibility: TEventVisibility
+                               #  motion: TEventMotion
+                               #  button: TEventButton
+                               #  scroll: TEventScroll
+                               #  key: TEventKey
+                               #  crossing: TEventCrossing
+                               #  focus_change: TEventFocus
+                               #  configure: TEventConfigure
+                               #  `property`: TEventProperty
+                               #  selection: TEventSelection
+                               #  proximity: TEventProximity
+                               #  client: TEventClient
+                               #  dnd: TEventDND
+                               #  window_state: TEventWindowState
+                               #  setting: TEventSetting
   
   PGCClass* = ptr TGCClass
   TGCClass* = object of TGObjectClass
@@ -606,14 +607,14 @@ type
   TKeymapClass* = object of TGObjectClass
     direction_changed*: proc (keymap: PKeymap){.cdecl.}
 
-  PPangoAttrStipple* = ptr TPangoAttrStipple
-  TPangoAttrStipple*{.final, pure.} = object 
-    attr*: TPangoAttribute
+  PAttrStipple* = ptr TAttrStipple
+  TAttrStipple*{.final, pure.} = object 
+    attr*: TAttribute
     stipple*: PBitmap
 
-  PPangoAttrEmbossed* = ptr TPangoAttrEmbossed
-  TPangoAttrEmbossed*{.final, pure.} = object 
-    attr*: TPangoAttribute
+  PAttrEmbossed* = ptr TAttrEmbossed
+  TAttrEmbossed*{.final, pure.} = object 
+    attr*: TAttribute
     embossed*: gboolean
 
   PPixmapObject* = ptr TPixmapObject
@@ -1004,21 +1005,21 @@ proc draw_segments*(drawable: PDrawable, gc: PGC, segs: PSegment, nsegs: gint){.
     cdecl, dynlib: lib, importc: "gdk_draw_segments".}
 proc draw_lines*(drawable: PDrawable, gc: PGC, points: PPoint, npoints: gint){.
     cdecl, dynlib: lib, importc: "gdk_draw_lines".}
-proc draw_glyphs*(drawable: PDrawable, gc: PGC, font: PPangoFont, x: gint, 
-                  y: gint, glyphs: PPangoGlyphString){.cdecl, dynlib: lib, 
+proc draw_glyphs*(drawable: PDrawable, gc: PGC, font: PFont, x: gint, 
+                  y: gint, glyphs: PGlyphString){.cdecl, dynlib: lib, 
     importc: "gdk_draw_glyphs".}
 proc draw_layout_line*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
-                       line: PPangoLayoutLine){.cdecl, dynlib: lib, 
+                       line: PLayoutLine){.cdecl, dynlib: lib, 
     importc: "gdk_draw_layout_line".}
 proc draw_layout*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
-                  layout: PPangoLayout){.cdecl, dynlib: lib, 
+                  layout: PLayout){.cdecl, dynlib: lib, 
     importc: "gdk_draw_layout".}
 proc draw_layout_line_with_colors*(drawable: PDrawable, gc: PGC, x: gint, 
-                                   y: gint, line: PPangoLayoutLine, 
+                                   y: gint, line: PLayoutLine, 
                                    foreground: PColor, background: PColor){.
     cdecl, dynlib: lib, importc: "gdk_draw_layout_line_with_colors".}
 proc draw_layout_with_colors*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
-                              layout: PPangoLayout, foreground: PColor, 
+                              layout: PLayout, foreground: PColor, 
                               background: PColor){.cdecl, dynlib: lib, 
     importc: "gdk_draw_layout_with_colors".}
 proc drawable_get_image*(drawable: PDrawable, x: gint, y: gint, width: gint, 
@@ -1035,8 +1036,8 @@ const
   EXPOSE* = 2
   MOTION_NOTIFY* = 3
   BUTTON_PRESS* = 4
-  2BUTTON_PRESS* = 5
-  3BUTTON_PRESS* = 6
+  BUTTON2_PRESS* = 5
+  BUTTON3_PRESS* = 6
   BUTTON_RELEASE* = 7
   KEY_PRESS* = 8
   KEY_RELEASE* = 9
@@ -1137,7 +1138,7 @@ proc font_load_for_display*(display: PDisplay, font_name: cstring): PFont{.
 proc fontset_load_for_display*(display: PDisplay, fontset_name: cstring): PFont{.
     cdecl, dynlib: lib, importc: "gdk_fontset_load_for_display".}
 proc font_from_description_for_display*(display: PDisplay, 
-                                        font_desc: PPangoFontDescription): PFont{.
+                                        font_desc: PFontDescription): PFont{.
     cdecl, dynlib: lib, importc: "gdk_font_from_description_for_display".}
 proc font_ref*(font: PFont): PFont{.cdecl, dynlib: lib, importc: "gdk_font_ref".}
 proc font_unref*(font: PFont){.cdecl, dynlib: lib, importc: "gdk_font_unref".}
@@ -1311,9 +1312,9 @@ proc device_get_state*(device: PDevice, window: PWindow, axes: Pgdouble,
                        mask: PModifierType){.cdecl, dynlib: lib, 
     importc: "gdk_device_get_state".}
 proc device_get_history*(device: PDevice, window: PWindow, start: guint32, 
-                         stop: guint32, s: var PPGdkTimeCoord, n_events: Pgint): gboolean{.
+                         stop: guint32, s: var PPTimeCoord, n_events: Pgint): gboolean{.
     cdecl, dynlib: lib, importc: "gdk_device_get_history".}
-proc device_free_history*(events: PPGdkTimeCoord, n_events: gint){.cdecl, 
+proc device_free_history*(events: PPTimeCoord, n_events: gint){.cdecl, 
     dynlib: lib, importc: "gdk_device_free_history".}
 proc device_get_axis*(device: PDevice, axes: Pgdouble, use: TAxisUse, 
                       value: Pgdouble): gboolean{.cdecl, dynlib: lib, 
@@ -1348,7 +1349,7 @@ proc keymap_get_entries_for_keycode*(keymap: PKeymap, hardware_keycode: guint,
                                      s: var PKeymapKey, sasdf: var Pguint, 
                                      n_entries: Pgint): gboolean{.cdecl, 
     dynlib: lib, importc: "gdk_keymap_get_entries_for_keycode".}
-proc keymap_get_direction*(keymap: PKeymap): TPangoDirection{.cdecl, 
+proc keymap_get_direction*(keymap: PKeymap): TDirection{.cdecl, 
     dynlib: lib, importc: "gdk_keymap_get_direction".}
 proc keyval_name*(keyval: guint): cstring{.cdecl, dynlib: lib, 
     importc: "gdk_keyval_name".}
@@ -2703,21 +2704,21 @@ const
   KEY_DongSign* = 0x000020AB
   KEY_EuroSign* = 0x000020AC
 
-proc pango_context_get_for_screen*(screen: PScreen): PPangoContext{.cdecl, 
+proc pango_context_get_for_screen*(screen: PScreen): PContext{.cdecl, 
     dynlib: lib, importc: "gdk_pango_context_get_for_screen".}
-proc pango_context_set_colormap*(context: PPangoContext, colormap: PColormap){.
+proc pango_context_set_colormap*(context: PContext, colormap: PColormap){.
     cdecl, dynlib: lib, importc: "gdk_pango_context_set_colormap".}
-proc pango_layout_line_get_clip_region*(line: PPangoLayoutLine, x_origin: gint, 
+proc pango_layout_line_get_clip_region*(line: PLayoutLine, x_origin: gint, 
                                         y_origin: gint, index_ranges: Pgint, 
                                         n_ranges: gint): PRegion{.cdecl, 
     dynlib: lib, importc: "gdk_pango_layout_line_get_clip_region".}
-proc pango_layout_get_clip_region*(layout: PPangoLayout, x_origin: gint, 
+proc pango_layout_get_clip_region*(layout: PLayout, x_origin: gint, 
                                    y_origin: gint, index_ranges: Pgint, 
                                    n_ranges: gint): PRegion{.cdecl, dynlib: lib, 
     importc: "gdk_pango_layout_get_clip_region".}
-proc pango_attr_stipple_new*(stipple: PBitmap): PPangoAttribute{.cdecl, 
+proc pango_attr_stipple_new*(stipple: PBitmap): PAttribute{.cdecl, 
     dynlib: lib, importc: "gdk_pango_attr_stipple_new".}
-proc pango_attr_embossed_new*(embossed: gboolean): PPangoAttribute{.cdecl, 
+proc pango_attr_embossed_new*(embossed: gboolean): PAttribute{.cdecl, 
     dynlib: lib, importc: "gdk_pango_attr_embossed_new".}
 proc pixbuf_render_threshold_alpha*(pixbuf: PPixbuf, bitmap: PBitmap, 
                                     src_x: int32, src_y: int32, dest_x: int32, 
@@ -3125,14 +3126,14 @@ proc IS_WINDOW_CLASS*(klass: Pointer): bool
 proc WINDOW_GET_CLASS*(obj: Pointer): PWindowObjectClass
 proc WINDOW_OBJECT*(anObject: Pointer): PWindowObject
 const 
-  bm_TGdkWindowObject_guffaw_gravity* = 0x0001'i16
-  bp_TGdkWindowObject_guffaw_gravity* = 0'i16
-  bm_TGdkWindowObject_input_only* = 0x0002'i16
-  bp_TGdkWindowObject_input_only* = 1'i16
-  bm_TGdkWindowObject_modal_hint* = 0x0004'i16
-  bp_TGdkWindowObject_modal_hint* = 2'i16
-  bm_TGdkWindowObject_destroyed* = 0x0018'i16
-  bp_TGdkWindowObject_destroyed* = 3'i16
+  bm_TWindowObject_guffaw_gravity* = 0x0001'i16
+  bp_TWindowObject_guffaw_gravity* = 0'i16
+  bm_TWindowObject_input_only* = 0x0002'i16
+  bp_TWindowObject_input_only* = 1'i16
+  bm_TWindowObject_modal_hint* = 0x0004'i16
+  bp_TWindowObject_modal_hint* = 2'i16
+  bm_TWindowObject_destroyed* = 0x0018'i16
+  bp_TWindowObject_destroyed* = 3'i16
 
 proc WindowObject_guffaw_gravity*(a: var TWindowObject): guint
 proc WindowObject_set_guffaw_gravity*(a: var TWindowObject, 
@@ -3802,41 +3803,41 @@ proc WINDOW_OBJECT*(anObject: Pointer): PWindowObject =
   result = cast[PWindowObject](WINDOW(anObject))
 
 proc WindowObject_guffaw_gravity*(a: var TWindowObject): guint = 
-  result = (a.flag0 and bm_TGdkWindowObject_guffaw_gravity) shr
-      bp_TGdkWindowObject_guffaw_gravity
+  result = (a.flag0 and bm_TWindowObject_guffaw_gravity) shr
+      bp_TWindowObject_guffaw_gravity
 
 proc WindowObject_set_guffaw_gravity*(a: var TWindowObject, 
                                       `guffaw_gravity`: guint) = 
   a.flag0 = a.flag0 or
-      (int16(`guffaw_gravity` shl bp_TGdkWindowObject_guffaw_gravity) and
-      bm_TGdkWindowObject_guffaw_gravity)
+      (int16(`guffaw_gravity` shl bp_TWindowObject_guffaw_gravity) and
+      bm_TWindowObject_guffaw_gravity)
 
 proc WindowObject_input_only*(a: var TWindowObject): guint = 
-  result = (a.flag0 and bm_TGdkWindowObject_input_only) shr
-      bp_TGdkWindowObject_input_only
+  result = (a.flag0 and bm_TWindowObject_input_only) shr
+      bp_TWindowObject_input_only
 
 proc WindowObject_set_input_only*(a: var TWindowObject, `input_only`: guint) = 
   a.flag0 = a.flag0 or
-      (int16(`input_only` shl bp_TGdkWindowObject_input_only) and
-      bm_TGdkWindowObject_input_only)
+      (int16(`input_only` shl bp_TWindowObject_input_only) and
+      bm_TWindowObject_input_only)
 
 proc WindowObject_modal_hint*(a: var TWindowObject): guint = 
-  result = (a.flag0 and bm_TGdkWindowObject_modal_hint) shr
-      bp_TGdkWindowObject_modal_hint
+  result = (a.flag0 and bm_TWindowObject_modal_hint) shr
+      bp_TWindowObject_modal_hint
 
 proc WindowObject_set_modal_hint*(a: var TWindowObject, `modal_hint`: guint) = 
   a.flag0 = a.flag0 or
-      (int16(`modal_hint` shl bp_TGdkWindowObject_modal_hint) and
-      bm_TGdkWindowObject_modal_hint)
+      (int16(`modal_hint` shl bp_TWindowObject_modal_hint) and
+      bm_TWindowObject_modal_hint)
 
 proc WindowObject_destroyed*(a: var TWindowObject): guint = 
-  result = (a.flag0 and bm_TGdkWindowObject_destroyed) shr
-      bp_TGdkWindowObject_destroyed
+  result = (a.flag0 and bm_TWindowObject_destroyed) shr
+      bp_TWindowObject_destroyed
 
 proc WindowObject_set_destroyed*(a: var TWindowObject, `destroyed`: guint) = 
   a.flag0 = a.flag0 or
-      (int16(`destroyed` shl bp_TGdkWindowObject_destroyed) and
-      bm_TGdkWindowObject_destroyed)
+      (int16(`destroyed` shl bp_TWindowObject_destroyed) and
+      bm_TWindowObject_destroyed)
 
 proc ROOT_PARENT*(): PWindow = 
   result = get_default_root_window()

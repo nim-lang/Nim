@@ -115,7 +115,7 @@ type
     SVG_VERSION_1_1, SVG_VERSION_1_2
   PSurface* = ptr TSurface
   PPCairoSurface* = ptr PSurface
-  P* = ptr T
+  PCairo* = ptr TCario
   PPattern* = ptr TPattern
   PFontOptions* = ptr TFontOptions
   PFontFace* = ptr TFontFace
@@ -135,7 +135,7 @@ type
   TDestroyFunc* = proc (data: Pointer){.cdecl.}
   TWriteFunc* = proc (closure: Pointer, data: PByte, len: int32): TStatus{.cdecl.}
   TReadFunc* = proc (closure: Pointer, data: PByte, len: int32): TStatus{.cdecl.}
-  T*{.final.} = object        #OPAQUE
+  TCario*{.final.} = object        #OPAQUE
   TSurface*{.final.} = object  #OPAQUE
   TPattern*{.final.} = object  #OPAQUE
   TScaledFont*{.final.} = object  #OPAQUE
@@ -198,130 +198,130 @@ proc version_string*(): cstring{.cdecl, importc: "cairo_version_string",
   #Helper function to retrieve decoded version
 proc version*(major, minor, micro: var int32)
   #* Functions for manipulating state objects
-proc create*(target: PSurface): P{.cdecl, importc: "cairo_create", 
+proc create*(target: PSurface): PCairo{.cdecl, importc: "cairo_create", 
                                    dynlib: LIB_CAIRO.}
-proc reference*(cr: P): P{.cdecl, importc: "cairo_reference", dynlib: LIB_CAIRO.}
-proc destroy*(cr: P){.cdecl, importc: "cairo_destroy", dynlib: LIB_CAIRO.}
-proc get_reference_count*(cr: P): int32{.cdecl, 
+proc reference*(cr: PCairo): PCairo{.cdecl, importc: "cairo_reference", dynlib: LIB_CAIRO.}
+proc destroy*(cr: PCairo){.cdecl, importc: "cairo_destroy", dynlib: LIB_CAIRO.}
+proc get_reference_count*(cr: PCairo): int32{.cdecl, 
     importc: "cairo_get_reference_count", dynlib: LIB_CAIRO.}
-proc get_user_data*(cr: P, key: PUserDataKey): pointer{.cdecl, 
+proc get_user_data*(cr: PCairo, key: PUserDataKey): pointer{.cdecl, 
     importc: "cairo_get_user_data", dynlib: LIB_CAIRO.}
-proc set_user_data*(cr: P, key: PUserDataKey, user_data: Pointer, 
+proc set_user_data*(cr: PCairo, key: PUserDataKey, user_data: Pointer, 
                     destroy: TDestroyFunc): TStatus{.cdecl, 
     importc: "cairo_set_user_data", dynlib: LIB_CAIRO.}
-proc save*(cr: P){.cdecl, importc: "cairo_save", dynlib: LIB_CAIRO.}
-proc restore*(cr: P){.cdecl, importc: "cairo_restore", dynlib: LIB_CAIRO.}
-proc push_group*(cr: P){.cdecl, importc: "cairo_push_group", dynlib: LIB_CAIRO.}
-proc push_group_with_content*(cr: P, content: TContent){.cdecl, 
+proc save*(cr: PCairo){.cdecl, importc: "cairo_save", dynlib: LIB_CAIRO.}
+proc restore*(cr: PCairo){.cdecl, importc: "cairo_restore", dynlib: LIB_CAIRO.}
+proc push_group*(cr: PCairo){.cdecl, importc: "cairo_push_group", dynlib: LIB_CAIRO.}
+proc push_group_with_content*(cr: PCairo, content: TContent){.cdecl, 
     importc: "cairo_push_group_with_content", dynlib: LIB_CAIRO.}
-proc pop_group*(cr: P): PPattern{.cdecl, importc: "cairo_pop_group", 
+proc pop_group*(cr: PCairo): PPattern{.cdecl, importc: "cairo_pop_group", 
                                   dynlib: LIB_CAIRO.}
-proc pop_group_to_source*(cr: P){.cdecl, importc: "cairo_pop_group_to_source", 
+proc pop_group_to_source*(cr: PCairo){.cdecl, importc: "cairo_pop_group_to_source", 
                                   dynlib: LIB_CAIRO.}
   #* Modify state
-proc set_operator*(cr: P, op: TOperator){.cdecl, importc: "cairo_set_operator", 
+proc set_operator*(cr: PCairo, op: TOperator){.cdecl, importc: "cairo_set_operator", 
     dynlib: LIB_CAIRO.}
-proc set_source*(cr: P, source: PPattern){.cdecl, importc: "cairo_set_source", 
+proc set_source*(cr: PCairo, source: PPattern){.cdecl, importc: "cairo_set_source", 
     dynlib: LIB_CAIRO.}
-proc set_source_rgb*(cr: P, red, green, blue: float64){.cdecl, 
+proc set_source_rgb*(cr: PCairo, red, green, blue: float64){.cdecl, 
     importc: "cairo_set_source_rgb", dynlib: LIB_CAIRO.}
-proc set_source_rgba*(cr: P, red, green, blue, alpha: float64){.cdecl, 
+proc set_source_rgba*(cr: PCairo, red, green, blue, alpha: float64){.cdecl, 
     importc: "cairo_set_source_rgba", dynlib: LIB_CAIRO.}
-proc set_source_surface*(cr: P, surface: PSurface, x, y: float64){.cdecl, 
+proc set_source_surface*(cr: PCairo, surface: PSurface, x, y: float64){.cdecl, 
     importc: "cairo_set_source_surface", dynlib: LIB_CAIRO.}
-proc set_tolerance*(cr: P, tolerance: float64){.cdecl, 
+proc set_tolerance*(cr: PCairo, tolerance: float64){.cdecl, 
     importc: "cairo_set_tolerance", dynlib: LIB_CAIRO.}
-proc set_antialias*(cr: P, antialias: TAntialias){.cdecl, 
+proc set_antialias*(cr: PCairo, antialias: TAntialias){.cdecl, 
     importc: "cairo_set_antialias", dynlib: LIB_CAIRO.}
-proc set_fill_rule*(cr: P, fill_rule: TFillRule){.cdecl, 
+proc set_fill_rule*(cr: PCairo, fill_rule: TFillRule){.cdecl, 
     importc: "cairo_set_fill_rule", dynlib: LIB_CAIRO.}
-proc set_line_width*(cr: P, width: float64){.cdecl, 
+proc set_line_width*(cr: PCairo, width: float64){.cdecl, 
     importc: "cairo_set_line_width", dynlib: LIB_CAIRO.}
-proc set_line_cap*(cr: P, line_cap: TLineCap){.cdecl, 
+proc set_line_cap*(cr: PCairo, line_cap: TLineCap){.cdecl, 
     importc: "cairo_set_line_cap", dynlib: LIB_CAIRO.}
-proc set_line_join*(cr: P, line_join: TLineJoin){.cdecl, 
+proc set_line_join*(cr: PCairo, line_join: TLineJoin){.cdecl, 
     importc: "cairo_set_line_join", dynlib: LIB_CAIRO.}
-proc set_dash*(cr: P, dashes: openarray[float64], offset: float64){.cdecl, 
+proc set_dash*(cr: PCairo, dashes: openarray[float64], offset: float64){.cdecl, 
     importc: "cairo_set_dash", dynlib: LIB_CAIRO.}
-proc set_miter_limit*(cr: P, limit: float64){.cdecl, 
+proc set_miter_limit*(cr: PCairo, limit: float64){.cdecl, 
     importc: "cairo_set_miter_limit", dynlib: LIB_CAIRO.}
-proc translate*(cr: P, tx, ty: float64){.cdecl, importc: "cairo_translate", 
+proc translate*(cr: PCairo, tx, ty: float64){.cdecl, importc: "cairo_translate", 
     dynlib: LIB_CAIRO.}
-proc scale*(cr: P, sx, sy: float64){.cdecl, importc: "cairo_scale", 
+proc scale*(cr: PCairo, sx, sy: float64){.cdecl, importc: "cairo_scale", 
                                      dynlib: LIB_CAIRO.}
-proc rotate*(cr: P, angle: float64){.cdecl, importc: "cairo_rotate", 
+proc rotate*(cr: PCairo, angle: float64){.cdecl, importc: "cairo_rotate", 
                                      dynlib: LIB_CAIRO.}
-proc transform*(cr: P, matrix: PMatrix){.cdecl, importc: "cairo_transform", 
+proc transform*(cr: PCairo, matrix: PMatrix){.cdecl, importc: "cairo_transform", 
     dynlib: LIB_CAIRO.}
-proc set_matrix*(cr: P, matrix: PMatrix){.cdecl, importc: "cairo_set_matrix", 
+proc set_matrix*(cr: PCairo, matrix: PMatrix){.cdecl, importc: "cairo_set_matrix", 
     dynlib: LIB_CAIRO.}
-proc identity_matrix*(cr: P){.cdecl, importc: "cairo_identity_matrix", 
+proc identity_matrix*(cr: PCairo){.cdecl, importc: "cairo_identity_matrix", 
                               dynlib: LIB_CAIRO.}
-proc user_to_device*(cr: P, x, y: var float64){.cdecl, 
+proc user_to_device*(cr: PCairo, x, y: var float64){.cdecl, 
     importc: "cairo_user_to_device", dynlib: LIB_CAIRO.}
-proc user_to_device_distance*(cr: P, dx, dy: var float64){.cdecl, 
+proc user_to_device_distance*(cr: PCairo, dx, dy: var float64){.cdecl, 
     importc: "cairo_user_to_device_distance", dynlib: LIB_CAIRO.}
-proc device_to_user*(cr: P, x, y: var float64){.cdecl, 
+proc device_to_user*(cr: PCairo, x, y: var float64){.cdecl, 
     importc: "cairo_device_to_user", dynlib: LIB_CAIRO.}
-proc device_to_user_distance*(cr: P, dx, dy: var float64){.cdecl, 
+proc device_to_user_distance*(cr: PCairo, dx, dy: var float64){.cdecl, 
     importc: "cairo_device_to_user_distance", dynlib: LIB_CAIRO.}
   #* Path creation functions
-proc new_path*(cr: P){.cdecl, importc: "cairo_new_path", dynlib: LIB_CAIRO.}
-proc move_to*(cr: P, x, y: float64){.cdecl, importc: "cairo_move_to", 
+proc new_path*(cr: PCairo){.cdecl, importc: "cairo_new_path", dynlib: LIB_CAIRO.}
+proc move_to*(cr: PCairo, x, y: float64){.cdecl, importc: "cairo_move_to", 
                                      dynlib: LIB_CAIRO.}
-proc new_sub_path*(cr: P){.cdecl, importc: "cairo_new_sub_path", 
+proc new_sub_path*(cr: PCairo){.cdecl, importc: "cairo_new_sub_path", 
                            dynlib: LIB_CAIRO.}
-proc line_to*(cr: P, x, y: float64){.cdecl, importc: "cairo_line_to", 
+proc line_to*(cr: PCairo, x, y: float64){.cdecl, importc: "cairo_line_to", 
                                      dynlib: LIB_CAIRO.}
-proc curve_to*(cr: P, x1, y1, x2, y2, x3, y3: float64){.cdecl, 
+proc curve_to*(cr: PCairo, x1, y1, x2, y2, x3, y3: float64){.cdecl, 
     importc: "cairo_curve_to", dynlib: LIB_CAIRO.}
-proc arc*(cr: P, xc, yc, radius, angle1, angle2: float64){.cdecl, 
+proc arc*(cr: PCairo, xc, yc, radius, angle1, angle2: float64){.cdecl, 
     importc: "cairo_arc", dynlib: LIB_CAIRO.}
-proc arc_negative*(cr: P, xc, yc, radius, angle1, angle2: float64){.cdecl, 
+proc arc_negative*(cr: PCairo, xc, yc, radius, angle1, angle2: float64){.cdecl, 
     importc: "cairo_arc_negative", dynlib: LIB_CAIRO.}
-proc rel_move_to*(cr: P, dx, dy: float64){.cdecl, importc: "cairo_rel_move_to", 
+proc rel_move_to*(cr: PCairo, dx, dy: float64){.cdecl, importc: "cairo_rel_move_to", 
     dynlib: LIB_CAIRO.}
-proc rel_line_to*(cr: P, dx, dy: float64){.cdecl, importc: "cairo_rel_line_to", 
+proc rel_line_to*(cr: PCairo, dx, dy: float64){.cdecl, importc: "cairo_rel_line_to", 
     dynlib: LIB_CAIRO.}
-proc rel_curve_to*(cr: P, dx1, dy1, dx2, dy2, dx3, dy3: float64){.cdecl, 
+proc rel_curve_to*(cr: PCairo, dx1, dy1, dx2, dy2, dx3, dy3: float64){.cdecl, 
     importc: "cairo_rel_curve_to", dynlib: LIB_CAIRO.}
-proc rectangle*(cr: P, x, y, width, height: float64){.cdecl, 
+proc rectangle*(cr: PCairo, x, y, width, height: float64){.cdecl, 
     importc: "cairo_rectangle", dynlib: LIB_CAIRO.}
-proc close_path*(cr: P){.cdecl, importc: "cairo_close_path", dynlib: LIB_CAIRO.}
+proc close_path*(cr: PCairo){.cdecl, importc: "cairo_close_path", dynlib: LIB_CAIRO.}
   #* Painting functions
-proc paint*(cr: P){.cdecl, importc: "cairo_paint", dynlib: LIB_CAIRO.}
-proc paint_with_alpha*(cr: P, alpha: float64){.cdecl, 
+proc paint*(cr: PCairo){.cdecl, importc: "cairo_paint", dynlib: LIB_CAIRO.}
+proc paint_with_alpha*(cr: PCairo, alpha: float64){.cdecl, 
     importc: "cairo_paint_with_alpha", dynlib: LIB_CAIRO.}
-proc mask*(cr: P, pattern: PPattern){.cdecl, importc: "cairo_mask", 
+proc mask*(cr: PCairo, pattern: PPattern){.cdecl, importc: "cairo_mask", 
                                       dynlib: LIB_CAIRO.}
-proc mask_surface*(cr: P, surface: PSurface, surface_x, surface_y: float64){.
+proc mask_surface*(cr: PCairo, surface: PSurface, surface_x, surface_y: float64){.
     cdecl, importc: "cairo_mask_surface", dynlib: LIB_CAIRO.}
-proc stroke*(cr: P){.cdecl, importc: "cairo_stroke", dynlib: LIB_CAIRO.}
-proc stroke_preserve*(cr: P){.cdecl, importc: "cairo_stroke_preserve", 
+proc stroke*(cr: PCairo){.cdecl, importc: "cairo_stroke", dynlib: LIB_CAIRO.}
+proc stroke_preserve*(cr: PCairo){.cdecl, importc: "cairo_stroke_preserve", 
                               dynlib: LIB_CAIRO.}
-proc fill*(cr: P){.cdecl, importc: "cairo_fill", dynlib: LIB_CAIRO.}
-proc fill_preserve*(cr: P){.cdecl, importc: "cairo_fill_preserve", 
+proc fill*(cr: PCairo){.cdecl, importc: "cairo_fill", dynlib: LIB_CAIRO.}
+proc fill_preserve*(cr: PCairo){.cdecl, importc: "cairo_fill_preserve", 
                             dynlib: LIB_CAIRO.}
-proc copy_page*(cr: P){.cdecl, importc: "cairo_copy_page", dynlib: LIB_CAIRO.}
-proc show_page*(cr: P){.cdecl, importc: "cairo_show_page", dynlib: LIB_CAIRO.}
+proc copy_page*(cr: PCairo){.cdecl, importc: "cairo_copy_page", dynlib: LIB_CAIRO.}
+proc show_page*(cr: PCairo){.cdecl, importc: "cairo_show_page", dynlib: LIB_CAIRO.}
   #* Insideness testing
-proc in_stroke*(cr: P, x, y: float64): TBool{.cdecl, importc: "cairo_in_stroke", 
+proc in_stroke*(cr: PCairo, x, y: float64): TBool{.cdecl, importc: "cairo_in_stroke", 
     dynlib: LIB_CAIRO.}
-proc in_fill*(cr: P, x, y: float64): TBool{.cdecl, importc: "cairo_in_fill", 
+proc in_fill*(cr: PCairo, x, y: float64): TBool{.cdecl, importc: "cairo_in_fill", 
     dynlib: LIB_CAIRO.}
   #* Rectangular extents
-proc stroke_extents*(cr: P, x1, y1, x2, y2: var float64){.cdecl, 
+proc stroke_extents*(cr: PCairo, x1, y1, x2, y2: var float64){.cdecl, 
     importc: "cairo_stroke_extents", dynlib: LIB_CAIRO.}
-proc fill_extents*(cr: P, x1, y1, x2, y2: var float64){.cdecl, 
+proc fill_extents*(cr: PCairo, x1, y1, x2, y2: var float64){.cdecl, 
     importc: "cairo_fill_extents", dynlib: LIB_CAIRO.}
   #* Clipping
-proc reset_clip*(cr: P){.cdecl, importc: "cairo_reset_clip", dynlib: LIB_CAIRO.}
-proc clip*(cr: P){.cdecl, importc: "cairo_clip", dynlib: LIB_CAIRO.}
-proc clip_preserve*(cr: P){.cdecl, importc: "cairo_clip_preserve", 
+proc reset_clip*(cr: PCairo){.cdecl, importc: "cairo_reset_clip", dynlib: LIB_CAIRO.}
+proc clip*(cr: PCairo){.cdecl, importc: "cairo_clip", dynlib: LIB_CAIRO.}
+proc clip_preserve*(cr: PCairo){.cdecl, importc: "cairo_clip_preserve", 
                             dynlib: LIB_CAIRO.}
-proc clip_extents*(cr: P, x1, y1, x2, y2: var float64){.cdecl, 
+proc clip_extents*(cr: PCairo, x1, y1, x2, y2: var float64){.cdecl, 
     importc: "cairo_clip_extents", dynlib: LIB_CAIRO.}
-proc copy_clip_rectangle_list*(cr: P): PRectangleList{.cdecl, 
+proc copy_clip_rectangle_list*(cr: PCairo): PRectangleList{.cdecl, 
     importc: "cairo_copy_clip_rectangle_list", dynlib: LIB_CAIRO.}
 proc rectangle_list_destroy*(rectangle_list: PRectangleList){.cdecl, 
     importc: "cairo_rectangle_list_destroy", dynlib: LIB_CAIRO.}
@@ -360,41 +360,41 @@ proc font_options_get_hint_metrics*(options: PFontOptions): THintMetrics{.cdecl,
     importc: "cairo_font_options_get_hint_metrics", dynlib: LIB_CAIRO.}
   #* This interface is for dealing with text as text, not caring about the
   #   font object inside the the TCairo.
-proc select_font_face*(cr: P, family: cstring, slant: TFontSlant, 
+proc select_font_face*(cr: PCairo, family: cstring, slant: TFontSlant, 
                        weight: TFontWeight){.cdecl, 
     importc: "cairo_select_font_face", dynlib: LIB_CAIRO.}
-proc set_font_size*(cr: P, size: float64){.cdecl, 
+proc set_font_size*(cr: PCairo, size: float64){.cdecl, 
     importc: "cairo_set_font_size", dynlib: LIB_CAIRO.}
-proc set_font_matrix*(cr: P, matrix: PMatrix){.cdecl, 
+proc set_font_matrix*(cr: PCairo, matrix: PMatrix){.cdecl, 
     importc: "cairo_set_font_matrix", dynlib: LIB_CAIRO.}
-proc get_font_matrix*(cr: P, matrix: PMatrix){.cdecl, 
+proc get_font_matrix*(cr: PCairo, matrix: PMatrix){.cdecl, 
     importc: "cairo_get_font_matrix", dynlib: LIB_CAIRO.}
-proc set_font_options*(cr: P, options: PFontOptions){.cdecl, 
+proc set_font_options*(cr: PCairo, options: PFontOptions){.cdecl, 
     importc: "cairo_set_font_options", dynlib: LIB_CAIRO.}
-proc get_font_options*(cr: P, options: PFontOptions){.cdecl, 
+proc get_font_options*(cr: PCairo, options: PFontOptions){.cdecl, 
     importc: "cairo_get_font_options", dynlib: LIB_CAIRO.}
-proc set_font_face*(cr: P, font_face: PFontFace){.cdecl, 
+proc set_font_face*(cr: PCairo, font_face: PFontFace){.cdecl, 
     importc: "cairo_set_font_face", dynlib: LIB_CAIRO.}
-proc get_font_face*(cr: P): PFontFace{.cdecl, importc: "cairo_get_font_face", 
+proc get_font_face*(cr: PCairo): PFontFace{.cdecl, importc: "cairo_get_font_face", 
                                        dynlib: LIB_CAIRO.}
-proc set_scaled_font*(cr: P, scaled_font: PScaledFont){.cdecl, 
+proc set_scaled_font*(cr: PCairo, scaled_font: PScaledFont){.cdecl, 
     importc: "cairo_set_scaled_font", dynlib: LIB_CAIRO.}
-proc get_scaled_font*(cr: P): PScaledFont{.cdecl, 
+proc get_scaled_font*(cr: PCairo): PScaledFont{.cdecl, 
     importc: "cairo_get_scaled_font", dynlib: LIB_CAIRO.}
-proc show_text*(cr: P, utf8: cstring){.cdecl, importc: "cairo_show_text", 
+proc show_text*(cr: PCairo, utf8: cstring){.cdecl, importc: "cairo_show_text", 
                                        dynlib: LIB_CAIRO.}
-proc show_glyphs*(cr: P, glyphs: PGlyph, num_glyphs: int32){.cdecl, 
+proc show_glyphs*(cr: PCairo, glyphs: PGlyph, num_glyphs: int32){.cdecl, 
     importc: "cairo_show_glyphs", dynlib: LIB_CAIRO.}
-proc text_path*(cr: P, utf8: cstring){.cdecl, importc: "cairo_text_path", 
+proc text_path*(cr: PCairo, utf8: cstring){.cdecl, importc: "cairo_text_path", 
                                        dynlib: LIB_CAIRO.}
-proc glyph_path*(cr: P, glyphs: PGlyph, num_glyphs: int32){.cdecl, 
+proc glyph_path*(cr: PCairo, glyphs: PGlyph, num_glyphs: int32){.cdecl, 
     importc: "cairo_glyph_path", dynlib: LIB_CAIRO.}
-proc text_extents*(cr: P, utf8: cstring, extents: PTextExtents){.cdecl, 
+proc text_extents*(cr: PCairo, utf8: cstring, extents: PTextExtents){.cdecl, 
     importc: "cairo_text_extents", dynlib: LIB_CAIRO.}
-proc glyph_extents*(cr: P, glyphs: PGlyph, num_glyphs: int32, 
+proc glyph_extents*(cr: PCairo, glyphs: PGlyph, num_glyphs: int32, 
                     extents: PTextExtents){.cdecl, 
     importc: "cairo_glyph_extents", dynlib: LIB_CAIRO.}
-proc font_extents*(cr: P, extents: PFontExtents){.cdecl, 
+proc font_extents*(cr: PCairo, extents: PFontExtents){.cdecl, 
     importc: "cairo_font_extents", dynlib: LIB_CAIRO.}
   #* Generic identifier for a font style
 proc font_face_reference*(font_face: PFontFace): PFontFace{.cdecl, 
@@ -449,46 +449,46 @@ proc scaled_font_get_font_options*(scaled_font: PScaledFont,
                                    options: PFontOptions){.cdecl, 
     importc: "cairo_scaled_font_get_font_options", dynlib: LIB_CAIRO.}
   #* Query functions
-proc get_operator*(cr: P): TOperator{.cdecl, importc: "cairo_get_operator", 
+proc get_operator*(cr: PCairo): TOperator{.cdecl, importc: "cairo_get_operator", 
                                       dynlib: LIB_CAIRO.}
-proc get_source*(cr: P): PPattern{.cdecl, importc: "cairo_get_source", 
+proc get_source*(cr: PCairo): PPattern{.cdecl, importc: "cairo_get_source", 
                                    dynlib: LIB_CAIRO.}
-proc get_tolerance*(cr: P): float64{.cdecl, importc: "cairo_get_tolerance", 
+proc get_tolerance*(cr: PCairo): float64{.cdecl, importc: "cairo_get_tolerance", 
                                      dynlib: LIB_CAIRO.}
-proc get_antialias*(cr: P): TAntialias{.cdecl, importc: "cairo_get_antialias", 
+proc get_antialias*(cr: PCairo): TAntialias{.cdecl, importc: "cairo_get_antialias", 
                                         dynlib: LIB_CAIRO.}
-proc get_current_point*(cr: P, x, y: var float64){.cdecl, 
+proc get_current_point*(cr: PCairo, x, y: var float64){.cdecl, 
     importc: "cairo_get_current_point", dynlib: LIB_CAIRO.}
-proc get_fill_rule*(cr: P): TFillRule{.cdecl, importc: "cairo_get_fill_rule", 
+proc get_fill_rule*(cr: PCairo): TFillRule{.cdecl, importc: "cairo_get_fill_rule", 
                                        dynlib: LIB_CAIRO.}
-proc get_line_width*(cr: P): float64{.cdecl, importc: "cairo_get_line_width", 
+proc get_line_width*(cr: PCairo): float64{.cdecl, importc: "cairo_get_line_width", 
                                       dynlib: LIB_CAIRO.}
-proc get_line_cap*(cr: P): TLineCap{.cdecl, importc: "cairo_get_line_cap", 
+proc get_line_cap*(cr: PCairo): TLineCap{.cdecl, importc: "cairo_get_line_cap", 
                                      dynlib: LIB_CAIRO.}
-proc get_line_join*(cr: P): TLineJoin{.cdecl, importc: "cairo_get_line_join", 
+proc get_line_join*(cr: PCairo): TLineJoin{.cdecl, importc: "cairo_get_line_join", 
                                        dynlib: LIB_CAIRO.}
-proc get_miter_limit*(cr: P): float64{.cdecl, importc: "cairo_get_miter_limit", 
+proc get_miter_limit*(cr: PCairo): float64{.cdecl, importc: "cairo_get_miter_limit", 
                                        dynlib: LIB_CAIRO.}
-proc get_dash_count*(cr: P): int32{.cdecl, importc: "cairo_get_dash_count", 
+proc get_dash_count*(cr: PCairo): int32{.cdecl, importc: "cairo_get_dash_count", 
                                     dynlib: LIB_CAIRO.}
-proc get_dash*(cr: P, dashes, offset: var float64){.cdecl, 
+proc get_dash*(cr: PCairo, dashes, offset: var float64){.cdecl, 
     importc: "cairo_get_dash", dynlib: LIB_CAIRO.}
-proc get_matrix*(cr: P, matrix: PMatrix){.cdecl, importc: "cairo_get_matrix", 
+proc get_matrix*(cr: PCairo, matrix: PMatrix){.cdecl, importc: "cairo_get_matrix", 
     dynlib: LIB_CAIRO.}
-proc get_target*(cr: P): PSurface{.cdecl, importc: "cairo_get_target", 
+proc get_target*(cr: PCairo): PSurface{.cdecl, importc: "cairo_get_target", 
                                    dynlib: LIB_CAIRO.}
-proc get_group_target*(cr: P): PSurface{.cdecl, 
+proc get_group_target*(cr: PCairo): PSurface{.cdecl, 
     importc: "cairo_get_group_target", dynlib: LIB_CAIRO.}
-proc copy_path*(cr: P): PPath{.cdecl, importc: "cairo_copy_path", 
+proc copy_path*(cr: PCairo): PPath{.cdecl, importc: "cairo_copy_path", 
                                dynlib: LIB_CAIRO.}
-proc copy_path_flat*(cr: P): PPath{.cdecl, importc: "cairo_copy_path_flat", 
+proc copy_path_flat*(cr: PCairo): PPath{.cdecl, importc: "cairo_copy_path_flat", 
                                     dynlib: LIB_CAIRO.}
-proc append_path*(cr: P, path: PPath){.cdecl, importc: "cairo_append_path", 
+proc append_path*(cr: PCairo, path: PPath){.cdecl, importc: "cairo_append_path", 
                                        dynlib: LIB_CAIRO.}
 proc path_destroy*(path: PPath){.cdecl, importc: "cairo_path_destroy", 
                                  dynlib: LIB_CAIRO.}
   #* Error status queries
-proc status*(cr: P): TStatus{.cdecl, importc: "cairo_status", dynlib: LIB_CAIRO.}
+proc status*(cr: PCairo): TStatus{.cdecl, importc: "cairo_status", dynlib: LIB_CAIRO.}
 proc status_to_string*(status: TStatus): cstring{.cdecl, 
     importc: "cairo_status_to_string", dynlib: LIB_CAIRO.}
   #* Surface manipulation

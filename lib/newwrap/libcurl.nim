@@ -67,8 +67,8 @@ type
   PSHoption* = ptr TSHoption
   Pversion* = ptr Tversion
   Pfd_set* = pointer
-  P* = ptr T
-  T* = pointer
+  PCurl* = ptr TCurl
+  TCurl* = pointer
   Thttppost*{.final, pure.} = object 
     next*: Phttppost
     name*: cstring
@@ -84,8 +84,8 @@ type
     showfilename*: cstring
 
   Tprogress_callback* = proc (clientp: pointer, dltotal: float64, 
-                              dlnow: float64, ultotal: float64, ulnow: float64): int32{.
-      cdecl.}
+                              dlnow: float64, ultotal: float64, 
+                              ulnow: float64): int32 {.cdecl.}
   Twrite_callback* = proc (buffer: cstring, size: int, nitems: int, 
                            outstream: pointer): int{.cdecl.}
   Tread_callback* = proc (buffer: cstring, size: int, nitems: int, 
@@ -96,7 +96,7 @@ type
     IOE_OK, IOE_UNKNOWNCMD, IOE_FAILRESTART, IOE_LAST
   Tiocmd* = enum 
     IOCMD_NOP, IOCMD_RESTARTREAD, IOCMD_LAST
-  Tioctl_callback* = proc (handle: P, cmd: int32, clientp: pointer): Tioerr{.
+  Tioctl_callback* = proc (handle: PCurl, cmd: int32, clientp: pointer): Tioerr{.
       cdecl.}
   Tmalloc_callback* = proc (size: int): pointer{.cdecl.}
   Tfree_callback* = proc (p: pointer){.cdecl.}
@@ -106,7 +106,7 @@ type
   Tinfotype* = enum 
     INFO_TEXT = 0, INFO_HEADER_IN, INFO_HEADER_OUT, INFO_DATA_IN, INFO_DATA_OUT, 
     INFO_SSL_DATA_IN, INFO_SSL_DATA_OUT, INFO_END
-  Tdebug_callback* = proc (handle: P, theType: Tinfotype, data: cstring, 
+  Tdebug_callback* = proc (handle: PCurl, theType: Tinfotype, data: cstring, 
                            size: int, userptr: pointer): int32{.cdecl.}
   Tcode* = enum 
     E_OK = 0, E_UNSUPPORTED_PROTOCOL, E_FAILED_INIT, E_URL_MALFORMAT, 
@@ -134,7 +134,7 @@ type
     E_TFTP_ILLEGAL, E_TFTP_UNKNOWNID, E_TFTP_EXISTS, E_TFTP_NOSUCHUSER, 
     E_CONV_FAILED, E_CONV_REQD, LAST
   Tconv_callback* = proc (buffer: cstring, len: int): Tcode{.cdecl.}
-  Tssl_ctx_callback* = proc (: P, ssl_ctx, userptr: pointer): Tcode{.cdecl.}
+  Tssl_ctx_callback* = proc (curl: PCurl, ssl_ctx, userptr: pointer): Tcode{.cdecl.}
   Tproxytype* = enum 
     PROXY_HTTP = 0, PROXY_SOCKS4 = 4, PROXY_SOCKS5 = 5
   Tftpssl* = enum 
@@ -269,9 +269,10 @@ type
   Tlock_access* = enum 
     LOCK_ACCESS_NONE = 0, LOCK_ACCESS_SHARED = 1, LOCK_ACCESS_SINGLE = 2, 
     LOCK_ACCESS_LAST
-  Tlock_function* = proc (handle: P, data: Tlock_data, locktype: Tlock_access, 
+  Tlock_function* = proc (handle: PCurl, data: Tlock_data,
+                          locktype: Tlock_access, 
                           userptr: pointer){.cdecl.}
-  Tunlock_function* = proc (handle: P, data: Tlock_data, userptr: pointer){.
+  Tunlock_function* = proc (handle: PCurl, data: Tlock_data, userptr: pointer){.
       cdecl.}
   TSH* = pointer
   TSHcode* = enum 
@@ -305,14 +306,14 @@ type
     MSG_NONE, MSG_DONE, MSG_LAST
   TMsg*{.pure, final.} = object 
     msg*: TMSGEnum
-    easy_handle*: P
+    easy_handle*: PCurl
     whatever*: Pointer        #data : record
                               #      case longint of
                               #        0 : ( whatever : pointer );
                               #        1 : ( result : CURLcode );
                               #    end;
   
-  Tsocket_callback* = proc (easy: P, s: Tsocket, what: int32, 
+  Tsocket_callback* = proc (easy: PCurl, s: Tsocket, what: int32, 
                             userp, socketp: pointer): int32{.cdecl.}
   TMoption* = enum 
     MOPT_SOCKETDATA = 10000 + 2, MOPT_LASTENTRY = 10000 + 3, 
@@ -419,11 +420,11 @@ proc formfree*(form: Phttppost){.cdecl, dynlib: libname,
 proc getenv*(variable: cstring): cstring{.cdecl, dynlib: libname, 
     importc: "curl_getenv".}
 proc version*(): cstring{.cdecl, dynlib: libname, importc: "curl_version".}
-proc easy_escape*(handle: P, str: cstring, len: int32): cstring{.cdecl, 
+proc easy_escape*(handle: PCurl, str: cstring, len: int32): cstring{.cdecl, 
     dynlib: libname, importc: "curl_easy_escape".}
 proc escape*(str: cstring, len: int32): cstring{.cdecl, dynlib: libname, 
     importc: "curl_escape".}
-proc easy_unescape*(handle: P, str: cstring, len: int32, outlength: var int32): cstring{.
+proc easy_unescape*(handle: PCurl, str: cstring, len: int32, outlength: var int32): cstring{.
     cdecl, dynlib: libname, importc: "curl_easy_unescape".}
 proc unescape*(str: cstring, len: int32): cstring{.cdecl, dynlib: libname, 
     importc: "curl_unescape".}
@@ -435,7 +436,7 @@ proc global_init_mem*(flags: int32, m: Tmalloc_callback, f: Tfree_callback,
                       c: Tcalloc_callback): Tcode{.cdecl, dynlib: libname, 
     importc: "curl_global_init_mem".}
 proc global_cleanup*(){.cdecl, dynlib: libname, importc: "curl_global_cleanup".}
-proc slist_append*(slist: Pslist, P: cstring): Pslist{.cdecl, dynlib: libname, 
+proc slist_append*(slist: Pslist, p: cstring): Pslist{.cdecl, dynlib: libname, 
     importc: "curl_slist_append".}
 proc slist_free_all*(para1: Pslist){.cdecl, dynlib: libname, 
                                      importc: "curl_slist_free_all".}
@@ -452,21 +453,21 @@ proc easy_strerror*(para1: Tcode): cstring{.cdecl, dynlib: libname,
     importc: "curl_easy_strerror".}
 proc share_strerror*(para1: TSHcode): cstring{.cdecl, dynlib: libname, 
     importc: "curl_share_strerror".}
-proc easy_init*(): P{.cdecl, dynlib: libname, importc: "curl_easy_init".}
-proc easy_setopt*(: P, option: Toption): Tcode{.cdecl, varargs, dynlib: libname, 
+proc easy_init*(): PCurl{.cdecl, dynlib: libname, importc: "curl_easy_init".}
+proc easy_setopt*(curl: PCurl, option: Toption): Tcode{.cdecl, varargs, dynlib: libname, 
     importc: "curl_easy_setopt".}
-proc easy_perform*(: P): Tcode{.cdecl, dynlib: libname, 
+proc easy_perform*(curl: PCurl): Tcode{.cdecl, dynlib: libname, 
                                 importc: "curl_easy_perform".}
-proc easy_cleanup*(: P){.cdecl, dynlib: libname, importc: "curl_easy_cleanup".}
-proc easy_getinfo*(: P, info: TINFO): Tcode{.cdecl, varargs, dynlib: libname, 
+proc easy_cleanup*(curl: PCurl){.cdecl, dynlib: libname, importc: "curl_easy_cleanup".}
+proc easy_getinfo*(curl: PCurl, info: TINFO): Tcode{.cdecl, varargs, dynlib: libname, 
     importc: "curl_easy_getinfo".}
-proc easy_duphandle*(: P): P{.cdecl, dynlib: libname, 
+proc easy_duphandle*(curl: PCurl): PCurl{.cdecl, dynlib: libname, 
                               importc: "curl_easy_duphandle".}
-proc easy_reset*(: P){.cdecl, dynlib: libname, importc: "curl_easy_reset".}
+proc easy_reset*(curl: PCurl){.cdecl, dynlib: libname, importc: "curl_easy_reset".}
 proc multi_init*(): PM{.cdecl, dynlib: libname, importc: "curl_multi_init".}
-proc multi_add_handle*(multi_handle: PM, handle: P): TMcode{.cdecl, 
+proc multi_add_handle*(multi_handle: PM, handle: PCurl): TMcode{.cdecl, 
     dynlib: libname, importc: "curl_multi_add_handle".}
-proc multi_remove_handle*(multi_handle: PM, handle: P): TMcode{.cdecl, 
+proc multi_remove_handle*(multi_handle: PM, handle: PCurl): TMcode{.cdecl, 
     dynlib: libname, importc: "curl_multi_remove_handle".}
 proc multi_fdset*(multi_handle: PM, read_fd_set: Pfd_set, write_fd_set: Pfd_set, 
                   exc_fd_set: Pfd_set, max_fd: var int32): TMcode{.cdecl, 

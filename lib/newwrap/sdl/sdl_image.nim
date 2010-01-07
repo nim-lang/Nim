@@ -129,7 +129,7 @@
 #******************************************************************************
 
 import 
-  
+  sdl
 
 when defined(windows): 
   const 
@@ -224,19 +224,9 @@ proc IMG_LoadXV_RW*(src: PRWops): PSurface{.cdecl, importc: "IMG_LoadXV_RW",
     dynlib: ImageLibName.}
 proc IMG_ReadXPMFromArray*(xpm: cstringArray): PSurface{.cdecl, 
     importc: "IMG_ReadXPMFromArray", dynlib: ImageLibName.}
-  # Error Macros 
-  # We'll use SDL for reporting errors 
-proc IMG_SetError*(fmt: cstring)
-proc IMG_GetError*(): cstring
-# implementation
 
 proc IMAGE_VERSION(X: var TVersion) = 
   X.major = IMAGE_MAJOR_VERSION
   X.minor = IMAGE_MINOR_VERSION
   X.patch = IMAGE_PATCHLEVEL
 
-proc IMG_SetError(fmt: cstring) = 
-  SetError(fmt)
-
-proc IMG_GetError(): cstring = 
-  result = GetError()

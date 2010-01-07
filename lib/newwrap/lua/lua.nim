@@ -47,9 +47,7 @@ else:
   const 
     NAME* = "lua(|5.2|5.1|5.0).dll"
     LIB_NAME* = "lua(|5.2|5.1|5.0).dll"
-type 
-  size_t* = int
-  Psize_t* = ptr size_t
+
 
 const 
   VERSION* = "Lua 5.1"
@@ -67,7 +65,7 @@ const
 
 proc upvalueindex*(I: int): int
 const                         # thread status; 0 is OK 
-  YIELD_* = 1
+  constYIELD* = 1
   ERRRUN* = 2
   ERRSYNTAX* = 3
   ERRMEM* = 4
@@ -82,9 +80,9 @@ type
 #
 
 type 
-  Reader* = proc (L: PState, ud: Pointer, sz: Psize_t): cstring{.cdecl.}
-  Writer* = proc (L: PState, p: Pointer, sz: size_t, ud: Pointer): int{.cdecl.}
-  Alloc* = proc (ud, theptr: Pointer, osize, nsize: size_t){.cdecl.}
+  Reader* = proc (L: PState, ud: Pointer, sz: ptr int): cstring{.cdecl.}
+  Writer* = proc (L: PState, p: Pointer, sz: int, ud: Pointer): int{.cdecl.}
+  Alloc* = proc (ud, theptr: Pointer, osize, nsize: int){.cdecl.}
 
 const 
   TNONE* = - 1
@@ -129,7 +127,7 @@ proc iscfunction*(L: PState, idx: int): cint{.cdecl, dynlib: NAME,
     importc: "lua_iscfunction".}
 proc isuserdata*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
     importc: "lua_isuserdata".}
-proc type*(L: PState, idx: int): int{.cdecl, dynlib: NAME, importc: "lua_type".}
+proc luatype*(L: PState, idx: int): int{.cdecl, dynlib: NAME, importc: "lua_type".}
 proc typename*(L: PState, tp: int): cstring{.cdecl, dynlib: NAME, 
     importc: "lua_typename".}
 proc equal*(L: PState, idx1, idx2: int): cint{.cdecl, dynlib: NAME, 
@@ -144,9 +142,9 @@ proc tointeger*(L: PState, idx: int): Integer{.cdecl, dynlib: NAME,
     importc: "lua_tointeger".}
 proc toboolean*(L: PState, idx: int): cint{.cdecl, dynlib: NAME, 
     importc: "lua_toboolean".}
-proc tolstring*(L: PState, idx: int, length: Psize_t): cstring{.cdecl, 
+proc tolstring*(L: PState, idx: int, length: ptr int): cstring{.cdecl, 
     dynlib: NAME, importc: "lua_tolstring".}
-proc objlen*(L: PState, idx: int): size_t{.cdecl, dynlib: NAME, 
+proc objlen*(L: PState, idx: int): int{.cdecl, dynlib: NAME, 
     importc: "lua_objlen".}
 proc tocfunction*(L: PState, idx: int): CFunction{.cdecl, dynlib: NAME, 
     importc: "lua_tocfunction".}
@@ -161,7 +159,7 @@ proc pushnumber*(L: PState, n: Number){.cdecl, dynlib: NAME,
                                         importc: "lua_pushnumber".}
 proc pushinteger*(L: PState, n: Integer){.cdecl, dynlib: NAME, 
     importc: "lua_pushinteger".}
-proc pushlstring*(L: PState, s: cstring, l_: size_t){.cdecl, dynlib: NAME, 
+proc pushlstring*(L: PState, s: cstring, l_: int){.cdecl, dynlib: NAME, 
     importc: "lua_pushlstring".}
 proc pushstring*(L: PState, s: cstring){.cdecl, dynlib: NAME, 
     importc: "lua_pushstring".}
@@ -185,7 +183,7 @@ proc rawgeti*(L: PState, idx, n: int){.cdecl, dynlib: NAME,
                                        importc: "lua_rawgeti".}
 proc createtable*(L: PState, narr, nrec: int){.cdecl, dynlib: NAME, 
     importc: "lua_createtable".}
-proc newuserdata*(L: PState, sz: size_t): Pointer{.cdecl, dynlib: NAME, 
+proc newuserdata*(L: PState, sz: int): Pointer{.cdecl, dynlib: NAME, 
     importc: "lua_newuserdata".}
 proc getmetatable*(L: PState, objindex: int): int{.cdecl, dynlib: NAME, 
     importc: "lua_getmetatable".}
@@ -211,7 +209,7 @@ proc load*(L: PState, reader: Reader, dt: Pointer, chunkname: cstring): int{.
     cdecl, dynlib: NAME, importc: "lua_load".}
 proc dump*(L: PState, writer: Writer, data: Pointer): int{.cdecl, dynlib: NAME, 
     importc: "lua_dump".}
-proc yield*(L: PState, nresults: int): int{.cdecl, dynlib: NAME, 
+proc luayield*(L: PState, nresults: int): int{.cdecl, dynlib: NAME, 
     importc: "lua_yield".}
 proc resume*(L: PState, narg: int): int{.cdecl, dynlib: NAME, 
     importc: "lua_resume".}
@@ -249,7 +247,7 @@ proc pop*(L: PState, n: int)
 proc newtable*(L: Pstate)
 proc register*(L: PState, n: cstring, f: CFunction)
 proc pushcfunction*(L: PState, f: CFunction)
-proc strlen*(L: Pstate, i: int): size_t
+proc strlen*(L: Pstate, i: int): int
 proc isfunction*(L: PState, n: int): bool
 proc istable*(L: PState, n: int): bool
 proc islightuserdata*(L: PState, n: int): bool
@@ -295,7 +293,7 @@ const
   IDSIZE* = 60
 
 type 
-  Debug*{.final.} = object    # activation record 
+  TDebug*{.final.} = object    # activation record 
     event*: int
     name*: cstring            # (n) 
     namewhat*: cstring        # (n) `global', `local', `field', `method' 
@@ -309,7 +307,7 @@ type
                                            # private part 
     i_ci*: int                # active function 
   
-  PDebug* = ptr Debug
+  PDebug* = ptr TDebug
   Hook* = proc (L: PState, ar: PDebug){.cdecl.}
 
 #
@@ -355,32 +353,32 @@ proc register(L: PState, n: cstring, f: CFunction) =
 proc pushcfunction(L: PState, f: CFunction) = 
   pushcclosure(L, f, 0)
 
-proc strlen(L: PState, i: int): size_t = 
+proc strlen(L: PState, i: int): int = 
   Result = objlen(L, i)
 
 proc isfunction(L: PState, n: int): bool = 
-  Result = type(L, n) == TFUNCTION
+  Result = luatype(L, n) == TFUNCTION
 
 proc istable(L: PState, n: int): bool = 
-  Result = type(L, n) == TTABLE
+  Result = luatype(L, n) == TTABLE
 
 proc islightuserdata(L: PState, n: int): bool = 
-  Result = type(L, n) == TLIGHTUSERDATA
+  Result = luatype(L, n) == TLIGHTUSERDATA
 
 proc isnil(L: PState, n: int): bool = 
-  Result = type(L, n) == TNIL
+  Result = luatype(L, n) == TNIL
 
 proc isboolean(L: PState, n: int): bool = 
-  Result = type(L, n) == TBOOLEAN
+  Result = luatype(L, n) == TBOOLEAN
 
 proc isthread(L: PState, n: int): bool = 
-  Result = type(L, n) == TTHREAD
+  Result = luatype(L, n) == TTHREAD
 
 proc isnone(L: PState, n: int): bool = 
-  Result = type(L, n) == TNONE
+  Result = luatype(L, n) == TNONE
 
 proc isnoneornil(L: PState, n: int): bool = 
-  Result = type(L, n) <= 0
+  Result = luatype(L, n) <= 0
 
 proc pushliteral(L: PState, s: cstring) = 
   pushlstring(L, s, len(s))

@@ -153,7 +153,7 @@
 #
 
 import 
-  
+  sdl
 
 when defined(windows): 
   const 
@@ -165,97 +165,88 @@ else:
   const 
     ttfLibName = "libSDL_ttf.so"
 const 
-  TTF_MAJOR_VERSION* = 2'i8
-  TTF_MINOR_VERSION* = 0'i8
-  TTF_PATCHLEVEL* = 8'i8      # Backwards compatibility
-  TTF_MAJOR_VERSION* = TTF_MAJOR_VERSION
-  TTF_MINOR_VERSION* = TTF_MINOR_VERSION
-  TTF_PATCHLEVEL* = TTF_PATCHLEVEL #*
-                                   #   Set and retrieve the font style
-                                   #   This font style is implemented by modifying the font glyphs, and
-                                   #   doesn't reflect any inherent properties of the truetype font file.
-                                   #*
-  TTF_STYLE_NORMAL* = 0x00000000
-  TTF_STYLE_BOLD* = 0x00000001
-  TTF_STYLE_ITALIC* = 0x00000002
-  TTF_STYLE_UNDERLINE* = 0x00000004 # ZERO WIDTH NO-BREAKSPACE (Unicode byte order mark)
+  MAJOR_VERSION* = 2'i8
+  MINOR_VERSION* = 0'i8
+  PATCHLEVEL* = 8'i8      # Backwards compatibility
+
+  STYLE_NORMAL* = 0x00000000
+  STYLE_BOLD* = 0x00000001
+  STYLE_ITALIC* = 0x00000002
+  STYLE_UNDERLINE* = 0x00000004 # ZERO WIDTH NO-BREAKSPACE (Unicode byte order mark)
   UNICODE_BOM_NATIVE* = 0x0000FEFF
   UNICODE_BOM_SWAPPED* = 0x0000FFFE
 
 type 
-  PTTF_Font* = ptr TTTF_font
-  TTTF_Font*{.final.} = object  # This macro can be used to fill a version structure with the compile-time
+  PFont* = ptr Tfont
+  TFont*{.final.} = object  # This macro can be used to fill a version structure with the compile-time
                                 #  version of the SDL_ttf library. 
 
-proc TTF_VERSION*(X: var Tversion)
-  # This function gets the version of the dynamically linked SDL_ttf library.
-  #     It should NOT be used to fill a version structure, instead you should use the
-  #     SDL_TTF_VERSION() macro. 
-proc TTF_Linked_Version*(): Pversion{.cdecl, importc: "TTF_Linked_Version", 
+
+proc Linked_Version*(): sdl.Pversion{.cdecl, importc: "TTF_Linked_Version", 
                                       dynlib: ttfLibName.}
   # This function tells the library whether UNICODE text is generally
   #   byteswapped.  A UNICODE BOM character in a string will override
   #   this setting for the remainder of that string.
   #
-proc TTF_ByteSwappedUNICODE*(swapped: int){.cdecl, 
+proc ByteSwappedUNICODE*(swapped: int){.cdecl, 
     importc: "TTF_ByteSwappedUNICODE", dynlib: ttfLibName.}
   #returns 0 on succes, -1 if error occurs
-proc TTF_Init*(): int{.cdecl, importc: "TTF_Init", dynlib: ttfLibName.}
+proc Init*(): int{.cdecl, importc: "TTF_Init", dynlib: ttfLibName.}
   #
   # Open a font file and create a font of the specified point size.
   # Some .fon fonts will have several sizes embedded in the file, so the
   # point size becomes the index of choosing which size.  If the value
   # is too high, the last indexed size will be the default.
   #
-proc TTF_OpenFont*(filename: cstring, ptsize: int): PTTF_Font{.cdecl, 
+proc OpenFont*(filename: cstring, ptsize: int): PFont{.cdecl, 
     importc: "TTF_OpenFont", dynlib: ttfLibName.}
-proc TTF_OpenFontIndex*(filename: cstring, ptsize: int, index: int32): PTTF_Font{.
+proc OpenFontIndex*(filename: cstring, ptsize: int, index: int32): PFont{.
     cdecl, importc: "TTF_OpenFontIndex", dynlib: ttfLibName.}
-proc TTF_OpenFontRW*(src: PRWops, freesrc: int, ptsize: int): PTTF_Font{.cdecl, 
+proc OpenFontRW*(src: PRWops, freesrc: int, ptsize: int): PFont{.cdecl, 
     importc: "TTF_OpenFontRW", dynlib: ttfLibName.}
-proc TTF_OpenFontIndexRW*(src: PRWops, freesrc: int, ptsize: int, index: int32): PTTF_Font{.
+proc OpenFontIndexRW*(src: PRWops, freesrc: int, ptsize: int, index: int32): PFont{.
     cdecl, importc: "TTF_OpenFontIndexRW", dynlib: ttfLibName.}
-proc TTF_GetFontStyle*(font: PTTF_Font): int{.cdecl, 
+proc GetFontStyle*(font: PFont): int{.cdecl, 
     importc: "TTF_GetFontStyle", dynlib: ttfLibName.}
-proc TTF_SetFontStyle*(font: PTTF_Font, style: int){.cdecl, 
+proc SetFontStyle*(font: PFont, style: int){.cdecl, 
     importc: "TTF_SetFontStyle", dynlib: ttfLibName.}
   # Get the total height of the font - usually equal to point size 
-proc TTF_FontHeight*(font: PTTF_Font): int{.cdecl, importc: "TTF_FontHeight", 
+proc FontHeight*(font: PFont): int{.cdecl, importc: "TTF_FontHeight", 
     dynlib: ttfLibName.}
   # Get the offset from the baseline to the top of the font
   #   This is a positive value, relative to the baseline.
   #
-proc TTF_FontAscent*(font: PTTF_Font): int{.cdecl, importc: "TTF_FontAscent", 
+proc FontAscent*(font: PFont): int{.cdecl, importc: "TTF_FontAscent", 
     dynlib: ttfLibName.}
   # Get the offset from the baseline to the bottom of the font
   #   This is a negative value, relative to the baseline.
   #
-proc TTF_FontDescent*(font: PTTF_Font): int{.cdecl, importc: "TTF_FontDescent", 
+proc FontDescent*(font: PFont): int{.cdecl, importc: "TTF_FontDescent", 
     dynlib: ttfLibName.}
   # Get the recommended spacing between lines of text for this font 
-proc TTF_FontLineSkip*(font: PTTF_Font): int{.cdecl, 
+proc FontLineSkip*(font: PFont): int{.cdecl, 
     importc: "TTF_FontLineSkip", dynlib: ttfLibName.}
   # Get the number of faces of the font 
-proc TTF_FontFaces*(font: PTTF_Font): int32{.cdecl, importc: "TTF_FontFaces", 
+proc FontFaces*(font: PFont): int32{.cdecl, importc: "TTF_FontFaces", 
     dynlib: ttfLibName.}
   # Get the font face attributes, if any 
-proc TTF_FontFaceIsFixedWidth*(font: PTTF_Font): int{.cdecl, 
+proc FontFaceIsFixedWidth*(font: PFont): int{.cdecl, 
     importc: "TTF_FontFaceIsFixedWidth", dynlib: ttfLibName.}
-proc TTF_FontFaceFamilyName*(font: PTTF_Font): cstring{.cdecl, 
+proc FontFaceFamilyName*(font: PFont): cstring{.cdecl, 
     importc: "TTF_FontFaceFamilyName", dynlib: ttfLibName.}
-proc TTF_FontFaceStyleName*(font: PTTF_Font): cstring{.cdecl, 
+proc FontFaceStyleName*(font: PFont): cstring{.cdecl, 
     importc: "TTF_FontFaceStyleName", dynlib: ttfLibName.}
   # Get the metrics (dimensions) of a glyph 
-proc TTF_GlyphMetrics*(font: PTTF_Font, ch: Uint16, minx: var int, 
+proc GlyphMetrics*(font: PFont, ch: Uint16, minx: var int, 
                        maxx: var int, miny: var int, maxy: var int, 
                        advance: var int): int{.cdecl, 
     importc: "TTF_GlyphMetrics", dynlib: ttfLibName.}
   # Get the dimensions of a rendered string of text 
-proc TTF_SizeText*(font: PTTF_Font, text: cstring, w: var int, y: var int): int{.
+proc SizeText*(font: PFont, text: cstring, w: var int, y: var int): int{.
     cdecl, importc: "TTF_SizeText", dynlib: ttfLibName.}
-proc TTF_SizeUTF8*(font: PTTF_Font, text: cstring, w: var int, y: var int): int{.
+proc SizeUTF8*(font: PFont, text: cstring, w: var int, y: var int): int{.
     cdecl, importc: "TTF_SizeUTF8", dynlib: ttfLibName.}
-proc TTF_SizeUNICODE*(font: PTTF_Font, text: PUint16, w: var int, y: var int): int{.
+proc SizeUNICODE*(font: PFont, text: PUint16, w: var int, y: var int): int{.
     cdecl, importc: "TTF_SizeUNICODE", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given text at
   #   fast quality with the given font and color.  The 0 pixel is the
@@ -263,9 +254,9 @@ proc TTF_SizeUNICODE*(font: PTTF_Font, text: PUint16, w: var int, y: var int): i
   #   to the text color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderUTF8_Solid*(font: PTTF_Font, text: cstring, fg: TColor): PSurface{.
+proc RenderUTF8_Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderUTF8_Solid", dynlib: ttfLibName.}
-proc TTF_RenderUNICODE_Solid*(font: PTTF_Font, text: PUint16, fg: TColor): PSurface{.
+proc RenderUNICODE_Solid*(font: PFont, text: PUint16, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderUNICODE_Solid", dynlib: ttfLibName.}
   #
   #Create an 8-bit palettized surface and render the given glyph at
@@ -275,20 +266,20 @@ proc TTF_RenderUNICODE_Solid*(font: PTTF_Font, text: PUint16, fg: TColor): PSurf
   #   centering in the X direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderGlyph_Solid*(font: PTTF_Font, ch: Uint16, fg: TColor): PSurface{.
+proc RenderGlyph_Solid*(font: PFont, ch: Uint16, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Solid", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given text at
   #   high quality with the given font and colors.  The 0 pixel is background,
   #   while other pixels have varying degrees of the foreground color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderText_Shaded*(font: PTTF_Font, text: cstring, fg: TColor, 
+proc RenderText_Shaded*(font: PFont, text: cstring, fg: TColor, 
                             bg: TColor): PSurface{.cdecl, 
     importc: "TTF_RenderText_Shaded", dynlib: ttfLibName.}
-proc TTF_RenderUTF8_Shaded*(font: PTTF_Font, text: cstring, fg: TColor, 
+proc RenderUTF8_Shaded*(font: PFont, text: cstring, fg: TColor, 
                             bg: TColor): PSurface{.cdecl, 
     importc: "TTF_RenderUTF8_Shaded", dynlib: ttfLibName.}
-proc TTF_RenderUNICODE_Shaded*(font: PTTF_Font, text: PUint16, fg: TColor, 
+proc RenderUNICODE_Shaded*(font: PFont, text: PUint16, fg: TColor, 
                                bg: TColor): PSurface{.cdecl, 
     importc: "TTF_RenderUNICODE_Shaded", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given glyph at
@@ -298,17 +289,17 @@ proc TTF_RenderUNICODE_Shaded*(font: PTTF_Font, text: PUint16, fg: TColor,
   #   direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderGlyph_Shaded*(font: PTTF_Font, ch: Uint16, fg: TColor, bg: TColor): PSurface{.
+proc RenderGlyph_Shaded*(font: PFont, ch: Uint16, fg: TColor, bg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Shaded", dynlib: ttfLibName.}
   # Create a 32-bit ARGB surface and render the given text at high quality,
   #   using alpha blending to dither the font with the given color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderText_Blended*(font: PTTF_Font, text: cstring, fg: TColor): PSurface{.
+proc RenderText_Blended*(font: PFont, text: cstring, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderText_Blended", dynlib: ttfLibName.}
-proc TTF_RenderUTF8_Blended*(font: PTTF_Font, text: cstring, fg: TColor): PSurface{.
+proc RenderUTF8_Blended*(font: PFont, text: cstring, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderUTF8_Blended", dynlib: ttfLibName.}
-proc TTF_RenderUNICODE_Blended*(font: PTTF_Font, text: PUint16, fg: TColor): PSurface{.
+proc RenderUNICODE_Blended*(font: PFont, text: PUint16, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderUNICODE_Blended", dynlib: ttfLibName.}
   # Create a 32-bit ARGB surface and render the given glyph at high quality,
   #   using alpha blending to dither the font with the given color.
@@ -316,7 +307,7 @@ proc TTF_RenderUNICODE_Blended*(font: PTTF_Font, text: PUint16, fg: TColor): PSu
   #   direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc TTF_RenderGlyph_Blended*(font: PTTF_Font, ch: Uint16, fg: TColor): PSurface{.
+proc RenderGlyph_Blended*(font: PFont, ch: Uint16, fg: TColor): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Blended", dynlib: ttfLibName.}
   # For compatibility with previous versions, here are the old functions 
   ##define TTF_RenderText(font, text, fg, bg)
@@ -326,32 +317,25 @@ proc TTF_RenderGlyph_Blended*(font: PTTF_Font, ch: Uint16, fg: TColor): PSurface
   ##define TTF_RenderUNICODE(font, text, fg, bg)	
   #	TTF_RenderUNICODE_Shaded(font, text, fg, bg)
   # Close an opened font file 
-proc TTF_CloseFont*(font: PTTF_Font){.cdecl, importc: "TTF_CloseFont", 
+proc CloseFont*(font: PFont){.cdecl, importc: "TTF_CloseFont", 
                                       dynlib: ttfLibName.}
   #De-initialize TTF engine
-proc TTF_Quit*(){.cdecl, importc: "TTF_Quit", dynlib: ttfLibName.}
+proc Quit*(){.cdecl, importc: "TTF_Quit", dynlib: ttfLibName.}
   # Check if the TTF engine is initialized
-proc TTF_WasInit*(): int{.cdecl, importc: "TTF_WasInit", dynlib: ttfLibName.}
-  # We'll use SDL for reporting errors
-proc TTF_SetError*(fmt: cstring)
-proc TTF_GetError*(): cstring
-# implementation
+proc WasInit*(): int{.cdecl, importc: "TTF_WasInit", dynlib: ttfLibName.}
 
-proc TTF_VERSION(X: var Tversion) = 
-  X.major = TTF_MAJOR_VERSION
-  X.minor = TTF_MINOR_VERSION
-  X.patch = TTF_PATCHLEVEL
 
-proc TTF_SetError(fmt: cstring) = 
-  SetError(fmt)
+proc VERSION*(X: var sdl.Tversion) = 
+  X.major = MAJOR_VERSION
+  X.minor = MINOR_VERSION
+  X.patch = PATCHLEVEL
 
-proc TTF_GetError(): cstring = 
-  result = GetError()
 
-when not (defined(Workaround_TTF_RenderText_Solid)): 
-  proc TTF_RenderText_Solid*(font: PTTF_Font, text: cstring, fg: TColor): PSurface{.
+when not (defined(Workaround_RenderText_Solid)): 
+  proc RenderText_Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
       cdecl, importc: "TTF_RenderText_Solid", dynlib: ttfLibName.}
 else: 
-  proc TTF_RenderText_Solid(font: PTTF_Font, text: cstring, fg: TColor): PSurface = 
+  proc RenderText_Solid(font: PFont, text: cstring, fg: TColor): PSurface = 
     var Black: TColor         # initialized to zero
-    Result = TTF_RenderText_Shaded(font, text, fg, Black)
+    result = RenderText_Shaded(font, text, fg, Black)
+
