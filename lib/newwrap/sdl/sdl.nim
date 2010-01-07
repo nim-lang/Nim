@@ -752,7 +752,7 @@ type
   THandle* = int              #SDL_types.h types
                               # Basic data types
   TBool* = enum 
-    FALSE, TRUE
+    sdlFALSE, sdlTRUE
   PUInt8Array* = ptr TUInt8Array
   PUInt8* = ptr UInt8
   PPUInt8* = ptr PUInt8

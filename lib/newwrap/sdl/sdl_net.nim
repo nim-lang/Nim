@@ -110,7 +110,7 @@
 #******************************************************************************
 
 import 
-  
+  sdl
 
 when defined(windows): 
   const 
@@ -122,9 +122,9 @@ else:
   const 
     NetLibName = "libSDL_net.so"
 const                         #* Printable format: "%d.%d.%d", MAJOR, MINOR, PATCHLEVEL *
-  NET_MAJOR_VERSION* = 1'i8
-  NET_MINOR_VERSION* = 2'i8
-  NET_PATCHLEVEL* = 5'i8 # SDL_Net.h constants
+  MAJOR_VERSION* = 1'i8
+  MINOR_VERSION* = 2'i8
+  PATCHLEVEL* = 5'i8     # SDL_Net.h constants
                          #* Resolve a host name and port to an IP address in network form.
                          #   If the function succeeds, it will return 0.
                          #   If the host couldn't be resolved, the host portion of the returned
@@ -136,8 +136,8 @@ const                         #* Printable format: "%d.%d.%d", MAJOR, MINOR, PAT
                             #* UDP network API                                                     *
                             #***********************************************************************
                             #* The maximum channels on a a UDP socket *
-  NET_MAX_UDPCHANNELS* = 32   #* The maximum addresses bound to a single UDP socket channel *
-  NET_MAX_UDPADDRESSES* = 4
+  MAX_UDPCHANNELS* = 32   #* The maximum addresses bound to a single UDP socket channel *
+  MAX_UDPADDRESSES* = 4
 
 type  # SDL_net.h types
       #***********************************************************************
@@ -149,9 +149,7 @@ type  # SDL_net.h types
     port*: Uint16             # 16-bit protocol port */
   
   PTCPSocket* = ptr TTCPSocket
-  TTCPSocket*{.final.} = object  #***********************************************************************
-                                 #* UDP network API                                                     *
-                                 #***********************************************************************
+  TTCPSocket*{.final.} = object  # UDP network API
     ready*: int
     channel*: int
     remoteAddress*: TIPaddress
@@ -161,14 +159,14 @@ type  # SDL_net.h types
   PUDP_Channel* = ptr TUDP_Channel
   TUDP_Channel*{.final.} = object 
     numbound*: int
-    address*: array[0..NET_MAX_UDPADDRESSES - 1, TIPAddress]
+    address*: array[0..MAX_UDPADDRESSES - 1, TIPAddress]
 
   PUDPSocket* = ptr TUDPSocket
   TUDPSocket*{.final.} = object 
     ready*: int
     channel*: int
     address*: TIPAddress
-    binding*: array[0..NET_MAX_UDPCHANNELS - 1, TUDP_Channel]
+    binding*: array[0..MAX_UDPCHANNELS - 1, TUDP_Channel]
 
   PUDPpacket* = ptr TUDPpacket
   PPUDPpacket* = ptr PUDPpacket
@@ -182,44 +180,43 @@ type  # SDL_net.h types
     status*: int              #* packet status after sending *
     address*: TIPAddress      #* The source/dest address of an incoming/outgoing packet *
   
-  PNet_Socket* = ptr TNet_Socket
-  TNet_Socket*{.final.} = object 
+  PSocket* = ptr TSocket
+  TSocket*{.final.} = object 
     ready*: int
     channel*: int
 
-  PNet_SocketSet* = ptr TNet_SocketSet
-  TNet_SocketSet*{.final.} = object  #* Any network socket can be safely cast to this socket type *
+  PSocketSet* = ptr TSocketSet
+  TSocketSet*{.final.} = object  # Any network socket can be safely cast to this socket type *
     numsockets*: int
     maxsockets*: int
-    sockets*: PNet_Socket
+    sockets*: PSocket
 
-  PNet_GenericSocket* = ptr TNet_GenericSocket
-  TNet_GenericSocket*{.final.} = object  # This macro can be used to fill a version structure with the compile-time
-                                         #  version of the SDL_net library. 
+  PGenericSocket* = ptr TGenericSocket
+  TGenericSocket*{.final.} = object 
     ready*: int
 
 
-proc NET_VERSION*(X: var Tversion)
+proc VERSION*(X: var Tversion)
   #* Initialize/Cleanup the network API
   #   SDL must be initialized before calls to functions in this library,
   #   because this library uses utility functions from the SDL library.
   #*
-proc Net_Init*(): int{.cdecl, importc: "SDLNet_Init", dynlib: NetLibName.}
-proc Net_Quit*(){.cdecl, importc: "SDLNet_Quit", dynlib: NetLibName.}
+proc Init*(): int{.cdecl, importc: "SDLNet_Init", dynlib: NetLibName.}
+proc Quit*(){.cdecl, importc: "SDLNet_Quit", dynlib: NetLibName.}
   #* Resolve a host name and port to an IP address in network form.
   #   If the function succeeds, it will return 0.
   #   If the host couldn't be resolved, the host portion of the returned
   #   address will be INADDR_NONE, and the function will return -1.
   #   If 'host' is NULL, the resolved host will be set to INADDR_ANY.
   # *
-proc Net_ResolveHost*(address: var TIPaddress, host: cstring, port: Uint16): int{.
+proc ResolveHost*(address: var TIPaddress, host: cstring, port: Uint16): int{.
     cdecl, importc: "SDLNet_ResolveHost", dynlib: NetLibName.}
   #* Resolve an ip address to a host name in canonical form.
   #   If the ip couldn't be resolved, this function returns NULL,
   #   otherwise a pointer to a static buffer containing the hostname
   #   is returned.  Note that this function is not thread-safe.
   #*
-proc Net_ResolveIP*(ip: var TIPaddress): cstring{.cdecl, 
+proc ResolveIP*(ip: var TIPaddress): cstring{.cdecl, 
     importc: "SDLNet_ResolveIP", dynlib: NetLibName.}
   #***********************************************************************
   #* TCP network API                                                     *
@@ -232,24 +229,24 @@ proc Net_ResolveIP*(ip: var TIPaddress): cstring{.cdecl,
   #   in the correct form).
   #   The newly created socket is returned, or NULL if there was an error.
   #*
-proc Net_TCP_Open*(ip: var TIPaddress): PTCPSocket{.cdecl, 
+proc TCP_Open*(ip: var TIPaddress): PTCPSocket{.cdecl, 
     importc: "SDLNet_TCP_Open", dynlib: NetLibName.}
   #* Accept an incoming connection on the given server socket.
   #   The newly created socket is returned, or NULL if there was an error.
   #*
-proc Net_TCP_Accept*(server: PTCPsocket): PTCPSocket{.cdecl, 
+proc TCP_Accept*(server: PTCPsocket): PTCPSocket{.cdecl, 
     importc: "SDLNet_TCP_Accept", dynlib: NetLibName.}
   #* Get the IP address of the remote system associated with the socket.
   #   If the socket is a server socket, this function returns NULL.
   #*
-proc Net_TCP_GetPeerAddress*(sock: PTCPsocket): PIPAddress{.cdecl, 
+proc TCP_GetPeerAddress*(sock: PTCPsocket): PIPAddress{.cdecl, 
     importc: "SDLNet_TCP_GetPeerAddress", dynlib: NetLibName.}
   #* Send 'len' bytes of 'data' over the non-server socket 'sock'
   #   This function returns the actual amount of data sent.  If the return value
   #   is less than the amount of data sent, then either the remote connection was
   #   closed, or an unknown socket error occurred.
   #*
-proc Net_TCP_Send*(sock: PTCPsocket, data: Pointer, length: int): int{.cdecl, 
+proc TCP_Send*(sock: PTCPsocket, data: Pointer, length: int): int{.cdecl, 
     importc: "SDLNet_TCP_Send", dynlib: NetLibName.}
   #* Receive up to 'maxlen' bytes of data over the non-server socket 'sock',
   #   and store them in the buffer pointed to by 'data'.
@@ -257,10 +254,10 @@ proc Net_TCP_Send*(sock: PTCPsocket, data: Pointer, length: int): int{.cdecl,
   #   value is less than or equal to zero, then either the remote connection was
   #   closed, or an unknown socket error occurred.
   #*
-proc Net_TCP_Recv*(sock: PTCPsocket, data: Pointer, maxlen: int): int{.cdecl, 
+proc TCP_Recv*(sock: PTCPsocket, data: Pointer, maxlen: int): int{.cdecl, 
     importc: "SDLNet_TCP_Recv", dynlib: NetLibName.}
   #* Close a TCP network socket *
-proc Net_TCP_Close*(sock: PTCPsocket){.cdecl, importc: "SDLNet_TCP_Close", 
+proc TCP_Close*(sock: PTCPsocket){.cdecl, importc: "SDLNet_TCP_Close", 
                                        dynlib: NetLibName.}
   #***********************************************************************
   #* UDP network API                                                     *
@@ -268,26 +265,26 @@ proc Net_TCP_Close*(sock: PTCPsocket){.cdecl, importc: "SDLNet_TCP_Close",
   #* Allocate/resize/free a single UDP packet 'size' bytes long.
   #   The new packet is returned, or NULL if the function ran out of memory.
   # *
-proc Net_AllocPacket*(size: int): PUDPpacket{.cdecl, 
+proc AllocPacket*(size: int): PUDPpacket{.cdecl, 
     importc: "SDLNet_AllocPacket", dynlib: NetLibName.}
-proc Net_ResizePacket*(packet: PUDPpacket, newsize: int): int{.cdecl, 
+proc ResizePacket*(packet: PUDPpacket, newsize: int): int{.cdecl, 
     importc: "SDLNet_ResizePacket", dynlib: NetLibName.}
-proc Net_FreePacket*(packet: PUDPpacket){.cdecl, importc: "SDLNet_FreePacket", 
+proc FreePacket*(packet: PUDPpacket){.cdecl, importc: "SDLNet_FreePacket", 
     dynlib: NetLibName.}
   #* Allocate/Free a UDP packet vector (array of packets) of 'howmany' packets,
   #   each 'size' bytes long.
   #   A pointer to the first packet in the array is returned, or NULL if the
   #   function ran out of memory.
   # *
-proc Net_AllocPacketV*(howmany: int, size: int): PUDPpacket{.cdecl, 
+proc AllocPacketV*(howmany: int, size: int): PUDPpacket{.cdecl, 
     importc: "SDLNet_AllocPacketV", dynlib: NetLibName.}
-proc Net_FreePacketV*(packetV: PUDPpacket){.cdecl, 
+proc FreePacketV*(packetV: PUDPpacket){.cdecl, 
     importc: "SDLNet_FreePacketV", dynlib: NetLibName.}
   #* Open a UDP network socket
   #   If 'port' is non-zero, the UDP socket is bound to a local port.
   #   This allows other systems to send to this socket via a known port.
   #*
-proc Net_UDP_Open*(port: Uint16): PUDPsocket{.cdecl, importc: "SDLNet_UDP_Open", 
+proc UDP_Open*(port: Uint16): PUDPsocket{.cdecl, importc: "SDLNet_UDP_Open", 
     dynlib: NetLibName.}
   #* Bind the address 'address' to the requested channel on the UDP socket.
   #   If the channel is -1, then the first unbound channel will be bound with
@@ -298,10 +295,10 @@ proc Net_UDP_Open*(port: Uint16): PUDPsocket{.cdecl, importc: "SDLNet_UDP_Open",
   #   address, to which all outbound packets on the channel are sent.
   #   This function returns the channel which was bound, or -1 on error.
   #*
-proc Net_UDP_Bind*(sock: PUDPsocket, channel: int, address: var TIPaddress): int{.
+proc UDP_Bind*(sock: PUDPsocket, channel: int, address: var TIPaddress): int{.
     cdecl, importc: "SDLNet_UDP_Bind", dynlib: NetLibName.}
   #* Unbind all addresses from the given channel *
-proc Net_UDP_Unbind*(sock: PUDPsocket, channel: int){.cdecl, 
+proc UDP_Unbind*(sock: PUDPsocket, channel: int){.cdecl, 
     importc: "SDLNet_UDP_Unbind", dynlib: NetLibName.}
   #* Get the primary IP address of the remote system associated with the
   #   socket and channel.  If the channel is -1, then the primary IP port
@@ -309,7 +306,7 @@ proc Net_UDP_Unbind*(sock: PUDPsocket, channel: int){.cdecl,
   #   opened with a specific port.
   #   If the channel is not bound and not -1, this function returns NULL.
   # *
-proc Net_UDP_GetPeerAddress*(sock: PUDPsocket, channel: int): PIPAddress{.cdecl, 
+proc UDP_GetPeerAddress*(sock: PUDPsocket, channel: int): PIPAddress{.cdecl, 
     importc: "SDLNet_UDP_GetPeerAddress", dynlib: NetLibName.}
   #* Send a vector of packets to the the channels specified within the packet.
   #   If the channel specified in the packet is -1, the packet will be sent to
@@ -318,7 +315,7 @@ proc Net_UDP_GetPeerAddress*(sock: PUDPsocket, channel: int): PIPAddress{.cdecl,
   #   been sent, -1 if the packet send failed.
   #   This function returns the number of packets sent.
   #*
-proc Net_UDP_SendV*(sock: PUDPsocket, packets: PPUDPpacket, npackets: int): int{.
+proc UDP_SendV*(sock: PUDPsocket, packets: PPUDPpacket, npackets: int): int{.
     cdecl, importc: "SDLNet_UDP_SendV", dynlib: NetLibName.}
   #* Send a single packet to the specified channel.
   #   If the channel specified in the packet is -1, the packet will be sent to
@@ -327,7 +324,7 @@ proc Net_UDP_SendV*(sock: PUDPsocket, packets: PPUDPpacket, npackets: int): int{
   #   been sent.
   #   This function returns 1 if the packet was sent, or 0 on error.
   #*
-proc Net_UDP_Send*(sock: PUDPsocket, channel: int, packet: PUDPpacket): int{.
+proc UDP_Send*(sock: PUDPsocket, channel: int, packet: PUDPpacket): int{.
     cdecl, importc: "SDLNet_UDP_Send", dynlib: NetLibName.}
   #* Receive a vector of pending packets from the UDP socket.
   #   The returned packets contain the source address and the channel they arrived
@@ -339,7 +336,7 @@ proc Net_UDP_Send*(sock: PUDPsocket, channel: int, packet: PUDPpacket): int{.
   #   This function returns the number of packets read from the network, or -1
   #   on error.  This function does not block, so can return 0 packets pending.
   #*
-proc Net_UDP_RecvV*(sock: PUDPsocket, packets: PPUDPpacket): int{.cdecl, 
+proc UDP_RecvV*(sock: PUDPsocket, packets: PPUDPpacket): int{.cdecl, 
     importc: "SDLNet_UDP_RecvV", dynlib: NetLibName.}
   #* Receive a single packet from the UDP socket.
   #   The returned packet contains the source address and the channel it arrived
@@ -351,10 +348,10 @@ proc Net_UDP_RecvV*(sock: PUDPsocket, packets: PPUDPpacket): int{.cdecl,
   #   This function returns the number of packets read from the network, or -1
   #   on error.  This function does not block, so can return 0 packets pending.
   #*
-proc Net_UDP_Recv*(sock: PUDPsocket, packet: PUDPpacket): int{.cdecl, 
+proc UDP_Recv*(sock: PUDPsocket, packet: PUDPpacket): int{.cdecl, 
     importc: "SDLNet_UDP_Recv", dynlib: NetLibName.}
   #* Close a UDP network socket *
-proc Net_UDP_Close*(sock: PUDPsocket){.cdecl, importc: "SDLNet_UDP_Close", 
+proc UDP_Close*(sock: PUDPsocket){.cdecl, importc: "SDLNet_UDP_Close", 
                                        dynlib: NetLibName.}
   #***********************************************************************
   #* Hooks for checking sockets for available data                       *
@@ -363,19 +360,19 @@ proc Net_UDP_Close*(sock: PUDPsocket){.cdecl, importc: "SDLNet_UDP_Close",
   #   This returns a socket set for up to 'maxsockets' sockets, or NULL if
   #   the function ran out of memory.
   # *
-proc Net_AllocSocketSet*(maxsockets: int): PNet_SocketSet{.cdecl, 
+proc AllocSocketSet*(maxsockets: int): PSocketSet{.cdecl, 
     importc: "SDLNet_AllocSocketSet", dynlib: NetLibName.}
   #* Add a socket to a set of sockets to be checked for available data *
-proc Net_AddSocket*(theSet: PNet_SocketSet, sock: PNet_GenericSocket): int{.
+proc AddSocket*(theSet: PSocketSet, sock: PGenericSocket): int{.
     cdecl, importc: "SDLNet_AddSocket", dynlib: NetLibName.}
-proc Net_TCP_AddSocket*(theSet: PNet_SocketSet, sock: PTCPSocket): int
-proc Net_UDP_AddSocket*(theSet: PNet_SocketSet, sock: PUDPSocket): int
+proc TCP_AddSocket*(theSet: PSocketSet, sock: PTCPSocket): int
+proc UDP_AddSocket*(theSet: PSocketSet, sock: PUDPSocket): int
   #* Remove a socket from a set of sockets to be checked for available data *
-proc Net_DelSocket*(theSet: PNet_SocketSet, sock: PNet_GenericSocket): int{.
+proc DelSocket*(theSet: PSocketSet, sock: PGenericSocket): int{.
     cdecl, importc: "SDLNet_DelSocket", dynlib: NetLibName.}
-proc Net_TCP_DelSocket*(theSet: PNet_SocketSet, sock: PTCPSocket): int
+proc TCP_DelSocket*(theSet: PSocketSet, sock: PTCPSocket): int
   # SDLNet_DelSocket(set, (SDLNet_GenericSocket)sock)
-proc Net_UDP_DelSocket*(theSet: PNet_SocketSet, sock: PUDPSocket): int
+proc UDP_DelSocket*(theSet: PSocketSet, sock: PUDPSocket): int
   #SDLNet_DelSocket(set, (SDLNet_GenericSocket)sock)
   #* This function checks to see if data is available for reading on the
   #   given set of sockets.  If 'timeout' is 0, it performs a quick poll,
@@ -384,59 +381,47 @@ proc Net_UDP_DelSocket*(theSet: PNet_SocketSet, sock: PUDPSocket): int
   #   first.  This function returns the number of sockets ready for reading,
   #   or -1 if there was an error with the select() system call.
   #*
-proc Net_CheckSockets*(theSet: PNet_SocketSet, timeout: Sint32): int{.cdecl, 
+proc CheckSockets*(theSet: PSocketSet, timeout: Sint32): int{.cdecl, 
     importc: "SDLNet_CheckSockets", dynlib: NetLibName.}
   #* After calling SDLNet_CheckSockets(), you can use this function on a
   #   socket that was in the socket set, to find out if data is available
   #   for reading.
   #*
-proc Net_SocketReady*(sock: PNet_GenericSocket): bool
+proc SocketReady*(sock: PGenericSocket): bool
   #* Free a set of sockets allocated by SDL_NetAllocSocketSet() *
-proc Net_FreeSocketSet*(theSet: PNet_SocketSet){.cdecl, 
+proc FreeSocketSet*(theSet: PSocketSet){.cdecl, 
     importc: "SDLNet_FreeSocketSet", dynlib: NetLibName.}
   #***********************************************************************
   #* Platform-independent data conversion functions                      *
   #***********************************************************************
   #* Write a 16/32 bit value to network packet buffer *
-proc Net_Write16*(value: Uint16, area: Pointer){.cdecl, 
+proc Write16*(value: Uint16, area: Pointer){.cdecl, 
     importc: "SDLNet_Write16", dynlib: NetLibName.}
-proc Net_Write32*(value: Uint32, area: Pointer){.cdecl, 
+proc Write32*(value: Uint32, area: Pointer){.cdecl, 
     importc: "SDLNet_Write32", dynlib: NetLibName.}
   #* Read a 16/32 bit value from network packet buffer *
-proc Net_Read16*(area: Pointer): Uint16{.cdecl, importc: "SDLNet_Read16", 
+proc Read16*(area: Pointer): Uint16{.cdecl, importc: "SDLNet_Read16", 
     dynlib: NetLibName.}
-proc Net_Read32*(area: Pointer): Uint32{.cdecl, importc: "SDLNet_Read32", 
+proc Read32*(area: Pointer): Uint32{.cdecl, importc: "SDLNet_Read32", 
     dynlib: NetLibName.}
-  #***********************************************************************
-  #* Error reporting functions                                           *
-  #***********************************************************************
-  #* We'll use SDL's functions for error reporting *
-proc Net_SetError*(fmt: cstring)
-proc Net_GetError*(): cstring
-# implementation
 
-proc NET_VERSION(X: var Tversion) = 
-  X.major = NET_MAJOR_VERSION
-  X.minor = NET_MINOR_VERSION
-  X.patch = NET_PATCHLEVEL
+proc VERSION(X: var Tversion) = 
+  X.major = MAJOR_VERSION
+  X.minor = MINOR_VERSION
+  X.patch = PATCHLEVEL
 
-proc Net_TCP_AddSocket(theSet: PNet_SocketSet, sock: PTCPSocket): int = 
-  result = Net_AddSocket(theSet, cast[PNet_GenericSocket](sock))
+proc TCP_AddSocket(theSet: PSocketSet, sock: PTCPSocket): int = 
+  result = AddSocket(theSet, cast[PGenericSocket](sock))
 
-proc Net_UDP_AddSocket(theSet: PNet_SocketSet, sock: PUDPSocket): int = 
-  result = Net_AddSocket(theSet, cast[PNet_GenericSocket](sock))
+proc UDP_AddSocket(theSet: PSocketSet, sock: PUDPSocket): int = 
+  result = AddSocket(theSet, cast[PGenericSocket](sock))
 
-proc Net_TCP_DelSocket(theSet: PNet_SocketSet, sock: PTCPSocket): int = 
-  result = Net_DelSocket(theSet, cast[PNet_GenericSocket](sock))
+proc TCP_DelSocket(theSet: PSocketSet, sock: PTCPSocket): int = 
+  result = DelSocket(theSet, cast[PGenericSocket](sock))
 
-proc Net_UDP_DelSocket(theSet: PNet_SocketSet, sock: PUDPSocket): int = 
-  result = Net_DelSocket(theSet, cast[PNet_GenericSocket](sock))
+proc UDP_DelSocket(theSet: PSocketSet, sock: PUDPSocket): int = 
+  result = DelSocket(theSet, cast[PGenericSocket](sock))
 
-proc Net_SocketReady(sock: PNet_GenericSocket): bool = 
+proc SocketReady(sock: PGenericSocket): bool = 
   result = ((sock != nil) and (sock.ready == 1))
 
-proc Net_SetError(fmt: cstring) = 
-  SetError(fmt)
-
-proc Net_GetError(): cstring = 
-  result = GetError()

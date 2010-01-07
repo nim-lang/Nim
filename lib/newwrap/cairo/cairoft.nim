@@ -5,7 +5,7 @@
 #
 
 import 
-  , freetypeh
+  cairo, freetypeh
 
 #todo: properly define FcPattern:
 #It will require translate FontConfig header

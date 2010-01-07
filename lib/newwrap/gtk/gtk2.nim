@@ -18,8 +18,6 @@ elif defined(darwin):
 else: 
   const 
     lib = "libgtk-x11-2.0.so"
-type 
-  PPPchar* = PPPgchar
 
 const 
   MAX_COMPOSE_LEN* = 7
@@ -186,7 +184,7 @@ type
   TWidgetHelpType* = enum 
     WIDGET_HELP_TOOLTIP, WIDGET_HELP_WHATS_THIS
   PAllocation* = ptr TAllocation
-  TAllocation* = TGdkRectangle
+  TAllocation* = Gdk2.TRectangle
   TCallback* = proc (widget: PWidget, data: gpointer){.cdecl.}
   PRequisition* = ptr TRequisition
   TRequisition*{.final, pure.} = object 
@@ -201,7 +199,7 @@ type
     style*: PStyle
     requisition*: TRequisition
     allocation*: TAllocation
-    window*: PGdkWindow
+    window*: Gdk2.PWindow
     parent*: PWidget
 
   PWidgetClass* = ptr TWidgetClass
@@ -233,78 +231,78 @@ type
         cdecl.}
     grab_focus*: proc (widget: PWidget){.cdecl.}
     focus*: proc (widget: PWidget, direction: TDirectionType): gboolean{.cdecl.}
-    event*: proc (widget: PWidget, event: PGdkEvent): gboolean{.cdecl.}
-    button_press_event*: proc (widget: PWidget, event: PGdkEventButton): gboolean{.
+    event*: proc (widget: PWidget, event: Gdk2.PEvent): gboolean{.cdecl.}
+    button_press_event*: proc (widget: PWidget, event: PEventButton): gboolean{.
         cdecl.}
-    button_release_event*: proc (widget: PWidget, event: PGdkEventButton): gboolean{.
+    button_release_event*: proc (widget: PWidget, event: PEventButton): gboolean{.
         cdecl.}
-    scroll_event*: proc (widget: PWidget, event: PGdkEventScroll): gboolean{.
+    scroll_event*: proc (widget: PWidget, event: PEventScroll): gboolean{.
         cdecl.}
-    motion_notify_event*: proc (widget: PWidget, event: PGdkEventMotion): gboolean{.
+    motion_notify_event*: proc (widget: PWidget, event: PEventMotion): gboolean{.
         cdecl.}
-    delete_event*: proc (widget: PWidget, event: PGdkEventAny): gboolean{.cdecl.}
-    destroy_event*: proc (widget: PWidget, event: PGdkEventAny): gboolean{.cdecl.}
-    expose_event*: proc (widget: PWidget, event: PGdkEventExpose): gboolean{.
+    delete_event*: proc (widget: PWidget, event: PEventAny): gboolean{.cdecl.}
+    destroy_event*: proc (widget: PWidget, event: PEventAny): gboolean{.cdecl.}
+    expose_event*: proc (widget: PWidget, event: PEventExpose): gboolean{.
         cdecl.}
-    key_press_event*: proc (widget: PWidget, event: PGdkEventKey): gboolean{.
+    key_press_event*: proc (widget: PWidget, event: PEventKey): gboolean{.
         cdecl.}
-    key_release_event*: proc (widget: PWidget, event: PGdkEventKey): gboolean{.
+    key_release_event*: proc (widget: PWidget, event: PEventKey): gboolean{.
         cdecl.}
-    enter_notify_event*: proc (widget: PWidget, event: PGdkEventCrossing): gboolean{.
+    enter_notify_event*: proc (widget: PWidget, event: PEventCrossing): gboolean{.
         cdecl.}
-    leave_notify_event*: proc (widget: PWidget, event: PGdkEventCrossing): gboolean{.
+    leave_notify_event*: proc (widget: PWidget, event: PEventCrossing): gboolean{.
         cdecl.}
-    configure_event*: proc (widget: PWidget, event: PGdkEventConfigure): gboolean{.
+    configure_event*: proc (widget: PWidget, event: PEventConfigure): gboolean{.
         cdecl.}
-    focus_in_event*: proc (widget: PWidget, event: PGdkEventFocus): gboolean{.
+    focus_in_event*: proc (widget: PWidget, event: PEventFocus): gboolean{.
         cdecl.}
-    focus_out_event*: proc (widget: PWidget, event: PGdkEventFocus): gboolean{.
+    focus_out_event*: proc (widget: PWidget, event: PEventFocus): gboolean{.
         cdecl.}
-    map_event*: proc (widget: PWidget, event: PGdkEventAny): gboolean{.cdecl.}
-    unmap_event*: proc (widget: PWidget, event: PGdkEventAny): gboolean{.cdecl.}
-    property_notify_event*: proc (widget: PWidget, event: PGdkEventProperty): gboolean{.
+    map_event*: proc (widget: PWidget, event: PEventAny): gboolean{.cdecl.}
+    unmap_event*: proc (widget: PWidget, event: PEventAny): gboolean{.cdecl.}
+    property_notify_event*: proc (widget: PWidget, event: PEventProperty): gboolean{.
         cdecl.}
-    selection_clear_event*: proc (widget: PWidget, event: PGdkEventSelection): gboolean{.
+    selection_clear_event*: proc (widget: PWidget, event: PEventSelection): gboolean{.
         cdecl.}
-    selection_request_event*: proc (widget: PWidget, event: PGdkEventSelection): gboolean{.
+    selection_request_event*: proc (widget: PWidget, event: PEventSelection): gboolean{.
         cdecl.}
-    selection_notify_event*: proc (widget: PWidget, event: PGdkEventSelection): gboolean{.
+    selection_notify_event*: proc (widget: PWidget, event: PEventSelection): gboolean{.
         cdecl.}
-    proximity_in_event*: proc (widget: PWidget, event: PGdkEventProximity): gboolean{.
+    proximity_in_event*: proc (widget: PWidget, event: PEventProximity): gboolean{.
         cdecl.}
-    proximity_out_event*: proc (widget: PWidget, event: PGdkEventProximity): gboolean{.
+    proximity_out_event*: proc (widget: PWidget, event: PEventProximity): gboolean{.
         cdecl.}
-    visibility_notify_event*: proc (widget: PWidget, event: PGdkEventVisibility): gboolean{.
+    visibility_notify_event*: proc (widget: PWidget, event: PEventVisibility): gboolean{.
         cdecl.}
-    client_event*: proc (widget: PWidget, event: PGdkEventClient): gboolean{.
+    client_event*: proc (widget: PWidget, event: PEventClient): gboolean{.
         cdecl.}
-    no_expose_event*: proc (widget: PWidget, event: PGdkEventAny): gboolean{.
+    no_expose_event*: proc (widget: PWidget, event: PEventAny): gboolean{.
         cdecl.}
-    window_state_event*: proc (widget: PWidget, event: PGdkEventWindowState): gboolean{.
+    window_state_event*: proc (widget: PWidget, event: PEventWindowState): gboolean{.
         cdecl.}
     selection_get*: proc (widget: PWidget, selection_data: PSelectionData, 
                           info: guint, time: guint){.cdecl.}
     selection_received*: proc (widget: PWidget, selection_data: PSelectionData, 
                                time: guint){.cdecl.}
-    drag_begin*: proc (widget: PWidget, context: PGdkDragContext){.cdecl.}
-    drag_end*: proc (widget: PWidget, context: PGdkDragContext){.cdecl.}
-    drag_data_get*: proc (widget: PWidget, context: PGdkDragContext, 
+    drag_begin*: proc (widget: PWidget, context: PDragContext){.cdecl.}
+    drag_end*: proc (widget: PWidget, context: PDragContext){.cdecl.}
+    drag_data_get*: proc (widget: PWidget, context: PDragContext, 
                           selection_data: PSelectionData, info: guint, 
                           time: guint){.cdecl.}
-    drag_data_delete*: proc (widget: PWidget, context: PGdkDragContext){.cdecl.}
-    drag_leave*: proc (widget: PWidget, context: PGdkDragContext, time: guint){.
+    drag_data_delete*: proc (widget: PWidget, context: PDragContext){.cdecl.}
+    drag_leave*: proc (widget: PWidget, context: PDragContext, time: guint){.
         cdecl.}
-    drag_motion*: proc (widget: PWidget, context: PGdkDragContext, x: gint, 
+    drag_motion*: proc (widget: PWidget, context: PDragContext, x: gint, 
                         y: gint, time: guint): gboolean{.cdecl.}
-    drag_drop*: proc (widget: PWidget, context: PGdkDragContext, x: gint, 
+    drag_drop*: proc (widget: PWidget, context: PDragContext, x: gint, 
                       y: gint, time: guint): gboolean{.cdecl.}
-    drag_data_received*: proc (widget: PWidget, context: PGdkDragContext, 
+    drag_data_received*: proc (widget: PWidget, context: PDragContext, 
                                x: gint, y: gint, selection_data: PSelectionData, 
                                info: guint, time: guint){.cdecl.}
     popup_menu*: proc (widget: PWidget): gboolean{.cdecl.}
     show_help*: proc (widget: PWidget, help_type: TWidgetHelpType): gboolean{.
         cdecl.}
-    get_accessible*: proc (widget: PWidget): PAtkObject{.cdecl.}
+    get_accessible*: proc (widget: PWidget): atk.PObject{.cdecl.}
     reserved1: proc (){.cdecl.}
     reserved2: proc (){.cdecl.}
     reserved3: proc (){.cdecl.}
@@ -326,7 +324,7 @@ type
   TWidgetShapeInfo*{.final, pure.} = object 
     offset_x*: gint16
     offset_y*: gint16
-    shape_mask*: PGdkBitmap
+    shape_mask*: gdk2.PBitmap
 
   TMisc* = object of TWidget
     xalign*: gfloat
@@ -342,10 +340,10 @@ type
   PAccelGroupEntry* = ptr TAccelGroupEntry
   TAccelGroupActivate* = proc (accel_group: PAccelGroup, 
                                acceleratable: PGObject, keyval: guint, 
-                               modifier: TGdkModifierType): gboolean{.cdecl.}
+                               modifier: gdk2.TModifierType): gboolean{.cdecl.}
   TAccelGroup* = object of TGObject
     lock_count*: guint
-    modifier_mask*: TGdkModifierType
+    modifier_mask*: gdk2.TModifierType
     acceleratables*: PGSList
     n_accels*: guint
     priv_accels*: PAccelGroupEntry
@@ -353,7 +351,7 @@ type
   PAccelGroupClass* = ptr TAccelGroupClass
   TAccelGroupClass* = object of TGObjectClass
     accel_changed*: proc (accel_group: PAccelGroup, keyval: guint, 
-                          modifier: TGdkModifierType, accel_closure: PGClosure){.
+                          modifier: gdk2.TModifierType, accel_closure: PGClosure){.
         cdecl.}
     reserved1: proc (){.cdecl.}
     reserved2: proc (){.cdecl.}
@@ -363,7 +361,7 @@ type
   PAccelKey* = ptr TAccelKey
   TAccelKey*{.final, pure.} = object 
     accel_key*: guint
-    accel_mods*: TGdkModifierType
+    accel_mods*: gdk2.TModifierType
     flag0*: guint16
 
   TAccelGroupEntry*{.final, pure.} = object 
@@ -418,7 +416,7 @@ type
     default_widget*: PWidget
     transient_parent*: PWindow
     geometry_info*: PWindowGeometryInfo
-    frame*: PGdkWindow
+    frame*: gdk2.PWindow
     group*: PWindowGroup
     configure_request_count*: guint16
     window_flag0*: int32
@@ -427,13 +425,13 @@ type
     frame_right*: guint
     frame_bottom*: guint
     keys_changed_handler*: guint
-    mnemonic_modifier*: TGdkModifierType
-    screen*: PGdkScreen
+    mnemonic_modifier*: gdk2.TModifierType
+    screen*: gdk2.PScreen
 
   PWindowClass* = ptr TWindowClass
   TWindowClass* = object of TBinClass
     set_focus*: proc (window: PWindow, focus: PWidget){.cdecl.}
-    frame_event*: proc (window: PWindow, event: PGdkEvent): gboolean{.cdecl.}
+    frame_event*: proc (window: PWindow, event: gdk2.PEvent): gboolean{.cdecl.}
     activate_focus*: proc (window: PWindow){.cdecl.}
     activate_default*: proc (window: PWindow){.cdecl.}
     move_focus*: proc (window: PWindow, direction: TDirectionType){.cdecl.}
@@ -454,7 +452,7 @@ type
     reserved43: proc (){.cdecl.}
 
   TWindowKeysForeachFunc* = proc (window: PWindow, keyval: guint, 
-                                  modifiers: TGdkModifierType, 
+                                  modifiers: gdk2.TModifierType, 
                                   is_mnemonic: gboolean, data: gpointer){.cdecl.}
   PLabelSelectionInfo* = pointer
   TLabel* = object of TMisc
@@ -462,9 +460,9 @@ type
     Label_flag0*: guint16
     mnemonic_keyval*: guint
     text*: cstring
-    attrs*: PPangoAttrList
-    effective_attrs*: PPangoAttrList
-    layout*: PPangoLayout
+    attrs*: pango.PAttrList
+    effective_attrs*: pango.PAttrList
+    layout*: pango.PLayout
     mnemonic_widget*: PWidget
     mnemonic_window*: PWindow
     select_info*: PLabelSelectionInfo
@@ -506,14 +504,14 @@ type
     reserved64: proc (){.cdecl.}
 
   TAccelMapForeach* = proc (data: gpointer, accel_path: cstring, 
-                            accel_key: guint, accel_mods: TGdkModifierType, 
+                            accel_key: guint, accel_mods: gdk2.TModifierType, 
                             changed: gboolean){.cdecl.}
   PAccessible* = ptr TAccessible
-  TAccessible* = object of TAtkObject
+  TAccessible* = object of atk.TObject
     widget*: PWidget
 
   PAccessibleClass* = ptr TAccessibleClass
-  TAccessibleClass* = object of TAtkObjectClass
+  TAccessibleClass* = object of atk.TObjectClass
     connect_widget_destroyed*: proc (accessible: PAccessible){.cdecl.}
     reserved71: proc (){.cdecl.}
     reserved72: proc (){.cdecl.}
@@ -593,7 +591,7 @@ type
 
   TBindingEntry*{.final, pure.} = object 
     keyval*: guint
-    modifiers*: TGdkModifierType
+    modifiers*: gdk2.TModifierType
     binding_set*: PBindingSet
     flag0*: guint16
     set_next*: PBindingEntry
@@ -636,7 +634,7 @@ type
   TButtonBoxClass* = object of TBoxClass
   PButton* = ptr TButton
   TButton* = object of TBin
-    event_window*: PGdkWindow
+    event_window*: gdk2.PWindow
     label_text*: cstring
     activate_timeout*: guint
     button_flag0*: guint16
@@ -668,9 +666,9 @@ type
     num_marked_dates*: gint
     marked_date*: array[0..30, gint]
     display_flags*: TCalendarDisplayOptions
-    marked_date_color*: array[0..30, TGdkColor]
-    gc*: PGdkGC
-    xor_gc*: PGdkGC
+    marked_date_color*: array[0..30, gdk2.TColor]
+    gc*: gdk2.PGC
+    xor_gc*: gdk2.PGC
     focus_row*: gint
     focus_col*: gint
     highlight_row*: gint
@@ -697,7 +695,7 @@ type
   TCellEditableIface* = object of TGTypeInterface
     editing_done*: proc (cell_editable: PCellEditable){.cdecl.}
     remove_widget*: proc (cell_editable: PCellEditable){.cdecl.}
-    start_editing*: proc (cell_editable: PCellEditable, event: PGdkEvent){.cdecl.}
+    start_editing*: proc (cell_editable: PCellEditable, event: gdk2.PEvent){.cdecl.}
 
   PCellRendererState* = ptr TCellRendererState
   TCellRendererState* = int32
@@ -718,19 +716,19 @@ type
   PCellRendererClass* = ptr TCellRendererClass
   TCellRendererClass* = object of TObjectClass
     get_size*: proc (cell: PCellRenderer, widget: PWidget, 
-                     cell_area: PGdkRectangle, x_offset: Pgint, y_offset: Pgint, 
+                     cell_area: gdk2.PRectangle, x_offset: Pgint, y_offset: Pgint, 
                      width: Pgint, height: Pgint){.cdecl.}
-    render*: proc (cell: PCellRenderer, window: PGdkWindow, widget: PWidget, 
-                   background_area: PGdkRectangle, cell_area: PGdkRectangle, 
-                   expose_area: PGdkRectangle, flags: TCellRendererState){.cdecl.}
-    activate*: proc (cell: PCellRenderer, event: PGdkEvent, widget: PWidget, 
-                     path: cstring, background_area: PGdkRectangle, 
-                     cell_area: PGdkRectangle, flags: TCellRendererState): gboolean{.
+    render*: proc (cell: PCellRenderer, window: gdk2.PWindow, widget: PWidget, 
+                   background_area: gdk2.PRectangle, cell_area: gdk2.PRectangle, 
+                   expose_area: gdk2.PRectangle, flags: TCellRendererState){.cdecl.}
+    activate*: proc (cell: PCellRenderer, event: gdk2.PEvent, widget: PWidget, 
+                     path: cstring, background_area: gdk2.PRectangle, 
+                     cell_area: gdk2.PRectangle, flags: TCellRendererState): gboolean{.
         cdecl.}
-    start_editing*: proc (cell: PCellRenderer, event: PGdkEvent, 
+    start_editing*: proc (cell: PCellRenderer, event: gdk2.PEvent, 
                           widget: PWidget, path: cstring, 
-                          background_area: PGdkRectangle, 
-                          cell_area: PGdkRectangle, flags: TCellRendererState): PCellEditable{.
+                          background_area: gdk2.PRectangle, 
+                          cell_area: gdk2.PRectangle, flags: TCellRendererState): PCellEditable{.
         cdecl.}
     reserved121: proc (){.cdecl.}
     reserved122: proc (){.cdecl.}
@@ -740,12 +738,12 @@ type
   PCellRendererText* = ptr TCellRendererText
   TCellRendererText* = object of TCellRenderer
     text*: cstring
-    font*: PPangoFontDescription
+    font*: pango.PFontDescription
     font_scale*: gdouble
-    foreground*: TPangoColor
-    background*: TPangoColor
-    extra_attrs*: PPangoAttrList
-    underline_style*: TPangoUnderline
+    foreground*: pango.TColor
+    background*: pango.TColor
+    extra_attrs*: pango.PAttrList
+    underline_style*: pango.TUnderline
     rise*: gint
     fixed_height_rows*: gint
     CellRendererText_flag0*: guint16
@@ -774,9 +772,9 @@ type
 
   PCellRendererPixbuf* = ptr TCellRendererPixbuf
   TCellRendererPixbuf* = object of TCellRenderer
-    pixbuf*: PGdkPixbuf
-    pixbuf_expander_open*: PGdkPixbuf
-    pixbuf_expander_closed*: PGdkPixbuf
+    pixbuf*: gdk2pixbuf.PPixbuf
+    pixbuf_expander_open*: gdk2pixbuf.PPixbuf
+    pixbuf_expander_closed*: gdk2pixbuf.PPixbuf
 
   PCellRendererPixbufClass* = ptr TCellRendererPixbufClass
   TCellRendererPixbufClass* = object of TCellRendererClass
@@ -800,7 +798,7 @@ type
   PMenuItem* = ptr TMenuItem
   TMenuItem* = object of TItem
     submenu*: PWidget
-    event_window*: PGdkWindow
+    event_window*: gdk2.PWindow
     toggle_size*: guint16
     accelerator_width*: guint16
     accel_path*: cstring
@@ -835,7 +833,7 @@ type
   TCheckButton* = object of TToggleButton
   PCheckButtonClass* = ptr TCheckButtonClass
   TCheckButtonClass* = object of TToggleButtonClass
-    draw_indicator*: proc (check_button: PCheckButton, area: PGdkRectangle){.
+    draw_indicator*: proc (check_button: PCheckButton, area: gdk2.PRectangle){.
         cdecl.}
     reserved181: proc (){.cdecl.}
     reserved182: proc (){.cdecl.}
@@ -849,7 +847,7 @@ type
   PCheckMenuItemClass* = ptr TCheckMenuItemClass
   TCheckMenuItemClass* = object of TMenuItemClass
     toggled*: proc (check_menu_item: PCheckMenuItem){.cdecl.}
-    draw_indicator*: proc (check_menu_item: PCheckMenuItem, area: PGdkRectangle){.
+    draw_indicator*: proc (check_menu_item: PCheckMenuItem, area: gdk2.PRectangle){.
         cdecl.}
     reserved191: proc (){.cdecl.}
     reserved192: proc (){.cdecl.}
@@ -896,16 +894,16 @@ type
     row_mem_chunk*: PGMemChunk
     cell_mem_chunk*: PGMemChunk
     freeze_count*: guint
-    internal_allocation*: TGdkRectangle
+    internal_allocation*: gdk2.TRectangle
     rows*: gint
     row_height*: gint
     row_list*: PGList
     row_list_end*: PGList
     columns*: gint
-    column_title_area*: TGdkRectangle
-    title_window*: PGdkWindow
+    column_title_area*: gdk2.TRectangle
+    title_window*: gdk2.PWindow
     column*: PCListColumn
-    clist_window*: PGdkWindow
+    clist_window*: gdk2.PWindow
     clist_window_width*: gint
     clist_window_height*: gint
     hoffset*: gint
@@ -922,10 +920,10 @@ type
     click_cell*: TCListCellInfo
     hadjustment*: PAdjustment
     vadjustment*: PAdjustment
-    xor_gc*: PGdkGC
-    fg_gc*: PGdkGC
-    bg_gc*: PGdkGC
-    cursor_drag*: PGdkCursor
+    xor_gc*: gdk2.PGC
+    fg_gc*: gdk2.PGC
+    bg_gc*: gdk2.PGC
+    cursor_drag*: gdk2.PCursor
     x_drag*: gint
     focus_row*: gint
     focus_header_column*: gint
@@ -945,10 +943,10 @@ type
     set_scroll_adjustments*: proc (clist: PCList, hadjustment: PAdjustment, 
                                    vadjustment: PAdjustment){.cdecl.}
     refresh*: proc (clist: PCList){.cdecl.}
-    select_row*: proc (clist: PCList, row: gint, column: gint, event: PGdkEvent){.
+    select_row*: proc (clist: PCList, row: gint, column: gint, event: gdk2.PEvent){.
         cdecl.}
     unselect_row*: proc (clist: PCList, row: gint, column: gint, 
-                         event: PGdkEvent){.cdecl.}
+                         event: gdk2.PEvent){.cdecl.}
     row_move*: proc (clist: PCList, source_row: gint, dest_row: gint){.cdecl.}
     click_column*: proc (clist: PCList, column: gint){.cdecl.}
     resize_column*: proc (clist: PCList, column: gint, width: gint){.cdecl.}
@@ -967,10 +965,10 @@ type
                             position: gfloat){.cdecl.}
     toggle_add_mode*: proc (clist: PCList){.cdecl.}
     abort_column_resize*: proc (clist: PCList){.cdecl.}
-    resync_selection*: proc (clist: PCList, event: PGdkEvent){.cdecl.}
+    resync_selection*: proc (clist: PCList, event: gdk2.PEvent){.cdecl.}
     selection_find*: proc (clist: PCList, row_number: gint, 
                            row_list_element: PGList): PGList{.cdecl.}
-    draw_row*: proc (clist: PCList, area: PGdkRectangle, row: gint, 
+    draw_row*: proc (clist: PCList, area: gdk2.PRectangle, row: gint, 
                      clist_row: PCListRow){.cdecl.}
     draw_drag_highlight*: proc (clist: PCList, target_row: PCListRow, 
                                 target_row_number: gint, drag_pos: TCListDragPos){.
@@ -982,8 +980,8 @@ type
     remove_row*: proc (clist: PCList, row: gint){.cdecl.}
     set_cell_contents*: proc (clist: PCList, clist_row: PCListRow, column: gint, 
                               thetype: TCellType, text: cstring, 
-                              spacing: guint8, pixmap: PGdkPixmap, 
-                              mask: PGdkBitmap){.cdecl.}
+                              spacing: guint8, pixmap: gdk2.PPixmap, 
+                              mask: gdk2.PBitmap){.cdecl.}
     cell_size_request*: proc (clist: PCList, clist_row: PCListRow, column: gint, 
                               requisition: PRequisition){.cdecl.}
 
@@ -991,9 +989,9 @@ type
   PGArray = pointer
   TCListColumn*{.final, pure.} = object 
     title*: cstring
-    area*: TGdkRectangle
+    area*: gdk2.TRectangle
     button*: PWidget
-    window*: PGdkWindow
+    window*: gdk2.PWindow
     width*: gint
     min_width*: gint
     max_width*: gint
@@ -1003,8 +1001,8 @@ type
   TCListRow*{.final, pure.} = object 
     cell*: PCell
     state*: TStateType
-    foreground*: TGdkColor
-    background*: TGdkColor
+    foreground*: gdk2.TColor
+    background*: gdk2.TColor
     style*: PStyle
     data*: gpointer
     destroy*: TDestroyNotify
@@ -1024,8 +1022,8 @@ type
     vertical*: gint16
     horizontal*: gint16
     style*: PStyle
-    pixmap*: PGdkPixmap
-    mask*: PGdkBitmap
+    pixmap*: gdk2.PPixmap
+    mask*: gdk2.PBitmap
 
   PCellPixText* = ptr TCellPixText
   TCellPixText*{.final, pure.} = object 
@@ -1035,8 +1033,8 @@ type
     style*: PStyle
     text*: cstring
     spacing*: guint8
-    pixmap*: PGdkPixmap
-    mask*: PGdkBitmap
+    pixmap*: gdk2.PPixmap
+    mask*: gdk2.PBitmap
 
   PCellWidget* = ptr TCellWidget
   TCellWidget*{.final, pure.} = object 
@@ -1053,8 +1051,8 @@ type
     style*: PStyle
     text*: cstring
     spacing*: guint8
-    pixmap*: PGdkPixmap
-    mask*: PGdkBitmap
+    pixmap*: gdk2.PPixmap
+    mask*: gdk2.PBitmap
 
   PDialogFlags* = ptr TDialogFlags
   TDialogFlags* = int32
@@ -1079,10 +1077,10 @@ type
   TVBox* = object of TBox
   PVBoxClass* = ptr TVBoxClass
   TVBoxClass* = object of TBoxClass
-  TColorSelectionChangePaletteFunc* = proc (colors: PGdkColor, n_colors: gint){.
+  TColorSelectionChangePaletteFunc* = proc (colors: gdk2.PColor, n_colors: gint){.
       cdecl.}
-  TColorSelectionChangePaletteWithScreenFunc* = proc (screen: PGdkScreen, 
-      colors: PGdkColor, n_colors: gint){.cdecl.}
+  TColorSelectionChangePaletteWithScreenFunc* = proc (screen: gdk2.PScreen, 
+      colors: gdk2.PColor, n_colors: gint){.cdecl.}
   PColorSelection* = ptr TColorSelection
   TColorSelection* = object of TVBox
     private_data*: gpointer
@@ -1157,7 +1155,7 @@ type
                                  new_parent: PCTreeNode, new_sibling: PCTreeNode): gboolean{.
       cdecl.}
   TCTree* = object of TCList
-    lines_gc*: PGdkGC
+    lines_gc*: gdk2.PGC
     tree_indent*: gint
     tree_spacing*: gint
     tree_column*: gint
@@ -1182,10 +1180,10 @@ type
     parent*: PCTreeNode
     sibling*: PCTreeNode
     children*: PCTreeNode
-    pixmap_closed*: PGdkPixmap
-    mask_closed*: PGdkBitmap
-    pixmap_opened*: PGdkPixmap
-    mask_opened*: PGdkBitmap
+    pixmap_closed*: gdk2.PPixmap
+    mask_closed*: gdk2.PBitmap
+    pixmap_opened*: gdk2.PPixmap
+    mask_opened*: gdk2.PBitmap
     level*: guint16
     CTreeRow_flag0*: guint16
 
@@ -1212,13 +1210,13 @@ type
     max_x*: gfloat
     min_y*: gfloat
     max_y*: gfloat
-    pixmap*: PGdkPixmap
+    pixmap*: gdk2.PPixmap
     curve_type*: TCurveType
     height*: gint
     grab_point*: gint
     last*: gint
     num_points*: gint
-    point*: PGdkPoint
+    point*: gdk2.PPoint
     num_ctlpoints*: gint
     ctlpoint*: Pctlpoint
 
@@ -1266,16 +1264,16 @@ type
     retrieve_surrounding*: proc (context: PIMContext): gboolean{.cdecl.}
     delete_surrounding*: proc (context: PIMContext, offset: gint, n_chars: gint): gboolean{.
         cdecl.}
-    set_client_window*: proc (context: PIMContext, window: PGdkWindow){.cdecl.}
+    set_client_window*: proc (context: PIMContext, window: gdk2.PWindow){.cdecl.}
     get_preedit_string*: proc (context: PIMContext, str: PPgchar, 
-                               attrs: var PPangoAttrList, cursor_pos: Pgint){.
+                               attrs: var pango.PAttrList, cursor_pos: Pgint){.
         cdecl.}
-    filter_keypress*: proc (context: PIMContext, event: PGdkEventKey): gboolean{.
+    filter_keypress*: proc (context: PIMContext, event: gdk2.PEventKey): gboolean{.
         cdecl.}
     focus_in*: proc (context: PIMContext){.cdecl.}
     focus_out*: proc (context: PIMContext){.cdecl.}
     reset*: proc (context: PIMContext){.cdecl.}
-    set_cursor_location*: proc (context: PIMContext, area: PGdkRectangle){.cdecl.}
+    set_cursor_location*: proc (context: PIMContext, area: gdk2.PRectangle){.cdecl.}
     set_use_preedit*: proc (context: PIMContext, use_preedit: gboolean){.cdecl.}
     set_surrounding*: proc (context: PIMContext, text: cstring, len: gint, 
                             cursor_index: gint){.cdecl.}
@@ -1331,13 +1329,13 @@ type
     tearoff_hbox*: PWidget
     tearoff_scrollbar*: PWidget
     tearoff_adjustment*: PAdjustment
-    view_window*: PGdkWindow
-    bin_window*: PGdkWindow
+    view_window*: gdk2.PWindow
+    bin_window*: gdk2.PWindow
     scroll_offset*: gint
     saved_scroll_offset*: gint
     scroll_step*: gint
     timeout_id*: guint
-    navigation_region*: PGdkRegion
+    navigation_region*: gdk2.PRegion
     navigation_timeout*: guint
     Menu_flag0*: guint16
 
@@ -1354,12 +1352,12 @@ type
     Entry_flag0*: guint16
     text_length*: guint16
     text_max_length*: guint16
-    text_area*: PGdkWindow
+    text_area*: gdk2.PWindow
     im_context*: PIMContext
     popup_menu*: PWidget
     current_pos*: gint
     selection_bound*: gint
-    cached_layout*: PPangoLayout
+    cached_layout*: pango.PLayout
     flag1*: guint16
     button*: guint
     blink_timeout*: guint
@@ -1455,10 +1453,10 @@ type
     points_button*: PWidget
     filter_button*: PWidget
     preview_entry*: PWidget
-    family*: PPangoFontFamily
-    face*: PPangoFontFace
+    family*: pango.PFontFamily
+    face*: pango.PFontFace
     size*: gint
-    font*: PGdkFont
+    font*: gdk2.PFont
 
   PFontSelectionClass* = ptr TFontSelectionClass
   TFontSelectionClass* = object of TVBoxClass
@@ -1503,8 +1501,8 @@ type
 
   PHandleBox* = ptr THandleBox
   THandleBox* = object of TBin
-    bin_window*: PGdkWindow
-    float_window*: PGdkWindow
+    bin_window*: gdk2.PWindow
+    float_window*: gdk2.PWindow
     shadow_type*: TShadowType
     HandleBox_flag0*: guint16
     deskoff_x*: gint
@@ -1525,10 +1523,10 @@ type
   TPaned* = object of TContainer
     child1*: PWidget
     child2*: PWidget
-    handle*: PGdkWindow
-    xor_gc*: PGdkGC
-    cursor_type*: TGdkCursorType
-    handle_pos*: TGdkRectangle
+    handle*: gdk2.PWindow
+    xor_gc*: gdk2.PGC
+    cursor_type*: gdk2.TCursorType
+    handle_pos*: gdk2.TRectangle
     child1_size*: gint
     last_allocation*: gint
     min_position*: gint
@@ -1565,8 +1563,8 @@ type
   PRulerMetric* = ptr TRulerMetric
   PRuler* = ptr TRuler
   TRuler* = object of TWidget
-    backing_store*: PGdkPixmap
-    non_gr_exp_gc*: PGdkGC
+    backing_store*: gdk2.PPixmap
+    non_gr_exp_gc*: gdk2.PGC
     metric*: PRulerMetric
     xsrc*: gint
     ysrc*: gint
@@ -1602,7 +1600,7 @@ type
     queued_settings*: PGData
     property_values*: PGValue
     rc_context*: PRcContext
-    screen*: PGdkScreen
+    screen*: gdk2.PScreen
 
   PSettingsClass* = ptr TSettingsClass
   TSettingsClass* = object of TGObjectClass
@@ -1617,12 +1615,12 @@ type
   TRcStyle* = object of TGObject
     name*: cstring
     bg_pixmap_name*: array[0..4, cstring]
-    font_desc*: PPangoFontDescription
+    font_desc*: pango.PFontDescription
     color_flags*: array[0..4, TRcFlags]
-    fg*: array[0..4, TGdkColor]
-    bg*: array[0..4, TGdkColor]
-    text*: array[0..4, TGdkColor]
-    base*: array[0..4, TGdkColor]
+    fg*: array[0..4, gdk2.TColor]
+    bg*: array[0..4, gdk2.TColor]
+    text*: array[0..4, gdk2.TColor]
+    base*: array[0..4, gdk2.TColor]
     xthickness*: gint
     ythickness*: gint
     rc_properties*: PGArray
@@ -1665,35 +1663,35 @@ type
   TRcPropertyParser* = proc (pspec: PGParamSpec, rc_string: PGString, 
                              property_value: PGValue): gboolean{.cdecl.}
   TStyle* = object of TGObject
-    fg*: array[0..4, TGdkColor]
-    bg*: array[0..4, TGdkColor]
-    light*: array[0..4, TGdkColor]
-    dark*: array[0..4, TGdkColor]
-    mid*: array[0..4, TGdkColor]
-    text*: array[0..4, TGdkColor]
-    base*: array[0..4, TGdkColor]
-    text_aa*: array[0..4, TGdkColor]
-    black*: TGdkColor
-    white*: TGdkColor
-    font_desc*: PPangoFontDescription
+    fg*: array[0..4, gdk2.TColor]
+    bg*: array[0..4, gdk2.TColor]
+    light*: array[0..4, gdk2.TColor]
+    dark*: array[0..4, gdk2.TColor]
+    mid*: array[0..4, gdk2.TColor]
+    text*: array[0..4, gdk2.TColor]
+    base*: array[0..4, gdk2.TColor]
+    text_aa*: array[0..4, gdk2.TColor]
+    black*: gdk2.TColor
+    white*: gdk2.TColor
+    font_desc*: pango.PFontDescription
     xthickness*: gint
     ythickness*: gint
-    fg_gc*: array[0..4, PGdkGC]
-    bg_gc*: array[0..4, PGdkGC]
-    light_gc*: array[0..4, PGdkGC]
-    dark_gc*: array[0..4, PGdkGC]
-    mid_gc*: array[0..4, PGdkGC]
-    text_gc*: array[0..4, PGdkGC]
-    base_gc*: array[0..4, PGdkGC]
-    text_aa_gc*: array[0..4, PGdkGC]
-    black_gc*: PGdkGC
-    white_gc*: PGdkGC
-    bg_pixmap*: array[0..4, PGdkPixmap]
+    fg_gc*: array[0..4, gdk2.PGC]
+    bg_gc*: array[0..4, gdk2.PGC]
+    light_gc*: array[0..4, gdk2.PGC]
+    dark_gc*: array[0..4, gdk2.PGC]
+    mid_gc*: array[0..4, gdk2.PGC]
+    text_gc*: array[0..4, gdk2.PGC]
+    base_gc*: array[0..4, gdk2.PGC]
+    text_aa_gc*: array[0..4, gdk2.PGC]
+    black_gc*: gdk2.PGC
+    white_gc*: gdk2.PGC
+    bg_pixmap*: array[0..4, gdk2.PPixmap]
     attach_count*: gint
     depth*: gint
-    colormap*: PGdkColormap
-    private_font*: PGdkFont
-    private_font_desc*: PPangoFontDescription
+    colormap*: gdk2.PColormap
+    private_font*: gdk2.PFont
+    private_font_desc*: pango.PFontDescription
     rc_style*: PRcStyle
     styles*: PGSList
     property_cache*: PGArray
@@ -1706,104 +1704,104 @@ type
     copy*: proc (style: PStyle, src: PStyle){.cdecl.}
     clone*: proc (style: PStyle): PStyle{.cdecl.}
     init_from_rc*: proc (style: PStyle, rc_style: PRcStyle){.cdecl.}
-    set_background*: proc (style: PStyle, window: PGdkWindow, 
+    set_background*: proc (style: PStyle, window: gdk2.PWindow, 
                            state_type: TStateType){.cdecl.}
     render_icon*: proc (style: PStyle, source: PIconSource, 
                         direction: TTextDirection, state: TStateType, 
-                        size: TIconSize, widget: PWidget, detail: cstring): PGdkPixbuf{.
+                        size: TIconSize, widget: PWidget, detail: cstring): gdk2pixbuf.PPixbuf{.
         cdecl.}
-    draw_hline*: proc (style: PStyle, window: PGdkWindow, 
-                       state_type: TStateType, area: PGdkRectangle, 
+    draw_hline*: proc (style: PStyle, window: gdk2.PWindow, 
+                       state_type: TStateType, area: gdk2.PRectangle, 
                        widget: PWidget, detail: cstring, x1: gint, x2: gint, 
                        y: gint){.cdecl.}
-    draw_vline*: proc (style: PStyle, window: PGdkWindow, 
-                       state_type: TStateType, area: PGdkRectangle, 
+    draw_vline*: proc (style: PStyle, window: gdk2.PWindow, 
+                       state_type: TStateType, area: gdk2.PRectangle, 
                        widget: PWidget, detail: cstring, y1: gint, y2: gint, 
                        x: gint){.cdecl.}
-    draw_shadow*: proc (style: PStyle, window: PGdkWindow, 
+    draw_shadow*: proc (style: PStyle, window: gdk2.PWindow, 
                         state_type: TStateType, shadow_type: TShadowType, 
-                        area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                        area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                         x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_polygon*: proc (style: PStyle, window: PGdkWindow, 
+    draw_polygon*: proc (style: PStyle, window: gdk2.PWindow, 
                          state_type: TStateType, shadow_type: TShadowType, 
-                         area: PGdkRectangle, widget: PWidget, detail: cstring, 
-                         point: PGdkPoint, npoints: gint, fill: gboolean){.cdecl.}
-    draw_arrow*: proc (style: PStyle, window: PGdkWindow, 
+                         area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
+                         point: gdk2.PPoint, npoints: gint, fill: gboolean){.cdecl.}
+    draw_arrow*: proc (style: PStyle, window: gdk2.PWindow, 
                        state_type: TStateType, shadow_type: TShadowType, 
-                       area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                       area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                        arrow_type: TArrowType, fill: gboolean, x: gint, y: gint, 
                        width: gint, height: gint){.cdecl.}
-    draw_diamond*: proc (style: PStyle, window: PGdkWindow, 
+    draw_diamond*: proc (style: PStyle, window: gdk2.PWindow, 
                          state_type: TStateType, shadow_type: TShadowType, 
-                         area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                         area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                          x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_string*: proc (style: PStyle, window: PGdkWindow, 
-                        state_type: TStateType, area: PGdkRectangle, 
+    draw_string*: proc (style: PStyle, window: gdk2.PWindow, 
+                        state_type: TStateType, area: gdk2.PRectangle, 
                         widget: PWidget, detail: cstring, x: gint, y: gint, 
                         `string`: cstring){.cdecl.}
-    draw_box*: proc (style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                     shadow_type: TShadowType, area: PGdkRectangle, 
+    draw_box*: proc (style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                     shadow_type: TShadowType, area: gdk2.PRectangle, 
                      widget: PWidget, detail: cstring, x: gint, y: gint, 
                      width: gint, height: gint){.cdecl.}
-    draw_flat_box*: proc (style: PStyle, window: PGdkWindow, 
+    draw_flat_box*: proc (style: PStyle, window: gdk2.PWindow, 
                           state_type: TStateType, shadow_type: TShadowType, 
-                          area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                          area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                           x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_check*: proc (style: PStyle, window: PGdkWindow, 
+    draw_check*: proc (style: PStyle, window: gdk2.PWindow, 
                        state_type: TStateType, shadow_type: TShadowType, 
-                       area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                       area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                        x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_option*: proc (style: PStyle, window: PGdkWindow, 
+    draw_option*: proc (style: PStyle, window: gdk2.PWindow, 
                         state_type: TStateType, shadow_type: TShadowType, 
-                        area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                        area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                         x: gint, y: gint, width: gint, height: gint){.cdecl.}
-    draw_tab*: proc (style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                     shadow_type: TShadowType, area: PGdkRectangle, 
+    draw_tab*: proc (style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                     shadow_type: TShadowType, area: gdk2.PRectangle, 
                      widget: PWidget, detail: cstring, x: gint, y: gint, 
                      width: gint, height: gint){.cdecl.}
-    draw_shadow_gap*: proc (style: PStyle, window: PGdkWindow, 
+    draw_shadow_gap*: proc (style: PStyle, window: gdk2.PWindow, 
                             state_type: TStateType, shadow_type: TShadowType, 
-                            area: PGdkRectangle, widget: PWidget, 
+                            area: gdk2.PRectangle, widget: PWidget, 
                             detail: cstring, x: gint, y: gint, width: gint, 
                             height: gint, gap_side: TPositionType, gap_x: gint, 
                             gap_width: gint){.cdecl.}
-    draw_box_gap*: proc (style: PStyle, window: PGdkWindow, 
+    draw_box_gap*: proc (style: PStyle, window: gdk2.PWindow, 
                          state_type: TStateType, shadow_type: TShadowType, 
-                         area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                         area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                          x: gint, y: gint, width: gint, height: gint, 
                          gap_side: TPositionType, gap_x: gint, gap_width: gint){.
         cdecl.}
-    draw_extension*: proc (style: PStyle, window: PGdkWindow, 
+    draw_extension*: proc (style: PStyle, window: gdk2.PWindow, 
                            state_type: TStateType, shadow_type: TShadowType, 
-                           area: PGdkRectangle, widget: PWidget, 
+                           area: gdk2.PRectangle, widget: PWidget, 
                            detail: cstring, x: gint, y: gint, width: gint, 
                            height: gint, gap_side: TPositionType){.cdecl.}
-    draw_focus*: proc (style: PStyle, window: PGdkWindow, 
-                       state_type: TStateType, area: PGdkRectangle, 
+    draw_focus*: proc (style: PStyle, window: gdk2.PWindow, 
+                       state_type: TStateType, area: gdk2.PRectangle, 
                        widget: PWidget, detail: cstring, x: gint, y: gint, 
                        width: gint, height: gint){.cdecl.}
-    draw_slider*: proc (style: PStyle, window: PGdkWindow, 
+    draw_slider*: proc (style: PStyle, window: gdk2.PWindow, 
                         state_type: TStateType, shadow_type: TShadowType, 
-                        area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                        area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                         x: gint, y: gint, width: gint, height: gint, 
                         orientation: TOrientation){.cdecl.}
-    draw_handle*: proc (style: PStyle, window: PGdkWindow, 
+    draw_handle*: proc (style: PStyle, window: gdk2.PWindow, 
                         state_type: TStateType, shadow_type: TShadowType, 
-                        area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                        area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                         x: gint, y: gint, width: gint, height: gint, 
                         orientation: TOrientation){.cdecl.}
-    draw_expander*: proc (style: PStyle, window: PGdkWindow, 
-                          state_type: TStateType, area: PGdkRectangle, 
+    draw_expander*: proc (style: PStyle, window: gdk2.PWindow, 
+                          state_type: TStateType, area: gdk2.PRectangle, 
                           widget: PWidget, detail: cstring, x: gint, y: gint, 
                           expander_style: TExpanderStyle){.cdecl.}
-    draw_layout*: proc (style: PStyle, window: PGdkWindow, 
+    draw_layout*: proc (style: PStyle, window: gdk2.PWindow, 
                         state_type: TStateType, use_text: gboolean, 
-                        area: PGdkRectangle, widget: PWidget, detail: cstring, 
-                        x: gint, y: gint, layout: PPangoLayout){.cdecl.}
-    draw_resize_grip*: proc (style: PStyle, window: PGdkWindow, 
-                             state_type: TStateType, area: PGdkRectangle, 
+                        area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
+                        x: gint, y: gint, layout: pango.PLayout){.cdecl.}
+    draw_resize_grip*: proc (style: PStyle, window: gdk2.PWindow, 
+                             state_type: TStateType, area: gdk2.PRectangle, 
                              widget: PWidget, detail: cstring, 
-                             edge: TGdkWindowEdge, x: gint, y: gint, 
+                             edge: gdk2.TWindowEdge, x: gint, y: gint, 
                              width: gint, height: gint){.cdecl.}
     reserved381: proc (){.cdecl.}
     reserved382: proc (){.cdecl.}
@@ -1834,7 +1832,7 @@ type
     Range_flag0*: guint16
     min_slider_size*: gint
     orientation*: TOrientation
-    range_rect*: TGdkRectangle
+    range_rect*: gdk2.TRectangle
     slider_start*: gint
     slider_end*: gint
     round_digits*: gint
@@ -1844,7 +1842,7 @@ type
     slide_initial_slider_position*: gint
     slide_initial_coordinate*: gint
     update_timeout_id*: guint
-    event_window*: PGdkWindow
+    event_window*: gdk2.PWindow
 
   PRangeClass* = ptr TRangeClass
   TRangeClass* = object of TWidgetClass
@@ -1912,15 +1910,15 @@ type
   PIconSet* = pointer
   PImagePixmapData* = ptr TImagePixmapData
   TImagePixmapData*{.final, pure.} = object 
-    pixmap*: PGdkPixmap
+    pixmap*: gdk2.PPixmap
 
   PImageImageData* = ptr TImageImageData
   TImageImageData*{.final, pure.} = object 
-    image*: PGdkImage
+    image*: gdk2.PImage
 
   PImagePixbufData* = ptr TImagePixbufData
   TImagePixbufData*{.final, pure.} = object 
-    pixbuf*: PGdkPixbuf
+    pixbuf*: gdk2pixbuf.PPixbuf
 
   PImageStockData* = ptr TImageStockData
   TImageStockData*{.final, pure.} = object 
@@ -1932,8 +1930,8 @@ type
 
   PImageAnimationData* = ptr TImageAnimationData
   TImageAnimationData*{.final, pure.} = object 
-    anim*: PGdkPixbufAnimation
-    iter*: PGdkPixbufAnimationIter
+    anim*: gdk2pixbuf.PPixbufAnimation
+    iter*: gdk2pixbuf.PPixbufAnimationIter
     frame_timeout*: guint
 
   PImageType* = ptr TImageType
@@ -1944,7 +1942,7 @@ type
   TImage* = object of TMisc
     storage_type*: TImageType
     pixmap*: TImagePixmapData
-    mask*: PGdkBitmap
+    mask*: gdk2.PBitmap
     icon_size*: TIconSize
 
   PImageClass* = ptr TImageClass
@@ -1973,7 +1971,7 @@ type
   PIMMulticontext* = ptr TIMMulticontext
   TIMMulticontext* = object of TIMContext
     slave*: PIMContext
-    client_window*: PGdkWindow
+    client_window*: gdk2.PWindow
     context_id*: cstring
 
   PIMMulticontextClass* = ptr TIMMulticontextClass
@@ -1990,15 +1988,15 @@ type
     mode_optionmenu*: PWidget
     close_button*: PWidget
     save_button*: PWidget
-    axis_items*: array[0..(GDK_AXIS_LAST) - 1, PWidget]
-    current_device*: PGdkDevice
+    axis_items*: array[0..(gdk2.AXIS_LAST) - 1, PWidget]
+    current_device*: gdk2.PDevice
     keys_list*: PWidget
     keys_listbox*: PWidget
 
   PInputDialogClass* = ptr TInputDialogClass
   TInputDialogClass* = object of TDialogClass
-    enable_device*: proc (inputd: PInputDialog, device: PGdkDevice){.cdecl.}
-    disable_device*: proc (inputd: PInputDialog, device: PGdkDevice){.cdecl.}
+    enable_device*: proc (inputd: PInputDialog, device: gdk2.PDevice){.cdecl.}
+    disable_device*: proc (inputd: PInputDialog, device: gdk2.PDevice){.cdecl.}
     reserved461: proc (){.cdecl.}
     reserved462: proc (){.cdecl.}
     reserved463: proc (){.cdecl.}
@@ -2007,7 +2005,7 @@ type
   PInvisible* = ptr TInvisible
   TInvisible* = object of TWidget
     has_user_ref_count*: gboolean
-    screen*: PGdkScreen
+    screen*: gdk2.PScreen
 
   PInvisibleClass* = ptr TInvisibleClass
   TInvisibleClass* = object of TWidgetClass
@@ -2061,8 +2059,8 @@ type
     height*: guint
     hadjustment*: PAdjustment
     vadjustment*: PAdjustment
-    bin_window*: PGdkWindow
-    visibility*: TGdkVisibilityState
+    bin_window*: gdk2.PWindow
+    visibility*: gdk2.TVisibilityState
     scroll_x*: gint
     scroll_y*: gint
     freeze_count*: guint
@@ -2209,7 +2207,7 @@ type
     reserved504: proc (){.cdecl.}
 
   TModuleInitFunc* = proc (argc: Pgint, argv: PPPgchar){.cdecl.}
-  TKeySnoopFunc* = proc (grab_widget: PWidget, event: PGdkEventKey, 
+  TKeySnoopFunc* = proc (grab_widget: PWidget, event: gdk2.PEventKey, 
                          func_data: gpointer): gint{.cdecl.}
   PMenuBar* = ptr TMenuBar
   TMenuBar* = object of TMenuShell
@@ -2250,7 +2248,7 @@ type
     first_tab*: PGList
     focus_tab*: PGList
     menu*: PWidget
-    event_window*: PGdkWindow
+    event_window*: gdk2.PWindow
     timer*: guint32
     tab_hborder*: guint16
     tab_vborder*: guint16
@@ -2321,16 +2319,16 @@ type
 
   PPixmap* = ptr TPixmap
   TPixmap* = object of TMisc
-    pixmap*: PGdkPixmap
-    mask*: PGdkBitmap
-    pixmap_insensitive*: PGdkPixmap
+    pixmap*: gdk2.PPixmap
+    mask*: gdk2.PBitmap
+    pixmap_insensitive*: gdk2.PPixmap
     Pixmap_flag0*: guint16
 
   PPixmapClass* = ptr TPixmapClass
   TPixmapClass* = object of TMiscClass
   PPlug* = ptr TPlug
   TPlug* = object of TWindow
-    socket_window*: PGdkWindow
+    socket_window*: gdk2.PWindow
     modality_window*: PWidget
     modality_group*: PWindowGroup
     grabbed_keys*: PGHashTable
@@ -2351,7 +2349,7 @@ type
     buffer_height*: guint16
     bpp*: guint16
     rowstride*: guint16
-    dither*: TGdkRgbDither
+    dither*: gdk2.TRgbDither
     Preview_flag0*: guint16
 
   PPreviewInfo* = ptr TPreviewInfo
@@ -2370,7 +2368,7 @@ type
   PProgress* = ptr TProgress
   TProgress* = object of TWidget
     adjustment*: PAdjustment
-    offscreen_pixmap*: PGdkPixmap
+    offscreen_pixmap*: gdk2.PPixmap
     format*: cstring
     x_align*: gfloat
     y_align*: gfloat
@@ -2454,13 +2452,13 @@ type
     reserved604: proc (){.cdecl.}
 
   TSelectionData*{.final, pure.} = object 
-    selection*: TGdkAtom
-    target*: TGdkAtom
-    thetype*: TGdkAtom
+    selection*: gdk2.TAtom
+    target*: gdk2.TAtom
+    thetype*: gdk2.TAtom
     format*: gint
     data*: Pguchar
     length*: gint
-    display*: PGdkDisplay
+    display*: gdk2.PDisplay
 
   PTargetEntry* = ptr TTargetEntry
   TTargetEntry*{.final, pure.} = object 
@@ -2475,7 +2473,7 @@ type
 
   PTargetPair* = ptr TTargetPair
   TTargetPair*{.final, pure.} = object 
-    target*: TGdkAtom
+    target*: gdk2.TAtom
     flags*: guint
     info*: guint
 
@@ -2506,7 +2504,7 @@ type
     request_height*: guint16
     current_width*: guint16
     current_height*: guint16
-    plug_window*: PGdkWindow
+    plug_window*: gdk2.PWindow
     plug_widget*: PWidget
     xembed_version*: gshort
     Socket_flag0*: guint16
@@ -2532,7 +2530,7 @@ type
   PSpinButton* = ptr TSpinButton
   TSpinButton* = object of TEntry
     adjustment*: PAdjustment
-    panel*: PGdkWindow
+    panel*: gdk2.PWindow
     timer*: guint32
     climb_rate*: gdouble
     timer_step*: gdouble
@@ -2554,7 +2552,7 @@ type
   TStockItem*{.final, pure.} = object 
     stock_id*: cstring
     label*: cstring
-    modifier*: TGdkModifierType
+    modifier*: gdk2.TModifierType
     keyval*: guint
     translation_domain*: cstring
 
@@ -2566,7 +2564,7 @@ type
     keys*: PGSList
     seq_context_id*: guint
     seq_message_id*: guint
-    grip_window*: PGdkWindow
+    grip_window*: gdk2.PWindow
     Statusbar_flag0*: guint16
 
   PStatusbarClass* = ptr TStatusbarClass
@@ -2632,12 +2630,12 @@ type
 
   PText* = ptr TText
   TText* = object of TOldEditable
-    text_area*: PGdkWindow
+    text_area*: gdk2.PWindow
     hadj*: PAdjustment
     vadj*: PAdjustment
-    gc*: PGdkGC
-    line_wrap_bitmap*: PGdkPixmap
-    line_arrow_bitmap*: PGdkPixmap
+    gc*: gdk2.PGC
+    line_wrap_bitmap*: gdk2.PPixmap
+    line_arrow_bitmap*: gdk2.PPixmap
     text*: Pguchar
     text_len*: guint
     gap_position*: guint
@@ -2659,7 +2657,7 @@ type
     cursor_pos_x*: gint
     cursor_pos_y*: gint
     cursor_mark*: TPropertyMark
-    cursor_char*: TGdkWChar
+    cursor_char*: gdk2.TWChar
     cursor_char_offset*: gchar
     cursor_virtual_x*: gint
     cursor_drawn_level*: gint
@@ -2669,7 +2667,7 @@ type
     current_font*: PTextFont
     timer*: gint
     button*: guint
-    bg_gc*: PGdkGC
+    bg_gc*: gdk2.PGC
 
   PTextClass* = ptr TTextClass
   TTextClass* = object of TOldEditableClass
@@ -2709,7 +2707,7 @@ type
     TextTag_flag0*: int32
 
   TTextTagClass* = object of TGObjectClass
-    event*: proc (tag: PTextTag, event_object: PGObject, event: PGdkEvent, 
+    event*: proc (tag: PTextTag, event_object: PGObject, event: gdk2.PEvent, 
                   iter: PTextIter): gboolean{.cdecl.}
     reserved661: proc (){.cdecl.}
     reserved662: proc (){.cdecl.}
@@ -2718,10 +2716,10 @@ type
 
   PTextAppearance* = ptr TTextAppearance
   TTextAppearance*{.final, pure.} = object 
-    bg_color*: TGdkColor
-    fg_color*: TGdkColor
-    bg_stipple*: PGdkBitmap
-    fg_stipple*: PGdkBitmap
+    bg_color*: gdk2.TColor
+    fg_color*: gdk2.TColor
+    bg_stipple*: gdk2.PBitmap
+    fg_stipple*: gdk2.PBitmap
     rise*: gint
     padding1*: gpointer
     flag0*: guint16
@@ -2731,7 +2729,7 @@ type
     appearance*: TTextAppearance
     justification*: TJustification
     direction*: TTextDirection
-    font*: PPangoFontDescription
+    font*: pango.PFontDescription
     font_scale*: gdouble
     left_margin*: gint
     indent*: gint
@@ -2739,9 +2737,9 @@ type
     pixels_above_lines*: gint
     pixels_below_lines*: gint
     pixels_inside_wrap*: gint
-    tabs*: PPangoTabArray
+    tabs*: pango.PTabArray
     wrap_mode*: TWrapMode
-    language*: PPangoLanguage
+    language*: pango.PLanguage
     padding1*: gpointer
     flag0*: guint16
 
@@ -2795,7 +2793,7 @@ type
 
   PTextPixbuf* = ptr TTextPixbuf
   TTextPixbuf*{.final, pure.} = object 
-    pixbuf*: PGdkPixbuf
+    pixbuf*: gdk2pixbuf.PPixbuf
 
   PTextChildBody* = ptr TTextChildBody
   TTextChildBody*{.final, pure.} = object 
@@ -2870,7 +2868,7 @@ type
     insert_text*: proc (buffer: PTextBuffer, pos: PTextIter, text: cstring, 
                         length: gint){.cdecl.}
     insert_pixbuf*: proc (buffer: PTextBuffer, pos: PTextIter, 
-                          pixbuf: PGdkPixbuf){.cdecl.}
+                          pixbuf: gdk2pixbuf.PPixbuf){.cdecl.}
     insert_child_anchor*: proc (buffer: PTextBuffer, pos: PTextIter, 
                                 anchor: PTextChildAnchor){.cdecl.}
     delete_range*: proc (buffer: PTextBuffer, start: PTextIter, 
@@ -2901,14 +2899,14 @@ type
     height*: gint
     buffer*: PTextBuffer
     default_style*: PTextAttributes
-    ltr_context*: PPangoContext
-    rtl_context*: PPangoContext
+    ltr_context*: pango.PContext
+    rtl_context*: pango.PContext
     one_style_cache*: PTextAttributes
     one_display_cache*: PTextLineDisplay
     wrap_loop_count*: gint
     TextLayout_flag0*: guint16
     preedit_string*: cstring
-    preedit_attrs*: PPangoAttrList
+    preedit_attrs*: pango.PAttrList
     preedit_len*: gint
     preedit_cursor*: gint
 
@@ -2920,7 +2918,7 @@ type
     wrap*: proc (layout: PTextLayout, line: PTextLine, line_data: PTextLineData): PTextLineData{.
         cdecl.}
     get_log_attrs*: proc (layout: PTextLayout, line: PTextLine, 
-                          attrs: var PPangoLogAttr, n_attrs: Pgint){.cdecl.}
+                          attrs: var pango.PLogAttr, n_attrs: Pgint){.cdecl.}
     invalidate*: proc (layout: PTextLayout, start: PTextIter, theEnd: PTextIter){.
         cdecl.}
     free_line_data*: proc (layout: PTextLayout, line: PTextLine, 
@@ -2934,7 +2932,7 @@ type
 
   PTextAttrAppearance* = ptr TTextAttrAppearance
   TTextAttrAppearance*{.final, pure.} = object 
-    attr*: TPangoAttribute
+    attr*: pango.TAttribute
     appearance*: TTextAppearance
 
   PTextCursorDisplay* = ptr TTextCursorDisplay
@@ -2945,7 +2943,7 @@ type
     flag0*: guint16
 
   TTextLineDisplay*{.final, pure.} = object 
-    layout*: PPangoLayout
+    layout*: pango.PLayout
     cursors*: PGSList
     shaped_objects*: PGSList
     direction*: TTextDirection
@@ -2981,7 +2979,7 @@ type
     left_margin*: gint
     right_margin*: gint
     indent*: gint
-    tabs*: PPangoTabArray
+    tabs*: pango.PTabArray
     TextView_flag0*: guint16
     text_window*: PTextWindow
     left_window*: PTextWindow
@@ -3045,7 +3043,7 @@ type
     label_no_tip*: cstring
     caller*: PWidget
     last_crossed*: PWidget
-    query_cursor*: PGdkCursor
+    query_cursor*: gdk2.PCursor
 
   PTipsQueryClass* = ptr TTipsQueryClass
   TTipsQueryClass* = object of TLabelClass
@@ -3055,7 +3053,7 @@ type
                            tip_text: cstring, tip_private: cstring){.cdecl.}
     widget_selected*: proc (tips_query: PTipsQuery, widget: PWidget, 
                             tip_text: cstring, tip_private: cstring, 
-                            event: PGdkEventButton): gint{.cdecl.}
+                            event: gdk2.PEventButton): gint{.cdecl.}
     reserved721: proc (){.cdecl.}
     reserved722: proc (){.cdecl.}
     reserved723: proc (){.cdecl.}
@@ -3233,7 +3231,7 @@ type
     child*: PWidget
     arrow*: PWidget
     alignment*: PWidget
-    window*: PGdkWindow
+    window*: gdk2.PWindow
     editable_widget*: PCellEditable
     xalign*: gfloat
     property_changed_signal*: guint
@@ -3310,10 +3308,10 @@ type
     expander_size*: gint
     hadjustment*: PAdjustment
     vadjustment*: PAdjustment
-    bin_window*: PGdkWindow
-    header_window*: PGdkWindow
-    drag_window*: PGdkWindow
-    drag_highlight_window*: PGdkWindow
+    bin_window*: gdk2.PWindow
+    header_window*: gdk2.PWindow
+    drag_window*: gdk2.PWindow
+    drag_highlight_window*: gdk2.PWindow
     drag_column*: PTreeViewColumn
     last_button_press*: PTreeRowReference
     last_button_press_2*: PTreeRowReference
@@ -3411,8 +3409,8 @@ type
   PViewport* = ptr TViewport
   TViewport* = object of TBin
     shadow_type*: TShadowType
-    view_window*: PGdkWindow
-    bin_window*: PGdkWindow
+    view_window*: gdk2.PWindow
+    bin_window*: gdk2.PWindow
     hadjustment*: PAdjustment
     vadjustment*: PAdjustment
 
@@ -3455,7 +3453,7 @@ const
   ARG_CHILD_ARG* = 1 shl 4
 
 proc TYPE_OBJECT*(): GType
-proc OBJECT*(anObject: pointer): PObject
+proc `OBJECT`*(anObject: pointer): PObject
 proc OBJECT_CLASS*(klass: pointer): PObjectClass
 proc IS_OBJECT*(anObject: pointer): bool
 proc IS_OBJECT_CLASS*(klass: pointer): bool
@@ -3501,13 +3499,13 @@ proc type_class*(thetype: TType): gpointer{.cdecl, dynlib: lib,
 const 
   TOPLEVEL* = 1 shl 4
   NO_WINDOW* = 1 shl 5
-  REALIZED* = 1 shl 6
+  constREALIZED* = 1 shl 6
   MAPPED* = 1 shl 7
-  VISIBLE* = 1 shl 8
+  constVISIBLE* = 1 shl 8
   SENSITIVE* = 1 shl 9
   PARENT_SENSITIVE* = 1 shl 10
   CAN_FOCUS* = 1 shl 11
-  HAS_FOCUS* = 1 shl 12
+  constHAS_FOCUS* = 1 shl 12
   CAN_DEFAULT* = 1 shl 13
   HAS_DEFAULT* = 1 shl 14
   HAS_GRAB* = 1 shl 15
@@ -3604,11 +3602,11 @@ proc widget_get_child_requisition*(widget: PWidget, requisition: PRequisition){.
     cdecl, dynlib: lib, importc: "gtk_widget_get_child_requisition".}
 proc widget_add_accelerator*(widget: PWidget, accel_signal: cstring, 
                              accel_group: PAccelGroup, accel_key: guint, 
-                             accel_mods: TGdkModifierType, 
+                             accel_mods: gdk2.TModifierType, 
                              accel_flags: TAccelFlags){.cdecl, dynlib: lib, 
     importc: "gtk_widget_add_accelerator".}
 proc widget_remove_accelerator*(widget: PWidget, accel_group: PAccelGroup, 
-                                accel_key: guint, accel_mods: TGdkModifierType): gboolean{.
+                                accel_key: guint, accel_mods: gdk2.TModifierType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_remove_accelerator".}
 proc widget_set_accel_path*(widget: PWidget, accel_path: cstring, 
                             accel_group: PAccelGroup){.cdecl, dynlib: lib, 
@@ -3619,9 +3617,9 @@ proc widget_list_accel_closures*(widget: PWidget): PGList{.cdecl, dynlib: lib,
     importc: "gtk_widget_list_accel_closures".}
 proc widget_mnemonic_activate*(widget: PWidget, group_cycling: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_mnemonic_activate".}
-proc widget_event*(widget: PWidget, event: PGdkEvent): gboolean{.cdecl, 
+proc widget_event*(widget: PWidget, event: gdk2.PEvent): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_event".}
-proc widget_send_expose*(widget: PWidget, event: PGdkEvent): gint{.cdecl, 
+proc widget_send_expose*(widget: PWidget, event: gdk2.PEvent): gint{.cdecl, 
     dynlib: lib, importc: "gtk_widget_send_expose".}
 proc widget_activate*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_activate".}
@@ -3630,10 +3628,10 @@ proc widget_set_scroll_adjustments*(widget: PWidget, hadjustment: PAdjustment,
     dynlib: lib, importc: "gtk_widget_set_scroll_adjustments".}
 proc widget_reparent*(widget: PWidget, new_parent: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_reparent".}
-proc widget_intersect*(widget: PWidget, area: PGdkRectangle, 
-                       intersection: PGdkRectangle): gboolean{.cdecl, 
+proc widget_intersect*(widget: PWidget, area: gdk2.PRectangle, 
+                       intersection: gdk2.PRectangle): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_intersect".}
-proc widget_region_intersect*(widget: PWidget, region: PGdkRegion): PGdkRegion{.
+proc widget_region_intersect*(widget: PWidget, region: gdk2.PRegion): gdk2.PRegion{.
     cdecl, dynlib: lib, importc: "gtk_widget_region_intersect".}
 proc widget_freeze_child_notify*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_freeze_child_notify".}
@@ -3664,7 +3662,7 @@ proc widget_set_redraw_on_allocate*(widget: PWidget,
     dynlib: lib, importc: "gtk_widget_set_redraw_on_allocate".}
 proc widget_set_parent*(widget: PWidget, parent: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_parent".}
-proc widget_set_parent_window*(widget: PWidget, parent_window: PGdkWindow){.
+proc widget_set_parent_window*(widget: PWidget, parent_window: gdk2.PWindow){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_parent_window".}
 proc widget_set_child_visible*(widget: PWidget, is_visible: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_child_visible".}
@@ -3672,7 +3670,7 @@ proc widget_get_child_visible*(widget: PWidget): gboolean{.cdecl, dynlib: lib,
     importc: "gtk_widget_get_child_visible".}
 proc widget_get_parent*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_parent".}
-proc widget_get_parent_window*(widget: PWidget): PGdkWindow{.cdecl, dynlib: lib, 
+proc widget_get_parent_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_parent_window".}
 proc widget_child_focus*(widget: PWidget, direction: TDirectionType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_child_focus".}
@@ -3684,33 +3682,33 @@ proc widget_set_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib,
     importc: "gtk_widget_set_events".}
 proc widget_add_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib, 
     importc: "gtk_widget_add_events".}
-proc widget_set_extension_events*(widget: PWidget, mode: TGdkExtensionMode){.
+proc widget_set_extension_events*(widget: PWidget, mode: gdk2.TExtensionMode){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_extension_events".}
-proc widget_get_extension_events*(widget: PWidget): TGdkExtensionMode{.cdecl, 
+proc widget_get_extension_events*(widget: PWidget): gdk2.TExtensionMode{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_extension_events".}
 proc widget_get_toplevel*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_toplevel".}
 proc widget_get_ancestor*(widget: PWidget, widget_type: TType): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_ancestor".}
-proc widget_get_colormap*(widget: PWidget): PGdkColormap{.cdecl, dynlib: lib, 
+proc widget_get_colormap*(widget: PWidget): gdk2.PColormap{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_colormap".}
-proc widget_get_visual*(widget: PWidget): PGdkVisual{.cdecl, dynlib: lib, 
+proc widget_get_visual*(widget: PWidget): gdk2.PVisual{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_visual".}
-proc widget_get_screen*(widget: PWidget): PGdkScreen{.cdecl, dynlib: lib, 
+proc widget_get_screen*(widget: PWidget): gdk2.PScreen{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_screen".}
 proc widget_has_screen*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_has_screen".}
-proc widget_get_display*(widget: PWidget): PGdkDisplay{.cdecl, dynlib: lib, 
+proc widget_get_display*(widget: PWidget): gdk2.PDisplay{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_display".}
-proc widget_get_root_window*(widget: PWidget): PGdkWindow{.cdecl, dynlib: lib, 
+proc widget_get_root_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_root_window".}
 proc widget_get_settings*(widget: PWidget): PSettings{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_settings".}
-proc widget_get_clipboard*(widget: PWidget, selection: TGdkAtom): PClipboard{.
+proc widget_get_clipboard*(widget: PWidget, selection: gdk2.TAtom): PClipboard{.
     cdecl, dynlib: lib, importc: "gtk_widget_get_clipboard".}
-proc widget_get_accessible*(widget: PWidget): PAtkObject{.cdecl, dynlib: lib, 
+proc widget_get_accessible*(widget: PWidget): atk.PObject{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_accessible".}
-proc widget_set_colormap*(widget: PWidget, colormap: PGdkColormap){.cdecl, 
+proc widget_set_colormap*(widget: PWidget, colormap: gdk2.PColormap){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_colormap".}
 proc widget_get_events*(widget: PWidget): gint{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_events".}
@@ -3734,24 +3732,24 @@ proc widget_modify_style*(widget: PWidget, style: PRcStyle){.cdecl, dynlib: lib,
     importc: "gtk_widget_modify_style".}
 proc widget_get_modifier_style*(widget: PWidget): PRcStyle{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_modifier_style".}
-proc widget_modify_fg*(widget: PWidget, state: TStateType, color: PGdkColor){.
+proc widget_modify_fg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_fg".}
-proc widget_modify_bg*(widget: PWidget, state: TStateType, color: PGdkColor){.
+proc widget_modify_bg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_bg".}
-proc widget_modify_text*(widget: PWidget, state: TStateType, color: PGdkColor){.
+proc widget_modify_text*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_text".}
-proc widget_modify_base*(widget: PWidget, state: TStateType, color: PGdkColor){.
+proc widget_modify_base*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_base".}
-proc widget_modify_font*(widget: PWidget, font_desc: PPangoFontDescription){.
+proc widget_modify_font*(widget: PWidget, font_desc: pango.PFontDescription){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_font".}
-proc widget_create_pango_context*(widget: PWidget): PPangoContext{.cdecl, 
+proc widget_create_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
     dynlib: lib, importc: "gtk_widget_create_pango_context".}
-proc widget_get_pango_context*(widget: PWidget): PPangoContext{.cdecl, 
+proc widget_get_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_pango_context".}
-proc widget_create_pango_layout*(widget: PWidget, text: cstring): PPangoLayout{.
+proc widget_create_pango_layout*(widget: PWidget, text: cstring): pango.PLayout{.
     cdecl, dynlib: lib, importc: "gtk_widget_create_pango_layout".}
 proc widget_render_icon*(widget: PWidget, stock_id: cstring, size: TIconSize, 
-                         detail: cstring): PGdkPixbuf{.cdecl, dynlib: lib, 
+                         detail: cstring): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_widget_render_icon".}
 proc widget_set_composite_name*(widget: PWidget, name: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_composite_name".}
@@ -3759,7 +3757,7 @@ proc widget_get_composite_name*(widget: PWidget): cstring{.cdecl, dynlib: lib,
     importc: "gtk_widget_get_composite_name".}
 proc widget_reset_rc_styles*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_reset_rc_styles".}
-proc widget_push_colormap*(cmap: PGdkColormap){.cdecl, dynlib: lib, 
+proc widget_push_colormap*(cmap: gdk2.PColormap){.cdecl, dynlib: lib, 
     importc: "gtk_widget_push_colormap".}
 proc widget_push_composite_child*(){.cdecl, dynlib: lib, 
                                      importc: "gtk_widget_push_composite_child".}
@@ -3782,7 +3780,7 @@ proc widget_class_list_style_properties*(klass: PWidgetClass,
 proc widget_style_get_property*(widget: PWidget, property_name: cstring, 
                                 value: PGValue){.cdecl, dynlib: lib, 
     importc: "gtk_widget_style_get_property".}
-proc widget_set_default_colormap*(colormap: PGdkColormap){.cdecl, dynlib: lib, 
+proc widget_set_default_colormap*(colormap: gdk2.PColormap){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_default_colormap".}
 proc widget_get_default_style*(): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_default_style".}
@@ -3794,7 +3792,7 @@ proc widget_set_default_direction*(dir: TTextDirection){.cdecl, dynlib: lib,
     importc: "gtk_widget_set_default_direction".}
 proc widget_get_default_direction*(): TTextDirection{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_default_direction".}
-proc widget_shape_combine_mask*(widget: PWidget, shape_mask: PGdkBitmap, 
+proc widget_shape_combine_mask*(widget: PWidget, shape_mask: gdk2.PBitmap, 
                                 offset_x: gint, offset_y: gint){.cdecl, 
     dynlib: lib, importc: "gtk_widget_shape_combine_mask".}
 proc widget_reset_shapes*(widget: PWidget){.cdecl, dynlib: lib, 
@@ -3815,7 +3813,7 @@ proc widget_get_aux_info*(widget: PWidget, create: gboolean): PWidgetAuxInfo{.
     cdecl, dynlib: lib, importc: "gtk_widget_get_aux_info".}
 proc widget_propagate_hierarchy_changed*(widget: PWidget, 
     previous_toplevel: PWidget){.cdecl, dynlib: lib, importc: "_gtk_widget_propagate_hierarchy_changed".}
-proc widget_peek_colormap*(): PGdkColormap{.cdecl, dynlib: lib, 
+proc widget_peek_colormap*(): gdk2.PColormap{.cdecl, dynlib: lib, 
     importc: "_gtk_widget_peek_colormap".}
 proc TYPE_MISC*(): GType
 proc MISC*(obj: pointer): PMisc
@@ -3856,7 +3854,7 @@ proc accel_group_lock*(accel_group: PAccelGroup){.cdecl, dynlib: lib,
 proc accel_group_unlock*(accel_group: PAccelGroup){.cdecl, dynlib: lib, 
     importc: "gtk_accel_group_unlock".}
 proc accel_group_connect*(accel_group: PAccelGroup, accel_key: guint, 
-                          accel_mods: TGdkModifierType, 
+                          accel_mods: gdk2.TModifierType, 
                           accel_flags: TAccelFlags, closure: PGClosure){.cdecl, 
     dynlib: lib, importc: "gtk_accel_group_connect".}
 proc accel_group_connect_by_path*(accel_group: PAccelGroup, accel_path: cstring, 
@@ -3865,14 +3863,14 @@ proc accel_group_connect_by_path*(accel_group: PAccelGroup, accel_path: cstring,
 proc accel_group_disconnect*(accel_group: PAccelGroup, closure: PGClosure): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_accel_group_disconnect".}
 proc accel_group_disconnect_key*(accel_group: PAccelGroup, accel_key: guint, 
-                                 accel_mods: TGdkModifierType): gboolean{.cdecl, 
+                                 accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_group_disconnect_key".}
 proc accel_group_attach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
     dynlib: lib, importc: "_gtk_accel_group_attach".}
 proc accel_group_detach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
     dynlib: lib, importc: "_gtk_accel_group_detach".}
 proc accel_groups_activate*(anObject: PGObject, accel_key: guint, 
-                            accel_mods: TGdkModifierType): gboolean{.cdecl, 
+                            accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_groups_activate".}
 proc accel_groups_from_object*(anObject: PGObject): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_accel_groups_from_object".}
@@ -3881,20 +3879,20 @@ proc accel_group_find*(accel_group: PAccelGroup,
     cdecl, dynlib: lib, importc: "gtk_accel_group_find".}
 proc accel_group_from_accel_closure*(closure: PGClosure): PAccelGroup{.cdecl, 
     dynlib: lib, importc: "gtk_accel_group_from_accel_closure".}
-proc accelerator_valid*(keyval: guint, modifiers: TGdkModifierType): gboolean{.
+proc accelerator_valid*(keyval: guint, modifiers: gdk2.TModifierType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_accelerator_valid".}
 proc accelerator_parse*(accelerator: cstring, accelerator_key: Pguint, 
-                        accelerator_mods: PGdkModifierType){.cdecl, dynlib: lib, 
+                        accelerator_mods: gdk2.PModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_accelerator_parse".}
 proc accelerator_name*(accelerator_key: guint, 
-                       accelerator_mods: TGdkModifierType): cstring{.cdecl, 
+                       accelerator_mods: gdk2.TModifierType): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_accelerator_name".}
-proc accelerator_set_default_mod_mask*(default_mod_mask: TGdkModifierType){.
+proc accelerator_set_default_mod_mask*(default_mod_mask: gdk2.TModifierType){.
     cdecl, dynlib: lib, importc: "gtk_accelerator_set_default_mod_mask".}
 proc accelerator_get_default_mod_mask*(): guint{.cdecl, dynlib: lib, 
     importc: "gtk_accelerator_get_default_mod_mask".}
 proc accel_group_query*(accel_group: PAccelGroup, accel_key: guint, 
-                        accel_mods: TGdkModifierType, n_entries: Pguint): PAccelGroupEntry{.
+                        accel_mods: gdk2.TModifierType, n_entries: Pguint): PAccelGroupEntry{.
     cdecl, dynlib: lib, importc: "gtk_accel_group_query".}
 proc accel_group_reconnect*(accel_group: PAccelGroup, accel_path_quark: TGQuark){.
     cdecl, dynlib: lib, importc: "_gtk_accel_group_reconnect".}
@@ -3949,7 +3947,7 @@ proc container_foreach*(container: PContainer, callback: TCallback,
 proc container_get_children*(container: PContainer): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_container_get_children".}
 proc container_propagate_expose*(container: PContainer, child: PWidget, 
-                                 event: PGdkEventExpose){.cdecl, dynlib: lib, 
+                                 event: gdk2.PEventExpose){.cdecl, dynlib: lib, 
     importc: "gtk_container_propagate_expose".}
 proc container_set_focus_chain*(container: PContainer, focusable_widgets: PGList){.
     cdecl, dynlib: lib, importc: "gtk_container_set_focus_chain".}
@@ -4138,9 +4136,9 @@ proc window_set_transient_for*(window: PWindow, parent: PWindow){.cdecl,
     dynlib: lib, importc: "gtk_window_set_transient_for".}
 proc window_get_transient_for*(window: PWindow): PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_transient_for".}
-proc window_set_type_hint*(window: PWindow, hint: TGdkWindowTypeHint){.cdecl, 
+proc window_set_type_hint*(window: PWindow, hint: gdk2.TWindowTypeHint){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_type_hint".}
-proc window_get_type_hint*(window: PWindow): TGdkWindowTypeHint{.cdecl, 
+proc window_get_type_hint*(window: PWindow): gdk2.TWindowTypeHint{.cdecl, 
     dynlib: lib, importc: "gtk_window_get_type_hint".}
 proc window_set_destroy_with_parent*(window: PWindow, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_destroy_with_parent".}
@@ -4150,17 +4148,17 @@ proc window_set_resizable*(window: PWindow, resizable: gboolean){.cdecl,
     dynlib: lib, importc: "gtk_window_set_resizable".}
 proc window_get_resizable*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_resizable".}
-proc window_set_gravity*(window: PWindow, gravity: TGdkGravity){.cdecl, 
+proc window_set_gravity*(window: PWindow, gravity: gdk2.TGravity){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_gravity".}
-proc window_get_gravity*(window: PWindow): TGdkGravity{.cdecl, dynlib: lib, 
+proc window_get_gravity*(window: PWindow): gdk2.TGravity{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_gravity".}
 proc window_set_geometry_hints*(window: PWindow, geometry_widget: PWidget, 
-                                geometry: PGdkGeometry, 
-                                geom_mask: TGdkWindowHints){.cdecl, dynlib: lib, 
+                                geometry: gdk2.PGeometry, 
+                                geom_mask: gdk2.TWindowHints){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_geometry_hints".}
-proc window_set_screen*(window: PWindow, screen: PGdkScreen){.cdecl, 
+proc window_set_screen*(window: PWindow, screen: gdk2.PScreen){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_screen".}
-proc window_get_screen*(window: PWindow): PGdkScreen{.cdecl, dynlib: lib, 
+proc window_get_screen*(window: PWindow): gdk2.PScreen{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_screen".}
 proc window_set_has_frame*(window: PWindow, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_has_frame".}
@@ -4180,9 +4178,9 @@ proc window_set_icon_list*(window: PWindow, list: PGList){.cdecl, dynlib: lib,
     importc: "gtk_window_set_icon_list".}
 proc window_get_icon_list*(window: PWindow): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_icon_list".}
-proc window_set_icon*(window: PWindow, icon: PGdkPixbuf){.cdecl, dynlib: lib, 
+proc window_set_icon*(window: PWindow, icon: gdk2pixbuf.PPixbuf){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_icon".}
-proc window_get_icon*(window: PWindow): PGdkPixbuf{.cdecl, dynlib: lib, 
+proc window_get_icon*(window: PWindow): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_icon".}
 proc window_set_default_icon_list*(list: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_default_icon_list".}
@@ -4199,11 +4197,11 @@ proc window_add_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
 proc window_remove_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_window_remove_mnemonic".}
 proc window_mnemonic_activate*(window: PWindow, keyval: guint, 
-                               modifier: TGdkModifierType): gboolean{.cdecl, 
+                               modifier: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_window_mnemonic_activate".}
-proc window_set_mnemonic_modifier*(window: PWindow, modifier: TGdkModifierType){.
+proc window_set_mnemonic_modifier*(window: PWindow, modifier: gdk2.TModifierType){.
     cdecl, dynlib: lib, importc: "gtk_window_set_mnemonic_modifier".}
-proc window_get_mnemonic_modifier*(window: PWindow): TGdkModifierType{.cdecl, 
+proc window_get_mnemonic_modifier*(window: PWindow): gdk2.TModifierType{.cdecl, 
     dynlib: lib, importc: "gtk_window_get_mnemonic_modifier".}
 proc window_present*(window: PWindow){.cdecl, dynlib: lib, 
                                        importc: "gtk_window_present".}
@@ -4219,7 +4217,7 @@ proc window_maximize*(window: PWindow){.cdecl, dynlib: lib,
                                         importc: "gtk_window_maximize".}
 proc window_unmaximize*(window: PWindow){.cdecl, dynlib: lib, 
     importc: "gtk_window_unmaximize".}
-proc window_begin_resize_drag*(window: PWindow, edge: TGdkWindowEdge, 
+proc window_begin_resize_drag*(window: PWindow, edge: gdk2.TWindowEdge, 
                                button: gint, root_x: gint, root_y: gint, 
                                timestamp: guint32){.cdecl, dynlib: lib, 
     importc: "gtk_window_begin_resize_drag".}
@@ -4265,13 +4263,13 @@ proc window_constrain_size*(window: PWindow, width: gint, height: gint,
     dynlib: lib, importc: "_gtk_window_constrain_size".}
 proc window_get_group*(window: PWindow): PWindowGroup{.cdecl, dynlib: lib, 
     importc: "_gtk_window_get_group".}
-proc window_activate_key*(window: PWindow, event: PGdkEventKey): gboolean{.
+proc window_activate_key*(window: PWindow, event: gdk2.PEventKey): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_window_activate_key".}
 proc window_keys_foreach*(window: PWindow, func: TWindowKeysForeachFunc, 
                           func_data: gpointer){.cdecl, dynlib: lib, 
     importc: "_gtk_window_keys_foreach".}
 proc window_query_nonaccels*(window: PWindow, accel_key: guint, 
-                             accel_mods: TGdkModifierType): gboolean{.cdecl, 
+                             accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_window_query_nonaccels".}
 const 
   bm_TGtkLabel_jtype* = 0x0003'i16
@@ -4306,9 +4304,9 @@ proc label_set_text*(`label`: PLabel, str: cstring){.cdecl, dynlib: lib,
     importc: "gtk_label_set_text".}
 proc label_get_text*(`label`: PLabel): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_label_get_text".}
-proc label_set_attributes*(`label`: PLabel, attrs: PPangoAttrList){.cdecl, 
+proc label_set_attributes*(`label`: PLabel, attrs: pango.PAttrList){.cdecl, 
     dynlib: lib, importc: "gtk_label_set_attributes".}
-proc label_get_attributes*(`label`: PLabel): PPangoAttrList{.cdecl, dynlib: lib, 
+proc label_get_attributes*(`label`: PLabel): pango.PAttrList{.cdecl, dynlib: lib, 
     importc: "gtk_label_get_attributes".}
 proc label_set_label*(`label`: PLabel, str: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_label_set_label".}
@@ -4352,7 +4350,7 @@ proc label_select_region*(`label`: PLabel, start_offset: gint, end_offset: gint)
     cdecl, dynlib: lib, importc: "gtk_label_select_region".}
 proc label_get_selection_bounds*(`label`: PLabel, start: Pgint, theEnd: Pgint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_label_get_selection_bounds".}
-proc label_get_layout*(`label`: PLabel): PPangoLayout{.cdecl, dynlib: lib, 
+proc label_get_layout*(`label`: PLabel): pango.PLayout{.cdecl, dynlib: lib, 
     importc: "gtk_label_get_layout".}
 proc label_get_layout_offsets*(`label`: PLabel, x: Pgint, y: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_label_get_layout_offsets".}
@@ -4385,12 +4383,12 @@ proc accel_label_set_accel_closure*(accel_label: PAccelLabel,
 proc accel_label_refetch*(accel_label: PAccelLabel): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_label_refetch".}
 proc accel_map_add_entry*(accel_path: cstring, accel_key: guint, 
-                          accel_mods: TGdkModifierType){.cdecl, dynlib: lib, 
+                          accel_mods: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_accel_map_add_entry".}
 proc accel_map_lookup_entry*(accel_path: cstring, key: PAccelKey): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_accel_map_lookup_entry".}
 proc accel_map_change_entry*(accel_path: cstring, accel_key: guint, 
-                             accel_mods: TGdkModifierType, replace: gboolean): gboolean{.
+                             accel_mods: gdk2.TModifierType, replace: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_accel_map_change_entry".}
 proc accel_map_load*(file_name: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_accel_map_load".}
@@ -4522,7 +4520,7 @@ const
   bp_TGtkBindingEntry_in_emission* = 1'i16
 
 proc binding_entry_add*(binding_set: PBindingSet, keyval: guint, 
-                        modifiers: TGdkModifierType)
+                        modifiers: gdk2.TModifierType)
 proc parsed*(a: var TBindingSet): guint
 proc set_parsed*(a: var TBindingSet, `parsed`: guint)
 proc destroyed*(a: var TBindingEntry): guint
@@ -4536,27 +4534,27 @@ proc binding_set_by_class*(object_class: gpointer): PBindingSet{.cdecl,
 proc binding_set_find*(set_name: cstring): PBindingSet{.cdecl, dynlib: lib, 
     importc: "gtk_binding_set_find".}
 proc bindings_activate*(anObject: PObject, keyval: guint, 
-                        modifiers: TGdkModifierType): gboolean{.cdecl, 
+                        modifiers: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_bindings_activate".}
 proc binding_set_activate*(binding_set: PBindingSet, keyval: guint, 
-                           modifiers: TGdkModifierType, anObject: PObject): gboolean{.
+                           modifiers: gdk2.TModifierType, anObject: PObject): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_binding_set_activate".}
 proc binding_entry_clear*(binding_set: PBindingSet, keyval: guint, 
-                          modifiers: TGdkModifierType){.cdecl, dynlib: lib, 
+                          modifiers: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_binding_entry_clear".}
 proc binding_set_add_path*(binding_set: PBindingSet, path_type: TPathType, 
                            path_pattern: cstring, priority: TPathPriorityType){.
     cdecl, dynlib: lib, importc: "gtk_binding_set_add_path".}
 proc binding_entry_remove*(binding_set: PBindingSet, keyval: guint, 
-                           modifiers: TGdkModifierType){.cdecl, dynlib: lib, 
+                           modifiers: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_binding_entry_remove".}
 proc binding_entry_add_signall*(binding_set: PBindingSet, keyval: guint, 
-                                modifiers: TGdkModifierType, 
+                                modifiers: gdk2.TModifierType, 
                                 signal_name: cstring, binding_args: PGSList){.
     cdecl, dynlib: lib, importc: "gtk_binding_entry_add_signall".}
 proc binding_parse_binding*(scanner: PGScanner): guint{.cdecl, dynlib: lib, 
     importc: "gtk_binding_parse_binding".}
-proc bindings_activate_event*(anObject: PObject, event: PGdkEventKey): gboolean{.
+proc bindings_activate_event*(anObject: PObject, event: gdk2.PEventKey): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_bindings_activate_event".}
 proc binding_reset_parsed*(){.cdecl, dynlib: lib, 
                               importc: "_gtk_binding_reset_parsed".}
@@ -4715,7 +4713,7 @@ proc button_get_use_stock*(button: PButton): gboolean{.cdecl, dynlib: lib,
     importc: "gtk_button_get_use_stock".}
 proc button_set_depressed*(button: PButton, depressed: gboolean){.cdecl, 
     dynlib: lib, importc: "_gtk_button_set_depressed".}
-proc button_paint*(button: PButton, area: PGdkRectangle, state_type: TStateType, 
+proc button_paint*(button: PButton, area: gdk2.PRectangle, state_type: TStateType, 
                    shadow_type: TShadowType, main_detail: cstring, 
                    default_detail: cstring){.cdecl, dynlib: lib, 
     importc: "_gtk_button_paint".}
@@ -4766,7 +4764,7 @@ proc IS_CELL_EDITABLE*(obj: pointer): bool
 proc CELL_EDITABLE_GET_IFACE*(obj: pointer): PCellEditableIface
 proc cell_editable_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_cell_editable_get_type".}
-proc cell_editable_start_editing*(cell_editable: PCellEditable, event: PGdkEvent){.
+proc cell_editable_start_editing*(cell_editable: PCellEditable, event: gdk2.PEvent){.
     cdecl, dynlib: lib, importc: "gtk_cell_editable_start_editing".}
 proc cell_editable_editing_done*(cell_editable: PCellEditable){.cdecl, 
     dynlib: lib, importc: "gtk_cell_editable_editing_done".}
@@ -4809,23 +4807,23 @@ proc set_cell_background_set*(a: var TCellRenderer, `cell_background_set`: guint
 proc cell_renderer_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_cell_renderer_get_type".}
 proc cell_renderer_get_size*(cell: PCellRenderer, widget: PWidget, 
-                             cell_area: PGdkRectangle, x_offset: Pgint, 
+                             cell_area: gdk2.PRectangle, x_offset: Pgint, 
                              y_offset: Pgint, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_get_size".}
-proc cell_renderer_render*(cell: PCellRenderer, window: PGdkWindow, 
-                           widget: PWidget, background_area: PGdkRectangle, 
-                           cell_area: PGdkRectangle, expose_area: PGdkRectangle, 
+proc cell_renderer_render*(cell: PCellRenderer, window: gdk2.PWindow, 
+                           widget: PWidget, background_area: gdk2.PRectangle, 
+                           cell_area: gdk2.PRectangle, expose_area: gdk2.PRectangle, 
                            flags: TCellRendererState){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_render".}
-proc cell_renderer_activate*(cell: PCellRenderer, event: PGdkEvent, 
+proc cell_renderer_activate*(cell: PCellRenderer, event: gdk2.PEvent, 
                              widget: PWidget, path: cstring, 
-                             background_area: PGdkRectangle, 
-                             cell_area: PGdkRectangle, flags: TCellRendererState): gboolean{.
+                             background_area: gdk2.PRectangle, 
+                             cell_area: gdk2.PRectangle, flags: TCellRendererState): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_activate".}
-proc cell_renderer_start_editing*(cell: PCellRenderer, event: PGdkEvent, 
+proc cell_renderer_start_editing*(cell: PCellRenderer, event: gdk2.PEvent, 
                                   widget: PWidget, path: cstring, 
-                                  background_area: PGdkRectangle, 
-                                  cell_area: PGdkRectangle, 
+                                  background_area: gdk2.PRectangle, 
+                                  cell_area: gdk2.PRectangle, 
                                   flags: TCellRendererState): PCellEditable{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_start_editing".}
 proc cell_renderer_set_fixed_size*(cell: PCellRenderer, width: gint, 
@@ -5114,9 +5112,9 @@ proc check_menu_item_set_inconsistent*(check_menu_item: PCheckMenuItem,
     importc: "gtk_check_menu_item_set_inconsistent".}
 proc check_menu_item_get_inconsistent*(check_menu_item: PCheckMenuItem): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_check_menu_item_get_inconsistent".}
-proc clipboard_get_for_display*(display: PGdkDisplay, selection: TGdkAtom): PClipboard{.
+proc clipboard_get_for_display*(display: gdk2.PDisplay, selection: gdk2.TAtom): PClipboard{.
     cdecl, dynlib: lib, importc: "gtk_clipboard_get_for_display".}
-proc clipboard_get_display*(clipboard: PClipboard): PGdkDisplay{.cdecl, 
+proc clipboard_get_display*(clipboard: PClipboard): gdk2.PDisplay{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_get_display".}
 proc clipboard_set_with_data*(clipboard: PClipboard, targets: PTargetEntry, 
                               n_targets: guint, get_func: TClipboardGetFunc, 
@@ -5133,7 +5131,7 @@ proc clipboard_clear*(clipboard: PClipboard){.cdecl, dynlib: lib,
     importc: "gtk_clipboard_clear".}
 proc clipboard_set_text*(clipboard: PClipboard, text: cstring, len: gint){.
     cdecl, dynlib: lib, importc: "gtk_clipboard_set_text".}
-proc clipboard_request_contents*(clipboard: PClipboard, target: TGdkAtom, 
+proc clipboard_request_contents*(clipboard: PClipboard, target: gdk2.TAtom, 
                                  callback: TClipboardReceivedFunc, 
                                  user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_request_contents".}
@@ -5141,7 +5139,7 @@ proc clipboard_request_text*(clipboard: PClipboard,
                              callback: TClipboardTextReceivedFunc, 
                              user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_request_text".}
-proc clipboard_wait_for_contents*(clipboard: PClipboard, target: TGdkAtom): PSelectionData{.
+proc clipboard_wait_for_contents*(clipboard: PClipboard, target: gdk2.TAtom): PSelectionData{.
     cdecl, dynlib: lib, importc: "gtk_clipboard_wait_for_contents".}
 proc clipboard_wait_for_text*(clipboard: PClipboard): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_wait_for_text".}
@@ -5302,17 +5300,17 @@ proc clist_set_text*(clist: PCList, row: gint, column: gint, text: cstring){.
 proc clist_get_text*(clist: PCList, row: gint, column: gint, text: PPgchar): gint{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_text".}
 proc clist_set_pixmap*(clist: PCList, row: gint, column: gint, 
-                       pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl, 
+                       pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_pixmap".}
 proc clist_get_pixmap*(clist: PCList, row: gint, column: gint, 
-                       pixmap: var PGdkPixmap, mask: var PGdkBitmap): gint{.
+                       pixmap: var gdk2.PPixmap, mask: var gdk2.PBitmap): gint{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_pixmap".}
 proc clist_set_pixtext*(clist: PCList, row: gint, column: gint, text: cstring, 
-                        spacing: guint8, pixmap: PGdkPixmap, mask: PGdkBitmap){.
+                        spacing: guint8, pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_pixtext".}
-proc clist_set_foreground*(clist: PCList, row: gint, color: PGdkColor){.cdecl, 
+proc clist_set_foreground*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_foreground".}
-proc clist_set_background*(clist: PCList, row: gint, color: PGdkColor){.cdecl, 
+proc clist_set_background*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_background".}
 proc clist_set_cell_style*(clist: PCList, row: gint, column: gint, style: PStyle){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_cell_style".}
@@ -5367,7 +5365,7 @@ proc clist_set_sort_type*(clist: PCList, sort_type: TSortType){.cdecl,
 proc clist_sort*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_sort".}
 proc clist_set_auto_sort*(clist: PCList, auto_sort: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_auto_sort".}
-proc clist_create_cell_layout*(clist: PCList, clist_row: PCListRow, column: gint): PPangoLayout{.
+proc clist_create_cell_layout*(clist: PCList, clist_row: PCListRow, column: gint): pango.PLayout{.
     cdecl, dynlib: lib, importc: "_gtk_clist_create_cell_layout".}
 const 
   DIALOG_MODAL* = 1 shl 0
@@ -5443,32 +5441,32 @@ proc color_selection_set_has_palette*(colorsel: PColorSelection,
                                       has_palette: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_color_selection_set_has_palette".}
 proc color_selection_set_current_color*(colorsel: PColorSelection, 
-                                        color: PGdkColor){.cdecl, dynlib: lib, 
+                                        color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_set_current_color".}
 proc color_selection_set_current_alpha*(colorsel: PColorSelection, 
                                         alpha: guint16){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_set_current_alpha".}
 proc color_selection_get_current_color*(colorsel: PColorSelection, 
-                                        color: PGdkColor){.cdecl, dynlib: lib, 
+                                        color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_get_current_color".}
 proc color_selection_get_current_alpha*(colorsel: PColorSelection): guint16{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_current_alpha".}
 proc color_selection_set_previous_color*(colorsel: PColorSelection, 
-    color: PGdkColor){.cdecl, dynlib: lib, 
+    color: gdk2.PColor){.cdecl, dynlib: lib, 
                        importc: "gtk_color_selection_set_previous_color".}
 proc color_selection_set_previous_alpha*(colorsel: PColorSelection, 
     alpha: guint16){.cdecl, dynlib: lib, 
                      importc: "gtk_color_selection_set_previous_alpha".}
 proc color_selection_get_previous_color*(colorsel: PColorSelection, 
-    color: PGdkColor){.cdecl, dynlib: lib, 
+    color: gdk2.PColor){.cdecl, dynlib: lib, 
                        importc: "gtk_color_selection_get_previous_color".}
 proc color_selection_get_previous_alpha*(colorsel: PColorSelection): guint16{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_previous_alpha".}
 proc color_selection_is_adjusting*(colorsel: PColorSelection): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_color_selection_is_adjusting".}
-proc color_selection_palette_from_string*(str: cstring, colors: var PGdkColor, 
+proc color_selection_palette_from_string*(str: cstring, colors: var gdk2.PColor, 
     n_colors: Pgint): gboolean{.cdecl, dynlib: lib, importc: "gtk_color_selection_palette_from_string".}
-proc color_selection_palette_to_string*(colors: PGdkColor, n_colors: gint): cstring{.
+proc color_selection_palette_to_string*(colors: gdk2.PColor, n_colors: gint): cstring{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_palette_to_string".}
 proc color_selection_set_change_palette_with_screen_hook*(
     func: TColorSelectionChangePaletteWithScreenFunc): TColorSelectionChangePaletteWithScreenFunc{.
@@ -5577,8 +5575,8 @@ proc ctree_new*(columns: gint, tree_column: gint): PCTree{.cdecl, dynlib: lib,
     importc: "gtk_ctree_new".}
 proc ctree_insert_node*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
                         text: openarray[cstring], spacing: guint8, 
-                        pixmap_closed: PGdkPixmap, mask_closed: PGdkBitmap, 
-                        pixmap_opened: PGdkPixmap, mask_opened: PGdkBitmap, 
+                        pixmap_closed: gdk2.PPixmap, mask_closed: gdk2.PBitmap, 
+                        pixmap_opened: gdk2.PPixmap, mask_opened: gdk2.PBitmap, 
                         is_leaf: gboolean, expanded: gboolean): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_insert_node".}
 proc ctree_remove_node*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
@@ -5662,16 +5660,16 @@ proc ctree_node_set_text*(ctree: PCTree, node_: PCTreeNode, column: gint,
                           text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_text".}
 proc ctree_node_set_pixmap*(ctree: PCTree, node_: PCTreeNode, column: gint, 
-                            pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl, 
+                            pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_set_pixmap".}
 proc ctree_node_set_pixtext*(ctree: PCTree, node_: PCTreeNode, column: gint, 
-                             text: cstring, spacing: guint8, pixmap: PGdkPixmap, 
-                             mask: PGdkBitmap){.cdecl, dynlib: lib, 
+                             text: cstring, spacing: guint8, pixmap: gdk2.PPixmap, 
+                             mask: gdk2.PBitmap){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_pixtext".}
 proc ctree_set_node_info*(ctree: PCTree, node_: PCTreeNode, text: cstring, 
-                          spacing: guint8, pixmap_closed: PGdkPixmap, 
-                          mask_closed: PGdkBitmap, pixmap_opened: PGdkPixmap, 
-                          mask_opened: PGdkBitmap, is_leaf: gboolean, 
+                          spacing: guint8, pixmap_closed: gdk2.PPixmap, 
+                          mask_closed: gdk2.PBitmap, pixmap_opened: gdk2.PPixmap, 
+                          mask_opened: gdk2.PBitmap, is_leaf: gboolean, 
                           expanded: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_node_info".}
 proc ctree_node_set_shift*(ctree: PCTree, node_: PCTreeNode, column: gint, 
@@ -5697,10 +5695,10 @@ proc ctree_node_set_cell_style*(ctree: PCTree, node_: PCTreeNode, column: gint,
 proc ctree_node_get_cell_style*(ctree: PCTree, node_: PCTreeNode, column: gint): PStyle{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_cell_style".}
 proc ctree_node_set_foreground*(ctree: PCTree, node_: PCTreeNode, 
-                                color: PGdkColor){.cdecl, dynlib: lib, 
+                                color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_foreground".}
 proc ctree_node_set_background*(ctree: PCTree, node_: PCTreeNode, 
-                                color: PGdkColor){.cdecl, dynlib: lib, 
+                                color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_background".}
 proc ctree_node_set_row_data*(ctree: PCTree, node_: PCTreeNode, data: gpointer){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_data".}
@@ -5768,12 +5766,12 @@ const
   TARGET_SAME_APP* = 1 shl 0
   TARGET_SAME_WIDGET* = 1 shl 1
 
-proc drag_get_data*(widget: PWidget, context: PGdkDragContext, target: TGdkAtom, 
+proc drag_get_data*(widget: PWidget, context: gdk2.PDragContext, target: gdk2.TAtom, 
                     time: guint32){.cdecl, dynlib: lib, 
                                     importc: "gtk_drag_get_data".}
-proc drag_finish*(context: PGdkDragContext, success: gboolean, del: gboolean, 
+proc drag_finish*(context: gdk2.PDragContext, success: gboolean, del: gboolean, 
                   time: guint32){.cdecl, dynlib: lib, importc: "gtk_drag_finish".}
-proc drag_get_source_widget*(context: PGdkDragContext): PWidget{.cdecl, 
+proc drag_get_source_widget*(context: gdk2.PDragContext): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_drag_get_source_widget".}
 proc drag_highlight*(widget: PWidget){.cdecl, dynlib: lib, 
                                        importc: "gtk_drag_highlight".}
@@ -5781,57 +5779,57 @@ proc drag_unhighlight*(widget: PWidget){.cdecl, dynlib: lib,
     importc: "gtk_drag_unhighlight".}
 proc drag_dest_set*(widget: PWidget, flags: TDestDefaults, 
                     targets: PTargetEntry, n_targets: gint, 
-                    actions: TGdkDragAction){.cdecl, dynlib: lib, 
+                    actions: gdk2.TDragAction){.cdecl, dynlib: lib, 
     importc: "gtk_drag_dest_set".}
-proc drag_dest_set_proxy*(widget: PWidget, proxy_window: PGdkWindow, 
-                          protocol: TGdkDragProtocol, use_coordinates: gboolean){.
+proc drag_dest_set_proxy*(widget: PWidget, proxy_window: gdk2.PWindow, 
+                          protocol: gdk2.TDragProtocol, use_coordinates: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_drag_dest_set_proxy".}
 proc drag_dest_unset*(widget: PWidget){.cdecl, dynlib: lib, 
                                         importc: "gtk_drag_dest_unset".}
-proc drag_dest_find_target*(widget: PWidget, context: PGdkDragContext, 
-                            target_list: PTargetList): TGdkAtom{.cdecl, 
+proc drag_dest_find_target*(widget: PWidget, context: gdk2.PDragContext, 
+                            target_list: PTargetList): gdk2.TAtom{.cdecl, 
     dynlib: lib, importc: "gtk_drag_dest_find_target".}
 proc drag_dest_get_target_list*(widget: PWidget): PTargetList{.cdecl, 
     dynlib: lib, importc: "gtk_drag_dest_get_target_list".}
 proc drag_dest_set_target_list*(widget: PWidget, target_list: PTargetList){.
     cdecl, dynlib: lib, importc: "gtk_drag_dest_set_target_list".}
-proc drag_source_set*(widget: PWidget, start_button_mask: TGdkModifierType, 
+proc drag_source_set*(widget: PWidget, start_button_mask: gdk2.TModifierType, 
                       targets: PTargetEntry, n_targets: gint, 
-                      actions: TGdkDragAction){.cdecl, dynlib: lib, 
+                      actions: gdk2.TDragAction){.cdecl, dynlib: lib, 
     importc: "gtk_drag_source_set".}
 proc drag_source_unset*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_drag_source_unset".}
-proc drag_source_set_icon*(widget: PWidget, colormap: PGdkColormap, 
-                           pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl, 
+proc drag_source_set_icon*(widget: PWidget, colormap: gdk2.PColormap, 
+                           pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_drag_source_set_icon".}
-proc drag_source_set_icon_pixbuf*(widget: PWidget, pixbuf: PGdkPixbuf){.cdecl, 
+proc drag_source_set_icon_pixbuf*(widget: PWidget, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "gtk_drag_source_set_icon_pixbuf".}
 proc drag_source_set_icon_stock*(widget: PWidget, stock_id: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_drag_source_set_icon_stock".}
-proc drag_begin*(widget: PWidget, targets: PTargetList, actions: TGdkDragAction, 
-                 button: gint, event: PGdkEvent): PGdkDragContext{.cdecl, 
+proc drag_begin*(widget: PWidget, targets: PTargetList, actions: gdk2.TDragAction, 
+                 button: gint, event: gdk2.PEvent): gdk2.PDragContext{.cdecl, 
     dynlib: lib, importc: "gtk_drag_begin".}
-proc drag_set_icon_widget*(context: PGdkDragContext, widget: PWidget, 
+proc drag_set_icon_widget*(context: gdk2.PDragContext, widget: PWidget, 
                            hot_x: gint, hot_y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_drag_set_icon_widget".}
-proc drag_set_icon_pixmap*(context: PGdkDragContext, colormap: PGdkColormap, 
-                           pixmap: PGdkPixmap, mask: PGdkBitmap, hot_x: gint, 
+proc drag_set_icon_pixmap*(context: gdk2.PDragContext, colormap: gdk2.PColormap, 
+                           pixmap: gdk2.PPixmap, mask: gdk2.PBitmap, hot_x: gint, 
                            hot_y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_drag_set_icon_pixmap".}
-proc drag_set_icon_pixbuf*(context: PGdkDragContext, pixbuf: PGdkPixbuf, 
+proc drag_set_icon_pixbuf*(context: gdk2.PDragContext, pixbuf: gdk2pixbuf.PPixbuf, 
                            hot_x: gint, hot_y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_drag_set_icon_pixbuf".}
-proc drag_set_icon_stock*(context: PGdkDragContext, stock_id: cstring, 
+proc drag_set_icon_stock*(context: gdk2.PDragContext, stock_id: cstring, 
                           hot_x: gint, hot_y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_drag_set_icon_stock".}
-proc drag_set_icon_default*(context: PGdkDragContext){.cdecl, dynlib: lib, 
+proc drag_set_icon_default*(context: gdk2.PDragContext){.cdecl, dynlib: lib, 
     importc: "gtk_drag_set_icon_default".}
 proc drag_check_threshold*(widget: PWidget, start_x: gint, start_y: gint, 
                            current_x: gint, current_y: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_drag_check_threshold".}
-proc drag_source_handle_event*(widget: PWidget, event: PGdkEvent){.cdecl, 
+proc drag_source_handle_event*(widget: PWidget, event: gdk2.PEvent){.cdecl, 
     dynlib: lib, importc: "_gtk_drag_source_handle_event".}
-proc drag_dest_handle_event*(toplevel: PWidget, event: PGdkEvent){.cdecl, 
+proc drag_dest_handle_event*(toplevel: PWidget, event: gdk2.PEvent){.cdecl, 
     dynlib: lib, importc: "_gtk_drag_dest_handle_event".}
 proc TYPE_EDITABLE*(): GType
 proc EDITABLE*(obj: pointer): PEditable
@@ -5877,9 +5875,9 @@ proc IS_IM_CONTEXT_CLASS*(klass: pointer): bool
 proc IM_CONTEXT_GET_CLASS*(obj: pointer): PIMContextClass
 proc im_context_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_im_context_get_type".}
-proc im_context_set_client_window*(context: PIMContext, window: PGdkWindow){.
+proc im_context_set_client_window*(context: PIMContext, window: gdk2.PWindow){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_client_window".}
-proc im_context_filter_keypress*(context: PIMContext, event: PGdkEventKey): gboolean{.
+proc im_context_filter_keypress*(context: PIMContext, event: gdk2.PEventKey): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_im_context_filter_keypress".}
 proc im_context_focus_in*(context: PIMContext){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_focus_in".}
@@ -5887,7 +5885,7 @@ proc im_context_focus_out*(context: PIMContext){.cdecl, dynlib: lib,
     importc: "gtk_im_context_focus_out".}
 proc im_context_reset*(context: PIMContext){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_reset".}
-proc im_context_set_cursor_location*(context: PIMContext, area: PGdkRectangle){.
+proc im_context_set_cursor_location*(context: PIMContext, area: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_cursor_location".}
 proc im_context_set_use_preedit*(context: PIMContext, use_preedit: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_use_preedit".}
@@ -6033,7 +6031,7 @@ proc menu_get_title*(menu: PMenu): cstring{.cdecl, dynlib: lib,
     importc: "gtk_menu_get_title".}
 proc menu_reorder_child*(menu: PMenu, child: PWidget, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_menu_reorder_child".}
-proc menu_set_screen*(menu: PMenu, screen: PGdkScreen){.cdecl, dynlib: lib, 
+proc menu_set_screen*(menu: PMenu, screen: gdk2.PScreen){.cdecl, dynlib: lib, 
     importc: "gtk_menu_set_screen".}
 const 
   bm_TGtkEntry_editable* = 0x0001'i16
@@ -6125,7 +6123,7 @@ proc entry_set_text*(entry: PEntry, text: cstring){.cdecl, dynlib: lib,
     importc: "gtk_entry_set_text".}
 proc entry_get_text*(entry: PEntry): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_text".}
-proc entry_get_layout*(entry: PEntry): PPangoLayout{.cdecl, dynlib: lib, 
+proc entry_get_layout*(entry: PEntry): pango.PLayout{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_layout".}
 proc entry_get_layout_offsets*(entry: PEntry, x: Pgint, y: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_entry_get_layout_offsets".}
@@ -6151,9 +6149,9 @@ const
   ARROW_DOWN* = 1
   ARROW_LEFT* = 2
   ARROW_RIGHT* = 3
-  EXPAND* = 1 shl 0
-  SHRINK* = 1 shl 1
-  FILL* = 1 shl 2
+  constEXPAND* = 1 shl 0
+  constSHRINK* = 1 shl 1
+  constFILL* = 1 shl 2
   BUTTONBOX_DEFAULT_STYLE* = 0
   BUTTONBOX_SPREAD* = 1
   BUTTONBOX_EDGE* = 2
@@ -6414,10 +6412,10 @@ proc gamma_curve_get_type*(): TType{.cdecl, dynlib: lib,
                                      importc: "gtk_gamma_curve_get_type".}
 proc gamma_curve_new*(): PGammaCurve{.cdecl, dynlib: lib, 
                                       importc: "gtk_gamma_curve_new".}
-proc gc_get*(depth: gint, colormap: PGdkColormap, values: PGdkGCValues, 
-             values_mask: TGdkGCValuesMask): PGdkGC{.cdecl, dynlib: lib, 
+proc gc_get*(depth: gint, colormap: gdk2.PColormap, values: gdk2.PGCValues, 
+             values_mask: gdk2.TGCValuesMask): gdk2.PGC{.cdecl, dynlib: lib, 
     importc: "gtk_gc_get".}
-proc gc_release*(gc: PGdkGC){.cdecl, dynlib: lib, importc: "gtk_gc_release".}
+proc gc_release*(gc: gdk2.PGC){.cdecl, dynlib: lib, importc: "gtk_gc_release".}
 const 
   bm_TGtkHandleBox_handle_position* = 0x0003'i16
   bp_TGtkHandleBox_handle_position* = 0'i16
@@ -6586,7 +6584,7 @@ proc IS_SETTINGS_CLASS*(klass: pointer): bool
 proc SETTINGS_GET_CLASS*(obj: pointer): PSettingsClass
 proc settings_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "gtk_settings_get_type".}
-proc settings_get_for_screen*(screen: PGdkScreen): PSettings{.cdecl, 
+proc settings_get_for_screen*(screen: gdk2.PScreen): PSettings{.cdecl, 
     dynlib: lib, importc: "gtk_settings_get_for_screen".}
 proc settings_install_property*(pspec: PGParamSpec){.cdecl, dynlib: lib, 
     importc: "gtk_settings_install_property".}
@@ -6620,7 +6618,7 @@ proc settings_set_long_property*(settings: PSettings, name: cstring,
 proc settings_set_double_property*(settings: PSettings, name: cstring, 
                                    v_double: gdouble, origin: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_settings_set_double_property".}
-proc settings_handle_event*(event: PGdkEventSetting){.cdecl, dynlib: lib, 
+proc settings_handle_event*(event: gdk2.PEventSetting){.cdecl, dynlib: lib, 
     importc: "_gtk_settings_handle_event".}
 proc rc_property_parser_from_type*(thetype: GType): TRcPropertyParser{.cdecl, 
     dynlib: lib, importc: "_gtk_rc_property_parser_from_type".}
@@ -6686,7 +6684,7 @@ proc rc_get_im_module_file*(): cstring{.cdecl, dynlib: lib,
                                         importc: "gtk_rc_get_im_module_file".}
 proc rc_scanner_new*(): PGScanner{.cdecl, dynlib: lib, 
                                    importc: "gtk_rc_scanner_new".}
-proc rc_parse_color*(scanner: PGScanner, color: PGdkColor): guint{.cdecl, 
+proc rc_parse_color*(scanner: PGScanner, color: gdk2.PColor): guint{.cdecl, 
     dynlib: lib, importc: "gtk_rc_parse_color".}
 proc rc_parse_state*(scanner: PGScanner, state: PStateType): guint{.cdecl, 
     dynlib: lib, importc: "gtk_rc_parse_state".}
@@ -6709,117 +6707,117 @@ proc style_get_type*(): GType{.cdecl, dynlib: lib, importc: "gtk_style_get_type"
 proc style_new*(): PStyle{.cdecl, dynlib: lib, importc: "gtk_style_new".}
 proc style_copy*(style: PStyle): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_style_copy".}
-proc style_attach*(style: PStyle, window: PGdkWindow): PStyle{.cdecl, 
+proc style_attach*(style: PStyle, window: gdk2.PWindow): PStyle{.cdecl, 
     dynlib: lib, importc: "gtk_style_attach".}
 proc style_detach*(style: PStyle){.cdecl, dynlib: lib, 
                                    importc: "gtk_style_detach".}
-proc style_set_background*(style: PStyle, window: PGdkWindow, 
+proc style_set_background*(style: PStyle, window: gdk2.PWindow, 
                            state_type: TStateType){.cdecl, dynlib: lib, 
     importc: "gtk_style_set_background".}
-proc style_apply_default_background*(style: PStyle, window: PGdkWindow, 
+proc style_apply_default_background*(style: PStyle, window: gdk2.PWindow, 
                                      set_bg: gboolean, state_type: TStateType, 
-                                     area: PGdkRectangle, x: gint, y: gint, 
+                                     area: gdk2.PRectangle, x: gint, y: gint, 
                                      width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_style_apply_default_background".}
 proc style_lookup_icon_set*(style: PStyle, stock_id: cstring): PIconSet{.cdecl, 
     dynlib: lib, importc: "gtk_style_lookup_icon_set".}
 proc style_render_icon*(style: PStyle, source: PIconSource, 
                         direction: TTextDirection, state: TStateType, 
-                        size: TIconSize, widget: PWidget, detail: cstring): PGdkPixbuf{.
+                        size: TIconSize, widget: PWidget, detail: cstring): gdk2pixbuf.PPixbuf{.
     cdecl, dynlib: lib, importc: "gtk_style_render_icon".}
-proc paint_hline*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                  area: PGdkRectangle, widget: PWidget, detail: cstring, 
+proc paint_hline*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                  area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                   x1: gint, x2: gint, y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_hline".}
-proc paint_vline*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                  area: PGdkRectangle, widget: PWidget, detail: cstring, 
+proc paint_vline*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                  area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                   y1: gint, y2: gint, x: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_vline".}
-proc paint_shadow*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                   shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_shadow*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                   shadow_type: TShadowType, area: gdk2.PRectangle, 
                    widget: PWidget, detail: cstring, x: gint, y: gint, 
                    width: gint, height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_shadow".}
-proc paint_polygon*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                    shadow_type: TShadowType, area: PGdkRectangle, 
-                    widget: PWidget, detail: cstring, points: PGdkPoint, 
+proc paint_polygon*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                    shadow_type: TShadowType, area: gdk2.PRectangle, 
+                    widget: PWidget, detail: cstring, points: gdk2.PPoint, 
                     npoints: gint, fill: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_paint_polygon".}
-proc paint_arrow*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                  shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_arrow*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                  shadow_type: TShadowType, area: gdk2.PRectangle, 
                   widget: PWidget, detail: cstring, arrow_type: TArrowType, 
                   fill: gboolean, x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "gtk_paint_arrow".}
-proc paint_diamond*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                    shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_diamond*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                    shadow_type: TShadowType, area: gdk2.PRectangle, 
                     widget: PWidget, detail: cstring, x: gint, y: gint, 
                     width: gint, height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_diamond".}
-proc paint_box*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                shadow_type: TShadowType, area: PGdkRectangle, widget: PWidget, 
+proc paint_box*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                shadow_type: TShadowType, area: gdk2.PRectangle, widget: PWidget, 
                 detail: cstring, x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "gtk_paint_box".}
-proc paint_flat_box*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                     shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_flat_box*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                     shadow_type: TShadowType, area: gdk2.PRectangle, 
                      widget: PWidget, detail: cstring, x: gint, y: gint, 
                      width: gint, height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_flat_box".}
-proc paint_check*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                  shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_check*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                  shadow_type: TShadowType, area: gdk2.PRectangle, 
                   widget: PWidget, detail: cstring, x: gint, y: gint, 
                   width: gint, height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_check".}
-proc paint_option*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                   shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_option*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                   shadow_type: TShadowType, area: gdk2.PRectangle, 
                    widget: PWidget, detail: cstring, x: gint, y: gint, 
                    width: gint, height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_option".}
-proc paint_tab*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                shadow_type: TShadowType, area: PGdkRectangle, widget: PWidget, 
+proc paint_tab*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                shadow_type: TShadowType, area: gdk2.PRectangle, widget: PWidget, 
                 detail: cstring, x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "gtk_paint_tab".}
-proc paint_shadow_gap*(style: PStyle, window: PGdkWindow, 
+proc paint_shadow_gap*(style: PStyle, window: gdk2.PWindow, 
                        state_type: TStateType, shadow_type: TShadowType, 
-                       area: PGdkRectangle, widget: PWidget, detail: cstring, 
+                       area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                        x: gint, y: gint, width: gint, height: gint, 
                        gap_side: TPositionType, gap_x: gint, gap_width: gint){.
     cdecl, dynlib: lib, importc: "gtk_paint_shadow_gap".}
-proc paint_box_gap*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                    shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_box_gap*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                    shadow_type: TShadowType, area: gdk2.PRectangle, 
                     widget: PWidget, detail: cstring, x: gint, y: gint, 
                     width: gint, height: gint, gap_side: TPositionType, 
                     gap_x: gint, gap_width: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paint_box_gap".}
-proc paint_extension*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                      shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_extension*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                      shadow_type: TShadowType, area: gdk2.PRectangle, 
                       widget: PWidget, detail: cstring, x: gint, y: gint, 
                       width: gint, height: gint, gap_side: TPositionType){.
     cdecl, dynlib: lib, importc: "gtk_paint_extension".}
-proc paint_focus*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                  area: PGdkRectangle, widget: PWidget, detail: cstring, 
+proc paint_focus*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                  area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                   x: gint, y: gint, width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_paint_focus".}
-proc paint_slider*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                   shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_slider*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                   shadow_type: TShadowType, area: gdk2.PRectangle, 
                    widget: PWidget, detail: cstring, x: gint, y: gint, 
                    width: gint, height: gint, orientation: TOrientation){.cdecl, 
     dynlib: lib, importc: "gtk_paint_slider".}
-proc paint_handle*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                   shadow_type: TShadowType, area: PGdkRectangle, 
+proc paint_handle*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                   shadow_type: TShadowType, area: gdk2.PRectangle, 
                    widget: PWidget, detail: cstring, x: gint, y: gint, 
                    width: gint, height: gint, orientation: TOrientation){.cdecl, 
     dynlib: lib, importc: "gtk_paint_handle".}
-proc paint_expander*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                     area: PGdkRectangle, widget: PWidget, detail: cstring, 
+proc paint_expander*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                     area: gdk2.PRectangle, widget: PWidget, detail: cstring, 
                      x: gint, y: gint, expander_style: TExpanderStyle){.cdecl, 
     dynlib: lib, importc: "gtk_paint_expander".}
-proc paint_layout*(style: PStyle, window: PGdkWindow, state_type: TStateType, 
-                   use_text: gboolean, area: PGdkRectangle, widget: PWidget, 
-                   detail: cstring, x: gint, y: gint, layout: PPangoLayout){.
+proc paint_layout*(style: PStyle, window: gdk2.PWindow, state_type: TStateType, 
+                   use_text: gboolean, area: gdk2.PRectangle, widget: PWidget, 
+                   detail: cstring, x: gint, y: gint, layout: pango.PLayout){.
     cdecl, dynlib: lib, importc: "gtk_paint_layout".}
-proc paint_resize_grip*(style: PStyle, window: PGdkWindow, 
-                        state_type: TStateType, area: PGdkRectangle, 
-                        widget: PWidget, detail: cstring, edge: TGdkWindowEdge, 
+proc paint_resize_grip*(style: PStyle, window: gdk2.PWindow, 
+                        state_type: TStateType, area: gdk2.PRectangle, 
+                        widget: PWidget, detail: cstring, edge: gdk2.TWindowEdge, 
                         x: gint, y: gint, width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_paint_resize_grip".}
 proc border_get_type*(): GType{.cdecl, dynlib: lib, 
@@ -6831,10 +6829,10 @@ proc border_free*(border: PBorder){.cdecl, dynlib: lib,
 proc style_peek_property_value*(style: PStyle, widget_type: GType, 
                                 pspec: PGParamSpec, parser: TRcPropertyParser): PGValue{.
     cdecl, dynlib: lib, importc: "_gtk_style_peek_property_value".}
-proc get_insertion_cursor_gc*(widget: PWidget, is_primary: gboolean): PGdkGC{.
+proc get_insertion_cursor_gc*(widget: PWidget, is_primary: gboolean): gdk2.PGC{.
     cdecl, dynlib: lib, importc: "_gtk_get_insertion_cursor_gc".}
-proc draw_insertion_cursor*(widget: PWidget, drawable: PGdkDrawable, gc: PGdkGC, 
-                            location: PGdkRectangle, direction: TTextDirection, 
+proc draw_insertion_cursor*(widget: PWidget, drawable: gdk2.PDrawable, gc: gdk2.PGC, 
+                            location: gdk2.PRectangle, direction: TTextDirection, 
                             draw_arrow: gboolean){.cdecl, dynlib: lib, 
     importc: "_gtk_draw_insertion_cursor".}
 const 
@@ -7023,7 +7021,7 @@ proc icon_size_get_name*(size: TIconSize): cstring{.cdecl, dynlib: lib,
 proc icon_set_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "gtk_icon_set_get_type".}
 proc icon_set_new*(): PIconSet{.cdecl, dynlib: lib, importc: "gtk_icon_set_new".}
-proc icon_set_new_from_pixbuf*(pixbuf: PGdkPixbuf): PIconSet{.cdecl, 
+proc icon_set_new_from_pixbuf*(pixbuf: gdk2pixbuf.PPixbuf): PIconSet{.cdecl, 
     dynlib: lib, importc: "gtk_icon_set_new_from_pixbuf".}
 proc icon_set_ref*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib, 
     importc: "gtk_icon_set_ref".}
@@ -7033,7 +7031,7 @@ proc icon_set_copy*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib,
     importc: "gtk_icon_set_copy".}
 proc icon_set_render_icon*(icon_set: PIconSet, style: PStyle, 
                            direction: TTextDirection, state: TStateType, 
-                           size: TIconSize, widget: PWidget, detail: cstring): PGdkPixbuf{.
+                           size: TIconSize, widget: PWidget, detail: cstring): gdk2pixbuf.PPixbuf{.
     cdecl, dynlib: lib, importc: "gtk_icon_set_render_icon".}
 proc icon_set_add_source*(icon_set: PIconSet, source: PIconSource){.cdecl, 
     dynlib: lib, importc: "gtk_icon_set_add_source".}
@@ -7050,11 +7048,11 @@ proc icon_source_free*(source: PIconSource){.cdecl, dynlib: lib,
     importc: "gtk_icon_source_free".}
 proc icon_source_set_filename*(source: PIconSource, filename: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_filename".}
-proc icon_source_set_pixbuf*(source: PIconSource, pixbuf: PGdkPixbuf){.cdecl, 
+proc icon_source_set_pixbuf*(source: PIconSource, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_pixbuf".}
 proc icon_source_get_filename*(source: PIconSource): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_filename".}
-proc icon_source_get_pixbuf*(source: PIconSource): PGdkPixbuf{.cdecl, 
+proc icon_source_get_pixbuf*(source: PIconSource): gdk2pixbuf.PPixbuf{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_pixbuf".}
 proc icon_source_set_direction_wildcarded*(source: PIconSource, 
     setting: gboolean){.cdecl, dynlib: lib, 
@@ -7093,41 +7091,41 @@ proc IS_IMAGE_CLASS*(klass: pointer): bool
 proc IMAGE_GET_CLASS*(obj: pointer): PImageClass
 proc image_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_image_get_type".}
 proc image_new*(): PImage{.cdecl, dynlib: lib, importc: "gtk_image_new".}
-proc image_new_from_pixmap*(pixmap: PGdkPixmap, mask: PGdkBitmap): PImage{.
+proc image_new_from_pixmap*(pixmap: gdk2.PPixmap, mask: gdk2.PBitmap): PImage{.
     cdecl, dynlib: lib, importc: "gtk_image_new_from_pixmap".}
-proc image_new_from_image*(image: PGdkImage, mask: PGdkBitmap): PImage{.cdecl, 
+proc image_new_from_image*(image: gdk2.PImage, mask: gdk2.PBitmap): PImage{.cdecl, 
     dynlib: lib, importc: "gtk_image_new_from_image".}
 proc image_new_from_file*(filename: cstring): PImage{.cdecl, dynlib: lib, 
     importc: "gtk_image_new_from_file".}
-proc image_new_from_pixbuf*(pixbuf: PGdkPixbuf): PImage{.cdecl, dynlib: lib, 
+proc image_new_from_pixbuf*(pixbuf: gdk2pixbuf.PPixbuf): PImage{.cdecl, dynlib: lib, 
     importc: "gtk_image_new_from_pixbuf".}
 proc image_new_from_stock*(stock_id: cstring, size: TIconSize): PImage{.cdecl, 
     dynlib: lib, importc: "gtk_image_new_from_stock".}
 proc image_new_from_icon_set*(icon_set: PIconSet, size: TIconSize): PImage{.
     cdecl, dynlib: lib, importc: "gtk_image_new_from_icon_set".}
-proc image_new_from_animation*(animation: PGdkPixbufAnimation): PImage{.cdecl, 
+proc image_new_from_animation*(animation: gdk2pixbuf.PPixbufAnimation): PImage{.cdecl, 
     dynlib: lib, importc: "gtk_image_new_from_animation".}
-proc image_set_from_pixmap*(image: PImage, pixmap: PGdkPixmap, mask: PGdkBitmap){.
+proc image_set_from_pixmap*(image: PImage, pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_pixmap".}
-proc image_set_from_image*(image: PImage, gdk_image: PGdkImage, mask: PGdkBitmap){.
+proc image_set_from_image*(image: PImage, gdk_image: gdk2.PImage, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_image".}
 proc image_set_from_file*(image: PImage, filename: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_image_set_from_file".}
-proc image_set_from_pixbuf*(image: PImage, pixbuf: PGdkPixbuf){.cdecl, 
+proc image_set_from_pixbuf*(image: PImage, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "gtk_image_set_from_pixbuf".}
 proc image_set_from_stock*(image: PImage, stock_id: cstring, size: TIconSize){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_stock".}
 proc image_set_from_icon_set*(image: PImage, icon_set: PIconSet, size: TIconSize){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_icon_set".}
-proc image_set_from_animation*(image: PImage, animation: PGdkPixbufAnimation){.
+proc image_set_from_animation*(image: PImage, animation: gdk2pixbuf.PPixbufAnimation){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_animation".}
 proc image_get_storage_type*(image: PImage): TImageType{.cdecl, dynlib: lib, 
     importc: "gtk_image_get_storage_type".}
-proc image_get_pixbuf*(image: PImage): PGdkPixbuf{.cdecl, dynlib: lib, 
+proc image_get_pixbuf*(image: PImage): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_image_get_pixbuf".}
 proc image_get_stock*(image: PImage, stock_id: PPgchar, size: PIconSize){.cdecl, 
     dynlib: lib, importc: "gtk_image_get_stock".}
-proc image_get_animation*(image: PImage): PGdkPixbufAnimation{.cdecl, 
+proc image_get_animation*(image: PImage): gdk2pixbuf.PPixbufAnimation{.cdecl, 
     dynlib: lib, importc: "gtk_image_get_animation".}
 proc TYPE_IMAGE_MENU_ITEM*(): GType
 proc IMAGE_MENU_ITEM*(obj: pointer): PImageMenuItem
@@ -7202,11 +7200,11 @@ proc invisible_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_invisible_get_type".}
 proc invisible_new*(): PInvisible{.cdecl, dynlib: lib, 
                                    importc: "gtk_invisible_new".}
-proc invisible_new_for_screen*(screen: PGdkScreen): PInvisible{.cdecl, 
+proc invisible_new_for_screen*(screen: gdk2.PScreen): PInvisible{.cdecl, 
     dynlib: lib, importc: "gtk_invisible_new_for_screen".}
-proc invisible_set_screen*(invisible: PInvisible, screen: PGdkScreen){.cdecl, 
+proc invisible_set_screen*(invisible: PInvisible, screen: gdk2.PScreen){.cdecl, 
     dynlib: lib, importc: "gtk_invisible_set_screen".}
-proc invisible_get_screen*(invisible: PInvisible): PGdkScreen{.cdecl, 
+proc invisible_get_screen*(invisible: PInvisible): gdk2.PScreen{.cdecl, 
     dynlib: lib, importc: "gtk_invisible_get_screen".}
 proc TYPE_ITEM_FACTORY*(): GType
 proc ITEM_FACTORY*(anObject: pointer): PItemFactory
@@ -7224,7 +7222,7 @@ proc item_factory_construct*(ifactory: PItemFactory, container_type: TType,
     dynlib: lib, importc: "gtk_item_factory_construct".}
 proc item_factory_add_foreign*(accel_widget: PWidget, full_path: cstring, 
                                accel_group: PAccelGroup, keyval: guint, 
-                               modifiers: TGdkModifierType){.cdecl, dynlib: lib, 
+                               modifiers: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_item_factory_add_foreign".}
 proc item_factory_from_widget*(widget: PWidget): PItemFactory{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_from_widget".}
@@ -7597,10 +7595,10 @@ proc check_version*(required_major: guint, required_minor: guint,
     importc: "gtk_check_version".}
 proc disable_setlocale*(){.cdecl, dynlib: lib, importc: "gtk_disable_setlocale".}
 proc set_locale*(): cstring{.cdecl, dynlib: lib, importc: "gtk_set_locale".}
-proc get_default_language*(): PPangoLanguage{.cdecl, dynlib: lib, 
+proc get_default_language*(): pango.PLanguage{.cdecl, dynlib: lib, 
     importc: "gtk_get_default_language".}
 proc events_pending*(): gint{.cdecl, dynlib: lib, importc: "gtk_events_pending".}
-proc main_do_event*(event: PGdkEvent){.cdecl, dynlib: lib, 
+proc main_do_event*(event: gdk2.PEvent){.cdecl, dynlib: lib, 
                                        importc: "gtk_main_do_event".}
 proc main*(){.cdecl, dynlib: lib, importc: "gtk_main".}
 proc init*(argc, argv: pointer){.cdecl, dynlib: lib, importc: "gtk_init".}
@@ -7610,8 +7608,8 @@ proc main_iteration*(): gboolean{.cdecl, dynlib: lib,
                                   importc: "gtk_main_iteration".}
 proc main_iteration_do*(blocking: gboolean): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_main_iteration_do".}
-proc true*(): gboolean{.cdecl, dynlib: lib, importc: "gtk_true".}
-proc false*(): gboolean{.cdecl, dynlib: lib, importc: "gtk_false".}
+proc gtkTrue*(): gboolean{.cdecl, dynlib: lib, importc: "gtk_true".}
+proc gtkFalse*(): gboolean{.cdecl, dynlib: lib, importc: "gtk_false".}
 proc grab_add*(widget: PWidget){.cdecl, dynlib: lib, importc: "gtk_grab_add".}
 proc grab_get_current*(): PWidget{.cdecl, dynlib: lib, 
                                    importc: "gtk_grab_get_current".}
@@ -7651,8 +7649,8 @@ proc idle_remove*(idle_handler_id: guint){.cdecl, dynlib: lib,
     importc: "gtk_idle_remove".}
 proc idle_remove_by_data*(data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_idle_remove_by_data".}
-proc input_add_full*(source: gint, condition: TGdkInputCondition, 
-                     `function`: TGdkInputFunction, marshal: TCallbackMarshal, 
+proc input_add_full*(source: gint, condition: gdk2.TInputCondition, 
+                     `function`: gdk2.TInputFunction, marshal: TCallbackMarshal, 
                      data: gpointer, destroy: TDestroyNotify): guint{.cdecl, 
     dynlib: lib, importc: "gtk_input_add_full".}
 proc input_remove*(input_handler_id: guint){.cdecl, dynlib: lib, 
@@ -7661,15 +7659,15 @@ proc key_snooper_install*(snooper: TKeySnoopFunc, func_data: gpointer): guint{.
     cdecl, dynlib: lib, importc: "gtk_key_snooper_install".}
 proc key_snooper_remove*(snooper_handler_id: guint){.cdecl, dynlib: lib, 
     importc: "gtk_key_snooper_remove".}
-proc get_current_event*(): PGdkEvent{.cdecl, dynlib: lib, 
+proc get_current_event*(): gdk2.PEvent{.cdecl, dynlib: lib, 
                                       importc: "gtk_get_current_event".}
 proc get_current_event_time*(): guint32{.cdecl, dynlib: lib, 
     importc: "gtk_get_current_event_time".}
-proc get_current_event_state*(state: PGdkModifierType): gboolean{.cdecl, 
+proc get_current_event_state*(state: gdk2.PModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_get_current_event_state".}
-proc get_event_widget*(event: PGdkEvent): PWidget{.cdecl, dynlib: lib, 
+proc get_event_widget*(event: gdk2.PEvent): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_get_event_widget".}
-proc propagate_event*(widget: PWidget, event: PGdkEvent){.cdecl, dynlib: lib, 
+proc propagate_event*(widget: PWidget, event: gdk2.PEvent){.cdecl, dynlib: lib, 
     importc: "gtk_propagate_event".}
 proc boolean_handled_accumulator*(ihint: PGSignalInvocationHint, 
                                   return_accu: PGValue, handler_return: PGValue, 
@@ -7903,11 +7901,11 @@ proc build_insensitive*(a: var TPixmap): guint
 proc set_build_insensitive*(a: var TPixmap, `build_insensitive`: guint)
 proc pixmap_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_pixmap_get_type".}
-proc pixmap_new*(pixmap: PGdkPixmap, mask: PGdkBitmap): PPixmap{.cdecl, 
+proc pixmap_new*(pixmap: gdk2.PPixmap, mask: gdk2.PBitmap): PPixmap{.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_new".}
-proc pixmap_set*(pixmap: PPixmap, val: PGdkPixmap, mask: PGdkBitmap){.cdecl, 
+proc pixmap_set*(pixmap: PPixmap, val: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_set".}
-proc pixmap_get*(pixmap: PPixmap, val: var PGdkPixmap, mask: var PGdkBitmap){.
+proc pixmap_get*(pixmap: PPixmap, val: var gdk2.PPixmap, mask: var gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_pixmap_get".}
 proc pixmap_set_build_insensitive*(pixmap: PPixmap, build: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_set_build_insensitive".}
@@ -7924,12 +7922,12 @@ proc PLUG_GET_CLASS*(obj: pointer): PPlugClass
 proc same_app*(a: var TPlug): guint
 proc set_same_app*(a: var TPlug, `same_app`: guint)
 proc plug_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_plug_get_type".}
-proc plug_construct_for_display*(plug: PPlug, display: PGdkDisplay, 
-                                 socket_id: TGdkNativeWindow){.cdecl, 
+proc plug_construct_for_display*(plug: PPlug, display: gdk2.PDisplay, 
+                                 socket_id: gdk2.TNativeWindow){.cdecl, 
     dynlib: lib, importc: "gtk_plug_construct_for_display".}
-proc plug_new_for_display*(display: PGdkDisplay, socket_id: TGdkNativeWindow): PPlug{.
+proc plug_new_for_display*(display: gdk2.PDisplay, socket_id: gdk2.TNativeWindow): PPlug{.
     cdecl, dynlib: lib, importc: "gtk_plug_new_for_display".}
-proc plug_get_id*(plug: PPlug): TGdkNativeWindow{.cdecl, dynlib: lib, 
+proc plug_get_id*(plug: PPlug): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
     importc: "gtk_plug_get_id".}
 proc plug_add_to_socket*(plug: PPlug, socket: PSocket){.cdecl, dynlib: lib, 
     importc: "_gtk_plug_add_to_socket".}
@@ -7958,7 +7956,7 @@ proc preview_new*(thetype: TPreviewClass): PPreview{.cdecl, dynlib: lib,
     importc: "gtk_preview_new".}
 proc preview_size*(preview: PPreview, width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_preview_size".}
-proc preview_put*(preview: PPreview, window: PGdkWindow, gc: PGdkGC, srcx: gint, 
+proc preview_put*(preview: PPreview, window: gdk2.PWindow, gc: gdk2.PGC, srcx: gint, 
                   srcy: gint, destx: gint, desty: gint, width: gint, 
                   height: gint){.cdecl, dynlib: lib, importc: "gtk_preview_put".}
 proc preview_draw_row*(preview: PPreview, data: Pguchar, x: gint, y: gint, 
@@ -7975,7 +7973,7 @@ proc preview_set_install_cmap*(install_cmap: gint){.cdecl, dynlib: lib,
     importc: "gtk_preview_set_install_cmap".}
 proc preview_set_reserved*(nreserved: gint){.cdecl, dynlib: lib, 
     importc: "gtk_preview_set_reserved".}
-proc preview_set_dither*(preview: PPreview, dither: TGdkRgbDither){.cdecl, 
+proc preview_set_dither*(preview: PPreview, dither: gdk2.TRgbDither){.cdecl, 
     dynlib: lib, importc: "gtk_preview_set_dither".}
 proc preview_get_info*(): PPreviewInfo{.cdecl, dynlib: lib, 
                                         importc: "gtk_preview_get_info".}
@@ -8145,33 +8143,33 @@ proc target_list_ref*(list: PTargetList){.cdecl, dynlib: lib,
     importc: "gtk_target_list_ref".}
 proc target_list_unref*(list: PTargetList){.cdecl, dynlib: lib, 
     importc: "gtk_target_list_unref".}
-proc target_list_add*(list: PTargetList, target: TGdkAtom, flags: guint, 
+proc target_list_add*(list: PTargetList, target: gdk2.TAtom, flags: guint, 
                       info: guint){.cdecl, dynlib: lib, 
                                     importc: "gtk_target_list_add".}
 proc target_list_add_table*(list: PTargetList, targets: PTargetEntry, 
                             ntargets: guint){.cdecl, dynlib: lib, 
     importc: "gtk_target_list_add_table".}
-proc target_list_remove*(list: PTargetList, target: TGdkAtom){.cdecl, 
+proc target_list_remove*(list: PTargetList, target: gdk2.TAtom){.cdecl, 
     dynlib: lib, importc: "gtk_target_list_remove".}
-proc target_list_find*(list: PTargetList, target: TGdkAtom, info: Pguint): gboolean{.
+proc target_list_find*(list: PTargetList, target: gdk2.TAtom, info: Pguint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_target_list_find".}
-proc selection_owner_set*(widget: PWidget, selection: TGdkAtom, time: guint32): gboolean{.
+proc selection_owner_set*(widget: PWidget, selection: gdk2.TAtom, time: guint32): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_owner_set".}
-proc selection_owner_set_for_display*(display: PGdkDisplay, widget: PWidget, 
-                                      selection: TGdkAtom, time: guint32): gboolean{.
+proc selection_owner_set_for_display*(display: gdk2.PDisplay, widget: PWidget, 
+                                      selection: gdk2.TAtom, time: guint32): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_owner_set_for_display".}
-proc selection_add_target*(widget: PWidget, selection: TGdkAtom, 
-                           target: TGdkAtom, info: guint){.cdecl, dynlib: lib, 
+proc selection_add_target*(widget: PWidget, selection: gdk2.TAtom, 
+                           target: gdk2.TAtom, info: guint){.cdecl, dynlib: lib, 
     importc: "gtk_selection_add_target".}
-proc selection_add_targets*(widget: PWidget, selection: TGdkAtom, 
+proc selection_add_targets*(widget: PWidget, selection: gdk2.TAtom, 
                             targets: PTargetEntry, ntargets: guint){.cdecl, 
     dynlib: lib, importc: "gtk_selection_add_targets".}
-proc selection_clear_targets*(widget: PWidget, selection: TGdkAtom){.cdecl, 
+proc selection_clear_targets*(widget: PWidget, selection: gdk2.TAtom){.cdecl, 
     dynlib: lib, importc: "gtk_selection_clear_targets".}
-proc selection_convert*(widget: PWidget, selection: TGdkAtom, target: TGdkAtom, 
+proc selection_convert*(widget: PWidget, selection: gdk2.TAtom, target: gdk2.TAtom, 
                         time: guint32): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_selection_convert".}
-proc selection_data_set*(selection_data: PSelectionData, thetype: TGdkAtom, 
+proc selection_data_set*(selection_data: PSelectionData, thetype: gdk2.TAtom, 
                          format: gint, data: Pguchar, length: gint){.cdecl, 
     dynlib: lib, importc: "gtk_selection_data_set".}
 proc selection_data_set_text*(selection_data: PSelectionData, str: cstring, 
@@ -8183,15 +8181,15 @@ proc selection_data_targets_include_text*(selection_data: PSelectionData): gbool
     cdecl, dynlib: lib, importc: "gtk_selection_data_targets_include_text".}
 proc selection_remove_all*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_selection_remove_all".}
-proc selection_clear*(widget: PWidget, event: PGdkEventSelection): gboolean{.
+proc selection_clear*(widget: PWidget, event: gdk2.PEventSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_clear".}
-proc selection_request*(widget: PWidget, event: PGdkEventSelection): gboolean{.
+proc selection_request*(widget: PWidget, event: gdk2.PEventSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_request".}
-proc selection_incr_event*(window: PGdkWindow, event: PGdkEventProperty): gboolean{.
+proc selection_incr_event*(window: gdk2.PWindow, event: gdk2.PEventProperty): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_incr_event".}
-proc selection_notify*(widget: PWidget, event: PGdkEventSelection): gboolean{.
+proc selection_notify*(widget: PWidget, event: gdk2.PEventSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_notify".}
-proc selection_property_notify*(widget: PWidget, event: PGdkEventProperty): gboolean{.
+proc selection_property_notify*(widget: PWidget, event: gdk2.PEventProperty): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_property_notify".}
 proc selection_data_get_type*(): GType{.cdecl, dynlib: lib, 
                                         importc: "gtk_selection_data_get_type".}
@@ -8275,9 +8273,9 @@ proc set_is_mapped*(a: var TSocket, `is_mapped`: guint)
 proc socket_new*(): PSocket{.cdecl, dynlib: lib, importc: "gtk_socket_new".}
 proc socket_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_socket_get_type".}
-proc socket_add_id*(socket: PSocket, window_id: TGdkNativeWindow){.cdecl, 
+proc socket_add_id*(socket: PSocket, window_id: gdk2.TNativeWindow){.cdecl, 
     dynlib: lib, importc: "gtk_socket_add_id".}
-proc socket_get_id*(socket: PSocket): TGdkNativeWindow{.cdecl, dynlib: lib, 
+proc socket_get_id*(socket: PSocket): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
     importc: "gtk_socket_get_id".}
 const 
   INPUT_ERROR* = - (1)
@@ -8654,7 +8652,7 @@ proc text_get_length*(text: PText): guint{.cdecl, dynlib: lib,
     importc: "gtk_text_get_length".}
 proc text_freeze*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_freeze".}
 proc text_thaw*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_thaw".}
-proc text_insert*(text: PText, font: PGdkFont, fore: PGdkColor, back: PGdkColor, 
+proc text_insert*(text: PText, font: gdk2.PFont, fore: gdk2.PColor, back: gdk2.PColor, 
                   chars: cstring, length: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_insert".}
 proc text_backward_delete*(text: PText, nchars: guint): gboolean{.cdecl, 
@@ -8698,7 +8696,7 @@ proc text_iter_get_visible_slice*(start: PTextIter, theEnd: PTextIter): cstring{
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_visible_slice".}
 proc text_iter_get_visible_text*(start: PTextIter, theEnd: PTextIter): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_visible_text".}
-proc text_iter_get_pixbuf*(iter: PTextIter): PGdkPixbuf{.cdecl, dynlib: lib, 
+proc text_iter_get_pixbuf*(iter: PTextIter): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_pixbuf".}
 proc text_iter_get_marks*(iter: PTextIter): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_marks".}
@@ -8744,7 +8742,7 @@ proc text_iter_get_bytes_in_line*(iter: PTextIter): gint{.cdecl, dynlib: lib,
     importc: "gtk_text_iter_get_bytes_in_line".}
 proc text_iter_get_attributes*(iter: PTextIter, values: PTextAttributes): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_attributes".}
-proc text_iter_get_language*(iter: PTextIter): PPangoLanguage{.cdecl, 
+proc text_iter_get_language*(iter: PTextIter): pango.PLanguage{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_language".}
 proc text_iter_is_end*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_is_end".}
@@ -8847,7 +8845,7 @@ proc text_tag_get_priority*(tag: PTextTag): gint{.cdecl, dynlib: lib,
     importc: "gtk_text_tag_get_priority".}
 proc text_tag_set_priority*(tag: PTextTag, priority: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_set_priority".}
-proc text_tag_event*(tag: PTextTag, event_object: PGObject, event: PGdkEvent, 
+proc text_tag_event*(tag: PTextTag, event_object: PGObject, event: gdk2.PEvent, 
                      iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_event".}
 proc text_attributes_new*(): PTextAttributes{.cdecl, dynlib: lib, 
@@ -9106,7 +9104,7 @@ proc text_child_anchor_get_widgets*(anchor: PTextChildAnchor): PGList{.cdecl,
     dynlib: lib, importc: "gtk_text_child_anchor_get_widgets".}
 proc text_child_anchor_get_deleted*(anchor: PTextChildAnchor): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_child_anchor_get_deleted".}
-proc pixbuf_segment_new*(pixbuf: PGdkPixbuf): PTextLineSegment{.cdecl, 
+proc pixbuf_segment_new*(pixbuf: gdk2pixbuf.PPixbuf): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_pixbuf_segment_new".}
 proc widget_segment_new*(anchor: PTextChildAnchor): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_widget_segment_new".}
@@ -9151,7 +9149,7 @@ proc text_btree_delete*(start: PTextIter, theEnd: PTextIter){.cdecl,
     dynlib: lib, importc: "_gtk_text_btree_delete".}
 proc text_btree_insert*(iter: PTextIter, text: cstring, len: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_insert".}
-proc text_btree_insert_pixbuf*(iter: PTextIter, pixbuf: PGdkPixbuf){.cdecl, 
+proc text_btree_insert_pixbuf*(iter: PTextIter, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_insert_pixbuf".}
 proc text_btree_insert_child_anchor*(iter: PTextIter, anchor: PTextChildAnchor){.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_insert_child_anchor".}
@@ -9402,7 +9400,7 @@ proc text_buffer_get_slice*(buffer: PTextBuffer, start: PTextIter,
                             theEnd: PTextIter, include_hidden_chars: gboolean): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_get_slice".}
 proc text_buffer_insert_pixbuf*(buffer: PTextBuffer, iter: PTextIter, 
-                                pixbuf: PGdkPixbuf){.cdecl, dynlib: lib, 
+                                pixbuf: gdk2pixbuf.PPixbuf){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_insert_pixbuf".}
 proc text_buffer_insert_child_anchor*(buffer: PTextBuffer, iter: PTextIter, 
                                       anchor: PTextChildAnchor){.cdecl, 
@@ -9503,7 +9501,7 @@ proc text_buffer_get_btree*(buffer: PTextBuffer): PTextBTree{.cdecl,
     dynlib: lib, importc: "_gtk_text_buffer_get_btree".}
 proc text_buffer_get_line_log_attrs*(buffer: PTextBuffer, 
                                      anywhere_in_line: PTextIter, 
-                                     char_len: Pgint): PPangoLogAttr{.cdecl, 
+                                     char_len: Pgint): pango.PLogAttr{.cdecl, 
     dynlib: lib, importc: "_gtk_text_buffer_get_line_log_attrs".}
 proc text_buffer_notify_will_remove_tag*(buffer: PTextBuffer, tag: PTextTag){.
     cdecl, dynlib: lib, importc: "_gtk_text_buffer_notify_will_remove_tag".}
@@ -9543,8 +9541,8 @@ proc text_layout_get_buffer*(layout: PTextLayout): PTextBuffer{.cdecl,
     dynlib: lib, importc: "gtk_text_layout_get_buffer".}
 proc text_layout_set_default_style*(layout: PTextLayout, values: PTextAttributes){.
     cdecl, dynlib: lib, importc: "gtk_text_layout_set_default_style".}
-proc text_layout_set_contexts*(layout: PTextLayout, ltr_context: PPangoContext, 
-                               rtl_context: PPangoContext){.cdecl, dynlib: lib, 
+proc text_layout_set_contexts*(layout: PTextLayout, ltr_context: pango.PContext, 
+                               rtl_context: pango.PContext){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_set_contexts".}
 proc text_layout_set_cursor_direction*(layout: PTextLayout, 
                                        direction: TTextDirection){.cdecl, 
@@ -9555,7 +9553,7 @@ proc text_layout_set_screen_width*(layout: PTextLayout, width: gint){.cdecl,
     dynlib: lib, importc: "gtk_text_layout_set_screen_width".}
 proc text_layout_set_preedit_string*(layout: PTextLayout, 
                                      preedit_string: cstring, 
-                                     preedit_attrs: PPangoAttrList, 
+                                     preedit_attrs: pango.PAttrList, 
                                      cursor_pos: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_set_preedit_string".}
 proc text_layout_set_cursor_visible*(layout: PTextLayout, 
@@ -9604,7 +9602,7 @@ proc text_layout_changed*(layout: PTextLayout, y: gint, old_height: gint,
                           new_height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_changed".}
 proc text_layout_get_iter_location*(layout: PTextLayout, iter: PTextIter, 
-                                    rect: PGdkRectangle){.cdecl, dynlib: lib, 
+                                    rect: gdk2.PRectangle){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_iter_location".}
 proc text_layout_get_line_yrange*(layout: PTextLayout, iter: PTextIter, 
                                   y: Pgint, height: Pgint){.cdecl, dynlib: lib, 
@@ -9613,8 +9611,8 @@ proc text_layout_get_line_xrange*(layout: PTextLayout, iter: PTextIter,
                                   x: Pgint, width: Pgint){.cdecl, dynlib: lib, 
     importc: "_gtk_text_layout_get_line_xrange".}
 proc text_layout_get_cursor_locations*(layout: PTextLayout, iter: PTextIter, 
-                                       strong_pos: PGdkRectangle, 
-                                       weak_pos: PGdkRectangle){.cdecl, 
+                                       strong_pos: gdk2.PRectangle, 
+                                       weak_pos: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_get_cursor_locations".}
 proc text_layout_clamp_iter_to_vrange*(layout: PTextLayout, iter: PTextIter, 
                                        top: gint, bottom: gint): gboolean{.
@@ -9715,14 +9713,14 @@ proc text_view_move_mark_onscreen*(text_view: PTextView, mark: PTextMark): gbool
 proc text_view_place_cursor_onscreen*(text_view: PTextView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_place_cursor_onscreen".}
 proc text_view_get_visible_rect*(text_view: PTextView, 
-                                 visible_rect: PGdkRectangle){.cdecl, 
+                                 visible_rect: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_visible_rect".}
 proc text_view_set_cursor_visible*(text_view: PTextView, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_text_view_set_cursor_visible".}
 proc text_view_get_cursor_visible*(text_view: PTextView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_cursor_visible".}
 proc text_view_get_iter_location*(text_view: PTextView, iter: PTextIter, 
-                                  location: PGdkRectangle){.cdecl, dynlib: lib, 
+                                  location: gdk2.PRectangle){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_iter_location".}
 proc text_view_get_iter_at_location*(text_view: PTextView, iter: PTextIter, 
                                      x: gint, y: gint){.cdecl, dynlib: lib, 
@@ -9743,9 +9741,9 @@ proc text_view_window_to_buffer_coords*(text_view: PTextView,
                                         window_y: gint, buffer_x: Pgint, 
                                         buffer_y: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_window_to_buffer_coords".}
-proc text_view_get_window*(text_view: PTextView, win: TTextWindowType): PGdkWindow{.
+proc text_view_get_window*(text_view: PTextView, win: TTextWindowType): gdk2.PWindow{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_window".}
-proc text_view_get_window_type*(text_view: PTextView, window: PGdkWindow): TTextWindowType{.
+proc text_view_get_window_type*(text_view: PTextView, window: gdk2.PWindow): TTextWindowType{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_window_type".}
 proc text_view_set_border_window_size*(text_view: PTextView, 
                                        thetype: TTextWindowType, size: gint){.
@@ -9815,9 +9813,9 @@ proc text_view_set_indent*(text_view: PTextView, indent: gint){.cdecl,
     dynlib: lib, importc: "gtk_text_view_set_indent".}
 proc text_view_get_indent*(text_view: PTextView): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_indent".}
-proc text_view_set_tabs*(text_view: PTextView, tabs: PPangoTabArray){.cdecl, 
+proc text_view_set_tabs*(text_view: PTextView, tabs: pango.PTabArray){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_tabs".}
-proc text_view_get_tabs*(text_view: PTextView): PPangoTabArray{.cdecl, 
+proc text_view_get_tabs*(text_view: PTextView): pango.PTabArray{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_tabs".}
 proc text_view_get_default_attributes*(text_view: PTextView): PTextAttributes{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_default_attributes".}
@@ -10344,7 +10342,7 @@ proc tree_view_column_cell_set_cell_data*(tree_column: PTreeViewColumn,
     is_expanded: gboolean){.cdecl, dynlib: lib, 
                             importc: "gtk_tree_view_column_cell_set_cell_data".}
 proc tree_view_column_cell_get_size*(tree_column: PTreeViewColumn, 
-                                     cell_area: PGdkRectangle, x_offset: Pgint, 
+                                     cell_area: gdk2.PRectangle, x_offset: Pgint, 
                                      y_offset: Pgint, width: Pgint, 
                                      height: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_cell_get_size".}
@@ -10502,7 +10500,7 @@ proc set_enable_search*(a: var TTreeViewPrivate, `enable_search`: guint)
 proc disable_popdown*(a: var TTreeViewPrivate): guint
 proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint)
 proc tree_selection_internal_select_node*(selection: PTreeSelection, 
-    node_: PRBNode, tree: PRBTree, path: PTreePath, state: TGdkModifierType, 
+    node_: PRBNode, tree: PRBTree, path: PTreePath, state: gdk2.TModifierType, 
     override_browse_mode: gboolean){.cdecl, dynlib: lib, importc: "_gtk_tree_selection_internal_select_node".}
 proc tree_view_find_node*(tree_view: PTreeView, path: PTreePath, 
                           tree: var PRBTree, node_: var PRBNode): gboolean{.
@@ -10513,7 +10511,7 @@ proc tree_view_child_move_resize*(tree_view: PTreeView, widget: PWidget,
                                   x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_child_move_resize".}
 proc tree_view_queue_draw_node*(tree_view: PTreeView, tree: PRBTree, 
-                                node_: PRBNode, clip_rect: PGdkRectangle){.
+                                node_: PRBNode, clip_rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_queue_draw_node".}
 proc tree_view_column_realize_button*(column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_realize_button".}
@@ -10554,19 +10552,19 @@ proc tree_selection_set_tree_view*(selection: PTreeSelection,
                                    tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "_gtk_tree_selection_set_tree_view".}
 proc tree_view_column_cell_render*(tree_column: PTreeViewColumn, 
-                                   window: PGdkWindow, 
-                                   background_area: PGdkRectangle, 
-                                   cell_area: PGdkRectangle, 
-                                   expose_area: PGdkRectangle, flags: guint){.
+                                   window: gdk2.PWindow, 
+                                   background_area: gdk2.PRectangle, 
+                                   cell_area: gdk2.PRectangle, 
+                                   expose_area: gdk2.PRectangle, flags: guint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_render".}
 proc tree_view_column_cell_focus*(tree_column: PTreeViewColumn, direction: gint, 
                                   left: gboolean, right: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_focus".}
 proc tree_view_column_cell_draw_focus*(tree_column: PTreeViewColumn, 
-                                       window: PGdkWindow, 
-                                       background_area: PGdkRectangle, 
-                                       cell_area: PGdkRectangle, 
-                                       expose_area: PGdkRectangle, flags: guint){.
+                                       window: gdk2.PWindow, 
+                                       background_area: gdk2.PRectangle, 
+                                       cell_area: gdk2.PRectangle, 
+                                       expose_area: gdk2.PRectangle, flags: guint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_draw_focus".}
 proc tree_view_column_cell_set_dirty*(tree_column: PTreeViewColumn, 
                                       install_handler: gboolean){.cdecl, 
@@ -10675,16 +10673,16 @@ proc tree_view_set_cursor_on_cell*(tree_view: PTreeView, path: PTreePath,
                                    focus_cell: PCellRenderer, 
                                    start_editing: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_set_cursor_on_cell".}
-proc tree_view_get_bin_window*(tree_view: PTreeView): PGdkWindow{.cdecl, 
+proc tree_view_get_bin_window*(tree_view: PTreeView): gdk2.PWindow{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_bin_window".}
 proc tree_view_get_cell_area*(tree_view: PTreeView, path: PTreePath, 
-                              column: PTreeViewColumn, rect: PGdkRectangle){.
+                              column: PTreeViewColumn, rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_cell_area".}
 proc tree_view_get_background_area*(tree_view: PTreeView, path: PTreePath, 
-                                    column: PTreeViewColumn, rect: PGdkRectangle){.
+                                    column: PTreeViewColumn, rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_background_area".}
 proc tree_view_get_visible_rect*(tree_view: PTreeView, 
-                                 visible_rect: PGdkRectangle){.cdecl, 
+                                 visible_rect: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_visible_rect".}
 proc tree_view_widget_to_tree_coords*(tree_view: PTreeView, wx: gint, wy: gint, 
                                       tx: Pgint, ty: Pgint){.cdecl, dynlib: lib, 
@@ -10693,12 +10691,12 @@ proc tree_view_tree_to_widget_coords*(tree_view: PTreeView, tx: gint, ty: gint,
                                       wx: Pgint, wy: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_tree_to_widget_coords".}
 proc tree_view_enable_model_drag_source*(tree_view: PTreeView, 
-    start_button_mask: TGdkModifierType, targets: PTargetEntry, n_targets: gint, 
-    actions: TGdkDragAction){.cdecl, dynlib: lib, 
+    start_button_mask: gdk2.TModifierType, targets: PTargetEntry, n_targets: gint, 
+    actions: gdk2.TDragAction){.cdecl, dynlib: lib, 
                               importc: "gtk_tree_view_enable_model_drag_source".}
 proc tree_view_enable_model_drag_dest*(tree_view: PTreeView, 
                                        targets: PTargetEntry, n_targets: gint, 
-                                       actions: TGdkDragAction){.cdecl, 
+                                       actions: gdk2.TDragAction){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_enable_model_drag_dest".}
 proc tree_view_unset_rows_drag_source*(tree_view: PTreeView){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_unset_rows_drag_source".}
@@ -10707,7 +10705,7 @@ proc tree_view_unset_rows_drag_dest*(tree_view: PTreeView){.cdecl, dynlib: lib,
 proc tree_view_set_drag_dest_row*(tree_view: PTreeView, path: PTreePath, 
                                   pos: TTreeViewDropPosition){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_drag_dest_row".}
-proc tree_view_create_row_drag_icon*(tree_view: PTreeView, path: PTreePath): PGdkPixmap{.
+proc tree_view_create_row_drag_icon*(tree_view: PTreeView, path: PTreePath): gdk2.PPixmap{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_create_row_drag_icon".}
 proc tree_view_set_enable_search*(tree_view: PTreeView, enable_search: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_enable_search".}
@@ -10810,7 +10808,7 @@ proc vseparator_get_type*(): TType{.cdecl, dynlib: lib,
 proc vseparator_new*(): PVSeparator{.cdecl, dynlib: lib, 
                                      importc: "gtk_vseparator_new".}
 proc TYPE_OBJECT*(): GType = 
-  result = object_get_type()
+  result = gtk2.object_get_type()
 
 proc CHECK_CAST*(instance: Pointer, g_type: GType): PGTypeInstance = 
   result = G_TYPE_CHECK_INSTANCE_CAST(instance, g_type)
@@ -10827,20 +10825,20 @@ proc CHECK_TYPE*(instance: Pointer, g_type: GType): bool =
 proc CHECK_CLASS_TYPE*(g_class: pointer, g_type: GType): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(g_class, g_type)
 
-proc OBJECT*(anObject: pointer): PObject = 
-  result = cast[PObject](CHECK_CAST(anObject, TYPE_OBJECT()))
+proc `OBJECT`*(anObject: pointer): PObject = 
+  result = cast[PObject](CHECK_CAST(anObject, gtk2.TYPE_OBJECT()))
 
 proc OBJECT_CLASS*(klass: pointer): PObjectClass = 
-  result = cast[PObjectClass](CHECK_CLASS_CAST(klass, TYPE_OBJECT()))
+  result = cast[PObjectClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_OBJECT()))
 
 proc IS_OBJECT*(anObject: pointer): bool = 
-  result = CHECK_TYPE(anObject, TYPE_OBJECT())
+  result = CHECK_TYPE(anObject, gtk2.TYPE_OBJECT())
 
 proc IS_OBJECT_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_OBJECT())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_OBJECT())
 
 proc OBJECT_GET_CLASS*(anObject: pointer): PObjectClass = 
-  result = cast[PObjectClass](CHECK_GET_CLASS(anObject, TYPE_OBJECT()))
+  result = cast[PObjectClass](CHECK_GET_CLASS(anObject, gtk2.TYPE_OBJECT()))
 
 proc OBJECT_TYPE*(anObject: pointer): GType = 
   result = G_TYPE_FROM_INSTANCE(anObject)
@@ -10849,16 +10847,16 @@ proc OBJECT_TYPE_NAME*(anObject: pointer): cstring =
   result = g_type_name(OBJECT_TYPE(anObject))
 
 proc OBJECT_FLAGS*(obj: pointer): guint32 = 
-  result = (OBJECT(obj)).flags
+  result = (gtk2.`OBJECT`(obj)).flags
 
 proc OBJECT_FLOATING*(obj: pointer): gboolean = 
   result = ((OBJECT_FLAGS(obj)) and cint(FLOATING)) != 0'i32
 
 proc OBJECT_SET_FLAGS*(obj: pointer, flag: guint32) = 
-  OBJECT(obj).flags = OBJECT(obj).flags or flag
+  gtk2.`OBJECT`(obj).flags = gtk2.`OBJECT`(obj).flags or flag
 
 proc OBJECT_UNSET_FLAGS*(obj: pointer, flag: guint32) = 
-  OBJECT(obj).flags = OBJECT(obj).flags and not (flag)
+  gtk2.`OBJECT`(obj).flags = gtk2.`OBJECT`(obj).flags and not (flag)
 
 proc object_data_try_key*(`string`: cstring): TGQuark = 
   result = g_quark_try_string(`string`)
@@ -10873,7 +10871,7 @@ proc CLASS_TYPE*(`class`: pointer): GType =
   result = G_TYPE_FROM_CLASS(`class`)
 
 proc TYPE_IS_OBJECT*(thetype: GType): gboolean = 
-  result = g_type_is_a(thetype, TYPE_OBJECT())
+  result = g_type_is_a(thetype, gtk2.TYPE_OBJECT())
 
 proc TYPE_IDENTIFIER*(): GType = 
   result = identifier_get_type()
@@ -11057,13 +11055,13 @@ proc WIDGET_NO_WINDOW*(wid: pointer): gboolean =
   result = ((WIDGET_FLAGS(wid)) and cint(NO_WINDOW)) != 0'i32
 
 proc WIDGET_REALIZED*(wid: pointer): gboolean = 
-  result = ((WIDGET_FLAGS(wid)) and cint(REALIZED)) != 0'i32
+  result = ((WIDGET_FLAGS(wid)) and cint(constREALIZED)) != 0'i32
 
 proc WIDGET_MAPPED*(wid: pointer): gboolean = 
   result = ((WIDGET_FLAGS(wid)) and cint(MAPPED)) != 0'i32
 
 proc WIDGET_VISIBLE*(wid: pointer): gboolean = 
-  result = ((WIDGET_FLAGS(wid)) and cint(VISIBLE)) != 0'i32
+  result = ((WIDGET_FLAGS(wid)) and cint(constVISIBLE)) != 0'i32
 
 proc WIDGET_DRAWABLE*(wid: pointer): gboolean = 
   result = (WIDGET_VISIBLE(wid)) and (WIDGET_MAPPED(wid))
@@ -11081,7 +11079,7 @@ proc WIDGET_CAN_FOCUS*(wid: pointer): gboolean =
   result = ((WIDGET_FLAGS(wid)) and cint(CAN_FOCUS)) != 0'i32
 
 proc WIDGET_HAS_FOCUS*(wid: pointer): gboolean = 
-  result = ((WIDGET_FLAGS(wid)) and cint(HAS_FOCUS)) != 0'i32
+  result = ((WIDGET_FLAGS(wid)) and cint(constHAS_FOCUS)) != 0'i32
 
 proc WIDGET_CAN_DEFAULT*(wid: pointer): gboolean = 
   result = ((WIDGET_FLAGS(wid)) and cint(CAN_DEFAULT)) != 0'i32
@@ -11301,19 +11299,19 @@ proc TYPE_WINDOW*(): GType =
   result = window_get_type()
 
 proc WINDOW*(obj: pointer): PWindow = 
-  result = cast[PWindow](CHECK_CAST(obj, TYPE_WINDOW()))
+  result = cast[PWindow](CHECK_CAST(obj, gtk2.TYPE_WINDOW()))
 
 proc WINDOW_CLASS*(klass: pointer): PWindowClass = 
-  result = cast[PWindowClass](CHECK_CLASS_CAST(klass, TYPE_WINDOW()))
+  result = cast[PWindowClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_WINDOW()))
 
 proc IS_WINDOW*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_WINDOW())
+  result = CHECK_TYPE(obj, gtk2.TYPE_WINDOW())
 
 proc IS_WINDOW_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_WINDOW())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_WINDOW())
 
 proc WINDOW_GET_CLASS*(obj: pointer): PWindowClass = 
-  result = cast[PWindowClass](CHECK_GET_CLASS(obj, TYPE_WINDOW()))
+  result = cast[PWindowClass](CHECK_GET_CLASS(obj, gtk2.TYPE_WINDOW()))
 
 proc allow_shrink*(a: var TWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_allow_shrink) shr
@@ -11709,7 +11707,7 @@ proc set_in_emission*(a: var TBindingEntry, `in_emission`: guint) =
       bm_TGtkBindingEntry_in_emission)
 
 proc binding_entry_add*(binding_set: PBindingSet, keyval: guint, 
-                        modifiers: TGdkModifierType) = 
+                        modifiers: gdk2.TModifierType) = 
   binding_entry_clear(binding_set, keyval, modifiers)
 
 proc TYPE_BOX*(): GType = 
@@ -12257,7 +12255,7 @@ proc set_hide_on_activate*(a: var TMenuItemClass, `hide_on_activate`: guint) =
       bm_TGtkMenuItemClass_hide_on_activate)
 
 proc menu_item_right_justify*(menu_item: PMenuItem) = 
-  menu_item_set_right_justified(menu_item, true)
+  menu_item_set_right_justified(menu_item, system.true)
 
 proc TYPE_TOGGLE_BUTTON*(): GType = 
   result = toggle_button_get_type()
@@ -13559,8 +13557,8 @@ proc TYPE_BORDER*(): GType =
 proc STYLE_ATTACHED*(style: pointer): bool = 
   result = ((STYLE(style)).attach_count) > 0'i32
 
-proc style_apply_default_pixmap*(style: PStyle, window: PGdkWindow, 
-                                 state_type: TStateType, area: PGdkRectangle, 
+proc style_apply_default_pixmap*(style: PStyle, window: gdk2.PWindow, 
+                                 state_type: TStateType, area: gdk2.PRectangle, 
                                  x: gint, y: gint, width: gint, height: gint) = 
   style_apply_default_background(style, window, true, state_type, area, x, y, 
                                  width, height)
@@ -13825,22 +13823,22 @@ proc TYPE_ICON_SOURCE*(): GType =
   result = icon_source_get_type()
 
 proc TYPE_IMAGE*(): GType = 
-  result = image_get_type()
+  result = gtk2.image_get_type()
 
 proc IMAGE*(obj: pointer): PImage = 
-  result = cast[PImage](CHECK_CAST(obj, TYPE_IMAGE()))
+  result = cast[PImage](CHECK_CAST(obj, gtk2.TYPE_IMAGE()))
 
 proc IMAGE_CLASS*(klass: pointer): PImageClass = 
-  result = cast[PImageClass](CHECK_CLASS_CAST(klass, TYPE_IMAGE()))
+  result = cast[PImageClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_IMAGE()))
 
 proc IS_IMAGE*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_IMAGE())
+  result = CHECK_TYPE(obj, gtk2.TYPE_IMAGE())
 
 proc IS_IMAGE_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_IMAGE())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_IMAGE())
 
 proc IMAGE_GET_CLASS*(obj: pointer): PImageClass = 
-  result = cast[PImageClass](CHECK_GET_CLASS(obj, TYPE_IMAGE()))
+  result = cast[PImageClass](CHECK_GET_CLASS(obj, gtk2.TYPE_IMAGE()))
 
 proc TYPE_IMAGE_MENU_ITEM*(): GType = 
   result = image_menu_item_get_type()
@@ -14376,22 +14374,22 @@ proc OPTION_MENU_GET_CLASS*(obj: pointer): POptionMenuClass =
   result = cast[POptionMenuClass](CHECK_GET_CLASS(obj, TYPE_OPTION_MENU()))
 
 proc TYPE_PIXMAP*(): GType = 
-  result = pixmap_get_type()
+  result = gtk2.pixmap_get_type()
 
 proc PIXMAP*(obj: pointer): PPixmap = 
-  result = cast[PPixmap](CHECK_CAST(obj, TYPE_PIXMAP()))
+  result = cast[PPixmap](CHECK_CAST(obj, gtk2.TYPE_PIXMAP()))
 
 proc PIXMAP_CLASS*(klass: pointer): PPixmapClass = 
-  result = cast[PPixmapClass](CHECK_CLASS_CAST(klass, TYPE_PIXMAP()))
+  result = cast[PPixmapClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_PIXMAP()))
 
 proc IS_PIXMAP*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_PIXMAP())
+  result = CHECK_TYPE(obj, gtk2.TYPE_PIXMAP())
 
 proc IS_PIXMAP_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_PIXMAP())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_PIXMAP())
 
 proc PIXMAP_GET_CLASS*(obj: pointer): PPixmapClass = 
-  result = cast[PPixmapClass](CHECK_GET_CLASS(obj, TYPE_PIXMAP()))
+  result = cast[PPixmapClass](CHECK_GET_CLASS(obj, gtk2.TYPE_PIXMAP()))
 
 proc build_insensitive*(a: var TPixmap): guint = 
   result = (a.Pixmapflag0 and bm_TGtkPixmap_build_insensitive) shr
@@ -14977,22 +14975,22 @@ proc set_has_resize_grip*(a: var TStatusbar, `has_resize_grip`: guint) =
       bm_TGtkStatusbar_has_resize_grip)
 
 proc TYPE_TABLE*(): GType = 
-  result = table_get_type()
+  result = gtk2.table_get_type()
 
 proc TABLE*(obj: pointer): PTable = 
-  result = cast[PTable](CHECK_CAST(obj, TYPE_TABLE()))
+  result = cast[PTable](CHECK_CAST(obj, gtk2.TYPE_TABLE()))
 
 proc TABLE_CLASS*(klass: pointer): PTableClass = 
-  result = cast[PTableClass](CHECK_CLASS_CAST(klass, TYPE_TABLE()))
+  result = cast[PTableClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_TABLE()))
 
 proc IS_TABLE*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_TABLE())
+  result = CHECK_TYPE(obj, gtk2.TYPE_TABLE())
 
 proc IS_TABLE_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_TABLE())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_TABLE())
 
 proc TABLE_GET_CLASS*(obj: pointer): PTableClass = 
-  result = cast[PTableClass](CHECK_GET_CLASS(obj, TYPE_TABLE()))
+  result = cast[PTableClass](CHECK_GET_CLASS(obj, gtk2.TYPE_TABLE()))
 
 proc homogeneous*(a: var TTable): guint = 
   result = (a.Tableflag0 and bm_TGtkTable_homogeneous) shr
@@ -15130,22 +15128,22 @@ proc set_torn_off*(a: var TTearoffMenuItem, `torn_off`: guint) =
       bm_TGtkTearoffMenuItem_torn_off)
 
 proc TYPE_TEXT*(): GType = 
-  result = text_get_type()
+  result = gtk2.text_get_type()
 
 proc TEXT*(obj: pointer): PText = 
-  result = cast[PText](CHECK_CAST(obj, TYPE_TEXT()))
+  result = cast[PText](CHECK_CAST(obj, gtk2.TYPE_TEXT()))
 
 proc TEXT_CLASS*(klass: pointer): PTextClass = 
-  result = cast[PTextClass](CHECK_CLASS_CAST(klass, TYPE_TEXT()))
+  result = cast[PTextClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_TEXT()))
 
 proc IS_TEXT*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_TEXT())
+  result = CHECK_TYPE(obj, gtk2.TYPE_TEXT())
 
 proc IS_TEXT_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_TEXT())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_TEXT())
 
 proc TEXT_GET_CLASS*(obj: pointer): PTextClass = 
-  result = cast[PTextClass](CHECK_GET_CLASS(obj, TYPE_TEXT()))
+  result = cast[PTextClass](CHECK_GET_CLASS(obj, gtk2.TYPE_TEXT()))
 
 proc line_wrap*(a: PText): guint = 
   result = (a.Textflag0 and bm_TGtkText_line_wrap) shr bp_TGtkText_line_wrap
@@ -16542,7 +16540,7 @@ const
   ARG_READWRITE* = ARG_READABLE or ARG_WRITABLE
 
 proc binding_entry_add_signal*(binding_set: PBindingSet, keyval: guint, 
-                               modifiers: TGdkModifierType, 
+                               modifiers: gdk2.TModifierType, 
                                signal_name: cstring, n_args: guint){.varargs, 
     importc: "gtk_binding_entry_add_signal", cdecl, dynlib: lib.}
 proc clist_new_with_titles*(columns: gint): PCList{.varargs, cdecl, 
@@ -16651,7 +16649,7 @@ proc widget_queue_clear*(widget: PWidget){.importc: "gtk_widget_queue_clear",
 proc widget_queue_clear_area*(widget: PWidget, x: gint, y: gint, width: gint, 
                               height: gint){.cdecl, 
     importc: "gtk_widget_queue_clear_area", dynlib: lib.}
-proc widget_draw*(widget: PWidget, area: PGdkRectangle){.cdecl, 
+proc widget_draw*(widget: PWidget, area: gdk2.PRectangle){.cdecl, 
     importc: "gtk_widget_draw", dynlib: lib.}
 proc widget_style_get_valist*(widget: PWidget, first_property_name: cstring){.
     varargs, cdecl, importc: "gtk_widget_style_get_valist", dynlib: lib.}
@@ -16876,6 +16874,7 @@ proc file_chooser_list_shortcut_folder_uris*(chooser: PFileChooser): PGSList{.
 proc file_chooser_set_do_overwrite_confirmation*(chooser: PFileChooser, 
     do_overwrite_confirmation: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_set_do_overwrite_confirmation".}
+
 proc nimrod_init*() = 
   var 
     cmdLine{.importc: "cmdLine".}: array[0..255, cstring]

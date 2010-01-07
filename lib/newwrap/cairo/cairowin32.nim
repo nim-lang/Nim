@@ -4,7 +4,7 @@
 #
 
 import 
-  , windows
+  cairo, windows
 
 proc win32_surface_create*(hdc: HDC): PSurface{.cdecl, 
     importc: "cairo_win32_surface_create", dynlib: LIB_CAIRO.}
