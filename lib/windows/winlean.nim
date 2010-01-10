@@ -60,6 +60,8 @@ const
   STD_ERROR_HANDLE* = -12'i32
 
   DETACHED_PROCESS* = 8'i32
+  
+  SW_SHOWNORMAL* = 1'i32
 
 proc CloseHandle*(hObject: THANDLE): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -190,4 +192,8 @@ proc rdFileTime*(f: FILETIME): int64 =
 proc Sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 
+proc ShellExecute*(HWND: THandle, lpOperation, lpFile,
+                   lpParameters, lpDirectory: cstring,
+                   nShowCmd: int32): THandle{.
+    stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
 
