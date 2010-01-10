@@ -12,7 +12,7 @@
 import strutils, os, osproc, strtabs, streams, sockets
 
 const
-  wwwNL = "\r\L"
+  wwwNL* = "\r\L"
   ServerSig = "Server: httpserver.nim/1.0.0" & wwwNL
 
 # --------------- output messages --------------------------------------------
@@ -222,12 +222,12 @@ proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
   ## encapsulates the server object and main loop
   var s: TServer
   open(s, port)
-  echo("httpserver running on port ", s.port)
+  #echo("httpserver running on port ", s.port)
   while true: 
     next(s)
     if handleRequest(s.client, s.path, s.query): break
     close(s.client)
-  close(s.socket)
+  close(s)
 
 when false:
   proc main =  

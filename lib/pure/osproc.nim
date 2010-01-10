@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -33,7 +33,7 @@ type
   TProcessOption* = enum ## options that can be passed `startProcess`
     poEchoCmd,           ## echo the command before execution
     poUseShell,          ## use the shell to execute the command; NOTE: This
-                         ## often creates a security whole!
+                         ## often creates a security hole!
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams      ## use the parent's streams
 

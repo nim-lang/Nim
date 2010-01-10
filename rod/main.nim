@@ -170,15 +170,13 @@ proc exSymbols(n: PNode) =
 
 proc CommandExportSymbols(filename: string) = 
   # now unused!
-  var module: PNode
-  module = parseFile(addFileExt(filename, NimExt))
+  var module = parseFile(addFileExt(filename, NimExt))
   if module != nil: 
     exSymbols(module)
     renderModule(module, getOutFile(filename, "pretty." & NimExt))
 
 proc CommandPretty(filename: string) = 
-  var module: PNode
-  module = parseFile(addFileExt(filename, NimExt))
+  var module = parseFile(addFileExt(filename, NimExt))
   if module != nil: 
     renderModule(module, getOutFile(filename, "pretty." & NimExt))
   
