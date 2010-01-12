@@ -12,8 +12,11 @@ Bugfixes
 
 Additions
 ---------
+- Added ``system.cstringArrayToSeq``.
+- Added ``cgi.decodeData(data: string): tuple[key, value: string]``.
 - Added ``ropes`` module.
 - Added ``sockets`` module.
+- Added ``browsers`` module.
 - Added ``httpserver`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change

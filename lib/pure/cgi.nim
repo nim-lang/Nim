@@ -120,51 +120,57 @@ proc getEncodedData(allowedMethods: set[TRequestMethod]): string =
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
+iterator decodeData*(data: string): tuple[key, value: string] = 
+  ## Reads and decodes CGI data and yields the (name, value) pairs the
+  ## data consists of.
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while data[i] != '\0':
+    setLen(name, 0) # reuse memory
+    while true:
+      case data[i]
+      of '\0': break
+      of '%': 
+        var x = 0
+        handleHexChar(data[i+1], x)
+        handleHexChar(data[i+2], x)
+        inc(i, 2)
+        add(name, chr(x))
+      of '+': add(name, ' ')
+      of '=', '&': break
+      else: add(name, data[i])
+      inc(i)
+    if data[i] != '=': cgiError("'=' expected")
+    inc(i) # skip '='
+    setLen(value, 0) # reuse memory
+    while true:
+      case data[i]
+      of '%': 
+        var x = 0
+        handleHexChar(data[i+1], x)
+        handleHexChar(data[i+2], x)
+        inc(i, 2)
+        add(value, chr(x))
+      of '+': add(value, ' ')
+      of '&', '\0': break
+      else: add(value, data[i])
+      inc(i)
+    yield (name, value)
+    if data[i] == '&': inc(i)
+    elif data[i] == '\0': break
+    else: cgiError("'&' expected")
+ 
 iterator decodeData*(allowedMethods: set[TRequestMethod] = 
        {methodNone, methodPost, methodGet}): tuple[key, value: string] = 
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
-  var enc = getEncodedData(allowedMethods)
-  if not isNil(enc): 
-    # decode everything in one pass:
-    var i = 0
-    var name = ""
-    var value = ""
-    while enc[i] != '\0':
-      setLen(name, 0) # reuse memory
-      while true:
-        case enc[i]
-        of '\0': break
-        of '%': 
-          var x = 0
-          handleHexChar(enc[i+1], x)
-          handleHexChar(enc[i+2], x)
-          inc(i, 2)
-          add(name, chr(x))
-        of '+': add(name, ' ')
-        of '=', '&': break
-        else: add(name, enc[i])
-        inc(i)
-      if enc[i] != '=': cgiError("'=' expected")
-      inc(i) # skip '='
-      setLen(value, 0) # reuse memory
-      while true:
-        case enc[i]
-        of '%': 
-          var x = 0
-          handleHexChar(enc[i+1], x)
-          handleHexChar(enc[i+2], x)
-          inc(i, 2)
-          add(value, chr(x))
-        of '+': add(value, ' ')
-        of '&', '\0': break
-        else: add(value, enc[i])
-        inc(i)
-      yield (name, value)
-      if enc[i] == '&': inc(i)
-      elif enc[i] == '\0': break
-      else: cgiError("'&' expected")
+  var data = getEncodedData(allowedMethods)
+  if not isNil(data): 
+    for key, value in decodeData(data):
+      yield key, value
 
 proc readData*(allowedMethods: set[TRequestMethod] = 
                {methodNone, methodPost, methodGet}): PStringTable = 

@@ -743,6 +743,7 @@ type # these work for most platforms:
   cstringArray* {.importc: "char**", nodecl.} = ptr array [0..50_000, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
+    ## Use cstringArrayToSeq to convert it into a ``seq[string]``.
 
   TEndian* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -1467,6 +1468,19 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc quit(errormsg: string) =
     echo(errormsg)
     quit(quitFailure)
+
+  proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
+    ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
+    ## of length ``len``.
+    newSeq(result, len)
+    for i in 0..len-1: result[i] = $a[i]
+
+  proc cstringArrayToSeq*(a: cstringArray): seq[string] =
+    ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
+    ## terminated by ``nil``.
+    var L = 0
+    while a[L] != nil: inc(L)
+    result = cstringArrayToSeq(a, L)
 
   # ----------------------------------------------------------------------------
 

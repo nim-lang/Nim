@@ -577,7 +577,7 @@ proc cmpPaths*(pathA, pathB: string): int {.noSideEffect.} =
 proc sameFile*(path1, path2: string): bool =
   ## Returns True if both pathname arguments refer to the same file or
   ## directory (as indicated by device number and i-node number).
-  ## Raises an exception if an os.stat() call on either pathname fails.
+  ## Raises an exception if an stat() call on either pathname fails.
   when defined(Windows):
     var
       a, b: TWin32FindData

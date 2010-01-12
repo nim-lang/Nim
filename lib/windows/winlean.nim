@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -196,4 +196,148 @@ proc ShellExecute*(HWND: THandle, lpOperation, lpFile,
                    lpParameters, lpDirectory: cstring,
                    nShowCmd: int32): THandle{.
     stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
+
+const
+  WSADESCRIPTION_LEN* = 256
+  WSASYS_STATUS_LEN* = 128
+  FD_SETSIZE* = 64
+  MSG_PEEK* = 2
+  
+  INADDR_ANY* = 0
+  INADDR_LOOPBACK* = 0x7F000001
+  INADDR_BROADCAST* = -1
+  INADDR_NONE* = -1
+  
+type 
+  TWSAData* {.pure, final.} = object 
+    wVersion, wHighVersion: int16
+    szDescription: array[0..WSADESCRIPTION_LEN, char]
+    szSystemStatus: array[0..WSASYS_STATUS_LEN, char]
+    iMaxSockets, iMaxUdpDg: int16
+    lpVendorInfo: cstring
+    
+  TSockAddr* {.pure, final.} = object 
+    sa_family*: int16 # unsigned
+    sa_data: array[0..13, char]
+
+  TInAddr* {.pure, final.} = object ## struct in_addr
+    s_addr*: int32  # IP address
+  
+  Tsockaddr_in* {.pure, final.} = object
+    sin_family*: int16
+    sin_port*: int16 # unsigned
+    sin_addr*: TInAddr
+    sin_zero*: array[0..7, char]
+
+  Tin6_addr* {.pure, final.} = object 
+    bytes*: array[0..15, char]
+
+  Tsockaddr_in6* {.pure, final.} = object
+    sin6_family*: int16
+    sin6_port*: int16 # unsigned
+    sin6_flowinfo*: int32 # unsigned
+    sin6_addr*: Tin6_addr
+    sin6_scope_id*: int32 # unsigned
+
+  Tsockaddr_in6_old* {.pure, final.} = object
+    sin6_family*: int16
+    sin6_port*: int16 # unsigned
+    sin6_flowinfo*: int32 # unsigned
+    sin6_addr*: Tin6_addr
+
+  TServent* {.pure, final.} = object
+    s_name*: cstring
+    s_aliases*: cstringArray
+    when defined(cpu64):
+      s_proto*: cstring
+      s_port*: int16
+    else:
+      s_port*: int16
+      s_proto*: cstring
+
+  Thostent* {.pure, final.} = object
+    h_name*: cstring
+    h_aliases*: cstringArray
+    h_addrtype*: int16
+    h_length*: int16
+    h_addr_list*: cstringArray
+    
+  TWinSocket* = cint
+  
+  TFdSet* {.pure, final.} = object
+    fd_count*: cint # unsigned
+    fd_array*: array[0..FD_SETSIZE-1, TWinSocket]
+    
+  TTimeval* {.pure, final.} = object
+    tv_sec*, tv_usec*: int32
+
+proc getservbyname*(name, proto: cstring): ptr TServent {.
+  stdcall, importc: "getservbyname", dynlib: "Ws2_32.dll".}
+
+proc getservbyport*(port: cint, proto: cstring): ptr TServent {.
+  stdcall, importc: "getservbyport", dynlib: "Ws2_32.dll".}
+
+proc gethostbyname*(name: cstring): ptr THostEnt {.
+  stdcall, importc: "gethostbyname", dynlib: "Ws2_32.dll".}
+
+proc socket*(af, typ, protocol: cint): TWinSocket {.
+  stdcall, importc: "socket", dynlib: "Ws2_32.dll".}
+
+proc closesocket*(s: TWinSocket): cint {.
+  stdcall, importc: "closesocket", dynlib: "Ws2_32.dll".}
+
+proc accept*(s: TWinSocket, a: ptr TSockAddr, addrlen: ptr cint): TWinSocket {.
+  stdcall, importc: "accept", dynlib: "Ws2_32.dll".}
+proc bindSocket*(s: TWinSocket, name: ptr TSockAddr, namelen: cint): cint {.
+  stdcall, importc: "bind", dynlib: "Ws2_32.dll".}
+proc connect*(s: TWinSocket, name: ptr TSockAddr, namelen: cint): cint {.
+  stdcall, importc: "connect", dynlib: "Ws2_32.dll".}
+proc getsockname*(s: TWinSocket, name: ptr TSockAddr, 
+                  namelen: ptr cint): cint {.
+  stdcall, importc: "getsockname", dynlib: "Ws2_32.dll".}
+proc getsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
+                 optlen: ptr cint): cint {.
+  stdcall, importc: "getsockopt", dynlib: "Ws2_32.dll".}
+proc setsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
+                 optlen: cint): cint {.
+  stdcall, importc: "setsockopt", dynlib: "Ws2_32.dll".}
+
+proc listen*(s: TWinSocket, backlog: cint): cint {.
+  stdcall, importc: "listen", dynlib: "Ws2_32.dll".}
+proc recv*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
+  stdcall, importc: "recv", dynlib: "Ws2_32.dll".}
+proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
+               fromm: ptr TSockAddr, fromlen: ptr cint): cint {.
+  stdcall, importc: "recvfrom", dynlib: "Ws2_32.dll".}
+proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
+             timeout: ptr TTimeval): cint {.
+  stdcall, importc: "select", dynlib: "Ws2_32.dll".}
+proc send*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
+  stdcall, importc: "send", dynlib: "Ws2_32.dll".}
+proc sendto*(s: TWinSocket, buf: cstring, len, flags: cint,
+             to: ptr TSockAddr, tolen: cint): cint {.
+  stdcall, importc: "sendto", dynlib: "Ws2_32.dll".}
+
+proc shutdown*(s: TWinSocket, how: cint): cint {.
+  stdcall, importc: "shutdown", dynlib: "Ws2_32.dll".}
+  
+proc inet_addr*(cp: cstring): int32 {.
+  stdcall, importc: "inet_addr", dynlib: "Ws2_32.dll".} 
+
+proc WSAFDIsSet(s: TWinSocket, FDSet: var TFDSet): bool {.
+  stdcall, importc: "__WSAFDIsSet", dynlib: "Ws2_32.dll".}
+
+proc FD_ISSET*(Socket: TWinSocket, FDSet: var TFDSet): cint = 
+  result = if WSAFDIsSet(Socket, FDSet): 1'i32 else: 0'i32
+
+proc FD_SET*(Socket: TWinSocket, FDSet: var TFDSet) = 
+  if FDSet.fd_count < FD_SETSIZE:
+    FDSet.fd_array[int(FDSet.fd_count)] = Socket
+    inc(FDSet.fd_count)
+
+proc FD_ZERO*(FDSet: var TFDSet) =
+  FDSet.fd_count = 0
+
+proc WSAStartup*(wVersionRequired: int16, WSData: var TWSAData): cint {.
+  stdcall, importc: "WSAStartup", dynlib: "Ws2_32.dll".}
 
