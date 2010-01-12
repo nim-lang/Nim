@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -655,8 +655,7 @@ proc replace*(s: string, sub, by: char): string =
 proc delete*(s: var string, first, last: int) =
   ## Deletes in `s` the characters at position `first`..`last`. This modifies
   ## `s` itself, it does not return a copy.
-  var
-    i = first
+  var i = first
   # example: "abc___uvwxyz\0"  (___ is to be deleted)
   # --> first == 3, last == 5
   # s[first..] = s[last+1..]
@@ -851,6 +850,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string =
 proc validEmailAddress*(s: string): bool = 
   ## returns true if `s` seems to be a valid e-mail address. 
   ## The checking also uses a domain list.
+  ## Note: This will be moved into another module soon.
   const
     chars = Letters + Digits + {'!','#','$','%','&',
       '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
