@@ -372,7 +372,7 @@ type
               final, pure.} = object ## struct timeval
     tv_sec*: int       ## Seconds. 
     tv_usec*: int ## Microseconds. 
-  Tfd_set* {.importc: "struct fd_set", header: "<sys/select.h>", 
+  Tfd_set* {.importc: "fd_set", header: "<sys/select.h>", 
              final, pure.} = object
   Tmcontext* {.importc: "mcontext_t", header: "<ucontext.h>", 
                final, pure.} = object
