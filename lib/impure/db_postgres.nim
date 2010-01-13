@@ -1,5 +1,5 @@
 # Nimrod PostgreSQL database wrapper
-# (c) 2009 Andreas Rumpf
+# (c) 2010 Andreas Rumpf
 
 import strutils, postgres
 
