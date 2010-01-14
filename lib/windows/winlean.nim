@@ -208,6 +208,8 @@ const
   INADDR_BROADCAST* = -1
   INADDR_NONE* = -1
   
+  ws2dll = "Ws2_32.dll"
+  
 type 
   TWSAData* {.pure, final.} = object 
     wVersion, wHighVersion: int16
@@ -270,62 +272,79 @@ type
     
   TTimeval* {.pure, final.} = object
     tv_sec*, tv_usec*: int32
+    
+  TAddrInfo* {.pure, final.} = object
+    ai_flags*: cint         ## Input flags. 
+    ai_family*: cint        ## Address family of socket. 
+    ai_socktype*: cint      ## Socket type. 
+    ai_protocol*: cint      ## Protocol of socket. 
+    ai_addrlen*: int        ## Length of socket address. 
+    ai_canonname*: cstring  ## Canonical name of service location.
+    ai_addr*: ptr TSockAddr ## Socket address of socket. 
+    ai_next*: ptr TAddrInfo ## Pointer to next in list. 
+
+  Tsocklen* = cint
 
 proc getservbyname*(name, proto: cstring): ptr TServent {.
-  stdcall, importc: "getservbyname", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "getservbyname", dynlib: ws2dll.}
 
 proc getservbyport*(port: cint, proto: cstring): ptr TServent {.
-  stdcall, importc: "getservbyport", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "getservbyport", dynlib: ws2dll.}
 
 proc gethostbyname*(name: cstring): ptr THostEnt {.
-  stdcall, importc: "gethostbyname", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "gethostbyname", dynlib: ws2dll.}
 
 proc socket*(af, typ, protocol: cint): TWinSocket {.
-  stdcall, importc: "socket", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "socket", dynlib: ws2dll.}
 
 proc closesocket*(s: TWinSocket): cint {.
-  stdcall, importc: "closesocket", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "closesocket", dynlib: ws2dll.}
 
 proc accept*(s: TWinSocket, a: ptr TSockAddr, addrlen: ptr cint): TWinSocket {.
-  stdcall, importc: "accept", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "accept", dynlib: ws2dll.}
 proc bindSocket*(s: TWinSocket, name: ptr TSockAddr, namelen: cint): cint {.
-  stdcall, importc: "bind", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "bind", dynlib: ws2dll.}
 proc connect*(s: TWinSocket, name: ptr TSockAddr, namelen: cint): cint {.
-  stdcall, importc: "connect", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "connect", dynlib: ws2dll.}
 proc getsockname*(s: TWinSocket, name: ptr TSockAddr, 
                   namelen: ptr cint): cint {.
-  stdcall, importc: "getsockname", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "getsockname", dynlib: ws2dll.}
 proc getsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
                  optlen: ptr cint): cint {.
-  stdcall, importc: "getsockopt", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "getsockopt", dynlib: ws2dll.}
 proc setsockopt*(s: TWinSocket, level, optname: cint, optval: pointer,
                  optlen: cint): cint {.
-  stdcall, importc: "setsockopt", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "setsockopt", dynlib: ws2dll.}
 
 proc listen*(s: TWinSocket, backlog: cint): cint {.
-  stdcall, importc: "listen", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "listen", dynlib: ws2dll.}
 proc recv*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
-  stdcall, importc: "recv", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "recv", dynlib: ws2dll.}
 proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
                fromm: ptr TSockAddr, fromlen: ptr cint): cint {.
-  stdcall, importc: "recvfrom", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "recvfrom", dynlib: ws2dll.}
 proc select*(nfds: cint, readfds, writefds, exceptfds: ptr TFdSet,
              timeout: ptr TTimeval): cint {.
-  stdcall, importc: "select", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "select", dynlib: ws2dll.}
 proc send*(s: TWinSocket, buf: pointer, len, flags: cint): cint {.
-  stdcall, importc: "send", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "send", dynlib: ws2dll.}
 proc sendto*(s: TWinSocket, buf: cstring, len, flags: cint,
              to: ptr TSockAddr, tolen: cint): cint {.
-  stdcall, importc: "sendto", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "sendto", dynlib: ws2dll.}
 
 proc shutdown*(s: TWinSocket, how: cint): cint {.
-  stdcall, importc: "shutdown", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "shutdown", dynlib: ws2dll.}
+  
+proc getnameinfo*(a1: ptr Tsockaddr, a2: Tsocklen,
+                  a3: cstring, a4: Tsocklen, a5: cstring,
+                  a6: Tsocklen, a7: cint): cint {.
+  stdcall, importc: "getnameinfo", dynlib: ws2dll.}
   
 proc inet_addr*(cp: cstring): int32 {.
-  stdcall, importc: "inet_addr", dynlib: "Ws2_32.dll".} 
+  stdcall, importc: "inet_addr", dynlib: ws2dll.} 
 
 proc WSAFDIsSet(s: TWinSocket, FDSet: var TFDSet): bool {.
-  stdcall, importc: "__WSAFDIsSet", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll.}
 
 proc FD_ISSET*(Socket: TWinSocket, FDSet: var TFDSet): cint = 
   result = if WSAFDIsSet(Socket, FDSet): 1'i32 else: 0'i32
@@ -339,5 +358,13 @@ proc FD_ZERO*(FDSet: var TFDSet) =
   FDSet.fd_count = 0
 
 proc WSAStartup*(wVersionRequired: int16, WSData: var TWSAData): cint {.
-  stdcall, importc: "WSAStartup", dynlib: "Ws2_32.dll".}
+  stdcall, importc: "WSAStartup", dynlib: ws2dll.}
+
+proc getaddrinfo*(nodename, servname: cstring, hints: ptr TAddrInfo,
+                  res: var ptr TAddrInfo): cint {.
+  stdcall, importc: "getaddrinfo", dynlib: ws2dll.}
+
+proc freeaddrinfo*(ai: ptr TAddrInfo) {.
+  stdcall, importc: "freeaddrinfo", dynlib: ws2dll.}
+
 

@@ -124,6 +124,16 @@ when defined(Posix):
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
     else: nil
 
+else:
+  proc toInt(domain: TDomain): cint = 
+    result = toU16(ord(domain))
+
+  proc ToInt(typ: TType): cint =
+    result = cint(ord(typ))
+  
+  proc ToInt(p: TProtocol): cint =
+    result = cint(ord(p))
+
 proc socket*(domain: TDomain = AF_INET, typ: TType = SOCK_STREAM,
              protocol: TProtocol = IPPROTO_TCP): TSocket =
   ## creates a new socket; returns `InvalidSocket` if an error occurs.  
@@ -242,20 +252,39 @@ proc setSockOptInt*(socket: TSocket, level, optname, optval: int) =
 proc connect*(socket: TSocket, name: string, port = TPort(0), 
               af: TDomain = AF_INET) =
   ## well-known connect operation. Already does ``htons`` on the port number,
-  ## so you shouldn't do it.
-  var s: TSockAddrIn
-  s.sin_addr.s_addr = inet_addr(name)
-  s.sin_port = sockets.htons(int16(port))
-  when defined(windows):
-    s.sin_family = toU16(ord(af))
-  else:
-    case af 
-    of AF_UNIX: s.sin_family = posix.AF_UNIX
-    of AF_INET: s.sin_family = posix.AF_INET
-    of AF_INET6: s.sin_family = posix.AF_INET6
-    else: nil
-  if connect(cint(socket), cast[ptr TSockAddr](addr(s)), sizeof(s)) < 0'i32:
-    OSError()
+  ## so you shouldn't do it. `name` can be an IP address or a host name of the
+  ## form "force7.de". 
+  var hints: TAddrInfo
+  var aiList: ptr TAddrInfo = nil
+  hints.ai_family = toInt(af)
+  hints.ai_socktype = toInt(SOCK_STREAM)
+  hints.ai_protocol = toInt(IPPROTO_TCP)
+  if getAddrInfo(name, $port, addr(hints), aiList) != 0'i32: OSError()
+  # try all possibilities:
+  var success = false
+  var it = aiList
+  while it != nil:
+    if connect(cint(socket), it.ai_addr, it.ai_addrlen) == 0'i32:
+      success = true
+      break
+    it = it.ai_next
+  freeaddrinfo(aiList)
+  if not success: OSError()
+  
+  when false:
+    var s: TSockAddrIn
+    s.sin_addr.s_addr = inet_addr(name)
+    s.sin_port = sockets.htons(int16(port))
+    when defined(windows):
+      s.sin_family = toU16(ord(af))
+    else:
+      case af 
+      of AF_UNIX: s.sin_family = posix.AF_UNIX
+      of AF_INET: s.sin_family = posix.AF_INET
+      of AF_INET6: s.sin_family = posix.AF_INET6
+      else: nil
+    if connect(cint(socket), cast[ptr TSockAddr](addr(s)), sizeof(s)) < 0'i32:
+      OSError()
 
 #proc recvfrom*(s: TWinSocket, buf: cstring, len, flags: cint, 
 #               fromm: ptr TSockAddr, fromlen: ptr cint): cint 
