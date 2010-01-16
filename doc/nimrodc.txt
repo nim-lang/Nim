@@ -42,12 +42,16 @@ Configuration file
 The default configuration file is ``nimrod.cfg``. The ``nimrod`` executable
 looks for it in the following directories (in this order):
 
-1. ``/home/$user/.config/nimrod.cfg`` (UNIX) or ``$APPDATA/nimrod.cfg`` (Windows)
+1. ``/home/$user/.config/nimrod.cfg`` (UNIX) or ``%APPDATA%/nimrod.cfg`` (Windows)
 2. ``$nimrod/config/nimrod.cfg`` (UNIX, Windows)
 3. ``/etc/nimrod.cfg`` (UNIX)
 
 The search stops as soon as a configuration file has been found. The reading
 of ``nimrod.cfg`` can be suppressed by the ``--skipCfg`` command line option.
+
+**Note:** The *project file name* is the name of the ``.nim`` file that is 
+passed as a command line argument to the compiler. 
+
 Configuration settings can be overwritten in a project specific
 configuration file that is read automatically. This specific file has to
 be in the same directory as the project and be of the same name, except

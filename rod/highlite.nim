@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -57,13 +57,12 @@ proc getSourceLanguage(name: string): TSourceLanguage =
   result = langNone
 
 proc initGeneralTokenizer(g: var TGeneralTokenizer, buf: string) = 
-  var pos: int
   g.buf = cstring(buf)
   g.kind = low(TTokenClass)
   g.start = 0
   g.length = 0
   g.state = low(TTokenClass)
-  pos = 0                     # skip initial whitespace:
+  var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
 
@@ -71,8 +70,7 @@ proc deinitGeneralTokenizer(g: var TGeneralTokenizer) =
   nil
 
 proc nimGetKeyword(id: string): TTokenClass = 
-  var i: PIdent
-  i = getIdent(id)
+  var i = getIdent(id)
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)): 
     result = gtKeyword
@@ -80,8 +78,7 @@ proc nimGetKeyword(id: string): TTokenClass =
     result = gtIdentifier
   
 proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int = 
-  var pos: int
-  pos = position
+  var pos = position
   if g.buf[pos] == '\'': 
     inc(pos)
     case g.buf[pos]
@@ -99,10 +96,8 @@ proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int =
   result = pos
 
 proc nimNumber(g: var TGeneralTokenizer, position: int): int = 
-  const 
-    decChars = {'0'..'9', '_'}
-  var pos: int
-  pos = position
+  const decChars = {'0'..'9', '_'}
+  var pos = position
   g.kind = gtDecNumber
   while g.buf[pos] in decChars: inc(pos)
   if g.buf[pos] == '.': 
@@ -121,10 +116,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
     octChars = {'0'..'7', '_'}
     binChars = {'0'..'1', '_'}
-  var 
-    pos: int
-    id: string
-  pos = g.pos
+  var pos = g.pos
   g.start = g.pos
   if g.state == gtStringLit: 
     g.kind = gtStringLit
@@ -161,7 +153,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
       g.kind = gtComment
       while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): inc(pos)
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
-      id = ""
+      var id = ""
       while g.buf[pos] in scanner.SymChars + {'_'}: 
         add(id, g.buf[pos])
         inc(pos)
@@ -175,14 +167,17 @@ proc nimNextToken(g: var TGeneralTokenizer) =
               break 
             of '\"': 
               inc(pos)
-              if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'): 
+              if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and 
+                  g.buf[pos+2] != '\"': 
                 inc(pos, 2)
                 break 
             else: inc(pos)
         else: 
           g.kind = gtRawData
           inc(pos)
-          while not (g.buf[pos] in {'\0', '\"', '\x0A', '\x0D'}): inc(pos)
+          while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): 
+            if g.buf[pos] == '"' and g.buf[pos+1] != '"': break
+            inc(pos)
           if g.buf[pos] == '\"': inc(pos)
       else: 
         g.kind = nimGetKeyword(id)
@@ -228,7 +223,8 @@ proc nimNextToken(g: var TGeneralTokenizer) =
             break 
           of '\"': 
             inc(pos)
-            if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'): 
+            if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and 
+                g.buf[pos+2] != '\"': 
               inc(pos, 2)
               break 
           else: inc(pos)
@@ -263,10 +259,8 @@ proc nimNextToken(g: var TGeneralTokenizer) =
   g.pos = pos
 
 proc generalNumber(g: var TGeneralTokenizer, position: int): int = 
-  const 
-    decChars = {'0'..'9'}
-  var pos: int
-  pos = position
+  const decChars = {'0'..'9'}
+  var pos = position
   g.kind = gtDecNumber
   while g.buf[pos] in decChars: inc(pos)
   if g.buf[pos] == '.': 
@@ -284,12 +278,9 @@ proc generalStrLit(g: var TGeneralTokenizer, position: int): int =
   const 
     decChars = {'0'..'9'}
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f'}
-  var 
-    pos: int
-    c: Char
-  pos = position
+  var pos = position
   g.kind = gtStringLit
-  c = g.buf[pos]
+  var c = g.buf[pos]
   inc(pos)                    # skip " or '
   while true: 
     case g.buf[pos]
@@ -316,12 +307,11 @@ proc generalStrLit(g: var TGeneralTokenizer, position: int): int =
   result = pos
 
 proc isKeyword(x: openarray[string], y: string): int = 
-  var a, b, mid, c: int
-  a = 0
-  b = len(x) - 1
+  var a = 0
+  var b = len(x) - 1
   while a <= b: 
-    mid = (a + b) div 2
-    c = cmp(x[mid], y)
+    var mid = (a + b) div 2
+    var c = cmp(x[mid], y)
     if c < 0: 
       a = mid + 1
     elif c > 0: 
@@ -331,12 +321,11 @@ proc isKeyword(x: openarray[string], y: string): int =
   result = - 1
 
 proc isKeywordIgnoreCase(x: openarray[string], y: string): int = 
-  var a, b, mid, c: int
-  a = 0
-  b = len(x) - 1
+  var a = 0
+  var b = len(x) - 1
   while a <= b: 
-    mid = (a + b) div 2
-    c = cmpIgnoreCase(x[mid], y)
+    var mid = (a + b) div 2
+    var c = cmpIgnoreCase(x[mid], y)
     if c < 0: 
       a = mid + 1
     elif c > 0: 
@@ -357,10 +346,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
     octChars = {'0'..'7'}
     binChars = {'0'..'1'}
     symChars = {'A'..'Z', 'a'..'z', '0'..'9', '_', '\x80'..'\xFF'}
-  var 
-    pos, nested: int
-    id: string
-  pos = g.pos
+  var pos = g.pos
   g.start = g.pos
   if g.state == gtStringLit: 
     g.kind = gtStringLit
@@ -400,7 +386,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
         while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): inc(pos)
       elif g.buf[pos] == '*': 
         g.kind = gtLongComment
-        nested = 0
+        var nested = 0
         inc(pos)
         while true: 
           case g.buf[pos]
@@ -426,7 +412,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
       else: 
         g.kind = gtOperator
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
-      id = ""
+      var id = ""
       while g.buf[pos] in SymChars: 
         add(id, g.buf[pos])
         inc(pos)

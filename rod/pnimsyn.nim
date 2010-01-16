@@ -113,9 +113,8 @@ proc parLineInfo(p: TParser): TLineInfo =
   result = getLineInfo(p.lex^)
 
 proc indAndComment(p: var TParser, n: PNode) = 
-  var info: TLineInfo
   if p.tok.tokType == tkInd: 
-    info = parLineInfo(p)
+    var info = parLineInfo(p)
     getTok(p)
     if p.tok.tokType == tkComment: skipComment(p, n)
     else: liMessage(info, errInvalidIndentation)

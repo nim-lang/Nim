@@ -215,7 +215,15 @@ String literals can also be delimited by three double quotes
 Literals in this form may run for several lines, may contain ``"`` and do not
 interpret any escape sequences.
 For convenience, when the opening ``"""`` is immediately followed by a newline,
-the newline is not included in the string.
+the newline is not included in the string. The ending of the string literal is
+defined by the pattern ``"""[^"]``, so this:
+  
+.. code-block:: nimrod 
+  """"long string within quotes""""
+  
+Produces::
+  
+  "long string within quotes"
 
 
 Raw string literals
@@ -229,6 +237,19 @@ convenient for regular expressions or Windows paths:
 .. code-block:: nimrod
 
   var f = openFile(r"C:\texts\text.txt") # a raw string, so ``\t`` is no tab
+
+To produce a single ``"`` within a raw string literal, it has to be doubled:
+
+.. code-block:: nimrod
+
+  r"a""b"
+  
+Produces::
+  
+  a"b
+
+``r""""`` is not possible with this notation, because the three leading 
+quotes introduce a triple quoted string literal. 
 
 
 Generalized raw string literals
@@ -291,8 +312,8 @@ prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
 
 There exists a literal for each numerical type that is
 defined. The suffix starting with an apostrophe ('\'') is called a
-`type suffix`:idx:. Literals without a type prefix are of the type ``int``,
-unless the literal contains a dot or an ``E`` in which case it is of
+`type suffix`:idx:. Literals without a type suffix are of the type ``int``,
+unless the literal contains a dot or ``E|e`` in which case it is of
 type ``float``.
 
 The type suffixes are:
