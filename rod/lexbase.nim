@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -83,7 +83,8 @@ proc FillBuffer(L: var TBaseLexer) =
   toCopy = L.BufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0: 
-    MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) # "moveMem" handles overlapping regions
+    MoveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize) 
+    # "moveMem" handles overlapping regions
   charsRead = LLStreamRead(L.stream, addr(L.buf[toCopy]), 
                            (L.sentinel + 1) * chrSize) div chrSize
   s = toCopy + charsRead
@@ -142,7 +143,7 @@ proc skip_UTF_8_BOM(L: var TBaseLexer) =
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
-proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen: int = 8192) = 
+proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) = 
   assert(bufLen > 0)
   L.bufpos = 0
   L.bufLen = bufLen
@@ -158,9 +159,8 @@ proc getColNumber(L: TBaseLexer, pos: int): int =
   result = abs(pos - L.lineStart)
 
 proc getCurrentLine(L: TBaseLexer, marker: bool = true): string = 
-  var i: int
   result = ""
-  i = L.lineStart
+  var i = L.lineStart
   while not (L.buf[i] in {CR, LF, EndOfFile}): 
     add(result, L.buf[i])
     inc(i)

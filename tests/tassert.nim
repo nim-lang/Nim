@@ -7,10 +7,10 @@ proc callC() = callA()
 try:
   callC()
 except EAssertionFailed:
-  write(stdout, "assertion failure!\n")
+  write(stdout, "assertion failure!")
 except:
-  write(stdout, "unknown exception!\n")
+  write(stdout, "unknown exception!")
 finally:
-  system.write(stdout, "this shall be always written\n")
+  system.write(stdout, "this shall be always written")
 
-assert(false)
+assert(false) #OUT assertion failure!this shall be always written
