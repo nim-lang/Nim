@@ -67,7 +67,7 @@ const
 
 proc lua_upvalueindex*(I: int): int
 const                         # thread status; 0 is OK 
-  LUA_YIELD_* = 1
+  constLUA_YIELD* = 1
   LUA_ERRRUN* = 2
   LUA_ERRSYNTAX* = 3
   LUA_ERRMEM* = 4
@@ -158,7 +158,7 @@ proc lua_pushnumber*(L: Plua_State, n: lua_Number){.cdecl, dynlib: LUA_NAME,
     importc.}
 proc lua_pushinteger*(L: Plua_State, n: lua_Integer){.cdecl, dynlib: LUA_NAME, 
     importc.}
-proc lua_pushlstring*(L: Plua_State, s: cstring, l_: size_t){.cdecl, 
+proc lua_pushlstring*(L: Plua_State, s: cstring, len: size_t){.cdecl, 
     dynlib: LUA_NAME, importc.}
 proc lua_pushstring*(L: Plua_State, s: cstring){.cdecl, dynlib: LUA_NAME, 
     importc.}

@@ -5377,7 +5377,7 @@ proc GTK_CLIST_UNSET_FLAG*(clist: PGtkCList, flag: guint16)
 #proc GTK_CLIST_USE_DRAG_ICONS_get*(clist: pointer): bool
 #proc GTK_CLIST_DRAW_DRAG_LINE_get*(clist: pointer): bool
 #proc GTK_CLIST_DRAW_DRAG_RECT_get*(clist: pointer): bool
-#proc GTK_CLIST_ROW_get*(`glist_`: PGList): PGtkCListRow
+#proc GTK_CLIST_ROW_get*(glist: PGList): PGtkCListRow
 #proc GTK_CELL_TEXT_get*(cell: pointer): PGtkCellText
 #proc GTK_CELL_PIXMAP_get*(cell: pointer): PGtkCellPixmap
 #proc GTK_CELL_PIXTEXT_get*(cell: pointer): PGtkCellPixText
@@ -5754,11 +5754,11 @@ proc GTK_CTREE_CLASS*(klass: pointer): PGtkCTreeClass
 proc GTK_IS_CTREE*(obj: pointer): bool
 proc GTK_IS_CTREE_CLASS*(klass: pointer): bool
 proc GTK_CTREE_GET_CLASS*(obj: pointer): PGtkCTreeClass
-proc GTK_CTREE_ROW*(`node_`: TAddress): PGtkCTreeRow
-proc GTK_CTREE_NODE*(`node_`: TAddress): PGtkCTreeNode
-proc GTK_CTREE_NODE_NEXT*(`nnode_`: TAddress): PGtkCTreeNode
-proc GTK_CTREE_NODE_PREV*(`pnode_`: TAddress): PGtkCTreeNode
-proc GTK_CTREE_FUNC*(`func_`: TAddress): TGtkCTreeFunc
+proc GTK_CTREE_ROW*(`node`: TAddress): PGtkCTreeRow
+proc GTK_CTREE_NODE*(`node`: TAddress): PGtkCTreeNode
+proc GTK_CTREE_NODE_NEXT*(`nnode`: TAddress): PGtkCTreeNode
+proc GTK_CTREE_NODE_PREV*(`pnode`: TAddress): PGtkCTreeNode
+proc GTK_CTREE_FUNC*(`func`: TAddress): TGtkCTreeFunc
 proc GTK_TYPE_CTREE_NODE*(): GType
 proc line_style*(a: var TGtkCTree): guint
 proc set_line_style*(a: var TGtkCTree, `line_style`: guint)
@@ -5781,103 +5781,103 @@ proc gtk_ctree_insert_node*(ctree: PGtkCTree, parent: PGtkCTreeNode,
                             mask_opened: PGdkBitmap, is_leaf: gboolean,
                             expanded: gboolean): PGtkCTreeNode{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_insert_node".}
-proc gtk_ctree_remove_node*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_remove_node*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_remove_node".}
 proc gtk_ctree_insert_gnode*(ctree: PGtkCTree, parent: PGtkCTreeNode,
                              sibling: PGtkCTreeNode, gnode: PGNode,
-                             func_: TGtkCTreeGNodeFunc, data: gpointer): PGtkCTreeNode{.
+                             fun: TGtkCTreeGNodeFunc, data: gpointer): PGtkCTreeNode{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_insert_gnode".}
 proc gtk_ctree_export_to_gnode*(ctree: PGtkCTree, parent: PGNode,
-                                sibling: PGNode, node_: PGtkCTreeNode,
-                                func_: TGtkCTreeGNodeFunc, data: gpointer): PGNode{.
+                                sibling: PGNode, node: PGtkCTreeNode,
+                                fun: TGtkCTreeGNodeFunc, data: gpointer): PGNode{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_export_to_gnode".}
-proc gtk_ctree_post_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode,
-                               func_: TGtkCTreeFunc, data: gpointer){.cdecl,
+proc gtk_ctree_post_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode,
+                               fun: TGtkCTreeFunc, data: gpointer){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_post_recursive".}
-proc gtk_ctree_post_recursive_to_depth*(ctree: PGtkCTree, node_: PGtkCTreeNode,
-                                        depth: gint, func_: TGtkCTreeFunc,
+proc gtk_ctree_post_recursive_to_depth*(ctree: PGtkCTree, node: PGtkCTreeNode,
+                                        depth: gint, fun: TGtkCTreeFunc,
                                         data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_post_recursive_to_depth".}
-proc gtk_ctree_pre_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode,
-                              func_: TGtkCTreeFunc, data: gpointer){.cdecl,
+proc gtk_ctree_pre_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode,
+                              fun: TGtkCTreeFunc, data: gpointer){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_pre_recursive".}
-proc gtk_ctree_pre_recursive_to_depth*(ctree: PGtkCTree, node_: PGtkCTreeNode,
-                                       depth: gint, func_: TGtkCTreeFunc,
+proc gtk_ctree_pre_recursive_to_depth*(ctree: PGtkCTree, node: PGtkCTreeNode,
+                                       depth: gint, fun: TGtkCTreeFunc,
                                        data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_pre_recursive_to_depth".}
-proc gtk_ctree_is_viewable*(ctree: PGtkCTree, node_: PGtkCTreeNode): gboolean{.
+proc gtk_ctree_is_viewable*(ctree: PGtkCTree, node: PGtkCTreeNode): gboolean{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_is_viewable".}
-proc gtk_ctree_last*(ctree: PGtkCTree, node_: PGtkCTreeNode): PGtkCTreeNode{.
+proc gtk_ctree_last*(ctree: PGtkCTree, node: PGtkCTreeNode): PGtkCTreeNode{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_last".}
 proc gtk_ctree_find_node_ptr*(ctree: PGtkCTree, ctree_row: PGtkCTreeRow): PGtkCTreeNode{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_find_node_ptr".}
 proc gtk_ctree_node_nth*(ctree: PGtkCTree, row: guint): PGtkCTreeNode{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_nth".}
-proc gtk_ctree_find*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_find*(ctree: PGtkCTree, node: PGtkCTreeNode,
                      child: PGtkCTreeNode): gboolean{.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_find".}
-proc gtk_ctree_is_ancestor*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_is_ancestor*(ctree: PGtkCTree, node: PGtkCTreeNode,
                             child: PGtkCTreeNode): gboolean{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_is_ancestor".}
-proc gtk_ctree_find_by_row_data*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_find_by_row_data*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                  data: gpointer): PGtkCTreeNode{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_find_by_row_data".}
-proc gtk_ctree_find_all_by_row_data*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_find_all_by_row_data*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                      data: gpointer): PGList{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_find_all_by_row_data".}
-proc gtk_ctree_find_by_row_data_custom*(ctree: PGtkCTree, node_: PGtkCTreeNode,
-                                        data: gpointer, func_: TGCompareFunc): PGtkCTreeNode{.
+proc gtk_ctree_find_by_row_data_custom*(ctree: PGtkCTree, node: PGtkCTreeNode,
+                                        data: gpointer, fun: TGCompareFunc): PGtkCTreeNode{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_find_by_row_data_custom".}
 proc gtk_ctree_find_all_by_row_data_custom*(ctree: PGtkCTree,
-    node_: PGtkCTreeNode, data: gpointer, func_: TGCompareFunc): PGList{.cdecl,
+    node: PGtkCTreeNode, data: gpointer, fun: TGCompareFunc): PGList{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_find_all_by_row_data_custom".}
 proc gtk_ctree_is_hot_spot*(ctree: PGtkCTree, x: gint, y: gint): gboolean{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_is_hot_spot".}
-proc gtk_ctree_move*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_move*(ctree: PGtkCTree, node: PGtkCTreeNode,
                      new_parent: PGtkCTreeNode, new_sibling: PGtkCTreeNode){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_move".}
-proc gtk_ctree_expand*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_expand*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_expand".}
-proc gtk_ctree_expand_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_expand_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_expand_recursive".}
-proc gtk_ctree_expand_to_depth*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_expand_to_depth*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                 depth: gint){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_expand_to_depth".}
-proc gtk_ctree_collapse*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_collapse*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_collapse".}
-proc gtk_ctree_collapse_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode){.
+proc gtk_ctree_collapse_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_collapse_recursive".}
-proc gtk_ctree_collapse_to_depth*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_collapse_to_depth*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                   depth: gint){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_collapse_to_depth".}
-proc gtk_ctree_toggle_expansion*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_toggle_expansion*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_toggle_expansion".}
 proc gtk_ctree_toggle_expansion_recursive*(ctree: PGtkCTree,
-    node_: PGtkCTreeNode){.cdecl, dynlib: gtklib,
+    node: PGtkCTreeNode){.cdecl, dynlib: gtklib,
                            importc: "gtk_ctree_toggle_expansion_recursive".}
-proc gtk_ctree_select*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_select*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_select".}
-proc gtk_ctree_select_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_select_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_select_recursive".}
-proc gtk_ctree_unselect*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_unselect*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_unselect".}
-proc gtk_ctree_unselect_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode){.
+proc gtk_ctree_unselect_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_unselect_recursive".}
-proc gtk_ctree_real_select_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_real_select_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                       state: gint){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_real_select_recursive".}
-proc gtk_ctree_node_set_text*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_text*(ctree: PGtkCTree, node: PGtkCTreeNode,
                               column: gint, text: cstring){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_set_text".}
-proc gtk_ctree_node_set_pixmap*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_pixmap*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                 column: gint, pixmap: PGdkPixmap,
                                 mask: PGdkBitmap){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_node_set_pixmap".}
-proc gtk_ctree_node_set_pixtext*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_pixtext*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                  column: gint, text: cstring, spacing: guint8,
                                  pixmap: PGdkPixmap, mask: PGdkBitmap){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_set_pixtext".}
-proc gtk_ctree_set_node_info*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_set_node_info*(ctree: PGtkCTree, node: PGtkCTreeNode,
                               text: cstring, spacing: guint8,
                               pixmap_closed: PGdkPixmap,
                               mask_closed: PGdkBitmap,
@@ -5885,50 +5885,50 @@ proc gtk_ctree_set_node_info*(ctree: PGtkCTree, node_: PGtkCTreeNode,
                               mask_opened: PGdkBitmap, is_leaf: gboolean,
                               expanded: gboolean){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_set_node_info".}
-proc gtk_ctree_node_set_shift*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_shift*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                column: gint, vertical: gint, horizontal: gint){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_set_shift".}
-proc gtk_ctree_node_set_selectable*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_selectable*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                     selectable: gboolean){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_set_selectable".}
-proc gtk_ctree_node_get_selectable*(ctree: PGtkCTree, node_: PGtkCTreeNode): gboolean{.
+proc gtk_ctree_node_get_selectable*(ctree: PGtkCTree, node: PGtkCTreeNode): gboolean{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_get_selectable".}
-proc gtk_ctree_node_get_cell_type*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_get_cell_type*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                    column: gint): TGtkCellType{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_get_cell_type".}
-proc gtk_ctree_node_get_text*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_get_text*(ctree: PGtkCTree, node: PGtkCTreeNode,
                               column: gint, text: PPgchar): gboolean{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_get_text".}
-proc gtk_ctree_node_set_row_style*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_row_style*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                    style: PGtkStyle){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_node_set_row_style".}
-proc gtk_ctree_node_get_row_style*(ctree: PGtkCTree, node_: PGtkCTreeNode): PGtkStyle{.
+proc gtk_ctree_node_get_row_style*(ctree: PGtkCTree, node: PGtkCTreeNode): PGtkStyle{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_get_row_style".}
-proc gtk_ctree_node_set_cell_style*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_cell_style*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                     column: gint, style: PGtkStyle){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_set_cell_style".}
-proc gtk_ctree_node_get_cell_style*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_get_cell_style*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                     column: gint): PGtkStyle{.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_get_cell_style".}
-proc gtk_ctree_node_set_foreground*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_foreground*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                     color: PGdkColor){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_node_set_foreground".}
-proc gtk_ctree_node_set_background*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_background*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                     color: PGdkColor){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_node_set_background".}
-proc gtk_ctree_node_set_row_data*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_row_data*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                   data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_ctree_node_set_row_data".}
-proc gtk_ctree_node_set_row_data_full*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_set_row_data_full*(ctree: PGtkCTree, node: PGtkCTreeNode,
                                        data: gpointer,
                                        destroy: TGtkDestroyNotify){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_node_set_row_data_full".}
-proc gtk_ctree_node_get_row_data*(ctree: PGtkCTree, node_: PGtkCTreeNode): gpointer{.
+proc gtk_ctree_node_get_row_data*(ctree: PGtkCTree, node: PGtkCTreeNode): gpointer{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_get_row_data".}
-proc gtk_ctree_node_moveto*(ctree: PGtkCTree, node_: PGtkCTreeNode,
+proc gtk_ctree_node_moveto*(ctree: PGtkCTree, node: PGtkCTreeNode,
                             column: gint, row_align: gfloat, col_align: gfloat){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_moveto".}
-proc gtk_ctree_node_is_visible*(ctree: PGtkCTree, node_: PGtkCTreeNode): TGtkVisibility{.
+proc gtk_ctree_node_is_visible*(ctree: PGtkCTree, node: PGtkCTreeNode): TGtkVisibility{.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_node_is_visible".}
 proc gtk_ctree_set_indent*(ctree: PGtkCTree, indent: gint){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_set_indent".}
@@ -5944,9 +5944,9 @@ proc gtk_ctree_set_expander_style*(ctree: PGtkCTree,
 proc gtk_ctree_set_drag_compare_func*(ctree: PGtkCTree,
                                       cmp_func: TGtkCTreeCompareDragFunc){.
     cdecl, dynlib: gtklib, importc: "gtk_ctree_set_drag_compare_func".}
-proc gtk_ctree_sort_node*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_sort_node*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_sort_node".}
-proc gtk_ctree_sort_recursive*(ctree: PGtkCTree, node_: PGtkCTreeNode){.cdecl,
+proc gtk_ctree_sort_recursive*(ctree: PGtkCTree, node: PGtkCTreeNode){.cdecl,
     dynlib: gtklib, importc: "gtk_ctree_sort_recursive".}
 proc gtk_ctree_set_reorderable*(t: pointer, r: bool)
 proc gtk_ctree_node_get_type*(): GType{.cdecl, dynlib: gtklib,
@@ -6236,7 +6236,7 @@ proc gtk_menu_get_type*(): TGtkType{.cdecl, dynlib: gtklib,
                                      importc: "gtk_menu_get_type".}
 proc gtk_menu_new*(): PGtkMenu {.cdecl, dynlib: gtklib, importc: "gtk_menu_new".}
 proc gtk_menu_popup*(menu: PGtkMenu, parent_menu_shell: PGtkWidget,
-                     parent_menu_item: PGtkWidget, func_: TGtkMenuPositionFunc,
+                     parent_menu_item: PGtkWidget, fun: TGtkMenuPositionFunc,
                      data: gpointer, button: guint, activate_time: guint32){.
     cdecl, dynlib: gtklib, importc: "gtk_menu_popup".}
 proc gtk_menu_reposition*(menu: PGtkMenu){.cdecl, dynlib: gtklib,
@@ -7563,7 +7563,7 @@ proc gtk_item_factory_popup_data*(ifactory: PGtkItemFactory): gpointer{.cdecl,
 proc gtk_item_factory_popup_data_from_widget*(widget: PGtkWidget): gpointer{.
     cdecl, dynlib: gtklib, importc: "gtk_item_factory_popup_data_from_widget".}
 proc gtk_item_factory_set_translate_func*(ifactory: PGtkItemFactory,
-    func_: TGtkTranslateFunc, data: gpointer, notify: TGtkDestroyNotify){.cdecl,
+    fun: TGtkTranslateFunc, data: gpointer, notify: TGtkDestroyNotify){.cdecl,
     dynlib: gtklib, importc: "gtk_item_factory_set_translate_func".}
 proc GTK_TYPE_LAYOUT*(): GType
 proc GTK_LAYOUT*(obj: pointer): PGtkLayout
@@ -7783,7 +7783,7 @@ proc gtk_tree_model_ref_node*(tree_model: PGtkTreeModel, iter: PGtkTreeIter){.
 proc gtk_tree_model_unref_node*(tree_model: PGtkTreeModel, iter: PGtkTreeIter){.
     cdecl, dynlib: gtklib, importc: "gtk_tree_model_unref_node".}
 proc gtk_tree_model_foreach*(model: PGtkTreeModel,
-                             func_: TGtkTreeModelForeachFunc,
+                             fun: TGtkTreeModelForeachFunc,
                              user_data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_tree_model_foreach".}
 proc gtk_tree_model_row_changed*(tree_model: PGtkTreeModel, path: PGtkTreePath,
@@ -9403,7 +9403,7 @@ proc gtk_text_tag_table_remove*(table: PGtkTextTagTable, tag: PGtkTextTag){.
 proc gtk_text_tag_table_lookup*(table: PGtkTextTagTable, name: cstring): PGtkTextTag{.
     cdecl, dynlib: gtklib, importc: "gtk_text_tag_table_lookup".}
 proc gtk_text_tag_table_foreach*(table: PGtkTextTagTable,
-                                 func_: TGtkTextTagTableForeach, data: gpointer){.
+                                 fun: TGtkTextTagTableForeach, data: gpointer){.
     cdecl, dynlib: gtklib, importc: "gtk_text_tag_table_foreach".}
 proc gtk_text_tag_table_get_size*(table: PGtkTextTagTable): gint{.cdecl,
     dynlib: gtklib, importc: "gtk_text_tag_table_get_size".}
@@ -9700,7 +9700,7 @@ proc gtk_text_btree_spew*(tree: PGtkTextBTree){.cdecl, dynlib: gtklib,
 proc gtk_toggle_segment_check_func*(segPtr: PGtkTextLineSegment,
                                       line: PGtkTextLine){.cdecl,
     dynlib: gtklib, importc: "_gtk_toggle_segment_check_func".}
-proc gtk_change_node_toggle_count*(node_: PGtkTextBTreeNode,
+proc gtk_change_node_toggle_count*(node: PGtkTextBTreeNode,
                                      info: PGtkTextTagInfo, delta: gint){.cdecl,
     dynlib: gtklib, importc: "_gtk_change_node_toggle_count".}
 proc gtk_text_btree_release_mark_segment*(tree: PGtkTextBTree,
@@ -10511,7 +10511,7 @@ proc gtk_tree_selection_set_mode*(selection: PGtkTreeSelection,
 proc gtk_tree_selection_get_mode*(selection: PGtkTreeSelection): TGtkSelectionMode{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_selection_get_mode".}
 proc gtk_tree_selection_set_select_function*(selection: PGtkTreeSelection,
-    func_: TGtkTreeSelectionFunc, data: gpointer, destroy: TGtkDestroyNotify){.
+    fun: TGtkTreeSelectionFunc, data: gpointer, destroy: TGtkDestroyNotify){.
     cdecl, dynlib: gtklib, importc: "gtk_tree_selection_set_select_function".}
 proc gtk_tree_selection_get_user_data*(selection: PGtkTreeSelection): gpointer{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_selection_get_user_data".}
@@ -10523,7 +10523,7 @@ proc gtk_tree_selection_get_selected*(selection: PGtkTreeSelection,
 proc gtk_tree_selection_get_selected_rows*(selection: PGtkTreeSelection,
     model: PPGtkTreeModel): PGList{.cdecl, dynlib: gtklib, importc: "gtk_tree_selection_get_selected_rows".}
 proc gtk_tree_selection_selected_foreach*(selection: PGtkTreeSelection,
-    func_: TGtkTreeSelectionForeachFunc, data: gpointer){.cdecl, dynlib: gtklib,
+    fun: TGtkTreeSelectionForeachFunc, data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_tree_selection_selected_foreach".}
 proc gtk_tree_selection_select_path*(selection: PGtkTreeSelection,
                                      path: PGtkTreePath){.cdecl, dynlib: gtklib,
@@ -10656,7 +10656,7 @@ proc gtk_tree_view_column_add_attribute*(tree_column: PGtkTreeViewColumn,
     cell_renderer: PGtkCellRenderer, attribute: cstring, column: gint){.cdecl,
     dynlib: gtklib, importc: "gtk_tree_view_column_add_attribute".}
 proc gtk_tree_view_column_set_cell_data_func*(tree_column: PGtkTreeViewColumn,
-    cell_renderer: PGtkCellRenderer, func_: TGtkTreeCellDataFunc,
+    cell_renderer: PGtkCellRenderer, fun: TGtkTreeCellDataFunc,
     func_data: gpointer, destroy: TGtkDestroyNotify){.cdecl, dynlib: gtklib,
     importc: "gtk_tree_view_column_set_cell_data_func".}
 proc gtk_tree_view_column_clear_attributes*(tree_column: PGtkTreeViewColumn,
@@ -10784,12 +10784,12 @@ proc flags*(a: PGtkRBNode): guint
 proc set_flags*(a: PGtkRBNode, `flags`: guint)
 proc parity*(a: PGtkRBNode): guint
 proc set_parity*(a: PGtkRBNode, `parity`: guint)
-proc GTK_RBNODE_GET_COLOR*(node_: PGtkRBNode): guint
-proc GTK_RBNODE_SET_COLOR*(node_: PGtkRBNode, color: guint)
-proc GTK_RBNODE_GET_HEIGHT*(node_: PGtkRBNode): gint
-proc GTK_RBNODE_SET_FLAG*(node_: PGtkRBNode, flag: guint16)
-proc GTK_RBNODE_UNSET_FLAG*(node_: PGtkRBNode, flag: guint16)
-proc GTK_RBNODE_FLAG_SET*(node_: PGtkRBNode, flag: guint): bool
+proc GTK_RBNODE_GET_COLOR*(node: PGtkRBNode): guint
+proc GTK_RBNODE_SET_COLOR*(node: PGtkRBNode, color: guint)
+proc GTK_RBNODE_GET_HEIGHT*(node: PGtkRBNode): gint
+proc GTK_RBNODE_SET_FLAG*(node: PGtkRBNode, flag: guint16)
+proc GTK_RBNODE_UNSET_FLAG*(node: PGtkRBNode, flag: guint16)
+proc GTK_RBNODE_FLAG_SET*(node: PGtkRBNode, flag: guint): bool
 proc gtk_rbtree_push_allocator*(allocator: PGAllocator){.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_push_allocator".}
 proc gtk_rbtree_pop_allocator*(){.cdecl, dynlib: gtklib,
@@ -10802,24 +10802,24 @@ proc gtk_rbtree_remove*(tree: PGtkRBTree){.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_remove".}
 proc gtk_rbtree_destroy*(tree: PGtkRBTree){.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_destroy".}
-proc gtk_rbtree_insert_before*(tree: PGtkRBTree, node_: PGtkRBNode,
+proc gtk_rbtree_insert_before*(tree: PGtkRBTree, node: PGtkRBNode,
                                  height: gint, valid: gboolean): PGtkRBNode{.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_insert_before".}
-proc gtk_rbtree_insert_after*(tree: PGtkRBTree, node_: PGtkRBNode,
+proc gtk_rbtree_insert_after*(tree: PGtkRBTree, node: PGtkRBNode,
                                 height: gint, valid: gboolean): PGtkRBNode{.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_insert_after".}
-proc gtk_rbtree_remove_node*(tree: PGtkRBTree, node_: PGtkRBNode){.cdecl,
+proc gtk_rbtree_remove_node*(tree: PGtkRBTree, node: PGtkRBNode){.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_remove_node".}
 proc gtk_rbtree_reorder*(tree: PGtkRBTree, new_order: Pgint, length: gint){.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_reorder".}
 proc gtk_rbtree_find_count*(tree: PGtkRBTree, count: gint): PGtkRBNode{.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_find_count".}
-proc gtk_rbtree_node_set_height*(tree: PGtkRBTree, node_: PGtkRBNode,
+proc gtk_rbtree_node_set_height*(tree: PGtkRBTree, node: PGtkRBNode,
                                    height: gint){.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_node_set_height".}
-proc gtk_rbtree_node_mark_invalid*(tree: PGtkRBTree, node_: PGtkRBNode){.
+proc gtk_rbtree_node_mark_invalid*(tree: PGtkRBTree, node: PGtkRBNode){.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_node_mark_invalid".}
-proc gtk_rbtree_node_mark_valid*(tree: PGtkRBTree, node_: PGtkRBNode){.cdecl,
+proc gtk_rbtree_node_mark_valid*(tree: PGtkRBTree, node: PGtkRBNode){.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_node_mark_valid".}
 proc gtk_rbtree_column_invalid*(tree: PGtkRBTree){.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_column_invalid".}
@@ -10827,17 +10827,17 @@ proc gtk_rbtree_mark_invalid*(tree: PGtkRBTree){.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_mark_invalid".}
 proc gtk_rbtree_set_fixed_height*(tree: PGtkRBTree, height: gint){.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_set_fixed_height".}
-proc gtk_rbtree_node_find_offset*(tree: PGtkRBTree, node_: PGtkRBNode): gint{.
+proc gtk_rbtree_node_find_offset*(tree: PGtkRBTree, node: PGtkRBNode): gint{.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_node_find_offset".}
-proc gtk_rbtree_node_find_parity*(tree: PGtkRBTree, node_: PGtkRBNode): gint{.
+proc gtk_rbtree_node_find_parity*(tree: PGtkRBTree, node: PGtkRBNode): gint{.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_node_find_parity".}
-proc gtk_rbtree_traverse*(tree: PGtkRBTree, node_: PGtkRBNode,
+proc gtk_rbtree_traverse*(tree: PGtkRBTree, node: PGtkRBNode,
                             order: TGTraverseType,
-                            func_: TGtkRBTreeTraverseFunc, data: gpointer){.
+                            fun: TGtkRBTreeTraverseFunc, data: gpointer){.
     cdecl, dynlib: gtklib, importc: "_gtk_rbtree_traverse".}
-proc gtk_rbtree_next*(tree: PGtkRBTree, node_: PGtkRBNode): PGtkRBNode{.cdecl,
+proc gtk_rbtree_next*(tree: PGtkRBTree, node: PGtkRBNode): PGtkRBNode{.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_next".}
-proc gtk_rbtree_prev*(tree: PGtkRBTree, node_: PGtkRBNode): PGtkRBNode{.cdecl,
+proc gtk_rbtree_prev*(tree: PGtkRBTree, node: PGtkRBNode): PGtkRBNode{.cdecl,
     dynlib: gtklib, importc: "_gtk_rbtree_prev".}
 proc gtk_rbtree_get_depth*(tree: PGtkRBTree): gint{.cdecl, dynlib: gtklib,
     importc: "_gtk_rbtree_get_depth".}
@@ -10907,21 +10907,21 @@ proc set_enable_search*(a: var TGtkTreeViewPrivate, `enable_search`: guint)
 proc disable_popdown*(a: var TGtkTreeViewPrivate): guint
 proc set_disable_popdown*(a: var TGtkTreeViewPrivate, `disable_popdown`: guint)
 proc gtk_tree_selection_internal_select_node*(selection: PGtkTreeSelection,
-    node_: PGtkRBNode, tree: PGtkRBTree, path: PGtkTreePath,
+    node: PGtkRBNode, tree: PGtkRBTree, path: PGtkTreePath,
     state: TGdkModifierType, override_browse_mode: gboolean){.cdecl,
     dynlib: gtklib, importc: "_gtk_tree_selection_internal_select_node".}
 proc gtk_tree_view_find_node*(tree_view: PGtkTreeView, path: PGtkTreePath,
-                                tree: var PGtkRBTree, node_: var PGtkRBNode): gboolean{.
+                                tree: var PGtkRBTree, node: var PGtkRBNode): gboolean{.
     cdecl, dynlib: gtklib, importc: "_gtk_tree_view_find_node".}
 proc gtk_tree_view_find_path*(tree_view: PGtkTreeView, tree: PGtkRBTree,
-                                node_: PGtkRBNode): PGtkTreePath{.cdecl,
+                                node: PGtkRBNode): PGtkTreePath{.cdecl,
     dynlib: gtklib, importc: "_gtk_tree_view_find_path".}
 proc gtk_tree_view_child_move_resize*(tree_view: PGtkTreeView,
                                         widget: PGtkWidget, x: gint, y: gint,
                                         width: gint, height: gint){.cdecl,
     dynlib: gtklib, importc: "_gtk_tree_view_child_move_resize".}
 proc gtk_tree_view_queue_draw_node*(tree_view: PGtkTreeView, tree: PGtkRBTree,
-                                      node_: PGtkRBNode,
+                                      node: PGtkRBNode,
                                       clip_rect: PGdkRectangle){.cdecl,
     dynlib: gtklib, importc: "_gtk_tree_view_queue_draw_node".}
 proc gtk_tree_view_column_realize_button*(column: PGtkTreeViewColumn){.cdecl,
@@ -11033,7 +11033,7 @@ proc gtk_tree_view_insert_column*(tree_view: PGtkTreeView,
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_insert_column".}
 proc gtk_tree_view_insert_column_with_data_func*(tree_view: PGtkTreeView,
     position: gint, title: cstring, cell: PGtkCellRenderer,
-    func_: TGtkTreeCellDataFunc, data: gpointer, dnotify: TGDestroyNotify): gint{.
+    fun: TGtkTreeCellDataFunc, data: gpointer, dnotify: TGDestroyNotify): gint{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_insert_column_with_data_func".}
 proc gtk_tree_view_get_column*(tree_view: PGtkTreeView, n: gint): PGtkTreeViewColumn{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_get_column".}
@@ -11049,7 +11049,7 @@ proc gtk_tree_view_set_expander_column*(tree_view: PGtkTreeView,
 proc gtk_tree_view_get_expander_column*(tree_view: PGtkTreeView): PGtkTreeViewColumn{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_get_expander_column".}
 proc gtk_tree_view_set_column_drag_function*(tree_view: PGtkTreeView,
-    func_: TGtkTreeViewColumnDropFunc, user_data: gpointer,
+    fun: TGtkTreeViewColumnDropFunc, user_data: gpointer,
     destroy: TGtkDestroyNotify){.cdecl, dynlib: gtklib, importc: "gtk_tree_view_set_column_drag_function".}
 proc gtk_tree_view_scroll_to_point*(tree_view: PGtkTreeView, tree_x: gint,
                                     tree_y: gint){.cdecl, dynlib: gtklib,
@@ -11072,7 +11072,7 @@ proc gtk_tree_view_expand_row*(tree_view: PGtkTreeView, path: PGtkTreePath,
 proc gtk_tree_view_collapse_row*(tree_view: PGtkTreeView, path: PGtkTreePath): gboolean{.
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_collapse_row".}
 proc gtk_tree_view_map_expanded_rows*(tree_view: PGtkTreeView,
-                                      func_: TGtkTreeViewMappingFunc,
+                                      fun: TGtkTreeViewMappingFunc,
                                       data: gpointer){.cdecl, dynlib: gtklib,
     importc: "gtk_tree_view_map_expanded_rows".}
 proc gtk_tree_view_row_expanded*(tree_view: PGtkTreeView, path: PGtkTreePath): gboolean{.
@@ -11142,7 +11142,7 @@ proc gtk_tree_view_set_search_equal_func*(tree_view: PGtkTreeView,
     search_equal_func: TGtkTreeViewSearchEqualFunc, search_user_data: gpointer,
     search_destroy: TGtkDestroyNotify){.cdecl, dynlib: gtklib, importc: "gtk_tree_view_set_search_equal_func".}
 proc gtk_tree_view_set_destroy_count_func*(tree_view: PGtkTreeView,
-    func_: TGtkTreeDestroyCountFunc, data: gpointer, destroy: TGtkDestroyNotify){.
+    fun: TGtkTreeDestroyCountFunc, data: gpointer, destroy: TGtkDestroyNotify){.
     cdecl, dynlib: gtklib, importc: "gtk_tree_view_set_destroy_count_func".}
 proc GTK_TYPE_VBUTTON_BOX*(): GType
 proc GTK_VBUTTON_BOX*(obj: pointer): PGtkVButtonBox
@@ -12832,8 +12832,8 @@ proc GTK_CLIST_DRAW_DRAG_LINE_get*(clist: pointer): bool =
 proc GTK_CLIST_DRAW_DRAG_RECT_get*(clist: pointer): bool =
   result = ((GTK_CLIST_FLAGS(clist)) and cint(GTK_CLIST_DRAW_DRAG_RECT)) != 0'i32
 
-proc GTK_CLIST_ROW_get*(`glist_`: PGList): PGtkCListRow =
-  result = cast[PGtkCListRow](`glist_` . data)
+proc GTK_CLIST_ROW_get*(glist: PGList): PGtkCListRow =
+  result = cast[PGtkCListRow](glist . data)
 
 when false:
   proc GTK_CELL_TEXT_get*(cell: pointer): PGtkCellText =
@@ -13090,20 +13090,20 @@ proc GTK_IS_CTREE_CLASS*(klass: pointer): bool =
 proc GTK_CTREE_GET_CLASS*(obj: pointer): PGtkCTreeClass =
   result = cast[PGtkCTreeClass](GTK_CHECK_GET_CLASS(obj, GTK_TYPE_CTREE()))
 
-proc GTK_CTREE_ROW*(`node_`: TAddress): PGtkCTreeRow =
-  result = cast[PGtkCTreeRow]((cast[PGList](`node_`)) . data)
+proc GTK_CTREE_ROW*(node: TAddress): PGtkCTreeRow =
+  result = cast[PGtkCTreeRow]((cast[PGList](node)) . data)
 
-proc GTK_CTREE_NODE*(`node_`: TAddress): PGtkCTreeNode =
-  result = cast[PGtkCTreeNode](`node_`)
+proc GTK_CTREE_NODE*(node: TAddress): PGtkCTreeNode =
+  result = cast[PGtkCTreeNode](node)
 
-proc GTK_CTREE_NODE_NEXT*(`nnode_`: TAddress): PGtkCTreeNode =
-  result = cast[PGtkCTreeNode]((cast[PGList](`nnode_`)) . next)
+proc GTK_CTREE_NODE_NEXT*(nnode: TAddress): PGtkCTreeNode =
+  result = cast[PGtkCTreeNode]((cast[PGList](nnode)) . next)
 
-proc GTK_CTREE_NODE_PREV*(`pnode_`: TAddress): PGtkCTreeNode =
-  result = cast[PGtkCTreeNode]((cast[PGList](`pnode_`)) . prev)
+proc GTK_CTREE_NODE_PREV*(`pnode`: TAddress): PGtkCTreeNode =
+  result = cast[PGtkCTreeNode]((cast[PGList](`pnode`)) . prev)
 
-proc GTK_CTREE_FUNC*(`func_`: TAddress): TGtkCTreeFunc =
-  result = cast[TGtkCTreeFunc](`func_`)
+proc GTK_CTREE_FUNC*(`func`: TAddress): TGtkCTreeFunc =
+  result = cast[TGtkCTreeFunc](`func`)
 
 proc GTK_TYPE_CTREE_NODE*(): GType =
   result = gtk_ctree_node_get_type()
@@ -15080,34 +15080,34 @@ proc gtk_signal_emit_stop*(instance: gpointer, signal_id: guint, detail: TGQuark
   if detail != 0'i32: g_signal_stop_emission(instance, signal_id, 0)
 
 proc gtk_signal_connect_full*(anObject: PGtkObject, name: cstring,
-                         func_: TGtkSignalFunc, unknown1: pointer,
+                         fun: TGtkSignalFunc, unknown1: pointer,
                          func_data: gpointer, unknown2: pointer,
                          unknown3, unknown4: int): gulong {.
   importc, cdecl, dynlib: gtklib.}
 
-proc gtk_signal_compat_matched*(anObject: PGtkObject, func_: TGtkSignalFunc,
+proc gtk_signal_compat_matched*(anObject: PGtkObject, fun: TGtkSignalFunc,
                                 data: gpointer, m: TGSignalMatchType,
                                 u: int) {.importc, cdecl, dynlib: gtklib.}
 
 proc gtk_signal_connect*(anObject: PGtkObject, name: cstring,
-                         func_: TGtkSignalFunc, func_data: gpointer): gulong =
-  result = gtk_signal_connect_full(anObject, name, func_, nil, func_data, nil,
+                         fun: TGtkSignalFunc, func_data: gpointer): gulong =
+  result = gtk_signal_connect_full(anObject, name, fun, nil, func_data, nil,
                                    0, 0)
 
 proc gtk_signal_connect_after*(anObject: PGtkObject, name: cstring,
-                               func_: TGtkSignalFunc, func_data: gpointer): gulong =
-  result = gtk_signal_connect_full(anObject, name, func_, nil, func_data, nil,
+                               fun: TGtkSignalFunc, func_data: gpointer): gulong =
+  result = gtk_signal_connect_full(anObject, name, fun, nil, func_data, nil,
                                    0, 1)
 
 proc gtk_signal_connect_object*(anObject: PGtkObject, name: cstring,
-                                func_: TGtkSignalFunc, slot_object: gpointer): gulong =
-  result = gtk_signal_connect_full(anObject, name, func_, nil, slot_object, nil,
+                                fun: TGtkSignalFunc, slot_object: gpointer): gulong =
+  result = gtk_signal_connect_full(anObject, name, fun, nil, slot_object, nil,
                                    1, 0)
 
 proc gtk_signal_connect_object_after*(anObject: PGtkObject, name: cstring,
-                                      func_: TGtkSignalFunc,
+                                      fun: TGtkSignalFunc,
                                       slot_object: gpointer): gulong =
-  result = gtk_signal_connect_full(anObject, name, func_, nil, slot_object, nil,
+  result = gtk_signal_connect_full(anObject, name, fun, nil, slot_object, nil,
                                    1, 1)
 
 proc gtk_signal_disconnect*(anObject: gpointer, handler_id: gulong) =
@@ -15122,22 +15122,22 @@ proc gtk_signal_handler_unblock*(anObject: gpointer, handler_id: gulong) =
 proc gtk_signal_disconnect_by_data*(anObject: PGtkObject, data: gpointer) =
   gtk_signal_compat_matched(anObject, nil, data, G_SIGNAL_MATCH_DATA, 0)
 
-proc gtk_signal_disconnect_by_func*(anObject: PGtkObject, func_: TGtkSignalFunc,
+proc gtk_signal_disconnect_by_func*(anObject: PGtkObject, fun: TGtkSignalFunc,
                                     data: gpointer) =
-  gtk_signal_compat_matched(anObject, func_, data, cast[TGSignalMatchType](
+  gtk_signal_compat_matched(anObject, fun, data, cast[TGSignalMatchType](
       G_SIGNAL_MATCH_FUNC or G_SIGNAL_MATCH_DATA), 0)
 
 proc gtk_signal_handler_block_by_func*(anObject: PGtkObject,
-                                       func_: TGtkSignalFunc, data: gpointer) =
-  gtk_signal_compat_matched(anObject, func_, data, TGSignalMatchType(
+                                       fun: TGtkSignalFunc, data: gpointer) =
+  gtk_signal_compat_matched(anObject, fun, data, TGSignalMatchType(
       G_SIGNAL_MATCH_FUNC or G_SIGNAL_MATCH_DATA), 0)
 
 proc gtk_signal_handler_block_by_data*(anObject: PGtkObject, data: gpointer) =
   gtk_signal_compat_matched(anObject, nil, data, G_SIGNAL_MATCH_DATA, 1)
 
 proc gtk_signal_handler_unblock_by_func*(anObject: PGtkObject,
-    func_: TGtkSignalFunc, data: gpointer) =
-  gtk_signal_compat_matched(anObject, func_, data, cast[TGSignalMatchType](
+    fun: TGtkSignalFunc, data: gpointer) =
+  gtk_signal_compat_matched(anObject, fun, data, cast[TGSignalMatchType](
       G_SIGNAL_MATCH_FUNC or G_SIGNAL_MATCH_DATA), 0)
 
 proc gtk_signal_handler_unblock_by_data*(anObject: PGtkObject, data: gpointer) =
@@ -15148,13 +15148,13 @@ proc gtk_signal_handler_pending*(anObject: PGtkObject, signal_id: guint,
   Result = g_signal_has_handler_pending(anObject, signal_id, 0, may_be_blocked)
 
 proc gtk_signal_handler_pending_by_func*(anObject: PGtkObject, signal_id: guint,
-    may_be_blocked: gboolean, func_: TGtkSignalFunc, data: gpointer): gboolean =
+    may_be_blocked: gboolean, fun: TGtkSignalFunc, data: gpointer): gboolean =
   var t: TGSignalMatchType
   t = cast[TGSignalMatchType](G_SIGNAL_MATCH_ID or G_SIGNAL_MATCH_FUNC or
       G_SIGNAL_MATCH_DATA)
   if not may_be_blocked:
     t = t or cast[TGSignalMatchType](G_SIGNAL_MATCH_UNBLOCKED)
-  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, func_,
+  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, fun,
                                  data) != 0
 
 proc GTK_TYPE_SIZE_GROUP*(): GType =
@@ -16594,36 +16594,36 @@ proc set_parity*(a: PGtkRBNode, `parity`: guint) =
   a . flag0 = a .
       flag0 or (int16(`parity` shl bp_TGtkRBNode_parity) and bm_TGtkRBNode_parity)
 
-proc GTK_RBNODE_GET_COLOR*(node_: PGtkRBNode): guint =
-  if node_ == nil:
+proc GTK_RBNODE_GET_COLOR*(node: PGtkRBNode): guint =
+  if node == nil:
     Result = GTK_RBNODE_BLACK
-  elif (int(flags(node_)) and GTK_RBNODE_RED) == GTK_RBNODE_RED:
+  elif (int(flags(node)) and GTK_RBNODE_RED) == GTK_RBNODE_RED:
     Result = GTK_RBNODE_RED
   else:
     Result = GTK_RBNODE_BLACK
 
-proc GTK_RBNODE_SET_COLOR*(node_: PGtkRBNode, color: guint) =
-  if node_ == nil:
+proc GTK_RBNODE_SET_COLOR*(node: PGtkRBNode, color: guint) =
+  if node == nil:
     return
-  if ((flags(node_) and (color)) != color):
-    set_flags(node_, flags(node_) xor cint(GTK_RBNODE_RED or GTK_RBNODE_BLACK))
+  if ((flags(node) and (color)) != color):
+    set_flags(node, flags(node) xor cint(GTK_RBNODE_RED or GTK_RBNODE_BLACK))
 
-proc GTK_RBNODE_GET_HEIGHT*(node_: PGtkRBNode): gint =
+proc GTK_RBNODE_GET_HEIGHT*(node: PGtkRBNode): gint =
   var if_local1: gint
-  if node_ . children != nil:
-    if_local1 = node_.children.root.offset
+  if node.children != nil:
+    if_local1 = node.children.root.offset
   else:
     if_local1 = 0
-  result = node_.offset - ((node_.left.offset) + node_.right.offset + if_local1)
+  result = node.offset - ((node.left.offset) + node.right.offset + if_local1)
 
-proc GTK_RBNODE_FLAG_SET*(node_: PGtkRBNode, flag: guint): bool =
-  result = (node_ != nil) and ((flags(node_) and (flag)) == flag)
+proc GTK_RBNODE_FLAG_SET*(node: PGtkRBNode, flag: guint): bool =
+  result = (node != nil) and ((flags(node) and (flag)) == flag)
 
-proc GTK_RBNODE_SET_FLAG*(node_: PGtkRBNode, flag: guint16) =
-  set_flags(node_, (flag) or flags(node_))
+proc GTK_RBNODE_SET_FLAG*(node: PGtkRBNode, flag: guint16) =
+  set_flags(node, (flag) or flags(node))
 
-proc GTK_RBNODE_UNSET_FLAG*(node_: PGtkRBNode, flag: guint16) =
-  set_flags(node_, (not (flag)) and flags(node_))
+proc GTK_RBNODE_UNSET_FLAG*(node: PGtkRBNode, flag: guint16) =
+  set_flags(node, (not (flag)) and flags(node))
 
 proc GTK_TREE_VIEW_FLAG_SET*(tree_view: PGtkTreeView, flag: guint): bool =
   result = ((tree_view.priv.flags) and (flag)) == flag

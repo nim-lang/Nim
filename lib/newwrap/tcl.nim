@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -48,52 +48,52 @@ const
   TCL_RETURN* = 2
   TCL_BREAK* = 3
   TCL_CONTINUE* = 4
-  TCL_RESULT_SIZE* = 200
+  RESULT_SIZE* = 200
   MAX_ARGV* = 0x00007FFF
-  TCL_VERSION_MAJOR* = 0
-  TCL_VERSION_MINOR* = 0
-  TCL_NO_EVAL* = 0x00010000
-  TCL_EVAL_GLOBAL* = 0x00020000 # Flag values passed to variable-related procedures. *
-  TCL_GLOBAL_ONLY* = 1
-  TCL_NAMESPACE_ONLY* = 2
-  TCL_APPEND_VALUE* = 4
-  TCL_LIST_ELEMENT* = 8
-  TCL_TRACE_READS* = 0x00000010
-  TCL_TRACE_WRITES* = 0x00000020
-  TCL_TRACE_UNSETS* = 0x00000040
-  TCL_TRACE_DESTROYED* = 0x00000080
-  TCL_INTERP_DESTROYED* = 0x00000100
-  TCL_LEAVE_ERR_MSG* = 0x00000200
-  TCL_PARSE_PART1* = 0x00000400 # Types for linked variables: *
-  TCL_LINK_INT* = 1
-  TCL_LINK_DOUBLE* = 2
-  TCL_LINK_BOOLEAN* = 3
-  TCL_LINK_STRING* = 4
-  TCL_LINK_READ_ONLY* = 0x00000080
-  TCL_SMALL_HASH_TABLE* = 4   # Hash Table *
-  TCL_STRING_KEYS* = 0
-  TCL_ONE_WORD_KEYS* = 1      # Const/enums Tcl_QueuePosition *
-                              # typedef enum {
-  TCL_QUEUE_TAIL* = 0
-  TCL_QUEUE_HEAD* = 1
-  TCL_QUEUE_MARK* = 2         #} Tcl_QueuePosition;
-                              # Event Flags
-  TCL_DONT_WAIT* = 1 shl 1
-  TCL_WINDOW_EVENTS* = 1 shl 2
-  TCL_FILE_EVENTS* = 1 shl 3
-  TCL_TIMER_EVENTS* = 1 shl 4
-  TCL_IDLE_EVENTS* = 1 shl 5  # WAS 0x10 ???? *
-  TCL_ALL_EVENTS* = not TCL_DONT_WAIT
-  TCL_VOLATILE* = 1
-  TCL_STATIC* = 0
-  TCL_DYNAMIC* = 3            # Channel
+  VERSION_MAJOR* = 0
+  VERSION_MINOR* = 0
+  NO_EVAL* = 0x00010000
+  EVAL_GLOBAL* = 0x00020000 # Flag values passed to variable-related proc
+  GLOBAL_ONLY* = 1
+  NAMESPACE_ONLY* = 2
+  APPEND_VALUE* = 4
+  LIST_ELEMENT* = 8
+  TRACE_READS* = 0x00000010
+  TRACE_WRITES* = 0x00000020
+  TRACE_UNSETS* = 0x00000040
+  TRACE_DESTROYED* = 0x00000080
+  INTERP_DESTROYED* = 0x00000100
+  LEAVE_ERR_MSG* = 0x00000200
+  PARSE_PART1* = 0x00000400 # Types for linked variables: *
+  LINK_INT* = 1
+  LINK_DOUBLE* = 2
+  LINK_BOOLEAN* = 3
+  LINK_STRING* = 4
+  LINK_READ_ONLY* = 0x00000080
+  SMALL_HASH_TABLE* = 4   # Hash Table *
+  STRING_KEYS* = 0
+  ONE_WORD_KEYS* = 1      # Const/enums Tcl_QueuePosition *
+                          
+  QUEUE_TAIL* = 0
+  QUEUE_HEAD* = 1
+  QUEUE_MARK* = 2         # Tcl_QueuePosition;
+                          # Event Flags
+  DONT_WAIT* = 1 shl 1
+  WINDOW_EVENTS* = 1 shl 2
+  FILE_EVENTS* = 1 shl 3
+  TIMER_EVENTS* = 1 shl 4
+  IDLE_EVENTS* = 1 shl 5  # WAS 0x10 ???? *
+  ALL_EVENTS* = not DONT_WAIT
+  VOLATILE* = 1
+  STATIC* = 0
+  DYNAMIC* = 3            # Channel
   TCL_STDIN* = 1 shl 1
   TCL_STDOUT* = 1 shl 2
   TCL_STDERR* = 1 shl 3
-  TCL_ENFORCE_MODE* = 1 shl 4
-  TCL_READABLE* = 1 shl 1
-  TCL_WRITABLE* = 1 shl 2
-  TCL_EXCEPTION* = 1 shl 3    # POSIX *
+  ENFORCE_MODE* = 1 shl 4
+  READABLE* = 1 shl 1
+  WRITABLE* = 1 shl 2
+  EXCEPTION* = 1 shl 3    # POSIX *
   EPERM* = 1 # Operation not permitted; only the owner of the file (or other
              # resource) or processes with special privileges can perform the
              # operation.
@@ -367,112 +367,110 @@ const
                #
 
 type 
-  Tcl_Argv* = cstringArray
-  Tcl_ClientData* = pointer
-  Tcl_FreeProc* = proc (theBlock: pointer){.cdecl.}
-  PInterp* = ptr Tcl_Interp
-  Tcl_Interp*{.final.} = object  #  Event Definitions  *
+  TArgv* = cstringArray
+  TClientData* = pointer
+  TFreeProc* = proc (theBlock: pointer){.cdecl.}
+  PInterp* = ptr TInterp
+  TInterp*{.final.} = object  #  Event Definitions
     result*: cstring # Do not access this directly. Use
-                     #                          * Tcl_GetStringResult since result
-                     #                          * may be pointing to an object
-                     #                          *
-    freeProc*: Tcl_FreeProc
+                     # Tcl_GetStringResult since result
+                     # may be pointing to an object
+                     #
+    freeProc*: TFreeProc
     errorLine*: int
 
-  TEventSetupProc* = proc (clientData: Tcl_ClientData, flags: int){.cdecl.}
+  TEventSetupProc* = proc (clientData: TClientData, flags: int){.cdecl.}
   TEventCheckProc* = TEventSetupProc
-  PEvent* = ptr Tcl_Event
+  PEvent* = ptr TEvent
   TEventProc* = proc (evPtr: PEvent, flags: int): int{.cdecl.}
-  Tcl_Event*{.final.} = object 
+  TEvent*{.final.} = object 
     prc*: TEventProc
     nextPtr*: PEvent
     ClientData*: TObject      # ClientData is just pointer.*
   
-  PTime* = ptr Tcl_Time
-  Tcl_Time*{.final.} = object 
+  PTime* = ptr TTime
+  TTime*{.final.} = object 
     sec*: int32               # Seconds. * 
     usec*: int32              # Microseconds. * 
   
-  Tcl_TimerToken* = pointer
+  TTimerToken* = pointer
   PInteger* = ptr int
-  PHashTable* = pointer
-  PHashEntry* = ptr Tcl_HashEntry
-  PPTcl_HashEntry* = ptr PHashEntry
-  Tcl_HashEntry*{.final.} = object 
+  PHashTable* = ptr THashTable
+  PHashEntry* = ptr THashEntry
+  PPHashEntry* = ptr PHashEntry
+  THashEntry*{.final.} = object 
     nextPtr*: PHashEntry
     tablePtr*: PHashTable
-    bucketPtr*: PPTcl_HashEntry
-    clientData*: Tcl_ClientData
+    bucketPtr*: PPHashEntry
+    clientData*: TClientData
     key*: cstring
 
-  Tcl_HashFindProc* = proc (tablePtr: PHashTable, key: cstring): PHashEntry{.
+  THashFindProc* = proc (tablePtr: PHashTable, key: cstring): PHashEntry{.
       cdecl.}
-  Tcl_HashCreateProc* = proc (tablePtr: PHashTable, key: cstring, 
+  THashCreateProc* = proc (tablePtr: PHashTable, key: cstring, 
                               newPtr: PInteger): PHashEntry{.cdecl.}
-  PHashTable* = ptr Tcl_HashTable
-  Tcl_HashTable*{.final.} = object 
-    buckets*: ppTcl_HashEntry
-    staticBuckets*: array[0..TCL_SMALL_HASH_TABLE - 1, PHashEntry]
+  THashTable*{.final.} = object 
+    buckets*: ppHashEntry
+    staticBuckets*: array[0..SMALL_HASH_TABLE - 1, PHashEntry]
     numBuckets*: int
     numEntries*: int
     rebuildSize*: int
     downShift*: int
     mask*: int
     keyType*: int
-    findProc*: Tcl_HashFindProc
-    createProc*: Tcl_HashCreateProc
+    findProc*: THashFindProc
+    createProc*: THashCreateProc
 
-  PHashSearch* = ptr Tcl_HashSearch
-  Tcl_HashSearch*{.final.} = object 
+  PHashSearch* = ptr THashSearch
+  THashSearch*{.final.} = object 
     tablePtr*: PHashTable
     nextIndex*: int
     nextEntryPtr*: PHashEntry
 
   TAppInitProc* = proc (interp: pInterp): int{.cdecl.}
   TPackageInitProc* = proc (interp: pInterp): int{.cdecl.}
-  TCmdProc* = proc (clientData: Tcl_ClientData, interp: pInterp, argc: int, 
-                    argv: Tcl_Argv): int{.cdecl.}
-  TVarTraceProc* = proc (clientData: Tcl_ClientData, interp: pInterp, 
+  TCmdProc* = proc (clientData: TClientData, interp: pInterp, argc: int, 
+                    argv: TArgv): int{.cdecl.}
+  TVarTraceProc* = proc (clientData: TClientData, interp: pInterp, 
                          varName: cstring, elemName: cstring, flags: int): cstring{.
       cdecl.}
-  TFreeProc* = proc (theBlock: pointer){.cdecl.}
-  TInterpDeleteProc* = proc (clientData: Tcl_ClientData, interp: pInterp){.cdecl.}
-  TCmdDeleteProc* = proc (clientData: Tcl_ClientData){.cdecl.}
-  TNamespaceDeleteProc* = proc (clientData: Tcl_ClientData){.cdecl.}
+  TInterpDeleteProc* = proc (clientData: TClientData, interp: pInterp){.cdecl.}
+  TCmdDeleteProc* = proc (clientData: TClientData){.cdecl.}
+  TNamespaceDeleteProc* = proc (clientData: TClientData){.cdecl.}
 
 const 
-  TCL_DSTRING_STATIC_SIZE* = 200
+  DSTRING_STATIC_SIZE* = 200
 
 type 
-  PDString* = ptr Tcl_DString
-  Tcl_DString*{.final.} = object 
+  PDString* = ptr TDString
+  TDString*{.final.} = object 
     str*: cstring
     len*: int
     spaceAvl*: int
-    staticSpace*: array[0..TCL_DSTRING_STATIC_SIZE - 1, char]
+    staticSpace*: array[0..DSTRING_STATIC_SIZE - 1, char]
 
-  PChannel* = ptr Tcl_Channel
-  Tcl_Channel*{.final.} = object 
-  TDriverBlockModeProc* = proc (instanceData: Tcl_ClientData, mode: int): int{.
+  PChannel* = ptr TChannel
+  TChannel*{.final.} = object 
+  TDriverBlockModeProc* = proc (instanceData: TClientData, mode: int): int{.
       cdecl.}
-  TDriverCloseProc* = proc (instanceData: Tcl_ClientData, interp: PInterp): int{.
+  TDriverCloseProc* = proc (instanceData: TClientData, interp: PInterp): int{.
       cdecl.}
-  TDriverInputProc* = proc (instanceData: Tcl_ClientData, buf: cstring, 
+  TDriverInputProc* = proc (instanceData: TClientData, buf: cstring, 
                             toRead: int, errorCodePtr: PInteger): int{.cdecl.}
-  TDriverOutputProc* = proc (instanceData: Tcl_ClientData, buf: cstring, 
+  TDriverOutputProc* = proc (instanceData: TClientData, buf: cstring, 
                              toWrite: int, errorCodePtr: PInteger): int{.cdecl.}
-  TDriverSeekProc* = proc (instanceData: Tcl_ClientData, offset: int32, 
+  TDriverSeekProc* = proc (instanceData: TClientData, offset: int32, 
                            mode: int, errorCodePtr: PInteger): int{.cdecl.}
-  TDriverSetOptionProc* = proc (instanceData: Tcl_ClientData, interp: PInterp, 
+  TDriverSetOptionProc* = proc (instanceData: TClientData, interp: PInterp, 
                                 optionName: cstring, value: cstring): int{.cdecl.}
-  TDriverGetOptionProc* = proc (instanceData: Tcl_ClientData, interp: pInterp, 
+  TDriverGetOptionProc* = proc (instanceData: TClientData, interp: pInterp, 
                                 optionName: cstring, dsPtr: PDString): int{.
       cdecl.}
-  TDriverWatchProc* = proc (instanceData: Tcl_ClientData, mask: int){.cdecl.}
-  TDriverGetHandleProc* = proc (instanceData: Tcl_ClientData, direction: int, 
-                                handlePtr: var Tcl_ClientData): int{.cdecl.}
-  PChannelType* = ptr Tcl_ChannelType
-  Tcl_ChannelType*{.final.} = object 
+  TDriverWatchProc* = proc (instanceData: TClientData, mask: int){.cdecl.}
+  TDriverGetHandleProc* = proc (instanceData: TClientData, direction: int, 
+                                handlePtr: var TClientData): int{.cdecl.}
+  PChannelType* = ptr TChannelType
+  TChannelType*{.final.} = object 
     typeName*: cstring
     blockModeProc*: TDriverBlockModeProc
     closeProc*: TDriverCloseProc
@@ -484,24 +482,24 @@ type
     watchProc*: TDriverWatchProc
     getHandleProc*: TDriverGetHandleProc
 
-  TChannelProc* = proc (clientData: Tcl_ClientData, mask: int){.cdecl.}
-  PObj* = ptr Tcl_Obj
-  PPTcl_Obj* = ptr PObj
-  Tcl_Obj*{.final.} = object 
+  TChannelProc* = proc (clientData: TClientData, mask: int){.cdecl.}
+  PObj* = ptr TObj
+  PPObj* = ptr PObj
+  TObj*{.final.} = object 
     refCount*: int            # ...
   
-  TObjCmdProc* = proc (clientData: Tcl_ClientData, interp: PInterp, objc: int, 
-                       PPObj: PPTcl_Obj): int{.cdecl.}
-  PNamespace* = ptr Tcl_Namespace
-  Tcl_Namespace*{.final.} = object 
+  TObjCmdProc* = proc (clientData: TClientData, interp: PInterp, objc: int, 
+                       PPObj: PPObj): int{.cdecl.}
+  PNamespace* = ptr TNamespace
+  TNamespace*{.final.} = object 
     name*: cstring
     fullName*: cstring
-    clientData*: Tcl_ClientData
+    clientData*: TClientData
     deleteProc*: TNamespaceDeleteProc
     parentPtr*: PNamespace
 
-  PCallFrame* = ptr Tcl_CallFrame
-  Tcl_CallFrame*{.final.} = object 
+  PCallFrame* = ptr TCallFrame
+  TCallFrame*{.final.} = object 
     nsPtr*: PNamespace
     dummy1*: int
     dummy2*: int
@@ -514,19 +512,19 @@ type
     dummy9*: int
     dummy10*: cstring
 
-  PCmdInfo* = ptr Tcl_CmdInfo
-  Tcl_CmdInfo*{.final.} = object 
+  PCmdInfo* = ptr TCmdInfo
+  TCmdInfo*{.final.} = object 
     isNativeObjectProc*: int
     objProc*: TObjCmdProc
-    objClientData*: Tcl_ClientData
+    objClientData*: TClientData
     prc*: TCmdProc
-    clientData*: Tcl_ClientData
+    clientData*: TClientData
     deleteProc*: TCmdDeleteProc
-    deleteData*: Tcl_ClientData
+    deleteData*: TClientData
     namespacePtr*: pNamespace
 
-  pCommand* = ptr Tcl_Command
-  Tcl_Command*{.final.} = object  #       hPtr            : pTcl_HashEntry;
+  pCommand* = ptr TCommand
+  TCommand*{.final.} = object     #       hPtr            : pTcl_HashEntry;
                                   #        nsPtr           : pTcl_Namespace;
                                   #        refCount        : integer;
                                   #        isCmdEpoch      : integer;
@@ -544,196 +542,196 @@ type
 type 
   TPanicProc* = proc (fmt, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8: cstring){.
       cdecl.}                 # 1/15/97 orig. Tcl style
-  TClientDataProc* = proc (clientData: Tcl_ClientData){.cdecl.}
-  TIdleProc* = proc (clientData: Tcl_ClientData){.cdecl.}
+  TClientDataProc* = proc (clientData: TClientData){.cdecl.}
+  TIdleProc* = proc (clientData: TClientData){.cdecl.}
   TTimerProc* = TIdleProc
   TCreateCloseHandler* = proc (channel: pChannel, prc: TClientDataProc, 
-                               clientData: Tcl_ClientData){.cdecl.}
+                               clientData: TClientData){.cdecl.}
   TDeleteCloseHandler* = TCreateCloseHandler
-  TEventDeleteProc* = proc (evPtr: pEvent, clientData: Tcl_ClientData): int{.
+  TEventDeleteProc* = proc (evPtr: pEvent, clientData: TClientData): int{.
       cdecl.}
 
-proc Tcl_Alloc*(size: int): cstring{.cdecl, dynlib: dllName, 
+proc Alloc*(size: int): cstring{.cdecl, dynlib: dllName, 
                                      importc: "Tcl_Alloc".}
-proc Tcl_CreateInterp*(): pInterp{.cdecl, dynlib: dllName, 
+proc CreateInterp*(): pInterp{.cdecl, dynlib: dllName, 
                                    importc: "Tcl_CreateInterp".}
-proc Tcl_DeleteInterp*(interp: pInterp){.cdecl, dynlib: dllName, 
+proc DeleteInterp*(interp: pInterp){.cdecl, dynlib: dllName, 
     importc: "Tcl_DeleteInterp".}
-proc Tcl_ResetResult*(interp: pInterp){.cdecl, dynlib: dllName, 
+proc ResetResult*(interp: pInterp){.cdecl, dynlib: dllName, 
                                         importc: "Tcl_ResetResult".}
-proc Tcl_Eval*(interp: pInterp, script: cstring): int{.cdecl, dynlib: dllName, 
+proc Eval*(interp: pInterp, script: cstring): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_Eval".}
-proc Tcl_EvalFile*(interp: pInterp, filename: cstring): int{.cdecl, 
+proc EvalFile*(interp: pInterp, filename: cstring): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_EvalFile".}
-proc Tcl_AddErrorInfo*(interp: pInterp, message: cstring){.cdecl, 
+proc AddErrorInfo*(interp: pInterp, message: cstring){.cdecl, 
     dynlib: dllName, importc: "Tcl_AddErrorInfo".}
-proc Tcl_BackgroundError*(interp: pInterp){.cdecl, dynlib: dllName, 
+proc BackgroundError*(interp: pInterp){.cdecl, dynlib: dllName, 
     importc: "Tcl_BackgroundError".}
-proc Tcl_CreateCommand*(interp: pInterp, name: cstring, cmdProc: TCmdProc, 
-                        clientData: Tcl_ClientData, deleteProc: TCmdDeleteProc): pCommand{.
+proc CreateCommand*(interp: pInterp, name: cstring, cmdProc: TCmdProc, 
+                        clientData: TClientData, deleteProc: TCmdDeleteProc): pCommand{.
     cdecl, dynlib: dllName, importc: "Tcl_CreateCommand".}
-proc Tcl_DeleteCommand*(interp: pInterp, name: cstring): int{.cdecl, 
+proc DeleteCommand*(interp: pInterp, name: cstring): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_DeleteCommand".}
-proc Tcl_CallWhenDeleted*(interp: pInterp, prc: TInterpDeleteProc, 
-                          clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+proc CallWhenDeleted*(interp: pInterp, prc: TInterpDeleteProc, 
+                          clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_CallWhenDeleted".}
-proc Tcl_DontCallWhenDeleted*(interp: pInterp, prc: TInterpDeleteProc, 
-                              clientData: Tcl_ClientData){.cdecl, 
+proc DontCallWhenDeleted*(interp: pInterp, prc: TInterpDeleteProc, 
+                              clientData: TClientData){.cdecl, 
     dynlib: dllName, importc: "Tcl_DontCallWhenDeleted".}
-proc Tcl_CommandComplete*(cmd: cstring): int{.cdecl, dynlib: dllName, 
+proc CommandComplete*(cmd: cstring): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_CommandComplete".}
-proc Tcl_LinkVar*(interp: pInterp, varName: cstring, varAddr: pointer, typ: int): int{.
+proc LinkVar*(interp: pInterp, varName: cstring, varAddr: pointer, typ: int): int{.
     cdecl, dynlib: dllName, importc: "Tcl_LinkVar".}
-proc Tcl_UnlinkVar*(interp: pInterp, varName: cstring){.cdecl, dynlib: dllName, 
+proc UnlinkVar*(interp: pInterp, varName: cstring){.cdecl, dynlib: dllName, 
     importc: "Tcl_UnlinkVar".}
-proc Tcl_TraceVar*(interp: pInterp, varName: cstring, flags: int, 
-                   prc: TVarTraceProc, clientData: Tcl_ClientData): int{.cdecl, 
+proc TraceVar*(interp: pInterp, varName: cstring, flags: int, 
+                   prc: TVarTraceProc, clientData: TClientData): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_TraceVar".}
-proc Tcl_TraceVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
-                    flags: int, prc: TVarTraceProc, clientData: Tcl_ClientData): int{.
+proc TraceVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
+                    flags: int, prc: TVarTraceProc, clientData: TClientData): int{.
     cdecl, dynlib: dllName, importc: "Tcl_TraceVar2".}
-proc Tcl_UntraceVar*(interp: pInterp, varName: cstring, flags: int, 
-                     prc: TVarTraceProc, clientData: Tcl_ClientData){.cdecl, 
+proc UntraceVar*(interp: pInterp, varName: cstring, flags: int, 
+                     prc: TVarTraceProc, clientData: TClientData){.cdecl, 
     dynlib: dllName, importc: "Tcl_UntraceVar".}
-proc Tcl_UntraceVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
-                      flags: int, prc: TVarTraceProc, clientData: Tcl_ClientData){.
+proc UntraceVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
+                      flags: int, prc: TVarTraceProc, clientData: TClientData){.
     cdecl, dynlib: dllName, importc: "Tcl_UntraceVar2".}
-proc Tcl_GetVar*(interp: pInterp, varName: cstring, flags: int): cstring{.cdecl, 
+proc GetVar*(interp: pInterp, varName: cstring, flags: int): cstring{.cdecl, 
     dynlib: dllName, importc: "Tcl_GetVar".}
-proc Tcl_GetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
+proc GetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
                   flags: int): cstring{.cdecl, dynlib: dllName, 
                                         importc: "Tcl_GetVar2".}
-proc Tcl_SetVar*(interp: pInterp, varName: cstring, newValue: cstring, 
+proc SetVar*(interp: pInterp, varName: cstring, newValue: cstring, 
                  flags: int): cstring{.cdecl, dynlib: dllName, 
                                        importc: "Tcl_SetVar".}
-proc Tcl_SetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
+proc SetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
                   newValue: cstring, flags: int): cstring{.cdecl, 
     dynlib: dllName, importc: "Tcl_SetVar2".}
-proc Tcl_UnsetVar*(interp: pInterp, varName: cstring, flags: int): int{.cdecl, 
+proc UnsetVar*(interp: pInterp, varName: cstring, flags: int): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_UnsetVar".}
-proc Tcl_UnsetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
+proc UnsetVar2*(interp: pInterp, varName: cstring, elemName: cstring, 
                     flags: int): int{.cdecl, dynlib: dllName, 
                                       importc: "Tcl_UnsetVar2".}
-proc Tcl_SetResult*(interp: pInterp, newValue: cstring, freeProc: TFreeProc){.
+proc SetResult*(interp: pInterp, newValue: cstring, freeProc: TFreeProc){.
     cdecl, dynlib: dllName, importc: "Tcl_SetResult".}
-proc Tcl_FirstHashEntry*(hashTbl: pHashTable, searchInfo: var Tcl_HashSearch): pHashEntry{.
+proc FirstHashEntry*(hashTbl: pHashTable, searchInfo: var THashSearch): pHashEntry{.
     cdecl, dynlib: dllName, importc: "Tcl_FirstHashEntry".}
-proc Tcl_NextHashEntry*(searchInfo: var Tcl_HashSearch): pHashEntry{.cdecl, 
+proc NextHashEntry*(searchInfo: var THashSearch): pHashEntry{.cdecl, 
     dynlib: dllName, importc: "Tcl_NextHashEntry".}
-proc Tcl_InitHashTable*(hashTbl: pHashTable, keyType: int){.cdecl, 
+proc InitHashTable*(hashTbl: pHashTable, keyType: int){.cdecl, 
     dynlib: dllName, importc: "Tcl_InitHashTable".}
-proc Tcl_StringMatch*(str: cstring, pattern: cstring): int{.cdecl, 
+proc StringMatch*(str: cstring, pattern: cstring): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_StringMatch".}
-proc Tcl_GetErrno*(): int{.cdecl, dynlib: dllName, importc: "Tcl_GetErrno".}
-proc Tcl_SetErrno*(val: int){.cdecl, dynlib: dllName, importc: "Tcl_SetErrno".}
-proc Tcl_SetPanicProc*(prc: TPanicProc){.cdecl, dynlib: dllName, 
+proc GetErrno*(): int{.cdecl, dynlib: dllName, importc: "Tcl_GetErrno".}
+proc SetErrno*(val: int){.cdecl, dynlib: dllName, importc: "Tcl_SetErrno".}
+proc SetPanicProc*(prc: TPanicProc){.cdecl, dynlib: dllName, 
     importc: "Tcl_SetPanicProc".}
-proc Tcl_PkgProvide*(interp: pInterp, name: cstring, version: cstring): int{.
+proc PkgProvide*(interp: pInterp, name: cstring, version: cstring): int{.
     cdecl, dynlib: dllName, importc: "Tcl_PkgProvide".}
-proc Tcl_StaticPackage*(interp: pInterp, pkgName: cstring, 
+proc StaticPackage*(interp: pInterp, pkgName: cstring, 
                         initProc: TPackageInitProc, 
                         safeInitProc: TPackageInitProc){.cdecl, dynlib: dllName, 
     importc: "Tcl_StaticPackage".}
-proc Tcl_CreateEventSource*(setupProc: TEventSetupProc, 
+proc CreateEventSource*(setupProc: TEventSetupProc, 
                             checkProc: TEventCheckProc, 
-                            clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+                            clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_CreateEventSource".}
-proc Tcl_DeleteEventSource*(setupProc: TEventSetupProc, 
+proc DeleteEventSource*(setupProc: TEventSetupProc, 
                             checkProc: TEventCheckProc, 
-                            clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+                            clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_DeleteEventSource".}
-proc Tcl_QueueEvent*(evPtr: pEvent, pos: int){.cdecl, dynlib: dllName, 
+proc QueueEvent*(evPtr: pEvent, pos: int){.cdecl, dynlib: dllName, 
     importc: "Tcl_QueueEvent".}
-proc Tcl_SetMaxBlockTime*(timePtr: pTime){.cdecl, dynlib: dllName, 
+proc SetMaxBlockTime*(timePtr: pTime){.cdecl, dynlib: dllName, 
     importc: "Tcl_SetMaxBlockTime".}
-proc Tcl_DeleteEvents*(prc: TEventDeleteProc, clientData: Tcl_ClientData){.
+proc DeleteEvents*(prc: TEventDeleteProc, clientData: TClientData){.
     cdecl, dynlib: dllName, importc: "Tcl_DeleteEvents".}
-proc Tcl_DoOneEvent*(flags: int): int{.cdecl, dynlib: dllName, 
+proc DoOneEvent*(flags: int): int{.cdecl, dynlib: dllName, 
                                        importc: "Tcl_DoOneEvent".}
-proc Tcl_DoWhenIdle*(prc: TIdleProc, clientData: Tcl_ClientData){.cdecl, 
+proc DoWhenIdle*(prc: TIdleProc, clientData: TClientData){.cdecl, 
     dynlib: dllName, importc: "Tcl_DoWhenIdle".}
-proc Tcl_CancelIdleCall*(prc: TIdleProc, clientData: Tcl_ClientData){.cdecl, 
+proc CancelIdleCall*(prc: TIdleProc, clientData: TClientData){.cdecl, 
     dynlib: dllName, importc: "Tcl_CancelIdleCall".}
-proc Tcl_CreateTimerHandler*(milliseconds: int, prc: TTimerProc, 
-                             clientData: Tcl_ClientData): Tcl_TimerToken{.cdecl, 
+proc CreateTimerHandler*(milliseconds: int, prc: TTimerProc, 
+                             clientData: TClientData): TTimerToken{.cdecl, 
     dynlib: dllName, importc: "Tcl_CreateTimerHandler".}
-proc Tcl_DeleteTimerHandler*(token: Tcl_TimerToken){.cdecl, dynlib: dllName, 
+proc DeleteTimerHandler*(token: TTimerToken){.cdecl, dynlib: dllName, 
     importc: "Tcl_DeleteTimerHandler".}
   #    procedure Tcl_CreateModalTimeout(milliseconds: integer; prc: TTclTimerProc; clientData: Tcl_ClientData); cdecl; external dllName;
   #    procedure Tcl_DeleteModalTimeout(prc: TTclTimerProc; clientData: Tcl_ClientData); cdecl; external dllName;
-proc Tcl_SplitList*(interp: pInterp, list: cstring, argcPtr: var int, 
-                    argvPtr: var Tcl_Argv): int{.cdecl, dynlib: dllName, 
+proc SplitList*(interp: pInterp, list: cstring, argcPtr: var int, 
+                    argvPtr: var TArgv): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_SplitList".}
-proc Tcl_Merge*(argc: int, argv: Tcl_Argv): cstring{.cdecl, dynlib: dllName, 
+proc Merge*(argc: int, argv: TArgv): cstring{.cdecl, dynlib: dllName, 
     importc: "Tcl_Merge".}
-proc Tcl_Free*(p: cstring){.cdecl, dynlib: dllName, importc: "Tcl_Free".}
-proc Tcl_Init*(interp: pInterp): int{.cdecl, dynlib: dllName, 
+proc Free*(p: cstring){.cdecl, dynlib: dllName, importc: "Tcl_Free".}
+proc Init*(interp: pInterp): int{.cdecl, dynlib: dllName, 
                                       importc: "Tcl_Init".}
   #    procedure Tcl_InterpDeleteProc(clientData: Tcl_ClientData; interp: pTcl_Interp); cdecl; external dllName;
-proc Tcl_GetAssocData*(interp: pInterp, key: cstring, prc: var TInterpDeleteProc): Tcl_ClientData{.
+proc GetAssocData*(interp: pInterp, key: cstring, prc: var TInterpDeleteProc): TClientData{.
     cdecl, dynlib: dllName, importc: "Tcl_GetAssocData".}
-proc Tcl_DeleteAssocData*(interp: pInterp, key: cstring){.cdecl, 
+proc DeleteAssocData*(interp: pInterp, key: cstring){.cdecl, 
     dynlib: dllName, importc: "Tcl_DeleteAssocData".}
-proc Tcl_SetAssocData*(interp: pInterp, key: cstring, prc: TInterpDeleteProc, 
-                       clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+proc SetAssocData*(interp: pInterp, key: cstring, prc: TInterpDeleteProc, 
+                       clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_SetAssocData".}
-proc Tcl_IsSafe*(interp: pInterp): int{.cdecl, dynlib: dllName, 
+proc IsSafe*(interp: pInterp): int{.cdecl, dynlib: dllName, 
                                         importc: "Tcl_IsSafe".}
-proc Tcl_MakeSafe*(interp: pInterp): int{.cdecl, dynlib: dllName, 
+proc MakeSafe*(interp: pInterp): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_MakeSafe".}
-proc Tcl_CreateSlave*(interp: pInterp, slaveName: cstring, isSafe: int): pInterp{.
+proc CreateSlave*(interp: pInterp, slaveName: cstring, isSafe: int): pInterp{.
     cdecl, dynlib: dllName, importc: "Tcl_CreateSlave".}
-proc Tcl_GetSlave*(interp: pInterp, slaveName: cstring): pInterp{.cdecl, 
+proc GetSlave*(interp: pInterp, slaveName: cstring): pInterp{.cdecl, 
     dynlib: dllName, importc: "Tcl_GetSlave".}
-proc Tcl_GetMaster*(interp: pInterp): pInterp{.cdecl, dynlib: dllName, 
+proc GetMaster*(interp: pInterp): pInterp{.cdecl, dynlib: dllName, 
     importc: "Tcl_GetMaster".}
-proc Tcl_GetInterpPath*(askingInterp: pInterp, slaveInterp: pInterp): int{.
+proc GetInterpPath*(askingInterp: pInterp, slaveInterp: pInterp): int{.
     cdecl, dynlib: dllName, importc: "Tcl_GetInterpPath".}
-proc Tcl_CreateAlias*(slaveInterp: pInterp, srcCmd: cstring, 
+proc CreateAlias*(slaveInterp: pInterp, srcCmd: cstring, 
                       targetInterp: pInterp, targetCmd: cstring, argc: int, 
-                      argv: Tcl_Argv): int{.cdecl, dynlib: dllName, 
+                      argv: TArgv): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_CreateAlias".}
-proc Tcl_GetAlias*(interp: pInterp, srcCmd: cstring, targetInterp: var pInterp, 
-                   targetCmd: var cstring, argc: var int, argv: var Tcl_Argv): int{.
+proc GetAlias*(interp: pInterp, srcCmd: cstring, targetInterp: var pInterp, 
+                   targetCmd: var cstring, argc: var int, argv: var TArgv): int{.
     cdecl, dynlib: dllName, importc: "Tcl_GetAlias".}
-proc Tcl_ExposeCommand*(interp: pInterp, hiddenCmdName: cstring, 
+proc ExposeCommand*(interp: pInterp, hiddenCmdName: cstring, 
                         cmdName: cstring): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_ExposeCommand".}
-proc Tcl_HideCommand*(interp: pInterp, cmdName: cstring, hiddenCmdName: cstring): int{.
+proc HideCommand*(interp: pInterp, cmdName: cstring, hiddenCmdName: cstring): int{.
     cdecl, dynlib: dllName, importc: "Tcl_HideCommand".}
-proc Tcl_EventuallyFree*(clientData: Tcl_ClientData, freeProc: TFreeProc){.
+proc EventuallyFree*(clientData: TClientData, freeProc: TFreeProc){.
     cdecl, dynlib: dllName, importc: "Tcl_EventuallyFree".}
-proc Tcl_Preserve*(clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+proc Preserve*(clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_Preserve".}
-proc Tcl_Release*(clientData: Tcl_ClientData){.cdecl, dynlib: dllName, 
+proc Release*(clientData: TClientData){.cdecl, dynlib: dllName, 
     importc: "Tcl_Release".}
-proc Tcl_InterpDeleted*(interp: pInterp): int{.cdecl, dynlib: dllName, 
+proc InterpDeleted*(interp: pInterp): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_InterpDeleted".}
-proc Tcl_GetCommandInfo*(interp: pInterp, cmdName: cstring, 
-                         info: var Tcl_CmdInfo): int{.cdecl, dynlib: dllName, 
+proc GetCommandInfo*(interp: pInterp, cmdName: cstring, 
+                         info: var TCmdInfo): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_GetCommandInfo".}
-proc Tcl_SetCommandInfo*(interp: pInterp, cmdName: cstring, 
-                         info: var Tcl_CmdInfo): int{.cdecl, dynlib: dllName, 
+proc SetCommandInfo*(interp: pInterp, cmdName: cstring, 
+                         info: var TCmdInfo): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_SetCommandInfo".}
-proc Tcl_FindExecutable*(path: cstring){.cdecl, dynlib: dllName, 
+proc FindExecutable*(path: cstring){.cdecl, dynlib: dllName, 
     importc: "Tcl_FindExecutable".}
-proc Tcl_GetStringResult*(interp: pInterp): cstring{.cdecl, dynlib: dllName, 
+proc GetStringResult*(interp: pInterp): cstring{.cdecl, dynlib: dllName, 
     importc: "Tcl_GetStringResult".}
   #v1.0
-proc Tcl_FindCommand*(interp: pInterp, cmdName: cstring, 
-                      contextNsPtr: pNamespace, flags: int): Tcl_Command{.cdecl, 
+proc FindCommand*(interp: pInterp, cmdName: cstring, 
+                      contextNsPtr: pNamespace, flags: int): TCommand{.cdecl, 
     dynlib: dllName, importc: "Tcl_FindCommand".}
   #v1.0
-proc Tcl_DeleteCommandFromToken*(interp: pInterp, cmd: pCommand): int{.cdecl, 
+proc DeleteCommandFromToken*(interp: pInterp, cmd: pCommand): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_DeleteCommandFromToken".}
-proc Tcl_CreateNamespace*(interp: pInterp, name: cstring, 
-                          clientData: Tcl_ClientData, 
+proc CreateNamespace*(interp: pInterp, name: cstring, 
+                          clientData: TClientData, 
                           deleteProc: TNamespaceDeleteProc): pNamespace{.cdecl, 
     dynlib: dllName, importc: "Tcl_CreateNamespace".}
   #v1.0
-proc Tcl_DeleteNamespace*(namespacePtr: pNamespace){.cdecl, dynlib: dllName, 
+proc DeleteNamespace*(namespacePtr: pNamespace){.cdecl, dynlib: dllName, 
     importc: "Tcl_DeleteNamespace".}
-proc Tcl_FindNamespace*(interp: pInterp, name: cstring, 
+proc FindNamespace*(interp: pInterp, name: cstring, 
                         contextNsPtr: pNamespace, flags: int): pNamespace{.
     cdecl, dynlib: dllName, importc: "Tcl_FindNamespace".}
 proc Tcl_Export*(interp: pInterp, namespacePtr: pNamespace, pattern: cstring, 
@@ -742,118 +740,124 @@ proc Tcl_Export*(interp: pInterp, namespacePtr: pNamespace, pattern: cstring,
 proc Tcl_Import*(interp: pInterp, namespacePtr: pNamespace, pattern: cstring, 
                  allowOverwrite: int): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_Import".}
-proc Tcl_GetCurrentNamespace*(interp: pInterp): pNamespace{.cdecl, 
+proc GetCurrentNamespace*(interp: pInterp): pNamespace{.cdecl, 
     dynlib: dllName, importc: "Tcl_GetCurrentNamespace".}
-proc Tcl_GetGlobalNamespace*(interp: pInterp): pNamespace{.cdecl, 
+proc GetGlobalNamespace*(interp: pInterp): pNamespace{.cdecl, 
     dynlib: dllName, importc: "Tcl_GetGlobalNamespace".}
-proc Tcl_PushCallFrame*(interp: pInterp, callFramePtr: var Tcl_CallFrame, 
+proc PushCallFrame*(interp: pInterp, callFramePtr: var TCallFrame, 
                         namespacePtr: pNamespace, isProcCallFrame: int): int{.
     cdecl, dynlib: dllName, importc: "Tcl_PushCallFrame".}
-proc Tcl_PopCallFrame*(interp: pInterp){.cdecl, dynlib: dllName, 
+proc PopCallFrame*(interp: pInterp){.cdecl, dynlib: dllName, 
     importc: "Tcl_PopCallFrame".}
-proc Tcl_VarEval*(interp: pInterp): int{.cdecl, varargs, dynlib: dllName, 
+proc VarEval*(interp: pInterp): int{.cdecl, varargs, dynlib: dllName, 
     importc: "Tcl_VarEval".}
   # For TkConsole.c *
-proc Tcl_RecordAndEval*(interp: pInterp, cmd: cstring, flags: int): int{.cdecl, 
+proc RecordAndEval*(interp: pInterp, cmd: cstring, flags: int): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_RecordAndEval".}
-proc Tcl_GlobalEval*(interp: pInterp, command: cstring): int{.cdecl, 
+proc GlobalEval*(interp: pInterp, command: cstring): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_GlobalEval".}
-proc Tcl_DStringFree*(dsPtr: pDString){.cdecl, dynlib: dllName, 
+proc DStringFree*(dsPtr: pDString){.cdecl, dynlib: dllName, 
                                         importc: "Tcl_DStringFree".}
-proc Tcl_DStringAppend*(dsPtr: pDString, str: cstring, length: int): cstring{.
+proc DStringAppend*(dsPtr: pDString, str: cstring, length: int): cstring{.
     cdecl, dynlib: dllName, importc: "Tcl_DStringAppend".}
-proc Tcl_DStringAppendElement*(dsPtr: pDString, str: cstring): cstring{.cdecl, 
+proc DStringAppendElement*(dsPtr: pDString, str: cstring): cstring{.cdecl, 
     dynlib: dllName, importc: "Tcl_DStringAppendElement".}
-proc Tcl_DStringInit*(dsPtr: pDString){.cdecl, dynlib: dllName, 
+proc DStringInit*(dsPtr: pDString){.cdecl, dynlib: dllName, 
                                         importc: "Tcl_DStringInit".}
-proc Tcl_AppendResult*(interp: pInterp){.cdecl, varargs, dynlib: dllName, 
+proc AppendResult*(interp: pInterp){.cdecl, varargs, dynlib: dllName, 
     importc: "Tcl_AppendResult".}
   # actually a "C" var array
-proc Tcl_SetStdChannel*(channel: pChannel, typ: int){.cdecl, dynlib: dllName, 
+proc SetStdChannel*(channel: pChannel, typ: int){.cdecl, dynlib: dllName, 
     importc: "Tcl_SetStdChannel".}
-proc Tcl_SetChannelOption*(interp: pInterp, chan: pChannel, optionName: cstring, 
+proc SetChannelOption*(interp: pInterp, chan: pChannel, optionName: cstring, 
                            newValue: cstring): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_SetChannelOption".}
-proc Tcl_GetChannelOption*(interp: pInterp, chan: pChannel, optionName: cstring, 
+proc GetChannelOption*(interp: pInterp, chan: pChannel, optionName: cstring, 
                            dsPtr: pDString): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_GetChannelOption".}
-proc Tcl_CreateChannel*(typePtr: pChannelType, chanName: cstring, 
-                        instanceData: Tcl_ClientData, mask: int): pChannel{.
+proc CreateChannel*(typePtr: pChannelType, chanName: cstring, 
+                        instanceData: TClientData, mask: int): pChannel{.
     cdecl, dynlib: dllName, importc: "Tcl_CreateChannel".}
-proc Tcl_RegisterChannel*(interp: pInterp, channel: pChannel){.cdecl, 
+proc RegisterChannel*(interp: pInterp, channel: pChannel){.cdecl, 
     dynlib: dllName, importc: "Tcl_RegisterChannel".}
-proc Tcl_UnregisterChannel*(interp: pInterp, channel: pChannel): int{.cdecl, 
+proc UnregisterChannel*(interp: pInterp, channel: pChannel): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_UnregisterChannel".}
-proc Tcl_CreateChannelHandler*(chan: pChannel, mask: int, prc: TChannelProc, 
-                               clientData: Tcl_ClientData){.cdecl, 
+proc CreateChannelHandler*(chan: pChannel, mask: int, prc: TChannelProc, 
+                               clientData: TClientData){.cdecl, 
     dynlib: dllName, importc: "Tcl_CreateChannelHandler".}
-proc Tcl_GetChannel*(interp: pInterp, chanName: cstring, modePtr: pInteger): pChannel{.
+proc GetChannel*(interp: pInterp, chanName: cstring, modePtr: pInteger): pChannel{.
     cdecl, dynlib: dllName, importc: "Tcl_GetChannel".}
-proc Tcl_GetStdChannel*(typ: int): pChannel{.cdecl, dynlib: dllName, 
+proc GetStdChannel*(typ: int): pChannel{.cdecl, dynlib: dllName, 
     importc: "Tcl_GetStdChannel".}
-proc Tcl_Gets*(chan: pChannel, dsPtr: pDString): int{.cdecl, dynlib: dllName, 
+proc Gets*(chan: pChannel, dsPtr: pDString): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_Gets".}
-proc Tcl_Write*(chan: pChannel, s: cstring, slen: int): int{.cdecl, 
+proc Write*(chan: pChannel, s: cstring, slen: int): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_Write".}
-proc Tcl_Flush*(chan: pChannel): int{.cdecl, dynlib: dllName, 
+proc Flush*(chan: pChannel): int{.cdecl, dynlib: dllName, 
                                       importc: "Tcl_Flush".}
   #    TclWinLoadLibrary      = function(name: PChar): HMODULE; cdecl; external dllName;
-proc Tcl_CreateExitHandler*(prc: TClientDataProc, clientData: Tcl_ClientData){.
+proc CreateExitHandler*(prc: TClientDataProc, clientData: TClientData){.
     cdecl, dynlib: dllName, importc: "Tcl_CreateExitHandler".}
-proc Tcl_DeleteExitHandler*(prc: TClientDataProc, clientData: Tcl_ClientData){.
+proc DeleteExitHandler*(prc: TClientDataProc, clientData: TClientData){.
     cdecl, dynlib: dllName, importc: "Tcl_DeleteExitHandler".}
-proc Tcl_GetStringFromObj*(pObj: pObj, pLen: pInteger): cstring{.cdecl, 
+proc GetStringFromObj*(pObj: pObj, pLen: pInteger): cstring{.cdecl, 
     dynlib: dllName, importc: "Tcl_GetStringFromObj".}
-proc Tcl_CreateObjCommand*(interp: pInterp, name: cstring, cmdProc: TObjCmdProc, 
-                           clientData: Tcl_ClientData, 
+proc CreateObjCommand*(interp: pInterp, name: cstring, cmdProc: TObjCmdProc, 
+                           clientData: TClientData, 
                            deleteProc: TCmdDeleteProc): pCommand{.cdecl, 
     dynlib: dllName, importc: "Tcl_CreateObjCommand".}
-proc Tcl_NewStringObj*(bytes: cstring, length: int): pObj{.cdecl, 
+proc NewStringObj*(bytes: cstring, length: int): pObj{.cdecl, 
     dynlib: dllName, importc: "Tcl_NewStringObj".}
   #    procedure TclFreeObj(pObj: pTcl_Obj); cdecl; external dllName;
-proc Tcl_EvalObj*(interp: pInterp, pObj: pObj): int{.cdecl, dynlib: dllName, 
+proc EvalObj*(interp: pInterp, pObj: pObj): int{.cdecl, dynlib: dllName, 
     importc: "Tcl_EvalObj".}
-proc Tcl_GlobalEvalObj*(interp: pInterp, pObj: pObj): int{.cdecl, 
+proc GlobalEvalObj*(interp: pInterp, pObj: pObj): int{.cdecl, 
     dynlib: dllName, importc: "Tcl_GlobalEvalObj".}
-proc TclRegComp*(exp: cstring): pointer{.cdecl, dynlib: dllName, 
+proc RegComp*(exp: cstring): pointer{.cdecl, dynlib: dllName, 
     importc: "TclRegComp".}
-proc TclRegExec*(prog: pointer, str: cstring, start: cstring): int{.cdecl, 
+
+proc RegExec*(prog: pointer, str: cstring, start: cstring): int{.cdecl, 
     dynlib: dllName, importc: "TclRegExec".}
-proc TclRegError*(msg: cstring){.cdecl, dynlib: dllName, importc: "TclRegError".}
-proc TclGetRegError*(): cstring{.cdecl, dynlib: dllName, 
-                                 importc: "TclGetRegError".}
-proc Tcl_RegExpRange*(prog: pointer, index: int, head: var cstring, 
+
+proc RegError*(msg: cstring){.cdecl, dynlib: dllName, importc: "TclRegError".}
+
+proc GetRegError*(): cstring{.cdecl, dynlib: dllName, 
+                              importc: "TclGetRegError".}
+
+proc RegExpRange*(prog: pointer, index: int, head: var cstring, 
                       tail: var cstring){.cdecl, dynlib: dllName, 
     importc: "Tcl_RegExpRange".}
-proc Tcl_GetCommandTable*(interp: pInterp): pHashTable = 
+    
+proc GetCommandTable*(interp: pInterp): pHashTable = 
   if interp != nil: 
-    result = cast[pHashTable](cast[int](interp) + sizeof(Tcl_Interp) +
+    result = cast[pHashTable](cast[int](interp) + sizeof(Interp) +
         sizeof(pointer))
 
-proc Tcl_CreateHashEntry*(tablePtr: pHashTable, key: cstring, newPtr: pInteger): pHashEntry = 
+proc CreateHashEntry*(tablePtr: pHashTable, key: cstring, 
+                      newPtr: pInteger): pHashEntry = 
   result = cast[pHashTable](tablePtr).createProc(tablePtr, key, newPtr)
 
-proc Tcl_FindHashEntry*(tablePtr: pHashTable, key: cstring): pHashEntry = 
+proc FindHashEntry*(tablePtr: pHashTable, key: cstring): pHashEntry = 
   result = cast[pHashTable](tablePtr).findProc(tablePtr, key)
 
-proc Tcl_SetHashValue*(h: pHashEntry, clientData: Tcl_ClientData) = 
+proc SetHashValue*(h: pHashEntry, clientData: TClientData) = 
   h.clientData = clientData
 
-proc Tcl_GetHashValue*(h: pHashEntry): Tcl_ClientData = 
+proc GetHashValue*(h: pHashEntry): TClientData = 
   result = h.clientData
 
-proc Tcl_IncrRefCount*(pObj: pObj) = 
+proc IncrRefCount*(pObj: pObj) = 
   inc(pObj.refCount)
 
-proc Tcl_DecrRefCount*(pObj: pObj) = 
+proc DecrRefCount*(pObj: pObj) = 
   dec(pObj.refCount)
   if pObj.refCount <= 0: 
     dealloc(pObj)
 
-proc Tcl_IsShared*(pObj: pObj): bool = 
+proc IsShared*(pObj: pObj): bool = 
   return pObj.refCount > 1
 
-proc Tcl_GetHashKey*(hashTbl: pHashTable, hashEntry: pHashEntry): cstring = 
+proc GetHashKey*(hashTbl: pHashTable, hashEntry: pHashEntry): cstring = 
   if hashTbl == nil or hashEntry == nil: 
     result = nil
   else: 

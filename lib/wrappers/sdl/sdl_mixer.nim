@@ -207,7 +207,7 @@ type                          #music_cmd.h types
   TMidiEvent*{.final.} = object
     time*: int32
     channel*: uint8
-    type_*: uint8
+    typ*: uint8
     a*: uint8
     b*: uint8
 
@@ -280,7 +280,7 @@ type                          #music_cmd.h types
                                   #  end;
   PMix_Music* = ptr TMix_Music
   TMix_Music*{.final.} = object  # The internal format for a music chunk interpreted via mikmod
-    type_*: TMix_MusicType    # other fields are not aviable
+    typ*: TMix_MusicType      # other fields are not aviable
                               #    data : TMusicUnion;
                               #    fading : TMix_Fading;
                               #    fade_volume : integer;

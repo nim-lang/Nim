@@ -68,7 +68,7 @@ type
 
   PXGCValues* = ptr TXGCValues
   TXGCValues*{.final.} = object 
-    function_*: cint
+    function*: cint
     plane_mask*: culong
     foreground*: culong
     background*: culong
@@ -651,7 +651,7 @@ type
     requestor*: TWindow
     selection*: TAtom
     target*: TAtom
-    property_*: TAtom
+    property*: TAtom
     time*: TTime
 
   PXSelectionEvent* = ptr TXSelectionEvent
@@ -663,7 +663,7 @@ type
     requestor*: TWindow
     selection*: TAtom
     target*: TAtom
-    property_*: TAtom
+    property*: TAtom
     time*: TTime
 
   PXColormapEvent* = ptr TXColormapEvent

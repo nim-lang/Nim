@@ -205,7 +205,7 @@ type                          #music_cmd.h types
   TMidiEvent*{.final.} = object 
     time*: int32
     channel*: uint8
-    type_*: uint8
+    typ*: uint8
     a*: uint8
     b*: uint8
 

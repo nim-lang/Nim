@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20445,7 +20445,7 @@ proc ListView_SetItemCount*(hwndLV: HWND, cItems: int32): LRESULT
 proc ListView_SetItemPosition*(hwndLV: HWND, i, x, y: int32): LRESULT
 proc ListView_SetItemPosition32*(hwndLV: HWND, i, x, y: int32): LRESULT
 proc ListView_SetItemState*(hwndLV: HWND, i, data, mask: int32): LRESULT
-proc ListView_SetItemText*(hwndLV: HWND, i, iSubItem_: int32, pszText_: LPTSTR): LRESULT
+proc ListView_SetItemText*(hwndLV: HWND, i, iSubItem: int32, pszText: LPTSTR): LRESULT
 proc ListView_SetTextBkColor*(hwnd: HWND, clrTextBk: COLORREF): LRESULT
 proc ListView_SetTextColor*(hwnd: HWND, clrText: COLORREF): LRESULT
 proc ListView_SortItems*(hwndLV: HWND, pfnCompare: PFNLVCOMPARE, lPrm: LPARAM): LRESULT
@@ -23448,10 +23448,11 @@ proc ListView_SetItemState(hwndLV: HWND, i, data, mask: int32): LRESULT =
   result = SendMessage(hwndLV, LVM_SETITEMSTATE, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 
-proc ListView_SetItemText(hwndLV: HWND, i, iSubItem_: int32, pszText_: LPTSTR): LRESULT =
+proc ListView_SetItemText(hwndLV: HWND, i, iSubItem: int32, 
+                          pszText: LPTSTR): LRESULT =
   var gnu_lvi: LV_ITEM
-  gnu_lvi.iSubItem = iSubItem_
-  gnu_lvi.pszText = pszText_
+  gnu_lvi.iSubItem = iSubItem
+  gnu_lvi.pszText = pszText
   result = SendMessage(hwndLV, LVM_SETITEMTEXT, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 
@@ -23461,8 +23462,10 @@ proc ListView_SetTextBkColor(hwnd: HWND, clrTextBk: COLORREF): LRESULT =
 proc ListView_SetTextColor(hwnd: HWND, clrText: COLORREF): LRESULT =
   result = SendMessage(hwnd, LVM_SETTEXTCOLOR, 0, LPARAM(clrText))
 
-proc ListView_SortItems(hwndLV: HWND, pfnCompare: PFNLVCOMPARE, lPrm: LPARAM): LRESULT =
-  result = SendMessage(hwndLV, LVM_SORTITEMS, WPARAM(lPrm), cast[LPARAM](pfnCompare))
+proc ListView_SortItems(hwndLV: HWND, pfnCompare: PFNLVCOMPARE, 
+                        lPrm: LPARAM): LRESULT =
+  result = SendMessage(hwndLV, LVM_SORTITEMS, WPARAM(lPrm), 
+                       cast[LPARAM](pfnCompare))
 
 proc ListView_Update(hwndLV: HWND, i: int32): LRESULT =
   result = SendMessage(hwndLV, LVM_UPDATE, WPARAM(i), 0)

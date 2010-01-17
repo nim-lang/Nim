@@ -5198,7 +5198,7 @@ proc CLIST_UNSET_FLAG*(clist: PCList, flag: guint16)
 #proc GTK_CLIST_USE_DRAG_ICONS_get*(clist: pointer): bool
 #proc GTK_CLIST_DRAW_DRAG_LINE_get*(clist: pointer): bool
 #proc GTK_CLIST_DRAW_DRAG_RECT_get*(clist: pointer): bool
-#proc GTK_CLIST_ROW_get*(`glist_`: PGList): PGtkCListRow
+#proc GTK_CLIST_ROW_get*(glist: PGList): PGtkCListRow
 #proc GTK_CELL_TEXT_get*(cell: pointer): PGtkCellText
 #proc GTK_CELL_PIXMAP_get*(cell: pointer): PGtkCellPixmap
 #proc GTK_CELL_PIXTEXT_get*(cell: pointer): PGtkCellPixText
@@ -5554,11 +5554,11 @@ proc CTREE_CLASS*(klass: pointer): PCTreeClass
 proc IS_CTREE*(obj: pointer): bool
 proc IS_CTREE_CLASS*(klass: pointer): bool
 proc CTREE_GET_CLASS*(obj: pointer): PCTreeClass
-proc CTREE_ROW*(`node_`: TAddress): PCTreeRow
-proc CTREE_NODE*(`node_`: TAddress): PCTreeNode
-proc CTREE_NODE_NEXT*(`nnode_`: TAddress): PCTreeNode
-proc CTREE_NODE_PREV*(`pnode_`: TAddress): PCTreeNode
-proc CTREE_FUNC*(`func_`: TAddress): TCTreeFunc
+proc CTREE_ROW*(node: TAddress): PCTreeRow
+proc CTREE_NODE*(node: TAddress): PCTreeNode
+proc CTREE_NODE_NEXT*(nnode: TAddress): PCTreeNode
+proc CTREE_NODE_PREV*(pnode: TAddress): PCTreeNode
+proc CTREE_FUNC*(fun: TAddress): TCTreeFunc
 proc TYPE_CTREE_NODE*(): GType
 proc line_style*(a: var TCTree): guint
 proc set_line_style*(a: var TCTree, `line_style`: guint)
@@ -5579,138 +5579,138 @@ proc ctree_insert_node*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode,
                         pixmap_opened: gdk2.PPixmap, mask_opened: gdk2.PBitmap, 
                         is_leaf: gboolean, expanded: gboolean): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_insert_node".}
-proc ctree_remove_node*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_remove_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_remove_node".}
 proc ctree_insert_gnode*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
-                         gnode: PGNode, func_: TCTreeGNodeFunc, data: gpointer): PCTreeNode{.
+                         gnode: PGNode, fun: TCTreeGNodeFunc, data: gpointer): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_insert_gnode".}
 proc ctree_export_to_gnode*(ctree: PCTree, parent: PGNode, sibling: PGNode, 
-                            node_: PCTreeNode, func_: TCTreeGNodeFunc, 
+                            node: PCTreeNode, fun: TCTreeGNodeFunc, 
                             data: gpointer): PGNode{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_export_to_gnode".}
-proc ctree_post_recursive*(ctree: PCTree, node_: PCTreeNode, func_: TCTreeFunc, 
+proc ctree_post_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
                            data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_post_recursive".}
-proc ctree_post_recursive_to_depth*(ctree: PCTree, node_: PCTreeNode, 
-                                    depth: gint, func_: TCTreeFunc, 
+proc ctree_post_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
+                                    depth: gint, fun: TCTreeFunc, 
                                     data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_post_recursive_to_depth".}
-proc ctree_pre_recursive*(ctree: PCTree, node_: PCTreeNode, func_: TCTreeFunc, 
+proc ctree_pre_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
                           data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_pre_recursive".}
-proc ctree_pre_recursive_to_depth*(ctree: PCTree, node_: PCTreeNode, 
-                                   depth: gint, func_: TCTreeFunc, 
+proc ctree_pre_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
+                                   depth: gint, fun: TCTreeFunc, 
                                    data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_pre_recursive_to_depth".}
-proc ctree_is_viewable*(ctree: PCTree, node_: PCTreeNode): gboolean{.cdecl, 
+proc ctree_is_viewable*(ctree: PCTree, node: PCTreeNode): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_is_viewable".}
-proc ctree_last*(ctree: PCTree, node_: PCTreeNode): PCTreeNode{.cdecl, 
+proc ctree_last*(ctree: PCTree, node: PCTreeNode): PCTreeNode{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_last".}
 proc ctree_find_node_ptr*(ctree: PCTree, ctree_row: PCTreeRow): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_node_ptr".}
 proc ctree_node_nth*(ctree: PCTree, row: guint): PCTreeNode{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_nth".}
-proc ctree_find*(ctree: PCTree, node_: PCTreeNode, child: PCTreeNode): gboolean{.
+proc ctree_find*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find".}
-proc ctree_is_ancestor*(ctree: PCTree, node_: PCTreeNode, child: PCTreeNode): gboolean{.
+proc ctree_is_ancestor*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_is_ancestor".}
-proc ctree_find_by_row_data*(ctree: PCTree, node_: PCTreeNode, data: gpointer): PCTreeNode{.
+proc ctree_find_by_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_by_row_data".}
-proc ctree_find_all_by_row_data*(ctree: PCTree, node_: PCTreeNode, 
+proc ctree_find_all_by_row_data*(ctree: PCTree, node: PCTreeNode, 
                                  data: gpointer): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_find_all_by_row_data".}
-proc ctree_find_by_row_data_custom*(ctree: PCTree, node_: PCTreeNode, 
-                                    data: gpointer, func_: TGCompareFunc): PCTreeNode{.
+proc ctree_find_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
+                                    data: gpointer, fun: TGCompareFunc): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_by_row_data_custom".}
-proc ctree_find_all_by_row_data_custom*(ctree: PCTree, node_: PCTreeNode, 
-                                        data: gpointer, func_: TGCompareFunc): PGList{.
+proc ctree_find_all_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
+                                        data: gpointer, fun: TGCompareFunc): PGList{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_all_by_row_data_custom".}
 proc ctree_is_hot_spot*(ctree: PCTree, x: gint, y: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_is_hot_spot".}
-proc ctree_move*(ctree: PCTree, node_: PCTreeNode, new_parent: PCTreeNode, 
+proc ctree_move*(ctree: PCTree, node: PCTreeNode, new_parent: PCTreeNode, 
                  new_sibling: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_move".}
-proc ctree_expand*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_expand*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_expand".}
-proc ctree_expand_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_expand_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_expand_recursive".}
-proc ctree_expand_to_depth*(ctree: PCTree, node_: PCTreeNode, depth: gint){.
+proc ctree_expand_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_expand_to_depth".}
-proc ctree_collapse*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_collapse*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_collapse".}
-proc ctree_collapse_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_collapse_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_collapse_recursive".}
-proc ctree_collapse_to_depth*(ctree: PCTree, node_: PCTreeNode, depth: gint){.
+proc ctree_collapse_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_collapse_to_depth".}
-proc ctree_toggle_expansion*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_toggle_expansion*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_toggle_expansion".}
-proc ctree_toggle_expansion_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_toggle_expansion_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_toggle_expansion_recursive".}
-proc ctree_select*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_select*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_select".}
-proc ctree_select_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_select_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_select_recursive".}
-proc ctree_unselect*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_unselect*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_unselect".}
-proc ctree_unselect_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_unselect_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_unselect_recursive".}
-proc ctree_real_select_recursive*(ctree: PCTree, node_: PCTreeNode, state: gint){.
+proc ctree_real_select_recursive*(ctree: PCTree, node: PCTreeNode, state: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_real_select_recursive".}
-proc ctree_node_set_text*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_set_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
                           text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_text".}
-proc ctree_node_set_pixmap*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_set_pixmap*(ctree: PCTree, node: PCTreeNode, column: gint, 
                             pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_set_pixmap".}
-proc ctree_node_set_pixtext*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_set_pixtext*(ctree: PCTree, node: PCTreeNode, column: gint, 
                              text: cstring, spacing: guint8, pixmap: gdk2.PPixmap, 
                              mask: gdk2.PBitmap){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_pixtext".}
-proc ctree_set_node_info*(ctree: PCTree, node_: PCTreeNode, text: cstring, 
+proc ctree_set_node_info*(ctree: PCTree, node: PCTreeNode, text: cstring, 
                           spacing: guint8, pixmap_closed: gdk2.PPixmap, 
                           mask_closed: gdk2.PBitmap, pixmap_opened: gdk2.PPixmap, 
                           mask_opened: gdk2.PBitmap, is_leaf: gboolean, 
                           expanded: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_node_info".}
-proc ctree_node_set_shift*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_set_shift*(ctree: PCTree, node: PCTreeNode, column: gint, 
                            vertical: gint, horizontal: gint){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_set_shift".}
-proc ctree_node_set_selectable*(ctree: PCTree, node_: PCTreeNode, 
+proc ctree_node_set_selectable*(ctree: PCTree, node: PCTreeNode, 
                                 selectable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_selectable".}
-proc ctree_node_get_selectable*(ctree: PCTree, node_: PCTreeNode): gboolean{.
+proc ctree_node_get_selectable*(ctree: PCTree, node: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_selectable".}
-proc ctree_node_get_cell_type*(ctree: PCTree, node_: PCTreeNode, column: gint): TCellType{.
+proc ctree_node_get_cell_type*(ctree: PCTree, node: PCTreeNode, column: gint): TCellType{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_cell_type".}
-proc ctree_node_get_text*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_get_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
                           text: PPgchar): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_get_text".}
-proc ctree_node_set_row_style*(ctree: PCTree, node_: PCTreeNode, style: PStyle){.
+proc ctree_node_set_row_style*(ctree: PCTree, node: PCTreeNode, style: PStyle){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_style".}
-proc ctree_node_get_row_style*(ctree: PCTree, node_: PCTreeNode): PStyle{.cdecl, 
+proc ctree_node_get_row_style*(ctree: PCTree, node: PCTreeNode): PStyle{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_get_row_style".}
-proc ctree_node_set_cell_style*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_set_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint, 
                                 style: PStyle){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_cell_style".}
-proc ctree_node_get_cell_style*(ctree: PCTree, node_: PCTreeNode, column: gint): PStyle{.
+proc ctree_node_get_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint): PStyle{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_cell_style".}
-proc ctree_node_set_foreground*(ctree: PCTree, node_: PCTreeNode, 
+proc ctree_node_set_foreground*(ctree: PCTree, node: PCTreeNode, 
                                 color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_foreground".}
-proc ctree_node_set_background*(ctree: PCTree, node_: PCTreeNode, 
+proc ctree_node_set_background*(ctree: PCTree, node: PCTreeNode, 
                                 color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_background".}
-proc ctree_node_set_row_data*(ctree: PCTree, node_: PCTreeNode, data: gpointer){.
+proc ctree_node_set_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_data".}
-proc ctree_node_set_row_data_full*(ctree: PCTree, node_: PCTreeNode, 
+proc ctree_node_set_row_data_full*(ctree: PCTree, node: PCTreeNode, 
                                    data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_data_full".}
-proc ctree_node_get_row_data*(ctree: PCTree, node_: PCTreeNode): gpointer{.
+proc ctree_node_get_row_data*(ctree: PCTree, node: PCTreeNode): gpointer{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_row_data".}
-proc ctree_node_moveto*(ctree: PCTree, node_: PCTreeNode, column: gint, 
+proc ctree_node_moveto*(ctree: PCTree, node: PCTreeNode, column: gint, 
                         row_align: gfloat, col_align: gfloat){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_moveto".}
-proc ctree_node_is_visible*(ctree: PCTree, node_: PCTreeNode): TVisibility{.
+proc ctree_node_is_visible*(ctree: PCTree, node: PCTreeNode): TVisibility{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_is_visible".}
 proc ctree_set_indent*(ctree: PCTree, indent: gint){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_indent".}
@@ -5725,9 +5725,9 @@ proc ctree_set_expander_style*(ctree: PCTree,
     dynlib: lib, importc: "gtk_ctree_set_expander_style".}
 proc ctree_set_drag_compare_func*(ctree: PCTree, cmp_func: TCTreeCompareDragFunc){.
     cdecl, dynlib: lib, importc: "gtk_ctree_set_drag_compare_func".}
-proc ctree_sort_node*(ctree: PCTree, node_: PCTreeNode){.cdecl, dynlib: lib, 
+proc ctree_sort_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_sort_node".}
-proc ctree_sort_recursive*(ctree: PCTree, node_: PCTreeNode){.cdecl, 
+proc ctree_sort_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_sort_recursive".}
 proc ctree_set_reorderable*(t: pointer, r: bool)
 proc ctree_node_get_type*(): GType{.cdecl, dynlib: lib, 
@@ -5999,7 +5999,7 @@ proc set_lower_arrow_prelight*(a: var TMenu, `lower_arrow_prelight`: guint)
 proc menu_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_menu_get_type".}
 proc menu_new*(): PMenu{.cdecl, dynlib: lib, importc: "gtk_menu_new".}
 proc menu_popup*(menu: PMenu, parent_menu_shell: PWidget, 
-                 parent_menu_item: PWidget, func_: TMenuPositionFunc, 
+                 parent_menu_item: PWidget, fun: TMenuPositionFunc, 
                  data: gpointer, button: guint, activate_time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_menu_popup".}
 proc menu_reposition*(menu: PMenu){.cdecl, dynlib: lib, 
@@ -7262,7 +7262,7 @@ proc item_factory_popup_data*(ifactory: PItemFactory): gpointer{.cdecl,
 proc item_factory_popup_data_from_widget*(widget: PWidget): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup_data_from_widget".}
 proc item_factory_set_translate_func*(ifactory: PItemFactory, 
-                                      func_: TTranslateFunc, data: gpointer, 
+                                      fun: TTranslateFunc, data: gpointer, 
                                       notify: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_set_translate_func".}
 proc TYPE_LAYOUT*(): GType
@@ -7476,7 +7476,7 @@ proc tree_model_ref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl,
     dynlib: lib, importc: "gtk_tree_model_ref_node".}
 proc tree_model_unref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_unref_node".}
-proc tree_model_foreach*(model: PTreeModel, func_: TTreeModelForeachFunc, 
+proc tree_model_foreach*(model: PTreeModel, fun: TTreeModelForeachFunc, 
                          user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_foreach".}
 proc tree_model_row_changed*(tree_model: PTreeModel, path: PTreePath, 
@@ -9049,7 +9049,7 @@ proc text_tag_table_remove*(table: PTextTagTable, tag: PTextTag){.cdecl,
     dynlib: lib, importc: "gtk_text_tag_table_remove".}
 proc text_tag_table_lookup*(table: PTextTagTable, name: cstring): PTextTag{.
     cdecl, dynlib: lib, importc: "gtk_text_tag_table_lookup".}
-proc text_tag_table_foreach*(table: PTextTagTable, func_: TTextTagTableForeach, 
+proc text_tag_table_foreach*(table: PTextTagTable, fun: TTextTagTableForeach, 
                              data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_table_foreach".}
 proc text_tag_table_get_size*(table: PTextTagTable): gint{.cdecl, dynlib: lib, 
@@ -9336,7 +9336,7 @@ proc text_btree_spew*(tree: PTextBTree){.cdecl, dynlib: lib,
     importc: "_gtk_text_btree_spew".}
 proc toggle_segment_check_func*(segPtr: PTextLineSegment, line: PTextLine){.
     cdecl, dynlib: lib, importc: "_gtk_toggle_segment_check_func".}
-proc change_node_toggle_count*(node_: PTextBTreeNode, info: PTextTagInfo, 
+proc change_node_toggle_count*(node: PTextBTreeNode, info: PTextTagInfo, 
                                delta: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_change_node_toggle_count".}
 proc text_btree_release_mark_segment*(tree: PTextBTree, 
@@ -10115,7 +10115,7 @@ proc tree_selection_set_mode*(selection: PTreeSelection, thetype: TSelectionMode
 proc tree_selection_get_mode*(selection: PTreeSelection): TSelectionMode{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_mode".}
 proc tree_selection_set_select_function*(selection: PTreeSelection, 
-    func_: TTreeSelectionFunc, data: gpointer, destroy: TDestroyNotify){.cdecl, 
+    fun: TTreeSelectionFunc, data: gpointer, destroy: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_set_select_function".}
 proc tree_selection_get_user_data*(selection: PTreeSelection): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_user_data".}
@@ -10128,7 +10128,7 @@ proc tree_selection_get_selected_rows*(selection: PTreeSelection,
                                        model: PPGtkTreeModel): PGList{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_selected_rows".}
 proc tree_selection_selected_foreach*(selection: PTreeSelection, 
-                                      func_: TTreeSelectionForeachFunc, 
+                                      fun: TTreeSelectionForeachFunc, 
                                       data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_tree_selection_selected_foreach".}
 proc tree_selection_select_path*(selection: PTreeSelection, path: PTreePath){.
@@ -10256,7 +10256,7 @@ proc tree_view_column_add_attribute*(tree_column: PTreeViewColumn,
                                      attribute: cstring, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_add_attribute".}
 proc tree_view_column_set_cell_data_func*(tree_column: PTreeViewColumn, 
-    cell_renderer: PCellRenderer, func_: TTreeCellDataFunc, func_data: gpointer, 
+    cell_renderer: PCellRenderer, fun: TTreeCellDataFunc, func_data: gpointer, 
     destroy: TDestroyNotify){.cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_cell_data_func".}
 proc tree_view_column_clear_attributes*(tree_column: PTreeViewColumn, 
                                         cell_renderer: PCellRenderer){.cdecl, 
@@ -10380,12 +10380,12 @@ proc flags*(a: PRBNode): guint
 proc set_flags*(a: PRBNode, `flags`: guint)
 proc parity*(a: PRBNode): guint
 proc set_parity*(a: PRBNode, `parity`: guint)
-proc RBNODE_GET_COLOR*(node_: PRBNode): guint
-proc RBNODE_SET_COLOR*(node_: PRBNode, color: guint)
-proc RBNODE_GET_HEIGHT*(node_: PRBNode): gint
-proc RBNODE_SET_FLAG*(node_: PRBNode, flag: guint16)
-proc RBNODE_UNSET_FLAG*(node_: PRBNode, flag: guint16)
-proc RBNODE_FLAG_SET*(node_: PRBNode, flag: guint): bool
+proc RBNODE_GET_COLOR*(node: PRBNode): guint
+proc RBNODE_SET_COLOR*(node: PRBNode, color: guint)
+proc RBNODE_GET_HEIGHT*(node: PRBNode): gint
+proc RBNODE_SET_FLAG*(node: PRBNode, flag: guint16)
+proc RBNODE_UNSET_FLAG*(node: PRBNode, flag: guint16)
+proc RBNODE_FLAG_SET*(node: PRBNode, flag: guint): bool
 proc rbtree_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_push_allocator".}
 proc rbtree_pop_allocator*(){.cdecl, dynlib: lib, 
@@ -10397,23 +10397,23 @@ proc rbtree_remove*(tree: PRBTree){.cdecl, dynlib: lib,
                                     importc: "_gtk_rbtree_remove".}
 proc rbtree_destroy*(tree: PRBTree){.cdecl, dynlib: lib, 
                                      importc: "_gtk_rbtree_destroy".}
-proc rbtree_insert_before*(tree: PRBTree, node_: PRBNode, height: gint, 
+proc rbtree_insert_before*(tree: PRBTree, node: PRBNode, height: gint, 
                            valid: gboolean): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_insert_before".}
-proc rbtree_insert_after*(tree: PRBTree, node_: PRBNode, height: gint, 
+proc rbtree_insert_after*(tree: PRBTree, node: PRBNode, height: gint, 
                           valid: gboolean): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_insert_after".}
-proc rbtree_remove_node*(tree: PRBTree, node_: PRBNode){.cdecl, dynlib: lib, 
+proc rbtree_remove_node*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_remove_node".}
 proc rbtree_reorder*(tree: PRBTree, new_order: Pgint, length: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_reorder".}
 proc rbtree_find_count*(tree: PRBTree, count: gint): PRBNode{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_find_count".}
-proc rbtree_node_set_height*(tree: PRBTree, node_: PRBNode, height: gint){.
+proc rbtree_node_set_height*(tree: PRBTree, node: PRBNode, height: gint){.
     cdecl, dynlib: lib, importc: "_gtk_rbtree_node_set_height".}
-proc rbtree_node_mark_invalid*(tree: PRBTree, node_: PRBNode){.cdecl, 
+proc rbtree_node_mark_invalid*(tree: PRBTree, node: PRBNode){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_mark_invalid".}
-proc rbtree_node_mark_valid*(tree: PRBTree, node_: PRBNode){.cdecl, dynlib: lib, 
+proc rbtree_node_mark_valid*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_node_mark_valid".}
 proc rbtree_column_invalid*(tree: PRBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_column_invalid".}
@@ -10421,16 +10421,16 @@ proc rbtree_mark_invalid*(tree: PRBTree){.cdecl, dynlib: lib,
     importc: "_gtk_rbtree_mark_invalid".}
 proc rbtree_set_fixed_height*(tree: PRBTree, height: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_set_fixed_height".}
-proc rbtree_node_find_offset*(tree: PRBTree, node_: PRBNode): gint{.cdecl, 
+proc rbtree_node_find_offset*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_find_offset".}
-proc rbtree_node_find_parity*(tree: PRBTree, node_: PRBNode): gint{.cdecl, 
+proc rbtree_node_find_parity*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_find_parity".}
-proc rbtree_traverse*(tree: PRBTree, node_: PRBNode, order: TGTraverseType, 
-                      func_: TRBTreeTraverseFunc, data: gpointer){.cdecl, 
+proc rbtree_traverse*(tree: PRBTree, node: PRBNode, order: TGTraverseType, 
+                      fun: TRBTreeTraverseFunc, data: gpointer){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_traverse".}
-proc rbtree_next*(tree: PRBTree, node_: PRBNode): PRBNode{.cdecl, dynlib: lib, 
+proc rbtree_next*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_next".}
-proc rbtree_prev*(tree: PRBTree, node_: PRBNode): PRBNode{.cdecl, dynlib: lib, 
+proc rbtree_prev*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_prev".}
 proc rbtree_get_depth*(tree: PRBTree): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_get_depth".}
@@ -10500,18 +10500,18 @@ proc set_enable_search*(a: var TTreeViewPrivate, `enable_search`: guint)
 proc disable_popdown*(a: var TTreeViewPrivate): guint
 proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint)
 proc tree_selection_internal_select_node*(selection: PTreeSelection, 
-    node_: PRBNode, tree: PRBTree, path: PTreePath, state: gdk2.TModifierType, 
+    node: PRBNode, tree: PRBTree, path: PTreePath, state: gdk2.TModifierType, 
     override_browse_mode: gboolean){.cdecl, dynlib: lib, importc: "_gtk_tree_selection_internal_select_node".}
 proc tree_view_find_node*(tree_view: PTreeView, path: PTreePath, 
-                          tree: var PRBTree, node_: var PRBNode): gboolean{.
+                          tree: var PRBTree, node: var PRBNode): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_find_node".}
-proc tree_view_find_path*(tree_view: PTreeView, tree: PRBTree, node_: PRBNode): PTreePath{.
+proc tree_view_find_path*(tree_view: PTreeView, tree: PRBTree, node: PRBNode): PTreePath{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_find_path".}
 proc tree_view_child_move_resize*(tree_view: PTreeView, widget: PWidget, 
                                   x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_child_move_resize".}
 proc tree_view_queue_draw_node*(tree_view: PTreeView, tree: PRBTree, 
-                                node_: PRBNode, clip_rect: gdk2.PRectangle){.
+                                node: PRBNode, clip_rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_queue_draw_node".}
 proc tree_view_column_realize_button*(column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_realize_button".}
@@ -10620,7 +10620,7 @@ proc tree_view_insert_column*(tree_view: PTreeView, column: PTreeViewColumn,
     importc: "gtk_tree_view_insert_column".}
 proc tree_view_insert_column_with_data_func*(tree_view: PTreeView, 
     position: gint, title: cstring, cell: PCellRenderer, 
-    func_: TTreeCellDataFunc, data: gpointer, dnotify: TGDestroyNotify): gint{.
+    fun: TTreeCellDataFunc, data: gpointer, dnotify: TGDestroyNotify): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_insert_column_with_data_func".}
 proc tree_view_get_column*(tree_view: PTreeView, n: gint): PTreeViewColumn{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_column".}
@@ -10635,7 +10635,7 @@ proc tree_view_set_expander_column*(tree_view: PTreeView,
 proc tree_view_get_expander_column*(tree_view: PTreeView): PTreeViewColumn{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_expander_column".}
 proc tree_view_set_column_drag_function*(tree_view: PTreeView, 
-    func_: TTreeViewColumnDropFunc, user_data: gpointer, destroy: TDestroyNotify){.
+    fun: TTreeViewColumnDropFunc, user_data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_column_drag_function".}
 proc tree_view_scroll_to_point*(tree_view: PTreeView, tree_x: gint, tree_y: gint){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_scroll_to_point".}
@@ -10656,7 +10656,7 @@ proc tree_view_expand_row*(tree_view: PTreeView, path: PTreePath,
 proc tree_view_collapse_row*(tree_view: PTreeView, path: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_collapse_row".}
 proc tree_view_map_expanded_rows*(tree_view: PTreeView, 
-                                  func_: TTreeViewMappingFunc, data: gpointer){.
+                                  fun: TTreeViewMappingFunc, data: gpointer){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_map_expanded_rows".}
 proc tree_view_row_expanded*(tree_view: PTreeView, path: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_row_expanded".}
@@ -10722,7 +10722,7 @@ proc tree_view_set_search_equal_func*(tree_view: PTreeView, search_equal_func: T
                                       search_destroy: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_search_equal_func".}
 proc tree_view_set_destroy_count_func*(tree_view: PTreeView, 
-                                       func_: TTreeDestroyCountFunc, 
+                                       fun: TTreeDestroyCountFunc, 
                                        data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_destroy_count_func".}
 proc TYPE_VBUTTON_BOX*(): GType
@@ -12423,8 +12423,8 @@ proc CLIST_DRAW_DRAG_LINE_get*(clist: pointer): bool =
 proc CLIST_DRAW_DRAG_RECT_get*(clist: pointer): bool = 
   result = ((CLIST_FLAGS(clist)) and cint(CLIST_DRAW_DRAG_RECT)) != 0'i32
 
-proc CLIST_ROW_get*(`glist_`: PGList): PCListRow = 
-  result = cast[PCListRow](`glist_`.data)
+proc CLIST_ROW_get*(glist: PGList): PCListRow = 
+  result = cast[PCListRow](glist.data)
 
 when false: 
   proc CELL_TEXT_get*(cell: pointer): PCellText = 
@@ -12683,20 +12683,20 @@ proc IS_CTREE_CLASS*(klass: pointer): bool =
 proc CTREE_GET_CLASS*(obj: pointer): PCTreeClass = 
   result = cast[PCTreeClass](CHECK_GET_CLASS(obj, TYPE_CTREE()))
 
-proc CTREE_ROW*(`node_`: TAddress): PCTreeRow = 
-  result = cast[PCTreeRow]((cast[PGList](`node_`)).data)
+proc CTREE_ROW*(node: TAddress): PCTreeRow = 
+  result = cast[PCTreeRow]((cast[PGList](node)).data)
 
-proc CTREE_NODE*(`node_`: TAddress): PCTreeNode = 
-  result = cast[PCTreeNode](`node_`)
+proc CTREE_NODE*(node: TAddress): PCTreeNode = 
+  result = cast[PCTreeNode](node)
 
-proc CTREE_NODE_NEXT*(`nnode_`: TAddress): PCTreeNode = 
-  result = cast[PCTreeNode]((cast[PGList](`nnode_`)).next)
+proc CTREE_NODE_NEXT*(nnode: TAddress): PCTreeNode = 
+  result = cast[PCTreeNode]((cast[PGList](nnode)).next)
 
-proc CTREE_NODE_PREV*(`pnode_`: TAddress): PCTreeNode = 
-  result = cast[PCTreeNode]((cast[PGList](`pnode_`)).prev)
+proc CTREE_NODE_PREV*(pnode: TAddress): PCTreeNode = 
+  result = cast[PCTreeNode]((cast[PGList](pnode)).prev)
 
-proc CTREE_FUNC*(`func_`: TAddress): TCTreeFunc = 
-  result = cast[TCTreeFunc](`func_`)
+proc CTREE_FUNC*(fun: TAddress): TCTreeFunc = 
+  result = cast[TCTreeFunc](fun)
 
 proc TYPE_CTREE_NODE*(): GType = 
   result = ctree_node_get_type()
@@ -14679,29 +14679,29 @@ proc signal_name*(signal_id: guint): cstring =
 proc signal_emit_stop*(instance: gpointer, signal_id: guint, detail: TGQuark) = 
   if detail != 0'i32: g_signal_stop_emission(instance, signal_id, 0)
   
-proc signal_connect_full*(anObject: PObject, name: cstring, func_: TSignalFunc, 
+proc signal_connect_full*(anObject: PObject, name: cstring, fun: TSignalFunc, 
                           unknown1: pointer, func_data: gpointer, 
                           unknown2: pointer, unknown3, unknown4: int): gulong{.
     importc: "gtk_signal_connect_full", cdecl, dynlib: lib.}
-proc signal_compat_matched*(anObject: PObject, func_: TSignalFunc, 
+proc signal_compat_matched*(anObject: PObject, fun: TSignalFunc, 
                             data: gpointer, m: TGSignalMatchType, u: int){.
     importc: "gtk_signal_compat_matched", cdecl, dynlib: lib.}
-proc signal_connect*(anObject: PObject, name: cstring, func_: TSignalFunc, 
+proc signal_connect*(anObject: PObject, name: cstring, fun: TSignalFunc, 
                      func_data: gpointer): gulong = 
-  result = signal_connect_full(anObject, name, func_, nil, func_data, nil, 0, 0)
+  result = signal_connect_full(anObject, name, fun, nil, func_data, nil, 0, 0)
 
-proc signal_connect_after*(anObject: PObject, name: cstring, func_: TSignalFunc, 
+proc signal_connect_after*(anObject: PObject, name: cstring, fun: TSignalFunc, 
                            func_data: gpointer): gulong = 
-  result = signal_connect_full(anObject, name, func_, nil, func_data, nil, 0, 1)
+  result = signal_connect_full(anObject, name, fun, nil, func_data, nil, 0, 1)
 
 proc signal_connect_object*(anObject: PObject, name: cstring, 
-                            func_: TSignalFunc, slot_object: gpointer): gulong = 
-  result = signal_connect_full(anObject, name, func_, nil, slot_object, nil, 1, 
+                            fun: TSignalFunc, slot_object: gpointer): gulong = 
+  result = signal_connect_full(anObject, name, fun, nil, slot_object, nil, 1, 
                                0)
 
 proc signal_connect_object_after*(anObject: PObject, name: cstring, 
-                                  func_: TSignalFunc, slot_object: gpointer): gulong = 
-  result = signal_connect_full(anObject, name, func_, nil, slot_object, nil, 1, 
+                                  fun: TSignalFunc, slot_object: gpointer): gulong = 
+  result = signal_connect_full(anObject, name, fun, nil, slot_object, nil, 1, 
                                1)
 
 proc signal_disconnect*(anObject: gpointer, handler_id: gulong) = 
@@ -14716,22 +14716,22 @@ proc signal_handler_unblock*(anObject: gpointer, handler_id: gulong) =
 proc signal_disconnect_by_data*(anObject: PObject, data: gpointer) = 
   signal_compat_matched(anObject, nil, data, G_SIGNAL_MATCH_DATA, 0)
 
-proc signal_disconnect_by_func*(anObject: PObject, func_: TSignalFunc, 
+proc signal_disconnect_by_func*(anObject: PObject, fun: TSignalFunc, 
                                 data: gpointer) = 
-  signal_compat_matched(anObject, func_, data, cast[TGSignalMatchType](G_SIGNAL_MATCH_FUNC or
+  signal_compat_matched(anObject, fun, data, cast[TGSignalMatchType](G_SIGNAL_MATCH_FUNC or
       G_SIGNAL_MATCH_DATA), 0)
 
-proc signal_handler_block_by_func*(anObject: PObject, func_: TSignalFunc, 
+proc signal_handler_block_by_func*(anObject: PObject, fun: TSignalFunc, 
                                    data: gpointer) = 
-  signal_compat_matched(anObject, func_, data, TGSignalMatchType(
+  signal_compat_matched(anObject, fun, data, TGSignalMatchType(
       G_SIGNAL_MATCH_FUNC or G_SIGNAL_MATCH_DATA), 0)
 
 proc signal_handler_block_by_data*(anObject: PObject, data: gpointer) = 
   signal_compat_matched(anObject, nil, data, G_SIGNAL_MATCH_DATA, 1)
 
-proc signal_handler_unblock_by_func*(anObject: PObject, func_: TSignalFunc, 
+proc signal_handler_unblock_by_func*(anObject: PObject, fun: TSignalFunc, 
                                      data: gpointer) = 
-  signal_compat_matched(anObject, func_, data, cast[TGSignalMatchType](G_SIGNAL_MATCH_FUNC or
+  signal_compat_matched(anObject, fun, data, cast[TGSignalMatchType](G_SIGNAL_MATCH_FUNC or
       G_SIGNAL_MATCH_DATA), 0)
 
 proc signal_handler_unblock_by_data*(anObject: PObject, data: gpointer) = 
@@ -14743,13 +14743,13 @@ proc signal_handler_pending*(anObject: PObject, signal_id: guint,
 
 proc signal_handler_pending_by_func*(anObject: PObject, signal_id: guint, 
                                      may_be_blocked: gboolean, 
-                                     func_: TSignalFunc, data: gpointer): gboolean = 
+                                     fun: TSignalFunc, data: gpointer): gboolean = 
   var t: TGSignalMatchType
   t = cast[TGSignalMatchType](G_SIGNAL_MATCH_ID or G_SIGNAL_MATCH_FUNC or
       G_SIGNAL_MATCH_DATA)
   if not may_be_blocked: 
     t = t or cast[TGSignalMatchType](G_SIGNAL_MATCH_UNBLOCKED)
-  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, func_, data) !=
+  Result = g_signal_handler_find(anObject, t, signal_id, 0, nil, fun, data) !=
       0
 
 proc TYPE_SIZE_GROUP*(): GType = 
@@ -16221,37 +16221,37 @@ proc set_parity*(a: PRBNode, `parity`: guint) =
   a.flag0 = a.flag0 or
       (int16(`parity` shl bp_TGtkRBNode_parity) and bm_TGtkRBNode_parity)
 
-proc RBNODE_GET_COLOR*(node_: PRBNode): guint = 
-  if node_ == nil: 
+proc RBNODE_GET_COLOR*(node: PRBNode): guint = 
+  if node == nil: 
     Result = RBNODE_BLACK
-  elif (int(flags(node_)) and RBNODE_RED) == RBNODE_RED: 
+  elif (int(flags(node)) and RBNODE_RED) == RBNODE_RED: 
     Result = RBNODE_RED
   else: 
     Result = RBNODE_BLACK
 
-proc RBNODE_SET_COLOR*(node_: PRBNode, color: guint) = 
-  if node_ == nil: 
+proc RBNODE_SET_COLOR*(node: PRBNode, color: guint) = 
+  if node == nil: 
     return 
-  if ((flags(node_) and (color)) != color): 
-    set_flags(node_, flags(node_) xor cint(RBNODE_RED or RBNODE_BLACK))
+  if ((flags(node) and (color)) != color): 
+    set_flags(node, flags(node) xor cint(RBNODE_RED or RBNODE_BLACK))
 
-proc RBNODE_GET_HEIGHT*(node_: PRBNode): gint = 
+proc RBNODE_GET_HEIGHT*(node: PRBNode): gint = 
   var if_local1: gint
-  if node_.children != nil: 
-    if_local1 = node_.children.root.offset
+  if node.children != nil: 
+    if_local1 = node.children.root.offset
   else: 
     if_local1 = 0
-  result = node_.offset -
-      ((node_.left.offset) + node_.right.offset + if_local1)
+  result = node.offset -
+      ((node.left.offset) + node.right.offset + if_local1)
 
-proc RBNODE_FLAG_SET*(node_: PRBNode, flag: guint): bool = 
-  result = (node_ != nil) and ((flags(node_) and (flag)) == flag)
+proc RBNODE_FLAG_SET*(node: PRBNode, flag: guint): bool = 
+  result = (node != nil) and ((flags(node) and (flag)) == flag)
 
-proc RBNODE_SET_FLAG*(node_: PRBNode, flag: guint16) = 
-  set_flags(node_, (flag) or flags(node_))
+proc RBNODE_SET_FLAG*(node: PRBNode, flag: guint16) = 
+  set_flags(node, (flag) or flags(node))
 
-proc RBNODE_UNSET_FLAG*(node_: PRBNode, flag: guint16) = 
-  set_flags(node_, (not (flag)) and flags(node_))
+proc RBNODE_UNSET_FLAG*(node: PRBNode, flag: guint16) = 
+  set_flags(node, (not (flag)) and flags(node))
 
 proc TREE_VIEW_FLAG_SET*(tree_view: PTreeView, flag: guint): bool = 
   result = ((tree_view.priv.flags) and (flag)) == flag

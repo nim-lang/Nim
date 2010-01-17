@@ -169,11 +169,11 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr: liMessage(n.info, errStringLiteralExpected)
   else: 
     result = c.semExpr(c, n.sons[1])
-    if result.typ == nil or result.typ.kind != tyString: 
-      liMessage(n.info, errStringLiteralExpected)
     if result.kind == nkSym and result.sym.kind == skConst:
       result = result.sym.ast # look it up
-
+    if result.typ == nil or result.typ.kind != tyString: 
+      liMessage(n.info, errStringLiteralExpected)
+    
 proc processDynLib(c: PContext, n: PNode, sym: PSym) = 
   if (sym == nil) or (sym.kind == skModule): 
     POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic, 
