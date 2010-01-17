@@ -61,7 +61,7 @@ type                          #music_cmd.h types
   TMidiEvent*{.final.} = object 
     time*: int32
     channel*: uint8
-    type_*: uint8
+    typ*: uint8
     a*: uint8
     b*: uint8
 
@@ -122,7 +122,7 @@ type                          #music_cmd.h types
     MUS_NONE, MUS_CMD, MUS_WAV, MUS_MOD, MUS_MID, MUS_OGG
   PMix_Music* = ptr TMix_Music
   TMix_Music*{.final.} = object 
-    type_*: TMix_MusicType
+    typ*: TMix_MusicType
 
   TMixFunction* = proc (udata: Pointer, stream: PUint8, length: int): Pointer{.
       cdecl.} # This macro can be used to fill a version structure with the compile-time

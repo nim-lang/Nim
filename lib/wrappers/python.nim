@@ -1,6 +1,6 @@
 #
 #    Light-weight binding for the Python interpreter
-#       (c) 2009 Andreas Rumpf 
+#       (c) 2010 Andreas Rumpf 
 #    Based on 'PythonEngine' module by Dr. Dietmar Budelsky
 #
 #
@@ -375,7 +375,7 @@ type
   TPyGetSetDef*{.final.} = object 
     name*: cstring
     get*: Tgetter
-    set_*: Tsetter
+    setter*: Tsetter
     doc*: cstring
     closure*: Pointer
 

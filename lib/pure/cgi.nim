@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -170,7 +170,7 @@ iterator decodeData*(allowedMethods: set[TRequestMethod] =
   var data = getEncodedData(allowedMethods)
   if not isNil(data): 
     for key, value in decodeData(data):
-      yield key, value
+      yield (key, value)
 
 proc readData*(allowedMethods: set[TRequestMethod] = 
                {methodNone, methodPost, methodGet}): PStringTable = 

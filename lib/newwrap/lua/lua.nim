@@ -159,7 +159,7 @@ proc pushnumber*(L: PState, n: Number){.cdecl, dynlib: NAME,
                                         importc: "lua_pushnumber".}
 proc pushinteger*(L: PState, n: Integer){.cdecl, dynlib: NAME, 
     importc: "lua_pushinteger".}
-proc pushlstring*(L: PState, s: cstring, l_: int){.cdecl, dynlib: NAME, 
+proc pushlstring*(L: PState, s: cstring, len: int){.cdecl, dynlib: NAME, 
     importc: "lua_pushlstring".}
 proc pushstring*(L: PState, s: cstring){.cdecl, dynlib: NAME, 
     importc: "lua_pushstring".}

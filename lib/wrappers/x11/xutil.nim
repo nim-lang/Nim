@@ -146,7 +146,7 @@ type
     visualid*: TVisualID
     screen*: cint
     depth*: cint
-    class_*: cint
+    class*: cint
     red_mask*: culong
     green_mask*: culong
     blue_mask*: culong

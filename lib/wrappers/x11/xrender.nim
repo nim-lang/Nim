@@ -163,7 +163,7 @@ type
 
   PXRenderPictureAttributes* = ptr TXRenderPictureAttributes
   TXRenderPictureAttributes*{.final.} = object 
-    repeat_*: TBool
+    repeat*: TBool
     alpha_map*: TPicture
     alpha_x_origin*: int32
     alpha_y_origin*: int32

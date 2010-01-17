@@ -251,7 +251,7 @@ proc SMPEG_setdisplay*(mpeg: PSMPEG, dst: PSDL_Surface, surfLock: PSDL_mutex,
                        callback: TSMPEG_DisplayCallback){.cdecl, 
     importc, dynlib: SmpegLibName.}
   # Set or clear looping play on an SMPEG object 
-proc SMPEG_loop*(mpeg: PSMPEG, repeat_: int){.cdecl, importc, dynlib: SmpegLibName.}
+proc SMPEG_loop*(mpeg: PSMPEG, repeat: int){.cdecl, importc, dynlib: SmpegLibName.}
   # Scale pixel display on an SMPEG object 
 proc SMPEG_scaleXY*(mpeg: PSMPEG, width, height: int){.cdecl, 
     importc, dynlib: SmpegLibName.}

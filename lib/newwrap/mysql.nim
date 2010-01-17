@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -45,7 +45,7 @@ const
   SERVICENAME* = "MySQL"
 
 type 
-  enum_server_command* = enum 
+  Tenum_server_command* = enum 
     COM_SLEEP, COM_QUIT, COM_INIT_DB, COM_QUERY, COM_FIELD_LIST, COM_CREATE_DB, 
     COM_DROP_DB, COM_REFRESH, COM_SHUTDOWN, COM_STATISTICS, COM_PROCESS_INFO, 
     COM_CONNECT, COM_PROCESS_KILL, COM_DEBUG, COM_PING, COM_TIME, 
@@ -144,8 +144,8 @@ const
   MAX_BLOB_WIDTH* = 8192      # Default width for blob
 
 type 
-  Pst_net* = ptr st_net
-  st_net*{.final.} = object 
+  Pst_net* = ptr Tst_net
+  Tst_net*{.final.} = object 
     vio*: PVio
     buff*: cstring
     buff_end*: cstring
@@ -185,14 +185,14 @@ type
     report_error*: my_bool    # We should report error (we have unreported error)
     return_errno*: my_bool
 
-  NET* = st_net
-  PNET* = ptr NET
+  TNET* = Tst_net
+  PNET* = ptr TNET
 
 const 
   packet_error* = - 1
 
 type 
-  enum_field_types* = enum    # For backward compatibility  
+  Tenum_field_types* = enum    # For backward compatibility  
     TYPE_DECIMAL, TYPE_TINY, TYPE_SHORT, TYPE_LONG, TYPE_FLOAT, TYPE_DOUBLE, 
     TYPE_NULL, TYPE_TIMESTAMP, TYPE_LONGLONG, TYPE_INT24, TYPE_DATE, TYPE_TIME, 
     TYPE_DATETIME, TYPE_YEAR, TYPE_NEWDATE, TYPE_VARCHAR, TYPE_BIT, 
@@ -238,18 +238,17 @@ const
   SHUTDOWN_KILLABLE_UPDATE* = chr(1 shl 3)
 
 type 
-  enum_shutdown_level* = enum 
+  Tenum_shutdown_level* = enum 
     SHUTDOWN_DEFAULT = 0, SHUTDOWN_WAIT_CONNECTIONS = 1, 
     SHUTDOWN_WAIT_TRANSACTIONS = 2, SHUTDOWN_WAIT_UPDATES = 8, 
     SHUTDOWN_WAIT_ALL_BUFFERS = 16, SHUTDOWN_WAIT_CRITICAL_BUFFERS = 17, 
     KILL_QUERY = 254, KILL_CONNECTION = 255
-  enum_cursor_type* = enum    # options for mysql_set_option  
+  Tenum_cursor_type* = enum    # options for mysql_set_option  
     CURSOR_TYPE_NO_CURSOR = 0, CURSOR_TYPE_READ_ONLY = 1, 
     CURSOR_TYPE_FOR_UPDATE = 2, CURSOR_TYPE_SCROLLABLE = 4
-  enum_mysql_set_option* = enum 
+  Tenum_mysql_set_option* = enum 
     OPTION_MULTI_STATEMENTS_ON, OPTION_MULTI_STATEMENTS_OFF
 
-proc net_new_transaction*(net: st_net): st_net
 proc my_net_init*(net: PNET, vio: PVio): my_bool{.cdecl, dynlib: lib, 
     importc: "my_net_init".}
 proc my_net_local_init*(net: PNET){.cdecl, dynlib: lib, 
@@ -270,24 +269,24 @@ proc my_net_read*(net: PNET): int{.cdecl, dynlib: lib, importc: "my_net_read".}
   # The following function is not meant for normal usage
   #      Currently it's used internally by manager.c  
 type 
-  Psockaddr* = ptr sockaddr
-  sockaddr*{.final.} = object  # undefined structure
+  Psockaddr* = ptr Tsockaddr
+  Tsockaddr*{.final.} = object  # undefined structure
 
 proc my_connect*(s: my_socket, name: Psockaddr, namelen: cuint, timeout: cuint): cint{.
     cdecl, dynlib: lib, importc: "my_connect".}
 type 
-  Prand_struct* = ptr rand_struct
-  rand_struct*{.final.} = object  # The following is for user defined functions  
+  Prand_struct* = ptr Trand_struct
+  Trand_struct*{.final.} = object # The following is for user defined functions  
     seed1*: int
     seed2*: int
     max_value*: int
     max_value_dbl*: cdouble
 
-  Item_result* = enum 
+  TItem_result* = enum 
     STRING_RESULT, REAL_RESULT, INT_RESULT, ROW_RESULT, DECIMAL_RESULT
-  PItem_result* = ptr Item_result
-  Pst_udf_args* = ptr st_udf_args
-  st_udf_args*{.final.} = object 
+  PItem_result* = ptr TItem_result
+  Pst_udf_args* = ptr Tst_udf_args
+  Tst_udf_args*{.final.} = object 
     arg_count*: cuint         # Number of arguments
     arg_type*: PItem_result   # Pointer to item_results
     args*: cstringArray       # Pointer to item_results
@@ -296,18 +295,18 @@ type
     attributes*: cstringArray # Pointer to attribute name
     attribute_lengths*: ptr int # Length of attribute arguments
   
-  UDF_ARGS* = st_udf_args
-  PUDF_ARGS* = ptr UDF_ARGS   # This holds information about the result  
-  Pst_udf_init* = ptr st_udf_init
-  st_udf_init*{.final.} = object 
+  TUDF_ARGS* = Tst_udf_args
+  PUDF_ARGS* = ptr TUDF_ARGS   # This holds information about the result  
+  Pst_udf_init* = ptr Tst_udf_init
+  Tst_udf_init*{.final.} = object 
     maybe_null*: my_bool      # 1 if function can return NULL
     decimals*: cuint          # for real functions
     max_length*: int          # For string functions
     theptr*: cstring          # free pointer for function data
     const_item*: my_bool      # free pointer for function data
   
-  UDF_INIT* = st_udf_init
-  PUDF_INIT* = ptr UDF_INIT   # Constants when using compression  
+  TUDF_INIT* = Tst_udf_init
+  PUDF_INIT* = ptr TUDF_INIT   # Constants when using compression  
 
 const 
   NET_HEADER_SIZE* = 4        # standard header size
@@ -381,8 +380,8 @@ const
   CLIENT_NET_WRITE_TIMEOUT* = 365 * 24 * 3600 # Timeout on write
 
 type 
-  Pst_mysql_field* = ptr st_mysql_field
-  st_mysql_field*{.final.} = object 
+  Pst_mysql_field* = ptr Tst_mysql_field
+  Tst_mysql_field*{.final.} = object 
     name*: cstring            # Name of column
     org_name*: cstring        # Original column name, if an alias
     table*: cstring           # Table of column if column was a field
@@ -402,19 +401,19 @@ type
     flags*: cuint             # Div flags
     decimals*: cuint          # Number of decimals in field
     charsetnr*: cuint         # Character set
-    ftype*: enum_field_types  # Type of field. See mysql_com.h for types
+    ftype*: Tenum_field_types  # Type of field. See mysql_com.h for types
   
-  FIELD* = st_mysql_field
-  PFIELD* = ptr FIELD
-  PROW* = ptr ROW             # return data as array of strings
-  ROW* = cstringArray
-  PFIELD_OFFSET* = ptr FIELD_OFFSET # offset to current field
-  FIELD_OFFSET* = cuint
+  TFIELD* = Tst_mysql_field
+  PFIELD* = ptr TFIELD
+  PROW* = ptr TROW             # return data as array of strings
+  TROW* = cstringArray
+  PFIELD_OFFSET* = ptr TFIELD_OFFSET # offset to current field
+  TFIELD_OFFSET* = cuint
 
 proc IS_PRI_KEY*(n: int32): bool
 proc IS_NOT_NULL*(n: int32): bool
 proc IS_BLOB*(n: int32): bool
-proc IS_NUM*(t: enum_field_types): bool
+proc IS_NUM*(t: Tenum_field_types): bool
 proc INTERNAL_NUM_FIELD*(f: Pst_mysql_field): bool
 proc IS_NUM_FIELD*(f: Pst_mysql_field): bool
 type 
@@ -425,33 +424,32 @@ const
   COUNT_ERROR* = not (my_ulonglong(0))
 
 type 
-  Pst_mysql_rows* = ptr st_mysql_rows
-  st_mysql_rows*{.final.} = object 
+  Pst_mysql_rows* = ptr Tst_mysql_rows
+  Tst_mysql_rows*{.final.} = object 
     next*: Pst_mysql_rows     # list of rows
-    data*: ROW
+    data*: TROW
     len*: int
 
-  ROWS* = st_mysql_rows
-  PROWS* = ptr ROWS
-  PROW_OFFSET* = ptr ROW_OFFSET # offset to current row
-  ROW_OFFSET* = ROWS #  ------------ Start of declaration in "my_alloc.h"     --------------------  
-                     # $include "my_alloc.h"
-
+  TROWS* = Tst_mysql_rows
+  PROWS* = ptr TROWS
+  PROW_OFFSET* = ptr TROW_OFFSET # offset to current row
+  TROW_OFFSET* = TROWS 
+  
 const 
   ALLOC_MAX_BLOCK_TO_DROP* = 4096
   ALLOC_MAX_BLOCK_USAGE_BEFORE_DROP* = 10 # struct for once_alloc (block)  
 
 type 
-  Pst_used_mem* = ptr st_used_mem
-  st_used_mem*{.final.} = object 
+  Pst_used_mem* = ptr Tst_used_mem
+  Tst_used_mem*{.final.} = object 
     next*: Pst_used_mem       # Next block in use
     left*: cuint              # memory left in block
     size*: cuint              # size of block
   
-  USED_MEM* = st_used_mem
-  PUSED_MEM* = ptr USED_MEM
-  Pst_mem_root* = ptr st_mem_root
-  st_mem_root*{.final.} = object 
+  TUSED_MEM* = Tst_used_mem
+  PUSED_MEM* = ptr TUSED_MEM
+  Pst_mem_root* = ptr Tst_mem_root
+  Tst_mem_root*{.final.} = object 
     free*: PUSED_MEM          # blocks with free memory in it
     used*: PUSED_MEM          # blocks almost without free memory
     pre_alloc*: PUSED_MEM     # preallocated block
@@ -463,21 +461,21 @@ type
     first_block_usage*: cuint
     error_handler*: proc (){.cdecl.}
 
-  MEM_ROOT* = st_mem_root
-  PMEM_ROOT* = ptr MEM_ROOT   #  ------------ Stop of declaration in "my_alloc.h"    ----------------------  
+  TMEM_ROOT* = Tst_mem_root
+  PMEM_ROOT* = ptr TMEM_ROOT   #  ------------ Stop of declaration in "my_alloc.h"    ----------------------  
 
 type 
-  Pst_mysql_data* = ptr st_mysql_data
-  st_mysql_data*{.final.} = object 
+  Pst_mysql_data* = ptr Tst_mysql_data
+  Tst_mysql_data*{.final.} = object 
     rows*: my_ulonglong
     fields*: cuint
     data*: PROWS
-    alloc*: MEM_ROOT
+    alloc*: TMEM_ROOT
     prev_ptr*: ptr PROWS
 
-  DATA* = st_mysql_data
-  PDATA* = ptr DATA
-  option* = enum 
+  TDATA* = Tst_mysql_data
+  PDATA* = ptr TDATA
+  Toption* = enum 
     OPT_CONNECT_TIMEOUT, OPT_COMPRESS, OPT_NAMED_PIPE, INIT_COMMAND, 
     READ_DEFAULT_FILE, READ_DEFAULT_GROUP, SET_CHARSET_DIR, SET_CHARSET_NAME, 
     OPT_LOCAL_INFILE, OPT_PROTOCOL, SHARED_MEMORY_BASE_NAME, OPT_READ_TIMEOUT, 
@@ -495,17 +493,17 @@ const
   MANAGER_INTERNAL_ERR* = 500
 
 type 
-  st_dynamic_array*{.final.} = object 
+  Tst_dynamic_array*{.final.} = object 
     buffer*: cstring
     elements*: cuint
     max_element*: cuint
     alloc_increment*: cuint
     size_of_element*: cuint
 
-  DYNAMIC_ARRAY* = st_dynamic_array
-  Pst_dynamic_array* = ptr st_dynamic_array
-  Pst_mysql_options* = ptr st_mysql_options
-  st_mysql_options*{.final.} = object 
+  TDYNAMIC_ARRAY* = Tst_dynamic_array
+  Pst_dynamic_array* = ptr Tst_dynamic_array
+  Pst_mysql_options* = ptr Tst_mysql_options
+  Tst_mysql_options*{.final.} = object 
     connect_timeout*: cuint
     read_timeout*: cuint
     write_timeout*: cuint
@@ -539,7 +537,7 @@ type
                         #       a read that is replication-aware    
     no_master_reads*: my_bool
     separate_thread*: my_bool
-    methods_to_use*: option
+    methods_to_use*: Toption
     client_ip*: cstring
     secure_auth*: my_bool     # Refuse client connecting to server if it uses old (pre-4.1.1) protocol
     report_data_truncation*: my_bool # 0 - never report, 1 - always report (default)
@@ -551,16 +549,16 @@ type
     local_infile_error*: proc (para1: pointer, para2: cstring, para3: cuint): cint
     local_infile_userdata*: pointer
 
-  status* = enum 
+  Tstatus* = enum 
     STATUS_READY, STATUS_GET_RESULT, STATUS_USE_RESULT
-  protocol_type* = enum  # There are three types of queries - the ones that have to go to
-                         #      the master, the ones that go to a slave, and the adminstrative
-                         #      type which must happen on the pivot connectioin 
+  Tprotocol_type* = enum  # There are three types of queries - the ones that have to go to
+                          # the master, the ones that go to a slave, and the adminstrative
+                          # type which must happen on the pivot connectioin 
     PROTOCOL_DEFAULT, PROTOCOL_TCP, PROTOCOL_SOCKET, PROTOCOL_PIPE, 
     PROTOCOL_MEMORY
-  rpl_type* = enum 
+  Trpl_type* = enum 
     RPL_MASTER, RPL_SLAVE, RPL_ADMIN
-  charset_info_st*{.final.} = object 
+  Tcharset_info_st*{.final.} = object 
     number*: cuint
     primary_number*: cuint
     binary_number*: cuint
@@ -588,10 +586,10 @@ type
     cset*: pointer            # was ^MY_CHARSET_HANDLER
     coll*: pointer            # was ^MY_COLLATION_HANDLER;
   
-  CHARSET_INFO* = charset_info_st
-  Pcharset_info_st* = ptr charset_info_st
-  Pcharacter_set* = ptr character_set
-  character_set*{.final.} = object 
+  TCHARSET_INFO* = Tcharset_info_st
+  Pcharset_info_st* = ptr Tcharset_info_st
+  Pcharacter_set* = ptr Tcharacter_set
+  Tcharacter_set*{.final.} = object 
     number*: cuint
     state*: cuint
     csname*: cstring
@@ -601,12 +599,12 @@ type
     mbminlen*: cuint
     mbmaxlen*: cuint
 
-  MY_CHARSET_INFO* = character_set
-  PMY_CHARSET_INFO* = ptr MY_CHARSET_INFO
-  Pst_mysql_methods* = ptr st_mysql_methods
-  Pst_mysql* = ptr st_mysql
-  st_mysql*{.final.} = object 
-    net*: NET                 # Communication parameters
+  TMY_CHARSET_INFO* = Tcharacter_set
+  PMY_CHARSET_INFO* = ptr TMY_CHARSET_INFO
+  Pst_mysql_methods* = ptr Tst_mysql_methods
+  Pst_mysql* = ptr Tst_mysql
+  Tst_mysql*{.final.} = object 
+    net*: TNET                 # Communication parameters
     connector_fd*: gptr       # ConnectorFd for SSL
     host*: cstring
     user*: cstring
@@ -618,7 +616,7 @@ type
     db*: cstring
     charset*: Pcharset_info_st
     fields*: PFIELD
-    field_alloc*: MEM_ROOT
+    field_alloc*: TMEM_ROOT
     affected_rows*: my_ulonglong
     insert_id*: my_ulonglong  # id if insert on table with NEXTNR
     extra_info*: my_ulonglong # Used by mysqlshow, not used by mysql 5.0 and up
@@ -632,8 +630,8 @@ type
     server_status*: cuint
     server_language*: cuint
     warning_count*: cuint
-    options*: st_mysql_options
-    status*: status
+    options*: Tst_mysql_options
+    status*: Tstatus
     free_me*: my_bool         # If free in mysql_close
     reconnect*: my_bool       # set to 1 if automatic reconnect
     scramble*: array[0..(SCRAMBLE_LENGTH + 1) - 1, char] # session-wide random string
@@ -651,54 +649,54 @@ type
                   #        from mysql_stmt_close if close had to cancel result set of this object.       
     unbuffered_fetch_owner*: Pmy_bool
 
-  * = st_mysql
-  P* = ptr 
-  Pst_mysql_res* = ptr st_mysql_res
-  st_mysql_res*{.final.} = object 
+  TMySQL* = Tst_mysql
+  PMySQL* = ptr TMySQL
+  Pst_mysql_res* = ptr Tst_mysql_res
+  Tst_mysql_res*{.final.} = object 
     row_count*: my_ulonglong
     fields*: PFIELD
     data*: PDATA
     data_cursor*: PROWS
     lengths*: ptr int         # column lengths of current row
-    handle*: P                # for unbuffered reads
-    field_alloc*: MEM_ROOT
+    handle*: PMySQL                # for unbuffered reads
+    field_alloc*: TMEM_ROOT
     field_count*: cuint
     current_field*: cuint
-    row*: ROW                 # If unbuffered read
-    current_row*: ROW         # buffer to current row
+    row*: TROW                 # If unbuffered read
+    current_row*: TROW         # buffer to current row
     eof*: my_bool             # Used by mysql_fetch_row
     unbuffered_fetch_cancelled*: my_bool # mysql_stmt_close() had to cancel this result
     methods*: Pst_mysql_methods
 
-  RES* = st_mysql_res
-  PRES* = ptr RES
-  Pst_mysql_stmt* = ptr st_mysql_stmt
-  PSTMT* = ptr STMT
-  st_mysql_methods*{.final.} = object 
-    read_query_result*: proc (: P): my_bool{.cdecl.}
-    advanced_command*: proc (: P, command: enum_server_command, header: cstring, 
+  TRES* = Tst_mysql_res
+  PRES* = ptr TRES
+  Pst_mysql_stmt* = ptr Tst_mysql_stmt
+  PSTMT* = ptr TSTMT
+  Tst_mysql_methods*{.final.} = object 
+    read_query_result*: proc (MySQL:  PMySQL): my_bool{.cdecl.}
+    advanced_command*: proc (MySQL: PMySQL, command: Tenum_server_command, header: cstring, 
                              header_length: int, arg: cstring, arg_length: int, 
                              skip_check: my_bool): my_bool
-    read_rows*: proc (: P, fields: PFIELD, fields: cuint): PDATA
-    use_result*: proc (: P): PRES
-    fetch_lengths*: proc (fto: ptr int, column: ROW, field_count: cuint)
-    flush_use_result*: proc (: P)
-    list_fields*: proc (: P): PFIELD
-    read_prepare_result*: proc (: P, stmt: PSTMT): my_bool
+    read_rows*: proc (MySQL: PMySQL, fields: PFIELD, fields_count: cuint): PDATA
+    use_result*: proc (MySQL: PMySQL): PRES
+    fetch_lengths*: proc (fto: ptr int, column: TROW, field_count: cuint)
+    flush_use_result*: proc (MySQL: PMySQL)
+    list_fields*: proc (MySQL: PMySQL): PFIELD
+    read_prepare_result*: proc (MySQL: PMySQL, stmt: PSTMT): my_bool
     stmt_execute*: proc (stmt: PSTMT): cint
     read_binary_rows*: proc (stmt: PSTMT): cint
-    unbuffered_fetch*: proc (: P, row: cstringArray): cint
-    free_embedded_thd*: proc (: P)
-    read_statistics*: proc (: P): cstring
-    next_result*: proc (: P): my_bool
-    read_change_user_result*: proc (: P, buff: cstring, passwd: cstring): cint
+    unbuffered_fetch*: proc (MySQL: PMySQL, row: cstringArray): cint
+    free_embedded_thd*: proc (MySQL: PMySQL)
+    read_statistics*: proc (MySQL: PMySQL): cstring
+    next_result*: proc (MySQL: PMySQL): my_bool
+    read_change_user_result*: proc (MySQL: PMySQL, buff: cstring, passwd: cstring): cint
     read_rowsfrom_cursor*: proc (stmt: PSTMT): cint
 
-  METHODS* = st_mysql_methods
-  PMETHODS* = ptr METHODS
-  Pst_mysql_manager* = ptr st_mysql_manager
-  st_mysql_manager*{.final.} = object 
-    net*: NET
+  TMETHODS* = Tst_mysql_methods
+  PMETHODS* = ptr TMETHODS
+  Pst_mysql_manager* = ptr Tst_mysql_manager
+  Tst_mysql_manager*{.final.} = object 
+    net*: TNET
     host*: cstring
     user*: cstring
     passwd*: cstring
@@ -713,24 +711,24 @@ type
     net_buf_size*: cint
     last_error*: array[0..(MAX_MYSQL_MANAGER_ERR) - 1, char]
 
-  MANAGER* = st_mysql_manager
-  PMANAGER* = ptr MANAGER
-  Pst_mysql_parameters* = ptr st_mysql_parameters
-  st_mysql_parameters*{.final.} = object 
+  TMANAGER* = Tst_mysql_manager
+  PMANAGER* = ptr TMANAGER
+  Pst_mysql_parameters* = ptr Tst_mysql_parameters
+  Tst_mysql_parameters*{.final.} = object 
     p_max_allowed_packet*: ptr int
     p_net_buffer_length*: ptr int
 
-  PARAMETERS* = st_mysql_parameters
-  PPARAMETERS* = ptr PARAMETERS
-  enum_mysql_stmt_state* = enum 
+  TPARAMETERS* = Tst_mysql_parameters
+  PPARAMETERS* = ptr TPARAMETERS
+  Tenum_mysql_stmt_state* = enum 
     STMT_INIT_DONE = 1, STMT_PREPARE_DONE, STMT_EXECUTE_DONE, STMT_FETCH_DONE
-  Pst_mysql_bind* = ptr st_mysql_bind
-  st_mysql_bind*{.final.} = object 
+  Pst_mysql_bind* = ptr Tst_mysql_bind
+  Tst_mysql_bind*{.final.} = object 
     len*: int                 # output length pointer
     is_null*: Pmy_bool        # Pointer to null indicator
     buffer*: pointer          # buffer to get/put data
     error*: pmy_bool          # set this if you want to track data truncations happened during fetch
-    buffer_type*: enum_field_types # buffer type
+    buffer_type*: Tenum_field_types # buffer type
     buffer_length*: int       # buffer length, must be set for str/binary
                               # Following are for internal use. Set by mysql_stmt_bind_param  
     row_ptr*: ptr byte        # for the current data position
@@ -746,15 +744,15 @@ type
     fetch_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPbyte)
     skip_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPbyte)
 
-  BIND* = st_mysql_bind
-  PBIND* = ptr BIND           # statement handler  
-  st_mysql_stmt*{.final.} = object 
-    mem_root*: MEM_ROOT       # root allocations
-    *: P                      # connection handle
+  TBIND* = Tst_mysql_bind
+  PBIND* = ptr TBIND           # statement handler  
+  Tst_mysql_stmt*{.final.} = object 
+    mem_root*: TMEM_ROOT       # root allocations
+    mysql*: PMySQL                      # connection handle
     params*: PBIND            # input parameters
     `bind`*: PBIND            # input parameters
     fields*: PFIELD           # result set metadata
-    result*: DATA             # cached result set
+    result*: TDATA             # cached result set
     data_cursor*: PROWS       # current row in cached result
     affected_rows*: my_ulonglong # copy of mysql->affected_rows after statement execution
     insert_id*: my_ulonglong
@@ -767,7 +765,7 @@ type
     last_errno*: cuint        # error code
     param_count*: cuint       # input parameter count
     field_count*: cuint       # number of columns in result set
-    state*: enum_mysql_stmt_state # statement state
+    state*: Tenum_mysql_stmt_state # statement state
     last_error*: array[0..(ERRMSG_SIZE) - 1, char] # error message
     sqlstate*: array[0..(SQLSTATE_LENGTH + 1) - 1, char]
     send_types_to_server*: my_bool # Types of input parameters should be sent to server
@@ -776,12 +774,9 @@ type
     unbuffered_fetch_cancelled*: my_bool
     update_max_length*: my_bool
 
-  STMT* = st_mysql_stmt # When doing mysql_stmt_store_result calculate max_length attribute
-                        # of statement metadata. This is to be consistent with the old API,
-                        # where this was done automatically.
-                        # In the new API we do that only by request because it slows down
-                        # mysql_stmt_store_result sufficiently.       
-  enum_stmt_attr_type* = enum 
+  TSTMT* = Tst_mysql_stmt 
+         
+  Tenum_stmt_attr_type* = enum 
     STMT_ATTR_UPDATE_MAX_LENGTH, STMT_ATTR_CURSOR_TYPE, STMT_ATTR_PREFETCH_ROWS
 
 proc server_init*(argc: cint, argv: cstringArray, groups: cstringArray): cint{.
@@ -816,58 +811,58 @@ proc fetch_field_direct*(res: PRES, fieldnr: cuint): PFIELD{.stdcall,
     dynlib: lib, importc: "mysql_fetch_field_direct".}
 proc fetch_fields*(res: PRES): PFIELD{.stdcall, dynlib: lib, 
                                        importc: "mysql_fetch_fields".}
-proc row_tell*(res: PRES): ROW_OFFSET{.stdcall, dynlib: lib, 
+proc row_tell*(res: PRES): TROW_OFFSET{.stdcall, dynlib: lib, 
                                        importc: "mysql_row_tell".}
-proc field_tell*(res: PRES): FIELD_OFFSET{.stdcall, dynlib: lib, 
+proc field_tell*(res: PRES): TFIELD_OFFSET{.stdcall, dynlib: lib, 
     importc: "mysql_field_tell".}
-proc field_count*(: P): cuint{.stdcall, dynlib: lib, 
+proc field_count*(MySQL: PMySQL): cuint{.stdcall, dynlib: lib, 
                                importc: "mysql_field_count".}
-proc affected_rows*(: P): my_ulonglong{.stdcall, dynlib: lib, 
+proc affected_rows*(MySQL: PMySQL): my_ulonglong{.stdcall, dynlib: lib, 
                                         importc: "mysql_affected_rows".}
-proc insert_id*(: P): my_ulonglong{.stdcall, dynlib: lib, 
+proc insert_id*(MySQL: PMySQL): my_ulonglong{.stdcall, dynlib: lib, 
                                     importc: "mysql_insert_id".}
-proc errno*(: P): cuint{.stdcall, dynlib: lib, importc: "mysql_errno".}
-proc error*(: P): cstring{.stdcall, dynlib: lib, importc: "mysql_error".}
-proc sqlstate*(: P): cstring{.stdcall, dynlib: lib, importc: "mysql_sqlstate".}
-proc warning_count*(: P): cuint{.stdcall, dynlib: lib, 
+proc errno*(MySQL: PMySQL): cuint{.stdcall, dynlib: lib, importc: "mysql_errno".}
+proc error*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, importc: "mysql_error".}
+proc sqlstate*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, importc: "mysql_sqlstate".}
+proc warning_count*(MySQL: PMySQL): cuint{.stdcall, dynlib: lib, 
                                  importc: "mysql_warning_count".}
-proc info*(: P): cstring{.stdcall, dynlib: lib, importc: "mysql_info".}
-proc thread_id*(: P): int{.stdcall, dynlib: lib, importc: "mysql_thread_id".}
-proc character_set_name*(: P): cstring{.stdcall, dynlib: lib, 
+proc info*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, importc: "mysql_info".}
+proc thread_id*(MySQL: PMySQL): int{.stdcall, dynlib: lib, importc: "mysql_thread_id".}
+proc character_set_name*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, 
                                         importc: "mysql_character_set_name".}
-proc set_character_set*(: P, csname: cstring): int32{.stdcall, dynlib: lib, 
+proc set_character_set*(MySQL: PMySQL, csname: cstring): int32{.stdcall, dynlib: lib, 
     importc: "mysql_set_character_set".}
-proc init*(: P): P{.stdcall, dynlib: lib, importc: "mysql_init".}
-proc ssl_set*(: P, key: cstring, cert: cstring, ca: cstring, capath: cstring, 
+proc init*(MySQL: PMySQL): PMySQL{.stdcall, dynlib: lib, importc: "mysql_init".}
+proc ssl_set*(MySQL: PMySQL, key: cstring, cert: cstring, ca: cstring, capath: cstring, 
               cipher: cstring): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_ssl_set".}
-proc change_user*(: P, user: cstring, passwd: cstring, db: cstring): my_bool{.
+proc change_user*(MySQL: PMySQL, user: cstring, passwd: cstring, db: cstring): my_bool{.
     stdcall, dynlib: lib, importc: "mysql_change_user".}
-proc real_connect*(: P, host: cstring, user: cstring, passwd: cstring, 
+proc real_connect*(MySQL: PMySQL, host: cstring, user: cstring, passwd: cstring, 
                    db: cstring, port: cuint, unix_socket: cstring, 
-                   clientflag: int): P{.stdcall, dynlib: lib, 
+                   clientflag: int): PMySQL{.stdcall, dynlib: lib, 
                                         importc: "mysql_real_connect".}
-proc select_db*(: P, db: cstring): cint{.stdcall, dynlib: lib, 
+proc select_db*(MySQL: PMySQL, db: cstring): cint{.stdcall, dynlib: lib, 
     importc: "mysql_select_db".}
-proc query*(: P, q: cstring): cint{.stdcall, dynlib: lib, importc: "mysql_query".}
-proc send_query*(: P, q: cstring, len: int): cint{.stdcall, dynlib: lib, 
+proc query*(MySQL: PMySQL, q: cstring): cint{.stdcall, dynlib: lib, importc: "mysql_query".}
+proc send_query*(MySQL: PMySQL, q: cstring, len: int): cint{.stdcall, dynlib: lib, 
     importc: "mysql_send_query".}
-proc real_query*(: P, q: cstring, len: int): cint{.stdcall, dynlib: lib, 
+proc real_query*(MySQL: PMySQL, q: cstring, len: int): cint{.stdcall, dynlib: lib, 
     importc: "mysql_real_query".}
-proc store_result*(: P): PRES{.stdcall, dynlib: lib, 
+proc store_result*(MySQL: PMySQL): PRES{.stdcall, dynlib: lib, 
                                importc: "mysql_store_result".}
-proc use_result*(: P): PRES{.stdcall, dynlib: lib, importc: "mysql_use_result".}
+proc use_result*(MySQL: PMySQL): PRES{.stdcall, dynlib: lib, importc: "mysql_use_result".}
   # perform query on master  
-proc master_query*(: P, q: cstring, len: int): my_bool{.stdcall, dynlib: lib, 
+proc master_query*(MySQL: PMySQL, q: cstring, len: int): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_master_query".}
-proc master_send_query*(: P, q: cstring, len: int): my_bool{.stdcall, 
+proc master_send_query*(MySQL: PMySQL, q: cstring, len: int): my_bool{.stdcall, 
     dynlib: lib, importc: "mysql_master_send_query".}
   # perform query on slave  
-proc slave_query*(: P, q: cstring, len: int): my_bool{.stdcall, dynlib: lib, 
+proc slave_query*(MySQL: PMySQL, q: cstring, len: int): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_slave_query".}
-proc slave_send_query*(: P, q: cstring, len: int): my_bool{.stdcall, 
+proc slave_send_query*(MySQL: PMySQL, q: cstring, len: int): my_bool{.stdcall, 
     dynlib: lib, importc: "mysql_slave_send_query".}
-proc get_character_set_info*(: P, charset: PMY_CHARSET_INFO){.stdcall, 
+proc get_character_set_info*(MySQL: PMySQL, charset: PMY_CHARSET_INFO){.stdcall, 
     dynlib: lib, importc: "mysql_get_character_set_info".}
   # local infile support  
 const 
@@ -876,90 +871,90 @@ const
 # procedure mysql_set_local_infile_handler(mysql:PMYSQL; local_infile_init:function (para1:Ppointer; para2:Pchar; para3:pointer):longint; local_infile_read:function (para1:pointer; para2:Pchar; para3:dword):longint; local_infile_end:procedure (_pa
 # para6:pointer);cdecl;external mysqllib name 'mysql_set_local_infile_handler';
 
-proc set_local_infile_default*(: P){.cdecl, dynlib: lib, 
+proc set_local_infile_default*(MySQL: PMySQL){.cdecl, dynlib: lib, 
                                      importc: "mysql_set_local_infile_default".}
   # enable/disable parsing of all queries to decide if they go on master or
   #      slave     
-proc enable_rpl_parse*(: P){.stdcall, dynlib: lib, 
+proc enable_rpl_parse*(MySQL: PMySQL){.stdcall, dynlib: lib, 
                              importc: "mysql_enable_rpl_parse".}
-proc disable_rpl_parse*(: P){.stdcall, dynlib: lib, 
+proc disable_rpl_parse*(MySQL: PMySQL){.stdcall, dynlib: lib, 
                               importc: "mysql_disable_rpl_parse".}
   # get the value of the parse flag  
-proc rpl_parse_enabled*(: P): cint{.stdcall, dynlib: lib, 
+proc rpl_parse_enabled*(MySQL: PMySQL): cint{.stdcall, dynlib: lib, 
                                     importc: "mysql_rpl_parse_enabled".}
   #  enable/disable reads from master  
-proc enable_reads_from_master*(: P){.stdcall, dynlib: lib, 
+proc enable_reads_from_master*(MySQL: PMySQL){.stdcall, dynlib: lib, 
                                      importc: "mysql_enable_reads_from_master".}
-proc disable_reads_from_master*(: P){.stdcall, dynlib: lib, importc: "mysql_disable_reads_from_master".}
+proc disable_reads_from_master*(MySQL: PMySQL){.stdcall, dynlib: lib, importc: "mysql_disable_reads_from_master".}
   # get the value of the master read flag  
-proc reads_from_master_enabled*(: P): my_bool{.stdcall, dynlib: lib, 
+proc reads_from_master_enabled*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_reads_from_master_enabled".}
-proc rpl_query_type*(q: cstring, length: cint): rpl_type{.stdcall, dynlib: lib, 
+proc rpl_query_type*(q: cstring, length: cint): Trpl_type{.stdcall, dynlib: lib, 
     importc: "mysql_rpl_query_type".}
   # discover the master and its slaves  
-proc rpl_probe*(: P): my_bool{.stdcall, dynlib: lib, importc: "mysql_rpl_probe".}
+proc rpl_probe*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, importc: "mysql_rpl_probe".}
   # set the master, close/free the old one, if it is not a pivot  
-proc set_master*(: P, host: cstring, port: cuint, user: cstring, passwd: cstring): cint{.
+proc set_master*(MySQL: PMySQL, host: cstring, port: cuint, user: cstring, passwd: cstring): cint{.
     stdcall, dynlib: lib, importc: "mysql_set_master".}
-proc add_slave*(: P, host: cstring, port: cuint, user: cstring, passwd: cstring): cint{.
+proc add_slave*(MySQL: PMySQL, host: cstring, port: cuint, user: cstring, passwd: cstring): cint{.
     stdcall, dynlib: lib, importc: "mysql_add_slave".}
-proc shutdown*(: P, shutdown_level: enum_shutdown_level): cint{.stdcall, 
+proc shutdown*(MySQL: PMySQL, shutdown_level: Tenum_shutdown_level): cint{.stdcall, 
     dynlib: lib, importc: "mysql_shutdown".}
-proc dump_debug_info*(: P): cint{.stdcall, dynlib: lib, 
+proc dump_debug_info*(MySQL: PMySQL): cint{.stdcall, dynlib: lib, 
                                   importc: "mysql_dump_debug_info".}
-proc refresh*(: P, refresh_options: cuint): cint{.stdcall, dynlib: lib, 
+proc refresh*(MySQL: PMySQL, refresh_options: cuint): cint{.stdcall, dynlib: lib, 
     importc: "mysql_refresh".}
-proc kill*(: P, pid: int): cint{.stdcall, dynlib: lib, importc: "mysql_kill".}
-proc set_server_option*(: P, option: enum_mysql_set_option): cint{.stdcall, 
+proc kill*(MySQL: PMySQL, pid: int): cint{.stdcall, dynlib: lib, importc: "mysql_kill".}
+proc set_server_option*(MySQL: PMySQL, option: Tenum_mysql_set_option): cint{.stdcall, 
     dynlib: lib, importc: "mysql_set_server_option".}
-proc ping*(: P): cint{.stdcall, dynlib: lib, importc: "mysql_ping".}
-proc stat*(: P): cstring{.stdcall, dynlib: lib, importc: "mysql_stat".}
-proc get_server_info*(: P): cstring{.stdcall, dynlib: lib, 
+proc ping*(MySQL: PMySQL): cint{.stdcall, dynlib: lib, importc: "mysql_ping".}
+proc stat*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, importc: "mysql_stat".}
+proc get_server_info*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, 
                                      importc: "mysql_get_server_info".}
 proc get_client_info*(): cstring{.stdcall, dynlib: lib, 
                                   importc: "mysql_get_client_info".}
 proc get_client_version*(): int{.stdcall, dynlib: lib, 
                                  importc: "mysql_get_client_version".}
-proc get_host_info*(: P): cstring{.stdcall, dynlib: lib, 
+proc get_host_info*(MySQL: PMySQL): cstring{.stdcall, dynlib: lib, 
                                    importc: "mysql_get_host_info".}
-proc get_server_version*(: P): int{.stdcall, dynlib: lib, 
+proc get_server_version*(MySQL: PMySQL): int{.stdcall, dynlib: lib, 
                                     importc: "mysql_get_server_version".}
-proc get_proto_info*(: P): cuint{.stdcall, dynlib: lib, 
+proc get_proto_info*(MySQL: PMySQL): cuint{.stdcall, dynlib: lib, 
                                   importc: "mysql_get_proto_info".}
-proc list_dbs*(: P, wild: cstring): PRES{.stdcall, dynlib: lib, 
+proc list_dbs*(MySQL: PMySQL, wild: cstring): PRES{.stdcall, dynlib: lib, 
     importc: "mysql_list_dbs".}
-proc list_tables*(: P, wild: cstring): PRES{.stdcall, dynlib: lib, 
+proc list_tables*(MySQL: PMySQL, wild: cstring): PRES{.stdcall, dynlib: lib, 
     importc: "mysql_list_tables".}
-proc list_processes*(: P): PRES{.stdcall, dynlib: lib, 
+proc list_processes*(MySQL: PMySQL): PRES{.stdcall, dynlib: lib, 
                                  importc: "mysql_list_processes".}
-proc options*(: P, option: option, arg: cstring): cint{.stdcall, dynlib: lib, 
+proc options*(MySQL: PMySQL, option: Toption, arg: cstring): cint{.stdcall, dynlib: lib, 
     importc: "mysql_options".}
 proc free_result*(result: PRES){.stdcall, dynlib: lib, 
                                  importc: "mysql_free_result".}
 proc data_seek*(result: PRES, offset: my_ulonglong){.stdcall, dynlib: lib, 
     importc: "mysql_data_seek".}
-proc row_seek*(result: PRES, offset: ROW_OFFSET): ROW_OFFSET{.stdcall, 
+proc row_seek*(result: PRES, offset: TROW_OFFSET): TROW_OFFSET{.stdcall, 
     dynlib: lib, importc: "mysql_row_seek".}
-proc field_seek*(result: PRES, offset: FIELD_OFFSET): FIELD_OFFSET{.stdcall, 
+proc field_seek*(result: PRES, offset: TFIELD_OFFSET): TFIELD_OFFSET{.stdcall, 
     dynlib: lib, importc: "mysql_field_seek".}
-proc fetch_row*(result: PRES): ROW{.stdcall, dynlib: lib, 
+proc fetch_row*(result: PRES): TROW{.stdcall, dynlib: lib, 
                                     importc: "mysql_fetch_row".}
 proc fetch_lengths*(result: PRES): ptr int{.stdcall, dynlib: lib, 
     importc: "mysql_fetch_lengths".}
 proc fetch_field*(result: PRES): PFIELD{.stdcall, dynlib: lib, 
     importc: "mysql_fetch_field".}
-proc list_fields*(: P, table: cstring, wild: cstring): PRES{.stdcall, 
+proc list_fields*(MySQL: PMySQL, table: cstring, wild: cstring): PRES{.stdcall, 
     dynlib: lib, importc: "mysql_list_fields".}
 proc escape_string*(fto: cstring, `from`: cstring, from_length: int): int{.
     stdcall, dynlib: lib, importc: "mysql_escape_string".}
 proc hex_string*(fto: cstring, `from`: cstring, from_length: int): int{.stdcall, 
     dynlib: lib, importc: "mysql_hex_string".}
-proc real_escape_string*(: P, fto: cstring, `from`: cstring, len: int): int{.
+proc real_escape_string*(MySQL: PMySQL, fto: cstring, `from`: cstring, len: int): int{.
     stdcall, dynlib: lib, importc: "mysql_real_escape_string".}
 proc debug*(debug: cstring){.stdcall, dynlib: lib, importc: "mysql_debug".}
   #    function mysql_odbc_escape_string(mysql:PMYSQL; fto:Pchar; to_length:dword; from:Pchar; from_length:dword;
   #               param:pointer; extend_buffer:function (para1:pointer; to:Pchar; length:Pdword):Pchar):Pchar;stdcall;external mysqllib name 'mysql_odbc_escape_string';
-proc myodbc_remove_escape*(: P, name: cstring){.stdcall, dynlib: lib, 
+proc myodbc_remove_escape*(MySQL: PMySQL, name: cstring){.stdcall, dynlib: lib, 
     importc: "myodbc_remove_escape".}
 proc thread_safe*(): cuint{.stdcall, dynlib: lib, importc: "mysql_thread_safe".}
 proc embedded*(): my_bool{.stdcall, dynlib: lib, importc: "mysql_embedded".}
@@ -974,9 +969,9 @@ proc manager_command*(con: PMANAGER, cmd: cstring, cmd_len: cint): cint{.
     stdcall, dynlib: lib, importc: "mysql_manager_command".}
 proc manager_fetch_line*(con: PMANAGER, res_buf: cstring, res_buf_size: cint): cint{.
     stdcall, dynlib: lib, importc: "mysql_manager_fetch_line".}
-proc read_query_result*(: P): my_bool{.stdcall, dynlib: lib, 
+proc read_query_result*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, 
                                        importc: "mysql_read_query_result".}
-proc stmt_init*(: P): PSTMT{.stdcall, dynlib: lib, importc: "mysql_stmt_init".}
+proc stmt_init*(MySQL: PMySQL): PSTMT{.stdcall, dynlib: lib, importc: "mysql_stmt_init".}
 proc stmt_prepare*(stmt: PSTMT, query: cstring, len: int): cint{.stdcall, 
     dynlib: lib, importc: "mysql_stmt_prepare".}
 proc stmt_execute*(stmt: PSTMT): cint{.stdcall, dynlib: lib, 
@@ -989,9 +984,9 @@ proc stmt_store_result*(stmt: PSTMT): cint{.stdcall, dynlib: lib,
     importc: "mysql_stmt_store_result".}
 proc stmt_param_count*(stmt: PSTMT): int{.stdcall, dynlib: lib, 
     importc: "mysql_stmt_param_count".}
-proc stmt_attr_set*(stmt: PSTMT, attr_type: enum_stmt_attr_type, attr: pointer): my_bool{.
+proc stmt_attr_set*(stmt: PSTMT, attr_type: Tenum_stmt_attr_type, attr: pointer): my_bool{.
     stdcall, dynlib: lib, importc: "mysql_stmt_attr_set".}
-proc stmt_attr_get*(stmt: PSTMT, attr_type: enum_stmt_attr_type, attr: pointer): my_bool{.
+proc stmt_attr_get*(stmt: PSTMT, attr_type: Tenum_stmt_attr_type, attr: pointer): my_bool{.
     stdcall, dynlib: lib, importc: "mysql_stmt_attr_get".}
 proc stmt_bind_param*(stmt: PSTMT, bnd: PBIND): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_stmt_bind_param".}
@@ -1016,9 +1011,9 @@ proc stmt_error*(stmt: PSTMT): cstring{.stdcall, dynlib: lib,
                                         importc: "mysql_stmt_error".}
 proc stmt_sqlstate*(stmt: PSTMT): cstring{.stdcall, dynlib: lib, 
     importc: "mysql_stmt_sqlstate".}
-proc stmt_row_seek*(stmt: PSTMT, offset: ROW_OFFSET): ROW_OFFSET{.stdcall, 
+proc stmt_row_seek*(stmt: PSTMT, offset: TROW_OFFSET): TROW_OFFSET{.stdcall, 
     dynlib: lib, importc: "mysql_stmt_row_seek".}
-proc stmt_row_tell*(stmt: PSTMT): ROW_OFFSET{.stdcall, dynlib: lib, 
+proc stmt_row_tell*(stmt: PSTMT): TROW_OFFSET{.stdcall, dynlib: lib, 
     importc: "mysql_stmt_row_tell".}
 proc stmt_data_seek*(stmt: PSTMT, offset: my_ulonglong){.stdcall, dynlib: lib, 
     importc: "mysql_stmt_data_seek".}
@@ -1030,32 +1025,28 @@ proc stmt_insert_id*(stmt: PSTMT): my_ulonglong{.stdcall, dynlib: lib,
     importc: "mysql_stmt_insert_id".}
 proc stmt_field_count*(stmt: PSTMT): cuint{.stdcall, dynlib: lib, 
     importc: "mysql_stmt_field_count".}
-proc commit*(: P): my_bool{.stdcall, dynlib: lib, importc: "mysql_commit".}
-proc rollback*(: P): my_bool{.stdcall, dynlib: lib, importc: "mysql_rollback".}
-proc autocommit*(: P, auto_mode: my_bool): my_bool{.stdcall, dynlib: lib, 
+proc commit*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, importc: "mysql_commit".}
+proc rollback*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, importc: "mysql_rollback".}
+proc autocommit*(MySQL: PMySQL, auto_mode: my_bool): my_bool{.stdcall, dynlib: lib, 
     importc: "mysql_autocommit".}
-proc more_results*(: P): my_bool{.stdcall, dynlib: lib, 
+proc more_results*(MySQL: PMySQL): my_bool{.stdcall, dynlib: lib, 
                                   importc: "mysql_more_results".}
-proc next_result*(: P): cint{.stdcall, dynlib: lib, importc: "mysql_next_result".}
-proc close*(sock: P){.stdcall, dynlib: lib, importc: "mysql_close".}
+proc next_result*(MySQL: PMySQL): cint{.stdcall, dynlib: lib, importc: "mysql_next_result".}
+proc close*(sock: PMySQL){.stdcall, dynlib: lib, importc: "mysql_close".}
   # status return codes  
 const 
   NO_DATA* = 100
   DATA_TRUNCATED* = 101
 
-proc reload*(: P): cint
+proc reload*(MySQL: PMySQL): cint
 when defined(USE_OLD_FUNCTIONS): 
-  proc connect*(: P, host: cstring, user: cstring, passwd: cstring): P{.stdcall, 
-      dynlib: External_library, importc: "mysql_connect".}
-  proc create_db*(: P, DB: cstring): cint{.stdcall, dynlib: External_library, 
+  proc connect*(MySQL: PMySQL, host: cstring, user: cstring, passwd: cstring): PMySQL{.stdcall, 
+      dynlib: lib, importc: "mysql_connect".}
+  proc create_db*(MySQL: PMySQL, DB: cstring): cint{.stdcall, dynlib: lib, 
       importc: "mysql_create_db".}
-  proc drop_db*(: P, DB: cstring): cint{.stdcall, dynlib: External_library, 
+  proc drop_db*(MySQL: PMySQL, DB: cstring): cint{.stdcall, dynlib: lib, 
       importc: "mysql_drop_db".}
-proc net_safe_read*(: P): cuint{.cdecl, dynlib: lib, importc: "net_safe_read".}
-proc net_new_transaction(net: st_net): st_net = 
-  assert false
-  #net.pkt_nr = 0
-  result = net
+proc net_safe_read*(MySQL: PMySQL): cuint{.cdecl, dynlib: lib, importc: "net_safe_read".}
 
 proc IS_PRI_KEY(n: int32): bool = 
   result = (n and PRI_KEY_FLAG) != 0
@@ -1069,7 +1060,7 @@ proc IS_BLOB(n: int32): bool =
 proc IS_NUM_FIELD(f: pst_mysql_field): bool = 
   result = (f.flags and NUM_FLAG) != 0
 
-proc IS_NUM(t: enum_field_types): bool = 
+proc IS_NUM(t: Tenum_field_types): bool = 
   result = (t <= FIELD_TYPE_INT24) or (t == FIELD_TYPE_YEAR) or
       (t == FIELD_TYPE_NEWDECIMAL)
 
@@ -1078,5 +1069,5 @@ proc INTERNAL_NUM_FIELD(f: Pst_mysql_field): bool =
       ((f.ftype != FIELD_TYPE_TIMESTAMP) or (f.len == 14) or (f.len == 8)) or
       (f.ftype == FIELD_TYPE_YEAR)
 
-proc reload(: P): cint = 
-  result = refresh(, REFRESH_GRANT)
+proc reload(mysql: PMySQL): cint = 
+  result = refresh(mysql, REFRESH_GRANT)

@@ -48,9 +48,9 @@ proc luaL_typerror*(L: Plua_State, narg: int, tname: cstring): int{.cdecl,
     dynlib: LUA_LIB_NAME, importc.}
 proc luaL_argerror*(L: Plua_State, numarg: int, extramsg: cstring): int{.cdecl, 
     dynlib: LUA_LIB_NAME, importc.}
-proc luaL_checklstring*(L: Plua_State, numArg: int, l_: Psize_t): cstring{.
+proc luaL_checklstring*(L: Plua_State, numArg: int, len: Psize_t): cstring{.
     cdecl, dynlib: LUA_LIB_NAME, importc.}
-proc luaL_optlstring*(L: Plua_State, numArg: int, def: cstring, l_: Psize_t): cstring{.
+proc luaL_optlstring*(L: Plua_State, numArg: int, def: cstring, len: Psize_t): cstring{.
     cdecl, dynlib: LUA_LIB_NAME, importc.}
 proc luaL_checknumber*(L: Plua_State, numArg: int): lua_Number{.cdecl, 
     dynlib: LUA_LIB_NAME, importc.}
