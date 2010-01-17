@@ -136,7 +136,7 @@ proc closeLexer*(lex: var TLexer)
 proc PrintTok*(tok: PToken)
 proc tokToStr*(tok: PToken): string
   
-proc lexMessage*(L: TLexer, msg: TMsgKind, arg: string = "")
+proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "")
   # the Pascal scanner uses this too:
 proc fillToken*(L: var TToken)
 # implementation
@@ -146,8 +146,13 @@ proc isKeyword(kind: TTokType): bool =
 
 proc isNimrodIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
-    for c in items(s):
-      if c notin SymChars+{'_'}: return
+    var i = 1
+    while i < s.len:
+      if s[i] == '_': 
+        inc(i)
+        if s[i] notin SymChars: return
+      if s[i] notin SymChars: return
+      inc(i)
     result = true
 
 proc pushInd(L: var TLexer, indent: int) = 
@@ -214,15 +219,14 @@ proc getColumn(L: TLexer): int =
 proc getLineInfo(L: TLexer): TLineInfo = 
   result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
 
-proc lexMessage(L: TLexer, msg: TMsgKind, arg: string = "") = 
+proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
   msgs.liMessage(getLineInfo(L), msg, arg)
 
-proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg: string = "") = 
+proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
   var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
   msgs.liMessage(info, msg, arg)
 
 proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
-  # matches ([chars]_)*
   var pos = L.bufpos              # use registers for pos, buf
   var buf = L.buf
   while true: 
@@ -232,6 +236,9 @@ proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) =
     else: 
       break 
     if buf[pos] == '_': 
+      if buf[pos+1] notin chars: 
+        lexMessage(L, errInvalidToken, "_")
+        break
       add(tok.literal, '_')
       Inc(pos)
   L.bufPos = pos
@@ -316,6 +323,9 @@ proc GetNumber(L: var TLexer): TToken =
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
+            if L.buf[pos+1] notin {'0'..'1'}: 
+              lexMessage(L, errInvalidToken, "_")
+              break
             inc(pos)
           of '0', '1': 
             xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
@@ -329,6 +339,9 @@ proc GetNumber(L: var TLexer): TToken =
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
+            if L.buf[pos+1] notin {'0'..'7'}:
+              lexMessage(L, errInvalidToken, "_")
+              break
             inc(pos)
           of '0'..'7': 
             xi = `shl`(xi, 3) or (ord(L.buf[pos]) - ord('0'))
@@ -344,6 +357,9 @@ proc GetNumber(L: var TLexer): TToken =
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
+            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}: 
+              lexMessage(L, errInvalidToken, "_")
+              break
             inc(pos)
           of '0'..'9': 
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
@@ -551,7 +567,10 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h +% Ord(c)
       h = h +% h shl 10
       h = h xor (h shr 6)
-    of '_': nil
+    of '_': 
+      if buf[pos+1] notin SymChars: 
+        lexMessage(L, errInvalidToken, "_")
+        return
     else: break 
     Inc(pos)
   h = h +% h shl 3

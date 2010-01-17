@@ -8,6 +8,7 @@ News
 Bugfixes
 --------
 - The Posix version of ``os.copyFile`` has better error handling.
+- Fixed bug #502670 (underscores in identifiers).
 
 
 Additions
@@ -21,6 +22,8 @@ Additions
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.
+- Triple quoted strings allow for ``"`` in more contexts.
+- ``""`` within raw string literals stands for a single quotation mark.
 - More extensive subscript operator overloading. See ``_ for further
   information.
 
