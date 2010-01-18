@@ -5,6 +5,9 @@ News
 2010-XX-XX Version 0.8.8 released
 =================================
 
+Version 0.8.8 has been released! Get it `here <download.html>`_. 
+
+
 Bugfixes
 --------
 - The Posix version of ``os.copyFile`` has better error handling.
@@ -33,16 +36,18 @@ Changes affecting backwards compatibility
 
 - Overloading of the subscript operator only works if the type does not provide
   a built-in one.
-
-
+- The search order for libraries which is affected by the ``path`` option 
+  has been reversed, so that the project's path is searched before 
+  the standard library's path. 
+- The compiler does not include a Pascal parser for bootstrapping purposes any
+  more. Instead there is a ``pas2nim`` tool that contains the old functionality.
 
 
 2009-12-21 Version 0.8.6 released
 =================================
 
-Version 0.8.6 has been released! Get it `here <download.html>`_. The version
-jump from 0.8.2 to 0.8.6 acknowledges the fact that all development of the
-compiler is now done in Nimrod.
+The version jump from 0.8.2 to 0.8.6 acknowledges the fact that all development
+of the compiler is now done in Nimrod.
 
 
 Bugfixes

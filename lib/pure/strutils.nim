@@ -326,6 +326,10 @@ proc ParseFloat*(s: string): float {.noSideEffect, procvar.}
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
 
+proc ParseHexInt*(s: string): int {.noSideEffect, procvar.} 
+  ## Parses a hexadecimal integer value contained in `s`. If `s` is not
+  ## a valid integer, `EInvalidValue` is raised.
+
 # the stringify and format operators:
 proc toString*[Ty](x: Ty): string {.deprecated.}
   ## This generic proc is the same as the stringify operator `$`.
@@ -730,6 +734,25 @@ proc ParseBiggestInt(s: string): biggestInt =
   result = rawParseInt(s, index)
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)
+
+
+proc ParseHexInt(s: string): int = 
+  var i = 0
+  if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
+  while true: 
+    case s[i]
+    of '_': inc(i)
+    of '0'..'9': 
+      result = result shl 4 or (ord(s[i]) - ord('0'))
+      inc(i)
+    of 'a'..'f': 
+      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
+      inc(i)
+    of 'A'..'F': 
+      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
+      inc(i)
+    of '\0': break
+    else: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseFloat(s: string): float =
   var

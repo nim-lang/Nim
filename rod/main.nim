@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,7 @@
 
 import 
   llstream, strutils, ast, astalgo, scanner, syntaxes, rnimsyn, options, msgs, 
-  os, lists, condsyms, paslex, pasparse, rodread, rodwrite, ropes, trees, 
+  os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
   platform, interact, nimconf, importer, passaux, depends, transf, evals, types
@@ -47,7 +47,6 @@ proc getModule(filename: string): PSym =
   for i in countup(0, high(compMods)): 
     if sameFile(compMods[i].filename, filename): 
       return compMods[i].module
-  result = nil
 
 proc newModule(filename: string): PSym = 
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -152,60 +151,10 @@ proc CommandInteractive() =
   incl(m.flags, sfMainModule)
   processModule(m, "stdin", LLStreamOpenStdIn(), nil)
 
-proc exSymbols(n: PNode) = 
-  case n.kind
-  of nkEmpty..nkNilLit: nil
-  of nkProcDef..nkIteratorDef: exSymbol(n.sons[namePos])
-  of nkWhenStmt, nkStmtList: 
-    for i in countup(0, sonsLen(n) - 1): exSymbols(n.sons[i])
-  of nkVarSection, nkConstSection: 
-    for i in countup(0, sonsLen(n) - 1): exSymbol(n.sons[i].sons[0])
-  of nkTypeSection: 
-    for i in countup(0, sonsLen(n) - 1): 
-      exSymbol(n.sons[i].sons[0])
-      if (n.sons[i].sons[2] != nil) and
-          (n.sons[i].sons[2].kind == nkObjectTy): 
-        fixRecordDef(n.sons[i].sons[2])
-  else: nil
-
-proc CommandExportSymbols(filename: string) = 
-  # now unused!
-  var module = parseFile(addFileExt(filename, NimExt))
-  if module != nil: 
-    exSymbols(module)
-    renderModule(module, getOutFile(filename, "pretty." & NimExt))
-
 proc CommandPretty(filename: string) = 
   var module = parseFile(addFileExt(filename, NimExt))
   if module != nil: 
     renderModule(module, getOutFile(filename, "pretty." & NimExt))
-  
-proc CommandLexPas(filename: string) = 
-  var f = addFileExt(filename, "pas")
-  var stream = LLStreamOpen(f, fmRead)
-  if stream != nil: 
-    var 
-      L: TPasLex
-      tok: TPasTok
-    OpenLexer(L, f, stream)
-    getPasTok(L, tok)
-    while tok.xkind != pxEof: 
-      printPasTok(tok)
-      getPasTok(L, tok)
-    closeLexer(L)
-  else: rawMessage(errCannotOpenFile, f)
-
-proc CommandPas(filename: string) = 
-  var f = addFileExt(filename, "pas")
-  var stream = LLStreamOpen(f, fmRead)
-  if stream != nil: 
-    var p: TPasParser
-    OpenPasParser(p, f, stream)
-    var module = parseUnit(p)
-    closePasParser(p)
-    renderModule(module, getOutFile(filename, NimExt))
-  else: 
-    rawMessage(errCannotOpenFile, f)
   
 proc CommandScan(filename: string) = 
   var f = addFileExt(filename, nimExt)
@@ -274,14 +223,6 @@ proc MainCommand(cmd, filename: string) =
     LoadSpecialConfig(DocTexConfig)
     wantFile(filename)
     CommandRst2TeX(filename)
-  of wPas: 
-    gCmd = cmdPas
-    wantFile(filename)
-    CommandPas(filename)
-  of wBoot: 
-    gCmd = cmdBoot
-    wantFile(filename)
-    CommandPas(filename)
   of wGenDepend: 
     gCmd = cmdGenDepend
     wantFile(filename)

@@ -1,7 +1,7 @@
 #
 #
-#           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#      Pas2nim - Pascal to Nimrod source converter
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,11 +9,10 @@
 
 # This module implements the parser of the Pascal variant Nimrod is written in.
 # It transfers a Pascal module into a Nimrod AST. Then the renderer can be
-# used to generate the Nimrod version of the compiler.
+# used to convert the AST to its text representation.
 
 import 
-  os, llstream, scanner, paslex, idents, wordrecg, strutils, ast, astalgo, msgs, 
-  options
+  os, llstream, paslex, idents, strutils, ast, astalgo, msgs, options
 
 type 
   TPasSection* = enum 
@@ -96,7 +95,7 @@ proc skipCom(p: var TPasParser, n: PNode) =
   while p.tok.xkind == pxComment: 
     if (n != nil): 
       if n.comment == nil: n.comment = p.tok.literal
-      else: n.comment = n.comment & "\n" & p.tok.literal
+      else: add(n.comment, "\n" & p.tok.literal)
     else: 
       parMessage(p, warnCommentXIgnored, p.tok.literal)
     getTok(p)
@@ -119,7 +118,8 @@ proc newIntNodeP(kind: TNodeKind, intVal: BiggestInt, p: TPasParser): PNode =
   result = newNodeP(kind, p)
   result.intVal = intVal
 
-proc newFloatNodeP(kind: TNodeKind, floatVal: BiggestFloat, p: TPasParser): PNode = 
+proc newFloatNodeP(kind: TNodeKind, floatVal: BiggestFloat, 
+                   p: TPasParser): PNode = 
   result = newNodeP(kind, p)
   result.floatVal = floatVal
 
@@ -132,17 +132,16 @@ proc newIdentNodeP(ident: PIdent, p: TPasParser): PNode =
   result.ident = ident
 
 proc createIdentNodeP(ident: PIdent, p: TPasParser): PNode = 
-  var x: PIdent
   result = newNodeP(nkIdent, p)
-  x = PIdent(IdTableGet(p.repl, ident))
+  var x = PIdent(IdTableGet(p.repl, ident))
   if x != nil: result.ident = x
   else: result.ident = ident
   
 proc parseExpr(p: var TPasParser): PNode
 proc parseStmt(p: var TPasParser): PNode
 proc parseTypeDesc(p: var TPasParser, definition: PNode = nil): PNode
+
 proc parseEmit(p: var TPasParser, definition: PNode): PNode = 
-  var a: PNode
   getTok(p)                   # skip 'emit'
   result = nil
   if p.tok.xkind != pxCurlyDirRi: 
@@ -152,7 +151,7 @@ proc parseEmit(p: var TPasParser, definition: PNode): PNode =
     of conStmt: 
       result = parseStmt(p)
       if p.tok.xkind != pxCurlyDirRi: 
-        a = result
+        var a = result
         result = newNodeP(nkStmtList, p)
         addSon(result, a)
         while p.tok.xkind != pxCurlyDirRi: 
@@ -162,7 +161,6 @@ proc parseEmit(p: var TPasParser, definition: PNode): PNode =
   eat(p, pxCurlyDirRi)
 
 proc parseCommand(p: var TPasParser, definition: PNode = nil): PNode = 
-  var a: PNode
   result = nil
   getTok(p)
   if p.tok.ident.id == getIdent("discard").id: 
@@ -179,7 +177,7 @@ proc parseCommand(p: var TPasParser, definition: PNode = nil): PNode =
   elif p.tok.ident.id == getIdent("cast").id: 
     getTok(p)
     eat(p, pxCurlyDirRi)
-    a = parseExpr(p)
+    var a = parseExpr(p)
     if (a.kind == nkCall) and (sonsLen(a) == 2): 
       result = newNodeP(nkCast, p)
       addSon(result, a.sons[0])
@@ -230,16 +228,15 @@ proc parseCommand(p: var TPasParser, definition: PNode = nil): PNode =
 proc getPrecedence(kind: TPasTokKind): int = 
   case kind
   of pxDiv, pxMod, pxStar, pxSlash, pxShl, pxShr, pxAnd: 
-    result = 5                # highest
+    result = 5
   of pxPlus, pxMinus, pxOr, pxXor: 
     result = 4
   of pxIn, pxEquals, pxLe, pxLt, pxGe, pxGt, pxNeq, pxIs: 
     result = 3
-  else: result = - 1
+  else: result = -1
   
 proc rangeExpr(p: var TPasParser): PNode = 
-  var a: PNode
-  a = parseExpr(p)
+  var a = parseExpr(p)
   if p.tok.xkind == pxDotDot: 
     result = newNodeP(nkRange, p)
     addSon(result, a)
@@ -250,7 +247,6 @@ proc rangeExpr(p: var TPasParser): PNode =
     result = a
   
 proc bracketExprList(p: var TPasParser, first: PNode): PNode = 
-  var a: PNode
   result = newNodeP(nkBracketExpr, p)
   addSon(result, first)
   getTok(p)
@@ -262,16 +258,16 @@ proc bracketExprList(p: var TPasParser, first: PNode): PNode =
     if p.tok.xkind == pxEof: 
       parMessage(p, errTokenExpected, PasTokKindToStr[pxBracketRi])
       break 
-    a = rangeExpr(p)
+    var a = rangeExpr(p)
     skipCom(p, a)
     if p.tok.xkind == pxComma: 
       getTok(p)
       skipCom(p, a)
     addSon(result, a)
 
-proc exprColonEqExpr(p: var TPasParser, kind: TNodeKind, tok: TPasTokKind): PNode = 
-  var a: PNode
-  a = parseExpr(p)
+proc exprColonEqExpr(p: var TPasParser, kind: TNodeKind, 
+                     tok: TPasTokKind): PNode = 
+  var a = parseExpr(p)
   if p.tok.xkind == tok: 
     result = newNodeP(kind, p)
     getTok(p)
@@ -283,7 +279,6 @@ proc exprColonEqExpr(p: var TPasParser, kind: TNodeKind, tok: TPasTokKind): PNod
   
 proc exprListAux(p: var TPasParser, elemKind: TNodeKind, 
                  endTok, sepTok: TPasTokKind, result: PNode) = 
-  var a: PNode
   getTok(p)
   skipCom(p, result)
   while true: 
@@ -293,7 +288,7 @@ proc exprListAux(p: var TPasParser, elemKind: TNodeKind,
     if p.tok.xkind == pxEof: 
       parMessage(p, errTokenExpected, PasTokKindToStr[endtok])
       break 
-    a = exprColonEqExpr(p, elemKind, sepTok)
+    var a = exprColonEqExpr(p, elemKind, sepTok)
     skipCom(p, a)
     if (p.tok.xkind == pxComma) or (p.tok.xkind == pxSemicolon): 
       getTok(p)
@@ -301,7 +296,6 @@ proc exprListAux(p: var TPasParser, elemKind: TNodeKind,
     addSon(result, a)
 
 proc qualifiedIdent(p: var TPasParser): PNode = 
-  var a: PNode
   if p.tok.xkind == pxSymbol: 
     result = createIdentNodeP(p.tok.ident, p)
   else: 
@@ -313,7 +307,7 @@ proc qualifiedIdent(p: var TPasParser): PNode =
     getTok(p)
     skipCom(p, result)
     if p.tok.xkind == pxSymbol: 
-      a = result
+      var a = result
       result = newNodeI(nkDotExpr, a.info)
       addSon(result, a)
       addSon(result, createIdentNodeP(p.tok.ident, p))
@@ -321,8 +315,8 @@ proc qualifiedIdent(p: var TPasParser): PNode =
     else: 
       parMessage(p, errIdentifierExpected, pasTokToStr(p.tok))
   
-proc qualifiedIdentListAux(p: var TPasParser, endTok: TPasTokKind, result: PNode) = 
-  var a: PNode
+proc qualifiedIdentListAux(p: var TPasParser, endTok: TPasTokKind, 
+                           result: PNode) = 
   getTok(p)
   skipCom(p, result)
   while true: 
@@ -332,7 +326,7 @@ proc qualifiedIdentListAux(p: var TPasParser, endTok: TPasTokKind, result: PNode
     if p.tok.xkind == pxEof: 
       parMessage(p, errTokenExpected, PasTokKindToStr[endtok])
       break 
-    a = qualifiedIdent(p)
+    var a = qualifiedIdent(p)
     skipCom(p, a)
     if p.tok.xkind == pxComma: 
       getTok(p)
@@ -346,17 +340,12 @@ proc exprColonEqExprList(p: var TPasParser, kind, elemKind: TNodeKind,
 
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
-  of base10: 
-    nil
-  of base2: 
-    incl(n.flags, nfBase2)
-  of base8: 
-    incl(n.flags, nfBase8)
-  of base16: 
-    incl(n.flags, nfBase16)
+  of base10: nil
+  of base2: incl(n.flags, nfBase2)
+  of base8: incl(n.flags, nfBase8)
+  of base16: incl(n.flags, nfBase16)
   
 proc identOrLiteral(p: var TPasParser): PNode = 
-  var a: PNode
   case p.tok.xkind
   of pxSymbol: 
     result = createIdentNodeP(p.tok.ident, p)
@@ -382,8 +371,9 @@ proc identOrLiteral(p: var TPasParser): PNode =
     getTok(p)
   of pxParLe: 
     # () constructor
-    result = exprColonEqExprList(p, nkPar, nkExprColonExpr, pxParRi, pxColon) #if hasSonWith(result, nkExprColonExpr) then
-                                                                              #  replaceSons(result, nkExprColonExpr, nkExprEqExpr)
+    result = exprColonEqExprList(p, nkPar, nkExprColonExpr, pxParRi, pxColon)
+    #if hasSonWith(result, nkExprColonExpr) then
+    #  replaceSons(result, nkExprColonExpr, nkExprEqExpr)
     if (sonsLen(result) > 1) and not hasSonWith(result, nkExprColonExpr): 
       result.kind = nkBracket # is an array constructor
   of pxBracketLe: 
@@ -392,7 +382,7 @@ proc identOrLiteral(p: var TPasParser): PNode =
     getTok(p)
     skipCom(p, result)
     while (p.tok.xkind != pxBracketRi) and (p.tok.xkind != pxEof): 
-      a = rangeExpr(p)
+      var a = rangeExpr(p)
       if a.kind == nkRange: 
         result.kind = nkCurly # it is definitely a set literal
       opt(p, pxComma)
@@ -404,17 +394,16 @@ proc identOrLiteral(p: var TPasParser): PNode =
     result = parseCommand(p)
   else: 
     parMessage(p, errExprExpected, pasTokToStr(p.tok))
-    getTok(p)                 # we must consume a token here to prevend endless loops!
+    getTok(p) # we must consume a token here to prevend endless loops!
     result = nil
   if result != nil: skipCom(p, result)
   
 proc primary(p: var TPasParser): PNode = 
-  var a: PNode
   # prefix operator?
   if (p.tok.xkind == pxNot) or (p.tok.xkind == pxMinus) or
       (p.tok.xkind == pxPlus): 
     result = newNodeP(nkPrefix, p)
-    a = newIdentNodeP(getIdent(pasTokToStr(p.tok)), p)
+    var a = newIdentNodeP(getIdent(pasTokToStr(p.tok)), p)
     addSon(result, a)
     getTok(p)
     skipCom(p, a)
@@ -422,7 +411,7 @@ proc primary(p: var TPasParser): PNode =
     return 
   elif p.tok.xkind == pxAt: 
     result = newNodeP(nkAddr, p)
-    a = newIdentNodeP(getIdent(pasTokToStr(p.tok)), p)
+    var a = newIdentNodeP(getIdent(pasTokToStr(p.tok)), p)
     getTok(p)
     if p.tok.xkind == pxBracketLe: 
       result = newNodeP(nkPrefix, p)
@@ -435,12 +424,12 @@ proc primary(p: var TPasParser): PNode =
   while true: 
     case p.tok.xkind
     of pxParLe: 
-      a = result
+      var a = result
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprListAux(p, nkExprEqExpr, pxParRi, pxEquals, result)
     of pxDot: 
-      a = result
+      var a = result
       result = newNodeP(nkDotExpr, p)
       addSon(result, a)
       getTok(p)               # skip '.'
@@ -451,7 +440,7 @@ proc primary(p: var TPasParser): PNode =
       else: 
         parMessage(p, errIdentifierExpected, pasTokToStr(p.tok))
     of pxHat: 
-      a = result
+      var a = result
       result = newNodeP(nkDerefExpr, p)
       addSon(result, a)
       getTok(p)
@@ -461,12 +450,11 @@ proc primary(p: var TPasParser): PNode =
   
 proc lowestExprAux(p: var TPasParser, v: var PNode, limit: int): TPasTokKind = 
   var 
-    op, nextop: TPasTokKind
-    opPred: int
+    nextop: TPasTokKind
     v2, node, opNode: PNode
-  v = primary(p)              # expand while operators have priorities higher than 'limit'
-  op = p.tok.xkind
-  opPred = getPrecedence(op)
+  v = primary(p) # expand while operators have priorities higher than 'limit'
+  var op = p.tok.xkind
+  var opPred = getPrecedence(op)
   while (opPred > limit): 
     node = newNodeP(nkInfix, p)
     opNode = newIdentNodeP(getIdent(pasTokToStr(p.tok)), p) # skip operator:
@@ -530,8 +518,7 @@ proc fixExpr(n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): result.sons[i] = fixExpr(n.sons[i])
   
 proc parseExpr(p: var TPasParser): PNode = 
-  var oldcontext: TPasContext
-  oldcontext = p.context
+  var oldcontext = p.context
   p.context = conExpr
   if p.tok.xkind == pxCommand: 
     result = parseCommand(p)
@@ -541,15 +528,12 @@ proc parseExpr(p: var TPasParser): PNode =
   p.context = oldcontext
 
 proc parseExprStmt(p: var TPasParser): PNode = 
-  var 
-    a, b: PNode
-    info: TLineInfo
-  info = parLineInfo(p)
-  a = parseExpr(p)
+  var info = parLineInfo(p)
+  var a = parseExpr(p)
   if p.tok.xkind == pxAsgn: 
     getTok(p)
     skipCom(p, a)
-    b = parseExpr(p)
+    var b = parseExpr(p)
     result = newNodeI(nkAsgn, info)
     addSon(result, a)
     addSon(result, b)
@@ -560,7 +544,6 @@ proc inImportBlackList(ident: PIdent): bool =
   for i in countup(low(ImportBlackList), high(ImportBlackList)): 
     if ident.id == getIdent(ImportBlackList[i]).id: 
       return true
-  result = false
 
 proc parseUsesStmt(p: var TPasParser): PNode = 
   var a: PNode
@@ -586,10 +569,9 @@ proc parseUsesStmt(p: var TPasParser): PNode =
   if sonsLen(result) == 0: result = nil
   
 proc parseIncludeDir(p: var TPasParser): PNode = 
-  var filename: string
   result = newNodeP(nkIncludeStmt, p)
   getTok(p)                   # skip `include`
-  filename = ""
+  var filename = ""
   while true: 
     case p.tok.xkind
     of pxSymbol, pxDot, pxDotDot, pxSlash: 
@@ -635,14 +617,11 @@ proc parseStmtList(p: var TPasParser): PNode =
   if sonsLen(result) == 1: result = result.sons[0]
   
 proc parseIfDirAux(p: var TPasParser, result: PNode) = 
-  var 
-    s: PNode
-    endMarker: TPasTokKind
   addSon(result.sons[0], parseStmtList(p))
   if p.tok.xkind in {pxCurlyDirLe, pxStarDirLe}: 
-    endMarker = succ(p.tok.xkind)
+    var endMarker = succ(p.tok.xkind)
     if whichKeyword(p.tok.ident) == wElse: 
-      s = newNodeP(nkElse, p)
+      var s = newNodeP(nkElse, p)
       while (p.tok.xkind != pxEof) and (p.tok.xkind != endMarker): getTok(p)
       eat(p, endMarker)
       addSon(s, parseStmtList(p))
@@ -666,11 +645,10 @@ proc parseIfdefDir(p: var TPasParser, endMarker: TPasTokKind): PNode =
   parseIfDirAux(p, result)
 
 proc parseIfndefDir(p: var TPasParser, endMarker: TPasTokKind): PNode = 
-  var e: PNode
   result = newNodeP(nkWhenStmt, p)
   addSon(result, newNodeP(nkElifBranch, p))
   getTok(p)
-  e = newNodeP(nkCall, p)
+  var e = newNodeP(nkCall, p)
   addSon(e, newIdentNodeP(getIdent("not"), p))
   addSon(e, definedExprAux(p))
   eat(p, endMarker)
@@ -686,21 +664,17 @@ proc parseIfDir(p: var TPasParser, endMarker: TPasTokKind): PNode =
   parseIfDirAux(p, result)
 
 proc parseDirective(p: var TPasParser): PNode = 
-  var endMarker: TPasTokKind
   result = nil
   if not (p.tok.xkind in {pxCurlyDirLe, pxStarDirLe}): return 
-  endMarker = succ(p.tok.xkind)
+  var endMarker = succ(p.tok.xkind)
   if p.tok.ident != nil: 
     case whichKeyword(p.tok.ident)
     of wInclude: 
       result = parseIncludeDir(p)
       eat(p, endMarker)
-    of wIf: 
-      result = parseIfDir(p, endMarker)
-    of wIfdef: 
-      result = parseIfdefDir(p, endMarker)
-    of wIfndef: 
-      result = parseIfndefDir(p, endMarker)
+    of wIf: result = parseIfDir(p, endMarker)
+    of wIfdef: result = parseIfdefDir(p, endMarker)
+    of wIfndef: result = parseIfndefDir(p, endMarker)
     else: 
       # skip unknown compiler directive
       while (p.tok.xkind != pxEof) and (p.tok.xkind != endMarker): getTok(p)
@@ -716,11 +690,10 @@ proc parseRaise(p: var TPasParser): PNode =
   else: addSon(result, nil)
   
 proc parseIf(p: var TPasParser): PNode = 
-  var branch: PNode
   result = newNodeP(nkIfStmt, p)
   while true: 
     getTok(p)                 # skip ``if``
-    branch = newNodeP(nkElifBranch, p)
+    var branch = newNodeP(nkElifBranch, p)
     skipCom(p, branch)
     addSon(branch, parseExpr(p))
     eat(p, pxThen)
@@ -750,26 +723,24 @@ proc parseWhile(p: var TPasParser): PNode =
   addSon(result, parseStmt(p))
 
 proc parseRepeat(p: var TPasParser): PNode = 
-  var a, b, c, s: PNode
   result = newNodeP(nkWhileStmt, p)
   getTok(p)
   skipCom(p, result)
   addSon(result, newIdentNodeP(getIdent("true"), p))
-  s = newNodeP(nkStmtList, p)
+  var s = newNodeP(nkStmtList, p)
   while (p.tok.xkind != pxEof) and (p.tok.xkind != pxUntil): 
     addSon(s, parseStmt(p))
   eat(p, pxUntil)
-  a = newNodeP(nkIfStmt, p)
+  var a = newNodeP(nkIfStmt, p)
   skipCom(p, a)
-  b = newNodeP(nkElifBranch, p)
-  c = newNodeP(nkBreakStmt, p)
+  var b = newNodeP(nkElifBranch, p)
+  var c = newNodeP(nkBreakStmt, p)
   addSon(c, nil)
   addSon(b, parseExpr(p))
   skipCom(p, a)
   addSon(b, c)
   addSon(a, b)
-  if (b.sons[0].kind == nkIdent) and
-      (b.sons[0].ident.id == getIdent("false").id): 
+  if b.sons[0].kind == nkIdent and b.sons[0].ident.id == getIdent("false").id: 
     nil
   else: 
     addSon(s, a)
@@ -800,11 +771,10 @@ proc parseCase(p: var TPasParser): PNode =
   eat(p, pxEnd)
 
 proc parseTry(p: var TPasParser): PNode = 
-  var b, e: PNode
   result = newNodeP(nkTryStmt, p)
   getTok(p)
   skipCom(p, result)
-  b = newNodeP(nkStmtList, p)
+  var b = newNodeP(nkStmtList, p)
   while not (p.tok.xkind in {pxFinally, pxExcept, pxEof, pxEnd}): 
     addSon(b, parseStmt(p))
   addSon(result, b)
@@ -813,7 +783,7 @@ proc parseTry(p: var TPasParser): PNode =
     while p.tok.ident.id == getIdent("on").id: 
       b = newNodeP(nkExceptBranch, p)
       getTok(p)
-      e = qualifiedIdent(p)
+      var e = qualifiedIdent(p)
       if p.tok.xkind == pxColon: 
         getTok(p)
         e = qualifiedIdent(p)
@@ -830,7 +800,7 @@ proc parseTry(p: var TPasParser): PNode =
   if p.tok.xkind == pxFinally: 
     b = newNodeP(nkFinally, p)
     getTok(p)
-    e = newNodeP(nkStmtList, p)
+    var e = newNodeP(nkStmtList, p)
     while (p.tok.xkind != pxEof) and (p.tok.xkind != pxEnd): 
       addSon(e, parseStmt(p))
     if sonsLen(e) == 0: addSon(e, newNodeP(nkNilLit, p))
@@ -1062,8 +1032,7 @@ proc parseEnum(p: var TPasParser): PNode =
 
 proc identVis(p: var TPasParser): PNode = 
   # identifier with visability
-  var a: PNode
-  a = createIdentNodeP(p.tok.ident, p)
+  var a = createIdentNodeP(p.tok.ident, p)
   if p.section == seInterface: 
     result = newNodeP(nkPostfix, p)
     addSon(result, newIdentNodeP(getIdent("*"), p))
@@ -1079,7 +1048,8 @@ proc rawIdent(p: var TPasParser): PNode =
   result = createIdentNodeP(p.tok.ident, p)
   getTok(p)
 
-proc parseIdentColonEquals(p: var TPasParser, identParser: TSymbolParser): PNode = 
+proc parseIdentColonEquals(p: var TPasParser, 
+                           identParser: TSymbolParser): PNode = 
   var a: PNode
   result = newNodeP(nkIdentDefs, p)
   while true: 
@@ -1171,41 +1141,38 @@ proc parseRecordPart(p: var TPasParser): PNode =
       break 
 
 proc exSymbol(n: var PNode) = 
-  var a: PNode
   case n.kind
   of nkPostfix: 
     nil
   of nkPragmaExpr: 
     exSymbol(n.sons[0])
   of nkIdent, nkAccQuoted: 
-    a = newNodeI(nkPostFix, n.info)
+    var a = newNodeI(nkPostFix, n.info)
     addSon(a, newIdentNode(getIdent("*"), n.info))
     addSon(a, n)
     n = a
   else: internalError(n.info, "exSymbol(): " & $n.kind)
   
 proc fixRecordDef(n: var PNode) = 
-  var length: int
   if n == nil: return 
   case n.kind
   of nkRecCase: 
     fixRecordDef(n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 
-      length = sonsLen(n.sons[i])
+      var length = sonsLen(n.sons[i])
       fixRecordDef(n.sons[i].sons[length - 1])
   of nkRecList, nkRecWhen, nkElse, nkOfBranch, nkElifBranch, nkObjectTy: 
     for i in countup(0, sonsLen(n) - 1): fixRecordDef(n.sons[i])
   of nkIdentDefs: 
     for i in countup(0, sonsLen(n) - 3): exSymbol(n.sons[i])
-  of nkNilLit: 
-    nil
+  of nkNilLit: nil
   else: internalError(n.info, "fixRecordDef(): " & $n.kind)
   
 proc addPragmaToIdent(ident: var PNode, pragma: PNode) = 
-  var e, pragmasNode: PNode
+  var pragmasNode: PNode
   if ident.kind != nkPragmaExpr: 
     pragmasNode = newNodeI(nkPragma, ident.info)
-    e = newNodeI(nkPragmaExpr, ident.info)
+    var e = newNodeI(nkPragmaExpr, ident.info)
     addSon(e, ident)
     addSon(e, pragmasNode)
     ident = e
@@ -1216,9 +1183,8 @@ proc addPragmaToIdent(ident: var PNode, pragma: PNode) =
   addSon(pragmasNode, pragma)
 
 proc parseRecordBody(p: var TPasParser, result, definition: PNode) = 
-  var a: PNode
   skipCom(p, result)
-  a = parseRecordPart(p)
+  var a = parseRecordPart(p)
   if result.kind != nkTupleTy: fixRecordDef(a)
   addSon(result, a)
   eat(p, pxEnd)
@@ -1242,12 +1208,11 @@ proc parseRecordBody(p: var TPasParser, result, definition: PNode) =
 
 proc parseRecordOrObject(p: var TPasParser, kind: TNodeKind, 
                          definition: PNode): PNode = 
-  var a: PNode
   result = newNodeP(kind, p)
   getTok(p)
   addSon(result, nil)
   if p.tok.xkind == pxParLe: 
-    a = newNodeP(nkOfInherit, p)
+    var a = newNodeP(nkOfInherit, p)
     getTok(p)
     addSon(a, parseTypeDesc(p))
     addSon(result, a)
@@ -1257,10 +1222,7 @@ proc parseRecordOrObject(p: var TPasParser, kind: TNodeKind,
   parseRecordBody(p, result, definition)
 
 proc parseTypeDesc(p: var TPasParser, definition: PNode = nil): PNode = 
-  var 
-    oldcontext: TPasContext
-    a, r: PNode
-  oldcontext = p.context
+  var oldcontext = p.context
   p.context = conTypeDesc
   if p.tok.xkind == pxPacked: getTok(p)
   case p.tok.xkind
@@ -1274,7 +1236,7 @@ proc parseTypeDesc(p: var TPasParser, definition: PNode = nil): PNode =
       result = parseCommand(p)
       if result.kind != nkTupleTy: InternalError(result.info, "parseTypeDesc")
       parseRecordBody(p, result, definition)
-      a = lastSon(result)     # embed nkRecList directly into nkTupleTy
+      var a = lastSon(result)     # embed nkRecList directly into nkTupleTy
       for i in countup(0, sonsLen(a) - 1): 
         if i == 0: result.sons[sonsLen(result) - 1] = a.sons[0]
         else: addSon(result, a.sons[i])
@@ -1287,10 +1249,8 @@ proc parseTypeDesc(p: var TPasParser, definition: PNode = nil): PNode =
         addPragmaToIdent(definition.sons[0], newIdentNodeP(getIdent("final"), p))
       else: 
         InternalError(result.info, "anonymous record is not supported")
-  of pxObject: 
-    result = parseRecordOrObject(p, nkObjectTy, definition)
-  of pxParLe: 
-    result = parseEnum(p)
+  of pxObject: result = parseRecordOrObject(p, nkObjectTy, definition)
+  of pxParLe: result = parseEnum(p)
   of pxArray: 
     result = newNodeP(nkBracketExpr, p)
     getTok(p)
@@ -1320,10 +1280,10 @@ proc parseTypeDesc(p: var TPasParser, definition: PNode = nil): PNode =
     getTok(p)
     result = parseTypeDesc(p)
   else: 
-    a = primary(p)
+    var a = primary(p)
     if p.tok.xkind == pxDotDot: 
       result = newNodeP(nkBracketExpr, p)
-      r = newNodeP(nkRange, p)
+      var r = newNodeP(nkRange, p)
       addSon(result, newIdentNodeP(getIdent("range"), p))
       getTok(p)
       addSon(r, a)
@@ -1386,13 +1346,13 @@ proc parseVar(p: var TPasParser): PNode =
   result = newNodeP(nkVarSection, p)
   getTok(p)
   skipCom(p, result)
-  while p.tok.xkind == pxSymbol: 
+  while p.tok.xkind == pxSymbol:
     addSon(result, parseIdentColonEquals(p, identVis))
   p.lastVarSection = result
 
 proc parseRoutine(p: var TPasParser): PNode = 
   var 
-    a, stmts: PNode
+    stmts: PNode
     noBody: bool
   result = newNodeP(nkProcDef, p)
   getTok(p)
@@ -1417,19 +1377,16 @@ proc parseRoutine(p: var TPasParser): PNode =
       else: 
         parMessage(p, errTokenExpected, "begin")
         break 
-    a = parseStmt(p)
+    var a = parseStmt(p)
     for i in countup(0, sonsLen(a) - 1): addSon(stmts, a.sons[i])
     addSon(result, stmts)
 
 proc fixExit(p: var TPasParser, n: PNode): bool = 
-  var 
-    length: int
-    a: PNode
   result = false
   if (p.tok.ident.id == getIdent("exit").id): 
-    length = sonsLen(n)
+    var length = sonsLen(n)
     if (length <= 0): return 
-    a = n.sons[length - 1]
+    var a = n.sons[length-1]
     if (a.kind == nkAsgn) and (a.sons[0].kind == nkIdent) and
         (a.sons[0].ident.id == getIdent("result").id): 
       delSon(a, 0)
@@ -1440,11 +1397,10 @@ proc fixExit(p: var TPasParser, n: PNode): bool =
       skipCom(p, a)
 
 proc fixVarSection(p: var TPasParser, counter: PNode) = 
-  var v: PNode
   if p.lastVarSection == nil: return 
   assert(counter.kind == nkIdent)
   for i in countup(0, sonsLen(p.lastVarSection) - 1): 
-    v = p.lastVarSection.sons[i]
+    var v = p.lastVarSection.sons[i]
     for j in countup(0, sonsLen(v) - 3): 
       if v.sons[j].ident.id == counter.ident.id: 
         delSon(v, j)
@@ -1456,64 +1412,47 @@ proc parseBegin(p: var TPasParser, result: PNode) =
   getTok(p)
   while true: 
     case p.tok.xkind
-    of pxComment: 
-      addSon(result, parseStmt(p))
+    of pxComment: addSon(result, parseStmt(p))
     of pxSymbol: 
       if not fixExit(p, result): addSon(result, parseStmt(p))
     of pxEnd: 
       getTok(p)
       break 
-    of pxSemicolon: 
-      getTok(p)
-    of pxEof: 
-      parMessage(p, errExprExpected)
+    of pxSemicolon: getTok(p)
+    of pxEof: parMessage(p, errExprExpected)
     else: addSonIfNotNil(result, parseStmt(p))
   if sonsLen(result) == 0: addSon(result, newNodeP(nkNilLit, p))
   
 proc parseStmt(p: var TPasParser): PNode = 
-  var oldcontext: TPasContext
-  oldcontext = p.context
+  var oldcontext = p.context
   p.context = conStmt
   result = nil
   case p.tok.xkind
   of pxBegin: 
     result = newNodeP(nkStmtList, p)
     parseBegin(p, result)
-  of pxCommand: 
-    result = parseCommand(p)
+  of pxCommand: result = parseCommand(p)
   of pxCurlyDirLe, pxStarDirLe: 
     if isHandledDirective(p): result = parseDirective(p)
-  of pxIf: 
-    result = parseIf(p)
-  of pxWhile: 
-    result = parseWhile(p)
-  of pxRepeat: 
-    result = parseRepeat(p)
-  of pxCase: 
-    result = parseCase(p)
-  of pxTry: 
-    result = parseTry(p)
-  of pxProcedure, pxFunction: 
-    result = parseRoutine(p)
-  of pxType: 
-    result = parseTypeSection(p)
-  of pxConst: 
-    result = parseConstSection(p)
-  of pxVar: 
-    result = parseVar(p)
+  of pxIf: result = parseIf(p)
+  of pxWhile: result = parseWhile(p)
+  of pxRepeat: result = parseRepeat(p)
+  of pxCase: result = parseCase(p)
+  of pxTry: result = parseTry(p)
+  of pxProcedure, pxFunction: result = parseRoutine(p)
+  of pxType: result = parseTypeSection(p)
+  of pxConst: result = parseConstSection(p)
+  of pxVar: result = parseVar(p)
   of pxFor: 
     result = parseFor(p)
     fixVarSection(p, result.sons[0])
-  of pxRaise: 
-    result = parseRaise(p)
-  of pxUses: 
-    result = parseUsesStmt(p)
+  of pxRaise: result = parseRaise(p)
+  of pxUses: result = parseUsesStmt(p)
   of pxProgram, pxUnit, pxLibrary: 
     # skip the pointless header
     while not (p.tok.xkind in {pxSemicolon, pxEof}): getTok(p)
     getTok(p)
-  of pxInitialization: 
-    getTok(p)                 # just skip the token
+  of pxInitialization: getTok(p) # just skip the token
   of pxImplementation: 
     p.section = seImplementation
     result = newNodeP(nkCommentStmt, p)
@@ -1525,8 +1464,7 @@ proc parseStmt(p: var TPasParser): PNode =
   of pxComment: 
     result = newNodeP(nkCommentStmt, p)
     skipCom(p, result)
-  of pxSemicolon: 
-    getTok(p)
+  of pxSemicolon: getTok(p)
   of pxSymbol: 
     if p.tok.ident.id == getIdent("break").id: 
       result = newNodeP(nkBreakStmt, p)
@@ -1545,8 +1483,7 @@ proc parseStmt(p: var TPasParser): PNode =
       addSon(result, nil)
     else: 
       result = parseExprStmt(p)
-  of pxDot: 
-    getTok(p)                 # BUGFIX for ``end.`` in main program
+  of pxDot: getTok(p) # BUGFIX for ``end.`` in main program
   else: result = parseExprStmt(p)
   opt(p, pxSemicolon)
   if result != nil: skipCom(p, result)
@@ -1557,10 +1494,8 @@ proc parseUnit(p: var TPasParser): PNode =
   getTok(p)                   # read first token
   while true: 
     case p.tok.xkind
-    of pxEof, pxEnd: 
-      break 
-    of pxBegin: 
-      parseBegin(p, result)
+    of pxEof, pxEnd: break 
+    of pxBegin: parseBegin(p, result)
     of pxCurlyDirLe, pxStarDirLe: 
       if isHandledDirective(p): addSon(result, parseDirective(p))
       else: parMessage(p, errXNotAllowedHere, p.tok.ident.s)
