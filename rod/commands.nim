@@ -232,7 +232,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of wPath, wP: 
     expectArg(switch, arg, pass, info)
     path = processPath(arg)
-    discard lists.IncludeStr(options.searchPaths, path)
+    if not contains(options.searchPaths, path): 
+      lists.PrependStr(options.searchPaths, path)
+    #discard lists.IncludeStr(options.searchPaths, path)
   of wOut, wO: 
     expectArg(switch, arg, pass, info)
     options.outFile = arg

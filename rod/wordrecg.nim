@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -16,33 +16,21 @@
 import 
   nhashes, strutils, idents
 
+# Keywords must be kept sorted and within a range
+
 type 
   TSpecialWord* = enum 
-    wInvalid, # these are mapped to Nimrod keywords:
-              #[[[cog
-              #from string import split, capitalize
-              #keywords = split(open("data/keywords.txt").read())
-              #idents = ""
-              #strings = ""
-              #i = 1
-              #for k in keywords:
-              #  idents = idents + "w" + capitalize(k) + ", "
-              #  strings = strings + "'" + k + "', "
-              #  if i % 4 == 0:
-              #    idents = idents + "\n"
-              #    strings = strings + "\n"
-              #  i = i + 1
-              #cog.out(idents)
-              #]]]
+    wInvalid, 
+    
     wAddr, wAnd, wAs, wAsm, wBind, wBlock, wBreak, wCase, wCast, wConst, 
     wContinue, wConverter, wDiscard, wDistinct, wDiv, wElif, wElse, wEnd, wEnum, 
     wExcept, wFinally, wFor, wFrom, wGeneric, wIf, wImplies, wImport, wIn, 
     wInclude, wIs, wIsnot, wIterator, wLambda, wMacro, wMethod, wMod, wNil, 
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn, 
     wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
-    wWithout, wXor, wYield,   #[[[end]]]
-                              # other special tokens:
-    wColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, # pragmas and command line options:
+    wWithout, wXor, wYield,
+    
+    wColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
     wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks, wImportc, wExportc, 
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
@@ -60,39 +48,30 @@ type
     wPassc, wT, wPassl, wL, wListcmd, wGendoc, wGenmapping, wOs, wCpu, 
     wGenerate, wG, wC, wCpp, wBorrow, wRun, wR, wVerbosity, wV, wHelp, wH, 
     wSymbolFiles, wFieldChecks, wX, wVersion, wAdvanced, wSkipcfg, wSkipProjCfg, 
-    wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, wAcyclic, wIndex, # 
-                                                                                      # commands:
+    wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
+    wAcyclic, wIndex, 
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
     wDoc, wPas, wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy, 
-    wRst2html, wRst2tex, wI,  # special for the preprocessor of configuration files:
-    wWrite, wPutEnv, wPrependEnv, wAppendEnv, # additional Pascal keywords:
-    wArray, wBegin, wClass, wConstructor, wDestructor, wDo, wDownto, wExports, 
-    wFinalization, wFunction, wGoto, wImplementation, wInherited, 
-    wInitialization, wInterface, wLabel, wLibrary, wPacked, wProcedure, 
-    wProgram, wProperty, wRecord, wRepeat, wResourcestring, wSet, wThen, 
-    wThreadvar, wTo, wUnit, wUntil, wUses, # Pascal special tokens:
-    wExternal, wOverload, wFar, wAssembler, wForward, wIfdef, wIfndef, wEndif
+    wRst2html, wRst2tex, wI,
+    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar
+    
   TSpecialWords* = set[TSpecialWord]
 
 const 
   oprLow* = ord(wColon)
   oprHigh* = ord(wHat)
-  specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", # 
-                                                                             # keywords:
-                                                                             #
-                                                                             #[[[cog
-                                                                             #
-                                                                             #cog.out(strings)
-                                                                             #]]]
+  specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
+    
     "addr", "and", "as", "asm", "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter", "discard", "distinct", "div", "elif", 
     "else", "end", "enum", "except", "finally", "for", "from", "generic", "if", 
     "implies", "import", "in", "include", "is", "isnot", "iterator", "lambda", 
     "macro", "method", "mod", "nil", "not", "notin", "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "template", 
-    "try", "tuple", "type", "var", "when", "while", "with", "without", "xor", "yield", #[[[end]]]
-                                                                                       # other special tokens:
-    ":", "=", ".", "..", "^", "*", "-", # pragmas and command line options:
+    "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
+    "yield",
+
+    ":", "=", ".", "..", "^", "*", "-",
     "magic", "typecheck", "final", "profiler", "objchecks", "importc", 
     "exportc", "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
@@ -113,18 +92,11 @@ const
     "cpu", "generate", "g", "c", "cpp", "borrow", "run", "r", "verbosity", "v", 
     "help", "h", "symbolfiles", "fieldchecks", "x", "version", "advanced", 
     "skipcfg", "skipprojcfg", "cc", "genscript", "checkpoint", "checkpoints", 
-    "nomain", "subschar", "acyclic", "index", # commands:
+    "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
     "pretty", "doc", "pas", "gendepend", "listdef", "check", "parse", "scan", 
-    "boot", "lazy", "rst2html", "rst2tex", "i", # special for the preprocessor of configuration files:
-    "write", "putenv", "prependenv", "appendenv", "array", "begin", "class", 
-    "constructor", "destructor", "do", "downto", "exports", "finalization", 
-    "function", "goto", "implementation", "inherited", "initialization", 
-    "interface", "label", "library", "packed", "procedure", "program", 
-    "property", "record", "repeat", "resourcestring", "set", "then", 
-    "threadvar", "to", "unit", "until", "uses", # Pascal special tokens
-    "external", "overload", "far", "assembler", "forward", "ifdef", "ifndef", 
-    "endif"]
+    "boot", "lazy", "rst2html", "rst2tex", "i", 
+    "write", "putenv", "prependenv", "appendenv", "threadvar"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
 proc whichKeyword*(id: String): TSpecialWord

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -60,15 +60,16 @@ proc AppendStr(list: var TLinkedList, data: string) =
 proc PrependStr(list: var TLinkedList, data: string) = 
   prepend(list, newStrEntry(data))
 
-proc IncludeStr(list: var TLinkedList, data: string): bool = 
-  var it: PListEntry
-  it = list.head
+proc Contains*(list: TLinkedList, data: string): bool = 
+  var it = list.head
   while it != nil: 
     if PStrEntry(it).data == data: 
-      return true             # already in list
+      return true
     it = it.next
+
+proc IncludeStr(list: var TLinkedList, data: string): bool = 
+  if Contains(list, data): return true
   AppendStr(list, data)       # else: add to list
-  result = false
 
 proc InsertBefore(list: var TLinkedList, pos, entry: PListEntry) = 
   assert(pos != nil)
