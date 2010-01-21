@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -89,7 +89,7 @@ type
     reportComments         ## report comments
 
   TXmlParser* = object of TBaseLexer ## the parser object.
-    a, b: string
+    a, b, c: string
     kind: TXmlEventKind
     err: TXmlError
     state: TParserState
@@ -424,6 +424,7 @@ proc parseTag(my: var TXmlParser) =
     # an attribute follows:
     my.kind = xmlElementOpen
     my.state = stateAttr
+    my.c = my.a # save for later
   else:
     my.kind = xmlElementStart
     if my.buf[my.bufpos] == '/' and my.buf[my.bufpos+1] == '>':
@@ -597,6 +598,8 @@ proc next*(my: var TXmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
+    if not isNil(my.c):
+      my.a = my.c
   of stateError: 
     my.kind = xmlError
     my.state = stateNormal
