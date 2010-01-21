@@ -328,7 +328,9 @@ proc ParseFloat*(s: string): float {.noSideEffect, procvar.}
 
 proc ParseHexInt*(s: string): int {.noSideEffect, procvar.} 
   ## Parses a hexadecimal integer value contained in `s`. If `s` is not
-  ## a valid integer, `EInvalidValue` is raised.
+  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
+  ## following optional prefixes: ``0x``, ``0X``, ``#``. 
+  ## Underscores within `s` are ignored.
 
 # the stringify and format operators:
 proc toString*[Ty](x: Ty): string {.deprecated.}
@@ -735,10 +737,22 @@ proc ParseBiggestInt(s: string): biggestInt =
   if index == -1:
     raise newException(EInvalidValue, "invalid integer: " & s)
 
+proc ParseOctInt*(s: string): int =
+  var i = 0
+  if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
+  while true: 
+    case s[i]
+    of '_': inc(i)
+    of '0'..'7': 
+      result = result shl 3 or (ord(s[i]) - ord('0'))
+      inc(i)
+    of '\0': break
+    else: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseHexInt(s: string): int = 
   var i = 0
   if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
+  elif s[i] == '#': inc(i)
   while true: 
     case s[i]
     of '_': inc(i)

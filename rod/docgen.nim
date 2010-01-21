@@ -91,20 +91,19 @@ proc initIndexFile(d: PDoc) =
     addSon(d.indexFile, h)
 
 proc newDocumentor(filename: string): PDoc = 
-  var s: string
   new(result)
   result.tocPart = @ []
   result.filename = filename
   result.id = 100
   result.splitAfter = 20
-  s = getConfigVar("split.item.toc")
+  var s = getConfigVar("split.item.toc")
   if s != "": result.splitAfter = parseInt(s)
   
 proc getVarIdx(varnames: openarray[string], id: string): int = 
   for i in countup(0, high(varnames)): 
     if cmpIgnoreStyle(varnames[i], id) == 0: 
       return i
-  result = - 1
+  result = -1
 
 proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string], 
                          varvalues: openarray[PRope]): PRope = 
@@ -277,12 +276,9 @@ proc genComment(d: PDoc, n: PNode): PRope =
     result = renderRstToOut(d, rstParse(n.comment, true, toFilename(n.info), 
                                         toLineNumber(n.info), toColumn(n.info), 
                                         dummyHasToc))
-  else: 
-    result = nil
   
 proc genRecComment(d: PDoc, n: PNode): PRope = 
-  if n == nil: 
-    return nil
+  if n == nil: return nil
   result = genComment(d, n)
   if result == nil: 
     if not (n.kind in {nkEmpty..nkNilLit}): 
@@ -293,11 +289,10 @@ proc genRecComment(d: PDoc, n: PNode): PRope =
     n.comment = nil
   
 proc isVisible(n: PNode): bool = 
-  var v: PIdent
   result = false
   if n.kind == nkPostfix: 
     if (sonsLen(n) == 2) and (n.sons[0].kind == nkIdent): 
-      v = n.sons[0].ident
+      var v = n.sons[0].ident
       result = (v.id == ord(wStar)) or (v.id == ord(wMinus))
   elif n.kind == nkSym: 
     result = sfInInterface in n.sym.flags
@@ -388,14 +383,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   setIndexForSourceTerm(d, getRstName(nameNode), d.id)
 
 proc renderHeadline(d: PDoc, n: PRstNode): PRope = 
-  var 
-    length: int
-    refname: PRope
   result = nil
   for i in countup(0, rsonsLen(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
-  refname = toRope(rstnodeToRefname(n))
+  var refname = toRope(rstnodeToRefname(n))
   if d.hasToc: 
-    length = len(d.tocPart)
+    var length = len(d.tocPart)
     setlen(d.tocPart, length + 1)
     d.tocPart[length].refname = refname
     d.tocPart[length].n = n
@@ -424,8 +416,8 @@ proc renderOverline(d: PDoc, n: PRstNode): PRope =
   
 proc renderRstToRst(d: PDoc, n: PRstNode): PRope
 proc renderRstSons(d: PDoc, n: PRstNode): PRope = 
-  result = nil
-  for i in countup(0, rsonsLen(n) - 1): app(result, renderRstToRst(d, n.sons[i]))
+  for i in countup(0, rsonsLen(n) - 1): 
+    app(result, renderRstToRst(d, n.sons[i]))
   
 proc renderRstToRst(d: PDoc, n: PRstNode): PRope = 
   # this is needed for the index generation; it may also be useful for
@@ -612,9 +604,8 @@ proc renderCodeBlock(d: PDoc, n: PRstNode): PRope =
                    [result])
   
 proc renderContainer(d: PDoc, n: PRstNode): PRope = 
-  var arg: PRope
   result = renderRstToOut(d, n.sons[2])
-  arg = toRope(strip(getArgument(n)))
+  var arg = toRope(strip(getArgument(n)))
   if arg == nil: result = dispF("<div>$1</div>", "$1", [result])
   else: result = dispF("<div class=\"$1\">$2</div>", "$2", [arg, result])
   
@@ -874,12 +865,9 @@ proc generateIndex(d: PDoc) =
     writeRope(renderRstToRst(d, d.indexFile), gIndexFile)
 
 proc CommandDoc(filename: string) = 
-  var 
-    ast: PNode
-    d: PDoc
-  ast = parseFile(addFileExt(filename, nimExt))
+  var ast = parseFile(addFileExt(filename, nimExt))
   if ast == nil: return 
-  d = newDocumentor(filename)
+  var d = newDocumentor(filename)
   initIndexFile(d)
   d.hasToc = true
   generateDoc(d, ast)
@@ -887,17 +875,12 @@ proc CommandDoc(filename: string) =
   generateIndex(d)
 
 proc CommandRstAux(filename, outExt: string) = 
-  var 
-    filen: string
-    d: PDoc
-    rst: PRstNode
-    code: PRope
-  filen = addFileExt(filename, "txt")
-  d = newDocumentor(filen)
+  var filen = addFileExt(filename, "txt")
+  var d = newDocumentor(filen)
   initIndexFile(d)
-  rst = rstParse(readFile(filen), false, filen, 0, 1, d.hasToc)
+  var rst = rstParse(readFile(filen), false, filen, 0, 1, d.hasToc)
   d.modDesc = renderRstToOut(d, rst)
-  code = genOutFile(d)
+  var code = genOutFile(d)
   writeRope(code, getOutFile(filename, outExt))
   generateIndex(d)
 

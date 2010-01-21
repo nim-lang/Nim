@@ -1,12 +1,14 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
+##   Constructive mathematics is naturally typed. -- Simon Thompson
+## 
 ## Basic math routines for Nimrod.
 ## This module is available for the ECMAScript target.
 

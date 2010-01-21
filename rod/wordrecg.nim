@@ -22,7 +22,8 @@ type
   TSpecialWord* = enum 
     wInvalid, 
     
-    wAddr, wAnd, wAs, wAsm, wBind, wBlock, wBreak, wCase, wCast, wConst, 
+    wAddr, wAnd, wAs, wAsm, wAtomic, 
+    wBind, wBlock, wBreak, wCase, wCast, wConst, 
     wContinue, wConverter, wDiscard, wDistinct, wDiv, wElif, wElse, wEnd, wEnum, 
     wExcept, wFinally, wFor, wFrom, wGeneric, wIf, wImplies, wImport, wIn, 
     wInclude, wIs, wIsnot, wIterator, wLambda, wMacro, wMethod, wMod, wNil, 
@@ -62,7 +63,8 @@ const
   oprHigh* = ord(wHat)
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["", 
     
-    "addr", "and", "as", "asm", "bind", "block", "break", "case", "cast", 
+    "addr", "and", "as", "asm", "atomic", 
+    "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter", "discard", "distinct", "div", "elif", 
     "else", "end", "enum", "except", "finally", "for", "from", "generic", "if", 
     "implies", "import", "in", "include", "is", "isnot", "iterator", "lambda", 

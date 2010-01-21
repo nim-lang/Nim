@@ -46,7 +46,8 @@ type
               #  i = i + 1
               #cog.out(idents)
               #]]]
-    tkAddr, tkAnd, tkAs, tkAsm, tkBind, tkBlock, tkBreak, tkCase, tkCast, 
+    tkAddr, tkAnd, tkAs, tkAsm, tkAtomic, 
+    tkBind, tkBlock, tkBreak, tkCase, tkCast, 
     tkConst, tkContinue, tkConverter, tkDiscard, tkDistinct, tkDiv, tkElif, 
     tkElse, tkEnd, tkEnum, tkExcept, tkFinally, tkFor, tkFrom, tkGeneric, tkIf, 
     tkImplies, tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator, tkLambda, 
@@ -77,7 +78,8 @@ const
     "tkSymbol", #[[[cog
                 #cog.out(strings)
                 #]]]
-    "addr", "and", "as", "asm", "bind", "block", "break", "case", "cast", 
+    "addr", "and", "as", "asm", "atomic", 
+    "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter", "discard", "distinct", "div", "elif", 
     "else", "end", "enum", "except", "finally", "for", "from", "generic", "if", 
     "implies", "import", "in", "include", "is", "isnot", "iterator", "lambda", 
