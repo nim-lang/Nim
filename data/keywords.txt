@@ -1,4 +1,4 @@
-addr and as asm
+addr and as asm atomic
 bind block break
 case cast const continue converter
 discard distinct div
