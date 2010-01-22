@@ -12,6 +12,8 @@ Bugfixes
 --------
 - The Posix version of ``os.copyFile`` has better error handling.
 - Fixed bug #502670 (underscores in identifiers).
+- Fixed a bug in the ``parsexml`` module concerning the parsing of
+  ``<tag attr="value" />``.
 
 
 Additions
