@@ -1343,9 +1343,7 @@ proc parseVar(p: var TParser): PNode =
   p.lastVarSection = result
 
 proc parseRoutine(p: var TParser): PNode = 
-  var 
-    stmts: PNode
-    noBody: bool
+  var noBody: bool
   result = newNodeP(nkProcDef, p)
   getTok(p)
   skipCom(p, result)
@@ -1358,7 +1356,7 @@ proc parseRoutine(p: var TParser): PNode =
   if (p.section == seInterface) or noBody: 
     addSon(result, nil)
   else: 
-    stmts = newNodeP(nkStmtList, p)
+    var stmts = newNodeP(nkStmtList, p)
     while true: 
       case p.tok.xkind
       of pxVar: addSon(stmts, parseVar(p))
@@ -1374,7 +1372,6 @@ proc parseRoutine(p: var TParser): PNode =
     addSon(result, stmts)
 
 proc fixExit(p: var TParser, n: PNode): bool = 
-  result = false
   if (p.tok.ident.id == getIdent("exit").id): 
     var length = sonsLen(n)
     if (length <= 0): return 
