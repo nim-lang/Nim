@@ -7,61 +7,58 @@
 #    distribution, for details about the copyright.
 #
 
-# 
-
 import 
-  llstream, strutils, os, ast, rnimsyn, options, msgs, 
+  strutils, os, parseopt, llstream, ast, rnimsyn, options, msgs,
   paslex, pasparse
-  
-proc exSymbols(n: PNode) = 
-  case n.kind
-  of nkEmpty..nkNilLit: nil
-  of nkProcDef..nkIteratorDef: exSymbol(n.sons[namePos])
-  of nkWhenStmt, nkStmtList: 
-    for i in countup(0, sonsLen(n) - 1): exSymbols(n.sons[i])
-  of nkVarSection, nkConstSection: 
-    for i in countup(0, sonsLen(n) - 1): exSymbol(n.sons[i].sons[0])
-  of nkTypeSection: 
-    for i in countup(0, sonsLen(n) - 1): 
-      exSymbol(n.sons[i].sons[0])
-      if (n.sons[i].sons[2] != nil) and
-          (n.sons[i].sons[2].kind == nkObjectTy): 
-        fixRecordDef(n.sons[i].sons[2])
-  else: nil
 
-proc CommandExportSymbols(filename: string) = 
-  # now unused!
-  var module = parseFile(addFileExt(filename, NimExt))
-  if module != nil: 
-    exSymbols(module)
-    renderModule(module, getOutFile(filename, "pretty." & NimExt))
+const
+  Version = "0.8"
+  Usage = """
+pas2nim - Pascal to Nimrod source converter
+  (c) 2010 Andreas Rumpf
+Usage: pas2nim [options] inputfile [options]
+Options: 
+  -o, --out:FILE         set output filename
+  --ref                  convert ^typ to ref typ (default: ptr typ)
+  --boot                 use special translation rules for the Nimrod compiler
+  -v, --version          write pas2nim's version
+  -h, --help             show this help
+"""
 
-proc CommandLexPas(filename: string) = 
-  var f = addFileExt(filename, "pas")
-  var stream = LLStreamOpen(f, fmRead)
-  if stream != nil: 
-    var 
-      L: TPasLex
-      tok: TPasTok
-    OpenLexer(L, f, stream)
-    getPasTok(L, tok)
-    while tok.xkind != pxEof: 
-      printPasTok(tok)
-      getPasTok(L, tok)
-    closeLexer(L)
-  else: rawMessage(errCannotOpenFile, f)
+proc main(infile, outfile: string, flags: set[TParserFlag]) = 
+  var stream = LLStreamOpen(infile, fmRead)
+  if stream == nil: rawMessage(errCannotOpenFile, infile)
+  var p: TParser
+  OpenParser(p, infile, stream, flags)
+  var module = parseUnit(p)
+  closeParser(p)
+  renderModule(module, outfile)
 
-proc CommandPas(filename: string) = 
-  var f = addFileExt(filename, "pas")
-  var stream = LLStreamOpen(f, fmRead)
-  if stream != nil: 
-    var p: TPasParser
-    OpenPasParser(p, f, stream)
-    var module = parseUnit(p)
-    closePasParser(p)
-    renderModule(module, getOutFile(filename, NimExt))
-  else: 
-    rawMessage(errCannotOpenFile, f)
-  
-
-
+var
+  infile = ""
+  outfile = ""
+  flags: set[TParserFlag] = {}
+for kind, key, val in getopt():
+  case kind
+  of cmdArgument: infile = key
+  of cmdLongOption, cmdShortOption:
+    case key
+    of "help", "h":
+      stdout.write(Usage)
+      quit(0)
+    of "version", "v":
+      stdout.write(Version & "\n")
+      quit(0)
+    of "o", "out": outfile = key
+    of "ref": incl(flags, pfRefs)
+    of "boot": flags = flags + {pfRefs, pfMoreReplacements, pfImportBlackList}
+    else: stdout.write("[Error] unknown option: " & key)
+  of cmdEnd: assert(false)
+if infile.len == 0:
+  # no filename has been given, so we show the help:
+  stdout.write(Usage)
+else:
+  if outfile.len == 0:
+    outfile = changeFileExt(infile, "nim")
+  infile = addFileExt(infile, "pas")
+  main(infile, outfile, flags)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -17,7 +17,7 @@ var
   cmdLineInfo: TLineInfo
 
 proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) = 
-  var p = parseopt.init()
+  var p = parseopt.initOptParser()
   while true: 
     parseopt.next(p)
     case p.kind
@@ -40,7 +40,7 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
         filename = unixToNativePath(p.key) # BUGFIX for portable build scripts
         break 
   if pass == passCmd2: 
-    arguments = getRestOfCommandLine(p)
+    arguments = cmdLineRest(p)
     if not (optRun in gGlobalOptions) and (arguments != ""): 
       rawMessage(errArgsNeedRunOption)
   

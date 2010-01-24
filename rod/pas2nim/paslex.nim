@@ -11,7 +11,7 @@
 # the scanner module.
 
 import 
-  nhashes, options, msgs, strutils, platform, idents, lexbase
+  nhashes, options, msgs, strutils, platform, idents, lexbase, llstream
 
 const 
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -24,7 +24,7 @@ const
 # keywords are sorted!
 
 type
-  TPasTokKind* = enum 
+  TTokKind* = enum 
     pxInvalid, pxEof,         
     pxAnd, pxArray, pxAs, pxAsm, pxBegin, pxCase, pxClass, pxConst, 
     pxConstructor, pxDestructor, pxDiv, pxDo, pxDownto, pxElse, pxEnd, pxExcept, 
@@ -46,7 +46,7 @@ type
     pxAsgn, pxEquals, pxDot, pxDotDot, pxHat, pxPlus, pxMinus, pxStar, pxSlash, 
     pxLe, pxLt, pxGe, pxGt, pxNeq, pxAt, pxStarDirLe, pxStarDirRi, pxCurlyDirLe, 
     pxCurlyDirRi
-  TPasTokKinds* = set[TPasTokKind]
+  TTokKinds* = set[TTokKind]
 
 const 
   Keywords = ["and", "array", "as", "asm", "begin", "case", "class", "const", 
@@ -62,9 +62,10 @@ const
   firstKeyword = pxAnd
   lastKeyword = pxXor
 
-type 
-  TPasTok* = object
-    xkind*: TPasTokKind       # the type of the token
+type
+  TNumericalBase* = enum base10, base2, base8, base16
+  TToken* = object
+    xkind*: TTokKind          # the type of the token
     ident*: PIdent            # the parsed identifier
     iNumber*: BiggestInt      # the parsed integer literal
     fNumber*: BiggestFloat    # the parsed floating point literal
@@ -72,79 +73,104 @@ type
                               # or float literals
     literal*: string          # the parsed (string) literal
   
-  TPasLex* = object 
+  TLexer* = object of TBaseLexer
     filename*: string
   
 
-proc getPasTok*(L: var TPasLex, tok: var TPasTok)
-proc PrintPasTok*(tok: TPasTok)
-proc pasTokToStr*(tok: TPasTok): string
+proc getTok*(L: var TLexer, tok: var TToken)
+proc PrintTok*(tok: TToken)
+proc `$`*(tok: TToken): string
 # implementation
 
-var dummyIdent: PIdent
+var
+  dummyIdent: PIdent
+  gLinesCompiled: int
 
 proc fillToken(L: var TToken) = 
-  L.TokType = tkInvalid
+  L.xkind = pxInvalid
   L.iNumber = 0
-  L.Indent = 0
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
   L.ident = dummyIdent        # this prevents many bugs!
   
-proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) = 
+proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) = 
   openBaseLexer(lex, inputstream)
-  lex.indentStack = @[0]
   lex.filename = filename
-  lex.indentAhead = - 1
 
-proc closeLexer(lex: var TLexer) = 
+proc closeLexer*(lex: var TLexer) = 
   inc(gLinesCompiled, lex.LineNumber)
   closeBaseLexer(lex)
 
 proc getColumn(L: TLexer): int = 
   result = getColNumber(L, L.bufPos)
 
-proc getLineInfo(L: TLexer): TLineInfo = 
+proc getLineInfo*(L: TLexer): TLineInfo = 
   result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
 
-proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
+proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") = 
   msgs.liMessage(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
   var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
   msgs.liMessage(info, msg, arg)
 
-proc binaryStrSearch(x: openarray[string], y: string): int =
-  var a = 0
-  var b = len(x)
-  while a < b:
-     var mid = (a + b) div 2
-     if x[mid] < y: a = mid + 1
-     else: b = mid
-  if a < len(x) and x[a] == y: result = a
-  else: result = -1
+proc TokKindToStr*(k: TTokKind): string =
+  case k
+  of pxEof: result = "[EOF]"
+  of firstKeyword..lastKeyword:
+    result = keywords[ord(k)-ord(firstKeyword)]
+  of pxInvalid, pxComment, pxStrLit: result = "string literal"
+  of pxCommand: result = "{@"
+  of pxAmp: result = "{&"
+  of pxPer: result = "{%"
+  of pxSymbol: result = "identifier"
+  of pxIntLit, pxInt64Lit: result = "integer literal"
+  of pxFloatLit: result = "floating point literal"
+  of pxParLe: result = "("
+  of pxParRi: result = ")"
+  of pxBracketLe: result = "["
+  of pxBracketRi: result = "]"
+  of pxComma: result = ","
+  of pxSemiColon: result = ";"
+  of pxColon: result = ":"
+  of pxAsgn: result = ":="
+  of pxEquals: result = "="
+  of pxDot: result = "."
+  of pxDotDot: result = ".."
+  of pxHat: result = "^"
+  of pxPlus: result = "+"
+  of pxMinus: result = "-"
+  of pxStar: result = "*"
+  of pxSlash: result = "/"
+  of pxLe: result = "<="
+  of pxLt: result = "<"
+  of pxGe: result = ">="
+  of pxGt: result = ">"
+  of pxNeq: result = "<>"
+  of pxAt: result = "@"
+  of pxStarDirLe: result = "(*$"
+  of pxStarDirRi: result = "*)"
+  of pxCurlyDirLe: result = "{$"
+  of pxCurlyDirRi: result = "}"
 
-proc pastokToStr(tok: TPasTok): string = 
+proc `$`(tok: TToken): string = 
   case tok.xkind
-  of pxIntLit, pxInt64Lit: result = $(tok.iNumber)
-  of pxFloatLit: result = $(tok.fNumber)
-  of pxInvalid, pxComment..pxStrLit: result = tok.literal
-  else: 
-    if (tok.ident.s != ""): result = tok.ident.s
-    else: result = pasTokKindToStr[tok.xkind]
+  of pxInvalid, pxComment, pxStrLit: result = tok.literal
+  of pxSymbol: result = tok.ident.s
+  of pxIntLit, pxInt64Lit: result = $tok.iNumber
+  of pxFloatLit: result = $tok.fNumber
+  else: result = TokKindToStr(tok.xkind)
   
-proc PrintPasTok(tok: TPasTok) = 
-  write(stdout, pasTokKindToStr[tok.xkind])
-  write(stdout, ' ')
-  writeln(stdout, pastokToStr(tok))
+proc PrintTok(tok: TToken) = 
+  writeln(stdout, $tok)
 
-proc setKeyword(L: var TPasLex, tok: var TPasTok) = 
+proc setKeyword(L: var TLexer, tok: var TToken) = 
   var x = binaryStrSearch(keywords, toLower(tok.ident.s))
   if x < 0: tok.xkind = pxSymbol
-  else: tok.xKind = TPasTokKind(x + ord(firstKeyword))
+  else: tok.xKind = TTokKind(x + ord(firstKeyword))
   
-proc matchUnderscoreChars(L: var TPasLex, tok: var TPasTok, chars: TCharSet) = 
+proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
   # matches ([chars]_)*
   var pos = L.bufpos              # use registers for pos, buf
   var buf = L.buf
@@ -164,7 +190,7 @@ proc isFloatLiteral(s: string): bool =
     if s[i] in {'.', 'e', 'E'}: 
       return true
 
-proc getNumber2(L: var TPasLex, tok: var TPasTok) = 
+proc getNumber2(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos + 1 # skip %
   if not (L.buf[pos] in {'0'..'1'}): 
     # BUGFIX for %date%
@@ -192,7 +218,7 @@ proc getNumber2(L: var TPasLex, tok: var TPasTok) =
   else: tok.xkind = pxIntLit
   L.bufpos = pos
 
-proc getNumber16(L: var TPasLex, tok: var TPasTok) = 
+proc getNumber16(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos + 1          # skip $
   tok.base = base16
   var xi: biggestInt = 0
@@ -223,7 +249,7 @@ proc getNumber16(L: var TPasLex, tok: var TPasTok) =
     tok.xkind = pxIntLit
   L.bufpos = pos
 
-proc getNumber10(L: var TPasLex, tok: var TPasTok) = 
+proc getNumber10(L: var TLexer, tok: var TToken) = 
   tok.base = base10
   matchUnderscoreChars(L, tok, {'0'..'9'})
   if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}): 
@@ -251,7 +277,7 @@ proc HandleCRLF(L: var TLexer, pos: int): int =
   of LF: result = lexbase.HandleLF(L, pos)
   else: result = pos
   
-proc getString(L: var TPasLex, tok: var TPasTok) = 
+proc getString(L: var TLexer, tok: var TToken) = 
   var xi: int
   var pos = L.bufPos
   var buf = L.buf
@@ -300,7 +326,7 @@ proc getString(L: var TPasLex, tok: var TPasTok) =
   tok.xkind = pxStrLit
   L.bufpos = pos
 
-proc getSymbol(L: var TPasLex, tok: var TPasTok) = 
+proc getSymbol(L: var TLexer, tok: var TToken) = 
   var h: THash = 0
   var pos = L.bufpos
   var buf = L.buf
@@ -326,7 +352,7 @@ proc getSymbol(L: var TPasLex, tok: var TPasTok) =
   L.bufpos = pos
   setKeyword(L, tok)
 
-proc scanLineComment(L: var TPasLex, tok: var TPasTok) = 
+proc scanLineComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf 
   # a comment ends if the next line does not start with the // on the same
@@ -351,7 +377,7 @@ proc scanLineComment(L: var TPasLex, tok: var TPasTok) =
       break 
   L.bufpos = pos
 
-proc scanCurlyComment(L: var TPasLex, tok: var TPasTok) = 
+proc scanCurlyComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf
   tok.literal = "#"
@@ -371,7 +397,7 @@ proc scanCurlyComment(L: var TPasLex, tok: var TPasTok) =
       inc(pos)
   L.bufpos = pos
 
-proc scanStarComment(L: var TPasLex, tok: var TPasTok) = 
+proc scanStarComment(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf
   tok.literal = "#"
@@ -396,7 +422,7 @@ proc scanStarComment(L: var TPasLex, tok: var TPasTok) =
       inc(pos)
   L.bufpos = pos
 
-proc skip(L: var TPasLex, tok: var TPasTok) = 
+proc skip(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf
   while true: 
@@ -410,7 +436,7 @@ proc skip(L: var TPasLex, tok: var TPasTok) =
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
 
-proc getPasTok(L: var TPasLex, tok: var TPasTok) = 
+proc getTok(L: var TLexer, tok: var TToken) = 
   tok.xkind = pxInvalid
   fillToken(tok)
   skip(L, tok)
