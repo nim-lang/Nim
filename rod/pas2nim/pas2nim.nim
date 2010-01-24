@@ -29,7 +29,7 @@ proc main(infile, outfile: string, flags: set[TParserFlag]) =
   var stream = LLStreamOpen(infile, fmRead)
   if stream == nil: rawMessage(errCannotOpenFile, infile)
   var p: TParser
-  OpenParser(p, infile, stream, flags)
+  openParser(p, infile, stream, flags)
   var module = parseUnit(p)
   closeParser(p)
   renderModule(module, outfile)

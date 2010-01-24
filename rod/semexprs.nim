@@ -909,16 +909,15 @@ proc semBlockExpr(c: PContext, n: PNode): PNode =
   Inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2)
   openScope(c.tab)            # BUGFIX: label is in the scope of block!
-  if n.sons[0] != nil: 
-    addDecl(c, newSymS(skLabel, n.sons[0], c))
+  if n.sons[0] != nil: addDecl(c, newSymS(skLabel, n.sons[0], c))
   n.sons[1] = semStmtListExpr(c, n.sons[1])
   n.typ = n.sons[1].typ
   closeScope(c.tab)
   Dec(c.p.nestedBlockCounter)
 
 proc isCallExpr(n: PNode): bool = 
-  result = n.kind in
-      {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit}
+  result = n.kind in {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand,
+                      nkCallStrLit}
 
 proc semMacroStmt(c: PContext, n: PNode, semCheck: bool = true): PNode = 
   checkMinSonsLen(n, 2)
@@ -1002,13 +1001,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookup(c, n.sons[0], false)
     if s != nil: 
       case s.kind
-      of skMacro: 
-        result = semMacroExpr(c, n, s)
-      of skTemplate: 
-        result = semTemplateExpr(c, n, s)
+      of skMacro: result = semMacroExpr(c, n, s)
+      of skTemplate: result = semTemplateExpr(c, n, s)
       of skType: 
-        if n.kind != nkCall: 
-          liMessage(n.info, errXisNotCallable, s.name.s) # XXX does this check make any sense?
+        if n.kind != nkCall: liMessage(n.info, errXisNotCallable, s.name.s)
+        # XXX does this check make any sense?
         result = semConv(c, n, s)
       of skProc, skMethod, skConverter, skIterator: 
         if s.magic == mNone: result = semDirectOp(c, n, flags)
