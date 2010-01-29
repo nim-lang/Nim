@@ -21,7 +21,7 @@ proc dbError(db: TDbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
-  e.msg = PQerrorMessage(db)
+  e.msg = $PQerrorMessage(db)
   raise e
 
 proc dbError*(msg: string) {.noreturn.} = 
@@ -31,17 +31,9 @@ proc dbError*(msg: string) {.noreturn.} =
   e.msg = msg
   raise e
 
-when false:
-  proc dbQueryOpt*(db: TDbConn, query: string, args: openarray[string]) =
-    var stmt = mysql_stmt_init(db)
-    if stmt == nil: dbError(db)
-    if mysql_stmt_prepare(stmt, query, len(query)) != 0: 
-      dbError(db)
-    var 
-      bindings: seq[MYSQL_BIND]
-    discard mysql_stmt_close(stmt)
-
 proc dbQuote(s: string): string =
+  #if s.len > 0 and allCharsInSet(s, {'0'..'9'}): result = s
+  #else:
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -86,7 +78,8 @@ proc setupQuery(db: TDbConn, query: TSqlQuery,
 proc setRow(res: PPGresult, r: var TRow, line, cols: int) =
   for col in 0..cols-1:
     setLen(r[col], 0)
-    add(r[col], PQgetvalue(res, line, cols))    
+    var x = PQgetvalue(res, line, col)
+    add(r[col], x)
   
 iterator dbFastRows*(db: TDbConn, query: TSqlQuery,
                      args: openarray[string]): TRow =
@@ -118,10 +111,8 @@ proc dbGetValue*(db: TDbConn, query: TSqlQuery,
   ## executes the query and returns the result dataset's the first column 
   ## of the first row. Returns "" if the dataset contains no rows. This uses
   ## `dbFastRows`, so it inherits its fragile behaviour.
-  result = ""
-  for row in dbFastRows(db, query, args): 
-    result = row[0]
-    break
+  var x = PQgetvalue(setupQuery(db, query, args), 0, 0)
+  result = if isNil(x): "" else: $x
   
 proc dbTryInsertID*(db: TDbConn, query: TSqlQuery, 
                     args: openarray[string]): int64 =
@@ -134,11 +125,6 @@ proc dbTryInsertID*(db: TDbConn, query: TSqlQuery,
     result = ParseBiggestInt(val)
   else:
     result = -1
-  #if mysqlRealQuery(db, q, q.len) != 0'i32: 
-  #  result = -1'i64
-  #else:
-  #  result = mysql_insert_id(db)
-  #LAST_INSERT_ID()
 
 proc dbInsertID*(db: TDbConn, query: TSqlQuery, 
                  args: openArray[string]): int64 = 
