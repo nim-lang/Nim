@@ -14,7 +14,9 @@ Bugfixes
 - Fixed bug #502670 (underscores in identifiers).
 - Fixed a bug in the ``parsexml`` module concerning the parsing of
   ``<tag attr="value" />``.
-
+- ``system.write(f: TFile, s: string)`` now works even if ``s`` contains binary
+  zeros.
+  
 
 Additions
 ---------

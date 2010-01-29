@@ -194,13 +194,15 @@ proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
   rawWriteStackTrace(buf)
 
   if s == SIGINT: add(buf, "SIGINT: Interrupted by Ctrl-C.\n")
-  elif s == SIGSEGV: add(buf, "SIGSEGV: Illegal storage access.\n")
+  elif s == SIGSEGV: 
+    add(buf, "SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
   elif s == SIGABRT:
     if dbgAborting: return # the debugger wants to abort
     add(buf, "SIGABRT: Abnormal termination.\n")
   elif s == SIGFPE: add(buf, "SIGFPE: Arithmetic error.\n")
   elif s == SIGILL: add(buf, "SIGILL: Illegal operation.\n")
-  elif s == SIGBUS: add(buf, "SIGBUS: Illegal storage access.\n")
+  elif s == SIGBUS: 
+    add(buf, "SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
   else: add(buf, "unknown signal\n")
   writeToStdErr(buf)
   dbgAborting = True # play safe here...

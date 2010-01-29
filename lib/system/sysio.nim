@@ -51,7 +51,6 @@ proc readLine(f: TFile): string =
   result = ""
   rawReadLine(f, result)
 
-proc write(f: TFile, s: string) = fputs(s, f)
 proc write(f: TFile, i: int) = 
   when sizeof(int) == 8:
     fprintf(f, "%lld", i)
@@ -166,6 +165,10 @@ proc writeChars(f: TFile, a: openarray[char], start, len: int): int =
   result = writeBuffer(f, addr(x[start]), len)
 proc writeBuffer(f: TFile, buffer: pointer, len: int): int =
   result = fwrite(buffer, 1, len, f)
+
+proc write(f: TFile, s: string) =
+  if writeBuffer(f, cstring(s), s.len) != s.len:
+    raise newException(EIO, "cannot write string to file")
 
 proc setFilePos(f: TFile, pos: int64) =
   if fseek(f, clong(pos), 0) != 0:
