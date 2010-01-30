@@ -1,26 +1,113 @@
-import sockets, strutils, parseurl, pegs
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2010 Dominik Picheta, Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module implements a simple HTTP client that can be used to retrieve
+## webpages/other data.
+
+# neuer Code:
+import sockets, strutils, parseurl, pegs, os, parseutils
 
 type
-  response = tuple[version: string, status: string, headers: seq[header], body: string]
-  header = tuple[htype: string, hvalue: string] 
+  TResponse* = tuple[
+    version: string, status: string, headers: seq[THeader],
+    body: string]
+  THeader* = tuple[htype: string, hvalue: string]
 
   EInvalidHttp* = object of EBase ## exception that is raised when server does
                                   ## not conform to the implemented HTTP
                                   ## protocol
+
+  EHttpRequestErr* = object of EBase ## Thrown in the ``getContent`` proc,
+                                     ## when the server returns an error
+
+template newException(exceptn, message: expr): expr =
+  block: # open a new scope
+    var
+      e: ref exceptn
+    new(e)
+    e.msg = message
+    e
 
 proc httpError(msg: string) =
   var e: ref EInvalidHttp
   new(e)
   e.msg = msg
   raise e
+  
+proc fileError(msg: string) =
+  var e: ref EIO
+  new(e)
+  e.msg = msg
+  raise e
 
-proc parseResponse(data: string): response =
+proc getHeaderValue*(headers: seq[THeader], name: string): string =
+  ## Retrieves a header by ``name``, from ``headers``.
+  ## Returns "" if a header is not found
+  for i in low(headers)..high(headers):
+    if cmpIgnoreCase(headers[i].htype, name) == 0:
+      return headers[i].hvalue
+  return ""
+
+proc parseBody(data: var string, start: int, s: TSocket,
+               headers: seq[THeader]): string =
+  if getHeaderValue(headers, "Transfer-Encoding") == "chunked":
+    # get chunks:
+    var i = start
+    result = ""
+    while true:
+      var chunkSize = 0
+      var j = parseHex(data, chunkSize, i)
+      if j <= 0: break
+      inc(i, j)
+      while data[i] notin {'\C', '\L', '\0'}: inc(i)
+      if data[i] == '\C': inc(i)
+      if data[i] == '\L': inc(i)
+      if chunkSize <= 0: break
+      result.add(copy(data, i, i+chunkSize-1))
+      if i + chunkSize > data.len:
+        echo "i: ", i, " size: ", chunkSize, " len: ", data.len
+      
+      assert(i + chunkSize <= data.len)
+      i = i + chunkSize
+      # skip trailing CR-LF:
+      #if data[i] == '\C': inc(i)
+      #if data[i] == '\L': inc(i)
+      
+      echo "came here"
+      data.add(s.recv())
+  else:
+    result = copy(data, start)
+    # -REGION- Content-Length
+    # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
+    var contentLengthHeader = getHeaderValue(headers, "Content-Length")
+    if contentLengthHeader != "":
+      var length = contentLengthHeader.parseint()
+      while result.len() < length: result.add(s.recv())
+    else:
+      # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
+      
+      # -REGION- Connection: Close
+      # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
+      if getHeaderValue(headers, "Connection") == "close":
+        while True:
+          var moreData = recv(s)
+          if moreData.len == 0: break
+          result.add(moreData)
+
+proc parseResponse(s: TSocket): TResponse =
+  var data = s.recv()
   var i = 0
 
-  #Parse the version
-  #Parses the first line of the headers
-  #``HTTP/1.1`` 200 OK
-    
+  # Parse the version
+  # Parses the first line of the headers
+  # ``HTTP/1.1`` 200 OK
+
   var matches: array[0..1, string]
   var L = data.matchLen(peg"\i 'HTTP/' {'1.1'/'1.0'} \s+ {(!\n .)*}\n",
                         matches, i)
@@ -30,9 +117,9 @@ proc parseResponse(data: string): response =
   result.status = matches[1]
   inc(i, L)
   
-  #Parse the headers
-  #Everything after the first line leading up to the body
-  #htype: hvalue
+  # Parse the headers
+  # Everything after the first line leading up to the body
+  # htype: hvalue
 
   result.headers = @[]
   while true:
@@ -42,7 +129,7 @@ proc parseResponse(data: string): response =
       key.add(data[i])
       inc(i)
     inc(i) # skip ':'
-    if data[i] == ' ': inc(i)
+    if data[i] == ' ': inc(i) # skip if the character is a space
     var val = ""
     while data[i] notin {'\C', '\L', '\0'}:
       val.add(data[i])
@@ -59,58 +146,9 @@ proc parseResponse(data: string): response =
       inc(i)
       break
     
-  #Parse the body
-  #Everything after the headers(The first double CRLF)
-  result.body = data.copy(i)
-  
+  result.body = parseBody(data, i, s, result.headers) 
 
-proc readChunked(data: var string, s: TSocket): response =
-  #Read data from socket until the terminating chunk size is found(0\c\L\c\L)
-  while true:
-    data.add(s.recv())
-    #Contains because 
-    #trailers might be present
-    #after the terminating chunk size
-    if data.contains("0\c\L\c\L"): 
-      break
-      
-  result = parseResponse(data) #Re-parse the body
-  
-  var count, length, chunkLength: int = 0
-  var newBody: string = ""
-  var bodySplit: seq[string] = result.body.splitLines()
-  #Remove the chunks
-  for i in items(bodySplit):
-    if count == 1: #Get the first chunk size
-      chunkLength = ParseHexInt(i) - i.len() - 1
-    else:
-      if length >= chunkLength:
-        #The chunk size determines how much text is left
-        #Until the next chunk size
-        chunkLength = ParseHexInt(i)
-        length = 0
-      else:
-        #Break if the terminating chunk size is found
-        #This should ignore the `trailers`
-        if bodySplit[count] == "0": #This might cause problems...
-          break
-        
-        #Add the text to the newBody
-        newBody.add(i & "\c\L")
-        length = length + i.len()
-    inc(count)
-  #Make the parsed body the new body
-  result.body = newBody
-    
-proc getHeaderValue*(headers: seq[header], name: string): string =
-  ## Retrieves a header by ``name``, from ``headers``.
-  ## Returns "" if a header is not found
-  for i in low(headers)..high(headers):
-    if cmpIgnoreCase(headers[i].htype, name) == 0:
-      return headers[i].hvalue
-  return ""
-
-proc request*(url: string): response =
+proc request*(url: string): TResponse =
   var r = parse(url)
   
   var headers: string
@@ -119,58 +157,46 @@ proc request*(url: string): response =
   else:
     headers = "GET / HTTP/1.1\c\L"
   
-  headers = headers & "Host: " & r.subdomain & r.domain & "\c\L\c\L"
-  
+  add(headers, "Host: " & r.hostname & "\c\L\c\L")
+
   var s = socket()
-  s.connect(r.subdomain & r.domain, TPort(80))
+  s.connect(r.hostname, TPort(80))
   s.send(headers)
-  
-  var data = s.recv()
-  
-  result = parseResponse(data)
-
-  #-REGION- Transfer-Encoding 
-  #-Takes precedence over Content-Length
-  #(http://tools.ietf.org/html/rfc2616#section-4.4) NR.2
-  var transferEncodingHeader = getHeaderValue(result.headers, "Transfer-Encoding")
-  if transferEncodingHeader == "chunked":
-    result = readChunked(data, s)
-  
-  #-REGION- Content-Length
-  #(http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
-  var contentLengthHeader = getHeaderValue(result.headers, "Content-Length")
-  if contentLengthHeader != "":
-    var length = contentLengthHeader.parseint()
-
-    while data.len() < length:
-      data.add(s.recv())
-      
-    result = parseResponse(data)
-    
-  #(http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
-    
-  #-REGION- Connection: Close
-  #(http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-  var connectionHeader = getHeaderValue(result.headers, "Connection")
-  if connectionHeader == "close":
-    while True:
-      var nD = s.recv()
-      if nD == "": break
-      data.add(nD)
-    result = parseResponse(data)
-  
+  result = parseResponse(s)
   s.close()
-
-proc get*(url: string): response =
-  result = request(url)
   
+proc redirection(status: string): bool =
+  const redirectionNRs = ["301", "302", "303", "307"]
+  for i in items(redirectionNRs):
+    if status.startsWith(i):
+      return True
+  
+proc get*(url: string, maxRedirects = 5): TResponse =
+  ## low-level proc similar to ``request`` which handles redirection
+  result = request(url)
+  for i in 1..maxRedirects:
+    if result.status.redirection():
+      var locationHeader = getHeaderValue(result.headers, "Location")
+      if locationHeader == "": httpError("location header expected")
+      result = request(locationHeader)
+      
+proc getContent*(url: string): string =
+  ## GET's the body and returns it as a string
+  ## Raises exceptions for the status codes ``4xx`` and ``5xx``
+  var r = get(url)
+  if r.status[0] in {'4','5'}:
+    raise newException(EHTTPRequestErr, r.status)
+  else:
+    return r.body
+  
+proc downloadFile*(url: string, outputFilename: string) =
+  var f: TFile
+  if open(f, outputFilename, fmWrite):
+    f.write(getContent(url))
+    f.close()
+  else:
+    fileError("Unable to open file")
 
-var r = get("http://www.google.co.uk/index.html")
-#var r = get("http://www.crunchyroll.com")
-echo("===================================")
-echo(r.version & " " & r.status)
 
-for htype, hvalue in items(r.headers):
-  echo(htype, ": ", hvalue)
-echo("---------------------------------")
-echo(r.body)
+when isMainModule:
+  downloadFile("http://www.google.com", "GoogleTest.txt")
