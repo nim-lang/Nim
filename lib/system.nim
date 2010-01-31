@@ -1460,6 +1460,13 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       yield res
     Close(f)
 
+  iterator lines*(f: TFile): string =
+    ## Iterate over any line in the file `f`.
+    var res = ""
+    while not endOfFile(f):
+      rawReadLine(f, res)
+      yield res
+
   proc fileHandle*(f: TFile): TFileHandle {.importc: "fileno",
                                             header: "<stdio.h>"}
     ## returns the OS file handle of the file ``f``. This is only useful for

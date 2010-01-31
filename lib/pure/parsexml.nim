@@ -315,21 +315,22 @@ proc parseEntity(my: var TXmlParser, dest: var string) =
         r = r * 10 + (ord(buf[pos]) - ord('0'))
         inc(pos)
     add(dest, toUTF8(TRune(r)))
-  elif buf[pos] == 'l' and buf[pos+1] == 't':
+  elif buf[pos] == 'l' and buf[pos+1] == 't' and buf[pos+2] == ';':
     add(dest, '<')
     inc(pos, 2)
-  elif buf[pos] == 'g' and buf[pos+1] == 't':
+  elif buf[pos] == 'g' and buf[pos+1] == 't' and buf[pos+2] == ';':
     add(dest, '>')
     inc(pos, 2)
-  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p':
+  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p'
+       and buf[pos+3] == ';':
     add(dest, '&')
     inc(pos, 3)
   elif buf[pos] == 'a' and buf[pos+1] == 'p' and buf[pos+2] == 'o' and 
-      buf[pos+3] == 's':
+      buf[pos+3] == 's' and buf[pos+4] == ';':
     add(dest, '\'')
     inc(pos, 4)
   elif buf[pos] == 'q' and buf[pos+1] == 'u' and buf[pos+2] == 'o' and 
-      buf[pos+3] == 't':
+      buf[pos+3] == 't' and buf[pos+4] == ';':
     add(dest, '"')
     inc(pos, 4)
   else:

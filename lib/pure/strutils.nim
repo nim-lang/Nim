@@ -10,6 +10,8 @@
 ## This module contains various string utility routines.
 ## See the module `regexprs` for regular expression support.
 
+import parseutils
+
 {.deadCodeElim: on.}
 
 {.push debugger:off .} # the user does not want to trace a part
@@ -440,7 +442,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
     inc(i, 2) # incrementing by 1 would probably result in a
-              # security whole ...
+              # security hole ...
   return -1
 
 proc addf(s: var string, formatstr: string, a: openarray[string]) =
@@ -686,56 +688,13 @@ proc toHex(x: BiggestInt, len: int): string =
     result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
     shift = shift + 4
 
-{.push overflowChecks: on.}
-# this must be compiled with overflow checking turned on:
-proc rawParseInt(s: string, index: var int): BiggestInt =
-  # index contains the start position at proc entry; end position will be
-  # an index before the proc returns; index = -1 on error (no number at all)
-  # the problem here is that integers have an asymmetrical range: there is
-  # one more valid negative than prositive integer. Thus we perform the
-  # computation as a negative number and then change the sign at the end.
-  var
-    i = index # a local i is more efficient than accessing a var parameter
-    sign: BiggestInt = -1
-  if s[i] == '+':
-    inc(i)
-  elif s[i] == '-':
-    inc(i)
-    sign = 1
-  if s[i] in {'0'..'9'}:
-    result = 0
-    while s[i] in {'0'..'9'}:
-      result = result * 10 - (ord(s[i]) - ord('0'))
-      inc(i)
-      while s[i] == '_':
-        inc(i)               # underscores are allowed and ignored
-    result = result * sign
-    if s[i] == '\0':
-      index = i              # store index back
-    else:
-      index = -1 # BUGFIX: error!
-  else:
-    index = -1
-
-{.pop.} # overflowChecks
-
 proc parseInt(s: string): int =
-  var
-    index = 0
-    res = rawParseInt(s, index)
-  if index == -1:
-    raise newException(EInvalidValue, "invalid integer: " & s)
-  elif (sizeof(int) <= 4) and
-      ((res < low(int)) or (res > high(int))):
-    raise newException(EOverflow, "overflow")
-  else:
-    result = int(res) # convert to smaller integer type
+  var L = parseutils.parseInt(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseBiggestInt(s: string): biggestInt =
-  var index = 0
-  result = rawParseInt(s, index)
-  if index == -1:
-    raise newException(EInvalidValue, "invalid integer: " & s)
+  var L = parseutils.parseBiggestInt(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseOctInt*(s: string): int =
   var i = 0
@@ -769,72 +728,8 @@ proc ParseHexInt(s: string): int =
     else: raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseFloat(s: string): float =
-  var
-    esign = 1.0
-    sign = 1.0
-    i = 0
-    exponent: int
-    flags: int
-  result = 0.0
-  if s[i] == '+': inc(i)
-  elif s[i] == '-':
-    sign = -1.0
-    inc(i)
-  if s[i] == 'N' or s[i] == 'n':
-    if s[i+1] == 'A' or s[i+1] == 'a':
-      if s[i+2] == 'N' or s[i+2] == 'n':
-        if s[i+3] == '\0': return NaN
-    raise newException(EInvalidValue, "invalid float: " & s)
-  if s[i] == 'I' or s[i] == 'i':
-    if s[i+1] == 'N' or s[i+1] == 'n':
-      if s[i+2] == 'F' or s[i+2] == 'f':
-        if s[i+3] == '\0': return Inf*sign
-    raise newException(EInvalidValue, "invalid float: " & s)
-  while s[i] in {'0'..'9'}:
-    # Read integer part
-    flags = flags or 1
-    result = result * 10.0 + toFloat(ord(s[i]) - ord('0'))
-    inc(i)
-    while s[i] == '_': inc(i)
-  # Decimal?
-  if s[i] == '.':
-    var hd = 1.0
-    inc(i)
-    while s[i] in {'0'..'9'}:
-      # Read fractional part
-      flags = flags or 2
-      result = result * 10.0 + toFloat(ord(s[i]) - ord('0'))
-      hd = hd * 10.0
-      inc(i)
-      while s[i] == '_': inc(i)
-    result = result / hd # this complicated way preserves precision
-  # Again, read integer and fractional part
-  if flags == 0:
-    raise newException(EInvalidValue, "invalid float: " & s)
-  # Exponent?
-  if s[i] in {'e', 'E'}:
-    inc(i)
-    if s[i] == '+':
-      inc(i)
-    elif s[i] == '-':
-      esign = -1.0
-      inc(i)
-    if s[i] notin {'0'..'9'}:
-      raise newException(EInvalidValue, "invalid float: " & s)
-    while s[i] in {'0'..'9'}:
-      exponent = exponent * 10 + ord(s[i]) - ord('0')
-      inc(i)
-      while s[i] == '_': inc(i)
-  # Calculate Exponent
-  var hd = 1.0
-  for j in 1..exponent:
-    hd = hd * 10.0
-  if esign > 0.0: result = result * hd
-  else:           result = result / hd
-  # Not all characters are read?
-  if s[i] != '\0': raise newException(EInvalidValue, "invalid float: " & s)
-  # evaluate sign
-  result = result * sign
+  var L = parseutils.parseFloat(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid float: " & s)
 
 proc toOct*(x: BiggestInt, len: int): string =
   ## converts `x` into its octal representation. The resulting string is
