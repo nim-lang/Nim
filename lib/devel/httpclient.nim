@@ -68,19 +68,47 @@ proc parseBody(data: var string, start: int, s: TSocket,
       while data[i] notin {'\C', '\L', '\0'}: inc(i)
       if data[i] == '\C': inc(i)
       if data[i] == '\L': inc(i)
+      echo "ChunkSize: ", chunkSize
       if chunkSize <= 0: break
-      result.add(copy(data, i, i+chunkSize-1))
-      if i + chunkSize > data.len:
-        echo "i: ", i, " size: ", chunkSize, " len: ", data.len
       
-      assert(i + chunkSize <= data.len)
-      i = i + chunkSize
+      var x = copy(data, i, i+chunkSize-1)
+      var size = x.len
+      result.add(x)
+      
+      if size < chunkSize:
+        # read in the rest:
+        var missing = chunkSize - size
+        var L = result.len
+        setLen(result, L + missing)
+        discard s.recv(addr(result[L]), missing)
+      
+      #var c: char
+      #discard s.recv(addr(c), sizeof(c))
+      #if c == '\C': discard s.recv(addr(c), sizeof(c))
+      #if c != '\L': httpError("CRLF missing: " & c)
+      
+      # next chunk:
+      data = s.recv()
+      echo data
+      i = 0
+      when false:
+        # chunk may be bigger than what we got:
+        while size < chunkSize:
+          data = s.recv()
+          echo "currsize: ", size, " chunksize: ", chunkSize, " dlen ", data.len
+          if size + data.len <= chunkSize:
+            result.add(data)
+            inc(size, data.len)
+          else:
+            i = chunkSize-size
+            var x = copy(data, 0, i-1)
+            result.add(x)
+            inc(size, x.len)
+            #break
+      
       # skip trailing CR-LF:
-      #if data[i] == '\C': inc(i)
-      #if data[i] == '\L': inc(i)
-      
-      echo "came here"
-      data.add(s.recv())
+      while data[i] in {'\C', '\L'}: inc(i)
+            
   else:
     result = copy(data, start)
     # -REGION- Content-Length
@@ -199,4 +227,4 @@ proc downloadFile*(url: string, outputFilename: string) =
 
 
 when isMainModule:
-  downloadFile("http://www.google.com", "GoogleTest.txt")
+  downloadFile("http://www.google.com", "GoogleTest.html")
