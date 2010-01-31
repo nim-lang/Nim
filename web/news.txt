@@ -14,18 +14,22 @@ Bugfixes
 - Fixed bug #502670 (underscores in identifiers).
 - Fixed a bug in the ``parsexml`` module concerning the parsing of
   ``<tag attr="value" />``.
+- Fixed a bug in the ``parsexml`` module concerning the parsing of
+  enities like ``&ltXX``.
 - ``system.write(f: TFile, s: string)`` now works even if ``s`` contains binary
   zeros.
-  
+
 
 Additions
 ---------
 - Added ``system.cstringArrayToSeq``.
+- Added ``system.lines(f: TFile)`` iterator.
 - Added ``cgi.decodeData(data: string): tuple[key, value: string]``.
 - Added ``ropes`` module.
 - Added ``sockets`` module.
 - Added ``browsers`` module.
 - Added ``httpserver`` module.
+- Added ``parseutils`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.

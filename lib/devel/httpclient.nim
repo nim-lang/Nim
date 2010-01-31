@@ -11,7 +11,7 @@
 ## webpages/other data.
 
 # neuer Code:
-import sockets, strutils, parseurl, pegs, os, parseutils
+import sockets, strutils, parseurl, pegs, parseutils
 
 type
   TResponse* = tuple[
@@ -19,9 +19,9 @@ type
     body: string]
   THeader* = tuple[htype: string, hvalue: string]
 
-  EInvalidHttp* = object of EBase ## exception that is raised when server does
-                                  ## not conform to the implemented HTTP
-                                  ## protocol
+  EInvalidProtocol* = object of EBase ## exception that is raised when server
+                                      ## does not conform to the implemented
+                                      ## protocol
 
   EHttpRequestErr* = object of EBase ## Thrown in the ``getContent`` proc,
                                      ## when the server returns an error
@@ -35,7 +35,7 @@ template newException(exceptn, message: expr): expr =
     e
 
 proc httpError(msg: string) =
-  var e: ref EInvalidHttp
+  var e: ref EInvalidProtocol
   new(e)
   e.msg = msg
   raise e
@@ -54,42 +54,44 @@ proc getHeaderValue*(headers: seq[THeader], name: string): string =
       return headers[i].hvalue
   return ""
 
+proc parseChunks(data: var string, start: int, s: TSocket): string =
+  # get chunks:
+  var i = start
+  result = ""
+  while true:
+    var chunkSize = 0
+    var j = parseHex(data, chunkSize, i)
+    if j <= 0: break
+    inc(i, j)
+    while data[i] notin {'\C', '\L', '\0'}: inc(i)
+    if data[i] == '\C': inc(i)
+    if data[i] == '\L': inc(i)
+    if chunkSize <= 0: break
+    var x = copy(data, i, i+chunkSize-1)
+    var size = x.len
+    result.add(x)
+    
+    if size < chunkSize:
+      # read in the rest:
+      var missing = chunkSize - size
+      var L = result.len
+      setLen(result, L + missing)
+      while missing > 0:
+        var bytesRead = s.recv(addr(result[L]), missing)
+        inc(L, bytesRead)
+        dec(missing, bytesRead)
+    
+    # next chunk:
+    data = s.recv()
+    i = 0
+    # skip trailing CR-LF:
+    while data[i] in {'\C', '\L'}: inc(i)
+    if data[i] == '\0': data.add(s.recv())
+  
 proc parseBody(data: var string, start: int, s: TSocket,
                headers: seq[THeader]): string =
   if getHeaderValue(headers, "Transfer-Encoding") == "chunked":
-    # get chunks:
-    var i = start
-    result = ""
-    while true:
-      var chunkSize = 0
-      var j = parseHex(data, chunkSize, i)
-      if j <= 0: break
-      inc(i, j)
-      while data[i] notin {'\C', '\L', '\0'}: inc(i)
-      if data[i] == '\C': inc(i)
-      if data[i] == '\L': inc(i)
-      echo "ChunkSize: ", chunkSize
-      if chunkSize <= 0: break
-      
-      var x = copy(data, i, i+chunkSize-1)
-      var size = x.len
-      result.add(x)
-      
-      if size < chunkSize:
-        # read in the rest:
-        var missing = chunkSize - size
-        var L = result.len
-        setLen(result, L + missing)
-        discard s.recv(addr(result[L]), missing)
-      
-      # next chunk:
-      data = s.recv()
-      echo data
-      i = 0
-      
-      # skip trailing CR-LF:
-      while data[i] in {'\C', '\L'}: inc(i)
-            
+    result = parseChunks(data, start, s)
   else:
     result = copy(data, start)
     # -REGION- Content-Length
