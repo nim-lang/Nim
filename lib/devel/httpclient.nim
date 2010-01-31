@@ -82,29 +82,10 @@ proc parseBody(data: var string, start: int, s: TSocket,
         setLen(result, L + missing)
         discard s.recv(addr(result[L]), missing)
       
-      #var c: char
-      #discard s.recv(addr(c), sizeof(c))
-      #if c == '\C': discard s.recv(addr(c), sizeof(c))
-      #if c != '\L': httpError("CRLF missing: " & c)
-      
       # next chunk:
       data = s.recv()
       echo data
       i = 0
-      when false:
-        # chunk may be bigger than what we got:
-        while size < chunkSize:
-          data = s.recv()
-          echo "currsize: ", size, " chunksize: ", chunkSize, " dlen ", data.len
-          if size + data.len <= chunkSize:
-            result.add(data)
-            inc(size, data.len)
-          else:
-            i = chunkSize-size
-            var x = copy(data, 0, i-1)
-            result.add(x)
-            inc(size, x.len)
-            #break
       
       # skip trailing CR-LF:
       while data[i] in {'\C', '\L'}: inc(i)
