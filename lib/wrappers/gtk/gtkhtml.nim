@@ -40,16 +40,16 @@ const
   DOM_DOCUMENT_TYPE_NODE* = 10
   DOM_DOCUMENT_FRAGMENT_NODE* = 11
   DOM_NOTATION_NODE* = 12
-  bm__HtmlFontSpecification_weight* = 0x0000000F
-  bp__HtmlFontSpecification_weight* = 0
-  bm__HtmlFontSpecification_style* = 0x00000030
-  bp__HtmlFontSpecification_style* = 4
-  bm__HtmlFontSpecification_variant* = 0x000000C0
-  bp__HtmlFontSpecification_variant* = 6
-  bm__HtmlFontSpecification_stretch* = 0x00000F00
-  bp__HtmlFontSpecification_stretch* = 8
-  bm__HtmlFontSpecification_decoration* = 0x00007000
-  bp__HtmlFontSpecification_decoration* = 12
+  bm_HtmlFontSpecification_weight = 0x0000000F
+  bp_HtmlFontSpecification_weight = 0
+  bm_HtmlFontSpecification_style = 0x00000030
+  bp_HtmlFontSpecification_style = 4
+  bm_HtmlFontSpecification_variant = 0x000000C0
+  bp_HtmlFontSpecification_variant = 6
+  bm_HtmlFontSpecification_stretch = 0x00000F00
+  bp_HtmlFontSpecification_stretch = 8
+  bm_HtmlFontSpecification_decoration = 0x00007000
+  bp_HtmlFontSpecification_decoration = 12
 
 type 
   TDomString* = gchar
@@ -194,28 +194,28 @@ proc dom_node_get_type*(): GType{.cdecl, dynlib: gtkhtmllib,
                                   importc: "dom_node_get_type".}
 proc dom_Node_mkref*(node: pointer): PDomNode{.cdecl, dynlib: gtkhtmllib, 
     importc: "dom_Node_mkref".}
-proc dom_Node__get_childNodes*(node: PDomNode): PDomNodeList{.cdecl, 
+proc dom_Node_get_childNodes*(node: PDomNode): PDomNodeList{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_childNodes".}
 proc dom_Node_removeChild*(node: PDomNode, oldChild: PDomNode, 
                            exc: PDomException): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node_removeChild".}
-proc dom_Node__get_nodeValue*(node: PDomNode, exc: PDomException): PDomString{.
+proc dom_Node_get_nodeValue*(node: PDomNode, exc: PDomException): PDomString{.
     cdecl, dynlib: gtkhtmllib, importc: "dom_Node__get_nodeValue".}
-proc dom_Node__get_firstChild*(node: PDomNode): PDomNode{.cdecl, 
+proc dom_Node_get_firstChild*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_firstChild".}
-proc dom_Node__get_nodeName*(node: PDomNode): PDomString{.cdecl, 
+proc dom_Node_get_nodeName*(node: PDomNode): PDomString{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_nodeName".}
-proc dom_Node__get_attributes*(node: PDomNode): PDomNamedNodeMap{.cdecl, 
+proc dom_Node_get_attributes*(node: PDomNode): PDomNamedNodeMap{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_attributes".}
-proc dom_Document__get_doctype*(doc: PDomDocument): PDomDocumentType{.cdecl, 
+proc dom_Document_get_doctype*(doc: PDomDocument): PDomDocumentType{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Document__get_doctype".}
 proc dom_Node_hasChildNodes*(node: PDomNode): DomBoolean{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node_hasChildNodes".}
-proc dom_Node__get_parentNode*(node: PDomNode): PDomNode{.cdecl, 
+proc dom_Node_get_parentNode*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_parentNode".}
-proc dom_Node__get_nextSibling*(node: PDomNode): PDomNode{.cdecl, 
+proc dom_Node_get_nextSibling*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_nextSibling".}
-proc dom_Node__get_nodeType*(node: PDomNode): gushort{.cdecl, 
+proc dom_Node_get_nodeType*(node: PDomNode): gushort{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_nodeType".}
 proc dom_Node_hasAttributes*(node: PDomNode): DomBoolean{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node_hasAttributes".}
@@ -224,18 +224,18 @@ proc dom_Node_cloneNode*(node: PDomNode, deep: DomBoolean): PDomNode{.cdecl,
 proc dom_Node_appendChild*(node: PDomNode, newChild: PDomNode, 
                            exc: PDomException): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node_appendChild".}
-proc dom_Node__get_localName*(node: PDomNode): PDomString{.cdecl, 
+proc dom_Node_get_localName*(node: PDomNode): PDomString{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_localName".}
-proc dom_Node__get_namespaceURI*(node: PDomNode): PDomString{.cdecl, 
+proc dom_Node_get_namespaceURI*(node: PDomNode): PDomString{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_namespaceURI".}
-proc dom_Node__get_previousSibling*(node: PDomNode): PDomNode{.cdecl, 
+proc dom_Node_get_previousSibling*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_previousSibling".}
-proc dom_Node__get_lastChild*(node: PDomNode): PDomNode{.cdecl, 
+proc dom_Node_get_lastChild*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_lastChild".}
-proc dom_Node__set_nodeValue*(node: PDomNode, value: PDomString, 
-                              exc: PDomException){.cdecl, dynlib: gtkhtmllib, 
+proc dom_Node_set_nodeValue*(node: PDomNode, value: PDomString, 
+                             exc: PDomException){.cdecl, dynlib: gtkhtmllib, 
     importc: "dom_Node__set_nodeValue".}
-proc dom_Node__get_ownerDocument*(node: PDomNode): PDomDocument{.cdecl, 
+proc dom_Node_get_ownerDocument*(node: PDomNode): PDomDocument{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node__get_ownerDocument".}
 proc dom_Node_hasAttributes*(node: PDomNode): gboolean{.cdecl, 
     dynlib: gtkhtmllib, importc: "dom_Node_hasAttributes".}
@@ -246,7 +246,7 @@ proc DOM_IS_DOCUMENT*(theobject: pointer): bool
 proc DOM_IS_DOCUMENT_CLASS*(klass: pointer): bool
 proc DOM_DOCUMENT_GET_CLASS*(obj: pointer): PDomDocumentClass
 proc dom_document_get_type*(): GType
-proc dom_Document__get_documentElement*(doc: PDomDocument): PDomElement
+proc dom_Document_get_documentElement*(doc: PDomDocument): PDomElement
 proc dom_Document_createElement*(doc: PDomDocument, tagName: PDomString): PDomElement
 proc dom_Document_createTextNode*(doc: PDomDocument, data: PDomString): PDomText
 proc dom_Document_createComment*(doc: PDomDocument, data: PDomString): PDomComment

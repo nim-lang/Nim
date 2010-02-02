@@ -1,6 +1,6 @@
 {.deadCodeElim: on.}
 import 
-  Glib2, Gdk2, 2, GdkGLExt
+  Glib2, Gdk2, gtk2, GdkGLExt
 
 const 
   GLExtLib* = if defined(WIN32): "libgtkglext-win32-1.0-0.dll" else: "libgtkglext-x11-1.0.so"

@@ -36,7 +36,8 @@ Additions
   your configuration file to use these.
 - Triple quoted strings allow for ``"`` in more contexts.
 - ``""`` within raw string literals stands for a single quotation mark.
-- More extensive subscript operator overloading. See ``_ for further
+- More extensive subscript operator overloading. See 
+  `subscript overloading <manual.html#subscript-overloading>`_ for further
   information.
 
 

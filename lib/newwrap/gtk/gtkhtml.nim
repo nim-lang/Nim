@@ -1,6 +1,6 @@
 {.deadCodeElim: on.}
 import 
-  2, glib2, atk, pango, gdk2pixbuf, gdk2
+  gtk2, glib2, atk, pango, gdk2pixbuf, gdk2
 
 when defined(windows): 
   {.define: WINDOWING_WIN32.}

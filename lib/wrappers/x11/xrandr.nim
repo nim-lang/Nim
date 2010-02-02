@@ -98,7 +98,7 @@ type
     mwidth*, mheight*: cint
 
   TXRRScreenChangeNotifyEvent*{.final.} = object  # internal representation is private to the library 
-    type_*: cint              # event base 
+    typ*: cint                # event base 
     serial*: culong           # # of last request processed by server 
     send_event*: TBool        # true if this came from a SendEvent request 
     display*: PDisplay        # Display the event was read from 

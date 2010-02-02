@@ -1,6 +1,6 @@
 {.deadCodeElim: on.}
 import 
-  Glib2, 2
+  Glib2, gdk2
 
 when defined(WIN32): 
   const 
