@@ -17,7 +17,7 @@ type
   TResponse* = tuple[
     version: string, status: string, headers: seq[THeader],
     body: string]
-  THeader* = tuple[htype: string, hvalue: string]
+  THeader* = tuple[htype, hvalue: string]
 
   EInvalidProtocol* = object of EBase ## exception that is raised when server
                                       ## does not conform to the implemented
@@ -54,20 +54,49 @@ proc getHeaderValue*(headers: seq[THeader], name: string): string =
       return headers[i].hvalue
   return ""
 
-proc parseChunks(data: var string, start: int, s: TSocket): string =
+proc charAt(d: var string, i: var int, s: TSocket): char {.inline.} = 
+  result = d[i]
+  while result == '\0':
+    d = s.recv()
+    i = 0
+    result = d[i]
+
+proc parseChunks(d: var string, start: int, s: TSocket): string =
   # get chunks:
   var i = start
   result = ""
   while true:
     var chunkSize = 0
-    var j = parseHex(data, chunkSize, i)
-    if j <= 0: break
-    inc(i, j)
-    while data[i] notin {'\C', '\L', '\0'}: inc(i)
-    if data[i] == '\C': inc(i)
-    if data[i] == '\L': inc(i)
-    if chunkSize <= 0: break
-    var x = copy(data, i, i+chunkSize-1)
+    var digitFound = false
+    echo "number: ", copy(d, i, i + 10)
+    while true: 
+      case d[i]
+      of '0'..'9': 
+        digitFound = true
+        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('0'))
+      of 'a'..'f': 
+        digitFound = true
+        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('a') + 10)
+      of 'A'..'F': 
+        digitFound = true
+        chunkSize = chunkSize shl 4 or (ord(d[i]) - ord('A') + 10)
+      of '\0': 
+        d = s.recv()
+        i = -1
+      else: break
+      inc(i)
+    
+    echo "chunksize: ", chunkSize
+    if chunkSize <= 0:       
+      echo copy(d, i)
+      assert digitFound
+      break
+    while charAt(d, i, s) notin {'\C', '\L', '\0'}: inc(i)
+    if charAt(d, i, s) == '\C': inc(i)
+    if charAt(d, i, s) == '\L': inc(i)
+    else: httpError("CR-LF after chunksize expected")
+    
+    var x = copy(d, i, i+chunkSize-1)
     var size = x.len
     result.add(x)
     
@@ -82,18 +111,17 @@ proc parseChunks(data: var string, start: int, s: TSocket): string =
         dec(missing, bytesRead)
     
     # next chunk:
-    data = s.recv()
+    d = s.recv()
     i = 0
     # skip trailing CR-LF:
-    while data[i] in {'\C', '\L'}: inc(i)
-    if data[i] == '\0': data.add(s.recv())
+    while charAt(d, i, s) in {'\C', '\L'}: inc(i)
   
-proc parseBody(data: var string, start: int, s: TSocket,
+proc parseBody(d: var string, start: int, s: TSocket,
                headers: seq[THeader]): string =
   if getHeaderValue(headers, "Transfer-Encoding") == "chunked":
-    result = parseChunks(data, start, s)
+    result = parseChunks(d, start, s)
   else:
-    result = copy(data, start)
+    result = copy(d, start)
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
     var contentLengthHeader = getHeaderValue(headers, "Content-Length")
@@ -112,7 +140,7 @@ proc parseBody(data: var string, start: int, s: TSocket,
           result.add(moreData)
 
 proc parseResponse(s: TSocket): TResponse =
-  var data = s.recv()
+  var d = s.recv()
   var i = 0
 
   # Parse the version
@@ -120,8 +148,8 @@ proc parseResponse(s: TSocket): TResponse =
   # ``HTTP/1.1`` 200 OK
 
   var matches: array[0..1, string]
-  var L = data.matchLen(peg"\i 'HTTP/' {'1.1'/'1.0'} \s+ {(!\n .)*}\n",
-                        matches, i)
+  var L = d.matchLen(peg"\i 'HTTP/' {'1.1'/'1.0'} \s+ {(!\n .)*}\n",
+                     matches, i)
   if L < 0: httpError("invalid HTTP header")
   
   result.version = matches[0]
@@ -135,29 +163,29 @@ proc parseResponse(s: TSocket): TResponse =
   result.headers = @[]
   while true:
     var key = ""
-    while data[i] != ':':
-      if data[i] == '\0': httpError("invalid HTTP header, ':' expected")
-      key.add(data[i])
+    while d[i] != ':':
+      if d[i] == '\0': httpError("invalid HTTP header, ':' expected")
+      key.add(d[i])
       inc(i)
     inc(i) # skip ':'
-    if data[i] == ' ': inc(i) # skip if the character is a space
+    if d[i] == ' ': inc(i) # skip if the character is a space
     var val = ""
-    while data[i] notin {'\C', '\L', '\0'}:
-      val.add(data[i])
+    while d[i] notin {'\C', '\L', '\0'}:
+      val.add(d[i])
       inc(i)
     
     result.headers.add((key, val))
     
-    if data[i] == '\C': inc(i)
-    if data[i] == '\L': inc(i)
+    if d[i] == '\C': inc(i)
+    if d[i] == '\L': inc(i)
     else: httpError("invalid HTTP header, CR-LF expected")
     
-    if data[i] == '\C': inc(i)
-    if data[i] == '\L':
+    if d[i] == '\C': inc(i)
+    if d[i] == '\L':
       inc(i)
       break
     
-  result.body = parseBody(data, i, s, result.headers) 
+  result.body = parseBody(d, i, s, result.headers) 
 
 proc request*(url: string): TResponse =
   var r = parse(url)
@@ -169,6 +197,8 @@ proc request*(url: string): TResponse =
     headers = "GET / HTTP/1.1\c\L"
   
   add(headers, "Host: " & r.hostname & "\c\L\c\L")
+  add(headers, "User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; pl;" &
+               " rv:1.9.2) Gecko/20100115 Firefox/3.6")
 
   var s = socket()
   s.connect(r.hostname, TPort(80))
@@ -210,4 +240,7 @@ proc downloadFile*(url: string, outputFilename: string) =
 
 
 when isMainModule:
-  downloadFile("http://www.google.com", "GoogleTest.html")
+  #downloadFile("http://force7.de/nimrod/index.html", "nimrodindex.html")
+  #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
+  downloadFile("http://www.httpwatch.com/httpgallery/chunked/", "ChunkTest.html")
+  
