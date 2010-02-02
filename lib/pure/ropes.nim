@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,7 +13,7 @@
 ## trees that are only flattened when converting to a native Nimrod
 ## string. The empty string is represented by ``nil``. Ropes are immutable and
 ## subtrees can be shared without copying.
-## Leaves can be cached for better memory efficiency at the cost of a bit of
+## Leaves can be cached for better memory efficiency at the cost of
 ## runtime efficiency.
 
 {.deadCodeElim: on.}

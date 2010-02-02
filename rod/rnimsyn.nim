@@ -585,7 +585,6 @@ proc gcase(g: var TSrcGen, n: PNode) =
   gsub(g, n.sons[0])
   gcoms(g)
   optNL(g)
-  last = 0
   gsons(g, n, c, 1, last)
   if last == - 2: 
     initContext(c)
