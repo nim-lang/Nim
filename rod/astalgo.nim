@@ -311,7 +311,8 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int, maxRecDepth: int)
                                  toRope("align"), toRope(n.align), 
                                  toRope("sons"), result])
 
-proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int, maxRecDepth: int): PRope = 
+proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int, 
+                   maxRecDepth: int): PRope = 
   var istr: PRope
   if n == nil: 
     result = toRope("null")

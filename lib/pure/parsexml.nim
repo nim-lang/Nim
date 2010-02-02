@@ -321,8 +321,8 @@ proc parseEntity(my: var TXmlParser, dest: var string) =
   elif buf[pos] == 'g' and buf[pos+1] == 't' and buf[pos+2] == ';':
     add(dest, '>')
     inc(pos, 2)
-  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p'
-       and buf[pos+3] == ';':
+  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p' and
+      buf[pos+3] == ';':
     add(dest, '&')
     inc(pos, 3)
   elif buf[pos] == 'a' and buf[pos+1] == 'p' and buf[pos+2] == 'o' and 
