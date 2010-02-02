@@ -68,7 +68,6 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
   while true:
     var chunkSize = 0
     var digitFound = false
-    echo "number: ", copy(d, i, i + 10)
     while true: 
       case d[i]
       of '0'..'9': 
@@ -85,12 +84,8 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
         i = -1
       else: break
       inc(i)
-    
-    echo "chunksize: ", chunkSize
-    if chunkSize <= 0:       
-      echo copy(d, i)
-      assert digitFound
-      break
+    if not digitFound: httpError("Chunksize expected")
+    if chunkSize <= 0: break
     while charAt(d, i, s) notin {'\C', '\L', '\0'}: inc(i)
     if charAt(d, i, s) == '\C': inc(i)
     if charAt(d, i, s) == '\L': inc(i)
@@ -99,20 +94,19 @@ proc parseChunks(d: var string, start: int, s: TSocket): string =
     var x = copy(d, i, i+chunkSize-1)
     var size = x.len
     result.add(x)
-    
+    inc(i, size)
     if size < chunkSize:
       # read in the rest:
       var missing = chunkSize - size
       var L = result.len
-      setLen(result, L + missing)
+      setLen(result, L + missing)    
       while missing > 0:
         var bytesRead = s.recv(addr(result[L]), missing)
         inc(L, bytesRead)
         dec(missing, bytesRead)
-    
-    # next chunk:
-    d = s.recv()
-    i = 0
+      # next chunk:
+      d = s.recv()
+      i = 0
     # skip trailing CR-LF:
     while charAt(d, i, s) in {'\C', '\L'}: inc(i)
   
