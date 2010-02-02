@@ -719,7 +719,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
   var j = xl-1
   while j >= i:
     x[j+1] = x[j]
-    inc(j)
+    dec(j)
   x[i] = item
 
 
