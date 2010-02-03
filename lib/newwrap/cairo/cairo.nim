@@ -50,7 +50,7 @@
 
 when defined(windows): 
   const 
-    LIB_CAIRO* = "cairo.dll"
+    LIB_CAIRO* = "libcairo-2.dll"
 else: 
   const 
     LIB_CAIRO* = "libcairo.so"

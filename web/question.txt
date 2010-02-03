@@ -48,6 +48,15 @@ and a substantial body of other code. Until version 1.0.0 is released, slight
 incompabilities with older versions of the compiler may be introduced.
 
 
+How fast is Nimrod?
+-------------------
+Benchmarks have not been ported yet and support for threads is missing. But in
+the worst case, you can get exactly the same performance as C if you decide to
+write as low-level Nimrod code as C requires you to do. That said the only
+overhead Nimrod has over C is the GC which has been tuned for years (and is 
+significantly faster than the Boehm GC).
+
+
 Compilation
 ===========
 
