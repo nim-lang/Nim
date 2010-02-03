@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -16,6 +16,11 @@
 ##
 ## Currently only requesting URLs is implemented. The implementation depends
 ## on the libcurl library!
+##
+## **Deprecated since version 0.8.0:** Use the httpclient module instead. 
+## 
+
+{.deprecated.}
 
 import libcurl, streams
 

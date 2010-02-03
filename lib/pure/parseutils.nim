@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Helpers for parsing.
+## This module contains helpers for parsing tokens, numbers, identifiers, etc.
 
 {.deadCodeElim: on.}
 
@@ -25,8 +25,6 @@ template newException(exceptn, message: expr): expr =
 
 const
   Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
-  Letters = {'A'..'Z', 'a'..'z'}
-  Digits = {'0'..'9'}
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
   IdentStartChars = {'a'..'z', 'A'..'Z', '_'}
     ## copied from strutils
@@ -218,6 +216,9 @@ proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int =
   result = i - start
 
 proc parseFloat*(s: string, number: var float, start = 0): int =
+  ## parses a float starting at `start` and stores the value into `number`.
+  ## Result is the number of processed chars or 0 if there occured a parsing
+  ## error.
   var bf: biggestFloat
   result = parseBiggestFloat(s, bf, start)
   number = bf

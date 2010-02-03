@@ -174,7 +174,7 @@ proc acceptRequest(client: TSocket) =
       executeCgi(client, path, query, meth)
 
 type
-  TServer* = object
+  TServer* = object       ## contains the current server state
     socket: TSocket
     port: TPort
     client*: TSocket      ## the socket to write the file data to
@@ -187,6 +187,7 @@ proc open*(s: var TServer, port = TPort(0)) =
   if s.socket == InvalidSocket: OSError()
   bindAddr(s.socket)
   listen(s.socket)
+  
   s.port = getSockName(s.socket)
   s.client = InvalidSocket
   s.path = ""
@@ -215,6 +216,7 @@ proc next*(s: var TServer) =
     unimplemented(s.client)
 
 proc close*(s: TServer) =
+  ## closes the server (and the socket the server uses).
   close(s.socket)
 
 proc run*(handleRequest: proc (client: TSocket, path, query: string): bool, 
