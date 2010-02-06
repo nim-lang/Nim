@@ -21,6 +21,8 @@
 # This is not just a convenient wrapper for the pcre library; the
 # API will stay the same if the implementation should change.
 
+{.deprecated.}
+
 import
   pcre, strutils
 

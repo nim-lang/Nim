@@ -28,23 +28,11 @@ const
     ## More subpatterns cannot be captured!
 
 type
-  TRegExOptions* = enum  ## options for regular expressions
+  TRegExFlag* = enum     ## options for regular expressions
     reIgnoreCase = 0,    ## do caseless matching
     reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data 
     reDotAll = 2,        ## ``.`` matches anything including NL
-    reExtended = 3,      ## ignore whitespace and ``#`` comments
-    
-    
-    PCRE_ANCHORED* = 0x00000010
-    PCRE_DOLLAR_ENDONLY* = 0x00000020
-    PCRE_EXTRA* = 0x00000040
-    PCRE_NOTBOL* = 0x00000080
-    PCRE_NOTEOL* = 0x00000100
-    PCRE_UNGREEDY* = 0x00000200
-    PCRE_NOTEMPTY* = 0x00000400
-    PCRE_UTF8* = 0x00000800
-    PCRE_NO_AUTO_CAPTURE* = 0x00001000
-    
+    reExtended = 3       ## ignore whitespace and ``#`` comments
     
   TRegExDesc {.pure, final.}  = object 
     h: PPcre
@@ -68,230 +56,80 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
 
 proc finalizeRegEx(x: TRegEx) = dealloc(x.h)
 
-proc re*(s: string): TRegEx =
+proc re*(s: string, flags = {reExtended}): TRegEx =
   ## Constructor of regular expressions. Note that Nimrod's
   ## extended raw string literals supports this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
   new(result, finalizeRegEx)
-  result.h = rawCompile(s, 
+  result.h = rawCompile(s, cast[cint](flags))
   
-  var err = int(regncomp(addr(result^), s, s.len,
-                cint(REG_EXTENDED or REG_NEWLINE)))
-  if err != 0:
-    var e: ref EInvalidRegEx
-    new(e)
-    e.msg = ErrorMessages[err]
-    raise e
-
-proc xre*(pattern: string): TRegEx = 
-  ## deletes whitespace from a pattern that is not escaped or in a character
-  ## class. Then it constructs a regular expresion object via `re`.
-  ## This is modelled after Perl's ``/x`` modifier. 
-  var p = ""
-  var i = 0
-  while i < pattern.len: 
-    case pattern[i]
-    of ' ', '\t': 
-      inc i
-    of '\\': 
-      add p, '\\'
-      add p, pattern[i+1]
-      inc i, 2
-    of '[': 
-      while pattern[i] != ']' and pattern[i] != '\0': 
-        add p, pattern[i]
-        inc i
-    else: 
-      add p, pattern[i]
-      inc i
-  result = re(p)
-
-proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
-                 start: cint): cint =
+proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
+                 start, flags: cint): cint =
   var
-    rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = int(pcreExec(pattern, nil, s, len(s), start, 0,
-      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3))
-  dealloc(pattern)
-  if res < 0: return res
-  for i in 0..res-1:
-    var
-      a = rawMatches[i * 2]
-      b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i] = copy(s, a, int(b)-1)
-    else: matches[i] = ""
+    rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
+    res = pcreExec(pattern.h, nil, s, len(s), start, flags,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  if res < 0'i32: return res
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    else: matches[i-1] = ""
   return res
 
-proc matchOrFind(s: string, pattern: PPcre, start: cint): cint =
-  var
-    rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-    res = pcreExec(pattern, nil, s, len(s), start, 0,
-                   cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
-  dealloc(pattern)
-  return res
-
-proc match(s, pattern: string, matches: var openarray[string],
-           start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED),
-                     matches, start) >= 0'i32
-
-proc matchLen(s, pattern: string, matches: var openarray[string],
-              start: int = 0): int =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), matches, start)
-
-proc find(s, pattern: string, matches: var openarray[string],
-          start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE),
-                     matches, start) >= 0'i32
-
-proc match(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), start) >= 0'i32
-
-proc find(s, pattern: string, start: int = 0): bool =
-  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE), start) >= 0'i32
-
-template `=~` *(s, pattern: expr): expr = 
-  ## This calls ``match`` with an implicit declared ``matches`` array that 
-  ## can be used in the scope of the ``=~`` call: 
-  ## 
-  ## .. code-block:: nimrod
-  ##
-  ##   if line =~ r"\s*(\w+)\s*\=\s*(\w+)": 
-  ##     # matches a key=value pair:
-  ##     echo("Key: ", matches[1])
-  ##     echo("Value: ", matches[2])
-  ##   elif line =~ r"\s*(\#.*)":
-  ##     # matches a comment
-  ##     # note that the implicit ``matches`` array is different from the
-  ##     # ``matches`` array of the first branch
-  ##     echo("comment: ", matches[1])
-  ##   else:
-  ##     echo("syntax error")
-  ##
-  when not definedInScope(matches):
-    var matches: array[0..maxSubPatterns-1, string]
-  match(s, pattern, matches)
-
-
-
-proc regnexec(preg: ptr TRegExDesc, s: cstring, len, nmatch: int,
-              pmatch: ptr array [0..maxSubpatterns-1, TRegMatch],
-              eflags: cint): cint {.importc.}
-proc regncomp(preg: ptr TRegExDesc, regex: cstring, n: int,
-              cflags: cint): cint {.importc.}
-proc regfree(preg: ptr TRegExDesc) {.importc.}
-
-const
-  # POSIX regcomp() flags
-  REG_EXTENDED = 1
-  REG_ICASE = (REG_EXTENDED shl 1)
-  REG_NEWLINE = (REG_ICASE shl 1)
-  REG_NOSUB = (REG_NEWLINE shl 1)
-  # Extra regcomp() flags
-  REG_BASIC = 0
-  REG_LITERAL = (REG_NOSUB shl 1)
-  REG_RIGHT_ASSOC = (REG_LITERAL shl 1)
-  REG_UNGREEDY = (REG_RIGHT_ASSOC shl 1)
-
-  # POSIX regexec() flags
-  REG_NOTBOL = 1
-  REG_NOTEOL = (REG_NOTBOL shl 1)
-
-  # Extra regexec() flags
-  REG_APPROX_MATCHER = (REG_NOTEOL shl 1)
-  REG_BACKTRACKING_MATCHER = (REG_APPROX_MATCHER shl 1)
-
-  ErrorMessages = [
-    "No error",
-    "No match",
-    "Invalid regexp",
-    "Unknown collating element",
-    "Unknown character class name",
-    "Trailing backslash",
-    "Invalid back reference",
-    "Missing ']'",
-    "Missing ')'",
-    "Missing '}'",
-    "Invalid contents of {}",
-    "Invalid character range",
-    "Out of memory",
-    "Invalid use of repetition operators"
-  ]
-
-proc rawmatch(s: string, pattern: TRegEx, matches: var openarray[string],
-              start: int): tuple[first, last: int] =
-  var
-    rawMatches: array [0..maxSubpatterns-1, TRegMatch]
-    cs = cstring(s)
-    res = int(regnexec(addr(pattern^), cast[cstring](addr(cs[start])),
-              s.len-start, maxSubpatterns, addr(rawMatches), cint(0)))
-  if res == 0:
-    for i in 0..min(matches.len, int(pattern.re_nsub))-1:
-      var a = int(rawMatches[i].so)
-      var b = int(rawMatches[i].eo)
-      echo "a: ", a, " b: ", b
-      if a >= 0 and b >= 0:
-        matches[i] = copy(s, a+start, b - 1 + start)
-      else:
-        matches[i] = ""
-    return (int(rawMatches[0].so), int(rawMatches[0].eo)-1)
-  return (-1, -1)
+proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
+  var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
+  return pcreExec(pattern.h, nil, s, len(s), start, flags,
+                  cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
 
 proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
-            start = 0): bool =
+           start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
-  result = rawmatch(s, pattern, matches, start).first == 0
+  return matchOrFind(s, pattern, matches, start, PCRE_ANCHORED) >= 0'i32
 
-proc match*(s: string, pattern: TRegEx, start: int = 0): bool =
-  ## returns ``true`` if ``s`` matches the ``pattern`` beginning
-  ## from ``start``.
-  var matches: array [0..0, string]
-  result = rawmatch(s, pattern, matches, start).first == 0
+proc match*(s: string, pattern: TRegEx, start = 0): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
+  return matchOrFind(s, pattern, start, PCRE_ANCHORED) >= 0'i32
 
 proc matchLen*(s: string, pattern: TRegEx, matches: var openarray[string],
-               start = 0): int =
+              start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen.
-  var (a, b) = rawmatch(s, pattern, matches, start)
-  result = a - b + 1
+  return matchOrFind(s, pattern, matches, start, PCRE_ANCHORED)
 
 proc matchLen*(s: string, pattern: TRegEx, start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
-  ## of zero can happen.
-  var matches: array [0..0, string]
-  var (a, b) = rawmatch(s, pattern, matches, start)
-  result = a - b + 1
+  ## of zero can happen. 
+  return matchOrFind(s, pattern, start, PCRE_ANCHORED)
 
 proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
            start = 0): int =
-  ## returns ``true`` if ``pattern`` occurs in ``s`` and the captured
+  ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches``.
-  result = rawmatch(s, pattern, matches, start).first
-  if result >= 0: inc(result, start)
+  ## is written into ``matches`` and -1 is returned.
+  return matchOrFind(s, pattern, matches, start, 0'i32)
 
 proc find*(s: string, pattern: TRegEx, start = 0): int =
-  ## returns ``true`` if ``pattern`` occurs in ``s``.
-  var matches: array [0..0, string]
-  result = rawmatch(s, pattern, matches, start).first
-  if result >= 0: inc(result, start)
+  ## returns the starting position of ``pattern`` in ``s``. If it does not
+  ## match, -1 is returned.
+  return matchOrFind(s, pattern, start, 0'i32)
 
-template `=~`*(s: string, pattern: TRegEx): expr = 
+template `=~` *(s: string, pattern: TRegEx): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 
   ## can be used in the scope of the ``=~`` call: 
   ## 
   ## .. code-block:: nimrod
   ##
-  ##   if line =~ r"\s*(\w+)\s*\=\s*(\w+)": 
+  ##   if line =~ re"\s*(\w+)\s*\=\s*(\w+)": 
   ##     # matches a key=value pair:
   ##     echo("Key: ", matches[1])
   ##     echo("Value: ", matches[2])
-  ##   elif line =~ r"\s*(\#.*)":
+  ##   elif line =~ re"\s*(\#.*)":
   ##     # matches a comment
   ##     # note that the implicit ``matches`` array is different from the
   ##     # ``matches`` array of the first branch
@@ -302,7 +140,7 @@ template `=~`*(s: string, pattern: TRegEx): expr =
   when not definedInScope(matches):
     var matches: array[0..maxSubPatterns-1, string]
   match(s, pattern, matches)
-  
+
 # ------------------------- more string handling ------------------------------
 
 proc contains*(s: string, pattern: TRegEx, start = 0): bool =
