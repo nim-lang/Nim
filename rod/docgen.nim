@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -92,7 +92,7 @@ proc initIndexFile(d: PDoc) =
 
 proc newDocumentor(filename: string): PDoc = 
   new(result)
-  result.tocPart = @ []
+  result.tocPart = @[]
   result.filename = filename
   result.id = 100
   result.splitAfter = 20
@@ -203,24 +203,21 @@ proc nextSplitPoint(s: string, start: int): int =
   result = start
   while result < len(s) + 0: 
     case s[result]
-    of '_': 
-      return 
+    of '_': return 
     of 'a'..'z': 
       if result + 1 < len(s) + 0: 
         if s[result + 1] in {'A'..'Z'}: return 
-    else: 
-      nil
+    else: nil
     inc(result)
   dec(result)                 # last valid index
   
 proc esc(s: string, splitAfter: int = - 1): string = 
-  var j, k, partLen: int
   result = ""
   if splitAfter >= 0: 
-    partLen = 0
-    j = 0
-    while j < len(s) + 0: 
-      k = nextSplitPoint(s, j)
+    var partLen = 0
+    var j = 0
+    while j < len(s): 
+      var k = nextSplitPoint(s, j)
       if (splitter != " ") or (partLen + k - j + 1 > splitAfter): 
         partLen = 0
         add(result, splitter)
@@ -249,10 +246,9 @@ proc renderAux(d: PDoc, n: PRstNode, outer: string = "$1"): PRope =
   result = ropef(outer, [result])
 
 proc setIndexForSourceTerm(d: PDoc, name: PRstNode, id: int) = 
-  var a, h: PRstNode
   if d.theIndex == nil: return 
-  h = newRstNode(rnHyperlink)
-  a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $(id))
+  var h = newRstNode(rnHyperlink)
+  var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $id)
   addSon(h, a)
   addSon(h, a)
   a = newRstNode(rnIdx)
@@ -260,12 +256,11 @@ proc setIndexForSourceTerm(d: PDoc, name: PRstNode, id: int) =
   setIndexPair(d.theIndex, a, h)
 
 proc renderIndexTerm(d: PDoc, n: PRstNode): PRope = 
-  var a, h: PRstNode
   inc(d.id)
   result = dispF("<em id=\"$1\">$2</em>", "$2\\label{$1}", 
                  [toRope(d.id), renderAux(d, n)])
-  h = newRstNode(rnHyperlink)
-  a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $(d.id))
+  var h = newRstNode(rnHyperlink)
+  var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $d.id)
   addSon(h, a)
   addSon(h, a)
   setIndexPair(d.theIndex, n, h)
@@ -530,12 +525,13 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
   else: rawMessage(errCannotRenderX, $n.kind)
   
 proc renderTocEntry(d: PDoc, e: TTocEntry): PRope = 
-  result = dispF("<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>$n", 
-                 "\\item\\label{$1_toc} $2\\ref{$1}$n", [e.refname, e.header])
+  result = dispF(
+    "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>$n", 
+    "\\item\\label{$1_toc} $2\\ref{$1}$n", [e.refname, e.header])
 
 proc renderTocEntries(d: PDoc, j: var int, lvl: int): PRope = 
   result = nil
-  while (j <= high(d.tocPart)): 
+  while j <= high(d.tocPart): 
     var a = abs(d.tocPart[j].n.level)
     if (a == lvl): 
       app(result, renderTocEntry(d, d.tocPart[j]))
@@ -552,12 +548,9 @@ proc fieldAux(s: string): PRope =
   result = toRope(strip(s))
 
 proc renderImage(d: PDoc, n: PRstNode): PRope = 
-  var 
-    s, scale: string
-    options: PRope
-  options = nil
-  s = getFieldValue(n, "scale")
-  if s != "": dispA(options, " scale=\"$1\"", " scale=$1", [fieldAux(scale)])
+  var options: PRope = nil
+  var s = getFieldValue(n, "scale")
+  if s != "": dispA(options, " scale=\"$1\"", " scale=$1", [fieldAux(s)])
   s = getFieldValue(n, "height")
   if s != "": dispA(options, " height=\"$1\"", " height=$1", [fieldAux(s)])
   s = getFieldValue(n, "width")
@@ -614,14 +607,10 @@ proc texColumns(n: PRstNode): string =
   for i in countup(1, rsonsLen(n)): add(result, "|X")
   
 proc renderField(d: PDoc, n: PRstNode): PRope = 
-  var 
-    fieldname: string
-    fieldval: PRope
-    b: bool
-  b = false
+  var b = false
   if gCmd == cmdRst2Tex: 
-    fieldname = addNodes(n.sons[0])
-    fieldval = toRope(esc(strip(addNodes(n.sons[1]))))
+    var fieldname = addNodes(n.sons[0])
+    var fieldval = toRope(esc(strip(addNodes(n.sons[1]))))
     if cmpIgnoreStyle(fieldname, "author") == 0: 
       if d.meta[metaAuthor] == nil: 
         d.meta[metaAuthor] = fieldval
@@ -637,45 +626,39 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   if n == nil: 
     return nil
   case n.kind
-  of rnInner: 
-    result = renderAux(d, n)
-  of rnHeadline: 
-    result = renderHeadline(d, n)
-  of rnOverline: 
-    result = renderOverline(d, n)
-  of rnTransition: 
-    result = renderAux(d, n, disp("<hr />" & "\n", "\\hrule" & "\n"))
-  of rnParagraph: 
-    result = renderAux(d, n, disp("<p>$1</p>" & "\n", "$1$n$n"))
+  of rnInner: result = renderAux(d, n)
+  of rnHeadline: result = renderHeadline(d, n)
+  of rnOverline: result = renderOverline(d, n)
+  of rnTransition: result = renderAux(d, n, disp("<hr />\n", "\\hrule\n"))
+  of rnParagraph: result = renderAux(d, n, disp("<p>$1</p>\n", "$1$n$n"))
   of rnBulletList: 
-    result = renderAux(d, n, disp("<ul class=\"simple\">$1</ul>" & "\n", 
-                                  "\\begin{itemize}$1\\end{itemize}" & "\n"))
+    result = renderAux(d, n, disp("<ul class=\"simple\">$1</ul>\n", 
+                                  "\\begin{itemize}$1\\end{itemize}\n"))
   of rnBulletItem, rnEnumItem: 
     result = renderAux(d, n, disp("<li>$1</li>" & "\n", "\\item $1" & "\n"))
   of rnEnumList: 
     result = renderAux(d, n, disp("<ol class=\"simple\">$1</ol>" & "\n", 
                                   "\\begin{enumerate}$1\\end{enumerate}" & "\n"))
   of rnDefList: 
-    result = renderAux(d, n, disp("<dl class=\"docutils\">$1</dl>" & "\n", "\\begin{description}$1\\end{description}" &
-        "\n"))
-  of rnDefItem: 
-    result = renderAux(d, n)
-  of rnDefName: 
-    result = renderAux(d, n, disp("<dt>$1</dt>" & "\n", "\\item[$1] "))
-  of rnDefBody: 
-    result = renderAux(d, n, disp("<dd>$1</dd>" & "\n", "$1" & "\n"))
+    result = renderAux(d, n, disp("<dl class=\"docutils\">$1</dl>\n", 
+                       "\\begin{description}$1\\end{description}\n"))
+  of rnDefItem: result = renderAux(d, n)
+  of rnDefName: result = renderAux(d, n, disp("<dt>$1</dt>\n", "\\item[$1] "))
+  of rnDefBody: result = renderAux(d, n, disp("<dd>$1</dd>\n", "$1\n"))
   of rnFieldList: 
     result = nil
     for i in countup(0, rsonsLen(n) - 1): 
       app(result, renderRstToOut(d, n.sons[i]))
     if result != nil: 
-      result = dispf("<table class=\"docinfo\" frame=\"void\" rules=\"none\">" &
+      result = dispf(
+          "<table class=\"docinfo\" frame=\"void\" rules=\"none\">" &
           "<col class=\"docinfo-name\" />" &
-          "<col class=\"docinfo-content\" />" & "<tbody valign=\"top\">$1" &
-          "</tbody></table>", "\\begin{description}$1\\end{description}" & "\n", 
-                     [result])
-  of rnField: 
-    result = renderField(d, n)
+          "<col class=\"docinfo-content\" />" & 
+          "<tbody valign=\"top\">$1" &
+          "</tbody></table>", 
+          "\\begin{description}$1\\end{description}\n", 
+          [result])
+  of rnField: result = renderField(d, n)
   of rnFieldName: 
     result = renderAux(d, n, disp("<th class=\"docinfo-name\">$1:</th>", 
                                   "\\item[$1:]"))
@@ -684,8 +667,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   of rnIndex: 
     result = renderRstToOut(d, n.sons[2])
   of rnOptionList: 
-    result = renderAux(d, n, disp("<table frame=\"void\">$1</table>", "\\begin{description}$n$1\\end{description}" &
-        "\n"))
+    result = renderAux(d, n, disp("<table frame=\"void\">$1</table>", 
+      "\\begin{description}$n$1\\end{description}\n"))
   of rnOptionListItem: 
     result = renderAux(d, n, disp("<tr>$1</tr>$n", "$1"))
   of rnOptionGroup: 
@@ -707,7 +690,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     result = renderAux(d, n, disp("<blockquote><p>$1</p></blockquote>$n", 
                                   "\\begin{quote}$1\\end{quote}$n"))
   of rnTable, rnGridTable: 
-    result = renderAux(d, n, disp("<table border=\"1\" class=\"docutils\">$1</table>", "\\begin{table}\\begin{rsttab}{" &
+    result = renderAux(d, n, disp(
+      "<table border=\"1\" class=\"docutils\">$1</table>", 
+      "\\begin{table}\\begin{rsttab}{" &
         texColumns(n) & "|}$n\\hline$n$1\\end{rsttab}\\end{table}"))
   of rnTableRow: 
     if rsonsLen(n) >= 1: 
@@ -717,8 +702,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
       result = dispf("<tr>$1</tr>$n", "$1\\\\$n\\hline$n", [result])
     else: 
       result = nil
-  of rnTableDataCell: 
-    result = renderAux(d, n, disp("<td>$1</td>", "$1"))
+  of rnTableDataCell: result = renderAux(d, n, disp("<td>$1</td>", "$1"))
   of rnTableHeaderCell: 
     result = renderAux(d, n, disp("<th>$1</th>", "\\textbf{$1}"))
   of rnLabel: 
@@ -731,20 +715,17 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     result = dispF("<a class=\"reference external\" href=\"#$2\">$1</a>", 
                    "$1\\ref{$2}", [renderAux(d, n), toRope(rstnodeToRefname(n))])
   of rnStandaloneHyperlink: 
-    result = renderAux(d, n, disp("<a class=\"reference external\" href=\"$1\">$1</a>", 
-                                  "\\href{$1}{$1}"))
+    result = renderAux(d, n, disp(
+      "<a class=\"reference external\" href=\"$1\">$1</a>", 
+      "\\href{$1}{$1}"))
   of rnHyperlink: 
     result = dispF("<a class=\"reference external\" href=\"$2\">$1</a>", 
                    "\\href{$2}{$1}", 
                    [renderRstToOut(d, n.sons[0]), renderRstToOut(d, n.sons[1])])
-  of rnDirArg, rnRaw: 
-    result = renderAux(d, n)
-  of rnImage, rnFigure: 
-    result = renderImage(d, n)
-  of rnCodeBlock: 
-    result = renderCodeBlock(d, n)
-  of rnContainer: 
-    result = renderContainer(d, n)
+  of rnDirArg, rnRaw: result = renderAux(d, n)
+  of rnImage, rnFigure: result = renderImage(d, n)
+  of rnCodeBlock: result = renderCodeBlock(d, n)
+  of rnContainer: result = renderContainer(d, n)
   of rnSubstitutionReferences, rnSubstitutionDef: 
     result = renderAux(d, n, disp("|$1|", "|$1|"))
   of rnDirective: 
@@ -752,13 +733,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   of rnGeneralRole: 
     result = dispF("<span class=\"$2\">$1</span>", "\\span$2{$1}", 
                    [renderRstToOut(d, n.sons[0]), renderRstToOut(d, n.sons[1])])
-  of rnSub: 
-    result = renderAux(d, n, disp("<sub>$1</sub>", "\\rstsub{$1}"))
-  of rnSup: 
-    result = renderAux(d, n, disp("<sup>$1</sup>", "\\rstsup{$1}"))
-  of rnEmphasis: 
-    result = renderAux(d, n, disp("<em>$1</em>", "\\emph{$1}"))
-  of rnStrongEmphasis: 
+  of rnSub: result = renderAux(d, n, disp("<sub>$1</sub>", "\\rstsub{$1}"))
+  of rnSup: result = renderAux(d, n, disp("<sup>$1</sup>", "\\rstsup{$1}"))
+  of rnEmphasis: result = renderAux(d, n, disp("<em>$1</em>", "\\emph{$1}"))
+  of rnStrongEmphasis:
     result = renderAux(d, n, disp("<strong>$1</strong>", "\\textbf{$1}"))
   of rnInterpretedText: 
     result = renderAux(d, n, disp("<cite>$1</cite>", "\\emph{$1}"))
@@ -768,33 +746,24 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     else: 
       result = renderIndexTerm(d, n)
   of rnInlineLiteral: 
-    result = renderAux(d, n, disp("<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>", 
-                                  "\\texttt{$1}"))
-  of rnLeaf: 
-    result = toRope(esc(n.text))
-  of rnContents: 
-    d.hasToc = true
-  of rnTitle: 
-    d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
+    result = renderAux(d, n, disp(
+      "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>", 
+      "\\texttt{$1}"))
+  of rnLeaf: result = toRope(esc(n.text))
+  of rnContents: d.hasToc = true
+  of rnTitle: d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
   else: InternalError("renderRstToOut")
   
 proc generateDoc(d: PDoc, n: PNode) = 
   if n == nil: return 
   case n.kind
-  of nkCommentStmt: 
-    app(d.modDesc, genComment(d, n))
-  of nkProcDef: 
-    genItem(d, n, n.sons[namePos], skProc)
-  of nkMethodDef: 
-    genItem(d, n, n.sons[namePos], skMethod)
-  of nkIteratorDef: 
-    genItem(d, n, n.sons[namePos], skIterator)
-  of nkMacroDef: 
-    genItem(d, n, n.sons[namePos], skMacro)
-  of nkTemplateDef: 
-    genItem(d, n, n.sons[namePos], skTemplate)
-  of nkConverterDef: 
-    genItem(d, n, n.sons[namePos], skConverter)
+  of nkCommentStmt: app(d.modDesc, genComment(d, n))
+  of nkProcDef: genItem(d, n, n.sons[namePos], skProc)
+  of nkMethodDef: genItem(d, n, n.sons[namePos], skMethod)
+  of nkIteratorDef: genItem(d, n, n.sons[namePos], skIterator)
+  of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
+  of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
+  of nkConverterDef: genItem(d, n, n.sons[namePos], skConverter)
   of nkVarSection: 
     for i in countup(0, sonsLen(n) - 1): 
       if n.sons[i].kind != nkCommentStmt: 
@@ -812,8 +781,7 @@ proc generateDoc(d: PDoc, n: PNode) =
   of nkWhenStmt: 
     # generate documentation for the first branch only:
     generateDoc(d, lastSon(n.sons[0]))
-  else: 
-    nil
+  else: nil
 
 proc genSection(d: PDoc, kind: TSymKind) = 
   if d.section[kind] == nil: return 

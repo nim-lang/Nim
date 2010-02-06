@@ -50,22 +50,22 @@ proc dbQuote(s: string): string =
     else: add(result, c)
   add(result, '\'')
 
-proc dbFormat(formatstr: string, args: openarray[string]): string =
+proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
   result = ""
   var a = 0
-  for c in items(formatstr):
+  for c in items(string(formatstr)):
     if c == '?':
       add(result, dbQuote(args[a]))
       inc(a)
     else: 
       add(result, c)
   
-proc TryQuery*(db: TDbConn, query: string, args: openarray[string]): bool =
+proc TryQuery*(db: TDbConn, query: TSqlQuery, args: openarray[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysqlRealQuery(db, q, q.len) == 0'i32
 
-proc Query*(db: TDbConn, query: string, args: openarray[string]) =
+proc Query*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   if mysqlRealQuery(db, q, q.len) != 0'i32: dbError(db)
@@ -79,7 +79,7 @@ proc properFreeResult(sqlres: PMYSQL_RES, row: cstringArray) =
     while mysqlFetchRow(sqlres) != nil: nil
   mysqlFreeResult(sqlres)
   
-iterator FastRows*(db: TDbConn, query: string,
+iterator FastRows*(db: TDbConn, query: TSqlQuery,
                    args: openarray[string]): TRow =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
@@ -99,7 +99,7 @@ iterator FastRows*(db: TDbConn, query: string,
       yield result
     properFreeResult(sqlres, row)
 
-proc GetAllRows*(db: TDbConn, query: string, 
+proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: openarray[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
   result = @[]
@@ -118,12 +118,12 @@ proc GetAllRows*(db: TDbConn, query: string,
       inc(j)
     mysqlFreeResult(sqlres)
 
-iterator Rows*(db: TDbConn, query: string, 
+iterator Rows*(db: TDbConn, query: TSqlQuery, 
                args: openarray[string]): TRow =
   ## same as `FastRows`, but slower and safe.
   for r in items(GetAllRows(db, query, args)): yield r
 
-proc GetValue*(db: TDbConn, query: string, 
+proc GetValue*(db: TDbConn, query: TSqlQuery, 
                args: openarray[string]): string = 
   ## executes the query and returns the result dataset's the first column 
   ## of the first row. Returns "" if the dataset contains no rows. This uses
@@ -133,7 +133,7 @@ proc GetValue*(db: TDbConn, query: string,
     result = row[0]
     break
 
-proc TryInsertID*(db: TDbConn, query: string, 
+proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
                   args: openarray[string]): int64 =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error.
@@ -143,13 +143,13 @@ proc TryInsertID*(db: TDbConn, query: string,
   else:
     result = mysql_insert_id(db)
   
-proc InsertID*(db: TDbConn, query: string, args: openArray[string]): int64 = 
+proc InsertID*(db: TDbConn, query: TSqlQuery, args: openArray[string]): int64 = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row.
   result = TryInsertID(db, query, args)
   if result < 0: dbError(db)
 
-proc QueryAffectedRows*(db: TDbConn, query: string, 
+proc QueryAffectedRows*(db: TDbConn, query: TSqlQuery, 
                         args: openArray[string]): int64 = 
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows

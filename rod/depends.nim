@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,36 +14,30 @@ import
 
 proc genDependPass*(): TPass
 proc generateDot*(project: string)
-# implementation
 
 type 
   TGen = object of TPassContext
     module*: PSym
     filename*: string
-
   PGen = ref TGen
 
-var gDotGraph: PRope
+var gDotGraph: PRope # the generated DOT file; we need a global variable
 
 proc addDependencyAux(importing, imported: string) = 
-  # the generated DOT file; we need a global variable
-  appf(gDotGraph, "$1 -> $2;$n", [toRope(importing), toRope(imported)]) #    s1 -> s2_4 
-                                                                        #    [label="[0-9]"];
+  appf(gDotGraph, "$1 -> $2;$n", [toRope(importing), toRope(imported)]) 
+  # s1 -> s2_4[label="[0-9]"];
   
 proc addDotDependency(c: PPassContext, n: PNode): PNode = 
-  var 
-    g: PGen
-    imported: string
   result = n
   if n == nil: return 
-  g = PGen(c)
+  var g = PGen(c)
   case n.kind
   of nkImportStmt: 
     for i in countup(0, sonsLen(n) - 1): 
-      imported = splitFile(getModuleFile(n.sons[i])).name
+      var imported = splitFile(getModuleFile(n.sons[i])).name
       addDependencyAux(g.module.name.s, imported)
   of nkFromStmt: 
-    imported = splitFile(getModuleFile(n.sons[0])).name
+    var imported = splitFile(getModuleFile(n.sons[0])).name
     addDependencyAux(g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr: 
     for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])

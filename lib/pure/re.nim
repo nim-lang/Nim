@@ -9,27 +9,170 @@
 
 ## Regular expression support for Nimrod. Consider using the pegs module
 ## instead.
+## Currently this module is implemented by providing a wrapper around the
+## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
+## C library. This means that your application will depend on the PRCE
+## library's licence when using this module, which should not be a problem
+## though.
+## PRCE's licence follows:
+##
+## .. include:: ../doc/regexprs.txt
+##
 
-{.compile: "tre/tre_all.c".}
-
-from strutils import addf
-
-type
-  TRegExDesc {.pure, final.} = object
-    re_nsub: int    # Number of parenthesized subexpressions.
-    value: pointer  # For internal use only.
-  
-  TRegEx* = ref TRegExDesc ## a compiled regular expression  
-  EInvalidRegEx* = object of EInvalidValue
-    ## is raised if the pattern is no valid regular expression.
-    
-  TRegMatch {.pure.} = object
-    so, eo: cint
+import
+  pcre, strutils
 
 const
   MaxSubpatterns* = 10
     ## defines the maximum number of subpatterns that can be captured.
     ## More subpatterns cannot be captured!
+
+type
+  TRegExOptions* = enum  ## options for regular expressions
+    reIgnoreCase = 0,    ## do caseless matching
+    reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data 
+    reDotAll = 2,        ## ``.`` matches anything including NL
+    reExtended = 3,      ## ignore whitespace and ``#`` comments
+    
+    
+    PCRE_ANCHORED* = 0x00000010
+    PCRE_DOLLAR_ENDONLY* = 0x00000020
+    PCRE_EXTRA* = 0x00000040
+    PCRE_NOTBOL* = 0x00000080
+    PCRE_NOTEOL* = 0x00000100
+    PCRE_UNGREEDY* = 0x00000200
+    PCRE_NOTEMPTY* = 0x00000400
+    PCRE_UTF8* = 0x00000800
+    PCRE_NO_AUTO_CAPTURE* = 0x00001000
+    
+    
+  TRegExDesc {.pure, final.}  = object 
+    h: PPcre
+    
+  TRegEx* = ref TRegExDesc ## a compiled regular expression
+    
+  EInvalidRegEx* = object of EInvalidValue
+    ## is raised if the pattern is no valid regular expression.
+
+proc rawCompile(pattern: string, flags: cint): PPcre =
+  var
+    msg: CString
+    offset: int
+    com = pcreCompile(pattern, flags, addr(msg), addr(offset), nil)
+  if com == nil:
+    var e: ref EInvalidRegEx
+    new(e)
+    e.msg = $msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n"
+    raise e
+  return com
+
+proc finalizeRegEx(x: TRegEx) = dealloc(x.h)
+
+proc re*(s: string): TRegEx =
+  ## Constructor of regular expressions. Note that Nimrod's
+  ## extended raw string literals supports this syntax ``re"[abc]"`` as
+  ## a short form for ``re(r"[abc]")``.
+  new(result, finalizeRegEx)
+  result.h = rawCompile(s, 
+  
+  var err = int(regncomp(addr(result^), s, s.len,
+                cint(REG_EXTENDED or REG_NEWLINE)))
+  if err != 0:
+    var e: ref EInvalidRegEx
+    new(e)
+    e.msg = ErrorMessages[err]
+    raise e
+
+proc xre*(pattern: string): TRegEx = 
+  ## deletes whitespace from a pattern that is not escaped or in a character
+  ## class. Then it constructs a regular expresion object via `re`.
+  ## This is modelled after Perl's ``/x`` modifier. 
+  var p = ""
+  var i = 0
+  while i < pattern.len: 
+    case pattern[i]
+    of ' ', '\t': 
+      inc i
+    of '\\': 
+      add p, '\\'
+      add p, pattern[i+1]
+      inc i, 2
+    of '[': 
+      while pattern[i] != ']' and pattern[i] != '\0': 
+        add p, pattern[i]
+        inc i
+    else: 
+      add p, pattern[i]
+      inc i
+  result = re(p)
+
+proc matchOrFind(s: string, pattern: PPcre, matches: var openarray[string],
+                 start: cint): cint =
+  var
+    rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
+    res = int(pcreExec(pattern, nil, s, len(s), start, 0,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3))
+  dealloc(pattern)
+  if res < 0: return res
+  for i in 0..res-1:
+    var
+      a = rawMatches[i * 2]
+      b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i] = copy(s, a, int(b)-1)
+    else: matches[i] = ""
+  return res
+
+proc matchOrFind(s: string, pattern: PPcre, start: cint): cint =
+  var
+    rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
+    res = pcreExec(pattern, nil, s, len(s), start, 0,
+                   cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  dealloc(pattern)
+  return res
+
+proc match(s, pattern: string, matches: var openarray[string],
+           start: int = 0): bool =
+  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED),
+                     matches, start) >= 0'i32
+
+proc matchLen(s, pattern: string, matches: var openarray[string],
+              start: int = 0): int =
+  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), matches, start)
+
+proc find(s, pattern: string, matches: var openarray[string],
+          start: int = 0): bool =
+  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE),
+                     matches, start) >= 0'i32
+
+proc match(s, pattern: string, start: int = 0): bool =
+  return matchOrFind(s, rawCompile(pattern, PCRE_ANCHORED), start) >= 0'i32
+
+proc find(s, pattern: string, start: int = 0): bool =
+  return matchOrFind(s, rawCompile(pattern, PCRE_MULTILINE), start) >= 0'i32
+
+template `=~` *(s, pattern: expr): expr = 
+  ## This calls ``match`` with an implicit declared ``matches`` array that 
+  ## can be used in the scope of the ``=~`` call: 
+  ## 
+  ## .. code-block:: nimrod
+  ##
+  ##   if line =~ r"\s*(\w+)\s*\=\s*(\w+)": 
+  ##     # matches a key=value pair:
+  ##     echo("Key: ", matches[1])
+  ##     echo("Value: ", matches[2])
+  ##   elif line =~ r"\s*(\#.*)":
+  ##     # matches a comment
+  ##     # note that the implicit ``matches`` array is different from the
+  ##     # ``matches`` array of the first branch
+  ##     echo("comment: ", matches[1])
+  ##   else:
+  ##     echo("syntax error")
+  ##
+  when not definedInScope(matches):
+    var matches: array[0..maxSubPatterns-1, string]
+  match(s, pattern, matches)
+
+
 
 proc regnexec(preg: ptr TRegExDesc, s: cstring, len, nmatch: int,
               pmatch: ptr array [0..maxSubpatterns-1, TRegMatch],
@@ -74,44 +217,6 @@ const
     "Out of memory",
     "Invalid use of repetition operators"
   ]
-
-proc finalizeRegEx(x: TRegEx) = regfree(addr(x^))
-
-proc re*(s: string): TRegEx =
-  ## Constructor of regular expressions. Note that Nimrod's
-  ## extended raw string literals supports this syntax ``re"[abc]"`` as
-  ## a short form for ``re(r"[abc]")``.
-  new(result, finalizeRegEx)
-  var err = int(regncomp(addr(result^), s, s.len,
-                cint(REG_EXTENDED or REG_NEWLINE)))
-  if err != 0:
-    var e: ref EInvalidRegEx
-    new(e)
-    e.msg = ErrorMessages[err]
-    raise e
-
-proc xre*(pattern: string): TRegEx = 
-  ## deletes whitespace from a pattern that is not escaped or in a character
-  ## class. Then it constructs a regular expresion object via `re`.
-  ## This is modelled after Perl's ``/x`` modifier. 
-  var p = ""
-  var i = 0
-  while i < pattern.len: 
-    case pattern[i]
-    of ' ', '\t': 
-      inc i
-    of '\\': 
-      add p, '\\'
-      add p, pattern[i+1]
-      inc i, 2
-    of '[': 
-      while pattern[i] != ']' and pattern[i] != '\0': 
-        add p, pattern[i]
-        inc i
-    else: 
-      add p, pattern[i]
-      inc i
-  result = re(p)
 
 proc rawmatch(s: string, pattern: TRegEx, matches: var openarray[string],
               start: int): tuple[first, last: int] =
