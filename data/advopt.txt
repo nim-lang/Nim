@@ -1,5 +1,4 @@
 Advanced commands::
-  pas                       convert a Pascal file to Nimrod syntax
   pretty                    pretty print the inputfile
   genDepend                 generate a DOT file containing the
                             module dependency graph

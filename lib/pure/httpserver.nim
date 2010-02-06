@@ -8,6 +8,20 @@
 #
 
 ## This module implements a simple HTTP-Server. 
+##
+## Example: 
+##
+## .. code-block:: nimrod
+##  import strutils, sockets, httpserver
+##  
+##  var counter = 0
+##  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
+##    inc(counter)
+##    client.send("Hallo for the $#th time." % $counter & wwwNL)
+##    return false # do not stop processing
+##  
+##  run(handleRequest, TPort(80))
+##
 
 import strutils, os, osproc, strtabs, streams, sockets
 
@@ -180,15 +194,18 @@ type
     client*: TSocket      ## the socket to write the file data to
     path*, query*: string ## path and query the client requested
     
-proc open*(s: var TServer, port = TPort(0)) = 
+proc open*(s: var TServer, port = TPort(80)) = 
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## aquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
   if s.socket == InvalidSocket: OSError()
-  bindAddr(s.socket)
+  bindAddr(s.socket, port)
   listen(s.socket)
   
-  s.port = getSockName(s.socket)
+  if port == TPort(0):
+    s.port = getSockName(s.socket)
+  else:
+    s.port = port
   s.client = InvalidSocket
   s.path = ""
   s.query = ""
@@ -220,7 +237,7 @@ proc close*(s: TServer) =
   close(s.socket)
 
 proc run*(handleRequest: proc (client: TSocket, path, query: string): bool, 
-          port = TPort(0)) =
+          port = TPort(80)) =
   ## encapsulates the server object and main loop
   var s: TServer
   open(s, port)
@@ -231,18 +248,6 @@ proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
     close(s.client)
   close(s)
 
-when false:
-  proc main =  
-    var (server, port) = startup()
-    echo("httpserver running on port ", int16(port))
-    
-    while true:
-      var client = accept(server)
-      if client == InvalidSocket: OSError()
-      acceptRequest(client)
-      close(client)
-    close(server)
-
 when isMainModule:
   var counter = 0
   proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
@@ -250,5 +255,5 @@ when isMainModule:
     client.send("Hallo, Andreas for the $#th time." % $counter & wwwNL)
     return false # do not stop processing
   
-  run(handleRequest)
+  run(handleRequest, TPort(80))
 

@@ -7,6 +7,10 @@
 
 .. contents::
 
+
+**Note:** ENDB has not been maintained/tested since several versions. Help if
+you want this debugger to survive.
+
 Nimrod comes with a platform independant debugger -
 the `Embedded Nimrod Debugger`:idx: (`ENDB`:idx:). The debugger is
 *embedded* into your executable if it has been

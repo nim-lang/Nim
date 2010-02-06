@@ -223,6 +223,8 @@ proc allocParam(p: BProc, s: PSym) =
 proc localDebugInfo(p: BProc, s: PSym) = 
   var name, a: PRope
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return 
+  # XXX work around a bug: No type information for open arrays possible:
+  if skipTypes(s.typ, abstractVar).kind == tyOpenArray: return
   if gCmd == cmdCompileToLLVM: 
     # "address" is the 0th field
     # "typ" is the 1rst field
