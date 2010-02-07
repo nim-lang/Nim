@@ -18,6 +18,7 @@ Bugfixes
   enities like ``&ltXX``.
 - ``system.write(f: TFile, s: string)`` now works even if ``s`` contains binary
   zeros.
+- Fixed a bug in ``os.setFilePermissions`` for Windows.
 
 
 Additions
@@ -39,6 +40,7 @@ Additions
 - More extensive subscript operator overloading. See 
   `subscript overloading <manual.html#subscript-overloading>`_ for further
   information.
+- The documentation generator supports the ``.. raw:: html`` directive.
 
 
 Changes affecting backwards compatibility

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,6 +43,7 @@ type
     rnCitation,               # similar to footnote
     rnStandaloneHyperlink, rnHyperlink, rnRef, rnDirective, # a directive
     rnDirArg, rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock,
+    rnRawHtml, rnRawLatex,
     rnContainer,              # ``container`` directive
     rnIndex,                  # index directve:
                               # .. index::
@@ -109,11 +110,10 @@ type
 
 
 proc getThing(L: var TLexer, tok: var TToken, s: TCharSet) = 
-  var pos: int
   tok.kind = tkWord
   tok.line = L.line
   tok.col = L.col
-  pos = L.bufpos
+  var pos = L.bufpos
   while True: 
     add(tok.symbol, L.buf[pos])
     inc(pos)
@@ -122,14 +122,11 @@ proc getThing(L: var TLexer, tok: var TToken, s: TCharSet) =
   L.bufpos = pos
 
 proc getAdornment(L: var TLexer, tok: var TToken) = 
-  var 
-    pos: int
-    c: char
   tok.kind = tkAdornment
   tok.line = L.line
   tok.col = L.col
-  pos = L.bufpos
-  c = L.buf[pos]
+  var pos = L.bufpos
+  var c = L.buf[pos]
   while True: 
     add(tok.symbol, L.buf[pos])
     inc(pos)
@@ -138,11 +135,9 @@ proc getAdornment(L: var TLexer, tok: var TToken) =
   L.bufpos = pos
 
 proc getIndentAux(L: var TLexer, start: int): int = 
-  var 
-    buf: cstring
-    pos: int
-  pos = start
-  buf = L.buf                 # skip the newline (but include it in the token!)
+  var pos = start
+  var buf = L.buf                 
+  # skip the newline (but include it in the token!)
   if buf[pos] == '\x0D': 
     if buf[pos + 1] == '\x0A': inc(pos, 2)
     else: inc(pos)
@@ -151,7 +146,6 @@ proc getIndentAux(L: var TLexer, start: int): int =
   if L.skipPounds: 
     if buf[pos] == '#': inc(pos)
     if buf[pos] == '#': inc(pos)
-  result = 0
   while True: 
     case buf[pos]
     of ' ', '\x0B', '\x0C': 
@@ -180,10 +174,9 @@ proc getIndent(L: var TLexer, tok: var TToken) =
   tok.symbol = "\n" & repeatChar(tok.ival)
 
 proc rawGetTok(L: var TLexer, tok: var TToken) = 
-  var c: Char
   tok.symbol = ""
   tok.ival = 0
-  c = L.buf[L.bufpos]
+  var c = L.buf[L.bufpos]
   case c
   of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '0'..'9': 
     getThing(L, tok, SymChars)
@@ -212,10 +205,8 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
   tok.col = max(tok.col - L.baseIndent, 0)
 
 proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq) = 
-  var 
-    L: TLexer
-    length: int
-  length = len(tokens)
+  var L: TLexer
+  var length = len(tokens)
   L.buf = cstring(buffer)
   L.line = 1                  # skip UTF-8 BOM
   if (L.buf[0] == '\xEF') and (L.buf[1] == '\xBB') and (L.buf[2] == '\xBF'): 
@@ -239,10 +230,7 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TTokenSeq) =
     tokens[0].kind = tkIndent
 
 proc addSon(father, son: PRstNode) = 
-  var L: int
-  L = len(father.sons)
-  setlen(father.sons, L + 1)
-  father.sons[L] = son
+  add(father.sons, son)
 
 proc addSonIfNotNil(father, son: PRstNode) = 
   if son != nil: addSon(father, son)
@@ -252,12 +240,15 @@ proc rsonsLen(n: PRstNode): int =
 
 proc newRstNode(kind: TRstNodeKind): PRstNode = 
   new(result)
-  result.sons = @ []
+  result.sons = @[]
   result.kind = kind
 
 proc newRstNode(kind: TRstNodeKind, s: string): PRstNode = 
   result = newRstNode(kind)
   result.text = s
+
+proc lastSon*(n: PRstNode): PRstNode = 
+  result = n.sons[len(n.sons)-1]
 
 type 
   TLevelMap = array[Char, int]
@@ -269,10 +260,13 @@ type
     uLevel*, oLevel*: int     # counters for the section levels
     subs*: seq[TSubstitution] # substitutions
     refs*: seq[TSubstitution] # references
-    underlineToLevel*: TLevelMap # Saves for each possible title adornment character its level in the
-                                 # current document. This is for single underline adornments.
-    overlineToLevel*: TLevelMap # Saves for each possible title adornment character its level in the
-                                # current document. This is for over-underline adornments.
+    underlineToLevel*: TLevelMap # Saves for each possible title adornment
+                                 # character its level in the
+                                 # current document. 
+                                 # This is for single underline adornments.
+    overlineToLevel*: TLevelMap # Saves for each possible title adornment 
+                                # character its level in the current document. 
+                                # This is for over-underline adornments.
   
   PSharedState = ref TSharedState
   TRstParser = object of TObject
@@ -287,8 +281,8 @@ type
 
 proc newSharedState(): PSharedState = 
   new(result)
-  result.subs = @ []
-  result.refs = @ []
+  result.subs = @[]
+  result.refs = @[]
 
 proc tokInfo(p: TRstParser, tok: TToken): TLineInfo = 
   result = newLineInfo(p.filename, p.line + tok.line, p.col + tok.col)
@@ -303,17 +297,14 @@ proc currInd(p: TRstParser): int =
   result = p.indentStack[high(p.indentStack)]
 
 proc pushInd(p: var TRstParser, ind: int) = 
-  var length: int
-  length = len(p.indentStack)
-  setlen(p.indentStack, length + 1)
-  p.indentStack[length] = ind
+  add(p.indentStack, ind)
 
 proc popInd(p: var TRstParser) = 
   if len(p.indentStack) > 1: setlen(p.indentStack, len(p.indentStack) - 1)
   
 proc initParser(p: var TRstParser, sharedState: PSharedState) = 
-  p.indentStack = @ [0]
-  p.tok = @ []
+  p.indentStack = @[0]
+  p.tok = @[]
   p.idx = 0
   p.filename = ""
   p.hasToc = false
@@ -357,14 +348,13 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
     for i in countup(0, rsonsLen(n) - 1): rstnodeToRefnameAux(n.sons[i], r, b)
   
 proc rstnodeToRefname(n: PRstNode): string = 
-  var b: bool
   result = ""
-  b = false
+  var b = false
   rstnodeToRefnameAux(n, result, b)
 
 proc findSub(p: var TRstParser, n: PRstNode): int = 
-  var key: string
-  key = addNodes(n)           # the spec says: if no exact match, try one without case distinction:
+  var key = addNodes(n)           
+  # the spec says: if no exact match, try one without case distinction:
   for i in countup(0, high(p.s.subs)): 
     if key == p.s.subs[i].key: 
       return i
@@ -374,8 +364,7 @@ proc findSub(p: var TRstParser, n: PRstNode): int =
   result = - 1
 
 proc setSub(p: var TRstParser, key: string, value: PRstNode) = 
-  var length: int
-  length = len(p.s.subs)
+  var length = len(p.s.subs)
   for i in countup(0, length - 1): 
     if key == p.s.subs[i].key: 
       p.s.subs[i].value = value
@@ -385,8 +374,7 @@ proc setSub(p: var TRstParser, key: string, value: PRstNode) =
   p.s.subs[length].value = value
 
 proc setRef(p: var TRstParser, key: string, value: PRstNode) = 
-  var length: int
-  length = len(p.s.refs)
+  var length = len(p.s.refs)
   for i in countup(0, length - 1): 
     if key == p.s.refs[i].key: 
       p.s.refs[i].value = value
@@ -400,32 +388,27 @@ proc findRef(p: var TRstParser, key: string): PRstNode =
   for i in countup(0, high(p.s.refs)): 
     if key == p.s.refs[i].key: 
       return p.s.refs[i].value
-  result = nil
 
 proc cmpNodes(a, b: PRstNode): int = 
-  var x, y: PRstNode
   assert(a.kind == rnDefItem)
   assert(b.kind == rnDefItem)
-  x = a.sons[0]
-  y = b.sons[0]
+  var x = a.sons[0]
+  var y = b.sons[0]
   result = cmpIgnoreStyle(addNodes(x), addNodes(y))
 
 proc sortIndex(a: PRstNode) = 
   # we use shellsort here; fast and simple
-  var 
-    N, j, h: int
-    v: PRstNode
   assert(a.kind == rnDefList)
-  N = rsonsLen(a)
-  h = 1
+  var N = rsonsLen(a)
+  var h = 1
   while true: 
     h = 3 * h + 1
     if h > N: break 
   while true: 
     h = h div 3
     for i in countup(h, N - 1): 
-      v = a.sons[i]
-      j = i
+      var v = a.sons[i]
+      var j = i
       while cmpNodes(a.sons[j - h], v) >= 0: 
         a.sons[j] = a.sons[j - h]
         j = j - h
@@ -434,7 +417,6 @@ proc sortIndex(a: PRstNode) =
     if h == 1: break 
   
 proc eqRstNodes(a, b: PRstNode): bool = 
-  result = false
   if a.kind != b.kind: return 
   if a.kind == rnLeaf: 
     result = a.text == b.text
@@ -445,12 +427,11 @@ proc eqRstNodes(a, b: PRstNode): bool =
     result = true
 
 proc matchesHyperlink(h: PRstNode, filename: string): bool = 
-  var s: string
   if h.kind == rnInner:       # this may happen in broken indexes!
     assert(rsonsLen(h) == 1)
     result = matchesHyperlink(h.sons[0], filename)
   elif h.kind == rnHyperlink: 
-    s = addNodes(h.sons[1])
+    var s = addNodes(h.sons[1])
     if startsWith(s, filename) and (s[len(filename) + 0] == '#'): result = true
     else: result = false
   else: 
@@ -521,8 +502,7 @@ proc newLeaf(p: var TRstParser): PRstNode =
   result = newRstNode(rnLeaf, p.tok[p.idx].symbol)
 
 proc getReferenceName(p: var TRstParser, endStr: string): PRstNode = 
-  var res: PRstNode
-  res = newRstNode(rnInner)
+  var res = newRstNode(rnInner)
   while true: 
     case p.tok[p.idx].kind
     of tkWord, tkOther, tkWhite: 
@@ -637,8 +617,7 @@ proc match(p: TRstParser, start: int, expr: string): bool =
         case p.tok[j].symbol[0]
         of 'a'..'z', 'A'..'Z': result = len(p.tok[j].symbol) == 1
         of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
-        else: 
-          nil
+        else: nil
     else: 
       var c = expr[i]
       var length = 0
@@ -712,10 +691,9 @@ proc isURL(p: TRstParser, i: int): bool =
       (p.tok[i + 3].kind == tkWord) and (p.tok[i + 4].symbol == ".")
 
 proc parseURL(p: var TRstParser, father: PRstNode) = 
-  var n: PRstNode
   #if p.tok[p.idx].symbol[strStart] = '<' then begin
   if isURL(p, p.idx): 
-    n = newRstNode(rnStandaloneHyperlink)
+    var n = newRstNode(rnStandaloneHyperlink)
     while true: 
       case p.tok[p.idx].kind
       of tkWord, tkAdornment, tkOther: 
@@ -729,7 +707,7 @@ proc parseURL(p: var TRstParser, father: PRstNode) =
       inc(p.idx)
     addSon(father, n)
   else: 
-    n = newLeaf(p)
+    var n = newLeaf(p)
     inc(p.idx)
     if p.tok[p.idx].symbol == "_": n = parsePostfix(p, n)
     addSon(father, n)
@@ -1091,11 +1069,12 @@ proc getColumns(p: var TRstParser, cols: var TIntSeq) =
     if p.tok[p.idx].kind != tkWhite: break 
     inc(p.idx)
     if p.tok[p.idx].kind != tkAdornment: break 
-  if p.tok[p.idx].kind == tkIndent: 
-    inc(p.idx)                # last column has no limit:
+  if p.tok[p.idx].kind == tkIndent: inc(p.idx)                
+  # last column has no limit:
   cols[L - 1] = 32000
 
 proc parseDoc(p: var TRstParser): PRstNode
+
 proc parseSimpleTable(p: var TRstParser): PRstNode = 
   var 
     cols: TIntSeq
@@ -1351,18 +1330,16 @@ proc parseDoc(p: var TRstParser): PRstNode =
   result = parseSectionWrapper(p)
   if p.tok[p.idx].kind != tkEof: rstMessage(p, errGeneralParseError)
   
-type 
+type
   TDirFlag = enum 
-    hasArg, hasOptions, argIsFile
+    hasArg, hasOptions, argIsFile, argIsWord
   TDirFlags = set[TDirFlag]
   TSectionParser = proc (p: var TRstParser): PRstNode
 
-proc parseDirective(p: var TRstParser, flags: TDirFlags, 
-                    contentParser: TSectionParser): PRstNode = 
-  var args, options, content: PRstNode
+proc parseDirective(p: var TRstParser, flags: TDirFlags): PRstNode = 
   result = newRstNode(rnDirective)
-  args = nil
-  options = nil
+  var args: PRstNode = nil
+  var options: PRstNode = nil
   if hasArg in flags: 
     args = newRstNode(rnDirArg)
     if argIsFile in flags: 
@@ -1372,6 +1349,13 @@ proc parseDirective(p: var TRstParser, flags: TDirFlags,
           addSon(args, newLeaf(p))
           inc(p.idx)
         else: break 
+    elif argIsWord in flags:
+      while p.tok[p.idx].kind == tkWhite: inc(p.idx)
+      if p.tok[p.idx].kind == tkWord: 
+        addSon(args, newLeaf(p))
+        inc(p.idx)
+      else:
+        args = nil
     else: 
       parseLine(p, args)
   addSon(result, args)
@@ -1380,14 +1364,26 @@ proc parseDirective(p: var TRstParser, flags: TDirFlags,
         (p.tok[p.idx + 1].symbol == ":"): 
       options = parseFields(p)
   addSon(result, options)
-  if (not isNil(contentParser)) and (p.tok[p.idx].kind == tkIndent) and
-      (p.tok[p.idx].ival > currInd(p)): 
+  
+proc indFollows(p: TRstParser): bool = 
+  result = p.tok[p.idx].kind == tkIndent and p.tok[p.idx].ival > currInd(p)
+  
+proc parseDirective(p: var TRstParser, flags: TDirFlags, 
+                    contentParser: TSectionParser): PRstNode = 
+  result = parseDirective(p, flags)
+  if not isNil(contentParser) and indFollows(p): 
     pushInd(p, p.tok[p.idx].ival)
-    content = contentParser(p)
+    var content = contentParser(p)
     popInd(p)
     addSon(result, content)
   else: 
     addSon(result, nil)
+
+proc parseDirBody(p: var TRstParser, contentParser: TSectionParser): PRstNode = 
+  if indFollows(p): 
+    pushInd(p, p.tok[p.idx].ival)
+    result = contentParser(p)
+    popInd(p)
   
 proc dirInclude(p: var TRstParser): PRstNode = 
   #
@@ -1464,29 +1460,40 @@ proc dirIndex(p: var TRstParser): PRstNode =
   result = parseDirective(p, {}, parseSectionWrapper)
   result.kind = rnIndex
 
+proc dirRawAux(p: var TRstParser, result: var PRstNode, kind: TRstNodeKind,
+               contentParser: TSectionParser) = 
+  var filename = getFieldValue(result, "file")
+  if filename.len > 0: 
+    var path = findFile(filename)
+    if path.len == 0: 
+      rstMessage(p, errCannotOpenFile, filename)
+    else: 
+      var f = readFile(path)
+      result = newRstNode(kind)
+      addSon(result, newRstNode(rnLeaf, f))
+  else:      
+    result.kind = kind
+    addSon(result, parseDirBody(p, contentParser))
+
 proc dirRaw(p: var TRstParser): PRstNode = 
   #
   #The following options are recognized:
   #
   #file : string (newlines removed)
   #    The local filesystem path of a raw data file to be included.
-  #url : string (whitespace removed)
-  #    An Internet URL reference to a raw data file to be included.
-  #encoding : name of text encoding
-  #    The text encoding of the external raw data (file or URL).
-  #    Defaults to the document's encoding (if specified).
   #
-  result = parseDirective(p, {hasOptions}, parseSectionWrapper)
-  result.kind = rnRaw
-  var filename = getFieldValue(result, "file")
-  if filename != "": 
-    var path = findFile(filename)
-    if path == "": 
-      rstMessage(p, errCannotOpenFile, filename)
-    else: 
-      var f = readFile(path)
-      result = newRstNode(rnRaw)
-      addSon(result, newRstNode(rnLeaf, f))
+  # html
+  # latex
+  result = parseDirective(p, {hasOptions, hasArg, argIsWord})
+  if result.sons[0] != nil:
+    if cmpIgnoreCase(result.sons[0].text, "html") == 0:
+      dirRawAux(p, result, rnRawHtml, parseLiteralBlock)
+    elif cmpIgnoreCase(result.sons[0].text, "latex") == 0: 
+      dirRawAux(p, result, rnRawLatex, parseLiteralBlock)
+    else:
+      rstMessage(p, errInvalidDirectiveX, result.sons[0].text)
+  else:
+    dirRawAux(p, result, rnRaw, parseSectionWrapper)
 
 proc parseDotDot(p: var TRstParser): PRstNode = 
   result = nil

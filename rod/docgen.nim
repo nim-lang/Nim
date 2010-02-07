@@ -67,7 +67,7 @@ proc initIndexFile(d: PDoc) =
   var 
     h: PRstNode
     dummyHasToc: bool
-  if gIndexFile == "": return 
+  if gIndexFile.len == 0: return 
   gIndexFile = addFileExt(gIndexFile, "txt")
   d.indexValFilename = changeFileExt(extractFilename(d.filename), HtmlExt)
   if ExistsFile(gIndexFile): 
@@ -107,14 +107,11 @@ proc getVarIdx(varnames: openarray[string], id: string): int =
 
 proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string], 
                          varvalues: openarray[PRope]): PRope = 
-  var 
-    i, j, L, start, idx, num: int
-    id: string
-  i = 0
-  L = len(frmt)
+  var i = 0
+  var L = len(frmt)
   result = nil
-  num = 0
-  while i <= L + 0 - 1: 
+  var num = 0
+  while i < L: 
     if frmt[i] == '$': 
       inc(i)                  # skip '$'
       case frmt[i]
@@ -126,7 +123,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         app(result, "$")
         inc(i)
       of '0'..'9': 
-        j = 0
+        var j = 0
         while true: 
           j = (j * 10) + Ord(frmt[i]) - ord('0')
           inc(i)
@@ -135,16 +132,16 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
         num = j
         app(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF': 
-        id = ""
+        var id = ""
         while true: 
           add(id, frmt[i])
           inc(i)
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break 
-        idx = getVarIdx(varnames, id)
+        var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
         else: rawMessage(errUnkownSubstitionVar, id)
       of '{': 
-        id = ""
+        var id = ""
         inc(i)
         while frmt[i] != '}': 
           if frmt[i] == '\0': rawMessage(errTokenExpected, "}")
@@ -152,12 +149,12 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openarray[string],
           inc(i)
         inc(i)                # skip }
                               # search for the variable:
-        idx = getVarIdx(varnames, id)
+        var idx = getVarIdx(varnames, id)
         if idx >= 0: app(result, varvalues[idx])
         else: rawMessage(errUnkownSubstitionVar, id)
       else: InternalError("ropeFormatNamedVars")
-    start = i
-    while (i <= L + 0 - 1): 
+    var start = i
+    while i < L: 
       if (frmt[i] != '$'): inc(i)
       else: break 
     if i - 1 >= start: app(result, copy(frmt, start, i - 1))
@@ -240,6 +237,7 @@ proc dispA(dest: var PRope, xml, tex: string, args: openarray[PRope]) =
   else: appf(dest, tex, args)
   
 proc renderRstToOut(d: PDoc, n: PRstNode): PRope
+
 proc renderAux(d: PDoc, n: PRstNode, outer: string = "$1"): PRope = 
   result = nil
   for i in countup(0, rsonsLen(n) - 1): app(result, renderRstToOut(d, n.sons[i]))
@@ -723,6 +721,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
                    "\\href{$2}{$1}", 
                    [renderRstToOut(d, n.sons[0]), renderRstToOut(d, n.sons[1])])
   of rnDirArg, rnRaw: result = renderAux(d, n)
+  of rnRawHtml: 
+    if gCmd != cmdRst2Tex:
+      result = toRope(addNodes(lastSon(n)))
+  of rnRawLatex:
+    if gCmd == cmdRst2Tex:
+      result = toRope(addNodes(lastSon(n)))
+      
   of rnImage, rnFigure: result = renderImage(d, n)
   of rnCodeBlock: result = renderCodeBlock(d, n)
   of rnContainer: result = renderContainer(d, n)
