@@ -1486,9 +1486,9 @@ proc dirRaw(p: var TRstParser): PRstNode =
   # latex
   result = parseDirective(p, {hasOptions, hasArg, argIsWord})
   if result.sons[0] != nil:
-    if cmpIgnoreCase(result.sons[0].text, "html") == 0:
+    if cmpIgnoreCase(result.sons[0].sons[0].text, "html") == 0:
       dirRawAux(p, result, rnRawHtml, parseLiteralBlock)
-    elif cmpIgnoreCase(result.sons[0].text, "latex") == 0: 
+    elif cmpIgnoreCase(result.sons[0].sons[0].text, "latex") == 0: 
       dirRawAux(p, result, rnRawLatex, parseLiteralBlock)
     else:
       rstMessage(p, errInvalidDirectiveX, result.sons[0].text)

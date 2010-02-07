@@ -1,7 +1,7 @@
 #
 #
 #           Nimrod Website Generator
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -41,7 +41,7 @@ include "sunset.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.6"
+  Version = "0.7"
   Usage = "nimweb - Nimrod Website Generator Version " & version & """
 
   (c) 2009 Andreas Rumpf
@@ -170,7 +170,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
-    echo "pdflatex not found; not PDF documentation generated"
+    echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
       Exec("nimrod rst2tex $# $#" % [c.nimrodArgs, d])
