@@ -117,14 +117,14 @@ Internet Protocols and Support
 * `sockets <sockets.html>`
   This module implements a simple portable type-safe sockets layer.
 
-* `browsers <browsers.html>`
+* `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default 
   browser.
   
-* `httpserver <httpserver.html>`
+* `httpserver <httpserver.html>`_
   This module implements a simple HTTP server.
   
-* `httpclient <httpclient.html>`
+* `httpclient <httpclient.html>`_
   This module implements a simple HTTP client. 
 
 
