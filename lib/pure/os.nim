@@ -1020,7 +1020,7 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) =
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
-    if SetFileAttributesA(filename, res) != 0'i32: 
+    if SetFileAttributesA(filename, res) == - 1'i32: 
       OSError()
   
 proc inclFilePermissions*(filename: string, 
