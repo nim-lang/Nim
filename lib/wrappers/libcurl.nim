@@ -16,6 +16,8 @@
 #   website for this. 
 # 
 
+{.deadCodeElim: on.}
+
 import times
 
 when defined(windows):

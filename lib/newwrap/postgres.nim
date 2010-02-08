@@ -6,6 +6,8 @@
 # connection-protocol.
 #
 
+{.deadCodeElim: on.}
+
 when defined(windows): 
   const 
     dllName = "pq.dll"

@@ -43,7 +43,7 @@
 ##    
 ##   echo(postContent("http://validator.w3.org/check", headers, body))
 
-import sockets, strutils, parseurl, pegs, parseutils, strtabs
+import sockets, strutils, parseurl, parseutils, strtabs
 
 type
   TResponse* = tuple[
@@ -166,20 +166,32 @@ proc parseResponse(s: TSocket): TResponse =
   # Parse the version
   # Parses the first line of the headers
   # ``HTTP/1.1`` 200 OK
-
-  var matches: array[0..1, string]
-  var L = d.matchLen(peg"\i 'HTTP/' {'1.1'/'1.0'} \s+ {(!\n .)*}\n",
-                     matches, i)
-  if L < 0: httpError("invalid HTTP header")
-  
-  result.version = matches[0]
-  result.status = matches[1]
+  var L = skipIgnoreCase(d, "HTTP/1.1", i)
+  if L > 0:
+    result.version = "1.1"
+    inc(i, L)
+  else:
+    L = skipIgnoreCase(d, "HTTP/1.0", i)
+    if L > 0:
+      result.version = "1.0"
+      inc(i, L)
+    else: 
+      httpError("invalid HTTP header")
+  L = skipWhiteSpace(d, i)
+  if L <= 0: httpError("invalid HTTP header")
   inc(i, L)
   
+  result.status = ""
+  while d[i] notin {'\C', '\L', '\0'}:
+    result.status.add(d[i])
+    inc(i)
+  if d[i] == '\C': inc(i)
+  if d[i] == '\L': inc(i)
+  else: httpError("invalid HTTP header, CR-LF expected")
+
   # Parse the headers
   # Everything after the first line leading up to the body
   # htype: hvalue
-
   result.headers = newStringTable(modeCaseInsensitive)
   while true:
     var key = ""

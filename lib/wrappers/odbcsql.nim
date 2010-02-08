@@ -1,4 +1,6 @@
 
+{.deadCodeElim: on.}
+
 when not defined(ODBCVER):
   const
     ODBCVER = 0x0351 ## define ODBC version 3.51 by default

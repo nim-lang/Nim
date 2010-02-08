@@ -31,7 +31,9 @@ Additions
 - Added ``sockets`` module.
 - Added ``browsers`` module.
 - Added ``httpserver`` module.
+- Added ``httpclient`` module.
 - Added ``parseutils`` module.
+- Added ``unidecode`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.
