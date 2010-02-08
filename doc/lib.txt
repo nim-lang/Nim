@@ -68,6 +68,9 @@ String handling
   is done in O(1) instead of O(n).
 
 * `unidecode <unidecode.html>`_ 
+  This module provides Unicode to ASCII transliterations:
+  It finds the sequence of ASCII characters that is the closest approximation
+  to the Unicode string.
   
 
 Generic Operating System Services
@@ -160,6 +163,16 @@ Parsers
 * `lexbase <lexbase.html>`_
   This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
+
+
+XML Processing
+--------------
+
+* `xmldom <xmldom.html>`_ 
+  This module implements the XML DOM Level 2.
+
+* `xmldomparser <xmldomparser.html>`_
+  This module parses a XML Document into a XML DOM Document representation.
 
 
 Code generation

@@ -34,6 +34,8 @@ Additions
 - Added ``httpclient`` module.
 - Added ``parseutils`` module.
 - Added ``unidecode`` module.
+- Added ``xmldom`` module.
+- Added ``xmldomparser`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.
