@@ -1,6 +1,6 @@
 #
 #    Binding for the IUP GUI toolkit
-#       (c) 2009 Andreas Rumpf 
+#       (c) 2010 Andreas Rumpf 
 #    C header files translated by hand
 #    Licence of IUP follows:
 
@@ -28,6 +28,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ****************************************************************************
 
+{.deadCodeElim: on.}
 
 when defined(windows): 
   const dllname = "iup(30|27|26|25|24).dll"

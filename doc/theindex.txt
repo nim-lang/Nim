@@ -187,14 +187,14 @@ Index
      * `system.html#344 <system.html#344>`_
 
    `<=%`:idx:
-     `unicode.html#103 <unicode.html#103>`_
-
-   `<=%`:idx:
      * `system.html#303 <system.html#303>`_
      * `system.html#304 <system.html#304>`_
      * `system.html#305 <system.html#305>`_
      * `system.html#306 <system.html#306>`_
      * `system.html#307 <system.html#307>`_
+
+   `<=%`:idx:
+     `unicode.html#103 <unicode.html#103>`_
 
    `==`:idx:
      * `md5.html#107 <md5.html#107>`_
@@ -248,16 +248,16 @@ Index
      `ropes.html#115 <ropes.html#115>`_
 
    `[]`:idx:
-     `macros.html#112 <macros.html#112>`_
-
-   `[]`:idx:
      `strtabs.html#107 <strtabs.html#107>`_
 
-   `[]=`:idx:
-     `macros.html#113 <macros.html#113>`_
+   `[]`:idx:
+     `macros.html#112 <macros.html#112>`_
 
    `[]=`:idx:
      `strtabs.html#106 <strtabs.html#106>`_
+
+   `[]=`:idx:
+     `macros.html#113 <macros.html#113>`_
 
    `[ESC]`:idx:
      `manual.html#134 <manual.html#134>`_
@@ -1260,7 +1260,7 @@ Index
      `manual.html#222 <manual.html#222>`_
 
    `downloadFile`:idx:
-     `httpclient.html#111 <httpclient.html#111>`_
+     `httpclient.html#110 <httpclient.html#110>`_
 
    `dt`:idx:
      `xmlgen.html#128 <xmlgen.html#128>`_
@@ -1338,7 +1338,7 @@ Index
      * `system.html#165 <system.html#165>`_
 
    `EHttpRequestErr`:idx:
-     `httpclient.html#104 <httpclient.html#104>`_
+     `httpclient.html#103 <httpclient.html#103>`_
 
    `EInvalidCsv`:idx:
      `parsecsv.html#105 <parsecsv.html#105>`_
@@ -1362,7 +1362,7 @@ Index
      `pegs.html#150 <pegs.html#150>`_
 
    `EInvalidProtocol`:idx:
-     `httpclient.html#103 <httpclient.html#103>`_
+     `httpclient.html#102 <httpclient.html#102>`_
 
    `EInvalidRegEx`:idx:
      `regexprs.html#104 <regexprs.html#104>`_
@@ -1409,11 +1409,11 @@ Index
    `enum_cursor_type`:idx:
      `mysql.html#237 <mysql.html#237>`_
 
-   `enumeration`:idx:
-     `tut1.html#113 <tut1.html#113>`_
-
    `Enumeration`:idx:
      `manual.html#155 <manual.html#155>`_
+
+   `enumeration`:idx:
+     `tut1.html#113 <tut1.html#113>`_
 
    `enum_field_types`:idx:
      `mysql.html#202 <mysql.html#202>`_
@@ -1817,7 +1817,7 @@ Index
      * `tut2.html#109 <tut2.html#109>`_
 
    `get`:idx:
-     `httpclient.html#107 <httpclient.html#107>`_
+     `httpclient.html#106 <httpclient.html#106>`_
 
    `GetAllRows`:idx:
      * `db_postgres.html#111 <db_postgres.html#111>`_
@@ -1843,7 +1843,7 @@ Index
      `os.html#167 <os.html#167>`_
 
    `getContent`:idx:
-     `httpclient.html#108 <httpclient.html#108>`_
+     `httpclient.html#107 <httpclient.html#107>`_
 
    `getContentLength`:idx:
      `cgi.html#111 <cgi.html#111>`_
@@ -1896,9 +1896,6 @@ Index
 
    `getGMTime`:idx:
      `times.html#107 <times.html#107>`_
-
-   `getHeaderValue`:idx:
-     `httpclient.html#105 <httpclient.html#105>`_
 
    `getHomeDir`:idx:
      `os.html#166 <os.html#166>`_
@@ -2156,11 +2153,11 @@ Index
    `ident=`:idx:
      `macros.html#132 <macros.html#132>`_
 
-   `IdentChars`:idx:
-     `strutils.html#105 <strutils.html#105>`_
-
    `identChars`:idx:
      `pegs.html#128 <pegs.html#128>`_
+
+   `IdentChars`:idx:
+     `strutils.html#105 <strutils.html#105>`_
 
    `identifier`:idx:
      `manual.html#105 <manual.html#105>`_
@@ -2379,11 +2376,11 @@ Index
      * `macros.html#118 <macros.html#118>`_
      * `ropes.html#103 <ropes.html#103>`_
 
-   `Letters`:idx:
-     `strutils.html#103 <strutils.html#103>`_
-
    `letters`:idx:
      `pegs.html#125 <pegs.html#125>`_
+
+   `Letters`:idx:
+     `strutils.html#103 <strutils.html#103>`_
 
    `li`:idx:
      `xmlgen.html#148 <xmlgen.html#148>`_
@@ -3316,6 +3313,12 @@ Index
    `ONLY_KILL_QUERY`:idx:
      `mysql.html#189 <mysql.html#189>`_
 
+   `Open`:idx:
+     * `system.html#507 <system.html#507>`_
+     * `system.html#508 <system.html#508>`_
+     * `db_postgres.html#118 <db_postgres.html#118>`_
+     * `db_mysql.html#118 <db_mysql.html#118>`_
+
    `open`:idx:
      * `lexbase.html#104 <lexbase.html#104>`_
      * `parsecfg.html#104 <parsecfg.html#104>`_
@@ -3323,12 +3326,6 @@ Index
      * `parsecsv.html#106 <parsecsv.html#106>`_
      * `zipfiles.html#102 <zipfiles.html#102>`_
      * `httpserver.html#103 <httpserver.html#103>`_
-
-   `Open`:idx:
-     * `system.html#507 <system.html#507>`_
-     * `system.html#508 <system.html#508>`_
-     * `db_postgres.html#118 <db_postgres.html#118>`_
-     * `db_mysql.html#118 <db_mysql.html#118>`_
 
    `openarray`:idx:
      * `tut1.html#119 <tut1.html#119>`_
@@ -3364,11 +3361,11 @@ Index
    `ord`:idx:
      `system.html#182 <system.html#182>`_
 
-   `ordinal`:idx:
-     `tut1.html#114 <tut1.html#114>`_
-
    `Ordinal`:idx:
      `system.html#114 <system.html#114>`_
+
+   `ordinal`:idx:
+     `tut1.html#114 <tut1.html#114>`_
 
    `Ordinal types`:idx:
      `manual.html#142 <manual.html#142>`_
@@ -3409,11 +3406,11 @@ Index
    `parseBiggestFloat`:idx:
      `parseutils.html#110 <parseutils.html#110>`_
 
-   `parseBiggestInt`:idx:
-     `parseutils.html#108 <parseutils.html#108>`_
-
    `ParseBiggestInt`:idx:
      `strutils.html#143 <strutils.html#143>`_
+
+   `parseBiggestInt`:idx:
+     `parseutils.html#108 <parseutils.html#108>`_
 
    `parseCmdLine`:idx:
      `os.html#160 <os.html#160>`_
@@ -3708,10 +3705,10 @@ Index
      `system.html#135 <system.html#135>`_
 
    `post`:idx:
-     `httpclient.html#109 <httpclient.html#109>`_
+     `httpclient.html#108 <httpclient.html#108>`_
 
    `postContent`:idx:
-     `httpclient.html#110 <httpclient.html#110>`_
+     `httpclient.html#109 <httpclient.html#109>`_
 
    `PostgreSQL`:idx:
      `db_postgres.html#101 <db_postgres.html#101>`_
@@ -4074,7 +4071,7 @@ Index
      `system.html#379 <system.html#379>`_
 
    `request`:idx:
-     `httpclient.html#106 <httpclient.html#106>`_
+     `httpclient.html#105 <httpclient.html#105>`_
 
    `ResetAttributes`:idx:
      `terminal.html#110 <terminal.html#110>`_
@@ -5284,8 +5281,8 @@ Index
    `thead`:idx:
      `xmlgen.html#176 <xmlgen.html#176>`_
 
-   `THeader`:idx:
-     `httpclient.html#102 <httpclient.html#102>`_
+   `THttpMethod`:idx:
+     `httpclient.html#104 <httpclient.html#104>`_
 
    `TimeInfoToTime`:idx:
      `times.html#108 <times.html#108>`_
