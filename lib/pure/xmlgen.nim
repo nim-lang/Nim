@@ -21,6 +21,10 @@
 ##   
 ##   <h1><a href="http://force7.de/nimrod">Nimrod</a></h1>
 ##
+## **Deprecated since version 0.8.8.** Use the macro ``<>`` in xmltree 
+## instead.
+
+{.deprecated.}
 
 import
   macros, strutils
@@ -52,8 +56,8 @@ proc xmlCheckedTag*(e: PNimrodNode, tag: string,
   
   # copy the attributes; when iterating over them these lists
   # will be modified, so that each attribute is only given one value
-  var req = splitSeq(reqAttr)
-  var opt = splitSeq(optAttr)
+  var req = split(reqAttr)
+  var opt = split(optAttr)
   result = newNimNode(nnkBracket, e)
   result.add(newStrLitNode("<"))
   result.add(newStrLitNode(tag))

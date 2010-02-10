@@ -172,7 +172,16 @@ XML Processing
   This module implements the XML DOM Level 2.
 
 * `xmldomparser <xmldomparser.html>`_
-  This module parses a XML Document into a XML DOM Document representation.
+  This module parses an XML Document into a XML DOM Document representation.
+
+* `xmltree <xmltree.html>`_
+  A simple XML tree. More efficient and simpler than the DOM.
+
+* `xmltreeparser <xmltreeparser.html>`_ 
+  This module parses an XML document and creates its XML tree representation.
+  
+* `htmlparser <htmlparser.html>`_ 
+  This module parses an HTML document and creates its XML tree representation.
 
 
 Code generation

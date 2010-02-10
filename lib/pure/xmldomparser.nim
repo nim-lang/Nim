@@ -16,6 +16,7 @@ import xmldom, os, streams, parsexml, strutils
 type
   #Parsing errors
   EMismatchedTag* = object of E_Base ## Raised when a tag is not properly closed
+  EParserError* = object of E_Base ## Raised when an unexpected XML Parser event occurs
 
 template newException(exceptn, message: expr): expr =
   block: # open a new scope
@@ -52,6 +53,7 @@ proc parseElement(x: var TXmlParser, doc: var PDocument): PElement =
         
     of xmlElementEnd:
       if x.elementName == n.nodeName:
+        # n.normalize() # Remove any whitespace etc.
         return n
       else: #The wrong element is ended
         raise newException(EMismatchedTag, "Mismatched tag at line " & 
@@ -71,8 +73,12 @@ proc parseElement(x: var TXmlParser, doc: var PDocument): PElement =
       n.appendChild(doc.createComment(x.charData()))
     of xmlPI:
       n.appendChild(doc.createProcessingInstruction(x.PIName(), x.PIRest()))
+      
+    of xmlWhitespace, xmlElementClose, xmlEntity, xmlSpecial:
+      # Unused 'events'
+
     else:
-      # echo(x.kind()) # XXX do nothing here!?
+      raise newException(EParserError, "Unexpected XML Parser event")
     x.next()
 
   raise newException(EMismatchedTag, 
@@ -99,9 +105,12 @@ proc loadXML*(path: string): PDocument =
     of xmlElementStart, xmlElementOpen:
       var el: PElement = parseElement(x, XmlDoc)
       XmlDoc = dom.createDocument(el)
+    of xmlWhitespace, xmlElementClose, xmlEntity, xmlSpecial:
+      # Unused 'events'
     else:
-      # echo(x.kind())
+      raise newException(EParserError, "Unexpected XML Parser event")
 
+  close(x)
   return XmlDoc
 
 

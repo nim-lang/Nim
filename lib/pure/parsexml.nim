@@ -364,7 +364,7 @@ proc parsePI(my: var TXmlParser) =
         break
       add(my.b, '?')
       inc(pos)
-    of '\c':  
+    of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.HandleCR(my, pos)
       buf = my.buf      
