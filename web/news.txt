@@ -26,6 +26,7 @@ Additions
 - Added ``system.cstringArrayToSeq``.
 - Added ``system.lines(f: TFile)`` iterator.
 - Added ``system.delete``, ``system.del`` and ``system.insert`` for sequences.
+- Exported ``system.newException`` template.
 - Added ``cgi.decodeData(data: string): tuple[key, value: string]``.
 - Added ``ropes`` module.
 - Added ``sockets`` module.
@@ -36,6 +37,9 @@ Additions
 - Added ``unidecode`` module.
 - Added ``xmldom`` module.
 - Added ``xmldomparser`` module.
+- Added ``xmltree`` module.
+- Added ``xmltreeparser`` module.
+- Added ``htmlparser`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.
@@ -100,7 +104,7 @@ Changes affecting backwards compatibility
 - The compiler does not skip the linking step anymore even if no file
   has changed.
 - ``os.splitFile(".xyz")`` now returns ``("", ".xyz", "")`` instead of
-  ``("", "", ".xyz")``. Filenames starting with a dot are handled
+  ``("", "", ".xyz")``. So filenames starting with a dot are handled
   differently. 
 - ``strutils.split(s: string, seps: set[char])`` never yields the empty string
   anymore. This behaviour is probably more appropriate for whitespace splitting. 

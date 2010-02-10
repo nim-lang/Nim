@@ -9,33 +9,30 @@
 
 
 import strutils
-## This module implements the XML DOM Level 2
+## This module implements XML DOM Level 2 Core specification(http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html)
+
 
 #http://www.w3.org/TR/2000/REC-DOM-Level-2-Core-20001113/core.html
-#DOMString = String
-#DOMTimeStamp = int16 ??
-
-#DECLARATIONS
 
 #Exceptions
 type
-  EDOMException* = object of E_Base #Base exception object for all DOM Exceptions
-  EDOMStringSizeErr* = object of EDOMException #If the specified range of text does not fit into a DOMString
-                                               #Currently not used(Since DOMString is just string)
-  EHierarchyRequestErr* = object of EDOMException #If any node is inserted somewhere it doesn't belong
-  EIndexSizeErr* = object of EDOMException #If index or size is negative, or greater than the allowed value
-  EInuseAttributeErr* = object of EDOMException #If an attempt is made to add an attribute that is already in use elsewhere
-  EInvalidAccessErr* = object of EDOMException #If a parameter or an operation is not supported by the underlying object.
-  EInvalidCharacterErr* = object of EDOMException #This exception is raised when a string parameter contains an illegal character
-  EInvalidModificationErr* = object of EDOMException #If an attempt is made to modify the type of the underlying object.
-  EInvalidStateErr* = object of EDOMException #If an attempt is made to use an object that is not, or is no longer, usable.
-  ENamespaceErr* = object of EDOMException #If an attempt is made to create or change an object in a way which is incorrect with regard to namespaces.
-  ENotFoundErr* = object of EDOMException #If an attempt is made to reference a node in a context where it does not exist
-  ENotSupportedErr* = object of EDOMException #If the implementation does not support the requested type of object or operation.
-  ENoDataAllowedErr* = object of EDOMException #If data is specified for a node which does not support data
-  ENoModificationAllowedErr* = object of EDOMException #If an attempt is made to modify an object where modifications are not allowed
-  ESyntaxErr* = object of EDOMException #If an invalid or illegal string is specified.
-  EWrongDocumentErr* = object of EDOMException #If a node is used in a different document than the one that created it (that doesn't support it)
+  EDOMException* = object of E_Base ## Base exception object for all DOM Exceptions
+  EDOMStringSizeErr* = object of EDOMException ## If the specified range of text does not fit into a DOMString
+                                               ## Currently not used(Since DOMString is just string)
+  EHierarchyRequestErr* = object of EDOMException ## If any node is inserted somewhere it doesn't belong
+  EIndexSizeErr* = object of EDOMException ## If index or size is negative, or greater than the allowed value
+  EInuseAttributeErr* = object of EDOMException ## If an attempt is made to add an attribute that is already in use elsewhere
+  EInvalidAccessErr* = object of EDOMException ## If a parameter or an operation is not supported by the underlying object.
+  EInvalidCharacterErr* = object of EDOMException ## This exception is raised when a string parameter contains an illegal character
+  EInvalidModificationErr* = object of EDOMException ## If an attempt is made to modify the type of the underlying object.
+  EInvalidStateErr* = object of EDOMException ## If an attempt is made to use an object that is not, or is no longer, usable.
+  ENamespaceErr* = object of EDOMException ## If an attempt is made to create or change an object in a way which is incorrect with regard to namespaces.
+  ENotFoundErr* = object of EDOMException ## If an attempt is made to reference a node in a context where it does not exist
+  ENotSupportedErr* = object of EDOMException ## If the implementation does not support the requested type of object or operation.
+  ENoDataAllowedErr* = object of EDOMException ## If data is specified for a node which does not support data
+  ENoModificationAllowedErr* = object of EDOMException ## If an attempt is made to modify an object where modifications are not allowed
+  ESyntaxErr* = object of EDOMException ## If an invalid or illegal string is specified.
+  EWrongDocumentErr* = object of EDOMException ## If a node is used in a different document than the one that created it (that doesn't support it)
 
 template newException(exceptn, message: expr): expr =
   block: # open a new scope
@@ -65,24 +62,24 @@ type
   Feature = tuple[name: string, version: string]
   PDOMImplementation* = ref DOMImplementation
   DOMImplementation = object
-    Features: seq[Feature] #Read-Only
+    Features: seq[Feature] # Read-Only
 
   PNode* = ref Node
   Node = object
-    attributes: seq[PAttr] #Read-only
-    childNodes*: seq[PNode] #Read-only
-    FLocalName: string #Read-only
-    FNamespaceURI: string #Read-only
-    FNodeName: string #Read-only
+    attributes*: seq[PAttr]
+    childNodes*: seq[PNode]
+    FLocalName: string # Read-only
+    FNamespaceURI: string # Read-only
+    FNodeName: string # Read-only
     nodeValue*: string
-    FNodeType: int #Read-only
-    FOwnerDocument: PDocument #Read-Only
-    FParentNode: PNode #Read-Only
+    FNodeType: int # Read-only
+    FOwnerDocument: PDocument # Read-Only
+    FParentNode: PNode # Read-Only
     prefix*: string # Setting this should change some values... TODO!
   
   PElement* = ref Element
   Element = object of Node
-    FTagName: string #Read-only
+    FTagName: string # Read-only
   
   PCharacterData = ref CharacterData
   CharacterData = object of Node
@@ -90,15 +87,15 @@ type
     
   PDocument* = ref Document
   Document = object of Node
-    FImplementation: PDOMImplementation #Read-only
-    FDocumentElement: PElement #Read-only
+    FImplementation: PDOMImplementation # Read-only
+    FDocumentElement: PElement # Read-only
     
   PAttr* = ref Attr  
   Attr = object of Node
-    FName: string #Read-only
-    FSpecified: bool #Read-only
+    FName: string # Read-only
+    FSpecified: bool # Read-only
     value*: string
-    FOwnerElement: PElement #Read-only
+    FOwnerElement: PElement # Read-only
 
   PDocumentFragment* = ref DocumentFragment
   DocumentFragment = object of Node
@@ -115,18 +112,18 @@ type
   PProcessingInstruction* = ref ProcessingInstruction
   ProcessingInstruction = object of Node
     data*: string
-    FTarget: string #Read-only
+    FTarget: string # Read-only
 
-#DOMImplementation
+# DOMImplementation
 proc getDOM*(): PDOMImplementation =
-  ##Returns a DOMImplementation
+  ## Returns a DOMImplementation
   var DOMImpl: PDOMImplementation
   new(DOMImpl)
   DOMImpl.Features = @[(name: "core", version: "2.0"), (name: "core", version: "1.0"), (name: "XML", version: "2.0")]
   return DOMImpl
 
 proc createDocument*(dom: PDOMImplementation, namespaceURI: string, qualifiedName: string): PDocument =
-  ##Creates an XML Document object of the specified type with its document element.
+  ## Creates an XML Document object of the specified type with its document element.
   var doc: PDocument
   new(doc)
   doc.FNamespaceURI = namespaceURI
@@ -142,8 +139,9 @@ proc createDocument*(dom: PDOMImplementation, namespaceURI: string, qualifiedNam
   return doc
   
 proc createDocument*(dom: PDOMImplementation, n: PElement): PDocument =
-  ##Creates an XML Document object of the specified type with its document element.
-  #This procedure is not in the specification, it's provided for the parser.
+  ## Creates an XML Document object of the specified type with its document element.
+  
+  # This procedure is not in the specification, it's provided for the parser.
   var doc: PDocument
   new(doc)
   doc.FDocumentElement = n
@@ -153,7 +151,7 @@ proc createDocument*(dom: PDOMImplementation, n: PElement): PDocument =
   return doc
   
 proc hasFeature*(dom: PDOMImplementation, feature: string, version: string = ""): bool =
-  ##Returns ``true`` if this ``version`` of the DomImplementation implements ``feature``, otherwise ``false``
+  ## Returns ``true`` if this ``version`` of the DomImplementation implements ``feature``, otherwise ``false``
   for iName, iVersion in items(dom.Features):
     if iName == feature:
       if version == "":
@@ -164,8 +162,8 @@ proc hasFeature*(dom: PDOMImplementation, feature: string, version: string = "")
   return False
 
 
-#Document
-#Attributes
+# Document
+# Attributes
   
 proc implementation*(doc: PDocument): PDOMImplementation =
   return doc.FImplementation
@@ -173,9 +171,9 @@ proc implementation*(doc: PDocument): PDOMImplementation =
 proc documentElement*(doc: PDocument): PElement = 
   return doc.FDocumentElement
 
-#Internal procedures
+# Internal procedures
 proc findNodes(nl: PNode, name: string): seq[PNode] =
-  #Made for getElementsByTagName
+  # Made for getElementsByTagName
   var r: seq[PNode] = @[]
   if nl.childNodes == nil: return @[]
   if nl.childNodes.len() == 0: return @[]
@@ -192,7 +190,7 @@ proc findNodes(nl: PNode, name: string): seq[PNode] =
   return r
   
 proc findNodesNS(nl: PNode, namespaceURI: string, localName: string): seq[PNode] =
-  #Made for getElementsByTagNameNS
+  # Made for getElementsByTagNameNS
   var r: seq[PNode] = @[]
   if nl.childNodes == nil: return @[]
   if nl.childNodes.len() == 0: return @[]
@@ -211,10 +209,10 @@ proc findNodesNS(nl: PNode, namespaceURI: string, localName: string): seq[PNode]
 
 #Procedures
 proc createAttribute*(doc: PDocument, name: string): PAttr =
-  ##Creates an Attr of the given name. Note that the Attr instance can then be set on an Element using the setAttributeNode method.
-  ##To create an attribute with a qualified name and namespace URI, use the createAttributeNS method. 
+  ## Creates an Attr of the given name. Note that the Attr instance can then be set on an Element using the setAttributeNode method.
+  ## To create an attribute with a qualified name and namespace URI, use the createAttributeNS method. 
   
-  #Check if name contains illegal characters
+  # Check if name contains illegal characters
   if illegalChars in name:
     raise newException(EInvalidCharacterErr, "Invalid character")
   
@@ -230,12 +228,12 @@ proc createAttribute*(doc: PDocument, name: string): PAttr =
   return AttrNode
 
 proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PAttr =
-  ##Creates an attribute of the given qualified name and namespace URI
+  ## Creates an attribute of the given qualified name and namespace URI
   
-  #Check if name contains illegal characters
+  # Check if name contains illegal characters
   if illegalChars in namespaceURI or illegalChars in qualifiedName:
     raise newException(EInvalidCharacterErr, "Invalid character")
-  #Exceptions
+  # Exceptions
   if qualifiedName.contains(':'):
     if namespaceURI == nil or namespaceURI == "":
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
@@ -264,17 +262,17 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
   return AttrNode
 
 proc createCDATASection*(doc: PDocument, data: string): PCDATASection =
-  ##Creates a CDATASection node whose value is the specified string.
+  ## Creates a CDATASection node whose value is the specified string.
   var CData: PCDATASection
   new(CData)
   CData.data = data
   CData.nodeValue = data
-  CData.FNodeName = "#text" #Not sure about this, but this is technically a TextNode
+  CData.FNodeName = "#text" # Not sure about this, but this is technically a TextNode
   CData.FNodeType = CDataSectionNode
   return CData
 
 proc createComment*(doc: PDocument, data: string): PComment =
-  ##Creates a Comment node given the specified string. 
+  ## Creates a Comment node given the specified string. 
   var Comm: PComment
   new(Comm)
   Comm.data = data
@@ -284,15 +282,15 @@ proc createComment*(doc: PDocument, data: string): PComment =
   return Comm
 
 proc createDocumentFragment*(doc: PDocument): PDocumentFragment =
-  ##Creates an empty DocumentFragment object.
+  ## Creates an empty DocumentFragment object.
   var DF: PDocumentFragment
   new(DF)
   return DF
 
 proc createElement*(doc: PDocument, tagName: string): PElement =
-  ##Creates an element of the type specified.
+  ## Creates an element of the type specified.
   
-  #Check if name contains illegal characters
+  # Check if name contains illegal characters
   if illegalChars in tagName:
     raise newException(EInvalidCharacterErr, "Invalid character")
     
@@ -311,7 +309,7 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
   return elNode
 
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
-  ##Creates an element of the given qualified name and namespace URI.
+  ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
     if namespaceURI == nil or namespaceURI == "":
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
@@ -319,7 +317,7 @@ proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: strin
       raise newException(ENamespaceErr, 
         "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
         
-  #Check if name contains illegal characters
+  # Check if name contains illegal characters
   if illegalChars in namespaceURI or illegalChars in qualifiedName:
     raise newException(EInvalidCharacterErr, "Invalid character")
     
@@ -342,7 +340,7 @@ proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: strin
   return elNode
 
 proc createProcessingInstruction*(doc: PDocument, target: string, data: string): PProcessingInstruction = 
-  ##Creates a ProcessingInstruction node given the specified name and data strings. 
+  ## Creates a ProcessingInstruction node given the specified name and data strings. 
   
   #Check if name contains illegal characters
   if illegalChars in target:
@@ -356,7 +354,7 @@ proc createProcessingInstruction*(doc: PDocument, target: string, data: string):
   return PI
 
 proc createTextNode*(doc: PDocument, data: string): PText = #Propably TextNode
-  ##Creates a Text node given the specified string. 
+  ## Creates a Text node given the specified string. 
   var txtNode: PText
   new(txtNode)
   txtNode.data = data
@@ -371,8 +369,8 @@ discard """proc getElementById*(doc: PDocument, elementId: string): PElement =
   #TODO"""
 
 proc getElementsByTagName*(doc: PDocument, tagName: string): seq[PNode] =
-  ##Returns a NodeList of all the Elements with a given tag name in
-  ##the order in which they are encountered in a preorder traversal of the Document tree. 
+  ## Returns a NodeList of all the Elements with a given tag name in
+  ## the order in which they are encountered in a preorder traversal of the Document tree. 
   var result: seq[PNode] = @[]
   if doc.FDocumentElement.FNodeName == tagName or tagName == "*":
     result.add(doc.FDocumentElement)
@@ -381,8 +379,8 @@ proc getElementsByTagName*(doc: PDocument, tagName: string): seq[PNode] =
   return result
   
 proc getElementsByTagNameNS*(doc: PDocument, namespaceURI: string, localName: string): seq[PNode] =
-  ##Returns a NodeList of all the Elements with a given localName and namespaceURI
-  ##in the order in which they are encountered in a preorder traversal of the Document tree. 
+  ## Returns a NodeList of all the Elements with a given localName and namespaceURI
+  ## in the order in which they are encountered in a preorder traversal of the Document tree. 
   var result: seq[PNode] = @[]
   if doc.FDocumentElement.FLocalName == localName or localName == "*":
     if doc.FDocumentElement.FNamespaceURI == namespaceURI or namespaceURI == "*":
@@ -450,57 +448,76 @@ proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
 
 # Node
 # Attributes
-proc Attributes*(n: PNode): seq[PAttr] =
-  if n.attributes == nil: n.attributes = @[] # Initialize the sequence if it's nil
-  return n.attributes
   
 proc firstChild*(n: PNode): PNode =
+  ## Returns this node's first child
+
   if n.childNodes.len() > 0:
     return n.childNodes[0]
   else:
     return nil
   
 proc lastChild*(n: PNode): PNode =
+  ## Returns this node's last child
+
   if n.childNodes.len() > 0:
     return n.childNodes[n.childNodes.len() - 1]
   else:
     return nil
   
 proc localName*(n: PNode): string =
+  ## Returns this nodes local name
+
   return n.FLocalName
 
 proc namespaceURI*(n: PNode): string =
+  ## Returns this nodes namespace URI
+
   return n.FNamespaceURI
 
 proc nextSibling*(n: PNode): PNode =
+  ## Returns the next sibling of this node
+
   var nLow: int = low(n.FParentNode.childNodes)
   var nHigh: int = high(n.FParentNode.childNodes)
   for i in nLow..nHigh:
-    if n.FParentNode.childNodes[i] == n: # HAVE TO TEST this line, not sure if ``==`` will work
+    if n.FParentNode.childNodes[i] == n:
       return n.FParentNode.childNodes[i + 1]
   return nil
 
 proc nodeName*(n: PNode): string =
+  ## Returns the name of this node
+
   return n.FNodeName
 
 proc nodeType*(n: PNode): int =
+  ## Returns the type of this node
+
   return n.FNodeType
 
 proc ownerDocument*(n: PNode): PDocument =
+  ## Returns the owner document of this node
+
   return n.FOwnerDocument
 
 proc parentNode*(n: PNode): PNode =
+  ## Returns the parent node of this node
+
   return n.FParentNode
   
 proc previousSibling*(n: PNode): PNode =
+  ## Returns the previous sibling of this node
+
   var nLow: int = low(n.FParentNode.childNodes)
   var nHigh: int = high(n.FParentNode.childNodes)
   for i in nLow..nHigh:
-    if n.FParentNode.childNodes[i] == n: # HAVE TO TEST this line, not sure if ``==`` will work
+    if n.FParentNode.childNodes[i] == n:
       return n.FParentNode.childNodes[i - 1]
   return nil
   
 proc `prefix=`*(n: var PNode, value: string) =
+  ## Modifies the prefix of this node
+
   # Setter
   # Check if name contains illegal characters
   if illegalChars in value:
@@ -532,8 +549,11 @@ proc appendChild*(n: PNode, newChild: PNode) =
   ## Adds the node newChild to the end of the list of children of this node.
   ## If the newChild is already in the tree, it is first removed.
   
-  # TODO - Check if n contains newChild
-  # TODO - Exceptions
+  # Check if n contains newChild
+  if n.childNodes != nil:
+    for i in low(n.childNodes)..high(n.childNodes):
+      if n.childNodes[i] == newChild:
+        raise newException(EHierarchyRequestErr, "The node to append is already in this nodes children.")
   
   # Check if newChild is from this nodes document
   if n.FOwnerDocument != newChild.FOwnerDocument:
@@ -541,6 +561,9 @@ proc appendChild*(n: PNode, newChild: PNode) =
   
   if n == newChild:
     raise newException(EHierarchyRequestErr, "You can't add a node into itself")
+  
+  if n.nodeType in childlessObjects:
+    raise newException(ENoModificationAllowedErr, "Cannot append children to a childless node")
   
   if n.childNodes == nil: n.childNodes = @[]
     
@@ -604,10 +627,43 @@ proc isSupported*(n: PNode, feature: string, version: string): bool =
   ## feature and that feature is supported by this node. 
   return n.FOwnerDocument.FImplementation.hasFeature(feature, version)
 
+proc isEmpty(s: string): bool =
+
+  if s == "" or s == nil:
+    return True
+  for i in items(s):
+    if i != ' ':
+      return False
+  return True
+
 proc normalize*(n: PNode) =
-  ## Puts all Text nodes in the full depth of the sub-tree underneath this Node
+  ## Merges all seperated TextNodes together, and removes any empty TextNodes
+  var curTextNode: PNode = nil
+  var i: int = 0
   
-  # TODO
+  var newChildNodes: seq[PNode] = @[]
+  while True:
+    if i >= n.childNodes.len:
+      break
+    if n.childNodes[i].nodeType == TextNode:
+      
+      #If the TextNode is empty, remove it
+      if PText(n.childNodes[i]).data.isEmpty():
+        inc(i)
+      
+      if curTextNode == nil:
+        curTextNode = n.childNodes[i]
+      else:
+        PText(curTextNode).data.add(PText(n.childNodes[i]).data)
+        curTextNode.nodeValue.add(PText(n.childNodes[i]).data)
+        inc(i)
+    else:
+      newChildNodes.add(curTextNode)
+      newChildNodes.add(n.childNodes[i])
+      curTextNode = nil
+    
+    inc(i)
+  n.childNodes = newChildNodes
 
 proc removeChild*(n: PNode, oldChild: PNode): PNode =
   ## Removes the child node indicated by ``oldChild`` from the list of children, and returns it.
@@ -791,26 +847,32 @@ proc setNamedItemNS*(NList: var seq[PAttr], arg: PAttr): PAttr =
     NList[index] = arg
     return item # Return the replaced node
     
-# TODO - Maybe implement a ChildlessNode!^
-    
 # CharacterData - Decided to implement this, 
 # Didn't add the procedures, because you can just edit .data
 
 # Attr
 # Attributes
 proc name*(a: PAttr): string =
+  ## Returns the name of the Attribute
+
   return a.FName
   
 proc specified*(a: PAttr): bool =
+  ## Specifies whether this attribute was specified in the original document
+
   return a.FSpecified
   
 proc ownerElement*(a: PAttr): PElement = 
+  ## Returns this Attributes owner element
+
   return a.FOwnerElement
 
 # Element
 # Attributes
 
 proc tagName*(el: PElement): string =
+  ## Returns the Element Tag Name
+
   return el.FTagName
 
 # Procedures
@@ -960,11 +1022,29 @@ proc setAttributeNS*(el: PElement, namespaceURI, localName, value: string) =
 proc splitData*(TextNode: PText, offset: int): PText =
   ## Breaks this node into two nodes at the specified offset, 
   ## keeping both in the tree as siblings.
+  
+  if offset > TextNode.data.len():
+    raise newException(EIndexSizeErr, "Index out of bounds")
+  
+  var left: string = TextNode.data.copy(0, offset)
+  TextNode.data = left
+  var right: string = TextNode.data.copy(offset, TextNode.data.len())
+  
+  if TextNode.FParentNode != nil:
+    for i in low(TextNode.FParentNode.childNodes)..high(TextNode.FParentNode.childNodes):
+      if TextNode.FParentNode.childNodes[i] == TextNode:
+        var newNode: PText = TextNode.FOwnerDocument.createTextNode(right)
+        TextNode.FParentNode.childNodes.insert(newNode, i)
+        return newNode
+  else:
+    var newNode: PText = TextNode.FOwnerDocument.createTextNode(right)
+    return newNode
 
-  # TODO - need insert(seq[T])
 
 # ProcessingInstruction
-proc target*(PI: PProcessingInstruction): string = 
+proc target*(PI: PProcessingInstruction): string =
+  ## Returns the Processing Instructions target
+
   return PI.FTarget
 
     

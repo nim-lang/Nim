@@ -1257,7 +1257,9 @@ proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
   ## available for the ECMAScript target too!
 
-template newException(exceptn, message: expr): expr =
+template newException*(exceptn, message: expr): expr = 
+  ## creates an exception object of type "exceptn" and sets its ``msg`` field
+  ## to `message`. Returns the new exception object. 
   block: # open a new scope
     var
       e: ref exceptn
