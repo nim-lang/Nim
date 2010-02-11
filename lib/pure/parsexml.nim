@@ -196,6 +196,12 @@ proc errorMsgExpected*(my: TXmlParser, tag: string): string =
   ## other error messages 
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), "<$1> expected" % tag]
+
+proc errorMsg*(my: TXmlParser, msg: string): string = 
+  ## returns an error message with text `msg` in the same format as the
+  ## other error messages 
+  result = "$1($2, $3) Error: $4" % [
+    my.filename, $getLine(my), $getColumn(my), msg]
     
 proc markError(my: var TXmlParser, kind: TXmlError) {.inline.} = 
   my.err = kind

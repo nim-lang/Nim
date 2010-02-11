@@ -18,13 +18,14 @@ type
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
+    xnEntity,           ## an entity (like ``&thing;``)
     xnComment           ## an XML comment
   
   PXmlAttributes* = PStringTable ## an alias for a string to string mapping
   
   TXmlNode {.pure, final, acyclic.} = object 
     case k: TXmlNodeKind
-    of xnText, xnComment, xnCData: 
+    of xnText, xnComment, xnCData, xnEntity: 
       fText: string
     of xnElement:
       fTag: string
@@ -59,10 +60,15 @@ proc newCData*(cdata: string): PXmlNode =
   result = newXmlNode(xnCData)
   result.fText = cdata
 
+proc newEntity*(entity: string): PXmlNode = 
+  ## creates a new ``PXmlNode`` of kind ``xnEntity`` with the text `entity`.
+  result = newXmlNode(xnCData)
+  result.fText = cdata
+
 proc text*(n: PXmlNode): string {.inline.} = 
-  ## gets the associated text with the node `n`. `n` can be a CDATA, Text
-  ## or comment node.
-  assert n.k in {xnText, xnComment, xnCData}
+  ## gets the associated text with the node `n`. `n` can be a CDATA, Text,
+  ## comment, or entity node.
+  assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
 proc tag*(n: PXmlNode): string {.inline.} = 
@@ -181,6 +187,10 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
     result.add("<![CDATA[")
     result.add(n.fText)
     result.add("]]>")
+  of xnEntity:
+    result.add('&')
+    result.add(n.fText)
+    result.add(';')
 
 proc `$`*(n: PXmlNode): string =
   ## converts `n` into its string representation.

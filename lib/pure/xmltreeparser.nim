@@ -9,11 +9,87 @@
 
 ## This module parses an XML document and creates its XML tree representation.
 
-import streams, parsexml, xmltree
+import streams, parsexml, strtabs, xmltree, hxmlcommon
 
+type
+  EInvalidXml* = object of E_Base ## exception that is raised for invalid XML
+    errors*: seq[string]          ## all detected parsing errors
 
-proc parse*(x: var TXmlParser, father: PXmlNode) =
+proc raiseInvalidXml(errors: seq[string]) = 
+  var e: ref EInvalidXml
+  new(e)
+  e.msg = errors[0]
+  e.errors = errors
+  raise e
+
+proc addNode(father, son: PXmlNode) = 
+  if son != nil: add(father, son)
+
+proc parse*(x: var TXmlParser, errors: var seq[string]): PXmlNode =
+  case x.kind
+  of xmlComment: 
+    result = newComment(x.text)
+    next(x)
+  of xmlCharData, xmlWhitespace:
+    result = newText(x.text)
+    next(x)
+  of xmlPI, xmlSpecial:
+    # we just ignore processing instructions for now
+    next(x)
+  of xmlError:
+    errors.add(errorMsg(x))
+    next(x)
+  of xmlElementStart:    ## ``<elem>``
+    result = newElement(x.elementName)
+    next(x)
+    while true:
+      case x.kind
+      of xmlElementEnd: 
+        if x.elementName == result.tag: 
+          next(x)
+        else:
+          errors.add(errorMsg(x, "</$1> expected" % result.tag))
+          # do not skip it here!
+        break
+      of xmlEof:
+        errors.add(errorMsg(x, "</$1> expected" % result.tag))
+        break
+      else:
+        result.addNode(parse(x, errors))
+  of xmlElementEnd:       ## ``</elem>``
+    errors.add(errorMsg(x, "unexpected ending tag: " & x.elementName))
+  of xmlElementOpen:     ## ``<elem 
+    result = newElement(x.elementName)
+    next(x)
+    result.attr = newStringTable()
+    while true: 
+      case x.kind
+      of xmlAttribute:
+        result.attr[x.attrKey] = x.attrValue
+        next(x)
+      of xmlElementClose:
+        next(x)
+        break
+      of xmlError:
+        errors.add(errorMsg(x))
+        next(x)
+        break
+      else:
+        errors.add(errorMsg(x, "'>' expected" % result.tag))
+        next(x)
+        break
   
+  of xmlAttribute, xmlElementClose:
+    errors.add(errorMsg(x, "<some_tag> expected")
+    next(x)
+  of xmlCData: 
+    result = newCData(x.charData)
+    next(x)
+  of xmlEntity:
+    ## &entity;
+    ## XXX To implement!
+    next(x)
+  of xmlEof: nil
 
 proc parseXml*(s: PStream, filename: string, 
                errors: var seq[string]): PXmlNode = 
@@ -21,27 +97,31 @@ proc parseXml*(s: PStream, filename: string,
   ## occured parsing error is added to the `errors` sequence.
   var x: TXmlParser
   open(x, s, filename, {reportComments})
-  
-  result = newElement("html")
   while true:
     x.next()
     case x.kind
-    of xmlWhitespace: nil # just skip it
-    of xmlComment: 
-      result.add(newComment(x.text))
-  
+    of xmlElementOpen, xmlElementStart: 
+      result = parse(x, errors)
+      break
+    of xmlComment, xmlWhitespace: nil # just skip it
+    of xmlError:
+      errors.add(errorMsg(x))
+    else:
+      errors.add(errorMsg(x, "<some_tag> expected")
+      break
   close(x)
 
 proc parseXml*(s: PStream): PXmlNode = 
   ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
-  ## errors are ignored.
+  ## errors are turned into an ``EInvalidXML`` exception.
   var errors: seq[string] = @[]
   result = parseXml(s, "unknown_html_doc", errors)
+  if errors.len > 0: raiseInvalidXMl(errors)
 
 proc loadXml*(path: string, reportErrors = false): PXmlNode = 
   ## Loads and parses XML from file specified by ``path``, and returns 
   ## a ``PXmlNode``. If `reportErrors` is true, the parsing errors are
-  ## ``echo``ed.
+  ## ``echo``ed, otherwise an exception is thrown.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(EIO, "Unable to read file: " & path)
   
@@ -49,4 +129,6 @@ proc loadXml*(path: string, reportErrors = false): PXmlNode =
   result = parseXml(s, path, errors)
   if reportErrors: 
     for msg in items(errors): echo(msg)
+  elif errors.len > 0: 
+    raiseInvalidXMl(errors)
 
