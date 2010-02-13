@@ -475,7 +475,8 @@ type
   end;
 
 const
-  OverloadableSyms = {@set}[skProc, skMethod, skIterator, skConverter];
+  OverloadableSyms = {@set}[skProc, skMethod, skIterator, skConverter,
+                            skModule];
 
 const // "MagicToStr" array:
   MagicToStr: array [TMagic] of string = (

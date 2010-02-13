@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -229,12 +229,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSym = 
   # identifier with visibility
-  var v: PIdent
-  result = nil
   if n.kind == nkPostfix: 
     if (sonsLen(n) == 2) and (n.sons[0].kind == nkIdent): 
       result = newSymS(kind, n.sons[1], c)
-      v = n.sons[0].ident
+      var v = n.sons[0].ident
       if (sfStar in allowed) and (v.id == ord(wStar)): 
         incl(result.flags, sfStar)
       elif (sfMinus in allowed) and (v.id == ord(wMinus)): 

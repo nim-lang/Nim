@@ -34,14 +34,6 @@ type
   ESyntaxErr* = object of EDOMException ## If an invalid or illegal string is specified.
   EWrongDocumentErr* = object of EDOMException ## If a node is used in a different document than the one that created it (that doesn't support it)
 
-template newException(exceptn, message: expr): expr =
-  block: # open a new scope
-    var
-      e: ref exceptn
-    new(e)
-    e.msg = message
-    e
-
 const
   ElementNode* = 1
   AttributeNode* = 2

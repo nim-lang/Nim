@@ -21,15 +21,6 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
-# copied from excpt.nim, because I don't want to make this template public
-template newException(exceptn, message: expr): expr =
-  block: # open a new scope
-    var
-      e: ref exceptn
-    new(e)
-    e.msg = message
-    e
-
 const
   countCacheMisses = false
 

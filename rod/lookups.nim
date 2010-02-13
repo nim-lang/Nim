@@ -71,10 +71,9 @@ proc addDeclAt(c: PContext, sym: PSym, at: Natural) =
     liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
   
 proc addOverloadableSymAt(c: PContext, fn: PSym, at: Natural) = 
-  var check: PSym
   if not (fn.kind in OverloadableSyms): 
     InternalError(fn.info, "addOverloadableSymAt")
-  check = StrTableGet(c.tab.stack[at], fn.name)
+  var check = StrTableGet(c.tab.stack[at], fn.name)
   if (check != nil) and not (check.Kind in OverloadableSyms): 
     liMessage(fn.info, errAttemptToRedefine, fn.Name.s)
   SymTabAddAt(c.tab, fn, at)

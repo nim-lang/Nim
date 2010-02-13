@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.deadCodeElim: on.}
+
 # leave out unused functions so the unit can be used on win2000 as well
 
 #+-------------------------------------------------------------------------

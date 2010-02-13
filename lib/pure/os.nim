@@ -26,15 +26,6 @@ else:
 
 include "system/ansi_c"
 
-# copied from excpt.nim, because I don't want to make this template public
-template newException(exceptn, message: expr): expr =
-  block: # open a new scope
-    var
-      e: ref exceptn
-    new(e)
-    e.msg = message
-    e
-
 const
   doslike = defined(windows) or defined(OS2) or defined(DOS)
     # DOS-like filesystem

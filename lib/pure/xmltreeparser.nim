@@ -9,7 +9,7 @@
 
 ## This module parses an XML document and creates its XML tree representation.
 
-import streams, parsexml, strtabs, xmltree, hxmlcommon
+import streams, parsexml, strtabs, xmltree
 
 type
   EInvalidXml* = object of E_Base ## exception that is raised for invalid XML
@@ -25,13 +25,30 @@ proc raiseInvalidXml(errors: seq[string]) =
 proc addNode(father, son: PXmlNode) = 
   if son != nil: add(father, son)
 
-proc parse*(x: var TXmlParser, errors: var seq[string]): PXmlNode =
+proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
+                     errors: var seq[string]) =
+  while true:
+    case x.kind
+    of xmlElementEnd: 
+      if x.elementName == result.tag: 
+        next(x)
+      else:
+        errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+        # do not skip it here!
+      break
+    of xmlEof:
+      errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+      break
+    else:
+      result.addNode(parse(x, errors))
+
+proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
   case x.kind
   of xmlComment: 
-    result = newComment(x.text)
+    result = newComment(x.charData)
     next(x)
   of xmlCharData, xmlWhitespace:
-    result = newText(x.text)
+    result = newText(x.charData)
     next(x)
   of xmlPI, xmlSpecial:
     # we just ignore processing instructions for now
@@ -42,23 +59,10 @@ proc parse*(x: var TXmlParser, errors: var seq[string]): PXmlNode =
   of xmlElementStart:    ## ``<elem>``
     result = newElement(x.elementName)
     next(x)
-    while true:
-      case x.kind
-      of xmlElementEnd: 
-        if x.elementName == result.tag: 
-          next(x)
-        else:
-          errors.add(errorMsg(x, "</$1> expected" % result.tag))
-          # do not skip it here!
-        break
-      of xmlEof:
-        errors.add(errorMsg(x, "</$1> expected" % result.tag))
-        break
-      else:
-        result.addNode(parse(x, errors))
-  of xmlElementEnd:       ## ``</elem>``
+    untilElementEnd(x, result, errors)
+  of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elementName))
-  of xmlElementOpen:     ## ``<elem 
+  of xmlElementOpen: 
     result = newElement(x.elementName)
     next(x)
     result.attr = newStringTable()
@@ -75,12 +79,12 @@ proc parse*(x: var TXmlParser, errors: var seq[string]): PXmlNode =
         next(x)
         break
       else:
-        errors.add(errorMsg(x, "'>' expected" % result.tag))
+        errors.add(errorMsg(x, "'>' expected"))
         next(x)
         break
-  
+    untilElementEnd(x, result, errors)
   of xmlAttribute, xmlElementClose:
-    errors.add(errorMsg(x, "<some_tag> expected")
+    errors.add(errorMsg(x, "<some_tag> expected"))
     next(x)
   of xmlCData: 
     result = newCData(x.charData)
@@ -107,7 +111,7 @@ proc parseXml*(s: PStream, filename: string,
     of xmlError:
       errors.add(errorMsg(x))
     else:
-      errors.add(errorMsg(x, "<some_tag> expected")
+      errors.add(errorMsg(x, "<some_tag> expected"))
       break
   close(x)
 
