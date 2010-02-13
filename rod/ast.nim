@@ -502,9 +502,12 @@ type
     counter*: int
     data*: TObjectSeq
 
+# BUGFIX: a module is overloadable so that a proc can have the
+# same name as an imported module. This is necessary because of
+# the poor naming choices in the standard library.
 
 const 
-  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter}
+  OverloadableSyms* = {skProc, skMethod, skIterator, skConverter, skModule}
 
   GenericTypes*: TTypeKinds = {tyGenericInvokation, tyGenericBody, 
     tyGenericParam}

@@ -21,6 +21,8 @@
 #   LCC-win32 (c) Jacob Navia
 #*******************************
 
+{.deadCodeElim: on.}
+
 import
   windows
 

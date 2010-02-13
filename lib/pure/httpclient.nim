@@ -60,14 +60,6 @@ type
                                      ## and ``postContent`` proc,
                                      ## when the server returns an error
 
-template newException(exceptn, message: expr): expr =
-  block: # open a new scope
-    var
-      e: ref exceptn
-    new(e)
-    e.msg = message
-    e
-
 proc httpError(msg: string) =
   var e: ref EInvalidProtocol
   new(e)

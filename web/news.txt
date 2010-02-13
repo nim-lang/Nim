@@ -19,6 +19,7 @@ Bugfixes
 - ``system.write(f: TFile, s: string)`` now works even if ``s`` contains binary
   zeros.
 - Fixed a bug in ``os.setFilePermissions`` for Windows.
+- An overloadable symbol can now have the same name as an imported module.
 
 
 Additions

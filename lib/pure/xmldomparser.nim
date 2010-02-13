@@ -17,14 +17,6 @@ type
   #Parsing errors
   EMismatchedTag* = object of E_Base ## Raised when a tag is not properly closed
   EParserError* = object of E_Base ## Raised when an unexpected XML Parser event occurs
-
-template newException(exceptn, message: expr): expr =
-  block: # open a new scope
-    var
-      e: ref exceptn
-    new(e)
-    e.msg = message
-    e
     
 proc parseText(x: var TXmlParser, doc: var PDocument): PText =
   result = doc.createTextNode(x.charData())

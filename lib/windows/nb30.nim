@@ -10,6 +10,8 @@
 
 # This module contains the definitions for portable NetBIOS 3.0 support. 
 
+{.deadCodeElim: on.}
+
 import                        # Data structure templates 
   Windows
 
