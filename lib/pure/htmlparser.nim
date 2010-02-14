@@ -281,8 +281,8 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
           # some tags are common to have no ``</end>``, like ``<li>``:
           errors.add(expected(x, result))
           break
-      of tagTr, tagTd, tagTh:
-        if htmlTag(x.elementName) in {tagTr, tagTd, tagTh}:
+      of tagTr, tagTd, tagTh, tagTfoot, tagThead:
+        if htmlTag(x.elementName) in {tagTr, tagTd, tagTh, tagTfoot, tagThead}:
           errors.add(expected(x, result))
           break
       of tagOptgroup:
