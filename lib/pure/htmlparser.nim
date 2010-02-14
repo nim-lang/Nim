@@ -152,7 +152,7 @@ const
     tagOl, tagP, tagPre, tagTable, tagUl, tagCenter, tagDir, tagIsindex, 
     tagMenu, tagNoframes}
   SingleTags* = {tagArea, tagBase, tagBasefont, 
-    tagBr, tagCol, tagFrame, tagHr, tagImg, tagInput, tagIsindex,
+    tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
     tagLink, tagMeta, tagParam}
   
   Entities = [
@@ -276,13 +276,17 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
     case x.kind
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
-      of tagLi, tagP, tagDt, tagDd, tagOption:
+      of tagLi, tagP, tagDt, tagDd, tagInput, tagOption:
         if htmlTag(x.elementName) notin InlineTags:
           # some tags are common to have no ``</end>``, like ``<li>``:
           errors.add(expected(x, result))
           break
       of tagTr, tagTd, tagTh:
         if htmlTag(x.elementName) in {tagTr, tagTd, tagTh}:
+          errors.add(expected(x, result))
+          break
+      of tagOptgroup:
+        if htmlTag(x.elementName) in {tagOption, tagOptgroup}:
           errors.add(expected(x, result))
           break
       else: nil
