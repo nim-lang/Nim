@@ -138,8 +138,7 @@ const
     "s", "samp", "script", "select", "small", "span", 
     "strike", "strong", "style", "sub", "sup", "table", 
     "tbody", "td", "textarea", "tfoot", "th", "thead", 
-    "title", "tr", "tt", "u", "ul", "var"
-  ]
+    "title", "tr", "tt", "u", "ul", "var"]
   InlineTags* = {tagA, tagAbbr, tagAcronym, tagApplet, tagB, tagBasefont,
     tagBdo, tagBig, tagBr, tagButton, tagCite, tagCode, tagDel, tagDfn,
     tagEm, tagFont, tagI, tagImg, tagIns, tagInput, tagIframe, tagKbd,
@@ -154,7 +153,7 @@ const
     tagMenu, tagNoframes}
   SingleTags* = {tagArea, tagBase, tagBasefont, 
     tagBr, tagCol, tagFrame, tagHr, tagImg, tagInput, tagIsindex,
-    tagLink, tagMeta, tagParam} # `tagP` can be both!
+    tagLink, tagMeta, tagParam}
   
   Entities = [
     ("nbsp", 0x00A0), ("iexcl", 0x00A1), ("cent", 0x00A2), ("pound", 0x00A3),
@@ -247,19 +246,26 @@ proc htmlTag*(n: PXmlNode): THtmlTag =
     n.clientData = binaryStrSearch(tagStrs, n.tag)+1
   result = THtmlTag(n.clientData)
 
+proc htmlTag*(s: string): THtmlTag =
+  ## converts `s` to a ``THtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
+  ## returned.
+  result = THtmlTag(binaryStrSearch(tagStrs, s.toLower)+1)
+
 proc entityToUtf8*(entity: string): string = 
   ## converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
   for name, val in items(entities):
-    if name == entity:
-      return toUTF8(TRune(val))
+    if name == entity: return toUTF8(TRune(val))
   result = ""
 
 proc addNode(father, son: PXmlNode) = 
   if son != nil: add(father, son)
 
 proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode
+
+proc expected(x: var TXmlParser, n: PXmlNode): string =
+  result = errorMsg(x, "</" & n.tag & "$1> expected")
 
 proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
                      errors: var seq[string]) =
@@ -268,15 +274,28 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
       return
   while true:
     case x.kind
+    of xmlElementStart, xmlElementOpen:
+      case result.htmlTag
+      of tagLi, tagP, tagDt, tagDd, tagOption:
+        if htmlTag(x.elementName) notin InlineTags:
+          # some tags are common to have no ``</end>``, like ``<li>``:
+          errors.add(expected(x, result))
+          break
+      of tagTr, tagTd, tagTh:
+        if htmlTag(x.elementName) in {tagTr, tagTd, tagTh}:
+          errors.add(expected(x, result))
+          break
+      else: nil
+      result.addNode(parse(x, errors))
     of xmlElementEnd: 
       if cmpIgnoreCase(x.elementName, result.tag) == 0: 
         next(x)
       else:
-        errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+        errors.add(expected(x, result))
         # do not skip it here!
       break
     of xmlEof:
-      errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+      errors.add(expected(x, result))
       break
     else:
       result.addNode(parse(x, errors))
@@ -296,13 +315,13 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     errors.add(errorMsg(x))
     next(x)
   of xmlElementStart:
-    result = newElement(x.elementName)
+    result = newElement(x.elementName.toLower)
     next(x)
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elementName))
   of xmlElementOpen: 
-    result = newElement(x.elementName)
+    result = newElement(x.elementName.toLower)
     next(x)
     result.attr = newStringTable()
     while true: 
