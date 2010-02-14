@@ -482,12 +482,13 @@ proc `%`(formatstr: string, a: openarray[string]): string =
   addf(result, formatstr, a)
 
 proc cmpIgnoreCase(a, b: string): int =
-  # makes usage of the fact that strings are zero-terminated
-  for i in 0..len(a)-1:
-    var aa = toLower(a[i])
-    var bb = toLower(b[i])
-    result = ord(aa) - ord(bb)
-    if result != 0: break
+  var i = 0
+  while i < a.len and i < b.len:
+    result = ord(toLower(a[i])) - ord(toLower(b[i]))
+    if result != 0: return
+    inc(i)
+  result = a.len - b.len
+
 
 {.push checks: off, line_trace: off .} # this is a hot-spot in the compiler!
                                        # thus we compile without checks here
