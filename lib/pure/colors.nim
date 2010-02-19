@@ -1,5 +1,4 @@
 #
-#
 #            Nimrod's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
 #
@@ -10,19 +9,7 @@
 ## This module implements graphical output for Nimrod; the current
 ## implementation uses Cairo under the surface. 
 
-import cairo
-
 type
-  PSurface* = ref TSurface
-  TSurface {.pure, final.} = object
-    c: cairo.PSurface
-    
-    ... # internal data
-  
-  
-  TRect* = tuple[x, y, width, height: int]
-  TPoint* = tuple[x, y: int]
-  
   TColor* = distinct int ## a color stored as RGB
 
 proc `==` *(a, b: TColor): bool {.borrow.}
@@ -72,14 +59,14 @@ template mix*(a, b: TColor, fn: expr): expr =
   template `><` (x: expr): expr =
     # keep it in the range 0..255
     block:
-      var xx = x # eval only once
-      if xx >% 255:
-        xx = if xx < 0: 0 else: 255
-      xx
+      var y = x # eval only once
+      if y >% 255:
+        y = if y < 0: 0 else: 255
+      y
   
-  extract(a, ar, ag, ab)
-  extract(b, br, bg, bb)
-  rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
+  bind extract(a, ar, ag, ab)
+  bind extract(b, br, bg, bb)
+  bind rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
 
 
 const
@@ -369,44 +356,40 @@ const
 proc `$`*(c: TColor): string = 
   ## converts a color into its textual representation. Example: ``#00FF00``.
   result = '#' & toHex(int(c), 6)
-  
-proc newSurface*(width, height: int): PSurface
+
+proc binaryStrSearch(x: openarray[tuple[name: string, col: TColor]], 
+                     y: string): int = 
+  var a = 0
+  var b = len(x) - 1
+  while a <= b: 
+    var mid = (a + b) div 2
+    var c = cmp(x[mid].name, y)
+    if c < 0: a = mid + 1
+    elif c > 0: b = mid - 1
+    else: return mid
+  result = - 1
   
 proc parseColor*(name: string): TColor = 
-  ## parses `s` to a color value. If no valid color could be 
+  ## parses `name` to a color value. If no valid color could be 
   ## parsed ``EInvalidValue`` is raised.
-  if name[0] == '#'
+  if name[0] == '#':
+    result = TColor(parseHex(name))
+  else:
+    var idx = binaryStrSearch(colorNames, name)
+    if idx < 0: raise newException(EInvalidValue, "unkown color: " & name)
+    result = colorNames[idx][1]
 
-
-proc isColor*(name: string): bool
+proc isColor*(name: string): bool =
+  ## returns true if `name` is a known color name or a hexadecimal color 
+  ## prefixed with ``#``.
+  if name[0] == '#': 
+    for i in 1 .. name.len-1: 
+      if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
+    result = true
+  else:
+    result = binaryStrSearch(colorNames, name) >= 0
 
 proc rgb*(r, g, b: range[0..255]): TColor =
   ## constructs a color from RGB values.
   result = rawRGB(r, g, b)
-
-proc drawRect*(sur: PSurface, r: TRect, col: TColor)
-proc fillRect*(sur: PSurface, r: TRect, col: TColor)
-
-proc drawCircle*(sur: PSurface, mid: TPoint, radius: int)
-proc drawCircle*(sur: PSurface, r: TRect)
-
-proc fillCircle*(sur: PSurface, mid: TPoint, radius: int)
-proc fillCircle*(sur: PSurface, r: TRect)
-
-proc drawElipse*(sur: PSurface, r: TRect)
-proc fillElipse*(sur: PSurface, r: TRect)
-
-
-proc textBounds*(text: string): tuple[len, height: int]
-proc drawText*(sur: PSurface, p: TPoint, text: string)
-
-proc drawLine*(sur: PSurface, a, b: TPoint)
-
-proc `[]`*(sur: PSurface, p: TPoint): TColor
-proc `[,]`*(sur: PSurface, x, y: int): TColor
-proc `[]=`*(sur: PSurface, p: TPoint, col: TColor)
-proc `[,]=`*(sur: PSurface, x, y: int, col: TColor)
-
-proc writeToPNG*(sur: PSurface, filename: string)
-
 
