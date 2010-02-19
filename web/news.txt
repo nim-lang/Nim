@@ -20,6 +20,7 @@ Bugfixes
   zeros.
 - Fixed a bug in ``os.setFilePermissions`` for Windows.
 - An overloadable symbol can now have the same name as an imported module.
+- Fixed a serious bug in ``strutils.cmpIgnoreCase``. 
 
 
 Additions

@@ -1,4 +1,4 @@
-import glib2, gtk2, gdk2, osproc, dialogs
+import glib2, gtk2, gdk2, osproc, dialogs, strutils
 
 type
   output = tuple[compiler, app: string]
@@ -55,17 +55,19 @@ proc FileSaveClicked(menuitem: PGtkMenuItem, userdata: pgpointer) =
 
 
 proc inputKeyPressed(widget: PGtkWidget, event: PGdkEventKey, userdata: pgpointer): bool =
-  if event.keyval == 65505:
+  if ($gdk_keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is pressed
     shiftPressed = True
   
   return False
 proc inputKeyReleased(widget: PGtkWidget, event: PGdkEventKey, userdata: pgpointer): bool =
-  if event.keyval == 65505:
+  echo(gdk_keyval_name(event.keyval))
+  if ($gdk_keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
     shiftPressed = False
     
-  if event.keyval == 65293:
+  if ($gdk_keyval_name(event.keyval)).tolower() == "return":
+    echo($gdk_keyval_name(event.keyval), "Shift_L")
     # Enter pressed
     if shiftPressed == False:
       var startIter: TGtkTextIter

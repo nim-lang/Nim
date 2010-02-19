@@ -189,6 +189,9 @@ proc GetCommandLineA*(): CString {.importc, stdcall, dynlib: "kernel32".}
 proc rdFileTime*(f: FILETIME): int64 = 
   result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
 
+proc rdFileSize*(f: TWin32FindData): int64 = 
+  result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
+
 proc Sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 
