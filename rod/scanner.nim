@@ -50,7 +50,8 @@ type
     tkBind, tkBlock, tkBreak, tkCase, tkCast, 
     tkConst, tkContinue, tkConverter, tkDiscard, tkDistinct, tkDiv, tkElif, 
     tkElse, tkEnd, tkEnum, tkExcept, tkFinally, tkFor, tkFrom, tkGeneric, tkIf, 
-    tkImplies, tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator, tkLambda, 
+    tkImplies, tkImport, tkIn, tkInclude, tkIs, tkIsnot, tkIterator,
+    tkLambda, tkLet,
     tkMacro, tkMethod, tkMod, tkNil, tkNot, tkNotin, tkObject, tkOf, tkOr, 
     tkOut, tkProc, tkPtr, tkRaise, tkRef, tkReturn, tkShl, tkShr, tkTemplate, 
     tkTry, tkTuple, tkType, tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
@@ -82,7 +83,8 @@ const
     "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter", "discard", "distinct", "div", "elif", 
     "else", "end", "enum", "except", "finally", "for", "from", "generic", "if", 
-    "implies", "import", "in", "include", "is", "isnot", "iterator", "lambda", 
+    "implies", "import", "in", "include", "is", "isnot", "iterator",
+    "lambda", "let", 
     "macro", "method", "mod", "nil", "not", "notin", "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "template", 
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
@@ -769,7 +771,8 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       Inc(L.bufpos)
     of '\"': 
       getString(L, tok, false)
-    of '\'': 
+    of '\'':
+      tok.tokType = tkCharLit
       getCharacter(L, tok)
       tok.tokType = tkCharLit
     of lexbase.EndOfFile: 

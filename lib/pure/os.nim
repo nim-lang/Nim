@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -619,9 +619,11 @@ proc sameFileContent*(path1, path2: string): bool =
   close(a)
   close(b)
 
-proc copyFile*(dest, source: string) =
+proc copyFile*(dest, source: string) {.deprecated.} =
   ## Copies a file from `source` to `dest`. If this fails,
   ## `EOS` is raised.
+  ## **Deprecated since version 0.8.8**: Use this proc with named arguments
+  ## only, because the order will change!
   when defined(Windows):
     if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
   else:
@@ -647,8 +649,10 @@ proc copyFile*(dest, source: string) =
     close(s)
     close(d)
 
-proc moveFile*(dest, source: string) =
+proc moveFile*(dest, source: string) {.deprecated.} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
+  ## **Deprecated since version 0.8.8**: Use this proc with named arguments
+  ## only, because the order will change!
   if crename(source, dest) != 0'i32: OSError()
 
 proc removeFile*(file: string) =

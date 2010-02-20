@@ -153,8 +153,15 @@ proc addIndent(result: var string, indent: int) =
   result.add("\n")
   for i in 1..indent: result.add(' ')
   
+proc noWhitespace(n: PXmlNode): bool =
+  #for i in 1..n.len-1:
+  #  if n[i].kind != n[0].kind: return true
+  for i in 0..n.len-1:
+    if n[i].kind in {xnText, xnEntity}: return true
+  
 proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) = 
   ## adds the textual representation of `n` to `result`.
+  if n == nil: return
   case n.k
   of xnElement:
     result.add('<')
@@ -168,10 +175,19 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
         result.add('"')
     if n.len > 0:
       result.add('>')
-      for i in 0..n.len-1:
-        result.addIndent(indent+indWidth)
-        result.add(n[i], indent+indWidth, indWidth)
-      result.addIndent(indent)
+      if n.len > 1:
+        if noWhitespace(n):
+          # for mixed leaves, we cannot output whitespace for readability,
+          # because this would be wrong. For example: ``a<b>b</b>`` is
+          # different from ``a <b>b</b>``.
+          for i in 0..n.len-1: result.add(n[i], indent+indWidth, indWidth)
+        else: 
+          for i in 0..n.len-1:
+            result.addIndent(indent+indWidth)
+            result.add(n[i], indent+indWidth, indWidth)
+          result.addIndent(indent)
+      else:
+        result.add(n[0], indent+indWidth, indWidth)
       result.add("</")
       result.add(n.fTag)
       result.add(">")

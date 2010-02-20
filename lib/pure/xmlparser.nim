@@ -25,6 +25,8 @@ proc raiseInvalidXml(errors: seq[string]) =
 proc addNode(father, son: PXmlNode) = 
   if son != nil: add(father, son)
 
+proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode
+
 proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
                      errors: var seq[string]) =
   while true:
@@ -33,11 +35,11 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
       if x.elementName == result.tag: 
         next(x)
       else:
-        errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+        errors.add(errorMsg(x, "</" & result.tag & "> expected"))
         # do not skip it here!
       break
     of xmlEof:
-      errors.add(errorMsg(x, "</" & result.tag & "$1> expected"))
+      errors.add(errorMsg(x, "</" & result.tag & "> expected"))
       break
     else:
       result.addNode(parse(x, errors))
@@ -91,7 +93,7 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
     next(x)
   of xmlEntity:
     ## &entity;
-    ## XXX To implement!
+    errors.add(errorMsg(x, "unknown entity: " & x.entityName))
     next(x)
   of xmlEof: nil
 
@@ -110,6 +112,8 @@ proc parseXml*(s: PStream, filename: string,
     of xmlComment, xmlWhitespace: nil # just skip it
     of xmlError:
       errors.add(errorMsg(x))
+    of xmlSpecial:
+      errors.add(errorMsg(x, "<some_tag> expected"))      
     else:
       errors.add(errorMsg(x, "<some_tag> expected"))
       break
@@ -122,17 +126,33 @@ proc parseXml*(s: PStream): PXmlNode =
   result = parseXml(s, "unknown_html_doc", errors)
   if errors.len > 0: raiseInvalidXMl(errors)
 
-proc loadXml*(path: string, reportErrors = false): PXmlNode = 
+proc loadXml*(path: string, errors: var seq[string]): PXmlNode = 
   ## Loads and parses XML from file specified by ``path``, and returns 
-  ## a ``PXmlNode``. If `reportErrors` is true, the parsing errors are
-  ## ``echo``ed, otherwise an exception is thrown.
+  ## a ``PXmlNode``. Every occured parsing error is added to the `errors`
+  ## sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(EIO, "Unable to read file: " & path)
-  
-  var errors: seq[string] = @[]
   result = parseXml(s, path, errors)
-  if reportErrors: 
-    for msg in items(errors): echo(msg)
-  elif errors.len > 0: 
-    raiseInvalidXMl(errors)
 
+proc loadXml*(path: string): PXmlNode = 
+  ## Loads and parses XML from file specified by ``path``, and returns 
+  ## a ``PXmlNode``.  All parsing errors are turned into an ``EInvalidXML``
+  ## exception.  
+  var errors: seq[string] = @[]
+  result = loadXml(path, errors)
+  if errors.len > 0: raiseInvalidXMl(errors)
+
+when isMainModule:
+  import os
+
+  var errors: seq[string] = @[]  
+  var x = loadXml(paramStr(1), errors)
+  for e in items(errors): echo e
+  
+  var f: TFile
+  if open(f, "xmltest.txt", fmWrite):
+    f.write($x)
+    f.close()
+  else:
+    quit("cannot write test.txt")
+    

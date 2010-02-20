@@ -177,7 +177,7 @@ XML Processing
 * `xmltree <xmltree.html>`_
   A simple XML tree. More efficient and simpler than the DOM.
 
-* `xmltreeparser <xmltreeparser.html>`_ 
+* `xmlparser <xmlparser.html>`_ 
   This module parses an XML document and creates its XML tree representation.
   
 * `htmlparser <htmlparser.html>`_ 
