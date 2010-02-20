@@ -21,6 +21,8 @@ Bugfixes
 - Fixed a bug in ``os.setFilePermissions`` for Windows.
 - An overloadable symbol can now have the same name as an imported module.
 - Fixed a serious bug in ``strutils.cmpIgnoreCase``. 
+- Fixed ``unicode.toUTF8``. 
+- The compiler now rejects ``'\n'``. 
 
 
 Additions
@@ -40,7 +42,7 @@ Additions
 - Added ``xmldom`` module.
 - Added ``xmldomparser`` module.
 - Added ``xmltree`` module.
-- Added ``xmltreeparser`` module.
+- Added ``xmlparser`` module.
 - Added ``htmlparser`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
@@ -63,6 +65,11 @@ Changes affecting backwards compatibility
   the standard library's path. 
 - The compiler does not include a Pascal parser for bootstrapping purposes any
   more. Instead there is a ``pas2nim`` tool that contains the old functionality.
+- The procs ``os.copyFile`` and ``os.moveFile`` have been deprecated
+  temporarily, so that the compiler warns about their usage. Use them with
+  named arguments only, because the parameter order will change the next
+  version!
+- ``atomic`` and ``let`` are now keywords.
 
 
 2009-12-21 Version 0.8.6 released

@@ -108,13 +108,13 @@ proc safeRemove(filename: string) =
 proc bootIteration(args: string): bool = 
   var nimrod1 = "rod" / "nimrod1".exe
   safeRemove(nimrod1)
-  moveFile(nimrod1, "rod" / "nimrod".exe)
+  moveFile(dest=nimrod1, source="rod" / "nimrod".exe)
   exec "rod" / "nimrod1 cc $# $# rod/nimrod.nim" % [bootOptions, args]
   # Nimrod does not produce an executable again if nothing changed. That's ok:
   result = sameFileContent("rod" / "nimrod".exe, nimrod1)
   safeRemove("bin" / "nimrod".exe)
   var dest = "bin" / "nimrod".exe
-  copyFile(dest, "rod" / "nimrod".exe)
+  copyFile(dest=dest, source="rod" / "nimrod".exe)
   inclFilePermissions(dest, {fpUserExec})
   safeRemove(nimrod1)
   if result: echo "executables are equal: SUCCESS!"

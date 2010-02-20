@@ -290,7 +290,8 @@ proc writeFile(filename, content, newline: string) =
     quit("Cannot open for writing: " & filename)
 
 proc srcdist(c: var TConfigData) =
-  for x in walkFiles("lib/*.h"): CopyFile("build" / extractFilename(x), x)
+  for x in walkFiles("lib/*.h"):
+    CopyFile(dest="build" / extractFilename(x), source=x)
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = buildDir(osA, cpuA)
@@ -307,7 +308,7 @@ proc srcdist(c: var TConfigData) =
       readCFiles(c, osA, cpuA)
       for i in 0 .. c.cfiles[osA][cpuA].len-1:
         var dest = dir / extractFilename(c.cfiles[osA][cpuA][i])
-        CopyFile(dest, c.cfiles[osA][cpuA][i])
+        CopyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
         c.cfiles[osA][cpuA][i] = dest
   # second pass: remove duplicate files
   for osA in countdown(c.oses.len, 1):

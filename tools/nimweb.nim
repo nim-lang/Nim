@@ -179,7 +179,7 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       Exec("pdflatex " & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       var pdf = splitFile(d).name & ".pdf"
-      moveFile(destPath / pdf, pdf)
+      moveFile(dest=destPath / pdf, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
       if existsFile(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))

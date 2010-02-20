@@ -227,7 +227,7 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     raise newException(EInvalidCharacterErr, "Invalid character")
   # Exceptions
   if qualifiedName.contains(':'):
-    if namespaceURI == nil or namespaceURI == "":
+    if namespaceURI == nil:
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
     elif qualifiedName.split(':')[0].toLower() == "xml" and namespaceURI != "http://www.w3.org/XML/1998/namespace":
       raise newException(ENamespaceErr, 
@@ -303,7 +303,7 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
   ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
-    if namespaceURI == nil or namespaceURI == "":
+    if namespaceURI == nil:
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
     elif qualifiedName.split(':')[0].toLower() == "xml" and namespaceURI != "http://www.w3.org/XML/1998/namespace":
       raise newException(ENamespaceErr, 
@@ -464,8 +464,11 @@ proc localName*(n: PNode): string =
 
 proc namespaceURI*(n: PNode): string =
   ## Returns this nodes namespace URI
-
+  
   return n.FNamespaceURI
+  
+proc `namespaceURI=`*(n: PNode, value: string) = 
+  n.FNamespaceURI = value
 
 proc nextSibling*(n: PNode): PNode =
   ## Returns the next sibling of this node
@@ -507,7 +510,7 @@ proc previousSibling*(n: PNode): PNode =
       return n.FParentNode.childNodes[i - 1]
   return nil
   
-proc `prefix=`*(n: var PNode, value: string) =
+proc `prefix=`*(n: PNode, value: string) =
   ## Modifies the prefix of this node
 
   # Setter
@@ -530,11 +533,10 @@ proc `prefix=`*(n: var PNode, value: string) =
   if n.nodeType == ElementNode:
     var el: PElement = PElement(n)
     el.FTagName = value & ":" & n.FLocalName
-    n = PNode(el)
+
   elif n.nodeType == AttributeNode:
     var attr: PAttr = PAttr(n)
     attr.FName = value & ":" & n.FLocalName
-    n = PNode(attr)
 
 # Procedures
 proc appendChild*(n: PNode, newChild: PNode) =

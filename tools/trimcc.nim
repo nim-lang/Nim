@@ -10,7 +10,7 @@ proc walker(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
-      moveFile(newName(path), path)
+      moveFile(dest=newName(path), source=path)
       # test if installation still works:
       if execShellCmd(r"nimrod c --force_build tests\tlastmod") == 0:
         echo "Optional: ", path

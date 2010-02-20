@@ -265,7 +265,7 @@ proc addNode(father, son: PXmlNode) =
 proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode
 
 proc expected(x: var TXmlParser, n: PXmlNode): string =
-  result = errorMsg(x, "</" & n.tag & "$1> expected")
+  result = errorMsg(x, "</" & n.tag & "> expected")
 
 proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
                      errors: var seq[string]) =
@@ -378,17 +378,19 @@ proc parseHtml*(s: PStream): PXmlNode =
   var errors: seq[string] = @[]
   result = parseHtml(s, "unknown_html_doc", errors)
 
-proc loadHtml*(path: string, reportErrors = false): PXmlNode = 
+proc loadHtml*(path: string, errors: var seq[string]): PXmlNode = 
   ## Loads and parses HTML from file specified by ``path``, and returns 
-  ## a ``PXmlNode``. If `reportErrors` is true, the parsing errors are
-  ## ``echo``ed, otherwise they are ignored.
+  ## a ``PXmlNode``.  Every occured parsing error is added to
+  ## the `errors` sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(EIO, "Unable to read file: " & path)
-  
-  var errors: seq[string] = @[]
   result = parseHtml(s, path, errors)
-  if reportErrors: 
-    for msg in items(errors): echo(msg)
+
+proc loadHtml*(path: string): PXmlNode = 
+  ## Loads and parses HTML from file specified by ``path``, and returns 
+  ## a ``PXmlNode``. All parsing errors are ignored.
+  var errors: seq[string] = @[]  
+  result = loadHtml(path, errors)
 
 when true:
   nil
@@ -402,4 +404,18 @@ else:
     if n == nil or n.htmlTag != tagHtml: 
       errors.add("<html> tag expected")
     checkHtmlAux(n, errors)
+  
+when isMainModule:
+  import os
+
+  var errors: seq[string] = @[]  
+  var x = loadHtml(paramStr(1), errors)
+  for e in items(errors): echo e
+  
+  var f: TFile
+  if open(f, "test.txt", fmWrite):
+    f.write($x)
+    f.close()
+  else:
+    quit("cannot write test.txt")
   
