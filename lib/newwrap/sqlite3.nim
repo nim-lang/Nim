@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -17,13 +17,13 @@ elif defined(macosx):
 else: 
   const 
     Lib = "libsqlite3.so"
+    
 const 
   SQLITE_INTEGER* = 1
   SQLITE_FLOAT* = 2
   SQLITE_BLOB* = 4
   SQLITE_NULL* = 5
   SQLITE_TEXT* = 3
-  TEXT* = 3
   SQLITE_UTF8* = 1
   SQLITE_UTF16LE* = 2
   SQLITE_UTF16BE* = 3         # Use native byte order  
@@ -98,9 +98,9 @@ const
 type 
   sqlite_int64* = int64
   PPPChar* = ptr ptr cstring
-  T{.pure, final.} = object 
-  P* = ptr T
-  PPSqlite3* = ptr P
+  TSqlite3 {.pure, final.} = object 
+  PSqlite3* = ptr TSqlite3
+  PPSqlite3* = ptr PSqlite3
   TSqlLite3Context{.pure, final.} = object 
   Pcontext* = ptr TSqlLite3Context
   Tstmt{.pure, final.} = object 
@@ -124,30 +124,30 @@ type
   Tresult_func* = proc (para1: pointer){.cdecl.}
   Tcreate_collation_func* = proc (para1: pointer, para2: int32, para3: pointer, 
                                   para4: int32, para5: pointer): int32{.cdecl.}
-  Tcollation_needed_func* = proc (para1: pointer, para2: P, eTextRep: int32, 
+  Tcollation_needed_func* = proc (para1: pointer, para2: PSqlite3, eTextRep: int32, 
                                   para4: cstring){.cdecl.}
 
-proc close*(para1: P): int32{.cdecl, dynlib: Lib, importc: "sqlite3_close".}
-proc exec*(para1: P, sql: cstring, para3: Tcallback, para4: pointer, 
+proc close*(para1: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_close".}
+proc exec*(para1: PSqlite3, sql: cstring, para3: Tcallback, para4: pointer, 
            errmsg: var cstring): int32{.cdecl, dynlib: Lib, 
                                         importc: "sqlite3_exec".}
-proc last_insert_rowid*(para1: P): sqlite_int64{.cdecl, dynlib: Lib, 
+proc last_insert_rowid*(para1: PSqlite3): sqlite_int64{.cdecl, dynlib: Lib, 
     importc: "sqlite3_last_insert_rowid".}
-proc changes*(para1: P): int32{.cdecl, dynlib: Lib, importc: "sqlite3_changes".}
-proc total_changes*(para1: P): int32{.cdecl, dynlib: Lib, 
+proc changes*(para1: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_changes".}
+proc total_changes*(para1: PSqlite3): int32{.cdecl, dynlib: Lib, 
                                       importc: "sqlite3_total_changes".}
-proc interrupt*(para1: P){.cdecl, dynlib: Lib, importc: "sqlite3_interrupt".}
+proc interrupt*(para1: PSqlite3){.cdecl, dynlib: Lib, importc: "sqlite3_interrupt".}
 proc complete*(sql: cstring): int32{.cdecl, dynlib: Lib, 
                                      importc: "sqlite3_complete".}
 proc complete16*(sql: pointer): int32{.cdecl, dynlib: Lib, 
                                        importc: "sqlite3_complete16".}
-proc busy_handler*(para1: P, 
+proc busy_handler*(para1: PSqlite3, 
                    para2: proc (para1: pointer, para2: int32): int32{.cdecl.}, 
                    para3: pointer): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_busy_handler".}
-proc busy_timeout*(para1: P, ms: int32): int32{.cdecl, dynlib: Lib, 
+proc busy_timeout*(para1: PSqlite3, ms: int32): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_busy_timeout".}
-proc get_table*(para1: P, sql: cstring, resultp: var cstringArray, 
+proc get_table*(para1: PSqlite3, sql: cstring, resultp: var cstringArray, 
                 nrow, ncolumn: var cint, errmsg: ptr cstring): int32{.cdecl, 
     dynlib: Lib, importc: "sqlite3_get_table".}
 proc free_table*(result: cstringArray){.cdecl, dynlib: Lib, 
@@ -161,32 +161,32 @@ proc free*(z: cstring){.cdecl, dynlib: Lib, importc: "sqlite3_free".}
   #function sqlite3_snprintf(_para1:longint; _para2:Pchar; _para3:Pchar; args:array of const):Pchar;cdecl; external Sqlite3Lib name 'sqlite3_snprintf';
 proc snprintf*(para1: int32, para2: cstring, para3: cstring): cstring{.cdecl, 
     dynlib: Lib, varargs, importc: "sqlite3_snprintf".}
-proc set_authorizer*(para1: P, xAuth: proc (para1: pointer, para2: int32, 
+proc set_authorizer*(para1: PSqlite3, xAuth: proc (para1: pointer, para2: int32, 
     para3: cstring, para4: cstring, para5: cstring, para6: cstring): int32{.
     cdecl.}, pUserData: pointer): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_set_authorizer".}
-proc trace*(para1: P, xTrace: proc (para1: pointer, para2: cstring){.cdecl.}, 
+proc trace*(para1: PSqlite3, xTrace: proc (para1: pointer, para2: cstring){.cdecl.}, 
             para3: pointer): pointer{.cdecl, dynlib: Lib, 
                                       importc: "sqlite3_trace".}
-proc progress_handler*(para1: P, para2: int32, 
+proc progress_handler*(para1: PSqlite3, para2: int32, 
                        para3: proc (para1: pointer): int32{.cdecl.}, 
                        para4: pointer){.cdecl, dynlib: Lib, 
                                         importc: "sqlite3_progress_handler".}
-proc commit_hook*(para1: P, para2: proc (para1: pointer): int32{.cdecl.}, 
+proc commit_hook*(para1: PSqlite3, para2: proc (para1: pointer): int32{.cdecl.}, 
                   para3: pointer): pointer{.cdecl, dynlib: Lib, 
     importc: "sqlite3_commit_hook".}
-proc open*(filename: cstring, ppDb: var P): int32{.cdecl, dynlib: Lib, 
+proc open*(filename: cstring, ppDb: var PSqlite3): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_open".}
-proc open16*(filename: pointer, ppDb: var P): int32{.cdecl, dynlib: Lib, 
+proc open16*(filename: pointer, ppDb: var PSqlite3): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_open16".}
-proc errcode*(db: P): int32{.cdecl, dynlib: Lib, importc: "sqlite3_errcode".}
-proc errmsg*(para1: P): cstring{.cdecl, dynlib: Lib, importc: "sqlite3_errmsg".}
-proc errmsg16*(para1: P): pointer{.cdecl, dynlib: Lib, 
+proc errcode*(db: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_errcode".}
+proc errmsg*(para1: PSqlite3): cstring{.cdecl, dynlib: Lib, importc: "sqlite3_errmsg".}
+proc errmsg16*(para1: PSqlite3): pointer{.cdecl, dynlib: Lib, 
                                    importc: "sqlite3_errmsg16".}
-proc prepare*(db: P, zSql: cstring, nBytes: int32, ppStmt: PPsqlite3_stmt, 
+proc prepare*(db: PSqlite3, zSql: cstring, nBytes: int32, ppStmt: PPsqlite3_stmt, 
               pzTail: ptr cstring): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_prepare".}
-proc prepare16*(db: P, zSql: pointer, nBytes: int32, ppStmt: PPsqlite3_stmt, 
+proc prepare16*(db: PSqlite3, zSql: pointer, nBytes: int32, ppStmt: PPsqlite3_stmt, 
                 pzTail: var pointer): int32{.cdecl, dynlib: Lib, 
     importc: "sqlite3_prepare16".}
 proc bind_blob*(para1: Pstmt, para2: int32, para3: pointer, n: int32, 
@@ -259,13 +259,13 @@ proc column_type*(para1: Pstmt, iCol: int32): int32{.cdecl, dynlib: Lib,
 proc finalize*(pStmt: Pstmt): int32{.cdecl, dynlib: Lib, 
                                      importc: "sqlite3_finalize".}
 proc reset*(pStmt: Pstmt): int32{.cdecl, dynlib: Lib, importc: "sqlite3_reset".}
-proc create_function*(para1: P, zFunctionName: cstring, nArg: int32, 
+proc create_function*(para1: PSqlite3, zFunctionName: cstring, nArg: int32, 
                       eTextRep: int32, para5: pointer, 
                       xFunc: Tcreate_function_func_func, 
                       xStep: Tcreate_function_step_func, 
                       xFinal: Tcreate_function_final_func): int32{.cdecl, 
     dynlib: Lib, importc: "sqlite3_create_function".}
-proc create_function16*(para1: P, zFunctionName: pointer, nArg: int32, 
+proc create_function16*(para1: PSqlite3, zFunctionName: pointer, nArg: int32, 
                         eTextRep: int32, para5: pointer, 
                         xFunc: Tcreate_function_func_func, 
                         xStep: Tcreate_function_step_func, 
@@ -333,15 +333,15 @@ proc result_text16be*(para1: Pcontext, para2: pointer, para3: int32,
     importc: "sqlite3_result_text16be".}
 proc result_value*(para1: Pcontext, para2: Pvalue){.cdecl, dynlib: Lib, 
     importc: "sqlite3_result_value".}
-proc create_collation*(para1: P, zName: cstring, eTextRep: int32, 
+proc create_collation*(para1: PSqlite3, zName: cstring, eTextRep: int32, 
                        para4: pointer, xCompare: Tcreate_collation_func): int32{.
     cdecl, dynlib: Lib, importc: "sqlite3_create_collation".}
-proc create_collation16*(para1: P, zName: cstring, eTextRep: int32, 
+proc create_collation16*(para1: PSqlite3, zName: cstring, eTextRep: int32, 
                          para4: pointer, xCompare: Tcreate_collation_func): int32{.
     cdecl, dynlib: Lib, importc: "sqlite3_create_collation16".}
-proc collation_needed*(para1: P, para2: pointer, para3: Tcollation_needed_func): int32{.
+proc collation_needed*(para1: PSqlite3, para2: pointer, para3: Tcollation_needed_func): int32{.
     cdecl, dynlib: Lib, importc: "sqlite3_collation_needed".}
-proc collation_needed16*(para1: P, para2: pointer, para3: Tcollation_needed_func): int32{.
+proc collation_needed16*(para1: PSqlite3, para2: pointer, para3: Tcollation_needed_func): int32{.
     cdecl, dynlib: Lib, importc: "sqlite3_collation_needed16".}
 proc libversion*(): cstring{.cdecl, dynlib: Lib, importc: "sqlite3_libversion".}
   #Alias for allowing better code portability (win32 is not working with external variables) 

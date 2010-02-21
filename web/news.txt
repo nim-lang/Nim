@@ -23,6 +23,7 @@ Bugfixes
 - Fixed a serious bug in ``strutils.cmpIgnoreCase``. 
 - Fixed ``unicode.toUTF8``. 
 - The compiler now rejects ``'\n'``. 
+- ``times.getStartMilsecs()`` now works on Mac OS X.
 
 
 Additions
