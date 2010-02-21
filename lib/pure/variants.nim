@@ -74,8 +74,8 @@ proc `<>`* [T: object](x: T): TVariant {.magic: "ToVariant".}
 
 proc `><`*[T](v: TVariant, typ: T): T {.magic: "FromVariant".}
 
-[<>5, <>67, <>"hallo"]
-myVar><int
+?[?5, ?67, ?"hallo"]
+myVar?int
 
   
 proc `==`* (x, y: TVariant): bool =
