@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod Tester
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,7 +14,7 @@
 ## directive.)
 ## The format for '#ERROR_IN' is:
 ##      #ERROR_IN filename linenumber
-## One can omit the extension of the filename ('.nim' is then assumed).
+## One can omit the extension of the filename ('.nim' is then used).
 ## Tests which contain none of the two directives should compile. Thus they
 ## are executed after successful compilation and their output is verified
 ## against the results specified with the '#OUT' directive.

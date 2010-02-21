@@ -3,11 +3,6 @@
 
 # This is a new one!
 
-# This should not be allowed!
-
-export
-main
-
 import
   lexbase, os, strutils
 

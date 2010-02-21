@@ -61,9 +61,9 @@ proc eventloop =
   discard XFlush(display)
   var num_events = int(XPending(display))
   while num_events != 0:
-     dec(num_events)
-     discard XNextEvent(display, addr(xev))
-     process_event()
+    dec(num_events)
+    discard XNextEvent(display, addr(xev))
+    process_event()
 
 create_window()
 while true:

@@ -196,7 +196,11 @@ when not defined(ECMAScript):
   proc `-` (a, b: TTime): int64 =
     return toBiggestInt(difftime(a, b))
   
-  proc getStartMilsecs(): int = return clock() div (clocksPerSec div 1000)
+  proc getStartMilsecs(): int =
+    #echo "clocks per sec: ", clocksPerSec
+    #return clock() div (clocksPerSec div 1000)
+    result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
+    
   proc getTime(): TTime = return timec(nil)
   proc getLocalTime(t: TTime): TTimeInfo =
     var a = t
