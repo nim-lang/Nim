@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -112,8 +112,8 @@ type
                                         #were named using as prefix the 
                                         #function name that uses them,
                                         #rather than describing their functions  
-  Tsqlite3_callback* = proc (para1: pointer, para2: int32, para3: var cstring, 
-                             para4: var cstring): int32{.cdecl.}
+  Tsqlite3_callback* = proc (para1: pointer, para2: int32, para3, 
+                             para4: cstringArray): int32{.cdecl.}
   Tbind_destructor_func* = proc (para1: pointer){.cdecl.}
   Tcreate_function_step_func* = proc (para1: Psqlite3_context, para2: int32, 
                                      para3: PPsqlite3_value){.cdecl.}
