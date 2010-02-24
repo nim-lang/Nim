@@ -60,12 +60,12 @@ proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
     else: 
       add(result, c)
   
-proc TryQuery*(db: TDbConn, query: TSqlQuery, args: openarray[string]): bool =
+proc TryExec*(db: TDbConn, query: TSqlQuery, args: openarray[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysqlRealQuery(db, q, q.len) == 0'i32
 
-proc Query*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
+proc Exec*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   if mysqlRealQuery(db, q, q.len) != 0'i32: dbError(db)
@@ -84,7 +84,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
-  Query(db, query, args)
+  Exec(db, query, args)
   var sqlres = mysqlUseResult(db)
   if sqlres != nil:
     var L = int(mysql_num_fields(sqlres))
@@ -103,7 +103,7 @@ proc GetAllRows*(db: TDbConn, query: TSqlQuery,
                  args: openarray[string]): seq[TRow] =
   ## executes the query and returns the whole result dataset.
   result = @[]
-  Query(db, query, args)
+  Exec(db, query, args)
   var sqlres = mysqlUseResult(db)
   if sqlres != nil:
     var L = int(mysql_num_fields(sqlres))
@@ -149,11 +149,11 @@ proc InsertID*(db: TDbConn, query: TSqlQuery, args: openArray[string]): int64 =
   result = TryInsertID(db, query, args)
   if result < 0: dbError(db)
 
-proc QueryAffectedRows*(db: TDbConn, query: TSqlQuery, 
-                        args: openArray[string]): int64 = 
+proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
+                       args: openArray[string]): int64 = 
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows
-  Query(db, query, args)
+  Exec(db, query, args)
   result = mysql_affected_rows(db)
 
 proc Close*(db: TDbConn) = 
