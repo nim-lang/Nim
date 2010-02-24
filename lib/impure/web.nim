@@ -17,7 +17,7 @@
 ## Currently only requesting URLs is implemented. The implementation depends
 ## on the libcurl library!
 ##
-## **Deprecated since version 0.8.6:** Use the httpclient module instead. 
+## **Deprecated since version 0.8.6:** Use the ``httpclient`` module instead. 
 ## 
 
 {.deprecated.}
