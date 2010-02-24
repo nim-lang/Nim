@@ -59,15 +59,15 @@ proc dbFormat(formatstr: TSqlQuery, args: openarray[string]): string =
     else: 
       add(result, c)
   
-proc TryQuery*(db: TDbConn, query: TSqlQuery, 
-               args: openarray[string]): bool =
+proc TryExec*(db: TDbConn, query: TSqlQuery, 
+              args: openarray[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   var res = PQExec(db, q)
   result = PQresultStatus(res) == PGRES_COMMAND_OK
   PQclear(res)
 
-proc Query*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
+proc Exec*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   var res = PQExec(db, q)
@@ -143,8 +143,8 @@ proc InsertID*(db: TDbConn, query: TSqlQuery,
   result = TryInsertID(db, query, args)
   if result < 0: dbError(db)
   
-proc QueryAffectedRows*(db: TDbConn, query: TSqlQuery, 
-                        args: openArray[string]): int64 = 
+proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery, 
+                       args: openArray[string]): int64 = 
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   var q = dbFormat(query, args)
