@@ -133,6 +133,22 @@ proc skip(my: var TYamlLexer) =
   var buf = my.buf
   while true: 
     case buf[pos]
+    of '#':
+      # skip line comment:
+      inc(pos)
+      while true:
+        case buf[pos] 
+        of '\0': break
+        of '\c': 
+          pos = lexbase.HandleCR(my, pos)
+          buf = my.buf
+          break
+        of '\L': 
+          pos = lexbase.HandleLF(my, pos)
+          buf = my.buf
+          break
+        else:
+          inc(pos)
     of '/': 
       if buf[pos+1] == '/': 
         # skip line comment:
@@ -186,6 +202,26 @@ proc skip(my: var TYamlLexer) =
       break
   my.bufpos = pos
 
+proc parseDirective(my: var TYamlLexer) = 
+  var pos = my.bufpos
+  var buf = my.buf
+  inc(pos)
+  while buf[pos] in {'\t', ' '}: inc(pos)
+  while true:
+    case buf[pos] 
+    of '\0': break
+    of '\c': 
+      pos = lexbase.HandleCR(my, pos)
+      buf = my.buf
+      break
+    of '\L': 
+      pos = lexbase.HandleLF(my, pos)
+      buf = my.buf
+      break
+    else:
+      add(my.a, buf[pos])
+      inc(pos)
+
 proc parseNumber(my: var TYamlLexer) = 
   var pos = my.bufpos
   var buf = my.buf
@@ -230,11 +266,16 @@ proc getTok(my: var TYamlLexer): TTokKind =
   setLen(my.a, 0)
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
+  of '-': 
+    inc(my.bufpos)
+    result = tkHyphen
   of '-', '.', '0'..'9': 
     parseNumber(my)
     result = tkNumber
   of '"':
     result = parseString(my)
+  of '\'':
+    result = parseSingleQuote(my)
   of '[':
     inc(my.bufpos)
     result = tkBracketLe
@@ -253,8 +294,30 @@ proc getTok(my: var TYamlLexer): TTokKind =
   of ':':
     inc(my.bufpos)
     result = tkColon
-  of '\0':
-    result = tkEof
+  of '?':
+    inc(my.bufpos)
+    result = tkQust
+  of '!':
+    inc(my.bufpos)
+    result = tkExcl
+  of '&':
+    inc(my.bufpos)
+    result = tkAmp
+  of '*':
+    inc(my.bufpos)
+    result = tkStar
+  of '|':
+    parseLiteralBlockScalar(my)
+    result = tkLiteralBlockScalar
+  of '>':
+    parseFoldedBlockScalar(my)
+    result = tkFoldedBlockScalar
+  of '%': 
+    parseDirective(my)
+    result = tkDirective
+  of '@', '`': 
+    inc(my.bufpos)
+    result = tkReserved
   of 'a'..'z', 'A'..'Z', '_':
     parseName(my)
     case my.a 
@@ -262,6 +325,8 @@ proc getTok(my: var TYamlLexer): TTokKind =
     of "true": result = tkTrue
     of "false": result = tkFalse
     else: result = tkError
+  of '\0':
+    result = tkEof
   else: 
     inc(my.bufpos)
     result = tkError

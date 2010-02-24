@@ -10,10 +10,10 @@
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface 
 ## is implemented for other databases too.
 
-import strutils, postgres
+import strutils, sqlite3
 
 type
-  TDbConn* = PPGconn   ## encapsulates a database connection
+  TDbConn* = PSqlite3  ## encapsulates a database connection
   TRow* = seq[string]  ## a row of a dataset
   EDb* = object of EIO ## exception that is raised if a database error occurs
   
@@ -32,7 +32,7 @@ proc dbError(db: TDbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
-  e.msg = $PQerrorMessage(db)
+  e.msg = $sqlite3.errmsg(db)
   raise e
 
 proc dbError*(msg: string) {.noreturn.} = 
@@ -63,45 +63,42 @@ proc TryExec*(db: TDbConn, query: TSqlQuery,
               args: openarray[string]): bool =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  var res = PQExec(db, q)
-  result = PQresultStatus(res) == PGRES_COMMAND_OK
-  PQclear(res)
+  var stmt: sqlite3.PStmt
+  if prepare_v2(db, q, q.len, stmt, nil) == SQLITE_OK:
+    if step(stmt) == SQLITE_DONE:
+      result = finalize(stmt) == SQLITE_OK
 
 proc Exec*(db: TDbConn, query: TSqlQuery, args: openarray[string]) =
   ## executes the query and raises EDB if not successful.
-  var q = dbFormat(query, args)
-  var res = PQExec(db, q)
-  if PQresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
-  PQclear(res)
+  if not TryExec(db, query, args): dbError(db)
   
 proc newRow(L: int): TRow =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
   
 proc setupQuery(db: TDbConn, query: TSqlQuery, 
-                args: openarray[string]): PPGresult = 
+                args: openarray[string]): PStmt = 
   var q = dbFormat(query, args)
-  result = PQExec(db, q)
-  if PQresultStatus(result) != PGRES_TUPLES_OK: dbError(db)
+  if prepare_v2(db, q, q.len, result, nil) != SQLITE_OK: dbError(db)
   
-proc setRow(res: PPGresult, r: var TRow, line, cols: int) =
+proc setRow(stmt: PStmt, r: var TRow, cols: int) =
   for col in 0..cols-1:
+    setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
-    var x = PQgetvalue(res, line, col)
-    add(r[col], x)
+    add(r[col], column_text(stmt, col))
   
 iterator FastRows*(db: TDbConn, query: TSqlQuery,
                    args: openarray[string]): TRow =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
-  ## query, the results can be undefined. For Postgres it is safe though.
-  var res = setupQuery(db, query, args)
-  var L = int(PQnfields(res))
+  ## query, the results can be undefined. For Sqlite it is safe though.
+  var stmt = setupQuery(db, query, args)
+  var L = int(columnCount(stmt))
   var result = newRow(L)
-  for i in 0..PQntuples(res)-1:
-    setRow(res, result, i, L)
+  while step(stmt) == SQLITE_ROW: 
+    setRow(stmt, result, L)
     yield result
-  PQclear(res)
+  if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc GetAllRows*(db: TDbConn, query: TSqlQuery, 
                  args: openarray[string]): seq[TRow] =
@@ -113,24 +110,27 @@ proc GetAllRows*(db: TDbConn, query: TSqlQuery,
 iterator Rows*(db: TDbConn, query: TSqlQuery, 
                args: openarray[string]): TRow =
   ## same as `FastRows`, but slower and safe.
-  for r in items(GetAllRows(db, query, args)): yield r
+  for r in FastRows(db, query, args): yield r
 
 proc GetValue*(db: TDbConn, query: TSqlQuery, 
                args: openarray[string]): string = 
   ## executes the query and returns the result dataset's the first column 
   ## of the first row. Returns "" if the dataset contains no rows.
-  var x = PQgetvalue(setupQuery(db, query, args), 0, 0)
-  result = if isNil(x): "" else: $x
+  var stmt = setupQuery(db, query, args)
+  if step(stmt) == SQLITE_ROW: 
+    result = newString(column_bytes(stmt, 0))
+    setLen(result, 0)
+    add(result, column_text(stmt, 0))
+    if finalize(stmt) != SQLITE_OK: dbError(db)
+  else:
+    result = ""
   
 proc TryInsertID*(db: TDbConn, query: TSqlQuery, 
                   args: openarray[string]): int64 =
   ## executes the query (typically "INSERT") and returns the 
-  ## generated ID for the row or -1 in case of an error. For Postgre this adds
-  ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``. 
-  var val = GetValue(db, TSqlQuery(string(query) & " RETURNING id"), args)
-  if val.len > 0:
-    result = ParseBiggestInt(val)
+  ## generated ID for the row or -1 in case of an error. 
+  if tryExec(db, query, args): 
+    result = last_insert_rowid(db)
   else:
     result = -1
 
@@ -147,20 +147,32 @@ proc ExecAffectedRows*(db: TDbConn, query: TSqlQuery,
                        args: openArray[string]): int64 = 
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
-  var q = dbFormat(query, args)
-  var res = PQExec(db, q)
-  if PQresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
-  result = parseBiggestInt($PQcmdTuples(res))
-  PQclear(res)
+  Exec(db, query, args)
+  result = changes(db)
 
 proc Close*(db: TDbConn) = 
   ## closes the database connection.
-  if db != nil: PQfinish(db)
-
+  if sqlite3.close(db) != SQLITE_OK:
+    dbError(db)
+    
 proc Open*(connection, user, password, database: string): TDbConn =
   ## opens a database connection. Raises `EDb` if the connection could not
-  ## be established.
-  result = PQsetdbLogin(nil, nil, nil, nil, database, user, password)
-  if PQStatus(result) != CONNECTION_OK: dbError(result) # result = nil
-
-
+  ## be established. Only the ``connection`` parameter is used for ``sqlite``.
+  var db: TDbConn
+  if sqlite3.open(connection, db) == SQLITE_OK:
+    return db
+  else:
+    dbError(db)
+   
+when isMainModule:
+  var db = open("db.sql", "", "", "")
+  Exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
+  exec(db, sql"insert into tbl1 values('hello!',10)", [])
+  exec(db, sql"insert into tbl1 values('goodbye', 20)", [])
+  #db.query("create table tbl1(one varchar(10), two smallint)")
+  #db.query("insert into tbl1 values('hello!',10)")
+  #db.query("insert into tbl1 values('goodbye', 20)")
+  for r in db.rows(sql"select * from tbl1", []):
+    echo(r[0], r[1])
+  
+  db_sqlite.close(db)

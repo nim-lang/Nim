@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -35,41 +35,41 @@ type
 iterator objectFields*[T](x: T, skipInherited: bool): tuple[
   key: string, val: TVariant] {.magic: "ObjectFields"}
 
-proc `<>`*(x: ordinal): TVariant =
+proc `?`*(x: ordinal): TVariant =
   result.kind = vtEnum
   result.vint = x
 
-proc `<>`*(x: biggestInt): TVariant =
+proc `?`*(x: biggestInt): TVariant =
   result.kind = vtInt
   result.vint = x
 
-proc `<>`*(x: char): TVariant =
+proc `?`*(x: char): TVariant =
   result.kind = vtChar
   result.vint = ord(x)
 
-proc `<>`*(x: bool): TVariant =
+proc `?`*(x: bool): TVariant =
   result.kind = vtBool
   result.vint = ord(x)
 
-proc `<>`*(x: biggestFloat): TVariant =
+proc `?`*(x: biggestFloat): TVariant =
   result.kind = vtFloat
   result.vfloat = x
 
-proc `<>`*(x: string): TVariant =
+proc `?`*(x: string): TVariant =
   result.kind = vtString
   result.vstring = x
 
-proc `<>`*[T](x: openArray[T]): TVariant =
+proc `?`*[T](x: openArray[T]): TVariant =
   result.kind = vtSeq
   newSeq(result.q, x.len)
   for i in 0..x.len-1: result.q[i] = <>x[i]
 
-proc `<>`*[T](x: set[T]): TVariant =
+proc `?`*[T](x: set[T]): TVariant =
   result.kind = vtSet
   result.q = @[]
   for a in items(x): result.q.add(<>a)
 
-proc `<>`* [T: object](x: T): TVariant {.magic: "ToVariant".}
+proc `?`* [T: object](x: T): TVariant {.magic: "ToVariant".}
   ## this converts a value to a variant ("boxing")
 
 proc `><`*[T](v: TVariant, typ: T): T {.magic: "FromVariant".}
@@ -140,10 +140,10 @@ proc `[]=`* (a, b, c: TVariant) =
     variantError()
   else: variantError()
   
-proc `[]`* (a: TVariant, b: int): TVariant {.inline} = return a[<>b]
-proc `[]`* (a: TVariant, b: string): TVariant {.inline} = return a[<>b]
-proc `[]=`* (a: TVariant, b: int, c: TVariant) {.inline} = a[<>b] = c
-proc `[]=`* (a: TVariant, b: string, c: TVariant) {.inline} = a[<>b] = c
+proc `[]`* (a: TVariant, b: int): TVariant {.inline} = return a[?b]
+proc `[]`* (a: TVariant, b: string): TVariant {.inline} = return a[?b]
+proc `[]=`* (a: TVariant, b: int, c: TVariant) {.inline} = a[?b] = c
+proc `[]=`* (a: TVariant, b: string, c: TVariant) {.inline} = a[?b] = c
 
 proc `+`* (x, y: TVariant): TVariant =
   case x.vtype

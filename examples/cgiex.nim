@@ -1,4 +1,4 @@
-# Test the new CGI module
+# Test/show CGI module
 import strtabs, cgi
 
 
