@@ -1,0 +1,34 @@
+t99bott.nim;20;constant expression expected
+tadrdisc.nim;15;for a 'var' type a variable needs to be passed
+tambsym.nim;6;ambiguous identifier
+tambsym3.nim;6;ambiguous identifier
+tbind2.nim;7;ambiguous call
+tbind4.nim;4;instantiation from here
+tblock1.nim;9;undeclared identifier: 'ha'
+tconstr1.nim;20;type mismatch
+tillrec.nim;8;illegal recursion in type 'TIllegal'
+tinc.nim;3;to var type a variable needs to be passed
+tinout.nim;7;for a 'var' type a variable needs to be passed
+tinvalidnewseq.nim;10;
+tinvwhen.nim;6;invalid indentation
+titer4.nim;2;iterator within for loop context expected
+tnamspc.nim;5;
+tnoop.nim;6;expression 'a()' cannot be called
+tnot.nim;9;type mismatch
+topaque.nim;11;undeclared field: 'buffer'
+topena1.nim;4;invalid type
+toverl.nim;6;attempt to redefine 'TNone'
+trawstr.nim;5;
+trecinca.nim;3;recursive dependency: 'tests/trecincb.nim'
+trecincb.nim;4;recursive dependency: 'tests/trecincb.nim'
+treciter.nim;4;recursive dependency: 'myrec'
+trectype.nim;20;internal error: cannot generate C type for: PA
+trefs.nim;15;type mismatch
+tsidee1.nim;7;'SideEffectLyer' can have side effects
+tsidee4.nim;10;type mismatch
+tsimtych.nim;5;
+tstatret.nim;4;statement not allowed after
+tstmtexp.nim;3;value returned by statement has to be discarded
+ttempl2.nim;13;undeclared identifier: 'b'
+tunderscores.nim;3;invalid token: _
+typredef.nim;2;illegal recursion in type 'Uint8'
