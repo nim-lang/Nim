@@ -26,7 +26,8 @@ notation           meaning
                    operator priority.
 ``{E}``            Capture: Apply expression `E` and store the substring
                    that matched `E` into a *capture* that can be accessed
-                   after the matching process.                   
+                   after the matching process.
+``$i``             back reference to the ``i``th capture. ``i`` counts from 1. 
 ``&E``             And predicate: Indicate success if expression `E` matches
                    the text ahead; otherwise indicate failure. Do not consume
                    any text.
@@ -54,6 +55,9 @@ notation           meaning
 ``y's'``           String match ignoring style.
 ``v's'``           Verbatim string match: Use this to override a global
                    ``\i`` or ``\y`` modifier.
+``i$j``            String match ignoring case for back reference.
+``y$j``            String match ignoring style for back reference.
+``v$j``            Verbatim string match for back reference.
 ``.``              Any character: If there is a character ahead, consume it
                    and indicate success. Otherwise (that is, at the end of
                    input) indicate failure.
@@ -125,11 +129,17 @@ The PEG parser implements this grammar (written in PEG syntax)::
   
   rule <- identifier \s* "<-" expr ig
   identNoArrow <- identifier !(\s* "<-")
-  primary <- (ig '&' / ig '!' / ig '@')*
-               ((ig identNoArrow / ig charset / ig stringlit
-                                 / ig builtin / ig '.' / ig '_'
-                                 / (ig "(" expr ig ")"))
-             (ig '?' / ig '*' / ig '+')*)
+  prefixOpr <- ig '&' / ig '!' / ig '@'
+  literal <- ig identifier? '$' [0-9]+
+             ig identNoArrow / 
+             ig charset / 
+             ig stringlit / 
+             ig builtin / 
+             ig '.' / 
+             ig '_' / 
+             (ig "(" expr ig ")")
+  postfixOpr <- ig '?' / ig '*' / ig '+'
+  primary <- prefixOpr* (literal postfixOpr*)
   
   # Concatenation has higher priority than choice:
   # ``a b / c`` means ``(a b) / c``
