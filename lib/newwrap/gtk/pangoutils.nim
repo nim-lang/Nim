@@ -38,5 +38,5 @@ proc log2vis_get_embedding_levels*(str: Pgunichar, len: int32,
     cdecl, dynlib: lib, importc: "pango_log2vis_get_embedding_levels".}
 proc get_mirror_char*(ch: gunichar, mirrored_ch: Pgunichar): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_get_mirror_char".}
-proc language_get_sample_string*(language: PLanguage): cstring{.cdecl, 
+proc get_sample_string*(language: PLanguage): cstring{.cdecl, 
     dynlib: lib, importc: "pango_language_get_sample_string".}

@@ -48,34 +48,34 @@ proc xml_new*(fname: cstring, root: cstring, domain: cstring): PXML{.cdecl,
 proc xml_new_from_buffer*(buffer: cstring, size: int32, root: cstring, 
                           domain: cstring): PXML{.cdecl, dynlib: LibGladeLib, 
     importc: "glade_xml_new_from_buffer".}
-proc xml_construct*(self: PXML, fname: cstring, root: cstring, domain: cstring): gboolean{.
+proc construct*(self: PXML, fname: cstring, root: cstring, domain: cstring): gboolean{.
     cdecl, dynlib: LibGladeLib, importc: "glade_xml_construct".}
-proc xml_signal_connect*(self: PXML, handlername: cstring, func: TGCallback){.
+proc signal_connect*(self: PXML, handlername: cstring, func: TGCallback){.
     cdecl, dynlib: LibGladeLib, importc: "glade_xml_signal_connect".}
-proc xml_signal_connect_data*(self: PXML, handlername: cstring, 
+proc signal_connect_data*(self: PXML, handlername: cstring, 
                               func: TGCallback, user_data: gpointer){.cdecl, 
     dynlib: LibGladeLib, importc: "glade_xml_signal_connect_data".}
-proc xml_signal_autoconnect*(self: PXML){.cdecl, dynlib: LibGladeLib, 
+proc signal_autoconnect*(self: PXML){.cdecl, dynlib: LibGladeLib, 
     importc: "glade_xml_signal_autoconnect".}
-proc xml_signal_connect_full*(self: PXML, handler_name: cstring, 
+proc signal_connect_full*(self: PXML, handler_name: cstring, 
                               func: TXMLConnectFunc, user_data: gpointer){.
     cdecl, dynlib: LibGladeLib, importc: "glade_xml_signal_connect_full".}
-proc xml_signal_autoconnect_full*(self: PXML, func: TXMLConnectFunc, 
+proc signal_autoconnect_full*(self: PXML, func: TXMLConnectFunc, 
                                   user_data: gpointer){.cdecl, 
     dynlib: LibGladeLib, importc: "glade_xml_signal_autoconnect_full".}
-proc xml_get_widget*(self: PXML, name: cstring): PGtkWidget{.cdecl, 
+proc get_widget*(self: PXML, name: cstring): gtk2.PWidget{.cdecl, 
     dynlib: LibGladeLib, importc: "glade_xml_get_widget".}
-proc xml_get_widget_prefix*(self: PXML, name: cstring): PGList{.cdecl, 
+proc get_widget_prefix*(self: PXML, name: cstring): PGList{.cdecl, 
     dynlib: LibGladeLib, importc: "glade_xml_get_widget_prefix".}
-proc xml_relative_file*(self: PXML, filename: cstring): cstring{.cdecl, 
+proc relative_file*(self: PXML, filename: cstring): cstring{.cdecl, 
     dynlib: LibGladeLib, importc: "glade_xml_relative_file".}
-proc get_widget_name*(widget: PGtkWidget): cstring{.cdecl, dynlib: LibGladeLib, 
+proc get_widget_name*(widget: gtk2.PWidget): cstring{.cdecl, dynlib: LibGladeLib, 
     importc: "glade_get_widget_name".}
-proc get_widget_tree*(widget: PGtkWidget): PXML{.cdecl, dynlib: LibGladeLib, 
+proc get_widget_tree*(widget: gtk2.PWidget): PXML{.cdecl, dynlib: LibGladeLib, 
     importc: "glade_get_widget_tree".}
 type 
   PXMLCustomWidgetHandler* = ptr TXMLCustomWidgetHandler
-  TXMLCustomWidgetHandler* = TGtkWidget
+  TXMLCustomWidgetHandler* = gtk2.TWidget
 
 proc set_custom_handler*(handler: TXMLCustomWidgetHandler, user_data: gpointer){.
     cdecl, dynlib: LibGladeLib, importc: "glade_set_custom_handler".}

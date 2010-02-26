@@ -3468,9 +3468,9 @@ proc object_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_object_get_type".}
 proc object_new*(thetype: TType, first_property_name: cstring): PObject{.cdecl, 
     varargs, dynlib: lib, importc: "gtk_object_new".}
-proc object_sink*(anObject: PObject){.cdecl, dynlib: lib, 
+proc sink*(anObject: PObject){.cdecl, dynlib: lib, 
                                       importc: "gtk_object_sink".}
-proc object_destroy*(anObject: PObject){.cdecl, dynlib: lib, 
+proc destroy*(anObject: PObject){.cdecl, dynlib: lib, 
     importc: "gtk_object_destroy".}
 const 
   TYPE_INVALID* = G_TYPE_INVALID
@@ -3551,8 +3551,8 @@ proc WIDGET_COMPOSITE_CHILD*(wid: pointer): gboolean
 proc WIDGET_APP_PAINTABLE*(wid: pointer): gboolean
 proc WIDGET_RECEIVES_DEFAULT*(wid: pointer): gboolean
 proc WIDGET_DOUBLE_BUFFERED*(wid: pointer): gboolean
-proc WIDGET_SET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
-proc WIDGET_UNSET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
+proc SET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
+proc UNSET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
 proc TYPE_REQUISITION*(): GType
 proc x_set*(a: var TWidgetAuxInfo): guint
 proc set_x_set*(a: var TWidgetAuxInfo, x_set: guint)
@@ -3560,202 +3560,202 @@ proc y_set*(a: var TWidgetAuxInfo): guint
 proc set_y_set*(a: var TWidgetAuxInfo, y_set: guint)
 proc widget_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_widget_get_type".}
-proc widget_ref*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
+proc reference*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_widget_ref".}
-proc widget_unref*(widget: PWidget){.cdecl, dynlib: lib, 
+proc unref*(widget: PWidget){.cdecl, dynlib: lib, 
                                      importc: "gtk_widget_unref".}
-proc widget_destroy*(widget: PWidget){.cdecl, dynlib: lib, 
+proc destroy*(widget: PWidget){.cdecl, dynlib: lib, 
                                        importc: "gtk_widget_destroy".}
-proc widget_destroyed*(widget: PWidget, r: var PWidget){.cdecl, dynlib: lib, 
+proc destroyed*(widget: PWidget, r: var PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_destroyed".}
-proc widget_unparent*(widget: PWidget){.cdecl, dynlib: lib, 
+proc unparent*(widget: PWidget){.cdecl, dynlib: lib, 
                                         importc: "gtk_widget_unparent".}
-proc widget_show*(widget: PWidget){.cdecl, dynlib: lib, 
+proc show*(widget: PWidget){.cdecl, dynlib: lib, 
                                     importc: "gtk_widget_show".}
-proc widget_show_now*(widget: PWidget){.cdecl, dynlib: lib, 
+proc show_now*(widget: PWidget){.cdecl, dynlib: lib, 
                                         importc: "gtk_widget_show_now".}
-proc widget_hide*(widget: PWidget){.cdecl, dynlib: lib, 
+proc hide*(widget: PWidget){.cdecl, dynlib: lib, 
                                     importc: "gtk_widget_hide".}
-proc widget_show_all*(widget: PWidget){.cdecl, dynlib: lib, 
+proc show_all*(widget: PWidget){.cdecl, dynlib: lib, 
                                         importc: "gtk_widget_show_all".}
-proc widget_hide_all*(widget: PWidget){.cdecl, dynlib: lib, 
+proc hide_all*(widget: PWidget){.cdecl, dynlib: lib, 
                                         importc: "gtk_widget_hide_all".}
-proc widget_map*(widget: PWidget){.cdecl, dynlib: lib, importc: "gtk_widget_map".}
-proc widget_unmap*(widget: PWidget){.cdecl, dynlib: lib, 
+proc map*(widget: PWidget){.cdecl, dynlib: lib, importc: "gtk_widget_map".}
+proc unmap*(widget: PWidget){.cdecl, dynlib: lib, 
                                      importc: "gtk_widget_unmap".}
-proc widget_realize*(widget: PWidget){.cdecl, dynlib: lib, 
+proc realize*(widget: PWidget){.cdecl, dynlib: lib, 
                                        importc: "gtk_widget_realize".}
-proc widget_unrealize*(widget: PWidget){.cdecl, dynlib: lib, 
+proc unrealize*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_unrealize".}
-proc widget_queue_draw*(widget: PWidget){.cdecl, dynlib: lib, 
+proc queue_draw*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_queue_draw".}
-proc widget_queue_draw_area*(widget: PWidget, x: gint, y: gint, width: gint, 
+proc queue_draw_area*(widget: PWidget, x: gint, y: gint, width: gint, 
                              height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_widget_queue_draw_area".}
-proc widget_queue_resize*(widget: PWidget){.cdecl, dynlib: lib, 
+proc queue_resize*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_queue_resize".}
-proc widget_size_request*(widget: PWidget, requisition: PRequisition){.cdecl, 
+proc size_request*(widget: PWidget, requisition: PRequisition){.cdecl, 
     dynlib: lib, importc: "gtk_widget_size_request".}
-proc widget_size_allocate*(widget: PWidget, allocation: PAllocation){.cdecl, 
+proc size_allocate*(widget: PWidget, allocation: PAllocation){.cdecl, 
     dynlib: lib, importc: "gtk_widget_size_allocate".}
-proc widget_get_child_requisition*(widget: PWidget, requisition: PRequisition){.
+proc get_child_requisition*(widget: PWidget, requisition: PRequisition){.
     cdecl, dynlib: lib, importc: "gtk_widget_get_child_requisition".}
-proc widget_add_accelerator*(widget: PWidget, accel_signal: cstring, 
+proc add_accelerator*(widget: PWidget, accel_signal: cstring, 
                              accel_group: PAccelGroup, accel_key: guint, 
                              accel_mods: gdk2.TModifierType, 
                              accel_flags: TAccelFlags){.cdecl, dynlib: lib, 
     importc: "gtk_widget_add_accelerator".}
-proc widget_remove_accelerator*(widget: PWidget, accel_group: PAccelGroup, 
+proc remove_accelerator*(widget: PWidget, accel_group: PAccelGroup, 
                                 accel_key: guint, accel_mods: gdk2.TModifierType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_remove_accelerator".}
-proc widget_set_accel_path*(widget: PWidget, accel_path: cstring, 
+proc set_accel_path*(widget: PWidget, accel_path: cstring, 
                             accel_group: PAccelGroup){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_accel_path".}
-proc widget_get_accel_path*(widget: PWidget, locked: Pgboolean): cstring{.cdecl, 
+proc get_accel_path*(widget: PWidget, locked: Pgboolean): cstring{.cdecl, 
     dynlib: lib, importc: "_gtk_widget_get_accel_path".}
-proc widget_list_accel_closures*(widget: PWidget): PGList{.cdecl, dynlib: lib, 
+proc list_accel_closures*(widget: PWidget): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_widget_list_accel_closures".}
-proc widget_mnemonic_activate*(widget: PWidget, group_cycling: gboolean): gboolean{.
+proc mnemonic_activate*(widget: PWidget, group_cycling: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_mnemonic_activate".}
-proc widget_event*(widget: PWidget, event: gdk2.PEvent): gboolean{.cdecl, 
+proc event*(widget: PWidget, event: gdk2.PEvent): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_event".}
-proc widget_send_expose*(widget: PWidget, event: gdk2.PEvent): gint{.cdecl, 
+proc send_expose*(widget: PWidget, event: gdk2.PEvent): gint{.cdecl, 
     dynlib: lib, importc: "gtk_widget_send_expose".}
-proc widget_activate*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+proc activate*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_activate".}
-proc widget_set_scroll_adjustments*(widget: PWidget, hadjustment: PAdjustment, 
+proc set_scroll_adjustments*(widget: PWidget, hadjustment: PAdjustment, 
                                     vadjustment: PAdjustment): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_scroll_adjustments".}
-proc widget_reparent*(widget: PWidget, new_parent: PWidget){.cdecl, dynlib: lib, 
+proc reparent*(widget: PWidget, new_parent: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_reparent".}
-proc widget_intersect*(widget: PWidget, area: gdk2.PRectangle, 
+proc intersect*(widget: PWidget, area: gdk2.PRectangle, 
                        intersection: gdk2.PRectangle): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_intersect".}
-proc widget_region_intersect*(widget: PWidget, region: gdk2.PRegion): gdk2.PRegion{.
+proc region_intersect*(widget: PWidget, region: gdk2.PRegion): gdk2.PRegion{.
     cdecl, dynlib: lib, importc: "gtk_widget_region_intersect".}
-proc widget_freeze_child_notify*(widget: PWidget){.cdecl, dynlib: lib, 
+proc freeze_child_notify*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_freeze_child_notify".}
-proc widget_child_notify*(widget: PWidget, child_property: cstring){.cdecl, 
+proc child_notify*(widget: PWidget, child_property: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_widget_child_notify".}
-proc widget_thaw_child_notify*(widget: PWidget){.cdecl, dynlib: lib, 
+proc thaw_child_notify*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_thaw_child_notify".}
-proc widget_is_focus*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+proc is_focus*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_is_focus".}
-proc widget_grab_focus*(widget: PWidget){.cdecl, dynlib: lib, 
+proc grab_focus*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_grab_focus".}
-proc widget_grab_default*(widget: PWidget){.cdecl, dynlib: lib, 
+proc grab_default*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_grab_default".}
-proc widget_set_name*(widget: PWidget, name: cstring){.cdecl, dynlib: lib, 
+proc set_name*(widget: PWidget, name: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_name".}
-proc widget_get_name*(widget: PWidget): cstring{.cdecl, dynlib: lib, 
+proc get_name*(widget: PWidget): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_name".}
-proc widget_set_state*(widget: PWidget, state: TStateType){.cdecl, dynlib: lib, 
+proc set_state*(widget: PWidget, state: TStateType){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_state".}
-proc widget_set_sensitive*(widget: PWidget, sensitive: gboolean){.cdecl, 
+proc set_sensitive*(widget: PWidget, sensitive: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_sensitive".}
-proc widget_set_app_paintable*(widget: PWidget, app_paintable: gboolean){.cdecl, 
+proc set_app_paintable*(widget: PWidget, app_paintable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_app_paintable".}
-proc widget_set_double_buffered*(widget: PWidget, double_buffered: gboolean){.
+proc set_double_buffered*(widget: PWidget, double_buffered: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_double_buffered".}
-proc widget_set_redraw_on_allocate*(widget: PWidget, 
+proc set_redraw_on_allocate*(widget: PWidget, 
                                     redraw_on_allocate: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_redraw_on_allocate".}
-proc widget_set_parent*(widget: PWidget, parent: PWidget){.cdecl, dynlib: lib, 
+proc set_parent*(widget: PWidget, parent: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_parent".}
-proc widget_set_parent_window*(widget: PWidget, parent_window: gdk2.PWindow){.
+proc set_parent_window*(widget: PWidget, parent_window: gdk2.PWindow){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_parent_window".}
-proc widget_set_child_visible*(widget: PWidget, is_visible: gboolean){.cdecl, 
+proc set_child_visible*(widget: PWidget, is_visible: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_child_visible".}
-proc widget_get_child_visible*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+proc get_child_visible*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_child_visible".}
-proc widget_get_parent*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
+proc get_parent*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_parent".}
-proc widget_get_parent_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
+proc get_parent_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_parent_window".}
-proc widget_child_focus*(widget: PWidget, direction: TDirectionType): gboolean{.
+proc child_focus*(widget: PWidget, direction: TDirectionType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_widget_child_focus".}
-proc widget_set_size_request*(widget: PWidget, width: gint, height: gint){.
+proc set_size_request*(widget: PWidget, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_size_request".}
-proc widget_get_size_request*(widget: PWidget, width: Pgint, height: Pgint){.
+proc get_size_request*(widget: PWidget, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_widget_get_size_request".}
-proc widget_set_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib, 
+proc set_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_events".}
-proc widget_add_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib, 
+proc add_events*(widget: PWidget, events: gint){.cdecl, dynlib: lib, 
     importc: "gtk_widget_add_events".}
-proc widget_set_extension_events*(widget: PWidget, mode: gdk2.TExtensionMode){.
+proc set_extension_events*(widget: PWidget, mode: gdk2.TExtensionMode){.
     cdecl, dynlib: lib, importc: "gtk_widget_set_extension_events".}
-proc widget_get_extension_events*(widget: PWidget): gdk2.TExtensionMode{.cdecl, 
+proc get_extension_events*(widget: PWidget): gdk2.TExtensionMode{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_extension_events".}
-proc widget_get_toplevel*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
+proc get_toplevel*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_toplevel".}
-proc widget_get_ancestor*(widget: PWidget, widget_type: TType): PWidget{.cdecl, 
+proc get_ancestor*(widget: PWidget, widget_type: TType): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_ancestor".}
-proc widget_get_colormap*(widget: PWidget): gdk2.PColormap{.cdecl, dynlib: lib, 
+proc get_colormap*(widget: PWidget): gdk2.PColormap{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_colormap".}
-proc widget_get_visual*(widget: PWidget): gdk2.PVisual{.cdecl, dynlib: lib, 
+proc get_visual*(widget: PWidget): gdk2.PVisual{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_visual".}
-proc widget_get_screen*(widget: PWidget): gdk2.PScreen{.cdecl, dynlib: lib, 
+proc get_screen*(widget: PWidget): gdk2.PScreen{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_screen".}
-proc widget_has_screen*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+proc has_screen*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_has_screen".}
-proc widget_get_display*(widget: PWidget): gdk2.PDisplay{.cdecl, dynlib: lib, 
+proc get_display*(widget: PWidget): gdk2.PDisplay{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_display".}
-proc widget_get_root_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
+proc get_root_window*(widget: PWidget): gdk2.PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_root_window".}
-proc widget_get_settings*(widget: PWidget): PSettings{.cdecl, dynlib: lib, 
+proc get_settings*(widget: PWidget): PSettings{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_settings".}
-proc widget_get_clipboard*(widget: PWidget, selection: gdk2.TAtom): PClipboard{.
+proc get_clipboard*(widget: PWidget, selection: gdk2.TAtom): PClipboard{.
     cdecl, dynlib: lib, importc: "gtk_widget_get_clipboard".}
-proc widget_get_accessible*(widget: PWidget): atk.PObject{.cdecl, dynlib: lib, 
+proc get_accessible*(widget: PWidget): atk.PObject{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_accessible".}
-proc widget_set_colormap*(widget: PWidget, colormap: gdk2.PColormap){.cdecl, 
+proc set_colormap*(widget: PWidget, colormap: gdk2.PColormap){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_colormap".}
-proc widget_get_events*(widget: PWidget): gint{.cdecl, dynlib: lib, 
+proc get_events*(widget: PWidget): gint{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_events".}
-proc widget_get_pointer*(widget: PWidget, x: Pgint, y: Pgint){.cdecl, 
+proc get_pointer*(widget: PWidget, x: Pgint, y: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_pointer".}
-proc widget_is_ancestor*(widget: PWidget, ancestor: PWidget): gboolean{.cdecl, 
+proc is_ancestor*(widget: PWidget, ancestor: PWidget): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_widget_is_ancestor".}
-proc widget_translate_coordinates*(src_widget: PWidget, dest_widget: PWidget, 
+proc translate_coordinates*(src_widget: PWidget, dest_widget: PWidget, 
                                    src_x: gint, src_y: gint, dest_x: Pgint, 
                                    dest_y: Pgint): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_translate_coordinates".}
-proc widget_hide_on_delete*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
+proc hide_on_delete*(widget: PWidget): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_widget_hide_on_delete".}
-proc widget_set_style*(widget: PWidget, style: PStyle){.cdecl, dynlib: lib, 
+proc set_style*(widget: PWidget, style: PStyle){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_style".}
-proc widget_ensure_style*(widget: PWidget){.cdecl, dynlib: lib, 
+proc ensure_style*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_ensure_style".}
-proc widget_get_style*(widget: PWidget): PStyle{.cdecl, dynlib: lib, 
+proc get_style*(widget: PWidget): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_style".}
-proc widget_modify_style*(widget: PWidget, style: PRcStyle){.cdecl, dynlib: lib, 
+proc modify_style*(widget: PWidget, style: PRcStyle){.cdecl, dynlib: lib, 
     importc: "gtk_widget_modify_style".}
-proc widget_get_modifier_style*(widget: PWidget): PRcStyle{.cdecl, dynlib: lib, 
+proc get_modifier_style*(widget: PWidget): PRcStyle{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_modifier_style".}
-proc widget_modify_fg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
+proc modify_fg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_fg".}
-proc widget_modify_bg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
+proc modify_bg*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_bg".}
-proc widget_modify_text*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
+proc modify_text*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_text".}
-proc widget_modify_base*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
+proc modify_base*(widget: PWidget, state: TStateType, color: gdk2.PColor){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_base".}
-proc widget_modify_font*(widget: PWidget, font_desc: pango.PFontDescription){.
+proc modify_font*(widget: PWidget, font_desc: pango.PFontDescription){.
     cdecl, dynlib: lib, importc: "gtk_widget_modify_font".}
-proc widget_create_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
+proc create_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
     dynlib: lib, importc: "gtk_widget_create_pango_context".}
-proc widget_get_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
+proc get_pango_context*(widget: PWidget): pango.PContext{.cdecl, 
     dynlib: lib, importc: "gtk_widget_get_pango_context".}
-proc widget_create_pango_layout*(widget: PWidget, text: cstring): pango.PLayout{.
+proc create_pango_layout*(widget: PWidget, text: cstring): pango.PLayout{.
     cdecl, dynlib: lib, importc: "gtk_widget_create_pango_layout".}
-proc widget_render_icon*(widget: PWidget, stock_id: cstring, size: TIconSize, 
+proc render_icon*(widget: PWidget, stock_id: cstring, size: TIconSize, 
                          detail: cstring): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_widget_render_icon".}
-proc widget_set_composite_name*(widget: PWidget, name: cstring){.cdecl, 
+proc set_composite_name*(widget: PWidget, name: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_composite_name".}
-proc widget_get_composite_name*(widget: PWidget): cstring{.cdecl, dynlib: lib, 
+proc get_composite_name*(widget: PWidget): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_composite_name".}
-proc widget_reset_rc_styles*(widget: PWidget){.cdecl, dynlib: lib, 
+proc reset_rc_styles*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_reset_rc_styles".}
 proc widget_push_colormap*(cmap: gdk2.PColormap){.cdecl, dynlib: lib, 
     importc: "gtk_widget_push_colormap".}
@@ -3765,53 +3765,53 @@ proc widget_pop_composite_child*(){.cdecl, dynlib: lib,
                                     importc: "gtk_widget_pop_composite_child".}
 proc widget_pop_colormap*(){.cdecl, dynlib: lib, 
                              importc: "gtk_widget_pop_colormap".}
-proc widget_class_install_style_property*(klass: PWidgetClass, 
+proc install_style_property*(klass: PWidgetClass, 
     pspec: PGParamSpec){.cdecl, dynlib: lib, 
                          importc: "gtk_widget_class_install_style_property".}
-proc widget_class_install_style_property_parser*(klass: PWidgetClass, 
+proc install_style_property_parser*(klass: PWidgetClass, 
     pspec: PGParamSpec, parser: TRcPropertyParser){.cdecl, dynlib: lib, 
     importc: "gtk_widget_class_install_style_property_parser".}
-proc widget_class_find_style_property*(klass: PWidgetClass, 
+proc find_style_property*(klass: PWidgetClass, 
                                        property_name: cstring): PGParamSpec{.
     cdecl, dynlib: lib, importc: "gtk_widget_class_find_style_property".}
-proc widget_class_list_style_properties*(klass: PWidgetClass, 
+proc list_style_properties*(klass: PWidgetClass, 
     n_properties: Pguint): PPGParamSpec{.cdecl, dynlib: lib, 
     importc: "gtk_widget_class_list_style_properties".}
-proc widget_style_get_property*(widget: PWidget, property_name: cstring, 
+proc style_get_property*(widget: PWidget, property_name: cstring, 
                                 value: PGValue){.cdecl, dynlib: lib, 
     importc: "gtk_widget_style_get_property".}
 proc widget_set_default_colormap*(colormap: gdk2.PColormap){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_default_colormap".}
 proc widget_get_default_style*(): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_default_style".}
-proc widget_set_direction*(widget: PWidget, dir: TTextDirection){.cdecl, 
+proc set_direction*(widget: PWidget, dir: TTextDirection){.cdecl, 
     dynlib: lib, importc: "gtk_widget_set_direction".}
-proc widget_get_direction*(widget: PWidget): TTextDirection{.cdecl, dynlib: lib, 
+proc get_direction*(widget: PWidget): TTextDirection{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_direction".}
 proc widget_set_default_direction*(dir: TTextDirection){.cdecl, dynlib: lib, 
     importc: "gtk_widget_set_default_direction".}
 proc widget_get_default_direction*(): TTextDirection{.cdecl, dynlib: lib, 
     importc: "gtk_widget_get_default_direction".}
-proc widget_shape_combine_mask*(widget: PWidget, shape_mask: gdk2.PBitmap, 
+proc shape_combine_mask*(widget: PWidget, shape_mask: gdk2.PBitmap, 
                                 offset_x: gint, offset_y: gint){.cdecl, 
     dynlib: lib, importc: "gtk_widget_shape_combine_mask".}
-proc widget_reset_shapes*(widget: PWidget){.cdecl, dynlib: lib, 
+proc reset_shapes*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_widget_reset_shapes".}
-proc widget_path*(widget: PWidget, path_length: Pguint, path: PPgchar, 
+proc path*(widget: PWidget, path_length: Pguint, path: PPgchar, 
                   path_reversed: PPgchar){.cdecl, dynlib: lib, 
     importc: "gtk_widget_path".}
-proc widget_class_path*(widget: PWidget, path_length: Pguint, path: PPgchar, 
+proc class_path*(widget: PWidget, path_length: Pguint, path: PPgchar, 
                         path_reversed: PPgchar){.cdecl, dynlib: lib, 
     importc: "gtk_widget_class_path".}
 proc requisition_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_requisition_get_type".}
-proc requisition_copy*(requisition: PRequisition): PRequisition{.cdecl, 
+proc copy*(requisition: PRequisition): PRequisition{.cdecl, 
     dynlib: lib, importc: "gtk_requisition_copy".}
-proc requisition_free*(requisition: PRequisition){.cdecl, dynlib: lib, 
+proc free*(requisition: PRequisition){.cdecl, dynlib: lib, 
     importc: "gtk_requisition_free".}
-proc widget_get_aux_info*(widget: PWidget, create: gboolean): PWidgetAuxInfo{.
+proc get_aux_info*(widget: PWidget, create: gboolean): PWidgetAuxInfo{.
     cdecl, dynlib: lib, importc: "gtk_widget_get_aux_info".}
-proc widget_propagate_hierarchy_changed*(widget: PWidget, 
+proc propagate_hierarchy_changed*(widget: PWidget, 
     previous_toplevel: PWidget){.cdecl, dynlib: lib, importc: "_gtk_widget_propagate_hierarchy_changed".}
 proc widget_peek_colormap*(): gdk2.PColormap{.cdecl, dynlib: lib, 
     importc: "_gtk_widget_peek_colormap".}
@@ -3822,13 +3822,13 @@ proc IS_MISC*(obj: pointer): bool
 proc IS_MISC_CLASS*(klass: pointer): bool
 proc MISC_GET_CLASS*(obj: pointer): PMiscClass
 proc misc_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_misc_get_type".}
-proc misc_set_alignment*(misc: PMisc, xalign: gfloat, yalign: gfloat){.cdecl, 
+proc set_alignment*(misc: PMisc, xalign: gfloat, yalign: gfloat){.cdecl, 
     dynlib: lib, importc: "gtk_misc_set_alignment".}
-proc misc_get_alignment*(misc: PMisc, xalign, yalign: var Pgfloat){.cdecl, 
+proc get_alignment*(misc: PMisc, xalign, yalign: var Pgfloat){.cdecl, 
     dynlib: lib, importc: "gtk_misc_get_alignment".}
-proc misc_set_padding*(misc: PMisc, xpad: gint, ypad: gint){.cdecl, dynlib: lib, 
+proc set_padding*(misc: PMisc, xpad: gint, ypad: gint){.cdecl, dynlib: lib, 
     importc: "gtk_misc_set_padding".}
-proc misc_get_padding*(misc: PMisc, xpad, ypad: var Pgint){.cdecl, dynlib: lib, 
+proc get_padding*(misc: PMisc, xpad, ypad: var Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_misc_get_padding".}
 const 
   ACCEL_VISIBLE* = 1 shl 0
@@ -3849,32 +3849,32 @@ proc accel_group_get_type*(): GType{.cdecl, dynlib: lib,
                                      importc: "gtk_accel_group_get_type".}
 proc accel_group_new*(): PAccelGroup{.cdecl, dynlib: lib, 
                                       importc: "gtk_accel_group_new".}
-proc accel_group_lock*(accel_group: PAccelGroup){.cdecl, dynlib: lib, 
+proc lock*(accel_group: PAccelGroup){.cdecl, dynlib: lib, 
     importc: "gtk_accel_group_lock".}
-proc accel_group_unlock*(accel_group: PAccelGroup){.cdecl, dynlib: lib, 
+proc unlock*(accel_group: PAccelGroup){.cdecl, dynlib: lib, 
     importc: "gtk_accel_group_unlock".}
-proc accel_group_connect*(accel_group: PAccelGroup, accel_key: guint, 
+proc connect*(accel_group: PAccelGroup, accel_key: guint, 
                           accel_mods: gdk2.TModifierType, 
                           accel_flags: TAccelFlags, closure: PGClosure){.cdecl, 
     dynlib: lib, importc: "gtk_accel_group_connect".}
-proc accel_group_connect_by_path*(accel_group: PAccelGroup, accel_path: cstring, 
+proc connect_by_path*(accel_group: PAccelGroup, accel_path: cstring, 
                                   closure: PGClosure){.cdecl, dynlib: lib, 
     importc: "gtk_accel_group_connect_by_path".}
-proc accel_group_disconnect*(accel_group: PAccelGroup, closure: PGClosure): gboolean{.
+proc disconnect*(accel_group: PAccelGroup, closure: PGClosure): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_accel_group_disconnect".}
-proc accel_group_disconnect_key*(accel_group: PAccelGroup, accel_key: guint, 
+proc disconnect_key*(accel_group: PAccelGroup, accel_key: guint, 
                                  accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_group_disconnect_key".}
-proc accel_group_attach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
+proc attach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
     dynlib: lib, importc: "_gtk_accel_group_attach".}
-proc accel_group_detach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
+proc detach*(accel_group: PAccelGroup, anObject: PGObject){.cdecl, 
     dynlib: lib, importc: "_gtk_accel_group_detach".}
 proc accel_groups_activate*(anObject: PGObject, accel_key: guint, 
                             accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_groups_activate".}
 proc accel_groups_from_object*(anObject: PGObject): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_accel_groups_from_object".}
-proc accel_group_find*(accel_group: PAccelGroup, 
+proc find*(accel_group: PAccelGroup, 
                        find_func: Taccel_group_find_func, data: gpointer): PAccelKey{.
     cdecl, dynlib: lib, importc: "gtk_accel_group_find".}
 proc accel_group_from_accel_closure*(closure: PGClosure): PAccelGroup{.cdecl, 
@@ -3891,10 +3891,10 @@ proc accelerator_set_default_mod_mask*(default_mod_mask: gdk2.TModifierType){.
     cdecl, dynlib: lib, importc: "gtk_accelerator_set_default_mod_mask".}
 proc accelerator_get_default_mod_mask*(): guint{.cdecl, dynlib: lib, 
     importc: "gtk_accelerator_get_default_mod_mask".}
-proc accel_group_query*(accel_group: PAccelGroup, accel_key: guint, 
+proc query*(accel_group: PAccelGroup, accel_key: guint, 
                         accel_mods: gdk2.TModifierType, n_entries: Pguint): PAccelGroupEntry{.
     cdecl, dynlib: lib, importc: "gtk_accel_group_query".}
-proc accel_group_reconnect*(accel_group: PAccelGroup, accel_path_quark: TGQuark){.
+proc reconnect*(accel_group: PAccelGroup, accel_path_quark: TGQuark){.
     cdecl, dynlib: lib, importc: "_gtk_accel_group_reconnect".}
 const 
   bm_TGtkContainer_border_width* = 0x0000FFFF'i32
@@ -3927,54 +3927,54 @@ proc has_focus_chain*(a: var TContainer): guint
 proc set_has_focus_chain*(a: var TContainer, `has_focus_chain`: guint)
 proc container_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_container_get_type".}
-proc container_set_border_width*(container: PContainer, border_width: guint){.
+proc set_border_width*(container: PContainer, border_width: guint){.
     cdecl, dynlib: lib, importc: "gtk_container_set_border_width".}
-proc container_get_border_width*(container: PContainer): guint{.cdecl, 
+proc get_border_width*(container: PContainer): guint{.cdecl, 
     dynlib: lib, importc: "gtk_container_get_border_width".}
-proc container_add*(container: PContainer, widget: PWidget){.cdecl, dynlib: lib, 
+proc add*(container: PContainer, widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_container_add".}
-proc container_remove*(container: PContainer, widget: PWidget){.cdecl, 
+proc remove*(container: PContainer, widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_container_remove".}
-proc container_set_resize_mode*(container: PContainer, resize_mode: TResizeMode){.
+proc set_resize_mode*(container: PContainer, resize_mode: TResizeMode){.
     cdecl, dynlib: lib, importc: "gtk_container_set_resize_mode".}
-proc container_get_resize_mode*(container: PContainer): TResizeMode{.cdecl, 
+proc get_resize_mode*(container: PContainer): TResizeMode{.cdecl, 
     dynlib: lib, importc: "gtk_container_get_resize_mode".}
-proc container_check_resize*(container: PContainer){.cdecl, dynlib: lib, 
+proc check_resize*(container: PContainer){.cdecl, dynlib: lib, 
     importc: "gtk_container_check_resize".}
-proc container_foreach*(container: PContainer, callback: TCallback, 
+proc foreach*(container: PContainer, callback: TCallback, 
                         callback_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_container_foreach".}
-proc container_get_children*(container: PContainer): PGList{.cdecl, dynlib: lib, 
+proc get_children*(container: PContainer): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_container_get_children".}
-proc container_propagate_expose*(container: PContainer, child: PWidget, 
+proc propagate_expose*(container: PContainer, child: PWidget, 
                                  event: gdk2.PEventExpose){.cdecl, dynlib: lib, 
     importc: "gtk_container_propagate_expose".}
-proc container_set_focus_chain*(container: PContainer, focusable_widgets: PGList){.
+proc set_focus_chain*(container: PContainer, focusable_widgets: PGList){.
     cdecl, dynlib: lib, importc: "gtk_container_set_focus_chain".}
-proc container_get_focus_chain*(container: PContainer, s: var PGList): gboolean{.
+proc get_focus_chain*(container: PContainer, s: var PGList): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_container_get_focus_chain".}
-proc container_unset_focus_chain*(container: PContainer){.cdecl, dynlib: lib, 
+proc unset_focus_chain*(container: PContainer){.cdecl, dynlib: lib, 
     importc: "gtk_container_unset_focus_chain".}
-proc container_set_reallocate_redraws*(container: PContainer, 
+proc set_reallocate_redraws*(container: PContainer, 
                                        needs_redraws: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_container_set_reallocate_redraws".}
-proc container_set_focus_child*(container: PContainer, child: PWidget){.cdecl, 
+proc set_focus_child*(container: PContainer, child: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_container_set_focus_child".}
-proc container_set_focus_vadjustment*(container: PContainer, 
+proc set_focus_vadjustment*(container: PContainer, 
                                       adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_container_set_focus_vadjustment".}
-proc container_get_focus_vadjustment*(container: PContainer): PAdjustment{.
+proc get_focus_vadjustment*(container: PContainer): PAdjustment{.
     cdecl, dynlib: lib, importc: "gtk_container_get_focus_vadjustment".}
-proc container_set_focus_hadjustment*(container: PContainer, 
+proc set_focus_hadjustment*(container: PContainer, 
                                       adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_container_set_focus_hadjustment".}
-proc container_get_focus_hadjustment*(container: PContainer): PAdjustment{.
+proc get_focus_hadjustment*(container: PContainer): PAdjustment{.
     cdecl, dynlib: lib, importc: "gtk_container_get_focus_hadjustment".}
-proc container_resize_children*(container: PContainer){.cdecl, dynlib: lib, 
+proc resize_children*(container: PContainer){.cdecl, dynlib: lib, 
     importc: "gtk_container_resize_children".}
-proc container_child_type*(container: PContainer): TType{.cdecl, dynlib: lib, 
+proc child_type*(container: PContainer): TType{.cdecl, dynlib: lib, 
     importc: "gtk_container_child_type".}
-proc container_class_install_child_property*(cclass: PContainerClass, 
+proc install_child_property*(cclass: PContainerClass, 
     property_id: guint, pspec: PGParamSpec){.cdecl, dynlib: lib, 
     importc: "gtk_container_class_install_child_property".}
 proc container_class_find_child_property*(cclass: PGObjectClass, 
@@ -3983,26 +3983,26 @@ proc container_class_find_child_property*(cclass: PGObjectClass,
 proc container_class_list_child_properties*(cclass: PGObjectClass, 
     n_properties: Pguint): PPGParamSpec{.cdecl, dynlib: lib, 
     importc: "gtk_container_class_list_child_properties".}
-proc container_child_set_property*(container: PContainer, child: PWidget, 
+proc child_set_property*(container: PContainer, child: PWidget, 
                                    property_name: cstring, value: PGValue){.
     cdecl, dynlib: lib, importc: "gtk_container_child_set_property".}
-proc container_child_get_property*(container: PContainer, child: PWidget, 
+proc child_get_property*(container: PContainer, child: PWidget, 
                                    property_name: cstring, value: PGValue){.
     cdecl, dynlib: lib, importc: "gtk_container_child_get_property".}
 proc CONTAINER_WARN_INVALID_CHILD_PROPERTY_ID*(anObject: pointer, 
     property_id: guint, pspec: pointer)
-proc container_forall*(container: PContainer, callback: TCallback, 
+proc forall*(container: PContainer, callback: TCallback, 
                        callback_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_container_forall".}
-proc container_queue_resize*(container: PContainer){.cdecl, dynlib: lib, 
+proc queue_resize*(container: PContainer){.cdecl, dynlib: lib, 
     importc: "_gtk_container_queue_resize".}
-proc container_clear_resize_widgets*(container: PContainer){.cdecl, dynlib: lib, 
+proc clear_resize_widgets*(container: PContainer){.cdecl, dynlib: lib, 
     importc: "_gtk_container_clear_resize_widgets".}
-proc container_child_composite_name*(container: PContainer, child: PWidget): cstring{.
+proc child_composite_name*(container: PContainer, child: PWidget): cstring{.
     cdecl, dynlib: lib, importc: "_gtk_container_child_composite_name".}
-proc container_dequeue_resize_handler*(container: PContainer){.cdecl, 
+proc dequeue_resize_handler*(container: PContainer){.cdecl, 
     dynlib: lib, importc: "_gtk_container_dequeue_resize_handler".}
-proc container_focus_sort*(container: PContainer, children: PGList, 
+proc focus_sort*(container: PContainer, children: PGList, 
                            direction: TDirectionType, old_focus: PWidget): PGList{.
     cdecl, dynlib: lib, importc: "_gtk_container_focus_sort".}
 proc TYPE_BIN*(): GType
@@ -4012,7 +4012,7 @@ proc IS_BIN*(obj: pointer): bool
 proc IS_BIN_CLASS*(klass: pointer): bool
 proc BIN_GET_CLASS*(obj: pointer): PBinClass
 proc bin_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_bin_get_type".}
-proc bin_get_child*(bin: PBin): PWidget{.cdecl, dynlib: lib, 
+proc get_child*(bin: PBin): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_bin_get_child".}
 const 
   bm_TGtkWindow_allow_shrink* = 0x00000001'i32
@@ -4105,170 +4105,170 @@ proc window_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_window_get_type".}
 proc window_new*(thetype: TWindowType): PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_window_new".}
-proc window_set_title*(window: PWindow, title: cstring){.cdecl, dynlib: lib, 
+proc set_title*(window: PWindow, title: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_title".}
-proc window_get_title*(window: PWindow): cstring{.cdecl, dynlib: lib, 
+proc get_title*(window: PWindow): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_title".}
-proc window_set_wmclass*(window: PWindow, wmclass_name: cstring, 
+proc set_wmclass*(window: PWindow, wmclass_name: cstring, 
                          wmclass_class: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_wmclass".}
-proc window_set_role*(window: PWindow, role: cstring){.cdecl, dynlib: lib, 
+proc set_role*(window: PWindow, role: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_role".}
-proc window_get_role*(window: PWindow): cstring{.cdecl, dynlib: lib, 
+proc get_role*(window: PWindow): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_role".}
-proc window_add_accel_group*(window: PWindow, accel_group: PAccelGroup){.cdecl, 
+proc add_accel_group*(window: PWindow, accel_group: PAccelGroup){.cdecl, 
     dynlib: lib, importc: "gtk_window_add_accel_group".}
-proc window_remove_accel_group*(window: PWindow, accel_group: PAccelGroup){.
+proc remove_accel_group*(window: PWindow, accel_group: PAccelGroup){.
     cdecl, dynlib: lib, importc: "gtk_window_remove_accel_group".}
-proc window_set_position*(window: PWindow, position: TWindowPosition){.cdecl, 
+proc set_position*(window: PWindow, position: TWindowPosition){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_position".}
-proc window_activate_focus*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc activate_focus*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_activate_focus".}
-proc window_set_focus*(window: PWindow, focus: PWidget){.cdecl, dynlib: lib, 
+proc set_focus*(window: PWindow, focus: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_focus".}
-proc window_get_focus*(window: PWindow): PWidget{.cdecl, dynlib: lib, 
+proc get_focus*(window: PWindow): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_focus".}
-proc window_set_default*(window: PWindow, default_widget: PWidget){.cdecl, 
+proc set_default*(window: PWindow, default_widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_default".}
-proc window_activate_default*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc activate_default*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_activate_default".}
-proc window_set_transient_for*(window: PWindow, parent: PWindow){.cdecl, 
+proc set_transient_for*(window: PWindow, parent: PWindow){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_transient_for".}
-proc window_get_transient_for*(window: PWindow): PWindow{.cdecl, dynlib: lib, 
+proc get_transient_for*(window: PWindow): PWindow{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_transient_for".}
-proc window_set_type_hint*(window: PWindow, hint: gdk2.TWindowTypeHint){.cdecl, 
+proc set_type_hint*(window: PWindow, hint: gdk2.TWindowTypeHint){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_type_hint".}
-proc window_get_type_hint*(window: PWindow): gdk2.TWindowTypeHint{.cdecl, 
+proc get_type_hint*(window: PWindow): gdk2.TWindowTypeHint{.cdecl, 
     dynlib: lib, importc: "gtk_window_get_type_hint".}
-proc window_set_destroy_with_parent*(window: PWindow, setting: gboolean){.cdecl, 
+proc set_destroy_with_parent*(window: PWindow, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_destroy_with_parent".}
-proc window_get_destroy_with_parent*(window: PWindow): gboolean{.cdecl, 
+proc get_destroy_with_parent*(window: PWindow): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_window_get_destroy_with_parent".}
-proc window_set_resizable*(window: PWindow, resizable: gboolean){.cdecl, 
+proc set_resizable*(window: PWindow, resizable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_resizable".}
-proc window_get_resizable*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc get_resizable*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_resizable".}
-proc window_set_gravity*(window: PWindow, gravity: gdk2.TGravity){.cdecl, 
+proc set_gravity*(window: PWindow, gravity: gdk2.TGravity){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_gravity".}
-proc window_get_gravity*(window: PWindow): gdk2.TGravity{.cdecl, dynlib: lib, 
+proc get_gravity*(window: PWindow): gdk2.TGravity{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_gravity".}
-proc window_set_geometry_hints*(window: PWindow, geometry_widget: PWidget, 
+proc set_geometry_hints*(window: PWindow, geometry_widget: PWidget, 
                                 geometry: gdk2.PGeometry, 
                                 geom_mask: gdk2.TWindowHints){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_geometry_hints".}
-proc window_set_screen*(window: PWindow, screen: gdk2.PScreen){.cdecl, 
+proc set_screen*(window: PWindow, screen: gdk2.PScreen){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_screen".}
-proc window_get_screen*(window: PWindow): gdk2.PScreen{.cdecl, dynlib: lib, 
+proc get_screen*(window: PWindow): gdk2.PScreen{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_screen".}
-proc window_set_has_frame*(window: PWindow, setting: gboolean){.cdecl, 
+proc set_has_frame*(window: PWindow, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_has_frame".}
-proc window_get_has_frame*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc get_has_frame*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_has_frame".}
-proc window_set_frame_dimensions*(window: PWindow, left: gint, top: gint, 
+proc set_frame_dimensions*(window: PWindow, left: gint, top: gint, 
                                   right: gint, bottom: gint){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_frame_dimensions".}
-proc window_get_frame_dimensions*(window: PWindow, left: Pgint, top: Pgint, 
+proc get_frame_dimensions*(window: PWindow, left: Pgint, top: Pgint, 
                                   right: Pgint, bottom: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_window_get_frame_dimensions".}
-proc window_set_decorated*(window: PWindow, setting: gboolean){.cdecl, 
+proc set_decorated*(window: PWindow, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_window_set_decorated".}
-proc window_get_decorated*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc get_decorated*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_decorated".}
-proc window_set_icon_list*(window: PWindow, list: PGList){.cdecl, dynlib: lib, 
+proc set_icon_list*(window: PWindow, list: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_icon_list".}
-proc window_get_icon_list*(window: PWindow): PGList{.cdecl, dynlib: lib, 
+proc get_icon_list*(window: PWindow): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_icon_list".}
-proc window_set_icon*(window: PWindow, icon: gdk2pixbuf.PPixbuf){.cdecl, dynlib: lib, 
+proc set_icon*(window: PWindow, icon: gdk2pixbuf.PPixbuf){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_icon".}
-proc window_get_icon*(window: PWindow): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
+proc get_icon*(window: PWindow): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_icon".}
 proc window_set_default_icon_list*(list: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_default_icon_list".}
 proc window_get_default_icon_list*(): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_default_icon_list".}
-proc window_set_modal*(window: PWindow, modal: gboolean){.cdecl, dynlib: lib, 
+proc set_modal*(window: PWindow, modal: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_modal".}
-proc window_get_modal*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
+proc get_modal*(window: PWindow): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_window_get_modal".}
 proc window_list_toplevels*(): PGList{.cdecl, dynlib: lib, 
                                        importc: "gtk_window_list_toplevels".}
-proc window_add_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
+proc add_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_window_add_mnemonic".}
-proc window_remove_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
+proc remove_mnemonic*(window: PWindow, keyval: guint, target: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_window_remove_mnemonic".}
-proc window_mnemonic_activate*(window: PWindow, keyval: guint, 
+proc mnemonic_activate*(window: PWindow, keyval: guint, 
                                modifier: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_window_mnemonic_activate".}
-proc window_set_mnemonic_modifier*(window: PWindow, modifier: gdk2.TModifierType){.
+proc set_mnemonic_modifier*(window: PWindow, modifier: gdk2.TModifierType){.
     cdecl, dynlib: lib, importc: "gtk_window_set_mnemonic_modifier".}
-proc window_get_mnemonic_modifier*(window: PWindow): gdk2.TModifierType{.cdecl, 
+proc get_mnemonic_modifier*(window: PWindow): gdk2.TModifierType{.cdecl, 
     dynlib: lib, importc: "gtk_window_get_mnemonic_modifier".}
-proc window_present*(window: PWindow){.cdecl, dynlib: lib, 
+proc present*(window: PWindow){.cdecl, dynlib: lib, 
                                        importc: "gtk_window_present".}
-proc window_iconify*(window: PWindow){.cdecl, dynlib: lib, 
+proc iconify*(window: PWindow){.cdecl, dynlib: lib, 
                                        importc: "gtk_window_iconify".}
-proc window_deiconify*(window: PWindow){.cdecl, dynlib: lib, 
+proc deiconify*(window: PWindow){.cdecl, dynlib: lib, 
     importc: "gtk_window_deiconify".}
-proc window_stick*(window: PWindow){.cdecl, dynlib: lib, 
+proc stick*(window: PWindow){.cdecl, dynlib: lib, 
                                      importc: "gtk_window_stick".}
-proc window_unstick*(window: PWindow){.cdecl, dynlib: lib, 
+proc unstick*(window: PWindow){.cdecl, dynlib: lib, 
                                        importc: "gtk_window_unstick".}
-proc window_maximize*(window: PWindow){.cdecl, dynlib: lib, 
+proc maximize*(window: PWindow){.cdecl, dynlib: lib, 
                                         importc: "gtk_window_maximize".}
-proc window_unmaximize*(window: PWindow){.cdecl, dynlib: lib, 
+proc unmaximize*(window: PWindow){.cdecl, dynlib: lib, 
     importc: "gtk_window_unmaximize".}
-proc window_begin_resize_drag*(window: PWindow, edge: gdk2.TWindowEdge, 
+proc begin_resize_drag*(window: PWindow, edge: gdk2.TWindowEdge, 
                                button: gint, root_x: gint, root_y: gint, 
                                timestamp: guint32){.cdecl, dynlib: lib, 
     importc: "gtk_window_begin_resize_drag".}
-proc window_begin_move_drag*(window: PWindow, button: gint, root_x: gint, 
+proc begin_move_drag*(window: PWindow, button: gint, root_x: gint, 
                              root_y: gint, timestamp: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_window_begin_move_drag".}
-proc window_set_default_size*(window: PWindow, width: gint, height: gint){.
+proc set_default_size*(window: PWindow, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "gtk_window_set_default_size".}
-proc window_get_default_size*(window: PWindow, width: Pgint, height: Pgint){.
+proc get_default_size*(window: PWindow, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_window_get_default_size".}
-proc window_resize*(window: PWindow, width: gint, height: gint){.cdecl, 
+proc resize*(window: PWindow, width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_window_resize".}
-proc window_get_size*(window: PWindow, width: Pgint, height: Pgint){.cdecl, 
+proc get_size*(window: PWindow, width: Pgint, height: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_window_get_size".}
-proc window_move*(window: PWindow, x: gint, y: gint){.cdecl, dynlib: lib, 
+proc move*(window: PWindow, x: gint, y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_window_move".}
-proc window_get_position*(window: PWindow, root_x: Pgint, root_y: Pgint){.cdecl, 
+proc get_position*(window: PWindow, root_x: Pgint, root_y: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_window_get_position".}
-proc window_parse_geometry*(window: PWindow, geometry: cstring): gboolean{.
+proc parse_geometry*(window: PWindow, geometry: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_window_parse_geometry".}
-proc window_reshow_with_initial_size*(window: PWindow){.cdecl, dynlib: lib, 
+proc reshow_with_initial_size*(window: PWindow){.cdecl, dynlib: lib, 
     importc: "gtk_window_reshow_with_initial_size".}
 proc window_group_get_type*(): GType{.cdecl, dynlib: lib, 
                                       importc: "gtk_window_group_get_type".}
 proc window_group_new*(): PWindowGroup{.cdecl, dynlib: lib, 
                                         importc: "gtk_window_group_new".}
-proc window_group_add_window*(window_group: PWindowGroup, window: PWindow){.
+proc add_window*(window_group: PWindowGroup, window: PWindow){.
     cdecl, dynlib: lib, importc: "gtk_window_group_add_window".}
-proc window_group_remove_window*(window_group: PWindowGroup, window: PWindow){.
+proc remove_window*(window_group: PWindowGroup, window: PWindow){.
     cdecl, dynlib: lib, importc: "gtk_window_group_remove_window".}
 proc window_set_default_icon_name*(name: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_window_set_default_icon_name".}
-proc window_internal_set_focus*(window: PWindow, focus: PWidget){.cdecl, 
+proc internal_set_focus*(window: PWindow, focus: PWidget){.cdecl, 
     dynlib: lib, importc: "_gtk_window_internal_set_focus".}
-proc window_remove_embedded_xid*(window: PWindow, xid: guint){.cdecl, 
+proc remove_embedded_xid*(window: PWindow, xid: guint){.cdecl, 
     dynlib: lib, importc: "gtk_window_remove_embedded_xid".}
-proc window_add_embedded_xid*(window: PWindow, xid: guint){.cdecl, dynlib: lib, 
+proc add_embedded_xid*(window: PWindow, xid: guint){.cdecl, dynlib: lib, 
     importc: "gtk_window_add_embedded_xid".}
-proc window_reposition*(window: PWindow, x: gint, y: gint){.cdecl, dynlib: lib, 
+proc reposition*(window: PWindow, x: gint, y: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_window_reposition".}
-proc window_constrain_size*(window: PWindow, width: gint, height: gint, 
+proc constrain_size*(window: PWindow, width: gint, height: gint, 
                             new_width: Pgint, new_height: Pgint){.cdecl, 
     dynlib: lib, importc: "_gtk_window_constrain_size".}
-proc window_get_group*(window: PWindow): PWindowGroup{.cdecl, dynlib: lib, 
+proc get_group*(window: PWindow): PWindowGroup{.cdecl, dynlib: lib, 
     importc: "_gtk_window_get_group".}
-proc window_activate_key*(window: PWindow, event: gdk2.PEventKey): gboolean{.
+proc activate_key*(window: PWindow, event: gdk2.PEventKey): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_window_activate_key".}
-proc window_keys_foreach*(window: PWindow, func: TWindowKeysForeachFunc, 
+proc keys_foreach*(window: PWindow, func: TWindowKeysForeachFunc, 
                           func_data: gpointer){.cdecl, dynlib: lib, 
     importc: "_gtk_window_keys_foreach".}
-proc window_query_nonaccels*(window: PWindow, accel_key: guint, 
+proc query_nonaccels*(window: PWindow, accel_key: guint, 
                              accel_mods: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_window_query_nonaccels".}
 const 
@@ -4370,17 +4370,17 @@ proc accel_label_get_type*(): TType{.cdecl, dynlib: lib,
                                      importc: "gtk_accel_label_get_type".}
 proc accel_label_new*(`string`: cstring): PAccelLabel{.cdecl, dynlib: lib, 
     importc: "gtk_accel_label_new".}
-proc accel_label_get_accel_widget*(accel_label: PAccelLabel): PWidget{.cdecl, 
+proc get_accel_widget*(accel_label: PAccelLabel): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_accel_label_get_accel_widget".}
-proc accel_label_get_accel_width*(accel_label: PAccelLabel): guint{.cdecl, 
+proc get_accel_width*(accel_label: PAccelLabel): guint{.cdecl, 
     dynlib: lib, importc: "gtk_accel_label_get_accel_width".}
-proc accel_label_set_accel_widget*(accel_label: PAccelLabel, 
+proc set_accel_widget*(accel_label: PAccelLabel, 
                                    accel_widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_accel_label_set_accel_widget".}
-proc accel_label_set_accel_closure*(accel_label: PAccelLabel, 
+proc set_accel_closure*(accel_label: PAccelLabel, 
                                     accel_closure: PGClosure){.cdecl, 
     dynlib: lib, importc: "gtk_accel_label_set_accel_closure".}
-proc accel_label_refetch*(accel_label: PAccelLabel): gboolean{.cdecl, 
+proc refetch*(accel_label: PAccelLabel): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_accel_label_refetch".}
 proc accel_map_add_entry*(accel_path: cstring, accel_key: guint, 
                           accel_mods: gdk2.TModifierType){.cdecl, dynlib: lib, 
@@ -4422,7 +4422,7 @@ proc IS_ACCESSIBLE_CLASS*(klass: pointer): bool
 proc ACCESSIBLE_GET_CLASS*(obj: pointer): PAccessibleClass
 proc accessible_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_accessible_get_type".}
-proc accessible_connect_widget_destroyed*(accessible: PAccessible){.cdecl, 
+proc connect_widget_destroyed*(accessible: PAccessible){.cdecl, 
     dynlib: lib, importc: "gtk_accessible_connect_widget_destroyed".}
 proc TYPE_ADJUSTMENT*(): GType
 proc ADJUSTMENT*(obj: pointer): PAdjustment
@@ -4436,16 +4436,16 @@ proc adjustment_new*(value: gdouble, lower: gdouble, upper: gdouble,
                      step_increment: gdouble, page_increment: gdouble, 
                      page_size: gdouble): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_adjustment_new".}
-proc adjustment_changed*(adjustment: PAdjustment){.cdecl, dynlib: lib, 
+proc changed*(adjustment: PAdjustment){.cdecl, dynlib: lib, 
     importc: "gtk_adjustment_changed".}
-proc adjustment_value_changed*(adjustment: PAdjustment){.cdecl, dynlib: lib, 
+proc value_changed*(adjustment: PAdjustment){.cdecl, dynlib: lib, 
     importc: "gtk_adjustment_value_changed".}
-proc adjustment_clamp_page*(adjustment: PAdjustment, lower: gdouble, 
+proc clamp_page*(adjustment: PAdjustment, lower: gdouble, 
                             upper: gdouble){.cdecl, dynlib: lib, 
     importc: "gtk_adjustment_clamp_page".}
-proc adjustment_get_value*(adjustment: PAdjustment): gdouble{.cdecl, 
+proc get_value*(adjustment: PAdjustment): gdouble{.cdecl, 
     dynlib: lib, importc: "gtk_adjustment_get_value".}
-proc adjustment_set_value*(adjustment: PAdjustment, value: gdouble){.cdecl, 
+proc set_value*(adjustment: PAdjustment, value: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_adjustment_set_value".}
 proc TYPE_ALIGNMENT*(): GType
 proc ALIGNMENT*(obj: pointer): PAlignment
@@ -4458,7 +4458,7 @@ proc alignment_get_type*(): TType{.cdecl, dynlib: lib,
 proc alignment_new*(xalign: gfloat, yalign: gfloat, xscale: gfloat, 
                     yscale: gfloat): PAlignment{.cdecl, dynlib: lib, 
     importc: "gtk_alignment_new".}
-proc alignment_set*(alignment: PAlignment, xalign: gfloat, yalign: gfloat, 
+proc set*(alignment: PAlignment, xalign: gfloat, yalign: gfloat, 
                     xscale: gfloat, yscale: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_alignment_set".}
 proc TYPE_FRAME*(): GType
@@ -4470,21 +4470,21 @@ proc FRAME_GET_CLASS*(obj: pointer): PFrameClass
 proc frame_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_frame_get_type".}
 proc frame_new*(`label`: cstring): PFrame{.cdecl, dynlib: lib, 
     importc: "gtk_frame_new".}
-proc frame_set_label*(frame: PFrame, `label`: cstring){.cdecl, dynlib: lib, 
+proc set_label*(frame: PFrame, `label`: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_frame_set_label".}
-proc frame_get_label*(frame: PFrame): cstring{.cdecl, dynlib: lib, 
+proc get_label*(frame: PFrame): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_frame_get_label".}
-proc frame_set_label_widget*(frame: PFrame, label_widget: PWidget){.cdecl, 
+proc set_label_widget*(frame: PFrame, label_widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_frame_set_label_widget".}
-proc frame_get_label_widget*(frame: PFrame): PWidget{.cdecl, dynlib: lib, 
+proc get_label_widget*(frame: PFrame): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_frame_get_label_widget".}
-proc frame_set_label_align*(frame: PFrame, xalign: gfloat, yalign: gfloat){.
+proc set_label_align*(frame: PFrame, xalign: gfloat, yalign: gfloat){.
     cdecl, dynlib: lib, importc: "gtk_frame_set_label_align".}
-proc frame_get_label_align*(frame: PFrame, xalign: Pgfloat, yalign: Pgfloat){.
+proc get_label_align*(frame: PFrame, xalign: Pgfloat, yalign: Pgfloat){.
     cdecl, dynlib: lib, importc: "gtk_frame_get_label_align".}
-proc frame_set_shadow_type*(frame: PFrame, thetype: TShadowType){.cdecl, 
+proc set_shadow_type*(frame: PFrame, thetype: TShadowType){.cdecl, 
     dynlib: lib, importc: "gtk_frame_set_shadow_type".}
-proc frame_get_shadow_type*(frame: PFrame): TShadowType{.cdecl, dynlib: lib, 
+proc get_shadow_type*(frame: PFrame): TShadowType{.cdecl, dynlib: lib, 
     importc: "gtk_frame_get_shadow_type".}
 proc TYPE_ASPECT_FRAME*(): GType
 proc ASPECT_FRAME*(obj: pointer): PAspectFrame
@@ -4497,7 +4497,7 @@ proc aspect_frame_get_type*(): TType{.cdecl, dynlib: lib,
 proc aspect_frame_new*(`label`: cstring, xalign: gfloat, yalign: gfloat, 
                        ratio: gfloat, obey_child: gboolean): PAspectFrame{.
     cdecl, dynlib: lib, importc: "gtk_aspect_frame_new".}
-proc aspect_frame_set*(aspect_frame: PAspectFrame, xalign: gfloat, 
+proc set*(aspect_frame: PAspectFrame, xalign: gfloat, 
                        yalign: gfloat, ratio: gfloat, obey_child: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_aspect_frame_set".}
 proc TYPE_ARROW*(): GType
@@ -4509,7 +4509,7 @@ proc ARROW_GET_CLASS*(obj: pointer): PArrowClass
 proc arrow_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_arrow_get_type".}
 proc arrow_new*(arrow_type: TArrowType, shadow_type: TShadowType): PArrow{.
     cdecl, dynlib: lib, importc: "gtk_arrow_new".}
-proc arrow_set*(arrow: PArrow, arrow_type: TArrowType, shadow_type: TShadowType){.
+proc set*(arrow: PArrow, arrow_type: TArrowType, shadow_type: TShadowType){.
     cdecl, dynlib: lib, importc: "gtk_arrow_set".}
 const 
   bm_TGtkBindingSet_parsed* = 0x0001'i16
@@ -4519,7 +4519,7 @@ const
   bm_TGtkBindingEntry_in_emission* = 0x0002'i16
   bp_TGtkBindingEntry_in_emission* = 1'i16
 
-proc binding_entry_add*(binding_set: PBindingSet, keyval: guint, 
+proc entry_add*(binding_set: PBindingSet, keyval: guint, 
                         modifiers: gdk2.TModifierType)
 proc parsed*(a: var TBindingSet): guint
 proc set_parsed*(a: var TBindingSet, `parsed`: guint)
@@ -4536,19 +4536,19 @@ proc binding_set_find*(set_name: cstring): PBindingSet{.cdecl, dynlib: lib,
 proc bindings_activate*(anObject: PObject, keyval: guint, 
                         modifiers: gdk2.TModifierType): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_bindings_activate".}
-proc binding_set_activate*(binding_set: PBindingSet, keyval: guint, 
+proc activate*(binding_set: PBindingSet, keyval: guint, 
                            modifiers: gdk2.TModifierType, anObject: PObject): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_binding_set_activate".}
-proc binding_entry_clear*(binding_set: PBindingSet, keyval: guint, 
+proc entry_clear*(binding_set: PBindingSet, keyval: guint, 
                           modifiers: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_binding_entry_clear".}
-proc binding_set_add_path*(binding_set: PBindingSet, path_type: TPathType, 
+proc add_path*(binding_set: PBindingSet, path_type: TPathType, 
                            path_pattern: cstring, priority: TPathPriorityType){.
     cdecl, dynlib: lib, importc: "gtk_binding_set_add_path".}
-proc binding_entry_remove*(binding_set: PBindingSet, keyval: guint, 
+proc entry_remove*(binding_set: PBindingSet, keyval: guint, 
                            modifiers: gdk2.TModifierType){.cdecl, dynlib: lib, 
     importc: "gtk_binding_entry_remove".}
-proc binding_entry_add_signall*(binding_set: PBindingSet, keyval: guint, 
+proc entry_add_signall*(binding_set: PBindingSet, keyval: guint, 
                                 modifiers: gdk2.TModifierType, 
                                 signal_name: cstring, binding_args: PGSList){.
     cdecl, dynlib: lib, importc: "gtk_binding_entry_add_signall".}
@@ -4587,31 +4587,31 @@ proc set_pack*(a: var TBoxChild, `pack`: guint)
 proc is_secondary*(a: var TBoxChild): guint
 proc set_is_secondary*(a: var TBoxChild, `is_secondary`: guint)
 proc box_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_box_get_type".}
-proc box_pack_start*(box: PBox, child: PWidget, expand: gboolean, 
+proc pack_start*(box: PBox, child: PWidget, expand: gboolean, 
                      fill: gboolean, padding: guint){.cdecl, dynlib: lib, 
     importc: "gtk_box_pack_start".}
-proc box_pack_end*(box: PBox, child: PWidget, expand: gboolean, fill: gboolean, 
+proc pack_end*(box: PBox, child: PWidget, expand: gboolean, fill: gboolean, 
                    padding: guint){.cdecl, dynlib: lib, 
                                     importc: "gtk_box_pack_end".}
-proc box_pack_start_defaults*(box: PBox, widget: PWidget){.cdecl, dynlib: lib, 
+proc pack_start_defaults*(box: PBox, widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_box_pack_start_defaults".}
-proc box_pack_end_defaults*(box: PBox, widget: PWidget){.cdecl, dynlib: lib, 
+proc pack_end_defaults*(box: PBox, widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_box_pack_end_defaults".}
-proc box_set_homogeneous*(box: PBox, homogeneous: gboolean){.cdecl, dynlib: lib, 
+proc set_homogeneous*(box: PBox, homogeneous: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_box_set_homogeneous".}
-proc box_get_homogeneous*(box: PBox): gboolean{.cdecl, dynlib: lib, 
+proc get_homogeneous*(box: PBox): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_box_get_homogeneous".}
-proc box_set_spacing*(box: PBox, spacing: gint){.cdecl, dynlib: lib, 
+proc set_spacing*(box: PBox, spacing: gint){.cdecl, dynlib: lib, 
     importc: "gtk_box_set_spacing".}
-proc box_get_spacing*(box: PBox): gint{.cdecl, dynlib: lib, 
+proc get_spacing*(box: PBox): gint{.cdecl, dynlib: lib, 
                                         importc: "gtk_box_get_spacing".}
-proc box_reorder_child*(box: PBox, child: PWidget, position: gint){.cdecl, 
+proc reorder_child*(box: PBox, child: PWidget, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_box_reorder_child".}
-proc box_query_child_packing*(box: PBox, child: PWidget, expand: Pgboolean, 
+proc query_child_packing*(box: PBox, child: PWidget, expand: Pgboolean, 
                               fill: Pgboolean, padding: Pguint, 
                               pack_type: PPackType){.cdecl, dynlib: lib, 
     importc: "gtk_box_query_child_packing".}
-proc box_set_child_packing*(box: PBox, child: PWidget, expand: gboolean, 
+proc set_child_packing*(box: PBox, child: PWidget, expand: gboolean, 
                             fill: gboolean, padding: guint, pack_type: TPackType){.
     cdecl, dynlib: lib, importc: "gtk_box_set_child_packing".}
 const 
@@ -4625,11 +4625,11 @@ proc IS_BUTTON_BOX_CLASS*(klass: pointer): bool
 proc BUTTON_BOX_GET_CLASS*(obj: pointer): PButtonBoxClass
 proc button_box_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_button_box_get_type".}
-proc button_box_get_layout*(widget: PButtonBox): TButtonBoxStyle{.cdecl, 
+proc get_layout*(widget: PButtonBox): TButtonBoxStyle{.cdecl, 
     dynlib: lib, importc: "gtk_button_box_get_layout".}
-proc button_box_set_layout*(widget: PButtonBox, layout_style: TButtonBoxStyle){.
+proc set_layout*(widget: PButtonBox, layout_style: TButtonBoxStyle){.
     cdecl, dynlib: lib, importc: "gtk_button_box_set_layout".}
-proc button_box_set_child_secondary*(widget: PButtonBox, child: PWidget, 
+proc set_child_secondary*(widget: PButtonBox, child: PWidget, 
                                      is_secondary: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_button_box_set_child_secondary".}
 proc button_box_child_requisition*(widget: PWidget, nvis_children: var int32, 
@@ -4685,41 +4685,41 @@ proc button_new_from_stock*(stock_id: cstring): PButton{.cdecl, dynlib: lib,
     importc: "gtk_button_new_from_stock".}
 proc button_new_with_mnemonic*(`label`: cstring): PButton{.cdecl, dynlib: lib, 
     importc: "gtk_button_new_with_mnemonic".}
-proc button_pressed*(button: PButton){.cdecl, dynlib: lib, 
+proc pressed*(button: PButton){.cdecl, dynlib: lib, 
                                        importc: "gtk_button_pressed".}
-proc button_released*(button: PButton){.cdecl, dynlib: lib, 
+proc released*(button: PButton){.cdecl, dynlib: lib, 
                                         importc: "gtk_button_released".}
-proc button_clicked*(button: PButton){.cdecl, dynlib: lib, 
+proc clicked*(button: PButton){.cdecl, dynlib: lib, 
                                        importc: "gtk_button_clicked".}
-proc button_enter*(button: PButton){.cdecl, dynlib: lib, 
+proc enter*(button: PButton){.cdecl, dynlib: lib, 
                                      importc: "gtk_button_enter".}
-proc button_leave*(button: PButton){.cdecl, dynlib: lib, 
+proc leave*(button: PButton){.cdecl, dynlib: lib, 
                                      importc: "gtk_button_leave".}
-proc button_set_relief*(button: PButton, newstyle: TReliefStyle){.cdecl, 
+proc set_relief*(button: PButton, newstyle: TReliefStyle){.cdecl, 
     dynlib: lib, importc: "gtk_button_set_relief".}
-proc button_get_relief*(button: PButton): TReliefStyle{.cdecl, dynlib: lib, 
+proc get_relief*(button: PButton): TReliefStyle{.cdecl, dynlib: lib, 
     importc: "gtk_button_get_relief".}
-proc button_set_label*(button: PButton, `label`: cstring){.cdecl, dynlib: lib, 
+proc set_label*(button: PButton, `label`: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_button_set_label".}
-proc button_get_label*(button: PButton): cstring{.cdecl, dynlib: lib, 
+proc get_label*(button: PButton): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_button_get_label".}
-proc button_set_use_underline*(button: PButton, use_underline: gboolean){.cdecl, 
+proc set_use_underline*(button: PButton, use_underline: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_button_set_use_underline".}
-proc button_get_use_underline*(button: PButton): gboolean{.cdecl, dynlib: lib, 
+proc get_use_underline*(button: PButton): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_button_get_use_underline".}
-proc button_set_use_stock*(button: PButton, use_stock: gboolean){.cdecl, 
+proc set_use_stock*(button: PButton, use_stock: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_button_set_use_stock".}
-proc button_get_use_stock*(button: PButton): gboolean{.cdecl, dynlib: lib, 
+proc get_use_stock*(button: PButton): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_button_get_use_stock".}
-proc button_set_depressed*(button: PButton, depressed: gboolean){.cdecl, 
+proc set_depressed*(button: PButton, depressed: gboolean){.cdecl, 
     dynlib: lib, importc: "_gtk_button_set_depressed".}
-proc button_paint*(button: PButton, area: gdk2.PRectangle, state_type: TStateType, 
+proc paint*(button: PButton, area: gdk2.PRectangle, state_type: TStateType, 
                    shadow_type: TShadowType, main_detail: cstring, 
                    default_detail: cstring){.cdecl, dynlib: lib, 
     importc: "_gtk_button_paint".}
-proc button_set_image*(button: PButton, image: PWidget){.cdecl, dynlib: lib, 
+proc set_image*(button: PButton, image: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_button_set_image".}
-proc button_get_image*(button: PButton): PWidget{.cdecl, dynlib: lib, 
+proc get_image*(button: PButton): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_button_get_image".}
 const 
   CALENDAR_SHOW_HEADING* = 1 shl 0
@@ -4737,25 +4737,25 @@ proc CALENDAR_GET_CLASS*(obj: pointer): PCalendarClass
 proc calendar_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_calendar_get_type".}
 proc calendar_new*(): PCalendar{.cdecl, dynlib: lib, importc: "gtk_calendar_new".}
-proc calendar_select_month*(calendar: PCalendar, month: guint, year: guint): gboolean{.
+proc select_month*(calendar: PCalendar, month: guint, year: guint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_calendar_select_month".}
-proc calendar_select_day*(calendar: PCalendar, day: guint){.cdecl, dynlib: lib, 
+proc select_day*(calendar: PCalendar, day: guint){.cdecl, dynlib: lib, 
     importc: "gtk_calendar_select_day".}
-proc calendar_mark_day*(calendar: PCalendar, day: guint): gboolean{.cdecl, 
+proc mark_day*(calendar: PCalendar, day: guint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_calendar_mark_day".}
-proc calendar_unmark_day*(calendar: PCalendar, day: guint): gboolean{.cdecl, 
+proc unmark_day*(calendar: PCalendar, day: guint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_calendar_unmark_day".}
-proc calendar_clear_marks*(calendar: PCalendar){.cdecl, dynlib: lib, 
+proc clear_marks*(calendar: PCalendar){.cdecl, dynlib: lib, 
     importc: "gtk_calendar_clear_marks".}
-proc calendar_display_options*(calendar: PCalendar, 
+proc display_options*(calendar: PCalendar, 
                                flags: TCalendarDisplayOptions){.cdecl, 
     dynlib: lib, importc: "gtk_calendar_display_options".}
-proc calendar_get_date*(calendar: PCalendar, year: Pguint, month: Pguint, 
+proc get_date*(calendar: PCalendar, year: Pguint, month: Pguint, 
                         day: Pguint){.cdecl, dynlib: lib, 
                                       importc: "gtk_calendar_get_date".}
-proc calendar_freeze*(calendar: PCalendar){.cdecl, dynlib: lib, 
+proc freeze*(calendar: PCalendar){.cdecl, dynlib: lib, 
     importc: "gtk_calendar_freeze".}
-proc calendar_thaw*(calendar: PCalendar){.cdecl, dynlib: lib, 
+proc thaw*(calendar: PCalendar){.cdecl, dynlib: lib, 
     importc: "gtk_calendar_thaw".}
 proc TYPE_CELL_EDITABLE*(): GType
 proc CELL_EDITABLE*(obj: pointer): PCellEditable
@@ -4764,11 +4764,11 @@ proc IS_CELL_EDITABLE*(obj: pointer): bool
 proc CELL_EDITABLE_GET_IFACE*(obj: pointer): PCellEditableIface
 proc cell_editable_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_cell_editable_get_type".}
-proc cell_editable_start_editing*(cell_editable: PCellEditable, event: gdk2.PEvent){.
+proc start_editing*(cell_editable: PCellEditable, event: gdk2.PEvent){.
     cdecl, dynlib: lib, importc: "gtk_cell_editable_start_editing".}
-proc cell_editable_editing_done*(cell_editable: PCellEditable){.cdecl, 
+proc editing_done*(cell_editable: PCellEditable){.cdecl, 
     dynlib: lib, importc: "gtk_cell_editable_editing_done".}
-proc cell_editable_remove_widget*(cell_editable: PCellEditable){.cdecl, 
+proc remove_widget*(cell_editable: PCellEditable){.cdecl, 
     dynlib: lib, importc: "gtk_cell_editable_remove_widget".}
 const 
   CELL_RENDERER_SELECTED* = 1 shl 0
@@ -4806,30 +4806,30 @@ proc cell_background_set*(a: var TCellRenderer): guint
 proc set_cell_background_set*(a: var TCellRenderer, `cell_background_set`: guint)
 proc cell_renderer_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_cell_renderer_get_type".}
-proc cell_renderer_get_size*(cell: PCellRenderer, widget: PWidget, 
+proc get_size*(cell: PCellRenderer, widget: PWidget, 
                              cell_area: gdk2.PRectangle, x_offset: Pgint, 
                              y_offset: Pgint, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_get_size".}
-proc cell_renderer_render*(cell: PCellRenderer, window: gdk2.PWindow, 
+proc render*(cell: PCellRenderer, window: gdk2.PWindow, 
                            widget: PWidget, background_area: gdk2.PRectangle, 
                            cell_area: gdk2.PRectangle, expose_area: gdk2.PRectangle, 
                            flags: TCellRendererState){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_render".}
-proc cell_renderer_activate*(cell: PCellRenderer, event: gdk2.PEvent, 
+proc activate*(cell: PCellRenderer, event: gdk2.PEvent, 
                              widget: PWidget, path: cstring, 
                              background_area: gdk2.PRectangle, 
                              cell_area: gdk2.PRectangle, flags: TCellRendererState): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_activate".}
-proc cell_renderer_start_editing*(cell: PCellRenderer, event: gdk2.PEvent, 
+proc start_editing*(cell: PCellRenderer, event: gdk2.PEvent, 
                                   widget: PWidget, path: cstring, 
                                   background_area: gdk2.PRectangle, 
                                   cell_area: gdk2.PRectangle, 
                                   flags: TCellRendererState): PCellEditable{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_start_editing".}
-proc cell_renderer_set_fixed_size*(cell: PCellRenderer, width: gint, 
+proc set_fixed_size*(cell: PCellRenderer, width: gint, 
                                    height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_set_fixed_size".}
-proc cell_renderer_get_fixed_size*(cell: PCellRenderer, width: Pgint, 
+proc get_fixed_size*(cell: PCellRenderer, width: Pgint, 
                                    height: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_get_fixed_size".}
 const 
@@ -4884,7 +4884,7 @@ proc cell_renderer_text_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_cell_renderer_text_get_type".}
 proc cell_renderer_text_new*(): PCellRenderer{.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_text_new".}
-proc cell_renderer_text_set_fixed_height_from_font*(renderer: PCellRendererText, 
+proc text_set_fixed_height_from_font*(renderer: PCellRendererText, 
     number_of_rows: gint){.cdecl, dynlib: lib, importc: "gtk_cell_renderer_text_set_fixed_height_from_font".}
 const 
   bm_TGtkCellRendererToggle_active* = 0x0001'i16
@@ -4910,14 +4910,14 @@ proc cell_renderer_toggle_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_cell_renderer_toggle_get_type".}
 proc cell_renderer_toggle_new*(): PCellRenderer{.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_toggle_new".}
-proc cell_renderer_toggle_get_radio*(toggle: PCellRendererToggle): gboolean{.
+proc toggle_get_radio*(toggle: PCellRendererToggle): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_toggle_get_radio".}
-proc cell_renderer_toggle_set_radio*(toggle: PCellRendererToggle, 
+proc toggle_set_radio*(toggle: PCellRendererToggle, 
                                      radio: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_toggle_set_radio".}
-proc cell_renderer_toggle_get_active*(toggle: PCellRendererToggle): gboolean{.
+proc toggle_get_active*(toggle: PCellRendererToggle): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_cell_renderer_toggle_get_active".}
-proc cell_renderer_toggle_set_active*(toggle: PCellRendererToggle, 
+proc toggle_set_active*(toggle: PCellRendererToggle, 
                                       setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_toggle_set_active".}
 proc TYPE_CELL_RENDERER_PIXBUF*(): GType
@@ -4937,10 +4937,10 @@ proc IS_ITEM*(obj: pointer): bool
 proc IS_ITEM_CLASS*(klass: pointer): bool
 proc ITEM_GET_CLASS*(obj: pointer): PItemClass
 proc item_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_item_get_type".}
-proc item_select*(item: PItem){.cdecl, dynlib: lib, importc: "gtk_item_select".}
-proc item_deselect*(item: PItem){.cdecl, dynlib: lib, 
+proc select*(item: PItem){.cdecl, dynlib: lib, importc: "gtk_item_select".}
+proc deselect*(item: PItem){.cdecl, dynlib: lib, 
                                   importc: "gtk_item_deselect".}
-proc item_toggle*(item: PItem){.cdecl, dynlib: lib, importc: "gtk_item_toggle".}
+proc toggle*(item: PItem){.cdecl, dynlib: lib, importc: "gtk_item_toggle".}
 const 
   bm_TGtkMenuItem_show_submenu_indicator* = 0x0001'i16
   bp_TGtkMenuItem_show_submenu_indicator* = 0'i16
@@ -4982,30 +4982,30 @@ proc menu_item_new_with_label*(`label`: cstring): PMenuItem{.cdecl, dynlib: lib,
     importc: "gtk_menu_item_new_with_label".}
 proc menu_item_new_with_mnemonic*(`label`: cstring): PMenuItem{.cdecl, 
     dynlib: lib, importc: "gtk_menu_item_new_with_mnemonic".}
-proc menu_item_set_submenu*(menu_item: PMenuItem, submenu: PWidget){.cdecl, 
+proc set_submenu*(menu_item: PMenuItem, submenu: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_menu_item_set_submenu".}
-proc menu_item_get_submenu*(menu_item: PMenuItem): PWidget{.cdecl, dynlib: lib, 
+proc get_submenu*(menu_item: PMenuItem): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_get_submenu".}
-proc menu_item_remove_submenu*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
+proc remove_submenu*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_remove_submenu".}
-proc menu_item_select*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
+proc select*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_select".}
-proc menu_item_deselect*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
+proc deselect*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_deselect".}
-proc menu_item_activate*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
+proc activate*(menu_item: PMenuItem){.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_activate".}
-proc menu_item_toggle_size_request*(menu_item: PMenuItem, requisition: Pgint){.
+proc toggle_size_request*(menu_item: PMenuItem, requisition: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_menu_item_toggle_size_request".}
-proc menu_item_toggle_size_allocate*(menu_item: PMenuItem, allocation: gint){.
+proc toggle_size_allocate*(menu_item: PMenuItem, allocation: gint){.
     cdecl, dynlib: lib, importc: "gtk_menu_item_toggle_size_allocate".}
-proc menu_item_set_right_justified*(menu_item: PMenuItem, 
+proc set_right_justified*(menu_item: PMenuItem, 
                                     right_justified: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_menu_item_set_right_justified".}
-proc menu_item_get_right_justified*(menu_item: PMenuItem): gboolean{.cdecl, 
+proc get_right_justified*(menu_item: PMenuItem): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_menu_item_get_right_justified".}
-proc menu_item_set_accel_path*(menu_item: PMenuItem, accel_path: cstring){.
+proc set_accel_path*(menu_item: PMenuItem, accel_path: cstring){.
     cdecl, dynlib: lib, importc: "gtk_menu_item_set_accel_path".}
-proc menu_item_refresh_accel_path*(menu_item: PMenuItem, prefix: cstring, 
+proc refresh_accel_path*(menu_item: PMenuItem, prefix: cstring, 
                                    accel_group: PAccelGroup, 
                                    group_changed: gboolean){.cdecl, dynlib: lib, 
     importc: "_gtk_menu_item_refresh_accel_path".}
@@ -5039,21 +5039,21 @@ proc toggle_button_new_with_label*(`label`: cstring): PToggleButton{.cdecl,
     dynlib: lib, importc: "gtk_toggle_button_new_with_label".}
 proc toggle_button_new_with_mnemonic*(`label`: cstring): PToggleButton{.cdecl, 
     dynlib: lib, importc: "gtk_toggle_button_new_with_mnemonic".}
-proc toggle_button_set_mode*(toggle_button: PToggleButton, 
+proc set_mode*(toggle_button: PToggleButton, 
                              draw_indicator: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_toggle_button_set_mode".}
-proc toggle_button_get_mode*(toggle_button: PToggleButton): gboolean{.cdecl, 
+proc get_mode*(toggle_button: PToggleButton): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_toggle_button_get_mode".}
-proc toggle_button_set_active*(toggle_button: PToggleButton, is_active: gboolean){.
+proc set_active*(toggle_button: PToggleButton, is_active: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_toggle_button_set_active".}
-proc toggle_button_get_active*(toggle_button: PToggleButton): gboolean{.cdecl, 
+proc get_active*(toggle_button: PToggleButton): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_toggle_button_get_active".}
-proc toggle_button_toggled*(toggle_button: PToggleButton){.cdecl, dynlib: lib, 
+proc toggled*(toggle_button: PToggleButton){.cdecl, dynlib: lib, 
     importc: "gtk_toggle_button_toggled".}
-proc toggle_button_set_inconsistent*(toggle_button: PToggleButton, 
+proc set_inconsistent*(toggle_button: PToggleButton, 
                                      setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_toggle_button_set_inconsistent".}
-proc toggle_button_get_inconsistent*(toggle_button: PToggleButton): gboolean{.
+proc get_inconsistent*(toggle_button: PToggleButton): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_toggle_button_get_inconsistent".}
 proc TYPE_CHECK_BUTTON*(): GType
 proc CHECK_BUTTON*(obj: pointer): PCheckButton
@@ -5069,7 +5069,7 @@ proc check_button_new_with_label*(`label`: cstring): PCheckButton{.cdecl,
     dynlib: lib, importc: "gtk_check_button_new_with_label".}
 proc check_button_new_with_mnemonic*(`label`: cstring): PCheckButton{.cdecl, 
     dynlib: lib, importc: "gtk_check_button_new_with_mnemonic".}
-proc check_button_get_props*(check_button: PCheckButton, indicator_size: Pgint, 
+proc get_props*(check_button: PCheckButton, indicator_size: Pgint, 
                              indicator_spacing: Pgint){.cdecl, dynlib: lib, 
     importc: "_gtk_check_button_get_props".}
 const 
@@ -5100,50 +5100,50 @@ proc check_menu_item_new_with_label*(`label`: cstring): PWidget{.cdecl,
     dynlib: lib, importc: "gtk_check_menu_item_new_with_label".}
 proc check_menu_item_new_with_mnemonic*(`label`: cstring): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_new_with_mnemonic".}
-proc check_menu_item_set_active*(check_menu_item: PCheckMenuItem, 
+proc item_set_active*(check_menu_item: PCheckMenuItem, 
                                  is_active: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_check_menu_item_set_active".}
-proc check_menu_item_get_active*(check_menu_item: PCheckMenuItem): gboolean{.
+proc item_get_active*(check_menu_item: PCheckMenuItem): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_check_menu_item_get_active".}
-proc check_menu_item_toggled*(check_menu_item: PCheckMenuItem){.cdecl, 
+proc item_toggled*(check_menu_item: PCheckMenuItem){.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_toggled".}
-proc check_menu_item_set_inconsistent*(check_menu_item: PCheckMenuItem, 
+proc item_set_inconsistent*(check_menu_item: PCheckMenuItem, 
                                        setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_check_menu_item_set_inconsistent".}
-proc check_menu_item_get_inconsistent*(check_menu_item: PCheckMenuItem): gboolean{.
+proc item_get_inconsistent*(check_menu_item: PCheckMenuItem): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_check_menu_item_get_inconsistent".}
 proc clipboard_get_for_display*(display: gdk2.PDisplay, selection: gdk2.TAtom): PClipboard{.
     cdecl, dynlib: lib, importc: "gtk_clipboard_get_for_display".}
-proc clipboard_get_display*(clipboard: PClipboard): gdk2.PDisplay{.cdecl, 
+proc get_display*(clipboard: PClipboard): gdk2.PDisplay{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_get_display".}
-proc clipboard_set_with_data*(clipboard: PClipboard, targets: PTargetEntry, 
+proc set_with_data*(clipboard: PClipboard, targets: PTargetEntry, 
                               n_targets: guint, get_func: TClipboardGetFunc, 
                               clear_func: TClipboardClearFunc, 
                               user_data: gpointer): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_set_with_data".}
-proc clipboard_set_with_owner*(clipboard: PClipboard, targets: PTargetEntry, 
+proc set_with_owner*(clipboard: PClipboard, targets: PTargetEntry, 
                                n_targets: guint, get_func: TClipboardGetFunc, 
                                clear_func: TClipboardClearFunc, owner: PGObject): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_clipboard_set_with_owner".}
-proc clipboard_get_owner*(clipboard: PClipboard): PGObject{.cdecl, dynlib: lib, 
+proc get_owner*(clipboard: PClipboard): PGObject{.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_get_owner".}
-proc clipboard_clear*(clipboard: PClipboard){.cdecl, dynlib: lib, 
+proc clear*(clipboard: PClipboard){.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_clear".}
-proc clipboard_set_text*(clipboard: PClipboard, text: cstring, len: gint){.
+proc set_text*(clipboard: PClipboard, text: cstring, len: gint){.
     cdecl, dynlib: lib, importc: "gtk_clipboard_set_text".}
-proc clipboard_request_contents*(clipboard: PClipboard, target: gdk2.TAtom, 
+proc request_contents*(clipboard: PClipboard, target: gdk2.TAtom, 
                                  callback: TClipboardReceivedFunc, 
                                  user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_request_contents".}
-proc clipboard_request_text*(clipboard: PClipboard, 
+proc request_text*(clipboard: PClipboard, 
                              callback: TClipboardTextReceivedFunc, 
                              user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_clipboard_request_text".}
-proc clipboard_wait_for_contents*(clipboard: PClipboard, target: gdk2.TAtom): PSelectionData{.
+proc wait_for_contents*(clipboard: PClipboard, target: gdk2.TAtom): PSelectionData{.
     cdecl, dynlib: lib, importc: "gtk_clipboard_wait_for_contents".}
-proc clipboard_wait_for_text*(clipboard: PClipboard): cstring{.cdecl, 
+proc wait_for_text*(clipboard: PClipboard): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_wait_for_text".}
-proc clipboard_wait_is_text_available*(clipboard: PClipboard): gboolean{.cdecl, 
+proc wait_is_text_available*(clipboard: PClipboard): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_clipboard_wait_is_text_available".}
 const 
   CLIST_IN_DRAG* = 1 shl 0
@@ -5186,8 +5186,8 @@ proc IS_CLIST*(obj: pointer): bool
 proc IS_CLIST_CLASS*(klass: pointer): bool
 proc CLIST_GET_CLASS*(obj: pointer): PCListClass
 proc CLIST_FLAGS*(clist: pointer): guint16
-proc CLIST_SET_FLAG*(clist: PCList, flag: guint16)
-proc CLIST_UNSET_FLAG*(clist: PCList, flag: guint16)
+proc SET_FLAG*(clist: PCList, flag: guint16)
+proc UNSET_FLAG*(clist: PCList, flag: guint16)
 #proc GTK_CLIST_IN_DRAG_get*(clist: pointer): bool
 #proc GTK_CLIST_ROW_HEIGHT_SET_get*(clist: pointer): bool
 #proc GTK_CLIST_SHOW_TITLES_get*(clist: pointer): bool
@@ -5223,149 +5223,149 @@ proc set_selectable*(a: var TCListRow, `selectable`: guint)
 proc clist_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_clist_get_type".}
 proc clist_new*(columns: gint): PCList{.cdecl, dynlib: lib, 
                                         importc: "gtk_clist_new".}
-proc clist_set_hadjustment*(clist: PCList, adjustment: PAdjustment){.cdecl, 
+proc set_hadjustment*(clist: PCList, adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_hadjustment".}
-proc clist_set_vadjustment*(clist: PCList, adjustment: PAdjustment){.cdecl, 
+proc set_vadjustment*(clist: PCList, adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_vadjustment".}
-proc clist_get_hadjustment*(clist: PCList): PAdjustment{.cdecl, dynlib: lib, 
+proc get_hadjustment*(clist: PCList): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_clist_get_hadjustment".}
-proc clist_get_vadjustment*(clist: PCList): PAdjustment{.cdecl, dynlib: lib, 
+proc get_vadjustment*(clist: PCList): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_clist_get_vadjustment".}
-proc clist_set_shadow_type*(clist: PCList, thetype: TShadowType){.cdecl, 
+proc set_shadow_type*(clist: PCList, thetype: TShadowType){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_shadow_type".}
-proc clist_set_selection_mode*(clist: PCList, mode: TSelectionMode){.cdecl, 
+proc set_selection_mode*(clist: PCList, mode: TSelectionMode){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_selection_mode".}
-proc clist_set_reorderable*(clist: PCList, reorderable: gboolean){.cdecl, 
+proc set_reorderable*(clist: PCList, reorderable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_reorderable".}
-proc clist_set_use_drag_icons*(clist: PCList, use_icons: gboolean){.cdecl, 
+proc set_use_drag_icons*(clist: PCList, use_icons: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_use_drag_icons".}
-proc clist_set_button_actions*(clist: PCList, button: guint, 
+proc set_button_actions*(clist: PCList, button: guint, 
                                button_actions: guint8){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_button_actions".}
-proc clist_freeze*(clist: PCList){.cdecl, dynlib: lib, 
+proc freeze*(clist: PCList){.cdecl, dynlib: lib, 
                                    importc: "gtk_clist_freeze".}
-proc clist_thaw*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_thaw".}
-proc clist_column_titles_show*(clist: PCList){.cdecl, dynlib: lib, 
+proc thaw*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_thaw".}
+proc column_titles_show*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_column_titles_show".}
-proc clist_column_titles_hide*(clist: PCList){.cdecl, dynlib: lib, 
+proc column_titles_hide*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_column_titles_hide".}
-proc clist_column_title_active*(clist: PCList, column: gint){.cdecl, 
+proc column_title_active*(clist: PCList, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_column_title_active".}
-proc clist_column_title_passive*(clist: PCList, column: gint){.cdecl, 
+proc column_title_passive*(clist: PCList, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_column_title_passive".}
-proc clist_column_titles_active*(clist: PCList){.cdecl, dynlib: lib, 
+proc column_titles_active*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_column_titles_active".}
-proc clist_column_titles_passive*(clist: PCList){.cdecl, dynlib: lib, 
+proc column_titles_passive*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_column_titles_passive".}
-proc clist_set_column_title*(clist: PCList, column: gint, title: cstring){.
+proc set_column_title*(clist: PCList, column: gint, title: cstring){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_column_title".}
-proc clist_get_column_title*(clist: PCList, column: gint): cstring{.cdecl, 
+proc get_column_title*(clist: PCList, column: gint): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_clist_get_column_title".}
-proc clist_set_column_widget*(clist: PCList, column: gint, widget: PWidget){.
+proc set_column_widget*(clist: PCList, column: gint, widget: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_column_widget".}
-proc clist_get_column_widget*(clist: PCList, column: gint): PWidget{.cdecl, 
+proc get_column_widget*(clist: PCList, column: gint): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_clist_get_column_widget".}
-proc clist_set_column_justification*(clist: PCList, column: gint, 
+proc set_column_justification*(clist: PCList, column: gint, 
                                      justification: TJustification){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_column_justification".}
-proc clist_set_column_visibility*(clist: PCList, column: gint, visible: gboolean){.
+proc set_column_visibility*(clist: PCList, column: gint, visible: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_column_visibility".}
-proc clist_set_column_resizeable*(clist: PCList, column: gint, 
+proc set_column_resizeable*(clist: PCList, column: gint, 
                                   resizeable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_column_resizeable".}
-proc clist_set_column_auto_resize*(clist: PCList, column: gint, 
+proc set_column_auto_resize*(clist: PCList, column: gint, 
                                    auto_resize: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_column_auto_resize".}
-proc clist_columns_autosize*(clist: PCList): gint{.cdecl, dynlib: lib, 
+proc columns_autosize*(clist: PCList): gint{.cdecl, dynlib: lib, 
     importc: "gtk_clist_columns_autosize".}
-proc clist_optimal_column_width*(clist: PCList, column: gint): gint{.cdecl, 
+proc optimal_column_width*(clist: PCList, column: gint): gint{.cdecl, 
     dynlib: lib, importc: "gtk_clist_optimal_column_width".}
-proc clist_set_column_width*(clist: PCList, column: gint, width: gint){.cdecl, 
+proc set_column_width*(clist: PCList, column: gint, width: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_column_width".}
-proc clist_set_column_min_width*(clist: PCList, column: gint, min_width: gint){.
+proc set_column_min_width*(clist: PCList, column: gint, min_width: gint){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_column_min_width".}
-proc clist_set_column_max_width*(clist: PCList, column: gint, max_width: gint){.
+proc set_column_max_width*(clist: PCList, column: gint, max_width: gint){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_column_max_width".}
-proc clist_set_row_height*(clist: PCList, height: guint){.cdecl, dynlib: lib, 
+proc set_row_height*(clist: PCList, height: guint){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_row_height".}
-proc clist_moveto*(clist: PCList, row: gint, column: gint, row_align: gfloat, 
+proc moveto*(clist: PCList, row: gint, column: gint, row_align: gfloat, 
                    col_align: gfloat){.cdecl, dynlib: lib, 
                                        importc: "gtk_clist_moveto".}
-proc clist_row_is_visible*(clist: PCList, row: gint): TVisibility{.cdecl, 
+proc row_is_visible*(clist: PCList, row: gint): TVisibility{.cdecl, 
     dynlib: lib, importc: "gtk_clist_row_is_visible".}
-proc clist_get_cell_type*(clist: PCList, row: gint, column: gint): TCellType{.
+proc get_cell_type*(clist: PCList, row: gint, column: gint): TCellType{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_cell_type".}
-proc clist_set_text*(clist: PCList, row: gint, column: gint, text: cstring){.
+proc set_text*(clist: PCList, row: gint, column: gint, text: cstring){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_text".}
-proc clist_get_text*(clist: PCList, row: gint, column: gint, text: PPgchar): gint{.
+proc get_text*(clist: PCList, row: gint, column: gint, text: PPgchar): gint{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_text".}
-proc clist_set_pixmap*(clist: PCList, row: gint, column: gint, 
+proc set_pixmap*(clist: PCList, row: gint, column: gint, 
                        pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_pixmap".}
-proc clist_get_pixmap*(clist: PCList, row: gint, column: gint, 
+proc get_pixmap*(clist: PCList, row: gint, column: gint, 
                        pixmap: var gdk2.PPixmap, mask: var gdk2.PBitmap): gint{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_pixmap".}
-proc clist_set_pixtext*(clist: PCList, row: gint, column: gint, text: cstring, 
+proc set_pixtext*(clist: PCList, row: gint, column: gint, text: cstring, 
                         spacing: guint8, pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_pixtext".}
-proc clist_set_foreground*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
+proc set_foreground*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_foreground".}
-proc clist_set_background*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
+proc set_background*(clist: PCList, row: gint, color: gdk2.PColor){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_background".}
-proc clist_set_cell_style*(clist: PCList, row: gint, column: gint, style: PStyle){.
+proc set_cell_style*(clist: PCList, row: gint, column: gint, style: PStyle){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_cell_style".}
-proc clist_get_cell_style*(clist: PCList, row: gint, column: gint): PStyle{.
+proc get_cell_style*(clist: PCList, row: gint, column: gint): PStyle{.
     cdecl, dynlib: lib, importc: "gtk_clist_get_cell_style".}
-proc clist_set_row_style*(clist: PCList, row: gint, style: PStyle){.cdecl, 
+proc set_row_style*(clist: PCList, row: gint, style: PStyle){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_row_style".}
-proc clist_get_row_style*(clist: PCList, row: gint): PStyle{.cdecl, dynlib: lib, 
+proc get_row_style*(clist: PCList, row: gint): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_clist_get_row_style".}
-proc clist_set_shift*(clist: PCList, row: gint, column: gint, vertical: gint, 
+proc set_shift*(clist: PCList, row: gint, column: gint, vertical: gint, 
                       horizontal: gint){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_shift".}
-proc clist_set_selectable*(clist: PCList, row: gint, selectable: gboolean){.
+proc set_selectable*(clist: PCList, row: gint, selectable: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_clist_set_selectable".}
-proc clist_get_selectable*(clist: PCList, row: gint): gboolean{.cdecl, 
+proc get_selectable*(clist: PCList, row: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_clist_get_selectable".}
-proc clist_remove*(clist: PCList, row: gint){.cdecl, dynlib: lib, 
+proc remove*(clist: PCList, row: gint){.cdecl, dynlib: lib, 
     importc: "gtk_clist_remove".}
-proc clist_set_row_data*(clist: PCList, row: gint, data: gpointer){.cdecl, 
+proc set_row_data*(clist: PCList, row: gint, data: gpointer){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_row_data".}
-proc clist_set_row_data_full*(clist: PCList, row: gint, data: gpointer, 
+proc set_row_data_full*(clist: PCList, row: gint, data: gpointer, 
                               destroy: TDestroyNotify){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_row_data_full".}
-proc clist_get_row_data*(clist: PCList, row: gint): gpointer{.cdecl, 
+proc get_row_data*(clist: PCList, row: gint): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_clist_get_row_data".}
-proc clist_find_row_from_data*(clist: PCList, data: gpointer): gint{.cdecl, 
+proc find_row_from_data*(clist: PCList, data: gpointer): gint{.cdecl, 
     dynlib: lib, importc: "gtk_clist_find_row_from_data".}
-proc clist_select_row*(clist: PCList, row: gint, column: gint){.cdecl, 
+proc select_row*(clist: PCList, row: gint, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_select_row".}
-proc clist_unselect_row*(clist: PCList, row: gint, column: gint){.cdecl, 
+proc unselect_row*(clist: PCList, row: gint, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_unselect_row".}
-proc clist_undo_selection*(clist: PCList){.cdecl, dynlib: lib, 
+proc undo_selection*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_undo_selection".}
-proc clist_clear*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_clear".}
-proc clist_get_selection_info*(clist: PCList, x: gint, y: gint, row: Pgint, 
+proc clear*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_clear".}
+proc get_selection_info*(clist: PCList, x: gint, y: gint, row: Pgint, 
                                column: Pgint): gint{.cdecl, dynlib: lib, 
     importc: "gtk_clist_get_selection_info".}
-proc clist_select_all*(clist: PCList){.cdecl, dynlib: lib, 
+proc select_all*(clist: PCList){.cdecl, dynlib: lib, 
                                        importc: "gtk_clist_select_all".}
-proc clist_unselect_all*(clist: PCList){.cdecl, dynlib: lib, 
+proc unselect_all*(clist: PCList){.cdecl, dynlib: lib, 
     importc: "gtk_clist_unselect_all".}
-proc clist_swap_rows*(clist: PCList, row1: gint, row2: gint){.cdecl, 
+proc swap_rows*(clist: PCList, row1: gint, row2: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_swap_rows".}
-proc clist_row_move*(clist: PCList, source_row: gint, dest_row: gint){.cdecl, 
+proc row_move*(clist: PCList, source_row: gint, dest_row: gint){.cdecl, 
     dynlib: lib, importc: "gtk_clist_row_move".}
-proc clist_set_compare_func*(clist: PCList, cmp_func: TCListCompareFunc){.cdecl, 
+proc set_compare_func*(clist: PCList, cmp_func: TCListCompareFunc){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_compare_func".}
-proc clist_set_sort_column*(clist: PCList, column: gint){.cdecl, dynlib: lib, 
+proc set_sort_column*(clist: PCList, column: gint){.cdecl, dynlib: lib, 
     importc: "gtk_clist_set_sort_column".}
-proc clist_set_sort_type*(clist: PCList, sort_type: TSortType){.cdecl, 
+proc set_sort_type*(clist: PCList, sort_type: TSortType){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_sort_type".}
-proc clist_sort*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_sort".}
-proc clist_set_auto_sort*(clist: PCList, auto_sort: gboolean){.cdecl, 
+proc sort*(clist: PCList){.cdecl, dynlib: lib, importc: "gtk_clist_sort".}
+proc set_auto_sort*(clist: PCList, auto_sort: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_clist_set_auto_sort".}
-proc clist_create_cell_layout*(clist: PCList, clist_row: PCListRow, column: gint): pango.PLayout{.
+proc create_cell_layout*(clist: PCList, clist_row: PCListRow, column: gint): pango.PLayout{.
     cdecl, dynlib: lib, importc: "_gtk_clist_create_cell_layout".}
 const 
   DIALOG_MODAL* = 1 shl 0
@@ -5392,23 +5392,23 @@ proc DIALOG_GET_CLASS*(obj: pointer): PDialogClass
 proc dialog_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_dialog_get_type".}
 proc dialog_new*(): PDialog{.cdecl, dynlib: lib, importc: "gtk_dialog_new".}
-proc dialog_add_action_widget*(dialog: PDialog, child: PWidget, 
+proc add_action_widget*(dialog: PDialog, child: PWidget, 
                                response_id: gint){.cdecl, dynlib: lib, 
     importc: "gtk_dialog_add_action_widget".}
-proc dialog_add_button*(dialog: PDialog, button_text: cstring, response_id: gint): PWidget{.
+proc add_button*(dialog: PDialog, button_text: cstring, response_id: gint): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_dialog_add_button".}
-proc dialog_set_response_sensitive*(dialog: PDialog, response_id: gint, 
+proc set_response_sensitive*(dialog: PDialog, response_id: gint, 
                                     setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_dialog_set_response_sensitive".}
-proc dialog_set_default_response*(dialog: PDialog, response_id: gint){.cdecl, 
+proc set_default_response*(dialog: PDialog, response_id: gint){.cdecl, 
     dynlib: lib, importc: "gtk_dialog_set_default_response".}
-proc dialog_set_has_separator*(dialog: PDialog, setting: gboolean){.cdecl, 
+proc set_has_separator*(dialog: PDialog, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_dialog_set_has_separator".}
-proc dialog_get_has_separator*(dialog: PDialog): gboolean{.cdecl, dynlib: lib, 
+proc get_has_separator*(dialog: PDialog): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_dialog_get_has_separator".}
-proc dialog_response*(dialog: PDialog, response_id: gint){.cdecl, dynlib: lib, 
+proc response*(dialog: PDialog, response_id: gint){.cdecl, dynlib: lib, 
     importc: "gtk_dialog_response".}
-proc dialog_run*(dialog: PDialog): gint{.cdecl, dynlib: lib, 
+proc run*(dialog: PDialog): gint{.cdecl, dynlib: lib, 
     importc: "gtk_dialog_run".}
 proc show_about_dialog*(parent: PWindow, firstPropertyName: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_show_about_dialog", varargs.}
@@ -5431,38 +5431,38 @@ proc color_selection_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_color_selection_get_type".}
 proc color_selection_new*(): PColorSelection{.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_new".}
-proc color_selection_get_has_opacity_control*(colorsel: PColorSelection): gboolean{.
+proc get_has_opacity_control*(colorsel: PColorSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_has_opacity_control".}
-proc color_selection_set_has_opacity_control*(colorsel: PColorSelection, 
+proc set_has_opacity_control*(colorsel: PColorSelection, 
     has_opacity: gboolean){.cdecl, dynlib: lib, importc: "gtk_color_selection_set_has_opacity_control".}
-proc color_selection_get_has_palette*(colorsel: PColorSelection): gboolean{.
+proc get_has_palette*(colorsel: PColorSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_has_palette".}
-proc color_selection_set_has_palette*(colorsel: PColorSelection, 
+proc set_has_palette*(colorsel: PColorSelection, 
                                       has_palette: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_color_selection_set_has_palette".}
-proc color_selection_set_current_color*(colorsel: PColorSelection, 
+proc set_current_color*(colorsel: PColorSelection, 
                                         color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_set_current_color".}
-proc color_selection_set_current_alpha*(colorsel: PColorSelection, 
+proc set_current_alpha*(colorsel: PColorSelection, 
                                         alpha: guint16){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_set_current_alpha".}
-proc color_selection_get_current_color*(colorsel: PColorSelection, 
+proc get_current_color*(colorsel: PColorSelection, 
                                         color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_color_selection_get_current_color".}
-proc color_selection_get_current_alpha*(colorsel: PColorSelection): guint16{.
+proc get_current_alpha*(colorsel: PColorSelection): guint16{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_current_alpha".}
-proc color_selection_set_previous_color*(colorsel: PColorSelection, 
+proc set_previous_color*(colorsel: PColorSelection, 
     color: gdk2.PColor){.cdecl, dynlib: lib, 
                        importc: "gtk_color_selection_set_previous_color".}
-proc color_selection_set_previous_alpha*(colorsel: PColorSelection, 
+proc set_previous_alpha*(colorsel: PColorSelection, 
     alpha: guint16){.cdecl, dynlib: lib, 
                      importc: "gtk_color_selection_set_previous_alpha".}
-proc color_selection_get_previous_color*(colorsel: PColorSelection, 
+proc get_previous_color*(colorsel: PColorSelection, 
     color: gdk2.PColor){.cdecl, dynlib: lib, 
                        importc: "gtk_color_selection_get_previous_color".}
-proc color_selection_get_previous_alpha*(colorsel: PColorSelection): guint16{.
+proc get_previous_alpha*(colorsel: PColorSelection): guint16{.
     cdecl, dynlib: lib, importc: "gtk_color_selection_get_previous_alpha".}
-proc color_selection_is_adjusting*(colorsel: PColorSelection): gboolean{.cdecl, 
+proc is_adjusting*(colorsel: PColorSelection): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_color_selection_is_adjusting".}
 proc color_selection_palette_from_string*(str: cstring, colors: var gdk2.PColor, 
     n_colors: Pgint): gboolean{.cdecl, dynlib: lib, importc: "gtk_color_selection_palette_from_string".}
@@ -5521,20 +5521,20 @@ proc use_arrows_always*(a: var TCombo): guint
 proc set_use_arrows_always*(a: var TCombo, `use_arrows_always`: guint)
 proc combo_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_combo_get_type".}
 proc combo_new*(): PCombo{.cdecl, dynlib: lib, importc: "gtk_combo_new".}
-proc combo_set_value_in_list*(combo: PCombo, val: gboolean, 
+proc set_value_in_list*(combo: PCombo, val: gboolean, 
                               ok_if_empty: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_combo_set_value_in_list".}
-proc combo_set_use_arrows*(combo: PCombo, val: gboolean){.cdecl, dynlib: lib, 
+proc set_use_arrows*(combo: PCombo, val: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_combo_set_use_arrows".}
-proc combo_set_use_arrows_always*(combo: PCombo, val: gboolean){.cdecl, 
+proc set_use_arrows_always*(combo: PCombo, val: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_combo_set_use_arrows_always".}
-proc combo_set_case_sensitive*(combo: PCombo, val: gboolean){.cdecl, 
+proc set_case_sensitive*(combo: PCombo, val: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_combo_set_case_sensitive".}
-proc combo_set_item_string*(combo: PCombo, item: PItem, item_value: cstring){.
+proc set_item_string*(combo: PCombo, item: PItem, item_value: cstring){.
     cdecl, dynlib: lib, importc: "gtk_combo_set_item_string".}
-proc combo_set_popdown_strings*(combo: PCombo, strings: PGList){.cdecl, 
+proc set_popdown_strings*(combo: PCombo, strings: PGList){.cdecl, 
     dynlib: lib, importc: "gtk_combo_set_popdown_strings".}
-proc combo_disable_activate*(combo: PCombo){.cdecl, dynlib: lib, 
+proc disable_activate*(combo: PCombo){.cdecl, dynlib: lib, 
     importc: "gtk_combo_disable_activate".}
 const 
   bm_TGtkCTree_line_style* = 0x0003'i16
@@ -5573,161 +5573,161 @@ proc set_expanded*(a: var TCTreeRow, `expanded`: guint)
 proc ctree_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_ctree_get_type".}
 proc ctree_new*(columns: gint, tree_column: gint): PCTree{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_new".}
-proc ctree_insert_node*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
+proc insert_node*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
                         text: openarray[cstring], spacing: guint8, 
                         pixmap_closed: gdk2.PPixmap, mask_closed: gdk2.PBitmap, 
                         pixmap_opened: gdk2.PPixmap, mask_opened: gdk2.PBitmap, 
                         is_leaf: gboolean, expanded: gboolean): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_insert_node".}
-proc ctree_remove_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc remove_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_remove_node".}
-proc ctree_insert_gnode*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
+proc insert_gnode*(ctree: PCTree, parent: PCTreeNode, sibling: PCTreeNode, 
                          gnode: PGNode, fun: TCTreeGNodeFunc, data: gpointer): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_insert_gnode".}
-proc ctree_export_to_gnode*(ctree: PCTree, parent: PGNode, sibling: PGNode, 
+proc export_to_gnode*(ctree: PCTree, parent: PGNode, sibling: PGNode, 
                             node: PCTreeNode, fun: TCTreeGNodeFunc, 
                             data: gpointer): PGNode{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_export_to_gnode".}
-proc ctree_post_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
+proc post_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
                            data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_post_recursive".}
-proc ctree_post_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
+proc post_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
                                     depth: gint, fun: TCTreeFunc, 
                                     data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_post_recursive_to_depth".}
-proc ctree_pre_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
+proc pre_recursive*(ctree: PCTree, node: PCTreeNode, fun: TCTreeFunc, 
                           data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_pre_recursive".}
-proc ctree_pre_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
+proc pre_recursive_to_depth*(ctree: PCTree, node: PCTreeNode, 
                                    depth: gint, fun: TCTreeFunc, 
                                    data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_pre_recursive_to_depth".}
-proc ctree_is_viewable*(ctree: PCTree, node: PCTreeNode): gboolean{.cdecl, 
+proc is_viewable*(ctree: PCTree, node: PCTreeNode): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_is_viewable".}
-proc ctree_last*(ctree: PCTree, node: PCTreeNode): PCTreeNode{.cdecl, 
+proc last*(ctree: PCTree, node: PCTreeNode): PCTreeNode{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_last".}
-proc ctree_find_node_ptr*(ctree: PCTree, ctree_row: PCTreeRow): PCTreeNode{.
+proc find_node_ptr*(ctree: PCTree, ctree_row: PCTreeRow): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_node_ptr".}
-proc ctree_node_nth*(ctree: PCTree, row: guint): PCTreeNode{.cdecl, dynlib: lib, 
+proc node_nth*(ctree: PCTree, row: guint): PCTreeNode{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_nth".}
-proc ctree_find*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
+proc find*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find".}
-proc ctree_is_ancestor*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
+proc is_ancestor*(ctree: PCTree, node: PCTreeNode, child: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_is_ancestor".}
-proc ctree_find_by_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer): PCTreeNode{.
+proc find_by_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_by_row_data".}
-proc ctree_find_all_by_row_data*(ctree: PCTree, node: PCTreeNode, 
+proc find_all_by_row_data*(ctree: PCTree, node: PCTreeNode, 
                                  data: gpointer): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_find_all_by_row_data".}
-proc ctree_find_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
+proc find_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
                                     data: gpointer, fun: TGCompareFunc): PCTreeNode{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_by_row_data_custom".}
-proc ctree_find_all_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
+proc find_all_by_row_data_custom*(ctree: PCTree, node: PCTreeNode, 
                                         data: gpointer, fun: TGCompareFunc): PGList{.
     cdecl, dynlib: lib, importc: "gtk_ctree_find_all_by_row_data_custom".}
-proc ctree_is_hot_spot*(ctree: PCTree, x: gint, y: gint): gboolean{.cdecl, 
+proc is_hot_spot*(ctree: PCTree, x: gint, y: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_is_hot_spot".}
-proc ctree_move*(ctree: PCTree, node: PCTreeNode, new_parent: PCTreeNode, 
+proc move*(ctree: PCTree, node: PCTreeNode, new_parent: PCTreeNode, 
                  new_sibling: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_move".}
-proc ctree_expand*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc expand*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_expand".}
-proc ctree_expand_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc expand_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_expand_recursive".}
-proc ctree_expand_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
+proc expand_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_expand_to_depth".}
-proc ctree_collapse*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc collapse*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_collapse".}
-proc ctree_collapse_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc collapse_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_collapse_recursive".}
-proc ctree_collapse_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
+proc collapse_to_depth*(ctree: PCTree, node: PCTreeNode, depth: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_collapse_to_depth".}
-proc ctree_toggle_expansion*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc toggle_expansion*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_toggle_expansion".}
-proc ctree_toggle_expansion_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc toggle_expansion_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_toggle_expansion_recursive".}
-proc ctree_select*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc select*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_select".}
-proc ctree_select_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc select_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_select_recursive".}
-proc ctree_unselect*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc unselect*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_unselect".}
-proc ctree_unselect_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc unselect_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_unselect_recursive".}
-proc ctree_real_select_recursive*(ctree: PCTree, node: PCTreeNode, state: gint){.
+proc real_select_recursive*(ctree: PCTree, node: PCTreeNode, state: gint){.
     cdecl, dynlib: lib, importc: "gtk_ctree_real_select_recursive".}
-proc ctree_node_set_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_set_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
                           text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_text".}
-proc ctree_node_set_pixmap*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_set_pixmap*(ctree: PCTree, node: PCTreeNode, column: gint, 
                             pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_set_pixmap".}
-proc ctree_node_set_pixtext*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_set_pixtext*(ctree: PCTree, node: PCTreeNode, column: gint, 
                              text: cstring, spacing: guint8, pixmap: gdk2.PPixmap, 
                              mask: gdk2.PBitmap){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_pixtext".}
-proc ctree_set_node_info*(ctree: PCTree, node: PCTreeNode, text: cstring, 
+proc set_node_info*(ctree: PCTree, node: PCTreeNode, text: cstring, 
                           spacing: guint8, pixmap_closed: gdk2.PPixmap, 
                           mask_closed: gdk2.PBitmap, pixmap_opened: gdk2.PPixmap, 
                           mask_opened: gdk2.PBitmap, is_leaf: gboolean, 
                           expanded: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_node_info".}
-proc ctree_node_set_shift*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_set_shift*(ctree: PCTree, node: PCTreeNode, column: gint, 
                            vertical: gint, horizontal: gint){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_set_shift".}
-proc ctree_node_set_selectable*(ctree: PCTree, node: PCTreeNode, 
+proc node_set_selectable*(ctree: PCTree, node: PCTreeNode, 
                                 selectable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_selectable".}
-proc ctree_node_get_selectable*(ctree: PCTree, node: PCTreeNode): gboolean{.
+proc node_get_selectable*(ctree: PCTree, node: PCTreeNode): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_selectable".}
-proc ctree_node_get_cell_type*(ctree: PCTree, node: PCTreeNode, column: gint): TCellType{.
+proc node_get_cell_type*(ctree: PCTree, node: PCTreeNode, column: gint): TCellType{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_cell_type".}
-proc ctree_node_get_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_get_text*(ctree: PCTree, node: PCTreeNode, column: gint, 
                           text: PPgchar): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_get_text".}
-proc ctree_node_set_row_style*(ctree: PCTree, node: PCTreeNode, style: PStyle){.
+proc node_set_row_style*(ctree: PCTree, node: PCTreeNode, style: PStyle){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_style".}
-proc ctree_node_get_row_style*(ctree: PCTree, node: PCTreeNode): PStyle{.cdecl, 
+proc node_get_row_style*(ctree: PCTree, node: PCTreeNode): PStyle{.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_get_row_style".}
-proc ctree_node_set_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_set_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint, 
                                 style: PStyle){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_cell_style".}
-proc ctree_node_get_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint): PStyle{.
+proc node_get_cell_style*(ctree: PCTree, node: PCTreeNode, column: gint): PStyle{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_cell_style".}
-proc ctree_node_set_foreground*(ctree: PCTree, node: PCTreeNode, 
+proc node_set_foreground*(ctree: PCTree, node: PCTreeNode, 
                                 color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_foreground".}
-proc ctree_node_set_background*(ctree: PCTree, node: PCTreeNode, 
+proc node_set_background*(ctree: PCTree, node: PCTreeNode, 
                                 color: gdk2.PColor){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_node_set_background".}
-proc ctree_node_set_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer){.
+proc node_set_row_data*(ctree: PCTree, node: PCTreeNode, data: gpointer){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_data".}
-proc ctree_node_set_row_data_full*(ctree: PCTree, node: PCTreeNode, 
+proc node_set_row_data_full*(ctree: PCTree, node: PCTreeNode, 
                                    data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_set_row_data_full".}
-proc ctree_node_get_row_data*(ctree: PCTree, node: PCTreeNode): gpointer{.
+proc node_get_row_data*(ctree: PCTree, node: PCTreeNode): gpointer{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_get_row_data".}
-proc ctree_node_moveto*(ctree: PCTree, node: PCTreeNode, column: gint, 
+proc node_moveto*(ctree: PCTree, node: PCTreeNode, column: gint, 
                         row_align: gfloat, col_align: gfloat){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_node_moveto".}
-proc ctree_node_is_visible*(ctree: PCTree, node: PCTreeNode): TVisibility{.
+proc node_is_visible*(ctree: PCTree, node: PCTreeNode): TVisibility{.
     cdecl, dynlib: lib, importc: "gtk_ctree_node_is_visible".}
-proc ctree_set_indent*(ctree: PCTree, indent: gint){.cdecl, dynlib: lib, 
+proc set_indent*(ctree: PCTree, indent: gint){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_indent".}
-proc ctree_set_spacing*(ctree: PCTree, spacing: gint){.cdecl, dynlib: lib, 
+proc set_spacing*(ctree: PCTree, spacing: gint){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_set_spacing".}
-proc ctree_set_show_stub*(ctree: PCTree, show_stub: gboolean){.cdecl, 
+proc set_show_stub*(ctree: PCTree, show_stub: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_set_show_stub".}
-proc ctree_set_line_style*(ctree: PCTree, line_style: TCTreeLineStyle){.cdecl, 
+proc set_line_style*(ctree: PCTree, line_style: TCTreeLineStyle){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_set_line_style".}
-proc ctree_set_expander_style*(ctree: PCTree, 
+proc set_expander_style*(ctree: PCTree, 
                                expander_style: TCTreeExpanderStyle){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_set_expander_style".}
-proc ctree_set_drag_compare_func*(ctree: PCTree, cmp_func: TCTreeCompareDragFunc){.
+proc set_drag_compare_func*(ctree: PCTree, cmp_func: TCTreeCompareDragFunc){.
     cdecl, dynlib: lib, importc: "gtk_ctree_set_drag_compare_func".}
-proc ctree_sort_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
+proc sort_node*(ctree: PCTree, node: PCTreeNode){.cdecl, dynlib: lib, 
     importc: "gtk_ctree_sort_node".}
-proc ctree_sort_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
+proc sort_recursive*(ctree: PCTree, node: PCTreeNode){.cdecl, 
     dynlib: lib, importc: "gtk_ctree_sort_recursive".}
 proc ctree_set_reorderable*(t: pointer, r: bool)
 proc ctree_node_get_type*(): GType{.cdecl, dynlib: lib, 
@@ -5750,13 +5750,13 @@ proc IS_CURVE_CLASS*(klass: pointer): bool
 proc CURVE_GET_CLASS*(obj: pointer): PCurveClass
 proc curve_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_curve_get_type".}
 proc curve_new*(): PCurve{.cdecl, dynlib: lib, importc: "gtk_curve_new".}
-proc curve_reset*(curve: PCurve){.cdecl, dynlib: lib, importc: "gtk_curve_reset".}
-proc curve_set_gamma*(curve: PCurve, gamma: gfloat){.cdecl, dynlib: lib, 
+proc reset*(curve: PCurve){.cdecl, dynlib: lib, importc: "gtk_curve_reset".}
+proc set_gamma*(curve: PCurve, gamma: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_curve_set_gamma".}
-proc curve_set_range*(curve: PCurve, min_x: gfloat, max_x: gfloat, 
+proc set_range*(curve: PCurve, min_x: gfloat, max_x: gfloat, 
                       min_y: gfloat, max_y: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_curve_set_range".}
-proc curve_set_curve_type*(curve: PCurve, thetype: TCurveType){.cdecl, 
+proc set_curve_type*(curve: PCurve, thetype: TCurveType){.cdecl, 
     dynlib: lib, importc: "gtk_curve_set_curve_type".}
 const 
   DEST_DEFAULT_MOTION* = 1 shl 0
@@ -5839,33 +5839,33 @@ proc IS_EDITABLE_CLASS*(vtable: pointer): bool
 proc EDITABLE_GET_CLASS*(inst: pointer): PEditableClass
 proc editable_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_editable_get_type".}
-proc editable_select_region*(editable: PEditable, start: gint, theEnd: gint){.
+proc select_region*(editable: PEditable, start: gint, theEnd: gint){.
     cdecl, dynlib: lib, importc: "gtk_editable_select_region".}
-proc editable_get_selection_bounds*(editable: PEditable, start: Pgint, 
+proc get_selection_bounds*(editable: PEditable, start: Pgint, 
                                     theEnd: Pgint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_editable_get_selection_bounds".}
-proc editable_insert_text*(editable: PEditable, new_text: cstring, 
+proc insert_text*(editable: PEditable, new_text: cstring, 
                            new_text_length: gint, position: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_editable_insert_text".}
-proc editable_delete_text*(editable: PEditable, start_pos: gint, end_pos: gint){.
+proc delete_text*(editable: PEditable, start_pos: gint, end_pos: gint){.
     cdecl, dynlib: lib, importc: "gtk_editable_delete_text".}
-proc editable_get_chars*(editable: PEditable, start_pos: gint, end_pos: gint): cstring{.
+proc get_chars*(editable: PEditable, start_pos: gint, end_pos: gint): cstring{.
     cdecl, dynlib: lib, importc: "gtk_editable_get_chars".}
-proc editable_cut_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
+proc cut_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
     importc: "gtk_editable_cut_clipboard".}
-proc editable_copy_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
+proc copy_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
     importc: "gtk_editable_copy_clipboard".}
-proc editable_paste_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
+proc paste_clipboard*(editable: PEditable){.cdecl, dynlib: lib, 
     importc: "gtk_editable_paste_clipboard".}
-proc editable_delete_selection*(editable: PEditable){.cdecl, dynlib: lib, 
+proc delete_selection*(editable: PEditable){.cdecl, dynlib: lib, 
     importc: "gtk_editable_delete_selection".}
-proc editable_set_position*(editable: PEditable, position: gint){.cdecl, 
+proc set_position*(editable: PEditable, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_editable_set_position".}
-proc editable_get_position*(editable: PEditable): gint{.cdecl, dynlib: lib, 
+proc get_position*(editable: PEditable): gint{.cdecl, dynlib: lib, 
     importc: "gtk_editable_get_position".}
-proc editable_set_editable*(editable: PEditable, is_editable: gboolean){.cdecl, 
+proc set_editable*(editable: PEditable, is_editable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_editable_set_editable".}
-proc editable_get_editable*(editable: PEditable): gboolean{.cdecl, dynlib: lib, 
+proc get_editable*(editable: PEditable): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_editable_get_editable".}
 proc TYPE_IM_CONTEXT*(): GType
 proc IM_CONTEXT*(obj: pointer): PIMContext
@@ -5875,27 +5875,27 @@ proc IS_IM_CONTEXT_CLASS*(klass: pointer): bool
 proc IM_CONTEXT_GET_CLASS*(obj: pointer): PIMContextClass
 proc im_context_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_im_context_get_type".}
-proc im_context_set_client_window*(context: PIMContext, window: gdk2.PWindow){.
+proc set_client_window*(context: PIMContext, window: gdk2.PWindow){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_client_window".}
-proc im_context_filter_keypress*(context: PIMContext, event: gdk2.PEventKey): gboolean{.
+proc filter_keypress*(context: PIMContext, event: gdk2.PEventKey): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_im_context_filter_keypress".}
-proc im_context_focus_in*(context: PIMContext){.cdecl, dynlib: lib, 
+proc focus_in*(context: PIMContext){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_focus_in".}
-proc im_context_focus_out*(context: PIMContext){.cdecl, dynlib: lib, 
+proc focus_out*(context: PIMContext){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_focus_out".}
-proc im_context_reset*(context: PIMContext){.cdecl, dynlib: lib, 
+proc reset*(context: PIMContext){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_reset".}
-proc im_context_set_cursor_location*(context: PIMContext, area: gdk2.PRectangle){.
+proc set_cursor_location*(context: PIMContext, area: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_cursor_location".}
-proc im_context_set_use_preedit*(context: PIMContext, use_preedit: gboolean){.
+proc set_use_preedit*(context: PIMContext, use_preedit: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_im_context_set_use_preedit".}
-proc im_context_set_surrounding*(context: PIMContext, text: cstring, len: gint, 
+proc set_surrounding*(context: PIMContext, text: cstring, len: gint, 
                                  cursor_index: gint){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_set_surrounding".}
-proc im_context_get_surrounding*(context: PIMContext, text: PPgchar, 
+proc get_surrounding*(context: PIMContext, text: PPgchar, 
                                  cursor_index: Pgint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_im_context_get_surrounding".}
-proc im_context_delete_surrounding*(context: PIMContext, offset: gint, 
+proc delete_surrounding*(context: PIMContext, offset: gint, 
                                     n_chars: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_im_context_delete_surrounding".}
 const 
@@ -5936,24 +5936,24 @@ proc submenu_placement*(a: var TMenuShellClass): guint
 proc set_submenu_placement*(a: var TMenuShellClass, `submenu_placement`: guint)
 proc menu_shell_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_menu_shell_get_type".}
-proc menu_shell_append*(menu_shell: PMenuShell, child: PWidget){.cdecl, 
+proc append*(menu_shell: PMenuShell, child: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_menu_shell_append".}
-proc menu_shell_prepend*(menu_shell: PMenuShell, child: PWidget){.cdecl, 
+proc prepend*(menu_shell: PMenuShell, child: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_menu_shell_prepend".}
-proc menu_shell_insert*(menu_shell: PMenuShell, child: PWidget, position: gint){.
+proc insert*(menu_shell: PMenuShell, child: PWidget, position: gint){.
     cdecl, dynlib: lib, importc: "gtk_menu_shell_insert".}
-proc menu_shell_deactivate*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
+proc deactivate*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
     importc: "gtk_menu_shell_deactivate".}
-proc menu_shell_select_item*(menu_shell: PMenuShell, menu_item: PWidget){.cdecl, 
+proc select_item*(menu_shell: PMenuShell, menu_item: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_menu_shell_select_item".}
-proc menu_shell_deselect*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
+proc deselect*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
     importc: "gtk_menu_shell_deselect".}
-proc menu_shell_activate_item*(menu_shell: PMenuShell, menu_item: PWidget, 
+proc activate_item*(menu_shell: PMenuShell, menu_item: PWidget, 
                                force_deactivate: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_menu_shell_activate_item".}
-proc menu_shell_select_first*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
+proc select_first*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
     importc: "_gtk_menu_shell_select_first".}
-proc menu_shell_activate*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
+proc activate*(menu_shell: PMenuShell){.cdecl, dynlib: lib, 
     importc: "_gtk_menu_shell_activate".}
 const 
   bm_TGtkMenu_needs_destruction_ref_count* = 0x0001'i16
@@ -5998,40 +5998,40 @@ proc lower_arrow_prelight*(a: var TMenu): guint
 proc set_lower_arrow_prelight*(a: var TMenu, `lower_arrow_prelight`: guint)
 proc menu_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_menu_get_type".}
 proc menu_new*(): PMenu{.cdecl, dynlib: lib, importc: "gtk_menu_new".}
-proc menu_popup*(menu: PMenu, parent_menu_shell: PWidget, 
+proc popup*(menu: PMenu, parent_menu_shell: PWidget, 
                  parent_menu_item: PWidget, fun: TMenuPositionFunc, 
                  data: gpointer, button: guint, activate_time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_menu_popup".}
-proc menu_reposition*(menu: PMenu){.cdecl, dynlib: lib, 
+proc reposition*(menu: PMenu){.cdecl, dynlib: lib, 
                                     importc: "gtk_menu_reposition".}
-proc menu_popdown*(menu: PMenu){.cdecl, dynlib: lib, importc: "gtk_menu_popdown".}
-proc menu_get_active*(menu: PMenu): PWidget{.cdecl, dynlib: lib, 
+proc popdown*(menu: PMenu){.cdecl, dynlib: lib, importc: "gtk_menu_popdown".}
+proc get_active*(menu: PMenu): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_menu_get_active".}
-proc menu_set_active*(menu: PMenu, index: guint){.cdecl, dynlib: lib, 
+proc set_active*(menu: PMenu, index: guint){.cdecl, dynlib: lib, 
     importc: "gtk_menu_set_active".}
-proc menu_set_accel_group*(menu: PMenu, accel_group: PAccelGroup){.cdecl, 
+proc set_accel_group*(menu: PMenu, accel_group: PAccelGroup){.cdecl, 
     dynlib: lib, importc: "gtk_menu_set_accel_group".}
-proc menu_get_accel_group*(menu: PMenu): PAccelGroup{.cdecl, dynlib: lib, 
+proc get_accel_group*(menu: PMenu): PAccelGroup{.cdecl, dynlib: lib, 
     importc: "gtk_menu_get_accel_group".}
-proc menu_set_accel_path*(menu: PMenu, accel_path: cstring){.cdecl, dynlib: lib, 
+proc set_accel_path*(menu: PMenu, accel_path: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_menu_set_accel_path".}
-proc menu_attach_to_widget*(menu: PMenu, attach_widget: PWidget, 
+proc attach_to_widget*(menu: PMenu, attach_widget: PWidget, 
                             detacher: TMenuDetachFunc){.cdecl, dynlib: lib, 
     importc: "gtk_menu_attach_to_widget".}
-proc menu_detach*(menu: PMenu){.cdecl, dynlib: lib, importc: "gtk_menu_detach".}
-proc menu_get_attach_widget*(menu: PMenu): PWidget{.cdecl, dynlib: lib, 
+proc detach*(menu: PMenu){.cdecl, dynlib: lib, importc: "gtk_menu_detach".}
+proc get_attach_widget*(menu: PMenu): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_menu_get_attach_widget".}
-proc menu_set_tearoff_state*(menu: PMenu, torn_off: gboolean){.cdecl, 
+proc set_tearoff_state*(menu: PMenu, torn_off: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_menu_set_tearoff_state".}
-proc menu_get_tearoff_state*(menu: PMenu): gboolean{.cdecl, dynlib: lib, 
+proc get_tearoff_state*(menu: PMenu): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_menu_get_tearoff_state".}
-proc menu_set_title*(menu: PMenu, title: cstring){.cdecl, dynlib: lib, 
+proc set_title*(menu: PMenu, title: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_menu_set_title".}
-proc menu_get_title*(menu: PMenu): cstring{.cdecl, dynlib: lib, 
+proc get_title*(menu: PMenu): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_menu_get_title".}
-proc menu_reorder_child*(menu: PMenu, child: PWidget, position: gint){.cdecl, 
+proc reorder_child*(menu: PMenu, child: PWidget, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_menu_reorder_child".}
-proc menu_set_screen*(menu: PMenu, screen: gdk2.PScreen){.cdecl, dynlib: lib, 
+proc set_screen*(menu: PMenu, screen: gdk2.PScreen){.cdecl, dynlib: lib, 
     importc: "gtk_menu_set_screen".}
 const 
   bm_TGtkEntry_editable* = 0x0001'i16
@@ -6095,37 +6095,37 @@ proc mouse_cursor_obscured*(a: var TEntry): guint
 proc set_mouse_cursor_obscured*(a: var TEntry, `mouse_cursor_obscured`: guint)
 proc entry_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_entry_get_type".}
 proc entry_new*(): PEntry{.cdecl, dynlib: lib, importc: "gtk_entry_new".}
-proc entry_set_visibility*(entry: PEntry, visible: gboolean){.cdecl, 
+proc set_visibility*(entry: PEntry, visible: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_entry_set_visibility".}
-proc entry_get_visibility*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
+proc get_visibility*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_visibility".}
-proc entry_set_invisible_char*(entry: PEntry, ch: gunichar){.cdecl, dynlib: lib, 
+proc set_invisible_char*(entry: PEntry, ch: gunichar){.cdecl, dynlib: lib, 
     importc: "gtk_entry_set_invisible_char".}
-proc entry_get_invisible_char*(entry: PEntry): gunichar{.cdecl, dynlib: lib, 
+proc get_invisible_char*(entry: PEntry): gunichar{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_invisible_char".}
-proc entry_set_has_frame*(entry: PEntry, setting: gboolean){.cdecl, dynlib: lib, 
+proc set_has_frame*(entry: PEntry, setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_entry_set_has_frame".}
-proc entry_get_has_frame*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
+proc get_has_frame*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_has_frame".}
-proc entry_set_max_length*(entry: PEntry, max: gint){.cdecl, dynlib: lib, 
+proc set_max_length*(entry: PEntry, max: gint){.cdecl, dynlib: lib, 
     importc: "gtk_entry_set_max_length".}
-proc entry_get_max_length*(entry: PEntry): gint{.cdecl, dynlib: lib, 
+proc get_max_length*(entry: PEntry): gint{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_max_length".}
-proc entry_set_activates_default*(entry: PEntry, setting: gboolean){.cdecl, 
+proc set_activates_default*(entry: PEntry, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_entry_set_activates_default".}
-proc entry_get_activates_default*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
+proc get_activates_default*(entry: PEntry): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_activates_default".}
-proc entry_set_width_chars*(entry: PEntry, n_chars: gint){.cdecl, dynlib: lib, 
+proc set_width_chars*(entry: PEntry, n_chars: gint){.cdecl, dynlib: lib, 
     importc: "gtk_entry_set_width_chars".}
-proc entry_get_width_chars*(entry: PEntry): gint{.cdecl, dynlib: lib, 
+proc get_width_chars*(entry: PEntry): gint{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_width_chars".}
-proc entry_set_text*(entry: PEntry, text: cstring){.cdecl, dynlib: lib, 
+proc set_text*(entry: PEntry, text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_entry_set_text".}
-proc entry_get_text*(entry: PEntry): cstring{.cdecl, dynlib: lib, 
+proc get_text*(entry: PEntry): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_text".}
-proc entry_get_layout*(entry: PEntry): pango.PLayout{.cdecl, dynlib: lib, 
+proc get_layout*(entry: PEntry): pango.PLayout{.cdecl, dynlib: lib, 
     importc: "gtk_entry_get_layout".}
-proc entry_get_layout_offsets*(entry: PEntry, x: Pgint, y: Pgint){.cdecl, 
+proc get_layout_offsets*(entry: PEntry, x: Pgint, y: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_entry_get_layout_offsets".}
 const 
   ANCHOR_CENTER* = 0
@@ -6214,8 +6214,8 @@ const
   CORNER_BOTTOM_LEFT* = 1
   CORNER_TOP_RIGHT* = 2
   CORNER_BOTTOM_RIGHT* = 3
-  PACK_START* = 0
-  PACK_END* = 1
+  constPACK_START* = 0
+  constPACK_END* = 1
   PATH_PRIO_LOWEST* = 0
   PATH_PRIO_GTK* = 4
   PATH_PRIO_APPLICATION* = 8
@@ -6333,21 +6333,21 @@ proc file_selection_get_type*(): TType{.cdecl, dynlib: lib,
                                         importc: "gtk_file_selection_get_type".}
 proc file_selection_new*(title: cstring): PFileSelection{.cdecl, dynlib: lib, 
     importc: "gtk_file_selection_new".}
-proc file_selection_set_filename*(filesel: PFileSelection, filename: cstring){.
+proc set_filename*(filesel: PFileSelection, filename: cstring){.
     cdecl, dynlib: lib, importc: "gtk_file_selection_set_filename".}
-proc file_selection_get_filename*(filesel: PFileSelection): cstring{.cdecl, 
+proc get_filename*(filesel: PFileSelection): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_file_selection_get_filename".}
-proc file_selection_complete*(filesel: PFileSelection, pattern: cstring){.cdecl, 
+proc complete*(filesel: PFileSelection, pattern: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_file_selection_complete".}
-proc file_selection_show_fileop_buttons*(filesel: PFileSelection){.cdecl, 
+proc show_fileop_buttons*(filesel: PFileSelection){.cdecl, 
     dynlib: lib, importc: "gtk_file_selection_show_fileop_buttons".}
-proc file_selection_hide_fileop_buttons*(filesel: PFileSelection){.cdecl, 
+proc hide_fileop_buttons*(filesel: PFileSelection){.cdecl, 
     dynlib: lib, importc: "gtk_file_selection_hide_fileop_buttons".}
-proc file_selection_get_selections*(filesel: PFileSelection): PPgchar{.cdecl, 
+proc get_selections*(filesel: PFileSelection): PPgchar{.cdecl, 
     dynlib: lib, importc: "gtk_file_selection_get_selections".}
-proc file_selection_set_select_multiple*(filesel: PFileSelection, 
+proc set_select_multiple*(filesel: PFileSelection, 
     select_multiple: gboolean){.cdecl, dynlib: lib, importc: "gtk_file_selection_set_select_multiple".}
-proc file_selection_get_select_multiple*(filesel: PFileSelection): gboolean{.
+proc get_select_multiple*(filesel: PFileSelection): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_selection_get_select_multiple".}
 proc TYPE_FIXED*(): GType
 proc FIXED*(obj: pointer): PFixed
@@ -6357,13 +6357,13 @@ proc IS_FIXED_CLASS*(klass: pointer): bool
 proc FIXED_GET_CLASS*(obj: pointer): PFixedClass
 proc fixed_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_fixed_get_type".}
 proc fixed_new*(): PFixed{.cdecl, dynlib: lib, importc: "gtk_fixed_new".}
-proc fixed_put*(fixed: PFixed, widget: PWidget, x: gint, y: gint){.cdecl, 
+proc put*(fixed: PFixed, widget: PWidget, x: gint, y: gint){.cdecl, 
     dynlib: lib, importc: "gtk_fixed_put".}
-proc fixed_move*(fixed: PFixed, widget: PWidget, x: gint, y: gint){.cdecl, 
+proc move*(fixed: PFixed, widget: PWidget, x: gint, y: gint){.cdecl, 
     dynlib: lib, importc: "gtk_fixed_move".}
-proc fixed_set_has_window*(fixed: PFixed, has_window: gboolean){.cdecl, 
+proc set_has_window*(fixed: PFixed, has_window: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_fixed_set_has_window".}
-proc fixed_get_has_window*(fixed: PFixed): gboolean{.cdecl, dynlib: lib, 
+proc get_has_window*(fixed: PFixed): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_fixed_get_has_window".}
 proc TYPE_FONT_SELECTION*(): GType
 proc FONT_SELECTION*(obj: pointer): PFontSelection
@@ -6381,25 +6381,25 @@ proc font_selection_get_type*(): TType{.cdecl, dynlib: lib,
                                         importc: "gtk_font_selection_get_type".}
 proc font_selection_new*(): PFontSelection{.cdecl, dynlib: lib, 
     importc: "gtk_font_selection_new".}
-proc font_selection_get_font_name*(fontsel: PFontSelection): cstring{.cdecl, 
+proc get_font_name*(fontsel: PFontSelection): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_font_selection_get_font_name".}
-proc font_selection_set_font_name*(fontsel: PFontSelection, fontname: cstring): gboolean{.
+proc set_font_name*(fontsel: PFontSelection, fontname: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_font_selection_set_font_name".}
-proc font_selection_get_preview_text*(fontsel: PFontSelection): cstring{.cdecl, 
+proc get_preview_text*(fontsel: PFontSelection): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_font_selection_get_preview_text".}
-proc font_selection_set_preview_text*(fontsel: PFontSelection, text: cstring){.
+proc set_preview_text*(fontsel: PFontSelection, text: cstring){.
     cdecl, dynlib: lib, importc: "gtk_font_selection_set_preview_text".}
 proc font_selection_dialog_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_font_selection_dialog_get_type".}
 proc font_selection_dialog_new*(title: cstring): PFontSelectionDialog{.cdecl, 
     dynlib: lib, importc: "gtk_font_selection_dialog_new".}
-proc font_selection_dialog_get_font_name*(fsd: PFontSelectionDialog): cstring{.
+proc dialog_get_font_name*(fsd: PFontSelectionDialog): cstring{.
     cdecl, dynlib: lib, importc: "gtk_font_selection_dialog_get_font_name".}
-proc font_selection_dialog_set_font_name*(fsd: PFontSelectionDialog, 
+proc dialog_set_font_name*(fsd: PFontSelectionDialog, 
     fontname: cstring): gboolean{.cdecl, dynlib: lib, importc: "gtk_font_selection_dialog_set_font_name".}
-proc font_selection_dialog_get_preview_text*(fsd: PFontSelectionDialog): cstring{.
+proc dialog_get_preview_text*(fsd: PFontSelectionDialog): cstring{.
     cdecl, dynlib: lib, importc: "gtk_font_selection_dialog_get_preview_text".}
-proc font_selection_dialog_set_preview_text*(fsd: PFontSelectionDialog, 
+proc dialog_set_preview_text*(fsd: PFontSelectionDialog, 
     text: cstring){.cdecl, dynlib: lib, 
                     importc: "gtk_font_selection_dialog_set_preview_text".}
 proc TYPE_GAMMA_CURVE*(): GType
@@ -6452,18 +6452,18 @@ proc handle_box_get_type*(): TType{.cdecl, dynlib: lib,
                                     importc: "gtk_handle_box_get_type".}
 proc handle_box_new*(): PHandleBox{.cdecl, dynlib: lib, 
                                     importc: "gtk_handle_box_new".}
-proc handle_box_set_shadow_type*(handle_box: PHandleBox, thetype: TShadowType){.
+proc set_shadow_type*(handle_box: PHandleBox, thetype: TShadowType){.
     cdecl, dynlib: lib, importc: "gtk_handle_box_set_shadow_type".}
-proc handle_box_get_shadow_type*(handle_box: PHandleBox): TShadowType{.cdecl, 
+proc get_shadow_type*(handle_box: PHandleBox): TShadowType{.cdecl, 
     dynlib: lib, importc: "gtk_handle_box_get_shadow_type".}
-proc handle_box_set_handle_position*(handle_box: PHandleBox, 
+proc set_handle_position*(handle_box: PHandleBox, 
                                      position: TPositionType){.cdecl, 
     dynlib: lib, importc: "gtk_handle_box_set_handle_position".}
-proc handle_box_get_handle_position*(handle_box: PHandleBox): TPositionType{.
+proc get_handle_position*(handle_box: PHandleBox): TPositionType{.
     cdecl, dynlib: lib, importc: "gtk_handle_box_get_handle_position".}
-proc handle_box_set_snap_edge*(handle_box: PHandleBox, edge: TPositionType){.
+proc set_snap_edge*(handle_box: PHandleBox, edge: TPositionType){.
     cdecl, dynlib: lib, importc: "gtk_handle_box_set_snap_edge".}
-proc handle_box_get_snap_edge*(handle_box: PHandleBox): TPositionType{.cdecl, 
+proc get_snap_edge*(handle_box: PHandleBox): TPositionType{.cdecl, 
     dynlib: lib, importc: "gtk_handle_box_get_snap_edge".}
 const 
   bm_TGtkPaned_position_set* = 0x0001'i16
@@ -6510,21 +6510,21 @@ proc set_in_recursion*(a: var TPaned, `in_recursion`: guint)
 proc handle_prelit*(a: var TPaned): guint
 proc set_handle_prelit*(a: var TPaned, `handle_prelit`: guint)
 proc paned_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_paned_get_type".}
-proc paned_add1*(paned: PPaned, child: PWidget){.cdecl, dynlib: lib, 
+proc add1*(paned: PPaned, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_paned_add1".}
-proc paned_add2*(paned: PPaned, child: PWidget){.cdecl, dynlib: lib, 
+proc add2*(paned: PPaned, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_paned_add2".}
-proc paned_pack1*(paned: PPaned, child: PWidget, resize: gboolean, 
+proc pack1*(paned: PPaned, child: PWidget, resize: gboolean, 
                   shrink: gboolean){.cdecl, dynlib: lib, 
                                      importc: "gtk_paned_pack1".}
-proc paned_pack2*(paned: PPaned, child: PWidget, resize: gboolean, 
+proc pack2*(paned: PPaned, child: PWidget, resize: gboolean, 
                   shrink: gboolean){.cdecl, dynlib: lib, 
                                      importc: "gtk_paned_pack2".}
-proc paned_get_position*(paned: PPaned): gint{.cdecl, dynlib: lib, 
+proc get_position*(paned: PPaned): gint{.cdecl, dynlib: lib, 
     importc: "gtk_paned_get_position".}
-proc paned_set_position*(paned: PPaned, position: gint){.cdecl, dynlib: lib, 
+proc set_position*(paned: PPaned, position: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paned_set_position".}
-proc paned_compute_position*(paned: PPaned, allocation: gint, child1_req: gint, 
+proc compute_position*(paned: PPaned, allocation: gint, child1_req: gint, 
                              child2_req: gint){.cdecl, dynlib: lib, 
     importc: "gtk_paned_compute_position".}
 proc TYPE_HBUTTON_BOX*(): GType
@@ -6553,18 +6553,18 @@ proc IS_RULER*(obj: pointer): bool
 proc IS_RULER_CLASS*(klass: pointer): bool
 proc RULER_GET_CLASS*(obj: pointer): PRulerClass
 proc ruler_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_ruler_get_type".}
-proc ruler_set_metric*(ruler: PRuler, metric: TMetricType){.cdecl, dynlib: lib, 
+proc set_metric*(ruler: PRuler, metric: TMetricType){.cdecl, dynlib: lib, 
     importc: "gtk_ruler_set_metric".}
-proc ruler_set_range*(ruler: PRuler, lower: gdouble, upper: gdouble, 
+proc set_range*(ruler: PRuler, lower: gdouble, upper: gdouble, 
                       position: gdouble, max_size: gdouble){.cdecl, dynlib: lib, 
     importc: "gtk_ruler_set_range".}
-proc ruler_draw_ticks*(ruler: PRuler){.cdecl, dynlib: lib, 
+proc draw_ticks*(ruler: PRuler){.cdecl, dynlib: lib, 
                                        importc: "gtk_ruler_draw_ticks".}
-proc ruler_draw_pos*(ruler: PRuler){.cdecl, dynlib: lib, 
+proc draw_pos*(ruler: PRuler){.cdecl, dynlib: lib, 
                                      importc: "gtk_ruler_draw_pos".}
-proc ruler_get_metric*(ruler: PRuler): TMetricType{.cdecl, dynlib: lib, 
+proc get_metric*(ruler: PRuler): TMetricType{.cdecl, dynlib: lib, 
     importc: "gtk_ruler_get_metric".}
-proc ruler_get_range*(ruler: PRuler, lower: Pgdouble, upper: Pgdouble, 
+proc get_range*(ruler: PRuler, lower: Pgdouble, upper: Pgdouble, 
                       position: Pgdouble, max_size: Pgdouble){.cdecl, 
     dynlib: lib, importc: "gtk_ruler_get_range".}
 proc TYPE_HRULER*(): GType
@@ -6606,16 +6606,16 @@ proc rc_property_parse_requisition*(pspec: PGParamSpec, gstring: PGString,
 proc rc_property_parse_border*(pspec: PGParamSpec, gstring: PGString, 
                                property_value: PGValue): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_rc_property_parse_border".}
-proc settings_set_property_value*(settings: PSettings, name: cstring, 
+proc set_property_value*(settings: PSettings, name: cstring, 
                                   svalue: PSettingsValue){.cdecl, dynlib: lib, 
     importc: "gtk_settings_set_property_value".}
-proc settings_set_string_property*(settings: PSettings, name: cstring, 
+proc set_string_property*(settings: PSettings, name: cstring, 
                                    v_string: cstring, origin: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_settings_set_string_property".}
-proc settings_set_long_property*(settings: PSettings, name: cstring, 
+proc set_long_property*(settings: PSettings, name: cstring, 
                                  v_long: glong, origin: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_settings_set_long_property".}
-proc settings_set_double_property*(settings: PSettings, name: cstring, 
+proc set_double_property*(settings: PSettings, name: cstring, 
                                    v_double: gdouble, origin: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_settings_set_double_property".}
 proc settings_handle_event*(event: gdk2.PEventSetting){.cdecl, dynlib: lib, 
@@ -6666,11 +6666,11 @@ proc rc_reparse_all*(): gboolean{.cdecl, dynlib: lib,
 proc rc_style_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "gtk_rc_style_get_type".}
 proc rc_style_new*(): PRcStyle{.cdecl, dynlib: lib, importc: "gtk_rc_style_new".}
-proc rc_style_copy*(orig: PRcStyle): PRcStyle{.cdecl, dynlib: lib, 
+proc copy*(orig: PRcStyle): PRcStyle{.cdecl, dynlib: lib, 
     importc: "gtk_rc_style_copy".}
-proc rc_style_ref*(rc_style: PRcStyle){.cdecl, dynlib: lib, 
+proc reference*(rc_style: PRcStyle){.cdecl, dynlib: lib, 
                                         importc: "gtk_rc_style_ref".}
-proc rc_style_unref*(rc_style: PRcStyle){.cdecl, dynlib: lib, 
+proc unref*(rc_style: PRcStyle){.cdecl, dynlib: lib, 
     importc: "gtk_rc_style_unref".}
 proc rc_find_module_in_path*(module_file: cstring): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_rc_find_module_in_path".}
@@ -6690,7 +6690,7 @@ proc rc_parse_state*(scanner: PGScanner, state: PStateType): guint{.cdecl,
     dynlib: lib, importc: "gtk_rc_parse_state".}
 proc rc_parse_priority*(scanner: PGScanner, priority: PPathPriorityType): guint{.
     cdecl, dynlib: lib, importc: "gtk_rc_parse_priority".}
-proc rc_style_lookup_rc_property*(rc_style: PRcStyle, type_name: TGQuark, 
+proc lookup_rc_property*(rc_style: PRcStyle, type_name: TGQuark, 
                                   property_name: TGQuark): PRcProperty{.cdecl, 
     dynlib: lib, importc: "_gtk_rc_style_lookup_rc_property".}
 proc rc_context_get_default_font_name*(settings: PSettings): cstring{.cdecl, 
@@ -6705,23 +6705,23 @@ proc TYPE_BORDER*(): GType
 proc STYLE_ATTACHED*(style: pointer): bool
 proc style_get_type*(): GType{.cdecl, dynlib: lib, importc: "gtk_style_get_type".}
 proc style_new*(): PStyle{.cdecl, dynlib: lib, importc: "gtk_style_new".}
-proc style_copy*(style: PStyle): PStyle{.cdecl, dynlib: lib, 
+proc copy*(style: PStyle): PStyle{.cdecl, dynlib: lib, 
     importc: "gtk_style_copy".}
-proc style_attach*(style: PStyle, window: gdk2.PWindow): PStyle{.cdecl, 
+proc attach*(style: PStyle, window: gdk2.PWindow): PStyle{.cdecl, 
     dynlib: lib, importc: "gtk_style_attach".}
-proc style_detach*(style: PStyle){.cdecl, dynlib: lib, 
+proc detach*(style: PStyle){.cdecl, dynlib: lib, 
                                    importc: "gtk_style_detach".}
-proc style_set_background*(style: PStyle, window: gdk2.PWindow, 
+proc set_background*(style: PStyle, window: gdk2.PWindow, 
                            state_type: TStateType){.cdecl, dynlib: lib, 
     importc: "gtk_style_set_background".}
-proc style_apply_default_background*(style: PStyle, window: gdk2.PWindow, 
+proc apply_default_background*(style: PStyle, window: gdk2.PWindow, 
                                      set_bg: gboolean, state_type: TStateType, 
                                      area: gdk2.PRectangle, x: gint, y: gint, 
                                      width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_style_apply_default_background".}
-proc style_lookup_icon_set*(style: PStyle, stock_id: cstring): PIconSet{.cdecl, 
+proc lookup_icon_set*(style: PStyle, stock_id: cstring): PIconSet{.cdecl, 
     dynlib: lib, importc: "gtk_style_lookup_icon_set".}
-proc style_render_icon*(style: PStyle, source: PIconSource, 
+proc render_icon*(style: PStyle, source: PIconSource, 
                         direction: TTextDirection, state: TStateType, 
                         size: TIconSize, widget: PWidget, detail: cstring): gdk2pixbuf.PPixbuf{.
     cdecl, dynlib: lib, importc: "gtk_style_render_icon".}
@@ -6822,11 +6822,11 @@ proc paint_resize_grip*(style: PStyle, window: gdk2.PWindow,
     dynlib: lib, importc: "gtk_paint_resize_grip".}
 proc border_get_type*(): GType{.cdecl, dynlib: lib, 
                                 importc: "gtk_border_get_type".}
-proc border_copy*(border: PBorder): PBorder{.cdecl, dynlib: lib, 
+proc copy*(border: PBorder): PBorder{.cdecl, dynlib: lib, 
     importc: "gtk_border_copy".}
-proc border_free*(border: PBorder){.cdecl, dynlib: lib, 
+proc free*(border: PBorder){.cdecl, dynlib: lib, 
                                     importc: "gtk_border_free".}
-proc style_peek_property_value*(style: PStyle, widget_type: GType, 
+proc peek_property_value*(style: PStyle, widget_type: GType, 
                                 pspec: PGParamSpec, parser: TRcPropertyParser): PGValue{.
     cdecl, dynlib: lib, importc: "_gtk_style_peek_property_value".}
 proc get_insertion_cursor_gc*(widget: PWidget, is_primary: gboolean): gdk2.PGC{.
@@ -6884,25 +6884,25 @@ proc set_trough_click_forward*(a: var TRange, `trough_click_forward`: guint)
 proc update_pending*(a: var TRange): guint
 proc set_update_pending*(a: var TRange, `update_pending`: guint)
 proc range_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_range_get_type".}
-proc range_set_update_policy*(range: PRange, policy: TUpdateType){.cdecl, 
+proc set_update_policy*(range: PRange, policy: TUpdateType){.cdecl, 
     dynlib: lib, importc: "gtk_range_set_update_policy".}
-proc range_get_update_policy*(range: PRange): TUpdateType{.cdecl, dynlib: lib, 
+proc get_update_policy*(range: PRange): TUpdateType{.cdecl, dynlib: lib, 
     importc: "gtk_range_get_update_policy".}
-proc range_set_adjustment*(range: PRange, adjustment: PAdjustment){.cdecl, 
+proc set_adjustment*(range: PRange, adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_range_set_adjustment".}
-proc range_get_adjustment*(range: PRange): PAdjustment{.cdecl, dynlib: lib, 
+proc get_adjustment*(range: PRange): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_range_get_adjustment".}
-proc range_set_inverted*(range: PRange, setting: gboolean){.cdecl, dynlib: lib, 
+proc set_inverted*(range: PRange, setting: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_range_set_inverted".}
-proc range_get_inverted*(range: PRange): gboolean{.cdecl, dynlib: lib, 
+proc get_inverted*(range: PRange): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_range_get_inverted".}
-proc range_set_increments*(range: PRange, step: gdouble, page: gdouble){.cdecl, 
+proc set_increments*(range: PRange, step: gdouble, page: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_range_set_increments".}
-proc range_set_range*(range: PRange, min: gdouble, max: gdouble){.cdecl, 
+proc set_range*(range: PRange, min: gdouble, max: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_range_set_range".}
-proc range_set_value*(range: PRange, value: gdouble){.cdecl, dynlib: lib, 
+proc set_value*(range: PRange, value: gdouble){.cdecl, dynlib: lib, 
     importc: "gtk_range_set_value".}
-proc range_get_value*(range: PRange): gdouble{.cdecl, dynlib: lib, 
+proc get_value*(range: PRange): gdouble{.cdecl, dynlib: lib, 
     importc: "gtk_range_get_value".}
 const 
   bm_TGtkScale_draw_value* = 0x0001'i16
@@ -6921,21 +6921,21 @@ proc set_draw_value*(a: var TScale, `draw_value`: guint)
 proc value_pos*(a: var TScale): guint
 proc set_value_pos*(a: var TScale, `value_pos`: guint)
 proc scale_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_scale_get_type".}
-proc scale_set_digits*(scale: PScale, digits: gint){.cdecl, dynlib: lib, 
+proc set_digits*(scale: PScale, digits: gint){.cdecl, dynlib: lib, 
     importc: "gtk_scale_set_digits".}
-proc scale_get_digits*(scale: PScale): gint{.cdecl, dynlib: lib, 
+proc get_digits*(scale: PScale): gint{.cdecl, dynlib: lib, 
     importc: "gtk_scale_get_digits".}
-proc scale_set_draw_value*(scale: PScale, draw_value: gboolean){.cdecl, 
+proc set_draw_value*(scale: PScale, draw_value: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_scale_set_draw_value".}
-proc scale_get_draw_value*(scale: PScale): gboolean{.cdecl, dynlib: lib, 
+proc get_draw_value*(scale: PScale): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_scale_get_draw_value".}
-proc scale_set_value_pos*(scale: PScale, pos: TPositionType){.cdecl, 
+proc set_value_pos*(scale: PScale, pos: TPositionType){.cdecl, 
     dynlib: lib, importc: "gtk_scale_set_value_pos".}
-proc scale_get_value_pos*(scale: PScale): TPositionType{.cdecl, dynlib: lib, 
+proc get_value_pos*(scale: PScale): TPositionType{.cdecl, dynlib: lib, 
     importc: "gtk_scale_get_value_pos".}
-proc scale_get_value_size*(scale: PScale, width: Pgint, height: Pgint){.cdecl, 
+proc get_value_size*(scale: PScale, width: Pgint, height: Pgint){.cdecl, 
     dynlib: lib, importc: "_gtk_scale_get_value_size".}
-proc scale_format_value*(scale: PScale, value: gdouble): cstring{.cdecl, 
+proc format_value*(scale: PScale, value: gdouble): cstring{.cdecl, 
     dynlib: lib, importc: "_gtk_scale_format_value".}
 proc TYPE_HSCALE*(): GType
 proc HSCALE*(obj: pointer): PHScale
@@ -6997,14 +6997,14 @@ proc icon_factory_get_type*(): GType{.cdecl, dynlib: lib,
                                       importc: "gtk_icon_factory_get_type".}
 proc icon_factory_new*(): PIconFactory{.cdecl, dynlib: lib, 
                                         importc: "gtk_icon_factory_new".}
-proc icon_factory_add*(factory: PIconFactory, stock_id: cstring, 
+proc add*(factory: PIconFactory, stock_id: cstring, 
                        icon_set: PIconSet){.cdecl, dynlib: lib, 
     importc: "gtk_icon_factory_add".}
-proc icon_factory_lookup*(factory: PIconFactory, stock_id: cstring): PIconSet{.
+proc lookup*(factory: PIconFactory, stock_id: cstring): PIconSet{.
     cdecl, dynlib: lib, importc: "gtk_icon_factory_lookup".}
-proc icon_factory_add_default*(factory: PIconFactory){.cdecl, dynlib: lib, 
+proc add_default*(factory: PIconFactory){.cdecl, dynlib: lib, 
     importc: "gtk_icon_factory_add_default".}
-proc icon_factory_remove_default*(factory: PIconFactory){.cdecl, dynlib: lib, 
+proc remove_default*(factory: PIconFactory){.cdecl, dynlib: lib, 
     importc: "gtk_icon_factory_remove_default".}
 proc icon_factory_lookup_default*(stock_id: cstring): PIconSet{.cdecl, 
     dynlib: lib, importc: "gtk_icon_factory_lookup_default".}
@@ -7023,61 +7023,61 @@ proc icon_set_get_type*(): GType{.cdecl, dynlib: lib,
 proc icon_set_new*(): PIconSet{.cdecl, dynlib: lib, importc: "gtk_icon_set_new".}
 proc icon_set_new_from_pixbuf*(pixbuf: gdk2pixbuf.PPixbuf): PIconSet{.cdecl, 
     dynlib: lib, importc: "gtk_icon_set_new_from_pixbuf".}
-proc icon_set_ref*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib, 
+proc reference*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib, 
     importc: "gtk_icon_set_ref".}
-proc icon_set_unref*(icon_set: PIconSet){.cdecl, dynlib: lib, 
+proc unref*(icon_set: PIconSet){.cdecl, dynlib: lib, 
     importc: "gtk_icon_set_unref".}
-proc icon_set_copy*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib, 
+proc copy*(icon_set: PIconSet): PIconSet{.cdecl, dynlib: lib, 
     importc: "gtk_icon_set_copy".}
-proc icon_set_render_icon*(icon_set: PIconSet, style: PStyle, 
+proc render_icon*(icon_set: PIconSet, style: PStyle, 
                            direction: TTextDirection, state: TStateType, 
                            size: TIconSize, widget: PWidget, detail: cstring): gdk2pixbuf.PPixbuf{.
     cdecl, dynlib: lib, importc: "gtk_icon_set_render_icon".}
-proc icon_set_add_source*(icon_set: PIconSet, source: PIconSource){.cdecl, 
+proc add_source*(icon_set: PIconSet, source: PIconSource){.cdecl, 
     dynlib: lib, importc: "gtk_icon_set_add_source".}
-proc icon_set_get_sizes*(icon_set: PIconSet, sizes: PPGtkIconSize, 
+proc get_sizes*(icon_set: PIconSet, sizes: PPGtkIconSize, 
                          n_sizes: pgint){.cdecl, dynlib: lib, 
     importc: "gtk_icon_set_get_sizes".}
 proc icon_source_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_icon_source_get_type".}
 proc icon_source_new*(): PIconSource{.cdecl, dynlib: lib, 
                                       importc: "gtk_icon_source_new".}
-proc icon_source_copy*(source: PIconSource): PIconSource{.cdecl, dynlib: lib, 
+proc copy*(source: PIconSource): PIconSource{.cdecl, dynlib: lib, 
     importc: "gtk_icon_source_copy".}
-proc icon_source_free*(source: PIconSource){.cdecl, dynlib: lib, 
+proc free*(source: PIconSource){.cdecl, dynlib: lib, 
     importc: "gtk_icon_source_free".}
-proc icon_source_set_filename*(source: PIconSource, filename: cstring){.cdecl, 
+proc set_filename*(source: PIconSource, filename: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_filename".}
-proc icon_source_set_pixbuf*(source: PIconSource, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
+proc set_pixbuf*(source: PIconSource, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_pixbuf".}
-proc icon_source_get_filename*(source: PIconSource): cstring{.cdecl, 
+proc get_filename*(source: PIconSource): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_filename".}
-proc icon_source_get_pixbuf*(source: PIconSource): gdk2pixbuf.PPixbuf{.cdecl, 
+proc get_pixbuf*(source: PIconSource): gdk2pixbuf.PPixbuf{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_pixbuf".}
-proc icon_source_set_direction_wildcarded*(source: PIconSource, 
+proc set_direction_wildcarded*(source: PIconSource, 
     setting: gboolean){.cdecl, dynlib: lib, 
                         importc: "gtk_icon_source_set_direction_wildcarded".}
-proc icon_source_set_state_wildcarded*(source: PIconSource, setting: gboolean){.
+proc set_state_wildcarded*(source: PIconSource, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_icon_source_set_state_wildcarded".}
-proc icon_source_set_size_wildcarded*(source: PIconSource, setting: gboolean){.
+proc set_size_wildcarded*(source: PIconSource, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_icon_source_set_size_wildcarded".}
-proc icon_source_get_size_wildcarded*(source: PIconSource): gboolean{.cdecl, 
+proc get_size_wildcarded*(source: PIconSource): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_size_wildcarded".}
-proc icon_source_get_state_wildcarded*(source: PIconSource): gboolean{.cdecl, 
+proc get_state_wildcarded*(source: PIconSource): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_state_wildcarded".}
-proc icon_source_get_direction_wildcarded*(source: PIconSource): gboolean{.
+proc get_direction_wildcarded*(source: PIconSource): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_icon_source_get_direction_wildcarded".}
-proc icon_source_set_direction*(source: PIconSource, direction: TTextDirection){.
+proc set_direction*(source: PIconSource, direction: TTextDirection){.
     cdecl, dynlib: lib, importc: "gtk_icon_source_set_direction".}
-proc icon_source_set_state*(source: PIconSource, state: TStateType){.cdecl, 
+proc set_state*(source: PIconSource, state: TStateType){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_state".}
-proc icon_source_set_size*(source: PIconSource, size: TIconSize){.cdecl, 
+proc set_size*(source: PIconSource, size: TIconSize){.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_set_size".}
-proc icon_source_get_direction*(source: PIconSource): TTextDirection{.cdecl, 
+proc get_direction*(source: PIconSource): TTextDirection{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_direction".}
-proc icon_source_get_state*(source: PIconSource): TStateType{.cdecl, 
+proc get_state*(source: PIconSource): TStateType{.cdecl, 
     dynlib: lib, importc: "gtk_icon_source_get_state".}
-proc icon_source_get_size*(source: PIconSource): TIconSize{.cdecl, dynlib: lib, 
+proc get_size*(source: PIconSource): TIconSize{.cdecl, dynlib: lib, 
     importc: "gtk_icon_source_get_size".}
 proc icon_set_invalidate_caches*(){.cdecl, dynlib: lib, 
                                     importc: "_gtk_icon_set_invalidate_caches".}
@@ -7105,27 +7105,27 @@ proc image_new_from_icon_set*(icon_set: PIconSet, size: TIconSize): PImage{.
     cdecl, dynlib: lib, importc: "gtk_image_new_from_icon_set".}
 proc image_new_from_animation*(animation: gdk2pixbuf.PPixbufAnimation): PImage{.cdecl, 
     dynlib: lib, importc: "gtk_image_new_from_animation".}
-proc image_set_from_pixmap*(image: PImage, pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.
+proc set_from_pixmap*(image: PImage, pixmap: gdk2.PPixmap, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_pixmap".}
-proc image_set_from_image*(image: PImage, gdk_image: gdk2.PImage, mask: gdk2.PBitmap){.
+proc set_from_image*(image: PImage, gdk_image: gdk2.PImage, mask: gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_image".}
-proc image_set_from_file*(image: PImage, filename: cstring){.cdecl, dynlib: lib, 
+proc set_from_file*(image: PImage, filename: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_image_set_from_file".}
-proc image_set_from_pixbuf*(image: PImage, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
+proc set_from_pixbuf*(image: PImage, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "gtk_image_set_from_pixbuf".}
-proc image_set_from_stock*(image: PImage, stock_id: cstring, size: TIconSize){.
+proc set_from_stock*(image: PImage, stock_id: cstring, size: TIconSize){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_stock".}
-proc image_set_from_icon_set*(image: PImage, icon_set: PIconSet, size: TIconSize){.
+proc set_from_icon_set*(image: PImage, icon_set: PIconSet, size: TIconSize){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_icon_set".}
-proc image_set_from_animation*(image: PImage, animation: gdk2pixbuf.PPixbufAnimation){.
+proc set_from_animation*(image: PImage, animation: gdk2pixbuf.PPixbufAnimation){.
     cdecl, dynlib: lib, importc: "gtk_image_set_from_animation".}
-proc image_get_storage_type*(image: PImage): TImageType{.cdecl, dynlib: lib, 
+proc get_storage_type*(image: PImage): TImageType{.cdecl, dynlib: lib, 
     importc: "gtk_image_get_storage_type".}
-proc image_get_pixbuf*(image: PImage): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
+proc get_pixbuf*(image: PImage): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_image_get_pixbuf".}
-proc image_get_stock*(image: PImage, stock_id: PPgchar, size: PIconSize){.cdecl, 
+proc get_stock*(image: PImage, stock_id: PPgchar, size: PIconSize){.cdecl, 
     dynlib: lib, importc: "gtk_image_get_stock".}
-proc image_get_animation*(image: PImage): gdk2pixbuf.PPixbufAnimation{.cdecl, 
+proc get_animation*(image: PImage): gdk2pixbuf.PPixbufAnimation{.cdecl, 
     dynlib: lib, importc: "gtk_image_get_animation".}
 proc TYPE_IMAGE_MENU_ITEM*(): GType
 proc IMAGE_MENU_ITEM*(obj: pointer): PImageMenuItem
@@ -7143,9 +7143,9 @@ proc image_menu_item_new_with_mnemonic*(`label`: cstring): PImageMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_image_menu_item_new_with_mnemonic".}
 proc image_menu_item_new_from_stock*(stock_id: cstring, accel_group: PAccelGroup): PImageMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_image_menu_item_new_from_stock".}
-proc image_menu_item_set_image*(image_menu_item: PImageMenuItem, image: PWidget){.
+proc item_set_image*(image_menu_item: PImageMenuItem, image: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_image_menu_item_set_image".}
-proc image_menu_item_get_image*(image_menu_item: PImageMenuItem): PWidget{.
+proc item_get_image*(image_menu_item: PImageMenuItem): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_image_menu_item_get_image".}
 const 
   bm_TGtkIMContextSimple_in_hex_sequence* = 0x0001'i16
@@ -7163,7 +7163,7 @@ proc im_context_simple_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_im_context_simple_get_type".}
 proc im_context_simple_new*(): PIMContext{.cdecl, dynlib: lib, 
     importc: "gtk_im_context_simple_new".}
-proc im_context_simple_add_table*(context_simple: PIMContextSimple, 
+proc simple_add_table*(context_simple: PIMContextSimple, 
                                   data: Pguint16, max_seq_len: gint, 
                                   n_seqs: gint){.cdecl, dynlib: lib, 
     importc: "gtk_im_context_simple_add_table".}
@@ -7177,7 +7177,7 @@ proc im_multicontext_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_im_multicontext_get_type".}
 proc im_multicontext_new*(): PIMContext{.cdecl, dynlib: lib, 
     importc: "gtk_im_multicontext_new".}
-proc im_multicontext_append_menuitems*(context: PIMMulticontext, 
+proc append_menuitems*(context: PIMMulticontext, 
                                        menushell: PMenuShell){.cdecl, 
     dynlib: lib, importc: "gtk_im_multicontext_append_menuitems".}
 proc TYPE_INPUT_DIALOG*(): GType
@@ -7202,9 +7202,9 @@ proc invisible_new*(): PInvisible{.cdecl, dynlib: lib,
                                    importc: "gtk_invisible_new".}
 proc invisible_new_for_screen*(screen: gdk2.PScreen): PInvisible{.cdecl, 
     dynlib: lib, importc: "gtk_invisible_new_for_screen".}
-proc invisible_set_screen*(invisible: PInvisible, screen: gdk2.PScreen){.cdecl, 
+proc set_screen*(invisible: PInvisible, screen: gdk2.PScreen){.cdecl, 
     dynlib: lib, importc: "gtk_invisible_set_screen".}
-proc invisible_get_screen*(invisible: PInvisible): gdk2.PScreen{.cdecl, 
+proc get_screen*(invisible: PInvisible): gdk2.PScreen{.cdecl, 
     dynlib: lib, importc: "gtk_invisible_get_screen".}
 proc TYPE_ITEM_FACTORY*(): GType
 proc ITEM_FACTORY*(anObject: pointer): PItemFactory
@@ -7217,7 +7217,7 @@ proc item_factory_get_type*(): TType{.cdecl, dynlib: lib,
 proc item_factory_new*(container_type: TType, path: cstring, 
                        accel_group: PAccelGroup): PItemFactory{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_new".}
-proc item_factory_construct*(ifactory: PItemFactory, container_type: TType, 
+proc construct*(ifactory: PItemFactory, container_type: TType, 
                              path: cstring, accel_group: PAccelGroup){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_construct".}
 proc item_factory_add_foreign*(accel_widget: PWidget, full_path: cstring, 
@@ -7228,40 +7228,40 @@ proc item_factory_from_widget*(widget: PWidget): PItemFactory{.cdecl,
     dynlib: lib, importc: "gtk_item_factory_from_widget".}
 proc item_factory_path_from_widget*(widget: PWidget): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_path_from_widget".}
-proc item_factory_get_item*(ifactory: PItemFactory, path: cstring): PWidget{.
+proc get_item*(ifactory: PItemFactory, path: cstring): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_item_factory_get_item".}
-proc item_factory_get_widget*(ifactory: PItemFactory, path: cstring): PWidget{.
+proc get_widget*(ifactory: PItemFactory, path: cstring): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_item_factory_get_widget".}
-proc item_factory_get_widget_by_action*(ifactory: PItemFactory, action: guint): PWidget{.
+proc get_widget_by_action*(ifactory: PItemFactory, action: guint): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_item_factory_get_widget_by_action".}
-proc item_factory_get_item_by_action*(ifactory: PItemFactory, action: guint): PWidget{.
+proc get_item_by_action*(ifactory: PItemFactory, action: guint): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_item_factory_get_item_by_action".}
-proc item_factory_create_item*(ifactory: PItemFactory, entry: PItemFactoryEntry, 
+proc create_item*(ifactory: PItemFactory, entry: PItemFactoryEntry, 
                                callback_data: gpointer, callback_type: guint){.
     cdecl, dynlib: lib, importc: "gtk_item_factory_create_item".}
-proc item_factory_create_items*(ifactory: PItemFactory, n_entries: guint, 
+proc create_items*(ifactory: PItemFactory, n_entries: guint, 
                                 entries: PItemFactoryEntry, 
                                 callback_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_item_factory_create_items".}
-proc item_factory_delete_item*(ifactory: PItemFactory, path: cstring){.cdecl, 
+proc delete_item*(ifactory: PItemFactory, path: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_delete_item".}
-proc item_factory_delete_entry*(ifactory: PItemFactory, entry: PItemFactoryEntry){.
+proc delete_entry*(ifactory: PItemFactory, entry: PItemFactoryEntry){.
     cdecl, dynlib: lib, importc: "gtk_item_factory_delete_entry".}
-proc item_factory_delete_entries*(ifactory: PItemFactory, n_entries: guint, 
+proc delete_entries*(ifactory: PItemFactory, n_entries: guint, 
                                   entries: PItemFactoryEntry){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_delete_entries".}
-proc item_factory_popup*(ifactory: PItemFactory, x: guint, y: guint, 
+proc popup*(ifactory: PItemFactory, x: guint, y: guint, 
                          mouse_button: guint, time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup".}
-proc item_factory_popup_with_data*(ifactory: PItemFactory, popup_data: gpointer, 
+proc popup_with_data*(ifactory: PItemFactory, popup_data: gpointer, 
                                    destroy: TDestroyNotify, x: guint, y: guint, 
                                    mouse_button: guint, time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup_with_data".}
-proc item_factory_popup_data*(ifactory: PItemFactory): gpointer{.cdecl, 
+proc popup_data*(ifactory: PItemFactory): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup_data".}
 proc item_factory_popup_data_from_widget*(widget: PWidget): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup_data_from_widget".}
-proc item_factory_set_translate_func*(ifactory: PItemFactory, 
+proc set_translate_func*(ifactory: PItemFactory, 
                                       fun: TTranslateFunc, data: gpointer, 
                                       notify: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_set_translate_func".}
@@ -7275,21 +7275,21 @@ proc layout_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_layout_get_type".}
 proc layout_new*(hadjustment: PAdjustment, vadjustment: PAdjustment): PLayout{.
     cdecl, dynlib: lib, importc: "gtk_layout_new".}
-proc layout_put*(layout: PLayout, child_widget: PWidget, x: gint, y: gint){.
+proc put*(layout: PLayout, child_widget: PWidget, x: gint, y: gint){.
     cdecl, dynlib: lib, importc: "gtk_layout_put".}
-proc layout_move*(layout: PLayout, child_widget: PWidget, x: gint, y: gint){.
+proc move*(layout: PLayout, child_widget: PWidget, x: gint, y: gint){.
     cdecl, dynlib: lib, importc: "gtk_layout_move".}
-proc layout_set_size*(layout: PLayout, width: guint, height: guint){.cdecl, 
+proc set_size*(layout: PLayout, width: guint, height: guint){.cdecl, 
     dynlib: lib, importc: "gtk_layout_set_size".}
-proc layout_get_size*(layout: PLayout, width: Pguint, height: Pguint){.cdecl, 
+proc get_size*(layout: PLayout, width: Pguint, height: Pguint){.cdecl, 
     dynlib: lib, importc: "gtk_layout_get_size".}
-proc layout_get_hadjustment*(layout: PLayout): PAdjustment{.cdecl, dynlib: lib, 
+proc get_hadjustment*(layout: PLayout): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_layout_get_hadjustment".}
-proc layout_get_vadjustment*(layout: PLayout): PAdjustment{.cdecl, dynlib: lib, 
+proc get_vadjustment*(layout: PLayout): PAdjustment{.cdecl, dynlib: lib, 
     importc: "gtk_layout_get_vadjustment".}
-proc layout_set_hadjustment*(layout: PLayout, adjustment: PAdjustment){.cdecl, 
+proc set_hadjustment*(layout: PLayout, adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_layout_set_hadjustment".}
-proc layout_set_vadjustment*(layout: PLayout, adjustment: PAdjustment){.cdecl, 
+proc set_vadjustment*(layout: PLayout, adjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_layout_set_vadjustment".}
 const 
   bm_TGtkList_selection_mode* = 0x0003'i16
@@ -7313,56 +7313,56 @@ proc add_mode*(a: var TList): guint
 proc set_add_mode*(a: var TList, `add_mode`: guint)
 proc list_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_list_get_type".}
 proc list_new*(): PList{.cdecl, dynlib: lib, importc: "gtk_list_new".}
-proc list_insert_items*(list: PList, items: PGList, position: gint){.cdecl, 
+proc insert_items*(list: PList, items: PGList, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_list_insert_items".}
-proc list_append_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
+proc append_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_list_append_items".}
-proc list_prepend_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
+proc prepend_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_list_prepend_items".}
-proc list_remove_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
+proc remove_items*(list: PList, items: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_list_remove_items".}
-proc list_remove_items_no_unref*(list: PList, items: PGList){.cdecl, 
+proc remove_items_no_unref*(list: PList, items: PGList){.cdecl, 
     dynlib: lib, importc: "gtk_list_remove_items_no_unref".}
-proc list_clear_items*(list: PList, start: gint, theEnd: gint){.cdecl, 
+proc clear_items*(list: PList, start: gint, theEnd: gint){.cdecl, 
     dynlib: lib, importc: "gtk_list_clear_items".}
-proc list_select_item*(list: PList, item: gint){.cdecl, dynlib: lib, 
+proc select_item*(list: PList, item: gint){.cdecl, dynlib: lib, 
     importc: "gtk_list_select_item".}
-proc list_unselect_item*(list: PList, item: gint){.cdecl, dynlib: lib, 
+proc unselect_item*(list: PList, item: gint){.cdecl, dynlib: lib, 
     importc: "gtk_list_unselect_item".}
-proc list_select_child*(list: PList, child: PWidget){.cdecl, dynlib: lib, 
+proc select_child*(list: PList, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_list_select_child".}
-proc list_unselect_child*(list: PList, child: PWidget){.cdecl, dynlib: lib, 
+proc unselect_child*(list: PList, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_list_unselect_child".}
-proc list_child_position*(list: PList, child: PWidget): gint{.cdecl, 
+proc child_position*(list: PList, child: PWidget): gint{.cdecl, 
     dynlib: lib, importc: "gtk_list_child_position".}
-proc list_set_selection_mode*(list: PList, mode: TSelectionMode){.cdecl, 
+proc set_selection_mode*(list: PList, mode: TSelectionMode){.cdecl, 
     dynlib: lib, importc: "gtk_list_set_selection_mode".}
-proc list_extend_selection*(list: PList, scroll_type: TScrollType, 
+proc extend_selection*(list: PList, scroll_type: TScrollType, 
                             position: gfloat, auto_start_selection: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_list_extend_selection".}
-proc list_start_selection*(list: PList){.cdecl, dynlib: lib, 
+proc start_selection*(list: PList){.cdecl, dynlib: lib, 
     importc: "gtk_list_start_selection".}
-proc list_end_selection*(list: PList){.cdecl, dynlib: lib, 
+proc end_selection*(list: PList){.cdecl, dynlib: lib, 
                                        importc: "gtk_list_end_selection".}
-proc list_select_all*(list: PList){.cdecl, dynlib: lib, 
+proc select_all*(list: PList){.cdecl, dynlib: lib, 
                                     importc: "gtk_list_select_all".}
-proc list_unselect_all*(list: PList){.cdecl, dynlib: lib, 
+proc unselect_all*(list: PList){.cdecl, dynlib: lib, 
                                       importc: "gtk_list_unselect_all".}
-proc list_scroll_horizontal*(list: PList, scroll_type: TScrollType, 
+proc scroll_horizontal*(list: PList, scroll_type: TScrollType, 
                              position: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_list_scroll_horizontal".}
-proc list_scroll_vertical*(list: PList, scroll_type: TScrollType, 
+proc scroll_vertical*(list: PList, scroll_type: TScrollType, 
                            position: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_list_scroll_vertical".}
-proc list_toggle_add_mode*(list: PList){.cdecl, dynlib: lib, 
+proc toggle_add_mode*(list: PList){.cdecl, dynlib: lib, 
     importc: "gtk_list_toggle_add_mode".}
-proc list_toggle_focus_row*(list: PList){.cdecl, dynlib: lib, 
+proc toggle_focus_row*(list: PList){.cdecl, dynlib: lib, 
     importc: "gtk_list_toggle_focus_row".}
-proc list_toggle_row*(list: PList, item: PWidget){.cdecl, dynlib: lib, 
+proc toggle_row*(list: PList, item: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_list_toggle_row".}
-proc list_undo_selection*(list: PList){.cdecl, dynlib: lib, 
+proc undo_selection*(list: PList){.cdecl, dynlib: lib, 
                                         importc: "gtk_list_undo_selection".}
-proc list_end_drag_selection*(list: PList){.cdecl, dynlib: lib, 
+proc end_drag_selection*(list: PList){.cdecl, dynlib: lib, 
     importc: "gtk_list_end_drag_selection".}
 const 
   TREE_MODEL_ITERS_PERSIST* = 1 shl 0
@@ -7378,49 +7378,49 @@ proc tree_path_new*(): PTreePath{.cdecl, dynlib: lib,
                                   importc: "gtk_tree_path_new".}
 proc tree_path_new_from_string*(path: cstring): PTreePath{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_new_from_string".}
-proc tree_path_to_string*(path: PTreePath): cstring{.cdecl, dynlib: lib, 
+proc to_string*(path: PTreePath): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_to_string".}
 proc tree_path_new_root*(): PTreePath
 proc tree_path_new_first*(): PTreePath{.cdecl, dynlib: lib, 
                                         importc: "gtk_tree_path_new_first".}
-proc tree_path_append_index*(path: PTreePath, index: gint){.cdecl, dynlib: lib, 
+proc append_index*(path: PTreePath, index: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_append_index".}
-proc tree_path_prepend_index*(path: PTreePath, index: gint){.cdecl, dynlib: lib, 
+proc prepend_index*(path: PTreePath, index: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_prepend_index".}
-proc tree_path_get_depth*(path: PTreePath): gint{.cdecl, dynlib: lib, 
+proc get_depth*(path: PTreePath): gint{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_get_depth".}
-proc tree_path_get_indices*(path: PTreePath): Pgint{.cdecl, dynlib: lib, 
+proc get_indices*(path: PTreePath): Pgint{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_get_indices".}
-proc tree_path_free*(path: PTreePath){.cdecl, dynlib: lib, 
+proc free*(path: PTreePath){.cdecl, dynlib: lib, 
                                        importc: "gtk_tree_path_free".}
-proc tree_path_copy*(path: PTreePath): PTreePath{.cdecl, dynlib: lib, 
+proc copy*(path: PTreePath): PTreePath{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_copy".}
 proc tree_path_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "gtk_tree_path_get_type".}
-proc tree_path_compare*(a: PTreePath, b: PTreePath): gint{.cdecl, dynlib: lib, 
+proc compare*(a: PTreePath, b: PTreePath): gint{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_compare".}
-proc tree_path_next*(path: PTreePath){.cdecl, dynlib: lib, 
+proc next*(path: PTreePath){.cdecl, dynlib: lib, 
                                        importc: "gtk_tree_path_next".}
-proc tree_path_prev*(path: PTreePath): gboolean{.cdecl, dynlib: lib, 
+proc prev*(path: PTreePath): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_prev".}
-proc tree_path_up*(path: PTreePath): gboolean{.cdecl, dynlib: lib, 
+proc up*(path: PTreePath): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_path_up".}
-proc tree_path_down*(path: PTreePath){.cdecl, dynlib: lib, 
+proc down*(path: PTreePath){.cdecl, dynlib: lib, 
                                        importc: "gtk_tree_path_down".}
-proc tree_path_is_ancestor*(path: PTreePath, descendant: PTreePath): gboolean{.
+proc is_ancestor*(path: PTreePath, descendant: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_path_is_ancestor".}
-proc tree_path_is_descendant*(path: PTreePath, ancestor: PTreePath): gboolean{.
+proc is_descendant*(path: PTreePath, ancestor: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_path_is_descendant".}
-proc tree_row_reference_new*(model: PTreeModel, path: PTreePath): PTreeRowReference{.
+proc row_reference_new*(model: PTreeModel, path: PTreePath): PTreeRowReference{.
     cdecl, dynlib: lib, importc: "gtk_tree_row_reference_new".}
 proc tree_row_reference_new_proxy*(proxy: PGObject, model: PTreeModel, 
                                    path: PTreePath): PTreeRowReference{.cdecl, 
     dynlib: lib, importc: "gtk_tree_row_reference_new_proxy".}
-proc tree_row_reference_get_path*(reference: PTreeRowReference): PTreePath{.
+proc reference_get_path*(reference: PTreeRowReference): PTreePath{.
     cdecl, dynlib: lib, importc: "gtk_tree_row_reference_get_path".}
-proc tree_row_reference_valid*(reference: PTreeRowReference): gboolean{.cdecl, 
+proc reference_valid*(reference: PTreeRowReference): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_row_reference_valid".}
-proc tree_row_reference_free*(reference: PTreeRowReference){.cdecl, dynlib: lib, 
+proc reference_free*(reference: PTreeRowReference){.cdecl, dynlib: lib, 
     importc: "gtk_tree_row_reference_free".}
 proc tree_row_reference_inserted*(proxy: PGObject, path: PTreePath){.cdecl, 
     dynlib: lib, importc: "gtk_tree_row_reference_inserted".}
@@ -7429,68 +7429,68 @@ proc tree_row_reference_deleted*(proxy: PGObject, path: PTreePath){.cdecl,
 proc tree_row_reference_reordered*(proxy: PGObject, path: PTreePath, 
                                    iter: PTreeIter, new_order: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_row_reference_reordered".}
-proc tree_iter_copy*(iter: PTreeIter): PTreeIter{.cdecl, dynlib: lib, 
+proc copy*(iter: PTreeIter): PTreeIter{.cdecl, dynlib: lib, 
     importc: "gtk_tree_iter_copy".}
-proc tree_iter_free*(iter: PTreeIter){.cdecl, dynlib: lib, 
+proc free*(iter: PTreeIter){.cdecl, dynlib: lib, 
                                        importc: "gtk_tree_iter_free".}
 proc tree_iter_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "gtk_tree_iter_get_type".}
 proc tree_model_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_tree_model_get_type".}
-proc tree_model_get_flags*(tree_model: PTreeModel): TTreeModelFlags{.cdecl, 
+proc get_flags*(tree_model: PTreeModel): TTreeModelFlags{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_get_flags".}
-proc tree_model_get_n_columns*(tree_model: PTreeModel): gint{.cdecl, 
+proc get_n_columns*(tree_model: PTreeModel): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_get_n_columns".}
-proc tree_model_get_column_type*(tree_model: PTreeModel, index: gint): GType{.
+proc get_column_type*(tree_model: PTreeModel, index: gint): GType{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_get_column_type".}
-proc tree_model_get_iter*(tree_model: PTreeModel, iter: PTreeIter, 
+proc get_iter*(tree_model: PTreeModel, iter: PTreeIter, 
                           path: PTreePath): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_get_iter".}
-proc tree_model_get_iter_from_string*(tree_model: PTreeModel, iter: PTreeIter, 
+proc get_iter_from_string*(tree_model: PTreeModel, iter: PTreeIter, 
                                       path_string: cstring): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_get_iter_from_string".}
-proc tree_model_get_iter_root*(tree_model: PTreeModel, iter: PTreeIter): gboolean
-proc tree_model_get_iter_first*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
+proc get_iter_root*(tree_model: PTreeModel, iter: PTreeIter): gboolean
+proc get_iter_first*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_get_iter_first".}
-proc tree_model_get_path*(tree_model: PTreeModel, iter: PTreeIter): PTreePath{.
+proc get_path*(tree_model: PTreeModel, iter: PTreeIter): PTreePath{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_get_path".}
-proc tree_model_get_value*(tree_model: PTreeModel, iter: PTreeIter, 
+proc get_value*(tree_model: PTreeModel, iter: PTreeIter, 
                            column: gint, value: PGValue){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_get_value".}
-proc tree_model_iter_next*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
+proc iter_next*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_iter_next".}
-proc tree_model_iter_children*(tree_model: PTreeModel, iter: PTreeIter, 
+proc iter_children*(tree_model: PTreeModel, iter: PTreeIter, 
                                parent: PTreeIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_iter_children".}
-proc tree_model_iter_has_child*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
+proc iter_has_child*(tree_model: PTreeModel, iter: PTreeIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_iter_has_child".}
-proc tree_model_iter_n_children*(tree_model: PTreeModel, iter: PTreeIter): gint{.
+proc iter_n_children*(tree_model: PTreeModel, iter: PTreeIter): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_iter_n_children".}
-proc tree_model_iter_nth_child*(tree_model: PTreeModel, iter: PTreeIter, 
+proc iter_nth_child*(tree_model: PTreeModel, iter: PTreeIter, 
                                 parent: PTreeIter, n: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_iter_nth_child".}
-proc tree_model_iter_parent*(tree_model: PTreeModel, iter: PTreeIter, 
+proc iter_parent*(tree_model: PTreeModel, iter: PTreeIter, 
                              child: PTreeIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_iter_parent".}
-proc tree_model_ref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
+proc ref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_ref_node".}
-proc tree_model_unref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
+proc unref_node*(tree_model: PTreeModel, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_unref_node".}
-proc tree_model_foreach*(model: PTreeModel, fun: TTreeModelForeachFunc, 
+proc foreach*(model: PTreeModel, fun: TTreeModelForeachFunc, 
                          user_data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_foreach".}
-proc tree_model_row_changed*(tree_model: PTreeModel, path: PTreePath, 
+proc row_changed*(tree_model: PTreeModel, path: PTreePath, 
                              iter: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_row_changed".}
-proc tree_model_row_inserted*(tree_model: PTreeModel, path: PTreePath, 
+proc row_inserted*(tree_model: PTreeModel, path: PTreePath, 
                               iter: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_row_inserted".}
-proc tree_model_row_has_child_toggled*(tree_model: PTreeModel, path: PTreePath, 
+proc row_has_child_toggled*(tree_model: PTreeModel, path: PTreePath, 
                                        iter: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_row_has_child_toggled".}
-proc tree_model_row_deleted*(tree_model: PTreeModel, path: PTreePath){.cdecl, 
+proc row_deleted*(tree_model: PTreeModel, path: PTreePath){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_row_deleted".}
-proc tree_model_rows_reordered*(tree_model: PTreeModel, path: PTreePath, 
+proc rows_reordered*(tree_model: PTreeModel, path: PTreePath, 
                                 iter: PTreeIter, new_order: Pgint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_rows_reordered".}
 const 
@@ -7503,22 +7503,22 @@ proc IS_TREE_SORTABLE*(obj: pointer): bool
 proc TREE_SORTABLE_GET_IFACE*(obj: pointer): PTreeSortableIface
 proc tree_sortable_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_tree_sortable_get_type".}
-proc tree_sortable_sort_column_changed*(sortable: PTreeSortable){.cdecl, 
+proc sort_column_changed*(sortable: PTreeSortable){.cdecl, 
     dynlib: lib, importc: "gtk_tree_sortable_sort_column_changed".}
-proc tree_sortable_get_sort_column_id*(sortable: PTreeSortable, 
+proc get_sort_column_id*(sortable: PTreeSortable, 
                                        sort_column_id: Pgint, order: PSortType): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_sortable_get_sort_column_id".}
-proc tree_sortable_set_sort_column_id*(sortable: PTreeSortable, 
+proc set_sort_column_id*(sortable: PTreeSortable, 
                                        sort_column_id: gint, order: TSortType){.
     cdecl, dynlib: lib, importc: "gtk_tree_sortable_set_sort_column_id".}
-proc tree_sortable_set_sort_func*(sortable: PTreeSortable, sort_column_id: gint, 
+proc set_sort_func*(sortable: PTreeSortable, sort_column_id: gint, 
                                   sort_func: TTreeIterCompareFunc, 
                                   user_data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_tree_sortable_set_sort_func".}
-proc tree_sortable_set_default_sort_func*(sortable: PTreeSortable, 
+proc set_default_sort_func*(sortable: PTreeSortable, 
     sort_func: TTreeIterCompareFunc, user_data: gpointer, 
     destroy: TDestroyNotify){.cdecl, dynlib: lib, importc: "gtk_tree_sortable_set_default_sort_func".}
-proc tree_sortable_has_default_sort_func*(sortable: PTreeSortable): gboolean{.
+proc has_default_sort_func*(sortable: PTreeSortable): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_sortable_has_default_sort_func".}
 proc TYPE_TREE_MODEL_SORT*(): GType
 proc TREE_MODEL_SORT*(obj: pointer): PTreeModelSort
@@ -7528,9 +7528,9 @@ proc IS_TREE_MODEL_SORT_CLASS*(klass: pointer): bool
 proc TREE_MODEL_SORT_GET_CLASS*(obj: pointer): PTreeModelSortClass
 proc tree_model_sort_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_sort_get_type".}
-proc tree_model_sort_new_with_model*(child_model: PTreeModel): PTreeModel{.
+proc sort_new_with_model*(child_model: PTreeModel): PTreeModel{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_sort_new_with_model".}
-proc tree_model_sort_get_model*(tree_model: PTreeModelSort): PTreeModel{.cdecl, 
+proc sort_get_model*(tree_model: PTreeModelSort): PTreeModel{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_sort_get_model".}
 proc tree_model_sort_convert_child_path_to_path*(
     tree_model_sort: PTreeModelSort, child_path: PTreePath): PTreePath{.cdecl, 
@@ -7545,9 +7545,9 @@ proc tree_model_sort_convert_path_to_child_path*(
 proc tree_model_sort_convert_iter_to_child_iter*(
     tree_model_sort: PTreeModelSort, child_iter: PTreeIter, 
     sorted_iter: PTreeIter){.cdecl, dynlib: lib, importc: "gtk_tree_model_sort_convert_iter_to_child_iter".}
-proc tree_model_sort_reset_default_sort_func*(tree_model_sort: PTreeModelSort){.
+proc sort_reset_default_sort_func*(tree_model_sort: PTreeModelSort){.
     cdecl, dynlib: lib, importc: "gtk_tree_model_sort_reset_default_sort_func".}
-proc tree_model_sort_clear_cache*(tree_model_sort: PTreeModelSort){.cdecl, 
+proc sort_clear_cache*(tree_model_sort: PTreeModelSort){.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_sort_clear_cache".}
 const 
   bm_TGtkListStore_columns_dirty* = 0x0001'i16
@@ -7565,27 +7565,27 @@ proc list_store_get_type*(): TType{.cdecl, dynlib: lib,
                                     importc: "gtk_list_store_get_type".}
 proc list_store_newv*(n_columns: gint, types: PGType): PListStore{.cdecl, 
     dynlib: lib, importc: "gtk_list_store_newv".}
-proc list_store_set_column_types*(list_store: PListStore, n_columns: gint, 
+proc set_column_types*(list_store: PListStore, n_columns: gint, 
                                   types: PGType){.cdecl, dynlib: lib, 
     importc: "gtk_list_store_set_column_types".}
-proc list_store_set_value*(list_store: PListStore, iter: PTreeIter, 
+proc set_value*(list_store: PListStore, iter: PTreeIter, 
                            column: gint, value: PGValue){.cdecl, dynlib: lib, 
     importc: "gtk_list_store_set_value".}
-proc list_store_remove*(list_store: PListStore, iter: PTreeIter){.cdecl, 
+proc remove*(list_store: PListStore, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_list_store_remove".}
-proc list_store_insert*(list_store: PListStore, iter: PTreeIter, position: gint){.
+proc insert*(list_store: PListStore, iter: PTreeIter, position: gint){.
     cdecl, dynlib: lib, importc: "gtk_list_store_insert".}
-proc list_store_insert_before*(list_store: PListStore, iter: PTreeIter, 
+proc insert_before*(list_store: PListStore, iter: PTreeIter, 
                                sibling: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_list_store_insert_before".}
-proc list_store_insert_after*(list_store: PListStore, iter: PTreeIter, 
+proc insert_after*(list_store: PListStore, iter: PTreeIter, 
                               sibling: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_list_store_insert_after".}
-proc list_store_prepend*(list_store: PListStore, iter: PTreeIter){.cdecl, 
+proc prepend*(list_store: PListStore, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_list_store_prepend".}
-proc list_store_append*(list_store: PListStore, iter: PTreeIter){.cdecl, 
+proc append*(list_store: PListStore, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_list_store_append".}
-proc list_store_clear*(list_store: PListStore){.cdecl, dynlib: lib, 
+proc clear*(list_store: PListStore){.cdecl, dynlib: lib, 
     importc: "gtk_list_store_clear".}
 when false: 
   const 
@@ -7686,7 +7686,7 @@ proc MENU_BAR_GET_CLASS*(obj: pointer): PMenuBarClass
 proc menu_bar_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_menu_bar_get_type".}
 proc menu_bar_new*(): PMenuBar{.cdecl, dynlib: lib, importc: "gtk_menu_bar_new".}
-proc menu_bar_cycle_focus*(menubar: PMenuBar, dir: TDirectionType){.cdecl, 
+proc cycle_focus*(menubar: PMenuBar, dir: TDirectionType){.cdecl, 
     dynlib: lib, importc: "_gtk_menu_bar_cycle_focus".}
 proc TYPE_MESSAGE_DIALOG*(): GType
 proc MESSAGE_DIALOG*(obj: pointer): PMessageDialog
@@ -7755,90 +7755,90 @@ proc set_focus_out*(a: var TNotebook, `focus_out`: guint)
 proc notebook_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_notebook_get_type".}
 proc notebook_new*(): PNotebook{.cdecl, dynlib: lib, importc: "gtk_notebook_new".}
-proc notebook_append_page*(notebook: PNotebook, child: PWidget, 
+proc append_page*(notebook: PNotebook, child: PWidget, 
                            tab_label: PWidget): gint{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_append_page".}
-proc notebook_append_page_menu*(notebook: PNotebook, child: PWidget, 
+proc append_page_menu*(notebook: PNotebook, child: PWidget, 
                                 tab_label: PWidget, menu_label: PWidget): gint{.
     cdecl, dynlib: lib, importc: "gtk_notebook_append_page_menu".}
-proc notebook_prepend_page*(notebook: PNotebook, child: PWidget, 
+proc prepend_page*(notebook: PNotebook, child: PWidget, 
                             tab_label: PWidget): gint{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_prepend_page".}
-proc notebook_prepend_page_menu*(notebook: PNotebook, child: PWidget, 
+proc prepend_page_menu*(notebook: PNotebook, child: PWidget, 
                                  tab_label: PWidget, menu_label: PWidget): gint{.
     cdecl, dynlib: lib, importc: "gtk_notebook_prepend_page_menu".}
-proc notebook_insert_page*(notebook: PNotebook, child: PWidget, 
+proc insert_page*(notebook: PNotebook, child: PWidget, 
                            tab_label: PWidget, position: gint): gint{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_insert_page".}
-proc notebook_insert_page_menu*(notebook: PNotebook, child: PWidget, 
+proc insert_page_menu*(notebook: PNotebook, child: PWidget, 
                                 tab_label: PWidget, menu_label: PWidget, 
                                 position: gint): gint{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_insert_page_menu".}
-proc notebook_remove_page*(notebook: PNotebook, page_num: gint){.cdecl, 
+proc remove_page*(notebook: PNotebook, page_num: gint){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_remove_page".}
-proc notebook_get_current_page*(notebook: PNotebook): gint{.cdecl, dynlib: lib, 
+proc get_current_page*(notebook: PNotebook): gint{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_get_current_page".}
-proc notebook_get_n_pages*(notebook: PNotebook): gint{.cdecl, dynlib: lib, 
+proc get_n_pages*(notebook: PNotebook): gint{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_get_n_pages".}
-proc notebook_get_nth_page*(notebook: PNotebook, page_num: gint): PWidget{.
+proc get_nth_page*(notebook: PNotebook, page_num: gint): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_notebook_get_nth_page".}
-proc notebook_page_num*(notebook: PNotebook, child: PWidget): gint{.cdecl, 
+proc page_num*(notebook: PNotebook, child: PWidget): gint{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_page_num".}
-proc notebook_set_current_page*(notebook: PNotebook, page_num: gint){.cdecl, 
+proc set_current_page*(notebook: PNotebook, page_num: gint){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_set_current_page".}
-proc notebook_next_page*(notebook: PNotebook){.cdecl, dynlib: lib, 
+proc next_page*(notebook: PNotebook){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_next_page".}
-proc notebook_prev_page*(notebook: PNotebook){.cdecl, dynlib: lib, 
+proc prev_page*(notebook: PNotebook){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_prev_page".}
-proc notebook_set_show_border*(notebook: PNotebook, show_border: gboolean){.
+proc set_show_border*(notebook: PNotebook, show_border: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_notebook_set_show_border".}
-proc notebook_get_show_border*(notebook: PNotebook): gboolean{.cdecl, 
+proc get_show_border*(notebook: PNotebook): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_get_show_border".}
-proc notebook_set_show_tabs*(notebook: PNotebook, show_tabs: gboolean){.cdecl, 
+proc set_show_tabs*(notebook: PNotebook, show_tabs: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_set_show_tabs".}
-proc notebook_get_show_tabs*(notebook: PNotebook): gboolean{.cdecl, dynlib: lib, 
+proc get_show_tabs*(notebook: PNotebook): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_get_show_tabs".}
-proc notebook_set_tab_pos*(notebook: PNotebook, pos: TPositionType){.cdecl, 
+proc set_tab_pos*(notebook: PNotebook, pos: TPositionType){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_set_tab_pos".}
-proc notebook_get_tab_pos*(notebook: PNotebook): TPositionType{.cdecl, 
+proc get_tab_pos*(notebook: PNotebook): TPositionType{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_get_tab_pos".}
-proc notebook_set_scrollable*(notebook: PNotebook, scrollable: gboolean){.cdecl, 
+proc set_scrollable*(notebook: PNotebook, scrollable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_set_scrollable".}
-proc notebook_get_scrollable*(notebook: PNotebook): gboolean{.cdecl, 
+proc get_scrollable*(notebook: PNotebook): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_get_scrollable".}
-proc notebook_popup_enable*(notebook: PNotebook){.cdecl, dynlib: lib, 
+proc popup_enable*(notebook: PNotebook){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_popup_enable".}
-proc notebook_popup_disable*(notebook: PNotebook){.cdecl, dynlib: lib, 
+proc popup_disable*(notebook: PNotebook){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_popup_disable".}
-proc notebook_get_tab_label*(notebook: PNotebook, child: PWidget): PWidget{.
+proc get_tab_label*(notebook: PNotebook, child: PWidget): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_notebook_get_tab_label".}
-proc notebook_set_tab_label*(notebook: PNotebook, child: PWidget, 
+proc set_tab_label*(notebook: PNotebook, child: PWidget, 
                              tab_label: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_set_tab_label".}
-proc notebook_set_tab_label_text*(notebook: PNotebook, child: PWidget, 
+proc set_tab_label_text*(notebook: PNotebook, child: PWidget, 
                                   tab_text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_set_tab_label_text".}
-proc notebook_get_tab_label_text*(notebook: PNotebook, child: PWidget): cstring{.
+proc get_tab_label_text*(notebook: PNotebook, child: PWidget): cstring{.
     cdecl, dynlib: lib, importc: "gtk_notebook_get_tab_label_text".}
-proc notebook_get_menu_label*(notebook: PNotebook, child: PWidget): PWidget{.
+proc get_menu_label*(notebook: PNotebook, child: PWidget): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_notebook_get_menu_label".}
-proc notebook_set_menu_label*(notebook: PNotebook, child: PWidget, 
+proc set_menu_label*(notebook: PNotebook, child: PWidget, 
                               menu_label: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_set_menu_label".}
-proc notebook_set_menu_label_text*(notebook: PNotebook, child: PWidget, 
+proc set_menu_label_text*(notebook: PNotebook, child: PWidget, 
                                    menu_text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_set_menu_label_text".}
-proc notebook_get_menu_label_text*(notebook: PNotebook, child: PWidget): cstring{.
+proc get_menu_label_text*(notebook: PNotebook, child: PWidget): cstring{.
     cdecl, dynlib: lib, importc: "gtk_notebook_get_menu_label_text".}
-proc notebook_query_tab_label_packing*(notebook: PNotebook, child: PWidget, 
+proc query_tab_label_packing*(notebook: PNotebook, child: PWidget, 
                                        expand: Pgboolean, fill: Pgboolean, 
                                        pack_type: PPackType){.cdecl, 
     dynlib: lib, importc: "gtk_notebook_query_tab_label_packing".}
-proc notebook_set_tab_label_packing*(notebook: PNotebook, child: PWidget, 
+proc set_tab_label_packing*(notebook: PNotebook, child: PWidget, 
                                      expand: gboolean, fill: gboolean, 
                                      pack_type: TPackType){.cdecl, dynlib: lib, 
     importc: "gtk_notebook_set_tab_label_packing".}
-proc notebook_reorder_child*(notebook: PNotebook, child: PWidget, position: gint){.
+proc reorder_child*(notebook: PNotebook, child: PWidget, position: gint){.
     cdecl, dynlib: lib, importc: "gtk_notebook_reorder_child".}
 const 
   bm_TGtkOldEditable_has_selection* = 0x0001'i16
@@ -7862,10 +7862,10 @@ proc visible*(a: var TOldEditable): guint
 proc set_visible*(a: var TOldEditable, `visible`: guint)
 proc old_editable_get_type*(): TType{.cdecl, dynlib: lib, 
                                       importc: "gtk_old_editable_get_type".}
-proc old_editable_claim_selection*(old_editable: POldEditable, claim: gboolean, 
+proc claim_selection*(old_editable: POldEditable, claim: gboolean, 
                                    time: guint32){.cdecl, dynlib: lib, 
     importc: "gtk_old_editable_claim_selection".}
-proc old_editable_changed*(old_editable: POldEditable){.cdecl, dynlib: lib, 
+proc changed*(old_editable: POldEditable){.cdecl, dynlib: lib, 
     importc: "gtk_old_editable_changed".}
 proc TYPE_OPTION_MENU*(): GType
 proc OPTION_MENU*(obj: pointer): POptionMenu
@@ -7877,15 +7877,15 @@ proc option_menu_get_type*(): TType{.cdecl, dynlib: lib,
                                      importc: "gtk_option_menu_get_type".}
 proc option_menu_new*(): POptionMenu{.cdecl, dynlib: lib, 
                                       importc: "gtk_option_menu_new".}
-proc option_menu_get_menu*(option_menu: POptionMenu): PWidget{.cdecl, 
+proc get_menu*(option_menu: POptionMenu): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_option_menu_get_menu".}
-proc option_menu_set_menu*(option_menu: POptionMenu, menu: PWidget){.cdecl, 
+proc set_menu*(option_menu: POptionMenu, menu: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_option_menu_set_menu".}
-proc option_menu_remove_menu*(option_menu: POptionMenu){.cdecl, dynlib: lib, 
+proc remove_menu*(option_menu: POptionMenu){.cdecl, dynlib: lib, 
     importc: "gtk_option_menu_remove_menu".}
-proc option_menu_get_history*(option_menu: POptionMenu): gint{.cdecl, 
+proc get_history*(option_menu: POptionMenu): gint{.cdecl, 
     dynlib: lib, importc: "gtk_option_menu_get_history".}
-proc option_menu_set_history*(option_menu: POptionMenu, index: guint){.cdecl, 
+proc set_history*(option_menu: POptionMenu, index: guint){.cdecl, 
     dynlib: lib, importc: "gtk_option_menu_set_history".}
 const 
   bm_TGtkPixmap_build_insensitive* = 0x0001'i16
@@ -7903,11 +7903,11 @@ proc pixmap_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_pixmap_get_type".}
 proc pixmap_new*(pixmap: gdk2.PPixmap, mask: gdk2.PBitmap): PPixmap{.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_new".}
-proc pixmap_set*(pixmap: PPixmap, val: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
+proc set*(pixmap: PPixmap, val: gdk2.PPixmap, mask: gdk2.PBitmap){.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_set".}
-proc pixmap_get*(pixmap: PPixmap, val: var gdk2.PPixmap, mask: var gdk2.PBitmap){.
+proc get*(pixmap: PPixmap, val: var gdk2.PPixmap, mask: var gdk2.PBitmap){.
     cdecl, dynlib: lib, importc: "gtk_pixmap_get".}
-proc pixmap_set_build_insensitive*(pixmap: PPixmap, build: gboolean){.cdecl, 
+proc set_build_insensitive*(pixmap: PPixmap, build: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_pixmap_set_build_insensitive".}
 const 
   bm_TGtkPlug_same_app* = 0x0001'i16
@@ -7922,16 +7922,16 @@ proc PLUG_GET_CLASS*(obj: pointer): PPlugClass
 proc same_app*(a: var TPlug): guint
 proc set_same_app*(a: var TPlug, `same_app`: guint)
 proc plug_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_plug_get_type".}
-proc plug_construct_for_display*(plug: PPlug, display: gdk2.PDisplay, 
+proc construct_for_display*(plug: PPlug, display: gdk2.PDisplay, 
                                  socket_id: gdk2.TNativeWindow){.cdecl, 
     dynlib: lib, importc: "gtk_plug_construct_for_display".}
 proc plug_new_for_display*(display: gdk2.PDisplay, socket_id: gdk2.TNativeWindow): PPlug{.
     cdecl, dynlib: lib, importc: "gtk_plug_new_for_display".}
-proc plug_get_id*(plug: PPlug): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
+proc get_id*(plug: PPlug): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
     importc: "gtk_plug_get_id".}
-proc plug_add_to_socket*(plug: PPlug, socket: PSocket){.cdecl, dynlib: lib, 
+proc add_to_socket*(plug: PPlug, socket: PSocket){.cdecl, dynlib: lib, 
     importc: "_gtk_plug_add_to_socket".}
-proc plug_remove_from_socket*(plug: PPlug, socket: PSocket){.cdecl, dynlib: lib, 
+proc remove_from_socket*(plug: PPlug, socket: PSocket){.cdecl, dynlib: lib, 
     importc: "_gtk_plug_remove_from_socket".}
 const 
   bm_TGtkPreview_type* = 0x0001'i16
@@ -7954,15 +7954,15 @@ proc preview_get_type*(): TType{.cdecl, dynlib: lib,
 proc preview_uninit*(){.cdecl, dynlib: lib, importc: "gtk_preview_uninit".}
 proc preview_new*(thetype: TPreviewClass): PPreview{.cdecl, dynlib: lib, 
     importc: "gtk_preview_new".}
-proc preview_size*(preview: PPreview, width: gint, height: gint){.cdecl, 
+proc size*(preview: PPreview, width: gint, height: gint){.cdecl, 
     dynlib: lib, importc: "gtk_preview_size".}
-proc preview_put*(preview: PPreview, window: gdk2.PWindow, gc: gdk2.PGC, srcx: gint, 
+proc put*(preview: PPreview, window: gdk2.PWindow, gc: gdk2.PGC, srcx: gint, 
                   srcy: gint, destx: gint, desty: gint, width: gint, 
                   height: gint){.cdecl, dynlib: lib, importc: "gtk_preview_put".}
-proc preview_draw_row*(preview: PPreview, data: Pguchar, x: gint, y: gint, 
+proc draw_row*(preview: PPreview, data: Pguchar, x: gint, y: gint, 
                        w: gint){.cdecl, dynlib: lib, 
                                  importc: "gtk_preview_draw_row".}
-proc preview_set_expand*(preview: PPreview, expand: gboolean){.cdecl, 
+proc set_expand*(preview: PPreview, expand: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_preview_set_expand".}
 proc preview_set_gamma*(gamma: float64){.cdecl, dynlib: lib, 
     importc: "gtk_preview_set_gamma".}
@@ -7973,7 +7973,7 @@ proc preview_set_install_cmap*(install_cmap: gint){.cdecl, dynlib: lib,
     importc: "gtk_preview_set_install_cmap".}
 proc preview_set_reserved*(nreserved: gint){.cdecl, dynlib: lib, 
     importc: "gtk_preview_set_reserved".}
-proc preview_set_dither*(preview: PPreview, dither: gdk2.TRgbDither){.cdecl, 
+proc set_dither*(preview: PPreview, dither: gdk2.TRgbDither){.cdecl, 
     dynlib: lib, importc: "gtk_preview_set_dither".}
 proc preview_get_info*(): PPreviewInfo{.cdecl, dynlib: lib, 
                                         importc: "gtk_preview_get_info".}
@@ -8008,24 +8008,24 @@ proc progress_bar_get_type*(): TType{.cdecl, dynlib: lib,
                                       importc: "gtk_progress_bar_get_type".}
 proc progress_bar_new*(): PProgressBar{.cdecl, dynlib: lib, 
                                         importc: "gtk_progress_bar_new".}
-proc progress_bar_pulse*(pbar: PProgressBar){.cdecl, dynlib: lib, 
+proc pulse*(pbar: PProgressBar){.cdecl, dynlib: lib, 
     importc: "gtk_progress_bar_pulse".}
-proc progress_bar_set_text*(pbar: PProgressBar, text: cstring){.cdecl, 
+proc set_text*(pbar: PProgressBar, text: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_set_text".}
-proc progress_bar_set_fraction*(pbar: PProgressBar, fraction: gdouble){.cdecl, 
+proc set_fraction*(pbar: PProgressBar, fraction: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_set_fraction".}
-proc progress_bar_set_pulse_step*(pbar: PProgressBar, fraction: gdouble){.cdecl, 
+proc set_pulse_step*(pbar: PProgressBar, fraction: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_set_pulse_step".}
-proc progress_bar_set_orientation*(pbar: PProgressBar, 
+proc set_orientation*(pbar: PProgressBar, 
                                    orientation: TProgressBarOrientation){.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_set_orientation".}
-proc progress_bar_get_text*(pbar: PProgressBar): cstring{.cdecl, dynlib: lib, 
+proc get_text*(pbar: PProgressBar): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_progress_bar_get_text".}
-proc progress_bar_get_fraction*(pbar: PProgressBar): gdouble{.cdecl, 
+proc get_fraction*(pbar: PProgressBar): gdouble{.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_get_fraction".}
-proc progress_bar_get_pulse_step*(pbar: PProgressBar): gdouble{.cdecl, 
+proc get_pulse_step*(pbar: PProgressBar): gdouble{.cdecl, 
     dynlib: lib, importc: "gtk_progress_bar_get_pulse_step".}
-proc progress_bar_get_orientation*(pbar: PProgressBar): TProgressBarOrientation{.
+proc get_orientation*(pbar: PProgressBar): TProgressBarOrientation{.
     cdecl, dynlib: lib, importc: "gtk_progress_bar_get_orientation".}
 proc TYPE_RADIO_BUTTON*(): GType
 proc RADIO_BUTTON*(obj: pointer): PRadioButton
@@ -8037,19 +8037,19 @@ proc radio_button_get_type*(): TType{.cdecl, dynlib: lib,
                                       importc: "gtk_radio_button_get_type".}
 proc radio_button_new*(group: PGSList): PRadioButton{.cdecl, dynlib: lib, 
     importc: "gtk_radio_button_new".}
-proc radio_button_new_from_widget*(group: PRadioButton): PRadioButton{.cdecl, 
+proc new_from_widget*(group: PRadioButton): PRadioButton{.cdecl, 
     dynlib: lib, importc: "gtk_radio_button_new_from_widget".}
 proc radio_button_new_with_label*(group: PGSList, `label`: cstring): PRadioButton{.
     cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_label".}
-proc radio_button_new_with_label_from_widget*(group: PRadioButton, 
+proc new_with_label_from_widget*(group: PRadioButton, 
     `label`: cstring): PRadioButton{.cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_label_from_widget".}
 proc radio_button_new_with_mnemonic*(group: PGSList, `label`: cstring): PRadioButton{.
     cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_mnemonic".}
-proc radio_button_new_with_mnemonic_from_widget*(group: PRadioButton, 
+proc new_with_mnemonic_from_widget*(group: PRadioButton, 
     `label`: cstring): PRadioButton{.cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_mnemonic_from_widget".}
-proc radio_button_get_group*(radio_button: PRadioButton): PGSList{.cdecl, 
+proc get_group*(radio_button: PRadioButton): PGSList{.cdecl, 
     dynlib: lib, importc: "gtk_radio_button_get_group".}
-proc radio_button_set_group*(radio_button: PRadioButton, group: PGSList){.cdecl, 
+proc set_group*(radio_button: PRadioButton, group: PGSList){.cdecl, 
     dynlib: lib, importc: "gtk_radio_button_set_group".}
 proc TYPE_RADIO_MENU_ITEM*(): GType
 proc RADIO_MENU_ITEM*(obj: pointer): PRadioMenuItem
@@ -8065,9 +8065,9 @@ proc radio_menu_item_new_with_label*(group: PGSList, `label`: cstring): PRadioMe
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_new_with_label".}
 proc radio_menu_item_new_with_mnemonic*(group: PGSList, `label`: cstring): PRadioMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_new_with_mnemonic".}
-proc radio_menu_item_get_group*(radio_menu_item: PRadioMenuItem): PGSList{.
+proc item_get_group*(radio_menu_item: PRadioMenuItem): PGSList{.
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_get_group".}
-proc radio_menu_item_set_group*(radio_menu_item: PRadioMenuItem, group: PGSList){.
+proc item_set_group*(radio_menu_item: PRadioMenuItem, group: PGSList){.
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_set_group".}
 const 
   bm_TGtkScrolledWindow_hscrollbar_policy* = 0x0003'i16
@@ -8105,53 +8105,53 @@ proc scrolled_window_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_scrolled_window_get_type".}
 proc scrolled_window_new*(hadjustment: PAdjustment, vadjustment: PAdjustment): PScrolledWindow{.
     cdecl, dynlib: lib, importc: "gtk_scrolled_window_new".}
-proc scrolled_window_set_hadjustment*(scrolled_window: PScrolledWindow, 
+proc set_hadjustment*(scrolled_window: PScrolledWindow, 
                                       hadjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_scrolled_window_set_hadjustment".}
-proc scrolled_window_set_vadjustment*(scrolled_window: PScrolledWindow, 
+proc set_vadjustment*(scrolled_window: PScrolledWindow, 
                                       hadjustment: PAdjustment){.cdecl, 
     dynlib: lib, importc: "gtk_scrolled_window_set_vadjustment".}
-proc scrolled_window_get_hadjustment*(scrolled_window: PScrolledWindow): PAdjustment{.
+proc get_hadjustment*(scrolled_window: PScrolledWindow): PAdjustment{.
     cdecl, dynlib: lib, importc: "gtk_scrolled_window_get_hadjustment".}
-proc scrolled_window_get_vadjustment*(scrolled_window: PScrolledWindow): PAdjustment{.
+proc get_vadjustment*(scrolled_window: PScrolledWindow): PAdjustment{.
     cdecl, dynlib: lib, importc: "gtk_scrolled_window_get_vadjustment".}
-proc scrolled_window_set_policy*(scrolled_window: PScrolledWindow, 
+proc set_policy*(scrolled_window: PScrolledWindow, 
                                  hscrollbar_policy: TPolicyType, 
                                  vscrollbar_policy: TPolicyType){.cdecl, 
     dynlib: lib, importc: "gtk_scrolled_window_set_policy".}
-proc scrolled_window_get_policy*(scrolled_window: PScrolledWindow, 
+proc get_policy*(scrolled_window: PScrolledWindow, 
                                  hscrollbar_policy: PPolicyType, 
                                  vscrollbar_policy: PPolicyType){.cdecl, 
     dynlib: lib, importc: "gtk_scrolled_window_get_policy".}
-proc scrolled_window_set_placement*(scrolled_window: PScrolledWindow, 
+proc set_placement*(scrolled_window: PScrolledWindow, 
                                     window_placement: TCornerType){.cdecl, 
     dynlib: lib, importc: "gtk_scrolled_window_set_placement".}
-proc scrolled_window_get_placement*(scrolled_window: PScrolledWindow): TCornerType{.
+proc get_placement*(scrolled_window: PScrolledWindow): TCornerType{.
     cdecl, dynlib: lib, importc: "gtk_scrolled_window_get_placement".}
-proc scrolled_window_set_shadow_type*(scrolled_window: PScrolledWindow, 
+proc set_shadow_type*(scrolled_window: PScrolledWindow, 
                                       thetype: TShadowType){.cdecl, dynlib: lib, 
     importc: "gtk_scrolled_window_set_shadow_type".}
-proc scrolled_window_get_shadow_type*(scrolled_window: PScrolledWindow): TShadowType{.
+proc get_shadow_type*(scrolled_window: PScrolledWindow): TShadowType{.
     cdecl, dynlib: lib, importc: "gtk_scrolled_window_get_shadow_type".}
-proc scrolled_window_add_with_viewport*(scrolled_window: PScrolledWindow, 
+proc add_with_viewport*(scrolled_window: PScrolledWindow, 
                                         child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_scrolled_window_add_with_viewport".}
 proc TYPE_SELECTION_DATA*(): GType
-proc target_list_new*(targets: PTargetEntry, ntargets: guint): PTargetList{.
+proc list_new*(targets: PTargetEntry, ntargets: guint): PTargetList{.
     cdecl, dynlib: lib, importc: "gtk_target_list_new".}
-proc target_list_ref*(list: PTargetList){.cdecl, dynlib: lib, 
+proc reference*(list: PTargetList){.cdecl, dynlib: lib, 
     importc: "gtk_target_list_ref".}
-proc target_list_unref*(list: PTargetList){.cdecl, dynlib: lib, 
+proc unref*(list: PTargetList){.cdecl, dynlib: lib, 
     importc: "gtk_target_list_unref".}
-proc target_list_add*(list: PTargetList, target: gdk2.TAtom, flags: guint, 
+proc add*(list: PTargetList, target: gdk2.TAtom, flags: guint, 
                       info: guint){.cdecl, dynlib: lib, 
                                     importc: "gtk_target_list_add".}
-proc target_list_add_table*(list: PTargetList, targets: PTargetEntry, 
+proc add_table*(list: PTargetList, targets: PTargetEntry, 
                             ntargets: guint){.cdecl, dynlib: lib, 
     importc: "gtk_target_list_add_table".}
-proc target_list_remove*(list: PTargetList, target: gdk2.TAtom){.cdecl, 
+proc remove*(list: PTargetList, target: gdk2.TAtom){.cdecl, 
     dynlib: lib, importc: "gtk_target_list_remove".}
-proc target_list_find*(list: PTargetList, target: gdk2.TAtom, info: Pguint): gboolean{.
+proc find*(list: PTargetList, target: gdk2.TAtom, info: Pguint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_target_list_find".}
 proc selection_owner_set*(widget: PWidget, selection: gdk2.TAtom, time: guint32): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_owner_set".}
@@ -8169,15 +8169,15 @@ proc selection_clear_targets*(widget: PWidget, selection: gdk2.TAtom){.cdecl,
 proc selection_convert*(widget: PWidget, selection: gdk2.TAtom, target: gdk2.TAtom, 
                         time: guint32): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_selection_convert".}
-proc selection_data_set*(selection_data: PSelectionData, thetype: gdk2.TAtom, 
+proc set*(selection_data: PSelectionData, thetype: gdk2.TAtom, 
                          format: gint, data: Pguchar, length: gint){.cdecl, 
     dynlib: lib, importc: "gtk_selection_data_set".}
-proc selection_data_set_text*(selection_data: PSelectionData, str: cstring, 
+proc set_text*(selection_data: PSelectionData, str: cstring, 
                               len: gint): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_selection_data_set_text".}
-proc selection_data_get_text*(selection_data: PSelectionData): Pguchar{.cdecl, 
+proc get_text*(selection_data: PSelectionData): Pguchar{.cdecl, 
     dynlib: lib, importc: "gtk_selection_data_get_text".}
-proc selection_data_targets_include_text*(selection_data: PSelectionData): gboolean{.
+proc targets_include_text*(selection_data: PSelectionData): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_selection_data_targets_include_text".}
 proc selection_remove_all*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_selection_remove_all".}
@@ -8193,9 +8193,9 @@ proc selection_property_notify*(widget: PWidget, event: gdk2.PEventProperty): gb
     cdecl, dynlib: lib, importc: "gtk_selection_property_notify".}
 proc selection_data_get_type*(): GType{.cdecl, dynlib: lib, 
                                         importc: "gtk_selection_data_get_type".}
-proc selection_data_copy*(data: PSelectionData): PSelectionData{.cdecl, 
+proc copy*(data: PSelectionData): PSelectionData{.cdecl, 
     dynlib: lib, importc: "gtk_selection_data_copy".}
-proc selection_data_free*(data: PSelectionData){.cdecl, dynlib: lib, 
+proc free*(data: PSelectionData){.cdecl, dynlib: lib, 
     importc: "gtk_selection_data_free".}
 proc TYPE_SEPARATOR_MENU_ITEM*(): GType
 proc SEPARATOR_MENU_ITEM*(obj: pointer): PSeparatorMenuItem
@@ -8227,13 +8227,13 @@ proc size_group_get_type*(): GType{.cdecl, dynlib: lib,
                                     importc: "gtk_size_group_get_type".}
 proc size_group_new*(mode: TSizeGroupMode): PSizeGroup{.cdecl, dynlib: lib, 
     importc: "gtk_size_group_new".}
-proc size_group_set_mode*(size_group: PSizeGroup, mode: TSizeGroupMode){.cdecl, 
+proc set_mode*(size_group: PSizeGroup, mode: TSizeGroupMode){.cdecl, 
     dynlib: lib, importc: "gtk_size_group_set_mode".}
-proc size_group_get_mode*(size_group: PSizeGroup): TSizeGroupMode{.cdecl, 
+proc get_mode*(size_group: PSizeGroup): TSizeGroupMode{.cdecl, 
     dynlib: lib, importc: "gtk_size_group_get_mode".}
-proc size_group_add_widget*(size_group: PSizeGroup, widget: PWidget){.cdecl, 
+proc add_widget*(size_group: PSizeGroup, widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_size_group_add_widget".}
-proc size_group_remove_widget*(size_group: PSizeGroup, widget: PWidget){.cdecl, 
+proc remove_widget*(size_group: PSizeGroup, widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_size_group_remove_widget".}
 proc size_group_get_child_requisition*(widget: PWidget, 
                                        requisition: PRequisition){.cdecl, 
@@ -8273,9 +8273,9 @@ proc set_is_mapped*(a: var TSocket, `is_mapped`: guint)
 proc socket_new*(): PSocket{.cdecl, dynlib: lib, importc: "gtk_socket_new".}
 proc socket_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_socket_get_type".}
-proc socket_add_id*(socket: PSocket, window_id: gdk2.TNativeWindow){.cdecl, 
+proc add_id*(socket: PSocket, window_id: gdk2.TNativeWindow){.cdecl, 
     dynlib: lib, importc: "gtk_socket_add_id".}
-proc socket_get_id*(socket: PSocket): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
+proc get_id*(socket: PSocket): gdk2.TNativeWindow{.cdecl, dynlib: lib, 
     importc: "gtk_socket_get_id".}
 const 
   INPUT_ERROR* = - (1)
@@ -8324,7 +8324,7 @@ proc snap_to_ticks*(a: var TSpinButton): guint
 proc set_snap_to_ticks*(a: var TSpinButton, `snap_to_ticks`: guint)
 proc spin_button_get_type*(): TType{.cdecl, dynlib: lib, 
                                      importc: "gtk_spin_button_get_type".}
-proc spin_button_configure*(spin_button: PSpinButton, adjustment: PAdjustment, 
+proc configure*(spin_button: PSpinButton, adjustment: PAdjustment, 
                             climb_rate: gdouble, digits: guint){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_configure".}
 proc spin_button_new*(adjustment: PAdjustment, climb_rate: gdouble, 
@@ -8332,54 +8332,54 @@ proc spin_button_new*(adjustment: PAdjustment, climb_rate: gdouble,
     importc: "gtk_spin_button_new".}
 proc spin_button_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PSpinButton{.
     cdecl, dynlib: lib, importc: "gtk_spin_button_new_with_range".}
-proc spin_button_set_adjustment*(spin_button: PSpinButton, 
+proc set_adjustment*(spin_button: PSpinButton, 
                                  adjustment: PAdjustment){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_set_adjustment".}
-proc spin_button_get_adjustment*(spin_button: PSpinButton): PAdjustment{.cdecl, 
+proc get_adjustment*(spin_button: PSpinButton): PAdjustment{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_adjustment".}
-proc spin_button_set_digits*(spin_button: PSpinButton, digits: guint){.cdecl, 
+proc set_digits*(spin_button: PSpinButton, digits: guint){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_set_digits".}
-proc spin_button_get_digits*(spin_button: PSpinButton): guint{.cdecl, 
+proc get_digits*(spin_button: PSpinButton): guint{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_digits".}
-proc spin_button_set_increments*(spin_button: PSpinButton, step: gdouble, 
+proc set_increments*(spin_button: PSpinButton, step: gdouble, 
                                  page: gdouble){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_set_increments".}
-proc spin_button_get_increments*(spin_button: PSpinButton, step: Pgdouble, 
+proc get_increments*(spin_button: PSpinButton, step: Pgdouble, 
                                  page: Pgdouble){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_get_increments".}
-proc spin_button_set_range*(spin_button: PSpinButton, min: gdouble, max: gdouble){.
+proc set_range*(spin_button: PSpinButton, min: gdouble, max: gdouble){.
     cdecl, dynlib: lib, importc: "gtk_spin_button_set_range".}
-proc spin_button_get_range*(spin_button: PSpinButton, min: Pgdouble, 
+proc get_range*(spin_button: PSpinButton, min: Pgdouble, 
                             max: Pgdouble){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_get_range".}
-proc spin_button_get_value*(spin_button: PSpinButton): gdouble{.cdecl, 
+proc get_value*(spin_button: PSpinButton): gdouble{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_value".}
-proc spin_button_get_value_as_int*(spin_button: PSpinButton): gint{.cdecl, 
+proc get_value_as_int*(spin_button: PSpinButton): gint{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_value_as_int".}
-proc spin_button_set_value*(spin_button: PSpinButton, value: gdouble){.cdecl, 
+proc set_value*(spin_button: PSpinButton, value: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_set_value".}
-proc spin_button_set_update_policy*(spin_button: PSpinButton, 
+proc set_update_policy*(spin_button: PSpinButton, 
                                     policy: TSpinButtonUpdatePolicy){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_set_update_policy".}
-proc spin_button_get_update_policy*(spin_button: PSpinButton): TSpinButtonUpdatePolicy{.
+proc get_update_policy*(spin_button: PSpinButton): TSpinButtonUpdatePolicy{.
     cdecl, dynlib: lib, importc: "gtk_spin_button_get_update_policy".}
-proc spin_button_set_numeric*(spin_button: PSpinButton, numeric: gboolean){.
+proc set_numeric*(spin_button: PSpinButton, numeric: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_spin_button_set_numeric".}
-proc spin_button_get_numeric*(spin_button: PSpinButton): gboolean{.cdecl, 
+proc get_numeric*(spin_button: PSpinButton): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_numeric".}
-proc spin_button_spin*(spin_button: PSpinButton, direction: TSpinType, 
+proc spin*(spin_button: PSpinButton, direction: TSpinType, 
                        increment: gdouble){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_spin".}
-proc spin_button_set_wrap*(spin_button: PSpinButton, wrap: gboolean){.cdecl, 
+proc set_wrap*(spin_button: PSpinButton, wrap: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_set_wrap".}
-proc spin_button_get_wrap*(spin_button: PSpinButton): gboolean{.cdecl, 
+proc get_wrap*(spin_button: PSpinButton): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_wrap".}
-proc spin_button_set_snap_to_ticks*(spin_button: PSpinButton, 
+proc set_snap_to_ticks*(spin_button: PSpinButton, 
                                     snap_to_ticks: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_set_snap_to_ticks".}
-proc spin_button_get_snap_to_ticks*(spin_button: PSpinButton): gboolean{.cdecl, 
+proc get_snap_to_ticks*(spin_button: PSpinButton): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_spin_button_get_snap_to_ticks".}
-proc spin_button_update*(spin_button: PSpinButton){.cdecl, dynlib: lib, 
+proc update*(spin_button: PSpinButton){.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_update".}
 const 
   STOCK_DIALOG_INFO* = "gtk-dialog-info"
@@ -8465,17 +8465,17 @@ const
   STOCK_ZOOM_IN* = "gtk-zoom-in"
   STOCK_ZOOM_OUT* = "gtk-zoom-out"
 
-proc stock_add*(items: PStockItem, n_items: guint){.cdecl, dynlib: lib, 
+proc add*(items: PStockItem, n_items: guint){.cdecl, dynlib: lib, 
     importc: "gtk_stock_add".}
-proc stock_add_static*(items: PStockItem, n_items: guint){.cdecl, dynlib: lib, 
+proc add_static*(items: PStockItem, n_items: guint){.cdecl, dynlib: lib, 
     importc: "gtk_stock_add_static".}
 proc stock_lookup*(stock_id: cstring, item: PStockItem): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_stock_lookup".}
 proc stock_list_ids*(): PGSList{.cdecl, dynlib: lib, 
                                  importc: "gtk_stock_list_ids".}
-proc stock_item_copy*(item: PStockItem): PStockItem{.cdecl, dynlib: lib, 
+proc copy*(item: PStockItem): PStockItem{.cdecl, dynlib: lib, 
     importc: "gtk_stock_item_copy".}
-proc stock_item_free*(item: PStockItem){.cdecl, dynlib: lib, 
+proc free*(item: PStockItem){.cdecl, dynlib: lib, 
     importc: "gtk_stock_item_free".}
 proc TYPE_STATUSBAR*(): GType
 proc STATUSBAR*(obj: pointer): PStatusbar
@@ -8493,19 +8493,19 @@ proc statusbar_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_statusbar_get_type".}
 proc statusbar_new*(): PStatusbar{.cdecl, dynlib: lib, 
                                    importc: "gtk_statusbar_new".}
-proc statusbar_get_context_id*(statusbar: PStatusbar, 
+proc get_context_id*(statusbar: PStatusbar, 
                                context_description: cstring): guint{.cdecl, 
     dynlib: lib, importc: "gtk_statusbar_get_context_id".}
-proc statusbar_push*(statusbar: PStatusbar, context_id: guint, text: cstring): guint{.
+proc push*(statusbar: PStatusbar, context_id: guint, text: cstring): guint{.
     cdecl, dynlib: lib, importc: "gtk_statusbar_push".}
-proc statusbar_pop*(statusbar: PStatusbar, context_id: guint){.cdecl, 
+proc pop*(statusbar: PStatusbar, context_id: guint){.cdecl, 
     dynlib: lib, importc: "gtk_statusbar_pop".}
-proc statusbar_remove*(statusbar: PStatusbar, context_id: guint, 
+proc remove*(statusbar: PStatusbar, context_id: guint, 
                        message_id: guint){.cdecl, dynlib: lib, 
     importc: "gtk_statusbar_remove".}
-proc statusbar_set_has_resize_grip*(statusbar: PStatusbar, setting: gboolean){.
+proc set_has_resize_grip*(statusbar: PStatusbar, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_statusbar_set_has_resize_grip".}
-proc statusbar_get_has_resize_grip*(statusbar: PStatusbar): gboolean{.cdecl, 
+proc get_has_resize_grip*(statusbar: PStatusbar): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_statusbar_get_has_resize_grip".}
 const 
   bm_TGtkTable_homogeneous* = 0x0001'i16
@@ -8566,36 +8566,36 @@ proc set_empty*(a: var TTableRowCol, `empty`: guint)
 proc table_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_table_get_type".}
 proc table_new*(rows: guint, columns: guint, homogeneous: gboolean): PTable{.
     cdecl, dynlib: lib, importc: "gtk_table_new".}
-proc table_resize*(table: PTable, rows: guint, columns: guint){.cdecl, 
+proc resize*(table: PTable, rows: guint, columns: guint){.cdecl, 
     dynlib: lib, importc: "gtk_table_resize".}
-proc table_attach*(table: PTable, child: PWidget, left_attach: guint, 
+proc attach*(table: PTable, child: PWidget, left_attach: guint, 
                    right_attach: guint, top_attach: guint, bottom_attach: guint, 
                    xoptions: TAttachOptions, yoptions: TAttachOptions, 
                    xpadding: guint, ypadding: guint){.cdecl, dynlib: lib, 
     importc: "gtk_table_attach".}
-proc table_attach_defaults*(table: PTable, widget: PWidget, left_attach: guint, 
+proc attach_defaults*(table: PTable, widget: PWidget, left_attach: guint, 
                             right_attach: guint, top_attach: guint, 
                             bottom_attach: guint){.cdecl, dynlib: lib, 
     importc: "gtk_table_attach_defaults".}
-proc table_set_row_spacing*(table: PTable, row: guint, spacing: guint){.cdecl, 
+proc set_row_spacing*(table: PTable, row: guint, spacing: guint){.cdecl, 
     dynlib: lib, importc: "gtk_table_set_row_spacing".}
-proc table_get_row_spacing*(table: PTable, row: guint): guint{.cdecl, 
+proc get_row_spacing*(table: PTable, row: guint): guint{.cdecl, 
     dynlib: lib, importc: "gtk_table_get_row_spacing".}
-proc table_set_col_spacing*(table: PTable, column: guint, spacing: guint){.
+proc set_col_spacing*(table: PTable, column: guint, spacing: guint){.
     cdecl, dynlib: lib, importc: "gtk_table_set_col_spacing".}
-proc table_get_col_spacing*(table: PTable, column: guint): guint{.cdecl, 
+proc get_col_spacing*(table: PTable, column: guint): guint{.cdecl, 
     dynlib: lib, importc: "gtk_table_get_col_spacing".}
-proc table_set_row_spacings*(table: PTable, spacing: guint){.cdecl, dynlib: lib, 
+proc set_row_spacings*(table: PTable, spacing: guint){.cdecl, dynlib: lib, 
     importc: "gtk_table_set_row_spacings".}
-proc table_get_default_row_spacing*(table: PTable): guint{.cdecl, dynlib: lib, 
+proc get_default_row_spacing*(table: PTable): guint{.cdecl, dynlib: lib, 
     importc: "gtk_table_get_default_row_spacing".}
-proc table_set_col_spacings*(table: PTable, spacing: guint){.cdecl, dynlib: lib, 
+proc set_col_spacings*(table: PTable, spacing: guint){.cdecl, dynlib: lib, 
     importc: "gtk_table_set_col_spacings".}
-proc table_get_default_col_spacing*(table: PTable): guint{.cdecl, dynlib: lib, 
+proc get_default_col_spacing*(table: PTable): guint{.cdecl, dynlib: lib, 
     importc: "gtk_table_get_default_col_spacing".}
-proc table_set_homogeneous*(table: PTable, homogeneous: gboolean){.cdecl, 
+proc set_homogeneous*(table: PTable, homogeneous: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_table_set_homogeneous".}
-proc table_get_homogeneous*(table: PTable): gboolean{.cdecl, dynlib: lib, 
+proc get_homogeneous*(table: PTable): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_table_get_homogeneous".}
 const 
   bm_TGtkTearoffMenuItem_torn_off* = 0x0001'i16
@@ -8636,199 +8636,199 @@ proc set_use_wchar*(a: PText, `use_wchar`: gboolean)
 proc text_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_text_get_type".}
 proc text_new*(hadj: PAdjustment, vadj: PAdjustment): PText{.cdecl, dynlib: lib, 
     importc: "gtk_text_new".}
-proc text_set_editable*(text: PText, editable: gboolean){.cdecl, dynlib: lib, 
+proc set_editable*(text: PText, editable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_text_set_editable".}
-proc text_set_word_wrap*(text: PText, word_wrap: gboolean){.cdecl, dynlib: lib, 
+proc set_word_wrap*(text: PText, word_wrap: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_text_set_word_wrap".}
-proc text_set_line_wrap*(text: PText, line_wrap: gboolean){.cdecl, dynlib: lib, 
+proc set_line_wrap*(text: PText, line_wrap: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_text_set_line_wrap".}
-proc text_set_adjustments*(text: PText, hadj: PAdjustment, vadj: PAdjustment){.
+proc set_adjustments*(text: PText, hadj: PAdjustment, vadj: PAdjustment){.
     cdecl, dynlib: lib, importc: "gtk_text_set_adjustments".}
-proc text_set_point*(text: PText, index: guint){.cdecl, dynlib: lib, 
+proc set_point*(text: PText, index: guint){.cdecl, dynlib: lib, 
     importc: "gtk_text_set_point".}
-proc text_get_point*(text: PText): guint{.cdecl, dynlib: lib, 
+proc get_point*(text: PText): guint{.cdecl, dynlib: lib, 
     importc: "gtk_text_get_point".}
-proc text_get_length*(text: PText): guint{.cdecl, dynlib: lib, 
+proc get_length*(text: PText): guint{.cdecl, dynlib: lib, 
     importc: "gtk_text_get_length".}
-proc text_freeze*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_freeze".}
-proc text_thaw*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_thaw".}
-proc text_insert*(text: PText, font: gdk2.PFont, fore: gdk2.PColor, back: gdk2.PColor, 
+proc freeze*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_freeze".}
+proc thaw*(text: PText){.cdecl, dynlib: lib, importc: "gtk_text_thaw".}
+proc insert*(text: PText, font: gdk2.PFont, fore: gdk2.PColor, back: gdk2.PColor, 
                   chars: cstring, length: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_insert".}
-proc text_backward_delete*(text: PText, nchars: guint): gboolean{.cdecl, 
+proc backward_delete*(text: PText, nchars: guint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_backward_delete".}
-proc text_forward_delete*(text: PText, nchars: guint): gboolean{.cdecl, 
+proc forward_delete*(text: PText, nchars: guint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_forward_delete".}
-proc TEXT_INDEX_WCHAR*(t: PText, index: guint): guint32
-proc TEXT_INDEX_UCHAR*(t: PText, index: guint): GUChar
+proc INDEX_WCHAR*(t: PText, index: guint): guint32
+proc INDEX_UCHAR*(t: PText, index: guint): GUChar
 const 
   TEXT_SEARCH_VISIBLE_ONLY* = 0
   TEXT_SEARCH_TEXT_ONLY* = 1
 
 proc TYPE_TEXT_ITER*(): GType
-proc text_iter_get_buffer*(iter: PTextIter): PTextBuffer{.cdecl, dynlib: lib, 
+proc get_buffer*(iter: PTextIter): PTextBuffer{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_buffer".}
-proc text_iter_copy*(iter: PTextIter): PTextIter{.cdecl, dynlib: lib, 
+proc copy*(iter: PTextIter): PTextIter{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_copy".}
-proc text_iter_free*(iter: PTextIter){.cdecl, dynlib: lib, 
+proc free*(iter: PTextIter){.cdecl, dynlib: lib, 
                                        importc: "gtk_text_iter_free".}
 proc text_iter_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "gtk_text_iter_get_type".}
-proc text_iter_get_offset*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_offset*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_offset".}
-proc text_iter_get_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_line".}
-proc text_iter_get_line_offset*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_line_offset*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_line_offset".}
-proc text_iter_get_line_index*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_line_index*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_line_index".}
-proc text_iter_get_visible_line_offset*(iter: PTextIter): gint{.cdecl, 
+proc get_visible_line_offset*(iter: PTextIter): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_visible_line_offset".}
-proc text_iter_get_visible_line_index*(iter: PTextIter): gint{.cdecl, 
+proc get_visible_line_index*(iter: PTextIter): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_visible_line_index".}
-proc text_iter_get_char*(iter: PTextIter): gunichar{.cdecl, dynlib: lib, 
+proc get_char*(iter: PTextIter): gunichar{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_char".}
-proc text_iter_get_slice*(start: PTextIter, theEnd: PTextIter): cstring{.cdecl, 
+proc get_slice*(start: PTextIter, theEnd: PTextIter): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_slice".}
-proc text_iter_get_text*(start: PTextIter, theEnd: PTextIter): cstring{.cdecl, 
+proc get_text*(start: PTextIter, theEnd: PTextIter): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_text".}
-proc text_iter_get_visible_slice*(start: PTextIter, theEnd: PTextIter): cstring{.
+proc get_visible_slice*(start: PTextIter, theEnd: PTextIter): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_visible_slice".}
-proc text_iter_get_visible_text*(start: PTextIter, theEnd: PTextIter): cstring{.
+proc get_visible_text*(start: PTextIter, theEnd: PTextIter): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_visible_text".}
-proc text_iter_get_pixbuf*(iter: PTextIter): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
+proc get_pixbuf*(iter: PTextIter): gdk2pixbuf.PPixbuf{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_pixbuf".}
-proc text_iter_get_marks*(iter: PTextIter): PGSList{.cdecl, dynlib: lib, 
+proc get_marks*(iter: PTextIter): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_marks".}
-proc text_iter_get_child_anchor*(iter: PTextIter): PTextChildAnchor{.cdecl, 
+proc get_child_anchor*(iter: PTextIter): PTextChildAnchor{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_child_anchor".}
-proc text_iter_get_toggled_tags*(iter: PTextIter, toggled_on: gboolean): PGSList{.
+proc get_toggled_tags*(iter: PTextIter, toggled_on: gboolean): PGSList{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_toggled_tags".}
-proc text_iter_begins_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
+proc begins_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_begins_tag".}
-proc text_iter_ends_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
+proc ends_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_ends_tag".}
-proc text_iter_toggles_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
+proc toggles_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_toggles_tag".}
-proc text_iter_has_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
+proc has_tag*(iter: PTextIter, tag: PTextTag): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_has_tag".}
-proc text_iter_get_tags*(iter: PTextIter): PGSList{.cdecl, dynlib: lib, 
+proc get_tags*(iter: PTextIter): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_tags".}
-proc text_iter_editable*(iter: PTextIter, default_setting: gboolean): gboolean{.
+proc editable*(iter: PTextIter, default_setting: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_editable".}
-proc text_iter_can_insert*(iter: PTextIter, default_editability: gboolean): gboolean{.
+proc can_insert*(iter: PTextIter, default_editability: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_can_insert".}
-proc text_iter_starts_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc starts_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_starts_word".}
-proc text_iter_ends_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc ends_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_ends_word".}
-proc text_iter_inside_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc inside_word*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_inside_word".}
-proc text_iter_starts_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc starts_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_starts_sentence".}
-proc text_iter_ends_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc ends_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_ends_sentence".}
-proc text_iter_inside_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc inside_sentence*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_inside_sentence".}
-proc text_iter_starts_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc starts_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_starts_line".}
-proc text_iter_ends_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc ends_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_ends_line".}
-proc text_iter_is_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
+proc is_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_is_cursor_position".}
-proc text_iter_get_chars_in_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_chars_in_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_chars_in_line".}
-proc text_iter_get_bytes_in_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
+proc get_bytes_in_line*(iter: PTextIter): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_get_bytes_in_line".}
-proc text_iter_get_attributes*(iter: PTextIter, values: PTextAttributes): gboolean{.
+proc get_attributes*(iter: PTextIter, values: PTextAttributes): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_get_attributes".}
-proc text_iter_get_language*(iter: PTextIter): pango.PLanguage{.cdecl, 
+proc get_language*(iter: PTextIter): pango.PLanguage{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_get_language".}
-proc text_iter_is_end*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc is_end*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_is_end".}
-proc text_iter_is_start*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc is_start*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_is_start".}
-proc text_iter_forward_char*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc forward_char*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_forward_char".}
-proc text_iter_backward_char*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc backward_char*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_backward_char".}
-proc text_iter_forward_chars*(iter: PTextIter, count: gint): gboolean{.cdecl, 
+proc forward_chars*(iter: PTextIter, count: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_forward_chars".}
-proc text_iter_backward_chars*(iter: PTextIter, count: gint): gboolean{.cdecl, 
+proc backward_chars*(iter: PTextIter, count: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_backward_chars".}
-proc text_iter_forward_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc forward_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_forward_line".}
-proc text_iter_backward_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc backward_line*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_backward_line".}
-proc text_iter_forward_lines*(iter: PTextIter, count: gint): gboolean{.cdecl, 
+proc forward_lines*(iter: PTextIter, count: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_forward_lines".}
-proc text_iter_backward_lines*(iter: PTextIter, count: gint): gboolean{.cdecl, 
+proc backward_lines*(iter: PTextIter, count: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_backward_lines".}
-proc text_iter_forward_word_end*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
+proc forward_word_end*(iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_forward_word_end".}
-proc text_iter_backward_word_start*(iter: PTextIter): gboolean{.cdecl, 
+proc backward_word_start*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_backward_word_start".}
-proc text_iter_forward_word_ends*(iter: PTextIter, count: gint): gboolean{.
+proc forward_word_ends*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_word_ends".}
-proc text_iter_backward_word_starts*(iter: PTextIter, count: gint): gboolean{.
+proc backward_word_starts*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_word_starts".}
-proc text_iter_forward_sentence_end*(iter: PTextIter): gboolean{.cdecl, 
+proc forward_sentence_end*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_forward_sentence_end".}
-proc text_iter_backward_sentence_start*(iter: PTextIter): gboolean{.cdecl, 
+proc backward_sentence_start*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_backward_sentence_start".}
-proc text_iter_forward_sentence_ends*(iter: PTextIter, count: gint): gboolean{.
+proc forward_sentence_ends*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_sentence_ends".}
-proc text_iter_backward_sentence_starts*(iter: PTextIter, count: gint): gboolean{.
+proc backward_sentence_starts*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_sentence_starts".}
-proc text_iter_forward_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
+proc forward_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_forward_cursor_position".}
-proc text_iter_backward_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
+proc backward_cursor_position*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_backward_cursor_position".}
-proc text_iter_forward_cursor_positions*(iter: PTextIter, count: gint): gboolean{.
+proc forward_cursor_positions*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_cursor_positions".}
-proc text_iter_backward_cursor_positions*(iter: PTextIter, count: gint): gboolean{.
+proc backward_cursor_positions*(iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_cursor_positions".}
-proc text_iter_set_offset*(iter: PTextIter, char_offset: gint){.cdecl, 
+proc set_offset*(iter: PTextIter, char_offset: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_set_offset".}
-proc text_iter_set_line*(iter: PTextIter, line_number: gint){.cdecl, 
+proc set_line*(iter: PTextIter, line_number: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_set_line".}
-proc text_iter_set_line_offset*(iter: PTextIter, char_on_line: gint){.cdecl, 
+proc set_line_offset*(iter: PTextIter, char_on_line: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_set_line_offset".}
-proc text_iter_set_line_index*(iter: PTextIter, byte_on_line: gint){.cdecl, 
+proc set_line_index*(iter: PTextIter, byte_on_line: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_set_line_index".}
-proc text_iter_forward_to_end*(iter: PTextIter){.cdecl, dynlib: lib, 
+proc forward_to_end*(iter: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_forward_to_end".}
-proc text_iter_forward_to_line_end*(iter: PTextIter): gboolean{.cdecl, 
+proc forward_to_line_end*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_forward_to_line_end".}
-proc text_iter_set_visible_line_offset*(iter: PTextIter, char_on_line: gint){.
+proc set_visible_line_offset*(iter: PTextIter, char_on_line: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_iter_set_visible_line_offset".}
-proc text_iter_set_visible_line_index*(iter: PTextIter, byte_on_line: gint){.
+proc set_visible_line_index*(iter: PTextIter, byte_on_line: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_iter_set_visible_line_index".}
-proc text_iter_forward_to_tag_toggle*(iter: PTextIter, tag: PTextTag): gboolean{.
+proc forward_to_tag_toggle*(iter: PTextIter, tag: PTextTag): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_to_tag_toggle".}
-proc text_iter_backward_to_tag_toggle*(iter: PTextIter, tag: PTextTag): gboolean{.
+proc backward_to_tag_toggle*(iter: PTextIter, tag: PTextTag): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_to_tag_toggle".}
-proc text_iter_forward_find_char*(iter: PTextIter, pred: TTextCharPredicate, 
+proc forward_find_char*(iter: PTextIter, pred: TTextCharPredicate, 
                                   user_data: gpointer, limit: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_find_char".}
-proc text_iter_backward_find_char*(iter: PTextIter, pred: TTextCharPredicate, 
+proc backward_find_char*(iter: PTextIter, pred: TTextCharPredicate, 
                                    user_data: gpointer, limit: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_find_char".}
-proc text_iter_forward_search*(iter: PTextIter, str: cstring, 
+proc forward_search*(iter: PTextIter, str: cstring, 
                                flags: TTextSearchFlags, match_start: PTextIter, 
                                match_end: PTextIter, limit: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_forward_search".}
-proc text_iter_backward_search*(iter: PTextIter, str: cstring, 
+proc backward_search*(iter: PTextIter, str: cstring, 
                                 flags: TTextSearchFlags, match_start: PTextIter, 
                                 match_end: PTextIter, limit: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_backward_search".}
-proc text_iter_equal*(lhs: PTextIter, rhs: PTextIter): gboolean{.cdecl, 
+proc equal*(lhs: PTextIter, rhs: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_equal".}
-proc text_iter_compare*(lhs: PTextIter, rhs: PTextIter): gint{.cdecl, 
+proc compare*(lhs: PTextIter, rhs: PTextIter): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_iter_compare".}
-proc text_iter_in_range*(iter: PTextIter, start: PTextIter, theEnd: PTextIter): gboolean{.
+proc in_range*(iter: PTextIter, start: PTextIter, theEnd: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_iter_in_range".}
-proc text_iter_order*(first: PTextIter, second: PTextIter){.cdecl, dynlib: lib, 
+proc order*(first: PTextIter, second: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_iter_order".}
 proc TYPE_TEXT_TAG*(): GType
 proc TEXT_TAG*(obj: pointer): PTextTag
@@ -8841,22 +8841,22 @@ proc text_tag_get_type*(): GType{.cdecl, dynlib: lib,
                                   importc: "gtk_text_tag_get_type".}
 proc text_tag_new*(name: cstring): PTextTag{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_new".}
-proc text_tag_get_priority*(tag: PTextTag): gint{.cdecl, dynlib: lib, 
+proc get_priority*(tag: PTextTag): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_get_priority".}
-proc text_tag_set_priority*(tag: PTextTag, priority: gint){.cdecl, dynlib: lib, 
+proc set_priority*(tag: PTextTag, priority: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_set_priority".}
-proc text_tag_event*(tag: PTextTag, event_object: PGObject, event: gdk2.PEvent, 
+proc event*(tag: PTextTag, event_object: PGObject, event: gdk2.PEvent, 
                      iter: PTextIter): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_event".}
 proc text_attributes_new*(): PTextAttributes{.cdecl, dynlib: lib, 
     importc: "gtk_text_attributes_new".}
-proc text_attributes_copy*(src: PTextAttributes): PTextAttributes{.cdecl, 
+proc copy*(src: PTextAttributes): PTextAttributes{.cdecl, 
     dynlib: lib, importc: "gtk_text_attributes_copy".}
-proc text_attributes_copy_values*(src: PTextAttributes, dest: PTextAttributes){.
+proc copy_values*(src: PTextAttributes, dest: PTextAttributes){.
     cdecl, dynlib: lib, importc: "gtk_text_attributes_copy_values".}
-proc text_attributes_unref*(values: PTextAttributes){.cdecl, dynlib: lib, 
+proc unref*(values: PTextAttributes){.cdecl, dynlib: lib, 
     importc: "gtk_text_attributes_unref".}
-proc text_attributes_ref*(values: PTextAttributes){.cdecl, dynlib: lib, 
+proc reference*(values: PTextAttributes){.cdecl, dynlib: lib, 
     importc: "gtk_text_attributes_ref".}
 proc text_attributes_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "gtk_text_attributes_get_type".}
@@ -9043,20 +9043,20 @@ proc text_tag_table_get_type*(): GType{.cdecl, dynlib: lib,
                                         importc: "gtk_text_tag_table_get_type".}
 proc text_tag_table_new*(): PTextTagTable{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_table_new".}
-proc text_tag_table_add*(table: PTextTagTable, tag: PTextTag){.cdecl, 
+proc table_add*(table: PTextTagTable, tag: PTextTag){.cdecl, 
     dynlib: lib, importc: "gtk_text_tag_table_add".}
-proc text_tag_table_remove*(table: PTextTagTable, tag: PTextTag){.cdecl, 
+proc table_remove*(table: PTextTagTable, tag: PTextTag){.cdecl, 
     dynlib: lib, importc: "gtk_text_tag_table_remove".}
-proc text_tag_table_lookup*(table: PTextTagTable, name: cstring): PTextTag{.
+proc table_lookup*(table: PTextTagTable, name: cstring): PTextTag{.
     cdecl, dynlib: lib, importc: "gtk_text_tag_table_lookup".}
-proc text_tag_table_foreach*(table: PTextTagTable, fun: TTextTagTableForeach, 
+proc table_foreach*(table: PTextTagTable, fun: TTextTagTableForeach, 
                              data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_table_foreach".}
-proc text_tag_table_get_size*(table: PTextTagTable): gint{.cdecl, dynlib: lib, 
+proc table_get_size*(table: PTextTagTable): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_tag_table_get_size".}
-proc text_tag_table_add_buffer*(table: PTextTagTable, buffer: gpointer){.cdecl, 
+proc table_add_buffer*(table: PTextTagTable, buffer: gpointer){.cdecl, 
     dynlib: lib, importc: "_gtk_text_tag_table_add_buffer".}
-proc text_tag_table_remove_buffer*(table: PTextTagTable, buffer: gpointer){.
+proc table_remove_buffer*(table: PTextTagTable, buffer: gpointer){.
     cdecl, dynlib: lib, importc: "_gtk_text_tag_table_remove_buffer".}
 proc TYPE_TEXT_MARK*(): GType
 proc TEXT_MARK*(anObject: pointer): PTextMark
@@ -9066,17 +9066,17 @@ proc IS_TEXT_MARK_CLASS*(klass: pointer): bool
 proc TEXT_MARK_GET_CLASS*(obj: pointer): PTextMarkClass
 proc text_mark_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "gtk_text_mark_get_type".}
-proc text_mark_set_visible*(mark: PTextMark, setting: gboolean){.cdecl, 
+proc set_visible*(mark: PTextMark, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_text_mark_set_visible".}
-proc text_mark_get_visible*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
+proc get_visible*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_mark_get_visible".}
-proc text_mark_get_name*(mark: PTextMark): cstring{.cdecl, dynlib: lib, 
+proc get_name*(mark: PTextMark): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_text_mark_get_name".}
-proc text_mark_get_deleted*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
+proc get_deleted*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_mark_get_deleted".}
-proc text_mark_get_buffer*(mark: PTextMark): PTextBuffer{.cdecl, dynlib: lib, 
+proc get_buffer*(mark: PTextMark): PTextBuffer{.cdecl, dynlib: lib, 
     importc: "gtk_text_mark_get_buffer".}
-proc text_mark_get_left_gravity*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
+proc get_left_gravity*(mark: PTextMark): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_mark_get_left_gravity".}
 const 
   bm_TGtkTextMarkBody_visible* = 0x0001'i16
@@ -9100,9 +9100,9 @@ proc text_child_anchor_get_type*(): GType{.cdecl, dynlib: lib,
     importc: "gtk_text_child_anchor_get_type".}
 proc text_child_anchor_new*(): PTextChildAnchor{.cdecl, dynlib: lib, 
     importc: "gtk_text_child_anchor_new".}
-proc text_child_anchor_get_widgets*(anchor: PTextChildAnchor): PGList{.cdecl, 
+proc anchor_get_widgets*(anchor: PTextChildAnchor): PGList{.cdecl, 
     dynlib: lib, importc: "gtk_text_child_anchor_get_widgets".}
-proc text_child_anchor_get_deleted*(anchor: PTextChildAnchor): gboolean{.cdecl, 
+proc anchor_get_deleted*(anchor: PTextChildAnchor): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_child_anchor_get_deleted".}
 proc pixbuf_segment_new*(pixbuf: gdk2pixbuf.PPixbuf): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_pixbuf_segment_new".}
@@ -9118,7 +9118,7 @@ proc widget_segment_unref*(widget_segment: PTextLineSegment){.cdecl,
     dynlib: lib, importc: "_gtk_widget_segment_unref".}
 proc anchored_child_get_layout*(child: PWidget): PTextLayout{.cdecl, 
     dynlib: lib, importc: "_gtk_anchored_child_get_layout".}
-proc text_line_segment_split*(iter: PTextIter): PTextLineSegment{.cdecl, 
+proc line_segment_split*(iter: PTextIter): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "gtk_text_line_segment_split".}
 proc char_segment_new*(text: cstring, len: guint): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_char_segment_new".}
@@ -9127,135 +9127,135 @@ proc char_segment_new_from_two_strings*(text1: cstring, len1: guint,
     cdecl, dynlib: lib, importc: "_gtk_char_segment_new_from_two_strings".}
 proc toggle_segment_new*(info: PTextTagInfo, StateOn: gboolean): PTextLineSegment{.
     cdecl, dynlib: lib, importc: "_gtk_toggle_segment_new".}
-proc text_btree_new*(table: PTextTagTable, buffer: PTextBuffer): PTextBTree{.
+proc btree_new*(table: PTextTagTable, buffer: PTextBuffer): PTextBTree{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_new".}
-proc text_btree_ref*(tree: PTextBTree){.cdecl, dynlib: lib, 
-                                        importc: "_gtk_text_btree_ref".}
-proc text_btree_unref*(tree: PTextBTree){.cdecl, dynlib: lib, 
+proc reference*(tree: PTextBTree){.cdecl, dynlib: lib, 
+                                   importc: "_gtk_text_btree_ref".}
+proc unref*(tree: PTextBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_unref".}
-proc text_btree_get_buffer*(tree: PTextBTree): PTextBuffer{.cdecl, dynlib: lib, 
+proc get_buffer*(tree: PTextBTree): PTextBuffer{.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_get_buffer".}
-proc text_btree_get_chars_changed_stamp*(tree: PTextBTree): guint{.cdecl, 
+proc get_chars_changed_stamp*(tree: PTextBTree): guint{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_chars_changed_stamp".}
-proc text_btree_get_segments_changed_stamp*(tree: PTextBTree): guint{.cdecl, 
+proc get_segments_changed_stamp*(tree: PTextBTree): guint{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_segments_changed_stamp".}
-proc text_btree_segments_changed*(tree: PTextBTree){.cdecl, dynlib: lib, 
+proc segments_changed*(tree: PTextBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_segments_changed".}
-proc text_btree_is_end*(tree: PTextBTree, line: PTextLine, 
+proc is_end*(tree: PTextBTree, line: PTextLine, 
                         seg: PTextLineSegment, byte_index: int32, 
                         char_offset: int32): gboolean{.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_is_end".}
-proc text_btree_delete*(start: PTextIter, theEnd: PTextIter){.cdecl, 
+proc btree_delete*(start: PTextIter, theEnd: PTextIter){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_delete".}
-proc text_btree_insert*(iter: PTextIter, text: cstring, len: gint){.cdecl, 
+proc btree_insert*(iter: PTextIter, text: cstring, len: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_insert".}
-proc text_btree_insert_pixbuf*(iter: PTextIter, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
+proc btree_insert_pixbuf*(iter: PTextIter, pixbuf: gdk2pixbuf.PPixbuf){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_insert_pixbuf".}
-proc text_btree_insert_child_anchor*(iter: PTextIter, anchor: PTextChildAnchor){.
+proc btree_insert_child_anchor*(iter: PTextIter, anchor: PTextChildAnchor){.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_insert_child_anchor".}
-proc text_btree_unregister_child_anchor*(anchor: PTextChildAnchor){.cdecl, 
+proc btree_unregister_child_anchor*(anchor: PTextChildAnchor){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_unregister_child_anchor".}
-proc text_btree_find_line_by_y*(tree: PTextBTree, view_id: gpointer, 
+proc find_line_by_y*(tree: PTextBTree, view_id: gpointer, 
                                 ypixel: gint, line_top_y: Pgint): PTextLine{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_find_line_by_y".}
-proc text_btree_find_line_top*(tree: PTextBTree, line: PTextLine, 
+proc find_line_top*(tree: PTextBTree, line: PTextLine, 
                                view_id: gpointer): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_find_line_top".}
-proc text_btree_add_view*(tree: PTextBTree, layout: PTextLayout){.cdecl, 
+proc add_view*(tree: PTextBTree, layout: PTextLayout){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_add_view".}
-proc text_btree_remove_view*(tree: PTextBTree, view_id: gpointer){.cdecl, 
+proc remove_view*(tree: PTextBTree, view_id: gpointer){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_remove_view".}
-proc text_btree_invalidate_region*(tree: PTextBTree, start: PTextIter, 
+proc invalidate_region*(tree: PTextBTree, start: PTextIter, 
                                    theEnd: PTextIter){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_invalidate_region".}
-proc text_btree_get_view_size*(tree: PTextBTree, view_id: gpointer, 
+proc get_view_size*(tree: PTextBTree, view_id: gpointer, 
                                width: Pgint, height: Pgint){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_get_view_size".}
-proc text_btree_is_valid*(tree: PTextBTree, view_id: gpointer): gboolean{.cdecl, 
+proc is_valid*(tree: PTextBTree, view_id: gpointer): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_is_valid".}
-proc text_btree_validate*(tree: PTextBTree, view_id: gpointer, max_pixels: gint, 
+proc validate*(tree: PTextBTree, view_id: gpointer, max_pixels: gint, 
                           y: Pgint, old_height: Pgint, new_height: Pgint): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_validate".}
-proc text_btree_validate_line*(tree: PTextBTree, line: PTextLine, 
+proc validate_line*(tree: PTextBTree, line: PTextLine, 
                                view_id: gpointer){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_validate_line".}
-proc text_btree_tag*(start: PTextIter, theEnd: PTextIter, tag: PTextTag, 
+proc btree_tag*(start: PTextIter, theEnd: PTextIter, tag: PTextTag, 
                      apply: gboolean){.cdecl, dynlib: lib, 
                                        importc: "_gtk_text_btree_tag".}
-proc text_btree_get_line*(tree: PTextBTree, line_number: gint, 
+proc get_line*(tree: PTextBTree, line_number: gint, 
                           real_line_number: Pgint): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_line".}
-proc text_btree_get_line_no_last*(tree: PTextBTree, line_number: gint, 
+proc get_line_no_last*(tree: PTextBTree, line_number: gint, 
                                   real_line_number: Pgint): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_line_no_last".}
-proc text_btree_get_end_iter_line*(tree: PTextBTree): PTextLine{.cdecl, 
+proc get_end_iter_line*(tree: PTextBTree): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_end_iter_line".}
-proc text_btree_get_line_at_char*(tree: PTextBTree, char_index: gint, 
+proc get_line_at_char*(tree: PTextBTree, char_index: gint, 
                                   line_start_index: Pgint, 
                                   real_char_index: Pgint): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_line_at_char".}
-proc text_btree_get_tags*(iter: PTextIter, num_tags: Pgint): PPGtkTextTag{.
+proc btree_get_tags*(iter: PTextIter, num_tags: Pgint): PPGtkTextTag{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_get_tags".}
-proc text_btree_get_text*(start: PTextIter, theEnd: PTextIter, 
+proc btree_get_text*(start: PTextIter, theEnd: PTextIter, 
                           include_hidden: gboolean, include_nonchars: gboolean): cstring{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_get_text".}
-proc text_btree_line_count*(tree: PTextBTree): gint{.cdecl, dynlib: lib, 
+proc line_count*(tree: PTextBTree): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_line_count".}
-proc text_btree_char_count*(tree: PTextBTree): gint{.cdecl, dynlib: lib, 
+proc char_count*(tree: PTextBTree): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_char_count".}
-proc text_btree_char_is_invisible*(iter: PTextIter): gboolean{.cdecl, 
+proc btree_char_is_invisible*(iter: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_char_is_invisible".}
-proc text_btree_get_iter_at_char*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_char*(tree: PTextBTree, iter: PTextIter, 
                                   char_index: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_get_iter_at_char".}
-proc text_btree_get_iter_at_line_char*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_line_char*(tree: PTextBTree, iter: PTextIter, 
                                        line_number: gint, char_index: gint){.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_get_iter_at_line_char".}
-proc text_btree_get_iter_at_line_byte*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_line_byte*(tree: PTextBTree, iter: PTextIter, 
                                        line_number: gint, byte_index: gint){.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_get_iter_at_line_byte".}
-proc text_btree_get_iter_from_string*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_from_string*(tree: PTextBTree, iter: PTextIter, 
                                       `string`: cstring): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_iter_from_string".}
-proc text_btree_get_iter_at_mark_name*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_mark_name*(tree: PTextBTree, iter: PTextIter, 
                                        mark_name: cstring): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_iter_at_mark_name".}
-proc text_btree_get_iter_at_mark*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_mark*(tree: PTextBTree, iter: PTextIter, 
                                   mark: PTextMark){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_get_iter_at_mark".}
-proc text_btree_get_end_iter*(tree: PTextBTree, iter: PTextIter){.cdecl, 
+proc get_end_iter*(tree: PTextBTree, iter: PTextIter){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_end_iter".}
-proc text_btree_get_iter_at_line*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_line*(tree: PTextBTree, iter: PTextIter, 
                                   line: PTextLine, byte_offset: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_iter_at_line".}
-proc text_btree_get_iter_at_first_toggle*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_first_toggle*(tree: PTextBTree, iter: PTextIter, 
     tag: PTextTag): gboolean{.cdecl, dynlib: lib, importc: "_gtk_text_btree_get_iter_at_first_toggle".}
-proc text_btree_get_iter_at_last_toggle*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_last_toggle*(tree: PTextBTree, iter: PTextIter, 
     tag: PTextTag): gboolean{.cdecl, dynlib: lib, importc: "_gtk_text_btree_get_iter_at_last_toggle".}
-proc text_btree_get_iter_at_child_anchor*(tree: PTextBTree, iter: PTextIter, 
+proc get_iter_at_child_anchor*(tree: PTextBTree, iter: PTextIter, 
     anchor: PTextChildAnchor){.cdecl, dynlib: lib, importc: "_gtk_text_btree_get_iter_at_child_anchor".}
-proc text_btree_set_mark*(tree: PTextBTree, existing_mark: PTextMark, 
+proc set_mark*(tree: PTextBTree, existing_mark: PTextMark, 
                           name: cstring, left_gravity: gboolean, 
                           index: PTextIter, should_exist: gboolean): PTextMark{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_set_mark".}
-proc text_btree_remove_mark_by_name*(tree: PTextBTree, name: cstring){.cdecl, 
+proc remove_mark_by_name*(tree: PTextBTree, name: cstring){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_remove_mark_by_name".}
-proc text_btree_remove_mark*(tree: PTextBTree, segment: PTextMark){.cdecl, 
+proc remove_mark*(tree: PTextBTree, segment: PTextMark){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_remove_mark".}
-proc text_btree_get_selection_bounds*(tree: PTextBTree, start: PTextIter, 
+proc get_selection_bounds*(tree: PTextBTree, start: PTextIter, 
                                       theEnd: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_get_selection_bounds".}
-proc text_btree_place_cursor*(tree: PTextBTree, `where`: PTextIter){.cdecl, 
+proc place_cursor*(tree: PTextBTree, `where`: PTextIter){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_place_cursor".}
-proc text_btree_mark_is_insert*(tree: PTextBTree, segment: PTextMark): gboolean{.
+proc mark_is_insert*(tree: PTextBTree, segment: PTextMark): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_mark_is_insert".}
-proc text_btree_mark_is_selection_bound*(tree: PTextBTree, segment: PTextMark): gboolean{.
+proc mark_is_selection_bound*(tree: PTextBTree, segment: PTextMark): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_mark_is_selection_bound".}
-proc text_btree_get_mark_by_name*(tree: PTextBTree, name: cstring): PTextMark{.
+proc get_mark_by_name*(tree: PTextBTree, name: cstring): PTextMark{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_get_mark_by_name".}
-proc text_btree_first_could_contain_tag*(tree: PTextBTree, tag: PTextTag): PTextLine{.
+proc first_could_contain_tag*(tree: PTextBTree, tag: PTextTag): PTextLine{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_first_could_contain_tag".}
-proc text_btree_last_could_contain_tag*(tree: PTextBTree, tag: PTextTag): PTextLine{.
+proc last_could_contain_tag*(tree: PTextBTree, tag: PTextTag): PTextLine{.
     cdecl, dynlib: lib, importc: "_gtk_text_btree_last_could_contain_tag".}
 const 
   bm_TGtkTextLineData_width* = 0x00FFFFFF'i32
@@ -9267,82 +9267,82 @@ proc width*(a: PTextLineData): gint
 proc set_width*(a: PTextLineData, NewWidth: gint)
 proc valid*(a: PTextLineData): gint
 proc set_valid*(a: PTextLineData, `valid`: gint)
-proc text_line_get_number*(line: PTextLine): gint{.cdecl, dynlib: lib, 
+proc get_number*(line: PTextLine): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_get_number".}
-proc text_line_char_has_tag*(line: PTextLine, tree: PTextBTree, 
+proc char_has_tag*(line: PTextLine, tree: PTextBTree, 
                              char_in_line: gint, tag: PTextTag): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_line_char_has_tag".}
-proc text_line_byte_has_tag*(line: PTextLine, tree: PTextBTree, 
+proc byte_has_tag*(line: PTextLine, tree: PTextBTree, 
                              byte_in_line: gint, tag: PTextTag): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_line_byte_has_tag".}
-proc text_line_is_last*(line: PTextLine, tree: PTextBTree): gboolean{.cdecl, 
+proc is_last*(line: PTextLine, tree: PTextBTree): gboolean{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_is_last".}
-proc text_line_contains_end_iter*(line: PTextLine, tree: PTextBTree): gboolean{.
+proc contains_end_iter*(line: PTextLine, tree: PTextBTree): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_text_line_contains_end_iter".}
-proc text_line_next*(line: PTextLine): PTextLine{.cdecl, dynlib: lib, 
+proc next*(line: PTextLine): PTextLine{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_next".}
-proc text_line_next_excluding_last*(line: PTextLine): PTextLine{.cdecl, 
+proc next_excluding_last*(line: PTextLine): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_next_excluding_last".}
-proc text_line_previous*(line: PTextLine): PTextLine{.cdecl, dynlib: lib, 
+proc previous*(line: PTextLine): PTextLine{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_previous".}
-proc text_line_add_data*(line: PTextLine, data: PTextLineData){.cdecl, 
+proc add_data*(line: PTextLine, data: PTextLineData){.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_add_data".}
-proc text_line_remove_data*(line: PTextLine, view_id: gpointer): gpointer{.
+proc remove_data*(line: PTextLine, view_id: gpointer): gpointer{.
     cdecl, dynlib: lib, importc: "_gtk_text_line_remove_data".}
-proc text_line_get_data*(line: PTextLine, view_id: gpointer): gpointer{.cdecl, 
+proc get_data*(line: PTextLine, view_id: gpointer): gpointer{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_get_data".}
-proc text_line_invalidate_wrap*(line: PTextLine, ld: PTextLineData){.cdecl, 
+proc invalidate_wrap*(line: PTextLine, ld: PTextLineData){.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_invalidate_wrap".}
-proc text_line_char_count*(line: PTextLine): gint{.cdecl, dynlib: lib, 
+proc char_count*(line: PTextLine): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_char_count".}
-proc text_line_byte_count*(line: PTextLine): gint{.cdecl, dynlib: lib, 
+proc byte_count*(line: PTextLine): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_byte_count".}
-proc text_line_char_index*(line: PTextLine): gint{.cdecl, dynlib: lib, 
+proc char_index*(line: PTextLine): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_text_line_char_index".}
-proc text_line_byte_to_segment*(line: PTextLine, byte_offset: gint, 
+proc byte_to_segment*(line: PTextLine, byte_offset: gint, 
                                 seg_offset: Pgint): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_byte_to_segment".}
-proc text_line_char_to_segment*(line: PTextLine, char_offset: gint, 
+proc char_to_segment*(line: PTextLine, char_offset: gint, 
                                 seg_offset: Pgint): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_char_to_segment".}
-proc text_line_byte_to_char_offsets*(line: PTextLine, byte_offset: gint, 
+proc byte_to_char_offsets*(line: PTextLine, byte_offset: gint, 
                                      line_char_offset: Pgint, 
                                      seg_char_offset: Pgint){.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_byte_to_char_offsets".}
-proc text_line_char_to_byte_offsets*(line: PTextLine, char_offset: gint, 
+proc char_to_byte_offsets*(line: PTextLine, char_offset: gint, 
                                      line_byte_offset: Pgint, 
                                      seg_byte_offset: Pgint){.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_char_to_byte_offsets".}
-proc text_line_byte_to_any_segment*(line: PTextLine, byte_offset: gint, 
+proc byte_to_any_segment*(line: PTextLine, byte_offset: gint, 
                                     seg_offset: Pgint): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_byte_to_any_segment".}
-proc text_line_char_to_any_segment*(line: PTextLine, char_offset: gint, 
+proc char_to_any_segment*(line: PTextLine, char_offset: gint, 
                                     seg_offset: Pgint): PTextLineSegment{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_char_to_any_segment".}
-proc text_line_byte_to_char*(line: PTextLine, byte_offset: gint): gint{.cdecl, 
+proc byte_to_char*(line: PTextLine, byte_offset: gint): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_byte_to_char".}
-proc text_line_char_to_byte*(line: PTextLine, char_offset: gint): gint{.cdecl, 
+proc char_to_byte*(line: PTextLine, char_offset: gint): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_char_to_byte".}
-proc text_line_next_could_contain_tag*(line: PTextLine, tree: PTextBTree, 
+proc next_could_contain_tag*(line: PTextLine, tree: PTextBTree, 
                                        tag: PTextTag): PTextLine{.cdecl, 
     dynlib: lib, importc: "_gtk_text_line_next_could_contain_tag".}
-proc text_line_previous_could_contain_tag*(line: PTextLine, tree: PTextBTree, 
+proc previous_could_contain_tag*(line: PTextLine, tree: PTextBTree, 
     tag: PTextTag): PTextLine{.cdecl, dynlib: lib, importc: "_gtk_text_line_previous_could_contain_tag".}
-proc text_line_data_new*(layout: PTextLayout, line: PTextLine): PTextLineData{.
+proc line_data_new*(layout: PTextLayout, line: PTextLine): PTextLineData{.
     cdecl, dynlib: lib, importc: "_gtk_text_line_data_new".}
-proc text_btree_check*(tree: PTextBTree){.cdecl, dynlib: lib, 
+proc check*(tree: PTextBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_check".}
-proc text_btree_spew*(tree: PTextBTree){.cdecl, dynlib: lib, 
+proc spew*(tree: PTextBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_text_btree_spew".}
 proc toggle_segment_check_func*(segPtr: PTextLineSegment, line: PTextLine){.
     cdecl, dynlib: lib, importc: "_gtk_toggle_segment_check_func".}
 proc change_node_toggle_count*(node: PTextBTreeNode, info: PTextTagInfo, 
                                delta: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_change_node_toggle_count".}
-proc text_btree_release_mark_segment*(tree: PTextBTree, 
+proc release_mark_segment*(tree: PTextBTree, 
                                       segment: PTextLineSegment){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_release_mark_segment".}
-proc text_btree_notify_will_remove_tag*(tree: PTextBTree, tag: PTextTag){.cdecl, 
+proc notify_will_remove_tag*(tree: PTextBTree, tag: PTextTag){.cdecl, 
     dynlib: lib, importc: "_gtk_text_btree_notify_will_remove_tag".}
 const 
   bm_TGtkTextBuffer_modified* = 0x0001'i16
@@ -9358,152 +9358,152 @@ proc modified*(a: var TTextBuffer): guint
 proc set_modified*(a: var TTextBuffer, `modified`: guint)
 proc text_buffer_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_text_buffer_get_type".}
-proc text_buffer_new*(table: PTextTagTable): PTextBuffer{.cdecl, dynlib: lib, 
+proc buffer_new*(table: PTextTagTable): PTextBuffer{.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_new".}
-proc text_buffer_get_line_count*(buffer: PTextBuffer): gint{.cdecl, dynlib: lib, 
+proc get_line_count*(buffer: PTextBuffer): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_line_count".}
-proc text_buffer_get_char_count*(buffer: PTextBuffer): gint{.cdecl, dynlib: lib, 
+proc get_char_count*(buffer: PTextBuffer): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_char_count".}
-proc text_buffer_get_tag_table*(buffer: PTextBuffer): PTextTagTable{.cdecl, 
+proc get_tag_table*(buffer: PTextBuffer): PTextTagTable{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_tag_table".}
-proc text_buffer_set_text*(buffer: PTextBuffer, text: cstring, len: gint){.
+proc set_text*(buffer: PTextBuffer, text: cstring, len: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_set_text".}
-proc text_buffer_insert*(buffer: PTextBuffer, iter: PTextIter, text: cstring, 
+proc insert*(buffer: PTextBuffer, iter: PTextIter, text: cstring, 
                          len: gint){.cdecl, dynlib: lib, 
                                      importc: "gtk_text_buffer_insert".}
-proc text_buffer_insert_at_cursor*(buffer: PTextBuffer, text: cstring, len: gint){.
+proc insert_at_cursor*(buffer: PTextBuffer, text: cstring, len: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_insert_at_cursor".}
-proc text_buffer_insert_interactive*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_interactive*(buffer: PTextBuffer, iter: PTextIter, 
                                      text: cstring, len: gint, 
                                      default_editable: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_insert_interactive".}
-proc text_buffer_insert_interactive_at_cursor*(buffer: PTextBuffer, 
+proc insert_interactive_at_cursor*(buffer: PTextBuffer, 
     text: cstring, len: gint, default_editable: gboolean): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_insert_interactive_at_cursor".}
-proc text_buffer_insert_range*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_range*(buffer: PTextBuffer, iter: PTextIter, 
                                start: PTextIter, theEnd: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_insert_range".}
-proc text_buffer_insert_range_interactive*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_range_interactive*(buffer: PTextBuffer, iter: PTextIter, 
     start: PTextIter, theEnd: PTextIter, default_editable: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_insert_range_interactive".}
-proc text_buffer_delete*(buffer: PTextBuffer, start: PTextIter, 
+proc delete*(buffer: PTextBuffer, start: PTextIter, 
                          theEnd: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_delete".}
-proc text_buffer_delete_interactive*(buffer: PTextBuffer, start_iter: PTextIter, 
+proc delete_interactive*(buffer: PTextBuffer, start_iter: PTextIter, 
                                      end_iter: PTextIter, 
                                      default_editable: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_delete_interactive".}
-proc text_buffer_get_text*(buffer: PTextBuffer, start: PTextIter, 
+proc get_text*(buffer: PTextBuffer, start: PTextIter, 
                            theEnd: PTextIter, include_hidden_chars: gboolean): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_get_text".}
-proc text_buffer_get_slice*(buffer: PTextBuffer, start: PTextIter, 
+proc get_slice*(buffer: PTextBuffer, start: PTextIter, 
                             theEnd: PTextIter, include_hidden_chars: gboolean): cstring{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_get_slice".}
-proc text_buffer_insert_pixbuf*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_pixbuf*(buffer: PTextBuffer, iter: PTextIter, 
                                 pixbuf: gdk2pixbuf.PPixbuf){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_insert_pixbuf".}
-proc text_buffer_insert_child_anchor*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_child_anchor*(buffer: PTextBuffer, iter: PTextIter, 
                                       anchor: PTextChildAnchor){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_insert_child_anchor".}
-proc text_buffer_create_child_anchor*(buffer: PTextBuffer, iter: PTextIter): PTextChildAnchor{.
+proc create_child_anchor*(buffer: PTextBuffer, iter: PTextIter): PTextChildAnchor{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_create_child_anchor".}
-proc text_buffer_create_mark*(buffer: PTextBuffer, mark_name: cstring, 
+proc create_mark*(buffer: PTextBuffer, mark_name: cstring, 
                               `where`: PTextIter, left_gravity: gboolean): PTextMark{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_create_mark".}
-proc text_buffer_move_mark*(buffer: PTextBuffer, mark: PTextMark, 
+proc move_mark*(buffer: PTextBuffer, mark: PTextMark, 
                             `where`: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_move_mark".}
-proc text_buffer_delete_mark*(buffer: PTextBuffer, mark: PTextMark){.cdecl, 
+proc delete_mark*(buffer: PTextBuffer, mark: PTextMark){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_delete_mark".}
-proc text_buffer_get_mark*(buffer: PTextBuffer, name: cstring): PTextMark{.
+proc get_mark*(buffer: PTextBuffer, name: cstring): PTextMark{.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_get_mark".}
-proc text_buffer_move_mark_by_name*(buffer: PTextBuffer, name: cstring, 
+proc move_mark_by_name*(buffer: PTextBuffer, name: cstring, 
                                     `where`: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_move_mark_by_name".}
-proc text_buffer_delete_mark_by_name*(buffer: PTextBuffer, name: cstring){.
+proc delete_mark_by_name*(buffer: PTextBuffer, name: cstring){.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_delete_mark_by_name".}
-proc text_buffer_get_insert*(buffer: PTextBuffer): PTextMark{.cdecl, 
+proc get_insert*(buffer: PTextBuffer): PTextMark{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_insert".}
-proc text_buffer_get_selection_bound*(buffer: PTextBuffer): PTextMark{.cdecl, 
+proc get_selection_bound*(buffer: PTextBuffer): PTextMark{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_selection_bound".}
-proc text_buffer_place_cursor*(buffer: PTextBuffer, `where`: PTextIter){.cdecl, 
+proc place_cursor*(buffer: PTextBuffer, `where`: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_place_cursor".}
-proc text_buffer_apply_tag*(buffer: PTextBuffer, tag: PTextTag, 
+proc apply_tag*(buffer: PTextBuffer, tag: PTextTag, 
                             start: PTextIter, theEnd: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_apply_tag".}
-proc text_buffer_remove_tag*(buffer: PTextBuffer, tag: PTextTag, 
+proc remove_tag*(buffer: PTextBuffer, tag: PTextTag, 
                              start: PTextIter, theEnd: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_remove_tag".}
-proc text_buffer_apply_tag_by_name*(buffer: PTextBuffer, name: cstring, 
+proc apply_tag_by_name*(buffer: PTextBuffer, name: cstring, 
                                     start: PTextIter, theEnd: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_apply_tag_by_name".}
-proc text_buffer_remove_tag_by_name*(buffer: PTextBuffer, name: cstring, 
+proc remove_tag_by_name*(buffer: PTextBuffer, name: cstring, 
                                      start: PTextIter, theEnd: PTextIter){.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_remove_tag_by_name".}
-proc text_buffer_remove_all_tags*(buffer: PTextBuffer, start: PTextIter, 
+proc remove_all_tags*(buffer: PTextBuffer, start: PTextIter, 
                                   theEnd: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_remove_all_tags".}
-proc text_buffer_get_iter_at_line_offset*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_line_offset*(buffer: PTextBuffer, iter: PTextIter, 
     line_number: gint, char_offset: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_iter_at_line_offset".}
-proc text_buffer_get_iter_at_line_index*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_line_index*(buffer: PTextBuffer, iter: PTextIter, 
     line_number: gint, byte_index: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_iter_at_line_index".}
-proc text_buffer_get_iter_at_offset*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_offset*(buffer: PTextBuffer, iter: PTextIter, 
                                      char_offset: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_iter_at_offset".}
-proc text_buffer_get_iter_at_line*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_line*(buffer: PTextBuffer, iter: PTextIter, 
                                    line_number: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_iter_at_line".}
-proc text_buffer_get_start_iter*(buffer: PTextBuffer, iter: PTextIter){.cdecl, 
+proc get_start_iter*(buffer: PTextBuffer, iter: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_start_iter".}
-proc text_buffer_get_end_iter*(buffer: PTextBuffer, iter: PTextIter){.cdecl, 
+proc get_end_iter*(buffer: PTextBuffer, iter: PTextIter){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_end_iter".}
-proc text_buffer_get_bounds*(buffer: PTextBuffer, start: PTextIter, 
+proc get_bounds*(buffer: PTextBuffer, start: PTextIter, 
                              theEnd: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_bounds".}
-proc text_buffer_get_iter_at_mark*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_mark*(buffer: PTextBuffer, iter: PTextIter, 
                                    mark: PTextMark){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_iter_at_mark".}
-proc text_buffer_get_iter_at_child_anchor*(buffer: PTextBuffer, iter: PTextIter, 
+proc get_iter_at_child_anchor*(buffer: PTextBuffer, iter: PTextIter, 
     anchor: PTextChildAnchor){.cdecl, dynlib: lib, importc: "gtk_text_buffer_get_iter_at_child_anchor".}
-proc text_buffer_get_modified*(buffer: PTextBuffer): gboolean{.cdecl, 
+proc get_modified*(buffer: PTextBuffer): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_modified".}
-proc text_buffer_set_modified*(buffer: PTextBuffer, setting: gboolean){.cdecl, 
+proc set_modified*(buffer: PTextBuffer, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_set_modified".}
-proc text_buffer_add_selection_clipboard*(buffer: PTextBuffer, 
+proc add_selection_clipboard*(buffer: PTextBuffer, 
     clipboard: PClipboard){.cdecl, dynlib: lib, 
                             importc: "gtk_text_buffer_add_selection_clipboard".}
-proc text_buffer_remove_selection_clipboard*(buffer: PTextBuffer, 
+proc remove_selection_clipboard*(buffer: PTextBuffer, 
     clipboard: PClipboard){.cdecl, dynlib: lib, importc: "gtk_text_buffer_remove_selection_clipboard".}
-proc text_buffer_cut_clipboard*(buffer: PTextBuffer, clipboard: PClipboard, 
+proc cut_clipboard*(buffer: PTextBuffer, clipboard: PClipboard, 
                                 default_editable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_cut_clipboard".}
-proc text_buffer_copy_clipboard*(buffer: PTextBuffer, clipboard: PClipboard){.
+proc copy_clipboard*(buffer: PTextBuffer, clipboard: PClipboard){.
     cdecl, dynlib: lib, importc: "gtk_text_buffer_copy_clipboard".}
-proc text_buffer_paste_clipboard*(buffer: PTextBuffer, clipboard: PClipboard, 
+proc paste_clipboard*(buffer: PTextBuffer, clipboard: PClipboard, 
                                   override_location: PTextIter, 
                                   default_editable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_paste_clipboard".}
-proc text_buffer_get_selection_bounds*(buffer: PTextBuffer, start: PTextIter, 
+proc get_selection_bounds*(buffer: PTextBuffer, start: PTextIter, 
                                        theEnd: PTextIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_get_selection_bounds".}
-proc text_buffer_delete_selection*(buffer: PTextBuffer, interactive: gboolean, 
+proc delete_selection*(buffer: PTextBuffer, interactive: gboolean, 
                                    default_editable: gboolean): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_buffer_delete_selection".}
-proc text_buffer_begin_user_action*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
+proc begin_user_action*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_begin_user_action".}
-proc text_buffer_end_user_action*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
+proc end_user_action*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_end_user_action".}
-proc text_buffer_spew*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
+proc spew*(buffer: PTextBuffer){.cdecl, dynlib: lib, 
     importc: "_gtk_text_buffer_spew".}
-proc text_buffer_get_btree*(buffer: PTextBuffer): PTextBTree{.cdecl, 
+proc get_btree*(buffer: PTextBuffer): PTextBTree{.cdecl, 
     dynlib: lib, importc: "_gtk_text_buffer_get_btree".}
-proc text_buffer_get_line_log_attrs*(buffer: PTextBuffer, 
+proc get_line_log_attrs*(buffer: PTextBuffer, 
                                      anywhere_in_line: PTextIter, 
                                      char_len: Pgint): pango.PLogAttr{.cdecl, 
     dynlib: lib, importc: "_gtk_text_buffer_get_line_log_attrs".}
-proc text_buffer_notify_will_remove_tag*(buffer: PTextBuffer, tag: PTextTag){.
+proc notify_will_remove_tag*(buffer: PTextBuffer, tag: PTextTag){.
     cdecl, dynlib: lib, importc: "_gtk_text_buffer_notify_will_remove_tag".}
 proc TYPE_TEXT_LAYOUT*(): GType
 proc TEXT_LAYOUT*(obj: pointer): PTextLayout
@@ -9535,117 +9535,117 @@ proc text_layout_get_type*(): GType{.cdecl, dynlib: lib,
                                      importc: "gtk_text_layout_get_type".}
 proc text_layout_new*(): PTextLayout{.cdecl, dynlib: lib, 
                                       importc: "gtk_text_layout_new".}
-proc text_layout_set_buffer*(layout: PTextLayout, buffer: PTextBuffer){.cdecl, 
+proc set_buffer*(layout: PTextLayout, buffer: PTextBuffer){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_set_buffer".}
-proc text_layout_get_buffer*(layout: PTextLayout): PTextBuffer{.cdecl, 
+proc get_buffer*(layout: PTextLayout): PTextBuffer{.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_get_buffer".}
-proc text_layout_set_default_style*(layout: PTextLayout, values: PTextAttributes){.
+proc set_default_style*(layout: PTextLayout, values: PTextAttributes){.
     cdecl, dynlib: lib, importc: "gtk_text_layout_set_default_style".}
-proc text_layout_set_contexts*(layout: PTextLayout, ltr_context: pango.PContext, 
+proc set_contexts*(layout: PTextLayout, ltr_context: pango.PContext, 
                                rtl_context: pango.PContext){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_set_contexts".}
-proc text_layout_set_cursor_direction*(layout: PTextLayout, 
+proc set_cursor_direction*(layout: PTextLayout, 
                                        direction: TTextDirection){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_set_cursor_direction".}
-proc text_layout_default_style_changed*(layout: PTextLayout){.cdecl, 
+proc default_style_changed*(layout: PTextLayout){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_default_style_changed".}
-proc text_layout_set_screen_width*(layout: PTextLayout, width: gint){.cdecl, 
+proc set_screen_width*(layout: PTextLayout, width: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_set_screen_width".}
-proc text_layout_set_preedit_string*(layout: PTextLayout, 
+proc set_preedit_string*(layout: PTextLayout, 
                                      preedit_string: cstring, 
                                      preedit_attrs: pango.PAttrList, 
                                      cursor_pos: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_set_preedit_string".}
-proc text_layout_set_cursor_visible*(layout: PTextLayout, 
+proc set_cursor_visible*(layout: PTextLayout, 
                                      cursor_visible: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_set_cursor_visible".}
-proc text_layout_get_cursor_visible*(layout: PTextLayout): gboolean{.cdecl, 
+proc get_cursor_visible*(layout: PTextLayout): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_get_cursor_visible".}
-proc text_layout_get_size*(layout: PTextLayout, width: Pgint, height: Pgint){.
+proc get_size*(layout: PTextLayout, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "gtk_text_layout_get_size".}
-proc text_layout_get_lines*(layout: PTextLayout, top_y: gint, bottom_y: gint, 
+proc get_lines*(layout: PTextLayout, top_y: gint, bottom_y: gint, 
                             first_line_y: Pgint): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_lines".}
-proc text_layout_wrap_loop_start*(layout: PTextLayout){.cdecl, dynlib: lib, 
+proc wrap_loop_start*(layout: PTextLayout){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_wrap_loop_start".}
-proc text_layout_wrap_loop_end*(layout: PTextLayout){.cdecl, dynlib: lib, 
+proc wrap_loop_end*(layout: PTextLayout){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_wrap_loop_end".}
-proc text_layout_get_line_display*(layout: PTextLayout, line: PTextLine, 
+proc get_line_display*(layout: PTextLayout, line: PTextLine, 
                                    size_only: gboolean): PTextLineDisplay{.
     cdecl, dynlib: lib, importc: "gtk_text_layout_get_line_display".}
-proc text_layout_free_line_display*(layout: PTextLayout, 
+proc free_line_display*(layout: PTextLayout, 
                                     display: PTextLineDisplay){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_free_line_display".}
-proc text_layout_get_line_at_y*(layout: PTextLayout, target_iter: PTextIter, 
+proc get_line_at_y*(layout: PTextLayout, target_iter: PTextIter, 
                                 y: gint, line_top: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_line_at_y".}
-proc text_layout_get_iter_at_pixel*(layout: PTextLayout, iter: PTextIter, 
+proc get_iter_at_pixel*(layout: PTextLayout, iter: PTextIter, 
                                     x: gint, y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_iter_at_pixel".}
-proc text_layout_invalidate*(layout: PTextLayout, start: PTextIter, 
+proc invalidate*(layout: PTextLayout, start: PTextIter, 
                              theEnd: PTextIter){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_invalidate".}
-proc text_layout_free_line_data*(layout: PTextLayout, line: PTextLine, 
+proc free_line_data*(layout: PTextLayout, line: PTextLine, 
                                  line_data: PTextLineData){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_free_line_data".}
-proc text_layout_is_valid*(layout: PTextLayout): gboolean{.cdecl, dynlib: lib, 
+proc is_valid*(layout: PTextLayout): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_is_valid".}
-proc text_layout_validate_yrange*(layout: PTextLayout, anchor_line: PTextIter, 
+proc validate_yrange*(layout: PTextLayout, anchor_line: PTextIter, 
                                   y0: gint, y1: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_validate_yrange".}
-proc text_layout_validate*(layout: PTextLayout, max_pixels: gint){.cdecl, 
+proc validate*(layout: PTextLayout, max_pixels: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_validate".}
-proc text_layout_wrap*(layout: PTextLayout, line: PTextLine, 
+proc wrap*(layout: PTextLayout, line: PTextLine, 
                        line_data: PTextLineData): PTextLineData{.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_wrap".}
-proc text_layout_changed*(layout: PTextLayout, y: gint, old_height: gint, 
+proc changed*(layout: PTextLayout, y: gint, old_height: gint, 
                           new_height: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_changed".}
-proc text_layout_get_iter_location*(layout: PTextLayout, iter: PTextIter, 
+proc get_iter_location*(layout: PTextLayout, iter: PTextIter, 
                                     rect: gdk2.PRectangle){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_iter_location".}
-proc text_layout_get_line_yrange*(layout: PTextLayout, iter: PTextIter, 
+proc get_line_yrange*(layout: PTextLayout, iter: PTextIter, 
                                   y: Pgint, height: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_get_line_yrange".}
-proc text_layout_get_line_xrange*(layout: PTextLayout, iter: PTextIter, 
+proc get_line_xrange*(layout: PTextLayout, iter: PTextIter, 
                                   x: Pgint, width: Pgint){.cdecl, dynlib: lib, 
     importc: "_gtk_text_layout_get_line_xrange".}
-proc text_layout_get_cursor_locations*(layout: PTextLayout, iter: PTextIter, 
+proc get_cursor_locations*(layout: PTextLayout, iter: PTextIter, 
                                        strong_pos: gdk2.PRectangle, 
                                        weak_pos: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_get_cursor_locations".}
-proc text_layout_clamp_iter_to_vrange*(layout: PTextLayout, iter: PTextIter, 
+proc clamp_iter_to_vrange*(layout: PTextLayout, iter: PTextIter, 
                                        top: gint, bottom: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_layout_clamp_iter_to_vrange".}
-proc text_layout_move_iter_to_line_end*(layout: PTextLayout, iter: PTextIter, 
+proc move_iter_to_line_end*(layout: PTextLayout, iter: PTextIter, 
                                         direction: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_move_iter_to_line_end".}
-proc text_layout_move_iter_to_previous_line*(layout: PTextLayout, 
+proc move_iter_to_previous_line*(layout: PTextLayout, 
     iter: PTextIter): gboolean{.cdecl, dynlib: lib, importc: "gtk_text_layout_move_iter_to_previous_line".}
-proc text_layout_move_iter_to_next_line*(layout: PTextLayout, iter: PTextIter): gboolean{.
+proc move_iter_to_next_line*(layout: PTextLayout, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_layout_move_iter_to_next_line".}
-proc text_layout_move_iter_to_x*(layout: PTextLayout, iter: PTextIter, x: gint){.
+proc move_iter_to_x*(layout: PTextLayout, iter: PTextIter, x: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_layout_move_iter_to_x".}
-proc text_layout_move_iter_visually*(layout: PTextLayout, iter: PTextIter, 
+proc move_iter_visually*(layout: PTextLayout, iter: PTextIter, 
                                      count: gint): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_move_iter_visually".}
-proc text_layout_iter_starts_line*(layout: PTextLayout, iter: PTextIter): gboolean{.
+proc iter_starts_line*(layout: PTextLayout, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_layout_iter_starts_line".}
-proc text_layout_get_iter_at_line*(layout: PTextLayout, iter: PTextIter, 
+proc get_iter_at_line*(layout: PTextLayout, iter: PTextIter, 
                                    line: PTextLine, byte_offset: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_layout_get_iter_at_line".}
-proc text_child_anchor_register_child*(anchor: PTextChildAnchor, child: PWidget, 
+proc anchor_register_child*(anchor: PTextChildAnchor, child: PWidget, 
                                        layout: PTextLayout){.cdecl, dynlib: lib, 
     importc: "gtk_text_child_anchor_register_child".}
-proc text_child_anchor_unregister_child*(anchor: PTextChildAnchor, 
+proc anchor_unregister_child*(anchor: PTextChildAnchor, 
     child: PWidget){.cdecl, dynlib: lib, 
                      importc: "gtk_text_child_anchor_unregister_child".}
-proc text_child_anchor_queue_resize*(anchor: PTextChildAnchor, 
+proc anchor_queue_resize*(anchor: PTextChildAnchor, 
                                      layout: PTextLayout){.cdecl, dynlib: lib, 
     importc: "gtk_text_child_anchor_queue_resize".}
 proc text_anchored_child_set_layout*(child: PWidget, layout: PTextLayout){.
     cdecl, dynlib: lib, importc: "gtk_text_anchored_child_set_layout".}
-proc text_layout_spew*(layout: PTextLayout){.cdecl, dynlib: lib, 
+proc spew*(layout: PTextLayout){.cdecl, dynlib: lib, 
     importc: "gtk_text_layout_spew".}
 const                         # GTK_TEXT_VIEW_PRIORITY_VALIDATE* = GDK_PRIORITY_REDRAW + 5
   bm_TGtkTextView_editable* = 0x0001'i16
@@ -9692,132 +9692,132 @@ proc text_view_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_text_view_get_type".}
 proc text_view_new*(): PTextView{.cdecl, dynlib: lib, 
                                   importc: "gtk_text_view_new".}
-proc text_view_new_with_buffer*(buffer: PTextBuffer): PTextView{.cdecl, 
+proc view_new_with_buffer*(buffer: PTextBuffer): PTextView{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_new_with_buffer".}
-proc text_view_set_buffer*(text_view: PTextView, buffer: PTextBuffer){.cdecl, 
+proc set_buffer*(text_view: PTextView, buffer: PTextBuffer){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_buffer".}
-proc text_view_get_buffer*(text_view: PTextView): PTextBuffer{.cdecl, 
+proc get_buffer*(text_view: PTextView): PTextBuffer{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_buffer".}
-proc text_view_scroll_to_iter*(text_view: PTextView, iter: PTextIter, 
+proc scroll_to_iter*(text_view: PTextView, iter: PTextIter, 
                                within_margin: gdouble, use_align: gboolean, 
                                xalign: gdouble, yalign: gdouble): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_scroll_to_iter".}
-proc text_view_scroll_to_mark*(text_view: PTextView, mark: PTextMark, 
+proc scroll_to_mark*(text_view: PTextView, mark: PTextMark, 
                                within_margin: gdouble, use_align: gboolean, 
                                xalign: gdouble, yalign: gdouble){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_scroll_to_mark".}
-proc text_view_scroll_mark_onscreen*(text_view: PTextView, mark: PTextMark){.
+proc scroll_mark_onscreen*(text_view: PTextView, mark: PTextMark){.
     cdecl, dynlib: lib, importc: "gtk_text_view_scroll_mark_onscreen".}
-proc text_view_move_mark_onscreen*(text_view: PTextView, mark: PTextMark): gboolean{.
+proc move_mark_onscreen*(text_view: PTextView, mark: PTextMark): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_move_mark_onscreen".}
-proc text_view_place_cursor_onscreen*(text_view: PTextView): gboolean{.cdecl, 
+proc place_cursor_onscreen*(text_view: PTextView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_place_cursor_onscreen".}
-proc text_view_get_visible_rect*(text_view: PTextView, 
+proc get_visible_rect*(text_view: PTextView, 
                                  visible_rect: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_visible_rect".}
-proc text_view_set_cursor_visible*(text_view: PTextView, setting: gboolean){.
+proc set_cursor_visible*(text_view: PTextView, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_text_view_set_cursor_visible".}
-proc text_view_get_cursor_visible*(text_view: PTextView): gboolean{.cdecl, 
+proc get_cursor_visible*(text_view: PTextView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_cursor_visible".}
-proc text_view_get_iter_location*(text_view: PTextView, iter: PTextIter, 
+proc get_iter_location*(text_view: PTextView, iter: PTextIter, 
                                   location: gdk2.PRectangle){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_iter_location".}
-proc text_view_get_iter_at_location*(text_view: PTextView, iter: PTextIter, 
+proc get_iter_at_location*(text_view: PTextView, iter: PTextIter, 
                                      x: gint, y: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_iter_at_location".}
-proc text_view_get_line_yrange*(text_view: PTextView, iter: PTextIter, y: Pgint, 
+proc get_line_yrange*(text_view: PTextView, iter: PTextIter, y: Pgint, 
                                 height: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_line_yrange".}
-proc text_view_get_line_at_y*(text_view: PTextView, target_iter: PTextIter, 
+proc get_line_at_y*(text_view: PTextView, target_iter: PTextIter, 
                               y: gint, line_top: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_line_at_y".}
-proc text_view_buffer_to_window_coords*(text_view: PTextView, 
+proc buffer_to_window_coords*(text_view: PTextView, 
                                         win: TTextWindowType, buffer_x: gint, 
                                         buffer_y: gint, window_x: Pgint, 
                                         window_y: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_buffer_to_window_coords".}
-proc text_view_window_to_buffer_coords*(text_view: PTextView, 
+proc window_to_buffer_coords*(text_view: PTextView, 
                                         win: TTextWindowType, window_x: gint, 
                                         window_y: gint, buffer_x: Pgint, 
                                         buffer_y: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_window_to_buffer_coords".}
-proc text_view_get_window*(text_view: PTextView, win: TTextWindowType): gdk2.PWindow{.
+proc get_window*(text_view: PTextView, win: TTextWindowType): gdk2.PWindow{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_window".}
-proc text_view_get_window_type*(text_view: PTextView, window: gdk2.PWindow): TTextWindowType{.
+proc get_window_type*(text_view: PTextView, window: gdk2.PWindow): TTextWindowType{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_window_type".}
-proc text_view_set_border_window_size*(text_view: PTextView, 
+proc set_border_window_size*(text_view: PTextView, 
                                        thetype: TTextWindowType, size: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_view_set_border_window_size".}
-proc text_view_get_border_window_size*(text_view: PTextView, 
+proc get_border_window_size*(text_view: PTextView, 
                                        thetype: TTextWindowType): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_border_window_size".}
-proc text_view_forward_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
+proc forward_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_forward_display_line".}
-proc text_view_backward_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
+proc backward_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_backward_display_line".}
-proc text_view_forward_display_line_end*(text_view: PTextView, iter: PTextIter): gboolean{.
+proc forward_display_line_end*(text_view: PTextView, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_forward_display_line_end".}
-proc text_view_backward_display_line_start*(text_view: PTextView, 
+proc backward_display_line_start*(text_view: PTextView, 
     iter: PTextIter): gboolean{.cdecl, dynlib: lib, importc: "gtk_text_view_backward_display_line_start".}
-proc text_view_starts_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
+proc starts_display_line*(text_view: PTextView, iter: PTextIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_starts_display_line".}
-proc text_view_move_visually*(text_view: PTextView, iter: PTextIter, count: gint): gboolean{.
+proc move_visually*(text_view: PTextView, iter: PTextIter, count: gint): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_text_view_move_visually".}
-proc text_view_add_child_at_anchor*(text_view: PTextView, child: PWidget, 
+proc add_child_at_anchor*(text_view: PTextView, child: PWidget, 
                                     anchor: PTextChildAnchor){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_add_child_at_anchor".}
-proc text_view_add_child_in_window*(text_view: PTextView, child: PWidget, 
+proc add_child_in_window*(text_view: PTextView, child: PWidget, 
                                     which_window: TTextWindowType, xpos: gint, 
                                     ypos: gint){.cdecl, dynlib: lib, 
     importc: "gtk_text_view_add_child_in_window".}
-proc text_view_move_child*(text_view: PTextView, child: PWidget, xpos: gint, 
+proc move_child*(text_view: PTextView, child: PWidget, xpos: gint, 
                            ypos: gint){.cdecl, dynlib: lib, 
                                         importc: "gtk_text_view_move_child".}
-proc text_view_set_wrap_mode*(text_view: PTextView, wrap_mode: TWrapMode){.
+proc set_wrap_mode*(text_view: PTextView, wrap_mode: TWrapMode){.
     cdecl, dynlib: lib, importc: "gtk_text_view_set_wrap_mode".}
-proc text_view_get_wrap_mode*(text_view: PTextView): TWrapMode{.cdecl, 
+proc get_wrap_mode*(text_view: PTextView): TWrapMode{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_wrap_mode".}
-proc text_view_set_editable*(text_view: PTextView, setting: gboolean){.cdecl, 
+proc set_editable*(text_view: PTextView, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_editable".}
-proc text_view_get_editable*(text_view: PTextView): gboolean{.cdecl, 
+proc get_editable*(text_view: PTextView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_editable".}
-proc text_view_set_pixels_above_lines*(text_view: PTextView, 
+proc set_pixels_above_lines*(text_view: PTextView, 
                                        pixels_above_lines: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_pixels_above_lines".}
-proc text_view_get_pixels_above_lines*(text_view: PTextView): gint{.cdecl, 
+proc get_pixels_above_lines*(text_view: PTextView): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_pixels_above_lines".}
-proc text_view_set_pixels_below_lines*(text_view: PTextView, 
+proc set_pixels_below_lines*(text_view: PTextView, 
                                        pixels_below_lines: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_pixels_below_lines".}
-proc text_view_get_pixels_below_lines*(text_view: PTextView): gint{.cdecl, 
+proc get_pixels_below_lines*(text_view: PTextView): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_pixels_below_lines".}
-proc text_view_set_pixels_inside_wrap*(text_view: PTextView, 
+proc set_pixels_inside_wrap*(text_view: PTextView, 
                                        pixels_inside_wrap: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_pixels_inside_wrap".}
-proc text_view_get_pixels_inside_wrap*(text_view: PTextView): gint{.cdecl, 
+proc get_pixels_inside_wrap*(text_view: PTextView): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_pixels_inside_wrap".}
-proc text_view_set_justification*(text_view: PTextView, 
+proc set_justification*(text_view: PTextView, 
                                   justification: TJustification){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_justification".}
-proc text_view_get_justification*(text_view: PTextView): TJustification{.cdecl, 
+proc get_justification*(text_view: PTextView): TJustification{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_justification".}
-proc text_view_set_left_margin*(text_view: PTextView, left_margin: gint){.cdecl, 
+proc set_left_margin*(text_view: PTextView, left_margin: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_left_margin".}
-proc text_view_get_left_margin*(text_view: PTextView): gint{.cdecl, dynlib: lib, 
+proc get_left_margin*(text_view: PTextView): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_left_margin".}
-proc text_view_set_right_margin*(text_view: PTextView, right_margin: gint){.
+proc set_right_margin*(text_view: PTextView, right_margin: gint){.
     cdecl, dynlib: lib, importc: "gtk_text_view_set_right_margin".}
-proc text_view_get_right_margin*(text_view: PTextView): gint{.cdecl, 
+proc get_right_margin*(text_view: PTextView): gint{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_right_margin".}
-proc text_view_set_indent*(text_view: PTextView, indent: gint){.cdecl, 
+proc set_indent*(text_view: PTextView, indent: gint){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_indent".}
-proc text_view_get_indent*(text_view: PTextView): gint{.cdecl, dynlib: lib, 
+proc get_indent*(text_view: PTextView): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_view_get_indent".}
-proc text_view_set_tabs*(text_view: PTextView, tabs: pango.PTabArray){.cdecl, 
+proc set_tabs*(text_view: PTextView, tabs: pango.PTabArray){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_tabs".}
-proc text_view_get_tabs*(text_view: PTextView): pango.PTabArray{.cdecl, 
+proc get_tabs*(text_view: PTextView): pango.PTabArray{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_get_tabs".}
-proc text_view_get_default_attributes*(text_view: PTextView): PTextAttributes{.
+proc get_default_attributes*(text_view: PTextView): PTextAttributes{.
     cdecl, dynlib: lib, importc: "gtk_text_view_get_default_attributes".}
 const 
   bm_TGtkTipsQuery_emit_always* = 0x0001'i16
@@ -9839,13 +9839,13 @@ proc tips_query_get_type*(): TType{.cdecl, dynlib: lib,
                                     importc: "gtk_tips_query_get_type".}
 proc tips_query_new*(): PTipsQuery{.cdecl, dynlib: lib, 
                                     importc: "gtk_tips_query_new".}
-proc tips_query_start_query*(tips_query: PTipsQuery){.cdecl, dynlib: lib, 
+proc start_query*(tips_query: PTipsQuery){.cdecl, dynlib: lib, 
     importc: "gtk_tips_query_start_query".}
-proc tips_query_stop_query*(tips_query: PTipsQuery){.cdecl, dynlib: lib, 
+proc stop_query*(tips_query: PTipsQuery){.cdecl, dynlib: lib, 
     importc: "gtk_tips_query_stop_query".}
-proc tips_query_set_caller*(tips_query: PTipsQuery, caller: PWidget){.cdecl, 
+proc set_caller*(tips_query: PTipsQuery, caller: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_tips_query_set_caller".}
-proc tips_query_set_labels*(tips_query: PTipsQuery, label_inactive: cstring, 
+proc set_labels*(tips_query: PTipsQuery, label_inactive: cstring, 
                             label_no_tip: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_tips_query_set_labels".}
 const 
@@ -9875,16 +9875,16 @@ proc set_use_sticky_delay*(a: var TTooltips, `use_sticky_delay`: guint)
 proc tooltips_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_tooltips_get_type".}
 proc tooltips_new*(): PTooltips{.cdecl, dynlib: lib, importc: "gtk_tooltips_new".}
-proc tooltips_enable*(tooltips: PTooltips){.cdecl, dynlib: lib, 
+proc enable*(tooltips: PTooltips){.cdecl, dynlib: lib, 
     importc: "gtk_tooltips_enable".}
-proc tooltips_disable*(tooltips: PTooltips){.cdecl, dynlib: lib, 
+proc disable*(tooltips: PTooltips){.cdecl, dynlib: lib, 
     importc: "gtk_tooltips_disable".}
-proc tooltips_set_tip*(tooltips: PTooltips, widget: PWidget, tip_text: cstring, 
+proc set_tip*(tooltips: PTooltips, widget: PWidget, tip_text: cstring, 
                        tip_private: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_tooltips_set_tip".}
 proc tooltips_data_get*(widget: PWidget): PTooltipsData{.cdecl, dynlib: lib, 
     importc: "gtk_tooltips_data_get".}
-proc tooltips_force_window*(tooltips: PTooltips){.cdecl, dynlib: lib, 
+proc force_window*(tooltips: PTooltips){.cdecl, dynlib: lib, 
     importc: "gtk_tooltips_force_window".}
 proc tooltips_toggle_keyboard_mode*(widget: PWidget){.cdecl, dynlib: lib, 
     importc: "_gtk_tooltips_toggle_keyboard_mode".}
@@ -9907,83 +9907,83 @@ proc set_icon_size_set*(a: var TToolbar, `icon_size_set`: guint)
 proc toolbar_get_type*(): TType{.cdecl, dynlib: lib, 
                                  importc: "gtk_toolbar_get_type".}
 proc toolbar_new*(): PToolbar{.cdecl, dynlib: lib, importc: "gtk_toolbar_new".}
-proc toolbar_append_item*(toolbar: PToolbar, text: cstring, 
+proc append_item*(toolbar: PToolbar, text: cstring, 
                           tooltip_text: cstring, tooltip_private_text: cstring, 
                           icon: PWidget, callback: TSignalFunc, 
                           user_data: gpointer): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_append_item".}
-proc toolbar_prepend_item*(toolbar: PToolbar, text: cstring, 
+proc prepend_item*(toolbar: PToolbar, text: cstring, 
                            tooltip_text: cstring, tooltip_private_text: cstring, 
                            icon: PWidget, callback: TSignalFunc, 
                            user_data: gpointer): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_prepend_item".}
-proc toolbar_insert_item*(toolbar: PToolbar, text: cstring, 
+proc insert_item*(toolbar: PToolbar, text: cstring, 
                           tooltip_text: cstring, tooltip_private_text: cstring, 
                           icon: PWidget, callback: TSignalFunc, 
                           user_data: gpointer, position: gint): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_insert_item".}
-proc toolbar_insert_stock*(toolbar: PToolbar, stock_id: cstring, 
+proc insert_stock*(toolbar: PToolbar, stock_id: cstring, 
                            tooltip_text: cstring, tooltip_private_text: cstring, 
                            callback: TSignalFunc, user_data: gpointer, 
                            position: gint): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_insert_stock".}
-proc toolbar_append_space*(toolbar: PToolbar){.cdecl, dynlib: lib, 
+proc append_space*(toolbar: PToolbar){.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_append_space".}
-proc toolbar_prepend_space*(toolbar: PToolbar){.cdecl, dynlib: lib, 
+proc prepend_space*(toolbar: PToolbar){.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_prepend_space".}
-proc toolbar_insert_space*(toolbar: PToolbar, position: gint){.cdecl, 
+proc insert_space*(toolbar: PToolbar, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_insert_space".}
-proc toolbar_remove_space*(toolbar: PToolbar, position: gint){.cdecl, 
+proc remove_space*(toolbar: PToolbar, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_remove_space".}
-proc toolbar_append_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
+proc append_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
                              widget: PWidget, text: cstring, 
                              tooltip_text: cstring, 
                              tooltip_private_text: cstring, icon: PWidget, 
                              callback: TSignalFunc, user_data: gpointer): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_toolbar_append_element".}
-proc toolbar_prepend_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
+proc prepend_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
                               widget: PWidget, text: cstring, 
                               tooltip_text: cstring, 
                               tooltip_private_text: cstring, icon: PWidget, 
                               callback: TSignalFunc, user_data: gpointer): PWidget{.
     cdecl, dynlib: lib, importc: "gtk_toolbar_prepend_element".}
-proc toolbar_insert_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
+proc insert_element*(toolbar: PToolbar, thetype: TToolbarChildType, 
                              widget: PWidget, text: cstring, 
                              tooltip_text: cstring, 
                              tooltip_private_text: cstring, icon: PWidget, 
                              callback: TSignalFunc, user_data: gpointer, 
                              position: gint): PWidget{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_insert_element".}
-proc toolbar_append_widget*(toolbar: PToolbar, widget: PWidget, 
+proc append_widget*(toolbar: PToolbar, widget: PWidget, 
                             tooltip_text: cstring, tooltip_private_text: cstring){.
     cdecl, dynlib: lib, importc: "gtk_toolbar_append_widget".}
-proc toolbar_prepend_widget*(toolbar: PToolbar, widget: PWidget, 
+proc prepend_widget*(toolbar: PToolbar, widget: PWidget, 
                              tooltip_text: cstring, 
                              tooltip_private_text: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_prepend_widget".}
-proc toolbar_insert_widget*(toolbar: PToolbar, widget: PWidget, 
+proc insert_widget*(toolbar: PToolbar, widget: PWidget, 
                             tooltip_text: cstring, 
                             tooltip_private_text: cstring, position: gint){.
     cdecl, dynlib: lib, importc: "gtk_toolbar_insert_widget".}
-proc toolbar_set_orientation*(toolbar: PToolbar, orientation: TOrientation){.
+proc set_orientation*(toolbar: PToolbar, orientation: TOrientation){.
     cdecl, dynlib: lib, importc: "gtk_toolbar_set_orientation".}
-proc toolbar_set_style*(toolbar: PToolbar, style: TToolbarStyle){.cdecl, 
+proc set_style*(toolbar: PToolbar, style: TToolbarStyle){.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_set_style".}
-proc toolbar_set_icon_size*(toolbar: PToolbar, icon_size: TIconSize){.cdecl, 
+proc set_icon_size*(toolbar: PToolbar, icon_size: TIconSize){.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_set_icon_size".}
-proc toolbar_set_tooltips*(toolbar: PToolbar, enable: gboolean){.cdecl, 
+proc set_tooltips*(toolbar: PToolbar, enable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_set_tooltips".}
-proc toolbar_unset_style*(toolbar: PToolbar){.cdecl, dynlib: lib, 
+proc unset_style*(toolbar: PToolbar){.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_unset_style".}
-proc toolbar_unset_icon_size*(toolbar: PToolbar){.cdecl, dynlib: lib, 
+proc unset_icon_size*(toolbar: PToolbar){.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_unset_icon_size".}
-proc toolbar_get_orientation*(toolbar: PToolbar): TOrientation{.cdecl, 
+proc get_orientation*(toolbar: PToolbar): TOrientation{.cdecl, 
     dynlib: lib, importc: "gtk_toolbar_get_orientation".}
-proc toolbar_get_style*(toolbar: PToolbar): TToolbarStyle{.cdecl, dynlib: lib, 
+proc get_style*(toolbar: PToolbar): TToolbarStyle{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_get_style".}
-proc toolbar_get_icon_size*(toolbar: PToolbar): TIconSize{.cdecl, dynlib: lib, 
+proc get_icon_size*(toolbar: PToolbar): TIconSize{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_get_icon_size".}
-proc toolbar_get_tooltips*(toolbar: PToolbar): gboolean{.cdecl, dynlib: lib, 
+proc get_tooltips*(toolbar: PToolbar): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_toolbar_get_tooltips".}
 const 
   bm_TGtkTree_selection_mode* = 0x0003'i16
@@ -10010,33 +10010,33 @@ proc view_line*(a: var TTree): guint
 proc set_view_line*(a: var TTree, `view_line`: guint)
 proc tree_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_tree_get_type".}
 proc tree_new*(): PTree{.cdecl, dynlib: lib, importc: "gtk_tree_new".}
-proc tree_append*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
+proc append*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_tree_append".}
-proc tree_prepend*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
+proc prepend*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_tree_prepend".}
-proc tree_insert*(tree: PTree, tree_item: PWidget, position: gint){.cdecl, 
+proc insert*(tree: PTree, tree_item: PWidget, position: gint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_insert".}
-proc tree_remove_items*(tree: PTree, items: PGList){.cdecl, dynlib: lib, 
+proc remove_items*(tree: PTree, items: PGList){.cdecl, dynlib: lib, 
     importc: "gtk_tree_remove_items".}
-proc tree_clear_items*(tree: PTree, start: gint, theEnd: gint){.cdecl, 
+proc clear_items*(tree: PTree, start: gint, theEnd: gint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_clear_items".}
-proc tree_select_item*(tree: PTree, item: gint){.cdecl, dynlib: lib, 
+proc select_item*(tree: PTree, item: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_select_item".}
-proc tree_unselect_item*(tree: PTree, item: gint){.cdecl, dynlib: lib, 
+proc unselect_item*(tree: PTree, item: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_unselect_item".}
-proc tree_select_child*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
+proc select_child*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_tree_select_child".}
-proc tree_unselect_child*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
+proc unselect_child*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_tree_unselect_child".}
-proc tree_child_position*(tree: PTree, child: PWidget): gint{.cdecl, 
+proc child_position*(tree: PTree, child: PWidget): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_child_position".}
-proc tree_set_selection_mode*(tree: PTree, mode: TSelectionMode){.cdecl, 
+proc set_selection_mode*(tree: PTree, mode: TSelectionMode){.cdecl, 
     dynlib: lib, importc: "gtk_tree_set_selection_mode".}
-proc tree_set_view_mode*(tree: PTree, mode: TTreeViewMode){.cdecl, dynlib: lib, 
+proc set_view_mode*(tree: PTree, mode: TTreeViewMode){.cdecl, dynlib: lib, 
     importc: "gtk_tree_set_view_mode".}
-proc tree_set_view_lines*(tree: PTree, flag: gboolean){.cdecl, dynlib: lib, 
+proc set_view_lines*(tree: PTree, flag: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_set_view_lines".}
-proc tree_remove_item*(tree: PTree, child: PWidget){.cdecl, dynlib: lib, 
+proc remove_item*(tree: PTree, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_tree_remove_item".}
 proc TYPE_TREE_DRAG_SOURCE*(): GType
 proc TREE_DRAG_SOURCE*(obj: pointer): PTreeDragSource
@@ -10044,13 +10044,13 @@ proc IS_TREE_DRAG_SOURCE*(obj: pointer): bool
 proc TREE_DRAG_SOURCE_GET_IFACE*(obj: pointer): PTreeDragSourceIface
 proc tree_drag_source_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "gtk_tree_drag_source_get_type".}
-proc tree_drag_source_row_draggable*(drag_source: PTreeDragSource, 
+proc source_row_draggable*(drag_source: PTreeDragSource, 
                                      path: PTreePath): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_drag_source_row_draggable".}
-proc tree_drag_source_drag_data_delete*(drag_source: PTreeDragSource, 
+proc source_drag_data_delete*(drag_source: PTreeDragSource, 
                                         path: PTreePath): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_drag_source_drag_data_delete".}
-proc tree_drag_source_drag_data_get*(drag_source: PTreeDragSource, 
+proc source_drag_data_get*(drag_source: PTreeDragSource, 
                                      path: PTreePath, 
                                      selection_data: PSelectionData): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_drag_source_drag_data_get".}
@@ -10060,11 +10060,11 @@ proc IS_TREE_DRAG_DEST*(obj: pointer): bool
 proc TREE_DRAG_DEST_GET_IFACE*(obj: pointer): PTreeDragDestIface
 proc tree_drag_dest_get_type*(): GType{.cdecl, dynlib: lib, 
                                         importc: "gtk_tree_drag_dest_get_type".}
-proc tree_drag_dest_drag_data_received*(drag_dest: PTreeDragDest, 
+proc dest_drag_data_received*(drag_dest: PTreeDragDest, 
                                         dest: PTreePath, 
                                         selection_data: PSelectionData): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_drag_dest_drag_data_received".}
-proc tree_drag_dest_row_drop_possible*(drag_dest: PTreeDragDest, 
+proc dest_row_drop_possible*(drag_dest: PTreeDragDest, 
                                        dest_path: PTreePath, 
                                        selection_data: PSelectionData): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_drag_dest_row_drop_possible".}
@@ -10090,17 +10090,17 @@ proc tree_item_new*(): PTreeItem{.cdecl, dynlib: lib,
                                   importc: "gtk_tree_item_new".}
 proc tree_item_new_with_label*(`label`: cstring): PTreeItem{.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_new_with_label".}
-proc tree_item_set_subtree*(tree_item: PTreeItem, subtree: PWidget){.cdecl, 
+proc set_subtree*(tree_item: PTreeItem, subtree: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_tree_item_set_subtree".}
-proc tree_item_remove_subtree*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
+proc remove_subtree*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_remove_subtree".}
-proc tree_item_select*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
+proc select*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_select".}
-proc tree_item_deselect*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
+proc deselect*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_deselect".}
-proc tree_item_expand*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
+proc expand*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_expand".}
-proc tree_item_collapse*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
+proc collapse*(tree_item: PTreeItem){.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_collapse".}
 proc TYPE_TREE_SELECTION*(): GType
 proc TREE_SELECTION*(obj: pointer): PTreeSelection
@@ -10110,44 +10110,44 @@ proc IS_TREE_SELECTION_CLASS*(klass: pointer): bool
 proc TREE_SELECTION_GET_CLASS*(obj: pointer): PTreeSelectionClass
 proc tree_selection_get_type*(): TType{.cdecl, dynlib: lib, 
                                         importc: "gtk_tree_selection_get_type".}
-proc tree_selection_set_mode*(selection: PTreeSelection, thetype: TSelectionMode){.
+proc set_mode*(selection: PTreeSelection, thetype: TSelectionMode){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_set_mode".}
-proc tree_selection_get_mode*(selection: PTreeSelection): TSelectionMode{.cdecl, 
+proc get_mode*(selection: PTreeSelection): TSelectionMode{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_mode".}
-proc tree_selection_set_select_function*(selection: PTreeSelection, 
+proc set_select_function*(selection: PTreeSelection, 
     fun: TTreeSelectionFunc, data: gpointer, destroy: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_set_select_function".}
-proc tree_selection_get_user_data*(selection: PTreeSelection): gpointer{.cdecl, 
+proc get_user_data*(selection: PTreeSelection): gpointer{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_user_data".}
-proc tree_selection_get_tree_view*(selection: PTreeSelection): PTreeView{.cdecl, 
+proc get_tree_view*(selection: PTreeSelection): PTreeView{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_tree_view".}
-proc tree_selection_get_selected*(selection: PTreeSelection, 
+proc get_selected*(selection: PTreeSelection, 
                                   model: PPGtkTreeModel, iter: PTreeIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_get_selected".}
-proc tree_selection_get_selected_rows*(selection: PTreeSelection, 
+proc get_selected_rows*(selection: PTreeSelection, 
                                        model: PPGtkTreeModel): PGList{.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_get_selected_rows".}
-proc tree_selection_selected_foreach*(selection: PTreeSelection, 
+proc selected_foreach*(selection: PTreeSelection, 
                                       fun: TTreeSelectionForeachFunc, 
                                       data: gpointer){.cdecl, dynlib: lib, 
     importc: "gtk_tree_selection_selected_foreach".}
-proc tree_selection_select_path*(selection: PTreeSelection, path: PTreePath){.
+proc select_path*(selection: PTreeSelection, path: PTreePath){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_select_path".}
-proc tree_selection_unselect_path*(selection: PTreeSelection, path: PTreePath){.
+proc unselect_path*(selection: PTreeSelection, path: PTreePath){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_unselect_path".}
-proc tree_selection_select_iter*(selection: PTreeSelection, iter: PTreeIter){.
+proc select_iter*(selection: PTreeSelection, iter: PTreeIter){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_select_iter".}
-proc tree_selection_unselect_iter*(selection: PTreeSelection, iter: PTreeIter){.
+proc unselect_iter*(selection: PTreeSelection, iter: PTreeIter){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_unselect_iter".}
-proc tree_selection_path_is_selected*(selection: PTreeSelection, path: PTreePath): gboolean{.
+proc path_is_selected*(selection: PTreeSelection, path: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_path_is_selected".}
-proc tree_selection_iter_is_selected*(selection: PTreeSelection, iter: PTreeIter): gboolean{.
+proc iter_is_selected*(selection: PTreeSelection, iter: PTreeIter): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_iter_is_selected".}
-proc tree_selection_select_all*(selection: PTreeSelection){.cdecl, dynlib: lib, 
+proc select_all*(selection: PTreeSelection){.cdecl, dynlib: lib, 
     importc: "gtk_tree_selection_select_all".}
-proc tree_selection_unselect_all*(selection: PTreeSelection){.cdecl, 
+proc unselect_all*(selection: PTreeSelection){.cdecl, 
     dynlib: lib, importc: "gtk_tree_selection_unselect_all".}
-proc tree_selection_select_range*(selection: PTreeSelection, 
+proc select_range*(selection: PTreeSelection, 
                                   start_path: PTreePath, end_path: PTreePath){.
     cdecl, dynlib: lib, importc: "gtk_tree_selection_select_range".}
 const 
@@ -10166,35 +10166,35 @@ proc tree_store_get_type*(): TType{.cdecl, dynlib: lib,
                                     importc: "gtk_tree_store_get_type".}
 proc tree_store_newv*(n_columns: gint, types: PGType): PTreeStore{.cdecl, 
     dynlib: lib, importc: "gtk_tree_store_newv".}
-proc tree_store_set_column_types*(tree_store: PTreeStore, n_columns: gint, 
+proc set_column_types*(tree_store: PTreeStore, n_columns: gint, 
                                   types: PGType){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_set_column_types".}
-proc tree_store_set_value*(tree_store: PTreeStore, iter: PTreeIter, 
+proc set_value*(tree_store: PTreeStore, iter: PTreeIter, 
                            column: gint, value: PGValue){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_set_value".}
-proc tree_store_remove*(tree_store: PTreeStore, iter: PTreeIter){.cdecl, 
+proc remove*(tree_store: PTreeStore, iter: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_store_remove".}
-proc tree_store_insert*(tree_store: PTreeStore, iter: PTreeIter, 
+proc insert*(tree_store: PTreeStore, iter: PTreeIter, 
                         parent: PTreeIter, position: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_insert".}
-proc tree_store_insert_before*(tree_store: PTreeStore, iter: PTreeIter, 
+proc insert_before*(tree_store: PTreeStore, iter: PTreeIter, 
                                parent: PTreeIter, sibling: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_store_insert_before".}
-proc tree_store_insert_after*(tree_store: PTreeStore, iter: PTreeIter, 
+proc insert_after*(tree_store: PTreeStore, iter: PTreeIter, 
                               parent: PTreeIter, sibling: PTreeIter){.cdecl, 
     dynlib: lib, importc: "gtk_tree_store_insert_after".}
-proc tree_store_prepend*(tree_store: PTreeStore, iter: PTreeIter, 
+proc prepend*(tree_store: PTreeStore, iter: PTreeIter, 
                          parent: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_prepend".}
-proc tree_store_append*(tree_store: PTreeStore, iter: PTreeIter, 
+proc append*(tree_store: PTreeStore, iter: PTreeIter, 
                         parent: PTreeIter){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_append".}
-proc tree_store_is_ancestor*(tree_store: PTreeStore, iter: PTreeIter, 
+proc is_ancestor*(tree_store: PTreeStore, iter: PTreeIter, 
                              descendant: PTreeIter): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_store_is_ancestor".}
-proc tree_store_iter_depth*(tree_store: PTreeStore, iter: PTreeIter): gint{.
+proc iter_depth*(tree_store: PTreeStore, iter: PTreeIter): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_store_iter_depth".}
-proc tree_store_clear*(tree_store: PTreeStore){.cdecl, dynlib: lib, 
+proc clear*(tree_store: PTreeStore){.cdecl, dynlib: lib, 
     importc: "gtk_tree_store_clear".}
 const 
   bm_TGtkTreeViewColumn_visible* = 0x0001'i16
@@ -10241,119 +10241,119 @@ proc tree_view_column_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_tree_view_column_get_type".}
 proc tree_view_column_new*(): PTreeViewColumn{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_new".}
-proc tree_view_column_pack_start*(tree_column: PTreeViewColumn, 
+proc column_pack_start*(tree_column: PTreeViewColumn, 
                                   cell: PCellRenderer, expand: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_pack_start".}
-proc tree_view_column_pack_end*(tree_column: PTreeViewColumn, 
+proc column_pack_end*(tree_column: PTreeViewColumn, 
                                 cell: PCellRenderer, expand: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_pack_end".}
-proc tree_view_column_clear*(tree_column: PTreeViewColumn){.cdecl, dynlib: lib, 
+proc column_clear*(tree_column: PTreeViewColumn){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_clear".}
-proc tree_view_column_get_cell_renderers*(tree_column: PTreeViewColumn): PGList{.
+proc column_get_cell_renderers*(tree_column: PTreeViewColumn): PGList{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_cell_renderers".}
-proc tree_view_column_add_attribute*(tree_column: PTreeViewColumn, 
+proc column_add_attribute*(tree_column: PTreeViewColumn, 
                                      cell_renderer: PCellRenderer, 
                                      attribute: cstring, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_add_attribute".}
-proc tree_view_column_set_cell_data_func*(tree_column: PTreeViewColumn, 
+proc column_set_cell_data_func*(tree_column: PTreeViewColumn, 
     cell_renderer: PCellRenderer, fun: TTreeCellDataFunc, func_data: gpointer, 
     destroy: TDestroyNotify){.cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_cell_data_func".}
-proc tree_view_column_clear_attributes*(tree_column: PTreeViewColumn, 
+proc column_clear_attributes*(tree_column: PTreeViewColumn, 
                                         cell_renderer: PCellRenderer){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_clear_attributes".}
-proc tree_view_column_set_spacing*(tree_column: PTreeViewColumn, spacing: gint){.
+proc column_set_spacing*(tree_column: PTreeViewColumn, spacing: gint){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_spacing".}
-proc tree_view_column_get_spacing*(tree_column: PTreeViewColumn): gint{.cdecl, 
+proc column_get_spacing*(tree_column: PTreeViewColumn): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_spacing".}
-proc tree_view_column_set_visible*(tree_column: PTreeViewColumn, 
+proc column_set_visible*(tree_column: PTreeViewColumn, 
                                    visible: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_visible".}
-proc tree_view_column_get_visible*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_visible*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_visible".}
-proc tree_view_column_set_resizable*(tree_column: PTreeViewColumn, 
+proc column_set_resizable*(tree_column: PTreeViewColumn, 
                                      resizable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_resizable".}
-proc tree_view_column_get_resizable*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_resizable*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_resizable".}
-proc tree_view_column_set_sizing*(tree_column: PTreeViewColumn, 
+proc column_set_sizing*(tree_column: PTreeViewColumn, 
                                   thetype: TTreeViewColumnSizing){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_set_sizing".}
-proc tree_view_column_get_sizing*(tree_column: PTreeViewColumn): TTreeViewColumnSizing{.
+proc column_get_sizing*(tree_column: PTreeViewColumn): TTreeViewColumnSizing{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_sizing".}
-proc tree_view_column_get_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
+proc column_get_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_width".}
-proc tree_view_column_get_fixed_width*(tree_column: PTreeViewColumn): gint{.
+proc column_get_fixed_width*(tree_column: PTreeViewColumn): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_fixed_width".}
-proc tree_view_column_set_fixed_width*(tree_column: PTreeViewColumn, 
+proc column_set_fixed_width*(tree_column: PTreeViewColumn, 
                                        fixed_width: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_fixed_width".}
-proc tree_view_column_set_min_width*(tree_column: PTreeViewColumn, 
+proc column_set_min_width*(tree_column: PTreeViewColumn, 
                                      min_width: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_min_width".}
-proc tree_view_column_get_min_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
+proc column_get_min_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_min_width".}
-proc tree_view_column_set_max_width*(tree_column: PTreeViewColumn, 
+proc column_set_max_width*(tree_column: PTreeViewColumn, 
                                      max_width: gint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_max_width".}
-proc tree_view_column_get_max_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
+proc column_get_max_width*(tree_column: PTreeViewColumn): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_max_width".}
-proc tree_view_column_clicked*(tree_column: PTreeViewColumn){.cdecl, 
+proc column_clicked*(tree_column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_clicked".}
-proc tree_view_column_set_title*(tree_column: PTreeViewColumn, title: cstring){.
+proc column_set_title*(tree_column: PTreeViewColumn, title: cstring){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_title".}
-proc tree_view_column_get_title*(tree_column: PTreeViewColumn): cstring{.cdecl, 
+proc column_get_title*(tree_column: PTreeViewColumn): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_title".}
-proc tree_view_column_set_clickable*(tree_column: PTreeViewColumn, 
+proc column_set_clickable*(tree_column: PTreeViewColumn, 
                                      clickable: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_clickable".}
-proc tree_view_column_get_clickable*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_clickable*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_clickable".}
-proc tree_view_column_set_widget*(tree_column: PTreeViewColumn, widget: PWidget){.
+proc column_set_widget*(tree_column: PTreeViewColumn, widget: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_widget".}
-proc tree_view_column_get_widget*(tree_column: PTreeViewColumn): PWidget{.cdecl, 
+proc column_get_widget*(tree_column: PTreeViewColumn): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_get_widget".}
-proc tree_view_column_set_alignment*(tree_column: PTreeViewColumn, 
+proc column_set_alignment*(tree_column: PTreeViewColumn, 
                                      xalign: gfloat){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_alignment".}
-proc tree_view_column_get_alignment*(tree_column: PTreeViewColumn): gfloat{.
+proc column_get_alignment*(tree_column: PTreeViewColumn): gfloat{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_alignment".}
-proc tree_view_column_set_reorderable*(tree_column: PTreeViewColumn, 
+proc column_set_reorderable*(tree_column: PTreeViewColumn, 
                                        reorderable: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_column_set_reorderable".}
-proc tree_view_column_get_reorderable*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_reorderable*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_reorderable".}
-proc tree_view_column_set_sort_column_id*(tree_column: PTreeViewColumn, 
+proc column_set_sort_column_id*(tree_column: PTreeViewColumn, 
     sort_column_id: gint){.cdecl, dynlib: lib, 
                            importc: "gtk_tree_view_column_set_sort_column_id".}
-proc tree_view_column_get_sort_column_id*(tree_column: PTreeViewColumn): gint{.
+proc column_get_sort_column_id*(tree_column: PTreeViewColumn): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_sort_column_id".}
-proc tree_view_column_set_sort_indicator*(tree_column: PTreeViewColumn, 
+proc column_set_sort_indicator*(tree_column: PTreeViewColumn, 
     setting: gboolean){.cdecl, dynlib: lib, 
                         importc: "gtk_tree_view_column_set_sort_indicator".}
-proc tree_view_column_get_sort_indicator*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_sort_indicator*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_sort_indicator".}
-proc tree_view_column_set_sort_order*(tree_column: PTreeViewColumn, 
+proc column_set_sort_order*(tree_column: PTreeViewColumn, 
                                       order: TSortType){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_set_sort_order".}
-proc tree_view_column_get_sort_order*(tree_column: PTreeViewColumn): TSortType{.
+proc column_get_sort_order*(tree_column: PTreeViewColumn): TSortType{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_sort_order".}
-proc tree_view_column_cell_set_cell_data*(tree_column: PTreeViewColumn, 
+proc column_cell_set_cell_data*(tree_column: PTreeViewColumn, 
     tree_model: PTreeModel, iter: PTreeIter, is_expander: gboolean, 
     is_expanded: gboolean){.cdecl, dynlib: lib, 
                             importc: "gtk_tree_view_column_cell_set_cell_data".}
-proc tree_view_column_cell_get_size*(tree_column: PTreeViewColumn, 
+proc column_cell_get_size*(tree_column: PTreeViewColumn, 
                                      cell_area: gdk2.PRectangle, x_offset: Pgint, 
                                      y_offset: Pgint, width: Pgint, 
                                      height: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_cell_get_size".}
-proc tree_view_column_cell_is_visible*(tree_column: PTreeViewColumn): gboolean{.
+proc column_cell_is_visible*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_cell_is_visible".}
-proc tree_view_column_focus_cell*(tree_column: PTreeViewColumn, 
+proc column_focus_cell*(tree_column: PTreeViewColumn, 
                                   cell: PCellRenderer){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_focus_cell".}
-proc tree_view_column_set_expand*(tree_column: PTreeViewColumn, Expand: gboolean){.
+proc column_set_expand*(tree_column: PTreeViewColumn, Expand: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_set_expand".}
-proc tree_view_column_get_expand*(tree_column: PTreeViewColumn): gboolean{.
+proc column_get_expand*(tree_column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_column_get_expand".}
 const 
   RBNODE_BLACK* = 1 shl 0
@@ -10380,59 +10380,59 @@ proc flags*(a: PRBNode): guint
 proc set_flags*(a: PRBNode, `flags`: guint)
 proc parity*(a: PRBNode): guint
 proc set_parity*(a: PRBNode, `parity`: guint)
-proc RBNODE_GET_COLOR*(node: PRBNode): guint
-proc RBNODE_SET_COLOR*(node: PRBNode, color: guint)
-proc RBNODE_GET_HEIGHT*(node: PRBNode): gint
-proc RBNODE_SET_FLAG*(node: PRBNode, flag: guint16)
-proc RBNODE_UNSET_FLAG*(node: PRBNode, flag: guint16)
-proc RBNODE_FLAG_SET*(node: PRBNode, flag: guint): bool
+proc GET_COLOR*(node: PRBNode): guint
+proc SET_COLOR*(node: PRBNode, color: guint)
+proc GET_HEIGHT*(node: PRBNode): gint
+proc SET_FLAG*(node: PRBNode, flag: guint16)
+proc UNSET_FLAG*(node: PRBNode, flag: guint16)
+proc FLAG_SET*(node: PRBNode, flag: guint): bool
 proc rbtree_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_push_allocator".}
 proc rbtree_pop_allocator*(){.cdecl, dynlib: lib, 
                               importc: "_gtk_rbtree_pop_allocator".}
 proc rbtree_new*(): PRBTree{.cdecl, dynlib: lib, importc: "_gtk_rbtree_new".}
-proc rbtree_free*(tree: PRBTree){.cdecl, dynlib: lib, 
+proc free*(tree: PRBTree){.cdecl, dynlib: lib, 
                                   importc: "_gtk_rbtree_free".}
-proc rbtree_remove*(tree: PRBTree){.cdecl, dynlib: lib, 
+proc remove*(tree: PRBTree){.cdecl, dynlib: lib, 
                                     importc: "_gtk_rbtree_remove".}
-proc rbtree_destroy*(tree: PRBTree){.cdecl, dynlib: lib, 
+proc destroy*(tree: PRBTree){.cdecl, dynlib: lib, 
                                      importc: "_gtk_rbtree_destroy".}
-proc rbtree_insert_before*(tree: PRBTree, node: PRBNode, height: gint, 
+proc insert_before*(tree: PRBTree, node: PRBNode, height: gint, 
                            valid: gboolean): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_insert_before".}
-proc rbtree_insert_after*(tree: PRBTree, node: PRBNode, height: gint, 
+proc insert_after*(tree: PRBTree, node: PRBNode, height: gint, 
                           valid: gboolean): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_insert_after".}
-proc rbtree_remove_node*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
+proc remove_node*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_remove_node".}
-proc rbtree_reorder*(tree: PRBTree, new_order: Pgint, length: gint){.cdecl, 
+proc reorder*(tree: PRBTree, new_order: Pgint, length: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_reorder".}
-proc rbtree_find_count*(tree: PRBTree, count: gint): PRBNode{.cdecl, 
+proc find_count*(tree: PRBTree, count: gint): PRBNode{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_find_count".}
-proc rbtree_node_set_height*(tree: PRBTree, node: PRBNode, height: gint){.
+proc node_set_height*(tree: PRBTree, node: PRBNode, height: gint){.
     cdecl, dynlib: lib, importc: "_gtk_rbtree_node_set_height".}
-proc rbtree_node_mark_invalid*(tree: PRBTree, node: PRBNode){.cdecl, 
+proc node_mark_invalid*(tree: PRBTree, node: PRBNode){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_mark_invalid".}
-proc rbtree_node_mark_valid*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
+proc node_mark_valid*(tree: PRBTree, node: PRBNode){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_node_mark_valid".}
-proc rbtree_column_invalid*(tree: PRBTree){.cdecl, dynlib: lib, 
+proc column_invalid*(tree: PRBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_column_invalid".}
-proc rbtree_mark_invalid*(tree: PRBTree){.cdecl, dynlib: lib, 
+proc mark_invalid*(tree: PRBTree){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_mark_invalid".}
-proc rbtree_set_fixed_height*(tree: PRBTree, height: gint){.cdecl, dynlib: lib, 
+proc set_fixed_height*(tree: PRBTree, height: gint){.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_set_fixed_height".}
-proc rbtree_node_find_offset*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
+proc node_find_offset*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_find_offset".}
-proc rbtree_node_find_parity*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
+proc node_find_parity*(tree: PRBTree, node: PRBNode): gint{.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_node_find_parity".}
-proc rbtree_traverse*(tree: PRBTree, node: PRBNode, order: TGTraverseType, 
+proc traverse*(tree: PRBTree, node: PRBNode, order: TGTraverseType, 
                       fun: TRBTreeTraverseFunc, data: gpointer){.cdecl, 
     dynlib: lib, importc: "_gtk_rbtree_traverse".}
-proc rbtree_next*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
+proc next*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_next".}
-proc rbtree_prev*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
+proc prev*(tree: PRBTree, node: PRBNode): PRBNode{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_prev".}
-proc rbtree_get_depth*(tree: PRBTree): gint{.cdecl, dynlib: lib, 
+proc get_depth*(tree: PRBTree): gint{.cdecl, dynlib: lib, 
     importc: "_gtk_rbtree_get_depth".}
 const 
   TREE_VIEW_DRAG_WIDTH* = 6
@@ -10450,13 +10450,13 @@ const
   DRAG_COLUMN_WINDOW_STATE_ARROW_LEFT* = 3
   DRAG_COLUMN_WINDOW_STATE_ARROW_RIGHT* = 4
 
-proc TREE_VIEW_SET_FLAG*(tree_view: PTreeView, flag: guint)
-proc TREE_VIEW_UNSET_FLAG*(tree_view: PTreeView, flag: guint)
-proc TREE_VIEW_FLAG_SET*(tree_view: PTreeView, flag: guint): bool
-proc TREE_VIEW_HEADER_HEIGHT*(tree_view: PTreeView): int32
-proc TREE_VIEW_COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32
-proc TREE_VIEW_DRAW_EXPANDERS*(tree_view: PTreeView): bool
-proc TREE_VIEW_COLUMN_DRAG_DEAD_MULTIPLIER*(tree_view: PTreeView): int32
+proc SET_FLAG*(tree_view: PTreeView, flag: guint)
+proc UNSET_FLAG*(tree_view: PTreeView, flag: guint)
+proc FLAG_SET*(tree_view: PTreeView, flag: guint): bool
+proc HEADER_HEIGHT*(tree_view: PTreeView): int32
+proc COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32
+proc DRAW_EXPANDERS*(tree_view: PTreeView): bool
+proc COLUMN_DRAG_DEAD_MULTIPLIER*(tree_view: PTreeView): int32
 const 
   bm_TGtkTreeViewPrivate_scroll_to_use_align* = 0x0001'i16
   bp_TGtkTreeViewPrivate_scroll_to_use_align* = 0'i16
@@ -10499,77 +10499,77 @@ proc enable_search*(a: var TTreeViewPrivate): guint
 proc set_enable_search*(a: var TTreeViewPrivate, `enable_search`: guint)
 proc disable_popdown*(a: var TTreeViewPrivate): guint
 proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint)
-proc tree_selection_internal_select_node*(selection: PTreeSelection, 
+proc internal_select_node*(selection: PTreeSelection, 
     node: PRBNode, tree: PRBTree, path: PTreePath, state: gdk2.TModifierType, 
     override_browse_mode: gboolean){.cdecl, dynlib: lib, importc: "_gtk_tree_selection_internal_select_node".}
-proc tree_view_find_node*(tree_view: PTreeView, path: PTreePath, 
+proc find_node*(tree_view: PTreeView, path: PTreePath, 
                           tree: var PRBTree, node: var PRBNode): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_find_node".}
-proc tree_view_find_path*(tree_view: PTreeView, tree: PRBTree, node: PRBNode): PTreePath{.
+proc find_path*(tree_view: PTreeView, tree: PRBTree, node: PRBNode): PTreePath{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_find_path".}
-proc tree_view_child_move_resize*(tree_view: PTreeView, widget: PWidget, 
+proc child_move_resize*(tree_view: PTreeView, widget: PWidget, 
                                   x: gint, y: gint, width: gint, height: gint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_child_move_resize".}
-proc tree_view_queue_draw_node*(tree_view: PTreeView, tree: PRBTree, 
+proc queue_draw_node*(tree_view: PTreeView, tree: PRBTree, 
                                 node: PRBNode, clip_rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_queue_draw_node".}
-proc tree_view_column_realize_button*(column: PTreeViewColumn){.cdecl, 
+proc column_realize_button*(column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_realize_button".}
-proc tree_view_column_unrealize_button*(column: PTreeViewColumn){.cdecl, 
+proc column_unrealize_button*(column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_unrealize_button".}
-proc tree_view_column_set_tree_view*(column: PTreeViewColumn, 
+proc column_set_tree_view*(column: PTreeViewColumn, 
                                      tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "_gtk_tree_view_column_set_tree_view".}
-proc tree_view_column_unset_tree_view*(column: PTreeViewColumn){.cdecl, 
+proc column_unset_tree_view*(column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_unset_tree_view".}
-proc tree_view_column_set_width*(column: PTreeViewColumn, width: gint){.cdecl, 
+proc column_set_width*(column: PTreeViewColumn, width: gint){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_set_width".}
-proc tree_view_column_start_drag*(tree_view: PTreeView, column: PTreeViewColumn){.
+proc column_start_drag*(tree_view: PTreeView, column: PTreeViewColumn){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_start_drag".}
-proc tree_view_column_start_editing*(tree_column: PTreeViewColumn, 
+proc column_start_editing*(tree_column: PTreeViewColumn, 
                                      editable_widget: PCellEditable){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_start_editing".}
-proc tree_view_column_stop_editing*(tree_column: PTreeViewColumn){.cdecl, 
+proc column_stop_editing*(tree_column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_stop_editing".}
-proc tree_view_install_mark_rows_col_dirty*(tree_view: PTreeView){.cdecl, 
+proc install_mark_rows_col_dirty*(tree_view: PTreeView){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_install_mark_rows_col_dirty".}
 proc DOgtk_tree_view_column_autosize*(tree_view: PTreeView, 
                                       column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_autosize".}
-proc tree_view_column_has_editable_cell*(column: PTreeViewColumn): gboolean{.
+proc column_has_editable_cell*(column: PTreeViewColumn): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_has_editable_cell".}
-proc tree_view_column_get_edited_cell*(column: PTreeViewColumn): PCellRenderer{.
+proc column_get_edited_cell*(column: PTreeViewColumn): PCellRenderer{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_get_edited_cell".}
-proc tree_view_column_count_special_cells*(column: PTreeViewColumn): gint{.
+proc column_count_special_cells*(column: PTreeViewColumn): gint{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_count_special_cells".}
-proc tree_view_column_get_cell_at_pos*(column: PTreeViewColumn, x: gint): PCellRenderer{.
+proc column_get_cell_at_pos*(column: PTreeViewColumn, x: gint): PCellRenderer{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_get_cell_at_pos".}
 proc tree_selection_new*(): PTreeSelection{.cdecl, dynlib: lib, 
     importc: "_gtk_tree_selection_new".}
-proc tree_selection_new_with_tree_view*(tree_view: PTreeView): PTreeSelection{.
+proc selection_new_with_tree_view*(tree_view: PTreeView): PTreeSelection{.
     cdecl, dynlib: lib, importc: "_gtk_tree_selection_new_with_tree_view".}
-proc tree_selection_set_tree_view*(selection: PTreeSelection, 
+proc set_tree_view*(selection: PTreeSelection, 
                                    tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "_gtk_tree_selection_set_tree_view".}
-proc tree_view_column_cell_render*(tree_column: PTreeViewColumn, 
+proc column_cell_render*(tree_column: PTreeViewColumn, 
                                    window: gdk2.PWindow, 
                                    background_area: gdk2.PRectangle, 
                                    cell_area: gdk2.PRectangle, 
                                    expose_area: gdk2.PRectangle, flags: guint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_render".}
-proc tree_view_column_cell_focus*(tree_column: PTreeViewColumn, direction: gint, 
+proc column_cell_focus*(tree_column: PTreeViewColumn, direction: gint, 
                                   left: gboolean, right: gboolean): gboolean{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_focus".}
-proc tree_view_column_cell_draw_focus*(tree_column: PTreeViewColumn, 
+proc column_cell_draw_focus*(tree_column: PTreeViewColumn, 
                                        window: gdk2.PWindow, 
                                        background_area: gdk2.PRectangle, 
                                        cell_area: gdk2.PRectangle, 
                                        expose_area: gdk2.PRectangle, flags: guint){.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_cell_draw_focus".}
-proc tree_view_column_cell_set_dirty*(tree_column: PTreeViewColumn, 
+proc column_cell_set_dirty*(tree_column: PTreeViewColumn, 
                                       install_handler: gboolean){.cdecl, 
     dynlib: lib, importc: "_gtk_tree_view_column_cell_set_dirty".}
-proc tree_view_column_get_neighbor_sizes*(column: PTreeViewColumn, 
+proc column_get_neighbor_sizes*(column: PTreeViewColumn, 
     cell: PCellRenderer, left: Pgint, right: Pgint){.cdecl, dynlib: lib, 
     importc: "_gtk_tree_view_column_get_neighbor_sizes".}
 proc TYPE_TREE_VIEW*(): GType
@@ -10582,146 +10582,146 @@ proc tree_view_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_tree_view_get_type".}
 proc tree_view_new*(): PTreeView{.cdecl, dynlib: lib, 
                                   importc: "gtk_tree_view_new".}
-proc tree_view_new_with_model*(model: PTreeModel): PTreeView{.cdecl, 
+proc view_new_with_model*(model: PTreeModel): PTreeView{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_new_with_model".}
-proc tree_view_get_model*(tree_view: PTreeView): PTreeModel{.cdecl, dynlib: lib, 
+proc get_model*(tree_view: PTreeView): PTreeModel{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_get_model".}
-proc tree_view_set_model*(tree_view: PTreeView, model: PTreeModel){.cdecl, 
+proc set_model*(tree_view: PTreeView, model: PTreeModel){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_model".}
-proc tree_view_get_selection*(tree_view: PTreeView): PTreeSelection{.cdecl, 
+proc get_selection*(tree_view: PTreeView): PTreeSelection{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_selection".}
-proc tree_view_get_hadjustment*(tree_view: PTreeView): PAdjustment{.cdecl, 
+proc get_hadjustment*(tree_view: PTreeView): PAdjustment{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_hadjustment".}
-proc tree_view_set_hadjustment*(tree_view: PTreeView, adjustment: PAdjustment){.
+proc set_hadjustment*(tree_view: PTreeView, adjustment: PAdjustment){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_hadjustment".}
-proc tree_view_get_vadjustment*(tree_view: PTreeView): PAdjustment{.cdecl, 
+proc get_vadjustment*(tree_view: PTreeView): PAdjustment{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_vadjustment".}
-proc tree_view_set_vadjustment*(tree_view: PTreeView, adjustment: PAdjustment){.
+proc set_vadjustment*(tree_view: PTreeView, adjustment: PAdjustment){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_vadjustment".}
-proc tree_view_get_headers_visible*(tree_view: PTreeView): gboolean{.cdecl, 
+proc get_headers_visible*(tree_view: PTreeView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_headers_visible".}
-proc tree_view_set_headers_visible*(tree_view: PTreeView, 
+proc set_headers_visible*(tree_view: PTreeView, 
                                     headers_visible: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_headers_visible".}
-proc tree_view_columns_autosize*(tree_view: PTreeView){.cdecl, dynlib: lib, 
+proc columns_autosize*(tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_columns_autosize".}
-proc tree_view_set_headers_clickable*(tree_view: PTreeView, setting: gboolean){.
+proc set_headers_clickable*(tree_view: PTreeView, setting: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_headers_clickable".}
-proc tree_view_set_rules_hint*(tree_view: PTreeView, setting: gboolean){.cdecl, 
+proc set_rules_hint*(tree_view: PTreeView, setting: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_rules_hint".}
-proc tree_view_get_rules_hint*(tree_view: PTreeView): gboolean{.cdecl, 
+proc get_rules_hint*(tree_view: PTreeView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_rules_hint".}
-proc tree_view_append_column*(tree_view: PTreeView, column: PTreeViewColumn): gint{.
+proc append_column*(tree_view: PTreeView, column: PTreeViewColumn): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_append_column".}
-proc tree_view_remove_column*(tree_view: PTreeView, column: PTreeViewColumn): gint{.
+proc remove_column*(tree_view: PTreeView, column: PTreeViewColumn): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_remove_column".}
-proc tree_view_insert_column*(tree_view: PTreeView, column: PTreeViewColumn, 
+proc insert_column*(tree_view: PTreeView, column: PTreeViewColumn, 
                               position: gint): gint{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_insert_column".}
-proc tree_view_insert_column_with_data_func*(tree_view: PTreeView, 
+proc insert_column_with_data_func*(tree_view: PTreeView, 
     position: gint, title: cstring, cell: PCellRenderer, 
     fun: TTreeCellDataFunc, data: gpointer, dnotify: TGDestroyNotify): gint{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_insert_column_with_data_func".}
-proc tree_view_get_column*(tree_view: PTreeView, n: gint): PTreeViewColumn{.
+proc get_column*(tree_view: PTreeView, n: gint): PTreeViewColumn{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_column".}
-proc tree_view_get_columns*(tree_view: PTreeView): PGList{.cdecl, dynlib: lib, 
+proc get_columns*(tree_view: PTreeView): PGList{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_get_columns".}
-proc tree_view_move_column_after*(tree_view: PTreeView, column: PTreeViewColumn, 
+proc move_column_after*(tree_view: PTreeView, column: PTreeViewColumn, 
                                   base_column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_move_column_after".}
-proc tree_view_set_expander_column*(tree_view: PTreeView, 
+proc set_expander_column*(tree_view: PTreeView, 
                                     column: PTreeViewColumn){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_expander_column".}
-proc tree_view_get_expander_column*(tree_view: PTreeView): PTreeViewColumn{.
+proc get_expander_column*(tree_view: PTreeView): PTreeViewColumn{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_expander_column".}
-proc tree_view_set_column_drag_function*(tree_view: PTreeView, 
+proc set_column_drag_function*(tree_view: PTreeView, 
     fun: TTreeViewColumnDropFunc, user_data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_column_drag_function".}
-proc tree_view_scroll_to_point*(tree_view: PTreeView, tree_x: gint, tree_y: gint){.
+proc scroll_to_point*(tree_view: PTreeView, tree_x: gint, tree_y: gint){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_scroll_to_point".}
-proc tree_view_scroll_to_cell*(tree_view: PTreeView, path: PTreePath, 
+proc scroll_to_cell*(tree_view: PTreeView, path: PTreePath, 
                                column: PTreeViewColumn, use_align: gboolean, 
                                row_align: gfloat, col_align: gfloat){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_scroll_to_cell".}
-proc tree_view_row_activated*(tree_view: PTreeView, path: PTreePath, 
+proc row_activated*(tree_view: PTreeView, path: PTreePath, 
                               column: PTreeViewColumn){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_row_activated".}
-proc tree_view_expand_all*(tree_view: PTreeView){.cdecl, dynlib: lib, 
+proc expand_all*(tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_expand_all".}
-proc tree_view_collapse_all*(tree_view: PTreeView){.cdecl, dynlib: lib, 
+proc collapse_all*(tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_collapse_all".}
-proc tree_view_expand_row*(tree_view: PTreeView, path: PTreePath, 
+proc expand_row*(tree_view: PTreeView, path: PTreePath, 
                            open_all: gboolean): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_expand_row".}
-proc tree_view_collapse_row*(tree_view: PTreeView, path: PTreePath): gboolean{.
+proc collapse_row*(tree_view: PTreeView, path: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_collapse_row".}
-proc tree_view_map_expanded_rows*(tree_view: PTreeView, 
+proc map_expanded_rows*(tree_view: PTreeView, 
                                   fun: TTreeViewMappingFunc, data: gpointer){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_map_expanded_rows".}
-proc tree_view_row_expanded*(tree_view: PTreeView, path: PTreePath): gboolean{.
+proc row_expanded*(tree_view: PTreeView, path: PTreePath): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_row_expanded".}
-proc tree_view_set_reorderable*(tree_view: PTreeView, reorderable: gboolean){.
+proc set_reorderable*(tree_view: PTreeView, reorderable: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_reorderable".}
-proc tree_view_get_reorderable*(tree_view: PTreeView): gboolean{.cdecl, 
+proc get_reorderable*(tree_view: PTreeView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_reorderable".}
-proc tree_view_set_cursor*(tree_view: PTreeView, path: PTreePath, 
+proc set_cursor*(tree_view: PTreeView, path: PTreePath, 
                            focus_column: PTreeViewColumn, 
                            start_editing: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_set_cursor".}
-proc tree_view_set_cursor_on_cell*(tree_view: PTreeView, path: PTreePath, 
+proc set_cursor_on_cell*(tree_view: PTreeView, path: PTreePath, 
                                    focus_column: PTreeViewColumn, 
                                    focus_cell: PCellRenderer, 
                                    start_editing: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_set_cursor_on_cell".}
-proc tree_view_get_bin_window*(tree_view: PTreeView): gdk2.PWindow{.cdecl, 
+proc get_bin_window*(tree_view: PTreeView): gdk2.PWindow{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_bin_window".}
-proc tree_view_get_cell_area*(tree_view: PTreeView, path: PTreePath, 
+proc get_cell_area*(tree_view: PTreeView, path: PTreePath, 
                               column: PTreeViewColumn, rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_cell_area".}
-proc tree_view_get_background_area*(tree_view: PTreeView, path: PTreePath, 
+proc get_background_area*(tree_view: PTreeView, path: PTreePath, 
                                     column: PTreeViewColumn, rect: gdk2.PRectangle){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_background_area".}
-proc tree_view_get_visible_rect*(tree_view: PTreeView, 
+proc get_visible_rect*(tree_view: PTreeView, 
                                  visible_rect: gdk2.PRectangle){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_visible_rect".}
-proc tree_view_widget_to_tree_coords*(tree_view: PTreeView, wx: gint, wy: gint, 
+proc widget_to_tree_coords*(tree_view: PTreeView, wx: gint, wy: gint, 
                                       tx: Pgint, ty: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_widget_to_tree_coords".}
-proc tree_view_tree_to_widget_coords*(tree_view: PTreeView, tx: gint, ty: gint, 
+proc tree_to_widget_coords*(tree_view: PTreeView, tx: gint, ty: gint, 
                                       wx: Pgint, wy: Pgint){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_tree_to_widget_coords".}
-proc tree_view_enable_model_drag_source*(tree_view: PTreeView, 
+proc enable_model_drag_source*(tree_view: PTreeView, 
     start_button_mask: gdk2.TModifierType, targets: PTargetEntry, n_targets: gint, 
     actions: gdk2.TDragAction){.cdecl, dynlib: lib, 
                               importc: "gtk_tree_view_enable_model_drag_source".}
-proc tree_view_enable_model_drag_dest*(tree_view: PTreeView, 
+proc enable_model_drag_dest*(tree_view: PTreeView, 
                                        targets: PTargetEntry, n_targets: gint, 
                                        actions: gdk2.TDragAction){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_enable_model_drag_dest".}
-proc tree_view_unset_rows_drag_source*(tree_view: PTreeView){.cdecl, 
+proc unset_rows_drag_source*(tree_view: PTreeView){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_unset_rows_drag_source".}
-proc tree_view_unset_rows_drag_dest*(tree_view: PTreeView){.cdecl, dynlib: lib, 
+proc unset_rows_drag_dest*(tree_view: PTreeView){.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_unset_rows_drag_dest".}
-proc tree_view_set_drag_dest_row*(tree_view: PTreeView, path: PTreePath, 
+proc set_drag_dest_row*(tree_view: PTreeView, path: PTreePath, 
                                   pos: TTreeViewDropPosition){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_drag_dest_row".}
-proc tree_view_create_row_drag_icon*(tree_view: PTreeView, path: PTreePath): gdk2.PPixmap{.
+proc create_row_drag_icon*(tree_view: PTreeView, path: PTreePath): gdk2.PPixmap{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_create_row_drag_icon".}
-proc tree_view_set_enable_search*(tree_view: PTreeView, enable_search: gboolean){.
+proc set_enable_search*(tree_view: PTreeView, enable_search: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_enable_search".}
-proc tree_view_get_enable_search*(tree_view: PTreeView): gboolean{.cdecl, 
+proc get_enable_search*(tree_view: PTreeView): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_enable_search".}
-proc tree_view_get_search_column*(tree_view: PTreeView): gint{.cdecl, 
+proc get_search_column*(tree_view: PTreeView): gint{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_get_search_column".}
-proc tree_view_set_search_column*(tree_view: PTreeView, column: gint){.cdecl, 
+proc set_search_column*(tree_view: PTreeView, column: gint){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_search_column".}
-proc tree_view_get_search_equal_func*(tree_view: PTreeView): TTreeViewSearchEqualFunc{.
+proc get_search_equal_func*(tree_view: PTreeView): TTreeViewSearchEqualFunc{.
     cdecl, dynlib: lib, importc: "gtk_tree_view_get_search_equal_func".}
-proc tree_view_set_search_equal_func*(tree_view: PTreeView, search_equal_func: TTreeViewSearchEqualFunc, 
+proc set_search_equal_func*(tree_view: PTreeView, search_equal_func: TTreeViewSearchEqualFunc, 
                                       search_user_data: gpointer, 
                                       search_destroy: TDestroyNotify){.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_set_search_equal_func".}
-proc tree_view_set_destroy_count_func*(tree_view: PTreeView, 
+proc set_destroy_count_func*(tree_view: PTreeView, 
                                        fun: TTreeDestroyCountFunc, 
                                        data: gpointer, destroy: TDestroyNotify){.
     cdecl, dynlib: lib, importc: "gtk_tree_view_set_destroy_count_func".}
@@ -10745,17 +10745,17 @@ proc viewport_get_type*(): TType{.cdecl, dynlib: lib,
                                   importc: "gtk_viewport_get_type".}
 proc viewport_new*(hadjustment: PAdjustment, vadjustment: PAdjustment): PViewport{.
     cdecl, dynlib: lib, importc: "gtk_viewport_new".}
-proc viewport_get_hadjustment*(viewport: PViewport): PAdjustment{.cdecl, 
+proc get_hadjustment*(viewport: PViewport): PAdjustment{.cdecl, 
     dynlib: lib, importc: "gtk_viewport_get_hadjustment".}
-proc viewport_get_vadjustment*(viewport: PViewport): PAdjustment{.cdecl, 
+proc get_vadjustment*(viewport: PViewport): PAdjustment{.cdecl, 
     dynlib: lib, importc: "gtk_viewport_get_vadjustment".}
-proc viewport_set_hadjustment*(viewport: PViewport, adjustment: PAdjustment){.
+proc set_hadjustment*(viewport: PViewport, adjustment: PAdjustment){.
     cdecl, dynlib: lib, importc: "gtk_viewport_set_hadjustment".}
-proc viewport_set_vadjustment*(viewport: PViewport, adjustment: PAdjustment){.
+proc set_vadjustment*(viewport: PViewport, adjustment: PAdjustment){.
     cdecl, dynlib: lib, importc: "gtk_viewport_set_vadjustment".}
-proc viewport_set_shadow_type*(viewport: PViewport, thetype: TShadowType){.
+proc set_shadow_type*(viewport: PViewport, thetype: TShadowType){.
     cdecl, dynlib: lib, importc: "gtk_viewport_set_shadow_type".}
-proc viewport_get_shadow_type*(viewport: PViewport): TShadowType{.cdecl, 
+proc get_shadow_type*(viewport: PViewport): TShadowType{.cdecl, 
     dynlib: lib, importc: "gtk_viewport_get_shadow_type".}
 proc TYPE_VPANED*(): GType
 proc VPANED*(obj: pointer): PVPaned
@@ -11139,16 +11139,16 @@ proc widget_set_default_visual*(visual: pointer) =
   if (visual != nil): nil
   
 proc widget_set_rc_style*(widget: pointer) = 
-  widget_set_style(cast[PWidget](widget), nil)
+  set_style(cast[PWidget](widget), nil)
 
 proc widget_restore_default_style*(widget: pointer) = 
-  widget_set_style(cast[PWidget](widget), nil)
+  set_style(cast[PWidget](widget), nil)
 
-proc WIDGET_SET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags = 
+proc SET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags = 
   cast[pObject](wid).flags = cast[pObject](wid).flags or (flags)
   result = cast[pObject](wid).flags
 
-proc WIDGET_UNSET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags = 
+proc UNSET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags = 
   cast[pObject](wid).flags = cast[pObject](wid).flags and (not (flags))
   result = cast[pObject](wid).flags
 
@@ -11200,10 +11200,10 @@ proc set_accel_flags*(a: var TAccelKey, `accel_flags`: guint) =
       (int16(`accel_flags` shl bp_TGtkAccelKey_accel_flags) and
       bm_TGtkAccelKey_accel_flags)
 
-proc accel_group_ref*(AccelGroup: PAccelGroup) = 
+proc reference*(AccelGroup: PAccelGroup) = 
   discard g_object_ref(AccelGroup)
 
-proc accel_group_unref*(AccelGroup: PAccelGroup) = 
+proc unref*(AccelGroup: PAccelGroup) = 
   g_object_unref(AccelGroup)
 
 proc TYPE_CONTAINER*(): GType = 
@@ -11488,8 +11488,8 @@ proc WINDOW_GROUP_GET_CLASS*(obj: pointer): PWindowGroupClass =
   result = cast[PWindowGroupClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_WINDOW_GROUP()))
 
-proc window_position*(window: PWindow, position: TWindowPosition) = 
-  window_set_position(window, position)
+proc position*(window: PWindow, position: TWindowPosition) = 
+  set_position(window, position)
 
 proc TYPE_LABEL*(): GType = 
   result = label_get_type()
@@ -11568,8 +11568,8 @@ proc set_latin1_to_char*(a: var TAccelLabelClass, `latin1_to_char`: guint) =
       (int16(`latin1_to_char` shl bp_TGtkAccelLabelClass_latin1_to_char) and
       bm_TGtkAccelLabelClass_latin1_to_char)
 
-proc accel_label_accelerator_width*(accel_label: PAccelLabel): guint = 
-  result = accel_label_get_accel_width(accel_label)
+proc accelerator_width*(accel_label: PAccelLabel): guint = 
+  result = get_accel_width(accel_label)
 
 proc TYPE_ACCESSIBLE*(): GType = 
   result = accessible_get_type()
@@ -11706,9 +11706,9 @@ proc set_in_emission*(a: var TBindingEntry, `in_emission`: guint) =
       (int16(`in_emission` shl bp_TGtkBindingEntry_in_emission) and
       bm_TGtkBindingEntry_in_emission)
 
-proc binding_entry_add*(binding_set: PBindingSet, keyval: guint, 
+proc entry_add*(binding_set: PBindingSet, keyval: guint, 
                         modifiers: gdk2.TModifierType) = 
-  binding_entry_clear(binding_set, keyval, modifiers)
+  entry_clear(binding_set, keyval, modifiers)
 
 proc TYPE_BOX*(): GType = 
   result = box_get_type()
@@ -11785,10 +11785,10 @@ proc BUTTON_BOX_GET_CLASS*(obj: pointer): PButtonBoxClass =
   result = cast[PButtonBoxClass](CHECK_GET_CLASS(obj, TYPE_BUTTON_BOX()))
 
 proc button_box_set_spacing*(b: pointer, s: gint) = 
-  box_set_spacing(BOX(b), s)
+  set_spacing(BOX(b), s)
 
 proc button_box_get_spacing*(b: pointer): gint = 
-  result = box_get_spacing(BOX(b))
+  result = get_spacing(BOX(b))
 
 proc TYPE_BUTTON*(): GType = 
   result = button_get_type()
@@ -12254,8 +12254,8 @@ proc set_hide_on_activate*(a: var TMenuItemClass, `hide_on_activate`: guint) =
       (int16(`hide_on_activate` shl bp_TGtkMenuItemClass_hide_on_activate) and
       bm_TGtkMenuItemClass_hide_on_activate)
 
-proc menu_item_right_justify*(menu_item: PMenuItem) = 
-  menu_item_set_right_justified(menu_item, system.true)
+proc right_justify*(menu_item: PMenuItem) = 
+  set_right_justified(menu_item, system.true)
 
 proc TYPE_TOGGLE_BUTTON*(): GType = 
   result = toggle_button_get_type()
@@ -12387,10 +12387,10 @@ proc CLIST_GET_CLASS*(obj: pointer): PCListClass =
 proc CLIST_FLAGS*(clist: pointer): guint16 = 
   result = toU16(CLIST(clist).flags)
 
-proc CLIST_SET_FLAG*(clist: PCList, flag: guint16) = 
+proc SET_FLAG*(clist: PCList, flag: guint16) = 
   clist.flags = CLIST(clist).flags or (flag)
 
-proc CLIST_UNSET_FLAG*(clist: PCList, flag: guint16) = 
+proc UNSET_FLAG*(clist: PCList, flag: guint16) = 
   clist.flags = CLIST(clist).flags and not (flag)
 
 proc CLIST_IN_DRAG_get*(clist: pointer): bool = 
@@ -12747,7 +12747,7 @@ proc set_expanded*(a: var TCTreeRow, `expanded`: guint) =
       bm_TGtkCTreeRow_expanded)
 
 proc ctree_set_reorderable*(t: pointer, r: bool) = 
-  clist_set_reorderable(cast[PCList](t), r)
+  set_reorderable(cast[PCList](t), r)
 
 proc TYPE_DRAWING_AREA*(): GType = 
   result = drawing_area_get_type()
@@ -12994,13 +12994,13 @@ proc set_lower_arrow_prelight*(a: var TMenu, `lower_arrow_prelight`: guint) =
       bm_TGtkMenu_lower_arrow_prelight)
 
 proc menu_append*(menu, child: PWidget) = 
-  menu_shell_append(cast[PMenuShell](menu), child)
+  append(cast[PMenuShell](menu), child)
 
 proc menu_prepend*(menu, child: PWidget) = 
-  menu_shell_prepend(cast[PMenuShell](menu), child)
+  prepend(cast[PMenuShell](menu), child)
 
 proc menu_insert*(menu, child: PWidget, pos: gint) = 
-  menu_shell_insert(cast[PMenuShell](menu), child, pos)
+  insert(cast[PMenuShell](menu), child, pos)
 
 proc TYPE_ENTRY*(): GType = 
   result = entry_get_type()
@@ -13557,11 +13557,11 @@ proc TYPE_BORDER*(): GType =
 proc STYLE_ATTACHED*(style: pointer): bool = 
   result = ((STYLE(style)).attach_count) > 0'i32
 
-proc style_apply_default_pixmap*(style: PStyle, window: gdk2.PWindow, 
+proc apply_default_pixmap*(style: PStyle, window: gdk2.PWindow, 
                                  state_type: TStateType, area: gdk2.PRectangle, 
                                  x: gint, y: gint, width: gint, height: gint) = 
-  style_apply_default_background(style, window, true, state_type, area, x, y, 
-                                 width, height)
+  apply_default_background(style, window, true, state_type, area, x, y, 
+                           width, height)
 
 proc TYPE_RANGE*(): GType = 
   result = range_get_type()
@@ -13963,22 +13963,22 @@ proc ITEM_FACTORY_GET_CLASS*(obj: pointer): PItemFactoryClass =
   result = cast[PItemFactoryClass](CHECK_GET_CLASS(obj, TYPE_ITEM_FACTORY()))
 
 proc TYPE_LAYOUT*(): GType = 
-  result = layout_get_type()
+  result = gtk2.layout_get_type()
 
 proc LAYOUT*(obj: pointer): PLayout = 
-  result = cast[PLayout](CHECK_CAST(obj, TYPE_LAYOUT()))
+  result = cast[PLayout](CHECK_CAST(obj, gtk2.TYPE_LAYOUT()))
 
 proc LAYOUT_CLASS*(klass: pointer): PLayoutClass = 
-  result = cast[PLayoutClass](CHECK_CLASS_CAST(klass, TYPE_LAYOUT()))
+  result = cast[PLayoutClass](CHECK_CLASS_CAST(klass, gtk2.TYPE_LAYOUT()))
 
 proc IS_LAYOUT*(obj: pointer): bool = 
-  result = CHECK_TYPE(obj, TYPE_LAYOUT())
+  result = CHECK_TYPE(obj, gtk2.TYPE_LAYOUT())
 
 proc IS_LAYOUT_CLASS*(klass: pointer): bool = 
-  result = CHECK_CLASS_TYPE(klass, TYPE_LAYOUT())
+  result = CHECK_CLASS_TYPE(klass, gtk2.TYPE_LAYOUT())
 
 proc LAYOUT_GET_CLASS*(obj: pointer): PLayoutClass = 
-  result = cast[PLayoutClass](CHECK_GET_CLASS(obj, TYPE_LAYOUT()))
+  result = cast[PLayoutClass](CHECK_GET_CLASS(obj, gtk2.TYPE_LAYOUT()))
 
 proc TYPE_LIST*(): GType = 
   result = list_get_type()
@@ -14072,8 +14072,8 @@ proc TYPE_TREE_PATH*(): GType =
 proc tree_path_new_root*(): PTreePath = 
   result = tree_path_new_first()
 
-proc tree_model_get_iter_root*(tree_model: PTreeModel, iter: PTreeIter): gboolean = 
-  result = tree_model_get_iter_first(tree_model, iter)
+proc get_iter_root*(tree_model: PTreeModel, iter: PTreeIter): gboolean = 
+  result = get_iter_first(tree_model, iter)
 
 proc TYPE_TREE_SORTABLE*(): GType = 
   result = tree_sortable_get_type()
@@ -14158,13 +14158,13 @@ proc MENU_BAR_GET_CLASS*(obj: pointer): PMenuBarClass =
   result = cast[PMenuBarClass](CHECK_GET_CLASS(obj, TYPE_MENU_BAR()))
 
 proc menu_bar_append*(menu, child: PWidget) = 
-  menu_shell_append(cast[PMenuShell](menu), child)
+  append(cast[PMenuShell](menu), child)
 
 proc menu_bar_prepend*(menu, child: PWidget) = 
-  menu_shell_prepend(cast[PMenuShell](menu), child)
+  prepend(cast[PMenuShell](menu), child)
 
 proc menu_bar_insert*(menu, child: PWidget, pos: gint) = 
-  menu_shell_insert(cast[PMenuShell](menu), child, pos)
+  insert(cast[PMenuShell](menu), child, pos)
 
 proc TYPE_MESSAGE_DIALOG*(): GType = 
   result = message_dialog_get_type()
@@ -15169,10 +15169,10 @@ proc set_use_wchar*(a: PText, `use_wchar`: gboolean) =
   else: 
     a.Textflag0 = a.Textflag0 and not bm_TGtkText_use_wchar
 
-proc TEXT_INDEX_WCHAR*(t: PText, index: guint): guint32 = 
+proc INDEX_WCHAR*(t: PText, index: guint): guint32 = 
   nil
 
-proc TEXT_INDEX_UCHAR*(t: PText, index: guint): GUChar = 
+proc INDEX_UCHAR*(t: PText, index: guint): GUChar = 
   nil
 
 proc TYPE_TEXT_ITER*(): GType = 
@@ -16221,7 +16221,7 @@ proc set_parity*(a: PRBNode, `parity`: guint) =
   a.flag0 = a.flag0 or
       (int16(`parity` shl bp_TGtkRBNode_parity) and bm_TGtkRBNode_parity)
 
-proc RBNODE_GET_COLOR*(node: PRBNode): guint = 
+proc GET_COLOR*(node: PRBNode): guint = 
   if node == nil: 
     Result = RBNODE_BLACK
   elif (int(flags(node)) and RBNODE_RED) == RBNODE_RED: 
@@ -16229,13 +16229,13 @@ proc RBNODE_GET_COLOR*(node: PRBNode): guint =
   else: 
     Result = RBNODE_BLACK
 
-proc RBNODE_SET_COLOR*(node: PRBNode, color: guint) = 
+proc SET_COLOR*(node: PRBNode, color: guint) = 
   if node == nil: 
     return 
   if ((flags(node) and (color)) != color): 
     set_flags(node, flags(node) xor cint(RBNODE_RED or RBNODE_BLACK))
 
-proc RBNODE_GET_HEIGHT*(node: PRBNode): gint = 
+proc GET_HEIGHT*(node: PRBNode): gint = 
   var if_local1: gint
   if node.children != nil: 
     if_local1 = node.children.root.offset
@@ -16244,27 +16244,27 @@ proc RBNODE_GET_HEIGHT*(node: PRBNode): gint =
   result = node.offset -
       ((node.left.offset) + node.right.offset + if_local1)
 
-proc RBNODE_FLAG_SET*(node: PRBNode, flag: guint): bool = 
+proc FLAG_SET*(node: PRBNode, flag: guint): bool = 
   result = (node != nil) and ((flags(node) and (flag)) == flag)
 
-proc RBNODE_SET_FLAG*(node: PRBNode, flag: guint16) = 
+proc SET_FLAG*(node: PRBNode, flag: guint16) = 
   set_flags(node, (flag) or flags(node))
 
-proc RBNODE_UNSET_FLAG*(node: PRBNode, flag: guint16) = 
+proc UNSET_FLAG*(node: PRBNode, flag: guint16) = 
   set_flags(node, (not (flag)) and flags(node))
 
-proc TREE_VIEW_FLAG_SET*(tree_view: PTreeView, flag: guint): bool = 
+proc FLAG_SET*(tree_view: PTreeView, flag: guint): bool = 
   result = ((tree_view.priv.flags) and (flag)) == flag
 
-proc TREE_VIEW_HEADER_HEIGHT*(tree_view: PTreeView): int32 = 
+proc HEADER_HEIGHT*(tree_view: PTreeView): int32 = 
   var if_local1: int32
-  if TREE_VIEW_FLAG_SET(tree_view, TREE_VIEW_HEADERS_VISIBLE): 
+  if FLAG_SET(tree_view, TREE_VIEW_HEADERS_VISIBLE): 
     if_local1 = tree_view.priv.header_height
   else: 
     if_local1 = 0
   result = if_local1
 
-proc TREE_VIEW_COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32 = 
+proc COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32 = 
   var MinWidth, MaxWidth: int
   if column.min_width != - 1'i32: 
     MinWidth = column.min_width
@@ -16276,12 +16276,12 @@ proc TREE_VIEW_COLUMN_REQUESTED_WIDTH*(column: PTreeViewColumn): int32 =
     MaxWidth = column.requested_width
   result = CLAMP(column.requested_width, MinWidth, MaxWidth)
 
-proc TREE_VIEW_DRAW_EXPANDERS*(tree_view: PTreeView): bool = 
-  result = (not (TREE_VIEW_FLAG_SET(tree_view, TREE_VIEW_IS_LIST))) and
-      (TREE_VIEW_FLAG_SET(tree_view, TREE_VIEW_SHOW_EXPANDERS))
+proc DRAW_EXPANDERS*(tree_view: PTreeView): bool = 
+  result = (not (FLAG_SET(tree_view, TREE_VIEW_IS_LIST))) and
+      (FLAG_SET(tree_view, TREE_VIEW_SHOW_EXPANDERS))
 
-proc TREE_VIEW_COLUMN_DRAG_DEAD_MULTIPLIER*(tree_view: PTreeView): int32 = 
-  result = 10'i32 * (TREE_VIEW_HEADER_HEIGHT(tree_view))
+proc COLUMN_DRAG_DEAD_MULTIPLIER*(tree_view: PTreeView): int32 = 
+  result = 10'i32 * (HEADER_HEIGHT(tree_view))
 
 proc scroll_to_use_align*(a: var TTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_scroll_to_use_align) shr
@@ -16372,10 +16372,10 @@ proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint) =
       (int16(`disable_popdown` shl bp_TGtkTreeViewPrivate_disable_popdown) and
       bm_TGtkTreeViewPrivate_disable_popdown)
 
-proc TREE_VIEW_SET_FLAG*(tree_view: PTreeView, flag: guint) = 
+proc SET_FLAG*(tree_view: PTreeView, flag: guint) = 
   tree_view.priv.flags = tree_view.priv.flags or (flag)
 
-proc TREE_VIEW_UNSET_FLAG*(tree_view: PTreeView, flag: guint) = 
+proc UNSET_FLAG*(tree_view: PTreeView, flag: guint) = 
   tree_view.priv.flags = tree_view.priv.flags and not (flag)
 
 proc TYPE_TREE_VIEW*(): GType = 
@@ -16539,52 +16539,52 @@ type
 const 
   ARG_READWRITE* = ARG_READABLE or ARG_WRITABLE
 
-proc binding_entry_add_signal*(binding_set: PBindingSet, keyval: guint, 
+proc entry_add_signal*(binding_set: PBindingSet, keyval: guint, 
                                modifiers: gdk2.TModifierType, 
                                signal_name: cstring, n_args: guint){.varargs, 
     importc: "gtk_binding_entry_add_signal", cdecl, dynlib: lib.}
 proc clist_new_with_titles*(columns: gint): PCList{.varargs, cdecl, 
     importc: "gtk_clist_new_with_titles", dynlib: lib.}
-proc clist_prepend*(clist: PCList): gint{.importc: "gtk_clist_prepend", varargs, 
+proc prepend*(clist: PCList): gint{.importc: "gtk_clist_prepend", varargs, 
     cdecl, dynlib: lib.}
-proc clist_append*(clist: PCList): gint{.importc: "gtk_clist_append", varargs, 
+proc append*(clist: PCList): gint{.importc: "gtk_clist_append", varargs, 
     cdecl, dynlib: lib.}
-proc clist_insert*(clist: PCList, row: gint): gint{.varargs, cdecl, 
+proc insert*(clist: PCList, row: gint): gint{.varargs, cdecl, 
     importc: "gtk_clist_insert", dynlib: lib.}
-proc cell_layout_set_attributes*(cell_layout: PCellLayout, cell: PCellRenderer){.
+proc set_attributes*(cell_layout: PCellLayout, cell: PCellRenderer){.
     cdecl, varargs, importc: "gtk_cell_layout_set_attributes", dynlib: lib, 
     importc: "gtk_cell_layout_set_attributes".}
-proc container_add_with_properties*(container: PContainer, widget: PWidget, 
+proc add_with_properties*(container: PContainer, widget: PWidget, 
                                     first_prop_name: cstring){.varargs, 
     importc: "gtk_container_add_with_properties", cdecl, dynlib: lib.}
-proc container_child_set*(container: PContainer, child: PWidget, 
+proc child_set*(container: PContainer, child: PWidget, 
                           first_prop_name: cstring){.varargs, cdecl, 
     importc: "gtk_container_child_set", dynlib: lib.}
-proc container_child_get*(container: PContainer, child: PWidget, 
+proc child_get*(container: PContainer, child: PWidget, 
                           first_prop_name: cstring){.varargs, cdecl, 
     importc: "gtk_container_child_get", dynlib: lib.}
-proc container_child_set_valist*(container: PContainer, child: PWidget, 
+proc child_set_valist*(container: PContainer, child: PWidget, 
                                  first_property_name: cstring){.varargs, 
     importc: "gtk_container_child_set_valist", cdecl, dynlib: lib.}
-proc container_child_get_valist*(container: PContainer, child: PWidget, 
+proc child_get_valist*(container: PContainer, child: PWidget, 
                                  first_property_name: cstring){.varargs, 
     importc: "gtk_container_child_get_valist", cdecl, dynlib: lib.}
 proc ctree_new_with_titles*(columns: gint, tree_column: gint): PCTree{.
     importc: "gtk_ctree_new_with_titles", varargs, cdecl, dynlib: lib.}
-proc curve_get_vector*(curve: PCurve, veclen: int32){.varargs, cdecl, 
+proc get_vector*(curve: PCurve, veclen: int32){.varargs, cdecl, 
     importc: "gtk_curve_get_vector", dynlib: lib.}
-proc curve_set_vector*(curve: PCurve, veclen: int32){.varargs, cdecl, 
+proc set_vector*(curve: PCurve, veclen: int32){.varargs, cdecl, 
     importc: "gtk_curve_set_vector", dynlib: lib.}
-proc dialog_add_buttons*(dialog: PDialog, first_button_text: cstring){.varargs, 
+proc add_buttons*(dialog: PDialog, first_button_text: cstring){.varargs, 
     cdecl, importc: "gtk_dialog_add_buttons", dynlib: lib.}
 proc dialog_new_with_buttons*(title: cstring, parent: PWindow, 
                               flags: TDialogFlags, first_button_text: cstring): PDialog{.
     varargs, cdecl, importc: "gtk_dialog_new_with_buttons", dynlib: lib.}
 proc list_store_new*(n_columns: gint): PListStore{.varargs, cdecl, 
     importc: "gtk_list_store_new", dynlib: lib.}
-proc list_store_set*(list_store: PListStore, iter: PTreeIter){.varargs, cdecl, 
+proc set*(list_store: PListStore, iter: PTreeIter){.varargs, cdecl, 
     importc: "gtk_list_store_set", dynlib: lib.}
-proc list_store_set_valist*(list_store: PListStore, iter: PTreeIter){.varargs, 
+proc set_valist*(list_store: PListStore, iter: PTreeIter){.varargs, 
     cdecl, importc: "gtk_list_store_set_valist", dynlib: lib.}
 proc message_dialog_new*(parent: PWindow, flags: TDialogFlags, 
                          thetype: TMessageType, buttons: TButtonsType, 
@@ -16598,62 +16598,62 @@ proc signal_emit*(anObject: PObject, signal_id: guint){.varargs, cdecl,
     importc: "gtk_signal_emit", dynlib: lib.}
 proc signal_emit_by_name*(anObject: PObject, name: cstring){.varargs, cdecl, 
     importc: "gtk_signal_emit_by_name", dynlib: lib.}
-proc text_buffer_insert_with_tags*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_with_tags*(buffer: PTextBuffer, iter: PTextIter, 
                                    text: cstring, length: gint, 
                                    first_tag: PTextTag){.varargs, 
     importc: "gtk_text_buffer_insert_with_tags", cdecl, dynlib: lib.}
-proc text_buffer_insert_with_tags_by_name*(buffer: PTextBuffer, iter: PTextIter, 
+proc insert_with_tags_by_name*(buffer: PTextBuffer, iter: PTextIter, 
     text: cstring, length: gint, first_tag_name: cstring){.varargs, 
     importc: "gtk_text_buffer_insert_with_tags_by_name", cdecl, dynlib: lib.}
-proc text_buffer_create_tag*(buffer: PTextBuffer, tag_name: cstring, 
+proc create_tag*(buffer: PTextBuffer, tag_name: cstring, 
                              first_property_name: cstring): PTextTag{.varargs, 
     importc: "gtk_text_buffer_create_tag", cdecl, dynlib: lib.}
-proc tree_model_get*(tree_model: PTreeModel, iter: PTreeIter){.varargs, 
+proc get*(tree_model: PTreeModel, iter: PTreeIter){.varargs, 
     importc: "gtk_tree_model_get", cdecl, dynlib: lib.}
-proc tree_model_get_valist*(tree_model: PTreeModel, iter: PTreeIter){.varargs, 
+proc get_valist*(tree_model: PTreeModel, iter: PTreeIter){.varargs, 
     importc: "gtk_tree_model_get_valist", cdecl, dynlib: lib.}
 proc tree_store_new*(n_columns: gint): PTreeStore{.varargs, cdecl, 
     importc: "gtk_tree_store_new", dynlib: lib.}
-proc tree_store_set*(tree_store: PTreeStore, iter: PTreeIter){.varargs, cdecl, 
+proc set*(tree_store: PTreeStore, iter: PTreeIter){.varargs, cdecl, 
     importc: "gtk_tree_store_set", dynlib: lib.}
-proc tree_store_set_valist*(tree_store: PTreeStore, iter: PTreeIter){.varargs, 
+proc set_valist*(tree_store: PTreeStore, iter: PTreeIter){.varargs, 
     cdecl, importc: "gtk_tree_store_set_valist", dynlib: lib.}
-proc tree_store_iter_is_valid*(tree_store: PTreeStore, iter: PTreeIter): gboolean{.
+proc iter_is_valid*(tree_store: PTreeStore, iter: PTreeIter): gboolean{.
     cdecl, importc: "gtk_tree_store_iter_is_valid", dynlib: lib.}
-proc tree_store_reorder*(tree_store: PTreeStore, parent: PTreeIter, 
+proc reorder*(tree_store: PTreeStore, parent: PTreeIter, 
                          new_order: pgint){.cdecl, 
     importc: "gtk_tree_store_reorder", dynlib: lib.}
-proc tree_store_swap*(tree_store: PTreeStore, a: PTreeIter, b: PTreeIter){.
+proc swap*(tree_store: PTreeStore, a: PTreeIter, b: PTreeIter){.
     cdecl, importc: "gtk_tree_store_swap", dynlib: lib.}
-proc tree_store_move_before*(tree_store: PTreeStore, iter: PTreeIter, 
+proc move_before*(tree_store: PTreeStore, iter: PTreeIter, 
                              position: PTreeIter){.cdecl, 
     importc: "gtk_tree_store_move_before", dynlib: lib.}
-proc tree_store_move_after*(tree_store: PTreeStore, iter: PTreeIter, 
+proc move_after*(tree_store: PTreeStore, iter: PTreeIter, 
                             position: PTreeIter){.cdecl, 
     importc: "gtk_tree_store_move_after", dynlib: lib.}
-proc tree_view_insert_column_with_attributes*(tree_view: PTreeView, 
+proc insert_column_with_attributes*(tree_view: PTreeView, 
     position: gint, title: cstring, cell: PCellRenderer): gint{.varargs, 
     importc: "gtk_tree_view_insert_column_with_attributes", cdecl, dynlib: lib.}
 proc tree_view_column_new_with_attributes*(title: cstring, cell: PCellRenderer): PTreeViewColumn{.
     importc: "gtk_tree_view_column_new_with_attributes", varargs, cdecl, 
     dynlib: lib.}
-proc tree_view_column_set_attributes*(tree_column: PTreeViewColumn, 
+proc column_set_attributes*(tree_column: PTreeViewColumn, 
                                       cell_renderer: PCellRenderer){.
     importc: "gtk_tree_view_column_set_attributes", varargs, cdecl, dynlib: lib.}
 proc widget_new*(thetype: TType, first_property_name: cstring): PWidget{.
     importc: "gtk_widget_new", varargs, cdecl, dynlib: lib.}
-proc widget_set*(widget: PWidget, first_property_name: cstring){.varargs, 
+proc set*(widget: PWidget, first_property_name: cstring){.varargs, 
     importc: "gtk_widget_set", cdecl, dynlib: lib.}
-proc widget_queue_clear*(widget: PWidget){.importc: "gtk_widget_queue_clear", 
+proc queue_clear*(widget: PWidget){.importc: "gtk_widget_queue_clear", 
     cdecl, dynlib: lib.}
-proc widget_queue_clear_area*(widget: PWidget, x: gint, y: gint, width: gint, 
+proc queue_clear_area*(widget: PWidget, x: gint, y: gint, width: gint, 
                               height: gint){.cdecl, 
     importc: "gtk_widget_queue_clear_area", dynlib: lib.}
-proc widget_draw*(widget: PWidget, area: gdk2.PRectangle){.cdecl, 
+proc draw*(widget: PWidget, area: gdk2.PRectangle){.cdecl, 
     importc: "gtk_widget_draw", dynlib: lib.}
-proc widget_style_get_valist*(widget: PWidget, first_property_name: cstring){.
+proc style_get_valist*(widget: PWidget, first_property_name: cstring){.
     varargs, cdecl, importc: "gtk_widget_style_get_valist", dynlib: lib.}
-proc widget_style_get*(widget: PWidget, first_property_name: cstring){.varargs, 
+proc style_get*(widget: PWidget, first_property_name: cstring){.varargs, 
     cdecl, importc: "gtk_widget_style_get", dynlib: lib.}
 proc file_chooser_dialog_new*(title: cstring, parent: PWindow, 
                               action: TFileChooserAction, 
@@ -16663,47 +16663,47 @@ proc file_chooser_dialog_new_with_backend*(title: cstring, parent: PWindow,
     action: TFileChooserAction, backend: cstring, first_button_text: cstring): PDialog{.
     varargs, cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_dialog_new_with_backend".}
-proc object_ref*(anObject: PObject): PObject{.cdecl, importc: "gtk_object_ref", 
+proc reference*(anObject: PObject): PObject{.cdecl, importc: "gtk_object_ref", 
     dynlib: lib.}
-proc object_unref*(anObject: PObject){.cdecl, importc: "gtk_object_unref", 
+proc unref*(anObject: PObject){.cdecl, importc: "gtk_object_unref", 
                                        dynlib: lib.}
-proc object_weakref*(anObject: PObject, notify: TDestroyNotify, data: gpointer){.
+proc weakref*(anObject: PObject, notify: TDestroyNotify, data: gpointer){.
     cdecl, importc: "gtk_object_weakref", dynlib: lib.}
-proc object_weakunref*(anObject: PObject, notify: TDestroyNotify, data: gpointer){.
+proc weakunref*(anObject: PObject, notify: TDestroyNotify, data: gpointer){.
     cdecl, importc: "gtk_object_weakunref", dynlib: lib.}
-proc object_set_data*(anObject: PObject, key: cstring, data: gpointer){.cdecl, 
+proc set_data*(anObject: PObject, key: cstring, data: gpointer){.cdecl, 
     importc: "gtk_object_set_data", dynlib: lib.}
-proc object_set_data_full*(anObject: PObject, key: cstring, data: gpointer, 
+proc set_data_full*(anObject: PObject, key: cstring, data: gpointer, 
                            destroy: TDestroyNotify){.
     importc: "gtk_object_set_data_full", cdecl, dynlib: lib.}
-proc object_remove_data*(anObject: PObject, key: cstring){.cdecl, 
+proc remove_data*(anObject: PObject, key: cstring){.cdecl, 
     importc: "gtk_object_remove_data", dynlib: lib.}
-proc object_get_data*(anObject: PObject, key: cstring): gpointer{.cdecl, 
+proc get_data*(anObject: PObject, key: cstring): gpointer{.cdecl, 
     importc: "gtk_object_get_data", dynlib: lib.}
-proc object_remove_no_notify*(anObject: PObject, key: cstring){.cdecl, 
+proc remove_no_notify*(anObject: PObject, key: cstring){.cdecl, 
     importc: "gtk_object_remove_no_notify", dynlib: lib.}
-proc object_set_user_data*(anObject: PObject, data: gpointer){.cdecl, 
+proc set_user_data*(anObject: PObject, data: gpointer){.cdecl, 
     importc: "gtk_object_set_user_data", dynlib: lib.}
-proc object_get_user_data*(anObject: PObject): gpointer{.cdecl, 
+proc get_user_data*(anObject: PObject): gpointer{.cdecl, 
     importc: "gtk_object_get_user_data", dynlib: lib.}
-proc object_set_data_by_id*(anObject: PObject, data_id: TGQuark, data: gpointer){.
+proc set_data_by_id*(anObject: PObject, data_id: TGQuark, data: gpointer){.
     cdecl, importc: "gtk_object_set_data_by_id", dynlib: lib.}
-proc object_set_data_by_id_full*(anObject: PObject, data_id: TGQuark, 
+proc set_data_by_id_full*(anObject: PObject, data_id: TGQuark, 
                                  data: gpointer, destroy: TDestroyNotify){.
     cdecl, importc: "gtk_object_set_data_by_id_full", dynlib: lib.}
-proc object_get_data_by_id*(anObject: PObject, data_id: TGQuark): gpointer{.
+proc get_data_by_id*(anObject: PObject, data_id: TGQuark): gpointer{.
     cdecl, importc: "gtk_object_get_data_by_id", dynlib: lib.}
-proc object_remove_data_by_id*(anObject: PObject, data_id: TGQuark){.cdecl, 
+proc remove_data_by_id*(anObject: PObject, data_id: TGQuark){.cdecl, 
     importc: "gtk_object_remove_data_by_id", dynlib: lib.}
-proc object_remove_no_notify_by_id*(anObject: PObject, key_id: TGQuark){.cdecl, 
+proc remove_no_notify_by_id*(anObject: PObject, key_id: TGQuark){.cdecl, 
     importc: "gtk_object_remove_no_notify_by_id", dynlib: lib.}
 proc object_data_try_key*(str: cstring): TGQuark{.cdecl, 
     importc: "gtk_object_data_try_key", dynlib: lib.}
 proc object_data_force_id*(str: cstring): TGQuark{.cdecl, 
     importc: "gtk_object_data_force_id", dynlib: lib.}
-proc object_get*(anObject: PObject, first_property_name: cstring){.cdecl, 
+proc get*(anObject: PObject, first_property_name: cstring){.cdecl, 
     importc: "gtk_object_get", varargs, dynlib: lib.}
-proc object_set*(anObject: PObject, first_property_name: cstring){.cdecl, 
+proc set*(anObject: PObject, first_property_name: cstring){.cdecl, 
     importc: "gtk_object_set", varargs, dynlib: lib.}
 proc object_add_arg_type*(arg_name: cstring, arg_type: TType, arg_flags: guint, 
                           arg_id: guint){.cdecl, 
@@ -16737,21 +16737,21 @@ proc file_filter_get_type*(): GType{.cdecl, dynlib: lib,
                                      importc: "gtk_file_filter_get_type".}
 proc file_filter_new*(): PFileFilter{.cdecl, dynlib: lib, 
                                       importc: "gtk_file_filter_new".}
-proc file_filter_set_name*(filter: PFileFilter, name: cstring){.cdecl, 
+proc set_name*(filter: PFileFilter, name: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_file_filter_set_name".}
-proc file_filter_get_name*(filter: PFileFilter): cstring{.cdecl, dynlib: lib, 
+proc get_name*(filter: PFileFilter): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_file_filter_get_name".}
-proc file_filter_add_mime_type*(filter: PFileFilter, mime_type: cstring){.cdecl, 
+proc add_mime_type*(filter: PFileFilter, mime_type: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_file_filter_add_mime_type".}
-proc file_filter_add_pattern*(filter: PFileFilter, pattern: cstring){.cdecl, 
+proc add_pattern*(filter: PFileFilter, pattern: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_file_filter_add_pattern".}
-proc file_filter_add_custom*(filter: PFileFilter, needed: TFileFilterFlags, 
+proc add_custom*(filter: PFileFilter, needed: TFileFilterFlags, 
                              func: TFileFilterFunc, data: gpointer, 
                              notify: TGDestroyNotify){.cdecl, dynlib: lib, 
     importc: "gtk_file_filter_add_custom".}
-proc file_filter_get_needed*(filter: PFileFilter): TFileFilterFlags{.cdecl, 
+proc get_needed*(filter: PFileFilter): TFileFilterFlags{.cdecl, 
     dynlib: lib, importc: "gtk_file_filter_get_needed".}
-proc file_filter_filter*(filter: PFileFilter, filter_info: PFileFilterInfo): gboolean{.
+proc filter*(filter: PFileFilter, filter_info: PFileFilterInfo): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_filter_filter".}
 proc TYPE_FILE_FILTER(): GType = 
   result = file_filter_get_type()
@@ -16776,102 +16776,102 @@ proc FILE_CHOOSER*(obj: pointer): PFileChooser =
 proc IS_FILE_CHOOSER*(obj: pointer): gboolean = 
   result = G_TYPE_CHECK_INSTANCE_TYPE(obj, TYPE_FILE_CHOOSER())
 
-proc file_chooser_set_action*(chooser: PFileChooser, action: TFileChooserAction){.
+proc set_action*(chooser: PFileChooser, action: TFileChooserAction){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_action".}
-proc file_chooser_get_action*(chooser: PFileChooser): TFileChooserAction{.cdecl, 
+proc get_action*(chooser: PFileChooser): TFileChooserAction{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_action".}
-proc file_chooser_set_local_only*(chooser: PFileChooser, local_only: gboolean){.
+proc set_local_only*(chooser: PFileChooser, local_only: gboolean){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_local_only".}
-proc file_chooser_get_local_only*(chooser: PFileChooser): gboolean{.cdecl, 
+proc get_local_only*(chooser: PFileChooser): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_local_only".}
-proc file_chooser_set_select_multiple*(chooser: PFileChooser, 
+proc set_select_multiple*(chooser: PFileChooser, 
                                        select_multiple: gboolean){.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_set_select_multiple".}
-proc file_chooser_get_select_multiple*(chooser: PFileChooser): gboolean{.cdecl, 
+proc get_select_multiple*(chooser: PFileChooser): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_select_multiple".}
-proc file_chooser_set_current_name*(chooser: PFileChooser, name: cstring){.
+proc set_current_name*(chooser: PFileChooser, name: cstring){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_current_name".}
-proc file_chooser_get_filename*(chooser: PFileChooser): cstring{.cdecl, 
+proc get_filename*(chooser: PFileChooser): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_filename".}
-proc file_chooser_set_filename*(chooser: PFileChooser, filename: cstring): gboolean{.
+proc set_filename*(chooser: PFileChooser, filename: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_filename".}
-proc file_chooser_select_filename*(chooser: PFileChooser, filename: cstring): gboolean{.
+proc select_filename*(chooser: PFileChooser, filename: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_select_filename".}
-proc file_chooser_unselect_filename*(chooser: PFileChooser, filename: cstring){.
+proc unselect_filename*(chooser: PFileChooser, filename: cstring){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_unselect_filename".}
-proc file_chooser_select_all*(chooser: PFileChooser){.cdecl, dynlib: lib, 
+proc select_all*(chooser: PFileChooser){.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_select_all".}
-proc file_chooser_unselect_all*(chooser: PFileChooser){.cdecl, dynlib: lib, 
+proc unselect_all*(chooser: PFileChooser){.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_unselect_all".}
-proc file_chooser_get_filenames*(chooser: PFileChooser): PGSList{.cdecl, 
+proc get_filenames*(chooser: PFileChooser): PGSList{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_filenames".}
-proc file_chooser_set_current_folder*(chooser: PFileChooser, filename: cstring): gboolean{.
+proc set_current_folder*(chooser: PFileChooser, filename: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_current_folder".}
-proc file_chooser_get_current_folder*(chooser: PFileChooser): cstring{.cdecl, 
+proc get_current_folder*(chooser: PFileChooser): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_current_folder".}
-proc file_chooser_get_uri*(chooser: PFileChooser): cstring{.cdecl, dynlib: lib, 
+proc get_uri*(chooser: PFileChooser): cstring{.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_get_uri".}
-proc file_chooser_set_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
+proc set_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_uri".}
-proc file_chooser_select_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
+proc select_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_select_uri".}
-proc file_chooser_unselect_uri*(chooser: PFileChooser, uri: cstring){.cdecl, 
+proc unselect_uri*(chooser: PFileChooser, uri: cstring){.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_unselect_uri".}
-proc file_chooser_get_uris*(chooser: PFileChooser): PGSList{.cdecl, dynlib: lib, 
+proc get_uris*(chooser: PFileChooser): PGSList{.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_get_uris".}
-proc file_chooser_set_current_folder_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
+proc set_current_folder_uri*(chooser: PFileChooser, uri: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_current_folder_uri".}
-proc file_chooser_get_current_folder_uri*(chooser: PFileChooser): cstring{.
+proc get_current_folder_uri*(chooser: PFileChooser): cstring{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_get_current_folder_uri".}
-proc file_chooser_set_preview_widget*(chooser: PFileChooser, 
+proc set_preview_widget*(chooser: PFileChooser, 
                                       preview_widget: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_set_preview_widget".}
-proc file_chooser_get_preview_widget*(chooser: PFileChooser): PWidget{.cdecl, 
+proc get_preview_widget*(chooser: PFileChooser): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_preview_widget".}
-proc file_chooser_set_preview_widget_active*(chooser: PFileChooser, 
+proc set_preview_widget_active*(chooser: PFileChooser, 
     active: gboolean){.cdecl, dynlib: lib, 
                        importc: "gtk_file_chooser_set_preview_widget_active".}
-proc file_chooser_get_preview_widget_active*(chooser: PFileChooser): gboolean{.
+proc get_preview_widget_active*(chooser: PFileChooser): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_get_preview_widget_active".}
-proc file_chooser_set_use_preview_label*(chooser: PFileChooser, 
+proc set_use_preview_label*(chooser: PFileChooser, 
     use_label: gboolean){.cdecl, dynlib: lib, 
                           importc: "gtk_file_chooser_set_use_preview_label".}
-proc file_chooser_get_use_preview_label*(chooser: PFileChooser): gboolean{.
+proc get_use_preview_label*(chooser: PFileChooser): gboolean{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_get_use_preview_label".}
-proc file_chooser_get_preview_filename*(chooser: PFileChooser): cstring{.cdecl, 
+proc get_preview_filename*(chooser: PFileChooser): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_preview_filename".}
-proc file_chooser_get_preview_uri*(chooser: PFileChooser): cstring{.cdecl, 
+proc get_preview_uri*(chooser: PFileChooser): cstring{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_preview_uri".}
-proc file_chooser_set_extra_widget*(chooser: PFileChooser, extra_widget: PWidget){.
+proc set_extra_widget*(chooser: PFileChooser, extra_widget: PWidget){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_extra_widget".}
-proc file_chooser_get_extra_widget*(chooser: PFileChooser): PWidget{.cdecl, 
+proc get_extra_widget*(chooser: PFileChooser): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_extra_widget".}
-proc file_chooser_add_filter*(chooser: PFileChooser, filter: PFileFilter){.
+proc add_filter*(chooser: PFileChooser, filter: PFileFilter){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_add_filter".}
-proc file_chooser_remove_filter*(chooser: PFileChooser, filter: PFileFilter){.
+proc remove_filter*(chooser: PFileChooser, filter: PFileFilter){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_remove_filter".}
-proc file_chooser_list_filters*(chooser: PFileChooser): PGSList{.cdecl, 
+proc list_filters*(chooser: PFileChooser): PGSList{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_list_filters".}
-proc file_chooser_set_filter*(chooser: PFileChooser, filter: PFileFilter){.
+proc set_filter*(chooser: PFileChooser, filter: PFileFilter){.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_set_filter".}
-proc file_chooser_get_filter*(chooser: PFileChooser): PFileFilter{.cdecl, 
+proc get_filter*(chooser: PFileChooser): PFileFilter{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_get_filter".}
-proc file_chooser_add_shortcut_folder*(chooser: PFileChooser, folder: cstring, 
+proc add_shortcut_folder*(chooser: PFileChooser, folder: cstring, 
                                        error: pointer): gboolean{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_add_shortcut_folder".}
-proc file_chooser_remove_shortcut_folder*(chooser: PFileChooser, 
+proc remove_shortcut_folder*(chooser: PFileChooser, 
     folder: cstring, error: pointer): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_remove_shortcut_folder".}
-proc file_chooser_list_shortcut_folders*(chooser: PFileChooser): PGSList{.cdecl, 
+proc list_shortcut_folders*(chooser: PFileChooser): PGSList{.cdecl, 
     dynlib: lib, importc: "gtk_file_chooser_list_shortcut_folders".}
-proc file_chooser_add_shortcut_folder_uri*(chooser: PFileChooser, uri: cstring, 
+proc add_shortcut_folder_uri*(chooser: PFileChooser, uri: cstring, 
     error: pointer): gboolean{.cdecl, dynlib: lib, importc: "gtk_file_chooser_add_shortcut_folder_uri".}
-proc file_chooser_remove_shortcut_folder_uri*(chooser: PFileChooser, 
+proc remove_shortcut_folder_uri*(chooser: PFileChooser, 
     uri: cstring, error: pointer): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_remove_shortcut_folder_uri".}
-proc file_chooser_list_shortcut_folder_uris*(chooser: PFileChooser): PGSList{.
+proc list_shortcut_folder_uris*(chooser: PFileChooser): PGSList{.
     cdecl, dynlib: lib, importc: "gtk_file_chooser_list_shortcut_folder_uris".}
-proc file_chooser_set_do_overwrite_confirmation*(chooser: PFileChooser, 
+proc set_do_overwrite_confirmation*(chooser: PFileChooser, 
     do_overwrite_confirmation: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_set_do_overwrite_confirmation".}
 

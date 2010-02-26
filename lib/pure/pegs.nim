@@ -588,18 +588,13 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
       #else: silently ignore the capture
     else:
       c.ml = idx
-  of pkBackRef: 
+  of pkBackRef..pkBackRefIgnoreStyle: 
     if p.index >= c.ml: return -1
     var (a, b) = c.matches[p.index]
-    result = m(s, term(s.copy(a, b)), start, c)
-  of pkBackRefIgnoreCase:
-    if p.index >= c.ml: return -1
-    var (a, b) = c.matches[p.index]
-    result = m(s, termIgnoreCase(s.copy(a, b)), start, c)
-  of pkBackRefIgnoreStyle:
-    if p.index >= c.ml: return -1
-    var (a, b) = c.matches[p.index]
-    result = m(s, termIgnoreStyle(s.copy(a, b)), start, c)
+    var n: TPeg
+    n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef)) 
+    n.term = s.copy(a, b)
+    result = m(s, n, start, c)
   of pkRule, pkList: assert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
