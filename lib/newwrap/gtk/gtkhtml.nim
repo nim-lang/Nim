@@ -39,19 +39,20 @@ const
   DOM_DOCUMENT_TYPE_NODE* = 10
   DOM_DOCUMENT_FRAGMENT_NODE* = 11
   DOM_NOTATION_NODE* = 12
-  bm__HtmlFontSpecification_weight* = 0x0000000F
-  bp__HtmlFontSpecification_weight* = 0
-  bm__HtmlFontSpecification_style* = 0x00000030
-  bp__HtmlFontSpecification_style* = 4
-  bm__HtmlFontSpecification_variant* = 0x000000C0
-  bp__HtmlFontSpecification_variant* = 6
-  bm__HtmlFontSpecification_stretch* = 0x00000F00
-  bp__HtmlFontSpecification_stretch* = 8
-  bm__HtmlFontSpecification_decoration* = 0x00007000
-  bp__HtmlFontSpecification_decoration* = 12
+  bm_HtmlFontSpecification_weight* = 0x0000000F
+  bp_HtmlFontSpecification_weight* = 0
+  bm_HtmlFontSpecification_style* = 0x00000030
+  bp_HtmlFontSpecification_style* = 4
+  bm_HtmlFontSpecification_variant* = 0x000000C0
+  bp_HtmlFontSpecification_variant* = 6
+  bm_HtmlFontSpecification_stretch* = 0x00000F00
+  bp_HtmlFontSpecification_stretch* = 8
+  bm_HtmlFontSpecification_decoration* = 0x00007000
+  bp_HtmlFontSpecification_decoration* = 12
 
 type 
   TDomString* = gchar
+  PDomString* = cstring
   TDomBoolean* = gboolean
   TDomException* = gushort
   TDomTimeStamp* = guint64
@@ -59,6 +60,8 @@ type
   TDomNode* = object of TGObject
     xmlnode*: pointer
     style*: pointer
+
+  PDomException* = ptr TDomException
 
   PDomNodeClass* = ptr TDomNodeClass
   TDomNodeClass* = object of TGObjectClass
@@ -91,21 +94,21 @@ type
     parser_type*: THtmlParserType
     document*: PHtmlDocument
     stream*: PHtmlStream
-    xmlctxt*: xmlParserCtxtPtr
+    xmlctxt*: pointer
     res*: int32
     chars*: array[0..9, char]
     blocking*: gboolean
     blocking_node*: PDomNode
 
   PHtmlParserClass* = ptr THtmlParserClass
-  THtmlParserClass* = object of TObjectClass
+  THtmlParserClass* = object of gtk2.TObjectClass
     done_parsing*: proc (parser: PHtmlParser){.cdecl.}
     new_node*: proc (parser: PHtmlParser, node: PDomNode)
     parsed_document_node*: proc (parser: PHtmlParser, document: PDomDocument)
 
   PHtmlStream* = ptr THtmlStream
   THtmlStreamCloseFunc* = proc (stream: PHtmlStream, user_data: gpointer){.cdecl.}
-  THtmlStreamWriteFunc* = proc (stream: PHtmlStream, buffer: Pgchar, 
+  THtmlStreamWriteFunc* = proc (stream: PHtmlStream, buffer: cstring, 
                                 size: guint, user_data: gpointer){.cdecl.}
   THtmlStreamCancelFunc* = proc (stream: PHtmlStream, user_data: gpointer, 
                                  cancel_data: gpointer){.cdecl.}
@@ -120,7 +123,7 @@ type
 
   PHtmlStreamClass* = ptr THtmlStreamClass
   THtmlStreamClass* = object of TGObjectClass
-  THtmlStreamBufferCloseFunc* = proc (str: Pgchar, len: gint, 
+  THtmlStreamBufferCloseFunc* = proc (str: cstring, len: gint, 
                                       user_data: gpointer){.cdecl.}
   PHtmlContext* = ptr THtmlContext
   THtmlContext* = object of TGObject
@@ -128,6 +131,9 @@ type
     standard_font*: PHtmlFontSpecification
     fixed_font*: PHtmlFontSpecification
     debug_painting*: gboolean
+    
+  PHtmlFontSpecification* = ptr THtmlFontSpecification
+  THtmlFontSpecification {.final, pure.} = object
 
   PHtmlContextClass* = ptr THtmlContextClass
   THtmlContextClass* = object of TGObjectClass
@@ -141,16 +147,16 @@ type
 
   PHtmlDocumentClass* = ptr THtmlDocumentClass
   THtmlDocumentClass* = object of TGObjectClass
-    request_url*: proc (document: PHtmlDocument, url: Pgchar, 
+    request_url*: proc (document: PHtmlDocument, url: cstring, 
                         stream: PHtmlStream){.cdecl.}
-    link_clicked*: proc (document: PHtmlDocument, url: Pgchar){.cdecl.}
-    set_base*: proc (document: PHtmlDocument, url: Pgchar){.cdecl.}
-    title_changed*: proc (document: PHtmlDocument, new_title: Pgchar){.cdecl.}
-    submit*: proc (document: PHtmlDocument, `method`: Pgchar, url: Pgchar, 
-                   encoding: Pgchar){.cdecl.}
+    link_clicked*: proc (document: PHtmlDocument, url: cstring){.cdecl.}
+    set_base*: proc (document: PHtmlDocument, url: cstring){.cdecl.}
+    title_changed*: proc (document: PHtmlDocument, new_title: cstring){.cdecl.}
+    submit*: proc (document: PHtmlDocument, `method`: cstring, url: cstring, 
+                   encoding: cstring){.cdecl.}
 
   PHtmlView* = ptr THtmlView
-  THtmlView* = object of TLayout
+  THtmlView* = object of gtk2.TLayout
     document*: PHtmlDocument
     node_table*: PGHashTable
     relayout_idle_id*: guint
@@ -166,18 +172,39 @@ type
     sel_backwards*: gboolean
     sel_start_found*: gboolean
     sel_list*: PGSList
-    jump_to_anchor*: pgchar
+    jump_to_anchor*: cstring
     magnification*: gdouble
     magnification_modified*: gboolean
     on_url*: gboolean
 
   PHtmlViewClass* = ptr THtmlViewClass
-  THtmlViewClass* = object of TLayoutClass
+  THtmlViewClass* = object of gtk2.TLayoutClass
     move_cursor*: proc (html_view: PHtmlView, step: TMovementStep, count: gint, 
                         extend_selection: gboolean){.cdecl.}
-    on_url*: proc (html_view: PHtmlView, url: Pgchar)
+    on_url*: proc (html_view: PHtmlView, url: cstring)
     activate*: proc (html_view: PHtmlView)
     move_focus_out*: proc (html_view: PHtmlView, direction: TDirectionType)
+    
+  PDomNodeList* = ptr TDomNodeList
+  TDomNodeList {.pure, final.} = object
+  
+  PDomNamedNodeMap* = ptr TDomNamedNodeMap
+  TDomNamedNodeMap {.pure, final.} = object
+  
+  PDomDocumentType* = ptr TDomDocumentType
+  TDomDocumentType {.pure, final.} = object
+  
+  PDomElement* = ptr TDomElement
+  TDomElement = object of TDomNode
+  
+  PDomText* = ptr TDomText
+  TDomText = object of TDomNode
+
+  PDomComment* = ptr TDomComment
+  TDomComment = object of TDomNode
+ 
+  THtmlBox {.pure, final.} = object
+  PHtmlBox* = ptr THtmlBox
 
 
 proc DOM_TYPE_NODE*(): GType
@@ -190,50 +217,49 @@ proc dom_node_get_type*(): GType{.cdecl, dynlib: htmllib,
                                   importc: "dom_node_get_type".}
 proc dom_Node_mkref*(node: pointer): PDomNode{.cdecl, dynlib: htmllib, 
     importc: "dom_Node_mkref".}
-proc dom_Node__get_childNodes*(node: PDomNode): PDomNodeList{.cdecl, 
+proc get_childNodes*(node: PDomNode): PDomNodeList{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_childNodes".}
-proc dom_Node_removeChild*(node: PDomNode, oldChild: PDomNode, 
+proc removeChild*(node: PDomNode, oldChild: PDomNode, 
                            exc: PDomException): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node_removeChild".}
-proc dom_Node__get_nodeValue*(node: PDomNode, exc: PDomException): PDomString{.
+proc get_nodeValue*(node: PDomNode, exc: PDomException): PDomString{.
     cdecl, dynlib: htmllib, importc: "dom_Node__get_nodeValue".}
-proc dom_Node__get_firstChild*(node: PDomNode): PDomNode{.cdecl, 
+proc get_firstChild*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_firstChild".}
-proc dom_Node__get_nodeName*(node: PDomNode): PDomString{.cdecl, 
+proc get_nodeName*(node: PDomNode): PDomString{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_nodeName".}
-proc dom_Node__get_attributes*(node: PDomNode): PDomNamedNodeMap{.cdecl, 
+proc get_attributes*(node: PDomNode): PDomNamedNodeMap{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_attributes".}
-proc dom_Document__get_doctype*(doc: PDomDocument): PDomDocumentType{.cdecl, 
+proc get_doctype*(doc: PDomDocument): PDomDocumentType{.cdecl, 
     dynlib: htmllib, importc: "dom_Document__get_doctype".}
-proc dom_Node_hasChildNodes*(node: PDomNode): DomBoolean{.cdecl, 
+proc hasChildNodes*(node: PDomNode): bool{.cdecl, 
     dynlib: htmllib, importc: "dom_Node_hasChildNodes".}
-proc dom_Node__get_parentNode*(node: PDomNode): PDomNode{.cdecl, 
+proc get_parentNode*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_parentNode".}
-proc dom_Node__get_nextSibling*(node: PDomNode): PDomNode{.cdecl, 
+proc get_nextSibling*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_nextSibling".}
-proc dom_Node__get_nodeType*(node: PDomNode): gushort{.cdecl, dynlib: htmllib, 
+proc get_nodeType*(node: PDomNode): gushort{.cdecl, dynlib: htmllib, 
     importc: "dom_Node__get_nodeType".}
-proc dom_Node_hasAttributes*(node: PDomNode): DomBoolean{.cdecl, 
-    dynlib: htmllib, importc: "dom_Node_hasAttributes".}
-proc dom_Node_cloneNode*(node: PDomNode, deep: DomBoolean): PDomNode{.cdecl, 
+
+proc cloneNode*(node: PDomNode, deep: bool): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node_cloneNode".}
-proc dom_Node_appendChild*(node: PDomNode, newChild: PDomNode, 
+proc appendChild*(node: PDomNode, newChild: PDomNode, 
                            exc: PDomException): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node_appendChild".}
-proc dom_Node__get_localName*(node: PDomNode): PDomString{.cdecl, 
+proc get_localName*(node: PDomNode): PDomString{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_localName".}
-proc dom_Node__get_namespaceURI*(node: PDomNode): PDomString{.cdecl, 
+proc get_namespaceURI*(node: PDomNode): PDomString{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_namespaceURI".}
-proc dom_Node__get_previousSibling*(node: PDomNode): PDomNode{.cdecl, 
+proc get_previousSibling*(node: PDomNode): PDomNode{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_previousSibling".}
-proc dom_Node__get_lastChild*(node: PDomNode): PDomNode{.cdecl, dynlib: htmllib, 
+proc get_lastChild*(node: PDomNode): PDomNode{.cdecl, dynlib: htmllib, 
     importc: "dom_Node__get_lastChild".}
-proc dom_Node__set_nodeValue*(node: PDomNode, value: PDomString, 
+proc set_nodeValue*(node: PDomNode, value: PDomString, 
                               exc: PDomException){.cdecl, dynlib: htmllib, 
     importc: "dom_Node__set_nodeValue".}
-proc dom_Node__get_ownerDocument*(node: PDomNode): PDomDocument{.cdecl, 
+proc get_ownerDocument*(node: PDomNode): PDomDocument{.cdecl, 
     dynlib: htmllib, importc: "dom_Node__get_ownerDocument".}
-proc dom_Node_hasAttributes*(node: PDomNode): gboolean{.cdecl, dynlib: htmllib, 
+proc hasAttributes*(node: PDomNode): gboolean{.cdecl, dynlib: htmllib, 
     importc: "dom_Node_hasAttributes".}
 proc DOM_TYPE_DOCUMENT*(): GType
 proc DOM_DOCUMENT*(theobject: pointer): PDomDocument
@@ -242,12 +268,12 @@ proc DOM_IS_DOCUMENT*(theobject: pointer): bool
 proc DOM_IS_DOCUMENT_CLASS*(klass: pointer): bool
 proc DOM_DOCUMENT_GET_CLASS*(obj: pointer): PDomDocumentClass
 proc dom_document_get_type*(): GType
-proc dom_Document__get_documentElement*(doc: PDomDocument): PDomElement
-proc dom_Document_createElement*(doc: PDomDocument, tagName: PDomString): PDomElement
-proc dom_Document_createTextNode*(doc: PDomDocument, data: PDomString): PDomText
-proc dom_Document_createComment*(doc: PDomDocument, data: PDomString): PDomComment
-proc dom_Document_importNode*(doc: PDomDocument, importedNode: PDomNode, 
-                              deep: DomBoolean, exc: PDomException): PDomNode
+proc get_documentElement*(doc: PDomDocument): PDomElement
+proc createElement*(doc: PDomDocument, tagName: PDomString): PDomElement
+proc createTextNode*(doc: PDomDocument, data: PDomString): PDomText
+proc createComment*(doc: PDomDocument, data: PDomString): PDomComment
+proc importNode*(doc: PDomDocument, importedNode: PDomNode, 
+                              deep: bool, exc: PDomException): PDomNode
 proc HTML_TYPE_FOCUS_ITERATOR*(): GType
 proc HTML_FOCUS_ITERATOR*(theobject: pointer): PHtmlFocusIterator
 proc HTML_FOCUS_ITERATOR_CLASS*(klass: pointer): PHtmlFocusIteratorClass
@@ -265,7 +291,7 @@ proc HTML_PARSER*(obj: pointer): PHtmlParser
 proc HTML_PARSER_CLASS*(klass: pointer): PHtmlParserClass
 proc HTML_IS_PARSER*(obj: pointer): bool
 proc html_parser_get_type*(): GType
-proc html_parser_new*(document: PHtmlDocument, parser_type: THtmlParserType): PHtmlParser
+proc parser_new*(document: PHtmlDocument, parser_type: THtmlParserType): PHtmlParser
 proc HTML_TYPE_STREAM*(): GType
 proc HTML_STREAM*(obj: pointer): PHtmlStream
 proc HTML_STREAM_CLASS*(klass: pointer): PHtmlStreamClass
@@ -277,48 +303,48 @@ proc html_stream_get_type*(): GType{.cdecl, dynlib: htmllib,
 proc html_stream_new*(write_func: THtmlStreamWriteFunc, 
                       close_func: THtmlStreamCloseFunc, user_data: gpointer): PHtmlStream{.
     cdecl, dynlib: htmllib, importc: "html_stream_new".}
-proc html_stream_write*(stream: PHtmlStream, buffer: Pgchar, size: guint){.
+proc write*(stream: PHtmlStream, buffer: cstring, size: guint){.
     cdecl, dynlib: htmllib, importc: "html_stream_write".}
-proc html_stream_close*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
+proc close*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
     importc: "html_stream_close".}
-proc html_stream_destroy*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
+proc destroy*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
     importc: "html_stream_destroy".}
-proc html_stream_get_written*(stream: PHtmlStream): gint{.cdecl, 
+proc get_written*(stream: PHtmlStream): gint{.cdecl, 
     dynlib: htmllib, importc: "html_stream_get_written".}
-proc html_stream_cancel*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
+proc cancel*(stream: PHtmlStream){.cdecl, dynlib: htmllib, 
     importc: "html_stream_cancel".}
-proc html_stream_set_cancel_func*(stream: PHtmlStream, 
+proc set_cancel_func*(stream: PHtmlStream, 
                                   abort_func: THtmlStreamCancelFunc, 
                                   cancel_data: gpointer){.cdecl, 
     dynlib: htmllib, importc: "html_stream_set_cancel_func".}
-proc html_stream_get_mime_type*(stream: PHtmlStream): cstring{.cdecl, 
+proc get_mime_type*(stream: PHtmlStream): cstring{.cdecl, 
     dynlib: htmllib, importc: "html_stream_get_mime_type".}
-proc html_stream_set_mime_type*(stream: PHtmlStream, mime_type: cstring){.cdecl, 
+proc set_mime_type*(stream: PHtmlStream, mime_type: cstring){.cdecl, 
     dynlib: htmllib, importc: "html_stream_set_mime_type".}
 proc html_stream_buffer_new*(close_func: THtmlStreamBufferCloseFunc, 
                              user_data: gpointer): PHtmlStream{.cdecl, 
     dynlib: htmllib, importc: "html_stream_buffer_new".}
-proc html_event_mouse_move*(view: PHtmlView, event: PGdkEventMotion){.cdecl, 
+proc event_mouse_move*(view: PHtmlView, event: Gdk2.PEventMotion){.cdecl, 
     dynlib: htmllib, importc: "html_event_mouse_move".}
-proc html_event_button_press*(view: PHtmlView, button: PGdkEventButton){.cdecl, 
+proc event_button_press*(view: PHtmlView, button: Gdk2.PEventButton){.cdecl, 
     dynlib: htmllib, importc: "html_event_button_press".}
-proc html_event_button_release*(view: PHtmlView, event: PGdkEventButton){.cdecl, 
+proc event_button_release*(view: PHtmlView, event: Gdk2.PEventButton){.cdecl, 
     dynlib: htmllib, importc: "html_event_button_release".}
-proc html_event_activate*(view: PHtmlView){.cdecl, dynlib: htmllib, 
+proc event_activate*(view: PHtmlView){.cdecl, dynlib: htmllib, 
     importc: "html_event_activate".}
-proc html_event_key_press*(view: PHtmlView, event: PGdkEventKey): gboolean{.
+proc event_key_press*(view: PHtmlView, event: Gdk2.PEventKey): gboolean{.
     cdecl, dynlib: htmllib, importc: "html_event_key_press".}
-proc html_event_find_root_box*(self: PHtmlBox, x: gint, y: gint): PHtmlBox{.
+proc event_find_root_box*(self: PHtmlBox, x: gint, y: gint): PHtmlBox{.
     cdecl, dynlib: htmllib, importc: "html_event_find_root_box".}
-proc html_selection_start*(view: PHtmlView, event: PGdkEventButton){.cdecl, 
+proc selection_start*(view: PHtmlView, event: Gdk2.PEventButton){.cdecl, 
     dynlib: htmllib, importc: "html_selection_start".}
-proc html_selection_end*(view: PHtmlView, event: PGdkEventButton){.cdecl, 
+proc selection_end*(view: PHtmlView, event: Gdk2.PEventButton){.cdecl, 
     dynlib: htmllib, importc: "html_selection_end".}
-proc html_selection_update*(view: PHtmlView, event: PGdkEventMotion){.cdecl, 
+proc selection_update*(view: PHtmlView, event: Gdk2.PEventMotion){.cdecl, 
     dynlib: htmllib, importc: "html_selection_update".}
-proc html_selection_clear*(view: PHtmlView){.cdecl, dynlib: htmllib, 
+proc selection_clear*(view: PHtmlView){.cdecl, dynlib: htmllib, 
     importc: "html_selection_clear".}
-proc html_selection_set*(view: PHtmlView, start: PDomNode, offset: int32, 
+proc selection_set*(view: PHtmlView, start: PDomNode, offset: int32, 
                          len: int32){.cdecl, dynlib: htmllib, 
                                       importc: "html_selection_set".}
 proc HTML_CONTEXT_TYPE*(): GType
@@ -336,14 +362,14 @@ proc html_document_get_type*(): GType{.cdecl, dynlib: htmllib,
                                        importc: "html_document_get_type".}
 proc html_document_new*(): PHtmlDocument{.cdecl, dynlib: htmllib, 
     importc: "html_document_new".}
-proc html_document_open_stream*(document: PHtmlDocument, mime_type: Pgchar): gboolean{.
+proc open_stream*(document: PHtmlDocument, mime_type: cstring): gboolean{.
     cdecl, dynlib: htmllib, importc: "html_document_open_stream".}
-proc html_document_write_stream*(document: PHtmlDocument, buffer: Pgchar, 
+proc write_stream*(document: PHtmlDocument, buffer: cstring, 
                                  len: gint){.cdecl, dynlib: htmllib, 
     importc: "html_document_write_stream".}
-proc html_document_close_stream*(document: PHtmlDocument){.cdecl, 
+proc close_stream*(document: PHtmlDocument){.cdecl, 
     dynlib: htmllib, importc: "html_document_close_stream".}
-proc html_document_clear*(document: PHtmlDocument){.cdecl, dynlib: htmllib, 
+proc clear*(document: PHtmlDocument){.cdecl, dynlib: htmllib, 
     importc: "html_document_clear".}
 proc HTML_TYPE_VIEW*(): GType
 proc HTML_VIEW*(obj: pointer): PHtmlView
@@ -352,25 +378,26 @@ proc HTML_IS_VIEW*(obj: pointer): bool
 proc html_view_get_type*(): GType{.cdecl, dynlib: htmllib, 
                                    importc: "html_view_get_type".}
 proc html_view_new*(): PWidget{.cdecl, dynlib: htmllib, importc: "html_view_new".}
-proc html_view_set_document*(view: PHtmlView, document: PHtmlDocument){.cdecl, 
+proc set_document*(view: PHtmlView, document: PHtmlDocument){.cdecl, 
     dynlib: htmllib, importc: "html_view_set_document".}
-proc html_view_jump_to_anchor*(view: PHtmlView, anchor: Pgchar){.cdecl, 
+proc jump_to_anchor*(view: PHtmlView, anchor: cstring){.cdecl, 
     dynlib: htmllib, importc: "html_view_jump_to_anchor".}
-proc html_view_get_magnification*(view: PHtmlView): gdouble{.cdecl, 
+proc get_magnification*(view: PHtmlView): gdouble{.cdecl, 
     dynlib: htmllib, importc: "html_view_get_magnification".}
-proc html_view_set_magnification*(view: PHtmlView, magnification: gdouble){.
+proc set_magnification*(view: PHtmlView, magnification: gdouble){.
     cdecl, dynlib: htmllib, importc: "html_view_set_magnification".}
-proc html_view_zoom_in*(view: PHtmlView){.cdecl, dynlib: htmllib, 
+proc zoom_in*(view: PHtmlView){.cdecl, dynlib: htmllib, 
     importc: "html_view_zoom_in".}
-proc html_view_zoom_out*(view: PHtmlView){.cdecl, dynlib: htmllib, 
+proc zoom_out*(view: PHtmlView){.cdecl, dynlib: htmllib, 
     importc: "html_view_zoom_out".}
-proc html_view_zoom_reset*(view: PHtmlView){.cdecl, dynlib: htmllib, 
+proc zoom_reset*(view: PHtmlView){.cdecl, dynlib: htmllib, 
     importc: "html_view_zoom_reset".}
+
 proc DOM_TYPE_NODE*(): GType = 
   result = dom_node_get_type()
 
 proc DOM_NODE*(theobject: pointer): PDomNode = 
-  result = G_TYPE_CHECK_INSTANCE_CAST(theobject, DOM_TYPE_NODE(), TDomNode)
+  result = G_TYPE_CHECK_INSTANCE_CAST(theobject, DOM_TYPE_NODE())
 
 proc DOM_NODE_CLASS*(klass: pointer): PDomNodeClass = 
   result = G_TYPE_CHECK_CLASS_CAST(klass, DOM_TYPE_NODE(), TDomNodeClass)

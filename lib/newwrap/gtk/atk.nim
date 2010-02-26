@@ -473,48 +473,48 @@ proc IMPLEMENTOR*(obj: pointer): PImplementor
 proc IMPLEMENTOR_GET_IFACE*(obj: pointer): PImplementorIface
 proc implementor_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "atk_implementor_get_type".}
-proc implementor_ref_accessible*(implementor: PImplementor): PObject{.cdecl, 
+proc ref_accessible*(implementor: PImplementor): PObject{.cdecl, 
     dynlib: lib, importc: "atk_implementor_ref_accessible".}
-proc object_get_name*(accessible: PObject): cstring{.cdecl, dynlib: lib, 
+proc get_name*(accessible: PObject): cstring{.cdecl, dynlib: lib, 
     importc: "atk_object_get_name".}
-proc object_get_description*(accessible: PObject): cstring{.cdecl, dynlib: lib, 
+proc get_description*(accessible: PObject): cstring{.cdecl, dynlib: lib, 
     importc: "atk_object_get_description".}
-proc object_get_parent*(accessible: PObject): PObject{.cdecl, dynlib: lib, 
+proc get_parent*(accessible: PObject): PObject{.cdecl, dynlib: lib, 
     importc: "atk_object_get_parent".}
-proc object_get_n_accessible_children*(accessible: PObject): gint{.cdecl, 
+proc get_n_accessible_children*(accessible: PObject): gint{.cdecl, 
     dynlib: lib, importc: "atk_object_get_n_accessible_children".}
-proc object_ref_accessible_child*(accessible: PObject, i: gint): PObject{.cdecl, 
+proc ref_accessible_child*(accessible: PObject, i: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_object_ref_accessible_child".}
-proc object_ref_relation_set*(accessible: PObject): PRelationSet{.cdecl, 
+proc ref_relation_set*(accessible: PObject): PRelationSet{.cdecl, 
     dynlib: lib, importc: "atk_object_ref_relation_set".}
-proc object_get_role*(accessible: PObject): TRole{.cdecl, dynlib: lib, 
+proc get_role*(accessible: PObject): TRole{.cdecl, dynlib: lib, 
     importc: "atk_object_get_role".}
-proc object_get_layer*(accessible: PObject): TLayer{.cdecl, dynlib: lib, 
+proc get_layer*(accessible: PObject): TLayer{.cdecl, dynlib: lib, 
     importc: "atk_object_get_layer".}
-proc object_get_mdi_zorder*(accessible: PObject): gint{.cdecl, dynlib: lib, 
+proc get_mdi_zorder*(accessible: PObject): gint{.cdecl, dynlib: lib, 
     importc: "atk_object_get_mdi_zorder".}
-proc object_ref_state_set*(accessible: PObject): PStateSet{.cdecl, dynlib: lib, 
+proc ref_state_set*(accessible: PObject): PStateSet{.cdecl, dynlib: lib, 
     importc: "atk_object_ref_state_set".}
-proc object_get_index_in_parent*(accessible: PObject): gint{.cdecl, dynlib: lib, 
+proc get_index_in_parent*(accessible: PObject): gint{.cdecl, dynlib: lib, 
     importc: "atk_object_get_index_in_parent".}
-proc object_set_name*(accessible: PObject, name: cstring){.cdecl, dynlib: lib, 
+proc set_name*(accessible: PObject, name: cstring){.cdecl, dynlib: lib, 
     importc: "atk_object_set_name".}
-proc object_set_description*(accessible: PObject, description: cstring){.cdecl, 
+proc set_description*(accessible: PObject, description: cstring){.cdecl, 
     dynlib: lib, importc: "atk_object_set_description".}
-proc object_set_parent*(accessible: PObject, parent: PObject){.cdecl, 
+proc set_parent*(accessible: PObject, parent: PObject){.cdecl, 
     dynlib: lib, importc: "atk_object_set_parent".}
-proc object_set_role*(accessible: PObject, role: TRole){.cdecl, dynlib: lib, 
+proc set_role*(accessible: PObject, role: TRole){.cdecl, dynlib: lib, 
     importc: "atk_object_set_role".}
-proc object_connect_property_change_handler*(accessible: PObject, 
+proc connect_property_change_handler*(accessible: PObject, 
     handler: TPropertyChangeHandler): guint{.cdecl, dynlib: lib, 
     importc: "atk_object_connect_property_change_handler".}
-proc object_remove_property_change_handler*(accessible: PObject, 
+proc remove_property_change_handler*(accessible: PObject, 
     handler_id: guint){.cdecl, dynlib: lib, 
                         importc: "atk_object_remove_property_change_handler".}
-proc object_notify_state_change*(accessible: PObject, state: TState, 
+proc notify_state_change*(accessible: PObject, state: TState, 
                                  value: gboolean){.cdecl, dynlib: lib, 
     importc: "atk_object_notify_state_change".}
-proc object_initialize*(accessible: PObject, data: gpointer){.cdecl, 
+proc initialize*(accessible: PObject, data: gpointer){.cdecl, 
     dynlib: lib, importc: "atk_object_initialize".}
 proc role_get_name*(role: TRole): cstring{.cdecl, dynlib: lib, 
     importc: "atk_role_get_name".}
@@ -526,17 +526,17 @@ proc ACTION*(obj: pointer): PAction
 proc ACTION_GET_IFACE*(obj: pointer): PActionIface
 proc action_get_type*(): GType{.cdecl, dynlib: lib, 
                                 importc: "atk_action_get_type".}
-proc action_do_action*(action: PAction, i: gint): gboolean{.cdecl, dynlib: lib, 
+proc do_action*(action: PAction, i: gint): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_action_do_action".}
-proc action_get_n_actions*(action: PAction): gint{.cdecl, dynlib: lib, 
+proc get_n_actions*(action: PAction): gint{.cdecl, dynlib: lib, 
     importc: "atk_action_get_n_actions".}
-proc action_get_description*(action: PAction, i: gint): cstring{.cdecl, 
+proc get_description*(action: PAction, i: gint): cstring{.cdecl, 
     dynlib: lib, importc: "atk_action_get_description".}
-proc action_get_name*(action: PAction, i: gint): cstring{.cdecl, dynlib: lib, 
+proc get_name*(action: PAction, i: gint): cstring{.cdecl, dynlib: lib, 
     importc: "atk_action_get_name".}
-proc action_get_keybinding*(action: PAction, i: gint): cstring{.cdecl, 
+proc get_keybinding*(action: PAction, i: gint): cstring{.cdecl, 
     dynlib: lib, importc: "atk_action_get_keybinding".}
-proc action_set_description*(action: PAction, i: gint, desc: cstring): gboolean{.
+proc set_description*(action: PAction, i: gint, desc: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "atk_action_set_description".}
 proc TYPE_COMPONENT*(): GType
 proc IS_COMPONENT*(obj: pointer): bool
@@ -544,37 +544,37 @@ proc COMPONENT*(obj: pointer): PComponent
 proc COMPONENT_GET_IFACE*(obj: pointer): PComponentIface
 proc component_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "atk_component_get_type".}
-proc component_add_focus_handler*(component: PComponent, handler: TFocusHandler): guint{.
+proc add_focus_handler*(component: PComponent, handler: TFocusHandler): guint{.
     cdecl, dynlib: lib, importc: "atk_component_add_focus_handler".}
-proc component_contains*(component: PComponent, x, y: gint, 
+proc contains*(component: PComponent, x, y: gint, 
                          coord_type: TCoordType): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_component_contains".}
-proc component_ref_accessible_at_point*(component: PComponent, x, y: gint, 
+proc ref_accessible_at_point*(component: PComponent, x, y: gint, 
                                         coord_type: TCoordType): PObject{.cdecl, 
     dynlib: lib, importc: "atk_component_ref_accessible_at_point".}
-proc component_get_extents*(component: PComponent, x, y, width, height: Pgint, 
+proc get_extents*(component: PComponent, x, y, width, height: Pgint, 
                             coord_type: TCoordType){.cdecl, dynlib: lib, 
     importc: "atk_component_get_extents".}
-proc component_get_position*(component: PComponent, x: Pgint, y: Pgint, 
+proc get_position*(component: PComponent, x: Pgint, y: Pgint, 
                              coord_type: TCoordType){.cdecl, dynlib: lib, 
     importc: "atk_component_get_position".}
-proc component_get_size*(component: PComponent, width: Pgint, height: Pgint){.
+proc get_size*(component: PComponent, width: Pgint, height: Pgint){.
     cdecl, dynlib: lib, importc: "atk_component_get_size".}
-proc component_get_layer*(component: PComponent): TLayer{.cdecl, dynlib: lib, 
+proc get_layer*(component: PComponent): TLayer{.cdecl, dynlib: lib, 
     importc: "atk_component_get_layer".}
-proc component_get_mdi_zorder*(component: PComponent): gint{.cdecl, dynlib: lib, 
+proc get_mdi_zorder*(component: PComponent): gint{.cdecl, dynlib: lib, 
     importc: "atk_component_get_mdi_zorder".}
-proc component_grab_focus*(component: PComponent): gboolean{.cdecl, dynlib: lib, 
+proc grab_focus*(component: PComponent): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_component_grab_focus".}
-proc component_remove_focus_handler*(component: PComponent, handler_id: guint){.
+proc remove_focus_handler*(component: PComponent, handler_id: guint){.
     cdecl, dynlib: lib, importc: "atk_component_remove_focus_handler".}
-proc component_set_extents*(component: PComponent, x: gint, y: gint, 
+proc set_extents*(component: PComponent, x: gint, y: gint, 
                             width: gint, height: gint, coord_type: TCoordType): gboolean{.
     cdecl, dynlib: lib, importc: "atk_component_set_extents".}
-proc component_set_position*(component: PComponent, x: gint, y: gint, 
+proc set_position*(component: PComponent, x: gint, y: gint, 
                              coord_type: TCoordType): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_component_set_position".}
-proc component_set_size*(component: PComponent, width: gint, height: gint): gboolean{.
+proc set_size*(component: PComponent, width: gint, height: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_component_set_size".}
 proc TYPE_DOCUMENT*(): GType
 proc IS_DOCUMENT*(obj: pointer): bool
@@ -582,9 +582,9 @@ proc DOCUMENT*(obj: pointer): PDocument
 proc DOCUMENT_GET_IFACE*(obj: pointer): PDocumentIface
 proc document_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "atk_document_get_type".}
-proc document_get_document_type*(document: PDocument): cstring{.cdecl, 
+proc get_document_type*(document: PDocument): cstring{.cdecl, 
     dynlib: lib, importc: "atk_document_get_document_type".}
-proc document_get_document*(document: PDocument): gpointer{.cdecl, dynlib: lib, 
+proc get_document*(document: PDocument): gpointer{.cdecl, dynlib: lib, 
     importc: "atk_document_get_document".}
 proc TYPE_EDITABLE_TEXT*(): GType
 proc IS_EDITABLE_TEXT*(obj: pointer): bool
@@ -592,24 +592,24 @@ proc EDITABLE_TEXT*(obj: pointer): PEditableText
 proc EDITABLE_TEXT_GET_IFACE*(obj: pointer): PEditableTextIface
 proc editable_text_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "atk_editable_text_get_type".}
-proc editable_text_set_run_attributes*(text: PEditableText, 
+proc set_run_attributes*(text: PEditableText, 
                                        attrib_set: PAttributeSet, 
                                        start_offset: gint, end_offset: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_editable_text_set_run_attributes".}
-proc editable_text_set_text_contents*(text: PEditableText, string: cstring){.
+proc set_text_contents*(text: PEditableText, string: cstring){.
     cdecl, dynlib: lib, importc: "atk_editable_text_set_text_contents".}
-proc editable_text_insert_text*(text: PEditableText, `string`: cstring, 
+proc insert_text*(text: PEditableText, `string`: cstring, 
                                 length: gint, position: Pgint){.cdecl, 
     dynlib: lib, importc: "atk_editable_text_insert_text".}
-proc editable_text_copy_text*(text: PEditableText, start_pos: gint, 
+proc copy_text*(text: PEditableText, start_pos: gint, 
                               end_pos: gint){.cdecl, dynlib: lib, 
     importc: "atk_editable_text_copy_text".}
-proc editable_text_cut_text*(text: PEditableText, start_pos: gint, end_pos: gint){.
+proc cut_text*(text: PEditableText, start_pos: gint, end_pos: gint){.
     cdecl, dynlib: lib, importc: "atk_editable_text_cut_text".}
-proc editable_text_delete_text*(text: PEditableText, start_pos: gint, 
+proc delete_text*(text: PEditableText, start_pos: gint, 
                                 end_pos: gint){.cdecl, dynlib: lib, 
     importc: "atk_editable_text_delete_text".}
-proc editable_text_paste_text*(text: PEditableText, position: gint){.cdecl, 
+proc paste_text*(text: PEditableText, position: gint){.cdecl, 
     dynlib: lib, importc: "atk_editable_text_paste_text".}
 proc TYPE_GOBJECT_ACCESSIBLE*(): GType
 proc GOBJECT_ACCESSIBLE*(obj: pointer): PGObjectAccessible
@@ -619,9 +619,9 @@ proc IS_GOBJECT_ACCESSIBLE_CLASS*(klass: pointer): bool
 proc GOBJECT_ACCESSIBLE_GET_CLASS*(obj: pointer): PGObjectAccessibleClass
 proc gobject_accessible_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "atk_gobject_accessible_get_type".}
-proc gobject_accessible_for_object*(obj: PGObject): PObject{.cdecl, dynlib: lib, 
+proc accessible_for_object*(obj: PGObject): PObject{.cdecl, dynlib: lib, 
     importc: "atk_gobject_accessible_for_object".}
-proc gobject_accessible_get_object*(obj: PGObjectAccessible): PGObject{.cdecl, 
+proc get_object*(obj: PGObjectAccessible): PGObject{.cdecl, 
     dynlib: lib, importc: "atk_gobject_accessible_get_object".}
 proc TYPE_HYPERLINK*(): GType
 proc HYPERLINK*(obj: pointer): PHyperlink
@@ -631,17 +631,17 @@ proc IS_HYPERLINK_CLASS*(klass: pointer): bool
 proc HYPERLINK_GET_CLASS*(obj: pointer): PHyperlinkClass
 proc hyperlink_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "atk_hyperlink_get_type".}
-proc hyperlink_get_uri*(link: PHyperlink, i: gint): cstring{.cdecl, dynlib: lib, 
+proc get_uri*(link: PHyperlink, i: gint): cstring{.cdecl, dynlib: lib, 
     importc: "atk_hyperlink_get_uri".}
-proc hyperlink_get_object*(link: PHyperlink, i: gint): PObject{.cdecl, 
+proc get_object*(link: PHyperlink, i: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_hyperlink_get_object".}
-proc hyperlink_get_end_index*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
+proc get_end_index*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
     importc: "atk_hyperlink_get_end_index".}
-proc hyperlink_get_start_index*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
+proc get_start_index*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
     importc: "atk_hyperlink_get_start_index".}
-proc hyperlink_is_valid*(link: PHyperlink): gboolean{.cdecl, dynlib: lib, 
+proc is_valid*(link: PHyperlink): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_hyperlink_is_valid".}
-proc hyperlink_get_n_anchors*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
+proc get_n_anchors*(link: PHyperlink): gint{.cdecl, dynlib: lib, 
     importc: "atk_hyperlink_get_n_anchors".}
 proc TYPE_HYPERTEXT*(): GType
 proc IS_HYPERTEXT*(obj: pointer): bool
@@ -649,24 +649,24 @@ proc HYPERTEXT*(obj: pointer): PHypertext
 proc HYPERTEXT_GET_IFACE*(obj: pointer): PHypertextIface
 proc hypertext_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "atk_hypertext_get_type".}
-proc hypertext_get_link*(hypertext: PHypertext, link_index: gint): PHyperlink{.
+proc get_link*(hypertext: PHypertext, link_index: gint): PHyperlink{.
     cdecl, dynlib: lib, importc: "atk_hypertext_get_link".}
-proc hypertext_get_n_links*(hypertext: PHypertext): gint{.cdecl, dynlib: lib, 
+proc get_n_links*(hypertext: PHypertext): gint{.cdecl, dynlib: lib, 
     importc: "atk_hypertext_get_n_links".}
-proc hypertext_get_link_index*(hypertext: PHypertext, char_index: gint): gint{.
+proc get_link_index*(hypertext: PHypertext, char_index: gint): gint{.
     cdecl, dynlib: lib, importc: "atk_hypertext_get_link_index".}
 proc TYPE_IMAGE*(): GType
 proc IS_IMAGE*(obj: pointer): bool
 proc IMAGE*(obj: pointer): PImage
 proc IMAGE_GET_IFACE*(obj: pointer): PImageIface
 proc image_get_type*(): GType{.cdecl, dynlib: lib, importc: "atk_image_get_type".}
-proc image_get_image_description*(image: PImage): cstring{.cdecl, dynlib: lib, 
+proc get_image_description*(image: PImage): cstring{.cdecl, dynlib: lib, 
     importc: "atk_image_get_image_description".}
-proc image_get_image_size*(image: PImage, width: Pgint, height: Pgint){.cdecl, 
+proc get_image_size*(image: PImage, width: Pgint, height: Pgint){.cdecl, 
     dynlib: lib, importc: "atk_image_get_image_size".}
-proc image_set_image_description*(image: PImage, description: cstring): gboolean{.
+proc set_image_description*(image: PImage, description: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "atk_image_set_image_description".}
-proc image_get_image_position*(image: PImage, x: Pgint, y: Pgint, 
+proc get_image_position*(image: PImage, x: Pgint, y: Pgint, 
                                coord_type: TCoordType){.cdecl, dynlib: lib, 
     importc: "atk_image_get_image_position".}
 proc TYPE_OBJECT_FACTORY*(): GType
@@ -677,11 +677,11 @@ proc IS_OBJECT_FACTORY_CLASS*(klass: pointer): bool
 proc OBJECT_FACTORY_GET_CLASS*(obj: pointer): PObjectFactoryClass
 proc object_factory_get_type*(): GType{.cdecl, dynlib: lib, 
                                         importc: "atk_object_factory_get_type".}
-proc object_factory_create_accessible*(factory: PObjectFactory, obj: PGObject): PObject{.
+proc create_accessible*(factory: PObjectFactory, obj: PGObject): PObject{.
     cdecl, dynlib: lib, importc: "atk_object_factory_create_accessible".}
-proc object_factory_invalidate*(factory: PObjectFactory){.cdecl, dynlib: lib, 
+proc invalidate*(factory: PObjectFactory){.cdecl, dynlib: lib, 
     importc: "atk_object_factory_invalidate".}
-proc object_factory_get_accessible_type*(factory: PObjectFactory): GType{.cdecl, 
+proc get_accessible_type*(factory: PObjectFactory): GType{.cdecl, 
     dynlib: lib, importc: "atk_object_factory_get_accessible_type".}
 proc TYPE_REGISTRY*(): GType
 proc REGISTRY*(obj: pointer): PRegistry
@@ -691,12 +691,12 @@ proc IS_REGISTRY_CLASS*(klass: pointer): bool
 proc REGISTRY_GET_CLASS*(obj: pointer): PRegistryClass
 proc registry_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "atk_registry_get_type".}
-proc registry_set_factory_type*(registry: PRegistry, `type`: GType, 
+proc set_factory_type*(registry: PRegistry, `type`: GType, 
                                 factory_type: GType){.cdecl, dynlib: lib, 
     importc: "atk_registry_set_factory_type".}
-proc registry_get_factory_type*(registry: PRegistry, `type`: GType): GType{.
+proc get_factory_type*(registry: PRegistry, `type`: GType): GType{.
     cdecl, dynlib: lib, importc: "atk_registry_get_factory_type".}
-proc registry_get_factory*(registry: PRegistry, `type`: GType): PObjectFactory{.
+proc get_factory*(registry: PRegistry, `type`: GType): PObjectFactory{.
     cdecl, dynlib: lib, importc: "atk_registry_get_factory".}
 proc get_default_registry*(): PRegistry{.cdecl, dynlib: lib, 
     importc: "atk_get_default_registry".}
@@ -717,9 +717,9 @@ proc relation_type_for_name*(name: cstring): TRelationType{.cdecl, dynlib: lib,
 proc relation_new*(targets: PPAtkObject, n_targets: gint, 
                    relationship: TRelationType): PRelation{.cdecl, dynlib: lib, 
     importc: "atk_relation_new".}
-proc relation_get_relation_type*(relation: PRelation): TRelationType{.cdecl, 
+proc get_relation_type*(relation: PRelation): TRelationType{.cdecl, 
     dynlib: lib, importc: "atk_relation_get_relation_type".}
-proc relation_get_target*(relation: PRelation): PGPtrArray{.cdecl, dynlib: lib, 
+proc get_target*(relation: PRelation): PGPtrArray{.cdecl, dynlib: lib, 
     importc: "atk_relation_get_target".}
 proc TYPE_RELATION_SET*(): GType
 proc RELATION_SET*(obj: pointer): PRelationSet
@@ -731,18 +731,18 @@ proc relation_set_get_type*(): GType{.cdecl, dynlib: lib,
                                       importc: "atk_relation_set_get_type".}
 proc relation_set_new*(): PRelationSet{.cdecl, dynlib: lib, 
                                         importc: "atk_relation_set_new".}
-proc relation_set_contains*(RelationSet: PRelationSet, 
+proc contains*(RelationSet: PRelationSet, 
                             relationship: TRelationType): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_relation_set_contains".}
-proc relation_set_remove*(RelationSet: PRelationSet, relation: PRelation){.
+proc remove*(RelationSet: PRelationSet, relation: PRelation){.
     cdecl, dynlib: lib, importc: "atk_relation_set_remove".}
-proc relation_set_add*(RelationSet: PRelationSet, relation: PRelation){.cdecl, 
+proc add*(RelationSet: PRelationSet, relation: PRelation){.cdecl, 
     dynlib: lib, importc: "atk_relation_set_add".}
-proc relation_set_get_n_relations*(RelationSet: PRelationSet): gint{.cdecl, 
+proc get_n_relations*(RelationSet: PRelationSet): gint{.cdecl, 
     dynlib: lib, importc: "atk_relation_set_get_n_relations".}
-proc relation_set_get_relation*(RelationSet: PRelationSet, i: gint): PRelation{.
+proc get_relation*(RelationSet: PRelationSet, i: gint): PRelation{.
     cdecl, dynlib: lib, importc: "atk_relation_set_get_relation".}
-proc relation_set_get_relation_by_type*(RelationSet: PRelationSet, 
+proc get_relation_by_type*(RelationSet: PRelationSet, 
                                         relationship: TRelationType): PRelation{.
     cdecl, dynlib: lib, importc: "atk_relation_set_get_relation_by_type".}
 proc TYPE_SELECTION*(): GType
@@ -751,19 +751,19 @@ proc SELECTION*(obj: pointer): PSelection
 proc SELECTION_GET_IFACE*(obj: pointer): PSelectionIface
 proc selection_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "atk_selection_get_type".}
-proc selection_add_selection*(selection: PSelection, i: gint): gboolean{.cdecl, 
+proc add_selection*(selection: PSelection, i: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_selection_add_selection".}
-proc selection_clear_selection*(selection: PSelection): gboolean{.cdecl, 
+proc clear_selection*(selection: PSelection): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_selection_clear_selection".}
-proc selection_ref_selection*(selection: PSelection, i: gint): PObject{.cdecl, 
+proc ref_selection*(selection: PSelection, i: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_selection_ref_selection".}
-proc selection_get_selection_count*(selection: PSelection): gint{.cdecl, 
+proc get_selection_count*(selection: PSelection): gint{.cdecl, 
     dynlib: lib, importc: "atk_selection_get_selection_count".}
-proc selection_is_child_selected*(selection: PSelection, i: gint): gboolean{.
+proc is_child_selected*(selection: PSelection, i: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_selection_is_child_selected".}
-proc selection_remove_selection*(selection: PSelection, i: gint): gboolean{.
+proc remove_selection*(selection: PSelection, i: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_selection_remove_selection".}
-proc selection_select_all_selection*(selection: PSelection): gboolean{.cdecl, 
+proc select_all_selection*(selection: PSelection): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_selection_select_all_selection".}
 proc state_type_register*(name: cstring): TStateType{.cdecl, dynlib: lib, 
     importc: "atk_state_type_register".}
@@ -781,26 +781,26 @@ proc state_set_get_type*(): GType{.cdecl, dynlib: lib,
                                    importc: "atk_state_set_get_type".}
 proc state_set_new*(): PStateSet{.cdecl, dynlib: lib, 
                                   importc: "atk_state_set_new".}
-proc state_set_is_empty*(StateSet: PStateSet): gboolean{.cdecl, dynlib: lib, 
+proc is_empty*(StateSet: PStateSet): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_state_set_is_empty".}
-proc state_set_add_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
+proc add_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
     cdecl, dynlib: lib, importc: "atk_state_set_add_state".}
-proc state_set_add_states*(StateSet: PStateSet, types: PStateType, n_types: gint){.
+proc add_states*(StateSet: PStateSet, types: PStateType, n_types: gint){.
     cdecl, dynlib: lib, importc: "atk_state_set_add_states".}
-proc state_set_clear_states*(StateSet: PStateSet){.cdecl, dynlib: lib, 
+proc clear_states*(StateSet: PStateSet){.cdecl, dynlib: lib, 
     importc: "atk_state_set_clear_states".}
-proc state_set_contains_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
+proc contains_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
     cdecl, dynlib: lib, importc: "atk_state_set_contains_state".}
-proc state_set_contains_states*(StateSet: PStateSet, types: PStateType, 
+proc contains_states*(StateSet: PStateSet, types: PStateType, 
                                 n_types: gint): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_state_set_contains_states".}
-proc state_set_remove_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
+proc remove_state*(StateSet: PStateSet, `type`: TStateType): gboolean{.
     cdecl, dynlib: lib, importc: "atk_state_set_remove_state".}
-proc state_set_and_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
+proc and_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
     cdecl, dynlib: lib, importc: "atk_state_set_and_sets".}
-proc state_set_or_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
+proc or_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
     cdecl, dynlib: lib, importc: "atk_state_set_or_sets".}
-proc state_set_xor_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
+proc xor_sets*(StateSet: PStateSet, compare_set: PStateSet): PStateSet{.
     cdecl, dynlib: lib, importc: "atk_state_set_xor_sets".}
 proc TYPE_STREAMABLE_CONTENT*(): GType
 proc IS_STREAMABLE_CONTENT*(obj: pointer): bool
@@ -808,11 +808,11 @@ proc STREAMABLE_CONTENT*(obj: pointer): PStreamableContent
 proc STREAMABLE_CONTENT_GET_IFACE*(obj: pointer): PStreamableContentIface
 proc streamable_content_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "atk_streamable_content_get_type".}
-proc streamable_content_get_n_mime_types*(streamable: PStreamableContent): gint{.
+proc get_n_mime_types*(streamable: PStreamableContent): gint{.
     cdecl, dynlib: lib, importc: "atk_streamable_content_get_n_mime_types".}
-proc streamable_content_get_mime_type*(streamable: PStreamableContent, i: gint): cstring{.
+proc get_mime_type*(streamable: PStreamableContent, i: gint): cstring{.
     cdecl, dynlib: lib, importc: "atk_streamable_content_get_mime_type".}
-proc streamable_content_get_stream*(streamable: PStreamableContent, 
+proc get_stream*(streamable: PStreamableContent, 
                                     mime_type: cstring): PGIOChannel{.cdecl, 
     dynlib: lib, importc: "atk_streamable_content_get_stream".}
 proc TYPE_TABLE*(): GType
@@ -820,64 +820,64 @@ proc IS_TABLE*(obj: pointer): bool
 proc TABLE*(obj: pointer): PTable
 proc TABLE_GET_IFACE*(obj: pointer): PTableIface
 proc table_get_type*(): GType{.cdecl, dynlib: lib, importc: "atk_table_get_type".}
-proc table_ref_at*(table: PTable, row, column: gint): PObject{.cdecl, 
+proc ref_at*(table: PTable, row, column: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_table_ref_at".}
-proc table_get_index_at*(table: PTable, row, column: gint): gint{.cdecl, 
+proc get_index_at*(table: PTable, row, column: gint): gint{.cdecl, 
     dynlib: lib, importc: "atk_table_get_index_at".}
-proc table_get_column_at_index*(table: PTable, index: gint): gint{.cdecl, 
+proc get_column_at_index*(table: PTable, index: gint): gint{.cdecl, 
     dynlib: lib, importc: "atk_table_get_column_at_index".}
-proc table_get_row_at_index*(table: PTable, index: gint): gint{.cdecl, 
+proc get_row_at_index*(table: PTable, index: gint): gint{.cdecl, 
     dynlib: lib, importc: "atk_table_get_row_at_index".}
-proc table_get_n_columns*(table: PTable): gint{.cdecl, dynlib: lib, 
+proc get_n_columns*(table: PTable): gint{.cdecl, dynlib: lib, 
     importc: "atk_table_get_n_columns".}
-proc table_get_n_rows*(table: PTable): gint{.cdecl, dynlib: lib, 
+proc get_n_rows*(table: PTable): gint{.cdecl, dynlib: lib, 
     importc: "atk_table_get_n_rows".}
-proc table_get_column_extent_at*(table: PTable, row: gint, column: gint): gint{.
+proc get_column_extent_at*(table: PTable, row: gint, column: gint): gint{.
     cdecl, dynlib: lib, importc: "atk_table_get_column_extent_at".}
-proc table_get_row_extent_at*(table: PTable, row: gint, column: gint): gint{.
+proc get_row_extent_at*(table: PTable, row: gint, column: gint): gint{.
     cdecl, dynlib: lib, importc: "atk_table_get_row_extent_at".}
-proc table_get_caption*(table: PTable): PObject{.cdecl, dynlib: lib, 
+proc get_caption*(table: PTable): PObject{.cdecl, dynlib: lib, 
     importc: "atk_table_get_caption".}
-proc table_get_column_description*(table: PTable, column: gint): cstring{.cdecl, 
+proc get_column_description*(table: PTable, column: gint): cstring{.cdecl, 
     dynlib: lib, importc: "atk_table_get_column_description".}
-proc table_get_column_header*(table: PTable, column: gint): PObject{.cdecl, 
+proc get_column_header*(table: PTable, column: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_table_get_column_header".}
-proc table_get_row_description*(table: PTable, row: gint): cstring{.cdecl, 
+proc get_row_description*(table: PTable, row: gint): cstring{.cdecl, 
     dynlib: lib, importc: "atk_table_get_row_description".}
-proc table_get_row_header*(table: PTable, row: gint): PObject{.cdecl, 
+proc get_row_header*(table: PTable, row: gint): PObject{.cdecl, 
     dynlib: lib, importc: "atk_table_get_row_header".}
-proc table_get_summary*(table: PTable): PObject{.cdecl, dynlib: lib, 
+proc get_summary*(table: PTable): PObject{.cdecl, dynlib: lib, 
     importc: "atk_table_get_summary".}
-proc table_set_caption*(table: PTable, caption: PObject){.cdecl, dynlib: lib, 
+proc set_caption*(table: PTable, caption: PObject){.cdecl, dynlib: lib, 
     importc: "atk_table_set_caption".}
-proc table_set_column_description*(table: PTable, column: gint, 
+proc set_column_description*(table: PTable, column: gint, 
                                    description: cstring){.cdecl, dynlib: lib, 
     importc: "atk_table_set_column_description".}
-proc table_set_column_header*(table: PTable, column: gint, header: PObject){.
+proc set_column_header*(table: PTable, column: gint, header: PObject){.
     cdecl, dynlib: lib, importc: "atk_table_set_column_header".}
-proc table_set_row_description*(table: PTable, row: gint, description: cstring){.
+proc set_row_description*(table: PTable, row: gint, description: cstring){.
     cdecl, dynlib: lib, importc: "atk_table_set_row_description".}
-proc table_set_row_header*(table: PTable, row: gint, header: PObject){.cdecl, 
+proc set_row_header*(table: PTable, row: gint, header: PObject){.cdecl, 
     dynlib: lib, importc: "atk_table_set_row_header".}
-proc table_set_summary*(table: PTable, accessible: PObject){.cdecl, dynlib: lib, 
+proc set_summary*(table: PTable, accessible: PObject){.cdecl, dynlib: lib, 
     importc: "atk_table_set_summary".}
-proc table_get_selected_columns*(table: PTable, selected: PPgint): gint{.cdecl, 
+proc get_selected_columns*(table: PTable, selected: PPgint): gint{.cdecl, 
     dynlib: lib, importc: "atk_table_get_selected_columns".}
-proc table_get_selected_rows*(table: PTable, selected: PPgint): gint{.cdecl, 
+proc get_selected_rows*(table: PTable, selected: PPgint): gint{.cdecl, 
     dynlib: lib, importc: "atk_table_get_selected_rows".}
-proc table_is_column_selected*(table: PTable, column: gint): gboolean{.cdecl, 
+proc is_column_selected*(table: PTable, column: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_table_is_column_selected".}
-proc table_is_row_selected*(table: PTable, row: gint): gboolean{.cdecl, 
+proc is_row_selected*(table: PTable, row: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_table_is_row_selected".}
-proc table_is_selected*(table: PTable, row: gint, column: gint): gboolean{.
+proc is_selected*(table: PTable, row: gint, column: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_table_is_selected".}
-proc table_add_row_selection*(table: PTable, row: gint): gboolean{.cdecl, 
+proc add_row_selection*(table: PTable, row: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_table_add_row_selection".}
-proc table_remove_row_selection*(table: PTable, row: gint): gboolean{.cdecl, 
+proc remove_row_selection*(table: PTable, row: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_table_remove_row_selection".}
-proc table_add_column_selection*(table: PTable, column: gint): gboolean{.cdecl, 
+proc add_column_selection*(table: PTable, column: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_table_add_column_selection".}
-proc table_remove_column_selection*(table: PTable, column: gint): gboolean{.
+proc remove_column_selection*(table: PTable, column: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_table_remove_column_selection".}
 proc text_attribute_register*(name: cstring): TTextAttribute{.cdecl, 
     dynlib: lib, importc: "atk_text_attribute_register".}
@@ -886,51 +886,51 @@ proc IS_TEXT*(obj: pointer): bool
 proc TEXT*(obj: pointer): PText
 proc TEXT_GET_IFACE*(obj: pointer): PTextIface
 proc text_get_type*(): GType{.cdecl, dynlib: lib, importc: "atk_text_get_type".}
-proc text_get_text*(text: PText, start_offset: gint, end_offset: gint): cstring{.
+proc get_text*(text: PText, start_offset: gint, end_offset: gint): cstring{.
     cdecl, dynlib: lib, importc: "atk_text_get_text".}
-proc text_get_character_at_offset*(text: PText, offset: gint): gunichar{.cdecl, 
+proc get_character_at_offset*(text: PText, offset: gint): gunichar{.cdecl, 
     dynlib: lib, importc: "atk_text_get_character_at_offset".}
-proc text_get_text_after_offset*(text: PText, offset: gint, 
+proc get_text_after_offset*(text: PText, offset: gint, 
                                  boundary_type: TTextBoundary, 
                                  start_offset: Pgint, end_offset: Pgint): cstring{.
     cdecl, dynlib: lib, importc: "atk_text_get_text_after_offset".}
-proc text_get_text_at_offset*(text: PText, offset: gint, 
+proc get_text_at_offset*(text: PText, offset: gint, 
                               boundary_type: TTextBoundary, start_offset: Pgint, 
                               end_offset: Pgint): cstring{.cdecl, dynlib: lib, 
     importc: "atk_text_get_text_at_offset".}
-proc text_get_text_before_offset*(text: PText, offset: gint, 
+proc get_text_before_offset*(text: PText, offset: gint, 
                                   boundary_type: TTextBoundary, 
                                   start_offset: Pgint, end_offset: Pgint): cstring{.
     cdecl, dynlib: lib, importc: "atk_text_get_text_before_offset".}
-proc text_get_caret_offset*(text: PText): gint{.cdecl, dynlib: lib, 
+proc get_caret_offset*(text: PText): gint{.cdecl, dynlib: lib, 
     importc: "atk_text_get_caret_offset".}
-proc text_get_character_extents*(text: PText, offset: gint, x: Pgint, y: Pgint, 
+proc get_character_extents*(text: PText, offset: gint, x: Pgint, y: Pgint, 
                                  width: Pgint, height: Pgint, coords: TCoordType){.
     cdecl, dynlib: lib, importc: "atk_text_get_character_extents".}
-proc text_get_run_attributes*(text: PText, offset: gint, start_offset: Pgint, 
+proc get_run_attributes*(text: PText, offset: gint, start_offset: Pgint, 
                               end_offset: Pgint): PAttributeSet{.cdecl, 
     dynlib: lib, importc: "atk_text_get_run_attributes".}
-proc text_get_default_attributes*(text: PText): PAttributeSet{.cdecl, 
+proc get_default_attributes*(text: PText): PAttributeSet{.cdecl, 
     dynlib: lib, importc: "atk_text_get_default_attributes".}
-proc text_get_character_count*(text: PText): gint{.cdecl, dynlib: lib, 
+proc get_character_count*(text: PText): gint{.cdecl, dynlib: lib, 
     importc: "atk_text_get_character_count".}
-proc text_get_offset_at_point*(text: PText, x: gint, y: gint, coords: TCoordType): gint{.
+proc get_offset_at_point*(text: PText, x: gint, y: gint, coords: TCoordType): gint{.
     cdecl, dynlib: lib, importc: "atk_text_get_offset_at_point".}
-proc text_get_n_selections*(text: PText): gint{.cdecl, dynlib: lib, 
+proc get_n_selections*(text: PText): gint{.cdecl, dynlib: lib, 
     importc: "atk_text_get_n_selections".}
-proc text_get_selection*(text: PText, selection_num: gint, start_offset: Pgint, 
+proc get_selection*(text: PText, selection_num: gint, start_offset: Pgint, 
                          end_offset: Pgint): cstring{.cdecl, dynlib: lib, 
     importc: "atk_text_get_selection".}
-proc text_add_selection*(text: PText, start_offset: gint, end_offset: gint): gboolean{.
+proc add_selection*(text: PText, start_offset: gint, end_offset: gint): gboolean{.
     cdecl, dynlib: lib, importc: "atk_text_add_selection".}
-proc text_remove_selection*(text: PText, selection_num: gint): gboolean{.cdecl, 
+proc remove_selection*(text: PText, selection_num: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_text_remove_selection".}
-proc text_set_selection*(text: PText, selection_num: gint, start_offset: gint, 
+proc set_selection*(text: PText, selection_num: gint, start_offset: gint, 
                          end_offset: gint): gboolean{.cdecl, dynlib: lib, 
     importc: "atk_text_set_selection".}
-proc text_set_caret_offset*(text: PText, offset: gint): gboolean{.cdecl, 
+proc set_caret_offset*(text: PText, offset: gint): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_text_set_caret_offset".}
-proc attribute_set_free*(attrib_set: PAttributeSet){.cdecl, dynlib: lib, 
+proc free*(attrib_set: PAttributeSet){.cdecl, dynlib: lib, 
     importc: "atk_attribute_set_free".}
 proc text_attribute_get_name*(attr: TTextAttribute): cstring{.cdecl, 
     dynlib: lib, importc: "atk_text_attribute_get_name".}
@@ -972,13 +972,13 @@ proc IS_VALUE*(obj: pointer): bool
 proc VALUE*(obj: pointer): PValue
 proc VALUE_GET_IFACE*(obj: pointer): PValueIface
 proc value_get_type*(): GType{.cdecl, dynlib: lib, importc: "atk_value_get_type".}
-proc value_get_current_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
+proc get_current_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
     importc: "atk_value_get_current_value".}
-proc value_get_maximum_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
+proc get_maximum_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
     importc: "atk_value_get_maximum_value".}
-proc value_get_minimum_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
+proc get_minimum_value*(obj: PValue, value: PGValue){.cdecl, dynlib: lib, 
     importc: "atk_value_get_minimum_value".}
-proc value_set_current_value*(obj: PValue, value: PGValue): gboolean{.cdecl, 
+proc set_current_value*(obj: PValue, value: PGValue): gboolean{.cdecl, 
     dynlib: lib, importc: "atk_value_set_current_value".}
 proc TYPE_OBJECT*(): GType = 
   result = object_get_type()

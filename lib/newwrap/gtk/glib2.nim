@@ -373,7 +373,7 @@ proc g_type_fundamental*(type_id: GType): GType{.cdecl, dynlib: gobjectlib,
     importc: "g_type_fundamental".}
 proc g_type_create_instance*(theType: GType): PGTypeInstance{.cdecl, 
     dynlib: gobjectlib, importc: "g_type_create_instance".}
-proc g_type_free_instance*(instance: PGTypeInstance){.cdecl, dynlib: gobjectlib, 
+proc free_instance*(instance: PGTypeInstance){.cdecl, dynlib: gobjectlib, 
     importc: "g_type_free_instance".}
 proc g_type_add_class_cache_func*(cache_data: gpointer, 
                                   cache_func: TGTypeClassCacheFunc){.cdecl, 
@@ -405,9 +405,9 @@ proc private_g_type_check_value_holds*(value: PGValue, theType: GType): gboolean
     cdecl, dynlib: gobjectlib, importc: "g_type_check_value_holds".}
 proc private_g_type_test_flags*(theType: GType, flags: guint): gboolean{.cdecl, 
     dynlib: gobjectlib, importc: "g_type_test_flags".}
-proc g_type_name_from_instance*(instance: PGTypeInstance): cstring{.cdecl, 
+proc name_from_instance*(instance: PGTypeInstance): cstring{.cdecl, 
     dynlib: gobjectlib, importc: "g_type_name_from_instance".}
-proc g_type_name_from_class*(g_class: PGTypeClass): cstring{.cdecl, 
+proc name_from_class*(g_class: PGTypeClass): cstring{.cdecl, 
     dynlib: gobjectlib, importc: "g_type_name_from_class".}
 const 
   G_TYPE_FLAG_RESERVED_ID_BIT* = GType(1 shl 0)
@@ -420,25 +420,25 @@ proc G_VALUE_HOLDS*(value: pointer, g_type: GType): bool
 type 
   TGValueTransform* = proc (src_value: PGValue, dest_value: PGValue){.cdecl.}
 
-proc g_value_init*(value: PGValue, g_type: GType): PGValue{.cdecl, 
+proc init*(value: PGValue, g_type: GType): PGValue{.cdecl, 
     dynlib: gobjectlib, importc: "g_value_init".}
-proc g_value_copy*(src_value: PGValue, dest_value: PGValue){.cdecl, 
+proc copy*(src_value: PGValue, dest_value: PGValue){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_copy".}
-proc g_value_reset*(value: PGValue): PGValue{.cdecl, dynlib: gobjectlib, 
+proc reset*(value: PGValue): PGValue{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_reset".}
-proc g_value_unset*(value: PGValue){.cdecl, dynlib: gobjectlib, 
+proc unset*(value: PGValue){.cdecl, dynlib: gobjectlib, 
                                      importc: "g_value_unset".}
-proc g_value_set_instance*(value: PGValue, instance: gpointer){.cdecl, 
+proc set_instance*(value: PGValue, instance: gpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_instance".}
-proc g_value_fits_pointer*(value: PGValue): gboolean{.cdecl, dynlib: gobjectlib, 
+proc fits_pointer*(value: PGValue): gboolean{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_fits_pointer".}
-proc g_value_peek_pointer*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
+proc peek_pointer*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_peek_pointer".}
 proc g_value_type_compatible*(src_type: GType, dest_type: GType): gboolean{.
     cdecl, dynlib: gobjectlib, importc: "g_value_type_compatible".}
 proc g_value_type_transformable*(src_type: GType, dest_type: GType): gboolean{.
     cdecl, dynlib: gobjectlib, importc: "g_value_type_transformable".}
-proc g_value_transform*(src_value: PGValue, dest_value: PGValue): gboolean{.
+proc transform*(src_value: PGValue, dest_value: PGValue): gboolean{.
     cdecl, dynlib: gobjectlib, importc: "g_value_transform".}
 proc g_value_register_transform_func*(src_type: GType, dest_type: GType, 
                                       transform_func: TGValueTransform){.cdecl, 
@@ -454,26 +454,26 @@ type
     n_prealloced*: guint
 
 
-proc g_value_array_get_nth*(value_array: PGValueArray, index: guint): PGValue{.
+proc array_get_nth*(value_array: PGValueArray, index: guint): PGValue{.
     cdecl, dynlib: gobjectlib, importc: "g_value_array_get_nth".}
 proc g_value_array_new*(n_prealloced: guint): PGValueArray{.cdecl, 
     dynlib: gobjectlib, importc: "g_value_array_new".}
-proc g_value_array_free*(value_array: PGValueArray){.cdecl, dynlib: gobjectlib, 
+proc array_free*(value_array: PGValueArray){.cdecl, dynlib: gobjectlib, 
     importc: "g_value_array_free".}
-proc g_value_array_copy*(value_array: PGValueArray): PGValueArray{.cdecl, 
+proc array_copy*(value_array: PGValueArray): PGValueArray{.cdecl, 
     dynlib: gobjectlib, importc: "g_value_array_copy".}
-proc g_value_array_prepend*(value_array: PGValueArray, value: PGValue): PGValueArray{.
+proc array_prepend*(value_array: PGValueArray, value: PGValue): PGValueArray{.
     cdecl, dynlib: gobjectlib, importc: "g_value_array_prepend".}
-proc g_value_array_append*(value_array: PGValueArray, value: PGValue): PGValueArray{.
+proc array_append*(value_array: PGValueArray, value: PGValue): PGValueArray{.
     cdecl, dynlib: gobjectlib, importc: "g_value_array_append".}
-proc g_value_array_insert*(value_array: PGValueArray, index: guint, 
+proc array_insert*(value_array: PGValueArray, index: guint, 
                            value: PGValue): PGValueArray{.cdecl, 
     dynlib: gobjectlib, importc: "g_value_array_insert".}
-proc g_value_array_remove*(value_array: PGValueArray, index: guint): PGValueArray{.
+proc array_remove*(value_array: PGValueArray, index: guint): PGValueArray{.
     cdecl, dynlib: gobjectlib, importc: "g_value_array_remove".}
-proc g_value_array_sort*(value_array: PGValueArray, compare_func: TGCompareFunc): PGValueArray{.
+proc array_sort*(value_array: PGValueArray, compare_func: TGCompareFunc): PGValueArray{.
     cdecl, dynlib: gobjectlib, importc: "g_value_array_sort".}
-proc g_value_array_sort_with_data*(value_array: PGValueArray, 
+proc array_sort_with_data*(value_array: PGValueArray, 
                                    compare_func: TGCompareDataFunc, 
                                    user_data: gpointer): PGValueArray{.cdecl, 
     dynlib: gobjectlib, importc: "g_value_array_sort_with_data".}
@@ -485,80 +485,80 @@ const
   G_VALUE_COLLECT_POINTER* = 'p'
   G_VALUE_COLLECT_FORMAT_MAX_LENGTH* = 8
 
-proc G_VALUE_HOLDS_CHAR*(value: PGValue): bool
-proc G_VALUE_HOLDS_UCHAR*(value: PGValue): bool
-proc G_VALUE_HOLDS_BOOLEAN*(value: PGValue): bool
-proc G_VALUE_HOLDS_INT*(value: PGValue): bool
-proc G_VALUE_HOLDS_UINT*(value: PGValue): bool
-proc G_VALUE_HOLDS_LONG*(value: PGValue): bool
-proc G_VALUE_HOLDS_ULONG*(value: PGValue): bool
-proc G_VALUE_HOLDS_INT64*(value: PGValue): bool
-proc G_VALUE_HOLDS_UINT64*(value: PGValue): bool
-proc G_VALUE_HOLDS_FLOAT*(value: PGValue): bool
-proc G_VALUE_HOLDS_DOUBLE*(value: PGValue): bool
-proc G_VALUE_HOLDS_STRING*(value: PGValue): bool
-proc G_VALUE_HOLDS_POINTER*(value: PGValue): bool
-proc g_value_set_char*(value: PGValue, v_char: gchar){.cdecl, 
+proc HOLDS_CHAR*(value: PGValue): bool
+proc HOLDS_UCHAR*(value: PGValue): bool
+proc HOLDS_BOOLEAN*(value: PGValue): bool
+proc HOLDS_INT*(value: PGValue): bool
+proc HOLDS_UINT*(value: PGValue): bool
+proc HOLDS_LONG*(value: PGValue): bool
+proc HOLDS_ULONG*(value: PGValue): bool
+proc HOLDS_INT64*(value: PGValue): bool
+proc HOLDS_UINT64*(value: PGValue): bool
+proc HOLDS_FLOAT*(value: PGValue): bool
+proc HOLDS_DOUBLE*(value: PGValue): bool
+proc HOLDS_STRING*(value: PGValue): bool
+proc HOLDS_POINTER*(value: PGValue): bool
+proc set_char*(value: PGValue, v_char: gchar){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_char".}
-proc g_value_get_char*(value: PGValue): gchar{.cdecl, dynlib: gobjectlib, 
+proc get_char*(value: PGValue): gchar{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_char".}
-proc g_value_set_uchar*(value: PGValue, v_uchar: guchar){.cdecl, 
+proc set_uchar*(value: PGValue, v_uchar: guchar){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_uchar".}
-proc g_value_get_uchar*(value: PGValue): guchar{.cdecl, dynlib: gobjectlib, 
+proc get_uchar*(value: PGValue): guchar{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_uchar".}
-proc g_value_set_boolean*(value: PGValue, v_boolean: gboolean){.cdecl, 
+proc set_boolean*(value: PGValue, v_boolean: gboolean){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_boolean".}
-proc g_value_get_boolean*(value: PGValue): gboolean{.cdecl, dynlib: gobjectlib, 
+proc get_boolean*(value: PGValue): gboolean{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_boolean".}
-proc g_value_set_int*(value: PGValue, v_int: gint){.cdecl, dynlib: gobjectlib, 
+proc set_int*(value: PGValue, v_int: gint){.cdecl, dynlib: gobjectlib, 
     importc: "g_value_set_int".}
-proc g_value_get_int*(value: PGValue): gint{.cdecl, dynlib: gobjectlib, 
+proc get_int*(value: PGValue): gint{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_int".}
-proc g_value_set_uint*(value: PGValue, v_uint: guint){.cdecl, 
+proc set_uint*(value: PGValue, v_uint: guint){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_uint".}
-proc g_value_get_uint*(value: PGValue): guint{.cdecl, dynlib: gobjectlib, 
+proc get_uint*(value: PGValue): guint{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_uint".}
-proc g_value_set_long*(value: PGValue, v_long: glong){.cdecl, 
+proc set_long*(value: PGValue, v_long: glong){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_long".}
-proc g_value_get_long*(value: PGValue): glong{.cdecl, dynlib: gobjectlib, 
+proc get_long*(value: PGValue): glong{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_long".}
-proc g_value_set_ulong*(value: PGValue, v_ulong: gulong){.cdecl, 
+proc set_ulong*(value: PGValue, v_ulong: gulong){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_ulong".}
-proc g_value_get_ulong*(value: PGValue): gulong{.cdecl, dynlib: gobjectlib, 
+proc get_ulong*(value: PGValue): gulong{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_ulong".}
-proc g_value_set_int64*(value: PGValue, v_int64: gint64){.cdecl, 
+proc set_int64*(value: PGValue, v_int64: gint64){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_int64".}
-proc g_value_get_int64*(value: PGValue): gint64{.cdecl, dynlib: gobjectlib, 
+proc get_int64*(value: PGValue): gint64{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_int64".}
-proc g_value_set_uint64*(value: PGValue, v_uint64: guint64){.cdecl, 
+proc set_uint64*(value: PGValue, v_uint64: guint64){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_uint64".}
-proc g_value_get_uint64*(value: PGValue): guint64{.cdecl, dynlib: gobjectlib, 
+proc get_uint64*(value: PGValue): guint64{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_uint64".}
-proc g_value_set_float*(value: PGValue, v_float: gfloat){.cdecl, 
+proc set_float*(value: PGValue, v_float: gfloat){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_float".}
-proc g_value_get_float*(value: PGValue): gfloat{.cdecl, dynlib: gobjectlib, 
+proc get_float*(value: PGValue): gfloat{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_float".}
-proc g_value_set_double*(value: PGValue, v_double: gdouble){.cdecl, 
+proc set_double*(value: PGValue, v_double: gdouble){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_double".}
-proc g_value_get_double*(value: PGValue): gdouble{.cdecl, dynlib: gobjectlib, 
+proc get_double*(value: PGValue): gdouble{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_double".}
-proc g_value_set_string*(value: PGValue, v_string: cstring){.cdecl, 
+proc set_string*(value: PGValue, v_string: cstring){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_string".}
-proc g_value_set_static_string*(value: PGValue, v_string: cstring){.cdecl, 
+proc set_static_string*(value: PGValue, v_string: cstring){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_static_string".}
-proc g_value_get_string*(value: PGValue): cstring{.cdecl, dynlib: gobjectlib, 
+proc get_string*(value: PGValue): cstring{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_string".}
-proc g_value_dup_string*(value: PGValue): cstring{.cdecl, dynlib: gobjectlib, 
+proc dup_string*(value: PGValue): cstring{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_dup_string".}
-proc g_value_set_pointer*(value: PGValue, v_pointer: gpointer){.cdecl, 
+proc set_pointer*(value: PGValue, v_pointer: gpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_pointer".}
-proc g_value_get_pointer*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
+proc get_pointer*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_pointer".}
 proc g_pointer_type_register_static*(name: cstring): GType{.cdecl, 
     dynlib: gobjectlib, importc: "g_pointer_type_register_static".}
-proc g_strdup_value_contents*(value: PGValue): cstring{.cdecl, 
+proc strdup_value_contents*(value: PGValue): cstring{.cdecl, 
     dynlib: gobjectlib, importc: "g_strdup_value_contents".}
-proc g_value_set_string_take_ownership*(value: PGValue, v_string: cstring){.
+proc set_string_take_ownership*(value: PGValue, v_string: cstring){.
     cdecl, dynlib: gobjectlib, importc: "g_value_set_string_take_ownership".}
 type 
   Tgchararray* = gchar
@@ -585,45 +585,45 @@ const
   G_PARAM_MASK* = 0x000000FF
   G_PARAM_USER_SHIFT* = 8
 
-proc g_param_spec_ref*(pspec: PGParamSpec): PGParamSpec{.cdecl, dynlib: gliblib, 
+proc spec_ref*(pspec: PGParamSpec): PGParamSpec{.cdecl, dynlib: gliblib, 
     importc: "g_param_spec_ref".}
-proc g_param_spec_unref*(pspec: PGParamSpec){.cdecl, dynlib: gliblib, 
+proc spec_unref*(pspec: PGParamSpec){.cdecl, dynlib: gliblib, 
     importc: "g_param_spec_unref".}
-proc g_param_spec_sink*(pspec: PGParamSpec){.cdecl, dynlib: gliblib, 
+proc spec_sink*(pspec: PGParamSpec){.cdecl, dynlib: gliblib, 
     importc: "g_param_spec_sink".}
-proc g_param_spec_get_qdata*(pspec: PGParamSpec, quark: TGQuark): gpointer{.
+proc spec_get_qdata*(pspec: PGParamSpec, quark: TGQuark): gpointer{.
     cdecl, dynlib: gliblib, importc: "g_param_spec_get_qdata".}
-proc g_param_spec_set_qdata*(pspec: PGParamSpec, quark: TGQuark, data: gpointer){.
+proc spec_set_qdata*(pspec: PGParamSpec, quark: TGQuark, data: gpointer){.
     cdecl, dynlib: gliblib, importc: "g_param_spec_set_qdata".}
-proc g_param_spec_set_qdata_full*(pspec: PGParamSpec, quark: TGQuark, 
+proc spec_set_qdata_full*(pspec: PGParamSpec, quark: TGQuark, 
                                   data: gpointer, destroy: TGDestroyNotify){.
     cdecl, dynlib: gliblib, importc: "g_param_spec_set_qdata_full".}
-proc g_param_spec_steal_qdata*(pspec: PGParamSpec, quark: TGQuark): gpointer{.
+proc spec_steal_qdata*(pspec: PGParamSpec, quark: TGQuark): gpointer{.
     cdecl, dynlib: gliblib, importc: "g_param_spec_steal_qdata".}
-proc g_param_value_set_default*(pspec: PGParamSpec, value: PGValue){.cdecl, 
+proc value_set_default*(pspec: PGParamSpec, value: PGValue){.cdecl, 
     dynlib: gliblib, importc: "g_param_value_set_default".}
-proc g_param_value_defaults*(pspec: PGParamSpec, value: PGValue): gboolean{.
+proc value_defaults*(pspec: PGParamSpec, value: PGValue): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_param_value_defaults".}
-proc g_param_value_validate*(pspec: PGParamSpec, value: PGValue): gboolean{.
+proc value_validate*(pspec: PGParamSpec, value: PGValue): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_param_value_validate".}
-proc g_param_value_convert*(pspec: PGParamSpec, src_value: PGValue, 
+proc value_convert*(pspec: PGParamSpec, src_value: PGValue, 
                             dest_value: PGValue, strict_validation: gboolean): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_param_value_convert".}
-proc g_param_values_cmp*(pspec: PGParamSpec, value1: PGValue, value2: PGValue): gint{.
+proc values_cmp*(pspec: PGParamSpec, value1: PGValue, value2: PGValue): gint{.
     cdecl, dynlib: gliblib, importc: "g_param_values_cmp".}
-proc g_param_spec_get_name*(pspec: PGParamSpec): cstring{.cdecl, 
+proc spec_get_name*(pspec: PGParamSpec): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_param_spec_get_name".}
-proc g_param_spec_get_nick*(pspec: PGParamSpec): cstring{.cdecl, 
+proc spec_get_nick*(pspec: PGParamSpec): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_param_spec_get_nick".}
-proc g_param_spec_get_blurb*(pspec: PGParamSpec): cstring{.cdecl, 
+proc spec_get_blurb*(pspec: PGParamSpec): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_param_spec_get_blurb".}
-proc g_value_set_param*(value: PGValue, param: PGParamSpec){.cdecl, 
+proc set_param*(value: PGValue, param: PGParamSpec){.cdecl, 
     dynlib: gliblib, importc: "g_value_set_param".}
-proc g_value_get_param*(value: PGValue): PGParamSpec{.cdecl, dynlib: gliblib, 
+proc get_param*(value: PGValue): PGParamSpec{.cdecl, dynlib: gliblib, 
     importc: "g_value_get_param".}
-proc g_value_dup_param*(value: PGValue): PGParamSpec{.cdecl, dynlib: gliblib, 
+proc dup_param*(value: PGValue): PGParamSpec{.cdecl, dynlib: gliblib, 
     importc: "g_value_dup_param".}
-proc g_value_set_param_take_ownership*(value: PGValue, param: PGParamSpec){.
+proc set_param_take_ownership*(value: PGValue, param: PGParamSpec){.
     cdecl, dynlib: gliblib, importc: "g_value_set_param_take_ownership".}
 type 
   PGParamSpecTypeInfo* = ptr TGParamSpecTypeInfo
@@ -650,17 +650,17 @@ proc g_param_spec_internal*(param_type: GType, name: cstring, nick: cstring,
     cdecl, dynlib: gliblib, importc: "g_param_spec_internal".}
 proc g_param_spec_pool_new*(type_prefixing: gboolean): PGParamSpecPool{.cdecl, 
     dynlib: gliblib, importc: "g_param_spec_pool_new".}
-proc g_param_spec_pool_insert*(pool: PGParamSpecPool, pspec: PGParamSpec, 
+proc spec_pool_insert*(pool: PGParamSpecPool, pspec: PGParamSpec, 
                                owner_type: GType){.cdecl, dynlib: gliblib, 
     importc: "g_param_spec_pool_insert".}
-proc g_param_spec_pool_remove*(pool: PGParamSpecPool, pspec: PGParamSpec){.
+proc spec_pool_remove*(pool: PGParamSpecPool, pspec: PGParamSpec){.
     cdecl, dynlib: gliblib, importc: "g_param_spec_pool_remove".}
-proc g_param_spec_pool_lookup*(pool: PGParamSpecPool, param_name: cstring, 
+proc spec_pool_lookup*(pool: PGParamSpecPool, param_name: cstring, 
                                owner_type: GType, walk_ancestors: gboolean): PGParamSpec{.
     cdecl, dynlib: gliblib, importc: "g_param_spec_pool_lookup".}
-proc g_param_spec_pool_list_owned*(pool: PGParamSpecPool, owner_type: GType): PGList{.
+proc spec_pool_list_owned*(pool: PGParamSpecPool, owner_type: GType): PGList{.
     cdecl, dynlib: gliblib, importc: "g_param_spec_pool_list_owned".}
-proc g_param_spec_pool_list*(pool: PGParamSpecPool, owner_type: GType, 
+proc spec_pool_list*(pool: PGParamSpecPool, owner_type: GType, 
                              n_pspecs_p: Pguint): PPGParamSpec{.cdecl, 
     dynlib: gliblib, importc: "g_param_spec_pool_list".}
 type 
@@ -687,8 +687,8 @@ type
 
 
 proc G_CLOSURE_NEEDS_MARSHAL*(closure: Pointer): bool
-proc G_CLOSURE_N_NOTIFIERS*(cl: PGClosure): int32
-proc G_CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32
+proc N_NOTIFIERS*(cl: PGClosure): int32
+proc CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32
 proc G_CALLBACK*(f: pointer): TGCallback
 const 
   bm_TGClosure_ref_count* = 0x00007FFF'i32
@@ -746,41 +746,41 @@ proc g_cclosure_new_swap*(callback_func: TGCallback, user_data: gpointer,
     dynlib: gliblib, importc: "g_cclosure_new_swap".}
 proc g_signal_type_cclosure_new*(itype: GType, struct_offset: guint): PGClosure{.
     cdecl, dynlib: gliblib, importc: "g_signal_type_cclosure_new".}
-proc g_closure_ref*(closure: PGClosure): PGClosure{.cdecl, dynlib: gliblib, 
+proc reference*(closure: PGClosure): PGClosure{.cdecl, dynlib: gliblib, 
     importc: "g_closure_ref".}
-proc g_closure_sink*(closure: PGClosure){.cdecl, dynlib: gliblib, 
+proc sink*(closure: PGClosure){.cdecl, dynlib: gliblib, 
     importc: "g_closure_sink".}
-proc g_closure_unref*(closure: PGClosure){.cdecl, dynlib: gliblib, 
+proc unref*(closure: PGClosure){.cdecl, dynlib: gliblib, 
     importc: "g_closure_unref".}
 proc g_closure_new_simple*(sizeof_closure: guint, data: gpointer): PGClosure{.
     cdecl, dynlib: gliblib, importc: "g_closure_new_simple".}
-proc g_closure_add_finalize_notifier*(closure: PGClosure, notify_data: gpointer, 
+proc add_finalize_notifier*(closure: PGClosure, notify_data: gpointer, 
                                       notify_func: TGClosureNotify){.cdecl, 
     dynlib: gliblib, importc: "g_closure_add_finalize_notifier".}
-proc g_closure_remove_finalize_notifier*(closure: PGClosure, 
+proc remove_finalize_notifier*(closure: PGClosure, 
     notify_data: gpointer, notify_func: TGClosureNotify){.cdecl, 
     dynlib: gliblib, importc: "g_closure_remove_finalize_notifier".}
-proc g_closure_add_invalidate_notifier*(closure: PGClosure, 
+proc add_invalidate_notifier*(closure: PGClosure, 
                                         notify_data: gpointer, 
                                         notify_func: TGClosureNotify){.cdecl, 
     dynlib: gliblib, importc: "g_closure_add_invalidate_notifier".}
-proc g_closure_remove_invalidate_notifier*(closure: PGClosure, 
+proc remove_invalidate_notifier*(closure: PGClosure, 
     notify_data: gpointer, notify_func: TGClosureNotify){.cdecl, 
     dynlib: gliblib, importc: "g_closure_remove_invalidate_notifier".}
-proc g_closure_add_marshal_guards*(closure: PGClosure, 
+proc add_marshal_guards*(closure: PGClosure, 
                                    pre_marshal_data: gpointer, 
                                    pre_marshal_notify: TGClosureNotify, 
                                    post_marshal_data: gpointer, 
                                    post_marshal_notify: TGClosureNotify){.cdecl, 
     dynlib: gliblib, importc: "g_closure_add_marshal_guards".}
-proc g_closure_set_marshal*(closure: PGClosure, marshal: TGClosureMarshal){.
+proc set_marshal*(closure: PGClosure, marshal: TGClosureMarshal){.
     cdecl, dynlib: gliblib, importc: "g_closure_set_marshal".}
-proc g_closure_set_meta_marshal*(closure: PGClosure, marshal_data: gpointer, 
+proc set_meta_marshal*(closure: PGClosure, marshal_data: gpointer, 
                                  meta_marshal: TGClosureMarshal){.cdecl, 
     dynlib: gliblib, importc: "g_closure_set_meta_marshal".}
-proc g_closure_invalidate*(closure: PGClosure){.cdecl, dynlib: gliblib, 
+proc invalidate*(closure: PGClosure){.cdecl, dynlib: gliblib, 
     importc: "g_closure_invalidate".}
-proc g_closure_invoke*(closure: PGClosure, return_value: PGValue, 
+proc invoke*(closure: PGClosure, return_value: PGValue, 
                        n_param_values: guint, param_values: PGValue, 
                        invocation_hint: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_closure_invoke".}
@@ -850,7 +850,7 @@ proc g_signal_newv*(signal_name: cstring, itype: GType,
                     c_marshaller: TGSignalCMarshaller, return_type: GType, 
                     n_params: guint, param_types: PGType): guint{.cdecl, 
     dynlib: gobjectlib, importc: "g_signal_newv".}
-proc g_signal_emitv*(instance_and_params: PGValue, signal_id: guint, 
+proc signal_emitv*(instance_and_params: PGValue, signal_id: guint, 
                      detail: TGQuark, return_value: PGValue){.cdecl, 
     dynlib: gobjectlib, importc: "g_signal_emitv".}
 proc g_signal_lookup*(name: cstring, itype: GType): guint{.cdecl, 
@@ -925,7 +925,7 @@ proc g_signal_handlers_disconnect_matched*(instance: gpointer,
 proc g_signal_override_class_closure*(signal_id: guint, instance_type: GType, 
                                       class_closure: PGClosure){.cdecl, 
     dynlib: gobjectlib, importc: "g_signal_override_class_closure".}
-proc g_signal_chain_from_overridden*(instance_and_params: PGValue, 
+proc signal_chain_from_overridden*(instance_and_params: PGValue, 
                                      return_value: PGValue){.cdecl, 
     dynlib: gobjectlib, importc: "g_signal_chain_from_overridden".}
 proc g_signal_connect*(instance: gpointer, detailed_signal: cstring, 
@@ -967,15 +967,15 @@ proc G_IS_TYPE_PLUGIN_CLASS*(vtable: Pointer): bool
 proc G_TYPE_PLUGIN_GET_CLASS*(inst: Pointer): PGTypePluginClass
 proc g_type_plugin_get_type*(): GType{.cdecl, dynlib: gliblib, 
                                        importc: "g_type_plugin_get_type".}
-proc g_type_plugin_use*(plugin: PGTypePlugin){.cdecl, dynlib: gliblib, 
+proc plugin_use*(plugin: PGTypePlugin){.cdecl, dynlib: gliblib, 
     importc: "g_type_plugin_use".}
-proc g_type_plugin_unuse*(plugin: PGTypePlugin){.cdecl, dynlib: gliblib, 
+proc plugin_unuse*(plugin: PGTypePlugin){.cdecl, dynlib: gliblib, 
     importc: "g_type_plugin_unuse".}
-proc g_type_plugin_complete_type_info*(plugin: PGTypePlugin, g_type: GType, 
+proc plugin_complete_type_info*(plugin: PGTypePlugin, g_type: GType, 
                                        info: PGTypeInfo, 
                                        value_table: PGTypeValueTable){.cdecl, 
     dynlib: gliblib, importc: "g_type_plugin_complete_type_info".}
-proc g_type_plugin_complete_interface_info*(plugin: PGTypePlugin, 
+proc plugin_complete_interface_info*(plugin: PGTypePlugin, 
     instance_type: GType, interface_type: GType, info: PGInterfaceInfo){.cdecl, 
     dynlib: gliblib, importc: "g_type_plugin_complete_interface_info".}
 type 
@@ -1026,59 +1026,59 @@ proc G_OBJECT_TYPE_NAME*(anObject: pointer): cstring
 proc G_OBJECT_CLASS_TYPE*(class: Pointer): GType
 proc G_OBJECT_CLASS_NAME*(class: Pointer): cstring
 proc G_VALUE_HOLDS_OBJECT*(value: Pointer): bool
-proc g_object_class_install_property*(oclass: PGObjectClass, property_id: guint, 
+proc class_install_property*(oclass: PGObjectClass, property_id: guint, 
                                       pspec: PGParamSpec){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_class_install_property".}
-proc g_object_class_find_property*(oclass: PGObjectClass, property_name: cstring): PGParamSpec{.
+proc class_find_property*(oclass: PGObjectClass, property_name: cstring): PGParamSpec{.
     cdecl, dynlib: gobjectlib, importc: "g_object_class_find_property".}
-proc g_object_class_list_properties*(oclass: PGObjectClass, n_properties: Pguint): PPGParamSpec{.
+proc class_list_properties*(oclass: PGObjectClass, n_properties: Pguint): PPGParamSpec{.
     cdecl, dynlib: gobjectlib, importc: "g_object_class_list_properties".}
-proc g_object_set_property*(anObject: PGObject, property_name: cstring, 
+proc set_property*(anObject: PGObject, property_name: cstring, 
                             value: PGValue){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_set_property".}
-proc g_object_get_property*(anObject: PGObject, property_name: cstring, 
+proc get_property*(anObject: PGObject, property_name: cstring, 
                             value: PGValue){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_get_property".}
-proc g_object_freeze_notify*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
+proc freeze_notify*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_freeze_notify".}
-proc g_object_notify*(anObject: PGObject, property_name: cstring){.cdecl, 
+proc notify*(anObject: PGObject, property_name: cstring){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_notify".}
-proc g_object_thaw_notify*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
+proc thaw_notify*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_thaw_notify".}
 proc g_object_ref*(anObject: gpointer): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_object_ref".}
 proc g_object_unref*(anObject: gpointer){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_unref".}
-proc g_object_weak_ref*(anObject: PGObject, notify: TGWeakNotify, data: gpointer){.
+proc weak_ref*(anObject: PGObject, notify: TGWeakNotify, data: gpointer){.
     cdecl, dynlib: gobjectlib, importc: "g_object_weak_ref".}
-proc g_object_weak_unref*(anObject: PGObject, notify: TGWeakNotify, 
+proc weak_unref*(anObject: PGObject, notify: TGWeakNotify, 
                           data: gpointer){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_weak_unref".}
-proc g_object_add_weak_pointer*(anObject: PGObject, 
+proc add_weak_pointer*(anObject: PGObject, 
                                 weak_pointer_location: Pgpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_add_weak_pointer".}
-proc g_object_remove_weak_pointer*(anObject: PGObject, 
+proc remove_weak_pointer*(anObject: PGObject, 
                                    weak_pointer_location: Pgpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_remove_weak_pointer".}
-proc g_object_get_qdata*(anObject: PGObject, quark: TGQuark): gpointer{.cdecl, 
+proc get_qdata*(anObject: PGObject, quark: TGQuark): gpointer{.cdecl, 
     dynlib: gobjectlib, importc: "g_object_get_qdata".}
-proc g_object_set_qdata*(anObject: PGObject, quark: TGQuark, data: gpointer){.
+proc set_qdata*(anObject: PGObject, quark: TGQuark, data: gpointer){.
     cdecl, dynlib: gobjectlib, importc: "g_object_set_qdata".}
-proc g_object_set_qdata_full*(anObject: PGObject, quark: TGQuark, 
+proc set_qdata_full*(anObject: PGObject, quark: TGQuark, 
                               data: gpointer, destroy: TGDestroyNotify){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_set_qdata_full".}
-proc g_object_steal_qdata*(anObject: PGObject, quark: TGQuark): gpointer{.cdecl, 
+proc steal_qdata*(anObject: PGObject, quark: TGQuark): gpointer{.cdecl, 
     dynlib: gobjectlib, importc: "g_object_steal_qdata".}
-proc g_object_get_data*(anObject: PGObject, key: cstring): gpointer{.cdecl, 
+proc get_data*(anObject: PGObject, key: cstring): gpointer{.cdecl, 
     dynlib: gobjectlib, importc: "g_object_get_data".}
-proc g_object_set_data*(anObject: PGObject, key: cstring, data: gpointer){.
+proc set_data*(anObject: PGObject, key: cstring, data: gpointer){.
     cdecl, dynlib: gobjectlib, importc: "g_object_set_data".}
-proc g_object_set_data_full*(anObject: PGObject, key: cstring, data: gpointer, 
+proc set_data_full*(anObject: PGObject, key: cstring, data: gpointer, 
                              destroy: TGDestroyNotify){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_set_data_full".}
-proc g_object_steal_data*(anObject: PGObject, key: cstring): gpointer{.cdecl, 
+proc steal_data*(anObject: PGObject, key: cstring): gpointer{.cdecl, 
     dynlib: gobjectlib, importc: "g_object_steal_data".}
-proc g_object_watch_closure*(anObject: PGObject, closure: PGClosure){.cdecl, 
+proc watch_closure*(anObject: PGObject, closure: PGClosure){.cdecl, 
     dynlib: gobjectlib, importc: "g_object_watch_closure".}
 proc g_cclosure_new_object*(callback_func: TGCallback, anObject: PGObject): PGClosure{.
     cdecl, dynlib: gobjectlib, importc: "g_cclosure_new_object".}
@@ -1086,19 +1086,19 @@ proc g_cclosure_new_object_swap*(callback_func: TGCallback, anObject: PGObject):
     cdecl, dynlib: gobjectlib, importc: "g_cclosure_new_object_swap".}
 proc g_closure_new_object*(sizeof_closure: guint, anObject: PGObject): PGClosure{.
     cdecl, dynlib: gobjectlib, importc: "g_closure_new_object".}
-proc g_value_set_object*(value: PGValue, v_object: gpointer){.cdecl, 
+proc set_object*(value: PGValue, v_object: gpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_object".}
-proc g_value_get_object*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
+proc get_object*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_object".}
-proc g_value_dup_object*(value: PGValue): PGObject{.cdecl, dynlib: gobjectlib, 
+proc dup_object*(value: PGValue): PGObject{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_dup_object".}
 proc g_signal_connect_object*(instance: gpointer, detailed_signal: cstring, 
                               c_handler: TGCallback, gobject: gpointer, 
                               connect_flags: TGConnectFlags): gulong{.cdecl, 
     dynlib: gobjectlib, importc: "g_signal_connect_object".}
-proc g_object_run_dispose*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
+proc run_dispose*(anObject: PGObject){.cdecl, dynlib: gobjectlib, 
     importc: "g_object_run_dispose".}
-proc g_value_set_object_take_ownership*(value: PGValue, v_object: gpointer){.
+proc set_object_take_ownership*(value: PGValue, v_object: gpointer){.
     cdecl, dynlib: gobjectlib, importc: "g_value_set_object_take_ownership".}
 proc G_OBJECT_WARN_INVALID_PSPEC*(anObject: gpointer, pname: cstring, 
                                   property_id: gint, pspec: gpointer)
@@ -1162,25 +1162,25 @@ proc G_FLAGS_CLASS_TYPE*(class: pointer): GType
 proc G_FLAGS_CLASS_TYPE_NAME*(class: pointer): cstring
 proc G_VALUE_HOLDS_ENUM*(value: pointer): gboolean
 proc G_VALUE_HOLDS_FLAGS*(value: pointer): gboolean
-proc g_enum_get_value*(enum_class: PGEnumClass, value: gint): PGEnumValue{.
+proc get_value*(enum_class: PGEnumClass, value: gint): PGEnumValue{.
     cdecl, dynlib: gliblib, importc: "g_enum_get_value".}
-proc g_enum_get_value_by_name*(enum_class: PGEnumClass, name: cstring): PGEnumValue{.
+proc get_value_by_name*(enum_class: PGEnumClass, name: cstring): PGEnumValue{.
     cdecl, dynlib: gliblib, importc: "g_enum_get_value_by_name".}
-proc g_enum_get_value_by_nick*(enum_class: PGEnumClass, nick: cstring): PGEnumValue{.
+proc get_value_by_nick*(enum_class: PGEnumClass, nick: cstring): PGEnumValue{.
     cdecl, dynlib: gliblib, importc: "g_enum_get_value_by_nick".}
-proc g_flags_get_first_value*(flags_class: PGFlagsClass, value: guint): PGFlagsValue{.
+proc get_first_value*(flags_class: PGFlagsClass, value: guint): PGFlagsValue{.
     cdecl, dynlib: gliblib, importc: "g_flags_get_first_value".}
-proc g_flags_get_value_by_name*(flags_class: PGFlagsClass, name: cstring): PGFlagsValue{.
+proc get_value_by_name*(flags_class: PGFlagsClass, name: cstring): PGFlagsValue{.
     cdecl, dynlib: gliblib, importc: "g_flags_get_value_by_name".}
-proc g_flags_get_value_by_nick*(flags_class: PGFlagsClass, nick: cstring): PGFlagsValue{.
+proc get_value_by_nick*(flags_class: PGFlagsClass, nick: cstring): PGFlagsValue{.
     cdecl, dynlib: gliblib, importc: "g_flags_get_value_by_nick".}
-proc g_value_set_enum*(value: PGValue, v_enum: gint){.cdecl, dynlib: gliblib, 
+proc set_enum*(value: PGValue, v_enum: gint){.cdecl, dynlib: gliblib, 
     importc: "g_value_set_enum".}
-proc g_value_get_enum*(value: PGValue): gint{.cdecl, dynlib: gliblib, 
+proc get_enum*(value: PGValue): gint{.cdecl, dynlib: gliblib, 
     importc: "g_value_get_enum".}
-proc g_value_set_flags*(value: PGValue, v_flags: guint){.cdecl, dynlib: gliblib, 
+proc set_flags*(value: PGValue, v_flags: guint){.cdecl, dynlib: gliblib, 
     importc: "g_value_set_flags".}
-proc g_value_get_flags*(value: PGValue): guint{.cdecl, dynlib: gliblib, 
+proc get_flags*(value: PGValue): guint{.cdecl, dynlib: gliblib, 
     importc: "g_value_get_flags".}
 proc g_enum_register_static*(name: cstring, const_static_values: PGEnumValue): GType{.
     cdecl, dynlib: gliblib, importc: "g_enum_register_static".}
@@ -1370,7 +1370,7 @@ proc g_path_get_basename*(file_name: cstring): cstring{.cdecl, dynlib: gliblib,
     importc: "g_path_get_basename".}
 proc g_path_get_dirname*(file_name: cstring): cstring{.cdecl, dynlib: gliblib, 
     importc: "g_path_get_dirname".}
-proc g_nullify_pointer*(nullify_location: Pgpointer){.cdecl, dynlib: gliblib, 
+proc nullify_pointer*(nullify_location: Pgpointer){.cdecl, dynlib: gliblib, 
     importc: "g_nullify_pointer".}
 proc g_getenv*(variable: cstring): cstring{.cdecl, dynlib: gliblib, 
     importc: "g_getenv".}
@@ -1411,34 +1411,34 @@ proc g_hash_table_new_full*(hash_func: TGHashFunc, key_equal_func: TGEqualFunc,
                             key_destroy_func: TGDestroyNotify, 
                             value_destroy_func: TGDestroyNotify): PGHashTable{.
     cdecl, dynlib: gliblib, importc: "g_hash_table_new_full".}
-proc g_hash_table_destroy*(hash_table: PGHashTable){.cdecl, dynlib: gliblib, 
+proc table_destroy*(hash_table: PGHashTable){.cdecl, dynlib: gliblib, 
     importc: "g_hash_table_destroy".}
-proc g_hash_table_insert*(hash_table: PGHashTable, key: gpointer, 
+proc table_insert*(hash_table: PGHashTable, key: gpointer, 
                           value: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_hash_table_insert".}
-proc g_hash_table_replace*(hash_table: PGHashTable, key: gpointer, 
+proc table_replace*(hash_table: PGHashTable, key: gpointer, 
                            value: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_hash_table_replace".}
-proc g_hash_table_remove*(hash_table: PGHashTable, key: gconstpointer): gboolean{.
+proc table_remove*(hash_table: PGHashTable, key: gconstpointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_hash_table_remove".}
-proc g_hash_table_steal*(hash_table: PGHashTable, key: gconstpointer): gboolean{.
+proc table_steal*(hash_table: PGHashTable, key: gconstpointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_hash_table_steal".}
-proc g_hash_table_lookup*(hash_table: PGHashTable, key: gconstpointer): gpointer{.
+proc table_lookup*(hash_table: PGHashTable, key: gconstpointer): gpointer{.
     cdecl, dynlib: gliblib, importc: "g_hash_table_lookup".}
-proc g_hash_table_lookup_extended*(hash_table: PGHashTable, 
+proc table_lookup_extended*(hash_table: PGHashTable, 
                                    lookup_key: gconstpointer, 
                                    orig_key: Pgpointer, value: Pgpointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_hash_table_lookup_extended".}
-proc g_hash_table_foreach*(hash_table: PGHashTable, func: TGHFunc, 
+proc table_foreach*(hash_table: PGHashTable, func: TGHFunc, 
                            user_data: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_hash_table_foreach".}
-proc g_hash_table_foreach_remove*(hash_table: PGHashTable, func: TGHRFunc, 
+proc table_foreach_remove*(hash_table: PGHashTable, func: TGHRFunc, 
                                   user_data: gpointer): guint{.cdecl, 
     dynlib: gliblib, importc: "g_hash_table_foreach_remove".}
-proc g_hash_table_foreach_steal*(hash_table: PGHashTable, func: TGHRFunc, 
+proc table_foreach_steal*(hash_table: PGHashTable, func: TGHRFunc, 
                                  user_data: gpointer): guint{.cdecl, 
     dynlib: gliblib, importc: "g_hash_table_foreach_steal".}
-proc g_hash_table_size*(hash_table: PGHashTable): guint{.cdecl, dynlib: gliblib, 
+proc table_size*(hash_table: PGHashTable): guint{.cdecl, dynlib: gliblib, 
     importc: "g_hash_table_size".}
 proc g_str_equal*(v: gconstpointer, v2: gconstpointer): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_str_equal".}
@@ -1491,14 +1491,14 @@ proc g_try_realloc*(mem: gpointer, n_bytes: gulong): gpointer{.cdecl,
 #proc g_new0*(bytes_per_struct, n_structs: gsize): gpointer
 #proc g_renew*(struct_size: gsize, OldMem: gpointer, n_structs: gsize): gpointer
 
-proc g_mem_set_vtable*(vtable: PGMemVTable){.cdecl, dynlib: gliblib, 
+proc set_vtable*(vtable: PGMemVTable){.cdecl, dynlib: gliblib, 
     importc: "g_mem_set_vtable".}
 proc g_mem_is_system_malloc*(): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_mem_is_system_malloc".}
 proc g_mem_profile*(){.cdecl, dynlib: gliblib, importc: "g_mem_profile".}
 proc g_chunk_new*(chunk: Pointer): Pointer
 proc g_chunk_new0*(chunk: Pointer): Pointer
-proc g_chunk_free*(mem_chunk: PGMemChunk, mem: gpointer)
+
 const 
   G_ALLOC_ONLY* = 1
   G_ALLOC_AND_FREE* = 2
@@ -1506,150 +1506,150 @@ const
 proc g_mem_chunk_new*(name: cstring, atom_size: gint, area_size: gulong, 
                       theType: gint): PGMemChunk{.cdecl, dynlib: gliblib, 
     importc: "g_mem_chunk_new".}
-proc g_mem_chunk_destroy*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
+proc chunk_destroy*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
     importc: "g_mem_chunk_destroy".}
-proc g_mem_chunk_alloc*(mem_chunk: PGMemChunk): gpointer{.cdecl, 
+proc chunk_alloc*(mem_chunk: PGMemChunk): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_mem_chunk_alloc".}
-proc g_mem_chunk_alloc0*(mem_chunk: PGMemChunk): gpointer{.cdecl, 
+proc chunk_alloc0*(mem_chunk: PGMemChunk): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_mem_chunk_alloc0".}
-proc g_mem_chunk_free*(mem_chunk: PGMemChunk, mem: gpointer){.cdecl, 
+proc chunk_free*(mem_chunk: PGMemChunk, mem: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_mem_chunk_free".}
-proc g_mem_chunk_clean*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
+proc chunk_clean*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
     importc: "g_mem_chunk_clean".}
-proc g_mem_chunk_reset*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
+proc chunk_reset*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
     importc: "g_mem_chunk_reset".}
-proc g_mem_chunk_print*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
+proc chunk_print*(mem_chunk: PGMemChunk){.cdecl, dynlib: gliblib, 
     importc: "g_mem_chunk_print".}
 proc g_mem_chunk_info*(){.cdecl, dynlib: gliblib, importc: "g_mem_chunk_info".}
 proc g_blow_chunks*(){.cdecl, dynlib: gliblib, importc: "g_blow_chunks".}
 proc g_allocator_new*(name: cstring, n_preallocs: guint): PGAllocator{.cdecl, 
     dynlib: gliblib, importc: "g_allocator_new".}
-proc g_allocator_free*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
+proc free*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
     importc: "g_allocator_free".}
 const 
   G_ALLOCATOR_LIST* = 1
   G_ALLOCATOR_SLIST* = 2
   G_ALLOCATOR_NODE* = 3
 
-proc g_slist_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
+proc slist_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
     importc: "g_slist_push_allocator".}
 proc g_slist_pop_allocator*(){.cdecl, dynlib: gliblib, 
                                importc: "g_slist_pop_allocator".}
 proc g_slist_alloc*(): PGSList{.cdecl, dynlib: gliblib, importc: "g_slist_alloc".}
-proc g_slist_free*(list: PGSList){.cdecl, dynlib: gliblib, 
+proc free*(list: PGSList){.cdecl, dynlib: gliblib, 
                                    importc: "g_slist_free".}
-proc g_slist_free_1*(list: PGSList){.cdecl, dynlib: gliblib, 
+proc free_1*(list: PGSList){.cdecl, dynlib: gliblib, 
                                      importc: "g_slist_free_1".}
-proc g_slist_append*(list: PGSList, data: gpointer): PGSList{.cdecl, 
+proc append*(list: PGSList, data: gpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_append".}
-proc g_slist_prepend*(list: PGSList, data: gpointer): PGSList{.cdecl, 
+proc prepend*(list: PGSList, data: gpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_prepend".}
-proc g_slist_insert*(list: PGSList, data: gpointer, position: gint): PGSList{.
+proc insert*(list: PGSList, data: gpointer, position: gint): PGSList{.
     cdecl, dynlib: gliblib, importc: "g_slist_insert".}
-proc g_slist_insert_sorted*(list: PGSList, data: gpointer, func: TGCompareFunc): PGSList{.
+proc insert_sorted*(list: PGSList, data: gpointer, func: TGCompareFunc): PGSList{.
     cdecl, dynlib: gliblib, importc: "g_slist_insert_sorted".}
-proc g_slist_insert_before*(slist: PGSList, sibling: PGSList, data: gpointer): PGSList{.
+proc insert_before*(slist: PGSList, sibling: PGSList, data: gpointer): PGSList{.
     cdecl, dynlib: gliblib, importc: "g_slist_insert_before".}
-proc g_slist_concat*(list1: PGSList, list2: PGSList): PGSList{.cdecl, 
+proc concat*(list1: PGSList, list2: PGSList): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_concat".}
-proc g_slist_remove*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
+proc remove*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_remove".}
-proc g_slist_remove_all*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
+proc remove_all*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_remove_all".}
-proc g_slist_remove_link*(list: PGSList, link: PGSList): PGSList{.cdecl, 
+proc remove_link*(list: PGSList, link: PGSList): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_remove_link".}
-proc g_slist_delete_link*(list: PGSList, link: PGSList): PGSList{.cdecl, 
+proc delete_link*(list: PGSList, link: PGSList): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_delete_link".}
-proc g_slist_reverse*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
+proc reverse*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
     importc: "g_slist_reverse".}
-proc g_slist_copy*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
+proc copy*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
     importc: "g_slist_copy".}
-proc g_slist_nth*(list: PGSList, n: guint): PGSList{.cdecl, dynlib: gliblib, 
+proc nth*(list: PGSList, n: guint): PGSList{.cdecl, dynlib: gliblib, 
     importc: "g_slist_nth".}
-proc g_slist_find*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
+proc find*(list: PGSList, data: gconstpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_find".}
-proc g_slist_find_custom*(list: PGSList, data: gconstpointer, 
+proc find_custom*(list: PGSList, data: gconstpointer, 
                           func: TGCompareFunc): PGSList{.cdecl, dynlib: gliblib, 
     importc: "g_slist_find_custom".}
-proc g_slist_position*(list: PGSList, llink: PGSList): gint{.cdecl, 
+proc position*(list: PGSList, llink: PGSList): gint{.cdecl, 
     dynlib: gliblib, importc: "g_slist_position".}
-proc g_slist_index*(list: PGSList, data: gconstpointer): gint{.cdecl, 
+proc index*(list: PGSList, data: gconstpointer): gint{.cdecl, 
     dynlib: gliblib, importc: "g_slist_index".}
-proc g_slist_last*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
+proc last*(list: PGSList): PGSList{.cdecl, dynlib: gliblib, 
     importc: "g_slist_last".}
-proc g_slist_length*(list: PGSList): guint{.cdecl, dynlib: gliblib, 
+proc length*(list: PGSList): guint{.cdecl, dynlib: gliblib, 
     importc: "g_slist_length".}
-proc g_slist_foreach*(list: PGSList, func: TGFunc, user_data: gpointer){.cdecl, 
+proc foreach*(list: PGSList, func: TGFunc, user_data: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_slist_foreach".}
-proc g_slist_sort*(list: PGSList, compare_func: TGCompareFunc): PGSList{.cdecl, 
+proc sort*(list: PGSList, compare_func: TGCompareFunc): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_sort".}
-proc g_slist_sort_with_data*(list: PGSList, compare_func: TGCompareDataFunc, 
+proc sort_with_data*(list: PGSList, compare_func: TGCompareDataFunc, 
                              user_data: gpointer): PGSList{.cdecl, 
     dynlib: gliblib, importc: "g_slist_sort_with_data".}
-proc g_slist_nth_data*(list: PGSList, n: guint): gpointer{.cdecl, 
+proc nth_data*(list: PGSList, n: guint): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_slist_nth_data".}
-proc g_slist_next*(slist: PGSList): PGSList
-proc g_list_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
+proc next*(slist: PGSList): PGSList
+proc list_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
     importc: "g_list_push_allocator".}
 proc g_list_pop_allocator*(){.cdecl, dynlib: gliblib, 
                               importc: "g_list_pop_allocator".}
 proc g_list_alloc*(): PGList{.cdecl, dynlib: gliblib, importc: "g_list_alloc".}
-proc g_list_free*(list: PGList){.cdecl, dynlib: gliblib, importc: "g_list_free".}
-proc g_list_free_1*(list: PGList){.cdecl, dynlib: gliblib, 
+proc free*(list: PGList){.cdecl, dynlib: gliblib, importc: "g_list_free".}
+proc free_1*(list: PGList){.cdecl, dynlib: gliblib, 
                                    importc: "g_list_free_1".}
-proc g_list_append*(list: PGList, data: gpointer): PGList{.cdecl, 
+proc append*(list: PGList, data: gpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_append".}
-proc g_list_prepend*(list: PGList, data: gpointer): PGList{.cdecl, 
+proc prepend*(list: PGList, data: gpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_prepend".}
-proc g_list_insert*(list: PGList, data: gpointer, position: gint): PGList{.
+proc insert*(list: PGList, data: gpointer, position: gint): PGList{.
     cdecl, dynlib: gliblib, importc: "g_list_insert".}
-proc g_list_insert_sorted*(list: PGList, data: gpointer, func: TGCompareFunc): PGList{.
+proc insert_sorted*(list: PGList, data: gpointer, func: TGCompareFunc): PGList{.
     cdecl, dynlib: gliblib, importc: "g_list_insert_sorted".}
-proc g_list_insert_before*(list: PGList, sibling: PGList, data: gpointer): PGList{.
+proc insert_before*(list: PGList, sibling: PGList, data: gpointer): PGList{.
     cdecl, dynlib: gliblib, importc: "g_list_insert_before".}
-proc g_list_concat*(list1: PGList, list2: PGList): PGList{.cdecl, 
+proc concat*(list1: PGList, list2: PGList): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_concat".}
-proc g_list_remove*(list: PGList, data: gconstpointer): PGList{.cdecl, 
+proc remove*(list: PGList, data: gconstpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_remove".}
-proc g_list_remove_all*(list: PGList, data: gconstpointer): PGList{.cdecl, 
+proc remove_all*(list: PGList, data: gconstpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_remove_all".}
-proc g_list_remove_link*(list: PGList, llink: PGList): PGList{.cdecl, 
+proc remove_link*(list: PGList, llink: PGList): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_remove_link".}
-proc g_list_delete_link*(list: PGList, link: PGList): PGList{.cdecl, 
+proc delete_link*(list: PGList, link: PGList): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_delete_link".}
-proc g_list_reverse*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
+proc reverse*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_reverse".}
-proc g_list_copy*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
+proc copy*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_copy".}
-proc g_list_nth*(list: PGList, n: guint): PGList{.cdecl, dynlib: gliblib, 
+proc nth*(list: PGList, n: guint): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_nth".}
-proc g_list_nth_prev*(list: PGList, n: guint): PGList{.cdecl, dynlib: gliblib, 
+proc nth_prev*(list: PGList, n: guint): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_nth_prev".}
-proc g_list_find*(list: PGList, data: gconstpointer): PGList{.cdecl, 
+proc find*(list: PGList, data: gconstpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_find".}
-proc g_list_find_custom*(list: PGList, data: gconstpointer, func: TGCompareFunc): PGList{.
+proc find_custom*(list: PGList, data: gconstpointer, func: TGCompareFunc): PGList{.
     cdecl, dynlib: gliblib, importc: "g_list_find_custom".}
-proc g_list_position*(list: PGList, llink: PGList): gint{.cdecl, 
+proc position*(list: PGList, llink: PGList): gint{.cdecl, 
     dynlib: gliblib, importc: "g_list_position".}
-proc g_list_index*(list: PGList, data: gconstpointer): gint{.cdecl, 
+proc index*(list: PGList, data: gconstpointer): gint{.cdecl, 
     dynlib: gliblib, importc: "g_list_index".}
-proc g_list_last*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
+proc last*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_last".}
-proc g_list_first*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
+proc first*(list: PGList): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_list_first".}
-proc g_list_length*(list: PGList): guint{.cdecl, dynlib: gliblib, 
+proc length*(list: PGList): guint{.cdecl, dynlib: gliblib, 
     importc: "g_list_length".}
-proc g_list_foreach*(list: PGList, func: TGFunc, user_data: gpointer){.cdecl, 
+proc foreach*(list: PGList, func: TGFunc, user_data: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_list_foreach".}
-proc g_list_sort*(list: PGList, compare_func: TGCompareFunc): PGList{.cdecl, 
+proc sort*(list: PGList, compare_func: TGCompareFunc): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_sort".}
-proc g_list_sort_with_data*(list: PGList, compare_func: TGCompareDataFunc, 
+proc sort_with_data*(list: PGList, compare_func: TGCompareDataFunc, 
                             user_data: gpointer): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_list_sort_with_data".}
-proc g_list_nth_data*(list: PGList, n: guint): gpointer{.cdecl, dynlib: gliblib, 
+proc nth_data*(list: PGList, n: guint): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_list_nth_data".}
-proc g_list_previous*(list: PGList): PGList
-proc g_list_next*(list: PGList): PGList
+proc previous*(list: PGList): PGList
+proc next*(list: PGList): PGList
 type 
   PGCache* = pointer
   TGCacheNewFunc* = proc (key: gpointer): gpointer{.cdecl.}
@@ -1663,15 +1663,15 @@ proc g_cache_new*(value_new_func: TGCacheNewFunc,
                   hash_key_func: TGHashFunc, hash_value_func: TGHashFunc, 
                   key_equal_func: TGEqualFunc): PGCache{.cdecl, dynlib: gliblib, 
     importc: "g_cache_new".}
-proc g_cache_destroy*(cache: PGCache){.cdecl, dynlib: gliblib, 
+proc destroy*(cache: PGCache){.cdecl, dynlib: gliblib, 
                                        importc: "g_cache_destroy".}
-proc g_cache_insert*(cache: PGCache, key: gpointer): gpointer{.cdecl, 
+proc insert*(cache: PGCache, key: gpointer): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_cache_insert".}
-proc g_cache_remove*(cache: PGCache, value: gconstpointer){.cdecl, 
+proc remove*(cache: PGCache, value: gconstpointer){.cdecl, 
     dynlib: gliblib, importc: "g_cache_remove".}
-proc g_cache_key_foreach*(cache: PGCache, func: TGHFunc, user_data: gpointer){.
+proc key_foreach*(cache: PGCache, func: TGHFunc, user_data: gpointer){.
     cdecl, dynlib: gliblib, importc: "g_cache_key_foreach".}
-proc g_cache_value_foreach*(cache: PGCache, func: TGHFunc, user_data: gpointer){.
+proc value_foreach*(cache: PGCache, func: TGHFunc, user_data: gpointer){.
     cdecl, dynlib: gliblib, importc: "g_cache_value_foreach".}
 type 
   PGCompletionFunc* = ptr TGCompletionFunc
@@ -1689,19 +1689,19 @@ type
 
 proc g_completion_new*(func: TGCompletionFunc): PGCompletion{.cdecl, 
     dynlib: gliblib, importc: "g_completion_new".}
-proc g_completion_add_items*(cmp: PGCompletion, items: PGList){.cdecl, 
+proc add_items*(cmp: PGCompletion, items: PGList){.cdecl, 
     dynlib: gliblib, importc: "g_completion_add_items".}
-proc g_completion_remove_items*(cmp: PGCompletion, items: PGList){.cdecl, 
+proc remove_items*(cmp: PGCompletion, items: PGList){.cdecl, 
     dynlib: gliblib, importc: "g_completion_remove_items".}
-proc g_completion_clear_items*(cmp: PGCompletion){.cdecl, dynlib: gliblib, 
+proc clear_items*(cmp: PGCompletion){.cdecl, dynlib: gliblib, 
     importc: "g_completion_clear_items".}
-proc g_completion_complete*(cmp: PGCompletion, prefix: cstring, 
+proc complete*(cmp: PGCompletion, prefix: cstring, 
                             new_prefix: PPgchar): PGList{.cdecl, 
     dynlib: gliblib, importc: "g_completion_complete".}
-proc g_completion_set_compare*(cmp: PGCompletion, 
+proc set_compare*(cmp: PGCompletion, 
                                strncmp_func: TGCompletionStrncmpFunc){.cdecl, 
     dynlib: gliblib, importc: "g_completion_set_compare".}
-proc g_completion_free*(cmp: PGCompletion){.cdecl, dynlib: gliblib, 
+proc free*(cmp: PGCompletion){.cdecl, dynlib: gliblib, 
     importc: "g_completion_free".}
 type 
   PGConvertError* = ptr TGConvertError
@@ -1882,8 +1882,8 @@ proc g_date_new_dmy*(day: TGDateDay, month: TGDateMonth, year: TGDateYear): PGDa
     cdecl, dynlib: gliblib, importc: "g_date_new_dmy".}
 proc g_date_new_julian*(julian_day: guint32): PGDate{.cdecl, dynlib: gliblib, 
     importc: "g_date_new_julian".}
-proc g_date_free*(date: PGDate){.cdecl, dynlib: gliblib, importc: "g_date_free".}
-proc g_date_valid*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
+proc free*(date: PGDate){.cdecl, dynlib: gliblib, importc: "g_date_free".}
+proc valid*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_date_valid".}
 proc g_date_valid_month*(month: TGDateMonth): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_date_valid_month".}
@@ -1893,54 +1893,54 @@ proc g_date_valid_weekday*(weekday: TGDateWeekday): gboolean{.cdecl,
     dynlib: gliblib, importc: "g_date_valid_weekday".}
 proc g_date_valid_julian*(julian_date: guint32): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_date_valid_julian".}
-proc g_date_get_weekday*(date: PGDate): TGDateWeekday{.cdecl, dynlib: gliblib, 
+proc get_weekday*(date: PGDate): TGDateWeekday{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_weekday".}
-proc g_date_get_month*(date: PGDate): TGDateMonth{.cdecl, dynlib: gliblib, 
+proc get_month*(date: PGDate): TGDateMonth{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_month".}
-proc g_date_get_year*(date: PGDate): TGDateYear{.cdecl, dynlib: gliblib, 
+proc get_year*(date: PGDate): TGDateYear{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_year".}
-proc g_date_get_day*(date: PGDate): TGDateDay{.cdecl, dynlib: gliblib, 
+proc get_day*(date: PGDate): TGDateDay{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_day".}
-proc g_date_get_julian*(date: PGDate): guint32{.cdecl, dynlib: gliblib, 
+proc get_julian*(date: PGDate): guint32{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_julian".}
-proc g_date_get_day_of_year*(date: PGDate): guint{.cdecl, dynlib: gliblib, 
+proc get_day_of_year*(date: PGDate): guint{.cdecl, dynlib: gliblib, 
     importc: "g_date_get_day_of_year".}
-proc g_date_get_monday_week_of_year*(date: PGDate): guint{.cdecl, 
+proc get_monday_week_of_year*(date: PGDate): guint{.cdecl, 
     dynlib: gliblib, importc: "g_date_get_monday_week_of_year".}
-proc g_date_get_sunday_week_of_year*(date: PGDate): guint{.cdecl, 
+proc get_sunday_week_of_year*(date: PGDate): guint{.cdecl, 
     dynlib: gliblib, importc: "g_date_get_sunday_week_of_year".}
-proc g_date_clear*(date: PGDate, n_dates: guint){.cdecl, dynlib: gliblib, 
+proc clear*(date: PGDate, n_dates: guint){.cdecl, dynlib: gliblib, 
     importc: "g_date_clear".}
-proc g_date_set_parse*(date: PGDate, str: cstring){.cdecl, dynlib: gliblib, 
+proc set_parse*(date: PGDate, str: cstring){.cdecl, dynlib: gliblib, 
     importc: "g_date_set_parse".}
-proc g_date_set_time*(date: PGDate, time: TGTime){.cdecl, dynlib: gliblib, 
+proc set_time*(date: PGDate, time: TGTime){.cdecl, dynlib: gliblib, 
     importc: "g_date_set_time".}
-proc g_date_set_month*(date: PGDate, month: TGDateMonth){.cdecl, 
+proc set_month*(date: PGDate, month: TGDateMonth){.cdecl, 
     dynlib: gliblib, importc: "g_date_set_month".}
-proc g_date_set_day*(date: PGDate, day: TGDateDay){.cdecl, dynlib: gliblib, 
+proc set_day*(date: PGDate, day: TGDateDay){.cdecl, dynlib: gliblib, 
     importc: "g_date_set_day".}
-proc g_date_set_year*(date: PGDate, year: TGDateYear){.cdecl, dynlib: gliblib, 
+proc set_year*(date: PGDate, year: TGDateYear){.cdecl, dynlib: gliblib, 
     importc: "g_date_set_year".}
-proc g_date_set_dmy*(date: PGDate, day: TGDateDay, month: TGDateMonth, 
+proc set_dmy*(date: PGDate, day: TGDateDay, month: TGDateMonth, 
                      y: TGDateYear){.cdecl, dynlib: gliblib, 
                                      importc: "g_date_set_dmy".}
-proc g_date_set_julian*(date: PGDate, julian_date: guint32){.cdecl, 
+proc set_julian*(date: PGDate, julian_date: guint32){.cdecl, 
     dynlib: gliblib, importc: "g_date_set_julian".}
-proc g_date_is_first_of_month*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
+proc is_first_of_month*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_date_is_first_of_month".}
-proc g_date_is_last_of_month*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
+proc is_last_of_month*(date: PGDate): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_date_is_last_of_month".}
-proc g_date_add_days*(date: PGDate, n_days: guint){.cdecl, dynlib: gliblib, 
+proc add_days*(date: PGDate, n_days: guint){.cdecl, dynlib: gliblib, 
     importc: "g_date_add_days".}
-proc g_date_subtract_days*(date: PGDate, n_days: guint){.cdecl, dynlib: gliblib, 
+proc subtract_days*(date: PGDate, n_days: guint){.cdecl, dynlib: gliblib, 
     importc: "g_date_subtract_days".}
-proc g_date_add_months*(date: PGDate, n_months: guint){.cdecl, dynlib: gliblib, 
+proc add_months*(date: PGDate, n_months: guint){.cdecl, dynlib: gliblib, 
     importc: "g_date_add_months".}
-proc g_date_subtract_months*(date: PGDate, n_months: guint){.cdecl, 
+proc subtract_months*(date: PGDate, n_months: guint){.cdecl, 
     dynlib: gliblib, importc: "g_date_subtract_months".}
-proc g_date_add_years*(date: PGDate, n_years: guint){.cdecl, dynlib: gliblib, 
+proc add_years*(date: PGDate, n_years: guint){.cdecl, dynlib: gliblib, 
     importc: "g_date_add_years".}
-proc g_date_subtract_years*(date: PGDate, n_years: guint){.cdecl, 
+proc subtract_years*(date: PGDate, n_years: guint){.cdecl, 
     dynlib: gliblib, importc: "g_date_subtract_years".}
 proc g_date_is_leap_year*(year: TGDateYear): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_date_is_leap_year".}
@@ -1950,15 +1950,15 @@ proc g_date_get_monday_weeks_in_year*(year: TGDateYear): guint8{.cdecl,
     dynlib: gliblib, importc: "g_date_get_monday_weeks_in_year".}
 proc g_date_get_sunday_weeks_in_year*(year: TGDateYear): guint8{.cdecl, 
     dynlib: gliblib, importc: "g_date_get_sunday_weeks_in_year".}
-proc g_date_days_between*(date1: PGDate, date2: PGDate): gint{.cdecl, 
+proc days_between*(date1: PGDate, date2: PGDate): gint{.cdecl, 
     dynlib: gliblib, importc: "g_date_days_between".}
-proc g_date_compare*(lhs: PGDate, rhs: PGDate): gint{.cdecl, dynlib: gliblib, 
+proc compare*(lhs: PGDate, rhs: PGDate): gint{.cdecl, dynlib: gliblib, 
     importc: "g_date_compare".}
-proc g_date_to_struct_tm*(date: PGDate, tm: Ptm){.cdecl, dynlib: gliblib, 
+proc to_struct_tm*(date: PGDate, tm: Ptm){.cdecl, dynlib: gliblib, 
     importc: "g_date_to_struct_tm".}
-proc g_date_clamp*(date: PGDate, min_date: PGDate, max_date: PGDate){.cdecl, 
+proc clamp*(date: PGDate, min_date: PGDate, max_date: PGDate){.cdecl, 
     dynlib: gliblib, importc: "g_date_clamp".}
-proc g_date_order*(date1: PGDate, date2: PGDate){.cdecl, dynlib: gliblib, 
+proc order*(date1: PGDate, date2: PGDate){.cdecl, dynlib: gliblib, 
     importc: "g_date_order".}
 proc g_date_strftime*(s: cstring, slen: gsize, format: cstring, date: PGDate): gsize{.
     cdecl, dynlib: gliblib, importc: "g_date_strftime".}
@@ -1967,10 +1967,10 @@ type
 
 proc g_dir_open*(path: cstring, flags: guint, error: pointer): PGDir{.cdecl, 
     dynlib: gliblib, importc: "g_dir_open".}
-proc g_dir_read_name*(dir: PGDir): cstring{.cdecl, dynlib: gliblib, 
+proc read_name*(dir: PGDir): cstring{.cdecl, dynlib: gliblib, 
     importc: "g_dir_read_name".}
-proc g_dir_rewind*(dir: PGDir){.cdecl, dynlib: gliblib, importc: "g_dir_rewind".}
-proc g_dir_close*(dir: PGDir){.cdecl, dynlib: gliblib, importc: "g_dir_close".}
+proc rewind*(dir: PGDir){.cdecl, dynlib: gliblib, importc: "g_dir_rewind".}
+proc close*(dir: PGDir){.cdecl, dynlib: gliblib, importc: "g_dir_close".}
 type 
   PGFileError* = ptr TGFileError
   TGFileError* = gint
@@ -2077,62 +2077,62 @@ proc TGHookList_set_hook_size*(a: var TGHookList, `hook_size`: guint)
 proc TGHookList_is_setup*(a: var TGHookList): guint
 proc TGHookList_set_is_setup*(a: var TGHookList, `is_setup`: guint)
 proc G_HOOK*(hook: pointer): PGHook
-proc G_HOOK_FLAGS*(hook: PGHook): guint
-proc G_HOOK_ACTIVE*(hook: PGHook): bool
-proc G_HOOK_IN_CALL*(hook: PGHook): bool
-proc G_HOOK_IS_VALID*(hook: PGHook): bool
-proc G_HOOK_IS_UNLINKED*(hook: PGHook): bool
-proc g_hook_list_init*(hook_list: PGHookList, hook_size: guint){.cdecl, 
+proc FLAGS*(hook: PGHook): guint
+proc ACTIVE*(hook: PGHook): bool
+proc IN_CALL*(hook: PGHook): bool
+proc IS_VALID*(hook: PGHook): bool
+proc IS_UNLINKED*(hook: PGHook): bool
+proc list_init*(hook_list: PGHookList, hook_size: guint){.cdecl, 
     dynlib: gliblib, importc: "g_hook_list_init".}
-proc g_hook_list_clear*(hook_list: PGHookList){.cdecl, dynlib: gliblib, 
+proc list_clear*(hook_list: PGHookList){.cdecl, dynlib: gliblib, 
     importc: "g_hook_list_clear".}
-proc g_hook_alloc*(hook_list: PGHookList): PGHook{.cdecl, dynlib: gliblib, 
+proc alloc*(hook_list: PGHookList): PGHook{.cdecl, dynlib: gliblib, 
     importc: "g_hook_alloc".}
-proc g_hook_free*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
+proc free*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
     importc: "g_hook_free".}
-proc g_hook_ref*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
+proc reference*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
     importc: "g_hook_ref".}
-proc g_hook_unref*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
+proc unref*(hook_list: PGHookList, hook: PGHook){.cdecl, dynlib: gliblib, 
     importc: "g_hook_unref".}
-proc g_hook_destroy*(hook_list: PGHookList, hook_id: gulong): gboolean{.cdecl, 
+proc destroy*(hook_list: PGHookList, hook_id: gulong): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_hook_destroy".}
-proc g_hook_destroy_link*(hook_list: PGHookList, hook: PGHook){.cdecl, 
+proc destroy_link*(hook_list: PGHookList, hook: PGHook){.cdecl, 
     dynlib: gliblib, importc: "g_hook_destroy_link".}
-proc g_hook_prepend*(hook_list: PGHookList, hook: PGHook){.cdecl, 
+proc prepend*(hook_list: PGHookList, hook: PGHook){.cdecl, 
     dynlib: gliblib, importc: "g_hook_prepend".}
-proc g_hook_insert_before*(hook_list: PGHookList, sibling: PGHook, hook: PGHook){.
+proc insert_before*(hook_list: PGHookList, sibling: PGHook, hook: PGHook){.
     cdecl, dynlib: gliblib, importc: "g_hook_insert_before".}
-proc g_hook_insert_sorted*(hook_list: PGHookList, hook: PGHook, 
+proc insert_sorted*(hook_list: PGHookList, hook: PGHook, 
                            func: TGHookCompareFunc){.cdecl, dynlib: gliblib, 
     importc: "g_hook_insert_sorted".}
-proc g_hook_get*(hook_list: PGHookList, hook_id: gulong): PGHook{.cdecl, 
+proc get*(hook_list: PGHookList, hook_id: gulong): PGHook{.cdecl, 
     dynlib: gliblib, importc: "g_hook_get".}
-proc g_hook_find*(hook_list: PGHookList, need_valids: gboolean, 
+proc find*(hook_list: PGHookList, need_valids: gboolean, 
                   func: TGHookFindFunc, data: gpointer): PGHook{.cdecl, 
     dynlib: gliblib, importc: "g_hook_find".}
-proc g_hook_find_data*(hook_list: PGHookList, need_valids: gboolean, 
+proc find_data*(hook_list: PGHookList, need_valids: gboolean, 
                        data: gpointer): PGHook{.cdecl, dynlib: gliblib, 
     importc: "g_hook_find_data".}
-proc g_hook_find_func*(hook_list: PGHookList, need_valids: gboolean, 
+proc find_func*(hook_list: PGHookList, need_valids: gboolean, 
                        func: gpointer): PGHook{.cdecl, dynlib: gliblib, 
     importc: "g_hook_find_func".}
-proc g_hook_find_func_data*(hook_list: PGHookList, need_valids: gboolean, 
+proc find_func_data*(hook_list: PGHookList, need_valids: gboolean, 
                             func: gpointer, data: gpointer): PGHook{.cdecl, 
     dynlib: gliblib, importc: "g_hook_find_func_data".}
-proc g_hook_first_valid*(hook_list: PGHookList, may_be_in_call: gboolean): PGHook{.
+proc first_valid*(hook_list: PGHookList, may_be_in_call: gboolean): PGHook{.
     cdecl, dynlib: gliblib, importc: "g_hook_first_valid".}
-proc g_hook_next_valid*(hook_list: PGHookList, hook: PGHook, 
+proc next_valid*(hook_list: PGHookList, hook: PGHook, 
                         may_be_in_call: gboolean): PGHook{.cdecl, 
     dynlib: gliblib, importc: "g_hook_next_valid".}
-proc g_hook_compare_ids*(new_hook: PGHook, sibling: PGHook): gint{.cdecl, 
+proc compare_ids*(new_hook: PGHook, sibling: PGHook): gint{.cdecl, 
     dynlib: gliblib, importc: "g_hook_compare_ids".}
-proc g_hook_append*(hook_list: PGHookList, hook: PGHook)
-proc g_hook_list_invoke_check*(hook_list: PGHookList, may_recurse: gboolean){.
+proc append*(hook_list: PGHookList, hook: PGHook)
+proc list_invoke_check*(hook_list: PGHookList, may_recurse: gboolean){.
     cdecl, dynlib: gliblib, importc: "g_hook_list_invoke_check".}
-proc g_hook_list_marshal*(hook_list: PGHookList, may_recurse: gboolean, 
+proc list_marshal*(hook_list: PGHookList, may_recurse: gboolean, 
                           marshaller: TGHookMarshaller, marshal_data: gpointer){.
     cdecl, dynlib: gliblib, importc: "g_hook_list_marshal".}
-proc g_hook_list_marshal_check*(hook_list: PGHookList, may_recurse: gboolean, 
+proc list_marshal_check*(hook_list: PGHookList, may_recurse: gboolean, 
                                 marshaller: TGHookCheckMarshaller, 
                                 marshal_data: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_hook_list_marshal_check".}
@@ -2147,18 +2147,18 @@ type
 proc g_thread_pool_new*(func: TGFunc, user_data: gpointer, max_threads: gint, 
                         exclusive: gboolean, error: pointer): PGThreadPool{.
     cdecl, dynlib: gliblib, importc: "g_thread_pool_new".}
-proc g_thread_pool_push*(pool: PGThreadPool, data: gpointer, error: pointer){.
+proc pool_push*(pool: PGThreadPool, data: gpointer, error: pointer){.
     cdecl, dynlib: gliblib, importc: "g_thread_pool_push".}
-proc g_thread_pool_set_max_threads*(pool: PGThreadPool, max_threads: gint, 
+proc pool_set_max_threads*(pool: PGThreadPool, max_threads: gint, 
                                     error: pointer){.cdecl, dynlib: gliblib, 
     importc: "g_thread_pool_set_max_threads".}
-proc g_thread_pool_get_max_threads*(pool: PGThreadPool): gint{.cdecl, 
+proc pool_get_max_threads*(pool: PGThreadPool): gint{.cdecl, 
     dynlib: gliblib, importc: "g_thread_pool_get_max_threads".}
-proc g_thread_pool_get_num_threads*(pool: PGThreadPool): guint{.cdecl, 
+proc pool_get_num_threads*(pool: PGThreadPool): guint{.cdecl, 
     dynlib: gliblib, importc: "g_thread_pool_get_num_threads".}
-proc g_thread_pool_unprocessed*(pool: PGThreadPool): guint{.cdecl, 
+proc pool_unprocessed*(pool: PGThreadPool): guint{.cdecl, 
     dynlib: gliblib, importc: "g_thread_pool_unprocessed".}
-proc g_thread_pool_free*(pool: PGThreadPool, immediate: gboolean, wait: gboolean){.
+proc pool_free*(pool: PGThreadPool, immediate: gboolean, wait: gboolean){.
     cdecl, dynlib: gliblib, importc: "g_thread_pool_free".}
 proc g_thread_pool_set_max_unused_threads*(max_threads: gint){.cdecl, 
     dynlib: gliblib, importc: "g_thread_pool_set_max_unused_threads".}
@@ -2175,19 +2175,19 @@ const
   G_USEC_PER_SEC* = 1000000
 
 proc g_timer_new*(): PGTimer{.cdecl, dynlib: gliblib, importc: "g_timer_new".}
-proc g_timer_destroy*(timer: PGTimer){.cdecl, dynlib: gliblib, 
+proc destroy*(timer: PGTimer){.cdecl, dynlib: gliblib, 
                                        importc: "g_timer_destroy".}
-proc g_timer_start*(timer: PGTimer){.cdecl, dynlib: gliblib, 
+proc start*(timer: PGTimer){.cdecl, dynlib: gliblib, 
                                      importc: "g_timer_start".}
-proc g_timer_stop*(timer: PGTimer){.cdecl, dynlib: gliblib, 
+proc stop*(timer: PGTimer){.cdecl, dynlib: gliblib, 
                                     importc: "g_timer_stop".}
-proc g_timer_reset*(timer: PGTimer){.cdecl, dynlib: gliblib, 
+proc reset*(timer: PGTimer){.cdecl, dynlib: gliblib, 
                                      importc: "g_timer_reset".}
-proc g_timer_elapsed*(timer: PGTimer, microseconds: Pgulong): gdouble{.cdecl, 
+proc elapsed*(timer: PGTimer, microseconds: Pgulong): gdouble{.cdecl, 
     dynlib: gliblib, importc: "g_timer_elapsed".}
 proc g_usleep*(microseconds: gulong){.cdecl, dynlib: gliblib, 
                                       importc: "g_usleep".}
-proc g_time_val_add*(time: PGTimeVal, microseconds: glong){.cdecl, 
+proc val_add*(time: PGTimeVal, microseconds: glong){.cdecl, 
     dynlib: gliblib, importc: "g_time_val_add".}
 type 
   Pgunichar* = ptr gunichar
@@ -2271,11 +2271,11 @@ proc g_unichar_type*(c: gunichar): TGUnicodeType{.cdecl, dynlib: gliblib,
     importc: "g_unichar_type".}
 proc g_unichar_break_type*(c: gunichar): TGUnicodeBreakType{.cdecl, 
     dynlib: gliblib, importc: "g_unichar_break_type".}
-proc g_unicode_canonical_ordering*(str: Pgunichar, len: gsize){.cdecl, 
+proc unicode_canonical_ordering*(str: Pgunichar, len: gsize){.cdecl, 
     dynlib: gliblib, importc: "g_unicode_canonical_ordering".}
 proc g_unicode_canonical_decomposition*(ch: gunichar, result_len: Pgsize): Pgunichar{.
     cdecl, dynlib: gliblib, importc: "g_unicode_canonical_decomposition".}
-proc g_utf8_next_char*(p: pguchar): pguchar
+proc utf8_next_char*(p: pguchar): pguchar
 proc g_utf8_get_char*(p: cstring): gunichar{.cdecl, dynlib: gliblib, 
     importc: "g_utf8_get_char".}
 proc g_utf8_get_char_validated*(p: cstring, max_len: gssize): gunichar{.cdecl, 
@@ -2306,16 +2306,16 @@ proc g_utf8_to_ucs4*(str: cstring, len: glong, items_read: Pglong,
     dynlib: gliblib, importc: "g_utf8_to_ucs4".}
 proc g_utf8_to_ucs4_fast*(str: cstring, len: glong, items_written: Pglong): Pgunichar{.
     cdecl, dynlib: gliblib, importc: "g_utf8_to_ucs4_fast".}
-proc g_utf16_to_ucs4*(str: Pgunichar2, len: glong, items_read: Pglong, 
+proc utf16_to_ucs4*(str: Pgunichar2, len: glong, items_read: Pglong, 
                       items_written: Pglong, error: pointer): Pgunichar{.cdecl, 
     dynlib: gliblib, importc: "g_utf16_to_ucs4".}
-proc g_utf16_to_utf8*(str: Pgunichar2, len: glong, items_read: Pglong, 
+proc utf16_to_utf8*(str: Pgunichar2, len: glong, items_read: Pglong, 
                       items_written: Pglong, error: pointer): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_utf16_to_utf8".}
-proc g_ucs4_to_utf16*(str: Pgunichar, len: glong, items_read: Pglong, 
+proc ucs4_to_utf16*(str: Pgunichar, len: glong, items_read: Pglong, 
                       items_written: Pglong, error: pointer): Pgunichar2{.cdecl, 
     dynlib: gliblib, importc: "g_ucs4_to_utf16".}
-proc g_ucs4_to_utf8*(str: Pgunichar, len: glong, items_read: Pglong, 
+proc ucs4_to_utf8*(str: Pgunichar, len: glong, items_read: Pglong, 
                      items_written: Pglong, error: pointer): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_ucs4_to_utf8".}
 proc g_unichar_to_utf8*(c: gunichar, outbuf: cstring): gint{.cdecl, 
@@ -2361,11 +2361,11 @@ type
 
 proc g_string_chunk_new*(size: gsize): PGStringChunk{.cdecl, dynlib: gliblib, 
     importc: "g_string_chunk_new".}
-proc g_string_chunk_free*(chunk: PGStringChunk){.cdecl, dynlib: gliblib, 
+proc chunk_free*(chunk: PGStringChunk){.cdecl, dynlib: gliblib, 
     importc: "g_string_chunk_free".}
-proc g_string_chunk_insert*(chunk: PGStringChunk, str: cstring): cstring{.cdecl, 
+proc chunk_insert*(chunk: PGStringChunk, str: cstring): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_string_chunk_insert".}
-proc g_string_chunk_insert_const*(chunk: PGStringChunk, str: cstring): cstring{.
+proc chunk_insert_const*(chunk: PGStringChunk, str: cstring): cstring{.
     cdecl, dynlib: gliblib, importc: "g_string_chunk_insert_const".}
 proc g_string_new*(init: cstring): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_new".}
@@ -2373,51 +2373,51 @@ proc g_string_new_len*(init: cstring, len: gssize): PGString{.cdecl,
     dynlib: gliblib, importc: "g_string_new_len".}
 proc g_string_sized_new*(dfl_size: gsize): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_sized_new".}
-proc g_string_free*(str: PGString, free_segment: gboolean): cstring{.cdecl, 
+proc free*(str: PGString, free_segment: gboolean): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_string_free".}
-proc g_string_equal*(v: PGString, v2: PGString): gboolean{.cdecl, 
+proc equal*(v: PGString, v2: PGString): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_string_equal".}
-proc g_string_hash*(str: PGString): guint{.cdecl, dynlib: gliblib, 
+proc hash*(str: PGString): guint{.cdecl, dynlib: gliblib, 
     importc: "g_string_hash".}
-proc g_string_assign*(str: PGString, rval: cstring): PGString{.cdecl, 
+proc assign*(str: PGString, rval: cstring): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_assign".}
-proc g_string_truncate*(str: PGString, len: gsize): PGString{.cdecl, 
+proc truncate*(str: PGString, len: gsize): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_truncate".}
-proc g_string_set_size*(str: PGString, len: gsize): PGString{.cdecl, 
+proc set_size*(str: PGString, len: gsize): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_set_size".}
-proc g_string_insert_len*(str: PGString, pos: gssize, val: cstring, len: gssize): PGString{.
+proc insert_len*(str: PGString, pos: gssize, val: cstring, len: gssize): PGString{.
     cdecl, dynlib: gliblib, importc: "g_string_insert_len".}
-proc g_string_append*(str: PGString, val: cstring): PGString{.cdecl, 
+proc append*(str: PGString, val: cstring): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_append".}
-proc g_string_append_len*(str: PGString, val: cstring, len: gssize): PGString{.
+proc append_len*(str: PGString, val: cstring, len: gssize): PGString{.
     cdecl, dynlib: gliblib, importc: "g_string_append_len".}
-proc g_string_append_c*(str: PGString, c: gchar): PGString{.cdecl, 
+proc append_c*(str: PGString, c: gchar): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_append_c".}
-proc g_string_append_unichar*(str: PGString, wc: gunichar): PGString{.cdecl, 
+proc append_unichar*(str: PGString, wc: gunichar): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_append_unichar".}
-proc g_string_prepend*(str: PGString, val: cstring): PGString{.cdecl, 
+proc prepend*(str: PGString, val: cstring): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_prepend".}
-proc g_string_prepend_c*(str: PGString, c: gchar): PGString{.cdecl, 
+proc prepend_c*(str: PGString, c: gchar): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_prepend_c".}
-proc g_string_prepend_unichar*(str: PGString, wc: gunichar): PGString{.cdecl, 
+proc prepend_unichar*(str: PGString, wc: gunichar): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_prepend_unichar".}
-proc g_string_prepend_len*(str: PGString, val: cstring, len: gssize): PGString{.
+proc prepend_len*(str: PGString, val: cstring, len: gssize): PGString{.
     cdecl, dynlib: gliblib, importc: "g_string_prepend_len".}
-proc g_string_insert*(str: PGString, pos: gssize, val: cstring): PGString{.
+proc insert*(str: PGString, pos: gssize, val: cstring): PGString{.
     cdecl, dynlib: gliblib, importc: "g_string_insert".}
-proc g_string_insert_c*(str: PGString, pos: gssize, c: gchar): PGString{.cdecl, 
+proc insert_c*(str: PGString, pos: gssize, c: gchar): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_insert_c".}
-proc g_string_insert_unichar*(str: PGString, pos: gssize, wc: gunichar): PGString{.
+proc insert_unichar*(str: PGString, pos: gssize, wc: gunichar): PGString{.
     cdecl, dynlib: gliblib, importc: "g_string_insert_unichar".}
-proc g_string_erase*(str: PGString, pos: gssize, len: gssize): PGString{.cdecl, 
+proc erase*(str: PGString, pos: gssize, len: gssize): PGString{.cdecl, 
     dynlib: gliblib, importc: "g_string_erase".}
-proc g_string_ascii_down*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
+proc ascii_down*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_ascii_down".}
-proc g_string_ascii_up*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
+proc ascii_up*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_ascii_up".}
-proc g_string_down*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
+proc down*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_down".}
-proc g_string_up*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
+proc up*(str: PGString): PGString{.cdecl, dynlib: gliblib, 
     importc: "g_string_up".}
 type 
   PGIOError* = ptr TGIOError
@@ -2527,89 +2527,89 @@ proc TGIOChannel_is_writeable*(a: var TGIOChannel): guint
 proc TGIOChannel_set_is_writeable*(a: var TGIOChannel, `is_writeable`: guint)
 proc TGIOChannel_is_seekable*(a: var TGIOChannel): guint
 proc TGIOChannel_set_is_seekable*(a: var TGIOChannel, `is_seekable`: guint)
-proc g_io_channel_init*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
+proc channel_init*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_init".}
-proc g_io_channel_ref*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
+proc channel_ref*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_ref".}
-proc g_io_channel_unref*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
+proc channel_unref*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_unref".}
-proc g_io_channel_read*(channel: PGIOChannel, buf: cstring, count: gsize, 
+proc channel_read*(channel: PGIOChannel, buf: cstring, count: gsize, 
                         bytes_read: Pgsize): TGIOError{.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_read".}
-proc g_io_channel_write*(channel: PGIOChannel, buf: cstring, count: gsize, 
+proc channel_write*(channel: PGIOChannel, buf: cstring, count: gsize, 
                          bytes_written: Pgsize): TGIOError{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_write".}
-proc g_io_channel_seek*(channel: PGIOChannel, offset: gint64, 
+proc channel_seek*(channel: PGIOChannel, offset: gint64, 
                         theType: TGSeekType): TGIOError{.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_seek".}
-proc g_io_channel_close*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
+proc channel_close*(channel: PGIOChannel){.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_close".}
-proc g_io_channel_shutdown*(channel: PGIOChannel, flush: gboolean, err: pointer): TGIOStatus{.
+proc channel_shutdown*(channel: PGIOChannel, flush: gboolean, err: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_shutdown".}
-proc g_io_add_watch_full*(channel: PGIOChannel, priority: gint, 
+proc add_watch_full*(channel: PGIOChannel, priority: gint, 
                           condition: TGIOCondition, func: TGIOFunc, 
                           user_data: gpointer, notify: TGDestroyNotify): guint{.
     cdecl, dynlib: gliblib, importc: "g_io_add_watch_full".}
-proc g_io_create_watch*(channel: PGIOChannel, condition: TGIOCondition): PGSource{.
+proc create_watch*(channel: PGIOChannel, condition: TGIOCondition): PGSource{.
     cdecl, dynlib: gliblib, importc: "g_io_create_watch".}
-proc g_io_add_watch*(channel: PGIOChannel, condition: TGIOCondition, 
+proc add_watch*(channel: PGIOChannel, condition: TGIOCondition, 
                      func: TGIOFunc, user_data: gpointer): guint{.cdecl, 
     dynlib: gliblib, importc: "g_io_add_watch".}
-proc g_io_channel_set_buffer_size*(channel: PGIOChannel, size: gsize){.cdecl, 
+proc channel_set_buffer_size*(channel: PGIOChannel, size: gsize){.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_set_buffer_size".}
-proc g_io_channel_get_buffer_size*(channel: PGIOChannel): gsize{.cdecl, 
+proc channel_get_buffer_size*(channel: PGIOChannel): gsize{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_get_buffer_size".}
-proc g_io_channel_get_buffer_condition*(channel: PGIOChannel): TGIOCondition{.
+proc channel_get_buffer_condition*(channel: PGIOChannel): TGIOCondition{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_get_buffer_condition".}
-proc g_io_channel_set_flags*(channel: PGIOChannel, flags: TGIOFlags, 
+proc channel_set_flags*(channel: PGIOChannel, flags: TGIOFlags, 
                              error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_set_flags".}
-proc g_io_channel_get_flags*(channel: PGIOChannel): TGIOFlags{.cdecl, 
+proc channel_get_flags*(channel: PGIOChannel): TGIOFlags{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_get_flags".}
-proc g_io_channel_set_line_term*(channel: PGIOChannel, line_term: cstring, 
+proc channel_set_line_term*(channel: PGIOChannel, line_term: cstring, 
                                  length: gint){.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_set_line_term".}
-proc g_io_channel_get_line_term*(channel: PGIOChannel, length: Pgint): cstring{.
+proc channel_get_line_term*(channel: PGIOChannel, length: Pgint): cstring{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_get_line_term".}
-proc g_io_channel_set_buffered*(channel: PGIOChannel, buffered: gboolean){.
+proc channel_set_buffered*(channel: PGIOChannel, buffered: gboolean){.
     cdecl, dynlib: gliblib, importc: "g_io_channel_set_buffered".}
-proc g_io_channel_get_buffered*(channel: PGIOChannel): gboolean{.cdecl, 
+proc channel_get_buffered*(channel: PGIOChannel): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_get_buffered".}
-proc g_io_channel_set_encoding*(channel: PGIOChannel, encoding: cstring, 
+proc channel_set_encoding*(channel: PGIOChannel, encoding: cstring, 
                                 error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_set_encoding".}
-proc g_io_channel_get_encoding*(channel: PGIOChannel): cstring{.cdecl, 
+proc channel_get_encoding*(channel: PGIOChannel): cstring{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_get_encoding".}
-proc g_io_channel_set_close_on_unref*(channel: PGIOChannel, do_close: gboolean){.
+proc channel_set_close_on_unref*(channel: PGIOChannel, do_close: gboolean){.
     cdecl, dynlib: gliblib, importc: "g_io_channel_set_close_on_unref".}
-proc g_io_channel_get_close_on_unref*(channel: PGIOChannel): gboolean{.cdecl, 
+proc channel_get_close_on_unref*(channel: PGIOChannel): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_get_close_on_unref".}
-proc g_io_channel_flush*(channel: PGIOChannel, error: pointer): TGIOStatus{.
+proc channel_flush*(channel: PGIOChannel, error: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_flush".}
-proc g_io_channel_read_line*(channel: PGIOChannel, str_return: PPgchar, 
+proc channel_read_line*(channel: PGIOChannel, str_return: PPgchar, 
                              length: Pgsize, terminator_pos: Pgsize, 
                              error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_read_line".}
-proc g_io_channel_read_line_string*(channel: PGIOChannel, buffer: PGString, 
+proc channel_read_line_string*(channel: PGIOChannel, buffer: PGString, 
                                     terminator_pos: Pgsize, error: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_read_line_string".}
-proc g_io_channel_read_to_end*(channel: PGIOChannel, str_return: PPgchar, 
+proc channel_read_to_end*(channel: PGIOChannel, str_return: PPgchar, 
                                length: Pgsize, error: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_read_to_end".}
-proc g_io_channel_read_chars*(channel: PGIOChannel, buf: cstring, count: gsize, 
+proc channel_read_chars*(channel: PGIOChannel, buf: cstring, count: gsize, 
                               bytes_read: Pgsize, error: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_read_chars".}
-proc g_io_channel_read_unichar*(channel: PGIOChannel, thechar: Pgunichar, 
+proc channel_read_unichar*(channel: PGIOChannel, thechar: Pgunichar, 
                                 error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_read_unichar".}
-proc g_io_channel_write_chars*(channel: PGIOChannel, buf: cstring, 
+proc channel_write_chars*(channel: PGIOChannel, buf: cstring, 
                                count: gssize, bytes_written: Pgsize, 
                                error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_write_chars".}
-proc g_io_channel_write_unichar*(channel: PGIOChannel, thechar: gunichar, 
+proc channel_write_unichar*(channel: PGIOChannel, thechar: gunichar, 
                                  error: pointer): TGIOStatus{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_write_unichar".}
-proc g_io_channel_seek_position*(channel: PGIOChannel, offset: gint64, 
+proc channel_seek_position*(channel: PGIOChannel, offset: gint64, 
                                  theType: TGSeekType, error: pointer): TGIOStatus{.
     cdecl, dynlib: gliblib, importc: "g_io_channel_seek_position".}
 proc g_io_channel_new_file*(filename: cstring, mode: cstring, error: pointer): PGIOChannel{.
@@ -2620,7 +2620,7 @@ proc g_io_channel_error_from_errno*(en: gint): TGIOChannelError{.cdecl,
     dynlib: gliblib, importc: "g_io_channel_error_from_errno".}
 proc g_io_channel_unix_new*(fd: int32): PGIOChannel{.cdecl, dynlib: gliblib, 
     importc: "g_io_channel_unix_new".}
-proc g_io_channel_unix_get_fd*(channel: PGIOChannel): gint{.cdecl, 
+proc channel_unix_get_fd*(channel: PGIOChannel): gint{.cdecl, 
     dynlib: gliblib, importc: "g_io_channel_unix_get_fd".}
 const 
   G_LOG_LEVEL_USER_SHIFT* = 8
@@ -2713,19 +2713,19 @@ type
                   user_data: gpointer){.cdecl.}
 
 
-proc g_markup_parse_context_new*(parser: PGMarkupParser, 
+proc parse_context_new*(parser: PGMarkupParser, 
                                  flags: TGMarkupParseFlags, user_data: gpointer, 
                                  user_data_dnotify: TGDestroyNotify): PGMarkupParseContext{.
     cdecl, dynlib: gliblib, importc: "g_markup_parse_context_new".}
-proc g_markup_parse_context_free*(context: PGMarkupParseContext){.cdecl, 
+proc parse_context_free*(context: PGMarkupParseContext){.cdecl, 
     dynlib: gliblib, importc: "g_markup_parse_context_free".}
-proc g_markup_parse_context_parse*(context: PGMarkupParseContext, text: cstring, 
+proc parse_context_parse*(context: PGMarkupParseContext, text: cstring, 
                                    text_len: gssize, error: pointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_markup_parse_context_parse".}
-proc g_markup_parse_context_end_parse*(context: PGMarkupParseContext, 
+proc parse_context_end_parse*(context: PGMarkupParseContext, 
                                        error: pointer): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_markup_parse_context_end_parse".}
-proc g_markup_parse_context_get_position*(context: PGMarkupParseContext, 
+proc parse_context_get_position*(context: PGMarkupParseContext, 
     line_number: Pgint, char_number: Pgint){.cdecl, dynlib: gliblib, 
     importc: "g_markup_parse_context_get_position".}
 proc g_markup_escape_text*(text: cstring, length: gssize): cstring{.cdecl, 
@@ -2755,74 +2755,74 @@ type
   TGNodeTraverseFunc* = proc (node: PGNode, data: gpointer): gboolean{.cdecl.}
   TGNodeForeachFunc* = proc (node: PGNode, data: gpointer){.cdecl.}
 
-proc G_NODE_IS_ROOT*(node: PGNode): bool
-proc G_NODE_IS_LEAF*(node: PGNode): bool
-proc g_node_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
+proc IS_ROOT*(node: PGNode): bool
+proc IS_LEAF*(node: PGNode): bool
+proc node_push_allocator*(allocator: PGAllocator){.cdecl, dynlib: gliblib, 
     importc: "g_node_push_allocator".}
 proc g_node_pop_allocator*(){.cdecl, dynlib: gliblib, 
                               importc: "g_node_pop_allocator".}
 proc g_node_new*(data: gpointer): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_new".}
-proc g_node_destroy*(root: PGNode){.cdecl, dynlib: gliblib, 
+proc destroy*(root: PGNode){.cdecl, dynlib: gliblib, 
                                     importc: "g_node_destroy".}
-proc g_node_unlink*(node: PGNode){.cdecl, dynlib: gliblib, 
+proc unlink*(node: PGNode){.cdecl, dynlib: gliblib, 
                                    importc: "g_node_unlink".}
-proc g_node_copy*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
+proc copy*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_copy".}
-proc g_node_insert*(parent: PGNode, position: gint, node: PGNode): PGNode{.
+proc insert*(parent: PGNode, position: gint, node: PGNode): PGNode{.
     cdecl, dynlib: gliblib, importc: "g_node_insert".}
-proc g_node_insert_before*(parent: PGNode, sibling: PGNode, node: PGNode): PGNode{.
+proc insert_before*(parent: PGNode, sibling: PGNode, node: PGNode): PGNode{.
     cdecl, dynlib: gliblib, importc: "g_node_insert_before".}
-proc g_node_insert_after*(parent: PGNode, sibling: PGNode, node: PGNode): PGNode{.
+proc insert_after*(parent: PGNode, sibling: PGNode, node: PGNode): PGNode{.
     cdecl, dynlib: gliblib, importc: "g_node_insert_after".}
-proc g_node_prepend*(parent: PGNode, node: PGNode): PGNode{.cdecl, 
+proc prepend*(parent: PGNode, node: PGNode): PGNode{.cdecl, 
     dynlib: gliblib, importc: "g_node_prepend".}
-proc g_node_n_nodes*(root: PGNode, flags: TGTraverseFlags): guint{.cdecl, 
+proc n_nodes*(root: PGNode, flags: TGTraverseFlags): guint{.cdecl, 
     dynlib: gliblib, importc: "g_node_n_nodes".}
-proc g_node_get_root*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
+proc get_root*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_get_root".}
-proc g_node_is_ancestor*(node: PGNode, descendant: PGNode): gboolean{.cdecl, 
+proc is_ancestor*(node: PGNode, descendant: PGNode): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_node_is_ancestor".}
-proc g_node_depth*(node: PGNode): guint{.cdecl, dynlib: gliblib, 
+proc depth*(node: PGNode): guint{.cdecl, dynlib: gliblib, 
     importc: "g_node_depth".}
-proc g_node_find*(root: PGNode, order: TGTraverseType, flags: TGTraverseFlags, 
+proc find*(root: PGNode, order: TGTraverseType, flags: TGTraverseFlags, 
                   data: gpointer): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_find".}
-proc g_node_append*(parent: PGNode, node: PGNode): PGNode
-proc g_node_insert_data*(parent: PGNode, position: gint, data: gpointer): PGNode
-proc g_node_insert_data_before*(parent: PGNode, sibling: PGNode, data: gpointer): PGNode
-proc g_node_prepend_data*(parent: PGNode, data: gpointer): PGNode
-proc g_node_append_data*(parent: PGNode, data: gpointer): PGNode
-proc g_node_traverse*(root: PGNode, order: TGTraverseType, 
+proc append*(parent: PGNode, node: PGNode): PGNode
+proc insert_data*(parent: PGNode, position: gint, data: gpointer): PGNode
+proc insert_data_before*(parent: PGNode, sibling: PGNode, data: gpointer): PGNode
+proc prepend_data*(parent: PGNode, data: gpointer): PGNode
+proc append_data*(parent: PGNode, data: gpointer): PGNode
+proc traverse*(root: PGNode, order: TGTraverseType, 
                       flags: TGTraverseFlags, max_depth: gint, 
                       func: TGNodeTraverseFunc, data: gpointer): guint{.cdecl, 
     dynlib: gliblib, importc: "g_node_traverse".}
-proc g_node_max_height*(root: PGNode): guint{.cdecl, dynlib: gliblib, 
+proc max_height*(root: PGNode): guint{.cdecl, dynlib: gliblib, 
     importc: "g_node_max_height".}
-proc g_node_children_foreach*(node: PGNode, flags: TGTraverseFlags, 
+proc children_foreach*(node: PGNode, flags: TGTraverseFlags, 
                               func: TGNodeForeachFunc, data: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_node_children_foreach".}
-proc g_node_reverse_children*(node: PGNode){.cdecl, dynlib: gliblib, 
+proc reverse_children*(node: PGNode){.cdecl, dynlib: gliblib, 
     importc: "g_node_reverse_children".}
-proc g_node_n_children*(node: PGNode): guint{.cdecl, dynlib: gliblib, 
+proc n_children*(node: PGNode): guint{.cdecl, dynlib: gliblib, 
     importc: "g_node_n_children".}
-proc g_node_nth_child*(node: PGNode, n: guint): PGNode{.cdecl, dynlib: gliblib, 
+proc nth_child*(node: PGNode, n: guint): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_nth_child".}
-proc g_node_last_child*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
+proc last_child*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_last_child".}
-proc g_node_find_child*(node: PGNode, flags: TGTraverseFlags, data: gpointer): PGNode{.
+proc find_child*(node: PGNode, flags: TGTraverseFlags, data: gpointer): PGNode{.
     cdecl, dynlib: gliblib, importc: "g_node_find_child".}
-proc g_node_child_position*(node: PGNode, child: PGNode): gint{.cdecl, 
+proc child_position*(node: PGNode, child: PGNode): gint{.cdecl, 
     dynlib: gliblib, importc: "g_node_child_position".}
-proc g_node_child_index*(node: PGNode, data: gpointer): gint{.cdecl, 
+proc child_index*(node: PGNode, data: gpointer): gint{.cdecl, 
     dynlib: gliblib, importc: "g_node_child_index".}
-proc g_node_first_sibling*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
+proc first_sibling*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_first_sibling".}
-proc g_node_last_sibling*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
+proc last_sibling*(node: PGNode): PGNode{.cdecl, dynlib: gliblib, 
     importc: "g_node_last_sibling".}
-proc g_node_prev_sibling*(node: PGNode): PGNode
-proc g_node_next_sibling*(node: PGNode): PGNode
-proc g_node_first_child*(node: PGNode): PGNode
+proc prev_sibling*(node: PGNode): PGNode
+proc next_sibling*(node: PGNode): PGNode
+proc first_child*(node: PGNode): PGNode
 type 
   PGTree* = pointer
   TGTraverseFunc* = proc (key: gpointer, value: gpointer, data: gpointer): gboolean{.
@@ -2838,43 +2838,43 @@ proc g_tree_new_full*(key_compare_func: TGCompareDataFunc,
                       key_destroy_func: TGDestroyNotify, 
                       value_destroy_func: TGDestroyNotify): PGTree{.cdecl, 
     dynlib: gliblib, importc: "g_tree_new_full".}
-proc g_tree_destroy*(tree: PGTree){.cdecl, dynlib: gliblib, 
+proc destroy*(tree: PGTree){.cdecl, dynlib: gliblib, 
                                     importc: "g_tree_destroy".}
-proc g_tree_insert*(tree: PGTree, key: gpointer, value: gpointer){.cdecl, 
+proc insert*(tree: PGTree, key: gpointer, value: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_tree_insert".}
-proc g_tree_replace*(tree: PGTree, key: gpointer, value: gpointer){.cdecl, 
+proc replace*(tree: PGTree, key: gpointer, value: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_tree_replace".}
-proc g_tree_remove*(tree: PGTree, key: gconstpointer){.cdecl, dynlib: gliblib, 
+proc remove*(tree: PGTree, key: gconstpointer){.cdecl, dynlib: gliblib, 
     importc: "g_tree_remove".}
-proc g_tree_steal*(tree: PGTree, key: gconstpointer){.cdecl, dynlib: gliblib, 
+proc steal*(tree: PGTree, key: gconstpointer){.cdecl, dynlib: gliblib, 
     importc: "g_tree_steal".}
-proc g_tree_lookup*(tree: PGTree, key: gconstpointer): gpointer{.cdecl, 
+proc lookup*(tree: PGTree, key: gconstpointer): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_tree_lookup".}
-proc g_tree_lookup_extended*(tree: PGTree, lookup_key: gconstpointer, 
+proc lookup_extended*(tree: PGTree, lookup_key: gconstpointer, 
                              orig_key: Pgpointer, value: Pgpointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_tree_lookup_extended".}
-proc g_tree_foreach*(tree: PGTree, func: TGTraverseFunc, user_data: gpointer){.
+proc foreach*(tree: PGTree, func: TGTraverseFunc, user_data: gpointer){.
     cdecl, dynlib: gliblib, importc: "g_tree_foreach".}
-proc g_tree_search*(tree: PGTree, search_func: TGCompareFunc, 
+proc search*(tree: PGTree, search_func: TGCompareFunc, 
                     user_data: gconstpointer): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_tree_search".}
-proc g_tree_height*(tree: PGTree): gint{.cdecl, dynlib: gliblib, 
+proc height*(tree: PGTree): gint{.cdecl, dynlib: gliblib, 
     importc: "g_tree_height".}
-proc g_tree_nnodes*(tree: PGTree): gint{.cdecl, dynlib: gliblib, 
+proc nnodes*(tree: PGTree): gint{.cdecl, dynlib: gliblib, 
     importc: "g_tree_nnodes".}
 type 
   PGPatternSpec* = pointer
 
 proc g_pattern_spec_new*(pattern: cstring): PGPatternSpec{.cdecl, 
     dynlib: gliblib, importc: "g_pattern_spec_new".}
-proc g_pattern_spec_free*(pspec: PGPatternSpec){.cdecl, dynlib: gliblib, 
+proc spec_free*(pspec: PGPatternSpec){.cdecl, dynlib: gliblib, 
     importc: "g_pattern_spec_free".}
-proc g_pattern_spec_equal*(pspec1: PGPatternSpec, pspec2: PGPatternSpec): gboolean{.
+proc spec_equal*(pspec1: PGPatternSpec, pspec2: PGPatternSpec): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_pattern_spec_equal".}
-proc g_pattern_match*(pspec: PGPatternSpec, string_length: guint, str: cstring, 
+proc match*(pspec: PGPatternSpec, string_length: guint, str: cstring, 
                       string_reversed: cstring): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_pattern_match".}
-proc g_pattern_match_string*(pspec: PGPatternSpec, str: cstring): gboolean{.
+proc match_string*(pspec: PGPatternSpec, str: cstring): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_pattern_match_string".}
 proc g_pattern_match_simple*(pattern: cstring, str: cstring): gboolean{.cdecl, 
     dynlib: gliblib, importc: "g_pattern_match_simple".}
@@ -2892,29 +2892,29 @@ type
 
 
 proc g_queue_new*(): PGQueue{.cdecl, dynlib: gliblib, importc: "g_queue_new".}
-proc g_queue_free*(queue: PGQueue){.cdecl, dynlib: gliblib, 
+proc free*(queue: PGQueue){.cdecl, dynlib: gliblib, 
                                     importc: "g_queue_free".}
-proc g_queue_push_head*(queue: PGQueue, data: gpointer){.cdecl, dynlib: gliblib, 
+proc push_head*(queue: PGQueue, data: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_queue_push_head".}
-proc g_queue_push_tail*(queue: PGQueue, data: gpointer){.cdecl, dynlib: gliblib, 
+proc push_tail*(queue: PGQueue, data: gpointer){.cdecl, dynlib: gliblib, 
     importc: "g_queue_push_tail".}
-proc g_queue_pop_head*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
+proc pop_head*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_queue_pop_head".}
-proc g_queue_pop_tail*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
+proc pop_tail*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_queue_pop_tail".}
-proc g_queue_is_empty*(queue: PGQueue): gboolean{.cdecl, dynlib: gliblib, 
+proc is_empty*(queue: PGQueue): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_queue_is_empty".}
-proc g_queue_peek_head*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
+proc peek_head*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_queue_peek_head".}
-proc g_queue_peek_tail*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
+proc peek_tail*(queue: PGQueue): gpointer{.cdecl, dynlib: gliblib, 
     importc: "g_queue_peek_tail".}
-proc g_queue_push_head_link*(queue: PGQueue, link: PGList){.cdecl, 
+proc push_head_link*(queue: PGQueue, link: PGList){.cdecl, 
     dynlib: gliblib, importc: "g_queue_push_head_link".}
-proc g_queue_push_tail_link*(queue: PGQueue, link: PGList){.cdecl, 
+proc push_tail_link*(queue: PGQueue, link: PGList){.cdecl, 
     dynlib: gliblib, importc: "g_queue_push_tail_link".}
-proc g_queue_pop_head_link*(queue: PGQueue): PGList{.cdecl, dynlib: gliblib, 
+proc pop_head_link*(queue: PGQueue): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_queue_pop_head_link".}
-proc g_queue_pop_tail_link*(queue: PGQueue): PGList{.cdecl, dynlib: gliblib, 
+proc pop_tail_link*(queue: PGQueue): PGList{.cdecl, dynlib: gliblib, 
     importc: "g_queue_pop_tail_link".}
 type 
   PGRand* = pointer
@@ -2922,17 +2922,17 @@ type
 proc g_rand_new_with_seed*(seed: guint32): PGRand{.cdecl, dynlib: gliblib, 
     importc: "g_rand_new_with_seed".}
 proc g_rand_new*(): PGRand{.cdecl, dynlib: gliblib, importc: "g_rand_new".}
-proc g_rand_free*(rand: PGRand){.cdecl, dynlib: gliblib, importc: "g_rand_free".}
-proc g_rand_set_seed*(rand: PGRand, seed: guint32){.cdecl, dynlib: gliblib, 
+proc free*(rand: PGRand){.cdecl, dynlib: gliblib, importc: "g_rand_free".}
+proc set_seed*(rand: PGRand, seed: guint32){.cdecl, dynlib: gliblib, 
     importc: "g_rand_set_seed".}
-proc g_rand_boolean*(rand: PGRand): gboolean
-proc g_rand_int*(rand: PGRand): guint32{.cdecl, dynlib: gliblib, 
+proc boolean*(rand: PGRand): gboolean
+proc randint*(rand: PGRand): guint32{.cdecl, dynlib: gliblib, 
     importc: "g_rand_int".}
-proc g_rand_int_range*(rand: PGRand, `begin`: gint32, `end`: gint32): gint32{.
+proc int_range*(rand: PGRand, `begin`: gint32, `end`: gint32): gint32{.
     cdecl, dynlib: gliblib, importc: "g_rand_int_range".}
-proc g_rand_double*(rand: PGRand): gdouble{.cdecl, dynlib: gliblib, 
+proc double*(rand: PGRand): gdouble{.cdecl, dynlib: gliblib, 
     importc: "g_rand_double".}
-proc g_rand_double_range*(rand: PGRand, `begin`: gdouble, `end`: gdouble): gdouble{.
+proc double_range*(rand: PGRand, `begin`: gdouble, `end`: gdouble): gdouble{.
     cdecl, dynlib: gliblib, importc: "g_rand_double_range".}
 proc g_random_set_seed*(seed: guint32){.cdecl, dynlib: gliblib, 
                                         importc: "g_random_set_seed".}
@@ -2953,22 +2953,22 @@ type
 
 proc g_relation_new*(fields: gint): PGRelation{.cdecl, dynlib: gliblib, 
     importc: "g_relation_new".}
-proc g_relation_destroy*(relation: PGRelation){.cdecl, dynlib: gliblib, 
+proc destroy*(relation: PGRelation){.cdecl, dynlib: gliblib, 
     importc: "g_relation_destroy".}
-proc g_relation_index*(relation: PGRelation, field: gint, hash_func: TGHashFunc, 
+proc index*(relation: PGRelation, field: gint, hash_func: TGHashFunc, 
                        key_equal_func: TGEqualFunc){.cdecl, dynlib: gliblib, 
     importc: "g_relation_index".}
-proc g_relation_delete*(relation: PGRelation, key: gconstpointer, field: gint): gint{.
+proc delete*(relation: PGRelation, key: gconstpointer, field: gint): gint{.
     cdecl, dynlib: gliblib, importc: "g_relation_delete".}
-proc g_relation_select*(relation: PGRelation, key: gconstpointer, field: gint): PGTuples{.
+proc select*(relation: PGRelation, key: gconstpointer, field: gint): PGTuples{.
     cdecl, dynlib: gliblib, importc: "g_relation_select".}
-proc g_relation_count*(relation: PGRelation, key: gconstpointer, field: gint): gint{.
+proc count*(relation: PGRelation, key: gconstpointer, field: gint): gint{.
     cdecl, dynlib: gliblib, importc: "g_relation_count".}
-proc g_relation_print*(relation: PGRelation){.cdecl, dynlib: gliblib, 
+proc print*(relation: PGRelation){.cdecl, dynlib: gliblib, 
     importc: "g_relation_print".}
-proc g_tuples_destroy*(tuples: PGTuples){.cdecl, dynlib: gliblib, 
+proc destroy*(tuples: PGTuples){.cdecl, dynlib: gliblib, 
     importc: "g_tuples_destroy".}
-proc g_tuples_index*(tuples: PGTuples, index: gint, field: gint): gpointer{.
+proc index*(tuples: PGTuples, index: gint, field: gint): gpointer{.
     cdecl, dynlib: gliblib, importc: "g_tuples_index".}
 type 
   PGTokenType* = ptr TGTokenType
@@ -3148,47 +3148,47 @@ proc TGScannerConfig_set_symbol_2_token*(a: var TGScannerConfig,
 proc TGScannerConfig_scope_0_fallback*(a: var TGScannerConfig): guint
 proc TGScannerConfig_set_scope_0_fallback*(a: var TGScannerConfig, 
     `scope_0_fallback`: guint)
-proc g_scanner_new*(config_templ: PGScannerConfig): PGScanner{.cdecl, 
+proc new*(config_templ: PGScannerConfig): PGScanner{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_new".}
-proc g_scanner_destroy*(scanner: PGScanner){.cdecl, dynlib: gliblib, 
+proc destroy*(scanner: PGScanner){.cdecl, dynlib: gliblib, 
     importc: "g_scanner_destroy".}
-proc g_scanner_input_file*(scanner: PGScanner, input_fd: gint){.cdecl, 
+proc input_file*(scanner: PGScanner, input_fd: gint){.cdecl, 
     dynlib: gliblib, importc: "g_scanner_input_file".}
-proc g_scanner_sync_file_offset*(scanner: PGScanner){.cdecl, dynlib: gliblib, 
+proc sync_file_offset*(scanner: PGScanner){.cdecl, dynlib: gliblib, 
     importc: "g_scanner_sync_file_offset".}
-proc g_scanner_input_text*(scanner: PGScanner, text: cstring, text_len: guint){.
+proc input_text*(scanner: PGScanner, text: cstring, text_len: guint){.
     cdecl, dynlib: gliblib, importc: "g_scanner_input_text".}
-proc g_scanner_get_next_token*(scanner: PGScanner): TGTokenType{.cdecl, 
+proc get_next_token*(scanner: PGScanner): TGTokenType{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_get_next_token".}
-proc g_scanner_peek_next_token*(scanner: PGScanner): TGTokenType{.cdecl, 
+proc peek_next_token*(scanner: PGScanner): TGTokenType{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_peek_next_token".}
-proc g_scanner_cur_token*(scanner: PGScanner): TGTokenType{.cdecl, 
+proc cur_token*(scanner: PGScanner): TGTokenType{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_cur_token".}
-proc g_scanner_cur_value*(scanner: PGScanner): TGTokenValue{.cdecl, 
+proc cur_value*(scanner: PGScanner): TGTokenValue{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_cur_value".}
-proc g_scanner_cur_line*(scanner: PGScanner): guint{.cdecl, dynlib: gliblib, 
+proc cur_line*(scanner: PGScanner): guint{.cdecl, dynlib: gliblib, 
     importc: "g_scanner_cur_line".}
-proc g_scanner_cur_position*(scanner: PGScanner): guint{.cdecl, dynlib: gliblib, 
+proc cur_position*(scanner: PGScanner): guint{.cdecl, dynlib: gliblib, 
     importc: "g_scanner_cur_position".}
-proc g_scanner_eof*(scanner: PGScanner): gboolean{.cdecl, dynlib: gliblib, 
+proc eof*(scanner: PGScanner): gboolean{.cdecl, dynlib: gliblib, 
     importc: "g_scanner_eof".}
-proc g_scanner_set_scope*(scanner: PGScanner, scope_id: guint): guint{.cdecl, 
+proc set_scope*(scanner: PGScanner, scope_id: guint): guint{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_set_scope".}
-proc g_scanner_scope_add_symbol*(scanner: PGScanner, scope_id: guint, 
+proc scope_add_symbol*(scanner: PGScanner, scope_id: guint, 
                                  symbol: cstring, value: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_scanner_scope_add_symbol".}
-proc g_scanner_scope_remove_symbol*(scanner: PGScanner, scope_id: guint, 
+proc scope_remove_symbol*(scanner: PGScanner, scope_id: guint, 
                                     symbol: cstring){.cdecl, dynlib: gliblib, 
     importc: "g_scanner_scope_remove_symbol".}
-proc g_scanner_scope_lookup_symbol*(scanner: PGScanner, scope_id: guint, 
+proc scope_lookup_symbol*(scanner: PGScanner, scope_id: guint, 
                                     symbol: cstring): gpointer{.cdecl, 
     dynlib: gliblib, importc: "g_scanner_scope_lookup_symbol".}
-proc g_scanner_scope_foreach_symbol*(scanner: PGScanner, scope_id: guint, 
+proc scope_foreach_symbol*(scanner: PGScanner, scope_id: guint, 
                                      func: TGHFunc, user_data: gpointer){.cdecl, 
     dynlib: gliblib, importc: "g_scanner_scope_foreach_symbol".}
-proc g_scanner_lookup_symbol*(scanner: PGScanner, symbol: cstring): gpointer{.
+proc lookup_symbol*(scanner: PGScanner, symbol: cstring): gpointer{.
     cdecl, dynlib: gliblib, importc: "g_scanner_lookup_symbol".}
-proc g_scanner_unexp_token*(scanner: PGScanner, expected_token: TGTokenType, 
+proc unexp_token*(scanner: PGScanner, expected_token: TGTokenType, 
                             identifier_spec: cstring, symbol_spec: cstring, 
                             symbol_name: cstring, `message`: cstring, 
                             is_error: gint){.cdecl, dynlib: gliblib, 
@@ -3257,7 +3257,7 @@ proc g_spawn_command_line_sync*(command_line: cstring, standard_output: PPgchar,
 proc g_spawn_command_line_async*(command_line: cstring, error: pointer): gboolean{.
     cdecl, dynlib: gliblib, importc: "g_spawn_command_line_async".}
 proc G_TYPE_IS_BOXED*(theType: GType): gboolean
-proc G_VALUE_HOLDS_BOXED*(value: PGValue): gboolean
+proc HOLDS_BOXED*(value: PGValue): gboolean
 proc G_TYPE_CLOSURE*(): GType
 proc G_TYPE_VALUE*(): GType
 proc G_TYPE_VALUE_ARRAY*(): GType
@@ -3266,18 +3266,18 @@ proc g_boxed_copy*(boxed_type: GType, src_boxed: gconstpointer): gpointer{.
     cdecl, dynlib: gobjectlib, importc: "g_boxed_copy".}
 proc g_boxed_free*(boxed_type: GType, boxed: gpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_boxed_free".}
-proc g_value_set_boxed*(value: PGValue, v_boxed: gconstpointer){.cdecl, 
+proc set_boxed*(value: PGValue, v_boxed: gconstpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_boxed".}
-proc g_value_set_static_boxed*(value: PGValue, v_boxed: gconstpointer){.cdecl, 
+proc set_static_boxed*(value: PGValue, v_boxed: gconstpointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_value_set_static_boxed".}
-proc g_value_get_boxed*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
+proc get_boxed*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_get_boxed".}
-proc g_value_dup_boxed*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
+proc dup_boxed*(value: PGValue): gpointer{.cdecl, dynlib: gobjectlib, 
     importc: "g_value_dup_boxed".}
 proc g_boxed_type_register_static*(name: cstring, boxed_copy: TGBoxedCopyFunc, 
                                    boxed_free: TGBoxedFreeFunc): GType{.cdecl, 
     dynlib: gobjectlib, importc: "g_boxed_type_register_static".}
-proc g_value_set_boxed_take_ownership*(value: PGValue, v_boxed: gconstpointer){.
+proc set_boxed_take_ownership*(value: PGValue, v_boxed: gconstpointer){.
     cdecl, dynlib: gobjectlib, importc: "g_value_set_boxed_take_ownership".}
 proc g_closure_get_type*(): GType{.cdecl, dynlib: gobjectlib, 
                                    importc: "g_closure_get_type".}
@@ -3301,137 +3301,137 @@ proc g_module_supported*(): gboolean{.cdecl, dynlib: gmodulelib,
                                       importc: "g_module_supported".}
 proc g_module_open*(file_name: cstring, flags: TGModuleFlags): PGModule{.cdecl, 
     dynlib: gmodulelib, importc: "g_module_open".}
-proc g_module_close*(module: PGModule): gboolean{.cdecl, dynlib: gmodulelib, 
+proc close*(module: PGModule): gboolean{.cdecl, dynlib: gmodulelib, 
     importc: "g_module_close".}
-proc g_module_make_resident*(module: PGModule){.cdecl, dynlib: gmodulelib, 
+proc make_resident*(module: PGModule){.cdecl, dynlib: gmodulelib, 
     importc: "g_module_make_resident".}
 proc g_module_error*(): cstring{.cdecl, dynlib: gmodulelib, 
                                  importc: "g_module_error".}
-proc g_module_symbol*(module: PGModule, symbol_name: cstring, symbol: Pgpointer): gboolean{.
+proc symbol*(module: PGModule, symbol_name: cstring, symbol: Pgpointer): gboolean{.
     cdecl, dynlib: gmodulelib, importc: "g_module_symbol".}
-proc g_module_name*(module: PGModule): cstring{.cdecl, dynlib: gmodulelib, 
+proc name*(module: PGModule): cstring{.cdecl, dynlib: gmodulelib, 
     importc: "g_module_name".}
 proc g_module_build_path*(directory: cstring, module_name: cstring): cstring{.
     cdecl, dynlib: gmodulelib, importc: "g_module_build_path".}
-proc g_cclosure_marshal_VOID_VOID*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_VOID*(closure: PGClosure, return_value: PGValue, 
                                     n_param_values: GUInt, 
                                     param_values: PGValue, 
                                     invocation_hint: GPointer, 
                                     marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__VOID".}
-proc g_cclosure_marshal_VOID_BOOLEAN*(closure: PGClosure, 
+proc cclosure_marshal_VOID_BOOLEAN*(closure: PGClosure, 
                                        return_value: PGValue, 
                                        n_param_values: GUInt, 
                                        param_values: PGValue, 
                                        invocation_hint: GPointer, 
                                        marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__BOOLEAN".}
-proc g_cclosure_marshal_VOID_CHAR*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_CHAR*(closure: PGClosure, return_value: PGValue, 
                                     n_param_values: GUInt, 
                                     param_values: PGValue, 
                                     invocation_hint: GPointer, 
                                     marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__CHAR".}
-proc g_cclosure_marshal_VOID_UCHAR*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_UCHAR*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__UCHAR".}
-proc g_cclosure_marshal_VOID_INT*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_INT*(closure: PGClosure, return_value: PGValue, 
                                    n_param_values: GUInt, param_values: PGValue, 
                                    invocation_hint: GPointer, 
                                    marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__INT".}
-proc g_cclosure_marshal_VOID_UINT*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_UINT*(closure: PGClosure, return_value: PGValue, 
                                     n_param_values: GUInt, 
                                     param_values: PGValue, 
                                     invocation_hint: GPointer, 
                                     marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__UINT".}
-proc g_cclosure_marshal_VOID_LONG*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_LONG*(closure: PGClosure, return_value: PGValue, 
                                     n_param_values: GUInt, 
                                     param_values: PGValue, 
                                     invocation_hint: GPointer, 
                                     marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__LONG".}
-proc g_cclosure_marshal_VOID_ULONG*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_ULONG*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__ULONG".}
-proc g_cclosure_marshal_VOID_ENUM*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_ENUM*(closure: PGClosure, return_value: PGValue, 
                                     n_param_values: GUInt, 
                                     param_values: PGValue, 
                                     invocation_hint: GPointer, 
                                     marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__ENUM".}
-proc g_cclosure_marshal_VOID_FLAGS*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_FLAGS*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__FLAGS".}
-proc g_cclosure_marshal_VOID_FLOAT*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_FLOAT*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__FLOAT".}
-proc g_cclosure_marshal_VOID_DOUBLE*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_DOUBLE*(closure: PGClosure, return_value: PGValue, 
                                       n_param_values: GUInt, 
                                       param_values: PGValue, 
                                       invocation_hint: GPointer, 
                                       marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__DOUBLE".}
-proc g_cclosure_marshal_VOID_STRING*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_STRING*(closure: PGClosure, return_value: PGValue, 
                                       n_param_values: GUInt, 
                                       param_values: PGValue, 
                                       invocation_hint: GPointer, 
                                       marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__STRING".}
-proc g_cclosure_marshal_VOID_PARAM*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_PARAM*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__PARAM".}
-proc g_cclosure_marshal_VOID_BOXED*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_BOXED*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
                                      marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__BOXED".}
-proc g_cclosure_marshal_VOID_POINTER*(closure: PGClosure, 
+proc cclosure_marshal_VOID_POINTER*(closure: PGClosure, 
                                        return_value: PGValue, 
                                        n_param_values: GUInt, 
                                        param_values: PGValue, 
                                        invocation_hint: GPointer, 
                                        marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__POINTER".}
-proc g_cclosure_marshal_VOID_OBJECT*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_VOID_OBJECT*(closure: PGClosure, return_value: PGValue, 
                                       n_param_values: GUInt, 
                                       param_values: PGValue, 
                                       invocation_hint: GPointer, 
                                       marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__OBJECT".}
-proc g_cclosure_marshal_STRING_OBJECT_POINTER*(closure: PGClosure, 
+proc cclosure_marshal_STRING_OBJECT_POINTER*(closure: PGClosure, 
     return_value: PGValue, n_param_values: GUInt, param_values: PGValue, 
     invocation_hint: GPointer, marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_STRING__OBJECT_POINTER".}
-proc g_cclosure_marshal_VOID_UINT_POINTER*(closure: PGClosure, 
+proc cclosure_marshal_VOID_UINT_POINTER*(closure: PGClosure, 
     return_value: PGValue, n_param_values: GUInt, param_values: PGValue, 
     invocation_hint: GPointer, marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_VOID__UINT_POINTER".}
-proc g_cclosure_marshal_BOOLEAN_FLAGS*(closure: PGClosure, 
+proc cclosure_marshal_BOOLEAN_FLAGS*(closure: PGClosure, 
                                         return_value: PGValue, 
                                         n_param_values: GUInt, 
                                         param_values: PGValue, 
                                         invocation_hint: GPointer, 
                                         marshal_data: GPointer){.cdecl, 
     dynlib: gobjectlib, importc: "g_cclosure_marshal_BOOLEAN__FLAGS".}
-proc g_cclosure_marshal_BOOL_FLAGS*(closure: PGClosure, return_value: PGValue, 
+proc cclosure_marshal_BOOL_FLAGS*(closure: PGClosure, return_value: PGValue, 
                                      n_param_values: GUInt, 
                                      param_values: PGValue, 
                                      invocation_hint: GPointer, 
@@ -3567,7 +3567,7 @@ when false:
   proc g_main_set_poll_func*(func: TGPollFunc) = 
     g_main_context_set_poll_func(nil, func)
 
-proc g_slist_next*(slist: PGSList): PGSList = 
+proc next*(slist: PGSList): PGSList = 
   if slist != nil: 
     result = slist.next
   else: 
@@ -3583,21 +3583,18 @@ proc g_renew*(struct_size: int, OldMem: gpointer, n_structs: int): gpointer =
   result = g_realloc(OldMem, struct_size * n_structs)
 
 proc g_chunk_new*(chunk: Pointer): Pointer = 
-  result = g_mem_chunk_alloc(chunk)
+  result = chunk_alloc(chunk)
 
 proc g_chunk_new0*(chunk: Pointer): Pointer = 
-  result = g_mem_chunk_alloc0(chunk)
+  result = chunk_alloc0(chunk)
 
-proc g_chunk_free*(mem_chunk: PGMemChunk, mem: gpointer) = 
-  g_mem_chunk_free(mem_chunk, mem)
-
-proc g_list_previous*(list: PGList): PGList = 
+proc previous*(list: PGList): PGList = 
   if list != nil: 
     result = list.prev
   else: 
     result = nil
 
-proc g_list_next*(list: PGList): PGList = 
+proc next*(list: PGList): PGList = 
   if list != nil: 
     result = list.next
   else: 
@@ -3675,24 +3672,24 @@ proc TGHookList_set_is_setup*(a: var TGHookList, `is_setup`: guint) =
 proc G_HOOK*(hook: pointer): PGHook = 
   result = cast[PGHook](hook)
 
-proc G_HOOK_FLAGS*(hook: PGHook): guint = 
+proc FLAGS*(hook: PGHook): guint = 
   result = hook.flags
 
-proc G_HOOK_ACTIVE*(hook: PGHook): bool = 
+proc ACTIVE*(hook: PGHook): bool = 
   result = (hook.flags and G_HOOK_FLAG_ACTIVE) != 0'i32
 
-proc G_HOOK_IN_CALL*(hook: PGHook): bool = 
+proc IN_CALL*(hook: PGHook): bool = 
   result = (hook.flags and G_HOOK_FLAG_IN_CALL) != 0'i32
 
-proc G_HOOK_IS_VALID*(hook: PGHook): bool = 
-  result = (hook.hook_id != 0) and G_HOOK_ACTIVE(hook)
+proc IS_VALID*(hook: PGHook): bool = 
+  result = (hook.hook_id != 0) and ACTIVE(hook)
 
-proc G_HOOK_IS_UNLINKED*(hook: PGHook): bool = 
+proc IS_UNLINKED*(hook: PGHook): bool = 
   result = (hook.next == nil) and (hook.prev == nil) and (hook.hook_id == 0) and
       (hook.ref_count == 0'i32)
 
-proc g_hook_append*(hook_list: PGHookList, hook: PGHook) = 
-  g_hook_insert_before(hook_list, nil, hook)
+proc append*(hook_list: PGHookList, hook: PGHook) = 
+  insert_before(hook_list, nil, hook)
 
 proc G_IO_CHANNEL_ERROR*(): TGQuark = 
   result = g_io_channel_error_quark()
@@ -3751,7 +3748,7 @@ proc TGIOChannel_set_is_seekable*(a: var TGIOChannel, `is_seekable`: guint) =
       (int16(`is_seekable` shl bp_TGIOChannel_is_seekable) and
       bm_TGIOChannel_is_seekable)
 
-proc g_utf8_next_char*(p: pguchar): pguchar = 
+proc utf8_next_char*(p: pguchar): pguchar = 
   result = cast[pguchar](cast[TAddress](p) + 1) # p + ord((g_utf8_skip + p^ )^ )
   
 when false: 
@@ -3776,47 +3773,48 @@ when false:
 proc G_MARKUP_ERROR*(): TGQuark = 
   result = g_markup_error_quark()
 
-proc G_NODE_IS_ROOT*(node: PGNode): bool = 
+proc IS_ROOT*(node: PGNode): bool = 
   result = (node.parent == nil) and (node.next == nil) and (node.prev == nil)
 
-proc G_NODE_IS_LEAF*(node: PGNode): bool = 
+proc IS_LEAF*(node: PGNode): bool = 
   result = node.children == nil
 
-proc g_node_append*(parent: PGNode, node: PGNode): PGNode = 
-  result = g_node_insert_before(parent, nil, node)
+proc append*(parent: PGNode, node: PGNode): PGNode = 
+  result = insert_before(parent, nil, node)
 
-proc g_node_insert_data*(parent: PGNode, position: gint, data: gpointer): PGNode = 
-  result = g_node_insert(parent, position, g_node_new(data))
+proc insert_data*(parent: PGNode, position: gint, data: gpointer): PGNode = 
+  result = insert(parent, position, g_node_new(data))
 
-proc g_node_insert_data_before*(parent: PGNode, sibling: PGNode, data: gpointer): PGNode = 
-  result = g_node_insert_before(parent, sibling, g_node_new(data))
+proc insert_data_before*(parent: PGNode, sibling: PGNode, 
+                         data: gpointer): PGNode = 
+  result = insert_before(parent, sibling, g_node_new(data))
 
-proc g_node_prepend_data*(parent: PGNode, data: gpointer): PGNode = 
-  result = g_node_prepend(parent, g_node_new(data))
+proc prepend_data*(parent: PGNode, data: gpointer): PGNode = 
+  result = prepend(parent, g_node_new(data))
 
-proc g_node_append_data*(parent: PGNode, data: gpointer): PGNode = 
-  result = g_node_insert_before(parent, nil, g_node_new(data))
+proc append_data*(parent: PGNode, data: gpointer): PGNode = 
+  result = insert_before(parent, nil, g_node_new(data))
 
-proc g_node_prev_sibling*(node: PGNode): PGNode = 
+proc prev_sibling*(node: PGNode): PGNode = 
   if node != nil: 
     result = node.prev
   else: 
     result = nil
 
-proc g_node_next_sibling*(node: PGNode): PGNode = 
+proc next_sibling*(node: PGNode): PGNode = 
   if node != nil: 
     result = node.next
   else: 
     result = nil
 
-proc g_node_first_child*(node: PGNode): PGNode = 
+proc first_child*(node: PGNode): PGNode = 
   if node != nil: 
     result = node.children
   else: 
     result = nil
 
-proc g_rand_boolean*(rand: PGRand): gboolean = 
-  result = (int(g_rand_int(rand)) and (1 shl 15)) != 0
+proc boolean*(rand: PGRand): gboolean = 
+  result = (int(rand_int(rand)) and (1 shl 15)) != 0
 
 proc g_random_boolean*(): gboolean = 
   result = (int(g_random_int()) and (1 shl 15)) != 0
@@ -4028,10 +4026,10 @@ proc TGScannerConfig_set_scope_0_fallback*(a: var TGScannerConfig,
       ((`scope_0_fallback` shl bp_TGScannerConfig_scope_0_fallback) and
       bm_TGScannerConfig_scope_0_fallback)
 
-proc g_scanner_freeze_symbol_table*(scanner: PGScanner) = 
+proc freeze_symbol_table*(scanner: PGScanner) = 
   if Scanner == nil: nil
   
-proc g_scanner_thaw_symbol_table*(scanner: PGScanner) = 
+proc thaw_symbol_table*(scanner: PGScanner) = 
   if Scanner == nil: nil
   
 proc G_SHELL_ERROR*(): TGQuark = 
@@ -4201,11 +4199,11 @@ proc G_VALUE_HOLDS_PARAM*(value: Pointer): bool =
 proc G_CLOSURE_NEEDS_MARSHAL*(closure: Pointer): bool = 
   result = cast[PGClosure](closure).marshal == nil
 
-proc G_CLOSURE_N_NOTIFIERS*(cl: PGClosure): int32 = 
+proc N_NOTIFIERS*(cl: PGClosure): int32 = 
   result = ((meta_marshal(cl) + ((n_guards(cl)) shl 1'i32)) +
       (n_fnotifiers(cl))) + (n_inotifiers(cl))
 
-proc G_CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32 = 
+proc CCLOSURE_SWAP_DATA*(cclosure: PGClosure): int32 = 
   result = derivative_flag(cclosure)
 
 proc G_CALLBACK*(f: pointer): TGCallback = 
@@ -4442,49 +4440,49 @@ proc GPOINTER_TO_SIZE*(p: GPointer): GSize =
 proc GSIZE_TO_POINTER*(s: GSize): GPointer = 
   result = cast[GPointer](s)
 
-proc G_VALUE_HOLDS_CHAR*(value: PGValue): bool = 
+proc HOLDS_CHAR*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_CHAR)
 
-proc G_VALUE_HOLDS_UCHAR*(value: PGValue): bool = 
+proc HOLDS_UCHAR*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_UCHAR)
 
-proc G_VALUE_HOLDS_BOOLEAN*(value: PGValue): bool = 
+proc HOLDS_BOOLEAN*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_BOOLEAN)
 
-proc G_VALUE_HOLDS_INT*(value: PGValue): bool = 
+proc HOLDS_INT*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_INT)
 
-proc G_VALUE_HOLDS_UINT*(value: PGValue): bool = 
+proc HOLDS_UINT*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_UINT)
 
-proc G_VALUE_HOLDS_LONG*(value: PGValue): bool = 
+proc HOLDS_LONG*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_LONG)
 
-proc G_VALUE_HOLDS_ULONG*(value: PGValue): bool = 
+proc HOLDS_ULONG*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_ULONG)
 
-proc G_VALUE_HOLDS_INT64*(value: PGValue): bool = 
+proc HOLDS_INT64*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_INT64)
 
-proc G_VALUE_HOLDS_UINT64*(value: PGValue): bool = 
+proc HOLDS_UINT64*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_UINT64)
 
-proc G_VALUE_HOLDS_FLOAT*(value: PGValue): bool = 
+proc HOLDS_FLOAT*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_FLOAT)
 
-proc G_VALUE_HOLDS_DOUBLE*(value: PGValue): bool = 
+proc HOLDS_DOUBLE*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_DOUBLE)
 
-proc G_VALUE_HOLDS_STRING*(value: PGValue): bool = 
+proc HOLDS_STRING*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_STRING)
 
-proc G_VALUE_HOLDS_POINTER*(value: PGValue): bool = 
+proc HOLDS_POINTER*(value: PGValue): bool = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_POINTER)
 
 proc G_TYPE_IS_BOXED*(theType: GType): gboolean = 
   result = (G_TYPE_FUNDAMENTAL(theType)) == G_TYPE_BOXED
 
-proc G_VALUE_HOLDS_BOXED*(value: PGValue): gboolean = 
+proc HOLDS_BOXED*(value: PGValue): gboolean = 
   result = G_TYPE_CHECK_VALUE_TYPE(value, G_TYPE_BOXED)
 
 proc G_TYPE_CLOSURE*(): GType = 

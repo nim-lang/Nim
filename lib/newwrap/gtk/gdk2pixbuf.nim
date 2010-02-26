@@ -57,28 +57,28 @@ when not defined(PIXBUF_DISABLE_DEPRECATED):
       importc: "gdk_pixbuf_ref".}
   proc pixbuf_unref*(pixbuf: PPixbuf){.cdecl, dynlib: pixbuflib, 
                                        importc: "gdk_pixbuf_unref".}
-proc pixbuf_get_colorspace*(pixbuf: PPixbuf): TColorspace{.cdecl, 
+proc get_colorspace*(pixbuf: PPixbuf): TColorspace{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_get_colorspace".}
-proc pixbuf_get_n_channels*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
+proc get_n_channels*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_n_channels".}
-proc pixbuf_get_has_alpha*(pixbuf: PPixbuf): gboolean{.cdecl, dynlib: pixbuflib, 
+proc get_has_alpha*(pixbuf: PPixbuf): gboolean{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_has_alpha".}
-proc pixbuf_get_bits_per_sample*(pixbuf: PPixbuf): int32{.cdecl, 
+proc get_bits_per_sample*(pixbuf: PPixbuf): int32{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_get_bits_per_sample".}
-proc pixbuf_get_pixels*(pixbuf: PPixbuf): Pguchar{.cdecl, dynlib: pixbuflib, 
+proc get_pixels*(pixbuf: PPixbuf): Pguchar{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_pixels".}
-proc pixbuf_get_width*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
+proc get_width*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_width".}
-proc pixbuf_get_height*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
+proc get_height*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_height".}
-proc pixbuf_get_rowstride*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
+proc get_rowstride*(pixbuf: PPixbuf): int32{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_get_rowstride".}
 proc pixbuf_new*(colorspace: TColorspace, has_alpha: gboolean, 
                  bits_per_sample: int32, width: int32, height: int32): PPixbuf{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_new".}
-proc pixbuf_copy*(pixbuf: PPixbuf): PPixbuf{.cdecl, dynlib: pixbuflib, 
+proc copy*(pixbuf: PPixbuf): PPixbuf{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_copy".}
-proc pixbuf_new_subpixbuf*(src_pixbuf: PPixbuf, src_x: int32, src_y: int32, 
+proc new_subpixbuf*(src_pixbuf: PPixbuf, src_x: int32, src_y: int32, 
                            width: int32, height: int32): PPixbuf{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_new_subpixbuf".}
 proc pixbuf_new_from_file*(filename: cstring, error: pointer): PPixbuf{.cdecl, 
@@ -101,36 +101,36 @@ proc pixbuf_new_from_file_at_scale*(filename: cstring, width, height: gint,
                                     preserve_aspect_ratio: gboolean, 
                                     error: pointer): PPixbuf{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_new_from_file_at_scale".}
-proc pixbuf_fill*(pixbuf: PPixbuf, pixel: guint32){.cdecl, dynlib: pixbuflib, 
+proc fill*(pixbuf: PPixbuf, pixel: guint32){.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_fill".}
-proc pixbuf_save*(pixbuf: PPixbuf, filename: cstring, `type`: cstring, 
+proc save*(pixbuf: PPixbuf, filename: cstring, `type`: cstring, 
                   error: pointer): gboolean{.cdecl, varargs, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_save".}
-proc pixbuf_savev*(pixbuf: PPixbuf, filename: cstring, `type`: cstring, 
+proc savev*(pixbuf: PPixbuf, filename: cstring, `type`: cstring, 
                    option_keys: PPchar, option_values: PPchar, error: pointer): gboolean{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_savev".}
-proc pixbuf_add_alpha*(pixbuf: PPixbuf, substitute_color: gboolean, r: guchar, 
+proc add_alpha*(pixbuf: PPixbuf, substitute_color: gboolean, r: guchar, 
                        g: guchar, b: guchar): PPixbuf{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_add_alpha".}
-proc pixbuf_copy_area*(src_pixbuf: PPixbuf, src_x: int32, src_y: int32, 
+proc copy_area*(src_pixbuf: PPixbuf, src_x: int32, src_y: int32, 
                        width: int32, height: int32, dest_pixbuf: PPixbuf, 
                        dest_x: int32, dest_y: int32){.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_copy_area".}
-proc pixbuf_saturate_and_pixelate*(src: PPixbuf, dest: PPixbuf, 
+proc saturate_and_pixelate*(src: PPixbuf, dest: PPixbuf, 
                                    saturation: gfloat, pixelate: gboolean){.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_saturate_and_pixelate".}
-proc pixbuf_scale*(src: PPixbuf, dest: PPixbuf, dest_x: int32, dest_y: int32, 
+proc scale*(src: PPixbuf, dest: PPixbuf, dest_x: int32, dest_y: int32, 
                    dest_width: int32, dest_height: int32, offset_x: float64, 
                    offset_y: float64, scale_x: float64, scale_y: float64, 
                    interp_type: TInterpType){.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_scale".}
-proc pixbuf_composite*(src: PPixbuf, dest: PPixbuf, dest_x: int32, 
+proc composite*(src: PPixbuf, dest: PPixbuf, dest_x: int32, 
                        dest_y: int32, dest_width: int32, dest_height: int32, 
                        offset_x: float64, offset_y: float64, scale_x: float64, 
                        scale_y: float64, interp_type: TInterpType, 
                        overall_alpha: int32){.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_composite".}
-proc pixbuf_composite_color*(src: PPixbuf, dest: PPixbuf, dest_x: int32, 
+proc composite_color*(src: PPixbuf, dest: PPixbuf, dest_x: int32, 
                              dest_y: int32, dest_width: int32, 
                              dest_height: int32, offset_x: float64, 
                              offset_y: float64, scale_x: float64, 
@@ -139,10 +139,10 @@ proc pixbuf_composite_color*(src: PPixbuf, dest: PPixbuf, dest_x: int32,
                              check_y: int32, check_size: int32, color1: guint32, 
                              color2: guint32){.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_composite_color".}
-proc pixbuf_scale_simple*(src: PPixbuf, dest_width: int32, dest_height: int32, 
+proc scale_simple*(src: PPixbuf, dest_width: int32, dest_height: int32, 
                           interp_type: TInterpType): PPixbuf{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_scale_simple".}
-proc pixbuf_composite_color_simple*(src: PPixbuf, dest_width: int32, 
+proc composite_color_simple*(src: PPixbuf, dest_width: int32, 
                                     dest_height: int32, 
                                     interp_type: TInterpType, 
                                     overall_alpha: int32, check_size: int32, 
@@ -157,29 +157,29 @@ when not defined(PIXBUF_DISABLE_DEPRECATED):
       cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_ref".}
   proc pixbuf_animation_unref*(animation: PPixbufAnimation){.cdecl, 
       dynlib: pixbuflib, importc: "gdk_pixbuf_animation_unref".}
-proc pixbuf_animation_get_width*(animation: PPixbufAnimation): int32{.cdecl, 
+proc get_width*(animation: PPixbufAnimation): int32{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_animation_get_width".}
-proc pixbuf_animation_get_height*(animation: PPixbufAnimation): int32{.cdecl, 
+proc get_height*(animation: PPixbufAnimation): int32{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_animation_get_height".}
-proc pixbuf_animation_is_static_image*(animation: PPixbufAnimation): gboolean{.
+proc is_static_image*(animation: PPixbufAnimation): gboolean{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_is_static_image".}
-proc pixbuf_animation_get_static_image*(animation: PPixbufAnimation): PPixbuf{.
+proc get_static_image*(animation: PPixbufAnimation): PPixbuf{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_get_static_image".}
-proc pixbuf_animation_get_iter*(animation: PPixbufAnimation, e: var TGTimeVal): PPixbufAnimationIter{.
+proc get_iter*(animation: PPixbufAnimation, e: var TGTimeVal): PPixbufAnimationIter{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_get_iter".}
 proc pixbuf_animation_iter_get_type*(): GType{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_animation_iter_get_type".}
-proc pixbuf_animation_iter_get_delay_time*(iter: PPixbufAnimationIter): int32{.
+proc iter_get_delay_time*(iter: PPixbufAnimationIter): int32{.
     cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_animation_iter_get_delay_time".}
-proc pixbuf_animation_iter_get_pixbuf*(iter: PPixbufAnimationIter): PPixbuf{.
+proc iter_get_pixbuf*(iter: PPixbufAnimationIter): PPixbuf{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_iter_get_pixbuf".}
 proc pixbuf_animation_iter_on_currently_loading_frame*(
     iter: PPixbufAnimationIter): gboolean{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_animation_iter_on_currently_loading_frame".}
-proc pixbuf_animation_iter_advance*(iter: PPixbufAnimationIter, e: var TGTimeVal): gboolean{.
+proc iter_advance*(iter: PPixbufAnimationIter, e: var TGTimeVal): gboolean{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_animation_iter_advance".}
-proc pixbuf_get_option*(pixbuf: PPixbuf, key: cstring): cstring{.cdecl, 
+proc get_option*(pixbuf: PPixbuf, key: cstring): cstring{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_get_option".}
 type 
   PPixbufLoader* = ptr TPixbufLoader
@@ -208,14 +208,14 @@ proc pixbuf_loader_new*(): PPixbufLoader{.cdecl, dynlib: pixbuflib,
     importc: "gdk_pixbuf_loader_new".}
 proc pixbuf_loader_new_with_type*(image_type: cstring, error: pointer): PPixbufLoader{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_loader_new_with_type".}
-proc pixbuf_loader_write*(loader: PPixbufLoader, buf: Pguchar, count: gsize, 
+proc write*(loader: PPixbufLoader, buf: Pguchar, count: gsize, 
                           error: pointer): gboolean{.cdecl, dynlib: pixbuflib, 
     importc: "gdk_pixbuf_loader_write".}
-proc pixbuf_loader_get_pixbuf*(loader: PPixbufLoader): PPixbuf{.cdecl, 
+proc get_pixbuf*(loader: PPixbufLoader): PPixbuf{.cdecl, 
     dynlib: pixbuflib, importc: "gdk_pixbuf_loader_get_pixbuf".}
-proc pixbuf_loader_get_animation*(loader: PPixbufLoader): PPixbufAnimation{.
+proc get_animation*(loader: PPixbufLoader): PPixbufAnimation{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_loader_get_animation".}
-proc pixbuf_loader_close*(loader: PPixbufLoader, error: pointer): gboolean{.
+proc close*(loader: PPixbufLoader, error: pointer): gboolean{.
     cdecl, dynlib: pixbuflib, importc: "gdk_pixbuf_loader_close".}
 proc TYPE_PIXBUF_LOADER*(): GType = 
   result = pixbuf_loader_get_type()

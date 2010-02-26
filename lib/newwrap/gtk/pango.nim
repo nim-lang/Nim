@@ -9,42 +9,53 @@ else:
   const 
     lib* = "libpango-1.0.so.0"
 type 
-  PFont* = pointer
-  PFontFamily* = pointer
-  PFontset* = pointer
-  PFontMetrics* = pointer
-  PFontFace* = pointer
-  PFontMap* = pointer
-  PFontsetClass* = pointer
-  PFontFamilyClass* = pointer
-  PFontFaceClass* = pointer
-  PFontClass* = pointer
-  PFontMapClass* = pointer
+  TFont* {.pure, final.} = object
+  PFont* = ptr TFont
+  TFontFamily* {.pure, final.} = object
+  PFontFamily* = ptr TFontFamily
+  TFontSet* {.pure, final.} = object
+  PFontset* = ptr TFontset
+  TFontMetrics* {.pure, final.} = object
+  PFontMetrics* = ptr TFontMetrics
+  TFontFace* {.pure, final.} = object
+  PFontFace* = ptr TFontFace
+  TFontMap* {.pure, final.} = object
+  PFontMap* = ptr TFontMap
+  TFontsetClass {.pure, final.} = object
+  PFontsetClass* = ptr TFontSetClass
+  TFontFamilyClass* {.pure, final.} = object
+  PFontFamilyClass* = ptr TFontFamilyClass
+  TFontFaceClass* {.pure, final.} = object
+  PFontFaceClass* = ptr TFontFaceClass
+  TFontClass* {.pure, final.} = object
+  PFontClass* = ptr TFontClass
+  TFontMapClass* {.pure, final.} = object
+  PFontMapClass* = ptr TFontMapClass
   PFontDescription* = ptr TFontDescription
-  TFontDescription* = pointer
+  TFontDescription* {.pure, final.} = object
   PAttrList* = ptr TAttrList
-  TAttrList* = pointer
+  TAttrList* {.pure, final.} = object
   PAttrIterator* = ptr TAttrIterator
-  TAttrIterator* = pointer
+  TAttrIterator* {.pure, final.} = object
   PLayout* = ptr TLayout
-  TLayout* = pointer
+  TLayout* {.pure, final.} = object
   PLayoutClass* = ptr TLayoutClass
-  TLayoutClass* = pointer
+  TLayoutClass* {.pure, final.} = object
   PLayoutIter* = ptr TLayoutIter
-  TLayoutIter* = pointer
+  TLayoutIter* {.pure, final.} = object
   PContext* = ptr TContext
-  TContext* = pointer
+  TContext* {.pure, final.} = object
   PContextClass* = ptr TContextClass
-  TContextClass* = pointer
+  TContextClass* {.pure, final.} = object
   PFontsetSimple* = ptr TFontsetSimple
-  TFontsetSimple* = pointer
+  TFontsetSimple* {.pure, final.} = object
   PTabArray* = ptr TTabArray
-  TTabArray* = pointer
+  TTabArray* {.pure, final.} = object
   PGlyphString* = ptr TGlyphString
   PAnalysis* = ptr TAnalysis
   PItem* = ptr TItem
   PLanguage* = ptr TLanguage
-  TLanguage* = pointer
+  TLanguage* {.pure, final.} = object
   PGlyph* = ptr TGlyph
   TGlyph* = guint32
   PRectangle* = ptr TRectangle
@@ -256,8 +267,8 @@ proc language_get_type*(): GType{.cdecl, dynlib: lib,
                                   importc: "pango_language_get_type".}
 proc language_from_string*(language: cstring): PLanguage{.cdecl, dynlib: lib, 
     importc: "pango_language_from_string".}
-proc language_to_string*(language: PLanguage): cstring
-proc language_matches*(language: PLanguage, range_list: cstring): gboolean{.
+proc to_string*(language: PLanguage): cstring
+proc matches*(language: PLanguage, range_list: cstring): gboolean{.
     cdecl, dynlib: lib, importc: "pango_language_matches".}
 const 
   ATTR_INVALID* = 0
@@ -284,19 +295,19 @@ const
 proc TYPE_COLOR*(): GType
 proc color_get_type*(): GType{.cdecl, dynlib: lib, 
                                importc: "pango_color_get_type".}
-proc color_copy*(src: PColor): PColor{.cdecl, dynlib: lib, 
+proc copy*(src: PColor): PColor{.cdecl, dynlib: lib, 
                                        importc: "pango_color_copy".}
-proc color_free*(color: PColor){.cdecl, dynlib: lib, importc: "pango_color_free".}
-proc color_parse*(color: PColor, spec: cstring): gboolean{.cdecl, dynlib: lib, 
+proc free*(color: PColor){.cdecl, dynlib: lib, importc: "pango_color_free".}
+proc parse*(color: PColor, spec: cstring): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_color_parse".}
 proc TYPE_ATTR_LIST*(): GType
 proc attr_type_register*(name: cstring): TAttrType{.cdecl, dynlib: lib, 
     importc: "pango_attr_type_register".}
-proc attribute_copy*(attr: PAttribute): PAttribute{.cdecl, dynlib: lib, 
+proc copy*(attr: PAttribute): PAttribute{.cdecl, dynlib: lib, 
     importc: "pango_attribute_copy".}
-proc attribute_destroy*(attr: PAttribute){.cdecl, dynlib: lib, 
+proc destroy*(attr: PAttribute){.cdecl, dynlib: lib, 
     importc: "pango_attribute_destroy".}
-proc attribute_equal*(attr1: PAttribute, attr2: PAttribute): gboolean{.cdecl, 
+proc equal*(attr1: PAttribute, attr2: PAttribute): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_attribute_equal".}
 proc attr_language_new*(language: PLanguage): PAttribute{.cdecl, dynlib: lib, 
     importc: "pango_attr_language_new".}
@@ -332,21 +343,21 @@ proc attr_list_get_type*(): GType{.cdecl, dynlib: lib,
                                    importc: "pango_attr_list_get_type".}
 proc attr_list_new*(): PAttrList{.cdecl, dynlib: lib, 
                                   importc: "pango_attr_list_new".}
-proc attr_list_ref*(list: PAttrList){.cdecl, dynlib: lib, 
+proc reference*(list: PAttrList){.cdecl, dynlib: lib, 
                                       importc: "pango_attr_list_ref".}
-proc attr_list_unref*(list: PAttrList){.cdecl, dynlib: lib, 
+proc unref*(list: PAttrList){.cdecl, dynlib: lib, 
                                         importc: "pango_attr_list_unref".}
-proc attr_list_copy*(list: PAttrList): PAttrList{.cdecl, dynlib: lib, 
+proc copy*(list: PAttrList): PAttrList{.cdecl, dynlib: lib, 
     importc: "pango_attr_list_copy".}
-proc attr_list_insert*(list: PAttrList, attr: PAttribute){.cdecl, dynlib: lib, 
+proc insert*(list: PAttrList, attr: PAttribute){.cdecl, dynlib: lib, 
     importc: "pango_attr_list_insert".}
-proc attr_list_insert_before*(list: PAttrList, attr: PAttribute){.cdecl, 
+proc insert_before*(list: PAttrList, attr: PAttribute){.cdecl, 
     dynlib: lib, importc: "pango_attr_list_insert_before".}
-proc attr_list_change*(list: PAttrList, attr: PAttribute){.cdecl, dynlib: lib, 
+proc change*(list: PAttrList, attr: PAttribute){.cdecl, dynlib: lib, 
     importc: "pango_attr_list_change".}
-proc attr_list_splice*(list: PAttrList, other: PAttrList, pos: gint, len: gint){.
+proc splice*(list: PAttrList, other: PAttrList, pos: gint, len: gint){.
     cdecl, dynlib: lib, importc: "pango_attr_list_splice".}
-proc attr_list_get_iterator*(list: PAttrList): PAttrIterator{.cdecl, 
+proc get_iterator*(list: PAttrList): PAttrIterator{.cdecl, 
     dynlib: lib, importc: "pango_attr_list_get_iterator".}
 proc attr_iterator_range*(`iterator`: PAttrIterator, start: Pgint, theEnd: Pgint){.
     cdecl, dynlib: lib, importc: "pango_attr_iterator_range".}
@@ -421,50 +432,50 @@ proc CONTEXT*(anObject: pointer): PContext
 proc CONTEXT_CLASS*(klass: pointer): PContextClass
 proc IS_CONTEXT*(anObject: pointer): bool
 proc IS_CONTEXT_CLASS*(klass: pointer): bool
-proc CONTEXT_GET_CLASS*(obj: PContext): PContextClass
+proc GET_CLASS*(obj: PContext): PContextClass
 proc context_get_type*(): GType{.cdecl, dynlib: lib, 
                                  importc: "pango_context_get_type".}
-proc context_list_families*(context: PContext, 
+proc list_families*(context: PContext, 
                             families: openarray[ptr PFontFamily]){.cdecl, 
     dynlib: lib, importc: "pango_context_list_families".}
-proc context_load_font*(context: PContext, desc: PFontDescription): PFont{.
+proc load_font*(context: PContext, desc: PFontDescription): PFont{.
     cdecl, dynlib: lib, importc: "pango_context_load_font".}
-proc context_load_fontset*(context: PContext, desc: PFontDescription, 
+proc load_fontset*(context: PContext, desc: PFontDescription, 
                            language: PLanguage): PFontset{.cdecl, dynlib: lib, 
     importc: "pango_context_load_fontset".}
-proc context_get_metrics*(context: PContext, desc: PFontDescription, 
+proc get_metrics*(context: PContext, desc: PFontDescription, 
                           language: PLanguage): PFontMetrics{.cdecl, 
     dynlib: lib, importc: "pango_context_get_metrics".}
-proc context_set_font_description*(context: PContext, desc: PFontDescription){.
+proc set_font_description*(context: PContext, desc: PFontDescription){.
     cdecl, dynlib: lib, importc: "pango_context_set_font_description".}
-proc context_get_font_description*(context: PContext): PFontDescription{.cdecl, 
+proc get_font_description*(context: PContext): PFontDescription{.cdecl, 
     dynlib: lib, importc: "pango_context_get_font_description".}
-proc context_get_language*(context: PContext): PLanguage{.cdecl, dynlib: lib, 
+proc get_language*(context: PContext): PLanguage{.cdecl, dynlib: lib, 
     importc: "pango_context_get_language".}
-proc context_set_language*(context: PContext, language: PLanguage){.cdecl, 
+proc set_language*(context: PContext, language: PLanguage){.cdecl, 
     dynlib: lib, importc: "pango_context_set_language".}
-proc context_set_base_dir*(context: PContext, direction: TDirection){.cdecl, 
+proc set_base_dir*(context: PContext, direction: TDirection){.cdecl, 
     dynlib: lib, importc: "pango_context_set_base_dir".}
-proc context_get_base_dir*(context: PContext): TDirection{.cdecl, dynlib: lib, 
+proc get_base_dir*(context: PContext): TDirection{.cdecl, dynlib: lib, 
     importc: "pango_context_get_base_dir".}
 proc itemize*(context: PContext, text: cstring, start_index: int32, 
               length: int32, attrs: PAttrList, cached_iter: PAttrIterator): PGList{.
     cdecl, dynlib: lib, importc: "pango_itemize".}
 proc coverage_new*(): PCoverage{.cdecl, dynlib: lib, 
                                  importc: "pango_coverage_new".}
-proc coverage_ref*(coverage: PCoverage): PCoverage{.cdecl, dynlib: lib, 
+proc reference*(coverage: PCoverage): PCoverage{.cdecl, dynlib: lib, 
     importc: "pango_coverage_ref".}
-proc coverage_unref*(coverage: PCoverage){.cdecl, dynlib: lib, 
+proc unref*(coverage: PCoverage){.cdecl, dynlib: lib, 
     importc: "pango_coverage_unref".}
-proc coverage_copy*(coverage: PCoverage): PCoverage{.cdecl, dynlib: lib, 
+proc copy*(coverage: PCoverage): PCoverage{.cdecl, dynlib: lib, 
     importc: "pango_coverage_copy".}
-proc coverage_get*(coverage: PCoverage, index: int32): TCoverageLevel{.cdecl, 
+proc get*(coverage: PCoverage, index: int32): TCoverageLevel{.cdecl, 
     dynlib: lib, importc: "pango_coverage_get".}
-proc coverage_set*(coverage: PCoverage, index: int32, level: TCoverageLevel){.
+proc set*(coverage: PCoverage, index: int32, level: TCoverageLevel){.
     cdecl, dynlib: lib, importc: "pango_coverage_set".}
-proc coverage_max*(coverage: PCoverage, other: PCoverage){.cdecl, dynlib: lib, 
+proc max*(coverage: PCoverage, other: PCoverage){.cdecl, dynlib: lib, 
     importc: "pango_coverage_max".}
-proc coverage_to_bytes*(coverage: PCoverage, bytes: PPguchar, n_bytes: var int32){.
+proc to_bytes*(coverage: PCoverage, bytes: PPguchar, n_bytes: var int32){.
     cdecl, dynlib: lib, importc: "pango_coverage_to_bytes".}
 proc coverage_from_bytes*(bytes: Pguchar, n_bytes: int32): PCoverage{.cdecl, 
     dynlib: lib, importc: "pango_coverage_from_bytes".}
@@ -473,9 +484,9 @@ proc FONTSET*(anObject: pointer): PFontset
 proc IS_FONTSET*(anObject: pointer): bool
 proc fontset_get_type*(): GType{.cdecl, dynlib: lib, 
                                  importc: "pango_fontset_get_type".}
-proc fontset_get_font*(fontset: PFontset, wc: guint): PFont{.cdecl, dynlib: lib, 
+proc get_font*(fontset: PFontset, wc: guint): PFont{.cdecl, dynlib: lib, 
     importc: "pango_fontset_get_font".}
-proc fontset_get_metrics*(fontset: PFontset): PFontMetrics{.cdecl, dynlib: lib, 
+proc get_metrics*(fontset: PFontset): PFontMetrics{.cdecl, dynlib: lib, 
     importc: "pango_fontset_get_metrics".}
 const 
   STYLE_NORMAL* = 0
@@ -517,84 +528,84 @@ proc font_description_get_type*(): GType{.cdecl, dynlib: lib,
     importc: "pango_font_description_get_type".}
 proc font_description_new*(): PFontDescription{.cdecl, dynlib: lib, 
     importc: "pango_font_description_new".}
-proc font_description_copy*(desc: PFontDescription): PFontDescription{.cdecl, 
+proc copy*(desc: PFontDescription): PFontDescription{.cdecl, 
     dynlib: lib, importc: "pango_font_description_copy".}
-proc font_description_copy_static*(desc: PFontDescription): PFontDescription{.
+proc copy_static*(desc: PFontDescription): PFontDescription{.
     cdecl, dynlib: lib, importc: "pango_font_description_copy_static".}
-proc font_description_hash*(desc: PFontDescription): guint{.cdecl, dynlib: lib, 
+proc hash*(desc: PFontDescription): guint{.cdecl, dynlib: lib, 
     importc: "pango_font_description_hash".}
-proc font_description_equal*(desc1: PFontDescription, desc2: PFontDescription): gboolean{.
+proc equal*(desc1: PFontDescription, desc2: PFontDescription): gboolean{.
     cdecl, dynlib: lib, importc: "pango_font_description_equal".}
-proc font_description_free*(desc: PFontDescription){.cdecl, dynlib: lib, 
+proc free*(desc: PFontDescription){.cdecl, dynlib: lib, 
     importc: "pango_font_description_free".}
 proc font_descriptions_free*(descs: var PFontDescription, n_descs: int32){.
     cdecl, dynlib: lib, importc: "pango_font_descriptions_free".}
-proc font_description_set_family*(desc: PFontDescription, family: cstring){.
+proc set_family*(desc: PFontDescription, family: cstring){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_family".}
-proc font_description_set_family_static*(desc: PFontDescription, family: cstring){.
+proc set_family_static*(desc: PFontDescription, family: cstring){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_family_static".}
-proc font_description_get_family*(desc: PFontDescription): cstring{.cdecl, 
+proc get_family*(desc: PFontDescription): cstring{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_family".}
-proc font_description_set_style*(desc: PFontDescription, style: TStyle){.cdecl, 
+proc set_style*(desc: PFontDescription, style: TStyle){.cdecl, 
     dynlib: lib, importc: "pango_font_description_set_style".}
-proc font_description_get_style*(desc: PFontDescription): TStyle{.cdecl, 
+proc get_style*(desc: PFontDescription): TStyle{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_style".}
-proc font_description_set_variant*(desc: PFontDescription, variant: TVariant){.
+proc set_variant*(desc: PFontDescription, variant: TVariant){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_variant".}
-proc font_description_get_variant*(desc: PFontDescription): TVariant{.cdecl, 
+proc get_variant*(desc: PFontDescription): TVariant{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_variant".}
-proc font_description_set_weight*(desc: PFontDescription, weight: TWeight){.
+proc set_weight*(desc: PFontDescription, weight: TWeight){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_weight".}
-proc font_description_get_weight*(desc: PFontDescription): TWeight{.cdecl, 
+proc get_weight*(desc: PFontDescription): TWeight{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_weight".}
-proc font_description_set_stretch*(desc: PFontDescription, stretch: TStretch){.
+proc set_stretch*(desc: PFontDescription, stretch: TStretch){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_stretch".}
-proc font_description_get_stretch*(desc: PFontDescription): TStretch{.cdecl, 
+proc get_stretch*(desc: PFontDescription): TStretch{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_stretch".}
-proc font_description_set_size*(desc: PFontDescription, size: gint){.cdecl, 
+proc set_size*(desc: PFontDescription, size: gint){.cdecl, 
     dynlib: lib, importc: "pango_font_description_set_size".}
-proc font_description_get_size*(desc: PFontDescription): gint{.cdecl, 
+proc get_size*(desc: PFontDescription): gint{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_size".}
-proc font_description_set_absolute_size*(desc: PFontDescription, size: float64){.
+proc set_absolute_size*(desc: PFontDescription, size: float64){.
     cdecl, dynlib: lib, importc: "pango_font_description_set_absolute_size".}
-proc font_description_get_size_is_absolute*(desc: PFontDescription, 
+proc get_size_is_absolute*(desc: PFontDescription, 
     size: float64): gboolean{.cdecl, dynlib: lib, importc: "pango_font_description_get_size_is_absolute".}
-proc font_description_get_set_fields*(desc: PFontDescription): TFontMask{.cdecl, 
+proc get_set_fields*(desc: PFontDescription): TFontMask{.cdecl, 
     dynlib: lib, importc: "pango_font_description_get_set_fields".}
-proc font_description_unset_fields*(desc: PFontDescription, to_unset: TFontMask){.
+proc unset_fields*(desc: PFontDescription, to_unset: TFontMask){.
     cdecl, dynlib: lib, importc: "pango_font_description_unset_fields".}
-proc font_description_merge*(desc: PFontDescription, 
+proc merge*(desc: PFontDescription, 
                              desc_to_merge: PFontDescription, 
                              replace_existing: gboolean){.cdecl, dynlib: lib, 
     importc: "pango_font_description_merge".}
-proc font_description_merge_static*(desc: PFontDescription, 
+proc merge_static*(desc: PFontDescription, 
                                     desc_to_merge: PFontDescription, 
                                     replace_existing: gboolean){.cdecl, 
     dynlib: lib, importc: "pango_font_description_merge_static".}
-proc font_description_better_match*(desc: PFontDescription, 
+proc better_match*(desc: PFontDescription, 
                                     old_match: PFontDescription, 
                                     new_match: PFontDescription): gboolean{.
     cdecl, dynlib: lib, importc: "pango_font_description_better_match".}
 proc font_description_from_string*(str: cstring): PFontDescription{.cdecl, 
     dynlib: lib, importc: "pango_font_description_from_string".}
-proc font_description_to_string*(desc: PFontDescription): cstring{.cdecl, 
+proc to_string*(desc: PFontDescription): cstring{.cdecl, 
     dynlib: lib, importc: "pango_font_description_to_string".}
-proc font_description_to_filename*(desc: PFontDescription): cstring{.cdecl, 
+proc to_filename*(desc: PFontDescription): cstring{.cdecl, 
     dynlib: lib, importc: "pango_font_description_to_filename".}
 proc TYPE_FONT_METRICS*(): GType
 proc font_metrics_get_type*(): GType{.cdecl, dynlib: lib, 
                                       importc: "pango_font_metrics_get_type".}
-proc font_metrics_ref*(metrics: PFontMetrics): PFontMetrics{.cdecl, dynlib: lib, 
+proc reference*(metrics: PFontMetrics): PFontMetrics{.cdecl, dynlib: lib, 
     importc: "pango_font_metrics_ref".}
-proc font_metrics_unref*(metrics: PFontMetrics){.cdecl, dynlib: lib, 
+proc unref*(metrics: PFontMetrics){.cdecl, dynlib: lib, 
     importc: "pango_font_metrics_unref".}
-proc font_metrics_get_ascent*(metrics: PFontMetrics): int32{.cdecl, dynlib: lib, 
+proc get_ascent*(metrics: PFontMetrics): int32{.cdecl, dynlib: lib, 
     importc: "pango_font_metrics_get_ascent".}
-proc font_metrics_get_descent*(metrics: PFontMetrics): int32{.cdecl, 
+proc get_descent*(metrics: PFontMetrics): int32{.cdecl, 
     dynlib: lib, importc: "pango_font_metrics_get_descent".}
-proc font_metrics_get_approximate_char_width*(metrics: PFontMetrics): int32{.
+proc get_approximate_char_width*(metrics: PFontMetrics): int32{.
     cdecl, dynlib: lib, importc: "pango_font_metrics_get_approximate_char_width".}
-proc font_metrics_get_approximate_digit_width*(metrics: PFontMetrics): int32{.
+proc get_approximate_digit_width*(metrics: PFontMetrics): int32{.
     cdecl, dynlib: lib, 
     importc: "pango_font_metrics_get_approximate_digit_width".}
 proc TYPE_FONT_FAMILY*(): GType
@@ -602,33 +613,33 @@ proc FONT_FAMILY*(anObject: Pointer): PFontFamily
 proc IS_FONT_FAMILY*(anObject: Pointer): bool
 proc font_family_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "pango_font_family_get_type".}
-proc font_family_list_faces*(family: PFontFamily, 
+proc list_faces*(family: PFontFamily, 
                              faces: var openarray[ptr PFontFace]){.cdecl, 
     dynlib: lib, importc: "pango_font_family_list_faces".}
-proc font_family_get_name*(family: PFontFamily): cstring{.cdecl, dynlib: lib, 
+proc get_name*(family: PFontFamily): cstring{.cdecl, dynlib: lib, 
     importc: "pango_font_family_get_name".}
 proc TYPE_FONT_FACE*(): GType
 proc FONT_FACE*(anObject: pointer): PFontFace
 proc IS_FONT_FACE*(anObject: pointer): bool
 proc font_face_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "pango_font_face_get_type".}
-proc font_face_describe*(face: PFontFace): PFontDescription{.cdecl, dynlib: lib, 
+proc describe*(face: PFontFace): PFontDescription{.cdecl, dynlib: lib, 
     importc: "pango_font_face_describe".}
-proc font_face_get_face_name*(face: PFontFace): cstring{.cdecl, dynlib: lib, 
+proc get_face_name*(face: PFontFace): cstring{.cdecl, dynlib: lib, 
     importc: "pango_font_face_get_face_name".}
 proc TYPE_FONT*(): GType
 proc FONT*(anObject: pointer): PFont
 proc IS_FONT*(anObject: pointer): bool
 proc font_get_type*(): GType{.cdecl, dynlib: lib, importc: "pango_font_get_type".}
-proc font_describe*(font: PFont): PFontDescription{.cdecl, dynlib: lib, 
+proc describe*(font: PFont): PFontDescription{.cdecl, dynlib: lib, 
     importc: "pango_font_describe".}
-proc font_get_coverage*(font: PFont, language: PLanguage): PCoverage{.cdecl, 
+proc get_coverage*(font: PFont, language: PLanguage): PCoverage{.cdecl, 
     dynlib: lib, importc: "pango_font_get_coverage".}
-proc font_find_shaper*(font: PFont, language: PLanguage, ch: guint32): PEngineShape{.
+proc find_shaper*(font: PFont, language: PLanguage, ch: guint32): PEngineShape{.
     cdecl, dynlib: lib, importc: "pango_font_find_shaper".}
-proc font_get_metrics*(font: PFont, language: PLanguage): PFontMetrics{.cdecl, 
+proc get_metrics*(font: PFont, language: PLanguage): PFontMetrics{.cdecl, 
     dynlib: lib, importc: "pango_font_get_metrics".}
-proc font_get_glyph_extents*(font: PFont, glyph: TGlyph, ink_rect: PRectangle, 
+proc get_glyph_extents*(font: PFont, glyph: TGlyph, ink_rect: PRectangle, 
                              logical_rect: PRectangle){.cdecl, dynlib: lib, 
     importc: "pango_font_get_glyph_extents".}
 proc TYPE_FONT_MAP*(): GType
@@ -636,13 +647,13 @@ proc FONT_MAP*(anObject: pointer): PFontMap
 proc IS_FONT_MAP*(anObject: pointer): bool
 proc font_map_get_type*(): GType{.cdecl, dynlib: lib, 
                                   importc: "pango_font_map_get_type".}
-proc font_map_load_font*(fontmap: PFontMap, context: PContext, 
+proc load_font*(fontmap: PFontMap, context: PContext, 
                          desc: PFontDescription): PFont{.cdecl, dynlib: lib, 
     importc: "pango_font_map_load_font".}
-proc font_map_load_fontset*(fontmap: PFontMap, context: PContext, 
+proc load_fontset*(fontmap: PFontMap, context: PContext, 
                             desc: PFontDescription, language: PLanguage): PFontset{.
     cdecl, dynlib: lib, importc: "pango_font_map_load_fontset".}
-proc font_map_list_families*(fontmap: PFontMap, 
+proc list_families*(fontmap: PFontMap, 
                              families: var openarray[ptr PFontFamily]){.cdecl, 
     dynlib: lib, importc: "pango_font_map_list_families".}
 const 
@@ -662,22 +673,22 @@ proc glyph_string_copy*(`string`: PGlyphString): PGlyphString{.cdecl,
     dynlib: lib, importc: "pango_glyph_string_copy".}
 proc glyph_string_free*(`string`: PGlyphString){.cdecl, dynlib: lib, 
     importc: "pango_glyph_string_free".}
-proc glyph_string_extents*(glyphs: PGlyphString, font: PFont, 
+proc extents*(glyphs: PGlyphString, font: PFont, 
                            ink_rect: PRectangle, logical_rect: PRectangle){.
     cdecl, dynlib: lib, importc: "pango_glyph_string_extents".}
-proc glyph_string_extents_range*(glyphs: PGlyphString, start: int32, 
+proc extents_range*(glyphs: PGlyphString, start: int32, 
                                  theEnd: int32, font: PFont, 
                                  ink_rect: PRectangle, logical_rect: PRectangle){.
     cdecl, dynlib: lib, importc: "pango_glyph_string_extents_range".}
-proc glyph_string_get_logical_widths*(glyphs: PGlyphString, text: cstring, 
+proc get_logical_widths*(glyphs: PGlyphString, text: cstring, 
                                       length: int32, embedding_level: int32, 
                                       logical_widths: var int32){.cdecl, 
     dynlib: lib, importc: "pango_glyph_string_get_logical_widths".}
-proc glyph_string_index_to_x*(glyphs: PGlyphString, text: cstring, 
+proc index_to_x*(glyphs: PGlyphString, text: cstring, 
                               length: int32, analysis: PAnalysis, index: int32, 
                               trailing: gboolean, x_pos: var int32){.cdecl, 
     dynlib: lib, importc: "pango_glyph_string_index_to_x".}
-proc glyph_string_x_to_index*(glyphs: PGlyphString, text: cstring, 
+proc x_to_index*(glyphs: PGlyphString, text: cstring, 
                               length: int32, analysis: PAnalysis, x_pos: int32, 
                               index, trailing: var int32){.cdecl, dynlib: lib, 
     importc: "pango_glyph_string_x_to_index".}
@@ -686,182 +697,182 @@ proc shape*(text: cstring, length: gint, analysis: PAnalysis,
 proc reorder_items*(logical_items: PGList): PGList{.cdecl, dynlib: lib, 
     importc: "pango_reorder_items".}
 proc item_new*(): PItem{.cdecl, dynlib: lib, importc: "pango_item_new".}
-proc item_copy*(item: PItem): PItem{.cdecl, dynlib: lib, 
+proc copy*(item: PItem): PItem{.cdecl, dynlib: lib, 
                                      importc: "pango_item_copy".}
-proc item_free*(item: PItem){.cdecl, dynlib: lib, importc: "pango_item_free".}
-proc item_split*(orig: PItem, split_index: int32, split_offset: int32): PItem{.
+proc free*(item: PItem){.cdecl, dynlib: lib, importc: "pango_item_free".}
+proc split*(orig: PItem, split_index: int32, split_offset: int32): PItem{.
     cdecl, dynlib: lib, importc: "pango_item_split".}
 proc TYPE_LAYOUT*(): GType
 proc LAYOUT*(anObject: pointer): PLayout
 proc LAYOUT_CLASS*(klass: pointer): PLayoutClass
 proc IS_LAYOUT*(anObject: pointer): bool
 proc IS_LAYOUT_CLASS*(klass: pointer): bool
-proc LAYOUT_GET_CLASS*(obj: PLayout): PLayoutClass
+proc GET_CLASS*(obj: PLayout): PLayoutClass
 proc layout_get_type*(): GType{.cdecl, dynlib: lib, 
                                 importc: "pango_layout_get_type".}
 proc layout_new*(context: PContext): PLayout{.cdecl, dynlib: lib, 
     importc: "pango_layout_new".}
-proc layout_copy*(src: PLayout): PLayout{.cdecl, dynlib: lib, 
+proc copy*(src: PLayout): PLayout{.cdecl, dynlib: lib, 
     importc: "pango_layout_copy".}
-proc layout_get_context*(layout: PLayout): PContext{.cdecl, dynlib: lib, 
+proc get_context*(layout: PLayout): PContext{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_context".}
-proc layout_set_attributes*(layout: PLayout, attrs: PAttrList){.cdecl, 
+proc set_attributes*(layout: PLayout, attrs: PAttrList){.cdecl, 
     dynlib: lib, importc: "pango_layout_set_attributes".}
-proc layout_get_attributes*(layout: PLayout): PAttrList{.cdecl, dynlib: lib, 
+proc get_attributes*(layout: PLayout): PAttrList{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_attributes".}
-proc layout_set_text*(layout: PLayout, text: cstring, length: int32){.cdecl, 
+proc set_text*(layout: PLayout, text: cstring, length: int32){.cdecl, 
     dynlib: lib, importc: "pango_layout_set_text".}
-proc layout_get_text*(layout: PLayout): cstring{.cdecl, dynlib: lib, 
+proc get_text*(layout: PLayout): cstring{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_text".}
-proc layout_set_markup*(layout: PLayout, markup: cstring, length: int32){.cdecl, 
+proc set_markup*(layout: PLayout, markup: cstring, length: int32){.cdecl, 
     dynlib: lib, importc: "pango_layout_set_markup".}
-proc layout_set_markup_with_accel*(layout: PLayout, markup: cstring, 
+proc set_markup_with_accel*(layout: PLayout, markup: cstring, 
                                    length: int32, accel_marker: gunichar, 
                                    accel_char: Pgunichar){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_markup_with_accel".}
-proc layout_set_font_description*(layout: PLayout, desc: PFontDescription){.
+proc set_font_description*(layout: PLayout, desc: PFontDescription){.
     cdecl, dynlib: lib, importc: "pango_layout_set_font_description".}
-proc layout_set_width*(layout: PLayout, width: int32){.cdecl, dynlib: lib, 
+proc set_width*(layout: PLayout, width: int32){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_width".}
-proc layout_get_width*(layout: PLayout): int32{.cdecl, dynlib: lib, 
+proc get_width*(layout: PLayout): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_width".}
-proc layout_set_wrap*(layout: PLayout, wrap: TWrapMode){.cdecl, dynlib: lib, 
+proc set_wrap*(layout: PLayout, wrap: TWrapMode){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_wrap".}
-proc layout_get_wrap*(layout: PLayout): TWrapMode{.cdecl, dynlib: lib, 
+proc get_wrap*(layout: PLayout): TWrapMode{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_wrap".}
-proc layout_set_indent*(layout: PLayout, indent: int32){.cdecl, dynlib: lib, 
+proc set_indent*(layout: PLayout, indent: int32){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_indent".}
-proc layout_get_indent*(layout: PLayout): int32{.cdecl, dynlib: lib, 
+proc get_indent*(layout: PLayout): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_indent".}
-proc layout_set_spacing*(layout: PLayout, spacing: int32){.cdecl, dynlib: lib, 
+proc set_spacing*(layout: PLayout, spacing: int32){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_spacing".}
-proc layout_get_spacing*(layout: PLayout): int32{.cdecl, dynlib: lib, 
+proc get_spacing*(layout: PLayout): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_spacing".}
-proc layout_set_justify*(layout: PLayout, justify: gboolean){.cdecl, 
+proc set_justify*(layout: PLayout, justify: gboolean){.cdecl, 
     dynlib: lib, importc: "pango_layout_set_justify".}
-proc layout_get_justify*(layout: PLayout): gboolean{.cdecl, dynlib: lib, 
+proc get_justify*(layout: PLayout): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_justify".}
-proc layout_set_alignment*(layout: PLayout, alignment: TAlignment){.cdecl, 
+proc set_alignment*(layout: PLayout, alignment: TAlignment){.cdecl, 
     dynlib: lib, importc: "pango_layout_set_alignment".}
-proc layout_get_alignment*(layout: PLayout): TAlignment{.cdecl, dynlib: lib, 
+proc get_alignment*(layout: PLayout): TAlignment{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_alignment".}
-proc layout_set_tabs*(layout: PLayout, tabs: PTabArray){.cdecl, dynlib: lib, 
+proc set_tabs*(layout: PLayout, tabs: PTabArray){.cdecl, dynlib: lib, 
     importc: "pango_layout_set_tabs".}
-proc layout_get_tabs*(layout: PLayout): PTabArray{.cdecl, dynlib: lib, 
+proc get_tabs*(layout: PLayout): PTabArray{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_tabs".}
-proc layout_set_single_paragraph_mode*(layout: PLayout, setting: gboolean){.
+proc set_single_paragraph_mode*(layout: PLayout, setting: gboolean){.
     cdecl, dynlib: lib, importc: "pango_layout_set_single_paragraph_mode".}
-proc layout_get_single_paragraph_mode*(layout: PLayout): gboolean{.cdecl, 
+proc get_single_paragraph_mode*(layout: PLayout): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_layout_get_single_paragraph_mode".}
-proc layout_context_changed*(layout: PLayout){.cdecl, dynlib: lib, 
+proc context_changed*(layout: PLayout){.cdecl, dynlib: lib, 
     importc: "pango_layout_context_changed".}
-proc layout_get_log_attrs*(layout: PLayout, attrs: var PLogAttr, n_attrs: Pgint){.
+proc get_log_attrs*(layout: PLayout, attrs: var PLogAttr, n_attrs: Pgint){.
     cdecl, dynlib: lib, importc: "pango_layout_get_log_attrs".}
-proc layout_index_to_pos*(layout: PLayout, index: int32, pos: PRectangle){.
+proc index_to_pos*(layout: PLayout, index: int32, pos: PRectangle){.
     cdecl, dynlib: lib, importc: "pango_layout_index_to_pos".}
-proc layout_get_cursor_pos*(layout: PLayout, index: int32, 
+proc get_cursor_pos*(layout: PLayout, index: int32, 
                             strong_pos: PRectangle, weak_pos: PRectangle){.
     cdecl, dynlib: lib, importc: "pango_layout_get_cursor_pos".}
-proc layout_move_cursor_visually*(layout: PLayout, strong: gboolean, 
+proc move_cursor_visually*(layout: PLayout, strong: gboolean, 
                                   old_index: int32, old_trailing: int32, 
                                   direction: int32, 
                                   new_index, new_trailing: var int32){.cdecl, 
     dynlib: lib, importc: "pango_layout_move_cursor_visually".}
-proc layout_xy_to_index*(layout: PLayout, x: int32, y: int32, 
+proc xy_to_index*(layout: PLayout, x: int32, y: int32, 
                          index, trailing: var int32): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_layout_xy_to_index".}
-proc layout_get_extents*(layout: PLayout, ink_rect: PRectangle, 
+proc get_extents*(layout: PLayout, ink_rect: PRectangle, 
                          logical_rect: PRectangle){.cdecl, dynlib: lib, 
     importc: "pango_layout_get_extents".}
-proc layout_get_pixel_extents*(layout: PLayout, ink_rect: PRectangle, 
+proc get_pixel_extents*(layout: PLayout, ink_rect: PRectangle, 
                                logical_rect: PRectangle){.cdecl, dynlib: lib, 
     importc: "pango_layout_get_pixel_extents".}
-proc layout_get_size*(layout: PLayout, width: var int32, height: var int32){.
+proc get_size*(layout: PLayout, width: var int32, height: var int32){.
     cdecl, dynlib: lib, importc: "pango_layout_get_size".}
-proc layout_get_pixel_size*(layout: PLayout, width: var int32, height: var int32){.
+proc get_pixel_size*(layout: PLayout, width: var int32, height: var int32){.
     cdecl, dynlib: lib, importc: "pango_layout_get_pixel_size".}
-proc layout_get_line_count*(layout: PLayout): int32{.cdecl, dynlib: lib, 
+proc get_line_count*(layout: PLayout): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_line_count".}
-proc layout_get_line*(layout: PLayout, line: int32): PLayoutLine{.cdecl, 
+proc get_line*(layout: PLayout, line: int32): PLayoutLine{.cdecl, 
     dynlib: lib, importc: "pango_layout_get_line".}
-proc layout_get_lines*(layout: PLayout): PGSList{.cdecl, dynlib: lib, 
+proc get_lines*(layout: PLayout): PGSList{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_lines".}
-proc layout_line_ref*(line: PLayoutLine){.cdecl, dynlib: lib, 
+proc reference*(line: PLayoutLine){.cdecl, dynlib: lib, 
     importc: "pango_layout_line_ref".}
-proc layout_line_unref*(line: PLayoutLine){.cdecl, dynlib: lib, 
+proc unref*(line: PLayoutLine){.cdecl, dynlib: lib, 
     importc: "pango_layout_line_unref".}
-proc layout_line_x_to_index*(line: PLayoutLine, x_pos: int32, index: var int32, 
+proc x_to_index*(line: PLayoutLine, x_pos: int32, index: var int32, 
                              trailing: var int32): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_line_x_to_index".}
-proc layout_line_index_to_x*(line: PLayoutLine, index: int32, 
+proc index_to_x*(line: PLayoutLine, index: int32, 
                              trailing: gboolean, x_pos: var int32){.cdecl, 
     dynlib: lib, importc: "pango_layout_line_index_to_x".}
-proc layout_line_get_extents*(line: PLayoutLine, ink_rect: PRectangle, 
+proc get_extents*(line: PLayoutLine, ink_rect: PRectangle, 
                               logical_rect: PRectangle){.cdecl, dynlib: lib, 
     importc: "pango_layout_line_get_extents".}
-proc layout_line_get_pixel_extents*(layout_line: PLayoutLine, 
+proc get_pixel_extents*(layout_line: PLayoutLine, 
                                     ink_rect: PRectangle, 
                                     logical_rect: PRectangle){.cdecl, 
     dynlib: lib, importc: "pango_layout_line_get_pixel_extents".}
-proc layout_get_iter*(layout: PLayout): PLayoutIter{.cdecl, dynlib: lib, 
+proc get_iter*(layout: PLayout): PLayoutIter{.cdecl, dynlib: lib, 
     importc: "pango_layout_get_iter".}
-proc layout_iter_free*(iter: PLayoutIter){.cdecl, dynlib: lib, 
+proc free*(iter: PLayoutIter){.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_free".}
-proc layout_iter_get_index*(iter: PLayoutIter): int32{.cdecl, dynlib: lib, 
+proc get_index*(iter: PLayoutIter): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_index".}
-proc layout_iter_get_run*(iter: PLayoutIter): PLayoutRun{.cdecl, dynlib: lib, 
+proc get_run*(iter: PLayoutIter): PLayoutRun{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_run".}
-proc layout_iter_get_line*(iter: PLayoutIter): PLayoutLine{.cdecl, dynlib: lib, 
+proc get_line*(iter: PLayoutIter): PLayoutLine{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_line".}
-proc layout_iter_at_last_line*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
+proc at_last_line*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_at_last_line".}
-proc layout_iter_next_char*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
+proc next_char*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_next_char".}
-proc layout_iter_next_cluster*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
+proc next_cluster*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_next_cluster".}
-proc layout_iter_next_run*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
+proc next_run*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_next_run".}
-proc layout_iter_next_line*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
+proc next_line*(iter: PLayoutIter): gboolean{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_next_line".}
-proc layout_iter_get_char_extents*(iter: PLayoutIter, logical_rect: PRectangle){.
+proc get_char_extents*(iter: PLayoutIter, logical_rect: PRectangle){.
     cdecl, dynlib: lib, importc: "pango_layout_iter_get_char_extents".}
-proc layout_iter_get_cluster_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
+proc get_cluster_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
                                       logical_rect: PRectangle){.cdecl, 
     dynlib: lib, importc: "pango_layout_iter_get_cluster_extents".}
-proc layout_iter_get_run_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
+proc get_run_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
                                   logical_rect: PRectangle){.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_run_extents".}
-proc layout_iter_get_line_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
+proc get_line_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
                                    logical_rect: PRectangle){.cdecl, 
     dynlib: lib, importc: "pango_layout_iter_get_line_extents".}
-proc layout_iter_get_line_yrange*(iter: PLayoutIter, y0: var int32, 
+proc get_line_yrange*(iter: PLayoutIter, y0: var int32, 
                                   y1: var int32){.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_line_yrange".}
-proc layout_iter_get_layout_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
+proc get_layout_extents*(iter: PLayoutIter, ink_rect: PRectangle, 
                                      logical_rect: PRectangle){.cdecl, 
     dynlib: lib, importc: "pango_layout_iter_get_layout_extents".}
-proc layout_iter_get_baseline*(iter: PLayoutIter): int32{.cdecl, dynlib: lib, 
+proc get_baseline*(iter: PLayoutIter): int32{.cdecl, dynlib: lib, 
     importc: "pango_layout_iter_get_baseline".}
 proc TYPE_TAB_ARRAY*(): GType
 proc tab_array_new*(initial_size: gint, positions_in_pixels: gboolean): PTabArray{.
     cdecl, dynlib: lib, importc: "pango_tab_array_new".}
 proc tab_array_get_type*(): GType{.cdecl, dynlib: lib, 
                                    importc: "pango_tab_array_get_type".}
-proc tab_array_copy*(src: PTabArray): PTabArray{.cdecl, dynlib: lib, 
+proc copy*(src: PTabArray): PTabArray{.cdecl, dynlib: lib, 
     importc: "pango_tab_array_copy".}
-proc tab_array_free*(tab_array: PTabArray){.cdecl, dynlib: lib, 
+proc free*(tab_array: PTabArray){.cdecl, dynlib: lib, 
     importc: "pango_tab_array_free".}
-proc tab_array_get_size*(tab_array: PTabArray): gint{.cdecl, dynlib: lib, 
+proc get_size*(tab_array: PTabArray): gint{.cdecl, dynlib: lib, 
     importc: "pango_tab_array_get_size".}
-proc tab_array_resize*(tab_array: PTabArray, new_size: gint){.cdecl, 
+proc resize*(tab_array: PTabArray, new_size: gint){.cdecl, 
     dynlib: lib, importc: "pango_tab_array_resize".}
-proc tab_array_set_tab*(tab_array: PTabArray, tab_index: gint, 
+proc set_tab*(tab_array: PTabArray, tab_index: gint, 
                         alignment: TTabAlign, location: gint){.cdecl, 
     dynlib: lib, importc: "pango_tab_array_set_tab".}
-proc tab_array_get_tab*(tab_array: PTabArray, tab_index: gint, 
+proc get_tab*(tab_array: PTabArray, tab_index: gint, 
                         alignment: PTabAlign, location: Pgint){.cdecl, 
     dynlib: lib, importc: "pango_tab_array_get_tab".}
-proc tab_array_get_positions_in_pixels*(tab_array: PTabArray): gboolean{.cdecl, 
+proc get_positions_in_pixels*(tab_array: PTabArray): gboolean{.cdecl, 
     dynlib: lib, importc: "pango_tab_array_get_positions_in_pixels".}
 proc ASCENT*(rect: TRectangle): int32 = 
   result = - int(rect.y)
@@ -878,7 +889,7 @@ proc RBEARING*(rect: TRectangle): int32 =
 proc TYPE_LANGUAGE*(): GType = 
   result = language_get_type()
 
-proc language_to_string*(language: PLanguage): cstring = 
+proc to_string*(language: PLanguage): cstring = 
   result = cast[cstring](language)
 
 proc PIXELS*(d: int): int = 
@@ -998,7 +1009,7 @@ proc IS_CONTEXT*(anObject: pointer): bool =
 proc IS_CONTEXT_CLASS*(klass: pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_CONTEXT())
 
-proc CONTEXT_GET_CLASS*(obj: PContext): PContextClass = 
+proc GET_CLASS*(obj: PContext): PContextClass = 
   result = cast[PContextClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_CONTEXT()))
 
 proc TYPE_FONTSET*(): GType = 
@@ -1016,7 +1027,7 @@ proc FONTSET_CLASS*(klass: pointer): PFontsetClass =
 proc IS_FONTSET_CLASS*(klass: pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_FONTSET())
 
-proc FONTSET_GET_CLASS*(obj: PFontset): PFontsetClass = 
+proc GET_CLASS*(obj: PFontset): PFontsetClass = 
   result = cast[PFontsetClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_FONTSET()))
 
 proc fontset_simple_get_type(): GType{.importc: "pango_fontset_simple_get_type", 
@@ -1054,7 +1065,7 @@ proc FONT_FAMILY_CLASS*(klass: Pointer): PFontFamilyClass =
 proc IS_FONT_FAMILY_CLASS*(klass: Pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_FONT_FAMILY())
 
-proc FONT_FAMILY_GET_CLASS*(obj: PFontFamily): PFontFamilyClass = 
+proc GET_CLASS*(obj: PFontFamily): PFontFamilyClass = 
   result = cast[PFontFamilyClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_FONT_FAMILY()))
 
@@ -1091,7 +1102,7 @@ proc FONT_CLASS*(klass: Pointer): PFontClass =
 proc IS_FONT_CLASS*(klass: Pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_FONT())
 
-proc FONT_GET_CLASS*(obj: PFont): PFontClass = 
+proc GET_CLASS*(obj: PFont): PFontClass = 
   result = cast[PFontClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_FONT()))
 
 proc TYPE_FONT_MAP*(): GType = 
@@ -1109,7 +1120,7 @@ proc FONT_MAP_CLASS*(klass: pointer): PFontMapClass =
 proc IS_FONT_MAP_CLASS*(klass: pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_FONT_MAP())
 
-proc FONT_MAP_GET_CLASS*(obj: PFontMap): PFontMapClass = 
+proc GET_CLASS*(obj: PFontMap): PFontMapClass = 
   result = cast[PFontMapClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_FONT_MAP()))
 
 proc is_cluster_start*(a: var TGlyphVisAttr): guint = 
@@ -1139,7 +1150,7 @@ proc IS_LAYOUT*(anObject: pointer): bool =
 proc IS_LAYOUT_CLASS*(klass: pointer): bool = 
   result = G_TYPE_CHECK_CLASS_TYPE(klass, TYPE_LAYOUT())
 
-proc LAYOUT_GET_CLASS*(obj: PLayout): PLayoutClass = 
+proc GET_CLASS*(obj: PLayout): PLayoutClass = 
   result = cast[PLayoutClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_LAYOUT()))
 
 proc TYPE_TAB_ARRAY*(): GType = 

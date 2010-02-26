@@ -279,19 +279,57 @@ const ## common regular expressions
     ## describes an URL
 
 when isMainModule:
-  echo matchLen("key", re"[a-zA-Z_][a-zA-Z_0-9]*")
+  assert match("(a b c)", re"'(' @ ')'")
+  assert match("WHiLe", re(r"while", {reIgnoreCase}))
+  
+  assert "0158787".match(re"\d+")
+  assert "ABC 0232".match(re"\w+\s+\d+")
+  assert "ABC".match(re"\d+ / \w+")
 
-  var pattern = re"[a-zA-Z_][a-zA-Z_0-9]*\s*=\s*[a-zA-Z_][a-zA-Z_0-9]*"
-  echo matchLen("key1=  cal9", pattern, 2)
+  for word in split("00232this02939is39an22example111", re"\d+"):
+    writeln(stdout, word)
 
-  echo find("_____abc_______", re("abc"), 3)
-  #echo "var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2")
-  #echo "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
+  assert matchLen("key", re(reIdentifier)) == 3
 
-  if "abc" =~ re"(a)bc xyz|([a-z]+)":
-    echo matches[0]
+  var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+")
+  assert matchLen("key1=  cal9", pattern) == 11
+  
+  var c: TMatchClosure
+  var s = "a+b +  c +d+e+f"
+  assert m(s, expr.rule, 0, c) == len(s)
+  var a = ""
+  for i in 0..c.ml-1:
+    a.add(copy(s, c.matches[i][0], c.matches[i][1]))
+  assert a == "abcdef"
+  #echo expr.rule
+
+  #const filename = "lib/devel/peg/grammar.txt"
+  #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
+  #echo "a <- [abc]*?".match(grammar)
+  assert find("_____abc_______", term("abc")) == 5
+  assert match("_______ana", peg"A <- 'ana' / . A")
+  assert match("abcs%%%", peg"A <- ..A / .A / '%'")
+
+  if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
+    assert matches[0] == "abc"
   else:
-    echo "BUG"
+    assert false
+  
+  var g2 = peg"""S <- A B / C D
+                 A <- 'a'+
+                 B <- 'b'+
+                 C <- 'c'+
+                 D <- 'd'+
+              """
+  assert($g2 == "((A B) / (C D))")
+  assert match("cccccdddddd", g2)
+  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+         "var1<-keykey; var2<-key2key2")
+  assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
-#  for word in split("00232this02939is39an22example111", peg"\d+"):
-#    writeln(stdout, word)
+  if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
+    assert matches[0] == "a"
+  else:
+    assert false
+
+
