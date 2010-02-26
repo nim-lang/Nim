@@ -54,6 +54,7 @@ Additions
   `subscript overloading <manual.html#subscript-overloading>`_ for further
   information.
 - The documentation generator supports the ``.. raw:: html`` directive.
+- The Pegs module supports back references via the notation ``$capture_index``. 
 
 
 Changes affecting backwards compatibility

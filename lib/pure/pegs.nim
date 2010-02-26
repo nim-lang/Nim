@@ -26,6 +26,8 @@ when useUnicode:
 
 const
   InlineThreshold = 5   ## number of leaves; -1 to disable inlining
+  MaxSubpatterns* = 10 ## defines the maximum number of subpatterns that
+                       ## can be captured. More subpatterns cannot be captured! 
 
 type
   TPegKind = enum
@@ -50,17 +52,20 @@ type
     pkAndPredicate,     ## &a     --> Internal DSL: &a
     pkNotPredicate,     ## !a     --> Internal DSL: !a
     pkCapture,          ## {a}    --> Internal DSL: capture(a)
+    pkBackRef,          ## $i     --> Internal DSL: backref(i)
+    pkBackRefIgnoreCase,
+    pkBackRefIgnoreStyle,
     pkSearch,           ## @a     --> Internal DSL: @a
     pkRule,             ## a <- b
     pkList              ## a, b
   TNonTerminalFlag = enum
     ntDeclared, ntUsed
   TNonTerminal {.final.} = object ## represents a non terminal symbol
-    name: string        ## the name of the symbol
-    line: int           ## the line the symbol has been declared/used in
-    col: int            ## the column the symbol has been declared/used in
-    flags: set[TNonTerminalFlag] ## the nonterminal's flags
-    rule: TNode         ## the rule that the symbol refers to
+    name: string                  ## the name of the symbol
+    line: int                     ## line the symbol has been declared/used in
+    col: int                      ## column the symbol has been declared/used in
+    flags: set[TNonTerminalFlag]  ## the nonterminal's flags
+    rule: TNode                   ## the rule that the symbol refers to
   TNode {.final.} = object
     case kind: TPegKind
     of pkEmpty, pkAny, pkAnyRune, pkGreedyAny, pkNewLine: nil
@@ -68,6 +73,7 @@ type
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: PNonTerminal
+    of pkBackRef..pkBackRefIgnoreStyle: index: range[1..MaxSubpatterns]
     else: sons: seq[TNode]
   PNonTerminal* = ref TNonTerminal
   
@@ -224,6 +230,24 @@ proc capture*(a: TPeg): TPeg =
   result.kind = pkCapture
   result.sons = @[a]
 
+proc backref*(index: range[1..MaxSubPatterns]): TPeg = 
+  ## constructs a back reference of the given `index`. `index` starts counting
+  ## from 1.
+  result.kind = pkBackRef
+  result.index = index-1
+
+proc backrefIgnoreCase*(index: range[1..MaxSubPatterns]): TPeg = 
+  ## constructs a back reference of the given `index`. `index` starts counting
+  ## from 1. Ignores case for matching.
+  result.kind = pkBackRefIgnoreCase
+  result.index = index-1
+
+proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg = 
+  ## constructs a back reference of the given `index`. `index` starts counting
+  ## from 1. Ignores style for matching.
+  result.kind = pkBackRefIgnoreStyle
+  result.index = index-1
+
 proc spaceCost(n: TPeg): int =
   case n.kind
   of pkEmpty: nil
@@ -284,10 +308,6 @@ template ident*: expr =
 template natural*: expr =
   ## same as ``\d+``
   +digits
-
-const
-  MaxSubpatterns* = 10 ## defines the maximum number of subpatterns that
-                       ## can be captured. More subpatterns cannot be captured! 
 
 # ------------------------- debugging -----------------------------------------
 
@@ -394,6 +414,15 @@ proc toStrAux(r: TPeg, res: var string) =
     add(res, '{')
     toStrAux(r.sons[0], res)    
     add(res, '}')
+  of pkBackRef: 
+    add(res, '$')
+    add(res, $r.index)
+  of pkBackRefIgnoreCase: 
+    add(res, "i$")
+    add(res, $r.index)
+  of pkBackRefIgnoreStyle: 
+    add(res, "y$")
+    add(res, $r.index)
   of pkRule:
     toStrAux(r.sons[0], res)    
     add(res, " <- ")
@@ -559,6 +588,18 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
       #else: silently ignore the capture
     else:
       c.ml = idx
+  of pkBackRef: 
+    if p.index >= c.ml: return -1
+    var (a, b) = c.matches[p.index]
+    result = m(s, term(s.copy(a, b)), start, c)
+  of pkBackRefIgnoreCase:
+    if p.index >= c.ml: return -1
+    var (a, b) = c.matches[p.index]
+    result = m(s, termIgnoreCase(s.copy(a, b)), start, c)
+  of pkBackRefIgnoreStyle:
+    if p.index >= c.ml: return -1
+    var (a, b) = c.matches[p.index]
+    result = m(s, termIgnoreStyle(s.copy(a, b)), start, c)
   of pkRule, pkList: assert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
@@ -784,13 +825,15 @@ type
     tkOption,           ## '?'
     tkAt,               ## '@'
     tkBuiltin,          ## \identifier
-    tkEscaped           ## \\
+    tkEscaped,          ## \\
+    tkDollar            ## '$'
   
   TToken {.final.} = object  ## a token
     kind: TTokKind           ## the type of the token
     modifier: TModifier
     literal: string          ## the parsed (string) literal
     charset: set[char]       ## if kind == tkCharSet
+    index: int               ## if kind == tkDollar
   
   TPegLexer = object          ## the lexer object.
     bufpos: int               ## the current position within the buffer
@@ -804,7 +847,7 @@ const
   tokKindToStr: array[TTokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
     "character set", "(", ")", "{", "}", "<-", "/", "*", "+", "&", "!", "?",
-    "@", "built-in", "escaped"
+    "@", "built-in", "escaped", "$"
   ]
 
 proc HandleCR(L: var TPegLexer, pos: int): int =
@@ -945,6 +988,19 @@ proc getString(c: var TPegLexer, tok: var TToken) =
       Inc(pos)
   c.bufpos = pos
   
+proc getDollar(c: var TPegLexer, tok: var TToken) = 
+  var pos = c.bufPos + 1
+  var buf = c.buf
+  if buf[pos] in {'0'..'9'}:
+    tok.kind = tkDollar
+    tok.index = 0
+    while buf[pos] in {'0'..'9'}:
+      tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
+      inc(pos)
+  else:
+    tok.kind = tkInvalid
+  c.bufpos = pos
+  
 proc getCharSet(c: var TPegLexer, tok: var TToken) = 
   tok.kind = tkCharSet
   tok.charset = {}
@@ -1050,19 +1106,23 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
   of '\\': 
     getBuiltin(c, tok)
   of '\'', '"': getString(c, tok)
+  of '$': getDollar(c, tok)
   of '\0': 
     tok.kind = tkEof
     tok.literal = "[EOF]"
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
-    if c.buf[c.bufpos] in {'\'', '"'}:
+    if c.buf[c.bufpos] in {'\'', '"', '$'}:
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
       of "v": tok.modifier = modVerbatim
       else: nil
       setLen(tok.literal, 0)
-      getString(c, tok)
+      if c.buf[c.bufpos] == '$':
+        getDollar(c, tok)
+      else:
+        getString(c, tok)
       if tok.modifier == modNone: tok.kind = tkInvalid
   of '+':
     tok.kind = tkPlus
@@ -1117,14 +1177,17 @@ type
     tok: TToken
     nonterms: seq[PNonTerminal]
     modifier: TModifier
-
-proc getTok(p: var TPegParser) = getTok(p, p.tok)
+    captures: int
 
 proc pegError(p: TPegParser, msg: string, line = -1, col = -1) =
   var e: ref EInvalidPeg
   new(e)
   e.msg = errorStr(p, msg, line, col)
   raise e
+
+proc getTok(p: var TPegParser) = 
+  getTok(p, p.tok)
+  if p.tok.kind == tkInvalid: pegError(p, "invalid token")
 
 proc eat(p: var TPegParser, kind: TTokKind) =
   if p.tok.kind == kind: getTok(p)
@@ -1145,6 +1208,12 @@ proc modifiedTerm(s: string, m: TModifier): TPeg =
   of modNone, modVerbatim: result = term(s)
   of modIgnoreCase: result = termIgnoreCase(s)
   of modIgnoreStyle: result = termIgnoreStyle(s)
+
+proc modifiedBackref(s: int, m: TModifier): TPeg =
+  case m
+  of modNone, modVerbatim: result = backRef(s)
+  of modIgnoreCase: result = backRefIgnoreCase(s)
+  of modIgnoreStyle: result = backRefIgnoreStyle(s)
 
 proc primary(p: var TPegParser): TPeg =
   case p.tok.kind
@@ -1185,6 +1254,7 @@ proc primary(p: var TPegParser): TPeg =
     getTok(p)
     result = capture(parseExpr(p))
     eat(p, tkCurlyRi)
+    inc(p.captures)
   of tkAny:
     result = any()
     getTok(p)
@@ -1205,6 +1275,13 @@ proc primary(p: var TPegParser): TPeg =
     getTok(p)
   of tkEscaped:
     result = term(p.tok.literal[0])
+    getTok(p)
+  of tkDollar:
+    var m = p.tok.modifier
+    if m == modNone: m = p.modifier
+    result = modifiedBackRef(p.tok.index, m)
+    if p.tok.index < 0 or p.tok.index > p.captures: 
+      pegError(p, "invalid back reference index: " & $p.tok.index)
     getTok(p)
   else:
     pegError(p, "expression expected, but found: " & p.tok.literal)
@@ -1227,7 +1304,7 @@ proc seqExpr(p: var TPegParser): TPeg =
   while true:
     case p.tok.kind
     of tkAmp, tkNot, tkAt, tkStringLit, tkCharset, tkParLe, tkCurlyLe,
-       tkAny, tkAnyRune, tkBuiltin, tkEscaped:
+       tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar:
       result = sequence(result, primary(p))
     of tkIdentifier:
       if not arrowIsNextTok(p):
