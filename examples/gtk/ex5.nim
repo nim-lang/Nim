@@ -2,23 +2,23 @@
 import 
   glib2, gtk2
 
-proc destroy(widget: pGtkWidget, data: pgpointer){.cdecl.} = 
-  gtk_main_quit()
+proc destroy(widget: pWidget, data: pgpointer){.cdecl.} = 
+  main_quit()
 
-var 
-  window: PGtkWidget
-  button: PGtkWidget
+proc widgetDestroy(w: PWidget) {.cdecl.} = 
+  destroy(w)
 
-gtk_nimrod_init()
-window = gtk_window_new(GTK_WINDOW_TOPLEVEL)
-button = gtk_button_new_with_label("Click me")
-gtk_container_set_border_width(GTK_CONTAINER(Window), 5)
-gtk_container_add(GTK_Container(window), button)
-discard gtk_signal_connect(GTKOBJECT(window), "destroy", 
-                           GTK_SIGNAL_FUNC(destroy), nil)
-discard gtk_signal_connect_object(GTKOBJECT(button), "clicked", 
-                                  GTK_SIGNAL_FUNC(gtk_widget_destroy), 
-                                  GTKOBJECT(window))
-gtk_widget_show(button)
-gtk_widget_show(window)
-gtk_main()
+nimrod_init()
+var window = window_new(WINDOW_TOPLEVEL)
+var button = button_new_with_label("Click me")
+set_border_width(Window, 5)
+add(window, button)
+discard signal_connect(window, "destroy", 
+                       SIGNAL_FUNC(ex5.destroy), nil)
+discard signal_connect_object(button, "clicked", 
+                              SIGNAL_FUNC(widgetDestroy), 
+                              window)
+show(button)
+show(window)
+main()
+

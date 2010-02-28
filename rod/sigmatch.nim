@@ -335,7 +335,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
             result = minRel(m, result)
         if f.sons[0] != nil: 
           if a.sons[0] != nil: 
-            m = typeRel(mapping, f.sons[0], a.sons[0]) # Subtype is sufficient for return types!
+            m = typeRel(mapping, f.sons[0], a.sons[0]) 
+            # Subtype is sufficient for return types!
             if m < isSubtype: result = isNone
             elif m == isSubtype: result = isConvertible
             else: result = minRel(m, result)

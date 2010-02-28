@@ -14,12 +14,12 @@ bind .e <Return> {
 }  
 """
 
-Tcl_FindExecutable(getApplicationFilename())
-var interp = Tcl_CreateInterp()
+FindExecutable(getApplicationFilename())
+var interp = CreateInterp()
 if interp == nil: quit("cannot create TCL interpreter")
-if Tcl_Init(interp) != TCL_OK: 
+if Init(interp) != TCL_OK: 
   quit("cannot init interpreter")
-if Tcl_Eval(interp, myScript) != TCL_OK: 
+if Eval(interp, myScript) != TCL_OK: 
   quit("cannot execute script.tcl")
 
 

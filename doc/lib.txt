@@ -175,20 +175,14 @@ XML Processing
   This module parses an XML Document into a XML DOM Document representation.
 
 * `xmltree <xmltree.html>`_
-  A simple XML tree. More efficient and simpler than the DOM.
+  A simple XML tree. More efficient and simpler than the DOM. It also 
+  contains a macro for XML/HTML code generation.
 
 * `xmlparser <xmlparser.html>`_ 
   This module parses an XML document and creates its XML tree representation.
   
 * `htmlparser <htmlparser.html>`_ 
   This module parses an HTML document and creates its XML tree representation.
-
-
-Code generation
----------------
-
-* `xmlgen <xmlgen.html>`_
-  This module implements macros for XML/HTML code generation.
 
 
 Cryptography and Hashing
@@ -200,7 +194,6 @@ Cryptography and Hashing
 
 * `md5 <md5.html>`_
   This module implements the MD5 checksum algorithm.
-
 
 
 Impure libraries

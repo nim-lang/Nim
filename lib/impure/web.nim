@@ -17,7 +17,7 @@
 ## Currently only requesting URLs is implemented. The implementation depends
 ## on the libcurl library!
 ##
-## **Deprecated since version 0.8.6:** Use the ``httpclient`` module instead. 
+## **Deprecated since version 0.8.8:** Use the ``httpclient`` module instead. 
 ## 
 
 {.deprecated.}
@@ -34,27 +34,27 @@ proc URLretrieveStream*(url: string): PStream =
   ## retrieves the given `url` and returns a stream which one can read from to
   ## obtain the contents. Returns nil if an error occurs.
   result = newStringStream()
-  var hCurl = curl_easy_init() 
+  var hCurl = easy_init() 
   if hCurl == nil: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_URL, url) != CURLE_OK: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_WRITEFUNCTION, 
-                      curlwrapperWrite) != CURLE_OK: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_WRITEDATA, result) != CURLE_OK: return nil
-  if curl_easy_perform(hCurl) != CURLE_OK: return nil
-  curl_easy_cleanup(hCurl)
+  if easy_setopt(hCurl, OPT_URL, url) != E_OK: return nil
+  if easy_setopt(hCurl, OPT_WRITEFUNCTION, 
+                      curlwrapperWrite) != E_OK: return nil
+  if easy_setopt(hCurl, OPT_WRITEDATA, result) != E_OK: return nil
+  if easy_perform(hCurl) != E_OK: return nil
+  easy_cleanup(hCurl)
   
 proc URLretrieveString*(url: string): string = 
   ## retrieves the given `url` and returns the contents. Returns nil if an
   ## error occurs.
   var stream = newStringStream()
-  var hCurl = curl_easy_init()
+  var hCurl = easy_init()
   if hCurl == nil: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_URL, url) != CURLE_OK: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_WRITEFUNCTION, 
-                      curlwrapperWrite) != CURLE_OK: return nil
-  if curl_easy_setopt(hCurl, CURLOPT_WRITEDATA, stream) != CURLE_OK: return nil
-  if curl_easy_perform(hCurl) != CURLE_OK: return nil
-  curl_easy_cleanup(hCurl)
+  if easy_setopt(hCurl, OPT_URL, url) != E_OK: return nil
+  if easy_setopt(hCurl, OPT_WRITEFUNCTION, 
+                      curlwrapperWrite) != E_OK: return nil
+  if easy_setopt(hCurl, OPT_WRITEDATA, stream) != E_OK: return nil
+  if easy_perform(hCurl) != E_OK: return nil
+  easy_cleanup(hCurl)
   result = stream.data
 
 when isMainModule:

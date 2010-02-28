@@ -8,8 +8,8 @@ const
 print 'hi'
 """
 
-var L = luaL_newstate()
-luaL_openlibs(L)
-discard luaL_loadbuffer(L, code, code.len, "line") 
-discard lua_pcall(L, 0, 0, 0)
+var L = newstate()
+openlibs(L)
+discard loadbuffer(L, code, code.len, "line") 
+discard pcall(L, 0, 0, 0)
 

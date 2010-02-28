@@ -12,7 +12,7 @@ if paramCount() < 1:
   quit("Usage: htmlrefs filename[.html]")
 
 var links = 0 # count the number of links
-var filename = appendFileExt(ParamStr(1), "html")
+var filename = addFileExt(ParamStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
 var x: TXmlParser
