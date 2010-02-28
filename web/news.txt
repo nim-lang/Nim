@@ -24,6 +24,7 @@ Bugfixes
 - Fixed ``unicode.toUTF8``. 
 - The compiler now rejects ``'\n'``. 
 - ``times.getStartMilsecs()`` now works on Mac OS X.
+- Fixed a bug in ``pegs.match`` concerning start offsets.
 
 
 Additions
@@ -45,6 +46,7 @@ Additions
 - Added ``xmltree`` module.
 - Added ``xmlparser`` module.
 - Added ``htmlparser`` module.
+- Added ``re`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``). The new wrappers are available in ``lib/newwrap``. Change
   your configuration file to use these.
@@ -72,6 +74,7 @@ Changes affecting backwards compatibility
   named arguments only, because the parameter order will change the next
   version!
 - ``atomic`` and ``let`` are now keywords.
+- The ``\w`` character class for pegs now includes the digits ``'0'..'9'``.
 
 
 2009-12-21 Version 0.8.6 released

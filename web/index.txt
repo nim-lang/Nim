@@ -19,7 +19,7 @@ Welcome to Nimrod
   
   .. code-block:: nimrod
     # Filter key=value pairs
-    import regexprs
+    import re
 
     for x in lines("myfile.txt"):
       if x =~ r"(\w+)=(.*)":
@@ -70,7 +70,7 @@ Nimrod is expressive
   generics, etc.
 * User-defineable operators; code with new operators is often easier to read
   than code which overloads built-in operators. In the code snippet, the 
-  ``=~`` operator is defined in the ``regexprs`` module.
+  ``=~`` operator is defined in the ``re`` module.
 * Macros can modify the abstract syntax tree at compile time.
 
 

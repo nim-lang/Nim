@@ -75,12 +75,14 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
     else: matches[i-1] = ""
-  return res
+  return rawMatches[1] - rawMatches[0]
 
 proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
   var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-  return pcreExec(pattern.h, nil, s, len(s), start, flags,
-                  cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  result = pcreExec(pattern.h, nil, s, len(s), start, flags,
+                    cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  if result >= 0'i32:
+    result = rawMatches[1] - rawMatches[0]
 
 proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
            start = 0): bool =
@@ -88,11 +90,12 @@ proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
-  return matchOrFind(s, pattern, matches, start, PCRE_ANCHORED) >= 0'i32
+  return matchOrFind(s, pattern, matches, start, 
+                     PCRE_ANCHORED) == cint(s.len - start)
 
 proc match*(s: string, pattern: TRegEx, start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
-  return matchOrFind(s, pattern, start, PCRE_ANCHORED) >= 0'i32
+  return matchOrFind(s, pattern, start, PCRE_ANCHORED) == cint(s.len - start)
 
 proc matchLen*(s: string, pattern: TRegEx, matches: var openarray[string],
               start = 0): int =
@@ -112,12 +115,23 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
-  return matchOrFind(s, pattern, matches, start, 0'i32)
+  var
+    rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
+    res = pcreExec(pattern.h, nil, s, len(s), start, 0'i32,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  if res < 0'i32: return res
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    else: matches[i-1] = ""
+  return rawMatches[0]
 
 proc find*(s: string, pattern: TRegEx, start = 0): int =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
-  return matchOrFind(s, pattern, start, 0'i32)
+  var matches: array[0..maxSubpatterns-1, string]
+  result = find(s, pattern, matches, start)
 
 template `=~` *(s: string, pattern: TRegEx): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 
@@ -279,57 +293,36 @@ const ## common regular expressions
     ## describes an URL
 
 when isMainModule:
-  assert match("(a b c)", re"'(' @ ')'")
-  assert match("WHiLe", re(r"while", {reIgnoreCase}))
+  assert match("(a b c)", re"\( .* \)")
+  assert match("WHiLe", re("while", {reIgnoreCase}))
   
   assert "0158787".match(re"\d+")
   assert "ABC 0232".match(re"\w+\s+\d+")
-  assert "ABC".match(re"\d+ / \w+")
-
-  for word in split("00232this02939is39an22example111", re"\d+"):
-    writeln(stdout, word)
+  assert "ABC".match(re"\d+ | \w+")
 
   assert matchLen("key", re(reIdentifier)) == 3
 
-  var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+")
+  var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
   assert matchLen("key1=  cal9", pattern) == 11
   
-  var c: TMatchClosure
-  var s = "a+b +  c +d+e+f"
-  assert m(s, expr.rule, 0, c) == len(s)
-  var a = ""
-  for i in 0..c.ml-1:
-    a.add(copy(s, c.matches[i][0], c.matches[i][1]))
-  assert a == "abcdef"
-  #echo expr.rule
-
-  #const filename = "lib/devel/peg/grammar.txt"
-  #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
-  #echo "a <- [abc]*?".match(grammar)
-  assert find("_____abc_______", term("abc")) == 5
-  assert match("_______ana", peg"A <- 'ana' / . A")
-  assert match("abcs%%%", peg"A <- ..A / .A / '%'")
-
-  if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
-    assert matches[0] == "abc"
+  assert find("_____abc_______", re"abc") == 5
+  
+  var matches: array[0..5, string]
+  if match("abcdefg", re"c(d)ef(g)", matches, 2): 
+    assert matches[0] == "d"
+    assert matches[1] == "g"
   else:
     assert false
   
-  var g2 = peg"""S <- A B / C D
-                 A <- 'a'+
-                 B <- 'b'+
-                 C <- 'c'+
-                 D <- 'd'+
-              """
-  assert($g2 == "((A B) / (C D))")
-  assert match("cccccdddddd", g2)
-  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
-         "var1<-keykey; var2<-key2key2")
-  assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
-
-  if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
-    assert matches[0] == "a"
+  if "abc" =~ re"(a)bcxyz|(\w+)":
+    assert matches[1] == "abc"
   else:
     assert false
+    
+  assert "var1=key; var2=key2".endsWith(re"\w+=\w+")
+  assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
+         "var1<-keykey; var2<-key2key2")
 
+  for word in split("00232this02939is39an22example111", re"\d+"):
+    writeln(stdout, word)
 

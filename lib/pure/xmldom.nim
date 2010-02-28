@@ -1044,10 +1044,20 @@ proc target*(PI: PProcessingInstruction): string =
     
 # --Other stuff--
 # Writer
+proc addEscaped(s: string): string = 
+  result = ""
+  for c in items(s):
+    case c
+    of '<': result.add("&lt;")
+    of '>': result.add("&gt;")
+    of '&': result.add("&amp;")
+    of '"': result.add("&quot;")
+    else: result.add(c)
+
 proc nodeToXml(n: PNode, indent: int = 0): string =
   result = repeatChar(indent, ' ') & "<" & n.nodeName
   for i in items(n.Attributes):
-    result.add(" " & i.name & "=\"" & i.value & "\"")
+    result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
   
   if n.childNodes.len() == 0:
     result.add("/>") # No idea why this doesn't need a \n :O
@@ -1060,7 +1070,7 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
         result.add(repeatChar(indent * 2, ' '))
-        result.add(i.nodeValue)
+        result.add(addEscaped(i.nodeValue))
       of CDataSectionNode:
         result.add(repeatChar(indent * 2, ' '))
         result.add("<![CDATA[" & i.nodeValue & "]]>")
