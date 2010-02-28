@@ -86,8 +86,8 @@ macro              meaning
 ``\s``             any whitespace character: ``[ \9-\13]``
 ``\S``             any character that is not a whitespace character:
                    ``[^ \9-\13]``
-``\w``             any "word" character: ``[a-zA-Z_]``
-``\W``             any "non-word" character: ``[^a-zA-Z_]``
+``\w``             any "word" character: ``[a-zA-Z0-9_]``
+``\W``             any "non-word" character: ``[^a-zA-Z0-9_]``
 ``\n``             any newline combination: ``\10 / \13\10 / \13``
 ``\i``             ignore case for matching; use this at the start of the PEG
 ``\y``             ignore style for matching; use this at the start of the PEG

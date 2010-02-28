@@ -223,9 +223,8 @@ proc newXmlTree*(tag: string, children: openArray[PXmlNode],
   result.fAttr = attributes
   
 proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
-  ## use this procedure to define a new XML tag
-  expectLen(e, 1)
-  var a = e[0]
+  expectLen(e, 2)
+  var a = e[1]
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newCall("newStringTable", [])

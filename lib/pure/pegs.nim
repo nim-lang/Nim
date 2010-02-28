@@ -604,7 +604,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
   var c: TMatchClosure
-  result = m(s, pattern, start, c) == len(s)
+  result = m(s, pattern, start, c) == len(s) -start
   if result:
     for i in 0..c.ml-1:
       matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
@@ -612,7 +612,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
 proc match*(s: string, pattern: TPeg, start = 0): bool =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
   var c: TMatchClosure
-  result = m(s, pattern, start, c) == len(s)
+  result = m(s, pattern, start, c) == len(s)-start
 
 proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
                start = 0): int =
@@ -1263,8 +1263,8 @@ proc primary(p: var TPegParser): TPeg =
     of "D": result = charset({'\1'..'\xff'} - {'0'..'9'})
     of "s": result = charset({' ', '\9'..'\13'})
     of "S": result = charset({'\1'..'\xff'} - {' ', '\9'..'\13'})
-    of "w": result = charset({'a'..'z', 'A'..'Z', '_'})
-    of "W": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z', '_'})
+    of "w": result = charset({'a'..'z', 'A'..'Z', '_', '0'..'9'})
+    of "W": result = charset({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
     of "ident": result = pegs.ident
     else: pegError(p, "unknown built-in: " & p.tok.literal)
     getTok(p)
@@ -1435,3 +1435,11 @@ when isMainModule:
     assert matches[0] == "a"
   else:
     assert false
+    
+  var matches: array[0..5, string]
+  if match("abcdefg", peg"'c' {'d'} 'ef' {'g'}", matches, 2): 
+    assert matches[0] == "d"
+    assert matches[1] == "g"
+  else:
+    assert false
+
