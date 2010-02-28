@@ -7,17 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-{.compile: "pcre_all.c" .}
-
-type
+{.compile: "pcre_all.c".}
+type 
   Pbyte = ptr byte
   PPchar = ptr cstring
   Pint = ptr cint
-  Ppcre* = ptr TPcre
-  Ppcre_callout_block* = ptr tpcre_callout_block
-  Ppcre_extra* = ptr Tpcre_extra
-  TPcre {.final, pure.} = object
-
+  PPcre* = ptr Tpcre
+  Pcallout_block* = ptr tcallout_block
+  Pextra* = ptr Textra
+  Tpcre {.final, pure.} = object 
   # The structure for passing additional data to pcre_exec(). This is defined
   # in such as way as to be extensible.
   # Bits for which fields are set
@@ -26,34 +24,34 @@ type
   # Data passed back in callouts
   # Const before type ignored
   # Pointer to character tables
-  Tpcre_extra* {.final, pure.} = object
+  Textra*{.final, pure.} = object  # The structure for passing out data via the pcre_callout_function. We use a
+                                   # structure so that new fields can be added on the end in future versions,
+                                   # without changing the API of the function, thereby allowing old clients to
+                                   # work without modification.
+                                   # Identifies version of block
+                                   # ------------------------ Version 0 -------------------------------
+                                   # Number compiled into pattern
+                                   # The offset vector
+                                   # Const before type ignored
+                                   # The subject being matched
+                                   # The length of the subject
+                                   # Offset to start of this match attempt
+                                   # Where we currently are in the subject
+                                   # Max current capture
+                                   # Most recently closed capture
+                                   # Data passed in with the call
+                                   # ------------------- Added for Version 1 --------------------------
+                                   # Offset to next item in the pattern
+                                   # Length of next item in the pattern
+                                   # 
+                                   # ------------------------------------------------------------------
     flags: cint
     study_data: pointer
     match_limit: cint
     callout_data: pointer
     tables: ptr byte
 
-  # The structure for passing out data via the pcre_callout_function. We use a
-  # structure so that new fields can be added on the end in future versions,
-  # without changing the API of the function, thereby allowing old clients to
-  # work without modification.
-  # Identifies version of block
-  # ------------------------ Version 0 -------------------------------
-  # Number compiled into pattern
-  # The offset vector
-  # Const before type ignored
-  # The subject being matched
-  # The length of the subject
-  # Offset to start of this match attempt
-  # Where we currently are in the subject
-  # Max current capture
-  # Most recently closed capture
-  # Data passed in with the call
-  # ------------------- Added for Version 1 --------------------------
-  # Offset to next item in the pattern
-  # Length of next item in the pattern
-  # ------------------------------------------------------------------
-  TPcre_callout_block* {.final, pure.} = object
+  Tcallout_block*{.final, pure.} = object 
     version: cint
     callout_number: cint
     offset_vector: ptr cint
@@ -110,7 +108,7 @@ type
 # The file pcre.h is build by "configure". Do not edit it; instead
 # make changes to pcre.in.
 
-const
+const 
   PCRE_MAJOR* = 6
   PCRE_MINOR* = 3
   PCRE_DATE* = "2005/11/29"
@@ -135,27 +133,27 @@ const
   PCRE_DFA_RESTART* = 0x00020000
   PCRE_FIRSTLINE* = 0x00040000
   # Exec-time and get/set-time error codes
-  PCRE_ERROR_NOMATCH* = -(1)
-  PCRE_ERROR_NULL* = -(2)
-  PCRE_ERROR_BADOPTION* = -(3)
-  PCRE_ERROR_BADMAGIC* = -(4)
-  PCRE_ERROR_UNKNOWN_NODE* = -(5)
-  PCRE_ERROR_NOMEMORY* = -(6)
-  PCRE_ERROR_NOSUBSTRING* = -(7)
-  PCRE_ERROR_MATCHLIMIT* = -(8)
+  PCRE_ERROR_NOMATCH* = - (1)
+  PCRE_ERROR_NULL* = - (2)
+  PCRE_ERROR_BADOPTION* = - (3)
+  PCRE_ERROR_BADMAGIC* = - (4)
+  PCRE_ERROR_UNKNOWN_NODE* = - (5)
+  PCRE_ERROR_NOMEMORY* = - (6)
+  PCRE_ERROR_NOSUBSTRING* = - (7)
+  PCRE_ERROR_MATCHLIMIT* = - (8)
   # Never used by PCRE itself
-  PCRE_ERROR_CALLOUT* = -(9)
-  PCRE_ERROR_BADUTF8* = -(10)
-  PCRE_ERROR_BADUTF8_OFFSET* = -(11)
-  PCRE_ERROR_PARTIAL* = -(12)
-  PCRE_ERROR_BADPARTIAL* = -(13)
-  PCRE_ERROR_INTERNAL* = -(14)
-  PCRE_ERROR_BADCOUNT* = -(15)
-  PCRE_ERROR_DFA_UITEM* = -(16)
-  PCRE_ERROR_DFA_UCOND* = -(17)
-  PCRE_ERROR_DFA_UMLIMIT* = -(18)
-  PCRE_ERROR_DFA_WSSIZE* = -(19)
-  PCRE_ERROR_DFA_RECURSE* = -(20)
+  PCRE_ERROR_CALLOUT* = - (9)
+  PCRE_ERROR_BADUTF8* = - (10)
+  PCRE_ERROR_BADUTF8_OFFSET* = - (11)
+  PCRE_ERROR_PARTIAL* = - (12)
+  PCRE_ERROR_BADPARTIAL* = - (13)
+  PCRE_ERROR_INTERNAL* = - (14)
+  PCRE_ERROR_BADCOUNT* = - (15)
+  PCRE_ERROR_DFA_UITEM* = - (16)
+  PCRE_ERROR_DFA_UCOND* = - (17)
+  PCRE_ERROR_DFA_UMLIMIT* = - (18)
+  PCRE_ERROR_DFA_WSSIZE* = - (19)
+  PCRE_ERROR_DFA_RECURSE* = - (20)
   # Request types for pcre_fullinfo()
   PCRE_INFO_OPTIONS* = 0
   PCRE_INFO_SIZE* = 1
@@ -180,80 +178,60 @@ const
   PCRE_CONFIG_STACKRECURSE* = 5
   PCRE_CONFIG_UNICODE_PROPERTIES* = 6
   # Bit flags for the pcre_extra structure
-  PCRE_EXTRA_STUDY_DATA* = 0x0001
-  PCRE_EXTRA_MATCH_LIMIT* = 0x0002
-  PCRE_EXTRA_CALLOUT_DATA* = 0x0004
-  PCRE_EXTRA_TABLES* = 0x0008
+  PCRE_EXTRA_STUDY_DATA* = 0x00000001
+  PCRE_EXTRA_MATCH_LIMIT* = 0x00000002
+  PCRE_EXTRA_CALLOUT_DATA* = 0x00000004
+  PCRE_EXTRA_TABLES* = 0x00000008
 
 # Exported PCRE functions
 
-proc pcre_compile*(para1: cstring, para2: cint, para3: ptr cstring,
-                  para4: ptr int, para5: Pbyte): Ppcre {.
-                  importc: "pcre_compile", noconv.}
-
-proc pcre_compile2*(para1: cstring, para2: cint, para3: Pint, para4: PPchar,
-                   para5: ptr int, para6: Pbyte): Ppcre {.
-                   importc: "pcre_compile2", noconv.}
-
-proc pcre_config*(para1: cint, para2: pointer): cint {.
-  importc: "pcre_config", noconv.}
-
-proc pcre_copy_named_substring*(para1: Ppcre, para2: cstring, para3: Pint,
-                               para4: cint, para5: cstring, para6: cstring,
-                               para7: cint): cint {.
-                               importc: "pcre_copy_named_substring", noconv.}
-
-proc pcre_copy_substring*(para1: cstring, para2: Pint, para3: cint, para4: cint,
-                         para5: cstring, para6: cint): cint {.
-                         importc: "pcre_copy_substring", noconv.}
-
-proc pcre_dfa_exec*(para1: Ppcre, para2: Ppcre_extra, para3: cstring,
-                   para4: cint, para5: cint, para6: cint, para7: Pint,
-                   para8: cint, para9: Pint, para10: cint): cint {.
-                   importc: "pcre_dfa_exec", noconv.}
-
-proc pcre_exec*(para1: Ppcre, para2: Ppcre_extra, para3: cstring,
-               para4: cint, para5: cint, para6: cint, para7: Pint,
-               para8: cint): cint {.importc: "pcre_exec", noconv.}
-
-proc pcre_free_substring*(para1: cstring) {.
-  importc: "pcre_free_substring", noconv.}
-
-proc pcre_free_substring_list*(para1: PPchar) {.
-  importc: "pcre_free_substring_list", noconv.}
-
-proc pcre_fullinfo*(para1: Ppcre, para2: Ppcre_extra, para3: cint,
-                   para4: pointer): cint {.importc: "pcre_fullinfo", noconv.}
-
-proc pcre_get_named_substring*(para1: Ppcre, para2: cstring, para3: Pint,
-                              para4: cint, para5: cstring, para6: PPchar): cint {.
-                              importc: "pcre_get_named_substring", noconv.}
-
-proc pcre_get_stringnumber*(para1: Ppcre, para2: cstring): cint {.
-  importc: "pcre_get_stringnumber", noconv.}
-
-proc pcre_get_substring*(para1: cstring, para2: Pint, para3: cint,
-                        para4: cint, para5: PPchar): cint {.
-                        importc: "pcre_get_substring", noconv.}
-
-proc pcre_get_substring_list*(para1: cstring, para2: Pint, para3: cint,
-                             para4: ptr PPchar): cint {.
-                             importc: "pcre_get_substring_list", noconv.}
-
-proc pcre_info*(para1: Ppcre, para2: Pint, para3: Pint): cint {.
-  importc: "pcre_info", noconv.}
-
-proc pcre_maketables*: ptr byte {.
-  importc: "pcre_maketables", noconv.}
-
-proc pcre_refcount*(para1: Ppcre, para2: cint): cint {.
-  importc: "pcre_refcount", noconv.}
-
-proc pcre_study*(para1: Ppcre, para2: cint,
-                 para3: ptr CString): Ppcre_extra {.importc, noconv.}
-
-proc pcre_version*: CString {.importc: "pcre_version", noconv.}
-
+proc pcre_compile*(para1: cstring, para2: cint, para3: ptr cstring, 
+                   para4: ptr int, para5: Pbyte): PPcre{.importc: "pcre_compile", 
+    noconv.}
+proc pcre_compile2*(para1: cstring, para2: cint, para3: Pint, para4: PPchar, 
+                    para5: ptr int, para6: Pbyte): PPcre{.importc: "pcre_compile2", 
+    noconv.}
+proc pcre_config*(para1: cint, para2: pointer): cint{.importc: "pcre_config", 
+    noconv.}
+proc pcre_copy_named_substring*(para1: PPcre, para2: cstring, para3: Pint, 
+                                para4: cint, para5: cstring, para6: cstring, 
+                                para7: cint): cint{.
+    importc: "pcre_copy_named_substring", noconv.}
+proc pcre_copy_substring*(para1: cstring, para2: Pint, para3: cint, para4: cint, 
+                          para5: cstring, para6: cint): cint{.
+    importc: "pcre_copy_substring", noconv.}
+proc pcre_dfa_exec*(para1: PPcre, para2: Pextra, para3: cstring, para4: cint, 
+                    para5: cint, para6: cint, para7: Pint, para8: cint, 
+                    para9: Pint, para10: cint): cint{.importc: "pcre_dfa_exec", 
+    noconv.}
+proc pcre_exec*(para1: PPcre, para2: Pextra, para3: cstring, para4: cint, 
+                para5: cint, para6: cint, para7: Pint, para8: cint): cint{.
+    importc: "pcre_exec", noconv.}
+proc pcre_free_substring*(para1: cstring){.importc: "pcre_free_substring", 
+    noconv.}
+proc pcre_free_substring_list*(para1: PPchar){.
+    importc: "pcre_free_substring_list", noconv.}
+proc pcre_fullinfo*(para1: PPcre, para2: Pextra, para3: cint, para4: pointer): cint{.
+    importc: "pcre_fullinfo", noconv.}
+proc pcre_get_named_substring*(para1: PPcre, para2: cstring, para3: Pint, 
+                               para4: cint, para5: cstring, para6: PPchar): cint{.
+    importc: "pcre_get_named_substring", noconv.}
+proc pcre_get_stringnumber*(para1: PPcre, para2: cstring): cint{.
+    importc: "pcre_get_stringnumber", noconv.}
+proc pcre_get_substring*(para1: cstring, para2: Pint, para3: cint, para4: cint, 
+                         para5: PPchar): cint{.importc: "pcre_get_substring", 
+    noconv.}
+proc pcre_get_substring_list*(para1: cstring, para2: Pint, para3: cint, 
+                              para4: ptr PPchar): cint{.
+    importc: "pcre_get_substring_list", noconv.}
+proc pcre_info*(para1: PPcre, para2: Pint, para3: Pint): cint{.importc: "pcre_info", 
+    noconv.}
+proc pcre_maketables*(): ptr byte{.importc: "pcre_maketables", noconv.}
+proc pcre_refcount*(para1: PPcre, para2: cint): cint{.importc: "pcre_refcount", 
+    noconv.}
+proc pcre_study*(para1: PPcre, para2: cint, para3: ptr CString): Pextra{.
+    importc: "pcre_study", noconv.}
+proc pcre_version*(): CString{.importc: "pcre_version", noconv.}
 # Indirection for store get and free functions. These can be set to
 # alternative malloc/free functions if required. Special ones are used in the
 # non-recursive case for "frames". There is also an optional callout function
@@ -261,16 +239,18 @@ proc pcre_version*: CString {.importc: "pcre_version", noconv.}
 #
 
 # we use Nimrod's memory manager (but not GC!) for these functions:
-type
-  TMalloc = proc (para1: int): pointer {.noconv.}
-  TFree = proc (para1: pointer) {.noconv.}
-var
-  pcre_malloc {.importc: "pcre_malloc".}: TMalloc
-  pcre_free {.importc: "pcre_free".}: TFree
-  pcre_stack_malloc {.importc: "pcre_stack_malloc".}: TMalloc
-  pcre_stack_free  {.importc: "pcre_stack_free".}: TFree
-  pcre_callout {.importc: "pcre_callout".}:
-    proc (para1: Ppcre_callout_block): cint {.noconv.}
+
+type 
+  TMalloc = proc (para1: int): pointer{.noconv.}
+  TFree = proc (para1: pointer){.noconv.}
+
+var 
+  pcre_malloc{.importc: "pcre_malloc".}: TMalloc
+  pcre_free{.importc: "pcre_free".}: TFree
+  pcre_stack_malloc{.importc: "pcre_stack_malloc".}: TMalloc
+  pcre_stack_free{.importc: "pcre_stack_free".}: TFree
+  pcre_callout{.importc: "pcre_callout".}: proc (para1: Pcallout_block): cint{.
+      noconv.}
 
 pcre_malloc = cast[TMalloc](system.alloc)
 pcre_free = cast[TFree](system.dealloc)

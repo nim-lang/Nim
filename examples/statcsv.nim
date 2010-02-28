@@ -8,7 +8,7 @@ import os, streams, parsecsv, strutils, math
 if paramCount() < 1:
   quit("Usage: statcsv filename[.csv]")
 
-var filename = appendFileExt(ParamStr(1), "csv")
+var filename = addFileExt(ParamStr(1), "csv")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
 

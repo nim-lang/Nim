@@ -75,6 +75,8 @@ Changes affecting backwards compatibility
   version!
 - ``atomic`` and ``let`` are now keywords.
 - The ``\w`` character class for pegs now includes the digits ``'0'..'9'``.
+- Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
+  ``lua``) anymore.
 
 
 2009-12-21 Version 0.8.6 released

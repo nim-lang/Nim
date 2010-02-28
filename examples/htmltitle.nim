@@ -7,7 +7,7 @@ import os, streams, parsexml, strutils
 if paramCount() < 1: 
   quit("Usage: htmltitle filename[.html]")
 
-var filename = appendFileExt(ParamStr(1), "html")
+var filename = addFileExt(ParamStr(1), "html")
 var s = newFileStream(filename, fmRead)
 if s == nil: quit("cannot open the file " & filename)
 var x: TXmlParser

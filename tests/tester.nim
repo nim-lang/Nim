@@ -169,6 +169,10 @@ proc main(options: string) =
     inc(total)
   Echo("[Tester] $#/$# tests passed\n" % [$passed, $total])
 
+
+
+
+
 var
   options = ""
 for i in 1.. paramCount():
