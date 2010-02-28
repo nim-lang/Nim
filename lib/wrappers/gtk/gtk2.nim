@@ -9358,7 +9358,7 @@ proc modified*(a: var TTextBuffer): guint
 proc set_modified*(a: var TTextBuffer, `modified`: guint)
 proc text_buffer_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_text_buffer_get_type".}
-proc buffer_new*(table: PTextTagTable): PTextBuffer{.cdecl, dynlib: lib, 
+proc text_buffer_new*(table: PTextTagTable): PTextBuffer{.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_new".}
 proc get_line_count*(buffer: PTextBuffer): gint{.cdecl, dynlib: lib, 
     importc: "gtk_text_buffer_get_line_count".}
@@ -9692,7 +9692,7 @@ proc text_view_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_text_view_get_type".}
 proc text_view_new*(): PTextView{.cdecl, dynlib: lib, 
                                   importc: "gtk_text_view_new".}
-proc view_new_with_buffer*(buffer: PTextBuffer): PTextView{.cdecl, 
+proc text_view_new_with_buffer*(buffer: PTextBuffer): PTextView{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_new_with_buffer".}
 proc set_buffer*(text_view: PTextView, buffer: PTextBuffer){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_buffer".}
