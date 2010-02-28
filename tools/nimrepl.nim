@@ -17,34 +17,34 @@ proc execCode(code: string): output =
   return (compilerOutput, appOutput)
 
 var shiftPressed = False
-var w: PGtkWindow
-var InputTextBuffer: PGtkTextBuffer
-var OutputTextBuffer: PGtkTextBuffer
+var w: gtk2.PWindow
+var InputTextBuffer: PTextBuffer
+var OutputTextBuffer: PTextBuffer
 
-proc destroy(widget: PGtkWidget, data: pgpointer){.cdecl.} = 
-  gtk_main_quit()
+proc destroy(widget: PWidget, data: pgpointer){.cdecl.} = 
+  main_quit()
 
-proc FileOpenClicked(menuitem: PGtkMenuItem, userdata: pgpointer) =
+proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToOpen(w)
   
   if path != "":
 
     var file: string = readFile(path)
     if file != nil:
-      gtk_text_buffer_set_text(InputTextBuffer, file, len(file))
+      set_text(InputTextBuffer, file, len(file))
       
     else:
       error(w, "Unable to read from file")
 
-proc FileSaveClicked(menuitem: PGtkMenuItem, userdata: pgpointer) =
+proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToSave(w)
   
   if path != "":
-    var startIter: TGtkTextIter
-    var endIter: TGtkTextIter
-    gtk_text_buffer_get_start_iter(InputTextBuffer, addr(startIter))
-    gtk_text_buffer_get_end_iter(InputTextBuffer, addr(endIter))
-    var InputText = gtk_text_buffer_get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
+    var startIter: TTextIter
+    var endIter: TTextIter
+    get_start_iter(InputTextBuffer, addr(startIter))
+    get_end_iter(InputTextBuffer, addr(endIter))
+    var InputText = get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
 
     var f: TFile
     if open(f, path, fmWrite):
@@ -54,109 +54,105 @@ proc FileSaveClicked(menuitem: PGtkMenuItem, userdata: pgpointer) =
       error(w, "Unable to write to file")
 
 
-proc inputKeyPressed(widget: PGtkWidget, event: PGdkEventKey, userdata: pgpointer): bool =
-  if ($gdk_keyval_name(event.keyval)).tolower() == "shift_l":
+proc inputKeyPressed(widget: PWidget, event: PEventKey, userdata: pgpointer): bool =
+  if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is pressed
     shiftPressed = True
   
-  return False
-proc inputKeyReleased(widget: PGtkWidget, event: PGdkEventKey, userdata: pgpointer): bool =
-  echo(gdk_keyval_name(event.keyval))
-  if ($gdk_keyval_name(event.keyval)).tolower() == "shift_l":
+proc inputKeyReleased(widget: PWidget, event: PEventKey, userdata: pgpointer): bool =
+  echo(keyval_name(event.keyval))
+  if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
     shiftPressed = False
     
-  if ($gdk_keyval_name(event.keyval)).tolower() == "return":
-    echo($gdk_keyval_name(event.keyval), "Shift_L")
+  if ($keyval_name(event.keyval)).tolower() == "return":
+    echo($keyval_name(event.keyval), "Shift_L")
     # Enter pressed
     if shiftPressed == False:
-      var startIter: TGtkTextIter
-      var endIter: TGtkTextIter
-      gtk_text_buffer_get_start_iter(InputTextBuffer, addr(startIter))
-      gtk_text_buffer_get_end_iter(InputTextBuffer, addr(endIter))
-      var InputText = gtk_text_buffer_get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
+      var startIter: TTextIter
+      var endIter: TTextIter
+      get_start_iter(InputTextBuffer, addr(startIter))
+      get_end_iter(InputTextBuffer, addr(endIter))
+      var InputText = get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
 
       try:
-        var r: output = execCode($InputText)
-        gtk_text_buffer_set_text(OutputTextBuffer, r[0] & r[1], len(r[0] & r[1]))
+        var r = execCode($InputText)
+        set_text(OutputTextBuffer, r[0] & r[1], len(r[0] & r[1]))
       except:
-        gtk_text_buffer_set_text(OutputTextBuffer, "Error: Could not open file temp.nim", len("Error: Could not open file temp.nim"))
+        set_text(OutputTextBuffer, "Error: Could not open file temp.nim", len("Error: Could not open file temp.nim"))
 
-  return False
 
 proc initControls() =
-  w = gtk_window_new(GTK_WINDOW_TOPLEVEL)
-  gtk_window_set_default_size(w, 500, 600)
-  gtk_window_set_title(w, "Nimrod REPL")
-  discard gtk_signal_connect(GTKOBJECT(w), "destroy", 
-                          GTK_SIGNAL_FUNC(destroy), nil)
+  w = window_new(gtk2.WINDOW_TOPLEVEL)
+  set_default_size(w, 500, 600)
+  set_title(w, "Nimrod REPL")
+  discard signal_connect(w, "destroy", SIGNAL_FUNC(nimrepl.destroy), nil)
   
   # MainBox (vbox)
-  var MainBox: PGtkWidget = gtk_vbox_new(False, 0)
-  gtk_container_add(GTK_Container(w), MainBox)
+  var MainBox = vbox_new(False, 0)
+  add(w, MainBox)
   
   # TopMenu (MenuBar)
-  var TopMenu: PGtkWidget = gtk_menu_bar_new()
-  gtk_widget_show(TopMenu)
+  var TopMenu = menu_bar_new()
+  show(TopMenu)
   
-  var FileMenu = gtk_menu_new()
-  var OpenMenuItem = gtk_menu_item_new_with_label("Open")
-  gtk_menu_append(FileMenu, OpenMenuItem)
-  gtk_widget_show(OpenMenuItem)
-  discard gtk_signal_connect(GTKOBJECT(OpenMenuItem), "activate", 
-                          GTK_SIGNAL_FUNC(FileOpenClicked), nil)
-  var SaveMenuItem = gtk_menu_item_new_with_label("Save...")
-  gtk_menu_append(FileMenu, SaveMenuItem)
-  gtk_widget_show(SaveMenuItem)
-  discard gtk_signal_connect(GTKOBJECT(SaveMenuItem), "activate", 
-                          GTK_SIGNAL_FUNC(FileSaveClicked), nil)
-  var FileMenuItem = gtk_menu_item_new_with_label("File")
+  var FileMenu = menu_new()
+  var OpenMenuItem = menu_item_new_with_label("Open")
+  append(FileMenu, OpenMenuItem)
+  show(OpenMenuItem)
+  discard signal_connect(OpenMenuItem, "activate", 
+                          SIGNAL_FUNC(FileOpenClicked), nil)
+  var SaveMenuItem = menu_item_new_with_label("Save...")
+  append(FileMenu, SaveMenuItem)
+  show(SaveMenuItem)
+  discard signal_connect(SaveMenuItem, "activate", 
+                          SIGNAL_FUNC(FileSaveClicked), nil)
+  var FileMenuItem = menu_item_new_with_label("File")
 
   
-  gtk_menu_item_set_submenu(FileMenuItem, FileMenu)
-  gtk_widget_show(FileMenuItem)
-  gtk_menu_bar_append(TopMenu, FileMenuItem)
+  set_submenu(FileMenuItem, FileMenu)
+  show(FileMenuItem)
+  append(TopMenu, FileMenuItem)
   
-  gtk_box_pack_start(GTK_Box(MainBox), TopMenu, False, False, 0)
+  pack_start(MainBox, TopMenu, False, False, 0)
 
   # VPaned - Seperates the InputTextView and the OutputTextView
-  var paned = gtk_vpaned_new()
-  gtk_paned_set_position(paned, 450)
-  gtk_box_pack_start(GTK_Box(MainBox), paned, True, True, 0)
-  gtk_widget_show(paned)
+  var paned = vpaned_new()
+  set_position(paned, 450)
+  pack_start(MainBox, paned, True, True, 0)
+  show(paned)
 
   # Init the TextBuffers
-  InputTextBuffer = gtk_text_buffer_new(nil)
-  OutputTextBuffer = gtk_text_buffer_new(nil)
+  InputTextBuffer = text_buffer_new(nil)
+  OutputTextBuffer = text_buffer_new(nil)
 
   # InputTextView (TextView)
-  var InputScrolledWindow = gtk_scrolled_window_new(nil, nil)
-  gtk_scrolled_window_set_policy(InputScrolledWindow,
-                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC)
-  var InputTextView = gtk_text_view_new_with_buffer(InputTextBuffer)
-  gtk_scrolled_window_add_with_viewport(InputScrolledWindow, InputTextView)
-  gtk_paned_add1(paned, InputScrolledWindow)
-  gtk_widget_show(InputScrolledWindow)
-  gtk_widget_show(InputTextView)
+  var InputScrolledWindow = scrolled_window_new(nil, nil)
+  set_policy(InputScrolledWindow, POLICY_AUTOMATIC, POLICY_AUTOMATIC)
+  var InputTextView = text_view_new_with_buffer(InputTextBuffer)
+  add_with_viewport(InputScrolledWindow, InputTextView)
+  add1(paned, InputScrolledWindow)
+  show(InputScrolledWindow)
+  show(InputTextView)
   
-  discard gtk_signal_connect(GTKOBJECT(InputTextView), "key-release-event", 
-                          GTK_SIGNAL_FUNC(inputKeyReleased), nil)
-  discard gtk_signal_connect(GTKOBJECT(InputTextView), "key-press-event", 
-                          GTK_SIGNAL_FUNC(inputKeyPressed), nil)
+  discard signal_connect(InputTextView, "key-release-event", 
+                          SIGNAL_FUNC(inputKeyReleased), nil)
+  discard signal_connect(InputTextView, "key-press-event", 
+                          SIGNAL_FUNC(inputKeyPressed), nil)
   
   # OutputTextView (TextView)
-  var OutputScrolledWindow = gtk_scrolled_window_new(nil, nil)
-  gtk_scrolled_window_set_policy(OutputScrolledWindow,
-                GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC)
-  var OutputTextView = gtk_text_view_new_with_buffer(OutputTextBuffer)
-  gtk_scrolled_window_add_with_viewport(OutputScrolledWindow, OutputTextView)
-  gtk_paned_add2(paned, OutputScrolledWindow)
-  gtk_widget_show(OutputScrolledWindow)
-  gtk_widget_show(OutputTextView)
+  var OutputScrolledWindow = scrolled_window_new(nil, nil)
+  set_policy(OutputScrolledWindow, POLICY_AUTOMATIC, POLICY_AUTOMATIC)
+  var OutputTextView = text_view_new_with_buffer(OutputTextBuffer)
+  add_with_viewport(OutputScrolledWindow, OutputTextView)
+  add2(paned, OutputScrolledWindow)
+  show(OutputScrolledWindow)
+  show(OutputTextView)
   
-  gtk_widget_show(w)
-  gtk_widget_show(MainBox)
+  show(w)
+  show(MainBox)
   
-gtk_nimrod_init()
+nimrod_init()
 initControls()
-gtk_main()
+main()
+
