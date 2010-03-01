@@ -171,8 +171,21 @@ proc main(options: string) =
 
 proc reject(options: string) =  
   ## handle all the tests that the compiler should reject
+  const csvFile = "tests/reject/spec.csv"
+  var p: TCsvParser
+  
+  var s = newFileStream(csvFile, fmRead)
+  if s == nil: quit("cannot open the file" & csvFile)
+  p.open(s, csvFile, separator=';', skipInitialSpace=true)
+  while readRow(p):
+    for val in items(x.row):
+      Echo "##", val, "##"
+  close(p)
+  
   
 proc accept(options: string) = 
+  nil
+  
   
 
 
