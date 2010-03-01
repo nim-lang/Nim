@@ -1371,7 +1371,27 @@ proc peg*(pattern: string): TPeg =
   ##   peg"{\ident} \s* '=' \s* {.*}"
   result = parsePeg(pattern, "pattern")
 
+proc escapePeg*(s: string): string = 
+  ## escapes `s` so that it is matched verbatim when used as a peg.
+  result = ""
+  var inQuote = false
+  for c in items(s):  
+    case c
+    of '\0'..'\31', '\'', '"', '\\': 
+      if inQuote: 
+        result.add('\'')
+        inQuote = false
+      result.add("\\x")
+      result.add(toHex(ord(c), 2))
+    else:
+      if not inQuote: 
+        result.add('\'')
+        inQuote = true
+      result.add(c)
+  if inQuote: result.add('\'')
+
 when isMainModule:
+  assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
   assert match("(a b c)", peg"'(' @ ')'")
   assert match("W_HI_Le", peg"\y 'while'")
   assert(not match("W_HI_L", peg"\y 'while'"))

@@ -24,13 +24,12 @@ proc disablesignal(widget: pWidget, data: pgpointer){.cdecl.} =
   s.disable = not s.disable
 
 var 
-  quitsignal: guint
   QuitState: TButtonSignalState
 
 nimrod_init()
 var window = window_new(WINDOW_TOPLEVEL)
-var quitbutton = button_new_with_label("Quit program")
-var disablebutton = button_new_with_label("Disable button")
+var quitbutton = button_new("Quit program")
+var disablebutton = button_new("Disable button")
 var windowbox = vbox_new(TRUE, 10)
 pack_start(windowbox, disablebutton, True, false, 0)
 pack_start(windowbox, quitbutton, True, false, 0)

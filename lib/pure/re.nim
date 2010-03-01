@@ -273,6 +273,18 @@ proc split*(s: string, sep: TRegEx): seq[string] =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
   
+proc escapeRe*(s: string): string = 
+  ## escapes `s` so that it is matched verbatim when used as a regular 
+  ## expression.
+  result = ""
+  for c in items(s):
+    case c
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_':
+      result.add(c)
+    else: 
+      result.add("\\x")
+      result.add(toHex(ord(c), 2))
+  
 const ## common regular expressions
   reIdentifier* = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"  ## describes an identifier
   reNatural* = r"\b\d+\b" ## describes a natural number
