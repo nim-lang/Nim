@@ -44,8 +44,8 @@ proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
     var endIter: TTextIter
     get_start_iter(InputTextBuffer, addr(startIter))
     get_end_iter(InputTextBuffer, addr(endIter))
-    var InputText = get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
-
+    var InputText = get_text(InputTextBuffer, addr(startIter), 
+                             addr(endIter), False)
     var f: TFile
     if open(f, path, fmWrite):
       f.write(InputText)
@@ -54,12 +54,17 @@ proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
       error(w, "Unable to write to file")
 
 
-proc inputKeyPressed(widget: PWidget, event: PEventKey, userdata: pgpointer): bool =
+proc inputKeyPressed(widget: PWidget, event: PEventKey, 
+                     userdata: pgpointer): bool =
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is pressed
     shiftPressed = True
   
-proc inputKeyReleased(widget: PWidget, event: PEventKey, userdata: pgpointer): bool =
+proc setError(msg: string) = 
+  outputTextBuffer.setText(msg, msg.len)
+  
+proc inputKeyReleased(widget: PWidget, event: PEventKey, 
+                      userdata: pgpointer): bool =
   echo(keyval_name(event.keyval))
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
@@ -73,13 +78,14 @@ proc inputKeyReleased(widget: PWidget, event: PEventKey, userdata: pgpointer): b
       var endIter: TTextIter
       get_start_iter(InputTextBuffer, addr(startIter))
       get_end_iter(InputTextBuffer, addr(endIter))
-      var InputText = get_text(InputTextBuffer, addr(startIter), addr(endIter), False)
+      var InputText = get_text(InputTextBuffer, addr(startIter), 
+                               addr(endIter), False)
 
       try:
         var r = execCode($InputText)
         set_text(OutputTextBuffer, r[0] & r[1], len(r[0] & r[1]))
       except:
-        set_text(OutputTextBuffer, "Error: Could not open file temp.nim", len("Error: Could not open file temp.nim"))
+        setError("Error: Could not open file temp.nim")
 
 
 proc initControls() =
@@ -97,17 +103,17 @@ proc initControls() =
   show(TopMenu)
   
   var FileMenu = menu_new()
-  var OpenMenuItem = menu_item_new_with_label("Open")
+  var OpenMenuItem = menu_item_new("Open")
   append(FileMenu, OpenMenuItem)
   show(OpenMenuItem)
   discard signal_connect(OpenMenuItem, "activate", 
                           SIGNAL_FUNC(FileOpenClicked), nil)
-  var SaveMenuItem = menu_item_new_with_label("Save...")
+  var SaveMenuItem = menu_item_new("Save...")
   append(FileMenu, SaveMenuItem)
   show(SaveMenuItem)
   discard signal_connect(SaveMenuItem, "activate", 
                           SIGNAL_FUNC(FileSaveClicked), nil)
-  var FileMenuItem = menu_item_new_with_label("File")
+  var FileMenuItem = menu_item_new("File")
 
   
   set_submenu(FileMenuItem, FileMenu)
@@ -129,7 +135,7 @@ proc initControls() =
   # InputTextView (TextView)
   var InputScrolledWindow = scrolled_window_new(nil, nil)
   set_policy(InputScrolledWindow, POLICY_AUTOMATIC, POLICY_AUTOMATIC)
-  var InputTextView = text_view_new_with_buffer(InputTextBuffer)
+  var InputTextView = text_view_new(InputTextBuffer)
   add_with_viewport(InputScrolledWindow, InputTextView)
   add1(paned, InputScrolledWindow)
   show(InputScrolledWindow)
@@ -143,7 +149,7 @@ proc initControls() =
   # OutputTextView (TextView)
   var OutputScrolledWindow = scrolled_window_new(nil, nil)
   set_policy(OutputScrolledWindow, POLICY_AUTOMATIC, POLICY_AUTOMATIC)
-  var OutputTextView = text_view_new_with_buffer(OutputTextBuffer)
+  var OutputTextView = text_view_new(OutputTextBuffer)
   add_with_viewport(OutputScrolledWindow, OutputTextView)
   add2(paned, OutputScrolledWindow)
   show(OutputScrolledWindow)

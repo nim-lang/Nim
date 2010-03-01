@@ -1012,11 +1012,11 @@ proc layout_line*(drawable: PDrawable, gc: PGC, x: gint, y: gint,
 proc layout*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
                   layout: PLayout){.cdecl, dynlib: lib, 
     importc: "gdk_draw_layout".}
-proc layout_line_with_colors*(drawable: PDrawable, gc: PGC, x: gint, 
+proc layout_line*(drawable: PDrawable, gc: PGC, x: gint, 
                                    y: gint, line: PLayoutLine, 
                                    foreground: PColor, background: PColor){.
     cdecl, dynlib: lib, importc: "gdk_draw_layout_line_with_colors".}
-proc layout_with_colors*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
+proc layout*(drawable: PDrawable, gc: PGC, x: gint, y: gint, 
                               layout: PLayout, foreground: PColor, 
                               background: PColor){.cdecl, dynlib: lib, 
     importc: "gdk_draw_layout_with_colors".}
@@ -1210,7 +1210,7 @@ proc GC_GET_CLASS*(obj: Pointer): PGCClass
 proc gc_get_type*(): GType{.cdecl, dynlib: lib, importc: "gdk_gc_get_type".}
 proc gc_new*(drawable: PDrawable): PGC{.cdecl, dynlib: lib, 
                                         importc: "gdk_gc_new".}
-proc gc_new_with_values*(drawable: PDrawable, values: PGCValues, 
+proc gc_new*(drawable: PDrawable, values: PGCValues, 
                          values_mask: TGCValuesMask): PGC{.cdecl, dynlib: lib, 
     importc: "gdk_gc_new_with_values".}
 proc get_values*(gc: PGC, values: PGCValues){.cdecl, dynlib: lib, 
@@ -2844,7 +2844,7 @@ proc offset*(region: PRegion, dx: gint, dy: gint){.cdecl, dynlib: lib,
     importc: "gdk_region_offset".}
 proc shrink*(region: PRegion, dx: gint, dy: gint){.cdecl, dynlib: lib, 
     importc: "gdk_region_shrink".}
-proc union_with_rect*(region: PRegion, rect: PRectangle){.cdecl, 
+proc union*(region: PRegion, rect: PRectangle){.cdecl, 
     dynlib: lib, importc: "gdk_region_union_with_rect".}
 proc intersect*(source1: PRegion, source2: PRegion){.cdecl, dynlib: lib, 
     importc: "gdk_region_intersect".}
@@ -3133,15 +3133,15 @@ const
   bm_TWindowObject_destroyed* = 0x0018'i16
   bp_TWindowObject_destroyed* = 3'i16
 
-proc WindowObject_guffaw_gravity*(a: var TWindowObject): guint
-proc WindowObject_set_guffaw_gravity*(a: var TWindowObject, 
+proc WindowObject_guffaw_gravity*(a: PWindowObject): guint
+proc WindowObject_set_guffaw_gravity*(a: PWindowObject, 
                                       `guffaw_gravity`: guint)
-proc WindowObject_input_only*(a: var TWindowObject): guint
-proc WindowObject_set_input_only*(a: var TWindowObject, `input_only`: guint)
-proc WindowObject_modal_hint*(a: var TWindowObject): guint
-proc WindowObject_set_modal_hint*(a: var TWindowObject, `modal_hint`: guint)
-proc WindowObject_destroyed*(a: var TWindowObject): guint
-proc WindowObject_set_destroyed*(a: var TWindowObject, `destroyed`: guint)
+proc WindowObject_input_only*(a: PWindowObject): guint
+proc WindowObject_set_input_only*(a: PWindowObject, `input_only`: guint)
+proc WindowObject_modal_hint*(a: PWindowObject): guint
+proc WindowObject_set_modal_hint*(a: PWindowObject, `modal_hint`: guint)
+proc WindowObject_destroyed*(a: PWindowObject): guint
+proc WindowObject_set_destroyed*(a: PWindowObject, `destroyed`: guint)
 proc window_object_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gdk_window_object_get_type".}
 proc new*(parent: PWindow, attributes: PWindowAttr, attributes_mask: gint): PWindow{.
@@ -3800,39 +3800,39 @@ proc WINDOW_GET_CLASS*(obj: Pointer): PWindowObjectClass =
 proc WINDOW_OBJECT*(anObject: Pointer): PWindowObject = 
   result = cast[PWindowObject](WINDOW(anObject))
 
-proc WindowObject_guffaw_gravity*(a: var TWindowObject): guint = 
+proc WindowObject_guffaw_gravity*(a: PWindowObject): guint = 
   result = (a.flag0 and bm_TWindowObject_guffaw_gravity) shr
       bp_TWindowObject_guffaw_gravity
 
-proc WindowObject_set_guffaw_gravity*(a: var TWindowObject, 
+proc WindowObject_set_guffaw_gravity*(a: PWindowObject, 
                                       `guffaw_gravity`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`guffaw_gravity` shl bp_TWindowObject_guffaw_gravity) and
       bm_TWindowObject_guffaw_gravity)
 
-proc WindowObject_input_only*(a: var TWindowObject): guint = 
+proc WindowObject_input_only*(a: PWindowObject): guint = 
   result = (a.flag0 and bm_TWindowObject_input_only) shr
       bp_TWindowObject_input_only
 
-proc WindowObject_set_input_only*(a: var TWindowObject, `input_only`: guint) = 
+proc WindowObject_set_input_only*(a: PWindowObject, `input_only`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`input_only` shl bp_TWindowObject_input_only) and
       bm_TWindowObject_input_only)
 
-proc WindowObject_modal_hint*(a: var TWindowObject): guint = 
+proc WindowObject_modal_hint*(a: PWindowObject): guint = 
   result = (a.flag0 and bm_TWindowObject_modal_hint) shr
       bp_TWindowObject_modal_hint
 
-proc WindowObject_set_modal_hint*(a: var TWindowObject, `modal_hint`: guint) = 
+proc WindowObject_set_modal_hint*(a: PWindowObject, `modal_hint`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`modal_hint` shl bp_TWindowObject_modal_hint) and
       bm_TWindowObject_modal_hint)
 
-proc WindowObject_destroyed*(a: var TWindowObject): guint = 
+proc WindowObject_destroyed*(a: PWindowObject): guint = 
   result = (a.flag0 and bm_TWindowObject_destroyed) shr
       bp_TWindowObject_destroyed
 
-proc WindowObject_set_destroyed*(a: var TWindowObject, `destroyed`: guint) = 
+proc WindowObject_set_destroyed*(a: PWindowObject, `destroyed`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`destroyed` shl bp_TWindowObject_destroyed) and
       bm_TWindowObject_destroyed)

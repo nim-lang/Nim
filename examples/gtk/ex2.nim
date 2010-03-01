@@ -11,7 +11,7 @@ var
 
 nimrod_init()
 window = window_new(WINDOW_TOPLEVEL)
-button = button_new_with_label("Click me")
+button = button_new("Click me")
 set_border_width(PContainer(Window), 5)
 add(PContainer(window), button)
 discard signal_connect(window, "destroy", 

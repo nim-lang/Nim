@@ -15,7 +15,7 @@ var
 nimrod_init()
 var window = window_new(gtk2.WINDOW_TOPLEVEL)
 var stackbox = vbox_new(TRUE, 10)
-var button1 = button_new_with_label("Move mouse over button")
+var button1 = button_new("Move mouse over button")
 var buttonstyle = copy(get_style(Button1))
 ButtonStyle.bg[STATE_PRELIGHT].pixel = 0
 ButtonStyle.bg[STATE_PRELIGHT].red = -1'i16

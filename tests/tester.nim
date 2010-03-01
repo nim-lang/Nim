@@ -23,7 +23,7 @@
 ## Nimrod shall produce.
 
 import
-  strutils, pegs, os, osproc, streams
+  strutils, pegs, os, osproc, streams, parsecsv
 
 const
   cmdTemplate = r"nimrod cc --hints:on $options $filename"
@@ -169,8 +169,11 @@ proc main(options: string) =
     inc(total)
   Echo("[Tester] $#/$# tests passed\n" % [$passed, $total])
 
-
-
+proc reject(options: string) =  
+  ## handle all the tests that the compiler should reject
+  
+proc accept(options: string) = 
+  
 
 
 var

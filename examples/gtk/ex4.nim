@@ -3,7 +3,7 @@ import
   glib2, gtk2
 
 proc newbutton(ALabel: cstring): PWidget = 
-  Result = button_new_with_label(ALabel)
+  Result = button_new(ALabel)
   show(result)
 
 proc destroy(widget: pWidget, data: pgpointer){.cdecl.} = 

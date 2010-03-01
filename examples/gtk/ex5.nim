@@ -10,7 +10,7 @@ proc widgetDestroy(w: PWidget) {.cdecl.} =
 
 nimrod_init()
 var window = window_new(WINDOW_TOPLEVEL)
-var button = button_new_with_label("Click me")
+var button = button_new("Click me")
 set_border_width(Window, 5)
 add(window, button)
 discard signal_connect(window, "destroy", 

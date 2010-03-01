@@ -3554,10 +3554,10 @@ proc WIDGET_DOUBLE_BUFFERED*(wid: pointer): gboolean
 proc SET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
 proc UNSET_FLAGS*(wid: PWidget, flags: TWidgetFlags): TWidgetFlags
 proc TYPE_REQUISITION*(): GType
-proc x_set*(a: var TWidgetAuxInfo): guint
-proc set_x_set*(a: var TWidgetAuxInfo, x_set: guint)
-proc y_set*(a: var TWidgetAuxInfo): guint
-proc set_y_set*(a: var TWidgetAuxInfo, y_set: guint)
+proc x_set*(a: PWidgetAuxInfo): guint
+proc set_x_set*(a: PWidgetAuxInfo, x_set: guint)
+proc y_set*(a: PWidgetAuxInfo): guint
+proc set_y_set*(a: PWidgetAuxInfo, y_set: guint)
 proc widget_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_widget_get_type".}
 proc reference*(widget: PWidget): PWidget{.cdecl, dynlib: lib, 
@@ -3843,8 +3843,8 @@ proc ACCEL_GROUP_CLASS*(klass: pointer): PAccelGroupClass
 proc IS_ACCEL_GROUP*(anObject: pointer): bool
 proc IS_ACCEL_GROUP_CLASS*(klass: pointer): bool
 proc ACCEL_GROUP_GET_CLASS*(obj: pointer): PAccelGroupClass
-proc accel_flags*(a: var TAccelKey): guint
-proc set_accel_flags*(a: var TAccelKey, `accel_flags`: guint)
+proc accel_flags*(a: PAccelKey): guint
+proc set_accel_flags*(a: PAccelKey, `accel_flags`: guint)
 proc accel_group_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_accel_group_get_type".}
 proc accel_group_new*(): PAccelGroup{.cdecl, dynlib: lib, 
@@ -3915,16 +3915,15 @@ proc IS_CONTAINER*(obj: pointer): bool
 proc IS_CONTAINER_CLASS*(klass: pointer): bool
 proc CONTAINER_GET_CLASS*(obj: pointer): PContainerClass
 proc IS_RESIZE_CONTAINER*(widget: pointer): bool
-proc border_width*(a: var TContainer): guint
-proc set_border_width*(a: var TContainer, `border_width`: guint)
-proc need_resize*(a: var TContainer): guint
-proc set_need_resize*(a: var TContainer, `need_resize`: guint)
+proc border_width*(a: PContainer): guint
+proc need_resize*(a: PContainer): guint
+proc set_need_resize*(a: PContainer, `need_resize`: guint)
 proc resize_mode*(a: PContainer): guint
-proc set_resize_mode*(a: var TContainer, `resize_mode`: guint)
-proc reallocate_redraws*(a: var TContainer): guint
-proc set_reallocate_redraws*(a: var TContainer, `reallocate_redraws`: guint)
-proc has_focus_chain*(a: var TContainer): guint
-proc set_has_focus_chain*(a: var TContainer, `has_focus_chain`: guint)
+proc set_resize_mode*(a: PContainer, `resize_mode`: guint)
+proc reallocate_redraws*(a: PContainer): guint
+proc set_reallocate_redraws*(a: PContainer, `reallocate_redraws`: guint)
+proc has_focus_chain*(a: PContainer): guint
+proc set_has_focus_chain*(a: PContainer, `has_focus_chain`: guint)
 proc container_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_container_get_type".}
 proc set_border_width*(container: PContainer, border_width: guint){.
@@ -4058,43 +4057,43 @@ proc WINDOW_CLASS*(klass: pointer): PWindowClass
 proc IS_WINDOW*(obj: pointer): bool
 proc IS_WINDOW_CLASS*(klass: pointer): bool
 proc WINDOW_GET_CLASS*(obj: pointer): PWindowClass
-proc allow_shrink*(a: var TWindow): guint
-proc set_allow_shrink*(a: var TWindow, `allow_shrink`: guint)
-proc allow_grow*(a: var TWindow): guint
-proc set_allow_grow*(a: var TWindow, `allow_grow`: guint)
-proc configure_notify_received*(a: var TWindow): guint
-proc set_configure_notify_received*(a: var TWindow, 
+proc allow_shrink*(a: gtk2.PWindow): guint
+proc set_allow_shrink*(a: gtk2.PWindow, `allow_shrink`: guint)
+proc allow_grow*(a: gtk2.PWindow): guint
+proc set_allow_grow*(a: gtk2.PWindow, `allow_grow`: guint)
+proc configure_notify_received*(a: gtk2.PWindow): guint
+proc set_configure_notify_received*(a: gtk2.PWindow, 
                                     `configure_notify_received`: guint)
-proc need_default_position*(a: var TWindow): guint
-proc set_need_default_position*(a: var TWindow, `need_default_position`: guint)
-proc need_default_size*(a: var TWindow): guint
-proc set_need_default_size*(a: var TWindow, `need_default_size`: guint)
-proc position*(a: var TWindow): guint
-proc set_position*(a: var TWindow, `position`: guint)
-proc get_type*(a: var TWindow): guint
-proc set_type*(a: var TWindow, `type`: guint)
-proc has_user_ref_count*(a: var TWindow): guint
-proc set_has_user_ref_count*(a: var TWindow, `has_user_ref_count`: guint)
-proc has_focus*(a: var TWindow): guint
-proc set_has_focus*(a: var TWindow, `has_focus`: guint)
-proc modal*(a: var TWindow): guint
-proc set_modal*(a: var TWindow, `modal`: guint)
-proc destroy_with_parent*(a: var TWindow): guint
-proc set_destroy_with_parent*(a: var TWindow, `destroy_with_parent`: guint)
-proc has_frame*(a: var TWindow): guint
-proc set_has_frame*(a: var TWindow, `has_frame`: guint)
-proc iconify_initially*(a: var TWindow): guint
-proc set_iconify_initially*(a: var TWindow, `iconify_initially`: guint)
-proc stick_initially*(a: var TWindow): guint
-proc set_stick_initially*(a: var TWindow, `stick_initially`: guint)
-proc maximize_initially*(a: var TWindow): guint
-proc set_maximize_initially*(a: var TWindow, `maximize_initially`: guint)
-proc decorated*(a: var TWindow): guint
-proc set_decorated*(a: var TWindow, `decorated`: guint)
-proc type_hint*(a: var TWindow): guint
-proc set_type_hint*(a: var TWindow, `type_hint`: guint)
-proc gravity*(a: var TWindow): guint
-proc set_gravity*(a: var TWindow, `gravity`: guint)
+proc need_default_position*(a: gtk2.PWindow): guint
+proc set_need_default_position*(a: gtk2.PWindow, `need_default_position`: guint)
+proc need_default_size*(a: gtk2.PWindow): guint
+proc set_need_default_size*(a: gtk2.PWindow, `need_default_size`: guint)
+proc position*(a: gtk2.PWindow): guint
+proc set_position*(a: gtk2.PWindow, `position`: guint)
+proc get_type*(a: gtk2.PWindow): guint
+proc set_type*(a: gtk2.PWindow, `type`: guint)
+proc has_user_ref_count*(a: gtk2.PWindow): guint
+proc set_has_user_ref_count*(a: gtk2.PWindow, `has_user_ref_count`: guint)
+proc has_focus*(a: gtk2.PWindow): guint
+proc set_has_focus*(a: gtk2.PWindow, `has_focus`: guint)
+proc modal*(a: gtk2.PWindow): guint
+proc set_modal*(a: gtk2.PWindow, `modal`: guint)
+proc destroy_with_parent*(a: gtk2.PWindow): guint
+proc set_destroy_with_parent*(a: gtk2.PWindow, `destroy_with_parent`: guint)
+proc has_frame*(a: gtk2.PWindow): guint
+proc set_has_frame*(a: gtk2.PWindow, `has_frame`: guint)
+proc iconify_initially*(a: gtk2.PWindow): guint
+proc set_iconify_initially*(a: gtk2.PWindow, `iconify_initially`: guint)
+proc stick_initially*(a: gtk2.PWindow): guint
+proc set_stick_initially*(a: gtk2.PWindow, `stick_initially`: guint)
+proc maximize_initially*(a: gtk2.PWindow): guint
+proc set_maximize_initially*(a: gtk2.PWindow, `maximize_initially`: guint)
+proc decorated*(a: gtk2.PWindow): guint
+proc set_decorated*(a: gtk2.PWindow, `decorated`: guint)
+proc type_hint*(a: gtk2.PWindow): guint
+proc set_type_hint*(a: gtk2.PWindow, `type_hint`: guint)
+proc gravity*(a: gtk2.PWindow): guint
+proc set_gravity*(a: gtk2.PWindow, `gravity`: guint)
 proc TYPE_WINDOW_GROUP*(): GType
 proc WINDOW_GROUP*(anObject: pointer): PWindowGroup
 proc WINDOW_GROUP_CLASS*(klass: pointer): PWindowGroupClass
@@ -4287,14 +4286,14 @@ proc LABEL_CLASS*(klass: pointer): PLabelClass
 proc IS_LABEL*(obj: pointer): bool
 proc IS_LABEL_CLASS*(klass: pointer): bool
 proc LABEL_GET_CLASS*(obj: pointer): PLabelClass
-proc jtype*(a: var TLabel): guint
-proc set_jtype*(a: var TLabel, `jtype`: guint)
-proc wrap*(a: var TLabel): guint
-proc set_wrap*(a: var TLabel, `wrap`: guint)
-proc use_underline*(a: var TLabel): guint
-proc set_use_underline*(a: var TLabel, `use_underline`: guint)
-proc use_markup*(a: var TLabel): guint
-proc set_use_markup*(a: var TLabel, `use_markup`: guint)
+proc jtype*(a: PLabel): guint
+proc set_jtype*(a: PLabel, `jtype`: guint)
+proc wrap*(a: PLabel): guint
+proc set_wrap*(a: PLabel, `wrap`: guint)
+proc use_underline*(a: PLabel): guint
+proc set_use_underline*(a: PLabel, `use_underline`: guint)
+proc use_markup*(a: PLabel): guint
+proc set_use_markup*(a: PLabel, `use_markup`: guint)
 proc label_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_label_get_type".}
 proc label_new*(str: cstring): PLabel{.cdecl, dynlib: lib, 
                                        importc: "gtk_label_new".}
@@ -4364,8 +4363,8 @@ proc ACCEL_LABEL_CLASS*(klass: pointer): PAccelLabelClass
 proc IS_ACCEL_LABEL*(obj: pointer): bool
 proc IS_ACCEL_LABEL_CLASS*(klass: pointer): bool
 proc ACCEL_LABEL_GET_CLASS*(obj: pointer): PAccelLabelClass
-proc latin1_to_char*(a: var TAccelLabelClass): guint
-proc set_latin1_to_char*(a: var TAccelLabelClass, `latin1_to_char`: guint)
+proc latin1_to_char*(a: PAccelLabelClass): guint
+proc set_latin1_to_char*(a: PAccelLabelClass, `latin1_to_char`: guint)
 proc accel_label_get_type*(): TType{.cdecl, dynlib: lib, 
                                      importc: "gtk_accel_label_get_type".}
 proc accel_label_new*(`string`: cstring): PAccelLabel{.cdecl, dynlib: lib, 
@@ -4521,12 +4520,12 @@ const
 
 proc entry_add*(binding_set: PBindingSet, keyval: guint, 
                         modifiers: gdk2.TModifierType)
-proc parsed*(a: var TBindingSet): guint
-proc set_parsed*(a: var TBindingSet, `parsed`: guint)
-proc destroyed*(a: var TBindingEntry): guint
-proc set_destroyed*(a: var TBindingEntry, `destroyed`: guint)
-proc in_emission*(a: var TBindingEntry): guint
-proc set_in_emission*(a: var TBindingEntry, `in_emission`: guint)
+proc parsed*(a: PBindingSet): guint
+proc set_parsed*(a: PBindingSet, `parsed`: guint)
+proc destroyed*(a: PBindingEntry): guint
+proc set_destroyed*(a: PBindingEntry, `destroyed`: guint)
+proc in_emission*(a: PBindingEntry): guint
+proc set_in_emission*(a: PBindingEntry, `in_emission`: guint)
 proc binding_set_new*(set_name: cstring): PBindingSet{.cdecl, dynlib: lib, 
     importc: "gtk_binding_set_new".}
 proc binding_set_by_class*(object_class: gpointer): PBindingSet{.cdecl, 
@@ -4576,16 +4575,16 @@ proc BOX_CLASS*(klass: pointer): PBoxClass
 proc IS_BOX*(obj: pointer): bool
 proc IS_BOX_CLASS*(klass: pointer): bool
 proc BOX_GET_CLASS*(obj: pointer): PBoxClass
-proc homogeneous*(a: var TBox): guint
-proc set_homogeneous*(a: var TBox, `homogeneous`: guint)
-proc expand*(a: var TBoxChild): guint
-proc set_expand*(a: var TBoxChild, `expand`: guint)
-proc fill*(a: var TBoxChild): guint
-proc set_fill*(a: var TBoxChild, `fill`: guint)
-proc pack*(a: var TBoxChild): guint
-proc set_pack*(a: var TBoxChild, `pack`: guint)
-proc is_secondary*(a: var TBoxChild): guint
-proc set_is_secondary*(a: var TBoxChild, `is_secondary`: guint)
+proc homogeneous*(a: PBox): guint
+proc set_homogeneous*(a: PBox, `homogeneous`: guint)
+proc expand*(a: PBoxChild): guint
+proc set_expand*(a: PBoxChild, `expand`: guint)
+proc fill*(a: PBoxChild): guint
+proc set_fill*(a: PBoxChild, `fill`: guint)
+proc pack*(a: PBoxChild): guint
+proc set_pack*(a: PBoxChild, `pack`: guint)
+proc is_secondary*(a: PBoxChild): guint
+proc set_is_secondary*(a: PBoxChild, `is_secondary`: guint)
 proc box_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_box_get_type".}
 proc pack_start*(box: PBox, child: PWidget, expand: gboolean, 
                      fill: gboolean, padding: guint){.cdecl, dynlib: lib, 
@@ -4660,26 +4659,26 @@ proc BUTTON_CLASS*(klass: pointer): PButtonClass
 proc IS_BUTTON*(obj: pointer): bool
 proc IS_BUTTON_CLASS*(klass: pointer): bool
 proc BUTTON_GET_CLASS*(obj: pointer): PButtonClass
-proc constructed*(a: var TButton): guint
-proc set_constructed*(a: var TButton, `constructed`: guint)
-proc in_button*(a: var TButton): guint
-proc set_in_button*(a: var TButton, `in_button`: guint)
-proc button_down*(a: var TButton): guint
-proc set_button_down*(a: var TButton, `button_down`: guint)
-proc relief*(a: var TButton): guint
-proc set_relief*(a: var TButton, `relief`: guint)
-proc use_underline*(a: var TButton): guint
-proc set_use_underline*(a: var TButton, `use_underline`: guint)
-proc use_stock*(a: var TButton): guint
-proc set_use_stock*(a: var TButton, `use_stock`: guint)
-proc depressed*(a: var TButton): guint
-proc set_depressed*(a: var TButton, `depressed`: guint)
-proc depress_on_activate*(a: var TButton): guint
-proc set_depress_on_activate*(a: var TButton, `depress_on_activate`: guint)
+proc constructed*(a: PButton): guint
+proc set_constructed*(a: PButton, `constructed`: guint)
+proc in_button*(a: PButton): guint
+proc set_in_button*(a: PButton, `in_button`: guint)
+proc button_down*(a: PButton): guint
+proc set_button_down*(a: PButton, `button_down`: guint)
+proc relief*(a: PButton): guint
+proc set_relief*(a: PButton, `relief`: guint)
+proc use_underline*(a: PButton): guint
+proc set_use_underline*(a: PButton, `use_underline`: guint)
+proc use_stock*(a: PButton): guint
+proc set_use_stock*(a: PButton, `use_stock`: guint)
+proc depressed*(a: PButton): guint
+proc set_depressed*(a: PButton, `depressed`: guint)
+proc depress_on_activate*(a: PButton): guint
+proc set_depress_on_activate*(a: PButton, `depress_on_activate`: guint)
 proc button_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_button_get_type".}
 proc button_new*(): PButton{.cdecl, dynlib: lib, importc: "gtk_button_new".}
-proc button_new_with_label*(`label`: cstring): PButton{.cdecl, dynlib: lib, 
+proc button_new*(`label`: cstring): PButton{.cdecl, dynlib: lib, 
     importc: "gtk_button_new_with_label".}
 proc button_new_from_stock*(stock_id: cstring): PButton{.cdecl, dynlib: lib, 
     importc: "gtk_button_new_from_stock".}
@@ -4794,16 +4793,16 @@ proc CELL_RENDERER_CLASS*(klass: pointer): PCellRendererClass
 proc IS_CELL_RENDERER*(obj: pointer): bool
 proc IS_CELL_RENDERER_CLASS*(klass: pointer): bool
 proc CELL_RENDERER_GET_CLASS*(obj: pointer): PCellRendererClass
-proc mode*(a: var TCellRenderer): guint
-proc set_mode*(a: var TCellRenderer, `mode`: guint)
-proc visible*(a: var TCellRenderer): guint
-proc set_visible*(a: var TCellRenderer, `visible`: guint)
-proc is_expander*(a: var TCellRenderer): guint
-proc set_is_expander*(a: var TCellRenderer, `is_expander`: guint)
-proc is_expanded*(a: var TCellRenderer): guint
-proc set_is_expanded*(a: var TCellRenderer, `is_expanded`: guint)
-proc cell_background_set*(a: var TCellRenderer): guint
-proc set_cell_background_set*(a: var TCellRenderer, `cell_background_set`: guint)
+proc mode*(a: PCellRenderer): guint
+proc set_mode*(a: PCellRenderer, `mode`: guint)
+proc visible*(a: PCellRenderer): guint
+proc set_visible*(a: PCellRenderer, `visible`: guint)
+proc is_expander*(a: PCellRenderer): guint
+proc set_is_expander*(a: PCellRenderer, `is_expander`: guint)
+proc is_expanded*(a: PCellRenderer): guint
+proc set_is_expanded*(a: PCellRenderer, `is_expanded`: guint)
+proc cell_background_set*(a: PCellRenderer): guint
+proc set_cell_background_set*(a: PCellRenderer, `cell_background_set`: guint)
 proc cell_renderer_get_type*(): GType{.cdecl, dynlib: lib, 
                                        importc: "gtk_cell_renderer_get_type".}
 proc get_size*(cell: PCellRenderer, widget: PWidget, 
@@ -4860,26 +4859,26 @@ proc CELL_RENDERER_TEXT_CLASS*(klass: pointer): PCellRendererTextClass
 proc IS_CELL_RENDERER_TEXT*(obj: pointer): bool
 proc IS_CELL_RENDERER_TEXT_CLASS*(klass: pointer): bool
 proc CELL_RENDERER_TEXT_GET_CLASS*(obj: pointer): PCellRendererTextClass
-proc strikethrough*(a: var TCellRendererText): guint
-proc set_strikethrough*(a: var TCellRendererText, `strikethrough`: guint)
-proc editable*(a: var TCellRendererText): guint
-proc set_editable*(a: var TCellRendererText, `editable`: guint)
-proc scale_set*(a: var TCellRendererText): guint
-proc set_scale_set*(a: var TCellRendererText, `scale_set`: guint)
-proc foreground_set*(a: var TCellRendererText): guint
-proc set_foreground_set*(a: var TCellRendererText, `foreground_set`: guint)
-proc background_set*(a: var TCellRendererText): guint
-proc set_background_set*(a: var TCellRendererText, `background_set`: guint)
-proc underline_set*(a: var TCellRendererText): guint
-proc set_underline_set*(a: var TCellRendererText, `underline_set`: guint)
-proc rise_set*(a: var TCellRendererText): guint
-proc set_rise_set*(a: var TCellRendererText, `rise_set`: guint)
-proc strikethrough_set*(a: var TCellRendererText): guint
-proc set_strikethrough_set*(a: var TCellRendererText, `strikethrough_set`: guint)
-proc editable_set*(a: var TCellRendererText): guint
-proc set_editable_set*(a: var TCellRendererText, `editable_set`: guint)
-proc calc_fixed_height*(a: var TCellRendererText): guint
-proc set_calc_fixed_height*(a: var TCellRendererText, `calc_fixed_height`: guint)
+proc strikethrough*(a: PCellRendererText): guint
+proc set_strikethrough*(a: PCellRendererText, `strikethrough`: guint)
+proc editable*(a: PCellRendererText): guint
+proc set_editable*(a: PCellRendererText, `editable`: guint)
+proc scale_set*(a: PCellRendererText): guint
+proc set_scale_set*(a: PCellRendererText, `scale_set`: guint)
+proc foreground_set*(a: PCellRendererText): guint
+proc set_foreground_set*(a: PCellRendererText, `foreground_set`: guint)
+proc background_set*(a: PCellRendererText): guint
+proc set_background_set*(a: PCellRendererText, `background_set`: guint)
+proc underline_set*(a: PCellRendererText): guint
+proc set_underline_set*(a: PCellRendererText, `underline_set`: guint)
+proc rise_set*(a: PCellRendererText): guint
+proc set_rise_set*(a: PCellRendererText, `rise_set`: guint)
+proc strikethrough_set*(a: PCellRendererText): guint
+proc set_strikethrough_set*(a: PCellRendererText, `strikethrough_set`: guint)
+proc editable_set*(a: PCellRendererText): guint
+proc set_editable_set*(a: PCellRendererText, `editable_set`: guint)
+proc calc_fixed_height*(a: PCellRendererText): guint
+proc set_calc_fixed_height*(a: PCellRendererText, `calc_fixed_height`: guint)
 proc cell_renderer_text_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_text_get_type".}
 proc cell_renderer_text_new*(): PCellRenderer{.cdecl, dynlib: lib, 
@@ -4900,12 +4899,12 @@ proc CELL_RENDERER_TOGGLE_CLASS*(klass: pointer): PCellRendererToggleClass
 proc IS_CELL_RENDERER_TOGGLE*(obj: pointer): bool
 proc IS_CELL_RENDERER_TOGGLE_CLASS*(klass: pointer): bool
 proc CELL_RENDERER_TOGGLE_GET_CLASS*(obj: pointer): PCellRendererToggleClass
-proc active*(a: var TCellRendererToggle): guint
-proc set_active*(a: var TCellRendererToggle, `active`: guint)
-proc activatable*(a: var TCellRendererToggle): guint
-proc set_activatable*(a: var TCellRendererToggle, `activatable`: guint)
-proc radio*(a: var TCellRendererToggle): guint
-proc set_radio*(a: var TCellRendererToggle, `radio`: guint)
+proc active*(a: PCellRendererToggle): guint
+proc set_active*(a: PCellRendererToggle, `active`: guint)
+proc activatable*(a: PCellRendererToggle): guint
+proc set_activatable*(a: PCellRendererToggle, `activatable`: guint)
+proc radio*(a: PCellRendererToggle): guint
+proc set_radio*(a: PCellRendererToggle, `radio`: guint)
 proc cell_renderer_toggle_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_cell_renderer_toggle_get_type".}
 proc cell_renderer_toggle_new*(): PCellRenderer{.cdecl, dynlib: lib, 
@@ -4961,24 +4960,24 @@ proc MENU_ITEM_CLASS*(klass: pointer): PMenuItemClass
 proc IS_MENU_ITEM*(obj: pointer): bool
 proc IS_MENU_ITEM_CLASS*(klass: pointer): bool
 proc MENU_ITEM_GET_CLASS*(obj: pointer): PMenuItemClass
-proc show_submenu_indicator*(a: var TMenuItem): guint
-proc set_show_submenu_indicator*(a: var TMenuItem, 
+proc show_submenu_indicator*(a: PMenuItem): guint
+proc set_show_submenu_indicator*(a: PMenuItem, 
                                  `show_submenu_indicator`: guint)
-proc submenu_placement*(a: var TMenuItem): guint
-proc set_submenu_placement*(a: var TMenuItem, `submenu_placement`: guint)
-proc submenu_direction*(a: var TMenuItem): guint
-proc set_submenu_direction*(a: var TMenuItem, `submenu_direction`: guint)
-proc right_justify*(a: var TMenuItem): guint
-proc set_right_justify*(a: var TMenuItem, `right_justify`: guint)
-proc timer_from_keypress*(a: var TMenuItem): guint
-proc set_timer_from_keypress*(a: var TMenuItem, `timer_from_keypress`: guint)
-proc hide_on_activate*(a: var TMenuItemClass): guint
-proc set_hide_on_activate*(a: var TMenuItemClass, `hide_on_activate`: guint)
+proc submenu_placement*(a: PMenuItem): guint
+proc set_submenu_placement*(a: PMenuItem, `submenu_placement`: guint)
+proc submenu_direction*(a: PMenuItem): guint
+proc set_submenu_direction*(a: PMenuItem, `submenu_direction`: guint)
+proc right_justify*(a: PMenuItem): guint
+proc set_right_justify*(a: PMenuItem, `right_justify`: guint)
+proc timer_from_keypress*(a: PMenuItem): guint
+proc set_timer_from_keypress*(a: PMenuItem, `timer_from_keypress`: guint)
+proc hide_on_activate*(a: PMenuItemClass): guint
+proc set_hide_on_activate*(a: PMenuItemClass, `hide_on_activate`: guint)
 proc menu_item_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_menu_item_get_type".}
 proc menu_item_new*(): PMenuItem{.cdecl, dynlib: lib, 
                                   importc: "gtk_menu_item_new".}
-proc menu_item_new_with_label*(`label`: cstring): PMenuItem{.cdecl, dynlib: lib, 
+proc menu_item_new*(`label`: cstring): PMenuItem{.cdecl, dynlib: lib, 
     importc: "gtk_menu_item_new_with_label".}
 proc menu_item_new_with_mnemonic*(`label`: cstring): PMenuItem{.cdecl, 
     dynlib: lib, importc: "gtk_menu_item_new_with_mnemonic".}
@@ -5025,17 +5024,17 @@ proc TOGGLE_BUTTON_CLASS*(klass: pointer): PToggleButtonClass
 proc IS_TOGGLE_BUTTON*(obj: pointer): bool
 proc IS_TOGGLE_BUTTON_CLASS*(klass: pointer): bool
 proc TOGGLE_BUTTON_GET_CLASS*(obj: pointer): PToggleButtonClass
-proc active*(a: var TToggleButton): guint
-proc set_active*(a: var TToggleButton, `active`: guint)
-proc draw_indicator*(a: var TToggleButton): guint
-proc set_draw_indicator*(a: var TToggleButton, `draw_indicator`: guint)
-proc inconsistent*(a: var TToggleButton): guint
-proc set_inconsistent*(a: var TToggleButton, `inconsistent`: guint)
+proc active*(a: PToggleButton): guint
+proc set_active*(a: PToggleButton, `active`: guint)
+proc draw_indicator*(a: PToggleButton): guint
+proc set_draw_indicator*(a: PToggleButton, `draw_indicator`: guint)
+proc inconsistent*(a: PToggleButton): guint
+proc set_inconsistent*(a: PToggleButton, `inconsistent`: guint)
 proc toggle_button_get_type*(): TType{.cdecl, dynlib: lib, 
                                        importc: "gtk_toggle_button_get_type".}
 proc toggle_button_new*(): PToggleButton{.cdecl, dynlib: lib, 
     importc: "gtk_toggle_button_new".}
-proc toggle_button_new_with_label*(`label`: cstring): PToggleButton{.cdecl, 
+proc toggle_button_new*(`label`: cstring): PToggleButton{.cdecl, 
     dynlib: lib, importc: "gtk_toggle_button_new_with_label".}
 proc toggle_button_new_with_mnemonic*(`label`: cstring): PToggleButton{.cdecl, 
     dynlib: lib, importc: "gtk_toggle_button_new_with_mnemonic".}
@@ -5065,7 +5064,7 @@ proc check_button_get_type*(): TType{.cdecl, dynlib: lib,
                                       importc: "gtk_check_button_get_type".}
 proc check_button_new*(): PCheckButton{.cdecl, dynlib: lib, 
                                         importc: "gtk_check_button_new".}
-proc check_button_new_with_label*(`label`: cstring): PCheckButton{.cdecl, 
+proc check_button_new*(`label`: cstring): PCheckButton{.cdecl, 
     dynlib: lib, importc: "gtk_check_button_new_with_label".}
 proc check_button_new_with_mnemonic*(`label`: cstring): PCheckButton{.cdecl, 
     dynlib: lib, importc: "gtk_check_button_new_with_mnemonic".}
@@ -5086,17 +5085,17 @@ proc CHECK_MENU_ITEM_CLASS*(klass: pointer): PCheckMenuItemClass
 proc IS_CHECK_MENU_ITEM*(obj: pointer): bool
 proc IS_CHECK_MENU_ITEM_CLASS*(klass: pointer): bool
 proc CHECK_MENU_ITEM_GET_CLASS*(obj: pointer): PCheckMenuItemClass
-proc active*(a: var TCheckMenuItem): guint
-proc set_active*(a: var TCheckMenuItem, `active`: guint)
-proc always_show_toggle*(a: var TCheckMenuItem): guint
-proc set_always_show_toggle*(a: var TCheckMenuItem, `always_show_toggle`: guint)
-proc inconsistent*(a: var TCheckMenuItem): guint
-proc set_inconsistent*(a: var TCheckMenuItem, `inconsistent`: guint)
+proc active*(a: PCheckMenuItem): guint
+proc set_active*(a: PCheckMenuItem, `active`: guint)
+proc always_show_toggle*(a: PCheckMenuItem): guint
+proc set_always_show_toggle*(a: PCheckMenuItem, `always_show_toggle`: guint)
+proc inconsistent*(a: PCheckMenuItem): guint
+proc set_inconsistent*(a: PCheckMenuItem, `inconsistent`: guint)
 proc check_menu_item_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_check_menu_item_get_type".}
 proc check_menu_item_new*(): PWidget{.cdecl, dynlib: lib, 
                                       importc: "gtk_check_menu_item_new".}
-proc check_menu_item_new_with_label*(`label`: cstring): PWidget{.cdecl, 
+proc check_menu_item_new*(`label`: cstring): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_new_with_label".}
 proc check_menu_item_new_with_mnemonic*(`label`: cstring): PWidget{.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_new_with_mnemonic".}
@@ -5204,22 +5203,22 @@ proc UNSET_FLAG*(clist: PCList, flag: guint16)
 #proc GTK_CELL_PIXTEXT_get*(cell: pointer): PGtkCellPixText
 #proc GTK_CELL_WIDGET_get*(cell: pointer): PGtkCellWidget
 
-proc visible*(a: var TCListColumn): guint
-proc set_visible*(a: var TCListColumn, `visible`: guint)
-proc width_set*(a: var TCListColumn): guint
-proc set_width_set*(a: var TCListColumn, `width_set`: guint)
-proc resizeable*(a: var TCListColumn): guint
-proc set_resizeable*(a: var TCListColumn, `resizeable`: guint)
-proc auto_resize*(a: var TCListColumn): guint
-proc set_auto_resize*(a: var TCListColumn, `auto_resize`: guint)
-proc button_passive*(a: var TCListColumn): guint
-proc set_button_passive*(a: var TCListColumn, `button_passive`: guint)
-proc fg_set*(a: var TCListRow): guint
-proc set_fg_set*(a: var TCListRow, `fg_set`: guint)
-proc bg_set*(a: var TCListRow): guint
-proc set_bg_set*(a: var TCListRow, `bg_set`: guint)
-proc selectable*(a: var TCListRow): guint
-proc set_selectable*(a: var TCListRow, `selectable`: guint)
+proc visible*(a: PCListColumn): guint
+proc set_visible*(a: PCListColumn, `visible`: guint)
+proc width_set*(a: PCListColumn): guint
+proc set_width_set*(a: PCListColumn, `width_set`: guint)
+proc resizeable*(a: PCListColumn): guint
+proc set_resizeable*(a: PCListColumn, `resizeable`: guint)
+proc auto_resize*(a: PCListColumn): guint
+proc set_auto_resize*(a: PCListColumn, `auto_resize`: guint)
+proc button_passive*(a: PCListColumn): guint
+proc set_button_passive*(a: PCListColumn, `button_passive`: guint)
+proc fg_set*(a: PCListRow): guint
+proc set_fg_set*(a: PCListRow, `fg_set`: guint)
+proc bg_set*(a: PCListRow): guint
+proc set_bg_set*(a: PCListRow, `bg_set`: guint)
+proc selectable*(a: PCListRow): guint
+proc set_selectable*(a: PCListRow, `selectable`: guint)
 proc clist_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_clist_get_type".}
 proc clist_new*(columns: gint): PCList{.cdecl, dynlib: lib, 
                                         importc: "gtk_clist_new".}
@@ -5509,16 +5508,16 @@ proc COMBO_CLASS*(klass: pointer): PComboClass
 proc IS_COMBO*(obj: pointer): bool
 proc IS_COMBO_CLASS*(klass: pointer): bool
 proc COMBO_GET_CLASS*(obj: pointer): PComboClass
-proc value_in_list*(a: var TCombo): guint
-proc set_value_in_list*(a: var TCombo, `value_in_list`: guint)
-proc ok_if_empty*(a: var TCombo): guint
-proc set_ok_if_empty*(a: var TCombo, `ok_if_empty`: guint)
-proc case_sensitive*(a: var TCombo): guint
-proc set_case_sensitive*(a: var TCombo, `case_sensitive`: guint)
-proc use_arrows*(a: var TCombo): guint
-proc set_use_arrows*(a: var TCombo, `use_arrows`: guint)
-proc use_arrows_always*(a: var TCombo): guint
-proc set_use_arrows_always*(a: var TCombo, `use_arrows_always`: guint)
+proc value_in_list*(a: PCombo): guint
+proc set_value_in_list*(a: PCombo, `value_in_list`: guint)
+proc ok_if_empty*(a: PCombo): guint
+proc set_ok_if_empty*(a: PCombo, `ok_if_empty`: guint)
+proc case_sensitive*(a: PCombo): guint
+proc set_case_sensitive*(a: PCombo, `case_sensitive`: guint)
+proc use_arrows*(a: PCombo): guint
+proc set_use_arrows*(a: PCombo, `use_arrows`: guint)
+proc use_arrows_always*(a: PCombo): guint
+proc set_use_arrows_always*(a: PCombo, `use_arrows_always`: guint)
 proc combo_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_combo_get_type".}
 proc combo_new*(): PCombo{.cdecl, dynlib: lib, importc: "gtk_combo_new".}
 proc set_value_in_list*(combo: PCombo, val: gboolean, 
@@ -5560,16 +5559,16 @@ proc CTREE_NODE_NEXT*(nnode: TAddress): PCTreeNode
 proc CTREE_NODE_PREV*(pnode: TAddress): PCTreeNode
 proc CTREE_FUNC*(fun: TAddress): TCTreeFunc
 proc TYPE_CTREE_NODE*(): GType
-proc line_style*(a: var TCTree): guint
-proc set_line_style*(a: var TCTree, `line_style`: guint)
-proc expander_style*(a: var TCTree): guint
-proc set_expander_style*(a: var TCTree, `expander_style`: guint)
-proc show_stub*(a: var TCTree): guint
-proc set_show_stub*(a: var TCTree, `show_stub`: guint)
-proc is_leaf*(a: var TCTreeRow): guint
-proc set_is_leaf*(a: var TCTreeRow, `is_leaf`: guint)
-proc expanded*(a: var TCTreeRow): guint
-proc set_expanded*(a: var TCTreeRow, `expanded`: guint)
+proc line_style*(a: PCTree): guint
+proc set_line_style*(a: PCTree, `line_style`: guint)
+proc expander_style*(a: PCTree): guint
+proc set_expander_style*(a: PCTree, `expander_style`: guint)
+proc show_stub*(a: PCTree): guint
+proc set_show_stub*(a: PCTree, `show_stub`: guint)
+proc is_leaf*(a: PCTreeRow): guint
+proc set_is_leaf*(a: PCTreeRow, `is_leaf`: guint)
+proc expanded*(a: PCTreeRow): guint
+proc set_expanded*(a: PCTreeRow, `expanded`: guint)
 proc ctree_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_ctree_get_type".}
 proc ctree_new*(columns: gint, tree_column: gint): PCTree{.cdecl, dynlib: lib, 
     importc: "gtk_ctree_new".}
@@ -5920,20 +5919,20 @@ proc MENU_SHELL_CLASS*(klass: pointer): PMenuShellClass
 proc IS_MENU_SHELL*(obj: pointer): bool
 proc IS_MENU_SHELL_CLASS*(klass: pointer): bool
 proc MENU_SHELL_GET_CLASS*(obj: pointer): PMenuShellClass
-proc active*(a: var TMenuShell): guint
-proc set_active*(a: var TMenuShell, `active`: guint)
-proc have_grab*(a: var TMenuShell): guint
-proc set_have_grab*(a: var TMenuShell, `have_grab`: guint)
-proc have_xgrab*(a: var TMenuShell): guint
-proc set_have_xgrab*(a: var TMenuShell, `have_xgrab`: guint)
-proc ignore_leave*(a: var TMenuShell): guint
-proc set_ignore_leave*(a: var TMenuShell, `ignore_leave`: guint)
-proc menu_flag*(a: var TMenuShell): guint
-proc set_menu_flag*(a: var TMenuShell, `menu_flag`: guint)
-proc ignore_enter*(a: var TMenuShell): guint
-proc set_ignore_enter*(a: var TMenuShell, `ignore_enter`: guint)
-proc submenu_placement*(a: var TMenuShellClass): guint
-proc set_submenu_placement*(a: var TMenuShellClass, `submenu_placement`: guint)
+proc active*(a: PMenuShell): guint
+proc set_active*(a: PMenuShell, `active`: guint)
+proc have_grab*(a: PMenuShell): guint
+proc set_have_grab*(a: PMenuShell, `have_grab`: guint)
+proc have_xgrab*(a: PMenuShell): guint
+proc set_have_xgrab*(a: PMenuShell, `have_xgrab`: guint)
+proc ignore_leave*(a: PMenuShell): guint
+proc set_ignore_leave*(a: PMenuShell, `ignore_leave`: guint)
+proc menu_flag*(a: PMenuShell): guint
+proc set_menu_flag*(a: PMenuShell, `menu_flag`: guint)
+proc ignore_enter*(a: PMenuShell): guint
+proc set_ignore_enter*(a: PMenuShell, `ignore_enter`: guint)
+proc submenu_placement*(a: PMenuShellClass): guint
+proc set_submenu_placement*(a: PMenuShellClass, `submenu_placement`: guint)
 proc menu_shell_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_menu_shell_get_type".}
 proc append*(menu_shell: PMenuShell, child: PWidget){.cdecl, 
@@ -5979,23 +5978,23 @@ proc MENU_CLASS*(klass: pointer): PMenuClass
 proc IS_MENU*(obj: pointer): bool
 proc IS_MENU_CLASS*(klass: pointer): bool
 proc MENU_GET_CLASS*(obj: pointer): PMenuClass
-proc needs_destruction_ref_count*(a: var TMenu): guint
-proc set_needs_destruction_ref_count*(a: var TMenu, 
+proc needs_destruction_ref_count*(a: PMenu): guint
+proc set_needs_destruction_ref_count*(a: PMenu, 
                                       `needs_destruction_ref_count`: guint)
-proc torn_off*(a: var TMenu): guint
-proc set_torn_off*(a: var TMenu, `torn_off`: guint)
-proc tearoff_active*(a: var TMenu): guint
-proc set_tearoff_active*(a: var TMenu, `tearoff_active`: guint)
-proc scroll_fast*(a: var TMenu): guint
-proc set_scroll_fast*(a: var TMenu, `scroll_fast`: guint)
-proc upper_arrow_visible*(a: var TMenu): guint
-proc set_upper_arrow_visible*(a: var TMenu, `upper_arrow_visible`: guint)
-proc lower_arrow_visible*(a: var TMenu): guint
-proc set_lower_arrow_visible*(a: var TMenu, `lower_arrow_visible`: guint)
-proc upper_arrow_prelight*(a: var TMenu): guint
-proc set_upper_arrow_prelight*(a: var TMenu, `upper_arrow_prelight`: guint)
-proc lower_arrow_prelight*(a: var TMenu): guint
-proc set_lower_arrow_prelight*(a: var TMenu, `lower_arrow_prelight`: guint)
+proc torn_off*(a: PMenu): guint
+proc set_torn_off*(a: PMenu, `torn_off`: guint)
+proc tearoff_active*(a: PMenu): guint
+proc set_tearoff_active*(a: PMenu, `tearoff_active`: guint)
+proc scroll_fast*(a: PMenu): guint
+proc set_scroll_fast*(a: PMenu, `scroll_fast`: guint)
+proc upper_arrow_visible*(a: PMenu): guint
+proc set_upper_arrow_visible*(a: PMenu, `upper_arrow_visible`: guint)
+proc lower_arrow_visible*(a: PMenu): guint
+proc set_lower_arrow_visible*(a: PMenu, `lower_arrow_visible`: guint)
+proc upper_arrow_prelight*(a: PMenu): guint
+proc set_upper_arrow_prelight*(a: PMenu, `upper_arrow_prelight`: guint)
+proc lower_arrow_prelight*(a: PMenu): guint
+proc set_lower_arrow_prelight*(a: PMenu, `lower_arrow_prelight`: guint)
 proc menu_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_menu_get_type".}
 proc menu_new*(): PMenu{.cdecl, dynlib: lib, importc: "gtk_menu_new".}
 proc popup*(menu: PMenu, parent_menu_shell: PWidget, 
@@ -6067,32 +6066,32 @@ proc ENTRY_CLASS*(klass: pointer): PEntryClass
 proc IS_ENTRY*(obj: pointer): bool
 proc IS_ENTRY_CLASS*(klass: pointer): bool
 proc ENTRY_GET_CLASS*(obj: pointer): PEntryClass
-proc editable*(a: var TEntry): guint
-proc set_editable*(a: var TEntry, `editable`: guint)
-proc visible*(a: var TEntry): guint
-proc set_visible*(a: var TEntry, `visible`: guint)
-proc overwrite_mode*(a: var TEntry): guint
-proc set_overwrite_mode*(a: var TEntry, `overwrite_mode`: guint)
-proc in_drag*(a: var TEntry): guint
-proc set_in_drag*(a: var TEntry, `in_drag`: guint)
-proc cache_includes_preedit*(a: var TEntry): guint
-proc set_cache_includes_preedit*(a: var TEntry, `cache_includes_preedit`: guint)
-proc need_im_reset*(a: var TEntry): guint
-proc set_need_im_reset*(a: var TEntry, `need_im_reset`: guint)
-proc has_frame*(a: var TEntry): guint
-proc set_has_frame*(a: var TEntry, `has_frame`: guint)
-proc activates_default*(a: var TEntry): guint
-proc set_activates_default*(a: var TEntry, `activates_default`: guint)
-proc cursor_visible*(a: var TEntry): guint
-proc set_cursor_visible*(a: var TEntry, `cursor_visible`: guint)
-proc in_click*(a: var TEntry): guint
-proc set_in_click*(a: var TEntry, `in_click`: guint)
-proc is_cell_renderer*(a: var TEntry): guint
-proc set_is_cell_renderer*(a: var TEntry, `is_cell_renderer`: guint)
-proc editing_canceled*(a: var TEntry): guint
-proc set_editing_canceled*(a: var TEntry, `editing_canceled`: guint)
-proc mouse_cursor_obscured*(a: var TEntry): guint
-proc set_mouse_cursor_obscured*(a: var TEntry, `mouse_cursor_obscured`: guint)
+proc editable*(a: PEntry): guint
+proc set_editable*(a: PEntry, `editable`: guint)
+proc visible*(a: PEntry): guint
+proc set_visible*(a: PEntry, `visible`: guint)
+proc overwrite_mode*(a: PEntry): guint
+proc set_overwrite_mode*(a: PEntry, `overwrite_mode`: guint)
+proc in_drag*(a: PEntry): guint
+proc set_in_drag*(a: PEntry, `in_drag`: guint)
+proc cache_includes_preedit*(a: PEntry): guint
+proc set_cache_includes_preedit*(a: PEntry, `cache_includes_preedit`: guint)
+proc need_im_reset*(a: PEntry): guint
+proc set_need_im_reset*(a: PEntry, `need_im_reset`: guint)
+proc has_frame*(a: PEntry): guint
+proc set_has_frame*(a: PEntry, `has_frame`: guint)
+proc activates_default*(a: PEntry): guint
+proc set_activates_default*(a: PEntry, `activates_default`: guint)
+proc cursor_visible*(a: PEntry): guint
+proc set_cursor_visible*(a: PEntry, `cursor_visible`: guint)
+proc in_click*(a: PEntry): guint
+proc set_in_click*(a: PEntry, `in_click`: guint)
+proc is_cell_renderer*(a: PEntry): guint
+proc set_is_cell_renderer*(a: PEntry, `is_cell_renderer`: guint)
+proc editing_canceled*(a: PEntry): guint
+proc set_editing_canceled*(a: PEntry, `editing_canceled`: guint)
+proc mouse_cursor_obscured*(a: PEntry): guint
+proc set_mouse_cursor_obscured*(a: PEntry, `mouse_cursor_obscured`: guint)
 proc entry_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_entry_get_type".}
 proc entry_new*(): PEntry{.cdecl, dynlib: lib, importc: "gtk_entry_new".}
 proc set_visibility*(entry: PEntry, visible: gboolean){.cdecl, 
@@ -6436,18 +6435,18 @@ proc HANDLE_BOX_CLASS*(klass: pointer): PHandleBoxClass
 proc IS_HANDLE_BOX*(obj: pointer): bool
 proc IS_HANDLE_BOX_CLASS*(klass: pointer): bool
 proc HANDLE_BOX_GET_CLASS*(obj: pointer): PHandleBoxClass
-proc handle_position*(a: var THandleBox): guint
-proc set_handle_position*(a: var THandleBox, `handle_position`: guint)
-proc float_window_mapped*(a: var THandleBox): guint
-proc set_float_window_mapped*(a: var THandleBox, `float_window_mapped`: guint)
-proc child_detached*(a: var THandleBox): guint
-proc set_child_detached*(a: var THandleBox, `child_detached`: guint)
-proc in_drag*(a: var THandleBox): guint
-proc set_in_drag*(a: var THandleBox, `in_drag`: guint)
-proc shrink_on_detach*(a: var THandleBox): guint
-proc set_shrink_on_detach*(a: var THandleBox, `shrink_on_detach`: guint)
-proc snap_edge*(a: var THandleBox): gint
-proc set_snap_edge*(a: var THandleBox, `snap_edge`: gint)
+proc handle_position*(a: PHandleBox): guint
+proc set_handle_position*(a: PHandleBox, `handle_position`: guint)
+proc float_window_mapped*(a: PHandleBox): guint
+proc set_float_window_mapped*(a: PHandleBox, `float_window_mapped`: guint)
+proc child_detached*(a: PHandleBox): guint
+proc set_child_detached*(a: PHandleBox, `child_detached`: guint)
+proc in_drag*(a: PHandleBox): guint
+proc set_in_drag*(a: PHandleBox, `in_drag`: guint)
+proc shrink_on_detach*(a: PHandleBox): guint
+proc set_shrink_on_detach*(a: PHandleBox, `shrink_on_detach`: guint)
+proc snap_edge*(a: PHandleBox): gint
+proc set_snap_edge*(a: PHandleBox, `snap_edge`: gint)
 proc handle_box_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_handle_box_get_type".}
 proc handle_box_new*(): PHandleBox{.cdecl, dynlib: lib, 
@@ -6491,24 +6490,24 @@ proc PANED_CLASS*(klass: pointer): PPanedClass
 proc IS_PANED*(obj: pointer): bool
 proc IS_PANED_CLASS*(klass: pointer): bool
 proc PANED_GET_CLASS*(obj: pointer): PPanedClass
-proc position_set*(a: var TPaned): guint
-proc set_position_set*(a: var TPaned, `position_set`: guint)
-proc in_drag*(a: var TPaned): guint
-proc set_in_drag*(a: var TPaned, `in_drag`: guint)
-proc child1_shrink*(a: var TPaned): guint
-proc set_child1_shrink*(a: var TPaned, `child1_shrink`: guint)
-proc child1_resize*(a: var TPaned): guint
-proc set_child1_resize*(a: var TPaned, `child1_resize`: guint)
-proc child2_shrink*(a: var TPaned): guint
-proc set_child2_shrink*(a: var TPaned, `child2_shrink`: guint)
-proc child2_resize*(a: var TPaned): guint
-proc set_child2_resize*(a: var TPaned, `child2_resize`: guint)
-proc orientation*(a: var TPaned): guint
-proc set_orientation*(a: var TPaned, `orientation`: guint)
-proc in_recursion*(a: var TPaned): guint
-proc set_in_recursion*(a: var TPaned, `in_recursion`: guint)
-proc handle_prelit*(a: var TPaned): guint
-proc set_handle_prelit*(a: var TPaned, `handle_prelit`: guint)
+proc position_set*(a: PPaned): guint
+proc set_position_set*(a: PPaned, `position_set`: guint)
+proc in_drag*(a: PPaned): guint
+proc set_in_drag*(a: PPaned, `in_drag`: guint)
+proc child1_shrink*(a: PPaned): guint
+proc set_child1_shrink*(a: PPaned, `child1_shrink`: guint)
+proc child1_resize*(a: PPaned): guint
+proc set_child1_resize*(a: PPaned, `child1_resize`: guint)
+proc child2_shrink*(a: PPaned): guint
+proc set_child2_shrink*(a: PPaned, `child2_shrink`: guint)
+proc child2_resize*(a: PPaned): guint
+proc set_child2_resize*(a: PPaned, `child2_resize`: guint)
+proc orientation*(a: PPaned): guint
+proc set_orientation*(a: PPaned, `orientation`: guint)
+proc in_recursion*(a: PPaned): guint
+proc set_in_recursion*(a: PPaned, `in_recursion`: guint)
+proc handle_prelit*(a: PPaned): guint
+proc set_handle_prelit*(a: PPaned, `handle_prelit`: guint)
 proc paned_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_paned_get_type".}
 proc add1*(paned: PPaned, child: PWidget){.cdecl, dynlib: lib, 
     importc: "gtk_paned_add1".}
@@ -6639,8 +6638,8 @@ proc RC_STYLE_CLASS*(klass: pointer): PRcStyleClass
 proc IS_RC_STYLE*(anObject: pointer): bool
 proc IS_RC_STYLE_CLASS*(klass: pointer): bool
 proc RC_STYLE_GET_CLASS*(obj: pointer): PRcStyleClass
-proc engine_specified*(a: var TRcStyle): guint
-proc set_engine_specified*(a: var TRcStyle, `engine_specified`: guint)
+proc engine_specified*(a: PRcStyle): guint
+proc set_engine_specified*(a: PRcStyle, `engine_specified`: guint)
 proc rc_init*(){.cdecl, dynlib: lib, importc: "_gtk_rc_init".}
 proc rc_add_default_file*(filename: cstring){.cdecl, dynlib: lib, 
     importc: "gtk_rc_add_default_file".}
@@ -6863,26 +6862,26 @@ proc RANGE_CLASS*(klass: pointer): PRangeClass
 proc IS_RANGE*(obj: pointer): bool
 proc IS_RANGE_CLASS*(klass: pointer): bool
 proc RANGE_GET_CLASS*(obj: pointer): PRangeClass
-proc inverted*(a: var TRange): guint
-proc set_inverted*(a: var TRange, `inverted`: guint)
-proc flippable*(a: var TRange): guint
-proc set_flippable*(a: var TRange, `flippable`: guint)
-proc has_stepper_a*(a: var TRange): guint
-proc set_has_stepper_a*(a: var TRange, `has_stepper_a`: guint)
-proc has_stepper_b*(a: var TRange): guint
-proc set_has_stepper_b*(a: var TRange, `has_stepper_b`: guint)
-proc has_stepper_c*(a: var TRange): guint
-proc set_has_stepper_c*(a: var TRange, `has_stepper_c`: guint)
-proc has_stepper_d*(a: var TRange): guint
-proc set_has_stepper_d*(a: var TRange, `has_stepper_d`: guint)
-proc need_recalc*(a: var TRange): guint
-proc set_need_recalc*(a: var TRange, `need_recalc`: guint)
-proc slider_size_fixed*(a: var TRange): guint
-proc set_slider_size_fixed*(a: var TRange, `slider_size_fixed`: guint)
-proc trough_click_forward*(a: var TRange): guint
-proc set_trough_click_forward*(a: var TRange, `trough_click_forward`: guint)
-proc update_pending*(a: var TRange): guint
-proc set_update_pending*(a: var TRange, `update_pending`: guint)
+proc inverted*(a: PRange): guint
+proc set_inverted*(a: PRange, `inverted`: guint)
+proc flippable*(a: PRange): guint
+proc set_flippable*(a: PRange, `flippable`: guint)
+proc has_stepper_a*(a: PRange): guint
+proc set_has_stepper_a*(a: PRange, `has_stepper_a`: guint)
+proc has_stepper_b*(a: PRange): guint
+proc set_has_stepper_b*(a: PRange, `has_stepper_b`: guint)
+proc has_stepper_c*(a: PRange): guint
+proc set_has_stepper_c*(a: PRange, `has_stepper_c`: guint)
+proc has_stepper_d*(a: PRange): guint
+proc set_has_stepper_d*(a: PRange, `has_stepper_d`: guint)
+proc need_recalc*(a: PRange): guint
+proc set_need_recalc*(a: PRange, `need_recalc`: guint)
+proc slider_size_fixed*(a: PRange): guint
+proc set_slider_size_fixed*(a: PRange, `slider_size_fixed`: guint)
+proc trough_click_forward*(a: PRange): guint
+proc set_trough_click_forward*(a: PRange, `trough_click_forward`: guint)
+proc update_pending*(a: PRange): guint
+proc set_update_pending*(a: PRange, `update_pending`: guint)
 proc range_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_range_get_type".}
 proc set_update_policy*(range: PRange, policy: TUpdateType){.cdecl, 
     dynlib: lib, importc: "gtk_range_set_update_policy".}
@@ -6916,10 +6915,10 @@ proc SCALE_CLASS*(klass: pointer): PScaleClass
 proc IS_SCALE*(obj: pointer): bool
 proc IS_SCALE_CLASS*(klass: pointer): bool
 proc SCALE_GET_CLASS*(obj: pointer): PScaleClass
-proc draw_value*(a: var TScale): guint
-proc set_draw_value*(a: var TScale, `draw_value`: guint)
-proc value_pos*(a: var TScale): guint
-proc set_value_pos*(a: var TScale, `value_pos`: guint)
+proc draw_value*(a: PScale): guint
+proc set_draw_value*(a: PScale, `draw_value`: guint)
+proc value_pos*(a: PScale): guint
+proc set_value_pos*(a: PScale, `value_pos`: guint)
 proc scale_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_scale_get_type".}
 proc set_digits*(scale: PScale, digits: gint){.cdecl, dynlib: lib, 
     importc: "gtk_scale_set_digits".}
@@ -6947,7 +6946,7 @@ proc hscale_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_hscale_get_type".}
 proc hscale_new*(adjustment: PAdjustment): PHScale{.cdecl, dynlib: lib, 
     importc: "gtk_hscale_new".}
-proc hscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PHScale{.
+proc hscale_new*(min: gdouble, max: gdouble, step: gdouble): PHScale{.
     cdecl, dynlib: lib, importc: "gtk_hscale_new_with_range".}
 proc TYPE_SCROLLBAR*(): GType
 proc SCROLLBAR*(obj: pointer): PScrollbar
@@ -7137,7 +7136,7 @@ proc image_menu_item_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_image_menu_item_get_type".}
 proc image_menu_item_new*(): PImageMenuItem{.cdecl, dynlib: lib, 
     importc: "gtk_image_menu_item_new".}
-proc image_menu_item_new_with_label*(`label`: cstring): PImageMenuItem{.cdecl, 
+proc image_menu_item_new*(`label`: cstring): PImageMenuItem{.cdecl, 
     dynlib: lib, importc: "gtk_image_menu_item_new_with_label".}
 proc image_menu_item_new_with_mnemonic*(`label`: cstring): PImageMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_image_menu_item_new_with_mnemonic".}
@@ -7157,8 +7156,8 @@ proc IM_CONTEXT_SIMPLE_CLASS*(klass: pointer): PIMContextSimpleClass
 proc IS_IM_CONTEXT_SIMPLE*(obj: pointer): bool
 proc IS_IM_CONTEXT_SIMPLE_CLASS*(klass: pointer): bool
 proc IM_CONTEXT_SIMPLE_GET_CLASS*(obj: pointer): PIMContextSimpleClass
-proc in_hex_sequence*(a: var TIMContextSimple): guint
-proc set_in_hex_sequence*(a: var TIMContextSimple, `in_hex_sequence`: guint)
+proc in_hex_sequence*(a: PIMContextSimple): guint
+proc set_in_hex_sequence*(a: PIMContextSimple, `in_hex_sequence`: guint)
 proc im_context_simple_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_im_context_simple_get_type".}
 proc im_context_simple_new*(): PIMContext{.cdecl, dynlib: lib, 
@@ -7253,7 +7252,7 @@ proc delete_entries*(ifactory: PItemFactory, n_entries: guint,
 proc popup*(ifactory: PItemFactory, x: guint, y: guint, 
                          mouse_button: guint, time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup".}
-proc popup_with_data*(ifactory: PItemFactory, popup_data: gpointer, 
+proc popup*(ifactory: PItemFactory, popup_data: gpointer, 
                                    destroy: TDestroyNotify, x: guint, y: guint, 
                                    mouse_button: guint, time: guint32){.cdecl, 
     dynlib: lib, importc: "gtk_item_factory_popup_with_data".}
@@ -7305,12 +7304,12 @@ proc LIST_CLASS*(klass: pointer): PListClass
 proc IS_LIST*(obj: pointer): bool
 proc IS_LIST_CLASS*(klass: pointer): bool
 proc LIST_GET_CLASS*(obj: pointer): PListClass
-proc selection_mode*(a: var TList): guint
-proc set_selection_mode*(a: var TList, `selection_mode`: guint)
-proc drag_selection*(a: var TList): guint
-proc set_drag_selection*(a: var TList, `drag_selection`: guint)
-proc add_mode*(a: var TList): guint
-proc set_add_mode*(a: var TList, `add_mode`: guint)
+proc selection_mode*(a: PList): guint
+proc set_selection_mode*(a: PList, `selection_mode`: guint)
+proc drag_selection*(a: PList): guint
+proc set_drag_selection*(a: PList, `drag_selection`: guint)
+proc add_mode*(a: PList): guint
+proc set_add_mode*(a: PList, `add_mode`: guint)
 proc list_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_list_get_type".}
 proc list_new*(): PList{.cdecl, dynlib: lib, importc: "gtk_list_new".}
 proc insert_items*(list: PList, items: PGList, position: gint){.cdecl, 
@@ -7528,7 +7527,7 @@ proc IS_TREE_MODEL_SORT_CLASS*(klass: pointer): bool
 proc TREE_MODEL_SORT_GET_CLASS*(obj: pointer): PTreeModelSortClass
 proc tree_model_sort_get_type*(): GType{.cdecl, dynlib: lib, 
     importc: "gtk_tree_model_sort_get_type".}
-proc sort_new_with_model*(child_model: PTreeModel): PTreeModel{.
+proc sort_new*(child_model: PTreeModel): PTreeModel{.
     cdecl, dynlib: lib, importc: "gtk_tree_model_sort_new_with_model".}
 proc sort_get_model*(tree_model: PTreeModelSort): PTreeModel{.cdecl, 
     dynlib: lib, importc: "gtk_tree_model_sort_get_model".}
@@ -7559,8 +7558,8 @@ proc LIST_STORE_CLASS*(klass: pointer): PListStoreClass
 proc IS_LIST_STORE*(obj: pointer): bool
 proc IS_LIST_STORE_CLASS*(klass: pointer): bool
 proc LIST_STORE_GET_CLASS*(obj: pointer): PListStoreClass
-proc columns_dirty*(a: var TListStore): guint
-proc set_columns_dirty*(a: var TListStore, `columns_dirty`: guint)
+proc columns_dirty*(a: PListStore): guint
+proc set_columns_dirty*(a: PListStore, `columns_dirty`: guint)
 proc list_store_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_list_store_get_type".}
 proc list_store_newv*(n_columns: gint, types: PGType): PListStore{.cdecl, 
@@ -7728,30 +7727,30 @@ proc NOTEBOOK_CLASS*(klass: pointer): PNotebookClass
 proc IS_NOTEBOOK*(obj: pointer): bool
 proc IS_NOTEBOOK_CLASS*(klass: pointer): bool
 proc NOTEBOOK_GET_CLASS*(obj: pointer): PNotebookClass
-proc show_tabs*(a: var TNotebook): guint
-proc set_show_tabs*(a: var TNotebook, `show_tabs`: guint)
-proc homogeneous*(a: var TNotebook): guint
-proc set_homogeneous*(a: var TNotebook, `homogeneous`: guint)
-proc show_border*(a: var TNotebook): guint
-proc set_show_border*(a: var TNotebook, `show_border`: guint)
-proc tab_pos*(a: var TNotebook): guint
-proc set_tab_pos*(a: var TNotebook, `tab_pos`: guint)
-proc scrollable*(a: var TNotebook): guint
-proc set_scrollable*(a: var TNotebook, `scrollable`: guint)
-proc in_child*(a: var TNotebook): guint
-proc set_in_child*(a: var TNotebook, `in_child`: guint)
-proc click_child*(a: var TNotebook): guint
-proc set_click_child*(a: var TNotebook, `click_child`: guint)
-proc button*(a: var TNotebook): guint
-proc set_button*(a: var TNotebook, `button`: guint)
-proc need_timer*(a: var TNotebook): guint
-proc set_need_timer*(a: var TNotebook, `need_timer`: guint)
-proc child_has_focus*(a: var TNotebook): guint
-proc set_child_has_focus*(a: var TNotebook, `child_has_focus`: guint)
-proc have_visible_child*(a: var TNotebook): guint
-proc set_have_visible_child*(a: var TNotebook, `have_visible_child`: guint)
-proc focus_out*(a: var TNotebook): guint
-proc set_focus_out*(a: var TNotebook, `focus_out`: guint)
+proc show_tabs*(a: PNotebook): guint
+proc set_show_tabs*(a: PNotebook, `show_tabs`: guint)
+proc homogeneous*(a: PNotebook): guint
+proc set_homogeneous*(a: PNotebook, `homogeneous`: guint)
+proc show_border*(a: PNotebook): guint
+proc set_show_border*(a: PNotebook, `show_border`: guint)
+proc tab_pos*(a: PNotebook): guint
+proc set_tab_pos*(a: PNotebook, `tab_pos`: guint)
+proc scrollable*(a: PNotebook): guint
+proc set_scrollable*(a: PNotebook, `scrollable`: guint)
+proc in_child*(a: PNotebook): guint
+proc set_in_child*(a: PNotebook, `in_child`: guint)
+proc click_child*(a: PNotebook): guint
+proc set_click_child*(a: PNotebook, `click_child`: guint)
+proc button*(a: PNotebook): guint
+proc set_button*(a: PNotebook, `button`: guint)
+proc need_timer*(a: PNotebook): guint
+proc set_need_timer*(a: PNotebook, `need_timer`: guint)
+proc child_has_focus*(a: PNotebook): guint
+proc set_child_has_focus*(a: PNotebook, `child_has_focus`: guint)
+proc have_visible_child*(a: PNotebook): guint
+proc set_have_visible_child*(a: PNotebook, `have_visible_child`: guint)
+proc focus_out*(a: PNotebook): guint
+proc set_focus_out*(a: PNotebook, `focus_out`: guint)
 proc notebook_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_notebook_get_type".}
 proc notebook_new*(): PNotebook{.cdecl, dynlib: lib, importc: "gtk_notebook_new".}
@@ -7854,12 +7853,12 @@ proc OLD_EDITABLE_CLASS*(klass: pointer): POldEditableClass
 proc IS_OLD_EDITABLE*(obj: pointer): bool
 proc IS_OLD_EDITABLE_CLASS*(klass: pointer): bool
 proc OLD_EDITABLE_GET_CLASS*(obj: pointer): POldEditableClass
-proc has_selection*(a: var TOldEditable): guint
-proc set_has_selection*(a: var TOldEditable, `has_selection`: guint)
-proc editable*(a: var TOldEditable): guint
-proc set_editable*(a: var TOldEditable, `editable`: guint)
-proc visible*(a: var TOldEditable): guint
-proc set_visible*(a: var TOldEditable, `visible`: guint)
+proc has_selection*(a: POldEditable): guint
+proc set_has_selection*(a: POldEditable, `has_selection`: guint)
+proc editable*(a: POldEditable): guint
+proc set_editable*(a: POldEditable, `editable`: guint)
+proc visible*(a: POldEditable): guint
+proc set_visible*(a: POldEditable, `visible`: guint)
 proc old_editable_get_type*(): TType{.cdecl, dynlib: lib, 
                                       importc: "gtk_old_editable_get_type".}
 proc claim_selection*(old_editable: POldEditable, claim: gboolean, 
@@ -7897,8 +7896,8 @@ proc PIXMAP_CLASS*(klass: pointer): PPixmapClass
 proc IS_PIXMAP*(obj: pointer): bool
 proc IS_PIXMAP_CLASS*(klass: pointer): bool
 proc PIXMAP_GET_CLASS*(obj: pointer): PPixmapClass
-proc build_insensitive*(a: var TPixmap): guint
-proc set_build_insensitive*(a: var TPixmap, `build_insensitive`: guint)
+proc build_insensitive*(a: PPixmap): guint
+proc set_build_insensitive*(a: PPixmap, `build_insensitive`: guint)
 proc pixmap_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_pixmap_get_type".}
 proc pixmap_new*(pixmap: gdk2.PPixmap, mask: gdk2.PBitmap): PPixmap{.cdecl, 
@@ -7919,8 +7918,8 @@ proc PLUG_CLASS*(klass: pointer): PPlugClass
 proc IS_PLUG*(obj: pointer): bool
 proc IS_PLUG_CLASS*(klass: pointer): bool
 proc PLUG_GET_CLASS*(obj: pointer): PPlugClass
-proc same_app*(a: var TPlug): guint
-proc set_same_app*(a: var TPlug, `same_app`: guint)
+proc same_app*(a: PPlug): guint
+proc set_same_app*(a: PPlug, `same_app`: guint)
 proc plug_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_plug_get_type".}
 proc construct_for_display*(plug: PPlug, display: gdk2.PDisplay, 
                                  socket_id: gdk2.TNativeWindow){.cdecl, 
@@ -7945,10 +7944,10 @@ proc PREVIEW_CLASS*(klass: pointer): PPreviewClass
 proc IS_PREVIEW*(obj: pointer): bool
 proc IS_PREVIEW_CLASS*(klass: pointer): bool
 proc PREVIEW_GET_CLASS*(obj: pointer): PPreviewClass
-proc get_type*(a: var TPreview): guint
-proc set_type*(a: var TPreview, `type`: guint)
-proc get_expand*(a: var TPreview): guint
-proc set_expand*(a: var TPreview, `expand`: guint)
+proc get_type*(a: PPreview): guint
+proc set_type*(a: PPreview, `type`: guint)
+proc get_expand*(a: PPreview): guint
+proc set_expand*(a: PPreview, `expand`: guint)
 proc preview_get_type*(): TType{.cdecl, dynlib: lib, 
                                  importc: "gtk_preview_get_type".}
 proc preview_uninit*(){.cdecl, dynlib: lib, importc: "gtk_preview_uninit".}
@@ -7986,12 +7985,12 @@ const
   bm_TGtkProgress_use_text_format* = 0x0004'i16
   bp_TGtkProgress_use_text_format* = 2'i16
 
-proc show_text*(a: var TProgress): guint
-proc set_show_text*(a: var TProgress, `show_text`: guint)
-proc activity_mode*(a: var TProgress): guint
-proc set_activity_mode*(a: var TProgress, `activity_mode`: guint)
-proc use_text_format*(a: var TProgress): guint
-proc set_use_text_format*(a: var TProgress, `use_text_format`: guint)
+proc show_text*(a: PProgress): guint
+proc set_show_text*(a: PProgress, `show_text`: guint)
+proc activity_mode*(a: PProgress): guint
+proc set_activity_mode*(a: PProgress, `activity_mode`: guint)
+proc use_text_format*(a: PProgress): guint
+proc set_use_text_format*(a: PProgress, `use_text_format`: guint)
 const 
   bm_TGtkProgressBar_activity_dir* = 0x0001'i16
   bp_TGtkProgressBar_activity_dir* = 0'i16
@@ -8002,8 +8001,8 @@ proc PROGRESS_BAR_CLASS*(klass: pointer): PProgressBarClass
 proc IS_PROGRESS_BAR*(obj: pointer): bool
 proc IS_PROGRESS_BAR_CLASS*(klass: pointer): bool
 proc PROGRESS_BAR_GET_CLASS*(obj: pointer): PProgressBarClass
-proc activity_dir*(a: var TProgressBar): guint
-proc set_activity_dir*(a: var TProgressBar, `activity_dir`: guint)
+proc activity_dir*(a: PProgressBar): guint
+proc set_activity_dir*(a: PProgressBar, `activity_dir`: guint)
 proc progress_bar_get_type*(): TType{.cdecl, dynlib: lib, 
                                       importc: "gtk_progress_bar_get_type".}
 proc progress_bar_new*(): PProgressBar{.cdecl, dynlib: lib, 
@@ -8039,13 +8038,13 @@ proc radio_button_new*(group: PGSList): PRadioButton{.cdecl, dynlib: lib,
     importc: "gtk_radio_button_new".}
 proc new_from_widget*(group: PRadioButton): PRadioButton{.cdecl, 
     dynlib: lib, importc: "gtk_radio_button_new_from_widget".}
-proc radio_button_new_with_label*(group: PGSList, `label`: cstring): PRadioButton{.
+proc radio_button_new*(group: PGSList, `label`: cstring): PRadioButton{.
     cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_label".}
-proc new_with_label_from_widget*(group: PRadioButton, 
+proc radio_button_new_with_label_from_widget*(group: PRadioButton, 
     `label`: cstring): PRadioButton{.cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_label_from_widget".}
 proc radio_button_new_with_mnemonic*(group: PGSList, `label`: cstring): PRadioButton{.
     cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_mnemonic".}
-proc new_with_mnemonic_from_widget*(group: PRadioButton, 
+proc radio_button_new_with_mnemonic_from_widget*(group: PRadioButton, 
     `label`: cstring): PRadioButton{.cdecl, dynlib: lib, importc: "gtk_radio_button_new_with_mnemonic_from_widget".}
 proc get_group*(radio_button: PRadioButton): PGSList{.cdecl, 
     dynlib: lib, importc: "gtk_radio_button_get_group".}
@@ -8061,7 +8060,7 @@ proc radio_menu_item_get_type*(): TType{.cdecl, dynlib: lib,
     importc: "gtk_radio_menu_item_get_type".}
 proc radio_menu_item_new*(group: PGSList): PRadioMenuItem{.cdecl, dynlib: lib, 
     importc: "gtk_radio_menu_item_new".}
-proc radio_menu_item_new_with_label*(group: PGSList, `label`: cstring): PRadioMenuItem{.
+proc radio_menu_item_new*(group: PGSList, `label`: cstring): PRadioMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_new_with_label".}
 proc radio_menu_item_new_with_mnemonic*(group: PGSList, `label`: cstring): PRadioMenuItem{.
     cdecl, dynlib: lib, importc: "gtk_radio_menu_item_new_with_mnemonic".}
@@ -8089,18 +8088,18 @@ proc SCROLLED_WINDOW_CLASS*(klass: pointer): PScrolledWindowClass
 proc IS_SCROLLED_WINDOW*(obj: pointer): bool
 proc IS_SCROLLED_WINDOW_CLASS*(klass: pointer): bool
 proc SCROLLED_WINDOW_GET_CLASS*(obj: pointer): PScrolledWindowClass
-proc hscrollbar_policy*(a: var TScrolledWindow): guint
-proc set_hscrollbar_policy*(a: var TScrolledWindow, `hscrollbar_policy`: guint)
-proc vscrollbar_policy*(a: var TScrolledWindow): guint
-proc set_vscrollbar_policy*(a: var TScrolledWindow, `vscrollbar_policy`: guint)
-proc hscrollbar_visible*(a: var TScrolledWindow): guint
-proc set_hscrollbar_visible*(a: var TScrolledWindow, `hscrollbar_visible`: guint)
-proc vscrollbar_visible*(a: var TScrolledWindow): guint
-proc set_vscrollbar_visible*(a: var TScrolledWindow, `vscrollbar_visible`: guint)
-proc window_placement*(a: var TScrolledWindow): guint
-proc set_window_placement*(a: var TScrolledWindow, `window_placement`: guint)
-proc focus_out*(a: var TScrolledWindow): guint
-proc set_focus_out*(a: var TScrolledWindow, `focus_out`: guint)
+proc hscrollbar_policy*(a: PScrolledWindow): guint
+proc set_hscrollbar_policy*(a: PScrolledWindow, `hscrollbar_policy`: guint)
+proc vscrollbar_policy*(a: PScrolledWindow): guint
+proc set_vscrollbar_policy*(a: PScrolledWindow, `vscrollbar_policy`: guint)
+proc hscrollbar_visible*(a: PScrolledWindow): guint
+proc set_hscrollbar_visible*(a: PScrolledWindow, `hscrollbar_visible`: guint)
+proc vscrollbar_visible*(a: PScrolledWindow): guint
+proc set_vscrollbar_visible*(a: PScrolledWindow, `vscrollbar_visible`: guint)
+proc window_placement*(a: PScrolledWindow): guint
+proc set_window_placement*(a: PScrolledWindow, `window_placement`: guint)
+proc focus_out*(a: PScrolledWindow): guint
+proc set_focus_out*(a: PScrolledWindow, `focus_out`: guint)
 proc scrolled_window_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_scrolled_window_get_type".}
 proc scrolled_window_new*(hadjustment: PAdjustment, vadjustment: PAdjustment): PScrolledWindow{.
@@ -8219,10 +8218,10 @@ proc SIZE_GROUP_CLASS*(klass: pointer): PSizeGroupClass
 proc IS_SIZE_GROUP*(obj: pointer): bool
 proc IS_SIZE_GROUP_CLASS*(klass: pointer): bool
 proc SIZE_GROUP_GET_CLASS*(obj: pointer): PSizeGroupClass
-proc have_width*(a: var TSizeGroup): guint
-proc set_have_width*(a: var TSizeGroup, `have_width`: guint)
-proc have_height*(a: var TSizeGroup): guint
-proc set_have_height*(a: var TSizeGroup, `have_height`: guint)
+proc have_width*(a: PSizeGroup): guint
+proc set_have_width*(a: PSizeGroup, `have_width`: guint)
+proc have_height*(a: PSizeGroup): guint
+proc set_have_height*(a: PSizeGroup, `have_height`: guint)
 proc size_group_get_type*(): GType{.cdecl, dynlib: lib, 
                                     importc: "gtk_size_group_get_type".}
 proc size_group_new*(mode: TSizeGroupMode): PSizeGroup{.cdecl, dynlib: lib, 
@@ -8260,16 +8259,16 @@ proc SOCKET_CLASS*(klass: pointer): PSocketClass
 proc IS_SOCKET*(obj: pointer): bool
 proc IS_SOCKET_CLASS*(klass: pointer): bool
 proc SOCKET_GET_CLASS*(obj: pointer): PSocketClass
-proc same_app*(a: var TSocket): guint
-proc set_same_app*(a: var TSocket, `same_app`: guint)
-proc focus_in*(a: var TSocket): guint
-proc set_focus_in*(a: var TSocket, `focus_in`: guint)
-proc have_size*(a: var TSocket): guint
-proc set_have_size*(a: var TSocket, `have_size`: guint)
-proc need_map*(a: var TSocket): guint
-proc set_need_map*(a: var TSocket, `need_map`: guint)
-proc is_mapped*(a: var TSocket): guint
-proc set_is_mapped*(a: var TSocket, `is_mapped`: guint)
+proc same_app*(a: PSocket): guint
+proc set_same_app*(a: PSocket, `same_app`: guint)
+proc focus_in*(a: PSocket): guint
+proc set_focus_in*(a: PSocket, `focus_in`: guint)
+proc have_size*(a: PSocket): guint
+proc set_have_size*(a: PSocket, `have_size`: guint)
+proc need_map*(a: PSocket): guint
+proc set_need_map*(a: PSocket, `need_map`: guint)
+proc is_mapped*(a: PSocket): guint
+proc set_is_mapped*(a: PSocket, `is_mapped`: guint)
 proc socket_new*(): PSocket{.cdecl, dynlib: lib, importc: "gtk_socket_new".}
 proc socket_get_type*(): TType{.cdecl, dynlib: lib, 
                                 importc: "gtk_socket_get_type".}
@@ -8304,24 +8303,24 @@ proc SPIN_BUTTON_CLASS*(klass: pointer): PSpinButtonClass
 proc IS_SPIN_BUTTON*(obj: pointer): bool
 proc IS_SPIN_BUTTON_CLASS*(klass: pointer): bool
 proc SPIN_BUTTON_GET_CLASS*(obj: pointer): PSpinButtonClass
-proc in_child*(a: var TSpinButton): guint
-proc set_in_child*(a: var TSpinButton, `in_child`: guint)
-proc click_child*(a: var TSpinButton): guint
-proc set_click_child*(a: var TSpinButton, `click_child`: guint)
-proc button*(a: var TSpinButton): guint
-proc set_button*(a: var TSpinButton, `button`: guint)
-proc need_timer*(a: var TSpinButton): guint
-proc set_need_timer*(a: var TSpinButton, `need_timer`: guint)
-proc timer_calls*(a: var TSpinButton): guint
-proc set_timer_calls*(a: var TSpinButton, `timer_calls`: guint)
-proc digits*(a: var TSpinButton): guint
-proc set_digits*(a: var TSpinButton, `digits`: guint)
-proc numeric*(a: var TSpinButton): guint
-proc set_numeric*(a: var TSpinButton, `numeric`: guint)
-proc wrap*(a: var TSpinButton): guint
-proc set_wrap*(a: var TSpinButton, `wrap`: guint)
-proc snap_to_ticks*(a: var TSpinButton): guint
-proc set_snap_to_ticks*(a: var TSpinButton, `snap_to_ticks`: guint)
+proc in_child*(a: PSpinButton): guint
+proc set_in_child*(a: PSpinButton, `in_child`: guint)
+proc click_child*(a: PSpinButton): guint
+proc set_click_child*(a: PSpinButton, `click_child`: guint)
+proc button*(a: PSpinButton): guint
+proc set_button*(a: PSpinButton, `button`: guint)
+proc need_timer*(a: PSpinButton): guint
+proc set_need_timer*(a: PSpinButton, `need_timer`: guint)
+proc timer_calls*(a: PSpinButton): guint
+proc set_timer_calls*(a: PSpinButton, `timer_calls`: guint)
+proc digits*(a: PSpinButton): guint
+proc set_digits*(a: PSpinButton, `digits`: guint)
+proc numeric*(a: PSpinButton): guint
+proc set_numeric*(a: PSpinButton, `numeric`: guint)
+proc wrap*(a: PSpinButton): guint
+proc set_wrap*(a: PSpinButton, `wrap`: guint)
+proc snap_to_ticks*(a: PSpinButton): guint
+proc set_snap_to_ticks*(a: PSpinButton, `snap_to_ticks`: guint)
 proc spin_button_get_type*(): TType{.cdecl, dynlib: lib, 
                                      importc: "gtk_spin_button_get_type".}
 proc configure*(spin_button: PSpinButton, adjustment: PAdjustment, 
@@ -8330,7 +8329,7 @@ proc configure*(spin_button: PSpinButton, adjustment: PAdjustment,
 proc spin_button_new*(adjustment: PAdjustment, climb_rate: gdouble, 
                       digits: guint): PSpinButton{.cdecl, dynlib: lib, 
     importc: "gtk_spin_button_new".}
-proc spin_button_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PSpinButton{.
+proc spin_button_new*(min: gdouble, max: gdouble, step: gdouble): PSpinButton{.
     cdecl, dynlib: lib, importc: "gtk_spin_button_new_with_range".}
 proc set_adjustment*(spin_button: PSpinButton, 
                                  adjustment: PAdjustment){.cdecl, dynlib: lib, 
@@ -8487,8 +8486,8 @@ const
   bm_TGtkStatusbar_has_resize_grip* = 0x0001'i16
   bp_TGtkStatusbar_has_resize_grip* = 0'i16
 
-proc has_resize_grip*(a: var TStatusbar): guint
-proc set_has_resize_grip*(a: var TStatusbar, `has_resize_grip`: guint)
+proc has_resize_grip*(a: PStatusbar): guint
+proc set_has_resize_grip*(a: PStatusbar, `has_resize_grip`: guint)
 proc statusbar_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_statusbar_get_type".}
 proc statusbar_new*(): PStatusbar{.cdecl, dynlib: lib, 
@@ -8539,30 +8538,30 @@ proc TABLE_CLASS*(klass: pointer): PTableClass
 proc IS_TABLE*(obj: pointer): bool
 proc IS_TABLE_CLASS*(klass: pointer): bool
 proc TABLE_GET_CLASS*(obj: pointer): PTableClass
-proc homogeneous*(a: var TTable): guint
-proc set_homogeneous*(a: var TTable, `homogeneous`: guint)
-proc xexpand*(a: var TTableChild): guint
-proc set_xexpand*(a: var TTableChild, `xexpand`: guint)
-proc yexpand*(a: var TTableChild): guint
-proc set_yexpand*(a: var TTableChild, `yexpand`: guint)
-proc xshrink*(a: var TTableChild): guint
-proc set_xshrink*(a: var TTableChild, `xshrink`: guint)
-proc yshrink*(a: var TTableChild): guint
-proc set_yshrink*(a: var TTableChild, `yshrink`: guint)
-proc xfill*(a: var TTableChild): guint
-proc set_xfill*(a: var TTableChild, `xfill`: guint)
-proc yfill*(a: var TTableChild): guint
-proc set_yfill*(a: var TTableChild, `yfill`: guint)
-proc need_expand*(a: var TTableRowCol): guint
-proc set_need_expand*(a: var TTableRowCol, `need_expand`: guint)
-proc need_shrink*(a: var TTableRowCol): guint
-proc set_need_shrink*(a: var TTableRowCol, `need_shrink`: guint)
-proc expand*(a: var TTableRowCol): guint
-proc set_expand*(a: var TTableRowCol, `expand`: guint)
-proc shrink*(a: var TTableRowCol): guint
-proc set_shrink*(a: var TTableRowCol, `shrink`: guint)
-proc empty*(a: var TTableRowCol): guint
-proc set_empty*(a: var TTableRowCol, `empty`: guint)
+proc homogeneous*(a: PTable): guint
+proc set_homogeneous*(a: PTable, `homogeneous`: guint)
+proc xexpand*(a: PTableChild): guint
+proc set_xexpand*(a: PTableChild, `xexpand`: guint)
+proc yexpand*(a: PTableChild): guint
+proc set_yexpand*(a: PTableChild, `yexpand`: guint)
+proc xshrink*(a: PTableChild): guint
+proc set_xshrink*(a: PTableChild, `xshrink`: guint)
+proc yshrink*(a: PTableChild): guint
+proc set_yshrink*(a: PTableChild, `yshrink`: guint)
+proc xfill*(a: PTableChild): guint
+proc set_xfill*(a: PTableChild, `xfill`: guint)
+proc yfill*(a: PTableChild): guint
+proc set_yfill*(a: PTableChild, `yfill`: guint)
+proc need_expand*(a: PTableRowCol): guint
+proc set_need_expand*(a: PTableRowCol, `need_expand`: guint)
+proc need_shrink*(a: PTableRowCol): guint
+proc set_need_shrink*(a: PTableRowCol, `need_shrink`: guint)
+proc expand*(a: PTableRowCol): guint
+proc set_expand*(a: PTableRowCol, `expand`: guint)
+proc shrink*(a: PTableRowCol): guint
+proc set_shrink*(a: PTableRowCol, `shrink`: guint)
+proc empty*(a: PTableRowCol): guint
+proc set_empty*(a: PTableRowCol, `empty`: guint)
 proc table_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_table_get_type".}
 proc table_new*(rows: guint, columns: guint, homogeneous: gboolean): PTable{.
     cdecl, dynlib: lib, importc: "gtk_table_new".}
@@ -8607,8 +8606,8 @@ proc TEAROFF_MENU_ITEM_CLASS*(klass: pointer): PTearoffMenuItemClass
 proc IS_TEAROFF_MENU_ITEM*(obj: pointer): bool
 proc IS_TEAROFF_MENU_ITEM_CLASS*(klass: pointer): bool
 proc TEAROFF_MENU_ITEM_GET_CLASS*(obj: pointer): PTearoffMenuItemClass
-proc torn_off*(a: var TTearoffMenuItem): guint
-proc set_torn_off*(a: var TTearoffMenuItem, `torn_off`: guint)
+proc torn_off*(a: PTearoffMenuItem): guint
+proc set_torn_off*(a: PTearoffMenuItem, `torn_off`: guint)
 proc tearoff_menu_item_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_tearoff_menu_item_get_type".}
 proc tearoff_menu_item_new*(): PTearoffMenuItem{.cdecl, dynlib: lib, 
@@ -8910,57 +8909,57 @@ const
   bm_TGtkTextTag_pad3* = 0x00800000'i32
   bp_TGtkTextTag_pad3* = 23'i32
 
-proc bg_color_set*(a: var TTextTag): guint
-proc set_bg_color_set*(a: var TTextTag, `bg_color_set`: guint)
-proc bg_stipple_set*(a: var TTextTag): guint
-proc set_bg_stipple_set*(a: var TTextTag, `bg_stipple_set`: guint)
-proc fg_color_set*(a: var TTextTag): guint
-proc set_fg_color_set*(a: var TTextTag, `fg_color_set`: guint)
-proc scale_set*(a: var TTextTag): guint
-proc set_scale_set*(a: var TTextTag, `scale_set`: guint)
-proc fg_stipple_set*(a: var TTextTag): guint
-proc set_fg_stipple_set*(a: var TTextTag, `fg_stipple_set`: guint)
-proc justification_set*(a: var TTextTag): guint
-proc set_justification_set*(a: var TTextTag, `justification_set`: guint)
-proc left_margin_set*(a: var TTextTag): guint
-proc set_left_margin_set*(a: var TTextTag, `left_margin_set`: guint)
-proc indent_set*(a: var TTextTag): guint
-proc set_indent_set*(a: var TTextTag, `indent_set`: guint)
-proc rise_set*(a: var TTextTag): guint
-proc set_rise_set*(a: var TTextTag, `rise_set`: guint)
-proc strikethrough_set*(a: var TTextTag): guint
-proc set_strikethrough_set*(a: var TTextTag, `strikethrough_set`: guint)
-proc right_margin_set*(a: var TTextTag): guint
-proc set_right_margin_set*(a: var TTextTag, `right_margin_set`: guint)
-proc pixels_above_lines_set*(a: var TTextTag): guint
-proc set_pixels_above_lines_set*(a: var TTextTag, 
+proc bg_color_set*(a: PTextTag): guint
+proc set_bg_color_set*(a: PTextTag, `bg_color_set`: guint)
+proc bg_stipple_set*(a: PTextTag): guint
+proc set_bg_stipple_set*(a: PTextTag, `bg_stipple_set`: guint)
+proc fg_color_set*(a: PTextTag): guint
+proc set_fg_color_set*(a: PTextTag, `fg_color_set`: guint)
+proc scale_set*(a: PTextTag): guint
+proc set_scale_set*(a: PTextTag, `scale_set`: guint)
+proc fg_stipple_set*(a: PTextTag): guint
+proc set_fg_stipple_set*(a: PTextTag, `fg_stipple_set`: guint)
+proc justification_set*(a: PTextTag): guint
+proc set_justification_set*(a: PTextTag, `justification_set`: guint)
+proc left_margin_set*(a: PTextTag): guint
+proc set_left_margin_set*(a: PTextTag, `left_margin_set`: guint)
+proc indent_set*(a: PTextTag): guint
+proc set_indent_set*(a: PTextTag, `indent_set`: guint)
+proc rise_set*(a: PTextTag): guint
+proc set_rise_set*(a: PTextTag, `rise_set`: guint)
+proc strikethrough_set*(a: PTextTag): guint
+proc set_strikethrough_set*(a: PTextTag, `strikethrough_set`: guint)
+proc right_margin_set*(a: PTextTag): guint
+proc set_right_margin_set*(a: PTextTag, `right_margin_set`: guint)
+proc pixels_above_lines_set*(a: PTextTag): guint
+proc set_pixels_above_lines_set*(a: PTextTag, 
                                  `pixels_above_lines_set`: guint)
-proc pixels_below_lines_set*(a: var TTextTag): guint
-proc set_pixels_below_lines_set*(a: var TTextTag, 
+proc pixels_below_lines_set*(a: PTextTag): guint
+proc set_pixels_below_lines_set*(a: PTextTag, 
                                  `pixels_below_lines_set`: guint)
-proc pixels_inside_wrap_set*(a: var TTextTag): guint
-proc set_pixels_inside_wrap_set*(a: var TTextTag, 
+proc pixels_inside_wrap_set*(a: PTextTag): guint
+proc set_pixels_inside_wrap_set*(a: PTextTag, 
                                  `pixels_inside_wrap_set`: guint)
-proc tabs_set*(a: var TTextTag): guint
-proc set_tabs_set*(a: var TTextTag, `tabs_set`: guint)
-proc underline_set*(a: var TTextTag): guint
-proc set_underline_set*(a: var TTextTag, `underline_set`: guint)
-proc wrap_mode_set*(a: var TTextTag): guint
-proc set_wrap_mode_set*(a: var TTextTag, `wrap_mode_set`: guint)
-proc bg_full_height_set*(a: var TTextTag): guint
-proc set_bg_full_height_set*(a: var TTextTag, `bg_full_height_set`: guint)
-proc invisible_set*(a: var TTextTag): guint
-proc set_invisible_set*(a: var TTextTag, `invisible_set`: guint)
-proc editable_set*(a: var TTextTag): guint
-proc set_editable_set*(a: var TTextTag, `editable_set`: guint)
-proc language_set*(a: var TTextTag): guint
-proc set_language_set*(a: var TTextTag, `language_set`: guint)
-proc pad1*(a: var TTextTag): guint
-proc set_pad1*(a: var TTextTag, `pad1`: guint)
-proc pad2*(a: var TTextTag): guint
-proc set_pad2*(a: var TTextTag, `pad2`: guint)
-proc pad3*(a: var TTextTag): guint
-proc set_pad3*(a: var TTextTag, `pad3`: guint)
+proc tabs_set*(a: PTextTag): guint
+proc set_tabs_set*(a: PTextTag, `tabs_set`: guint)
+proc underline_set*(a: PTextTag): guint
+proc set_underline_set*(a: PTextTag, `underline_set`: guint)
+proc wrap_mode_set*(a: PTextTag): guint
+proc set_wrap_mode_set*(a: PTextTag, `wrap_mode_set`: guint)
+proc bg_full_height_set*(a: PTextTag): guint
+proc set_bg_full_height_set*(a: PTextTag, `bg_full_height_set`: guint)
+proc invisible_set*(a: PTextTag): guint
+proc set_invisible_set*(a: PTextTag, `invisible_set`: guint)
+proc editable_set*(a: PTextTag): guint
+proc set_editable_set*(a: PTextTag, `editable_set`: guint)
+proc language_set*(a: PTextTag): guint
+proc set_language_set*(a: PTextTag, `language_set`: guint)
+proc pad1*(a: PTextTag): guint
+proc set_pad1*(a: PTextTag, `pad1`: guint)
+proc pad2*(a: PTextTag): guint
+proc set_pad2*(a: PTextTag, `pad2`: guint)
+proc pad3*(a: PTextTag): guint
+proc set_pad3*(a: PTextTag, `pad3`: guint)
 const 
   bm_TGtkTextAppearance_underline* = 0x000F'i16
   bp_TGtkTextAppearance_underline* = 0'i16
@@ -8981,24 +8980,24 @@ const
   bm_TGtkTextAppearance_pad4* = 0x0800'i16
   bp_TGtkTextAppearance_pad4* = 11'i16
 
-proc underline*(a: var TTextAppearance): guint
-proc set_underline*(a: var TTextAppearance, `underline`: guint)
-proc strikethrough*(a: var TTextAppearance): guint
-proc set_strikethrough*(a: var TTextAppearance, `strikethrough`: guint)
-proc draw_bg*(a: var TTextAppearance): guint
-proc set_draw_bg*(a: var TTextAppearance, `draw_bg`: guint)
-proc inside_selection*(a: var TTextAppearance): guint
-proc set_inside_selection*(a: var TTextAppearance, `inside_selection`: guint)
-proc is_text*(a: var TTextAppearance): guint
-proc set_is_text*(a: var TTextAppearance, `is_text`: guint)
-proc pad1*(a: var TTextAppearance): guint
-proc set_pad1*(a: var TTextAppearance, `pad1`: guint)
-proc pad2*(a: var TTextAppearance): guint
-proc set_pad2*(a: var TTextAppearance, `pad2`: guint)
-proc pad3*(a: var TTextAppearance): guint
-proc set_pad3*(a: var TTextAppearance, `pad3`: guint)
-proc pad4*(a: var TTextAppearance): guint
-proc set_pad4*(a: var TTextAppearance, `pad4`: guint)
+proc underline*(a: PTextAppearance): guint
+proc set_underline*(a: PTextAppearance, `underline`: guint)
+proc strikethrough*(a: PTextAppearance): guint
+proc set_strikethrough*(a: PTextAppearance, `strikethrough`: guint)
+proc draw_bg*(a: PTextAppearance): guint
+proc set_draw_bg*(a: PTextAppearance, `draw_bg`: guint)
+proc inside_selection*(a: PTextAppearance): guint
+proc set_inside_selection*(a: PTextAppearance, `inside_selection`: guint)
+proc is_text*(a: PTextAppearance): guint
+proc set_is_text*(a: PTextAppearance, `is_text`: guint)
+proc pad1*(a: PTextAppearance): guint
+proc set_pad1*(a: PTextAppearance, `pad1`: guint)
+proc pad2*(a: PTextAppearance): guint
+proc set_pad2*(a: PTextAppearance, `pad2`: guint)
+proc pad3*(a: PTextAppearance): guint
+proc set_pad3*(a: PTextAppearance, `pad3`: guint)
+proc pad4*(a: PTextAppearance): guint
+proc set_pad4*(a: PTextAppearance, `pad4`: guint)
 const 
   bm_TGtkTextAttributes_invisible* = 0x0001'i16
   bp_TGtkTextAttributes_invisible* = 0'i16
@@ -9017,22 +9016,22 @@ const
   bm_TGtkTextAttributes_pad4* = 0x0080'i16
   bp_TGtkTextAttributes_pad4* = 7'i16
 
-proc invisible*(a: var TTextAttributes): guint
-proc set_invisible*(a: var TTextAttributes, `invisible`: guint)
-proc bg_full_height*(a: var TTextAttributes): guint
-proc set_bg_full_height*(a: var TTextAttributes, `bg_full_height`: guint)
-proc editable*(a: var TTextAttributes): guint
-proc set_editable*(a: var TTextAttributes, `editable`: guint)
-proc realized*(a: var TTextAttributes): guint
-proc set_realized*(a: var TTextAttributes, `realized`: guint)
-proc pad1*(a: var TTextAttributes): guint
-proc set_pad1*(a: var TTextAttributes, `pad1`: guint)
-proc pad2*(a: var TTextAttributes): guint
-proc set_pad2*(a: var TTextAttributes, `pad2`: guint)
-proc pad3*(a: var TTextAttributes): guint
-proc set_pad3*(a: var TTextAttributes, `pad3`: guint)
-proc pad4*(a: var TTextAttributes): guint
-proc set_pad4*(a: var TTextAttributes, `pad4`: guint)
+proc invisible*(a: PTextAttributes): guint
+proc set_invisible*(a: PTextAttributes, `invisible`: guint)
+proc bg_full_height*(a: PTextAttributes): guint
+proc set_bg_full_height*(a: PTextAttributes, `bg_full_height`: guint)
+proc editable*(a: PTextAttributes): guint
+proc set_editable*(a: PTextAttributes, `editable`: guint)
+proc realized*(a: PTextAttributes): guint
+proc set_realized*(a: PTextAttributes, `realized`: guint)
+proc pad1*(a: PTextAttributes): guint
+proc set_pad1*(a: PTextAttributes, `pad1`: guint)
+proc pad2*(a: PTextAttributes): guint
+proc set_pad2*(a: PTextAttributes, `pad2`: guint)
+proc pad3*(a: PTextAttributes): guint
+proc set_pad3*(a: PTextAttributes, `pad3`: guint)
+proc pad4*(a: PTextAttributes): guint
+proc set_pad4*(a: PTextAttributes, `pad4`: guint)
 proc TYPE_TEXT_TAG_TABLE*(): GType
 proc TEXT_TAG_TABLE*(obj: pointer): PTextTagTable
 proc TEXT_TAG_TABLE_CLASS*(klass: pointer): PTextTagTableClass
@@ -9084,10 +9083,10 @@ const
   bm_TGtkTextMarkBody_not_deleteable* = 0x0002'i16
   bp_TGtkTextMarkBody_not_deleteable* = 1'i16
 
-proc visible*(a: var TTextMarkBody): guint
-proc set_visible*(a: var TTextMarkBody, `visible`: guint)
-proc not_deleteable*(a: var TTextMarkBody): guint
-proc set_not_deleteable*(a: var TTextMarkBody, `not_deleteable`: guint)
+proc visible*(a: PTextMarkBody): guint
+proc set_visible*(a: PTextMarkBody, `visible`: guint)
+proc not_deleteable*(a: PTextMarkBody): guint
+proc set_not_deleteable*(a: PTextMarkBody, `not_deleteable`: guint)
 proc mark_segment_new*(tree: PTextBTree, left_gravity: gboolean, name: cstring): PTextLineSegment{.
     cdecl, dynlib: lib, importc: "_gtk_mark_segment_new".}
 proc TYPE_TEXT_CHILD_ANCHOR*(): GType
@@ -9354,8 +9353,8 @@ proc TEXT_BUFFER_CLASS*(klass: pointer): PTextBufferClass
 proc IS_TEXT_BUFFER*(obj: pointer): bool
 proc IS_TEXT_BUFFER_CLASS*(klass: pointer): bool
 proc TEXT_BUFFER_GET_CLASS*(obj: pointer): PTextBufferClass
-proc modified*(a: var TTextBuffer): guint
-proc set_modified*(a: var TTextBuffer, `modified`: guint)
+proc modified*(a: PTextBuffer): guint
+proc set_modified*(a: PTextBuffer, `modified`: guint)
 proc text_buffer_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_text_buffer_get_type".}
 proc text_buffer_new*(table: PTextTagTable): PTextBuffer{.cdecl, dynlib: lib, 
@@ -9517,20 +9516,20 @@ const
   bm_TGtkTextLayout_cursor_direction* = 0x0006'i16
   bp_TGtkTextLayout_cursor_direction* = 1'i16
 
-proc cursor_visible*(a: var TTextLayout): guint
-proc set_cursor_visible*(a: var TTextLayout, `cursor_visible`: guint)
-proc cursor_direction*(a: var TTextLayout): gint
-proc set_cursor_direction*(a: var TTextLayout, `cursor_direction`: gint)
+proc cursor_visible*(a: PTextLayout): guint
+proc set_cursor_visible*(a: PTextLayout, `cursor_visible`: guint)
+proc cursor_direction*(a: PTextLayout): gint
+proc set_cursor_direction*(a: PTextLayout, `cursor_direction`: gint)
 const 
   bm_TGtkTextCursorDisplay_is_strong* = 0x0001'i16
   bp_TGtkTextCursorDisplay_is_strong* = 0'i16
   bm_TGtkTextCursorDisplay_is_weak* = 0x0002'i16
   bp_TGtkTextCursorDisplay_is_weak* = 1'i16
 
-proc is_strong*(a: var TTextCursorDisplay): guint
-proc set_is_strong*(a: var TTextCursorDisplay, `is_strong`: guint)
-proc is_weak*(a: var TTextCursorDisplay): guint
-proc set_is_weak*(a: var TTextCursorDisplay, `is_weak`: guint)
+proc is_strong*(a: PTextCursorDisplay): guint
+proc set_is_strong*(a: PTextCursorDisplay, `is_strong`: guint)
+proc is_weak*(a: PTextCursorDisplay): guint
+proc set_is_weak*(a: PTextCursorDisplay, `is_weak`: guint)
 proc text_layout_get_type*(): GType{.cdecl, dynlib: lib, 
                                      importc: "gtk_text_layout_get_type".}
 proc text_layout_new*(): PTextLayout{.cdecl, dynlib: lib, 
@@ -9671,28 +9670,28 @@ proc TEXT_VIEW_CLASS*(klass: pointer): PTextViewClass
 proc IS_TEXT_VIEW*(obj: pointer): bool
 proc IS_TEXT_VIEW_CLASS*(klass: pointer): bool
 proc TEXT_VIEW_GET_CLASS*(obj: pointer): PTextViewClass
-proc editable*(a: var TTextView): guint
-proc set_editable*(a: var TTextView, `editable`: guint)
-proc overwrite_mode*(a: var TTextView): guint
-proc set_overwrite_mode*(a: var TTextView, `overwrite_mode`: guint)
-proc cursor_visible*(a: var TTextView): guint
-proc set_cursor_visible*(a: var TTextView, `cursor_visible`: guint)
-proc need_im_reset*(a: var TTextView): guint
-proc set_need_im_reset*(a: var TTextView, `need_im_reset`: guint)
-proc just_selected_element*(a: var TTextView): guint
-proc set_just_selected_element*(a: var TTextView, `just_selected_element`: guint)
-proc disable_scroll_on_focus*(a: var TTextView): guint
-proc set_disable_scroll_on_focus*(a: var TTextView, 
+proc editable*(a: PTextView): guint
+proc set_editable*(a: PTextView, `editable`: guint)
+proc overwrite_mode*(a: PTextView): guint
+proc set_overwrite_mode*(a: PTextView, `overwrite_mode`: guint)
+proc cursor_visible*(a: PTextView): guint
+proc set_cursor_visible*(a: PTextView, `cursor_visible`: guint)
+proc need_im_reset*(a: PTextView): guint
+proc set_need_im_reset*(a: PTextView, `need_im_reset`: guint)
+proc just_selected_element*(a: PTextView): guint
+proc set_just_selected_element*(a: PTextView, `just_selected_element`: guint)
+proc disable_scroll_on_focus*(a: PTextView): guint
+proc set_disable_scroll_on_focus*(a: PTextView, 
                                   `disable_scroll_on_focus`: guint)
-proc onscreen_validated*(a: var TTextView): guint
-proc set_onscreen_validated*(a: var TTextView, `onscreen_validated`: guint)
-proc mouse_cursor_obscured*(a: var TTextView): guint
-proc set_mouse_cursor_obscured*(a: var TTextView, `mouse_cursor_obscured`: guint)
+proc onscreen_validated*(a: PTextView): guint
+proc set_onscreen_validated*(a: PTextView, `onscreen_validated`: guint)
+proc mouse_cursor_obscured*(a: PTextView): guint
+proc set_mouse_cursor_obscured*(a: PTextView, `mouse_cursor_obscured`: guint)
 proc text_view_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_text_view_get_type".}
 proc text_view_new*(): PTextView{.cdecl, dynlib: lib, 
                                   importc: "gtk_text_view_new".}
-proc text_view_new_with_buffer*(buffer: PTextBuffer): PTextView{.cdecl, 
+proc text_view_new*(buffer: PTextBuffer): PTextView{.cdecl, 
     dynlib: lib, importc: "gtk_text_view_new_with_buffer".}
 proc set_buffer*(text_view: PTextView, buffer: PTextBuffer){.cdecl, 
     dynlib: lib, importc: "gtk_text_view_set_buffer".}
@@ -9831,10 +9830,10 @@ proc TIPS_QUERY_CLASS*(klass: pointer): PTipsQueryClass
 proc IS_TIPS_QUERY*(obj: pointer): bool
 proc IS_TIPS_QUERY_CLASS*(klass: pointer): bool
 proc TIPS_QUERY_GET_CLASS*(obj: pointer): PTipsQueryClass
-proc emit_always*(a: var TTipsQuery): guint
-proc set_emit_always*(a: var TTipsQuery, `emit_always`: guint)
-proc in_query*(a: var TTipsQuery): guint
-proc set_in_query*(a: var TTipsQuery, `in_query`: guint)
+proc emit_always*(a: PTipsQuery): guint
+proc set_emit_always*(a: PTipsQuery, `emit_always`: guint)
+proc in_query*(a: PTipsQuery): guint
+proc set_in_query*(a: PTipsQuery, `in_query`: guint)
 proc tips_query_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_tips_query_get_type".}
 proc tips_query_new*(): PTipsQuery{.cdecl, dynlib: lib, 
@@ -9864,14 +9863,14 @@ proc TOOLTIPS_CLASS*(klass: pointer): PTooltipsClass
 proc IS_TOOLTIPS*(obj: pointer): bool
 proc IS_TOOLTIPS_CLASS*(klass: pointer): bool
 proc TOOLTIPS_GET_CLASS*(obj: pointer): PTooltipsClass
-proc delay*(a: var TTooltips): guint
-proc set_delay*(a: var TTooltips, `delay`: guint)
-proc enabled*(a: var TTooltips): guint
-proc set_enabled*(a: var TTooltips, `enabled`: guint)
-proc have_grab*(a: var TTooltips): guint
-proc set_have_grab*(a: var TTooltips, `have_grab`: guint)
-proc use_sticky_delay*(a: var TTooltips): guint
-proc set_use_sticky_delay*(a: var TTooltips, `use_sticky_delay`: guint)
+proc delay*(a: PTooltips): guint
+proc set_delay*(a: PTooltips, `delay`: guint)
+proc enabled*(a: PTooltips): guint
+proc set_enabled*(a: PTooltips, `enabled`: guint)
+proc have_grab*(a: PTooltips): guint
+proc set_have_grab*(a: PTooltips, `have_grab`: guint)
+proc use_sticky_delay*(a: PTooltips): guint
+proc set_use_sticky_delay*(a: PTooltips, `use_sticky_delay`: guint)
 proc tooltips_get_type*(): TType{.cdecl, dynlib: lib, 
                                   importc: "gtk_tooltips_get_type".}
 proc tooltips_new*(): PTooltips{.cdecl, dynlib: lib, importc: "gtk_tooltips_new".}
@@ -9900,10 +9899,10 @@ proc TOOLBAR_CLASS*(klass: pointer): PToolbarClass
 proc IS_TOOLBAR*(obj: pointer): bool
 proc IS_TOOLBAR_CLASS*(klass: pointer): bool
 proc TOOLBAR_GET_CLASS*(obj: pointer): PToolbarClass
-proc style_set*(a: var TToolbar): guint
-proc set_style_set*(a: var TToolbar, `style_set`: guint)
-proc icon_size_set*(a: var TToolbar): guint
-proc set_icon_size_set*(a: var TToolbar, `icon_size_set`: guint)
+proc style_set*(a: PToolbar): guint
+proc set_style_set*(a: PToolbar, `style_set`: guint)
+proc icon_size_set*(a: PToolbar): guint
+proc set_icon_size_set*(a: PToolbar, `icon_size_set`: guint)
 proc toolbar_get_type*(): TType{.cdecl, dynlib: lib, 
                                  importc: "gtk_toolbar_get_type".}
 proc toolbar_new*(): PToolbar{.cdecl, dynlib: lib, importc: "gtk_toolbar_new".}
@@ -10002,12 +10001,12 @@ proc TREE_GET_CLASS*(obj: pointer): PTreeClass
 proc IS_ROOT_TREE*(obj: pointer): bool
 proc TREE_ROOT_TREE*(obj: pointer): PTree
 proc TREE_SELECTION_OLD*(obj: pointer): PGList
-proc selection_mode*(a: var TTree): guint
-proc set_selection_mode*(a: var TTree, `selection_mode`: guint)
-proc view_mode*(a: var TTree): guint
-proc set_view_mode*(a: var TTree, `view_mode`: guint)
-proc view_line*(a: var TTree): guint
-proc set_view_line*(a: var TTree, `view_line`: guint)
+proc selection_mode*(a: PTree): guint
+proc set_selection_mode*(a: PTree, `selection_mode`: guint)
+proc view_mode*(a: PTree): guint
+proc set_view_mode*(a: PTree, `view_mode`: guint)
+proc view_line*(a: PTree): guint
+proc set_view_line*(a: PTree, `view_line`: guint)
 proc tree_get_type*(): TType{.cdecl, dynlib: lib, importc: "gtk_tree_get_type".}
 proc tree_new*(): PTree{.cdecl, dynlib: lib, importc: "gtk_tree_new".}
 proc append*(tree: PTree, tree_item: PWidget){.cdecl, dynlib: lib, 
@@ -10082,13 +10081,13 @@ proc IS_TREE_ITEM*(obj: pointer): bool
 proc IS_TREE_ITEM_CLASS*(klass: pointer): bool
 proc TREE_ITEM_GET_CLASS*(obj: pointer): PTreeItemClass
 proc TREE_ITEM_SUBTREE*(obj: pointer): PWidget
-proc expanded*(a: var TTreeItem): guint
-proc set_expanded*(a: var TTreeItem, `expanded`: guint)
+proc expanded*(a: PTreeItem): guint
+proc set_expanded*(a: PTreeItem, `expanded`: guint)
 proc tree_item_get_type*(): TType{.cdecl, dynlib: lib, 
                                    importc: "gtk_tree_item_get_type".}
 proc tree_item_new*(): PTreeItem{.cdecl, dynlib: lib, 
                                   importc: "gtk_tree_item_new".}
-proc tree_item_new_with_label*(`label`: cstring): PTreeItem{.cdecl, dynlib: lib, 
+proc tree_item_new*(`label`: cstring): PTreeItem{.cdecl, dynlib: lib, 
     importc: "gtk_tree_item_new_with_label".}
 proc set_subtree*(tree_item: PTreeItem, subtree: PWidget){.cdecl, 
     dynlib: lib, importc: "gtk_tree_item_set_subtree".}
@@ -10160,8 +10159,8 @@ proc TREE_STORE_CLASS*(klass: pointer): PTreeStoreClass
 proc IS_TREE_STORE*(obj: pointer): bool
 proc IS_TREE_STORE_CLASS*(klass: pointer): bool
 proc TREE_STORE_GET_CLASS*(obj: pointer): PTreeStoreClass
-proc columns_dirty*(a: var TTreeStore): guint
-proc set_columns_dirty*(a: var TTreeStore, `columns_dirty`: guint)
+proc columns_dirty*(a: PTreeStore): guint
+proc set_columns_dirty*(a: PTreeStore, `columns_dirty`: guint)
 proc tree_store_get_type*(): TType{.cdecl, dynlib: lib, 
                                     importc: "gtk_tree_store_get_type".}
 proc tree_store_newv*(n_columns: gint, types: PGType): PTreeStore{.cdecl, 
@@ -10220,23 +10219,23 @@ proc TREE_VIEW_COLUMN_CLASS*(klass: pointer): PTreeViewColumnClass
 proc IS_TREE_VIEW_COLUMN*(obj: pointer): bool
 proc IS_TREE_VIEW_COLUMN_CLASS*(klass: pointer): bool
 proc TREE_VIEW_COLUMN_GET_CLASS*(obj: pointer): PTreeViewColumnClass
-proc visible*(a: var TTreeViewColumn): guint
-proc set_visible*(a: var TTreeViewColumn, `visible`: guint)
-proc resizable*(a: var TTreeViewColumn): guint
-proc set_resizable*(a: var TTreeViewColumn, `resizable`: guint)
-proc clickable*(a: var TTreeViewColumn): guint
-proc set_clickable*(a: var TTreeViewColumn, `clickable`: guint)
-proc dirty*(a: var TTreeViewColumn): guint
-proc set_dirty*(a: var TTreeViewColumn, `dirty`: guint)
-proc show_sort_indicator*(a: var TTreeViewColumn): guint
-proc set_show_sort_indicator*(a: var TTreeViewColumn, 
+proc visible*(a: PTreeViewColumn): guint
+proc set_visible*(a: PTreeViewColumn, `visible`: guint)
+proc resizable*(a: PTreeViewColumn): guint
+proc set_resizable*(a: PTreeViewColumn, `resizable`: guint)
+proc clickable*(a: PTreeViewColumn): guint
+proc set_clickable*(a: PTreeViewColumn, `clickable`: guint)
+proc dirty*(a: PTreeViewColumn): guint
+proc set_dirty*(a: PTreeViewColumn, `dirty`: guint)
+proc show_sort_indicator*(a: PTreeViewColumn): guint
+proc set_show_sort_indicator*(a: PTreeViewColumn, 
                               `show_sort_indicator`: guint)
-proc maybe_reordered*(a: var TTreeViewColumn): guint
-proc set_maybe_reordered*(a: var TTreeViewColumn, `maybe_reordered`: guint)
-proc reorderable*(a: var TTreeViewColumn): guint
-proc set_reorderable*(a: var TTreeViewColumn, `reorderable`: guint)
-proc use_resized_width*(a: var TTreeViewColumn): guint
-proc set_use_resized_width*(a: var TTreeViewColumn, `use_resized_width`: guint)
+proc maybe_reordered*(a: PTreeViewColumn): guint
+proc set_maybe_reordered*(a: PTreeViewColumn, `maybe_reordered`: guint)
+proc reorderable*(a: PTreeViewColumn): guint
+proc set_reorderable*(a: PTreeViewColumn, `reorderable`: guint)
+proc use_resized_width*(a: PTreeViewColumn): guint
+proc set_use_resized_width*(a: PTreeViewColumn, `use_resized_width`: guint)
 proc tree_view_column_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_column_get_type".}
 proc tree_view_column_new*(): PTreeViewColumn{.cdecl, dynlib: lib, 
@@ -10477,28 +10476,28 @@ const
   bm_TGtkTreeViewPrivate_disable_popdown* = 0x0400'i16
   bp_TGtkTreeViewPrivate_disable_popdown* = 10'i16
 
-proc scroll_to_use_align*(a: var TTreeViewPrivate): guint
-proc set_scroll_to_use_align*(a: var TTreeViewPrivate, 
+proc scroll_to_use_align*(a: PTreeViewPrivate): guint
+proc set_scroll_to_use_align*(a: PTreeViewPrivate, 
                               `scroll_to_use_align`: guint)
-proc fixed_height_check*(a: var TTreeViewPrivate): guint
-proc set_fixed_height_check*(a: var TTreeViewPrivate, 
+proc fixed_height_check*(a: PTreeViewPrivate): guint
+proc set_fixed_height_check*(a: PTreeViewPrivate, 
                              `fixed_height_check`: guint)
-proc reorderable*(a: var TTreeViewPrivate): guint
-proc set_reorderable*(a: var TTreeViewPrivate, `reorderable`: guint)
-proc header_has_focus*(a: var TTreeViewPrivate): guint
-proc set_header_has_focus*(a: var TTreeViewPrivate, `header_has_focus`: guint)
-proc drag_column_window_state*(a: var TTreeViewPrivate): guint
-proc set_drag_column_window_state*(a: var TTreeViewPrivate, 
+proc reorderable*(a: PTreeViewPrivate): guint
+proc set_reorderable*(a: PTreeViewPrivate, `reorderable`: guint)
+proc header_has_focus*(a: PTreeViewPrivate): guint
+proc set_header_has_focus*(a: PTreeViewPrivate, `header_has_focus`: guint)
+proc drag_column_window_state*(a: PTreeViewPrivate): guint
+proc set_drag_column_window_state*(a: PTreeViewPrivate, 
                                    `drag_column_window_state`: guint)
-proc has_rules*(a: var TTreeViewPrivate): guint
-proc set_has_rules*(a: var TTreeViewPrivate, `has_rules`: guint)
-proc mark_rows_col_dirty*(a: var TTreeViewPrivate): guint
-proc set_mark_rows_col_dirty*(a: var TTreeViewPrivate, 
+proc has_rules*(a: PTreeViewPrivate): guint
+proc set_has_rules*(a: PTreeViewPrivate, `has_rules`: guint)
+proc mark_rows_col_dirty*(a: PTreeViewPrivate): guint
+proc set_mark_rows_col_dirty*(a: PTreeViewPrivate, 
                               `mark_rows_col_dirty`: guint)
-proc enable_search*(a: var TTreeViewPrivate): guint
-proc set_enable_search*(a: var TTreeViewPrivate, `enable_search`: guint)
-proc disable_popdown*(a: var TTreeViewPrivate): guint
-proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint)
+proc enable_search*(a: PTreeViewPrivate): guint
+proc set_enable_search*(a: PTreeViewPrivate, `enable_search`: guint)
+proc disable_popdown*(a: PTreeViewPrivate): guint
+proc set_disable_popdown*(a: PTreeViewPrivate, `disable_popdown`: guint)
 proc internal_select_node*(selection: PTreeSelection, 
     node: PRBNode, tree: PRBTree, path: PTreePath, state: gdk2.TModifierType, 
     override_browse_mode: gboolean){.cdecl, dynlib: lib, importc: "_gtk_tree_selection_internal_select_node".}
@@ -10546,7 +10545,7 @@ proc column_get_cell_at_pos*(column: PTreeViewColumn, x: gint): PCellRenderer{.
     cdecl, dynlib: lib, importc: "_gtk_tree_view_column_get_cell_at_pos".}
 proc tree_selection_new*(): PTreeSelection{.cdecl, dynlib: lib, 
     importc: "_gtk_tree_selection_new".}
-proc selection_new_with_tree_view*(tree_view: PTreeView): PTreeSelection{.
+proc selection_new*(tree_view: PTreeView): PTreeSelection{.
     cdecl, dynlib: lib, importc: "_gtk_tree_selection_new_with_tree_view".}
 proc set_tree_view*(selection: PTreeSelection, 
                                    tree_view: PTreeView){.cdecl, dynlib: lib, 
@@ -10582,7 +10581,7 @@ proc tree_view_get_type*(): TType{.cdecl, dynlib: lib,
                                    importc: "gtk_tree_view_get_type".}
 proc tree_view_new*(): PTreeView{.cdecl, dynlib: lib, 
                                   importc: "gtk_tree_view_new".}
-proc view_new_with_model*(model: PTreeModel): PTreeView{.cdecl, 
+proc tree_view_new*(model: PTreeModel): PTreeView{.cdecl, 
     dynlib: lib, importc: "gtk_tree_view_new_with_model".}
 proc get_model*(tree_view: PTreeView): PTreeModel{.cdecl, dynlib: lib, 
     importc: "gtk_tree_view_get_model".}
@@ -10785,7 +10784,7 @@ proc vscale_get_type*(): TType{.cdecl, dynlib: lib,
                                 importc: "gtk_vscale_get_type".}
 proc vscale_new*(adjustment: PAdjustment): PVScale{.cdecl, dynlib: lib, 
     importc: "gtk_vscale_new".}
-proc vscale_new_with_range*(min: gdouble, max: gdouble, step: gdouble): PVScale{.
+proc vscale_new*(min: gdouble, max: gdouble, step: gdouble): PVScale{.
     cdecl, dynlib: lib, importc: "gtk_vscale_new_with_range".}
 proc TYPE_VSCROLLBAR*(): GType
 proc VSCROLLBAR*(obj: pointer): PVScrollbar
@@ -11108,20 +11107,20 @@ proc WIDGET_DOUBLE_BUFFERED*(wid: pointer): gboolean =
 proc TYPE_REQUISITION*(): GType = 
   result = requisition_get_type()
 
-proc x_set*(a: var TWidgetAuxInfo): guint = 
+proc x_set*(a: PWidgetAuxInfo): guint = 
   result = (a.flag0 and bm_TGtkWidgetAuxInfo_x_set) shr
       bp_TGtkWidgetAuxInfo_x_set
 
-proc set_x_set*(a: var TWidgetAuxInfo, `x_set`: guint) = 
+proc set_x_set*(a: PWidgetAuxInfo, `x_set`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`x_set` shl bp_TGtkWidgetAuxInfo_x_set) and
       bm_TGtkWidgetAuxInfo_x_set)
 
-proc y_set*(a: var TWidgetAuxInfo): guint = 
+proc y_set*(a: PWidgetAuxInfo): guint = 
   result = (a.flag0 and bm_TGtkWidgetAuxInfo_y_set) shr
       bp_TGtkWidgetAuxInfo_y_set
 
-proc set_y_set*(a: var TWidgetAuxInfo, `y_set`: guint) = 
+proc set_y_set*(a: PWidgetAuxInfo, `y_set`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`y_set` shl bp_TGtkWidgetAuxInfo_y_set) and
       bm_TGtkWidgetAuxInfo_y_set)
@@ -11191,11 +11190,11 @@ proc ACCEL_GROUP_GET_CLASS*(obj: pointer): PAccelGroupClass =
   result = cast[PAccelGroupClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_ACCEL_GROUP()))
 
-proc accel_flags*(a: var TAccelKey): guint = 
+proc accel_flags*(a: PAccelKey): guint = 
   result = (a.flag0 and bm_TGtkAccelKey_accel_flags) shr
       bp_TGtkAccelKey_accel_flags
 
-proc set_accel_flags*(a: var TAccelKey, `accel_flags`: guint) = 
+proc set_accel_flags*(a: PAccelKey, `accel_flags`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`accel_flags` shl bp_TGtkAccelKey_accel_flags) and
       bm_TGtkAccelKey_accel_flags)
@@ -11228,20 +11227,15 @@ proc IS_RESIZE_CONTAINER*(widget: pointer): bool =
   result = (IS_CONTAINER(widget)) and
       ((resize_mode(cast[PContainer](widget))) != cint(RESIZE_PARENT))
 
-proc border_width*(a: var TContainer): guint = 
+proc border_width*(a: PContainer): guint = 
   result = (a.Container_flag0 and bm_TGtkContainer_border_width) shr
       bp_TGtkContainer_border_width
 
-proc set_border_width*(a: var TContainer, `border_width`: guint) = 
-  a.Container_flag0 = a.Container_flag0 or
-      ((`border_width` shl bp_TGtkContainer_border_width) and
-      bm_TGtkContainer_border_width)
-
-proc need_resize*(a: var TContainer): guint = 
+proc need_resize*(a: PContainer): guint = 
   result = (a.Container_flag0 and bm_TGtkContainer_need_resize) shr
       bp_TGtkContainer_need_resize
 
-proc set_need_resize*(a: var TContainer, `need_resize`: guint) = 
+proc set_need_resize*(a: PContainer, `need_resize`: guint) = 
   a.Container_flag0 = a.Container_flag0 or
       ((`need_resize` shl bp_TGtkContainer_need_resize) and
       bm_TGtkContainer_need_resize)
@@ -11250,25 +11244,25 @@ proc resize_mode*(a: PContainer): guint =
   result = (a.Container_flag0 and bm_TGtkContainer_resize_mode) shr
       bp_TGtkContainer_resize_mode
 
-proc set_resize_mode*(a: var TContainer, `resize_mode`: guint) = 
+proc set_resize_mode*(a: PContainer, `resize_mode`: guint) = 
   a.Containerflag0 = a.Containerflag0 or
       ((`resize_mode` shl bp_TGtkContainer_resize_mode) and
       bm_TGtkContainer_resize_mode)
 
-proc reallocate_redraws*(a: var TContainer): guint = 
+proc reallocate_redraws*(a: PContainer): guint = 
   result = (a.Containerflag0 and bm_TGtkContainer_reallocate_redraws) shr
       bp_TGtkContainer_reallocate_redraws
 
-proc set_reallocate_redraws*(a: var TContainer, `reallocate_redraws`: guint) = 
+proc set_reallocate_redraws*(a: PContainer, `reallocate_redraws`: guint) = 
   a.Containerflag0 = a.Containerflag0 or
       ((`reallocate_redraws` shl bp_TGtkContainer_reallocate_redraws) and
       bm_TGtkContainer_reallocate_redraws)
 
-proc has_focus_chain*(a: var TContainer): guint = 
+proc has_focus_chain*(a: PContainer): guint = 
   result = (a.Containerflag0 and bm_TGtkContainer_has_focus_chain) shr
       bp_TGtkContainer_has_focus_chain
 
-proc set_has_focus_chain*(a: var TContainer, `has_focus_chain`: guint) = 
+proc set_has_focus_chain*(a: PContainer, `has_focus_chain`: guint) = 
   a.Containerflag0 = a.Containerflag0 or
       ((`has_focus_chain` shl bp_TGtkContainer_has_focus_chain) and
       bm_TGtkContainer_has_focus_chain)
@@ -11313,157 +11307,157 @@ proc IS_WINDOW_CLASS*(klass: pointer): bool =
 proc WINDOW_GET_CLASS*(obj: pointer): PWindowClass = 
   result = cast[PWindowClass](CHECK_GET_CLASS(obj, gtk2.TYPE_WINDOW()))
 
-proc allow_shrink*(a: var TWindow): guint = 
+proc allow_shrink*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_allow_shrink) shr
       bp_TGtkWindow_allow_shrink
 
-proc set_allow_shrink*(a: var TWindow, `allow_shrink`: guint) = 
+proc set_allow_shrink*(a: gtk2.PWindow, `allow_shrink`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`allow_shrink` shl bp_TGtkWindow_allow_shrink) and
       bm_TGtkWindow_allow_shrink)
 
-proc allow_grow*(a: var TWindow): guint = 
+proc allow_grow*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_allow_grow) shr
       bp_TGtkWindow_allow_grow
 
-proc set_allow_grow*(a: var TWindow, `allow_grow`: guint) = 
+proc set_allow_grow*(a: gtk2.PWindow, `allow_grow`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`allow_grow` shl bp_TGtkWindow_allow_grow) and
       bm_TGtkWindow_allow_grow)
 
-proc configure_notify_received*(a: var TWindow): guint = 
+proc configure_notify_received*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_configure_notify_received) shr
       bp_TGtkWindow_configure_notify_received
 
-proc set_configure_notify_received*(a: var TWindow, 
+proc set_configure_notify_received*(a: gtk2.PWindow, 
                                     `configure_notify_received`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`configure_notify_received` shl
       bp_TGtkWindow_configure_notify_received) and
       bm_TGtkWindow_configure_notify_received)
 
-proc need_default_position*(a: var TWindow): guint = 
+proc need_default_position*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_need_default_position) shr
       bp_TGtkWindow_need_default_position
 
-proc set_need_default_position*(a: var TWindow, `need_default_position`: guint) = 
+proc set_need_default_position*(a: gtk2.PWindow, `need_default_position`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`need_default_position` shl bp_TGtkWindow_need_default_position) and
       bm_TGtkWindow_need_default_position)
 
-proc need_default_size*(a: var TWindow): guint = 
+proc need_default_size*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_need_default_size) shr
       bp_TGtkWindow_need_default_size
 
-proc set_need_default_size*(a: var TWindow, `need_default_size`: guint) = 
+proc set_need_default_size*(a: gtk2.PWindow, `need_default_size`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`need_default_size` shl bp_TGtkWindow_need_default_size) and
       bm_TGtkWindow_need_default_size)
 
-proc position*(a: var TWindow): guint = 
+proc position*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_position) shr
       bp_TGtkWindow_position
 
-proc set_position*(a: var TWindow, `position`: guint) = 
+proc set_position*(a: gtk2.PWindow, `position`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`position` shl bp_TGtkWindow_position) and bm_TGtkWindow_position)
 
-proc get_type*(a: var TWindow): guint = 
+proc get_type*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_type) shr bp_TGtkWindow_type
 
-proc set_type*(a: var TWindow, `type`: guint) = 
+proc set_type*(a: gtk2.PWindow, `type`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`type` shl bp_TGtkWindow_type) and bm_TGtkWindow_type)
 
-proc has_user_ref_count*(a: var TWindow): guint = 
+proc has_user_ref_count*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_has_user_ref_count) shr
       bp_TGtkWindow_has_user_ref_count
 
-proc set_has_user_ref_count*(a: var TWindow, `has_user_ref_count`: guint) = 
+proc set_has_user_ref_count*(a: gtk2.PWindow, `has_user_ref_count`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`has_user_ref_count` shl bp_TGtkWindow_has_user_ref_count) and
       bm_TGtkWindow_has_user_ref_count)
 
-proc has_focus*(a: var TWindow): guint = 
+proc has_focus*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_has_focus) shr
       bp_TGtkWindow_has_focus
 
-proc set_has_focus*(a: var TWindow, `has_focus`: guint) = 
+proc set_has_focus*(a: gtk2.PWindow, `has_focus`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`has_focus` shl bp_TGtkWindow_has_focus) and bm_TGtkWindow_has_focus)
 
-proc modal*(a: var TWindow): guint = 
+proc modal*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_modal) shr bp_TGtkWindow_modal
 
-proc set_modal*(a: var TWindow, `modal`: guint) = 
+proc set_modal*(a: gtk2.PWindow, `modal`: guint) = 
   a.Window_flag0 = a.Window_flag0 or
       ((`modal` shl bp_TGtkWindow_modal) and bm_TGtkWindow_modal)
 
-proc destroy_with_parent*(a: var TWindow): guint = 
+proc destroy_with_parent*(a: gtk2.PWindow): guint = 
   result = (a.Window_flag0 and bm_TGtkWindow_destroy_with_parent) shr
       bp_TGtkWindow_destroy_with_parent
 
-proc set_destroy_with_parent*(a: var TWindow, `destroy_with_parent`: guint) = 
+proc set_destroy_with_parent*(a: gtk2.PWindow, `destroy_with_parent`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`destroy_with_parent` shl bp_TGtkWindow_destroy_with_parent) and
       bm_TGtkWindow_destroy_with_parent)
 
-proc has_frame*(a: var TWindow): guint = 
+proc has_frame*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_has_frame) shr
       bp_TGtkWindow_has_frame
 
-proc set_has_frame*(a: var TWindow, `has_frame`: guint) = 
+proc set_has_frame*(a: gtk2.PWindow, `has_frame`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`has_frame` shl bp_TGtkWindow_has_frame) and bm_TGtkWindow_has_frame)
 
-proc iconify_initially*(a: var TWindow): guint = 
+proc iconify_initially*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_iconify_initially) shr
       bp_TGtkWindow_iconify_initially
 
-proc set_iconify_initially*(a: var TWindow, `iconify_initially`: guint) = 
+proc set_iconify_initially*(a: gtk2.PWindow, `iconify_initially`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`iconify_initially` shl bp_TGtkWindow_iconify_initially) and
       bm_TGtkWindow_iconify_initially)
 
-proc stick_initially*(a: var TWindow): guint = 
+proc stick_initially*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_stick_initially) shr
       bp_TGtkWindow_stick_initially
 
-proc set_stick_initially*(a: var TWindow, `stick_initially`: guint) = 
+proc set_stick_initially*(a: gtk2.PWindow, `stick_initially`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`stick_initially` shl bp_TGtkWindow_stick_initially) and
       bm_TGtkWindow_stick_initially)
 
-proc maximize_initially*(a: var TWindow): guint = 
+proc maximize_initially*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_maximize_initially) shr
       bp_TGtkWindow_maximize_initially
 
-proc set_maximize_initially*(a: var TWindow, `maximize_initially`: guint) = 
+proc set_maximize_initially*(a: gtk2.PWindow, `maximize_initially`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`maximize_initially` shl bp_TGtkWindow_maximize_initially) and
       bm_TGtkWindow_maximize_initially)
 
-proc decorated*(a: var TWindow): guint = 
+proc decorated*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_decorated) shr
       bp_TGtkWindow_decorated
 
-proc set_decorated*(a: var TWindow, `decorated`: guint) = 
+proc set_decorated*(a: gtk2.PWindow, `decorated`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`decorated` shl bp_TGtkWindow_decorated) and bm_TGtkWindow_decorated)
 
-proc type_hint*(a: var TWindow): guint = 
+proc type_hint*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_type_hint) shr
       bp_TGtkWindow_type_hint
 
-proc set_type_hint*(a: var TWindow, `type_hint`: guint) = 
+proc set_type_hint*(a: gtk2.PWindow, `type_hint`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`type_hint` shl bp_TGtkWindow_type_hint) and bm_TGtkWindow_type_hint)
 
-proc gravity*(a: var TWindow): guint = 
+proc gravity*(a: gtk2.PWindow): guint = 
   result = (a.Windowflag0 and bm_TGtkWindow_gravity) shr
       bp_TGtkWindow_gravity
 
-proc set_gravity*(a: var TWindow, `gravity`: guint) = 
+proc set_gravity*(a: gtk2.PWindow, `gravity`: guint) = 
   a.Windowflag0 = a.Windowflag0 or
       ((`gravity` shl bp_TGtkWindow_gravity) and bm_TGtkWindow_gravity)
 
@@ -11488,9 +11482,6 @@ proc WINDOW_GROUP_GET_CLASS*(obj: pointer): PWindowGroupClass =
   result = cast[PWindowGroupClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_WINDOW_GROUP()))
 
-proc position*(window: PWindow, position: TWindowPosition) = 
-  set_position(window, position)
-
 proc TYPE_LABEL*(): GType = 
   result = label_get_type()
 
@@ -11509,34 +11500,34 @@ proc IS_LABEL_CLASS*(klass: pointer): bool =
 proc LABEL_GET_CLASS*(obj: pointer): PLabelClass = 
   result = cast[PLabelClass](CHECK_GET_CLASS(obj, TYPE_LABEL()))
 
-proc jtype*(a: var TLabel): guint = 
+proc jtype*(a: PLabel): guint = 
   result = (a.Labelflag0 and bm_TGtkLabel_jtype) shr bp_TGtkLabel_jtype
 
-proc set_jtype*(a: var TLabel, `jtype`: guint) = 
+proc set_jtype*(a: PLabel, `jtype`: guint) = 
   a.Labelflag0 = a.Labelflag0 or
       (int16(`jtype` shl bp_TGtkLabel_jtype) and bm_TGtkLabel_jtype)
 
-proc wrap*(a: var TLabel): guint = 
+proc wrap*(a: PLabel): guint = 
   result = (a.Labelflag0 and bm_TGtkLabel_wrap) shr bp_TGtkLabel_wrap
 
-proc set_wrap*(a: var TLabel, `wrap`: guint) = 
+proc set_wrap*(a: PLabel, `wrap`: guint) = 
   a.Labelflag0 = a.Labelflag0 or
       (int16(`wrap` shl bp_TGtkLabel_wrap) and bm_TGtkLabel_wrap)
 
-proc use_underline*(a: var TLabel): guint = 
+proc use_underline*(a: PLabel): guint = 
   result = (a.Labelflag0 and bm_TGtkLabel_use_underline) shr
       bp_TGtkLabel_use_underline
 
-proc set_use_underline*(a: var TLabel, `use_underline`: guint) = 
+proc set_use_underline*(a: PLabel, `use_underline`: guint) = 
   a.Labelflag0 = a.Labelflag0 or
       (int16(`use_underline` shl bp_TGtkLabel_use_underline) and
       bm_TGtkLabel_use_underline)
 
-proc use_markup*(a: var TLabel): guint = 
+proc use_markup*(a: PLabel): guint = 
   result = (a.Labelflag0 and bm_TGtkLabel_use_markup) shr
       bp_TGtkLabel_use_markup
 
-proc set_use_markup*(a: var TLabel, `use_markup`: guint) = 
+proc set_use_markup*(a: PLabel, `use_markup`: guint) = 
   a.Labelflag0 = a.Labelflag0 or
       (int16(`use_markup` shl bp_TGtkLabel_use_markup) and
       bm_TGtkLabel_use_markup)
@@ -11559,11 +11550,11 @@ proc IS_ACCEL_LABEL_CLASS*(klass: pointer): bool =
 proc ACCEL_LABEL_GET_CLASS*(obj: pointer): PAccelLabelClass = 
   result = cast[PAccelLabelClass](CHECK_GET_CLASS(obj, TYPE_ACCEL_LABEL()))
 
-proc latin1_to_char*(a: var TAccelLabelClass): guint = 
+proc latin1_to_char*(a: PAccelLabelClass): guint = 
   result = (a.AccelLabelClassflag0 and bm_TGtkAccelLabelClass_latin1_to_char) shr
       bp_TGtkAccelLabelClass_latin1_to_char
 
-proc set_latin1_to_char*(a: var TAccelLabelClass, `latin1_to_char`: guint) = 
+proc set_latin1_to_char*(a: PAccelLabelClass, `latin1_to_char`: guint) = 
   a.AccelLabelClassflag0 = a.AccelLabelClassflag0 or
       (int16(`latin1_to_char` shl bp_TGtkAccelLabelClass_latin1_to_char) and
       bm_TGtkAccelLabelClass_latin1_to_char)
@@ -11679,29 +11670,29 @@ proc IS_ARROW_CLASS*(klass: pointer): bool =
 proc ARROW_GET_CLASS*(obj: pointer): PArrowClass = 
   result = cast[PArrowClass](CHECK_GET_CLASS(obj, TYPE_ARROW()))
 
-proc parsed*(a: var TBindingSet): guint = 
+proc parsed*(a: PBindingSet): guint = 
   result = (a.flag0 and bm_TGtkBindingSet_parsed) shr
       bp_TGtkBindingSet_parsed
 
-proc set_parsed*(a: var TBindingSet, `parsed`: guint) = 
+proc set_parsed*(a: PBindingSet, `parsed`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`parsed` shl bp_TGtkBindingSet_parsed) and
       bm_TGtkBindingSet_parsed)
 
-proc destroyed*(a: var TBindingEntry): guint = 
+proc destroyed*(a: PBindingEntry): guint = 
   result = (a.flag0 and bm_TGtkBindingEntry_destroyed) shr
       bp_TGtkBindingEntry_destroyed
 
-proc set_destroyed*(a: var TBindingEntry, `destroyed`: guint) = 
+proc set_destroyed*(a: PBindingEntry, `destroyed`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`destroyed` shl bp_TGtkBindingEntry_destroyed) and
       bm_TGtkBindingEntry_destroyed)
 
-proc in_emission*(a: var TBindingEntry): guint = 
+proc in_emission*(a: PBindingEntry): guint = 
   result = (a.flag0 and bm_TGtkBindingEntry_in_emission) shr
       bp_TGtkBindingEntry_in_emission
 
-proc set_in_emission*(a: var TBindingEntry, `in_emission`: guint) = 
+proc set_in_emission*(a: PBindingEntry, `in_emission`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`in_emission` shl bp_TGtkBindingEntry_in_emission) and
       bm_TGtkBindingEntry_in_emission)
@@ -11728,40 +11719,40 @@ proc IS_BOX_CLASS*(klass: pointer): bool =
 proc BOX_GET_CLASS*(obj: pointer): PBoxClass = 
   result = cast[PBoxClass](CHECK_GET_CLASS(obj, TYPE_BOX()))
 
-proc homogeneous*(a: var TBox): guint = 
+proc homogeneous*(a: PBox): guint = 
   result = (a.Boxflag0 and bm_TGtkBox_homogeneous) shr bp_TGtkBox_homogeneous
 
-proc set_homogeneous*(a: var TBox, `homogeneous`: guint) = 
+proc set_homogeneous*(a: PBox, `homogeneous`: guint) = 
   a.Boxflag0 = a.Boxflag0 or
       (int16(`homogeneous` shl bp_TGtkBox_homogeneous) and
       bm_TGtkBox_homogeneous)
 
-proc expand*(a: var TBoxChild): guint = 
+proc expand*(a: PBoxChild): guint = 
   result = (a.flag0 and bm_TGtkBoxChild_expand) shr bp_TGtkBoxChild_expand
 
-proc set_expand*(a: var TBoxChild, `expand`: guint) = 
+proc set_expand*(a: PBoxChild, `expand`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`expand` shl bp_TGtkBoxChild_expand) and bm_TGtkBoxChild_expand)
 
-proc fill*(a: var TBoxChild): guint = 
+proc fill*(a: PBoxChild): guint = 
   result = (a.flag0 and bm_TGtkBoxChild_fill) shr bp_TGtkBoxChild_fill
 
-proc set_fill*(a: var TBoxChild, `fill`: guint) = 
+proc set_fill*(a: PBoxChild, `fill`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`fill` shl bp_TGtkBoxChild_fill) and bm_TGtkBoxChild_fill)
 
-proc pack*(a: var TBoxChild): guint = 
+proc pack*(a: PBoxChild): guint = 
   result = (a.flag0 and bm_TGtkBoxChild_pack) shr bp_TGtkBoxChild_pack
 
-proc set_pack*(a: var TBoxChild, `pack`: guint) = 
+proc set_pack*(a: PBoxChild, `pack`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pack` shl bp_TGtkBoxChild_pack) and bm_TGtkBoxChild_pack)
 
-proc is_secondary*(a: var TBoxChild): guint = 
+proc is_secondary*(a: PBoxChild): guint = 
   result = (a.flag0 and bm_TGtkBoxChild_is_secondary) shr
       bp_TGtkBoxChild_is_secondary
 
-proc set_is_secondary*(a: var TBoxChild, `is_secondary`: guint) = 
+proc set_is_secondary*(a: PBoxChild, `is_secondary`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`is_secondary` shl bp_TGtkBoxChild_is_secondary) and
       bm_TGtkBoxChild_is_secondary)
@@ -11808,72 +11799,72 @@ proc IS_BUTTON_CLASS*(klass: pointer): bool =
 proc BUTTON_GET_CLASS*(obj: pointer): PButtonClass = 
   result = cast[PButtonClass](CHECK_GET_CLASS(obj, TYPE_BUTTON()))
 
-proc constructed*(a: var TButton): guint = 
+proc constructed*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_constructed) shr
       bp_TGtkButton_constructed
 
-proc set_constructed*(a: var TButton, `constructed`: guint) = 
+proc set_constructed*(a: PButton, `constructed`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`constructed` shl bp_TGtkButton_constructed) and
       bm_TGtkButton_constructed)
 
-proc in_button*(a: var TButton): guint = 
+proc in_button*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_in_button) shr
       bp_TGtkButton_in_button
 
-proc set_in_button*(a: var TButton, `in_button`: guint) = 
+proc set_in_button*(a: PButton, `in_button`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`in_button` shl bp_TGtkButton_in_button) and
       bm_TGtkButton_in_button)
 
-proc button_down*(a: var TButton): guint = 
+proc button_down*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_button_down) shr
       bp_TGtkButton_button_down
 
-proc set_button_down*(a: var TButton, `button_down`: guint) = 
+proc set_button_down*(a: PButton, `button_down`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`button_down` shl bp_TGtkButton_button_down) and
       bm_TGtkButton_button_down)
 
-proc relief*(a: var TButton): guint = 
+proc relief*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_relief) shr bp_TGtkButton_relief
 
-proc set_relief*(a: var TButton, `relief`: guint) = 
+proc set_relief*(a: PButton, `relief`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`relief` shl bp_TGtkButton_relief) and bm_TGtkButton_relief)
 
-proc use_underline*(a: var TButton): guint = 
+proc use_underline*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_use_underline) shr
       bp_TGtkButton_use_underline
 
-proc set_use_underline*(a: var TButton, `use_underline`: guint) = 
+proc set_use_underline*(a: PButton, `use_underline`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`use_underline` shl bp_TGtkButton_use_underline) and
       bm_TGtkButton_use_underline)
 
-proc use_stock*(a: var TButton): guint = 
+proc use_stock*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_use_stock) shr
       bp_TGtkButton_use_stock
 
-proc set_use_stock*(a: var TButton, `use_stock`: guint) = 
+proc set_use_stock*(a: PButton, `use_stock`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`use_stock` shl bp_TGtkButton_use_stock) and
       bm_TGtkButton_use_stock)
 
-proc depressed*(a: var TButton): guint = 
+proc depressed*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_depressed) shr
       bp_TGtkButton_depressed
 
-proc set_depressed*(a: var TButton, `depressed`: guint) = 
+proc set_depressed*(a: PButton, `depressed`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`depressed` shl bp_TGtkButton_depressed) and
       bm_TGtkButton_depressed)
 
-proc depress_on_activate*(a: var TButton): guint = 
+proc depress_on_activate*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_depress_on_activate) shr
       bp_TGtkButton_depress_on_activate
 
-proc set_depress_on_activate*(a: var TButton, `depress_on_activate`: guint) = 
+proc set_depress_on_activate*(a: PButton, `depress_on_activate`: guint) = 
   a.Buttonflag0 = a.Buttonflag0 or
       (int16(`depress_on_activate` shl bp_TGtkButton_depress_on_activate) and
       bm_TGtkButton_depress_on_activate)
@@ -11932,47 +11923,47 @@ proc IS_CELL_RENDERER_CLASS*(klass: pointer): bool =
 proc CELL_RENDERER_GET_CLASS*(obj: pointer): PCellRendererClass = 
   result = cast[PCellRendererClass](CHECK_GET_CLASS(obj, TYPE_CELL_RENDERER()))
 
-proc mode*(a: var TCellRenderer): guint = 
+proc mode*(a: PCellRenderer): guint = 
   result = (a.CellRendererflag0 and bm_TGtkCellRenderer_mode) shr
       bp_TGtkCellRenderer_mode
 
-proc set_mode*(a: var TCellRenderer, `mode`: guint) = 
+proc set_mode*(a: PCellRenderer, `mode`: guint) = 
   a.CellRendererflag0 = a.CellRendererflag0 or
       (int16(`mode` shl bp_TGtkCellRenderer_mode) and
       bm_TGtkCellRenderer_mode)
 
-proc visible*(a: var TCellRenderer): guint = 
+proc visible*(a: PCellRenderer): guint = 
   result = (a.CellRendererflag0 and bm_TGtkCellRenderer_visible) shr
       bp_TGtkCellRenderer_visible
 
-proc set_visible*(a: var TCellRenderer, `visible`: guint) = 
+proc set_visible*(a: PCellRenderer, `visible`: guint) = 
   a.CellRendererflag0 = a.CellRendererflag0 or
       (int16(`visible` shl bp_TGtkCellRenderer_visible) and
       bm_TGtkCellRenderer_visible)
 
-proc is_expander*(a: var TCellRenderer): guint = 
+proc is_expander*(a: PCellRenderer): guint = 
   result = (a.CellRendererflag0 and bm_TGtkCellRenderer_is_expander) shr
       bp_TGtkCellRenderer_is_expander
 
-proc set_is_expander*(a: var TCellRenderer, `is_expander`: guint) = 
+proc set_is_expander*(a: PCellRenderer, `is_expander`: guint) = 
   a.CellRendererflag0 = a.CellRendererflag0 or
       (int16(`is_expander` shl bp_TGtkCellRenderer_is_expander) and
       bm_TGtkCellRenderer_is_expander)
 
-proc is_expanded*(a: var TCellRenderer): guint = 
+proc is_expanded*(a: PCellRenderer): guint = 
   result = (a.CellRendererflag0 and bm_TGtkCellRenderer_is_expanded) shr
       bp_TGtkCellRenderer_is_expanded
 
-proc set_is_expanded*(a: var TCellRenderer, `is_expanded`: guint) = 
+proc set_is_expanded*(a: PCellRenderer, `is_expanded`: guint) = 
   a.CellRendererflag0 = a.CellRendererflag0 or
       (int16(`is_expanded` shl bp_TGtkCellRenderer_is_expanded) and
       bm_TGtkCellRenderer_is_expanded)
 
-proc cell_background_set*(a: var TCellRenderer): guint = 
+proc cell_background_set*(a: PCellRenderer): guint = 
   result = (a.CellRendererflag0 and bm_TGtkCellRenderer_cell_background_set) shr
       bp_TGtkCellRenderer_cell_background_set
 
-proc set_cell_background_set*(a: var TCellRenderer, `cell_background_set`: guint) = 
+proc set_cell_background_set*(a: PCellRenderer, `cell_background_set`: guint) = 
   a.CellRendererflag0 = a.CellRendererflag0 or
       (int16(`cell_background_set` shl
       bp_TGtkCellRenderer_cell_background_set) and
@@ -11998,97 +11989,97 @@ proc CELL_RENDERER_TEXT_GET_CLASS*(obj: pointer): PCellRendererTextClass =
   result = cast[PCellRendererTextClass](CHECK_GET_CLASS(obj, 
       TYPE_CELL_RENDERER_TEXT()))
 
-proc strikethrough*(a: var TCellRendererText): guint = 
+proc strikethrough*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_strikethrough) shr
       bp_TGtkCellRendererText_strikethrough
 
-proc set_strikethrough*(a: var TCellRendererText, `strikethrough`: guint) = 
+proc set_strikethrough*(a: PCellRendererText, `strikethrough`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`strikethrough` shl bp_TGtkCellRendererText_strikethrough) and
       bm_TGtkCellRendererText_strikethrough)
 
-proc editable*(a: var TCellRendererText): guint = 
+proc editable*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_editable) shr
       bp_TGtkCellRendererText_editable
 
-proc set_editable*(a: var TCellRendererText, `editable`: guint) = 
+proc set_editable*(a: PCellRendererText, `editable`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`editable` shl bp_TGtkCellRendererText_editable) and
       bm_TGtkCellRendererText_editable)
 
-proc scale_set*(a: var TCellRendererText): guint = 
+proc scale_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_scale_set) shr
       bp_TGtkCellRendererText_scale_set
 
-proc set_scale_set*(a: var TCellRendererText, `scale_set`: guint) = 
+proc set_scale_set*(a: PCellRendererText, `scale_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`scale_set` shl bp_TGtkCellRendererText_scale_set) and
       bm_TGtkCellRendererText_scale_set)
 
-proc foreground_set*(a: var TCellRendererText): guint = 
+proc foreground_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and
       bm_TGtkCellRendererText_foreground_set) shr
       bp_TGtkCellRendererText_foreground_set
 
-proc set_foreground_set*(a: var TCellRendererText, `foreground_set`: guint) = 
+proc set_foreground_set*(a: PCellRendererText, `foreground_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`foreground_set` shl bp_TGtkCellRendererText_foreground_set) and
       bm_TGtkCellRendererText_foreground_set)
 
-proc background_set*(a: var TCellRendererText): guint = 
+proc background_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and
       bm_TGtkCellRendererText_background_set) shr
       bp_TGtkCellRendererText_background_set
 
-proc set_background_set*(a: var TCellRendererText, `background_set`: guint) = 
+proc set_background_set*(a: PCellRendererText, `background_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`background_set` shl bp_TGtkCellRendererText_background_set) and
       bm_TGtkCellRendererText_background_set)
 
-proc underline_set*(a: var TCellRendererText): guint = 
+proc underline_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_underline_set) shr
       bp_TGtkCellRendererText_underline_set
 
-proc set_underline_set*(a: var TCellRendererText, `underline_set`: guint) = 
+proc set_underline_set*(a: PCellRendererText, `underline_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`underline_set` shl bp_TGtkCellRendererText_underline_set) and
       bm_TGtkCellRendererText_underline_set)
 
-proc rise_set*(a: var TCellRendererText): guint = 
+proc rise_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_rise_set) shr
       bp_TGtkCellRendererText_rise_set
 
-proc set_rise_set*(a: var TCellRendererText, `rise_set`: guint) = 
+proc set_rise_set*(a: PCellRendererText, `rise_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`rise_set` shl bp_TGtkCellRendererText_rise_set) and
       bm_TGtkCellRendererText_rise_set)
 
-proc strikethrough_set*(a: var TCellRendererText): guint = 
+proc strikethrough_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and
       bm_TGtkCellRendererText_strikethrough_set) shr
       bp_TGtkCellRendererText_strikethrough_set
 
-proc set_strikethrough_set*(a: var TCellRendererText, `strikethrough_set`: guint) = 
+proc set_strikethrough_set*(a: PCellRendererText, `strikethrough_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`strikethrough_set` shl
       bp_TGtkCellRendererText_strikethrough_set) and
       bm_TGtkCellRendererText_strikethrough_set)
 
-proc editable_set*(a: var TCellRendererText): guint = 
+proc editable_set*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and bm_TGtkCellRendererText_editable_set) shr
       bp_TGtkCellRendererText_editable_set
 
-proc set_editable_set*(a: var TCellRendererText, `editable_set`: guint) = 
+proc set_editable_set*(a: PCellRendererText, `editable_set`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`editable_set` shl bp_TGtkCellRendererText_editable_set) and
       bm_TGtkCellRendererText_editable_set)
 
-proc calc_fixed_height*(a: var TCellRendererText): guint = 
+proc calc_fixed_height*(a: PCellRendererText): guint = 
   result = (a.CellRendererTextflag0 and
       bm_TGtkCellRendererText_calc_fixed_height) shr
       bp_TGtkCellRendererText_calc_fixed_height
 
-proc set_calc_fixed_height*(a: var TCellRendererText, `calc_fixed_height`: guint) = 
+proc set_calc_fixed_height*(a: PCellRendererText, `calc_fixed_height`: guint) = 
   a.CellRendererTextflag0 = a.CellRendererTextflag0 or
       (int16(`calc_fixed_height` shl
       bp_TGtkCellRendererText_calc_fixed_height) and
@@ -12114,30 +12105,30 @@ proc CELL_RENDERER_TOGGLE_GET_CLASS*(obj: pointer): PCellRendererToggleClass =
   result = cast[PCellRendererToggleClass](CHECK_GET_CLASS(obj, 
       TYPE_CELL_RENDERER_TOGGLE()))
 
-proc active*(a: var TCellRendererToggle): guint = 
+proc active*(a: PCellRendererToggle): guint = 
   result = (a.CellRendererToggleflag0 and bm_TGtkCellRendererToggle_active) shr
       bp_TGtkCellRendererToggle_active
 
-proc set_active*(a: var TCellRendererToggle, `active`: guint) = 
+proc set_active*(a: PCellRendererToggle, `active`: guint) = 
   a.CellRendererToggleflag0 = a.CellRendererToggleflag0 or
       (int16(`active` shl bp_TGtkCellRendererToggle_active) and
       bm_TGtkCellRendererToggle_active)
 
-proc activatable*(a: var TCellRendererToggle): guint = 
+proc activatable*(a: PCellRendererToggle): guint = 
   result = (a.CellRendererToggleflag0 and
       bm_TGtkCellRendererToggle_activatable) shr
       bp_TGtkCellRendererToggle_activatable
 
-proc set_activatable*(a: var TCellRendererToggle, `activatable`: guint) = 
+proc set_activatable*(a: PCellRendererToggle, `activatable`: guint) = 
   a.CellRendererToggleflag0 = a.CellRendererToggleflag0 or
       (int16(`activatable` shl bp_TGtkCellRendererToggle_activatable) and
       bm_TGtkCellRendererToggle_activatable)
 
-proc radio*(a: var TCellRendererToggle): guint = 
+proc radio*(a: PCellRendererToggle): guint = 
   result = (a.CellRendererToggleflag0 and bm_TGtkCellRendererToggle_radio) shr
       bp_TGtkCellRendererToggle_radio
 
-proc set_radio*(a: var TCellRendererToggle, `radio`: guint) = 
+proc set_radio*(a: PCellRendererToggle, `radio`: guint) = 
   a.CellRendererToggleflag0 = a.CellRendererToggleflag0 or
       (int16(`radio` shl bp_TGtkCellRendererToggle_radio) and
       bm_TGtkCellRendererToggle_radio)
@@ -12198,58 +12189,58 @@ proc IS_MENU_ITEM_CLASS*(klass: pointer): bool =
 proc MENU_ITEM_GET_CLASS*(obj: pointer): PMenuItemClass = 
   result = cast[PMenuItemClass](CHECK_GET_CLASS(obj, TYPE_MENU_ITEM()))
 
-proc show_submenu_indicator*(a: var TMenuItem): guint = 
+proc show_submenu_indicator*(a: PMenuItem): guint = 
   result = (a.MenuItemflag0 and bm_TGtkMenuItem_show_submenu_indicator) shr
       bp_TGtkMenuItem_show_submenu_indicator
 
-proc set_show_submenu_indicator*(a: var TMenuItem, 
+proc set_show_submenu_indicator*(a: PMenuItem, 
                                  `show_submenu_indicator`: guint) = 
   a.MenuItemflag0 = a.MenuItemflag0 or
       (int16(`show_submenu_indicator` shl
       bp_TGtkMenuItem_show_submenu_indicator) and
       bm_TGtkMenuItem_show_submenu_indicator)
 
-proc submenu_placement*(a: var TMenuItem): guint = 
+proc submenu_placement*(a: PMenuItem): guint = 
   result = (a.MenuItemflag0 and bm_TGtkMenuItem_submenu_placement) shr
       bp_TGtkMenuItem_submenu_placement
 
-proc set_submenu_placement*(a: var TMenuItem, `submenu_placement`: guint) = 
+proc set_submenu_placement*(a: PMenuItem, `submenu_placement`: guint) = 
   a.MenuItemflag0 = a.MenuItemflag0 or
       (int16(`submenu_placement` shl bp_TGtkMenuItem_submenu_placement) and
       bm_TGtkMenuItem_submenu_placement)
 
-proc submenu_direction*(a: var TMenuItem): guint = 
+proc submenu_direction*(a: PMenuItem): guint = 
   result = (a.MenuItemflag0 and bm_TGtkMenuItem_submenu_direction) shr
       bp_TGtkMenuItem_submenu_direction
 
-proc set_submenu_direction*(a: var TMenuItem, `submenu_direction`: guint) = 
+proc set_submenu_direction*(a: PMenuItem, `submenu_direction`: guint) = 
   a.MenuItemflag0 = a.MenuItemflag0 or
       (int16(`submenu_direction` shl bp_TGtkMenuItem_submenu_direction) and
       bm_TGtkMenuItem_submenu_direction)
 
-proc right_justify*(a: var TMenuItem): guint = 
+proc right_justify*(a: PMenuItem): guint = 
   result = (a.MenuItemflag0 and bm_TGtkMenuItem_right_justify) shr
       bp_TGtkMenuItem_right_justify
 
-proc set_right_justify*(a: var TMenuItem, `right_justify`: guint) = 
+proc set_right_justify*(a: PMenuItem, `right_justify`: guint) = 
   a.MenuItemflag0 = a.MenuItemflag0 or
       (int16(`right_justify` shl bp_TGtkMenuItem_right_justify) and
       bm_TGtkMenuItem_right_justify)
 
-proc timer_from_keypress*(a: var TMenuItem): guint = 
+proc timer_from_keypress*(a: PMenuItem): guint = 
   result = (a.MenuItemflag0 and bm_TGtkMenuItem_timer_from_keypress) shr
       bp_TGtkMenuItem_timer_from_keypress
 
-proc set_timer_from_keypress*(a: var TMenuItem, `timer_from_keypress`: guint) = 
+proc set_timer_from_keypress*(a: PMenuItem, `timer_from_keypress`: guint) = 
   a.MenuItemflag0 = a.MenuItemflag0 or
       (int16(`timer_from_keypress` shl bp_TGtkMenuItem_timer_from_keypress) and
       bm_TGtkMenuItem_timer_from_keypress)
 
-proc hide_on_activate*(a: var TMenuItemClass): guint = 
+proc hide_on_activate*(a: PMenuItemClass): guint = 
   result = (a.MenuItemClassflag0 and bm_TGtkMenuItemClass_hide_on_activate) shr
       bp_TGtkMenuItemClass_hide_on_activate
 
-proc set_hide_on_activate*(a: var TMenuItemClass, `hide_on_activate`: guint) = 
+proc set_hide_on_activate*(a: PMenuItemClass, `hide_on_activate`: guint) = 
   a.MenuItemClassflag0 = a.MenuItemClassflag0 or
       (int16(`hide_on_activate` shl bp_TGtkMenuItemClass_hide_on_activate) and
       bm_TGtkMenuItemClass_hide_on_activate)
@@ -12275,29 +12266,29 @@ proc IS_TOGGLE_BUTTON_CLASS*(klass: pointer): bool =
 proc TOGGLE_BUTTON_GET_CLASS*(obj: pointer): PToggleButtonClass = 
   result = cast[PToggleButtonClass](CHECK_GET_CLASS(obj, TYPE_TOGGLE_BUTTON()))
 
-proc active*(a: var TToggleButton): guint = 
+proc active*(a: PToggleButton): guint = 
   result = (a.ToggleButtonflag0 and bm_TGtkToggleButton_active) shr
       bp_TGtkToggleButton_active
 
-proc set_active*(a: var TToggleButton, `active`: guint) = 
+proc set_active*(a: PToggleButton, `active`: guint) = 
   a.ToggleButtonflag0 = a.ToggleButtonflag0 or
       (int16(`active` shl bp_TGtkToggleButton_active) and
       bm_TGtkToggleButton_active)
 
-proc draw_indicator*(a: var TToggleButton): guint = 
+proc draw_indicator*(a: PToggleButton): guint = 
   result = (a.ToggleButtonflag0 and bm_TGtkToggleButton_draw_indicator) shr
       bp_TGtkToggleButton_draw_indicator
 
-proc set_draw_indicator*(a: var TToggleButton, `draw_indicator`: guint) = 
+proc set_draw_indicator*(a: PToggleButton, `draw_indicator`: guint) = 
   a.ToggleButtonflag0 = a.ToggleButtonflag0 or
       (int16(`draw_indicator` shl bp_TGtkToggleButton_draw_indicator) and
       bm_TGtkToggleButton_draw_indicator)
 
-proc inconsistent*(a: var TToggleButton): guint = 
+proc inconsistent*(a: PToggleButton): guint = 
   result = (a.ToggleButtonflag0 and bm_TGtkToggleButton_inconsistent) shr
       bp_TGtkToggleButton_inconsistent
 
-proc set_inconsistent*(a: var TToggleButton, `inconsistent`: guint) = 
+proc set_inconsistent*(a: PToggleButton, `inconsistent`: guint) = 
   a.ToggleButtonflag0 = a.ToggleButtonflag0 or
       (int16(`inconsistent` shl bp_TGtkToggleButton_inconsistent) and
       bm_TGtkToggleButton_inconsistent)
@@ -12339,29 +12330,29 @@ proc IS_CHECK_MENU_ITEM_CLASS*(klass: pointer): bool =
 proc CHECK_MENU_ITEM_GET_CLASS*(obj: pointer): PCheckMenuItemClass = 
   result = cast[PCheckMenuItemClass](CHECK_GET_CLASS(obj, TYPE_CHECK_MENU_ITEM()))
 
-proc active*(a: var TCheckMenuItem): guint = 
+proc active*(a: PCheckMenuItem): guint = 
   result = (a.CheckMenuItemflag0 and bm_TGtkCheckMenuItem_active) shr
       bp_TGtkCheckMenuItem_active
 
-proc set_active*(a: var TCheckMenuItem, `active`: guint) = 
+proc set_active*(a: PCheckMenuItem, `active`: guint) = 
   a.CheckMenuItemflag0 = a.CheckMenuItemflag0 or
       (int16(`active` shl bp_TGtkCheckMenuItem_active) and
       bm_TGtkCheckMenuItem_active)
 
-proc always_show_toggle*(a: var TCheckMenuItem): guint = 
+proc always_show_toggle*(a: PCheckMenuItem): guint = 
   result = (a.CheckMenuItemflag0 and bm_TGtkCheckMenuItem_always_show_toggle) shr
       bp_TGtkCheckMenuItem_always_show_toggle
 
-proc set_always_show_toggle*(a: var TCheckMenuItem, `always_show_toggle`: guint) = 
+proc set_always_show_toggle*(a: PCheckMenuItem, `always_show_toggle`: guint) = 
   a.CheckMenuItemflag0 = a.CheckMenuItemflag0 or
       (int16(`always_show_toggle` shl bp_TGtkCheckMenuItem_always_show_toggle) and
       bm_TGtkCheckMenuItem_always_show_toggle)
 
-proc inconsistent*(a: var TCheckMenuItem): guint = 
+proc inconsistent*(a: PCheckMenuItem): guint = 
   result = (a.CheckMenuItemflag0 and bm_TGtkCheckMenuItem_inconsistent) shr
       bp_TGtkCheckMenuItem_inconsistent
 
-proc set_inconsistent*(a: var TCheckMenuItem, `inconsistent`: guint) = 
+proc set_inconsistent*(a: PCheckMenuItem, `inconsistent`: guint) = 
   a.CheckMenuItemflag0 = a.CheckMenuItemflag0 or
       (int16(`inconsistent` shl bp_TGtkCheckMenuItem_inconsistent) and
       bm_TGtkCheckMenuItem_inconsistent)
@@ -12439,70 +12430,70 @@ when false:
   proc CELL_WIDGET_get*(cell: pointer): PCellWidget = 
     result = cast[PCellWidget](addr((cell)))
 
-proc visible*(a: var TCListColumn): guint = 
+proc visible*(a: PCListColumn): guint = 
   result = (a.flag0 and bm_TGtkCListColumn_visible) shr
       bp_TGtkCListColumn_visible
 
-proc set_visible*(a: var TCListColumn, `visible`: guint) = 
+proc set_visible*(a: PCListColumn, `visible`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`visible` shl bp_TGtkCListColumn_visible) and
       bm_TGtkCListColumn_visible)
 
-proc width_set*(a: var TCListColumn): guint = 
+proc width_set*(a: PCListColumn): guint = 
   result = (a.flag0 and bm_TGtkCListColumn_width_set) shr
       bp_TGtkCListColumn_width_set
 
-proc set_width_set*(a: var TCListColumn, `width_set`: guint) = 
+proc set_width_set*(a: PCListColumn, `width_set`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`width_set` shl bp_TGtkCListColumn_width_set) and
       bm_TGtkCListColumn_width_set)
 
-proc resizeable*(a: var TCListColumn): guint = 
+proc resizeable*(a: PCListColumn): guint = 
   result = (a.flag0 and bm_TGtkCListColumn_resizeable) shr
       bp_TGtkCListColumn_resizeable
 
-proc set_resizeable*(a: var TCListColumn, `resizeable`: guint) = 
+proc set_resizeable*(a: PCListColumn, `resizeable`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`resizeable` shl bp_TGtkCListColumn_resizeable) and
       bm_TGtkCListColumn_resizeable)
 
-proc auto_resize*(a: var TCListColumn): guint = 
+proc auto_resize*(a: PCListColumn): guint = 
   result = (a.flag0 and bm_TGtkCListColumn_auto_resize) shr
       bp_TGtkCListColumn_auto_resize
 
-proc set_auto_resize*(a: var TCListColumn, `auto_resize`: guint) = 
+proc set_auto_resize*(a: PCListColumn, `auto_resize`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`auto_resize` shl bp_TGtkCListColumn_auto_resize) and
       bm_TGtkCListColumn_auto_resize)
 
-proc button_passive*(a: var TCListColumn): guint = 
+proc button_passive*(a: PCListColumn): guint = 
   result = (a.flag0 and bm_TGtkCListColumn_button_passive) shr
       bp_TGtkCListColumn_button_passive
 
-proc set_button_passive*(a: var TCListColumn, `button_passive`: guint) = 
+proc set_button_passive*(a: PCListColumn, `button_passive`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`button_passive` shl bp_TGtkCListColumn_button_passive) and
       bm_TGtkCListColumn_button_passive)
 
-proc fg_set*(a: var TCListRow): guint = 
+proc fg_set*(a: PCListRow): guint = 
   result = (a.flag0 and bm_TGtkCListRow_fg_set) shr bp_TGtkCListRow_fg_set
 
-proc set_fg_set*(a: var TCListRow, `fg_set`: guint) = 
+proc set_fg_set*(a: PCListRow, `fg_set`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`fg_set` shl bp_TGtkCListRow_fg_set) and bm_TGtkCListRow_fg_set)
 
-proc bg_set*(a: var TCListRow): guint = 
+proc bg_set*(a: PCListRow): guint = 
   result = (a.flag0 and bm_TGtkCListRow_bg_set) shr bp_TGtkCListRow_bg_set
 
-proc set_bg_set*(a: var TCListRow, `bg_set`: guint) = 
+proc set_bg_set*(a: PCListRow, `bg_set`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`bg_set` shl bp_TGtkCListRow_bg_set) and bm_TGtkCListRow_bg_set)
 
-proc selectable*(a: var TCListRow): guint = 
+proc selectable*(a: PCListRow): guint = 
   result = (a.flag0 and bm_TGtkCListRow_selectable) shr
       bp_TGtkCListRow_selectable
 
-proc set_selectable*(a: var TCListRow, `selectable`: guint) = 
+proc set_selectable*(a: PCListRow, `selectable`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`selectable` shl bp_TGtkCListRow_selectable) and
       bm_TGtkCListRow_selectable)
@@ -12620,47 +12611,47 @@ proc IS_COMBO_CLASS*(klass: pointer): bool =
 proc COMBO_GET_CLASS*(obj: pointer): PComboClass = 
   result = cast[PComboClass](CHECK_GET_CLASS(obj, TYPE_COMBO()))
 
-proc value_in_list*(a: var TCombo): guint = 
+proc value_in_list*(a: PCombo): guint = 
   result = (a.Comboflag0 and bm_TGtkCombo_value_in_list) shr
       bp_TGtkCombo_value_in_list
 
-proc set_value_in_list*(a: var TCombo, `value_in_list`: guint) = 
+proc set_value_in_list*(a: PCombo, `value_in_list`: guint) = 
   a.Comboflag0 = a.Comboflag0 or
       (int16(`value_in_list` shl bp_TGtkCombo_value_in_list) and
       bm_TGtkCombo_value_in_list)
 
-proc ok_if_empty*(a: var TCombo): guint = 
+proc ok_if_empty*(a: PCombo): guint = 
   result = (a.Comboflag0 and bm_TGtkCombo_ok_if_empty) shr
       bp_TGtkCombo_ok_if_empty
 
-proc set_ok_if_empty*(a: var TCombo, `ok_if_empty`: guint) = 
+proc set_ok_if_empty*(a: PCombo, `ok_if_empty`: guint) = 
   a.Comboflag0 = a.Comboflag0 or
       (int16(`ok_if_empty` shl bp_TGtkCombo_ok_if_empty) and
       bm_TGtkCombo_ok_if_empty)
 
-proc case_sensitive*(a: var TCombo): guint = 
+proc case_sensitive*(a: PCombo): guint = 
   result = (a.Comboflag0 and bm_TGtkCombo_case_sensitive) shr
       bp_TGtkCombo_case_sensitive
 
-proc set_case_sensitive*(a: var TCombo, `case_sensitive`: guint) = 
+proc set_case_sensitive*(a: PCombo, `case_sensitive`: guint) = 
   a.Comboflag0 = a.Comboflag0 or
       (int16(`case_sensitive` shl bp_TGtkCombo_case_sensitive) and
       bm_TGtkCombo_case_sensitive)
 
-proc use_arrows*(a: var TCombo): guint = 
+proc use_arrows*(a: PCombo): guint = 
   result = (a.Comboflag0 and bm_TGtkCombo_use_arrows) shr
       bp_TGtkCombo_use_arrows
 
-proc set_use_arrows*(a: var TCombo, `use_arrows`: guint) = 
+proc set_use_arrows*(a: PCombo, `use_arrows`: guint) = 
   a.Comboflag0 = a.Comboflag0 or
       (int16(`use_arrows` shl bp_TGtkCombo_use_arrows) and
       bm_TGtkCombo_use_arrows)
 
-proc use_arrows_always*(a: var TCombo): guint = 
+proc use_arrows_always*(a: PCombo): guint = 
   result = (a.Comboflag0 and bm_TGtkCombo_use_arrows_always) shr
       bp_TGtkCombo_use_arrows_always
 
-proc set_use_arrows_always*(a: var TCombo, `use_arrows_always`: guint) = 
+proc set_use_arrows_always*(a: PCombo, `use_arrows_always`: guint) = 
   a.Comboflag0 = a.Comboflag0 or
       (int16(`use_arrows_always` shl bp_TGtkCombo_use_arrows_always) and
       bm_TGtkCombo_use_arrows_always)
@@ -12701,47 +12692,47 @@ proc CTREE_FUNC*(fun: TAddress): TCTreeFunc =
 proc TYPE_CTREE_NODE*(): GType = 
   result = ctree_node_get_type()
 
-proc line_style*(a: var TCTree): guint = 
+proc line_style*(a: PCTree): guint = 
   result = (a.CTreeflag0 and bm_TGtkCTree_line_style) shr
       bp_TGtkCTree_line_style
 
-proc set_line_style*(a: var TCTree, `line_style`: guint) = 
+proc set_line_style*(a: PCTree, `line_style`: guint) = 
   a.CTreeflag0 = a.CTreeflag0 or
       (int16(`line_style` shl bp_TGtkCTree_line_style) and
       bm_TGtkCTree_line_style)
 
-proc expander_style*(a: var TCTree): guint = 
+proc expander_style*(a: PCTree): guint = 
   result = (a.CTreeflag0 and bm_TGtkCTree_expander_style) shr
       bp_TGtkCTree_expander_style
 
-proc set_expander_style*(a: var TCTree, `expander_style`: guint) = 
+proc set_expander_style*(a: PCTree, `expander_style`: guint) = 
   a.CTreeflag0 = a.CTreeflag0 or
       (int16(`expander_style` shl bp_TGtkCTree_expander_style) and
       bm_TGtkCTree_expander_style)
 
-proc show_stub*(a: var TCTree): guint = 
+proc show_stub*(a: PCTree): guint = 
   result = (a.CTreeflag0 and bm_TGtkCTree_show_stub) shr
       bp_TGtkCTree_show_stub
 
-proc set_show_stub*(a: var TCTree, `show_stub`: guint) = 
+proc set_show_stub*(a: PCTree, `show_stub`: guint) = 
   a.CTreeflag0 = a.CTreeflag0 or
       (int16(`show_stub` shl bp_TGtkCTree_show_stub) and
       bm_TGtkCTree_show_stub)
 
-proc is_leaf*(a: var TCTreeRow): guint = 
+proc is_leaf*(a: PCTreeRow): guint = 
   result = (a.CTreeRow_flag0 and bm_TGtkCTreeRow_is_leaf) shr
       bp_TGtkCTreeRow_is_leaf
 
-proc set_is_leaf*(a: var TCTreeRow, `is_leaf`: guint) = 
+proc set_is_leaf*(a: PCTreeRow, `is_leaf`: guint) = 
   a.CTreeRow_flag0 = a.CTreeRow_flag0 or
       (int16(`is_leaf` shl bp_TGtkCTreeRow_is_leaf) and
       bm_TGtkCTreeRow_is_leaf)
 
-proc expanded*(a: var TCTreeRow): guint = 
+proc expanded*(a: PCTreeRow): guint = 
   result = (a.CTreeRow_flag0 and bm_TGtkCTreeRow_expanded) shr
       bp_TGtkCTreeRow_expanded
 
-proc set_expanded*(a: var TCTreeRow, `expanded`: guint) = 
+proc set_expanded*(a: PCTreeRow, `expanded`: guint) = 
   a.CTreeRow_flag0 = a.CTreeRowflag0 or
       (int16(`expanded` shl bp_TGtkCTreeRow_expanded) and
       bm_TGtkCTreeRow_expanded)
@@ -12840,65 +12831,65 @@ proc IS_MENU_SHELL_CLASS*(klass: pointer): bool =
 proc MENU_SHELL_GET_CLASS*(obj: pointer): PMenuShellClass = 
   result = cast[PMenuShellClass](CHECK_GET_CLASS(obj, TYPE_MENU_SHELL()))
 
-proc active*(a: var TMenuShell): guint = 
+proc active*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_active) shr
       bp_TGtkMenuShell_active
 
-proc set_active*(a: var TMenuShell, `active`: guint) = 
+proc set_active*(a: PMenuShell, `active`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`active` shl bp_TGtkMenuShell_active) and
       bm_TGtkMenuShell_active)
 
-proc have_grab*(a: var TMenuShell): guint = 
+proc have_grab*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_have_grab) shr
       bp_TGtkMenuShell_have_grab
 
-proc set_have_grab*(a: var TMenuShell, `have_grab`: guint) = 
+proc set_have_grab*(a: PMenuShell, `have_grab`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`have_grab` shl bp_TGtkMenuShell_have_grab) and
       bm_TGtkMenuShell_have_grab)
 
-proc have_xgrab*(a: var TMenuShell): guint = 
+proc have_xgrab*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_have_xgrab) shr
       bp_TGtkMenuShell_have_xgrab
 
-proc set_have_xgrab*(a: var TMenuShell, `have_xgrab`: guint) = 
+proc set_have_xgrab*(a: PMenuShell, `have_xgrab`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`have_xgrab` shl bp_TGtkMenuShell_have_xgrab) and
       bm_TGtkMenuShell_have_xgrab)
 
-proc ignore_leave*(a: var TMenuShell): guint = 
+proc ignore_leave*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_ignore_leave) shr
       bp_TGtkMenuShell_ignore_leave
 
-proc set_ignore_leave*(a: var TMenuShell, `ignore_leave`: guint) = 
+proc set_ignore_leave*(a: PMenuShell, `ignore_leave`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`ignore_leave` shl bp_TGtkMenuShell_ignore_leave) and
       bm_TGtkMenuShell_ignore_leave)
 
-proc menu_flag*(a: var TMenuShell): guint = 
+proc menu_flag*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_menu_flag) shr
       bp_TGtkMenuShell_menu_flag
 
-proc set_menu_flag*(a: var TMenuShell, `menu_flag`: guint) = 
+proc set_menu_flag*(a: PMenuShell, `menu_flag`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`menu_flag` shl bp_TGtkMenuShell_menu_flag) and
       bm_TGtkMenuShell_menu_flag)
 
-proc ignore_enter*(a: var TMenuShell): guint = 
+proc ignore_enter*(a: PMenuShell): guint = 
   result = (a.MenuShellflag0 and bm_TGtkMenuShell_ignore_enter) shr
       bp_TGtkMenuShell_ignore_enter
 
-proc set_ignore_enter*(a: var TMenuShell, `ignore_enter`: guint) = 
+proc set_ignore_enter*(a: PMenuShell, `ignore_enter`: guint) = 
   a.MenuShellflag0 = a.MenuShellflag0 or
       (int16(`ignore_enter` shl bp_TGtkMenuShell_ignore_enter) and
       bm_TGtkMenuShell_ignore_enter)
 
-proc submenu_placement*(a: var TMenuShellClass): guint = 
+proc submenu_placement*(a: PMenuShellClass): guint = 
   result = (a.MenuShellClassflag0 and bm_TGtkMenuShellClass_submenu_placement) shr
       bp_TGtkMenuShellClass_submenu_placement
 
-proc set_submenu_placement*(a: var TMenuShellClass, `submenu_placement`: guint) = 
+proc set_submenu_placement*(a: PMenuShellClass, `submenu_placement`: guint) = 
   a.MenuShellClassflag0 = a.MenuShellClassflag0 or
       (int16(`submenu_placement` shl bp_TGtkMenuShellClass_submenu_placement) and
       bm_TGtkMenuShellClass_submenu_placement)
@@ -12921,74 +12912,74 @@ proc IS_MENU_CLASS*(klass: pointer): bool =
 proc MENU_GET_CLASS*(obj: pointer): PMenuClass = 
   result = cast[PMenuClass](CHECK_GET_CLASS(obj, TYPE_MENU()))
 
-proc needs_destruction_ref_count*(a: var TMenu): guint = 
+proc needs_destruction_ref_count*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_needs_destruction_ref_count) shr
       bp_TGtkMenu_needs_destruction_ref_count
 
-proc set_needs_destruction_ref_count*(a: var TMenu, 
+proc set_needs_destruction_ref_count*(a: PMenu, 
                                       `needs_destruction_ref_count`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`needs_destruction_ref_count` shl
       bp_TGtkMenu_needs_destruction_ref_count) and
       bm_TGtkMenu_needs_destruction_ref_count)
 
-proc torn_off*(a: var TMenu): guint = 
+proc torn_off*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_torn_off) shr bp_TGtkMenu_torn_off
 
-proc set_torn_off*(a: var TMenu, `torn_off`: guint) = 
+proc set_torn_off*(a: PMenu, `torn_off`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`torn_off` shl bp_TGtkMenu_torn_off) and bm_TGtkMenu_torn_off)
 
-proc tearoff_active*(a: var TMenu): guint = 
+proc tearoff_active*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_tearoff_active) shr
       bp_TGtkMenu_tearoff_active
 
-proc set_tearoff_active*(a: var TMenu, `tearoff_active`: guint) = 
+proc set_tearoff_active*(a: PMenu, `tearoff_active`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`tearoff_active` shl bp_TGtkMenu_tearoff_active) and
       bm_TGtkMenu_tearoff_active)
 
-proc scroll_fast*(a: var TMenu): guint = 
+proc scroll_fast*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_scroll_fast) shr
       bp_TGtkMenu_scroll_fast
 
-proc set_scroll_fast*(a: var TMenu, `scroll_fast`: guint) = 
+proc set_scroll_fast*(a: PMenu, `scroll_fast`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`scroll_fast` shl bp_TGtkMenu_scroll_fast) and
       bm_TGtkMenu_scroll_fast)
 
-proc upper_arrow_visible*(a: var TMenu): guint = 
+proc upper_arrow_visible*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_upper_arrow_visible) shr
       bp_TGtkMenu_upper_arrow_visible
 
-proc set_upper_arrow_visible*(a: var TMenu, `upper_arrow_visible`: guint) = 
+proc set_upper_arrow_visible*(a: PMenu, `upper_arrow_visible`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`upper_arrow_visible` shl bp_TGtkMenu_upper_arrow_visible) and
       bm_TGtkMenu_upper_arrow_visible)
 
-proc lower_arrow_visible*(a: var TMenu): guint = 
+proc lower_arrow_visible*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_lower_arrow_visible) shr
       bp_TGtkMenu_lower_arrow_visible
 
-proc set_lower_arrow_visible*(a: var TMenu, `lower_arrow_visible`: guint) = 
+proc set_lower_arrow_visible*(a: PMenu, `lower_arrow_visible`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`lower_arrow_visible` shl bp_TGtkMenu_lower_arrow_visible) and
       bm_TGtkMenu_lower_arrow_visible)
 
-proc upper_arrow_prelight*(a: var TMenu): guint = 
+proc upper_arrow_prelight*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_upper_arrow_prelight) shr
       bp_TGtkMenu_upper_arrow_prelight
 
-proc set_upper_arrow_prelight*(a: var TMenu, `upper_arrow_prelight`: guint) = 
+proc set_upper_arrow_prelight*(a: PMenu, `upper_arrow_prelight`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`upper_arrow_prelight` shl bp_TGtkMenu_upper_arrow_prelight) and
       bm_TGtkMenu_upper_arrow_prelight)
 
-proc lower_arrow_prelight*(a: var TMenu): guint = 
+proc lower_arrow_prelight*(a: PMenu): guint = 
   result = (a.Menuflag0 and bm_TGtkMenu_lower_arrow_prelight) shr
       bp_TGtkMenu_lower_arrow_prelight
 
-proc set_lower_arrow_prelight*(a: var TMenu, `lower_arrow_prelight`: guint) = 
+proc set_lower_arrow_prelight*(a: PMenu, `lower_arrow_prelight`: guint) = 
   a.Menuflag0 = a.Menuflag0 or
       (int16(`lower_arrow_prelight` shl bp_TGtkMenu_lower_arrow_prelight) and
       bm_TGtkMenu_lower_arrow_prelight)
@@ -13020,110 +13011,110 @@ proc IS_ENTRY_CLASS*(klass: pointer): bool =
 proc ENTRY_GET_CLASS*(obj: pointer): PEntryClass = 
   result = cast[PEntryClass](CHECK_GET_CLASS(obj, TYPE_ENTRY()))
 
-proc editable*(a: var TEntry): guint = 
+proc editable*(a: PEntry): guint = 
   result = (a.Entryflag0 and bm_TGtkEntry_editable) shr bp_TGtkEntry_editable
 
-proc set_editable*(a: var TEntry, `editable`: guint) = 
+proc set_editable*(a: PEntry, `editable`: guint) = 
   a.Entryflag0 = a.Entryflag0 or
       (int16(`editable` shl bp_TGtkEntry_editable) and bm_TGtkEntry_editable)
 
-proc visible*(a: var TEntry): guint = 
+proc visible*(a: PEntry): guint = 
   result = (a.Entryflag0 and bm_TGtkEntry_visible) shr bp_TGtkEntry_visible
 
-proc set_visible*(a: var TEntry, `visible`: guint) = 
+proc set_visible*(a: PEntry, `visible`: guint) = 
   a.Entryflag0 = a.Entryflag0 or
       (int16(`visible` shl bp_TGtkEntry_visible) and bm_TGtkEntry_visible)
 
-proc overwrite_mode*(a: var TEntry): guint = 
+proc overwrite_mode*(a: PEntry): guint = 
   result = (a.Entryflag0 and bm_TGtkEntry_overwrite_mode) shr
       bp_TGtkEntry_overwrite_mode
 
-proc set_overwrite_mode*(a: var TEntry, `overwrite_mode`: guint) = 
+proc set_overwrite_mode*(a: PEntry, `overwrite_mode`: guint) = 
   a.Entryflag0 = a.Entryflag0 or
       (int16(`overwrite_mode` shl bp_TGtkEntry_overwrite_mode) and
       bm_TGtkEntry_overwrite_mode)
 
-proc in_drag*(a: var TEntry): guint = 
+proc in_drag*(a: PEntry): guint = 
   result = (a.Entryflag0 and bm_TGtkEntry_in_drag) shr bp_TGtkEntry_in_drag
 
-proc set_in_drag*(a: var TEntry, `in_drag`: guint) = 
+proc set_in_drag*(a: PEntry, `in_drag`: guint) = 
   a.Entryflag0 = a.Entryflag0 or
       (int16(`in_drag` shl bp_TGtkEntry_in_drag) and bm_TGtkEntry_in_drag)
 
-proc cache_includes_preedit*(a: var TEntry): guint = 
+proc cache_includes_preedit*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_cache_includes_preedit) shr
       bp_TGtkEntry_cache_includes_preedit
 
-proc set_cache_includes_preedit*(a: var TEntry, `cache_includes_preedit`: guint) = 
+proc set_cache_includes_preedit*(a: PEntry, `cache_includes_preedit`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`cache_includes_preedit` shl bp_TGtkEntry_cache_includes_preedit) and
       bm_TGtkEntry_cache_includes_preedit)
 
-proc need_im_reset*(a: var TEntry): guint = 
+proc need_im_reset*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_need_im_reset) shr
       bp_TGtkEntry_need_im_reset
 
-proc set_need_im_reset*(a: var TEntry, `need_im_reset`: guint) = 
+proc set_need_im_reset*(a: PEntry, `need_im_reset`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`need_im_reset` shl bp_TGtkEntry_need_im_reset) and
       bm_TGtkEntry_need_im_reset)
 
-proc has_frame*(a: var TEntry): guint = 
+proc has_frame*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_has_frame) shr bp_TGtkEntry_has_frame
 
-proc set_has_frame*(a: var TEntry, `has_frame`: guint) = 
+proc set_has_frame*(a: PEntry, `has_frame`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`has_frame` shl bp_TGtkEntry_has_frame) and
       bm_TGtkEntry_has_frame)
 
-proc activates_default*(a: var TEntry): guint = 
+proc activates_default*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_activates_default) shr
       bp_TGtkEntry_activates_default
 
-proc set_activates_default*(a: var TEntry, `activates_default`: guint) = 
+proc set_activates_default*(a: PEntry, `activates_default`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`activates_default` shl bp_TGtkEntry_activates_default) and
       bm_TGtkEntry_activates_default)
 
-proc cursor_visible*(a: var TEntry): guint = 
+proc cursor_visible*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_cursor_visible) shr
       bp_TGtkEntry_cursor_visible
 
-proc set_cursor_visible*(a: var TEntry, `cursor_visible`: guint) = 
+proc set_cursor_visible*(a: PEntry, `cursor_visible`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`cursor_visible` shl bp_TGtkEntry_cursor_visible) and
       bm_TGtkEntry_cursor_visible)
 
-proc in_click*(a: var TEntry): guint = 
+proc in_click*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_in_click) shr bp_TGtkEntry_in_click
 
-proc set_in_click*(a: var TEntry, `in_click`: guint) = 
+proc set_in_click*(a: PEntry, `in_click`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`in_click` shl bp_TGtkEntry_in_click) and bm_TGtkEntry_in_click)
 
-proc is_cell_renderer*(a: var TEntry): guint = 
+proc is_cell_renderer*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_is_cell_renderer) shr
       bp_TGtkEntry_is_cell_renderer
 
-proc set_is_cell_renderer*(a: var TEntry, `is_cell_renderer`: guint) = 
+proc set_is_cell_renderer*(a: PEntry, `is_cell_renderer`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`is_cell_renderer` shl bp_TGtkEntry_is_cell_renderer) and
       bm_TGtkEntry_is_cell_renderer)
 
-proc editing_canceled*(a: var TEntry): guint = 
+proc editing_canceled*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_editing_canceled) shr
       bp_TGtkEntry_editing_canceled
 
-proc set_editing_canceled*(a: var TEntry, `editing_canceled`: guint) = 
+proc set_editing_canceled*(a: PEntry, `editing_canceled`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`editing_canceled` shl bp_TGtkEntry_editing_canceled) and
       bm_TGtkEntry_editing_canceled)
 
-proc mouse_cursor_obscured*(a: var TEntry): guint = 
+proc mouse_cursor_obscured*(a: PEntry): guint = 
   result = (a.flag1 and bm_TGtkEntry_mouse_cursor_obscured) shr
       bp_TGtkEntry_mouse_cursor_obscured
 
-proc set_mouse_cursor_obscured*(a: var TEntry, `mouse_cursor_obscured`: guint) = 
+proc set_mouse_cursor_obscured*(a: PEntry, `mouse_cursor_obscured`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`mouse_cursor_obscured` shl bp_TGtkEntry_mouse_cursor_obscured) and
       bm_TGtkEntry_mouse_cursor_obscured)
@@ -13259,56 +13250,56 @@ proc IS_HANDLE_BOX_CLASS*(klass: pointer): bool =
 proc HANDLE_BOX_GET_CLASS*(obj: pointer): PHandleBoxClass = 
   result = cast[PHandleBoxClass](CHECK_GET_CLASS(obj, TYPE_HANDLE_BOX()))
 
-proc handle_position*(a: var THandleBox): guint = 
+proc handle_position*(a: PHandleBox): guint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_handle_position) shr
       bp_TGtkHandleBox_handle_position
 
-proc set_handle_position*(a: var THandleBox, `handle_position`: guint) = 
+proc set_handle_position*(a: PHandleBox, `handle_position`: guint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`handle_position` shl bp_TGtkHandleBox_handle_position) and
       bm_TGtkHandleBox_handle_position)
 
-proc float_window_mapped*(a: var THandleBox): guint = 
+proc float_window_mapped*(a: PHandleBox): guint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_float_window_mapped) shr
       bp_TGtkHandleBox_float_window_mapped
 
-proc set_float_window_mapped*(a: var THandleBox, `float_window_mapped`: guint) = 
+proc set_float_window_mapped*(a: PHandleBox, `float_window_mapped`: guint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`float_window_mapped` shl bp_TGtkHandleBox_float_window_mapped) and
       bm_TGtkHandleBox_float_window_mapped)
 
-proc child_detached*(a: var THandleBox): guint = 
+proc child_detached*(a: PHandleBox): guint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_child_detached) shr
       bp_TGtkHandleBox_child_detached
 
-proc set_child_detached*(a: var THandleBox, `child_detached`: guint) = 
+proc set_child_detached*(a: PHandleBox, `child_detached`: guint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`child_detached` shl bp_TGtkHandleBox_child_detached) and
       bm_TGtkHandleBox_child_detached)
 
-proc in_drag*(a: var THandleBox): guint = 
+proc in_drag*(a: PHandleBox): guint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_in_drag) shr
       bp_TGtkHandleBox_in_drag
 
-proc set_in_drag*(a: var THandleBox, `in_drag`: guint) = 
+proc set_in_drag*(a: PHandleBox, `in_drag`: guint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`in_drag` shl bp_TGtkHandleBox_in_drag) and
       bm_TGtkHandleBox_in_drag)
 
-proc shrink_on_detach*(a: var THandleBox): guint = 
+proc shrink_on_detach*(a: PHandleBox): guint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_shrink_on_detach) shr
       bp_TGtkHandleBox_shrink_on_detach
 
-proc set_shrink_on_detach*(a: var THandleBox, `shrink_on_detach`: guint) = 
+proc set_shrink_on_detach*(a: PHandleBox, `shrink_on_detach`: guint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`shrink_on_detach` shl bp_TGtkHandleBox_shrink_on_detach) and
       bm_TGtkHandleBox_shrink_on_detach)
 
-proc snap_edge*(a: var THandleBox): gint = 
+proc snap_edge*(a: PHandleBox): gint = 
   result = (a.HandleBoxflag0 and bm_TGtkHandleBox_snap_edge) shr
       bp_TGtkHandleBox_snap_edge
 
-proc set_snap_edge*(a: var THandleBox, `snap_edge`: gint) = 
+proc set_snap_edge*(a: PHandleBox, `snap_edge`: gint) = 
   a.HandleBoxflag0 = a.HandleBoxflag0 or
       (int16(`snap_edge` shl bp_TGtkHandleBox_snap_edge) and
       bm_TGtkHandleBox_snap_edge)
@@ -13331,81 +13322,81 @@ proc IS_PANED_CLASS*(klass: pointer): bool =
 proc PANED_GET_CLASS*(obj: pointer): PPanedClass = 
   result = cast[PPanedClass](CHECK_GET_CLASS(obj, TYPE_PANED()))
 
-proc position_set*(a: var TPaned): guint = 
+proc position_set*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_position_set) shr
       bp_TGtkPaned_position_set
 
-proc set_position_set*(a: var TPaned, `position_set`: guint) = 
+proc set_position_set*(a: PPaned, `position_set`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`position_set` shl bp_TGtkPaned_position_set) and
       bm_TGtkPaned_position_set)
 
-proc in_drag*(a: var TPaned): guint = 
+proc in_drag*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_in_drag) shr bp_TGtkPaned_in_drag
 
-proc set_in_drag*(a: var TPaned, `in_drag`: guint) = 
+proc set_in_drag*(a: PPaned, `in_drag`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`in_drag` shl bp_TGtkPaned_in_drag) and bm_TGtkPaned_in_drag)
 
-proc child1_shrink*(a: var TPaned): guint = 
+proc child1_shrink*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_child1_shrink) shr
       bp_TGtkPaned_child1_shrink
 
-proc set_child1_shrink*(a: var TPaned, `child1_shrink`: guint) = 
+proc set_child1_shrink*(a: PPaned, `child1_shrink`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`child1_shrink` shl bp_TGtkPaned_child1_shrink) and
       bm_TGtkPaned_child1_shrink)
 
-proc child1_resize*(a: var TPaned): guint = 
+proc child1_resize*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_child1_resize) shr
       bp_TGtkPaned_child1_resize
 
-proc set_child1_resize*(a: var TPaned, `child1_resize`: guint) = 
+proc set_child1_resize*(a: PPaned, `child1_resize`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`child1_resize` shl bp_TGtkPaned_child1_resize) and
       bm_TGtkPaned_child1_resize)
 
-proc child2_shrink*(a: var TPaned): guint = 
+proc child2_shrink*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_child2_shrink) shr
       bp_TGtkPaned_child2_shrink
 
-proc set_child2_shrink*(a: var TPaned, `child2_shrink`: guint) = 
+proc set_child2_shrink*(a: PPaned, `child2_shrink`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`child2_shrink` shl bp_TGtkPaned_child2_shrink) and
       bm_TGtkPaned_child2_shrink)
 
-proc child2_resize*(a: var TPaned): guint = 
+proc child2_resize*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_child2_resize) shr
       bp_TGtkPaned_child2_resize
 
-proc set_child2_resize*(a: var TPaned, `child2_resize`: guint) = 
+proc set_child2_resize*(a: PPaned, `child2_resize`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`child2_resize` shl bp_TGtkPaned_child2_resize) and
       bm_TGtkPaned_child2_resize)
 
-proc orientation*(a: var TPaned): guint = 
+proc orientation*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_orientation) shr
       bp_TGtkPaned_orientation
 
-proc set_orientation*(a: var TPaned, `orientation`: guint) = 
+proc set_orientation*(a: PPaned, `orientation`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`orientation` shl bp_TGtkPaned_orientation) and
       bm_TGtkPaned_orientation)
 
-proc in_recursion*(a: var TPaned): guint = 
+proc in_recursion*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_in_recursion) shr
       bp_TGtkPaned_in_recursion
 
-proc set_in_recursion*(a: var TPaned, `in_recursion`: guint) = 
+proc set_in_recursion*(a: PPaned, `in_recursion`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`in_recursion` shl bp_TGtkPaned_in_recursion) and
       bm_TGtkPaned_in_recursion)
 
-proc handle_prelit*(a: var TPaned): guint = 
+proc handle_prelit*(a: PPaned): guint = 
   result = (a.Panedflag0 and bm_TGtkPaned_handle_prelit) shr
       bp_TGtkPaned_handle_prelit
 
-proc set_handle_prelit*(a: var TPaned, `handle_prelit`: guint) = 
+proc set_handle_prelit*(a: PPaned, `handle_prelit`: guint) = 
   a.Panedflag0 = a.Panedflag0 or
       (int16(`handle_prelit` shl bp_TGtkPaned_handle_prelit) and
       bm_TGtkPaned_handle_prelit)
@@ -13524,11 +13515,11 @@ proc IS_RC_STYLE_CLASS*(klass: pointer): bool =
 proc RC_STYLE_GET_CLASS*(obj: pointer): PRcStyleClass = 
   result = cast[PRcStyleClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_RC_STYLE()))
 
-proc engine_specified*(a: var TRcStyle): guint = 
+proc engine_specified*(a: PRcStyle): guint = 
   result = (a.RcStyleflag0 and bm_TGtkRcStyle_engine_specified) shr
       bp_TGtkRcStyle_engine_specified
 
-proc set_engine_specified*(a: var TRcStyle, `engine_specified`: guint) = 
+proc set_engine_specified*(a: PRcStyle, `engine_specified`: guint) = 
   a.RcStyleflag0 = a.RcStyleflag0 or
       (int16(`engine_specified` shl bp_TGtkRcStyle_engine_specified) and
       bm_TGtkRcStyle_engine_specified)
@@ -13581,90 +13572,90 @@ proc IS_RANGE_CLASS*(klass: pointer): bool =
 proc RANGE_GET_CLASS*(obj: pointer): PRangeClass = 
   result = cast[PRangeClass](CHECK_GET_CLASS(obj, TYPE_RANGE()))
 
-proc inverted*(a: var TRange): guint = 
+proc inverted*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_inverted) shr bp_TGtkRange_inverted
 
-proc set_inverted*(a: var TRange, `inverted`: guint) = 
+proc set_inverted*(a: PRange, `inverted`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`inverted` shl bp_TGtkRange_inverted) and bm_TGtkRange_inverted)
 
-proc flippable*(a: var TRange): guint = 
+proc flippable*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_flippable) shr
       bp_TGtkRange_flippable
 
-proc set_flippable*(a: var TRange, `flippable`: guint) = 
+proc set_flippable*(a: PRange, `flippable`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`flippable` shl bp_TGtkRange_flippable) and
       bm_TGtkRange_flippable)
 
-proc has_stepper_a*(a: var TRange): guint = 
+proc has_stepper_a*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_has_stepper_a) shr
       bp_TGtkRange_has_stepper_a
 
-proc set_has_stepper_a*(a: var TRange, `has_stepper_a`: guint) = 
+proc set_has_stepper_a*(a: PRange, `has_stepper_a`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`has_stepper_a` shl bp_TGtkRange_has_stepper_a) and
       bm_TGtkRange_has_stepper_a)
 
-proc has_stepper_b*(a: var TRange): guint = 
+proc has_stepper_b*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_has_stepper_b) shr
       bp_TGtkRange_has_stepper_b
 
-proc set_has_stepper_b*(a: var TRange, `has_stepper_b`: guint) = 
+proc set_has_stepper_b*(a: PRange, `has_stepper_b`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`has_stepper_b` shl bp_TGtkRange_has_stepper_b) and
       bm_TGtkRange_has_stepper_b)
 
-proc has_stepper_c*(a: var TRange): guint = 
+proc has_stepper_c*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_has_stepper_c) shr
       bp_TGtkRange_has_stepper_c
 
-proc set_has_stepper_c*(a: var TRange, `has_stepper_c`: guint) = 
+proc set_has_stepper_c*(a: PRange, `has_stepper_c`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`has_stepper_c` shl bp_TGtkRange_has_stepper_c) and
       bm_TGtkRange_has_stepper_c)
 
-proc has_stepper_d*(a: var TRange): guint = 
+proc has_stepper_d*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_has_stepper_d) shr
       bp_TGtkRange_has_stepper_d
 
-proc set_has_stepper_d*(a: var TRange, `has_stepper_d`: guint) = 
+proc set_has_stepper_d*(a: PRange, `has_stepper_d`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`has_stepper_d` shl bp_TGtkRange_has_stepper_d) and
       bm_TGtkRange_has_stepper_d)
 
-proc need_recalc*(a: var TRange): guint = 
+proc need_recalc*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_need_recalc) shr
       bp_TGtkRange_need_recalc
 
-proc set_need_recalc*(a: var TRange, `need_recalc`: guint) = 
+proc set_need_recalc*(a: PRange, `need_recalc`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`need_recalc` shl bp_TGtkRange_need_recalc) and
       bm_TGtkRange_need_recalc)
 
-proc slider_size_fixed*(a: var TRange): guint = 
+proc slider_size_fixed*(a: PRange): guint = 
   result = (a.Rangeflag0 and bm_TGtkRange_slider_size_fixed) shr
       bp_TGtkRange_slider_size_fixed
 
-proc set_slider_size_fixed*(a: var TRange, `slider_size_fixed`: guint) = 
+proc set_slider_size_fixed*(a: PRange, `slider_size_fixed`: guint) = 
   a.Rangeflag0 = a.Rangeflag0 or
       (int16(`slider_size_fixed` shl bp_TGtkRange_slider_size_fixed) and
       bm_TGtkRange_slider_size_fixed)
 
-proc trough_click_forward*(a: var TRange): guint = 
+proc trough_click_forward*(a: PRange): guint = 
   result = (a.flag1 and bm_TGtkRange_trough_click_forward) shr
       bp_TGtkRange_trough_click_forward
 
-proc set_trough_click_forward*(a: var TRange, `trough_click_forward`: guint) = 
+proc set_trough_click_forward*(a: PRange, `trough_click_forward`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`trough_click_forward` shl bp_TGtkRange_trough_click_forward) and
       bm_TGtkRange_trough_click_forward)
 
-proc update_pending*(a: var TRange): guint = 
+proc update_pending*(a: PRange): guint = 
   result = (a.flag1 and bm_TGtkRange_update_pending) shr
       bp_TGtkRange_update_pending
 
-proc set_update_pending*(a: var TRange, `update_pending`: guint) = 
+proc set_update_pending*(a: PRange, `update_pending`: guint) = 
   a.flag1 = a.flag1 or
       (int16(`update_pending` shl bp_TGtkRange_update_pending) and
       bm_TGtkRange_update_pending)
@@ -13687,20 +13678,20 @@ proc IS_SCALE_CLASS*(klass: pointer): bool =
 proc SCALE_GET_CLASS*(obj: pointer): PScaleClass = 
   result = cast[PScaleClass](CHECK_GET_CLASS(obj, TYPE_SCALE()))
 
-proc draw_value*(a: var TScale): guint = 
+proc draw_value*(a: PScale): guint = 
   result = (a.Scaleflag0 and bm_TGtkScale_draw_value) shr
       bp_TGtkScale_draw_value
 
-proc set_draw_value*(a: var TScale, `draw_value`: guint) = 
+proc set_draw_value*(a: PScale, `draw_value`: guint) = 
   a.Scaleflag0 = a.Scaleflag0 or
       (int16(`draw_value` shl bp_TGtkScale_draw_value) and
       bm_TGtkScale_draw_value)
 
-proc value_pos*(a: var TScale): guint = 
+proc value_pos*(a: PScale): guint = 
   result = (a.Scaleflag0 and bm_TGtkScale_value_pos) shr
       bp_TGtkScale_value_pos
 
-proc set_value_pos*(a: var TScale, `value_pos`: guint) = 
+proc set_value_pos*(a: PScale, `value_pos`: guint) = 
   a.Scaleflag0 = a.Scaleflag0 or
       (int16(`value_pos` shl bp_TGtkScale_value_pos) and
       bm_TGtkScale_value_pos)
@@ -13879,11 +13870,11 @@ proc IM_CONTEXT_SIMPLE_GET_CLASS*(obj: pointer): PIMContextSimpleClass =
   result = cast[PIMContextSimpleClass](CHECK_GET_CLASS(obj, 
       TYPE_IM_CONTEXT_SIMPLE()))
 
-proc in_hex_sequence*(a: var TIMContextSimple): guint = 
+proc in_hex_sequence*(a: PIMContextSimple): guint = 
   result = (a.IMContextSimpleflag0 and bm_TGtkIMContextSimple_in_hex_sequence) shr
       bp_TGtkIMContextSimple_in_hex_sequence
 
-proc set_in_hex_sequence*(a: var TIMContextSimple, `in_hex_sequence`: guint) = 
+proc set_in_hex_sequence*(a: PIMContextSimple, `in_hex_sequence`: guint) = 
   a.IMContextSimpleflag0 = a.IMContextSimpleflag0 or
       (int16(`in_hex_sequence` shl bp_TGtkIMContextSimple_in_hex_sequence) and
       bm_TGtkIMContextSimple_in_hex_sequence)
@@ -13998,28 +13989,28 @@ proc IS_LIST_CLASS*(klass: pointer): bool =
 proc LIST_GET_CLASS*(obj: pointer): PListClass = 
   result = cast[PListClass](CHECK_GET_CLASS(obj, TYPE_LIST()))
 
-proc selection_mode*(a: var TList): guint = 
+proc selection_mode*(a: PList): guint = 
   result = (a.Listflag0 and bm_TGtkList_selection_mode) shr
       bp_TGtkList_selection_mode
 
-proc set_selection_mode*(a: var TList, `selection_mode`: guint) = 
+proc set_selection_mode*(a: PList, `selection_mode`: guint) = 
   a.Listflag0 = a.Listflag0 or
       (int16(`selection_mode` shl bp_TGtkList_selection_mode) and
       bm_TGtkList_selection_mode)
 
-proc drag_selection*(a: var TList): guint = 
+proc drag_selection*(a: PList): guint = 
   result = (a.Listflag0 and bm_TGtkList_drag_selection) shr
       bp_TGtkList_drag_selection
 
-proc set_drag_selection*(a: var TList, `drag_selection`: guint) = 
+proc set_drag_selection*(a: PList, `drag_selection`: guint) = 
   a.Listflag0 = a.Listflag0 or
       (int16(`drag_selection` shl bp_TGtkList_drag_selection) and
       bm_TGtkList_drag_selection)
 
-proc add_mode*(a: var TList): guint = 
+proc add_mode*(a: PList): guint = 
   result = (a.Listflag0 and bm_TGtkList_add_mode) shr bp_TGtkList_add_mode
 
-proc set_add_mode*(a: var TList, `add_mode`: guint) = 
+proc set_add_mode*(a: PList, `add_mode`: guint) = 
   a.Listflag0 = a.Listflag0 or
       (int16(`add_mode` shl bp_TGtkList_add_mode) and bm_TGtkList_add_mode)
 
@@ -14130,11 +14121,11 @@ proc IS_LIST_STORE_CLASS*(klass: pointer): bool =
 proc LIST_STORE_GET_CLASS*(obj: pointer): PListStoreClass = 
   result = cast[PListStoreClass](CHECK_GET_CLASS(obj, TYPE_LIST_STORE()))
 
-proc columns_dirty*(a: var TListStore): guint = 
+proc columns_dirty*(a: PListStore): guint = 
   result = (a.ListStoreflag0 and bm_TGtkListStore_columns_dirty) shr
       bp_TGtkListStore_columns_dirty
 
-proc set_columns_dirty*(a: var TListStore, `columns_dirty`: guint) = 
+proc set_columns_dirty*(a: PListStore, `columns_dirty`: guint) = 
   a.ListStoreflag0 = a.ListStoreflag0 or
       (int16(`columns_dirty` shl bp_TGtkListStore_columns_dirty) and
       bm_TGtkListStore_columns_dirty)
@@ -14203,109 +14194,109 @@ proc IS_NOTEBOOK_CLASS*(klass: pointer): bool =
 proc NOTEBOOK_GET_CLASS*(obj: pointer): PNotebookClass = 
   result = cast[PNotebookClass](CHECK_GET_CLASS(obj, TYPE_NOTEBOOK()))
 
-proc show_tabs*(a: var TNotebook): guint = 
+proc show_tabs*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_show_tabs) shr
       bp_TGtkNotebook_show_tabs
 
-proc set_show_tabs*(a: var TNotebook, `show_tabs`: guint) = 
+proc set_show_tabs*(a: PNotebook, `show_tabs`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`show_tabs` shl bp_TGtkNotebook_show_tabs) and
       bm_TGtkNotebook_show_tabs)
 
-proc homogeneous*(a: var TNotebook): guint = 
+proc homogeneous*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_homogeneous) shr
       bp_TGtkNotebook_homogeneous
 
-proc set_homogeneous*(a: var TNotebook, `homogeneous`: guint) = 
+proc set_homogeneous*(a: PNotebook, `homogeneous`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`homogeneous` shl bp_TGtkNotebook_homogeneous) and
       bm_TGtkNotebook_homogeneous)
 
-proc show_border*(a: var TNotebook): guint = 
+proc show_border*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_show_border) shr
       bp_TGtkNotebook_show_border
 
-proc set_show_border*(a: var TNotebook, `show_border`: guint) = 
+proc set_show_border*(a: PNotebook, `show_border`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`show_border` shl bp_TGtkNotebook_show_border) and
       bm_TGtkNotebook_show_border)
 
-proc tab_pos*(a: var TNotebook): guint = 
+proc tab_pos*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_tab_pos) shr
       bp_TGtkNotebook_tab_pos
 
-proc set_tab_pos*(a: var TNotebook, `tab_pos`: guint) = 
+proc set_tab_pos*(a: PNotebook, `tab_pos`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`tab_pos` shl bp_TGtkNotebook_tab_pos) and
       bm_TGtkNotebook_tab_pos)
 
-proc scrollable*(a: var TNotebook): guint = 
+proc scrollable*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_scrollable) shr
       bp_TGtkNotebook_scrollable
 
-proc set_scrollable*(a: var TNotebook, `scrollable`: guint) = 
+proc set_scrollable*(a: PNotebook, `scrollable`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`scrollable` shl bp_TGtkNotebook_scrollable) and
       bm_TGtkNotebook_scrollable)
 
-proc in_child*(a: var TNotebook): guint = 
+proc in_child*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_in_child) shr
       bp_TGtkNotebook_in_child
 
-proc set_in_child*(a: var TNotebook, `in_child`: guint) = 
+proc set_in_child*(a: PNotebook, `in_child`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`in_child` shl bp_TGtkNotebook_in_child) and
       bm_TGtkNotebook_in_child)
 
-proc click_child*(a: var TNotebook): guint = 
+proc click_child*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_click_child) shr
       bp_TGtkNotebook_click_child
 
-proc set_click_child*(a: var TNotebook, `click_child`: guint) = 
+proc set_click_child*(a: PNotebook, `click_child`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`click_child` shl bp_TGtkNotebook_click_child) and
       bm_TGtkNotebook_click_child)
 
-proc button*(a: var TNotebook): guint = 
+proc button*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_button) shr
       bp_TGtkNotebook_button
 
-proc set_button*(a: var TNotebook, `button`: guint) = 
+proc set_button*(a: PNotebook, `button`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`button` shl bp_TGtkNotebook_button) and bm_TGtkNotebook_button)
 
-proc need_timer*(a: var TNotebook): guint = 
+proc need_timer*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_need_timer) shr
       bp_TGtkNotebook_need_timer
 
-proc set_need_timer*(a: var TNotebook, `need_timer`: guint) = 
+proc set_need_timer*(a: PNotebook, `need_timer`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`need_timer` shl bp_TGtkNotebook_need_timer) and
       bm_TGtkNotebook_need_timer)
 
-proc child_has_focus*(a: var TNotebook): guint = 
+proc child_has_focus*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_child_has_focus) shr
       bp_TGtkNotebook_child_has_focus
 
-proc set_child_has_focus*(a: var TNotebook, `child_has_focus`: guint) = 
+proc set_child_has_focus*(a: PNotebook, `child_has_focus`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`child_has_focus` shl bp_TGtkNotebook_child_has_focus) and
       bm_TGtkNotebook_child_has_focus)
 
-proc have_visible_child*(a: var TNotebook): guint = 
+proc have_visible_child*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_have_visible_child) shr
       bp_TGtkNotebook_have_visible_child
 
-proc set_have_visible_child*(a: var TNotebook, `have_visible_child`: guint) = 
+proc set_have_visible_child*(a: PNotebook, `have_visible_child`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`have_visible_child` shl bp_TGtkNotebook_have_visible_child) and
       bm_TGtkNotebook_have_visible_child)
 
-proc focus_out*(a: var TNotebook): guint = 
+proc focus_out*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_focus_out) shr
       bp_TGtkNotebook_focus_out
 
-proc set_focus_out*(a: var TNotebook, `focus_out`: guint) = 
+proc set_focus_out*(a: PNotebook, `focus_out`: guint) = 
   a.Notebookflag0 = a.Notebookflag0 or
       (int16(`focus_out` shl bp_TGtkNotebook_focus_out) and
       bm_TGtkNotebook_focus_out)
@@ -14328,29 +14319,29 @@ proc IS_OLD_EDITABLE_CLASS*(klass: pointer): bool =
 proc OLD_EDITABLE_GET_CLASS*(obj: pointer): POldEditableClass = 
   result = cast[POldEditableClass](CHECK_GET_CLASS(obj, TYPE_OLD_EDITABLE()))
 
-proc has_selection*(a: var TOldEditable): guint = 
+proc has_selection*(a: POldEditable): guint = 
   result = (a.OldEditableflag0 and bm_TGtkOldEditable_has_selection) shr
       bp_TGtkOldEditable_has_selection
 
-proc set_has_selection*(a: var TOldEditable, `has_selection`: guint) = 
+proc set_has_selection*(a: POldEditable, `has_selection`: guint) = 
   a.OldEditableflag0 = a.OldEditableflag0 or
       (int16(`has_selection` shl bp_TGtkOldEditable_has_selection) and
       bm_TGtkOldEditable_has_selection)
 
-proc editable*(a: var TOldEditable): guint = 
+proc editable*(a: POldEditable): guint = 
   result = (a.OldEditableflag0 and bm_TGtkOldEditable_editable) shr
       bp_TGtkOldEditable_editable
 
-proc set_editable*(a: var TOldEditable, `editable`: guint) = 
+proc set_editable*(a: POldEditable, `editable`: guint) = 
   a.OldEditableflag0 = a.OldEditableflag0 or
       (int16(`editable` shl bp_TGtkOldEditable_editable) and
       bm_TGtkOldEditable_editable)
 
-proc visible*(a: var TOldEditable): guint = 
+proc visible*(a: POldEditable): guint = 
   result = (a.OldEditableflag0 and bm_TGtkOldEditable_visible) shr
       bp_TGtkOldEditable_visible
 
-proc set_visible*(a: var TOldEditable, `visible`: guint) = 
+proc set_visible*(a: POldEditable, `visible`: guint) = 
   a.OldEditableflag0 = a.OldEditableflag0 or
       (int16(`visible` shl bp_TGtkOldEditable_visible) and
       bm_TGtkOldEditable_visible)
@@ -14391,11 +14382,11 @@ proc IS_PIXMAP_CLASS*(klass: pointer): bool =
 proc PIXMAP_GET_CLASS*(obj: pointer): PPixmapClass = 
   result = cast[PPixmapClass](CHECK_GET_CLASS(obj, gtk2.TYPE_PIXMAP()))
 
-proc build_insensitive*(a: var TPixmap): guint = 
+proc build_insensitive*(a: PPixmap): guint = 
   result = (a.Pixmapflag0 and bm_TGtkPixmap_build_insensitive) shr
       bp_TGtkPixmap_build_insensitive
 
-proc set_build_insensitive*(a: var TPixmap, `build_insensitive`: guint) = 
+proc set_build_insensitive*(a: PPixmap, `build_insensitive`: guint) = 
   a.Pixmapflag0 = a.Pixmapflag0 or
       (int16(`build_insensitive` shl bp_TGtkPixmap_build_insensitive) and
       bm_TGtkPixmap_build_insensitive)
@@ -14418,10 +14409,10 @@ proc IS_PLUG_CLASS*(klass: pointer): bool =
 proc PLUG_GET_CLASS*(obj: pointer): PPlugClass = 
   result = cast[PPlugClass](CHECK_GET_CLASS(obj, TYPE_PLUG()))
 
-proc same_app*(a: var TPlug): guint = 
+proc same_app*(a: PPlug): guint = 
   result = (a.Plugflag0 and bm_TGtkPlug_same_app) shr bp_TGtkPlug_same_app
 
-proc set_same_app*(a: var TPlug, `same_app`: guint) = 
+proc set_same_app*(a: PPlug, `same_app`: guint) = 
   a.Plugflag0 = a.Plugflag0 or
       (int16(`same_app` shl bp_TGtkPlug_same_app) and bm_TGtkPlug_same_app)
 
@@ -14443,18 +14434,18 @@ proc IS_PREVIEW_CLASS*(klass: pointer): bool =
 proc PREVIEW_GET_CLASS*(obj: pointer): PPreviewClass = 
   result = cast[PPreviewClass](CHECK_GET_CLASS(obj, TYPE_PREVIEW()))
 
-proc get_type*(a: var TPreview): guint = 
+proc get_type*(a: PPreview): guint = 
   result = (a.Previewflag0 and bm_TGtkPreview_type) shr bp_TGtkPreview_type
 
-proc set_type*(a: var TPreview, `type`: guint) = 
+proc set_type*(a: PPreview, `type`: guint) = 
   a.Previewflag0 = a.Previewflag0 or
       (int16(`type` shl bp_TGtkPreview_type) and bm_TGtkPreview_type)
 
-proc get_expand*(a: var TPreview): guint = 
+proc get_expand*(a: PPreview): guint = 
   result = (a.Previewflag0 and bm_TGtkPreview_expand) shr
       bp_TGtkPreview_expand
 
-proc set_expand*(a: var TPreview, `expand`: guint) = 
+proc set_expand*(a: PPreview, `expand`: guint) = 
   a.Previewflag0 = a.Previewflag0 or
       (int16(`expand` shl bp_TGtkPreview_expand) and bm_TGtkPreview_expand)
 
@@ -14478,29 +14469,29 @@ proc IS_PROGRESS_CLASS*(klass: pointer): bool =
 proc PROGRESS_GET_CLASS*(obj: pointer): PProgressClass = 
   result = cast[PProgressClass](CHECK_GET_CLASS(obj, TYPE_PROGRESS()))
 
-proc show_text*(a: var TProgress): guint = 
+proc show_text*(a: PProgress): guint = 
   result = (a.Progressflag0 and bm_TGtkProgress_show_text) shr
       bp_TGtkProgress_show_text
 
-proc set_show_text*(a: var TProgress, `show_text`: guint) = 
+proc set_show_text*(a: PProgress, `show_text`: guint) = 
   a.Progressflag0 = a.Progressflag0 or
       (int16(`show_text` shl bp_TGtkProgress_show_text) and
       bm_TGtkProgress_show_text)
 
-proc activity_mode*(a: var TProgress): guint = 
+proc activity_mode*(a: PProgress): guint = 
   result = (a.Progressflag0 and bm_TGtkProgress_activity_mode) shr
       bp_TGtkProgress_activity_mode
 
-proc set_activity_mode*(a: var TProgress, `activity_mode`: guint) = 
+proc set_activity_mode*(a: PProgress, `activity_mode`: guint) = 
   a.Progressflag0 = a.Progressflag0 or
       (int16(`activity_mode` shl bp_TGtkProgress_activity_mode) and
       bm_TGtkProgress_activity_mode)
 
-proc use_text_format*(a: var TProgress): guint = 
+proc use_text_format*(a: PProgress): guint = 
   result = (a.Progressflag0 and bm_TGtkProgress_use_text_format) shr
       bp_TGtkProgress_use_text_format
 
-proc set_use_text_format*(a: var TProgress, `use_text_format`: guint) = 
+proc set_use_text_format*(a: PProgress, `use_text_format`: guint) = 
   a.Progressflag0 = a.Progressflag0 or
       (int16(`use_text_format` shl bp_TGtkProgress_use_text_format) and
       bm_TGtkProgress_use_text_format)
@@ -14523,11 +14514,11 @@ proc IS_PROGRESS_BAR_CLASS*(klass: pointer): bool =
 proc PROGRESS_BAR_GET_CLASS*(obj: pointer): PProgressBarClass = 
   result = cast[PProgressBarClass](CHECK_GET_CLASS(obj, TYPE_PROGRESS_BAR()))
 
-proc activity_dir*(a: var TProgressBar): guint = 
+proc activity_dir*(a: PProgressBar): guint = 
   result = (a.ProgressBarflag0 and bm_TGtkProgressBar_activity_dir) shr
       bp_TGtkProgressBar_activity_dir
 
-proc set_activity_dir*(a: var TProgressBar, `activity_dir`: guint) = 
+proc set_activity_dir*(a: PProgressBar, `activity_dir`: guint) = 
   a.ProgressBarflag0 = a.ProgressBarflag0 or
       (int16(`activity_dir` shl bp_TGtkProgressBar_activity_dir) and
       bm_TGtkProgressBar_activity_dir)
@@ -14589,60 +14580,60 @@ proc SCROLLED_WINDOW_GET_CLASS*(obj: pointer): PScrolledWindowClass =
   result = cast[PScrolledWindowClass](CHECK_GET_CLASS(obj, 
       TYPE_SCROLLED_WINDOW()))
 
-proc hscrollbar_policy*(a: var TScrolledWindow): guint = 
+proc hscrollbar_policy*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and bm_TGtkScrolledWindow_hscrollbar_policy) shr
       bp_TGtkScrolledWindow_hscrollbar_policy
 
-proc set_hscrollbar_policy*(a: var TScrolledWindow, `hscrollbar_policy`: guint) = 
+proc set_hscrollbar_policy*(a: PScrolledWindow, `hscrollbar_policy`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       (int16(`hscrollbar_policy` shl bp_TGtkScrolledWindow_hscrollbar_policy) and
       bm_TGtkScrolledWindow_hscrollbar_policy)
 
-proc vscrollbar_policy*(a: var TScrolledWindow): guint = 
+proc vscrollbar_policy*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and bm_TGtkScrolledWindow_vscrollbar_policy) shr
       bp_TGtkScrolledWindow_vscrollbar_policy
 
-proc set_vscrollbar_policy*(a: var TScrolledWindow, `vscrollbar_policy`: guint) = 
+proc set_vscrollbar_policy*(a: PScrolledWindow, `vscrollbar_policy`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       (int16(`vscrollbar_policy` shl bp_TGtkScrolledWindow_vscrollbar_policy) and
       bm_TGtkScrolledWindow_vscrollbar_policy)
 
-proc hscrollbar_visible*(a: var TScrolledWindow): guint = 
+proc hscrollbar_visible*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and
       bm_TGtkScrolledWindow_hscrollbar_visible) shr
       bp_TGtkScrolledWindow_hscrollbar_visible
 
-proc set_hscrollbar_visible*(a: var TScrolledWindow, `hscrollbar_visible`: guint) = 
+proc set_hscrollbar_visible*(a: PScrolledWindow, `hscrollbar_visible`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       (int16(`hscrollbar_visible` shl
       bp_TGtkScrolledWindow_hscrollbar_visible) and
       bm_TGtkScrolledWindow_hscrollbar_visible)
 
-proc vscrollbar_visible*(a: var TScrolledWindow): guint = 
+proc vscrollbar_visible*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and
       bm_TGtkScrolledWindow_vscrollbar_visible) shr
       bp_TGtkScrolledWindow_vscrollbar_visible
 
-proc set_vscrollbar_visible*(a: var TScrolledWindow, `vscrollbar_visible`: guint) = 
+proc set_vscrollbar_visible*(a: PScrolledWindow, `vscrollbar_visible`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       int16((`vscrollbar_visible` shl
       bp_TGtkScrolledWindow_vscrollbar_visible) and
       bm_TGtkScrolledWindow_vscrollbar_visible)
 
-proc window_placement*(a: var TScrolledWindow): guint = 
+proc window_placement*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and bm_TGtkScrolledWindow_window_placement) shr
       bp_TGtkScrolledWindow_window_placement
 
-proc set_window_placement*(a: var TScrolledWindow, `window_placement`: guint) = 
+proc set_window_placement*(a: PScrolledWindow, `window_placement`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       (int16(`window_placement` shl bp_TGtkScrolledWindow_window_placement) and
       bm_TGtkScrolledWindow_window_placement)
 
-proc focus_out*(a: var TScrolledWindow): guint = 
+proc focus_out*(a: PScrolledWindow): guint = 
   result = (a.ScrolledWindowflag0 and bm_TGtkScrolledWindow_focus_out) shr
       bp_TGtkScrolledWindow_focus_out
 
-proc set_focus_out*(a: var TScrolledWindow, `focus_out`: guint) = 
+proc set_focus_out*(a: PScrolledWindow, `focus_out`: guint) = 
   a.ScrolledWindowflag0 = a.ScrolledWindowflag0 or
       (int16(`focus_out` shl bp_TGtkScrolledWindow_focus_out) and
       bm_TGtkScrolledWindow_focus_out)
@@ -14743,8 +14734,9 @@ proc signal_handler_pending*(anObject: PObject, signal_id: guint,
 
 proc signal_handler_pending_by_func*(anObject: PObject, signal_id: guint, 
                                      may_be_blocked: gboolean, 
-                                     fun: TSignalFunc, data: gpointer): gboolean = 
-  var t: TGSignalMatchType
+                                     fun: TSignalFunc, 
+                                     data: gpointer): gboolean = 
+  var T: TGSignalMatchType
   t = cast[TGSignalMatchType](G_SIGNAL_MATCH_ID or G_SIGNAL_MATCH_FUNC or
       G_SIGNAL_MATCH_DATA)
   if not may_be_blocked: 
@@ -14770,20 +14762,20 @@ proc IS_SIZE_GROUP_CLASS*(klass: pointer): bool =
 proc SIZE_GROUP_GET_CLASS*(obj: pointer): PSizeGroupClass = 
   result = cast[PSizeGroupClass](CHECK_GET_CLASS(obj, TYPE_SIZE_GROUP()))
 
-proc have_width*(a: var TSizeGroup): guint = 
+proc have_width*(a: PSizeGroup): guint = 
   result = (a.SizeGroupflag0 and bm_TGtkSizeGroup_have_width) shr
       bp_TGtkSizeGroup_have_width
 
-proc set_have_width*(a: var TSizeGroup, `have_width`: guint) = 
+proc set_have_width*(a: PSizeGroup, `have_width`: guint) = 
   a.SizeGroupflag0 = a.SizeGroupflag0 or
       (int16(`have_width` shl bp_TGtkSizeGroup_have_width) and
       bm_TGtkSizeGroup_have_width)
 
-proc have_height*(a: var TSizeGroup): guint = 
+proc have_height*(a: PSizeGroup): guint = 
   result = (a.SizeGroupflag0 and bm_TGtkSizeGroup_have_height) shr
       bp_TGtkSizeGroup_have_height
 
-proc set_have_height*(a: var TSizeGroup, `have_height`: guint) = 
+proc set_have_height*(a: PSizeGroup, `have_height`: guint) = 
   a.SizeGroupflag0 = a.SizeGroupflag0 or
       (int16(`have_height` shl bp_TGtkSizeGroup_have_height) and
       bm_TGtkSizeGroup_have_height)
@@ -14806,47 +14798,47 @@ proc IS_SOCKET_CLASS*(klass: pointer): bool =
 proc SOCKET_GET_CLASS*(obj: pointer): PSocketClass = 
   result = cast[PSocketClass](CHECK_GET_CLASS(obj, TYPE_SOCKET()))
 
-proc same_app*(a: var TSocket): guint = 
+proc same_app*(a: PSocket): guint = 
   result = (a.Socketflag0 and bm_TGtkSocket_same_app) shr
       bp_TGtkSocket_same_app
 
-proc set_same_app*(a: var TSocket, `same_app`: guint) = 
+proc set_same_app*(a: PSocket, `same_app`: guint) = 
   a.Socketflag0 = a.Socketflag0 or
       (int16(`same_app` shl bp_TGtkSocket_same_app) and
       bm_TGtkSocket_same_app)
 
-proc focus_in*(a: var TSocket): guint = 
+proc focus_in*(a: PSocket): guint = 
   result = (a.Socketflag0 and bm_TGtkSocket_focus_in) shr
       bp_TGtkSocket_focus_in
 
-proc set_focus_in*(a: var TSocket, `focus_in`: guint) = 
+proc set_focus_in*(a: PSocket, `focus_in`: guint) = 
   a.Socketflag0 = a.Socketflag0 or
       (int16(`focus_in` shl bp_TGtkSocket_focus_in) and
       bm_TGtkSocket_focus_in)
 
-proc have_size*(a: var TSocket): guint = 
+proc have_size*(a: PSocket): guint = 
   result = (a.Socketflag0 and bm_TGtkSocket_have_size) shr
       bp_TGtkSocket_have_size
 
-proc set_have_size*(a: var TSocket, `have_size`: guint) = 
+proc set_have_size*(a: PSocket, `have_size`: guint) = 
   a.Socketflag0 = a.Socketflag0 or
       (int16(`have_size` shl bp_TGtkSocket_have_size) and
       bm_TGtkSocket_have_size)
 
-proc need_map*(a: var TSocket): guint = 
+proc need_map*(a: PSocket): guint = 
   result = (a.Socketflag0 and bm_TGtkSocket_need_map) shr
       bp_TGtkSocket_need_map
 
-proc set_need_map*(a: var TSocket, `need_map`: guint) = 
+proc set_need_map*(a: PSocket, `need_map`: guint) = 
   a.Socketflag0 = a.Socketflag0 or
       (int16(`need_map` shl bp_TGtkSocket_need_map) and
       bm_TGtkSocket_need_map)
 
-proc is_mapped*(a: var TSocket): guint = 
+proc is_mapped*(a: PSocket): guint = 
   result = (a.Socketflag0 and bm_TGtkSocket_is_mapped) shr
       bp_TGtkSocket_is_mapped
 
-proc set_is_mapped*(a: var TSocket, `is_mapped`: guint) = 
+proc set_is_mapped*(a: PSocket, `is_mapped`: guint) = 
   a.Socketflag0 = a.Socketflag0 or
       (int16(`is_mapped` shl bp_TGtkSocket_is_mapped) and
       bm_TGtkSocket_is_mapped)
@@ -14869,80 +14861,80 @@ proc IS_SPIN_BUTTON_CLASS*(klass: pointer): bool =
 proc SPIN_BUTTON_GET_CLASS*(obj: pointer): PSpinButtonClass = 
   result = cast[PSpinButtonClass](CHECK_GET_CLASS(obj, TYPE_SPIN_BUTTON()))
 
-proc in_child*(a: var TSpinButton): guint = 
+proc in_child*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_in_child) shr
       bp_TGtkSpinButton_in_child
 
-proc set_in_child*(a: var TSpinButton, `in_child`: guint) = 
+proc set_in_child*(a: PSpinButton, `in_child`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`in_child` shl bp_TGtkSpinButton_in_child) and
       bm_TGtkSpinButton_in_child)
 
-proc click_child*(a: var TSpinButton): guint = 
+proc click_child*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_click_child) shr
       bp_TGtkSpinButton_click_child
 
-proc set_click_child*(a: var TSpinButton, `click_child`: guint) = 
+proc set_click_child*(a: PSpinButton, `click_child`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`click_child` shl bp_TGtkSpinButton_click_child) and
       bm_TGtkSpinButton_click_child)
 
-proc button*(a: var TSpinButton): guint = 
+proc button*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_button) shr
       bp_TGtkSpinButton_button
 
-proc set_button*(a: var TSpinButton, `button`: guint) = 
+proc set_button*(a: PSpinButton, `button`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`button` shl bp_TGtkSpinButton_button) and bm_TGtkSpinButton_button)
 
-proc need_timer*(a: var TSpinButton): guint = 
+proc need_timer*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_need_timer) shr
       bp_TGtkSpinButton_need_timer
 
-proc set_need_timer*(a: var TSpinButton, `need_timer`: guint) = 
+proc set_need_timer*(a: PSpinButton, `need_timer`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`need_timer` shl bp_TGtkSpinButton_need_timer) and
       bm_TGtkSpinButton_need_timer)
 
-proc timer_calls*(a: var TSpinButton): guint = 
+proc timer_calls*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_timer_calls) shr
       bp_TGtkSpinButton_timer_calls
 
-proc set_timer_calls*(a: var TSpinButton, `timer_calls`: guint) = 
+proc set_timer_calls*(a: PSpinButton, `timer_calls`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`timer_calls` shl bp_TGtkSpinButton_timer_calls) and
       bm_TGtkSpinButton_timer_calls)
 
-proc digits*(a: var TSpinButton): guint = 
+proc digits*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_digits) shr
       bp_TGtkSpinButton_digits
 
-proc set_digits*(a: var TSpinButton, `digits`: guint) = 
+proc set_digits*(a: PSpinButton, `digits`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`digits` shl bp_TGtkSpinButton_digits) and bm_TGtkSpinButton_digits)
 
-proc numeric*(a: var TSpinButton): guint = 
+proc numeric*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_numeric) shr
       bp_TGtkSpinButton_numeric
 
-proc set_numeric*(a: var TSpinButton, `numeric`: guint) = 
+proc set_numeric*(a: PSpinButton, `numeric`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`numeric` shl bp_TGtkSpinButton_numeric) and
       bm_TGtkSpinButton_numeric)
 
-proc wrap*(a: var TSpinButton): guint = 
+proc wrap*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_wrap) shr
       bp_TGtkSpinButton_wrap
 
-proc set_wrap*(a: var TSpinButton, `wrap`: guint) = 
+proc set_wrap*(a: PSpinButton, `wrap`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`wrap` shl bp_TGtkSpinButton_wrap) and bm_TGtkSpinButton_wrap)
 
-proc snap_to_ticks*(a: var TSpinButton): guint = 
+proc snap_to_ticks*(a: PSpinButton): guint = 
   result = (a.SpinButtonflag0 and bm_TGtkSpinButton_snap_to_ticks) shr
       bp_TGtkSpinButton_snap_to_ticks
 
-proc set_snap_to_ticks*(a: var TSpinButton, `snap_to_ticks`: guint) = 
+proc set_snap_to_ticks*(a: PSpinButton, `snap_to_ticks`: guint) = 
   a.SpinButtonflag0 = a.SpinButtonflag0 or
       ((`snap_to_ticks` shl bp_TGtkSpinButton_snap_to_ticks) and
       bm_TGtkSpinButton_snap_to_ticks)
@@ -14965,11 +14957,11 @@ proc IS_STATUSBAR_CLASS*(klass: pointer): bool =
 proc STATUSBAR_GET_CLASS*(obj: pointer): PStatusbarClass = 
   result = cast[PStatusbarClass](CHECK_GET_CLASS(obj, TYPE_STATUSBAR()))
 
-proc has_resize_grip*(a: var TStatusbar): guint = 
+proc has_resize_grip*(a: PStatusbar): guint = 
   result = (a.Statusbarflag0 and bm_TGtkStatusbar_has_resize_grip) shr
       bp_TGtkStatusbar_has_resize_grip
 
-proc set_has_resize_grip*(a: var TStatusbar, `has_resize_grip`: guint) = 
+proc set_has_resize_grip*(a: PStatusbar, `has_resize_grip`: guint) = 
   a.Statusbarflag0 = a.Statusbarflag0 or
       (int16(`has_resize_grip` shl bp_TGtkStatusbar_has_resize_grip) and
       bm_TGtkStatusbar_has_resize_grip)
@@ -14992,108 +14984,108 @@ proc IS_TABLE_CLASS*(klass: pointer): bool =
 proc TABLE_GET_CLASS*(obj: pointer): PTableClass = 
   result = cast[PTableClass](CHECK_GET_CLASS(obj, gtk2.TYPE_TABLE()))
 
-proc homogeneous*(a: var TTable): guint = 
+proc homogeneous*(a: PTable): guint = 
   result = (a.Tableflag0 and bm_TGtkTable_homogeneous) shr
       bp_TGtkTable_homogeneous
 
-proc set_homogeneous*(a: var TTable, `homogeneous`: guint) = 
+proc set_homogeneous*(a: PTable, `homogeneous`: guint) = 
   a.Tableflag0 = a.Tableflag0 or
       (int16(`homogeneous` shl bp_TGtkTable_homogeneous) and
       bm_TGtkTable_homogeneous)
 
-proc xexpand*(a: var TTableChild): guint = 
+proc xexpand*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_xexpand) shr
       bp_TGtkTableChild_xexpand
 
-proc set_xexpand*(a: var TTableChild, `xexpand`: guint) = 
+proc set_xexpand*(a: PTableChild, `xexpand`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`xexpand` shl bp_TGtkTableChild_xexpand) and
       bm_TGtkTableChild_xexpand)
 
-proc yexpand*(a: var TTableChild): guint = 
+proc yexpand*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_yexpand) shr
       bp_TGtkTableChild_yexpand
 
-proc set_yexpand*(a: var TTableChild, `yexpand`: guint) = 
+proc set_yexpand*(a: PTableChild, `yexpand`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`yexpand` shl bp_TGtkTableChild_yexpand) and
       bm_TGtkTableChild_yexpand)
 
-proc xshrink*(a: var TTableChild): guint = 
+proc xshrink*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_xshrink) shr
       bp_TGtkTableChild_xshrink
 
-proc set_xshrink*(a: var TTableChild, `xshrink`: guint) = 
+proc set_xshrink*(a: PTableChild, `xshrink`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`xshrink` shl bp_TGtkTableChild_xshrink) and
       bm_TGtkTableChild_xshrink)
 
-proc yshrink*(a: var TTableChild): guint = 
+proc yshrink*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_yshrink) shr
       bp_TGtkTableChild_yshrink
 
-proc set_yshrink*(a: var TTableChild, `yshrink`: guint) = 
+proc set_yshrink*(a: PTableChild, `yshrink`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`yshrink` shl bp_TGtkTableChild_yshrink) and
       bm_TGtkTableChild_yshrink)
 
-proc xfill*(a: var TTableChild): guint = 
+proc xfill*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_xfill) shr
       bp_TGtkTableChild_xfill
 
-proc set_xfill*(a: var TTableChild, `xfill`: guint) = 
+proc set_xfill*(a: PTableChild, `xfill`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`xfill` shl bp_TGtkTableChild_xfill) and bm_TGtkTableChild_xfill)
 
-proc yfill*(a: var TTableChild): guint = 
+proc yfill*(a: PTableChild): guint = 
   result = (a.TableChildflag0 and bm_TGtkTableChild_yfill) shr
       bp_TGtkTableChild_yfill
 
-proc set_yfill*(a: var TTableChild, `yfill`: guint) = 
+proc set_yfill*(a: PTableChild, `yfill`: guint) = 
   a.TableChildflag0 = a.TableChildflag0 or
       (int16(`yfill` shl bp_TGtkTableChild_yfill) and bm_TGtkTableChild_yfill)
 
-proc need_expand*(a: var TTableRowCol): guint = 
+proc need_expand*(a: PTableRowCol): guint = 
   result = (a.flag0 and bm_TGtkTableRowCol_need_expand) shr
       bp_TGtkTableRowCol_need_expand
 
-proc set_need_expand*(a: var TTableRowCol, `need_expand`: guint) = 
+proc set_need_expand*(a: PTableRowCol, `need_expand`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`need_expand` shl bp_TGtkTableRowCol_need_expand) and
       bm_TGtkTableRowCol_need_expand)
 
-proc need_shrink*(a: var TTableRowCol): guint = 
+proc need_shrink*(a: PTableRowCol): guint = 
   result = (a.flag0 and bm_TGtkTableRowCol_need_shrink) shr
       bp_TGtkTableRowCol_need_shrink
 
-proc set_need_shrink*(a: var TTableRowCol, `need_shrink`: guint) = 
+proc set_need_shrink*(a: PTableRowCol, `need_shrink`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`need_shrink` shl bp_TGtkTableRowCol_need_shrink) and
       bm_TGtkTableRowCol_need_shrink)
 
-proc expand*(a: var TTableRowCol): guint = 
+proc expand*(a: PTableRowCol): guint = 
   result = (a.flag0 and bm_TGtkTableRowCol_expand) shr
       bp_TGtkTableRowCol_expand
 
-proc set_expand*(a: var TTableRowCol, `expand`: guint) = 
+proc set_expand*(a: PTableRowCol, `expand`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`expand` shl bp_TGtkTableRowCol_expand) and
       bm_TGtkTableRowCol_expand)
 
-proc shrink*(a: var TTableRowCol): guint = 
+proc shrink*(a: PTableRowCol): guint = 
   result = (a.flag0 and bm_TGtkTableRowCol_shrink) shr
       bp_TGtkTableRowCol_shrink
 
-proc set_shrink*(a: var TTableRowCol, `shrink`: guint) = 
+proc set_shrink*(a: PTableRowCol, `shrink`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`shrink` shl bp_TGtkTableRowCol_shrink) and
       bm_TGtkTableRowCol_shrink)
 
-proc empty*(a: var TTableRowCol): guint = 
+proc empty*(a: PTableRowCol): guint = 
   result = (a.flag0 and bm_TGtkTableRowCol_empty) shr
       bp_TGtkTableRowCol_empty
 
-proc set_empty*(a: var TTableRowCol, `empty`: guint) = 
+proc set_empty*(a: PTableRowCol, `empty`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`empty` shl bp_TGtkTableRowCol_empty) and
       bm_TGtkTableRowCol_empty)
@@ -15118,11 +15110,11 @@ proc TEAROFF_MENU_ITEM_GET_CLASS*(obj: pointer): PTearoffMenuItemClass =
   result = cast[PTearoffMenuItemClass](CHECK_GET_CLASS(obj, 
       TYPE_TEAROFF_MENU_ITEM()))
 
-proc torn_off*(a: var TTearoffMenuItem): guint = 
+proc torn_off*(a: PTearoffMenuItem): guint = 
   result = (a.TearoffMenuItemflag0 and bm_TGtkTearoffMenuItem_torn_off) shr
       bp_TGtkTearoffMenuItem_torn_off
 
-proc set_torn_off*(a: var TTearoffMenuItem, `torn_off`: guint) = 
+proc set_torn_off*(a: PTearoffMenuItem, `torn_off`: guint) = 
   a.TearoffMenuItemflag0 = a.TearoffMenuItemflag0 or
       (int16(`torn_off` shl bp_TGtkTearoffMenuItem_torn_off) and
       bm_TGtkTearoffMenuItem_torn_off)
@@ -15199,366 +15191,366 @@ proc TEXT_TAG_GET_CLASS*(obj: pointer): PTextTagClass =
 proc TYPE_TEXT_ATTRIBUTES*(): GType = 
   result = text_attributes_get_type()
 
-proc bg_color_set*(a: var TTextTag): guint = 
+proc bg_color_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_bg_color_set) shr
       bp_TGtkTextTag_bg_color_set
 
-proc set_bg_color_set*(a: var TTextTag, `bg_color_set`: guint) = 
+proc set_bg_color_set*(a: PTextTag, `bg_color_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`bg_color_set` shl bp_TGtkTextTag_bg_color_set) and
       bm_TGtkTextTag_bg_color_set)
 
-proc bg_stipple_set*(a: var TTextTag): guint = 
+proc bg_stipple_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_bg_stipple_set) shr
       bp_TGtkTextTag_bg_stipple_set
 
-proc set_bg_stipple_set*(a: var TTextTag, `bg_stipple_set`: guint) = 
+proc set_bg_stipple_set*(a: PTextTag, `bg_stipple_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`bg_stipple_set` shl bp_TGtkTextTag_bg_stipple_set) and
       bm_TGtkTextTag_bg_stipple_set)
 
-proc fg_color_set*(a: var TTextTag): guint = 
+proc fg_color_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_fg_color_set) shr
       bp_TGtkTextTag_fg_color_set
 
-proc set_fg_color_set*(a: var TTextTag, `fg_color_set`: guint) = 
+proc set_fg_color_set*(a: PTextTag, `fg_color_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`fg_color_set` shl bp_TGtkTextTag_fg_color_set) and
       bm_TGtkTextTag_fg_color_set)
 
-proc scale_set*(a: var TTextTag): guint = 
+proc scale_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_scale_set) shr
       bp_TGtkTextTag_scale_set
 
-proc set_scale_set*(a: var TTextTag, `scale_set`: guint) = 
+proc set_scale_set*(a: PTextTag, `scale_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`scale_set` shl bp_TGtkTextTag_scale_set) and
       bm_TGtkTextTag_scale_set)
 
-proc fg_stipple_set*(a: var TTextTag): guint = 
+proc fg_stipple_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_fg_stipple_set) shr
       bp_TGtkTextTag_fg_stipple_set
 
-proc set_fg_stipple_set*(a: var TTextTag, `fg_stipple_set`: guint) = 
+proc set_fg_stipple_set*(a: PTextTag, `fg_stipple_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`fg_stipple_set` shl bp_TGtkTextTag_fg_stipple_set) and
       bm_TGtkTextTag_fg_stipple_set)
 
-proc justification_set*(a: var TTextTag): guint = 
+proc justification_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_justification_set) shr
       bp_TGtkTextTag_justification_set
 
-proc set_justification_set*(a: var TTextTag, `justification_set`: guint) = 
+proc set_justification_set*(a: PTextTag, `justification_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`justification_set` shl bp_TGtkTextTag_justification_set) and
       bm_TGtkTextTag_justification_set)
 
-proc left_margin_set*(a: var TTextTag): guint = 
+proc left_margin_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_left_margin_set) shr
       bp_TGtkTextTag_left_margin_set
 
-proc set_left_margin_set*(a: var TTextTag, `left_margin_set`: guint) = 
+proc set_left_margin_set*(a: PTextTag, `left_margin_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`left_margin_set` shl bp_TGtkTextTag_left_margin_set) and
       bm_TGtkTextTag_left_margin_set)
 
-proc indent_set*(a: var TTextTag): guint = 
+proc indent_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_indent_set) shr
       bp_TGtkTextTag_indent_set
 
-proc set_indent_set*(a: var TTextTag, `indent_set`: guint) = 
+proc set_indent_set*(a: PTextTag, `indent_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`indent_set` shl bp_TGtkTextTag_indent_set) and
       bm_TGtkTextTag_indent_set)
 
-proc rise_set*(a: var TTextTag): guint = 
+proc rise_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_rise_set) shr
       bp_TGtkTextTag_rise_set
 
-proc set_rise_set*(a: var TTextTag, `rise_set`: guint) = 
+proc set_rise_set*(a: PTextTag, `rise_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`rise_set` shl bp_TGtkTextTag_rise_set) and bm_TGtkTextTag_rise_set)
 
-proc strikethrough_set*(a: var TTextTag): guint = 
+proc strikethrough_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_strikethrough_set) shr
       bp_TGtkTextTag_strikethrough_set
 
-proc set_strikethrough_set*(a: var TTextTag, `strikethrough_set`: guint) = 
+proc set_strikethrough_set*(a: PTextTag, `strikethrough_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`strikethrough_set` shl bp_TGtkTextTag_strikethrough_set) and
       bm_TGtkTextTag_strikethrough_set)
 
-proc right_margin_set*(a: var TTextTag): guint = 
+proc right_margin_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_right_margin_set) shr
       bp_TGtkTextTag_right_margin_set
 
-proc set_right_margin_set*(a: var TTextTag, `right_margin_set`: guint) = 
+proc set_right_margin_set*(a: PTextTag, `right_margin_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`right_margin_set` shl bp_TGtkTextTag_right_margin_set) and
       bm_TGtkTextTag_right_margin_set)
 
-proc pixels_above_lines_set*(a: var TTextTag): guint = 
+proc pixels_above_lines_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pixels_above_lines_set) shr
       bp_TGtkTextTag_pixels_above_lines_set
 
-proc set_pixels_above_lines_set*(a: var TTextTag, 
+proc set_pixels_above_lines_set*(a: PTextTag, 
                                  `pixels_above_lines_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pixels_above_lines_set` shl bp_TGtkTextTag_pixels_above_lines_set) and
       bm_TGtkTextTag_pixels_above_lines_set)
 
-proc pixels_below_lines_set*(a: var TTextTag): guint = 
+proc pixels_below_lines_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pixels_below_lines_set) shr
       bp_TGtkTextTag_pixels_below_lines_set
 
-proc set_pixels_below_lines_set*(a: var TTextTag, 
+proc set_pixels_below_lines_set*(a: PTextTag, 
                                  `pixels_below_lines_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pixels_below_lines_set` shl bp_TGtkTextTag_pixels_below_lines_set) and
       bm_TGtkTextTag_pixels_below_lines_set)
 
-proc pixels_inside_wrap_set*(a: var TTextTag): guint = 
+proc pixels_inside_wrap_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pixels_inside_wrap_set) shr
       bp_TGtkTextTag_pixels_inside_wrap_set
 
-proc set_pixels_inside_wrap_set*(a: var TTextTag, 
+proc set_pixels_inside_wrap_set*(a: PTextTag, 
                                  `pixels_inside_wrap_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pixels_inside_wrap_set` shl bp_TGtkTextTag_pixels_inside_wrap_set) and
       bm_TGtkTextTag_pixels_inside_wrap_set)
 
-proc tabs_set*(a: var TTextTag): guint = 
+proc tabs_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_tabs_set) shr
       bp_TGtkTextTag_tabs_set
 
-proc set_tabs_set*(a: var TTextTag, `tabs_set`: guint) = 
+proc set_tabs_set*(a: PTextTag, `tabs_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`tabs_set` shl bp_TGtkTextTag_tabs_set) and bm_TGtkTextTag_tabs_set)
 
-proc underline_set*(a: var TTextTag): guint = 
+proc underline_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_underline_set) shr
       bp_TGtkTextTag_underline_set
 
-proc set_underline_set*(a: var TTextTag, `underline_set`: guint) = 
+proc set_underline_set*(a: PTextTag, `underline_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`underline_set` shl bp_TGtkTextTag_underline_set) and
       bm_TGtkTextTag_underline_set)
 
-proc wrap_mode_set*(a: var TTextTag): guint = 
+proc wrap_mode_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_wrap_mode_set) shr
       bp_TGtkTextTag_wrap_mode_set
 
-proc set_wrap_mode_set*(a: var TTextTag, `wrap_mode_set`: guint) = 
+proc set_wrap_mode_set*(a: PTextTag, `wrap_mode_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`wrap_mode_set` shl bp_TGtkTextTag_wrap_mode_set) and
       bm_TGtkTextTag_wrap_mode_set)
 
-proc bg_full_height_set*(a: var TTextTag): guint = 
+proc bg_full_height_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_bg_full_height_set) shr
       bp_TGtkTextTag_bg_full_height_set
 
-proc set_bg_full_height_set*(a: var TTextTag, `bg_full_height_set`: guint) = 
+proc set_bg_full_height_set*(a: PTextTag, `bg_full_height_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`bg_full_height_set` shl bp_TGtkTextTag_bg_full_height_set) and
       bm_TGtkTextTag_bg_full_height_set)
 
-proc invisible_set*(a: var TTextTag): guint = 
+proc invisible_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_invisible_set) shr
       bp_TGtkTextTag_invisible_set
 
-proc set_invisible_set*(a: var TTextTag, `invisible_set`: guint) = 
+proc set_invisible_set*(a: PTextTag, `invisible_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`invisible_set` shl bp_TGtkTextTag_invisible_set) and
       bm_TGtkTextTag_invisible_set)
 
-proc editable_set*(a: var TTextTag): guint = 
+proc editable_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_editable_set) shr
       bp_TGtkTextTag_editable_set
 
-proc set_editable_set*(a: var TTextTag, `editable_set`: guint) = 
+proc set_editable_set*(a: PTextTag, `editable_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`editable_set` shl bp_TGtkTextTag_editable_set) and
       bm_TGtkTextTag_editable_set)
 
-proc language_set*(a: var TTextTag): guint = 
+proc language_set*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_language_set) shr
       bp_TGtkTextTag_language_set
 
-proc set_language_set*(a: var TTextTag, `language_set`: guint) = 
+proc set_language_set*(a: PTextTag, `language_set`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`language_set` shl bp_TGtkTextTag_language_set) and
       bm_TGtkTextTag_language_set)
 
-proc pad1*(a: var TTextTag): guint = 
+proc pad1*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pad1) shr bp_TGtkTextTag_pad1
 
-proc set_pad1*(a: var TTextTag, `pad1`: guint) = 
+proc set_pad1*(a: PTextTag, `pad1`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pad1` shl bp_TGtkTextTag_pad1) and bm_TGtkTextTag_pad1)
 
-proc pad2*(a: var TTextTag): guint = 
+proc pad2*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pad2) shr bp_TGtkTextTag_pad2
 
-proc set_pad2*(a: var TTextTag, `pad2`: guint) = 
+proc set_pad2*(a: PTextTag, `pad2`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pad2` shl bp_TGtkTextTag_pad2) and bm_TGtkTextTag_pad2)
 
-proc pad3*(a: var TTextTag): guint = 
+proc pad3*(a: PTextTag): guint = 
   result = (a.TextTagflag0 and bm_TGtkTextTag_pad3) shr bp_TGtkTextTag_pad3
 
-proc set_pad3*(a: var TTextTag, `pad3`: guint) = 
+proc set_pad3*(a: PTextTag, `pad3`: guint) = 
   a.TextTagflag0 = a.TextTagflag0 or
       ((`pad3` shl bp_TGtkTextTag_pad3) and bm_TGtkTextTag_pad3)
 
-proc underline*(a: var TTextAppearance): guint = 
+proc underline*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_underline) shr
       bp_TGtkTextAppearance_underline
 
-proc set_underline*(a: var TTextAppearance, `underline`: guint) = 
+proc set_underline*(a: PTextAppearance, `underline`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`underline` shl bp_TGtkTextAppearance_underline) and
       bm_TGtkTextAppearance_underline)
 
-proc strikethrough*(a: var TTextAppearance): guint = 
+proc strikethrough*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_strikethrough) shr
       bp_TGtkTextAppearance_strikethrough
 
-proc set_strikethrough*(a: var TTextAppearance, `strikethrough`: guint) = 
+proc set_strikethrough*(a: PTextAppearance, `strikethrough`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`strikethrough` shl bp_TGtkTextAppearance_strikethrough) and
       bm_TGtkTextAppearance_strikethrough)
 
-proc draw_bg*(a: var TTextAppearance): guint = 
+proc draw_bg*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_draw_bg) shr
       bp_TGtkTextAppearance_draw_bg
 
-proc set_draw_bg*(a: var TTextAppearance, `draw_bg`: guint) = 
+proc set_draw_bg*(a: PTextAppearance, `draw_bg`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`draw_bg` shl bp_TGtkTextAppearance_draw_bg) and
       bm_TGtkTextAppearance_draw_bg)
 
-proc inside_selection*(a: var TTextAppearance): guint = 
+proc inside_selection*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_inside_selection) shr
       bp_TGtkTextAppearance_inside_selection
 
-proc set_inside_selection*(a: var TTextAppearance, `inside_selection`: guint) = 
+proc set_inside_selection*(a: PTextAppearance, `inside_selection`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`inside_selection` shl bp_TGtkTextAppearance_inside_selection) and
       bm_TGtkTextAppearance_inside_selection)
 
-proc is_text*(a: var TTextAppearance): guint = 
+proc is_text*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_is_text) shr
       bp_TGtkTextAppearance_is_text
 
-proc set_is_text*(a: var TTextAppearance, `is_text`: guint) = 
+proc set_is_text*(a: PTextAppearance, `is_text`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`is_text` shl bp_TGtkTextAppearance_is_text) and
       bm_TGtkTextAppearance_is_text)
 
-proc pad1*(a: var TTextAppearance): guint = 
+proc pad1*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_pad1) shr
       bp_TGtkTextAppearance_pad1
 
-proc set_pad1*(a: var TTextAppearance, `pad1`: guint) = 
+proc set_pad1*(a: PTextAppearance, `pad1`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad1` shl bp_TGtkTextAppearance_pad1) and
       bm_TGtkTextAppearance_pad1)
 
-proc pad2*(a: var TTextAppearance): guint = 
+proc pad2*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_pad2) shr
       bp_TGtkTextAppearance_pad2
 
-proc set_pad2*(a: var TTextAppearance, `pad2`: guint) = 
+proc set_pad2*(a: PTextAppearance, `pad2`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad2` shl bp_TGtkTextAppearance_pad2) and
       bm_TGtkTextAppearance_pad2)
 
-proc pad3*(a: var TTextAppearance): guint = 
+proc pad3*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_pad3) shr
       bp_TGtkTextAppearance_pad3
 
-proc set_pad3*(a: var TTextAppearance, `pad3`: guint) = 
+proc set_pad3*(a: PTextAppearance, `pad3`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad3` shl bp_TGtkTextAppearance_pad3) and
       bm_TGtkTextAppearance_pad3)
 
-proc pad4*(a: var TTextAppearance): guint = 
+proc pad4*(a: PTextAppearance): guint = 
   result = (a.flag0 and bm_TGtkTextAppearance_pad4) shr
       bp_TGtkTextAppearance_pad4
 
-proc set_pad4*(a: var TTextAppearance, `pad4`: guint) = 
+proc set_pad4*(a: PTextAppearance, `pad4`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad4` shl bp_TGtkTextAppearance_pad4) and
       bm_TGtkTextAppearance_pad4)
 
-proc invisible*(a: var TTextAttributes): guint = 
+proc invisible*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_invisible) shr
       bp_TGtkTextAttributes_invisible
 
-proc set_invisible*(a: var TTextAttributes, `invisible`: guint) = 
+proc set_invisible*(a: PTextAttributes, `invisible`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`invisible` shl bp_TGtkTextAttributes_invisible) and
       bm_TGtkTextAttributes_invisible)
 
-proc bg_full_height*(a: var TTextAttributes): guint = 
+proc bg_full_height*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_bg_full_height) shr
       bp_TGtkTextAttributes_bg_full_height
 
-proc set_bg_full_height*(a: var TTextAttributes, `bg_full_height`: guint) = 
+proc set_bg_full_height*(a: PTextAttributes, `bg_full_height`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`bg_full_height` shl bp_TGtkTextAttributes_bg_full_height) and
       bm_TGtkTextAttributes_bg_full_height)
 
-proc editable*(a: var TTextAttributes): guint = 
+proc editable*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_editable) shr
       bp_TGtkTextAttributes_editable
 
-proc set_editable*(a: var TTextAttributes, `editable`: guint) = 
+proc set_editable*(a: PTextAttributes, `editable`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`editable` shl bp_TGtkTextAttributes_editable) and
       bm_TGtkTextAttributes_editable)
 
-proc realized*(a: var TTextAttributes): guint = 
+proc realized*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_realized) shr
       bp_TGtkTextAttributes_realized
 
-proc set_realized*(a: var TTextAttributes, `realized`: guint) = 
+proc set_realized*(a: PTextAttributes, `realized`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`realized` shl bp_TGtkTextAttributes_realized) and
       bm_TGtkTextAttributes_realized)
 
-proc pad1*(a: var TTextAttributes): guint = 
+proc pad1*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_pad1) shr
       bp_TGtkTextAttributes_pad1
 
-proc set_pad1*(a: var TTextAttributes, `pad1`: guint) = 
+proc set_pad1*(a: PTextAttributes, `pad1`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad1` shl bp_TGtkTextAttributes_pad1) and
       bm_TGtkTextAttributes_pad1)
 
-proc pad2*(a: var TTextAttributes): guint = 
+proc pad2*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_pad2) shr
       bp_TGtkTextAttributes_pad2
 
-proc set_pad2*(a: var TTextAttributes, `pad2`: guint) = 
+proc set_pad2*(a: PTextAttributes, `pad2`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad2` shl bp_TGtkTextAttributes_pad2) and
       bm_TGtkTextAttributes_pad2)
 
-proc pad3*(a: var TTextAttributes): guint = 
+proc pad3*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_pad3) shr
       bp_TGtkTextAttributes_pad3
 
-proc set_pad3*(a: var TTextAttributes, `pad3`: guint) = 
+proc set_pad3*(a: PTextAttributes, `pad3`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad3` shl bp_TGtkTextAttributes_pad3) and
       bm_TGtkTextAttributes_pad3)
 
-proc pad4*(a: var TTextAttributes): guint = 
+proc pad4*(a: PTextAttributes): guint = 
   result = (a.flag0 and bm_TGtkTextAttributes_pad4) shr
       bp_TGtkTextAttributes_pad4
 
-proc set_pad4*(a: var TTextAttributes, `pad4`: guint) = 
+proc set_pad4*(a: PTextAttributes, `pad4`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`pad4` shl bp_TGtkTextAttributes_pad4) and
       bm_TGtkTextAttributes_pad4)
@@ -15602,20 +15594,20 @@ proc IS_TEXT_MARK_CLASS*(klass: pointer): bool =
 proc TEXT_MARK_GET_CLASS*(obj: pointer): PTextMarkClass = 
   result = cast[PTextMarkClass](G_TYPE_INSTANCE_GET_CLASS(obj, TYPE_TEXT_MARK()))
 
-proc visible*(a: var TTextMarkBody): guint = 
+proc visible*(a: PTextMarkBody): guint = 
   result = (a.flag0 and bm_TGtkTextMarkBody_visible) shr
       bp_TGtkTextMarkBody_visible
 
-proc set_visible*(a: var TTextMarkBody, `visible`: guint) = 
+proc set_visible*(a: PTextMarkBody, `visible`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`visible` shl bp_TGtkTextMarkBody_visible) and
       bm_TGtkTextMarkBody_visible)
 
-proc not_deleteable*(a: var TTextMarkBody): guint = 
+proc not_deleteable*(a: PTextMarkBody): guint = 
   result = (a.flag0 and bm_TGtkTextMarkBody_not_deleteable) shr
       bp_TGtkTextMarkBody_not_deleteable
 
-proc set_not_deleteable*(a: var TTextMarkBody, `not_deleteable`: guint) = 
+proc set_not_deleteable*(a: PTextMarkBody, `not_deleteable`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`not_deleteable` shl bp_TGtkTextMarkBody_not_deleteable) and
       bm_TGtkTextMarkBody_not_deleteable)
@@ -15675,11 +15667,11 @@ proc TEXT_BUFFER_GET_CLASS*(obj: pointer): PTextBufferClass =
   result = cast[PTextBufferClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_TEXT_BUFFER()))
 
-proc modified*(a: var TTextBuffer): guint = 
+proc modified*(a: PTextBuffer): guint = 
   result = (a.TextBufferflag0 and bm_TGtkTextBuffer_modified) shr
       bp_TGtkTextBuffer_modified
 
-proc set_modified*(a: var TTextBuffer, `modified`: guint) = 
+proc set_modified*(a: PTextBuffer, `modified`: guint) = 
   a.TextBufferflag0 = a.TextBufferflag0 or
       (int16(`modified` shl bp_TGtkTextBuffer_modified) and
       bm_TGtkTextBuffer_modified)
@@ -15704,38 +15696,38 @@ proc TEXT_LAYOUT_GET_CLASS*(obj: pointer): PTextLayoutClass =
   result = cast[PTextLayoutClass](G_TYPE_INSTANCE_GET_CLASS(obj, 
       TYPE_TEXT_LAYOUT()))
 
-proc cursor_visible*(a: var TTextLayout): guint = 
+proc cursor_visible*(a: PTextLayout): guint = 
   result = (a.TextLayoutflag0 and bm_TGtkTextLayout_cursor_visible) shr
       bp_TGtkTextLayout_cursor_visible
 
-proc set_cursor_visible*(a: var TTextLayout, `cursor_visible`: guint) = 
+proc set_cursor_visible*(a: PTextLayout, `cursor_visible`: guint) = 
   a.TextLayoutflag0 = a.TextLayoutflag0 or
       (int16(`cursor_visible` shl bp_TGtkTextLayout_cursor_visible) and
       bm_TGtkTextLayout_cursor_visible)
 
-proc cursor_direction*(a: var TTextLayout): gint = 
+proc cursor_direction*(a: PTextLayout): gint = 
   result = (a.TextLayoutflag0 and bm_TGtkTextLayout_cursor_direction) shr
       bp_TGtkTextLayout_cursor_direction
 
-proc set_cursor_direction*(a: var TTextLayout, `cursor_direction`: gint) = 
+proc set_cursor_direction*(a: PTextLayout, `cursor_direction`: gint) = 
   a.TextLayoutflag0 = a.TextLayoutflag0 or
       (int16(`cursor_direction` shl bp_TGtkTextLayout_cursor_direction) and
       bm_TGtkTextLayout_cursor_direction)
 
-proc is_strong*(a: var TTextCursorDisplay): guint = 
+proc is_strong*(a: PTextCursorDisplay): guint = 
   result = (a.flag0 and bm_TGtkTextCursorDisplay_is_strong) shr
       bp_TGtkTextCursorDisplay_is_strong
 
-proc set_is_strong*(a: var TTextCursorDisplay, `is_strong`: guint) = 
+proc set_is_strong*(a: PTextCursorDisplay, `is_strong`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`is_strong` shl bp_TGtkTextCursorDisplay_is_strong) and
       bm_TGtkTextCursorDisplay_is_strong)
 
-proc is_weak*(a: var TTextCursorDisplay): guint = 
+proc is_weak*(a: PTextCursorDisplay): guint = 
   result = (a.flag0 and bm_TGtkTextCursorDisplay_is_weak) shr
       bp_TGtkTextCursorDisplay_is_weak
 
-proc set_is_weak*(a: var TTextCursorDisplay, `is_weak`: guint) = 
+proc set_is_weak*(a: PTextCursorDisplay, `is_weak`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`is_weak` shl bp_TGtkTextCursorDisplay_is_weak) and
       bm_TGtkTextCursorDisplay_is_weak)
@@ -15758,77 +15750,77 @@ proc IS_TEXT_VIEW_CLASS*(klass: pointer): bool =
 proc TEXT_VIEW_GET_CLASS*(obj: pointer): PTextViewClass = 
   result = cast[PTextViewClass](CHECK_GET_CLASS(obj, TYPE_TEXT_VIEW()))
 
-proc editable*(a: var TTextView): guint = 
+proc editable*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_editable) shr
       bp_TGtkTextView_editable
 
-proc set_editable*(a: var TTextView, `editable`: guint) = 
+proc set_editable*(a: PTextView, `editable`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`editable` shl bp_TGtkTextView_editable) and
       bm_TGtkTextView_editable)
 
-proc overwrite_mode*(a: var TTextView): guint = 
+proc overwrite_mode*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_overwrite_mode) shr
       bp_TGtkTextView_overwrite_mode
 
-proc set_overwrite_mode*(a: var TTextView, `overwrite_mode`: guint) = 
+proc set_overwrite_mode*(a: PTextView, `overwrite_mode`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`overwrite_mode` shl bp_TGtkTextView_overwrite_mode) and
       bm_TGtkTextView_overwrite_mode)
 
-proc cursor_visible*(a: var TTextView): guint = 
+proc cursor_visible*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_cursor_visible) shr
       bp_TGtkTextView_cursor_visible
 
-proc set_cursor_visible*(a: var TTextView, `cursor_visible`: guint) = 
+proc set_cursor_visible*(a: PTextView, `cursor_visible`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`cursor_visible` shl bp_TGtkTextView_cursor_visible) and
       bm_TGtkTextView_cursor_visible)
 
-proc need_im_reset*(a: var TTextView): guint = 
+proc need_im_reset*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_need_im_reset) shr
       bp_TGtkTextView_need_im_reset
 
-proc set_need_im_reset*(a: var TTextView, `need_im_reset`: guint) = 
+proc set_need_im_reset*(a: PTextView, `need_im_reset`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`need_im_reset` shl bp_TGtkTextView_need_im_reset) and
       bm_TGtkTextView_need_im_reset)
 
-proc just_selected_element*(a: var TTextView): guint = 
+proc just_selected_element*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_just_selected_element) shr
       bp_TGtkTextView_just_selected_element
 
-proc set_just_selected_element*(a: var TTextView, `just_selected_element`: guint) = 
+proc set_just_selected_element*(a: PTextView, `just_selected_element`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`just_selected_element` shl
       bp_TGtkTextView_just_selected_element) and
       bm_TGtkTextView_just_selected_element)
 
-proc disable_scroll_on_focus*(a: var TTextView): guint = 
+proc disable_scroll_on_focus*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_disable_scroll_on_focus) shr
       bp_TGtkTextView_disable_scroll_on_focus
 
-proc set_disable_scroll_on_focus*(a: var TTextView, 
+proc set_disable_scroll_on_focus*(a: PTextView, 
                                   `disable_scroll_on_focus`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`disable_scroll_on_focus` shl
       bp_TGtkTextView_disable_scroll_on_focus) and
       bm_TGtkTextView_disable_scroll_on_focus)
 
-proc onscreen_validated*(a: var TTextView): guint = 
+proc onscreen_validated*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_onscreen_validated) shr
       bp_TGtkTextView_onscreen_validated
 
-proc set_onscreen_validated*(a: var TTextView, `onscreen_validated`: guint) = 
+proc set_onscreen_validated*(a: PTextView, `onscreen_validated`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`onscreen_validated` shl bp_TGtkTextView_onscreen_validated) and
       bm_TGtkTextView_onscreen_validated)
 
-proc mouse_cursor_obscured*(a: var TTextView): guint = 
+proc mouse_cursor_obscured*(a: PTextView): guint = 
   result = (a.TextViewflag0 and bm_TGtkTextView_mouse_cursor_obscured) shr
       bp_TGtkTextView_mouse_cursor_obscured
 
-proc set_mouse_cursor_obscured*(a: var TTextView, `mouse_cursor_obscured`: guint) = 
+proc set_mouse_cursor_obscured*(a: PTextView, `mouse_cursor_obscured`: guint) = 
   a.TextViewflag0 = a.TextViewflag0 or
       (int16(`mouse_cursor_obscured` shl
       bp_TGtkTextView_mouse_cursor_obscured) and
@@ -15852,20 +15844,20 @@ proc IS_TIPS_QUERY_CLASS*(klass: pointer): bool =
 proc TIPS_QUERY_GET_CLASS*(obj: pointer): PTipsQueryClass = 
   result = cast[PTipsQueryClass](CHECK_GET_CLASS(obj, TYPE_TIPS_QUERY()))
 
-proc emit_always*(a: var TTipsQuery): guint = 
+proc emit_always*(a: PTipsQuery): guint = 
   result = (a.TipsQueryflag0 and bm_TGtkTipsQuery_emit_always) shr
       bp_TGtkTipsQuery_emit_always
 
-proc set_emit_always*(a: var TTipsQuery, `emit_always`: guint) = 
+proc set_emit_always*(a: PTipsQuery, `emit_always`: guint) = 
   a.TipsQueryflag0 = a.TipsQueryflag0 or
       (int16(`emit_always` shl bp_TGtkTipsQuery_emit_always) and
       bm_TGtkTipsQuery_emit_always)
 
-proc in_query*(a: var TTipsQuery): guint = 
+proc in_query*(a: PTipsQuery): guint = 
   result = (a.TipsQueryflag0 and bm_TGtkTipsQuery_in_query) shr
       bp_TGtkTipsQuery_in_query
 
-proc set_in_query*(a: var TTipsQuery, `in_query`: guint) = 
+proc set_in_query*(a: PTipsQuery, `in_query`: guint) = 
   a.TipsQueryflag0 = a.TipsQueryflag0 or
       (int16(`in_query` shl bp_TGtkTipsQuery_in_query) and
       bm_TGtkTipsQuery_in_query)
@@ -15888,36 +15880,36 @@ proc IS_TOOLTIPS_CLASS*(klass: pointer): bool =
 proc TOOLTIPS_GET_CLASS*(obj: pointer): PTooltipsClass = 
   result = cast[PTooltipsClass](CHECK_GET_CLASS(obj, TYPE_TOOLTIPS()))
 
-proc delay*(a: var TTooltips): guint = 
+proc delay*(a: PTooltips): guint = 
   result = (a.Tooltipsflag0 and bm_TGtkTooltips_delay) shr
       bp_TGtkTooltips_delay
 
-proc set_delay*(a: var TTooltips, `delay`: guint) = 
+proc set_delay*(a: PTooltips, `delay`: guint) = 
   a.Tooltipsflag0 = a.Tooltipsflag0 or
       ((`delay` shl bp_TGtkTooltips_delay) and bm_TGtkTooltips_delay)
 
-proc enabled*(a: var TTooltips): guint = 
+proc enabled*(a: PTooltips): guint = 
   result = (a.Tooltipsflag0 and bm_TGtkTooltips_enabled) shr
       bp_TGtkTooltips_enabled
 
-proc set_enabled*(a: var TTooltips, `enabled`: guint) = 
+proc set_enabled*(a: PTooltips, `enabled`: guint) = 
   a.Tooltipsflag0 = a.Tooltipsflag0 or
       ((`enabled` shl bp_TGtkTooltips_enabled) and bm_TGtkTooltips_enabled)
 
-proc have_grab*(a: var TTooltips): guint = 
+proc have_grab*(a: PTooltips): guint = 
   result = (a.Tooltipsflag0 and bm_TGtkTooltips_have_grab) shr
       bp_TGtkTooltips_have_grab
 
-proc set_have_grab*(a: var TTooltips, `have_grab`: guint) = 
+proc set_have_grab*(a: PTooltips, `have_grab`: guint) = 
   a.Tooltipsflag0 = a.Tooltipsflag0 or
       ((`have_grab` shl bp_TGtkTooltips_have_grab) and
       bm_TGtkTooltips_have_grab)
 
-proc use_sticky_delay*(a: var TTooltips): guint = 
+proc use_sticky_delay*(a: PTooltips): guint = 
   result = (a.Tooltipsflag0 and bm_TGtkTooltips_use_sticky_delay) shr
       bp_TGtkTooltips_use_sticky_delay
 
-proc set_use_sticky_delay*(a: var TTooltips, `use_sticky_delay`: guint) = 
+proc set_use_sticky_delay*(a: PTooltips, `use_sticky_delay`: guint) = 
   a.Tooltipsflag0 = a.Tooltipsflag0 or
       ((`use_sticky_delay` shl bp_TGtkTooltips_use_sticky_delay) and
       bm_TGtkTooltips_use_sticky_delay)
@@ -15940,20 +15932,20 @@ proc IS_TOOLBAR_CLASS*(klass: pointer): bool =
 proc TOOLBAR_GET_CLASS*(obj: pointer): PToolbarClass = 
   result = cast[PToolbarClass](CHECK_GET_CLASS(obj, TYPE_TOOLBAR()))
 
-proc style_set*(a: var TToolbar): guint = 
+proc style_set*(a: PToolbar): guint = 
   result = (a.Toolbarflag0 and bm_TGtkToolbar_style_set) shr
       bp_TGtkToolbar_style_set
 
-proc set_style_set*(a: var TToolbar, `style_set`: guint) = 
+proc set_style_set*(a: PToolbar, `style_set`: guint) = 
   a.Toolbarflag0 = a.Toolbarflag0 or
       (int16(`style_set` shl bp_TGtkToolbar_style_set) and
       bm_TGtkToolbar_style_set)
 
-proc icon_size_set*(a: var TToolbar): guint = 
+proc icon_size_set*(a: PToolbar): guint = 
   result = (a.Toolbarflag0 and bm_TGtkToolbar_icon_size_set) shr
       bp_TGtkToolbar_icon_size_set
 
-proc set_icon_size_set*(a: var TToolbar, `icon_size_set`: guint) = 
+proc set_icon_size_set*(a: PToolbar, `icon_size_set`: guint) = 
   a.Toolbarflag0 = a.Toolbarflag0 or
       (int16(`icon_size_set` shl bp_TGtkToolbar_icon_size_set) and
       bm_TGtkToolbar_icon_size_set)
@@ -15985,26 +15977,26 @@ proc TREE_ROOT_TREE*(obj: pointer): PTree =
 proc TREE_SELECTION_OLD*(obj: pointer): PGList = 
   result = (TREE_ROOT_TREE(obj)).selection
 
-proc selection_mode*(a: var TTree): guint = 
+proc selection_mode*(a: PTree): guint = 
   result = (a.Treeflag0 and bm_TGtkTree_selection_mode) shr
       bp_TGtkTree_selection_mode
 
-proc set_selection_mode*(a: var TTree, `selection_mode`: guint) = 
+proc set_selection_mode*(a: PTree, `selection_mode`: guint) = 
   a.Treeflag0 = a.Treeflag0 or
       (int16(`selection_mode` shl bp_TGtkTree_selection_mode) and
       bm_TGtkTree_selection_mode)
 
-proc view_mode*(a: var TTree): guint = 
+proc view_mode*(a: PTree): guint = 
   result = (a.Treeflag0 and bm_TGtkTree_view_mode) shr bp_TGtkTree_view_mode
 
-proc set_view_mode*(a: var TTree, `view_mode`: guint) = 
+proc set_view_mode*(a: PTree, `view_mode`: guint) = 
   a.Treeflag0 = a.Treeflag0 or
       (int16(`view_mode` shl bp_TGtkTree_view_mode) and bm_TGtkTree_view_mode)
 
-proc view_line*(a: var TTree): guint = 
+proc view_line*(a: PTree): guint = 
   result = (a.Treeflag0 and bm_TGtkTree_view_line) shr bp_TGtkTree_view_line
 
-proc set_view_line*(a: var TTree, `view_line`: guint) = 
+proc set_view_line*(a: PTree, `view_line`: guint) = 
   a.Treeflag0 = a.Treeflag0 or
       (int16(`view_line` shl bp_TGtkTree_view_line) and bm_TGtkTree_view_line)
 
@@ -16057,11 +16049,11 @@ proc TREE_ITEM_GET_CLASS*(obj: pointer): PTreeItemClass =
 proc TREE_ITEM_SUBTREE*(obj: pointer): PWidget = 
   result = (TREE_ITEM(obj)).subtree
 
-proc expanded*(a: var TTreeItem): guint = 
+proc expanded*(a: PTreeItem): guint = 
   result = (a.TreeItemflag0 and bm_TGtkTreeItem_expanded) shr
       bp_TGtkTreeItem_expanded
 
-proc set_expanded*(a: var TTreeItem, `expanded`: guint) = 
+proc set_expanded*(a: PTreeItem, `expanded`: guint) = 
   a.TreeItemflag0 = a.TreeItemflag0 or
       (int16(`expanded` shl bp_TGtkTreeItem_expanded) and
       bm_TGtkTreeItem_expanded)
@@ -16103,11 +16095,11 @@ proc IS_TREE_STORE_CLASS*(klass: pointer): bool =
 proc TREE_STORE_GET_CLASS*(obj: pointer): PTreeStoreClass = 
   result = cast[PTreeStoreClass](CHECK_GET_CLASS(obj, TYPE_TREE_STORE()))
 
-proc columns_dirty*(a: var TTreeStore): guint = 
+proc columns_dirty*(a: PTreeStore): guint = 
   result = (a.TreeStoreflag0 and bm_TGtkTreeStore_columns_dirty) shr
       bp_TGtkTreeStore_columns_dirty
 
-proc set_columns_dirty*(a: var TTreeStore, `columns_dirty`: guint) = 
+proc set_columns_dirty*(a: PTreeStore, `columns_dirty`: guint) = 
   a.TreeStoreflag0 = a.TreeStoreflag0 or
       (int16(`columns_dirty` shl bp_TGtkTreeStore_columns_dirty) and
       bm_TGtkTreeStore_columns_dirty)
@@ -16132,77 +16124,77 @@ proc TREE_VIEW_COLUMN_GET_CLASS*(obj: pointer): PTreeViewColumnClass =
   result = cast[PTreeViewColumnClass](CHECK_GET_CLASS(obj, 
       TYPE_TREE_VIEW_COLUMN()))
 
-proc visible*(a: var TTreeViewColumn): guint = 
+proc visible*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_visible) shr
       bp_TGtkTreeViewColumn_visible
 
-proc set_visible*(a: var TTreeViewColumn, `visible`: guint) = 
+proc set_visible*(a: PTreeViewColumn, `visible`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`visible` shl bp_TGtkTreeViewColumn_visible) and
       bm_TGtkTreeViewColumn_visible)
 
-proc resizable*(a: var TTreeViewColumn): guint = 
+proc resizable*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_resizable) shr
       bp_TGtkTreeViewColumn_resizable
 
-proc set_resizable*(a: var TTreeViewColumn, `resizable`: guint) = 
+proc set_resizable*(a: PTreeViewColumn, `resizable`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`resizable` shl bp_TGtkTreeViewColumn_resizable) and
       bm_TGtkTreeViewColumn_resizable)
 
-proc clickable*(a: var TTreeViewColumn): guint = 
+proc clickable*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_clickable) shr
       bp_TGtkTreeViewColumn_clickable
 
-proc set_clickable*(a: var TTreeViewColumn, `clickable`: guint) = 
+proc set_clickable*(a: PTreeViewColumn, `clickable`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`clickable` shl bp_TGtkTreeViewColumn_clickable) and
       bm_TGtkTreeViewColumn_clickable)
 
-proc dirty*(a: var TTreeViewColumn): guint = 
+proc dirty*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_dirty) shr
       bp_TGtkTreeViewColumn_dirty
 
-proc set_dirty*(a: var TTreeViewColumn, `dirty`: guint) = 
+proc set_dirty*(a: PTreeViewColumn, `dirty`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`dirty` shl bp_TGtkTreeViewColumn_dirty) and
       bm_TGtkTreeViewColumn_dirty)
 
-proc show_sort_indicator*(a: var TTreeViewColumn): guint = 
+proc show_sort_indicator*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and
       bm_TGtkTreeViewColumn_show_sort_indicator) shr
       bp_TGtkTreeViewColumn_show_sort_indicator
 
-proc set_show_sort_indicator*(a: var TTreeViewColumn, 
+proc set_show_sort_indicator*(a: PTreeViewColumn, 
                               `show_sort_indicator`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`show_sort_indicator` shl
       bp_TGtkTreeViewColumn_show_sort_indicator) and
       bm_TGtkTreeViewColumn_show_sort_indicator)
 
-proc maybe_reordered*(a: var TTreeViewColumn): guint = 
+proc maybe_reordered*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_maybe_reordered) shr
       bp_TGtkTreeViewColumn_maybe_reordered
 
-proc set_maybe_reordered*(a: var TTreeViewColumn, `maybe_reordered`: guint) = 
+proc set_maybe_reordered*(a: PTreeViewColumn, `maybe_reordered`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`maybe_reordered` shl bp_TGtkTreeViewColumn_maybe_reordered) and
       bm_TGtkTreeViewColumn_maybe_reordered)
 
-proc reorderable*(a: var TTreeViewColumn): guint = 
+proc reorderable*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_reorderable) shr
       bp_TGtkTreeViewColumn_reorderable
 
-proc set_reorderable*(a: var TTreeViewColumn, `reorderable`: guint) = 
+proc set_reorderable*(a: PTreeViewColumn, `reorderable`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`reorderable` shl bp_TGtkTreeViewColumn_reorderable) and
       bm_TGtkTreeViewColumn_reorderable)
 
-proc use_resized_width*(a: var TTreeViewColumn): guint = 
+proc use_resized_width*(a: PTreeViewColumn): guint = 
   result = (a.TreeViewColumnflag0 and bm_TGtkTreeViewColumn_use_resized_width) shr
       bp_TGtkTreeViewColumn_use_resized_width
 
-proc set_use_resized_width*(a: var TTreeViewColumn, `use_resized_width`: guint) = 
+proc set_use_resized_width*(a: PTreeViewColumn, `use_resized_width`: guint) = 
   a.TreeViewColumnflag0 = a.TreeViewColumnflag0 or
       (int16(`use_resized_width` shl bp_TGtkTreeViewColumn_use_resized_width) and
       bm_TGtkTreeViewColumn_use_resized_width)
@@ -16283,91 +16275,91 @@ proc DRAW_EXPANDERS*(tree_view: PTreeView): bool =
 proc COLUMN_DRAG_DEAD_MULTIPLIER*(tree_view: PTreeView): int32 = 
   result = 10'i32 * (HEADER_HEIGHT(tree_view))
 
-proc scroll_to_use_align*(a: var TTreeViewPrivate): guint = 
+proc scroll_to_use_align*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_scroll_to_use_align) shr
       bp_TGtkTreeViewPrivate_scroll_to_use_align
 
-proc set_scroll_to_use_align*(a: var TTreeViewPrivate, 
+proc set_scroll_to_use_align*(a: PTreeViewPrivate, 
                               `scroll_to_use_align`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`scroll_to_use_align` shl
       bp_TGtkTreeViewPrivate_scroll_to_use_align) and
       bm_TGtkTreeViewPrivate_scroll_to_use_align)
 
-proc fixed_height_check*(a: var TTreeViewPrivate): guint = 
+proc fixed_height_check*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_fixed_height_check) shr
       bp_TGtkTreeViewPrivate_fixed_height_check
 
-proc set_fixed_height_check*(a: var TTreeViewPrivate, 
+proc set_fixed_height_check*(a: PTreeViewPrivate, 
                              `fixed_height_check`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`fixed_height_check` shl
       bp_TGtkTreeViewPrivate_fixed_height_check) and
       bm_TGtkTreeViewPrivate_fixed_height_check)
 
-proc reorderable*(a: var TTreeViewPrivate): guint = 
+proc reorderable*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_reorderable) shr
       bp_TGtkTreeViewPrivate_reorderable
 
-proc set_reorderable*(a: var TTreeViewPrivate, `reorderable`: guint) = 
+proc set_reorderable*(a: PTreeViewPrivate, `reorderable`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`reorderable` shl bp_TGtkTreeViewPrivate_reorderable) and
       bm_TGtkTreeViewPrivate_reorderable)
 
-proc header_has_focus*(a: var TTreeViewPrivate): guint = 
+proc header_has_focus*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_header_has_focus) shr
       bp_TGtkTreeViewPrivate_header_has_focus
 
-proc set_header_has_focus*(a: var TTreeViewPrivate, `header_has_focus`: guint) = 
+proc set_header_has_focus*(a: PTreeViewPrivate, `header_has_focus`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`header_has_focus` shl bp_TGtkTreeViewPrivate_header_has_focus) and
       bm_TGtkTreeViewPrivate_header_has_focus)
 
-proc drag_column_window_state*(a: var TTreeViewPrivate): guint = 
+proc drag_column_window_state*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_drag_column_window_state) shr
       bp_TGtkTreeViewPrivate_drag_column_window_state
 
-proc set_drag_column_window_state*(a: var TTreeViewPrivate, 
+proc set_drag_column_window_state*(a: PTreeViewPrivate, 
                                    `drag_column_window_state`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`drag_column_window_state` shl
       bp_TGtkTreeViewPrivate_drag_column_window_state) and
       bm_TGtkTreeViewPrivate_drag_column_window_state)
 
-proc has_rules*(a: var TTreeViewPrivate): guint = 
+proc has_rules*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_has_rules) shr
       bp_TGtkTreeViewPrivate_has_rules
 
-proc set_has_rules*(a: var TTreeViewPrivate, `has_rules`: guint) = 
+proc set_has_rules*(a: PTreeViewPrivate, `has_rules`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`has_rules` shl bp_TGtkTreeViewPrivate_has_rules) and
       bm_TGtkTreeViewPrivate_has_rules)
 
-proc mark_rows_col_dirty*(a: var TTreeViewPrivate): guint = 
+proc mark_rows_col_dirty*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_mark_rows_col_dirty) shr
       bp_TGtkTreeViewPrivate_mark_rows_col_dirty
 
-proc set_mark_rows_col_dirty*(a: var TTreeViewPrivate, 
+proc set_mark_rows_col_dirty*(a: PTreeViewPrivate, 
                               `mark_rows_col_dirty`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`mark_rows_col_dirty` shl
       bp_TGtkTreeViewPrivate_mark_rows_col_dirty) and
       bm_TGtkTreeViewPrivate_mark_rows_col_dirty)
 
-proc enable_search*(a: var TTreeViewPrivate): guint = 
+proc enable_search*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_enable_search) shr
       bp_TGtkTreeViewPrivate_enable_search
 
-proc set_enable_search*(a: var TTreeViewPrivate, `enable_search`: guint) = 
+proc set_enable_search*(a: PTreeViewPrivate, `enable_search`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`enable_search` shl bp_TGtkTreeViewPrivate_enable_search) and
       bm_TGtkTreeViewPrivate_enable_search)
 
-proc disable_popdown*(a: var TTreeViewPrivate): guint = 
+proc disable_popdown*(a: PTreeViewPrivate): guint = 
   result = (a.flag0 and bm_TGtkTreeViewPrivate_disable_popdown) shr
       bp_TGtkTreeViewPrivate_disable_popdown
 
-proc set_disable_popdown*(a: var TTreeViewPrivate, `disable_popdown`: guint) = 
+proc set_disable_popdown*(a: PTreeViewPrivate, `disable_popdown`: guint) = 
   a.flag0 = a.flag0 or
       (int16(`disable_popdown` shl bp_TGtkTreeViewPrivate_disable_popdown) and
       bm_TGtkTreeViewPrivate_disable_popdown)
