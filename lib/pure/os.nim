@@ -1140,4 +1140,19 @@ proc sleep*(milsecs: int) =
     a.tv_nsec = (milsecs mod 1000) * 1000
     discard posix.nanosleep(a, b)
 
+proc getFileSize*(file: string): biggestInt =
+  ## returns the file size of `file`. Can raise ``EOS``. 
+  when defined(windows):
+    var a: TWin32FindData
+    var resA = findfirstFileA(file, a)
+    if resA == -1: OSError()
+    result = rdFileSize(a)
+    findclose(resA)
+  else:
+    var f: TFile
+    if open(f, file): 
+      result = getFileSize(f)
+      close(f)
+    else: OSError()
+
 {.pop.}

@@ -9,6 +9,8 @@
 ## This module implements graphical output for Nimrod; the current
 ## implementation uses Cairo under the surface. 
 
+import strutils
+
 type
   TColor* = distinct int ## a color stored as RGB
 
@@ -16,9 +18,9 @@ proc `==` *(a, b: TColor): bool {.borrow.}
   ## compares two colors.
   
 template extract(a: TColor, r, g, b: expr) =
-  var r = a shr 16 and 0xff
-  var g = a shr 8 and 0xff
-  var b = a and 0xff
+  var r = a.int shr 16 and 0xff
+  var g = a.int shr 8 and 0xff
+  var b = a.int and 0xff
   
 template rawRGB(r, g, b: expr): expr =
   TColor(r shl 16 or g shl 8 or b)
@@ -64,9 +66,9 @@ template mix*(a, b: TColor, fn: expr): expr =
         y = if y < 0: 0 else: 255
       y
   
-  bind extract(a, ar, ag, ab)
-  bind extract(b, br, bg, bb)
-  bind rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
+  (bind extract)(a, ar, ag, ab)
+  (bind extract)(b, br, bg, bb)
+  (bind rawRGB)(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
 
 
 const
@@ -373,7 +375,7 @@ proc parseColor*(name: string): TColor =
   ## parses `name` to a color value. If no valid color could be 
   ## parsed ``EInvalidValue`` is raised.
   if name[0] == '#':
-    result = TColor(parseHex(name))
+    result = TColor(parseHexInt(name))
   else:
     var idx = binaryStrSearch(colorNames, name)
     if idx < 0: raise newException(EInvalidValue, "unkown color: " & name)
