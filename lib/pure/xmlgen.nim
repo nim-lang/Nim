@@ -58,6 +58,7 @@ proc xmlCheckedTag*(e: PNimrodNode, tag: string,
   # will be modified, so that each attribute is only given one value
   var req = split(reqAttr)
   var opt = split(optAttr)
+  echo "##", optAttr, "##", opt.len
   result = newNimNode(nnkBracket, e)
   result.add(newStrLitNode("<"))
   result.add(newStrLitNode(tag))

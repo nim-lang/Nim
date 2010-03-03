@@ -1,6 +1,7 @@
 t99bott.nim;20;constant expression expected
 tadrdisc.nim;15;for a 'var' type a variable needs to be passed
 tambsym.nim;6;ambiguous identifier
+tambsym2.nim;4;undeclared identifier: 'CreateRGBSurface'
 tambsym3.nim;6;ambiguous identifier
 tbind2.nim;7;ambiguous call
 tbind4.nim;4;instantiation from here
