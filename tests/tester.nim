@@ -99,7 +99,7 @@ proc colorBool(b: bool): string =
   else: result = "<span color:\"red\">no</span>"
 
 proc `$`(r: TResults): string = 
-  result = "<table><tr><td>Test</td><td>Expected</td>" &
+  result = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
            "<td>Given</td><td>Success</td></tr>\n"
   for test, expected, given, success in items(r.data):
     result.add("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n" % [
