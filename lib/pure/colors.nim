@@ -59,6 +59,17 @@ proc extractRGB*(a: TColor): tuple[r, g, b: range[0..255]] =
   result.g = a.int shr 8 and 0xff
   result.b = a.int and 0xff
   
+proc intensity*(a: TColor, f: float): TColor = 
+  ## returns `a` with intensity `f`. `f` should be a float from 0.0 (completely
+  ## dark) to 1.0 (full color intensity).
+  var r = toInt(toFloat(a.int shr 16 and 0xff) * f)
+  var g = toInt(toFloat(a.int shr 8 and 0xff) * f)
+  var b = toInt(toFloat(a.int and 0xff) * f)
+  if r >% 255: r = 255
+  if g >% 255: g = 255
+  if b >% 255: b = 255
+  result = rawRGB(r, g, b)
+  
 template mix*(a, b: TColor, fn: expr): expr =
   ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component
   ## R, G, and B. This is a template because `fn` should be inlined and the
