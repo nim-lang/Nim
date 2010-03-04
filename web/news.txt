@@ -47,9 +47,11 @@ Additions
 - Added ``xmlparser`` module.
 - Added ``htmlparser`` module.
 - Added ``re`` module.
+- Added ``graphics`` module.
+- Added ``colors`` module.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
-  ``lua``). The new wrappers are available in ``lib/newwrap``. Change
-  your configuration file to use these.
+  ``lua``). The old wrappers are still available in ``lib/oldwrappers``. 
+  Change your configuration file to use these.
 - Triple quoted strings allow for ``"`` in more contexts.
 - ``""`` within raw string literals stands for a single quotation mark.
 - More extensive subscript operator overloading. See 

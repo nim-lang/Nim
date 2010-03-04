@@ -6,8 +6,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements graphical output for Nimrod; the current
-## implementation uses Cairo under the surface. 
+## This module implements color handling for Nimrod. It is used by 
+## the ``graphics`` module.
 
 import strutils
 
@@ -52,6 +52,12 @@ proc `-`*(a, b: TColor): TColor =
   ## substracts two colors: This uses saturated artithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   colorOp(satMinus)
+  
+proc extractRGB*(a: TColor): tuple[r, g, b: range[0..255]] =
+  ## extracts the red/green/blue components of the color `a`.
+  result.r = a.int shr 16 and 0xff
+  result.g = a.int shr 8 and 0xff
+  result.b = a.int and 0xff
   
 template mix*(a, b: TColor, fn: expr): expr =
   ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component

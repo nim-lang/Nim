@@ -162,15 +162,11 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ## produces the same output.
   var last = 0
   assert(not ('\0' in seps))
-  #echo "cam here 1", s
   while last < len(s):
     while s[last] in seps: inc(last)
     var first = last
-    #echo "A first: ", first, " last: ", last
     while last < len(s) and s[last] not_in seps: inc(last) # BUGFIX!
-    #echo "B first: ", first, " last: ", last
     if first <= last-1:
-      echo copy(s, first, last-1) 
       yield copy(s, first, last-1)
 
 iterator split*(s: string, sep: char): string =
