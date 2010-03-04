@@ -196,8 +196,22 @@ Cryptography and Hashing
   This module implements the MD5 checksum algorithm.
 
 
+Multimedia support
+------------------
+
+* `colors <colors.html>`_ 
+  This module implements color handling for Nimrod. It is used by 
+  the ``graphics`` module.
+
+
+
 Impure libraries
 ================
+
+* `graphics <graphics>`_
+  This module implements graphical output for Nimrod; the current
+  implementation uses SDL but the interface is meant to support multiple
+  backends some day. 
 
 * `dialogs <dialogs.html>`_
   This module implements portable dialogs for Nimrod; the implementation

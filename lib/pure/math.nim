@@ -172,6 +172,8 @@ when not defined(ECMAScript):
   proc randomize() = srand(gettime(nil))
   proc random(max: int): int = return int(rand()) mod max
 
+  proc trunc*(x: float): float {.importc: "trunc", nodecl.}
+
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc mathfloor(x: float): float {.importc: "Math.floor", nodecl.}

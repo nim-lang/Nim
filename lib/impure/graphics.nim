@@ -150,7 +150,7 @@ proc drawLine*(sur: PSurface, p1, p2: TPoint, color: TColor) =
       setPix(video, pitch, x0, y0, color)
 
 proc drawHorLine*(sur: PSurface, x, y, w: Natural, Color: TColor) =
-  ## draws a horizontal line from (x,y) to (x+w-1, h).
+  ## draws a horizontal line from (x,y) to (x+w-1, y).
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
   for i in 0 .. w-1: setPix(video, pitch, x + i, y, color)
