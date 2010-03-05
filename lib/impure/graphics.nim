@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -150,16 +150,55 @@ proc drawLine*(sur: PSurface, p1, p2: TPoint, color: TColor) =
       setPix(video, pitch, x0, y0, color)
 
 proc drawHorLine*(sur: PSurface, x, y, w: Natural, Color: TColor) =
-  ## draws a horizontal line from (x,y) to (x+w-1, y).
+  ## draws a horizontal line from (x,y) to (x+w-1, h).
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
-  for i in 0 .. w-1: setPix(video, pitch, x + i, y, color)
+
+  if y >= 0 and y <= sur.s.h:
+    for i in 0 .. min(sur.s.w-x, w-1)-1:
+      setPix(video, pitch, x + i, y, color)
 
 proc drawVerLine*(sur: PSurface, x, y, h: Natural, Color: TColor) =
   ## draws a vertical line from (x,y) to (x, y+h-1).
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
-  for i in 0 .. h-1: setPix(video, pitch, x, y + i, color)
+
+  if x >= 0 and x <= sur.s.w:
+    for i in 0 .. min(sur.s.h-y, h-1)-1:
+      setPix(video, pitch, x, y + i, color)
+
+proc drawLine2*(sur: PSurface, p0: TPoint, p1: TPoint, color: TColor) =
+  ## Draws a line from ``p0`` to ``p1``, using the Bresenham's line algorithm
+  var (x0, x1, y0, y1) = (p0.x, p1.x, p0.y, p1.y)
+
+  var video = cast[PPixels](sur.s.pixels)
+  var pitch = sur.s.pitch div ColSize
+  
+  var steep = abs(y1 - y0) > abs(x1 - x0)
+  if steep:
+    swap(x0, y0)
+    swap(x1, y1)
+  if x0 > x1:
+    swap(x0, x1)
+    swap(y0, y1)
+    
+  var deltax = x1 - x0
+  var deltay = abs(y1 - y0)
+  var error = deltax div 2
+  
+  var ystep: int
+  var y = y0
+  if y0 < y1: ystep = 1 else: ystep = -1
+  
+  for x in x0..x1:
+    if steep:
+      setPix(video, pitch, y, x, color)
+    else:
+      setPix(video, pitch, x, y, color)
+    error = error - deltay
+    if error < 0:
+      y = y + ystep
+      error = error + deltax
 
 proc fillCircle*(s: PSurface, p: TPoint, r: Natural, color: TColor) =
   ## draws a circle with center `p` and radius `r` with the given color
@@ -193,30 +232,103 @@ proc drawRect*(sur: PSurface, r: TRect, color: TColor) =
   ## draws a rectangle.
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
-  for i in 0 .. r.width-1:
-    setPix(video, pitch, r.x + i, r.y, color)
-  for i in 0 .. r.height-1:
-    setPix(video, pitch, r.x, r.y + i, color)
-    setPix(video, pitch, r.x + r.width - 1, r.y + i, color)
-  for i in 0 .. r.width-1:
-    setPix(video, pitch, r.x + i, r.y + r.height - 1, color)
+  if (r.x >= 0 and r.x <= sur.s.w) and (r.y >= 0 and r.y <= sur.s.h):
+    var minW = min(sur.s.w - r.x, r.width - 1)
+    var minH = min(sur.s.h - r.y, r.height - 1)
+    
+    # Draw Top
+    for i in 0 .. minW - 1:
+      setPix(video, pitch, r.x + i, r.y, color)
+      setPix(video, pitch, r.x + i, r.y + minH - 1, color) # Draw bottom
+      
+    # Draw left side    
+    for i in 0 .. minH - 1:
+      setPix(video, pitch, r.x, r.y + i, color)
+      setPix(video, pitch, r.x + minW - 1, r.y + i, color) # Draw right side
     
 proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
   ## draws and fills a rectancle.
   var video = cast[PPixels](sur.s.pixels)
   assert video != nil
   var pitch = sur.s.pitch div ColSize
-  for i in r.y..r.y+r.height-1:
-    for j in r.x..r.x+r.width-1: 
+
+  for i in r.y..min(sur.s.h, r.y+r.height-1)-1:
+    for j in r.x..min(sur.s.w, r.x+r.width-1)-1:
       setPix(video, pitch, j, i, col)
+
+proc trunc(x: float): float {.importc: "trunc", nodecl.}
+
+proc plot(sur: PSurface, x, y, c: float, color: TColor) =
+  var video = cast[PPixels](sur.s.pixels)
+  var pitch = sur.s.pitch div ColSize
+  var pixColor = getPix(video, pitch, x.toInt, y.toInt)
+
+  setPix(video, pitch, x.toInt(), y.toInt(), 
+         pixColor.intensity(1.0 - c) + color.intensity(c))
+
+proc ipart(x: float): float =
+  return x.trunc()
+proc fpart(x: float): float =
+  return x - ipart(x)
+proc rfpart(x: float): float =
+  return 1.0 - fpart(x)
+
+import math
+
+proc drawLineAA(sur: PSurface, p1: TPoint, p2: TPoint, color: TColor) =
+  ## Draws a line from ``p1`` to ``p2``, using the Xiaolin Wu's line algorithm
+  var (x1, x2, y1, y2) = (p1.x.toFloat(), p2.x.toFloat(), 
+                          p1.y.toFloat(), p2.y.toFloat())
+  var dx = x2 - x1
+  var dy = y2 - y1
+  if abs(dx) < abs(dy):
+    swap(x1, y1)
+    swap(x2, y2)
+  if x2 < x1:
+    swap(x1, x2)
+    swap(y1, y2)
+
+  var gradient = dy / dx
+  # handle first endpoint
+  var xend = x1  # Should be round(x1), but since this is an int anyway..
+  var yend = y1 + gradient * (xend - x1)
+  var xgap = rfpart(x1 + 0.5)
+  var xpxl1 = xend # this will be used in the main loop
+  var ypxl1 = ipart(yend)
+  sur.plot(xpxl1, ypxl1, rfpart(yend) * xgap, color)
+  sur.plot(xpxl1, ypxl1 + 1.0, fpart(yend) * xgap, color)
+  var intery = yend + gradient # first y-intersection for the main loop
+  # handle second endpoint
+  xend = x2 # Should be round(x1), but since this is an int anyway..
+  yend = y2 + gradient * (xend - x2)
+  xgap = fpart(x2 + 0.5)
+  var xpxl2 = xend  # this will be used in the main loop
+  var ypxl2 = ipart (yend)
+  sur.plot(xpxl2, ypxl2, rfpart(yend) * xgap, color)
+  sur.plot(xpxl2, ypxl2 + 1.0, fpart(yend) * xgap, color)  
+  # main loop
+  for x in xpxl1.toInt + 1..xpxl2.toInt - 1:
+    sur.plot(x.toFloat(), ipart(intery), rfpart(intery), color)
+    sur.plot(x.toFloat(), ipart(intery) + 1.0, fpart(intery), color)
+    intery = intery + gradient
+
+  
       
 if sdl.Init(sdl.INIT_VIDEO) < 0: 
   echo "init failed"
   
 when isMainModule:
   var surf = newSurface(800, 600)
-  var r: TRect = (0, 0, 200, 300)
-  surf.fillRect(r, colBlue)
-  surf.drawHorLine(5, 5, 60, colRed)
+  var r: TRect = (0, 0, 900, 900)
+  surf.fillRect(r, colWhite)
+  surf.drawLineAA((500, 300), (200, 200), colBlack)
+  
+  
+  surf.drawHorLine(5, 5, 900, colRed)
+  surf.drawVerLine(5, 60, 800, colRed)
   surf.setPixel(70, 100, colWhite)
+  surf.drawCircle((600, 500), 60, colRed)
+  #surf.setPixel(799, 599, colGreen)
+  echo(fpart(5.5))
+  
   surf.writeToBMP("test.bmp")
