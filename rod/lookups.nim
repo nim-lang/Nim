@@ -69,6 +69,17 @@ proc addDecl(c: PContext, sym: PSym) =
 proc addDeclAt(c: PContext, sym: PSym, at: Natural) = 
   if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
     liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
+
+proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
+  if (sfInInterface in sym.flags): 
+    # add to interface:
+    if c.module == nil: InternalError(sym.info, "AddInterfaceDeclAux")
+    StrTableAdd(c.module.tab, sym)
+  if getCurrOwner().kind == skModule: incl(sym.flags, sfGlobal)
+
+proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) = 
+  addDeclAt(c, sym, at)
+  AddInterfaceDeclAux(c, sym)
   
 proc addOverloadableSymAt(c: PContext, fn: PSym, at: Natural) = 
   if not (fn.kind in OverloadableSyms): 
@@ -77,13 +88,6 @@ proc addOverloadableSymAt(c: PContext, fn: PSym, at: Natural) =
   if (check != nil) and not (check.Kind in OverloadableSyms): 
     liMessage(fn.info, errAttemptToRedefine, fn.Name.s)
   SymTabAddAt(c.tab, fn, at)
-
-proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
-  if (sfInInterface in sym.flags): 
-    # add to interface:
-    if c.module == nil: InternalError(sym.info, "AddInterfaceDeclAux")
-    StrTableAdd(c.module.tab, sym)
-  if getCurrOwner().kind == skModule: incl(sym.flags, sfGlobal)
   
 proc addInterfaceDecl(c: PContext, sym: PSym) = 
   # it adds the symbol to the interface if appropriate
@@ -115,9 +119,6 @@ proc lookUp(c: PContext, n: PNode): PSym =
   if result.kind == skStub: loadStub(result)
   
 proc QualifiedLookUp(c: PContext, n: PNode, ambiguousCheck: bool): PSym = 
-  var 
-    m: PSym
-    ident: PIdent
   case n.kind
   of nkIdent: 
     result = SymtabGet(c.Tab, n.ident)
@@ -136,9 +137,9 @@ proc QualifiedLookUp(c: PContext, n: PNode, ambiguousCheck: bool): PSym =
       liMessage(n.info, errUseQualifier, n.sym.name.s)
   of nkDotExpr: 
     result = nil
-    m = qualifiedLookUp(c, n.sons[0], false)
+    var m = qualifiedLookUp(c, n.sons[0], false)
     if (m != nil) and (m.kind == skModule): 
-      ident = nil
+      var ident: PIdent = nil
       if (n.sons[1].kind == nkIdent): 
         ident = n.sons[1].ident
       elif (n.sons[1].kind == nkAccQuoted) and

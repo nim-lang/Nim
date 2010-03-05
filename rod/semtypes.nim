@@ -227,7 +227,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     if s.ast == nil: liMessage(n.info, errCannotInstantiateX, s.name.s)
     result = instGenericContainer(c, n, result)
 
-proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSym = 
+proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, 
+                 allowed: TSymFlags): PSym = 
   # identifier with visibility
   if n.kind == nkPostfix: 
     if (sonsLen(n) == 2) and (n.sons[0].kind == nkIdent): 
@@ -252,14 +253,10 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     case kind
     of skType: 
       # process pragmas later, because result.typ has not been set yet
-    of skField: 
-      pragma(c, result, n.sons[1], fieldPragmas)
-    of skVar: 
-      pragma(c, result, n.sons[1], varPragmas)
-    of skConst: 
-      pragma(c, result, n.sons[1], constPragmas)
-    else: 
-      nil
+    of skField: pragma(c, result, n.sons[1], fieldPragmas)
+    of skVar:   pragma(c, result, n.sons[1], varPragmas)
+    of skConst: pragma(c, result, n.sons[1], constPragmas)
+    else: nil
   else: 
     result = semIdentVis(c, kind, n, allowed)
   

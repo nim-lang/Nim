@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -675,7 +675,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if kind in OverloadableSyms: 
       addInterfaceOverloadableSymAt(c, s, c.tab.tos - 2)
     else: 
-      addDeclAt(c, s, c.tab.tos - 2)
+      addInterfaceDeclAt(c, s, c.tab.tos - 2)
     if n.sons[pragmasPos] != nil: pragma(c, s, n.sons[pragmasPos], validPragmas)
   else: 
     if n.sons[pragmasPos] != nil: 

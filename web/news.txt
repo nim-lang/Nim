@@ -32,6 +32,7 @@ Additions
 - Added ``system.cstringArrayToSeq``.
 - Added ``system.lines(f: TFile)`` iterator.
 - Added ``system.delete``, ``system.del`` and ``system.insert`` for sequences.
+- Added ``system./`` for int.
 - Exported ``system.newException`` template.
 - Added ``cgi.decodeData(data: string): tuple[key, value: string]``.
 - Added ``math.trunc``.
