@@ -60,7 +60,6 @@ proc definedInScope*[T](x: T): bool {.
   ## Special comile-time procedure that checks whether `x` is
   ## defined in the current scope. `x` has to be an identifier.
 
-# these require compiler magic:
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
@@ -843,6 +842,10 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+
+proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+  ## integer division that results in a float.
+  result = toFloat(x) / toFloat(y)
 
 proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
