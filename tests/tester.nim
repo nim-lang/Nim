@@ -106,6 +106,20 @@ proc `$`(r: TResults): string =
       test, expected, given, success.colorBool])
   result.add("</table>\n")
 
+proc listResults(reject, compile, run: TResults) =
+  var s = "<html>"
+  s.add("<h1>Tests to Reject</h1>\n")
+  s.add($reject)
+  s.add("<br /><br /><br /><h1>Tests to Compile</h1>\n")
+  s.add($compile)
+  s.add("<br /><br /><br /><h1>Tests to Run</h1>\n")
+  s.add($run)
+  s.add("</html>")
+  var outp: TFile
+  if open(outp, "testresults.html", fmWrite):
+    write(outp, )
+    close(outp)
+
 proc cmpMsgs(r: var TResults, expected, given: TMsg, test: string) = 
   inc(r.total)
   if strip(expected.msg) notin strip(given.msg): 
