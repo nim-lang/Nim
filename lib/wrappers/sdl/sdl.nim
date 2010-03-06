@@ -85,7 +85,7 @@
 #   May      08 2001 - DL : Added Keyboard  State Array ( See demos for how to
 #                           use )
 #                           PKeyStateArr = ^TKeyStateArr;
-#                           TKeyStateArr = array[0..65000] of UInt8;
+#                           TKeyStateArr = array[0..65000] of byte;
 #                           As most games will need it.
 #
 #   April    02 2001 - DL : Added SDL_getenv.h definitions and tested version
@@ -372,7 +372,7 @@ type
     EVENT_RESERVED7 = 23,     # Reserved for future use..
                               # Events SDL_USEREVENT through SDL_MAXEVENTS-1 are for your use
     USEREVENT = 24 # This last event is only for bounding internal arrays
-                   # It is the number of bits in the event mask datatype -- UInt32
+                   # It is the number of bits in the event mask datatype -- int32
 
 const 
   NUMEVENTS* = 32
@@ -754,32 +754,22 @@ type
   TBool* = enum 
     sdlFALSE, sdlTRUE
   PUInt8Array* = ptr TUInt8Array
-  PUInt8* = ptr UInt8
-  PPUInt8* = ptr PUInt8
-  UInt8* = int8
-  TUInt8Array* = array[0..high(int) shr 1, UInt8]
+  TUInt8Array* = array[0..high(int) shr 1, byte]
   PUInt16* = ptr UInt16
   UInt16* = int16
-  PSInt8* = ptr SInt8
-  SInt8* = int8
-  PSInt16* = ptr SInt16
-  SInt16* = int16
-  PUInt32* = ptr UInt32
-  UInt32* = int
-  SInt32* = int
-  PInt* = ptr int
-  PShortInt* = ptr int8
+  PUInt32* = ptr int32
+  UInt32* = int32
   PUInt64* = ptr UInt64
   UInt64*{.final.} = object 
-    hi*: UInt32
-    lo*: UInt32
+    hi*: int32
+    lo*: int32
 
   PSInt64* = ptr SInt64
   SInt64*{.final.} = object 
-    hi*: UInt32
-    lo*: UInt32
+    hi*: int32
+    lo*: int32
 
-  TGrabMode* = int            # SDL_error.h types
+  TGrabMode* = int32         # SDL_error.h types
   Terrorcode* = enum 
     ENOMEM, EFREAD, EFWRITE, EFSEEK, LASTERROR
   errorcode* = Terrorcode
@@ -805,9 +795,9 @@ type
     fp*: Pointer
 
   TMem*{.final.} = object 
-    base*: PUInt8
-    here*: PUInt8
-    stop*: PUInt8
+    base*: ptr byte
+    here*: ptr byte
+    stop*: ptr byte
 
   TUnknown*{.final.} = object  # first declare the pointer type
     data1*: Pointer
@@ -839,47 +829,34 @@ type
   
   RWops* = TRWops             # SDL_timer.h types
                               # Function prototype for the timer callback function
-  TTimerCallback* = proc (interval: UInt32): UInt32{.cdecl.} # New timer API, supports multiple timers
-                                                             #   Written by Stephane Peter
-                                                             #   
-                                                             #   <megastep@lokigames.com>
-                                                             # Function prototype for the new timer callback function.
-                                                             #   The callback function is passed the current timer interval and returns
-                                                             #   the next timer interval.  If the returned value is the same as the one
-                                                             #   passed in, the periodic alarm continues, otherwise a new alarm is
-                                                             #   scheduled.  If the callback returns 0, the periodic alarm is cancelled.
-  TNewTimerCallback* = proc (interval: UInt32, param: Pointer): UInt32{.cdecl.} # 
-                                                                                # Definition 
-                                                                                # of 
-                                                                                # the 
-                                                                                # timer 
-                                                                                # ID 
-                                                                                # type
+  TTimerCallback* = proc (interval: int32): int32{.cdecl.}
+  TNewTimerCallback* = proc (interval: int32, param: Pointer): int32{.cdecl.}
+
   PTimerID* = ptr TTimerID
   TTimerID*{.final.} = object 
-    interval*: UInt32
+    interval*: int32
     callback*: TNewTimerCallback
     param*: Pointer
-    last_alarm*: UInt32
+    last_alarm*: int32
     next*: PTimerID
 
-  TAudioSpecCallback* = proc (userdata: Pointer, stream: PUInt8, length: int){.
+  TAudioSpecCallback* = proc (userdata: Pointer, stream: ptr byte, length: int){.
       cdecl.}                 # SDL_audio.h types
                               # The calculated values in this structure are calculated by SDL_OpenAudio()
   PAudioSpec* = ptr TAudioSpec
   TAudioSpec*{.final.} = object  # A structure to hold a set of audio conversion filters and buffers
     freq*: int                # DSP frequency -- samples per second
     format*: UInt16           # Audio data format
-    channels*: UInt8          # Number of channels: 1 mono, 2 stereo
-    silence*: UInt8           # Audio buffer silence value (calculated)
+    channels*: byte          # Number of channels: 1 mono, 2 stereo
+    silence*: byte           # Audio buffer silence value (calculated)
     samples*: UInt16          # Audio buffer size in samples
     padding*: UInt16          # Necessary for some compile environments
-    size*: UInt32 # Audio buffer size in bytes (calculated)
-                  # This function is called when the audio device needs more data.
-                  #      'stream' is a pointer to the audio data buffer
-                  #      'len' is the length of that buffer in bytes.
-                  #      Once the callback returns, the buffer will no longer be valid.
-                  #      Stereo samples are stored in a LRLRLR ordering.
+    size*: int32 # Audio buffer size in bytes (calculated)
+                 # This function is called when the audio device needs more data.
+                 # 'stream' is a pointer to the audio data buffer
+                 # 'len' is the length of that buffer in bytes.
+                 # Once the callback returns, the buffer will no longer be valid.
+                 # Stereo samples are stored in a LRLRLR ordering.
     callback*: TAudioSpecCallback
     userdata*: Pointer
 
@@ -896,7 +873,7 @@ type
     src_format*: UInt16       # Source audio format
     dst_format*: UInt16       # Target audio format
     rate_incr*: float64       # Rate conversion increment
-    buf*: PUInt8              # Buffer to hold entire audio data
+    buf*: ptr byte              # Buffer to hold entire audio data
     length*: int              # Length of original audio buffer
     len_cvt*: int             # Length of converted audio buffer
     len_mult*: int            # buffer must be len*len_mult big
@@ -910,11 +887,11 @@ type
     CD_ERROR, CD_TRAYEMPTY, CD_STOPPED, CD_PLAYING, CD_PAUSED
   PCDTrack* = ptr TCDTrack
   TCDTrack*{.final.} = object  # This structure is only current as of the last call to SDL_CDStatus()
-    id*: UInt8                # Track number
-    theType*: UInt8           # Data or audio track
+    id*: byte                # Track number
+    theType*: byte           # Data or audio track
     unused*: UInt16
-    len*: UInt32              # Length, in frames, of this track
-    offset*: UInt32           # Offset, in frames, from start of disk
+    len*: int32              # Length, in frames, of this track
+    offset*: int32           # Offset, in frames, from start of disk
   
   PCD* = ptr TCD
   TCD*{.final.} = object      #SDL_joystick.h types
@@ -944,24 +921,24 @@ type
 
   PJoystick* = ptr TJoystick
   TJoystick*{.final.} = object  # SDL_verion.h types
-    index*: UInt8             # Device index
+    index*: byte             # Device index
     name*: cstring            # Joystick name - system dependent
     naxes*: int               # Number of axis controls on the joystick
     axes*: PUInt16            # Current axis states
     nhats*: int               # Number of hats on the joystick
-    hats*: PUInt8             # Current hat states
+    hats*: ptr byte             # Current hat states
     nballs*: int              # Number of trackballs on the joystick
     balls*: PBallDelta        # Current ball motion deltas
     nbuttons*: int            # Number of buttons on the joystick
-    buttons*: PUInt8          # Current button states
+    buttons*: ptr byte          # Current button states
     hwdata*: PJoystick_hwdata # Driver dependent information
     ref_count*: int           # Reference count for multiple opens
   
   Pversion* = ptr Tversion
   Tversion*{.final.} = object  # SDL_keyboard.h types
-    major*: UInt8
-    minor*: UInt8
-    patch*: UInt8
+    major*: byte
+    minor*: byte
+    patch*: byte
 
   TKey* = int32
   TMod* = int32
@@ -978,7 +955,7 @@ type
                               #   removed from the queue.
                               #   This function returns the number of events actually stored, or -1
                               #   if there was an error.  This function is thread-safe.
-    scancode*: UInt8          # hardware specific scancode
+    scancode*: byte          # hardware specific scancode
     sym*: TKey                # SDL virtual keysym
     modifier*: TMod           # current key modifiers
     unicode*: UInt16          # translated character
@@ -987,61 +964,61 @@ type
     ADDEVENT, PEEKEVENT, GETEVENT
   TActiveEvent*{.final.} = object  # SDL_ACTIVEEVENT
                                    # Keyboard event structure
-    gain*: UInt8              # Whether given states were gained or lost (1/0)
-    state*: UInt8             # A mask of the focus states
+    gain*: byte              # Whether given states were gained or lost (1/0)
+    state*: byte             # A mask of the focus states
   
   TKeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
                                      # Mouse motion event structure
-    which*: UInt8             # The keyboard device index
-    state*: UInt8             # SDL_PRESSED or SDL_RELEASED
+    which*: byte             # The keyboard device index
+    state*: byte             # SDL_PRESSED or SDL_RELEASED
     keysym*: TKeySym
 
   TMouseMotionEvent*{.final.} = object  # SDL_MOUSEMOTION
                                         # Mouse button event structure
-    which*: UInt8             # The mouse device index
-    state*: UInt8             # The current button state
+    which*: byte             # The mouse device index
+    state*: byte             # The current button state
     x*, y*: UInt16            # The X/Y coordinates of the mouse
-    xrel*: SInt16             # The relative motion in the X direction
-    yrel*: SInt16             # The relative motion in the Y direction
+    xrel*: int16             # The relative motion in the X direction
+    yrel*: int16             # The relative motion in the Y direction
   
   TMouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
                                         # Joystick axis motion event structure
-    which*: UInt8             # The mouse device index
-    button*: UInt8            # The mouse button index
-    state*: UInt8             # SDL_PRESSED or SDL_RELEASED
+    which*: byte             # The mouse device index
+    button*: byte            # The mouse button index
+    state*: byte             # SDL_PRESSED or SDL_RELEASED
     x*: UInt16                # The X coordinates of the mouse at press time
     y*: UInt16                # The Y coordinates of the mouse at press time
   
   TJoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
                                     # Joystick trackball motion event structure
-    which*: UInt8             # The joystick device index
-    axis*: UInt8              # The joystick axis index
-    value*: SInt16            # The axis value (range: -32768 to 32767)
+    which*: byte             # The joystick device index
+    axis*: byte              # The joystick axis index
+    value*: int16            # The axis value (range: -32768 to 32767)
   
   TJoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
                                     # Joystick hat position change event structure
-    which*: UInt8             # The joystick device index
-    ball*: UInt8              # The joystick trackball index
-    xrel*: SInt16             # The relative motion in the X direction
-    yrel*: SInt16             # The relative motion in the Y direction
+    which*: byte             # The joystick device index
+    ball*: byte              # The joystick trackball index
+    xrel*: int16             # The relative motion in the X direction
+    yrel*: int16             # The relative motion in the Y direction
   
   TJoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
                                    # Joystick button event structure
-    which*: UInt8             # The joystick device index */
-    hat*: UInt8               # The joystick hat index */
-    value*: UInt8             # The hat position value:
-                              #                    8   1   2
-                              #                    7   0   3
-                              #                    6   5   4
-                              #                    Note that zero means the POV is centered.
+    which*: byte             # The joystick device index */
+    hat*: byte               # The joystick hat index */
+    value*: byte             # The hat position value:
+                             # 8   1   2
+                             # 7   0   3
+                             # 6   5   4
+                             # Note that zero means the POV is centered.
   
   TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
                                       #    When you get this event, you are responsible for setting a new video
                                       #    mode with the new width and height.
-    which*: UInt8             # The joystick device index
-    button*: UInt8            # The joystick button index
-    state*: UInt8             # SDL_PRESSED or SDL_RELEASED
+    which*: byte             # The joystick device index
+    button*: byte            # The joystick button index
+    state*: byte             # SDL_PRESSED or SDL_RELEASED
   
   TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
                                    # A user-defined event type
@@ -1050,9 +1027,9 @@ type
   
   PUserEvent* = ptr TUserEvent
   TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
-    code*: int                # User defined event code */
-    data1*: Pointer           # User defined data pointer */
-    data2*: Pointer           # User defined data pointer */
+    code*: int                # User defined event code
+    data1*: Pointer           # User defined data pointer
+    data2*: Pointer           # User defined data pointer 
   
 
 when defined(Unix): 
@@ -1178,16 +1155,16 @@ type
   PPSDL_Rect* = ptr PRect
   PRect* = ptr TRect
   TRect*{.final.} = object 
-    x*, y*: SInt16
+    x*, y*: int16
     w*, h*: UInt16
 
   Rect* = TRect
   PColor* = ptr TColor
   TColor*{.final.} = object 
-    r*: UInt8
-    g*: UInt8
-    b*: UInt8
-    unused*: UInt8
+    r*: byte
+    g*: byte
+    b*: byte
+    unused*: byte
 
   PColorArray* = ptr TColorArray
   TColorArray* = array[0..65000, TColor]
@@ -1199,43 +1176,43 @@ type
   PPixelFormat* = ptr TPixelFormat
   TPixelFormat*{.final.} = object  # The structure passed to the low level blit functions
     palette*: PPalette
-    BitsPerPixel*: UInt8
-    BytesPerPixel*: UInt8
-    Rloss*: UInt8
-    Gloss*: UInt8
-    Bloss*: UInt8
-    Aloss*: UInt8
-    Rshift*: UInt8
-    Gshift*: UInt8
-    Bshift*: UInt8
-    Ashift*: UInt8
-    RMask*: UInt32
-    GMask*: UInt32
-    BMask*: UInt32
-    AMask*: UInt32
-    colorkey*: UInt32         # RGB color key information
-    alpha*: UInt8             # Alpha value information (per-surface alpha)
+    BitsPerPixel*: byte
+    BytesPerPixel*: byte
+    Rloss*: byte
+    Gloss*: byte
+    Bloss*: byte
+    Aloss*: byte
+    Rshift*: byte
+    Gshift*: byte
+    Bshift*: byte
+    Ashift*: byte
+    RMask*: int32
+    GMask*: int32
+    BMask*: int32
+    AMask*: int32
+    colorkey*: int32         # RGB color key information
+    alpha*: byte             # Alpha value information (per-surface alpha)
   
   PBlitInfo* = ptr TBlitInfo
   TBlitInfo*{.final.} = object  # typedef for private surface blitting functions
-    s_pixels*: PUInt8
+    s_pixels*: ptr byte
     s_width*: int
     s_height*: int
     s_skip*: int
-    d_pixels*: PUInt8
+    d_pixels*: ptr byte
     d_width*: int
     d_height*: int
     d_skip*: int
     aux_data*: Pointer
     src*: PPixelFormat
-    table*: PUInt8
+    table*: ptr byte
     dst*: PPixelFormat
 
   PSurface* = ptr TSurface
   TBlit* = proc (src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): int{.
       cdecl.}
   TSurface*{.final.} = object  # Useful for determining the video hardware capabilities
-    flags*: UInt32            # Read-only
+    flags*: int32            # Read-only
     format*: PPixelFormat     # Read-only
     w*, h*: cint              # Read-only
     pitch*: UInt16            # Read-only
@@ -1244,9 +1221,9 @@ type
     hwdata*: Pointer          #TPrivate_hwdata;  Hardware-specific surface info
                               # clipping information:
     clip_rect*: TRect         # Read-only
-    unused1*: UInt32          # for binary compatibility
+    unused1*: int32           # for binary compatibility
                               # Allow recursive locks
-    locked*: UInt32           # Private
+    locked*: int32            # Private
                               # info for fast blit mapping to other surfaces
     Blitmap*: Pointer         # PSDL_BlitMap; //   Private
                               # format version, bumped at every change to invalidate blit maps
@@ -1255,33 +1232,22 @@ type
 
   PVideoInfo* = ptr TVideoInfo
   TVideoInfo*{.final.} = object  # The YUV hardware video overlay
-    hw_available*: UInt8 # Hardware and WindowManager flags in first 2 bits ( see below )
-                         #hw_available: 1; // Can you create hardware surfaces
-                         #    wm_available: 1; // Can you talk to a window manager?
-                         #    UnusedBits1: 6;
-    blit_hw*: UInt8 # Blit Hardware flags. See below for which bits do what
-                    #UnusedBits2: 1;
-                    #    blit_hw: 1; // Flag:UInt32  Accelerated blits HW --> HW
-                    #    blit_hw_CC: 1; // Flag:UInt32  Accelerated blits with Colorkey
-                    #    blit_hw_A: 1; // Flag:UInt32  Accelerated blits with Alpha
-                    #    blit_sw: 1; // Flag:UInt32  Accelerated blits SW --> HW
-                    #    blit_sw_CC: 1; // Flag:UInt32  Accelerated blits with Colorkey
-                    #    blit_sw_A: 1; // Flag:UInt32  Accelerated blits with Alpha
-                    #    blit_fill: 1; // Flag:UInt32  Accelerated color fill
-    UnusedBits3*: UInt8       # Unused at this point
-    video_mem*: UInt32        # The total amount of video memory (in K)
+    hw_available*: byte 
+    blit_hw*: byte 
+    UnusedBits3*: byte       # Unused at this point
+    video_mem*: int32        # The total amount of video memory (in K)
     vfmt*: PPixelFormat       # Value: The format of the video surface
-    current_w*: SInt32        # Value: The current video mode width
-    current_h*: SInt32        # Value: The current video mode height
+    current_w*: int32        # Value: The current video mode width
+    current_h*: int32        # Value: The current video mode height
   
   POverlay* = ptr TOverlay
   TOverlay*{.final.} = object  # Public enumeration for setting the OpenGL window attributes.
-    format*: UInt32           # Overlay format
+    format*: int32           # Overlay format
     w*, h*: int               # Width and height of overlay
     planes*: int              # Number of planes in the overlay. Usually either 1 or 3
     pitches*: PUInt16         # An array of pitches, one for each plane. Pitch is the length of a row in bytes.
-    pixels*: PPUInt8          # An array of pointers to the data of each plane. The overlay should be locked before these pointers are used.
-    hw_overlay*: UInt32       # This will be set to 1 if the overlay is hardware accelerated.
+    pixels*: ptr ptr byte # An array of pointers to the data of each plane. The overlay should be locked before these pointers are used.
+    hw_overlay*: int32    # This will be set to 1 if the overlay is hardware accelerated.
   
   TGLAttr* = enum 
     GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE, 
@@ -1292,10 +1258,10 @@ type
   PCursor* = ptr TCursor
   TCursor*{.final.} = object  # SDL_mutex.h types
     area*: TRect              # The area of the mouse cursor
-    hot_x*, hot_y*: SInt16    # The "tip" of the cursor
-    data*: PUInt8             # B/W cursor data
-    mask*: PUInt8             # B/W cursor mask
-    save*: array[1..2, PUInt8] # Place to save cursor area
+    hot_x*, hot_y*: int16    # The "tip" of the cursor
+    data*: ptr byte             # B/W cursor data
+    mask*: ptr byte             # B/W cursor mask
+    save*: array[1..2, ptr byte] # Place to save cursor area
     wm_cursor*: Pointer       # Window-manager cursor
   
 
@@ -1319,14 +1285,14 @@ type                          # This is the system-independent thread info struc
   PThread* = ptr TThread
   TThread*{.final.} = object  # Helper Types
                               # Keyboard  State Array ( See demos for how to use )
-    threadid*: UInt32
+    threadid*: int32
     handle*: TSYS_ThreadHandle
     status*: int
     errbuf*: TError
     data*: Pointer
 
   PKeyStateArr* = ptr TKeyStateArr
-  TKeyStateArr* = array[0..65000, UInt8] # Types required so we don't need to use Windows.pas
+  TKeyStateArr* = array[0..65000, byte] # Types required so we don't need to use Windows.pas
   PInteger* = ptr int
   PByte* = ptr int8
   PWord* = ptr int16
@@ -1343,24 +1309,24 @@ type                          # This is the system-independent thread info struc
                         #  Unless the SDL_INIT_NOPARACHUTE flag is set, it will install cleanup
                         #  signal handlers for some commonly ignored fatal signals (like SIGSEGV)
 
-proc Init*(flags: UInt32): int{.cdecl, importc: "SDL_Init", dynlib: LibName.}
+proc Init*(flags: int32): int{.cdecl, importc: "SDL_Init", dynlib: LibName.}
   # This function initializes specific SDL subsystems
-proc InitSubSystem*(flags: UInt32): int{.cdecl, importc: "SDL_InitSubSystem", 
+proc InitSubSystem*(flags: int32): int{.cdecl, importc: "SDL_InitSubSystem", 
     dynlib: LibName.}
   # This function cleans up specific SDL subsystems
-proc QuitSubSystem*(flags: UInt32){.cdecl, importc: "SDL_QuitSubSystem", 
+proc QuitSubSystem*(flags: int32){.cdecl, importc: "SDL_QuitSubSystem", 
                                     dynlib: LibName.}
   # This function returns mask of the specified subsystems which have
   #  been initialized.
   #  If 'flags' is 0, it returns a mask of all initialized subsystems.
-proc WasInit*(flags: UInt32): UInt32{.cdecl, importc: "SDL_WasInit", 
+proc WasInit*(flags: int32): int32{.cdecl, importc: "SDL_WasInit", 
                                       dynlib: LibName.}
   # This function cleans up all initialized subsystems and unloads the
   #  dynamically linked library.  You should call it upon all exit conditions.
 proc Quit*(){.cdecl, importc: "SDL_Quit", dynlib: LibName.}
 when defined(WINDOWS): 
   # This should be called from your WinMain() function, if any
-  proc RegisterApp*(name: cstring, style: UInt32, h_Inst: Pointer): int{.cdecl, 
+  proc RegisterApp*(name: cstring, style: int32, h_Inst: Pointer): int{.cdecl, 
       importc: "SDL_RegisterApp", dynlib: LibName.}
 proc TableSize*(table: cstring): int
   #------------------------------------------------------------------------------
@@ -1398,18 +1364,18 @@ proc RWClose*(context: PRWops): int
   #------------------------------------------------------------------------------
   # Get the number of milliseconds since the SDL library initialization.
   # Note that this value wraps if the program runs for more than ~49 days.
-proc GetTicks*(): UInt32{.cdecl, importc: "SDL_GetTicks", dynlib: LibName.}
+proc GetTicks*(): int32{.cdecl, importc: "SDL_GetTicks", dynlib: LibName.}
   # Wait a specified number of milliseconds before returning
-proc Delay*(msec: UInt32){.cdecl, importc: "SDL_Delay", dynlib: LibName.}
+proc Delay*(msec: int32){.cdecl, importc: "SDL_Delay", dynlib: LibName.}
   # Add a new timer to the pool of timers already running.
   # Returns a timer ID, or NULL when an error occurs.
-proc AddTimer*(interval: UInt32, callback: TNewTimerCallback, param: Pointer): PTimerID{.
+proc AddTimer*(interval: int32, callback: TNewTimerCallback, param: Pointer): PTimerID{.
     cdecl, importc: "SDL_AddTimer", dynlib: LibName.}
   # Remove one of the multiple timers knowing its ID.
   # Returns a boolean value indicating success.
 proc RemoveTimer*(t: PTimerID): TBool{.cdecl, importc: "SDL_RemoveTimer", 
                                        dynlib: LibName.}
-proc SetTimer*(interval: UInt32, callback: TTimerCallback): int{.cdecl, 
+proc SetTimer*(interval: int32, callback: TTimerCallback): int{.cdecl, 
     importc: "SDL_SetTimer", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # audio-routines
@@ -1491,21 +1457,21 @@ proc PauseAudio*(pause_on: int){.cdecl, importc: "SDL_PauseAudio",
   #  This function returns NULL and sets the SDL error message if the
   #  wave file cannot be opened, uses an unknown data format, or is
   #  corrupt.  Currently raw and MS-ADPCM WAVE files are supported.
-proc LoadWAV_RW*(src: PRWops, freesrc: int, spec: PAudioSpec, audio_buf: PUInt8, 
+proc LoadWAV_RW*(src: PRWops, freesrc: int, spec: PAudioSpec, audio_buf: ptr byte, 
                  audiolen: PUInt32): PAudioSpec{.cdecl, 
     importc: "SDL_LoadWAV_RW", dynlib: LibName.}
   # Compatibility convenience function -- loads a WAV from a file
-proc LoadWAV*(filename: cstring, spec: PAudioSpec, audio_buf: PUInt8, 
+proc LoadWAV*(filename: cstring, spec: PAudioSpec, audio_buf: ptr byte, 
               audiolen: PUInt32): PAudioSpec
   # This function frees data previously allocated with SDL_LoadWAV_RW()
-proc FreeWAV*(audio_buf: PUInt8){.cdecl, importc: "SDL_FreeWAV", dynlib: LibName.}
+proc FreeWAV*(audio_buf: ptr byte){.cdecl, importc: "SDL_FreeWAV", dynlib: LibName.}
   # This function takes a source format and rate and a destination format
   #  and rate, and initializes the 'cvt' structure with information needed
   #  by SDL_ConvertAudio() to convert a buffer of audio data from one format
   #  to the other.
   #  This function returns 0, or -1 if there was an error.
-proc BuildAudioCVT*(cvt: PAudioCVT, src_format: UInt16, src_channels: UInt8, 
-                    src_rate: int, dst_format: UInt16, dst_channels: UInt8, 
+proc BuildAudioCVT*(cvt: PAudioCVT, src_format: UInt16, src_channels: byte, 
+                    src_rate: int, dst_format: UInt16, dst_channels: byte, 
                     dst_rate: int): int{.cdecl, importc: "SDL_BuildAudioCVT", 
     dynlib: LibName.}
   # Once you have initialized the 'cvt' structure using SDL_BuildAudioCVT(),
@@ -1522,7 +1488,7 @@ proc ConvertAudio*(cvt: PAudioCVT): int{.cdecl, importc: "SDL_ConvertAudio",
   #  The volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
   #  for full audio volume.  Note this does not change hardware volume.
   #  This is provided for convenience -- you can mix your own audio data.
-proc MixAudio*(dst, src: PUInt8, length: UInt32, volume: int){.cdecl, 
+proc MixAudio*(dst, src: ptr byte, length: int32, volume: int){.cdecl, 
     importc: "SDL_MixAudio", dynlib: LibName.}
   # The lock manipulated by these functions protects the callback function.
   #  During a LockAudio/UnlockAudio pair, you can be guaranteed that the
@@ -1649,10 +1615,10 @@ proc JoystickEventState*(state: int): int{.cdecl,
   # Get the current state of an axis control on a joystick
   #  The state is a value ranging from -32768 to 32767.
   #  The axis indices start at index 0.
-proc JoystickGetAxis*(joystick: PJoystick, axis: int): SInt16{.cdecl, 
+proc JoystickGetAxis*(joystick: PJoystick, axis: int): int16{.cdecl, 
     importc: "SDL_JoystickGetAxis", dynlib: LibName.}
   # The hat indices start at index 0.
-proc JoystickGetHat*(joystick: PJoystick, hat: int): UInt8{.cdecl, 
+proc JoystickGetHat*(joystick: PJoystick, hat: int): byte{.cdecl, 
     importc: "SDL_JoystickGetHat", dynlib: LibName.}
   # Get the ball axis change since the last poll
   #  This returns 0, or -1 if you passed it invalid parameters.
@@ -1661,7 +1627,7 @@ proc JoystickGetBall*(joystick: PJoystick, ball: int, dx: var int, dy: var int):
     cdecl, importc: "SDL_JoystickGetBall", dynlib: LibName.}
   # Get the current state of a button on a joystick
   #  The button indices start at index 0.
-proc JoystickGetButton*(joystick: PJoystick, Button: int): UInt8{.cdecl, 
+proc JoystickGetButton*(joystick: PJoystick, Button: int): byte{.cdecl, 
     importc: "SDL_JoystickGetButton", dynlib: LibName.}
   # Close a joystick previously opened with SDL_JoystickOpen()
 proc JoystickClose*(joystick: PJoystick){.cdecl, importc: "SDL_JoystickClose", 
@@ -1685,7 +1651,7 @@ proc PumpEvents*(){.cdecl, importc: "SDL_PumpEvents", dynlib: LibName.}
   #  This function returns the number of events actually stored, or -1
   #  if there was an error.  This function is thread-safe.
 proc PeepEvents*(events: PEvent, numevents: int, action: Teventaction, 
-                 mask: UInt32): int{.cdecl, importc: "SDL_PeepEvents", 
+                 mask: int32): int{.cdecl, importc: "SDL_PeepEvents", 
                                      dynlib: LibName.}
   # Polls for currently pending events, and returns 1 if there are any pending
   #   events, or 0 if there are none available.  If 'event' is not NULL, the next
@@ -1725,7 +1691,7 @@ proc GetEventFilter*(): TEventFilter{.cdecl, importc: "SDL_GetEventFilter",
   #  If 'state' is set to SDL_ENABLE, that event will be processed normally.
   #  If 'state' is set to SDL_QUERY, SDL_EventState() will return the
   #  current processing state of the specified event.
-proc EventState*(theType: UInt8, state: int): UInt8{.cdecl, 
+proc EventState*(theType: byte, state: int): byte{.cdecl, 
     importc: "SDL_EventState", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # Version Routines
@@ -1761,7 +1727,7 @@ proc Linked_Version*(): Pversion{.cdecl, importc: "SDL_Linked_Version",
   #  If you use both sound and video in your application, you need to call
   #  SDL_Init() before opening the sound device, otherwise under Win32 DirectX,
   #  you won't be able to set full-screen display modes.
-proc VideoInit*(driver_name: cstring, flags: UInt32): int{.cdecl, 
+proc VideoInit*(driver_name: cstring, flags: int32): int{.cdecl, 
     importc: "SDL_VideoInit", dynlib: LibName.}
 proc VideoQuit*(){.cdecl, importc: "SDL_VideoQuit", dynlib: LibName.}
   # This function fills the given character buffer with the name of the
@@ -1790,7 +1756,7 @@ proc GetVideoInfo*(): PVideoInfo{.cdecl, importc: "SDL_GetVideoInfo",
   #
   #  The arguments to SDL_VideoModeOK() are the same ones you would pass to
   #  SDL_SetVideoMode()
-proc VideoModeOK*(width, height, bpp: int, flags: UInt32): int{.cdecl, 
+proc VideoModeOK*(width, height, bpp: int, flags: int32): int{.cdecl, 
     importc: "SDL_VideoModeOK", importc: "SDL_VideoModeOK", dynlib: LibName.}
   # Return a pointer to an array of available screen dimensions for the
   #  given format and video flags, sorted largest to smallest.  Returns
@@ -1799,7 +1765,7 @@ proc VideoModeOK*(width, height, bpp: int, flags: UInt32): int{.cdecl,
   #
   #  if 'format' is NULL, the mode list will be for the format given
   #  by SDL_GetVideoInfo( ) - > vfmt
-proc ListModes*(format: PPixelFormat, flags: UInt32): PPSDL_Rect{.cdecl, 
+proc ListModes*(format: PPixelFormat, flags: int32): PPSDL_Rect{.cdecl, 
     importc: "SDL_ListModes", dynlib: LibName.}
   # Set up a video mode with the specified width, height and bits-per-pixel.
   #
@@ -1842,7 +1808,7 @@ proc ListModes*(format: PPixelFormat, flags: UInt32): PPSDL_Rect{.cdecl,
   #  applications that redraw the entire screen on every update.
   #
   #  This function returns the video framebuffer surface, or NULL if it fails.
-proc SetVideoMode*(width, height, bpp: int, flags: UInt32): PSurface{.cdecl, 
+proc SetVideoMode*(width, height, bpp: int, flags: int32): PSurface{.cdecl, 
     importc: "SDL_SetVideoMode", dynlib: LibName.}
   # Makes sure the given list of rectangles is updated on the given screen.
   #  If 'x', 'y', 'w' and 'h' are all 0, SDL_UpdateRect will update the entire
@@ -1850,7 +1816,7 @@ proc SetVideoMode*(width, height, bpp: int, flags: UInt32): PSurface{.cdecl,
   #  These functions should not be called while 'screen' is locked.
 proc UpdateRects*(screen: PSurface, numrects: int, rects: PRect){.cdecl, 
     importc: "SDL_UpdateRects", dynlib: LibName.}
-proc UpdateRect*(screen: PSurface, x, y: SInt32, w, h: UInt32){.cdecl, 
+proc UpdateRect*(screen: PSurface, x, y: int32, w, h: int32){.cdecl, 
     importc: "SDL_UpdateRect", dynlib: LibName.}
   # On hardware that supports double-buffering, this function sets up a flip
   #  and returns.  The hardware will wait for vertical retrace, and then swap
@@ -1923,17 +1889,17 @@ proc SetPalette*(surface: PSurface, flags: int, colors: PColor, firstcolor: int,
                  ncolors: int): int{.cdecl, importc: "SDL_SetPalette", 
                                      dynlib: LibName.}
   # Maps an RGB triple to an opaque pixel value for a given pixel format
-proc MapRGB*(format: PPixelFormat, r: UInt8, g: UInt8, b: UInt8): UInt32{.cdecl, 
+proc MapRGB*(format: PPixelFormat, r: byte, g: byte, b: byte): int32{.cdecl, 
     importc: "SDL_MapRGB", dynlib: LibName.}
   # Maps an RGBA quadruple to a pixel value for a given pixel format
-proc MapRGBA*(format: PPixelFormat, r: UInt8, g: UInt8, b: UInt8, a: UInt8): UInt32{.
+proc MapRGBA*(format: PPixelFormat, r: byte, g: byte, b: byte, a: byte): int32{.
     cdecl, importc: "SDL_MapRGBA", dynlib: LibName.}
   # Maps a pixel value into the RGB components for a given pixel format
-proc GetRGB*(pixel: UInt32, fmt: PPixelFormat, r: PUInt8, g: PUInt8, b: PUInt8){.
+proc GetRGB*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr byte){.
     cdecl, importc: "SDL_GetRGB", dynlib: LibName.}
   # Maps a pixel value into the RGBA components for a given pixel format
-proc GetRGBA*(pixel: UInt32, fmt: PPixelFormat, r: PUInt8, g: PUInt8, b: PUInt8, 
-              a: PUInt8){.cdecl, importc: "SDL_GetRGBA", dynlib: LibName.}
+proc GetRGBA*(pixel: int32, fmt: PPixelFormat, r: ptr byte, g: ptr byte, b: ptr byte, 
+              a: ptr byte){.cdecl, importc: "SDL_GetRGBA", dynlib: LibName.}
   # Allocate and free an RGB surface (must be called after SDL_SetVideoMode)
   #  If the depth is 4 or 8 bits, an empty palette is allocated for the surface.
   #  If the depth is greater than 8 bits, the pixel format is set using the
@@ -1966,13 +1932,13 @@ proc GetRGBA*(pixel: UInt32, fmt: PPixelFormat, r: PUInt8, g: PUInt8, b: PUInt8,
   #  will be set in the flags member of the returned surface.  If for some
   #  reason the surface could not be placed in video memory, it will not have
   #  the SDL_HWSURFACE flag set, and will be created in system memory instead.
-proc AllocSurface*(flags: UInt32, width, height, depth: int, 
-                   RMask, GMask, BMask, AMask: UInt32): PSurface
-proc CreateRGBSurface*(flags: UInt32, width, height, depth: int, 
-                       RMask, GMask, BMask, AMask: UInt32): PSurface{.cdecl, 
+proc AllocSurface*(flags: int32, width, height, depth: int, 
+                   RMask, GMask, BMask, AMask: int32): PSurface
+proc CreateRGBSurface*(flags: int32, width, height, depth: int, 
+                       RMask, GMask, BMask, AMask: int32): PSurface{.cdecl, 
     importc: "SDL_CreateRGBSurface", dynlib: LibName.}
 proc CreateRGBSurfaceFrom*(pixels: Pointer, width, height, depth, pitch: int, 
-                           RMask, GMask, BMask, AMask: UInt32): PSurface{.cdecl, 
+                           RMask, GMask, BMask, AMask: int32): PSurface{.cdecl, 
     importc: "SDL_CreateRGBSurfaceFrom", dynlib: LibName.}
 proc FreeSurface*(surface: PSurface){.cdecl, importc: "SDL_FreeSurface", 
                                       dynlib: LibName.}
@@ -2019,7 +1985,7 @@ proc SaveBMP*(surface: PSurface, filename: cstring): int
   #  and removes RLE acceleration if absent.
   #  If 'flag' is 0, this function clears any current color key.
   #  This function returns 0, or -1 if there was an error.
-proc SetColorKey*(surface: PSurface, flag, key: UInt32): int{.cdecl, 
+proc SetColorKey*(surface: PSurface, flag, key: int32): int{.cdecl, 
     importc: "SDL_SetColorKey", dynlib: LibName.}
   # This function sets the alpha value for the entire surface, as opposed to
   #  using the alpha component of each pixel. This value measures the range
@@ -2032,7 +1998,7 @@ proc SetColorKey*(surface: PSurface, flag, key: UInt32): int{.cdecl,
   #  If 'flag' is SDL_SRCALPHA, alpha blending is enabled for the surface.
   #  OR:ing the flag with SDL_RLEACCEL requests RLE acceleration for the
   #  surface; if SDL_RLEACCEL is not specified, the RLE accel will be removed.
-proc SetAlpha*(surface: PSurface, flag: UInt32, alpha: UInt8): int{.cdecl, 
+proc SetAlpha*(surface: PSurface, flag: int32, alpha: byte): int{.cdecl, 
     importc: "SDL_SetAlpha", dynlib: LibName.}
   # Sets the clipping rectangle for the destination surface in a blit.
   #
@@ -2061,7 +2027,7 @@ proc GetClipRect*(surface: PSurface, rect: PRect){.cdecl,
   #  surface.
   #
   #  This function is used internally by SDL_DisplayFormat().
-proc ConvertSurface*(src: PSurface, fmt: PPixelFormat, flags: UInt32): PSurface{.
+proc ConvertSurface*(src: PSurface, fmt: PPixelFormat, flags: int32): PSurface{.
     cdecl, importc: "SDL_ConvertSurface", dynlib: LibName.}
   #
   #  This performs a fast blit from the source surface to the destination
@@ -2148,7 +2114,7 @@ proc LowerBlit*(src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): i
   #  The color should be a pixel of the format used by the surface, and
   #  can be generated by the SDL_MapRGB() function.
   #  This function returns 0 on success, or -1 on error.
-proc FillRect*(dst: PSurface, dstrect: PRect, color: UInt32): int{.cdecl, 
+proc FillRect*(dst: PSurface, dstrect: PRect, color: int32): int{.cdecl, 
     importc: "SDL_FillRect", dynlib: LibName.}
   # This function takes a surface and copies it to a new surface of the
   #  pixel format and colors of the video framebuffer, suitable for fast
@@ -2180,7 +2146,7 @@ proc DisplayFormatAlpha*(surface: PSurface): PSurface{.cdecl,
   #  Calling the returned surface an overlay is something of a misnomer because
   #  the contents of the display surface underneath the area where the overlay
   #  is shown is undefined - it may be overwritten with the converted YUV data.
-proc CreateYUVOverlay*(width: int, height: int, format: UInt32, 
+proc CreateYUVOverlay*(width: int, height: int, format: int32, 
                        display: PSurface): POverlay{.cdecl, 
     importc: "SDL_CreateYUVOverlay", dynlib: LibName.}
   # Lock an overlay for direct access, and unlock it when you are done
@@ -2246,7 +2212,7 @@ proc WM_SetCaption*(title: cstring, icon: cstring){.cdecl,
   #  This function must be called before the first call to SDL_SetVideoMode().
   #  It takes an icon surface, and a mask in MSB format.
   #  If 'mask' is NULL, the entire icon surface will be used as the icon.
-proc WM_SetIcon*(icon: PSurface, mask: UInt8){.cdecl, importc: "SDL_WM_SetIcon", 
+proc WM_SetIcon*(icon: PSurface, mask: byte){.cdecl, importc: "SDL_WM_SetIcon", 
     dynlib: LibName.}
   # This function iconifies the window, and returns 1 if it succeeded.
   #  If the function succeeds, it generates an SDL_APPACTIVE loss event.
@@ -2280,13 +2246,13 @@ proc WM_GrabInput*(mode: TGrabMode): TGrabMode{.cdecl,
   #  The current button state is returned as a button bitmask, which can
   #  be tested using the SDL_BUTTON(X) macros, and x and y are set to the
   #  current mouse cursor position.  You can pass NULL for either x or y.
-proc GetMouseState*(x: var int, y: var int): UInt8{.cdecl, 
+proc GetMouseState*(x: var int, y: var int): byte{.cdecl, 
     importc: "SDL_GetMouseState", dynlib: LibName.}
   # Retrieve the current state of the mouse.
   #  The current button state is returned as a button bitmask, which can
   #  be tested using the SDL_BUTTON(X) macros, and x and y are set to the
   #  mouse deltas since the last call to SDL_GetRelativeMouseState().
-proc GetRelativeMouseState*(x: var int, y: var int): UInt8{.cdecl, 
+proc GetRelativeMouseState*(x: var int, y: var int): byte{.cdecl, 
     importc: "SDL_GetRelativeMouseState", dynlib: LibName.}
   # Set the position of the mouse cursor (generates a mouse motion event)
 proc WarpMouse*(x, y: UInt16){.cdecl, importc: "SDL_WarpMouse", dynlib: LibName.}
@@ -2301,7 +2267,7 @@ proc WarpMouse*(x, y: UInt16){.cdecl, importc: "SDL_WarpMouse", dynlib: LibName.
   #   1     0       Inverted color if possible, black if not.
   #
   #  Cursors created with this function must be freed with SDL_FreeCursor().
-proc CreateCursor*(data, mask: PUInt8, w, h, hot_x, hot_y: int): PCursor{.cdecl, 
+proc CreateCursor*(data, mask: ptr byte, w, h, hot_x, hot_y: int): PCursor{.cdecl, 
     importc: "SDL_CreateCursor", dynlib: LibName.}
   # Set the currently active cursor to the specified one.
   #  If the cursor is currently visible, the change will be immediately
@@ -2341,9 +2307,9 @@ proc GetKeyRepeat*(delay: PInteger, interval: PInteger){.cdecl,
   #  Returns an array of keystates, indexed by the SDLK_* syms.
   #  Used:
   #
-  #  UInt8 *keystate = SDL_GetKeyState(NULL);
+  #  byte *keystate = SDL_GetKeyState(NULL);
   #  if ( keystate[SDLK_RETURN] ) ... <RETURN> is pressed
-proc GetKeyState*(numkeys: PInt): PUInt8{.cdecl, importc: "SDL_GetKeyState", 
+proc GetKeyState*(numkeys: pointer): ptr byte{.cdecl, importc: "SDL_GetKeyState", 
     dynlib: LibName.}
   # Get the current key modifier state
 proc GetModState*(): TMod{.cdecl, importc: "SDL_GetModState", dynlib: LibName.}
@@ -2361,7 +2327,7 @@ proc GetKeyName*(key: TKey): cstring{.cdecl, importc: "SDL_GetKeyName",
   #  bitwise combination of SDL_APPMOUSEFOCUS, SDL_APPINPUTFOCUS, and
   #  SDL_APPACTIVE.  If SDL_APPACTIVE is set, then the user is able to
   #  see your application, otherwise it has been iconified or disabled.
-proc GetAppState*(): UInt8{.cdecl, importc: "SDL_GetAppState", dynlib: LibName.}
+proc GetAppState*(): byte{.cdecl, importc: "SDL_GetAppState", dynlib: LibName.}
   # Mutex functions
   # Create a mutex, initialized unlocked
 proc CreateMutex*(): PMutex{.cdecl, importc: "SDL_CreateMutex", dynlib: LibName.}
@@ -2378,7 +2344,7 @@ proc DestroyMutex*(mutex: Pmutex){.cdecl, importc: "SDL_DestroyMutex",
   # Semaphore functions
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Create a semaphore, initialized with value, returns NULL on failure.
-proc CreateSemaphore*(initial_value: UInt32): PSem{.cdecl, 
+proc CreateSemaphore*(initial_value: int32): PSem{.cdecl, 
     importc: "SDL_CreateSemaphore", dynlib: LibName.}
   # Destroy a semaphore
 proc DestroySemaphore*(sem: Psem){.cdecl, importc: "SDL_DestroySemaphore", 
@@ -2396,13 +2362,13 @@ proc SemTryWait*(sem: Psem): int{.cdecl, importc: "SDL_SemTryWait",
   #   the allotted time, and -1 on error.
   #   On some platforms this function is implemented by looping with a delay
   #   of 1 ms, and so should be avoided if possible.
-proc SemWaitTimeout*(sem: Psem, ms: UInt32): int{.cdecl, 
+proc SemWaitTimeout*(sem: Psem, ms: int32): int{.cdecl, 
     importc: "SDL_SemWaitTimeout", dynlib: LibName.}
   # Atomically increases the semaphore's count (not blocking), returns 0,
   #   or -1 on error.
 proc SemPost*(sem: Psem): int{.cdecl, importc: "SDL_SemPost", dynlib: LibName.}
   # Returns the current count of the semaphore
-proc SemValue*(sem: Psem): UInt32{.cdecl, importc: "SDL_SemValue", 
+proc SemValue*(sem: Psem): int32{.cdecl, importc: "SDL_SemValue", 
                                    dynlib: LibName.}
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Condition variable functions
@@ -2430,19 +2396,19 @@ proc CondWait*(cond: Pcond, mut: Pmutex): int{.cdecl, importc: "SDL_CondWait",
   #  signaled in the allotted time, and -1 on error.
   #  On some platforms this function is implemented by looping with a delay
   #  of 1 ms, and so should be avoided if possible.
-proc CondWaitTimeout*(cond: Pcond, mut: Pmutex, ms: UInt32): int{.cdecl, 
+proc CondWaitTimeout*(cond: Pcond, mut: Pmutex, ms: int32): int{.cdecl, 
     importc: "SDL_CondWaitTimeout", dynlib: LibName.}
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Condition variable functions
   # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   # Create a thread
-proc CreateThread*(fn: PInt, data: Pointer): PThread{.cdecl, 
+proc CreateThread*(fn, data: Pointer): PThread{.cdecl, 
     importc: "SDL_CreateThread", dynlib: LibName.}
   # Get the 32-bit thread identifier for the current thread
-proc ThreadID*(): UInt32{.cdecl, importc: "SDL_ThreadID", dynlib: LibName.}
+proc ThreadID*(): int32{.cdecl, importc: "SDL_ThreadID", dynlib: LibName.}
   # Get the 32-bit thread identifier for the specified thread,
   #  equivalent to SDL_ThreadID() if the specified thread is NULL.
-proc GetThreadID*(thread: PThread): UInt32{.cdecl, importc: "SDL_GetThreadID", 
+proc GetThreadID*(thread: PThread): int32{.cdecl, importc: "SDL_GetThreadID", 
     dynlib: LibName.}
   # Wait for a thread to finish.
   #  The return code for the thread function is placed in the area
@@ -2481,7 +2447,7 @@ proc LoadFunction*(handle: Pointer, name: cstring): Pointer{.cdecl,
 proc UnloadObject*(handle: Pointer){.cdecl, importc: "SDL_UnloadObject", 
                                      dynlib: LibName.}
   #------------------------------------------------------------------------------
-proc Swap32*(D: Uint32): Uint32
+proc Swap32*(D: int32): int32
   # Bitwise Checking functions
 proc IsBitOn*(value: int, bit: int8): bool
 proc TurnBitOn*(value: int, bit: int8): int
@@ -2509,7 +2475,7 @@ proc RWWrite(context: PRWops, theptr: Pointer, size: int, n: int): int =
 proc RWClose(context: PRWops): int = 
   Result = context.closeFile(context)
 
-proc LoadWAV(filename: cstring, spec: PAudioSpec, audio_buf: PUInt8, 
+proc LoadWAV(filename: cstring, spec: PAudioSpec, audio_buf: ptr byte, 
              audiolen: PUInt32): PAudioSpec = 
   Result = LoadWAV_RW(RWFromFile(filename, "rb"), 1, spec, audio_buf, audiolen)
 
@@ -2551,8 +2517,8 @@ proc SaveBMP(surface: PSurface, filename: cstring): int =
 proc BlitSurface(src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): int = 
   Result = UpperBlit(src, srcrect, dst, dstrect)
 
-proc AllocSurface(flags: UInt32, width, height, depth: int, 
-                  RMask, GMask, BMask, AMask: UInt32): PSurface = 
+proc AllocSurface(flags: int32, width, height, depth: int, 
+                  RMask, GMask, BMask, AMask: int32): PSurface = 
   Result = CreateRGBSurface(flags, width, height, depth, RMask, GMask, BMask, 
                             AMask)
 
@@ -2569,7 +2535,7 @@ proc UnlockMutex(mutex: Pmutex): int =
 proc BUTTON(Button: int): int = 
   Result = PRESSED shl (Button - 1)
 
-proc Swap32(D: Uint32): Uint32 = 
+proc Swap32(D: int32): int32 = 
   Result = ((D shl 24) or ((D shl 8) and 0x00FF0000) or
       ((D shr 8) and 0x0000FF00) or (D shr 24))
 
