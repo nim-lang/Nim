@@ -444,8 +444,7 @@ proc addf(s: var string, formatstr: string, a: openarray[string]) =
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '#':
-        if not isNil(a[num]): 
-          add s, a[num]
+        add s, a[num]
         inc i, 2
         inc num
       of '$':

@@ -29,9 +29,7 @@ type
     data: string
 
 proc myExec(cmd: string): string =
-  #echo("Executing: " & cmd)
   result = osproc.execProcess(cmd)
-  #echo("Received: " & result)
 
 var
   pegLineError = peg"{[^(]*} '(' {\d+} ', ' \d+ ') Error:' \s* {.*}"
@@ -155,7 +153,6 @@ proc compile(r: var TResults, pattern, options: string) =
     var t = extractFilename(test)
     inc(r.total)
     var given = callCompiler(test, options)
-    echo given.msg, "##", given.err
     r.addResult(t, "", given.msg, not given.err)
     if not given.err: inc(r.passed)
   
@@ -187,7 +184,7 @@ for i in 1.. paramCount():
   add(options, " ")
   add(options, paramStr(i))
 
-#reject(rejectRes, "tests/reject", options)
+reject(rejectRes, "tests/reject", options)
 #compile(compileRes, "tests/accept/compile/t*.nim", options)
 compile(compileRes, "examples/*.nim", options)
 #compile(compileRes, "examples/gtk/*.nim", options)
