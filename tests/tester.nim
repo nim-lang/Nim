@@ -14,6 +14,7 @@ import
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
+  resultsFile = "testresults.html"
 
 type
   TMsg = tuple[
@@ -25,7 +26,7 @@ type
   TResult = tuple[test, expected, given: string, success: bool]
   TResults = object
     total, passed: int
-    data: seq[TResult]
+    data: string
 
 proc myExec(cmd: string): string =
   #echo("Executing: " & cmd)
@@ -64,7 +65,7 @@ proc callCompiler(filename, options: string): TMsg =
   elif s =~ pegSuccess:
     result.err = false
 
-proc setupCvsParser(cvsFile: string): TCsvParser = 
+proc setupCvsParser(csvFile: string): TCsvParser = 
   var s = newFileStream(csvFile, fmRead)
   if s == nil: quit("cannot open the file" & csvFile)
   result.open(s, csvFile, separator=';', skipInitialSpace=true)
@@ -84,27 +85,34 @@ proc parseRunData(dir: string): seq[TOutp] =
   close(p)
 
 proc findSpec[T](specs: seq[T], filename: string): int = 
-  for s in items(specs): 
-    if s.file == filename: return
+  while result < specs.len:
+    if specs[result].file == filename: return
     inc(result)
   quit("cannot find spec for file: " & filename)
 
 proc initResults: TResults = 
   result.total = 0
   result.passed = 0
-  result.data = @[]
+  result.data = ""
 
 proc colorBool(b: bool): string =
-  if b: result = "<span color:\"green\">yes</span>" 
-  else: result = "<span color:\"red\">no</span>"
+  if b: result = "<span style=\"color:green\">yes</span>" 
+  else: result = "<span style=\"color:red\">no</span>"
+
+const
+  TableHeader = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
+                "<td>Given</td><td>Success</td></tr>\n"
+  TableFooter = "</table>\n"
 
 proc `$`(r: TResults): string = 
-  result = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
-           "<td>Given</td><td>Success</td></tr>\n"
-  for test, expected, given, success in items(r.data):
-    result.add("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n" % [
-      test, expected, given, success.colorBool])
-  result.add("</table>\n")
+  result = TableHeader
+  result.add(r.data)
+  result.add(TableFooter)
+
+proc addResult(r: var TResults, test, expected, given: string,
+               success: bool) =
+  r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
+    test, expected, given, success.colorBool])
 
 proc listResults(reject, compile, run: TResults) =
   var s = "<html>"
@@ -116,20 +124,20 @@ proc listResults(reject, compile, run: TResults) =
   s.add($run)
   s.add("</html>")
   var outp: TFile
-  if open(outp, "testresults.html", fmWrite):
-    write(outp, )
+  if open(outp, resultsFile, fmWrite):
+    write(outp, s)
     close(outp)
 
 proc cmpMsgs(r: var TResults, expected, given: TMsg, test: string) = 
   inc(r.total)
-  if strip(expected.msg) notin strip(given.msg): 
-    r.data.add((test, expected.msg, given.msg, false))
+  if strip(expected.msg) notin strip(given.msg):
+    r.addResult(test, expected.msg, given.msg, false)
   elif expected.file != given.file:
-    r.data.add((test, expected.file, given.file, false))
+    r.addResult(test, expected.file, given.file, false)
   elif expected.line != given.line: 
-    r.data.add((test, $expected.line, $given.line, false))
+    r.addResult(test, $expected.line, $given.line, false)
   else:
-    r.data.add((test, expected.msg, given.msg, true))
+    r.addResult(test, expected.msg, given.msg, true)
     inc(r.passed)
 
 proc reject(r: var TResults, dir, options: string) =  
@@ -147,7 +155,8 @@ proc compile(r: var TResults, pattern, options: string) =
     var t = extractFilename(test)
     inc(r.total)
     var given = callCompiler(test, options)
-    r.data.add((t, "", given.msg, not given.err))
+    echo given.msg, "##", given.err
+    r.addResult(t, "", given.msg, not given.err)
     if not given.err: inc(r.passed)
   
 proc run(r: var TResults, dir, options: string) = 
@@ -157,17 +166,17 @@ proc run(r: var TResults, dir, options: string) =
     inc(r.total)
     var given = callCompiler(test, options)
     if given.err:
-      r.data.add((t, "", given.msg, not given.err))
+      r.addResult(t, "", given.msg, not given.err)
     else:
       var exeFile = changeFileExt(test, ExeExt)
       var expected = specs[findSpec(specs, t)]
       if existsFile(exeFile):
         var buf = myExec(exeFile)
-        var success = strip(buf) == strip(spec.outp)
+        var success = strip(buf) == strip(expected.outp)
         if success: inc(r.passed)
-        r.data.add((t, spec.outp, buf, success))
+        r.addResult(t, expected.outp, buf, success)
       else:
-        r.data.add((t, spec.outp, "executable not found", false))
+        r.addResult(t, expected.outp, "executable not found", false)
 
 var options = ""
 var rejectRes = initResults()
@@ -178,9 +187,10 @@ for i in 1.. paramCount():
   add(options, " ")
   add(options, paramStr(i))
 
-reject(rejectRes, "tests/reject", options)
-compile(compileRes, "tests/accept/compile/t*.nim", options)
+#reject(rejectRes, "tests/reject", options)
+#compile(compileRes, "tests/accept/compile/t*.nim", options)
 compile(compileRes, "examples/*.nim", options)
-compile(compileRes, "examples/gtk/*.nim", options)
-run(runRes, "tests/accept/run", options)
-
+#compile(compileRes, "examples/gtk/*.nim", options)
+#run(runRes, "tests/accept/run", options)
+listResults(rejectRes, compileRes, runRes)
+openDefaultBrowser(resultsFile)
