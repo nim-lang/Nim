@@ -955,7 +955,7 @@ type
                               #   removed from the queue.
                               #   This function returns the number of events actually stored, or -1
                               #   if there was an error.  This function is thread-safe.
-    scancode*: byte          # hardware specific scancode
+    scancode*: byte           # hardware specific scancode
     sym*: TKey                # SDL virtual keysym
     modifier*: TMod           # current key modifiers
     unicode*: UInt16          # translated character
