@@ -256,7 +256,66 @@ proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
     for j in r.x..min(sur.s.w, r.x+r.width-1)-1:
       setPix(video, pitch, j, i, col)
 
-proc trunc(x: float): float {.importc: "trunc", nodecl.}
+
+proc Plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
+  var video = cast[PPixels](sur.s.pixels)
+  var pitch = sur.s.pitch div ColSize
+  
+  setPix(video, pitch, CX+X, CY+Y, col)
+  setPix(video, pitch, CX-X, CY+Y, col)
+  setPix(video, pitch, CX-X, CY-Y, col)
+  setPix(video, pitch, CX+X, CY-Y, col)
+
+proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural, col: TColor) =
+  var 
+    X, Y: Natural
+    XChange, YChange: Natural
+    EllipseError: Natural
+    TwoASquare, TwoBSquare: Natural
+    StoppingX, StoppingY: Natural
+    
+  TwoASquare = 2 * XRadius * XRadius
+  TwoBSquare = 2 * YRadius * YRadius
+  X = XRadius
+  Y = 0
+  XChange = YRadius * YRadius * (1 - 2 * XRadius)
+  YChange = XRadius * XRadius
+  EllipseError = 0
+  StoppingX = TwoBSquare * XRadius
+  StoppingY = 0
+  
+  while StoppingX >=  StoppingY: # 1st set of points, y` > - 1
+    sur.Plot4EllipsePoints(CX, CY, X, Y, col)
+    inc(Y)
+    inc(StoppingY, TwoASquare)
+    inc(EllipseError, YChange)
+    inc(YChange, TwoASquare)
+    if (2 * EllipseError + XChange) > 0 :
+      dec(x)
+      dec(StoppingX, TwoBSquare)
+      inc(EllipseError, XChange)
+      inc(XChange, TwoBSquare)
+      
+  # 1st point set is done; start the 2nd set of points
+  X = 0
+  Y = YRadius
+  XChange = YRadius * YRadius
+  YChange = XRadius * XRadius * (1 - 2 * YRadius)
+  EllipseError = 0
+  StoppingX = 0
+  StoppingY = TwoASquare * YRadius
+  while StoppingX <= StoppingY:
+    sur.Plot4EllipsePoints(CX, CY, X, Y, col)
+    inc(X)
+    inc(StoppingX, TwoBSquare)
+    inc(EllipseError, XChange)
+    inc(XChange,TwoBSquare)
+    if (2 * EllipseError + YChange) > 0:
+      dec(Y)
+      dec(StoppingY, TwoASquare)
+      inc(EllipseError, YChange)
+      inc(YChange,TwoASquare)
+  
 
 proc plot(sur: PSurface, x, y, c: float, color: TColor) =
   var video = cast[PPixels](sur.s.pixels)
@@ -265,7 +324,7 @@ proc plot(sur: PSurface, x, y, c: float, color: TColor) =
 
   setPix(video, pitch, x.toInt(), y.toInt(), 
          pixColor.intensity(1.0 - c) + color.intensity(c))
-
+import math
 proc ipart(x: float): float =
   return x.trunc()
 proc fpart(x: float): float =
@@ -273,7 +332,7 @@ proc fpart(x: float): float =
 proc rfpart(x: float): float =
   return 1.0 - fpart(x)
 
-import math
+
 
 proc drawLineAA(sur: PSurface, p1: TPoint, p2: TPoint, color: TColor) =
   ## Draws a line from ``p1`` to ``p2``, using the Xiaolin Wu's line algorithm
@@ -321,8 +380,9 @@ when isMainModule:
   var surf = newSurface(800, 600)
   var r: TRect = (0, 0, 900, 900)
   surf.fillRect(r, colWhite)
-  surf.drawLineAA((500, 300), (200, 200), colBlack)
+  surf.drawLineAA((500, 300), (200, 270), colTan)
   
+  surf.drawEllipse(400, 300, 415, 200, colSeaGreen)
   
   surf.drawHorLine(5, 5, 900, colRed)
   surf.drawVerLine(5, 60, 800, colRed)

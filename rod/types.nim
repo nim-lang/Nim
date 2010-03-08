@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -91,15 +91,14 @@ proc InvalidGenericInst(f: PType): bool =
   result = (f.kind == tyGenericInst) and (lastSon(f) == nil)
 
 proc inheritanceDiff(a, b: PType): int = 
-  var x, y: PType
   # conversion to superclass?
-  x = a
+  var x = a
   result = 0
   while (x != nil): 
     if x.id == b.id: return 
     x = x.sons[0]
     dec(result)
-  y = b
+  var y = b
   result = 0
   while (y != nil): 
     if y.id == a.id: return 
@@ -130,11 +129,10 @@ proc isCompatibleToCString(a: PType): bool =
       result = true
   
 proc getProcHeader(sym: PSym): string = 
-  var n, p: PNode
   result = sym.name.s & '('
-  n = sym.typ.n
+  var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1): 
-    p = n.sons[i]
+    var p = n.sons[i]
     if (p.kind != nkSym): InternalError("getProcHeader")
     add(result, p.sym.name.s)
     add(result, ": ")
@@ -194,8 +192,7 @@ proc isOrdinalType(t: PType): bool =
       (t.Kind in {tyRange, tyOrdinal}) and isOrdinalType(t.sons[0])
 
 proc enumHasWholes(t: PType): bool = 
-  var b: PType
-  b = t
+  var b = t
   while b.kind == tyRange: b = b.sons[0]
   result = (b.Kind == tyEnum) and (tfEnumHasWholes in b.flags)
 
@@ -235,8 +232,11 @@ proc IterOverType(t: PType, iter: TTypeIter, closure: PObject): bool =
   IntSetInit(marker)
   result = iterOverTypeAux(marker, t, iter, closure)
 
-proc searchTypeForAux(t: PType, predicate: TTypePredicate, marker: var TIntSet): bool
-proc searchTypeNodeForAux(n: PNode, p: TTypePredicate, marker: var TIntSet): bool = 
+proc searchTypeForAux(t: PType, predicate: TTypePredicate, 
+                      marker: var TIntSet): bool
+
+proc searchTypeNodeForAux(n: PNode, p: TTypePredicate, 
+                          marker: var TIntSet): bool = 
   result = false
   case n.kind
   of nkRecList: 
@@ -424,10 +424,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc", 
       "pointer", "OpenArray[$1]", "string", "CString", "Forward", "int", "int8", 
       "int16", "int32", "int64", "float", "float32", "float64", "float128"]
-  var 
-    t: PType
-    prag: string
-  t = typ
+  var t = typ
   result = ""
   if t == nil: return 
   if (prefer == preferName) and (t.sym != nil): 
@@ -486,6 +483,7 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ')')
     if t.sons[0] != nil: add(result, ": " & TypeToString(t.sons[0]))
+    var prag: string
     if t.callConv != ccDefault: prag = CallingConvToStr[t.callConv]
     else: prag = ""
     if tfNoSideEffect in t.flags: 
@@ -668,11 +666,10 @@ proc sameTuple(a, b: PType, DistinctOf: bool): bool =
     result = false
   
 proc SameType(x, y: PType): bool = 
-  var a, b: PType
   if x == y: 
     return true
-  a = skipTypes(x, {tyGenericInst})
-  b = skipTypes(y, {tyGenericInst})
+  var a = skipTypes(x, {tyGenericInst})
+  var b = skipTypes(y, {tyGenericInst})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind: 
@@ -706,13 +703,12 @@ proc SameType(x, y: PType): bool =
     result = false
   
 proc equalOrDistinctOf(x, y: PType): bool = 
-  var a, b: PType
   if x == y: 
     return true
   if (x == nil) or (y == nil): 
     return false
-  a = skipTypes(x, {tyGenericInst})
-  b = skipTypes(y, {tyGenericInst})
+  var a = skipTypes(x, {tyGenericInst})
+  var b = skipTypes(y, {tyGenericInst})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind: 
