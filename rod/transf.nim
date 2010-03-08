@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -287,7 +287,10 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   var source = skipTypes(n.sons[1].typ, abstractVarRange)
   case dest.kind
   of tyInt..tyInt64, tyEnum, tyChar, tyBool: 
-    if (firstOrd(dest) <= firstOrd(source)) and
+    if not isOrdinalType(source):
+      # XXX int64 -> float conversion?
+      result = n
+    elif (firstOrd(dest) <= firstOrd(source)) and
         (lastOrd(source) <= lastOrd(dest)): 
       # BUGFIX: simply leave n as it is; we need a nkConv node,
       # but no range check:
