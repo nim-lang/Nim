@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -353,14 +353,12 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     of tyPointer: result = isEqual
     of tyNil: result = isSubtype
     of tyRef, tyPtr, tyProc, tyCString: result = isConvertible
-    else: 
-      nil
+    else: nil
   of tyString: 
     case a.kind
     of tyString: result = isEqual
     of tyNil: result = isSubtype
-    else: 
-      nil
+    else: nil
   of tyCString: 
     # conversion from string to cstring is automatic:
     case a.Kind
@@ -418,8 +416,8 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           idTablePut(mapping, f, concrete)
           result = isGeneric
       else: 
-        InternalError(f.sym.info, "has constraints: " & f.sym.name.s) # check 
-                                                                      # constraints:
+        InternalError(f.sym.info, "has constraints: " & f.sym.name.s) 
+        # check constraints:
         for i in countup(0, sonsLen(f) - 1): 
           if typeRel(mapping, f.sons[i], a) >= isSubtype: 
             concrete = concreteType(mapping, a)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,14 +43,24 @@ proc newStrNodeT(strVal: string, n: PNode): PNode =
   result.typ = n.typ
   result.info = n.info
 
-proc enumValToString(a: PNode): string = 
+proc ordinalValToString(a: PNode): string = 
+  # because $ has the param ordinal[T], `a` is not necessarily an enum, but an
+  # ordinal
   var x = getInt(a)
-  var n = skipTypes(a.typ, abstractInst).n
-  for i in countup(0, sonsLen(n) - 1): 
-    if n.sons[i].kind != nkSym: InternalError(a.info, "enumValToString")
-    var field = n.sons[i].sym
-    if field.position == x: return field.name.s
-  InternalError(a.info, "no symbol for ordinal value: " & $x)
+  
+  var t = skipTypes(a.typ, abstractRange)
+  case t.kind
+  of tyChar: 
+    result = $chr(int(x) and 0xff)
+  of tyEnum:
+    var n = t.n
+    for i in countup(0, sonsLen(n) - 1): 
+      if n.sons[i].kind != nkSym: InternalError(a.info, "ordinalValToString")
+      var field = n.sons[i].sym
+      if field.position == x: return field.name.s
+    InternalError(a.info, "no symbol for ordinal value: " & $x)
+  else:
+    result = $x
 
 proc evalOp(m: TMagic, n, a, b, c: PNode): PNode = 
   # b and c may be nil
@@ -180,7 +190,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mFloatToStr: result = newStrNodeT($(getFloat(a)), n)
   of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
   of mStrToStr: result = a
-  of mEnumToStr: result = newStrNodeT(enumValToString(a), n)
+  of mEnumToStr: result = newStrNodeT(ordinalValToString(a), n)
   of mArrToSeq: 
     result = copyTree(a)
     result.typ = n.typ
