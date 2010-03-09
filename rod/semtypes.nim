@@ -275,9 +275,8 @@ proc semBranchExpr(c: PContext, t: PNode, ex: var PNode) =
 
 proc SemCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
                    covered: var biggestInt) = 
-  var b: PNode
   for i in countup(0, sonsLen(branch) - 2): 
-    b = branch.sons[i]
+    var b = branch.sons[i]
     if b.kind == nkRange: 
       checkSonsLen(b, 2)
       semBranchExpr(c, t, b.sons[0])

@@ -136,6 +136,13 @@ proc semWhile(c: PContext, n: PNode): PNode =
   dec(c.p.nestedLoopCounter)
   closeScope(c.tab)
 
+proc toCover(t: PType): biggestInt = 
+  var t2 = skipTypes(t, abstractVarRange)
+  if t2.kind == tyEnum and enumHasWholes(t2): 
+    result = sonsLen(t2.n)
+  else:
+    result = lengthOrd(skipTypes(t, abstractVar))
+
 proc semCase(c: PContext, n: PNode): PNode = 
   # check selector:
   result = n
@@ -169,7 +176,7 @@ proc semCase(c: PContext, n: PNode): PNode =
       checkSonsLen(x, 1)
       x.sons[0] = semStmtScope(c, x.sons[0])
     else: illFormedAst(x)
-  if chckCovered and (covered != lengthOrd(n.sons[0].typ)): 
+  if chckCovered and (covered != toCover(n.sons[0].typ)): 
     liMessage(n.info, errNotAllCasesCovered)
   closeScope(c.tab)
 
