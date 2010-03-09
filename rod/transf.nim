@@ -191,7 +191,7 @@ proc newTupleAccess(tup: PNode, i: int): PNode =
 
 proc unpackTuple(c: PTransf, n, father: PNode) = 
   # XXX: BUG: what if `n` is an expression with side-effects?
-  for i in countup(0, sonsLen(n) - 1): 
+  for i in countup(0, sonsLen(c.transCon.forStmt) - 3): 
     addSon(father, newAsgnStmt(c, c.transCon.forStmt.sons[i], 
                                transform(c, newTupleAccess(n, i))))
 
@@ -439,8 +439,7 @@ proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym,
     case s.kind
     of skVar: found = not (sfGlobal in s.flags)
     of skTemp, skForVar, skParam: found = true
-    else: 
-      nil
+    else: nil
     if found and (owner.id != s.owner.id) and
         not IntSetContainsOrIncl(marked, s.id): 
       incl(s.flags, sfInClosure)

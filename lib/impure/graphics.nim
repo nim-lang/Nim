@@ -11,8 +11,9 @@
 ## implementation uses SDL but the interface is meant to support multiple
 ## backends some day. 
 
-import colors
+import colors, math
 from sdl import PSurface # Bug
+from sdl_ttf import OpenFont
 
 type
   TRect* = tuple[x, y, width, height: int]
@@ -22,6 +23,8 @@ type
   TSurface {.pure, final.} = object
     w, h: int
     s: sdl.PSurface
+  
+  ESDLError = object of EBase
   
 proc surfaceFinalizer(s: PSurface) = sdl.freeSurface(s.s)
   
@@ -35,8 +38,18 @@ proc newSurface*(width, height: int): PSurface =
    
   assert(not sdl.MustLock(result.s))
 
-#proc textBounds*(text: string): tuple[len, height: int]
-#proc drawText*(sur: PSurface, p: TPoint, text: string)
+proc newScreenSurface(width, height: int): PSurface =
+  ## Creates a new screen surface
+  new(result, surfaceFinalizer)
+  result.w = width
+  result.h = height
+  result.s = SDL.SetVideoMode(width, height, 0, 0)
+
+template withEvents(surf: PSurface, event: expr, actions: stmt): stmt =
+  while True:
+    var event: SDL.TEvent
+    if SDL.PollEvent(addr(event)) == 1:
+      actions
 
 proc writeToBMP*(sur: PSurface, filename: string) =
   ## Saves the contents of the surface `sur` to the file `filename` as a 
@@ -76,6 +89,91 @@ proc `[]=`*(sur: PSurface, p: TPoint, col: TColor) =
 
 #proc `[,]=`*(sur: PSurface, x, y: int, col: TColor) =
 #  setPixel(sur, x, y, col)
+
+proc blitSurface*(destSurf: PSurface, destRect: TRect, srcSurf: PSurface, srcRect: TRect) =
+  ## Merges ``srcSurf`` into ``destSurf``
+  var destTRect, srcTRect: SDL.TRect
+
+  destTRect.x = int16(destRect.x)
+  destTRect.y = int16(destRect.y)
+  destTRect.w = int16(destRect.width)
+  destTRect.h = int16(destRect.height)
+
+  srcTRect.x = int16(srcRect.x)
+  srcTRect.y = int16(srcRect.y)
+  srcTRect.w = int16(srcRect.width)
+  srcTRect.h = int16(srcRect.height)
+
+  if SDL.blitSurface(srcSurf.s, addr(srcTRect), destSurf.s, addr(destTRect)) != 0:
+    raise newException(ESDLError, $SDL.GetError())
+
+proc textBounds*(font: string, fontSize: int, 
+                 text: string): tuple[width, height: int] =
+  var fontFile = OpenFont(font, fontSize) # Open the font file
+  if fontFile == nil: raise newException(ESDLError, "Could not open font file")
+    
+  var w, h: cint
+  if sdl_ttf.SizeUTF8(fontFile, text, w, h) < 0:
+    raise newException(ESDLError, $SDL.GetError())
+  return (int(w), int(h))
+
+proc drawText*(sur: PSurface, p: TPoint, font: string, text: string,
+    fg: TColor = colBlack, fontSize: int = 9) =
+  ## Draws text with a transparent background, at location ``p``.
+  ## ``font`` specifies the path to the ttf file, 
+  ## ``fontSize`` specifies the font size in pt, and ``fg``
+  ## specifies the foreground color.
+  var fontFile = OpenFont(font, fontSize) # Open the font file
+  if fontFile == nil: raise newException(ESDLError, "Could not open font file")
+  
+  var textSur: PSurface # This surface will have the text drawn on it
+  new(textSur, surfaceFinalizer)
+  
+  var RGBfg = fg.extractRGB
+  
+  # Convert the colors.TColor to SDL.TColor
+  var SDLfg: SDL.TColor
+  SDLfg.r = toU8(RGBfg.r)
+  SDLfg.g = toU8(RGBfg.g)
+  SDLfg.b = toU8(RGBfg.b)
+  
+  # Render the text
+  textSur.s = sdl_ttf.RenderTextBlended(fontFile, text, SDLfg)
+  # Merge the text surface with sur
+  sur.blitSurface((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
+  # Free the surface
+  SDL.FreeSurface(sur.s)
+
+proc drawText*(sur: PSurface, p: TPoint, font: string, text: string,
+    bg: TColor, fg: TColor = colBlack, fontSize: int = 9) =
+  ## Draws text, at location ``p``, ``font`` specifies the path to 
+  ## the ttf file, ``fontSize`` specifies the font size in pt, and ``fg`` 
+  ## and ``bg`` specify the foreground and background colors.
+  var fontFile = OpenFont(font, fontSize) # Open the font file
+  if fontFile == nil: raise newException(ESDLError, "Could not open font file")
+  
+  var textSur: PSurface # This surface will have the text drawn on it
+  new(textSur, surfaceFinalizer)
+  
+  var RGBfg = fg.extractRGB
+  var RGBbg = bg.extractRGB
+  
+  # Convert the colors.TColor to SDL.TColor
+  var SDLfg: SDL.TColor
+  SDLfg.r = toU8(RGBfg.r)
+  SDLfg.g = toU8(RGBfg.g)
+  SDLfg.b = toU8(RGBfg.b)
+  var SDLbg: SDL.TColor
+  SDLbg.r = toU8(RGBbg.r)
+  SDLbg.g = toU8(RGBbg.g)
+  SDLbg.b = toU8(RGBbg.b)
+  
+  # Render the text
+  textSur.s = sdl_ttf.RenderTextShaded(fontFile, text, SDLfg, SDLbg)
+  # Merge the text surface with sur
+  sur.blitSurface((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
+  # Free the surface
+  SDL.FreeSurface(sur.s)
 
 proc drawCircle*(sur: PSurface, p: TPoint, r: Natural, color: TColor) =
   ## draws a circle with center `p` and radius `r` with the given color
@@ -247,7 +345,7 @@ proc drawRect*(sur: PSurface, r: TRect, color: TColor) =
       setPix(video, pitch, r.x + minW - 1, r.y + i, color) # Draw right side
     
 proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
-  ## draws and fills a rectancle.
+  ## draws and fills a rectangle.
   var video = cast[PPixels](sur.s.pixels)
   assert video != nil
   var pitch = sur.s.pitch div ColSize
@@ -256,17 +354,23 @@ proc fillRect*(sur: PSurface, r: TRect, col: TColor) =
     for j in r.x..min(sur.s.w, r.x+r.width-1)-1:
       setPix(video, pitch, j, i, col)
 
-
 proc Plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
   
-  setPix(video, pitch, CX+X, CY+Y, col)
-  setPix(video, pitch, CX-X, CY+Y, col)
-  setPix(video, pitch, CX-X, CY-Y, col)
-  setPix(video, pitch, CX+X, CY-Y, col)
+  if CX+X < sur.s.w and CY+Y < sur.s.h:
+    setPix(video, pitch, CX+X, CY+Y, col)
+  if CX-X < sur.s.w and CY+Y < sur.s.h:
+    setPix(video, pitch, CX-X, CY+Y, col)
+  if CX-X < sur.s.w and CY-Y < sur.s.h:
+    setPix(video, pitch, CX-X, CY-Y, col)
+  if CX+X < sur.s.w and CY-Y < sur.s.h:
+    setPix(video, pitch, CX+X, CY-Y, col)
 
 proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural, col: TColor) =
+  ## Draws an ellipse, ``CX`` and ``CY`` specify the center X and Y of
+  ## the ellipse, ``XRadius`` and ``YRadius`` specify the width and height 
+  ## of the ellipse.
   var 
     X, Y: Natural
     XChange, YChange: Natural
@@ -317,27 +421,29 @@ proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural, col: TColor)
       inc(YChange,TwoASquare)
   
 
-proc plot(sur: PSurface, x, y, c: float, color: TColor) =
-  var video = cast[PPixels](sur.s.pixels)
-  var pitch = sur.s.pitch div ColSize
-  var pixColor = getPix(video, pitch, x.toInt, y.toInt)
+proc plotAA(sur: PSurface, x, y, c: float, color: TColor) =
+  if (x.toInt() > 0 and x.toInt() < sur.s.w) and (y.toInt() > 0 and 
+      y.toInt() < sur.s.h):
+    var video = cast[PPixels](sur.s.pixels)
+    var pitch = sur.s.pitch div ColSize
 
-  setPix(video, pitch, x.toInt(), y.toInt(), 
-         pixColor.intensity(1.0 - c) + color.intensity(c))
-import math
+    var pixColor = getPix(video, pitch, x.toInt, y.toInt)
+
+    setPix(video, pitch, x.toInt(), y.toInt(), 
+           pixColor.intensity(1.0 - c) + color.intensity(c))
+         
 proc ipart(x: float): float =
   return x.trunc()
 proc fpart(x: float): float =
   return x - ipart(x)
 proc rfpart(x: float): float =
   return 1.0 - fpart(x)
-
-
-
+  
 proc drawLineAA(sur: PSurface, p1: TPoint, p2: TPoint, color: TColor) =
-  ## Draws a line from ``p1`` to ``p2``, using the Xiaolin Wu's line algorithm
+  ## Draws a anti-aliased line from ``p1`` to ``p2``, using Xiaolin Wu's line algorithm
   var (x1, x2, y1, y2) = (p1.x.toFloat(), p2.x.toFloat(), 
                           p1.y.toFloat(), p2.y.toFloat())
+  
   var dx = x2 - x1
   var dy = y2 - y1
   if abs(dx) < abs(dy):
@@ -354,41 +460,87 @@ proc drawLineAA(sur: PSurface, p1: TPoint, p2: TPoint, color: TColor) =
   var xgap = rfpart(x1 + 0.5)
   var xpxl1 = xend # this will be used in the main loop
   var ypxl1 = ipart(yend)
-  sur.plot(xpxl1, ypxl1, rfpart(yend) * xgap, color)
-  sur.plot(xpxl1, ypxl1 + 1.0, fpart(yend) * xgap, color)
+  sur.plotAA(xpxl1, ypxl1, rfpart(yend) * xgap, color)
+  sur.plotAA(xpxl1, ypxl1 + 1.0, fpart(yend) * xgap, color)
   var intery = yend + gradient # first y-intersection for the main loop
   # handle second endpoint
   xend = x2 # Should be round(x1), but since this is an int anyway..
   yend = y2 + gradient * (xend - x2)
   xgap = fpart(x2 + 0.5)
   var xpxl2 = xend  # this will be used in the main loop
-  var ypxl2 = ipart (yend)
-  sur.plot(xpxl2, ypxl2, rfpart(yend) * xgap, color)
-  sur.plot(xpxl2, ypxl2 + 1.0, fpart(yend) * xgap, color)  
+  var ypxl2 = ipart(yend)
+  sur.plotAA(xpxl2, ypxl2, rfpart(yend) * xgap, color)
+  sur.plotAA(xpxl2, ypxl2 + 1.0, fpart(yend) * xgap, color)  
   # main loop
   for x in xpxl1.toInt + 1..xpxl2.toInt - 1:
-    sur.plot(x.toFloat(), ipart(intery), rfpart(intery), color)
-    sur.plot(x.toFloat(), ipart(intery) + 1.0, fpart(intery), color)
+    sur.plotAA(x.toFloat(), ipart(intery), rfpart(intery), color)
+    sur.plotAA(x.toFloat(), ipart(intery) + 1.0, fpart(intery), color)
     intery = intery + gradient
-
   
       
-if sdl.Init(sdl.INIT_VIDEO) < 0: 
-  echo "init failed"
-  
+if sdl.Init(sdl.INIT_VIDEO) < 0:
+  echo "sdl init failed: " & $SDL.GetError()
+
+if sdl_ttf.Init() < 0:
+  echo "sdl_ttf init failed: " & $SDL.GetError() 
+
 when isMainModule:
-  var surf = newSurface(800, 600)
+  #var txtSurf = drawText(
+
+  var surf = newScreenSurface(800, 600)
   var r: TRect = (0, 0, 900, 900)
+    
+  # Draw the shapes
   surf.fillRect(r, colWhite)
-  surf.drawLineAA((500, 300), (200, 270), colTan)
+  surf.drawLineAA((400, 599), (100, 170), colTan)
   
-  surf.drawEllipse(400, 300, 415, 200, colSeaGreen)
+  surf.drawEllipse(200, 300, 200, 30, colSeaGreen)
+  surf.drawHorLine(1, 300, 400, colViolet) # Check if the ellipse is the size it's suppose to be.
+  surf.drawVerLine(200, 300 - 30 + 1, 60, colViolet) # ^^ | i suppose it is
+  
+  surf.drawEllipse(400, 300, 300, 300, colOrange)
+  surf.drawEllipse(5, 5, 5, 5, colGreen)
   
   surf.drawHorLine(5, 5, 900, colRed)
   surf.drawVerLine(5, 60, 800, colRed)
-  surf.setPixel(70, 100, colWhite)
   surf.drawCircle((600, 500), 60, colRed)
-  #surf.setPixel(799, 599, colGreen)
-  echo(fpart(5.5))
   
+  surf.drawText((300, 300), "VeraMono.ttf", "TEST", colTan,  colMidnightBlue, 150)
+  var textSize = textBounds("VeraMono.ttf", 150, "TEST")
+  surf.drawText((300, 300 + textSize.height), "VeraMono.ttf", $textSize.width & ", " & $textSize.height, colDarkGreen, 50)
+  
+  var mouseStartX = 0
+  var mouseStartY = 0
+  withEvents(surf, event):
+    case event.theType:
+    of SDL.QUITEV:
+      break
+    of SDL.KEYDOWN:
+      if event.key.keysym.sym == SDL.K_LEFT:
+        echo(event.key.keysym.sym)
+        surf.drawHorLine(395, 300, 5, colPaleGoldenRod)
+        echo("Drawing")
+      else:
+        echo(event.key.keysym.sym)
+    of SDL.MOUSEBUTTONDOWN:
+      # button.x/y is F* UP!
+      echo("MOUSEDOWN", event.button.x)
+      mouseStartX = event.button.x
+      mouseStartY = event.button.y
+      
+    of SDL.MOUSEBUTTONUP:
+      echo("MOUSEUP ", mouseStartX)
+      if mouseStartX != 0 and mouseStartY != 0:
+        echo(mouseStartX, "->", int(event.button.x))
+        surf.drawLineAA((mouseStartX, MouseStartY), 
+          (int(event.button.x), int(event.button.y)), colPaleGoldenRod)
+        mouseStartX = 0
+        mouseStartY = 0
+      
+    else:
+      echo(event.theType)
+      
+    SDL.UpdateRect(surf.s, int32(0), int32(0), int32(800), int32(600))
+    
   surf.writeToBMP("test.bmp")
+  SDL.Quit()
