@@ -357,7 +357,7 @@ proc GetNumber(L: var TLexer): TToken =
         result.base = base16
         while true: 
           case L.buf[pos]
-          of 'G'..'Z', 'g'..'z', '.': 
+          of 'G'..'Z', 'g'..'z': 
             lexMessage(L, errInvalidNumber, result.literal)
             inc(pos)
           of '_': 
