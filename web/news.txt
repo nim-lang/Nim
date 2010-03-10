@@ -35,6 +35,7 @@ Additions
 - Added ``system./`` for int.
 - Exported ``system.newException`` template.
 - Added ``cgi.decodeData(data: string): tuple[key, value: string]``.
+- Added ``strutils.insertSep``.
 - Added ``math.trunc``.
 - Added ``ropes`` module.
 - Added ``sockets`` module.

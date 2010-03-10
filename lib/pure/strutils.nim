@@ -748,6 +748,24 @@ proc toBin*(x: BiggestInt, len: int): string =
     shift = shift + 1
     mask = mask shl 1
 
+proc insertSep*(s: string, sep = '_', digits = 3): string = 
+  ## inserts the separator `sep` after `digits` digits from right to left.
+  ## Even though the algorithm works with any string `s`, it is only useful 
+  ## if `s` contains a number.
+  ## Example: ``insertSep("1000000") == "1_000_000"`` 
+  var L = (s.len-1) div digits + s.len
+  result = newString(L)
+  var j = 0
+  dec(L)
+  for i in countdown(len(s)-1, 0): 
+    if j == digits: 
+      result[L] = sep
+      dec(L)
+      j = 0
+    result[L] = s[i]
+    inc(j)
+    dec(L)
+
 proc escape*(s: string, prefix = "\"", suffix = "\""): string =
   ## Escapes a string `s`. This does these operations (at the same time):
   ## * replaces any ``\`` by ``\\``
