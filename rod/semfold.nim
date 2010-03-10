@@ -256,6 +256,21 @@ proc leValueConv(a, b: PNode): bool =
     else: InternalError(a.info, "leValueConv")
   else: InternalError(a.info, "leValueConv")
   
+proc magicCall(m: PSym, n: PNode): PNode =
+  var s = n.sons[0].sym
+  var a = getConstExpr(m, n.sons[1])
+  var b, c: PNode
+  if a == nil: return 
+  if sonsLen(n) > 2: 
+    b = getConstExpr(m, n.sons[2])
+    if b == nil: return 
+    if sonsLen(n) > 3: 
+      c = getConstExpr(m, n.sons[3])
+      if c == nil: return 
+  else: 
+    b = nil
+  result = evalOp(s.magic, n, a, b, c)
+  
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -308,19 +323,16 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         if not (skipTypes(n.sons[1].typ, abstractVar).kind in
             {tyOpenArray, tySequence, tyString}): 
           result = newIntNodeT(lastOrd(skipTypes(n.sons[1].typ, abstractVar)), n)
+      of mLengthOpenArray:
+        var a = n.sons[1]
+        if a.kind == nkPassAsOpenArray: a = a.sons[0]
+        if a.kind == nkBracket: 
+          # we can optimize it away! This fixes the bug ``len(134)``. 
+          result = newIntNodeT(sonsLen(a), n)
+        else:
+          result = magicCall(m, n)
       else: 
-        var a = getConstExpr(m, n.sons[1])
-        var b, c: PNode
-        if a == nil: return 
-        if sonsLen(n) > 2: 
-          b = getConstExpr(m, n.sons[2])
-          if b == nil: return 
-          if sonsLen(n) > 3: 
-            c = getConstExpr(m, n.sons[3])
-            if c == nil: return 
-        else: 
-          b = nil
-        result = evalOp(s.magic, n, a, b, c)
+        result = magicCall(m, n)
     except EOverflow: 
       liMessage(n.info, errOverOrUnderflow)
     except EDivByZero: 

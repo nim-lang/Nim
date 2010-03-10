@@ -85,7 +85,10 @@ proc semAndEvalConstExpr(c: PContext, n: PNode): PNode =
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
   case s.typ.sons[0].kind
-  of tyExpr: result = semExprWithType(c, result)
+  of tyExpr: 
+    # BUGFIX: we cannot expect a type here, because module aliases would not 
+    # work then (see the ``tmodulealias`` test)
+    result = semExpr(c, result) # semExprWithType(c, result)
   of tyStmt: result = semStmt(c, result)
   of tyTypeDesc: result.typ = semTypeNode(c, result, nil)
   else: liMessage(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))

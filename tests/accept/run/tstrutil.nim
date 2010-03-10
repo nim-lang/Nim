@@ -11,6 +11,10 @@ proc main() =
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
     
+assert(insertSep($1000_000) == "1_000_000")
+assert(insertSep($232) == "232")
+assert(insertSep($12345, ',') == "12,345")
+assert(insertSep($0) == "0")
 
 assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
 assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
