@@ -11,7 +11,7 @@
 ## implementation uses SDL but the interface is meant to support multiple
 ## backends some day. 
 
-import colors, math
+import colors
 from sdl import PSurface # Bug
 from sdl_ttf import OpenFont
 
@@ -107,8 +107,7 @@ proc blitSurface*(destSurf: PSurface, destRect: TRect, srcSurf: PSurface, srcRec
   if SDL.blitSurface(srcSurf.s, addr(srcTRect), destSurf.s, addr(destTRect)) != 0:
     raise newException(ESDLError, $SDL.GetError())
 
-proc textBounds*(font: string, fontSize: int, 
-                 text: string): tuple[width, height: int] =
+proc textBounds*(font: string, fontSize: int, text: string): tuple[width, height: int] =
   var fontFile = OpenFont(font, fontSize) # Open the font file
   if fontFile == nil: raise newException(ESDLError, "Could not open font file")
     
@@ -131,7 +130,7 @@ proc drawText*(sur: PSurface, p: TPoint, font: string, text: string,
   
   var RGBfg = fg.extractRGB
   
-  # Convert the colors.TColor to SDL.TColor
+  # Convert colors.TColor to SDL.TColor
   var SDLfg: SDL.TColor
   SDLfg.r = toU8(RGBfg.r)
   SDLfg.g = toU8(RGBfg.g)
@@ -158,7 +157,7 @@ proc drawText*(sur: PSurface, p: TPoint, font: string, text: string,
   var RGBfg = fg.extractRGB
   var RGBbg = bg.extractRGB
   
-  # Convert the colors.TColor to SDL.TColor
+  # Convert colors.TColor to SDL.TColor
   var SDLfg: SDL.TColor
   SDLfg.r = toU8(RGBfg.r)
   SDLfg.g = toU8(RGBfg.g)
@@ -265,9 +264,14 @@ proc drawVerLine*(sur: PSurface, x, y, h: Natural, Color: TColor) =
     for i in 0 .. min(sur.s.h-y, h-1)-1:
       setPix(video, pitch, x, y + i, color)
 
-proc drawLine2*(sur: PSurface, p0: TPoint, p1: TPoint, color: TColor) =
+proc drawLine2*(sur: PSurface, p0, p1: TPoint, color: TColor) =
   ## Draws a line from ``p0`` to ``p1``, using the Bresenham's line algorithm
   var (x0, x1, y0, y1) = (p0.x, p1.x, p0.y, p1.y)
+
+  if x0 >= sur.s.w: x0 = sur.s.w-1
+  if x1 >= sur.s.w: x1 = sur.s.w-1  
+  if y0 >= sur.s.h: y0 = sur.s.h-1
+  if y1 >= sur.s.h: y1 = sur.s.h-1
 
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
@@ -358,19 +362,21 @@ proc Plot4EllipsePoints(sur: PSurface, CX, CY, X, Y: Natural, col: TColor) =
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch div ColSize
   
-  if CX+X < sur.s.w and CY+Y < sur.s.h:
+  if CX+X <= sur.s.w-1 and CY+Y <= sur.s.h-1:
     setPix(video, pitch, CX+X, CY+Y, col)
-  if CX-X < sur.s.w and CY+Y < sur.s.h:
+    
+  if CX-X <= sur.s.w-1 and CY+Y <= sur.s.h-1:
     setPix(video, pitch, CX-X, CY+Y, col)
-  if CX-X < sur.s.w and CY-Y < sur.s.h:
+    
+  if CX-X <= sur.s.w-1 and CY-Y <= sur.s.h-1:
     setPix(video, pitch, CX-X, CY-Y, col)
-  if CX+X < sur.s.w and CY-Y < sur.s.h:
+    
+  if CX+X <= sur.s.w-1 and CY-Y <= sur.s.h-1:
     setPix(video, pitch, CX+X, CY-Y, col)
 
 proc drawEllipse*(sur: PSurface, CX, CY, XRadius, YRadius: Natural, col: TColor) =
-  ## Draws an ellipse, ``CX`` and ``CY`` specify the center X and Y of
-  ## the ellipse, ``XRadius`` and ``YRadius`` specify the width and height 
-  ## of the ellipse.
+  ## Draws an ellipse, ``CX`` and ``CY`` specify the center X and Y of the ellipse, 
+  ## ``XRadius`` and ``YRadius`` specify half the width and height of the ellipse.
   var 
     X, Y: Natural
     XChange, YChange: Natural
@@ -432,13 +438,13 @@ proc plotAA(sur: PSurface, x, y, c: float, color: TColor) =
     setPix(video, pitch, x.toInt(), y.toInt(), 
            pixColor.intensity(1.0 - c) + color.intensity(c))
          
+import math
 proc ipart(x: float): float =
   return x.trunc()
 proc fpart(x: float): float =
   return x - ipart(x)
 proc rfpart(x: float): float =
   return 1.0 - fpart(x)
-  
 proc drawLineAA(sur: PSurface, p1: TPoint, p2: TPoint, color: TColor) =
   ## Draws a anti-aliased line from ``p1`` to ``p2``, using Xiaolin Wu's line algorithm
   var (x1, x2, y1, y2) = (p1.x.toFloat(), p2.x.toFloat(), 
@@ -492,7 +498,8 @@ when isMainModule:
     
   # Draw the shapes
   surf.fillRect(r, colWhite)
-  surf.drawLineAA((400, 599), (100, 170), colTan)
+  surf.drawLineAA((100, 170), (400, 471), colTan)
+  surf.drawLine2((100, 170), (400, 471), colRed)
   
   surf.drawEllipse(200, 300, 200, 30, colSeaGreen)
   surf.drawHorLine(1, 300, 400, colViolet) # Check if the ellipse is the size it's suppose to be.
@@ -505,7 +512,7 @@ when isMainModule:
   surf.drawVerLine(5, 60, 800, colRed)
   surf.drawCircle((600, 500), 60, colRed)
   
-  surf.drawText((300, 300), "VeraMono.ttf", "TEST", colTan,  colMidnightBlue, 150)
+  surf.drawText((300, 300), "VeraMono.ttf", "TEST", colMidnightBlue, 150)
   var textSize = textBounds("VeraMono.ttf", 150, "TEST")
   surf.drawText((300, 300 + textSize.height), "VeraMono.ttf", $textSize.width & ", " & $textSize.height, colDarkGreen, 50)
   
@@ -538,7 +545,7 @@ when isMainModule:
         mouseStartY = 0
       
     else:
-      echo(event.theType)
+      #echo(event.theType)
       
     SDL.UpdateRect(surf.s, int32(0), int32(0), int32(800), int32(600))
     
