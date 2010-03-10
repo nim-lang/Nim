@@ -98,28 +98,30 @@ proc colorBool(b: bool): string =
   else: result = "<span style=\"color:red\">no</span>"
 
 const
-  TableHeader = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
-                "<td>Given</td><td>Success</td></tr>\n"
+  TableHeader4 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
+                 "<td>Given</td><td>Success</td></tr>\n"
+  TableHeader3 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
+                 "<td>Given</td><td>Success</td></tr>\n"
   TableFooter = "</table>\n"
-
-proc `$`(r: TResults): string = 
-  result = TableHeader
-  result.add(r.data)
-  result.add(TableFooter)
 
 proc addResult(r: var TResults, test, expected, given: string,
                success: bool) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
     test, expected, given, success.colorBool])
 
+proc addResult(r: var TResults, test, given: string,
+               success: bool) =
+  r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
+    test, given, success.colorBool])
+
 proc listResults(reject, compile, run: TResults) =
   var s = "<html>"
   s.add("<h1>Tests to Reject</h1>\n")
-  s.add($reject)
+  s.add(TableHeader4 & reject.data & TableFooter)
   s.add("<br /><br /><br /><h1>Tests to Compile</h1>\n")
-  s.add($compile)
+  s.add(TableHeader3 & compile.data & TableFooter)
   s.add("<br /><br /><br /><h1>Tests to Run</h1>\n")
-  s.add($run)
+  s.add(TableHeader4 & run.data & TableFooter)
   s.add("</html>")
   var outp: TFile
   if open(outp, resultsFile, fmWrite):
@@ -147,14 +149,17 @@ proc reject(r: var TResults, dir, options: string) =
     var expected = findSpec(specs, t)
     var given = callCompiler(test, options)
     cmpMsgs(r, specs[expected], given, t)
+    
+    if r.total > 3: break
   
 proc compile(r: var TResults, pattern, options: string) = 
   for test in os.walkFiles(pattern): 
     var t = extractFilename(test)
     inc(r.total)
     var given = callCompiler(test, options)
-    r.addResult(t, "", given.msg, not given.err)
+    r.addResult(t, given.msg, not given.err)
     if not given.err: inc(r.passed)
+    if r.total > 3: break
   
 proc run(r: var TResults, dir, options: string) = 
   var specs = parseRunData(dir)
@@ -174,6 +179,7 @@ proc run(r: var TResults, dir, options: string) =
         r.addResult(t, expected.outp, buf, success)
       else:
         r.addResult(t, expected.outp, "executable not found", false)
+    if r.total > 3: break
 
 var options = ""
 var rejectRes = initResults()
@@ -185,9 +191,9 @@ for i in 1.. paramCount():
   add(options, paramStr(i))
 
 reject(rejectRes, "tests/reject", options)
-#compile(compileRes, "tests/accept/compile/t*.nim", options)
+compile(compileRes, "tests/accept/compile/t*.nim", options)
 compile(compileRes, "examples/*.nim", options)
-#compile(compileRes, "examples/gtk/*.nim", options)
-#run(runRes, "tests/accept/run", options)
+compile(compileRes, "examples/gtk/*.nim", options)
+run(runRes, "tests/accept/run", options)
 listResults(rejectRes, compileRes, runRes)
 openDefaultBrowser(resultsFile)
