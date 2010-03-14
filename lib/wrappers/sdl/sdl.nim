@@ -799,9 +799,6 @@ type
     here*: ptr byte
     stop*: ptr byte
 
-  TUnknown*{.final.} = object  # first declare the pointer type
-    data1*: Pointer
-
   PRWops* = ptr TRWops        # now the pointer to function types
   TSeek* = proc (context: PRWops, offset: int, whence: int): int{.cdecl.}
   TRead* = proc (context: PRWops, thePtr: Pointer, size: int, maxnum: int): int{.
@@ -809,23 +806,14 @@ type
   TWrite* = proc (context: PRWops, thePtr: Pointer, size: int, num: int): int{.
       cdecl.}
   TClose* = proc (context: PRWops): int{.cdecl.} # the variant record itself
-  trange010 = range[0..2]
   TRWops*{.final.} = object 
     seek*: TSeek
     read*: TRead
     write*: TWrite
     closeFile*: TClose        # a keyword as name is not allowed
                               # be warned! structure alignment may arise at this point
-    case theType*: trange010
-    of trange010(0): 
-        stdio*: TStdio
-
-    of trange010(1): 
-        mem*: TMem
-
-    of trange010(2): 
-        unknown*: TUnknown
-
+    theType*: cint
+    mem*: TMem
   
   RWops* = TRWops             # SDL_timer.h types
                               # Function prototype for the timer callback function
@@ -1014,20 +1002,21 @@ type
   
   TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
-                                      #    When you get this event, you are responsible for setting a new video
-                                      #    mode with the new width and height.
+                                      # When you get this event, you are
+                                      # responsible for setting a new video
+                                      # mode with the new width and height.
     which*: byte             # The joystick device index
     button*: byte            # The joystick button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
   
   TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
                                    # A user-defined event type
-    w*: int                   # New width
-    h*: int                   # New height
+    w*: cint                   # New width
+    h*: cint                   # New height
   
   PUserEvent* = ptr TUserEvent
   TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
-    code*: int                # User defined event code
+    code*: cint                # User defined event code
     data1*: Pointer           # User defined data pointer
     data2*: Pointer           # User defined data pointer 
   
@@ -1096,7 +1085,7 @@ elif defined(Unix):
       X11*: TX11
 
 else: 
-  type                        # The generic custom window manager information structure
+  type # The generic custom window manager information structure
     PSysWMinfo* = ptr TSysWMinfo
     TSysWMinfo*{.final.} = object 
       version*: Tversion
@@ -1108,46 +1097,59 @@ type
     msg*: PSysWMmsg
 
   PEvent* = ptr TEvent
-  TEvent*{.final.} = object  # This function sets up a filter to process all events before they
-                             #  change internal state and are posted to the internal event queue.
-                             #
-                             #  The filter is protypted as:
-    case theType*: TEventKind # SDL_NOEVENT, SDL_QUITEV: ();
+  TEvent*{.final.} = object  
+    # This function sets up a filter to process all events before they
+    # change internal state and are posted to the internal event queue.
+    # The filter is protypted as:
+    case kind*: TEventKind # SDL_NOEVENT, SDL_QUITEV: ();
     of ACTIVEEVENT: 
-        active*: TActiveEvent
-
+      gain*: byte              # Whether given states were gained or lost (1/0)
+      state*: byte             # A mask of the focus states
     of KEYDOWN, KEYUP: 
-        key*: TKeyboardEvent
-
+      keystate*: byte             # SDL_PRESSED or SDL_RELEASED
+      scancode*: byte           # hardware specific scancode
+      sym*: TKey                # SDL virtual keysym
+      modifier*: TMod           # current key modifiers
+      unicode*: UInt16          # translated character
     of MOUSEMOTION: 
-        motion*: TMouseMotionEvent
-
+      motionState*: byte             # The current button state
+      motionX*, motionY*: UInt16            # The X/Y coordinates of the mouse
+      xrel*: int16             # The relative motion in the X direction
+      yrel*: int16             # The relative motion in the Y direction
     of MOUSEBUTTONDOWN, MOUSEBUTTONUP: 
-        button*: TMouseButtonEvent
-
+      button*: byte            # The mouse button index
+      buttonState*: byte             # SDL_PRESSED or SDL_RELEASED
+      align: byte
+      x*: UInt16                # The X coordinates of the mouse at press time
+      y*: UInt16                # The Y coordinates of the mouse at press time
     of JOYAXISMOTION: 
-        jaxis*: TJoyAxisEvent
-
+      axis*: byte              # The joystick axis index
+      value*: int16            # The axis value (range: -32768 to 32767)
     of JOYBALLMOTION: 
-        jball*: TJoyBallEvent
-
+      ball*: byte              # The joystick trackball index
+      joyXrel*: int16             # The relative motion in the X direction
+      joyYrel*: int16             # The relative motion in the Y direction
+  
     of JOYHATMOTION: 
-        jhat*: TJoyHatEvent
+      hat*: byte               # The joystick hat index
+      hatValue*: byte          # The hat position value:
+                               # 8   1   2
+                               # 7   0   3
+                               # 6   5   4
+                               # Note that zero means the POV is centered.
 
     of JOYBUTTONDOWN, JOYBUTTONUP: 
-        jbutton*: TJoyButtonEvent
-
+      joybutton*: byte            # The joystick button index
+      joyState*: byte             # SDL_PRESSED or SDL_RELEASED
+  
     of VIDEORESIZE: 
-        resize*: TResizeEvent
-
+      w*: cint                   # New width
+      h*: cint                   # New height
     of USEREVENT: 
-        user*: TUserEvent
-
-    of SYSWMEVENT: 
-        syswm*: TSysWMEvent
-
-    else: 
-        nil
+      code*: cint                # User defined event code
+      data1*: Pointer           # User defined data pointer
+      data2*: Pointer           # User defined data pointer 
+    else: nil
 
   
   TEventFilter* = proc (event: PEvent): int{.cdecl.} # SDL_video.h types
@@ -1209,8 +1211,8 @@ type
     dst*: PPixelFormat
 
   PSurface* = ptr TSurface
-  TBlit* = proc (src: PSurface, srcrect: PRect, dst: PSurface, dstrect: PRect): int{.
-      cdecl.}
+  TBlit* = proc (src: PSurface, srcrect: PRect, 
+                 dst: PSurface, dstrect: PRect): int{.cdecl.}
   TSurface*{.final.} = object  # Useful for determining the video hardware capabilities
     flags*: int32            # Read-only
     format*: PPixelFormat     # Read-only
@@ -1302,12 +1304,12 @@ type                          # This is the system-independent thread info struc
   PWordArray* = ptr TWordArray
   TWordArray* = array[0..16383, int16] # Generic procedure pointer
   TProcedure* = proc () #------------------------------------------------------------------------------
-                        # initialization
-                        #------------------------------------------------------------------------------
-                        # This function loads the SDL dynamically linked library and initializes
-                        #  the subsystems specified by 'flags' (and those satisfying dependencies)
-                        #  Unless the SDL_INIT_NOPARACHUTE flag is set, it will install cleanup
-                        #  signal handlers for some commonly ignored fatal signals (like SIGSEGV)
+# initialization
+#------------------------------------------------------------------------------
+# This function loads the SDL dynamically linked library and initializes
+#  the subsystems specified by 'flags' (and those satisfying dependencies)
+#  Unless the SDL_INIT_NOPARACHUTE flag is set, it will install cleanup
+#  signal handlers for some commonly ignored fatal signals (like SIGSEGV)
 
 proc Init*(flags: int32): int{.cdecl, importc: "SDL_Init", dynlib: LibName.}
   # This function initializes specific SDL subsystems

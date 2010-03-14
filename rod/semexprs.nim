@@ -388,7 +388,12 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   checkMinSonsLen(n, 1)
   var t = n.sons[0].typ
   if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic in FakeVarParams): 
-    return 
+    # BUGFIX: check for L-Value still needs to be done for the arguments!
+    for i in countup(1, sonsLen(n) - 1): 
+      if i < sonsLen(t) and skipTypes(t.sons[i], abstractInst).kind == tyVar: 
+        if isAssignable(n.sons[i]) != arLValue: 
+          liMessage(n.sons[i].info, errVarForOutParamNeeded)
+    return
   for i in countup(1, sonsLen(n) - 1): 
     if (i < sonsLen(t)) and
         (skipTypes(t.sons[i], abstractInst).kind == tyVar): 
@@ -781,7 +786,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semIfExpr(c: PContext, n: PNode): PNode = 
   result = n
-  checkSonsLen(n, 2)
+  checkMinSonsLen(n, 2)
   var typ: PType = nil
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]

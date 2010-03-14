@@ -441,7 +441,7 @@ Ordinal types
 - Ordinal values have a largest possible value. Trying to count further
   than the largest value gives a checked runtime or static error.
 
-Integers, bool, characters and enumeration types (and subrange of these
+Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types.
 
 
@@ -451,8 +451,8 @@ These integer types are pre-defined:
 
 ``int``
   the generic signed integer type; its size is platform dependent
-  (the compiler chooses the processor's fastest integer type)
-  this type should be used in general. An integer literal that has no type
+  (the compiler chooses the processor's fastest integer type).
+  This type should be used in general. An integer literal that has no type
   suffix is of this type.
 
 intXX
@@ -502,8 +502,8 @@ The following floating point types are pre-defined:
 
 ``float``
   the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type)
-  this type should be used in general
+  (the compiler chooses the processor's fastest floating point type).
+  This type should be used in general.
 
 floatXX
   an implementation may define additional floating point types of XX bits using
@@ -2193,6 +2193,8 @@ special ``:`` syntax:
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. 
 
+**Note:** Symbol binding rules in templates might change!
+
 Symbol binding within templates happens after template instantation: 
 
 .. code-block:: nimrod
@@ -2476,7 +2478,7 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-**Possible future**: ``func`` may become a keyword and syntactic sugar for a
+**Future directions**: ``func`` may become a keyword and syntactic sugar for a
 proc with no side effects:
 
 .. code-block:: nimrod
@@ -2521,7 +2523,7 @@ information that this cannot happen to the GC. If the programmer uses the
 ``acyclic`` pragma for data types that are in reality cyclic, the GC may leak
 memory, but nothing worse happens.
 
-**Possible future**: The ``acyclic`` pragma may become a property of a
+**Future directions**: The ``acyclic`` pragma may become a property of a
 ``ref`` type:
 
 .. code-block:: nimrod
@@ -2544,8 +2546,8 @@ The `pure`:idx: pragma serves two completely different purposes:
 1) To mark a procedure that Nimrod should not generate any exit statements like
    ``return result;`` in the generated code. This is useful for procs that only
    consist of an assembler statement.
-2) To mark an object type that Nimrod should omit its type field. This is
-   necessary for compatibility with other compiled languages.
+2) To mark an object type so that its type field should be omitted. This is
+   necessary for binary compatibility with other compiled languages.
 
 
 error pragma

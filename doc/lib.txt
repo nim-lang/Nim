@@ -43,7 +43,7 @@ String handling
   string into uppercase, splitting a string into substrings, searching for
   substrings, replacing substrings.
 
-* `parseutils <parseutils.html>`
+* `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
 
 * `strtabs <strtabs.html>`_
@@ -119,7 +119,7 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applictions. 
 
-* `sockets <sockets.html>`
+* `sockets <sockets.html>`_
   This module implements a simple portable type-safe sockets layer.
 
 * `browsers <browsers.html>`_
@@ -208,7 +208,7 @@ Multimedia support
 Impure libraries
 ================
 
-* `graphics <graphics>`_
+* `graphics <graphics.html>`_
   This module implements graphical output for Nimrod; the current
   implementation uses SDL but the interface is meant to support multiple
   backends some day. 

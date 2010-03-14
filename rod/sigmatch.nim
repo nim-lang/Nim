@@ -117,29 +117,26 @@ proc concreteType(mapping: TIdTable, t: PType): PType =
     result = t                # Note: empty is valid here
   
 proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation = 
-  var k: TTypeKind
   if a.kind == f.kind: 
     result = isEqual
   else: 
-    k = skipTypes(a, {tyRange}).kind
+    var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
     elif (f.kind == tyInt) and (k in {tyInt..tyInt32}): result = isIntConv
     elif (k >= min) and (k <= max): result = isConvertible
     else: result = isNone
   
 proc handleFloatRange(f, a: PType): TTypeRelation = 
-  var k: TTypeKind
   if a.kind == f.kind: 
     result = isEqual
   else: 
-    k = skipTypes(a, {tyRange}).kind
+    var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
     elif (k >= tyFloat) and (k <= tyFloat128): result = isConvertible
     else: result = isNone
   
 proc isObjectSubtype(a, f: PType): bool = 
-  var t: PType
-  t = a
+  var t = a
   while (t != nil) and (t.id != f.id): t = base(t)
   result = t != nil
 
@@ -148,14 +145,11 @@ proc minRel(a, b: TTypeRelation): TTypeRelation =
   else: result = b
   
 proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
-  var 
-    x, y: PSym
-    m: TTypeRelation
   result = isNone
   if sonsLen(a) == sonsLen(f): 
     result = isEqual
     for i in countup(0, sonsLen(f) - 1): 
-      m = typeRel(mapping, f.sons[i], a.sons[i])
+      var m = typeRel(mapping, f.sons[i], a.sons[i])
       if m < isSubtype: 
         return isNone
       result = minRel(result, m)
@@ -164,8 +158,8 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         # check field names:
         if f.n.sons[i].kind != nkSym: InternalError(f.n.info, "tupleRel")
         if a.n.sons[i].kind != nkSym: InternalError(a.n.info, "tupleRel")
-        x = f.n.sons[i].sym
-        y = a.n.sons[i].sym
+        var x = f.n.sons[i].sym
+        var y = a.n.sons[i].sym
         if x.name.id != y.name.id: 
           return isNone
 
@@ -438,8 +432,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       case a.kind
       of tyExpr, tyStmt, tyTypeDesc: result = isGeneric
       of tyNil: result = isSubtype
-      else: 
-        nil
+      else: nil
   else: internalError("typeRel(" & $f.kind & ')')
   
 proc cmpTypes(f, a: PType): TTypeRelation = 
@@ -522,10 +515,6 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   
 proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType, 
                      arg: PNode): PNode = 
-  var 
-    cmp, best: int
-    x, y, z: TCandidate
-    r: TTypeRelation
   if (arg == nil) or (arg.kind != nkSymChoice): 
     result = ParamTypesMatchAux(c, m, f, a, arg)
   else: 
@@ -533,18 +522,19 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
+    var x, y, z: TCandidate
     initCandidate(x, m.callee)
     initCandidate(y, m.callee)
     initCandidate(z, m.callee)
     x.calleeSym = m.calleeSym
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
-    best = - 1
+    var best = - 1
     for i in countup(0, sonsLen(arg) - 1): 
       # iterators are not first class yet, so ignore them
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}: 
         copyCandidate(z, m)
-        r = typeRel(z.bindings, f, arg.sons[i].typ)
+        var r = typeRel(z.bindings, f, arg.sons[i].typ)
         if r != isNone: 
           case x.state
           of csEmpty, csNoMatch: 
@@ -552,7 +542,7 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
             best = i
             x.state = csMatch
           of csMatch: 
-            cmp = cmpCandidates(x, z)
+            var cmp = cmpCandidates(x, z)
             if cmp < 0: 
               best = i
               x = z
@@ -658,7 +648,7 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
           return 
         m.baseTypeMatch = false
         var arg = ParamTypesMatch(c, m, formal.typ, n.sons[a].typ, n.sons[a])
-        if (arg == nil): 
+        if arg == nil: 
           m.state = csNoMatch
           return 
         if m.baseTypeMatch: 
@@ -677,9 +667,14 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
     formal = m.callee.n.sons[f].sym
     if not IntSetContainsOrIncl(marker, formal.position): 
       if formal.ast == nil: 
-        # no default value
-        m.state = csNoMatch
-        break 
+        if formal.typ.kind == tyOpenArray:
+          container = newNodeI(nkBracket, n.info)
+          addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ, 
+                                      container, m, c))
+        else:
+          # no default value
+          m.state = csNoMatch
+          break
       else: 
         # use default value:
         setSon(m.call, formal.position + 1, copyTree(formal.ast))

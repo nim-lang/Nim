@@ -108,7 +108,8 @@ type
     
 # Nodes should be reference counted to make the `copy` operation very fast!
 # However, this is difficult to achieve: modify(n[0][1]) should propagate to
-# its father. How to do this without back references?
+# its father. How to do this without back references? Hm, BS, it works without 
+# them.
 
 proc `[]`* (n: PNimrodNode, i: int): PNimrodNode {.magic: "NChild".}
   ## get `n`'s `i`'th child.

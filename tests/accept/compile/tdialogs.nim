@@ -2,7 +2,7 @@
 
 import dialogs, gtk2
 
-gtk_nimrod_init()
+gtk2.nimrod_init()
 
 var x = ChooseFilesToOpen(nil)
 for a in items(x):

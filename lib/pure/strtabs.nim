@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -36,7 +36,7 @@ proc newStringTable*(keyValuePairs: openarray[string],
   ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
   ##                              modeCaseInsensitive)
 
-proc newStringTable*(mode: TStringTableMode = modeCaseSensitive): PStringTable
+proc newStringTable*(mode: TStringTableMode): PStringTable
   ## creates a new string table that is empty.
 
 proc `[]=`*(t: PStringTable, key, val: string)
@@ -79,7 +79,7 @@ const
   growthFactor = 2
   startSize = 64
 
-proc newStringTable(mode: TStringTableMode = modeCaseSensitive): PStringTable =
+proc newStringTable(mode: TStringTableMode): PStringTable =
   new(result)
   result.mode = mode
   result.counter = 0

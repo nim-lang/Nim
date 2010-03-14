@@ -18,7 +18,7 @@ proc splitText(txt: string): seq[string] # splits a text into several lines
                                          # the comment continues here
                                          # this is not easy to parse!
 
-proc anotherSplit(txt: string): list[string] =
+proc anotherSplit(txt: string): seq[string] =
   # the comment should belong to `anotherSplit`!
   # another problem: comments are statements!
 

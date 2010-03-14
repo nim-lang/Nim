@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -18,36 +18,16 @@ import
 type 
   TPassContext* = object of TObject # the pass's context
   PPassContext* = ref TPassContext
-  TPass* = tuple[open: proc (module: PSym, filename: string): PPassContext, 
-      openCached: proc (module: PSym, filename: string, rd: PRodReader): PPassContext, 
-                 close: proc (p: PPassContext, n: PNode): PNode, 
-                 process: proc (p: PPassContext, topLevelStmt: PNode): PNode] # a 
-                                                                              # pass is a 
-                                                                              # tuple of 
-                                                                              # procedure 
-                                                                              # vars
-                                                                              # 
-                                                                              # ``TPass.close`` 
-                                                                              # may 
-                                                                              # produce 
-                                                                              # additional 
-                                                                              # nodes. 
-                                                                              # These 
-                                                                              # are 
-                                                                              # passed to 
-                                                                              # the 
-                                                                              # other
-                                                                              # 
-                                                                              # close 
-                                                                              # procedures. 
-                                                                              # This 
-                                                                              # mechanism is 
-                                                                              # needed 
-                                                                              # for 
-                                                                              # the 
-                                                                              # instantiation of
-                                                                              # 
-                                                                              # generics.
+  TPass* = tuple[
+    open: proc (module: PSym, filename: string): PPassContext, 
+    openCached: proc (module: PSym, filename: string,
+                     rd: PRodReader): PPassContext, 
+    close: proc (p: PPassContext, n: PNode): PNode, 
+    process: proc (p: PPassContext, topLevelStmt: PNode): PNode] 
+    
+# a  pass is a tuple of procedure vars ``TPass.close`` may produce additional 
+# nodes. These are passed to the other close procedures. 
+# This mechanism is needed for the instantiation of generics.
 
 proc registerPass*(p: TPass)
 proc initPass*(p: var TPass)
@@ -62,7 +42,8 @@ proc astNeeded*(s: PSym): bool
   # needs to be stored. The passes manager frees s.sons[codePos] when
   # appropriate to free the procedure body's memory. This is important
   # to keep memory usage down.
-  # the semantic checker needs these:
+
+# the semantic checker needs these:
 var 
   gImportModule*: proc (filename: string): PSym
   gIncludeFile*: proc (filename: string): PNode
@@ -105,29 +86,25 @@ proc openPassesCached(a: var TPassContextArray, module: PSym, filename: string,
       a[i] = nil
   
 proc closePasses(a: var TPassContextArray) = 
-  var m: PNode
-  m = nil
+  var m: PNode = nil
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].close): m = gPasses[i].close(a[i], m)
     a[i] = nil                # free the memory here
   
 proc processTopLevelStmt(n: PNode, a: var TPassContextArray) = 
-  var m: PNode
   # this implements the code transformation pipeline
-  m = n
+  var m = n
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].process): m = gPasses[i].process(a[i], m)
   
 proc processTopLevelStmtCached(n: PNode, a: var TPassContextArray) = 
-  var m: PNode
   # this implements the code transformation pipeline
-  m = n
+  var m = n
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].openCached): m = gPasses[i].process(a[i], m)
   
 proc closePassesCached(a: var TPassContextArray) = 
-  var m: PNode
-  m = nil
+  var m: PNode = nil
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].openCached) and not isNil(gPasses[i].close): 
       m = gPasses[i].close(a[i], m)
@@ -157,7 +134,8 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
         processTopLevelStmt(n, a)
       closeParsers(p)
       if s.kind != llsStdIn: break 
-    closePasses(a)            # id synchronization point for more consistent code generation:
+    closePasses(a)
+    # id synchronization point for more consistent code generation:
     IDsynchronizationPoint(1000)
   else: 
     openPassesCached(a, module, filename, rd)

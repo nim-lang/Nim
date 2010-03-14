@@ -12,7 +12,10 @@ import
   cairowin32, cairoxlib,
   odbcsql,
   gl, glut, glu, glx, glext, wingl,
-  lua, lualib, lauxlib, mysql, sqlite3, python, tcl
+  lua, lualib, lauxlib, mysql, sqlite3, python, tcl,
+  db_postgres, db_mysql, db_sqlite, ropes, sockets, browsers, httpserver,
+  httpclient, parseutils, unidecode, xmldom, xmldomparser, xmltree, xmlparser,
+  htmlparser, re, graphics, colors
   
 when defined(linux):
   import

@@ -1093,15 +1093,16 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
                 ropef("reprSet($1, $2)", [rdLoc(a), genTypeInfo(p.module, t)]))
   of tyOpenArray: 
     useMagic(p.module, "reprOpenArray")
+    var b: TLoc
     case a.t.kind
-    of tyOpenArray: putIntoDest(p, d, e.typ, ropef("$1, $1Len0", [rdLoc(a)]))
+    of tyOpenArray: putIntoDest(p, b, e.typ, rdLoc(a))
     of tyString, tySequence: 
-      putIntoDest(p, d, e.typ, ropef("$1->data, $1->Sup.len", [rdLoc(a)]))
+      putIntoDest(p, b, e.typ, ropef("$1->data, $1->Sup.len", [rdLoc(a)]))
     of tyArray, tyArrayConstr: 
-      putIntoDest(p, d, e.typ, 
+      putIntoDest(p, b, e.typ, 
                   ropef("$1, $2", [rdLoc(a), toRope(lengthOrd(a.t))]))
     else: InternalError(e.sons[0].info, "genRepr()")
-    putIntoDest(p, d, e.typ, ropef("reprOpenArray($1, $2)", [rdLoc(d), 
+    putIntoDest(p, d, e.typ, ropef("reprOpenArray($1, $2)", [rdLoc(b), 
         genTypeInfo(p.module, elemType(t))]))
   of tyCString, tyArray, tyArrayConstr, tyRef, tyPtr, tyPointer, tyNil, 
      tySequence: 

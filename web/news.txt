@@ -2,7 +2,7 @@
 News
 ====
 
-2010-XX-XX Version 0.8.8 released
+2010-03-14 Version 0.8.8 released
 =================================
 
 Version 0.8.8 has been released! Get it `here <download.html>`_. 
@@ -22,9 +22,10 @@ Bugfixes
 - An overloadable symbol can now have the same name as an imported module.
 - Fixed a serious bug in ``strutils.cmpIgnoreCase``. 
 - Fixed ``unicode.toUTF8``. 
-- The compiler now rejects ``'\n'``. 
+- The compiler now rejects ``'\n'`` (use ``"\n"`` instead). 
 - ``times.getStartMilsecs()`` now works on Mac OS X.
 - Fixed a bug in ``pegs.match`` concerning start offsets.
+- Lots of other little bugfixes.
 
 
 Additions
@@ -57,9 +58,8 @@ Additions
   You can change your configuration file to use these.
 - Triple quoted strings allow for ``"`` in more contexts.
 - ``""`` within raw string literals stands for a single quotation mark.
-- More extensive subscript operator overloading. See 
-  `subscript overloading <manual.html#subscript-overloading>`_ for further
-  information.
+- Arguments to ``openArray`` parameters can be left out.
+- More extensive subscript operator overloading. (To be documented.)
 - The documentation generator supports the ``.. raw:: html`` directive.
 - The Pegs module supports back references via the notation ``$capture_index``. 
 
@@ -82,6 +82,7 @@ Changes affecting backwards compatibility
 - The ``\w`` character class for pegs now includes the digits ``'0'..'9'``.
 - Many wrappers now do not contain redundant name prefixes (like ``GTK_``,
   ``lua``) anymore.
+- Arguments to ``openArray`` parameters can be left out.
 
 
 2009-12-21 Version 0.8.6 released

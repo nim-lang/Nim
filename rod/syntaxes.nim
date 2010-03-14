@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -142,9 +142,9 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string, stdin: PLLStream):
     result = filterReplace(stdin, filename, n)
   if f != filtNone: 
     if gVerbosity >= 2: 
-      rawMessage(hintCodeBegin)
+      rawMessage(hintCodeBegin, [])
       messageOut(result.s)
-      rawMessage(hintCodeEnd)
+      rawMessage(hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string, start: PLLStream): PLLStream = 
   result = start

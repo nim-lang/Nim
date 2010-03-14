@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -17,11 +17,11 @@
 ##
 ## .. include:: doc/mytest.cfg
 ##     :literal:
-## The file ``tests/tparscfg.nim`` demonstrates how to use the 
+## The file ``examples/parsecfgex.nim`` demonstrates how to use the 
 ## configuration file parser:
 ##
 ## .. code-block:: nimrod
-##     :file: tests/tparscfg.nim
+##     :file: examples/parsecfgex.nim
 
 
 import 

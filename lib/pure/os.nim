@@ -319,12 +319,12 @@ proc JoinPath*(head, tail: string): string {.noSideEffect.} =
   ##
   ## For example on Unix:
   ##
-  ## ..code-block:: nimrod
+  ## .. code-block:: nimrod
   ##   JoinPath("usr", "lib")
   ##
   ## results in:
   ##
-  ## ..code-block:: nimrod
+  ## .. code-block:: nimrod
   ##   "usr/lib"
   ##
   ## If head is the empty string, tail is returned.
@@ -375,6 +375,7 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.noSideEffect.} =
   ## ``JoinPath(head, tail) == path``.
   ##
   ## Examples: 
+  ##
   ## .. code-block:: nimrod
   ##   SplitPath("usr/local/bin") -> ("usr/local", "bin")
   ##   SplitPath("usr/local/bin/") -> ("usr/local/bin", "")
@@ -399,8 +400,8 @@ proc parentDir*(path: string): string {.noSideEffect.} =
   ##
   ## This is often the same as the ``head`` result of ``splitPath``.
   ## If there is no parent, ``path`` is returned.
-  ## Example: ``parentDir("/usr/local/bin") == "/usr/local"``.
-  ## Example: ``parentDir("/usr/local/bin/") == "/usr/local"``.
+  ## | Example: ``parentDir("/usr/local/bin") == "/usr/local"``.
+  ## | Example: ``parentDir("/usr/local/bin/") == "/usr/local"``.
   var
     sepPos = -1
     q = 1
@@ -834,7 +835,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
   ##     for kind, path in walkDir("dirA"):
   ##       echo(path)
   ##
-  ## produces this output (though not necessarily in this order!)::
+  ## produces this output (but not necessarily in this order!)::
   ##   dirA/dirB
   ##   dirA/dirC
   ##   dirA/fileA1.txt

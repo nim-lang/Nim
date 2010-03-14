@@ -5,11 +5,11 @@ tambsym2.nim;4;undeclared identifier: 'CreateRGBSurface'
 tambsym3.nim;6;ambiguous identifier
 tatomic.nim;2;identifier expected, but found 'atomic'
 tbind2.nim;7;ambiguous call
-tbind4.nim;4;instantiation from here
+tbind4.nim;4;undeclared identifier: 'lastId'
 tblock1.nim;9;undeclared identifier: 'ha'
 tconstr1.nim;20;type mismatch
 tillrec.nim;8;illegal recursion in type 'TIllegal'
-tinc.nim;3;to var type a variable needs to be passed
+tinc.nim;3;for a 'var' type a variable needs to be passed
 tinout.nim;7;for a 'var' type a variable needs to be passed
 tinvalidnewseq.nim;10;type mismatch: got (array[0..6, string], int)
 tinvwhen.nim;6;invalid indentation

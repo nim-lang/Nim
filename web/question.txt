@@ -28,7 +28,7 @@ flexibility for speed. You get both.
 Why is it named Nimrod?
 -----------------------
 You have to find out for yourself. If you don't find a tongue-in-cheek 
-interpretation you have to look harder.
+interpretation you will have to look harder.
 
 
 How is Nimrod licensed?
@@ -44,15 +44,17 @@ How stable is Nimrod?
 
 The compiler is in development and some important features are still missing. 
 However, the compiler is quite stable already: It is able to compile itself 
-and a substantial body of other code. Until version 1.0.0 is released, slight 
-incompabilities with older versions of the compiler may be introduced.
+and a substantial body of other code. Until version 1.0.0 is released, 
+incompabilities with older versions of the compiler will be introduced. The 
+semantic details of overloading, macros/templates/generics and iterators 
+and their interactions are subject to change.
 
 
 How fast is Nimrod?
 -------------------
 Benchmarks have not been ported yet and support for threads is missing. But in
-the worst case, you can get exactly the same performance as C if you decide to
-write as low-level Nimrod code as C requires you to do. That said the only
+the worst case, you can get exactly the same performance as in C if you decide 
+to write as low-level Nimrod code as C requires you to do. That said the only
 overhead Nimrod has over C is the GC which has been tuned for years (and is 
 significantly faster than the Boehm GC).
 
