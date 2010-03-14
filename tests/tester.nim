@@ -23,7 +23,6 @@ type
     msg: string,
     err: bool]
   TOutp = tuple[file, outp: string]
-  TResult = tuple[test, expected, given: string, success: bool]
   TResults = object
     total, passed: int
     data: string
@@ -100,7 +99,7 @@ proc colorBool(b: bool): string =
 const
   TableHeader4 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
                  "<td>Given</td><td>Success</td></tr>\n"
-  TableHeader3 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
+  TableHeader3 = "<table border=\"1\"><tr><td>Test</td>" &
                  "<td>Given</td><td>Success</td></tr>\n"
   TableFooter = "</table>\n"
 
@@ -149,8 +148,6 @@ proc reject(r: var TResults, dir, options: string) =
     var expected = findSpec(specs, t)
     var given = callCompiler(test, options)
     cmpMsgs(r, specs[expected], given, t)
-    
-    if r.total > 3: break
   
 proc compile(r: var TResults, pattern, options: string) = 
   for test in os.walkFiles(pattern): 
@@ -159,7 +156,6 @@ proc compile(r: var TResults, pattern, options: string) =
     var given = callCompiler(test, options)
     r.addResult(t, given.msg, not given.err)
     if not given.err: inc(r.passed)
-    if r.total > 3: break
   
 proc run(r: var TResults, dir, options: string) = 
   var specs = parseRunData(dir)
@@ -179,7 +175,6 @@ proc run(r: var TResults, dir, options: string) =
         r.addResult(t, expected.outp, buf, success)
       else:
         r.addResult(t, expected.outp, "executable not found", false)
-    if r.total > 3: break
 
 var options = ""
 var rejectRes = initResults()

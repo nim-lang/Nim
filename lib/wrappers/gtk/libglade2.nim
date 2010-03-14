@@ -85,9 +85,6 @@ proc gnome_init*() =
 proc bonobo_init*() = 
   init()
 
-proc xml_new*(fname: cstring, root: cstring, domain: cstring): PXML = 
-  result = xml_new(fname, root, domain)
-
 proc xml_new_from_memory*(buffer: cstring, size: int32, root: cstring, 
                           domain: cstring): PXML = 
   result = xml_new_from_buffer(buffer, size, root, domain)

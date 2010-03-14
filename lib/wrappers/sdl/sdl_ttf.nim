@@ -178,9 +178,11 @@ const
 
 type 
   PFont* = ptr Tfont
-  TFont*{.final.} = object  # This macro can be used to fill a version structure with the compile-time
-                                #  version of the SDL_ttf library. 
-
+  TFont{.final.} = object  
+  
+  
+# This macro can be used to fill a version structure with the compile-time
+# version of the SDL_ttf library. 
 
 proc Linked_Version*(): sdl.Pversion{.cdecl, importc: "TTF_Linked_Version", 
                                       dynlib: ttfLibName.}

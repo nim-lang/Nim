@@ -42,7 +42,7 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
   if pass == passCmd2: 
     arguments = cmdLineRest(p)
     if not (optRun in gGlobalOptions) and (arguments != ""): 
-      rawMessage(errArgsNeedRunOption)
+      rawMessage(errArgsNeedRunOption, [])
   
 proc HandleCmdLine() = 
   var start = getTime()

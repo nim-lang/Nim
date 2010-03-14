@@ -80,6 +80,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/strutils.c -o build/1_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/parseutils.c -o build/1_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/parseutils.c -o build/1_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/commands.c -o build/1_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/commands.c -o build/1_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/os.c -o build/1_1/os.o"
@@ -146,10 +148,6 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rnimsyn.c -o build/1_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/filters.c -o build/1_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/filters.c -o build/1_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/paslex.c -o build/1_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/paslex.c -o build/1_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pasparse.c -o build/1_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/pasparse.c -o build/1_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/rodread.c -o build/1_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodwrite.c -o build/1_1/rodwrite.o"
@@ -216,6 +214,7 @@ build/1_1/system.o \
 build/1_1/nimrod.o \
 build/1_1/times.o \
 build/1_1/strutils.o \
+build/1_1/parseutils.o \
 build/1_1/commands.o \
 build/1_1/os.o \
 build/1_1/posix.o \
@@ -249,8 +248,6 @@ build/1_1/pbraces.o \
 build/1_1/ptmplsyn.o \
 build/1_1/rnimsyn.o \
 build/1_1/filters.o \
-build/1_1/paslex.o \
-build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
@@ -287,6 +284,7 @@ build/1_1/system.o \
 build/1_1/nimrod.o \
 build/1_1/times.o \
 build/1_1/strutils.o \
+build/1_1/parseutils.o \
 build/1_1/commands.o \
 build/1_1/os.o \
 build/1_1/posix.o \
@@ -320,8 +318,6 @@ build/1_1/pbraces.o \
 build/1_1/ptmplsyn.o \
 build/1_1/rnimsyn.o \
 build/1_1/filters.o \
-build/1_1/paslex.o \
-build/1_1/pasparse.o \
 build/1_1/rodread.o \
 build/1_1/rodwrite.o \
 build/1_1/passes.o \
@@ -364,6 +360,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/strutils.c -o build/1_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/strutils.c -o build/1_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/parseutils.c -o build/1_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/parseutils.c -o build/1_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/commands.c -o build/1_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/commands.c -o build/1_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/os.c -o build/1_2/os.o"
@@ -430,10 +428,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rnimsyn.c -o build/1_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/filters.c -o build/1_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/paslex.c -o build/1_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/paslex.c -o build/1_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pasparse.c -o build/1_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/pasparse.c -o build/1_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/rodread.c -o build/1_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodwrite.c -o build/1_2/rodwrite.o"
@@ -500,6 +494,7 @@ build/1_2/system.o \
 build/1_2/nimrod.o \
 build/1_2/times.o \
 build/1_2/strutils.o \
+build/1_2/parseutils.o \
 build/1_2/commands.o \
 build/1_2/os.o \
 build/1_2/posix.o \
@@ -533,8 +528,6 @@ build/1_2/pbraces.o \
 build/1_2/ptmplsyn.o \
 build/1_2/rnimsyn.o \
 build/1_2/filters.o \
-build/1_2/paslex.o \
-build/1_2/pasparse.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -571,6 +564,7 @@ build/1_2/system.o \
 build/1_2/nimrod.o \
 build/1_2/times.o \
 build/1_2/strutils.o \
+build/1_2/parseutils.o \
 build/1_2/commands.o \
 build/1_2/os.o \
 build/1_2/posix.o \
@@ -604,8 +598,6 @@ build/1_2/pbraces.o \
 build/1_2/ptmplsyn.o \
 build/1_2/rnimsyn.o \
 build/1_2/filters.o \
-build/1_2/paslex.o \
-build/1_2/pasparse.o \
 build/1_2/rodread.o \
 build/1_2/rodwrite.o \
 build/1_2/passes.o \
@@ -652,6 +644,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/strutils.c -o build/2_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/strutils.c -o build/2_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/parseutils.c -o build/2_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/parseutils.c -o build/2_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/commands.c -o build/2_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/commands.c -o build/2_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/os.c -o build/2_1/os.o"
@@ -718,10 +712,6 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rnimsyn.c -o build/2_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/filters.c -o build/2_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/filters.c -o build/2_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/paslex.c -o build/2_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/paslex.c -o build/2_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pasparse.c -o build/2_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/pasparse.c -o build/2_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/rodread.c -o build/2_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodwrite.c -o build/2_1/rodwrite.o"
@@ -788,6 +778,7 @@ build/2_1/system.o \
 build/2_1/nimrod.o \
 build/1_1/times.o \
 build/2_1/strutils.o \
+build/2_1/parseutils.o \
 build/2_1/commands.o \
 build/2_1/os.o \
 build/2_1/posix.o \
@@ -821,8 +812,6 @@ build/2_1/pbraces.o \
 build/2_1/ptmplsyn.o \
 build/2_1/rnimsyn.o \
 build/2_1/filters.o \
-build/2_1/paslex.o \
-build/2_1/pasparse.o \
 build/2_1/rodread.o \
 build/2_1/rodwrite.o \
 build/1_1/passes.o \
@@ -859,6 +848,7 @@ build/2_1/system.o \
 build/2_1/nimrod.o \
 build/1_1/times.o \
 build/2_1/strutils.o \
+build/2_1/parseutils.o \
 build/2_1/commands.o \
 build/2_1/os.o \
 build/2_1/posix.o \
@@ -892,8 +882,6 @@ build/2_1/pbraces.o \
 build/2_1/ptmplsyn.o \
 build/2_1/rnimsyn.o \
 build/2_1/filters.o \
-build/2_1/paslex.o \
-build/2_1/pasparse.o \
 build/2_1/rodread.o \
 build/2_1/rodwrite.o \
 build/1_1/passes.o \
@@ -936,6 +924,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/strutils.c -o build/2_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/strutils.c -o build/2_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/parseutils.c -o build/2_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/parseutils.c -o build/2_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/commands.c -o build/2_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/commands.c -o build/2_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/os.c -o build/2_2/os.o"
@@ -1002,10 +992,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rnimsyn.c -o build/2_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/filters.c -o build/2_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/paslex.c -o build/2_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/paslex.c -o build/2_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pasparse.c -o build/2_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/pasparse.c -o build/2_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/rodread.c -o build/2_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodwrite.c -o build/2_2/rodwrite.o"
@@ -1072,6 +1058,7 @@ build/2_2/system.o \
 build/2_2/nimrod.o \
 build/1_2/times.o \
 build/2_2/strutils.o \
+build/2_2/parseutils.o \
 build/2_2/commands.o \
 build/2_2/os.o \
 build/2_2/posix.o \
@@ -1105,8 +1092,6 @@ build/2_2/pbraces.o \
 build/2_2/ptmplsyn.o \
 build/2_2/rnimsyn.o \
 build/2_2/filters.o \
-build/2_2/paslex.o \
-build/2_2/pasparse.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/1_2/passes.o \
@@ -1143,6 +1128,7 @@ build/2_2/system.o \
 build/2_2/nimrod.o \
 build/1_2/times.o \
 build/2_2/strutils.o \
+build/2_2/parseutils.o \
 build/2_2/commands.o \
 build/2_2/os.o \
 build/2_2/posix.o \
@@ -1176,8 +1162,6 @@ build/2_2/pbraces.o \
 build/2_2/ptmplsyn.o \
 build/2_2/rnimsyn.o \
 build/2_2/filters.o \
-build/2_2/paslex.o \
-build/2_2/pasparse.o \
 build/2_2/rodread.o \
 build/2_2/rodwrite.o \
 build/1_2/passes.o \
@@ -1224,6 +1208,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -1290,10 +1276,6 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
@@ -1360,6 +1342,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -1393,8 +1376,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -1431,6 +1412,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -1464,8 +1446,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -1508,6 +1488,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/os.c -o build/3_2/os.o"
@@ -1574,10 +1556,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -1644,6 +1622,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -1677,8 +1656,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -1715,6 +1692,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -1748,8 +1726,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -1796,6 +1772,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -1862,10 +1840,6 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
@@ -1932,6 +1906,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -1965,8 +1940,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -2003,6 +1976,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -2036,8 +2010,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -2080,6 +2052,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/os.c -o build/3_2/os.o"
@@ -2146,10 +2120,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -2216,6 +2186,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -2249,8 +2220,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -2287,6 +2256,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -2320,8 +2290,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -2368,6 +2336,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/os.c -o build/3_1/os.o"
@@ -2434,10 +2404,6 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
@@ -2504,6 +2470,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -2537,8 +2504,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -2575,6 +2540,7 @@ build/3_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/3_1/os.o \
 build/2_1/posix.o \
@@ -2608,8 +2574,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -2652,6 +2616,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/os.c -o build/3_2/os.o"
@@ -2718,10 +2684,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -2788,6 +2750,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -2821,8 +2784,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -2859,6 +2820,7 @@ build/3_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/3_2/os.o \
 build/2_2/posix.o \
@@ -2892,8 +2854,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -2940,6 +2900,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/times.c -o build/1_1/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/strutils.c -o build/3_1/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/parseutils.c -o build/3_1/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/commands.c -o build/3_1/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/6_1/os.c -o build/6_1/os.o"
@@ -3006,10 +2968,6 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rnimsyn.c -o build/3_1/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/filters.c -o build/3_1/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/paslex.c -o build/3_1/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_1/pasparse.c -o build/3_1/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/rodread.c -o build/3_1/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodwrite.c -o build/3_1/rodwrite.o"
@@ -3076,6 +3034,7 @@ build/6_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/6_1/os.o \
 build/2_1/posix.o \
@@ -3109,8 +3068,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -3147,6 +3104,7 @@ build/6_1/system.o \
 build/3_1/nimrod.o \
 build/1_1/times.o \
 build/3_1/strutils.o \
+build/3_1/parseutils.o \
 build/3_1/commands.o \
 build/6_1/os.o \
 build/2_1/posix.o \
@@ -3180,8 +3138,6 @@ build/3_1/pbraces.o \
 build/3_1/ptmplsyn.o \
 build/3_1/rnimsyn.o \
 build/3_1/filters.o \
-build/3_1/paslex.o \
-build/3_1/pasparse.o \
 build/3_1/rodread.o \
 build/3_1/rodwrite.o \
 build/1_1/passes.o \
@@ -3224,6 +3180,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/times.c -o build/1_2/times.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/strutils.c -o build/3_2/strutils.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/parseutils.c -o build/3_2/parseutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/commands.c -o build/3_2/commands.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/6_2/os.c -o build/6_2/os.o"
@@ -3290,10 +3248,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rnimsyn.c -o build/3_2/rnimsyn.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/filters.c -o build/3_2/filters.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/paslex.c -o build/3_2/paslex.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o"
-    $CC $COMP_FLAGS -Ibuild -c build/3_2/pasparse.c -o build/3_2/pasparse.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/rodread.c -o build/3_2/rodread.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodwrite.c -o build/3_2/rodwrite.o"
@@ -3360,6 +3314,7 @@ build/6_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/6_2/os.o \
 build/2_2/posix.o \
@@ -3393,8 +3348,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \
@@ -3431,6 +3384,7 @@ build/6_2/system.o \
 build/3_2/nimrod.o \
 build/1_2/times.o \
 build/3_2/strutils.o \
+build/3_2/parseutils.o \
 build/3_2/commands.o \
 build/6_2/os.o \
 build/2_2/posix.o \
@@ -3464,8 +3418,6 @@ build/3_2/pbraces.o \
 build/3_2/ptmplsyn.o \
 build/3_2/rnimsyn.o \
 build/3_2/filters.o \
-build/3_2/paslex.o \
-build/3_2/pasparse.o \
 build/3_2/rodread.o \
 build/3_2/rodwrite.o \
 build/1_2/passes.o \

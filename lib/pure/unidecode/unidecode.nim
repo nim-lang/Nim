@@ -10,7 +10,7 @@
 ## This module is based on Python's Unidecode module by Tomaz Solc, 
 ## which in turn is based on the ``Text::Unidecode`` Perl module by 
 ## Sean M. Burke 
-## (http://search.cpan.org/~sburke/Text-Unidecode-0.04/lib/Text/Unidecode.pm).
+## (http://search.cpan.org/~sburke/Text-Unidecode-0.04/lib/Text/Unidecode.pm ).
 ##
 ## It provides a single proc that does Unicode to ASCII transliterations:
 ## It finds the sequence of ASCII characters that is the closest approximation
@@ -47,7 +47,7 @@ proc unidecode*(s: string): string =
   ## Example: 
   ## 
   ## ..code-block:: nimrod
-  ##   unidecode("\x53\x17\x4E\xB0")
+  ##   unidecode("\\x53\\x17\\x4E\\xB0")
   ##
   ## Results in: "Bei Jing"
   ##

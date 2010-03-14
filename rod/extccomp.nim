@@ -283,7 +283,7 @@ proc NameToCC(name: string): TSystemCC =
   result = ccNone
 
 proc addOpt(dest: var string, src: string) = 
-  if (len(dest) == 0) or (dest[len(dest) - 1 + 0] != ' '): add(dest, " ")
+  if len(dest) == 0 or dest[len(dest) - 1 + 0] != ' ': add(dest, " ")
   add(dest, src)
 
 proc addCompileOption(option: string) = 
@@ -308,7 +308,7 @@ proc addFileToLink(filename: string) =
   
 proc execExternalProgram(cmd: string) = 
   if (optListCmd in gGlobalOptions) or (gVerbosity > 0): MessageOut(cmd)
-  if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed)
+  if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
   
 proc generateScript(projectFile: string, script: PRope) = 
   var (dir, name, ext) = splitFile(projectFile)
@@ -425,7 +425,7 @@ proc CallCCompiler(projectfile: string) =
     else: 
       res = execProcesses(cmds, {poUseShell, poParentStreams}, 
                           gNumberOfProcessors)
-    if res != 0: rawMessage(errExecutionOfProgramFailed)
+    if res != 0: rawMessage(errExecutionOfProgramFailed, [])
   if not (optNoLinking in gGlobalOptions): 
     # call the linker:
     var linkerExe = getConfigVar(cc[c].name & ".linkerexe")

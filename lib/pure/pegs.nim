@@ -1190,7 +1190,7 @@ proc eat(p: var TPegParser, kind: TTokKind) =
 
 proc parseExpr(p: var TPegParser): TPeg
 
-proc getNonTerminal(p: TPegParser, name: string): PNonTerminal =
+proc getNonTerminal(p: var TPegParser, name: string): PNonTerminal =
   for i in 0..high(p.nonterms):
     result = p.nonterms[i]
     if cmpIgnoreStyle(result.name, name) == 0: return

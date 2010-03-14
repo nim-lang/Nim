@@ -323,7 +323,7 @@ const # this format is understood by many text editors: it is the same that
   RawHintFormat* = "Hint: $1"
 
 proc MessageOut*(s: string)
-proc rawMessage*(msg: TMsgKind, arg: string = "")
+proc rawMessage*(msg: TMsgKind, arg: string)
 proc rawMessage*(msg: TMsgKind, args: openarray[string])
 proc liMessage*(info: TLineInfo, msg: TMsgKind, arg: string = "")
 proc InternalError*(info: TLineInfo, errMsg: string)
@@ -475,7 +475,7 @@ proc rawMessage(msg: TMsgKind, args: openarray[string]) =
   MessageOut(`%`(frmt, `%`(msgKindToString(msg), args)))
   handleError(msg)
 
-proc rawMessage(msg: TMsgKind, arg: string = "") = 
+proc rawMessage(msg: TMsgKind, arg: string) = 
   rawMessage(msg, [arg])
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string = "") = 

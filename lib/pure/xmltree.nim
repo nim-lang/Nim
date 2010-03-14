@@ -12,9 +12,9 @@
 import macros, strtabs
 
 type
-  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``s. 
+  PXmlNode* = ref TXmlNode ## an XML tree consists of ``PXmlNode``'s. 
   
-  TXmlNodeKind* = enum  ## different kinds of ``PXmlNode``s
+  TXmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
@@ -39,7 +39,7 @@ proc newXmlNode(kind: TXmlNodeKind): PXmlNode =
   result.k = kind
 
 proc newElement*(tag: string): PXmlNode = 
-  ## creates a new ``PXmlNode``. of kind ``xnText`` with the given `tag`.
+  ## creates a new ``PXmlNode`` of kind ``xnText`` with the given `tag`.
   result = newXmlNode(xnElement)
   result.fTag = tag
   result.s = @[]
@@ -208,9 +208,14 @@ proc add*(result: var string, n: PXmlNode, indent = 0, indWidth = 2) =
     result.add(n.fText)
     result.add(';')
 
+const
+  xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" 
+    ## header to use for complete XML output
+
 proc `$`*(n: PXmlNode): string =
-  ## converts `n` into its string representation.
-  result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+  ## converts `n` into its string representation. No ``<$xml ...$>`` declaration
+  ## is produced, so that the produced XML fragments are composable.
+  result = ""
   result.add(n)
 
 proc newXmlTree*(tag: string, children: openArray[PXmlNode],
@@ -227,16 +232,21 @@ proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
   var a = e[1]
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
-    var attrs = newCall("newStringTable", [])
-    var bracket = newNimNode(nnkBracket, a)
+    var attrs = newNimNode(nnkBracket, a)
+    var newStringTabCall = newCall("newStringTable", attrs, 
+                                   newIdentNode("modeCaseSensitive"))
+    var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
-      if a[i].kind == nnkExprEqExpr: 
+      if a[i].kind == nnkExprEqExpr:
         attrs.add(toStrLit(a[i][0]))
         attrs.add(a[i][1])
+        echo repr(attrs)
       else:
-        bracket.add(a[i])
-    result.add(bracket)
-    if attrs.len > 1: result.add(attrs)
+        elements.add(a[i])
+    result.add(elements)
+    if attrs.len > 1: 
+      echo repr(newStringTabCall)
+      result.add(newStringTabCall)
   else:
     result = newCall("newXmlTree", toStrLit(a))
 
@@ -251,6 +261,4 @@ macro `<>`*(x: expr): expr =
   ##  <a href="http://force7.de/nimrod">Nimrod rules.</a>
   ##
   result = xmlConstructor(x)
-
-
 

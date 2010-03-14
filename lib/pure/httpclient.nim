@@ -284,14 +284,14 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## | POST's ``body`` to the ``url`` and returns a ``TResponse`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
-  extraHeaders.add("Content-Length: " & $len(body) & "\c\L")
-  result = request(url, httpPOST, extraHeaders, body)
+  var xh = extraHeaders & "Content-Length: " & $len(body) & "\c\L"
+  result = request(url, httpPOST, xh, body)
   for i in 1..maxRedirects:
     if result.status.redirection():
       var locationHeader = result.headers["Location"]
       if locationHeader == "": httpError("location header expected")
       var meth = if result.status != "307": httpGet else: httpPost
-      result = request(locationHeader, meth, extraHeaders, body)
+      result = request(locationHeader, meth, xh, body)
   
 proc postContent*(url: string, extraHeaders = "", body = ""): string =
   ## | POST's ``body`` to ``url`` and returns the response's body as a string
