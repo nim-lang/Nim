@@ -83,7 +83,7 @@ iterator FastRows*(db: TDbConn, query: TSqlQuery,
                    args: openarray[string]): TRow =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
-  ## query, the results can be undefined. For Postgres it is safe though.
+  ## query, the results can be undefined. For MySQL this is the case!.
   Exec(db, query, args)
   var sqlres = mysql.UseResult(db)
   if sqlres != nil:
