@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## A higher level `PostgreSQL`:idx: database wrapper. This interface 
+## A higher level `SQLite`:idx: database wrapper. This interface 
 ## is implemented for other databases too.
 
 import strutils, sqlite3
