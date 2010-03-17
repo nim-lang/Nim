@@ -79,6 +79,7 @@ proc ChooseFileToOpen*(window: PWindow, root: string = ""): string =
     else:
       result = ""
   else:
+    assert file_chooser_dialog_new != nil
     var chooser = file_chooser_dialog_new("Open File", window,
                 FILE_CHOOSER_ACTION_OPEN,
                 STOCK_CANCEL, RESPONSE_CANCEL,

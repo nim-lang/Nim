@@ -195,7 +195,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = copyTree(a)
     result.typ = n.typ
   of mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
-     mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, mNLen..mNError: 
+     mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
+     mNLen..mNError, mEqRef: 
     nil
   else: InternalError(a.info, "evalOp(" & $m & ')')
   
