@@ -130,7 +130,7 @@ proc replaceStr*(s: string, sub, by: char): string {.noSideEffect, deprecated.}
   ## **Deprecated since version 0.8.0**: Use `replace` instead.
 
 proc deleteStr*(s: var string, first, last: int) {.deprecated.}
-  ## Deletes in `s` the characters at position `first`..`last`. This modifies
+  ## Deletes in `s` the characters at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
   ## **Deprecated since version 0.8.0**: Use `delete` instead.
 
@@ -665,7 +665,7 @@ proc delete*(s: var string, first, last: int) =
 
 proc replaceStr(s, sub, by: string): string = return replace(s, sub, by)
 proc replaceStr(s: string, sub, by: char): string = return replace(s, sub, by)
-proc deleteStr*(s: var string, first, last: int) = delete(s, first, last)
+proc deleteStr(s: var string, first, last: int) = delete(s, first, last)
 
 # parsing numbers:
 

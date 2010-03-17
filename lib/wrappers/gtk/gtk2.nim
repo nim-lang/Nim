@@ -150,8 +150,7 @@ type
   TDestroyNotify* = proc (data: gpointer){.cdecl.}
   TCallbackMarshal* = proc (anObject: PObject, data: gpointer, n_args: guint, 
                             args: PArg){.cdecl.}
-  TSignalFuncProc* = proc ()
-  TSignalFunc* = proc (para1: TSignalFuncProc){.cdecl.}
+  TSignalFunc* = proc (para1: pointer){.cdecl.}
   PSignalMarshaller* = ptr TSignalMarshaller
   TSignalMarshaller* = TGSignalCMarshaller
   TArgSignalData*{.final, pure.} = object 
@@ -5093,11 +5092,11 @@ proc inconsistent*(a: PCheckMenuItem): guint
 proc set_inconsistent*(a: PCheckMenuItem, `inconsistent`: guint)
 proc check_menu_item_get_type*(): TType{.cdecl, dynlib: lib, 
     importc: "gtk_check_menu_item_get_type".}
-proc check_menu_item_new*(): PWidget{.cdecl, dynlib: lib, 
+proc check_menu_item_new*(): PCheckMenuItem{.cdecl, dynlib: lib, 
                                       importc: "gtk_check_menu_item_new".}
-proc check_menu_item_new*(`label`: cstring): PWidget{.cdecl, 
+proc check_menu_item_new*(`label`: cstring): PCheckMenuItem{.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_new_with_label".}
-proc check_menu_item_new_with_mnemonic*(`label`: cstring): PWidget{.cdecl, 
+proc check_menu_item_new_with_mnemonic*(`label`: cstring): PCheckMenuItem{.cdecl, 
     dynlib: lib, importc: "gtk_check_menu_item_new_with_mnemonic".}
 proc item_set_active*(check_menu_item: PCheckMenuItem, 
                                  is_active: gboolean){.cdecl, dynlib: lib, 
