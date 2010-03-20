@@ -97,7 +97,7 @@ proc sqrt*(z: TComplex): TComplex =
       w = sqrt(y) * sqrt(0.5 * (r + sqrt(1.0 + r * r)))
     if z.re >= 0.0:
       result.re = w
-      result.im = z.im / (w * 2)
+      result.im = z.im / (w * 2.0)
     else:
       if z.im >= 0.0: result.im = w
       else:           result.im = -w

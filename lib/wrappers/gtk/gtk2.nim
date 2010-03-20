@@ -4665,7 +4665,6 @@ proc set_in_button*(a: PButton, `in_button`: guint)
 proc button_down*(a: PButton): guint
 proc set_button_down*(a: PButton, `button_down`: guint)
 proc relief*(a: PButton): guint
-proc set_relief*(a: PButton, `relief`: guint)
 proc use_underline*(a: PButton): guint
 proc set_use_underline*(a: PButton, `use_underline`: guint)
 proc use_stock*(a: PButton): guint
@@ -5366,20 +5365,20 @@ proc set_auto_sort*(clist: PCList, auto_sort: gboolean){.cdecl,
 proc create_cell_layout*(clist: PCList, clist_row: PCListRow, column: gint): pango.PLayout{.
     cdecl, dynlib: lib, importc: "_gtk_clist_create_cell_layout".}
 const 
-  DIALOG_MODAL* = 1 shl 0
-  DIALOG_DESTROY_WITH_PARENT* = 1 shl 1
-  DIALOG_NO_SEPARATOR* = 1 shl 2
-  RESPONSE_NONE* = - (1)
-  RESPONSE_REJECT* = - (2)
-  RESPONSE_ACCEPT* = - (3)
-  RESPONSE_DELETE_EVENT* = - (4)
-  RESPONSE_OK* = - (5)
-  RESPONSE_CANCEL* = - (6)
-  RESPONSE_CLOSE* = - (7)
-  RESPONSE_YES* = - (8)
-  RESPONSE_NO* = - (9)
-  RESPONSE_APPLY* = - (10)
-  RESPONSE_HELP* = - (11)
+  DIALOG_MODAL* = cint(1 shl 0)
+  DIALOG_DESTROY_WITH_PARENT* = cint(1 shl 1)
+  DIALOG_NO_SEPARATOR* = cint(1 shl 2)
+  RESPONSE_NONE* = - cint(1)
+  RESPONSE_REJECT* = - cint(2)
+  RESPONSE_ACCEPT* = - cint(3)
+  RESPONSE_DELETE_EVENT* = - cint(4)
+  RESPONSE_OK* = - cint(5)
+  RESPONSE_CANCEL* = - cint(6)
+  RESPONSE_CLOSE* = - cint(7)
+  RESPONSE_YES* = - cint(8)
+  RESPONSE_NO* = - cint(9)
+  RESPONSE_APPLY* = - cint(10)
+  RESPONSE_HELP* = - cint(11)
 
 proc TYPE_DIALOG*(): GType
 proc DIALOG*(obj: pointer): PDialog
@@ -11827,10 +11826,6 @@ proc set_button_down*(a: PButton, `button_down`: guint) =
 
 proc relief*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_relief) shr bp_TGtkButton_relief
-
-proc set_relief*(a: PButton, `relief`: guint) = 
-  a.Buttonflag0 = a.Buttonflag0 or
-      (int16(`relief` shl bp_TGtkButton_relief) and bm_TGtkButton_relief)
 
 proc use_underline*(a: PButton): guint = 
   result = (a.Buttonflag0 and bm_TGtkButton_use_underline) shr
