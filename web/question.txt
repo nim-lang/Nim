@@ -53,10 +53,9 @@ and their interactions are subject to change.
 How fast is Nimrod?
 -------------------
 Benchmarks have not been ported yet and support for threads is missing. But in
-the worst case, you can get exactly the same performance as in C if you decide 
+the worst case, you can get the same performance as in C if you decide 
 to write as low-level Nimrod code as C requires you to do. That said the only
-overhead Nimrod has over C is the GC which has been tuned for years (and is 
-significantly faster than the Boehm GC).
+overhead Nimrod has over C is the GC which has been tuned for years.
 
 
 Compilation

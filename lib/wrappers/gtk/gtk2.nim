@@ -17,7 +17,7 @@ elif defined(darwin):
   # linklib atk-1.0.0
 else: 
   const 
-    lib = "libgtk-x11-2.0.so"
+    lib = "libgtk-x11-2.0.so(|.0)"
 
 const 
   MAX_COMPOSE_LEN* = 7
