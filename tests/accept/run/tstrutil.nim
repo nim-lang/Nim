@@ -10,6 +10,17 @@ proc main() =
   testStrip()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
+
+proc testDelete = 
+  var s = "0123456789ABCDEFGH"
+  delete(s, 4, 5)
+  assert s == "01236789ABCDEFGH"
+  delete(s, s.len-1, s.len-1)
+  assert s == "01236789ABCDEFG"
+  delete(s, 0, 0)
+  assert s == "1236789ABCDEFG"
+
+testDelete()  
     
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
