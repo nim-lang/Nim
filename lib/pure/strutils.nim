@@ -655,13 +655,13 @@ proc delete*(s: var string, first, last: int) =
   ## Deletes in `s` the characters at position `first`..`last`. This modifies
   ## `s` itself, it does not return a copy.
   var i = first
-  # example: "abc___uvwxyz\0"  (___ is to be deleted)
-  # --> first == 3, last == 5
-  # s[first..] = s[last+1..]
-  while last+i+1 < len(s):
-    s[i] = s[last+i+1]
+  var j = last+1
+  var newLen = len(s)-j+i
+  while i < newLen:
+    s[i] = s[j]
     inc(i)
-  setlen(s, len(s)-(last-first+1))
+    inc(j)
+  setlen(s, newLen)
 
 proc replaceStr(s, sub, by: string): string = return replace(s, sub, by)
 proc replaceStr(s: string, sub, by: char): string = return replace(s, sub, by)
