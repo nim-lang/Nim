@@ -259,6 +259,8 @@ proc leValueConv(a, b: PNode): bool =
   
 proc magicCall(m: PSym, n: PNode): PNode =
   var s = n.sons[0].sym
+  if sonsLen(n) <= 1: return
+  
   var a = getConstExpr(m, n.sons[1])
   var b, c: PNode
   if a == nil: return 

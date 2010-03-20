@@ -3,7 +3,7 @@
 import
   unicode, cgi, terminal, libcurl, web, 
   parsexml, parseopt, parsecfg,
-  osproc,
+  osproc, complex,
   sdl, smpeg, sdl_gfx, sdl_net, sdl_mixer, sdl_ttf,
   sdl_image, sdl_mixer_nosmpeg,
   cursorfont, xatom, xf86vmode, xkb, xrandr, xshm, xvlib, keysym, xcms, xi,
