@@ -6,9 +6,9 @@ when defined(windows):
     gobjectlib = "libgobject-2.0-0.dll"
 else: 
   const 
-    gliblib = "libglib-2.0.so"
-    gmodulelib = "libgmodule-2.0.so"
-    gobjectlib = "libgobject-2.0.so"
+    gliblib = "libglib-2.0.so(|.0)"
+    gmodulelib = "libgmodule-2.0.so(|.0)"
+    gobjectlib = "libgobject-2.0.so(|.0)"
 # gthreadlib = "libgthread-2.0.so"
 
 type 
