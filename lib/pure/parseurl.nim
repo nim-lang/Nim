@@ -42,7 +42,6 @@ proc parseUrl*(url: string): TURL =
         inc(i) #Skip the @ 
       #hostname(subdomain, domain, port)
       if url[i] == '/' or url[i] == '\0':
-        #TODO
         hostname = temp
         if hostname.split(':').len() > 1:
           port = hostname.split(':')[1]
@@ -54,6 +53,7 @@ proc parseUrl*(url: string): TURL =
       temp.add(url[i])
       inc(i)
 
+  if url[i] == '/': inc(i) # Skip the '/'
   #Path
   while True:
     if url[i] == '?':
@@ -88,8 +88,8 @@ proc `$`*(t: TURL): string =
       result.add(t.username & ":" & t.password & "@")
     else:
       result.add(t.username & "@")
-  if t.hostname != "": result.add(t.hostname)
+  result.add(t.hostname)
   if t.port != "": result.add(":" & t.port)
-  if t.path != "": result.add(t.path)
-  if t.query != "": result.add(t.query)
-  if t.anchor != "": result.add(t.anchor)
+  if t.path != "": result.add("/" & t.path)
+  result.add(t.query)
+  result.add(t.anchor)
