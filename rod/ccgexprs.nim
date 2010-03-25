@@ -63,7 +63,7 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
       result = ropef("(($1) $2)", [getTypeDesc(p.module, 
           skipTypes(ty, abstractVarRange)), intLiteral(v.intVal)])
   of nkNilLit: 
-    result = toRope("0")
+    result = toRope("NIM_NIL")
   of nkStrLit..nkTripleStrLit: 
     if skipTypes(ty, abstractVarRange).kind == tyString: 
       var id = NodeTableTestOrSet(p.module.dataCache, v, gid)
