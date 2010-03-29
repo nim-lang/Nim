@@ -7794,8 +7794,8 @@ proc set_show_tabs*(notebook: PNotebook, show_tabs: gboolean){.cdecl,
     dynlib: lib, importc: "gtk_notebook_set_show_tabs".}
 proc get_show_tabs*(notebook: PNotebook): gboolean{.cdecl, dynlib: lib, 
     importc: "gtk_notebook_get_show_tabs".}
-proc set_tab_pos*(notebook: PNotebook, pos: TPositionType){.cdecl, 
-    dynlib: lib, importc: "gtk_notebook_set_tab_pos".}
+#proc set_tab_pos*(notebook: PNotebook, pos: TPositionType){.cdecl, 
+#    dynlib: lib, importc: "gtk_notebook_set_tab_pos".}
 proc get_tab_pos*(notebook: PNotebook): TPositionType{.cdecl, 
     dynlib: lib, importc: "gtk_notebook_get_tab_pos".}
 proc set_scrollable*(notebook: PNotebook, scrollable: gboolean){.cdecl, 
@@ -14217,6 +14217,11 @@ proc set_show_border*(a: PNotebook, `show_border`: guint) =
 proc tab_pos*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_tab_pos) shr
       bp_TGtkNotebook_tab_pos
+
+proc set_tab_pos*(a: PNotebook, `tab_pos`: guint) = 
+  a.Notebookflag0 = a.Notebookflag0 or
+      (int16(`tab_pos` shl bp_TGtkNotebook_tab_pos) and
+      bm_TGtkNotebook_tab_pos)
 
 proc scrollable*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_scrollable) shr
