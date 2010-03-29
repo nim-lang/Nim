@@ -1,4 +1,4 @@
-# Example program to show the new parsexml module
+# Example program to show the parsexml module
 # This program reads an HTML file and writes its title to stdout.
 # Errors and whitespace are ignored.
 
@@ -31,6 +31,6 @@ while true:
   of xmlEof: break # end of file reached
   else: nil # ignore other events
 
-quit("Could not determine title!")
 x.close()
+quit("Could not determine title!")
 
