@@ -22,13 +22,12 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
-  var d: PNode
   result = semExpr(c, n, flags)
   if result == nil: InternalError("semExprWithType")
   if (result.typ == nil): 
     liMessage(n.info, errExprXHasNoType, renderTree(result, {renderNoComments}))
   if result.typ.kind == tyVar: 
-    d = newNodeIT(nkHiddenDeref, result.info, result.typ.sons[0])
+    var d = newNodeIT(nkHiddenDeref, result.info, result.typ.sons[0])
     addSon(d, result)
     result = d
 
@@ -39,13 +38,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of skProc, skMethod, skIterator, skConverter: 
     if not (sfProcVar in s.flags) and (s.typ.callConv == ccDefault) and
         (getModule(s).id != c.module.id): 
-      liMessage(n.info, warnXisPassedToProcVar, s.name.s)
-      # XXX change this to 
-      # errXCannotBePassedToProcVar after version 0.8.2
-      # TODO VERSION 0.8.4
-      #if (s.magic <> mNone) then
-      #  liMessage(n.info, 
-      #  errInvalidContextForBuiltinX, s.name.s);
+      liMessage(n.info, errXCannotBePassedToProcVar, s.name.s)
     result = symChoice(c, n, s)
   of skConst: 
     #
@@ -109,7 +102,7 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
     checkConversionBetweenObjects(info, d, s)
   elif (skipTypes(castDest, abstractVarRange).Kind in IntegralTypes) and
       (skipTypes(src, abstractVarRange).Kind in IntegralTypes): 
-    # accept conversion between intregral types
+    # accept conversion between integral types
   else: 
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(d, s)

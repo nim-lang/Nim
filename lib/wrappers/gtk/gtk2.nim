@@ -7732,7 +7732,6 @@ proc set_homogeneous*(a: PNotebook, `homogeneous`: guint)
 proc show_border*(a: PNotebook): guint
 proc set_show_border*(a: PNotebook, `show_border`: guint)
 proc tab_pos*(a: PNotebook): guint
-proc set_tab_pos*(a: PNotebook, `tab_pos`: guint)
 proc scrollable*(a: PNotebook): guint
 proc set_scrollable*(a: PNotebook, `scrollable`: guint)
 proc in_child*(a: PNotebook): guint
@@ -14218,11 +14217,6 @@ proc set_show_border*(a: PNotebook, `show_border`: guint) =
 proc tab_pos*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_tab_pos) shr
       bp_TGtkNotebook_tab_pos
-
-proc set_tab_pos*(a: PNotebook, `tab_pos`: guint) = 
-  a.Notebookflag0 = a.Notebookflag0 or
-      (int16(`tab_pos` shl bp_TGtkNotebook_tab_pos) and
-      bm_TGtkNotebook_tab_pos)
 
 proc scrollable*(a: PNotebook): guint = 
   result = (a.Notebookflag0 and bm_TGtkNotebook_scrollable) shr
