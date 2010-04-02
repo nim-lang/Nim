@@ -17,7 +17,7 @@ elif defined(darwin):
     lib = "gdk-x11-2.0"
 else: 
   const 
-    lib = "libgdk-x11-2.0.so"
+    lib = "libgdk-x11-2.0.so(|.0)"
 const 
   NUMPTSTOBUFFER* = 200
   MAX_TIMECOORD_AXES* = 128

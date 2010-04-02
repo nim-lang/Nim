@@ -9,6 +9,9 @@
 
 import 
   os, lists, strutils, nstrtabs
+  
+const
+  hasTinyCBackend* = true
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -48,7 +51,8 @@ type                          # please make sure we have under 32 options
     cmdDebugTrans,            # debug a transformation pass
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
-    cmdInteractive            # start interactive session
+    cmdInteractive,           # start interactive session
+    cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
 
 const 

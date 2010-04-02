@@ -67,10 +67,12 @@ const
 
 type 
   TFormatStr* = string # later we may change it to CString for better
-                       # performance of the code generator (assignments copy the format strings
+                       # performance of the code generator (assignments 
+                       # copy the format strings
                        # though it is not necessary)
   PRope* = ref TRope
-  TRope*{.acyclic.} = object of TObject # the empty rope is represented by nil to safe space
+  TRope*{.acyclic.} = object of TObject # the empty rope is represented 
+                                        # by nil to safe space
     left*, right*: PRope
     length*: int
     data*: string             # != nil if a leaf
