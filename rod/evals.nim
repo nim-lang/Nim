@@ -1014,9 +1014,9 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
       case result.kind
       of nkExceptBranch, nkReturnToken, nkBreakStmt: break 
       else: nil
-  of nkProcDef, nkMethodDef, nkMacroDef, nkCommentStmt, nkPragma, nkTypeSection, 
-     nkTemplateDef, nkConstSection, nkIteratorDef, nkConverterDef, 
-     nkIncludeStmt, nkImportStmt, nkFromStmt: 
+  of nkProcDef, nkMethodDef, nkMacroDef, nkCommentStmt, nkPragma,
+     nkTypeSection, nkTemplateDef, nkConstSection, nkIteratorDef,
+     nkConverterDef, nkIncludeStmt, nkImportStmt, nkFromStmt: 
     nil
   of nkIdentDefs, nkCast, nkYieldStmt, nkAsmStmt, nkForStmt, nkPragmaExpr, 
      nkLambda, nkContinueStmt, nkIdent: 

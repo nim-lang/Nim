@@ -36,6 +36,7 @@ Usage::
 Command::
   compile, c                compile project with default code generator (C)
   compileToC, cc            compile project with C code generator
+  run                       compile the project in memory and run it
   doc                       generate the documentation for inputfile
   rst2html                  converts a reStructuredText file to HTML
   rst2tex                   converts a reStructuredText file to TeX
@@ -70,7 +71,6 @@ Options:
         
   AdvancedUsage = """
 Advanced commands::
-  pas                       convert a Pascal file to Nimrod syntax
   pretty                    pretty print the inputfile
   genDepend                 generate a DOT file containing the
                             module dependency graph

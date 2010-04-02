@@ -11,6 +11,9 @@ import
   times, commands, scanner, condsyms, options, msgs, nversion, nimconf, ropes, 
   extccomp, strutils, os, platform, main, parseopt
 
+when hasTinyCBackend:
+  import tccgen
+
 var 
   arguments: string = ""      # the arguments to be passed to the program that
                               # should be run
@@ -21,8 +24,7 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
   while true: 
     parseopt.next(p)
     case p.kind
-    of cmdEnd: 
-      break 
+    of cmdEnd: break 
     of cmdLongOption, cmdShortOption: 
       # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
       # we fix this here
@@ -41,7 +43,7 @@ proc ProcessCmdLine(pass: TCmdLinePass, command, filename: var string) =
         break 
   if pass == passCmd2: 
     arguments = cmdLineRest(p)
-    if not (optRun in gGlobalOptions) and (arguments != ""): 
+    if optRun notin gGlobalOptions and arguments != "": 
       rawMessage(errArgsNeedRunOption, [])
   
 proc HandleCmdLine() = 
@@ -63,8 +65,11 @@ proc HandleCmdLine() =
     ProcessCmdLine(passCmd2, command, filename)
     MainCommand(command, filename)
     if gVerbosity >= 2: echo(GC_getStatistics())
-    if (gCmd != cmdInterpret) and (msgs.gErrorCounter == 0): 
-      rawMessage(hintSuccessX, [$(gLinesCompiled), $(getTime() - start)])
+    when hasTinyCBackend:
+      if gCmd == cmdRun:
+        tccgen.run()
+    if gCmd notin {cmdInterpret, cmdRun} and msgs.gErrorCounter == 0: 
+      rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start)])
     if optRun in gGlobalOptions: 
       when defined(unix): 
         var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))

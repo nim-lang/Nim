@@ -1,20 +1,22 @@
+#
+#
+#              Nimrod REPL
+#        (c) Copyright 2010 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import glib2, gtk2, gdk2, osproc, dialogs, strutils
 
-type
-  output = tuple[compiler, app: string]
-
-proc execCode(code: string): output =
-
+proc execCode(code: string): string =
   var f: TFile
   if open(f, "temp.nim", fmWrite):
     f.write(code)
     f.close()
   else:
-    raise newException(EIO, "Unable to open file")
-    
-  var compilerOutput = osproc.execProcess("nimrod c temp.nim")
-  var appOutput = osproc.execProcess("temp.exe")
-  return (compilerOutput, appOutput)
+    raise newException(EIO, "Unable to open file")    
+  result = osproc.execProcess("nimrod run --verbosity:0 temp.nim")
 
 var shiftPressed = False
 var w: gtk2.PWindow
@@ -83,8 +85,8 @@ proc inputKeyReleased(widget: PWidget, event: PEventKey,
 
       try:
         var r = execCode($InputText)
-        set_text(OutputTextBuffer, r[0] & r[1], len(r[0] & r[1]))
-      except:
+        set_text(OutputTextBuffer, r, len(r))
+      except EIO:
         setError("Error: Could not open file temp.nim")
 
 

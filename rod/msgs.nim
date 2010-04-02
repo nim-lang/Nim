@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -298,14 +298,18 @@ const
 type 
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
-  TLineInfo*{.final.} = object # This is designed to be as small as possible, because it is used
-                               # in syntax nodes. We safe space here by using two int16 and an int32
-                               # on 64 bit and on 32 bit systems this is only 8 bytes.
+  TLineInfo*{.final.} = object # This is designed to be as small as possible,
+                               # because it is used
+                               # in syntax nodes. We safe space here by using 
+                               # two int16 and an int32
+                               # on 64 bit and on 32 bit systems this is 
+                               # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
 
 
 proc UnknownLineInfo*(): TLineInfo
+
 var 
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)}
   gErrorCounter*: int = 0     # counts the number of errors

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -480,8 +480,8 @@ proc genMappingFiles(list: TLinkedList): PRope =
     it = PStrEntry(it.next)
 
 proc writeMapping(gSymbolMapping: PRope) = 
-  if not (optGenMapping in gGlobalOptions): return 
-  var code = toRope("[C_Files]" & "\n")
+  if optGenMapping notin gGlobalOptions: return 
+  var code = toRope("[C_Files]\n")
   app(code, genMappingFiles(toCompile))
   app(code, genMappingFiles(externalToCompile))
   appf(code, "[Symbols]$n$1", [gSymbolMapping])

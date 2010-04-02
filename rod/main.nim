@@ -118,7 +118,8 @@ proc CommandCompileToC(filename: string) =
   registerPass(rodwrite.rodwritePass())
   #registerPass(cleanupPass())
   compileProject(filename)
-  extccomp.CallCCompiler(changeFileExt(filename, ""))
+  if gCmd != cmdRun:
+    extccomp.CallCCompiler(changeFileExt(filename, ""))
 
 when has_LLVM_Backend:
   proc CommandCompileToLLVM(filename: string) = 
@@ -191,6 +192,13 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdCompileToC
     wantFile(filename)
     CommandCompileToC(filename)
+  of wRun:
+    gCmd = cmdRun
+    wantFile(filename)
+    when hasTinyCBackend:
+      CommandCompileToC(filename)
+    else: 
+      rawMessage(errInvalidCommandX, cmd)
   of wCompileToCpp: 
     gCmd = cmdCompileToCpp
     wantFile(filename)
@@ -204,6 +212,8 @@ proc MainCommand(cmd, filename: string) =
     wantFile(filename)
     when has_LLVM_Backend:
       CommandCompileToLLVM(filename)
+    else:
+      rawMessage(errInvalidCommandX, cmd)
   of wPretty: 
     gCmd = cmdPretty
     wantFile(filename)        #CommandExportSymbols(filename);
