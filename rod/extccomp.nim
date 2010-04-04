@@ -375,7 +375,7 @@ proc getCompileCFileCmd(cfilename: string, isExternal: bool = false): string =
     compilePattern = cc[c].compilerExe
   if targetOS == platform.hostOS: cfile = cfilename
   else: cfile = extractFileName(cfilename)
-  if not isExternal or (targetOS != platform.hostOS): objfile = toObjFile(cfile)
+  if not isExternal or targetOS != platform.hostOS: objfile = toObjFile(cfile)
   else: objfile = completeCFilePath(toObjFile(cfile))
   cfile = quoteIfContainsWhite(AddFileExt(cfile, cExt))
   objfile = quoteIfContainsWhite(objfile)
