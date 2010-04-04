@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 # This module implements the signature matching for resolving
 # the call to overloaded procs, generic procs and operators.
 
@@ -150,18 +151,16 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     result = isEqual
     for i in countup(0, sonsLen(f) - 1): 
       var m = typeRel(mapping, f.sons[i], a.sons[i])
-      if m < isSubtype: 
-        return isNone
+      if m < isSubtype: return isNone
       result = minRel(result, m)
-    if (f.n != nil) and (a.n != nil): 
+    if f.n != nil and a.n != nil: 
       for i in countup(0, sonsLen(f.n) - 1): 
         # check field names:
         if f.n.sons[i].kind != nkSym: InternalError(f.n.info, "tupleRel")
         if a.n.sons[i].kind != nkSym: InternalError(a.n.info, "tupleRel")
         var x = f.n.sons[i].sym
         var y = a.n.sons[i].sym
-        if x.name.id != y.name.id: 
-          return isNone
+        if x.name.id != y.name.id: return isNone
 
 proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
   var 
@@ -171,42 +170,33 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   result = isNone
   assert(f != nil)
   assert(a != nil)
-  if (a.kind == tyGenericInst) and
-      not (skipTypes(f, {tyVar}).kind in {tyGenericBody, tyGenericInvokation}): 
+  if a.kind == tyGenericInst and
+      skipTypes(f, {tyVar}).kind notin {tyGenericBody, tyGenericInvokation}: 
     return typeRel(mapping, f, lastSon(a))
-  if (a.kind == tyVar) and (f.kind != tyVar): 
+  if a.kind == tyVar and f.kind != tyVar: 
     return typeRel(mapping, f, a.sons[0])
   case f.kind
   of tyEnum: 
-    if (a.kind == f.kind) and (a.id == f.id): result = isEqual
-    elif (skipTypes(a, {tyRange}).id == f.id): result = isSubtype
+    if a.kind == f.kind and a.id == f.id: result = isEqual
+    elif skipTypes(a, {tyRange}).id == f.id: result = isSubtype
   of tyBool, tyChar: 
-    if (a.kind == f.kind): result = isEqual
+    if a.kind == f.kind: result = isEqual
     elif skipTypes(a, {tyRange}).kind == f.kind: result = isSubtype
   of tyRange: 
-    if (a.kind == f.kind): 
+    if a.kind == f.kind: 
       result = typeRel(mapping, base(a), base(f))
       if result < isGeneric: result = isNone
     elif skipTypes(f, {tyRange}).kind == a.kind: 
       result = isConvertible  # a convertible to f
-  of tyInt: 
-    result = handleRange(f, a, tyInt8, tyInt32)
-  of tyInt8: 
-    result = handleRange(f, a, tyInt8, tyInt8)
-  of tyInt16: 
-    result = handleRange(f, a, tyInt8, tyInt16)
-  of tyInt32: 
-    result = handleRange(f, a, tyInt, tyInt32)
-  of tyInt64: 
-    result = handleRange(f, a, tyInt, tyInt64)
-  of tyFloat: 
-    result = handleFloatRange(f, a)
-  of tyFloat32: 
-    result = handleFloatRange(f, a)
-  of tyFloat64: 
-    result = handleFloatRange(f, a)
-  of tyFloat128: 
-    result = handleFloatRange(f, a)
+  of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
+  of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
+  of tyInt16:    result = handleRange(f, a, tyInt8, tyInt16)
+  of tyInt32:    result = handleRange(f, a, tyInt, tyInt32)
+  of tyInt64:    result = handleRange(f, a, tyInt, tyInt64)
+  of tyFloat:    result = handleFloatRange(f, a)
+  of tyFloat32:  result = handleFloatRange(f, a)
+  of tyFloat64:  result = handleFloatRange(f, a)
+  of tyFloat128: result = handleFloatRange(f, a)
   of tyVar: 
     if (a.kind == f.kind): result = typeRel(mapping, base(f), base(a))
     else: result = typeRel(mapping, base(f), a)
@@ -227,8 +217,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           result = isNone
         elif f.sons[0].kind in GenericTypes: 
           result = minRel(result, typeRel(mapping, f.sons[0], a.sons[0]))
-    else: 
-      nil
+    else: nil
   of tyOpenArray: 
     case a.Kind
     of tyOpenArray: 
@@ -249,8 +238,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         result = isConvertible
       elif typeRel(mapping, base(f), a.sons[0]) >= isGeneric: 
         result = isConvertible
-    else: 
-      nil
+    else: nil
   of tySequence: 
     case a.Kind
     of tyNil: 
@@ -261,16 +249,14 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       else: 
         result = typeRel(mapping, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
-    else: 
-      nil
+    else: nil
   of tyOrdinal: 
     if isOrdinalType(a): 
       if a.kind == tyOrdinal: x = a.sons[0]
       else: x = a
       result = typeRel(mapping, f.sons[0], x)
       if result < isGeneric: result = isNone
-  of tyForward: 
-    InternalError("forward type in typeRel()")
+  of tyForward: InternalError("forward type in typeRel()")
   of tyNil: 
     if a.kind == f.kind: result = isEqual
   of tyTuple: 
@@ -294,23 +280,18 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     of tyPtr: 
       result = typeRel(mapping, base(f), base(a))
       if result <= isConvertible: result = isNone
-    of tyNil: 
-      result = isSubtype
-    else: 
-      nil
+    of tyNil: result = isSubtype
+    else: nil
   of tyRef: 
     case a.kind
     of tyRef: 
       result = typeRel(mapping, base(f), base(a))
       if result <= isConvertible: result = isNone
-    of tyNil: 
-      result = isSubtype
-    else: 
-      nil
+    of tyNil: result = isSubtype
+    else: nil
   of tyProc: 
     case a.kind
-    of tyNil: 
-      result = isSubtype
+    of tyNil: result = isSubtype
     of tyProc: 
       if (sonsLen(f) == sonsLen(a)) and (f.callconv == a.callconv): 
         # Note: We have to do unification for the parameters before the
@@ -340,8 +321,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           result = isNone
         if (tfNoSideEffect in f.flags) and not (tfNoSideEffect in a.flags): 
           result = isNone
-    else: 
-      nil
+    else: nil
   of tyPointer: 
     case a.kind
     of tyPointer: result = isEqual
@@ -356,12 +336,9 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
   of tyCString: 
     # conversion from string to cstring is automatic:
     case a.Kind
-    of tyCString: 
-      result = isEqual
-    of tyNil: 
-      result = isSubtype
-    of tyString: 
-      result = isConvertible
+    of tyCString: result = isEqual
+    of tyNil: result = isSubtype
+    of tyString: result = isConvertible
     of tyPtr: 
       if a.sons[0].kind == tyChar: result = isConvertible
     of tyArray: 
@@ -369,8 +346,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
           (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
           (a.sons[1].kind == tyChar): 
         result = isConvertible
-    else: 
-      nil
+    else: nil
   of tyEmpty: 
     if a.kind == tyEmpty: result = isEqual
   of tyGenericInst: 
@@ -682,10 +658,10 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
 
 proc sameMethodDispatcher(a, b: PSym): bool = 
   result = false
-  if (a.kind == skMethod) and (b.kind == skMethod): 
+  if a.kind == skMethod and b.kind == skMethod: 
     var aa = lastSon(a.ast)
     var bb = lastSon(b.ast)
-    if (aa.kind == nkSym) and (bb.kind == nkSym) and (aa.sym == bb.sym): 
+    if aa.kind == nkSym and bb.kind == nkSym and aa.sym == bb.sym: 
       result = true
   
 proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode = 
@@ -707,29 +683,25 @@ proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode =
       matches(c, n, z)
       if z.state == csMatch: 
         case x.state
-        of csEmpty, csNoMatch: 
-          x = z
+        of csEmpty, csNoMatch: x = z
         of csMatch: 
           var cmp = cmpCandidates(x, z)
-          if cmp < 0: 
-            x = z             # z is better than x
-          elif cmp == 0: 
-            y = z             # z is as good as x
-          else: 
-            nil
+          if cmp < 0: x = z # z is better than x
+          elif cmp == 0: y = z # z is as good as x
+          else: nil
     sym = nextOverloadIter(o, c, n.sons[0])
   if x.state == csEmpty: 
     # no overloaded proc found
     # do not generate an error yet; the semantic checking will check for
     # an overloaded () operator
-  elif (y.state == csMatch) and (cmpCandidates(x, y) == 0) and
+  elif y.state == csMatch and cmpCandidates(x, y) == 0 and
       not sameMethodDispatcher(x.calleeSym, y.calleeSym): 
     if x.state != csMatch: 
       InternalError(n.info, "x.state is not csMatch") #writeMatches(x);
                                                       #writeMatches(y);
-    liMessage(n.Info, errGenerated, `%`(msgKindToString(errAmbiguousCallXYZ), [
-        getProcHeader(x.calleeSym), getProcHeader(y.calleeSym), 
-        x.calleeSym.Name.s]))
+    liMessage(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+      getProcHeader(x.calleeSym), getProcHeader(y.calleeSym), 
+      x.calleeSym.Name.s])
   else: 
     # only one valid interpretation found:
     markUsed(n, x.calleeSym)

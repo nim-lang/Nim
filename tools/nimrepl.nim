@@ -16,7 +16,8 @@ proc execCode(code: string): string =
     f.close()
   else:
     raise newException(EIO, "Unable to open file")    
-  result = osproc.execProcess("nimrod run --verbosity:0 temp.nim")
+  result = osproc.execProcess(
+      "nimrod run --verbosity:0 --hint[Conf]:off temp.nim")
 
 var shiftPressed = False
 var w: gtk2.PWindow

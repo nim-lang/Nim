@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -101,6 +101,6 @@ proc sqrt*(z: TComplex): TComplex =
     else:
       if z.im >= 0.0: result.im = w
       else:           result.im = -w
-      result.re = z.im / (c.im + c.im)
+      result.re = z.im / (result.im + result.im)
 
 {.pop.}

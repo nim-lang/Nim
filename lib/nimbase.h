@@ -22,7 +22,9 @@ __TINYC__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
-#include  <math.h>
+#if !defined(__TINYC__)
+#  include  <math.h>
+#endif
 
 /* calling convention mess ----------------------------------------------- */
 #if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
