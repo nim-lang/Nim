@@ -233,9 +233,9 @@ type
                              ## that is too small to be represented as 
                              ## a normal number
   EFloatInexact* {.compilerproc.} = 
-    object of EFloatingPoint ## Inexact. Operation produces a result that cannot 
-                             ## be represented with infinite precision -- 
-                             ## for example, 2.0 / 3.0, log(1.1) 
+    object of EFloatingPoint ## Inexact. Operation produces a result
+                             ## that cannot be represented with infinite
+                             ## precision -- for example, 2.0 / 3.0, log(1.1) 
                              ## NOTE: Nimrod currently does not detect these!
 
   TResult* = enum Failure, Success
@@ -962,7 +962,7 @@ proc `$` *(x: Cstring): string {.magic: "CStrToStr", noSideEffect.}
 proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stingify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
+  ## that ``$expr`` also works if ``expr`` already is a string.
 
 proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
   ## The stingify operator for an enumeration argument. This works for

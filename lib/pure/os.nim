@@ -926,28 +926,90 @@ proc createDir*(dir: string) =
   rawCreateDir(dir)
 
 proc parseCmdLine*(c: string): seq[string] =
-  ## Splits a command line into several components; components are separated by
-  ## whitespace unless the whitespace occurs within ``"`` or ``'`` quotes. 
+  ## Splits a command line into several components;  
   ## This proc is only occassionally useful, better use the `parseopt` module.
+  ##
+  ## On Windows, it uses the following parsing rules
+  ## (see http://msdn.microsoft.com/en-us/library/17w5ykft.aspx):
+  ##
+  ## * Arguments are delimited by white space, which is either a space or a tab.
+  ## * The caret character (^) is not recognized as an escape character or
+  ##   delimiter. The character is handled completely by the command-line parser
+  ##   in the operating system before being passed to the argv array in the
+  ##   program.
+  ## * A string surrounded by double quotation marks ("string") is interpreted
+  ##   as a single argument, regardless of white space contained within. A
+  ##   quoted string can be embedded in an argument.
+  ## * A double quotation mark preceded by a backslash (\") is interpreted as a
+  ##   literal double quotation mark character (").
+  ## * Backslashes are interpreted literally, unless they immediately precede
+  ##   a double quotation mark.
+  ## * If an even number of backslashes is followed by a double quotation mark,
+  ##   one backslash is placed in the argv array for every pair of backslashes,
+  ##   and the double quotation mark is interpreted as a string delimiter.
+  ## * If an odd number of backslashes is followed by a double quotation mark,
+  ##   one backslash is placed in the argv array for every pair of backslashes,
+  ##   and the double quotation mark is "escaped" by the remaining backslash,
+  ##   causing a literal double quotation mark (") to be placed in argv.
+  ##
+  ## On Posix systems, it uses the following parsing rules:
+  ## components are separated by
+  ## whitespace unless the whitespace occurs within ``"`` or ``'`` quotes.
   result = @[]
   var i = 0
   var a = ""
   while true:
     setLen(a, 0)
-    while c[i] >= '\1' and c[i] <= ' ': inc(i) # skip whitespace
-    case c[i]
-    of '\'', '\"':
-      var delim = c[i]
-      inc(i) # skip ' or "
-      while c[i] != '\0' and c[i] != delim:
-        add a, c[i]
-        inc(i)
-      if c[i] != '\0': inc(i)
-    of '\0': break
+    while c[i] == ' ' or c[i] == '\t': inc(i)
+    when defined(windows):
+      # parse a single argument according to the above rules:
+      var inQuote = false
+      while true:
+        case c[i]        
+        of '\0': break
+        of '\\':
+          var j = i
+          while c[j] == '\\': inc(j)
+          if c[j] == '"': 
+            for k in 0..(j-i) div 2: a.add('\\')
+            if (j-i) mod 2 == 0: 
+              i = j
+            else: 
+              a.add('"')
+              i = j+1
+          else: 
+            a.add(c[i])
+            inc(i)
+        of '"':
+          inc(i)
+          if not inQuote: inQuote = true
+          elif c[i] == '"': 
+            a.add(c[i])
+            inc(i)
+          else:
+            inQuote = false
+            break
+        of ' ', '\t': 
+          if not inQuote: break
+          a.add(c[i])
+          inc(i)
+        else:
+          a.add(c[i])
+          inc(i)
     else:
-      while c[i] > ' ':
-        add(a, c[i])
-        inc(i)
+      case c[i]
+      of '\'', '\"':
+        var delim = c[i]
+        inc(i) # skip ' or "
+        while c[i] != '\0' and c[i] != delim:
+          add a, c[i]
+          inc(i)
+        if c[i] != '\0': inc(i)
+      of '\0': break
+      else:
+        while c[i] > ' ':
+          add(a, c[i])
+          inc(i)
     add(result, a)
 
 type

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -90,8 +90,7 @@ type
   PByteArray = ref TByteArray
 
 proc crcFromBuf(buf: Pointer, length: int): TCrc32 = 
-  var p: PByteArray
-  p = cast[PByteArray](buf)
+  var p = cast[PByteArray](buf)
   result = InitCrc32
   for i in countup(0, length - 1): result = updateCrc32(p[i], result)
   
@@ -117,10 +116,12 @@ proc crcFromFile(filename: string): TCrc32 =
 
 const 
   base = int32(65521) # largest prime smaller than 65536 
-                      #NMAX = 5552; original code with unsigned 32 bit integer 
-                      # NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 
+                      # NMAX = 5552; original code with unsigned 32 bit integer 
+                      # NMAX is the largest n 
+                      # such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 
   nmax = 3854 # code with signed 32 bit integer 
-              # NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^31-1 
+              # NMAX is the largest n such that 
+              # 255n(n+1)/2 + (n+1)(BASE-1) <= 2^31-1 
               # The penalty is the time loss in the extra MOD-calls. 
 
 proc updateAdler32(adler: int32, buf: pointer, length: int): int32 = 

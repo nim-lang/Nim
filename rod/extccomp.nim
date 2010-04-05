@@ -11,7 +11,7 @@
 # some things are read in from the configuration file
 
 import                        
-  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs
+  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, crc
 
 type 
   TSystemCC* = enum 
@@ -299,12 +299,30 @@ proc toObjFile(filenameWithoutExt: string): string =
 proc addFileToCompile(filename: string) = 
   appendStr(toCompile, filename)
 
+proc externalFileChanged(filename: string): bool = 
+  var crcFile = toGeneratedFile(filename, "crc")
+  var currentCrc = int(crcFromFile(filename))
+  var f: TFile
+  if open(f, crcFile, fmRead): 
+    var line = f.readLine()
+    if isNil(line) or line.len == 0: line = "0"
+    close(f)
+    var oldCrc = parseInt(line)
+    result = oldCrc != currentCrc
+  else:
+    result = true
+  if result: 
+    if open(f, crcFile, fmWrite):
+      f.writeln($currentCrc)
+      close(f)
+
 proc addExternalFileToCompile(filename: string) = 
-  appendStr(externalToCompile, filename)
+  if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
+    appendStr(externalToCompile, changeFileExt(filename, ""))
 
 proc addFileToLink(filename: string) = 
-  prependStr(toLink, filename) # BUGFIX
-                               #appendStr(toLink, filename);
+  prependStr(toLink, filename) 
+  # BUGFIX: was ``appendStr``
   
 proc execExternalProgram(cmd: string) = 
   if (optListCmd in gGlobalOptions) or (gVerbosity > 0): MessageOut(cmd)
@@ -361,8 +379,8 @@ proc getCompileCFileCmd(cfilename: string, isExternal: bool = false): string =
   key = cc[c].name & ".exe"
   if existsConfigVar(key): exe = getConfigVar(key)
   if targetOS == osWindows: exe = addFileExt(exe, "exe")
-  if (optGenDynLib in gGlobalOptions) and
-      (ospNeedsPIC in platform.OS[targetOS].props): 
+  if optGenDynLib in gGlobalOptions and
+      ospNeedsPIC in platform.OS[targetOS].props: 
     add(options, ' ' & cc[c].pic)
   if targetOS == platform.hostOS: 
     # compute include paths:
@@ -383,11 +401,11 @@ proc getCompileCFileCmd(cfilename: string, isExternal: bool = false): string =
       objfile, "options", options, "include", includeCmd, "nimrod", 
       getPrefixDir(), "lib", libpath]))
   add(result, ' ')
-  add(result, `%`(cc[c].compileTmpl, ["file", cfile, "objfile", objfile, 
-                                      "options", options, "include", includeCmd, 
-                                      "nimrod", 
-                                      quoteIfContainsWhite(getPrefixDir()), 
-                                      "lib", quoteIfContainsWhite(libpath)]))
+  addf(result, cc[c].compileTmpl, [
+    "file", cfile, "objfile", objfile, 
+    "options", options, "include", includeCmd, 
+    "nimrod", quoteIfContainsWhite(getPrefixDir()), 
+    "lib", quoteIfContainsWhite(libpath)])
 
 proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq, 
                   isExternal: bool) = 
@@ -396,7 +414,7 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
     inc(fileCounter)          # call the C compiler for the .c file:
     var compileCmd = getCompileCFileCmd(it.data, isExternal)
     if not (optCompileOnly in gGlobalOptions): 
-      add(cmds, compileCmd)   #execExternalProgram(compileCmd);
+      add(cmds, compileCmd)
     if (optGenScript in gGlobalOptions): 
       app(script, compileCmd)
       app(script, tnl)
@@ -405,7 +423,7 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
 proc CallCCompiler(projectfile: string) = 
   var 
     linkCmd, buildgui, builddll: string
-  if (gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}): 
+  if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}: 
     return # speed up that call if only compiling and no script shall be
            # generated
   fileCounter = 0
@@ -414,7 +432,7 @@ proc CallCCompiler(projectfile: string) =
   var cmds: TStringSeq = @[]
   CompileCFile(toCompile, script, cmds, false)
   CompileCFile(externalToCompile, script, cmds, true)
-  if not (optCompileOnly in gGlobalOptions): 
+  if optCompileOnly notin gGlobalOptions: 
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
     if gNumberOfProcessors <= 1: 
@@ -426,7 +444,7 @@ proc CallCCompiler(projectfile: string) =
       res = execProcesses(cmds, {poUseShell, poParentStreams}, 
                           gNumberOfProcessors)
     if res != 0: rawMessage(errExecutionOfProgramFailed, [])
-  if not (optNoLinking in gGlobalOptions): 
+  if optNoLinking notin gGlobalOptions: 
     # call the linker:
     var linkerExe = getConfigVar(cc[c].name & ".linkerexe")
     if len(linkerExe) == 0: linkerExe = cc[c].linkerExe
@@ -448,22 +466,21 @@ proc CallCCompiler(projectfile: string) =
     var it = PStrEntry(toLink.head)
     var objfiles = ""
     while it != nil: 
-      add(objfiles, " ")
+      add(objfiles, ' ')
       if targetOS == platform.hostOS: 
         add(objfiles, quoteIfContainsWhite(toObjfile(it.data)))
       else: 
         add(objfiles, quoteIfContainsWhite(toObjfile(extractFileName(it.data))))
       it = PStrEntry(it.next)
-    linkCmd = quoteIfContainsWhite(`%`(linkCmd, ["builddll", builddll, 
+    linkCmd = quoteIfContainsWhite(linkCmd % ["builddll", builddll, 
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles, 
-        "exefile", exefile, "nimrod", getPrefixDir(), "lib", libpath]))
+        "exefile", exefile, "nimrod", getPrefixDir(), "lib", libpath])
     add(linkCmd, ' ')
-    add(linkCmd, `%`(cc[c].linkTmpl, ["builddll", builddll, "buildgui", 
-                                      buildgui, "options", linkOptions, 
-                                      "objfiles", objfiles, "exefile", exefile, 
-                                      "nimrod", 
-                                      quoteIfContainsWhite(getPrefixDir()), 
-                                      "lib", quoteIfContainsWhite(libpath)]))
+    addf(linkCmd, cc[c].linkTmpl, ["builddll", builddll, 
+        "buildgui", buildgui, "options", linkOptions, 
+        "objfiles", objfiles, "exefile", exefile, 
+        "nimrod", quoteIfContainsWhite(getPrefixDir()), 
+        "lib", quoteIfContainsWhite(libpath)])
     if not (optCompileOnly in gGlobalOptions): execExternalProgram(linkCmd)
   else: 
     linkCmd = ""

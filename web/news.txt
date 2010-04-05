@@ -5,6 +5,12 @@ News
 2010-XX-XX Version 0.8.10 released
 ==================================
 
+Bugfixes
+--------
+
+- Bugfix: Command line parsing on Windows and ``os.parseCmdLine`` now adheres
+  to the same parsing rules as Microsoft's C/C++ startup code.
+
 
 Changes affecting backwards compatibility
 -----------------------------------------
@@ -12,6 +18,12 @@ Changes affecting backwards compatibility
 - Procs not marked as ``procvar`` cannot only be passed to a procvar anymore,
   unless they are used in the same module.
 
+
+Additions
+---------
+
+- The ``{.compile: "file.c".}`` pragma uses a CRC check to see if the file 
+  needs to be recompiled.
 
 
 2010-03-14 Version 0.8.8 released
