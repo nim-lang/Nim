@@ -299,7 +299,7 @@ proc processCompile(c: PContext, n: PNode) =
   var found = findFile(s)
   if found == "": found = s
   var trunc = ChangeFileExt(found, "")
-  extccomp.addExternalFileToCompile(trunc)
+  extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) = 

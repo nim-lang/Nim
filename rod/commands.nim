@@ -216,11 +216,10 @@ proc processPath(path: string): string =
   result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath])
 
 proc processCompile(filename: string) = 
-  var found, trunc: string
-  found = findFile(filename)
+  var found = findFile(filename)
   if found == "": found = filename
-  trunc = changeFileExt(found, "")
-  extccomp.addExternalFileToCompile(trunc)
+  var trunc = changeFileExt(found, "")
+  extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
