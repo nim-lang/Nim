@@ -57,7 +57,7 @@ proc Foo(n: int): int =
     while b:
         a = a + 3
     a = a + 5
-    write(stdout, "Hallo!")
+    write(stdout, "Hello!")
 
 
 # We should come till here :-)

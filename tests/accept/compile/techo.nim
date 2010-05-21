@@ -1,3 +1,3 @@
 # Simplest Nimrod program
 
-echo "Hallo, World!"
+echo "Hello, World!"

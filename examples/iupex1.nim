@@ -29,7 +29,7 @@ Iup.SetAttribute(box, "GAP", "10")
 
 var dlg = Iup.Dialog(box)
 Iup.SetAttribute(dlg, "TITLE", "IupTabs")
-Iup.SetAttribute(dlg, "SIZE", "200x80")
+Iup.SetAttribute(dlg, "SIZE", "200x100")
 
 discard ShowXY(dlg, IUP_CENTER, IUP_CENTER)
 discard MainLoop()

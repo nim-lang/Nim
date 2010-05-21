@@ -9,6 +9,7 @@
 
 ## This module contains various string utility routines.
 ## See the module `regexprs` for regular expression support.
+## See the module `pegs` for PEG support.
 
 import parseutils
 
@@ -30,6 +31,9 @@ const
   Digits* = {'0'..'9'}
     ## the set of digits
   
+  HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
+    ## the set of hexadecimal digits
+
   IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
     ## the set of characters an identifier can consist of
   
@@ -432,7 +436,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
     inc(i, 2) # incrementing by 1 would probably result in a
-              # security hole ...
+              # security hole...
   return -1
 
 proc addf(s: var string, formatstr: string, a: openarray[string]) =
@@ -453,7 +457,7 @@ proc addf(s: var string, formatstr: string, a: openarray[string]) =
       of '1'..'9':
         var j = 0
         inc(i) # skip $
-        while formatstr[i] in {'0'..'9'}:
+        while formatstr[i] in Digits:
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         num = j

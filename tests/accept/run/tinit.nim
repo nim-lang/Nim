@@ -2,5 +2,5 @@
 
 import minit
 
-write(stdout, "Hallo from main module!\n")
-#OUT Hallo from module! Hallo from main module!
+write(stdout, "Hello from main module!\n")
+#OUT Hello from module! Hello from main module!
