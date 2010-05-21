@@ -104,7 +104,7 @@ proc addChar(s: NimString, c: char): NimString {.compilerProc.} =
 
 # These routines should be used like following:
 #   <Nimrod code>
-#   s &= "hallo " & name & " how do you feel?"
+#   s &= "Hello " & name & ", how do you feel?"
 #
 #   <generated C code>
 #   {
@@ -115,7 +115,7 @@ proc addChar(s: NimString, c: char): NimString {.compilerProc.} =
 #   }
 #
 #   <Nimrod code>
-#   s = "hallo " & name & " how do you feel?"
+#   s = "Hello " & name & ", how do you feel?"
 #
 #   <generated C code>
 #   {
@@ -180,8 +180,8 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
       result = cast[PGenericSeq](newSeq(extGetCellType(seq), s))
       genericSeqAssign(result, seq, XXX)
       #copyMem(result, seq, seq.len * elemSize + GenericSeqSize)
-    inc(result.len)  
-  else:  
+    inc(result.len)
+  else:
     result = seq
     if result.len >= result.space:
       result.space = resize(result.space)
@@ -214,7 +214,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
       # we need to decref here, otherwise the GC leaks!
       when not defined(boehmGC) and not defined(nogc):
         for i in newLen..result.len-1:
-          forAllChildrenAux(cast[pointer](cast[TAddress](result) +% 
+          forAllChildrenAux(cast[pointer](cast[TAddress](result) +%
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waZctDecRef)
       # and set the memory to nil:

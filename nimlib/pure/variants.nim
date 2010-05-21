@@ -9,12 +9,12 @@
 
 ## This module implements Nimrod's support for the ``variant`` datatype.
 ## `TVariant` shows how the flexibility of dynamic typing is achieved
-## within a static type system. 
+## within a static type system.
 
 type
   TVarType* = enum
     vtNone,
-    vtBool, 
+    vtBool,
     vtChar,
     vtEnum,
     vtInt,
@@ -31,7 +31,7 @@ type
     of vtString: vstring: string
     of vtSet, vtSeq: q: seq[TVariant]
     of vtDict: d: seq[tuple[key, val: TVariant]]
-    
+
 iterator objectFields*[T](x: T, skipInherited: bool): tuple[
   key: string, val: TVariant] {.magic: "ObjectFields"}
 
@@ -74,10 +74,10 @@ proc `<>`* [T: object](x: T): TVariant {.magic: "ToVariant".}
 
 proc `><`*[T](v: TVariant, typ: T): T {.magic: "FromVariant".}
 
-[<>5, <>67, <>"hallo"]
+[<>5, <>67, <>"hello"]
 myVar><int
 
-  
+
 proc `==`* (x, y: TVariant): bool =
   if x.vtype == y.vtype:
     case x.vtype
@@ -139,7 +139,7 @@ proc `[]=`* (a, b, c: TVariant) =
       a.d[b.vint].val = c
     variantError()
   else: variantError()
-  
+
 proc `[]`* (a: TVariant, b: int): TVariant {.inline} = return a[<>b]
 proc `[]`* (a: TVariant, b: string): TVariant {.inline} = return a[<>b]
 proc `[]=`* (a: TVariant, b: int, c: TVariant) {.inline} = a[<>b] = c
@@ -154,9 +154,9 @@ proc `+`* (x, y: TVariant): TVariant =
     else:
       case y.vtype
       of vtBool, vtChar, vtEnum, vtInt:
-        
-    
-    
+
+
+
     vint: int64
   of vtFloat: vfloat: float64
   of vtString: vstring: string
@@ -171,11 +171,11 @@ proc `mod`* (x, y: TVariant): TVariant
 proc `&`* (x, y: TVariant): TVariant
 proc `$`* (x: TVariant): string =
   # uses JS notation
-  
+
 proc parseVariant*(s: string): TVariant
 proc `<`* (x, y: TVariant): bool
 proc `<=`* (x, y: TVariant): bool
 
 proc hash*(x: TVariant): int =
-  
+
 

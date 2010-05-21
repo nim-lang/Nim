@@ -3,5 +3,5 @@
 proc write(t: TFile, s: string) =
   nil # a nop
 
-system.write(stdout, "hallo")
-#OUT hallo
+system.write(stdout, "hello")
+#OUT hello

@@ -2,7 +2,7 @@
 
 import strutils
 
-var x = "hallo world!".toLower.toUpper
+var x = "hello world!".toLower.toUpper
 x.echo()
-#OUT HALLO WORLD!
+#OUT HELLO WORLD!
 

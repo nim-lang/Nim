@@ -4,7 +4,7 @@ import tbintree
 
 var
   root: PBinaryTree[string]
-  x = newNode("hallo")
+  x = newNode("hello")
 add(root, x)
 add(root, "world")
 if find(root, "world"):
@@ -21,5 +21,5 @@ add(r2, 99)
 for y in items(r2):
   stdout.write(y)
 
-#OUT halloworld99110223
+#OUT helloworld99110223
 

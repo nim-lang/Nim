@@ -57,7 +57,7 @@ proc execCmd*(command: string): int
 proc executeCommand*(command: string): int {.deprecated.} =
   ## **Deprecated since version 0.8.2**: Use `execCmd` instead.
   result = execCmd(command)
-  
+
 
 proc startProcess*(command: string,
                    workingDir: string = "",
@@ -115,7 +115,7 @@ when defined(macosx) or defined(bsd):
               a: var int, b: pointer, c: int): cint {.
              importc: "sysctl", header: "<sys/sysctl.h>".}
 
-proc countProcessors*(): int = 
+proc countProcessors*(): int =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be determined.
   when defined(windows):
@@ -186,7 +186,7 @@ proc execProcesses*(cmds: openArray[string],
             inc(i)
             if i > high(cmds): break
     for i in 0..m-1:
-      result = max(waitForExit(q[i]), result)  
+      result = max(waitForExit(q[i]), result)
   else:
     for i in 0..high(cmds):
       var p = startProcessAux(cmds[i], options=options)
@@ -243,7 +243,7 @@ when defined(Windows):
     if a == 0 and br != 0: OSError()
     s.atTheEnd = br < bufLen
     result = br
-  
+
   proc hsWriteData(s: PFileHandleStream, buffer: pointer, bufLen: int) =
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen, bytesWritten, nil)
@@ -256,10 +256,10 @@ when defined(Windows):
     result.atEnd = hsAtEnd
     result.readData = hsReadData
     result.writeData = hsWriteData
-    
+
   proc buildCommandLine(a: string, args: openarray[string]): cstring =
     var res = quoteIfContainsWhite(a)
-    for i in 0..high(args): 
+    for i in 0..high(args):
       res.add(' ')
       res.add(quoteIfContainsWhite(args[i]))
     result = cast[cstring](alloc0(res.len+1))
@@ -324,7 +324,7 @@ when defined(Windows):
       result.inputHandle = si.hStdInput
       result.outputHandle = si.hStdOutput
       result.errorHandle = si.hStdError
-    
+
     var cmdl: cstring
     if false: # poUseShell in options:
       cmdl = buildCommandLine(getEnv("COMSPEC"), @["/c", command] & args)
@@ -337,13 +337,13 @@ when defined(Windows):
     if poEchoCmd in options: echo($cmdl)
     success = winlean.CreateProcess(nil,
       cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, SI, ProcInfo)
-    
+
     if poParentStreams notin options:
       FileClose(si.hStdInput)
       FileClose(si.hStdOutput)
       if poStdErrToStdOut notin options:
         FileClose(si.hStdError)
-      
+
     if e != nil: dealloc(e)
     dealloc(cmdl)
     if success == 0: OSError()
@@ -382,7 +382,7 @@ when defined(Windows):
   proc errorStream(p: PProcess): PStream =
     result = newFileHandleStream(p.errorHandle)
 
-  proc execCmd(command: string): int = 
+  proc execCmd(command: string): int =
     var
       SI: TStartupInfo
       ProcInfo: TProcessInformation
@@ -535,7 +535,7 @@ else:
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system".}
 
-  proc execCmd(command: string): int = 
+  proc execCmd(command: string): int =
     result = csystem(command)
 
 when isMainModule:

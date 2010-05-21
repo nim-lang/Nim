@@ -43,7 +43,7 @@ The default configuration file is ``nimrod.cfg``. The ``nimrod`` executable
 looks for it in the following directories (in this order):
 
 1. ``/home/$user/.config/nimrod.cfg`` (UNIX) or ``%APPDATA%/nimrod.cfg`` (Windows)
-2. ``$nimrod/config/nimrod.cfg`` (UNIX, Windows)
+2. ``$nimrod/config/nimrod.cfg`` (UNIX), ``%NIMROD%/config/nimrod.cfg`` (Windows)
 3. ``/etc/nimrod.cfg`` (UNIX)
 
 The search stops as soon as a configuration file has been found. The reading
@@ -52,7 +52,7 @@ of ``nimrod.cfg`` can be suppressed by the ``--skipCfg`` command line option.
 **Note:** The *project file name* is the name of the ``.nim`` file that is 
 passed as a command line argument to the compiler. 
 
-Configuration settings can be overwritten in a project specific
+Configuration settings can be overwritten individually in a project specific
 configuration file that is read automatically. This specific file has to
 be in the same directory as the project and be of the same name, except
 that its extension should be ``.cfg``.
@@ -99,7 +99,7 @@ However, the ``header`` pragma is often the better alternative.
 Header pragma
 -------------
 The `header`:idx: pragma is very similar to the ``noDecl`` pragma: It can be
-applied to almost any symbol and specifies that it should not be declared 
+applied to almost any symbol and specifies that it should not be declared
 and instead the generated code should contain an ``#include``:
 
 .. code-block:: Nimrod
@@ -117,8 +117,8 @@ encloses the header file in ``""`` in the generated C code.
 
 LineDir option
 --------------
-The `lineDir`:idx: option can be turned on or off. If turned on the 
-generated C code contains ``#line`` directives. This may be helpful for 
+The `lineDir`:idx: option can be turned on or off. If turned on the
+generated C code contains ``#line`` directives. This may be helpful for
 debugging with GDB.
 
 
@@ -180,7 +180,7 @@ However, sometimes one has to optimize. Do it in the following order:
 4. try to find a better algorithm
 5. do low-level optimizations
 
-This section can only help you with the last item. 
+This section can only help you with the last item.
 
 
 Optimizing string handling
@@ -211,29 +211,29 @@ However it is not efficient to do:
 ..
   The ECMAScript code generator
   =============================
-  
+
   Note: As of version 0.7.0 the ECMAScript code generator is not maintained any
   longer. Help if you are interested.
-  
+
   Note: I use the term `ECMAScript`:idx: here instead of `JavaScript`:idx:,
   since it is the proper term.
-  
+
   The ECMAScript code generator is experimental!
-  
+
   Nimrod targets ECMAScript 1.5 which is supported by any widely used browser.
   Since ECMAScript does not have a portable means to include another module,
   Nimrod just generates a long ``.js`` file.
-  
+
   Features or modules that the ECMAScript platform does not support are not
   available. This includes:
-  
+
   * manual memory management (``alloc``, etc.)
   * casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
   * file management
   * most modules of the Standard library
   * proper 64 bit integer arithmetic
   * proper unsigned integer arithmetic
-  
+
   However, the modules `strutils`:idx:, `math`:idx:, and `times`:idx: are
   available! To access the DOM, use the `dom`:idx: module that is only
   available for the ECMAScript platform.
