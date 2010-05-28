@@ -5,16 +5,16 @@
 :Author: Andreas Rumpf
 :Version: |nimrodversion|
 
-.. contents:: 
+.. contents::
 
 Introduction
 ============
 
-This document describes the subset of `Docutils`_' `reStructuredText`_ as it 
+This document describes the subset of `Docutils`_' `reStructuredText`_ as it
 has been implemented in the Nimrod compiler for generating documentation.
-Elements of |rst| that are not listed here have not been implemented. 
+Elements of |rst| that are not listed here have not been implemented.
 Unfortunately, the specification of |rst| is quite vague, so Nimrod is not as
-compatible to the original implementation as one would like.  
+compatible to the original implementation as one would like.
 
 Even though Nimrod's |rst| parser does not parse all constructs, it is pretty
 usable. The missing features can easily be circumvented. An indication of this
@@ -26,13 +26,13 @@ Docutils' parser.)
 Inline elements
 ===============
 
-Ordinary text may contain *inline elements*. 
+Ordinary text may contain *inline elements*.
 
 
 Bullet lists
 ============
 
-*Bullet lists* look like this:: 
+*Bullet lists* look like this::
 
   * Item 1
   * Item 2 that
@@ -60,8 +60,8 @@ Enumerated lists
 *Enumerated lists*
 
 
-Defintion lists
-===============
+Definition lists
+================
 
 Save this code to the file "greeting.nim". Now compile and run it:
 
@@ -77,14 +77,14 @@ appending them after the filename that is to be compiled and run:
 Tables
 ======
 
-Nimrod only implements simple tables of the form:: 
+Nimrod only implements simple tables of the form::
 
   ==================      ===============       ===================
   header 1                header 2              header n
   ==================      ===============       ===================
   Cell 1                  Cell 2                Cell 3
   Cell 4                  Cell 5; any           Cell 6
-                          cell that is 
+                          cell that is
                           not in column 1
                           may span over
                           multiple lines
@@ -97,7 +97,7 @@ header 1                header 2              header n
 ==================      ===============       ===================
 Cell 1                  Cell 2                Cell 3
 Cell 4                  Cell 5; any           Cell 6
-                        cell that is 
+                        cell that is
                         not in column 1
                         may span over
                         multiple lines

@@ -1,3 +1,3 @@
-# Hallo world program
+# Hello world program
 
-echo "Hallo world!"
+echo "Hello world!"

@@ -10,7 +10,7 @@
 ## The compiler depends on the System module to work properly and the System
 ## module depends on the compiler. Most of the routines listed here use
 ## special compiler magic.
-## Each module implicitly imports the System module; it may not be listed
+## Each module implicitly imports the System module; it must not be listed
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 
@@ -45,7 +45,7 @@ type
                                 ## a type description (for templates)
 
 proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
-  ## Special comile-time procedure that checks whether `x` is
+  ## Special compile-time procedure that checks whether `x` is
   ## defined. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
   ## feature or not:
@@ -57,7 +57,7 @@ proc defined*[T](x: T): bool {.magic: "Defined", noSideEffect.}
 
 proc definedInScope*[T](x: T): bool {.
   magic: "DefinedInScope", noSideEffect.}
-  ## Special comile-time procedure that checks whether `x` is
+  ## Special compile-time procedure that checks whether `x` is
   ## defined in the current scope. `x` has to be an identifier.
 
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
@@ -65,11 +65,11 @@ proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
 
 proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
   ## Boolean ``and``; returns true iff ``x == y == true``.
-  ## Evaluation is short-circuited: This means that if ``x`` is false,
+  ## Evaluation is short-circuited: this means that if ``x`` is false,
   ## ``y`` will not even be evaluated.
 proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
   ## Boolean ``or``; returns true iff ``not (not x and not y)``.
-  ## Evaluation is short-circuited: This means that if ``x`` is true,
+  ## Evaluation is short-circuited: this means that if ``x`` is true,
   ## ``y`` will not even be evaluated.
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
@@ -165,7 +165,7 @@ type
   EOS* = object of ESystem    ## raised if an operating system service failed.
   EInvalidLibrary* = object of EOS ## raised if a dynamic library
                                    ## could not be loaded.
-  ERessourceExhausted* = object of ESystem ## raised if a ressource request
+  EResourceExhausted* = object of ESystem ## raised if a resource request
                                            ## could not be fullfilled.
   EArithmetic* = object of ESynch       ## raised if any kind of arithmetic
                                         ## error occured.
@@ -962,7 +962,7 @@ proc `$` *(x: Cstring): string {.magic: "CStrToStr", noSideEffect.}
 proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stingify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` already is a string.
+  ## that ``$expr`` also works if ``expr`` is already a string.
 
 proc `$` *[T](x: ordinal[T]): string {.magic: "EnumToStr", noSideEffect.}
   ## The stingify operator for an enumeration argument. This works for
@@ -1190,6 +1190,11 @@ proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] {.
   ## `op` to every item in `data` and returns the result as a sequence.
   newSeq(result, data.len)
   for i in 0..data.len-1: result[i] = op(data[i])
+
+proc each*[T](data: openArray[T], op: proc (x: T)) =
+  ## The well-known ``map`` operation from functional programming. Applies
+  ## `op` to every item in `data`.
+  for i in 0..data.len-1: op(data[i])
 
 
 # ----------------- FPU ------------------------------------------------------

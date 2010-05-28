@@ -23,7 +23,7 @@ available for the debugger.
 
 If you start your program the debugger will immediately show
 a prompt on the console. You can now enter a command. The next sections
-deal with the possible commands. As usual for Nimrod for all commands
+deal with the possible commands. As usual in Nimrod in all commands
 underscores and case do not matter. Optional components of a command
 are listed in brackets ``[...]`` here.
 
