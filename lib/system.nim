@@ -1191,7 +1191,7 @@ proc each*[T, S](data: openArray[T], op: proc (x: T): S): seq[S] {.
   newSeq(result, data.len)
   for i in 0..data.len-1: result[i] = op(data[i])
 
-proc each*[T](data: openArray[T], op: proc (x: T)) =
+proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
