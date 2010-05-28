@@ -276,10 +276,10 @@ Index
      `ropes.html#115 <ropes.html#115>`_
 
    `[]`:idx:
-     `xmltree.html#114 <xmltree.html#114>`_
+     `graphics.html#111 <graphics.html#111>`_
 
    `[]`:idx:
-     `graphics.html#111 <graphics.html#111>`_
+     `xmltree.html#114 <xmltree.html#114>`_
 
    `[]=`:idx:
      `strtabs.html#106 <strtabs.html#106>`_
@@ -731,12 +731,6 @@ Index
    `clonglong`:idx:
      `system.html#388 <system.html#388>`_
 
-   `Close`:idx:
-     * `system.html#512 <system.html#512>`_
-     * `db_postgres.html#117 <db_postgres.html#117>`_
-     * `db_mysql.html#117 <db_mysql.html#117>`_
-     * `db_sqlite.html#117 <db_sqlite.html#117>`_
-
    `close`:idx:
      * `sockets.html#121 <sockets.html#121>`_
      * `lexbase.html#105 <lexbase.html#105>`_
@@ -746,8 +740,14 @@ Index
      * `zipfiles.html#103 <zipfiles.html#103>`_
      * `httpserver.html#106 <httpserver.html#106>`_
 
+   `Close`:idx:
+     * `system.html#513 <system.html#513>`_
+     * `db_postgres.html#117 <db_postgres.html#117>`_
+     * `db_mysql.html#117 <db_mysql.html#117>`_
+     * `db_sqlite.html#117 <db_sqlite.html#117>`_
+
    `CloseFile`:idx:
-     `system.html#511 <system.html#511>`_
+     `system.html#512 <system.html#512>`_
 
    `closure`:idx:
      `manual.html#177 <manual.html#177>`_
@@ -1350,8 +1350,8 @@ Index
      `system.html#392 <system.html#392>`_
 
    `cstringArrayToSeq`:idx:
-     * `system.html#539 <system.html#539>`_
      * `system.html#540 <system.html#540>`_
+     * `system.html#541 <system.html#541>`_
 
    `CSV`:idx:
      `parsecsv.html#101 <parsecsv.html#101>`_
@@ -1777,8 +1777,7 @@ Index
      * `strutils.html#157 <strutils.html#157>`_
 
    `deleteStr`:idx:
-     * `strutils.html#124 <strutils.html#124>`_
-     * `strutils.html#158 <strutils.html#158>`_
+     `strutils.html#124 <strutils.html#124>`_
 
    `dfn`:idx:
      `xmlgen.html#125 <xmlgen.html#125>`_
@@ -1894,7 +1893,7 @@ Index
      * `db_sqlite.html#104 <db_sqlite.html#104>`_
 
    `editDistance`:idx:
-     `strutils.html#166 <strutils.html#166>`_
+     `strutils.html#165 <strutils.html#165>`_
 
    `EDivByZero`:idx:
      `system.html#147 <system.html#147>`_
@@ -2020,7 +2019,7 @@ Index
      `endb.html#102 <endb.html#102>`_
 
    `EndOfFile`:idx:
-     * `system.html#513 <system.html#513>`_
+     * `system.html#514 <system.html#514>`_
      * `lexbase.html#101 <lexbase.html#101>`_
 
    `endsWith`:idx:
@@ -2132,7 +2131,7 @@ Index
 
    `escape`:idx:
      * `manual.html#133 <manual.html#133>`_
-     * `strutils.html#163 <strutils.html#163>`_
+     * `strutils.html#162 <strutils.html#162>`_
      * `xmltree.html#122 <xmltree.html#122>`_
 
    `escape sequences`:idx:
@@ -2373,7 +2372,7 @@ Index
      `mysql.html#218 <mysql.html#218>`_
 
    `fileHandle`:idx:
-     `system.html#538 <system.html#538>`_
+     `system.html#539 <system.html#539>`_
 
    `fileNewer`:idx:
      `os.html#119 <os.html#119>`_
@@ -2433,7 +2432,7 @@ Index
      `macros.html#130 <macros.html#130>`_
 
    `FlushFile`:idx:
-     `system.html#515 <system.html#515>`_
+     `system.html#516 <system.html#516>`_
 
    `for`:idx:
      * `manual.html#214 <manual.html#214>`_
@@ -2594,10 +2593,10 @@ Index
      `os.html#162 <os.html#162>`_
 
    `getFilePos`:idx:
-     `system.html#535 <system.html#535>`_
+     `system.html#536 <system.html#536>`_
 
    `getFileSize`:idx:
-     * `system.html#527 <system.html#527>`_
+     * `system.html#528 <system.html#528>`_
      * `os.html#171 <os.html#171>`_
 
    `getFreeMem`:idx:
@@ -2866,12 +2865,12 @@ Index
    `hr`:idx:
      `xmlgen.html#140 <xmlgen.html#140>`_
 
-   `html`:idx:
-     `xmlgen.html#139 <xmlgen.html#139>`_
-
    `HTML`:idx:
      * `parsexml.html#102 <parsexml.html#102>`_
      * `xmlgen.html#102 <xmlgen.html#102>`_
+
+   `html`:idx:
+     `xmlgen.html#139 <xmlgen.html#139>`_
 
    `htmlTag`:idx:
      * `htmlparser.html#105 <htmlparser.html#105>`_
@@ -2914,11 +2913,11 @@ Index
    `ident=`:idx:
      `macros.html#132 <macros.html#132>`_
 
-   `IdentChars`:idx:
-     `strutils.html#105 <strutils.html#105>`_
-
    `identChars`:idx:
      `pegs.html#132 <pegs.html#132>`_
+
+   `IdentChars`:idx:
+     `strutils.html#105 <strutils.html#105>`_
 
    `identifier`:idx:
      `manual.html#105 <manual.html#105>`_
@@ -2926,11 +2925,11 @@ Index
    `Identifiers`:idx:
      `manual.html#116 <manual.html#116>`_
 
-   `IdentStartChars`:idx:
-     `strutils.html#106 <strutils.html#106>`_
-
    `identStartChars`:idx:
      `pegs.html#133 <pegs.html#133>`_
+
+   `IdentStartChars`:idx:
+     `strutils.html#106 <strutils.html#106>`_
 
    `if`:idx:
      `manual.html#189 <manual.html#189>`_
@@ -3018,7 +3017,7 @@ Index
      * `db_sqlite.html#115 <db_sqlite.html#115>`_
 
    `insertSep`:idx:
-     `strutils.html#162 <strutils.html#162>`_
+     `strutils.html#161 <strutils.html#161>`_
 
    `int`:idx:
      `system.html#101 <system.html#101>`_
@@ -3208,8 +3207,8 @@ Index
      `nimrodc.html#103 <nimrodc.html#103>`_
 
    `lines`:idx:
-     * `system.html#536 <system.html#536>`_
      * `system.html#537 <system.html#537>`_
+     * `system.html#538 <system.html#538>`_
 
    `lineTrace`:idx:
      `nimrodc.html#105 <nimrodc.html#105>`_
@@ -3233,12 +3232,12 @@ Index
    `LoadLib`:idx:
      `dynlib.html#102 <dynlib.html#102>`_
 
-   `loadXML`:idx:
-     `xmldomparser.html#104 <xmldomparser.html#104>`_
-
    `loadXml`:idx:
      * `xmlparser.html#104 <xmlparser.html#104>`_
      * `xmlparser.html#105 <xmlparser.html#105>`_
+
+   `loadXML`:idx:
+     `xmldomparser.html#104 <xmldomparser.html#104>`_
 
    `loadXMLFile`:idx:
      `xmldomparser.html#105 <xmldomparser.html#105>`_
@@ -3965,11 +3964,11 @@ Index
    `nan`:idx:
      `system.html#441 <system.html#441>`_
 
-   `natural`:idx:
-     `pegs.html#135 <pegs.html#135>`_
-
    `Natural`:idx:
      `system.html#134 <system.html#134>`_
+
+   `natural`:idx:
+     `pegs.html#135 <pegs.html#135>`_
 
    `neginf`:idx:
      `system.html#440 <system.html#440>`_
@@ -4056,12 +4055,12 @@ Index
    `newIntLitNode`:idx:
      `macros.html#142 <macros.html#142>`_
 
+   `newLine`:idx:
+     `pegs.html#122 <pegs.html#122>`_
+
    `newline`:idx:
      * `manual.html#121 <manual.html#121>`_
      * `pegs.html#121 <pegs.html#121>`_
-
-   `newLine`:idx:
-     `pegs.html#122 <pegs.html#122>`_
 
    `NewLines`:idx:
      `lexbase.html#102 <lexbase.html#102>`_
@@ -4246,11 +4245,11 @@ Index
    `ord`:idx:
      `system.html#182 <system.html#182>`_
 
-   `ordinal`:idx:
-     `tut1.html#114 <tut1.html#114>`_
-
    `Ordinal`:idx:
      `system.html#114 <system.html#114>`_
+
+   `ordinal`:idx:
+     `tut1.html#114 <tut1.html#114>`_
 
    `Ordinal types`:idx:
      `manual.html#142 <manual.html#142>`_
@@ -4313,11 +4312,11 @@ Index
    `parseColor`:idx:
      `colors.html#249 <colors.html#249>`_
 
-   `parseFloat`:idx:
-     `parseutils.html#111 <parseutils.html#111>`_
-
    `ParseFloat`:idx:
      `strutils.html#144 <strutils.html#144>`_
+
+   `parseFloat`:idx:
+     `parseutils.html#111 <parseutils.html#111>`_
 
    `parseHex`:idx:
      `parseutils.html#101 <parseutils.html#101>`_
@@ -4332,17 +4331,17 @@ Index
    `parseIdent`:idx:
      `parseutils.html#103 <parseutils.html#103>`_
 
-   `ParseInt`:idx:
-     `strutils.html#142 <strutils.html#142>`_
-
    `parseInt`:idx:
      `parseutils.html#109 <parseutils.html#109>`_
+
+   `ParseInt`:idx:
+     `strutils.html#142 <strutils.html#142>`_
 
    `parseOct`:idx:
      `parseutils.html#102 <parseutils.html#102>`_
 
    `ParseOctInt`:idx:
-     `strutils.html#159 <strutils.html#159>`_
+     `strutils.html#158 <strutils.html#158>`_
 
    `parsePeg`:idx:
      `pegs.html#154 <pegs.html#154>`_
@@ -4644,8 +4643,7 @@ Index
      `httpclient.html#109 <httpclient.html#109>`_
 
    `PostgreSQL`:idx:
-     * `db_postgres.html#101 <db_postgres.html#101>`_
-     * `db_sqlite.html#101 <db_sqlite.html#101>`_
+     `db_postgres.html#101 <db_postgres.html#101>`_
 
    `pow`:idx:
      `math.html#132 <math.html#132>`_
@@ -4878,23 +4876,23 @@ Index
      `streams.html#106 <streams.html#106>`_
 
    `readBuffer`:idx:
-     `system.html#530 <system.html#530>`_
+     `system.html#531 <system.html#531>`_
 
    `ReadBytes`:idx:
-     `system.html#528 <system.html#528>`_
+     `system.html#529 <system.html#529>`_
 
    `readChar`:idx:
-     * `system.html#514 <system.html#514>`_
+     * `system.html#515 <system.html#515>`_
      * `streams.html#105 <streams.html#105>`_
 
    `ReadChars`:idx:
-     `system.html#529 <system.html#529>`_
+     `system.html#530 <system.html#530>`_
 
    `readData`:idx:
      `cgi.html#109 <cgi.html#109>`_
 
    `readFile`:idx:
-     `system.html#516 <system.html#516>`_
+     `system.html#517 <system.html#517>`_
 
    `readFloat32`:idx:
      `streams.html#111 <streams.html#111>`_
@@ -4915,7 +4913,7 @@ Index
      `streams.html#107 <streams.html#107>`_
 
    `readLine`:idx:
-     * `system.html#524 <system.html#524>`_
+     * `system.html#525 <system.html#525>`_
      * `streams.html#114 <streams.html#114>`_
 
    `readRow`:idx:
@@ -5040,6 +5038,9 @@ Index
    `reOctal`:idx:
      * `regexprs.html#117 <regexprs.html#117>`_
      * `re.html#131 <re.html#131>`_
+
+   `reopen`:idx:
+     `system.html#511 <system.html#511>`_
 
    `repeatChar`:idx:
      `strutils.html#147 <strutils.html#147>`_
@@ -5256,7 +5257,7 @@ Index
      `os.html#163 <os.html#163>`_
 
    `setFilePos`:idx:
-     `system.html#534 <system.html#534>`_
+     `system.html#535 <system.html#535>`_
 
    `SET_FLAG`:idx:
      `mysql.html#135 <mysql.html#135>`_
@@ -5377,6 +5378,9 @@ Index
    `sql`:idx:
      * `db_postgres.html#106 <db_postgres.html#106>`_
      * `db_sqlite.html#106 <db_sqlite.html#106>`_
+
+   `SQLite`:idx:
+     `db_sqlite.html#101 <db_sqlite.html#101>`_
 
    `sqlite3_aggregate_context`:idx:
      `sqlite3.html#261 <sqlite3.html#261>`_
@@ -6401,7 +6405,7 @@ Index
      `system.html#411 <system.html#411>`_
 
    `toBin`:idx:
-     `strutils.html#161 <strutils.html#161>`_
+     `strutils.html#160 <strutils.html#160>`_
 
    `TObject`:idx:
      `system.html#136 <system.html#136>`_
@@ -6421,7 +6425,7 @@ Index
      * `unicode.html#111 <unicode.html#111>`_
 
    `toOct`:idx:
-     `strutils.html#160 <strutils.html#160>`_
+     `strutils.html#159 <strutils.html#159>`_
 
    `toOctal`:idx:
      `strutils.html#125 <strutils.html#125>`_
@@ -6722,10 +6726,10 @@ Index
      `cgi.html#110 <cgi.html#110>`_
 
    `validEmailAddress`:idx:
-     `strutils.html#164 <strutils.html#164>`_
+     `strutils.html#163 <strutils.html#163>`_
 
    `validIdentifier`:idx:
-     `strutils.html#165 <strutils.html#165>`_
+     `strutils.html#164 <strutils.html#164>`_
 
    `Var`:idx:
      `manual.html#187 <manual.html#187>`_
@@ -6788,32 +6792,32 @@ Index
      `times.html#118 <times.html#118>`_
 
    `write`:idx:
-     * `system.html#517 <system.html#517>`_
      * `system.html#518 <system.html#518>`_
      * `system.html#519 <system.html#519>`_
      * `system.html#520 <system.html#520>`_
      * `system.html#521 <system.html#521>`_
      * `system.html#522 <system.html#522>`_
      * `system.html#523 <system.html#523>`_
+     * `system.html#524 <system.html#524>`_
      * `streams.html#103 <streams.html#103>`_
      * `streams.html#104 <streams.html#104>`_
      * `ropes.html#118 <ropes.html#118>`_
 
    `writeBuffer`:idx:
-     `system.html#533 <system.html#533>`_
+     `system.html#534 <system.html#534>`_
 
    `writeBytes`:idx:
-     `system.html#531 <system.html#531>`_
+     `system.html#532 <system.html#532>`_
 
    `writeChars`:idx:
-     `system.html#532 <system.html#532>`_
+     `system.html#533 <system.html#533>`_
 
    `writeContentType`:idx:
      `cgi.html#144 <cgi.html#144>`_
 
    `writeln`:idx:
-     * `system.html#525 <system.html#525>`_
      * `system.html#526 <system.html#526>`_
+     * `system.html#527 <system.html#527>`_
 
    `WriteStyled`:idx:
      `terminal.html#112 <terminal.html#112>`_

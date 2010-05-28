@@ -10,6 +10,13 @@ Bugfixes
 
 - Bugfix: Command line parsing on Windows and ``os.parseCmdLine`` now adheres
   to the same parsing rules as Microsoft's C/C++ startup code.
+- Bugfix: Passing a ``ref`` pointer to the untyped ``pointer`` type is invalid.
+- Bugfix: Updated ``keyval`` example.
+- Bugfix: ``system.splitChunk`` still contained code for debug output.
+- Bugfix: ``times.getStartMilsecs`` uses ``gettimeofday`` for Posix times. It
+  used to use ``clock`` which has the wrong semantics.
+- Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
+  ``STOCK_OPEN`` for the GTK backend.
 
 
 Changes affecting backwards compatibility
@@ -24,6 +31,10 @@ Additions
 
 - The ``{.compile: "file.c".}`` pragma uses a CRC check to see if the file 
   needs to be recompiled.
+- Added ``system.reopen``. 
+- Added ``system.getCurrentException``.
+- Implemented explicit type arguments for generics.
+- Implemented implicit type arguments for generics.
 
 
 2010-03-14 Version 0.8.8 released

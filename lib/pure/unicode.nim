@@ -1176,3 +1176,5 @@ proc cmpRunesIgnoreCase*(a, b: string): int =
     if result != 0: return
   result = a.len - b.len
 
+proc substringAt*(s, sub: string, start: int): int = 
+  

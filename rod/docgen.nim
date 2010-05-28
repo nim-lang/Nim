@@ -417,23 +417,20 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
   # debugging, but most code is already debugged...
   const 
     lvlToChar: array[0..8, char] = ['!', '=', '-', '~', '`', '<', '*', '|', '+']
-  var 
-    L: int
-    ind: PRope
   result = nil
   if n == nil: return 
-  ind = toRope(repeatChar(d.indent))
+  var ind = toRope(repeatChar(d.indent))
   case n.kind
   of rnInner: 
     result = renderRstSons(d, n)
   of rnHeadline: 
     result = renderRstSons(d, n)
-    L = ropeLen(result)
+    var L = ropeLen(result)
     result = ropef("$n$1$2$n$1$3", 
                    [ind, result, toRope(repeatChar(L, lvlToChar[n.level]))])
   of rnOverline: 
     result = renderRstSons(d, n)
-    L = ropeLen(result)
+    var L = ropeLen(result)
     result = ropef("$n$1$3$n$1$2$n$1$3", 
                    [ind, result, toRope(repeatChar(L, lvlToChar[n.level]))])
   of rnTransition: 
@@ -464,7 +461,7 @@ proc renderRstToRst(d: PDoc, n: PRstNode): PRope =
     dec(d.indent, 2)
   of rnField: 
     result = renderRstToRst(d, n.sons[0])
-    L = max(ropeLen(result) + 3, 30)
+    var L = max(ropeLen(result) + 3, 30)
     inc(d.indent, L)
     result = ropef("$n$1:$2:$3$4", [ind, result, toRope(
         repeatChar(L - ropeLen(result) - 2)), renderRstToRst(d, n.sons[1])])

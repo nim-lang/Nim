@@ -714,8 +714,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     var a = result
     result = newNodeIT(nkIntLit, n.info, n.typ)
     case a.kind
-    of nkEmpty..nkNilLit: 
-      nil
+    of nkEmpty..nkNilLit: nil
     else: result.intVal = sonsLen(a)
   of mNChild: 
     result = evalAux(c, n.sons[1], {efLValue})

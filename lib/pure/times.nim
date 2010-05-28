@@ -26,6 +26,19 @@ type
 when defined(posix): 
   type
     TTime* = distinct int ## distinct type that represents a time
+
+    Ttimeval {.importc: "struct timeval", header: "<sys/select.h>", 
+               final, pure.} = object ## struct timeval
+      tv_sec: int  ## Seconds. 
+      tv_usec: int ## Microseconds. 
+      
+  # we cannot import posix.nim here, because posix.nim depends on times.nim.
+  # Ok, we could, but I don't want circular dependencies. 
+  # And gettimeofday() is not defined in the posix module anyway. Sigh.
+  
+  proc posix_gettimeofday(tp: var Ttimeval, unused: pointer = nil) {.
+    importc: "gettimeofday", header: "<sys/time.h>".}
+
 elif defined(windows):
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
@@ -147,7 +160,7 @@ when not defined(ECMAScript):
     PTimeInfo = ptr structTM
     PTime = ptr TTime
   
-    TClock {.importc: "clock_t".} = range[low(int)..high(int)]
+    TClock {.importc: "clock_t".} = distinct int #range[low(int)..high(int)]
   
   proc localtime(timer: PTime): PTimeInfo {.
     importc: "localtime", header: "<time.h>".}
@@ -197,9 +210,17 @@ when not defined(ECMAScript):
     return toBiggestInt(difftime(a, b))
   
   proc getStartMilsecs(): int =
-    #echo "clocks per sec: ", clocksPerSec
+    #echo "clocks per sec: ", clocksPerSec, "clock: ", int(clock())
     #return clock() div (clocksPerSec div 1000)
-    result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
+    when defined(posix):
+      var a: Ttimeval
+      posix_gettimeofday(a)
+      result = a.tv_sec * 1000 + a.tv_usec
+    else:
+      result = int(clock()) div (clocksPerSec div 1000)
+    when false:
+      when defined(macosx):
+        result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
     
   proc getTime(): TTime = return timec(nil)
   proc getLocalTime(t: TTime): TTimeInfo =

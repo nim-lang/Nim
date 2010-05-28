@@ -981,6 +981,9 @@ when not defined(NimrodVM):
   proc getCurrentExceptionMsg*(): string {.exportc.}
     ## retrieves the error message that was attached to the current
     ## exception; if there is none, "" is returned.
+  
+  proc getCurrentException*(): ref E_Base
+    ## retrieves the current exception; if there is none, nil is returned.
 
 # new constants:
 const
@@ -1390,6 +1393,13 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
 
+  proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool
+    ## reopens the file `f` with given `filename` and `mode`. This 
+    ## is often used to redirect the `stdin`, `stdout` or `stderr`
+    ## file variables.
+    ##
+    ## Default mode is readonly. Returns true iff the file could be reopened.
+
   proc CloseFile*(f: TFile) {.importc: "fclose", nodecl, deprecated.}
     ## Closes the file.
     ## **Deprecated since version 0.8.0**: Use `close` instead.
@@ -1554,6 +1564,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     else:
       result = n.sons[n.len]
 
+  include "system/systhread"
   include "system/mm"
   include "system/sysstr"
   include "system/assign"
@@ -1563,6 +1574,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc getCurrentExceptionMsg(): string =
     if excHandler == nil: return ""
     return $excHandler.exc.msg
+
+  proc getCurrentException(): ref E_Base = 
+    if excHandler != nil: 
+      result = excHandler.exc
 
   {.push stack_trace: off.}
   when defined(endb):

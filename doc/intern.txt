@@ -114,6 +114,71 @@ Thus we need to serialize this graph as RTTI for C code generation.
 Look at the file ``lib/system/hti.nim`` for more information.
 
 
+The compiler's architecture
+===========================
+
+Nimrod uses the classic compiler architecture: A scanner feds tokens to a
+parser. The parser builds a syntax tree that is used by the code generator.
+This syntax tree is the interface between the parser and the code generator.
+It is essential to understand most of the compiler's code.
+
+In order to compile Nimrod correctly, type-checking has to be seperated from
+parsing. Otherwise generics cannot work.
+
+.. include:: filelist.txt
+
+
+The syntax tree
+---------------
+The synax tree consists of nodes which may have an arbitrary number of
+children. Types and symbols are represented by other nodes, because they
+may contain cycles. The AST changes its shape after semantic checking. This
+is needed to make life easier for the code generators. See the "ast" module
+for the type definitions. The `macros <macros.html>`_ module contains many
+examples how the AST represents each syntactic structure. 
+
+
+How the RTL is compiled
+=======================
+
+The ``system`` module contains the part of the RTL which needs support by
+compiler magic (and the stuff that needs to be in it because the spec
+says so). The C code generator generates the C code for it just like any other
+module. However, calls to some procedures like ``addInt`` are inserted by
+the CCG. Therefore the module ``magicsys`` contains a table (``compilerprocs``)
+with all symbols that are marked as ``compilerproc``. ``compilerprocs`` are
+needed by the code generator. A ``magic`` proc is not the same as a
+``compilerproc``: A ``magic`` is a proc that needs compiler magic for its
+semantic checking, a ``compilerproc`` is a proc that is used by the code
+generator.
+
+
+Debugging Nimrod's memory management
+====================================
+
+The following paragraphs are mostly a reminder for myself. Things to keep
+in mind:
+
+* Segmentation faults can have multiple reasons: One that is frequently
+  forgotten is that *stack overflow* can trigger one!
+* If an assertion in Nimrod's memory manager or GC fails, the stack trace
+  keeps allocating memory! Thus a stack overflow may happen, hiding the
+  real issue. 
+* What seem to be C code generation problems is often a bug resulting from
+  not producing prototypes, so that some types default to ``cint``. Testing
+  without the ``-w`` option helps!
+
+
+Generation of dynamic link libraries
+====================================
+
+Generation of dynamic link libraries or shared libraries is not difficult; the
+underlying C compiler already does all the hard work for us. The problem is the
+common runtime library, especially the memory manager. Note that Borland's
+Delphi had exactly the same problem. The workaround is to not link the GC with
+the Dll and provide an extra runtime dll that needs to be initialized.
+
+
 The Garbage Collector
 =====================
 
@@ -214,71 +279,6 @@ The generated code looks roughly like this:
 Note that for systems with a continous stack (which most systems have)
 the check whether the ref is on the stack is very cheap (only two
 comparisons).
-
-
-The compiler's architecture
-===========================
-
-Nimrod uses the classic compiler architecture: A scanner feds tokens to a
-parser. The parser builds a syntax tree that is used by the code generator.
-This syntax tree is the interface between the parser and the code generator.
-It is essential to understand most of the compiler's code.
-
-In order to compile Nimrod correctly, type-checking has to be seperated from
-parsing. Otherwise generics would not work.
-
-.. include:: filelist.txt
-
-
-The syntax tree
----------------
-The synax tree consists of nodes which may have an arbitrary number of
-children. Types and symbols are represented by other nodes, because they
-may contain cycles. The AST changes its shape after semantic checking. This
-is needed to make life easier for the code generators. See the "ast" module
-for the type definitions. The `macros <macros.html>`_ module contains many
-examples how the AST represents each syntactic structure. 
-
-
-How the RTL is compiled
-=======================
-
-The ``system`` module contains the part of the RTL which needs support by
-compiler magic (and the stuff that needs to be in it because the spec
-says so). The C code generator generates the C code for it just like any other
-module. However, calls to some procedures like ``addInt`` are inserted by
-the CCG. Therefore the module ``magicsys`` contains a table (``compilerprocs``)
-with all symbols that are marked as ``compilerproc``. ``compilerprocs`` are
-needed by the code generator. A ``magic`` proc is not the same as a
-``compilerproc``: A ``magic`` is a proc that needs compiler magic for its
-semantic checking, a ``compilerproc`` is a proc that is used by the code
-generator.
-
-
-Debugging Nimrod's memory management
-====================================
-
-The following paragraphs are mostly a reminder for myself. Things to keep
-in mind:
-
-* Segmentation faults can have multiple reasons: One that is frequently
-  forgotten is that *stack overflow* can trigger one!
-* If an assertion in Nimrod's memory manager or GC fails, the stack trace
-  keeps allocating memory! Thus a stack overflow may happen, hiding the
-  real issue. 
-* What seem to be C code generation problems is often a bug resulting from
-  not producing prototypes, so that some types default to ``cint``. Testing
-  without the ``-w`` option helps!
-
-
-Generation of dynamic link libraries
-====================================
-
-Generation of dynamic link libraries or shared libraries is not difficult; the
-underlying C compiler already does all the hard work for us. The problem is the
-common runtime library, especially the memory manager. Note that Borland's
-Delphi had exactly the same problem. The workaround is to not link the GC with
-the Dll and provide an extra runtime dll that needs to be initialized.
 
 
 Code generation for closures

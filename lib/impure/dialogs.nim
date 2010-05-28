@@ -9,8 +9,7 @@
 
 
 ## This module implements portable dialogs for Nimrod; the implementation
-## builds on the GTK interface. On Windows, native dialogs are shown if
-## appropriate.
+## builds on the GTK interface. On Windows, native dialogs are shown instead.
 
 import
   glib2, gtk2
@@ -174,7 +173,7 @@ proc ChooseFileToSave*(window: PWindow, root: string = ""): string =
     var chooser = file_chooser_dialog_new("Save File", window,
                 FILE_CHOOSER_ACTION_SAVE,
                 STOCK_CANCEL, RESPONSE_CANCEL,
-                STOCK_OPEN, RESPONSE_OK, nil)
+                STOCK_SAVE, RESPONSE_OK, nil)
     if root.len > 0:
       discard set_current_folder(chooser, root)
     set_do_overwrite_confirmation(chooser, true)
