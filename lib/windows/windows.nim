@@ -8,24 +8,244 @@
 #
 
 ## Define ``winUnicode`` before importing this module for the
-## unicode version.
+## Unicode version.
 
 {.deadCodeElim: on.}
 
 type
+  WideChar* = int16
+  PWideChar* = ptr int16
+
+type  # WinNT.h -- Defines the 32-Bit Windows types and constants
+  CHAR* = int8
+  SHORT* = int16
+  LONG* = int
+  # UNICODE (Wide Character) types
+  PWCHAR* = PWideChar
+  LPWCH* = PWideChar
+  PWCH* = PWideChar
+  LPCWCH* = PWideChar
+  PCWCH* = PWideChar
+  NWPSTR* = PWideChar
+  LPWSTR* = PWideChar
+  LPCWSTR* = PWideChar
+  PCWSTR* = PWideChar
+  # ANSI (Multi-byte Character) types
+  LPCH* = cstring
+  PCH* = cstring
+  LPCCH* = cstring
+  PCCH* = cstring
+  LPSTR* = cstring
+  PSTR* = cstring
+  LPCSTR* = cstring
+  PCSTR* = cstring
+
+type  # BaseTsd.h -- Type definitions for the basic sized types
+      # Give here only the bare minimum, to be expanded as needs arise
+  UINT8* = int8
+  UINT16* = int16
+  UINT32* = int32
+  UINT64* = int64
+  LONG32* = int32
+  ULONG32* = int32
+  DWORD32* = int32
+  LONG64* = int64
+  ULONG64* = int64
+  DWORD64* = int64
+  PDWORD64* = ptr DWORD64
+  # int32 on Win32, int64 on Win64
+  INT_PTR* = TAddress
+  UINT_PTR* = TAddress
+  LONG_PTR* = TAddress
+  ULONG_PTR* = TAddress
+  SIZE_T* = TAddress
+  SSIZE_T* = TAddress
+  DWORD_PTR* = TAddress
+  # Thread affinity
+  KAFFINITY* = TAddress
+  PKAFFINITY* = ptr KAFFINITY
+
+type  # WinDef.h -- Basic Windows Type Definitions
+  # BaseTypes
+  ULONG* = int
+  PULONG* = ptr int
+  USHORT* = int16
+  PUSHORT* = ptr int16
+  UCHAR* = int8
+  PUCHAR* = ptr int8
+  PSZ* = cstring
+
+  DWORD* = int32
+  WINBOOL* = int32
+  BYTE* = char
+  WORD* = int16
+  # FLOAT* = float
+  PFLOAT* = ptr FLOAT
+  PWINBOOL* = ptr WINBOOL
+  LPWINBOOL* = ptr WINBOOL
+  PBYTE* = ptr int8
+  LPBYTE* = ptr int8
+  PINT* = ptr int32
+  LPINT* = ptr int32
+  PWORD* = ptr int16
+  LPWORD* = ptr int16
+  LPLONG* = ptr int32
+  PDWORD* = ptr DWORD
+  LPDWORD* = ptr DWORD
+  LPVOID* = pointer
+  LPCVOID* = pointer
+
+  # INT* = int  # Cannot work and not necessary anyway
+  UINT* = int
+  PUINT* = ptr int
+
+  WPARAM* = LONG_PTR
+  LPARAM* = LONG_PTR
+  LRESULT* = LONG_PTR
+
   ATOM* = int16
   TAtom* = ATOM
-  WINBOOL* = int32            # XXX: longbool;
+  HANDLE* = int
+  THandle* = HANDLE
+  PHANDLE* = ptr HANDLE
+  LPHANDLE* = ptr HANDLE
+  HWND* = HANDLE
+  HHOOK* = HANDLE
+  HEVENT* = HANDLE
+  HGLOBAL* = HANDLE
+  HLOCAL* = HANDLE
+  HGDIOBJ* = HANDLE
+  HKEY* = HANDLE
+  PHKEY* = ptr HKEY
+  HACCEL* = HANDLE
+  HBITMAP* = HANDLE
+  HBRUSH* = HANDLE
+  HCOLORSPACE* = HANDLE
+  HDC* = HANDLE
+  HGLRC* = HANDLE
+  HDESK* = HANDLE
+  HENHMETAFILE* = HANDLE
+  HFONT* = HANDLE
+  HICON* = HANDLE
+  HMETAFILE* = HANDLE
+  HINST* = HANDLE  # Not HINSTANCE, else it has problems with the var HInstance
+  HMODULE* = HANDLE
+  HPALETTE* = HANDLE
+  HPEN* = HANDLE
+  HRGN* = HANDLE
+  HRSRC* = HANDLE
+  HTASK* = HANDLE
+  HWINSTA* = HANDLE
+  HKL* = HANDLE
+  HMONITOR* = HANDLE
+  HWINEVENTHOOK* = HANDLE
+  HUMPD* = HANDLE
+
+  HFILE* = HANDLE
+  HCURSOR* = HANDLE # = HICON
+  COLORREF* = int
+  LPCOLORREF* = ptr COLORREF
+
+  POINT* {.final, pure.} = object
+    x*: LONG
+    y*: LONG
+  PPOINT* = ptr POINT
+  LPPOINT* = ptr POINT
+  POINTL* {.final, pure.} = object
+    x*: LONG
+    y*: LONG
+  PPOINTL* = ptr POINTL
+
+  TPOINT* = POINT
+  TPOINTL* = POINTL
+
+  RECT* {.final, pure.} = object
+    TopLeft*, BottomRight*: TPoint
+  PRECT* = ptr RECT
+  LPRECT* = ptr RECT
+
+  RECTL* {.final, pure.} = object
+    left*: LONG
+    top*: LONG
+    right*: LONG
+    bottom*: LONG
+  PRECTL* = ptr RECTL
+
+  SIZE* {.final, pure.} = object
+    cx*: LONG
+    cy*: LONG
+  PSIZE* = ptr SIZE
+  LPSIZE* = ptr SIZE
+  SIZEL* = SIZE
+  PSIZEL* = ptr SIZE
+  LPSIZEL* = ptr SIZE
+
+  POINTS* {.final, pure.} = object
+    x*: SHORT
+    y*: SHORT
+  PPOINTS* = ptr POINTS
+
+  TRECT* = RECT
+  TRECTL* = RECTL
+  TSIZE* = SIZE
+  TSIZEL* = SIZE
+  TPOINTS* = POINTS
+
+  FILETIME* {.final, pure.} = object
+    dwLowDateTime*: DWORD
+    dwHighDateTime*: DWORD
+  PFILETIME* = ptr FILETIME
+  LPFILETIME* = ptr FILETIME
+
+  TFILETIME* = FILETIME
+
+const
+  MAX_PATH* = 260
+  HFILE_ERROR* = HFILE(-1)
+
+  # mode selections for the device mode function
+  # DocumentProperties
+  DM_UPDATE* = 1
+  DM_COPY* = 2
+  DM_PROMPT* = 4
+  DM_MODIFY* = 8
+
+  DM_IN_BUFFER* = DM_MODIFY
+  DM_IN_PROMPT* = DM_PROMPT
+  DM_OUT_BUFFER* = DM_COPY
+  DM_OUT_DEFAULT* = DM_UPDATE
+
+  # device capabilities indices
+  DC_FIELDS* = 1
+  DC_PAPERS* = 2
+  DC_PAPERSIZE* = 3
+  DC_MINEXTENT* = 4
+  DC_MAXEXTENT* = 5
+  DC_BINS* = 6
+  DC_DUPLEX* = 7
+  DC_SIZE* = 8
+  DC_EXTRA* = 9
+  DC_VERSION* = 10
+  DC_DRIVER* = 11
+  DC_BINNAMES* = 12
+  DC_ENUMRESOLUTIONS* = 13
+  DC_FILEDEPENDENCIES* = 14
+  DC_TRUETYPE* = 15
+  DC_PAPERNAMES* = 16
+  DC_ORIENTATION* = 17
+  DC_COPIES* = 18
+
+  DC_BINADJUST* = 19
+  DC_EMF_COMPLIANT* = 20
+  DC_DATATYPE_PRODUCED* = 21
+
+type
   WORDBOOL* = int16  # XXX: not a bool
   CALTYPE* = int
   CALID* = int
   CCHAR* = char
-  COLORREF* = int
   TCOLORREF* = int
-  SHORT* = int16
   WINT* = int32
-  LONG* = int32
-  DWORD* = int32
   PINTEGER* = ptr int32
   PBOOL* = ptr WINBOOL
   LONGLONG* = int64
@@ -33,130 +253,59 @@ type
   LPLONGLONG* = ptr LONGLONG
   ULONGLONG* = int64          # used in AMD64 CONTEXT
   PULONGLONG* = ptr ULONGLONG #
-  DWORD64* = int64            #
-  PDWORD64* = ptr DWORD64     #
-  INT_PTR* = TAddress
-  UINT_PTR* = TAddress
-  LONG_PTR* = TAddress
-  ULONG_PTR* = TAddress
   DWORDLONG* = int64          # was unsigned long
   PDWORDLONG* = ptr DWORDLONG
-  HANDLE* = int
-  THandle* = HANDLE
   HRESULT* = int
   PHRESULT* = ptr HRESULT
-  HACCEL* = HANDLE
-  HBITMAP* = HANDLE
-  HBRUSH* = HANDLE
-  HCOLORSPACE* = HANDLE
   HCONV* = HANDLE
   HCONVLIST* = HANDLE
-  HCURSOR* = HANDLE
   HDBC* = HANDLE
-  HDC* = HANDLE
   HDDEDATA* = HANDLE
-  HDESK* = HANDLE
   HDROP* = HANDLE
   HDWP* = HANDLE
-  HENHMETAFILE* = HANDLE
   HENV* = HANDLE
-  HFILE* = HANDLE
-  HFONT* = HANDLE
-  HGDIOBJ* = HANDLE
-  HGLOBAL* = HANDLE
-  HGLRC* = HANDLE
-  HHOOK* = HANDLE
-  HICON* = HANDLE
   HIMAGELIST* = HANDLE
-  HINST* = HANDLE             # Not HINSTANCE, else it has problems with the var HInstance
-  HKEY* = HANDLE
-  HKL* = HANDLE
-  HLOCAL* = HANDLE
   HMENU* = HANDLE
-  HMETAFILE* = HANDLE
-  HMODULE* = HANDLE
-  HPALETTE* = HANDLE
-  HPEN* = HANDLE
   HRASCONN* = HANDLE
-  HRGN* = HANDLE
-  HRSRC* = HANDLE
   HSTMT* = HANDLE
   HSTR* = HANDLE
   HSZ* = HANDLE
-  HWINSTA* = HANDLE
-  HWND* = HANDLE
-  HTASK* = HANDLE
   LANGID* = int16
   LCID* = DWORD
   LCTYPE* = DWORD
-  LPARAM* = LONG_PTR
   LP* = ptr int16
   LPBOOL* = ptr WINBOOL
-  LPBYTE* = ptr int8
-  LPCCH* = cstring
-  LPCH* = cstring
-  LPCOLORREF* = ptr COLORREF
-  LPCSTR* = cstring
-  PWideChar* = ptr int16 # XXX
-  WideChar* = int16
 
 when defined(winUnicode):
   type
-    LPCTSTR* = Pwidechar
+    LPCTSTR* = PWideChar
 else:
   type
     LPCTSTR* = cstring
 type
-  LPCWCH* = Pwidechar
-  LPCWSTR* = Pwidechar
   LPPCSTR* = ptr LPCSTR
   LPPCTSTR* = ptr LPCTSTR
   LPPCWSTR* = ptr LPCWSTR
-  LPDWORD* = ptr DWORD
-  LPHANDLE* = ptr HANDLE
-  LPINT* = ptr int32
-  LPLONG* = ptr int32
-  LPSTR* = cstring
 
 when defined(winUnicode):
   type
-    LPTCH* = Pwidechar
-    LPTSTR* = Pwidechar
+    LPTCH* = PWideChar
+    LPTSTR* = PWideChar
 else:
   type
     LPTCH* = cstring
     LPTSTR* = cstring
 type
-  LRESULT* = LONG_PTR
-  LPVOID* = pointer
-  LPCVOID* = pointer
-  LPWCH* = Pwidechar
-  LPWORD* = ptr int16
-  LPWSTR* = Pwidechar
-  NWPSTR* = Pwidechar
-  PWINBOOL* = ptr WINBOOL
   PBOOLEAN* = ptr int8
-  PBYTE* = ptr int8
-  PCCH* = cstring
-  PCH* = cstring
-  PCSTR* = cstring
-  PCWCH* = Pwidechar
-  PCWSTR* = Pwidechar
-  PDWORD* = ptr DWORD
-  PHANDLE* = ptr HANDLE
-  PHKEY* = ptr HKEY
-  PINT* = ptr int32
   PLONG* = ptr int32
   PSHORT* = ptr SHORT
-  PSTR* = cstring
-  PSZ* = cstring
 
 when defined(winUnicode):
   type
     PTBYTE* = ptr int16
-    PTCH* = Pwidechar
-    PTCHAR* = Pwidechar
-    PTSTR* = Pwidechar
+    PTCH* = PWideChar
+    PTCHAR* = PWideChar
+    PTSTR* = PWideChar
 else:
   type
     PTBYTE* = ptr int8
@@ -164,13 +313,6 @@ else:
     PTCHAR* = cstring
     PTSTR* = cstring
 type
-  PUCHAR* = ptr int8
-  PWCH* = Pwidechar
-  PWCHAR* = Pwidechar
-  PWORD* = ptr int16
-  PUINT* = ptr int
-  PULONG* = ptr int
-  PUSHORT* = ptr int16
   PVOID* = pointer
   RETCODE* = SHORT
   SC_HANDLE* = HANDLE
@@ -189,12 +331,7 @@ else:
     TCHAR* = char
     BCHAR* = int8
 type
-  UCHAR* = int8
   WCHAR* = WideChar
-  UINT* = int
-  ULONG* = int
-  USHORT* = int16
-  WPARAM* = LONG_PTR
   PLPSTR* = ptr LPSTR
   PLPWStr* = ptr LPWStr
   ACL_INFORMATION_CLASS* = enum
@@ -240,36 +377,6 @@ type
   MakeIntResourceW* = PWideChar
   MakeIntResource* = MakeIntResourceA
 
-proc GetBValue*(rgb: int32): int8
-proc GetGValue*(rgb: int32): int8
-proc GetRValue*(rgb: int32): int8
-proc RGB*(r, g, b: int32): DWORD
-proc HIBYTE*(w: int32): int8
-proc HIWORD*(L: int32): int16
-proc LOBYTE*(w: int32): int8
-proc LOWORD*(L: int32): int16
-proc MAKELONG*(a, b: int32): LONG
-proc MAKEWORD*(a, b: int32): int16
-proc SEXT_HIWORD*(L: int32): int32
-proc ZEXT_HIWORD*(L: int32): int32
-proc SEXT_LOWORD*(L: int32): int32
-proc INDEXTOOVERLAYMASK*(i: int32): int32
-proc INDEXTOSTATEIMAGEMASK*(i: int32): int32
-proc MAKEINTATOM*(i: int32): LPTSTR
-proc MAKELANGID*(p, s: int32): int32
-proc PRIMARYLANGID*(lgid: int32): int16
-proc SUBLANGID*(lgid: int32): int32
-proc LANGIDFROMLCID*(lcid: int32): int16
-proc SORTIDFROMLCID*(lcid: int32): int16
-proc MAKELCID*(lgid, srtid: int32): DWORD
-proc MAKELPARAM*(L, h: int32): LPARAM
-proc MAKELRESULT*(L, h: int32): LRESULT
-proc MAKEROP4*(fore, back: int32): DWORD
-proc MAKEWPARAM*(L, h: int32): WPARAM
-proc GET_X_LPARAM*(lp: Windows.LParam): int32
-proc GET_Y_LPARAM*(lp: Windows.LParam): int32
-proc PALETTEINDEX*(i: int32): COLORREF
-proc PALETTERGB*(r, g, b: int32): int32
   #
   #    Definitions for callback procedures
   #
@@ -350,7 +457,8 @@ type
   PFNRECONCILEPROFILE* = proc (para1: LPCTSTR, para2: LPCTSTR, para3: DWORD): UINT{.
       stdcall.}
   PFNPROCESSPOLICIES* = proc (para1: HWND, para2: LPCTSTR, para3: LPCTSTR,
-                              para4: LPCTSTR, para5: DWORD): WINBOOL{.stdcall.} #Not convertable by H2PAS
+                              para4: LPCTSTR, para5: DWORD): WINBOOL{.stdcall.}
+  #Not convertable by H2PAS
                                                                                 #  #define SECURITY_NULL_SID_AUTHORITY     {0,0,0,0,0,0}
                                                                                 #  #define SECURITY_WORLD_SID_AUTHORITY    {0,0,0,0,0,1}
                                                                                 #  #define SECURITY_LOCAL_SID_AUTHORITY    {0,0,0,0,0,2}
@@ -401,17 +509,13 @@ else:
     SERVICES_ACTIVE_DATABASE* = SERVICES_ACTIVE_DATABASEA
     SERVICES_FAILED_DATABASE* = SERVICES_FAILED_DATABASEA
     SC_GROUP_IDENTIFIER* = SC_GROUP_IDENTIFIERA
-type                          # PFNCALLBACK = CALLB;
+type
   PFNCALLBACK* = proc (para1, para2: UINT, para3: HCONV, para4, para5: HSZ,
-                       para6: HDDEDATA, para7, para8: DWORD): HDDEData{.stdcall.} #
-                                                                                  # CALLB
-                                                                                  # =
-                                                                                  # procedure
-                                                                                  # ;CDECL;
+                       para6: HDDEDATA, para7, para8: DWORD): HDDEData{.stdcall.}
   CALLB* = PFNCALLBACK
-  SECURITY_CONTEXT_TRACKING_MODE* = WINBOOL # End of stuff from ddeml.h in old Cygnus headers
-                                            #
-                                            # -----------------------------------------------
+  SECURITY_CONTEXT_TRACKING_MODE* = WINBOOL
+  # End of stuff from ddeml.h in old Cygnus headers
+
   WNDENUMPROC* = FARPROC
   ENHMFENUMPROC* = FARPROC
   CCSTYLE* = DWORD
@@ -422,14 +526,14 @@ type                          # PFNCALLBACK = CALLB;
   LPCCSTYLEFLAGA* = ptr CCSTYLEFLAGA
 
 const
-  LZERROR_UNKNOWNALG* = - (8)
-  LZERROR_BADVALUE* = - (7)
-  LZERROR_GLOBLOCK* = - (6)
-  LZERROR_GLOBALLOC* = - (5)
-  LZERROR_WRITE* = - (4)
-  LZERROR_READ* = - (3)
-  LZERROR_BADOUTHANDLE* = - (2)
-  LZERROR_BADINHANDLE* = - (1)
+  LZERROR_UNKNOWNALG* = -8
+  LZERROR_BADVALUE* = -7
+  LZERROR_GLOBLOCK* = -6
+  LZERROR_GLOBALLOC* = -5
+  LZERROR_WRITE* = -4
+  LZERROR_READ* = -3
+  LZERROR_BADOUTHANDLE* = -2
+  LZERROR_BADINHANDLE* = -1
   NO_ERROR* = 0
   ERROR_SUCCESS* = 0
   ERROR_INVALID_FUNCTION* = 1
@@ -1103,7 +1207,7 @@ const
   ERROR_INC_BACKUP* = 4003
   ERROR_FULL_BACKUP* = 4004
   ERROR_REC_NON_EXISTENT* = 4005
-  ERROR_RPL_NOT_ALLOWED* = 4006 #ERROR_NO_BROWSER_SERVERS_FOUND              = 6118; already above
+  ERROR_RPL_NOT_ALLOWED* = 4006
   E_UNEXPECTED* = HRESULT(0x8000FFFF)
   E_NOTIMPL* = HRESULT(0x80004001)
   E_OUTOFMEMORY* = HRESULT(0x8007000E)
@@ -1519,11 +1623,10 @@ const
   CERT_E_ISSUERCHAINING* = HRESULT(0x800B0107)
   CERT_E_MALFORMED* = HRESULT(0x800B0108)
   CERT_E_UNTRUSTEDROOT* = HRESULT(0x800B0109)
-  CERT_E_CHAINING* = HRESULT(0x800B010A) # was #define dname def_expr
+  CERT_E_CHAINING* = HRESULT(0x800B010A)
 
 proc UNICODE_NULL*(): WCHAR
 const
-  MAX_PATH* = 260
   LF_FACESIZE* = 32
   LF_FULLFACESIZE* = 64
   ELF_VENDOR_SIZE* = 4
@@ -1551,19 +1654,23 @@ const
   UNLEN* = 256
   PWLEN* = 256
   CNLEN* = 15
-  DNLEN* = 15                 # Unsigned types max
+  DNLEN* = 15
+  # Unsigned types max
   MAXDWORD* = 0xFFFFFFFF
   MAXWORD* = 0x0000FFFF
-  MAXBYTE* = 0x000000FF       # Signed types max/min
+  MAXBYTE* = 0x000000FF
+  # Signed types max/min
   MINCHAR* = 0x00000080
   MAXCHAR* = 0x0000007F
   MINSHORT* = 0x00008000
   MAXSHORT* = 0x00007FFF
   MINLONG* = 0x80000000
-  MAXLONG* = 0x7FFFFFFF       # _llseek
+  MAXLONG* = 0x7FFFFFFF
+  # _llseek
   FILE_BEGIN* = 0
   FILE_CURRENT* = 1
-  FILE_END* = 2               # _lopen, LZOpenFile, OpenFile
+  FILE_END* = 2
+  # _lopen, LZOpenFile, OpenFile
   OF_READ* = 0
   OF_READWRITE* = 2
   OF_WRITE* = 1
@@ -1579,7 +1686,8 @@ const
   OF_PARSE* = 256
   OF_PROMPT* = 8192
   OF_REOPEN* = 32768
-  OF_VERIFY* = 1024           # ActivateKeyboardLayout, LoadKeyboardLayout
+  OF_VERIFY* = 1024
+  # ActivateKeyboardLayout, LoadKeyboardLayout
   HKL_NEXT* = 1
   HKL_PREV* = 0
   KLF_REORDER* = 8
@@ -1587,7 +1695,8 @@ const
   KLF_ACTIVATE* = 1
   KLF_NOTELLSHELL* = 128
   KLF_REPLACELANG* = 16
-  KLF_SUBSTITUTE_OK* = 2      # AppendMenu
+  KLF_SUBSTITUTE_OK* = 2
+  # AppendMenu
   MF_BITMAP* = 0x00000004
   MF_DISABLED* = 0x00000002
   MF_ENABLED* = 0
@@ -1601,7 +1710,8 @@ const
   MF_SEPARATOR* = 0x00000800
   MF_STRING* = 0
   MF_SYSMENU* = 0x00002000
-  MF_USECHECKBITMAPS* = 0x00000200 # Ternary Raster Operations - BitBlt
+  MF_USECHECKBITMAPS* = 0x00000200
+  # Ternary Raster Operations - BitBlt
   BLACKNESS* = 0x00000042
   NOTSRCERASE* = 0x001100A6
   NOTSRCCOPY* = 0x00330008
@@ -1616,7 +1726,8 @@ const
   SRCPAINT* = 0x00EE0086
   PATCOPY* = 0x00F00021
   PATPAINT* = 0x00FB0A09
-  WHITENESS* = 0x00FF0062     # Binary Raster Operations
+  WHITENESS* = 0x00FF0062
+  # Binary Raster Operations
   R2_BLACK* = 1
   R2_COPYPEN* = 13
   R2_MASKNOTPEN* = 3
@@ -1632,7 +1743,8 @@ const
   R2_NOTMERGEPEN* = 2
   R2_NOTXORPEN* = 10
   R2_WHITE* = 16
-  R2_XORPEN* = 7              # BroadcastSystemMessage
+  R2_XORPEN* = 7
+  # BroadcastSystemMessage
   BSF_FLUSHDISK* = 4
   BSF_FORCEIFHUNG* = 32
   BSF_IGNORECURRENTTASK* = 2
@@ -1644,14 +1756,16 @@ const
   BSM_INSTALLABLEDRIVERS* = 4
   BSM_NETDRIVER* = 2
   BSM_VXDS* = 1
-  BROADCAST_QUERY_DENY* = 1112363332 # BrowseCallbackProc
+  BROADCAST_QUERY_DENY* = 1112363332
                                      # CallNamedPipe
   NMPWAIT_NOWAIT* = 1
-  NMPWAIT_WAIT_FOREVER* = - (1)
-  NMPWAIT_USE_DEFAULT_WAIT* = 0 # CascadeWindows, TileWindows
+  NMPWAIT_WAIT_FOREVER* = -1
+  NMPWAIT_USE_DEFAULT_WAIT* = 0
+  # CascadeWindows, TileWindows
   MDITILE_SKIPDISABLED* = 2
   MDITILE_HORIZONTAL* = 1
-  MDITILE_VERTICAL* = 0       # CBTProc
+  MDITILE_VERTICAL* = 0
+  # CBTProc
   HCBT_ACTIVATE* = 5
   HCBT_CLICKSKIPPED* = 6
   HCBT_CREATEWND* = 3
@@ -1661,12 +1775,8 @@ const
   HCBT_MOVESIZE* = 0
   HCBT_QS* = 2
   HCBT_SETFOCUS* = 9
-  HCBT_SYSCOMMAND* = 8        # ChangeDisplaySettings
-  DM_BITSPERPEL* = 0x00040000
-  DM_PELSWIDTH* = 0x00080000
-  DM_PELSHEIGHT* = 0x00100000
-  DM_DISPLAYFLAGS* = 0x00200000
-  DM_DISPLAYFREQUENCY* = 0x00400000
+  HCBT_SYSCOMMAND* = 8
+
   CDS_UPDATEREGISTRY* = 1
   CDS_TEST* = 2
   CDS_FULLSCREEN* = 4
@@ -1677,11 +1787,12 @@ const
   CDS_NORESET* = 0x10000000
   DISP_CHANGE_SUCCESSFUL* = 0
   DISP_CHANGE_RESTART* = 1
-  DISP_CHANGE_BADFLAGS* = - (4)
-  DISP_CHANGE_FAILED* = - (1)
-  DISP_CHANGE_BADMODE* = - (2)
-  DISP_CHANGE_NOTUPDATED* = - (3) # ChangeServiceConfig
-  SERVICE_NO_CHANGE* = - (1)
+  DISP_CHANGE_BADFLAGS* = -4
+  DISP_CHANGE_FAILED* = -1
+  DISP_CHANGE_BADMODE* = -2
+  DISP_CHANGE_NOTUPDATED* = -3
+  # ChangeServiceConfig
+  SERVICE_NO_CHANGE* = -1
   SERVICE_WIN32_OWN_PROCESS* = 16
   SERVICE_WIN32_SHARE_PROCESS* = 32
   SERVICE_KERNEL_DRIVER* = 1
@@ -1691,7 +1802,7 @@ const
   SERVICE_SYSTEM_START* = 1
   SERVICE_AUTO_START* = 2
   SERVICE_DEMAND_START* = 3
-  SERVICE_DISABLED* = 4       # SERVICE_STATUS structure
+  SERVICE_DISABLED* = 4
   SERVICE_STOPPED* = 1
   SERVICE_START_PENDING* = 2
   SERVICE_STOP_PENDING* = 3
@@ -1701,22 +1812,26 @@ const
   SERVICE_PAUSED* = 7
   SERVICE_ACCEPT_STOP* = 1
   SERVICE_ACCEPT_PAUSE_CONTINUE* = 2
-  SERVICE_ACCEPT_SHUTDOWN* = 4 # CheckDlgButton
+  SERVICE_ACCEPT_SHUTDOWN* = 4
+  # CheckDlgButton
   BST_CHECKED* = 1
   BST_INDETERMINATE* = 2
   BST_UNCHECKED* = 0
   BST_FOCUS* = 8
-  BST_PUSHED* = 4             # CheckMenuItem, HiliteMenuItem
+  BST_PUSHED* = 4
+  # CheckMenuItem, HiliteMenuItem
   MF_BYCOMMAND* = 0
   MF_BYPOSITION* = 0x00000400
   MF_CHECKED* = 0x00000008
   MF_UNCHECKED* = 0
   MF_HILITE* = 0x00000080
-  MF_UNHILITE* = 0            # ChildWindowFromPointEx
+  MF_UNHILITE* = 0
+  # ChildWindowFromPointEx
   CWP_ALL* = 0
   CWP_SKIPINVISIBLE* = 1
   CWP_SKIPDISABLED* = 2
-  CWP_SKIPTRANSPARENT* = 4    # ClearCommError
+  CWP_SKIPTRANSPARENT* = 4
+  # ClearCommError
   CE_BREAK* = 16
   CE_DNS* = 2048
   CE_FRAME* = 8
@@ -1727,7 +1842,7 @@ const
   CE_PTO* = 512
   CE_RXOVER* = 1
   CE_RXPARITY* = 4
-  CE_TXFULL* = 256            # ChooseMatchToTarget
+  CE_TXFULL* = 256
                               # CombineRgn
   RGN_AND* = 1
   RGN_COPY* = 5
@@ -1737,7 +1852,8 @@ const
   NULLREGION* = 1
   SIMPLEREGION* = 2
   COMPLEXREGION* = 3
-  ERROR* = 0                  # CommonDlgExtendedError
+  ERROR* = 0
+  # CommonDlgExtendedError
   CDERR_DIALOGFAILURE* = 0x0000FFFF
   CDERR_FINDRESFAILURE* = 6
   CDERR_INITIALIZATION* = 2
@@ -1768,7 +1884,8 @@ const
   FNERR_BUFFERTOOSMALL* = 0x00003000 + 3
   FNERR_INVALIDFILENAME* = 0x00003000 + 2
   FNERR_SUBCLASSFAILURE* = 0x00003000 + 1
-  FRERR_BUFFERLENGTHZERO* = 0x00004000 + 1 # CompareString, LCMapString
+  FRERR_BUFFERLENGTHZERO* = 0x00004000 + 1
+  # CompareString, LCMapString
   LOCALE_SYSTEM_DEFAULT* = 0x00000800
   LOCALE_USER_DEFAULT* = 0x00000400
   NORM_IGNORECASE* = 1
@@ -1784,18 +1901,21 @@ const
   LCMAP_KATAKANA* = 2097152
   LCMAP_LOWERCASE* = 256
   LCMAP_SORTKEY* = 1024
-  LCMAP_UPPERCASE* = 512      # ContinueDebugEvent
+  LCMAP_UPPERCASE* = 512
+  # ContinueDebugEvent
   DBG_CONTINUE* = 0x00010002
   DBG_CONTROL_BREAK* = 0x40010008
   DBG_CONTROL_C* = 0x40010005
   DBG_EXCEPTION_NOT_HANDLED* = 0x80010001
   DBG_TERMINATE_THREAD* = 0x40010003
-  DBG_TERMINATE_PROCESS* = 0x40010004 # ControlService
+  DBG_TERMINATE_PROCESS* = 0x40010004
+  # ControlService
   SERVICE_CONTROL_STOP* = 1
   SERVICE_CONTROL_PAUSE* = 2
   SERVICE_CONTROL_CONTINUE* = 3
   SERVICE_CONTROL_INTERROGATE* = 4
-  SERVICE_CONTROL_SHUTDOWN* = 5 # CopyImage, LoadImage
+  SERVICE_CONTROL_SHUTDOWN* = 5
+  # CopyImage, LoadImage
   IMAGE_BITMAP* = 0
   IMAGE_CURSOR* = 2
   IMAGE_ENHMETAFILE* = 1
@@ -1807,7 +1927,8 @@ const
   LR_DEFAULTSIZE* = 64
   LR_CREATEDIBSECTION* = 8192
   LR_COPYFROMRESOURCE* = 0x00004000
-  LR_SHARED* = 0x00008000     # CreateDesktop
+  LR_SHARED* = 0x00008000
+  # CreateDesktop
   DF_ALLOWOTHERACCOUNTHOOK* = 0x00000001
   DESKTOP_CREATEMENU* = 0x00000004
   DESKTOP_CREATEWINDOW* = 0x00000002
@@ -1818,50 +1939,30 @@ const
   DESKTOP_READOBJECTS* = 0x00000001
   DESKTOP_SWITCHDESKTOP* = 0x00000100
   DESKTOP_WRITEOBJECTS* = 0x00000080
-  WSF_VISIBLE* = 0x00000001   # CreateDIBitmap
+  WSF_VISIBLE* = 0x00000001
+  # CreateDIBitmap
   CBM_INIT* = 0x00000004
   DIB_PAL_COLORS* = 1
-  DIB_RGB_COLORS* = 0         # CreateFile, GetFileAttributes, SetFileAttributes
+  DIB_RGB_COLORS* = 0
+  # CreateFile, GetFileAttributes, SetFileAttributes
   GENERIC_READ* = 0x80000000
-  GENERIC_WRITE* = 0x40000000 # file & pipe
-  FILE_READ_DATA* = 0x00000001 # directory
-  FILE_LIST_DIRECTORY* = 0x00000001 # file & pipe
-  FILE_WRITE_DATA* = 0x00000002 # directory
-  FILE_ADD_FILE* = 0x00000002 # file
-  FILE_APPEND_DATA* = 0x00000004 # directory
-  FILE_ADD_SUBDIRECTORY* = 0x00000004 # named pipe
-  FILE_CREATE_PIPE_INSTANCE* = 0x00000004 # file & directory
-  FILE_READ_EA* = 0x00000008
-  FILE_READ_PROPERTIES* = FILE_READ_EA # file & directory
-  FILE_WRITE_EA* = 0x00000010
-  FILE_WRITE_PROPERTIES* = FILE_WRITE_EA # file
-  FILE_EXECUTE* = 0x00000020  # directory
+  GENERIC_WRITE* = 0x40000000
+  FILE_READ_DATA* = 0x00000001 # file & pipe
+  FILE_LIST_DIRECTORY* = 0x00000001 # directory
+  FILE_WRITE_DATA* = 0x00000002 # file & pipe
+  FILE_ADD_FILE* = 0x00000002 # directory
+  FILE_APPEND_DATA* = 0x00000004 # file
+  FILE_ADD_SUBDIRECTORY* = 0x00000004 # directory
+  FILE_CREATE_PIPE_INSTANCE* = 0x00000004 # named pipe
+  FILE_READ_EA* = 0x00000008 # file & directory
+  FILE_READ_PROPERTIES* = FILE_READ_EA
+  FILE_WRITE_EA* = 0x00000010 # file & directory
+  FILE_WRITE_PROPERTIES* = FILE_WRITE_EA
+  FILE_EXECUTE* = 0x00000020 # file
   FILE_TRAVERSE* = 0x00000020 # directory
-  FILE_DELETE_CHILD* = 0x00000040 # all
+  FILE_DELETE_CHILD* = 0x00000040 # directory
   FILE_READ_ATTRIBUTES* = 0x00000080 # all
-  FILE_WRITE_ATTRIBUTES* = 0x00000100 # displaced lower
-                                      #  #define FILE_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x1FF)
-                                      #
-                                      #  #define FILE_GENERIC_READ         (STANDARD_RIGHTS_READ     |\
-                                      #                                     FILE_READ_DATA           |\
-                                      #                                     FILE_READ_ATTRIBUTES     |\
-                                      #                                     FILE_READ_EA             |\
-                                      #                                     SYNCHRONIZE)
-                                      #
-                                      #
-                                      #  #define FILE_GENERIC_WRITE        (STANDARD_RIGHTS_WRITE    |\
-                                      #                                     FILE_WRITE_DATA          |\
-                                      #                                     FILE_WRITE_ATTRIBUTES    |\
-                                      #                                     FILE_WRITE_EA            |\
-                                      #                                     FILE_APPEND_DATA         |\
-                                      #                                     SYNCHRONIZE)
-                                      #
-                                      #
-                                      #  #define FILE_GENERIC_EXECUTE      (STANDARD_RIGHTS_EXECUTE  |\
-                                      #                                     FILE_READ_ATTRIBUTES     |\
-                                      #                                     FILE_EXECUTE             |\
-                                      #                                     SYNCHRONIZE)
-                                      #
+  FILE_WRITE_ATTRIBUTES* = 0x00000100 # all
   FILE_SHARE_DELETE* = 4
   FILE_SHARE_READ* = 1
   FILE_SHARE_WRITE* = 2
@@ -1893,7 +1994,8 @@ const
   cSECURITY_DELEGATION* = 196608
   cSECURITY_CONTEXT_TRACKING* = 262144
   cSECURITY_EFFECTIVE_ONLY* = 524288
-  cSECURITY_SQOS_PRESENT* = 1048576 # CreateFileMapping, VirtualAlloc, VirtualFree, VirtualProtect
+  cSECURITY_SQOS_PRESENT* = 1048576
+  # CreateFileMapping, VirtualAlloc, VirtualFree, VirtualProtect
   SEC_COMMIT* = 134217728
   SEC_IMAGE* = 16777216
   SEC_NOCACHE* = 268435456
@@ -1922,7 +2024,8 @@ const
   SECTION_MAP_READ* = 0x00000004
   SECTION_MAP_WRITE* = 0x00000002
   SECTION_QUERY* = 0x00000001
-  SECTION_ALL_ACCESS* = 0x000F001F # CreateFont
+  SECTION_ALL_ACCESS* = 0x000F001F
+  # CreateFont
   FW_DONTCARE* = 0
   FW_THIN* = 100
   FW_EXTRALIGHT* = 200
@@ -1980,21 +2083,23 @@ const
   FF_MODERN* = 48
   FF_ROMAN* = 16
   FF_SCRIPT* = 64
-  FF_SWISS* = 32              # CreateHatchBrush
+  FF_SWISS* = 32
+  # CreateHatchBrush
   HS_BDIAGONAL* = 3
   HS_CROSS* = 4
   HS_DIAGCROSS* = 5
   HS_FDIAGONAL* = 2
   HS_HORIZONTAL* = 0
-  HS_VERTICAL* = 1            # CreateIconFromResourceEx
+  HS_VERTICAL* = 1
+  # CreateIconFromResourceEx
   LR_DEFAULTCOLOR* = 0
-  LR_LOADREALSIZE* = 128      # already defined above !!
-                              #  #define LR_MONOCHROME (1)
-                              #
+  LR_LOADREALSIZE* = 128
                               # CreateMailslot, GetMailslotInfo
   MAILSLOT_WAIT_FOREVER* = 0xFFFFFFFF
-  MAILSLOT_NO_MESSAGE* = 0xFFFFFFFF # CreateMappedBitmap
-  CMB_MASKED* = 2             # CreateNamedPipe
+  MAILSLOT_NO_MESSAGE* = 0xFFFFFFFF
+  # CreateMappedBitmap
+  CMB_MASKED* = 2
+  # CreateNamedPipe
   PIPE_ACCESS_DUPLEX* = 3
   PIPE_ACCESS_INBOUND* = 1
   PIPE_ACCESS_OUTBOUND* = 2
@@ -2006,7 +2111,8 @@ const
   PIPE_READMODE_BYTE* = 0
   PIPE_READMODE_MESSAGE* = 2
   PIPE_WAIT* = 0
-  PIPE_NOWAIT* = 1            # CreatePen, ExtCreatePen
+  PIPE_NOWAIT* = 1
+  # CreatePen, ExtCreatePen
   PS_GEOMETRIC* = 65536
   PS_COSMETIC* = 0
   PS_ALTERNATE* = 8
@@ -2026,9 +2132,11 @@ const
   PS_JOIN_ROUND* = 0
   PS_STYLE_MASK* = 15
   PS_ENDCAP_MASK* = 3840
-  PS_TYPE_MASK* = 983040      # CreatePolygonRgn
+  PS_TYPE_MASK* = 983040
+  # CreatePolygonRgn
   ALTERNATE* = 1
-  WINDING* = 2                # CreateProcess
+  WINDING* = 2
+  # CreateProcess
   CREATE_DEFAULT_ERROR_MODE* = 67108864
   CREATE_NEW_CONSOLE* = 16
   CREATE_NEW_PROCESS_GROUP* = 512
@@ -2041,7 +2149,8 @@ const
   HIGH_PRIORITY_CLASS* = 128
   IDLE_PRIORITY_CLASS* = 64
   NORMAL_PRIORITY_CLASS* = 32
-  REALTIME_PRIORITY_CLASS* = 256 # CreateService
+  REALTIME_PRIORITY_CLASS* = 256
+  # CreateService
   SERVICE_ALL_ACCESS* = 0x000F01FF
   SERVICE_CHANGE_CONFIG* = 2
   SERVICE_ENUMERATE_DEPENDENTS* = 8
@@ -2054,29 +2163,20 @@ const
   SERVICE_USER_DEFINED_CONTROL* = 256
   SERVICE_DELETE* = 0x00010000
   SERVICE_READ_CONTROL* = 0x00020000
-  SERVICE_GENERIC_EXECUTE* = 0x20000000 # already defined above !!
-                                        #  #define SERVICE_WIN32_OWN_PROCESS     (16)
-                                        #  #define SERVICE_WIN32_SHARE_PROCESS   (32)
-                                        #  #define SERVICE_KERNEL_DRIVER (1)
-                                        #  #define SERVICE_FILE_SYSTEM_DRIVER    (2)
-                                        #  #define SERVICE_INTERACTIVE_PROCESS   (256)
-                                        #  #define SERVICE_BOOT_START    (0)
-                                        #  #define SERVICE_SYSTEM_START  (1)
-                                        #  #define SERVICE_AUTO_START    (2)
-                                        #  #define SERVICE_DEMAND_START  (3)
-                                        #  #define SERVICE_DISABLED      (4)
-                                        #
+  SERVICE_GENERIC_EXECUTE* = 0x20000000
   SERVICE_ERROR_IGNORE* = 0
   SERVICE_ERROR_NORMAL* = 1
   SERVICE_ERROR_SEVERE* = 2
-  SERVICE_ERROR_CRITICAL* = 3 # CreateTapePartition, WriteTapemark
+  SERVICE_ERROR_CRITICAL* = 3
+  # CreateTapePartition, WriteTapemark
   TAPE_FIXED_PARTITIONS* = 0
   TAPE_INITIATOR_PARTITIONS* = 0x00000002
   TAPE_SELECT_PARTITIONS* = 0x00000001
   TAPE_FILEMARKS* = 0x00000001
   TAPE_LONG_FILEMARKS* = 0x00000003
   TAPE_SETMARKS* = 0
-  TAPE_SHORT_FILEMARKS* = 0x00000002 # CreateWindow
+  TAPE_SHORT_FILEMARKS* = 0x00000002
+  # CreateWindow
   CW_USEDEFAULT* = int32(0x80000000)
   WS_BORDER* = 0x00800000
   WS_CAPTION* = 0x00C00000
@@ -2223,7 +2323,8 @@ const
   DS_NOIDLEMSG* = 0x00000100
   DS_SETFONT* = 0x00000040
   DS_SETFOREGROUND* = 0x00000200
-  DS_SYSMODAL* = 0x00000002   # CreateWindowEx
+  DS_SYSMODAL* = 0x00000002
+  # CreateWindowEx
   WS_EX_ACCEPTFILES* = 0x00000010
   WS_EX_APPWINDOW* = 0x00040000
   WS_EX_CLIENTEDGE* = 0x00000200
@@ -2244,7 +2345,8 @@ const
   WS_EX_TOOLWINDOW* = 0x00000080
   WS_EX_TOPMOST* = 0x00000008
   WS_EX_TRANSPARENT* = 0x00000020
-  WS_EX_WINDOWEDGE* = 0x00000100 # CreateWindowStation
+  WS_EX_WINDOWEDGE* = 0x00000100
+  # CreateWindowStation
   WINSTA_ACCESSCLIPBOARD* = 0x00000004
   WINSTA_ACCESSGLOBALATOMS* = 0x00000020
   WINSTA_CREATEDESKTOP* = 0x00000008
@@ -2253,7 +2355,8 @@ const
   WINSTA_EXITWINDOWS* = 0x00000040
   WINSTA_READATTRIBUTES* = 0x00000002
   WINSTA_READSCREEN* = 0x00000200
-  WINSTA_WRITEATTRIBUTES* = 0x00000010 # DdeCallback
+  WINSTA_WRITEATTRIBUTES* = 0x00000010
+  # DdeCallback
                                        # DdeClientTransaction
                                        # DdeEnableCallback
                                        # DdeGetLastError
@@ -2269,41 +2372,18 @@ const
   WH_JOURNALRECORD* = 0
   WH_KEYBOARD* = 2
   WH_MOUSE* = 7
-  WH_MSGFILTER* = - (1)
+  WH_MSGFILTER* = -1
   WH_SHELL* = 10
-  WH_SYSMSGFILTER* = 6        # already defined above !!
-                              #  #define WH_MSGFILTER  (-1)
-  WH_FOREGROUNDIDLE* = 11     # DefineDosDevice
+  WH_SYSMSGFILTER* = 6
+  WH_FOREGROUNDIDLE* = 11
+  # DefineDosDevice
   DDD_RAW_TARGET_PATH* = 1
   DDD_REMOVE_DEFINITION* = 2
-  DDD_EXACT_MATCH_ON_REMOVE* = 4 # DeviceCapbilities
-  DC_BINNAMES* = 12
-  DC_BINS* = 6
-  DC_COPIES* = 18
-  DC_DRIVER* = 11
-  DC_DATATYPE_PRODUCED* = 21
-  DC_DUPLEX* = 7
-  DC_EMF_COMPLIANT* = 20
-  DC_ENUMRESOLUTIONS* = 13
-  DC_EXTRA* = 9
-  DC_FIELDS* = 1
-  DC_FILEDEPENDENCIES* = 14
-  DC_MAXEXTENT* = 5
-  DC_MINEXTENT* = 4
-  DC_ORIENTATION* = 17
-  DC_PAPERNAMES* = 16
-  DC_PAPERS* = 2
-  DC_PAPERSIZE* = 3
-  DC_SIZE* = 8
-  DC_TRUETYPE* = 15
+  DDD_EXACT_MATCH_ON_REMOVE* = 4
+  # DeviceCapbilities
   DCTT_BITMAP* = 0x00000001
   DCTT_DOWNLOAD* = 0x00000002
   DCTT_SUBDEV* = 0x00000004
-  DC_VERSION* = 10
-  DC_BINADJUST* = 19          # already defined above !!
-                              #  #define DC_DATATYPE_PRODUCED  (21)
-                              #
-                              # DeviceIoControl
                               # DlgDirList
   DDL_ARCHIVE* = 32
   DDL_DIRECTORY* = 16
@@ -2313,22 +2393,19 @@ const
   DDL_READONLY* = 1
   DDL_READWRITE* = 0
   DDL_SYSTEM* = 4
-  DDL_POSTMSGS* = 8192        # DllEntryPoint
+  DDL_POSTMSGS* = 8192
+  # DllEntryPoint
   DLL_PROCESS_ATTACH* = 1
   DLL_THREAD_ATTACH* = 2
   DLL_PROCESS_DETACH* = 0
-  DLL_THREAD_DETACH* = 3      # DocumentProperties
-  DM_IN_BUFFER* = 8
-  DM_MODIFY* = 8
-  DM_IN_PROMPT* = 4
-  DM_PROMPT* = 4
-  DM_OUT_BUFFER* = 2
-  DM_COPY* = 2
-  DM_UPDATE* = 1              # DrawAnimatedRects
+  DLL_THREAD_DETACH* = 3
+  # DrawAnimatedRects
   IDANI_OPEN* = 1
-  IDANI_CLOSE* = 2            # DrawCaption
+  IDANI_CLOSE* = 2
+  # DrawCaption
   DC_ACTIVE* = 1
-  DC_SMALLCAP* = 2            # DrawEdge
+  DC_SMALLCAP* = 2
+  # DrawEdge
   BDR_RAISEDINNER* = 4
   BDR_SUNKENINNER* = 8
   BDR_RAISEDOUTER* = 1
@@ -2359,7 +2436,8 @@ const
   BF_SOFT* = 4096
   BF_TOP* = 2
   BF_TOPLEFT* = 3
-  BF_TOPRIGHT* = 6            # DrawFrameControl
+  BF_TOPRIGHT* = 6
+  # DrawFrameControl
   DFC_BUTTON* = 4
   DFC_CAPTION* = 1
   DFC_MENU* = 2
@@ -2389,12 +2467,14 @@ const
   DFCS_FLAT* = 16384
   DFCS_INACTIVE* = 256
   DFCS_MONO* = 32768
-  DFCS_PUSHED* = 512          # DrawIconEx
+  DFCS_PUSHED* = 512
+  # DrawIconEx
   DI_COMPAT* = 4
   DI_DEFAULTSIZE* = 8
   DI_IMAGE* = 2
   DI_MASK* = 1
-  DI_NORMAL* = 3              # DrawState
+  DI_NORMAL* = 3
+  # DrawState
   DST_BITMAP* = 4
   DST_COMPLEX* = 0
   DST_ICON* = 3
@@ -2403,11 +2483,13 @@ const
   DSS_NORMAL* = 0
   DSS_UNION* = 16
   DSS_DISABLED* = 32
-  DSS_MONO* = 128             # DrawStatusText
+  DSS_MONO* = 128
+  # DrawStatusText
   SBT_NOBORDERS* = 256
   SBT_OWNERDRAW* = 4096
   SBT_POPOUT* = 512
-  SBT_RTLREADING* = 1024      # DrawText, DrawTextEx
+  SBT_RTLREADING* = 1024
+  # DrawText, DrawTextEx
   DT_BOTTOM* = 8
   DT_CALCRECT* = 1024
   DT_CENTER* = 1
@@ -2430,7 +2512,8 @@ const
   DT_INTERNAL* = 4096
   DT_WORD_ELLIPSIS* = 0x00040000
   DT_HIDEPREFIX* = 0x00100000
-  DT_PREFIXONLY* = 0x00200000 # DuplicateHandle, MapViewOfFile
+  DT_PREFIXONLY* = 0x00200000
+  # DuplicateHandle, MapViewOfFile
   DUPLICATE_CLOSE_SOURCE* = 1
   DUPLICATE_SAME_ACCESS* = 2
   FILE_MAP_ALL_ACCESS* = 0x000F001F
@@ -2473,10 +2556,12 @@ const
   THREAD_SET_INFORMATION* = 32
   THREAD_SET_THREAD_TOKEN* = 128
   THREAD_SUSPEND_RESUME* = 2
-  THREAD_TERMINATE* = 1       # EditWordBreakProc
+  THREAD_TERMINATE* = 1
+  # EditWordBreakProc
   WB_ISDELIMITER* = 2
   WB_LEFT* = 0
-  WB_RIGHT* = 1               # EnableScrollBar
+  WB_RIGHT* = 1
+  # EnableScrollBar
   SB_BOTH* = 3
   SB_CTL* = 2
   SB_HORZ* = 0
@@ -2488,7 +2573,8 @@ const
   ESB_DISABLE_RIGHT* = 2
   ESB_DISABLE_RTDN* = 2
   ESB_DISABLE_UP* = 1
-  ESB_ENABLE_BOTH* = 0        # Scroll Bar notifications
+  ESB_ENABLE_BOTH* = 0
+  # Scroll Bar notifications
   SB_LINEUP* = 0
   SB_LINEDOWN* = 1
   SB_LINELEFT* = 0
@@ -2503,15 +2589,22 @@ const
   SB_LEFT* = 6
   SB_RIGHT* = 7
   SB_BOTTOM* = 7
-  SB_TOP* = 6                 # EnumCalendarInfo
-  ENUM_ALL_CALENDARS* = - (1) # EnumDateFormats
+  SB_TOP* = 6
+  # EnumCalendarInfo
+  ENUM_ALL_CALENDARS* = -1
+  # EnumDateFormats
+  # GetDateFormat
   DATE_SHORTDATE* = 1
-  DATE_LONGDATE* = 2          # EnumDependentServices
+  DATE_LONGDATE* = 2
+  DATE_USE_ALT_CALENDAR* = 4
+  # EnumDependentServices
   SERVICE_ACTIVE* = 1
-  SERVICE_INACTIVE* = 2       # EnumFontFamExProc
+  SERVICE_INACTIVE* = 2
+  # EnumFontFamExProc
   DEVICE_FONTTYPE* = 2
   RASTER_FONTTYPE* = 1
-  TRUETYPE_FONTTYPE* = 4      # EnumObjects, GetCurrentObject, GetObjectType
+  TRUETYPE_FONTTYPE* = 4
+  # EnumObjects, GetCurrentObject, GetObjectType
   OBJ_BRUSH* = 2
   OBJ_PEN* = 1
   OBJ_PAL* = 5
@@ -2524,13 +2617,11 @@ const
   OBJ_METAFILE* = 9
   OBJ_METADC* = 4
   OBJ_ENHMETAFILE* = 13
-  OBJ_ENHMETADC* = 12         # EnumPrinters
-                              # EnumProtocols
-                              # EnumResLangProc
+  OBJ_ENHMETADC* = 12
+
                               #
                               # Predefined Resource Types
                               #
-
 const
   RT_CURSOR* = cast[MAKEINTRESOURCE](1)
   RT_BITMAP* = cast[MAKEINTRESOURCE](2)
@@ -2553,38 +2644,48 @@ const
   RT_ANICURSOR* = cast[MAKEINTRESOURCE](21)
   RT_ANIICON* = cast[MAKEINTRESOURCE](22)
   RT_HTML* = cast[MAKEINTRESOURCE](23)
-  RT_MANIFEST* = cast[MAKEINTRESOURCE](24) # EnumServicesStatus
+  RT_MANIFEST* = cast[MAKEINTRESOURCE](24)
 
 const
+  # EnumServicesStatus
   SERVICE_WIN32* = 48
-  SERVICE_DRIVER* = 11        # EnumSystemCodePages
+  SERVICE_DRIVER* = 11
+  # EnumSystemCodePages
   CP_INSTALLED* = 1
-  CP_SUPPORTED* = 2           # EnumSystemLocales
+  CP_SUPPORTED* = 2
+  # EnumSystemLocales
   LCID_INSTALLED* = 1
-  LCID_SUPPORTED* = 2         # EraseTape
+  LCID_SUPPORTED* = 2
+  # EraseTape
   TAPE_ERASE_LONG* = 0x00000001
-  TAPE_ERASE_SHORT* = 0       # Escape
-  SP_ERROR* = - (1)
-  SP_OUTOFDISK* = - (4)
-  SP_OUTOFMEMORY* = - (5)
-  SP_USERABORT* = - (3)
+  TAPE_ERASE_SHORT* = 0
+  # Escape
+  SP_ERROR* = -1
+  SP_OUTOFDISK* = -4
+  SP_OUTOFMEMORY* = -5
+  SP_USERABORT* = -3
   PHYSICALWIDTH* = 110
   PHYSICALHEIGHT* = 111
   PHYSICALOFFSETX* = 112
   PHYSICALOFFSETY* = 113
   SCALINGFACTORX* = 114
   SCALINGFACTORY* = 115
-  QUERYESCSUPPORT* = 8        #ABORTDOC = 2; conflicts with AbortDoc function
-  cABORTDOC* = 2              #ENDDOC = 11; conflicts with AbortDoc function
+  QUERYESCSUPPORT* = 8
+  #ABORTDOC = 2; conflicts with AbortDoc function
+  cABORTDOC* = 2
+  #ENDDOC = 11; conflicts with AbortDoc function
   cENDDOC* = 11
   GETPHYSPAGESIZE* = 12
   GETPRINTINGOFFSET* = 13
   GETSCALINGFACTOR* = 14
   NEWFRAME* = 1
   NEXTBAND* = 3
-  PASSTHROUGH* = 19           #SETABORTPROC = 9; conflicts with AbortDoc function
-  cSETABORTPROC* = 9          #STARTDOC = 10; conflicts with AbortDoc function
-  cSTARTDOC* = 10             # EscapeCommFunction
+  PASSTHROUGH* = 19
+  #SETABORTPROC = 9; conflicts with AbortDoc function
+  cSETABORTPROC* = 9
+  #STARTDOC = 10; conflicts with AbortDoc function
+  cSTARTDOC* = 10
+  # EscapeCommFunction
   CLRDTR* = 6
   CLRRTS* = 4
   SETDTR* = 5
@@ -2592,18 +2693,22 @@ const
   SETXOFF* = 1
   SETXON* = 2
   SETBREAK* = 8
-  CLRBREAK* = 9               # ExitWindowsEx
+  CLRBREAK* = 9
+  # ExitWindowsEx
   EWX_FORCE* = 4
   EWX_LOGOFF* = 0
   EWX_POWEROFF* = 8
   EWX_REBOOT* = 2
-  EWX_SHUTDOWN* = 1           # ExtFloodFill
+  EWX_SHUTDOWN* = 1
+  # ExtFloodFill
   FLOODFILLBORDER* = 0
-  FLOODFILLSURFACE* = 1       # ExtTextOut
+  FLOODFILLSURFACE* = 1
+  # ExtTextOut
   ETO_CLIPPED* = 4
   ETO_GLYPH_INDEX* = 16
   ETO_OPAQUE* = 2
-  ETO_RTLREADING* = 128       # FillConsoleOutputAttribute
+  ETO_RTLREADING* = 128
+  # FillConsoleOutputAttribute
   FOREGROUND_BLUE* = 1
   FOREGROUND_GREEN* = 2
   FOREGROUND_RED* = 4
@@ -2611,52 +2716,62 @@ const
   BACKGROUND_BLUE* = 16
   BACKGROUND_GREEN* = 32
   BACKGROUND_RED* = 64
-  BACKGROUND_INTENSITY* = 128 # FindFirstChangeNotification
+  BACKGROUND_INTENSITY* = 128
+  # FindFirstChangeNotification
   FILE_NOTIFY_CHANGE_FILE_NAME* = 1
   FILE_NOTIFY_CHANGE_DIR_NAME* = 2
   FILE_NOTIFY_CHANGE_ATTRIBUTES* = 4
   FILE_NOTIFY_CHANGE_SIZE* = 8
   FILE_NOTIFY_CHANGE_LAST_WRITE* = 16
-  FILE_NOTIFY_CHANGE_SECURITY* = 256 # FindFirstPrinterChangeNotification
+  FILE_NOTIFY_CHANGE_SECURITY* = 256
+  # FindFirstPrinterChangeNotification
                                      # FindNextPrinterNotification
                                      # FMExtensionProc
                                      # FoldString
   MAP_FOLDCZONE* = 16
   MAP_FOLDDIGITS* = 128
   MAP_PRECOMPOSED* = 32
-  MAP_COMPOSITE* = 64         # ForegroundIdleProc
-  HC_ACTION* = 0              # FormatMessage
+  MAP_COMPOSITE* = 64
+  # ForegroundIdleProc
+  HC_ACTION* = 0
+  # FormatMessage
   FORMAT_MESSAGE_ALLOCATE_BUFFER* = 256
   FORMAT_MESSAGE_IGNORE_INSERTS* = 512
   FORMAT_MESSAGE_FROM_STRING* = 1024
   FORMAT_MESSAGE_FROM_HMODULE* = 2048
   FORMAT_MESSAGE_FROM_SYSTEM* = 4096
   FORMAT_MESSAGE_ARGUMENT_ARRAY* = 8192
-  FORMAT_MESSAGE_MAX_WIDTH_MASK* = 255 # GdiComment
-  GDICOMMENT_WINDOWS_METAFILE* = - (2147483647)
+  FORMAT_MESSAGE_MAX_WIDTH_MASK* = 255
+  # GdiComment
+  GDICOMMENT_WINDOWS_METAFILE* = -2147483647
   GDICOMMENT_BEGINGROUP* = 2
   GDICOMMENT_ENDGROUP* = 3
   GDICOMMENT_MULTIFORMATS* = 1073741828
-  GDICOMMENT_IDENTIFIER* = 1128875079 # GenerateConsoleCtrlEvent, HandlerRoutine
+  GDICOMMENT_IDENTIFIER* = 1128875079
+  # GenerateConsoleCtrlEvent, HandlerRoutine
   CTRL_C_EVENT* = 0
   CTRL_BREAK_EVENT* = 1
   CTRL_CLOSE_EVENT* = 2
   CTRL_LOGOFF_EVENT* = 5
-  CTRL_SHUTDOWN_EVENT* = 6    # GetAddressByName
+  CTRL_SHUTDOWN_EVENT* = 6
+  # GetAddressByName
                               # GetArcDirection
   AD_COUNTERCLOCKWISE* = 1
-  AD_CLOCKWISE* = 2           # GetBinaryTypes
+  AD_CLOCKWISE* = 2
+  # GetBinaryTypes
   SCS_32BIT_BINARY* = 0
   SCS_DOS_BINARY* = 1
   SCS_OS216_BINARY* = 5
   SCS_PIF_BINARY* = 3
   SCS_POSIX_BINARY* = 4
-  SCS_WOW_BINARY* = 2         # GetBoundsRect, SetBoundsRect
+  SCS_WOW_BINARY* = 2
+  # GetBoundsRect, SetBoundsRect
   DCB_DISABLE* = 8
   DCB_ENABLE* = 4
   DCB_RESET* = 1
   DCB_SET* = 3
-  DCB_ACCUMULATE* = 2         # GetCharacterPlacement, GetFontLanguageInfo
+  DCB_ACCUMULATE* = 2
+  # GetCharacterPlacement, GetFontLanguageInfo
   GCP_DBCS* = 1
   GCP_ERROR* = 0x00008000
   GCP_CLASSIN* = 0x00080000
@@ -2676,18 +2791,20 @@ const
   GCP_SYMSWAPOFF* = 0x00800000
   GCP_USEKERNING* = 8
   FLI_GLYPHS* = 0x00040000
-  FLI_MASK* = 0x0000103B      # GetClassLong, GetClassWord
-  GCW_ATOM* = - (32)
-  GCL_CBCLSEXTRA* = - (20)
-  GCL_CBWNDEXTRA* = - (18)
-  GCL_HBRBACKGROUND* = - (10)
-  GCL_HCURSOR* = - (12)
-  GCL_HICON* = - (14)
-  GCL_HICONSM* = - (34)
-  GCL_HMODULE* = - (16)
-  GCL_MENUNAME* = - (8)
-  GCL_STYLE* = - (26)
-  GCL_WNDPROC* = - (24)       # GetClipboardFormat, SetClipboardData
+  FLI_MASK* = 0x0000103B
+  # GetClassLong, GetClassWord
+  GCW_ATOM* = -32
+  GCL_CBCLSEXTRA* = -20
+  GCL_CBWNDEXTRA* = -18
+  GCL_HBRBACKGROUND* = -10
+  GCL_HCURSOR* = -12
+  GCL_HICON* = -14
+  GCL_HICONSM* = -34
+  GCL_HMODULE* = -16
+  GCL_MENUNAME* = -8
+  GCL_STYLE* = -26
+  GCL_WNDPROC* = -24
+  # GetClipboardFormat, SetClipboardData
   CF_BITMAP* = 2
   CF_DIB* = 8
   CF_PALETTE* = 9
@@ -2712,7 +2829,8 @@ const
   CF_RIFF* = 11
   CF_SYLK* = 4
   CF_WAVE* = 12
-  CF_TIFF* = 6                # GetCommMask
+  CF_TIFF* = 6
+  # GetCommMask
   EV_BREAK* = 64
   EV_CTS* = 8
   EV_DSR* = 16
@@ -2725,27 +2843,27 @@ const
   EV_RX80FULL* = 1024
   EV_RXCHAR* = 1
   EV_RXFLAG* = 2
-  EV_TXEMPTY* = 4             # GetCommModemStatus
+  EV_TXEMPTY* = 4
+  # GetCommModemStatus
   MS_CTS_ON* = 0x00000010
   MS_DSR_ON* = 0x00000020
   MS_RING_ON* = 0x00000040
-  MS_RLSD_ON* = 0x00000080    # GetComputerName
-  MAX_COMPUTERNAME_LENGTH* = 15 # GetConsoleMode
+  MS_RLSD_ON* = 0x00000080
+  # GetComputerName
+  MAX_COMPUTERNAME_LENGTH* = 15
+  # GetConsoleMode
   ENABLE_LINE_INPUT* = 2
   ENABLE_ECHO_INPUT* = 4
   ENABLE_PROCESSED_INPUT* = 1
   ENABLE_WINDOW_INPUT* = 8
   ENABLE_MOUSE_INPUT* = 16
   ENABLE_PROCESSED_OUTPUT* = 1
-  ENABLE_WRAP_AT_EOL_OUTPUT* = 2 # GetCPInfo
+  ENABLE_WRAP_AT_EOL_OUTPUT* = 2
+  # GetCPInfo
   CP_ACP* = 0
   CP_MACCP* = 2
-  CP_OEMCP* = 1               # GetDateFormat
-                              # already defined above !!
-                              #  #define DATE_SHORTDATE        (1)
-                              #  #define DATE_LONGDATE (2)
-                              #
-  DATE_USE_ALT_CALENDAR* = 4  # GetDCEx
+  CP_OEMCP* = 1
+  # GetDCEx
   DCX_WINDOW* = 0x00000001
   DCX_CACHE* = 0x00000002
   DCX_PARENTCLIP* = 0x00000020
@@ -2755,7 +2873,8 @@ const
   DCX_LOCKWINDOWUPDATE* = 0x00000400
   DCX_EXCLUDERGN* = 0x00000040
   DCX_INTERSECTRGN* = 0x00000080
-  DCX_VALIDATE* = 0x00200000  # GetDeviceCaps
+  DCX_VALIDATE* = 0x00200000
+  # GetDeviceCaps
   DRIVERVERSION* = 0
   TECHNOLOGY* = 2
   DT_PLOTTER* = 0
@@ -2784,14 +2903,7 @@ const
   CLIPCAPS* = 36
   SIZEPALETTE* = 104
   NUMRESERVED* = 106
-  COLORRES* = 108             # already defined above !!
-                              #  #define PHYSICALWIDTH (110)
-                              #  #define PHYSICALHEIGHT        (111)
-                              #  #define PHYSICALOFFSETX       (112)
-                              #  #define PHYSICALOFFSETY       (113)
-                              #  #define SCALINGFACTORX        (114)
-                              #  #define SCALINGFACTORY        (115)
-                              #
+  COLORRES* = 108
   VREFRESH* = 116
   DESKTOPHORZRES* = 118
   DESKTOPVERTRES* = 117
@@ -2856,14 +2968,16 @@ const
   TC_VA_ABLE* = 16384
   TC_RESERVED* = 32768
   TC_SCROLLBLT* = 65536
-  PC_PATHS* = 512             # GetDriveType
+  PC_PATHS* = 512
+  # GetDriveType
   DRIVE_REMOVABLE* = 2
   DRIVE_FIXED* = 3
   DRIVE_REMOTE* = 4
   DRIVE_CDROM* = 5
   DRIVE_RAMDISK* = 6
   DRIVE_UNKNOWN* = 0
-  DRIVE_NO_ROOT_DIR* = 1      # GetExceptionCode
+  DRIVE_NO_ROOT_DIR* = 1
+  # GetExceptionCode
   EXCEPTION_ACCESS_VIOLATION* = 0xC0000005
   EXCEPTION_BREAKPOINT* = 0x80000003
   EXCEPTION_DATATYPE_MISALIGNMENT* = 0x80000002
@@ -2886,91 +3000,56 @@ const
   EXCEPTION_INVALID_DISPOSITION* = 0xC0000026
   EXCEPTION_IN_PAGE_ERROR* = 0xC0000006
   EXCEPTION_ILLEGAL_INSTRUCTION* = 0xC000001D
-  EXCEPTION_POSSIBLE_DEADLOCK* = 0xC0000194 # GetFileType
+  EXCEPTION_POSSIBLE_DEADLOCK* = 0xC0000194
+  # GetFileType
   FILE_TYPE_UNKNOWN* = 0
   FILE_TYPE_DISK* = 1
   FILE_TYPE_CHAR* = 2
-  FILE_TYPE_PIPE* = 3         # GetGlyphOutline
+  FILE_TYPE_PIPE* = 3
+  # GetGlyphOutline
   GGO_BITMAP* = 1
   GGO_NATIVE* = 2
   GGO_METRICS* = 0
   GGO_GRAY2_BITMAP* = 4
   GGO_GRAY4_BITMAP* = 5
   GGO_GRAY8_BITMAP* = 6
-  GDI_ERROR* = 0xFFFFFFFF     # GetGraphicsMode
+  GDI_ERROR* = 0xFFFFFFFF
+  # GetGraphicsMode
   GM_COMPATIBLE* = 1
-  GM_ADVANCED* = 2            # GetHandleInformation
+  GM_ADVANCED* = 2
+  # GetHandleInformation
   HANDLE_FLAG_INHERIT* = 1
-  HANDLE_FLAG_PROTECT_FROM_CLOSE* = 2 # GetIconInfo
-                                      # was #define dname def_expr
+  HANDLE_FLAG_PROTECT_FROM_CLOSE* = 2
+  # GetIconInfo
+  IDC_ARROW* =       cast[MAKEINTRESOURCE](32512)
+  IDC_IBEAM* =       cast[MAKEINTRESOURCE](32513)
+  IDC_WAIT* =        cast[MAKEINTRESOURCE](32514)
+  IDC_CROSS* =       cast[MAKEINTRESOURCE](32515)
+  IDC_UPARROW* =     cast[MAKEINTRESOURCE](32516)
+  IDC_SIZE* =        cast[MAKEINTRESOURCE](32640)  # OBSOLETE: use IDC_SIZEALL
+  IDC_ICON* =        cast[MAKEINTRESOURCE](32641)  # OBSOLETE: use IDC_ARROW
+  IDC_SIZENWSE* =    cast[MAKEINTRESOURCE](32642)
+  IDC_SIZENESW* =    cast[MAKEINTRESOURCE](32643)
+  IDC_SIZEWE* =      cast[MAKEINTRESOURCE](32644)
+  IDC_SIZENS* =      cast[MAKEINTRESOURCE](32645)
+  IDC_SIZEALL* =     cast[MAKEINTRESOURCE](32646)
+  IDC_NO* =          cast[MAKEINTRESOURCE](32648)
+  IDC_HAND* =        cast[MAKEINTRESOURCE](32649)
+  IDC_APPSTARTING* = cast[MAKEINTRESOURCE](32650)
+  IDC_HELP* =        cast[MAKEINTRESOURCE](32651)
 
-proc IDC_ARROW*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_IBEAM*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_WAIT*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_CROSS*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_UPARROW*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZENWSE*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZENESW*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZEWE*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZENS*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZEALL*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_NO*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_APPSTARTING*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_HELP*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_APPLICATION*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_HAND*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_QUESTION*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_EXCLAMATION*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_ASTERISK*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDI_WINLOGO*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_SIZE*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_ICON*(): LPTSTR
-  # return type might be wrong
-  # was #define dname def_expr
-proc IDC_HAND*(): LPTSTR
-  # return type might be wrong
-  # GetMapMode
+  IDI_APPLICATION* = cast[MAKEINTRESOURCE](32512)
+  IDI_HAND* =        cast[MAKEINTRESOURCE](32513)
+  IDI_QUESTION* =    cast[MAKEINTRESOURCE](32514)
+  IDI_EXCLAMATION* = cast[MAKEINTRESOURCE](32515)
+  IDI_ASTERISK* =    cast[MAKEINTRESOURCE](32516)
+  IDI_WINLOGO* =     cast[MAKEINTRESOURCE](32517)
+  IDI_WARNING* =     IDI_EXCLAMATION
+  IDI_ERROR* =       IDI_HAND
+  IDI_INFORMATION* = IDI_ASTERISK
+
 const
+  # GetMapMode
   MM_ANISOTROPIC* = 8
   MM_HIENGLISH* = 5
   MM_HIMETRIC* = 3
@@ -2978,29 +3057,36 @@ const
   MM_LOENGLISH* = 4
   MM_LOMETRIC* = 2
   MM_TEXT* = 1
-  MM_TWIPS* = 6               # GetMenuDefaultItem
+  MM_TWIPS* = 6
+  # GetMenuDefaultItem
   GMDI_GOINTOPOPUPS* = 0x00000002
-  GMDI_USEDISABLED* = 0x00000001 # PeekMessage
+  GMDI_USEDISABLED* = 0x00000001
+  # PeekMessage
   PM_NOREMOVE* = 0
   PM_REMOVE* = 1
-  PM_NOYIELD* = 2             # GetNamedPipeHandleState
+  PM_NOYIELD* = 2
+  # GetNamedPipeHandleState
                               #   PIPE_NOWAIT = 1; already above
                               #   PIPE_READMODE_MESSAGE = 2;already above
                               # GetNamedPipeInfo
   PIPE_CLIENT_END* = 0
-  PIPE_SERVER_END* = 1        #   PIPE_TYPE_MESSAGE = 4;already above
+  PIPE_SERVER_END* = 1
+  #   PIPE_TYPE_MESSAGE = 4;already above
                               # GetNextWindow, GetWindow
   GW_HWNDNEXT* = 2
   GW_HWNDPREV* = 3
   GW_CHILD* = 5
   GW_HWNDFIRST* = 0
   GW_HWNDLAST* = 1
-  GW_OWNER* = 4               # GetPath
+  GW_OWNER* = 4
+  # GetPath
   PT_MOVETO* = 6
   PT_LINETO* = 2
   PT_BEZIERTO* = 4
-  PT_CLOSEFIGURE* = 1         # GetProcessShutdownParameters
-  SHUTDOWN_NORETRY* = 1       # GetQueueStatus
+  PT_CLOSEFIGURE* = 1
+  # GetProcessShutdownParameters
+  SHUTDOWN_NORETRY* = 1
+  # GetQueueStatus
   QS_ALLEVENTS* = 191
   QS_ALLINPUT* = 255
   QS_HOTKEY* = 128
@@ -3012,24 +3098,23 @@ const
   QS_PAINT* = 32
   QS_POSTMESSAGE* = 8
   QS_SENDMESSAGE* = 64
-  QS_TIMER* = 16              # GetScrollInfo, SetScrollInfo
+  QS_TIMER* = 16
+  # GetScrollInfo, SetScrollInfo
   SIF_ALL* = 23
   SIF_PAGE* = 2
   SIF_POS* = 4
   SIF_RANGE* = 1
-  SIF_DISABLENOSCROLL* = 8    # GetStdHandle
-                              # was #define dname def_expr
+  SIF_DISABLENOSCROLL* = 8
 
-proc STD_INPUT_HANDLE*(): DWORD
-  # was #define dname def_expr
-proc STD_OUTPUT_HANDLE*(): DWORD
-  # was #define dname def_expr
-proc STD_ERROR_HANDLE*(): DWORD
-  # was #define dname def_expr
-const
-  INVALID_HANDLE_VALUE* = HANDLE(- 1) # GetStockObject
+  # GetStdHandle
+  STD_INPUT_HANDLE* =  DWORD(-10)
+  STD_OUTPUT_HANDLE* = DWORD(-11)
+  STD_ERROR_HANDLE* =  DWORD(-12)
+
+  INVALID_HANDLE_VALUE* = HANDLE(-1)
 
 const
+  # GetStockObject
   BLACK_BRUSH* = 4
   DKGRAY_BRUSH* = 3
   GRAY_BRUSH* = 2
@@ -3047,7 +3132,8 @@ const
   OEM_FIXED_FONT* = 10
   SYSTEM_FONT* = 13
   SYSTEM_FIXED_FONT* = 16
-  DEFAULT_PALETTE* = 15       # GetStringTypeA
+  DEFAULT_PALETTE* = 15
+  # GetStringTypeA
   CT_CTYPE1* = 1
   CT_CTYPE2* = 2
   CT_CTYPE3* = 4
@@ -3083,7 +3169,8 @@ const
   C3_IDEOGRAPH* = 256
   C3_KASHIDA* = 512
   C3_ALPHA* = 32768
-  C3_NOTAPPLICABLE* = 0       # GetSysColor
+  C3_NOTAPPLICABLE* = 0
+  # GetSysColor
   COLOR_3DDKSHADOW* = 21
   COLOR_3DFACE* = 15
   COLOR_3DHILIGHT* = 20
@@ -3113,11 +3200,13 @@ const
   COLOR_SCROLLBAR* = 0
   COLOR_WINDOW* = 5
   COLOR_WINDOWFRAME* = 6
-  COLOR_WINDOWTEXT* = 8       # GetSystemMetrics
+  COLOR_WINDOWTEXT* = 8
+  # GetSystemMetrics
   SM_CYMIN* = 29
   SM_CXMIN* = 28
   SM_ARRANGE* = 56
-  SM_CLEANBOOT* = 67 # The right value for SM_CEMETRICS for NT 3.5 is 75.  For Windows 95
+  SM_CLEANBOOT* = 67
+  # The right value for SM_CEMETRICS for NT 3.5 is 75.  For Windows 95
                      #     and NT 4.0, it is 76.  The meaning is undocumented, anyhow.
   SM_CMETRICS* = 76
   SM_CMOUSEBUTTONS* = 43
@@ -3170,7 +3259,8 @@ const
   SM_CYSMICON* = 50
   SM_CXSMSIZE* = 52
   SM_CYSMSIZE* = 53
-  SM_CXVSCROLL* = 2           #SM_CYHSCROLL = 3;already above
+  SM_CXVSCROLL* = 2
+  #SM_CYHSCROLL = 3;already above
                               #SM_CXHSCROLL = 21;already above
   SM_CYVSCROLL* = 20
   SM_CYVTHUMB* = 9
@@ -3198,16 +3288,20 @@ const
   ARW_DOWN* = 0x00000004
   ARW_LEFT* = 0
   ARW_RIGHT* = 0
-  ARW_UP* = 0x00000004        # GetSystemPaletteUse
+  ARW_UP* = 0x00000004
+  # GetSystemPaletteUse
   SYSPAL_NOSTATIC* = 2
   SYSPAL_STATIC* = 1
-  SYSPAL_ERROR* = 0           # GetTapeParameters, SetTapeParameters
+  SYSPAL_ERROR* = 0
+  # GetTapeParameters, SetTapeParameters
   GET_TAPE_MEDIA_INFORMATION* = 0
   GET_TAPE_DRIVE_INFORMATION* = 1
   SET_TAPE_MEDIA_INFORMATION* = 0
-  SET_TAPE_DRIVE_INFORMATION* = 1 # GetTapePosition
+  SET_TAPE_DRIVE_INFORMATION* = 1
+  # GetTapePosition
   TAPE_ABSOLUTE_POSITION* = 0
-  TAPE_LOGICAL_POSITION* = 0x00000001 # GetTextAlign
+  TAPE_LOGICAL_POSITION* = 0x00000001
+  # GetTextAlign
   TA_BASELINE* = 24
   TA_BOTTOM* = 8
   TA_TOP* = 0
@@ -3218,46 +3312,52 @@ const
   TA_NOUPDATECP* = 0
   TA_UPDATECP* = 1
   VTA_BASELINE* = 24
-  VTA_CENTER* = 6             # GetThreadPriority
+  VTA_CENTER* = 6
+  # GetThreadPriority
   THREAD_PRIORITY_ABOVE_NORMAL* = 1
-  THREAD_PRIORITY_BELOW_NORMAL* = - (1)
+  THREAD_PRIORITY_BELOW_NORMAL* = -1
   THREAD_PRIORITY_HIGHEST* = 2
-  THREAD_PRIORITY_IDLE* = - (15)
-  THREAD_PRIORITY_LOWEST* = - (2)
+  THREAD_PRIORITY_IDLE* = -15
+  THREAD_PRIORITY_LOWEST* = -2
   THREAD_PRIORITY_NORMAL* = 0
   THREAD_PRIORITY_TIME_CRITICAL* = 15
   THREAD_PRIORITY_ERROR_RETURN* = 2147483647
-  TLS_MINIMUM_AVAILABLE* = 64 # GetTimeFormat
+  TLS_MINIMUM_AVAILABLE* = 64
+  # GetTimeFormat
   TIME_NOMINUTESORSECONDS* = 1
   TIME_NOSECONDS* = 2
   TIME_NOTIMEMARKER* = 4
-  TIME_FORCE24HOURFORMAT* = 8 # GetTimeZoneInformation
-                              # was #define dname def_expr
+  TIME_FORCE24HOURFORMAT* = 8
 
 const
+  # GetTimeZoneInformation
   TIME_ZONE_ID_INVALID* = DWORD(- 1)
   TIME_ZONE_ID_UNKNOWN* = 0
   TIME_ZONE_ID_STANDARD* = 1
-  TIME_ZONE_ID_DAYLIGHT* = 2  # GetUserObjectInformation
+  TIME_ZONE_ID_DAYLIGHT* = 2
+  # GetUserObjectInformation
   UOI_FLAGS* = 1
   UOI_NAME* = 2
-  UOI_TYPE* = 3               # GetVolumeInformation
+  UOI_TYPE* = 3
+  # GetVolumeInformation
   FS_CASE_IS_PRESERVED* = 2
   FS_CASE_SENSITIVE* = 1
   FS_UNICODE_STORED_ON_DISK* = 4
   FS_PERSISTENT_ACLS* = 8
   FS_FILE_COMPRESSION* = 16
-  FS_VOL_IS_COMPRESSED* = 32768 # GetWindowLong
-  GWL_EXSTYLE* = - (20)
-  GWL_STYLE* = - (16)
-  GWL_WNDPROC* = - (4)
-  GWL_HINSTANCE* = - (6)
-  GWL_HWNDPARENT* = - (8)
-  GWL_ID* = - (12)
-  GWL_USERDATA* = - (21)
+  FS_VOL_IS_COMPRESSED* = 32768
+  # GetWindowLong
+  GWL_EXSTYLE* = -20
+  GWL_STYLE* = -16
+  GWL_WNDPROC* = -4
+  GWL_HINSTANCE* = -6
+  GWL_HWNDPARENT* = -8
+  GWL_ID* = -12
+  GWL_USERDATA* = -21
   DWL_DLGPROC* = 4
   DWL_MSGRESULT* = 0
-  DWL_USER* = 8               # GlobalAlloc, GlobalFlags
+  DWL_USER* = 8
+  # GlobalAlloc, GlobalFlags
   GMEM_FIXED* = 0
   GMEM_MOVEABLE* = 2
   GPTR* = 64
@@ -3273,13 +3373,15 @@ const
   GMEM_ZEROINIT* = 64
   GMEM_DISCARDED* = 16384
   GMEM_INVALID_HANDLE* = 32768
-  GMEM_LOCKCOUNT* = 255       # HeapAlloc, HeapReAlloc
+  GMEM_LOCKCOUNT* = 255
+  # HeapAlloc, HeapReAlloc
   HEAP_GENERATE_EXCEPTIONS* = 4
   HEAP_NO_SERIALIZE* = 1
   HEAP_ZERO_MEMORY* = 8
   STATUS_NO_MEMORY* = 0xC0000017
   STATUS_ACCESS_VIOLATION* = 0xC0000005
-  HEAP_REALLOC_IN_PLACE_ONLY* = 16 # ImageList_Create
+  HEAP_REALLOC_IN_PLACE_ONLY* = 16
+  # ImageList_Create
   ILC_COLOR* = 0
   ILC_COLOR4* = 4
   ILC_COLOR8* = 8
@@ -3288,7 +3390,8 @@ const
   ILC_COLOR32* = 32
   ILC_COLORDDB* = 254
   ILC_MASK* = 1
-  ILC_PALETTE* = 2048         # ImageList_Draw, ImageList_DrawEx
+  ILC_PALETTE* = 2048
+  # ImageList_Draw, ImageList_DrawEx
   ILD_BLEND25* = 2
   ILD_BLEND50* = 4
   ILD_SELECTED* = 4
@@ -3299,17 +3402,21 @@ const
   ILD_TRANSPARENT* = 1
   CLR_NONE* = 0xFFFFFFFF
   CLR_DEFAULT* = 0xFF000000
-  CLR_INVALID* = 0xFFFFFFFF   # ImageList_LoadImage
+  CLR_INVALID* = 0xFFFFFFFF
+  # ImageList_LoadImage
                               #LR_DEFAULTCOLOR = 0;already above
   LR_LOADFROMFILE* = 16
   LR_LOADMAP3DCOLORS* = 4096
-  LR_LOADTRANSPARENT* = 32    # ImmConfigureIME
+  LR_LOADTRANSPARENT* = 32
+  # ImmConfigureIME
   IME_CONFIG_GENERAL* = 1
   IME_CONFIG_REGISTERWORD* = 2
-  IME_CONFIG_SELECTDICTIONARY* = 3 # ImmGetConversionList
+  IME_CONFIG_SELECTDICTIONARY* = 3
+  # ImmGetConversionList
   GCL_CONVERSION* = 1
   GCL_REVERSECONVERSION* = 2
-  GCL_REVERSE_LENGTH* = 3     # ImmGetGuideLine
+  GCL_REVERSE_LENGTH* = 3
+  # ImmGetGuideLine
   GGL_LEVEL* = 1
   GGL_INDEX* = 2
   GGL_STRING* = 3
@@ -3331,7 +3438,8 @@ const
   GL_ID_INPUTRADICAL* = 37
   GL_ID_INPUTCODE* = 38
   GL_ID_CHOOSECANDIDATE* = 40
-  GL_ID_REVERSECONVERSION* = 41 # ImmGetProperty
+  GL_ID_REVERSECONVERSION* = 41
+  # ImmGetProperty
   IGP_PROPERTY* = 4
   IGP_CONVERSION* = 8
   IGP_SENTENCE* = 12
@@ -3348,7 +3456,8 @@ const
   SCS_CAP_COMPSTR* = 1
   SCS_CAP_MAKEREAD* = 2
   SELECT_CAP_CONVERSION* = 1
-  SELECT_CAP_SENTENCE* = 2    # ImmNotifyIME
+  SELECT_CAP_SENTENCE* = 2
+  # ImmNotifyIME
   NI_CHANGECANDIDATELIST* = 19
   NI_CLOSECANDIDATE* = 17
   NI_COMPOSITIONSTR* = 21
@@ -3359,14 +3468,18 @@ const
   CPS_CANCEL* = 4
   CPS_COMPLETE* = 1
   CPS_CONVERT* = 2
-  CPS_REVERT* = 3             # ImmSetCompositionString
+  CPS_REVERT* = 3
+  # ImmSetCompositionString
   SCS_SETSTR* = 9
   SCS_CHANGEATTR* = 18
-  SCS_CHANGECLAUSE* = 36      # ImmUnregisterWord
+  SCS_CHANGECLAUSE* = 36
+  # ImmUnregisterWord
   IME_REGWORD_STYLE_EUDC* = 1
   IME_REGWORD_STYLE_USER_FIRST* = 0x80000000
-  IME_REGWORD_STYLE_USER_LAST* = - (1) # InitializeSecurityDescriptor
-  SECURITY_DESCRIPTOR_REVISION* = 1 # IsTextUnicode
+  IME_REGWORD_STYLE_USER_LAST* = -1
+  # InitializeSecurityDescriptor
+  SECURITY_DESCRIPTOR_REVISION* = 1
+  # IsTextUnicode
   IS_TEXT_UNICODE_ASCII16* = 1
   IS_TEXT_UNICODE_REVERSE_ASCII16* = 16
   IS_TEXT_UNICODE_STATISTICS* = 2
@@ -3381,14 +3494,17 @@ const
   IS_TEXT_UNICODE_UNICODE_MASK* = 15
   IS_TEXT_UNICODE_REVERSE_MASK* = 240
   IS_TEXT_UNICODE_NOT_UNICODE_MASK* = 3840
-  IS_TEXT_UNICODE_NOT_ASCII_MASK* = 61440 # JournalPlaybackProc, KeyboardProc
+  IS_TEXT_UNICODE_NOT_ASCII_MASK* = 61440
+  # JournalPlaybackProc, KeyboardProc
   HC_GETNEXT* = 1
   HC_SKIP* = 2
   HC_SYSMODALOFF* = 5
   HC_SYSMODALON* = 4
-  HC_NOREMOVE* = 3            # keybd_event
+  HC_NOREMOVE* = 3
+  # keybd_event
   KEYEVENTF_EXTENDEDKEY* = 1
-  KEYEVENTF_KEYUP* = 2        # LoadBitmap
+  KEYEVENTF_KEYUP* = 2
+  # LoadBitmap
   OBM_BTNCORNERS* = 32758
   OBM_BTSIZE* = 32761
   OBM_CHECK* = 32760
@@ -3422,10 +3538,12 @@ const
   OBM_UPARROWD* = 32743
   OBM_UPARROWI* = 32737
   OBM_ZOOM* = 32748
-  OBM_ZOOMD* = 32745          # LoadLibraryEx
+  OBM_ZOOMD* = 32745
+  # LoadLibraryEx
   DONT_RESOLVE_DLL_REFERENCES* = 1
   LOAD_LIBRARY_AS_DATAFILE* = 2
-  LOAD_WITH_ALTERED_SEARCH_PATH* = 8 # LocalAlloc, LocalFlags
+  LOAD_WITH_ALTERED_SEARCH_PATH* = 8
+  # LocalAlloc, LocalFlags
   LPTR* = 64
   LHND* = 66
   NONZEROLHND* = 2
@@ -3441,9 +3559,11 @@ const
   LMEM_LOCKCOUNT* = 255
   LMEM_DISCARDABLE* = 3840
   LMEM_DISCARDED* = 16384
-  LMEM_INVALID_HANDLE* = 32768 # LockFileEx
+  LMEM_INVALID_HANDLE* = 32768
+  # LockFileEx
   LOCKFILE_FAIL_IMMEDIATELY* = 1
-  LOCKFILE_EXCLUSIVE_LOCK* = 2 # LogonUser
+  LOCKFILE_EXCLUSIVE_LOCK* = 2
+  # LogonUser
                                # LZCopy, LZInit, LZRead
                                # MessageBeep, MessageBox
   MB_USERICON* = 0x00000080
@@ -3483,16 +3603,19 @@ const
   IDNO* = 7
   IDOK* = 1
   IDRETRY* = 4
-  IDYES* = 6                  # MessageProc
+  IDYES* = 6
+  # MessageProc
   MSGF_DIALOGBOX* = 0
   MSGF_MENU* = 2
   MSGF_NEXTWINDOW* = 6
   MSGF_SCROLLBAR* = 5
   MSGF_MAINLOOP* = 8
-  MSGF_USER* = 4096           # ModifyWorldTransform
+  MSGF_USER* = 4096
+  # ModifyWorldTransform
   MWT_IDENTITY* = 1
   MWT_LEFTMULTIPLY* = 2
-  MWT_RIGHTMULTIPLY* = 3      # mouse_event
+  MWT_RIGHTMULTIPLY* = 3
+  # mouse_event
   MOUSEEVENTF_ABSOLUTE* = 32768
   MOUSEEVENTF_MOVE* = 1
   MOUSEEVENTF_LEFTDOWN* = 2
@@ -3500,10 +3623,12 @@ const
   MOUSEEVENTF_RIGHTDOWN* = 8
   MOUSEEVENTF_RIGHTUP* = 16
   MOUSEEVENTF_MIDDLEDOWN* = 32
-  MOUSEEVENTF_MIDDLEUP* = 64  # MoveFileEx
+  MOUSEEVENTF_MIDDLEUP* = 64
+  # MoveFileEx
   MOVEFILE_REPLACE_EXISTING* = 1
   MOVEFILE_COPY_ALLOWED* = 2
-  MOVEFILE_DELAY_UNTIL_REBOOT* = 4 # MsgWaitForMultipleObjects, WaitForMultipleObjectsEx
+  MOVEFILE_DELAY_UNTIL_REBOOT* = 4
+  # MsgWaitForMultipleObjects, WaitForMultipleObjectsEx
   WAIT_OBJECT_0* = 0
   WAIT_ABANDONED_0* = 0x00000080
   WAIT_TIMEOUT* = 0x00000102
@@ -3511,11 +3636,13 @@ const
   WAIT_ABANDONED* = 0x00000080
   WAIT_FAILED* = 0xFFFFFFFF
   MAXIMUM_WAIT_OBJECTS* = 0x00000040
-  MAXIMUM_SUSPEND_COUNT* = 0x0000007F # MultiByteToWideChar
+  MAXIMUM_SUSPEND_COUNT* = 0x0000007F
+  # MultiByteToWideChar
   MB_PRECOMPOSED* = 1
   MB_COMPOSITE* = 2
   MB_ERR_INVALID_CHARS* = 8
-  MB_USEGLYPHCHARS* = 4       # NDdeSetTrustedShare
+  MB_USEGLYPHCHARS* = 4
+  # NDdeSetTrustedShare
                               # NetAccessCheck
                               # NetServerEnum
                               # NetServiceControl
@@ -3532,37 +3659,43 @@ const
   TOKEN_QUERY* = 8
   TOKEN_QUERY_SOURCE* = 16
   TOKEN_READ* = 0x00020008
-  TOKEN_WRITE* = 0x000200E0   # OpenSCManager
+  TOKEN_WRITE* = 0x000200E0
+  # OpenSCManager
   SC_MANAGER_ALL_ACCESS* = 0x000F003F
   SC_MANAGER_CONNECT* = 1
   SC_MANAGER_CREATE_SERVICE* = 2
   SC_MANAGER_ENUMERATE_SERVICE* = 4
   SC_MANAGER_LOCK* = 8
   SC_MANAGER_QUERY_LOCK_STATUS* = 16
-  SC_MANAGER_MODIFY_BOOT_CONFIG* = 32 # PostMessage
-                                      # was #define dname def_expr
+  SC_MANAGER_MODIFY_BOOT_CONFIG* = 32
+  # PostMessage
+  HWND_BROADCAST* = HWND(0xffff)
 
-proc HWND_BROADCAST*(): HWND
-  # PrepareTape
 const
+  # PrepareTape
   TAPE_FORMAT* = 0x00000005
   TAPE_LOAD* = 0
   TAPE_LOCK* = 0x00000003
   TAPE_TENSION* = 0x00000002
   TAPE_UNLOAD* = 0x00000001
-  TAPE_UNLOCK* = 0x00000004   # PropertySheet
+  TAPE_UNLOCK* = 0x00000004
+  # PropertySheet
   IS_PSREBOOTSYSTEM* = 3
-  IS_PSRESTARTWINDOWS* = 2    # PropSheetPageProc
+  IS_PSRESTARTWINDOWS* = 2
+  # PropSheetPageProc
   PSPCB_CREATE* = 2
-  PSPCB_RELEASE* = 1          # PurgeComm
+  PSPCB_RELEASE* = 1
+  # PurgeComm
   PURGE_TXABORT* = 1
   PURGE_RXABORT* = 2
   PURGE_TXCLEAR* = 4
-  PURGE_RXCLEAR* = 8          # QueryServiceObjectSecurity
+  PURGE_RXCLEAR* = 8
+  # QueryServiceObjectSecurity
   OWNER_SECURITY_INFORMATION* = 0x00000001
   GROUP_SECURITY_INFORMATION* = 0x00000002
   DACL_SECURITY_INFORMATION* = 0x00000004
-  SACL_SECURITY_INFORMATION* = 0x00000008 # ReadEventLog, ReportEvent
+  SACL_SECURITY_INFORMATION* = 0x00000008
+  # ReadEventLog, ReportEvent
   EVENTLOG_FORWARDS_READ* = 4
   EVENTLOG_BACKWARDS_READ* = 8
   EVENTLOG_SEEK_READ* = 2
@@ -3571,7 +3704,8 @@ const
   EVENTLOG_WARNING_TYPE* = 2
   EVENTLOG_INFORMATION_TYPE* = 4
   EVENTLOG_AUDIT_SUCCESS* = 8
-  EVENTLOG_AUDIT_FAILURE* = 16 # RedrawWindow
+  EVENTLOG_AUDIT_FAILURE* = 16
+  # RedrawWindow
   RDW_ERASE* = 4
   RDW_FRAME* = 1024
   RDW_INTERNALPAINT* = 2
@@ -3583,28 +3717,24 @@ const
   RDW_ERASENOW* = 512
   RDW_UPDATENOW* = 256
   RDW_ALLCHILDREN* = 128
-  RDW_NOCHILDREN* = 64        # RegCreateKey
-                              # was #define dname def_expr
+  RDW_NOCHILDREN* = 64
 
-proc HKEY_CLASSES_ROOT*(): HKEY
-  # was #define dname def_expr
-proc HKEY_CURRENT_USER*(): HKEY
-  # was #define dname def_expr
-proc HKEY_LOCAL_MACHINE*(): HKEY
-  # was #define dname def_expr
-proc HKEY_USERS*(): HKEY
-  # was #define dname def_expr
-proc HKEY_PERFORMANCE_DATA*(): HKEY
-  # was #define dname def_expr
-proc HKEY_CURRENT_CONFIG*(): HKEY
-  # was #define dname def_expr
-proc HKEY_DYN_DATA*(): HKEY
-  # RegCreateKeyEx
+  # RegCreateKey
+  HKEY_CLASSES_ROOT* =     HKEY(0x80000000)
+  HKEY_CURRENT_USER* =     HKEY(0x80000001)
+  HKEY_LOCAL_MACHINE* =    HKEY(0x80000002)
+  HKEY_USERS* =            HKEY(0x80000003)
+  HKEY_PERFORMANCE_DATA* = HKEY(0x80000004)
+  HKEY_CURRENT_CONFIG* =   HKEY(0x80000005)
+  HKEY_DYN_DATA* =         HKEY(0x80000006)
+
 const
+  # RegCreateKeyEx
   REG_OPTION_VOLATILE* = 0x00000001
   REG_OPTION_NON_VOLATILE* = 0
   REG_CREATED_NEW_KEY* = 0x00000001
-  REG_OPENED_EXISTING_KEY* = 0x00000002 # RegEnumValue
+  REG_OPENED_EXISTING_KEY* = 0x00000002
+  # RegEnumValue
   REG_BINARY* = 3
   REG_DWORD* = 4
   REG_DWORD_LITTLE_ENDIAN* = 4
@@ -3616,35 +3746,44 @@ const
   REG_NONE* = 0
   REG_RESOURCE_LIST* = 8
   REG_RESOURCE_REQUIREMENTS_LIST* = 10
-  REG_SZ* = 1                 # RegisterHotKey
+  REG_SZ* = 1
+  # RegisterHotKey
   MOD_ALT* = 1
   MOD_CONTROL* = 2
   MOD_SHIFT* = 4
   MOD_WIN* = 8
-  IDHOT_SNAPDESKTOP* = - (2)
-  IDHOT_SNAPWINDOW* = - (1)   # RegNotifyChangeKeyValue
+  IDHOT_SNAPDESKTOP* = -2
+  IDHOT_SNAPWINDOW* = -1
+  # RegNotifyChangeKeyValue
   REG_NOTIFY_CHANGE_NAME* = 0x00000001
   REG_NOTIFY_CHANGE_ATTRIBUTES* = 0x00000002
   REG_NOTIFY_CHANGE_LAST_SET* = 0x00000004
-  REG_NOTIFY_CHANGE_SECURITY* = 0x00000008 # ScrollWindowEx
+  REG_NOTIFY_CHANGE_SECURITY* = 0x00000008
+  # ScrollWindowEx
   SW_ERASE* = 4
   SW_INVALIDATE* = 2
-  SW_SCROLLCHILDREN* = 1      # SendMessageTimeout
+  SW_SCROLLCHILDREN* = 1
+  # SendMessageTimeout
   SMTO_ABORTIFHUNG* = 2
   SMTO_BLOCK* = 1
-  SMTO_NORMAL* = 0            # SetBkMode
+  SMTO_NORMAL* = 0
+  # SetBkMode
   OPAQUE* = 2
-  TRANSPARENT* = 1            # SetDebugErrorLevel
+  TRANSPARENT* = 1
+  # SetDebugErrorLevel
   SLE_ERROR* = 1
   SLE_MINORERROR* = 2
-  SLE_WARNING* = 3            # SetErrorMode
+  SLE_WARNING* = 3
+  # SetErrorMode
   SEM_FAILCRITICALERRORS* = 1
   SEM_NOALIGNMENTFAULTEXCEPT* = 4
   SEM_NOGPFAULTERRORBOX* = 2
-  SEM_NOOPENFILEERRORBOX* = 32768 # SetICMMode
+  SEM_NOOPENFILEERRORBOX* = 32768
+  # SetICMMode
   ICM_ON* = 2
   ICM_OFF* = 1
-  ICM_QUERY* = 3              # SetJob
+  ICM_QUERY* = 3
+  # SetJob
                               # Locale Information
   LOCALE_ILANGUAGE* = 1
   LOCALE_SLANGUAGE* = 2
@@ -3744,7 +3883,8 @@ const
   LOCALE_USE_CP_ACP* = 0x40000000 # use the system ACP
   LOCALE_RETURN_NUMBER* = 0x20000000 # return number instead
   LOCALE_SISO639LANGNAME* = 0x00000059
-  LOCALE_SISO3166CTRYNAME* = 0x0000005A # Calendar Type Information
+  LOCALE_SISO3166CTRYNAME* = 0x0000005A
+  # Calendar Type Information
   CAL_ICALINTVALUE* = 1
   CAL_IYEAROFFSETRANGE* = 3
   CAL_SABBREVDAYNAME1* = 14
@@ -3790,8 +3930,10 @@ const
   CAL_SMONTHNAME11* = 31
   CAL_SMONTHNAME12* = 32
   CAL_SMONTHNAME13* = 33
-  CAL_SSHORTDATE* = 5         # SetProcessWorkingSetSize
-  PROCESS_SET_QUOTA* = 256    # SetPrinter
+  CAL_SSHORTDATE* = 5
+  # SetProcessWorkingSetSize
+  PROCESS_SET_QUOTA* = 256
+  # SetPrinter
                               # SetService
                               # SetStretchBltMode
   BLACKONWHITE* = 1
@@ -3801,7 +3943,8 @@ const
   STRETCH_DELETESCANS* = 3
   STRETCH_HALFTONE* = 4
   STRETCH_ORSCANS* = 2
-  WHITEONBLACK* = 2           # SetSystemCursor
+  WHITEONBLACK* = 2
+  # SetSystemCursor
   OCR_NORMAL* = 32512
   OCR_IBEAM* = 32513
   OCR_WAIT* = 32514
@@ -3815,7 +3958,8 @@ const
   OCR_SIZENS* = 32645
   OCR_SIZEALL* = 32646
   OCR_NO* = 32648
-  OCR_APPSTARTING* = 32650    # SetTapePosition
+  OCR_APPSTARTING* = 32650
+  # SetTapePosition
   TAPE_ABSOLUTE_BLOCK* = 0x00000001
   TAPE_LOGICAL_BLOCK* = 0x00000002
   TAPE_REWIND* = 0
@@ -3824,19 +3968,18 @@ const
   TAPE_SPACE_RELATIVE_BLOCKS* = 0x00000005
   TAPE_SPACE_SEQUENTIAL_FMKS* = 0x00000007
   TAPE_SPACE_SEQUENTIAL_SMKS* = 0x00000009
-  TAPE_SPACE_SETMARKS* = 0x00000008 # SetUnhandledExceptionFilter
+  TAPE_SPACE_SETMARKS* = 0x00000008
+  # SetUnhandledExceptionFilter
   EXCEPTION_EXECUTE_HANDLER* = 1
-  EXCEPTION_CONTINUE_EXECUTION* = - (1)
-  EXCEPTION_CONTINUE_SEARCH* = 0 # SetWindowPos, DeferWindowPos
-                                 # was #define dname def_expr
+  EXCEPTION_CONTINUE_EXECUTION* = -1
+  EXCEPTION_CONTINUE_SEARCH* = 0
 
-proc HWND_BOTTOM*(): HWND
-  # was #define dname def_expr
-proc HWND_NOTOPMOST*(): HWND
-  # was #define dname def_expr
-proc HWND_TOP*(): HWND
-  # was #define dname def_expr
-proc HWND_TOPMOST*(): HWND
+  # SetWindowPos, DeferWindowPos
+  HWND_BOTTOM* =    HWND(1)
+  HWND_NOTOPMOST* = HWND(-2)
+  HWND_TOP* =       HWND(0)
+  HWND_TOPMOST* =   HWND(-1)
+
 const
   SWP_DRAWFRAME* = 32
   SWP_FRAMECHANGED* = 32
@@ -3850,7 +3993,8 @@ const
   SWP_SHOWWINDOW* = 64
   SWP_NOOWNERZORDER* = 512
   SWP_NOREPOSITION* = 512
-  SWP_NOSENDCHANGING* = 1024  # SHAddToRecentDocs
+  SWP_NOSENDCHANGING* = 1024
+  # SHAddToRecentDocs
                               # SHAppBarMessage
                               # SHChangeNotify
                               # ShellProc
@@ -3861,7 +4005,8 @@ const
   HSHELL_TASKMAN* = 7
   HSHELL_WINDOWACTIVATED* = 4
   HSHELL_WINDOWCREATED* = 1
-  HSHELL_WINDOWDESTROYED* = 2 # SHGetFileInfo
+  HSHELL_WINDOWDESTROYED* = 2
+  # SHGetFileInfo
                               # SHGetSpecialFolderLocation
                               # ShowWindow
   SW_HIDE* = 0
@@ -3878,8 +4023,10 @@ const
   SW_SHOWNOACTIVATE* = 4
   SW_SHOWNORMAL* = 1
   WPF_RESTORETOMAXIMIZED* = 2
-  WPF_SETMINPOSITION* = 1     # Sleep
-  INFINITE* = -1'i32      # SystemParametersInfo
+  WPF_SETMINPOSITION* = 1
+  # Sleep
+  INFINITE* = -1'i32
+  # SystemParametersInfo
   SPI_GETBEEP* = 1
   SPI_SETBEEP* = 2
   SPI_GETMOUSE* = 3
@@ -3984,7 +4131,8 @@ const
   SPI_GETMENUSHOWDELAY* = 106
   SPI_SETMENUSHOWDELAY* = 107
   SPI_GETSHOWIMEUI* = 110
-  SPI_SETSHOWIMEUI* = 111     # Windows Me/2000 and higher
+  SPI_SETSHOWIMEUI* = 111
+  # Windows Me/2000 and higher
   SPI_GETMOUSESPEED* = 112
   SPI_SETMOUSESPEED* = 113
   SPI_GETSCREENSAVERRUNNING* = 114
@@ -4026,7 +4174,8 @@ const
   SPI_GETFOREGROUNDFLASHCOUNT* = 8196
   SPI_SETFOREGROUNDFLASHCOUNT* = 8197
   SPI_GETCARETWIDTH* = 8198
-  SPI_SETCARETWIDTH* = 8199   # Windows XP and higher
+  SPI_SETCARETWIDTH* = 8199
+  # Windows XP and higher
   SPI_GETMOUSESONAR* = 4124
   SPI_SETMOUSESONAR* = 4125
   SPI_GETMOUSECLICKLOCK* = 4126
@@ -4050,29 +4199,36 @@ const
   SPI_GETFOCUSBORDERHEIGHT* = 8208
   SPI_SETFOCUSBORDERHEIGHT* = 8209
   SPI_GETFONTSMOOTHINGORIENTATION* = 8210
-  SPI_SETFONTSMOOTHINGORIENTATION* = 8211 # constants for SPI_GETFONTSMOOTHINGTYPE and SPI_SETFONTSMOOTHINGTYPE:
+  SPI_SETFONTSMOOTHINGORIENTATION* = 8211
+  # constants for SPI_GETFONTSMOOTHINGTYPE and SPI_SETFONTSMOOTHINGTYPE:
   FE_FONTSMOOTHINGSTANDARD* = 1
   FE_FONTSMOOTHINGCLEARTYPE* = 2
-  FE_FONTSMOOTHINGDOCKING* = 32768 # constants for SPI_GETFONTSMOOTHINGORIENTATION and SPI_SETFONTSMOOTHINGORIENTATION:
+  FE_FONTSMOOTHINGDOCKING* = 32768
+  # constants for SPI_GETFONTSMOOTHINGORIENTATION and SPI_SETFONTSMOOTHINGORIENTATION:
   FE_FONTSMOOTHINGORIENTATIONBGR* = 0
-  FE_FONTSMOOTHINGORIENTATIONRGB* = 1 # Flags
+  FE_FONTSMOOTHINGORIENTATIONRGB* = 1
+  # Flags
   SPIF_UPDATEINIFILE* = 1
   SPIF_SENDWININICHANGE* = 2
-  SPIF_SENDCHANGE* = 2        # TrackPopupMenu, TrackPopMenuEx
+  SPIF_SENDCHANGE* = 2
+  # TrackPopupMenu, TrackPopMenuEx
   TPM_CENTERALIGN* = 0x00000004
   TPM_LEFTALIGN* = 0
   TPM_RIGHTALIGN* = 0x00000008
   TPM_LEFTBUTTON* = 0
   TPM_RIGHTBUTTON* = 0x00000002
   TPM_HORIZONTAL* = 0
-  TPM_VERTICAL* = 0x00000040  # TranslateCharsetInfo
+  TPM_VERTICAL* = 0x00000040
+  # TranslateCharsetInfo
   TCI_SRCCHARSET* = 1
   TCI_SRCCODEPAGE* = 2
-  TCI_SRCFONTSIG* = 3         # VerFindFile
+  TCI_SRCFONTSIG* = 3
+  # VerFindFile
   VFFF_ISSHAREDFILE* = 1
   VFF_CURNEDEST* = 1
   VFF_FILEINUSE* = 2
-  VFF_BUFFTOOSMALL* = 4       # VerInstallFile
+  VFF_BUFFTOOSMALL* = 4
+  # VerInstallFile
   VIFF_FORCEINSTALL* = 1
   VIFF_DONTDELETEOLD* = 2
   VIF_TEMPFILE* = 0x00000001
@@ -4093,11 +4249,13 @@ const
   VIF_OUTOFMEMORY* = 0x00008000
   VIF_CANNOTREADSRC* = 0x00010000
   VIF_CANNOTREADDST* = 0x00020000
-  VIF_BUFFTOOSMALL* = 0x00040000 # WideCharToMultiByte
+  VIF_BUFFTOOSMALL* = 0x00040000
+  # WideCharToMultiByte
   WC_COMPOSITECHECK* = 512
   WC_DISCARDNS* = 16
   WC_SEPCHARS* = 32
-  WC_DEFAULTCHAR* = 64        # WinHelp
+  WC_DEFAULTCHAR* = 64
+  # WinHelp
   HELP_COMMAND* = 0x00000102
   HELP_CONTENTS* = 0x00000003
   HELP_CONTEXT* = 0x00000001
@@ -4116,8 +4274,10 @@ const
   HELP_WM_HELP* = 0x0000000C
   HELP_TCARD* = 0x00008000
   HELP_TCARD_DATA* = 0x00000010
-  HELP_TCARD_OTHER_CALLER* = 0x00000011 # WNetAddConnectino2
-  CONNECT_UPDATE_PROFILE* = 1 # WNetConnectionDialog, WNetDisconnectDialog, WNetOpenEnum
+  HELP_TCARD_OTHER_CALLER* = 0x00000011
+  # WNetAddConnectino2
+  CONNECT_UPDATE_PROFILE* = 1
+  # WNetConnectionDialog, WNetDisconnectDialog, WNetOpenEnum
   RESOURCETYPE_DISK* = 1
   RESOURCETYPE_PRINT* = 2
   RESOURCETYPE_ANY* = 0
@@ -4125,7 +4285,8 @@ const
   RESOURCE_GLOBALNET* = 2
   RESOURCE_REMEMBERED* = 3
   RESOURCEUSAGE_CONNECTABLE* = 1
-  RESOURCEUSAGE_CONTAINER* = 2 # WNetGetResourceInformation, WNetGetResourceParent
+  RESOURCEUSAGE_CONTAINER* = 2
+  # WNetGetResourceInformation, WNetGetResourceParent
   WN_BAD_NETNAME* = 0x00000043
   WN_EXTENDED_ERROR* = 0x000004B8
   WN_MORE_DATA* = 0x000000EA
@@ -4133,10 +4294,13 @@ const
   WN_SUCCESS* = 0
   WN_ACCESS_DENIED* = 0x00000005
   WN_BAD_PROVIDER* = 0x000004B4
-  WN_NOT_AUTHENTICATED* = 0x000004DC # WNetGetUniversalName
+  WN_NOT_AUTHENTICATED* = 0x000004DC
+  # WNetGetUniversalName
   UNIVERSAL_NAME_INFO_LEVEL* = 1
-  REMOTE_NAME_INFO_LEVEL* = 2 # GetExitCodeThread
-  STILL_ACTIVE* = 0x00000103  # COMMPROP structure
+  REMOTE_NAME_INFO_LEVEL* = 2
+  # GetExitCodeThread
+  STILL_ACTIVE* = 0x00000103
+  # COMMPROP structure
   SP_SERIALCOMM* = 0x00000001
   BAUD_075* = 0x00000001
   BAUD_110* = 0x00000002
@@ -4202,7 +4366,8 @@ const
   PARITY_EVEN* = 1024
   PARITY_MARK* = 2048
   PARITY_SPACE* = 4096
-  COMMPROP_INITIALIZED* = 0xE73CF52E # DCB structure
+  COMMPROP_INITIALIZED* = 0xE73CF52E
+  # DCB structure
   CBR_110* = 110
   CBR_300* = 300
   CBR_600* = 600
@@ -4232,7 +4397,8 @@ const
   SPACEPARITY* = 4
   ONESTOPBIT* = 0
   ONE5STOPBITS* = 1
-  TWOSTOPBITS* = 2            # Debugging events
+  TWOSTOPBITS* = 2
+  # Debugging events
   CREATE_PROCESS_DEBUG_EVENT* = 3
   CREATE_THREAD_DEBUG_EVENT* = 2
   EXCEPTION_DEBUG_EVENT* = 1
@@ -4241,20 +4407,24 @@ const
   LOAD_DLL_DEBUG_EVENT* = 6
   OUTPUT_DEBUG_STRING_EVENT* = 8
   UNLOAD_DLL_DEBUG_EVENT* = 7
-  RIP_EVENT* = 9              # PROCESS_HEAP_ENTRY structure
+  RIP_EVENT* = 9
+  # PROCESS_HEAP_ENTRY structure
   PROCESS_HEAP_REGION* = 1
   PROCESS_HEAP_UNCOMMITTED_RANGE* = 2
   PROCESS_HEAP_ENTRY_BUSY* = 4
   PROCESS_HEAP_ENTRY_MOVEABLE* = 16
-  PROCESS_HEAP_ENTRY_DDESHARE* = 32 # Win32s
-  HINSTANCE_ERROR* = 32       # WIN32_STREAM_ID structure
+  PROCESS_HEAP_ENTRY_DDESHARE* = 32
+  # Win32s
+  HINSTANCE_ERROR* = 32
+  # WIN32_STREAM_ID structure
   BACKUP_DATA* = 1
   BACKUP_EA_DATA* = 2
   BACKUP_SECURITY_DATA* = 3
   BACKUP_ALTERNATE_DATA* = 4
   BACKUP_LINK* = 5
   STREAM_MODIFIED_WHEN_READ* = 1
-  STREAM_CONTAINS_SECURITY* = 2 # STARTUPINFO structure
+  STREAM_CONTAINS_SECURITY* = 2
+  # STARTUPINFO structure
   STARTF_USESHOWWINDOW* = 1
   STARTF_USEPOSITION* = 4
   STARTF_USESIZE* = 2
@@ -4264,10 +4434,12 @@ const
   STARTF_FORCEONFEEDBACK* = 64
   STARTF_FORCEOFFFEEDBACK* = 128
   STARTF_USESTDHANDLES* = 256
-  STARTF_USEHOTKEY* = 512     # OSVERSIONINFO structure
+  STARTF_USEHOTKEY* = 512
+  # OSVERSIONINFO structure
   VER_PLATFORM_WIN32s* = 0
   VER_PLATFORM_WIN32_WINDOWS* = 1
-  VER_PLATFORM_WIN32_NT* = 2  # More versions
+  VER_PLATFORM_WIN32_NT* = 2
+  # More versions
   VER_SERVER_NT* = 0x80000000
   VER_WORKSTATION_NT* = 0x40000000
   VER_SUITE_SMALLBUSINESS* = 0x00000001
@@ -4281,7 +4453,8 @@ const
   VER_SUITE_SINGLEUSERTS* = 0x00000100
   VER_SUITE_PERSONAL* = 0x00000200
   VER_SUITE_BLADE* = 0x00000400
-  VER_SUITE_EMBEDDED_RESTRICTED* = 0x00000800 # PROPSHEETPAGE structure
+  VER_SUITE_EMBEDDED_RESTRICTED* = 0x00000800
+  # PROPSHEETPAGE structure
   MAXPROPPAGES* = 100
   PSP_DEFAULT* = 0
   PSP_DLGINDIRECT* = 1
@@ -4291,7 +4464,8 @@ const
   PSP_USEICONID* = 4
   PSP_USEREFPARENT* = 64
   PSP_USETITLE* = 8
-  PSP_RTLREADING* = 16        # PROPSHEETHEADER structure
+  PSP_RTLREADING* = 16
+  # PROPSHEETHEADER structure
   PSH_DEFAULT* = 0
   PSH_HASHELP* = 512
   PSH_MODELESS* = 1024
@@ -4305,9 +4479,11 @@ const
   PSH_WIZARD* = 32
   PSH_RTLREADING* = 2048
   PSCB_INITIALIZED* = 1
-  PSCB_PRECREATE* = 2         # PSN_APPLY message
+  PSCB_PRECREATE* = 2
+  # PSN_APPLY message
   PSNRET_NOERROR* = 0
-  PSNRET_INVALID_NOCHANGEPAGE* = 2 # Property Sheet
+  PSNRET_INVALID_NOCHANGEPAGE* = 2
+  # Property Sheet
   PSBTN_APPLYNOW* = 4
   PSBTN_BACK* = 0
   PSBTN_CANCEL* = 5
@@ -4325,11 +4501,11 @@ const
   WIZ_BODYX* = 92
   WIZ_CXBMP* = 80
   WIZ_CXDLG* = 276
-  WIZ_CYDLG* = 140            # VX_FIXEDFILEINFO structure
-                              # was #define dname def_expr
+  WIZ_CYDLG* = 140
 
-proc VS_FILE_INFO*(): LPTSTR
-  # return type might be wrong
+  # VX_FIXEDFILEINFO structure
+  VS_FILE_INFO* = cast[MAKEINTRESOURCE](16)
+
 const
   VS_VERSION_INFO* = 1
   VS_FF_DEBUG* = 0x00000001
@@ -4367,7 +4543,8 @@ const
   VFT2_DRV_SOUND* = 0x00000009
   VFT2_FONT_RASTER* = 0x00000001
   VFT2_FONT_VECTOR* = 0x00000002
-  VFT2_FONT_TRUETYPE* = 0x00000003 # PANOSE structure
+  VFT2_FONT_TRUETYPE* = 0x00000003
+  # PANOSE structure
   PAN_ANY* = 0
   PAN_NO_FIT* = 1
   PAN_FAMILY_TEXT_DISPLAY* = 2
@@ -4462,10 +4639,12 @@ const
   PAN_XHEIGHT_CONSTANT_LARGE* = 4
   PAN_XHEIGHT_DUCKING_SMALL* = 5
   PAN_XHEIGHT_DUCKING_STD* = 6
-  PAN_XHEIGHT_DUCKING_LARGE* = 7 # PALETTENTRY structure
+  PAN_XHEIGHT_DUCKING_LARGE* = 7
+  # PALETTENTRY structure
   PC_EXPLICIT* = 2
   PC_NOCOLLAPSE* = 4
-  PC_RESERVED* = 1            # LOGBRUSH structure
+  PC_RESERVED* = 1
+  # LOGBRUSH structure
   BS_DIBPATTERN* = 5
   BS_DIBPATTERN8X8* = 8
   BS_DIBPATTERNPT* = 6
@@ -4474,12 +4653,16 @@ const
   BS_NULL* = 1
   BS_PATTERN* = 3
   BS_PATTERN8X8* = 7
-  BS_SOLID* = 0               # DEVMODE structure
+  BS_SOLID* = 0
+  # DEVMODE structure, field selection bits
   DM_ORIENTATION* = 0x00000001
   DM_PAPERSIZE* = 0x00000002
   DM_PAPERLENGTH* = 0x00000004
   DM_PAPERWIDTH* = 0x00000008
   DM_SCALE* = 0x00000010
+  DM_POSITION* = 0x00000020
+  DM_NUP* = 0x00000040
+  DM_DISPLAYORIENTATION* = 0x00000080
   DM_COPIES* = 0x00000100
   DM_DEFAULTSOURCE* = 0x00000200
   DM_PRINTQUALITY* = 0x00000400
@@ -4489,17 +4672,23 @@ const
   DM_TTOPTION* = 0x00004000
   DM_COLLATE* = 0x00008000
   DM_FORMNAME* = 0x00010000
-  DM_LOGPIXELS* = 0x00020000  #DM_BITSPERPEL = $40000;
-                              #     DM_PELSWIDTH = $80000;
-                              #     DM_PELSHEIGHT = $100000;
-                              #     DM_DISPLAYFLAGS = $200000;
-                              #     DM_DISPLAYFREQUENCY = $400000;already above
+  DM_LOGPIXELS* = 0x00020000
+  DM_BITSPERPEL* = 0x00040000
+  DM_PELSWIDTH* = 0x00080000
+  DM_PELSHEIGHT* = 0x00100000
+  DM_DISPLAYFLAGS* = 0x00200000
+  DM_DISPLAYFREQUENCY* = 0x00400000
   DM_ICMMETHOD* = 0x00800000
   DM_ICMINTENT* = 0x01000000
   DM_MEDIATYPE* = 0x02000000
   DM_DITHERTYPE* = 0x04000000
+  DM_PANNINGWIDTH* = 0x08000000
+  DM_PANNINGHEIGHT* = 0x10000000
+  DM_DISPLAYFIXEDOUTPUT* = 0x20000000
+  # orientation selections
   DMORIENT_LANDSCAPE* = 2
   DMORIENT_PORTRAIT* = 1
+  # paper selections
   DMPAPER_LETTER* = 1
   DMPAPER_LEGAL* = 5
   DMPAPER_A4* = 9
@@ -4541,45 +4730,166 @@ const
   DMPAPER_FANFOLD_US* = 39
   DMPAPER_FANFOLD_STD_GERMAN* = 40
   DMPAPER_FANFOLD_LGL_GERMAN* = 41
-  DMRES_HIGH* = - (4)
-  DMRES_MEDIUM* = - (3)
-  DMRES_LOW* = - (2)
-  DMRES_DRAFT* = - (1)
-  DMCOLOR_COLOR* = 2
+  DMPAPER_ISO_B4* = 42
+  DMPAPER_JAPANESE_POSTCARD* = 43
+  DMPAPER_9X11* = 44
+  DMPAPER_10X11* = 45
+  DMPAPER_15X11* = 46
+  DMPAPER_ENV_INVITE* = 47
+  DMPAPER_RESERVED_48* = 48
+  DMPAPER_RESERVED_49* = 49
+  DMPAPER_LETTER_EXTRA* = 50
+  DMPAPER_LEGAL_EXTRA* = 51
+  DMPAPER_TABLOID_EXTRA* = 52
+  DMPAPER_A4_EXTRA* = 53
+  DMPAPER_LETTER_TRANSVERSE* = 54
+  DMPAPER_A4_TRANSVERSE* = 55
+  DMPAPER_LETTER_EXTRA_TRANSVERSE* = 56
+  DMPAPER_A_PLUS* = 57
+  DMPAPER_B_PLUS* = 58
+  DMPAPER_LETTER_PLUS* = 59
+  DMPAPER_A4_PLUS* = 60
+  DMPAPER_A5_TRANSVERSE* = 61
+  DMPAPER_B5_TRANSVERSE* = 62
+  DMPAPER_A3_EXTRA* = 63
+  DMPAPER_A5_EXTRA* = 64
+  DMPAPER_B5_EXTRA* = 65
+  DMPAPER_A2* = 66
+  DMPAPER_A3_TRANSVERSE* = 67
+  DMPAPER_A3_EXTRA_TRANSVERSE* = 68
+  DMPAPER_DBL_JAPANESE_POSTCARD* = 69
+  DMPAPER_A6* = 70
+  DMPAPER_JENV_KAKU2* = 71
+  DMPAPER_JENV_KAKU3* = 72
+  DMPAPER_JENV_CHOU3* = 73
+  DMPAPER_JENV_CHOU4* = 74
+  DMPAPER_LETTER_ROTATED* = 75
+  DMPAPER_A3_ROTATED* = 76
+  DMPAPER_A4_ROTATED* = 77
+  DMPAPER_A5_ROTATED* = 78
+  DMPAPER_B4_JIS_ROTATED* = 79
+  DMPAPER_B5_JIS_ROTATED* = 80
+  DMPAPER_JAPANESE_POSTCARD_ROTATED* = 81
+  DMPAPER_DBL_JAPANESE_POSTCARD_ROTATED* = 82
+  DMPAPER_A6_ROTATED* = 83
+  DMPAPER_JENV_KAKU2_ROTATED* = 84
+  DMPAPER_JENV_KAKU3_ROTATED* = 85
+  DMPAPER_JENV_CHOU3_ROTATED* = 86
+  DMPAPER_JENV_CHOU4_ROTATED* = 87
+  DMPAPER_B6_JIS* = 88
+  DMPAPER_B6_JIS_ROTATED* = 89
+  DMPAPER_12X11* = 90
+  DMPAPER_JENV_YOU4* = 91
+  DMPAPER_JENV_YOU4_ROTATED* = 92
+  DMPAPER_P16K* = 93
+  DMPAPER_P32K* = 94
+  DMPAPER_P32KBIG* = 95
+  DMPAPER_PENV_1* = 96
+  DMPAPER_PENV_2* = 97
+  DMPAPER_PENV_3* = 98
+  DMPAPER_PENV_4* = 99
+  DMPAPER_PENV_5* = 100
+  DMPAPER_PENV_6* = 101
+  DMPAPER_PENV_7* = 102
+  DMPAPER_PENV_8* = 103
+  DMPAPER_PENV_9* = 104
+  DMPAPER_PENV_10* = 105
+  DMPAPER_P16K_ROTATED* = 106
+  DMPAPER_P32K_ROTATED* = 107
+  DMPAPER_P32KBIG_ROTATED* = 108
+  DMPAPER_PENV_1_ROTATED* = 109
+  DMPAPER_PENV_2_ROTATED* = 110
+  DMPAPER_PENV_3_ROTATED* = 111
+  DMPAPER_PENV_4_ROTATED* = 112
+  DMPAPER_PENV_5_ROTATED* = 113
+  DMPAPER_PENV_6_ROTATED* = 114
+  DMPAPER_PENV_7_ROTATED* = 115
+  DMPAPER_PENV_8_ROTATED* = 116
+  DMPAPER_PENV_9_ROTATED* = 117
+  DMPAPER_PENV_10_ROTATED* = 118
+  DMPAPER_USER* = 256
+  # bin selections
+  DMBIN_UPPER* = 1
+  DMBIN_ONLYONE* = 1
+  DMBIN_LOWER* = 2
+  DMBIN_MIDDLE* = 3
+  DMBIN_MANUAL* = 4
+  DMBIN_ENVELOPE* = 5
+  DMBIN_ENVMANUAL* = 6
+  DMBIN_AUTO* = 7
+  DMBIN_TRACTOR* = 8
+  DMBIN_SMALLFMT* = 9
+  DMBIN_LARGEFMT* = 10
+  DMBIN_LARGECAPACITY* = 11
+  DMBIN_CASSETTE* = 14
+  DMBIN_FORMSOURCE* = 15
+  DMBIN_USER* = 256
+  # print qualities
+  DMRES_DRAFT* = -1
+  DMRES_LOW* = -2
+  DMRES_MEDIUM* = -3
+  DMRES_HIGH* = -4
+  # color enable/disable for color printers
   DMCOLOR_MONOCHROME* = 1
+  DMCOLOR_COLOR* = 2
+  # duplex enable
   DMDUP_SIMPLEX* = 1
-  DMDUP_HORIZONTAL* = 3
   DMDUP_VERTICAL* = 2
+  DMDUP_HORIZONTAL* = 3
+  # TrueType options
   DMTT_BITMAP* = 1
   DMTT_DOWNLOAD* = 2
   DMTT_SUBDEV* = 3
+  # Collation selections
   DMCOLLATE_TRUE* = 1
   DMCOLLATE_FALSE* = 0
-  DM_GRAYSCALE* = 1
-  DM_INTERLACED* = 2
+  # DEVMODE dmDisplayOrientation specifiations
+  DMDO_DEFAULT* = 0
+  DMDO_90* = 1
+  DMDO_180* = 2
+  DMDO_270* = 3
+  # DEVMODE dmDisplayFixedOutput specifiations
+  DMDFO_DEFAULT* = 0
+  DMDFO_STRETCH* = 1
+  DMDFO_CENTER* = 2
+  # Deprecated
+  #DM_GRAYSCALE* = 1
+  #DM_INTERLACED* = 2
+  DMDISPLAYFLAGS_TEXTMODE* = 0x00000004
+  # dmNup , multiple logical page per physical page options
+  DMNUP_SYSTEM* = 1
+  DMNUP_ONEUP* = 2
+  # ICM methods
   DMICMMETHOD_NONE* = 1
   DMICMMETHOD_SYSTEM* = 2
   DMICMMETHOD_DRIVER* = 3
   DMICMMETHOD_DEVICE* = 4
   DMICMMETHOD_USER* = 256
+  # ICM Intents
   DMICM_SATURATE* = 1
   DMICM_CONTRAST* = 2
   DMICM_COLORMETRIC* = 3
   DMICM_USER* = 256
+  # Media types
   DMMEDIA_STANDARD* = 1
-  DMMEDIA_GLOSSY* = 3
   DMMEDIA_TRANSPARENCY* = 2
+  DMMEDIA_GLOSSY* = 3
   DMMEDIA_USER* = 256
+  # Dither types
   DMDITHER_NONE* = 1
   DMDITHER_COARSE* = 2
   DMDITHER_FINE* = 3
   DMDITHER_LINEART* = 4
   DMDITHER_GRAYSCALE* = 10
-  DMDITHER_USER* = 256        # RGNDATAHEADER structure
-  RDH_RECTANGLES* = 1         # TTPOLYGONHEADER structure
-  TT_POLYGON_TYPE* = 24       # TTPOLYCURVE structure
+  DMDITHER_USER* = 256
+  # RGNDATAHEADER structure
+  RDH_RECTANGLES* = 1
+  # TTPOLYGONHEADER structure
+  TT_POLYGON_TYPE* = 24
+  # TTPOLYCURVE structure
   TT_PRIM_LINE* = 1
-  TT_PRIM_QSPLINE* = 2        # GCP_RESULTS structure
+  TT_PRIM_QSPLINE* = 2
+  # GCP_RESULTS structure
   GCPCLASS_ARABIC* = 2
   GCPCLASS_HEBREW* = 2
   GCPCLASS_LATIN* = 1
@@ -4594,9 +4904,11 @@ const
   GCPCLASS_POSTBOUNDLTR* = 32
   GCPCLASS_POSTBOUNDRTL* = 16
   GCPGLYPH_LINKBEFORE* = 32768
-  GCPGLYPH_LINKAFTER* = 16384 # RASTERIZER_STATUS structure
+  GCPGLYPH_LINKAFTER* = 16384
+  # RASTERIZER_STATUS structure
   TT_AVAILABLE* = 1
-  TT_ENABLED* = 2             # COLORADJUSTMENT structure
+  TT_ENABLED* = 2
+  # COLORADJUSTMENT structure
   CA_NEGATIVE* = 1
   CA_LOG_FILTER* = 2
   ILLUMINANT_DEVICE_DEFAULT* = 0
@@ -4611,10 +4923,13 @@ const
   ILLUMINANT_TUNGSTEN* = 1
   ILLUMINANT_DAYLIGHT* = 3
   ILLUMINANT_FLUORESCENT* = 8
-  ILLUMINANT_NTSC* = 3        # DOCINFO structure
-  DI_APPBANDING* = 1          # EMRMETAHEADER structure
+  ILLUMINANT_NTSC* = 3
+  # DOCINFO structure
+  DI_APPBANDING* = 1
+  # EMRMETAHEADER structure
   EMR_HEADER* = 1
-  ENHMETA_SIGNATURE* = 1179469088 # RTF event masks
+  ENHMETA_SIGNATURE* = 1179469088
+  # RTF event masks
   ENM_CHANGE* = 1
   ENM_CORRECTTEXT* = 4194304
   ENM_DROPFILES* = 1048576
@@ -4625,7 +4940,8 @@ const
   ENM_SCROLL* = 4
   ENM_SELCHANGE* = 524288
   ENM_UPDATE* = 2
-  ENM_NONE* = 0               # RTF styles
+  ENM_NONE* = 0
+  # RTF styles
   ES_DISABLENOSCROLL* = 8192
   ES_EX_NOCALLOLEINIT* = 16777216
   ES_NOIME* = 524288
@@ -4633,7 +4949,8 @@ const
   ES_SELFIME* = 262144
   ES_SUNKEN* = 16384
   ES_VERTICAL* = 4194304
-  ES_SELECTIONBAR* = 16777216 # EM_SETOPTIONS message
+  ES_SELECTIONBAR* = 16777216
+  # EM_SETOPTIONS message
   ECOOP_SET* = 1
   ECOOP_OR* = 2
   ECOOP_AND* = 3
@@ -4646,29 +4963,36 @@ const
   ECO_WANTRETURN* = 4096
   ECO_SAVESEL* = 32768
   ECO_SELECTIONBAR* = 16777216
-  ECO_VERTICAL* = 4194304     # EM_SETCHARFORMAT message
+  ECO_VERTICAL* = 4194304
+  # EM_SETCHARFORMAT message
   SCF_WORD* = 2
-  SCF_SELECTION* = 1          # EM_STREAMOUT message
+  SCF_SELECTION* = 1
+  # EM_STREAMOUT message
   SF_TEXT* = 1
   SF_RTF* = 2
   SF_RTFNOOBJS* = 3
   SF_TEXTIZED* = 4
   SFF_SELECTION* = 32768
-  SFF_PLAINRTF* = 16384       # EM_FINDWORDBREAK message
-  WB_CLASSIFY* = 3            #WB_ISDELIMITER = 2;
+  SFF_PLAINRTF* = 16384
+  # EM_FINDWORDBREAK message
+  WB_CLASSIFY* = 3
+  #WB_ISDELIMITER = 2;
                               #     WB_LEFT = 0; already above
   WB_LEFTBREAK* = 6
   WB_PREVBREAK* = 6
   WB_MOVEWORDLEFT* = 4
   WB_MOVEWORDPREV* = 4
   WB_MOVEWORDRIGHT* = 5
-  WB_MOVEWORDNEXT* = 5        #WB_RIGHT = 1;already above
+  WB_MOVEWORDNEXT* = 5
+  #WB_RIGHT = 1;already above
   WB_RIGHTBREAK* = 7
-  WB_NEXTBREAK* = 7           # EM_GETPUNCTUATION message
+  WB_NEXTBREAK* = 7
+  # EM_GETPUNCTUATION message
   PC_LEADING* = 2
   PC_FOLLOWING* = 1
   PC_DELIMITER* = 4
-  PC_OVERFLOW* = 3            # EM_SETWORDWRAPMODE message
+  PC_OVERFLOW* = 3
+  # EM_SETWORDWRAPMODE message
   WBF_WORDWRAP* = 16
   WBF_WORDBREAK* = 32
   WBF_OVERFLOW* = 64
@@ -4677,7 +5001,8 @@ const
   WBF_CUSTOM* = 512
   WBF_BREAKAFTER* = 64
   WBF_BREAKLINE* = 32
-  WBF_ISWHITE* = 16           # CHARFORMAT structure
+  WBF_ISWHITE* = 16
+  # CHARFORMAT structure
   CFM_BOLD* = 1
   CFM_COLOR* = 1073741824
   CFM_FACE* = 536870912
@@ -4692,7 +5017,8 @@ const
   CFE_ITALIC* = 2
   CFE_STRIKEOUT* = 8
   CFE_UNDERLINE* = 4
-  CFE_PROTECTED* = 16         # PARAFORMAT structure
+  CFE_PROTECTED* = 16
+  # PARAFORMAT structure
   PFM_ALIGNMENT* = 8
   PFM_NUMBERING* = 32
   PFM_OFFSET* = 4
@@ -4703,14 +5029,17 @@ const
   PFN_BULLET* = 1
   PFA_LEFT* = 1
   PFA_RIGHT* = 2
-  PFA_CENTER* = 3             # SELCHANGE structure
+  PFA_CENTER* = 3
+  # SELCHANGE structure
   SEL_EMPTY* = 0
   SEL_TEXT* = 1
   SEL_OBJECT* = 2
   SEL_MULTICHAR* = 4
-  SEL_MULTIOBJECT* = 8        # RTF clipboard formats
+  SEL_MULTIOBJECT* = 8
+  # RTF clipboard formats
   CF_RTF* = "Rich Text Format"
-  CF_RETEXTOBJ* = "RichEdit Text and Objects" # DRAWITEMSTRUCT structure
+  CF_RETEXTOBJ* = "RichEdit Text and Objects"
+  # DRAWITEMSTRUCT structure
   ODT_BUTTON* = 4
   ODT_COMBOBOX* = 3
   ODT_LISTBOX* = 2
@@ -4732,7 +5061,17 @@ const
   ODS_INACTIVE* = 0x00000080
   ODS_NOACCEL* = 0x00000100
   ODS_NOFOCUSRECT* = 0x00000200
-  ODS_COMBOBOXEDIT* = 0x00001000 # Common control window classes
+  ODS_COMBOBOXEDIT* = 0x00001000
+  # Common control styles
+  CCS_ADJUSTABLE* = 0x00000020
+  CCS_BOTTOM* = 0x00000003
+  CCS_NODIVIDER* = 0x00000040
+  CCS_NOMOVEY* = 0x00000002
+  CCS_NOPARENTALIGN* = 0x00000008
+  CCS_NORESIZE* = 0x00000004
+  CCS_TOP* = 0x00000001
+
+  # Common control window classes
   ANIMATE_CLASSW* = "SysAnimate32"
   HOTKEY_CLASSW* = "msctls_hotkey32"
   PROGRESS_CLASSW* = "msctls_progress32"
@@ -4744,14 +5083,8 @@ const
   WC_HEADERW* = "SysHeader32"
   WC_LISTVIEWW* = "SysListView32"
   WC_TABCONTROLW* = "SysTabControl32"
-  WC_TREEVIEWW* = "SysTreeView32" # Common control styles
-  CCS_ADJUSTABLE* = 0x00000020
-  CCS_BOTTOM* = 0x00000003
-  CCS_NODIVIDER* = 0x00000040
-  CCS_NOMOVEY* = 0x00000002
-  CCS_NOPARENTALIGN* = 0x00000008
-  CCS_NORESIZE* = 0x00000004
-  CCS_TOP* = 0x00000001
+  WC_TREEVIEWW* = "SysTreeView32"
+
   ANIMATE_CLASSA* = "SysAnimate32"
   HOTKEY_CLASSA* = "msctls_hotkey32"
   PROGRESS_CLASSA* = "msctls_progress32"
@@ -4793,13 +5126,14 @@ else:
     WC_LISTVIEW* = WC_LISTVIEWA
     WC_TABCONTROL* = WC_TABCONTROLA
     WC_TREEVIEW* = WC_TREEVIEWA
-# winUnicode
-# Header control styles
+# UNICODE
 
 const
+  # Header control styles
   HDS_BUTTONS* = 2
   HDS_HIDDEN* = 8
-  HDS_HORZ* = 0               # HD_ITEM structure
+  HDS_HORZ* = 0
+  # HD_ITEM structure
   HDI_BITMAP* = 16
   HDI_FORMAT* = 4
   HDI_HEIGHT* = 1
@@ -4813,16 +5147,17 @@ const
   HDF_BITMAP* = 8192
   HDF_OWNERDRAW* = 32768
   HDF_STRING* = 16384
-  HDF_JUSTIFYMASK* = 3        # HD_HITTESTINFO structure
+  HDF_JUSTIFYMASK* = 3
+  # HD_HITTESTINFO structure
   HHT_NOWHERE* = 1
   HHT_ONDIVIDER* = 4
   HHT_ONDIVOPEN* = 8
   HHT_ONHEADER* = 2
   HHT_TOLEFT* = 2048
-  HHT_TORIGHT* = 1024         # TBADDBITMAP structure
-                              # was #define dname def_expr
+  HHT_TORIGHT* = 1024
+  # TBADDBITMAP structure
+  HINST_COMMCTRL* = HINST(-1)
 
-proc HINST_COMMCTRL*(): HINST
 const
   IDB_STD_LARGE_COLOR* = 1
   IDB_STD_SMALL_COLOR* = 0
@@ -4850,7 +5185,8 @@ const
   VIEW_SORTNAME* = 4
   VIEW_SORTSIZE* = 5
   VIEW_SORTDATE* = 6
-  VIEW_SORTTYPE* = 7          # Toolbar styles
+  VIEW_SORTTYPE* = 7
+  # Toolbar styles
   TBSTYLE_ALTDRAG* = 1024
   TBSTYLE_TOOLTIPS* = 256
   TBSTYLE_WRAPABLE* = 512
@@ -4858,28 +5194,35 @@ const
   TBSTYLE_CHECK* = 2
   TBSTYLE_CHECKGROUP* = 6
   TBSTYLE_GROUP* = 4
-  TBSTYLE_SEP* = 1            # Toolbar states
+  TBSTYLE_SEP* = 1
+  # Toolbar states
   TBSTATE_CHECKED* = 1
   TBSTATE_ENABLED* = 4
   TBSTATE_HIDDEN* = 8
   TBSTATE_INDETERMINATE* = 16
   TBSTATE_PRESSED* = 2
-  TBSTATE_WRAP* = 32          # Tooltip styles
+  TBSTATE_WRAP* = 32
+  # Tooltip styles
   TTS_ALWAYSTIP* = 1
-  TTS_NOPREFIX* = 2           # TOOLINFO structure
+  TTS_NOPREFIX* = 2
+  # TOOLINFO structure
   TTF_IDISHWND* = 1
   TTF_CENTERTIP* = 2
   TTF_RTLREADING* = 4
-  TTF_SUBCLASS* = 16          # TTM_SETDELAYTIME message
+  TTF_SUBCLASS* = 16
+  # TTM_SETDELAYTIME message
   TTDT_AUTOMATIC* = 0
   TTDT_AUTOPOP* = 2
   TTDT_INITIAL* = 3
-  TTDT_RESHOW* = 1            # Status window
-  SBARS_SIZEGRIP* = 256       #SBARS_SIZEGRIP = 256;already above
+  TTDT_RESHOW* = 1
+  # Status window
+  SBARS_SIZEGRIP* = 256
+  #SBARS_SIZEGRIP = 256;already above
                               # DL_DRAGGING message
   DL_MOVECURSOR* = 3
   DL_COPYCURSOR* = 2
-  DL_STOPCURSOR* = 1          # Up-down control styles
+  DL_STOPCURSOR* = 1
+  # Up-down control styles
   UDS_ALIGNLEFT* = 8
   UDS_ALIGNRIGHT* = 4
   UDS_ARROWKEYS* = 32
@@ -4887,13 +5230,16 @@ const
   UDS_HORZ* = 64
   UDS_NOTHOUSANDS* = 128
   UDS_SETBUDDYINT* = 2
-  UDS_WRAP* = 1               # UDM_SETRANGE message
+  UDS_WRAP* = 1
+  # UDM_SETRANGE message
   UD_MAXVAL* = 32767
-  UD_MINVAL* = - (32767)      # HKM_GETHOTKEY message
+  UD_MINVAL* = -32767
+  # HKM_GETHOTKEY message
   HOTKEYF_ALT* = 4
   HOTKEYF_CONTROL* = 2
   HOTKEYF_EXT* = 8
-  HOTKEYF_SHIFT* = 1          # HKM_SETRULES message
+  HOTKEYF_SHIFT* = 1
+  # HKM_SETRULES message
   HKCOMB_A* = 8
   HKCOMB_C* = 4
   HKCOMB_CA* = 64
@@ -4901,7 +5247,8 @@ const
   HKCOMB_S* = 2
   HKCOMB_SA* = 32
   HKCOMB_SC* = 16
-  HKCOMB_SCA* = 128           # Trackbar styles
+  HKCOMB_SCA* = 128
+  # Trackbar styles
   TBS_HORZ* = 0
   TBS_VERT* = 2
   TBS_AUTOTICKS* = 1
@@ -4922,7 +5269,8 @@ const
   TB_PAGEUP* = 2
   TB_THUMBPOSITION* = 4
   TB_THUMBTRACK* = 5
-  TB_TOP* = 6                 # List view styles
+  TB_TOP* = 6
+  # List view styles
   LVS_ALIGNLEFT* = 2048
   LVS_ALIGNTOP* = 0
   LVS_AUTOARRANGE* = 256
@@ -4950,21 +5298,22 @@ const
   LVIS_FOCUSED* = 1
   LVIS_SELECTED* = 2
   LVIS_OVERLAYMASK* = 3840
-  LVIS_STATEIMAGEMASK* = 61440 # was #define dname def_expr
+  LVIS_STATEIMAGEMASK* = 61440
 
-proc LPSTR_TEXTCALLBACKW*(): LPWSTR
-  # was #define dname def_expr
-proc LPSTR_TEXTCALLBACKA*(): LPSTR
+  LPSTR_TEXTCALLBACKW* = cast[LPWSTR](-1)
+  LPSTR_TEXTCALLBACKA* = cast[LPSTR](-1)
 when defined(winUnicode):
-  proc LPSTR_TEXTCALLBACK*(): LPWSTR
+  const LPSTR_TEXTCALLBACK*  = cast[LPWSTR](-1)
 else:
-  proc LPSTR_TEXTCALLBACK*(): LPSTR
+  const LPSTR_TEXTCALLBACK*  = cast[LPSTR](-1)
+
 const
   LVIF_TEXT* = 1
   LVIF_IMAGE* = 2
   LVIF_PARAM* = 4
   LVIF_STATE* = 8
-  LVIF_DI_SETITEM* = 4096     # LVM_GETNEXTITEM structure
+  LVIF_DI_SETITEM* = 4096
+  # LVM_GETNEXTITEM structure
   LVNI_ABOVE* = 256
   LVNI_ALL* = 0
   LVNI_BELOW* = 512
@@ -4973,12 +5322,14 @@ const
   LVNI_CUT* = 4
   LVNI_DROPHILITED* = 8
   LVNI_FOCUSED* = 1
-  LVNI_SELECTED* = 2          # LV_FINDINFO structure
+  LVNI_SELECTED* = 2
+  # LV_FINDINFO structure
   LVFI_PARAM* = 1
   LVFI_PARTIAL* = 8
   LVFI_STRING* = 2
   LVFI_WRAP* = 32
-  LVFI_NEARESTXY* = 64        # LV_HITTESTINFO structure
+  LVFI_NEARESTXY* = 64
+  # LV_HITTESTINFO structure
   LVHT_ABOVE* = 8
   LVHT_BELOW* = 16
   LVHT_NOWHERE* = 1
@@ -4986,30 +5337,36 @@ const
   LVHT_ONITEMLABEL* = 4
   LVHT_ONITEMSTATEICON* = 8
   LVHT_TOLEFT* = 64
-  LVHT_TORIGHT* = 32          # LV_COLUMN structure
+  LVHT_TORIGHT* = 32
+  # LV_COLUMN structure
   LVCF_FMT* = 1
   LVCF_SUBITEM* = 8
   LVCF_TEXT* = 4
   LVCF_WIDTH* = 2
   LVCFMT_CENTER* = 2
   LVCFMT_LEFT* = 0
-  LVCFMT_RIGHT* = 1           # ListView_GetItemRect
+  LVCFMT_RIGHT* = 1
+  # ListView_GetItemRect
   LVIR_BOUNDS* = 0
   LVIR_ICON* = 1
   LVIR_LABEL* = 2
-  LVIR_SELECTBOUNDS* = 3      # LVM_ARRANGE message
+  LVIR_SELECTBOUNDS* = 3
+  # LVM_ARRANGE message
   LVA_ALIGNLEFT* = 1
   LVA_ALIGNTOP* = 2
   LVA_DEFAULT* = 0
-  LVA_SNAPTOGRID* = 5         # LVM_SETCOLUMNWIDTH message
-  LVSCW_AUTOSIZE* = - (1)
-  LVSCW_AUTOSIZE_USEHEADER* = - (2) # Tree View styles
+  LVA_SNAPTOGRID* = 5
+  # LVM_SETCOLUMNWIDTH message
+  LVSCW_AUTOSIZE* = -1
+  LVSCW_AUTOSIZE_USEHEADER* = -2
+  # Tree View styles
   TVS_DISABLEDRAGDROP* = 16
   TVS_EDITLABELS* = 8
   TVS_HASBUTTONS* = 1
   TVS_HASLINES* = 2
   TVS_LINESATROOT* = 4
-  TVS_SHOWSELALWAYS* = 32     # Tree View states
+  TVS_SHOWSELALWAYS* = 32
+  # Tree View states
   TVIS_BOLD* = 16
   TVIS_CUT* = 4
   TVIS_DROPHILITED* = 8
@@ -5019,7 +5376,8 @@ const
   TVIS_OVERLAYMASK* = 3840
   TVIS_SELECTED* = 2
   TVIS_STATEIMAGEMASK* = 61440
-  TVIS_USERMASK* = 61440      # TV_ITEM structure
+  TVIS_USERMASK* = 61440
+  # TV_ITEM structure
   TVIF_CHILDREN* = 64
   TVIF_HANDLE* = 16
   TVIF_IMAGE* = 2
@@ -5027,24 +5385,23 @@ const
   TVIF_SELECTEDIMAGE* = 32
   TVIF_STATE* = 8
   TVIF_TEXT* = 1
-  I_CHILDRENCALLBACK* = - (1)
-  I_IMAGECALLBACK* = - (1)    # TV_INSERTSTRUCT structure
-                              # added manually PM, TREEITEM is not defined in the C headers
+  I_CHILDRENCALLBACK* = -1
+  I_IMAGECALLBACK* = -1
+  # TV_INSERTSTRUCT structure
 
 type
   TTREEITEM* {.final, pure.} = object
   HTREEITEM* = ptr TTREEITEM
   PTREEITEM* = ptr TTREEITEM
 
-proc TVI_ROOT*(): HTREEITEM
-  # was #define dname def_expr
-proc TVI_FIRST*(): HTREEITEM
-  # was #define dname def_expr
-proc TVI_LAST*(): HTREEITEM
-  # was #define dname def_expr
-proc TVI_SORT*(): HTREEITEM
-  # TV_HITTESTINFO structure
 const
+  TVI_ROOT* =  cast[HTREEITEM](0xFFFF0000)
+  TVI_FIRST* = cast[HTREEITEM](0xFFFF0001)
+  TVI_LAST* =  cast[HTREEITEM](0xFFFF0002)
+  TVI_SORT* =  cast[HTREEITEM](0xFFFF0003)
+
+const
+  # TV_HITTESTINFO structure
   TVHT_ABOVE* = 256
   TVHT_BELOW* = 512
   TVHT_NOWHERE* = 1
@@ -5056,13 +5413,16 @@ const
   TVHT_ONITEMRIGHT* = 32
   TVHT_ONITEMSTATEICON* = 64
   TVHT_TOLEFT* = 2048
-  TVHT_TORIGHT* = 1024        # TVM_EXPAND message
+  TVHT_TORIGHT* = 1024
+  # TVM_EXPAND message
   TVE_COLLAPSE* = 1
   TVE_COLLAPSERESET* = 32768
   TVE_EXPAND* = 2
-  TVE_TOGGLE* = 3             # TVM_GETIMAGELIST message
+  TVE_TOGGLE* = 3
+  # TVM_GETIMAGELIST message
   TVSIL_NORMAL* = 0
-  TVSIL_STATE* = 2            # TVM_GETNEXTITEM message
+  TVSIL_STATE* = 2
+  # TVM_GETNEXTITEM message
   TVGN_CARET* = 9
   TVGN_CHILD* = 4
   TVGN_DROPHILITE* = 8
@@ -5072,10 +5432,12 @@ const
   TVGN_PARENT* = 3
   TVGN_PREVIOUS* = 2
   TVGN_PREVIOUSVISIBLE* = 7
-  TVGN_ROOT* = 0              # TVN_SELCHANGED message
+  TVGN_ROOT* = 0
+  # TVN_SELCHANGED message
   TVC_BYKEYBOARD* = 2
   TVC_BYMOUSE* = 1
-  TVC_UNKNOWN* = 0            # Tab control styles
+  TVC_UNKNOWN* = 0
+  # Tab control styles
   TCS_BUTTONS* = 256
   TCS_FIXEDWIDTH* = 1024
   TCS_FOCUSNEVER* = 32768
@@ -5088,18 +5450,22 @@ const
   TCS_RIGHTJUSTIFY* = 0
   TCS_SINGLELINE* = 0
   TCS_TABS* = 0
-  TCS_TOOLTIPS* = 16384       # TC_ITEM structure
+  TCS_TOOLTIPS* = 16384
+  # TC_ITEM structure
   TCIF_TEXT* = 1
   TCIF_IMAGE* = 2
   TCIF_PARAM* = 8
-  TCIF_RTLREADING* = 4        # TC_HITTESTINFO structure
+  TCIF_RTLREADING* = 4
+  # TC_HITTESTINFO structure
   TCHT_NOWHERE* = 1
   TCHT_ONITEM* = 6
   TCHT_ONITEMICON* = 2
-  TCHT_ONITEMLABEL* = 4       # Animation control styles
+  TCHT_ONITEMLABEL* = 4
+  # Animation control styles
   ACS_AUTOPLAY* = 4
   ACS_CENTER* = 1
-  ACS_TRANSPARENT* = 2        # MODEMDEVCAPS structure
+  ACS_TRANSPARENT* = 2
+  # MODEMDEVCAPS structure
   DIALOPTION_BILLING* = 64
   DIALOPTION_QUIET* = 128
   DIALOPTION_DIALTONE* = 256
@@ -5127,7 +5493,9 @@ const
   MDM_FORCED_EC* = 4
   MDM_SPEED_ADJUST* = 128
   MDM_TONE_DIAL* = 256
-  MDM_V23_OVERRIDE* = 1024 # Languages
+  MDM_V23_OVERRIDE* = 1024
+
+  # Languages
                            #
                            #  Language IDs.
                            #
@@ -5220,7 +5588,8 @@ const
   LANG_UKRAINIAN* = 0x00000022
   LANG_URDU* = 0x00000020
   LANG_UZBEK* = 0x00000043
-  LANG_VIETNAMESE* = 0x0000002A #
+  LANG_VIETNAMESE* = 0x0000002A
+  #
                                 #  Sublanguage IDs.
                                 #
                                 #  The name immediately following SUBLANG_ dictates which primary
@@ -5338,15 +5707,18 @@ const
   SORT_HUNGARIAN_TECHNICAL* = 0x00000001 # Hungarian Technical order
   SORT_GEORGIAN_TRADITIONAL* = 0x00000000 # Georgian Traditional order
   SORT_GEORGIAN_MODERN* = 0x00000001 # Georgian Modern order
+
                                      # SYSTEM_INFO structure
   PROCESSOR_INTEL_386* = 386
   PROCESSOR_INTEL_486* = 486
   PROCESSOR_INTEL_PENTIUM* = 586
   PROCESSOR_MIPS_R4000* = 4000
-  PROCESSOR_ALPHA_21064* = 21064 # FSCTL_SET_COMPRESSION
+  PROCESSOR_ALPHA_21064* = 21064
+  # FSCTL_SET_COMPRESSION
   COMPRESSION_FORMAT_NONE* = 0
   COMPRESSION_FORMAT_DEFAULT* = 1
-  COMPRESSION_FORMAT_LZNT1* = 2 # TAPE_GET_DRIVE_PARAMETERS structure
+  COMPRESSION_FORMAT_LZNT1* = 2
+  # TAPE_GET_DRIVE_PARAMETERS structure
   TAPE_DRIVE_COMPRESSION* = 131072
   TAPE_DRIVE_ECC* = 65536
   TAPE_DRIVE_ERASE_BOP_ONLY* = 64
@@ -5366,43 +5738,64 @@ const
   TAPE_DRIVE_TAPE_REMAINING* = 512
   TAPE_DRIVE_VARIABLE_BLOCK* = 2048
   TAPE_DRIVE_WRITE_PROTECT* = 4096
-  TAPE_DRIVE_ABS_BLK_IMMED* = - (2147475456)
-  TAPE_DRIVE_ABSOLUTE_BLK* = - (2147479552)
-  TAPE_DRIVE_END_OF_DATA* = - (2147418112)
-  TAPE_DRIVE_FILEMARKS* = - (2147221504)
-  TAPE_DRIVE_LOAD_UNLOAD* = - (2147483647)
-  TAPE_DRIVE_LOAD_UNLD_IMMED* = - (2147483616)
-  TAPE_DRIVE_LOCK_UNLOCK* = - (2147483644)
-  TAPE_DRIVE_LOCK_UNLK_IMMED* = - (2147483520)
-  TAPE_DRIVE_LOG_BLK_IMMED* = - (2147450880)
-  TAPE_DRIVE_LOGICAL_BLK* = - (2147467264)
-  TAPE_DRIVE_RELATIVE_BLKS* = - (2147352576)
-  TAPE_DRIVE_REVERSE_POSITION* = - (2143289344)
-  TAPE_DRIVE_REWIND_IMMEDIATE* = - (2147483640)
-  TAPE_DRIVE_SEQUENTIAL_FMKS* = - (2146959360)
-  TAPE_DRIVE_SEQUENTIAL_SMKS* = - (2145386496)
-  TAPE_DRIVE_SET_BLOCK_SIZE* = - (2147483632)
-  TAPE_DRIVE_SET_COMPRESSION* = - (2147483136)
-  TAPE_DRIVE_SET_ECC* = - (2147483392)
-  TAPE_DRIVE_SET_PADDING* = - (2147482624)
-  TAPE_DRIVE_SET_REPORT_SMKS* = - (2147481600)
-  TAPE_DRIVE_SETMARKS* = - (2146435072)
-  TAPE_DRIVE_SPACE_IMMEDIATE* = - (2139095040)
-  TAPE_DRIVE_TENSION* = - (2147483646)
-  TAPE_DRIVE_TENSION_IMMED* = - (2147483584)
-  TAPE_DRIVE_WRITE_FILEMARKS* = - (2113929216)
-  TAPE_DRIVE_WRITE_LONG_FMKS* = - (2013265920)
-  TAPE_DRIVE_WRITE_MARK_IMMED* = - (1879048192)
-  TAPE_DRIVE_WRITE_SETMARKS* = - (2130706432)
-  TAPE_DRIVE_WRITE_SHORT_FMKS* = - (2080374784) # Standard rights
+  TAPE_DRIVE_ABS_BLK_IMMED* = -2147475456
+  TAPE_DRIVE_ABSOLUTE_BLK* = -2147479552
+  TAPE_DRIVE_END_OF_DATA* = -2147418112
+  TAPE_DRIVE_FILEMARKS* = -2147221504
+  TAPE_DRIVE_LOAD_UNLOAD* = -2147483647
+  TAPE_DRIVE_LOAD_UNLD_IMMED* = -2147483616
+  TAPE_DRIVE_LOCK_UNLOCK* = -2147483644
+  TAPE_DRIVE_LOCK_UNLK_IMMED* = -2147483520
+  TAPE_DRIVE_LOG_BLK_IMMED* = -2147450880
+  TAPE_DRIVE_LOGICAL_BLK* = -2147467264
+  TAPE_DRIVE_RELATIVE_BLKS* = -2147352576
+  TAPE_DRIVE_REVERSE_POSITION* = -2143289344
+  TAPE_DRIVE_REWIND_IMMEDIATE* = -2147483640
+  TAPE_DRIVE_SEQUENTIAL_FMKS* = -2146959360
+  TAPE_DRIVE_SEQUENTIAL_SMKS* = -2145386496
+  TAPE_DRIVE_SET_BLOCK_SIZE* = -2147483632
+  TAPE_DRIVE_SET_COMPRESSION* = -2147483136
+  TAPE_DRIVE_SET_ECC* = -2147483392
+  TAPE_DRIVE_SET_PADDING* = -2147482624
+  TAPE_DRIVE_SET_REPORT_SMKS* = -2147481600
+  TAPE_DRIVE_SETMARKS* = -2146435072
+  TAPE_DRIVE_SPACE_IMMEDIATE* = -2139095040
+  TAPE_DRIVE_TENSION* = -2147483646
+  TAPE_DRIVE_TENSION_IMMED* = -2147483584
+  TAPE_DRIVE_WRITE_FILEMARKS* = -2113929216
+  TAPE_DRIVE_WRITE_LONG_FMKS* = -2013265920
+  TAPE_DRIVE_WRITE_MARK_IMMED* = -1879048192
+  TAPE_DRIVE_WRITE_SETMARKS* = -2130706432
+  TAPE_DRIVE_WRITE_SHORT_FMKS* = -2080374784
+  # Standard rights
   STANDARD_RIGHTS_REQUIRED* = 0x000F0000
   STANDARD_RIGHTS_WRITE* = 0x00020000
   STANDARD_RIGHTS_READ* = 0x00020000
   STANDARD_RIGHTS_EXECUTE* = 0x00020000
   STANDARD_RIGHTS_ALL* = 0x001F0000
-  SPECIFIC_RIGHTS_ALL* = 0x0000FFFF # ACCESS_MASK
+  SPECIFIC_RIGHTS_ALL* = 0x0000FFFF
+
+  FILE_GENERIC_READ* = STANDARD_RIGHTS_READ or
+      FILE_READ_DATA or
+      FILE_READ_ATTRIBUTES or
+      FILE_READ_EA or
+      SYNCHRONIZE
+  FILE_GENERIC_WRITE* = STANDARD_RIGHTS_WRITE or
+      FILE_WRITE_DATA or
+      FILE_WRITE_ATTRIBUTES or
+      FILE_WRITE_EA or
+      FILE_APPEND_DATA or
+      SYNCHRONIZE
+  FILE_GENERIC_EXECUTE* = STANDARD_RIGHTS_EXECUTE or
+      FILE_READ_ATTRIBUTES or
+      FILE_EXECUTE or
+      SYNCHRONIZE
+  FILE_ALL_ACCESS* = STANDARD_RIGHTS_REQUIRED or SYNCHRONIZE or 0x1FF
+
+  # ACCESS_MASK
   MAXIMUM_ALLOWED* = 0x02000000
-  GENERIC_ALL* = 0x10000000   # SID
+  GENERIC_ALL* = 0x10000000
+  # SID
   SECURITY_NULL_RID* = 0
   SECURITY_WORLD_RID* = 0
   SECURITY_LOCAL_RID* = 0
@@ -5429,23 +5822,28 @@ const
   DOMAIN_ALIAS_RID_SYSTEM_OPS* = 0x00000225
   DOMAIN_ALIAS_RID_PRINT_OPS* = 0x00000226
   DOMAIN_ALIAS_RID_BACKUP_OPS* = 0x00000227
-  DOMAIN_ALIAS_RID_REPLICATOR* = 0x00000228 # TOKEN_GROUPS structure
+  DOMAIN_ALIAS_RID_REPLICATOR* = 0x00000228
+  # TOKEN_GROUPS structure
   SE_GROUP_MANDATORY* = 0x00000001
   SE_GROUP_ENABLED_BY_DEFAULT* = 0x00000002
   SE_GROUP_ENABLED* = 0x00000004
   SE_GROUP_OWNER* = 0x00000008
-  SE_GROUP_LOGON_ID* = 0xC0000000 # ACL Defines
-  ACL_REVISION* = 2           # ACE_HEADER structure
+  SE_GROUP_LOGON_ID* = 0xC0000000
+  # ACL Defines
+  ACL_REVISION* = 2
+  # ACE_HEADER structure
   ACCESS_ALLOWED_ACE_TYPE* = 0x00000000
   ACCESS_DENIED_ACE_TYPE* = 0x00000001
   SYSTEM_AUDIT_ACE_TYPE* = 0x00000002
-  SYSTEM_ALARM_ACE_TYPE* = 0x00000003 # ACE flags in the ACE_HEADER structure
+  SYSTEM_ALARM_ACE_TYPE* = 0x00000003
+  # ACE flags in the ACE_HEADER structure
   OBJECT_INHERIT_ACE* = 0x00000001
   CONTAINER_INHERIT_ACE* = 0x00000002
   NO_PROPAGATE_INHERIT_ACE* = 0x00000004
   INHERIT_ONLY_ACE* = 0x00000008
   SUCCESSFUL_ACCESS_ACE_FLAG* = 0x00000040
-  FAILED_ACCESS_ACE_FLAG* = 0x00000080 # SECURITY_DESCRIPTOR_CONTROL
+  FAILED_ACCESS_ACE_FLAG* = 0x00000080
+  # SECURITY_DESCRIPTOR_CONTROL
                                        #SECURITY_DESCRIPTOR_REVISION = 1;already defined above
   SECURITY_DESCRIPTOR_MIN_LENGTH* = 20
   SE_OWNER_DEFAULTED* = 1
@@ -5454,11 +5852,13 @@ const
   SE_DACL_DEFAULTED* = 8
   SE_SACL_PRESENT* = 16
   SE_SACL_DEFAULTED* = 32
-  SE_SELF_RELATIVE* = 32768   # PRIVILEGE_SET
+  SE_SELF_RELATIVE* = 32768
+  # PRIVILEGE_SET
   SE_PRIVILEGE_ENABLED_BY_DEFAULT* = 0x00000001
   SE_PRIVILEGE_ENABLED* = 0x00000002
   SE_PRIVILEGE_USED_FOR_ACCESS* = 0x80000000
-  PRIVILEGE_SET_ALL_NECESSARY* = 0x00000001 # OPENFILENAME structure
+  PRIVILEGE_SET_ALL_NECESSARY* = 0x00000001
+  # OPENFILENAME structure
   OFN_ALLOWMULTISELECT* = 0x00000200
   OFN_CREATEPROMPT* = 0x00002000
   OFN_ENABLEHOOK* = 0x00000020
@@ -5480,24 +5880,28 @@ const
   OFN_PATHMUSTEXIST* = 0x00000800
   OFN_READONLY* = 0x00000001
   OFN_SHAREAWARE* = 0x00004000
-  OFN_SHOWHELP* = 0x00000010  # SHAREVISTRING message
+  OFN_SHOWHELP* = 0x00000010
+  # SHAREVISTRING message
   OFN_SHAREFALLTHROUGH* = 0x00000002
   OFN_SHARENOWARN* = 0x00000001
-  OFN_SHAREWARN* = 0          # Open/Save notifications
+  OFN_SHAREWARN* = 0
+  # Open/Save notifications
   CDN_INITDONE* = 0xFFFFFDA7
   CDN_SELCHANGE* = 0xFFFFFDA6
   CDN_FOLDERCHANGE* = 0xFFFFFDA5
   CDN_SHAREVIOLATION* = 0xFFFFFDA4
   CDN_HELP* = 0xFFFFFDA3
   CDN_FILEOK* = 0xFFFFFDA2
-  CDN_TYPECHANGE* = 0xFFFFFDA1 # Open/Save messages
+  CDN_TYPECHANGE* = 0xFFFFFDA1
+  # Open/Save messages
   CDM_GETFILEPATH* = 0x00000465
   CDM_GETFOLDERIDLIST* = 0x00000467
   CDM_GETFOLDERPATH* = 0x00000466
   CDM_GETSPEC* = 0x00000464
   CDM_HIDECONTROL* = 0x00000469
   CDM_SETCONTROLTEXT* = 0x00000468
-  CDM_SETDEFEXT* = 0x0000046A # CHOOSECOLOR structure
+  CDM_SETDEFEXT* = 0x0000046A
+  # CHOOSECOLOR structure
   CC_ENABLEHOOK* = 0x00000010
   CC_ENABLETEMPLATE* = 0x00000020
   CC_ENABLETEMPLATEHANDLE* = 0x00000040
@@ -5505,7 +5909,8 @@ const
   CC_PREVENTFULLOPEN* = 0x00000004
   CC_RGBINIT* = 0x00000001
   CC_SHOWHELP* = 0x00000008
-  CC_SOLIDCOLOR* = 0x00000080 # FINDREPLACE structure
+  CC_SOLIDCOLOR* = 0x00000080
+  # FINDREPLACE structure
   FR_DIALOGTERM* = 0x00000040
   FR_DOWN* = 0x00000001
   FR_ENABLEHOOK* = 0x00000100
@@ -5522,7 +5927,8 @@ const
   FR_REPLACE* = 0x00000010
   FR_REPLACEALL* = 0x00000020
   FR_SHOWHELP* = 0x00000080
-  FR_WHOLEWORD* = 0x00000002  # CHOOSEFONT structure
+  FR_WHOLEWORD* = 0x00000002
+  # CHOOSEFONT structure
   CF_APPLY* = 0x00000200
   CF_ANSIONLY* = 0x00000400
   CF_BOTH* = 0x00000003
@@ -5556,7 +5962,8 @@ const
   PRINTER_FONTTYPE* = 0x00004000
   REGULAR_FONTTYPE* = 0x00000400
   SCREEN_FONTTYPE* = 0x00002000
-  SIMULATED_FONTTYPE* = 0x00008000 # Common dialog messages
+  SIMULATED_FONTTYPE* = 0x00008000
+  # Common dialog messages
   COLOROKSTRINGW* = "commdlg_ColorOK"
   FILEOKSTRINGW* = "commdlg_FileNameOK"
   FINDMSGSTRINGW* = "commdlg_FindReplace"
@@ -5590,14 +5997,16 @@ else:
     LBSELCHSTRING* = LBSELCHSTRINGA
     SETRGBSTRING* = SETRGBSTRINGA
     SHAREVISTRING* = SHAREVISTRINGA
-# LBSELCHSTRING message
 
 const
+  # LBSELCHSTRING message
   CD_LBSELCHANGE* = 0
   CD_LBSELADD* = 2
   CD_LBSELSUB* = 1
-  CD_LBSELNOITEMS* = - (1)    # DEVNAMES structure
-  DN_DEFAULTPRN* = 1          # PRINTDLG structure
+  CD_LBSELNOITEMS* = -1
+  # DEVNAMES structure
+  DN_DEFAULTPRN* = 1
+  # PRINTDLG structure
   PD_ALLPAGES* = 0
   PD_COLLATE* = 16
   PD_DISABLEPRINTTOFILE* = 524288
@@ -5620,7 +6029,8 @@ const
   PD_SELECTION* = 1
   PD_SHOWHELP* = 2048
   PD_USEDEVMODECOPIES* = 262144
-  PD_USEDEVMODECOPIESANDCOLLATE* = 262144 # PAGESETUPDLG structure
+  PD_USEDEVMODECOPIESANDCOLLATE* = 262144
+  # PAGESETUPDLG structure
   PSD_DEFAULTMINMARGINS* = 0
   PSD_DISABLEMARGINS* = 16
   PSD_DISABLEORIENTATION* = 256
@@ -5638,11 +6048,13 @@ const
   PSD_MINMARGINS* = 1
   PSD_NOWARNING* = 128
   PSD_RETURNDEFAULT* = 1024
-  PSD_SHOWHELP* = 2048        # WM_SHOWWINDOW message
+  PSD_SHOWHELP* = 2048
+  # WM_SHOWWINDOW message
   SW_OTHERUNZOOM* = 4
   SW_OTHERZOOM* = 2
   SW_PARENTCLOSING* = 1
-  SW_PARENTOPENING* = 3       # Virtual Key codes
+  SW_PARENTOPENING* = 3
+  # Virtual Key codes
   VK_LBUTTON* = 1
   VK_RBUTTON* = 2
   VK_CANCEL* = 3
@@ -5751,7 +6163,8 @@ const
   VK_F21* = 132
   VK_F22* = 133
   VK_F23* = 134
-  VK_F24* = 135               # GetAsyncKeyState
+  VK_F24* = 135
+  # GetAsyncKeyState
   VK_NUMLOCK* = 144
   VK_SCROLL* = 145
   VK_LSHIFT* = 160
@@ -5759,27 +6172,34 @@ const
   VK_LMENU* = 164
   VK_RSHIFT* = 161
   VK_RCONTROL* = 163
-  VK_RMENU* = 165             # ImmGetVirtualKey
-  VK_PROCESSKEY* = 229        # Keystroke Message Flags
+  VK_RMENU* = 165
+  # ImmGetVirtualKey
+  VK_PROCESSKEY* = 229
+  # Keystroke Message Flags
   KF_ALTDOWN* = 8192
   KF_DLGMODE* = 2048
   KF_EXTENDED* = 256
   KF_MENUMODE* = 4096
   KF_REPEAT* = 16384
-  KF_UP* = 32768              # GetKeyboardLayoutName
-  KL_NAMELENGTH* = 9          # WM_ACTIVATE message
+  KF_UP* = 32768
+  # GetKeyboardLayoutName
+  KL_NAMELENGTH* = 9
+  # WM_ACTIVATE message
   WA_ACTIVE* = 1
   WA_CLICKACTIVE* = 2
-  WA_INACTIVE* = 0            # WM_ACTIVATE message
+  WA_INACTIVE* = 0
+  # WM_ACTIVATE message
   PWR_CRITICALRESUME* = 3
   PWR_SUSPENDREQUEST* = 1
   PWR_SUSPENDRESUME* = 2
-  PWR_FAIL* = - (1)
-  PWR_OK* = 1                 # WM_NOTIFYFORMAT message
+  PWR_FAIL* = -1
+  PWR_OK* = 1
+  # WM_NOTIFYFORMAT message
   NF_QUERY* = 3
   NF_REQUERY* = 4
   NFR_ANSI* = 1
-  NFR_UNICODE* = 2            # WM_SIZING message
+  NFR_UNICODE* = 2
+  # WM_SIZING message
   WMSZ_BOTTOM* = 6
   WMSZ_BOTTOMLEFT* = 7
   WMSZ_BOTTOMRIGHT* = 8
@@ -5787,16 +6207,19 @@ const
   WMSZ_RIGHT* = 2
   WMSZ_TOP* = 3
   WMSZ_TOPLEFT* = 4
-  WMSZ_TOPRIGHT* = 5          # WM_MOUSEACTIVATE message
+  WMSZ_TOPRIGHT* = 5
+  # WM_MOUSEACTIVATE message
   MA_ACTIVATE* = 1
   MA_ACTIVATEANDEAT* = 2
   MA_NOACTIVATE* = 3
-  MA_NOACTIVATEANDEAT* = 4    # WM_SIZE message
+  MA_NOACTIVATEANDEAT* = 4
+  # WM_SIZE message
   SIZE_MAXHIDE* = 4
   SIZE_MAXIMIZED* = 2
   SIZE_MAXSHOW* = 3
   SIZE_MINIMIZED* = 1
-  SIZE_RESTORED* = 0          # WM_NCCALCSIZE message
+  SIZE_RESTORED* = 0
+  # WM_NCCALCSIZE message
   WVR_ALIGNTOP* = 16
   WVR_ALIGNLEFT* = 32
   WVR_ALIGNBOTTOM* = 64
@@ -5804,13 +6227,14 @@ const
   WVR_HREDRAW* = 256
   WVR_VREDRAW* = 512
   WVR_REDRAW* = 768
-  WVR_VALIDRECTS* = 1024      # WM_NCHITTEST message
+  WVR_VALIDRECTS* = 1024
+  # WM_NCHITTEST message
   HTBOTTOM* = 15
   HTBOTTOMLEFT* = 16
   HTBOTTOMRIGHT* = 17
   HTCAPTION* = 2
   HTCLIENT* = 1
-  HTERROR* = - (2)
+  HTERROR* = -2
   HTGROWBOX* = 4
   HTHSCROLL* = 6
   HTLEFT* = 10
@@ -5823,14 +6247,16 @@ const
   HTTOP* = 12
   HTTOPLEFT* = 13
   HTTOPRIGHT* = 14
-  HTTRANSPARENT* = - (1)
+  HTTRANSPARENT* = -1
   HTVSCROLL* = 7
-  HTZOOM* = 9                 # Mouse messages
+  HTZOOM* = 9
+  # Mouse messages
   MK_CONTROL* = 8
   MK_LBUTTON* = 1
   MK_MBUTTON* = 16
   MK_RBUTTON* = 2
-  MK_SHIFT* = 4               # WNDCLASS structure
+  MK_SHIFT* = 4
+  # WNDCLASS structure
   CS_BYTEALIGNCLIENT* = 4096
   CS_BYTEALIGNWINDOW* = 8192
   CS_CLASSDC* = 64
@@ -5844,16 +6270,19 @@ const
   CS_PARENTDC* = 128
   CS_SAVEBITS* = 2048
   CS_VREDRAW* = 1
-  DLGWINDOWEXTRA* = 30        # ACCEL structure
+  DLGWINDOWEXTRA* = 30
+  # ACCEL structure
   FALT* = 16
   FCONTROL* = 8
   FNOINVERT* = 2
   FSHIFT* = 4
-  FVIRTKEY* = 1               # WM_MENUCHAR return constants
+  FVIRTKEY* = 1
+  # WM_MENUCHAR return constants
   MNC_IGNORE* = 0
   MNC_CLOSE* = 1
   MNC_EXECUTE* = 2
-  MNC_SELECT* = 3             # MENUINFO structure
+  MNC_SELECT* = 3
+  # MENUINFO structure
   MIM_MAXHEIGHT* = 1
   MIM_BACKGROUND* = 2
   MIM_HELPID* = 4
@@ -5865,7 +6294,8 @@ const
   MNS_AUTODISMISS* = 0x10000000
   MNS_DRAGDROP* = 0x20000000
   MNS_MODELESS* = 0x40000000
-  MNS_NOCHECK* = 0x80000000   # MENUITEMINFO structure
+  MNS_NOCHECK* = 0x80000000
+  # MENUITEMINFO structure
   MIIM_CHECKMARKS* = 8
   MIIM_DATA* = 32
   MIIM_ID* = 2
@@ -5902,30 +6332,35 @@ const
   HBMMENU_POPUP_CLOSE* = 8
   HBMMENU_POPUP_RESTORE* = 9
   HBMMENU_POPUP_MAXIMIZE* = 10
-  HBMMENU_POPUP_MINIMIZE* = 11 # SERIALKEYS structure
+  HBMMENU_POPUP_MINIMIZE* = 11
+  # SERIALKEYS structure
   SERKF_AVAILABLE* = 2
   SERKF_INDICATOR* = 4
-  SERKF_SERIALKEYSON* = 1     # FILTERKEYS structure
+  SERKF_SERIALKEYSON* = 1
+  # FILTERKEYS structure
   FKF_AVAILABLE* = 2
   FKF_CLICKON* = 64
   FKF_FILTERKEYSON* = 1
   FKF_HOTKEYACTIVE* = 4
   FKF_HOTKEYSOUND* = 16
   FKF_CONFIRMHOTKEY* = 8
-  FKF_INDICATOR* = 32         # HELPINFO structure
+  FKF_INDICATOR* = 32
+  # HELPINFO structure
   HELPINFO_MENUITEM* = 2
-  HELPINFO_WINDOW* = 1        # WM_PRINT message
+  HELPINFO_WINDOW* = 1
+  # WM_PRINT message
   PRF_CHECKVISIBLE* = 0x00000001
   PRF_CHILDREN* = 0x00000010
   PRF_CLIENT* = 0x00000004
   PRF_ERASEBKGND* = 0x00000008
   PRF_NONCLIENT* = 0x00000002
-  PRF_OWNED* = 0x00000020     # MapWindowPoints
-                              # was #define dname def_expr
+  PRF_OWNED* = 0x00000020
 
-proc HWND_DESKTOP*(): HWND
-  # WM_SYSCOMMAND message
+  # MapWindowPoints
+  HWND_DESKTOP* = HWND(0)
+
 const
+  # WM_SYSCOMMAND message
   SC_CLOSE* = 61536
   SC_CONTEXTHELP* = 61824
   SC_DEFAULT* = 61792
@@ -5945,8 +6380,10 @@ const
   SC_SCREENSAVE* = 61760
   SC_SIZE* = 61440
   SC_TASKLIST* = 61744
-  SC_VSCROLL* = 61552         # DM_GETDEFID message
-  DC_HASDEFID* = 21323        # WM_GETDLGCODE message
+  SC_VSCROLL* = 61552
+  # DM_GETDEFID message
+  DC_HASDEFID* = 21323
+  # WM_GETDLGCODE message
   DLGC_BUTTON* = 8192
   DLGC_DEFPUSHBUTTON* = 16
   DLGC_HASSETSEL* = 8
@@ -5957,15 +6394,19 @@ const
   DLGC_WANTARROWS* = 1
   DLGC_WANTCHARS* = 128
   DLGC_WANTMESSAGE* = 4
-  DLGC_WANTTAB* = 2           # EM_SETMARGINS message
+  DLGC_WANTTAB* = 2
+  # EM_SETMARGINS message
   EC_LEFTMARGIN* = 1
   EC_RIGHTMARGIN* = 2
-  EC_USEFONTINFO* = 65535     # LB_SETCOUNT message
-  LB_ERR* = - (1)
-  LB_ERRSPACE* = - (2)
-  LB_OKAY* = 0                # CB_DIR message
-  CB_ERR* = - (1)
-  CB_ERRSPACE* = - (2)        # WM_IME_CONTROL message
+  EC_USEFONTINFO* = 65535
+  # LB_SETCOUNT message
+  LB_ERR* = -1
+  LB_ERRSPACE* = -2
+  LB_OKAY* = 0
+  # CB_DIR message
+  CB_ERR* = -1
+  CB_ERRSPACE* = -2
+  # WM_IME_CONTROL message
   IMC_GETCANDIDATEPOS* = 7
   IMC_GETCOMPOSITIONFONT* = 9
   IMC_GETCOMPOSITIONWINDOW* = 11
@@ -5975,7 +6416,8 @@ const
   IMC_SETCANDIDATEPOS* = 8
   IMC_SETCOMPOSITIONFONT* = 10
   IMC_SETCOMPOSITIONWINDOW* = 12
-  IMC_SETSTATUSWINDOWPOS* = 16 # WM_IME_CONTROL message
+  IMC_SETSTATUSWINDOWPOS* = 16
+  # WM_IME_CONTROL message
   IMN_CHANGECANDIDATE* = 3
   IMN_CLOSECANDIDATE* = 4
   IMN_CLOSESTATUSWINDOW* = 1
@@ -5989,7 +6431,8 @@ const
   IMN_SETOPENSTATUS* = 8
   IMN_SETSENTENCEMODE* = 7
   IMN_SETSTATUSWINDOWPOS* = 12
-  IMN_PRIVATE* = 14           # STICKYKEYS structure
+  IMN_PRIVATE* = 14
+  # STICKYKEYS structure
   SKF_AUDIBLEFEEDBACK* = 64
   SKF_AVAILABLE* = 2
   SKF_CONFIRMHOTKEY* = 8
@@ -5998,7 +6441,8 @@ const
   SKF_INDICATOR* = 32
   SKF_STICKYKEYSON* = 1
   SKF_TRISTATE* = 128
-  SKF_TWOKEYSOFF* = 256       # MOUSEKEYS structure
+  SKF_TWOKEYSOFF* = 256
+  # MOUSEKEYS structure
   MKF_AVAILABLE* = 2
   MKF_CONFIRMHOTKEY* = 8
   MKF_HOTKEYACTIVE* = 4
@@ -6006,7 +6450,8 @@ const
   MKF_INDICATOR* = 32
   MKF_MOUSEKEYSON* = 1
   MKF_MODIFIERS* = 64
-  MKF_REPLACENUMBERS* = 128   # SOUNDSENTRY structure
+  MKF_REPLACENUMBERS* = 128
+  # SOUNDSENTRY structure
   SSF_AVAILABLE* = 2
   SSF_SOUNDSENTRYON* = 1
   SSTF_BORDER* = 2
@@ -6019,28 +6464,34 @@ const
   SSWF_DISPLAY* = 3
   SSWF_NONE* = 0
   SSWF_TITLE* = 1
-  SSWF_WINDOW* = 2            # ACCESSTIMEOUT structure
+  SSWF_WINDOW* = 2
+  # ACCESSTIMEOUT structure
   ATF_ONOFFFEEDBACK* = 2
-  ATF_TIMEOUTON* = 1          # HIGHCONTRAST structure
+  ATF_TIMEOUTON* = 1
+  # HIGHCONTRAST structure
   HCF_AVAILABLE* = 2
   HCF_CONFIRMHOTKEY* = 8
   HCF_HIGHCONTRASTON* = 1
   HCF_HOTKEYACTIVE* = 4
   HCF_HOTKEYAVAILABLE* = 64
   HCF_HOTKEYSOUND* = 16
-  HCF_INDICATOR* = 32         # TOGGLEKEYS structure
+  HCF_INDICATOR* = 32
+  # TOGGLEKEYS structure
   TKF_AVAILABLE* = 2
   TKF_CONFIRMHOTKEY* = 8
   TKF_HOTKEYACTIVE* = 4
   TKF_HOTKEYSOUND* = 16
-  TKF_TOGGLEKEYSON* = 1       # Installable Policy
-  PP_DISPLAYERRORS* = 1       # SERVICE_INFO structure
+  TKF_TOGGLEKEYSON* = 1
+  # Installable Policy
+  PP_DISPLAYERRORS* = 1
+  # SERVICE_INFO structure
   RESOURCEDISPLAYTYPE_DOMAIN* = 1
   RESOURCEDISPLAYTYPE_FILE* = 4
   RESOURCEDISPLAYTYPE_GENERIC* = 0
   RESOURCEDISPLAYTYPE_GROUP* = 5
   RESOURCEDISPLAYTYPE_SERVER* = 2
-  RESOURCEDISPLAYTYPE_SHARE* = 3 # KEY_EVENT_RECORD structure
+  RESOURCEDISPLAYTYPE_SHARE* = 3
+  # KEY_EVENT_RECORD structure
   CAPSLOCK_ON* = 128
   ENHANCED_KEY* = 256
   LEFT_ALT_PRESSED* = 2
@@ -6049,23 +6500,27 @@ const
   RIGHT_ALT_PRESSED* = 1
   RIGHT_CTRL_PRESSED* = 4
   SCROLLLOCK_ON* = 64
-  SHIFT_PRESSED* = 16         # MOUSE_EVENT_RECORD structure
+  SHIFT_PRESSED* = 16
+  # MOUSE_EVENT_RECORD structure
   FROM_LEFT_1ST_BUTTON_PRESSED* = 1
   RIGHTMOST_BUTTON_PRESSED* = 2
   FROM_LEFT_2ND_BUTTON_PRESSED* = 4
   FROM_LEFT_3RD_BUTTON_PRESSED* = 8
   FROM_LEFT_4TH_BUTTON_PRESSED* = 16
   DOUBLE_CLICK* = 2
-  MOUSE_MOVED* = 1            # INPUT_RECORD structure
+  MOUSE_MOVED* = 1
+  # INPUT_RECORD structure
   KEY_EVENT* = 1
   cMOUSE_EVENT* = 2
   WINDOW_BUFFER_SIZE_EVENT* = 4
   MENU_EVENT* = 8
-  FOCUS_EVENT* = 16           # BITMAPINFOHEADER structure
+  FOCUS_EVENT* = 16
+  # BITMAPINFOHEADER structure
   BI_RGB* = 0
   BI_RLE8* = 1
   BI_RLE4* = 2
-  BI_BITFIELDS* = 3           # Extensions to OpenGL
+  BI_BITFIELDS* = 3
+  # Extensions to OpenGL
                               # ChoosePixelFormat
   PFD_DOUBLEBUFFER* = 0x00000001
   PFD_STEREO* = 0x00000002
@@ -6080,10 +6535,10 @@ const
   PFD_TYPE_COLORINDEX* = 1
   PFD_MAIN_PLANE* = 0
   PFD_OVERLAY_PLANE* = 1
-  PFD_UNDERLAY_PLANE* = - (1) # wglUseFontOutlines
+  PFD_UNDERLAY_PLANE* = -1
+  # wglUseFontOutlines
   WGL_FONT_LINES* = 0
-  WGL_FONT_POLYGONS* = 1      # LAYERPLANEDESCRIPTOR structure
-                              # PIXELFORMATDESCRIPTOR structure
+  WGL_FONT_POLYGONS* = 1
   PFD_GENERIC_FORMAT* = 0x00000040
   PFD_NEED_PALETTE* = 0x00000080
   PFD_NEED_SYSTEM_PALETTE* = 0x00000100
@@ -6091,7 +6546,7 @@ const
   PFD_SWAP_COPY* = 0x00000400
   PFD_SWAP_LAYER_BUFFERS* = 0x00000800
   PFD_GENERIC_ACCELERATED* = 0x00001000
-  PFD_SUPPORT_DIRECTDRAW* = 0x00002000 # TEXTMETRIC structure
+  PFD_SUPPORT_DIRECTDRAW* = 0x00002000
   TMPF_FIXED_PITCH* = 0x00000001
   TMPF_VECTOR* = 0x00000002
   TMPF_TRUETYPE* = 0x00000004
@@ -6107,18 +6562,12 @@ const
   WS_EX_LAYOUTRTL* = 0x00400000
   WS_EX_COMPOSITED* = 0x02000000
   WS_EX_NOACTIVATE* = 0x08000000
-  C3_LEXICAL* = 1024 # --------------------- old stuff, need to organize! ---------------
-                     # BEGINNING of windowsx.h stuff from old headers:
-                     #  Not convertable by H2PAS
-                     #  #define CRACK_VOID_F(fn,args) (void)(fn args)
-                     #  #define CRACK_BOOL_F(fn,args) (WINBOOL)(fn args)
-                     #  #define CRACK_HMENU_F(fn,args) (HMENU)(fn args)
-                     #  #define CRACK_HWND_F(fn,args) (HWND)(fn args)
-                     #  #define CRACK_LONG_F(fn, args) (LRESULT)(fn args)
-                     #  #define CRACK_ZERO_F(fn, args)  (fn args,0)
-                     #
-                     # was #define dname(params) def_expr
+  C3_LEXICAL* = 1024
 
+# --------------------- old stuff, need to organize! ---------------
+                     # BEGINNING of windowsx.h stuff from old headers:
+
+                     # was #define dname(params) def_expr
 proc GetFirstChild*(h: HWND): HWND
   # was #define dname(params) def_expr
 proc GetNextSibling*(h: HWND): HWND
@@ -6220,14 +6669,16 @@ proc GET_WM_VSCROLL_POS*(w, L: int32): int32
   #
   # END OF windowsx.h stuff from old headers
   # ------------------------------------------------------------------
-  # BEGINNING of shellapi.h stuff from old headers
+
 const
+  # BEGINNING of shellapi.h stuff from old headers
   SE_ERR_SHARE* = 26
   SE_ERR_ASSOCINCOMPLETE* = 27
   SE_ERR_DDETIMEOUT* = 28
   SE_ERR_DDEFAIL* = 29
   SE_ERR_DDEBUSY* = 30
-  SE_ERR_NOASSOC* = 31 # END OF shellapi.h stuff from old headers
+  SE_ERR_NOASSOC* = 31
+  # END OF shellapi.h stuff from old headers
                        #
                        # ------------------------------------------------------------------
                        # From ddeml.h in old Cygnus headers
@@ -6275,12 +6726,12 @@ const
   DNS_REGISTER* = 0x00000001
   DNS_UNREGISTER* = 0x00000002
   CP_WINANSI* = 1004
-  CP_WINUNICODE* = 1200       #  Not convertable by H2PAS
+  CP_WINUNICODE* = 1200
+  #  Not convertable by H2PAS
                               #  #define EXPENTRY CALLBACK
-                              #
-  APPCLASS_STANDARD* = 0x00000000 # End of stuff from ddeml.h in old Cygnus headers
-                                  #
-                                  # -----------------------------------------------
+  APPCLASS_STANDARD* = 0x00000000
+  # End of stuff from ddeml.h in old Cygnus headers
+
   BKMODE_LAST* = 2
   CTLCOLOR_MSGBOX* = 0
   CTLCOLOR_EDIT* = 1
@@ -6326,35 +6777,10 @@ const
   PROCESSOR_ARCHITECTURE_ALPHA* = 2
   PROCESSOR_ARCHITECTURE_PPC* = 3
 
-# was #define dname(params) def_expr
-
-proc FreeModule*(h: HINST): WINBOOL
-  # was #define dname(params) def_expr
-  # argument types are unknown
-  # return type might be wrong
-proc MakeProcInstance*(p, i: int32): int32
-  # return type might be wrong
-  # was #define dname(params) def_expr
-  # argument types are unknown
-  # return type might be wrong
-proc FreeProcInstance*(p: int32): int32
-  # return type might be wrong
-const                         # _fmemcpy = memcpy; these are functions
-                              # Used by wxwindows.
+const
   SIZEFULLSCREEN* = SIZE_MAXIMIZED
   SIZENORMAL* = SIZE_RESTORED
-  SIZEICONIC* = SIZE_MINIMIZED # NPLOGPALETTE = PLOGPALETTE; probably a type
-                               # In the old winnt.h
-                               #  Not convertable by H2PAS anyhow with if 0
-                               #  #if 0
-                               #  #ifdef ANAL
-                               #  #define DECLARE_HANDLE(h) struct h## { int dummy; }; typedef struct h##  h
-                               #  #else
-                               #  #define DECLARE_HANDLE(h)  typedef void  h
-                               #  #endif
-                               #  DECLARE_HANDLE(HANDLE);
-                               #  #endif
-                               #
+  SIZEICONIC* = SIZE_MINIMIZED
 
 const
   EXCEPTION_READ_FAULT* = 0   # Access violation was caused by a read
@@ -6373,8 +6799,7 @@ when defined(cpupowerpc32):
     CONTEXT_FLOATING_POINT* = 2
     CONTEXT_INTEGER* = 4
     CONTEXT_DEBUG_REGISTERS* = 8
-    CONTEXT_FULL* = (CONTEXT_CONTROL or CONTEXT_FLOATING_POINT) or
-        CONTEXT_INTEGER
+    CONTEXT_FULL* = CONTEXT_CONTROL or CONTEXT_FLOATING_POINT or CONTEXT_INTEGER
     CONTEXT_DEBUGGER* = CONTEXT_FULL
 when defined(cpui386):
   # x86
@@ -6404,14 +6829,14 @@ when defined(cpux86_64):
     CONTEXT_SEGMENTS* = (CONTEXT_AMD64 or 0x00000004)
     CONTEXT_FLOATING_POINT* = (CONTEXT_AMD64 or 0x00000008)
     CONTEXT_DEBUG_REGISTERS* = (CONTEXT_AMD64 or 0x00000010)
-    CONTEXT_FULL* = (
-      CONTEXT_CONTROL or CONTEXT_INTEGER or CONTEXT_FLOATING_POINT)
-    CONTEXT_ALL* = (CONTEXT_CONTROL or CONTEXT_INTEGER or CONTEXT_SEGMENTS or
-        CONTEXT_FLOATING_POINT or CONTEXT_DEBUG_REGISTERS)
+    CONTEXT_FULL* = CONTEXT_CONTROL or CONTEXT_INTEGER or CONTEXT_FLOATING_POINT
+    CONTEXT_ALL* = CONTEXT_CONTROL or CONTEXT_INTEGER or CONTEXT_SEGMENTS or
+        CONTEXT_FLOATING_POINT or CONTEXT_DEBUG_REGISTERS
     CONTEXT_EXCEPTION_ACTIVE* = 0x08000000
     CONTEXT_SERVICE_ACTIVE* = 0x10000000
     CONTEXT_EXCEPTION_REQUEST* = 0x40000000
     CONTEXT_EXCEPTION_REPORTING* = 0x80000000
+
 const
   FILTER_TEMP_DUPLICATE_ACCOUNT* = 0x00000001
   FILTER_NORMAL_ACCOUNT* = 0x00000002
@@ -6423,12 +6848,16 @@ const
   LOGON32_LOGON_SERVICE* = 0x00000005
   LOGON32_PROVIDER_DEFAULT* = 0x00000000
   LOGON32_PROVIDER_WINNT35* = 0x00000001
-  QID_SYNC* = 0xFFFFFFFF      # Magic numbers in PE executable header.
+  QID_SYNC* = 0xFFFFFFFF
+  # Magic numbers in PE executable header.
                               # e_magic field
-  IMAGE_DOS_SIGNATURE* = 0x00005A4D # nt_signature field
-  IMAGE_NT_SIGNATURE* = 0x00004550 # Severity values
+  IMAGE_DOS_SIGNATURE* = 0x00005A4D
+  # nt_signature field
+  IMAGE_NT_SIGNATURE* = 0x00004550
+  # Severity values
   SEVERITY_SUCCESS* = 0
-  SEVERITY_ERROR* = 1         # Variant type codes (wtypes.h).
+  SEVERITY_ERROR* = 1
+  # Variant type codes (wtypes.h).
                               #    Some, not all though
   VT_EMPTY* = 0
   VT_NULL* = 1
@@ -6441,9 +6870,10 @@ const
   VT_BOOL* = 11
   VT_UI1* = 17
   VT_BYREF* = 0x00004000
-  VT_RESERVED* = 0x00008000   # Define the facility codes
+  VT_RESERVED* = 0x00008000
 
 const
+  # Define the facility codes
   FACILITY_WINDOWS* = 8
   FACILITY_STORAGE* = 3
   FACILITY_RPC* = 1
@@ -6456,7 +6886,8 @@ const
   FACILITY_DISPATCH* = 2
   FACILITY_CERT* = 11         # Manually added, bug 2672
   ICON_SMALL* = 0
-  ICON_BIG* = 1               # For the TRackMouseEvent
+  ICON_BIG* = 1
+  # For the TrackMouseEvent
   TME_HOVER* = 0x00000001
   TME_LEAVE* = 0x00000002
   TME_QUERY* = 0x40000000
@@ -6476,7 +6907,8 @@ const
   UISF_HIDEACCEL* = 0x00000002
   UISF_ACTIVE* = 0x00000004
 
-type                          # WARNING
+type
+  # WARNING
                               #      the variable argument list
                               #      is not implemented for FPC
                               #      va_list is just a dummy record
@@ -6600,27 +7032,7 @@ type                          # WARNING
   LPANIMATIONINFO* = ptr ANIMATIONINFO
   TANIMATIONINFO* = ANIMATIONINFO
   PANIMATIONINFO* = ptr ANIMATIONINFO
-  POINT* {.final, pure.} = object
-    x*: LONG
-    y*: LONG
 
-  LPPOINT* = ptr POINT
-  TPOINT* = POINT
-  PPOINT* = ptr POINT
-  RECT* {.final, pure.} = object
-    TopLeft*, BottomRight*: TPoint
-
-  LPRECT* = ptr RECT
-  TRECT* = RECT
-  PRECT* = ptr RECT
-  RECTL* {.final, pure.} = object
-    left*: LONG
-    top*: LONG
-    right*: LONG
-    bottom*: LONG
-
-  TRECTL* = RECTL
-  PRECTL* = ptr RECTL
   APPBARDATA* {.final, pure.} = object
     cbSize*: DWORD
     hWnd*: HWND
@@ -6787,13 +7199,7 @@ type                          # WARNING
   LPBROWSEINFO* = ptr BROWSEINFO
   Tbrowseinfo* = BROWSEINFO
   PBROWSEINFO* = ptr BROWSEINFO
-  FILETIME* {.final, pure.} = object
-    dwLowDateTime*: DWORD
-    dwHighDateTime*: DWORD
 
-  LPFILETIME* = ptr FILETIME
-  TFILETIME* = FILETIME
-  PFILETIME* = ptr FILETIME
   BY_HANDLE_FILE_INFORMATION* {.final, pure.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
@@ -6821,21 +7227,10 @@ type                          # WARNING
 
   TPOINTFX* = POINTFX
   PPOINTFX* = ptr POINTFX
-  POINTL* {.final, pure.} = object
-    x*: LONG
-    y*: LONG
 
-  TPOINTL* = POINTL
-  PPOINTL* = ptr POINTL
   TSmallPoint* {.final, pure.} = object
     X*, Y*: SHORT
 
-  POINTS* {.final, pure.} = object
-    x*: SHORT
-    y*: SHORT
-
-  TPOINTS* = POINTS
-  PPOINTS* = ptr POINTS
   CANDIDATEFORM* {.final, pure.} = object
     dwIndex*: DWORD
     dwStyle*: DWORD
@@ -6931,7 +7326,8 @@ type                          # WARNING
 
   LPCHARSETINFO* = ptr CHARSETINFO
   TCHARSETINFO* = CHARSETINFO
-  PCHARSETINFO* = ptr CHARSETINFO #CHOOSECOLOR = record confilcts with function ChooseColor
+  PCHARSETINFO* = ptr CHARSETINFO
+  #CHOOSECOLOR = record confilcts with function ChooseColor
   TCHOOSECOLOR* {.final, pure.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
@@ -7340,10 +7736,10 @@ when defined(x86_64):
 
     TM128A* = M128A
     PM128A* = TM128A #
+  type
                      # Format of data for 32-bit fxsave/fxrstor instructions.
                      #
                      #typedef struct _XMM_SAVE_AREA32 {
-  type
     XMM_SAVE_AREA32* {.final, pure.} = object
       ControlWord*: int16
       StatusWord*: int16
@@ -7655,7 +8051,8 @@ type
     lpStartAddress*: LPTHREAD_START_ROUTINE
 
   TCREATETHREADDEBUGINFO* = CREATE_THREAD_DEBUG_INFO
-  PCREATETHREADDEBUGINFO* = ptr CREATE_THREAD_DEBUG_INFO #
+  PCREATETHREADDEBUGINFO* = ptr CREATE_THREAD_DEBUG_INFO
+  #
                                                          #   TODO: sockets
                                                          #  typedef struct _SOCKET_ADDRESS {
                                                          #    LPSOCKADDR lpSockaddr ;
@@ -8464,6 +8861,7 @@ type
     palPalEntry*: array[0..0, PALETTEENTRY]
 
   LPLOGPALETTE* = ptr LOGPALETTE
+  NPLOGPALETTE* = ptr LOGPALETTE
   TLOGPALETTE* = LOGPALETTE
   PLOGPALETTE* = ptr LOGPALETTE
   EMRCREATEPALETTE* {.final, pure.} = object
@@ -8638,17 +9036,7 @@ type
 
   TEMRFORMAT* = EMRFORMAT
   PEMRFORMAT* = ptr EMRFORMAT
-  SIZE* {.final, pure.} = object
-    cx*: LONG
-    cy*: LONG
 
-  LPSIZE* = ptr SIZE
-  TSIZE* = SIZE
-  PSIZE* = ptr SIZE
-  SIZEL* = SIZE
-  TSIZEL* = SIZE
-  PSIZEL* = ptr SIZE
-  LPSIZEL* = ptr SIZE
   EMRFRAMERGN* {.final, pure.} = object
     emr*: EMR
     rclBounds*: RECTL
@@ -9200,19 +9588,10 @@ type
     elfScript*: array[0..(LF_FACESIZE) - 1, BCHAR]
 
   TENUMLOGFONTEX* = ENUMLOGFONTEX
-  PENUMLOGFONTEX* = ptr ENUMLOGFONTEX #
-                                      #    Then follow:
-                                      #
-                                      #    TCHAR SourceName[]
-                                      #    TCHAR Computername[]
-                                      #    SID   UserSid
-                                      #    TCHAR Strings[]
-                                      #    BYTE  Data[]
-                                      #    CHAR  Pad[]
-                                      #    DWORD Length;
-                                      #
+  PENUMLOGFONTEX* = ptr ENUMLOGFONTEX
+
   EVENTLOGRECORD* {.final, pure.} = object
-    len*: DWORD
+    Length*: DWORD
     Reserved*: DWORD
     RecordNumber*: DWORD
     TimeGenerated*: DWORD
@@ -9297,7 +9676,8 @@ type
 
   LPFINDREPLACE* = ptr FINDREPLACE
   TFINDREPLACE* = FINDREPLACE
-  PFINDREPLACE* = ptr FINDREPLACE #FINDTEXT = record conflicts with FindText function
+  PFINDREPLACE* = ptr FINDREPLACE
+  #FINDTEXT = record conflicts with FindText function
   TFINDTEXT* {.final, pure.} = object
     chrg*: CHARRANGE
     lpstrText*: LPSTR
@@ -9559,6 +9939,15 @@ type
                                #                 3 : ( MenuEvent : MENU_EVENT_RECORD );
                                #                 4 : ( FocusEvent : FOCUS_EVENT_RECORD );
                                #       end;
+    Event*: array[0..5, DWORD]
+    #union {
+    #    KEY_EVENT_RECORD KeyEvent;
+    #    MOUSE_EVENT_RECORD MouseEvent;
+    #    WINDOW_BUFFER_SIZE_RECORD WindowBufferSizeEvent;
+    #    MENU_EVENT_RECORD MenuEvent;
+    #    FOCUS_EVENT_RECORD FocusEvent;
+    #} Event;
+    Event*: array[0..5, DWORD] # union of KEY_EVENT_RECORD, MOUSE_EVENT_RECORD, WINDOW_BUFFER_SIZE_RECORD, MENU_EVENT_RECORD, FOCUS_EVENT_RECORD
 
   PINPUT_RECORD* = ptr INPUT_RECORD
   TINPUTRECORD* = INPUT_RECORD
@@ -10557,7 +10946,8 @@ type
 
   LPOVERLAPPED* = ptr OVERLAPPED
   TOVERLAPPED* = OVERLAPPED
-  POVERLAPPED* = ptr OVERLAPPED #PAGESETUPDLG = record conflicts with function PageSetupDlg
+  POVERLAPPED* = ptr OVERLAPPED
+  #PAGESETUPDLG = record conflicts with function PageSetupDlg
   TPAGESETUPDLG* {.final, pure.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
@@ -10697,7 +11087,8 @@ type
     PreventMediaRemoval*: bool
 
   TPREVENTMEDIAREMOVAL* = PREVENT_MEDIA_REMOVAL
-  PPREVENTMEDIAREMOVAL* = ptr PREVENT_MEDIA_REMOVAL #PRINTDLG = record conflicts with PrintDlg function
+  PPREVENTMEDIAREMOVAL* = ptr PREVENT_MEDIA_REMOVAL
+  #PRINTDLG = record conflicts with PrintDlg function
   TPRINTDLG* {.final, pure.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
@@ -10897,7 +11288,8 @@ type
   LPPROPSHEETHEADER* = ptr PROPSHEETHEADER
   LPCPROPSHEETHEADER* = ptr PROPSHEETHEADER
   TPROPSHEETHEADER* = PROPSHEETHEADER
-  PPROPSHEETHEADER* = ptr PROPSHEETHEADER # PropertySheet callbacks
+  PPROPSHEETHEADER* = ptr PROPSHEETHEADER
+  # PropertySheet callbacks
   LPFNADDPROPSHEETPAGE* = proc (para1: HPROPSHEETPAGE, para2: LPARAM): WINBOOL{.
       stdcall.}
   TFNADDPROPSHEETPAGE* = LPFNADDPROPSHEETPAGE
@@ -11052,7 +11444,8 @@ type
     lpRemainingPath*: LPTSTR
 
   TREMOTENAMEINFO* = REMOTE_NAME_INFO
-  PREMOTENAMEINFO* = ptr REMOTE_NAME_INFO #
+  PREMOTENAMEINFO* = ptr REMOTE_NAME_INFO
+  #
                                           #   TODO: OLE
                                           #  typedef struct _reobject {
                                           #    DWORD  cbStruct;
@@ -11876,7 +12269,8 @@ type
   FONTENUMEXPROC* = proc (para1: var ENUMLOGFONTEX, para2: var NEWTEXTMETRICEX,
                           para3: int32, para4: LPARAM): int32{.stdcall.}
   LPOVERLAPPED_COMPLETION_ROUTINE* = proc (para1: DWORD, para2: DWORD,
-      para3: LPOVERLAPPED){.stdcall.} # Structures for the extensions to OpenGL
+      para3: LPOVERLAPPED){.stdcall.}
+  # Structures for the extensions to OpenGL
   POINTFLOAT* {.final, pure.} = object
     x*: float32
     y*: float32
@@ -12109,7 +12503,8 @@ type
 
   LPWIN32_FILE_ATTRIBUTE_DATA* = ptr WIN32_FILE_ATTRIBUTE_DATA
   TWIN32FILEATTRIBUTEDATA* = WIN32_FILE_ATTRIBUTE_DATA
-  PWIN32FILEATTRIBUTEDATA* = ptr WIN32_FILE_ATTRIBUTE_DATA # TrackMouseEvent. NT or higher only.
+  PWIN32FILEATTRIBUTEDATA* = ptr WIN32_FILE_ATTRIBUTE_DATA
+  # TrackMouseEvent. NT or higher only.
   TTrackMouseEvent* {.final, pure.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
@@ -12134,7 +12529,8 @@ const
   ACM_PLAY* = 1125
   ACM_STOP* = 1126
   ACN_START* = 1
-  ACN_STOP* = 2               # Buttons
+  ACN_STOP* = 2
+  # Buttons
   BM_CLICK* = 245
   BM_GETCHECK* = 240
   BM_GETIMAGE* = 246
@@ -12153,7 +12549,8 @@ const
   BN_PUSHED* = 2
   BN_SETFOCUS* = 6
   BN_UNHILITE* = 3
-  BN_UNPUSHED* = 3            # Combo Box
+  BN_UNPUSHED* = 3
+  # Combo Box
   CB_ADDSTRING* = 323
   CB_DELETESTRING* = 324
   CB_DIR* = 325
@@ -12187,27 +12584,31 @@ const
   CB_SETITEMHEIGHT* = 339
   CB_SETLOCALE* = 345
   CB_SETTOPINDEX* = 348
-  CB_SHOWDROPDOWN* = 335      # Combo Box notifications
+  CB_SHOWDROPDOWN* = 335
+  # Combo Box notifications
   CBN_CLOSEUP* = 8
   CBN_DBLCLK* = 2
   CBN_DROPDOWN* = 7
   CBN_EDITCHANGE* = 5
   CBN_EDITUPDATE* = 6
-  CBN_ERRSPACE* = - (1)
+  CBN_ERRSPACE* = -1
   CBN_KILLFOCUS* = 4
   CBN_SELCHANGE* = 1
   CBN_SELENDCANCEL* = 10
   CBN_SELENDOK* = 9
-  CBN_SETFOCUS* = 3           # Control Panel
+  CBN_SETFOCUS* = 3
+  # Control Panel
                               # Device messages
                               # Drag list box
   DL_BEGINDRAG* = 1157
   DL_CANCELDRAG* = 1160
   DL_DRAGGING* = 1158
-  DL_DROPPED* = 1159          # Default push button
+  DL_DROPPED* = 1159
+  # Default push button
   DM_GETDEFID* = 1024
   DM_REPOSITION* = 1026
-  DM_SETDEFID* = 1025         # RTF control
+  DM_SETDEFID* = 1025
+  # RTF control
   EM_CANPASTE* = 1074
   EM_CANUNDO* = 198
   EM_CHARFROMPOS* = 215
@@ -12284,7 +12685,8 @@ const
   EM_SETWORDWRAPMODE* = 1126
   EM_STREAMIN* = 1097
   EM_STREAMOUT* = 1098
-  EM_UNDO* = 199              # Edit control
+  EM_UNDO* = 199
+  # Edit control
   EN_CHANGE* = 768
   EN_CORRECTTEXT* = 1797
   EN_DROPFILES* = 1795
@@ -12302,7 +12704,8 @@ const
   EN_SETFOCUS* = 256
   EN_STOPNOUNDO* = 1798
   EN_UPDATE* = 1024
-  EN_VSCROLL* = 1538          # File Manager extensions
+  EN_VSCROLL* = 1538
+  # File Manager extensions
                               # File Manager extensions DLL events
                               # Header control
   HDM_DELETEITEM* = 4610
@@ -12328,23 +12731,24 @@ else:
 const
   HDM_GETITEMCOUNT* = 4608
   HDM_HITTEST* = 4614
-  HDM_LAYOUT* = 4613          # Header control notifications
-  HDN_BEGINTRACKW* = - (326)
-  HDN_DIVIDERDBLCLICKW* = - (325)
-  HDN_ENDTRACKW* = - (327)
-  HDN_ITEMCHANGEDW* = - (321)
-  HDN_ITEMCHANGINGW* = - (320)
-  HDN_ITEMCLICKW* = - (322)
-  HDN_ITEMDBLCLICKW* = - (323)
-  HDN_TRACKW* = - (328)
-  HDN_BEGINTRACKA* = - (306)
-  HDN_DIVIDERDBLCLICKA* = - (305)
-  HDN_ENDTRACKA* = - (307)
-  HDN_ITEMCHANGEDA* = - (301)
-  HDN_ITEMCHANGINGA* = - (300)
-  HDN_ITEMCLICKA* = - (302)
-  HDN_ITEMDBLCLICKA* = - (303)
-  HDN_TRACKA* = - (308)
+  HDM_LAYOUT* = 4613
+  # Header control notifications
+  HDN_BEGINTRACKW* = -326
+  HDN_DIVIDERDBLCLICKW* = -325
+  HDN_ENDTRACKW* = -327
+  HDN_ITEMCHANGEDW* = -321
+  HDN_ITEMCHANGINGW* = -320
+  HDN_ITEMCLICKW* = -322
+  HDN_ITEMDBLCLICKW* = -323
+  HDN_TRACKW* = -328
+  HDN_BEGINTRACKA* = -306
+  HDN_DIVIDERDBLCLICKA* = -305
+  HDN_ENDTRACKA* = -307
+  HDN_ITEMCHANGEDA* = -301
+  HDN_ITEMCHANGINGA* = -300
+  HDN_ITEMCLICKA* = -302
+  HDN_ITEMDBLCLICKA* = -303
+  HDN_TRACKA* = -308
 
 when defined(winUnicode):
   const
@@ -12367,12 +12771,13 @@ else:
     HDN_ITEMDBLCLICK* = HDN_ITEMDBLCLICKA
     HDN_TRACK* = HDN_TRACKA
 # UNICODE
-# Hot key control
 
 const
+  # Hot key control
   HKM_GETHOTKEY* = 1026
   HKM_SETHOTKEY* = 1025
-  HKM_SETRULES* = 1027        # List box
+  HKM_SETRULES* = 1027
+  # List box
   LB_ADDFILE* = 406
   LB_ADDSTRING* = 384
   LB_DELETESTRING* = 386
@@ -12412,13 +12817,15 @@ const
   LB_SETLOCALE* = 421
   LB_SETSEL* = 389
   LB_SETTABSTOPS* = 402
-  LB_SETTOPINDEX* = 407       # List box notifications
+  LB_SETTOPINDEX* = 407
+  # List box notifications
   LBN_DBLCLK* = 2
-  LBN_ERRSPACE* = - (2)
+  LBN_ERRSPACE* = -2
   LBN_KILLFOCUS* = 5
   LBN_SELCANCEL* = 3
   LBN_SELCHANGE* = 1
-  LBN_SETFOCUS* = 4           # List view control
+  LBN_SETFOCUS* = 4
+  # List view control
   LVM_ARRANGE* = 4118
   LVM_CREATEDRAGIMAGE* = 4129
   LVM_DELETEALLITEMS* = 4105
@@ -12513,20 +12920,21 @@ const
   LVM_SETTEXTBKCOLOR* = 4134
   LVM_SETTEXTCOLOR* = 4132
   LVM_SORTITEMS* = 4144
-  LVM_UPDATE* = 4138          # List view control notifications
-  LVN_BEGINDRAG* = - (109)
-  LVN_BEGINRDRAG* = - (111)
-  LVN_COLUMNCLICK* = - (108)
-  LVN_DELETEALLITEMS* = - (104)
-  LVN_DELETEITEM* = - (103)
-  LVN_BEGINLABELEDITW* = - (175)
-  LVN_ENDLABELEDITW* = - (176)
-  LVN_GETDISPINFOW* = - (177)
-  LVN_SETDISPINFOW* = - (178)
-  LVN_BEGINLABELEDITA* = - (105)
-  LVN_ENDLABELEDITA* = - (106)
-  LVN_GETDISPINFOA* = - (150)
-  LVN_SETDISPINFOA* = - (151)
+  LVM_UPDATE* = 4138
+  # List view control notifications
+  LVN_BEGINDRAG* = -109
+  LVN_BEGINRDRAG* = -111
+  LVN_COLUMNCLICK* = -108
+  LVN_DELETEALLITEMS* = -104
+  LVN_DELETEITEM* = -103
+  LVN_BEGINLABELEDITW* = -175
+  LVN_ENDLABELEDITW* = -176
+  LVN_GETDISPINFOW* = -177
+  LVN_SETDISPINFOW* = -178
+  LVN_BEGINLABELEDITA* = -105
+  LVN_ENDLABELEDITA* = -106
+  LVN_GETDISPINFOA* = -150
+  LVN_SETDISPINFOA* = -151
 
 when defined(winUnicode):
   const
@@ -12543,25 +12951,28 @@ else:
 # UNICODE
 
 const
-  LVN_INSERTITEM* = - (102)
-  LVN_ITEMCHANGED* = - (101)
-  LVN_ITEMCHANGING* = - (100)
-  LVN_KEYDOWN* = - (155)      # Control notification
-  NM_CLICK* = - (2)
-  NM_DBLCLK* = - (3)
-  NM_KILLFOCUS* = - (8)
-  NM_OUTOFMEMORY* = - (1)
-  NM_RCLICK* = - (5)
-  NM_RDBLCLK* = - (6)
-  NM_RETURN* = - (4)
-  NM_SETFOCUS* = - (7)        # Power status
+  LVN_INSERTITEM* = -102
+  LVN_ITEMCHANGED* = -101
+  LVN_ITEMCHANGING* = -100
+  LVN_KEYDOWN* = -155
+  # Control notification
+  NM_CLICK* = -2
+  NM_DBLCLK* = -3
+  NM_KILLFOCUS* = -8
+  NM_OUTOFMEMORY* = -1
+  NM_RCLICK* = -5
+  NM_RDBLCLK* = -6
+  NM_RETURN* = -4
+  NM_SETFOCUS* = -7
+  # Power status
                               # Progress bar control
   PBM_DELTAPOS* = 1027
   PBM_SETPOS* = 1026
   PBM_SETRANGE* = 1025
   PBM_SETRANGE32* = 1030
   PBM_SETSTEP* = 1028
-  PBM_STEPIT* = 1029          # Property sheets
+  PBM_STEPIT* = 1029
+  # Property sheets
   PSM_ADDPAGE* = 1127
   PSM_APPLY* = 1134
   PSM_CANCELTOCLOSE* = 1131
@@ -12593,16 +13004,18 @@ else:
 
 const
   PSM_SETWIZBUTTONS* = 1136
-  PSM_UNCHANGED* = 1133       # Property sheet notifications
-  PSN_APPLY* = - (202)
-  PSN_HELP* = - (205)
-  PSN_KILLACTIVE* = - (201)
-  PSN_QUERYCANCEL* = - (209)
-  PSN_RESET* = - (203)
-  PSN_SETACTIVE* = - (200)
-  PSN_WIZBACK* = - (206)
-  PSN_WIZFINISH* = - (208)
-  PSN_WIZNEXT* = - (207)      # Status window
+  PSM_UNCHANGED* = 1133
+  # Property sheet notifications
+  PSN_APPLY* = -202
+  PSN_HELP* = -205
+  PSN_KILLACTIVE* = -201
+  PSN_QUERYCANCEL* = -209
+  PSN_RESET* = -203
+  PSN_SETACTIVE* = -200
+  PSN_WIZBACK* = -206
+  PSN_WIZFINISH* = -208
+  PSN_WIZNEXT* = -207
+  # Status window
   SB_GETBORDERS* = 1031
   SB_GETPARTS* = 1030
   SB_GETRECT* = 1034
@@ -12628,7 +13041,8 @@ else:
 const
   SB_SETMINHEIGHT* = 1032
   SB_SETPARTS* = 1028
-  SB_SIMPLE* = 1033           # Scroll bar control
+  SB_SIMPLE* = 1033
+  # Scroll bar control
   SBM_ENABLE_ARROWS* = 228
   SBM_GETPOS* = 225
   SBM_GETRANGE* = 227
@@ -12636,15 +13050,18 @@ const
   SBM_SETPOS* = 224
   SBM_SETRANGE* = 226
   SBM_SETRANGEREDRAW* = 230
-  SBM_SETSCROLLINFO* = 233    # Static control
+  SBM_SETSCROLLINFO* = 233
+  # Static control
   STM_GETICON* = 369
   STM_GETIMAGE* = 371
   STM_SETICON* = 368
-  STM_SETIMAGE* = 370         # Static control notifications
+  STM_SETIMAGE* = 370
+  # Static control notifications
   STN_CLICKED* = 0
   STN_DBLCLK* = 1
   STN_DISABLE* = 3
-  STN_ENABLE* = 2             # Toolbar control
+  STN_ENABLE* = 2
+  # Toolbar control
   TB_ADDBITMAP* = 1043
   TB_ADDBUTTONS* = 1044
   TB_AUTOSIZE* = 1057
@@ -12698,7 +13115,8 @@ const
   TB_SETPARENT* = 1061
   TB_SETROWS* = 1063
   TB_SETSTATE* = 1041
-  TB_SETTOOLTIPS* = 1060      # Track bar control
+  TB_SETTOOLTIPS* = 1060
+  # Track bar control
   TBM_CLEARSEL* = 1043
   TBM_CLEARTICS* = 1033
   TBM_GETCHANNELRECT* = 1050
@@ -12726,14 +13144,15 @@ const
   TBM_SETSELSTART* = 1035
   TBM_SETTHUMBLENGTH* = 1051
   TBM_SETTIC* = 1028
-  TBM_SETTICFREQ* = 1044      # Tool bar control notifications
-  TBN_BEGINADJUST* = - (703)
-  TBN_BEGINDRAG* = - (701)
-  TBN_CUSTHELP* = - (709)
-  TBN_ENDADJUST* = - (704)
-  TBN_ENDDRAG* = - (702)
-  TBN_GETBUTTONINFOW* = - (720)
-  TBN_GETBUTTONINFOA* = - (700)
+  TBM_SETTICFREQ* = 1044
+  # Tool bar control notifications
+  TBN_BEGINADJUST* = -703
+  TBN_BEGINDRAG* = -701
+  TBN_CUSTHELP* = -709
+  TBN_ENDADJUST* = -704
+  TBN_ENDDRAG* = -702
+  TBN_GETBUTTONINFOW* = -720
+  TBN_GETBUTTONINFOA* = -700
 
 when defined(winUnicode):
   const
@@ -12744,10 +13163,11 @@ else:
 # UNICODE
 
 const
-  TBN_QUERYDELETE* = - (707)
-  TBN_QUERYINSERT* = - (706)
-  TBN_RESET* = - (705)
-  TBN_TOOLBARCHANGE* = - (708) # Tab control
+  TBN_QUERYDELETE* = -707
+  TBN_QUERYINSERT* = -706
+  TBN_RESET* = -705
+  TBN_TOOLBARCHANGE* = -708
+  # Tab control
   TCM_ADJUSTRECT* = 4904
   TCM_DELETEALLITEMS* = 4873
   TCM_DELETEITEM* = 4872
@@ -12786,10 +13206,12 @@ const
   TCM_SETITEMEXTRA* = 4878
   TCM_SETITEMSIZE* = 4905
   TCM_SETPADDING* = 4907
-  TCM_SETTOOLTIPS* = 4910     # Tab control notifications
-  TCN_KEYDOWN* = - (550)
-  TCN_SELCHANGE* = - (551)
-  TCN_SELCHANGING* = - (552)  # Tool tip control
+  TCM_SETTOOLTIPS* = 4910
+  # Tab control notifications
+  TCN_KEYDOWN* = -550
+  TCN_SELCHANGE* = -551
+  TCN_SELCHANGING* = -552
+  # Tool tip control
   TTM_ACTIVATE* = 1025
   TTM_ADDTOOLW* = 1074
   TTM_DELTOOLW* = 1075
@@ -12842,9 +13264,10 @@ const
   TTM_GETTOOLCOUNT* = 1037
   TTM_RELAYEVENT* = 1031
   TTM_SETDELAYTIME* = 1027
-  TTM_WINDOWFROMPOINT* = 1040 # Tool tip control notification
-  TTN_NEEDTEXTW* = - (530)
-  TTN_NEEDTEXTA* = - (520)
+  TTM_WINDOWFROMPOINT* = 1040
+  # Tool tip control notification
+  TTN_NEEDTEXTW* = -530
+  TTN_NEEDTEXTA* = -520
 
 when defined(winUnicode):
   const
@@ -12855,8 +13278,9 @@ else:
 # UNICODE
 
 const
-  TTN_POP* = - (522)
-  TTN_SHOW* = - (521)         # Tree view control
+  TTN_POP* = -522
+  TTN_SHOW* = -521
+  # Tree view control
   TVM_CREATEDRAGIMAGE* = 4370
   TVM_DELETEITEM* = 4353
   TVM_ENDEDITLABELNOW* = 4374
@@ -12902,30 +13326,31 @@ const
   TVM_SETIMAGELIST* = 4361
   TVM_SETINDENT* = 4359
   TVM_SORTCHILDREN* = 4371
-  TVM_SORTCHILDRENCB* = 4373  # Tree view control notification
-  TVN_KEYDOWN* = - (412)
-  TVN_BEGINDRAGW* = - (456)
-  TVN_BEGINLABELEDITW* = - (459)
-  TVN_BEGINRDRAGW* = - (457)
-  TVN_DELETEITEMW* = - (458)
-  TVN_ENDLABELEDITW* = - (460)
-  TVN_GETDISPINFOW* = - (452)
-  TVN_ITEMEXPANDEDW* = - (455)
-  TVN_ITEMEXPANDINGW* = - (454)
-  TVN_SELCHANGEDW* = - (451)
-  TVN_SELCHANGINGW* = - (450)
-  TVN_SETDISPINFOW* = - (453)
-  TVN_BEGINDRAGA* = - (407)
-  TVN_BEGINLABELEDITA* = - (410)
-  TVN_BEGINRDRAGA* = - (408)
-  TVN_DELETEITEMA* = - (409)
-  TVN_ENDLABELEDITA* = - (411)
-  TVN_GETDISPINFOA* = - (403)
-  TVN_ITEMEXPANDEDA* = - (406)
-  TVN_ITEMEXPANDINGA* = - (405)
-  TVN_SELCHANGEDA* = - (402)
-  TVN_SELCHANGINGA* = - (401)
-  TVN_SETDISPINFOA* = - (404)
+  TVM_SORTCHILDRENCB* = 4373
+  # Tree view control notification
+  TVN_KEYDOWN* = -412
+  TVN_BEGINDRAGW* = -456
+  TVN_BEGINLABELEDITW* = -459
+  TVN_BEGINRDRAGW* = -457
+  TVN_DELETEITEMW* = -458
+  TVN_ENDLABELEDITW* = -460
+  TVN_GETDISPINFOW* = -452
+  TVN_ITEMEXPANDEDW* = -455
+  TVN_ITEMEXPANDINGW* = -454
+  TVN_SELCHANGEDW* = -451
+  TVN_SELCHANGINGW* = -450
+  TVN_SETDISPINFOW* = -453
+  TVN_BEGINDRAGA* = -407
+  TVN_BEGINLABELEDITA* = -410
+  TVN_BEGINRDRAGA* = -408
+  TVN_DELETEITEMA* = -409
+  TVN_ENDLABELEDITA* = -411
+  TVN_GETDISPINFOA* = -403
+  TVN_ITEMEXPANDEDA* = -406
+  TVN_ITEMEXPANDINGA* = -405
+  TVN_SELCHANGEDA* = -402
+  TVN_SELCHANGINGA* = -401
+  TVN_SETDISPINFOA* = -404
 
 when defined(winUnicode):
   const
@@ -12954,9 +13379,9 @@ else:
     TVN_SELCHANGING* = TVN_SELCHANGINGA
     TVN_SETDISPINFO* = TVN_SETDISPINFOA
 # UNICODE
-# Up/down control
 
 const
+  # Up/down control
   UDM_GETACCEL* = 1132
   UDM_GETBASE* = 1134
   UDM_GETBUDDY* = 1130
@@ -12970,8 +13395,10 @@ const
   UDM_SETPOS* = 1127
   UDM_SETPOS32* = 1137
   UDM_SETRANGE* = 1125
-  UDM_SETRANGE32* = 1135      # Up/down control notification
-  UDN_DELTAPOS* = - (722)     # Window messages
+  UDM_SETRANGE32* = 1135
+  # Up/down control notification
+  UDN_DELTAPOS* = -722
+  # Window messages
   WM_ACTIVATE* = 6
   WM_ACTIVATEAPP* = 28
   WM_ASKCBFORMATNAME* = 780
@@ -13163,7 +13590,8 @@ const
   WM_VSCROLLCLIPBOARD* = 778
   WM_WINDOWPOSCHANGED* = 71
   WM_WINDOWPOSCHANGING* = 70
-  WM_WININICHANGE* = 26       # Window message ranges
+  WM_WININICHANGE* = 26
+  # Window message ranges
   WM_KEYFIRST* = 256
   WM_KEYLAST* = 264
   WM_MOUSEFIRST* = 512
@@ -18176,7 +18604,6 @@ proc GetProcAddress*(hModule: HINST, lpProcName: LPCSTR): FARPROC{.stdcall,
 proc GetVersion*(): DWORD{.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 proc GlobalAlloc*(uFlags: UINT, dwBytes: DWORD): HGLOBAL{.stdcall,
     dynlib: "kernel32", importc: "GlobalAlloc".}
-proc GlobalDiscard*(hglbMem: HGLOBAL): HGLOBAL
 proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: UINT): HGLOBAL{.
     stdcall, dynlib: "kernel32", importc: "GlobalReAlloc".}
 proc GlobalSize*(hMem: HGLOBAL): DWORD{.stdcall, dynlib: "kernel32",
@@ -18205,7 +18632,6 @@ proc GlobalMemoryStatus*(lpBuffer: LPMEMORYSTATUS){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatus".}
 proc LocalAlloc*(uFlags: UINT, uBytes: UINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalAlloc".}
-proc LocalDiscard*(hlocMem: HLOCAL): HLOCAL
 proc LocalReAlloc*(hMem: HLOCAL, uBytes: UINT, uFlags: UINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalReAlloc".}
 proc LocalLock*(hMem: HLOCAL): LPVOID{.stdcall, dynlib: "kernel32",
@@ -20313,7 +20739,6 @@ proc SHGetPathFromIDList*(para1: LPCITEMIDLIST, para2: LPTSTR): WINBOOL{.
 proc SHGetSpecialFolderLocation*(para1: HWND, para2: int32,
                                  para3: var LPITEMIDLIST): HRESULT{.stdcall,
     dynlib: "shell32", importc: "SHGetSpecialFolderLocation".}
-  # was missing, bug report 1808 PM
 proc CommDlgExtendedError*(): DWORD{.stdcall, dynlib: "comdlg32",
                                      importc: "CommDlgExtendedError".}
   # wgl Windows OpenGL helper functions
@@ -20337,7 +20762,6 @@ proc wglShareLists*(para1: HGLRC, para2: HGLRC): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglShareLists".}
 proc wglUseFontBitmapsW*(para1: HDC, para2: DWORD, para3: DWORD, para4: DWORD): WINBOOL{.
     stdcall, dynlib: "opengl32", importc: "wglUseFontBitmapsW".}
-  # Delphi doesn't declare these, but we do:
 proc wglUseFontOutlines*(para1: HDC, para2: DWORD, para3: DWORD, para4: DWORD,
                          para5: float32, para6: float32, para7: int32,
                          para8: LPGLYPHMETRICSFLOAT): WINBOOL{.stdcall,
@@ -20511,22 +20935,22 @@ proc TabCtrl_SetCurFocus*(hwnd: HWND, i: int32): LRESULT
 proc SNDMSG*(hWnd: HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM): LRESULT
 proc CommDlg_OpenSave_GetSpecA*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetSpecW*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetSpec*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetSpec*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
+else:
+  proc CommDlg_OpenSave_GetSpec*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetFilePathA*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetFilePathW*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetFilePath*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetFilePath*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
+else:
+  proc CommDlg_OpenSave_GetFilePath*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetFolderPathA*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetFolderPathW*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetFolderPath*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetFolderPath*(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT
+else:
+  proc CommDlg_OpenSave_GetFolderPath*(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_GetFolderIDList*(hdlg: HWND, pidl: LPVOID, cbmax: int32): LRESULT
 proc CommDlg_OpenSave_SetControlText*(hdlg: HWND, id: int32, text: LPSTR): LRESULT
 proc CommDlg_OpenSave_HideControl*(hdlg: HWND, id: int32): LRESULT
@@ -20584,7 +21008,8 @@ type
   TBitmapFileHeader* = BITMAPFILEHEADER
   PBitmapFileHeader* = ptr TBitmapFileHeader
 
-const                         # dll names
+const
+  # dll names
   advapi32* = "advapi32.dll"
   kernel32* = "kernel32.dll"
   mpr* = "mpr.dll"
@@ -20593,12 +21018,14 @@ const                         # dll names
   gdi32* = "gdi32.dll"
   opengl32* = "opengl32.dll"
   user32* = "user32.dll"
-  wintrust* = "wintrust.dll"  # Openfile Share modes normally declared in sysutils
+  wintrust* = "wintrust.dll"
+  # Openfile Share modes normally declared in sysutils
   fmShareCompat* = 0x00000000
   fmShareExclusive* = 0x00000010
   fmShareDenyWrite* = 0x00000020
   fmShareDenyRead* = 0x00000030
-  fmShareDenyNone* = 0x00000040 # HRESULT codes, delphilike
+  fmShareDenyNone* = 0x00000040
+  # HRESULT codes, delphilike
   SIF_TRACKPOS* = 0x00000010
   HTBORDER* = 18
   CP_UTF7* = 65000
@@ -20616,7 +21043,7 @@ const                         # dll names
 
 const                         # Severity values
   FACILITY_NT_BIT* = 0x10000000
-  HFILE_ERROR* = HFILE(- 1) #
+
                             #  A language ID is a 16 bit value which is the combination of a
                             #  primary language ID and a secondary language ID.  The bits are
                             #  allocated as follows:
@@ -20634,10 +21061,10 @@ const                         # Severity values
                             #    PRIMARYLANGID - extract primary language id from a language id.
                             #    SUBLANGID     - extract sublanguage id from a language id.
                             #
-
 proc MAKELANGID*(PrimaryLang, SubLang: USHORT): int16
 proc PRIMARYLANGID*(LangId: int16): int16
 proc SUBLANGID*(LangId: int16): int16
+
   #
   #  A locale ID is a 32 bit value which is the combination of a
   #  language ID, a sort ID, and a reserved area.  The bits are
@@ -20665,6 +21092,7 @@ proc MAKESORTLCID*(LangId, SortId, SortVersion: int16): DWORD
 proc LANGIDFROMLCID*(LocaleId: LCID): int16
 proc SORTIDFROMLCID*(LocaleId: LCID): int16
 proc SORTVERSIONFROMLCID*(LocaleId: LCID): int16
+
   #
   #  Default System and User IDs for language and locale.
   #
@@ -22387,8 +22815,9 @@ proc WriteProcessMemory*(hProcess: THandle, lpBaseAddress: Pointer,
     dynlib: "kernel32", importc: "WriteProcessMemory".}
 proc SHFileOperation*(para1: var SHFILEOPSTRUCT): int32{.stdcall,
     dynlib: "shell32", importc: "SHFileOperation".}
+
   # these are old Win16 funcs that under win32 are aliases for several char* funcs.
-  # exist under Win32 (even in SDK's from 2002), but are officially "depreciated"
+# exist under Win32 (even in SDK's from 2002), but are officially "deprecated"
 proc AnsiNext*(lpsz: LPCSTR): LPSTR{.stdcall, dynlib: "user32",
                                      importc: "CharNextA".}
 proc AnsiPrev*(lpszStart: LPCSTR, lpszCurrent: LPCSTR): LPSTR{.stdcall,
@@ -22409,21 +22838,52 @@ proc AnsiLower*(lpsz: LPSTR): LPSTR{.stdcall, dynlib: "user32",
                                      importc: "CharLowerA".}
 proc AnsiLowerBuff*(lpsz: LPSTR, cchLength: DWORD): DWORD{.stdcall,
     dynlib: "user32", importc: "CharLowerBuffA".}
-# implementation
-# was #define dname(params) def_expr
-# argument types are unknown
 
-proc GetBValue(rgb: int32): int8 =
-  result = toU8(rgb shr 16'i32)
+#== Implementation of macros
+
+# WinBase.h
+
+proc FreeModule(h: HINST): WINBOOL =
+  result = FreeLibrary(h)
+
+proc MakeProcInstance(p, i: pointer): pointer =
+  result = p
+
+proc FreeProcInstance(p: pointer): pointer =
+  result = p
+
+proc GlobalDiscard(hglbMem: HGLOBAL): HGLOBAL =
+  result = GlobalReAlloc(hglbMem, 0, GMEM_MOVEABLE)
+
+proc LocalDiscard(hlocMem: HLOCAL): HLOCAL =
+  result = LocalReAlloc(hlocMem, 0, LMEM_MOVEABLE)
+
+# WinGDI.h
 
 proc GetGValue(rgb: int32): int8 =
   result = toU8(rgb shr 8'i32)
+proc RGB(r, g, b: int): COLORREF =
+  result = toU32(r) or (toU32(g) shl 8) or (toU32(b) shl 16)
+proc RGB(r, g, b: range[0 .. 255]): COLORREF =
+  result = r or g shl 8 or b shl 16
 
-proc GetRValue(rgb: int32): int8 =
+proc PALETTERGB(r, g, b: range[0..255]): COLORREF =
+  result = 0x02000000 or RGB(r, g, b)
+
+proc PALETTEINDEX(i: DWORD): COLORREF =
+  result = COLORREF(0x01000000'i32 or i and 0xffff'i32)
+
+
+proc GetRValue(rgb: COLORREF): int8 =
   result = toU8(rgb)
 
-proc RGB(r, g, b: int32): DWORD =
-  result = toU8(r) or toU8(g shl 8'i32) or toU8(b shl 16'i32)
+proc GetGValue(rgb: COLORREF): int8 =
+  result = toU8(rgb shr 8)
+
+proc GetBValue(rgb: COLORREF): int8 =
+  result = toU8(rgb shr 16)
+
+#
 
 proc HIBYTE(w: int32): int8 =
   result = toU8(w shr 8'i32 and 0x000000FF'i32)
@@ -22470,8 +22930,6 @@ proc MAKELANGID(p, s: int32): int32 =
   result = toU16(s) shl 10'i16 or toU16(p)
 
 proc PRIMARYLANGID(lgid: int32): int16 =
-  # PRIMARYLANGID:=WORD(lgid(@($3ff)));
-  #         h2pas error here corrected by hand PM
   result = toU16(lgid) and 0x000003FF'i16
 
 proc SUBLANGID(lgid: int32): int32 =
@@ -22505,190 +22963,10 @@ proc GET_X_LPARAM(lp: Windows.LParam): int32 =
 proc GET_Y_LPARAM(lp: Windows.LParam): int32 =
   result = int16(HIWORD(lp))
 
-proc PALETTEINDEX(i: int32): COLORREF =
-  result = COLORREF(0x01000000'i32 or i and 0xffff'i32)
-
-proc PALETTERGB(r, g, b: int32): int32 =
-  # return type might be wrong
-  result = 0x02000000 or (RGB(r, g, b))
-
 proc UNICODE_NULL(): WCHAR =
   result = 0'i16
 
-proc IDC_ARROW(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32512)
 
-proc IDC_IBEAM(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32513)
-
-proc IDC_WAIT(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32514)
-
-proc IDC_CROSS(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32515)
-
-proc IDC_UPARROW(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32516)
-
-proc IDC_SIZENWSE(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32642)
-
-proc IDC_SIZENESW(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32643)
-
-proc IDC_SIZEWE(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32644)
-
-proc IDC_SIZENS(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32645)
-
-proc IDC_SIZEALL(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32646)
-
-proc IDC_NO(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32648)
-
-proc IDC_APPSTARTING(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32650)
-
-proc IDC_HELP(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32651)
-
-proc IDI_APPLICATION(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32512)
-
-proc IDI_HAND(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32513)
-
-proc IDI_QUESTION(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32514)
-
-proc IDI_EXCLAMATION(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32515)
-
-proc IDI_ASTERISK(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32516)
-
-proc IDI_WINLOGO(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32517)
-
-proc IDC_SIZE(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32640)
-
-proc IDC_ICON(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32641)
-
-proc IDC_HAND(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](32649)
-
-proc STD_INPUT_HANDLE(): DWORD =
-  result = DWORD(- (10))
-
-proc STD_OUTPUT_HANDLE(): DWORD =
-  result = DWORD(- (11))
-
-proc STD_ERROR_HANDLE(): DWORD =
-  result = DWORD(- (12))
-
-proc HWND_BROADCAST(): HWND =
-  result = HWND(0x0000FFFF)
-
-proc HKEY_CLASSES_ROOT(): HKEY =
-  result = HKEY(0x80000000)
-
-proc HKEY_CURRENT_USER(): HKEY =
-  result = HKEY(0x80000001)
-
-proc HKEY_LOCAL_MACHINE(): HKEY =
-  result = HKEY(0x80000002)
-
-proc HKEY_USERS(): HKEY =
-  result = HKEY(0x80000003)
-
-proc HKEY_PERFORMANCE_DATA(): HKEY =
-  result = HKEY(0x80000004)
-
-proc HKEY_CURRENT_CONFIG(): HKEY =
-  result = HKEY(0x80000005)
-
-proc HKEY_DYN_DATA(): HKEY =
-  result = HKEY(0x80000006)
-
-proc HWND_BOTTOM(): HWND =
-  result = HWND(1)
-
-proc HWND_NOTOPMOST(): HWND =
-  result = HWND(- (2))
-
-proc HWND_TOP(): HWND =
-  result = HWND(0)
-
-proc HWND_TOPMOST(): HWND =
-  result = HWND(- (1))
-
-proc VS_FILE_INFO(): LPTSTR =
-  # return type might be wrong
-  result = cast[MAKEINTRESOURCE](16)
-
-proc HINST_COMMCTRL(): HINST =
-  result = HINST(- (1))
-
-proc LPSTR_TEXTCALLBACKW(): LPWSTR =
-  result = cast[LPWSTR](- (1))
-
-proc LPSTR_TEXTCALLBACKA(): LPSTR =
-  result = cast[LPSTR](- (1))
-
-when defined(winUnicode):
-  #const this is a function in fact !!
-  #     LPSTR_TEXTCALLBACK = LPSTR_TEXTCALLBACKW;
-  proc LPSTR_TEXTCALLBACK(): LPWSTR =
-    result = cast[LPWSTR](- (1))
-
-else:
-  #const
-  #     LPSTR_TEXTCALLBACK = LPSTR_TEXTCALLBACKA;
-  proc LPSTR_TEXTCALLBACK(): LPSTR =
-    result = cast[LPSTR](- (1))
-
-# was #define dname def_expr
-
-proc TVI_ROOT(): HTREEITEM =
-  result = cast[HTREEITEM](0xFFFF0000)
-
-proc TVI_FIRST(): HTREEITEM =
-  result = cast[HTREEITEM](0xFFFF0001)
-
-proc TVI_LAST(): HTREEITEM =
-  result = cast[HTREEITEM](0xFFFF0002)
-
-proc TVI_SORT(): HTREEITEM =
-  result = cast[HTREEITEM](0xFFFF0003)
-
-proc HWND_DESKTOP(): HWND =
-  result = HWND(0)
 
 proc GetFirstChild(h: HWND): HWND =
   result = GetTopWindow(h)
@@ -22747,17 +23025,6 @@ proc GET_WM_VSCROLL_HWND(w, L: int32): HWND =
 proc GET_WM_VSCROLL_POS(w, L: int32): int32 =
   # return type might be wrong
   result = HIWORD(w)
-
-proc FreeModule(h: HINST): WINBOOL =
-  result = FreeLibrary(h)
-
-proc MakeProcInstance(p, i: int32): int32 =
-  # return type might be wrong
-  result = p
-
-proc FreeProcInstance(p: int32): int32 =
-  # return type might be wrong
-  result = p
 
 proc fBinary(a: var DCB): DWORD =
   result = (a.flags and bm_DCB_fBinary) shr bp_DCB_fBinary
@@ -23175,12 +23442,6 @@ else:
     result = DialogBoxIndirectParam(hInstance, hDialogTemplate, hWndParent,
                                     lpDialogFunc, 0)
 
-proc GlobalDiscard(hglbMem: HGLOBAL): HGLOBAL =
-  result = GlobalReAlloc(hglbMem, 0, GMEM_MOVEABLE)
-
-proc LocalDiscard(hlocMem: HLOCAL): HLOCAL =
-  result = LocalReAlloc(hlocMem, 0, LMEM_MOVEABLE)
-
 proc GlobalAllocPtr(flags, cb: DWord): Pointer =
   result = GlobalLock(GlobalAlloc(flags, cb))
 
@@ -23201,7 +23462,7 @@ proc GlobalPtrHandle(lp: pointer): Pointer =
   result = cast[Pointer](GlobalHandle(lp))
 
 proc ImageList_AddIcon(himl: HIMAGELIST, hicon: HICON): int32 =
-  result = ImageList_ReplaceIcon(himl, - (1), hicon)
+  result = ImageList_ReplaceIcon(himl, -1, hicon)
 
 proc Animate_Create(hWndP: HWND, id: HMENU, dwStyle: DWORD, hInstance: HINST): HWND =
   result = CreateWindow(cast[LPCSTR](ANIMATE_CLASS), nil, dwStyle, 0, 0, 0, 0, hwndP,
@@ -23448,8 +23709,10 @@ proc ListView_SetItemState(hwndLV: HWND, i, data, mask: int32): LRESULT =
   result = SendMessage(hwndLV, LVM_SETITEMSTATE, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 
+proc ListView_SetItemText(hwndLV: HWND, i, iSubItem_: int32, pszText_: LPTSTR): LRESULT =
 proc ListView_SetItemText(hwndLV: HWND, i, iSubItem: int32, 
                           pszText: LPTSTR): LRESULT =
+proc ListView_SetItemText(hwndLV: HWND, i, iSubItem: int32, pszText: LPTSTR): LRESULT =
   var gnu_lvi: LV_ITEM
   gnu_lvi.iSubItem = iSubItem
   gnu_lvi.pszText = pszText
@@ -23653,12 +23916,11 @@ proc CommDlg_OpenSave_GetSpecA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
 proc CommDlg_OpenSave_GetSpecW(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
   result = SNDMSG(hdlg, CDM_GETSPEC, WPARAM(cbmax), cast[LPARAM](psz))
 
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetSpec(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
-    result = SNDMSG(hdlg, CDM_GETSPEC, WPARAM(cbmax), cast[LPARAM](psz))
-
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetSpec(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
+    result = SNDMSG(hdlg, CDM_GETSPEC, WPARAM(cbmax), cast[LPARAM](psz))
+else:
+  proc CommDlg_OpenSave_GetSpec(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
     result = SNDMSG(hdlg, CDM_GETSPEC, WPARAM(cbmax), cast[LPARAM](psz))
 
 proc CommDlg_OpenSave_GetFilePathA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
@@ -23667,12 +23929,11 @@ proc CommDlg_OpenSave_GetFilePathA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESUL
 proc CommDlg_OpenSave_GetFilePathW(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
   result = SNDMSG(hdlg, CDM_GETFILEPATH, WPARAM(cbmax), cast[LPARAM](psz))
 
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetFilePath(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
-    result = SNDMSG(hdlg, CDM_GETFILEPATH, WPARAM(cbmax), cast[LPARAM](psz))
-
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetFilePath(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
+    result = SNDMSG(hdlg, CDM_GETFILEPATH, WPARAM(cbmax), cast[LPARAM](psz))
+else:
+  proc CommDlg_OpenSave_GetFilePath(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
     result = SNDMSG(hdlg, CDM_GETFILEPATH, WPARAM(cbmax), cast[LPARAM](psz))
 
 proc CommDlg_OpenSave_GetFolderPathA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
@@ -23681,13 +23942,12 @@ proc CommDlg_OpenSave_GetFolderPathA(hdlg: HWND, psz: LPSTR, cbmax: int32): LRES
 proc CommDlg_OpenSave_GetFolderPathW(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
   result = SNDMSG(hdlg, CDM_GETFOLDERPATH, WPARAM(cbmax), cast[LPARAM](psz))
 
-when not(defined(winUnicode)):
-  proc CommDlg_OpenSave_GetFolderPath(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
-    result = SNDMSG(hdlg, CDM_GETFOLDERPATH, WPARAM(cbmax), cast[LPARAM](psz))
-
-else:
+when defined(winUnicode):
   proc CommDlg_OpenSave_GetFolderPath(hdlg: HWND, psz: LPWSTR, cbmax: int32): LRESULT =
     result = SNDMSG(hdlg, CDM_GETFOLDERPATH, WPARAM(cbmax), cast[LPARAM]((psz)))
+else:
+  proc CommDlg_OpenSave_GetFolderPath(hdlg: HWND, psz: LPSTR, cbmax: int32): LRESULT =
+    result = SNDMSG(hdlg, CDM_GETFOLDERPATH, WPARAM(cbmax), cast[LPARAM](psz))
 
 proc CommDlg_OpenSave_GetFolderIDList(hdlg: HWND, pidl: LPVOID, cbmax: int32): LRESULT =
   result = SNDMSG(hdlg, CDM_GETFOLDERIDLIST, WPARAM(cbmax), cast[LPARAM](pidl))

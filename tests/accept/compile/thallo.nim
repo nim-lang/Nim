@@ -36,7 +36,7 @@ macrotest(stdout)
 #GC_disable()
 
 echo("This was compiled by Nimrod version " & system.nimrodVersion)
-writeln(stdout, "Hallo", " World", "!")
+writeln(stdout, "Hello", " World", "!")
 
 echo(["a", "b", "c", "d"].len)
 for x in items(["What's", "your", "name", "?", ]):
@@ -51,7 +51,7 @@ var testseq: seq[string] = @[
 ]
 echo(repr(testseq))
 
-var dummy = "hallo"
+var dummy = "hello"
 echo(copy(dummy, 2, 3))
 
 echo($meC)
@@ -60,11 +60,11 @@ echo($meC)
 for x, y in items([(1, 2), (3, 4), (6, 1), (5, 2)]):
   echo x
   echo y
-  
+
 proc simpleConst(): int = return 34
-  
-# test constant evaluation: 
-const  
+
+# test constant evaluation:
+const
   constEval3 = simpleConst()
   constEval = "abc".contains('b')
   constEval2 = fac(7)

@@ -35,12 +35,12 @@ proc add*[Ty](root: var PBinaryTree[Ty], data: Ty) =
   # convenience proc:
   add(root, newNode(data))
 
-proc find*[Ty2](b: PBinaryTree[Ty2], data: Ty2): bool = 
+proc find*[Ty2](b: PBinaryTree[Ty2], data: Ty2): bool =
   # for testing this needs to be recursive, so that the
   # instantiated type is checked for proper tyGenericInst envelopes
-  if b == nil: 
+  if b == nil:
     result = false
-  else: 
+  else:
     var c = cmp(data, b.data)
     if c < 0: result = find(b.le, data)
     elif c > 0: result = find(b.ri, data)
@@ -66,7 +66,7 @@ iterator items*[T](root: PBinaryTree[T]): T =
     while n != nil:
       add(stack, n)
       n = n.le
-    if stack.len > 0: 
+    if stack.len > 0:
       n = stack.pop()
       yield n.data
       n = n.ri
@@ -81,7 +81,7 @@ proc debug[T](a: PBinaryTree[T]) =
 when isMainModule:
   var
     root: PBinaryTree[string]
-    x = newNode("hallo")
+    x = newNode("hello")
   add(root, x)
   add(root, "world")
   if find(root, "world"):
@@ -89,7 +89,7 @@ when isMainModule:
       stdout.write(str)
   else:
     stdout.writeln("BUG")
-  
+
   var
     r2: PBinaryTree[int]
   add(r2, newNode(110))
@@ -98,4 +98,4 @@ when isMainModule:
   for y in items(r2):
     stdout.write(y)
 
-#OUT halloworld99110223
+#OUT helloworld99110223

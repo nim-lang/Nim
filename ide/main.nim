@@ -26,10 +26,10 @@ type
 proc on_about_menu_item_activate(menuItem: PGtkMenuItem,
                                  e: var TMyTextEditor) {.cdecl.} =
   gtk_show_about_dialog(e.window,
-    "comments", "A fast and leight-weight IDE for Nimrod",
-    "copyright", "Copyright \xc2\xa9 2008 Andreas Rumpf",
+    "comments", "A fast and lightweight IDE for Nimrod",
+    "copyright", "Copyright \xc2\xa9 2010 Andreas Rumpf",
     "version", "0.1",
-    "website", "http://nimrod.ethexor.com",
+    "website", "http://force7.de/nimrod/",
     "program-name", "Nimrod IDE",
     nil)
 
@@ -70,7 +70,7 @@ proc write_file(e: var TMyTextEditor, filename: string) =
     buffer: PGtkTextBuffer
     start, ende: TGtkTextIter
   # add Saving message to status bar and ensure GUI is current
-  gtk_statusbar_push(e.statusbar, e.statusbar_context_id, "Saving....")
+  gtk_statusbar_push(e.statusbar, e.statusbar_context_id, "Saving...")
   while gtk_events_pending(): gtk_main_iteration()
 
   # disable text view and get contents of buffer

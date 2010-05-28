@@ -1755,14 +1755,13 @@ value that is used if the caller does not provide a value for this parameter.
 The syntax is::
 
   param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
-  paramList ::= ['(' [param (comma param)*] optPar ')'] [':' typeDesc]
+  paramList ::= ['(' [param (comma param)*] [SAD] ')'] [':' typeDesc]
 
   genericParam ::= symbol [':' typeDesc] ['=' expr]
-  genericParams ::= '[' genericParam (comma genericParam)* optPar ']'
+  genericParams ::= '[' genericParam (comma genericParam)* [SAD] ']'
 
-  routineDecl := symbol ['*'] [genericParams] paramList [pragma] ['=' stmt]
-  procDecl ::= 'proc' routineDecl
-
+  procDecl ::= 'proc' symbol ['*'] [genericParams] paramList [pragma]
+               ['=' stmt]
 
 If the ``= stmt`` part is missing, it is a `forward`:idx: declaration. If
 the proc returns a value, the procedure body can access an implicitly declared
@@ -2460,7 +2459,7 @@ Syntax::
 
   pragma ::= '{.' optInd (colonExpr [comma])* [SAD] ('.}' | '}')
 
-Pragmas are Nimrod's method to give the compiler additional information/
+Pragmas are Nimrod's method to give the compiler additional information /
 commands without introducing a massive number of new keywords. Pragmas are
 processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
