@@ -278,7 +278,7 @@ elif defined(macosx):
     LibName = "libSDL-1.2.0.dylib"
 else: 
   const 
-    LibName = "libSDL.so"
+    LibName = "libSDL.so(|.1|.0)"
 const 
   MAJOR_VERSION* = 1'i8
   MINOR_VERSION* = 2'i8

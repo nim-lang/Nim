@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 # this module does the semantic checking of type declarations
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
@@ -63,10 +64,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     inc(counter)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType = 
-  var base: PType
   result = newOrPrevType(tySet, prev, c)
   if sonsLen(n) == 2: 
-    base = semTypeNode(c, n.sons[1], nil)
+    var base = semTypeNode(c, n.sons[1], nil)
     addSon(result, base)
     if base.kind == tyGenericInst: base = lastSon(base)
     if base.kind != tyGenericParam: 
@@ -77,29 +77,26 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
   
 proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string, 
                   prev: PType): PType = 
-  var base: PType
   result = newOrPrevType(kind, prev, c)
   if sonsLen(n) == 2: 
-    base = semTypeNode(c, n.sons[1], nil)
+    var base = semTypeNode(c, n.sons[1], nil)
     addSon(result, base)
   else: 
     liMessage(n.info, errXExpectsOneTypeParam, kindStr)
   
 proc semAnyRef(c: PContext, n: PNode, kind: TTypeKind, kindStr: string, 
                prev: PType): PType = 
-  var base: PType
   result = newOrPrevType(kind, prev, c)
   if sonsLen(n) == 1: 
-    base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil)
     addSon(result, base)
   else: 
     liMessage(n.info, errXExpectsOneTypeParam, kindStr)
   
 proc semVarType(c: PContext, n: PNode, prev: PType): PType = 
-  var base: PType
   result = newOrPrevType(tyVar, prev, c)
   if sonsLen(n) == 1: 
-    base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil)
     if base.kind == tyVar: liMessage(n.info, errVarVarTypeNotAllowed)
     addSon(result, base)
   else: 
@@ -111,15 +108,14 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   else: liMessage(n.info, errXExpectsOneTypeParam, "distinct")
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
-  var a, b: PNode
   if (n.kind != nkRange): InternalError(n.info, "semRangeAux")
   checkSonsLen(n, 2)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
   if (n.sons[0] == nil) or (n.sons[1] == nil): 
     liMessage(n.Info, errRangeIsEmpty)
-  a = semConstExpr(c, n.sons[0])
-  b = semConstExpr(c, n.sons[1])
+  var a = semConstExpr(c, n.sons[0])
+  var b = semConstExpr(c, n.sons[1])
   if not sameType(a.typ, b.typ): liMessage(n.info, errPureTypeMismatch)
   if not (a.typ.kind in
       {tyInt..tyInt64, tyEnum, tyBool, tyChar, tyFloat..tyFloat128}): 
@@ -159,10 +155,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     liMessage(n.info, errArrayExpectsTwoTypeParams)
   
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType = 
-  var base: PType
   result = newOrPrevType(tyOrdinal, prev, c)
   if sonsLen(n) == 2: 
-    base = semTypeNode(c, n.sons[1], nil)
+    var base = semTypeNode(c, n.sons[1], nil)
     if base.kind != tyGenericParam: 
       if not isOrdinalType(base): 
         liMessage(n.sons[1].info, errOrdinalTypeExpected)
@@ -231,7 +226,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym = 
   # identifier with visibility
   if n.kind == nkPostfix: 
-    if (sonsLen(n) == 2) and (n.sons[0].kind == nkIdent): 
+    if sonsLen(n) == 2 and n.sons[0].kind == nkIdent: 
       result = newSymS(kind, n.sons[1], c)
       var v = n.sons[0].ident
       if (sfStar in allowed) and (v.id == ord(wStar)): 
@@ -426,7 +421,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     base: PType
     pos: int
   IntSetInit(check)
-  pos = 0                     # n.sons[0] contains the pragmas (if any). We process these later...
+  pos = 0 # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1] != nil: 
     base = semTypeNode(c, n.sons[1].sons[0], nil)
@@ -444,28 +439,30 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   
 proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode, 
                               cl: var TIntSet): PType = 
-  var 
-    L: int
-    s: PSym
   result = t
-  if (t == nil): return 
+  if t == nil: return 
   if IntSetContainsOrIncl(cl, t.id): return 
   case t.kind
   of tyGenericBody: 
+    #debug(t)
     result = newTypeS(tyGenericInvokation, c)
     addSon(result, t)
     for i in countup(0, sonsLen(t) - 2): 
       if t.sons[i].kind != tyGenericParam: 
         InternalError("addTypeVarsOfGenericBody")
-      s = copySym(t.sons[i].sym)
+      # do not declare ``TKey`` twice:
+      #if not IntSetContainsOrIncl(cl, t.sons[i].sym.ident.id):
+      var s = copySym(t.sons[i].sym)
       s.position = sonsLen(genericParams)
       addDecl(c, s)
       addSon(genericParams, newSymNode(s))
       addSon(result, t.sons[i])
   of tyGenericInst: 
-    L = sonsLen(t) - 1
+    #debug(t)
+    var L = sonsLen(t) - 1
     t.sons[L] = addTypeVarsOfGenericBody(c, t.sons[L], genericParams, cl)
   of tyGenericInvokation: 
+    #debug(t)
     for i in countup(1, sonsLen(t) - 1): 
       t.sons[i] = addTypeVarsOfGenericBody(c, t.sons[i], genericParams, cl)
   else: 
@@ -476,13 +473,12 @@ proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType =
   result = semTypeNode(c, n, nil)
   if (genericParams != nil) and (sonsLen(genericParams) == 0): 
     result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
+    #if result.kind == tyGenericInvokation: debug(result)
   
 proc semProcTypeNode(c: PContext, n, genericParams: PNode, prev: PType): PType = 
   var 
-    length, counter: int
-    a, def, res: PNode
+    def, res: PNode
     typ: PType
-    arg: PSym
     check, cl: TIntSet
   checkMinSonsLen(n, 1)
   result = newOrPrevType(tyProc, prev, c)
@@ -491,27 +487,29 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode, prev: PType): PType =
   if (genericParams != nil) and (sonsLen(genericParams) == 0): IntSetInit(cl)
   if n.sons[0] == nil: 
     addSon(result, nil)       # return type
-    addSon(result.n, newNodeI(nkType, n.info)) # BUGFIX: nkType must exist!
-                                               # XXX but it does not, if n.sons[paramsPos] == nil?
+    addSon(result.n, newNodeI(nkType, n.info)) 
+    # BUGFIX: nkType must exist!
+    # XXX but it does not, if n.sons[paramsPos] == nil?
   else: 
     addSon(result, nil)
     res = newNodeI(nkType, n.info)
     addSon(result.n, res)
   IntSetInit(check)
-  counter = 0
+  var counter = 0
   for i in countup(1, sonsLen(n) - 1): 
-    a = n.sons[i]
-    if (a.kind != nkIdentDefs): IllFormedAst(a)
+    var a = n.sons[i]
+    if a.kind != nkIdentDefs: IllFormedAst(a)
     checkMinSonsLen(a, 3)
-    length = sonsLen(a)
+    var length = sonsLen(a)
     if a.sons[length - 2] != nil: 
       typ = paramType(c, a.sons[length - 2], genericParams, cl)
     else: 
       typ = nil
     if a.sons[length - 1] != nil: 
-      def = semExprWithType(c, a.sons[length - 1]) # check type compability between def.typ and typ:
-      if (typ != nil): 
-        if (cmpTypes(typ, def.typ) < isConvertible): 
+      def = semExprWithType(c, a.sons[length - 1]) 
+      # check type compability between def.typ and typ:
+      if typ != nil: 
+        if cmpTypes(typ, def.typ) < isConvertible: 
           typeMismatch(a.sons[length - 1], typ, def.typ)
         def = fitNode(c, typ, def)
       else: 
@@ -519,7 +517,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode, prev: PType): PType =
     else: 
       def = nil
     for j in countup(0, length - 3): 
-      arg = newSymS(skParam, a.sons[j], c)
+      var arg = newSymS(skParam, a.sons[j], c)
       arg.typ = typ
       arg.position = counter
       inc(counter)
@@ -600,21 +598,16 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       markUsed(n, n.sym)
     else: 
       liMessage(n.info, errTypeExpected)
-  of nkObjectTy: 
-    result = semObjectNode(c, n, prev)
-  of nkTupleTy: 
-    result = semTuple(c, n, prev)
-  of nkRefTy: 
-    result = semAnyRef(c, n, tyRef, "ref", prev)
-  of nkPtrTy: 
-    result = semAnyRef(c, n, tyPtr, "ptr", prev)
-  of nkVarTy: 
-    result = semVarType(c, n, prev)
-  of nkDistinctTy: 
-    result = semDistinct(c, n, prev)
+  of nkObjectTy: result = semObjectNode(c, n, prev)
+  of nkTupleTy: result = semTuple(c, n, prev)
+  of nkRefTy: result = semAnyRef(c, n, tyRef, "ref", prev)
+  of nkPtrTy: result = semAnyRef(c, n, tyPtr, "ptr", prev)
+  of nkVarTy: result = semVarType(c, n, prev)
+  of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkProcTy: 
     checkSonsLen(n, 2)
-    result = semProcTypeNode(c, n.sons[0], nil, prev) # dummy symbol for `pragma`:
+    result = semProcTypeNode(c, n.sons[0], nil, prev) 
+    # dummy symbol for `pragma`:
     s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[1], procTypePragmas)
@@ -636,49 +629,33 @@ proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
   
 proc processMagicType(c: PContext, m: PSym) = 
   case m.magic                #registerSysType(m.typ);
-  of mInt: 
-    setMagicType(m, tyInt, intSize)
-  of mInt8: 
-    setMagicType(m, tyInt8, 1)
-  of mInt16: 
-    setMagicType(m, tyInt16, 2)
-  of mInt32: 
-    setMagicType(m, tyInt32, 4)
-  of mInt64: 
-    setMagicType(m, tyInt64, 8)
-  of mFloat: 
-    setMagicType(m, tyFloat, floatSize)
-  of mFloat32: 
-    setMagicType(m, tyFloat32, 4)
-  of mFloat64: 
-    setMagicType(m, tyFloat64, 8)
-  of mBool: 
-    setMagicType(m, tyBool, 1)
-  of mChar: 
-    setMagicType(m, tyChar, 1)
+  of mInt: setMagicType(m, tyInt, intSize)
+  of mInt8: setMagicType(m, tyInt8, 1)
+  of mInt16: setMagicType(m, tyInt16, 2)
+  of mInt32: setMagicType(m, tyInt32, 4)
+  of mInt64: setMagicType(m, tyInt64, 8)
+  of mFloat: setMagicType(m, tyFloat, floatSize)
+  of mFloat32: setMagicType(m, tyFloat32, 4)
+  of mFloat64: setMagicType(m, tyFloat64, 8)
+  of mBool: setMagicType(m, tyBool, 1)
+  of mChar: setMagicType(m, tyChar, 1)
   of mString: 
     setMagicType(m, tyString, ptrSize)
     addSon(m.typ, getSysType(tyChar))
   of mCstring: 
     setMagicType(m, tyCString, ptrSize)
     addSon(m.typ, getSysType(tyChar))
-  of mPointer: 
-    setMagicType(m, tyPointer, ptrSize)
+  of mPointer: setMagicType(m, tyPointer, ptrSize)
   of mEmptySet: 
     setMagicType(m, tySet, 1)
     addSon(m.typ, newTypeS(tyEmpty, c))
   of mIntSetBaseType: 
     setMagicType(m, tyRange, intSize) #intSetBaseType := m.typ;
     return 
-  of mNil: 
-    setMagicType(m, tyNil, ptrSize)
-  of mExpr: 
-    setMagicType(m, tyExpr, 0)
-  of mStmt: 
-    setMagicType(m, tyStmt, 0)
-  of mTypeDesc: 
-    setMagicType(m, tyTypeDesc, 0)
-  of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: 
-    return 
+  of mNil: setMagicType(m, tyNil, ptrSize)
+  of mExpr: setMagicType(m, tyExpr, 0)
+  of mStmt: setMagicType(m, tyStmt, 0)
+  of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
+  of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: return 
   else: liMessage(m.info, errTypeExpected)
   

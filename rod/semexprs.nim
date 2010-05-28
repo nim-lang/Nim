@@ -1022,8 +1022,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookup(c, n.sons[0], false)
     if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}: 
       # type parameters: partial generic specialization
-      # XXX: too implement!
-      internalError(n.info, "explicit generic instantation not implemented")
       result = partialSpecialization(c, n, s)
     else: 
       result = semArrayAccess(c, n, flags)

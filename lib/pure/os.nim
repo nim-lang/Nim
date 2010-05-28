@@ -953,8 +953,8 @@ proc parseCmdLine*(c: string): seq[string] =
   ##   causing a literal double quotation mark (") to be placed in argv.
   ##
   ## On Posix systems, it uses the following parsing rules:
-  ## components are separated by
-  ## whitespace unless the whitespace occurs within ``"`` or ``'`` quotes.
+  ## Components are separated by whitespace unless the whitespace 
+  ## occurs within ``"`` or ``'`` quotes.
   result = @[]
   var i = 0
   var a = ""
@@ -963,6 +963,7 @@ proc parseCmdLine*(c: string): seq[string] =
     while c[i] == ' ' or c[i] == '\t': inc(i)
     when defined(windows):
       # parse a single argument according to the above rules:
+      if c[i] == '\0': break
       var inQuote = false
       while true:
         case c[i]        
@@ -971,7 +972,7 @@ proc parseCmdLine*(c: string): seq[string] =
           var j = i
           while c[j] == '\\': inc(j)
           if c[j] == '"': 
-            for k in 0..(j-i) div 2: a.add('\\')
+            for k in 1..(j-i) div 2: a.add('\\')
             if (j-i) mod 2 == 0: 
               i = j
             else: 

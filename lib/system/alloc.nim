@@ -376,10 +376,10 @@ proc freeBigChunk(a: var TAllocator, c: PBigChunk) =
 
 proc splitChunk(a: var TAllocator, c: PBigChunk, size: int) = 
   var rest = cast[PBigChunk](cast[TAddress](c) +% size)
-  if rest in a.freeChunksList: 
-    c_fprintf(c_stdout, "to add: %p\n", rest)
-    writeFreeList(allocator)
-    assert false
+  assert(rest notin a.freeChunksList)
+  #  c_fprintf(c_stdout, "to add: %p\n", rest)
+  #  writeFreeList(allocator)
+  #  assert false
   rest.size = c.size - size
   rest.used = false
   rest.next = nil

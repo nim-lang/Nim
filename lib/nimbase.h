@@ -24,6 +24,13 @@ __TINYC__
 
 #if !defined(__TINYC__)
 #  include  <math.h>
+#else
+/*#  define __GNUC__ 3
+#  define GCC_MAJOR 4
+#  define __GNUC_MINOR__ 4
+#  define __GNUC_PATCHLEVEL__ 5 */
+
+#  define __DECLSPEC_SUPPORTED 1
 #endif
 
 /* calling convention mess ----------------------------------------------- */

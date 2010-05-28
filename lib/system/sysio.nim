@@ -27,6 +27,9 @@ proc strlen(c: cstring): int {.importc: "strlen", nodecl.}
 proc setvbuf(stream: TFile, buf: pointer, typ, size: cint): cint {.
   importc, nodecl.}
 
+proc freopen(path, mode: cstring, stream: TFile): TFile {.importc: "freopen",
+  nodecl.}
+
 proc write(f: TFile, c: cstring) = fputs(c, f)
 
 var
@@ -112,9 +115,7 @@ const
 proc Open(f: var TFile, filename: string,
           mode: TFileMode = fmRead,
           bufSize: int = -1): Bool =
-  var
-    p: pointer
-  p = fopen(filename, FormatOpen[mode])
+  var p: pointer = fopen(filename, FormatOpen[mode])
   result = (p != nil)
   f = cast[TFile](p)
   if bufSize > 0:
@@ -122,6 +123,10 @@ proc Open(f: var TFile, filename: string,
       raise newException(EOutOfMemory, "out of memory")
   elif bufSize == 0:
     discard setvbuf(f, nil, IONBF, 0)
+
+proc reopen(f: TFile, filename: string, mode: TFileMode = fmRead): bool = 
+  var p: pointer = freopen(filename, FormatOpen[mode], f)
+  result = p != nil
 
 proc fdopen(filehandle: TFileHandle, mode: cstring): TFile {.
   importc: pccHack & "fdopen", header: "<stdio.h>".}

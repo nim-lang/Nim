@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 # this module does the semantic checking of statements
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
@@ -267,14 +268,13 @@ proc SemReturn(c: PContext, n: PNode): PNode =
       liMessage(n.info, errCannotReturnExpr)
   
 proc SemYield(c: PContext, n: PNode): PNode = 
-  var restype: PType
   result = n
   checkSonsLen(n, 1)
   if (c.p.owner == nil) or (c.p.owner.kind != skIterator): 
     liMessage(n.info, errYieldNotAllowedHere)
   if (n.sons[0] != nil): 
     n.sons[0] = SemExprWithType(c, n.sons[0]) # check for type compatibility:
-    restype = c.p.owner.typ.sons[0]
+    var restype = c.p.owner.typ.sons[0]
     if (restype != nil): 
       n.sons[0] = fitNode(c, restype, n.sons[0])
       if (n.sons[0].typ == nil): InternalError(n.info, "semYield")
@@ -477,6 +477,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         s = newSymS(skType, a.sons[j], c)
         s.typ = newTypeS(tyGenericParam, c)
       else: 
+        # not a type param, but an expression
         s = newSymS(skGenericParam, a.sons[j], c)
         s.typ = typ
       s.ast = def

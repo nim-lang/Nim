@@ -238,7 +238,7 @@ Database support
   for other databases too.
  
 * `db_sqlite <db_sqlite.html>`_
-  A higher level mySQL database wrapper. The same interface is implemented
+  A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
 

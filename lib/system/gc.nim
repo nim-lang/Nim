@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -478,6 +478,10 @@ proc gcMark(p: pointer) {.inline.} =
       cell.refcount = cell.refcount +% rcIncrement
       add(gch.decStack, cell)
 
+proc markThreadStacks(gch: var TGcHeap) = 
+  when isMultiThreaded:
+    nil
+
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
@@ -613,6 +617,7 @@ proc collectCT(gch: var TGcHeap) =
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
     assert(gch.decStack.len == 0)
     markStackAndRegisters(gch)
+    markThreadStacks(gch)
     gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)
     inc(gch.stat.stackScans)
     collectZCT(gch)

@@ -30,7 +30,7 @@ type
   TTypeRelation = enum        # order is important!
     isNone, isConvertible, isIntConv, isSubtype, isGeneric, isEqual
 
-proc initCandidate(c: var TCandidate, callee: PType) = 
+proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
   c.exactMatches = 0
   c.subtypeMatches = 0
   c.convMatches = 0
@@ -38,11 +38,25 @@ proc initCandidate(c: var TCandidate, callee: PType) =
   c.genericMatches = 0
   c.state = csEmpty
   c.callee = callee
-  c.calleeSym = nil
   c.call = nil
   c.baseTypeMatch = false
-  initIdTable(c.bindings)     #assert(c.callee <> nil);
-  
+
+proc initCandidate(c: var TCandidate, callee: PType) = 
+  initCandidateAux(c, callee)
+  c.calleeSym = nil
+  initIdTable(c.bindings)
+
+proc initCandidate(c: var TCandidate, callee: PSym, binding: PNode) = 
+  initCandidateAux(c, callee.typ)
+  c.calleeSym = callee
+  initIdTable(c.bindings)
+  if binding != nil:
+    var typeParams = callee.ast[genericParamsPos]
+    for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
+      var formalTypeParam = typeParams.sons[i-1].typ
+      #debug(formalTypeParam)
+      IdTablePut(c.bindings, formalTypeParam, binding[i].typ)
+
 proc copyCandidate(a: var TCandidate, b: TCandidate) = 
   a.exactMatches = b.exactMatches
   a.subtypeMatches = b.subtypeMatches
@@ -326,7 +340,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
     case a.kind
     of tyPointer: result = isEqual
     of tyNil: result = isSubtype
-    of tyRef, tyPtr, tyProc, tyCString: result = isConvertible
+    of tyPtr, tyProc, tyCString: result = isConvertible
     else: nil
   of tyString: 
     case a.kind
@@ -664,21 +678,20 @@ proc sameMethodDispatcher(a, b: PSym): bool =
     if aa.kind == nkSym and bb.kind == nkSym and aa.sym == bb.sym: 
       result = true
   
-proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode = 
-  var 
+proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
+                              initialBinding: PNode): PNode = 
+  var
     o: TOverloadIter
     x, y, z: TCandidate
   #liMessage(n.info, warnUser, renderTree(n));
-  var sym = initOverloadIter(o, c, n.sons[0])
+  var sym = initOverloadIter(o, c, f)
   result = nil
   if sym == nil: return 
-  initCandidate(x, sym.typ)
-  x.calleeSym = sym
-  initCandidate(y, sym.typ)
-  y.calleeSym = sym
+  initCandidate(x, sym, initialBinding)
+  initCandidate(y, sym, initialBinding)
   while sym != nil: 
     if sym.kind in filter: 
-      initCandidate(z, sym.typ)
+      initCandidate(z, sym, initialBinding)
       z.calleeSym = sym
       matches(c, n, z)
       if z.state == csMatch: 
@@ -689,7 +702,7 @@ proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode =
           if cmp < 0: x = z # z is better than x
           elif cmp == 0: y = z # z is as good as x
           else: nil
-    sym = nextOverloadIter(o, c, n.sons[0])
+    sym = nextOverloadIter(o, c, f)
   if x.state == csEmpty: 
     # no overloaded proc found
     # do not generate an error yet; the semantic checking will check for
@@ -714,3 +727,16 @@ proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode =
     result = x.call
     result.sons[0] = newSymNode(x.calleeSym)
     result.typ = x.callee.sons[0]
+        
+proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode = 
+  # process the bindings once:
+  var initialBinding: PNode
+  var f = n.sons[0]
+  if f.kind == nkBracketExpr:
+    # fill in the bindings:
+    initialBinding = f
+    f = f.sons[0]
+  else: 
+    initialBinding = nil
+  result = semDirectCallWithBinding(c, n, f, filter, initialBinding)
+

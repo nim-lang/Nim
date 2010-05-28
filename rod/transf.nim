@@ -63,55 +63,55 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PSym =
   incl(result.flags, sfFromGeneric)
 
 proc transform(c: PTransf, n: PNode): PNode
-  #
-  #
-  #Transforming iterators into non-inlined versions is pretty hard, but
-  #unavoidable for not bloating the code too much. If we had direct access to
-  #the program counter, things'd be much easier.
-  #::
-  #
-  #  iterator items(a: string): char =
-  #    var i = 0
-  #    while i < length(a):
-  #      yield a[i]
-  #      inc(i)
-  #
-  #  for ch in items("hello world"): # `ch` is an iteration variable
-  #    echo(ch)
-  #
-  #Should be transformed into::
-  #
-  #  type
-  #    TItemsClosure = record
-  #      i: int
-  #      state: int
-  #  proc items(a: string, c: var TItemsClosure): char =
-  #    case c.state
-  #    of 0: goto L0 # very difficult without goto!
-  #    of 1: goto L1 # can be implemented by GCC's computed gotos
-  #
-  #    block L0:
-  #      c.i = 0
-  #      while c.i < length(a):
-  #        c.state = 1
-  #        return a[i]
-  #        block L1: inc(c.i)
-  #
-  #More efficient, but not implementable::
-  #
-  #  type
-  #    TItemsClosure = record
-  #      i: int
-  #      pc: pointer
-  #
-  #  proc items(a: string, c: var TItemsClosure): char =
-  #    goto c.pc
-  #    c.i = 0
-  #    while c.i < length(a):
-  #      c.pc = label1
-  #      return a[i]
-  #      label1: inc(c.i)
-  #
+
+# Transforming iterators into non-inlined versions is pretty hard, but
+# unavoidable for not bloating the code too much. If we had direct access to
+# the program counter, things'd be much easier.
+# ::
+#
+#  iterator items(a: string): char =
+#    var i = 0
+#    while i < length(a):
+#      yield a[i]
+#      inc(i)
+#
+#  for ch in items("hello world"): # `ch` is an iteration variable
+#    echo(ch)
+#
+# Should be transformed into::
+#
+#  type
+#    TItemsClosure = record
+#      i: int
+#      state: int
+#  proc items(a: string, c: var TItemsClosure): char =
+#    case c.state
+#    of 0: goto L0 # very difficult without goto!
+#    of 1: goto L1 # can be implemented by GCC's computed gotos
+#
+#    block L0:
+#      c.i = 0
+#      while c.i < length(a):
+#        c.state = 1
+#        return a[i]
+#        block L1: inc(c.i)
+#
+# More efficient, but not implementable::
+#
+#  type
+#    TItemsClosure = record
+#      i: int
+#      pc: pointer
+#
+#  proc items(a: string, c: var TItemsClosure): char =
+#    goto c.pc
+#    c.i = 0
+#    while c.i < length(a):
+#      c.pc = label1
+#      return a[i]
+#      label1: inc(c.i)
+#
+
 proc newAsgnStmt(c: PTransf, le, ri: PNode): PNode = 
   result = newNodeI(nkFastAsgn, ri.info)
   addSon(result, le)
@@ -290,8 +290,8 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     if not isOrdinalType(source):
       # XXX int64 -> float conversion?
       result = n
-    elif (firstOrd(dest) <= firstOrd(source)) and
-        (lastOrd(source) <= lastOrd(dest)): 
+    elif firstOrd(dest) <= firstOrd(source) and
+        lastOrd(source) <= lastOrd(dest): 
       # BUGFIX: simply leave n as it is; we need a nkConv node,
       # but no range check:
       result = n
@@ -540,8 +540,8 @@ proc getMergeOp(n: PNode): PSym =
 
 proc flattenTreeAux(d, a: PNode, op: PSym) = 
   var op2 = getMergeOp(a)
-  if (op2 != nil) and
-      ((op2.id == op.id) or (op.magic != mNone) and (op2.magic == op.magic)): 
+  if op2 != nil and
+      (op2.id == op.id or op.magic != mNone and op2.magic == op.magic): 
     for i in countup(1, sonsLen(a) - 1): flattenTreeAux(d, a.sons[i], op)
   else: 
     addSon(d, copyTree(a))
