@@ -13,7 +13,7 @@ Bugfixes
 - Bugfix: Passing a ``ref`` pointer to the untyped ``pointer`` type is invalid.
 - Bugfix: Updated ``keyval`` example.
 - Bugfix: ``system.splitChunk`` still contained code for debug output.
-- Bugfix: ``times.getStartMilsecs`` uses ``gettimeofday`` for Posix times. It
+- Bugfix: ``times.getStartMilsecs`` uses ``gettimeofday`` for Posix. It
   used to use ``clock`` which has the wrong semantics.
 - Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
   ``STOCK_OPEN`` for the GTK backend.
