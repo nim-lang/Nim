@@ -139,7 +139,7 @@ proc `<=` * (a, b: TTime): bool =
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
-proc getStartMilsecs*(): int
+proc getStartMilsecs*(): int {.deprecated.}
   ## get the miliseconds from the start of the program
 
 
@@ -212,15 +212,15 @@ when not defined(ECMAScript):
   proc getStartMilsecs(): int =
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(clock())
     #return clock() div (clocksPerSec div 1000)
-    when defined(posix):
-      var a: Ttimeval
-      posix_gettimeofday(a)
-      result = a.tv_sec * 1000 + a.tv_usec
+    when defined(macosx):
+      result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
     else:
       result = int(clock()) div (clocksPerSec div 1000)
     when false:
-      when defined(macosx):
-        result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
+      var a: Ttimeval
+      posix_gettimeofday(a)
+      result = a.tv_sec * 1000 + a.tv_usec
+      #echo "result: ", result
     
   proc getTime(): TTime = return timec(nil)
   proc getLocalTime(t: TTime): TTimeInfo =
