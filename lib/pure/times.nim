@@ -26,7 +26,7 @@ type
 when defined(posix): 
   type
     TTime* = distinct int ## distinct type that represents a time
-
+    
     Ttimeval {.importc: "struct timeval", header: "<sys/select.h>", 
                final, pure.} = object ## struct timeval
       tv_sec: int  ## Seconds. 
@@ -40,11 +40,14 @@ when defined(posix):
     importc: "gettimeofday", header: "<sys/time.h>".}
 
 elif defined(windows):
+  import winlean
+  
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TTime* = distinct int64
   else:
     type TTime* = distinct int32
+
 elif defined(ECMAScript):
   type
     TTime* {.final.} = object
@@ -123,8 +126,8 @@ proc `$` *(time: TTime): string
   ## converts a calendar time to a string representation.
 
 proc getDateStr*(): string
-  ## gets the current date as a string of the format
-  ## ``YYYY-MM-DD``.
+  ## gets the current date as a string of the format ``YYYY-MM-DD``.
+
 proc getClockStr*(): string
   ## gets the current clock time as a string of the format ``HH:MM:SS``.
 
@@ -140,8 +143,27 @@ proc `<=` * (a, b: TTime): bool =
   result = a - b <= 0
 
 proc getStartMilsecs*(): int {.deprecated.}
-  ## get the miliseconds from the start of the program
+  ## get the miliseconds from the start of the program. **Deprecated since
+  ## version 0.8.10.** Use ``realTime`` or ``cpuTime`` instead.
 
+when not defined(ECMAScript):  
+  proc epochTime*(): float
+    ## gets time after the UNIX epoch (1970) in seconds. It is a float
+    ## because sub-second resolution is likely to be supported (depending 
+    ## on the hardware/OS).
+
+  proc cpuTime*(): float 
+    ## gets time spent that the CPU spent to run the current process in
+    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## However, it may measure the real time instead (depending on the OS).
+    ## The value of the result has no meaning. 
+    ## To generate useful timing values, take the difference between 
+    ## the results of two ``cpuTime`` calls:
+    ##
+    ## .. code-block:: nimrod
+    ##   var t0 = cpuTime()
+    ##   doWork()
+    ##   echo "CPU time [s] ", cpuTime() - t0
 
 when not defined(ECMAScript):  
   # C wrapper:
@@ -160,7 +182,7 @@ when not defined(ECMAScript):
     PTimeInfo = ptr structTM
     PTime = ptr TTime
   
-    TClock {.importc: "clock_t".} = distinct int #range[low(int)..high(int)]
+    TClock {.importc: "clock_t".} = distinct int
   
   proc localtime(timer: PTime): PTimeInfo {.
     importc: "localtime", header: "<time.h>".}
@@ -177,8 +199,7 @@ when not defined(ECMAScript):
   
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-  
-  
+    
   # our own procs on top of that:
   proc tmToTimeInfo(tm: structTM): TTimeInfo =
     const
@@ -213,13 +234,13 @@ when not defined(ECMAScript):
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(clock())
     #return clock() div (clocksPerSec div 1000)
     when defined(macosx):
-      result = toInt(toFloat(clock()) / (toFloat(clocksPerSec) / 1000.0))
+      result = toInt(toFloat(int(clock())) / (toFloat(clocksPerSec) / 1000.0))
     else:
       result = int(clock()) div (clocksPerSec div 1000)
     when false:
       var a: Ttimeval
       posix_gettimeofday(a)
-      result = a.tv_sec * 1000 + a.tv_usec
+      result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
       #echo "result: ", result
     
   proc getTime(): TTime = return timec(nil)
@@ -239,14 +260,13 @@ when not defined(ECMAScript):
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
-    
+
   proc toStringTillNL(p: cstring): string = 
     result = ""
     var i = 0
     while p[i] != '\0' and p[i] != '\10' and p[i] != '\13': 
       add(result, p[i])
       inc(i)
-    return result
     
   proc `$`(timeInfo: TTimeInfo): string =
     # BUGFIX: asctime returns a newline at the end!
@@ -269,7 +289,26 @@ when not defined(ECMAScript):
   proc winTimeToUnixTime*(t: int64): TTime = 
     ## converts a Windows time to a UNIX `TTime` (``time_t``)
     result = TTime((t - epochDiff) div rateDiff)
-
+    
+  proc epochTime(): float = 
+    when defined(posix):
+      var a: Ttimeval
+      posix_gettimeofday(a)
+      result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.001
+      # why 0.001 instead of 0.00_0001? I don't know.
+    elif defined(windows):
+      var f: winlean.Filetime
+      GetSystemTimeAsFileTime(f)
+      var i64 = rdFileTime(f) - epochDiff
+      var secs = i64 div rateDiff
+      var subsecs = i64 mod rateDiff
+      result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+    else:
+      {.error: "unknown OS".}
+    
+  proc cpuTime(): float = 
+    result = toFloat(int(clock())) / toFloat(clocksPerSec)
+    
 else:
   proc getTime(): TTime {.importc: "new Date", nodecl.}
 

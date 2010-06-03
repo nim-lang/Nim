@@ -268,17 +268,13 @@ proc getRaiseFrmt(p: BProc): string =
     result = "raiseException((E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) = 
-  var 
-    e: PRope
-    a: TLoc
-    typ: PType
   genLineDir(p, t)
   if t.sons[0] != nil: 
     if gCmd != cmdCompileToCpp: useMagic(p.module, "raiseException")
+    var a: TLoc
     InitLocExpr(p, t.sons[0], a)
-    e = rdLoc(a)
-    typ = t.sons[0].typ
-    while typ.kind in {tyVar, tyRef, tyPtr}: typ = typ.sons[0]
+    var e = rdLoc(a)
+    var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     appf(p.s[cpsStmts], getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
   else: 
     # reraise the last exception:
@@ -385,7 +381,8 @@ proc genStringCase(p: BProc, t: PNode) =
     strings, bitMask, labId: int
     a: TLoc
     branches: TRopeSeq
-  useMagic(p.module, "eqStrings") # count how many constant strings there are in the case:
+  useMagic(p.module, "eqStrings") 
+  # count how many constant strings there are in the case:
   strings = 0
   for i in countup(1, sonsLen(t) - 1): 
     if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
@@ -411,7 +408,8 @@ proc genStringCase(p: BProc, t: PNode) =
              [intLiteral(j), branches[j]])
     app(p.s[cpsStmts], '}' & tnl) # else statement:
     if t.sons[sonsLen(t) - 1].kind != nkOfBranch: 
-      appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.labels)]) # third pass: generate statements
+      appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.labels)]) 
+    # third pass: generate statements
     genCaseSecondPass(p, t, labId)
   else: 
     genCaseGeneric(p, t, "", "if (eqStrings($1, $2)) goto $3;$n")
@@ -420,7 +418,7 @@ proc branchHasTooBigRange(b: PNode): bool =
   for i in countup(0, sonsLen(b) - 2): 
     # last son is block
     if (b.sons[i].Kind == nkRange) and
-        (b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit): 
+        b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit: 
       return true
   result = false
 
@@ -481,8 +479,10 @@ proc genCaseStmt(p: BProc, t: PNode) =
     genStringCase(p, t)
   of tyFloat..tyFloat128: 
     genCaseGeneric(p, t, "if ($1 >= $2 && $1 <= $3) goto $4;$n", 
-                   "if ($1 == $2) goto $3;$n") # ordinal type: generate a switch statement
-  else: genOrdinalCase(p, t)
+                   "if ($1 == $2) goto $3;$n") 
+  else: 
+    # ordinal type: generate a switch statement
+    genOrdinalCase(p, t)
   
 proc hasGeneralExceptSection(t: PNode): bool = 
   var length, i, blen: int
@@ -561,8 +561,8 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   app(p.s[cpsStmts], "excHandler = excHandler->prev;" & tnl)
   if (i < length) and (t.sons[i].kind == nkFinally): 
     genStmts(p, t.sons[i].sons[0])
-    if rethrowFlag != nil: 
-      appf(p.s[cpsStmts], "if ($1) { throw; }$n", [rethrowFlag])
+  if rethrowFlag != nil: 
+    appf(p.s[cpsStmts], "if ($1) { throw; }$n", [rethrowFlag])
   
 proc genTryStmt(p: BProc, t: PNode) = 
   # code to generate:
@@ -630,9 +630,9 @@ proc genTryStmt(p: BProc, t: PNode) =
   dec(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally): 
     genStmts(p, t.sons[i].sons[0])
-    useMagic(p.module, "raiseException")
-    appf(p.s[cpsStmts], "if ($1.status != 0) { " &
-        "raiseException($1.exc, $1.exc->name); }$n", [safePoint])
+  useMagic(p.module, "raiseException")
+  appf(p.s[cpsStmts], "if ($1.status != 0) { " &
+      "raiseException($1.exc, $1.exc->name); }$n", [safePoint])
 
 var 
   breakPointId: int = 0
