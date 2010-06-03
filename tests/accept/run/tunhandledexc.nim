@@ -8,10 +8,9 @@ proc genErrors(s: string) =
   else:
     raise newException(EsomeotherErr, "bla")
 
-try:
-  genErrors("errssor!")
-except ESomething:
-  echo("Error happened")
-except:
-  raise
-
+when True:
+  try:
+    genErrors("errssor!")
+  except ESomething:
+    echo("Error happened")
+  

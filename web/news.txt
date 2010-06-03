@@ -13,10 +13,9 @@ Bugfixes
 - Bugfix: Passing a ``ref`` pointer to the untyped ``pointer`` type is invalid.
 - Bugfix: Updated ``keyval`` example.
 - Bugfix: ``system.splitChunk`` still contained code for debug output.
-- Bugfix: ``times.getStartMilsecs`` uses ``gettimeofday`` for Posix. It
-  used to use ``clock`` which has the wrong semantics.
 - Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
   ``STOCK_OPEN`` for the GTK backend.
+- Bugfix: ``raise`` within an exception handler did not work.
 
 
 Changes affecting backwards compatibility
@@ -24,6 +23,8 @@ Changes affecting backwards compatibility
 
 - Procs not marked as ``procvar`` cannot only be passed to a procvar anymore,
   unless they are used in the same module.
+- Deprecated ``times.getStartMilsecs``: Use ``epochTime`` or ``cpuTime`` 
+  instead.
 
 
 Additions
@@ -33,6 +34,7 @@ Additions
   needs to be recompiled.
 - Added ``system.reopen``. 
 - Added ``system.getCurrentException``.
+- Added ``times.epochTime`` and ``times.cpuTime``. 
 - Implemented explicit type arguments for generics.
 - Implemented implicit type arguments for generics.
 

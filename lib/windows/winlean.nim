@@ -192,6 +192,9 @@ proc rdFileTime*(f: FILETIME): int64 =
 proc rdFileSize*(f: TWin32FindData): int64 = 
   result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
 
+proc GetSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FileTime) {.
+  importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall.}
+
 proc Sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 
