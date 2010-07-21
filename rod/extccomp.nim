@@ -50,7 +50,7 @@ const
      compilerExe: "gcc", 
      compileTmpl: "-c $options $include -o $objfile $file", 
      buildGui: " -mwindows", 
-     buildDll: " -mdll", 
+     buildDll: " -shared", 
      linkerExe: "gcc", 
      linkTmpl: "$options $buildgui $builddll -o $exefile $objfiles", 
      includeCmd: " -I", 
@@ -65,7 +65,7 @@ const
      compilerExe: "llvm-gcc", 
      compileTmpl: "-c $options $include -o $objfile $file", 
      buildGui: " -mwindows", 
-     buildDll: " -mdll", 
+     buildDll: " -shared", 
      linkerExe: "llvm-gcc", 
      linkTmpl: "$options $buildgui $builddll -o $exefile $objfiles", 
      includeCmd: " -I", 
@@ -225,7 +225,7 @@ const
 
 var ccompiler*: TSystemCC = ccGcc
 
-const                         # the used compiler
+const                   # the used compiler
   hExt* = "h"
 
 var cExt*: string = "c" # extension of generated C/C++ files
@@ -490,7 +490,6 @@ proc CallCCompiler(projectfile: string) =
     generateScript(projectFile, script)
 
 proc genMappingFiles(list: TLinkedList): PRope = 
-  result = nil
   var it = PStrEntry(list.head)
   while it != nil: 
     appf(result, "--file:r\"$1\"$n", [toRope(AddFileExt(it.data, cExt))])

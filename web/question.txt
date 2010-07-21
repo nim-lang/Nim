@@ -58,8 +58,28 @@ to write as low-level Nimrod code as C requires you to do. That said the only
 overhead Nimrod has over C is the GC which has been tuned for years.
 
 
+What about JVM/CLR backends?
+----------------------------
+
+A JVM backend is almost impossible. The JVM is not expressive enough. It has
+never been designed as a general purpose VM anyway. A CLR backend is possible
+but would require much work. 
+
+
 Compilation
 ===========
+
+Which option to use for the fastest executable?
+-----------------------------------------------
+
+For the standard configuration file, ``-d:release`` does the trick.
+
+
+Which option to use for the smallest executable?
+------------------------------------------------
+
+For the standard configuration file, ``-d:quick --opt:size`` does the trick.
+
 
 Execution of GCC fails (Windows)
 --------------------------------

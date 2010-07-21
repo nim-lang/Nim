@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -37,7 +37,7 @@ const
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, wDeprecated}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerProc, wFinal}
+    wPure, wHeader, wCompilerProc, wFinal, wSize}
   fieldPragmas* = {wImportc, wExportc, wDeprecated}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib}
@@ -344,6 +344,13 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           sym.typ.align = expectIntLit(c, it)
           if not IsPowerOfTwo(sym.typ.align) and (sym.typ.align != 0): 
             liMessage(it.info, errPowerOfTwoExpected)
+        of wSize: 
+          if sym.typ == nil: invalidPragma(it)
+          var size = expectIntLit(c, it)
+          if not IsPowerOfTwo(size) or size <= 0 or size > 8: 
+            liMessage(it.info, errPowerOfTwoExpected)
+          else:
+            sym.typ.size = size
         of wNodecl: 
           noVal(it)
           incl(sym.loc.Flags, lfNoDecl)

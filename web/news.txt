@@ -16,6 +16,8 @@ Bugfixes
 - Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
   ``STOCK_OPEN`` for the GTK backend.
 - Bugfix: ``raise`` within an exception handler did not work.
+- Bugfix: ``low(somestring)`` crashed the compiler.
+- Bugfix: ``strutils.endsWith`` lacked range checking.
 
 
 Changes affecting backwards compatibility
@@ -37,6 +39,8 @@ Additions
 - Added ``times.epochTime`` and ``times.cpuTime``. 
 - Implemented explicit type arguments for generics.
 - Implemented implicit type arguments for generics.
+- Implemented ``{.size: sizeof(cint).}`` pragma for enum types. This is useful
+  for interfacing with C.
 
 
 2010-03-14 Version 0.8.8 released

@@ -427,7 +427,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   case L.buf[L.bufpos]
   of 'n', 'N': 
     if tok.toktype == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
-    tok.literal = tok.literal & tnl
+    add(tok.literal, tnl)
     Inc(L.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, CR)

@@ -408,7 +408,7 @@ proc toColumn(info: TLineInfo): int =
 proc MessageOut(s: string) = 
   # change only this proc to put it elsewhere
   Writeln(stdout, s)
-
+ 
 proc coordToStr(coord: int): string = 
   if coord == - 1: result = "???"
   else: result = $(coord)

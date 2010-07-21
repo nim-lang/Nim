@@ -92,18 +92,15 @@ proc getNotFoundError(c: PContext, n: PNode): string =
   # Gives a detailed error message; this is seperated from semDirectCall,
   # as semDirectCall is already pretty slow (and we need this information only
   # in case of an error).
-  var 
-    sym: PSym
-    o: TOverloadIter
-    candidates: string
   result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1): 
     #debug(n.sons[i].typ);
     add(result, typeToString(n.sons[i].typ))
     if i != sonsLen(n) - 1: add(result, ", ")
   add(result, ')')
-  candidates = ""
-  sym = initOverloadIter(o, c, n.sons[0])
+  var candidates = ""
+  var o: TOverloadIter  
+  var sym = initOverloadIter(o, c, n.sons[0])
   while sym != nil: 
     if sym.kind in {skProc, skMethod, skIterator, skConverter}: 
       add(candidates, getProcHeader(sym))

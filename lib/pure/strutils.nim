@@ -391,10 +391,13 @@ proc endsWith(s, suffix: string): bool =
   var
     i = 0
     j = len(s) - len(suffix)
-  while true:
-    if suffix[i] == '\0': return true
+  while i+j <% s.len:
     if s[i+j] != suffix[i]: return false
     inc(i)
+  if suffix[i] == '\0': return true
+
+# 012345
+#    345
 
 when false:
   proc abbrev(s: string, possibilities: openarray[string]): int = 
