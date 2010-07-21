@@ -1123,12 +1123,6 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
 
-
-# Fixup some magic symbols here:
-#{.fixup_system.} 
-# This is an undocumented pragma that can only be used
-# once in the system module.
-
 proc `&` *[T](x, y: openArray[T]): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
