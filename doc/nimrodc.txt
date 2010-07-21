@@ -66,9 +66,18 @@ The generated files that Nimrod produces all go into a subdirectory called
 ``nimcache`` in your project directory. This makes it easy to delete all
 generated files.
 
-However, the generated C code is not platform independant. C code generated for
+However, the generated C code is not platform independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
+
+..
+  DLL generation
+  ==============
+
+  Nimrod supports the generation of DLLs. However, there must be only one 
+  instance of the GC per address space. This instance is contained in
+  ``nimrtl.dll``. This means that every generated Nimrod DLL depends
+  on ``nimrtl.dll``. 
 
 
 Additional Features

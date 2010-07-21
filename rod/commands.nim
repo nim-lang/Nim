@@ -156,14 +156,14 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
                  info: TLineInfo) = 
   cmd = ""
   var i = 0
-  if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
-  if (i < len(switch) + 0) and (switch[i] == '-'): inc(i)
-  while i < len(switch) + 0: 
+  if i < len(switch) and switch[i] == '-': inc(i)
+  if i < len(switch) and switch[i] == '-': inc(i)
+  while i < len(switch): 
     case switch[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
     else: break 
     inc(i)
-  if i >= len(switch) + 0: arg = ""
+  if i >= len(switch): arg = ""
   elif switch[i] in {':', '=', '['}: arg = copy(switch, i + 1)
   else: InvalidCmdLineOption(pass, switch, info)
   

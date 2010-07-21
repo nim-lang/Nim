@@ -813,11 +813,15 @@ const
   hostOS* {.magic: "HostOS"}: string = ""
     ## a string that describes the host operating system. Possible values:
     ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
-    ## "aix"
+    ## "aix".
         
   hostCPU* {.magic: "HostCPU"}: string = ""
     ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm"
+    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
+  
+  appType* {.magic: "AppType"}: string = ""
+    ## a string that describes the application type. Possible values:
+    ## "console", "gui", "lib".
   
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
@@ -1570,7 +1574,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       result = n.sons[n.len]
 
   include "system/systhread"
-  include "system/mm"
+  include "system/mmdisp"
   include "system/sysstr"
   include "system/assign"
   include "system/repr"

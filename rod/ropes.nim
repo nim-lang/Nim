@@ -52,9 +52,9 @@
 #  Note that the left and right pointers are not needed for leafs.
 #  Leafs have relatively high memory overhead (~30 bytes on a 32
 #  bit machines) and we produce many of them. This is why we cache and
-#  share leafs accross different rope trees.
+#  share leaves accross different rope trees.
 #  To cache them they are inserted in another tree, a splay tree for best
-#  performance. But for the caching tree we use the leafs' left and right
+#  performance. But for the caching tree we use the leaves' left and right
 #  pointers.
 #
 
