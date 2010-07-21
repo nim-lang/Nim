@@ -5,6 +5,8 @@
 :Author: Andreas Rumpf
 :Version: 0.8.10
 
+.. contents::
+
 Introduction
 ============
 
@@ -65,10 +67,10 @@ Is translated into:
 
 .. code-block:: Nimrod
   when defined(debug):
-    template OUT(x: expr): expr = 
+    template OUT*(x: expr): expr = 
       printf("%s\x0A", x)
   else:
-    template OUT(x: expr): stmt = 
+    template OUT*(x: expr): stmt = 
       nil
   
 As can been seen from the example, C's macros with parameters are mapped
@@ -213,7 +215,7 @@ prototype but confuse c2nim's parser:
   EXPORT int f(void); 
   EXPORT int g(void); 
 
-Instead of to remove ``EXPORT`` from the input source file, one can tell c2nim
+Instead of removing ``EXPORT`` from the input source file, one can tell c2nim
 to skip special identifiers:
 
 .. code-block:: C
