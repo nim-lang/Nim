@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+typedef char gchar;
+typedef unsigned int gunsignedint;
+
 point* newPoint(void) {  
   for (int i = 0; i < 89; ++i) echo("test" " string "  "concatenation");
   for (; j < 54; j++) {}

@@ -36,6 +36,7 @@ Additions
   needs to be recompiled.
 - Added ``system.reopen``. 
 - Added ``system.getCurrentException``.
+- Added ``system.appType``.
 - Added ``times.epochTime`` and ``times.cpuTime``. 
 - Implemented explicit type arguments for generics.
 - Implemented implicit type arguments for generics.

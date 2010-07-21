@@ -583,6 +583,7 @@ proc otherTypeDef(p: var TParser, section, typ: PNode) =
     name = skipIdent(p)
   else: 
     # typedef typ name;
+    t = typ
     name = skipIdent(p)
   t = parseTypeSuffix(p, t)
   addTypeDef(section, name, t)
