@@ -376,7 +376,7 @@ proc typeAtom(p: var TParser): PNode =
   elif isIntType(p.tok.s):
     var x = "c" & p.tok.s
     getTok(p, nil)
-    while p.tok.xkind == pxSymbol and isIntType(p.tok.s):
+    while p.tok.xkind == pxSymbol and (isIntType(p.tok.s) or p.tok.s == "char"):
       add(x, p.tok.s)
       getTok(p, nil)
     result = newIdentNodeP(x, p)

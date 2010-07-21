@@ -136,6 +136,9 @@ elif defined(nogc):
   # object, because C does not support this operation... Even though every
   # possible implementation has to have a way to determine the object's size.
   # C just sucks.
+  when appType == "lib": 
+    {.warning: "nogc in a library context may not work".}
+  
   include "system/alloc"
 
   when false:
