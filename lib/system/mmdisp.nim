@@ -130,6 +130,12 @@ when defined(boehmgc):
 
   include "system/cellsets"
 elif defined(nogc):
+  # Even though we don't want the GC, we cannot simply use C's memory manager
+  # because Nimrod's runtime wants ``realloc`` to zero out the additional
+  # space which C's ``realloc`` does not. And we cannot get the old size of an
+  # object, because C does not support this operation... Even though every
+  # possible implementation has to have a way to determine the object's size.
+  # C just sucks.
   include "system/alloc"
 
   when false:

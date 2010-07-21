@@ -170,7 +170,7 @@ in the future as it cannot work for backends that do not generate C code.
 that can be used for the same purpose.
 
 c2nim does not do any name mangling by default. However the 
- ``#prefix`` and ``#suffix`` directives can be used to strip prefixes and
+``#prefix`` and ``#suffix`` directives can be used to strip prefixes and
 suffixes from the identifiers in the C code: 
  
 .. code-block:: C

@@ -274,6 +274,14 @@ proc magicCall(m: PSym, n: PNode): PNode =
     b = nil
   result = evalOp(s.magic, n, a, b, c)
   
+proc getAppType(n: PNode): PNode = 
+  if gGlobalOptions.contains(optGenDynLib):
+    result = newStrNodeT("lib", n)
+  elif gGlobalOptions.contains(optGenGuiApp):
+    result = newStrNodeT("gui", n)
+  else:
+    result = newStrNodeT("console", n)
+  
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -293,6 +301,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(toLower(platform.CPU[targetCPU].name), n)
+      of mAppType: result = getAppType(n)
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
       of mNegInf: result = newFloatNodeT(NegInf, n)
