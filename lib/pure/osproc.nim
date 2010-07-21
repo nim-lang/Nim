@@ -117,7 +117,7 @@ when defined(macosx) or defined(bsd):
 
 proc countProcessors*(): int =
   ## returns the numer of the processors/cores the machine has.
-  ## Returns 0 if it cannot be determined.
+  ## Returns 0 if it cannot be detected.
   when defined(windows):
     var x = getenv("NUMBER_OF_PROCESSORS")
     if x.len > 0: result = parseInt(x)

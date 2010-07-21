@@ -502,7 +502,7 @@ proc base(t: PType): PType =
 
 proc firstOrd(t: PType): biggestInt = 
   case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray: 
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString: 
     result = 0
   of tySet, tyVar: 
     result = firstOrd(t.sons[0])

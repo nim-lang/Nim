@@ -37,6 +37,7 @@ proc parseAll*(p: var TParsers): PNode
 proc parseTopLevelStmt*(p: var TParsers): PNode
   # implements an iterator. Returns the next top-level statement or nil if end
   # of stream.
+
 # implementation
 
 proc ParseFile(filename: string): PNode = 
@@ -57,7 +58,8 @@ proc parseAll(p: var TParsers): PNode =
   of skinBraces: 
     result = pbraces.parseAll(p.parser)
   of skinEndX: 
-    InternalError("parser to implement") # skinEndX: result := pendx.parseAll(p.parser);
+    InternalError("parser to implement") 
+    # skinEndX: result := pendx.parseAll(p.parser);
   
 proc parseTopLevelStmt(p: var TParsers): PNode = 
   case p.skin
@@ -66,39 +68,33 @@ proc parseTopLevelStmt(p: var TParsers): PNode =
   of skinBraces: 
     result = pbraces.parseTopLevelStmt(p.parser)
   of skinEndX: 
-    InternalError("parser to implement") #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
+    InternalError("parser to implement") 
+    #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   
 proc UTF8_BOM(s: string): int = 
-  if (s[0] == '\xEF') and (s[0 + 1] == '\xBB') and (s[0 + 2] == '\xBF'): 
+  if (s[0] == '\xEF') and (s[1] == '\xBB') and (s[2] == '\xBF'): 
     result = 3
   else: 
     result = 0
   
 proc containsShebang(s: string, i: int): bool = 
-  var j: int
-  result = false
   if (s[i] == '#') and (s[i + 1] == '!'): 
-    j = i + 2
+    var j = i + 2
     while s[j] in WhiteSpace: inc(j)
     result = s[j] == '/'
 
 proc parsePipe(filename: string, inputStream: PLLStream): PNode = 
-  var 
-    line: string
-    s: PLLStream
-    i: int
-    q: TParser
-  result = nil
-  s = LLStreamOpen(filename, fmRead)
+  var s = LLStreamOpen(filename, fmRead)
   if s != nil: 
-    line = LLStreamReadLine(s)
-    i = UTF8_Bom(line) + 0
+    var line = LLStreamReadLine(s)
+    var i = UTF8_Bom(line)
     if containsShebang(line, i): 
       line = LLStreamReadLine(s)
       i = 0
     if (line[i] == '#') and (line[i + 1] == '!'): 
       inc(i, 2)
       while line[i] in WhiteSpace: inc(i)
+      var q: TParser
       OpenParser(q, filename, LLStreamOpen(copy(line, i)))
       result = pnimsyn.parseAll(q)
       CloseParser(q)
@@ -124,12 +120,10 @@ proc getCallee(n: PNode): PIdent =
   else: 
     rawMessage(errXNotAllowedHere, renderTree(n))
   
-proc applyFilter(p: var TParsers, n: PNode, filename: string, stdin: PLLStream): PLLStream = 
-  var 
-    ident: PIdent
-    f: TFilterKind
-  ident = getCallee(n)
-  f = getFilter(ident)
+proc applyFilter(p: var TParsers, n: PNode, filename: string, 
+                 stdin: PLLStream): PLLStream = 
+  var ident = getCallee(n)
+  var f = getFilter(ident)
   case f
   of filtNone: 
     p.skin = getParser(ident)
@@ -146,7 +140,8 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string, stdin: PLLStream):
       messageOut(result.s)
       rawMessage(hintCodeEnd, [])
 
-proc evalPipe(p: var TParsers, n: PNode, filename: string, start: PLLStream): PLLStream = 
+proc evalPipe(p: var TParsers, n: PNode, filename: string, 
+              start: PLLStream): PLLStream = 
   result = start
   if n == nil: return 
   if (n.kind == nkInfix) and (n.sons[0].kind == nkIdent) and
@@ -162,16 +157,14 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string, start: PLLStream): PL
     result = applyFilter(p, n, filename, result)
   
 proc openParsers(p: var TParsers, filename: string, inputstream: PLLStream) = 
-  var 
-    pipe: PNode
-    s: PLLStream
+  var s: PLLStream
   p.skin = skinStandard
-  pipe = parsePipe(filename, inputStream)
+  var pipe = parsePipe(filename, inputStream)
   if pipe != nil: s = evalPipe(p, pipe, filename, inputStream)
   else: s = inputStream
   case p.skin
-  of skinStandard, skinBraces, skinEndX: pnimsyn.openParser(p.parser, filename, 
-      s)
+  of skinStandard, skinBraces, skinEndX: 
+    pnimsyn.openParser(p.parser, filename, s)
   
 proc closeParsers(p: var TParsers) = 
   pnimsyn.closeParser(p.parser)

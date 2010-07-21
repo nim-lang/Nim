@@ -155,7 +155,7 @@ underscores ``__`` are not allowed::
 
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
-  IDENTIFIER ::= letter ( ['_'] letter | digit )*
+  IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
 
 The following `keywords`:idx: are reserved and cannot be used as identifiers:
 

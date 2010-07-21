@@ -615,13 +615,19 @@ proc gproc(g: var TSrcGen, n: PNode) =
 proc gblock(g: var TSrcGen, n: PNode) = 
   var c: TContext
   initContext(c)
-  putWithSpace(g, tkBlock, "block")
-  gsub(g, n.sons[0])
+  if n.sons[0] != nil:
+    putWithSpace(g, tkBlock, "block")
+    gsub(g, n.sons[0])
+  else:
+    put(g, tkBlock, "block")
   putWithSpace(g, tkColon, ":")
   if longMode(n) or (lsub(n.sons[1]) + g.lineLen > maxLineLen): 
     incl(c.flags, rfLongMode)
   gcoms(g)
+  # XXX I don't get why this is needed here! gstmts should already handle this!
+  indentNL(g)
   gstmts(g, n.sons[1], c)
+  dedent(g)
 
 proc gasm(g: var TSrcGen, n: PNode) = 
   putWithSpace(g, tkAsm, "asm")

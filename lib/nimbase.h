@@ -80,7 +80,7 @@ __TINYC__
 
 /* ---------------- casting without correct aliasing rules ----------- */
 
-#if defined(__GNUCC__)
+#if defined(__GNUC__)
 #  define NIM_CAST(type, ptr) (((union{type __x__;}*)(ptr))->__x__)
 #else
 #  define NIM_CAST(type, ptr) ((type)(ptr))

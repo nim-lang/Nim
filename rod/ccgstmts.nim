@@ -581,16 +581,13 @@ proc genTryStmt(p: BProc, t: PNode) =
   #      sp.status = RangeError; /* if raise; else 0 */
   #    }
   #  }
+  #  excHandler = excHandler->prev; /* deactivate this safe point */ 
   #  /* finally: */
   #  printf('fin!\n');
   #  if (sp.status != 0)
   #    longjmp(excHandler->context, sp.status);
-  #  excHandler = excHandler->prev; /* deactivate this safe point */ 
-  var 
-    i, length, blen: int
-    safePoint, orExpr: PRope
   genLineDir(p, t)
-  safePoint = getTempName()
+  var safePoint = getTempName()
   useMagic(p.module, "TSafePoint")
   useMagic(p.module, "E_Base")
   useMagic(p.module, "excHandler")
@@ -600,13 +597,13 @@ proc genTryStmt(p: BProc, t: PNode) =
   if optStackTrace in p.Options: 
     app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
   appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
-  length = sonsLen(t)
+  var length = sonsLen(t)
   inc(p.nestedTryStmts)
   genStmts(p, t.sons[0])
   app(p.s[cpsStmts], "} else {" & tnl)
-  i = 1
+  var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
-    blen = sonsLen(t.sons[i])
+    var blen = sonsLen(t.sons[i])
     if blen == 1: 
       # general except section:
       if i > 1: app(p.s[cpsStmts], "else {" & tnl)
@@ -614,7 +611,7 @@ proc genTryStmt(p: BProc, t: PNode) =
       appf(p.s[cpsStmts], "$1.status = 0;$n", [safePoint])
       if i > 1: app(p.s[cpsStmts], '}' & tnl)
     else: 
-      orExpr = nil
+      var orExpr: PRope = nil
       for j in countup(0, blen - 2): 
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: app(orExpr, "||")

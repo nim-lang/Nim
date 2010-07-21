@@ -1,11 +1,12 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 # This implements the first pass over the generic body; it resolves some
 # symbols. Thus for generics there is a two-phase symbol lookup just like
 # in C++.
@@ -155,8 +156,8 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       if (a.kind != nkIdentDefs): IllFormedAst(a)
       checkMinSonsLen(a, 3)
       L = sonsLen(a)
-      a.sons[L - 2] = semGenericStmt(c, a.sons[L - 2], {withinTypeDesc}) # do not perform symbol lookup for default 
-                                                                         # expressions 
+      a.sons[L - 2] = semGenericStmt(c, a.sons[L - 2], {withinTypeDesc}) 
+      # do not perform symbol lookup for default expressions 
       for j in countup(0, L - 3): 
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkConstSection: 
@@ -196,8 +197,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       of nkEnumFieldDef: a = n.sons[i].sons[0]
       of nkIdent: a = n.sons[i]
       else: illFormedAst(n)
-      addDeclAt(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c), c.tab.tos -
-          1)
+      addDeclAt(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c), c.tab.tos-1)
   of nkObjectTy, nkTupleTy: 
     nil
   of nkFormalParams: 
