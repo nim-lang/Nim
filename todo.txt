@@ -4,16 +4,14 @@ For version 0.8.10
 - fix exception handling
 - fix implicit generic routines
 - fix the streams implementation so that they use methods
+- support for generation of dynamic libraries
 
 
-TO IMPLEMENT
-============
+High priority (version 0.9.0)
+=============================
 
-* fix overloading resolution
-* wrong co-/contravariance
-* startsWith `=^`
-* endsWith `=$`
-* ignore case `=?` --> `=$?`
+- fix overloading resolution
+- wrong co-/contravariance
 
 Bugs
 ----
@@ -29,7 +27,6 @@ Bugs
 To implement
 ------------
 
-* icon installation for the Windows installer
 * sort routine
 * hash tables and sets
 * the two other parsers
@@ -63,7 +60,6 @@ Low priority
 - real types for template results
 - generalized case statement (requires better transf)
 - normalize for the DOM
-- script layer!
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
 
@@ -78,9 +74,8 @@ Library
 - ftp, smtp (and other internet protocols)
 
 - finish json module: use coroutines for this!
-
 - pdcurses bindings
-- automate module: expect-like module for Nimrod
+- queues additional to streams: have two positions (read/write) instead of one
 
 - for system:
   proc `@` [T](a: openArray[T]): seq[T] = 
@@ -88,18 +83,6 @@ Library
     for i in 0..a.len-1: result[i] = a[i]
     
   --> ensure @[] calls the array version!
-  
-
-For the next versions
-=====================
-
-- support for generation of dynamic libraries
-
-
-Further ideas/nice to have
-==========================
-
-- queues additional to streams: have two positions (read/write) instead of one
 
 
 Version 2
@@ -117,14 +100,8 @@ Version 2
   * nil ptr THallo
   * nil proc 
 
-.. code-block:: nimrod
-  var
-    x: string = nil # initialized with invalid value!
-  if not isNil(x):
-    # now x 
-  
 - better for backwards compatibility: default nilable, but ``not nil``
-  notation::
+  notation:
   
   type
     PWindow = ref TWindow not nil
@@ -135,17 +112,18 @@ Low priority
 
 - ``when T is int`` for generic code
 - ``when validCode( proc ()  )`` for generic code
-  
-  
-  when compiles:
-    
-  elif compiles: 
-    
-
 - macros: ``typecheck`` pragma; this allows transformations based on types!
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
+- icon installation for the Windows installer
+
+
+Other ideas
+-----------
+- startsWith `=^`
+- endsWith `=$`
+- ignore case `=?` --> `=$?` too?
 
 
 RST
