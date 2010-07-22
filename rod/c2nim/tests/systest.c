@@ -130,6 +130,7 @@ int IupConvertXYToPos(PIhandle ih, int x, int y);
 
   #ifdef C2NIM
   #  def EXTERN(x) static x
+  #  def TWO_ARGS(x, y) x* y
   #endif
   // parses now!
   EXTERN(int) f(void);
@@ -140,6 +141,9 @@ int IupConvertXYToPos(PIhandle ih, int x, int y);
   // does parse now!
   EXPORT int f(void);
   EXPORT int g(void); 
+
+  static TWO_ARGS(int, x) = TWO_ARGS(56, 45);
+
 
 #  define abc 34
 #  define xyz 42

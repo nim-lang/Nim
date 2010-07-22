@@ -40,7 +40,7 @@ proc parseDefine(p: var TParser): PNode =
     # a macro with parameters:
     result = newNodeP(nkTemplateDef, p)
     getTok(p)
-    addSon(result, skipIdent(p))
+    addSon(result, skipIdentExport(p))
     eat(p, pxParLe)
     var params = newNodeP(nkFormalParams, p)
     # return type; not known yet:
@@ -68,7 +68,7 @@ proc parseDefine(p: var TParser): PNode =
     while p.tok.xkind == pxDirective and p.tok.s == "define":
       getTok(p) # skip #define
       var c = newNodeP(nkConstDef, p)
-      addSon(c, skipIdent(p))
+      addSon(c, skipIdentExport(p))
       addSon(c, nil)
       skipStarCom(p, c)
       if p.tok.xkind in {pxLineComment, pxNewLine, pxEof}:
