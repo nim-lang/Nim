@@ -187,24 +187,7 @@ proc parseIfDirAux(p: var TParser, result: PNode) =
     addSon(s, parseStmtList(p))
     addSon(result, s)
   eatEndif(p)
-  
-when false:
-  proc specialIf(p: TParser): bool = 
-    ExpectIdent(p)
-    result = p.tok.s == c2nimSymbol
     
-  proc chooseBranch(whenStmt: PNode, branch: int): PNode = 
-    var L = sonsLen(whenStmt)
-    if branch < L: 
-      if L == 2 and whenStmt[1].kind == nkElse or branch == 0: 
-        result = lastSon(whenStmt[branch])
-      else:
-        var b = whenStmt[branch]
-        assert(b.kind == nkElifBranch)
-        result = newNodeI(nkWhenStmt, whenStmt.info)
-        for i in branch .. L-1:
-          addSon(result, whenStmt[i])
-  
 proc skipUntilEndif(p: var TParser) =
   var nested = 1
   while p.tok.xkind != pxEof:
@@ -283,34 +266,6 @@ proc parseIfndef(p: var TParser): PNode =
     addSon(result.sons[0], e)
     parseIfDirAux(p, result)
   
-when false:
-  proc parseIfdefDir(p: var TParser): PNode = 
-    result = newNodeP(nkWhenStmt, p)
-    addSon(result, newNodeP(nkElifBranch, p))
-    getTok(p)
-    var special = specialIf(p)
-    if p.tok.s == "__cplusplus": 
-      return skipIfdefCPlusPlus(p)
-    addSon(result.sons[0], definedExprAux(p))
-    eatNewLine(p, nil)
-    parseIfDirAux(p, result)
-    if special: 
-      result = chooseBranch(result, 0)
-
-  proc parseIfndefDir(p: var TParser): PNode = 
-    result = newNodeP(nkWhenStmt, p)
-    addSon(result, newNodeP(nkElifBranch, p))
-    getTok(p)
-    var special = specialIf(p)
-    var e = newNodeP(nkCall, p)
-    addSon(e, newIdentNodeP("not", p))
-    addSon(e, definedExprAux(p))
-    eatNewLine(p, nil)
-    addSon(result.sons[0], e)
-    parseIfDirAux(p, result)
-    if special:
-      result = chooseBranch(result, 1)
-
 proc parseIfDir(p: var TParser): PNode = 
   result = newNodeP(nkWhenStmt, p)
   addSon(result, newNodeP(nkElifBranch, p))
