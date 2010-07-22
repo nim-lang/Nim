@@ -234,8 +234,6 @@ Limitations
 
 * C's ``,`` operator (comma operator) is not supported.
 * C's ``union`` has no equivalent in Nimrod.
-* Standalone ``struct x {}`` declarations are not implemented. Put them into
-  a ``typedef``.
 * The condition in a ``do while(condition)`` statement must be ``0``.
 * Lots of other small issues...
 
