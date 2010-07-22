@@ -24,6 +24,7 @@ const
 type
   TTokKind* = enum 
     pxInvalid, pxEof,         
+    pxMacroParam,             # fake token: macro parameter (with its index)
     pxStarComment,            # /* */ comment
     pxLineComment,            # // comment
     pxDirective,              # #define, etc.
@@ -78,10 +79,9 @@ type
     pxIntLit, 
     pxInt64Lit, # long constant like 0x70fffffff or out of int range
     pxFloatLit, 
-    pxParLe, pxParRi, 
-    pxBracketLe, pxBracketRi, 
+    pxParLe, pxBracketLe, pxCurlyLe, # this order is important 
+    pxParRi, pxBracketRi, pxCurlyRi, # for macro argument parsing!
     pxComma, pxSemiColon, pxColon,
-    pxCurlyLe, pxCurlyRi
   TTokKinds* = set[TTokKind]
 
 type
@@ -89,7 +89,8 @@ type
   TToken* = object
     xkind*: TTokKind          # the type of the token
     s*: string                # parsed symbol, char or string literal
-    iNumber*: BiggestInt      # the parsed integer literal
+    iNumber*: BiggestInt      # the parsed integer literal;
+                              # if xkind == pxMacroParam: parameter's position
     fNumber*: BiggestFloat    # the parsed floating point literal
     base*: TNumericalBase     # the numerical base; only valid for int
                               # or float literals
@@ -99,7 +100,6 @@ type
     filename*: string
     inDirective: bool
   
-
 proc getTok*(L: var TLexer, tok: var TToken)
 proc PrintTok*(tok: TToken)
 proc `$`*(tok: TToken): string
@@ -140,6 +140,7 @@ proc TokKindToStr*(k: TTokKind): string =
   case k
   of pxEof: result = "[EOF]"
   of pxInvalid: result = "[invalid]"
+  of pxMacroParam: result = "[macro param]"
   of pxStarComment, pxLineComment: result = "[comment]" 
   of pxStrLit: result = "[string literal]"
   of pxCharLit: result = "[char literal]"
