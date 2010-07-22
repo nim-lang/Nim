@@ -7,9 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements an Ansi C parser.
-# It transfers a C source file into a Nimrod AST. Then the renderer can be
-# used to convert the AST to its text representation.
+## This module implements an Ansi C parser.
+## It translates a C source file into a Nimrod AST. Then the renderer can be
+## used to convert the AST to its text representation.
 
 # XXX standalone structs and unions!
 # XXX header pragma for struct and union fields!
@@ -20,16 +20,22 @@ import
   options, strtabs
 
 type 
-  TParserFlag* = enum
+  TParserFlag = enum
     pfRefs,             ## use "ref" instead of "ptr" for C's typ*
     pfCDecl,            ## annotate procs with cdecl
     pfStdCall           ## annotate procs with stdcall
   
+  TMacro {.final.} = object
+    name: string
+    params: int           # number of parameters
+    body: seq[ref TToken] # can contain pxMacroParam tokens
+  
   TParserOptions {.final.} = object
     flags: set[TParserFlag]
-    prefixes, suffixes, skipWords: seq[string]
+    prefixes, suffixes: seq[string]
     mangleRules: seq[tuple[pattern: TPeg, frmt: string]]
     dynlibSym, header: string
+    macros: seq[TMacro]
   PParserOptions* = ref TParserOptions
   
   TParser* {.final.} = object
@@ -46,7 +52,7 @@ proc newParserOptions*(): PParserOptions =
   new(result)
   result.prefixes = @[]
   result.suffixes = @[]
-  result.skipWords = @[]
+  result.macros = @[]
   result.mangleRules = @[]
   result.flags = {}
   result.dynlibSym = ""
@@ -62,7 +68,6 @@ proc setOption*(parserOptions: PParserOptions, key: string, val=""): bool =
   of "stdcall": incl(parserOptions.flags, pfStdCall)
   of "prefix": parserOptions.prefixes.add(val)
   of "suffix": parserOptions.suffixes.add(val)
-  of "skip": parserOptions.skipWords.add(val)
   else: result = false
 
 proc ParseUnit*(p: var TParser): PNode
@@ -71,7 +76,6 @@ proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
 proc closeParser*(p: var TParser)
 proc exSymbol*(n: var PNode)
 proc fixRecordDef*(n: var PNode)
-  # XXX: move these two to an auxiliary module
 
 # implementation
 
@@ -81,7 +85,11 @@ proc OpenParser(p: var TParser, filename: string,
   p.options = options
   p.backtrack = @[]
   new(p.tok)
-  
+
+proc parMessage(p: TParser, msg: TMsgKind, arg = "") = 
+  #assert false
+  lexMessage(p.lex, msg, arg)
+
 proc CloseParser(p: var TParser) = CloseLexer(p.lex)
 proc safeContext(p: var TParser) = p.backtrack.add(p.tok)
 proc closeContext(p: var TParser) = discard p.backtrack.pop()
@@ -102,18 +110,81 @@ proc rawGetTok(p: var TParser) =
     p.tok.next = t
     p.tok = t
 
-proc isSkipWord(p: TParser): bool =
-  for s in items(p.options.skipWords):
-    if p.tok.s == s: return true
+proc findMacro(p: TParser): int =
+  for i in 0..high(p.options.macros):
+    if p.tok.s == p.options.macros[i].name: return i
+  return -1
+
+proc rawEat(p: var TParser, xkind: TTokKind) = 
+  if p.tok.xkind == xkind: rawGetTok(p)
+  else: parMessage(p, errTokenExpected, TokKindToStr(xkind))
+
+proc parseMacroArguments(p: var TParser): seq[seq[ref TToken]] = 
+  result = @[]
+  result.add(@[])
+  var i: array[pxParLe..pxCurlyLe, int]
+  var L = 0
+  safeContext(p)
+  while true:
+    var kind = p.tok.xkind
+    case kind
+    of pxEof: rawEat(p, pxParRi)
+    of pxParLe, pxBracketLe, pxCurlyLe: 
+      inc(i[kind])
+      result[L].add(p.tok)
+    of pxParRi:
+      # end of arguments?
+      if i[pxParLe] == 0: break
+      dec(i[pxParLe])
+      result[L].add(p.tok)
+    of pxBracketRi, pxCurlyRi:
+      kind = pred(kind, 3)
+      if i[kind] > 0: dec(i[kind])
+      result[L].add(p.tok)
+    of pxComma: 
+      if i[pxParLe] == 0 and i[pxBracketLe] == 0 and i[pxCurlyLe] == 0:
+        # next argument: comma is not part of the argument
+        rawGetTok(p)
+        result.add(@[])
+        inc(L)
+      else: 
+        # comma does not separate different arguments:
+        result[L].add(p.tok)
+    else:
+      result[L].add(p.tok)
+    rawGetTok(p)
+  closeContext(p)
+
+proc expandMacro(p: var TParser, m: TMacro) = 
+  rawGetTok(p) # skip macro name
+  var arguments: seq[seq[ref TToken]]
+  if m.params > 0:
+    rawEat(p, pxParLe)
+    arguments = parseMacroArguments(p)
+    if arguments.len != m.params: parMessage(p, errWrongNumberOfArguments)
+    rawEat(p, pxParRi)
+  # insert into the token list:
+  if m.body.len > 0:
+    var newList: ref TToken
+    new(newList)
+    var lastTok = newList
+    for tok in items(m.body): 
+      if tok.xkind == pxMacroParam: 
+        for t in items(arguments[int(tok.iNumber)]):
+          lastTok.next = t
+          lastTok = t
+      else:
+        lastTok.next = tok
+        lastTok = tok
+    lastTok.next = p.tok
+    p.tok = newList.next
 
 proc getTok(p: var TParser) = 
-  while true:
-    rawGetTok(p)
-    if p.tok.xkind != pxSymbol or not isSkipWord(p): break
-
-proc parMessage(p: TParser, msg: TMsgKind, arg = "") = 
-  #assert false
-  lexMessage(p.lex, msg, arg)
+  rawGetTok(p)
+  if p.tok.xkind == pxSymbol:
+    var idx = findMacro(p)
+    if idx >= 0: 
+      expandMacro(p, p.options.macros[idx])
 
 proc parLineInfo(p: TParser): TLineInfo = 
   result = getLineInfo(p.lex)

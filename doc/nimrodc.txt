@@ -75,9 +75,11 @@ C file lists the OS, CPU and CC the file has been compiled for.
   ==============
 
   Nimrod supports the generation of DLLs. However, there must be only one 
-  instance of the GC per address space. This instance is contained in
+  instance of the GC per process/address space. This instance is contained in
   ``nimrtl.dll``. This means that every generated Nimrod DLL depends
-  on ``nimrtl.dll``. 
+  on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
+    
+    nimrod c -d:release lib/nimrtl.nim
 
 
 Additional Features

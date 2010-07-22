@@ -4,12 +4,43 @@
  */
 
 #ifdef __cplusplus
+#  ifdef __SOME_OTHER_CRAP
 extern "C" {
+#  endif
 #endif
 
+// Test C2NIM skipping:
+
+#ifndef C2NIM 
+  #if someNestedCond
+    This is an invalid text that should generate a parser error, if not 
+  #endif
+    skipped correctly.
+#endif
+
+#ifndef C2NIM
+  #if someNestedCond
+    This is an invalid text that should generate a parser error, if not 
+  #endif
+    skipped correctly.
+#else
 typedef char gchar;
 typedef unsigned int gunsignedint;
 typedef unsigned char guchar;
+#endif
+
+#ifdef C2NIM
+# mangle "'those'" "these"
+int those;
+#elif abc
+  #if someNestedCond
+    This is an invalid text that should generate a parser error, if not 
+  #else
+    skipped correctly.
+  #endif
+#else
+  Another crappy input line.
+#endif
 
 point* newPoint(void) {  
   for (int i = 0; i < 89; ++i) echo("test" " string "  "concatenation");
@@ -97,7 +128,15 @@ int IupConvertXYToPos(PIhandle ih, int x, int y);
 #endif
 
 
-  #skip EXPORT
+  #ifdef C2NIM
+  #  def EXTERN(x) static x
+  #endif
+  // parses now!
+  EXTERN(int) f(void);
+  EXTERN(int) g(void);
+
+
+  #def EXPORT
   // does parse now!
   EXPORT int f(void);
   EXPORT int g(void); 

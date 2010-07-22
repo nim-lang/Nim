@@ -202,27 +202,31 @@ identifier should be converted:
   #mangle "'GTK_'{.*}" "TGtk$1"
 
 
-``#skip`` directive
--------------------
-**Note**: There is also ``--skip`` command line option that can be used for the
-same purpose.
+``#def`` directive
+------------------
 
 Often C code contains special macros that affect the declaration of a function
 prototype but confuse c2nim's parser:
 
 .. code-block:: C
   // does not parse!
-  EXPORT int f(void); 
-  EXPORT int g(void); 
+  EXTERN(int) f(void);
+  EXTERN(int) g(void);
 
-Instead of removing ``EXPORT`` from the input source file, one can tell c2nim
-to skip special identifiers:
+Instead of removing ``EXTERN()`` from the input source file (which cannot be 
+done reliably even with a regular expression!), one can tell c2nim
+that ``EXPORT`` is a macro that should be expanded by c2nim too:
 
 .. code-block:: C
-  #skip EXPORT
-  // does parse now!
-  EXPORT int f(void);
-  EXPORT int g(void); 
+  #ifdef C2NIM
+  #  def EXTERN(x) static x
+  #endif
+  // parses now!
+  EXTERN(int) f(void);
+  EXTERN(int) g(void);
+  
+``#def`` is very similar to C's ``#define``.
+
 
 
 Limitations
