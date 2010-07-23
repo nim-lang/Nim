@@ -11,6 +11,11 @@ extern "C" {
 
 // Test C2NIM skipping:
 
+#define MASK(x) ((x) & 0xff)
+#define CAST1(x) ((int) &x)
+#define CAST2(x) (typ*) &x
+#define CAST3(x) ((const unsigned char**) &x)
+
 #ifndef C2NIM 
   #if someNestedCond
     This is an invalid text that should generate a parser error, if not 
@@ -53,10 +58,12 @@ point* newPoint(void) {
     --p;
   } else if (**p == '\t') {
     p += 3;
-  } else {
+  } else { 
     p = 45 + (mytype*)45;
     p = 45 + ((mytype*)45);
     p = 45 + ((mytype)45);
+    // BUG: This does not parse:
+    // p = 45 + (mytype)45;
   }
 
   while (x >= 6 && x <= 20) 
