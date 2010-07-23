@@ -28,6 +28,7 @@ Options:
                          (multiple --prefix options are supported)
   --suffix:SUFFIX        strip suffix for the generated Nimrod identifiers 
                          (multiple --suffix options are supported)
+  --skipinclude          do not convert ``#include`` to ``import``
   -v, --version          write c2nim's version
   -h, --help             show this help
 """

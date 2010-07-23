@@ -84,6 +84,16 @@ is generated. They should be put into a ``#ifdef C2NIM`` section so that
 ordinary C compilers ignore them.
 
 
+``#skipinclude`` directive
+--------------------------
+**Note**: There is also a ``--skipinclude`` command line option that can be 
+used for the same purpose.
+
+By default, c2nim translates an ``#include`` that is not followed by ``<`` 
+(like in ``#include <stdlib>``) to a Nimrod ``import`` statement. This 
+directive tells c2nim to just skip any ``#include``. 
+
+
 ``#stdcall`` and ``#cdecl`` directives
 --------------------------------------
 **Note**: There are also ``--stdcall`` and ``--cdecl`` command line options
@@ -225,17 +235,17 @@ that ``EXPORT`` is a macro that should be expanded by c2nim too:
   EXTERN(int) f(void);
   EXTERN(int) g(void);
   
-``#def`` is very similar to C's ``#define``.
-
+``#def`` is very similar to C's ``#define``, so in general the macro definition
+can be copied and pasted into a ``#def`` directive.
 
 
 Limitations
 ===========
 
 * C's ``,`` operator (comma operator) is not supported.
-* C's ``union`` has no equivalent in Nimrod.
-* Standalone ``struct x {}`` declarations are not implemented. Put them into
-  a ``typedef``.
+* C's ``union`` are translated to Nimrod's objects and only the first field
+  is included in the object type. This way there is a high chance that it is
+  binary compatible to the union.
 * The condition in a ``do while(condition)`` statement must be ``0``.
 * Lots of other small issues...
 
