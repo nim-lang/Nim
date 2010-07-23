@@ -9,6 +9,66 @@ extern "C" {
 #  endif
 #endif
 
+void* x;
+void* fn(void);
+void (*fn)(void);
+void* (*fn)(void);
+void* (*fn)(void*);
+
+/*
+ * Very ugly real world code ahead:
+ */
+
+#def JMETHOD(rettype, name, params) rettype (*name) params
+
+typedef struct cjpeg_source_struct * cjpeg_source_ptr;
+
+struct cjpeg_source_struct {
+  JMETHOD(void, start_input, (j_compress_ptr cinfo,
+			      cjpeg_source_ptr sinfo));
+  JMETHOD(JDIMENSION, get_pixel_rows, (j_compress_ptr cinfo,
+				       cjpeg_source_ptr sinfo));
+  JMETHOD(void, finish_input, (j_compress_ptr cinfo,
+			       cjpeg_source_ptr sinfo));
+
+  FILE *input_file;
+
+  JSAMPARRAY buffer;
+  JDIMENSION buffer_height;
+};
+
+// Test standalone structs: 
+
+union myunion {
+  char x, y, *z;
+  myint a, b;  
+} u;
+
+struct mystruct {
+  char x, y, *z;
+  myint a, b;
+}; 
+
+struct mystruct fn(i32 x, i64 y);
+
+struct mystruct {
+  char x, y, *z;
+  myint a, b;
+} *myvar = NULL, **myvar2 = NULL; 
+
+// anonymous struct: 
+
+struct {
+  char x, y, *z;
+  myint a, b;  
+} varX, **varY;
+
+// empty anonymous struct: 
+
+struct {
+
+} varX, **varY;
+
 // Test C2NIM skipping:
 
 #define MASK(x) ((x) & 0xff)

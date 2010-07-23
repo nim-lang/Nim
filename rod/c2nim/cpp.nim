@@ -83,7 +83,7 @@ proc parseDefBody(p: var TParser, m: var TMacro, params: seq[string]) =
   # A little hack: We safe the context, so that every following token will be 
   # put into a newly allocated TToken object. Thus we can just save a
   # reference to the token in the macro's body.
-  safeContext(p)
+  saveContext(p)
   while p.tok.xkind notin {pxEof, pxNewLine, pxLineComment}: 
     case p.tok.xkind 
     of pxSymbol:
@@ -136,16 +136,14 @@ proc parseInclude(p: var TParser): PNode =
   result = newNodeP(nkImportStmt, p)
   while isDir(p, "include"):
     getTok(p) # skip "include"
-    if p.tok.xkind == pxStrLit:
-      var file = newStrNodeP(nkStrLit, p.tok.s, p)
+    if p.tok.xkind == pxStrLit and pfSkipInclude notin p.options.flags:
+      var file = newStrNodeP(nkStrLit, changeFileExt(p.tok.s, ""), p)
       addSon(result, file)
       getTok(p)
       skipStarCom(p, file)
-    elif p.tok.xkind == pxLt: 
-      while p.tok.xkind notin {pxEof, pxNewLine, pxLineComment}: getTok(p)
+      eatNewLine(p, nil)
     else:
-      parMessage(p, errXExpected, "string literal")
-    eatNewLine(p, nil)
+      skipLine(p)
   if sonsLen(result) == 0: 
     # we only parsed includes that we chose to ignore:
     result = nil
@@ -300,7 +298,7 @@ proc parseDir(p: var TParser): PNode =
   of "ifdef": result = parseIfdef(p)
   of "ifndef": result = parseIfndef(p)
   of "if": result = parseIfDir(p)
-  of "cdecl", "stdcall", "ref": 
+  of "cdecl", "stdcall", "ref", "skipinclude": 
     discard setOption(p.options, p.tok.s)
     getTok(p)
     eatNewLine(p, nil)
