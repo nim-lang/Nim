@@ -33,7 +33,7 @@ const
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
     wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop, wBreakpoint, 
     wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
-    wInfChecks, wNanChecks}
+    wInfChecks, wNanChecks, wPragma}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, wDeprecated}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
@@ -303,10 +303,9 @@ proc processCompile(c: PContext, n: PNode) =
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) = 
-  var f, found: string
-  f = expectStrLit(c, n)
+  var f = expectStrLit(c, n)
   if splitFile(f).ext == "": f = toObjFile(f)
-  found = findFile(f)
+  var found = findFile(f)
   if found == "": found = f # use the default
   case feature
   of linkNormal: extccomp.addFileToLink(found)
@@ -325,137 +324,159 @@ proc PragmaCheckpoint(c: PContext, n: PNode) =
 
 proc noVal(n: PNode) = 
   if n.kind == nkExprColonExpr: invalidPragma(n)
+
+proc processPragma(c: PContext, n: PNode, i: int) = 
+  var it = n.sons[i]
+  if it.kind != nkExprColonExpr: invalidPragma(n)
+  elif it.sons[0].kind != nkIdent: invalidPragma(n)
+  elif it.sons[1].kind != nkIdent: invalidPragma(n)
   
+  var userPragma = NewSym(skTemplate, it.sons[1].ident, nil)
+  userPragma.info = it.info
+  var body = newNodeI(nkPragma, n.info)
+  for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
+  userPragma.ast = body
+  StrTableAdd(c.userPragmas, userPragma)
+        
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) = 
   if n == nil: return 
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent: 
-      var k = whichKeyword(key.ident)
-      if k in validPragmas: 
-        case k
-        of wExportc: 
-          makeExternExport(sym, getOptionalStr(c, it, sym.name.s))
-          incl(sym.flags, sfUsed) # avoid wrong hints
-        of wImportc: makeExternImport(sym, getOptionalStr(c, it, sym.name.s))
-        of wAlign: 
-          if sym.typ == nil: invalidPragma(it)
-          sym.typ.align = expectIntLit(c, it)
-          if not IsPowerOfTwo(sym.typ.align) and (sym.typ.align != 0): 
-            liMessage(it.info, errPowerOfTwoExpected)
-        of wSize: 
-          if sym.typ == nil: invalidPragma(it)
-          var size = expectIntLit(c, it)
-          if not IsPowerOfTwo(size) or size <= 0 or size > 8: 
-            liMessage(it.info, errPowerOfTwoExpected)
-          else:
-            sym.typ.size = size
-        of wNodecl: 
-          noVal(it)
-          incl(sym.loc.Flags, lfNoDecl)
-        of wPure: 
-          noVal(it)
-          if sym != nil: incl(sym.flags, sfPure)
-        of wVolatile: 
-          noVal(it)
-          incl(sym.flags, sfVolatile)
-        of wRegister: 
-          noVal(it)
-          incl(sym.flags, sfRegister)
-        of wThreadVar: 
-          noVal(it)
-          incl(sym.flags, sfThreadVar)
-        of wDeadCodeElim: pragmaDeadCodeElim(c, it)
-        of wMagic: processMagic(c, it, sym)
-        of wCompileTime: 
-          noVal(it)
-          incl(sym.flags, sfCompileTime)
-          incl(sym.loc.Flags, lfNoDecl)
-        of wMerge: 
-          noval(it)
-          incl(sym.flags, sfMerge)
-        of wHeader: 
-          var lib = getLib(c, libHeader, getStrLitNode(c, it))
-          addToLib(lib, sym)
-          incl(sym.flags, sfImportc)
-          incl(sym.loc.flags, lfHeader)
-          incl(sym.loc.Flags, lfNoDecl) # implies nodecl, because
-                                        # otherwise header would not make sense
-          if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
-        of wNosideeffect: 
-          noVal(it)
-          incl(sym.flags, sfNoSideEffect)
-          if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
-        of wSideEffect: 
-          noVal(it)
-          incl(sym.flags, sfSideEffect)
-        of wNoReturn: 
-          noVal(it)
-          incl(sym.flags, sfNoReturn)
-        of wDynLib: 
-          processDynLib(c, it, sym)
-        of wCompilerProc: 
-          noVal(it)           # compilerproc may not get a string!
-          makeExternExport(sym, sym.name.s)
-          incl(sym.flags, sfCompilerProc)
-          incl(sym.flags, sfUsed) # suppress all those stupid warnings
-          registerCompilerProc(sym)
-        of wProcvar: 
-          noVal(it)
-          incl(sym.flags, sfProcVar)
-        of wDeprecated: 
-          noVal(it)
-          if sym != nil: incl(sym.flags, sfDeprecated)
-          else: incl(c.module.flags, sfDeprecated)
-        of wVarargs: 
-          noVal(it)
-          if sym.typ == nil: invalidPragma(it)
-          incl(sym.typ.flags, tfVarargs)
-        of wBorrow: 
-          noVal(it)
-          incl(sym.flags, sfBorrow)
-        of wFinal: 
-          noVal(it)
-          if sym.typ == nil: invalidPragma(it)
-          incl(sym.typ.flags, tfFinal)
-        of wAcyclic: 
-          noVal(it)
-          if sym.typ == nil: invalidPragma(it)
-          incl(sym.typ.flags, tfAcyclic)
-        of wTypeCheck: 
-          noVal(it)
-          incl(sym.flags, sfTypeCheck)
-        of wHint: liMessage(it.info, hintUser, expectStrLit(c, it))
-        of wWarning: liMessage(it.info, warnUser, expectStrLit(c, it))
-        of wError: liMessage(it.info, errUser, expectStrLit(c, it))
-        of wFatal: 
-          liMessage(it.info, errUser, expectStrLit(c, it))
-          quit(1)
-        of wDefine: processDefine(c, it)
-        of wUndef: processUndef(c, it)
-        of wCompile: processCompile(c, it)
-        of wLink: processCommonLink(c, it, linkNormal)
-        of wLinkSys: processCommonLink(c, it, linkSys)
-        of wPassL: extccomp.addLinkOption(expectStrLit(c, it))
-        of wPassC: extccomp.addCompileOption(expectStrLit(c, it))
-        of wBreakpoint: PragmaBreakpoint(c, it)
-        of wCheckpoint: PragmaCheckpoint(c, it)
-        of wPush: 
-          processPush(c, n, i + 1)
-          break 
-        of wPop: processPop(c, it)
-        of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
-           wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
-           wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef, wCallConv, 
-           wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks: 
-          processOption(c, it) # calling conventions (boring...):
-        of firstCallConv..lastCallConv: 
-          assert(sym != nil)
-          if sym.typ == nil: invalidPragma(it)
-          sym.typ.callConv = wordToCallConv(k)
+      var userPragma = StrTableGet(c.userPragmas, key.ident)
+      if userPragma != nil: 
+        pragma(c, sym, userPragma.ast, validPragmas)
+        # XXX BUG: possible infinite recursion!
+      else:
+        var k = whichKeyword(key.ident)
+        if k in validPragmas: 
+          case k
+          of wExportc: 
+            makeExternExport(sym, getOptionalStr(c, it, sym.name.s))
+            incl(sym.flags, sfUsed) # avoid wrong hints
+          of wImportc: makeExternImport(sym, getOptionalStr(c, it, sym.name.s))
+          of wAlign: 
+            if sym.typ == nil: invalidPragma(it)
+            sym.typ.align = expectIntLit(c, it)
+            if not IsPowerOfTwo(sym.typ.align) and (sym.typ.align != 0): 
+              liMessage(it.info, errPowerOfTwoExpected)
+          of wSize: 
+            if sym.typ == nil: invalidPragma(it)
+            var size = expectIntLit(c, it)
+            if not IsPowerOfTwo(size) or size <= 0 or size > 8: 
+              liMessage(it.info, errPowerOfTwoExpected)
+            else:
+              sym.typ.size = size
+          of wNodecl: 
+            noVal(it)
+            incl(sym.loc.Flags, lfNoDecl)
+          of wPure: 
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfPure)
+          of wVolatile: 
+            noVal(it)
+            incl(sym.flags, sfVolatile)
+          of wRegister: 
+            noVal(it)
+            incl(sym.flags, sfRegister)
+          of wThreadVar: 
+            noVal(it)
+            incl(sym.flags, sfThreadVar)
+          of wDeadCodeElim: pragmaDeadCodeElim(c, it)
+          of wMagic: processMagic(c, it, sym)
+          of wCompileTime: 
+            noVal(it)
+            incl(sym.flags, sfCompileTime)
+            incl(sym.loc.Flags, lfNoDecl)
+          of wMerge: 
+            noval(it)
+            incl(sym.flags, sfMerge)
+          of wHeader: 
+            var lib = getLib(c, libHeader, getStrLitNode(c, it))
+            addToLib(lib, sym)
+            incl(sym.flags, sfImportc)
+            incl(sym.loc.flags, lfHeader)
+            incl(sym.loc.Flags, lfNoDecl) 
+            # implies nodecl, because otherwise header would not make sense
+            if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+          of wNosideeffect: 
+            noVal(it)
+            incl(sym.flags, sfNoSideEffect)
+            if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
+          of wSideEffect: 
+            noVal(it)
+            incl(sym.flags, sfSideEffect)
+          of wNoReturn: 
+            noVal(it)
+            incl(sym.flags, sfNoReturn)
+          of wDynLib: 
+            processDynLib(c, it, sym)
+          of wCompilerProc: 
+            noVal(it)           # compilerproc may not get a string!
+            makeExternExport(sym, sym.name.s)
+            incl(sym.flags, sfCompilerProc)
+            incl(sym.flags, sfUsed) # suppress all those stupid warnings
+            registerCompilerProc(sym)
+          of wProcvar: 
+            noVal(it)
+            incl(sym.flags, sfProcVar)
+          of wDeprecated: 
+            noVal(it)
+            if sym != nil: incl(sym.flags, sfDeprecated)
+            else: incl(c.module.flags, sfDeprecated)
+          of wVarargs: 
+            noVal(it)
+            if sym.typ == nil: invalidPragma(it)
+            incl(sym.typ.flags, tfVarargs)
+          of wBorrow: 
+            noVal(it)
+            incl(sym.flags, sfBorrow)
+          of wFinal: 
+            noVal(it)
+            if sym.typ == nil: invalidPragma(it)
+            incl(sym.typ.flags, tfFinal)
+          of wAcyclic: 
+            noVal(it)
+            if sym.typ == nil: invalidPragma(it)
+            incl(sym.typ.flags, tfAcyclic)
+          of wTypeCheck: 
+            noVal(it)
+            incl(sym.flags, sfTypeCheck)
+          of wHint: liMessage(it.info, hintUser, expectStrLit(c, it))
+          of wWarning: liMessage(it.info, warnUser, expectStrLit(c, it))
+          of wError: liMessage(it.info, errUser, expectStrLit(c, it))
+          of wFatal: 
+            liMessage(it.info, errUser, expectStrLit(c, it))
+            quit(1)
+          of wDefine: processDefine(c, it)
+          of wUndef: processUndef(c, it)
+          of wCompile: processCompile(c, it)
+          of wLink: processCommonLink(c, it, linkNormal)
+          of wLinkSys: processCommonLink(c, it, linkSys)
+          of wPassL: extccomp.addLinkOption(expectStrLit(c, it))
+          of wPassC: extccomp.addCompileOption(expectStrLit(c, it))
+          of wBreakpoint: PragmaBreakpoint(c, it)
+          of wCheckpoint: PragmaCheckpoint(c, it)
+          of wPush: 
+            processPush(c, n, i + 1)
+            break 
+          of wPop: processPop(c, it)
+          of wPragma: 
+            processPragma(c, n, i)
+            break
+          of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
+             wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, 
+             wLinedir, wStacktrace, wLinetrace, wOptimization, wByRef,
+             wCallConv, 
+             wDebugger, wProfiler, wFloatChecks, wNanChecks, wInfChecks: 
+            processOption(c, it) # calling conventions (boring...):
+          of firstCallConv..lastCallConv: 
+            assert(sym != nil)
+            if sym.typ == nil: invalidPragma(it)
+            sym.typ.callConv = wordToCallConv(k)
+          else: invalidPragma(it)
         else: invalidPragma(it)
-      else: invalidPragma(it)
     else: processNote(c, it)
   if (sym != nil) and (sym.kind != skModule): 
     if (lfExportLib in sym.loc.flags) and not (sfExportc in sym.flags): 

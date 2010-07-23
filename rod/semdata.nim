@@ -51,6 +51,7 @@ type
     semExpr*: proc (c: PContext, n: PNode): PNode      # for the pragmas
     includedFiles*: TIntSet   # used to detect recursive include files
     filename*: string         # the module's filename
+    userPragmas*: TStrTable
   
 
 var gInstTypes*: TIdTable # map PType to PType
@@ -124,6 +125,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   result.converters = @ []
   result.filename = nimfile
   IntSetInit(result.includedFiles)
+  initStrTable(result.userPragmas)
 
 proc addConverter(c: PContext, conv: PSym) = 
   var L = len(c.converters)

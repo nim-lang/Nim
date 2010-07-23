@@ -708,7 +708,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(s)
   s.options = gOptions
   if n.sons[codePos] != nil: 
-    if {sfImportc, sfBorrow} * s.flags != {}: 
+    # for DLL generation, it is annoying to check for sfImportc!
+    if sfBorrow in s.flags: 
       liMessage(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
     if (n.sons[genericParamsPos] == nil): 
       c.p = newProcCon(s)
@@ -720,6 +721,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if (s.typ.sons[0] != nil) and (kind != skIterator): 
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[codePos] = semGenericStmtScope(c, n.sons[codePos])
+    if sfImportc in s.flags: 
+      # so we just ignore the body after semantic checking for importc:
+      n.sons[codePos] = nil
   else: 
     if proto != nil: liMessage(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {}: incl(s.flags, sfForward)

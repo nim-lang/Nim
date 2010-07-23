@@ -24,11 +24,8 @@ proc countDefinedSymbols*(): int
 # implementation
 
 proc DefineSymbol(symbol: string) = 
-  var 
-    sym: PSym
-    i: PIdent
-  i = getIdent(symbol)
-  sym = StrTableGet(gSymbols, i)
+  var i = getIdent(symbol)
+  var sym = StrTableGet(gSymbols, i)
   if sym == nil: 
     new(sym)                  # circumvent the ID mechanism
     sym.kind = skConditional
@@ -37,20 +34,16 @@ proc DefineSymbol(symbol: string) =
   sym.position = 1
 
 proc UndefSymbol(symbol: string) = 
-  var sym: PSym
-  sym = StrTableGet(gSymbols, getIdent(symbol))
+  var sym = StrTableGet(gSymbols, getIdent(symbol))
   if sym != nil: sym.position = 0
   
 proc isDefined(symbol: PIdent): bool = 
-  var sym: PSym
-  sym = StrTableGet(gSymbols, symbol)
+  var sym = StrTableGet(gSymbols, symbol)
   result = (sym != nil) and (sym.position == 1)
 
 proc ListSymbols() = 
-  var 
-    it: TTabIter
-    s: PSym
-  s = InitTabIter(it, gSymbols)
+  var it: TTabIter
+  var s = InitTabIter(it, gSymbols)
   MessageOut("-- List of currently defined symbols --")
   while s != nil: 
     if s.position == 1: MessageOut(s.name.s)
@@ -58,10 +51,8 @@ proc ListSymbols() =
   MessageOut("-- End of list --")
 
 proc countDefinedSymbols(): int = 
-  var 
-    it: TTabIter
-    s: PSym
-  s = InitTabIter(it, gSymbols)
+  var it: TTabIter
+  var s = InitTabIter(it, gSymbols)
   result = 0
   while s != nil: 
     if s.position == 1: inc(result)

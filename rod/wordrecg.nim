@@ -42,10 +42,11 @@ type
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline, 
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks, 
     wBoundchecks, wOverflowchecks, wNilchecks,
-    wFloatchecks, wNanChecks, wInfChecks,    
+    wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wWarnings, wW, 
     wHints, wOptimization, wSpeed, wSize, wNone, wPath, wP, wD, wU, wDebuginfo, 
     wCompileonly, wNolinking, wForcebuild, wF, wDeadCodeElim, wSafecode, 
+    wPragma,
     wCompileTime, wGc, wRefc, wBoehm, wA, wOpt, wO, wApp, wConsole, wGui, 
     wPassc, wT, wPassl, wL, wListcmd, wGendoc, wGenmapping, wOs, wCpu, 
     wGenerate, wG, wC, wCpp, wBorrow, wRun, wR, wVerbosity, wV, wHelp, wH, 
@@ -53,7 +54,7 @@ type
     wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
     wAcyclic, wIndex, 
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
-    wDoc, wPas, wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy, 
+    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar
     
@@ -91,6 +92,7 @@ const
     "assertions", "warnings", "w", "hints", 
     "optimization", "speed", "size", "none", "path", "p", "d", "u", "debuginfo", 
     "compileonly", "nolinking", "forcebuild", "f", "deadcodeelim", "safecode", 
+    "pragma",
     "compiletime", "gc", "refc", "boehm", "a", "opt", "o", "app", "console", 
     "gui", "passc", "t", "passl", "l", "listcmd", "gendoc", "genmapping", "os", 
     "cpu", "generate", "g", "c", "cpp", "borrow", "run", "r", "verbosity", "v", 
@@ -98,7 +100,7 @@ const
     "skipcfg", "skipprojcfg", "cc", "genscript", "checkpoint", "checkpoints", 
     "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
-    "pretty", "doc", "pas", "gendepend", "listdef", "check", "parse", "scan", 
+    "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
     "boot", "lazy", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar"]
 

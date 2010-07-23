@@ -2653,6 +2653,30 @@ Example:
   {.deadCodeElim: on.}
 
 
+Pragma pragma
+-------------
+
+The `pragma`:idx: pragma can be used to declare user defined pragmas. This is 
+useful because Nimrod's templates and macros do not affect pragmas. User 
+defined pragmas are in a different module-wide scope than all other symbols. 
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nimrod
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+    
+  proc p*(a, b: int): int {.rtl.} = 
+    return a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
 Disabling certain messages
 --------------------------
 Nimrod generates some warnings and hints ("line too long") that may annoy the
@@ -2715,8 +2739,8 @@ strings automatically:
   printf("hallo %s", "world") # "world" will be passed as C string
 
 
-Dynlib pragma
--------------
+Dynlib pragma for import
+------------------------
 With the `dynlib`:idx: pragma a procedure can be imported from
 a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
 non-optional argument has to be the name of the dynamic library:
@@ -2762,3 +2786,17 @@ string expressions in general:
 
 **Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
 strings, because they are precompiled.
+
+Dynlib pragma for export
+------------------------
+
+With the ``dynlib`` pragma a procedure can also be exported to
+a dynamic library. The pragma then has no argument and has to be used in
+conjunction with the ``exportc`` pragma:
+
+.. code-block:: Nimrod
+  proc exportme(): int {.cdecl, export, dynlib.}
+
+This is only useful if the program is compiled as a dynamic library via the
+``--app:lib`` command line option.
+
