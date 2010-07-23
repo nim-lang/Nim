@@ -12,8 +12,6 @@
 ## used to convert the AST to its text representation.
 
 # XXX standalone structs and unions!
-# XXX header pragma for struct and union fields!
-# XXX "cast" bug!
 
 import 
   os, llstream, rnimsyn, clex, idents, strutils, pegs, ast, astalgo, msgs,
@@ -314,6 +312,17 @@ proc varIdent(ident: string, p: TParser): PNode =
     addSon(result, pragmas)
     addImportToPragma(pragmas, ident, p)
 
+proc fieldIdent(ident: string, p: TParser): PNode = 
+  result = exportSym(p, mangledIdent(ident, p))
+  if p.scopeCounter > 0: return
+  if p.options.header.len > 0: 
+    var a = result
+    result = newNodeP(nkPragmaExpr, p)
+    var pragmas = newNodeP(nkPragma, p)
+    addSon(result, a)
+    addSon(result, pragmas)
+    addSon(pragmas, newIdentStrLitPair("importc", ident, p))
+
 proc DoImport(ident: string, pragmas: PNode, p: TParser) = 
   if p.options.dynlibSym.len > 0 or p.options.header.len > 0: 
     addImportToPragma(pragmas, ident, p)
@@ -333,20 +342,6 @@ proc skipIdentExport(p: var TParser): PNode =
   expectIdent(p)
   result = exportSym(p, mangledIdent(p.tok.s, p))
   getTok(p, result)
-
-proc addPragmaToIdent(ident: var PNode, pragma: PNode) = 
-  var pragmasNode: PNode
-  if ident.kind != nkPragmaExpr: 
-    pragmasNode = newNodeI(nkPragma, ident.info)
-    var e = newNodeI(nkPragmaExpr, ident.info)
-    addSon(e, ident)
-    addSon(e, pragmasNode)
-    ident = e
-  else: 
-    pragmasNode = ident.sons[1]
-    if pragmasNode.kind != nkPragma: 
-      InternalError(ident.info, "addPragmaToIdent")
-  addSon(pragmasNode, pragma)
   
 # --------------- parser -----------------------------------------------------
 # We use this parsing rule: If it looks like a declaration, it is one. This
@@ -472,7 +467,9 @@ proc parseStructBody(p: var TParser): PNode =
     while true:
       var def = newNodeP(nkIdentDefs, p)
       var t = pointer(p, baseTyp)
-      var i = skipIdentExport(p)
+      expectIdent(p)
+      var i = fieldIdent(p.tok.s, p)
+      getTok(p, i)
       t = parseTypeSuffix(p, t)
       addSon(def, i, t, nil)
       addSon(result, def)
@@ -481,12 +478,16 @@ proc parseStructBody(p: var TParser): PNode =
     eat(p, pxSemicolon, lastSon(result))
   eat(p, pxCurlyRi, result)
 
-proc structPragmas(p: TParser, name: PNode): PNode = 
+proc structPragmas(p: TParser, name: PNode, origName: string): PNode = 
+  assert name.kind == nkIdent
   result = newNodeP(nkPragmaExpr, p)
-  addson(result, name)
+  addson(result, exportSym(p, name))
   var pragmas = newNodep(nkPragma, p)
   addSon(pragmas, newIdentNodeP("pure", p))
   addSon(pragmas, newIdentNodeP("final", p))
+  if p.options.header.len > 0:
+    addSon(pragmas, newIdentStrLitPair("importc", origName, p))
+    addSon(pragmas, newIdentStrLitPair("header", p.options.header, p))
   addSon(result, pragmas)
 
 proc enumPragmas(p: TParser, name: PNode): PNode =
@@ -638,6 +639,81 @@ proc enumFields(p: var TParser): PNode =
     if p.tok.xkind != pxComma: break
     getTok(p, e)
 
+proc parseTypedefStruct(p: var TParser, result: PNode) = 
+  getTok(p, result)
+  if p.tok.xkind == pxCurlyLe:
+    var t = parseStruct(p)
+    var origName = p.tok.s
+    var name = skipIdent(p)
+    addTypeDef(result, structPragmas(p, name, origName), t)
+    parseTrailingDefinedTypes(p, result, name)
+  elif p.tok.xkind == pxSymbol: 
+    # name to be defined or type "struct a", we don't know yet:
+    var origName = p.tok.s
+    var nameOrType = skipIdent(p)
+    case p.tok.xkind 
+    of pxCurlyLe:
+      var t = parseStruct(p)
+      if p.tok.xkind == pxSymbol: 
+        # typedef struct tagABC {} abc, *pabc;
+        # --> abc is a better type name than tagABC!
+        var origName = p.tok.s
+        var name = skipIdent(p)
+        addTypeDef(result, structPragmas(p, name, origName), t)
+        parseTrailingDefinedTypes(p, result, name)
+      else:
+        addTypeDef(result, structPragmas(p, nameOrType, origName), t)
+    of pxSymbol: 
+      # typedef struct a a?
+      if mangleName(p.tok.s, p) == nameOrType.ident.s:
+        # ignore the declaration:
+        getTok(p, nil)
+      else:
+        # typedef struct a b; or typedef struct a b[45];
+        otherTypeDef(p, result, nameOrType)
+    else: 
+      otherTypeDef(p, result, nameOrType)
+  else:
+    expectIdent(p)
+
+proc parseTypedefEnum(p: var TParser, result: PNode) = 
+  getTok(p, result)
+  if p.tok.xkind == pxCurlyLe:
+    getTok(p, result)
+    var t = enumFields(p)
+    eat(p, pxCurlyRi, t)
+    var name = skipIdent(p)
+    addTypeDef(result, enumPragmas(p, exportSym(p, name)), t)
+    parseTrailingDefinedTypes(p, result, name)
+  elif p.tok.xkind == pxSymbol: 
+    # name to be defined or type "enum a", we don't know yet:
+    var nameOrType = skipIdent(p)
+    case p.tok.xkind 
+    of pxCurlyLe:
+      getTok(p, result)
+      var t = enumFields(p)
+      eat(p, pxCurlyRi, t)
+      if p.tok.xkind == pxSymbol: 
+        # typedef enum tagABC {} abc, *pabc;
+        # --> abc is a better type name than tagABC!
+        var name = skipIdent(p)
+        addTypeDef(result, enumPragmas(p, exportSym(p, name)), t)
+        parseTrailingDefinedTypes(p, result, name)
+      else:
+        addTypeDef(result, enumPragmas(p, exportSym(p, nameOrType)), t)
+    of pxSymbol: 
+      # typedef enum a a?
+      if mangleName(p.tok.s, p) == nameOrType.ident.s:
+        # ignore the declaration:
+        getTok(p, nil)
+      else:
+        # typedef enum a b; or typedef enum a b[45];
+        otherTypeDef(p, result, nameOrType)
+    else: 
+      otherTypeDef(p, result, nameOrType)
+  else:
+    expectIdent(p)
+
 proc parseTypeDef(p: var TParser): PNode =  
   result = newNodeP(nkTypeSection, p)
   while p.tok.xkind == pxSymbol and p.tok.s == "typedef":
@@ -645,80 +721,11 @@ proc parseTypeDef(p: var TParser): PNode =
     inc(p.inTypeDef)
     expectIdent(p)
     case p.tok.s
-    of "struct", "union": 
-      getTok(p, result)
-      if p.tok.xkind == pxCurlyLe:
-        var t = parseStruct(p)
-        var name = skipIdent(p)
-        addTypeDef(result, structPragmas(p, exportSym(p, name)), t)
-        parseTrailingDefinedTypes(p, result, name)
-      elif p.tok.xkind == pxSymbol: 
-        # name to be defined or type "struct a", we don't know yet:
-        var nameOrType = skipIdent(p)
-        case p.tok.xkind 
-        of pxCurlyLe:
-          var t = parseStruct(p)
-          if p.tok.xkind == pxSymbol: 
-            # typedef struct tagABC {} abc, *pabc;
-            # --> abc is a better type name than tagABC!
-            var name = skipIdent(p)
-            addTypeDef(result, structPragmas(p, exportSym(p, name)), t)
-            parseTrailingDefinedTypes(p, result, name)
-          else:
-            addTypeDef(result, structPragmas(p, exportSym(p, nameOrType)), t)
-        of pxSymbol: 
-          # typedef struct a a?
-          if mangleName(p.tok.s, p) == nameOrType.ident.s:
-            # ignore the declaration:
-            getTok(p, nil)
-          else:
-            # typedef struct a b; or typedef struct a b[45];
-            otherTypeDef(p, result, nameOrType)
-        else: 
-          otherTypeDef(p, result, nameOrType)
-      else:
-        expectIdent(p)
-    of "enum": 
-      getTok(p, result)
-      if p.tok.xkind == pxCurlyLe:
-        getTok(p, result)
-        var t = enumFields(p)
-        eat(p, pxCurlyRi, t)
-        var name = skipIdent(p)
-        addTypeDef(result, enumPragmas(p, exportSym(p, name)), t)
-        parseTrailingDefinedTypes(p, result, name)
-      elif p.tok.xkind == pxSymbol: 
-        # name to be defined or type "enum a", we don't know yet:
-        var nameOrType = skipIdent(p)
-        case p.tok.xkind 
-        of pxCurlyLe:
-          getTok(p, result)
-          var t = enumFields(p)
-          eat(p, pxCurlyRi, t)
-          if p.tok.xkind == pxSymbol: 
-            # typedef enum tagABC {} abc, *pabc;
-            # --> abc is a better type name than tagABC!
-            var name = skipIdent(p)
-            addTypeDef(result, enumPragmas(p, exportSym(p, name)), t)
-            parseTrailingDefinedTypes(p, result, name)
-          else:
-            addTypeDef(result, enumPragmas(p, exportSym(p, nameOrType)), t)
-        of pxSymbol: 
-          # typedef enum a a?
-          if mangleName(p.tok.s, p) == nameOrType.ident.s:
-            # ignore the declaration:
-            getTok(p, nil)
-          else:
-            # typedef enum a b; or typedef enum a b[45];
-            otherTypeDef(p, result, nameOrType)
-        else: 
-          otherTypeDef(p, result, nameOrType)
-      else:
-        expectIdent(p)
+    of "struct", "union": parseTypedefStruct(p, result)
+    of "enum": parseTypedefEnum(p, result)
     else: 
       var t = typeAtom(p)
       otherTypeDef(p, result, t)
-    
     eat(p, pxSemicolon)
     dec(p.inTypeDef)
     
@@ -874,6 +881,50 @@ proc setBaseFlags(n: PNode, base: TNumericalBase) =
   of base2: incl(n.flags, nfBase2)
   of base8: incl(n.flags, nfBase8)
   of base16: incl(n.flags, nfBase16)
+
+proc unaryExpression(p: var TParser): PNode
+
+proc isDefinitelyAType(p: var TParser): bool = 
+  var starFound = false
+  var words = 0
+  while true:
+    case p.tok.xkind 
+    of pxSymbol:
+      if declKeyword(p.tok.s): return true
+      elif starFound: return false
+      else: inc(words)
+    of pxStar:
+      starFound = true
+    of pxParRi: return words == 0 or words > 1 or starFound
+    else: return false
+    getTok(p, nil)
+
+proc castExpression(p: var TParser): PNode = 
+  if p.tok.xkind == pxParLe: 
+    SafeContext(p)
+    result = newNodeP(nkCast, p)
+    getTok(p, result)
+    var t = isDefinitelyAType(p)
+    backtrackContext(p)
+    if t:
+      eat(p, pxParLe, result)
+      var a = typeDesc(p)
+      eat(p, pxParRi, result)
+      addSon(result, a)
+      addSon(result, castExpression(p))
+    else: 
+      # else it is just an expression in ():
+      result = newNodeP(nkPar, p)
+      eat(p, pxParLe, result)
+      addSon(result, expression(p))
+      if p.tok.xkind != pxParRi:  
+        # ugh, it is a cast, even though it does not look like one:
+        result.kind = nkCast
+        addSon(result, castExpression(p))
+      eat(p, pxParRi, result)
+      #result = unaryExpression(p)
+  else:
+    result = unaryExpression(p)
   
 proc primaryExpression(p: var TParser): PNode = 
   case p.tok.xkind
@@ -906,30 +957,9 @@ proc primaryExpression(p: var TParser): PNode =
     result = newIntNodeP(nkCharLit, ord(p.tok.s[0]), p)
     getTok(p, result)
   of pxParLe:
-    result = newNodeP(nkPar, p)
-    getTok(p, result)
-    addSon(result, expression(p))
-    eat(p, pxParRi, result)
+    result = castExpression(p)
   else:
     result = nil
-
-proc unaryExpression(p: var TParser): PNode
-proc castExpression(p: var TParser): PNode = 
-  if p.tok.xkind == pxParLe: 
-    SafeContext(p)
-    result = newNodeP(nkCast, p)
-    getTok(p, result)
-    var a = typeDesc(p)
-    if a != nil and p.tok.xkind == pxParRi: 
-      closeContext(p)
-      eat(p, pxParRi, result)
-      addSon(result, a)
-      addSon(result, castExpression(p))
-    else: 
-      backtrackContext(p)
-      result = unaryExpression(p)
-  else:
-    result = unaryExpression(p)
 
 proc multiplicativeExpression(p: var TParser): PNode = 
   result = castExpression(p)
