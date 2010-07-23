@@ -11,6 +11,8 @@
 ## It translates a C source file into a Nimrod AST. Then the renderer can be
 ## used to convert the AST to its text representation.
 
+## XXX cleanup of declaration handling. Standalone enums.
+
 import 
   os, llstream, rnimsyn, clex, idents, strutils, pegs, ast, astalgo, msgs,
   options, strtabs

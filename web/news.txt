@@ -42,6 +42,7 @@ Additions
 - Implemented implicit type arguments for generics.
 - Implemented ``{.size: sizeof(cint).}`` pragma for enum types. This is useful
   for interfacing with C.
+- Implemented ``{.pragma.}`` pragma for user defined pragmas.
 
 
 2010-03-14 Version 0.8.8 released

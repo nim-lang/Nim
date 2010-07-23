@@ -288,7 +288,8 @@ type
     skIterator,           # an iterator
     skConverter,          # a type converter
     skMacro,              # a macro
-    skTemplate,           # a template
+    skTemplate,           # a template; currently also misused for user-defined
+                          # pragmas
     skField,              # a field in a record or object
     skEnumField,          # an identifier in an enum
     skForVar,             # a for loop variable
