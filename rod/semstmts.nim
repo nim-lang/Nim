@@ -688,7 +688,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else: 
     if n.sons[pragmasPos] != nil: 
       liMessage(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
-    if not (sfForward in proto.flags): 
+    if sfForward notin proto.flags: 
       liMessage(n.info, errAttemptToRedefineX, proto.name.s)
     excl(proto.flags, sfForward)
     closeScope(c.tab)         # close scope with wrong parameter symbols
@@ -715,7 +715,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       c.p = newProcCon(s)
       if (s.typ.sons[0] != nil) and (kind != skIterator): 
         addResult(c, s.typ.sons[0], n.info)
-      n.sons[codePos] = semStmtScope(c, n.sons[codePos])
+      if sfImportc notin s.flags: 
+        # no semantic checking for importc:
+        n.sons[codePos] = semStmtScope(c, n.sons[codePos])
       if (s.typ.sons[0] != nil) and (kind != skIterator): addResultNode(c, n)
     else: 
       if (s.typ.sons[0] != nil) and (kind != skIterator): 

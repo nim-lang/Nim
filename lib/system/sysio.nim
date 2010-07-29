@@ -135,14 +135,6 @@ proc open(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
   f = fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
-proc OpenFile(f: var TFile, filename: string,
-              mode: TFileMode = fmRead,
-              bufSize: int = -1): Bool =
-  result = open(f, filename, mode, bufSize)
-  
-proc openFile(f: var TFile, filehandle: TFileHandle, mode: TFileMode): bool =
-  result = open(f, filehandle, mode)
-
 # C routine that is used here:
 proc fread(buf: Pointer, size, n: int, f: TFile): int {.
   importc: "fread", noDecl.}

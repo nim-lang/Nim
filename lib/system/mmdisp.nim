@@ -187,60 +187,35 @@ elif defined(nogc):
     dest^ = src
 
   include "system/cellsets"
-elif appType == "lib": 
-  {.warning: "gc in a library context may not work".}
-  when hostOS == "windows": 
-    const nimrtl = "nimrtl.dll"
-  elif hostOS == "macosx":
-    const nimrtl = "nimrtl.dynlib"
-  else: 
-    const nimrtl = "libnimrtl.so"
-  
-  when not defined(includeGC):
-    # ordinary client; use the GC from nimrtl.dll:
-    proc initGC() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_disable() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_enable() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_fullCollect() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_setStrategy(strategy: TGC_Strategy) {.
-      cdecl, importc, dynlib: nimrtl.}
-    proc GC_enableMarkAndSweep() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_disableMarkAndSweep() {.cdecl, importc, dynlib: nimrtl.}
-    proc GC_getStatistics(): string {.cdecl, importc, dynlib: nimrtl.}
+elif defined(useNimRtl): 
+  proc initGC() = nil
 
-    proc newObj(typ: PNimType, size: int): pointer {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc newSeq(typ: PNimType, len: int): pointer {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc growObj(old: pointer, newsize: int): pointer {.
-      cdecl, importc, dynlib: nimrtl.}
-      
-    proc setStackBottom(theStackBottom: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc nimGCref(p: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc nimGCunref(p: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
+  proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.}
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
+  proc growObj(old: pointer, newsize: int): pointer {.rtl.}
     
-    # The write barrier is performance critical!
-    # XXX We should ensure that they are inlined here.
-    # Later implementations will do this.
+  proc setStackBottom(theStackBottom: pointer) {.compilerProc, inline.} = 
+    # This happens before setStackBottom has been loaded by dlsym(), so
+    # we simply provide a dummy implemenation here for the code gen. No
+    # harm is done by this.
+    nil
     
-    proc unsureAsgnRef(dest: ppointer, src: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc asgnRef(dest: ppointer, src: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    proc asgnRefNoCycle(dest: ppointer, src: pointer) {.
-      compilerproc, cdecl, importc, dynlib: nimrtl.}
-    
-  else:
-    # include the GC and export it!
-    include "system/alloc"
-    include "system/cellsets"
-    assert(sizeof(TCell) == sizeof(TFreeCell))
-    include "system/gc"
+  proc nimGCref(p: pointer) {.compilerRtl.}
+  proc nimGCunref(p: pointer) {.compilerRtl.}
   
+  # The write barrier is performance critical!
+  # XXX We should ensure that they are inlined here.
+  # Later implementations will do this.
+  
+  proc unsureAsgnRef(dest: ppointer, src: pointer) {.
+    compilerRtl.}
+  proc asgnRef(dest: ppointer, src: pointer) {.
+    compilerRtl.}
+  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.
+    compilerRtl.}
+
   include "system/cellsets"    
+
 else:
   include "system/alloc"
   include "system/cellsets"

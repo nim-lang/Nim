@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -69,8 +69,7 @@ proc getSysType(kind: TTypeKind): PType =
   if result == nil: InternalError("type not found: " & $kind)
   
 proc getCompilerProc(name: string): PSym = 
-  var ident: PIdent
-  ident = getIdent(name, getNormalizedHash(name))
+  var ident = getIdent(name, getNormalizedHash(name))
   result = StrTableGet(compilerprocs, ident)
   if result == nil: 
     result = StrTableGet(rodCompilerProcs, ident)

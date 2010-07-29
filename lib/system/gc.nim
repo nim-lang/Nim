@@ -74,13 +74,13 @@ var
     # This is wasteful but safe. This is a lock against recursive garbage
     # collection, not a lock for threads!
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerproc.}
+proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerRtl.}
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
-#proc growObj(old: pointer, newsize: int): pointer {.compilerproc.}
-proc newObj(typ: PNimType, size: int): pointer {.compilerproc.}
-proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.}
+
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.}
+proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -214,8 +214,10 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(recGcLock)
 
-proc setStackBottom(theStackBottom: pointer) {.compilerproc.} =
-  stackBottom = theStackBottom
+proc setStackBottom(theStackBottom: pointer) {.compilerRtl.} =
+  # the first init must be the one that defines the stack bottom:
+  if stackBottom == nil:
+    stackBottom = theStackBottom
 
 proc PossibleRoot(gch: var TGcHeap, c: PCell) {.inline.} =
   if canbeCycleRoot(c): incl(gch.cycleRoots, c)
@@ -236,10 +238,10 @@ proc incRef(c: PCell) {.inline.} =
   if canBeCycleRoot(c):
     incl(gch.cycleRoots, c)
 
-proc nimGCref(p: pointer) {.compilerproc, inline.} = incRef(usrToCell(p))
-proc nimGCunref(p: pointer) {.compilerproc, inline.} = decRef(usrToCell(p))
+proc nimGCref(p: pointer) {.compilerRtl, inl.} = incRef(usrToCell(p))
+proc nimGCunref(p: pointer) {.compilerRtl, inl.} = decRef(usrToCell(p))
 
-proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+proc asgnRef(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
   # the code generator calls this proc!
   assert(not isOnStack(dest))
   # BUGFIX: first incRef then decRef!
@@ -247,7 +249,7 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerproc, inline.} =
   if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
 
-proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerproc, inline.} =
+proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
   # the code generator calls this proc if it is known at compile time that no 
   # cycle is possible.
   if src != nil: 

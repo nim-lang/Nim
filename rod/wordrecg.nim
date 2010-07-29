@@ -34,6 +34,7 @@ type
     
     wColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
     wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks, wImportc, wExportc, 
+    wExtern,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
     wNosideeffect, wNoreturn, wMerge, wLib, wDynlib, wCompilerproc, wProcVar, 
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef, 
@@ -54,7 +55,7 @@ type
     wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
     wAcyclic, wIndex, 
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
-    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wBoot, wLazy, 
+    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wLazy, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar
     
@@ -78,7 +79,8 @@ const
 
     ":", "=", ".", "..", "^", "*", "-",
     "magic", "typecheck", "final", "profiler", "objchecks", "importc", 
-    "exportc", "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
+    "exportc", "extern",
+    "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
     "header", "nosideeffect", "noreturn", "merge", "lib", "dynlib", 
     "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line", 
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace", 
@@ -101,7 +103,7 @@ const
     "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
     "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
-    "boot", "lazy", "rst2html", "rst2tex", "i", 
+    "lazy", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord

@@ -1,10 +1,11 @@
 For version 0.8.10
 ==================
 
+- more robust boot strap process!
+- support for generation of dynamic libraries
 - fix exception handling
 - fix implicit generic routines
 - fix the streams implementation so that they use methods
-- support for generation of dynamic libraries
 
 
 High priority (version 0.9.0)

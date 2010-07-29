@@ -530,11 +530,10 @@ proc structPragmas(p: TParser, name: PNode, origName: string): PNode =
   result = newNodeP(nkPragmaExpr, p)
   addson(result, exportSym(p, name))
   var pragmas = newNodep(nkPragma, p)
-  addSon(pragmas, newIdentNodeP("pure", p))
-  addSon(pragmas, newIdentNodeP("final", p))
+  addSon(pragmas, newIdentNodeP("pure", p), newIdentNodeP("final", p))
   if p.options.header.len > 0:
-    addSon(pragmas, newIdentStrLitPair("importc", origName, p))
-    addSon(pragmas, newIdentStrLitPair("header", p.options.header, p))
+    addSon(pragmas, newIdentStrLitPair("importc", origName, p),
+                    newIdentStrLitPair("header", p.options.header, p))
   addSon(result, pragmas)
 
 proc enumPragmas(p: TParser, name: PNode): PNode =
@@ -542,15 +541,13 @@ proc enumPragmas(p: TParser, name: PNode): PNode =
   addson(result, name)
   var pragmas = newNodep(nkPragma, p)
   var e = newNodeP(nkExprColonExpr, p)
-  addSon(e, newIdentNodeP("size", p))
-  addSon(e, newIntNodeP(nkIntLit, 4, p))
+  addSon(e, newIdentNodeP("size", p), newIntNodeP(nkIntLit, 4, p))
   addSon(pragmas, e)
   addSon(result, pragmas)
 
 proc parseStruct(p: var TParser, isUnion: bool): PNode = 
   result = newNodeP(nkObjectTy, p)
-  addSon(result, nil) # no pragmas
-  addSon(result, nil) # no inheritance
+  addSon(result, nil, nil) # no pragmas, no inheritance 
   if p.tok.xkind == pxCurlyLe:
     addSon(result, parseStructBody(p, isUnion))
   else: 
@@ -569,8 +566,7 @@ proc parseParam(p: var TParser, params: PNode) =
     name = newIdentNodeP("a" & $idx, p)
   typ = parseTypeSuffix(p, typ)
   var x = newNodeP(nkIdentDefs, p)
-  addSon(x, name)
-  addSon(x, typ)
+  addSon(x, name, typ)
   if p.tok.xkind == pxAsgn: 
     # we support default parameters for C++:
     getTok(p, x)
@@ -621,15 +617,11 @@ proc parseFunctionPointerDecl(p: var TParser, rettyp: PNode): PNode =
   if p.inTypeDef == 0:
     result = newNodeP(nkVarSection, p)
     var def = newNodeP(nkIdentDefs, p)
-    addSon(def, name)
-    addSon(def, procType)
-    addSon(def, nil)
+    addSon(def, name, procType, nil)
     addSon(result, def)    
   else:
     result = newNodeP(nkTypeDef, p)
-    addSon(result, name)
-    addSon(result, nil) # no generics
-    addSon(result, procType)
+    addSon(result, name, nil, procType)
   
 proc addTypeDef(section, name, t: PNode) = 
   var def = newNodeI(nkTypeDef, name.info)
@@ -674,8 +666,7 @@ proc enumFields(p: var TParser): PNode =
       var c = constantExpression(p)
       var a = e
       e = newNodeP(nkEnumFieldDef, p)
-      addSon(e, a)
-      addSon(e, c)
+      addSon(e, a, c)
       skipCom(p, e)
     
     addSon(result, e)
@@ -871,10 +862,8 @@ proc declaration(p: var TParser): PNode =
       addSon(pragmas, newIdentNodeP("cdecl", p))
     elif pfStdcall in p.options.flags:
       addSon(pragmas, newIdentNodeP("stdcall", p))
-    addSon(result, exportSym(p, name))
-    addSon(result, nil) # no generics
-    addSon(result, params)
-    addSon(result, pragmas)
+    addSon(result, exportSym(p, name), nil) # no generics
+    addSon(result, params, pragmas)
     case p.tok.xkind 
     of pxSemicolon: 
       getTok(p)
@@ -1175,17 +1164,14 @@ proc asgnExpr(p: var TParser, opr: string, a: PNode): PNode =
   getTok(p, a)
   var b = assignmentExpression(p)
   result = newNodeP(nkAsgn, p)
-  addSon(result, a)
-  addSon(result, newBinary(opr, copyTree(a), b, p))
+  addSon(result, a, newBinary(opr, copyTree(a), b, p))
   
 proc incdec(p: var TParser, opr: string, a: PNode): PNode =
   closeContext(p)
   getTok(p, a)
   var b = assignmentExpression(p)
   result = newNodeP(nkCall, p)
-  addSon(result, newIdentNodeP(getIdent(opr), p))
-  addSon(result, a)
-  addSon(result, b)
+  addSon(result, newIdentNodeP(getIdent(opr), p), a, b)
   
 proc assignmentExpression(p: var TParser): PNode = 
   saveContext(p)
@@ -1196,8 +1182,7 @@ proc assignmentExpression(p: var TParser): PNode =
     getTok(p, a)
     var b = assignmentExpression(p)
     result = newNodeP(nkAsgn, p)
-    addSon(result, a)
-    addSon(result, b)
+    addSon(result, a, b)
   of pxPlusAsgn: result = incDec(p, "inc", a)    
   of pxMinusAsgn: result = incDec(p, "dec", a)
   of pxStarAsgn: result = asgnExpr(p, "*", a)
@@ -1291,8 +1276,7 @@ proc conditionalExpression(p: var TParser): PNode =
     var c = conditionalExpression(p)
     result = newNodeP(nkIfExpr, p)
     var branch = newNodeP(nkElifExpr, p)
-    addSon(branch, a)
-    addSon(branch, b)
+    addSon(branch, a, b)
     addSon(result, branch)
     branch = newNodeP(nkElseExpr, p)
     addSon(branch, c)
