@@ -24,7 +24,12 @@ proc nimUnloadLibrary(lib: TLibHandle) {.compilerproc.}
 proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
 
 proc nimLoadLibraryError(path: string) {.compilerproc, noinline.} =
-  raise newException(EInvalidLibrary, "could not load: " & path)
+  when true:
+    # carefully written to avoid memory allocation:
+    stdout.write("could not load: ")
+    quit(path)
+  else:
+    raise newException(EInvalidLibrary, "could not load: " & path)
 
 # this code was inspired from Lua's source code:
 # Lua - An Extensible Extension Language

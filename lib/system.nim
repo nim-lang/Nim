@@ -667,6 +667,8 @@ proc `&` * (x: char, y: string): string {.
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 
+include "system/cgprocs"
+
 when not defined(ECMAScript):
   {.push overflow_checks:off}
   proc add* (x: var string, y: cstring) =
@@ -732,7 +734,6 @@ type
     ## is the signed integer type that should be used for converting
     ## pointers to integer addresses for readability.
 
-type
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nimrod compiler
     ## supports. Currently this is ``int64``, but it is platform-dependant
@@ -767,7 +768,7 @@ type # these work for most platforms:
   cstringArray* {.importc: "char**", nodecl.} = ptr array [0..50_000, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
-    ## Use cstringArrayToSeq to convert it into a ``seq[string]``.
+    ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
 
   TEndian* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -822,6 +823,8 @@ const
   appType* {.magic: "AppType"}: string = ""
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
+  
+include "system/inclrtl"
   
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
@@ -897,23 +900,23 @@ proc equalMem*(a, b: Pointer, size: int): bool {.
   ## otherwise. Like any procedure dealing with raw memory this is
   ## *unsafe*.
 
-proc alloc*(size: int): pointer {.noconv.}
+proc alloc*(size: int): pointer {.noconv, rtl.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is not initialized, so reading
   ## from it before writing to it is undefined behaviour!
-proc alloc0*(size: int): pointer {.noconv.}
+proc alloc0*(size: int): pointer {.noconv, rtl.}
   ## allocates a new memory block with at least ``size`` bytes. The
   ## block has to be freed with ``realloc(block, 0)`` or
   ## ``dealloc(block)``. The block is initialized with all bytes
   ## containing zero, so it is somewhat safer than ``alloc``.
-proc realloc*(p: Pointer, newsize: int): pointer {.noconv.}
+proc realloc*(p: Pointer, newsize: int): pointer {.noconv, rtl.}
   ## grows or shrinks a given memory block. If p is **nil** then a new
   ## memory block is returned. In either way the block has at least
   ## ``newsize`` bytes. If ``newsize == 0`` and p is not **nil**
   ## ``realloc`` calls ``dealloc(p)``. In other cases the block has to
   ## be freed with ``dealloc``.
-proc dealloc*(p: Pointer) {.noconv.}
+proc dealloc*(p: Pointer) {.noconv, rtl.}
   ## frees the memory allocated with ``alloc``, ``alloc0`` or
   ## ``realloc``. This procedure is dangerous! If one forgets to
   ## free the memory a leak occurs; if one tries to access freed
@@ -1009,14 +1012,14 @@ var
 
 # GC interface:
 
-proc getOccupiedMem*(): int
+proc getOccupiedMem*(): int {.rtl.}
   ## returns the number of bytes that are owned by the process and hold data.
 
-proc getFreeMem*(): int
+proc getFreeMem*(): int {.rtl.}
   ## returns the number of bytes that are owned by the process, but do not
   ## hold any meaningful data.
 
-proc getTotalMem*(): int
+proc getTotalMem*(): int {.rtl.}
   ## returns the number of bytes that are owned by the process.
 
 
@@ -1205,15 +1208,15 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
 
 # ----------------- GC interface ---------------------------------------------
 
-proc GC_disable*()
+proc GC_disable*() {.rtl.}
   ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
   ## reactivate the GC. Note that in most circumstances one should only disable
   ## the mark and sweep phase with `GC_disableMarkAndSweep`.
 
-proc GC_enable*()
+proc GC_enable*() {.rtl.}
   ## enables the GC again.
 
-proc GC_fullCollect*()
+proc GC_fullCollect*() {.rtl.}
   ## forces a full garbage collection pass.
   ## Ordinary code does not need to call this (and should not).
 
@@ -1224,18 +1227,18 @@ type
     gcOptimizeTime,    ## optimize for speed
     gcOptimizeSpace    ## optimize for memory footprint
 
-proc GC_setStrategy*(strategy: TGC_Strategy)
+proc GC_setStrategy*(strategy: TGC_Strategy) {.rtl.}
   ## tells the GC the desired strategy for the application.
 
-proc GC_enableMarkAndSweep*()
-proc GC_disableMarkAndSweep*()
+proc GC_enableMarkAndSweep*() {.rtl.}
+proc GC_disableMarkAndSweep*() {.rtl.}
   ## the current implementation uses a reference counting garbage collector
   ## with a seldomly run mark and sweep phase to free cycles. The mark and
   ## sweep phase may take a long time and is not needed if the application
   ## does not create cycles. Thus the mark and sweep phase can be deactivated
   ## and activated separately from the rest of the GC.
 
-proc GC_getStatistics*(): string
+proc GC_getStatistics*(): string {.rtl.}
   ## returns an informative string about the GC's activity. This may be useful
   ## for tweaking.
   
@@ -1372,23 +1375,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## appropriately. It also annoys people if redirection via ``>output.txt``
       ## does not work because the program writes to ``stderr``.
 
-  proc OpenFile*(f: var TFile, filename: string,
-                 mode: TFileMode = fmRead, 
-                 bufSize: int = -1): Bool {.deprecated.}
-    ## **Deprecated since version 0.8.0**: Use `open` instead.
-
-  proc OpenFile*(f: var TFile, filehandle: TFileHandle,
-                 mode: TFileMode = fmRead): Bool {.deprecated.}
-    ## **Deprecated since version 0.8.0**: Use `open` instead.
-
   proc Open*(f: var TFile, filename: string,
              mode: TFileMode = fmRead, bufSize: int = -1): Bool
     ## Opens a file named `filename` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
     ## This throws no exception if the file could not be opened. The reason is
-    ## that the programmer needs to provide an appropriate error message anyway
-    ## (yes, even in scripts).
+    ## that the programmer needs to provide an appropriate error message 
+    ## anyway.
 
   proc Open*(f: var TFile, filehandle: TFileHandle,
              mode: TFileMode = fmRead): Bool
@@ -1402,10 +1396,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## file variables.
     ##
     ## Default mode is readonly. Returns true iff the file could be reopened.
-
-  proc CloseFile*(f: TFile) {.importc: "fclose", nodecl, deprecated.}
-    ## Closes the file.
-    ## **Deprecated since version 0.8.0**: Use `close` instead.
 
   proc Close*(f: TFile) {.importc: "fclose", nodecl.}
     ## Closes the file.
@@ -1545,7 +1535,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   const
     GenericSeqSize = (2 * sizeof(int))
     
-  proc reprAny(p: pointer, typ: PNimType): string {.compilerproc.}
+  proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}
 
   proc getDiscriminant(aa: Pointer, n: ptr TNimNode): int =
     assert(n.kind == nkCase)

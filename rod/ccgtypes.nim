@@ -248,7 +248,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): PRope =
         internalError(typ.sym.info, "getSimpleTypeDesc: " & $(getSize(typ)))
         result = nil
   of tyString: 
-    useMagic(m, "NimStringDesc")
+    discard cgsym(m, "NimStringDesc")
     result = typeNameOrLiteral(typ, "NimStringDesc*")
   of tyCstring: result = typeNameOrLiteral(typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
@@ -342,20 +342,19 @@ proc getRecordDesc(m: BModule, typ: PType, name: PRope,
   # declare the record:
   var hasField = false
   if typ.kind == tyObject: 
-    useMagic(m, "TNimType")
     if typ.sons[0] == nil: 
       if typ.sym != nil and sfPure in typ.sym.flags or tfFinal in typ.flags: 
-        result = ropef("struct $1 {$n", [name])
+        result = ropecg(m, "struct $1 {$n", [name])
       else: 
-        result = ropef("struct $1 {$nTNimType* m_type;$n", [name])
+        result = ropecg(m, "struct $1 {$n#TNimType* m_type;$n", [name])
         hasField = true
     elif gCmd == cmdCompileToCpp: 
-      result = ropef("struct $1 : public $2 {$n", 
-                     [name, getTypeDescAux(m, typ.sons[0], check)])
+      result = ropecg(m, "struct $1 : public $2 {$n", 
+                      [name, getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
     else: 
-      result = ropef("struct $1 {$n  $2 Sup;$n", 
-                     [name, getTypeDescAux(m, typ.sons[0], check)])
+      result = ropecg(m, "struct $1 {$n  $2 Sup;$n", 
+                      [name, getTypeDescAux(m, typ.sons[0], check)])
       hasField = true
   else: 
     result = ropef("struct $1 {$n", [name])
@@ -446,11 +445,12 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var TIntSet): PRope =
     assert(CacheGetType(m.typeCache, t) == nil)
     IdTablePut(m.typeCache, t, con(result, "*"))
     if not isImportedType(t): 
-      useMagic(m, "TGenericSeq")
       if skipTypes(t.sons[0], abstractInst).kind != tyEmpty: 
-        appf(m.s[cfsSeqTypes], "struct $2 {$n" & "  TGenericSeq Sup;$n" &
-            "  $1 data[SEQ_DECL_SIZE];$n" & "};$n", 
-             [getTypeDescAux(m, t.sons[0], check), result])
+        appcg(m, m.s[cfsSeqTypes], 
+            "struct $2 {$n" & 
+            "  #TGenericSeq Sup;$n" &
+            "  $1 data[SEQ_DECL_SIZE];$n" & 
+            "};$n", [getTypeDescAux(m, t.sons[0], check), result])
       else: 
         result = toRope("TGenericSeq")
     app(result, "*")
@@ -595,10 +595,9 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) =
     assert(n.sons[0].kind == nkSym)
     field = n.sons[0].sym
     tmp = getTempName()
-    useMagic(m, "chckNil")
     appf(m.s[cfsTypeInit3], "$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-        "chckNil($1.typ);$n" & "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
+        "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
         "$1.len = $7;$n", [expr, getTypeDesc(m, typ), field.loc.r, 
                            genTypeInfo(m, field.typ), makeCString(field.name.s), 
                            tmp, toRope(lengthOrd(field.typ))])
@@ -628,10 +627,9 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) =
       else: internalError(n.info, "genObjectFields(nkRecCase)")
   of nkSym: 
     field = n.sym
-    useMagic(m, "chckNil")
     appf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-        "chckNil($1.typ);$n" & "$1.name = $5;$n", [expr, getTypeDesc(m, typ), 
+        "$1.name = $5;$n", [expr, getTypeDesc(m, typ), 
         field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
   else: internalError(n.info, "genObjectFields")
   
@@ -658,10 +656,9 @@ proc genTupleInfo(m: BModule, typ: PType, name: PRope) =
       a = typ.sons[i]
       tmp2 = getNimNode(m)
       appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, toRope(i), tmp2])
-      useMagic(m, "chckNil")
       appf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
           "$1.offset = offsetof($2, Field$3);$n" & "$1.typ = $4;$n" &
-          "chckNil($1.typ);$n" & "$1.name = \"Field$3\";$n", 
+          "$1.name = \"Field$3\";$n", 
            [tmp2, getTypeDesc(m, typ), toRope(i), genTypeInfo(m, a)])
     appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n", 
          [expr, toRope(length), tmp])
@@ -735,8 +732,8 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
   result = ropef("NTI$1", [toRope(id)])
   if not IntSetContainsOrIncl(m.typeInfoMarker, id): 
     # declare type information structures:
-    useMagic(m, "TNimType")
-    useMagic(m, "TNimNode")
+    discard cgsym(m, "TNimType")
+    discard cgsym(m, "TNimNode")
     appf(m.s[cfsVars], "extern TNimType* $1; /* $2 */$n", 
          [result, toRope(typeToString(t))])
   if dataGenerated: return 

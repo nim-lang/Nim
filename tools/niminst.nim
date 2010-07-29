@@ -1,7 +1,7 @@
 #
 #
 #        The Nimrod Installation Generator
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,6 +20,7 @@ const
   maxOS = 20 # max number of OSes
   maxCPU = 10 # max number of CPUs
   buildShFile = "build.sh"
+  buildBatFile = "build.bat"
   installShFile = "install.sh"
   deinstallShFile = "deinstall.sh"
 
@@ -89,17 +90,18 @@ proc skipRoot(f: string): string =
   if result.len == 0: result = f
 
 include "inno.tmpl"
-include "build.tmpl"
+include "buildsh.tmpl"
+include "buildbat.tmpl"
 include "install.tmpl"
 include "deinstall.tmpl"
 
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.7"
+  Version = "0.8"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
-  (c) 2009 Andreas Rumpf
+  (c) 2010 Andreas Rumpf
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
@@ -289,6 +291,22 @@ proc writeFile(filename, content, newline: string) =
   else:
     quit("Cannot open for writing: " & filename)
 
+proc removeDuplicateFiles(c: var TConfigData) =
+  for osA in countdown(c.oses.len, 1):
+    for cpuA in countdown(c.cpus.len, 1):
+      for i in 0..c.cfiles[osA][cpuA].len-1:
+        var dup = c.cfiles[osA][cpuA][i]
+        var f = extractFilename(dup)
+        for osB in 1..c.oses.len:
+          for cpuB in 1..c.cpus.len:
+            if osB != osA or cpuB != cpuA:
+              var orig = buildDir(osB, cpuB) / f
+              if ExistsFile(orig) and ExistsFile(dup) and
+                  sameFileContent(orig, dup):
+                # file is identical, so delete duplicate:
+                RemoveFile(dup)
+                c.cfiles[osA][cpuA][i] = orig
+
 proc srcdist(c: var TConfigData) =
   for x in walkFiles("lib/*.h"):
     CopyFile(dest="build" / extractFilename(x), source=x)
@@ -311,21 +329,9 @@ proc srcdist(c: var TConfigData) =
         CopyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
         c.cfiles[osA][cpuA][i] = dest
   # second pass: remove duplicate files
-  for osA in countdown(c.oses.len, 1):
-    for cpuA in countdown(c.cpus.len, 1):
-      for i in 0..c.cfiles[osA][cpuA].len-1:
-        var dup = c.cfiles[osA][cpuA][i]
-        var f = extractFilename(dup)
-        for osB in 1..c.oses.len:
-          for cpuB in 1..c.cpus.len:
-            if osB != osA or cpuB != cpuA:
-              var orig = buildDir(osB, cpuB) / f
-              if ExistsFile(orig) and ExistsFile(dup) and
-                  sameFileContent(orig, dup):
-                # file is identical, so delete duplicate:
-                RemoveFile(dup)
-                c.cfiles[osA][cpuA][i] = orig
-  writeFile(buildShFile, GenerateBuildScript(c), "\10")
+  removeDuplicateFiles(c)
+  writeFile(buildShFile, GenerateBuildShellScript(c), "\10")
+  writeFile(buildBatFile, GenerateBuildBatchScript(c), "\13\10")
   if c.installScript: 
     writeFile(installShFile, GenerateInstallScript(c), "\10")
   if c.uninstallScript:

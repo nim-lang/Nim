@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,9 +20,7 @@ proc genLineDir(p: BProc, t: PNode) =
           [toRope(toFilename(t.info)), toRope(line)])
   if ({optStackTrace, optEndb} * p.Options == {optStackTrace, optEndb}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags)): 
-    useMagic(p.module, "endb") # new: endb support
-    appff(p.s[cpsStmts], "endb($1);$n", "call void @endb(%NI $1)$n", 
-          [toRope(line)])
+    appcg(p, cpsStmts, "#endb($1);$n", [toRope(line)])
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags)): 
@@ -262,27 +260,24 @@ proc genAsmStmt(p: BProc, t: PNode) =
 
 proc getRaiseFrmt(p: BProc): string = 
   if gCmd == cmdCompileToCpp: 
-    result = "throw nimException($1, $2);$n"
+    result = "throw #nimException($1, $2);$n"
   else: 
-    useMagic(p.module, "E_Base")
-    result = "raiseException((E_Base*)$1, $2);$n"
+    result = "#raiseException((#E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) = 
   genLineDir(p, t)
   if t.sons[0] != nil: 
-    if gCmd != cmdCompileToCpp: useMagic(p.module, "raiseException")
     var a: TLoc
     InitLocExpr(p, t.sons[0], a)
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
-    appf(p.s[cpsStmts], getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
+    appcg(p, cpsStmts, getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
   else: 
     # reraise the last exception:
     if gCmd == cmdCompileToCpp: 
-      app(p.s[cpsStmts], "throw;" & tnl)
+      appcg(p, cpsStmts, "throw;" & tnl)
     else: 
-      useMagic(p.module, "reraiseException")
-      app(p.s[cpsStmts], "reraiseException();" & tnl)
+      appcg(p, cpsStmts, "#reraiseException();" & tnl)
 
 const 
   stringCaseThreshold = 100000 
@@ -300,11 +295,11 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
     if b.sons[i].kind == nkRange: 
       initLocExpr(p, b.sons[i].sons[0], x)
       initLocExpr(p, b.sons[i].sons[1], y)
-      appf(p.s[cpsStmts], rangeFormat, 
+      appcg(p, cpsStmts, rangeFormat, 
            [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
     else: 
       initLocExpr(p, b.sons[i], x)
-      appf(p.s[cpsStmts], eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
+      appcg(p, cpsStmts, eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
 
 proc genCaseSecondPass(p: BProc, t: PNode, labId: int) = 
   var Lend = getLabel(p)
@@ -373,7 +368,7 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
     initLocExpr(p, b.sons[i], x)
     assert(b.sons[i].kind in {nkStrLit..nkTripleStrLit})
     j = int(hashString(b.sons[i].strVal) and high(branches))
-    appf(branches[j], "if (eqStrings($1, $2)) goto $3;$n", 
+    appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n", 
          [rdLoc(e), rdLoc(x), labl])
 
 proc genStringCase(p: BProc, t: PNode) = 
@@ -381,13 +376,11 @@ proc genStringCase(p: BProc, t: PNode) =
     strings, bitMask, labId: int
     a: TLoc
     branches: TRopeSeq
-  useMagic(p.module, "eqStrings") 
   # count how many constant strings there are in the case:
   strings = 0
   for i in countup(1, sonsLen(t) - 1): 
     if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
   if strings > stringCaseThreshold: 
-    useMagic(p.module, "hashString")
     bitMask = math.nextPowerOfTwo(strings) - 1
     newSeq(branches, bitMask + 1)
     initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
@@ -400,7 +393,7 @@ proc genStringCase(p: BProc, t: PNode) =
       else: 
         # else statement: nothing to do yet
         # but we reserved a label, which we use later
-    appf(p.s[cpsStmts], "switch (hashString($1) & $2) {$n", 
+    appcg(p, cpsStmts, "switch (#hashString($1) & $2) {$n", 
          [rdLoc(a), toRope(bitMask)])
     for j in countup(0, high(branches)): 
       if branches[j] != nil: 
@@ -412,7 +405,7 @@ proc genStringCase(p: BProc, t: PNode) =
     # third pass: generate statements
     genCaseSecondPass(p, t, labId)
   else: 
-    genCaseGeneric(p, t, "", "if (eqStrings($1, $2)) goto $3;$n")
+    genCaseGeneric(p, t, "", "if (#eqStrings($1, $2)) goto $3;$n")
   
 proc branchHasTooBigRange(b: PNode): bool = 
   for i in countup(0, sonsLen(b) - 2): 
@@ -588,11 +581,9 @@ proc genTryStmt(p: BProc, t: PNode) =
   #    longjmp(excHandler->context, sp.status);
   genLineDir(p, t)
   var safePoint = getTempName()
-  useMagic(p.module, "TSafePoint")
-  useMagic(p.module, "E_Base")
-  useMagic(p.module, "excHandler")
-  appf(p.s[cpsLocals], "TSafePoint $1;$n", [safePoint])
-  appf(p.s[cpsStmts], "$1.prev = excHandler;$n" & "excHandler = &$1;$n" &
+  discard cgsym(p.module, "E_Base")
+  appcg(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
+  appcg(p, cpsStmts, "$1.prev = #excHandler;$n" & "excHandler = &$1;$n" &
       "$1.status = setjmp($1.context);$n", [safePoint])
   if optStackTrace in p.Options: 
     app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
@@ -627,9 +618,8 @@ proc genTryStmt(p: BProc, t: PNode) =
   dec(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally): 
     genStmts(p, t.sons[i].sons[0])
-  useMagic(p.module, "raiseException")
-  appf(p.s[cpsStmts], "if ($1.status != 0) { " &
-      "raiseException($1.exc, $1.exc->name); }$n", [safePoint])
+  appcg(p, cpsStmts, "if ($1.status != 0) { " &
+      "#raiseException($1.exc, $1.exc->name); }$n", [safePoint])
 
 var 
   breakPointId: int = 0
@@ -643,21 +633,17 @@ proc genBreakPoint(p: BProc, t: PNode) =
       name = normalize(t.sons[1].strVal)
     else: 
       inc(breakPointId)
-      name = "bp" & $(breakPointId)
+      name = "bp" & $breakPointId
     genLineDir(p, t)          # BUGFIX
-    appf(gBreakpoints, 
-         "dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
+    appcg(p.module, gBreakpoints, 
+         "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
         toRope(toLinenumber(t.info)), makeCString(toFilename(t.info)), 
         makeCString(name)])
 
 proc genPragma(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
-    var key: PNode
-    if it.kind == nkExprColonExpr: 
-      key = it.sons[0]
-    else: 
-      key = it
+    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent: 
       case whichKeyword(key.ident)
       of wBreakpoint: 
@@ -667,8 +653,7 @@ proc genPragma(p: BProc, n: PNode) =
           # we need to keep track of ``deadCodeElim`` pragma
           if (sfDeadCodeElim in p.module.module.flags): 
             addPendingModule(p.module)
-      else: 
-        nil
+      else: nil
   
 proc genAsgn(p: BProc, e: PNode) = 
   var a: TLoc

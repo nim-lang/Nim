@@ -21,13 +21,13 @@ const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wMagic, wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, 
     wCompilerProc, wPure, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge, 
-    wBorrow}
+    wBorrow, wExtern}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wTypeCheck}
+    wMagic, wNosideEffect, wCompilerProc, wDeprecated, wTypeCheck, wExtern}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideEffect, wSideEffect, 
-    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow}
+    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks, 
     wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints, wLinedir, 
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
@@ -35,13 +35,15 @@ const
     wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
     wInfChecks, wNanChecks, wPragma}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
-    wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, wDeprecated}
+    wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
+    wDeprecated, wExtern}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerProc, wFinal, wSize}
-  fieldPragmas* = {wImportc, wExportc, wDeprecated}
+    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern}
+  fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
-    wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib}
-  constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl}
+    wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern}
+  constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
+    wExtern}
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideEffect}
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
@@ -64,18 +66,17 @@ proc pragmaAsm(c: PContext, n: PNode): char =
         else: invalidPragma(it)
       else: 
         invalidPragma(it)
-  
-const 
-  FirstPragmaWord = wMagic
-  LastPragmaWord = wNoconv
+
+proc setExternName(s: PSym, extname: string) = 
+  s.loc.r = toRope(extname % s.name.s)
 
 proc MakeExternImport(s: PSym, extname: string) = 
-  s.loc.r = toRope(extname)
+  setExternName(s, extname)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
 proc MakeExternExport(s: PSym, extname: string) = 
-  s.loc.r = toRope(extname)
+  setExternName(s, extname)
   incl(s.flags, sfExportc)
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
@@ -356,6 +357,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             makeExternExport(sym, getOptionalStr(c, it, sym.name.s))
             incl(sym.flags, sfUsed) # avoid wrong hints
           of wImportc: makeExternImport(sym, getOptionalStr(c, it, sym.name.s))
+          of wExtern: setExternName(sym, expectStrLit(c, it))
           of wAlign: 
             if sym.typ == nil: invalidPragma(it)
             sym.typ.align = expectIntLit(c, it)

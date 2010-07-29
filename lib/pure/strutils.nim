@@ -125,19 +125,6 @@ proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect.}
   ## Searches for `chars` in `s` starting at position `start`. If `s` contains
   ## none of the characters in `chars`, -1 is returned.
 
-proc replaceStr*(s, sub, by: string): string {.noSideEffect, deprecated.}
-  ## Replaces `sub` in `s` by the string `by`.
-  ## **Deprecated since version 0.8.0**: Use `replace` instead.
-
-proc replaceStr*(s: string, sub, by: char): string {.noSideEffect, deprecated.}
-  ## optimized version for characters.
-  ## **Deprecated since version 0.8.0**: Use `replace` instead.
-
-proc deleteStr*(s: var string, first, last: int) {.deprecated.}
-  ## Deletes in `s` the characters at position `first` .. `last`. This modifies
-  ## `s` itself, it does not return a copy.
-  ## **Deprecated since version 0.8.0**: Use `delete` instead.
-
 proc toOctal*(c: char): string
   ## Converts a character `c` to its octal representation. The resulting
   ## string may not have a leading zero. Its length is always exactly 3.
@@ -241,24 +228,6 @@ iterator splitLines*(s: string): string =
     else: break # was '\0'
     first = last
 
-proc splitLinesSeq*(s: string): seq[string] {.noSideEffect, deprecated.} =
-  ## The same as `splitLines`, but is a proc that returns a sequence 
-  ## of substrings.
-  ## **Deprecated since version 0.8.0**: Use `splitLines` instead.
-  accumulateResult(splitLines(s))
-
-proc splitSeq*(s: string, seps: set[char] = Whitespace): seq[string] {.
-  noSideEffect, deprecated.} =
-  ## The same as `split`, but is a proc that returns a sequence of substrings.
-  ## **Deprecated since version 0.8.0**: Use `split` instead.
-  accumulateResult(split(s, seps))
-
-proc splitSeq*(s: string, sep: char): seq[string] {.noSideEffect, 
-                                                    deprecated.} =
-  ## The same as `split`, but is a proc that returns a sequence of substrings.
-  ## **Deprecated since version 0.8.0**: Use `split` instead.
-  accumulateResult(split(s, sep))
-
 proc splitLines*(s: string): seq[string] {.noSideEffect.} =
   ## The same as the `splitLines` iterator, but is a proc that returns a 
   ## sequence of substrings.
@@ -327,12 +296,6 @@ proc ParseHexInt*(s: string): int {.noSideEffect, procvar.}
   ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
   ## following optional prefixes: ``0x``, ``0X``, ``#``. 
   ## Underscores within `s` are ignored.
-
-# the stringify and format operators:
-proc toString*[Ty](x: Ty): string {.deprecated.}
-  ## This generic proc is the same as the stringify operator `$`.
-  ##
-  ## **Deprecated since version 0.8.2:** Use `$` instead.
 
 proc repeatChar*(count: int, c: Char = ' '): string
   ## Returns a string of length `count` consisting only of
@@ -669,10 +632,6 @@ proc delete*(s: var string, first, last: int) =
     inc(i)
     inc(j)
   setlen(s, newLen)
-
-proc replaceStr(s, sub, by: string): string = return replace(s, sub, by)
-proc replaceStr(s: string, sub, by: char): string = return replace(s, sub, by)
-proc deleteStr(s: var string, first, last: int) = delete(s, first, last)
 
 # parsing numbers:
 

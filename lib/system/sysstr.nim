@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -88,7 +88,8 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.exportc.} =
 proc copyStr(s: NimString, start: int): NimString {.exportc.} =
   return copyStrLast(s, start, s.len-1)
 
-proc addChar(s: NimString, c: char): NimString {.compilerProc.} =
+proc addChar(s: NimString, c: char): NimString =
+  # is compilerproc!
   result = s
   if result.len >= result.space:
     result.space = resize(result.space)
@@ -196,7 +197,7 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
     inc(result.len)
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
-    compilerProc.} =
+    compilerRtl.} =
   when false:
     # broken version:
     result = seq
@@ -223,7 +224,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     result.len = newLen
 
 # --------------- other string routines ----------------------------------
-proc nimIntToStr(x: int): string {.compilerproc.} =
+proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)
   var i = 0
   var y = x
@@ -246,7 +247,7 @@ proc nimFloatToStr(x: float): string {.compilerproc.} =
   c_sprintf(buf, "%#g", x)
   return $buf
 
-proc nimInt64ToStr(x: int64): string {.compilerproc.} =
+proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   # we don't rely on C's runtime here as some C compiler's
   # int64 support is weak
   result = newString(sizeof(x)*4)

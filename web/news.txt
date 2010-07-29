@@ -27,6 +27,13 @@ Changes affecting backwards compatibility
   unless they are used in the same module.
 - Deprecated ``times.getStartMilsecs``: Use ``epochTime`` or ``cpuTime`` 
   instead.
+- Removed ``system.OpenFile``.
+- Removed ``system.CloseFile``.
+- Removed ``strutils.replaceStr``.
+- Removed ``strutils.deleteStr``.
+- Removed ``strutils.splitLinesSeq``.
+- Removed ``strutils.splitSeq``.
+- Removed ``strutils.toString``.
 
 
 Additions
@@ -43,6 +50,10 @@ Additions
 - Implemented ``{.size: sizeof(cint).}`` pragma for enum types. This is useful
   for interfacing with C.
 - Implemented ``{.pragma.}`` pragma for user defined pragmas.
+- Implemented ``{.extern.}`` pragma for better control of name mangling.
+- The ``importc`` and ``exportc`` pragmas support format strings: 
+  ``proc p{.exportc: "nim_$1".}`` exports ``p`` as ``nim_p``. This is useful
+  for user defined pragmas.
 
 
 2010-03-14 Version 0.8.8 released
