@@ -666,7 +666,8 @@ proc `&` * (x: char, y: string): string {.
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
-
+  
+include "system/inclrtl"
 include "system/cgprocs"
 
 when not defined(ECMAScript):
@@ -823,8 +824,6 @@ const
   appType* {.magic: "AppType"}: string = ""
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
-  
-include "system/inclrtl"
   
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
@@ -1305,12 +1304,17 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc initGC()
 
+  proc initStackBottom() {.inline.} = 
+    var locals: array[0..7, int]
+    setStackBottom(addr(locals))
+
   var
     strDesc: TNimType
 
   strDesc.size = sizeof(string)
   strDesc.kind = tyString
   strDesc.flags = {ntfAcyclic}
+  initStackBottom()
   initGC() # BUGFIX: need to be called here!
 
   {.push stack_trace: off.}
