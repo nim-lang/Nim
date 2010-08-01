@@ -214,11 +214,6 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(recGcLock)
 
-proc setStackBottom(theStackBottom: pointer) {.compilerRtl.} =
-  # the first init must be the one that defines the stack bottom:
-  if stackBottom == nil:
-    stackBottom = theStackBottom
-
 proc PossibleRoot(gch: var TGcHeap, c: PCell) {.inline.} =
   if canbeCycleRoot(c): incl(gch.cycleRoots, c)
 
@@ -367,7 +362,7 @@ proc newSeq(typ: PNimType, len: int): pointer =
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).space = len
 
-proc growObj(old: pointer, newsize: int): pointer =
+proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   checkCollection()
   var ol = usrToCell(old)
   assert(ol.typ != nil)
@@ -487,6 +482,25 @@ proc markThreadStacks(gch: var TGcHeap) =
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
+when defined(sparc):
+  const stackIncreases = false
+elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
+     defined(hp9000s700) or defined(hp9000s800) or defined(hp9000s820):
+  const stackIncreases = true
+else:
+  const stackIncreases = false
+
+proc setStackBottom(theStackBottom: pointer) =
+  # the first init must be the one that defines the stack bottom:
+  if stackBottom == nil: stackBottom = theStackBottom
+  else:
+    var a = cast[TAddress](theStackBottom)
+    var b = cast[TAddress](stackBottom)
+    when stackIncreases:
+      stackBottom = cast[pointer](min(a, b))
+    else:
+      stackBottom = cast[pointer](max(a, b))
+
 proc stackSize(): int {.noinline.} =
   var stackTop: array[0..1, pointer]
   result = abs(cast[int](addr(stackTop[0])) - cast[int](stackBottom))
@@ -518,8 +532,7 @@ when defined(sparc): # For SPARC architecture.
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}
 
-elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
-     defined(hp9000s700) or defined(hp9000s800) or defined(hp9000s820):
+elif stackIncreases:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------

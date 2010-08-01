@@ -385,8 +385,6 @@ proc intToStr(x: int, minchars: int = 1): string =
   if x < 0:
     result = '-' & result
 
-proc toString[Ty](x: Ty): string = return $x
-
 proc toOctal(c: char): string =
   result = newString(3)
   var val = ord(c)

@@ -21,7 +21,7 @@ when defined(createNimRtl):
   when defined(useNimRtl): 
     {.error: "Cannot create and use nimrtl at the same time!".}
   elif appType != "lib":
-    {.error: "nimrtl must be build as a library!".}
+    {.error: "nimrtl must be built as a library!".}
 
 when defined(createNimRtl): 
   # NOTE: compilerproc cannot make use of name mangling!

@@ -34,6 +34,10 @@ Changes affecting backwards compatibility
 - Removed ``strutils.splitLinesSeq``.
 - Removed ``strutils.splitSeq``.
 - Removed ``strutils.toString``.
+- If a DLL cannot be loaded (via the ``dynlib`` pragma) ``EInvalidLibrary`` 
+  is not raised anymore. Instead ``system.quit()`` is called. This is because
+  raising an exception requires heap allocations. However the memory manager
+  might be contained in the DLL that failed to load.
 
 
 Additions

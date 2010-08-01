@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -33,8 +33,9 @@ proc verbosePass(): TPass =
 
 proc cleanUp(c: PPassContext, n: PNode): PNode = 
   var s: PSym
-  result = n                  # we cannot clean up if dead code elimination is activated
-  if (optDeadCodeElim in gGlobalOptions): return 
+  result = n                  
+  # we cannot clean up if dead code elimination is activated
+  if optDeadCodeElim in gGlobalOptions: return 
   case n.kind
   of nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): discard cleanup(c, n.sons[i])

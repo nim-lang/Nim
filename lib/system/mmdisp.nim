@@ -117,7 +117,7 @@ when defined(boehmgc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc setStackBottom(theStackBottom: pointer) {.compilerproc.} = nil
+  proc setStackBottom(theStackBottom: pointer) = nil
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
   
@@ -175,7 +175,7 @@ elif defined(nogc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc setStackBottom(theStackBottom: pointer) {.compilerproc.} = nil
+  proc setStackBottom(theStackBottom: pointer) = nil
   proc nimGCref(p: pointer) {.compilerproc, inline.} = nil
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = nil
   
@@ -193,12 +193,6 @@ elif defined(useNimRtl):
   proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.}
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
   proc growObj(old: pointer, newsize: int): pointer {.rtl.}
-    
-  proc setStackBottom(theStackBottom: pointer) {.compilerProc, inline.} = 
-    # This happens before setStackBottom has been loaded by dlsym(), so
-    # we simply provide a dummy implemenation here for the code gen. No
-    # harm is done by this.
-    nil
     
   proc nimGCref(p: pointer) {.compilerRtl.}
   proc nimGCunref(p: pointer) {.compilerRtl.}

@@ -399,7 +399,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     lib.generated = true
     var tmp = getGlobalTempName()
     assert(lib.name == nil)
-    lib.name = tmp # BUGFIX: useMagic has awful side-effects
+    lib.name = tmp # BUGFIX: cgsym has awful side-effects
     appf(m.s[cfsVars], "static void* $1;$n", [tmp])
     if lib.path.kind in {nkStrLit..nkTripleStrLit}:
       var s: TStringSeq = @[]
@@ -437,14 +437,14 @@ proc SymInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
-  discard cgsym(m, "nimGetProcAddr")
+  #discard cgsym(m, "nimGetProcAddr")
   if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
   var tmp = mangleDynLibProc(sym)
   sym.loc.r = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
-  appf(m.s[cfsDynLibInit], 
-      "$1 = ($2) nimGetProcAddr($3, $4);$n", 
+  appcg(m, m.s[cfsDynLibInit], 
+      "$1 = ($2) #nimGetProcAddr($3, $4);$n", 
       [tmp, getTypeDesc(m, sym.typ), 
       lib.name, cstringLit(m, m.s[cfsDynLibInit], ropeToStr(extname))])
   appff(m.s[cfsVars], "$2 $1;$n", 
@@ -458,7 +458,7 @@ proc cgsym(m: BModule, name: string): PRope =
     of skProc, skMethod, skConverter: genProc(m, sym)
     of skVar: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
-    else: InternalError("useMagic: " & name)
+    else: InternalError("cgsym: " & name)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -700,10 +700,10 @@ proc getFileHeader(cfilenoext: string): PRope =
 
 proc genMainProc(m: BModule) = 
   const 
-    CommonMainBody = "  setStackBottom(dummy);$n" & "  nim__datInit();$n" &
+    CommonMainBody = "  #setStackBottom(dummy);$n" & "  nim__datInit();$n" &
         "  systemInit();$n" & "$1" & "$2"
     CommonMainBodyLLVM = "  %MOC$3 = bitcast [8 x %NI]* %dummy to i8*$n" &
-        "  call void @setStackBottom(i8* %MOC$3)$n" &
+        "  call void @#setStackBottom(i8* %MOC$3)$n" &
         "  call void @nim__datInit()$n" & "  call void systemInit()$n" & "$1" &
         "$2"
     PosixNimMain = "int cmdCount;$n" & "char** cmdLine;$n" & "char** gEnv;$n" &
@@ -744,7 +744,6 @@ proc genMainProc(m: BModule) =
         "                            i8* %lpvReserved) {$n" &
         "  call void @NimMain()$n" & "  ret i32 1$n" & "}$n"
   var nimMain, otherMain: TFormatStr
-  discard cgsym(m, "setStackBottom")
   if (platform.targetOS == osWindows) and
       (gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}): 
     if optGenGuiApp in gGlobalOptions: 
@@ -771,8 +770,10 @@ proc genMainProc(m: BModule) =
       otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
   inc(m.labels)
-  appf(m.s[cfsProcs], nimMain, [gBreakpoints, mainModInit, toRope(m.labels)])
-  if not (optNoMain in gGlobalOptions): appf(m.s[cfsProcs], otherMain, [])
+  appcg(m, m.s[cfsProcs], nimMain, [
+        gBreakpoints, mainModInit, toRope(m.labels)])
+  if not (optNoMain in gGlobalOptions): 
+    appcg(m, m.s[cfsProcs], otherMain, [])
   
 proc getInitName(m: PSym): PRope = 
   result = ropeff("$1Init", "@$1Init", [toRope(m.name.s)])

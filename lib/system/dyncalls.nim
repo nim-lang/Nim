@@ -12,24 +12,28 @@
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
 
-type
-  TLibHandle = pointer       # private type
-  TProcAddr = pointer        # libary loading and loading of procs:
-
 const
   NilLibHandle: TLibHandle = nil
 
-proc nimLoadLibrary(path: string): TLibHandle {.compilerproc.}
-proc nimUnloadLibrary(lib: TLibHandle) {.compilerproc.}
-proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
+proc rawWrite(f: TFile, s: string) = 
+  # we cannot throw an exception here!
+  discard writeBuffer(f, cstring(s), s.len)
 
-proc nimLoadLibraryError(path: string) {.compilerproc, noinline.} =
-  when true:
-    # carefully written to avoid memory allocation:
-    stdout.write("could not load: ")
-    quit(path)
-  else:
-    raise newException(EInvalidLibrary, "could not load: " & path)
+proc nimLoadLibraryError(path: string) =
+  # carefully written to avoid memory allocation:
+  #stdout.write("could not load: ")
+  #quit(path)
+  stdout.rawWrite("could not load: ")
+  stdout.rawWrite(path)
+  stdout.rawWrite("\n")
+  quit(1)
+
+proc ProcAddrError(name: cstring) {.noinline.} =
+  # carefully written to avoid memory allocation:
+  stdout.rawWrite("could not import: ")
+  stdout.write(name)
+  stdout.rawWrite("\n")
+  quit(1)
 
 # this code was inspired from Lua's source code:
 # Lua - An Extensible Extension Language
@@ -65,7 +69,7 @@ when defined(posix):
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)
-    if result == nil: nimLoadLibraryError($name)
+    if result == nil: ProcAddrError(name)
 
 elif defined(windows) or defined(dos):
   #
@@ -90,7 +94,7 @@ elif defined(windows) or defined(dos):
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = GetProcAddress(cast[THINSTANCE](lib), name)
-    if result == nil: nimLoadLibraryError($name)
+    if result == nil: ProcAddrError(name)
 
 elif defined(mac):
   #
@@ -126,7 +130,7 @@ elif defined(mac):
       nss: NSSymbol
     nss = NSLookupSymbolInModule(NSModule(lib), name)
     result = TProcAddr(NSAddressOfSymbol(nss))
-    if result == nil: nimLoadLibraryError($name)
+    if result == nil: ProcAddrError(name)
 
 else:
   {.error: "no implementation for dyncalls".}

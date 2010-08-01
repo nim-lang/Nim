@@ -284,7 +284,8 @@ proc symToYamlAux(n: PSym, marker: var TIntSet, indent: int,
                                  flagsToStr(n.options), toRope("position"), 
                                  toRope(n.position)])
 
-proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int, maxRecDepth: int): PRope = 
+proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int, 
+                   maxRecDepth: int): PRope = 
   if n == nil: 
     result = toRope("null")
   elif intSetContainsOrIncl(marker, n.id): 
@@ -417,7 +418,10 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
     appf(result, "$n$1}", [spaces(indent)])
 
 proc debug(n: PSym) = 
-  writeln(stdout, ropeToStr(ropef("$1_$2", [toRope(n.name.s), toRope(n.id)])))
+  #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
+  writeln(stdout, ropeToStr(ropef("$1_$2: $3, $4", [
+    toRope(n.name.s), toRope(n.id), flagsToStr(n.flags), 
+    flagsToStr(n.loc.flags)])))
 
 proc debug(n: PType) = 
   writeln(stdout, ropeToStr(debugType(n)))

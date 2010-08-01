@@ -715,10 +715,12 @@ proc genStmts(p: BProc, t: PNode) =
   of nkProcDef, nkMethodDef, nkConverterDef: 
     if (t.sons[genericParamsPos] == nil): 
       prc = t.sons[namePos].sym
-      if not (optDeadCodeElim in gGlobalOptions) and
-          not (sfDeadCodeElim in getModule(prc).flags) or
+      if (optDeadCodeElim notin gGlobalOptions and
+          sfDeadCodeElim notin getModule(prc).flags) or
           ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
+          (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
           (prc.kind == skMethod): 
+        # we have not only the header: 
         if (t.sons[codePos] != nil) or (lfDynamicLib in prc.loc.flags): 
           genProc(p.module, prc)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
