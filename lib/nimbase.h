@@ -431,4 +431,6 @@ struct NimException {
 };
 #endif
 
+#define NIM_POSIX_INIT  __attribute__((constructor)) 
+
 #endif

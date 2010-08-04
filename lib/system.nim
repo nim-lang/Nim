@@ -666,6 +666,56 @@ proc `&` * (x: char, y: string): string {.
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+type
+  TEndian* = enum ## is a type describing the endianness of a processor.
+    littleEndian, bigEndian
+
+const
+  isMainModule* {.magic: "IsMainModule".}: bool = false
+    ## is true only when accessed in the main module. This works thanks to
+    ## compiler magic. It is useful to embed testing code in a module.
+
+  CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
+    ## is the date of compilation as a string of the form
+    ## ``YYYY-MM-DD``. This works thanks to compiler magic.
+
+  CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
+    ## is the time of compilation as a string of the form
+    ## ``HH:MM:SS``. This works thanks to compiler magic.
+
+  NimrodVersion* {.magic: "NimrodVersion"}: string = "0.0.0"
+    ## is the version of Nimrod as a string.
+    ## This works thanks to compiler magic.
+
+  NimrodMajor* {.magic: "NimrodMajor"}: int = 0
+    ## is the major number of Nimrod's version.
+    ## This works thanks to compiler magic.
+
+  NimrodMinor* {.magic: "NimrodMinor"}: int = 0
+    ## is the minor number of Nimrod's version.
+    ## This works thanks to compiler magic.
+
+  NimrodPatch* {.magic: "NimrodPatch"}: int = 0
+    ## is the patch number of Nimrod's version.
+    ## This works thanks to compiler magic.
+
+  cpuEndian* {.magic: "CpuEndian"}: TEndian = littleEndian
+    ## is the endianness of the target CPU. This is a valuable piece of
+    ## information for low-level code only. This works thanks to compiler magic.
+    
+  hostOS* {.magic: "HostOS"}: string = ""
+    ## a string that describes the host operating system. Possible values:
+    ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
+    ## "aix".
+        
+  hostCPU* {.magic: "HostCPU"}: string = ""
+    ## a string that describes the host CPU. Possible values:
+    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
+  
+  appType* {.magic: "AppType"}: string = ""
+    ## a string that describes the application type. Possible values:
+    ## "console", "gui", "lib".
   
 include "system/inclrtl"
 include "system/cgprocs"
@@ -771,59 +821,10 @@ type # these work for most platforms:
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
 
-  TEndian* = enum ## is a type describing the endianness of a processor.
-    littleEndian, bigEndian
-
   PFloat32* = ptr Float32 ## an alias for ``ptr float32``
   PFloat64* = ptr Float64 ## an alias for ``ptr float64``
   PInt64* = ptr Int64 ## an alias for ``ptr int64``
   PInt32* = ptr Int32 ## an alias for ``ptr int32``
-
-const
-  isMainModule* {.magic: "IsMainModule".}: bool = false
-    ## is true only when accessed in the main module. This works thanks to
-    ## compiler magic. It is useful to embed testing code in a module.
-
-  CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
-    ## is the date of compilation as a string of the form
-    ## ``YYYY-MM-DD``. This works thanks to compiler magic.
-
-  CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
-    ## is the time of compilation as a string of the form
-    ## ``HH:MM:SS``. This works thanks to compiler magic.
-
-  NimrodVersion* {.magic: "NimrodVersion"}: string = "0.0.0"
-    ## is the version of Nimrod as a string.
-    ## This works thanks to compiler magic.
-
-  NimrodMajor* {.magic: "NimrodMajor"}: int = 0
-    ## is the major number of Nimrod's version.
-    ## This works thanks to compiler magic.
-
-  NimrodMinor* {.magic: "NimrodMinor"}: int = 0
-    ## is the minor number of Nimrod's version.
-    ## This works thanks to compiler magic.
-
-  NimrodPatch* {.magic: "NimrodPatch"}: int = 0
-    ## is the patch number of Nimrod's version.
-    ## This works thanks to compiler magic.
-
-  cpuEndian* {.magic: "CpuEndian"}: TEndian = littleEndian
-    ## is the endianness of the target CPU. This is a valuable piece of
-    ## information for low-level code only. This works thanks to compiler magic.
-    
-  hostOS* {.magic: "HostOS"}: string = ""
-    ## a string that describes the host operating system. Possible values:
-    ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
-    ## "aix".
-        
-  hostCPU* {.magic: "HostCPU"}: string = ""
-    ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "sparc", "amd64", "mips", "arm".
-  
-  appType* {.magic: "AppType"}: string = ""
-    ## a string that describes the application type. Possible values:
-    ## "console", "gui", "lib".
   
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
@@ -1305,7 +1306,10 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   proc initGC()
 
   proc initStackBottom() {.inline.} = 
-    var locals: array[0..7, int]
+    # WARNING: This is very fragile! An array size of 8 does not work on my
+    # Linux 64bit system. Very strange, but we are at the will of GCC's 
+    # optimizer...
+    var locals {.volatile.}: pointer
     setStackBottom(addr(locals))
 
   var

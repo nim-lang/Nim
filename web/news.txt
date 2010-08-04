@@ -58,6 +58,8 @@ Additions
 - The ``importc`` and ``exportc`` pragmas support format strings: 
   ``proc p{.exportc: "nim_$1".}`` exports ``p`` as ``nim_p``. This is useful
   for user defined pragmas.
+- The standard library can be built as a DLL. Generating DLLs has been
+  improved.
 
 
 2010-03-14 Version 0.8.8 released

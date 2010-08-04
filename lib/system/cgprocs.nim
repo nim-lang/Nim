@@ -21,6 +21,6 @@ proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr {.compilerproc.}
 
 proc nimLoadLibraryError(path: string) {.compilerproc, noinline.}
 
-proc setStackBottom(theStackBottom: pointer) {.compilerRtl.}
+proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline.}
 
 
