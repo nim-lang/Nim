@@ -1,7 +1,6 @@
 For version 0.8.10
 ==================
 
-- support for generation of dynamic libraries
 - fix exception handling
 - fix implicit generic routines
 - fix the streams implementation so that they use methods

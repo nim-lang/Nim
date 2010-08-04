@@ -700,74 +700,51 @@ proc getFileHeader(cfilenoext: string): PRope =
 
 proc genMainProc(m: BModule) = 
   const 
-    CommonMainBody = "  #setStackBottom(dummy);$n" & "  nim__datInit();$n" &
-        "  systemInit();$n" & "$1" & "$2"
-    CommonMainBodyLLVM = "  %MOC$3 = bitcast [8 x %NI]* %dummy to i8*$n" &
-        "  call void @#setStackBottom(i8* %MOC$3)$n" &
-        "  call void @nim__datInit()$n" & "  call void systemInit()$n" & "$1" &
+    CommonMainBody = 
+        "  nim__datInit();$n" &
+        "  systemInit();$n" & 
+        "$1" & 
         "$2"
-    PosixNimMain = "int cmdCount;$n" & "char** cmdLine;$n" & "char** gEnv;$n" &
-        "N_CDECL(void, NimMain)(void) {$n" & "  int dummy[8];$n" &
+    PosixNimMain = 
+        "int cmdCount;$n" & 
+        "char** cmdLine;$n" & 
+        "char** gEnv;$n" &
+        "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     PosixCMain = "int main(int argc, char** args, char** env) {$n" &
         "  cmdLine = args;$n" & "  cmdCount = argc;$n" & "  gEnv = env;$n" &
         "  NimMain();$n" & "  return 0;$n" & "}$n"
-    PosixNimMainLLVM = "@cmdCount = linkonce i32$n" &
-        "@cmdLine = linkonce i8**$n" & "@gEnv = linkonce i8**$n" &
-        "define void @NimMain(void) {$n" & "  %dummy = alloca [8 x %NI]$n" &
-        CommonMainBodyLLVM & "}$n"
-    PosixCMainLLVM = "define i32 @main(i32 %argc, i8** %args, i8** %env) {$n" &
-        "  store i8** %args, i8*** @cmdLine$n" &
-        "  store i32 %argc, i32* @cmdCount$n" &
-        "  store i8** %env, i8*** @gEnv$n" & "  call void @NimMain()$n" &
-        "  ret i32 0$n" & "}$n"
-    WinNimMain = "N_CDECL(void, NimMain)(void) {$n" & "  int dummy[8];$n" &
+    WinNimMain = "N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
     WinCMain = "N_STDCALL(int, WinMain)(HINSTANCE hCurInstance, $n" &
         "                        HINSTANCE hPrevInstance, $n" &
         "                        LPSTR lpCmdLine, int nCmdShow) {$n" &
         "  NimMain();$n" & "  return 0;$n" & "}$n"
-    WinNimMainLLVM = "define void @NimMain(void) {$n" &
-        "  %dummy = alloca [8 x %NI]$n" & CommonMainBodyLLVM & "}$n"
-    WinCMainLLVM = "define stdcall i32 @WinMain(i32 %hCurInstance, $n" &
-        "                            i32 %hPrevInstance, $n" &
-        "                            i8* %lpCmdLine, i32 %nCmdShow) {$n" &
-        "  call void @NimMain()$n" & "  ret i32 0$n" & "}$n"
     WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
-        "  int dummy[8];$n" & CommonMainBody & "}$n"
+        CommonMainBody & "}$n"
     WinCDllMain = "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
         "                    LPVOID lpvReserved) {$n" & "  NimMain();$n" &
         "  return 1;$n" & "}$n"
-    WinNimDllMainLLVM = WinNimMainLLVM
-    WinCDllMainLLVM = 
-        "define stdcall i32 @DllMain(i32 %hinstDLL, i32 %fwdreason, $n" &
-        "                            i8* %lpvReserved) {$n" &
-        "  call void @NimMain()$n" & "  ret i32 1$n" & "}$n"
+    PosixNimDllMain = WinNimDllMain
+    PosixCDllMain = 
+        "void NIM_POSIX_INIT NimMainInit(void) {$n" &
+        "  NimMain();$n}$n"
   var nimMain, otherMain: TFormatStr
   if (platform.targetOS == osWindows) and
       (gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}): 
     if optGenGuiApp in gGlobalOptions: 
-      if gCmd == cmdCompileToLLVM: 
-        nimMain = WinNimMainLLVM
-        otherMain = WinCMainLLVM
-      else: 
-        nimMain = WinNimMain
-        otherMain = WinCMain
+      nimMain = WinNimMain
+      otherMain = WinCMain
     else: 
-      if gCmd == cmdCompileToLLVM: 
-        nimMain = WinNimDllMainLLVM
-        otherMain = WinCDllMainLLVM
-      else: 
-        nimMain = WinNimDllMain
-        otherMain = WinCDllMain
+      nimMain = WinNimDllMain
+      otherMain = WinCDllMain
     discard lists.IncludeStr(m.headerFiles, "<windows.h>")
+  elif optGenDynLib in gGlobalOptions:
+    nimMain = posixNimDllMain
+    otherMain = posixCDllMain
   else: 
-    if gCmd == cmdCompileToLLVM: 
-      nimMain = PosixNimMainLLVM
-      otherMain = PosixCMainLLVM
-    else: 
-      nimMain = PosixNimMain
-      otherMain = PosixCMain
+    nimMain = PosixNimMain
+    otherMain = PosixCMain
   if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], nimMain, [

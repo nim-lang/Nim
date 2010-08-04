@@ -491,10 +491,11 @@ else:
   const stackIncreases = false
 
 proc setStackBottom(theStackBottom: pointer) =
+  #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
   # the first init must be the one that defines the stack bottom:
   if stackBottom == nil: stackBottom = theStackBottom
   else:
-    var a = cast[TAddress](theStackBottom)
+    var a = cast[TAddress](theStackBottom) # and not PageMask - PageSize*2
     var b = cast[TAddress](stackBottom)
     when stackIncreases:
       stackBottom = cast[pointer](min(a, b))
