@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,6 +12,8 @@
 ## lower-level features.
 
 {.push debugger: off.}
+
+include "system/inclrtl"
 
 import 
   os, strutils
@@ -32,24 +34,28 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-proc initOptParser*(cmdline = ""): TOptParser =
-  ## inits the option parser. If ``cmdline == ""``, the real command line
-  ## (as provided by the ``OS`` module) is taken.
-  result.pos = 0
-  result.inShortState = false
-  if cmdline != "": 
-    result.cmd = cmdline
-  else: 
-    result.cmd = ""
-    for i in countup(1, ParamCount()): 
-      result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i)) & ' '
-  result.kind = cmdEnd
-  result.key = ""
-  result.val = ""
+when defined(os.ParamCount):
+  # we cannot provide this for NimRtl creation on Posix, because we can't 
+  # access the command line arguments then!
 
-proc init*(cmdline: string = ""): TOptParser {.deprecated.} = 
-  ## **Deprecated since version 0.8.2**: Use `initOptParser` instead.
-  result = initOptParser(cmdline)
+  proc initOptParser*(cmdline = ""): TOptParser =
+    ## inits the option parser. If ``cmdline == ""``, the real command line
+    ## (as provided by the ``OS`` module) is taken.
+    result.pos = 0
+    result.inShortState = false
+    if cmdline != "": 
+      result.cmd = cmdline
+    else: 
+      result.cmd = ""
+      for i in countup(1, ParamCount()): 
+        result.cmd = result.cmd & quoteIfContainsWhite(paramStr(i)) & ' '
+    result.kind = cmdEnd
+    result.key = ""
+    result.val = ""
+
+  proc init*(cmdline: string = ""): TOptParser {.deprecated.} = 
+    ## **Deprecated since version 0.8.2**: Use `initOptParser` instead.
+    result = initOptParser(cmdline)
 
 proc parseWord(s: string, i: int, w: var string, 
                delim: TCharSet = {'\x09', ' ', '\0'}): int = 
@@ -82,7 +88,8 @@ proc handleShortOption(p: var TOptParser) =
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
-proc next*(p: var TOptParser) = 
+proc next*(p: var TOptParser) {.
+  rtl, extern: "npo$1".} = 
   ## parses the first or next option; ``p.kind`` describes what token has been
   ## parsed. ``p.key`` and ``p.val`` are set accordingly.
   var i = p.pos
@@ -116,7 +123,8 @@ proc next*(p: var TOptParser) =
     p.kind = cmdArgument
     p.pos = parseWord(p.cmd, i, p.key)
 
-proc cmdLineRest*(p: TOptParser): string = 
+proc cmdLineRest*(p: TOptParser): string {.
+  rtl, extern: "npo$1".} = 
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(copy(p.cmd, p.pos, len(p.cmd) - 1)) 
 
@@ -124,29 +132,31 @@ proc getRestOfCommandLine*(p: TOptParser): string {.deprecated.} =
   ## **Deprecated since version 0.8.2**: Use `cmdLineRest` instead.
   result = cmdLineRest(p) 
 
-iterator getopt*(): tuple[kind: TCmdLineKind, key, val: string] =
-  ## This is an convenience iterator for iterating over the command line.
-  ## This uses the TOptParser object. Example:
-  ##
-  ## .. code-block:: nimrod
-  ##   var
-  ##     filename = ""
-  ##   for kind, key, val in getopt():
-  ##     case kind
-  ##     of cmdArgument: 
-  ##       filename = key
-  ##     of cmdLongOption, cmdShortOption:
-  ##       case key
-  ##       of "help", "h": writeHelp()
-  ##       of "version", "v": writeVersion()
-  ##     of cmdEnd: assert(false) # cannot happen
-  ##   if filename == "":
-  ##     # no filename has been given, so we show the help:
-  ##     writeHelp()
-  var p = initOptParser()
-  while true:
-    next(p)
-    if p.kind == cmdEnd: break
-    yield (p.kind, p.key, p.val)
+when defined(initOptParser):
+
+  iterator getopt*(): tuple[kind: TCmdLineKind, key, val: string] =
+    ## This is an convenience iterator for iterating over the command line.
+    ## This uses the TOptParser object. Example:
+    ##
+    ## .. code-block:: nimrod
+    ##   var
+    ##     filename = ""
+    ##   for kind, key, val in getopt():
+    ##     case kind
+    ##     of cmdArgument: 
+    ##       filename = key
+    ##     of cmdLongOption, cmdShortOption:
+    ##       case key
+    ##       of "help", "h": writeHelp()
+    ##       of "version", "v": writeVersion()
+    ##     of cmdEnd: assert(false) # cannot happen
+    ##   if filename == "":
+    ##     # no filename has been given, so we show the help:
+    ##     writeHelp()
+    var p = initOptParser()
+    while true:
+      next(p)
+      if p.kind == cmdEnd: break
+      yield (p.kind, p.key, p.val)
 
 {.pop.}

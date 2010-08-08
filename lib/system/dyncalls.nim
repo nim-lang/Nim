@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -61,11 +61,14 @@ when defined(posix):
   proc dlsym(lib: TLibHandle, name: cstring): TProcAddr {.
       importc, header: "<dlfcn.h>".}
 
+  proc dlerror(): cstring {.importc, header: "<dlfcn.h>".}
+
   proc nimUnloadLibrary(lib: TLibHandle) =
     dlclose(lib)
 
   proc nimLoadLibrary(path: string): TLibHandle =
     result = dlopen(path, RTLD_NOW)
+    #c_fprintf(c_stdout, "%s\n", dlerror())
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)

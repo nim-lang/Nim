@@ -8,7 +8,7 @@
 #
 
 ## This module contains various string utility routines.
-## See the module `regexprs` for regular expression support.
+## See the module `re` for regular expression support.
 ## See the module `pegs` for PEG support.
 
 import parseutils
@@ -17,6 +17,8 @@ import parseutils
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
+
+include "system/inclrtl"
 
 type
   TCharSet* = set[char] # for compatibility with Nim
@@ -40,7 +42,151 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
+
+proc toLower*(c: Char): Char {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerChar".} =
+  ## Converts `c` into lower case. This works only for the letters A-Z.
+  ## See `unicode.toLower` for a version that works for any Unicode character.
+  if c in {'A'..'Z'}:
+    result = chr(ord(c) + (ord('a') - ord('A')))
+  else:
+    result = c
+
+proc toLower*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerStr".} =
+  ## Converts `s` into lower case. This works only for the letters A-Z.
+  ## See `unicode.toLower` for a version that works for any Unicode character.
+  result = newString(len(s))
+  for i in 0..len(s) - 1:
+    result[i] = toLower(s[i])
+
+proc toUpper*(c: Char): Char {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperChar".} =
+  ## Converts `c` into upper case. This works only for the letters a-z.
+  ## See `unicode.toUpper` for a version that works for any Unicode character.
+  if c in {'a'..'z'}:
+    result = Chr(Ord(c) - (Ord('a') - Ord('A')))
+  else:
+    result = c
+
+proc toUpper*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperStr".} =
+  ## Converts `s` into upper case. This works only for the letters a-z.
+  ## See `unicode.toUpper` for a version that works for any Unicode character.
+  result = newString(len(s))
+  for i in 0..len(s) - 1:
+    result[i] = toUpper(s[i])
+
+proc capitalize*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuCapitalize".} =
+  ## Converts the first character of `s` into upper case.
+  ## This works only for the letters a-z.
+  result = toUpper(s[0]) & copy(s, 1)
+
+proc normalize*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuNormalize".} =
+  ## Normalizes the string `s`. That means to convert it to lower case and
+  ## remove any '_'. This is needed for Nimrod identifiers for example.
+  result = ""
+  for i in 0..len(s) - 1:
+    if s[i] in {'A'..'Z'}:
+      add result, Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
+    elif s[i] != '_':
+      add result, s[i]
+
+proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
+  rtl, extern: "nsuCmpIgnoreCase".} =
+  ## Compares two strings in a case insensitive manner. Returns:
+  ##
+  ## | 0 iff a == b
+  ## | < 0 iff a < b
+  ## | > 0 iff a > b
+  var i = 0
+  while i < a.len and i < b.len:
+    result = ord(toLower(a[i])) - ord(toLower(b[i]))
+    if result != 0: return
+    inc(i)
+  result = a.len - b.len
+
+{.push checks: off, line_trace: off .} # this is a hot-spot in the compiler!
+                                       # thus we compile without checks here
+
+proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
+  rtl, extern: "nsuCmpIgnoreStyle".} =
+  ## Compares two strings normalized (i.e. case and
+  ## underscores do not matter). Returns:
+  ##
+  ## | 0 iff a == b
+  ## | < 0 iff a < b
+  ## | > 0 iff a > b
+  var i = 0
+  var j = 0
+  while True:
+    while a[i] == '_': inc(i)
+    while b[j] == '_': inc(j) # BUGFIX: typo
+    var aa = toLower(a[i])
+    var bb = toLower(b[j])
+    result = ord(aa) - ord(bb)
+    if result != 0 or aa == '\0': break
+    inc(i)
+    inc(j)
+
+{.pop.}
+
+proc findNormalized(x: string, inArray: openarray[string]): int =
+  var i = 0
+  while i < high(inArray):
+    if cmpIgnoreStyle(x, inArray[i]) == 0: return i
+    inc(i, 2) # incrementing by 1 would probably result in a
+              # security hole...
+  return -1
+
+proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
+  noSideEffect, rtl, extern: "nsuAddf".} =
+  ## The same as ``add(s, formatstr % a)``, but more efficient.
+  const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
+  var i = 0
+  var num = 0
+  while i < len(formatstr):
+    if formatstr[i] == '$':
+      case formatstr[i+1] # again we use the fact that strings
+                          # are zero-terminated here
+      of '#':
+        add s, a[num]
+        inc i, 2
+        inc num
+      of '$':
+        add s, '$'
+        inc(i, 2)
+      of '1'..'9':
+        var j = 0
+        inc(i) # skip $
+        while formatstr[i] in Digits:
+          j = j * 10 + ord(formatstr[i]) - ord('0')
+          inc(i)
+        num = j
+        add s, a[j - 1]
+      of '{':
+        var j = i+1
+        while formatstr[j] notin {'\0', '}'}: inc(j)
+        var x = findNormalized(copy(formatstr, i+2, j-1), a)
+        if x >= 0 and x < high(a): add s, a[x+1]
+        else: raise newException(EInvalidValue, "invalid format string")
+        i = j+1
+      of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
+        var j = i+1
+        while formatstr[j] in PatternChars: inc(j)
+        var x = findNormalized(copy(formatstr, i+1, j-1), a)
+        if x >= 0 and x < high(a): add s, a[x+1]
+        else: raise newException(EInvalidValue, "invalid format string")
+        i = j
+      else: raise newException(EInvalidValue, "invalid format string")
+    else:
+      add s, formatstr[i]
+      inc(i)
+
+proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
+  rtl, extern: "nsuFormatOpenArray".} = 
   ## The `substitution`:idx: operator performs string substitutions in
   ## `formatstr` and returns a modified `formatstr`. This is often called
   ## `string interpolation`:idx:.
@@ -77,57 +223,38 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect.}
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `EInvalidValue` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
+  result = ""
+  addf(result, formatstr, a)
 
-proc `%` *(formatstr, a: string): string {.noSideEffect.}
+proc `%` *(formatstr, a: string): string {.noSideEffect, 
+  rtl, extern: "nsuFormatSingleElem".} =
   ## This is the same as ``formatstr % [a]``.
+  return formatstr % [a]
 
-proc addf*(s: var string, formatstr: string, a: openarray[string])
-  ## The same as ``add(s, formatstr % a)``, but more efficient.
-
-proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect.}
+proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
+  rtl, extern: "nsuStrip".} =
   ## Strips whitespace from `s` and returns the resulting string.
   ## If `leading` is true, leading whitespace is stripped.
   ## If `trailing` is true, trailing whitespace is stripped.
+  const
+    chars: set[Char] = Whitespace
+  var
+    first = 0
+    last = len(s)-1
+  if leading: 
+    while s[first] in chars: inc(first)
+  if trailing:
+    while last >= 0 and s[last] in chars: dec(last)
+  result = copy(s, first, last)
 
-proc toLower*(s: string): string {.noSideEffect, procvar.}
-  ## Converts `s` into lower case. This works only for the letters A-Z.
-  ## See `unicode.toLower` for a version that works for any Unicode character.
-
-proc toLower*(c: Char): Char {.noSideEffect, procvar.}
-  ## Converts `c` into lower case. This works only for the letters A-Z.
-  ## See `unicode.toLower` for a version that works for any Unicode character.
-
-proc toUpper*(s: string): string {.noSideEffect, procvar.}
-  ## Converts `s` into upper case. This works only for the letters a-z.
-  ## See `unicode.toUpper` for a version that works for any Unicode character.
-
-proc toUpper*(c: Char): Char {.noSideEffect, procvar.}
-  ## Converts `c` into upper case. This works only for the letters a-z.
-  ## See `unicode.toUpper` for a version that works for any Unicode character.
-
-proc capitalize*(s: string): string {.noSideEffect, procvar.}
-  ## Converts the first character of `s` into upper case.
-  ## This works only for the letters a-z.
-
-proc normalize*(s: string): string {.noSideEffect, procvar.}
-  ## Normalizes the string `s`. That means to convert it to lower case and
-  ## remove any '_'. This is needed for Nimrod identifiers for example.
-
-proc find*(s, sub: string, start: int = 0): int {.noSideEffect.}
-  ## Searches for `sub` in `s` starting at position `start`. Searching is
-  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
-
-proc find*(s: string, sub: char, start: int = 0): int {.noSideEffect.}
-  ## Searches for `sub` in `s` starting at position `start`. Searching is
-  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
-
-proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect.}
-  ## Searches for `chars` in `s` starting at position `start`. If `s` contains
-  ## none of the characters in `chars`, -1 is returned.
-
-proc toOctal*(c: char): string
+proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation. The resulting
   ## string may not have a leading zero. Its length is always exactly 3.
+  result = newString(3)
+  var val = ord(c)
+  for i in countdown(2, 0):
+    result[i] = Chr(val mod 8 + ord('0'))
+    val = val div 8
 
 iterator split*(s: string, seps: set[char] = Whitespace): string =
   ## Splits the string `s` into substrings.
@@ -228,86 +355,123 @@ iterator splitLines*(s: string): string =
     else: break # was '\0'
     first = last
 
-proc splitLines*(s: string): seq[string] {.noSideEffect.} =
+proc splitLines*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitLines".} =
   ## The same as the `splitLines` iterator, but is a proc that returns a 
   ## sequence of substrings.
   accumulateResult(splitLines(s))
 
 proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
-  noSideEffect.} =
+  noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split` iterator, but is a proc that returns a
   ## sequence of substrings.
   accumulateResult(split(s, seps))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect.} =
+proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitChar".} =
   ## The same as the `split` iterator, but is a proc that returns a sequence
   ## of substrings.
   accumulateResult(split(s, sep))
 
-proc cmpIgnoreCase*(a, b: string): int {.noSideEffect.}
-  ## Compares two strings in a case insensitive manner. Returns:
-  ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
-
-proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect.}
-  ## Compares two strings normalized (i.e. case and
-  ## underscores do not matter). Returns:
-  ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
-
-proc contains*(s: string, c: char): bool {.noSideEffect.}
-  ## Same as ``find(s, c) >= 0``.
-
-proc contains*(s, sub: string): bool {.noSideEffect.}
-  ## Same as ``find(s, sub) >= 0``.
-
-proc contains*(s: string, chars: set[char]): bool {.noSideEffect.}
-  ## Same as ``find(s, chars) >= 0``.
-
-proc toHex*(x: BiggestInt, len: int): string {.noSideEffect.}
+proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
+  rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation. The resulting string
   ## will be exactly `len` characters long. No prefix like ``0x``
   ## is generated. `x` is treated as an unsigned value.
+  const
+    HexChars = "0123456789ABCDEF"
+  var
+    shift: BiggestInt
+  result = newString(len)
+  for j in countdown(len-1, 0):
+    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
+    shift = shift + 4
 
-proc intToStr*(x: int, minchars: int = 1): string
+proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
+  rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation. The resulting string
   ## will be minimally `minchars` characters long. This is achieved by
   ## adding leading zeros.
+  result = $abs(x)
+  for i in 1 .. minchars - len(result):
+    result = '0' & result
+  if x < 0:
+    result = '-' & result
 
-proc ParseInt*(s: string): int {.noSideEffect, procvar.}
+proc ParseInt*(s: string): int {.noSideEffect, procvar,
+  rtl, extern: "nsuParseInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
+  var L = parseutils.parseInt(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar.}
+proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
+  var L = parseutils.parseBiggestInt(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseFloat*(s: string): float {.noSideEffect, procvar.}
+proc ParseFloat*(s: string): float {.noSideEffect, procvar,
+  rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  var L = parseutils.parseFloat(s, result, 0)
+  if L != s.len: raise newException(EInvalidValue, "invalid float: " & s)
 
-proc ParseHexInt*(s: string): int {.noSideEffect, procvar.} 
+proc ParseHexInt*(s: string): int {.noSideEffect, procvar,
+  rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
   ## following optional prefixes: ``0x``, ``0X``, ``#``. 
   ## Underscores within `s` are ignored.
+  var i = 0
+  if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
+  elif s[i] == '#': inc(i)
+  while true: 
+    case s[i]
+    of '_': inc(i)
+    of '0'..'9': 
+      result = result shl 4 or (ord(s[i]) - ord('0'))
+      inc(i)
+    of 'a'..'f': 
+      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
+      inc(i)
+    of 'A'..'F': 
+      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
+      inc(i)
+    of '\0': break
+    else: raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc repeatChar*(count: int, c: Char = ' '): string
+proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
+  rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`.
+  result = newString(count)
+  for i in 0..count-1:
+    result[i] = c
 
-proc startsWith*(s, prefix: string): bool {.noSideEffect.}
+proc startsWith*(s, prefix: string): bool {.noSideEffect,
+  rtl, extern: "nsuStartsWith".} =
   ## Returns true iff ``s`` starts with ``prefix``.
   ## If ``prefix == ""`` true is returned.
+  var i = 0
+  while true:
+    if prefix[i] == '\0': return true
+    if s[i] != prefix[i]: return false
+    inc(i)
 
-proc endsWith*(s, suffix: string): bool {.noSideEffect.}
+proc endsWith*(s, suffix: string): bool {.noSideEffect,
+  rtl, extern: "nsuEndsWith".} =
   ## Returns true iff ``s`` ends with ``suffix``.
   ## If ``suffix == ""`` true is returned.
+  var i = 0
+  var j = len(s) - len(suffix)
+  while i+j <% s.len:
+    if s[i+j] != suffix[i]: return false
+    inc(i)
+  if suffix[i] == '\0': return true
 
 proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
                                                            inline.} = 
@@ -335,30 +499,6 @@ proc allCharsInSet*(s: string, theSet: TCharSet): bool =
     if c notin theSet: return false
   return true
 
-proc quoteIfContainsWhite*(s: string): string =
-  ## returns ``'"' & s & '"'`` if `s` contains a space and does not
-  ## start with a quote, else returns `s`
-  if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
-    result = '"' & s & '"'
-  else:
-    result = s
-
-proc startsWith(s, prefix: string): bool =
-  var i = 0
-  while true:
-    if prefix[i] == '\0': return true
-    if s[i] != prefix[i]: return false
-    inc(i)
-
-proc endsWith(s, suffix: string): bool =
-  var
-    i = 0
-    j = len(s) - len(suffix)
-  while i+j <% s.len:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if suffix[i] == '\0': return true
-
 # 012345
 #    345
 
@@ -373,112 +513,10 @@ when false:
         if result >= 0: return -2 # ambiguous
         result = i
 
-proc repeatChar(count: int, c: Char = ' '): string =
-  result = newString(count)
-  for i in 0..count-1:
-    result[i] = c
-
-proc intToStr(x: int, minchars: int = 1): string =
-  result = $abs(x)
-  for i in 1 .. minchars - len(result):
-    result = '0' & result
-  if x < 0:
-    result = '-' & result
-
-proc toOctal(c: char): string =
-  result = newString(3)
-  var val = ord(c)
-  for i in countdown(2, 0):
-    result[i] = Chr(val mod 8 + ord('0'))
-    val = val div 8
-
-proc `%`(formatstr: string, a: string): string =
-  return formatstr % [a]
-
-proc findNormalized(x: string, inArray: openarray[string]): int =
-  var i = 0
-  while i < high(inArray):
-    if cmpIgnoreStyle(x, inArray[i]) == 0: return i
-    inc(i, 2) # incrementing by 1 would probably result in a
-              # security hole...
-  return -1
-
-proc addf(s: var string, formatstr: string, a: openarray[string]) =
-  const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
-  var i = 0
-  var num = 0
-  while i < len(formatstr):
-    if formatstr[i] == '$':
-      case formatstr[i+1] # again we use the fact that strings
-                          # are zero-terminated here
-      of '#':
-        add s, a[num]
-        inc i, 2
-        inc num
-      of '$':
-        add s, '$'
-        inc(i, 2)
-      of '1'..'9':
-        var j = 0
-        inc(i) # skip $
-        while formatstr[i] in Digits:
-          j = j * 10 + ord(formatstr[i]) - ord('0')
-          inc(i)
-        num = j
-        add s, a[j - 1]
-      of '{':
-        var j = i+1
-        while formatstr[j] notin {'\0', '}'}: inc(j)
-        var x = findNormalized(copy(formatstr, i+2, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
-        i = j+1
-      of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
-        var j = i+1
-        while formatstr[j] in PatternChars: inc(j)
-        var x = findNormalized(copy(formatstr, i+1, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: raise newException(EInvalidValue, "invalid format string")
-        i = j
-      else: raise newException(EInvalidValue, "invalid format string")
-    else:
-      add s, formatstr[i]
-      inc(i)
-  
-proc `%`(formatstr: string, a: openarray[string]): string =
-  result = ""
-  addf(result, formatstr, a)
-
-proc cmpIgnoreCase(a, b: string): int =
-  var i = 0
-  while i < a.len and i < b.len:
-    result = ord(toLower(a[i])) - ord(toLower(b[i]))
-    if result != 0: return
-    inc(i)
-  result = a.len - b.len
-
-
-{.push checks: off, line_trace: off .} # this is a hot-spot in the compiler!
-                                       # thus we compile without checks here
-
-proc cmpIgnoreStyle(a, b: string): int =
-  var i = 0
-  var j = 0
-  while True:
-    while a[i] == '_': inc(i)
-    while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
-    result = ord(aa) - ord(bb)
-    if result != 0 or aa == '\0': break
-    inc(i)
-    inc(j)
-
-{.pop.}
-
 # ---------------------------------------------------------------------------
 
-proc join*(a: openArray[string], sep: string): string =
+proc join*(a: openArray[string], sep: string): string {.
+  noSideEffect, rtl, extern: "nsuJoinSep".} =
   ## concatenates all strings in `a` separating them with `sep`.
   if len(a) > 0:
     var L = sep.len * (a.len-1)
@@ -492,7 +530,8 @@ proc join*(a: openArray[string], sep: string): string =
   else:
     result = ""
   
-proc join*(a: openArray[string]): string =
+proc join*(a: openArray[string]): string {.
+  noSideEffect, rtl, extern: "nsuJoin".} =
   ## concatenates all strings in `a`.
   if len(a) > 0:
     var L = 0
@@ -502,51 +541,6 @@ proc join*(a: openArray[string]): string =
     for i in 0..high(a): add(result, a[i])
   else:
     result = ""
-
-proc strip(s: string, leading = true, trailing = true): string =
-  const
-    chars: set[Char] = Whitespace
-  var
-    first = 0
-    last = len(s)-1
-  if leading: 
-    while s[first] in chars: inc(first)
-  if trailing:
-    while last >= 0 and s[last] in chars: dec(last)
-  result = copy(s, first, last)
-
-proc toLower(c: Char): Char =
-  if c in {'A'..'Z'}:
-    result = chr(ord(c) + (ord('a') - ord('A')))
-  else:
-    result = c
-
-proc toLower(s: string): string =
-  result = newString(len(s))
-  for i in 0..len(s) - 1:
-    result[i] = toLower(s[i])
-
-proc toUpper(c: Char): Char =
-  if c in {'a'..'z'}:
-    result = Chr(Ord(c) - (Ord('a') - Ord('A')))
-  else:
-    result = c
-
-proc toUpper(s: string): string =
-  result = newString(len(s))
-  for i in 0..len(s) - 1:
-    result[i] = toUpper(s[i])
-
-proc capitalize(s: string): string =
-  result = toUpper(s[0]) & copy(s, 1)
-
-proc normalize(s: string): string =
-  result = ""
-  for i in 0..len(s) - 1:
-    if s[i] in {'A'..'Z'}:
-      add result, Chr(Ord(s[i]) + (Ord('a') - Ord('A')))
-    elif s[i] != '_':
-      add result, s[i]
 
 type
   TSkipTable = array[Char, int]
@@ -571,31 +565,52 @@ proc findAux(s, sub: string, start: int, a: TSkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
-proc find(s, sub: string, start: int = 0): int =
+proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
+  rtl, extern: "nsuFindStr".} =
+  ## Searches for `sub` in `s` starting at position `start`. Searching is
+  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
   var a: TSkipTable
   preprocessSub(sub, a)
   result = findAux(s, sub, start, a)
 
-proc find(s: string, sub: char, start: int = 0): int =
+proc find*(s: string, sub: char, start: int = 0): int {.noSideEffect,
+  rtl, extern: "nsuFindChar".} =
+  ## Searches for `sub` in `s` starting at position `start`. Searching is
+  ## case-sensitive. If `sub` is not in `s`, -1 is returned.
   for i in start..len(s)-1:
     if sub == s[i]: return i
   return -1
- 
-proc find(s: string, chars: set[char], start: int = 0): int =
+
+proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect,
+  rtl, extern: "nsuFindCharSet".} =
+  ## Searches for `chars` in `s` starting at position `start`. If `s` contains
+  ## none of the characters in `chars`, -1 is returned.
   for i in start..s.len-1:
     if s[i] in chars: return i
   return -1 
 
-proc contains(s: string, chars: set[char]): bool =
-  return find(s, chars) >= 0
+proc quoteIfContainsWhite*(s: string): string =
+  ## returns ``'"' & s & '"'`` if `s` contains a space and does not
+  ## start with a quote, else returns `s`
+  if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
+    result = '"' & s & '"'
+  else:
+    result = s
 
-proc contains(s: string, c: char): bool =
+proc contains*(s: string, c: char): bool {.noSideEffect.} =
+  ## Same as ``find(s, c) >= 0``.
   return find(s, c) >= 0
 
-proc contains(s, sub: string): bool =
+proc contains*(s, sub: string): bool {.noSideEffect.} =
+  ## Same as ``find(s, sub) >= 0``.
   return find(s, sub) >= 0
 
-proc replace*(s, sub, by: string): string =
+proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
+  ## Same as ``find(s, chars) >= 0``.
+  return find(s, chars) >= 0
+
+proc replace*(s, sub, by: string): string {.noSideEffect,
+  rtl, extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
   var a: TSkipTable
   result = ""
@@ -610,7 +625,8 @@ proc replace*(s, sub, by: string): string =
   # copy the rest:
   add result, copy(s, i)
 
-proc replace*(s: string, sub, by: char): string =
+proc replace*(s: string, sub, by: char): string {.noSideEffect,
+  rtl, extern: "nsuReplaceChar".} =
   ## optimized version for characters.
   result = newString(s.len)
   var i = 0
@@ -619,7 +635,8 @@ proc replace*(s: string, sub, by: char): string =
     else: result[i] = s[i]
     inc(i)
 
-proc delete*(s: var string, first, last: int) =
+proc delete*(s: var string, first, last: int) {.noSideEffect,
+  rtl, extern: "nsuDelete".} =
   ## Deletes in `s` the characters at position `first`..`last`. This modifies
   ## `s` itself, it does not return a copy.
   var i = first
@@ -631,27 +648,12 @@ proc delete*(s: var string, first, last: int) =
     inc(j)
   setlen(s, newLen)
 
-# parsing numbers:
-
-proc toHex(x: BiggestInt, len: int): string =
-  const
-    HexChars = "0123456789ABCDEF"
-  var
-    shift: BiggestInt
-  result = newString(len)
-  for j in countdown(len-1, 0):
-    result[j] = HexChars[toU32(x shr shift) and 0xF'i32]
-    shift = shift + 4
-
-proc parseInt(s: string): int =
-  var L = parseutils.parseInt(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
-
-proc ParseBiggestInt(s: string): biggestInt =
-  var L = parseutils.parseBiggestInt(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
-
-proc ParseOctInt*(s: string): int =
+proc ParseOctInt*(s: string): int {.noSideEffect,
+  rtl, extern: "nsuParseOctInt".} =
+  ## Parses an octal integer value contained in `s`. If `s` is not
+  ## a valid integer, `EInvalidValue` is raised. `s` can have one of the
+  ## following optional prefixes: ``0o``, ``0O``.
+  ## Underscores within `s` are ignored.
   var i = 0
   if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
   while true: 
@@ -663,30 +665,8 @@ proc ParseOctInt*(s: string): int =
     of '\0': break
     else: raise newException(EInvalidValue, "invalid integer: " & s)
 
-proc ParseHexInt(s: string): int = 
-  var i = 0
-  if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
-  elif s[i] == '#': inc(i)
-  while true: 
-    case s[i]
-    of '_': inc(i)
-    of '0'..'9': 
-      result = result shl 4 or (ord(s[i]) - ord('0'))
-      inc(i)
-    of 'a'..'f': 
-      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
-      inc(i)
-    of 'A'..'F': 
-      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
-      inc(i)
-    of '\0': break
-    else: raise newException(EInvalidValue, "invalid integer: " & s)
-
-proc ParseFloat(s: string): float =
-  var L = parseutils.parseFloat(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid float: " & s)
-
-proc toOct*(x: BiggestInt, len: int): string =
+proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
+  rtl, extern: "nsuToOct".} =
   ## converts `x` into its octal representation. The resulting string is
   ## always `len` characters long. No leading ``0o`` prefix is generated.
   var
@@ -699,7 +679,8 @@ proc toOct*(x: BiggestInt, len: int): string =
     shift = shift + 3
     mask = mask shl 3
 
-proc toBin*(x: BiggestInt, len: int): string =
+proc toBin*(x: BiggestInt, len: int): string {.noSideEffect,
+  rtl, extern: "nsuToBin".} =
   ## converts `x` into its binary representation. The resulting string is
   ## always `len` characters long. No leading ``0b`` prefix is generated.
   var
@@ -712,7 +693,8 @@ proc toBin*(x: BiggestInt, len: int): string =
     shift = shift + 1
     mask = mask shl 1
 
-proc insertSep*(s: string, sep = '_', digits = 3): string = 
+proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
+  rtl, extern: "nsuInsertSep".} = 
   ## inserts the separator `sep` after `digits` digits from right to left.
   ## Even though the algorithm works with any string `s`, it is only useful 
   ## if `s` contains a number.
@@ -730,7 +712,8 @@ proc insertSep*(s: string, sep = '_', digits = 3): string =
     inc(j)
     dec(L)
 
-proc escape*(s: string, prefix = "\"", suffix = "\""): string =
+proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
+  rtl, extern: "nsuEscape".} =
   ## Escapes a string `s`. This does these operations (at the same time):
   ## * replaces any ``\`` by ``\\``
   ## * replaces any ``'`` by ``\'``
@@ -752,7 +735,8 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string =
     else: add(result, c)
   add(result, suffix)
 
-proc validEmailAddress*(s: string): bool = 
+proc validEmailAddress*(s: string): bool {.noSideEffect,
+  rtl, extern: "nsuValidEmailAddress".} = 
   ## returns true if `s` seems to be a valid e-mail address. 
   ## The checking also uses a domain list.
   ## Note: This will be moved into another module soon.
@@ -779,7 +763,8 @@ proc validEmailAddress*(s: string): bool =
      "aero", "jobs", "museum": return true
   return false
   
-proc validIdentifier*(s: string): bool = 
+proc validIdentifier*(s: string): bool {.noSideEffect,
+  rtl, extern: "nsuValidIdentifier".} = 
   ## returns true if `s` is a valid identifier. A valid identifier starts
   ## with a character of the set `IdentStartChars` and is followed by any
   ## number of characters of the set `IdentChars`.
@@ -788,7 +773,8 @@ proc validIdentifier*(s: string): bool =
       if s[i] notin IdentChars: return false
     return true
   
-proc editDistance*(a, b: string): int =
+proc editDistance*(a, b: string): int {.noSideEffect,
+  rtl, extern: "nsuEditDistance".} =
   ## returns the edit distance between `a` and `b`. This uses the Levenshtein
   ## distance algorithm with only a linear memory overhead. This implementation
   ## is highly optimized!

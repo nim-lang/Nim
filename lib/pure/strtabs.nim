@@ -15,6 +15,8 @@
 import
   os, hashes, strutils
 
+include "system/inclrtl"
+
 type
   TStringTableMode* = enum    ## describes the tables operation mode
     modeCaseSensitive,        ## the table is case sensitive
@@ -29,28 +31,7 @@ type
 
   PStringTable* = ref TStringTable ## use this type to declare string tables
 
-proc newStringTable*(keyValuePairs: openarray[string],
-                     mode: TStringTableMode = modeCaseSensitive): PStringTable
-  ## creates a new string table with given key value pairs.
-  ## Example::
-  ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
-  ##                              modeCaseInsensitive)
-
-proc newStringTable*(mode: TStringTableMode): PStringTable
-  ## creates a new string table that is empty.
-
-proc `[]=`*(t: PStringTable, key, val: string)
-  ## puts a (key, value)-pair into `t`.
-
-proc `[]`*(t: PStringTable, key: string): string
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
-
-proc hasKey*(t: PStringTable, key: string): bool
-  ## returns true iff `key` is in the table `t`.
-
-proc len*(t: PStringTable): int =
+proc len*(t: PStringTable): int {.rtl, extern: "nst$1".} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -70,28 +51,11 @@ type
     useKey                    ## do not replace ``$key`` if it is not found
                               ## in the table (or in the environment)
 
-proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string
-  ## The `%` operator for string tables.
-
 # implementation
 
 const
   growthFactor = 2
   startSize = 64
-
-proc newStringTable(mode: TStringTableMode): PStringTable =
-  new(result)
-  result.mode = mode
-  result.counter = 0
-  newSeq(result.data, startSize)
-
-proc newStringTable(keyValuePairs: openarray[string],
-                    mode: TStringTableMode = modeCaseSensitive): PStringTable =
-  result = newStringTable(mode)
-  var i = 0
-  while i < high(keyValuePairs):
-    result[keyValuePairs[i]] = keyValuePairs[i + 1]
-    inc(i, 2)
 
 proc myhash(t: PStringTable, key: string): THash =
   case t.mode
@@ -121,13 +85,17 @@ proc RawGet(t: PStringTable, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-proc `[]`(t: PStringTable, key: string): string =
+proc `[]`*(t: PStringTable, key: string): string {.rtl, extern: "nstGet".} =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
+  ## and no exception is raised. One can check with ``hasKey`` whether the key
+  ## exists.
   var index: int
   index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = ""
 
-proc hasKey(t: PStringTable, key: string): bool =
+proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
+  ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc RawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) =
@@ -145,7 +113,8 @@ proc Enlarge(t: PStringTable) =
     if not isNil(t.data[i].key): RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`(t: PStringTable, key, val: string) =
+proc `[]=`*(t: PStringTable, key, val: string) {.rtl, extern: "nstPut".} =
+  ## puts a (key, value)-pair into `t`.
   var index = RawGet(t, key)
   if index >= 0:
     t.data[index].val = val
@@ -168,7 +137,30 @@ proc getValue(t: PStringTable, flags: set[TFormatFlag], key: string): string =
     if useKey in flags: result = '$' & key
     elif not (useEmpty in flags): raiseFormatException(key)
 
-proc `%`(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string =
+proc newStringTable*(mode: TStringTableMode): PStringTable {.
+  rtl, extern: "nst$1".} =
+  ## creates a new string table that is empty.
+  new(result)
+  result.mode = mode
+  result.counter = 0
+  newSeq(result.data, startSize)
+
+proc newStringTable*(keyValuePairs: openarray[string],
+                     mode: TStringTableMode = modeCaseSensitive): PStringTable {.
+  rtl, extern: "nst$1WithPairs".} =
+  ## creates a new string table with given key value pairs.
+  ## Example::
+  ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
+  ##                              modeCaseInsensitive)
+  result = newStringTable(mode)
+  var i = 0
+  while i < high(keyValuePairs):
+    result[keyValuePairs[i]] = keyValuePairs[i + 1]
+    inc(i, 2)
+
+proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
+  rtl, extern: "nstFormat".} =
+  ## The `%` operator for string tables.
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
   result = ""

@@ -74,14 +74,6 @@ var
     # This is wasteful but safe. This is a lock against recursive garbage
     # collection, not a lock for threads!
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerRtl.}
-  # unsureAsgnRef updates the reference counters only if dest is not on the
-  # stack. It is used by the code generator if it cannot decide wether a
-  # reference is in the stack or not (this can happen for var parameters).
-
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.}
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
-
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
     c.refcount = c.refcount and not colorMask or rcZct
@@ -104,24 +96,6 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
   result = int(usrToCell(p).refcount) shr rcShift
-
-proc GC_disable() = inc(recGcLock)
-proc GC_enable() =
-  if recGcLock > 0: dec(recGcLock)
-
-proc GC_setStrategy(strategy: TGC_Strategy) =
-  case strategy
-  of gcThroughput: nil
-  of gcResponsiveness: nil
-  of gcOptimizeSpace: nil
-  of gcOptimizeTime: nil
-
-proc GC_enableMarkAndSweep() =
-  cycleThreshold = InitialCycleThreshold
-
-proc GC_disableMarkAndSweep() =
-  cycleThreshold = high(cycleThreshold)-1
-  # set to the max value to suppress the cycle detector
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod (sizeof(int)*8) != 0:
@@ -214,8 +188,13 @@ proc prepareDealloc(cell: PCell) =
     (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(recGcLock)
 
-proc PossibleRoot(gch: var TGcHeap, c: PCell) {.inline.} =
-  if canbeCycleRoot(c): incl(gch.cycleRoots, c)
+proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
+  # we MUST access gch as a global here, because this crosses DLL boundaries!
+  incl(gch.cycleRoots, c)
+
+proc rtlAddZCT(c: PCell) {.rtl, inl.} =
+  # we MUST access gch as a global here, because this crosses DLL boundaries!
+  addZCT(gch.zct, c)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -224,19 +203,19 @@ proc decRef(c: PCell) {.inline.} =
   assert(c.refcount >=% rcIncrement)
   c.refcount = c.refcount -% rcIncrement
   if c.refcount <% rcIncrement:
-    addZCT(gch.zct, c)
+    rtlAddZCT(c)
   elif canBeCycleRoot(c):
-    incl(gch.cycleRoots, c) 
+    rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
   c.refcount = c.refcount +% rcIncrement
   if canBeCycleRoot(c):
-    incl(gch.cycleRoots, c)
+    rtlAddCycleRoot(c)
 
-proc nimGCref(p: pointer) {.compilerRtl, inl.} = incRef(usrToCell(p))
-proc nimGCunref(p: pointer) {.compilerRtl, inl.} = decRef(usrToCell(p))
+proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
+proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
 
-proc asgnRef(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
+proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
   assert(not isOnStack(dest))
   # BUGFIX: first incRef then decRef!
@@ -244,7 +223,7 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
   if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
 
-proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
+proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc if it is known at compile time that no 
   # cycle is possible.
   if src != nil: 
@@ -254,30 +233,34 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerRtl, inl.} =
     var c = usrToCell(dest^)
     c.refcount = c.refcount -% rcIncrement
     if c.refcount <% rcIncrement:
-      addZCT(gch.zct, c)
+      rtlAddZCT(c)
   dest^ = src
 
-proc unsureAsgnRef(dest: ppointer, src: pointer) =
+proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
+  # unsureAsgnRef updates the reference counters only if dest is not on the
+  # stack. It is used by the code generator if it cannot decide wether a
+  # reference is in the stack or not (this can happen for var parameters).
   if not IsOnStack(dest):
     if src != nil: incRef(usrToCell(src))
     if dest^ != nil: decRef(usrToCell(dest^))
   dest^ = src
 
 proc initGC() =
-  when traceGC:
-    for i in low(TCellState)..high(TCellState): Init(states[i])
-  gch.stat.stackScans = 0
-  gch.stat.cycleCollections = 0
-  gch.stat.maxThreshold = 0
-  gch.stat.maxStackSize = 0
-  gch.stat.maxStackCells = 0
-  gch.stat.cycleTableSize = 0
-  # init the rt
-  init(gch.zct)
-  init(gch.tempStack)
-  Init(gch.cycleRoots)
-  Init(gch.decStack)
-  new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
+  when not defined(useNimRtl):
+    when traceGC:
+      for i in low(TCellState)..high(TCellState): Init(states[i])
+    gch.stat.stackScans = 0
+    gch.stat.cycleCollections = 0
+    gch.stat.maxThreshold = 0
+    gch.stat.maxStackSize = 0
+    gch.stat.maxStackCells = 0
+    gch.stat.cycleTableSize = 0
+    # init the rt
+    init(gch.zct)
+    init(gch.tempStack)
+    Init(gch.cycleRoots)
+    Init(gch.decStack)
+    new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
   var d = cast[TAddress](dest)
@@ -325,7 +308,7 @@ proc checkCollection {.inline.} =
   if recGcLock == 0:
     collectCT(gch)
 
-proc newObj(typ: PNimType, size: int): pointer =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 0
   assert(typ.kind in {tyRef, tyString, tySequence})
   checkCollection()
@@ -357,7 +340,7 @@ proc newObj(typ: PNimType, size: int): pointer =
   gcTrace(res, csAllocated)
   result = cellToUsr(res)
 
-proc newSeq(typ: PNimType, len: int): pointer =
+proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).space = len
@@ -490,17 +473,18 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
 else:
   const stackIncreases = false
 
-proc setStackBottom(theStackBottom: pointer) =
-  #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
-  # the first init must be the one that defines the stack bottom:
-  if stackBottom == nil: stackBottom = theStackBottom
-  else:
-    var a = cast[TAddress](theStackBottom) # and not PageMask - PageSize*2
-    var b = cast[TAddress](stackBottom)
-    when stackIncreases:
-      stackBottom = cast[pointer](min(a, b))
+when not defined(useNimRtl):
+  proc setStackBottom(theStackBottom: pointer) =
+    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    # the first init must be the one that defines the stack bottom:
+    if stackBottom == nil: stackBottom = theStackBottom
     else:
-      stackBottom = cast[pointer](max(a, b))
+      var a = cast[TAddress](theStackBottom) # and not PageMask - PageSize*2
+      var b = cast[TAddress](stackBottom)
+      when stackIncreases:
+        stackBottom = cast[pointer](min(a, b))
+      else:
+        stackBottom = cast[pointer](max(a, b))
 
 proc stackSize(): int {.noinline.} =
   var stackTop: array[0..1, pointer]
@@ -647,22 +631,41 @@ proc collectCT(gch: var TGcHeap) =
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, cycleThreshold)
     unmarkStackAndRegisters(gch)
 
-proc GC_fullCollect() =
-  var oldThreshold = cycleThreshold
-  cycleThreshold = 0 # forces cycle collection
-  collectCT(gch)
-  cycleThreshold = oldThreshold
+when not defined(useNimRtl):
+  proc GC_disable() = inc(recGcLock)
+  proc GC_enable() =
+    if recGcLock > 0: dec(recGcLock)
 
-proc GC_getStatistics(): string =
-  GC_disable()
-  result = "[GC] total memory: " & $(getTotalMem()) & "\n" &
-           "[GC] occupied memory: " & $(getOccupiedMem()) & "\n" &
-           "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
-           "[GC] stack cells: " & $gch.stat.maxStackCells & "\n" &
-           "[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &
-           "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-           "[GC] zct capacity: " & $gch.zct.cap & "\n" &
-           "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
-           "[GC] max stack size: " & $gch.stat.maxStackSize
-  when traceGC: writeLeakage()
-  GC_enable()
+  proc GC_setStrategy(strategy: TGC_Strategy) =
+    case strategy
+    of gcThroughput: nil
+    of gcResponsiveness: nil
+    of gcOptimizeSpace: nil
+    of gcOptimizeTime: nil
+
+  proc GC_enableMarkAndSweep() =
+    cycleThreshold = InitialCycleThreshold
+
+  proc GC_disableMarkAndSweep() =
+    cycleThreshold = high(cycleThreshold)-1
+    # set to the max value to suppress the cycle detector
+
+  proc GC_fullCollect() =
+    var oldThreshold = cycleThreshold
+    cycleThreshold = 0 # forces cycle collection
+    collectCT(gch)
+    cycleThreshold = oldThreshold
+
+  proc GC_getStatistics(): string =
+    GC_disable()
+    result = "[GC] total memory: " & $(getTotalMem()) & "\n" &
+             "[GC] occupied memory: " & $(getOccupiedMem()) & "\n" &
+             "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
+             "[GC] stack cells: " & $gch.stat.maxStackCells & "\n" &
+             "[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &
+             "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
+             "[GC] zct capacity: " & $gch.zct.cap & "\n" &
+             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
+             "[GC] max stack size: " & $gch.stat.maxStackSize
+    when traceGC: writeLeakage()
+    GC_enable()

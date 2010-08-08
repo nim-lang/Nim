@@ -88,6 +88,8 @@ macro              meaning
                    ``[^ \9-\13]``
 ``\w``             any "word" character: ``[a-zA-Z0-9_]``
 ``\W``             any "non-word" character: ``[^a-zA-Z0-9_]``
+``\a``             same as ``[a-zA-Z]``
+``\A``             same as ``[^a-zA-Z]``
 ``\n``             any newline combination: ``\10 / \13\10 / \13``
 ``\i``             ignore case for matching; use this at the start of the PEG
 ``\y``             ignore style for matching; use this at the start of the PEG

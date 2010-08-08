@@ -14,6 +14,8 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
+include "system/inclrtl"
+
 const
   Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
@@ -23,7 +25,8 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseHex*(s: string, number: var int, start = 0): int = 
+proc parseHex*(s: string, number: var int, start = 0): int {.
+  rtl, extern: "npuParseHex", noSideEffect.}  = 
   ## parses a hexadecimal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   var i = start
@@ -46,7 +49,8 @@ proc parseHex*(s: string, number: var int, start = 0): int =
     inc(i)
   if foundDigit: result = i-start
 
-proc parseOct*(s: string, number: var int, start = 0): int = 
+proc parseOct*(s: string, number: var int, start = 0): int  {.
+  rtl, extern: "npuParseOct", noSideEffect.} = 
   ## parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   var i = start
@@ -116,13 +120,15 @@ proc rawParseInt(s: string, b: var biggestInt, start = 0): int =
     result = i - start
 {.pop.} # overflowChecks
 
-proc parseBiggestInt*(s: string, number: var biggestInt, start = 0): int =
+proc parseBiggestInt*(s: string, number: var biggestInt, start = 0): int {.
+  rtl, extern: "npuParseBiggestInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `EOverflow` is raised if an overflow occurs.
   result = rawParseInt(s, number, start)
 
-proc parseInt*(s: string, number: var int, start = 0): int =
+proc parseInt*(s: string, number: var int, start = 0): int {.
+  rtl, extern: "npuParseInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `EOverflow` is raised if an overflow occurs.
@@ -134,7 +140,8 @@ proc parseInt*(s: string, number: var int, start = 0): int =
   else:
     number = int(res)
 
-proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int =
+proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int {.
+  rtl, extern: "npuParseBiggestFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occured a parsing
   ## error.
@@ -206,7 +213,8 @@ proc parseBiggestFloat*(s: string, number: var biggestFloat, start = 0): int =
   number = number * sign
   result = i - start
 
-proc parseFloat*(s: string, number: var float, start = 0): int =
+proc parseFloat*(s: string, number: var float, start = 0): int {.
+  rtl, extern: "npuParseFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occured a parsing
   ## error.

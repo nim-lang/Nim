@@ -1,16 +1,14 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-
 # Exception handling code. This is difficult because it has
-# to work if there is no more memory. Do not use ``sprintf``, etc. as they are
-# unsafe!
+# to work if there is no more memory (but it doesn't yet!).
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: CString) = write(stdout, msg)

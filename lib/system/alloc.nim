@@ -531,48 +531,49 @@ proc isAllocatedPtr(a: TAllocator, p: pointer): bool =
 
 # ---------------------- interface to programs -------------------------------
 
-proc alloc(size: int): pointer =
-  result = rawAlloc(allocator, size+sizeof(TFreeCell))
-  cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
-  assert(not isAllocatedPtr(allocator, result))
-  result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
+when not defined(useNimRtl):
+  proc alloc(size: int): pointer =
+    result = rawAlloc(allocator, size+sizeof(TFreeCell))
+    cast[ptr TFreeCell](result).zeroField = 1 # mark it as used
+    assert(not isAllocatedPtr(allocator, result))
+    result = cast[pointer](cast[TAddress](result) +% sizeof(TFreeCell))
 
-proc alloc0(size: int): pointer =
-  result = alloc(size)
-  zeroMem(result, size)
+  proc alloc0(size: int): pointer =
+    result = alloc(size)
+    zeroMem(result, size)
 
-proc dealloc(p: pointer) =
-  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-  assert(cast[ptr TFreeCell](x).zeroField == 1)
-  rawDealloc(allocator, x)
-  assert(not isAllocatedPtr(allocator, x))
+  proc dealloc(p: pointer) =
+    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+    assert(cast[ptr TFreeCell](x).zeroField == 1)
+    rawDealloc(allocator, x)
+    assert(not isAllocatedPtr(allocator, x))
 
-proc ptrSize(p: pointer): int =
-  var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
-  result = pageAddr(x).size - sizeof(TFreeCell)
+  proc ptrSize(p: pointer): int =
+    var x = cast[pointer](cast[TAddress](p) -% sizeof(TFreeCell))
+    result = pageAddr(x).size - sizeof(TFreeCell)
 
-proc realloc(p: pointer, newsize: int): pointer =
-  if newsize > 0:
-    result = alloc(newsize)
-    if p != nil:
-      copyMem(result, p, ptrSize(p))
+  proc realloc(p: pointer, newsize: int): pointer =
+    if newsize > 0:
+      result = alloc(newsize)
+      if p != nil:
+        copyMem(result, p, ptrSize(p))
+        dealloc(p)
+    elif p != nil:
       dealloc(p)
-  elif p != nil:
-    dealloc(p)
 
-proc countFreeMem(): int =
-  # only used for assertions
-  var it = allocator.freeChunksList
-  while it != nil:
-    inc(result, it.size)
-    it = it.next
+  proc countFreeMem(): int =
+    # only used for assertions
+    var it = allocator.freeChunksList
+    while it != nil:
+      inc(result, it.size)
+      it = it.next
 
-proc getFreeMem(): int = 
-  result = allocator.freeMem
-  #assert(result == countFreeMem())
+  proc getFreeMem(): int = 
+    result = allocator.freeMem
+    #assert(result == countFreeMem())
 
-proc getTotalMem(): int = return allocator.currMem
-proc getOccupiedMem(): int = return getTotalMem() - getFreeMem()
+  proc getTotalMem(): int = return allocator.currMem
+  proc getOccupiedMem(): int = return getTotalMem() - getFreeMem()
 
 when isMainModule:
   const iterations = 4000_000

@@ -16,6 +16,8 @@
 ## Leaves can be cached for better memory efficiency at the cost of
 ## runtime efficiency.
 
+include "system/inclrtl"
+
 {.deadCodeElim: on.}
 
 {.push debugger:off .} # the user does not want to trace a part
@@ -44,7 +46,7 @@ proc isConc(r: PRope): bool {.inline.} = return isNil(r.data)
 # performance. But for the caching tree we use the leaf's left and right
 # pointers.
 
-proc len*(a: PRope): int =
+proc len*(a: PRope): int {.rtl, extern: "nro$1".} =
   ## the rope's length
   if a == nil: result = 0
   else: result = a.length
@@ -126,7 +128,7 @@ proc insertInCache(s: string, tree: PRope): PRope =
       result.left = t
       t.right = nil
 
-proc rope*(s: string): PRope =
+proc rope*(s: string): PRope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope. 
   if s.len == 0: 
     result = nil
@@ -136,25 +138,25 @@ proc rope*(s: string): PRope =
   else: 
     result = newRope(s)
   
-proc rope*(i: BiggestInt): PRope = 
+proc rope*(i: BiggestInt): PRope {.rtl, extern: "nro$1BiggestInt".} = 
   ## Converts an int to a rope. 
   result = rope($i)
 
-proc rope*(f: BiggestFloat): PRope =
+proc rope*(f: BiggestFloat): PRope {.rtl, extern: "nro$1BiggestFloat".} =
   ## Converts a float to a rope. 
   result = rope($f)
 
-proc disableCache*() =
+proc disableCache*() {.rtl, extern: "nro$1".} =
   ## the cache is discarded and disabled. The GC will reuse its used memory.
   cache = nil
   cacheEnabled = false
   
-proc enableCache*() =
+proc enableCache*() {.rtl, extern: "nro$1".} =
   ## Enables the caching of leaves. This reduces the memory footprint at
   ## the cost of runtime efficiency.
   cacheEnabled = true
 
-proc `&`*(a, b: PRope): PRope =
+proc `&`*(a, b: PRope): PRope {.rtl, extern: "nroConcRopeRope".} =
   ## the concatenation operator for ropes.
   if a == nil: 
     result = b
@@ -174,27 +176,27 @@ proc `&`*(a, b: PRope): PRope =
       result.left = a
       result.right = b
   
-proc `&`*(a: PRope, b: string): PRope = 
+proc `&`*(a: PRope, b: string): PRope {.rtl, extern: "nroConcRopeStr".} = 
   ## the concatenation operator for ropes.
   result = a & rope(b)
   
-proc `&`*(a: string, b: PRope): PRope = 
+proc `&`*(a: string, b: PRope): PRope {.rtl, extern: "nroConcStrRope".} = 
   ## the concatenation operator for ropes.
   result = rope(a) & b
   
-proc `&`*(a: openarray[PRope]): PRope = 
+proc `&`*(a: openarray[PRope]): PRope {.rtl, extern: "nroConcOpenArray".} = 
   ## the concatenation operator for an openarray of ropes.
   for i in countup(0, high(a)): result = result & a[i]
 
-proc add*(a: var PRope, b: PRope) =
+proc add*(a: var PRope, b: PRope) {.rtl, extern: "nro$1Rope".} =
   ## adds `b` to the rope `a`.
   a = a & b
 
-proc add*(a: var PRope, b: string) =
+proc add*(a: var PRope, b: string) {.rtl, extern: "nro$1Str".} =
   ## adds `b` to the rope `a`.
   a = a & b
   
-proc `[]`*(r: PRope, i: int): char =
+proc `[]`*(r: PRope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If ``i >= r.len``, ``\0`` is returned.
   var x = r
@@ -229,11 +231,11 @@ iterator items*(r: PRope): char =
   for s in leaves(r):
     for c in items(s): yield c
 
-proc write*(f: TFile, r: PRope) =
+proc write*(f: TFile, r: PRope) {.rtl, extern: "nro$1".} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc `$`*(r: PRope): string = 
+proc `$`*(r: PRope): string  {.rtl, extern: "nroToString".}= 
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)
@@ -289,7 +291,8 @@ when false:
       if i - 1 >= start: 
         add(result, copy(frmt, start, i-1))
   
-proc `%`*(frmt: string, args: openarray[PRope]): PRope =
+proc `%`*(frmt: string, args: openarray[PRope]): PRope {. 
+  rtl, extern: "nroFormat".} =
   ## `%` substitution operator for ropes. Does not support the ``$identifier``
   ## nor ``${identifier}`` notations.
   var i = 0
@@ -333,11 +336,12 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope =
     if i - 1 >= start: 
       add(result, copy(frmt, start, i - 1))
 
-proc addf*(c: var PRope, frmt: string, args: openarray[PRope]) =
+proc addf*(c: var PRope, frmt: string, args: openarray[PRope]) {.
+  rtl, extern: "nro$1".} =
   ## shortcut for ``add(c, frmt % args)``.
   add(c, frmt % args)
 
-proc equalsFile*(r: PRope, f: TFile): bool =
+proc equalsFile*(r: PRope, f: TFile): bool {.rtl, extern: "nro$1File".} =
   ## returns true if the contents of the file `f` equal `r`.
   var bufSize = 1024 # reasonable start value
   var buf = alloc(BufSize)
@@ -352,7 +356,7 @@ proc equalsFile*(r: PRope, f: TFile): bool =
     result = readBuffer(f, buf, 1) == 0 # really at the end of file?
   dealloc(buf)
 
-proc equalsFile*(r: PRope, f: string): bool =
+proc equalsFile*(r: PRope, f: string): bool {.rtl, extern: "nro$1Str".} =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
   var bin: TFile
