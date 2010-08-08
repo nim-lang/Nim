@@ -81,7 +81,7 @@ on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
   
   nimrod c -d:release lib/nimrtl.nim
 
-To link to ``nimrtl.dll`` use the command::
+To link against ``nimrtl.dll`` use the command::
 
   nimrod c -d:useNimRtl myprog.nim
 
