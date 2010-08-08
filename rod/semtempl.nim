@@ -57,18 +57,17 @@ proc evalTemplateAux(c: PContext, templ, actual: PNode, sym: PSym): PNode =
       result.sons[i] = evalTemplateAux(c, templ.sons[i], actual, sym)
   
 var evalTemplateCounter: int = 0
+  # to prevend endless recursion in templates instantation
 
 proc evalTemplateArgs(c: PContext, n: PNode, s: PSym): PNode = 
-  # to prevend endless recursion in templates
-  # instantation
   var 
     f, a: int
     arg: PNode
   f = sonsLen(s.typ) # if the template has zero arguments, it can be called without ``()``
                      # `n` is then a nkSym or something similar
   case n.kind
-  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: a = sonsLen(
-      n)
+  of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
+    a = sonsLen(n)
   else: a = 0
   if a > f: liMessage(n.info, errWrongNumberOfArguments)
   result = copyNode(n)
@@ -85,7 +84,8 @@ proc evalTemplate(c: PContext, n: PNode, sym: PSym): PNode =
   var args: PNode
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100: 
-    liMessage(n.info, errTemplateInstantiationTooNested) # replace each param by the corresponding node:
+    liMessage(n.info, errTemplateInstantiationTooNested) 
+  # replace each param by the corresponding node:
   args = evalTemplateArgs(c, n, sym)
   result = evalTemplateAux(c, sym.ast.sons[codePos], args, sym)
   dec(evalTemplateCounter)

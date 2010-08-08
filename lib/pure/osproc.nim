@@ -10,6 +10,8 @@
 ## This module implements an advanced facility for executing OS processes
 ## and process communication.
 
+include "system/inclrtl"
+
 import
   strutils, os, strtabs, streams
 
@@ -39,7 +41,8 @@ type
 
 proc execProcess*(command: string,
                   options: set[TProcessOption] = {poStdErrToStdOut,
-                                                  poUseShell}): string
+                                                  poUseShell}): string {.
+                                                  rtl, extern: "nosp$1".}
   ## A convience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
 
@@ -50,7 +53,7 @@ proc executeProcess*(command: string,
   ## **Deprecated since version 0.8.2**: Use `execProcess` instead.
   result = execProcess(command, options)
 
-proc execCmd*(command: string): int
+proc execCmd*(command: string): int {.rtl, extern: "nosp$1".}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process.
 
@@ -62,8 +65,9 @@ proc executeCommand*(command: string): int {.deprecated.} =
 proc startProcess*(command: string,
                    workingDir: string = "",
                    args: openarray[string] = [],
-                   env: PStringTable = nil,
-                   options: set[TProcessOption] = {poStdErrToStdOut}): PProcess
+                   env: PStringTable = nil, 
+                   options: set[TProcessOption] = {poStdErrToStdOut}): 
+              PProcess {.rtl, extern: "nosp$1".}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -78,32 +82,32 @@ proc startProcess*(command: string,
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``EOS`` is raised in case of an error.
 
-proc suspend*(p: PProcess)
+proc suspend*(p: PProcess) {.rtl, extern: "nosp$1".}
   ## Suspends the process `p`.
 
-proc resume*(p: PProcess)
+proc resume*(p: PProcess) {.rtl, extern: "nosp$1".}
   ## Resumes the process `p`.
 
-proc terminate*(p: PProcess)
+proc terminate*(p: PProcess) {.rtl, extern: "nosp$1".}
   ## Terminates the process `p`.
 
-proc running*(p: PProcess): bool
+proc running*(p: PProcess): bool {.rtl, extern: "nosp$1".}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
-proc processID*(p: PProcess): int =
+proc processID*(p: PProcess): int {.rtl, extern: "nosp$1".} =
   ## returns `p`'s process ID.
   return p.id
 
-proc waitForExit*(p: PProcess): int
+proc waitForExit*(p: PProcess): int {.rtl, extern: "nosp$1".}
   ## waits for the process to finish and returns `p`'s error code.
 
-proc inputStream*(p: PProcess): PStream
+proc inputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
   ## returns ``p``'s input stream for writing to
 
-proc outputStream*(p: PProcess): PStream
+proc outputStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
   ## returns ``p``'s output stream for reading from
 
-proc errorStream*(p: PProcess): PStream
+proc errorStream*(p: PProcess): PStream {.rtl, extern: "nosp$1".}
   ## returns ``p``'s output stream for reading from
 
 when defined(macosx) or defined(bsd):
@@ -115,7 +119,7 @@ when defined(macosx) or defined(bsd):
               a: var int, b: pointer, c: int): cint {.
              importc: "sysctl", header: "<sys/sysctl.h>".}
 
-proc countProcessors*(): int =
+proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
@@ -150,7 +154,7 @@ proc startProcessAux(cmd: string, options: set[TProcessOption]): PProcess =
 
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
-                    n = countProcessors()): int =
+                    n = countProcessors()): int {.rtl, extern: "nosp$1".} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned.
@@ -192,27 +196,16 @@ proc execProcesses*(cmds: openArray[string],
       var p = startProcessAux(cmds[i], options=options)
       result = max(waitForExit(p), result)
 
-when true:
-  nil
-else:
-  proc startGUIProcess*(command: string,
-                     workingDir: string = "",
-                     args: openarray[string] = [],
-                     env: PStringTable = nil,
-                     x = -1,
-                     y = -1,
-                     width = -1,
-                     height = -1): PProcess
-
-proc execProcess(command: string,
-                 options: set[TProcessOption] = {poStdErrToStdOut,
-                                                 poUseShell}): string =
-  var p = startProcessAux(command, options=options)
-  var outp = outputStream(p)
-  result = ""
-  while running(p) or not outp.atEnd(outp):
-    result.add(outp.readLine())
-    result.add("\n")
+when not defined(useNimRtl):
+  proc execProcess(command: string,
+                   options: set[TProcessOption] = {poStdErrToStdOut,
+                                                   poUseShell}): string =
+    var p = startProcessAux(command, options=options)
+    var outp = outputStream(p)
+    result = ""
+    while running(p) or not outp.atEnd(outp):
+      result.add(outp.readLine())
+      result.add("\n")
 
 when false:
   proc deallocCStringArray(a: cstringArray) =
@@ -222,7 +215,7 @@ when false:
       inc(i)
     dealloc(a)
 
-when defined(Windows):
+when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
     PFileHandleStream = ref TFileHandleStream
@@ -405,7 +398,7 @@ when defined(Windows):
         result = -1
       discard CloseHandle(Process)
 
-else:
+elif not defined(useNimRtl):
   const
     readIdx = 0
     writeIdx = 1

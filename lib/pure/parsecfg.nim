@@ -27,6 +27,8 @@
 import 
   hashes, strutils, lexbase, streams
 
+include "system/inclrtl"
+
 type 
   TCfgEventKind* = enum ## enumation of all events that may occur when parsing
     cfgEof,             ## end of file reached
@@ -65,37 +67,17 @@ type
     state: TParserState
     filename: string
 
-proc open*(c: var TCfgParser, input: PStream, filename: string)
-  ## initializes the parser with an input stream. `Filename` is only used
-  ## for nice error messages.
-
-proc close*(c: var TCfgParser)
-  ## closes the parser `c` and its associated input stream.
-
-proc next*(c: var TCfgParser): TCfgEvent
-  ## retrieves the first/next event. This controls the parser.
-
-proc getColumn*(c: TCfgParser): int
-  ## get the current column the parser has arrived at.
-
-proc getLine*(c: TCfgParser): int
-  ## get the current line the parser has arrived at.
-  
-proc getFilename*(c: TCfgParser): string
-  ## get the filename of the file that the parser processes.
-
-proc errorStr*(c: TCfgParser, msg: string): string
-  ## returns a properly formated error message containing current line and
-  ## column information.
-
-
 # implementation
 
 const 
   SymChars: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'} 
   
 proc rawGetTok(c: var TCfgParser, tok: var TToken)
-proc open(c: var TCfgParser, input: PStream, filename: string) = 
+
+proc open*(c: var TCfgParser, input: PStream, filename: string) {.
+  rtl, extern: "npc$1".} =
+  ## initializes the parser with an input stream. `Filename` is only used
+  ## for nice error messages.
   lexbase.open(c, input)
   c.filename = filename
   c.state = startState
@@ -103,16 +85,20 @@ proc open(c: var TCfgParser, input: PStream, filename: string) =
   c.tok.literal = ""
   rawGetTok(c, c.tok)
   
-proc close(c: var TCfgParser) = 
+proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
+  ## closes the parser `c` and its associated input stream.
   lexbase.close(c)
 
-proc getColumn(c: TCfgParser): int = 
+proc getColumn*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
+  ## get the current column the parser has arrived at.
   result = getColNumber(c, c.bufPos)
 
-proc getLine(c: TCfgParser): int = 
+proc getLine*(c: TCfgParser): int {.rtl, extern: "npc$1".} =
+  ## get the current line the parser has arrived at.
   result = c.linenumber
 
-proc getFilename(c: TCfgParser): string = 
+proc getFilename*(c: TCfgParser): string {.rtl, extern: "npc$1".} =
+  ## get the filename of the file that the parser processes.
   result = c.filename
 
 proc handleHexChar(c: var TCfgParser, xi: var int) = 
@@ -300,7 +286,9 @@ proc rawGetTok(c: var TCfgParser, tok: var TToken) =
     tok.literal = "[EOF]"
   else: getSymbol(c, tok)
   
-proc errorStr(c: TCfgParser, msg: string): string = 
+proc errorStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+  ## returns a properly formated error message containing current line and
+  ## column information.
   result = `%`("$1($2, $3) Error: $4", 
                [c.filename, $getLine(c), $getColumn(c), msg])
 
@@ -323,7 +311,8 @@ proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent =
     result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
     rawGetTok(c, c.tok)
 
-proc next(c: var TCfgParser): TCfgEvent = 
+proc next*(c: var TCfgParser): TCfgEvent {.rtl, extern: "npc$1".} =
+  ## retrieves the first/next event. This controls the parser.
   case c.tok.kind  
   of tkEof: 
     result.kind = cfgEof

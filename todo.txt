@@ -1,6 +1,7 @@
 For version 0.8.10
 ==================
 
+- exception propagation across DLLs
 - fix exception handling
 - fix implicit generic routines
 - fix the streams implementation so that they use methods
@@ -61,6 +62,7 @@ Low priority
 - normalize for the DOM
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
+- fast assignment optimization for TPeg
 
 
 Library
@@ -129,4 +131,7 @@ RST
 ---
 - footnotes; prefix :i: whitespace before :i:, _reference, `reference`__
   __ anonymous: www.nimrod.org
+- rewrite the parser to use the new better look ahead technique that c2nim
+  uses
+
 

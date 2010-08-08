@@ -11,11 +11,13 @@
 ## This module contains routines and types for dealing with time.
 ## This module is available for the ECMAScript target.
 
-{.push debugger:off .} # the user does not want to trace a part
-                       # of the standard library!
+{.push debugger:off.} # the user does not want to trace a part
+                      # of the standard library!
 
 import
   strutils
+
+include "system/inclrtl"
 
 type
   TMonth* = enum ## represents a month
@@ -125,20 +127,17 @@ proc `$` *(timeInfo: TTimeInfo): string
 proc `$` *(time: TTime): string
   ## converts a calendar time to a string representation.
 
-proc getDateStr*(): string
-  ## gets the current date as a string of the format ``YYYY-MM-DD``.
-
-proc getClockStr*(): string
-  ## gets the current clock time as a string of the format ``HH:MM:SS``.
-
-proc `-` *(a, b: TTime): int64
+proc `-` *(a, b: TTime): int64{.
+  rtl, extern: "ntDiffTime".}
   ## computes the difference of two calendar times. Result is in seconds.
 
-proc `<` * (a, b: TTime): bool = 
+proc `<` * (a, b: TTime): bool {.
+  rtl, extern: "ntLtTime".} = 
   ## returns true iff ``a < b``, that is iff a happened before b.
   result = a - b < 0
   
-proc `<=` * (a, b: TTime): bool = 
+proc `<=` * (a, b: TTime): bool {.
+  rtl, extern: "ntLeTime".}= 
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
@@ -147,12 +146,12 @@ proc getStartMilsecs*(): int {.deprecated.}
   ## version 0.8.10.** Use ``realTime`` or ``cpuTime`` instead.
 
 when not defined(ECMAScript):  
-  proc epochTime*(): float
+  proc epochTime*(): float {.rtl, extern: "nt$1".}
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
     ## because sub-second resolution is likely to be supported (depending 
     ## on the hardware/OS).
 
-  proc cpuTime*(): float 
+  proc cpuTime*(): float {.rtl, extern: "nt$1".}
     ## gets time spent that the CPU spent to run the current process in
     ## seconds. This may be more useful for benchmarking than ``epochTime``.
     ## However, it may measure the real time instead (depending on the OS).
@@ -227,8 +226,9 @@ when not defined(ECMAScript):
     result.yearday = t.yearday
     result.isdst = -1
   
-  proc `-` (a, b: TTime): int64 =
-    return toBiggestInt(difftime(a, b))
+  when not defined(useNimRtl):
+    proc `-` (a, b: TTime): int64 =
+      return toBiggestInt(difftime(a, b))
   
   proc getStartMilsecs(): int =
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(clock())
@@ -290,24 +290,25 @@ when not defined(ECMAScript):
     ## converts a Windows time to a UNIX `TTime` (``time_t``)
     result = TTime((t - epochDiff) div rateDiff)
     
-  proc epochTime(): float = 
-    when defined(posix):
-      var a: Ttimeval
-      posix_gettimeofday(a)
-      result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.001
-      # why 0.001 instead of 0.00_0001? I don't know.
-    elif defined(windows):
-      var f: winlean.Filetime
-      GetSystemTimeAsFileTime(f)
-      var i64 = rdFileTime(f) - epochDiff
-      var secs = i64 div rateDiff
-      var subsecs = i64 mod rateDiff
-      result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-    else:
-      {.error: "unknown OS".}
-    
-  proc cpuTime(): float = 
-    result = toFloat(int(clock())) / toFloat(clocksPerSec)
+  when not defined(useNimRtl):
+    proc epochTime(): float = 
+      when defined(posix):
+        var a: Ttimeval
+        posix_gettimeofday(a)
+        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.001
+        # why 0.001 instead of 0.00_0001? I don't know.
+      elif defined(windows):
+        var f: winlean.Filetime
+        GetSystemTimeAsFileTime(f)
+        var i64 = rdFileTime(f) - epochDiff
+        var secs = i64 div rateDiff
+        var subsecs = i64 mod rateDiff
+        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+      else:
+        {.error: "unknown OS".}
+      
+    proc cpuTime(): float = 
+      result = toFloat(int(clock())) / toFloat(clocksPerSec)
     
 else:
   proc getTime(): TTime {.importc: "new Date", nodecl.}
@@ -358,12 +359,15 @@ else:
     ## get the miliseconds from the start of the program
     return int(getTime() - startMilsecs)
 
-proc getDateStr(): string =
+
+proc getDateStr*(): string {.rtl, extern: "nt$1".} =
+  ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
     '-' & intToStr(ti.monthDay, 2)
 
-proc getClockStr(): string =
+proc getClockStr*(): string {.rtl, extern: "nt$1".} =
+  ## gets the current clock time as a string of the format ``HH:MM:SS``.
   var ti = getLocalTime(getTime())
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
     ':' & intToStr(ti.second, 2)

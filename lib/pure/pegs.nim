@@ -15,6 +15,8 @@
 ## .. include:: ../doc/pegdocs.txt
 ##
 
+include "system/inclrtl"
+
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
@@ -79,7 +81,7 @@ type
   
   TPeg* = TNode ## type that represents a PEG
 
-proc term*(t: string): TPeg =
+proc term*(t: string): TPeg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
   if t.len != 1:  
     result.kind = pkTerminal
@@ -88,23 +90,25 @@ proc term*(t: string): TPeg =
     result.kind = pkChar
     result.ch = t[0]
 
-proc termIgnoreCase*(t: string): TPeg =
+proc termIgnoreCase*(t: string): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore case for matching
   result.kind = pkTerminalIgnoreCase
   result.term = t
 
-proc termIgnoreStyle*(t: string): TPeg =
+proc termIgnoreStyle*(t: string): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore style for matching
   result.kind = pkTerminalIgnoreStyle
   result.term = t
 
-proc term*(t: char): TPeg =
+proc term*(t: char): TPeg {.nosideEffect, rtl, extern: "npegs$1Char".} =
   ## constructs a PEG from a terminal char
   assert t != '\0'
   result.kind = pkChar
   result.ch = t
   
-proc charSet*(s: set[char]): TPeg =
+proc charSet*(s: set[char]): TPeg {.nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
   result.kind = pkCharChoice
@@ -136,7 +140,8 @@ template multipleOp(k: TPegKind, localOpt: expr) =
   if result.len == 1:
     result = result.sons[0]
 
-proc `/`*(a: openArray[TPeg]): TPeg =
+proc `/`*(a: openArray[TPeg]): TPeg {.
+  nosideEffect, rtl, extern: "npegsOrderedChoice".} =
   ## constructs an ordered choice with the PEGs in `a`
   multipleOp(pkOrderedChoice, addChoice)
 
@@ -149,11 +154,12 @@ proc addSequence(dest: var TPeg, elem: TPeg) =
     else: add(dest, elem)
   else: add(dest, elem)
 
-proc sequence*(a: openArray[TPeg]): TPeg =
+proc sequence*(a: openArray[TPeg]): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a sequence with all the PEGs from `a`
   multipleOp(pkSequence, addSequence)
  
-proc `?`*(a: TPeg): TPeg =
+proc `?`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsOptional".} =
   ## constructs an optional for the PEG `a`
   if a.kind in {pkOption, pkGreedyRep, pkGreedyAny, pkGreedyRepChar,
                 pkGreedyRepSet}:
@@ -164,7 +170,7 @@ proc `?`*(a: TPeg): TPeg =
     result.kind = pkOption
     result.sons = @[a]
 
-proc `*`*(a: TPeg): TPeg =
+proc `*`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
   of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
@@ -182,7 +188,7 @@ proc `*`*(a: TPeg): TPeg =
     result.kind = pkGreedyRep
     result.sons = @[a]
 
-proc `@`*(a: TPeg): TPeg =
+proc `@`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsSearch".} =
   ## constructs a "search" for the PEG `a`
   result.kind = pkSearch
   result.sons = @[a]
@@ -199,16 +205,16 @@ when false:
       for i in 0..a.sons.len-1:
         if contains(a.sons[i], k): return true
 
-proc `+`*(a: TPeg): TPeg =
+proc `+`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsGreedyPosRep".} =
   ## constructs a "greedy positive repetition" with the PEG `a`
   return sequence(a, *a)
   
-proc `&`*(a: TPeg): TPeg =
+proc `&`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsAndPredicate".} =
   ## constructs an "and predicate" with the PEG `a`
   result.kind = pkAndPredicate
   result.sons = @[a]
 
-proc `!`*(a: TPeg): TPeg =
+proc `!`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsNotPredicate".} =
   ## constructs a "not predicate" with the PEG `a`
   result.kind = pkNotPredicate
   result.sons = @[a]
@@ -225,24 +231,27 @@ proc newLine*: TPeg {.inline.} =
   ## constructs the PEG `newline`:idx: (``\n``)
   result.kind = pkNewline
 
-proc capture*(a: TPeg): TPeg =
+proc capture*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
   result.kind = pkCapture
   result.sons = @[a]
 
-proc backref*(index: range[1..MaxSubPatterns]): TPeg = 
+proc backref*(index: range[1..MaxSubPatterns]): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} = 
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1.
   result.kind = pkBackRef
   result.index = index-1
 
-proc backrefIgnoreCase*(index: range[1..MaxSubPatterns]): TPeg = 
+proc backrefIgnoreCase*(index: range[1..MaxSubPatterns]): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} = 
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores case for matching.
   result.kind = pkBackRefIgnoreCase
   result.index = index-1
 
-proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg = 
+proc backrefIgnoreStyle*(index: range[1..MaxSubPatterns]): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".}= 
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores style for matching.
   result.kind = pkBackRefIgnoreStyle
@@ -263,7 +272,8 @@ proc spaceCost(n: TPeg): int =
       inc(result, spaceCost(n.sons[i]))
       if result >= InlineThreshold: break
 
-proc nonterminal*(n: PNonTerminal): TPeg = 
+proc nonterminal*(n: PNonTerminal): TPeg {.
+  nosideEffect, rtl, extern: "npegs$1".} = 
   ## constructs a PEG that consists of the nonterminal symbol
   assert n != nil
   if ntDeclared in n.flags and spaceCost(n.rule) < InlineThreshold:
@@ -273,7 +283,8 @@ proc nonterminal*(n: PNonTerminal): TPeg =
     result.kind = pkNonTerminal
     result.nt = n
 
-proc newNonTerminal*(name: string, line, column: int): PNonTerminal =
+proc newNonTerminal*(name: string, line, column: int): PNonTerminal {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a nonterminal symbol
   new(result)
   result.name = name
@@ -432,7 +443,7 @@ proc toStrAux(r: TPeg, res: var string) =
       toStrAux(r.sons[i], res)
       add(res, "\n")  
 
-proc `$` *(r: TPeg): string =
+proc `$` *(r: TPeg): string {.nosideEffect, rtl, extern: "npegsToString".} =
   ## converts a PEG to its string representation
   result = ""
   toStrAux(r, result)
@@ -598,7 +609,7 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkRule, pkList: assert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
-            start = 0): bool =
+            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
@@ -609,13 +620,14 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
     for i in 0..c.ml-1:
       matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
 
-proc match*(s: string, pattern: TPeg, start = 0): bool =
+proc match*(s: string, pattern: TPeg, 
+            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
   var c: TMatchClosure
   result = m(s, pattern, start, c) == len(s)-start
 
 proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
-               start = 0): int =
+               start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
@@ -626,7 +638,8 @@ proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
     for i in 0..c.ml-1:
       matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
 
-proc matchLen*(s: string, pattern: TPeg, start = 0): int =
+proc matchLen*(s: string, pattern: TPeg, 
+               start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
@@ -635,7 +648,7 @@ proc matchLen*(s: string, pattern: TPeg, start = 0): int =
   result = m(s, pattern, start, c)
 
 proc find*(s: string, pattern: TPeg, matches: var openarray[string],
-           start = 0): int =
+           start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
@@ -644,7 +657,8 @@ proc find*(s: string, pattern: TPeg, matches: var openarray[string],
   return -1
   # could also use the pattern here: (!P .)* P
   
-proc find*(s: string, pattern: TPeg, start = 0): int =
+proc find*(s: string, pattern: TPeg, 
+           start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
   for i in 0 .. s.len-1:
@@ -675,25 +689,29 @@ template `=~`*(s: string, pattern: TPeg): expr =
 
 # ------------------------- more string handling ------------------------------
 
-proc contains*(s: string, pattern: TPeg, start = 0): bool =
+proc contains*(s: string, pattern: TPeg, start = 0): bool {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## same as ``find(s, pattern, start) >= 0``
   return find(s, pattern, start) >= 0
 
 proc contains*(s: string, pattern: TPeg, matches: var openArray[string],
-              start = 0): bool =
+              start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
-proc startsWith*(s: string, prefix: TPeg): bool =
+proc startsWith*(s: string, prefix: TPeg): bool {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` starts with the pattern `prefix`
   result = matchLen(s, prefix) >= 0
 
-proc endsWith*(s: string, suffix: TPeg): bool =
+proc endsWith*(s: string, suffix: TPeg): bool {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `prefix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
-proc replace*(s: string, sub: TPeg, by: string): string =
+proc replace*(s: string, sub: TPeg, by: string): string {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
@@ -720,7 +738,8 @@ proc replace*(s: string, sub: TPeg, by: string): string =
   add(result, copy(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: TPeg, repl: string]]): string = 
+                      tuple[pattern: TPeg, repl: string]]): string {.
+                      nosideEffect, rtl, extern: "npegs$1".} = 
   ## Returns a modified copy of `s` with the substitutions in `subs`
   ## applied in parallel.
   result = ""
@@ -740,7 +759,8 @@ proc parallelReplace*(s: string, subs: openArray[
   add(result, copy(s, i))  
   
 proc transformFile*(infile, outfile: string,
-                    subs: openArray[tuple[pattern: TPeg, repl: string]]) =
+                    subs: openArray[tuple[pattern: TPeg, repl: string]]) {.
+                    rtl, extern: "npegs$1".} =
   ## reads in the file `infile`, performs a parallel replacement (calls
   ## `parallelReplace`) and writes back to `outfile`. Calls ``quit`` if an
   ## error occurs. This is supposed to be used for quick scripting.
@@ -787,7 +807,8 @@ iterator split*(s: string, sep: TPeg): string =
     if first < last:
       yield copy(s, first, last-1)
 
-proc split*(s: string, sep: TPeg): seq[string] {.noSideEffect.} =
+proc split*(s: string, sep: TPeg): seq[string] {.
+  nosideEffect, rtl, extern: "npegs$1".} =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
 
@@ -1265,6 +1286,8 @@ proc primary(p: var TPegParser): TPeg =
     of "S": result = charset({'\1'..'\xff'} - {' ', '\9'..'\13'})
     of "w": result = charset({'a'..'z', 'A'..'Z', '_', '0'..'9'})
     of "W": result = charset({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
+    of "a": result = charset({'a'..'z', 'A'..'Z'})
+    of "A": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
     of "ident": result = pegs.ident
     else: pegError(p, "unknown built-in: " & p.tok.literal)
     getTok(p)

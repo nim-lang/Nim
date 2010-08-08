@@ -187,28 +187,6 @@ elif defined(nogc):
     dest^ = src
 
   include "system/cellsets"
-elif defined(useNimRtl): 
-  proc initGC() = nil
-
-  proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
-  proc growObj(old: pointer, newsize: int): pointer {.rtl.}
-    
-  proc nimGCref(p: pointer) {.compilerRtl.}
-  proc nimGCunref(p: pointer) {.compilerRtl.}
-  
-  # The write barrier is performance critical!
-  # XXX We should ensure that they are inlined here.
-  # Later implementations will do this.
-  
-  proc unsureAsgnRef(dest: ppointer, src: pointer) {.
-    compilerRtl.}
-  proc asgnRef(dest: ppointer, src: pointer) {.
-    compilerRtl.}
-  proc asgnRefNoCycle(dest: ppointer, src: pointer) {.
-    compilerRtl.}
-
-  include "system/cellsets"    
 
 else:
   include "system/alloc"

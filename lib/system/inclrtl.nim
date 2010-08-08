@@ -24,7 +24,6 @@ when defined(createNimRtl):
     {.error: "nimrtl must be built as a library!".}
 
 when defined(createNimRtl): 
-  # NOTE: compilerproc cannot make use of name mangling!
   {.pragma: rtl, exportc: "nimrtl_$1", dynlib.}
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, exportc: "nimrtl_$1", dynlib.}

@@ -14,7 +14,7 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 
-{.push hints: off.}
+{.push hints: on.}
 
 type
   int* {.magic: Int.} ## default integer type; bitwidth depends on
@@ -720,25 +720,6 @@ const
 include "system/inclrtl"
 include "system/cgprocs"
 
-when not defined(ECMAScript):
-  {.push overflow_checks:off}
-  proc add* (x: var string, y: cstring) =
-    var i = 0
-    while y[i] != '\0':
-      add(x, y[i])
-      inc(i)
-  {.pop.}
-else:
-  proc add* (x: var string, y: cstring) {.pure.} =
-    asm """
-      var len = `x`[0].length-1;
-      for (var i = 0; i < `y`.length; ++i) {
-        `x`[0][len] = `y`.charCodeAt(i);
-        ++len;
-      }
-      `x`[0][len] = 0
-    """
-
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
 proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
@@ -849,10 +830,6 @@ proc toBiggestInt*(f: biggestfloat): biggestint {.
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
-
-proc `/`*(x, y: int): float {.inline, noSideEffect.} =
-  ## integer division that results in a float.
-  result = toFloat(x) / toFloat(y)
 
 proc addQuitProc*(QuitProc: proc {.noconv.}) {.importc: "atexit", nodecl.}
   ## adds/registers a quit procedure. Each call to ``addQuitProc``
@@ -1003,12 +980,6 @@ const
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
-
-var
-  dbgLineHook*: proc = nil
-    ## set this variable to provide a procedure that should be called before
-    ## each executed instruction. This should only be used by debuggers!
-    ## Only code compiled with the ``debugger:on`` switch calls this hook.
 
 # GC interface:
 
@@ -1265,6 +1236,35 @@ template accumulateResult*(iter: expr) =
 # however, stack-traces are available for most parts
 # of the code
 
+var
+  dbgLineHook*: proc = nil
+    ## set this variable to provide a procedure that should be called before
+    ## each executed instruction. This should only be used by debuggers!
+    ## Only code compiled with the ``debugger:on`` switch calls this hook.
+
+when not defined(ECMAScript):
+  {.push overflow_checks:off}
+  proc add* (x: var string, y: cstring) =
+    var i = 0
+    while y[i] != '\0':
+      add(x, y[i])
+      inc(i)
+  {.pop.}
+else:
+  proc add* (x: var string, y: cstring) {.pure.} =
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
+
+proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+  ## integer division that results in a float.
+  result = toFloat(x) / toFloat(y)
+
 proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
   ## equivalent to ``writeln(stdout, x); flush(stdout)``. BUT: This is
   ## available for the ECMAScript target too!
@@ -1342,7 +1342,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     # we use binary mode in Windows:
     setmode(fileno(c_stdin), O_BINARY)
     setmode(fileno(c_stdout), O_BINARY)
-
+  
   when defined(endb):
     proc endbStep()
 

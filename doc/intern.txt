@@ -169,16 +169,6 @@ in mind:
   without the ``-w`` option helps!
 
 
-Generation of dynamic link libraries
-====================================
-
-Generation of dynamic link libraries or shared libraries is not difficult; the
-underlying C compiler already does all the hard work for us. The problem is the
-common runtime library, especially the memory manager. Note that Borland's
-Delphi had exactly the same problem. The workaround is to not link the GC with
-the Dll and provide an extra runtime dll that needs to be initialized.
-
-
 The Garbage Collector
 =====================
 

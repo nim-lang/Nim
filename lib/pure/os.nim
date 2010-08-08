@@ -14,6 +14,8 @@
 
 {.push debugger: off.}
 
+include "system/inclrtl"
+
 import
   strutils, times
 
@@ -145,19 +147,7 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-# procs dealing with command line arguments:
-proc paramCount*(): int
-  ## Returns the number of command line arguments given to the
-  ## application.
-
-proc paramStr*(i: int): string
-  ## Returns the `i`-th command line arguments given to the
-  ## application.
-  ##
-  ## `i` should be in the range `1..paramCount()`, else
-  ## the `EOutOfIndex` exception is raised.
-
-proc OSError*(msg: string = "") {.noinline.} =
+proc OSError*(msg: string = "") {.noinline, rtl, extern: "nos$1".} =
   ## raises an EOS exception with the given message ``msg``.
   ## If ``msg == ""``, the operating system's error flag
   ## (``errno``) is converted to a readable error message. On Windows
@@ -182,7 +172,8 @@ proc OSError*(msg: string = "") {.noinline.} =
   else:
     raise newException(EOS, msg)
 
-proc UnixToNativePath*(path: string): string {.noSideEffect.} =
+proc UnixToNativePath*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.
   ##
   ## On an UNIX system this does nothing. Else it converts
@@ -227,7 +218,7 @@ proc UnixToNativePath*(path: string): string {.noSideEffect.} =
         add result, path[i]
         inc(i)
 
-proc existsFile*(filename: string): bool =
+proc existsFile*(filename: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file exists, false otherwise.
   when defined(windows):
     var a = GetFileAttributesA(filename)
@@ -237,7 +228,7 @@ proc existsFile*(filename: string): bool =
     var res: TStat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-proc existsDir*(dir: string): bool =
+proc existsDir*(dir: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true iff the directory `dir` exists. If `dir` is a file, false
   ## is returned.
   when defined(windows):
@@ -248,7 +239,7 @@ proc existsDir*(dir: string): bool =
     var res: TStat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
-proc getLastModificationTime*(file: string): TTime =
+proc getLastModificationTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: TStat
@@ -261,7 +252,7 @@ proc getLastModificationTime*(file: string): TTime =
     result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
     findclose(h)
 
-proc getLastAccessTime*(file: string): TTime =
+proc getLastAccessTime*(file: string): TTime {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: TStat
@@ -274,7 +265,7 @@ proc getLastAccessTime*(file: string): TTime =
     result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
     findclose(h)
 
-proc getCreationTime*(file: string): TTime = 
+proc getCreationTime*(file: string): TTime {.rtl, extern: "nos$1".} = 
   ## Returns the `file`'s creation time.
   when defined(posix):
     var res: TStat
@@ -287,12 +278,12 @@ proc getCreationTime*(file: string): TTime =
     result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
     findclose(h)
 
-proc fileNewer*(a, b: string): bool =
+proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   result = getLastModificationTime(a) - getLastModificationTime(b) > 0
 
-proc getCurrentDir*(): string =
+proc getCurrentDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the current working directory.
   const bufsize = 512 # should be enough
   result = newString(bufsize)
@@ -314,7 +305,8 @@ proc setCurrentDir*(newDir: string) {.inline.} =
   else:
     if chdir(newDir) != 0'i32: OSError()
 
-proc JoinPath*(head, tail: string): string {.noSideEffect.} =
+proc JoinPath*(head, tail: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
   ## For example on Unix:
@@ -342,7 +334,8 @@ proc JoinPath*(head, tail: string): string {.noSideEffect.} =
     else:
       result = head & DirSep & tail
 
-proc JoinPath*(parts: openarray[string]): string {.noSideEffect.} =
+proc JoinPath*(parts: openarray[string]): string {.noSideEffect,
+  rtl, extern: "nos$1OpenArray".} =
   ## The same as `JoinPath(head, tail)`, but works with any number
   ## of directory parts.
   result = parts[0]
@@ -370,7 +363,8 @@ proc SplitPath*(path: string, head, tail: var string) {.noSideEffect,
     head = ""
     tail = path # make a string copy here
 
-proc SplitPath*(path: string): tuple[head, tail: string] {.noSideEffect.} =
+proc SplitPath*(path: string): tuple[head, tail: string] {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into (head, tail), so that
   ## ``JoinPath(head, tail) == path``.
   ##
@@ -395,7 +389,8 @@ proc SplitPath*(path: string): tuple[head, tail: string] {.noSideEffect.} =
     result.head = ""
     result.tail = path
 
-proc parentDir*(path: string): string {.noSideEffect.} =
+proc parentDir*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
   ## This is often the same as the ``head`` result of ``splitPath``.
@@ -434,7 +429,8 @@ proc searchExtPos(s: string): int =
     elif s[i] in {dirsep, altsep}:
       break # do not skip over path
 
-proc splitFile*(path: string): tuple[dir, name, ext: string] {.noSideEffect.} =
+proc splitFile*(path: string): tuple[dir, name, ext: string] {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into (dir, filename, extension).
   ## `dir` does not end in `DirSep`.
   ## `extension` includes the leading dot.
@@ -472,7 +468,8 @@ proc extractDir*(path: string): string {.noSideEffect, deprecated.} =
   ## **Deprecated since version 0.8.2**: Use ``splitFile(path).dir`` instead.
   result = splitFile(path).dir
 
-proc extractFilename*(path: string): string {.noSideEffect.} =
+proc extractFilename*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as 
   ## ``name & ext`` from ``splitFile(path)``.
   if path.len == 0 or path[path.len-1] in {dirSep, altSep}:
@@ -480,7 +477,7 @@ proc extractFilename*(path: string): string {.noSideEffect.} =
   else:
     result = splitPath(path).tail
 
-proc expandFilename*(filename: string): string =
+proc expandFilename*(filename: string): string {.rtl, extern: "nos$1".} =
   ## Returns the full path of `filename`, raises EOS in case of an error.
   when defined(windows):
     var unused: cstring
@@ -524,7 +521,8 @@ proc extractFileTrunk*(filename: string): string {.noSideEffect, deprecated.} =
   ## **Deprecated since version 0.8.2**: Use ``splitFile(path).name`` instead.
   result = splitFile(filename).name
   
-proc ChangeFileExt*(filename, ext: string): string {.noSideEffect.} =
+proc ChangeFileExt*(filename, ext: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Changes the file extension to `ext`.
   ##
   ## If the `filename` has no extension, `ext` will be added.
@@ -536,7 +534,8 @@ proc ChangeFileExt*(filename, ext: string): string {.noSideEffect.} =
   if extPos < 0: result = filename & normExt(ext)
   else: result = copy(filename, 0, extPos-1) & normExt(ext)
 
-proc addFileExt*(filename, ext: string): string {.noSideEffect.} =
+proc addFileExt*(filename, ext: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Adds the file extension `ext` to `filename`, unless
   ## `filename` already has an extension.
   ##
@@ -552,7 +551,8 @@ proc AppendFileExt*(filename, ext: string): string {.
   ## **Deprecated since version 0.8.2**: Use `addFileExt` instead.
   result = addFileExt(filename, ext)
 
-proc cmpPaths*(pathA, pathB: string): int {.noSideEffect.} =
+proc cmpPaths*(pathA, pathB: string): int {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Compares two paths.
   ##
   ## On a case-sensitive filesystem this is done
@@ -566,7 +566,7 @@ proc cmpPaths*(pathA, pathB: string): int {.noSideEffect.} =
   else:
     result = cmpIgnoreCase(pathA, pathB)
 
-proc sameFile*(path1, path2: string): bool =
+proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
   ## Returns True if both pathname arguments refer to the same file or
   ## directory (as indicated by device number and i-node number).
   ## Raises an exception if an stat() call on either pathname fails.
@@ -590,7 +590,7 @@ proc sameFile*(path1, path2: string): bool =
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
-proc sameFileContent*(path1, path2: string): bool =
+proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
   ## Returns True if both pathname arguments refer to files with identical
   ## binary content.
   const
@@ -620,7 +620,7 @@ proc sameFileContent*(path1, path2: string): bool =
   close(a)
   close(b)
 
-proc copyFile*(dest, source: string) {.deprecated.} =
+proc copyFile*(dest, source: string) {.deprecated, rtl, extern: "nos$1".} =
   ## Copies a file from `source` to `dest`. If this fails,
   ## `EOS` is raised.
   ## **Deprecated since version 0.8.8**: Use this proc with named arguments
@@ -650,13 +650,13 @@ proc copyFile*(dest, source: string) {.deprecated.} =
     close(s)
     close(d)
 
-proc moveFile*(dest, source: string) {.deprecated.} =
+proc moveFile*(dest, source: string) {.deprecated, rtl, extern: "nos$1".} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
   ## **Deprecated since version 0.8.8**: Use this proc with named arguments
   ## only, because the order will change!
   if crename(source, dest) != 0'i32: OSError()
 
-proc removeFile*(file: string) =
+proc removeFile*(file: string) {.rtl, extern: "nos$1".} =
   ## Removes the `file`. If this fails, `EOS` is raised.
   if cremove(file) != 0'i32: OSError()
 
@@ -664,7 +664,7 @@ proc executeShellCommand*(command: string): int {.deprecated.} =
   ## **Deprecated since version 0.8.2**: Use `execShellCmd` instead.
   result = csystem(command)
 
-proc execShellCmd*(command: string): int =
+proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
   ## Executes a shell command.
   ##
   ## Command has the form 'program args' where args are the command
@@ -674,6 +674,9 @@ proc execShellCmd*(command: string): int =
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
   result = csystem(command)
+
+# Environment handling cannot be put into RTL, because the ``envPairs`` 
+# iterator depends on ``environment``.
 
 var
   envComputed: bool = false
@@ -700,8 +703,8 @@ when defined(windows):
       discard FreeEnvironmentStringsA(env)
 
 else:
-  var
-    gEnv {.importc: "gEnv".}: ptr array [0..10_000, CString]
+  var gEnv {.importc: "environ".}: cstringArray
+  # var gEnv {.importc: "gEnv".}: cstringArray
 
   proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
@@ -897,7 +900,7 @@ proc rawRemoveDir(dir: string) =
   else:
     if rmdir(dir) != 0'i32: OSError()
 
-proc removeDir*(dir: string) =
+proc removeDir*(dir: string) {.rtl, extern: "nos$1".} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively). If this fails, `EOS` is raised.
   for kind, path in walkDir(dir): 
@@ -914,7 +917,7 @@ proc rawCreateDir(dir: string) =
     if CreateDirectoryA(dir, nil) == 0'i32 and GetLastError() != 183'i32:
       OSError()
 
-proc createDir*(dir: string) =
+proc createDir*(dir: string) {.rtl, extern: "nos$1".} =
   ## Creates the directory `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
@@ -925,7 +928,8 @@ proc createDir*(dir: string) =
     if dir[i] in {dirsep, altsep}: rawCreateDir(copy(dir, 0, i-1))
   rawCreateDir(dir)
 
-proc parseCmdLine*(c: string): seq[string] =
+proc parseCmdLine*(c: string): seq[string] {.
+  noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a command line into several components;  
   ## This proc is only occassionally useful, better use the `parseopt` module.
   ##
@@ -1025,7 +1029,8 @@ type
     fpOthersWrite,         ## write access for others
     fpOthersRead           ## read access for others
 
-proc getFilePermissions*(filename: string): set[TFilePermission] =
+proc getFilePermissions*(filename: string): set[TFilePermission] {.
+  rtl, extern: "nos$1".} =
   ## retrieves file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
@@ -1053,7 +1058,8 @@ proc getFilePermissions*(filename: string): set[TFilePermission] =
     else:
       result = {fpUserExec..fpOthersRead}
   
-proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) =
+proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) {.
+  rtl, extern: "nos$1".} =
   ## sets the file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is changed, depending on
   ## ``fpUserWrite``.
@@ -1083,7 +1089,8 @@ proc setFilePermissions*(filename: string, permissions: set[TFilePermission]) =
       OSError()
   
 proc inclFilePermissions*(filename: string, 
-                          permissions: set[TFilePermission]) =
+                          permissions: set[TFilePermission]) {.
+  rtl, extern: "nos$1".} =
   ## a convenience procedure for: 
   ##
   ## .. code-block:: nimrod
@@ -1091,19 +1098,20 @@ proc inclFilePermissions*(filename: string,
   setFilePermissions(filename, getFilePermissions(filename)+permissions)
 
 proc exclFilePermissions*(filename: string, 
-                          permissions: set[TFilePermission]) =
+                          permissions: set[TFilePermission]) {.
+  rtl, extern: "nos$1".} =
   ## a convenience procedure for: 
   ##
   ## .. code-block:: nimrod
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-proc getHomeDir*(): string =
+proc getHomeDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the home directory of the current user.
   when defined(windows): return getEnv("USERPROFILE") & "\\"
   else: return getEnv("HOME") & "/"
 
-proc getConfigDir*(): string =
+proc getConfigDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the config directory of the current user for applications.
   when defined(windows): return getEnv("APPDATA") & "\\"
   else: return getEnv("HOME") & "/.config/"
@@ -1117,24 +1125,32 @@ when defined(windows):
   var
     ownArgv: seq[string]
 
-  proc paramStr(i: int): string =
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
-    return ownArgv[i]
-
-  proc paramCount(): int =
+  proc paramCount*(): int {.rtl, extern: "nos$1".} =
+    ## Returns the number of command line arguments given to the
+    ## application.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
     result = ownArgv.len-1
 
-else:
+  proc paramStr*(i: int): string {.rtl, extern: "nos$1".} =
+    ## Returns the `i`-th command line argument given to the
+    ## application.
+    ##
+    ## `i` should be in the range `1..paramCount()`, else
+    ## the `EOutOfIndex` exception is raised.
+    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
+    return ownArgv[i]
+
+elif not defined(createNimRtl):
+  # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr(i: int): string =
+  proc paramStr*(i: int): string =
     if i < cmdCount and i >= 0: return $cmdLine[i]
     raise newException(EInvalidIndex, "invalid index")
 
-  proc paramCount(): int = return cmdCount-1
+  proc paramCount*(): int = return cmdCount-1
 
 when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
   proc getApplAux(procPath: string): string =
@@ -1153,7 +1169,7 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var int32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
-proc getApplicationFilename*(): string =
+proc getApplicationFilename*(): string {.rtl, extern: "nos$1".} =
   ## Returns the filename of the application's executable.
 
   # Linux: /proc/<pid>/exe
@@ -1190,11 +1206,11 @@ proc getApplicationFilename*(): string =
           var x = joinPath(p, result)
           if ExistsFile(x): return x
 
-proc getApplicationDir*(): string =
+proc getApplicationDir*(): string {.rtl, extern: "nos$1".} =
   ## Returns the directory of the application's executable.
   result = splitFile(getApplicationFilename()).dir
 
-proc sleep*(milsecs: int) =
+proc sleep*(milsecs: int) {.rtl, extern: "nos$1".} =
   ## sleeps `milsecs` milliseconds.
   when defined(windows):
     winlean.sleep(int32(milsecs))
@@ -1204,7 +1220,7 @@ proc sleep*(milsecs: int) =
     a.tv_nsec = (milsecs mod 1000) * 1000
     discard posix.nanosleep(a, b)
 
-proc getFileSize*(file: string): biggestInt =
+proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1".} =
   ## returns the file size of `file`. Can raise ``EOS``. 
   when defined(windows):
     var a: TWin32FindData
