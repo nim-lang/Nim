@@ -25,7 +25,8 @@ proc skipLine(p: var TParser) =
 
 proc parseDefineBody(p: var TParser, tmplDef: PNode): string = 
   if p.tok.xkind == pxCurlyLe or 
-    (p.tok.xkind == pxSymbol and (declKeyword(p.tok.s) or stmtKeyword(p.tok.s))):
+    (p.tok.xkind == pxSymbol and (
+        declKeyword(p.tok.s) or stmtKeyword(p.tok.s))):
     addSon(tmplDef, statement(p))
     result = "stmt"
   elif p.tok.xkind in {pxLineComment, pxNewLine}:
@@ -272,22 +273,25 @@ proc parseIfDir(p: var TParser): PNode =
   eatNewLine(p, nil)
   parseIfDirAux(p, result)
 
-proc parseMangleDir(p: var TParser) = 
+proc parsePegLit(p: var TParser): TPeg =
   var col = getColumn(p.lex) + 2
   getTok(p)
   if p.tok.xkind != pxStrLit: ExpectIdent(p)
   try:
-    var pattern = parsePeg(
-      input = p.tok.s, 
+    result = parsePeg(
+      input = if p.tok.xkind == pxStrLit: p.tok.s else: escapePeg(p.tok.s), 
       filename = p.lex.filename, 
       line = p.lex.linenumber, 
       col = col)
     getTok(p)
-    if p.tok.xkind != pxStrLit: ExpectIdent(p)
-    p.options.mangleRules.add((pattern, p.tok.s))
-    getTok(p)
   except EInvalidPeg:
     parMessage(p, errUser, getCurrentExceptionMsg())
+
+proc parseMangleDir(p: var TParser) = 
+  var pattern = parsePegLit(p)
+  if p.tok.xkind != pxStrLit: ExpectIdent(p)
+  p.options.mangleRules.add((pattern, p.tok.s))
+  getTok(p)
   eatNewLine(p, nil)
 
 proc parseDir(p: var TParser): PNode = 
@@ -298,7 +302,7 @@ proc parseDir(p: var TParser): PNode =
   of "ifdef": result = parseIfdef(p)
   of "ifndef": result = parseIfndef(p)
   of "if": result = parseIfDir(p)
-  of "cdecl", "stdcall", "ref", "skipinclude": 
+  of "cdecl", "stdcall", "ref", "skipinclude", "typeprefixes", "skipcomments": 
     discard setOption(p.options, p.tok.s)
     getTok(p)
     eatNewLine(p, nil)
@@ -315,6 +319,10 @@ proc parseDir(p: var TParser): PNode =
     var L = p.options.macros.len
     setLen(p.options.macros, L+1)
     parseDef(p, p.options.macros[L])
+  of "private":
+    var pattern = parsePegLit(p)
+    p.options.privateRules.add(pattern)
+    eatNewLine(p, nil)
   else: 
     # ignore unimportant/unknown directive ("undef", "pragma", "error")
     skipLine(p)

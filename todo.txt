@@ -1,6 +1,7 @@
 For version 0.8.10
 ==================
 
+- accurate file/line information
 - exception propagation across DLLs
 - fix exception handling
 - fix implicit generic routines
@@ -21,7 +22,6 @@ Bugs
   counting is wrong; try to reproduce this in the GC test
 - the parser allows empty object case branches
 - SDL event handling
-- accurate file/line information
 
 
 To implement

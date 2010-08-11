@@ -55,10 +55,6 @@ String handling
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
 
-* `re <re.html>`_
-  This module contains procedures and operators for handling regular
-  expressions. Consider using `pegs` instead.
-
 * `pegs <pegs.html>`_
   This module contains procedures and operators for handling PEGs.
 
@@ -208,22 +204,12 @@ Multimedia support
 Impure libraries
 ================
 
-* `graphics <graphics.html>`_
-  This module implements graphical output for Nimrod; the current
-  implementation uses SDL but the interface is meant to support multiple
-  backends some day.
+Regular expressions
+-------------------
 
-* `dialogs <dialogs.html>`_
-  This module implements portable dialogs for Nimrod; the implementation
-  builds on the GTK interface. On Windows, native dialogs are shown if
-  appropriate.
-
-* `zipfiles <zipfiles.html>`_
-  This module implements a zip archive creator/reader/modifier.
-
-* `web <web.html>`_
-  This module contains simple high-level procedures for dealing with the
-  Web like loading the contents of a Web page from an URL.
+* `re <re.html>`_
+  This module contains procedures and operators for handling regular
+  expressions. The current implementation uses PCRE.
 
 
 Database support
@@ -242,6 +228,27 @@ Database support
   for other databases too.
 
 
+Other
+-----
+
+* `graphics <graphics.html>`_
+  This module implements graphical output for Nimrod; the current
+  implementation uses SDL but the interface is meant to support multiple
+  backends some day.
+
+* `dialogs <dialogs.html>`_
+  This module implements portable dialogs for Nimrod; the implementation
+  builds on the GTK interface. On Windows, native dialogs are shown if
+  appropriate.
+
+* `zipfiles <zipfiles.html>`_
+  This module implements a zip archive creator/reader/modifier.
+
+* `web <web.html>`_
+  This module contains simple high-level procedures for dealing with the
+  Web like loading the contents of a Web page from an URL.
+
+
 
 Wrappers
 ========
@@ -249,96 +256,28 @@ Wrappers
 The generated HTML for some of these wrappers is so huge, that it is
 not contained in the distribution. You can then find them on the website.
 
-* `posix <posix.html>`_
-  Contains a wrapper for the POSIX standard.
+Windows specific
+----------------
+
 * `windows <windows.html>`_
   Contains a wrapper for the Win32 API.
-* `mysql <mysql.html>`_
-  Contains a wrapper for the mySQL API.
-* `sqlite3 <sqlite3.html>`_
-  Contains a wrapper for SQLite 3 API.
-* `libcurl <libcurl.html>`_
-  Contains a wrapper for the libcurl library.
+* `ole2 <ole2.html>`_
+  Contains GUIDs for OLE2 automation support.
 * `shellapi <shellapi.html>`_
   Contains a wrapper for the ``shellapi.h`` header.
 * `shfolder <shfolder.html>`_
   Contains a wrapper for the ``shfolder.h`` header.
 * `mmsystem <mmsystem.html>`_
   Contains a wrapper for the ``mmsystem.h`` header.
-* `ole2 <ole2.html>`_
-  Contains GUIDs for OLE2 automation support.
 * `nb30 <nb30.html>`_
   This module contains the definitions for portable NetBIOS 3.0 support.
-* `cairo <cairo.html>`_
-  Wrapper for the cairo library.
-* `cairoft <cairoft.html>`_
-  Wrapper for the cairoft library.
-* `cairowin32 <cairowin32.html>`_
-  Wrapper for the cairowin32 library.
-* `cairoxlib <cairoxlib.html>`_
-  Wrapper for the cairoxlib library.
-* `atk <atk.html>`_
-  Wrapper for the atk library.
-* `gdk2 <gdk2.html>`_
-  Wrapper for the gdk2 library.
-* `gdk2pixbuf <gdk2pixbuf.html>`_
-  Wrapper for the gdk2pixbuf library.
-* `gdkglext <gdkglext.html>`_
-  Wrapper for the gdkglext library.
-* `glib2 <glib2.html>`_
-  Wrapper for the glib2 library.
-* `gtk2 <gtk2.html>`_
-  Wrapper for the gtk2 library.
-* `gtkglext <gtkglext.html>`_
-  Wrapper for the gtkglext library.
-* `gtkhtml <gtkhtml.html>`_
-  Wrapper for the gtkhtml library.
-* `libglade2 <libglade2.html>`_
-  Wrapper for the libglade2 library.
-* `pango <pango.html>`_
-  Wrapper for the pango library.
-* `pangoutils <pangoutils.html>`_
-  Wrapper for the pangoutils library.
-* `gl <gl.html>`_
-  Part of the wrapper for OpenGL.
-* `glext <glext.html>`_
-  Part of the wrapper for OpenGL.
-* `glu <glu.html>`_
-  Part of the wrapper for OpenGL.
-* `glut <glut.html>`_
-  Part of the wrapper for OpenGL.
-* `glx <glx.html>`_
-  Part of the wrapper for OpenGL.
-* `wingl <wingl.html>`_
-  Part of the wrapper for OpenGL.
-* `lua <lua.html>`_
-  Part of the wrapper for Lua.
-* `lualib <lualib.html>`_
-  Part of the wrapper for Lua.
-* `lauxlib <lauxlib.html>`_
-  Part of the wrapper for Lua.
-* `tcl <tcl.html>`_
-  Wrapper for the TCL programming language.
-* `python <python.html>`_
-  Wrapper for the Python programming language.
-* `odbcsql <odbcsql.html>`_
-  interface to the ODBC driver.
-* `zlib <zlib.html>`_
-  Wrapper for the zlib library.
-* `sdl <sdl.html>`_
-  Part of the wrapper for SDL.
-* `sdl_gfx <sdl_gfx.html>`_
-  Part of the wrapper for SDL.
-* `sdl_image <sdl_image.html>`_
-  Part of the wrapper for SDL.
-* `sdl_mixer <sdl_mixer.html>`_
-  Part of the wrapper for SDL.
-* `sdl_net <sdl_net.html>`_
-  Part of the wrapper for SDL.
-* `sdl_ttf <sdl_ttf.html>`_
-  Part of the wrapper for SDL.
-* `smpeg <smpeg.html>`_
-  Part of the wrapper for SDL.
+
+
+UNIX specific
+-------------
+
+* `posix <posix.html>`_
+  Contains a wrapper for the POSIX standard.
 * `cursorfont <cursorfont.html>`_
   Part of the wrapper for X11.
 * `keysym <keysym.html>`_
@@ -377,9 +316,126 @@ not contained in the distribution. You can then find them on the website.
   Part of the wrapper for X11.
 * `xvlib <xvlib.html>`_
   Part of the wrapper for X11.
+
+
+Graphics libraries
+------------------
+
+* `cairo <cairo.html>`_
+  Wrapper for the cairo library.
+* `cairoft <cairoft.html>`_
+  Wrapper for the cairoft library.
+* `cairowin32 <cairowin32.html>`_
+  Wrapper for the cairowin32 library.
+* `cairoxlib <cairoxlib.html>`_
+  Wrapper for the cairoxlib library.
+
+* `sdl <sdl.html>`_
+  Part of the wrapper for SDL.
+* `sdl_gfx <sdl_gfx.html>`_
+  Part of the wrapper for SDL.
+* `sdl_image <sdl_image.html>`_
+  Part of the wrapper for SDL.
+* `sdl_mixer <sdl_mixer.html>`_
+  Part of the wrapper for SDL.
+* `sdl_net <sdl_net.html>`_
+  Part of the wrapper for SDL.
+* `sdl_ttf <sdl_ttf.html>`_
+  Part of the wrapper for SDL.
+* `smpeg <smpeg.html>`_
+  Part of the wrapper for SDL.
+
+* `gl <gl.html>`_
+  Part of the wrapper for OpenGL.
+* `glext <glext.html>`_
+  Part of the wrapper for OpenGL.
+* `glu <glu.html>`_
+  Part of the wrapper for OpenGL.
+* `glut <glut.html>`_
+  Part of the wrapper for OpenGL.
+* `glx <glx.html>`_
+  Part of the wrapper for OpenGL.
+* `wingl <wingl.html>`_
+  Part of the wrapper for OpenGL.
+
+
+GUI libraries
+-------------
+* `atk <atk.html>`_
+  Wrapper for the atk library.
+* `gdk2 <gdk2.html>`_
+  Wrapper for the gdk2 library.
+* `gdk2pixbuf <gdk2pixbuf.html>`_
+  Wrapper for the gdk2pixbuf library.
+* `gdkglext <gdkglext.html>`_
+  Wrapper for the gdkglext library.
+* `glib2 <glib2.html>`_
+  Wrapper for the glib2 library.
+* `gtk2 <gtk2.html>`_
+  Wrapper for the gtk2 library.
+* `gtkglext <gtkglext.html>`_
+  Wrapper for the gtkglext library.
+* `gtkhtml <gtkhtml.html>`_
+  Wrapper for the gtkhtml library.
+* `libglade2 <libglade2.html>`_
+  Wrapper for the libglade2 library.
+* `pango <pango.html>`_
+  Wrapper for the pango library.
+* `pangoutils <pangoutils.html>`_
+  Wrapper for the pangoutils library.
+* `iup <iup.html>`_
+  Wrapper of the IUP GUI library.
+
+
+Database support
+----------------
+
+* `postgres <postgres.html>`_
+  Contains a wrapper for the PostgreSQL API.
+* `mysql <mysql.html>`_
+  Contains a wrapper for the mySQL API.
+* `sqlite3 <sqlite3.html>`_
+  Contains a wrapper for SQLite 3 API.
+* `odbcsql <odbcsql.html>`_
+  interface to the ODBC driver.
+
+
+XML Processing
+--------------
+
+* `expat <expat.html>`_
+  Wrapper of the expat XML parser.
+
+
+Internet Protocols and Support
+------------------------------
+
+* `libcurl <libcurl.html>`_
+  Contains a wrapper for the libcurl library.
+
+
+Scripting languages
+-------------------
+
+* `lua <lua.html>`_
+  Part of the wrapper for Lua.
+* `lualib <lualib.html>`_
+  Part of the wrapper for Lua.
+* `lauxlib <lauxlib.html>`_
+  Part of the wrapper for Lua.
+* `tcl <tcl.html>`_
+  Wrapper for the TCL programming language.
+* `python <python.html>`_
+  Wrapper for the Python programming language.
+
+
+Data Compression and Archiving
+------------------------------
+
+* `zlib <zlib.html>`_
+  Wrapper for the zlib library.
+
 * `libzip <libzip.html>`_
   Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
   Dieter Baron and Thomas Klausner.
-* `iup <iup.html>`_
-  Wrapper of the IUP GUI library.
 

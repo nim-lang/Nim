@@ -12,7 +12,7 @@ import
   clex, cparse
 
 const
-  Version = "0.8.10"
+  Version = NimrodVersion
   Usage = """
 c2nim - C to Nimrod source converter
   (c) 2010 Andreas Rumpf
@@ -29,6 +29,8 @@ Options:
   --suffix:SUFFIX        strip suffix for the generated Nimrod identifiers 
                          (multiple --suffix options are supported)
   --skipinclude          do not convert ``#include`` to ``import``
+  --typeprefixes         generate ``T`` and ``P`` type prefixes
+  --skipcomments         do not copy comments
   -v, --version          write c2nim's version
   -h, --help             show this help
 """
