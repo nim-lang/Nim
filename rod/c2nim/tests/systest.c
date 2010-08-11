@@ -9,6 +9,38 @@ extern "C" {
 #  endif
 #endif
 
+#private expatDll
+
+#if !defined(expatDll)
+#  if defined(windows)
+#    define expatDll "expat.dll"
+#  elif defined(macosx)
+#    define expatDll "libexpat.dynlib"
+#  else
+#    define expatDll "libexpat.so(.1|)"
+#  endif
+#endif
+
+#mangle "'XML_'{.*}" "$1"
+#private "'XML_ParserStruct'"
+
+#mangle cunsignedint cint
+
+unsigned int uiVar;
+
+#private "@('_'!.)"
+unsigned int myPrivateVar__;
+
+
+struct XML_ParserStruct;
+
+#def XMLCALL __cdecl
+
+typedef void (XMLCALL *XML_ElementDeclHandler) (void *userData,
+                                                const XML_Char *name,
+                                                XML_Content *model);
+
+
 void* x;
 void* fn(void);
 void (*fn)(void);

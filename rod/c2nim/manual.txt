@@ -3,7 +3,7 @@
 =================================
 
 :Author: Andreas Rumpf
-:Version: 0.8.10
+:Version: |nimrodversion|
 
 .. contents::
 
@@ -210,6 +210,47 @@ identifier should be converted:
 
 .. code-block:: C
   #mangle "'GTK_'{.*}" "TGtk$1"
+
+For convenience the PEG pattern and the replacement can be a single identifiers
+too, there is no need to quote them: 
+
+.. code-block:: C
+  #mangle ssize_t  int
+  // is short for:
+  #mangle "'ssize_t'" "int"
+
+
+``#private`` directive
+----------------------
+
+By default c2nim marks every top level identifier (proc name, variable, etc.)
+as exported (the export marker is ``*`` in Nimrod). With the ``#private`` 
+directive identifiers can be marked as private so that the resulting Nimrod
+module does not export them. The ``#private`` directive takes a PEG pattern:
+
+.. code-block:: C
+  #private "@('_'!.)" // all identifiers ending in '_' are private
+  
+Note: The pattern refers to the original C identifiers, not to the resulting
+identifiers after mangling!
+
+
+``#skipcomments`` directive
+---------------------------
+**Note**: There is also a ``--skipcomments`` command line option that can be
+used for the same purpose.
+
+The ``#skipcomments`` directive can be put into the C code to make c2nim
+ignore comments and not copy them into the generated Nimrod file.
+
+
+``#typeprefixes`` directive
+---------------------------
+**Note**: There is also a ``--typeprefixes`` command line option that can be
+used for the same purpose.
+
+The ``#typeprefixes`` directive can be put into the C code to make c2nim
+generate the ``T`` or ``P`` prefix for every defined type.
 
 
 ``#def`` directive

@@ -14,7 +14,7 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 
-{.push hints: on.}
+{.push hints: off.}
 
 type
   int* {.magic: Int.} ## default integer type; bitwidth depends on

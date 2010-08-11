@@ -739,7 +739,6 @@ proc IdTablePut(t: var TIdTable, key: PIdObj, val: PObject) =
     inc(t.counter)
 
 proc writeIdNodeTable(t: TIdNodeTable) = 
-  var h: THash
   nil
 
 proc IdNodeTableRawGet(t: TIdNodeTable, key: PIdObj): int = 
