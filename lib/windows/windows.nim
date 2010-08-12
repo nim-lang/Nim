@@ -377,9 +377,9 @@ type
   MakeIntResourceW* = PWideChar
   MakeIntResource* = MakeIntResourceA
 
-  #
-  #    Definitions for callback procedures
-  #
+#
+#    Definitions for callback procedures
+#
 type
   BFFCALLBACK* = proc (para1: HWND, para2: UINT, para3: LPARAM, para4: LPARAM): int32{.
       stdcall.}
@@ -458,14 +458,6 @@ type
       stdcall.}
   PFNPROCESSPOLICIES* = proc (para1: HWND, para2: LPCTSTR, para3: LPCTSTR,
                               para4: LPCTSTR, para5: DWORD): WINBOOL{.stdcall.}
-  #Not convertable by H2PAS
-                                                                                #  #define SECURITY_NULL_SID_AUTHORITY     {0,0,0,0,0,0}
-                                                                                #  #define SECURITY_WORLD_SID_AUTHORITY    {0,0,0,0,0,1}
-                                                                                #  #define SECURITY_LOCAL_SID_AUTHORITY    {0,0,0,0,0,2}
-                                                                                #  #define SECURITY_CREATOR_SID_AUTHORITY  {0,0,0,0,0,3}
-                                                                                #  #define SECURITY_NON_UNIQUE_AUTHORITY   {0,0,0,0,0,4}
-                                                                                #  #define SECURITY_NT_AUTHORITY           {0,0,0,0,0,5}
-                                                                                #
 
 const
   SE_CREATE_TOKEN_NAME* = "SeCreateTokenPrivilege"
@@ -2357,12 +2349,12 @@ const
   WINSTA_READSCREEN* = 0x00000200
   WINSTA_WRITEATTRIBUTES* = 0x00000010
   # DdeCallback
-                                       # DdeClientTransaction
-                                       # DdeEnableCallback
-                                       # DdeGetLastError
-                                       # DdeInitialize
-                                       # DdeNameService
-                                       # DebugProc
+  # DdeClientTransaction
+  # DdeEnableCallback
+  # DdeGetLastError
+  # DdeInitialize
+  # DdeNameService
+  # DebugProc
   WH_CALLWNDPROC* = 4
   WH_CALLWNDPROCRET* = 12
   WH_CBT* = 5
@@ -2725,9 +2717,9 @@ const
   FILE_NOTIFY_CHANGE_LAST_WRITE* = 16
   FILE_NOTIFY_CHANGE_SECURITY* = 256
   # FindFirstPrinterChangeNotification
-                                     # FindNextPrinterNotification
-                                     # FMExtensionProc
-                                     # FoldString
+  # FindNextPrinterNotification
+  # FMExtensionProc
+  # FoldString
   MAP_FOLDCZONE* = 16
   MAP_FOLDDIGITS* = 128
   MAP_PRECOMPOSED* = 32
@@ -2755,7 +2747,7 @@ const
   CTRL_LOGOFF_EVENT* = 5
   CTRL_SHUTDOWN_EVENT* = 6
   # GetAddressByName
-                              # GetArcDirection
+  # GetArcDirection
   AD_COUNTERCLOCKWISE* = 1
   AD_CLOCKWISE* = 2
   # GetBinaryTypes
@@ -3066,13 +3058,13 @@ const
   PM_REMOVE* = 1
   PM_NOYIELD* = 2
   # GetNamedPipeHandleState
-                              #   PIPE_NOWAIT = 1; already above
-                              #   PIPE_READMODE_MESSAGE = 2;already above
-                              # GetNamedPipeInfo
+  #   PIPE_NOWAIT = 1; already above
+  #   PIPE_READMODE_MESSAGE = 2;already above
+  # GetNamedPipeInfo
   PIPE_CLIENT_END* = 0
   PIPE_SERVER_END* = 1
   #   PIPE_TYPE_MESSAGE = 4;already above
-                              # GetNextWindow, GetWindow
+  # GetNextWindow, GetWindow
   GW_HWNDNEXT* = 2
   GW_HWNDPREV* = 3
   GW_CHILD* = 5
@@ -3207,7 +3199,7 @@ const
   SM_ARRANGE* = 56
   SM_CLEANBOOT* = 67
   # The right value for SM_CEMETRICS for NT 3.5 is 75.  For Windows 95
-                     #     and NT 4.0, it is 76.  The meaning is undocumented, anyhow.
+  #     and NT 4.0, it is 76.  The meaning is undocumented, anyhow.
   SM_CMETRICS* = 76
   SM_CMOUSEBUTTONS* = 43
   SM_CXBORDER* = 5
@@ -3261,7 +3253,7 @@ const
   SM_CYSMSIZE* = 53
   SM_CXVSCROLL* = 2
   #SM_CYHSCROLL = 3;already above
-                              #SM_CXHSCROLL = 21;already above
+  #SM_CXHSCROLL = 21;already above
   SM_CYVSCROLL* = 20
   SM_CYVTHUMB* = 9
   SM_CYCAPTION* = 4
@@ -3404,7 +3396,7 @@ const
   CLR_DEFAULT* = 0xFF000000
   CLR_INVALID* = 0xFFFFFFFF
   # ImageList_LoadImage
-                              #LR_DEFAULTCOLOR = 0;already above
+  #LR_DEFAULTCOLOR = 0;already above
   LR_LOADFROMFILE* = 16
   LR_LOADMAP3DCOLORS* = 4096
   LR_LOADTRANSPARENT* = 32
@@ -3564,8 +3556,8 @@ const
   LOCKFILE_FAIL_IMMEDIATELY* = 1
   LOCKFILE_EXCLUSIVE_LOCK* = 2
   # LogonUser
-                               # LZCopy, LZInit, LZRead
-                               # MessageBeep, MessageBox
+  # LZCopy, LZInit, LZRead
+  # MessageBeep, MessageBox
   MB_USERICON* = 0x00000080
   MB_ICONASTERISK* = 0x00000040
   MB_ICONEXCLAMATION* = 0x00000030
@@ -3643,11 +3635,11 @@ const
   MB_ERR_INVALID_CHARS* = 8
   MB_USEGLYPHCHARS* = 4
   # NDdeSetTrustedShare
-                              # NetAccessCheck
-                              # NetServerEnum
-                              # NetServiceControl
-                              # NetUserEnum
-                              # OpenProcessToken
+  # NetAccessCheck
+  # NetServerEnum
+  # NetServiceControl
+  # NetUserEnum
+  # OpenProcessToken
   TOKEN_ADJUST_DEFAULT* = 128
   TOKEN_ADJUST_GROUPS* = 64
   TOKEN_ADJUST_PRIVILEGES* = 32
@@ -3704,6 +3696,7 @@ const
   EVENTLOG_WARNING_TYPE* = 2
   EVENTLOG_INFORMATION_TYPE* = 4
   EVENTLOG_AUDIT_SUCCESS* = 8
+
   EVENTLOG_AUDIT_FAILURE* = 16
   # RedrawWindow
   RDW_ERASE* = 4
@@ -3784,7 +3777,7 @@ const
   ICM_OFF* = 1
   ICM_QUERY* = 3
   # SetJob
-                              # Locale Information
+  # Locale Information
   LOCALE_ILANGUAGE* = 1
   LOCALE_SLANGUAGE* = 2
   LOCALE_SENGLANGUAGE* = 4097
@@ -3934,8 +3927,8 @@ const
   # SetProcessWorkingSetSize
   PROCESS_SET_QUOTA* = 256
   # SetPrinter
-                              # SetService
-                              # SetStretchBltMode
+  # SetService
+  # SetStretchBltMode
   BLACKONWHITE* = 1
   COLORONCOLOR* = 3
   HALFTONE* = 4
@@ -3995,9 +3988,9 @@ const
   SWP_NOREPOSITION* = 512
   SWP_NOSENDCHANGING* = 1024
   # SHAddToRecentDocs
-                              # SHAppBarMessage
-                              # SHChangeNotify
-                              # ShellProc
+  # SHAppBarMessage
+  # SHChangeNotify
+  # ShellProc
   HSHELL_ACTIVATESHELLWINDOW* = 3
   HSHELL_GETMINRECT* = 5
   HSHELL_LANGUAGE* = 8
@@ -4007,8 +4000,8 @@ const
   HSHELL_WINDOWCREATED* = 1
   HSHELL_WINDOWDESTROYED* = 2
   # SHGetFileInfo
-                              # SHGetSpecialFolderLocation
-                              # ShowWindow
+  # SHGetSpecialFolderLocation
+  # ShowWindow
   SW_HIDE* = 0
   SW_MAXIMIZE* = 3
   SW_MINIMIZE* = 6
@@ -4977,7 +4970,7 @@ const
   # EM_FINDWORDBREAK message
   WB_CLASSIFY* = 3
   #WB_ISDELIMITER = 2;
-                              #     WB_LEFT = 0; already above
+  #     WB_LEFT = 0; already above
   WB_LEFTBREAK* = 6
   WB_PREVBREAK* = 6
   WB_MOVEWORDLEFT* = 4
@@ -5218,7 +5211,7 @@ const
   # Status window
   SBARS_SIZEGRIP* = 256
   #SBARS_SIZEGRIP = 256;already above
-                              # DL_DRAGGING message
+  # DL_DRAGGING message
   DL_MOVECURSOR* = 3
   DL_COPYCURSOR* = 2
   DL_STOPCURSOR* = 1
@@ -5496,22 +5489,22 @@ const
   MDM_V23_OVERRIDE* = 1024
 
   # Languages
-                           #
-                           #  Language IDs.
-                           #
-                           #  The following two combinations of primary language ID and
-                           #  sublanguage ID have special semantics:
-                           #
-                           #    Primary Language ID   Sublanguage ID      Result
-                           #    -------------------   ---------------     ------------------------
-                           #    LANG_NEUTRAL          SUBLANG_NEUTRAL     Language neutral
-                           #    LANG_NEUTRAL          SUBLANG_DEFAULT     User default language
-                           #    LANG_NEUTRAL          SUBLANG_SYS_DEFAULT System default language
-                           #    LANG_INVARIANT        SUBLANG_NEUTRAL     Invariant locale
-                           #
-                           #
-                           #  Primary language IDs.
-                           #
+  #
+  #  Language IDs.
+  #
+  #  The following two combinations of primary language ID and
+  #  sublanguage ID have special semantics:
+  #
+  #    Primary Language ID   Sublanguage ID      Result
+  #    -------------------   ---------------     ------------------------
+  #    LANG_NEUTRAL          SUBLANG_NEUTRAL     Language neutral
+  #    LANG_NEUTRAL          SUBLANG_DEFAULT     User default language
+  #    LANG_NEUTRAL          SUBLANG_SYS_DEFAULT System default language
+  #    LANG_INVARIANT        SUBLANG_NEUTRAL     Invariant locale
+  #
+  #
+  #  Primary language IDs.
+  #
   LANG_NEUTRAL* = 0x00000000
   LANG_INVARIANT* = 0x0000007F
   LANG_AFRIKAANS* = 0x00000036
@@ -5590,12 +5583,12 @@ const
   LANG_UZBEK* = 0x00000043
   LANG_VIETNAMESE* = 0x0000002A
   #
-                                #  Sublanguage IDs.
-                                #
-                                #  The name immediately following SUBLANG_ dictates which primary
-                                #  language ID that sublanguage ID can be combined with to form a
-                                #  valid language ID.
-                                #
+  #  Sublanguage IDs.
+  #
+  #  The name immediately following SUBLANG_ dictates which primary
+  #  language ID that sublanguage ID can be combined with to form a
+  #  valid language ID.
+  #
   SUBLANG_NEUTRAL* = 0x00000000 # language neutral
   SUBLANG_DEFAULT* = 0x00000001 # user default
   SUBLANG_SYS_DEFAULT* = 0x00000002 # system default
@@ -5707,7 +5700,6 @@ const
   SORT_HUNGARIAN_TECHNICAL* = 0x00000001 # Hungarian Technical order
   SORT_GEORGIAN_TRADITIONAL* = 0x00000000 # Georgian Traditional order
   SORT_GEORGIAN_MODERN* = 0x00000001 # Georgian Modern order
-
                                      # SYSTEM_INFO structure
   PROCESSOR_INTEL_386* = 386
   PROCESSOR_INTEL_486* = 486
@@ -5844,7 +5836,7 @@ const
   SUCCESSFUL_ACCESS_ACE_FLAG* = 0x00000040
   FAILED_ACCESS_ACE_FLAG* = 0x00000080
   # SECURITY_DESCRIPTOR_CONTROL
-                                       #SECURITY_DESCRIPTOR_REVISION = 1;already defined above
+  #SECURITY_DESCRIPTOR_REVISION = 1;already defined above
   SECURITY_DESCRIPTOR_MIN_LENGTH* = 20
   SE_OWNER_DEFAULTED* = 1
   SE_GROUP_DEFAULTED* = 2
@@ -6241,6 +6233,7 @@ const
   HTMENU* = 5
   HTNOWHERE* = 0
   HTREDUCE* = 8
+
   HTRIGHT* = 11
   HTSIZE* = 4
   HTSYSMENU* = 3
@@ -6521,7 +6514,7 @@ const
   BI_RLE4* = 2
   BI_BITFIELDS* = 3
   # Extensions to OpenGL
-                              # ChoosePixelFormat
+  # ChoosePixelFormat
   PFD_DOUBLEBUFFER* = 0x00000001
   PFD_STEREO* = 0x00000002
   PFD_DRAW_TO_WINDOW* = 0x00000004
@@ -6565,9 +6558,9 @@ const
   C3_LEXICAL* = 1024
 
 # --------------------- old stuff, need to organize! ---------------
-                     # BEGINNING of windowsx.h stuff from old headers:
+# BEGINNING of windowsx.h stuff from old headers:
 
-                     # was #define dname(params) def_expr
+# was #define dname(params) def_expr
 proc GetFirstChild*(h: HWND): HWND
   # was #define dname(params) def_expr
 proc GetNextSibling*(h: HWND): HWND
@@ -6629,44 +6622,6 @@ proc GET_WM_VSCROLL_HWND*(w, L: int32): HWND
 proc GET_WM_VSCROLL_POS*(w, L: int32): int32
   # return type might be wrong
   #  Not convertable by H2PAS
-  #  #define FORWARD_WM_CLOSE(h, fn)                 CRACK_VOID_F(fn,(h, WM_CLOSE, 0, 0))
-  #  #define FORWARD_WM_COMMAND(h, id, c, n, fn)     CRACK_VOID_F(fn,(h, WM_COMMAND, MAKEWPARAM(id,n), (LPARAM)c))
-  #  #define FORWARD_WM_CREATE(h, p, fn)             CRACK_BOOL_F(fn,(h, WM_CREATE, 0, (LPARAM)p))
-  #  #define FORWARD_WM_DESTROY(h, fn)               CRACK_VOID_F(fn,(h, WM_DESTROY, 0, 0))
-  #  #define FORWARD_WM_ENABLE(h, e, fn)             CRACK_VOID_F(fn,(h, WM_ENABLE, (WPARAM)e, 0))
-  #  #define FORWARD_WM_INITDIALOG(h, c, L, fn)      CRACK_BOOL_F(fn,(h, WM_INITDIALOG, (WPARAM)c, L))
-  #  #define FORWARD_WM_MDICASCADE(h, c, fn)         CRACK_BOOL_F(fn,(h, WM_MDICASCADE, (WPARAM)c, 0))
-  #  #define FORWARD_WM_MDIDESTROY(h, d, fn)         CRACK_VOID_F(fn,(h, WM_MDIDESTROY, (WPARAM)d, 0))
-  #  #define FORWARD_WM_MDIGETACTIVE(h, fn)          CRACK_HWND_F(fn,(h, WM_MDIGETACTIVE, 0, 0))
-  #  #define FORWARD_WM_MDIICONARRANGE(h, fn)        CRACK_VOID_F(fn,(h, WM_MDIICONARRANGE, 0, 0))
-  #  #define FORWARD_WM_MDISETMENU(h, fr, hf, hw, fn) CRACK_HMENU_F(fn,(h, WM_MDISETMENU, (WPARAM)((fr) ? (hf) : 0), (LPARAM)(hw)))
-  #  #define FORWARD_WM_MDITILE(h, c, fn)            CRACK_BOOL_F(fn,(h, WM_MDITILE, (WPARAM)(c), 0))
-  #  #define FORWARD_WM_PAINT(h, fn)                 CRACK_VOID_F(fn,(h, WM_PAINT, 0, 0))
-  #  #define FORWARD_WM_QUERYENDSESSION(h, fn)       CRACK_BOOL_F(fn,(h, WM_QUERYENDSESSION, 0, 0))
-  #  #define FORWARD_WM_SIZE(h, state, cx, cy, fn)   CRACK_VOID_F(fn,(h, WM_SIZE, (WPARAM)state, MAKELPARAM(cx, cy)))
-  #  #define FORWARD_WM_SYSCOMMAND(h, c, x, y, fn)   CRACK_VOID_F(fn,(h, WM_SYSCOMMAND, (WPARAM)c, MAKELPARAM(x, y)))
-  #
-  #  #define HANDLE_WM_CLOSE(h, w, L, fn)            CRACK_ZERO_F(fn,(h));
-  #  #define HANDLE_WM_COMMAND(h, w, L, fn)          CRACK_ZERO_F(fn,(h, SEXT_LOWORD(w), (HWND)L, HIWORD(w)))
-  #  #define HANDLE_WM_CREATE(h, w, L, fn)           (LRESULT)((fn(h, (CREATESTRUCT  )L)) ? 0 : -1)
-  #  #define HANDLE_WM_DESTROY(h, w, L, fn)          CRACK_ZERO_F(fn,(h))
-  #  #define HANDLE_WM_ENABLE(h, w, L, fn)           CRACK_ZERO_F(fn,(h, (WINBOOL)w))
-  #  #define HANDLE_WM_INITDIALOG(h, w, L, fn)       CRACK_LONG_F(fn,(h, (HWND)w, L))
-  #  #define HANDLE_WM_MDICASCADE(h, w, L, fn)       CRACK_LONG_F(fn, (h, (UINT)w)
-  #  #define HANDLE_WM_MDIDESTROY(h, w, L, fn)       CRACK_ZERO_F(fn,(h, (HWND)w))
-  #  #define HANDLE_WM_MDIGETACTIVE(h, w, L, fn)     CRACK_LONG_F(fn,(h))
-  #  #define HANDLE_WM_MDIICONARRANGE(h, w, L, fn)   CRACK_ZERO_F(fn,(h))
-  #  #define HANDLE_WM_MDISETMENU(h, w, L, fn)       CRACK_LONG_F(fn,(h, (WINBOOL)w, (HMENU)w, (HMENU)L)
-  #  #define HANDLE_WM_MDITILE(h, w, L, fn)          CRACK_LONG_F(fn,(h, (UINT)w))
-  #  #define HANDLE_WM_PAINT(h, w, L, fn)            CRACK_ZERO_F(fn,(h))
-  #  #define HANDLE_WM_QUERYENDSESSION(h, w, L, fn)  MAKELRESULT(fn(h), 0)
-  #  #define HANDLE_WM_SIZE(h, w, L, fn)             CRACK_ZERO_F(fn,(h, (UINT)w, SEXT_LOWORD(L), SEXT_HIWORD(L)))
-  #  #define HANDLE_WM_SYSCOMMAND(h, w, L, fn)       CRACK_ZERO_F(fn,(h, (UINT)w, SEXT_LOWORD(L), SEXT_HIWORD(L)))
-  #
-  # Totally disgusting! get wParam and lParam from the environment !
-  #  Not convertable by H2PAS
-  #  #define HANDLE_MSG(h, message, fn) case message: return HANDLE_##message(h, wParam, lParam, fn)
-  #
   # END OF windowsx.h stuff from old headers
   # ------------------------------------------------------------------
 
@@ -6679,9 +6634,9 @@ const
   SE_ERR_DDEBUSY* = 30
   SE_ERR_NOASSOC* = 31
   # END OF shellapi.h stuff from old headers
-                       #
-                       # ------------------------------------------------------------------
-                       # From ddeml.h in old Cygnus headers
+  #
+  # ------------------------------------------------------------------
+  # From ddeml.h in old Cygnus headers
   XCLASS_BOOL* = 0x00001000
   XCLASS_DATA* = 0x00002000
   XCLASS_FLAGS* = 0x00004000
@@ -6728,7 +6683,7 @@ const
   CP_WINANSI* = 1004
   CP_WINUNICODE* = 1200
   #  Not convertable by H2PAS
-                              #  #define EXPENTRY CALLBACK
+  #  #define EXPENTRY CALLBACK
   APPCLASS_STANDARD* = 0x00000000
   # End of stuff from ddeml.h in old Cygnus headers
 
@@ -6849,8 +6804,7 @@ const
   LOGON32_PROVIDER_DEFAULT* = 0x00000000
   LOGON32_PROVIDER_WINNT35* = 0x00000001
   QID_SYNC* = 0xFFFFFFFF
-  # Magic numbers in PE executable header.
-                              # e_magic field
+  # Magic numbers in PE executable header. # e_magic field
   IMAGE_DOS_SIGNATURE* = 0x00005A4D
   # nt_signature field
   IMAGE_NT_SIGNATURE* = 0x00004550
@@ -6858,7 +6812,7 @@ const
   SEVERITY_SUCCESS* = 0
   SEVERITY_ERROR* = 1
   # Variant type codes (wtypes.h).
-                              #    Some, not all though
+  #    Some, not all though
   VT_EMPTY* = 0
   VT_NULL* = 1
   VT_I2* = 2
@@ -6909,10 +6863,10 @@ const
 
 type
   # WARNING
-                              #      the variable argument list
-                              #      is not implemented for FPC
-                              #      va_list is just a dummy record
-                              #      MvdV: Nevertheless it should be a pointer type, not a record
+  #      the variable argument list
+  #      is not implemented for FPC
+  #      va_list is just a dummy record
+  #      MvdV: Nevertheless it should be a pointer type, not a record
   va_list* = cstring
   TABC* {.final, pure.} = object
     abcA*: int32
@@ -7735,11 +7689,7 @@ when defined(x86_64):
       High*: LONGLONG
 
     TM128A* = M128A
-    PM128A* = TM128A #
-  type
-                     # Format of data for 32-bit fxsave/fxrstor instructions.
-                     #
-                     #typedef struct _XMM_SAVE_AREA32 {
+    PM128A* = TM128A #typedef struct _XMM_SAVE_AREA32 {
     XMM_SAVE_AREA32* {.final, pure.} = object
       ControlWord*: int16
       StatusWord*: int16
@@ -8052,21 +8002,7 @@ type
 
   TCREATETHREADDEBUGINFO* = CREATE_THREAD_DEBUG_INFO
   PCREATETHREADDEBUGINFO* = ptr CREATE_THREAD_DEBUG_INFO
-  #
-                                                         #   TODO: sockets
-                                                         #  typedef struct _SOCKET_ADDRESS {
-                                                         #    LPSOCKADDR lpSockaddr ;
-                                                         #    INT iSockaddrLength ;
-                                                         #  } SOCKET_ADDRESS,  PSOCKET_ADDRESS,  LPSOCKET_ADDRESS;
-                                                         #   }
-                                                         #  {
-                                                         #  typedef struct _CSADDR_INFO {
-                                                         #    SOCKET_ADDRESS  LocalAddr;
-                                                         #    SOCKET_ADDRESS  RemoteAddr;
-                                                         #    INT             iSocketType;
-                                                         #    INT             iProtocol;
-                                                         #  } CSADDR_INFO;
-                                                         #
+
   CURRENCYFMT* {.final, pure.} = object
     NumDigits*: UINT
     LeadingZero*: UINT
@@ -8370,17 +8306,7 @@ type
     dwDebugEventCode*: DWORD
     dwProcessId*: DWORD
     dwThreadId*: DWORD
-    data*: array[0..15, DWORD] #
-                               # case longint of
-                               # 0 : ( Exception : EXCEPTION_DEBUG_INFO );
-                               # 1 : ( CreateThread : CREATE_THREAD_DEBUG_INFO );
-                               # 2 : ( CreateProcessInfo : CREATE_PROCESS_DEBUG_INFO );
-                               # 3 : ( ExitThread : EXIT_THREAD_DEBUG_INFO );
-                               # 4 : ( ExitProcess : EXIT_PROCESS_DEBUG_INFO );
-                               # 5 : ( LoadDll : LOAD_DLL_DEBUG_INFO );
-                               # 6 : ( UnloadDll : UNLOAD_DLL_DEBUG_INFO );
-                               # 7 : ( DebugString : OUTPUT_DEBUG_STRING_INFO );
-                               # 8 : ( RipInfo : RIP_INFO );
+    data*: array[0..15, DWORD]
 
   LPDEBUG_EVENT* = ptr DEBUG_EVENT
   TDEBUGEVENT* = DEBUG_EVENT
@@ -9932,22 +9858,7 @@ type
   INPUT_RECORD* {.final, pure.} = object
     EventType*: int16
     Reserved*: int16
-    event*: array[0..5, DWORD] #Event : record case longint of
-                               #                 0 : ( KeyEvent : KEY_EVENT_RECORD );
-                               #                 1 : ( MouseEvent : MOUSE_EVENT_RECORD );
-                               #                 2 : ( WindowBufferSizeEvent : WINDOW_BUFFER_SIZE_RECORD );
-                               #                 3 : ( MenuEvent : MENU_EVENT_RECORD );
-                               #                 4 : ( FocusEvent : FOCUS_EVENT_RECORD );
-                               #       end;
-    Event*: array[0..5, DWORD]
-    #union {
-    #    KEY_EVENT_RECORD KeyEvent;
-    #    MOUSE_EVENT_RECORD MouseEvent;
-    #    WINDOW_BUFFER_SIZE_RECORD WindowBufferSizeEvent;
-    #    MENU_EVENT_RECORD MenuEvent;
-    #    FOCUS_EVENT_RECORD FocusEvent;
-    #} Event;
-    Event*: array[0..5, DWORD] # union of KEY_EVENT_RECORD, MOUSE_EVENT_RECORD, WINDOW_BUFFER_SIZE_RECORD, MENU_EVENT_RECORD, FOCUS_EVENT_RECORD
+    event*: array[0..5, DWORD]
 
   PINPUT_RECORD* = ptr INPUT_RECORD
   TINPUTRECORD* = INPUT_RECORD
@@ -11445,21 +11356,7 @@ type
 
   TREMOTENAMEINFO* = REMOTE_NAME_INFO
   PREMOTENAMEINFO* = ptr REMOTE_NAME_INFO
-  #
-                                          #   TODO: OLE
-                                          #  typedef struct _reobject {
-                                          #    DWORD  cbStruct;
-                                          #    LONG   cp;
-                                          #    CLSID  clsid;
-                                          #    LPOLEOBJECT      poleobj;
-                                          #    LPSTORAGE        pstg;
-                                          #    LPOLECLIENTSITE  polesite;
-                                          #    SIZEL  sizel;
-                                          #    DWORD  dvaspect;
-                                          #    DWORD  dwFlags;
-                                          #    DWORD  dwUser;
-                                          #  } REOBJECT;
-                                          #
+
   REPASTESPECIAL* {.final, pure.} = object
     dwAspect*: DWORD
     dwParam*: DWORD
@@ -12598,8 +12495,8 @@ const
   CBN_SELENDOK* = 9
   CBN_SETFOCUS* = 3
   # Control Panel
-                              # Device messages
-                              # Drag list box
+  # Device messages
+  # Drag list box
   DL_BEGINDRAG* = 1157
   DL_CANCELDRAG* = 1160
   DL_DRAGGING* = 1158
@@ -12706,8 +12603,8 @@ const
   EN_UPDATE* = 1024
   EN_VSCROLL* = 1538
   # File Manager extensions
-                              # File Manager extensions DLL events
-                              # Header control
+  # File Manager extensions DLL events
+  # Header control
   HDM_DELETEITEM* = 4610
   HDM_GETITEMW* = 4619
   HDM_INSERTITEMW* = 4618
@@ -12965,7 +12862,7 @@ const
   NM_RETURN* = -4
   NM_SETFOCUS* = -7
   # Power status
-                              # Progress bar control
+  # Progress bar control
   PBM_DELTAPOS* = 1027
   PBM_SETPOS* = 1026
   PBM_SETRANGE* = 1025
@@ -14201,6 +14098,7 @@ proc GetPrivateProfileStringA*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
                                lpDefault: LPCSTR, lpReturnedString: LPSTR,
                                nSize: DWORD, lpFileName: LPCSTR): DWORD{.
     stdcall, dynlib: "kernel32", importc: "GetPrivateProfileStringA".}
+
 proc WritePrivateProfileStringA*(lpAppName: LPCSTR, lpKeyName: LPCSTR,
                                  lpString: LPCSTR, lpFileName: LPCSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WritePrivateProfileStringA".}
@@ -17865,6 +17763,7 @@ else:
                           dwInitParam: LPARAM): HWND{.stdcall, dynlib: "user32",
       importc: "CreateDialogParamA".}
   proc CreateDialogIndirectParam*(hInstance: HINST, lpTemplate: LPCDLGTEMPLATE,
+
                                   hWndParent: HWND, lpDialogFunc: DLGPROC,
                                   dwInitParam: LPARAM): HWND{.stdcall,
       dynlib: "user32", importc: "CreateDialogIndirectParamA".}
@@ -23709,9 +23608,6 @@ proc ListView_SetItemState(hwndLV: HWND, i, data, mask: int32): LRESULT =
   result = SendMessage(hwndLV, LVM_SETITEMSTATE, WPARAM(i),
                        cast[LPARAM](addr(gnu_lvi)))
 
-proc ListView_SetItemText(hwndLV: HWND, i, iSubItem_: int32, pszText_: LPTSTR): LRESULT =
-proc ListView_SetItemText(hwndLV: HWND, i, iSubItem: int32, 
-                          pszText: LPTSTR): LRESULT =
 proc ListView_SetItemText(hwndLV: HWND, i, iSubItem: int32, pszText: LPTSTR): LRESULT =
   var gnu_lvi: LV_ITEM
   gnu_lvi.iSubItem = iSubItem
