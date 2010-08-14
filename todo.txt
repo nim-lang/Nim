@@ -1,7 +1,6 @@
 For version 0.8.10
 ==================
 
-- accurate file/line information
 - exception propagation across DLLs
 - fix exception handling
 - fix implicit generic routines
@@ -74,7 +73,6 @@ Library
 - bignums
 - ftp, smtp (and other internet protocols)
 
-- finish json module: use coroutines for this!
 - pdcurses bindings
 - queues additional to streams: have two positions (read/write) instead of one
 

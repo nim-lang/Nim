@@ -5,12 +5,15 @@
 
 {
   "key1": null,
+  {1: 2, {}: 4}: 12,
+  
   "key2": [
     {},
     {   },
     [],
     
-    [ /* empty array */ ],
+    [ // empty array
+    ],
     
     -1e10 // another comment
     
@@ -19,4 +22,5 @@
   "key3": false
 }
 
+// [{}, {899: 12, "x": "y"}, [], 123, 89, 89, "xyz", null, [], [], [1, 2, 3]]
 

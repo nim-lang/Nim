@@ -211,7 +211,7 @@ identifier should be converted:
 .. code-block:: C
   #mangle "'GTK_'{.*}" "TGtk$1"
 
-For convenience the PEG pattern and the replacement can be a single identifiers
+For convenience the PEG pattern and the replacement can be single identifiers
 too, there is no need to quote them: 
 
 .. code-block:: C
