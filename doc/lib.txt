@@ -156,6 +156,9 @@ Parsers
 * `parsesql <parsesql.html>`_
   The ``parsesql`` module implements a simple high performance SQL parser.
 
+* `json <json.html>`_
+  High performance JSON parser.
+
 * `lexbase <lexbase.html>`_
   This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.

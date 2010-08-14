@@ -24,10 +24,8 @@ proc genLineDir(p: BProc, t: PNode) =
   elif ({optLineTrace, optStackTrace} * p.Options ==
       {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags)): 
-    inc(p.labels)
-    appff(p.s[cpsStmts], "F.line = $1;$n", 
-        "%LOC$2 = getelementptr %TF %F, %NI 2$n" &
-        "store %NI $1, %NI* %LOC$2$n", [toRope(line), toRope(p.labels)])
+    appf(p.s[cpsStmts], "F.line = $1;F.filename = $2;$n", 
+        [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
 proc finishTryStmt(p: BProc, howMany: int) = 
   for i in countup(1, howMany): 
@@ -265,14 +263,15 @@ proc getRaiseFrmt(p: BProc): string =
     result = "#raiseException((#E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) = 
-  genLineDir(p, t)
   if t.sons[0] != nil: 
     var a: TLoc
     InitLocExpr(p, t.sons[0], a)
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
+    genLineDir(p, t)
     appcg(p, cpsStmts, getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
   else: 
+    genLineDir(p, t)
     # reraise the last exception:
     if gCmd == cmdCompileToCpp: 
       appcg(p, cpsStmts, "throw;" & tnl)

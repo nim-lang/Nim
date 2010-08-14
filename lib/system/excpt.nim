@@ -68,7 +68,8 @@ var
 
   tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
   
-  stackTraceNewLine* = "\n" ## undocumented feature
+  stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
+                            ## for CGI applications
 
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   const 
@@ -102,10 +103,14 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
       add(s, $(total-i-1))
       add(s, " calls omitted) ...")
     else:
-      add(s, $tempFrames[j].procname)
+      var oldLen = s.len
+      add(s, tempFrames[j].filename)
       if tempFrames[j].line > 0:
-        add(s, ", line: ")
+        add(s, '(')
         add(s, $tempFrames[j].line)
+        add(s, ')')
+      for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
+      add(s, tempFrames[j].procname)
     add(s, stackTraceNewLine)
 
 proc rawWriteStackTrace(s: var string) =

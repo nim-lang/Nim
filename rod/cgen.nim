@@ -563,8 +563,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optStackTrace in prc.options: 
       getFrameDecl(p)
       app(generatedProc, p.s[cpsLocals])
-      procname = CStringLit(p, generatedProc, 
-                            prc.owner.name.s & '.' & prc.name.s)
+      procname = CStringLit(p, generatedProc, prc.name.s)
       filename = CStringLit(p, generatedProc, toFilename(prc.info))
       app(generatedProc, initFrame(p, procname, filename))
     else: 
@@ -577,7 +576,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       if prc.loc.a < 0: 
         appf(m.s[cfsDebugInit], "profileData[$1].procname = $2;$n", [
             toRope(gProcProfile), 
-            makeCString(prc.owner.name.s & '.' & prc.name.s)])
+            makeCString(prc.name.s)])
         prc.loc.a = gProcProfile
         inc(gProcProfile)
       prepend(p.s[cpsInit], toRope("NIM_profilingStart = getticks();" & tnl))
@@ -782,7 +781,7 @@ proc genInitCode(m: BModule) =
     getFrameDecl(m.initProc)
     app(prc, m.initProc.s[cpsLocals])
     app(prc, m.s[cfsTypeInit1])
-    procname = CStringLit(m.initProc, prc, "module " & m.module.name.s)
+    procname = CStringLit(m.initProc, prc, m.module.name.s)
     filename = CStringLit(m.initProc, prc, toFilename(m.module.info))
     app(prc, initFrame(m.initProc, procname, filename))
   else: 
