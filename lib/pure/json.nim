@@ -345,6 +345,8 @@ proc next*(my: var TJsonParser) =
   ## retrieves the first/next event. This controls the parser.
   var tk = getTok(my)
   var i = my.state.len-1
+  # the following code is a state machine. If we had proper coroutines,
+  # the code could be much simpler.
   case my.state[i]
   of stateEof:
     if tk == tkEof:

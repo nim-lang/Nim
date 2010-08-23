@@ -433,4 +433,15 @@ struct NimException {
 
 #define NIM_POSIX_INIT  __attribute__((constructor)) 
 
+
+#if defined(_MSCVER) && defined(__i386__)
+__declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
+  __asm {
+    lock xadd dword ptr [ECX], EDX
+    mov EAX, EDX
+    ret
+  }
+}
+#endif
+
 #endif
