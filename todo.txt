@@ -17,8 +17,6 @@ Bugs
 ----
 - proc (x: int) is passable to proc (x: var int)  !?
 - detected by pegs module 64bit: p(result, result) should use a temporary!
-- seq[TLoc] in C code generator always failed --> probably some reference
-  counting is wrong; try to reproduce this in the GC test
 - the parser allows empty object case branches
 - SDL event handling
 

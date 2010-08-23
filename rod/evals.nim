@@ -315,7 +315,7 @@ proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   for i in countup(0, sonsLen(n) - 1): 
     if x.sons[i].kind != nkExprColonExpr: 
       InternalError(n.info, "evalFieldAccess")
-    if x.sons[i].sons[0].sym.name.id == field.id: 
+    if x.sons[i].sons[0].sym.name.id == field.name.id: 
       result = x.sons[i].sons[1]
       if not aliasNeeded(result, flags): result = copyTree(result)
       return

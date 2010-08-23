@@ -44,29 +44,6 @@ proc genReturnStmt(p: BProc, t: PNode) =
   finishTryStmt(p, p.nestedTryStmts)
   appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
 
-proc initVariable(p: BProc, v: PSym) = 
-  if containsGarbageCollectedRef(v.typ) or (v.ast == nil): 
-    if not (skipTypes(v.typ, abstractVarRange).Kind in
-        {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}): 
-      if gCmd == cmdCompileToLLVM: 
-        appf(p.s[cpsStmts], "store $2 0, $2* $1$n", 
-             [addrLoc(v.loc), getTypeDesc(p.module, v.loc.t)])
-      else: 
-        appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(v.loc)])
-    else: 
-      if gCmd == cmdCompileToLLVM: 
-        app(p.module.s[cfsProcHeaders], 
-            "declare void @llvm.memset.i32(i8*, i8, i32, i32)" & tnl)
-        inc(p.labels, 2)
-        appf(p.s[cpsStmts], "%LOC$3 = getelementptr $2* null, %NI 1$n" &
-            "%LOC$4 = cast $2* %LOC$3 to i32$n" &
-            "call void @llvm.memset.i32(i8* $1, i8 0, i32 %LOC$4, i32 0)$n", [
-            addrLoc(v.loc), getTypeDesc(p.module, v.loc.t), toRope(p.labels), 
-            toRope(p.labels - 1)])
-      else: 
-        appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
-             [addrLoc(v.loc), rdLoc(v.loc)])
-  
 proc genVarTuple(p: BProc, n: PNode) = 
   var 
     L: int

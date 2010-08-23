@@ -236,6 +236,51 @@ include "ccgtypes.nim"
 
 # ------------------------------ Manager of temporaries ------------------
 
+proc rdLoc(a: TLoc): PRope =
+  # 'read' location (deref if indirect)
+  result = a.r
+  if lfIndirect in a.flags: result = ropef("(*$1)", [result])
+
+proc addrLoc(a: TLoc): PRope =
+  result = a.r
+  if not (lfIndirect in a.flags): result = con("&", result)
+
+proc rdCharLoc(a: TLoc): PRope =
+  # read a location that may need a char-cast:
+  result = rdLoc(a)
+  if skipTypes(a.t, abstractRange).kind == tyChar:
+    result = ropef("((NU8)($1))", [result])
+
+proc zeroLoc(p: BProc, loc: TLoc) = 
+  if not (skipTypes(loc.t, abstractVarRange).Kind in
+      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}): 
+    if gCmd == cmdCompileToLLVM: 
+      appf(p.s[cpsStmts], "store $2 0, $2* $1$n", 
+           [addrLoc(loc), getTypeDesc(p.module, loc.t)])
+    else: 
+      appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
+  else: 
+    if gCmd == cmdCompileToLLVM: 
+      app(p.module.s[cfsProcHeaders], 
+          "declare void @llvm.memset.i32(i8*, i8, i32, i32)" & tnl)
+      inc(p.labels, 2)
+      appf(p.s[cpsStmts], "%LOC$3 = getelementptr $2* null, %NI 1$n" &
+          "%LOC$4 = cast $2* %LOC$3 to i32$n" &
+          "call void @llvm.memset.i32(i8* $1, i8 0, i32 %LOC$4, i32 0)$n", [
+          addrLoc(loc), getTypeDesc(p.module, loc.t), toRope(p.labels), 
+          toRope(p.labels - 1)])
+    else: 
+      appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
+           [addrLoc(loc), rdLoc(loc)])
+
+proc initVariable(p: BProc, v: PSym) = 
+  if containsGarbageCollectedRef(v.typ) or (v.ast == nil): 
+    zeroLoc(p, v.loc)
+    
+proc initTemp(p: BProc, tmp: var TLoc) = 
+  if containsGarbageCollectedRef(tmp.t):
+    zeroLoc(p, tmp)
+
 proc getTemp(p: BProc, t: PType, result: var TLoc) = 
   inc(p.labels)
   if gCmd == cmdCompileToLLVM: 
@@ -248,6 +293,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc) =
   result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
+  initTemp(p, result)
 
 proc cstringLit(p: BProc, r: var PRope, s: string): PRope = 
   if gCmd == cmdCompileToLLVM: 

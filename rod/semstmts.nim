@@ -663,10 +663,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
     gp = n.sons[genericParamsPos]
   else: 
-    gp = newNodeI(nkGenericParams, n.info) # process parameters:
+    gp = newNodeI(nkGenericParams, n.info)
+  # process parameters:
   if n.sons[paramsPos] != nil: 
     semParamList(c, n.sons[ParamsPos], gp, s)
-    if sonsLen(gp) > 0: n.sons[genericParamsPos] = gp
+    if sonsLen(gp) > 0: 
+      if n.sons[genericParamsPos] == nil:
+        # we have a list of implicit type parameters:
+        n.sons[genericParamsPos] = gp
     addParams(c, s.typ.n)
   else: 
     s.typ = newTypeS(tyProc, c)

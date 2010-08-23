@@ -153,21 +153,6 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
-proc rdLoc(a: TLoc): PRope =
-  # 'read' location (deref if indirect)
-  result = a.r
-  if lfIndirect in a.flags: result = ropef("(*$1)", [result])
-
-proc addrLoc(a: TLoc): PRope =
-  result = a.r
-  if not (lfIndirect in a.flags): result = con("&", result)
-
-proc rdCharLoc(a: TLoc): PRope =
-  # read a location that may need a char-cast:
-  result = rdLoc(a)
-  if skipTypes(a.t, abstractRange).kind == tyChar:
-    result = ropef("((NU8)($1))", [result])
-
 type
   TAssignmentFlag = enum
     needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
@@ -1242,7 +1227,8 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[2], b)
       if d.k == locNone: getTemp(p, a.t, d)
       appf(p.s[cpsStmts],
-           "for ($1 = 0; $1 < $2; $1++) $n" & "  $3[$1] = $4[$1] $6 $5[$1];$n", [
+           "for ($1 = 0; $1 < $2; $1++) $n" & 
+           "  $3[$1] = $4[$1] $6 $5[$1];$n", [
           rdLoc(i), toRope(size), rdLoc(d), rdLoc(a), rdLoc(b),
           toRope(lookupOpr[op])])
     of mInSet: genInOp(p, e, d)
