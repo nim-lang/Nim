@@ -28,9 +28,11 @@ proc addFile(filename: string) =
     rawMessage(errCannotOpenFile, filename)
 
 proc setupEnvironment = 
-  #defineSymbol(gTinyC, "__x86_64__", nil)
-  #defineSymbol(gTinyC, "__linux__", nil)
-  #defineSymbol(gTinyC, "__linux", nil)
+  when defined(amd64):
+    defineSymbol(gTinyC, "__x86_64__", nil)
+  when defined(linux):
+    defineSymbol(gTinyC, "__linux__", nil)
+    defineSymbol(gTinyC, "__linux", nil)
   var nimrodDir = getPrefixDir()
 
   addIncludePath(gTinyC, libpath)

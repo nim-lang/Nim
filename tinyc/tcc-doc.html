@@ -1,0 +1,2241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html401/loose.dtd">
+<html>
+<!-- Created on May, 18 2009 by texi2html 1.78 -->
+<!--
+Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
+            Karl Berry  <karl@freefriends.org>
+            Olaf Bachmann <obachman@mathematik.uni-kl.de>
+            and many others.
+Maintained by: Many creative people.
+Send bugs and suggestions to <texi2html-bug@nongnu.org>
+
+-->
+<head>
+<title>Tiny C Compiler Reference Documentation</title>
+
+<meta name="description" content="Tiny C Compiler Reference Documentation">
+<meta name="keywords" content="Tiny C Compiler Reference Documentation">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="texi2html 1.78">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+pre.display {font-family: serif}
+pre.format {font-family: serif}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: serif; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: serif; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.roman {font-family:serif; font-weight:normal;}
+span.sansserif {font-family:sans-serif; font-weight:normal;}
+ul.toc {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+
+<a name="Top"></a>
+<a name="SEC_Top"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="settitle">Tiny C Compiler Reference Documentation</h1>
+
+<p>This manual documents version  of the Tiny C Compiler.
+</p>
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top"><a href="#SEC1">1. Introduction</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                Introduction to tcc.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC2">2. Command line invocation</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                      Invocation of tcc (command line, options).
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC5">3. C language support</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                       ANSI C and extensions.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC10">4. TinyCC Assembler</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                         Assembler syntax.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC16">5. TinyCC Linker</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                      Output file generation and supported targets.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC21">6. TinyCC Memory and Bound checks</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                      Automatic bounds-checking of C code.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC22">7. The <code>libtcc</code> library</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                      The libtcc library.
+</td></tr>
+<tr><td align="left" valign="top"><a href="#SEC23">8. Developer's guide</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                       Guide for Developers.
+</td></tr>
+</table>
+
+
+<hr size="1">
+<a name="Introduction"></a>
+<a name="SEC1"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC_Top" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[ &lt;&lt; ]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 1. Introduction </h1>
+
+<p>TinyCC (aka TCC) is a small but hyper fast C compiler. Unlike other C
+compilers, it is meant to be self-relying: you do not need an
+external assembler or linker because TCC does that for you.
+</p>
+<p>TCC compiles so <em>fast</em> that even for big projects <code>Makefile</code>s may
+not be necessary.
+</p>
+<p>TCC not only supports ANSI C, but also most of the new ISO C99
+standard and many GNUC extensions including inline assembly.
+</p>
+<p>TCC can also be used to make <em>C scripts</em>, i.e. pieces of C source
+that you run as a Perl or Python script. Compilation is so fast that
+your script will be as fast as if it was an executable.
+</p>
+<p>TCC can also automatically generate memory and bound checks
+(see section <a href="#SEC21">TinyCC Memory and Bound checks</a>) while allowing all C pointers operations. TCC can do
+these checks even if non patched libraries are used.
+</p>
+<p>With <code>libtcc</code>, you can use TCC as a backend for dynamic code
+generation (see section <a href="#SEC22">The <code>libtcc</code> library</a>).
+</p>
+<p>TCC mainly supports the i386 target on Linux and Windows. There are alpha
+ports for the ARM (<code>arm-tcc</code>) and the TMS320C67xx targets
+(<code>c67-tcc</code>). More information about the ARM port is available at
+<a href="http://lists.gnu.org/archive/html/tinycc-devel/2003-10/msg00044.html">http://lists.gnu.org/archive/html/tinycc-devel/2003-10/msg00044.html</a>.
+</p>
+<p>For usage on Windows, see also tcc-win32.txt.
+</p>
+<hr size="6">
+<a name="Invoke"></a>
+<a name="SEC2"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC1" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC3" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC1" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 2. Command line invocation </h1>
+
+<hr size="6">
+<a name="SEC3"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC2" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC4" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 2.1 Quick start </h2>
+
+<table><tr><td>&nbsp;</td><td><pre class="example">usage: tcc [options] [<var>infile1</var> <var>infile2</var>&hellip;] [&lsquo;<samp>-run</samp>&rsquo; <var>infile</var> <var>args</var>&hellip;]
+</pre></td></tr></table>
+
+<p>TCC options are a very much like gcc options. The main difference is that TCC
+can also execute directly the resulting program and give it runtime
+arguments.
+</p>
+<p>Here are some examples to understand the logic:
+</p>
+<dl compact="compact">
+<dt> <code>&lsquo;<samp>tcc -run a.c</samp>&rsquo;</code></dt>
+<dd><p>Compile &lsquo;<tt>a.c</tt>&rsquo; and execute it directly
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -run a.c arg1</samp>&rsquo;</code></dt>
+<dd><p>Compile a.c and execute it directly. arg1 is given as first argument to
+the <code>main()</code> of a.c.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc a.c -run b.c arg1</samp>&rsquo;</code></dt>
+<dd><p>Compile &lsquo;<tt>a.c</tt>&rsquo; and &lsquo;<tt>b.c</tt>&rsquo;, link them together and execute them. arg1 is given
+as first argument to the <code>main()</code> of the resulting program. 
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -o myprog a.c b.c</samp>&rsquo;</code></dt>
+<dd><p>Compile &lsquo;<tt>a.c</tt>&rsquo; and &lsquo;<tt>b.c</tt>&rsquo;, link them and generate the executable &lsquo;<tt>myprog</tt>&rsquo;.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -o myprog a.o b.o</samp>&rsquo;</code></dt>
+<dd><p>link &lsquo;<tt>a.o</tt>&rsquo; and &lsquo;<tt>b.o</tt>&rsquo; together and generate the executable &lsquo;<tt>myprog</tt>&rsquo;.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -c a.c</samp>&rsquo;</code></dt>
+<dd><p>Compile &lsquo;<tt>a.c</tt>&rsquo; and generate object file &lsquo;<tt>a.o</tt>&rsquo;.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -c asmfile.S</samp>&rsquo;</code></dt>
+<dd><p>Preprocess with C preprocess and assemble &lsquo;<tt>asmfile.S</tt>&rsquo; and generate
+object file &lsquo;<tt>asmfile.o</tt>&rsquo;.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -c asmfile.s</samp>&rsquo;</code></dt>
+<dd><p>Assemble (but not preprocess) &lsquo;<tt>asmfile.s</tt>&rsquo; and generate object file
+&lsquo;<tt>asmfile.o</tt>&rsquo;.
+</p>
+</dd>
+<dt> <code>&lsquo;<samp>tcc -r -o ab.o a.c b.c</samp>&rsquo;</code></dt>
+<dd><p>Compile &lsquo;<tt>a.c</tt>&rsquo; and &lsquo;<tt>b.c</tt>&rsquo;, link them together and generate the object file &lsquo;<tt>ab.o</tt>&rsquo;.
+</p>
+</dd>
+</dl>
+
+<p>Scripting:
+</p>
+<p>TCC can be invoked from <em>scripts</em>, just as shell scripts. You just
+need to add <code>#!/usr/local/bin/tcc -run</code> at the start of your C source:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">#!/usr/local/bin/tcc -run
+#include &lt;stdio.h&gt;
+
+int main() 
+{
+    printf(&quot;Hello World\n&quot;);
+    return 0;
+}
+</pre></td></tr></table>
+
+<p>TCC can read C source code from <em>standard input</em> when &lsquo;<samp>-</samp>&rsquo; is used in 
+place of &lsquo;<samp>infile</samp>&rsquo;. Example:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">echo 'main(){puts(&quot;hello&quot;);}' | tcc -run -
+</pre></td></tr></table>
+
+<hr size="6">
+<a name="SEC4"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC3" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 2.2 Option summary </h2>
+
+<p>General Options:
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-v</samp>&rsquo;</dt>
+<dd><p>Display current TCC version, increase verbosity.
+</p>
+</dd>
+<dt> &lsquo;<samp>-c</samp>&rsquo;</dt>
+<dd><p>Generate an object file (&lsquo;<samp>-o</samp>&rsquo; option must also be given).
+</p>
+</dd>
+<dt> &lsquo;<samp>-o outfile</samp>&rsquo;</dt>
+<dd><p>Put object file, executable, or dll into output file &lsquo;<tt>outfile</tt>&rsquo;.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Bdir</samp>&rsquo;</dt>
+<dd><p>Set the path where the tcc internal libraries can be found (default is
+&lsquo;<tt>PREFIX/lib/tcc</tt>&rsquo;).
+</p>
+</dd>
+<dt> &lsquo;<samp>-bench</samp>&rsquo;</dt>
+<dd><p>Output compilation statistics.
+</p>
+</dd>
+<dt> &lsquo;<samp>-run source [args...]</samp>&rsquo;</dt>
+<dd><p>Compile file <var>source</var> and run it with the command line arguments
+<var>args</var>. In order to be able to give more than one argument to a
+script, several TCC options can be given <em>after</em> the
+&lsquo;<samp>-run</samp>&rsquo; option, separated by spaces. Example:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">tcc &quot;-run -L/usr/X11R6/lib -lX11&quot; ex4.c
+</pre></td></tr></table>
+
+<p>In a script, it gives the following header:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">#!/usr/local/bin/tcc -run -L/usr/X11R6/lib -lX11
+#include &lt;stdlib.h&gt;
+int main(int argc, char **argv)
+{
+    ...
+}
+</pre></td></tr></table>
+
+</dd>
+</dl>
+
+<p>Preprocessor options:
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-Idir</samp>&rsquo;</dt>
+<dd><p>Specify an additional include path. Include paths are searched in the
+order they are specified.
+</p>
+<p>System include paths are always searched after. The default system
+include paths are: &lsquo;<tt>/usr/local/include</tt>&rsquo;, &lsquo;<tt>/usr/include</tt>&rsquo;
+and &lsquo;<tt>PREFIX/lib/tcc/include</tt>&rsquo;. (&lsquo;<tt>PREFIX</tt>&rsquo; is usually
+&lsquo;<tt>/usr</tt>&rsquo; or &lsquo;<tt>/usr/local</tt>&rsquo;).
+</p>
+</dd>
+<dt> &lsquo;<samp>-Dsym[=val]</samp>&rsquo;</dt>
+<dd><p>Define preprocessor symbol &lsquo;<samp>sym</samp>&rsquo; to
+val. If val is not present, its value is &lsquo;<samp>1</samp>&rsquo;. Function-like macros can
+also be defined: &lsquo;<samp>-DF(a)=a+1</samp>&rsquo;
+</p>
+</dd>
+<dt> &lsquo;<samp>-Usym</samp>&rsquo;</dt>
+<dd><p>Undefine preprocessor symbol &lsquo;<samp>sym</samp>&rsquo;.
+</p></dd>
+</dl>
+
+<p>Compilation flags:
+</p>
+<p>Note: each of the following warning options has a negative form beginning with
+&lsquo;<samp>-fno-</samp>&rsquo;.
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-funsigned-char</samp>&rsquo;</dt>
+<dd><p>Let the <code>char</code> type be unsigned.
+</p>
+</dd>
+<dt> &lsquo;<samp>-fsigned-char</samp>&rsquo;</dt>
+<dd><p>Let the <code>char</code> type be signed.
+</p>
+</dd>
+<dt> &lsquo;<samp>-fno-common</samp>&rsquo;</dt>
+<dd><p>Do not generate common symbols for uninitialized data.
+</p>
+</dd>
+<dt> &lsquo;<samp>-fleading-underscore</samp>&rsquo;</dt>
+<dd><p>Add a leading underscore at the beginning of each C symbol.
+</p>
+</dd>
+</dl>
+
+<p>Warning options:
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-w</samp>&rsquo;</dt>
+<dd><p>Disable all warnings.
+</p>
+</dd>
+</dl>
+
+<p>Note: each of the following warning options has a negative form beginning with
+&lsquo;<samp>-Wno-</samp>&rsquo;.
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-Wimplicit-function-declaration</samp>&rsquo;</dt>
+<dd><p>Warn about implicit function declaration.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Wunsupported</samp>&rsquo;</dt>
+<dd><p>Warn about unsupported GCC features that are ignored by TCC.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Wwrite-strings</samp>&rsquo;</dt>
+<dd><p>Make string constants be of type <code>const char *</code> instead of <code>char
+*</code>.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Werror</samp>&rsquo;</dt>
+<dd><p>Abort compilation if warnings are issued.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Wall</samp>&rsquo; </dt>
+<dd><p>Activate all warnings, except &lsquo;<samp>-Werror</samp>&rsquo;, &lsquo;<samp>-Wunusupported</samp>&rsquo; and
+&lsquo;<samp>-Wwrite-strings</samp>&rsquo;.
+</p>
+</dd>
+</dl>
+
+<p>Linker options:
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-Ldir</samp>&rsquo;</dt>
+<dd><p>Specify an additional static library path for the &lsquo;<samp>-l</samp>&rsquo; option. The
+default library paths are &lsquo;<tt>/usr/local/lib</tt>&rsquo;, &lsquo;<tt>/usr/lib</tt>&rsquo; and &lsquo;<tt>/lib</tt>&rsquo;.
+</p>
+</dd>
+<dt> &lsquo;<samp>-lxxx</samp>&rsquo;</dt>
+<dd><p>Link your program with dynamic library libxxx.so or static library
+libxxx.a. The library is searched in the paths specified by the
+&lsquo;<samp>-L</samp>&rsquo; option.
+</p>
+</dd>
+<dt> &lsquo;<samp>-shared</samp>&rsquo;</dt>
+<dd><p>Generate a shared library instead of an executable (&lsquo;<samp>-o</samp>&rsquo; option
+must also be given).
+</p>
+</dd>
+<dt> &lsquo;<samp>-static</samp>&rsquo;</dt>
+<dd><p>Generate a statically linked executable (default is a shared linked
+executable) (&lsquo;<samp>-o</samp>&rsquo; option must also be given).
+</p>
+</dd>
+<dt> &lsquo;<samp>-rdynamic</samp>&rsquo;</dt>
+<dd><p>Export global symbols to the dynamic linker. It is useful when a library
+opened with <code>dlopen()</code> needs to access executable symbols.
+</p>
+</dd>
+<dt> &lsquo;<samp>-r</samp>&rsquo;</dt>
+<dd><p>Generate an object file combining all input files (&lsquo;<samp>-o</samp>&rsquo; option must
+also be given).
+</p>
+</dd>
+<dt> &lsquo;<samp>-Wl,-Ttext,address</samp>&rsquo;</dt>
+<dd><p>Set the start of the .text section to <var>address</var>.
+</p>
+</dd>
+<dt> &lsquo;<samp>-Wl,--oformat,fmt</samp>&rsquo;</dt>
+<dd><p>Use <var>fmt</var> as output format. The supported output formats are:
+</p><dl compact="compact">
+<dt> <code>elf32-i386</code></dt>
+<dd><p>ELF output format (default)
+</p></dd>
+<dt> <code>binary</code></dt>
+<dd><p>Binary image (only for executable output)
+</p></dd>
+<dt> <code>coff</code></dt>
+<dd><p>COFF output format (only for executable output for TMS320C67xx target)
+</p></dd>
+</dl>
+
+</dd>
+</dl>
+
+<p>Debugger options:
+</p>
+<dl compact="compact">
+<dt> &lsquo;<samp>-g</samp>&rsquo;</dt>
+<dd><p>Generate run time debug information so that you get clear run time
+error messages: <code> test.c:68: in function 'test5()': dereferencing
+invalid pointer</code> instead of the laconic <code>Segmentation
+fault</code>.
+</p>
+</dd>
+<dt> &lsquo;<samp>-b</samp>&rsquo;</dt>
+<dd><p>Generate additional support code to check
+memory allocations and array/pointer bounds. &lsquo;<samp>-g</samp>&rsquo; is implied. Note
+that the generated code is slower and bigger in this case.
+</p>
+</dd>
+<dt> &lsquo;<samp>-bt N</samp>&rsquo;</dt>
+<dd><p>Display N callers in stack traces. This is useful with &lsquo;<samp>-g</samp>&rsquo; or
+&lsquo;<samp>-b</samp>&rsquo;.
+</p>
+</dd>
+</dl>
+
+<p>Note: GCC options &lsquo;<samp>-Ox</samp>&rsquo;, &lsquo;<samp>-fx</samp>&rsquo; and &lsquo;<samp>-mx</samp>&rsquo; are
+ignored.
+</p>
+
+<hr size="6">
+<a name="Clang"></a>
+<a name="SEC5"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC4" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC6" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC2" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 3. C language support </h1>
+
+<hr size="6">
+<a name="SEC6"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC5" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC7" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 3.1 ANSI C </h2>
+
+<p>TCC implements all the ANSI C standard, including structure bit fields
+and floating point numbers (<code>long double</code>, <code>double</code>, and
+<code>float</code> fully supported).
+</p>
+<hr size="6">
+<a name="SEC7"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC6" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC8" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 3.2 ISOC99 extensions </h2>
+
+<p>TCC implements many features of the new C standard: ISO C99. Currently
+missing items are: complex and imaginary numbers and variable length
+arrays.
+</p>
+<p>Currently implemented ISOC99 features:
+</p>
+<ul class="toc">
+<li> 64 bit <code>long long</code> types are fully supported.
+
+</li><li> The boolean type <code>_Bool</code> is supported.
+
+</li><li> <code>__func__</code> is a string variable containing the current
+function name.
+
+</li><li> Variadic macros: <code>__VA_ARGS__</code> can be used for
+   function-like macros:
+<table><tr><td>&nbsp;</td><td><pre class="example">    #define dprintf(level, __VA_ARGS__) printf(__VA_ARGS__)
+</pre></td></tr></table>
+
+<p><code>dprintf</code> can then be used with a variable number of parameters.
+</p>
+</li><li> Declarations can appear anywhere in a block (as in C++).
+
+</li><li> Array and struct/union elements can be initialized in any order by
+  using designators:
+<table><tr><td>&nbsp;</td><td><pre class="example">    struct { int x, y; } st[10] = { [0].x = 1, [0].y = 2 };
+
+    int tab[10] = { 1, 2, [5] = 5, [9] = 9};
+</pre></td></tr></table>
+    
+</li><li> Compound initializers are supported:
+<table><tr><td>&nbsp;</td><td><pre class="example">    int *p = (int []){ 1, 2, 3 };
+</pre></td></tr></table>
+<p>to initialize a pointer pointing to an initialized array. The same
+works for structures and strings.
+</p>
+</li><li> Hexadecimal floating point constants are supported:
+<table><tr><td>&nbsp;</td><td><pre class="example">          double d = 0x1234p10;
+</pre></td></tr></table>
+
+<p>is the same as writing 
+</p><table><tr><td>&nbsp;</td><td><pre class="example">          double d = 4771840.0;
+</pre></td></tr></table>
+
+</li><li> <code>inline</code> keyword is ignored.
+
+</li><li> <code>restrict</code> keyword is ignored.
+</li></ul>
+
+<hr size="6">
+<a name="SEC8"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC7" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC9" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 3.3 GNU C extensions </h2>
+
+<p>TCC implements some GNU C extensions:
+</p>
+<ul class="toc">
+<li> array designators can be used without '=': 
+<table><tr><td>&nbsp;</td><td><pre class="example">    int a[10] = { [0] 1, [5] 2, 3, 4 };
+</pre></td></tr></table>
+
+</li><li> Structure field designators can be a label: 
+<table><tr><td>&nbsp;</td><td><pre class="example">    struct { int x, y; } st = { x: 1, y: 1};
+</pre></td></tr></table>
+<p>instead of
+</p><table><tr><td>&nbsp;</td><td><pre class="example">    struct { int x, y; } st = { .x = 1, .y = 1};
+</pre></td></tr></table>
+
+</li><li> <code>\e</code> is ASCII character 27.
+
+</li><li> case ranges : ranges can be used in <code>case</code>s:
+<table><tr><td>&nbsp;</td><td><pre class="example">    switch(a) {
+    case 1 &hellip; 9:
+          printf(&quot;range 1 to 9\n&quot;);
+          break;
+    default:
+          printf(&quot;unexpected\n&quot;);
+          break;
+    }
+</pre></td></tr></table>
+
+<a name="IDX1"></a>
+<a name="IDX2"></a>
+<a name="IDX3"></a>
+<a name="IDX4"></a>
+<a name="IDX5"></a>
+<a name="IDX6"></a>
+<a name="IDX7"></a>
+<a name="IDX8"></a>
+
+</li><li> The keyword <code>__attribute__</code> is handled to specify variable or
+function attributes. The following attributes are supported:
+  
+<ul class="toc">
+<li> <code>aligned(n)</code>: align a variable or a structure field to n bytes
+(must be a power of two).
+
+  </li><li> <code>packed</code>: force alignment of a variable or a structure field to
+  1.
+
+  </li><li> <code>section(name)</code>: generate function or data in assembly section
+name (name is a string containing the section name) instead of the default
+section.
+
+  </li><li> <code>unused</code>: specify that the variable or the function is unused.
+
+  </li><li> <code>cdecl</code>: use standard C calling convention (default).
+
+  </li><li> <code>stdcall</code>: use Pascal-like calling convention.
+
+  </li><li> <code>regparm(n)</code>: use fast i386 calling convention. <var>n</var> must be
+between 1 and 3. The first <var>n</var> function parameters are respectively put in
+registers <code>%eax</code>, <code>%edx</code> and <code>%ecx</code>.
+
+  </li><li> <code>dllexport</code>: export function from dll/executable (win32 only)
+
+</li></ul>
+
+<p>Here are some examples:
+</p><table><tr><td>&nbsp;</td><td><pre class="example">    int a __attribute__ ((aligned(8), section(&quot;.mysection&quot;)));
+</pre></td></tr></table>
+
+<p>align variable <code>a</code> to 8 bytes and put it in section <code>.mysection</code>.
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">    int my_add(int a, int b) __attribute__ ((section(&quot;.mycodesection&quot;))) 
+    {
+        return a + b;
+    }
+</pre></td></tr></table>
+
+<p>generate function <code>my_add</code> in section <code>.mycodesection</code>.
+</p>
+</li><li> GNU style variadic macros:
+<table><tr><td>&nbsp;</td><td><pre class="example">    #define dprintf(fmt, args&hellip;) printf(fmt, ## args)
+
+    dprintf(&quot;no arg\n&quot;);
+    dprintf(&quot;one arg %d\n&quot;, 1);
+</pre></td></tr></table>
+
+</li><li> <code>__FUNCTION__</code> is interpreted as C99 <code>__func__</code> 
+(so it has not exactly the same semantics as string literal GNUC
+where it is a string literal).
+
+</li><li> The <code>__alignof__</code> keyword can be used as <code>sizeof</code> 
+to get the alignment of a type or an expression.
+
+</li><li> The <code>typeof(x)</code> returns the type of <code>x</code>. 
+<code>x</code> is an expression or a type.
+
+</li><li> Computed gotos: <code>&amp;&amp;label</code> returns a pointer of type 
+<code>void *</code> on the goto label <code>label</code>. <code>goto *expr</code> can be
+used to jump on the pointer resulting from <code>expr</code>.
+
+</li><li> Inline assembly with asm instruction:
+<a name="IDX9"></a>
+<a name="IDX10"></a>
+<a name="IDX11"></a>
+<table><tr><td>&nbsp;</td><td><pre class="example">static inline void * my_memcpy(void * to, const void * from, size_t n)
+{
+int d0, d1, d2;
+__asm__ __volatile__(
+        &quot;rep ; movsl\n\t&quot;
+        &quot;testb $2,%b4\n\t&quot;
+        &quot;je 1f\n\t&quot;
+        &quot;movsw\n&quot;
+        &quot;1:\ttestb $1,%b4\n\t&quot;
+        &quot;je 2f\n\t&quot;
+        &quot;movsb\n&quot;
+        &quot;2:&quot;
+        : &quot;=&amp;c&quot; (d0), &quot;=&amp;D&quot; (d1), &quot;=&amp;S&quot; (d2)
+        :&quot;0&quot; (n/4), &quot;q&quot; (n),&quot;1&quot; ((long) to),&quot;2&quot; ((long) from)
+        : &quot;memory&quot;);
+return (to);
+}
+</pre></td></tr></table>
+
+<a name="IDX12"></a>
+<p>TCC includes its own x86 inline assembler with a <code>gas</code>-like (GNU
+assembler) syntax. No intermediate files are generated. GCC 3.x named
+operands are supported.
+</p>
+</li><li> <code>__builtin_types_compatible_p()</code> and <code>__builtin_constant_p()</code> 
+are supported.
+
+</li><li> <code>#pragma pack</code> is supported for win32 compatibility.
+
+</li></ul>
+
+<hr size="6">
+<a name="SEC9"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC8" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 3.4 TinyCC extensions </h2>
+
+<ul class="toc">
+<li> <code>__TINYC__</code> is a predefined macro to <code>1</code> to
+indicate that you use TCC.
+
+</li><li> <code>#!</code> at the start of a line is ignored to allow scripting.
+
+</li><li> Binary digits can be entered (<code>0b101</code> instead of
+<code>5</code>).
+
+</li><li> <code>__BOUNDS_CHECKING_ON</code> is defined if bound checking is activated.
+
+</li></ul>
+
+<hr size="6">
+<a name="asm"></a>
+<a name="SEC10"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC9" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC11" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC5" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 4. TinyCC Assembler </h1>
+
+<p>Since version 0.9.16, TinyCC integrates its own assembler. TinyCC
+assembler supports a gas-like syntax (GNU assembler). You can
+desactivate assembler support if you want a smaller TinyCC executable
+(the C compiler does not rely on the assembler).
+</p>
+<p>TinyCC Assembler is used to handle files with &lsquo;<tt>.S</tt>&rsquo; (C
+preprocessed assembler) and &lsquo;<tt>.s</tt>&rsquo; extensions. It is also used to
+handle the GNU inline assembler with the <code>asm</code> keyword.
+</p>
+<hr size="6">
+<a name="SEC11"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC10" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC12" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 4.1 Syntax </h2>
+
+<p>TinyCC Assembler supports most of the gas syntax. The tokens are the
+same as C.
+</p>
+<ul class="toc">
+<li> C and C++ comments are supported.
+
+</li><li> Identifiers are the same as C, so you cannot use '.' or '$'.
+
+</li><li> Only 32 bit integer numbers are supported.
+
+</li></ul>
+
+<hr size="6">
+<a name="SEC12"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC11" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC13" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 4.2 Expressions </h2>
+
+<ul class="toc">
+<li> Integers in decimal, octal and hexa are supported.
+
+</li><li> Unary operators: +, -, ~.
+
+</li><li> Binary operators in decreasing priority order:
+
+<ol>
+<li> *, /, %
+</li><li> &amp;, |, ^
+</li><li> +, -
+</li></ol>
+
+</li><li> A value is either an absolute number or a label plus an offset. 
+All operators accept absolute values except '+' and '-'. '+' or '-' can be
+used to add an offset to a label. '-' supports two labels only if they
+are the same or if they are both defined and in the same section.
+
+</li></ul>
+
+<hr size="6">
+<a name="SEC13"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC12" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC14" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 4.3 Labels </h2>
+
+<ul class="toc">
+<li> All labels are considered as local, except undefined ones.
+
+</li><li> Numeric labels can be used as local <code>gas</code>-like labels. 
+They can be defined several times in the same source. Use 'b'
+(backward) or 'f' (forward) as suffix to reference them:
+
+<table><tr><td>&nbsp;</td><td><pre class="example"> 1:
+      jmp 1b /* jump to '1' label before */
+      jmp 1f /* jump to '1' label after */
+ 1:
+</pre></td></tr></table>
+
+</li></ul>
+
+<hr size="6">
+<a name="SEC14"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC13" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC15" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 4.4 Directives </h2>
+
+<p>All directives are preceeded by a '.'. The following directives are
+supported:
+</p>
+<ul class="toc">
+<li> .align n[,value]
+</li><li> .skip n[,value]
+</li><li> .space n[,value]
+</li><li> .byte value1[,...]
+</li><li> .word value1[,...]
+</li><li> .short value1[,...]
+</li><li> .int value1[,...]
+</li><li> .long value1[,...]
+</li><li> .quad immediate_value1[,...]
+</li><li> .globl symbol
+</li><li> .global symbol
+</li><li> .section section
+</li><li> .text
+</li><li> .data
+</li><li> .bss
+</li><li> .fill repeat[,size[,value]]
+</li><li> .org n
+</li><li> .previous
+</li><li> .string string[,...]
+</li><li> .asciz string[,...]
+</li><li> .ascii string[,...]
+</li></ul>
+
+<hr size="6">
+<a name="SEC15"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC14" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 4.5 X86 Assembler </h2>
+
+<p>All X86 opcodes are supported. Only ATT syntax is supported (source
+then destination operand order). If no size suffix is given, TinyCC
+tries to guess it from the operand sizes.
+</p>
+<p>Currently, MMX opcodes are supported but not SSE ones.
+</p>
+<hr size="6">
+<a name="linker"></a>
+<a name="SEC16"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC15" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC17" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC10" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 5. TinyCC Linker </h1>
+
+<hr size="6">
+<a name="SEC17"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC16" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC18" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 5.1 ELF file generation </h2>
+
+<p>TCC can directly output relocatable ELF files (object files),
+executable ELF files and dynamic ELF libraries without relying on an
+external linker.
+</p>
+<p>Dynamic ELF libraries can be output but the C compiler does not generate
+position independent code (PIC). It means that the dynamic library
+code generated by TCC cannot be factorized among processes yet.
+</p>
+<p>TCC linker eliminates unreferenced object code in libraries. A single pass is
+done on the object and library list, so the order in which object files and
+libraries are specified is important (same constraint as GNU ld). No grouping
+options (&lsquo;<samp>--start-group</samp>&rsquo; and &lsquo;<samp>--end-group</samp>&rsquo;) are supported.
+</p>
+<hr size="6">
+<a name="SEC18"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC17" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC19" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 5.2 ELF file loader </h2>
+
+<p>TCC can load ELF object files, archives (.a files) and dynamic
+libraries (.so).
+</p>
+<hr size="6">
+<a name="SEC19"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC18" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC20" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 5.3 PE-i386 file generation </h2>
+
+<p>TCC for Windows supports the native Win32 executable file format (PE-i386).  It
+generates EXE files (console and gui) and DLL files.
+</p>
+<p>For usage on Windows, see also tcc-win32.txt.
+</p>
+<hr size="6">
+<a name="SEC20"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC19" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 5.4 GNU Linker Scripts </h2>
+
+<p>Because on many Linux systems some dynamic libraries (such as
+&lsquo;<tt>/usr/lib/libc.so</tt>&rsquo;) are in fact GNU ld link scripts (horrible!),
+the TCC linker also supports a subset of GNU ld scripts.
+</p>
+<p>The <code>GROUP</code> and <code>FILE</code> commands are supported. <code>OUTPUT_FORMAT</code>
+and <code>TARGET</code> are ignored.
+</p>
+<p>Example from &lsquo;<tt>/usr/lib/libc.so</tt>&rsquo;:
+</p><table><tr><td>&nbsp;</td><td><pre class="example">/* GNU ld script
+   Use the shared library, but some functions are only in
+   the static library, so try that secondarily.  */
+GROUP ( /lib/libc.so.6 /usr/lib/libc_nonshared.a )
+</pre></td></tr></table>
+
+<hr size="6">
+<a name="Bounds"></a>
+<a name="SEC21"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC20" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC22" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC16" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC22" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 6. TinyCC Memory and Bound checks </h1>
+
+<p>This feature is activated with the &lsquo;<samp>-b</samp>&rsquo; (see section <a href="#SEC2">Command line invocation</a>).
+</p>
+<p>Note that pointer size is <em>unchanged</em> and that code generated
+with bound checks is <em>fully compatible</em> with unchecked
+code. When a pointer comes from unchecked code, it is assumed to be
+valid. Even very obscure C code with casts should work correctly.
+</p>
+<p>For more information about the ideas behind this method, see
+<a href="http://www.doc.ic.ac.uk/~phjk/BoundsChecking.html">http://www.doc.ic.ac.uk/~phjk/BoundsChecking.html</a>.
+</p>
+<p>Here are some examples of caught errors:
+</p>
+<dl compact="compact">
+<dt> Invalid range with standard string function:</dt>
+<dd><table><tr><td>&nbsp;</td><td><pre class="example">{
+    char tab[10];
+    memset(tab, 0, 11);
+}
+</pre></td></tr></table>
+
+</dd>
+<dt> Out of bounds-error in global or local arrays:</dt>
+<dd><table><tr><td>&nbsp;</td><td><pre class="example">{
+    int tab[10];
+    for(i=0;i&lt;11;i++) {
+        sum += tab[i];
+    }
+}
+</pre></td></tr></table>
+
+</dd>
+<dt> Out of bounds-error in malloc'ed data:</dt>
+<dd><table><tr><td>&nbsp;</td><td><pre class="example">{
+    int *tab;
+    tab = malloc(20 * sizeof(int));
+    for(i=0;i&lt;21;i++) {
+        sum += tab4[i];
+    }
+    free(tab);
+}
+</pre></td></tr></table>
+
+</dd>
+<dt> Access of freed memory:</dt>
+<dd><table><tr><td>&nbsp;</td><td><pre class="example">{
+    int *tab;
+    tab = malloc(20 * sizeof(int));
+    free(tab);
+    for(i=0;i&lt;20;i++) {
+        sum += tab4[i];
+    }
+}
+</pre></td></tr></table>
+
+</dd>
+<dt> Double free:</dt>
+<dd><table><tr><td>&nbsp;</td><td><pre class="example">{
+    int *tab;
+    tab = malloc(20 * sizeof(int));
+    free(tab);
+    free(tab);
+}
+</pre></td></tr></table>
+
+</dd>
+</dl>
+
+<hr size="6">
+<a name="Libtcc"></a>
+<a name="SEC22"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC21" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 7. The <code>libtcc</code> library </h1>
+
+<p>The <code>libtcc</code> library enables you to use TCC as a backend for
+dynamic code generation. 
+</p>
+<p>Read the &lsquo;<tt>libtcc.h</tt>&rsquo; to have an overview of the API. Read
+&lsquo;<tt>libtcc_test.c</tt>&rsquo; to have a very simple example.
+</p>
+<p>The idea consists in giving a C string containing the program you want
+to compile directly to <code>libtcc</code>. Then you can access to any global
+symbol (function or variable) defined.
+</p>
+<hr size="6">
+<a name="devel"></a>
+<a name="SEC23"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC22" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC24" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC22" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="chapter"> 8. Developer's guide </h1>
+
+<p>This chapter gives some hints to understand how TCC works. You can skip
+it if you do not intend to modify the TCC code.
+</p>
+<hr size="6">
+<a name="SEC24"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC23" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC25" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.1 File reading </h2>
+
+<p>The <code>BufferedFile</code> structure contains the context needed to read a
+file, including the current line number. <code>tcc_open()</code> opens a new
+file and <code>tcc_close()</code> closes it. <code>inp()</code> returns the next
+character.
+</p>
+<hr size="6">
+<a name="SEC25"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC24" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC26" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.2 Lexer </h2>
+
+<p><code>next()</code> reads the next token in the current
+file. <code>next_nomacro()</code> reads the next token without macro
+expansion.
+</p>
+<p><code>tok</code> contains the current token (see <code>TOK_xxx</code>)
+constants. Identifiers and keywords are also keywords. <code>tokc</code>
+contains additional infos about the token (for example a constant value
+if number or string token).
+</p>
+<hr size="6">
+<a name="SEC26"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC25" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC27" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.3 Parser </h2>
+
+<p>The parser is hardcoded (yacc is not necessary). It does only one pass,
+except:
+</p>
+<ul class="toc">
+<li> For initialized arrays with unknown size, a first pass 
+is done to count the number of elements.
+
+</li><li> For architectures where arguments are evaluated in 
+reverse order, a first pass is done to reverse the argument order.
+
+</li></ul>
+
+<hr size="6">
+<a name="SEC27"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC26" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC28" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.4 Types </h2>
+
+<p>The types are stored in a single 'int' variable. It was choosen in the
+first stages of development when tcc was much simpler. Now, it may not
+be the best solution.
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">#define VT_INT        0  /* integer type */
+#define VT_BYTE       1  /* signed byte type */
+#define VT_SHORT      2  /* short type */
+#define VT_VOID       3  /* void type */
+#define VT_PTR        4  /* pointer */
+#define VT_ENUM       5  /* enum definition */
+#define VT_FUNC       6  /* function type */
+#define VT_STRUCT     7  /* struct/union definition */
+#define VT_FLOAT      8  /* IEEE float */
+#define VT_DOUBLE     9  /* IEEE double */
+#define VT_LDOUBLE   10  /* IEEE long double */
+#define VT_BOOL      11  /* ISOC99 boolean type */
+#define VT_LLONG     12  /* 64 bit integer */
+#define VT_LONG      13  /* long integer (NEVER USED as type, only
+                            during parsing) */
+#define VT_BTYPE      0x000f /* mask for basic type */
+#define VT_UNSIGNED   0x0010  /* unsigned type */
+#define VT_ARRAY      0x0020  /* array type (also has VT_PTR) */
+#define VT_BITFIELD   0x0040  /* bitfield modifier */
+
+#define VT_STRUCT_SHIFT 16   /* structure/enum name shift (16 bits left) */
+</pre></td></tr></table>
+
+<p>When a reference to another type is needed (for pointers, functions and
+structures), the <code>32 - VT_STRUCT_SHIFT</code> high order bits are used to
+store an identifier reference.
+</p>
+<p>The <code>VT_UNSIGNED</code> flag can be set for chars, shorts, ints and long
+longs.
+</p>
+<p>Arrays are considered as pointers <code>VT_PTR</code> with the flag
+<code>VT_ARRAY</code> set.
+</p>
+<p>The <code>VT_BITFIELD</code> flag can be set for chars, shorts, ints and long
+longs. If it is set, then the bitfield position is stored from bits
+VT_STRUCT_SHIFT to VT_STRUCT_SHIFT + 5 and the bit field size is stored
+from bits VT_STRUCT_SHIFT + 6 to VT_STRUCT_SHIFT + 11.
+</p>
+<p><code>VT_LONG</code> is never used except during parsing.
+</p>
+<p>During parsing, the storage of an object is also stored in the type
+integer:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">#define VT_EXTERN  0x00000080  /* extern definition */
+#define VT_STATIC  0x00000100  /* static variable */
+#define VT_TYPEDEF 0x00000200  /* typedef definition */
+</pre></td></tr></table>
+
+<hr size="6">
+<a name="SEC28"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC27" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC29" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.5 Symbols </h2>
+
+<p>All symbols are stored in hashed symbol stacks. Each symbol stack
+contains <code>Sym</code> structures.
+</p>
+<p><code>Sym.v</code> contains the symbol name (remember
+an idenfier is also a token, so a string is never necessary to store
+it). <code>Sym.t</code> gives the type of the symbol. <code>Sym.r</code> is usually
+the register in which the corresponding variable is stored. <code>Sym.c</code> is
+usually a constant associated to the symbol.
+</p>
+<p>Four main symbol stacks are defined:
+</p>
+<dl compact="compact">
+<dt> <code>define_stack</code></dt>
+<dd><p>for the macros (<code>#define</code>s).
+</p>
+</dd>
+<dt> <code>global_stack</code></dt>
+<dd><p>for the global variables, functions and types.
+</p>
+</dd>
+<dt> <code>local_stack</code></dt>
+<dd><p>for the local variables, functions and types.
+</p>
+</dd>
+<dt> <code>global_label_stack</code></dt>
+<dd><p>for the local labels (for <code>goto</code>).
+</p>
+</dd>
+<dt> <code>label_stack</code></dt>
+<dd><p>for GCC block local labels (see the <code>__label__</code> keyword).
+</p>
+</dd>
+</dl>
+
+<p><code>sym_push()</code> is used to add a new symbol in the local symbol
+stack. If no local symbol stack is active, it is added in the global
+symbol stack.
+</p>
+<p><code>sym_pop(st,b)</code> pops symbols from the symbol stack <var>st</var> until
+the symbol <var>b</var> is on the top of stack. If <var>b</var> is NULL, the stack
+is emptied.
+</p>
+<p><code>sym_find(v)</code> return the symbol associated to the identifier
+<var>v</var>. The local stack is searched first from top to bottom, then the
+global stack.
+</p>
+<hr size="6">
+<a name="SEC29"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC28" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC30" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.6 Sections </h2>
+
+<p>The generated code and datas are written in sections. The structure
+<code>Section</code> contains all the necessary information for a given
+section. <code>new_section()</code> creates a new section. ELF file semantics
+is assumed for each section.
+</p>
+<p>The following sections are predefined:
+</p>
+<dl compact="compact">
+<dt> <code>text_section</code></dt>
+<dd><p>is the section containing the generated code. <var>ind</var> contains the
+current position in the code section.
+</p>
+</dd>
+<dt> <code>data_section</code></dt>
+<dd><p>contains initialized data
+</p>
+</dd>
+<dt> <code>bss_section</code></dt>
+<dd><p>contains uninitialized data
+</p>
+</dd>
+<dt> <code>bounds_section</code></dt>
+<dt> <code>lbounds_section</code></dt>
+<dd><p>are used when bound checking is activated
+</p>
+</dd>
+<dt> <code>stab_section</code></dt>
+<dt> <code>stabstr_section</code></dt>
+<dd><p>are used when debugging is actived to store debug information
+</p>
+</dd>
+<dt> <code>symtab_section</code></dt>
+<dt> <code>strtab_section</code></dt>
+<dd><p>contain the exported symbols (currently only used for debugging).
+</p>
+</dd>
+</dl>
+
+<hr size="6">
+<a name="SEC30"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC29" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC31" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.7 Code generation </h2>
+
+<hr size="6">
+<a name="SEC31"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC30" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC32" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC30" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h3 class="subsection"> 8.7.1 Introduction </h3>
+
+<p>The TCC code generator directly generates linked binary code in one
+pass. It is rather unusual these days (see gcc for example which
+generates text assembly), but it can be very fast and surprisingly
+little complicated.
+</p>
+<p>The TCC code generator is register based. Optimization is only done at
+the expression level. No intermediate representation of expression is
+kept except the current values stored in the <em>value stack</em>.
+</p>
+<p>On x86, three temporary registers are used. When more registers are
+needed, one register is spilled into a new temporary variable on the stack.
+</p>
+<hr size="6">
+<a name="SEC32"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC31" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC33" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC30" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h3 class="subsection"> 8.7.2 The value stack </h3>
+
+<p>When an expression is parsed, its value is pushed on the value stack
+(<var>vstack</var>). The top of the value stack is <var>vtop</var>. Each value
+stack entry is the structure <code>SValue</code>.
+</p>
+<p><code>SValue.t</code> is the type. <code>SValue.r</code> indicates how the value is
+currently stored in the generated code. It is usually a CPU register
+index (<code>REG_xxx</code> constants), but additional values and flags are
+defined:
+</p>
+<table><tr><td>&nbsp;</td><td><pre class="example">#define VT_CONST     0x00f0
+#define VT_LLOCAL    0x00f1
+#define VT_LOCAL     0x00f2
+#define VT_CMP       0x00f3
+#define VT_JMP       0x00f4
+#define VT_JMPI      0x00f5
+#define VT_LVAL      0x0100
+#define VT_SYM       0x0200
+#define VT_MUSTCAST  0x0400
+#define VT_MUSTBOUND 0x0800
+#define VT_BOUNDED   0x8000
+#define VT_LVAL_BYTE     0x1000
+#define VT_LVAL_SHORT    0x2000
+#define VT_LVAL_UNSIGNED 0x4000
+#define VT_LVAL_TYPE     (VT_LVAL_BYTE | VT_LVAL_SHORT | VT_LVAL_UNSIGNED)
+</pre></td></tr></table>
+
+<dl compact="compact">
+<dt> <code>VT_CONST</code></dt>
+<dd><p>indicates that the value is a constant. It is stored in the union
+<code>SValue.c</code>, depending on its type.
+</p>
+</dd>
+<dt> <code>VT_LOCAL</code></dt>
+<dd><p>indicates a local variable pointer at offset <code>SValue.c.i</code> in the
+stack.
+</p>
+</dd>
+<dt> <code>VT_CMP</code></dt>
+<dd><p>indicates that the value is actually stored in the CPU flags (i.e. the
+value is the consequence of a test). The value is either 0 or 1. The
+actual CPU flags used is indicated in <code>SValue.c.i</code>. 
+</p>
+<p>If any code is generated which destroys the CPU flags, this value MUST be
+put in a normal register.
+</p>
+</dd>
+<dt> <code>VT_JMP</code></dt>
+<dt> <code>VT_JMPI</code></dt>
+<dd><p>indicates that the value is the consequence of a conditional jump. For VT_JMP,
+it is 1 if the jump is taken, 0 otherwise. For VT_JMPI it is inverted.
+</p>
+<p>These values are used to compile the <code>||</code> and <code>&amp;&amp;</code> logical
+operators.
+</p>
+<p>If any code is generated, this value MUST be put in a normal
+register. Otherwise, the generated code won't be executed if the jump is
+taken.
+</p>
+</dd>
+<dt> <code>VT_LVAL</code></dt>
+<dd><p>is a flag indicating that the value is actually an lvalue (left value of
+an assignment). It means that the value stored is actually a pointer to
+the wanted value. 
+</p>
+<p>Understanding the use <code>VT_LVAL</code> is very important if you want to
+understand how TCC works.
+</p>
+</dd>
+<dt> <code>VT_LVAL_BYTE</code></dt>
+<dt> <code>VT_LVAL_SHORT</code></dt>
+<dt> <code>VT_LVAL_UNSIGNED</code></dt>
+<dd><p>if the lvalue has an integer type, then these flags give its real
+type. The type alone is not enough in case of cast optimisations.
+</p>
+</dd>
+<dt> <code>VT_LLOCAL</code></dt>
+<dd><p>is a saved lvalue on the stack. <code>VT_LLOCAL</code> should be eliminated
+ASAP because its semantics are rather complicated.
+</p>
+</dd>
+<dt> <code>VT_MUSTCAST</code></dt>
+<dd><p>indicates that a cast to the value type must be performed if the value
+is used (lazy casting).
+</p>
+</dd>
+<dt> <code>VT_SYM</code></dt>
+<dd><p>indicates that the symbol <code>SValue.sym</code> must be added to the constant.
+</p>
+</dd>
+<dt> <code>VT_MUSTBOUND</code></dt>
+<dt> <code>VT_BOUNDED</code></dt>
+<dd><p>are only used for optional bound checking.
+</p>
+</dd>
+</dl>
+
+<hr size="6">
+<a name="SEC33"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC32" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC34" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC30" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h3 class="subsection"> 8.7.3 Manipulating the value stack </h3>
+
+<p><code>vsetc()</code> and <code>vset()</code> pushes a new value on the value
+stack. If the previous <var>vtop</var> was stored in a very unsafe place(for
+example in the CPU flags), then some code is generated to put the
+previous <var>vtop</var> in a safe storage.
+</p>
+<p><code>vpop()</code> pops <var>vtop</var>. In some cases, it also generates cleanup
+code (for example if stacked floating point registers are used as on
+x86).
+</p>
+<p>The <code>gv(rc)</code> function generates code to evaluate <var>vtop</var> (the
+top value of the stack) into registers. <var>rc</var> selects in which
+register class the value should be put. <code>gv()</code> is the <em>most
+important function</em> of the code generator.
+</p>
+<p><code>gv2()</code> is the same as <code>gv()</code> but for the top two stack
+entries.
+</p>
+<hr size="6">
+<a name="SEC34"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC33" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC35" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC30" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h3 class="subsection"> 8.7.4 CPU dependent code generation </h3>
+<p>See the &lsquo;<tt>i386-gen.c</tt>&rsquo; file to have an example.
+</p>
+<dl compact="compact">
+<dt> <code>load()</code></dt>
+<dd><p>must generate the code needed to load a stack value into a register.
+</p>
+</dd>
+<dt> <code>store()</code></dt>
+<dd><p>must generate the code needed to store a register into a stack value
+lvalue.
+</p>
+</dd>
+<dt> <code>gfunc_start()</code></dt>
+<dt> <code>gfunc_param()</code></dt>
+<dt> <code>gfunc_call()</code></dt>
+<dd><p>should generate a function call
+</p>
+</dd>
+<dt> <code>gfunc_prolog()</code></dt>
+<dt> <code>gfunc_epilog()</code></dt>
+<dd><p>should generate a function prolog/epilog.
+</p>
+</dd>
+<dt> <code>gen_opi(op)</code></dt>
+<dd><p>must generate the binary integer operation <var>op</var> on the two top
+entries of the stack which are guaranted to contain integer types.
+</p>
+<p>The result value should be put on the stack.
+</p>
+</dd>
+<dt> <code>gen_opf(op)</code></dt>
+<dd><p>same as <code>gen_opi()</code> for floating point operations. The two top
+entries of the stack are guaranted to contain floating point values of
+same types.
+</p>
+</dd>
+<dt> <code>gen_cvt_itof()</code></dt>
+<dd><p>integer to floating point conversion.
+</p>
+</dd>
+<dt> <code>gen_cvt_ftoi()</code></dt>
+<dd><p>floating point to integer conversion.
+</p>
+</dd>
+<dt> <code>gen_cvt_ftof()</code></dt>
+<dd><p>floating point to floating point of different size conversion.
+</p>
+</dd>
+<dt> <code>gen_bounded_ptr_add()</code></dt>
+<dt> <code>gen_bounded_ptr_deref()</code></dt>
+<dd><p>are only used for bounds checking.
+</p>
+</dd>
+</dl>
+
+<hr size="6">
+<a name="SEC35"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC34" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section"> 8.8 Optimizations done </h2>
+<p>Constant propagation is done for all operations. Multiplications and
+divisions are optimized to shifts when appropriate. Comparison
+operators are optimized by maintaining a special cache for the
+processor flags. &amp;&amp;, || and ! are optimized by maintaining a special
+'jump target' value. No other jump optimization is currently performed
+because it would require to store the code in a more abstract fashion.
+</p>
+<hr size="6">
+<a name="SEC36"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC35" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ &gt; ]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC23" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[ &gt;&gt; ]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1 class="unnumbered"> Concept Index </h1>
+<table><tr><th valign="top">Jump to: &nbsp; </th><td><a href="#SEC36_0" class="summary-letter"><b>_</b></a>
+ &nbsp; 
+<br>
+<a href="#SEC36_1" class="summary-letter"><b>A</b></a>
+ &nbsp; 
+<a href="#SEC36_2" class="summary-letter"><b>B</b></a>
+ &nbsp; 
+<a href="#SEC36_3" class="summary-letter"><b>C</b></a>
+ &nbsp; 
+<a href="#SEC36_4" class="summary-letter"><b>D</b></a>
+ &nbsp; 
+<a href="#SEC36_5" class="summary-letter"><b>E</b></a>
+ &nbsp; 
+<a href="#SEC36_6" class="summary-letter"><b>F</b></a>
+ &nbsp; 
+<a href="#SEC36_7" class="summary-letter"><b>G</b></a>
+ &nbsp; 
+<a href="#SEC36_8" class="summary-letter"><b>I</b></a>
+ &nbsp; 
+<a href="#SEC36_9" class="summary-letter"><b>J</b></a>
+ &nbsp; 
+<a href="#SEC36_10" class="summary-letter"><b>L</b></a>
+ &nbsp; 
+<a href="#SEC36_11" class="summary-letter"><b>M</b></a>
+ &nbsp; 
+<a href="#SEC36_12" class="summary-letter"><b>O</b></a>
+ &nbsp; 
+<a href="#SEC36_13" class="summary-letter"><b>P</b></a>
+ &nbsp; 
+<a href="#SEC36_14" class="summary-letter"><b>Q</b></a>
+ &nbsp; 
+<a href="#SEC36_15" class="summary-letter"><b>R</b></a>
+ &nbsp; 
+<a href="#SEC36_16" class="summary-letter"><b>S</b></a>
+ &nbsp; 
+<a href="#SEC36_17" class="summary-letter"><b>T</b></a>
+ &nbsp; 
+<a href="#SEC36_18" class="summary-letter"><b>U</b></a>
+ &nbsp; 
+<a href="#SEC36_19" class="summary-letter"><b>V</b></a>
+ &nbsp; 
+<a href="#SEC36_20" class="summary-letter"><b>W</b></a>
+ &nbsp; 
+</td></tr></table>
+<table border="0" class="index-cp">
+<tr><td></td><th align="left">Index Entry</th><th align="left"> Section</th></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_0">_</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX11">__asm__</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_1">A</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">align directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX1">aligned attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">ascii directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">asciz directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC15">assembler</a></td><td valign="top"><a href="#SEC15">4.5 X86 Assembler</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">assembler directives</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX10">assembly, inline</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_2">B</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC21">bound checks</a></td><td valign="top"><a href="#SEC21">6. TinyCC Memory and Bound checks</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">bss directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">byte directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_3">C</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">caching processor flags</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX5">cdecl attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC30">code generation</a></td><td valign="top"><a href="#SEC30">8.7 Code generation</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">comparison operators</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">constant propagation</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC34">CPU dependent</a></td><td valign="top"><a href="#SEC34">8.7.4 CPU dependent code generation</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_4">D</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">data directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">directives, assembler</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX8">dllexport attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_5">E</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC17">ELF</a></td><td valign="top"><a href="#SEC17">5.1 ELF file generation</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_6">F</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">FILE, linker command</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">fill directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">flags, caching</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_7">G</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX12">gas</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">global directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">globl directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">GROUP, linker command</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_8">I</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX9">inline assembly</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">int directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_9">J</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">jump optimization</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_10">L</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC16">linker</a></td><td valign="top"><a href="#SEC16">5. TinyCC Linker</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">linker scripts</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">long directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_11">M</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC21">memory checks</a></td><td valign="top"><a href="#SEC21">6. TinyCC Memory and Bound checks</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_12">O</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">optimizations</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">org directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">OUTPUT_FORMAT, linker command</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_13">P</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX2">packed attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC19">PE-i386</a></td><td valign="top"><a href="#SEC19">5.3 PE-i386 file generation</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">previous directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_14">Q</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">quad directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_15">R</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX7">regparm attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_16">S</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">scripts, linker</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX3">section attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">section directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">short directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">skip directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">space directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX6">stdcall attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC35">strength reduction</a></td><td valign="top"><a href="#SEC35">8.8 Optimizations done</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">string directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_17">T</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC20">TARGET, linker command</a></td><td valign="top"><a href="#SEC20">5.4 GNU Linker Scripts</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">text directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_18">U</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#IDX4">unused attribute</a></td><td valign="top"><a href="#SEC8">3.3 GNU C extensions</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_19">V</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC33">value stack</a></td><td valign="top"><a href="#SEC33">8.7.3 Manipulating the value stack</a></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC32">value stack, introduction</a></td><td valign="top"><a href="#SEC32">8.7.2 The value stack</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+<tr><th><a name="SEC36_20">W</a></th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#SEC14">word directive</a></td><td valign="top"><a href="#SEC14">4.4 Directives</a></td></tr>
+<tr><td colspan="3"> <hr></td></tr>
+</table>
+<table><tr><th valign="top">Jump to: &nbsp; </th><td><a href="#SEC36_0" class="summary-letter"><b>_</b></a>
+ &nbsp; 
+<br>
+<a href="#SEC36_1" class="summary-letter"><b>A</b></a>
+ &nbsp; 
+<a href="#SEC36_2" class="summary-letter"><b>B</b></a>
+ &nbsp; 
+<a href="#SEC36_3" class="summary-letter"><b>C</b></a>
+ &nbsp; 
+<a href="#SEC36_4" class="summary-letter"><b>D</b></a>
+ &nbsp; 
+<a href="#SEC36_5" class="summary-letter"><b>E</b></a>
+ &nbsp; 
+<a href="#SEC36_6" class="summary-letter"><b>F</b></a>
+ &nbsp; 
+<a href="#SEC36_7" class="summary-letter"><b>G</b></a>
+ &nbsp; 
+<a href="#SEC36_8" class="summary-letter"><b>I</b></a>
+ &nbsp; 
+<a href="#SEC36_9" class="summary-letter"><b>J</b></a>
+ &nbsp; 
+<a href="#SEC36_10" class="summary-letter"><b>L</b></a>
+ &nbsp; 
+<a href="#SEC36_11" class="summary-letter"><b>M</b></a>
+ &nbsp; 
+<a href="#SEC36_12" class="summary-letter"><b>O</b></a>
+ &nbsp; 
+<a href="#SEC36_13" class="summary-letter"><b>P</b></a>
+ &nbsp; 
+<a href="#SEC36_14" class="summary-letter"><b>Q</b></a>
+ &nbsp; 
+<a href="#SEC36_15" class="summary-letter"><b>R</b></a>
+ &nbsp; 
+<a href="#SEC36_16" class="summary-letter"><b>S</b></a>
+ &nbsp; 
+<a href="#SEC36_17" class="summary-letter"><b>T</b></a>
+ &nbsp; 
+<a href="#SEC36_18" class="summary-letter"><b>U</b></a>
+ &nbsp; 
+<a href="#SEC36_19" class="summary-letter"><b>V</b></a>
+ &nbsp; 
+<a href="#SEC36_20" class="summary-letter"><b>W</b></a>
+ &nbsp; 
+</td></tr></table>
+
+<hr size="6">
+<a name="SEC_Contents"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1>Table of Contents</h1>
+<div class="contents">
+
+<ul class="toc">
+  <li><a name="TOC1" href="#SEC1">1. Introduction</a></li>
+  <li><a name="TOC2" href="#SEC2">2. Command line invocation</a>
+  <ul class="toc">
+    <li><a name="TOC3" href="#SEC3">2.1 Quick start</a></li>
+    <li><a name="TOC4" href="#SEC4">2.2 Option summary</a></li>
+  </ul></li>
+  <li><a name="TOC5" href="#SEC5">3. C language support</a>
+  <ul class="toc">
+    <li><a name="TOC6" href="#SEC6">3.1 ANSI C</a></li>
+    <li><a name="TOC7" href="#SEC7">3.2 ISOC99 extensions</a></li>
+    <li><a name="TOC8" href="#SEC8">3.3 GNU C extensions</a></li>
+    <li><a name="TOC9" href="#SEC9">3.4 TinyCC extensions</a></li>
+  </ul></li>
+  <li><a name="TOC10" href="#SEC10">4. TinyCC Assembler</a>
+  <ul class="toc">
+    <li><a name="TOC11" href="#SEC11">4.1 Syntax</a></li>
+    <li><a name="TOC12" href="#SEC12">4.2 Expressions</a></li>
+    <li><a name="TOC13" href="#SEC13">4.3 Labels</a></li>
+    <li><a name="TOC14" href="#SEC14">4.4 Directives</a></li>
+    <li><a name="TOC15" href="#SEC15">4.5 X86 Assembler</a></li>
+  </ul></li>
+  <li><a name="TOC16" href="#SEC16">5. TinyCC Linker</a>
+  <ul class="toc">
+    <li><a name="TOC17" href="#SEC17">5.1 ELF file generation</a></li>
+    <li><a name="TOC18" href="#SEC18">5.2 ELF file loader</a></li>
+    <li><a name="TOC19" href="#SEC19">5.3 PE-i386 file generation</a></li>
+    <li><a name="TOC20" href="#SEC20">5.4 GNU Linker Scripts</a></li>
+  </ul></li>
+  <li><a name="TOC21" href="#SEC21">6. TinyCC Memory and Bound checks</a></li>
+  <li><a name="TOC22" href="#SEC22">7. The <code>libtcc</code> library</a></li>
+  <li><a name="TOC23" href="#SEC23">8. Developer's guide</a>
+  <ul class="toc">
+    <li><a name="TOC24" href="#SEC24">8.1 File reading</a></li>
+    <li><a name="TOC25" href="#SEC25">8.2 Lexer</a></li>
+    <li><a name="TOC26" href="#SEC26">8.3 Parser</a></li>
+    <li><a name="TOC27" href="#SEC27">8.4 Types</a></li>
+    <li><a name="TOC28" href="#SEC28">8.5 Symbols</a></li>
+    <li><a name="TOC29" href="#SEC29">8.6 Sections</a></li>
+    <li><a name="TOC30" href="#SEC30">8.7 Code generation</a>
+    <ul class="toc">
+      <li><a name="TOC31" href="#SEC31">8.7.1 Introduction</a></li>
+      <li><a name="TOC32" href="#SEC32">8.7.2 The value stack</a></li>
+      <li><a name="TOC33" href="#SEC33">8.7.3 Manipulating the value stack</a></li>
+      <li><a name="TOC34" href="#SEC34">8.7.4 CPU dependent code generation</a></li>
+    </ul></li>
+    <li><a name="TOC35" href="#SEC35">8.8 Optimizations done</a></li>
+  </ul></li>
+  <li><a name="TOC36" href="#SEC36">Concept Index</a></li>
+</ul>
+</div>
+<hr size="1">
+<a name="SEC_About"></a>
+<table cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#SEC_Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC36" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h1>About This Document</h1>
+<p>
+  This document was generated by <em>gr</em> on <em>May, 18 2009</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
+</p>
+<p>
+  The buttons in the navigation panels have the following meaning:
+</p>
+<table border="1">
+  <tr>
+    <th> Button </th>
+    <th> Name </th>
+    <th> Go to </th>
+    <th> From 1.2.3 go to</th>
+  </tr>
+  <tr>
+    <td align="center"> [ &lt; ] </td>
+    <td align="center">Back</td>
+    <td>Previous section in reading order</td>
+    <td>1.2.2</td>
+  </tr>
+  <tr>
+    <td align="center"> [ &gt; ] </td>
+    <td align="center">Forward</td>
+    <td>Next section in reading order</td>
+    <td>1.2.4</td>
+  </tr>
+  <tr>
+    <td align="center"> [ &lt;&lt; ] </td>
+    <td align="center">FastBack</td>
+    <td>Beginning of this chapter or previous chapter</td>
+    <td>1</td>
+  </tr>
+  <tr>
+    <td align="center"> [ Up ] </td>
+    <td align="center">Up</td>
+    <td>Up section</td>
+    <td>1.2</td>
+  </tr>
+  <tr>
+    <td align="center"> [ &gt;&gt; ] </td>
+    <td align="center">FastForward</td>
+    <td>Next chapter</td>
+    <td>2</td>
+  </tr>
+  <tr>
+    <td align="center"> [Top] </td>
+    <td align="center">Top</td>
+    <td>Cover (top) of document</td>
+    <td> &nbsp; </td>
+  </tr>
+  <tr>
+    <td align="center"> [Contents] </td>
+    <td align="center">Contents</td>
+    <td>Table of contents</td>
+    <td> &nbsp; </td>
+  </tr>
+  <tr>
+    <td align="center"> [Index] </td>
+    <td align="center">Index</td>
+    <td>Index</td>
+    <td> &nbsp; </td>
+  </tr>
+  <tr>
+    <td align="center"> [ ? ] </td>
+    <td align="center">About</td>
+    <td>About (help)</td>
+    <td> &nbsp; </td>
+  </tr>
+</table>
+
+<p>
+  where the <strong> Example </strong> assumes that the current position is at <strong> Subsubsection One-Two-Three </strong> of a document of the following structure:
+</p>
+
+<ul>
+  <li> 1. Section One
+    <ul>
+      <li>1.1 Subsection One-One
+        <ul>
+          <li>...</li>
+        </ul>
+      </li>
+      <li>1.2 Subsection One-Two
+        <ul>
+          <li>1.2.1 Subsubsection One-Two-One</li>
+          <li>1.2.2 Subsubsection One-Two-Two</li>
+          <li>1.2.3 Subsubsection One-Two-Three &nbsp; &nbsp;
+            <strong>&lt;== Current Position </strong></li>
+          <li>1.2.4 Subsubsection One-Two-Four</li>
+        </ul>
+      </li>
+      <li>1.3 Subsection One-Three
+        <ul>
+          <li>...</li>
+        </ul>
+      </li>
+      <li>1.4 Subsection One-Four</li>
+    </ul>
+  </li>
+</ul>
+
+<hr size="1">
+<p>
+ <font size="-1">
+  This document was generated by <em>gr</em> on <em>May, 18 2009</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
+ </font>
+ <br>
+
+</p>
+</body>
+</html>

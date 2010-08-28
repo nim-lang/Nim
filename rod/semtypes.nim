@@ -454,6 +454,8 @@ proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode,
       #if not IntSetContainsOrIncl(cl, t.sons[i].sym.ident.id):
       var s = copySym(t.sons[i].sym)
       s.position = sonsLen(genericParams)
+      if s.typ == nil or s.typ.kind != tyGenericParam: 
+        InternalError("addTypeVarsOfGenericBody 2")
       addDecl(c, s)
       addSon(genericParams, newSymNode(s))
       addSon(result, t.sons[i])

@@ -671,6 +671,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if n.sons[genericParamsPos] == nil:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
+        # check for semantics again:
+        semParamList(c, n.sons[ParamsPos], nil, s)
     addParams(c, s.typ.n)
   else: 
     s.typ = newTypeS(tyProc, c)

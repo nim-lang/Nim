@@ -160,7 +160,7 @@ underscores ``__`` are not allowed::
 The following `keywords`:idx: are reserved and cannot be used as identifiers:
 
 .. code-block:: nimrod
-   :file: ../data/keywords.txt
+   :file: keywords.txt
 
 Some keywords are unused; they are reserved for future developments of the
 language.

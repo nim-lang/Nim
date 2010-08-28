@@ -1,10 +1,12 @@
-Advanced commands::
-  pretty                    pretty print the inputfile
-  genDepend                 generate a DOT file containing the
+Advanced commands:
+  //run                     run the project (with Tiny C backend; Linux only!)
+  //pretty                  pretty print the inputfile
+  //genDepend               generate a DOT file containing the
                             module dependency graph
-  listDef                   list all defined conditionals and exit
-  check                     checks the project for syntax and semantic
-  parse                     parses a single file (for debugging Nimrod)
+  //listDef                 list all defined conditionals and exit
+  //check                   checks the project for syntax and semantic
+  //parse                   parses a single file (for debugging Nimrod)
+
 Advanced options:
   -w, --warnings:on|off     turn all warnings on|off
   --warning[X]:on|off       turn specific warning X on|off

@@ -17,8 +17,8 @@ const
   InitCrc32* = TCrc32(- 1)
   InitAdler32* = int32(1)
 
-proc updateCrc32*(val: int8, crc: TCrc32): TCrc32
-proc updateCrc32*(val: Char, crc: TCrc32): TCrc32
+proc updateCrc32*(val: int8, crc: TCrc32): TCrc32 {.inline.}
+proc updateCrc32*(val: Char, crc: TCrc32): TCrc32 {.inline.}
 proc crcFromBuf*(buf: Pointer, length: int): TCrc32
 proc strCrc32*(s: string): TCrc32
 proc crcFromFile*(filename: string): TCrc32
@@ -84,6 +84,10 @@ proc updateCrc32(val: Char, crc: TCrc32): TCrc32 =
 proc strCrc32(s: string): TCrc32 = 
   result = InitCrc32
   for i in countup(0, len(s) + 0 - 1): result = updateCrc32(s[i], result)
+  
+proc `><`*(c: TCrc32, s: string): TCrc32 = 
+  result = c
+  for i in 0..len(s)-1: result = updateCrc32(s[i], result)  
   
 type 
   TByteArray = array[0..10000000, int8]
