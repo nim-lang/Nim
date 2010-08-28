@@ -30,6 +30,9 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno                     builds the Inno Setup installer
+Boot options:
+  -d:release               produce a release version of the compiler
+  -d:tinyc                 include the Tiny C backend (not supported on Windows)
 """
 
 proc exec(cmd: string) =

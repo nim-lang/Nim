@@ -40,7 +40,7 @@ proc atomicDec(memLoc: var int, x: int): int =
 type
   TThread* {.final, pure.} = object
     next: ptr TThread
-  TThreadFunc* = proc (closure: pointer) {.cdecl.}
+  TThreadFunc* = proc (closure: pointer)
   
 proc createThread*(t: var TThread, fn: TThreadFunc) = 
   nil

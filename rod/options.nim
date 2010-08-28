@@ -11,7 +11,7 @@ import
   os, lists, strutils, nstrtabs
   
 const
-  hasTinyCBackend* = false
+  hasTinyCBackend* = defined(tinyc)
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)

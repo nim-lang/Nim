@@ -243,7 +243,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # passed to an open array?
     if needsComplexAssignment(dest.t):
       appcg(p, cpsStmts,     # XXX: is this correct for arrays?
-           "genericAssignOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
+           "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
            [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
     else:
       appcg(p, cpsStmts,

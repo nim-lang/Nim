@@ -487,14 +487,14 @@ when not defined(useNimRtl):
         stackBottom = cast[pointer](max(a, b))
 
 proc stackSize(): int {.noinline.} =
-  var stackTop: array[0..1, pointer]
-  result = abs(cast[int](addr(stackTop[0])) - cast[int](stackBottom))
+  var stackTop {.volatile.}: pointer
+  result = abs(cast[int](addr(stackTop)) - cast[int](stackBottom))
 
 when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
-    var stackTop: array [0..1, pointer]
+    var stackTop {.volatile.}: pointer
     var b = cast[TAddress](stackBottom)
-    var a = cast[TAddress](addr(stackTop[0]))
+    var a = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
     result = x >=% a and x <=% b
 
@@ -522,9 +522,9 @@ elif stackIncreases:
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------
   proc isOnStack(p: pointer): bool =
-    var stackTop: array [0..1, pointer]
+    var stackTop {.volatile.}: pointer
     var a = cast[TAddress](stackBottom)
-    var b = cast[TAddress](addr(stackTop[0]))
+    var b = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
     result = x >=% a and x <=% b
 
@@ -549,9 +549,9 @@ else:
   # Generic code for architectures where addresses decrease as the stack grows.
   # ---------------------------------------------------------------------------
   proc isOnStack(p: pointer): bool =
-    var stackTop: array [0..1, pointer]
+    var stackTop {.volatile.}: pointer
     var b = cast[TAddress](stackBottom)
-    var a = cast[TAddress](addr(stackTop[0]))
+    var a = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
     result = x >=% a and x <=% b
 

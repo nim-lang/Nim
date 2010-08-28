@@ -299,9 +299,15 @@ proc toObjFile(filenameWithoutExt: string): string =
 proc addFileToCompile(filename: string) = 
   appendStr(toCompile, filename)
 
+proc footprint(filename: string): TCrc32 =
+  result = crcFromFile(filename) >< 
+      platform.OS[targetOS].name ><
+      platform.CPU[targetCPU].name ><
+      extccomp.CC[extccomp.ccompiler].name
+
 proc externalFileChanged(filename: string): bool = 
   var crcFile = toGeneratedFile(filename, "crc")
-  var currentCrc = int(crcFromFile(filename))
+  var currentCrc = int(footprint(filename))
   var f: TFile
   if open(f, crcFile, fmRead): 
     var line = f.readLine()

@@ -30,11 +30,11 @@ Command line switches
 ---------------------
 Basis command line switches are:
 
-.. include:: ../data/basicopt.txt
+.. include:: basicopt.txt
 
 Advanced command line switches are:
 
-.. include:: ../data/advopt.txt
+.. include:: advopt.txt
 
 
 Configuration file

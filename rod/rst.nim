@@ -948,6 +948,10 @@ proc isDefList(p: TRstParser): bool =
       (p.tok[j].kind in {tkWord, tkOther, tkPunct}) and
       (p.tok[j - 2].symbol != "::")
 
+proc isOptionList(p: TRstParser): bool = 
+  result = match(p, p.idx, "-w") or match(p, p.idx, "--w") or
+           match(p, p.idx, "/w") or match(p, p.idx, "//w")
+
 proc whichSection(p: TRstParser): TRstNodeKind = 
   case p.tok[p.idx].kind
   of tkAdornment: 
@@ -977,8 +981,7 @@ proc whichSection(p: TRstParser): TRstNodeKind =
       rstMessage(p, errGridTableNotImplemented)
     elif isDefList(p): 
       result = rnDefList
-    elif match(p, p.idx, "-w") or match(p, p.idx, "--w") or
-        match(p, p.idx, "/w"): 
+    elif isOptionList(p): 
       result = rnOptionList
     else: 
       result = rnParagraph
@@ -1176,11 +1179,11 @@ proc parseBulletList(p: var TRstParser): PRstNode =
 proc parseOptionList(p: var TRstParser): PRstNode = 
   result = newRstNode(rnOptionList)
   while true: 
-    if match(p, p.idx, "-w") or match(p, p.idx, "--w") or
-        match(p, p.idx, "/w"): 
+    if isOptionList(p):
       var a = newRstNode(rnOptionGroup)
       var b = newRstNode(rnDescription)
       var c = newRstNode(rnOptionListItem)
+      if match(p, p.idx, "//w"): inc(p.idx)
       while not (p.tok[p.idx].kind in {tkIndent, tkEof}): 
         if (p.tok[p.idx].kind == tkWhite) and (len(p.tok[p.idx].symbol) > 1): 
           inc(p.idx)
