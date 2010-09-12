@@ -5,23 +5,23 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY49523 TY49523;
-typedef struct TY49549 TY49549;
+typedef struct TY49525 TY49525;
+typedef struct TY49551 TY49551;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
 typedef struct TY41532 TY41532;
-typedef struct TY49545 TY49545;
+typedef struct TY49547 TY49547;
 typedef struct TY48011 TY48011;
-typedef struct TY49517 TY49517;
+typedef struct TY49519 TY49519;
 typedef struct TY48005 TY48005;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
+typedef struct TY49529 TY49529;
 typedef struct TY49527 TY49527;
-typedef struct TY49525 TY49525;
-typedef struct TY49537 TY49537;
+typedef struct TY49539 TY49539;
 typedef struct TY46008 TY46008;
-typedef struct TY49541 TY49541;
+typedef struct TY49543 TY49543;
 typedef struct TY10402 TY10402;
 typedef struct TY7804 TY7804;
 typedef struct TY10790 TY10790;
@@ -29,7 +29,7 @@ typedef struct TY10418 TY10418;
 typedef struct TY10414 TY10414;
 typedef struct TY10410 TY10410;
 typedef struct TY10788 TY10788;
-typedef struct TY49547 TY49547;
+typedef struct TY49549 TY49549;
 typedef struct TY37013 TY37013;
 struct TGenericSeq {
 NI len;
@@ -45,8 +45,8 @@ NI16 Line;
 NI16 Col;
 NI32 Fileindex;
 };
-struct TY49523 {
-TY49549* Typ;
+struct TY49525 {
+TY49551* Typ;
 NimStringDesc* Comment;
 TY41532 Info;
 NU8 Flags;
@@ -58,15 +58,15 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY49545* Sym;
+struct {TY49547* Sym;
 } S4;
 struct {TY48011* Ident;
 } S5;
-struct {TY49517* Sons;
+struct {TY49519* Sons;
 } S6;
 } KindU;
 };
-typedef NU8 TY49997[16];
+typedef NU8 TY49999[16];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -82,35 +82,35 @@ struct TY48005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY49527 {
+struct TY49529 {
 TNimType* m_type;
 NI Counter;
-TY49525* Data;
+TY49527* Data;
 };
-struct TY49537 {
+struct TY49539 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY49549* T;
+TY49551* T;
 TY46008* R;
 NI A;
 };
-struct TY49545 {
+struct TY49547 {
   TY48005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY49549* Typ;
+TY49551* Typ;
 TY48011* Name;
 TY41532 Info;
-TY49545* Owner;
+TY49547* Owner;
 NU32 Flags;
-TY49527 Tab;
-TY49523* Ast;
+TY49529 Tab;
+TY49525* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY49537 Loc;
-TY49541* Annex;
+TY49539 Loc;
+TY49543* Annex;
 };
 struct TY48011 {
   TY48005 Sup;
@@ -160,19 +160,19 @@ TY7804 Zctlock;
 TY10788 Stat;
 };
 typedef N_STDCALL_PTR(void, TY7820) (TY7804* L_7822);
-struct TY49549 {
+struct TY49551 {
   TY48005 Sup;
 NU8 Kind;
-TY49547* Sons;
-TY49523* N;
+TY49549* Sons;
+TY49525* N;
 NU8 Flags;
 NU8 Callconv;
-TY49545* Owner;
-TY49545* Sym;
+TY49547* Owner;
+TY49547* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY49537 Loc;
+TY49539 Loc;
 };
 struct TNimNode {
 NU8 kind;
@@ -194,12 +194,12 @@ struct TY37013 {
 TY37013* Prev;
 TY37013* Next;
 };
-struct TY49541 {
+struct TY49543 {
   TY37013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
 TY46008* Name;
-TY49523* Path;
+TY49525* Path;
 };
 typedef NI TY8414[16];
 struct TY10410 {
@@ -207,75 +207,75 @@ TY10410* Next;
 NI Key;
 TY8414 Bits;
 };
-struct TY49517 {
+struct TY49519 {
   TGenericSeq Sup;
-  TY49523* data[SEQ_DECL_SIZE];
+  TY49525* data[SEQ_DECL_SIZE];
 };
-struct TY49525 {
+struct TY49527 {
   TGenericSeq Sup;
-  TY49545* data[SEQ_DECL_SIZE];
+  TY49547* data[SEQ_DECL_SIZE];
 };
-struct TY49547 {
+struct TY49549 {
   TGenericSeq Sup;
-  TY49549* data[SEQ_DECL_SIZE];
+  TY49551* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(NIM_BOOL, Hasson_89046)(TY49523* Father_89048, TY49523* Son_89049);
-N_NIMCALL(NI, Sonslen_49801)(TY49523* N_49803);
+N_NIMCALL(NIM_BOOL, Hasson_90046)(TY49525* Father_90048, TY49525* Son_90049);
+N_NIMCALL(NI, Sonslen_49803)(TY49525* N_49805);
 static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
 N_NOINLINE(void, raiseIndexError)(void);
 static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
-N_NIMCALL(NIM_BOOL, Cyclictreeaux_89103)(TY49523* N_89105, TY49523* S_89106);
-N_NIMCALL(void, Addson_49821)(TY49523* Father_49823, TY49523* Son_49824);
-N_NIMCALL(void, Delson_49833)(TY49523* Father_49835, NI Idx_49836);
-N_NIMCALL(NIM_BOOL, Cyclictree_89043)(TY49523* N_89045);
-N_NIMCALL(TY49523*, Newnodei_49735)(NU8 Kind_49737, TY41532 Info_49738);
-N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_89035)(TY49523* A_89037, TY49523* B_89038);
+N_NIMCALL(NIM_BOOL, Cyclictreeaux_90103)(TY49525* N_90105, TY49525* S_90106);
+N_NIMCALL(void, Addson_49823)(TY49525* Father_49825, TY49525* Son_49826);
+N_NIMCALL(void, Delson_49835)(TY49525* Father_49837, NI Idx_49838);
+N_NIMCALL(NIM_BOOL, Cyclictree_90043)(TY49525* N_90045);
+N_NIMCALL(TY49525*, Newnodei_49737)(NU8 Kind_49739, TY41532 Info_49740);
+N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_90035)(TY49525* A_90037, TY49525* B_90038);
 static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048);
-N_NIMCALL(NIM_BOOL, Sametree_89039)(TY49523* A_89041, TY49523* B_89042);
-N_NIMCALL(TY49545*, Getprocsym_89032)(TY49523* Call_89034);
-N_NIMCALL(TY49545*, Getopsym_89029)(TY49523* Op_89031);
+N_NIMCALL(NIM_BOOL, Sametree_90039)(TY49525* A_90041, TY49525* B_90042);
+N_NIMCALL(TY49547*, Getprocsym_90032)(TY49525* Call_90034);
+N_NIMCALL(TY49547*, Getopsym_90029)(TY49525* Op_90031);
 N_NIMCALL(void, Internalerror_41567)(TY41532 Info_41569, NimStringDesc* Errmsg_41570);
-N_NIMCALL(NU8, Getmagic_89013)(TY49523* Op_89015);
-N_NIMCALL(TY49545*, Treetosym_89023)(TY49523* T_89025);
-N_NIMCALL(NIM_BOOL, Isconstexpr_89016)(TY49523* N_89018);
-N_NIMCALL(void, Flattentreeaux_89783)(TY49523* D_89785, TY49523* A_89786, NU8 Op_89787);
-N_NIMCALL(TY49523*, Copytree_49856)(TY49523* Src_49858);
-N_NIMCALL(TY49523*, Flattentree_89019)(TY49523* Root_89021, NU8 Op_89022);
-N_NIMCALL(TY49523*, Copynode_49853)(TY49523* Src_49855);
-N_NIMCALL(void, Swapoperands_89026)(TY49523* Op_89028);
+N_NIMCALL(NU8, Getmagic_90013)(TY49525* Op_90015);
+N_NIMCALL(TY49547*, Treetosym_90023)(TY49525* T_90025);
+N_NIMCALL(NIM_BOOL, Isconstexpr_90016)(TY49525* N_90018);
+N_NIMCALL(void, Flattentreeaux_90783)(TY49525* D_90785, TY49525* A_90786, NU8 Op_90787);
+N_NIMCALL(TY49525*, Copytree_49858)(TY49525* Src_49860);
+N_NIMCALL(TY49525*, Flattentree_90019)(TY49525* Root_90021, NU8 Op_90022);
+N_NIMCALL(TY49525*, Copynode_49855)(TY49525* Src_49857);
+N_NIMCALL(void, Swapoperands_90026)(TY49525* Op_90028);
 static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619);
 static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838);
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805);
+static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810);
 static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460);
 N_NOINLINE(void, Addzct_10825)(TY10418* S_10828, TY10402* C_10829);
-static NIM_CONST TY49997 TMP89101 = {
+static NIM_CONST TY49999 TMP90101 = {
 0xEC, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89102, "sons", 4);
-static NIM_CONST TY49997 TMP89374 = {
+;STRING_LITERAL(TMP90102, "sons", 4);
+static NIM_CONST TY49999 TMP90374 = {
 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89375, "sym", 3);
-static NIM_CONST TY49997 TMP89376 = {
+;STRING_LITERAL(TMP90375, "sym", 3);
+static NIM_CONST TY49999 TMP90376 = {
 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89377, "ident", 5);
-static NIM_CONST TY49997 TMP89378 = {
+;STRING_LITERAL(TMP90377, "ident", 5);
+static NIM_CONST TY49999 TMP90378 = {
 0xE0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89379, "intVal", 6);
-static NIM_CONST TY49997 TMP89380 = {
+;STRING_LITERAL(TMP90379, "intVal", 6);
+static NIM_CONST TY49999 TMP90380 = {
 0x00, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89381, "floatVal", 8);
-static NIM_CONST TY49997 TMP89382 = {
+;STRING_LITERAL(TMP90381, "floatVal", 8);
+static NIM_CONST TY49999 TMP90382 = {
 0x00, 0xC0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP89383, "strVal", 6);
-STRING_LITERAL(TMP89699, "getOpSym", 8);
+;STRING_LITERAL(TMP90383, "strVal", 6);
+STRING_LITERAL(TMP90699, "getOpSym", 8);
 extern TY7816 Dl_7815;
 extern TY10790 Gch_10810;
 extern TY7820 Dl_7819;
@@ -311,12 +311,12 @@ raiseOverflow();
 BeforeRet: ;
 return Result_5605;
 }
-N_NIMCALL(NIM_BOOL, Hasson_89046)(TY49523* Father_89048, TY49523* Son_89049) {
-NIM_BOOL Result_89050;
-NI I_89073;
-NI HEX3Atmp_89096;
+N_NIMCALL(NIM_BOOL, Hasson_90046)(TY49525* Father_90048, TY49525* Son_90049) {
+NIM_BOOL Result_90050;
+NI I_90073;
+NI HEX3Atmp_90096;
 NI LOC1;
-NI Res_89098;
+NI Res_90098;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "hasSon";
@@ -325,46 +325,46 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89050 = 0;
-I_89073 = 0;
-HEX3Atmp_89096 = 0;
+Result_90050 = 0;
+I_90073 = 0;
+HEX3Atmp_90096 = 0;
 F.line = 29;F.filename = "trees.nim";
-LOC1 = Sonslen_49801(Father_89048);
-HEX3Atmp_89096 = subInt(LOC1, 1);
-Res_89098 = 0;
-F.line = 1011;F.filename = "system.nim";
-Res_89098 = 0;
-F.line = 1012;F.filename = "system.nim";
+LOC1 = Sonslen_49803(Father_90048);
+HEX3Atmp_90096 = subInt(LOC1, 1);
+Res_90098 = 0;
+F.line = 1019;F.filename = "system.nim";
+Res_90098 = 0;
+F.line = 1020;F.filename = "system.nim";
 while (1) {
-if (!(Res_89098 <= HEX3Atmp_89096)) goto LA2;
-F.line = 1011;F.filename = "system.nim";
-I_89073 = Res_89098;
+if (!(Res_90098 <= HEX3Atmp_90096)) goto LA2;
+F.line = 1019;F.filename = "system.nim";
+I_90073 = Res_90098;
 F.line = 30;F.filename = "trees.nim";
-if (((TMP89101[(*Father_89048).Kind/8] &(1<<((*Father_89048).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89073) >= (NU)((*Father_89048).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*Father_89048).KindU.S6.Sons->data[I_89073] == Son_89049)) goto LA4;
+if (((TMP90101[(*Father_90048).Kind/8] &(1<<((*Father_90048).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90073) >= (NU)((*Father_90048).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*Father_90048).KindU.S6.Sons->data[I_90073] == Son_90049)) goto LA4;
 F.line = 31;F.filename = "trees.nim";
 F.line = 31;F.filename = "trees.nim";
-Result_89050 = NIM_TRUE;
+Result_90050 = NIM_TRUE;
 goto BeforeRet;
 LA4: ;
-F.line = 1014;F.filename = "system.nim";
-Res_89098 = addInt(Res_89098, 1);
+F.line = 1022;F.filename = "system.nim";
+Res_90098 = addInt(Res_90098, 1);
 } LA2: ;
 F.line = 32;F.filename = "trees.nim";
-Result_89050 = NIM_FALSE;
+Result_90050 = NIM_FALSE;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_89050;
+return Result_90050;
 }
-N_NIMCALL(NIM_BOOL, Cyclictreeaux_89103)(TY49523* N_89105, TY49523* S_89106) {
-NIM_BOOL Result_89107;
+N_NIMCALL(NIM_BOOL, Cyclictreeaux_90103)(TY49525* N_90105, TY49525* S_90106) {
+NIM_BOOL Result_90107;
 NIM_BOOL LOC5;
-NI M_89119;
-NI I_89139;
-NI HEX3Atmp_89153;
+NI M_90119;
+NI I_90139;
+NI HEX3Atmp_90153;
 NI LOC11;
-NI Res_89155;
+NI Res_90155;
 NIM_BOOL LOC14;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -374,67 +374,67 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89107 = 0;
+Result_90107 = 0;
 F.line = 35;F.filename = "trees.nim";
-if (!(N_89105 == NIM_NIL)) goto LA2;
+if (!(N_90105 == NIM_NIL)) goto LA2;
 F.line = 36;F.filename = "trees.nim";
 F.line = 36;F.filename = "trees.nim";
-Result_89107 = NIM_FALSE;
+Result_90107 = NIM_FALSE;
 goto BeforeRet;
 LA2: ;
 F.line = 37;F.filename = "trees.nim";
-LOC5 = Hasson_89046(S_89106, N_89105);
+LOC5 = Hasson_90046(S_90106, N_90105);
 if (!LOC5) goto LA6;
 F.line = 38;F.filename = "trees.nim";
 F.line = 38;F.filename = "trees.nim";
-Result_89107 = NIM_TRUE;
+Result_90107 = NIM_TRUE;
 goto BeforeRet;
 LA6: ;
-M_89119 = 0;
+M_90119 = 0;
 F.line = 39;F.filename = "trees.nim";
-M_89119 = Sonslen_49801(S_89106);
+M_90119 = Sonslen_49803(S_90106);
 F.line = 40;F.filename = "trees.nim";
-Addson_49821(S_89106, N_89105);
+Addson_49823(S_90106, N_90105);
 F.line = 41;F.filename = "trees.nim";
-if (!!(((*N_89105).Kind >= ((NU8) 1) && (*N_89105).Kind <= ((NU8) 18)))) goto LA9;
-I_89139 = 0;
-HEX3Atmp_89153 = 0;
+if (!!(((*N_90105).Kind >= ((NU8) 1) && (*N_90105).Kind <= ((NU8) 18)))) goto LA9;
+I_90139 = 0;
+HEX3Atmp_90153 = 0;
 F.line = 42;F.filename = "trees.nim";
-LOC11 = Sonslen_49801(N_89105);
-HEX3Atmp_89153 = subInt(LOC11, 1);
-Res_89155 = 0;
-F.line = 1011;F.filename = "system.nim";
-Res_89155 = 0;
-F.line = 1012;F.filename = "system.nim";
+LOC11 = Sonslen_49803(N_90105);
+HEX3Atmp_90153 = subInt(LOC11, 1);
+Res_90155 = 0;
+F.line = 1019;F.filename = "system.nim";
+Res_90155 = 0;
+F.line = 1020;F.filename = "system.nim";
 while (1) {
-if (!(Res_89155 <= HEX3Atmp_89153)) goto LA12;
-F.line = 1011;F.filename = "system.nim";
-I_89139 = Res_89155;
+if (!(Res_90155 <= HEX3Atmp_90153)) goto LA12;
+F.line = 1019;F.filename = "system.nim";
+I_90139 = Res_90155;
 F.line = 43;F.filename = "trees.nim";
-if (((TMP89101[(*N_89105).Kind/8] &(1<<((*N_89105).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89139) >= (NU)((*N_89105).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC14 = Cyclictreeaux_89103((*N_89105).KindU.S6.Sons->data[I_89139], S_89106);
+if (((TMP90101[(*N_90105).Kind/8] &(1<<((*N_90105).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90139) >= (NU)((*N_90105).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC14 = Cyclictreeaux_90103((*N_90105).KindU.S6.Sons->data[I_90139], S_90106);
 if (!LOC14) goto LA15;
 F.line = 44;F.filename = "trees.nim";
 F.line = 44;F.filename = "trees.nim";
-Result_89107 = NIM_TRUE;
+Result_90107 = NIM_TRUE;
 goto BeforeRet;
 LA15: ;
-F.line = 1014;F.filename = "system.nim";
-Res_89155 = addInt(Res_89155, 1);
+F.line = 1022;F.filename = "system.nim";
+Res_90155 = addInt(Res_90155, 1);
 } LA12: ;
 LA9: ;
 F.line = 45;F.filename = "trees.nim";
-Result_89107 = NIM_FALSE;
+Result_90107 = NIM_FALSE;
 F.line = 46;F.filename = "trees.nim";
-Delson_49833(S_89106, M_89119);
+Delson_49835(S_90106, M_90119);
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_89107;
+return Result_90107;
 }
-N_NIMCALL(NIM_BOOL, Cyclictree_89043)(TY49523* N_89045) {
-NIM_BOOL Result_89161;
-TY49523* S_89162;
+N_NIMCALL(NIM_BOOL, Cyclictree_90043)(TY49525* N_90045) {
+NIM_BOOL Result_90161;
+TY49525* S_90162;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "cyclicTree";
@@ -443,14 +443,14 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89161 = 0;
-S_89162 = 0;
+Result_90161 = 0;
+S_90162 = 0;
 F.line = 49;F.filename = "trees.nim";
-S_89162 = Newnodei_49735(((NU8) 1), (*N_89045).Info);
+S_90162 = Newnodei_49737(((NU8) 1), (*N_90045).Info);
 F.line = 50;F.filename = "trees.nim";
-Result_89161 = Cyclictreeaux_89103(N_89045, S_89162);
+Result_90161 = Cyclictreeaux_90103(N_90045, S_90162);
 framePtr = framePtr->prev;
-return Result_89161;
+return Result_90161;
 }
 static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048) {
 NIM_BOOL Result_17049;
@@ -497,16 +497,16 @@ BeforeRet: ;
 framePtr = framePtr->prev;
 return Result_17049;
 }
-N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_89035)(TY49523* A_89037, TY49523* B_89038) {
-NIM_BOOL Result_89167;
+N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_90035)(TY49525* A_90037, TY49525* B_90038) {
+NIM_BOOL Result_90167;
 NIM_BOOL LOC4;
 NIM_BOOL LOC5;
 NI LOC11;
 NI LOC12;
-NI I_89343;
-NI HEX3Atmp_89369;
+NI I_90343;
+NI HEX3Atmp_90369;
 NI LOC15;
-NI Res_89371;
+NI Res_90371;
 NIM_BOOL LOC18;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -516,95 +516,95 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89167 = 0;
+Result_90167 = 0;
 F.line = 53;F.filename = "trees.nim";
-Result_89167 = NIM_FALSE;
+Result_90167 = NIM_FALSE;
 F.line = 54;F.filename = "trees.nim";
-if (!(A_89037 == B_89038)) goto LA2;
+if (!(A_90037 == B_90038)) goto LA2;
 F.line = 55;F.filename = "trees.nim";
-Result_89167 = NIM_TRUE;
+Result_90167 = NIM_TRUE;
 goto LA1;
 LA2: ;
-LOC5 = !((A_89037 == NIM_NIL));
+LOC5 = !((A_90037 == NIM_NIL));
 if (!(LOC5)) goto LA6;
-LOC5 = !((B_89038 == NIM_NIL));
+LOC5 = !((B_90038 == NIM_NIL));
 LA6: ;
 LOC4 = LOC5;
 if (!(LOC4)) goto LA7;
-LOC4 = ((*A_89037).Kind == (*B_89038).Kind);
+LOC4 = ((*A_90037).Kind == (*B_90038).Kind);
 LA7: ;
 if (!LOC4) goto LA8;
 F.line = 57;F.filename = "trees.nim";
-switch ((*A_89037).Kind) {
+switch ((*A_90037).Kind) {
 case ((NU8) 3):
 F.line = 60;F.filename = "trees.nim";
-if (!(((TMP89374[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-if (!(((TMP89374[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89167 = ((*(*(*A_89037).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_89038).KindU.S4.Sym).Name).Sup.Id);
+if (!(((TMP90374[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+if (!(((TMP90374[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90167 = ((*(*(*A_90037).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_90038).KindU.S4.Sym).Name).Sup.Id);
 break;
 case ((NU8) 2):
 F.line = 61;F.filename = "trees.nim";
-if (!(((TMP89376[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89377));
-if (!(((TMP89376[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89377));
-Result_89167 = ((*(*A_89037).KindU.S5.Ident).Sup.Id == (*(*B_89038).KindU.S5.Ident).Sup.Id);
+if (!(((TMP90376[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90377));
+if (!(((TMP90376[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90377));
+Result_90167 = ((*(*A_90037).KindU.S5.Ident).Sup.Id == (*(*B_90038).KindU.S5.Ident).Sup.Id);
 break;
 case ((NU8) 5) ... ((NU8) 10):
 F.line = 62;F.filename = "trees.nim";
-if (!(((TMP89378[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89379));
-if (!(((TMP89378[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89379));
-Result_89167 = ((*A_89037).KindU.S1.Intval == (*B_89038).KindU.S1.Intval);
+if (!(((TMP90378[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90379));
+if (!(((TMP90378[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90379));
+Result_90167 = ((*A_90037).KindU.S1.Intval == (*B_90038).KindU.S1.Intval);
 break;
 case ((NU8) 11) ... ((NU8) 13):
 F.line = 63;F.filename = "trees.nim";
-if (!(((TMP89380[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89381));
-if (!(((TMP89380[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89381));
-Result_89167 = (((NF) ((*A_89037).KindU.S2.Floatval)) == ((NF) ((*B_89038).KindU.S2.Floatval)));
+if (!(((TMP90380[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90381));
+if (!(((TMP90380[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90381));
+Result_90167 = (((NF) ((*A_90037).KindU.S2.Floatval)) == ((NF) ((*B_90038).KindU.S2.Floatval)));
 break;
 case ((NU8) 14) ... ((NU8) 16):
 F.line = 64;F.filename = "trees.nim";
-if (!(((TMP89382[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89383));
-if (!(((TMP89382[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89383));
-Result_89167 = eqStrings((*A_89037).KindU.S3.Strval, (*B_89038).KindU.S3.Strval);
+if (!(((TMP90382[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90383));
+if (!(((TMP90382[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90383));
+Result_90167 = eqStrings((*A_90037).KindU.S3.Strval, (*B_90038).KindU.S3.Strval);
 break;
 case ((NU8) 1):
 case ((NU8) 18):
 case ((NU8) 4):
 F.line = 65;F.filename = "trees.nim";
-Result_89167 = NIM_TRUE;
+Result_90167 = NIM_TRUE;
 break;
 default:
 F.line = 67;F.filename = "trees.nim";
-LOC11 = Sonslen_49801(A_89037);
-LOC12 = Sonslen_49801(B_89038);
+LOC11 = Sonslen_49803(A_90037);
+LOC12 = Sonslen_49803(B_90038);
 if (!(LOC11 == LOC12)) goto LA13;
-I_89343 = 0;
-HEX3Atmp_89369 = 0;
+I_90343 = 0;
+HEX3Atmp_90369 = 0;
 F.line = 68;F.filename = "trees.nim";
-LOC15 = Sonslen_49801(A_89037);
-HEX3Atmp_89369 = subInt(LOC15, 1);
-Res_89371 = 0;
-F.line = 1011;F.filename = "system.nim";
-Res_89371 = 0;
-F.line = 1012;F.filename = "system.nim";
+LOC15 = Sonslen_49803(A_90037);
+HEX3Atmp_90369 = subInt(LOC15, 1);
+Res_90371 = 0;
+F.line = 1019;F.filename = "system.nim";
+Res_90371 = 0;
+F.line = 1020;F.filename = "system.nim";
 while (1) {
-if (!(Res_89371 <= HEX3Atmp_89369)) goto LA16;
-F.line = 1011;F.filename = "system.nim";
-I_89343 = Res_89371;
+if (!(Res_90371 <= HEX3Atmp_90369)) goto LA16;
+F.line = 1019;F.filename = "system.nim";
+I_90343 = Res_90371;
 F.line = 69;F.filename = "trees.nim";
-if (((TMP89101[(*A_89037).Kind/8] &(1<<((*A_89037).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89343) >= (NU)((*A_89037).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP89101[(*B_89038).Kind/8] &(1<<((*B_89038).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89343) >= (NU)((*B_89038).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC18 = Exprstructuralequivalent_89035((*A_89037).KindU.S6.Sons->data[I_89343], (*B_89038).KindU.S6.Sons->data[I_89343]);
+if (((TMP90101[(*A_90037).Kind/8] &(1<<((*A_90037).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90343) >= (NU)((*A_90037).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP90101[(*B_90038).Kind/8] &(1<<((*B_90038).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90343) >= (NU)((*B_90038).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC18 = Exprstructuralequivalent_90035((*A_90037).KindU.S6.Sons->data[I_90343], (*B_90038).KindU.S6.Sons->data[I_90343]);
 if (!!(LOC18)) goto LA19;
 F.line = 69;F.filename = "trees.nim";
 goto BeforeRet;
 LA19: ;
-F.line = 1014;F.filename = "system.nim";
-Res_89371 = addInt(Res_89371, 1);
+F.line = 1022;F.filename = "system.nim";
+Res_90371 = addInt(Res_90371, 1);
 } LA16: ;
 F.line = 70;F.filename = "trees.nim";
-Result_89167 = NIM_TRUE;
+Result_90167 = NIM_TRUE;
 LA13: ;
 break;
 }
@@ -613,18 +613,18 @@ LA8: ;
 LA1: ;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_89167;
+return Result_90167;
 }
-N_NIMCALL(NIM_BOOL, Sametree_89039)(TY49523* A_89041, TY49523* B_89042) {
-NIM_BOOL Result_89388;
+N_NIMCALL(NIM_BOOL, Sametree_90039)(TY49525* A_90041, TY49525* B_90042) {
+NIM_BOOL Result_90388;
 NIM_BOOL LOC4;
 NIM_BOOL LOC5;
 NI LOC20;
 NI LOC21;
-NI I_89577;
-NI HEX3Atmp_89603;
+NI I_90577;
+NI HEX3Atmp_90603;
 NI LOC24;
-NI Res_89605;
+NI Res_90605;
 NIM_BOOL LOC27;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -634,110 +634,110 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89388 = 0;
+Result_90388 = 0;
 F.line = 73;F.filename = "trees.nim";
-Result_89388 = NIM_FALSE;
+Result_90388 = NIM_FALSE;
 F.line = 74;F.filename = "trees.nim";
-if (!(A_89041 == B_89042)) goto LA2;
+if (!(A_90041 == B_90042)) goto LA2;
 F.line = 75;F.filename = "trees.nim";
-Result_89388 = NIM_TRUE;
+Result_90388 = NIM_TRUE;
 goto LA1;
 LA2: ;
-LOC5 = !((A_89041 == NIM_NIL));
+LOC5 = !((A_90041 == NIM_NIL));
 if (!(LOC5)) goto LA6;
-LOC5 = !((B_89042 == NIM_NIL));
+LOC5 = !((B_90042 == NIM_NIL));
 LA6: ;
 LOC4 = LOC5;
 if (!(LOC4)) goto LA7;
-LOC4 = ((*A_89041).Kind == (*B_89042).Kind);
+LOC4 = ((*A_90041).Kind == (*B_90042).Kind);
 LA7: ;
 if (!LOC4) goto LA8;
 F.line = 77;F.filename = "trees.nim";
-if (!!(((*A_89041).Flags == (*B_89042).Flags))) goto LA11;
+if (!!(((*A_90041).Flags == (*B_90042).Flags))) goto LA11;
 F.line = 77;F.filename = "trees.nim";
 goto BeforeRet;
 LA11: ;
 F.line = 78;F.filename = "trees.nim";
-if (!!(((*A_89041).Info.Line == (*B_89042).Info.Line))) goto LA14;
+if (!!(((*A_90041).Info.Line == (*B_90042).Info.Line))) goto LA14;
 F.line = 78;F.filename = "trees.nim";
 goto BeforeRet;
 LA14: ;
 F.line = 79;F.filename = "trees.nim";
-if (!!(((*A_89041).Info.Col == (*B_89042).Info.Col))) goto LA17;
+if (!!(((*A_90041).Info.Col == (*B_90042).Info.Col))) goto LA17;
 F.line = 80;F.filename = "trees.nim";
 goto BeforeRet;
 LA17: ;
 F.line = 81;F.filename = "trees.nim";
-switch ((*A_89041).Kind) {
+switch ((*A_90041).Kind) {
 case ((NU8) 3):
 F.line = 84;F.filename = "trees.nim";
-if (!(((TMP89374[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-if (!(((TMP89374[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89388 = ((*(*(*A_89041).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_89042).KindU.S4.Sym).Name).Sup.Id);
+if (!(((TMP90374[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+if (!(((TMP90374[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90388 = ((*(*(*A_90041).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_90042).KindU.S4.Sym).Name).Sup.Id);
 break;
 case ((NU8) 2):
 F.line = 85;F.filename = "trees.nim";
-if (!(((TMP89376[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89377));
-if (!(((TMP89376[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89377));
-Result_89388 = ((*(*A_89041).KindU.S5.Ident).Sup.Id == (*(*B_89042).KindU.S5.Ident).Sup.Id);
+if (!(((TMP90376[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90377));
+if (!(((TMP90376[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90377));
+Result_90388 = ((*(*A_90041).KindU.S5.Ident).Sup.Id == (*(*B_90042).KindU.S5.Ident).Sup.Id);
 break;
 case ((NU8) 5) ... ((NU8) 10):
 F.line = 86;F.filename = "trees.nim";
-if (!(((TMP89378[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89379));
-if (!(((TMP89378[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89379));
-Result_89388 = ((*A_89041).KindU.S1.Intval == (*B_89042).KindU.S1.Intval);
+if (!(((TMP90378[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90379));
+if (!(((TMP90378[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90379));
+Result_90388 = ((*A_90041).KindU.S1.Intval == (*B_90042).KindU.S1.Intval);
 break;
 case ((NU8) 11) ... ((NU8) 13):
 F.line = 87;F.filename = "trees.nim";
-if (!(((TMP89380[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89381));
-if (!(((TMP89380[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89381));
-Result_89388 = (((NF) ((*A_89041).KindU.S2.Floatval)) == ((NF) ((*B_89042).KindU.S2.Floatval)));
+if (!(((TMP90380[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90381));
+if (!(((TMP90380[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90381));
+Result_90388 = (((NF) ((*A_90041).KindU.S2.Floatval)) == ((NF) ((*B_90042).KindU.S2.Floatval)));
 break;
 case ((NU8) 14) ... ((NU8) 16):
 F.line = 88;F.filename = "trees.nim";
-if (!(((TMP89382[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89383));
-if (!(((TMP89382[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89383));
-Result_89388 = eqStrings((*A_89041).KindU.S3.Strval, (*B_89042).KindU.S3.Strval);
+if (!(((TMP90382[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90383));
+if (!(((TMP90382[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90383));
+Result_90388 = eqStrings((*A_90041).KindU.S3.Strval, (*B_90042).KindU.S3.Strval);
 break;
 case ((NU8) 1):
 case ((NU8) 18):
 case ((NU8) 4):
 F.line = 89;F.filename = "trees.nim";
-Result_89388 = NIM_TRUE;
+Result_90388 = NIM_TRUE;
 break;
 default:
 F.line = 91;F.filename = "trees.nim";
-LOC20 = Sonslen_49801(A_89041);
-LOC21 = Sonslen_49801(B_89042);
+LOC20 = Sonslen_49803(A_90041);
+LOC21 = Sonslen_49803(B_90042);
 if (!(LOC20 == LOC21)) goto LA22;
-I_89577 = 0;
-HEX3Atmp_89603 = 0;
+I_90577 = 0;
+HEX3Atmp_90603 = 0;
 F.line = 92;F.filename = "trees.nim";
-LOC24 = Sonslen_49801(A_89041);
-HEX3Atmp_89603 = subInt(LOC24, 1);
-Res_89605 = 0;
-F.line = 1011;F.filename = "system.nim";
-Res_89605 = 0;
-F.line = 1012;F.filename = "system.nim";
+LOC24 = Sonslen_49803(A_90041);
+HEX3Atmp_90603 = subInt(LOC24, 1);
+Res_90605 = 0;
+F.line = 1019;F.filename = "system.nim";
+Res_90605 = 0;
+F.line = 1020;F.filename = "system.nim";
 while (1) {
-if (!(Res_89605 <= HEX3Atmp_89603)) goto LA25;
-F.line = 1011;F.filename = "system.nim";
-I_89577 = Res_89605;
+if (!(Res_90605 <= HEX3Atmp_90603)) goto LA25;
+F.line = 1019;F.filename = "system.nim";
+I_90577 = Res_90605;
 F.line = 93;F.filename = "trees.nim";
-if (((TMP89101[(*A_89041).Kind/8] &(1<<((*A_89041).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89577) >= (NU)((*A_89041).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP89101[(*B_89042).Kind/8] &(1<<((*B_89042).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89577) >= (NU)((*B_89042).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC27 = Sametree_89039((*A_89041).KindU.S6.Sons->data[I_89577], (*B_89042).KindU.S6.Sons->data[I_89577]);
+if (((TMP90101[(*A_90041).Kind/8] &(1<<((*A_90041).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90577) >= (NU)((*A_90041).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP90101[(*B_90042).Kind/8] &(1<<((*B_90042).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90577) >= (NU)((*B_90042).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC27 = Sametree_90039((*A_90041).KindU.S6.Sons->data[I_90577], (*B_90042).KindU.S6.Sons->data[I_90577]);
 if (!!(LOC27)) goto LA28;
 F.line = 93;F.filename = "trees.nim";
 goto BeforeRet;
 LA28: ;
-F.line = 1014;F.filename = "system.nim";
-Res_89605 = addInt(Res_89605, 1);
+F.line = 1022;F.filename = "system.nim";
+Res_90605 = addInt(Res_90605, 1);
 } LA25: ;
 F.line = 94;F.filename = "trees.nim";
-Result_89388 = NIM_TRUE;
+Result_90388 = NIM_TRUE;
 LA22: ;
 break;
 }
@@ -746,10 +746,10 @@ LA8: ;
 LA1: ;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_89388;
+return Result_90388;
 }
-N_NIMCALL(TY49545*, Getprocsym_89032)(TY49523* Call_89034) {
-TY49545* Result_89611;
+N_NIMCALL(TY49547*, Getprocsym_90032)(TY49525* Call_90034) {
+TY49547* Result_90611;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "getProcSym";
@@ -758,17 +758,17 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89611 = 0;
+Result_90611 = 0;
 F.line = 97;F.filename = "trees.nim";
-if (((TMP89101[(*Call_89034).Kind/8] &(1<<((*Call_89034).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Call_89034).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP89374[(*(*Call_89034).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Call_89034).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89611 = (*(*Call_89034).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP90101[(*Call_90034).Kind/8] &(1<<((*Call_90034).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Call_90034).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP90374[(*(*Call_90034).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Call_90034).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90611 = (*(*Call_90034).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 framePtr = framePtr->prev;
-return Result_89611;
+return Result_90611;
 }
-N_NIMCALL(TY49545*, Getopsym_89029)(TY49523* Op_89031) {
-TY49545* Result_89639;
+N_NIMCALL(TY49547*, Getopsym_90029)(TY49525* Op_90031) {
+TY49547* Result_90639;
 NI LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -778,39 +778,39 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89639 = 0;
+Result_90639 = 0;
 F.line = 100;F.filename = "trees.nim";
-if (!!(((*Op_89031).Kind == ((NU8) 21) || (*Op_89031).Kind == ((NU8) 49) || (*Op_89031).Kind == ((NU8) 20) || (*Op_89031).Kind == ((NU8) 22)))) goto LA2;
+if (!!(((*Op_90031).Kind == ((NU8) 21) || (*Op_90031).Kind == ((NU8) 49) || (*Op_90031).Kind == ((NU8) 20) || (*Op_90031).Kind == ((NU8) 22)))) goto LA2;
 F.line = 101;F.filename = "trees.nim";
-Result_89639 = NIM_NIL;
+Result_90639 = NIM_NIL;
 goto LA1;
 LA2: ;
 F.line = 103;F.filename = "trees.nim";
-LOC5 = Sonslen_49801(Op_89031);
+LOC5 = Sonslen_49803(Op_90031);
 if (!(LOC5 <= 0)) goto LA6;
 F.line = 103;F.filename = "trees.nim";
-Internalerror_41567((*Op_89031).Info, ((NimStringDesc*) &TMP89699));
+Internalerror_41567((*Op_90031).Info, ((NimStringDesc*) &TMP90699));
 LA6: ;
 F.line = 104;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89031).Kind/8] &(1<<((*Op_89031).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Op_89031).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*Op_89031).KindU.S6.Sons->data[0]).Kind == ((NU8) 3))) goto LA9;
+if (((TMP90101[(*Op_90031).Kind/8] &(1<<((*Op_90031).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Op_90031).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*Op_90031).KindU.S6.Sons->data[0]).Kind == ((NU8) 3))) goto LA9;
 F.line = 104;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89031).Kind/8] &(1<<((*Op_89031).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Op_89031).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP89374[(*(*Op_89031).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Op_89031).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89639 = (*(*Op_89031).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP90101[(*Op_90031).Kind/8] &(1<<((*Op_90031).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Op_90031).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP90374[(*(*Op_90031).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Op_90031).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90639 = (*(*Op_90031).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 goto LA8;
 LA9: ;
 F.line = 105;F.filename = "trees.nim";
-Result_89639 = NIM_NIL;
+Result_90639 = NIM_NIL;
 LA8: ;
 LA1: ;
 framePtr = framePtr->prev;
-return Result_89639;
+return Result_90639;
 }
-N_NIMCALL(NU8, Getmagic_89013)(TY49523* Op_89015) {
-NU8 Result_89703;
+N_NIMCALL(NU8, Getmagic_90013)(TY49525* Op_90015) {
+NU8 Result_90703;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "getMagic";
@@ -819,40 +819,40 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89703 = 0;
+Result_90703 = 0;
 F.line = 108;F.filename = "trees.nim";
-switch ((*Op_89015).Kind) {
+switch ((*Op_90015).Kind) {
 case ((NU8) 21):
 case ((NU8) 49):
 case ((NU8) 20):
 case ((NU8) 22):
 F.line = 110;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89015).Kind/8] &(1<<((*Op_89015).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Op_89015).KindU.S6.Sons->Sup.len)) raiseIndexError();
-switch ((*(*Op_89015).KindU.S6.Sons->data[0]).Kind) {
+if (((TMP90101[(*Op_90015).Kind/8] &(1<<((*Op_90015).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Op_90015).KindU.S6.Sons->Sup.len)) raiseIndexError();
+switch ((*(*Op_90015).KindU.S6.Sons->data[0]).Kind) {
 case ((NU8) 3):
 F.line = 111;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89015).Kind/8] &(1<<((*Op_89015).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Op_89015).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP89374[(*(*Op_89015).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Op_89015).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89703 = (*(*(*Op_89015).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
+if (((TMP90101[(*Op_90015).Kind/8] &(1<<((*Op_90015).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Op_90015).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP90374[(*(*Op_90015).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Op_90015).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90703 = (*(*(*Op_90015).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
 break;
 default:
 F.line = 112;F.filename = "trees.nim";
-Result_89703 = ((NU8) 0);
+Result_90703 = ((NU8) 0);
 break;
 }
 break;
 default:
 F.line = 113;F.filename = "trees.nim";
-Result_89703 = ((NU8) 0);
+Result_90703 = ((NU8) 0);
 break;
 }
 framePtr = framePtr->prev;
-return Result_89703;
+return Result_90703;
 }
-N_NIMCALL(TY49545*, Treetosym_89023)(TY49523* T_89025) {
-TY49545* Result_89743;
+N_NIMCALL(TY49547*, Treetosym_90023)(TY49525* T_90025) {
+TY49547* Result_90743;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "TreeToSym";
@@ -861,15 +861,15 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89743 = 0;
+Result_90743 = 0;
 F.line = 116;F.filename = "trees.nim";
-if (!(((TMP89374[(*T_89025).Kind/8] &(1<<((*T_89025).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP89375));
-Result_89743 = (*T_89025).KindU.S4.Sym;
+if (!(((TMP90374[(*T_90025).Kind/8] &(1<<((*T_90025).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP90375));
+Result_90743 = (*T_90025).KindU.S4.Sym;
 framePtr = framePtr->prev;
-return Result_89743;
+return Result_90743;
 }
-N_NIMCALL(NIM_BOOL, Isconstexpr_89016)(TY49523* N_89018) {
-NIM_BOOL Result_89759;
+N_NIMCALL(NIM_BOOL, Isconstexpr_90016)(TY49525* N_90018) {
+NIM_BOOL Result_90759;
 NIM_BOOL LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -879,23 +879,23 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89759 = 0;
+Result_90759 = 0;
 F.line = 119;F.filename = "trees.nim";
-LOC1 = ((*N_89018).Kind >= ((NU8) 5) && (*N_89018).Kind <= ((NU8) 10) || (*N_89018).Kind >= ((NU8) 14) && (*N_89018).Kind <= ((NU8) 16) || (*N_89018).Kind >= ((NU8) 11) && (*N_89018).Kind <= ((NU8) 13) || (*N_89018).Kind == ((NU8) 18));
+LOC1 = ((*N_90018).Kind >= ((NU8) 5) && (*N_90018).Kind <= ((NU8) 10) || (*N_90018).Kind >= ((NU8) 14) && (*N_90018).Kind <= ((NU8) 16) || (*N_90018).Kind >= ((NU8) 11) && (*N_90018).Kind <= ((NU8) 13) || (*N_90018).Kind == ((NU8) 18));
 if (LOC1) goto LA2;
-LOC1 = (((*N_89018).Flags &(1<<((((NU8) 4))&7)))!=0);
+LOC1 = (((*N_90018).Flags &(1<<((((NU8) 4))&7)))!=0);
 LA2: ;
-Result_89759 = LOC1;
+Result_90759 = LOC1;
 framePtr = framePtr->prev;
-return Result_89759;
+return Result_90759;
 }
-N_NIMCALL(void, Flattentreeaux_89783)(TY49523* D_89785, TY49523* A_89786, NU8 Op_89787) {
+N_NIMCALL(void, Flattentreeaux_90783)(TY49525* D_90785, TY49525* A_90786, NU8 Op_90787) {
 NU8 LOC2;
-NI I_89804;
-NI HEX3Atmp_89818;
+NI I_90804;
+NI HEX3Atmp_90818;
 NI LOC5;
-NI Res_89820;
-TY49523* LOC7;
+NI Res_90820;
+TY49525* LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "flattenTreeAux";
@@ -905,41 +905,41 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 124;F.filename = "trees.nim";
-LOC2 = Getmagic_89013(A_89786);
-if (!(LOC2 == Op_89787)) goto LA3;
-I_89804 = 0;
-HEX3Atmp_89818 = 0;
+LOC2 = Getmagic_90013(A_90786);
+if (!(LOC2 == Op_90787)) goto LA3;
+I_90804 = 0;
+HEX3Atmp_90818 = 0;
 F.line = 125;F.filename = "trees.nim";
-LOC5 = Sonslen_49801(A_89786);
-HEX3Atmp_89818 = subInt(LOC5, 1);
-Res_89820 = 0;
-F.line = 1011;F.filename = "system.nim";
-Res_89820 = 1;
-F.line = 1012;F.filename = "system.nim";
+LOC5 = Sonslen_49803(A_90786);
+HEX3Atmp_90818 = subInt(LOC5, 1);
+Res_90820 = 0;
+F.line = 1019;F.filename = "system.nim";
+Res_90820 = 1;
+F.line = 1020;F.filename = "system.nim";
 while (1) {
-if (!(Res_89820 <= HEX3Atmp_89818)) goto LA6;
-F.line = 1011;F.filename = "system.nim";
-I_89804 = Res_89820;
+if (!(Res_90820 <= HEX3Atmp_90818)) goto LA6;
+F.line = 1019;F.filename = "system.nim";
+I_90804 = Res_90820;
 F.line = 126;F.filename = "trees.nim";
-if (((TMP89101[(*A_89786).Kind/8] &(1<<((*A_89786).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(I_89804) >= (NU)((*A_89786).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Flattentreeaux_89783(D_89785, (*A_89786).KindU.S6.Sons->data[I_89804], Op_89787);
-F.line = 1014;F.filename = "system.nim";
-Res_89820 = addInt(Res_89820, 1);
+if (((TMP90101[(*A_90786).Kind/8] &(1<<((*A_90786).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(I_90804) >= (NU)((*A_90786).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Flattentreeaux_90783(D_90785, (*A_90786).KindU.S6.Sons->data[I_90804], Op_90787);
+F.line = 1022;F.filename = "system.nim";
+Res_90820 = addInt(Res_90820, 1);
 } LA6: ;
 goto LA1;
 LA3: ;
 F.line = 128;F.filename = "trees.nim";
 LOC7 = 0;
-LOC7 = Copytree_49856(A_89786);
-Addson_49821(D_89785, LOC7);
+LOC7 = Copytree_49858(A_90786);
+Addson_49823(D_90785, LOC7);
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY49523*, Flattentree_89019)(TY49523* Root_89021, NU8 Op_89022) {
-TY49523* Result_89827;
+N_NIMCALL(TY49525*, Flattentree_90019)(TY49525* Root_90021, NU8 Op_90022) {
+TY49525* Result_90827;
 NU8 LOC2;
-TY49523* LOC5;
+TY49525* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "flattenTree";
@@ -948,23 +948,23 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_89827 = 0;
+Result_90827 = 0;
 F.line = 131;F.filename = "trees.nim";
-Result_89827 = Copynode_49853(Root_89021);
+Result_90827 = Copynode_49855(Root_90021);
 F.line = 132;F.filename = "trees.nim";
-LOC2 = Getmagic_89013(Root_89021);
-if (!(LOC2 == Op_89022)) goto LA3;
+LOC2 = Getmagic_90013(Root_90021);
+if (!(LOC2 == Op_90022)) goto LA3;
 F.line = 134;F.filename = "trees.nim";
-if (((TMP89101[(*Root_89021).Kind/8] &(1<<((*Root_89021).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(0) >= (NU)((*Root_89021).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP90101[(*Root_90021).Kind/8] &(1<<((*Root_90021).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(0) >= (NU)((*Root_90021).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC5 = 0;
-LOC5 = Copynode_49853((*Root_89021).KindU.S6.Sons->data[0]);
-Addson_49821(Result_89827, LOC5);
+LOC5 = Copynode_49855((*Root_90021).KindU.S6.Sons->data[0]);
+Addson_49823(Result_90827, LOC5);
 F.line = 135;F.filename = "trees.nim";
-Flattentreeaux_89783(Result_89827, Root_89021, Op_89022);
+Flattentreeaux_90783(Result_90827, Root_90021, Op_90022);
 LA3: ;
 framePtr = framePtr->prev;
-return Result_89827;
+return Result_90827;
 }
 static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838) {
 TY10402* Result_10839;
@@ -982,7 +982,7 @@ Result_10839 = ((TY10402*) ((NI32)((NU32)(((NI) (Usr_10838))) - (NU32)(((NI) (((
 framePtr = framePtr->prev;
 return Result_10839;
 }
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805) {
 NI Result_7208;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -994,11 +994,11 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 Result_7208 = 0;
 F.line = 29;F.filename = "systhread.nim";
-Result_7208 = __sync_add_and_fetch(Memloc_3004, X_3005);
+Result_7208 = __sync_add_and_fetch(Memloc_2804, X_2805);
 framePtr = framePtr->prev;
 return Result_7208;
 }
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810) {
 NI Result_7406;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1010,7 +1010,7 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 Result_7406 = 0;
 F.line = 37;F.filename = "systhread.nim";
-Result_7406 = __sync_sub_and_fetch(Memloc_3009, X_3010);
+Result_7406 = __sync_sub_and_fetch(Memloc_2809, X_2810);
 framePtr = framePtr->prev;
 return Result_7406;
 }
@@ -1056,7 +1056,7 @@ C_11620 = 0;
 F.line = 245;F.filename = "gc.nim";
 C_11620 = Usrtocell_10836(Src_11619);
 F.line = 246;F.filename = "gc.nim";
-LOC4 = Atomicinc_3001(&(*C_11620).Refcount, 8);
+LOC4 = Atomicinc_2801(&(*C_11620).Refcount, 8);
 LA2: ;
 F.line = 247;F.filename = "gc.nim";
 if (!!(((*Dest_11618) == NIM_NIL))) goto LA6;
@@ -1064,7 +1064,7 @@ C_11622 = 0;
 F.line = 248;F.filename = "gc.nim";
 C_11622 = Usrtocell_10836((*Dest_11618));
 F.line = 249;F.filename = "gc.nim";
-LOC9 = Atomicdec_3006(&(*C_11622).Refcount, 8);
+LOC9 = Atomicdec_2806(&(*C_11622).Refcount, 8);
 if (!((NU32)(LOC9) < (NU32)(8))) goto LA10;
 F.line = 250;F.filename = "gc.nim";
 Rtladdzct_11458(C_11622);
@@ -1074,8 +1074,8 @@ F.line = 251;F.filename = "gc.nim";
 (*Dest_11618) = Src_11619;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Swapoperands_89026)(TY49523* Op_89028) {
-TY49523* Tmp_89864;
+N_NIMCALL(void, Swapoperands_90026)(TY49525* Op_90028) {
+TY49525* Tmp_90864;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "SwapOperands";
@@ -1084,21 +1084,21 @@ F.filename = "rod/trees.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Tmp_89864 = 0;
+Tmp_90864 = 0;
 F.line = 138;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89028).Kind/8] &(1<<((*Op_89028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(1) >= (NU)((*Op_89028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Tmp_89864 = (*Op_89028).KindU.S6.Sons->data[1];
+if (((TMP90101[(*Op_90028).Kind/8] &(1<<((*Op_90028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(1) >= (NU)((*Op_90028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Tmp_90864 = (*Op_90028).KindU.S6.Sons->data[1];
 F.line = 139;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89028).Kind/8] &(1<<((*Op_89028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(1) >= (NU)((*Op_89028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP89101[(*Op_89028).Kind/8] &(1<<((*Op_89028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(2) >= (NU)((*Op_89028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-asgnRefNoCycle((void**) &(*Op_89028).KindU.S6.Sons->data[1], (*Op_89028).KindU.S6.Sons->data[2]);
+if (((TMP90101[(*Op_90028).Kind/8] &(1<<((*Op_90028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(1) >= (NU)((*Op_90028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP90101[(*Op_90028).Kind/8] &(1<<((*Op_90028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(2) >= (NU)((*Op_90028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*Op_90028).KindU.S6.Sons->data[1], (*Op_90028).KindU.S6.Sons->data[2]);
 F.line = 140;F.filename = "trees.nim";
-if (((TMP89101[(*Op_89028).Kind/8] &(1<<((*Op_89028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP89102));
-if ((NU)(2) >= (NU)((*Op_89028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-asgnRefNoCycle((void**) &(*Op_89028).KindU.S6.Sons->data[2], Tmp_89864);
+if (((TMP90101[(*Op_90028).Kind/8] &(1<<((*Op_90028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP90102));
+if ((NU)(2) >= (NU)((*Op_90028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*Op_90028).KindU.S6.Sons->data[2], Tmp_90864);
 framePtr = framePtr->prev;
 }
 N_NOINLINE(void, treesInit)(void) {

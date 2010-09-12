@@ -7,7 +7,7 @@ typedef unsigned long int NU;
 
 #include <math.h>
 #include <time.h>
-typedef struct TY94802 TY94802;
+typedef struct TY95802 TY95802;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
 struct TNimType {
@@ -18,7 +18,7 @@ TNimType* base;
 TNimNode* node;
 void* finalizer;
 };
-struct TY94802 {
+struct TY95802 {
 TNimType* m_type;
 NI N;
 NF Sum;
@@ -37,241 +37,241 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-N_NIMCALL(NU8, Classify_94212)(NF X_94214);
-N_NIMCALL(NI, Binom_94216)(NI N_94218, NI K_94219);
-N_NIMCALL(NI, Fac_94253)(NI N_94255);
-N_NIMCALL(NIM_BOOL, Ispoweroftwo_94270)(NI X_94272);
-N_NIMCALL(NI, Nextpoweroftwo_94276)(NI X_94278);
-N_NIMCALL(NI, Countbits32_94413)(NI32 N_94415);
-N_NIMCALL(NF, Mean_94428)(NF* X_94431, NI X_94431Len0);
-N_NIMCALL(NF, Variance_94495)(NF* X_94498, NI X_94498Len0);
-N_NIMCALL(NF, Log2_94540)(NF X_94542);
-N_NIMCALL(void, Randomize_94529)(void);
-N_NIMCALL(NI, Random_94526)(NI Max_94528);
-N_NIMCALL(void, Push_94811)(TY94802* S_94814, NF X_94815);
-N_NIMCALL(NF, Variance_94830)(TY94802* S_94832);
-N_NIMCALL(NF, Standarddeviation_94836)(TY94802* S_94838);
-N_NIMCALL(NF, Sum_94438)(NF* X_94442, NI X_94442Len0);
-N_NIMCALL(NU8, Classify_94212)(NF X_94214) {
-NU8 Result_94215;
-Result_94215 = 0;
-if (!(X_94214 == 0.00000)) goto LA2;
-if (!((1.00000 / X_94214) == INF)) goto LA5;
-Result_94215 = ((NU8) 2);
+N_NIMCALL(NU8, Classify_95212)(NF X_95214);
+N_NIMCALL(NI, Binom_95216)(NI N_95218, NI K_95219);
+N_NIMCALL(NI, Fac_95253)(NI N_95255);
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_95270)(NI X_95272);
+N_NIMCALL(NI, Nextpoweroftwo_95276)(NI X_95278);
+N_NIMCALL(NI, Countbits32_95413)(NI32 N_95415);
+N_NIMCALL(NF, Mean_95428)(NF* X_95431, NI X_95431Len0);
+N_NIMCALL(NF, Variance_95495)(NF* X_95498, NI X_95498Len0);
+N_NIMCALL(NF, Log2_95540)(NF X_95542);
+N_NIMCALL(void, Randomize_95529)(void);
+N_NIMCALL(NI, Random_95526)(NI Max_95528);
+N_NIMCALL(void, Push_95811)(TY95802* S_95814, NF X_95815);
+N_NIMCALL(NF, Variance_95830)(TY95802* S_95832);
+N_NIMCALL(NF, Standarddeviation_95836)(TY95802* S_95838);
+N_NIMCALL(NF, Sum_95438)(NF* X_95442, NI X_95442Len0);
+N_NIMCALL(NU8, Classify_95212)(NF X_95214) {
+NU8 Result_95215;
+Result_95215 = 0;
+if (!(X_95214 == 0.00000)) goto LA2;
+if (!((1.00000 / X_95214) == INF)) goto LA5;
+Result_95215 = ((NU8) 2);
 goto BeforeRet;
 goto LA4;
 LA5: ;
-Result_94215 = ((NU8) 3);
+Result_95215 = ((NU8) 3);
 goto BeforeRet;
 LA4: ;
 LA2: ;
-if (!((X_94214 * 0.500000) == X_94214)) goto LA8;
-if (!(0.00000 < X_94214)) goto LA11;
-Result_94215 = ((NU8) 5);
+if (!((X_95214 * 0.500000) == X_95214)) goto LA8;
+if (!(0.00000 < X_95214)) goto LA11;
+Result_95215 = ((NU8) 5);
 goto BeforeRet;
 goto LA10;
 LA11: ;
-Result_94215 = ((NU8) 6);
+Result_95215 = ((NU8) 6);
 goto BeforeRet;
 LA10: ;
 LA8: ;
-if (!!((X_94214 == X_94214))) goto LA14;
-Result_94215 = ((NU8) 4);
+if (!!((X_95214 == X_95214))) goto LA14;
+Result_95215 = ((NU8) 4);
 goto BeforeRet;
 LA14: ;
-Result_94215 = ((NU8) 0);
+Result_95215 = ((NU8) 0);
 goto BeforeRet;
 BeforeRet: ;
-return Result_94215;
+return Result_95215;
 }
-N_NIMCALL(NI, Binom_94216)(NI N_94218, NI K_94219) {
-NI Result_94220;
-NI I_94247;
-NI Res_94250;
-Result_94220 = 0;
-if (!(K_94219 <= 0)) goto LA2;
-Result_94220 = 1;
+N_NIMCALL(NI, Binom_95216)(NI N_95218, NI K_95219) {
+NI Result_95220;
+NI I_95247;
+NI Res_95250;
+Result_95220 = 0;
+if (!(K_95219 <= 0)) goto LA2;
+Result_95220 = 1;
 goto BeforeRet;
 LA2: ;
-if (!(N_94218 < (NI32)(2 * K_94219))) goto LA5;
-Result_94220 = Binom_94216(N_94218, (NI32)(N_94218 - K_94219));
+if (!(N_95218 < (NI32)(2 * K_95219))) goto LA5;
+Result_95220 = Binom_95216(N_95218, (NI32)(N_95218 - K_95219));
 goto BeforeRet;
 LA5: ;
-Result_94220 = N_94218;
-I_94247 = 0;
-Res_94250 = 0;
-Res_94250 = 2;
+Result_95220 = N_95218;
+I_95247 = 0;
+Res_95250 = 0;
+Res_95250 = 2;
 while (1) {
-if (!(Res_94250 <= K_94219)) goto LA7;
-I_94247 = Res_94250;
-Result_94220 = (NI32)((NI32)(Result_94220 * (NI32)((NI32)(N_94218 + 1) - I_94247)) / I_94247);
-Res_94250 += 1;
+if (!(Res_95250 <= K_95219)) goto LA7;
+I_95247 = Res_95250;
+Result_95220 = (NI32)((NI32)(Result_95220 * (NI32)((NI32)(N_95218 + 1) - I_95247)) / I_95247);
+Res_95250 += 1;
 } LA7: ;
 BeforeRet: ;
-return Result_94220;
+return Result_95220;
 }
-N_NIMCALL(NI, Fac_94253)(NI N_94255) {
-NI Result_94256;
-NI I_94264;
-NI Res_94267;
-Result_94256 = 0;
-Result_94256 = 1;
-I_94264 = 0;
-Res_94267 = 0;
-Res_94267 = 2;
+N_NIMCALL(NI, Fac_95253)(NI N_95255) {
+NI Result_95256;
+NI I_95264;
+NI Res_95267;
+Result_95256 = 0;
+Result_95256 = 1;
+I_95264 = 0;
+Res_95267 = 0;
+Res_95267 = 2;
 while (1) {
-if (!(Res_94267 <= N_94255)) goto LA1;
-I_94264 = Res_94267;
-Result_94256 = (NI32)(Result_94256 * I_94264);
-Res_94267 += 1;
+if (!(Res_95267 <= N_95255)) goto LA1;
+I_95264 = Res_95267;
+Result_95256 = (NI32)(Result_95256 * I_95264);
+Res_95267 += 1;
 } LA1: ;
-return Result_94256;
+return Result_95256;
 }
-N_NIMCALL(NIM_BOOL, Ispoweroftwo_94270)(NI X_94272) {
-NIM_BOOL Result_94273;
-Result_94273 = 0;
-Result_94273 = ((NI32)(X_94272 & ((NI32)-(X_94272))) == X_94272);
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_95270)(NI X_95272) {
+NIM_BOOL Result_95273;
+Result_95273 = 0;
+Result_95273 = ((NI32)(X_95272 & ((NI32)-(X_95272))) == X_95272);
 goto BeforeRet;
 BeforeRet: ;
-return Result_94273;
+return Result_95273;
 }
-N_NIMCALL(NI, Nextpoweroftwo_94276)(NI X_94278) {
-NI Result_94279;
-Result_94279 = 0;
-Result_94279 = (NI32)(X_94278 - 1);
-Result_94279 = (NI32)(Result_94279 | (NI32)((NU32)(Result_94279) >> (NU32)(16)));
-Result_94279 = (NI32)(Result_94279 | (NI32)((NU32)(Result_94279) >> (NU32)(8)));
-Result_94279 = (NI32)(Result_94279 | (NI32)((NU32)(Result_94279) >> (NU32)(4)));
-Result_94279 = (NI32)(Result_94279 | (NI32)((NU32)(Result_94279) >> (NU32)(2)));
-Result_94279 = (NI32)(Result_94279 | (NI32)((NU32)(Result_94279) >> (NU32)(1)));
-Result_94279 += 1;
-return Result_94279;
+N_NIMCALL(NI, Nextpoweroftwo_95276)(NI X_95278) {
+NI Result_95279;
+Result_95279 = 0;
+Result_95279 = (NI32)(X_95278 - 1);
+Result_95279 = (NI32)(Result_95279 | (NI32)((NU32)(Result_95279) >> (NU32)(16)));
+Result_95279 = (NI32)(Result_95279 | (NI32)((NU32)(Result_95279) >> (NU32)(8)));
+Result_95279 = (NI32)(Result_95279 | (NI32)((NU32)(Result_95279) >> (NU32)(4)));
+Result_95279 = (NI32)(Result_95279 | (NI32)((NU32)(Result_95279) >> (NU32)(2)));
+Result_95279 = (NI32)(Result_95279 | (NI32)((NU32)(Result_95279) >> (NU32)(1)));
+Result_95279 += 1;
+return Result_95279;
 }
-N_NIMCALL(NI, Countbits32_94413)(NI32 N_94415) {
-NI Result_94416;
-NI32 V_94417;
-Result_94416 = 0;
-V_94417 = 0;
-V_94417 = N_94415;
-V_94417 = (NI32)((NU32)(V_94417) - (NU32)((NI32)((NI32)((NU32)(V_94417) >> (NU32)(((NI32) 1))) & ((NI32) 1431655765))));
-V_94417 = (NI32)((NU32)((NI32)(V_94417 & ((NI32) 858993459))) + (NU32)((NI32)((NI32)((NU32)(V_94417) >> (NU32)(((NI32) 2))) & ((NI32) 858993459))));
-Result_94416 = ((NI) ((NI32)((NU32)((NI32)((NU32)((NI32)((NI32)((NU32)(V_94417) + (NU32)((NI32)((NU32)(V_94417) >> (NU32)(((NI32) 4))))) & ((NI32) 252645135))) * (NU32)(((NI32) 16843009)))) >> (NU32)(((NI32) 24)))));
-return Result_94416;
+N_NIMCALL(NI, Countbits32_95413)(NI32 N_95415) {
+NI Result_95416;
+NI32 V_95417;
+Result_95416 = 0;
+V_95417 = 0;
+V_95417 = N_95415;
+V_95417 = (NI32)((NU32)(V_95417) - (NU32)((NI32)((NI32)((NU32)(V_95417) >> (NU32)(((NI32) 1))) & ((NI32) 1431655765))));
+V_95417 = (NI32)((NU32)((NI32)(V_95417 & ((NI32) 858993459))) + (NU32)((NI32)((NI32)((NU32)(V_95417) >> (NU32)(((NI32) 2))) & ((NI32) 858993459))));
+Result_95416 = ((NI) ((NI32)((NU32)((NI32)((NU32)((NI32)((NI32)((NU32)(V_95417) + (NU32)((NI32)((NU32)(V_95417) >> (NU32)(((NI32) 4))))) & ((NI32) 252645135))) * (NU32)(((NI32) 16843009)))) >> (NU32)(((NI32) 24)))));
+return Result_95416;
 }
-N_NIMCALL(NF, Mean_94428)(NF* X_94431, NI X_94431Len0) {
-NF Result_94432;
+N_NIMCALL(NF, Mean_95428)(NF* X_95431, NI X_95431Len0) {
+NF Result_95432;
 NF LOC1;
-Result_94432 = 0;
-LOC1 = Sum_94438(X_94431, X_94431Len0);
-Result_94432 = (LOC1 / ((double) (X_94431Len0)));
-return Result_94432;
+Result_95432 = 0;
+LOC1 = Sum_95438(X_95431, X_95431Len0);
+Result_95432 = (LOC1 / ((double) (X_95431Len0)));
+return Result_95432;
 }
-N_NIMCALL(NF, Variance_94495)(NF* X_94498, NI X_94498Len0) {
-NF Result_94499;
-NF M_94500;
-NI I_94508;
-NI HEX3Atmp_94521;
-NI Res_94523;
-NF Diff_94509;
-Result_94499 = 0;
-Result_94499 = 0.00000;
-M_94500 = 0;
-M_94500 = Mean_94428(X_94498, X_94498Len0);
-I_94508 = 0;
-HEX3Atmp_94521 = 0;
-HEX3Atmp_94521 = (X_94498Len0-1);
-Res_94523 = 0;
-Res_94523 = 0;
+N_NIMCALL(NF, Variance_95495)(NF* X_95498, NI X_95498Len0) {
+NF Result_95499;
+NF M_95500;
+NI I_95508;
+NI HEX3Atmp_95521;
+NI Res_95523;
+NF Diff_95509;
+Result_95499 = 0;
+Result_95499 = 0.00000;
+M_95500 = 0;
+M_95500 = Mean_95428(X_95498, X_95498Len0);
+I_95508 = 0;
+HEX3Atmp_95521 = 0;
+HEX3Atmp_95521 = (X_95498Len0-1);
+Res_95523 = 0;
+Res_95523 = 0;
 while (1) {
-if (!(Res_94523 <= HEX3Atmp_94521)) goto LA1;
-I_94508 = Res_94523;
-Diff_94509 = 0;
-Diff_94509 = (X_94498[I_94508] - M_94500);
-Result_94499 = (Result_94499 + (Diff_94509 * Diff_94509));
-Res_94523 += 1;
+if (!(Res_95523 <= HEX3Atmp_95521)) goto LA1;
+I_95508 = Res_95523;
+Diff_95509 = 0;
+Diff_95509 = (X_95498[I_95508] - M_95500);
+Result_95499 = (Result_95499 + (Diff_95509 * Diff_95509));
+Res_95523 += 1;
 } LA1: ;
-Result_94499 = (Result_94499 / ((double) (X_94498Len0)));
-return Result_94499;
+Result_95499 = (Result_95499 / ((double) (X_95498Len0)));
+return Result_95499;
 }
-N_NIMCALL(NF, Log2_94540)(NF X_94542) {
-NF Result_94543;
+N_NIMCALL(NF, Log2_95540)(NF X_95542) {
+NF Result_95543;
 NF LOC1;
 NF LOC2;
-Result_94543 = 0;
-LOC1 = log(X_94542);
+Result_95543 = 0;
+LOC1 = log(X_95542);
 LOC2 = log(2.00000);
-Result_94543 = (LOC1 / LOC2);
+Result_95543 = (LOC1 / LOC2);
 goto BeforeRet;
 BeforeRet: ;
-return Result_94543;
+return Result_95543;
 }
-N_NIMCALL(void, Randomize_94529)(void) {
+N_NIMCALL(void, Randomize_95529)(void) {
 NI32 LOC1;
 LOC1 = time(NIM_NIL);
 srand(LOC1);
 }
-N_NIMCALL(NI, Random_94526)(NI Max_94528) {
-NI Result_94605;
+N_NIMCALL(NI, Random_95526)(NI Max_95528) {
+NI Result_95605;
 NI32 LOC1;
-Result_94605 = 0;
+Result_95605 = 0;
 LOC1 = rand();
-Result_94605 = (NI32)(((NI) (LOC1)) % Max_94528);
+Result_95605 = (NI32)(((NI) (LOC1)) % Max_95528);
 goto BeforeRet;
 BeforeRet: ;
-return Result_94605;
+return Result_95605;
 }
-N_NIMCALL(void, Push_94811)(TY94802* S_94814, NF X_94815) {
-(*S_94814).N += 1;
-if (!((*S_94814).N == 1)) goto LA2;
-(*S_94814).Oldm = X_94815;
-(*S_94814).Mean = X_94815;
-(*S_94814).Olds = 0.00000;
+N_NIMCALL(void, Push_95811)(TY95802* S_95814, NF X_95815) {
+(*S_95814).N += 1;
+if (!((*S_95814).N == 1)) goto LA2;
+(*S_95814).Oldm = X_95815;
+(*S_95814).Mean = X_95815;
+(*S_95814).Olds = 0.00000;
 goto LA1;
 LA2: ;
-(*S_94814).Mean = ((*S_94814).Oldm + ((X_94815 - (*S_94814).Oldm) / ((double) ((*S_94814).N))));
-(*S_94814).News = ((*S_94814).Olds + ((X_94815 - (*S_94814).Oldm) * (X_94815 - (*S_94814).Mean)));
-(*S_94814).Oldm = (*S_94814).Mean;
-(*S_94814).Olds = (*S_94814).News;
+(*S_95814).Mean = ((*S_95814).Oldm + ((X_95815 - (*S_95814).Oldm) / ((double) ((*S_95814).N))));
+(*S_95814).News = ((*S_95814).Olds + ((X_95815 - (*S_95814).Oldm) * (X_95815 - (*S_95814).Mean)));
+(*S_95814).Oldm = (*S_95814).Mean;
+(*S_95814).Olds = (*S_95814).News;
 LA1: ;
-(*S_94814).Sum = ((*S_94814).Sum + X_94815);
-if (!(X_94815 < (*S_94814).Min)) goto LA5;
-(*S_94814).Min = X_94815;
+(*S_95814).Sum = ((*S_95814).Sum + X_95815);
+if (!(X_95815 < (*S_95814).Min)) goto LA5;
+(*S_95814).Min = X_95815;
 LA5: ;
-if (!((*S_94814).Max < X_94815)) goto LA8;
-(*S_94814).Max = X_94815;
+if (!((*S_95814).Max < X_95815)) goto LA8;
+(*S_95814).Max = X_95815;
 LA8: ;
 }
-N_NIMCALL(NF, Variance_94830)(TY94802* S_94832) {
-NF Result_94833;
-Result_94833 = 0;
-if (!(1 < (*S_94832).N)) goto LA2;
-Result_94833 = ((*S_94832).News / ((double) ((NI32)((*S_94832).N - 1))));
+N_NIMCALL(NF, Variance_95830)(TY95802* S_95832) {
+NF Result_95833;
+Result_95833 = 0;
+if (!(1 < (*S_95832).N)) goto LA2;
+Result_95833 = ((*S_95832).News / ((double) ((NI32)((*S_95832).N - 1))));
 LA2: ;
-return Result_94833;
+return Result_95833;
 }
-N_NIMCALL(NF, Standarddeviation_94836)(TY94802* S_94838) {
-NF Result_94839;
+N_NIMCALL(NF, Standarddeviation_95836)(TY95802* S_95838) {
+NF Result_95839;
 NF LOC1;
-Result_94839 = 0;
-LOC1 = Variance_94830(S_94838);
-Result_94839 = sqrt(LOC1);
-return Result_94839;
+Result_95839 = 0;
+LOC1 = Variance_95830(S_95838);
+Result_95839 = sqrt(LOC1);
+return Result_95839;
 }
-N_NIMCALL(NF, Sum_94438)(NF* X_94442, NI X_94442Len0) {
-NF Result_94443;
-NF I_94479;
-NI I_94492;
-Result_94443 = 0;
-I_94479 = 0;
-I_94492 = 0;
-I_94492 = 0;
+N_NIMCALL(NF, Sum_95438)(NF* X_95442, NI X_95442Len0) {
+NF Result_95443;
+NF I_95479;
+NI I_95492;
+Result_95443 = 0;
+I_95479 = 0;
+I_95492 = 0;
+I_95492 = 0;
 while (1) {
-if (!(I_94492 < X_94442Len0)) goto LA1;
-I_94479 = X_94442[I_94492];
-Result_94443 = (Result_94443 + I_94479);
-I_94492 += 1;
+if (!(I_95492 < X_95442Len0)) goto LA1;
+I_95479 = X_95442[I_95492];
+Result_95443 = (Result_95443 + I_95479);
+I_95492 += 1;
 } LA1: ;
-return Result_94443;
+return Result_95443;
 }
 N_NOINLINE(void, mathInit)(void) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;

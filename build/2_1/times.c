@@ -58,7 +58,7 @@ TY239 data;
 N_NIMCALL(NIM_BOOL, ntLtTime)(NI A_27639, NI B_27640);
 N_NIMCALL(NIM_BOOL, ntLeTime)(NI A_27646, NI B_27647);
 N_NIMCALL(TY27602, Tmtotimeinfo_27843)(struct tm* Tm_27845);
-static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412);
 N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
 static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
 N_NOINLINE(void, raiseOverflow)(void);
@@ -150,20 +150,20 @@ Result_27648 = (LOC1 <= 0);
 framePtr = framePtr->prev;
 return Result_27648;
 }
-static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412) {
 NI Result_5316;
 NIM_BOOL LOC2;
 Result_5316 = 0;
-LOC2 = (A_4611 <= I_4610);
+LOC2 = (A_4411 <= I_4410);
 if (!(LOC2)) goto LA3;
-LOC2 = (I_4610 <= B_4612);
+LOC2 = (I_4410 <= B_4412);
 LA3: ;
 if (!LOC2) goto LA4;
-Result_5316 = I_4610;
+Result_5316 = I_4410;
 goto BeforeRet;
 goto LA1;
 LA4: ;
-raiseRangeError(((NI64) (I_4610)));
+raiseRangeError(((NI64) (I_4410)));
 LA1: ;
 BeforeRet: ;
 return Result_5316;

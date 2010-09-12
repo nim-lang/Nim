@@ -6,22 +6,22 @@ typedef unsigned long int NU;
 #include "nimbase.h"
 
 #include <pthread.h>
-typedef struct TY54527 TY54527;
+typedef struct TY54529 TY54529;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY54525 TY54525;
-typedef struct TY54545 TY54545;
+typedef struct TY54527 TY54527;
+typedef struct TY54547 TY54547;
 typedef struct TGenericSeq TGenericSeq;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TY53011 TY53011;
 typedef struct TY53005 TY53005;
 typedef struct TNimObject TNimObject;
-typedef struct TY54549 TY54549;
+typedef struct TY54551 TY54551;
 typedef struct TY46532 TY46532;
-typedef struct TY54523 TY54523;
-typedef struct TY54537 TY54537;
+typedef struct TY54525 TY54525;
+typedef struct TY54539 TY54539;
 typedef struct TY51008 TY51008;
-typedef struct TY54541 TY54541;
+typedef struct TY54543 TY54543;
 typedef struct TY10602 TY10602;
 typedef struct TY10990 TY10990;
 typedef struct TY10618 TY10618;
@@ -31,8 +31,8 @@ typedef struct TY10988 TY10988;
 typedef struct TY58079 TY58079;
 typedef struct TY50448 TY50448;
 typedef struct TY50036 TY50036;
-typedef struct TY54547 TY54547;
-typedef struct TY54517 TY54517;
+typedef struct TY54549 TY54549;
+typedef struct TY54519 TY54519;
 typedef struct TY42013 TY42013;
 struct TNimType {
 NI size;
@@ -46,10 +46,10 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-struct TY54527 {
+struct TY54529 {
 TNimType* m_type;
 NI Counter;
-TY54525* Data;
+TY54527* Data;
 };
 struct TNimNode {
 NU8 kind;
@@ -76,30 +76,30 @@ NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-struct TY54537 {
+struct TY54539 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY54549* T;
+TY54551* T;
 TY51008* R;
 NI A;
 };
-struct TY54545 {
+struct TY54547 {
   TY53005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY54549* Typ;
+TY54551* Typ;
 TY53011* Name;
 TY46532 Info;
-TY54545* Owner;
+TY54547* Owner;
 NU32 Flags;
-TY54527 Tab;
-TY54523* Ast;
+TY54529 Tab;
+TY54525* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY54537 Loc;
-TY54541* Annex;
+TY54539 Loc;
+TY54543* Annex;
 };
 struct TY10602 {
 NI Refcount;
@@ -167,22 +167,22 @@ NimStringDesc* Extsep;
 NU8 Props;
 };
 typedef TY50036 TY50054[21];
-struct TY54549 {
+struct TY54551 {
   TY53005 Sup;
 NU8 Kind;
-TY54547* Sons;
-TY54523* N;
+TY54549* Sons;
+TY54525* N;
 NU8 Flags;
 NU8 Callconv;
-TY54545* Owner;
-TY54545* Sym;
+TY54547* Owner;
+TY54547* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY54537 Loc;
+TY54539 Loc;
 };
-struct TY54523 {
-TY54549* Typ;
+struct TY54525 {
+TY54551* Typ;
 NimStringDesc* Comment;
 TY46532 Info;
 NU8 Flags;
@@ -194,11 +194,11 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY54545* Sym;
+struct {TY54547* Sym;
 } S4;
 struct {TY53011* Ident;
 } S5;
-struct {TY54517* Sons;
+struct {TY54519* Sons;
 } S6;
 } KindU;
 };
@@ -214,12 +214,12 @@ struct TY42013 {
 TY42013* Prev;
 TY42013* Next;
 };
-struct TY54541 {
+struct TY54543 {
   TY42013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
 TY51008* Name;
-TY54523* Path;
+TY54525* Path;
 };
 typedef NI TY8614[16];
 struct TY10610 {
@@ -227,41 +227,41 @@ TY10610* Next;
 NI Key;
 TY8614 Bits;
 };
-struct TY54525 {
+struct TY54527 {
   TGenericSeq Sup;
-  TY54545* data[SEQ_DECL_SIZE];
+  TY54547* data[SEQ_DECL_SIZE];
 };
-struct TY54547 {
+struct TY54549 {
   TGenericSeq Sup;
-  TY54549* data[SEQ_DECL_SIZE];
+  TY54551* data[SEQ_DECL_SIZE];
 };
-struct TY54517 {
+struct TY54519 {
   TGenericSeq Sup;
-  TY54523* data[SEQ_DECL_SIZE];
+  TY54525* data[SEQ_DECL_SIZE];
 };
 N_NIMCALL(void, Definesymbol_62006)(NimStringDesc* Symbol_62008);
 N_NIMCALL(TY53011*, Getident_53016)(NimStringDesc* Identifier_53018);
-N_NIMCALL(TY54545*, Strtableget_58069)(TY54527* T_58071, TY53011* Name_58072);
+N_NIMCALL(TY54547*, Strtableget_58069)(TY54529* T_58071, TY53011* Name_58072);
 N_NIMCALL(void*, newObj)(TNimType* Typ_12307, NI Size_12308);
 N_NIMCALL(void, objectInit)(void* Dest_18262, TNimType* Typ_18263);
 static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819);
 static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038);
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805);
+static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810);
 static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660);
 N_NOINLINE(void, Addzct_11025)(TY10618* S_11028, TY10602* C_11029);
-N_NIMCALL(void, Strtableadd_58064)(TY54527* T_58067, TY54545* N_58068);
+N_NIMCALL(void, Strtableadd_58064)(TY54529* T_58067, TY54547* N_58068);
 N_NIMCALL(void, Undefsymbol_62009)(NimStringDesc* Symbol_62011);
 N_NIMCALL(NIM_BOOL, Isdefined_62012)(TY53011* Symbol_62014);
 N_NIMCALL(void, Listsymbols_62015)(void);
-N_NIMCALL(TY54545*, Inittabiter_58081)(TY58079* Ti_58084, TY54527* Tab_58085);
+N_NIMCALL(TY54547*, Inittabiter_58081)(TY58079* Ti_58084, TY54529* Tab_58085);
 N_NIMCALL(void, Messageout_46550)(NimStringDesc* S_46552);
-N_NIMCALL(TY54545*, Nextiter_58086)(TY58079* Ti_58089, TY54527* Tab_58090);
+N_NIMCALL(TY54547*, Nextiter_58086)(TY58079* Ti_58089, TY54529* Tab_58090);
 N_NIMCALL(NI, Countdefinedsymbols_62017)(void);
 static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NIMCALL(void, Initdefines_62002)(void);
-N_NIMCALL(void, Initstrtable_54744)(TY54527* X_54747);
+N_NIMCALL(void, Initstrtable_54746)(TY54529* X_54749);
 static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
 N_NOINLINE(void, raiseIndexError)(void);
 N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_18003);
@@ -286,10 +286,10 @@ STRING_LITERAL(TMP62164, "cpu", 3);
 extern NIM_CONST TY50461 Cpu_50460;
 extern NIM_CONST TY50457 Endiantostr_50456;
 extern NIM_CONST TY50054 Os_50053;
-TY54527 Gsymbols_62001;
-extern TNimType* NTI54527; /* TStrTable */
-extern TNimType* NTI54521; /* PSym */
-extern TNimType* NTI54545; /* TSym */
+TY54529 Gsymbols_62001;
+extern TNimType* NTI54529; /* TStrTable */
+extern TNimType* NTI54523; /* PSym */
+extern TNimType* NTI54547; /* TSym */
 extern TY10990 Gch_11010;
 extern NU8 Targetcpu_50560;
 extern NU8 Targetos_50562;
@@ -309,7 +309,7 @@ Result_11039 = ((TY10602*) ((NI32)((NU32)(((NI) (Usr_11038))) - (NU32)(((NI) (((
 framePtr = framePtr->prev;
 return Result_11039;
 }
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805) {
 NI Result_7208;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -321,11 +321,11 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 Result_7208 = 0;
 F.line = 29;F.filename = "systhread.nim";
-Result_7208 = __sync_add_and_fetch(Memloc_3004, X_3005);
+Result_7208 = __sync_add_and_fetch(Memloc_2804, X_2805);
 framePtr = framePtr->prev;
 return Result_7208;
 }
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810) {
 NI Result_7406;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -337,7 +337,7 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 Result_7406 = 0;
 F.line = 37;F.filename = "systhread.nim";
-Result_7406 = __sync_sub_and_fetch(Memloc_3009, X_3010);
+Result_7406 = __sync_sub_and_fetch(Memloc_2809, X_2810);
 framePtr = framePtr->prev;
 return Result_7406;
 }
@@ -383,7 +383,7 @@ C_11820 = 0;
 F.line = 245;F.filename = "gc.nim";
 C_11820 = Usrtocell_11036(Src_11819);
 F.line = 246;F.filename = "gc.nim";
-LOC4 = Atomicinc_3001(&(*C_11820).Refcount, 8);
+LOC4 = Atomicinc_2801(&(*C_11820).Refcount, 8);
 LA2: ;
 F.line = 247;F.filename = "gc.nim";
 if (!!(((*Dest_11818) == NIM_NIL))) goto LA6;
@@ -391,7 +391,7 @@ C_11822 = 0;
 F.line = 248;F.filename = "gc.nim";
 C_11822 = Usrtocell_11036((*Dest_11818));
 F.line = 249;F.filename = "gc.nim";
-LOC9 = Atomicdec_3006(&(*C_11822).Refcount, 8);
+LOC9 = Atomicdec_2806(&(*C_11822).Refcount, 8);
 if (!((NU32)(LOC9) < (NU32)(8))) goto LA10;
 F.line = 250;F.filename = "gc.nim";
 Rtladdzct_11658(C_11822);
@@ -403,7 +403,7 @@ framePtr = framePtr->prev;
 }
 N_NIMCALL(void, Definesymbol_62006)(NimStringDesc* Symbol_62008) {
 TY53011* I_62022;
-TY54545* Sym_62023;
+TY54547* Sym_62023;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "DefineSymbol";
@@ -421,8 +421,8 @@ Sym_62023 = Strtableget_58069(&Gsymbols_62001, I_62022);
 F.line = 29;F.filename = "condsyms.nim";
 if (!(Sym_62023 == NIM_NIL)) goto LA2;
 F.line = 30;F.filename = "condsyms.nim";
-Sym_62023 = (TY54545*) newObj(NTI54521, sizeof(TY54545));
-objectInit(Sym_62023, NTI54545);
+Sym_62023 = (TY54547*) newObj(NTI54523, sizeof(TY54547));
+objectInit(Sym_62023, NTI54547);
 F.line = 31;F.filename = "condsyms.nim";
 (*Sym_62023).Kind = ((NU8) 1);
 F.line = 32;F.filename = "condsyms.nim";
@@ -435,7 +435,7 @@ F.line = 34;F.filename = "condsyms.nim";
 framePtr = framePtr->prev;
 }
 N_NIMCALL(void, Undefsymbol_62009)(NimStringDesc* Symbol_62011) {
-TY54545* Sym_62054;
+TY54547* Sym_62054;
 TY53011* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -459,7 +459,7 @@ framePtr = framePtr->prev;
 }
 N_NIMCALL(NIM_BOOL, Isdefined_62012)(TY53011* Symbol_62014) {
 NIM_BOOL Result_62069;
-TY54545* Sym_62070;
+TY54547* Sym_62070;
 NIM_BOOL LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -484,7 +484,7 @@ return Result_62069;
 }
 N_NIMCALL(void, Listsymbols_62015)(void) {
 TY58079 It_62086;
-TY54545* S_62088;
+TY54547* S_62088;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ListSymbols";
@@ -533,7 +533,7 @@ return Result_5605;
 N_NIMCALL(NI, Countdefinedsymbols_62017)(void) {
 NI Result_62108;
 TY58079 It_62109;
-TY54545* S_62111;
+TY54547* S_62111;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "countDefinedSymbols";
@@ -591,7 +591,7 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 62;F.filename = "condsyms.nim";
-Initstrtable_54744(&Gsymbols_62001);
+Initstrtable_54746(&Gsymbols_62001);
 F.line = 63;F.filename = "condsyms.nim";
 Definesymbol_62006(((NimStringDesc*) &TMP62152));
 F.line = 66;F.filename = "condsyms.nim";
@@ -711,7 +711,7 @@ F.filename = "rod/condsyms.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Gsymbols_62001.m_type = NTI54527;
+Gsymbols_62001.m_type = NTI54529;
 framePtr = framePtr->prev;
 }
 

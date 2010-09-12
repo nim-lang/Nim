@@ -15,10 +15,10 @@ typedef struct TY416 TY416;
 typedef struct TY418 TY418;
 typedef struct TY420 TY420;
 typedef struct TY442 TY442;
-typedef struct TY4377 TY4377;
+typedef struct TY452 TY452;
+typedef struct TY4177 TY4177;
 typedef struct TY428 TY428;
 typedef struct EOverflow EOverflow;
-typedef struct TY452 TY452;
 typedef struct EAssertionFailed EAssertionFailed;
 typedef struct TY448 TY448;
 typedef struct TY444 TY444;
@@ -45,26 +45,26 @@ typedef struct TY51008 TY51008;
 typedef struct TY51010 TY51010;
 typedef struct TY53005 TY53005;
 typedef struct TY53011 TY53011;
-typedef struct TY54557 TY54557;
 typedef struct TY54559 TY54559;
-typedef struct TY54551 TY54551;
-typedef struct TY54523 TY54523;
-typedef struct TY54549 TY54549;
-typedef struct TY54545 TY54545;
-typedef struct TY54517 TY54517;
-typedef struct TY54547 TY54547;
-typedef struct TY54537 TY54537;
-typedef struct TY54527 TY54527;
-typedef struct TY54525 TY54525;
-typedef struct TY54541 TY54541;
+typedef struct TY54561 TY54561;
 typedef struct TY54553 TY54553;
-typedef struct TY54575 TY54575;
-typedef struct TY54563 TY54563;
+typedef struct TY54525 TY54525;
+typedef struct TY54551 TY54551;
+typedef struct TY54547 TY54547;
+typedef struct TY54519 TY54519;
+typedef struct TY54549 TY54549;
+typedef struct TY54539 TY54539;
+typedef struct TY54529 TY54529;
+typedef struct TY54527 TY54527;
+typedef struct TY54543 TY54543;
+typedef struct TY54555 TY54555;
+typedef struct TY54577 TY54577;
 typedef struct TY54565 TY54565;
-typedef struct TY54569 TY54569;
+typedef struct TY54567 TY54567;
 typedef struct TY54571 TY54571;
-typedef struct TY54894 TY54894;
+typedef struct TY54573 TY54573;
 typedef struct TY54896 TY54896;
+typedef struct TY54898 TY54898;
 typedef struct TY58109 TY58109;
 typedef struct TY58219 TY58219;
 typedef struct TY58221 TY58221;
@@ -74,62 +74,62 @@ typedef struct TY65226 TY65226;
 typedef struct TY65323 TY65323;
 typedef struct TY66202 TY66202;
 typedef struct TY66698 TY66698;
-typedef struct TY72013 TY72013;
-typedef struct TY74434 TY74434;
-typedef struct TY74263 TY74263;
-typedef struct TY77137 TY77137;
-typedef struct TY73015 TY73015;
-typedef struct TY74267 TY74267;
-typedef struct TY82012 TY82012;
-typedef struct TY82014 TY82014;
-typedef struct TY90031 TY90031;
-typedef struct TY90029 TY90029;
+typedef struct TY73013 TY73013;
+typedef struct TY75434 TY75434;
+typedef struct TY75263 TY75263;
+typedef struct TY78137 TY78137;
+typedef struct TY74015 TY74015;
+typedef struct TY75267 TY75267;
+typedef struct TY83012 TY83012;
+typedef struct TY83014 TY83014;
+typedef struct TY91031 TY91031;
+typedef struct TY91029 TY91029;
 typedef struct TY58223 TY58223;
-typedef struct TY54561 TY54561;
-typedef struct TY92176 TY92176;
-typedef struct TY92178 TY92178;
-typedef struct TY100008 TY100008;
-typedef struct TY104002 TY104002;
-typedef struct TY104006 TY104006;
-typedef struct TY102002 TY102002;
-typedef struct TY104012 TY104012;
+typedef struct TY54563 TY54563;
+typedef struct TY93176 TY93176;
+typedef struct TY93178 TY93178;
+typedef struct TY101008 TY101008;
+typedef struct TY105002 TY105002;
+typedef struct TY105006 TY105006;
+typedef struct TY103002 TY103002;
+typedef struct TY105012 TY105012;
 typedef struct TY58107 TY58107;
-typedef struct TY54898 TY54898;
-typedef struct TY108004 TY108004;
-typedef struct TY113004 TY113004;
-typedef struct TY54567 TY54567;
-typedef struct TY113006 TY113006;
-typedef struct TY125066 TY125066;
-typedef struct TY145139 TY145139;
-typedef struct TY145077 TY145077;
-typedef struct TY145075 TY145075;
-typedef struct TY145695 TY145695;
-typedef struct TY145704 TY145704;
-typedef struct TY145693 TY145693;
-typedef struct TY145135 TY145135;
-typedef struct TY145137 TY145137;
-typedef struct TY145699 TY145699;
-typedef struct TY153017 TY153017;
-typedef struct TY153034 TY153034;
-typedef struct TY153011 TY153011;
-typedef struct TY150007 TY150007;
-typedef struct TY157172 TY157172;
-typedef struct TY158226 TY158226;
-typedef struct TY158222 TY158222;
-typedef struct TY54573 TY54573;
-typedef struct TY158277 TY158277;
-typedef struct TY158220 TY158220;
-typedef struct TY158308 TY158308;
-typedef struct TY177017 TY177017;
-typedef struct TY177015 TY177015;
-typedef struct TY177050 TY177050;
-typedef struct TY177007 TY177007;
-typedef struct TY186010 TY186010;
+typedef struct TY54900 TY54900;
+typedef struct TY109004 TY109004;
+typedef struct TY114004 TY114004;
+typedef struct TY54569 TY54569;
+typedef struct TY114006 TY114006;
+typedef struct TY126066 TY126066;
+typedef struct TY146139 TY146139;
+typedef struct TY146077 TY146077;
+typedef struct TY146075 TY146075;
+typedef struct TY146695 TY146695;
+typedef struct TY146704 TY146704;
+typedef struct TY146693 TY146693;
+typedef struct TY146135 TY146135;
+typedef struct TY146137 TY146137;
+typedef struct TY146699 TY146699;
+typedef struct TY154017 TY154017;
+typedef struct TY154034 TY154034;
+typedef struct TY154011 TY154011;
+typedef struct TY151007 TY151007;
+typedef struct TY158172 TY158172;
+typedef struct TY159226 TY159226;
+typedef struct TY159222 TY159222;
+typedef struct TY54575 TY54575;
+typedef struct TY159277 TY159277;
+typedef struct TY159220 TY159220;
+typedef struct TY159308 TY159308;
+typedef struct TY178017 TY178017;
+typedef struct TY178015 TY178015;
+typedef struct TY178050 TY178050;
+typedef struct TY178007 TY178007;
 typedef struct TY187010 TY187010;
-typedef struct TY187012 TY187012;
-typedef struct TY191206 TY191206;
-typedef struct TY191208 TY191208;
-typedef struct TY193404 TY193404;
+typedef struct TY188010 TY188010;
+typedef struct TY188012 TY188012;
+typedef struct TY192206 TY192206;
+typedef struct TY192208 TY192208;
+typedef struct TY194404 TY194404;
 struct TNimType {
 NI size;
 NU8 kind;
@@ -176,14 +176,14 @@ struct TY420 {
 struct TY442 {
   TY418 Sup;
 };
+struct TY452 {
+  TY416 Sup;
+};
 struct TY428 {
   TY416 Sup;
 };
 struct EOverflow {
   TY428 Sup;
-};
-struct TY452 {
-  TY416 Sup;
 };
 struct EAssertionFailed {
   TY416 Sup;
@@ -282,16 +282,16 @@ NimStringDesc* S;
 TY53011* Next;
 NI H;
 };
-struct TY54557 {
+struct TY54559 {
 TY53005* Key;
 TNimObject* Val;
 };
-struct TY54551 {
+struct TY54553 {
 TNimObject* Key;
 TNimObject* Val;
 };
-struct TY54523 {
-TY54549* Typ;
+struct TY54525 {
+TY54551* Typ;
 NimStringDesc* Comment;
 TY46532 Info;
 NU8 Flags;
@@ -303,77 +303,77 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY54545* Sym;
+struct {TY54547* Sym;
 } S4;
 struct {TY53011* Ident;
 } S5;
-struct {TY54517* Sons;
+struct {TY54519* Sons;
 } S6;
 } KindU;
 };
-struct TY54537 {
+struct TY54539 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY54549* T;
+TY54551* T;
 TY51008* R;
 NI A;
 };
-struct TY54549 {
+struct TY54551 {
   TY53005 Sup;
 NU8 Kind;
-TY54547* Sons;
-TY54523* N;
+TY54549* Sons;
+TY54525* N;
 NU8 Flags;
 NU8 Callconv;
-TY54545* Owner;
-TY54545* Sym;
+TY54547* Owner;
+TY54547* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY54537 Loc;
+TY54539 Loc;
 };
-struct TY54527 {
+struct TY54529 {
 TNimType* m_type;
 NI Counter;
-TY54525* Data;
+TY54527* Data;
 };
-struct TY54545 {
+struct TY54547 {
   TY53005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY54549* Typ;
+TY54551* Typ;
 TY53011* Name;
 TY46532 Info;
-TY54545* Owner;
+TY54547* Owner;
 NU32 Flags;
-TY54527 Tab;
-TY54523* Ast;
+TY54529 Tab;
+TY54525* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY54537 Loc;
-TY54541* Annex;
+TY54539 Loc;
+TY54543* Annex;
 };
-struct TY54541 {
+struct TY54543 {
   TY42013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
 TY51008* Name;
-TY54523* Path;
+TY54525* Path;
 };
-struct TY54563 {
+struct TY54565 {
 TY53005* Key;
-TY54523* Val;
+TY54525* Val;
 };
-struct TY54569 {
+struct TY54571 {
 NI H;
-TY54523* Key;
+TY54525* Key;
 NI Val;
 };
 typedef NI TY8614[16];
-struct TY54894 {
-TY54894* Next;
+struct TY54896 {
+TY54896* Next;
 NI Key;
 TY8614 Bits;
 };
@@ -419,7 +419,7 @@ int Errorhandle;
 int Id;
 int Exitcode;
 };
-struct TY72013 {
+struct TY73013 {
   TNimObject Sup;
 NU8 Kind;
 FILE* F;
@@ -427,7 +427,7 @@ NimStringDesc* S;
 NI Rd;
 NI Wr;
 };
-struct TY74263 {
+struct TY75263 {
 TNimType* m_type;
 NU8 Toktype;
 NI Indent;
@@ -436,26 +436,26 @@ NI64 Inumber;
 NF64 Fnumber;
 NU8 Base;
 NimStringDesc* Literal;
-TY74263* Next;
+TY75263* Next;
 };
-struct TY73015 {
+struct TY74015 {
   TNimObject Sup;
 NI Bufpos;
 NCSTRING Buf;
 NI Buflen;
-TY72013* Stream;
+TY73013* Stream;
 NI Linenumber;
 NI Sentinel;
 NI Linestart;
 };
-struct TY74267 {
-  TY73015 Sup;
+struct TY75267 {
+  TY74015 Sup;
 NimStringDesc* Filename;
-TY74434* Indentstack;
+TY75434* Indentstack;
 NI Dedent;
 NI Indentahead;
 };
-struct TY82012 {
+struct TY83012 {
 NU8 Kind;
 NI16 Length;
 };
@@ -463,25 +463,25 @@ struct TY58223 {
 NI Counter;
 TY58221* Data;
 };
-struct TY90029 {
+struct TY91029 {
 NI Lastidxkey;
 NI Lastidxval;
 TY58223 Tab;
 TY51008* R;
 NI Offset;
 };
-struct TY54561 {
+struct TY54563 {
 NI Counter;
-TY54559* Data;
+TY54561* Data;
 };
-struct TY90031 {
+struct TY91031 {
   TNimObject Sup;
 NI Pos;
 NimStringDesc* S;
 NU32 Options;
 NU8 Reason;
-TY4377* Moddeps;
-TY4377* Files;
+TY4177* Moddeps;
+TY4177* Files;
 NI Dataidx;
 NI Convertersidx;
 NI Initidx;
@@ -489,69 +489,69 @@ NI Interfidx;
 NI Compilerprocsidx;
 NI Cgenidx;
 NimStringDesc* Filename;
-TY90029 Index;
-TY90029 Imports;
+TY91029 Index;
+TY91029 Imports;
 NI Readerindex;
 NI Line;
 NI Moduleid;
-TY54561 Syms;
+TY54563 Syms;
 };
-struct TY92176 {
+struct TY93176 {
 NimStringDesc* Filename;
 NU8 Reason;
-TY90031* Rd;
+TY91031* Rd;
 int Crc;
 };
-struct TY104002 {
+struct TY105002 {
   TY42013 Sup;
 NU32 Options;
 NU8 Defaultcc;
-TY54541* Dynlib;
+TY54543* Dynlib;
 NU32 Notes;
 };
-struct TY104006 {
-TY54545* Owner;
-TY54545* Resultsym;
+struct TY105006 {
+TY54547* Owner;
+TY54547* Resultsym;
 NI Nestedloopcounter;
 NI Nestedblockcounter;
 };
-struct TY102002 {
+struct TY103002 {
   TNimObject Sup;
 };
 struct TY58107 {
 NI Tos;
 TY58109* Stack;
 };
-struct TY54898 {
+struct TY54900 {
 NI Counter;
 NI Max;
-TY54894* Head;
-TY54896* Data;
+TY54896* Head;
+TY54898* Data;
 };
-typedef N_NIMCALL_PTR(TY54523*, TY104032) (TY104012* C_104033, TY54523* N_104034);
-typedef N_NIMCALL_PTR(TY54523*, TY104037) (TY104012* C_104038, TY54523* N_104039);
-struct TY104012 {
-  TY102002 Sup;
-TY54545* Module;
-TY104006* P;
+typedef N_NIMCALL_PTR(TY54525*, TY105032) (TY105012* C_105033, TY54525* N_105034);
+typedef N_NIMCALL_PTR(TY54525*, TY105037) (TY105012* C_105038, TY54525* N_105039);
+struct TY105012 {
+  TY103002 Sup;
+TY54547* Module;
+TY105006* P;
 NI Instcounter;
-TY54523* Generics;
+TY54525* Generics;
 NI Lastgenericidx;
 TY58107 Tab;
-TY54898 Ambiguoussymbols;
-TY54525* Converters;
+TY54900 Ambiguoussymbols;
+TY54527* Converters;
 TY42019 Optionstack;
 TY42019 Libs;
 NIM_BOOL Fromcache;
-TY104032 Semconstexpr;
-TY104037 Semexpr;
-TY54898 Includedfiles;
+TY105032 Semconstexpr;
+TY105037 Semexpr;
+TY54900 Includedfiles;
 NimStringDesc* Filename;
-TY54527 Userpragmas;
+TY54529 Userpragmas;
 };
-struct TY108004 {
-  TY102002 Sup;
-TY54545* Module;
+struct TY109004 {
+  TY103002 Sup;
+TY54547* Module;
 int Crc;
 NU32 Options;
 TY51008* Defines;
@@ -559,48 +559,48 @@ TY51008* Incldeps;
 TY51008* Moddeps;
 TY51008* Interf;
 TY51008* Compilerprocs;
-TY90029 Index;
-TY90029 Imports;
+TY91029 Index;
+TY91029 Imports;
 TY51008* Converters;
 TY51008* Init;
 TY51008* Data;
 NimStringDesc* Filename;
-TY54525* Sstack;
-TY54547* Tstack;
-TY4377* Files;
+TY54527* Sstack;
+TY54549* Tstack;
+TY4177* Files;
 };
-struct TY54567 {
+struct TY54569 {
 NI Counter;
-TY54565* Data;
+TY54567* Data;
 };
-struct TY113004 {
-TY54567 Mapping;
-TY54545* Prc;
-TY54523* Call;
-TY113004* Next;
-TY54517* Params;
+struct TY114004 {
+TY54569 Mapping;
+TY54547* Prc;
+TY54525* Call;
+TY114004* Next;
+TY54519* Params;
 };
-struct TY113006 {
-  TY102002 Sup;
-TY54545* Module;
-TY113004* Tos;
-TY54523* Lastexception;
+struct TY114006 {
+  TY103002 Sup;
+TY54547* Module;
+TY114004* Tos;
+TY54525* Lastexception;
 NIM_BOOL Opteval;
 };
-struct TY125066 {
+struct TY126066 {
 NI Exactmatches;
 NI Subtypematches;
 NI Intconvmatches;
 NI Convmatches;
 NI Genericmatches;
 NU8 State;
-TY54549* Callee;
-TY54545* Calleesym;
-TY54523* Call;
-TY54561 Bindings;
+TY54551* Callee;
+TY54547* Calleesym;
+TY54525* Call;
+TY54563 Bindings;
 NIM_BOOL Basetypematch;
 };
-struct TY145139 {
+struct TY146139 {
   TNimObject Sup;
 NCSTRING Buf;
 NI Bufpos;
@@ -609,69 +609,69 @@ NI Col;
 NI Baseindent;
 NIM_BOOL Skippounds;
 };
-struct TY145077 {
+struct TY146077 {
 NU8 Kind;
 NimStringDesc* Text;
 NI Level;
-TY145075* Sons;
+TY146075* Sons;
 };
-struct TY145693 {
+struct TY146693 {
 NimStringDesc* Key;
-TY145077* Value;
+TY146077* Value;
 };
 typedef NI TY25135[256];
-struct TY145695 {
+struct TY146695 {
 NI Ulevel;
 NI Olevel;
-TY145704* Subs;
-TY145704* Refs;
+TY146704* Subs;
+TY146704* Refs;
 TY25135 Underlinetolevel;
 TY25135 Overlinetolevel;
 };
-struct TY145135 {
+struct TY146135 {
 NU8 Kind;
 NI Ival;
 NimStringDesc* Symbol;
 NI Line;
 NI Col;
 };
-struct TY145699 {
+struct TY146699 {
   TNimObject Sup;
 NI Idx;
-TY145137* Tok;
-TY145695* S;
-TY74434* Indentstack;
+TY146137* Tok;
+TY146695* S;
+TY75434* Indentstack;
 NimStringDesc* Filename;
 NI Line;
 NI Col;
 NIM_BOOL Hastoc;
 };
-struct TY153011 {
-TY145077* N;
+struct TY154011 {
+TY146077* N;
 TY51008* Refname;
 TY51008* Header;
 };
-typedef TY51008* TY153013[21];
-typedef TY51008* TY153044[5];
-struct TY153017 {
+typedef TY51008* TY154013[21];
+typedef TY51008* TY154044[5];
+struct TY154017 {
 NimStringDesc* Filename;
 NimStringDesc* Basedir;
 TY51008* Moddesc;
 TY51008* Dependson;
 NI Id;
 NI Splitafter;
-TY153034* Tocpart;
+TY154034* Tocpart;
 NIM_BOOL Hastoc;
-TY153013 Toc;
-TY153013 Section;
-TY145077* Indexfile;
-TY145077* Theindex;
+TY154013 Toc;
+TY154013 Section;
+TY146077* Indexfile;
+TY146077* Theindex;
 NimStringDesc* Indexvalfilename;
 NI Indent;
 NI Verbatim;
-TY153044 Meta;
+TY154044 Meta;
 };
-struct TY150007 {
+struct TY151007 {
   TNimObject Sup;
 NU8 Kind;
 NI Start;
@@ -680,86 +680,86 @@ NCSTRING Buf;
 NI Pos;
 NU8 State;
 };
-typedef TY51008* TY158210[16];
-struct TY54573 {
+typedef TY51008* TY159210[16];
+struct TY54575 {
 NI Counter;
-TY54571* Data;
+TY54573* Data;
 };
-struct TY158226 {
-  TY102002 Sup;
-TY54545* Module;
+struct TY159226 {
+  TY103002 Sup;
+TY54547* Module;
 NimStringDesc* Filename;
-TY158210 S;
+TY159210 S;
 NimStringDesc* Cfilename;
-TY54561 Typecache;
-TY54561 Forwtypecache;
-TY54898 Declaredthings;
-TY54898 Declaredprotos;
+TY54563 Typecache;
+TY54563 Forwtypecache;
+TY54900 Declaredthings;
+TY54900 Declaredprotos;
 TY42019 Headerfiles;
-TY54898 Typeinfomarker;
-TY158222* Initproc;
-TY54547* Typestack;
-TY54573 Datacache;
-TY54525* Forwardedprocs;
+TY54900 Typeinfomarker;
+TY159222* Initproc;
+TY54549* Typestack;
+TY54575 Datacache;
+TY54527* Forwardedprocs;
 NI Typenodes;
 NI Nimtypes;
 TY51008* Typenodesname;
 TY51008* Nimtypesname;
 NI Labels;
 };
-typedef TY51008* TY158214[3];
-struct TY158220 {
+typedef TY51008* TY159214[3];
+struct TY159220 {
 NI Id;
 NI Nestedtrystmts;
 };
-struct TY158222 {
-TY158214 S;
-TY54545* Prc;
+struct TY159222 {
+TY159214 S;
+TY54547* Prc;
 NIM_BOOL Beforeretneeded;
 NI Nestedtrystmts;
 NI Labels;
-TY158277* Blocks;
+TY159277* Blocks;
 NU32 Options;
 NI Framelen;
-TY54549* Sendclosure;
-TY54549* Receiveclosure;
-TY158226* Module;
+TY54551* Sendclosure;
+TY54551* Receiveclosure;
+TY159226* Module;
 };
-struct TY177017 {
+struct TY178017 {
 TY51008* Typeinfo;
 TY51008* Code;
-TY54898 Typeinfogenerated;
+TY54900 Typeinfogenerated;
 };
-struct TY177015 {
+struct TY178015 {
 NI Id;
 NI Nestedtrystmts;
 };
-struct TY177007 {
-  TY102002 Sup;
+struct TY178007 {
+  TY103002 Sup;
 NimStringDesc* Filename;
-TY54545* Module;
-};
-struct TY186010 {
-  TY102002 Sup;
-TY54545* Module;
-NimStringDesc* Filename;
+TY54547* Module;
 };
 struct TY187010 {
-TY54567 Mapping;
-TY54545* Owner;
-TY54523* Forstmt;
-TY187010* Next;
-};
-struct TY187012 {
-  TY102002 Sup;
-TY54545* Module;
-TY187010* Transcon;
-};
-struct TY191206 {
+  TY103002 Sup;
+TY54547* Module;
 NimStringDesc* Filename;
-TY54545* Module;
 };
-struct TY193404 {
+struct TY188010 {
+TY54569 Mapping;
+TY54547* Owner;
+TY54525* Forstmt;
+TY188010* Next;
+};
+struct TY188012 {
+  TY103002 Sup;
+TY54547* Module;
+TY188010* Transcon;
+};
+struct TY192206 {
+NimStringDesc* Filename;
+TY54547* Module;
+};
+struct TY194404 {
   TNimObject Sup;
 NimStringDesc* Cmd;
 NI Pos;
@@ -768,7 +768,7 @@ NU8 Kind;
 NimStringDesc* Key;
 NimStringDesc* Val;
 };
-struct TY4377 {
+struct TY4177 {
   TGenericSeq Sup;
   NimStringDesc* data[SEQ_DECL_SIZE];
 };
@@ -784,45 +784,45 @@ struct TY51010 {
   TGenericSeq Sup;
   TY51008* data[SEQ_DECL_SIZE];
 };
-struct TY54559 {
+struct TY54561 {
   TGenericSeq Sup;
-  TY54557 data[SEQ_DECL_SIZE];
+  TY54559 data[SEQ_DECL_SIZE];
 };
-struct TY54517 {
+struct TY54519 {
   TGenericSeq Sup;
-  TY54523* data[SEQ_DECL_SIZE];
+  TY54525* data[SEQ_DECL_SIZE];
 };
-struct TY54547 {
+struct TY54549 {
   TGenericSeq Sup;
-  TY54549* data[SEQ_DECL_SIZE];
+  TY54551* data[SEQ_DECL_SIZE];
 };
-struct TY54525 {
+struct TY54527 {
   TGenericSeq Sup;
-  TY54545* data[SEQ_DECL_SIZE];
+  TY54547* data[SEQ_DECL_SIZE];
 };
-struct TY54553 {
+struct TY54555 {
   TGenericSeq Sup;
-  TY54551 data[SEQ_DECL_SIZE];
+  TY54553 data[SEQ_DECL_SIZE];
 };
-struct TY54575 {
+struct TY54577 {
   TGenericSeq Sup;
   TNimObject* data[SEQ_DECL_SIZE];
 };
-struct TY54565 {
+struct TY54567 {
   TGenericSeq Sup;
-  TY54563 data[SEQ_DECL_SIZE];
+  TY54565 data[SEQ_DECL_SIZE];
 };
-struct TY54571 {
+struct TY54573 {
   TGenericSeq Sup;
-  TY54569 data[SEQ_DECL_SIZE];
+  TY54571 data[SEQ_DECL_SIZE];
 };
-struct TY54896 {
+struct TY54898 {
   TGenericSeq Sup;
-  TY54894* data[SEQ_DECL_SIZE];
+  TY54896* data[SEQ_DECL_SIZE];
 };
 struct TY58109 {
   TGenericSeq Sup;
-  TY54527 data[SEQ_DECL_SIZE];
+  TY54529 data[SEQ_DECL_SIZE];
 };
 struct TY58221 {
   TGenericSeq Sup;
@@ -832,61 +832,61 @@ struct TY66698 {
   TGenericSeq Sup;
   TY66202* data[SEQ_DECL_SIZE];
 };
-struct TY74434 {
+struct TY75434 {
   TGenericSeq Sup;
   NI data[SEQ_DECL_SIZE];
 };
-struct TY77137 {
+struct TY78137 {
   TGenericSeq Sup;
   NIM_BOOL data[SEQ_DECL_SIZE];
 };
-struct TY82014 {
+struct TY83014 {
   TGenericSeq Sup;
-  TY82012 data[SEQ_DECL_SIZE];
+  TY83012 data[SEQ_DECL_SIZE];
 };
-struct TY92178 {
+struct TY93178 {
   TGenericSeq Sup;
-  TY92176 data[SEQ_DECL_SIZE];
+  TY93176 data[SEQ_DECL_SIZE];
 };
-struct TY100008 {
+struct TY101008 {
   TGenericSeq Sup;
   NI8 data[SEQ_DECL_SIZE];
 };
-struct TY145075 {
+struct TY146075 {
   TGenericSeq Sup;
-  TY145077* data[SEQ_DECL_SIZE];
+  TY146077* data[SEQ_DECL_SIZE];
 };
-struct TY145704 {
+struct TY146704 {
   TGenericSeq Sup;
-  TY145693 data[SEQ_DECL_SIZE];
+  TY146693 data[SEQ_DECL_SIZE];
 };
-struct TY145137 {
+struct TY146137 {
   TGenericSeq Sup;
-  TY145135 data[SEQ_DECL_SIZE];
+  TY146135 data[SEQ_DECL_SIZE];
 };
-struct TY153034 {
+struct TY154034 {
   TGenericSeq Sup;
-  TY153011 data[SEQ_DECL_SIZE];
+  TY154011 data[SEQ_DECL_SIZE];
 };
-struct TY157172 {
+struct TY158172 {
   TGenericSeq Sup;
-  TY54525* data[SEQ_DECL_SIZE];
+  TY54527* data[SEQ_DECL_SIZE];
 };
-struct TY158277 {
+struct TY159277 {
   TGenericSeq Sup;
-  TY158220 data[SEQ_DECL_SIZE];
+  TY159220 data[SEQ_DECL_SIZE];
 };
-struct TY158308 {
+struct TY159308 {
   TGenericSeq Sup;
-  TY158226* data[SEQ_DECL_SIZE];
+  TY159226* data[SEQ_DECL_SIZE];
 };
-struct TY177050 {
+struct TY178050 {
   TGenericSeq Sup;
-  TY177015 data[SEQ_DECL_SIZE];
+  TY178015 data[SEQ_DECL_SIZE];
 };
-struct TY191208 {
+struct TY192208 {
   TGenericSeq Sup;
-  TY191206 data[SEQ_DECL_SIZE];
+  TY192206 data[SEQ_DECL_SIZE];
 };
 extern TNimType* NTI420; /* EIO */
 extern TNimType* NTI418; /* ESystem */
@@ -904,19 +904,19 @@ TNimType* NTI130; /* string */
 TNimType* NTI416; /* ESynch */
 TNimType* NTI418; /* ESystem */
 TNimType* NTI420; /* EIO */
-TNimType* NTI4262; /* ref EIO */
+TNimType* NTI4062; /* ref EIO */
 extern TNimType* NTI442; /* EOutOfMemory */
 TNimType* NTI442; /* EOutOfMemory */
 TNimType* NTI8062; /* ref EOutOfMemory */
-TNimType* NTI4377; /* seq[string] */
+extern TNimType* NTI452; /* ENoExceptionToReraise */
+TNimType* NTI452; /* ENoExceptionToReraise */
+TNimType* NTI5033; /* ref ENoExceptionToReraise */
+TNimType* NTI4177; /* seq[string] */
 extern TNimType* NTI432; /* EOverflow */
 extern TNimType* NTI428; /* EArithmetic */
 TNimType* NTI428; /* EArithmetic */
 TNimType* NTI432; /* EOverflow */
 TNimType* NTI5491; /* ref EOverflow */
-extern TNimType* NTI452; /* ENoExceptionToReraise */
-TNimType* NTI452; /* ENoExceptionToReraise */
-TNimType* NTI5033; /* ref ENoExceptionToReraise */
 extern TNimType* NTI436; /* EAssertionFailed */
 TNimType* NTI436; /* EAssertionFailed */
 TNimType* NTI5050; /* ref EAssertionFailed */
@@ -1007,33 +1007,33 @@ TNimType* NTI53005; /* TIdObj */
 TNimType* NTI53011; /* TIdent */
 extern TNimType* NTI53009; /* PIdent */
 TNimType* NTI53009; /* PIdent */
-extern TNimType* NTI54557; /* TIdPair */
-TNimType* NTI54557; /* TIdPair */
+extern TNimType* NTI54559; /* TIdPair */
+TNimType* NTI54559; /* TIdPair */
 extern TNimType* NTI53007; /* PIdObj */
 TNimType* NTI53007; /* PIdObj */
 extern TNimType* NTI410; /* PObject */
 TNimType* NTI410; /* PObject */
-TNimType* NTI54559; /* TIdPairSeq */
-TNimType* NTI54551; /* TPair */
-extern TNimType* NTI54513; /* PNode */
-extern TNimType* NTI54523; /* TNode */
-TNimType* NTI54523; /* TNode */
-extern TNimType* NTI54519; /* PType */
-extern TNimType* NTI54549; /* TType */
-TNimType* NTI54549; /* TType */
+TNimType* NTI54561; /* TIdPairSeq */
+TNimType* NTI54553; /* TPair */
+extern TNimType* NTI54515; /* PNode */
+extern TNimType* NTI54525; /* TNode */
+TNimType* NTI54525; /* TNode */
+extern TNimType* NTI54521; /* PType */
+extern TNimType* NTI54551; /* TType */
+TNimType* NTI54551; /* TType */
 extern TNimType* NTI54162; /* TTypeKind */
 TNimType* NTI54162; /* TTypeKind */
-extern TNimType* NTI54547; /* TTypeSeq */
-TNimType* NTI54547; /* TTypeSeq */
+extern TNimType* NTI54549; /* TTypeSeq */
+TNimType* NTI54549; /* TTypeSeq */
 extern TNimType* NTI54172; /* TTypeFlags */
 extern TNimType* NTI54170; /* TTypeFlag */
 TNimType* NTI54170; /* TTypeFlag */
 TNimType* NTI54172; /* TTypeFlags */
 extern TNimType* NTI54004; /* TCallingConvention */
 TNimType* NTI54004; /* TCallingConvention */
-extern TNimType* NTI54521; /* PSym */
-extern TNimType* NTI54545; /* TSym */
-TNimType* NTI54545; /* TSym */
+extern TNimType* NTI54523; /* PSym */
+extern TNimType* NTI54547; /* TSym */
+TNimType* NTI54547; /* TSym */
 extern TNimType* NTI54174; /* TSymKind */
 TNimType* NTI54174; /* TSymKind */
 extern TNimType* NTI54178; /* TMagic */
@@ -1042,36 +1042,36 @@ extern TNimType* NTI54160; /* TSymFlags */
 extern TNimType* NTI54158; /* TSymFlag */
 TNimType* NTI54158; /* TSymFlag */
 TNimType* NTI54160; /* TSymFlags */
-extern TNimType* NTI54527; /* TStrTable */
-TNimType* NTI54527; /* TStrTable */
-extern TNimType* NTI54525; /* TSymSeq */
-TNimType* NTI54525; /* TSymSeq */
+extern TNimType* NTI54529; /* TStrTable */
+TNimType* NTI54529; /* TStrTable */
+extern TNimType* NTI54527; /* TSymSeq */
+TNimType* NTI54527; /* TSymSeq */
 extern TNimType* NTI45073; /* set[TOption] */
 extern TNimType* NTI45003; /* TOption */
 TNimType* NTI45003; /* TOption */
 TNimType* NTI45073; /* set[TOption] */
-extern TNimType* NTI54537; /* TLoc */
-TNimType* NTI54537; /* TLoc */
-extern TNimType* NTI54529; /* TLocKind */
-TNimType* NTI54529; /* TLocKind */
-extern TNimType* NTI54533; /* TStorageLoc */
-TNimType* NTI54533; /* TStorageLoc */
-extern TNimType* NTI54535; /* TLocFlags */
-extern TNimType* NTI54531; /* TLocFlag */
-TNimType* NTI54531; /* TLocFlag */
-TNimType* NTI54535; /* TLocFlags */
-extern TNimType* NTI54543; /* PLib */
-extern TNimType* NTI54541; /* TLib */
-TNimType* NTI54541; /* TLib */
-extern TNimType* NTI54539; /* TLibKind */
-TNimType* NTI54539; /* TLibKind */
+extern TNimType* NTI54539; /* TLoc */
+TNimType* NTI54539; /* TLoc */
+extern TNimType* NTI54531; /* TLocKind */
+TNimType* NTI54531; /* TLocKind */
+extern TNimType* NTI54535; /* TStorageLoc */
+TNimType* NTI54535; /* TStorageLoc */
+extern TNimType* NTI54537; /* TLocFlags */
+extern TNimType* NTI54533; /* TLocFlag */
+TNimType* NTI54533; /* TLocFlag */
+TNimType* NTI54537; /* TLocFlags */
+extern TNimType* NTI54545; /* PLib */
+extern TNimType* NTI54543; /* TLib */
+TNimType* NTI54543; /* TLib */
+extern TNimType* NTI54541; /* TLibKind */
+TNimType* NTI54541; /* TLibKind */
 extern TNimType* NTI124; /* bool */
 TNimType* NTI124; /* bool */
-TNimType* NTI54543; /* PLib */
-TNimType* NTI54521; /* PSym */
+TNimType* NTI54545; /* PLib */
+TNimType* NTI54523; /* PSym */
 extern TNimType* NTI116; /* int64 */
 TNimType* NTI116; /* int64 */
-TNimType* NTI54519; /* PType */
+TNimType* NTI54521; /* PType */
 extern TNimType* NTI54168; /* TNodeFlags */
 extern TNimType* NTI54166; /* TNodeFlag */
 TNimType* NTI54166; /* TNodeFlag */
@@ -1080,25 +1080,25 @@ extern TNimType* NTI54030; /* TNodeKind */
 TNimType* NTI54030; /* TNodeKind */
 extern TNimType* NTI122; /* TAlignType */
 TNimType* NTI122; /* TAlignType */
-extern TNimType* NTI54517; /* TNodeSeq */
-TNimType* NTI54513; /* PNode */
-TNimType* NTI54517; /* TNodeSeq */
-extern TNimType* NTI54551; /* TPair */
-TNimType* NTI54553; /* TPairSeq */
-TNimType* NTI54575; /* TObjectSeq */
-extern TNimType* NTI54563; /* TIdNodePair */
-TNimType* NTI54563; /* TIdNodePair */
-TNimType* NTI54565; /* TIdNodePairSeq */
-extern TNimType* NTI54569; /* TNodePair */
-TNimType* NTI54569; /* TNodePair */
-TNimType* NTI54571; /* TNodePairSeq */
-extern TNimType* NTI54892; /* PTrunk */
-extern TNimType* NTI54894; /* TTrunk */
-TNimType* NTI54894; /* TTrunk */
+extern TNimType* NTI54519; /* TNodeSeq */
+TNimType* NTI54515; /* PNode */
+TNimType* NTI54519; /* TNodeSeq */
+extern TNimType* NTI54553; /* TPair */
+TNimType* NTI54555; /* TPairSeq */
+TNimType* NTI54577; /* TObjectSeq */
+extern TNimType* NTI54565; /* TIdNodePair */
+TNimType* NTI54565; /* TIdNodePair */
+TNimType* NTI54567; /* TIdNodePairSeq */
+extern TNimType* NTI54571; /* TNodePair */
+TNimType* NTI54571; /* TNodePair */
+TNimType* NTI54573; /* TNodePairSeq */
+extern TNimType* NTI54894; /* PTrunk */
+extern TNimType* NTI54896; /* TTrunk */
+TNimType* NTI54896; /* TTrunk */
 extern TNimType* NTI8614; /* array[0..15, int] */
 TNimType* NTI8614; /* array[0..15, int] */
-TNimType* NTI54892; /* PTrunk */
-TNimType* NTI54896; /* TTrunkSeq */
+TNimType* NTI54894; /* PTrunk */
+TNimType* NTI54898; /* TTrunkSeq */
 TNimType* NTI58109; /* seq[TStrTable] */
 extern TNimType* NTI58219; /* TIIPair */
 TNimType* NTI58219; /* TIIPair */
@@ -1127,195 +1127,195 @@ TNimType* NTI65226; /* TStringStream */
 TNimType* NTI65224; /* PStringStream */
 extern TNimType* NTI65323; /* TFileStream */
 TNimType* NTI65323; /* TFileStream */
-extern TNimType* NTI3604; /* TFile */
-extern TNimType* NTI3602; /* CFile */
-TNimType* NTI3602; /* CFile */
-TNimType* NTI3604; /* TFile */
+extern TNimType* NTI3404; /* TFile */
+extern TNimType* NTI3402; /* CFile */
+TNimType* NTI3402; /* CFile */
+TNimType* NTI3404; /* TFile */
 TNimType* NTI65321; /* PFileStream */
 extern TNimType* NTI66204; /* PProcess */
 extern TNimType* NTI66202; /* TProcess */
 TNimType* NTI66202; /* TProcess */
 TNimType* NTI66204; /* PProcess */
 TNimType* NTI66698; /* seq[PProcess] */
-extern TNimType* NTI72013; /* TLLStream */
-TNimType* NTI72013; /* TLLStream */
-extern TNimType* NTI72011; /* TLLStreamKind */
-TNimType* NTI72011; /* TLLStreamKind */
-TNimType* NTI72015; /* PLLStream */
-TNimType* NTI74434; /* seq[int] */
-TNimType* NTI74263; /* TToken */
-extern TNimType* NTI74011; /* TTokType */
-TNimType* NTI74011; /* TTokType */
-extern TNimType* NTI74259; /* TNumericalBase */
-TNimType* NTI74259; /* TNumericalBase */
-extern TNimType* NTI74261; /* PToken */
-extern TNimType* NTI74263; /* TToken */
-TNimType* NTI74261; /* PToken */
-TNimType* NTI77137; /* seq[bool] */
-extern TNimType* NTI73015; /* TBaseLexer */
-TNimType* NTI73015; /* TBaseLexer */
-extern TNimType* NTI72015; /* PLLStream */
-TNimType* NTI74267; /* TLexer */
-extern TNimType* NTI74434; /* seq[int] */
-extern TNimType* NTI74267; /* TLexer */
-TNimType* NTI74265; /* PLexer */
-extern TNimType* NTI82012; /* TRenderTok */
-TNimType* NTI82012; /* TRenderTok */
-TNimType* NTI82014; /* TRenderTokSeq */
-extern TNimType* NTI90031; /* TRodReader */
-TNimType* NTI90031; /* TRodReader */
-extern TNimType* NTI90005; /* TReasonForRecompile */
-TNimType* NTI90005; /* TReasonForRecompile */
-extern TNimType* NTI4377; /* seq[string] */
-extern TNimType* NTI90029; /* TIndex */
-TNimType* NTI90029; /* TIndex */
+extern TNimType* NTI73013; /* TLLStream */
+TNimType* NTI73013; /* TLLStream */
+extern TNimType* NTI73011; /* TLLStreamKind */
+TNimType* NTI73011; /* TLLStreamKind */
+TNimType* NTI73015; /* PLLStream */
+TNimType* NTI75434; /* seq[int] */
+TNimType* NTI75263; /* TToken */
+extern TNimType* NTI75011; /* TTokType */
+TNimType* NTI75011; /* TTokType */
+extern TNimType* NTI75259; /* TNumericalBase */
+TNimType* NTI75259; /* TNumericalBase */
+extern TNimType* NTI75261; /* PToken */
+extern TNimType* NTI75263; /* TToken */
+TNimType* NTI75261; /* PToken */
+TNimType* NTI78137; /* seq[bool] */
+extern TNimType* NTI74015; /* TBaseLexer */
+TNimType* NTI74015; /* TBaseLexer */
+extern TNimType* NTI73015; /* PLLStream */
+TNimType* NTI75267; /* TLexer */
+extern TNimType* NTI75434; /* seq[int] */
+extern TNimType* NTI75267; /* TLexer */
+TNimType* NTI75265; /* PLexer */
+extern TNimType* NTI83012; /* TRenderTok */
+TNimType* NTI83012; /* TRenderTok */
+TNimType* NTI83014; /* TRenderTokSeq */
+extern TNimType* NTI91031; /* TRodReader */
+TNimType* NTI91031; /* TRodReader */
+extern TNimType* NTI91005; /* TReasonForRecompile */
+TNimType* NTI91005; /* TReasonForRecompile */
+extern TNimType* NTI4177; /* seq[string] */
+extern TNimType* NTI91029; /* TIndex */
+TNimType* NTI91029; /* TIndex */
 extern TNimType* NTI58223; /* TIITable */
 TNimType* NTI58223; /* TIITable */
 extern TNimType* NTI58221; /* TIIPairSeq */
-extern TNimType* NTI54561; /* TIdTable */
-TNimType* NTI54561; /* TIdTable */
-extern TNimType* NTI54559; /* TIdPairSeq */
-TNimType* NTI90033; /* PRodReader */
-extern TNimType* NTI92176; /* TFileModuleRec */
-TNimType* NTI92176; /* TFileModuleRec */
-extern TNimType* NTI90033; /* PRodReader */
-TNimType* NTI92178; /* TFileModuleMap */
+extern TNimType* NTI54563; /* TIdTable */
+TNimType* NTI54563; /* TIdTable */
+extern TNimType* NTI54561; /* TIdPairSeq */
+TNimType* NTI91033; /* PRodReader */
+extern TNimType* NTI93176; /* TFileModuleRec */
+TNimType* NTI93176; /* TFileModuleRec */
+extern TNimType* NTI91033; /* PRodReader */
+TNimType* NTI93178; /* TFileModuleMap */
 extern TNimType* NTI110; /* int8 */
 TNimType* NTI110; /* int8 */
-TNimType* NTI100008; /* TBitSet */
-TNimType* NTI104002; /* TOptionEntry */
+TNimType* NTI101008; /* TBitSet */
+TNimType* NTI105002; /* TOptionEntry */
 extern TNimType* NTI46530; /* TNoteKinds */
 extern TNimType* NTI46528; /* TNoteKind */
 extern TNimType* NTI46002; /* TMsgKind */
 TNimType* NTI46002; /* TMsgKind */
 TNimType* NTI46528; /* TNoteKind */
 TNimType* NTI46530; /* TNoteKinds */
-extern TNimType* NTI104006; /* TProcCon */
-TNimType* NTI104006; /* TProcCon */
-TNimType* NTI104008; /* PProcCon */
-extern TNimType* NTI104002; /* TOptionEntry */
-TNimType* NTI104004; /* POptionEntry */
-extern TNimType* NTI104012; /* TContext */
-extern TNimType* NTI102002; /* TPassContext */
-TNimType* NTI102002; /* TPassContext */
-TNimType* NTI104012; /* TContext */
-extern TNimType* NTI104008; /* PProcCon */
+extern TNimType* NTI105006; /* TProcCon */
+TNimType* NTI105006; /* TProcCon */
+TNimType* NTI105008; /* PProcCon */
+extern TNimType* NTI105002; /* TOptionEntry */
+TNimType* NTI105004; /* POptionEntry */
+extern TNimType* NTI105012; /* TContext */
+extern TNimType* NTI103002; /* TPassContext */
+TNimType* NTI103002; /* TPassContext */
+TNimType* NTI105012; /* TContext */
+extern TNimType* NTI105008; /* PProcCon */
 extern TNimType* NTI58107; /* TSymTab */
 TNimType* NTI58107; /* TSymTab */
 extern TNimType* NTI404; /* Natural */
 TNimType* NTI404; /* Natural */
 extern TNimType* NTI58109; /* seq[TStrTable] */
-extern TNimType* NTI54898; /* TIntSet */
-TNimType* NTI54898; /* TIntSet */
-extern TNimType* NTI54896; /* TTrunkSeq */
+extern TNimType* NTI54900; /* TIntSet */
+TNimType* NTI54900; /* TIntSet */
+extern TNimType* NTI54898; /* TTrunkSeq */
 extern TNimType* NTI42019; /* TLinkedList */
-extern TNimType* NTI104032; /* proc (PContext, PNode): PNode */
-TNimType* NTI104032; /* proc (PContext, PNode): PNode */
-extern TNimType* NTI104037; /* proc (PContext, PNode): PNode */
-TNimType* NTI104037; /* proc (PContext, PNode): PNode */
-TNimType* NTI104010; /* PContext */
-extern TNimType* NTI108004; /* TRodWriter */
-TNimType* NTI108004; /* TRodWriter */
-TNimType* NTI108006; /* PRodWriter */
-extern TNimType* NTI113004; /* TStackFrame */
-TNimType* NTI113004; /* TStackFrame */
-extern TNimType* NTI54567; /* TIdNodeTable */
-TNimType* NTI54567; /* TIdNodeTable */
-extern TNimType* NTI54565; /* TIdNodePairSeq */
-extern TNimType* NTI113002; /* PStackFrame */
-TNimType* NTI113002; /* PStackFrame */
-extern TNimType* NTI113006; /* TEvalContext */
-TNimType* NTI113006; /* TEvalContext */
-TNimType* NTI113008; /* PEvalContext */
-TNimType* NTI125066; /* TCandidate */
-extern TNimType* NTI125064; /* TCandidateState */
-TNimType* NTI125064; /* TCandidateState */
-TNimType* NTI145139; /* TLexer */
-extern TNimType* NTI145077; /* TRSTNode */
-TNimType* NTI145077; /* TRSTNode */
-extern TNimType* NTI145008; /* TRstNodeKind */
-TNimType* NTI145008; /* TRstNodeKind */
-extern TNimType* NTI145075; /* TRstNodeSeq */
-extern TNimType* NTI145073; /* PRSTNode */
-TNimType* NTI145075; /* TRstNodeSeq */
-TNimType* NTI145073; /* PRSTNode */
-extern TNimType* NTI145695; /* TSharedState */
-TNimType* NTI145695; /* TSharedState */
-extern TNimType* NTI145704; /* seq[TSubstitution] */
-extern TNimType* NTI145693; /* TSubstitution */
-TNimType* NTI145693; /* TSubstitution */
-TNimType* NTI145704; /* seq[TSubstitution] */
+extern TNimType* NTI105032; /* proc (PContext, PNode): PNode */
+TNimType* NTI105032; /* proc (PContext, PNode): PNode */
+extern TNimType* NTI105037; /* proc (PContext, PNode): PNode */
+TNimType* NTI105037; /* proc (PContext, PNode): PNode */
+TNimType* NTI105010; /* PContext */
+extern TNimType* NTI109004; /* TRodWriter */
+TNimType* NTI109004; /* TRodWriter */
+TNimType* NTI109006; /* PRodWriter */
+extern TNimType* NTI114004; /* TStackFrame */
+TNimType* NTI114004; /* TStackFrame */
+extern TNimType* NTI54569; /* TIdNodeTable */
+TNimType* NTI54569; /* TIdNodeTable */
+extern TNimType* NTI54567; /* TIdNodePairSeq */
+extern TNimType* NTI114002; /* PStackFrame */
+TNimType* NTI114002; /* PStackFrame */
+extern TNimType* NTI114006; /* TEvalContext */
+TNimType* NTI114006; /* TEvalContext */
+TNimType* NTI114008; /* PEvalContext */
+TNimType* NTI126066; /* TCandidate */
+extern TNimType* NTI126064; /* TCandidateState */
+TNimType* NTI126064; /* TCandidateState */
+TNimType* NTI146139; /* TLexer */
+extern TNimType* NTI146077; /* TRSTNode */
+TNimType* NTI146077; /* TRSTNode */
+extern TNimType* NTI146008; /* TRstNodeKind */
+TNimType* NTI146008; /* TRstNodeKind */
+extern TNimType* NTI146075; /* TRstNodeSeq */
+extern TNimType* NTI146073; /* PRSTNode */
+TNimType* NTI146075; /* TRstNodeSeq */
+TNimType* NTI146073; /* PRSTNode */
+extern TNimType* NTI146695; /* TSharedState */
+TNimType* NTI146695; /* TSharedState */
+extern TNimType* NTI146704; /* seq[TSubstitution] */
+extern TNimType* NTI146693; /* TSubstitution */
+TNimType* NTI146693; /* TSubstitution */
+TNimType* NTI146704; /* seq[TSubstitution] */
 extern TNimType* NTI25135; /* TSkipTable */
 TNimType* NTI25135; /* TSkipTable */
-TNimType* NTI145697; /* PSharedState */
-extern TNimType* NTI145135; /* TToken */
-TNimType* NTI145135; /* TToken */
-extern TNimType* NTI145133; /* TTokType */
-TNimType* NTI145133; /* TTokType */
-TNimType* NTI145137; /* TTokenSeq */
-TNimType* NTI145699; /* TRstParser */
-extern TNimType* NTI145137; /* TTokenSeq */
-extern TNimType* NTI145697; /* PSharedState */
-extern TNimType* NTI153017; /* TDocumentor */
-TNimType* NTI153017; /* TDocumentor */
-extern TNimType* NTI153034; /* seq[TTocEntry] */
-extern TNimType* NTI153011; /* TTocEntry */
-TNimType* NTI153011; /* TTocEntry */
-TNimType* NTI153034; /* seq[TTocEntry] */
-extern TNimType* NTI153013; /* TSections */
-TNimType* NTI153013; /* TSections */
-extern TNimType* NTI153044; /* array[TMetaEnum, PRope] */
-TNimType* NTI153044; /* array[TMetaEnum, PRope] */
-TNimType* NTI153019; /* PDoc */
-TNimType* NTI150007; /* TGeneralTokenizer */
-extern TNimType* NTI150005; /* TTokenClass */
-TNimType* NTI150005; /* TTokenClass */
-TNimType* NTI157172; /* seq[TSymSeq] */
-extern TNimType* NTI158216; /* BModule */
-extern TNimType* NTI158226; /* TCGen */
-TNimType* NTI158226; /* TCGen */
-extern TNimType* NTI158210; /* TCFileSections */
-TNimType* NTI158210; /* TCFileSections */
-extern TNimType* NTI158218; /* BProc */
-extern TNimType* NTI158222; /* TCProc */
-TNimType* NTI158222; /* TCProc */
-extern TNimType* NTI158214; /* TCProcSections */
-TNimType* NTI158214; /* TCProcSections */
-extern TNimType* NTI158277; /* seq[TBlock] */
-extern TNimType* NTI158220; /* TBlock */
-TNimType* NTI158220; /* TBlock */
-TNimType* NTI158277; /* seq[TBlock] */
-TNimType* NTI158218; /* BProc */
-extern TNimType* NTI54573; /* TNodeTable */
-TNimType* NTI54573; /* TNodeTable */
-extern TNimType* NTI54571; /* TNodePairSeq */
-TNimType* NTI158216; /* BModule */
-TNimType* NTI158308; /* seq[BModule] */
-extern TNimType* NTI177017; /* TGlobals */
-TNimType* NTI177017; /* TGlobals */
-TNimType* NTI177019; /* PGlobals */
-extern TNimType* NTI177015; /* TBlock */
-TNimType* NTI177015; /* TBlock */
-TNimType* NTI177050; /* seq[TBlock] */
-extern TNimType* NTI177007; /* TEcmasGen */
-TNimType* NTI177007; /* TEcmasGen */
-TNimType* NTI177009; /* BModule */
-TNimType* NTI186010; /* TGen */
-extern TNimType* NTI186010; /* TGen */
-TNimType* NTI186012; /* PGen */
-extern TNimType* NTI187010; /* TTransCon */
-TNimType* NTI187010; /* TTransCon */
-extern TNimType* NTI187008; /* PTransCon */
-TNimType* NTI187008; /* PTransCon */
-TNimType* NTI187012; /* TTransfContext */
-extern TNimType* NTI187012; /* TTransfContext */
-TNimType* NTI187014; /* PTransf */
-extern TNimType* NTI191206; /* TFileModuleRec */
-TNimType* NTI191206; /* TFileModuleRec */
-TNimType* NTI191208; /* TFileModuleMap */
-TNimType* NTI193404; /* TOptParser */
-extern TNimType* NTI193402; /* TCmdLineKind */
-TNimType* NTI193402; /* TCmdLineKind */
+TNimType* NTI146697; /* PSharedState */
+extern TNimType* NTI146135; /* TToken */
+TNimType* NTI146135; /* TToken */
+extern TNimType* NTI146133; /* TTokType */
+TNimType* NTI146133; /* TTokType */
+TNimType* NTI146137; /* TTokenSeq */
+TNimType* NTI146699; /* TRstParser */
+extern TNimType* NTI146137; /* TTokenSeq */
+extern TNimType* NTI146697; /* PSharedState */
+extern TNimType* NTI154017; /* TDocumentor */
+TNimType* NTI154017; /* TDocumentor */
+extern TNimType* NTI154034; /* seq[TTocEntry] */
+extern TNimType* NTI154011; /* TTocEntry */
+TNimType* NTI154011; /* TTocEntry */
+TNimType* NTI154034; /* seq[TTocEntry] */
+extern TNimType* NTI154013; /* TSections */
+TNimType* NTI154013; /* TSections */
+extern TNimType* NTI154044; /* array[TMetaEnum, PRope] */
+TNimType* NTI154044; /* array[TMetaEnum, PRope] */
+TNimType* NTI154019; /* PDoc */
+TNimType* NTI151007; /* TGeneralTokenizer */
+extern TNimType* NTI151005; /* TTokenClass */
+TNimType* NTI151005; /* TTokenClass */
+TNimType* NTI158172; /* seq[TSymSeq] */
+extern TNimType* NTI159216; /* BModule */
+extern TNimType* NTI159226; /* TCGen */
+TNimType* NTI159226; /* TCGen */
+extern TNimType* NTI159210; /* TCFileSections */
+TNimType* NTI159210; /* TCFileSections */
+extern TNimType* NTI159218; /* BProc */
+extern TNimType* NTI159222; /* TCProc */
+TNimType* NTI159222; /* TCProc */
+extern TNimType* NTI159214; /* TCProcSections */
+TNimType* NTI159214; /* TCProcSections */
+extern TNimType* NTI159277; /* seq[TBlock] */
+extern TNimType* NTI159220; /* TBlock */
+TNimType* NTI159220; /* TBlock */
+TNimType* NTI159277; /* seq[TBlock] */
+TNimType* NTI159218; /* BProc */
+extern TNimType* NTI54575; /* TNodeTable */
+TNimType* NTI54575; /* TNodeTable */
+extern TNimType* NTI54573; /* TNodePairSeq */
+TNimType* NTI159216; /* BModule */
+TNimType* NTI159308; /* seq[BModule] */
+extern TNimType* NTI178017; /* TGlobals */
+TNimType* NTI178017; /* TGlobals */
+TNimType* NTI178019; /* PGlobals */
+extern TNimType* NTI178015; /* TBlock */
+TNimType* NTI178015; /* TBlock */
+TNimType* NTI178050; /* seq[TBlock] */
+extern TNimType* NTI178007; /* TEcmasGen */
+TNimType* NTI178007; /* TEcmasGen */
+TNimType* NTI178009; /* BModule */
+TNimType* NTI187010; /* TGen */
+extern TNimType* NTI187010; /* TGen */
+TNimType* NTI187012; /* PGen */
+extern TNimType* NTI188010; /* TTransCon */
+TNimType* NTI188010; /* TTransCon */
+extern TNimType* NTI188008; /* PTransCon */
+TNimType* NTI188008; /* PTransCon */
+TNimType* NTI188012; /* TTransfContext */
+extern TNimType* NTI188012; /* TTransfContext */
+TNimType* NTI188014; /* PTransf */
+extern TNimType* NTI192206; /* TFileModuleRec */
+TNimType* NTI192206; /* TFileModuleRec */
+TNimType* NTI192208; /* TFileModuleMap */
+TNimType* NTI194404; /* TOptParser */
+extern TNimType* NTI194402; /* TCmdLineKind */
+TNimType* NTI194402; /* TCmdLineKind */
 N_NOINLINE(void, nim__datInit)(void) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1359,13 +1359,13 @@ static TNimNode* TMP45085[3];
 static TNimNode* TMP46653[3];
 static TNimNode* TMP51126[4];
 static TNimNode* TMP53332[3];
-static TNimNode* TMP55370[2];
-static TNimNode* TMP55420[2];
-static TNimNode* TMP55487[5];
-static TNimNode* TMP55488[11];
-static TNimNode* TMP55489[40];
-NI TMP55491;
-static char* NIM_CONST TMP55490[40] = {
+static TNimNode* TMP55372[2];
+static TNimNode* TMP55422[2];
+static TNimNode* TMP55489[5];
+static TNimNode* TMP55490[11];
+static TNimNode* TMP55491[40];
+NI TMP55493;
+static char* NIM_CONST TMP55492[40] = {
 "tyNone", 
 "tyBool", 
 "tyChar", 
@@ -1406,17 +1406,17 @@ static char* NIM_CONST TMP55490[40] = {
 "tyFloat32", 
 "tyFloat64", 
 "tyFloat128"};
-static TNimNode* TMP55492[5];
-NI TMP55494;
-static char* NIM_CONST TMP55493[5] = {
+static TNimNode* TMP55494[5];
+NI TMP55496;
+static char* NIM_CONST TMP55495[5] = {
 "tfVarargs", 
 "tfNoSideEffect", 
 "tfFinal", 
 "tfAcyclic", 
 "tfEnumHasWholes"};
-static TNimNode* TMP55495[10];
-NI TMP55497;
-static char* NIM_CONST TMP55496[10] = {
+static TNimNode* TMP55497[10];
+NI TMP55499;
+static char* NIM_CONST TMP55498[10] = {
 "ccDefault", 
 "ccStdCall", 
 "ccCDecl", 
@@ -1427,10 +1427,10 @@ static char* NIM_CONST TMP55496[10] = {
 "ccFastCall", 
 "ccClosure", 
 "ccNoConvention"};
-static TNimNode* TMP55498[14];
-static TNimNode* TMP55499[21];
-NI TMP55501;
-static char* NIM_CONST TMP55500[21] = {
+static TNimNode* TMP55500[14];
+static TNimNode* TMP55501[21];
+NI TMP55503;
+static char* NIM_CONST TMP55502[21] = {
 "skUnknown", 
 "skConditional", 
 "skDynLib", 
@@ -1452,9 +1452,9 @@ static char* NIM_CONST TMP55500[21] = {
 "skModule", 
 "skLabel", 
 "skStub"};
-static TNimNode* TMP55502[230];
-NI TMP55504;
-static char* NIM_CONST TMP55503[230] = {
+static TNimNode* TMP55504[232];
+NI TMP55506;
+static char* NIM_CONST TMP55505[232] = {
 "mNone", 
 "mDefined", 
 "mDefinedInScope", 
@@ -1656,6 +1656,8 @@ static char* NIM_CONST TMP55503[230] = {
 "mNaN", 
 "mInf", 
 "mNegInf", 
+"mCompileOption", 
+"mCompileOptionArg", 
 "mNLen", 
 "mNChild", 
 "mNSetChild", 
@@ -1685,9 +1687,9 @@ static char* NIM_CONST TMP55503[230] = {
 "mNHint", 
 "mNWarning", 
 "mNError"};
-static TNimNode* TMP55505[30];
-NI TMP55507;
-static char* NIM_CONST TMP55506[30] = {
+static TNimNode* TMP55507[30];
+NI TMP55509;
+static char* NIM_CONST TMP55508[30] = {
 "sfUsed", 
 "sfStar", 
 "sfMinus", 
@@ -1718,10 +1720,10 @@ static char* NIM_CONST TMP55506[30] = {
 "sfMerge", 
 "sfDeadCodeElim", 
 "sfBorrow"};
-static TNimNode* TMP55508[2];
-static TNimNode* TMP55509[21];
-NI TMP55511;
-static char* NIM_CONST TMP55510[21] = {
+static TNimNode* TMP55510[2];
+static TNimNode* TMP55511[21];
+NI TMP55513;
+static char* NIM_CONST TMP55512[21] = {
 "optNone", 
 "optObjCheck", 
 "optFieldCheck", 
@@ -1743,10 +1745,10 @@ static char* NIM_CONST TMP55510[21] = {
 "optByRef", 
 "optCheckpoints", 
 "optProfiler"};
-static TNimNode* TMP55512[6];
-static TNimNode* TMP55513[12];
-NI TMP55515;
-static char* NIM_CONST TMP55514[12] = {
+static TNimNode* TMP55514[6];
+static TNimNode* TMP55515[12];
+NI TMP55517;
+static char* NIM_CONST TMP55516[12] = {
 "locNone", 
 "locTemp", 
 "locLocalVar", 
@@ -1759,15 +1761,15 @@ static char* NIM_CONST TMP55514[12] = {
 "locData", 
 "locCall", 
 "locOther"};
-static TNimNode* TMP55516[3];
-NI TMP55518;
-static char* NIM_CONST TMP55517[3] = {
+static TNimNode* TMP55518[3];
+NI TMP55520;
+static char* NIM_CONST TMP55519[3] = {
 "OnUnknown", 
 "OnStack", 
 "OnHeap"};
-static TNimNode* TMP55519[7];
-NI TMP55521;
-static char* NIM_CONST TMP55520[7] = {
+static TNimNode* TMP55521[7];
+NI TMP55523;
+static char* NIM_CONST TMP55522[7] = {
 "lfIndirect", 
 "lfParamCopy", 
 "lfNoDeepCopy", 
@@ -1775,15 +1777,15 @@ static char* NIM_CONST TMP55520[7] = {
 "lfDynamicLib", 
 "lfExportLib", 
 "lfHeader"};
-static TNimNode* TMP55522[4];
-static TNimNode* TMP55523[2];
-NI TMP55525;
-static char* NIM_CONST TMP55524[2] = {
+static TNimNode* TMP55524[4];
+static TNimNode* TMP55525[2];
+NI TMP55527;
+static char* NIM_CONST TMP55526[2] = {
 "libHeader", 
 "libDynamic"};
-static TNimNode* TMP55526[7];
-NI TMP55528;
-static char* NIM_CONST TMP55527[7] = {
+static TNimNode* TMP55528[7];
+NI TMP55530;
+static char* NIM_CONST TMP55529[7] = {
 "nfNone", 
 "nfBase2", 
 "nfBase8", 
@@ -1791,9 +1793,9 @@ static char* NIM_CONST TMP55527[7] = {
 "nfAllConst", 
 "nfTransf", 
 "nfSem"};
-static TNimNode* TMP55530[124];
-NI TMP55532;
-static char* NIM_CONST TMP55531[124] = {
+static TNimNode* TMP55532[124];
+NI TMP55534;
+static char* NIM_CONST TMP55533[124] = {
 "nkNone", 
 "nkEmpty", 
 "nkIdent", 
@@ -1918,10 +1920,10 @@ static char* NIM_CONST TMP55531[124] = {
 "nkEnumTy", 
 "nkEnumFieldDef", 
 "nkReturnToken"};
-static TNimNode* TMP55529[125];
-static TNimNode* TMP55810[2];
-static TNimNode* TMP55827[3];
-static TNimNode* TMP57153[3];
+static TNimNode* TMP55531[125];
+static TNimNode* TMP55812[2];
+static TNimNode* TMP55829[3];
+static TNimNode* TMP57155[3];
 static TNimNode* TMP61222[2];
 static TNimNode* TMP64720[3];
 static TNimNode* TMP64721[3];
@@ -1933,18 +1935,18 @@ static char* NIM_CONST TMP64722[3] = {
 static TNimNode* TMP65318[6];
 static TNimNode* TMP65319[2];
 static TNimNode* TMP66847[5];
-static TNimNode* TMP72093[5];
-static TNimNode* TMP72094[4];
-NI TMP72096;
-static char* NIM_CONST TMP72095[4] = {
+static TNimNode* TMP73093[5];
+static TNimNode* TMP73094[4];
+NI TMP73096;
+static char* NIM_CONST TMP73095[4] = {
 "llsNone", 
 "llsString", 
 "llsFile", 
 "llsStdIn"};
-static TNimNode* TMP75268[8];
-static TNimNode* TMP75269[109];
-NI TMP75271;
-static char* NIM_CONST TMP75270[109] = {
+static TNimNode* TMP76268[8];
+static TNimNode* TMP76269[109];
+NI TMP76271;
+static char* NIM_CONST TMP76270[109] = {
 "tkInvalid", 
 "tkEof", 
 "tkSymbol", 
@@ -2054,20 +2056,20 @@ static char* NIM_CONST TMP75270[109] = {
 "tkInfixOpr", 
 "tkPrefixOpr", 
 "tkPostfixOpr"};
-static TNimNode* TMP75272[4];
-NI TMP75274;
-static char* NIM_CONST TMP75273[4] = {
+static TNimNode* TMP76272[4];
+NI TMP76274;
+static char* NIM_CONST TMP76273[4] = {
 "base10", 
 "base2", 
 "base8", 
 "base16"};
-static TNimNode* TMP77517[7];
-static TNimNode* TMP77518[4];
-static TNimNode* TMP82105[2];
-static TNimNode* TMP92144[19];
-static TNimNode* TMP92145[9];
-NI TMP92147;
-static char* NIM_CONST TMP92146[9] = {
+static TNimNode* TMP78517[7];
+static TNimNode* TMP78518[4];
+static TNimNode* TMP83105[2];
+static TNimNode* TMP93144[19];
+static TNimNode* TMP93145[9];
+NI TMP93147;
+static char* NIM_CONST TMP93146[9] = {
 "rrEmpty", 
 "rrNone", 
 "rrRodDoesNotExist", 
@@ -2077,14 +2079,14 @@ static char* NIM_CONST TMP92146[9] = {
 "rrOptions", 
 "rrInclDeps", 
 "rrModDeps"};
-static TNimNode* TMP92148[5];
-static TNimNode* TMP92149[2];
-static TNimNode* TMP92150[2];
-static TNimNode* TMP92200[4];
-static TNimNode* TMP104188[4];
-static TNimNode* TMP104189[235];
-NI TMP104191;
-static char* NIM_CONST TMP104190[235] = {
+static TNimNode* TMP93148[5];
+static TNimNode* TMP93149[2];
+static TNimNode* TMP93150[2];
+static TNimNode* TMP93200[4];
+static TNimNode* TMP105188[4];
+static TNimNode* TMP105189[235];
+NI TMP105191;
+static char* NIM_CONST TMP105190[235] = {
 "errUnknown", 
 "errIllFormedAstX", 
 "errCannotOpenFile", 
@@ -2320,26 +2322,26 @@ static char* NIM_CONST TMP104190[235] = {
 "hintCodeEnd", 
 "hintConf", 
 "hintUser"};
-static TNimNode* TMP104223[4];
-static TNimNode* TMP104285[16];
-static TNimNode* TMP104286[2];
-static TNimNode* TMP104287[4];
-static TNimNode* TMP108218[17];
-static TNimNode* TMP113086[5];
-static TNimNode* TMP113087[2];
-static TNimNode* TMP113109[4];
-static TNimNode* TMP127946[11];
-static TNimNode* TMP127947[3];
-NI TMP127949;
-static char* NIM_CONST TMP127948[3] = {
+static TNimNode* TMP105223[4];
+static TNimNode* TMP105285[16];
+static TNimNode* TMP105286[2];
+static TNimNode* TMP105287[4];
+static TNimNode* TMP109218[17];
+static TNimNode* TMP114086[5];
+static TNimNode* TMP114087[2];
+static TNimNode* TMP114109[4];
+static TNimNode* TMP128946[11];
+static TNimNode* TMP128947[3];
+NI TMP128949;
+static char* NIM_CONST TMP128948[3] = {
 "csEmpty", 
 "csMatch", 
 "csNoMatch"};
-static TNimNode* TMP145580[6];
-static TNimNode* TMP145667[4];
-static TNimNode* TMP145668[63];
-NI TMP145670;
-static char* NIM_CONST TMP145669[63] = {
+static TNimNode* TMP146580[6];
+static TNimNode* TMP146667[4];
+static TNimNode* TMP146668[63];
+NI TMP146670;
+static char* NIM_CONST TMP146669[63] = {
 "rnInner", 
 "rnHeadline", 
 "rnOverline", 
@@ -2403,12 +2405,12 @@ static char* NIM_CONST TMP145669[63] = {
 "rnInlineLiteral", 
 "rnSubstitutionReferences", 
 "rnLeaf"};
-static TNimNode* TMP145769[6];
-static TNimNode* TMP145770[2];
-static TNimNode* TMP145885[5];
-static TNimNode* TMP145886[7];
-NI TMP145888;
-static char* NIM_CONST TMP145887[7] = {
+static TNimNode* TMP146769[6];
+static TNimNode* TMP146770[2];
+static TNimNode* TMP146885[5];
+static TNimNode* TMP146886[7];
+NI TMP146888;
+static char* NIM_CONST TMP146887[7] = {
 "tkEof", 
 "tkIndent", 
 "tkWhite", 
@@ -2416,13 +2418,13 @@ static char* NIM_CONST TMP145887[7] = {
 "tkAdornment", 
 "tkPunct", 
 "tkOther"};
-static TNimNode* TMP148485[8];
-static TNimNode* TMP153201[16];
-static TNimNode* TMP153202[3];
-static TNimNode* TMP154950[6];
-static TNimNode* TMP154951[33];
-NI TMP154953;
-static char* NIM_CONST TMP154952[33] = {
+static TNimNode* TMP149485[8];
+static TNimNode* TMP154201[16];
+static TNimNode* TMP154202[3];
+static TNimNode* TMP155950[6];
+static TNimNode* TMP155951[33];
+NI TMP155953;
+static char* NIM_CONST TMP155952[33] = {
 "gtEof", 
 "gtNone", 
 "gtWhitespace", 
@@ -2456,26 +2458,26 @@ static char* NIM_CONST TMP154952[33] = {
 "gtLabel", 
 "gtReference", 
 "gtOther"};
-static TNimNode* TMP158328[19];
-static TNimNode* TMP158329[11];
-static TNimNode* TMP158330[2];
-static TNimNode* TMP158331[2];
-static TNimNode* TMP177071[3];
-static TNimNode* TMP177135[2];
-static TNimNode* TMP183747[2];
-static TNimNode* TMP186124[2];
-static TNimNode* TMP187040[4];
-static TNimNode* TMP190284[2];
-static TNimNode* TMP191228[2];
-static TNimNode* TMP193607[6];
-static TNimNode* TMP193608[4];
-NI TMP193610;
-static char* NIM_CONST TMP193609[4] = {
+static TNimNode* TMP159328[19];
+static TNimNode* TMP159329[11];
+static TNimNode* TMP159330[2];
+static TNimNode* TMP159331[2];
+static TNimNode* TMP178071[3];
+static TNimNode* TMP178135[2];
+static TNimNode* TMP184747[2];
+static TNimNode* TMP187124[2];
+static TNimNode* TMP188040[4];
+static TNimNode* TMP191284[2];
+static TNimNode* TMP192228[2];
+static TNimNode* TMP194607[6];
+static TNimNode* TMP194608[4];
+NI TMP194610;
+static char* NIM_CONST TMP194609[4] = {
 "cmdEnd", 
 "cmdArgument", 
 "cmdLongoption", 
 "cmdShortOption"};
-static TNimNode TMP103[1482];
+static TNimNode TMP103[1484];
 static TNimType TMP104[239];
 F.procname = "nim__dat";
 F.prev = framePtr;
@@ -2490,15 +2492,15 @@ NTI130 = &TMP104[4];
 NTI416 = &TMP104[5];
 NTI418 = &TMP104[6];
 NTI420 = &TMP104[7];
-NTI4262 = &TMP104[8];
+NTI4062 = &TMP104[8];
 NTI442 = &TMP104[9];
 NTI8062 = &TMP104[10];
-NTI4377 = &TMP104[11];
-NTI428 = &TMP104[12];
-NTI432 = &TMP104[13];
-NTI5491 = &TMP104[14];
-NTI452 = &TMP104[15];
-NTI5033 = &TMP104[16];
+NTI452 = &TMP104[11];
+NTI5033 = &TMP104[12];
+NTI4177 = &TMP104[13];
+NTI428 = &TMP104[14];
+NTI432 = &TMP104[15];
+NTI5491 = &TMP104[16];
 NTI436 = &TMP104[17];
 NTI5050 = &TMP104[18];
 NTI448 = &TMP104[19];
@@ -2553,55 +2555,55 @@ NTI51010 = &TMP104[67];
 NTI53005 = &TMP104[68];
 NTI53011 = &TMP104[69];
 NTI53009 = &TMP104[70];
-NTI54557 = &TMP104[71];
+NTI54559 = &TMP104[71];
 NTI53007 = &TMP104[72];
 NTI410 = &TMP104[73];
-NTI54559 = &TMP104[74];
-NTI54551 = &TMP104[75];
-NTI54523 = &TMP104[76];
-NTI54549 = &TMP104[77];
+NTI54561 = &TMP104[74];
+NTI54553 = &TMP104[75];
+NTI54525 = &TMP104[76];
+NTI54551 = &TMP104[77];
 NTI54162 = &TMP104[78];
-NTI54547 = &TMP104[79];
+NTI54549 = &TMP104[79];
 NTI54170 = &TMP104[80];
 NTI54172 = &TMP104[81];
 NTI54004 = &TMP104[82];
-NTI54545 = &TMP104[83];
+NTI54547 = &TMP104[83];
 NTI54174 = &TMP104[84];
 NTI54178 = &TMP104[85];
 NTI54158 = &TMP104[86];
 NTI54160 = &TMP104[87];
-NTI54527 = &TMP104[88];
-NTI54525 = &TMP104[89];
+NTI54529 = &TMP104[88];
+NTI54527 = &TMP104[89];
 NTI45003 = &TMP104[90];
 NTI45073 = &TMP104[91];
-NTI54537 = &TMP104[92];
-NTI54529 = &TMP104[93];
-NTI54533 = &TMP104[94];
-NTI54531 = &TMP104[95];
-NTI54535 = &TMP104[96];
-NTI54541 = &TMP104[97];
-NTI54539 = &TMP104[98];
+NTI54539 = &TMP104[92];
+NTI54531 = &TMP104[93];
+NTI54535 = &TMP104[94];
+NTI54533 = &TMP104[95];
+NTI54537 = &TMP104[96];
+NTI54543 = &TMP104[97];
+NTI54541 = &TMP104[98];
 NTI124 = &TMP104[99];
-NTI54543 = &TMP104[100];
-NTI54521 = &TMP104[101];
+NTI54545 = &TMP104[100];
+NTI54523 = &TMP104[101];
 NTI116 = &TMP104[102];
-NTI54519 = &TMP104[103];
+NTI54521 = &TMP104[103];
 NTI54166 = &TMP104[104];
 NTI54168 = &TMP104[105];
 NTI54030 = &TMP104[106];
 NTI122 = &TMP104[107];
-NTI54513 = &TMP104[108];
-NTI54517 = &TMP104[109];
-NTI54553 = &TMP104[110];
-NTI54575 = &TMP104[111];
-NTI54563 = &TMP104[112];
-NTI54565 = &TMP104[113];
-NTI54569 = &TMP104[114];
-NTI54571 = &TMP104[115];
-NTI54894 = &TMP104[116];
+NTI54515 = &TMP104[108];
+NTI54519 = &TMP104[109];
+NTI54555 = &TMP104[110];
+NTI54577 = &TMP104[111];
+NTI54565 = &TMP104[112];
+NTI54567 = &TMP104[113];
+NTI54571 = &TMP104[114];
+NTI54573 = &TMP104[115];
+NTI54896 = &TMP104[116];
 NTI8614 = &TMP104[117];
-NTI54892 = &TMP104[118];
-NTI54896 = &TMP104[119];
+NTI54894 = &TMP104[118];
+NTI54898 = &TMP104[119];
 NTI58109 = &TMP104[120];
 NTI58219 = &TMP104[121];
 NTI58221 = &TMP104[122];
@@ -2618,109 +2620,109 @@ NTI65051 = &TMP104[132];
 NTI65226 = &TMP104[133];
 NTI65224 = &TMP104[134];
 NTI65323 = &TMP104[135];
-NTI3602 = &TMP104[136];
-NTI3604 = &TMP104[137];
+NTI3402 = &TMP104[136];
+NTI3404 = &TMP104[137];
 NTI65321 = &TMP104[138];
 NTI66202 = &TMP104[139];
 NTI66204 = &TMP104[140];
 NTI66698 = &TMP104[141];
-NTI72013 = &TMP104[142];
-NTI72011 = &TMP104[143];
-NTI72015 = &TMP104[144];
-NTI74434 = &TMP104[145];
-NTI74263 = &TMP104[146];
-NTI74011 = &TMP104[147];
-NTI74259 = &TMP104[148];
-NTI74261 = &TMP104[149];
-NTI77137 = &TMP104[150];
-NTI73015 = &TMP104[151];
-NTI74267 = &TMP104[152];
-NTI74265 = &TMP104[153];
-NTI82012 = &TMP104[154];
-NTI82014 = &TMP104[155];
-NTI90031 = &TMP104[156];
-NTI90005 = &TMP104[157];
-NTI90029 = &TMP104[158];
+NTI73013 = &TMP104[142];
+NTI73011 = &TMP104[143];
+NTI73015 = &TMP104[144];
+NTI75434 = &TMP104[145];
+NTI75263 = &TMP104[146];
+NTI75011 = &TMP104[147];
+NTI75259 = &TMP104[148];
+NTI75261 = &TMP104[149];
+NTI78137 = &TMP104[150];
+NTI74015 = &TMP104[151];
+NTI75267 = &TMP104[152];
+NTI75265 = &TMP104[153];
+NTI83012 = &TMP104[154];
+NTI83014 = &TMP104[155];
+NTI91031 = &TMP104[156];
+NTI91005 = &TMP104[157];
+NTI91029 = &TMP104[158];
 NTI58223 = &TMP104[159];
-NTI54561 = &TMP104[160];
-NTI90033 = &TMP104[161];
-NTI92176 = &TMP104[162];
-NTI92178 = &TMP104[163];
+NTI54563 = &TMP104[160];
+NTI91033 = &TMP104[161];
+NTI93176 = &TMP104[162];
+NTI93178 = &TMP104[163];
 NTI110 = &TMP104[164];
-NTI100008 = &TMP104[165];
-NTI104002 = &TMP104[166];
+NTI101008 = &TMP104[165];
+NTI105002 = &TMP104[166];
 NTI46002 = &TMP104[167];
 NTI46528 = &TMP104[168];
 NTI46530 = &TMP104[169];
-NTI104006 = &TMP104[170];
-NTI104008 = &TMP104[171];
-NTI104004 = &TMP104[172];
-NTI102002 = &TMP104[173];
-NTI104012 = &TMP104[174];
+NTI105006 = &TMP104[170];
+NTI105008 = &TMP104[171];
+NTI105004 = &TMP104[172];
+NTI103002 = &TMP104[173];
+NTI105012 = &TMP104[174];
 NTI58107 = &TMP104[175];
 NTI404 = &TMP104[176];
-NTI54898 = &TMP104[177];
-NTI104032 = &TMP104[178];
-NTI104037 = &TMP104[179];
-NTI104010 = &TMP104[180];
-NTI108004 = &TMP104[181];
-NTI108006 = &TMP104[182];
-NTI113004 = &TMP104[183];
-NTI54567 = &TMP104[184];
-NTI113002 = &TMP104[185];
-NTI113006 = &TMP104[186];
-NTI113008 = &TMP104[187];
-NTI125066 = &TMP104[188];
-NTI125064 = &TMP104[189];
-NTI145139 = &TMP104[190];
-NTI145077 = &TMP104[191];
-NTI145008 = &TMP104[192];
-NTI145075 = &TMP104[193];
-NTI145073 = &TMP104[194];
-NTI145695 = &TMP104[195];
-NTI145693 = &TMP104[196];
-NTI145704 = &TMP104[197];
+NTI54900 = &TMP104[177];
+NTI105032 = &TMP104[178];
+NTI105037 = &TMP104[179];
+NTI105010 = &TMP104[180];
+NTI109004 = &TMP104[181];
+NTI109006 = &TMP104[182];
+NTI114004 = &TMP104[183];
+NTI54569 = &TMP104[184];
+NTI114002 = &TMP104[185];
+NTI114006 = &TMP104[186];
+NTI114008 = &TMP104[187];
+NTI126066 = &TMP104[188];
+NTI126064 = &TMP104[189];
+NTI146139 = &TMP104[190];
+NTI146077 = &TMP104[191];
+NTI146008 = &TMP104[192];
+NTI146075 = &TMP104[193];
+NTI146073 = &TMP104[194];
+NTI146695 = &TMP104[195];
+NTI146693 = &TMP104[196];
+NTI146704 = &TMP104[197];
 NTI25135 = &TMP104[198];
-NTI145697 = &TMP104[199];
-NTI145135 = &TMP104[200];
-NTI145133 = &TMP104[201];
-NTI145137 = &TMP104[202];
-NTI145699 = &TMP104[203];
-NTI153017 = &TMP104[204];
-NTI153011 = &TMP104[205];
-NTI153034 = &TMP104[206];
-NTI153013 = &TMP104[207];
-NTI153044 = &TMP104[208];
-NTI153019 = &TMP104[209];
-NTI150007 = &TMP104[210];
-NTI150005 = &TMP104[211];
-NTI157172 = &TMP104[212];
-NTI158226 = &TMP104[213];
-NTI158210 = &TMP104[214];
-NTI158222 = &TMP104[215];
-NTI158214 = &TMP104[216];
-NTI158220 = &TMP104[217];
-NTI158277 = &TMP104[218];
-NTI158218 = &TMP104[219];
-NTI54573 = &TMP104[220];
-NTI158216 = &TMP104[221];
-NTI158308 = &TMP104[222];
-NTI177017 = &TMP104[223];
-NTI177019 = &TMP104[224];
-NTI177015 = &TMP104[225];
-NTI177050 = &TMP104[226];
-NTI177007 = &TMP104[227];
-NTI177009 = &TMP104[228];
-NTI186010 = &TMP104[229];
-NTI186012 = &TMP104[230];
-NTI187010 = &TMP104[231];
-NTI187008 = &TMP104[232];
-NTI187012 = &TMP104[233];
-NTI187014 = &TMP104[234];
-NTI191206 = &TMP104[235];
-NTI191208 = &TMP104[236];
-NTI193404 = &TMP104[237];
-NTI193402 = &TMP104[238];
+NTI146697 = &TMP104[199];
+NTI146135 = &TMP104[200];
+NTI146133 = &TMP104[201];
+NTI146137 = &TMP104[202];
+NTI146699 = &TMP104[203];
+NTI154017 = &TMP104[204];
+NTI154011 = &TMP104[205];
+NTI154034 = &TMP104[206];
+NTI154013 = &TMP104[207];
+NTI154044 = &TMP104[208];
+NTI154019 = &TMP104[209];
+NTI151007 = &TMP104[210];
+NTI151005 = &TMP104[211];
+NTI158172 = &TMP104[212];
+NTI159226 = &TMP104[213];
+NTI159210 = &TMP104[214];
+NTI159222 = &TMP104[215];
+NTI159214 = &TMP104[216];
+NTI159220 = &TMP104[217];
+NTI159277 = &TMP104[218];
+NTI159218 = &TMP104[219];
+NTI54575 = &TMP104[220];
+NTI159216 = &TMP104[221];
+NTI159308 = &TMP104[222];
+NTI178017 = &TMP104[223];
+NTI178019 = &TMP104[224];
+NTI178015 = &TMP104[225];
+NTI178050 = &TMP104[226];
+NTI178007 = &TMP104[227];
+NTI178009 = &TMP104[228];
+NTI187010 = &TMP104[229];
+NTI187012 = &TMP104[230];
+NTI188010 = &TMP104[231];
+NTI188008 = &TMP104[232];
+NTI188012 = &TMP104[233];
+NTI188014 = &TMP104[234];
+NTI192206 = &TMP104[235];
+NTI192208 = &TMP104[236];
+NTI194404 = &TMP104[237];
+NTI194402 = &TMP104[238];
 NTI408->size = sizeof(TNimObject);
 NTI408->kind = 17;
 NTI408->base = 0;
@@ -2776,10 +2778,10 @@ NTI420->base = NTI418;
 NTI420->flags = 2;
 TMP103[7].len = 0; TMP103[7].kind = 2;
 NTI420->node = &TMP103[7];
-NTI4262->size = sizeof(TY420*);
-NTI4262->kind = 22;
-NTI4262->base = NTI420;
-NTI4262->flags = 2;
+NTI4062->size = sizeof(TY420*);
+NTI4062->kind = 22;
+NTI4062->base = NTI420;
+NTI4062->flags = 2;
 NTI442->size = sizeof(TY442);
 NTI442->kind = 17;
 NTI442->base = NTI418;
@@ -2790,36 +2792,36 @@ NTI8062->size = sizeof(TY442*);
 NTI8062->kind = 22;
 NTI8062->base = NTI442;
 NTI8062->flags = 2;
-NTI4377->size = sizeof(TY4377*);
-NTI4377->kind = 24;
-NTI4377->base = NTI130;
-NTI4377->flags = 2;
-NTI428->size = sizeof(TY428);
-NTI428->kind = 17;
-NTI428->base = NTI416;
-NTI428->flags = 2;
-TMP103[9].len = 0; TMP103[9].kind = 2;
-NTI428->node = &TMP103[9];
-NTI432->size = sizeof(EOverflow);
-NTI432->kind = 17;
-NTI432->base = NTI428;
-NTI432->flags = 2;
-TMP103[10].len = 0; TMP103[10].kind = 2;
-NTI432->node = &TMP103[10];
-NTI5491->size = sizeof(EOverflow*);
-NTI5491->kind = 22;
-NTI5491->base = NTI432;
-NTI5491->flags = 2;
 NTI452->size = sizeof(TY452);
 NTI452->kind = 17;
 NTI452->base = NTI416;
 NTI452->flags = 2;
-TMP103[11].len = 0; TMP103[11].kind = 2;
-NTI452->node = &TMP103[11];
+TMP103[9].len = 0; TMP103[9].kind = 2;
+NTI452->node = &TMP103[9];
 NTI5033->size = sizeof(TY452*);
 NTI5033->kind = 22;
 NTI5033->base = NTI452;
 NTI5033->flags = 2;
+NTI4177->size = sizeof(TY4177*);
+NTI4177->kind = 24;
+NTI4177->base = NTI130;
+NTI4177->flags = 2;
+NTI428->size = sizeof(TY428);
+NTI428->kind = 17;
+NTI428->base = NTI416;
+NTI428->flags = 2;
+TMP103[10].len = 0; TMP103[10].kind = 2;
+NTI428->node = &TMP103[10];
+NTI432->size = sizeof(EOverflow);
+NTI432->kind = 17;
+NTI432->base = NTI428;
+NTI432->flags = 2;
+TMP103[11].len = 0; TMP103[11].kind = 2;
+NTI432->node = &TMP103[11];
+NTI5491->size = sizeof(EOverflow*);
+NTI5491->kind = 22;
+NTI5491->base = NTI432;
+NTI5491->flags = 2;
 NTI436->size = sizeof(EAssertionFailed);
 NTI436->kind = 17;
 NTI436->base = NTI416;
@@ -3250,100 +3252,100 @@ NTI53009->size = sizeof(TY53011*);
 NTI53009->kind = 22;
 NTI53009->base = NTI53011;
 NTI53009->flags = 2;
-NTI54557->size = sizeof(TY54557);
-NTI54557->kind = 40;
-NTI54557->base = 0;
-NTI54557->flags = 2;
-TMP55370[0] = &TMP103[89];
+NTI54559->size = sizeof(TY54559);
+NTI54559->kind = 40;
+NTI54559->base = 0;
+NTI54559->flags = 2;
+TMP55372[0] = &TMP103[89];
 NTI53007->size = sizeof(TY53005*);
 NTI53007->kind = 22;
 NTI53007->base = NTI53005;
 NTI53007->flags = 2;
 TMP103[89].kind = 1;
-TMP103[89].offset = offsetof(TY54557, Key);
+TMP103[89].offset = offsetof(TY54559, Key);
 TMP103[89].typ = NTI53007;
 TMP103[89].name = "key";
-TMP55370[1] = &TMP103[90];
+TMP55372[1] = &TMP103[90];
 NTI410->size = sizeof(TNimObject*);
 NTI410->kind = 22;
 NTI410->base = NTI408;
 NTI410->flags = 2;
 TMP103[90].kind = 1;
-TMP103[90].offset = offsetof(TY54557, Val);
+TMP103[90].offset = offsetof(TY54559, Val);
 TMP103[90].typ = NTI410;
 TMP103[90].name = "val";
-TMP103[88].len = 2; TMP103[88].kind = 2; TMP103[88].sons = &TMP55370[0];
-NTI54557->node = &TMP103[88];
-NTI54559->size = sizeof(TY54559*);
-NTI54559->kind = 24;
-NTI54559->base = NTI54557;
-NTI54559->flags = 2;
-NTI54551->size = sizeof(TY54551);
-NTI54551->kind = 40;
-NTI54551->base = 0;
-NTI54551->flags = 2;
-TMP55420[0] = &TMP103[92];
+TMP103[88].len = 2; TMP103[88].kind = 2; TMP103[88].sons = &TMP55372[0];
+NTI54559->node = &TMP103[88];
+NTI54561->size = sizeof(TY54561*);
+NTI54561->kind = 24;
+NTI54561->base = NTI54559;
+NTI54561->flags = 2;
+NTI54553->size = sizeof(TY54553);
+NTI54553->kind = 40;
+NTI54553->base = 0;
+NTI54553->flags = 2;
+TMP55422[0] = &TMP103[92];
 TMP103[92].kind = 1;
-TMP103[92].offset = offsetof(TY54551, Key);
+TMP103[92].offset = offsetof(TY54553, Key);
 TMP103[92].typ = NTI410;
 TMP103[92].name = "key";
-TMP55420[1] = &TMP103[93];
+TMP55422[1] = &TMP103[93];
 TMP103[93].kind = 1;
-TMP103[93].offset = offsetof(TY54551, Val);
+TMP103[93].offset = offsetof(TY54553, Val);
 TMP103[93].typ = NTI410;
 TMP103[93].name = "val";
-TMP103[91].len = 2; TMP103[91].kind = 2; TMP103[91].sons = &TMP55420[0];
-NTI54551->node = &TMP103[91];
-NTI54523->size = sizeof(TY54523);
-NTI54523->kind = 40;
-NTI54523->base = 0;
-NTI54523->flags = 2;
-TMP55487[0] = &TMP103[95];
-NTI54549->size = sizeof(TY54549);
-NTI54549->kind = 17;
-NTI54549->base = NTI53005;
-TMP55488[0] = &TMP103[97];
+TMP103[91].len = 2; TMP103[91].kind = 2; TMP103[91].sons = &TMP55422[0];
+NTI54553->node = &TMP103[91];
+NTI54525->size = sizeof(TY54525);
+NTI54525->kind = 40;
+NTI54525->base = 0;
+NTI54525->flags = 2;
+TMP55489[0] = &TMP103[95];
+NTI54551->size = sizeof(TY54551);
+NTI54551->kind = 17;
+NTI54551->base = NTI53005;
+TMP55490[0] = &TMP103[97];
 NTI54162->size = sizeof(NU8);
 NTI54162->kind = 14;
 NTI54162->base = 0;
 NTI54162->flags = 3;
-for (TMP55491 = 0; TMP55491 < 40; TMP55491++) {
-TMP103[TMP55491+98].kind = 1;
-TMP103[TMP55491+98].offset = TMP55491;
-TMP103[TMP55491+98].name = TMP55490[TMP55491];
-TMP55489[TMP55491] = &TMP103[TMP55491+98];
+for (TMP55493 = 0; TMP55493 < 40; TMP55493++) {
+TMP103[TMP55493+98].kind = 1;
+TMP103[TMP55493+98].offset = TMP55493;
+TMP103[TMP55493+98].name = TMP55492[TMP55493];
+TMP55491[TMP55493] = &TMP103[TMP55493+98];
 }
-TMP103[138].len = 40; TMP103[138].kind = 2; TMP103[138].sons = &TMP55489[0];
+TMP103[138].len = 40; TMP103[138].kind = 2; TMP103[138].sons = &TMP55491[0];
 NTI54162->node = &TMP103[138];
 TMP103[97].kind = 1;
-TMP103[97].offset = offsetof(TY54549, Kind);
+TMP103[97].offset = offsetof(TY54551, Kind);
 TMP103[97].typ = NTI54162;
 TMP103[97].name = "kind";
-TMP55488[1] = &TMP103[139];
-NTI54547->size = sizeof(TY54547*);
-NTI54547->kind = 24;
-NTI54547->base = NTI54519;
+TMP55490[1] = &TMP103[139];
+NTI54549->size = sizeof(TY54549*);
+NTI54549->kind = 24;
+NTI54549->base = NTI54521;
 TMP103[139].kind = 1;
-TMP103[139].offset = offsetof(TY54549, Sons);
-TMP103[139].typ = NTI54547;
+TMP103[139].offset = offsetof(TY54551, Sons);
+TMP103[139].typ = NTI54549;
 TMP103[139].name = "sons";
-TMP55488[2] = &TMP103[140];
+TMP55490[2] = &TMP103[140];
 TMP103[140].kind = 1;
-TMP103[140].offset = offsetof(TY54549, N);
-TMP103[140].typ = NTI54513;
+TMP103[140].offset = offsetof(TY54551, N);
+TMP103[140].typ = NTI54515;
 TMP103[140].name = "n";
-TMP55488[3] = &TMP103[141];
+TMP55490[3] = &TMP103[141];
 NTI54170->size = sizeof(NU8);
 NTI54170->kind = 14;
 NTI54170->base = 0;
 NTI54170->flags = 3;
-for (TMP55494 = 0; TMP55494 < 5; TMP55494++) {
-TMP103[TMP55494+142].kind = 1;
-TMP103[TMP55494+142].offset = TMP55494;
-TMP103[TMP55494+142].name = TMP55493[TMP55494];
-TMP55492[TMP55494] = &TMP103[TMP55494+142];
+for (TMP55496 = 0; TMP55496 < 5; TMP55496++) {
+TMP103[TMP55496+142].kind = 1;
+TMP103[TMP55496+142].offset = TMP55496;
+TMP103[TMP55496+142].name = TMP55495[TMP55496];
+TMP55494[TMP55496] = &TMP103[TMP55496+142];
 }
-TMP103[147].len = 5; TMP103[147].kind = 2; TMP103[147].sons = &TMP55492[0];
+TMP103[147].len = 5; TMP103[147].kind = 2; TMP103[147].sons = &TMP55494[0];
 NTI54170->node = &TMP103[147];
 NTI54172->size = sizeof(NU8);
 NTI54172->kind = 19;
@@ -3352,557 +3354,557 @@ NTI54172->flags = 3;
 TMP103[148].len = 0; TMP103[148].kind = 0;
 NTI54172->node = &TMP103[148];
 TMP103[141].kind = 1;
-TMP103[141].offset = offsetof(TY54549, Flags);
+TMP103[141].offset = offsetof(TY54551, Flags);
 TMP103[141].typ = NTI54172;
 TMP103[141].name = "flags";
-TMP55488[4] = &TMP103[149];
+TMP55490[4] = &TMP103[149];
 NTI54004->size = sizeof(NU8);
 NTI54004->kind = 14;
 NTI54004->base = 0;
 NTI54004->flags = 3;
-for (TMP55497 = 0; TMP55497 < 10; TMP55497++) {
-TMP103[TMP55497+150].kind = 1;
-TMP103[TMP55497+150].offset = TMP55497;
-TMP103[TMP55497+150].name = TMP55496[TMP55497];
-TMP55495[TMP55497] = &TMP103[TMP55497+150];
+for (TMP55499 = 0; TMP55499 < 10; TMP55499++) {
+TMP103[TMP55499+150].kind = 1;
+TMP103[TMP55499+150].offset = TMP55499;
+TMP103[TMP55499+150].name = TMP55498[TMP55499];
+TMP55497[TMP55499] = &TMP103[TMP55499+150];
 }
-TMP103[160].len = 10; TMP103[160].kind = 2; TMP103[160].sons = &TMP55495[0];
+TMP103[160].len = 10; TMP103[160].kind = 2; TMP103[160].sons = &TMP55497[0];
 NTI54004->node = &TMP103[160];
 TMP103[149].kind = 1;
-TMP103[149].offset = offsetof(TY54549, Callconv);
+TMP103[149].offset = offsetof(TY54551, Callconv);
 TMP103[149].typ = NTI54004;
 TMP103[149].name = "callConv";
-TMP55488[5] = &TMP103[161];
-NTI54545->size = sizeof(TY54545);
-NTI54545->kind = 17;
-NTI54545->base = NTI53005;
-TMP55498[0] = &TMP103[163];
+TMP55490[5] = &TMP103[161];
+NTI54547->size = sizeof(TY54547);
+NTI54547->kind = 17;
+NTI54547->base = NTI53005;
+TMP55500[0] = &TMP103[163];
 NTI54174->size = sizeof(NU8);
 NTI54174->kind = 14;
 NTI54174->base = 0;
 NTI54174->flags = 3;
-for (TMP55501 = 0; TMP55501 < 21; TMP55501++) {
-TMP103[TMP55501+164].kind = 1;
-TMP103[TMP55501+164].offset = TMP55501;
-TMP103[TMP55501+164].name = TMP55500[TMP55501];
-TMP55499[TMP55501] = &TMP103[TMP55501+164];
+for (TMP55503 = 0; TMP55503 < 21; TMP55503++) {
+TMP103[TMP55503+164].kind = 1;
+TMP103[TMP55503+164].offset = TMP55503;
+TMP103[TMP55503+164].name = TMP55502[TMP55503];
+TMP55501[TMP55503] = &TMP103[TMP55503+164];
 }
-TMP103[185].len = 21; TMP103[185].kind = 2; TMP103[185].sons = &TMP55499[0];
+TMP103[185].len = 21; TMP103[185].kind = 2; TMP103[185].sons = &TMP55501[0];
 NTI54174->node = &TMP103[185];
 TMP103[163].kind = 1;
-TMP103[163].offset = offsetof(TY54545, Kind);
+TMP103[163].offset = offsetof(TY54547, Kind);
 TMP103[163].typ = NTI54174;
 TMP103[163].name = "kind";
-TMP55498[1] = &TMP103[186];
+TMP55500[1] = &TMP103[186];
 NTI54178->size = sizeof(NU8);
 NTI54178->kind = 14;
 NTI54178->base = 0;
 NTI54178->flags = 3;
-for (TMP55504 = 0; TMP55504 < 230; TMP55504++) {
-TMP103[TMP55504+187].kind = 1;
-TMP103[TMP55504+187].offset = TMP55504;
-TMP103[TMP55504+187].name = TMP55503[TMP55504];
-TMP55502[TMP55504] = &TMP103[TMP55504+187];
+for (TMP55506 = 0; TMP55506 < 232; TMP55506++) {
+TMP103[TMP55506+187].kind = 1;
+TMP103[TMP55506+187].offset = TMP55506;
+TMP103[TMP55506+187].name = TMP55505[TMP55506];
+TMP55504[TMP55506] = &TMP103[TMP55506+187];
 }
-TMP103[417].len = 230; TMP103[417].kind = 2; TMP103[417].sons = &TMP55502[0];
-NTI54178->node = &TMP103[417];
+TMP103[419].len = 232; TMP103[419].kind = 2; TMP103[419].sons = &TMP55504[0];
+NTI54178->node = &TMP103[419];
 TMP103[186].kind = 1;
-TMP103[186].offset = offsetof(TY54545, Magic);
+TMP103[186].offset = offsetof(TY54547, Magic);
 TMP103[186].typ = NTI54178;
 TMP103[186].name = "magic";
-TMP55498[2] = &TMP103[418];
-TMP103[418].kind = 1;
-TMP103[418].offset = offsetof(TY54545, Typ);
-TMP103[418].typ = NTI54519;
-TMP103[418].name = "typ";
-TMP55498[3] = &TMP103[419];
-TMP103[419].kind = 1;
-TMP103[419].offset = offsetof(TY54545, Name);
-TMP103[419].typ = NTI53009;
-TMP103[419].name = "name";
-TMP55498[4] = &TMP103[420];
+TMP55500[2] = &TMP103[420];
 TMP103[420].kind = 1;
-TMP103[420].offset = offsetof(TY54545, Info);
-TMP103[420].typ = NTI46532;
-TMP103[420].name = "info";
-TMP55498[5] = &TMP103[421];
+TMP103[420].offset = offsetof(TY54547, Typ);
+TMP103[420].typ = NTI54521;
+TMP103[420].name = "typ";
+TMP55500[3] = &TMP103[421];
 TMP103[421].kind = 1;
-TMP103[421].offset = offsetof(TY54545, Owner);
-TMP103[421].typ = NTI54521;
-TMP103[421].name = "owner";
-TMP55498[6] = &TMP103[422];
+TMP103[421].offset = offsetof(TY54547, Name);
+TMP103[421].typ = NTI53009;
+TMP103[421].name = "name";
+TMP55500[4] = &TMP103[422];
+TMP103[422].kind = 1;
+TMP103[422].offset = offsetof(TY54547, Info);
+TMP103[422].typ = NTI46532;
+TMP103[422].name = "info";
+TMP55500[5] = &TMP103[423];
+TMP103[423].kind = 1;
+TMP103[423].offset = offsetof(TY54547, Owner);
+TMP103[423].typ = NTI54523;
+TMP103[423].name = "owner";
+TMP55500[6] = &TMP103[424];
 NTI54158->size = sizeof(NU8);
 NTI54158->kind = 14;
 NTI54158->base = 0;
 NTI54158->flags = 3;
-for (TMP55507 = 0; TMP55507 < 30; TMP55507++) {
-TMP103[TMP55507+423].kind = 1;
-TMP103[TMP55507+423].offset = TMP55507;
-TMP103[TMP55507+423].name = TMP55506[TMP55507];
-TMP55505[TMP55507] = &TMP103[TMP55507+423];
+for (TMP55509 = 0; TMP55509 < 30; TMP55509++) {
+TMP103[TMP55509+425].kind = 1;
+TMP103[TMP55509+425].offset = TMP55509;
+TMP103[TMP55509+425].name = TMP55508[TMP55509];
+TMP55507[TMP55509] = &TMP103[TMP55509+425];
 }
-TMP103[453].len = 30; TMP103[453].kind = 2; TMP103[453].sons = &TMP55505[0];
-NTI54158->node = &TMP103[453];
+TMP103[455].len = 30; TMP103[455].kind = 2; TMP103[455].sons = &TMP55507[0];
+NTI54158->node = &TMP103[455];
 NTI54160->size = sizeof(NU32);
 NTI54160->kind = 19;
 NTI54160->base = NTI54158;
 NTI54160->flags = 3;
-TMP103[454].len = 0; TMP103[454].kind = 0;
-NTI54160->node = &TMP103[454];
-TMP103[422].kind = 1;
-TMP103[422].offset = offsetof(TY54545, Flags);
-TMP103[422].typ = NTI54160;
-TMP103[422].name = "flags";
-TMP55498[7] = &TMP103[455];
-NTI54527->size = sizeof(TY54527);
-NTI54527->kind = 17;
-NTI54527->base = 0;
-TMP55508[0] = &TMP103[457];
-TMP103[457].kind = 1;
-TMP103[457].offset = offsetof(TY54527, Counter);
-TMP103[457].typ = NTI108;
-TMP103[457].name = "counter";
-TMP55508[1] = &TMP103[458];
-NTI54525->size = sizeof(TY54525*);
-NTI54525->kind = 24;
-NTI54525->base = NTI54521;
-TMP103[458].kind = 1;
-TMP103[458].offset = offsetof(TY54527, Data);
-TMP103[458].typ = NTI54525;
-TMP103[458].name = "data";
-TMP103[456].len = 2; TMP103[456].kind = 2; TMP103[456].sons = &TMP55508[0];
-NTI54527->node = &TMP103[456];
-TMP103[455].kind = 1;
-TMP103[455].offset = offsetof(TY54545, Tab);
-TMP103[455].typ = NTI54527;
-TMP103[455].name = "tab";
-TMP55498[8] = &TMP103[459];
+TMP103[456].len = 0; TMP103[456].kind = 0;
+NTI54160->node = &TMP103[456];
+TMP103[424].kind = 1;
+TMP103[424].offset = offsetof(TY54547, Flags);
+TMP103[424].typ = NTI54160;
+TMP103[424].name = "flags";
+TMP55500[7] = &TMP103[457];
+NTI54529->size = sizeof(TY54529);
+NTI54529->kind = 17;
+NTI54529->base = 0;
+TMP55510[0] = &TMP103[459];
 TMP103[459].kind = 1;
-TMP103[459].offset = offsetof(TY54545, Ast);
-TMP103[459].typ = NTI54513;
-TMP103[459].name = "ast";
-TMP55498[9] = &TMP103[460];
+TMP103[459].offset = offsetof(TY54529, Counter);
+TMP103[459].typ = NTI108;
+TMP103[459].name = "counter";
+TMP55510[1] = &TMP103[460];
+NTI54527->size = sizeof(TY54527*);
+NTI54527->kind = 24;
+NTI54527->base = NTI54523;
+TMP103[460].kind = 1;
+TMP103[460].offset = offsetof(TY54529, Data);
+TMP103[460].typ = NTI54527;
+TMP103[460].name = "data";
+TMP103[458].len = 2; TMP103[458].kind = 2; TMP103[458].sons = &TMP55510[0];
+NTI54529->node = &TMP103[458];
+TMP103[457].kind = 1;
+TMP103[457].offset = offsetof(TY54547, Tab);
+TMP103[457].typ = NTI54529;
+TMP103[457].name = "tab";
+TMP55500[8] = &TMP103[461];
+TMP103[461].kind = 1;
+TMP103[461].offset = offsetof(TY54547, Ast);
+TMP103[461].typ = NTI54515;
+TMP103[461].name = "ast";
+TMP55500[9] = &TMP103[462];
 NTI45003->size = sizeof(NU8);
 NTI45003->kind = 14;
 NTI45003->base = 0;
 NTI45003->flags = 3;
-for (TMP55511 = 0; TMP55511 < 21; TMP55511++) {
-TMP103[TMP55511+461].kind = 1;
-TMP103[TMP55511+461].offset = TMP55511;
-TMP103[TMP55511+461].name = TMP55510[TMP55511];
-TMP55509[TMP55511] = &TMP103[TMP55511+461];
+for (TMP55513 = 0; TMP55513 < 21; TMP55513++) {
+TMP103[TMP55513+463].kind = 1;
+TMP103[TMP55513+463].offset = TMP55513;
+TMP103[TMP55513+463].name = TMP55512[TMP55513];
+TMP55511[TMP55513] = &TMP103[TMP55513+463];
 }
-TMP103[482].len = 21; TMP103[482].kind = 2; TMP103[482].sons = &TMP55509[0];
-NTI45003->node = &TMP103[482];
+TMP103[484].len = 21; TMP103[484].kind = 2; TMP103[484].sons = &TMP55511[0];
+NTI45003->node = &TMP103[484];
 NTI45073->size = sizeof(NU32);
 NTI45073->kind = 19;
 NTI45073->base = NTI45003;
 NTI45073->flags = 3;
-TMP103[483].len = 0; TMP103[483].kind = 0;
-NTI45073->node = &TMP103[483];
-TMP103[460].kind = 1;
-TMP103[460].offset = offsetof(TY54545, Options);
-TMP103[460].typ = NTI45073;
-TMP103[460].name = "options";
-TMP55498[10] = &TMP103[484];
-TMP103[484].kind = 1;
-TMP103[484].offset = offsetof(TY54545, Position);
-TMP103[484].typ = NTI108;
-TMP103[484].name = "position";
-TMP55498[11] = &TMP103[485];
-TMP103[485].kind = 1;
-TMP103[485].offset = offsetof(TY54545, Offset);
-TMP103[485].typ = NTI108;
-TMP103[485].name = "offset";
-TMP55498[12] = &TMP103[486];
-NTI54537->size = sizeof(TY54537);
-NTI54537->kind = 40;
-NTI54537->base = 0;
-TMP55512[0] = &TMP103[488];
-NTI54529->size = sizeof(NU8);
-NTI54529->kind = 14;
-NTI54529->base = 0;
-NTI54529->flags = 3;
-for (TMP55515 = 0; TMP55515 < 12; TMP55515++) {
-TMP103[TMP55515+489].kind = 1;
-TMP103[TMP55515+489].offset = TMP55515;
-TMP103[TMP55515+489].name = TMP55514[TMP55515];
-TMP55513[TMP55515] = &TMP103[TMP55515+489];
-}
-TMP103[501].len = 12; TMP103[501].kind = 2; TMP103[501].sons = &TMP55513[0];
-NTI54529->node = &TMP103[501];
-TMP103[488].kind = 1;
-TMP103[488].offset = offsetof(TY54537, K);
-TMP103[488].typ = NTI54529;
-TMP103[488].name = "k";
-TMP55512[1] = &TMP103[502];
-NTI54533->size = sizeof(NU8);
-NTI54533->kind = 14;
-NTI54533->base = 0;
-NTI54533->flags = 3;
-for (TMP55518 = 0; TMP55518 < 3; TMP55518++) {
-TMP103[TMP55518+503].kind = 1;
-TMP103[TMP55518+503].offset = TMP55518;
-TMP103[TMP55518+503].name = TMP55517[TMP55518];
-TMP55516[TMP55518] = &TMP103[TMP55518+503];
-}
-TMP103[506].len = 3; TMP103[506].kind = 2; TMP103[506].sons = &TMP55516[0];
-NTI54533->node = &TMP103[506];
-TMP103[502].kind = 1;
-TMP103[502].offset = offsetof(TY54537, S);
-TMP103[502].typ = NTI54533;
-TMP103[502].name = "s";
-TMP55512[2] = &TMP103[507];
+TMP103[485].len = 0; TMP103[485].kind = 0;
+NTI45073->node = &TMP103[485];
+TMP103[462].kind = 1;
+TMP103[462].offset = offsetof(TY54547, Options);
+TMP103[462].typ = NTI45073;
+TMP103[462].name = "options";
+TMP55500[10] = &TMP103[486];
+TMP103[486].kind = 1;
+TMP103[486].offset = offsetof(TY54547, Position);
+TMP103[486].typ = NTI108;
+TMP103[486].name = "position";
+TMP55500[11] = &TMP103[487];
+TMP103[487].kind = 1;
+TMP103[487].offset = offsetof(TY54547, Offset);
+TMP103[487].typ = NTI108;
+TMP103[487].name = "offset";
+TMP55500[12] = &TMP103[488];
+NTI54539->size = sizeof(TY54539);
+NTI54539->kind = 40;
+NTI54539->base = 0;
+TMP55514[0] = &TMP103[490];
 NTI54531->size = sizeof(NU8);
 NTI54531->kind = 14;
 NTI54531->base = 0;
 NTI54531->flags = 3;
-for (TMP55521 = 0; TMP55521 < 7; TMP55521++) {
-TMP103[TMP55521+508].kind = 1;
-TMP103[TMP55521+508].offset = TMP55521;
-TMP103[TMP55521+508].name = TMP55520[TMP55521];
-TMP55519[TMP55521] = &TMP103[TMP55521+508];
+for (TMP55517 = 0; TMP55517 < 12; TMP55517++) {
+TMP103[TMP55517+491].kind = 1;
+TMP103[TMP55517+491].offset = TMP55517;
+TMP103[TMP55517+491].name = TMP55516[TMP55517];
+TMP55515[TMP55517] = &TMP103[TMP55517+491];
 }
-TMP103[515].len = 7; TMP103[515].kind = 2; TMP103[515].sons = &TMP55519[0];
-NTI54531->node = &TMP103[515];
+TMP103[503].len = 12; TMP103[503].kind = 2; TMP103[503].sons = &TMP55515[0];
+NTI54531->node = &TMP103[503];
+TMP103[490].kind = 1;
+TMP103[490].offset = offsetof(TY54539, K);
+TMP103[490].typ = NTI54531;
+TMP103[490].name = "k";
+TMP55514[1] = &TMP103[504];
 NTI54535->size = sizeof(NU8);
-NTI54535->kind = 19;
-NTI54535->base = NTI54531;
+NTI54535->kind = 14;
+NTI54535->base = 0;
 NTI54535->flags = 3;
-TMP103[516].len = 0; TMP103[516].kind = 0;
-NTI54535->node = &TMP103[516];
-TMP103[507].kind = 1;
-TMP103[507].offset = offsetof(TY54537, Flags);
-TMP103[507].typ = NTI54535;
-TMP103[507].name = "flags";
-TMP55512[3] = &TMP103[517];
-TMP103[517].kind = 1;
-TMP103[517].offset = offsetof(TY54537, T);
-TMP103[517].typ = NTI54519;
-TMP103[517].name = "t";
-TMP55512[4] = &TMP103[518];
-TMP103[518].kind = 1;
-TMP103[518].offset = offsetof(TY54537, R);
-TMP103[518].typ = NTI51006;
-TMP103[518].name = "r";
-TMP55512[5] = &TMP103[519];
-TMP103[519].kind = 1;
-TMP103[519].offset = offsetof(TY54537, A);
-TMP103[519].typ = NTI108;
-TMP103[519].name = "a";
-TMP103[487].len = 6; TMP103[487].kind = 2; TMP103[487].sons = &TMP55512[0];
-NTI54537->node = &TMP103[487];
-TMP103[486].kind = 1;
-TMP103[486].offset = offsetof(TY54545, Loc);
-TMP103[486].typ = NTI54537;
-TMP103[486].name = "loc";
-TMP55498[13] = &TMP103[520];
-NTI54541->size = sizeof(TY54541);
-NTI54541->kind = 17;
-NTI54541->base = NTI42013;
-NTI54541->flags = 2;
-TMP55522[0] = &TMP103[522];
-NTI54539->size = sizeof(NU8);
-NTI54539->kind = 14;
-NTI54539->base = 0;
-NTI54539->flags = 3;
-for (TMP55525 = 0; TMP55525 < 2; TMP55525++) {
-TMP103[TMP55525+523].kind = 1;
-TMP103[TMP55525+523].offset = TMP55525;
-TMP103[TMP55525+523].name = TMP55524[TMP55525];
-TMP55523[TMP55525] = &TMP103[TMP55525+523];
+for (TMP55520 = 0; TMP55520 < 3; TMP55520++) {
+TMP103[TMP55520+505].kind = 1;
+TMP103[TMP55520+505].offset = TMP55520;
+TMP103[TMP55520+505].name = TMP55519[TMP55520];
+TMP55518[TMP55520] = &TMP103[TMP55520+505];
 }
-TMP103[525].len = 2; TMP103[525].kind = 2; TMP103[525].sons = &TMP55523[0];
-NTI54539->node = &TMP103[525];
-TMP103[522].kind = 1;
-TMP103[522].offset = offsetof(TY54541, Kind);
-TMP103[522].typ = NTI54539;
-TMP103[522].name = "kind";
-TMP55522[1] = &TMP103[526];
+TMP103[508].len = 3; TMP103[508].kind = 2; TMP103[508].sons = &TMP55518[0];
+NTI54535->node = &TMP103[508];
+TMP103[504].kind = 1;
+TMP103[504].offset = offsetof(TY54539, S);
+TMP103[504].typ = NTI54535;
+TMP103[504].name = "s";
+TMP55514[2] = &TMP103[509];
+NTI54533->size = sizeof(NU8);
+NTI54533->kind = 14;
+NTI54533->base = 0;
+NTI54533->flags = 3;
+for (TMP55523 = 0; TMP55523 < 7; TMP55523++) {
+TMP103[TMP55523+510].kind = 1;
+TMP103[TMP55523+510].offset = TMP55523;
+TMP103[TMP55523+510].name = TMP55522[TMP55523];
+TMP55521[TMP55523] = &TMP103[TMP55523+510];
+}
+TMP103[517].len = 7; TMP103[517].kind = 2; TMP103[517].sons = &TMP55521[0];
+NTI54533->node = &TMP103[517];
+NTI54537->size = sizeof(NU8);
+NTI54537->kind = 19;
+NTI54537->base = NTI54533;
+NTI54537->flags = 3;
+TMP103[518].len = 0; TMP103[518].kind = 0;
+NTI54537->node = &TMP103[518];
+TMP103[509].kind = 1;
+TMP103[509].offset = offsetof(TY54539, Flags);
+TMP103[509].typ = NTI54537;
+TMP103[509].name = "flags";
+TMP55514[3] = &TMP103[519];
+TMP103[519].kind = 1;
+TMP103[519].offset = offsetof(TY54539, T);
+TMP103[519].typ = NTI54521;
+TMP103[519].name = "t";
+TMP55514[4] = &TMP103[520];
+TMP103[520].kind = 1;
+TMP103[520].offset = offsetof(TY54539, R);
+TMP103[520].typ = NTI51006;
+TMP103[520].name = "r";
+TMP55514[5] = &TMP103[521];
+TMP103[521].kind = 1;
+TMP103[521].offset = offsetof(TY54539, A);
+TMP103[521].typ = NTI108;
+TMP103[521].name = "a";
+TMP103[489].len = 6; TMP103[489].kind = 2; TMP103[489].sons = &TMP55514[0];
+NTI54539->node = &TMP103[489];
+TMP103[488].kind = 1;
+TMP103[488].offset = offsetof(TY54547, Loc);
+TMP103[488].typ = NTI54539;
+TMP103[488].name = "loc";
+TMP55500[13] = &TMP103[522];
+NTI54543->size = sizeof(TY54543);
+NTI54543->kind = 17;
+NTI54543->base = NTI42013;
+NTI54543->flags = 2;
+TMP55524[0] = &TMP103[524];
+NTI54541->size = sizeof(NU8);
+NTI54541->kind = 14;
+NTI54541->base = 0;
+NTI54541->flags = 3;
+for (TMP55527 = 0; TMP55527 < 2; TMP55527++) {
+TMP103[TMP55527+525].kind = 1;
+TMP103[TMP55527+525].offset = TMP55527;
+TMP103[TMP55527+525].name = TMP55526[TMP55527];
+TMP55525[TMP55527] = &TMP103[TMP55527+525];
+}
+TMP103[527].len = 2; TMP103[527].kind = 2; TMP103[527].sons = &TMP55525[0];
+NTI54541->node = &TMP103[527];
+TMP103[524].kind = 1;
+TMP103[524].offset = offsetof(TY54543, Kind);
+TMP103[524].typ = NTI54541;
+TMP103[524].name = "kind";
+TMP55524[1] = &TMP103[528];
 NTI124->size = sizeof(NIM_BOOL);
 NTI124->kind = 1;
 NTI124->base = 0;
 NTI124->flags = 3;
-TMP103[526].kind = 1;
-TMP103[526].offset = offsetof(TY54541, Generated);
-TMP103[526].typ = NTI124;
-TMP103[526].name = "generated";
-TMP55522[2] = &TMP103[527];
-TMP103[527].kind = 1;
-TMP103[527].offset = offsetof(TY54541, Name);
-TMP103[527].typ = NTI51006;
-TMP103[527].name = "name";
-TMP55522[3] = &TMP103[528];
 TMP103[528].kind = 1;
-TMP103[528].offset = offsetof(TY54541, Path);
-TMP103[528].typ = NTI54513;
-TMP103[528].name = "path";
-TMP103[521].len = 4; TMP103[521].kind = 2; TMP103[521].sons = &TMP55522[0];
-NTI54541->node = &TMP103[521];
-NTI54543->size = sizeof(TY54541*);
-NTI54543->kind = 22;
-NTI54543->base = NTI54541;
-NTI54543->flags = 2;
-TMP103[520].kind = 1;
-TMP103[520].offset = offsetof(TY54545, Annex);
-TMP103[520].typ = NTI54543;
-TMP103[520].name = "annex";
-TMP103[162].len = 14; TMP103[162].kind = 2; TMP103[162].sons = &TMP55498[0];
-NTI54545->node = &TMP103[162];
-NTI54521->size = sizeof(TY54545*);
-NTI54521->kind = 22;
-NTI54521->base = NTI54545;
-TMP103[161].kind = 1;
-TMP103[161].offset = offsetof(TY54549, Owner);
-TMP103[161].typ = NTI54521;
-TMP103[161].name = "owner";
-TMP55488[6] = &TMP103[529];
+TMP103[528].offset = offsetof(TY54543, Generated);
+TMP103[528].typ = NTI124;
+TMP103[528].name = "generated";
+TMP55524[2] = &TMP103[529];
 TMP103[529].kind = 1;
-TMP103[529].offset = offsetof(TY54549, Sym);
-TMP103[529].typ = NTI54521;
-TMP103[529].name = "sym";
-TMP55488[7] = &TMP103[530];
+TMP103[529].offset = offsetof(TY54543, Name);
+TMP103[529].typ = NTI51006;
+TMP103[529].name = "name";
+TMP55524[3] = &TMP103[530];
+TMP103[530].kind = 1;
+TMP103[530].offset = offsetof(TY54543, Path);
+TMP103[530].typ = NTI54515;
+TMP103[530].name = "path";
+TMP103[523].len = 4; TMP103[523].kind = 2; TMP103[523].sons = &TMP55524[0];
+NTI54543->node = &TMP103[523];
+NTI54545->size = sizeof(TY54543*);
+NTI54545->kind = 22;
+NTI54545->base = NTI54543;
+NTI54545->flags = 2;
+TMP103[522].kind = 1;
+TMP103[522].offset = offsetof(TY54547, Annex);
+TMP103[522].typ = NTI54545;
+TMP103[522].name = "annex";
+TMP103[162].len = 14; TMP103[162].kind = 2; TMP103[162].sons = &TMP55500[0];
+NTI54547->node = &TMP103[162];
+NTI54523->size = sizeof(TY54547*);
+NTI54523->kind = 22;
+NTI54523->base = NTI54547;
+TMP103[161].kind = 1;
+TMP103[161].offset = offsetof(TY54551, Owner);
+TMP103[161].typ = NTI54523;
+TMP103[161].name = "owner";
+TMP55490[6] = &TMP103[531];
+TMP103[531].kind = 1;
+TMP103[531].offset = offsetof(TY54551, Sym);
+TMP103[531].typ = NTI54523;
+TMP103[531].name = "sym";
+TMP55490[7] = &TMP103[532];
 NTI116->size = sizeof(NI64);
 NTI116->kind = 35;
 NTI116->base = 0;
 NTI116->flags = 3;
-TMP103[530].kind = 1;
-TMP103[530].offset = offsetof(TY54549, Size);
-TMP103[530].typ = NTI116;
-TMP103[530].name = "size";
-TMP55488[8] = &TMP103[531];
-TMP103[531].kind = 1;
-TMP103[531].offset = offsetof(TY54549, Align);
-TMP103[531].typ = NTI108;
-TMP103[531].name = "align";
-TMP55488[9] = &TMP103[532];
 TMP103[532].kind = 1;
-TMP103[532].offset = offsetof(TY54549, Containerid);
-TMP103[532].typ = NTI108;
-TMP103[532].name = "containerID";
-TMP55488[10] = &TMP103[533];
+TMP103[532].offset = offsetof(TY54551, Size);
+TMP103[532].typ = NTI116;
+TMP103[532].name = "size";
+TMP55490[8] = &TMP103[533];
 TMP103[533].kind = 1;
-TMP103[533].offset = offsetof(TY54549, Loc);
-TMP103[533].typ = NTI54537;
-TMP103[533].name = "loc";
-TMP103[96].len = 11; TMP103[96].kind = 2; TMP103[96].sons = &TMP55488[0];
-NTI54549->node = &TMP103[96];
-NTI54519->size = sizeof(TY54549*);
-NTI54519->kind = 22;
-NTI54519->base = NTI54549;
-TMP103[95].kind = 1;
-TMP103[95].offset = offsetof(TY54523, Typ);
-TMP103[95].typ = NTI54519;
-TMP103[95].name = "typ";
-TMP55487[1] = &TMP103[534];
+TMP103[533].offset = offsetof(TY54551, Align);
+TMP103[533].typ = NTI108;
+TMP103[533].name = "align";
+TMP55490[9] = &TMP103[534];
 TMP103[534].kind = 1;
-TMP103[534].offset = offsetof(TY54523, Comment);
-TMP103[534].typ = NTI130;
-TMP103[534].name = "comment";
-TMP55487[2] = &TMP103[535];
+TMP103[534].offset = offsetof(TY54551, Containerid);
+TMP103[534].typ = NTI108;
+TMP103[534].name = "containerID";
+TMP55490[10] = &TMP103[535];
 TMP103[535].kind = 1;
-TMP103[535].offset = offsetof(TY54523, Info);
-TMP103[535].typ = NTI46532;
-TMP103[535].name = "info";
-TMP55487[3] = &TMP103[536];
+TMP103[535].offset = offsetof(TY54551, Loc);
+TMP103[535].typ = NTI54539;
+TMP103[535].name = "loc";
+TMP103[96].len = 11; TMP103[96].kind = 2; TMP103[96].sons = &TMP55490[0];
+NTI54551->node = &TMP103[96];
+NTI54521->size = sizeof(TY54551*);
+NTI54521->kind = 22;
+NTI54521->base = NTI54551;
+TMP103[95].kind = 1;
+TMP103[95].offset = offsetof(TY54525, Typ);
+TMP103[95].typ = NTI54521;
+TMP103[95].name = "typ";
+TMP55489[1] = &TMP103[536];
+TMP103[536].kind = 1;
+TMP103[536].offset = offsetof(TY54525, Comment);
+TMP103[536].typ = NTI130;
+TMP103[536].name = "comment";
+TMP55489[2] = &TMP103[537];
+TMP103[537].kind = 1;
+TMP103[537].offset = offsetof(TY54525, Info);
+TMP103[537].typ = NTI46532;
+TMP103[537].name = "info";
+TMP55489[3] = &TMP103[538];
 NTI54166->size = sizeof(NU8);
 NTI54166->kind = 14;
 NTI54166->base = 0;
 NTI54166->flags = 3;
-for (TMP55528 = 0; TMP55528 < 7; TMP55528++) {
-TMP103[TMP55528+537].kind = 1;
-TMP103[TMP55528+537].offset = TMP55528;
-TMP103[TMP55528+537].name = TMP55527[TMP55528];
-TMP55526[TMP55528] = &TMP103[TMP55528+537];
+for (TMP55530 = 0; TMP55530 < 7; TMP55530++) {
+TMP103[TMP55530+539].kind = 1;
+TMP103[TMP55530+539].offset = TMP55530;
+TMP103[TMP55530+539].name = TMP55529[TMP55530];
+TMP55528[TMP55530] = &TMP103[TMP55530+539];
 }
-TMP103[544].len = 7; TMP103[544].kind = 2; TMP103[544].sons = &TMP55526[0];
-NTI54166->node = &TMP103[544];
+TMP103[546].len = 7; TMP103[546].kind = 2; TMP103[546].sons = &TMP55528[0];
+NTI54166->node = &TMP103[546];
 NTI54168->size = sizeof(NU8);
 NTI54168->kind = 19;
 NTI54168->base = NTI54166;
 NTI54168->flags = 3;
-TMP103[545].len = 0; TMP103[545].kind = 0;
-NTI54168->node = &TMP103[545];
-TMP103[536].kind = 1;
-TMP103[536].offset = offsetof(TY54523, Flags);
-TMP103[536].typ = NTI54168;
-TMP103[536].name = "flags";
-TMP55487[4] = &TMP103[546];
+TMP103[547].len = 0; TMP103[547].kind = 0;
+NTI54168->node = &TMP103[547];
+TMP103[538].kind = 1;
+TMP103[538].offset = offsetof(TY54525, Flags);
+TMP103[538].typ = NTI54168;
+TMP103[538].name = "flags";
+TMP55489[4] = &TMP103[548];
 NTI54030->size = sizeof(NU8);
 NTI54030->kind = 14;
 NTI54030->base = 0;
 NTI54030->flags = 3;
-for (TMP55532 = 0; TMP55532 < 124; TMP55532++) {
-TMP103[TMP55532+547].kind = 1;
-TMP103[TMP55532+547].offset = TMP55532;
-TMP103[TMP55532+547].name = TMP55531[TMP55532];
-TMP55530[TMP55532] = &TMP103[TMP55532+547];
+for (TMP55534 = 0; TMP55534 < 124; TMP55534++) {
+TMP103[TMP55534+549].kind = 1;
+TMP103[TMP55534+549].offset = TMP55534;
+TMP103[TMP55534+549].name = TMP55533[TMP55534];
+TMP55532[TMP55534] = &TMP103[TMP55534+549];
 }
-TMP103[671].len = 124; TMP103[671].kind = 2; TMP103[671].sons = &TMP55530[0];
-NTI54030->node = &TMP103[671];
-TMP103[546].kind = 3;
-TMP103[546].offset = offsetof(TY54523, Kind);
-TMP103[546].typ = NTI54030;
-TMP103[546].name = "Kind";
-TMP103[546].sons = &TMP55529[0];
-TMP103[546].len = 124;
-TMP103[672].kind = 1;
-TMP103[672].offset = offsetof(TY54523, KindU.S1.Intval);
-TMP103[672].typ = NTI116;
-TMP103[672].name = "intVal";
-TMP55529[5] = &TMP103[672];
-TMP55529[6] = &TMP103[672];
-TMP55529[7] = &TMP103[672];
-TMP55529[8] = &TMP103[672];
-TMP55529[9] = &TMP103[672];
-TMP55529[10] = &TMP103[672];
+TMP103[673].len = 124; TMP103[673].kind = 2; TMP103[673].sons = &TMP55532[0];
+NTI54030->node = &TMP103[673];
+TMP103[548].kind = 3;
+TMP103[548].offset = offsetof(TY54525, Kind);
+TMP103[548].typ = NTI54030;
+TMP103[548].name = "Kind";
+TMP103[548].sons = &TMP55531[0];
+TMP103[548].len = 124;
+TMP103[674].kind = 1;
+TMP103[674].offset = offsetof(TY54525, KindU.S1.Intval);
+TMP103[674].typ = NTI116;
+TMP103[674].name = "intVal";
+TMP55531[5] = &TMP103[674];
+TMP55531[6] = &TMP103[674];
+TMP55531[7] = &TMP103[674];
+TMP55531[8] = &TMP103[674];
+TMP55531[9] = &TMP103[674];
+TMP55531[10] = &TMP103[674];
 NTI122->size = sizeof(NF64);
 NTI122->kind = 38;
 NTI122->base = 0;
 NTI122->flags = 3;
-TMP103[673].kind = 1;
-TMP103[673].offset = offsetof(TY54523, KindU.S2.Floatval);
-TMP103[673].typ = NTI122;
-TMP103[673].name = "floatVal";
-TMP55529[11] = &TMP103[673];
-TMP55529[12] = &TMP103[673];
-TMP55529[13] = &TMP103[673];
-TMP103[674].kind = 1;
-TMP103[674].offset = offsetof(TY54523, KindU.S3.Strval);
-TMP103[674].typ = NTI130;
-TMP103[674].name = "strVal";
-TMP55529[14] = &TMP103[674];
-TMP55529[15] = &TMP103[674];
-TMP55529[16] = &TMP103[674];
 TMP103[675].kind = 1;
-TMP103[675].offset = offsetof(TY54523, KindU.S4.Sym);
-TMP103[675].typ = NTI54521;
-TMP103[675].name = "sym";
-TMP55529[3] = &TMP103[675];
+TMP103[675].offset = offsetof(TY54525, KindU.S2.Floatval);
+TMP103[675].typ = NTI122;
+TMP103[675].name = "floatVal";
+TMP55531[11] = &TMP103[675];
+TMP55531[12] = &TMP103[675];
+TMP55531[13] = &TMP103[675];
 TMP103[676].kind = 1;
-TMP103[676].offset = offsetof(TY54523, KindU.S5.Ident);
-TMP103[676].typ = NTI53009;
-TMP103[676].name = "ident";
-TMP55529[2] = &TMP103[676];
+TMP103[676].offset = offsetof(TY54525, KindU.S3.Strval);
+TMP103[676].typ = NTI130;
+TMP103[676].name = "strVal";
+TMP55531[14] = &TMP103[676];
+TMP55531[15] = &TMP103[676];
+TMP55531[16] = &TMP103[676];
 TMP103[677].kind = 1;
-TMP103[677].offset = offsetof(TY54523, KindU.S6.Sons);
-TMP103[677].typ = NTI54517;
-TMP103[677].name = "sons";
-TMP55529[124] = &TMP103[677];
-TMP103[94].len = 5; TMP103[94].kind = 2; TMP103[94].sons = &TMP55487[0];
-NTI54523->node = &TMP103[94];
-NTI54513->size = sizeof(TY54523*);
-NTI54513->kind = 22;
-NTI54513->base = NTI54523;
-NTI54513->flags = 2;
-NTI54517->size = sizeof(TY54517*);
-NTI54517->kind = 24;
-NTI54517->base = NTI54513;
-NTI54517->flags = 2;
-NTI54553->size = sizeof(TY54553*);
-NTI54553->kind = 24;
-NTI54553->base = NTI54551;
-NTI54553->flags = 2;
-NTI54575->size = sizeof(TY54575*);
-NTI54575->kind = 24;
-NTI54575->base = NTI410;
-NTI54575->flags = 2;
-NTI54563->size = sizeof(TY54563);
-NTI54563->kind = 40;
-NTI54563->base = 0;
-NTI54563->flags = 2;
-TMP55810[0] = &TMP103[679];
+TMP103[677].offset = offsetof(TY54525, KindU.S4.Sym);
+TMP103[677].typ = NTI54523;
+TMP103[677].name = "sym";
+TMP55531[3] = &TMP103[677];
+TMP103[678].kind = 1;
+TMP103[678].offset = offsetof(TY54525, KindU.S5.Ident);
+TMP103[678].typ = NTI53009;
+TMP103[678].name = "ident";
+TMP55531[2] = &TMP103[678];
 TMP103[679].kind = 1;
-TMP103[679].offset = offsetof(TY54563, Key);
-TMP103[679].typ = NTI53007;
-TMP103[679].name = "key";
-TMP55810[1] = &TMP103[680];
-TMP103[680].kind = 1;
-TMP103[680].offset = offsetof(TY54563, Val);
-TMP103[680].typ = NTI54513;
-TMP103[680].name = "val";
-TMP103[678].len = 2; TMP103[678].kind = 2; TMP103[678].sons = &TMP55810[0];
-NTI54563->node = &TMP103[678];
-NTI54565->size = sizeof(TY54565*);
-NTI54565->kind = 24;
-NTI54565->base = NTI54563;
+TMP103[679].offset = offsetof(TY54525, KindU.S6.Sons);
+TMP103[679].typ = NTI54519;
+TMP103[679].name = "sons";
+TMP55531[124] = &TMP103[679];
+TMP103[94].len = 5; TMP103[94].kind = 2; TMP103[94].sons = &TMP55489[0];
+NTI54525->node = &TMP103[94];
+NTI54515->size = sizeof(TY54525*);
+NTI54515->kind = 22;
+NTI54515->base = NTI54525;
+NTI54515->flags = 2;
+NTI54519->size = sizeof(TY54519*);
+NTI54519->kind = 24;
+NTI54519->base = NTI54515;
+NTI54519->flags = 2;
+NTI54555->size = sizeof(TY54555*);
+NTI54555->kind = 24;
+NTI54555->base = NTI54553;
+NTI54555->flags = 2;
+NTI54577->size = sizeof(TY54577*);
+NTI54577->kind = 24;
+NTI54577->base = NTI410;
+NTI54577->flags = 2;
+NTI54565->size = sizeof(TY54565);
+NTI54565->kind = 40;
+NTI54565->base = 0;
 NTI54565->flags = 2;
-NTI54569->size = sizeof(TY54569);
-NTI54569->kind = 40;
-NTI54569->base = 0;
-NTI54569->flags = 2;
-TMP55827[0] = &TMP103[682];
+TMP55812[0] = &TMP103[681];
+TMP103[681].kind = 1;
+TMP103[681].offset = offsetof(TY54565, Key);
+TMP103[681].typ = NTI53007;
+TMP103[681].name = "key";
+TMP55812[1] = &TMP103[682];
 TMP103[682].kind = 1;
-TMP103[682].offset = offsetof(TY54569, H);
-TMP103[682].typ = NTI108;
-TMP103[682].name = "h";
-TMP55827[1] = &TMP103[683];
-TMP103[683].kind = 1;
-TMP103[683].offset = offsetof(TY54569, Key);
-TMP103[683].typ = NTI54513;
-TMP103[683].name = "key";
-TMP55827[2] = &TMP103[684];
-TMP103[684].kind = 1;
-TMP103[684].offset = offsetof(TY54569, Val);
-TMP103[684].typ = NTI108;
-TMP103[684].name = "val";
-TMP103[681].len = 3; TMP103[681].kind = 2; TMP103[681].sons = &TMP55827[0];
-NTI54569->node = &TMP103[681];
-NTI54571->size = sizeof(TY54571*);
-NTI54571->kind = 24;
-NTI54571->base = NTI54569;
+TMP103[682].offset = offsetof(TY54565, Val);
+TMP103[682].typ = NTI54515;
+TMP103[682].name = "val";
+TMP103[680].len = 2; TMP103[680].kind = 2; TMP103[680].sons = &TMP55812[0];
+NTI54565->node = &TMP103[680];
+NTI54567->size = sizeof(TY54567*);
+NTI54567->kind = 24;
+NTI54567->base = NTI54565;
+NTI54567->flags = 2;
+NTI54571->size = sizeof(TY54571);
+NTI54571->kind = 40;
+NTI54571->base = 0;
 NTI54571->flags = 2;
-NTI54894->size = sizeof(TY54894);
-NTI54894->kind = 40;
-NTI54894->base = 0;
-TMP57153[0] = &TMP103[686];
+TMP55829[0] = &TMP103[684];
+TMP103[684].kind = 1;
+TMP103[684].offset = offsetof(TY54571, H);
+TMP103[684].typ = NTI108;
+TMP103[684].name = "h";
+TMP55829[1] = &TMP103[685];
+TMP103[685].kind = 1;
+TMP103[685].offset = offsetof(TY54571, Key);
+TMP103[685].typ = NTI54515;
+TMP103[685].name = "key";
+TMP55829[2] = &TMP103[686];
 TMP103[686].kind = 1;
-TMP103[686].offset = offsetof(TY54894, Next);
-TMP103[686].typ = NTI54892;
-TMP103[686].name = "next";
-TMP57153[1] = &TMP103[687];
-TMP103[687].kind = 1;
-TMP103[687].offset = offsetof(TY54894, Key);
-TMP103[687].typ = NTI108;
-TMP103[687].name = "key";
-TMP57153[2] = &TMP103[688];
+TMP103[686].offset = offsetof(TY54571, Val);
+TMP103[686].typ = NTI108;
+TMP103[686].name = "val";
+TMP103[683].len = 3; TMP103[683].kind = 2; TMP103[683].sons = &TMP55829[0];
+NTI54571->node = &TMP103[683];
+NTI54573->size = sizeof(TY54573*);
+NTI54573->kind = 24;
+NTI54573->base = NTI54571;
+NTI54573->flags = 2;
+NTI54896->size = sizeof(TY54896);
+NTI54896->kind = 40;
+NTI54896->base = 0;
+TMP57155[0] = &TMP103[688];
+TMP103[688].kind = 1;
+TMP103[688].offset = offsetof(TY54896, Next);
+TMP103[688].typ = NTI54894;
+TMP103[688].name = "next";
+TMP57155[1] = &TMP103[689];
+TMP103[689].kind = 1;
+TMP103[689].offset = offsetof(TY54896, Key);
+TMP103[689].typ = NTI108;
+TMP103[689].name = "key";
+TMP57155[2] = &TMP103[690];
 NTI8614->size = sizeof(TY8614);
 NTI8614->kind = 16;
 NTI8614->base = NTI108;
 NTI8614->flags = 3;
-TMP103[688].kind = 1;
-TMP103[688].offset = offsetof(TY54894, Bits);
-TMP103[688].typ = NTI8614;
-TMP103[688].name = "bits";
-TMP103[685].len = 3; TMP103[685].kind = 2; TMP103[685].sons = &TMP57153[0];
-NTI54894->node = &TMP103[685];
-NTI54892->size = sizeof(TY54894*);
-NTI54892->kind = 22;
-NTI54892->base = NTI54894;
-NTI54896->size = sizeof(TY54896*);
-NTI54896->kind = 24;
-NTI54896->base = NTI54892;
-NTI54896->flags = 2;
+TMP103[690].kind = 1;
+TMP103[690].offset = offsetof(TY54896, Bits);
+TMP103[690].typ = NTI8614;
+TMP103[690].name = "bits";
+TMP103[687].len = 3; TMP103[687].kind = 2; TMP103[687].sons = &TMP57155[0];
+NTI54896->node = &TMP103[687];
+NTI54894->size = sizeof(TY54896*);
+NTI54894->kind = 22;
+NTI54894->base = NTI54896;
+NTI54898->size = sizeof(TY54898*);
+NTI54898->kind = 24;
+NTI54898->base = NTI54894;
+NTI54898->flags = 2;
 NTI58109->size = sizeof(TY58109*);
 NTI58109->kind = 24;
-NTI58109->base = NTI54527;
+NTI58109->base = NTI54529;
 NTI58109->flags = 2;
 NTI58219->size = sizeof(TY58219);
 NTI58219->kind = 40;
 NTI58219->base = 0;
 NTI58219->flags = 3;
-TMP61222[0] = &TMP103[690];
-TMP103[690].kind = 1;
-TMP103[690].offset = offsetof(TY58219, Key);
-TMP103[690].typ = NTI108;
-TMP103[690].name = "key";
-TMP61222[1] = &TMP103[691];
-TMP103[691].kind = 1;
-TMP103[691].offset = offsetof(TY58219, Val);
-TMP103[691].typ = NTI108;
-TMP103[691].name = "val";
-TMP103[689].len = 2; TMP103[689].kind = 2; TMP103[689].sons = &TMP61222[0];
-NTI58219->node = &TMP103[689];
+TMP61222[0] = &TMP103[692];
+TMP103[692].kind = 1;
+TMP103[692].offset = offsetof(TY58219, Key);
+TMP103[692].typ = NTI108;
+TMP103[692].name = "key";
+TMP61222[1] = &TMP103[693];
+TMP103[693].kind = 1;
+TMP103[693].offset = offsetof(TY58219, Val);
+TMP103[693].typ = NTI108;
+TMP103[693].name = "val";
+TMP103[691].len = 2; TMP103[691].kind = 2; TMP103[691].sons = &TMP61222[0];
+NTI58219->node = &TMP103[691];
 NTI58221->size = sizeof(TY58221*);
 NTI58221->kind = 24;
 NTI58221->base = NTI58219;
@@ -3911,35 +3913,35 @@ NTI64408->size = sizeof(TY64408);
 NTI64408->kind = 17;
 NTI64408->base = NTI408;
 NTI64408->flags = 2;
-TMP64720[0] = &TMP103[693];
-TMP103[693].kind = 1;
-TMP103[693].offset = offsetof(TY64408, Counter);
-TMP103[693].typ = NTI108;
-TMP103[693].name = "counter";
-TMP64720[1] = &TMP103[694];
-TMP103[694].kind = 1;
-TMP103[694].offset = offsetof(TY64408, Data);
-TMP103[694].typ = NTI44006;
-TMP103[694].name = "data";
-TMP64720[2] = &TMP103[695];
+TMP64720[0] = &TMP103[695];
+TMP103[695].kind = 1;
+TMP103[695].offset = offsetof(TY64408, Counter);
+TMP103[695].typ = NTI108;
+TMP103[695].name = "counter";
+TMP64720[1] = &TMP103[696];
+TMP103[696].kind = 1;
+TMP103[696].offset = offsetof(TY64408, Data);
+TMP103[696].typ = NTI44006;
+TMP103[696].name = "data";
+TMP64720[2] = &TMP103[697];
 NTI64402->size = sizeof(NU8);
 NTI64402->kind = 14;
 NTI64402->base = 0;
 NTI64402->flags = 3;
 for (TMP64723 = 0; TMP64723 < 3; TMP64723++) {
-TMP103[TMP64723+696].kind = 1;
-TMP103[TMP64723+696].offset = TMP64723;
-TMP103[TMP64723+696].name = TMP64722[TMP64723];
-TMP64721[TMP64723] = &TMP103[TMP64723+696];
+TMP103[TMP64723+698].kind = 1;
+TMP103[TMP64723+698].offset = TMP64723;
+TMP103[TMP64723+698].name = TMP64722[TMP64723];
+TMP64721[TMP64723] = &TMP103[TMP64723+698];
 }
-TMP103[699].len = 3; TMP103[699].kind = 2; TMP103[699].sons = &TMP64721[0];
-NTI64402->node = &TMP103[699];
-TMP103[695].kind = 1;
-TMP103[695].offset = offsetof(TY64408, Mode);
-TMP103[695].typ = NTI64402;
-TMP103[695].name = "mode";
-TMP103[692].len = 3; TMP103[692].kind = 2; TMP103[692].sons = &TMP64720[0];
-NTI64408->node = &TMP103[692];
+TMP103[701].len = 3; TMP103[701].kind = 2; TMP103[701].sons = &TMP64721[0];
+NTI64402->node = &TMP103[701];
+TMP103[697].kind = 1;
+TMP103[697].offset = offsetof(TY64408, Mode);
+TMP103[697].typ = NTI64402;
+TMP103[697].name = "mode";
+TMP103[694].len = 3; TMP103[694].kind = 2; TMP103[694].sons = &TMP64720[0];
+NTI64408->node = &TMP103[694];
 NTI64410->size = sizeof(TY64408*);
 NTI64410->kind = 22;
 NTI64410->base = NTI64408;
@@ -3948,78 +3950,78 @@ NTI65027->size = sizeof(TY65027);
 NTI65027->kind = 17;
 NTI65027->base = NTI408;
 NTI65027->flags = 3;
-TMP65318[0] = &TMP103[701];
+TMP65318[0] = &TMP103[703];
 NTI65028->size = sizeof(TY65028);
 NTI65028->kind = 25;
 NTI65028->base = 0;
 NTI65028->flags = 3;
-TMP103[701].kind = 1;
-TMP103[701].offset = offsetof(TY65027, Close);
-TMP103[701].typ = NTI65028;
-TMP103[701].name = "close";
-TMP65318[1] = &TMP103[702];
+TMP103[703].kind = 1;
+TMP103[703].offset = offsetof(TY65027, Close);
+TMP103[703].typ = NTI65028;
+TMP103[703].name = "close";
+TMP65318[1] = &TMP103[704];
 NTI65032->size = sizeof(TY65032);
 NTI65032->kind = 25;
 NTI65032->base = 0;
 NTI65032->flags = 3;
-TMP103[702].kind = 1;
-TMP103[702].offset = offsetof(TY65027, Atend);
-TMP103[702].typ = NTI65032;
-TMP103[702].name = "atEnd";
-TMP65318[2] = &TMP103[703];
+TMP103[704].kind = 1;
+TMP103[704].offset = offsetof(TY65027, Atend);
+TMP103[704].typ = NTI65032;
+TMP103[704].name = "atEnd";
+TMP65318[2] = &TMP103[705];
 NTI65036->size = sizeof(TY65036);
 NTI65036->kind = 25;
 NTI65036->base = 0;
 NTI65036->flags = 3;
-TMP103[703].kind = 1;
-TMP103[703].offset = offsetof(TY65027, Setposition);
-TMP103[703].typ = NTI65036;
-TMP103[703].name = "setPosition";
-TMP65318[3] = &TMP103[704];
+TMP103[705].kind = 1;
+TMP103[705].offset = offsetof(TY65027, Setposition);
+TMP103[705].typ = NTI65036;
+TMP103[705].name = "setPosition";
+TMP65318[3] = &TMP103[706];
 NTI65041->size = sizeof(TY65041);
 NTI65041->kind = 25;
 NTI65041->base = 0;
 NTI65041->flags = 3;
-TMP103[704].kind = 1;
-TMP103[704].offset = offsetof(TY65027, Getposition);
-TMP103[704].typ = NTI65041;
-TMP103[704].name = "getPosition";
-TMP65318[4] = &TMP103[705];
+TMP103[706].kind = 1;
+TMP103[706].offset = offsetof(TY65027, Getposition);
+TMP103[706].typ = NTI65041;
+TMP103[706].name = "getPosition";
+TMP65318[4] = &TMP103[707];
 NTI65045->size = sizeof(TY65045);
 NTI65045->kind = 25;
 NTI65045->base = 0;
 NTI65045->flags = 3;
-TMP103[705].kind = 1;
-TMP103[705].offset = offsetof(TY65027, Readdata);
-TMP103[705].typ = NTI65045;
-TMP103[705].name = "readData";
-TMP65318[5] = &TMP103[706];
+TMP103[707].kind = 1;
+TMP103[707].offset = offsetof(TY65027, Readdata);
+TMP103[707].typ = NTI65045;
+TMP103[707].name = "readData";
+TMP65318[5] = &TMP103[708];
 NTI65051->size = sizeof(TY65051);
 NTI65051->kind = 25;
 NTI65051->base = 0;
 NTI65051->flags = 3;
-TMP103[706].kind = 1;
-TMP103[706].offset = offsetof(TY65027, Writedata);
-TMP103[706].typ = NTI65051;
-TMP103[706].name = "writeData";
-TMP103[700].len = 6; TMP103[700].kind = 2; TMP103[700].sons = &TMP65318[0];
-NTI65027->node = &TMP103[700];
+TMP103[708].kind = 1;
+TMP103[708].offset = offsetof(TY65027, Writedata);
+TMP103[708].typ = NTI65051;
+TMP103[708].name = "writeData";
+TMP103[702].len = 6; TMP103[702].kind = 2; TMP103[702].sons = &TMP65318[0];
+NTI65027->node = &TMP103[702];
 NTI65226->size = sizeof(TY65226);
 NTI65226->kind = 17;
 NTI65226->base = NTI65027;
 NTI65226->flags = 2;
-TMP65319[0] = &TMP103[708];
-TMP103[708].kind = 1;
-TMP103[708].offset = offsetof(TY65226, Data);
-TMP103[708].typ = NTI130;
-TMP103[708].name = "data";
-TMP65319[1] = &TMP103[709];
-TMP103[709].kind = 1;
-TMP103[709].offset = offsetof(TY65226, Pos);
-TMP103[709].typ = NTI108;
-TMP103[709].name = "pos";
-TMP103[707].len = 2; TMP103[707].kind = 2; TMP103[707].sons = &TMP65319[0];
-NTI65226->node = &TMP103[707];
+TMP65319[0] = &TMP103[710];
+TMP103[710].kind = 1;
+TMP103[710].offset = offsetof(TY65226, Data);
+TMP103[710].typ = NTI130;
+TMP103[710].name = "data";
+TMP65319[1] = &TMP103[711];
+TMP103[711].kind = 1;
+TMP103[711].offset = offsetof(TY65226, Pos);
+TMP103[711].typ = NTI108;
+TMP103[711].name = "pos";
+TMP103[709].len = 2; TMP103[709].kind = 2; TMP103[709].sons = &TMP65319[0];
+NTI65226->node = &TMP103[709];
 NTI65224->size = sizeof(TY65226*);
 NTI65224->kind = 22;
 NTI65224->base = NTI65226;
@@ -4028,21 +4030,21 @@ NTI65323->size = sizeof(TY65323);
 NTI65323->kind = 17;
 NTI65323->base = NTI65027;
 NTI65323->flags = 3;
-NTI3602->size = sizeof(FILE);
-NTI3602->kind = 40;
-NTI3602->base = 0;
-NTI3602->flags = 3;
-TMP103[711].len = 0; TMP103[711].kind = 2;
-NTI3602->node = &TMP103[711];
-NTI3604->size = sizeof(FILE*);
-NTI3604->kind = 21;
-NTI3604->base = NTI3602;
-NTI3604->flags = 3;
-TMP103[710].kind = 1;
-TMP103[710].offset = offsetof(TY65323, F);
-TMP103[710].typ = NTI3604;
-TMP103[710].name = "f";
-NTI65323->node = &TMP103[710];
+NTI3402->size = sizeof(FILE);
+NTI3402->kind = 40;
+NTI3402->base = 0;
+NTI3402->flags = 3;
+TMP103[713].len = 0; TMP103[713].kind = 2;
+NTI3402->node = &TMP103[713];
+NTI3404->size = sizeof(FILE*);
+NTI3404->kind = 21;
+NTI3404->base = NTI3402;
+NTI3404->flags = 3;
+TMP103[712].kind = 1;
+TMP103[712].offset = offsetof(TY65323, F);
+TMP103[712].typ = NTI3404;
+TMP103[712].name = "f";
+NTI65323->node = &TMP103[712];
 NTI65321->size = sizeof(TY65323*);
 NTI65321->kind = 22;
 NTI65321->base = NTI65323;
@@ -4051,33 +4053,33 @@ NTI66202->size = sizeof(TY66202);
 NTI66202->kind = 17;
 NTI66202->base = NTI408;
 NTI66202->flags = 3;
-TMP66847[0] = &TMP103[713];
-TMP103[713].kind = 1;
-TMP103[713].offset = offsetof(TY66202, Inputhandle);
-TMP103[713].typ = NTI114;
-TMP103[713].name = "inputHandle";
-TMP66847[1] = &TMP103[714];
-TMP103[714].kind = 1;
-TMP103[714].offset = offsetof(TY66202, Outputhandle);
-TMP103[714].typ = NTI114;
-TMP103[714].name = "outputHandle";
-TMP66847[2] = &TMP103[715];
+TMP66847[0] = &TMP103[715];
 TMP103[715].kind = 1;
-TMP103[715].offset = offsetof(TY66202, Errorhandle);
+TMP103[715].offset = offsetof(TY66202, Inputhandle);
 TMP103[715].typ = NTI114;
-TMP103[715].name = "errorHandle";
-TMP66847[3] = &TMP103[716];
+TMP103[715].name = "inputHandle";
+TMP66847[1] = &TMP103[716];
 TMP103[716].kind = 1;
-TMP103[716].offset = offsetof(TY66202, Id);
+TMP103[716].offset = offsetof(TY66202, Outputhandle);
 TMP103[716].typ = NTI114;
-TMP103[716].name = "id";
-TMP66847[4] = &TMP103[717];
+TMP103[716].name = "outputHandle";
+TMP66847[2] = &TMP103[717];
 TMP103[717].kind = 1;
-TMP103[717].offset = offsetof(TY66202, Exitcode);
+TMP103[717].offset = offsetof(TY66202, Errorhandle);
 TMP103[717].typ = NTI114;
-TMP103[717].name = "exitCode";
-TMP103[712].len = 5; TMP103[712].kind = 2; TMP103[712].sons = &TMP66847[0];
-NTI66202->node = &TMP103[712];
+TMP103[717].name = "errorHandle";
+TMP66847[3] = &TMP103[718];
+TMP103[718].kind = 1;
+TMP103[718].offset = offsetof(TY66202, Id);
+TMP103[718].typ = NTI114;
+TMP103[718].name = "id";
+TMP66847[4] = &TMP103[719];
+TMP103[719].kind = 1;
+TMP103[719].offset = offsetof(TY66202, Exitcode);
+TMP103[719].typ = NTI114;
+TMP103[719].name = "exitCode";
+TMP103[714].len = 5; TMP103[714].kind = 2; TMP103[714].sons = &TMP66847[0];
+NTI66202->node = &TMP103[714];
 NTI66204->size = sizeof(TY66202*);
 NTI66204->kind = 22;
 NTI66204->base = NTI66202;
@@ -4086,474 +4088,474 @@ NTI66698->size = sizeof(TY66698*);
 NTI66698->kind = 24;
 NTI66698->base = NTI66204;
 NTI66698->flags = 2;
-NTI72013->size = sizeof(TY72013);
-NTI72013->kind = 17;
-NTI72013->base = NTI408;
-NTI72013->flags = 2;
-TMP72093[0] = &TMP103[719];
-NTI72011->size = sizeof(NU8);
-NTI72011->kind = 14;
-NTI72011->base = 0;
-NTI72011->flags = 3;
-for (TMP72096 = 0; TMP72096 < 4; TMP72096++) {
-TMP103[TMP72096+720].kind = 1;
-TMP103[TMP72096+720].offset = TMP72096;
-TMP103[TMP72096+720].name = TMP72095[TMP72096];
-TMP72094[TMP72096] = &TMP103[TMP72096+720];
+NTI73013->size = sizeof(TY73013);
+NTI73013->kind = 17;
+NTI73013->base = NTI408;
+NTI73013->flags = 2;
+TMP73093[0] = &TMP103[721];
+NTI73011->size = sizeof(NU8);
+NTI73011->kind = 14;
+NTI73011->base = 0;
+NTI73011->flags = 3;
+for (TMP73096 = 0; TMP73096 < 4; TMP73096++) {
+TMP103[TMP73096+722].kind = 1;
+TMP103[TMP73096+722].offset = TMP73096;
+TMP103[TMP73096+722].name = TMP73095[TMP73096];
+TMP73094[TMP73096] = &TMP103[TMP73096+722];
 }
-TMP103[724].len = 4; TMP103[724].kind = 2; TMP103[724].sons = &TMP72094[0];
-NTI72011->node = &TMP103[724];
-TMP103[719].kind = 1;
-TMP103[719].offset = offsetof(TY72013, Kind);
-TMP103[719].typ = NTI72011;
-TMP103[719].name = "kind";
-TMP72093[1] = &TMP103[725];
-TMP103[725].kind = 1;
-TMP103[725].offset = offsetof(TY72013, F);
-TMP103[725].typ = NTI3604;
-TMP103[725].name = "f";
-TMP72093[2] = &TMP103[726];
-TMP103[726].kind = 1;
-TMP103[726].offset = offsetof(TY72013, S);
-TMP103[726].typ = NTI130;
-TMP103[726].name = "s";
-TMP72093[3] = &TMP103[727];
+TMP103[726].len = 4; TMP103[726].kind = 2; TMP103[726].sons = &TMP73094[0];
+NTI73011->node = &TMP103[726];
+TMP103[721].kind = 1;
+TMP103[721].offset = offsetof(TY73013, Kind);
+TMP103[721].typ = NTI73011;
+TMP103[721].name = "kind";
+TMP73093[1] = &TMP103[727];
 TMP103[727].kind = 1;
-TMP103[727].offset = offsetof(TY72013, Rd);
-TMP103[727].typ = NTI108;
-TMP103[727].name = "rd";
-TMP72093[4] = &TMP103[728];
+TMP103[727].offset = offsetof(TY73013, F);
+TMP103[727].typ = NTI3404;
+TMP103[727].name = "f";
+TMP73093[2] = &TMP103[728];
 TMP103[728].kind = 1;
-TMP103[728].offset = offsetof(TY72013, Wr);
-TMP103[728].typ = NTI108;
-TMP103[728].name = "wr";
-TMP103[718].len = 5; TMP103[718].kind = 2; TMP103[718].sons = &TMP72093[0];
-NTI72013->node = &TMP103[718];
-NTI72015->size = sizeof(TY72013*);
-NTI72015->kind = 22;
-NTI72015->base = NTI72013;
-NTI72015->flags = 2;
-NTI74434->size = sizeof(TY74434*);
-NTI74434->kind = 24;
-NTI74434->base = NTI108;
-NTI74434->flags = 2;
-NTI74263->size = sizeof(TY74263);
-NTI74263->kind = 17;
-NTI74263->base = 0;
-TMP75268[0] = &TMP103[730];
-NTI74011->size = sizeof(NU8);
-NTI74011->kind = 14;
-NTI74011->base = 0;
-NTI74011->flags = 3;
-for (TMP75271 = 0; TMP75271 < 109; TMP75271++) {
-TMP103[TMP75271+731].kind = 1;
-TMP103[TMP75271+731].offset = TMP75271;
-TMP103[TMP75271+731].name = TMP75270[TMP75271];
-TMP75269[TMP75271] = &TMP103[TMP75271+731];
-}
-TMP103[840].len = 109; TMP103[840].kind = 2; TMP103[840].sons = &TMP75269[0];
-NTI74011->node = &TMP103[840];
+TMP103[728].offset = offsetof(TY73013, S);
+TMP103[728].typ = NTI130;
+TMP103[728].name = "s";
+TMP73093[3] = &TMP103[729];
+TMP103[729].kind = 1;
+TMP103[729].offset = offsetof(TY73013, Rd);
+TMP103[729].typ = NTI108;
+TMP103[729].name = "rd";
+TMP73093[4] = &TMP103[730];
 TMP103[730].kind = 1;
-TMP103[730].offset = offsetof(TY74263, Toktype);
-TMP103[730].typ = NTI74011;
-TMP103[730].name = "tokType";
-TMP75268[1] = &TMP103[841];
-TMP103[841].kind = 1;
-TMP103[841].offset = offsetof(TY74263, Indent);
-TMP103[841].typ = NTI108;
-TMP103[841].name = "indent";
-TMP75268[2] = &TMP103[842];
-TMP103[842].kind = 1;
-TMP103[842].offset = offsetof(TY74263, Ident);
-TMP103[842].typ = NTI53009;
-TMP103[842].name = "ident";
-TMP75268[3] = &TMP103[843];
-TMP103[843].kind = 1;
-TMP103[843].offset = offsetof(TY74263, Inumber);
-TMP103[843].typ = NTI116;
-TMP103[843].name = "iNumber";
-TMP75268[4] = &TMP103[844];
-TMP103[844].kind = 1;
-TMP103[844].offset = offsetof(TY74263, Fnumber);
-TMP103[844].typ = NTI122;
-TMP103[844].name = "fNumber";
-TMP75268[5] = &TMP103[845];
-NTI74259->size = sizeof(NU8);
-NTI74259->kind = 14;
-NTI74259->base = 0;
-NTI74259->flags = 3;
-for (TMP75274 = 0; TMP75274 < 4; TMP75274++) {
-TMP103[TMP75274+846].kind = 1;
-TMP103[TMP75274+846].offset = TMP75274;
-TMP103[TMP75274+846].name = TMP75273[TMP75274];
-TMP75272[TMP75274] = &TMP103[TMP75274+846];
-}
-TMP103[850].len = 4; TMP103[850].kind = 2; TMP103[850].sons = &TMP75272[0];
-NTI74259->node = &TMP103[850];
-TMP103[845].kind = 1;
-TMP103[845].offset = offsetof(TY74263, Base);
-TMP103[845].typ = NTI74259;
-TMP103[845].name = "base";
-TMP75268[6] = &TMP103[851];
-TMP103[851].kind = 1;
-TMP103[851].offset = offsetof(TY74263, Literal);
-TMP103[851].typ = NTI130;
-TMP103[851].name = "literal";
-TMP75268[7] = &TMP103[852];
-NTI74261->size = sizeof(TY74263*);
-NTI74261->kind = 22;
-NTI74261->base = NTI74263;
-TMP103[852].kind = 1;
-TMP103[852].offset = offsetof(TY74263, Next);
-TMP103[852].typ = NTI74261;
-TMP103[852].name = "next";
-TMP103[729].len = 8; TMP103[729].kind = 2; TMP103[729].sons = &TMP75268[0];
-NTI74263->node = &TMP103[729];
-NTI77137->size = sizeof(TY77137*);
-NTI77137->kind = 24;
-NTI77137->base = NTI124;
-NTI77137->flags = 2;
-NTI73015->size = sizeof(TY73015);
-NTI73015->kind = 17;
-NTI73015->base = NTI408;
+TMP103[730].offset = offsetof(TY73013, Wr);
+TMP103[730].typ = NTI108;
+TMP103[730].name = "wr";
+TMP103[720].len = 5; TMP103[720].kind = 2; TMP103[720].sons = &TMP73093[0];
+NTI73013->node = &TMP103[720];
+NTI73015->size = sizeof(TY73013*);
+NTI73015->kind = 22;
+NTI73015->base = NTI73013;
 NTI73015->flags = 2;
-TMP77517[0] = &TMP103[854];
-TMP103[854].kind = 1;
-TMP103[854].offset = offsetof(TY73015, Bufpos);
-TMP103[854].typ = NTI108;
-TMP103[854].name = "bufpos";
-TMP77517[1] = &TMP103[855];
-TMP103[855].kind = 1;
-TMP103[855].offset = offsetof(TY73015, Buf);
-TMP103[855].typ = NTI132;
-TMP103[855].name = "buf";
-TMP77517[2] = &TMP103[856];
-TMP103[856].kind = 1;
-TMP103[856].offset = offsetof(TY73015, Buflen);
-TMP103[856].typ = NTI108;
-TMP103[856].name = "bufLen";
-TMP77517[3] = &TMP103[857];
-TMP103[857].kind = 1;
-TMP103[857].offset = offsetof(TY73015, Stream);
-TMP103[857].typ = NTI72015;
-TMP103[857].name = "stream";
-TMP77517[4] = &TMP103[858];
-TMP103[858].kind = 1;
-TMP103[858].offset = offsetof(TY73015, Linenumber);
-TMP103[858].typ = NTI108;
-TMP103[858].name = "LineNumber";
-TMP77517[5] = &TMP103[859];
-TMP103[859].kind = 1;
-TMP103[859].offset = offsetof(TY73015, Sentinel);
-TMP103[859].typ = NTI108;
-TMP103[859].name = "sentinel";
-TMP77517[6] = &TMP103[860];
-TMP103[860].kind = 1;
-TMP103[860].offset = offsetof(TY73015, Linestart);
-TMP103[860].typ = NTI108;
-TMP103[860].name = "lineStart";
-TMP103[853].len = 7; TMP103[853].kind = 2; TMP103[853].sons = &TMP77517[0];
-NTI73015->node = &TMP103[853];
-NTI74267->size = sizeof(TY74267);
-NTI74267->kind = 17;
-NTI74267->base = NTI73015;
-NTI74267->flags = 2;
-TMP77518[0] = &TMP103[862];
-TMP103[862].kind = 1;
-TMP103[862].offset = offsetof(TY74267, Filename);
-TMP103[862].typ = NTI130;
-TMP103[862].name = "filename";
-TMP77518[1] = &TMP103[863];
-TMP103[863].kind = 1;
-TMP103[863].offset = offsetof(TY74267, Indentstack);
-TMP103[863].typ = NTI74434;
-TMP103[863].name = "indentStack";
-TMP77518[2] = &TMP103[864];
-TMP103[864].kind = 1;
-TMP103[864].offset = offsetof(TY74267, Dedent);
-TMP103[864].typ = NTI108;
-TMP103[864].name = "dedent";
-TMP77518[3] = &TMP103[865];
-TMP103[865].kind = 1;
-TMP103[865].offset = offsetof(TY74267, Indentahead);
-TMP103[865].typ = NTI108;
-TMP103[865].name = "indentAhead";
-TMP103[861].len = 4; TMP103[861].kind = 2; TMP103[861].sons = &TMP77518[0];
-NTI74267->node = &TMP103[861];
-NTI74265->size = sizeof(TY74267*);
-NTI74265->kind = 22;
-NTI74265->base = NTI74267;
-NTI74265->flags = 2;
-NTI82012->size = sizeof(TY82012);
-NTI82012->kind = 40;
-NTI82012->base = 0;
-NTI82012->flags = 3;
-TMP82105[0] = &TMP103[867];
-TMP103[867].kind = 1;
-TMP103[867].offset = offsetof(TY82012, Kind);
-TMP103[867].typ = NTI74011;
-TMP103[867].name = "kind";
-TMP82105[1] = &TMP103[868];
-TMP103[868].kind = 1;
-TMP103[868].offset = offsetof(TY82012, Length);
-TMP103[868].typ = NTI112;
-TMP103[868].name = "length";
-TMP103[866].len = 2; TMP103[866].kind = 2; TMP103[866].sons = &TMP82105[0];
-NTI82012->node = &TMP103[866];
-NTI82014->size = sizeof(TY82014*);
-NTI82014->kind = 24;
-NTI82014->base = NTI82012;
-NTI82014->flags = 2;
-NTI90031->size = sizeof(TY90031);
-NTI90031->kind = 17;
-NTI90031->base = NTI408;
-NTI90031->flags = 2;
-TMP92144[0] = &TMP103[870];
-TMP103[870].kind = 1;
-TMP103[870].offset = offsetof(TY90031, Pos);
-TMP103[870].typ = NTI108;
-TMP103[870].name = "pos";
-TMP92144[1] = &TMP103[871];
-TMP103[871].kind = 1;
-TMP103[871].offset = offsetof(TY90031, S);
-TMP103[871].typ = NTI130;
-TMP103[871].name = "s";
-TMP92144[2] = &TMP103[872];
-TMP103[872].kind = 1;
-TMP103[872].offset = offsetof(TY90031, Options);
-TMP103[872].typ = NTI45073;
-TMP103[872].name = "options";
-TMP92144[3] = &TMP103[873];
-NTI90005->size = sizeof(NU8);
-NTI90005->kind = 14;
-NTI90005->base = 0;
-NTI90005->flags = 3;
-for (TMP92147 = 0; TMP92147 < 9; TMP92147++) {
-TMP103[TMP92147+874].kind = 1;
-TMP103[TMP92147+874].offset = TMP92147;
-TMP103[TMP92147+874].name = TMP92146[TMP92147];
-TMP92145[TMP92147] = &TMP103[TMP92147+874];
+NTI75434->size = sizeof(TY75434*);
+NTI75434->kind = 24;
+NTI75434->base = NTI108;
+NTI75434->flags = 2;
+NTI75263->size = sizeof(TY75263);
+NTI75263->kind = 17;
+NTI75263->base = 0;
+TMP76268[0] = &TMP103[732];
+NTI75011->size = sizeof(NU8);
+NTI75011->kind = 14;
+NTI75011->base = 0;
+NTI75011->flags = 3;
+for (TMP76271 = 0; TMP76271 < 109; TMP76271++) {
+TMP103[TMP76271+733].kind = 1;
+TMP103[TMP76271+733].offset = TMP76271;
+TMP103[TMP76271+733].name = TMP76270[TMP76271];
+TMP76269[TMP76271] = &TMP103[TMP76271+733];
 }
-TMP103[883].len = 9; TMP103[883].kind = 2; TMP103[883].sons = &TMP92145[0];
-NTI90005->node = &TMP103[883];
+TMP103[842].len = 109; TMP103[842].kind = 2; TMP103[842].sons = &TMP76269[0];
+NTI75011->node = &TMP103[842];
+TMP103[732].kind = 1;
+TMP103[732].offset = offsetof(TY75263, Toktype);
+TMP103[732].typ = NTI75011;
+TMP103[732].name = "tokType";
+TMP76268[1] = &TMP103[843];
+TMP103[843].kind = 1;
+TMP103[843].offset = offsetof(TY75263, Indent);
+TMP103[843].typ = NTI108;
+TMP103[843].name = "indent";
+TMP76268[2] = &TMP103[844];
+TMP103[844].kind = 1;
+TMP103[844].offset = offsetof(TY75263, Ident);
+TMP103[844].typ = NTI53009;
+TMP103[844].name = "ident";
+TMP76268[3] = &TMP103[845];
+TMP103[845].kind = 1;
+TMP103[845].offset = offsetof(TY75263, Inumber);
+TMP103[845].typ = NTI116;
+TMP103[845].name = "iNumber";
+TMP76268[4] = &TMP103[846];
+TMP103[846].kind = 1;
+TMP103[846].offset = offsetof(TY75263, Fnumber);
+TMP103[846].typ = NTI122;
+TMP103[846].name = "fNumber";
+TMP76268[5] = &TMP103[847];
+NTI75259->size = sizeof(NU8);
+NTI75259->kind = 14;
+NTI75259->base = 0;
+NTI75259->flags = 3;
+for (TMP76274 = 0; TMP76274 < 4; TMP76274++) {
+TMP103[TMP76274+848].kind = 1;
+TMP103[TMP76274+848].offset = TMP76274;
+TMP103[TMP76274+848].name = TMP76273[TMP76274];
+TMP76272[TMP76274] = &TMP103[TMP76274+848];
+}
+TMP103[852].len = 4; TMP103[852].kind = 2; TMP103[852].sons = &TMP76272[0];
+NTI75259->node = &TMP103[852];
+TMP103[847].kind = 1;
+TMP103[847].offset = offsetof(TY75263, Base);
+TMP103[847].typ = NTI75259;
+TMP103[847].name = "base";
+TMP76268[6] = &TMP103[853];
+TMP103[853].kind = 1;
+TMP103[853].offset = offsetof(TY75263, Literal);
+TMP103[853].typ = NTI130;
+TMP103[853].name = "literal";
+TMP76268[7] = &TMP103[854];
+NTI75261->size = sizeof(TY75263*);
+NTI75261->kind = 22;
+NTI75261->base = NTI75263;
+TMP103[854].kind = 1;
+TMP103[854].offset = offsetof(TY75263, Next);
+TMP103[854].typ = NTI75261;
+TMP103[854].name = "next";
+TMP103[731].len = 8; TMP103[731].kind = 2; TMP103[731].sons = &TMP76268[0];
+NTI75263->node = &TMP103[731];
+NTI78137->size = sizeof(TY78137*);
+NTI78137->kind = 24;
+NTI78137->base = NTI124;
+NTI78137->flags = 2;
+NTI74015->size = sizeof(TY74015);
+NTI74015->kind = 17;
+NTI74015->base = NTI408;
+NTI74015->flags = 2;
+TMP78517[0] = &TMP103[856];
+TMP103[856].kind = 1;
+TMP103[856].offset = offsetof(TY74015, Bufpos);
+TMP103[856].typ = NTI108;
+TMP103[856].name = "bufpos";
+TMP78517[1] = &TMP103[857];
+TMP103[857].kind = 1;
+TMP103[857].offset = offsetof(TY74015, Buf);
+TMP103[857].typ = NTI132;
+TMP103[857].name = "buf";
+TMP78517[2] = &TMP103[858];
+TMP103[858].kind = 1;
+TMP103[858].offset = offsetof(TY74015, Buflen);
+TMP103[858].typ = NTI108;
+TMP103[858].name = "bufLen";
+TMP78517[3] = &TMP103[859];
+TMP103[859].kind = 1;
+TMP103[859].offset = offsetof(TY74015, Stream);
+TMP103[859].typ = NTI73015;
+TMP103[859].name = "stream";
+TMP78517[4] = &TMP103[860];
+TMP103[860].kind = 1;
+TMP103[860].offset = offsetof(TY74015, Linenumber);
+TMP103[860].typ = NTI108;
+TMP103[860].name = "LineNumber";
+TMP78517[5] = &TMP103[861];
+TMP103[861].kind = 1;
+TMP103[861].offset = offsetof(TY74015, Sentinel);
+TMP103[861].typ = NTI108;
+TMP103[861].name = "sentinel";
+TMP78517[6] = &TMP103[862];
+TMP103[862].kind = 1;
+TMP103[862].offset = offsetof(TY74015, Linestart);
+TMP103[862].typ = NTI108;
+TMP103[862].name = "lineStart";
+TMP103[855].len = 7; TMP103[855].kind = 2; TMP103[855].sons = &TMP78517[0];
+NTI74015->node = &TMP103[855];
+NTI75267->size = sizeof(TY75267);
+NTI75267->kind = 17;
+NTI75267->base = NTI74015;
+NTI75267->flags = 2;
+TMP78518[0] = &TMP103[864];
+TMP103[864].kind = 1;
+TMP103[864].offset = offsetof(TY75267, Filename);
+TMP103[864].typ = NTI130;
+TMP103[864].name = "filename";
+TMP78518[1] = &TMP103[865];
+TMP103[865].kind = 1;
+TMP103[865].offset = offsetof(TY75267, Indentstack);
+TMP103[865].typ = NTI75434;
+TMP103[865].name = "indentStack";
+TMP78518[2] = &TMP103[866];
+TMP103[866].kind = 1;
+TMP103[866].offset = offsetof(TY75267, Dedent);
+TMP103[866].typ = NTI108;
+TMP103[866].name = "dedent";
+TMP78518[3] = &TMP103[867];
+TMP103[867].kind = 1;
+TMP103[867].offset = offsetof(TY75267, Indentahead);
+TMP103[867].typ = NTI108;
+TMP103[867].name = "indentAhead";
+TMP103[863].len = 4; TMP103[863].kind = 2; TMP103[863].sons = &TMP78518[0];
+NTI75267->node = &TMP103[863];
+NTI75265->size = sizeof(TY75267*);
+NTI75265->kind = 22;
+NTI75265->base = NTI75267;
+NTI75265->flags = 2;
+NTI83012->size = sizeof(TY83012);
+NTI83012->kind = 40;
+NTI83012->base = 0;
+NTI83012->flags = 3;
+TMP83105[0] = &TMP103[869];
+TMP103[869].kind = 1;
+TMP103[869].offset = offsetof(TY83012, Kind);
+TMP103[869].typ = NTI75011;
+TMP103[869].name = "kind";
+TMP83105[1] = &TMP103[870];
+TMP103[870].kind = 1;
+TMP103[870].offset = offsetof(TY83012, Length);
+TMP103[870].typ = NTI112;
+TMP103[870].name = "length";
+TMP103[868].len = 2; TMP103[868].kind = 2; TMP103[868].sons = &TMP83105[0];
+NTI83012->node = &TMP103[868];
+NTI83014->size = sizeof(TY83014*);
+NTI83014->kind = 24;
+NTI83014->base = NTI83012;
+NTI83014->flags = 2;
+NTI91031->size = sizeof(TY91031);
+NTI91031->kind = 17;
+NTI91031->base = NTI408;
+NTI91031->flags = 2;
+TMP93144[0] = &TMP103[872];
+TMP103[872].kind = 1;
+TMP103[872].offset = offsetof(TY91031, Pos);
+TMP103[872].typ = NTI108;
+TMP103[872].name = "pos";
+TMP93144[1] = &TMP103[873];
 TMP103[873].kind = 1;
-TMP103[873].offset = offsetof(TY90031, Reason);
-TMP103[873].typ = NTI90005;
-TMP103[873].name = "reason";
-TMP92144[4] = &TMP103[884];
-TMP103[884].kind = 1;
-TMP103[884].offset = offsetof(TY90031, Moddeps);
-TMP103[884].typ = NTI4377;
-TMP103[884].name = "modDeps";
-TMP92144[5] = &TMP103[885];
-TMP103[885].kind = 1;
-TMP103[885].offset = offsetof(TY90031, Files);
-TMP103[885].typ = NTI4377;
-TMP103[885].name = "files";
-TMP92144[6] = &TMP103[886];
+TMP103[873].offset = offsetof(TY91031, S);
+TMP103[873].typ = NTI130;
+TMP103[873].name = "s";
+TMP93144[2] = &TMP103[874];
+TMP103[874].kind = 1;
+TMP103[874].offset = offsetof(TY91031, Options);
+TMP103[874].typ = NTI45073;
+TMP103[874].name = "options";
+TMP93144[3] = &TMP103[875];
+NTI91005->size = sizeof(NU8);
+NTI91005->kind = 14;
+NTI91005->base = 0;
+NTI91005->flags = 3;
+for (TMP93147 = 0; TMP93147 < 9; TMP93147++) {
+TMP103[TMP93147+876].kind = 1;
+TMP103[TMP93147+876].offset = TMP93147;
+TMP103[TMP93147+876].name = TMP93146[TMP93147];
+TMP93145[TMP93147] = &TMP103[TMP93147+876];
+}
+TMP103[885].len = 9; TMP103[885].kind = 2; TMP103[885].sons = &TMP93145[0];
+NTI91005->node = &TMP103[885];
+TMP103[875].kind = 1;
+TMP103[875].offset = offsetof(TY91031, Reason);
+TMP103[875].typ = NTI91005;
+TMP103[875].name = "reason";
+TMP93144[4] = &TMP103[886];
 TMP103[886].kind = 1;
-TMP103[886].offset = offsetof(TY90031, Dataidx);
-TMP103[886].typ = NTI108;
-TMP103[886].name = "dataIdx";
-TMP92144[7] = &TMP103[887];
+TMP103[886].offset = offsetof(TY91031, Moddeps);
+TMP103[886].typ = NTI4177;
+TMP103[886].name = "modDeps";
+TMP93144[5] = &TMP103[887];
 TMP103[887].kind = 1;
-TMP103[887].offset = offsetof(TY90031, Convertersidx);
-TMP103[887].typ = NTI108;
-TMP103[887].name = "convertersIdx";
-TMP92144[8] = &TMP103[888];
+TMP103[887].offset = offsetof(TY91031, Files);
+TMP103[887].typ = NTI4177;
+TMP103[887].name = "files";
+TMP93144[6] = &TMP103[888];
 TMP103[888].kind = 1;
-TMP103[888].offset = offsetof(TY90031, Initidx);
+TMP103[888].offset = offsetof(TY91031, Dataidx);
 TMP103[888].typ = NTI108;
-TMP103[888].name = "initIdx";
-TMP92144[9] = &TMP103[889];
+TMP103[888].name = "dataIdx";
+TMP93144[7] = &TMP103[889];
 TMP103[889].kind = 1;
-TMP103[889].offset = offsetof(TY90031, Interfidx);
+TMP103[889].offset = offsetof(TY91031, Convertersidx);
 TMP103[889].typ = NTI108;
-TMP103[889].name = "interfIdx";
-TMP92144[10] = &TMP103[890];
+TMP103[889].name = "convertersIdx";
+TMP93144[8] = &TMP103[890];
 TMP103[890].kind = 1;
-TMP103[890].offset = offsetof(TY90031, Compilerprocsidx);
+TMP103[890].offset = offsetof(TY91031, Initidx);
 TMP103[890].typ = NTI108;
-TMP103[890].name = "compilerProcsIdx";
-TMP92144[11] = &TMP103[891];
+TMP103[890].name = "initIdx";
+TMP93144[9] = &TMP103[891];
 TMP103[891].kind = 1;
-TMP103[891].offset = offsetof(TY90031, Cgenidx);
+TMP103[891].offset = offsetof(TY91031, Interfidx);
 TMP103[891].typ = NTI108;
-TMP103[891].name = "cgenIdx";
-TMP92144[12] = &TMP103[892];
+TMP103[891].name = "interfIdx";
+TMP93144[10] = &TMP103[892];
 TMP103[892].kind = 1;
-TMP103[892].offset = offsetof(TY90031, Filename);
-TMP103[892].typ = NTI130;
-TMP103[892].name = "filename";
-TMP92144[13] = &TMP103[893];
-NTI90029->size = sizeof(TY90029);
-NTI90029->kind = 40;
-NTI90029->base = 0;
-NTI90029->flags = 2;
-TMP92148[0] = &TMP103[895];
-TMP103[895].kind = 1;
-TMP103[895].offset = offsetof(TY90029, Lastidxkey);
-TMP103[895].typ = NTI108;
-TMP103[895].name = "lastIdxKey";
-TMP92148[1] = &TMP103[896];
-TMP103[896].kind = 1;
-TMP103[896].offset = offsetof(TY90029, Lastidxval);
-TMP103[896].typ = NTI108;
-TMP103[896].name = "lastIdxVal";
-TMP92148[2] = &TMP103[897];
+TMP103[892].offset = offsetof(TY91031, Compilerprocsidx);
+TMP103[892].typ = NTI108;
+TMP103[892].name = "compilerProcsIdx";
+TMP93144[11] = &TMP103[893];
+TMP103[893].kind = 1;
+TMP103[893].offset = offsetof(TY91031, Cgenidx);
+TMP103[893].typ = NTI108;
+TMP103[893].name = "cgenIdx";
+TMP93144[12] = &TMP103[894];
+TMP103[894].kind = 1;
+TMP103[894].offset = offsetof(TY91031, Filename);
+TMP103[894].typ = NTI130;
+TMP103[894].name = "filename";
+TMP93144[13] = &TMP103[895];
+NTI91029->size = sizeof(TY91029);
+NTI91029->kind = 40;
+NTI91029->base = 0;
+NTI91029->flags = 2;
+TMP93148[0] = &TMP103[897];
+TMP103[897].kind = 1;
+TMP103[897].offset = offsetof(TY91029, Lastidxkey);
+TMP103[897].typ = NTI108;
+TMP103[897].name = "lastIdxKey";
+TMP93148[1] = &TMP103[898];
+TMP103[898].kind = 1;
+TMP103[898].offset = offsetof(TY91029, Lastidxval);
+TMP103[898].typ = NTI108;
+TMP103[898].name = "lastIdxVal";
+TMP93148[2] = &TMP103[899];
 NTI58223->size = sizeof(TY58223);
 NTI58223->kind = 40;
 NTI58223->base = 0;
 NTI58223->flags = 2;
-TMP92149[0] = &TMP103[899];
-TMP103[899].kind = 1;
-TMP103[899].offset = offsetof(TY58223, Counter);
-TMP103[899].typ = NTI108;
-TMP103[899].name = "counter";
-TMP92149[1] = &TMP103[900];
-TMP103[900].kind = 1;
-TMP103[900].offset = offsetof(TY58223, Data);
-TMP103[900].typ = NTI58221;
-TMP103[900].name = "data";
-TMP103[898].len = 2; TMP103[898].kind = 2; TMP103[898].sons = &TMP92149[0];
-NTI58223->node = &TMP103[898];
-TMP103[897].kind = 1;
-TMP103[897].offset = offsetof(TY90029, Tab);
-TMP103[897].typ = NTI58223;
-TMP103[897].name = "tab";
-TMP92148[3] = &TMP103[901];
+TMP93149[0] = &TMP103[901];
 TMP103[901].kind = 1;
-TMP103[901].offset = offsetof(TY90029, R);
-TMP103[901].typ = NTI51006;
-TMP103[901].name = "r";
-TMP92148[4] = &TMP103[902];
+TMP103[901].offset = offsetof(TY58223, Counter);
+TMP103[901].typ = NTI108;
+TMP103[901].name = "counter";
+TMP93149[1] = &TMP103[902];
 TMP103[902].kind = 1;
-TMP103[902].offset = offsetof(TY90029, Offset);
-TMP103[902].typ = NTI108;
-TMP103[902].name = "offset";
-TMP103[894].len = 5; TMP103[894].kind = 2; TMP103[894].sons = &TMP92148[0];
-NTI90029->node = &TMP103[894];
-TMP103[893].kind = 1;
-TMP103[893].offset = offsetof(TY90031, Index);
-TMP103[893].typ = NTI90029;
-TMP103[893].name = "index";
-TMP92144[14] = &TMP103[903];
+TMP103[902].offset = offsetof(TY58223, Data);
+TMP103[902].typ = NTI58221;
+TMP103[902].name = "data";
+TMP103[900].len = 2; TMP103[900].kind = 2; TMP103[900].sons = &TMP93149[0];
+NTI58223->node = &TMP103[900];
+TMP103[899].kind = 1;
+TMP103[899].offset = offsetof(TY91029, Tab);
+TMP103[899].typ = NTI58223;
+TMP103[899].name = "tab";
+TMP93148[3] = &TMP103[903];
 TMP103[903].kind = 1;
-TMP103[903].offset = offsetof(TY90031, Imports);
-TMP103[903].typ = NTI90029;
-TMP103[903].name = "imports";
-TMP92144[15] = &TMP103[904];
+TMP103[903].offset = offsetof(TY91029, R);
+TMP103[903].typ = NTI51006;
+TMP103[903].name = "r";
+TMP93148[4] = &TMP103[904];
 TMP103[904].kind = 1;
-TMP103[904].offset = offsetof(TY90031, Readerindex);
+TMP103[904].offset = offsetof(TY91029, Offset);
 TMP103[904].typ = NTI108;
-TMP103[904].name = "readerIndex";
-TMP92144[16] = &TMP103[905];
+TMP103[904].name = "offset";
+TMP103[896].len = 5; TMP103[896].kind = 2; TMP103[896].sons = &TMP93148[0];
+NTI91029->node = &TMP103[896];
+TMP103[895].kind = 1;
+TMP103[895].offset = offsetof(TY91031, Index);
+TMP103[895].typ = NTI91029;
+TMP103[895].name = "index";
+TMP93144[14] = &TMP103[905];
 TMP103[905].kind = 1;
-TMP103[905].offset = offsetof(TY90031, Line);
-TMP103[905].typ = NTI108;
-TMP103[905].name = "line";
-TMP92144[17] = &TMP103[906];
+TMP103[905].offset = offsetof(TY91031, Imports);
+TMP103[905].typ = NTI91029;
+TMP103[905].name = "imports";
+TMP93144[15] = &TMP103[906];
 TMP103[906].kind = 1;
-TMP103[906].offset = offsetof(TY90031, Moduleid);
+TMP103[906].offset = offsetof(TY91031, Readerindex);
 TMP103[906].typ = NTI108;
-TMP103[906].name = "moduleID";
-TMP92144[18] = &TMP103[907];
-NTI54561->size = sizeof(TY54561);
-NTI54561->kind = 40;
-NTI54561->base = 0;
-NTI54561->flags = 2;
-TMP92150[0] = &TMP103[909];
-TMP103[909].kind = 1;
-TMP103[909].offset = offsetof(TY54561, Counter);
-TMP103[909].typ = NTI108;
-TMP103[909].name = "counter";
-TMP92150[1] = &TMP103[910];
-TMP103[910].kind = 1;
-TMP103[910].offset = offsetof(TY54561, Data);
-TMP103[910].typ = NTI54559;
-TMP103[910].name = "data";
-TMP103[908].len = 2; TMP103[908].kind = 2; TMP103[908].sons = &TMP92150[0];
-NTI54561->node = &TMP103[908];
+TMP103[906].name = "readerIndex";
+TMP93144[16] = &TMP103[907];
 TMP103[907].kind = 1;
-TMP103[907].offset = offsetof(TY90031, Syms);
-TMP103[907].typ = NTI54561;
-TMP103[907].name = "syms";
-TMP103[869].len = 19; TMP103[869].kind = 2; TMP103[869].sons = &TMP92144[0];
-NTI90031->node = &TMP103[869];
-NTI90033->size = sizeof(TY90031*);
-NTI90033->kind = 22;
-NTI90033->base = NTI90031;
-NTI90033->flags = 2;
-NTI92176->size = sizeof(TY92176);
-NTI92176->kind = 40;
-NTI92176->base = 0;
-NTI92176->flags = 2;
-TMP92200[0] = &TMP103[912];
+TMP103[907].offset = offsetof(TY91031, Line);
+TMP103[907].typ = NTI108;
+TMP103[907].name = "line";
+TMP93144[17] = &TMP103[908];
+TMP103[908].kind = 1;
+TMP103[908].offset = offsetof(TY91031, Moduleid);
+TMP103[908].typ = NTI108;
+TMP103[908].name = "moduleID";
+TMP93144[18] = &TMP103[909];
+NTI54563->size = sizeof(TY54563);
+NTI54563->kind = 40;
+NTI54563->base = 0;
+NTI54563->flags = 2;
+TMP93150[0] = &TMP103[911];
+TMP103[911].kind = 1;
+TMP103[911].offset = offsetof(TY54563, Counter);
+TMP103[911].typ = NTI108;
+TMP103[911].name = "counter";
+TMP93150[1] = &TMP103[912];
 TMP103[912].kind = 1;
-TMP103[912].offset = offsetof(TY92176, Filename);
-TMP103[912].typ = NTI130;
-TMP103[912].name = "filename";
-TMP92200[1] = &TMP103[913];
-TMP103[913].kind = 1;
-TMP103[913].offset = offsetof(TY92176, Reason);
-TMP103[913].typ = NTI90005;
-TMP103[913].name = "reason";
-TMP92200[2] = &TMP103[914];
+TMP103[912].offset = offsetof(TY54563, Data);
+TMP103[912].typ = NTI54561;
+TMP103[912].name = "data";
+TMP103[910].len = 2; TMP103[910].kind = 2; TMP103[910].sons = &TMP93150[0];
+NTI54563->node = &TMP103[910];
+TMP103[909].kind = 1;
+TMP103[909].offset = offsetof(TY91031, Syms);
+TMP103[909].typ = NTI54563;
+TMP103[909].name = "syms";
+TMP103[871].len = 19; TMP103[871].kind = 2; TMP103[871].sons = &TMP93144[0];
+NTI91031->node = &TMP103[871];
+NTI91033->size = sizeof(TY91031*);
+NTI91033->kind = 22;
+NTI91033->base = NTI91031;
+NTI91033->flags = 2;
+NTI93176->size = sizeof(TY93176);
+NTI93176->kind = 40;
+NTI93176->base = 0;
+NTI93176->flags = 2;
+TMP93200[0] = &TMP103[914];
 TMP103[914].kind = 1;
-TMP103[914].offset = offsetof(TY92176, Rd);
-TMP103[914].typ = NTI90033;
-TMP103[914].name = "rd";
-TMP92200[3] = &TMP103[915];
+TMP103[914].offset = offsetof(TY93176, Filename);
+TMP103[914].typ = NTI130;
+TMP103[914].name = "filename";
+TMP93200[1] = &TMP103[915];
 TMP103[915].kind = 1;
-TMP103[915].offset = offsetof(TY92176, Crc);
-TMP103[915].typ = NTI114;
-TMP103[915].name = "crc";
-TMP103[911].len = 4; TMP103[911].kind = 2; TMP103[911].sons = &TMP92200[0];
-NTI92176->node = &TMP103[911];
-NTI92178->size = sizeof(TY92178*);
-NTI92178->kind = 24;
-NTI92178->base = NTI92176;
-NTI92178->flags = 2;
+TMP103[915].offset = offsetof(TY93176, Reason);
+TMP103[915].typ = NTI91005;
+TMP103[915].name = "reason";
+TMP93200[2] = &TMP103[916];
+TMP103[916].kind = 1;
+TMP103[916].offset = offsetof(TY93176, Rd);
+TMP103[916].typ = NTI91033;
+TMP103[916].name = "rd";
+TMP93200[3] = &TMP103[917];
+TMP103[917].kind = 1;
+TMP103[917].offset = offsetof(TY93176, Crc);
+TMP103[917].typ = NTI114;
+TMP103[917].name = "crc";
+TMP103[913].len = 4; TMP103[913].kind = 2; TMP103[913].sons = &TMP93200[0];
+NTI93176->node = &TMP103[913];
+NTI93178->size = sizeof(TY93178*);
+NTI93178->kind = 24;
+NTI93178->base = NTI93176;
+NTI93178->flags = 2;
 NTI110->size = sizeof(NI8);
 NTI110->kind = 32;
 NTI110->base = 0;
 NTI110->flags = 3;
-NTI100008->size = sizeof(TY100008*);
-NTI100008->kind = 24;
-NTI100008->base = NTI110;
-NTI100008->flags = 2;
-NTI104002->size = sizeof(TY104002);
-NTI104002->kind = 17;
-NTI104002->base = NTI42013;
-NTI104002->flags = 2;
-TMP104188[0] = &TMP103[917];
-TMP103[917].kind = 1;
-TMP103[917].offset = offsetof(TY104002, Options);
-TMP103[917].typ = NTI45073;
-TMP103[917].name = "options";
-TMP104188[1] = &TMP103[918];
-TMP103[918].kind = 1;
-TMP103[918].offset = offsetof(TY104002, Defaultcc);
-TMP103[918].typ = NTI54004;
-TMP103[918].name = "defaultCC";
-TMP104188[2] = &TMP103[919];
+NTI101008->size = sizeof(TY101008*);
+NTI101008->kind = 24;
+NTI101008->base = NTI110;
+NTI101008->flags = 2;
+NTI105002->size = sizeof(TY105002);
+NTI105002->kind = 17;
+NTI105002->base = NTI42013;
+NTI105002->flags = 2;
+TMP105188[0] = &TMP103[919];
 TMP103[919].kind = 1;
-TMP103[919].offset = offsetof(TY104002, Dynlib);
-TMP103[919].typ = NTI54543;
-TMP103[919].name = "dynlib";
-TMP104188[3] = &TMP103[920];
+TMP103[919].offset = offsetof(TY105002, Options);
+TMP103[919].typ = NTI45073;
+TMP103[919].name = "options";
+TMP105188[1] = &TMP103[920];
+TMP103[920].kind = 1;
+TMP103[920].offset = offsetof(TY105002, Defaultcc);
+TMP103[920].typ = NTI54004;
+TMP103[920].name = "defaultCC";
+TMP105188[2] = &TMP103[921];
+TMP103[921].kind = 1;
+TMP103[921].offset = offsetof(TY105002, Dynlib);
+TMP103[921].typ = NTI54545;
+TMP103[921].name = "dynlib";
+TMP105188[3] = &TMP103[922];
 NTI46002->size = sizeof(NU8);
 NTI46002->kind = 14;
 NTI46002->base = 0;
 NTI46002->flags = 3;
-for (TMP104191 = 0; TMP104191 < 235; TMP104191++) {
-TMP103[TMP104191+921].kind = 1;
-TMP103[TMP104191+921].offset = TMP104191;
-TMP103[TMP104191+921].name = TMP104190[TMP104191];
-TMP104189[TMP104191] = &TMP103[TMP104191+921];
+for (TMP105191 = 0; TMP105191 < 235; TMP105191++) {
+TMP103[TMP105191+923].kind = 1;
+TMP103[TMP105191+923].offset = TMP105191;
+TMP103[TMP105191+923].name = TMP105190[TMP105191];
+TMP105189[TMP105191] = &TMP103[TMP105191+923];
 }
-TMP103[1156].len = 235; TMP103[1156].kind = 2; TMP103[1156].sons = &TMP104189[0];
-NTI46002->node = &TMP103[1156];
+TMP103[1158].len = 235; TMP103[1158].kind = 2; TMP103[1158].sons = &TMP105189[0];
+NTI46002->node = &TMP103[1158];
 NTI46528->size = sizeof(NU8);
 NTI46528->kind = 20;
 NTI46528->base = NTI46002;
@@ -4562,1274 +4564,1274 @@ NTI46530->size = sizeof(NU32);
 NTI46530->kind = 19;
 NTI46530->base = NTI46528;
 NTI46530->flags = 3;
-TMP103[1157].len = 207; TMP103[1157].kind = 0;
-NTI46530->node = &TMP103[1157];
-TMP103[920].kind = 1;
-TMP103[920].offset = offsetof(TY104002, Notes);
-TMP103[920].typ = NTI46530;
-TMP103[920].name = "Notes";
-TMP103[916].len = 4; TMP103[916].kind = 2; TMP103[916].sons = &TMP104188[0];
-NTI104002->node = &TMP103[916];
-NTI104006->size = sizeof(TY104006);
-NTI104006->kind = 40;
-NTI104006->base = 0;
-NTI104006->flags = 2;
-TMP104223[0] = &TMP103[1159];
-TMP103[1159].kind = 1;
-TMP103[1159].offset = offsetof(TY104006, Owner);
-TMP103[1159].typ = NTI54521;
-TMP103[1159].name = "owner";
-TMP104223[1] = &TMP103[1160];
-TMP103[1160].kind = 1;
-TMP103[1160].offset = offsetof(TY104006, Resultsym);
-TMP103[1160].typ = NTI54521;
-TMP103[1160].name = "resultSym";
-TMP104223[2] = &TMP103[1161];
+TMP103[1159].len = 207; TMP103[1159].kind = 0;
+NTI46530->node = &TMP103[1159];
+TMP103[922].kind = 1;
+TMP103[922].offset = offsetof(TY105002, Notes);
+TMP103[922].typ = NTI46530;
+TMP103[922].name = "Notes";
+TMP103[918].len = 4; TMP103[918].kind = 2; TMP103[918].sons = &TMP105188[0];
+NTI105002->node = &TMP103[918];
+NTI105006->size = sizeof(TY105006);
+NTI105006->kind = 40;
+NTI105006->base = 0;
+NTI105006->flags = 2;
+TMP105223[0] = &TMP103[1161];
 TMP103[1161].kind = 1;
-TMP103[1161].offset = offsetof(TY104006, Nestedloopcounter);
-TMP103[1161].typ = NTI108;
-TMP103[1161].name = "nestedLoopCounter";
-TMP104223[3] = &TMP103[1162];
+TMP103[1161].offset = offsetof(TY105006, Owner);
+TMP103[1161].typ = NTI54523;
+TMP103[1161].name = "owner";
+TMP105223[1] = &TMP103[1162];
 TMP103[1162].kind = 1;
-TMP103[1162].offset = offsetof(TY104006, Nestedblockcounter);
-TMP103[1162].typ = NTI108;
-TMP103[1162].name = "nestedBlockCounter";
-TMP103[1158].len = 4; TMP103[1158].kind = 2; TMP103[1158].sons = &TMP104223[0];
-NTI104006->node = &TMP103[1158];
-NTI104008->size = sizeof(TY104006*);
-NTI104008->kind = 22;
-NTI104008->base = NTI104006;
-NTI104008->flags = 2;
-NTI104004->size = sizeof(TY104002*);
-NTI104004->kind = 22;
-NTI104004->base = NTI104002;
-NTI104004->flags = 2;
-NTI102002->size = sizeof(TY102002);
-NTI102002->kind = 17;
-NTI102002->base = NTI408;
-NTI102002->flags = 3;
-TMP103[1163].len = 0; TMP103[1163].kind = 2;
-NTI102002->node = &TMP103[1163];
-NTI104012->size = sizeof(TY104012);
-NTI104012->kind = 17;
-NTI104012->base = NTI102002;
-NTI104012->flags = 2;
-TMP104285[0] = &TMP103[1165];
-TMP103[1165].kind = 1;
-TMP103[1165].offset = offsetof(TY104012, Module);
-TMP103[1165].typ = NTI54521;
-TMP103[1165].name = "module";
-TMP104285[1] = &TMP103[1166];
-TMP103[1166].kind = 1;
-TMP103[1166].offset = offsetof(TY104012, P);
-TMP103[1166].typ = NTI104008;
-TMP103[1166].name = "p";
-TMP104285[2] = &TMP103[1167];
+TMP103[1162].offset = offsetof(TY105006, Resultsym);
+TMP103[1162].typ = NTI54523;
+TMP103[1162].name = "resultSym";
+TMP105223[2] = &TMP103[1163];
+TMP103[1163].kind = 1;
+TMP103[1163].offset = offsetof(TY105006, Nestedloopcounter);
+TMP103[1163].typ = NTI108;
+TMP103[1163].name = "nestedLoopCounter";
+TMP105223[3] = &TMP103[1164];
+TMP103[1164].kind = 1;
+TMP103[1164].offset = offsetof(TY105006, Nestedblockcounter);
+TMP103[1164].typ = NTI108;
+TMP103[1164].name = "nestedBlockCounter";
+TMP103[1160].len = 4; TMP103[1160].kind = 2; TMP103[1160].sons = &TMP105223[0];
+NTI105006->node = &TMP103[1160];
+NTI105008->size = sizeof(TY105006*);
+NTI105008->kind = 22;
+NTI105008->base = NTI105006;
+NTI105008->flags = 2;
+NTI105004->size = sizeof(TY105002*);
+NTI105004->kind = 22;
+NTI105004->base = NTI105002;
+NTI105004->flags = 2;
+NTI103002->size = sizeof(TY103002);
+NTI103002->kind = 17;
+NTI103002->base = NTI408;
+NTI103002->flags = 3;
+TMP103[1165].len = 0; TMP103[1165].kind = 2;
+NTI103002->node = &TMP103[1165];
+NTI105012->size = sizeof(TY105012);
+NTI105012->kind = 17;
+NTI105012->base = NTI103002;
+NTI105012->flags = 2;
+TMP105285[0] = &TMP103[1167];
 TMP103[1167].kind = 1;
-TMP103[1167].offset = offsetof(TY104012, Instcounter);
-TMP103[1167].typ = NTI108;
-TMP103[1167].name = "InstCounter";
-TMP104285[3] = &TMP103[1168];
+TMP103[1167].offset = offsetof(TY105012, Module);
+TMP103[1167].typ = NTI54523;
+TMP103[1167].name = "module";
+TMP105285[1] = &TMP103[1168];
 TMP103[1168].kind = 1;
-TMP103[1168].offset = offsetof(TY104012, Generics);
-TMP103[1168].typ = NTI54513;
-TMP103[1168].name = "generics";
-TMP104285[4] = &TMP103[1169];
+TMP103[1168].offset = offsetof(TY105012, P);
+TMP103[1168].typ = NTI105008;
+TMP103[1168].name = "p";
+TMP105285[2] = &TMP103[1169];
 TMP103[1169].kind = 1;
-TMP103[1169].offset = offsetof(TY104012, Lastgenericidx);
+TMP103[1169].offset = offsetof(TY105012, Instcounter);
 TMP103[1169].typ = NTI108;
-TMP103[1169].name = "lastGenericIdx";
-TMP104285[5] = &TMP103[1170];
+TMP103[1169].name = "InstCounter";
+TMP105285[3] = &TMP103[1170];
+TMP103[1170].kind = 1;
+TMP103[1170].offset = offsetof(TY105012, Generics);
+TMP103[1170].typ = NTI54515;
+TMP103[1170].name = "generics";
+TMP105285[4] = &TMP103[1171];
+TMP103[1171].kind = 1;
+TMP103[1171].offset = offsetof(TY105012, Lastgenericidx);
+TMP103[1171].typ = NTI108;
+TMP103[1171].name = "lastGenericIdx";
+TMP105285[5] = &TMP103[1172];
 NTI58107->size = sizeof(TY58107);
 NTI58107->kind = 40;
 NTI58107->base = 0;
 NTI58107->flags = 2;
-TMP104286[0] = &TMP103[1172];
+TMP105286[0] = &TMP103[1174];
 NTI404->size = sizeof(NI);
 NTI404->kind = 20;
 NTI404->base = NTI108;
 NTI404->flags = 3;
-TMP103[1172].kind = 1;
-TMP103[1172].offset = offsetof(TY58107, Tos);
-TMP103[1172].typ = NTI404;
-TMP103[1172].name = "tos";
-TMP104286[1] = &TMP103[1173];
-TMP103[1173].kind = 1;
-TMP103[1173].offset = offsetof(TY58107, Stack);
-TMP103[1173].typ = NTI58109;
-TMP103[1173].name = "stack";
-TMP103[1171].len = 2; TMP103[1171].kind = 2; TMP103[1171].sons = &TMP104286[0];
-NTI58107->node = &TMP103[1171];
-TMP103[1170].kind = 1;
-TMP103[1170].offset = offsetof(TY104012, Tab);
-TMP103[1170].typ = NTI58107;
-TMP103[1170].name = "tab";
-TMP104285[6] = &TMP103[1174];
-NTI54898->size = sizeof(TY54898);
-NTI54898->kind = 40;
-NTI54898->base = 0;
-NTI54898->flags = 2;
-TMP104287[0] = &TMP103[1176];
-TMP103[1176].kind = 1;
-TMP103[1176].offset = offsetof(TY54898, Counter);
-TMP103[1176].typ = NTI108;
-TMP103[1176].name = "counter";
-TMP104287[1] = &TMP103[1177];
-TMP103[1177].kind = 1;
-TMP103[1177].offset = offsetof(TY54898, Max);
-TMP103[1177].typ = NTI108;
-TMP103[1177].name = "max";
-TMP104287[2] = &TMP103[1178];
-TMP103[1178].kind = 1;
-TMP103[1178].offset = offsetof(TY54898, Head);
-TMP103[1178].typ = NTI54892;
-TMP103[1178].name = "head";
-TMP104287[3] = &TMP103[1179];
-TMP103[1179].kind = 1;
-TMP103[1179].offset = offsetof(TY54898, Data);
-TMP103[1179].typ = NTI54896;
-TMP103[1179].name = "data";
-TMP103[1175].len = 4; TMP103[1175].kind = 2; TMP103[1175].sons = &TMP104287[0];
-NTI54898->node = &TMP103[1175];
 TMP103[1174].kind = 1;
-TMP103[1174].offset = offsetof(TY104012, Ambiguoussymbols);
-TMP103[1174].typ = NTI54898;
-TMP103[1174].name = "AmbiguousSymbols";
-TMP104285[7] = &TMP103[1180];
+TMP103[1174].offset = offsetof(TY58107, Tos);
+TMP103[1174].typ = NTI404;
+TMP103[1174].name = "tos";
+TMP105286[1] = &TMP103[1175];
+TMP103[1175].kind = 1;
+TMP103[1175].offset = offsetof(TY58107, Stack);
+TMP103[1175].typ = NTI58109;
+TMP103[1175].name = "stack";
+TMP103[1173].len = 2; TMP103[1173].kind = 2; TMP103[1173].sons = &TMP105286[0];
+NTI58107->node = &TMP103[1173];
+TMP103[1172].kind = 1;
+TMP103[1172].offset = offsetof(TY105012, Tab);
+TMP103[1172].typ = NTI58107;
+TMP103[1172].name = "tab";
+TMP105285[6] = &TMP103[1176];
+NTI54900->size = sizeof(TY54900);
+NTI54900->kind = 40;
+NTI54900->base = 0;
+NTI54900->flags = 2;
+TMP105287[0] = &TMP103[1178];
+TMP103[1178].kind = 1;
+TMP103[1178].offset = offsetof(TY54900, Counter);
+TMP103[1178].typ = NTI108;
+TMP103[1178].name = "counter";
+TMP105287[1] = &TMP103[1179];
+TMP103[1179].kind = 1;
+TMP103[1179].offset = offsetof(TY54900, Max);
+TMP103[1179].typ = NTI108;
+TMP103[1179].name = "max";
+TMP105287[2] = &TMP103[1180];
 TMP103[1180].kind = 1;
-TMP103[1180].offset = offsetof(TY104012, Converters);
-TMP103[1180].typ = NTI54525;
-TMP103[1180].name = "converters";
-TMP104285[8] = &TMP103[1181];
+TMP103[1180].offset = offsetof(TY54900, Head);
+TMP103[1180].typ = NTI54894;
+TMP103[1180].name = "head";
+TMP105287[3] = &TMP103[1181];
 TMP103[1181].kind = 1;
-TMP103[1181].offset = offsetof(TY104012, Optionstack);
-TMP103[1181].typ = NTI42019;
-TMP103[1181].name = "optionStack";
-TMP104285[9] = &TMP103[1182];
+TMP103[1181].offset = offsetof(TY54900, Data);
+TMP103[1181].typ = NTI54898;
+TMP103[1181].name = "data";
+TMP103[1177].len = 4; TMP103[1177].kind = 2; TMP103[1177].sons = &TMP105287[0];
+NTI54900->node = &TMP103[1177];
+TMP103[1176].kind = 1;
+TMP103[1176].offset = offsetof(TY105012, Ambiguoussymbols);
+TMP103[1176].typ = NTI54900;
+TMP103[1176].name = "AmbiguousSymbols";
+TMP105285[7] = &TMP103[1182];
 TMP103[1182].kind = 1;
-TMP103[1182].offset = offsetof(TY104012, Libs);
-TMP103[1182].typ = NTI42019;
-TMP103[1182].name = "libs";
-TMP104285[10] = &TMP103[1183];
+TMP103[1182].offset = offsetof(TY105012, Converters);
+TMP103[1182].typ = NTI54527;
+TMP103[1182].name = "converters";
+TMP105285[8] = &TMP103[1183];
 TMP103[1183].kind = 1;
-TMP103[1183].offset = offsetof(TY104012, Fromcache);
-TMP103[1183].typ = NTI124;
-TMP103[1183].name = "fromCache";
-TMP104285[11] = &TMP103[1184];
-NTI104032->size = sizeof(TY104032);
-NTI104032->kind = 25;
-NTI104032->base = 0;
-NTI104032->flags = 3;
+TMP103[1183].offset = offsetof(TY105012, Optionstack);
+TMP103[1183].typ = NTI42019;
+TMP103[1183].name = "optionStack";
+TMP105285[9] = &TMP103[1184];
 TMP103[1184].kind = 1;
-TMP103[1184].offset = offsetof(TY104012, Semconstexpr);
-TMP103[1184].typ = NTI104032;
-TMP103[1184].name = "semConstExpr";
-TMP104285[12] = &TMP103[1185];
-NTI104037->size = sizeof(TY104037);
-NTI104037->kind = 25;
-NTI104037->base = 0;
-NTI104037->flags = 3;
+TMP103[1184].offset = offsetof(TY105012, Libs);
+TMP103[1184].typ = NTI42019;
+TMP103[1184].name = "libs";
+TMP105285[10] = &TMP103[1185];
 TMP103[1185].kind = 1;
-TMP103[1185].offset = offsetof(TY104012, Semexpr);
-TMP103[1185].typ = NTI104037;
-TMP103[1185].name = "semExpr";
-TMP104285[13] = &TMP103[1186];
+TMP103[1185].offset = offsetof(TY105012, Fromcache);
+TMP103[1185].typ = NTI124;
+TMP103[1185].name = "fromCache";
+TMP105285[11] = &TMP103[1186];
+NTI105032->size = sizeof(TY105032);
+NTI105032->kind = 25;
+NTI105032->base = 0;
+NTI105032->flags = 3;
 TMP103[1186].kind = 1;
-TMP103[1186].offset = offsetof(TY104012, Includedfiles);
-TMP103[1186].typ = NTI54898;
-TMP103[1186].name = "includedFiles";
-TMP104285[14] = &TMP103[1187];
+TMP103[1186].offset = offsetof(TY105012, Semconstexpr);
+TMP103[1186].typ = NTI105032;
+TMP103[1186].name = "semConstExpr";
+TMP105285[12] = &TMP103[1187];
+NTI105037->size = sizeof(TY105037);
+NTI105037->kind = 25;
+NTI105037->base = 0;
+NTI105037->flags = 3;
 TMP103[1187].kind = 1;
-TMP103[1187].offset = offsetof(TY104012, Filename);
-TMP103[1187].typ = NTI130;
-TMP103[1187].name = "filename";
-TMP104285[15] = &TMP103[1188];
+TMP103[1187].offset = offsetof(TY105012, Semexpr);
+TMP103[1187].typ = NTI105037;
+TMP103[1187].name = "semExpr";
+TMP105285[13] = &TMP103[1188];
 TMP103[1188].kind = 1;
-TMP103[1188].offset = offsetof(TY104012, Userpragmas);
-TMP103[1188].typ = NTI54527;
-TMP103[1188].name = "userPragmas";
-TMP103[1164].len = 16; TMP103[1164].kind = 2; TMP103[1164].sons = &TMP104285[0];
-NTI104012->node = &TMP103[1164];
-NTI104010->size = sizeof(TY104012*);
-NTI104010->kind = 22;
-NTI104010->base = NTI104012;
-NTI104010->flags = 2;
-NTI108004->size = sizeof(TY108004);
-NTI108004->kind = 17;
-NTI108004->base = NTI102002;
-NTI108004->flags = 2;
-TMP108218[0] = &TMP103[1190];
+TMP103[1188].offset = offsetof(TY105012, Includedfiles);
+TMP103[1188].typ = NTI54900;
+TMP103[1188].name = "includedFiles";
+TMP105285[14] = &TMP103[1189];
+TMP103[1189].kind = 1;
+TMP103[1189].offset = offsetof(TY105012, Filename);
+TMP103[1189].typ = NTI130;
+TMP103[1189].name = "filename";
+TMP105285[15] = &TMP103[1190];
 TMP103[1190].kind = 1;
-TMP103[1190].offset = offsetof(TY108004, Module);
-TMP103[1190].typ = NTI54521;
-TMP103[1190].name = "module";
-TMP108218[1] = &TMP103[1191];
-TMP103[1191].kind = 1;
-TMP103[1191].offset = offsetof(TY108004, Crc);
-TMP103[1191].typ = NTI114;
-TMP103[1191].name = "crc";
-TMP108218[2] = &TMP103[1192];
+TMP103[1190].offset = offsetof(TY105012, Userpragmas);
+TMP103[1190].typ = NTI54529;
+TMP103[1190].name = "userPragmas";
+TMP103[1166].len = 16; TMP103[1166].kind = 2; TMP103[1166].sons = &TMP105285[0];
+NTI105012->node = &TMP103[1166];
+NTI105010->size = sizeof(TY105012*);
+NTI105010->kind = 22;
+NTI105010->base = NTI105012;
+NTI105010->flags = 2;
+NTI109004->size = sizeof(TY109004);
+NTI109004->kind = 17;
+NTI109004->base = NTI103002;
+NTI109004->flags = 2;
+TMP109218[0] = &TMP103[1192];
 TMP103[1192].kind = 1;
-TMP103[1192].offset = offsetof(TY108004, Options);
-TMP103[1192].typ = NTI45073;
-TMP103[1192].name = "options";
-TMP108218[3] = &TMP103[1193];
+TMP103[1192].offset = offsetof(TY109004, Module);
+TMP103[1192].typ = NTI54523;
+TMP103[1192].name = "module";
+TMP109218[1] = &TMP103[1193];
 TMP103[1193].kind = 1;
-TMP103[1193].offset = offsetof(TY108004, Defines);
-TMP103[1193].typ = NTI51006;
-TMP103[1193].name = "defines";
-TMP108218[4] = &TMP103[1194];
+TMP103[1193].offset = offsetof(TY109004, Crc);
+TMP103[1193].typ = NTI114;
+TMP103[1193].name = "crc";
+TMP109218[2] = &TMP103[1194];
 TMP103[1194].kind = 1;
-TMP103[1194].offset = offsetof(TY108004, Incldeps);
-TMP103[1194].typ = NTI51006;
-TMP103[1194].name = "inclDeps";
-TMP108218[5] = &TMP103[1195];
+TMP103[1194].offset = offsetof(TY109004, Options);
+TMP103[1194].typ = NTI45073;
+TMP103[1194].name = "options";
+TMP109218[3] = &TMP103[1195];
 TMP103[1195].kind = 1;
-TMP103[1195].offset = offsetof(TY108004, Moddeps);
+TMP103[1195].offset = offsetof(TY109004, Defines);
 TMP103[1195].typ = NTI51006;
-TMP103[1195].name = "modDeps";
-TMP108218[6] = &TMP103[1196];
+TMP103[1195].name = "defines";
+TMP109218[4] = &TMP103[1196];
 TMP103[1196].kind = 1;
-TMP103[1196].offset = offsetof(TY108004, Interf);
+TMP103[1196].offset = offsetof(TY109004, Incldeps);
 TMP103[1196].typ = NTI51006;
-TMP103[1196].name = "interf";
-TMP108218[7] = &TMP103[1197];
+TMP103[1196].name = "inclDeps";
+TMP109218[5] = &TMP103[1197];
 TMP103[1197].kind = 1;
-TMP103[1197].offset = offsetof(TY108004, Compilerprocs);
+TMP103[1197].offset = offsetof(TY109004, Moddeps);
 TMP103[1197].typ = NTI51006;
-TMP103[1197].name = "compilerProcs";
-TMP108218[8] = &TMP103[1198];
+TMP103[1197].name = "modDeps";
+TMP109218[6] = &TMP103[1198];
 TMP103[1198].kind = 1;
-TMP103[1198].offset = offsetof(TY108004, Index);
-TMP103[1198].typ = NTI90029;
-TMP103[1198].name = "index";
-TMP108218[9] = &TMP103[1199];
+TMP103[1198].offset = offsetof(TY109004, Interf);
+TMP103[1198].typ = NTI51006;
+TMP103[1198].name = "interf";
+TMP109218[7] = &TMP103[1199];
 TMP103[1199].kind = 1;
-TMP103[1199].offset = offsetof(TY108004, Imports);
-TMP103[1199].typ = NTI90029;
-TMP103[1199].name = "imports";
-TMP108218[10] = &TMP103[1200];
+TMP103[1199].offset = offsetof(TY109004, Compilerprocs);
+TMP103[1199].typ = NTI51006;
+TMP103[1199].name = "compilerProcs";
+TMP109218[8] = &TMP103[1200];
 TMP103[1200].kind = 1;
-TMP103[1200].offset = offsetof(TY108004, Converters);
-TMP103[1200].typ = NTI51006;
-TMP103[1200].name = "converters";
-TMP108218[11] = &TMP103[1201];
+TMP103[1200].offset = offsetof(TY109004, Index);
+TMP103[1200].typ = NTI91029;
+TMP103[1200].name = "index";
+TMP109218[9] = &TMP103[1201];
 TMP103[1201].kind = 1;
-TMP103[1201].offset = offsetof(TY108004, Init);
-TMP103[1201].typ = NTI51006;
-TMP103[1201].name = "init";
-TMP108218[12] = &TMP103[1202];
+TMP103[1201].offset = offsetof(TY109004, Imports);
+TMP103[1201].typ = NTI91029;
+TMP103[1201].name = "imports";
+TMP109218[10] = &TMP103[1202];
 TMP103[1202].kind = 1;
-TMP103[1202].offset = offsetof(TY108004, Data);
+TMP103[1202].offset = offsetof(TY109004, Converters);
 TMP103[1202].typ = NTI51006;
-TMP103[1202].name = "data";
-TMP108218[13] = &TMP103[1203];
+TMP103[1202].name = "converters";
+TMP109218[11] = &TMP103[1203];
 TMP103[1203].kind = 1;
-TMP103[1203].offset = offsetof(TY108004, Filename);
-TMP103[1203].typ = NTI130;
-TMP103[1203].name = "filename";
-TMP108218[14] = &TMP103[1204];
+TMP103[1203].offset = offsetof(TY109004, Init);
+TMP103[1203].typ = NTI51006;
+TMP103[1203].name = "init";
+TMP109218[12] = &TMP103[1204];
 TMP103[1204].kind = 1;
-TMP103[1204].offset = offsetof(TY108004, Sstack);
-TMP103[1204].typ = NTI54525;
-TMP103[1204].name = "sstack";
-TMP108218[15] = &TMP103[1205];
+TMP103[1204].offset = offsetof(TY109004, Data);
+TMP103[1204].typ = NTI51006;
+TMP103[1204].name = "data";
+TMP109218[13] = &TMP103[1205];
 TMP103[1205].kind = 1;
-TMP103[1205].offset = offsetof(TY108004, Tstack);
-TMP103[1205].typ = NTI54547;
-TMP103[1205].name = "tstack";
-TMP108218[16] = &TMP103[1206];
+TMP103[1205].offset = offsetof(TY109004, Filename);
+TMP103[1205].typ = NTI130;
+TMP103[1205].name = "filename";
+TMP109218[14] = &TMP103[1206];
 TMP103[1206].kind = 1;
-TMP103[1206].offset = offsetof(TY108004, Files);
-TMP103[1206].typ = NTI4377;
-TMP103[1206].name = "files";
-TMP103[1189].len = 17; TMP103[1189].kind = 2; TMP103[1189].sons = &TMP108218[0];
-NTI108004->node = &TMP103[1189];
-NTI108006->size = sizeof(TY108004*);
-NTI108006->kind = 22;
-NTI108006->base = NTI108004;
-NTI108006->flags = 2;
-NTI113004->size = sizeof(TY113004);
-NTI113004->kind = 40;
-NTI113004->base = 0;
-TMP113086[0] = &TMP103[1208];
-NTI54567->size = sizeof(TY54567);
-NTI54567->kind = 40;
-NTI54567->base = 0;
-NTI54567->flags = 2;
-TMP113087[0] = &TMP103[1210];
-TMP103[1210].kind = 1;
-TMP103[1210].offset = offsetof(TY54567, Counter);
-TMP103[1210].typ = NTI108;
-TMP103[1210].name = "counter";
-TMP113087[1] = &TMP103[1211];
-TMP103[1211].kind = 1;
-TMP103[1211].offset = offsetof(TY54567, Data);
-TMP103[1211].typ = NTI54565;
-TMP103[1211].name = "data";
-TMP103[1209].len = 2; TMP103[1209].kind = 2; TMP103[1209].sons = &TMP113087[0];
-NTI54567->node = &TMP103[1209];
+TMP103[1206].offset = offsetof(TY109004, Sstack);
+TMP103[1206].typ = NTI54527;
+TMP103[1206].name = "sstack";
+TMP109218[15] = &TMP103[1207];
+TMP103[1207].kind = 1;
+TMP103[1207].offset = offsetof(TY109004, Tstack);
+TMP103[1207].typ = NTI54549;
+TMP103[1207].name = "tstack";
+TMP109218[16] = &TMP103[1208];
 TMP103[1208].kind = 1;
-TMP103[1208].offset = offsetof(TY113004, Mapping);
-TMP103[1208].typ = NTI54567;
-TMP103[1208].name = "mapping";
-TMP113086[1] = &TMP103[1212];
+TMP103[1208].offset = offsetof(TY109004, Files);
+TMP103[1208].typ = NTI4177;
+TMP103[1208].name = "files";
+TMP103[1191].len = 17; TMP103[1191].kind = 2; TMP103[1191].sons = &TMP109218[0];
+NTI109004->node = &TMP103[1191];
+NTI109006->size = sizeof(TY109004*);
+NTI109006->kind = 22;
+NTI109006->base = NTI109004;
+NTI109006->flags = 2;
+NTI114004->size = sizeof(TY114004);
+NTI114004->kind = 40;
+NTI114004->base = 0;
+TMP114086[0] = &TMP103[1210];
+NTI54569->size = sizeof(TY54569);
+NTI54569->kind = 40;
+NTI54569->base = 0;
+NTI54569->flags = 2;
+TMP114087[0] = &TMP103[1212];
 TMP103[1212].kind = 1;
-TMP103[1212].offset = offsetof(TY113004, Prc);
-TMP103[1212].typ = NTI54521;
-TMP103[1212].name = "prc";
-TMP113086[2] = &TMP103[1213];
+TMP103[1212].offset = offsetof(TY54569, Counter);
+TMP103[1212].typ = NTI108;
+TMP103[1212].name = "counter";
+TMP114087[1] = &TMP103[1213];
 TMP103[1213].kind = 1;
-TMP103[1213].offset = offsetof(TY113004, Call);
-TMP103[1213].typ = NTI54513;
-TMP103[1213].name = "call";
-TMP113086[3] = &TMP103[1214];
+TMP103[1213].offset = offsetof(TY54569, Data);
+TMP103[1213].typ = NTI54567;
+TMP103[1213].name = "data";
+TMP103[1211].len = 2; TMP103[1211].kind = 2; TMP103[1211].sons = &TMP114087[0];
+NTI54569->node = &TMP103[1211];
+TMP103[1210].kind = 1;
+TMP103[1210].offset = offsetof(TY114004, Mapping);
+TMP103[1210].typ = NTI54569;
+TMP103[1210].name = "mapping";
+TMP114086[1] = &TMP103[1214];
 TMP103[1214].kind = 1;
-TMP103[1214].offset = offsetof(TY113004, Next);
-TMP103[1214].typ = NTI113002;
-TMP103[1214].name = "next";
-TMP113086[4] = &TMP103[1215];
+TMP103[1214].offset = offsetof(TY114004, Prc);
+TMP103[1214].typ = NTI54523;
+TMP103[1214].name = "prc";
+TMP114086[2] = &TMP103[1215];
 TMP103[1215].kind = 1;
-TMP103[1215].offset = offsetof(TY113004, Params);
-TMP103[1215].typ = NTI54517;
-TMP103[1215].name = "params";
-TMP103[1207].len = 5; TMP103[1207].kind = 2; TMP103[1207].sons = &TMP113086[0];
-NTI113004->node = &TMP103[1207];
-NTI113002->size = sizeof(TY113004*);
-NTI113002->kind = 22;
-NTI113002->base = NTI113004;
-NTI113006->size = sizeof(TY113006);
-NTI113006->kind = 17;
-NTI113006->base = NTI102002;
-NTI113006->flags = 2;
-TMP113109[0] = &TMP103[1217];
+TMP103[1215].offset = offsetof(TY114004, Call);
+TMP103[1215].typ = NTI54515;
+TMP103[1215].name = "call";
+TMP114086[3] = &TMP103[1216];
+TMP103[1216].kind = 1;
+TMP103[1216].offset = offsetof(TY114004, Next);
+TMP103[1216].typ = NTI114002;
+TMP103[1216].name = "next";
+TMP114086[4] = &TMP103[1217];
 TMP103[1217].kind = 1;
-TMP103[1217].offset = offsetof(TY113006, Module);
-TMP103[1217].typ = NTI54521;
-TMP103[1217].name = "module";
-TMP113109[1] = &TMP103[1218];
-TMP103[1218].kind = 1;
-TMP103[1218].offset = offsetof(TY113006, Tos);
-TMP103[1218].typ = NTI113002;
-TMP103[1218].name = "tos";
-TMP113109[2] = &TMP103[1219];
+TMP103[1217].offset = offsetof(TY114004, Params);
+TMP103[1217].typ = NTI54519;
+TMP103[1217].name = "params";
+TMP103[1209].len = 5; TMP103[1209].kind = 2; TMP103[1209].sons = &TMP114086[0];
+NTI114004->node = &TMP103[1209];
+NTI114002->size = sizeof(TY114004*);
+NTI114002->kind = 22;
+NTI114002->base = NTI114004;
+NTI114006->size = sizeof(TY114006);
+NTI114006->kind = 17;
+NTI114006->base = NTI103002;
+NTI114006->flags = 2;
+TMP114109[0] = &TMP103[1219];
 TMP103[1219].kind = 1;
-TMP103[1219].offset = offsetof(TY113006, Lastexception);
-TMP103[1219].typ = NTI54513;
-TMP103[1219].name = "lastException";
-TMP113109[3] = &TMP103[1220];
+TMP103[1219].offset = offsetof(TY114006, Module);
+TMP103[1219].typ = NTI54523;
+TMP103[1219].name = "module";
+TMP114109[1] = &TMP103[1220];
 TMP103[1220].kind = 1;
-TMP103[1220].offset = offsetof(TY113006, Opteval);
-TMP103[1220].typ = NTI124;
-TMP103[1220].name = "optEval";
-TMP103[1216].len = 4; TMP103[1216].kind = 2; TMP103[1216].sons = &TMP113109[0];
-NTI113006->node = &TMP103[1216];
-NTI113008->size = sizeof(TY113006*);
-NTI113008->kind = 22;
-NTI113008->base = NTI113006;
-NTI113008->flags = 2;
-NTI125066->size = sizeof(TY125066);
-NTI125066->kind = 40;
-NTI125066->base = 0;
-NTI125066->flags = 2;
-TMP127946[0] = &TMP103[1222];
+TMP103[1220].offset = offsetof(TY114006, Tos);
+TMP103[1220].typ = NTI114002;
+TMP103[1220].name = "tos";
+TMP114109[2] = &TMP103[1221];
+TMP103[1221].kind = 1;
+TMP103[1221].offset = offsetof(TY114006, Lastexception);
+TMP103[1221].typ = NTI54515;
+TMP103[1221].name = "lastException";
+TMP114109[3] = &TMP103[1222];
 TMP103[1222].kind = 1;
-TMP103[1222].offset = offsetof(TY125066, Exactmatches);
-TMP103[1222].typ = NTI108;
-TMP103[1222].name = "exactMatches";
-TMP127946[1] = &TMP103[1223];
-TMP103[1223].kind = 1;
-TMP103[1223].offset = offsetof(TY125066, Subtypematches);
-TMP103[1223].typ = NTI108;
-TMP103[1223].name = "subtypeMatches";
-TMP127946[2] = &TMP103[1224];
+TMP103[1222].offset = offsetof(TY114006, Opteval);
+TMP103[1222].typ = NTI124;
+TMP103[1222].name = "optEval";
+TMP103[1218].len = 4; TMP103[1218].kind = 2; TMP103[1218].sons = &TMP114109[0];
+NTI114006->node = &TMP103[1218];
+NTI114008->size = sizeof(TY114006*);
+NTI114008->kind = 22;
+NTI114008->base = NTI114006;
+NTI114008->flags = 2;
+NTI126066->size = sizeof(TY126066);
+NTI126066->kind = 40;
+NTI126066->base = 0;
+NTI126066->flags = 2;
+TMP128946[0] = &TMP103[1224];
 TMP103[1224].kind = 1;
-TMP103[1224].offset = offsetof(TY125066, Intconvmatches);
+TMP103[1224].offset = offsetof(TY126066, Exactmatches);
 TMP103[1224].typ = NTI108;
-TMP103[1224].name = "intConvMatches";
-TMP127946[3] = &TMP103[1225];
+TMP103[1224].name = "exactMatches";
+TMP128946[1] = &TMP103[1225];
 TMP103[1225].kind = 1;
-TMP103[1225].offset = offsetof(TY125066, Convmatches);
+TMP103[1225].offset = offsetof(TY126066, Subtypematches);
 TMP103[1225].typ = NTI108;
-TMP103[1225].name = "convMatches";
-TMP127946[4] = &TMP103[1226];
+TMP103[1225].name = "subtypeMatches";
+TMP128946[2] = &TMP103[1226];
 TMP103[1226].kind = 1;
-TMP103[1226].offset = offsetof(TY125066, Genericmatches);
+TMP103[1226].offset = offsetof(TY126066, Intconvmatches);
 TMP103[1226].typ = NTI108;
-TMP103[1226].name = "genericMatches";
-TMP127946[5] = &TMP103[1227];
-NTI125064->size = sizeof(NU8);
-NTI125064->kind = 14;
-NTI125064->base = 0;
-NTI125064->flags = 3;
-for (TMP127949 = 0; TMP127949 < 3; TMP127949++) {
-TMP103[TMP127949+1228].kind = 1;
-TMP103[TMP127949+1228].offset = TMP127949;
-TMP103[TMP127949+1228].name = TMP127948[TMP127949];
-TMP127947[TMP127949] = &TMP103[TMP127949+1228];
-}
-TMP103[1231].len = 3; TMP103[1231].kind = 2; TMP103[1231].sons = &TMP127947[0];
-NTI125064->node = &TMP103[1231];
+TMP103[1226].name = "intConvMatches";
+TMP128946[3] = &TMP103[1227];
 TMP103[1227].kind = 1;
-TMP103[1227].offset = offsetof(TY125066, State);
-TMP103[1227].typ = NTI125064;
-TMP103[1227].name = "state";
-TMP127946[6] = &TMP103[1232];
-TMP103[1232].kind = 1;
-TMP103[1232].offset = offsetof(TY125066, Callee);
-TMP103[1232].typ = NTI54519;
-TMP103[1232].name = "callee";
-TMP127946[7] = &TMP103[1233];
-TMP103[1233].kind = 1;
-TMP103[1233].offset = offsetof(TY125066, Calleesym);
-TMP103[1233].typ = NTI54521;
-TMP103[1233].name = "calleeSym";
-TMP127946[8] = &TMP103[1234];
-TMP103[1234].kind = 1;
-TMP103[1234].offset = offsetof(TY125066, Call);
-TMP103[1234].typ = NTI54513;
-TMP103[1234].name = "call";
-TMP127946[9] = &TMP103[1235];
-TMP103[1235].kind = 1;
-TMP103[1235].offset = offsetof(TY125066, Bindings);
-TMP103[1235].typ = NTI54561;
-TMP103[1235].name = "bindings";
-TMP127946[10] = &TMP103[1236];
-TMP103[1236].kind = 1;
-TMP103[1236].offset = offsetof(TY125066, Basetypematch);
-TMP103[1236].typ = NTI124;
-TMP103[1236].name = "baseTypeMatch";
-TMP103[1221].len = 11; TMP103[1221].kind = 2; TMP103[1221].sons = &TMP127946[0];
-NTI125066->node = &TMP103[1221];
-NTI145139->size = sizeof(TY145139);
-NTI145139->kind = 17;
-NTI145139->base = NTI408;
-NTI145139->flags = 3;
-TMP145580[0] = &TMP103[1238];
-TMP103[1238].kind = 1;
-TMP103[1238].offset = offsetof(TY145139, Buf);
-TMP103[1238].typ = NTI132;
-TMP103[1238].name = "buf";
-TMP145580[1] = &TMP103[1239];
-TMP103[1239].kind = 1;
-TMP103[1239].offset = offsetof(TY145139, Bufpos);
-TMP103[1239].typ = NTI108;
-TMP103[1239].name = "bufpos";
-TMP145580[2] = &TMP103[1240];
-TMP103[1240].kind = 1;
-TMP103[1240].offset = offsetof(TY145139, Line);
-TMP103[1240].typ = NTI108;
-TMP103[1240].name = "line";
-TMP145580[3] = &TMP103[1241];
-TMP103[1241].kind = 1;
-TMP103[1241].offset = offsetof(TY145139, Col);
-TMP103[1241].typ = NTI108;
-TMP103[1241].name = "col";
-TMP145580[4] = &TMP103[1242];
-TMP103[1242].kind = 1;
-TMP103[1242].offset = offsetof(TY145139, Baseindent);
-TMP103[1242].typ = NTI108;
-TMP103[1242].name = "baseIndent";
-TMP145580[5] = &TMP103[1243];
-TMP103[1243].kind = 1;
-TMP103[1243].offset = offsetof(TY145139, Skippounds);
-TMP103[1243].typ = NTI124;
-TMP103[1243].name = "skipPounds";
-TMP103[1237].len = 6; TMP103[1237].kind = 2; TMP103[1237].sons = &TMP145580[0];
-NTI145139->node = &TMP103[1237];
-NTI145077->size = sizeof(TY145077);
-NTI145077->kind = 40;
-NTI145077->base = 0;
-NTI145077->flags = 2;
-TMP145667[0] = &TMP103[1245];
-NTI145008->size = sizeof(NU8);
-NTI145008->kind = 14;
-NTI145008->base = 0;
-NTI145008->flags = 3;
-for (TMP145670 = 0; TMP145670 < 63; TMP145670++) {
-TMP103[TMP145670+1246].kind = 1;
-TMP103[TMP145670+1246].offset = TMP145670;
-TMP103[TMP145670+1246].name = TMP145669[TMP145670];
-TMP145668[TMP145670] = &TMP103[TMP145670+1246];
+TMP103[1227].offset = offsetof(TY126066, Convmatches);
+TMP103[1227].typ = NTI108;
+TMP103[1227].name = "convMatches";
+TMP128946[4] = &TMP103[1228];
+TMP103[1228].kind = 1;
+TMP103[1228].offset = offsetof(TY126066, Genericmatches);
+TMP103[1228].typ = NTI108;
+TMP103[1228].name = "genericMatches";
+TMP128946[5] = &TMP103[1229];
+NTI126064->size = sizeof(NU8);
+NTI126064->kind = 14;
+NTI126064->base = 0;
+NTI126064->flags = 3;
+for (TMP128949 = 0; TMP128949 < 3; TMP128949++) {
+TMP103[TMP128949+1230].kind = 1;
+TMP103[TMP128949+1230].offset = TMP128949;
+TMP103[TMP128949+1230].name = TMP128948[TMP128949];
+TMP128947[TMP128949] = &TMP103[TMP128949+1230];
 }
-TMP103[1309].len = 63; TMP103[1309].kind = 2; TMP103[1309].sons = &TMP145668[0];
-NTI145008->node = &TMP103[1309];
+TMP103[1233].len = 3; TMP103[1233].kind = 2; TMP103[1233].sons = &TMP128947[0];
+NTI126064->node = &TMP103[1233];
+TMP103[1229].kind = 1;
+TMP103[1229].offset = offsetof(TY126066, State);
+TMP103[1229].typ = NTI126064;
+TMP103[1229].name = "state";
+TMP128946[6] = &TMP103[1234];
+TMP103[1234].kind = 1;
+TMP103[1234].offset = offsetof(TY126066, Callee);
+TMP103[1234].typ = NTI54521;
+TMP103[1234].name = "callee";
+TMP128946[7] = &TMP103[1235];
+TMP103[1235].kind = 1;
+TMP103[1235].offset = offsetof(TY126066, Calleesym);
+TMP103[1235].typ = NTI54523;
+TMP103[1235].name = "calleeSym";
+TMP128946[8] = &TMP103[1236];
+TMP103[1236].kind = 1;
+TMP103[1236].offset = offsetof(TY126066, Call);
+TMP103[1236].typ = NTI54515;
+TMP103[1236].name = "call";
+TMP128946[9] = &TMP103[1237];
+TMP103[1237].kind = 1;
+TMP103[1237].offset = offsetof(TY126066, Bindings);
+TMP103[1237].typ = NTI54563;
+TMP103[1237].name = "bindings";
+TMP128946[10] = &TMP103[1238];
+TMP103[1238].kind = 1;
+TMP103[1238].offset = offsetof(TY126066, Basetypematch);
+TMP103[1238].typ = NTI124;
+TMP103[1238].name = "baseTypeMatch";
+TMP103[1223].len = 11; TMP103[1223].kind = 2; TMP103[1223].sons = &TMP128946[0];
+NTI126066->node = &TMP103[1223];
+NTI146139->size = sizeof(TY146139);
+NTI146139->kind = 17;
+NTI146139->base = NTI408;
+NTI146139->flags = 3;
+TMP146580[0] = &TMP103[1240];
+TMP103[1240].kind = 1;
+TMP103[1240].offset = offsetof(TY146139, Buf);
+TMP103[1240].typ = NTI132;
+TMP103[1240].name = "buf";
+TMP146580[1] = &TMP103[1241];
+TMP103[1241].kind = 1;
+TMP103[1241].offset = offsetof(TY146139, Bufpos);
+TMP103[1241].typ = NTI108;
+TMP103[1241].name = "bufpos";
+TMP146580[2] = &TMP103[1242];
+TMP103[1242].kind = 1;
+TMP103[1242].offset = offsetof(TY146139, Line);
+TMP103[1242].typ = NTI108;
+TMP103[1242].name = "line";
+TMP146580[3] = &TMP103[1243];
+TMP103[1243].kind = 1;
+TMP103[1243].offset = offsetof(TY146139, Col);
+TMP103[1243].typ = NTI108;
+TMP103[1243].name = "col";
+TMP146580[4] = &TMP103[1244];
+TMP103[1244].kind = 1;
+TMP103[1244].offset = offsetof(TY146139, Baseindent);
+TMP103[1244].typ = NTI108;
+TMP103[1244].name = "baseIndent";
+TMP146580[5] = &TMP103[1245];
 TMP103[1245].kind = 1;
-TMP103[1245].offset = offsetof(TY145077, Kind);
-TMP103[1245].typ = NTI145008;
-TMP103[1245].name = "kind";
-TMP145667[1] = &TMP103[1310];
-TMP103[1310].kind = 1;
-TMP103[1310].offset = offsetof(TY145077, Text);
-TMP103[1310].typ = NTI130;
-TMP103[1310].name = "text";
-TMP145667[2] = &TMP103[1311];
-TMP103[1311].kind = 1;
-TMP103[1311].offset = offsetof(TY145077, Level);
-TMP103[1311].typ = NTI108;
-TMP103[1311].name = "level";
-TMP145667[3] = &TMP103[1312];
-NTI145075->size = sizeof(TY145075*);
-NTI145075->kind = 24;
-NTI145075->base = NTI145073;
-NTI145075->flags = 2;
+TMP103[1245].offset = offsetof(TY146139, Skippounds);
+TMP103[1245].typ = NTI124;
+TMP103[1245].name = "skipPounds";
+TMP103[1239].len = 6; TMP103[1239].kind = 2; TMP103[1239].sons = &TMP146580[0];
+NTI146139->node = &TMP103[1239];
+NTI146077->size = sizeof(TY146077);
+NTI146077->kind = 40;
+NTI146077->base = 0;
+NTI146077->flags = 2;
+TMP146667[0] = &TMP103[1247];
+NTI146008->size = sizeof(NU8);
+NTI146008->kind = 14;
+NTI146008->base = 0;
+NTI146008->flags = 3;
+for (TMP146670 = 0; TMP146670 < 63; TMP146670++) {
+TMP103[TMP146670+1248].kind = 1;
+TMP103[TMP146670+1248].offset = TMP146670;
+TMP103[TMP146670+1248].name = TMP146669[TMP146670];
+TMP146668[TMP146670] = &TMP103[TMP146670+1248];
+}
+TMP103[1311].len = 63; TMP103[1311].kind = 2; TMP103[1311].sons = &TMP146668[0];
+NTI146008->node = &TMP103[1311];
+TMP103[1247].kind = 1;
+TMP103[1247].offset = offsetof(TY146077, Kind);
+TMP103[1247].typ = NTI146008;
+TMP103[1247].name = "kind";
+TMP146667[1] = &TMP103[1312];
 TMP103[1312].kind = 1;
-TMP103[1312].offset = offsetof(TY145077, Sons);
-TMP103[1312].typ = NTI145075;
-TMP103[1312].name = "sons";
-TMP103[1244].len = 4; TMP103[1244].kind = 2; TMP103[1244].sons = &TMP145667[0];
-NTI145077->node = &TMP103[1244];
-NTI145073->size = sizeof(TY145077*);
-NTI145073->kind = 22;
-NTI145073->base = NTI145077;
-NTI145073->flags = 2;
-NTI145695->size = sizeof(TY145695);
-NTI145695->kind = 40;
-NTI145695->base = 0;
-NTI145695->flags = 2;
-TMP145769[0] = &TMP103[1314];
+TMP103[1312].offset = offsetof(TY146077, Text);
+TMP103[1312].typ = NTI130;
+TMP103[1312].name = "text";
+TMP146667[2] = &TMP103[1313];
+TMP103[1313].kind = 1;
+TMP103[1313].offset = offsetof(TY146077, Level);
+TMP103[1313].typ = NTI108;
+TMP103[1313].name = "level";
+TMP146667[3] = &TMP103[1314];
+NTI146075->size = sizeof(TY146075*);
+NTI146075->kind = 24;
+NTI146075->base = NTI146073;
+NTI146075->flags = 2;
 TMP103[1314].kind = 1;
-TMP103[1314].offset = offsetof(TY145695, Ulevel);
-TMP103[1314].typ = NTI108;
-TMP103[1314].name = "uLevel";
-TMP145769[1] = &TMP103[1315];
-TMP103[1315].kind = 1;
-TMP103[1315].offset = offsetof(TY145695, Olevel);
-TMP103[1315].typ = NTI108;
-TMP103[1315].name = "oLevel";
-TMP145769[2] = &TMP103[1316];
-NTI145693->size = sizeof(TY145693);
-NTI145693->kind = 40;
-NTI145693->base = 0;
-NTI145693->flags = 2;
-TMP145770[0] = &TMP103[1318];
-TMP103[1318].kind = 1;
-TMP103[1318].offset = offsetof(TY145693, Key);
-TMP103[1318].typ = NTI130;
-TMP103[1318].name = "key";
-TMP145770[1] = &TMP103[1319];
-TMP103[1319].kind = 1;
-TMP103[1319].offset = offsetof(TY145693, Value);
-TMP103[1319].typ = NTI145073;
-TMP103[1319].name = "value";
-TMP103[1317].len = 2; TMP103[1317].kind = 2; TMP103[1317].sons = &TMP145770[0];
-NTI145693->node = &TMP103[1317];
-NTI145704->size = sizeof(TY145704*);
-NTI145704->kind = 24;
-NTI145704->base = NTI145693;
-NTI145704->flags = 2;
+TMP103[1314].offset = offsetof(TY146077, Sons);
+TMP103[1314].typ = NTI146075;
+TMP103[1314].name = "sons";
+TMP103[1246].len = 4; TMP103[1246].kind = 2; TMP103[1246].sons = &TMP146667[0];
+NTI146077->node = &TMP103[1246];
+NTI146073->size = sizeof(TY146077*);
+NTI146073->kind = 22;
+NTI146073->base = NTI146077;
+NTI146073->flags = 2;
+NTI146695->size = sizeof(TY146695);
+NTI146695->kind = 40;
+NTI146695->base = 0;
+NTI146695->flags = 2;
+TMP146769[0] = &TMP103[1316];
 TMP103[1316].kind = 1;
-TMP103[1316].offset = offsetof(TY145695, Subs);
-TMP103[1316].typ = NTI145704;
-TMP103[1316].name = "subs";
-TMP145769[3] = &TMP103[1320];
+TMP103[1316].offset = offsetof(TY146695, Ulevel);
+TMP103[1316].typ = NTI108;
+TMP103[1316].name = "uLevel";
+TMP146769[1] = &TMP103[1317];
+TMP103[1317].kind = 1;
+TMP103[1317].offset = offsetof(TY146695, Olevel);
+TMP103[1317].typ = NTI108;
+TMP103[1317].name = "oLevel";
+TMP146769[2] = &TMP103[1318];
+NTI146693->size = sizeof(TY146693);
+NTI146693->kind = 40;
+NTI146693->base = 0;
+NTI146693->flags = 2;
+TMP146770[0] = &TMP103[1320];
 TMP103[1320].kind = 1;
-TMP103[1320].offset = offsetof(TY145695, Refs);
-TMP103[1320].typ = NTI145704;
-TMP103[1320].name = "refs";
-TMP145769[4] = &TMP103[1321];
+TMP103[1320].offset = offsetof(TY146693, Key);
+TMP103[1320].typ = NTI130;
+TMP103[1320].name = "key";
+TMP146770[1] = &TMP103[1321];
+TMP103[1321].kind = 1;
+TMP103[1321].offset = offsetof(TY146693, Value);
+TMP103[1321].typ = NTI146073;
+TMP103[1321].name = "value";
+TMP103[1319].len = 2; TMP103[1319].kind = 2; TMP103[1319].sons = &TMP146770[0];
+NTI146693->node = &TMP103[1319];
+NTI146704->size = sizeof(TY146704*);
+NTI146704->kind = 24;
+NTI146704->base = NTI146693;
+NTI146704->flags = 2;
+TMP103[1318].kind = 1;
+TMP103[1318].offset = offsetof(TY146695, Subs);
+TMP103[1318].typ = NTI146704;
+TMP103[1318].name = "subs";
+TMP146769[3] = &TMP103[1322];
+TMP103[1322].kind = 1;
+TMP103[1322].offset = offsetof(TY146695, Refs);
+TMP103[1322].typ = NTI146704;
+TMP103[1322].name = "refs";
+TMP146769[4] = &TMP103[1323];
 NTI25135->size = sizeof(TY25135);
 NTI25135->kind = 16;
 NTI25135->base = NTI108;
 NTI25135->flags = 3;
-TMP103[1321].kind = 1;
-TMP103[1321].offset = offsetof(TY145695, Underlinetolevel);
-TMP103[1321].typ = NTI25135;
-TMP103[1321].name = "underlineToLevel";
-TMP145769[5] = &TMP103[1322];
-TMP103[1322].kind = 1;
-TMP103[1322].offset = offsetof(TY145695, Overlinetolevel);
-TMP103[1322].typ = NTI25135;
-TMP103[1322].name = "overlineToLevel";
-TMP103[1313].len = 6; TMP103[1313].kind = 2; TMP103[1313].sons = &TMP145769[0];
-NTI145695->node = &TMP103[1313];
-NTI145697->size = sizeof(TY145695*);
-NTI145697->kind = 22;
-NTI145697->base = NTI145695;
-NTI145697->flags = 2;
-NTI145135->size = sizeof(TY145135);
-NTI145135->kind = 40;
-NTI145135->base = 0;
-NTI145135->flags = 2;
-TMP145885[0] = &TMP103[1324];
-NTI145133->size = sizeof(NU8);
-NTI145133->kind = 14;
-NTI145133->base = 0;
-NTI145133->flags = 3;
-for (TMP145888 = 0; TMP145888 < 7; TMP145888++) {
-TMP103[TMP145888+1325].kind = 1;
-TMP103[TMP145888+1325].offset = TMP145888;
-TMP103[TMP145888+1325].name = TMP145887[TMP145888];
-TMP145886[TMP145888] = &TMP103[TMP145888+1325];
-}
-TMP103[1332].len = 7; TMP103[1332].kind = 2; TMP103[1332].sons = &TMP145886[0];
-NTI145133->node = &TMP103[1332];
+TMP103[1323].kind = 1;
+TMP103[1323].offset = offsetof(TY146695, Underlinetolevel);
+TMP103[1323].typ = NTI25135;
+TMP103[1323].name = "underlineToLevel";
+TMP146769[5] = &TMP103[1324];
 TMP103[1324].kind = 1;
-TMP103[1324].offset = offsetof(TY145135, Kind);
-TMP103[1324].typ = NTI145133;
-TMP103[1324].name = "kind";
-TMP145885[1] = &TMP103[1333];
-TMP103[1333].kind = 1;
-TMP103[1333].offset = offsetof(TY145135, Ival);
-TMP103[1333].typ = NTI108;
-TMP103[1333].name = "ival";
-TMP145885[2] = &TMP103[1334];
-TMP103[1334].kind = 1;
-TMP103[1334].offset = offsetof(TY145135, Symbol);
-TMP103[1334].typ = NTI130;
-TMP103[1334].name = "symbol";
-TMP145885[3] = &TMP103[1335];
+TMP103[1324].offset = offsetof(TY146695, Overlinetolevel);
+TMP103[1324].typ = NTI25135;
+TMP103[1324].name = "overlineToLevel";
+TMP103[1315].len = 6; TMP103[1315].kind = 2; TMP103[1315].sons = &TMP146769[0];
+NTI146695->node = &TMP103[1315];
+NTI146697->size = sizeof(TY146695*);
+NTI146697->kind = 22;
+NTI146697->base = NTI146695;
+NTI146697->flags = 2;
+NTI146135->size = sizeof(TY146135);
+NTI146135->kind = 40;
+NTI146135->base = 0;
+NTI146135->flags = 2;
+TMP146885[0] = &TMP103[1326];
+NTI146133->size = sizeof(NU8);
+NTI146133->kind = 14;
+NTI146133->base = 0;
+NTI146133->flags = 3;
+for (TMP146888 = 0; TMP146888 < 7; TMP146888++) {
+TMP103[TMP146888+1327].kind = 1;
+TMP103[TMP146888+1327].offset = TMP146888;
+TMP103[TMP146888+1327].name = TMP146887[TMP146888];
+TMP146886[TMP146888] = &TMP103[TMP146888+1327];
+}
+TMP103[1334].len = 7; TMP103[1334].kind = 2; TMP103[1334].sons = &TMP146886[0];
+NTI146133->node = &TMP103[1334];
+TMP103[1326].kind = 1;
+TMP103[1326].offset = offsetof(TY146135, Kind);
+TMP103[1326].typ = NTI146133;
+TMP103[1326].name = "kind";
+TMP146885[1] = &TMP103[1335];
 TMP103[1335].kind = 1;
-TMP103[1335].offset = offsetof(TY145135, Line);
+TMP103[1335].offset = offsetof(TY146135, Ival);
 TMP103[1335].typ = NTI108;
-TMP103[1335].name = "line";
-TMP145885[4] = &TMP103[1336];
+TMP103[1335].name = "ival";
+TMP146885[2] = &TMP103[1336];
 TMP103[1336].kind = 1;
-TMP103[1336].offset = offsetof(TY145135, Col);
-TMP103[1336].typ = NTI108;
-TMP103[1336].name = "col";
-TMP103[1323].len = 5; TMP103[1323].kind = 2; TMP103[1323].sons = &TMP145885[0];
-NTI145135->node = &TMP103[1323];
-NTI145137->size = sizeof(TY145137*);
-NTI145137->kind = 24;
-NTI145137->base = NTI145135;
-NTI145137->flags = 2;
-NTI145699->size = sizeof(TY145699);
-NTI145699->kind = 17;
-NTI145699->base = NTI408;
-NTI145699->flags = 2;
-TMP148485[0] = &TMP103[1338];
+TMP103[1336].offset = offsetof(TY146135, Symbol);
+TMP103[1336].typ = NTI130;
+TMP103[1336].name = "symbol";
+TMP146885[3] = &TMP103[1337];
+TMP103[1337].kind = 1;
+TMP103[1337].offset = offsetof(TY146135, Line);
+TMP103[1337].typ = NTI108;
+TMP103[1337].name = "line";
+TMP146885[4] = &TMP103[1338];
 TMP103[1338].kind = 1;
-TMP103[1338].offset = offsetof(TY145699, Idx);
+TMP103[1338].offset = offsetof(TY146135, Col);
 TMP103[1338].typ = NTI108;
-TMP103[1338].name = "idx";
-TMP148485[1] = &TMP103[1339];
-TMP103[1339].kind = 1;
-TMP103[1339].offset = offsetof(TY145699, Tok);
-TMP103[1339].typ = NTI145137;
-TMP103[1339].name = "tok";
-TMP148485[2] = &TMP103[1340];
+TMP103[1338].name = "col";
+TMP103[1325].len = 5; TMP103[1325].kind = 2; TMP103[1325].sons = &TMP146885[0];
+NTI146135->node = &TMP103[1325];
+NTI146137->size = sizeof(TY146137*);
+NTI146137->kind = 24;
+NTI146137->base = NTI146135;
+NTI146137->flags = 2;
+NTI146699->size = sizeof(TY146699);
+NTI146699->kind = 17;
+NTI146699->base = NTI408;
+NTI146699->flags = 2;
+TMP149485[0] = &TMP103[1340];
 TMP103[1340].kind = 1;
-TMP103[1340].offset = offsetof(TY145699, S);
-TMP103[1340].typ = NTI145697;
-TMP103[1340].name = "s";
-TMP148485[3] = &TMP103[1341];
+TMP103[1340].offset = offsetof(TY146699, Idx);
+TMP103[1340].typ = NTI108;
+TMP103[1340].name = "idx";
+TMP149485[1] = &TMP103[1341];
 TMP103[1341].kind = 1;
-TMP103[1341].offset = offsetof(TY145699, Indentstack);
-TMP103[1341].typ = NTI74434;
-TMP103[1341].name = "indentStack";
-TMP148485[4] = &TMP103[1342];
+TMP103[1341].offset = offsetof(TY146699, Tok);
+TMP103[1341].typ = NTI146137;
+TMP103[1341].name = "tok";
+TMP149485[2] = &TMP103[1342];
 TMP103[1342].kind = 1;
-TMP103[1342].offset = offsetof(TY145699, Filename);
-TMP103[1342].typ = NTI130;
-TMP103[1342].name = "filename";
-TMP148485[5] = &TMP103[1343];
+TMP103[1342].offset = offsetof(TY146699, S);
+TMP103[1342].typ = NTI146697;
+TMP103[1342].name = "s";
+TMP149485[3] = &TMP103[1343];
 TMP103[1343].kind = 1;
-TMP103[1343].offset = offsetof(TY145699, Line);
-TMP103[1343].typ = NTI108;
-TMP103[1343].name = "line";
-TMP148485[6] = &TMP103[1344];
+TMP103[1343].offset = offsetof(TY146699, Indentstack);
+TMP103[1343].typ = NTI75434;
+TMP103[1343].name = "indentStack";
+TMP149485[4] = &TMP103[1344];
 TMP103[1344].kind = 1;
-TMP103[1344].offset = offsetof(TY145699, Col);
-TMP103[1344].typ = NTI108;
-TMP103[1344].name = "col";
-TMP148485[7] = &TMP103[1345];
+TMP103[1344].offset = offsetof(TY146699, Filename);
+TMP103[1344].typ = NTI130;
+TMP103[1344].name = "filename";
+TMP149485[5] = &TMP103[1345];
 TMP103[1345].kind = 1;
-TMP103[1345].offset = offsetof(TY145699, Hastoc);
-TMP103[1345].typ = NTI124;
-TMP103[1345].name = "hasToc";
-TMP103[1337].len = 8; TMP103[1337].kind = 2; TMP103[1337].sons = &TMP148485[0];
-NTI145699->node = &TMP103[1337];
-NTI153017->size = sizeof(TY153017);
-NTI153017->kind = 40;
-NTI153017->base = 0;
-NTI153017->flags = 2;
-TMP153201[0] = &TMP103[1347];
+TMP103[1345].offset = offsetof(TY146699, Line);
+TMP103[1345].typ = NTI108;
+TMP103[1345].name = "line";
+TMP149485[6] = &TMP103[1346];
+TMP103[1346].kind = 1;
+TMP103[1346].offset = offsetof(TY146699, Col);
+TMP103[1346].typ = NTI108;
+TMP103[1346].name = "col";
+TMP149485[7] = &TMP103[1347];
 TMP103[1347].kind = 1;
-TMP103[1347].offset = offsetof(TY153017, Filename);
-TMP103[1347].typ = NTI130;
-TMP103[1347].name = "filename";
-TMP153201[1] = &TMP103[1348];
-TMP103[1348].kind = 1;
-TMP103[1348].offset = offsetof(TY153017, Basedir);
-TMP103[1348].typ = NTI130;
-TMP103[1348].name = "basedir";
-TMP153201[2] = &TMP103[1349];
+TMP103[1347].offset = offsetof(TY146699, Hastoc);
+TMP103[1347].typ = NTI124;
+TMP103[1347].name = "hasToc";
+TMP103[1339].len = 8; TMP103[1339].kind = 2; TMP103[1339].sons = &TMP149485[0];
+NTI146699->node = &TMP103[1339];
+NTI154017->size = sizeof(TY154017);
+NTI154017->kind = 40;
+NTI154017->base = 0;
+NTI154017->flags = 2;
+TMP154201[0] = &TMP103[1349];
 TMP103[1349].kind = 1;
-TMP103[1349].offset = offsetof(TY153017, Moddesc);
-TMP103[1349].typ = NTI51006;
-TMP103[1349].name = "modDesc";
-TMP153201[3] = &TMP103[1350];
+TMP103[1349].offset = offsetof(TY154017, Filename);
+TMP103[1349].typ = NTI130;
+TMP103[1349].name = "filename";
+TMP154201[1] = &TMP103[1350];
 TMP103[1350].kind = 1;
-TMP103[1350].offset = offsetof(TY153017, Dependson);
-TMP103[1350].typ = NTI51006;
-TMP103[1350].name = "dependsOn";
-TMP153201[4] = &TMP103[1351];
+TMP103[1350].offset = offsetof(TY154017, Basedir);
+TMP103[1350].typ = NTI130;
+TMP103[1350].name = "basedir";
+TMP154201[2] = &TMP103[1351];
 TMP103[1351].kind = 1;
-TMP103[1351].offset = offsetof(TY153017, Id);
-TMP103[1351].typ = NTI108;
-TMP103[1351].name = "id";
-TMP153201[5] = &TMP103[1352];
+TMP103[1351].offset = offsetof(TY154017, Moddesc);
+TMP103[1351].typ = NTI51006;
+TMP103[1351].name = "modDesc";
+TMP154201[3] = &TMP103[1352];
 TMP103[1352].kind = 1;
-TMP103[1352].offset = offsetof(TY153017, Splitafter);
-TMP103[1352].typ = NTI108;
-TMP103[1352].name = "splitAfter";
-TMP153201[6] = &TMP103[1353];
-NTI153011->size = sizeof(TY153011);
-NTI153011->kind = 40;
-NTI153011->base = 0;
-NTI153011->flags = 2;
-TMP153202[0] = &TMP103[1355];
-TMP103[1355].kind = 1;
-TMP103[1355].offset = offsetof(TY153011, N);
-TMP103[1355].typ = NTI145073;
-TMP103[1355].name = "n";
-TMP153202[1] = &TMP103[1356];
-TMP103[1356].kind = 1;
-TMP103[1356].offset = offsetof(TY153011, Refname);
-TMP103[1356].typ = NTI51006;
-TMP103[1356].name = "refname";
-TMP153202[2] = &TMP103[1357];
-TMP103[1357].kind = 1;
-TMP103[1357].offset = offsetof(TY153011, Header);
-TMP103[1357].typ = NTI51006;
-TMP103[1357].name = "header";
-TMP103[1354].len = 3; TMP103[1354].kind = 2; TMP103[1354].sons = &TMP153202[0];
-NTI153011->node = &TMP103[1354];
-NTI153034->size = sizeof(TY153034*);
-NTI153034->kind = 24;
-NTI153034->base = NTI153011;
-NTI153034->flags = 2;
+TMP103[1352].offset = offsetof(TY154017, Dependson);
+TMP103[1352].typ = NTI51006;
+TMP103[1352].name = "dependsOn";
+TMP154201[4] = &TMP103[1353];
 TMP103[1353].kind = 1;
-TMP103[1353].offset = offsetof(TY153017, Tocpart);
-TMP103[1353].typ = NTI153034;
-TMP103[1353].name = "tocPart";
-TMP153201[7] = &TMP103[1358];
+TMP103[1353].offset = offsetof(TY154017, Id);
+TMP103[1353].typ = NTI108;
+TMP103[1353].name = "id";
+TMP154201[5] = &TMP103[1354];
+TMP103[1354].kind = 1;
+TMP103[1354].offset = offsetof(TY154017, Splitafter);
+TMP103[1354].typ = NTI108;
+TMP103[1354].name = "splitAfter";
+TMP154201[6] = &TMP103[1355];
+NTI154011->size = sizeof(TY154011);
+NTI154011->kind = 40;
+NTI154011->base = 0;
+NTI154011->flags = 2;
+TMP154202[0] = &TMP103[1357];
+TMP103[1357].kind = 1;
+TMP103[1357].offset = offsetof(TY154011, N);
+TMP103[1357].typ = NTI146073;
+TMP103[1357].name = "n";
+TMP154202[1] = &TMP103[1358];
 TMP103[1358].kind = 1;
-TMP103[1358].offset = offsetof(TY153017, Hastoc);
-TMP103[1358].typ = NTI124;
-TMP103[1358].name = "hasToc";
-TMP153201[8] = &TMP103[1359];
-NTI153013->size = sizeof(TY153013);
-NTI153013->kind = 16;
-NTI153013->base = NTI51006;
-NTI153013->flags = 2;
+TMP103[1358].offset = offsetof(TY154011, Refname);
+TMP103[1358].typ = NTI51006;
+TMP103[1358].name = "refname";
+TMP154202[2] = &TMP103[1359];
 TMP103[1359].kind = 1;
-TMP103[1359].offset = offsetof(TY153017, Toc);
-TMP103[1359].typ = NTI153013;
-TMP103[1359].name = "toc";
-TMP153201[9] = &TMP103[1360];
+TMP103[1359].offset = offsetof(TY154011, Header);
+TMP103[1359].typ = NTI51006;
+TMP103[1359].name = "header";
+TMP103[1356].len = 3; TMP103[1356].kind = 2; TMP103[1356].sons = &TMP154202[0];
+NTI154011->node = &TMP103[1356];
+NTI154034->size = sizeof(TY154034*);
+NTI154034->kind = 24;
+NTI154034->base = NTI154011;
+NTI154034->flags = 2;
+TMP103[1355].kind = 1;
+TMP103[1355].offset = offsetof(TY154017, Tocpart);
+TMP103[1355].typ = NTI154034;
+TMP103[1355].name = "tocPart";
+TMP154201[7] = &TMP103[1360];
 TMP103[1360].kind = 1;
-TMP103[1360].offset = offsetof(TY153017, Section);
-TMP103[1360].typ = NTI153013;
-TMP103[1360].name = "section";
-TMP153201[10] = &TMP103[1361];
+TMP103[1360].offset = offsetof(TY154017, Hastoc);
+TMP103[1360].typ = NTI124;
+TMP103[1360].name = "hasToc";
+TMP154201[8] = &TMP103[1361];
+NTI154013->size = sizeof(TY154013);
+NTI154013->kind = 16;
+NTI154013->base = NTI51006;
+NTI154013->flags = 2;
 TMP103[1361].kind = 1;
-TMP103[1361].offset = offsetof(TY153017, Indexfile);
-TMP103[1361].typ = NTI145073;
-TMP103[1361].name = "indexFile";
-TMP153201[11] = &TMP103[1362];
+TMP103[1361].offset = offsetof(TY154017, Toc);
+TMP103[1361].typ = NTI154013;
+TMP103[1361].name = "toc";
+TMP154201[9] = &TMP103[1362];
 TMP103[1362].kind = 1;
-TMP103[1362].offset = offsetof(TY153017, Theindex);
-TMP103[1362].typ = NTI145073;
-TMP103[1362].name = "theIndex";
-TMP153201[12] = &TMP103[1363];
+TMP103[1362].offset = offsetof(TY154017, Section);
+TMP103[1362].typ = NTI154013;
+TMP103[1362].name = "section";
+TMP154201[10] = &TMP103[1363];
 TMP103[1363].kind = 1;
-TMP103[1363].offset = offsetof(TY153017, Indexvalfilename);
-TMP103[1363].typ = NTI130;
-TMP103[1363].name = "indexValFilename";
-TMP153201[13] = &TMP103[1364];
+TMP103[1363].offset = offsetof(TY154017, Indexfile);
+TMP103[1363].typ = NTI146073;
+TMP103[1363].name = "indexFile";
+TMP154201[11] = &TMP103[1364];
 TMP103[1364].kind = 1;
-TMP103[1364].offset = offsetof(TY153017, Indent);
-TMP103[1364].typ = NTI108;
-TMP103[1364].name = "indent";
-TMP153201[14] = &TMP103[1365];
+TMP103[1364].offset = offsetof(TY154017, Theindex);
+TMP103[1364].typ = NTI146073;
+TMP103[1364].name = "theIndex";
+TMP154201[12] = &TMP103[1365];
 TMP103[1365].kind = 1;
-TMP103[1365].offset = offsetof(TY153017, Verbatim);
-TMP103[1365].typ = NTI108;
-TMP103[1365].name = "verbatim";
-TMP153201[15] = &TMP103[1366];
-NTI153044->size = sizeof(TY153044);
-NTI153044->kind = 16;
-NTI153044->base = NTI51006;
-NTI153044->flags = 2;
+TMP103[1365].offset = offsetof(TY154017, Indexvalfilename);
+TMP103[1365].typ = NTI130;
+TMP103[1365].name = "indexValFilename";
+TMP154201[13] = &TMP103[1366];
 TMP103[1366].kind = 1;
-TMP103[1366].offset = offsetof(TY153017, Meta);
-TMP103[1366].typ = NTI153044;
-TMP103[1366].name = "meta";
-TMP103[1346].len = 16; TMP103[1346].kind = 2; TMP103[1346].sons = &TMP153201[0];
-NTI153017->node = &TMP103[1346];
-NTI153019->size = sizeof(TY153017*);
-NTI153019->kind = 22;
-NTI153019->base = NTI153017;
-NTI153019->flags = 2;
-NTI150007->size = sizeof(TY150007);
-NTI150007->kind = 17;
-NTI150007->base = NTI408;
-NTI150007->flags = 3;
-TMP154950[0] = &TMP103[1368];
-NTI150005->size = sizeof(NU8);
-NTI150005->kind = 14;
-NTI150005->base = 0;
-NTI150005->flags = 3;
-for (TMP154953 = 0; TMP154953 < 33; TMP154953++) {
-TMP103[TMP154953+1369].kind = 1;
-TMP103[TMP154953+1369].offset = TMP154953;
-TMP103[TMP154953+1369].name = TMP154952[TMP154953];
-TMP154951[TMP154953] = &TMP103[TMP154953+1369];
-}
-TMP103[1402].len = 33; TMP103[1402].kind = 2; TMP103[1402].sons = &TMP154951[0];
-NTI150005->node = &TMP103[1402];
+TMP103[1366].offset = offsetof(TY154017, Indent);
+TMP103[1366].typ = NTI108;
+TMP103[1366].name = "indent";
+TMP154201[14] = &TMP103[1367];
+TMP103[1367].kind = 1;
+TMP103[1367].offset = offsetof(TY154017, Verbatim);
+TMP103[1367].typ = NTI108;
+TMP103[1367].name = "verbatim";
+TMP154201[15] = &TMP103[1368];
+NTI154044->size = sizeof(TY154044);
+NTI154044->kind = 16;
+NTI154044->base = NTI51006;
+NTI154044->flags = 2;
 TMP103[1368].kind = 1;
-TMP103[1368].offset = offsetof(TY150007, Kind);
-TMP103[1368].typ = NTI150005;
-TMP103[1368].name = "kind";
-TMP154950[1] = &TMP103[1403];
-TMP103[1403].kind = 1;
-TMP103[1403].offset = offsetof(TY150007, Start);
-TMP103[1403].typ = NTI108;
-TMP103[1403].name = "start";
-TMP154950[2] = &TMP103[1404];
-TMP103[1404].kind = 1;
-TMP103[1404].offset = offsetof(TY150007, Length);
-TMP103[1404].typ = NTI108;
-TMP103[1404].name = "length";
-TMP154950[3] = &TMP103[1405];
-TMP103[1405].kind = 1;
-TMP103[1405].offset = offsetof(TY150007, Buf);
-TMP103[1405].typ = NTI132;
-TMP103[1405].name = "buf";
-TMP154950[4] = &TMP103[1406];
-TMP103[1406].kind = 1;
-TMP103[1406].offset = offsetof(TY150007, Pos);
-TMP103[1406].typ = NTI108;
-TMP103[1406].name = "pos";
-TMP154950[5] = &TMP103[1407];
-TMP103[1407].kind = 1;
-TMP103[1407].offset = offsetof(TY150007, State);
-TMP103[1407].typ = NTI150005;
-TMP103[1407].name = "state";
-TMP103[1367].len = 6; TMP103[1367].kind = 2; TMP103[1367].sons = &TMP154950[0];
-NTI150007->node = &TMP103[1367];
-NTI157172->size = sizeof(TY157172*);
-NTI157172->kind = 24;
-NTI157172->base = NTI54525;
-NTI157172->flags = 2;
-NTI158226->size = sizeof(TY158226);
-NTI158226->kind = 17;
-NTI158226->base = NTI102002;
-TMP158328[0] = &TMP103[1409];
-TMP103[1409].kind = 1;
-TMP103[1409].offset = offsetof(TY158226, Module);
-TMP103[1409].typ = NTI54521;
-TMP103[1409].name = "module";
-TMP158328[1] = &TMP103[1410];
-TMP103[1410].kind = 1;
-TMP103[1410].offset = offsetof(TY158226, Filename);
-TMP103[1410].typ = NTI130;
-TMP103[1410].name = "filename";
-TMP158328[2] = &TMP103[1411];
-NTI158210->size = sizeof(TY158210);
-NTI158210->kind = 16;
-NTI158210->base = NTI51006;
-NTI158210->flags = 2;
-TMP103[1411].kind = 1;
-TMP103[1411].offset = offsetof(TY158226, S);
-TMP103[1411].typ = NTI158210;
-TMP103[1411].name = "s";
-TMP158328[3] = &TMP103[1412];
-TMP103[1412].kind = 1;
-TMP103[1412].offset = offsetof(TY158226, Cfilename);
-TMP103[1412].typ = NTI130;
-TMP103[1412].name = "cfilename";
-TMP158328[4] = &TMP103[1413];
-TMP103[1413].kind = 1;
-TMP103[1413].offset = offsetof(TY158226, Typecache);
-TMP103[1413].typ = NTI54561;
-TMP103[1413].name = "typeCache";
-TMP158328[5] = &TMP103[1414];
-TMP103[1414].kind = 1;
-TMP103[1414].offset = offsetof(TY158226, Forwtypecache);
-TMP103[1414].typ = NTI54561;
-TMP103[1414].name = "forwTypeCache";
-TMP158328[6] = &TMP103[1415];
-TMP103[1415].kind = 1;
-TMP103[1415].offset = offsetof(TY158226, Declaredthings);
-TMP103[1415].typ = NTI54898;
-TMP103[1415].name = "declaredThings";
-TMP158328[7] = &TMP103[1416];
-TMP103[1416].kind = 1;
-TMP103[1416].offset = offsetof(TY158226, Declaredprotos);
-TMP103[1416].typ = NTI54898;
-TMP103[1416].name = "declaredProtos";
-TMP158328[8] = &TMP103[1417];
-TMP103[1417].kind = 1;
-TMP103[1417].offset = offsetof(TY158226, Headerfiles);
-TMP103[1417].typ = NTI42019;
-TMP103[1417].name = "headerFiles";
-TMP158328[9] = &TMP103[1418];
-TMP103[1418].kind = 1;
-TMP103[1418].offset = offsetof(TY158226, Typeinfomarker);
-TMP103[1418].typ = NTI54898;
-TMP103[1418].name = "typeInfoMarker";
-TMP158328[10] = &TMP103[1419];
-NTI158222->size = sizeof(TY158222);
-NTI158222->kind = 40;
-NTI158222->base = 0;
-TMP158329[0] = &TMP103[1421];
-NTI158214->size = sizeof(TY158214);
-NTI158214->kind = 16;
-NTI158214->base = NTI51006;
-NTI158214->flags = 2;
-TMP103[1421].kind = 1;
-TMP103[1421].offset = offsetof(TY158222, S);
-TMP103[1421].typ = NTI158214;
-TMP103[1421].name = "s";
-TMP158329[1] = &TMP103[1422];
-TMP103[1422].kind = 1;
-TMP103[1422].offset = offsetof(TY158222, Prc);
-TMP103[1422].typ = NTI54521;
-TMP103[1422].name = "prc";
-TMP158329[2] = &TMP103[1423];
-TMP103[1423].kind = 1;
-TMP103[1423].offset = offsetof(TY158222, Beforeretneeded);
-TMP103[1423].typ = NTI124;
-TMP103[1423].name = "BeforeRetNeeded";
-TMP158329[3] = &TMP103[1424];
-TMP103[1424].kind = 1;
-TMP103[1424].offset = offsetof(TY158222, Nestedtrystmts);
-TMP103[1424].typ = NTI404;
-TMP103[1424].name = "nestedTryStmts";
-TMP158329[4] = &TMP103[1425];
-TMP103[1425].kind = 1;
-TMP103[1425].offset = offsetof(TY158222, Labels);
-TMP103[1425].typ = NTI404;
-TMP103[1425].name = "labels";
-TMP158329[5] = &TMP103[1426];
-NTI158220->size = sizeof(TY158220);
-NTI158220->kind = 40;
-NTI158220->base = 0;
-NTI158220->flags = 3;
-TMP158330[0] = &TMP103[1428];
-TMP103[1428].kind = 1;
-TMP103[1428].offset = offsetof(TY158220, Id);
-TMP103[1428].typ = NTI108;
-TMP103[1428].name = "id";
-TMP158330[1] = &TMP103[1429];
-TMP103[1429].kind = 1;
-TMP103[1429].offset = offsetof(TY158220, Nestedtrystmts);
-TMP103[1429].typ = NTI108;
-TMP103[1429].name = "nestedTryStmts";
-TMP103[1427].len = 2; TMP103[1427].kind = 2; TMP103[1427].sons = &TMP158330[0];
-NTI158220->node = &TMP103[1427];
-NTI158277->size = sizeof(TY158277*);
-NTI158277->kind = 24;
-NTI158277->base = NTI158220;
-NTI158277->flags = 2;
-TMP103[1426].kind = 1;
-TMP103[1426].offset = offsetof(TY158222, Blocks);
-TMP103[1426].typ = NTI158277;
-TMP103[1426].name = "blocks";
-TMP158329[6] = &TMP103[1430];
-TMP103[1430].kind = 1;
-TMP103[1430].offset = offsetof(TY158222, Options);
-TMP103[1430].typ = NTI45073;
-TMP103[1430].name = "options";
-TMP158329[7] = &TMP103[1431];
-TMP103[1431].kind = 1;
-TMP103[1431].offset = offsetof(TY158222, Framelen);
-TMP103[1431].typ = NTI108;
-TMP103[1431].name = "frameLen";
-TMP158329[8] = &TMP103[1432];
-TMP103[1432].kind = 1;
-TMP103[1432].offset = offsetof(TY158222, Sendclosure);
-TMP103[1432].typ = NTI54519;
-TMP103[1432].name = "sendClosure";
-TMP158329[9] = &TMP103[1433];
-TMP103[1433].kind = 1;
-TMP103[1433].offset = offsetof(TY158222, Receiveclosure);
-TMP103[1433].typ = NTI54519;
-TMP103[1433].name = "receiveClosure";
-TMP158329[10] = &TMP103[1434];
-TMP103[1434].kind = 1;
-TMP103[1434].offset = offsetof(TY158222, Module);
-TMP103[1434].typ = NTI158216;
-TMP103[1434].name = "module";
-TMP103[1420].len = 11; TMP103[1420].kind = 2; TMP103[1420].sons = &TMP158329[0];
-NTI158222->node = &TMP103[1420];
-NTI158218->size = sizeof(TY158222*);
-NTI158218->kind = 22;
-NTI158218->base = NTI158222;
-TMP103[1419].kind = 1;
-TMP103[1419].offset = offsetof(TY158226, Initproc);
-TMP103[1419].typ = NTI158218;
-TMP103[1419].name = "initProc";
-TMP158328[11] = &TMP103[1435];
-TMP103[1435].kind = 1;
-TMP103[1435].offset = offsetof(TY158226, Typestack);
-TMP103[1435].typ = NTI54547;
-TMP103[1435].name = "typeStack";
-TMP158328[12] = &TMP103[1436];
-NTI54573->size = sizeof(TY54573);
-NTI54573->kind = 40;
-NTI54573->base = 0;
-NTI54573->flags = 2;
-TMP158331[0] = &TMP103[1438];
-TMP103[1438].kind = 1;
-TMP103[1438].offset = offsetof(TY54573, Counter);
-TMP103[1438].typ = NTI108;
-TMP103[1438].name = "counter";
-TMP158331[1] = &TMP103[1439];
-TMP103[1439].kind = 1;
-TMP103[1439].offset = offsetof(TY54573, Data);
-TMP103[1439].typ = NTI54571;
-TMP103[1439].name = "data";
-TMP103[1437].len = 2; TMP103[1437].kind = 2; TMP103[1437].sons = &TMP158331[0];
-NTI54573->node = &TMP103[1437];
-TMP103[1436].kind = 1;
-TMP103[1436].offset = offsetof(TY158226, Datacache);
-TMP103[1436].typ = NTI54573;
-TMP103[1436].name = "dataCache";
-TMP158328[13] = &TMP103[1440];
-TMP103[1440].kind = 1;
-TMP103[1440].offset = offsetof(TY158226, Forwardedprocs);
-TMP103[1440].typ = NTI54525;
-TMP103[1440].name = "forwardedProcs";
-TMP158328[14] = &TMP103[1441];
-TMP103[1441].kind = 1;
-TMP103[1441].offset = offsetof(TY158226, Typenodes);
-TMP103[1441].typ = NTI108;
-TMP103[1441].name = "typeNodes";
-TMP158328[15] = &TMP103[1442];
-TMP103[1442].kind = 1;
-TMP103[1442].offset = offsetof(TY158226, Nimtypes);
-TMP103[1442].typ = NTI108;
-TMP103[1442].name = "nimTypes";
-TMP158328[16] = &TMP103[1443];
-TMP103[1443].kind = 1;
-TMP103[1443].offset = offsetof(TY158226, Typenodesname);
-TMP103[1443].typ = NTI51006;
-TMP103[1443].name = "typeNodesName";
-TMP158328[17] = &TMP103[1444];
-TMP103[1444].kind = 1;
-TMP103[1444].offset = offsetof(TY158226, Nimtypesname);
-TMP103[1444].typ = NTI51006;
-TMP103[1444].name = "nimTypesName";
-TMP158328[18] = &TMP103[1445];
-TMP103[1445].kind = 1;
-TMP103[1445].offset = offsetof(TY158226, Labels);
-TMP103[1445].typ = NTI404;
-TMP103[1445].name = "labels";
-TMP103[1408].len = 19; TMP103[1408].kind = 2; TMP103[1408].sons = &TMP158328[0];
-NTI158226->node = &TMP103[1408];
-NTI158216->size = sizeof(TY158226*);
-NTI158216->kind = 22;
-NTI158216->base = NTI158226;
-NTI158308->size = sizeof(TY158308*);
-NTI158308->kind = 24;
-NTI158308->base = NTI158216;
-NTI158308->flags = 2;
-NTI177017->size = sizeof(TY177017);
-NTI177017->kind = 40;
-NTI177017->base = 0;
-NTI177017->flags = 2;
-TMP177071[0] = &TMP103[1447];
-TMP103[1447].kind = 1;
-TMP103[1447].offset = offsetof(TY177017, Typeinfo);
-TMP103[1447].typ = NTI51006;
-TMP103[1447].name = "typeInfo";
-TMP177071[1] = &TMP103[1448];
-TMP103[1448].kind = 1;
-TMP103[1448].offset = offsetof(TY177017, Code);
-TMP103[1448].typ = NTI51006;
-TMP103[1448].name = "code";
-TMP177071[2] = &TMP103[1449];
-TMP103[1449].kind = 1;
-TMP103[1449].offset = offsetof(TY177017, Typeinfogenerated);
-TMP103[1449].typ = NTI54898;
-TMP103[1449].name = "typeInfoGenerated";
-TMP103[1446].len = 3; TMP103[1446].kind = 2; TMP103[1446].sons = &TMP177071[0];
-NTI177017->node = &TMP103[1446];
-NTI177019->size = sizeof(TY177017*);
-NTI177019->kind = 22;
-NTI177019->base = NTI177017;
-NTI177019->flags = 2;
-NTI177015->size = sizeof(TY177015);
-NTI177015->kind = 40;
-NTI177015->base = 0;
-NTI177015->flags = 3;
-TMP177135[0] = &TMP103[1451];
-TMP103[1451].kind = 1;
-TMP103[1451].offset = offsetof(TY177015, Id);
-TMP103[1451].typ = NTI108;
-TMP103[1451].name = "id";
-TMP177135[1] = &TMP103[1452];
-TMP103[1452].kind = 1;
-TMP103[1452].offset = offsetof(TY177015, Nestedtrystmts);
-TMP103[1452].typ = NTI108;
-TMP103[1452].name = "nestedTryStmts";
-TMP103[1450].len = 2; TMP103[1450].kind = 2; TMP103[1450].sons = &TMP177135[0];
-NTI177015->node = &TMP103[1450];
-NTI177050->size = sizeof(TY177050*);
-NTI177050->kind = 24;
-NTI177050->base = NTI177015;
-NTI177050->flags = 2;
-NTI177007->size = sizeof(TY177007);
-NTI177007->kind = 17;
-NTI177007->base = NTI102002;
-NTI177007->flags = 2;
-TMP183747[0] = &TMP103[1454];
-TMP103[1454].kind = 1;
-TMP103[1454].offset = offsetof(TY177007, Filename);
-TMP103[1454].typ = NTI130;
-TMP103[1454].name = "filename";
-TMP183747[1] = &TMP103[1455];
-TMP103[1455].kind = 1;
-TMP103[1455].offset = offsetof(TY177007, Module);
-TMP103[1455].typ = NTI54521;
-TMP103[1455].name = "module";
-TMP103[1453].len = 2; TMP103[1453].kind = 2; TMP103[1453].sons = &TMP183747[0];
-NTI177007->node = &TMP103[1453];
-NTI177009->size = sizeof(TY177007*);
-NTI177009->kind = 22;
-NTI177009->base = NTI177007;
-NTI177009->flags = 2;
-NTI186010->size = sizeof(TY186010);
-NTI186010->kind = 17;
-NTI186010->base = NTI102002;
-NTI186010->flags = 2;
-TMP186124[0] = &TMP103[1457];
-TMP103[1457].kind = 1;
-TMP103[1457].offset = offsetof(TY186010, Module);
-TMP103[1457].typ = NTI54521;
-TMP103[1457].name = "module";
-TMP186124[1] = &TMP103[1458];
-TMP103[1458].kind = 1;
-TMP103[1458].offset = offsetof(TY186010, Filename);
-TMP103[1458].typ = NTI130;
-TMP103[1458].name = "filename";
-TMP103[1456].len = 2; TMP103[1456].kind = 2; TMP103[1456].sons = &TMP186124[0];
-NTI186010->node = &TMP103[1456];
-NTI186012->size = sizeof(TY186010*);
-NTI186012->kind = 22;
-NTI186012->base = NTI186010;
-NTI186012->flags = 2;
-NTI187010->size = sizeof(TY187010);
-NTI187010->kind = 40;
-NTI187010->base = 0;
-TMP187040[0] = &TMP103[1460];
-TMP103[1460].kind = 1;
-TMP103[1460].offset = offsetof(TY187010, Mapping);
-TMP103[1460].typ = NTI54567;
-TMP103[1460].name = "mapping";
-TMP187040[1] = &TMP103[1461];
-TMP103[1461].kind = 1;
-TMP103[1461].offset = offsetof(TY187010, Owner);
-TMP103[1461].typ = NTI54521;
-TMP103[1461].name = "owner";
-TMP187040[2] = &TMP103[1462];
-TMP103[1462].kind = 1;
-TMP103[1462].offset = offsetof(TY187010, Forstmt);
-TMP103[1462].typ = NTI54513;
-TMP103[1462].name = "forStmt";
-TMP187040[3] = &TMP103[1463];
-TMP103[1463].kind = 1;
-TMP103[1463].offset = offsetof(TY187010, Next);
-TMP103[1463].typ = NTI187008;
-TMP103[1463].name = "next";
-TMP103[1459].len = 4; TMP103[1459].kind = 2; TMP103[1459].sons = &TMP187040[0];
-NTI187010->node = &TMP103[1459];
-NTI187008->size = sizeof(TY187010*);
-NTI187008->kind = 22;
-NTI187008->base = NTI187010;
-NTI187012->size = sizeof(TY187012);
-NTI187012->kind = 17;
-NTI187012->base = NTI102002;
-NTI187012->flags = 2;
-TMP190284[0] = &TMP103[1465];
-TMP103[1465].kind = 1;
-TMP103[1465].offset = offsetof(TY187012, Module);
-TMP103[1465].typ = NTI54521;
-TMP103[1465].name = "module";
-TMP190284[1] = &TMP103[1466];
-TMP103[1466].kind = 1;
-TMP103[1466].offset = offsetof(TY187012, Transcon);
-TMP103[1466].typ = NTI187008;
-TMP103[1466].name = "transCon";
-TMP103[1464].len = 2; TMP103[1464].kind = 2; TMP103[1464].sons = &TMP190284[0];
-NTI187012->node = &TMP103[1464];
-NTI187014->size = sizeof(TY187012*);
-NTI187014->kind = 22;
-NTI187014->base = NTI187012;
-NTI187014->flags = 2;
-NTI191206->size = sizeof(TY191206);
-NTI191206->kind = 40;
-NTI191206->base = 0;
-NTI191206->flags = 2;
-TMP191228[0] = &TMP103[1468];
-TMP103[1468].kind = 1;
-TMP103[1468].offset = offsetof(TY191206, Filename);
-TMP103[1468].typ = NTI130;
-TMP103[1468].name = "filename";
-TMP191228[1] = &TMP103[1469];
-TMP103[1469].kind = 1;
-TMP103[1469].offset = offsetof(TY191206, Module);
-TMP103[1469].typ = NTI54521;
-TMP103[1469].name = "module";
-TMP103[1467].len = 2; TMP103[1467].kind = 2; TMP103[1467].sons = &TMP191228[0];
-NTI191206->node = &TMP103[1467];
-NTI191208->size = sizeof(TY191208*);
-NTI191208->kind = 24;
-NTI191208->base = NTI191206;
-NTI191208->flags = 2;
-NTI193404->size = sizeof(TY193404);
-NTI193404->kind = 17;
-NTI193404->base = NTI408;
-NTI193404->flags = 2;
-TMP193607[0] = &TMP103[1471];
-TMP103[1471].kind = 1;
-TMP103[1471].offset = offsetof(TY193404, Cmd);
-TMP103[1471].typ = NTI130;
-TMP103[1471].name = "cmd";
-TMP193607[1] = &TMP103[1472];
-TMP103[1472].kind = 1;
-TMP103[1472].offset = offsetof(TY193404, Pos);
-TMP103[1472].typ = NTI108;
-TMP103[1472].name = "pos";
-TMP193607[2] = &TMP103[1473];
-TMP103[1473].kind = 1;
-TMP103[1473].offset = offsetof(TY193404, Inshortstate);
-TMP103[1473].typ = NTI124;
-TMP103[1473].name = "inShortState";
-TMP193607[3] = &TMP103[1474];
-NTI193402->size = sizeof(NU8);
-NTI193402->kind = 14;
-NTI193402->base = 0;
-NTI193402->flags = 3;
-for (TMP193610 = 0; TMP193610 < 4; TMP193610++) {
-TMP103[TMP193610+1475].kind = 1;
-TMP103[TMP193610+1475].offset = TMP193610;
-TMP103[TMP193610+1475].name = TMP193609[TMP193610];
-TMP193608[TMP193610] = &TMP103[TMP193610+1475];
+TMP103[1368].offset = offsetof(TY154017, Meta);
+TMP103[1368].typ = NTI154044;
+TMP103[1368].name = "meta";
+TMP103[1348].len = 16; TMP103[1348].kind = 2; TMP103[1348].sons = &TMP154201[0];
+NTI154017->node = &TMP103[1348];
+NTI154019->size = sizeof(TY154017*);
+NTI154019->kind = 22;
+NTI154019->base = NTI154017;
+NTI154019->flags = 2;
+NTI151007->size = sizeof(TY151007);
+NTI151007->kind = 17;
+NTI151007->base = NTI408;
+NTI151007->flags = 3;
+TMP155950[0] = &TMP103[1370];
+NTI151005->size = sizeof(NU8);
+NTI151005->kind = 14;
+NTI151005->base = 0;
+NTI151005->flags = 3;
+for (TMP155953 = 0; TMP155953 < 33; TMP155953++) {
+TMP103[TMP155953+1371].kind = 1;
+TMP103[TMP155953+1371].offset = TMP155953;
+TMP103[TMP155953+1371].name = TMP155952[TMP155953];
+TMP155951[TMP155953] = &TMP103[TMP155953+1371];
 }
-TMP103[1479].len = 4; TMP103[1479].kind = 2; TMP103[1479].sons = &TMP193608[0];
-NTI193402->node = &TMP103[1479];
+TMP103[1404].len = 33; TMP103[1404].kind = 2; TMP103[1404].sons = &TMP155951[0];
+NTI151005->node = &TMP103[1404];
+TMP103[1370].kind = 1;
+TMP103[1370].offset = offsetof(TY151007, Kind);
+TMP103[1370].typ = NTI151005;
+TMP103[1370].name = "kind";
+TMP155950[1] = &TMP103[1405];
+TMP103[1405].kind = 1;
+TMP103[1405].offset = offsetof(TY151007, Start);
+TMP103[1405].typ = NTI108;
+TMP103[1405].name = "start";
+TMP155950[2] = &TMP103[1406];
+TMP103[1406].kind = 1;
+TMP103[1406].offset = offsetof(TY151007, Length);
+TMP103[1406].typ = NTI108;
+TMP103[1406].name = "length";
+TMP155950[3] = &TMP103[1407];
+TMP103[1407].kind = 1;
+TMP103[1407].offset = offsetof(TY151007, Buf);
+TMP103[1407].typ = NTI132;
+TMP103[1407].name = "buf";
+TMP155950[4] = &TMP103[1408];
+TMP103[1408].kind = 1;
+TMP103[1408].offset = offsetof(TY151007, Pos);
+TMP103[1408].typ = NTI108;
+TMP103[1408].name = "pos";
+TMP155950[5] = &TMP103[1409];
+TMP103[1409].kind = 1;
+TMP103[1409].offset = offsetof(TY151007, State);
+TMP103[1409].typ = NTI151005;
+TMP103[1409].name = "state";
+TMP103[1369].len = 6; TMP103[1369].kind = 2; TMP103[1369].sons = &TMP155950[0];
+NTI151007->node = &TMP103[1369];
+NTI158172->size = sizeof(TY158172*);
+NTI158172->kind = 24;
+NTI158172->base = NTI54527;
+NTI158172->flags = 2;
+NTI159226->size = sizeof(TY159226);
+NTI159226->kind = 17;
+NTI159226->base = NTI103002;
+TMP159328[0] = &TMP103[1411];
+TMP103[1411].kind = 1;
+TMP103[1411].offset = offsetof(TY159226, Module);
+TMP103[1411].typ = NTI54523;
+TMP103[1411].name = "module";
+TMP159328[1] = &TMP103[1412];
+TMP103[1412].kind = 1;
+TMP103[1412].offset = offsetof(TY159226, Filename);
+TMP103[1412].typ = NTI130;
+TMP103[1412].name = "filename";
+TMP159328[2] = &TMP103[1413];
+NTI159210->size = sizeof(TY159210);
+NTI159210->kind = 16;
+NTI159210->base = NTI51006;
+NTI159210->flags = 2;
+TMP103[1413].kind = 1;
+TMP103[1413].offset = offsetof(TY159226, S);
+TMP103[1413].typ = NTI159210;
+TMP103[1413].name = "s";
+TMP159328[3] = &TMP103[1414];
+TMP103[1414].kind = 1;
+TMP103[1414].offset = offsetof(TY159226, Cfilename);
+TMP103[1414].typ = NTI130;
+TMP103[1414].name = "cfilename";
+TMP159328[4] = &TMP103[1415];
+TMP103[1415].kind = 1;
+TMP103[1415].offset = offsetof(TY159226, Typecache);
+TMP103[1415].typ = NTI54563;
+TMP103[1415].name = "typeCache";
+TMP159328[5] = &TMP103[1416];
+TMP103[1416].kind = 1;
+TMP103[1416].offset = offsetof(TY159226, Forwtypecache);
+TMP103[1416].typ = NTI54563;
+TMP103[1416].name = "forwTypeCache";
+TMP159328[6] = &TMP103[1417];
+TMP103[1417].kind = 1;
+TMP103[1417].offset = offsetof(TY159226, Declaredthings);
+TMP103[1417].typ = NTI54900;
+TMP103[1417].name = "declaredThings";
+TMP159328[7] = &TMP103[1418];
+TMP103[1418].kind = 1;
+TMP103[1418].offset = offsetof(TY159226, Declaredprotos);
+TMP103[1418].typ = NTI54900;
+TMP103[1418].name = "declaredProtos";
+TMP159328[8] = &TMP103[1419];
+TMP103[1419].kind = 1;
+TMP103[1419].offset = offsetof(TY159226, Headerfiles);
+TMP103[1419].typ = NTI42019;
+TMP103[1419].name = "headerFiles";
+TMP159328[9] = &TMP103[1420];
+TMP103[1420].kind = 1;
+TMP103[1420].offset = offsetof(TY159226, Typeinfomarker);
+TMP103[1420].typ = NTI54900;
+TMP103[1420].name = "typeInfoMarker";
+TMP159328[10] = &TMP103[1421];
+NTI159222->size = sizeof(TY159222);
+NTI159222->kind = 40;
+NTI159222->base = 0;
+TMP159329[0] = &TMP103[1423];
+NTI159214->size = sizeof(TY159214);
+NTI159214->kind = 16;
+NTI159214->base = NTI51006;
+NTI159214->flags = 2;
+TMP103[1423].kind = 1;
+TMP103[1423].offset = offsetof(TY159222, S);
+TMP103[1423].typ = NTI159214;
+TMP103[1423].name = "s";
+TMP159329[1] = &TMP103[1424];
+TMP103[1424].kind = 1;
+TMP103[1424].offset = offsetof(TY159222, Prc);
+TMP103[1424].typ = NTI54523;
+TMP103[1424].name = "prc";
+TMP159329[2] = &TMP103[1425];
+TMP103[1425].kind = 1;
+TMP103[1425].offset = offsetof(TY159222, Beforeretneeded);
+TMP103[1425].typ = NTI124;
+TMP103[1425].name = "BeforeRetNeeded";
+TMP159329[3] = &TMP103[1426];
+TMP103[1426].kind = 1;
+TMP103[1426].offset = offsetof(TY159222, Nestedtrystmts);
+TMP103[1426].typ = NTI404;
+TMP103[1426].name = "nestedTryStmts";
+TMP159329[4] = &TMP103[1427];
+TMP103[1427].kind = 1;
+TMP103[1427].offset = offsetof(TY159222, Labels);
+TMP103[1427].typ = NTI404;
+TMP103[1427].name = "labels";
+TMP159329[5] = &TMP103[1428];
+NTI159220->size = sizeof(TY159220);
+NTI159220->kind = 40;
+NTI159220->base = 0;
+NTI159220->flags = 3;
+TMP159330[0] = &TMP103[1430];
+TMP103[1430].kind = 1;
+TMP103[1430].offset = offsetof(TY159220, Id);
+TMP103[1430].typ = NTI108;
+TMP103[1430].name = "id";
+TMP159330[1] = &TMP103[1431];
+TMP103[1431].kind = 1;
+TMP103[1431].offset = offsetof(TY159220, Nestedtrystmts);
+TMP103[1431].typ = NTI108;
+TMP103[1431].name = "nestedTryStmts";
+TMP103[1429].len = 2; TMP103[1429].kind = 2; TMP103[1429].sons = &TMP159330[0];
+NTI159220->node = &TMP103[1429];
+NTI159277->size = sizeof(TY159277*);
+NTI159277->kind = 24;
+NTI159277->base = NTI159220;
+NTI159277->flags = 2;
+TMP103[1428].kind = 1;
+TMP103[1428].offset = offsetof(TY159222, Blocks);
+TMP103[1428].typ = NTI159277;
+TMP103[1428].name = "blocks";
+TMP159329[6] = &TMP103[1432];
+TMP103[1432].kind = 1;
+TMP103[1432].offset = offsetof(TY159222, Options);
+TMP103[1432].typ = NTI45073;
+TMP103[1432].name = "options";
+TMP159329[7] = &TMP103[1433];
+TMP103[1433].kind = 1;
+TMP103[1433].offset = offsetof(TY159222, Framelen);
+TMP103[1433].typ = NTI108;
+TMP103[1433].name = "frameLen";
+TMP159329[8] = &TMP103[1434];
+TMP103[1434].kind = 1;
+TMP103[1434].offset = offsetof(TY159222, Sendclosure);
+TMP103[1434].typ = NTI54521;
+TMP103[1434].name = "sendClosure";
+TMP159329[9] = &TMP103[1435];
+TMP103[1435].kind = 1;
+TMP103[1435].offset = offsetof(TY159222, Receiveclosure);
+TMP103[1435].typ = NTI54521;
+TMP103[1435].name = "receiveClosure";
+TMP159329[10] = &TMP103[1436];
+TMP103[1436].kind = 1;
+TMP103[1436].offset = offsetof(TY159222, Module);
+TMP103[1436].typ = NTI159216;
+TMP103[1436].name = "module";
+TMP103[1422].len = 11; TMP103[1422].kind = 2; TMP103[1422].sons = &TMP159329[0];
+NTI159222->node = &TMP103[1422];
+NTI159218->size = sizeof(TY159222*);
+NTI159218->kind = 22;
+NTI159218->base = NTI159222;
+TMP103[1421].kind = 1;
+TMP103[1421].offset = offsetof(TY159226, Initproc);
+TMP103[1421].typ = NTI159218;
+TMP103[1421].name = "initProc";
+TMP159328[11] = &TMP103[1437];
+TMP103[1437].kind = 1;
+TMP103[1437].offset = offsetof(TY159226, Typestack);
+TMP103[1437].typ = NTI54549;
+TMP103[1437].name = "typeStack";
+TMP159328[12] = &TMP103[1438];
+NTI54575->size = sizeof(TY54575);
+NTI54575->kind = 40;
+NTI54575->base = 0;
+NTI54575->flags = 2;
+TMP159331[0] = &TMP103[1440];
+TMP103[1440].kind = 1;
+TMP103[1440].offset = offsetof(TY54575, Counter);
+TMP103[1440].typ = NTI108;
+TMP103[1440].name = "counter";
+TMP159331[1] = &TMP103[1441];
+TMP103[1441].kind = 1;
+TMP103[1441].offset = offsetof(TY54575, Data);
+TMP103[1441].typ = NTI54573;
+TMP103[1441].name = "data";
+TMP103[1439].len = 2; TMP103[1439].kind = 2; TMP103[1439].sons = &TMP159331[0];
+NTI54575->node = &TMP103[1439];
+TMP103[1438].kind = 1;
+TMP103[1438].offset = offsetof(TY159226, Datacache);
+TMP103[1438].typ = NTI54575;
+TMP103[1438].name = "dataCache";
+TMP159328[13] = &TMP103[1442];
+TMP103[1442].kind = 1;
+TMP103[1442].offset = offsetof(TY159226, Forwardedprocs);
+TMP103[1442].typ = NTI54527;
+TMP103[1442].name = "forwardedProcs";
+TMP159328[14] = &TMP103[1443];
+TMP103[1443].kind = 1;
+TMP103[1443].offset = offsetof(TY159226, Typenodes);
+TMP103[1443].typ = NTI108;
+TMP103[1443].name = "typeNodes";
+TMP159328[15] = &TMP103[1444];
+TMP103[1444].kind = 1;
+TMP103[1444].offset = offsetof(TY159226, Nimtypes);
+TMP103[1444].typ = NTI108;
+TMP103[1444].name = "nimTypes";
+TMP159328[16] = &TMP103[1445];
+TMP103[1445].kind = 1;
+TMP103[1445].offset = offsetof(TY159226, Typenodesname);
+TMP103[1445].typ = NTI51006;
+TMP103[1445].name = "typeNodesName";
+TMP159328[17] = &TMP103[1446];
+TMP103[1446].kind = 1;
+TMP103[1446].offset = offsetof(TY159226, Nimtypesname);
+TMP103[1446].typ = NTI51006;
+TMP103[1446].name = "nimTypesName";
+TMP159328[18] = &TMP103[1447];
+TMP103[1447].kind = 1;
+TMP103[1447].offset = offsetof(TY159226, Labels);
+TMP103[1447].typ = NTI404;
+TMP103[1447].name = "labels";
+TMP103[1410].len = 19; TMP103[1410].kind = 2; TMP103[1410].sons = &TMP159328[0];
+NTI159226->node = &TMP103[1410];
+NTI159216->size = sizeof(TY159226*);
+NTI159216->kind = 22;
+NTI159216->base = NTI159226;
+NTI159308->size = sizeof(TY159308*);
+NTI159308->kind = 24;
+NTI159308->base = NTI159216;
+NTI159308->flags = 2;
+NTI178017->size = sizeof(TY178017);
+NTI178017->kind = 40;
+NTI178017->base = 0;
+NTI178017->flags = 2;
+TMP178071[0] = &TMP103[1449];
+TMP103[1449].kind = 1;
+TMP103[1449].offset = offsetof(TY178017, Typeinfo);
+TMP103[1449].typ = NTI51006;
+TMP103[1449].name = "typeInfo";
+TMP178071[1] = &TMP103[1450];
+TMP103[1450].kind = 1;
+TMP103[1450].offset = offsetof(TY178017, Code);
+TMP103[1450].typ = NTI51006;
+TMP103[1450].name = "code";
+TMP178071[2] = &TMP103[1451];
+TMP103[1451].kind = 1;
+TMP103[1451].offset = offsetof(TY178017, Typeinfogenerated);
+TMP103[1451].typ = NTI54900;
+TMP103[1451].name = "typeInfoGenerated";
+TMP103[1448].len = 3; TMP103[1448].kind = 2; TMP103[1448].sons = &TMP178071[0];
+NTI178017->node = &TMP103[1448];
+NTI178019->size = sizeof(TY178017*);
+NTI178019->kind = 22;
+NTI178019->base = NTI178017;
+NTI178019->flags = 2;
+NTI178015->size = sizeof(TY178015);
+NTI178015->kind = 40;
+NTI178015->base = 0;
+NTI178015->flags = 3;
+TMP178135[0] = &TMP103[1453];
+TMP103[1453].kind = 1;
+TMP103[1453].offset = offsetof(TY178015, Id);
+TMP103[1453].typ = NTI108;
+TMP103[1453].name = "id";
+TMP178135[1] = &TMP103[1454];
+TMP103[1454].kind = 1;
+TMP103[1454].offset = offsetof(TY178015, Nestedtrystmts);
+TMP103[1454].typ = NTI108;
+TMP103[1454].name = "nestedTryStmts";
+TMP103[1452].len = 2; TMP103[1452].kind = 2; TMP103[1452].sons = &TMP178135[0];
+NTI178015->node = &TMP103[1452];
+NTI178050->size = sizeof(TY178050*);
+NTI178050->kind = 24;
+NTI178050->base = NTI178015;
+NTI178050->flags = 2;
+NTI178007->size = sizeof(TY178007);
+NTI178007->kind = 17;
+NTI178007->base = NTI103002;
+NTI178007->flags = 2;
+TMP184747[0] = &TMP103[1456];
+TMP103[1456].kind = 1;
+TMP103[1456].offset = offsetof(TY178007, Filename);
+TMP103[1456].typ = NTI130;
+TMP103[1456].name = "filename";
+TMP184747[1] = &TMP103[1457];
+TMP103[1457].kind = 1;
+TMP103[1457].offset = offsetof(TY178007, Module);
+TMP103[1457].typ = NTI54523;
+TMP103[1457].name = "module";
+TMP103[1455].len = 2; TMP103[1455].kind = 2; TMP103[1455].sons = &TMP184747[0];
+NTI178007->node = &TMP103[1455];
+NTI178009->size = sizeof(TY178007*);
+NTI178009->kind = 22;
+NTI178009->base = NTI178007;
+NTI178009->flags = 2;
+NTI187010->size = sizeof(TY187010);
+NTI187010->kind = 17;
+NTI187010->base = NTI103002;
+NTI187010->flags = 2;
+TMP187124[0] = &TMP103[1459];
+TMP103[1459].kind = 1;
+TMP103[1459].offset = offsetof(TY187010, Module);
+TMP103[1459].typ = NTI54523;
+TMP103[1459].name = "module";
+TMP187124[1] = &TMP103[1460];
+TMP103[1460].kind = 1;
+TMP103[1460].offset = offsetof(TY187010, Filename);
+TMP103[1460].typ = NTI130;
+TMP103[1460].name = "filename";
+TMP103[1458].len = 2; TMP103[1458].kind = 2; TMP103[1458].sons = &TMP187124[0];
+NTI187010->node = &TMP103[1458];
+NTI187012->size = sizeof(TY187010*);
+NTI187012->kind = 22;
+NTI187012->base = NTI187010;
+NTI187012->flags = 2;
+NTI188010->size = sizeof(TY188010);
+NTI188010->kind = 40;
+NTI188010->base = 0;
+TMP188040[0] = &TMP103[1462];
+TMP103[1462].kind = 1;
+TMP103[1462].offset = offsetof(TY188010, Mapping);
+TMP103[1462].typ = NTI54569;
+TMP103[1462].name = "mapping";
+TMP188040[1] = &TMP103[1463];
+TMP103[1463].kind = 1;
+TMP103[1463].offset = offsetof(TY188010, Owner);
+TMP103[1463].typ = NTI54523;
+TMP103[1463].name = "owner";
+TMP188040[2] = &TMP103[1464];
+TMP103[1464].kind = 1;
+TMP103[1464].offset = offsetof(TY188010, Forstmt);
+TMP103[1464].typ = NTI54515;
+TMP103[1464].name = "forStmt";
+TMP188040[3] = &TMP103[1465];
+TMP103[1465].kind = 1;
+TMP103[1465].offset = offsetof(TY188010, Next);
+TMP103[1465].typ = NTI188008;
+TMP103[1465].name = "next";
+TMP103[1461].len = 4; TMP103[1461].kind = 2; TMP103[1461].sons = &TMP188040[0];
+NTI188010->node = &TMP103[1461];
+NTI188008->size = sizeof(TY188010*);
+NTI188008->kind = 22;
+NTI188008->base = NTI188010;
+NTI188012->size = sizeof(TY188012);
+NTI188012->kind = 17;
+NTI188012->base = NTI103002;
+NTI188012->flags = 2;
+TMP191284[0] = &TMP103[1467];
+TMP103[1467].kind = 1;
+TMP103[1467].offset = offsetof(TY188012, Module);
+TMP103[1467].typ = NTI54523;
+TMP103[1467].name = "module";
+TMP191284[1] = &TMP103[1468];
+TMP103[1468].kind = 1;
+TMP103[1468].offset = offsetof(TY188012, Transcon);
+TMP103[1468].typ = NTI188008;
+TMP103[1468].name = "transCon";
+TMP103[1466].len = 2; TMP103[1466].kind = 2; TMP103[1466].sons = &TMP191284[0];
+NTI188012->node = &TMP103[1466];
+NTI188014->size = sizeof(TY188012*);
+NTI188014->kind = 22;
+NTI188014->base = NTI188012;
+NTI188014->flags = 2;
+NTI192206->size = sizeof(TY192206);
+NTI192206->kind = 40;
+NTI192206->base = 0;
+NTI192206->flags = 2;
+TMP192228[0] = &TMP103[1470];
+TMP103[1470].kind = 1;
+TMP103[1470].offset = offsetof(TY192206, Filename);
+TMP103[1470].typ = NTI130;
+TMP103[1470].name = "filename";
+TMP192228[1] = &TMP103[1471];
+TMP103[1471].kind = 1;
+TMP103[1471].offset = offsetof(TY192206, Module);
+TMP103[1471].typ = NTI54523;
+TMP103[1471].name = "module";
+TMP103[1469].len = 2; TMP103[1469].kind = 2; TMP103[1469].sons = &TMP192228[0];
+NTI192206->node = &TMP103[1469];
+NTI192208->size = sizeof(TY192208*);
+NTI192208->kind = 24;
+NTI192208->base = NTI192206;
+NTI192208->flags = 2;
+NTI194404->size = sizeof(TY194404);
+NTI194404->kind = 17;
+NTI194404->base = NTI408;
+NTI194404->flags = 2;
+TMP194607[0] = &TMP103[1473];
+TMP103[1473].kind = 1;
+TMP103[1473].offset = offsetof(TY194404, Cmd);
+TMP103[1473].typ = NTI130;
+TMP103[1473].name = "cmd";
+TMP194607[1] = &TMP103[1474];
 TMP103[1474].kind = 1;
-TMP103[1474].offset = offsetof(TY193404, Kind);
-TMP103[1474].typ = NTI193402;
-TMP103[1474].name = "kind";
-TMP193607[4] = &TMP103[1480];
-TMP103[1480].kind = 1;
-TMP103[1480].offset = offsetof(TY193404, Key);
-TMP103[1480].typ = NTI130;
-TMP103[1480].name = "key";
-TMP193607[5] = &TMP103[1481];
-TMP103[1481].kind = 1;
-TMP103[1481].offset = offsetof(TY193404, Val);
-TMP103[1481].typ = NTI130;
-TMP103[1481].name = "val";
-TMP103[1470].len = 6; TMP103[1470].kind = 2; TMP103[1470].sons = &TMP193607[0];
-NTI193404->node = &TMP103[1470];
+TMP103[1474].offset = offsetof(TY194404, Pos);
+TMP103[1474].typ = NTI108;
+TMP103[1474].name = "pos";
+TMP194607[2] = &TMP103[1475];
+TMP103[1475].kind = 1;
+TMP103[1475].offset = offsetof(TY194404, Inshortstate);
+TMP103[1475].typ = NTI124;
+TMP103[1475].name = "inShortState";
+TMP194607[3] = &TMP103[1476];
+NTI194402->size = sizeof(NU8);
+NTI194402->kind = 14;
+NTI194402->base = 0;
+NTI194402->flags = 3;
+for (TMP194610 = 0; TMP194610 < 4; TMP194610++) {
+TMP103[TMP194610+1477].kind = 1;
+TMP103[TMP194610+1477].offset = TMP194610;
+TMP103[TMP194610+1477].name = TMP194609[TMP194610];
+TMP194608[TMP194610] = &TMP103[TMP194610+1477];
+}
+TMP103[1481].len = 4; TMP103[1481].kind = 2; TMP103[1481].sons = &TMP194608[0];
+NTI194402->node = &TMP103[1481];
+TMP103[1476].kind = 1;
+TMP103[1476].offset = offsetof(TY194404, Kind);
+TMP103[1476].typ = NTI194402;
+TMP103[1476].name = "kind";
+TMP194607[4] = &TMP103[1482];
+TMP103[1482].kind = 1;
+TMP103[1482].offset = offsetof(TY194404, Key);
+TMP103[1482].typ = NTI130;
+TMP103[1482].name = "key";
+TMP194607[5] = &TMP103[1483];
+TMP103[1483].kind = 1;
+TMP103[1483].offset = offsetof(TY194404, Val);
+TMP103[1483].typ = NTI130;
+TMP103[1483].name = "val";
+TMP103[1472].len = 6; TMP103[1472].kind = 2; TMP103[1472].sons = &TMP194607[0];
+NTI194404->node = &TMP103[1472];
 F.len = 0;
 framePtr = framePtr->prev;
 }
