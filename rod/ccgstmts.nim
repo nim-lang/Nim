@@ -27,21 +27,15 @@ proc genLineDir(p: BProc, t: PNode) =
     appf(p.s[cpsStmts], "F.line = $1;F.filename = $2;$n", 
         [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
-proc finishTryStmt(p: BProc, howMany: int) = 
+proc popSafePoints(p: BProc, howMany: int) = 
   for i in countup(1, howMany): 
-    inc(p.labels, 3)
-    appff(p.s[cpsStmts], "excHandler = excHandler->prev;$n", 
-        "%LOC$1 = load %TSafePoint** @excHandler$n" &
-        "%LOC$2 = getelementptr %TSafePoint* %LOC$1, %NI 0$n" &
-        "%LOC$3 = load %TSafePoint** %LOC$2$n" &
-        "store %TSafePoint* %LOC$3, %TSafePoint** @excHandler$n", 
-          [toRope(p.labels), toRope(p.labels - 1), toRope(p.labels - 2)])
+    appcg(p, cpsStmts, "#popSafePoint();$n", [])
 
 proc genReturnStmt(p: BProc, t: PNode) = 
   p.beforeRetNeeded = true
   genLineDir(p, t)
   if (t.sons[0] != nil): genStmts(p, t.sons[0])
-  finishTryStmt(p, p.nestedTryStmts)
+  popSafePoints(p, p.nestedTryStmts)
   appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
 
 proc genVarTuple(p: BProc, n: PNode) = 
@@ -202,7 +196,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
     assert(sym.loc.k == locOther)
     idx = sym.loc.a
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  finishTryStmt(p, p.nestedTryStmts - p.blocks[idx].nestedTryStmts)
+  popSafePoints(p, p.nestedTryStmts - p.blocks[idx].nestedTryStmts)
   appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.blocks[idx].id)])
 
 proc genAsmStmt(p: BProc, t: PNode) = 
@@ -477,7 +471,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   #      {
   #         case DIVIDE_BY_ZERO:
   #           tmpRethrow = false;
-  #           printf('Division by Zero\n');
+  #           printf("Division by Zero\n");
   #         break;
   #      default: // used for general except!
   #         generalExceptPart();
@@ -526,8 +520,8 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     inc(i)
   if t.sons[1].kind == nkExceptBranch: 
     app(p.s[cpsStmts], "}}" & tnl) # end of catch-switch statement
+  popSafePoints(p, p.nestedTryStmts)
   dec(p.nestedTryStmts)
-  app(p.s[cpsStmts], "excHandler = excHandler->prev;" & tnl)
   if (i < length) and (t.sons[i].kind == nkFinally): 
     genStmts(p, t.sons[i].sons[0])
   if rethrowFlag != nil: 
@@ -536,38 +530,39 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
 proc genTryStmt(p: BProc, t: PNode) = 
   # code to generate:
   #
-  #  sp.prev = excHandler;
-  #  excHandler = &sp;
+  #  TSafePoint sp;
+  #  pushSafePoint(&sp);
   #  sp.status = setjmp(sp.context);
   #  if (sp.status == 0) {
   #    myDiv(4, 9);
+  #    popSafePoint();
   #  } else {
+  #    popSafePoint();
   #    /* except DivisionByZero: */
   #    if (sp.status == DivisionByZero) {
   #      printf('Division by Zero\n');
-  #
-  #      /* longjmp(excHandler->context, RangeError); /* raise rangeError */
-  #      sp.status = RangeError; /* if raise; else 0 */
+  #      clearException();
+  #    } else {
+  #      clearException();
   #    }
   #  }
-  #  excHandler = excHandler->prev; /* deactivate this safe point */ 
   #  /* finally: */
   #  printf('fin!\n');
-  #  if (sp.status != 0)
-  #    longjmp(excHandler->context, sp.status);
+  #  if (exception not cleared)
+  #    propagateCurrentException();
   genLineDir(p, t)
   var safePoint = getTempName()
   discard cgsym(p.module, "E_Base")
   appcg(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
-  appcg(p, cpsStmts, "$1.prev = #excHandler;$n" & "excHandler = &$1;$n" &
-      "$1.status = setjmp($1.context);$n", [safePoint])
+  appcg(p, cpsStmts, "#pushSafePoint(&$1);$n" &
+        "$1.status = setjmp($1.context);$n", [safePoint])
   if optStackTrace in p.Options: 
     app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
   appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   inc(p.nestedTryStmts)
   genStmts(p, t.sons[0])
-  app(p.s[cpsStmts], "} else {" & tnl)
+  appcg(p, cpsStmts, "#popSafePoint();$n} else {$n#popSafePoint();$n")
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
     var blen = sonsLen(t.sons[i])
@@ -575,27 +570,27 @@ proc genTryStmt(p: BProc, t: PNode) =
       # general except section:
       if i > 1: app(p.s[cpsStmts], "else {" & tnl)
       genStmts(p, t.sons[i].sons[0])
-      appf(p.s[cpsStmts], "$1.status = 0;$n", [safePoint])
+      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();$n", [safePoint])
       if i > 1: app(p.s[cpsStmts], '}' & tnl)
     else: 
       var orExpr: PRope = nil
       for j in countup(0, blen - 2): 
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: app(orExpr, "||")
-        appf(orExpr, "($1.exc->Sup.m_type == $2)", 
-             [safePoint, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+        appcg(p.module, orExpr, "#getCurrentException()->Sup.m_type == $1", 
+             [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: app(p.s[cpsStmts], "else ")
       appf(p.s[cpsStmts], "if ($1) {$n", [orExpr])
-      genStmts(p, t.sons[i].sons[blen - 1]) # code to clear the exception:
-      appf(p.s[cpsStmts], "$1.status = 0;}$n", [safePoint])
+      genStmts(p, t.sons[i].sons[blen-1]) 
+      # code to clear the exception:
+      appcg(p, cpsStmts, "$1.status = 0;#popCurrentException();}$n",
+           [safePoint])
     inc(i)
   app(p.s[cpsStmts], '}' & tnl) # end of if statement
-  finishTryStmt(p, p.nestedTryStmts)
   dec(p.nestedTryStmts)
-  if (i < length) and (t.sons[i].kind == nkFinally): 
+  if i < length and t.sons[i].kind == nkFinally: 
     genStmts(p, t.sons[i].sons[0])
-  appcg(p, cpsStmts, "if ($1.status != 0) { " &
-      "#raiseException($1.exc, $1.exc->name); }$n", [safePoint])
+  appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
 
 var 
   breakPointId: int = 0

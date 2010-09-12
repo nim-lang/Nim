@@ -5,35 +5,36 @@ typedef long long int NI;
 typedef unsigned long long int NU;
 #include "nimbase.h"
 
-typedef struct TY53523 TY53523;
-typedef struct TY53549 TY53549;
+#include <pthread.h>
+typedef struct TY54523 TY54523;
+typedef struct TY54549 TY54549;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY45532 TY45532;
-typedef struct TY53545 TY53545;
-typedef struct TY52011 TY52011;
-typedef struct TY53517 TY53517;
-typedef struct TY52005 TY52005;
+typedef struct TY46532 TY46532;
+typedef struct TY54545 TY54545;
+typedef struct TY53011 TY53011;
+typedef struct TY54517 TY54517;
+typedef struct TY53005 TY53005;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY53547 TY53547;
-typedef struct TY53537 TY53537;
-typedef struct TY50008 TY50008;
-typedef struct TY10402 TY10402;
-typedef struct TY10414 TY10414;
-typedef struct TY10790 TY10790;
-typedef struct TY10418 TY10418;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
-typedef struct TY53527 TY53527;
-typedef struct TY53525 TY53525;
-typedef struct TY53541 TY53541;
-typedef struct TY49448 TY49448;
-typedef struct TY49036 TY49036;
+typedef struct TY54547 TY54547;
+typedef struct TY54537 TY54537;
+typedef struct TY51008 TY51008;
+typedef struct TY10602 TY10602;
+typedef struct TY10990 TY10990;
+typedef struct TY10618 TY10618;
+typedef struct TY10614 TY10614;
+typedef struct TY10610 TY10610;
+typedef struct TY10988 TY10988;
+typedef struct TY54527 TY54527;
+typedef struct TY54525 TY54525;
+typedef struct TY54541 TY54541;
+typedef struct TY50448 TY50448;
+typedef struct TY50036 TY50036;
 typedef struct E_Base E_Base;
 typedef struct TSafePoint TSafePoint;
-typedef struct TY41013 TY41013;
+typedef struct TY42013 TY42013;
 struct TGenericSeq {
 NI len;
 NI space;
@@ -43,15 +44,15 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY45532 {
+struct TY46532 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-struct TY53523 {
-TY53549* Typ;
+struct TY54523 {
+TY54549* Typ;
 NimStringDesc* Comment;
-TY45532 Info;
+TY46532 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -61,11 +62,11 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY53545* Sym;
+struct {TY54545* Sym;
 } S4;
-struct {TY52011* Ident;
+struct {TY53011* Ident;
 } S5;
-struct {TY53517* Sons;
+struct {TY54517* Sons;
 } S6;
 } KindU;
 };
@@ -80,48 +81,48 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY52005 {
+struct TY53005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY53537 {
+struct TY54537 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY53549* T;
-TY50008* R;
+TY54549* T;
+TY51008* R;
 NI A;
 };
-struct TY53549 {
-  TY52005 Sup;
+struct TY54549 {
+  TY53005 Sup;
 NU8 Kind;
-TY53547* Sons;
-TY53523* N;
+TY54547* Sons;
+TY54523* N;
 NU8 Flags;
 NU8 Callconv;
-TY53545* Owner;
-TY53545* Sym;
+TY54545* Owner;
+TY54545* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY53537 Loc;
+TY54537 Loc;
 };
-struct TY10402 {
+struct TY10602 {
 NI Refcount;
 TNimType* Typ;
 };
-struct TY10418 {
+struct TY10618 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY10602** D;
 };
-struct TY10414 {
+struct TY10614 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY10610* Head;
+TY10610** Data;
 };
-struct TY10788 {
+struct TY10988 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -129,39 +130,42 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY10788 Stat;
+struct TY10990 {
+TY10618 Zct;
+TY10618 Decstack;
+TY10614 Cycleroots;
+TY10618 Tempstack;
+NI Cyclerootslock;
+NI Zctlock;
+TY10988 Stat;
 };
-struct TY53527 {
+typedef NU8 TY54997[16];
+struct TY54527 {
 TNimType* m_type;
 NI Counter;
-TY53525* Data;
+TY54525* Data;
 };
-struct TY53545 {
-  TY52005 Sup;
+struct TY54545 {
+  TY53005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY53549* Typ;
-TY52011* Name;
-TY45532 Info;
-TY53545* Owner;
+TY54549* Typ;
+TY53011* Name;
+TY46532 Info;
+TY54545* Owner;
 NU32 Flags;
-TY53527 Tab;
-TY53523* Ast;
+TY54527 Tab;
+TY54523* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY53537 Loc;
-TY53541* Annex;
+TY54537 Loc;
+TY54541* Annex;
 };
-struct TY52011 {
-  TY52005 Sup;
+struct TY53011 {
+  TY53005 Sup;
 NimStringDesc* S;
-TY52011* Next;
+TY53011* Next;
 NI H;
 };
 struct TNimNode {
@@ -172,15 +176,15 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY49448 {
+struct TY50448 {
 NimStringDesc* Name;
 NI Intsize;
 NU8 Endian;
 NI Floatsize;
 NI Bit;
 };
-typedef TY49448 TY49461[12];
-struct TY49036 {
+typedef TY50448 TY50461[12];
+struct TY50036 {
 NimStringDesc* Name;
 NimStringDesc* Pardir;
 NimStringDesc* Dllfrmt;
@@ -195,9 +199,10 @@ NimStringDesc* Exeext;
 NimStringDesc* Extsep;
 NU8 Props;
 };
-typedef TY49036 TY49054[21];
+typedef TY50036 TY50054[21];
 struct E_Base {
   TNimObject Sup;
+E_Base* parent;
 NCSTRING name;
 NimStringDesc* message;
 };
@@ -207,337 +212,730 @@ E_Base* exc;
 NI status;
 jmp_buf context;
 };
-typedef NimStringDesc* TY111148[2];
-struct TY50008 {
+typedef NimStringDesc* TY67430[2];
+struct TY51008 {
   TNimObject Sup;
-TY50008* Left;
-TY50008* Right;
+TY51008* Left;
+TY51008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-typedef NI TY8414[8];
-struct TY10410 {
-TY10410* Next;
+typedef NI TY8614[8];
+struct TY10610 {
+TY10610* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-struct TY41013 {
+struct TY42013 {
   TNimObject Sup;
-TY41013* Prev;
-TY41013* Next;
+TY42013* Prev;
+TY42013* Next;
 };
-struct TY53541 {
-  TY41013 Sup;
+struct TY54541 {
+  TY42013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY50008* Name;
-TY53523* Path;
+TY51008* Name;
+TY54523* Path;
 };
-struct TY53517 {
+struct TY54517 {
   TGenericSeq Sup;
-  TY53523* data[SEQ_DECL_SIZE];
+  TY54523* data[SEQ_DECL_SIZE];
 };
-struct TY53547 {
+struct TY54547 {
   TGenericSeq Sup;
-  TY53549* data[SEQ_DECL_SIZE];
+  TY54549* data[SEQ_DECL_SIZE];
 };
-struct TY53525 {
+struct TY54525 {
   TGenericSeq Sup;
-  TY53545* data[SEQ_DECL_SIZE];
+  TY54545* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(TY53549*, Skiptypes_93085)(TY53549* T_93087, NU64 Kinds_93088);
-N_NIMCALL(TY53523*, Newintnode_53711)(NU8 Kind_53713, NI64 Intval_53714);
-static N_INLINE(void, asgnRef)(void** Dest_11612, void* Src_11613);
-static N_INLINE(void, Incref_11601)(TY10402* C_11603);
-static N_INLINE(NIM_BOOL, Canbecycleroot_10826)(TY10402* C_10828);
-static N_INLINE(void, Rtladdcycleroot_11452)(TY10402* C_11454);
-N_NOINLINE(void, Incl_10674)(TY10414* S_10677, TY10402* Cell_10678);
-static N_INLINE(TY10402*, Usrtocell_10822)(void* Usr_10824);
-static N_INLINE(void, Decref_11460)(TY10402* C_11462);
-static N_INLINE(void, Rtladdzct_11456)(TY10402* C_11458);
-N_NOINLINE(void, Addzct_10811)(TY10418* S_10814, TY10402* C_10815);
-N_NIMCALL(TY53523*, Newstrnode_53724)(NU8 Kind_53726, NimStringDesc* Strval_53727);
-N_NIMCALL(TY53523*, Newintnodet_109025)(NI64 Intval_109027, TY53523* N_109028);
-N_NIMCALL(NI64, Getordvalue_93107)(TY53523* N_93109);
-N_NIMCALL(NI64, Getint_55971)(TY53523* A_55973);
-N_NIMCALL(TY53523*, Newfloatnodet_109029)(NF64 Floatval_109031, TY53523* N_109032);
-N_NIMCALL(TY53523*, Newfloatnode_53720)(NU8 Kind_53722, NF64 Floatval_53723);
-N_NIMCALL(NF64, Getfloat_55987)(TY53523* A_55989);
-N_NIMCALL(NI64, Cardset_100050)(TY53523* S_100052);
-N_NIMCALL(NimStringDesc*, Getstr_56003)(TY53523* A_56005);
-N_NIMCALL(NI64, Lengthord_93007)(TY53549* T_93009);
-N_NIMCALL(NI, Sonslen_53801)(TY53523* N_53803);
-N_NIMCALL(NI64, Getsize_93113)(TY53549* Typ_93115);
-N_NIMCALL(void, Internalerror_45567)(TY45532 Info_45569, NimStringDesc* Errmsg_45570);
-static N_INLINE(NI, cmpStrings)(NimStringDesc* A_17011, NimStringDesc* B_17012);
-static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048);
-N_NIMCALL(NIM_BOOL, Containssets_100042)(TY53523* A_100044, TY53523* B_100045);
-N_NIMCALL(NIM_BOOL, Equalsets_100046)(TY53523* A_100048, TY53523* B_100049);
-N_NIMCALL(TY53523*, Intersectsets_100034)(TY53523* A_100036, TY53523* B_100037);
-N_NIMCALL(TY53523*, Unionsets_100026)(TY53523* A_100028, TY53523* B_100029);
-N_NIMCALL(TY53523*, Diffsets_100030)(TY53523* A_100032, TY53523* B_100033);
-N_NIMCALL(TY53523*, Symdiffsets_100038)(TY53523* A_100040, TY53523* B_100041);
-N_NIMCALL(TY53523*, Newstrnodet_109033)(NimStringDesc* Strval_109035, TY53523* N_109036);
-N_NIMCALL(NimStringDesc*, Getstrorchar_56019)(TY53523* A_56021);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17087);
-N_NIMCALL(NIM_BOOL, Inset_100010)(TY53523* S_100012, TY53523* Elem_100013);
-N_NIMCALL(NimStringDesc*, nimInt64ToStr)(NI64 X_17867);
+N_NIMCALL(TY54523*, Newintnodet_111025)(NI64 Intval_111027, TY54523* N_111028);
+N_NIMCALL(TY54549*, Skiptypes_94085)(TY54549* T_94087, NU64 Kinds_94088);
+N_NIMCALL(TY54523*, Newintnode_54711)(NU8 Kind_54713, NI64 Intval_54714);
+static N_INLINE(void, asgnRef)(void** Dest_11814, void* Src_11815);
+static N_INLINE(void, Incref_11802)(TY10602* C_11804);
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
+static N_INLINE(NIM_BOOL, Canbecycleroot_11040)(TY10602* C_11042);
+static N_INLINE(void, Rtladdcycleroot_11652)(TY10602* C_11654);
+N_NOINLINE(void, Incl_10874)(TY10614* S_10877, TY10602* Cell_10878);
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038);
+static N_INLINE(void, Decref_11664)(TY10602* C_11666);
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660);
+N_NOINLINE(void, Addzct_11025)(TY10618* S_11028, TY10602* C_11029);
+N_NIMCALL(TY54523*, Newfloatnodet_111029)(NF64 Floatval_111031, TY54523* N_111032);
+N_NIMCALL(TY54523*, Newfloatnode_54720)(NU8 Kind_54722, NF64 Floatval_54723);
+N_NIMCALL(TY54523*, Newstrnodet_111033)(NimStringDesc* Strval_111035, TY54523* N_111036);
+N_NIMCALL(TY54523*, Newstrnode_54724)(NU8 Kind_54726, NimStringDesc* Strval_54727);
+N_NIMCALL(NimStringDesc*, Ordinalvaltostring_111061)(TY54523* A_111063);
+N_NIMCALL(NI64, Getint_57037)(TY54523* A_57039);
+N_NIMCALL(NimStringDesc*, nimCharToStr)(NIM_CHAR X_18128);
+N_NIMCALL(NI, Sonslen_54801)(TY54523* N_54803);
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NOINLINE(void, raiseOverflow)(void);
+N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
+N_NOINLINE(void, raiseIndexError)(void);
+N_NIMCALL(void, Internalerror_46567)(TY46532 Info_46569, NimStringDesc* Errmsg_46570);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
+N_NIMCALL(NimStringDesc*, nimInt64ToStr)(NI64 X_18067);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17287);
+N_NIMCALL(TY54523*, Evalop_111014)(NU8 M_111016, TY54523* N_111017, TY54523* A_111018, TY54523* B_111019, TY54523* C_111020);
+N_NIMCALL(NI64, Getordvalue_94107)(TY54523* N_94109);
+N_NIMCALL(NF64, Getfloat_57054)(TY54523* A_57056);
+static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539);
+N_NIMCALL(NI64, Cardset_101050)(TY54523* S_101052);
+N_NIMCALL(NimStringDesc*, Getstr_57071)(TY54523* A_57073);
+N_NIMCALL(NI64, Lengthord_94007)(TY54549* T_94009);
+N_NIMCALL(NI64, Getsize_94113)(TY54549* Typ_94115);
+N_NIMCALL(NI64, mulInt64)(NI64 A_5579, NI64 B_5580);
+static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
+static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562);
+N_NOINLINE(void, raiseDivByZero)(void);
+static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573);
+static N_INLINE(NI, cmpStrings)(NimStringDesc* A_17211, NimStringDesc* B_17212);
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17247, NimStringDesc* B_17248);
+N_NIMCALL(NIM_BOOL, Containssets_101042)(TY54523* A_101044, TY54523* B_101045);
+N_NIMCALL(NIM_BOOL, Equalsets_101046)(TY54523* A_101048, TY54523* B_101049);
+N_NIMCALL(TY54523*, Intersectsets_101034)(TY54523* A_101036, TY54523* B_101037);
+N_NIMCALL(TY54523*, Unionsets_101026)(TY54523* A_101028, TY54523* B_101029);
+N_NIMCALL(TY54523*, Diffsets_101030)(TY54523* A_101032, TY54523* B_101033);
+N_NIMCALL(TY54523*, Symdiffsets_101038)(TY54523* A_101040, TY54523* B_101041);
+N_NIMCALL(NimStringDesc*, Getstrorchar_57088)(TY54523* A_57090);
+N_NIMCALL(NIM_BOOL, Inset_101010)(TY54523* S_101012, TY54523* Elem_101013);
 N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_1748, NI First_1749);
 N_NIMCALL(NimStringDesc*, copyStrLast)(NimStringDesc* S_1752, NI First_1753, NI Last_1754);
-N_NIMCALL(NimStringDesc*, nimFloatToStr)(NF X_17860);
-N_NIMCALL(NimStringDesc*, Ordinalvaltostring_109061)(TY53523* A_109063);
-N_NIMCALL(NimStringDesc*, nimCharToStr)(NIM_CHAR X_17928);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
-N_NIMCALL(TY53523*, Copytree_53856)(TY53523* Src_53858);
-N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18179, TNimType* Typ_18180);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210);
+N_NIMCALL(NimStringDesc*, nimFloatToStr)(NF X_18060);
+N_NIMCALL(TY54523*, Copytree_54856)(TY54523* Src_54858);
+N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18379, TNimType* Typ_18380);
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410);
+N_NIMCALL(TY54523*, Getconstifexpr_111312)(TY54545* C_111314, TY54523* N_111315);
+N_NIMCALL(TY54523*, Partialandexpr_111428)(TY54545* C_111430, TY54523* N_111431);
+N_NIMCALL(TY54523*, Partialorexpr_111520)(TY54545* C_111522, TY54523* N_111523);
+N_NIMCALL(NIM_BOOL, Levalueconv_111021)(TY54523* A_111023, TY54523* B_111024);
+N_NIMCALL(TY54523*, Magiccall_111722)(TY54545* M_111724, TY54523* N_111725);
+N_NIMCALL(TY54523*, Getapptype_111830)(TY54523* N_111832);
+N_NIMCALL(TY54523*, Getconstexpr_111010)(TY54545* M_111012, TY54523* N_111013);
 N_NIMCALL(NimStringDesc*, ntgetDateStr)(void);
 N_NIMCALL(NimStringDesc*, ntgetClockStr)(void);
-N_NIMCALL(NimStringDesc*, nsuToLowerStr)(NimStringDesc* S_22448);
-N_NIMCALL(TY53523*, Getapptype_109814)(TY53523* N_109816);
-N_NIMCALL(TY53523*, Copynode_53853)(TY53523* Src_53855);
-N_NIMCALL(TY53523*, Getconstifexpr_109302)(TY53545* C_109304, TY53523* N_109305);
-N_NIMCALL(TY53523*, Getconstexpr_109010)(TY53545* M_109012, TY53523* N_109013);
-N_NIMCALL(NI64, Computesize_93110)(TY53549* Typ_93112);
-N_NIMCALL(void, Limessage_45562)(TY45532 Info_45564, NU8 Msg_45565, NimStringDesc* Arg_45566);
-N_NIMCALL(NI64, Firstord_93001)(TY53549* T_93003);
-N_NIMCALL(NI64, Lastord_93004)(TY53549* T_93006);
-N_NIMCALL(TY53523*, Magiccall_109706)(TY53545* M_109708, TY53523* N_109709);
-N_NIMCALL(TY53523*, Evalop_109014)(NU8 M_109016, TY53523* N_109017, TY53523* A_109018, TY53523* B_109019, TY53523* C_109020);
-N_NIMCALL(void, raiseException)(E_Base* E_4604, NCSTRING Ename_4605);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11616, void* Src_11617);
-N_NIMCALL(void, Addson_53821)(TY53523* Father_53823, TY53523* Son_53824);
-N_NIMCALL(NIM_BOOL, Levalueconv_109021)(TY53523* A_109023, TY53523* B_109024);
-N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_22965, NimStringDesc** A_22967, NI A_22967Len0);
-N_NIMCALL(NimStringDesc*, Msgkindtostring_45588)(NU8 Kind_45590);
-N_NIMCALL(NimStringDesc*, Typetostring_93014)(TY53549* Typ_93016, NU8 Prefer_93017);
-STRING_LITERAL(TMP193970, "constant folding for shl", 24);
-STRING_LITERAL(TMP193972, "false", 5);
-STRING_LITERAL(TMP193973, "true", 4);
-STRING_LITERAL(TMP193974, "ordinalValToString", 18);
-STRING_LITERAL(TMP193975, "no symbol for ordinal value: ", 29);
-STRING_LITERAL(TMP193976, "evalOp(", 7);
-STRING_LITERAL(TMP194054, "leValueConv", 11);
-STRING_LITERAL(TMP194153, "0.8.9", 5);
-extern NIM_CONST TY49461 Cpu_49460;
-extern NIM_CONST TY49054 Os_49053;
-STRING_LITERAL(TMP194154, "lib", 3);
-STRING_LITERAL(TMP194155, "gui", 3);
-STRING_LITERAL(TMP194156, "console", 7);
-STRING_LITERAL(TMP194157, "getConstIfExpr()", 16);
-STRING_LITERAL(TMP194159, "sizeof", 6);
-STRING_LITERAL(TMP194160, "", 0);
-extern TY10790 Gch_10808;
-extern TNimType* NTI53178; /* TMagic */
-extern NU8 Targetcpu_49560;
-extern NU8 Targetos_49562;
-extern NU32 Gglobaloptions_44077;
+N_NIMCALL(NimStringDesc*, nsuToLowerStr)(NimStringDesc* S_23448);
+N_NIMCALL(TY54523*, Copynode_54853)(TY54523* Src_54855);
+N_NIMCALL(NI64, Computesize_94110)(TY54549* Typ_94112);
+N_NIMCALL(void, Limessage_46562)(TY46532 Info_46564, NU8 Msg_46565, NimStringDesc* Arg_46566);
+N_NIMCALL(NI64, Firstord_94001)(TY54549* T_94003);
+N_NIMCALL(NI64, Lastord_94004)(TY54549* T_94006);
+N_NIMCALL(void, raiseException)(E_Base* E_5004, NCSTRING Ename_5005);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819);
+N_NIMCALL(void, Addson_54821)(TY54523* Father_54823, TY54523* Son_54824);
+N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_23965, NimStringDesc** A_23967, NI A_23967Len0);
+N_NIMCALL(NimStringDesc*, Msgkindtostring_46588)(NU8 Kind_46590);
+N_NIMCALL(NimStringDesc*, Typetostring_94014)(TY54549* Typ_94016, NU8 Prefer_94017);
+static NIM_CONST TY54997 TMP111159 = {
+0xEC, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;STRING_LITERAL(TMP111160, "sons", 4);
+STRING_LITERAL(TMP111161, "ordinalValToString", 18);
+static NIM_CONST TY54997 TMP111162 = {
+0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;STRING_LITERAL(TMP111163, "sym", 3);
+STRING_LITERAL(TMP111164, "no symbol for ordinal value: ", 29);
+STRING_LITERAL(TMP111308, "constant folding for shl", 24);
+STRING_LITERAL(TMP111309, "false", 5);
+STRING_LITERAL(TMP111310, "true", 4);
+STRING_LITERAL(TMP111311, "evalOp(", 7);
+STRING_LITERAL(TMP111427, "getConstIfExpr()", 16);
+static NIM_CONST TY54997 TMP111717 = {
+0xE0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;STRING_LITERAL(TMP111718, "intVal", 6);
+static NIM_CONST TY54997 TMP111719 = {
+0x00, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;STRING_LITERAL(TMP111720, "floatVal", 8);
+STRING_LITERAL(TMP111721, "leValueConv", 11);
+STRING_LITERAL(TMP111856, "lib", 3);
+STRING_LITERAL(TMP111857, "gui", 3);
+STRING_LITERAL(TMP111858, "console", 7);
+STRING_LITERAL(TMP112580, "0.8.9", 5);
+extern NIM_CONST TY50461 Cpu_50460;
+extern NIM_CONST TY50054 Os_50053;
+STRING_LITERAL(TMP112582, "sizeof", 6);
+STRING_LITERAL(TMP112583, "", 0);
+extern TY10990 Gch_11010;
+extern TNimType* NTI54178; /* TMagic */
+extern NU32 Gglobaloptions_45077;
+extern NU8 Targetcpu_50560;
+extern NU8 Targetos_50562;
 extern TSafePoint* excHandler;
 extern TNimType* NTI432; /* EOverflow */
 extern TNimType* NTI430; /* EDivByZero */
-static N_INLINE(NIM_BOOL, Canbecycleroot_10826)(TY10402* C_10828) {
-NIM_BOOL Result_10829;
-Result_10829 = 0;
-Result_10829 = !((((*(*C_10828).Typ).flags &(1<<((((NU8) 1))&7)))!=0));
-return Result_10829;
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+NI Result_7208;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "atomicInc";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_7208 = 0;
+F.line = 29;F.filename = "systhread.nim";
+Result_7208 = __sync_add_and_fetch(Memloc_3004, X_3005);
+framePtr = framePtr->prev;
+return Result_7208;
 }
-static N_INLINE(void, Rtladdcycleroot_11452)(TY10402* C_11454) {
-Incl_10674(&Gch_10808.Cycleroots, C_11454);
+static N_INLINE(NIM_BOOL, Canbecycleroot_11040)(TY10602* C_11042) {
+NIM_BOOL Result_11043;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "canbeCycleRoot";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_11043 = 0;
+F.line = 103;F.filename = "gc.nim";
+Result_11043 = !((((*(*C_11042).Typ).flags &(1<<((((NU8) 1))&7)))!=0));
+framePtr = framePtr->prev;
+return Result_11043;
 }
-static N_INLINE(void, Incref_11601)(TY10402* C_11603) {
-NIM_BOOL LOC2;
-(*C_11603).Refcount = (NI64)((NU64)((*C_11603).Refcount) + (NU64)(8));
-LOC2 = Canbecycleroot_10826(C_11603);
-if (!LOC2) goto LA3;
-Rtladdcycleroot_11452(C_11603);
-LA3: ;
-}
-static N_INLINE(TY10402*, Usrtocell_10822)(void* Usr_10824) {
-TY10402* Result_10825;
-Result_10825 = 0;
-Result_10825 = ((TY10402*) ((NI64)((NU64)(((NI) (Usr_10824))) - (NU64)(((NI) (((NI)sizeof(TY10402))))))));
-return Result_10825;
-}
-static N_INLINE(void, Rtladdzct_11456)(TY10402* C_11458) {
-Addzct_10811(&Gch_10808.Zct, C_11458);
-}
-static N_INLINE(void, Decref_11460)(TY10402* C_11462) {
-NIM_BOOL LOC4;
-(*C_11462).Refcount = (NI64)((NU64)((*C_11462).Refcount) - (NU64)(8));
-if (!((NU64)((*C_11462).Refcount) < (NU64)(8))) goto LA2;
-Rtladdzct_11456(C_11462);
-goto LA1;
+static N_INLINE(void, Rtladdcycleroot_11652)(TY10602* C_11654) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "rtlAddCycleRoot";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 205;F.filename = "gc.nim";
+if (!NIM_TRUE) goto LA2;
+F.line = 205;F.filename = "gc.nim";
+pthread_mutex_lock(&Gch_11010.Cyclerootslock);
 LA2: ;
-LOC4 = Canbecycleroot_10826(C_11462);
-if (!LOC4) goto LA5;
-Rtladdcycleroot_11452(C_11462);
-goto LA1;
+F.line = 206;F.filename = "gc.nim";
+Incl_10874(&Gch_11010.Cycleroots, C_11654);
+F.line = 207;F.filename = "gc.nim";
+if (!NIM_TRUE) goto LA5;
+F.line = 207;F.filename = "gc.nim";
+pthread_mutex_unlock(&Gch_11010.Cyclerootslock);
 LA5: ;
-LA1: ;
+framePtr = framePtr->prev;
 }
-static N_INLINE(void, asgnRef)(void** Dest_11612, void* Src_11613) {
-TY10402* LOC4;
-TY10402* LOC8;
-if (!!((Src_11613 == NIM_NIL))) goto LA2;
-LOC4 = Usrtocell_10822(Src_11613);
-Incref_11601(LOC4);
+static N_INLINE(void, Incref_11802)(TY10602* C_11804) {
+NI LOC1;
+NIM_BOOL LOC3;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "incRef";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 226;F.filename = "gc.nim";
+LOC1 = Atomicinc_3001(&(*C_11804).Refcount, 8);
+F.line = 227;F.filename = "gc.nim";
+LOC3 = Canbecycleroot_11040(C_11804);
+if (!LOC3) goto LA4;
+F.line = 228;F.filename = "gc.nim";
+Rtladdcycleroot_11652(C_11804);
+LA4: ;
+framePtr = framePtr->prev;
+}
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038) {
+TY10602* Result_11039;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "usrToCell";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_11039 = 0;
+F.line = 100;F.filename = "gc.nim";
+Result_11039 = ((TY10602*) ((NI64)((NU64)(((NI) (Usr_11038))) - (NU64)(((NI) (((NI)sizeof(TY10602))))))));
+framePtr = framePtr->prev;
+return Result_11039;
+}
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+NI Result_7406;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "atomicDec";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_7406 = 0;
+F.line = 37;F.filename = "systhread.nim";
+Result_7406 = __sync_sub_and_fetch(Memloc_3009, X_3010);
+framePtr = framePtr->prev;
+return Result_7406;
+}
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "rtlAddZCT";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 211;F.filename = "gc.nim";
+if (!NIM_TRUE) goto LA2;
+F.line = 211;F.filename = "gc.nim";
+pthread_mutex_lock(&Gch_11010.Zctlock);
 LA2: ;
-if (!!(((*Dest_11612) == NIM_NIL))) goto LA6;
-LOC8 = Usrtocell_10822((*Dest_11612));
-Decref_11460(LOC8);
+F.line = 212;F.filename = "gc.nim";
+Addzct_11025(&Gch_11010.Zct, C_11660);
+F.line = 213;F.filename = "gc.nim";
+if (!NIM_TRUE) goto LA5;
+F.line = 213;F.filename = "gc.nim";
+pthread_mutex_unlock(&Gch_11010.Zctlock);
+LA5: ;
+framePtr = framePtr->prev;
+}
+static N_INLINE(void, Decref_11664)(TY10602* C_11666) {
+NI LOC2;
+NIM_BOOL LOC5;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "decRef";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 219;F.filename = "gc.nim";
+F.line = 220;F.filename = "gc.nim";
+LOC2 = Atomicdec_3006(&(*C_11666).Refcount, 8);
+if (!((NU64)(LOC2) < (NU64)(8))) goto LA3;
+F.line = 221;F.filename = "gc.nim";
+Rtladdzct_11658(C_11666);
+goto LA1;
+LA3: ;
+LOC5 = Canbecycleroot_11040(C_11666);
+if (!LOC5) goto LA6;
+F.line = 223;F.filename = "gc.nim";
+Rtladdcycleroot_11652(C_11666);
+goto LA1;
 LA6: ;
-(*Dest_11612) = Src_11613;
+LA1: ;
+framePtr = framePtr->prev;
 }
-N_NIMCALL(TY53523*, Newintnodet_109025)(NI64 Intval_109027, TY53523* N_109028) {
-TY53523* Result_109041;
-TY53549* LOC2;
-Result_109041 = 0;
-LOC2 = Skiptypes_93085((*N_109028).Typ, 9480192);
+static N_INLINE(void, asgnRef)(void** Dest_11814, void* Src_11815) {
+TY10602* LOC4;
+TY10602* LOC8;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "asgnRef";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 235;F.filename = "gc.nim";
+F.line = 237;F.filename = "gc.nim";
+if (!!((Src_11815 == NIM_NIL))) goto LA2;
+F.line = 237;F.filename = "gc.nim";
+LOC4 = Usrtocell_11036(Src_11815);
+Incref_11802(LOC4);
+LA2: ;
+F.line = 238;F.filename = "gc.nim";
+if (!!(((*Dest_11814) == NIM_NIL))) goto LA6;
+F.line = 238;F.filename = "gc.nim";
+LOC8 = Usrtocell_11036((*Dest_11814));
+Decref_11664(LOC8);
+LA6: ;
+F.line = 239;F.filename = "gc.nim";
+(*Dest_11814) = Src_11815;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(TY54523*, Newintnodet_111025)(NI64 Intval_111027, TY54523* N_111028) {
+TY54523* Result_111041;
+TY54549* LOC2;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "newIntNodeT";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111041 = 0;
+F.line = 29;F.filename = "semfold.nim";
+LOC2 = 0;
+LOC2 = Skiptypes_94085((*N_111028).Typ, 9480192);
 if (!((*LOC2).Kind == ((NU8) 2))) goto LA3;
-Result_109041 = Newintnode_53711(((NU8) 5), Intval_109027);
+F.line = 30;F.filename = "semfold.nim";
+Result_111041 = Newintnode_54711(((NU8) 5), Intval_111027);
 goto LA1;
 LA3: ;
-Result_109041 = Newintnode_53711(((NU8) 6), Intval_109027);
+F.line = 32;F.filename = "semfold.nim";
+Result_111041 = Newintnode_54711(((NU8) 6), Intval_111027);
 LA1: ;
-asgnRef((void**) &(*Result_109041).Typ, (*N_109028).Typ);
-(*Result_109041).Info = (*N_109028).Info;
-return Result_109041;
+F.line = 33;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111041).Typ, (*N_111028).Typ);
+F.line = 34;F.filename = "semfold.nim";
+(*Result_111041).Info = (*N_111028).Info;
+framePtr = framePtr->prev;
+return Result_111041;
 }
-N_NIMCALL(TY53523*, Newstrnodet_109033)(NimStringDesc* Strval_109035, TY53523* N_109036) {
-TY53523* Result_109060;
-Result_109060 = 0;
-Result_109060 = Newstrnode_53724(((NU8) 14), Strval_109035);
-asgnRef((void**) &(*Result_109060).Typ, (*N_109036).Typ);
-(*Result_109060).Info = (*N_109036).Info;
-return Result_109060;
+N_NIMCALL(TY54523*, Newfloatnodet_111029)(NF64 Floatval_111031, TY54523* N_111032) {
+TY54523* Result_111055;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "newFloatNodeT";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111055 = 0;
+F.line = 37;F.filename = "semfold.nim";
+Result_111055 = Newfloatnode_54720(((NU8) 11), Floatval_111031);
+F.line = 38;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111055).Typ, (*N_111032).Typ);
+F.line = 39;F.filename = "semfold.nim";
+(*Result_111055).Info = (*N_111032).Info;
+framePtr = framePtr->prev;
+return Result_111055;
 }
-N_NIMCALL(TY53523*, Newfloatnodet_109029)(NF64 Floatval_109031, TY53523* N_109032) {
-TY53523* Result_109055;
-Result_109055 = 0;
-Result_109055 = Newfloatnode_53720(((NU8) 11), Floatval_109031);
-asgnRef((void**) &(*Result_109055).Typ, (*N_109032).Typ);
-(*Result_109055).Info = (*N_109032).Info;
-return Result_109055;
+N_NIMCALL(TY54523*, Newstrnodet_111033)(NimStringDesc* Strval_111035, TY54523* N_111036) {
+TY54523* Result_111060;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "newStrNodeT";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111060 = 0;
+F.line = 42;F.filename = "semfold.nim";
+Result_111060 = Newstrnode_54724(((NU8) 14), Strval_111035);
+F.line = 43;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111060).Typ, (*N_111036).Typ);
+F.line = 44;F.filename = "semfold.nim";
+(*Result_111060).Info = (*N_111036).Info;
+framePtr = framePtr->prev;
+return Result_111060;
 }
-static N_INLINE(NI, cmpStrings)(NimStringDesc* A_17011, NimStringDesc* B_17012) {
-NI Result_17013;
-int LOC10;
-Result_17013 = 0;
-if (!(A_17011 == B_17012)) goto LA2;
-Result_17013 = 0;
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
+NIM_BOOL LOC2;
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LA3: ;
+if (!LOC2) goto LA4;
 goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5805;
+}
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
+NIM_BOOL LOC2;
+Result_5605 = 0;
+Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
+LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
+}
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendString";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 150;F.filename = "sysstr.nim";
+memcpy(((NCSTRING) (&(*Dest_17392).data[((*Dest_17392).Sup.len)-0])), ((NCSTRING) ((*Src_17393).data)), ((int) ((NI64)((NI64)((*Src_17393).Sup.len + 1) * 1))));
+F.line = 151;F.filename = "sysstr.nim";
+(*Dest_17392).Sup.len += (*Src_17393).Sup.len;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(NimStringDesc*, Ordinalvaltostring_111061)(TY54523* A_111063) {
+NimStringDesc* Result_111064;
+NI64 X_111065;
+TY54549* T_111066;
+TY54523* N_111069;
+NI I_111092;
+NI HEX3Atmp_111154;
+NI LOC1;
+NI Res_111156;
+TY54545* Field_111138;
+NimStringDesc* LOC9;
+NimStringDesc* LOC10;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "ordinalValToString";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111064 = 0;
+X_111065 = 0;
+F.line = 49;F.filename = "semfold.nim";
+X_111065 = Getint_57037(A_111063);
+T_111066 = 0;
+F.line = 51;F.filename = "semfold.nim";
+T_111066 = Skiptypes_94085((*A_111063).Typ, 1091584);
+F.line = 52;F.filename = "semfold.nim";
+switch ((*T_111066).Kind) {
+case ((NU8) 2):
+F.line = 54;F.filename = "semfold.nim";
+Result_111064 = nimCharToStr(((NIM_CHAR) (((NI) ((NI64)(((NI) (X_111065)) & 255))))));
+break;
+case ((NU8) 14):
+N_111069 = 0;
+F.line = 56;F.filename = "semfold.nim";
+N_111069 = (*T_111066).N;
+I_111092 = 0;
+HEX3Atmp_111154 = 0;
+F.line = 57;F.filename = "semfold.nim";
+LOC1 = Sonslen_54801(N_111069);
+HEX3Atmp_111154 = subInt(LOC1, 1);
+Res_111156 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_111156 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_111156 <= HEX3Atmp_111154)) goto LA2;
+F.line = 1011;F.filename = "system.nim";
+I_111092 = Res_111156;
+F.line = 58;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111069).Kind/8] &(1<<((*N_111069).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_111092) >= (NU)((*N_111069).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_111069).KindU.S6.Sons->data[I_111092]).Kind == ((NU8) 3)))) goto LA4;
+F.line = 58;F.filename = "semfold.nim";
+Internalerror_46567((*A_111063).Info, ((NimStringDesc*) &TMP111161));
+LA4: ;
+Field_111138 = 0;
+F.line = 59;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111069).Kind/8] &(1<<((*N_111069).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_111092) >= (NU)((*N_111069).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP111162[(*(*N_111069).KindU.S6.Sons->data[I_111092]).Kind/8] &(1<<((*(*N_111069).KindU.S6.Sons->data[I_111092]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111163));
+Field_111138 = (*(*N_111069).KindU.S6.Sons->data[I_111092]).KindU.S4.Sym;
+F.line = 60;F.filename = "semfold.nim";
+if (!(((NI64) ((*Field_111138).Position)) == X_111065)) goto LA7;
+F.line = 60;F.filename = "semfold.nim";
+F.line = 60;F.filename = "semfold.nim";
+Result_111064 = copyString((*(*Field_111138).Name).S);
+goto BeforeRet;
+LA7: ;
+F.line = 1014;F.filename = "system.nim";
+Res_111156 = addInt(Res_111156, 1);
+} LA2: ;
+F.line = 61;F.filename = "semfold.nim";
+LOC9 = 0;
+LOC10 = 0;
+LOC10 = nimInt64ToStr(X_111065);
+LOC9 = rawNewString(LOC10->Sup.len + 29);
+appendString(LOC9, ((NimStringDesc*) &TMP111164));
+appendString(LOC9, LOC10);
+Internalerror_46567((*A_111063).Info, LOC9);
+break;
+default:
+F.line = 63;F.filename = "semfold.nim";
+Result_111064 = nimInt64ToStr(X_111065);
+break;
+}
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_111064;
+}
+static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539) {
+NI64 Result_5540;
+NIM_BOOL LOC2;
+Result_5540 = 0;
+Result_5540 = (NI64)((NU64)(A_5538) - (NU64)(B_5539));
+LOC2 = (0 <= (Result_5540 ^ A_5538));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (Result_5540 ^ ~(B_5539)));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5540;
+}
+static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530) {
+NI64 Result_5531;
+NIM_BOOL LOC2;
+Result_5531 = 0;
+Result_5531 = (NI64)((NU64)(A_5529) + (NU64)(B_5530));
+LOC2 = (0 <= (Result_5531 ^ A_5529));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (Result_5531 ^ B_5530));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5531;
+}
+static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562) {
+NI64 Result_5563;
+NIM_BOOL LOC5;
+Result_5563 = 0;
+if (!(B_5562 == 0)) goto LA2;
+raiseDivByZero();
 LA2: ;
-if (!(A_17011 == NIM_NIL)) goto LA5;
-Result_17013 = -1;
-goto BeforeRet;
-LA5: ;
-if (!(B_17012 == NIM_NIL)) goto LA8;
-Result_17013 = 1;
-goto BeforeRet;
-LA8: ;
-LOC10 = strcmp(((NCSTRING) ((*A_17011).data)), ((NCSTRING) ((*B_17012).data)));
-Result_17013 = ((NI) (LOC10));
+LOC5 = (A_5561 == (IL64(-9223372036854775807) - IL64(1)));
+if (!(LOC5)) goto LA6;
+LOC5 = (B_5562 == -1);
+LA6: ;
+if (!LOC5) goto LA7;
+raiseOverflow();
+LA7: ;
+Result_5563 = (NI64)(A_5561 / B_5562);
 goto BeforeRet;
 BeforeRet: ;
-return Result_17013;
+return Result_5563;
 }
-static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048) {
-NIM_BOOL Result_17049;
+static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573) {
+NI64 Result_5574;
+Result_5574 = 0;
+if (!(B_5573 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+Result_5574 = (NI64)(A_5572 % B_5573);
+goto BeforeRet;
+BeforeRet: ;
+return Result_5574;
+}
+static N_INLINE(NI, cmpStrings)(NimStringDesc* A_17211, NimStringDesc* B_17212) {
+NI Result_17213;
+int LOC10;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "cmpStrings";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_17213 = 0;
+F.line = 26;F.filename = "sysstr.nim";
+if (!(A_17211 == B_17212)) goto LA2;
+F.line = 26;F.filename = "sysstr.nim";
+F.line = 26;F.filename = "sysstr.nim";
+Result_17213 = 0;
+goto BeforeRet;
+LA2: ;
+F.line = 27;F.filename = "sysstr.nim";
+if (!(A_17211 == NIM_NIL)) goto LA5;
+F.line = 27;F.filename = "sysstr.nim";
+F.line = 27;F.filename = "sysstr.nim";
+Result_17213 = -1;
+goto BeforeRet;
+LA5: ;
+F.line = 28;F.filename = "sysstr.nim";
+if (!(B_17212 == NIM_NIL)) goto LA8;
+F.line = 28;F.filename = "sysstr.nim";
+F.line = 28;F.filename = "sysstr.nim";
+Result_17213 = 1;
+goto BeforeRet;
+LA8: ;
+F.line = 29;F.filename = "sysstr.nim";
+F.line = 29;F.filename = "sysstr.nim";
+LOC10 = strcmp(((NCSTRING) ((*A_17211).data)), ((NCSTRING) ((*B_17212).data)));
+Result_17213 = ((NI) (LOC10));
+goto BeforeRet;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_17213;
+}
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17247, NimStringDesc* B_17248) {
+NIM_BOOL Result_17249;
 NIM_BOOL LOC5;
 NIM_BOOL LOC9;
 int LOC11;
-Result_17049 = 0;
-if (!(A_17047 == B_17048)) goto LA2;
-Result_17049 = NIM_TRUE;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "eqStrings";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_17249 = 0;
+F.line = 32;F.filename = "sysstr.nim";
+if (!(A_17247 == B_17248)) goto LA2;
+F.line = 32;F.filename = "sysstr.nim";
+F.line = 32;F.filename = "sysstr.nim";
+Result_17249 = NIM_TRUE;
 goto BeforeRet;
 LA2: ;
-LOC5 = (A_17047 == NIM_NIL);
+F.line = 33;F.filename = "sysstr.nim";
+LOC5 = (A_17247 == NIM_NIL);
 if (LOC5) goto LA6;
-LOC5 = (B_17048 == NIM_NIL);
+LOC5 = (B_17248 == NIM_NIL);
 LA6: ;
 if (!LOC5) goto LA7;
-Result_17049 = NIM_FALSE;
+F.line = 33;F.filename = "sysstr.nim";
+F.line = 33;F.filename = "sysstr.nim";
+Result_17249 = NIM_FALSE;
 goto BeforeRet;
 LA7: ;
-LOC9 = ((*A_17047).Sup.len == (*B_17048).Sup.len);
+F.line = 34;F.filename = "sysstr.nim";
+F.line = 34;F.filename = "sysstr.nim";
+LOC9 = ((*A_17247).Sup.len == (*B_17248).Sup.len);
 if (!(LOC9)) goto LA10;
-LOC11 = memcmp(((NCSTRING) ((*A_17047).data)), ((NCSTRING) ((*B_17048).data)), ((int) ((NI64)((*A_17047).Sup.len * 1))));
+LOC11 = memcmp(((NCSTRING) ((*A_17247).data)), ((NCSTRING) ((*B_17248).data)), ((int) ((NI64)((*A_17247).Sup.len * 1))));
 LOC9 = (LOC11 == ((NI32) 0));
 LA10: ;
-Result_17049 = LOC9;
+Result_17249 = LOC9;
 goto BeforeRet;
 BeforeRet: ;
-return Result_17049;
+framePtr = framePtr->prev;
+return Result_17249;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193) {
-memcpy(((NCSTRING) (&(*Dest_17192).data[((*Dest_17192).Sup.len)-0])), ((NCSTRING) ((*Src_17193).data)), ((int) ((NI64)((NI64)((*Src_17193).Sup.len + 1) * 1))));
-(*Dest_17192).Sup.len += (*Src_17193).Sup.len;
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendChar";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 154;F.filename = "sysstr.nim";
+(*Dest_17409).data[((*Dest_17409).Sup.len)-0] = C_17410;
+F.line = 155;F.filename = "sysstr.nim";
+(*Dest_17409).data[((NI64)((*Dest_17409).Sup.len + 1))-0] = 0;
+F.line = 156;F.filename = "sysstr.nim";
+(*Dest_17409).Sup.len += 1;
+framePtr = framePtr->prev;
 }
-N_NIMCALL(NimStringDesc*, Ordinalvaltostring_109061)(TY53523* A_109063) {
-NimStringDesc* Result_109064;
-NI64 X_109065;
-TY53549* T_109066;
-TY53523* N_109069;
-NI I_109092;
-NI HEX3Atmp_109154;
-NI LOC1;
-NI Res_109156;
-TY53545* Field_109138;
-NimStringDesc* LOC9;
-NimStringDesc* LOC10;
-Result_109064 = 0;
-X_109065 = 0;
-X_109065 = Getint_55971(A_109063);
-T_109066 = 0;
-T_109066 = Skiptypes_93085((*A_109063).Typ, 1091584);
-switch ((*T_109066).Kind) {
-case ((NU8) 2):
-Result_109064 = nimCharToStr(((NIM_CHAR) (((NI) ((NI64)(((NI) (X_109065)) & 255))))));
-break;
-case ((NU8) 14):
-N_109069 = 0;
-N_109069 = (*T_109066).N;
-I_109092 = 0;
-HEX3Atmp_109154 = 0;
-LOC1 = Sonslen_53801(N_109069);
-HEX3Atmp_109154 = (NI64)(LOC1 - 1);
-Res_109156 = 0;
-Res_109156 = 0;
-while (1) {
-if (!(Res_109156 <= HEX3Atmp_109154)) goto LA2;
-I_109092 = Res_109156;
-if (!!(((*(*N_109069).KindU.S6.Sons->data[I_109092]).Kind == ((NU8) 3)))) goto LA4;
-Internalerror_45567((*A_109063).Info, ((NimStringDesc*) &TMP193974));
-LA4: ;
-Field_109138 = 0;
-Field_109138 = (*(*N_109069).KindU.S6.Sons->data[I_109092]).KindU.S4.Sym;
-if (!(((NI64) ((*Field_109138).Position)) == X_109065)) goto LA7;
-Result_109064 = copyString((*(*Field_109138).Name).S);
-goto BeforeRet;
-LA7: ;
-Res_109156 += 1;
-} LA2: ;
-LOC10 = nimInt64ToStr(X_109065);
-LOC9 = rawNewString(LOC10->Sup.len + 29);
-appendString(LOC9, ((NimStringDesc*) &TMP193975));
-appendString(LOC9, LOC10);
-Internalerror_45567((*A_109063).Info, LOC9);
-break;
-default:
-Result_109064 = nimInt64ToStr(X_109065);
-break;
-}
-BeforeRet: ;
-return Result_109064;
-}
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210) {
-(*Dest_17209).data[((*Dest_17209).Sup.len)-0] = C_17210;
-(*Dest_17209).data[((NI64)((*Dest_17209).Sup.len + 1))-0] = 0;
-(*Dest_17209).Sup.len += 1;
-}
-N_NIMCALL(TY53523*, Evalop_109014)(NU8 M_109016, TY53523* N_109017, TY53523* A_109018, TY53523* B_109019, TY53523* C_109020) {
-TY53523* Result_109166;
+N_NIMCALL(TY54523*, Evalop_111014)(NU8 M_111016, TY54523* N_111017, TY54523* A_111018, TY54523* B_111019, TY54523* C_111020) {
+TY54523* Result_111172;
 NI64 LOC1;
 NI64 LOC2;
 NI64 LOC3;
@@ -576,7 +974,7 @@ NI64 LOC42;
 NI64 LOC43;
 NI64 LOC46;
 NI64 LOC47;
-TY53549* LOC48;
+TY54549* LOC48;
 NI64 LOC49;
 NI64 LOC50;
 NI64 LOC51;
@@ -585,7 +983,7 @@ NI64 LOC53;
 NI64 LOC54;
 NI64 LOC55;
 NI64 LOC56;
-TY53549* LOC57;
+TY54549* LOC57;
 NI64 LOC58;
 NI64 LOC59;
 NI64 LOC60;
@@ -677,80 +1075,110 @@ NimStringDesc* LOC161;
 NimStringDesc* LOC162;
 NimStringDesc* LOC163;
 NimStringDesc* LOC164;
-Result_109166 = 0;
-Result_109166 = NIM_NIL;
-switch (M_109016) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "evalOp";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111172 = 0;
+F.line = 67;F.filename = "semfold.nim";
+Result_111172 = NIM_NIL;
+F.line = 68;F.filename = "semfold.nim";
+switch (M_111016) {
 case ((NU8) 12):
-LOC1 = Getordvalue_93107(A_109018);
-Result_109166 = Newintnodet_109025(LOC1, N_109017);
+F.line = 69;F.filename = "semfold.nim";
+LOC1 = Getordvalue_94107(A_111018);
+Result_111172 = Newintnodet_111025(LOC1, N_111017);
 break;
 case ((NU8) 23):
-LOC2 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(LOC2, N_109017);
+F.line = 70;F.filename = "semfold.nim";
+LOC2 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025(LOC2, N_111017);
 break;
 case ((NU8) 95):
 case ((NU8) 96):
-LOC3 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(-(LOC3), N_109017);
+F.line = 71;F.filename = "semfold.nim";
+LOC3 = Getint_57037(A_111018);
+if (LOC3 == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
+Result_111172 = Newintnodet_111025(-(LOC3), N_111017);
 break;
 case ((NU8) 105):
-LOC4 = Getfloat_55987(A_109018);
-Result_109166 = Newfloatnodet_109029(((NF64) (-(((NF) (LOC4))))), N_109017);
+F.line = 72;F.filename = "semfold.nim";
+LOC4 = Getfloat_57054(A_111018);
+Result_111172 = Newfloatnodet_111029(((NF64) (-(((NF) (LOC4))))), N_111017);
 break;
 case ((NU8) 99):
-LOC5 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025((NI64)(1 - LOC5), N_109017);
+F.line = 73;F.filename = "semfold.nim";
+LOC5 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025(subInt64(1, LOC5), N_111017);
 break;
 case ((NU8) 22):
-LOC6 = Cardset_100050(A_109018);
-Result_109166 = Newintnodet_109025(LOC6, N_109017);
+F.line = 74;F.filename = "semfold.nim";
+LOC6 = Cardset_101050(A_111018);
+Result_111172 = Newintnodet_111025(LOC6, N_111017);
 break;
 case ((NU8) 101):
 case ((NU8) 103):
-LOC7 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(~(LOC7), N_109017);
+F.line = 75;F.filename = "semfold.nim";
+LOC7 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025(~(LOC7), N_111017);
 break;
 case ((NU8) 17):
-LOC8 = Getstr_56003(A_109018);
-Result_109166 = Newintnodet_109025(((NI64) (LOC8->Sup.len)), N_109017);
+F.line = 76;F.filename = "semfold.nim";
+LOC8 = 0;
+LOC8 = Getstr_57071(A_111018);
+Result_111172 = Newintnodet_111025(((NI64) (LOC8->Sup.len)), N_111017);
 break;
 case ((NU8) 18):
-LOC9 = Lengthord_93007((*A_109018).Typ);
-Result_109166 = Newintnodet_109025(LOC9, N_109017);
+F.line = 77;F.filename = "semfold.nim";
+LOC9 = Lengthord_94007((*A_111018).Typ);
+Result_111172 = Newintnodet_111025(LOC9, N_111017);
 break;
 case ((NU8) 19):
 case ((NU8) 16):
-LOC10 = Sonslen_53801(A_109018);
-Result_109166 = Newintnodet_109025(((NI64) (LOC10)), N_109017);
+F.line = 78;F.filename = "semfold.nim";
+LOC10 = Sonslen_54801(A_111018);
+Result_111172 = Newintnodet_111025(((NI64) (LOC10)), N_111017);
 break;
 case ((NU8) 100):
 case ((NU8) 102):
 case ((NU8) 104):
-Result_109166 = A_109018;
+F.line = 79;F.filename = "semfold.nim";
+Result_111172 = A_111018;
 break;
 case ((NU8) 116):
 case ((NU8) 117):
-LOC11 = Getint_55971(A_109018);
-Result_109166 = Newfloatnodet_109029(((NF64) (((double) (((NI) (LOC11)))))), N_109017);
+F.line = 81;F.filename = "semfold.nim";
+LOC11 = Getint_57037(A_111018);
+Result_111172 = Newfloatnodet_111029(((NF64) (((double) (((NI) (LOC11)))))), N_111017);
 break;
 case ((NU8) 118):
 case ((NU8) 119):
-LOC12 = Getfloat_55987(A_109018);
-Result_109166 = Newintnodet_109025(((NI64) (float64ToInt32(((NF) (LOC12))))), N_109017);
+F.line = 82;F.filename = "semfold.nim";
+LOC12 = Getfloat_57054(A_111018);
+Result_111172 = Newintnodet_111025(((NI64) (float64ToInt32(((NF) (LOC12))))), N_111017);
 break;
 case ((NU8) 106):
-LOC13 = Getfloat_55987(A_109018);
-Result_109166 = Newfloatnodet_109029(((NF64) ((((NF) (LOC13)) > 0? (((NF) (LOC13))) : -(((NF) (LOC13)))))), N_109017);
+F.line = 83;F.filename = "semfold.nim";
+LOC13 = Getfloat_57054(A_111018);
+Result_111172 = Newfloatnodet_111029(((NF64) ((((NF) (LOC13)) > 0? (((NF) (LOC13))) : -(((NF) (LOC13)))))), N_111017);
 break;
 case ((NU8) 97):
 case ((NU8) 98):
-LOC15 = Getint_55971(A_109018);
+F.line = 85;F.filename = "semfold.nim";
+LOC15 = Getint_57037(A_111018);
 if (!(0 <= LOC15)) goto LA16;
-Result_109166 = A_109018;
+F.line = 85;F.filename = "semfold.nim";
+Result_111172 = A_111018;
 goto LA14;
 LA16: ;
-LOC18 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(-(LOC18), N_109017);
+F.line = 86;F.filename = "semfold.nim";
+LOC18 = Getint_57037(A_111018);
+if (LOC18 == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
+Result_111172 = Newintnodet_111025(-(LOC18), N_111017);
 LA14: ;
 break;
 case ((NU8) 107):
@@ -759,421 +1187,528 @@ case ((NU8) 109):
 case ((NU8) 110):
 case ((NU8) 111):
 case ((NU8) 112):
-LOC19 = Getint_55971(A_109018);
-LOC20 = Getsize_93113((*A_109018).Typ);
-Result_109166 = Newintnodet_109025((LOC19 & (NI64)((NI64)((NU64)(1) << (NU64)((NI64)(LOC20 * 8))) - 1)), N_109017);
+F.line = 89;F.filename = "semfold.nim";
+LOC19 = Getint_57037(A_111018);
+LOC20 = Getsize_94113((*A_111018).Typ);
+Result_111172 = Newintnodet_111025((LOC19 & subInt64((NI64)((NU64)(1) << (NU64)(mulInt64(LOC20, 8))), 1)), N_111017);
 break;
 case ((NU8) 113):
-LOC21 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025((LOC21 & 255), N_109017);
+F.line = 90;F.filename = "semfold.nim";
+LOC21 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025((LOC21 & 255), N_111017);
 break;
 case ((NU8) 114):
-LOC22 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025((LOC22 & 65535), N_109017);
+F.line = 91;F.filename = "semfold.nim";
+LOC22 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025((LOC22 & 65535), N_111017);
 break;
 case ((NU8) 115):
-LOC23 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025((LOC23 & IL64(4294967295)), N_109017);
+F.line = 92;F.filename = "semfold.nim";
+LOC23 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025((LOC23 & IL64(4294967295)), N_111017);
 break;
 case ((NU8) 8):
-LOC24 = Getordvalue_93107(A_109018);
-LOC25 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC24 + LOC25), N_109017);
+F.line = 93;F.filename = "semfold.nim";
+LOC24 = Getordvalue_94107(A_111018);
+LOC25 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(addInt64(LOC24, LOC25), N_111017);
 break;
 case ((NU8) 9):
-LOC26 = Getordvalue_93107(A_109018);
-LOC27 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC26 - LOC27), N_109017);
+F.line = 94;F.filename = "semfold.nim";
+LOC26 = Getordvalue_94107(A_111018);
+LOC27 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(subInt64(LOC26, LOC27), N_111017);
 break;
 case ((NU8) 26):
 case ((NU8) 31):
-LOC28 = Getint_55971(A_109018);
-LOC29 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC28 + LOC29), N_109017);
+F.line = 95;F.filename = "semfold.nim";
+LOC28 = Getint_57037(A_111018);
+LOC29 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(addInt64(LOC28, LOC29), N_111017);
 break;
 case ((NU8) 27):
 case ((NU8) 32):
-LOC30 = Getint_55971(A_109018);
-LOC31 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC30 - LOC31), N_109017);
+F.line = 96;F.filename = "semfold.nim";
+LOC30 = Getint_57037(A_111018);
+LOC31 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(subInt64(LOC30, LOC31), N_111017);
 break;
 case ((NU8) 28):
 case ((NU8) 33):
-LOC32 = Getint_55971(A_109018);
-LOC33 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC32 * LOC33), N_109017);
+F.line = 97;F.filename = "semfold.nim";
+LOC32 = Getint_57037(A_111018);
+LOC33 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(mulInt64(LOC32, LOC33), N_111017);
 break;
 case ((NU8) 45):
 case ((NU8) 52):
-LOC35 = Getint_55971(B_109019);
-LOC36 = Getint_55971(A_109018);
+F.line = 99;F.filename = "semfold.nim";
+LOC35 = Getint_57037(B_111019);
+LOC36 = Getint_57037(A_111018);
 if (!(LOC35 < LOC36)) goto LA37;
-LOC39 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(LOC39, N_109017);
+F.line = 99;F.filename = "semfold.nim";
+LOC39 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(LOC39, N_111017);
 goto LA34;
 LA37: ;
-LOC40 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(LOC40, N_109017);
+F.line = 100;F.filename = "semfold.nim";
+LOC40 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025(LOC40, N_111017);
 LA34: ;
 break;
 case ((NU8) 46):
 case ((NU8) 53):
-LOC42 = Getint_55971(B_109019);
-LOC43 = Getint_55971(A_109018);
+F.line = 102;F.filename = "semfold.nim";
+LOC42 = Getint_57037(B_111019);
+LOC43 = Getint_57037(A_111018);
 if (!(LOC42 < LOC43)) goto LA44;
-LOC46 = Getint_55971(A_109018);
-Result_109166 = Newintnodet_109025(LOC46, N_109017);
+F.line = 102;F.filename = "semfold.nim";
+LOC46 = Getint_57037(A_111018);
+Result_111172 = Newintnodet_111025(LOC46, N_111017);
 goto LA41;
 LA44: ;
-LOC47 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(LOC47, N_109017);
+F.line = 103;F.filename = "semfold.nim";
+LOC47 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(LOC47, N_111017);
 LA41: ;
 break;
 case ((NU8) 41):
 case ((NU8) 48):
-LOC48 = Skiptypes_93085((*N_109017).Typ, 1091584);
+F.line = 105;F.filename = "semfold.nim";
+LOC48 = 0;
+LOC48 = Skiptypes_94085((*N_111017).Typ, 1091584);
 switch ((*LOC48).Kind) {
 case ((NU8) 32):
-LOC49 = Getint_55971(A_109018);
-LOC50 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI8)((NU8)(((NI8) (LOC49))) << (NU8)(((NI8) (LOC50)))))), N_109017);
+F.line = 106;F.filename = "semfold.nim";
+LOC49 = Getint_57037(A_111018);
+LOC50 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI8)((NU8)(((NI8)chckRange64(LOC49, ((NI8) -128), ((NI8) 127)))) << (NU8)(((NI8)chckRange64(LOC50, ((NI8) -128), ((NI8) 127))))))), N_111017);
 break;
 case ((NU8) 33):
-LOC51 = Getint_55971(A_109018);
-LOC52 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI16)((NU16)(((NI16) (LOC51))) << (NU16)(((NI16) (LOC52)))))), N_109017);
+F.line = 107;F.filename = "semfold.nim";
+LOC51 = Getint_57037(A_111018);
+LOC52 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI16)((NU16)(((NI16)chckRange64(LOC51, ((NI16) -32768), ((NI16) 32767)))) << (NU16)(((NI16)chckRange64(LOC52, ((NI16) -32768), ((NI16) 32767))))))), N_111017);
 break;
 case ((NU8) 34):
-LOC53 = Getint_55971(A_109018);
-LOC54 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI32)((NU32)(((int) (LOC53))) << (NU32)(((int) (LOC54)))))), N_109017);
+F.line = 108;F.filename = "semfold.nim";
+LOC53 = Getint_57037(A_111018);
+LOC54 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI32)((NU32)(((int)chckRange64(LOC53, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)))) << (NU32)(((int)chckRange64(LOC54, ((NI32) (-2147483647 -1)), ((NI32) 2147483647))))))), N_111017);
 break;
 case ((NU8) 35):
 case ((NU8) 31):
-LOC55 = Getint_55971(A_109018);
-LOC56 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC55) << (NU64)(LOC56)), N_109017);
+F.line = 109;F.filename = "semfold.nim";
+LOC55 = Getint_57037(A_111018);
+LOC56 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC55) << (NU64)(LOC56)), N_111017);
 break;
 default:
-Internalerror_45567((*N_109017).Info, ((NimStringDesc*) &TMP193970));
+F.line = 110;F.filename = "semfold.nim";
+Internalerror_46567((*N_111017).Info, ((NimStringDesc*) &TMP111308));
 break;
 }
 break;
 case ((NU8) 40):
 case ((NU8) 47):
-LOC57 = Skiptypes_93085((*N_109017).Typ, 1091584);
+F.line = 112;F.filename = "semfold.nim";
+LOC57 = 0;
+LOC57 = Skiptypes_94085((*N_111017).Typ, 1091584);
 switch ((*LOC57).Kind) {
 case ((NU8) 32):
-LOC58 = Getint_55971(A_109018);
-LOC59 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI8)((NU8)(((NI8) (LOC58))) >> (NU8)(((NI8) (LOC59)))))), N_109017);
+F.line = 113;F.filename = "semfold.nim";
+LOC58 = Getint_57037(A_111018);
+LOC59 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI8)((NU8)(((NI8)chckRange64(LOC58, ((NI8) -128), ((NI8) 127)))) >> (NU8)(((NI8)chckRange64(LOC59, ((NI8) -128), ((NI8) 127))))))), N_111017);
 break;
 case ((NU8) 33):
-LOC60 = Getint_55971(A_109018);
-LOC61 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI16)((NU16)(((NI16) (LOC60))) >> (NU16)(((NI16) (LOC61)))))), N_109017);
+F.line = 114;F.filename = "semfold.nim";
+LOC60 = Getint_57037(A_111018);
+LOC61 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI16)((NU16)(((NI16)chckRange64(LOC60, ((NI16) -32768), ((NI16) 32767)))) >> (NU16)(((NI16)chckRange64(LOC61, ((NI16) -32768), ((NI16) 32767))))))), N_111017);
 break;
 case ((NU8) 34):
-LOC62 = Getint_55971(A_109018);
-LOC63 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((NI32)((NU32)(((int) (LOC62))) >> (NU32)(((int) (LOC63)))))), N_109017);
+F.line = 115;F.filename = "semfold.nim";
+LOC62 = Getint_57037(A_111018);
+LOC63 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((NI32)((NU32)(((int)chckRange64(LOC62, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)))) >> (NU32)(((int)chckRange64(LOC63, ((NI32) (-2147483647 -1)), ((NI32) 2147483647))))))), N_111017);
 break;
 case ((NU8) 35):
 case ((NU8) 31):
-LOC64 = Getint_55971(A_109018);
-LOC65 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC64) >> (NU64)(LOC65)), N_109017);
+F.line = 116;F.filename = "semfold.nim";
+LOC64 = Getint_57037(A_111018);
+LOC65 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC64) >> (NU64)(LOC65)), N_111017);
 break;
 default:
-Internalerror_45567((*N_109017).Info, ((NimStringDesc*) &TMP193970));
+F.line = 117;F.filename = "semfold.nim";
+Internalerror_46567((*N_111017).Info, ((NimStringDesc*) &TMP111308));
 break;
 }
 break;
 case ((NU8) 29):
 case ((NU8) 34):
-LOC66 = Getint_55971(A_109018);
-LOC67 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC66 / LOC67), N_109017);
+F.line = 118;F.filename = "semfold.nim";
+LOC66 = Getint_57037(A_111018);
+LOC67 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(divInt64(LOC66, LOC67), N_111017);
 break;
 case ((NU8) 30):
 case ((NU8) 35):
-LOC68 = Getint_55971(A_109018);
-LOC69 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)(LOC68 % LOC69), N_109017);
+F.line = 119;F.filename = "semfold.nim";
+LOC68 = Getint_57037(A_111018);
+LOC69 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025(modInt64(LOC68, LOC69), N_111017);
 break;
 case ((NU8) 36):
-LOC70 = Getfloat_55987(A_109018);
-LOC71 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(((NF64) ((((NF) (LOC70)) + ((NF) (LOC71))))), N_109017);
+F.line = 120;F.filename = "semfold.nim";
+LOC70 = Getfloat_57054(A_111018);
+LOC71 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(((NF64) ((((NF) (LOC70)) + ((NF) (LOC71))))), N_111017);
 break;
 case ((NU8) 37):
-LOC72 = Getfloat_55987(A_109018);
-LOC73 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(((NF64) ((((NF) (LOC72)) - ((NF) (LOC73))))), N_109017);
+F.line = 121;F.filename = "semfold.nim";
+LOC72 = Getfloat_57054(A_111018);
+LOC73 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(((NF64) ((((NF) (LOC72)) - ((NF) (LOC73))))), N_111017);
 break;
 case ((NU8) 38):
-LOC74 = Getfloat_55987(A_109018);
-LOC75 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(((NF64) ((((NF) (LOC74)) * ((NF) (LOC75))))), N_109017);
+F.line = 122;F.filename = "semfold.nim";
+LOC74 = Getfloat_57054(A_111018);
+LOC75 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(((NF64) ((((NF) (LOC74)) * ((NF) (LOC75))))), N_111017);
 break;
 case ((NU8) 39):
-LOC77 = Getfloat_55987(B_109019);
-if (!(((NF) (LOC77)) == 0.000000)) goto LA78;
-LOC81 = Getfloat_55987(A_109018);
-if (!(((NF) (LOC81)) == 0.000000)) goto LA82;
-Result_109166 = Newfloatnodet_109029(NAN, N_109017);
+F.line = 124;F.filename = "semfold.nim";
+LOC77 = Getfloat_57054(B_111019);
+if (!(((NF) (LOC77)) == 0.00000)) goto LA78;
+F.line = 125;F.filename = "semfold.nim";
+LOC81 = Getfloat_57054(A_111018);
+if (!(((NF) (LOC81)) == 0.00000)) goto LA82;
+F.line = 125;F.filename = "semfold.nim";
+Result_111172 = Newfloatnodet_111029(NAN, N_111017);
 goto LA80;
 LA82: ;
-Result_109166 = Newfloatnodet_109029(INF, N_109017);
+F.line = 126;F.filename = "semfold.nim";
+Result_111172 = Newfloatnodet_111029(INF, N_111017);
 LA80: ;
 goto LA76;
 LA78: ;
-LOC84 = Getfloat_55987(A_109018);
-LOC85 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(((NF64) ((((NF) (LOC84)) / ((NF) (LOC85))))), N_109017);
+F.line = 128;F.filename = "semfold.nim";
+LOC84 = Getfloat_57054(A_111018);
+LOC85 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(((NF64) ((((NF) (LOC84)) / ((NF) (LOC85))))), N_111017);
 LA76: ;
 break;
 case ((NU8) 55):
-LOC87 = Getfloat_55987(B_109019);
-LOC88 = Getfloat_55987(A_109018);
+F.line = 130;F.filename = "semfold.nim";
+LOC87 = Getfloat_57054(B_111019);
+LOC88 = Getfloat_57054(A_111018);
 if (!(((NF) (LOC87)) < ((NF) (LOC88)))) goto LA89;
-LOC91 = Getfloat_55987(A_109018);
-Result_109166 = Newfloatnodet_109029(LOC91, N_109017);
+F.line = 130;F.filename = "semfold.nim";
+LOC91 = Getfloat_57054(A_111018);
+Result_111172 = Newfloatnodet_111029(LOC91, N_111017);
 goto LA86;
 LA89: ;
-LOC92 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(LOC92, N_109017);
+F.line = 131;F.filename = "semfold.nim";
+LOC92 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(LOC92, N_111017);
 LA86: ;
 break;
 case ((NU8) 54):
-LOC94 = Getfloat_55987(B_109019);
-LOC95 = Getfloat_55987(A_109018);
+F.line = 133;F.filename = "semfold.nim";
+LOC94 = Getfloat_57054(B_111019);
+LOC95 = Getfloat_57054(A_111018);
 if (!(((NF) (LOC94)) < ((NF) (LOC95)))) goto LA96;
-LOC98 = Getfloat_55987(B_109019);
-Result_109166 = Newfloatnodet_109029(LOC98, N_109017);
+F.line = 133;F.filename = "semfold.nim";
+LOC98 = Getfloat_57054(B_111019);
+Result_111172 = Newfloatnodet_111029(LOC98, N_111017);
 goto LA93;
 LA96: ;
-LOC99 = Getfloat_55987(A_109018);
-Result_109166 = Newfloatnodet_109029(LOC99, N_109017);
+F.line = 134;F.filename = "semfold.nim";
+LOC99 = Getfloat_57054(A_111018);
+Result_111172 = Newfloatnodet_111029(LOC99, N_111017);
 LA93: ;
 break;
 case ((NU8) 157):
-Result_109166 = Newintnodet_109025(((NI64) (((*A_109018).Kind == ((NU8) 18)))), N_109017);
+F.line = 135;F.filename = "semfold.nim";
+Result_111172 = Newintnodet_111025(((NI64) (((*A_111018).Kind == ((NU8) 18)))), N_111017);
 break;
 case ((NU8) 68):
 case ((NU8) 71):
 case ((NU8) 87):
 case ((NU8) 81):
 case ((NU8) 84):
-LOC100 = Getordvalue_93107(A_109018);
-LOC101 = Getordvalue_93107(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((LOC100 < LOC101))), N_109017);
+F.line = 137;F.filename = "semfold.nim";
+LOC100 = Getordvalue_94107(A_111018);
+LOC101 = Getordvalue_94107(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((LOC100 < LOC101))), N_111017);
 break;
 case ((NU8) 67):
 case ((NU8) 70):
 case ((NU8) 86):
 case ((NU8) 80):
 case ((NU8) 83):
-LOC102 = Getordvalue_93107(A_109018);
-LOC103 = Getordvalue_93107(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((LOC102 <= LOC103))), N_109017);
+F.line = 139;F.filename = "semfold.nim";
+LOC102 = Getordvalue_94107(A_111018);
+LOC103 = Getordvalue_94107(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((LOC102 <= LOC103))), N_111017);
 break;
 case ((NU8) 66):
 case ((NU8) 69):
 case ((NU8) 85):
 case ((NU8) 79):
 case ((NU8) 82):
-LOC104 = Getordvalue_93107(A_109018);
-LOC105 = Getordvalue_93107(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((LOC104 == LOC105))), N_109017);
+F.line = 141;F.filename = "semfold.nim";
+LOC104 = Getordvalue_94107(A_111018);
+LOC105 = Getordvalue_94107(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((LOC104 == LOC105))), N_111017);
 break;
 case ((NU8) 74):
-LOC106 = Getfloat_55987(A_109018);
-LOC107 = Getfloat_55987(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((((NF) (LOC106)) < ((NF) (LOC107))))), N_109017);
+F.line = 142;F.filename = "semfold.nim";
+LOC106 = Getfloat_57054(A_111018);
+LOC107 = Getfloat_57054(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((((NF) (LOC106)) < ((NF) (LOC107))))), N_111017);
 break;
 case ((NU8) 73):
-LOC108 = Getfloat_55987(A_109018);
-LOC109 = Getfloat_55987(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((((NF) (LOC108)) <= ((NF) (LOC109))))), N_109017);
+F.line = 143;F.filename = "semfold.nim";
+LOC108 = Getfloat_57054(A_111018);
+LOC109 = Getfloat_57054(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((((NF) (LOC108)) <= ((NF) (LOC109))))), N_111017);
 break;
 case ((NU8) 72):
-LOC110 = Getfloat_55987(A_109018);
-LOC111 = Getfloat_55987(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((((NF) (LOC110)) == ((NF) (LOC111))))), N_109017);
+F.line = 144;F.filename = "semfold.nim";
+LOC110 = Getfloat_57054(A_111018);
+LOC111 = Getfloat_57054(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((((NF) (LOC110)) == ((NF) (LOC111))))), N_111017);
 break;
 case ((NU8) 132):
-LOC112 = Getstr_56003(A_109018);
-LOC113 = Getstr_56003(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((cmpStrings(LOC112, LOC113) < 0))), N_109017);
+F.line = 145;F.filename = "semfold.nim";
+LOC112 = 0;
+LOC112 = Getstr_57071(A_111018);
+LOC113 = 0;
+LOC113 = Getstr_57071(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((cmpStrings(LOC112, LOC113) < 0))), N_111017);
 break;
 case ((NU8) 131):
-LOC114 = Getstr_56003(A_109018);
-LOC115 = Getstr_56003(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) ((cmpStrings(LOC114, LOC115) <= 0))), N_109017);
+F.line = 146;F.filename = "semfold.nim";
+LOC114 = 0;
+LOC114 = Getstr_57071(A_111018);
+LOC115 = 0;
+LOC115 = Getstr_57071(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) ((cmpStrings(LOC114, LOC115) <= 0))), N_111017);
 break;
 case ((NU8) 130):
-LOC116 = Getstr_56003(A_109018);
-LOC117 = Getstr_56003(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (eqStrings(LOC116, LOC117))), N_109017);
+F.line = 147;F.filename = "semfold.nim";
+LOC116 = 0;
+LOC116 = Getstr_57071(A_111018);
+LOC117 = 0;
+LOC117 = Getstr_57071(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (eqStrings(LOC116, LOC117))), N_111017);
 break;
 case ((NU8) 76):
 case ((NU8) 78):
-LOC118 = Getordvalue_93107(A_109018);
-LOC119 = Getordvalue_93107(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (((NU64)(LOC118) < (NU64)(LOC119)))), N_109017);
+F.line = 149;F.filename = "semfold.nim";
+LOC118 = Getordvalue_94107(A_111018);
+LOC119 = Getordvalue_94107(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (((NU64)(LOC118) < (NU64)(LOC119)))), N_111017);
 break;
 case ((NU8) 75):
 case ((NU8) 77):
-LOC120 = Getordvalue_93107(A_109018);
-LOC121 = Getordvalue_93107(B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (((NU64)(LOC120) <= (NU64)(LOC121)))), N_109017);
+F.line = 151;F.filename = "semfold.nim";
+LOC120 = Getordvalue_94107(A_111018);
+LOC121 = Getordvalue_94107(B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (((NU64)(LOC120) <= (NU64)(LOC121)))), N_111017);
 break;
 case ((NU8) 42):
 case ((NU8) 49):
 case ((NU8) 128):
-LOC122 = Getint_55971(A_109018);
-LOC123 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((LOC122 & LOC123), N_109017);
+F.line = 152;F.filename = "semfold.nim";
+LOC122 = Getint_57037(A_111018);
+LOC123 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((LOC122 & LOC123), N_111017);
 break;
 case ((NU8) 43):
 case ((NU8) 50):
 case ((NU8) 129):
-LOC124 = Getint_55971(A_109018);
-LOC125 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((LOC124 | LOC125), N_109017);
+F.line = 153;F.filename = "semfold.nim";
+LOC124 = Getint_57037(A_111018);
+LOC125 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((LOC124 | LOC125), N_111017);
 break;
 case ((NU8) 44):
 case ((NU8) 51):
 case ((NU8) 94):
-LOC126 = Getint_55971(A_109018);
-LOC127 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((LOC126 ^ LOC127), N_109017);
+F.line = 154;F.filename = "semfold.nim";
+LOC126 = Getint_57037(A_111018);
+LOC127 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((LOC126 ^ LOC127), N_111017);
 break;
 case ((NU8) 56):
 case ((NU8) 61):
-LOC128 = Getint_55971(A_109018);
-LOC129 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC128) + (NU64)(LOC129)), N_109017);
+F.line = 155;F.filename = "semfold.nim";
+LOC128 = Getint_57037(A_111018);
+LOC129 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC128) + (NU64)(LOC129)), N_111017);
 break;
 case ((NU8) 57):
 case ((NU8) 62):
-LOC130 = Getint_55971(A_109018);
-LOC131 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC130) - (NU64)(LOC131)), N_109017);
+F.line = 156;F.filename = "semfold.nim";
+LOC130 = Getint_57037(A_111018);
+LOC131 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC130) - (NU64)(LOC131)), N_111017);
 break;
 case ((NU8) 58):
 case ((NU8) 63):
-LOC132 = Getint_55971(A_109018);
-LOC133 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC132) * (NU64)(LOC133)), N_109017);
+F.line = 157;F.filename = "semfold.nim";
+LOC132 = Getint_57037(A_111018);
+LOC133 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC132) * (NU64)(LOC133)), N_111017);
 break;
 case ((NU8) 60):
 case ((NU8) 65):
-LOC134 = Getint_55971(A_109018);
-LOC135 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC134) % (NU64)(LOC135)), N_109017);
+F.line = 158;F.filename = "semfold.nim";
+LOC134 = Getint_57037(A_111018);
+LOC135 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC134) % (NU64)(LOC135)), N_111017);
 break;
 case ((NU8) 59):
 case ((NU8) 64):
-LOC136 = Getint_55971(A_109018);
-LOC137 = Getint_55971(B_109019);
-Result_109166 = Newintnodet_109025((NI64)((NU64)(LOC136) / (NU64)(LOC137)), N_109017);
+F.line = 159;F.filename = "semfold.nim";
+LOC136 = Getint_57037(A_111018);
+LOC137 = Getint_57037(B_111019);
+Result_111172 = Newintnodet_111025((NI64)((NU64)(LOC136) / (NU64)(LOC137)), N_111017);
 break;
 case ((NU8) 134):
-LOC138 = Containssets_100042(A_109018, B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (LOC138)), N_109017);
+F.line = 160;F.filename = "semfold.nim";
+LOC138 = Containssets_101042(A_111018, B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (LOC138)), N_111017);
 break;
 case ((NU8) 133):
-LOC139 = Equalsets_100046(A_109018, B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (LOC139)), N_109017);
+F.line = 161;F.filename = "semfold.nim";
+LOC139 = Equalsets_101046(A_111018, B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (LOC139)), N_111017);
 break;
 case ((NU8) 135):
-LOC140 = Containssets_100042(A_109018, B_109019);
+F.line = 163;F.filename = "semfold.nim";
+LOC140 = Containssets_101042(A_111018, B_111019);
 if (!(LOC140)) goto LA141;
-LOC142 = Equalsets_100046(A_109018, B_109019);
+LOC142 = Equalsets_101046(A_111018, B_111019);
 LOC140 = !(LOC142);
 LA141: ;
-Result_109166 = Newintnodet_109025(((NI64) (LOC140)), N_109017);
+Result_111172 = Newintnodet_111025(((NI64) (LOC140)), N_111017);
 break;
 case ((NU8) 136):
-Result_109166 = Intersectsets_100034(A_109018, B_109019);
-(*Result_109166).Info = (*N_109017).Info;
+F.line = 165;F.filename = "semfold.nim";
+Result_111172 = Intersectsets_101034(A_111018, B_111019);
+F.line = 166;F.filename = "semfold.nim";
+(*Result_111172).Info = (*N_111017).Info;
 break;
 case ((NU8) 137):
-Result_109166 = Unionsets_100026(A_109018, B_109019);
-(*Result_109166).Info = (*N_109017).Info;
+F.line = 168;F.filename = "semfold.nim";
+Result_111172 = Unionsets_101026(A_111018, B_111019);
+F.line = 169;F.filename = "semfold.nim";
+(*Result_111172).Info = (*N_111017).Info;
 break;
 case ((NU8) 138):
-Result_109166 = Diffsets_100030(A_109018, B_109019);
-(*Result_109166).Info = (*N_109017).Info;
+F.line = 171;F.filename = "semfold.nim";
+Result_111172 = Diffsets_101030(A_111018, B_111019);
+F.line = 172;F.filename = "semfold.nim";
+(*Result_111172).Info = (*N_111017).Info;
 break;
 case ((NU8) 139):
-Result_109166 = Symdiffsets_100038(A_109018, B_109019);
-(*Result_109166).Info = (*N_109017).Info;
+F.line = 174;F.filename = "semfold.nim";
+Result_111172 = Symdiffsets_101038(A_111018, B_111019);
+F.line = 175;F.filename = "semfold.nim";
+(*Result_111172).Info = (*N_111017).Info;
 break;
 case ((NU8) 140):
-LOC144 = Getstrorchar_56019(A_109018);
-LOC145 = Getstrorchar_56019(B_109019);
+F.line = 176;F.filename = "semfold.nim";
+LOC143 = 0;
+LOC144 = 0;
+LOC144 = Getstrorchar_57088(A_111018);
+LOC145 = 0;
+LOC145 = Getstrorchar_57088(B_111019);
 LOC143 = rawNewString(LOC144->Sup.len + LOC145->Sup.len + 0);
 appendString(LOC143, LOC144);
 appendString(LOC143, LOC145);
-Result_109166 = Newstrnodet_109033(LOC143, N_109017);
+Result_111172 = Newstrnodet_111033(LOC143, N_111017);
 break;
 case ((NU8) 150):
-LOC146 = Inset_100010(A_109018, B_109019);
-Result_109166 = Newintnodet_109025(((NI64) (LOC146)), N_109017);
+F.line = 177;F.filename = "semfold.nim";
+LOC146 = Inset_101010(A_111018, B_111019);
+Result_111172 = Newintnodet_111025(((NI64) (LOC146)), N_111017);
 break;
 case ((NU8) 151):
 break;
 case ((NU8) 122):
 case ((NU8) 123):
-LOC147 = Getordvalue_93107(A_109018);
+F.line = 182;F.filename = "semfold.nim";
+LOC147 = Getordvalue_94107(A_111018);
+LOC148 = 0;
 LOC148 = nimInt64ToStr(LOC147);
-Result_109166 = Newstrnodet_109033(LOC148, N_109017);
+Result_111172 = Newstrnodet_111033(LOC148, N_111017);
 break;
 case ((NU8) 121):
-LOC150 = Getordvalue_93107(A_109018);
+F.line = 184;F.filename = "semfold.nim";
+LOC150 = Getordvalue_94107(A_111018);
 if (!(LOC150 == 0)) goto LA151;
-Result_109166 = Newstrnodet_109033(((NimStringDesc*) &TMP193972), N_109017);
+F.line = 184;F.filename = "semfold.nim";
+Result_111172 = Newstrnodet_111033(((NimStringDesc*) &TMP111309), N_111017);
 goto LA149;
 LA151: ;
-Result_109166 = Newstrnodet_109033(((NimStringDesc*) &TMP193973), N_109017);
+F.line = 185;F.filename = "semfold.nim";
+Result_111172 = Newstrnodet_111033(((NimStringDesc*) &TMP111310), N_111017);
 LA149: ;
 break;
 case ((NU8) 159):
-LOC153 = Getstr_56003(A_109018);
-LOC154 = Getordvalue_93107(B_109019);
+F.line = 186;F.filename = "semfold.nim";
+LOC153 = 0;
+LOC153 = Getstr_57071(A_111018);
+LOC154 = Getordvalue_94107(B_111019);
+LOC155 = 0;
 LOC155 = copyStr(LOC153, ((NI) (LOC154)));
-Result_109166 = Newstrnodet_109033(LOC155, N_109017);
+Result_111172 = Newstrnodet_111033(LOC155, N_111017);
 break;
 case ((NU8) 160):
-LOC156 = Getstr_56003(A_109018);
-LOC157 = Getordvalue_93107(B_109019);
-LOC158 = Getordvalue_93107(C_109020);
+F.line = 188;F.filename = "semfold.nim";
+LOC156 = 0;
+LOC156 = Getstr_57071(A_111018);
+LOC157 = Getordvalue_94107(B_111019);
+LOC158 = Getordvalue_94107(C_111020);
+LOC159 = 0;
 LOC159 = copyStrLast(LOC156, ((NI) (LOC157)), ((NI) (LOC158)));
-Result_109166 = Newstrnodet_109033(LOC159, N_109017);
+Result_111172 = Newstrnodet_111033(LOC159, N_111017);
 break;
 case ((NU8) 124):
-LOC160 = Getfloat_55987(A_109018);
+F.line = 190;F.filename = "semfold.nim";
+LOC160 = Getfloat_57054(A_111018);
+LOC161 = 0;
 LOC161 = nimFloatToStr(((NF) (LOC160)));
-Result_109166 = Newstrnodet_109033(LOC161, N_109017);
+Result_111172 = Newstrnodet_111033(LOC161, N_111017);
 break;
 case ((NU8) 125):
 case ((NU8) 120):
-LOC162 = Getstrorchar_56019(A_109018);
-Result_109166 = Newstrnodet_109033(LOC162, N_109017);
+F.line = 191;F.filename = "semfold.nim";
+LOC162 = 0;
+LOC162 = Getstrorchar_57088(A_111018);
+Result_111172 = Newstrnodet_111033(LOC162, N_111017);
 break;
 case ((NU8) 126):
-Result_109166 = A_109018;
+F.line = 192;F.filename = "semfold.nim";
+Result_111172 = A_111018;
 break;
 case ((NU8) 127):
-LOC163 = Ordinalvaltostring_109061(A_109018);
-Result_109166 = Newstrnodet_109033(LOC163, N_109017);
+F.line = 193;F.filename = "semfold.nim";
+LOC163 = 0;
+LOC163 = Ordinalvaltostring_111061(A_111018);
+Result_111172 = Newstrnodet_111033(LOC163, N_111017);
 break;
 case ((NU8) 158):
-Result_109166 = Copytree_53856(A_109018);
-asgnRef((void**) &(*Result_109166).Typ, (*N_109017).Typ);
+F.line = 195;F.filename = "semfold.nim";
+Result_111172 = Copytree_54856(A_111018);
+F.line = 196;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111172).Typ, (*N_111017).Typ);
 break;
 case ((NU8) 161):
 case ((NU8) 152):
@@ -1191,584 +1726,1071 @@ case ((NU8) 201) ... ((NU8) 229):
 case ((NU8) 88):
 break;
 default:
-LOC164 = rawNewString(reprEnum(M_109016, NTI53178)->Sup.len + 8);
-appendString(LOC164, ((NimStringDesc*) &TMP193976));
-appendString(LOC164, reprEnum(M_109016, NTI53178));
+F.line = 201;F.filename = "semfold.nim";
+LOC164 = 0;
+LOC164 = rawNewString(reprEnum(M_111016, NTI54178)->Sup.len + 8);
+appendString(LOC164, ((NimStringDesc*) &TMP111311));
+appendString(LOC164, reprEnum(M_111016, NTI54178));
 appendChar(LOC164, 41);
-Internalerror_45567((*A_109018).Info, LOC164);
+Internalerror_46567((*A_111018).Info, LOC164);
 break;
 }
-return Result_109166;
+framePtr = framePtr->prev;
+return Result_111172;
 }
-N_NIMCALL(NIM_BOOL, Levalueconv_109021)(TY53523* A_109023, TY53523* B_109024) {
-NIM_BOOL Result_109605;
+N_NIMCALL(TY54523*, Getconstifexpr_111312)(TY54545* C_111314, TY54523* N_111315) {
+TY54523* Result_111316;
+NI I_111324;
+NI HEX3Atmp_111422;
 NI LOC1;
-Result_109605 = 0;
-Result_109605 = NIM_FALSE;
-switch ((*A_109023).Kind) {
-case ((NU8) 5) ... ((NU8) 10):
-switch ((*B_109024).Kind) {
-case ((NU8) 5) ... ((NU8) 10):
-Result_109605 = ((*A_109023).KindU.S1.Intval <= (*B_109024).KindU.S1.Intval);
-break;
-case ((NU8) 11) ... ((NU8) 13):
-LOC1 = lrint(((NF) ((*B_109024).KindU.S2.Floatval)));
-Result_109605 = ((*A_109023).KindU.S1.Intval <= ((NI64) (LOC1)));
-break;
-default:
-Internalerror_45567((*A_109023).Info, ((NimStringDesc*) &TMP194054));
-break;
-}
-break;
-case ((NU8) 11) ... ((NU8) 13):
-switch ((*B_109024).Kind) {
-case ((NU8) 11) ... ((NU8) 13):
-Result_109605 = (((NF) ((*A_109023).KindU.S2.Floatval)) <= ((NF) ((*B_109024).KindU.S2.Floatval)));
-break;
-case ((NU8) 5) ... ((NU8) 10):
-Result_109605 = (((NF) ((*A_109023).KindU.S2.Floatval)) <= ((double) (((NI) ((*B_109024).KindU.S1.Intval)))));
-break;
-default:
-Internalerror_45567((*A_109023).Info, ((NimStringDesc*) &TMP194054));
-break;
-}
-break;
-default:
-Internalerror_45567((*A_109023).Info, ((NimStringDesc*) &TMP194054));
-break;
-}
-return Result_109605;
-}
-N_NIMCALL(TY53523*, Getapptype_109814)(TY53523* N_109816) {
-TY53523* Result_109817;
-Result_109817 = 0;
-if (!((Gglobaloptions_44077 &(1<<((((NU8) 10))&31)))!=0)) goto LA2;
-Result_109817 = Newstrnodet_109033(((NimStringDesc*) &TMP194154), N_109816);
-goto LA1;
-LA2: ;
-if (!((Gglobaloptions_44077 &(1<<((((NU8) 11))&31)))!=0)) goto LA4;
-Result_109817 = Newstrnodet_109033(((NimStringDesc*) &TMP194155), N_109816);
-goto LA1;
-LA4: ;
-Result_109817 = Newstrnodet_109033(((NimStringDesc*) &TMP194156), N_109816);
-LA1: ;
-return Result_109817;
-}
-N_NIMCALL(TY53523*, Getconstifexpr_109302)(TY53545* C_109304, TY53523* N_109305) {
-TY53523* Result_109306;
-NI I_109314;
-NI HEX3Atmp_109412;
-NI LOC1;
-NI Res_109414;
-TY53523* It_109327;
-TY53523* E_109340;
+NI Res_111424;
+TY54523* It_111337;
+TY54523* E_111350;
 NI64 LOC7;
-Result_109306 = 0;
-Result_109306 = NIM_NIL;
-I_109314 = 0;
-HEX3Atmp_109412 = 0;
-LOC1 = Sonslen_53801(N_109305);
-HEX3Atmp_109412 = (NI64)(LOC1 - 1);
-Res_109414 = 0;
-Res_109414 = 0;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getConstIfExpr";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111316 = 0;
+F.line = 204;F.filename = "semfold.nim";
+Result_111316 = NIM_NIL;
+I_111324 = 0;
+HEX3Atmp_111422 = 0;
+F.line = 205;F.filename = "semfold.nim";
+LOC1 = Sonslen_54801(N_111315);
+HEX3Atmp_111422 = subInt(LOC1, 1);
+Res_111424 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_111424 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_109414 <= HEX3Atmp_109412)) goto LA2;
-I_109314 = Res_109414;
-It_109327 = 0;
-It_109327 = (*N_109305).KindU.S6.Sons->data[I_109314];
-switch ((*It_109327).Kind) {
+if (!(Res_111424 <= HEX3Atmp_111422)) goto LA2;
+F.line = 1011;F.filename = "system.nim";
+I_111324 = Res_111424;
+It_111337 = 0;
+F.line = 206;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111315).Kind/8] &(1<<((*N_111315).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_111324) >= (NU)((*N_111315).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_111337 = (*N_111315).KindU.S6.Sons->data[I_111324];
+F.line = 207;F.filename = "semfold.nim";
+switch ((*It_111337).Kind) {
 case ((NU8) 40):
-E_109340 = 0;
-E_109340 = Getconstexpr_109010(C_109304, (*It_109327).KindU.S6.Sons->data[0]);
-if (!(E_109340 == NIM_NIL)) goto LA4;
-Result_109306 = NIM_NIL;
+E_111350 = 0;
+F.line = 209;F.filename = "semfold.nim";
+if (((TMP111159[(*It_111337).Kind/8] &(1<<((*It_111337).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*It_111337).KindU.S6.Sons->Sup.len)) raiseIndexError();
+E_111350 = Getconstexpr_111010(C_111314, (*It_111337).KindU.S6.Sons->data[0]);
+F.line = 210;F.filename = "semfold.nim";
+if (!(E_111350 == NIM_NIL)) goto LA4;
+F.line = 210;F.filename = "semfold.nim";
+F.line = 210;F.filename = "semfold.nim";
+Result_111316 = NIM_NIL;
 goto BeforeRet;
 LA4: ;
-LOC7 = Getordvalue_93107(E_109340);
+F.line = 211;F.filename = "semfold.nim";
+LOC7 = Getordvalue_94107(E_111350);
 if (!!((LOC7 == 0))) goto LA8;
-if (!(Result_109306 == NIM_NIL)) goto LA11;
-Result_109306 = Getconstexpr_109010(C_109304, (*It_109327).KindU.S6.Sons->data[1]);
-if (!(Result_109306 == NIM_NIL)) goto LA14;
+F.line = 212;F.filename = "semfold.nim";
+if (!(Result_111316 == NIM_NIL)) goto LA11;
+F.line = 213;F.filename = "semfold.nim";
+if (((TMP111159[(*It_111337).Kind/8] &(1<<((*It_111337).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*It_111337).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111316 = Getconstexpr_111010(C_111314, (*It_111337).KindU.S6.Sons->data[1]);
+F.line = 214;F.filename = "semfold.nim";
+if (!(Result_111316 == NIM_NIL)) goto LA14;
+F.line = 214;F.filename = "semfold.nim";
 goto BeforeRet;
 LA14: ;
 LA11: ;
 LA8: ;
 break;
 case ((NU8) 41):
-if (!(Result_109306 == NIM_NIL)) goto LA17;
-Result_109306 = Getconstexpr_109010(C_109304, (*It_109327).KindU.S6.Sons->data[0]);
+F.line = 216;F.filename = "semfold.nim";
+if (!(Result_111316 == NIM_NIL)) goto LA17;
+F.line = 216;F.filename = "semfold.nim";
+if (((TMP111159[(*It_111337).Kind/8] &(1<<((*It_111337).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*It_111337).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111316 = Getconstexpr_111010(C_111314, (*It_111337).KindU.S6.Sons->data[0]);
 LA17: ;
 break;
 default:
-Internalerror_45567((*It_109327).Info, ((NimStringDesc*) &TMP194157));
+F.line = 217;F.filename = "semfold.nim";
+Internalerror_46567((*It_111337).Info, ((NimStringDesc*) &TMP111427));
 break;
 }
-Res_109414 += 1;
+F.line = 1014;F.filename = "system.nim";
+Res_111424 = addInt(Res_111424, 1);
 } LA2: ;
 BeforeRet: ;
-return Result_109306;
+framePtr = framePtr->prev;
+return Result_111316;
 }
-N_NIMCALL(TY53523*, Magiccall_109706)(TY53545* M_109708, TY53523* N_109709) {
-TY53523* Result_109710;
+N_NIMCALL(TY54523*, Partialandexpr_111428)(TY54545* C_111430, TY54523* N_111431) {
+TY54523* Result_111432;
+TY54523* A_111445;
+TY54523* B_111458;
+NI64 LOC5;
+NI64 LOC13;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "partialAndExpr";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111432 = 0;
+F.line = 221;F.filename = "semfold.nim";
+Result_111432 = N_111431;
+A_111445 = 0;
+F.line = 222;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111431).Kind/8] &(1<<((*N_111431).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111431).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_111445 = Getconstexpr_111010(C_111430, (*N_111431).KindU.S6.Sons->data[1]);
+B_111458 = 0;
+F.line = 223;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111431).Kind/8] &(1<<((*N_111431).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111431).KindU.S6.Sons->Sup.len)) raiseIndexError();
+B_111458 = Getconstexpr_111010(C_111430, (*N_111431).KindU.S6.Sons->data[2]);
+F.line = 224;F.filename = "semfold.nim";
+if (!!((A_111445 == NIM_NIL))) goto LA2;
+F.line = 225;F.filename = "semfold.nim";
+LOC5 = Getint_57037(A_111445);
+if (!(LOC5 == 0)) goto LA6;
+F.line = 225;F.filename = "semfold.nim";
+Result_111432 = A_111445;
+goto LA4;
+LA6: ;
+if (!!((B_111458 == NIM_NIL))) goto LA8;
+F.line = 226;F.filename = "semfold.nim";
+Result_111432 = B_111458;
+goto LA4;
+LA8: ;
+F.line = 227;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111431).Kind/8] &(1<<((*N_111431).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111431).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111432 = (*N_111431).KindU.S6.Sons->data[2];
+LA4: ;
+goto LA1;
+LA2: ;
+if (!!((B_111458 == NIM_NIL))) goto LA10;
+F.line = 229;F.filename = "semfold.nim";
+LOC13 = Getint_57037(B_111458);
+if (!(LOC13 == 0)) goto LA14;
+F.line = 229;F.filename = "semfold.nim";
+Result_111432 = B_111458;
+goto LA12;
+LA14: ;
+F.line = 230;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111431).Kind/8] &(1<<((*N_111431).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111431).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111432 = (*N_111431).KindU.S6.Sons->data[1];
+LA12: ;
+goto LA1;
+LA10: ;
+LA1: ;
+framePtr = framePtr->prev;
+return Result_111432;
+}
+N_NIMCALL(TY54523*, Partialorexpr_111520)(TY54545* C_111522, TY54523* N_111523) {
+TY54523* Result_111524;
+TY54523* A_111537;
+TY54523* B_111550;
+NI64 LOC5;
+NI64 LOC13;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "partialOrExpr";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111524 = 0;
+F.line = 234;F.filename = "semfold.nim";
+Result_111524 = N_111523;
+A_111537 = 0;
+F.line = 235;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111523).Kind/8] &(1<<((*N_111523).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111523).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_111537 = Getconstexpr_111010(C_111522, (*N_111523).KindU.S6.Sons->data[1]);
+B_111550 = 0;
+F.line = 236;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111523).Kind/8] &(1<<((*N_111523).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111523).KindU.S6.Sons->Sup.len)) raiseIndexError();
+B_111550 = Getconstexpr_111010(C_111522, (*N_111523).KindU.S6.Sons->data[2]);
+F.line = 237;F.filename = "semfold.nim";
+if (!!((A_111537 == NIM_NIL))) goto LA2;
+F.line = 238;F.filename = "semfold.nim";
+LOC5 = Getint_57037(A_111537);
+if (!!((LOC5 == 0))) goto LA6;
+F.line = 238;F.filename = "semfold.nim";
+Result_111524 = A_111537;
+goto LA4;
+LA6: ;
+if (!!((B_111550 == NIM_NIL))) goto LA8;
+F.line = 239;F.filename = "semfold.nim";
+Result_111524 = B_111550;
+goto LA4;
+LA8: ;
+F.line = 240;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111523).Kind/8] &(1<<((*N_111523).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111523).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111524 = (*N_111523).KindU.S6.Sons->data[2];
+LA4: ;
+goto LA1;
+LA2: ;
+if (!!((B_111550 == NIM_NIL))) goto LA10;
+F.line = 242;F.filename = "semfold.nim";
+LOC13 = Getint_57037(B_111550);
+if (!!((LOC13 == 0))) goto LA14;
+F.line = 242;F.filename = "semfold.nim";
+Result_111524 = B_111550;
+goto LA12;
+LA14: ;
+F.line = 243;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111523).Kind/8] &(1<<((*N_111523).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111523).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_111524 = (*N_111523).KindU.S6.Sons->data[1];
+LA12: ;
+goto LA1;
+LA10: ;
+LA1: ;
+framePtr = framePtr->prev;
+return Result_111524;
+}
+N_NIMCALL(NIM_BOOL, Levalueconv_111021)(TY54523* A_111023, TY54523* B_111024) {
+NIM_BOOL Result_111616;
+NI LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "leValueConv";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111616 = 0;
+F.line = 246;F.filename = "semfold.nim";
+Result_111616 = NIM_FALSE;
+F.line = 247;F.filename = "semfold.nim";
+switch ((*A_111023).Kind) {
+case ((NU8) 5) ... ((NU8) 10):
+F.line = 249;F.filename = "semfold.nim";
+switch ((*B_111024).Kind) {
+case ((NU8) 5) ... ((NU8) 10):
+F.line = 250;F.filename = "semfold.nim";
+if (!(((TMP111717[(*A_111023).Kind/8] &(1<<((*A_111023).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111718));
+if (!(((TMP111717[(*B_111024).Kind/8] &(1<<((*B_111024).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111718));
+Result_111616 = ((*A_111023).KindU.S1.Intval <= (*B_111024).KindU.S1.Intval);
+break;
+case ((NU8) 11) ... ((NU8) 13):
+F.line = 251;F.filename = "semfold.nim";
+if (!(((TMP111717[(*A_111023).Kind/8] &(1<<((*A_111023).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111718));
+if (!(((TMP111719[(*B_111024).Kind/8] &(1<<((*B_111024).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111720));
+LOC1 = lrint(((NF) ((*B_111024).KindU.S2.Floatval)));
+Result_111616 = ((*A_111023).KindU.S1.Intval <= ((NI64) (LOC1)));
+break;
+default:
+F.line = 252;F.filename = "semfold.nim";
+Internalerror_46567((*A_111023).Info, ((NimStringDesc*) &TMP111721));
+break;
+}
+break;
+case ((NU8) 11) ... ((NU8) 13):
+F.line = 254;F.filename = "semfold.nim";
+switch ((*B_111024).Kind) {
+case ((NU8) 11) ... ((NU8) 13):
+F.line = 255;F.filename = "semfold.nim";
+if (!(((TMP111719[(*A_111023).Kind/8] &(1<<((*A_111023).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111720));
+if (!(((TMP111719[(*B_111024).Kind/8] &(1<<((*B_111024).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111720));
+Result_111616 = (((NF) ((*A_111023).KindU.S2.Floatval)) <= ((NF) ((*B_111024).KindU.S2.Floatval)));
+break;
+case ((NU8) 5) ... ((NU8) 10):
+F.line = 256;F.filename = "semfold.nim";
+if (!(((TMP111719[(*A_111023).Kind/8] &(1<<((*A_111023).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111720));
+if (!(((TMP111717[(*B_111024).Kind/8] &(1<<((*B_111024).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111718));
+Result_111616 = (((NF) ((*A_111023).KindU.S2.Floatval)) <= ((double) (((NI) ((*B_111024).KindU.S1.Intval)))));
+break;
+default:
+F.line = 257;F.filename = "semfold.nim";
+Internalerror_46567((*A_111023).Info, ((NimStringDesc*) &TMP111721));
+break;
+}
+break;
+default:
+F.line = 258;F.filename = "semfold.nim";
+Internalerror_46567((*A_111023).Info, ((NimStringDesc*) &TMP111721));
+break;
+}
+framePtr = framePtr->prev;
+return Result_111616;
+}
+N_NIMCALL(TY54523*, Magiccall_111722)(TY54545* M_111724, TY54523* N_111725) {
+TY54523* Result_111726;
 NI LOC2;
-TY53545* S_109737;
-TY53523* A_109750;
-TY53523* B_109751;
-TY53523* C_109752;
+TY54545* S_111753;
+TY54523* A_111766;
+TY54523* B_111767;
+TY54523* C_111768;
 NI LOC9;
 NI LOC16;
-Result_109710 = 0;
-LOC2 = Sonslen_53801(N_109709);
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "magicCall";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111726 = 0;
+F.line = 261;F.filename = "semfold.nim";
+LOC2 = Sonslen_54801(N_111725);
 if (!(LOC2 <= 1)) goto LA3;
+F.line = 261;F.filename = "semfold.nim";
 goto BeforeRet;
 LA3: ;
-S_109737 = 0;
-S_109737 = (*(*N_109709).KindU.S6.Sons->data[0]).KindU.S4.Sym;
-A_109750 = 0;
-A_109750 = Getconstexpr_109010(M_109708, (*N_109709).KindU.S6.Sons->data[1]);
-B_109751 = 0;
-C_109752 = 0;
-if (!(A_109750 == NIM_NIL)) goto LA6;
+S_111753 = 0;
+F.line = 263;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111725).Kind/8] &(1<<((*N_111725).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111725).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP111162[(*(*N_111725).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_111725).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111163));
+S_111753 = (*(*N_111725).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+A_111766 = 0;
+F.line = 264;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111725).Kind/8] &(1<<((*N_111725).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111725).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_111766 = Getconstexpr_111010(M_111724, (*N_111725).KindU.S6.Sons->data[1]);
+B_111767 = 0;
+C_111768 = 0;
+F.line = 266;F.filename = "semfold.nim";
+if (!(A_111766 == NIM_NIL)) goto LA6;
+F.line = 266;F.filename = "semfold.nim";
 goto BeforeRet;
 LA6: ;
-LOC9 = Sonslen_53801(N_109709);
+F.line = 267;F.filename = "semfold.nim";
+LOC9 = Sonslen_54801(N_111725);
 if (!(2 < LOC9)) goto LA10;
-B_109751 = Getconstexpr_109010(M_109708, (*N_109709).KindU.S6.Sons->data[2]);
-if (!(B_109751 == NIM_NIL)) goto LA13;
+F.line = 268;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111725).Kind/8] &(1<<((*N_111725).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111725).KindU.S6.Sons->Sup.len)) raiseIndexError();
+B_111767 = Getconstexpr_111010(M_111724, (*N_111725).KindU.S6.Sons->data[2]);
+F.line = 269;F.filename = "semfold.nim";
+if (!(B_111767 == NIM_NIL)) goto LA13;
+F.line = 269;F.filename = "semfold.nim";
 goto BeforeRet;
 LA13: ;
-LOC16 = Sonslen_53801(N_109709);
+F.line = 270;F.filename = "semfold.nim";
+LOC16 = Sonslen_54801(N_111725);
 if (!(3 < LOC16)) goto LA17;
-C_109752 = Getconstexpr_109010(M_109708, (*N_109709).KindU.S6.Sons->data[3]);
-if (!(C_109752 == NIM_NIL)) goto LA20;
+F.line = 271;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111725).Kind/8] &(1<<((*N_111725).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(3) >= (NU)((*N_111725).KindU.S6.Sons->Sup.len)) raiseIndexError();
+C_111768 = Getconstexpr_111010(M_111724, (*N_111725).KindU.S6.Sons->data[3]);
+F.line = 272;F.filename = "semfold.nim";
+if (!(C_111768 == NIM_NIL)) goto LA20;
+F.line = 272;F.filename = "semfold.nim";
 goto BeforeRet;
 LA20: ;
 LA17: ;
 goto LA8;
 LA10: ;
-B_109751 = NIM_NIL;
+F.line = 274;F.filename = "semfold.nim";
+B_111767 = NIM_NIL;
 LA8: ;
-Result_109710 = Evalop_109014((*S_109737).Magic, N_109709, A_109750, B_109751, C_109752);
+F.line = 275;F.filename = "semfold.nim";
+Result_111726 = Evalop_111014((*S_111753).Magic, N_111725, A_111766, B_111767, C_111768);
 BeforeRet: ;
-return Result_109710;
+framePtr = framePtr->prev;
+return Result_111726;
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11616, void* Src_11617) {
-TY10402* C_11618;
-TY10402* C_11619;
-if (!!((Src_11617 == NIM_NIL))) goto LA2;
-C_11618 = 0;
-C_11618 = Usrtocell_10822(Src_11617);
-(*C_11618).Refcount = (NI64)((NU64)((*C_11618).Refcount) + (NU64)(8));
+N_NIMCALL(TY54523*, Getapptype_111830)(TY54523* N_111832) {
+TY54523* Result_111833;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getAppType";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111833 = 0;
+F.line = 278;F.filename = "semfold.nim";
+if (!((Gglobaloptions_45077 &(1<<((((NU8) 10))&31)))!=0)) goto LA2;
+F.line = 279;F.filename = "semfold.nim";
+Result_111833 = Newstrnodet_111033(((NimStringDesc*) &TMP111856), N_111832);
+goto LA1;
 LA2: ;
-if (!!(((*Dest_11616) == NIM_NIL))) goto LA5;
-C_11619 = 0;
-C_11619 = Usrtocell_10822((*Dest_11616));
-(*C_11619).Refcount = (NI64)((NU64)((*C_11619).Refcount) - (NU64)(8));
-if (!((NU64)((*C_11619).Refcount) < (NU64)(8))) goto LA8;
-Rtladdzct_11456(C_11619);
-LA8: ;
-LA5: ;
-(*Dest_11616) = Src_11617;
+if (!((Gglobaloptions_45077 &(1<<((((NU8) 11))&31)))!=0)) goto LA4;
+F.line = 281;F.filename = "semfold.nim";
+Result_111833 = Newstrnodet_111033(((NimStringDesc*) &TMP111857), N_111832);
+goto LA1;
+LA4: ;
+F.line = 283;F.filename = "semfold.nim";
+Result_111833 = Newstrnodet_111033(((NimStringDesc*) &TMP111858), N_111832);
+LA1: ;
+framePtr = framePtr->prev;
+return Result_111833;
 }
-N_NIMCALL(TY53523*, Getconstexpr_109010)(TY53545* M_109012, TY53523* N_109013) {
-TY53523* Result_109844;
-TY53545* S_109857;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819) {
+TY10602* C_11820;
+NI LOC4;
+TY10602* C_11822;
+NI LOC9;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "asgnRefNoCycle";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 244;F.filename = "gc.nim";
+if (!!((Src_11819 == NIM_NIL))) goto LA2;
+C_11820 = 0;
+F.line = 245;F.filename = "gc.nim";
+C_11820 = Usrtocell_11036(Src_11819);
+F.line = 246;F.filename = "gc.nim";
+LOC4 = Atomicinc_3001(&(*C_11820).Refcount, 8);
+LA2: ;
+F.line = 247;F.filename = "gc.nim";
+if (!!(((*Dest_11818) == NIM_NIL))) goto LA6;
+C_11822 = 0;
+F.line = 248;F.filename = "gc.nim";
+C_11822 = Usrtocell_11036((*Dest_11818));
+F.line = 249;F.filename = "gc.nim";
+LOC9 = Atomicdec_3006(&(*C_11822).Refcount, 8);
+if (!((NU64)(LOC9) < (NU64)(8))) goto LA10;
+F.line = 250;F.filename = "gc.nim";
+Rtladdzct_11658(C_11822);
+LA10: ;
+LA6: ;
+F.line = 251;F.filename = "gc.nim";
+(*Dest_11818) = Src_11819;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(TY54523*, Getconstexpr_111010)(TY54545* M_111012, TY54523* N_111013) {
+TY54523* Result_111863;
+TY54545* S_111876;
 NimStringDesc* LOC6;
 NimStringDesc* LOC7;
 NimStringDesc* LOC8;
 NimStringDesc* LOC9;
-TY53545* S_109954;
-TSafePoint TMP194158;
-TY53523* volatile A_109976;
+TY54545* S_111973;
+TSafePoint TMP112581;
+TY54523* volatile A_111995;
 NI64 LOC22;
 NI64 LOC28;
 NI64 LOC29;
-TY53549* LOC31;
-TY53549* LOC34;
+TY54549* LOC31;
+TY54549* LOC34;
 NI64 LOC35;
-TY53523* volatile A_110051;
+TY54523* volatile A_112070;
 NI LOC42;
-TY53523* A_110094;
-NI I_110125;
-NI HEX3Atmp_110538;
+TY54523* A_112113;
+NI I_112144;
+NI HEX3Atmp_112557;
 NI LOC49;
-NI Res_110540;
-TY53523* A_110138;
-TY53523* A_110186;
-TY53523* B_110210;
-NI I_110229;
-NI HEX3Atmp_110544;
+NI Res_112559;
+TY54523* A_112157;
+TY54523* A_112205;
+TY54523* B_112229;
+NI I_112248;
+NI HEX3Atmp_112563;
 NI LOC60;
-NI Res_110546;
-TY53523* A_110242;
+NI Res_112565;
+TY54523* A_112261;
 NIM_BOOL LOC66;
 NI LOC67;
-NI I_110308;
-NI HEX3Atmp_110550;
+NI I_112327;
+NI HEX3Atmp_112569;
 NI LOC71;
-NI Res_110552;
-TY53523* A_110333;
-NI I_110376;
-NI HEX3Atmp_110556;
+NI Res_112571;
+TY54523* A_112352;
+NI I_112395;
+NI HEX3Atmp_112575;
 NI LOC76;
-NI Res_110558;
-TY53523* A_110389;
-TY53523* A_110437;
+NI Res_112577;
+TY54523* A_112408;
+TY54523* A_112456;
 NIM_BOOL LOC85;
 NimStringDesc* LOC89;
-TY111148 LOC90;
+TY67430 LOC90;
 NimStringDesc* LOC91;
-TY53523* A_110501;
-TY53523* A_110525;
-TY53549* LOC98;
-TY53549* LOC99;
+TY54523* A_112520;
+TY54523* A_112544;
+TY54549* LOC98;
+TY54549* LOC99;
 NF64 LOC100;
 NI64 LOC101;
-TY53549* LOC102;
+TY54549* LOC102;
 NI64 LOC103;
-Result_109844 = 0;
-Result_109844 = NIM_NIL;
-switch ((*N_109013).Kind) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getConstExpr";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_111863 = 0;
+F.line = 286;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
+F.line = 287;F.filename = "semfold.nim";
+switch ((*N_111013).Kind) {
 case ((NU8) 3):
-S_109857 = 0;
-S_109857 = (*N_109013).KindU.S4.Sym;
-if (!((*S_109857).Kind == ((NU8) 16))) goto LA2;
-Result_109844 = Newintnodet_109025(((NI64) ((*S_109857).Position)), N_109013);
+S_111876 = 0;
+F.line = 289;F.filename = "semfold.nim";
+if (!(((TMP111162[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111163));
+S_111876 = (*N_111013).KindU.S4.Sym;
+F.line = 290;F.filename = "semfold.nim";
+if (!((*S_111876).Kind == ((NU8) 16))) goto LA2;
+F.line = 291;F.filename = "semfold.nim";
+Result_111863 = Newintnodet_111025(((NI64) ((*S_111876).Position)), N_111013);
 goto LA1;
 LA2: ;
-if (!((*S_109857).Kind == ((NU8) 7))) goto LA4;
-switch ((*S_109857).Magic) {
+if (!((*S_111876).Kind == ((NU8) 7))) goto LA4;
+F.line = 293;F.filename = "semfold.nim";
+switch ((*S_111876).Magic) {
 case ((NU8) 187):
-Result_109844 = Newintnodet_109025(((NI64) ((((*M_109012).Flags &(1<<((((NU8) 15))&31)))!=0))), N_109013);
+F.line = 294;F.filename = "semfold.nim";
+Result_111863 = Newintnodet_111025(((NI64) ((((*M_111012).Flags &(1<<((((NU8) 15))&31)))!=0))), N_111013);
 break;
 case ((NU8) 188):
+F.line = 295;F.filename = "semfold.nim";
+LOC6 = 0;
 LOC6 = ntgetDateStr();
-Result_109844 = Newstrnodet_109033(LOC6, N_109013);
+Result_111863 = Newstrnodet_111033(LOC6, N_111013);
 break;
 case ((NU8) 189):
+F.line = 296;F.filename = "semfold.nim";
+LOC7 = 0;
 LOC7 = ntgetClockStr();
-Result_109844 = Newstrnodet_109033(LOC7, N_109013);
+Result_111863 = Newstrnodet_111033(LOC7, N_111013);
 break;
 case ((NU8) 190):
-Result_109844 = Newstrnodet_109033(((NimStringDesc*) &TMP194153), N_109013);
+F.line = 297;F.filename = "semfold.nim";
+Result_111863 = Newstrnodet_111033(((NimStringDesc*) &TMP112580), N_111013);
 break;
 case ((NU8) 191):
-Result_109844 = Newintnodet_109025(0, N_109013);
+F.line = 298;F.filename = "semfold.nim";
+Result_111863 = Newintnodet_111025(0, N_111013);
 break;
 case ((NU8) 192):
-Result_109844 = Newintnodet_109025(8, N_109013);
+F.line = 299;F.filename = "semfold.nim";
+Result_111863 = Newintnodet_111025(8, N_111013);
 break;
 case ((NU8) 193):
-Result_109844 = Newintnodet_109025(9, N_109013);
+F.line = 300;F.filename = "semfold.nim";
+Result_111863 = Newintnodet_111025(9, N_111013);
 break;
 case ((NU8) 194):
-Result_109844 = Newintnodet_109025(((NI64) (Cpu_49460[(Targetcpu_49560)-1].Endian)), N_109013);
+F.line = 301;F.filename = "semfold.nim";
+if (Targetcpu_50560 < 1 || Targetcpu_50560 > 12) raiseIndexError();
+Result_111863 = Newintnodet_111025(((NI64) (Cpu_50460[(Targetcpu_50560)-1].Endian)), N_111013);
 break;
 case ((NU8) 195):
-LOC8 = nsuToLowerStr(Os_49053[(Targetos_49562)-1].Name);
-Result_109844 = Newstrnodet_109033(LOC8, N_109013);
+F.line = 302;F.filename = "semfold.nim";
+if (Targetos_50562 < 1 || Targetos_50562 > 21) raiseIndexError();
+LOC8 = 0;
+LOC8 = nsuToLowerStr(Os_50053[(Targetos_50562)-1].Name);
+Result_111863 = Newstrnodet_111033(LOC8, N_111013);
 break;
 case ((NU8) 196):
-LOC9 = nsuToLowerStr(Cpu_49460[(Targetcpu_49560)-1].Name);
-Result_109844 = Newstrnodet_109033(LOC9, N_109013);
+F.line = 303;F.filename = "semfold.nim";
+if (Targetcpu_50560 < 1 || Targetcpu_50560 > 12) raiseIndexError();
+LOC9 = 0;
+LOC9 = nsuToLowerStr(Cpu_50460[(Targetcpu_50560)-1].Name);
+Result_111863 = Newstrnodet_111033(LOC9, N_111013);
 break;
 case ((NU8) 197):
-Result_109844 = Getapptype_109814(N_109013);
+F.line = 304;F.filename = "semfold.nim";
+Result_111863 = Getapptype_111830(N_111013);
 break;
 case ((NU8) 198):
-Result_109844 = Newfloatnodet_109029(NAN, N_109013);
+F.line = 305;F.filename = "semfold.nim";
+Result_111863 = Newfloatnodet_111029(NAN, N_111013);
 break;
 case ((NU8) 199):
-Result_109844 = Newfloatnodet_109029(INF, N_109013);
+F.line = 306;F.filename = "semfold.nim";
+Result_111863 = Newfloatnodet_111029(INF, N_111013);
 break;
 case ((NU8) 200):
-Result_109844 = Newfloatnodet_109029(-INF, N_109013);
+F.line = 307;F.filename = "semfold.nim";
+Result_111863 = Newfloatnodet_111029(-INF, N_111013);
 break;
 default:
-Result_109844 = Copytree_53856((*S_109857).Ast);
+F.line = 308;F.filename = "semfold.nim";
+Result_111863 = Copytree_54856((*S_111876).Ast);
 break;
 }
 goto LA1;
 LA4: ;
-if (!((1536 &(1<<(((*S_109857).Kind)&31)))!=0)) goto LA10;
-Result_109844 = N_109013;
+if (!((1536 &(1<<(((*S_111876).Kind)&31)))!=0)) goto LA10;
+F.line = 310;F.filename = "semfold.nim";
+Result_111863 = N_111013;
 goto LA1;
 LA10: ;
 LA1: ;
 break;
 case ((NU8) 5) ... ((NU8) 18):
-Result_109844 = Copynode_53853(N_109013);
+F.line = 312;F.filename = "semfold.nim";
+Result_111863 = Copynode_54853(N_111013);
 break;
 case ((NU8) 39):
-Result_109844 = Getconstifexpr_109302(M_109012, N_109013);
+F.line = 314;F.filename = "semfold.nim";
+Result_111863 = Getconstifexpr_111312(M_111012, N_111013);
 break;
 case ((NU8) 21):
 case ((NU8) 20):
 case ((NU8) 22):
-if (!!(((*(*N_109013).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA13;
+F.line = 316;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_111013).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA13;
+F.line = 316;F.filename = "semfold.nim";
 goto BeforeRet;
 LA13: ;
-S_109954 = 0;
-S_109954 = (*(*N_109013).KindU.S6.Sons->data[0]).KindU.S4.Sym;
-if (!!(((*S_109954).Kind == ((NU8) 9)))) goto LA16;
+S_111973 = 0;
+F.line = 317;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP111162[(*(*N_111013).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_111013).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP111163));
+S_111973 = (*(*N_111013).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+F.line = 318;F.filename = "semfold.nim";
+if (!!(((*S_111973).Kind == ((NU8) 9)))) goto LA16;
+F.line = 318;F.filename = "semfold.nim";
 goto BeforeRet;
 LA16: ;
-TMP194158.prev = excHandler;
-excHandler = &TMP194158;
-TMP194158.status = setjmp(TMP194158.context);
-if (TMP194158.status == 0) {
-switch ((*S_109954).Magic) {
+F.line = 319;F.filename = "semfold.nim";
+TMP112581.prev = excHandler;
+excHandler = &TMP112581;
+TMP112581.status = setjmp(TMP112581.context);
+framePtr = (TFrame*)&F;
+if (TMP112581.status == 0) {
+F.line = 320;F.filename = "semfold.nim";
+switch ((*S_111973).Magic) {
 case ((NU8) 0):
+F.line = 322;F.filename = "semfold.nim";
 excHandler = excHandler->prev;
 goto BeforeRet;
 break;
 case ((NU8) 5):
-A_109976 = 0;
-A_109976 = (*N_109013).KindU.S6.Sons->data[1];
-LOC22 = Computesize_93110((*A_109976).Typ);
+A_111995 = 0;
+F.line = 324;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_111995 = (*N_111013).KindU.S6.Sons->data[1];
+F.line = 325;F.filename = "semfold.nim";
+LOC22 = Computesize_94110((*A_111995).Typ);
 if (!(LOC22 < 0)) goto LA23;
-Limessage_45562((*A_109976).Info, ((NU8) 74), ((NimStringDesc*) &TMP194159));
+F.line = 326;F.filename = "semfold.nim";
+Limessage_46562((*A_111995).Info, ((NU8) 74), ((NimStringDesc*) &TMP112582));
 LA23: ;
-if (!((458752 &(IL64(1)<<(((*(*A_109976).Typ).Kind)&IL64(63))))!=0)) goto LA26;
-Result_109844 = NIM_NIL;
+F.line = 327;F.filename = "semfold.nim";
+if (!((458752 &(IL64(1)<<(((*(*A_111995).Typ).Kind)&IL64(63))))!=0)) goto LA26;
+F.line = 328;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
 goto LA25;
 LA26: ;
-LOC28 = Getsize_93113((*A_109976).Typ);
-Result_109844 = Newintnodet_109025(LOC28, N_109013);
+F.line = 331;F.filename = "semfold.nim";
+LOC28 = Getsize_94113((*A_111995).Typ);
+Result_111863 = Newintnodet_111025(LOC28, N_111013);
 LA25: ;
 break;
 case ((NU8) 3):
-LOC29 = Firstord_93001((*(*N_109013).KindU.S6.Sons->data[1]).Typ);
-Result_109844 = Newintnodet_109025(LOC29, N_109013);
+F.line = 333;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC29 = Firstord_94001((*(*N_111013).KindU.S6.Sons->data[1]).Typ);
+Result_111863 = Newintnodet_111025(LOC29, N_111013);
 break;
 case ((NU8) 4):
-LOC31 = Skiptypes_93085((*(*N_109013).KindU.S6.Sons->data[1]).Typ, 8431616);
+F.line = 335;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC31 = 0;
+LOC31 = Skiptypes_94085((*(*N_111013).KindU.S6.Sons->data[1]).Typ, 8431616);
 if (!!(((419430400 &(IL64(1)<<(((*LOC31).Kind)&IL64(63))))!=0))) goto LA32;
-LOC34 = Skiptypes_93085((*(*N_109013).KindU.S6.Sons->data[1]).Typ, 8431616);
-LOC35 = Lastord_93004(LOC34);
-Result_109844 = Newintnodet_109025(LOC35, N_109013);
+F.line = 337;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC34 = 0;
+LOC34 = Skiptypes_94085((*(*N_111013).KindU.S6.Sons->data[1]).Typ, 8431616);
+LOC35 = Lastord_94004(LOC34);
+Result_111863 = Newintnodet_111025(LOC35, N_111013);
 LA32: ;
 break;
 case ((NU8) 16):
-A_110051 = 0;
-A_110051 = (*N_109013).KindU.S6.Sons->data[1];
-if (!((*A_110051).Kind == ((NU8) 62))) goto LA37;
-A_110051 = (*A_110051).KindU.S6.Sons->data[0];
+A_112070 = 0;
+F.line = 339;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112070 = (*N_111013).KindU.S6.Sons->data[1];
+F.line = 340;F.filename = "semfold.nim";
+if (!((*A_112070).Kind == ((NU8) 62))) goto LA37;
+F.line = 340;F.filename = "semfold.nim";
+if (((TMP111159[(*A_112070).Kind/8] &(1<<((*A_112070).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*A_112070).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112070 = (*A_112070).KindU.S6.Sons->data[0];
 LA37: ;
-if (!((*A_110051).Kind == ((NU8) 32))) goto LA40;
-LOC42 = Sonslen_53801(A_110051);
-Result_109844 = Newintnodet_109025(((NI64) (LOC42)), N_109013);
+F.line = 341;F.filename = "semfold.nim";
+if (!((*A_112070).Kind == ((NU8) 32))) goto LA40;
+F.line = 343;F.filename = "semfold.nim";
+LOC42 = Sonslen_54801(A_112070);
+Result_111863 = Newintnodet_111025(((NI64) (LOC42)), N_111013);
 goto LA39;
 LA40: ;
-Result_109844 = Magiccall_109706(M_109012, N_109013);
+F.line = 345;F.filename = "semfold.nim";
+Result_111863 = Magiccall_111722(M_111012, N_111013);
 LA39: ;
 break;
 default:
-Result_109844 = Magiccall_109706(M_109012, N_109013);
+F.line = 347;F.filename = "semfold.nim";
+Result_111863 = Magiccall_111722(M_111012, N_111013);
 break;
 }
 } else {
-if ((TMP194158.exc->Sup.m_type == NTI432)) {
-Limessage_45562((*N_109013).Info, ((NU8) 73), ((NimStringDesc*) &TMP194160));
-TMP194158.status = 0;}
-else if ((TMP194158.exc->Sup.m_type == NTI430)) {
-Limessage_45562((*N_109013).Info, ((NU8) 70), ((NimStringDesc*) &TMP194160));
-TMP194158.status = 0;}
+if ((TMP112581.exc->Sup.m_type == NTI432)) {
+F.line = 349;F.filename = "semfold.nim";
+Limessage_46562((*N_111013).Info, ((NU8) 73), ((NimStringDesc*) &TMP112583));
+TMP112581.status = 0;}
+else if ((TMP112581.exc->Sup.m_type == NTI430)) {
+F.line = 351;F.filename = "semfold.nim";
+Limessage_46562((*N_111013).Info, ((NU8) 70), ((NimStringDesc*) &TMP112583));
+TMP112581.status = 0;}
 }
 excHandler = excHandler->prev;
-if (TMP194158.status != 0) { raiseException(TMP194158.exc, TMP194158.exc->name); }
+if (TMP112581.status != 0) { raiseException(TMP112581.exc, TMP112581.exc->name); }
 break;
 case ((NU8) 52):
-A_110094 = 0;
-A_110094 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[0]);
-if (!!((A_110094 == NIM_NIL))) goto LA47;
-Result_109844 = N_109013;
-asgnRefNoCycle((void**) &(*N_109013).KindU.S6.Sons->data[0], A_110094);
+A_112113 = 0;
+F.line = 353;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112113 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[0]);
+F.line = 354;F.filename = "semfold.nim";
+if (!!((A_112113 == NIM_NIL))) goto LA47;
+F.line = 355;F.filename = "semfold.nim";
+Result_111863 = N_111013;
+F.line = 356;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*N_111013).KindU.S6.Sons->data[0], A_112113);
 LA47: ;
 break;
 case ((NU8) 32):
-Result_109844 = Copytree_53856(N_109013);
-I_110125 = 0;
-HEX3Atmp_110538 = 0;
-LOC49 = Sonslen_53801(N_109013);
-HEX3Atmp_110538 = (NI64)(LOC49 - 1);
-Res_110540 = 0;
-Res_110540 = 0;
+F.line = 358;F.filename = "semfold.nim";
+Result_111863 = Copytree_54856(N_111013);
+I_112144 = 0;
+HEX3Atmp_112557 = 0;
+F.line = 359;F.filename = "semfold.nim";
+LOC49 = Sonslen_54801(N_111013);
+HEX3Atmp_112557 = subInt(LOC49, 1);
+Res_112559 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_112559 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_110540 <= HEX3Atmp_110538)) goto LA50;
-I_110125 = Res_110540;
-A_110138 = 0;
-A_110138 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[I_110125]);
-if (!(A_110138 == NIM_NIL)) goto LA52;
-Result_109844 = NIM_NIL;
+if (!(Res_112559 <= HEX3Atmp_112557)) goto LA50;
+F.line = 1011;F.filename = "system.nim";
+I_112144 = Res_112559;
+A_112157 = 0;
+F.line = 360;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112144) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112157 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[I_112144]);
+F.line = 361;F.filename = "semfold.nim";
+if (!(A_112157 == NIM_NIL)) goto LA52;
+F.line = 361;F.filename = "semfold.nim";
+F.line = 361;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
 goto BeforeRet;
 LA52: ;
-asgnRefNoCycle((void**) &(*Result_109844).KindU.S6.Sons->data[I_110125], A_110138);
-Res_110540 += 1;
+F.line = 362;F.filename = "semfold.nim";
+if (((TMP111159[(*Result_111863).Kind/8] &(1<<((*Result_111863).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112144) >= (NU)((*Result_111863).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*Result_111863).KindU.S6.Sons->data[I_112144], A_112157);
+F.line = 1014;F.filename = "system.nim";
+Res_112559 = addInt(Res_112559, 1);
 } LA50: ;
-(*Result_109844).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
+F.line = 363;F.filename = "semfold.nim";
+(*Result_111863).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 35):
-A_110186 = 0;
-A_110186 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[0]);
-if (!(A_110186 == NIM_NIL)) goto LA55;
+A_112205 = 0;
+F.line = 365;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112205 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[0]);
+F.line = 366;F.filename = "semfold.nim";
+if (!(A_112205 == NIM_NIL)) goto LA55;
+F.line = 366;F.filename = "semfold.nim";
 goto BeforeRet;
 LA55: ;
-B_110210 = 0;
-B_110210 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[1]);
-if (!(B_110210 == NIM_NIL)) goto LA58;
+B_112229 = 0;
+F.line = 367;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+B_112229 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[1]);
+F.line = 368;F.filename = "semfold.nim";
+if (!(B_112229 == NIM_NIL)) goto LA58;
+F.line = 368;F.filename = "semfold.nim";
 goto BeforeRet;
 LA58: ;
-Result_109844 = Copynode_53853(N_109013);
-Addson_53821(Result_109844, A_110186);
-Addson_53821(Result_109844, B_110210);
+F.line = 369;F.filename = "semfold.nim";
+Result_111863 = Copynode_54853(N_111013);
+F.line = 370;F.filename = "semfold.nim";
+Addson_54821(Result_111863, A_112205);
+F.line = 371;F.filename = "semfold.nim";
+Addson_54821(Result_111863, B_112229);
 break;
 case ((NU8) 31):
-Result_109844 = Copytree_53856(N_109013);
-I_110229 = 0;
-HEX3Atmp_110544 = 0;
-LOC60 = Sonslen_53801(N_109013);
-HEX3Atmp_110544 = (NI64)(LOC60 - 1);
-Res_110546 = 0;
-Res_110546 = 0;
+F.line = 373;F.filename = "semfold.nim";
+Result_111863 = Copytree_54856(N_111013);
+I_112248 = 0;
+HEX3Atmp_112563 = 0;
+F.line = 374;F.filename = "semfold.nim";
+LOC60 = Sonslen_54801(N_111013);
+HEX3Atmp_112563 = subInt(LOC60, 1);
+Res_112565 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_112565 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_110546 <= HEX3Atmp_110544)) goto LA61;
-I_110229 = Res_110546;
-A_110242 = 0;
-A_110242 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[I_110229]);
-if (!(A_110242 == NIM_NIL)) goto LA63;
-Result_109844 = NIM_NIL;
+if (!(Res_112565 <= HEX3Atmp_112563)) goto LA61;
+F.line = 1011;F.filename = "system.nim";
+I_112248 = Res_112565;
+A_112261 = 0;
+F.line = 375;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112248) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112261 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[I_112248]);
+F.line = 376;F.filename = "semfold.nim";
+if (!(A_112261 == NIM_NIL)) goto LA63;
+F.line = 376;F.filename = "semfold.nim";
+F.line = 376;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
 goto BeforeRet;
 LA63: ;
-asgnRefNoCycle((void**) &(*Result_109844).KindU.S6.Sons->data[I_110229], A_110242);
-Res_110546 += 1;
+F.line = 377;F.filename = "semfold.nim";
+if (((TMP111159[(*Result_111863).Kind/8] &(1<<((*Result_111863).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112248) >= (NU)((*Result_111863).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*Result_111863).KindU.S6.Sons->data[I_112248], A_112261);
+F.line = 1014;F.filename = "system.nim";
+Res_112565 = addInt(Res_112565, 1);
 } LA61: ;
-(*Result_109844).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
+F.line = 378;F.filename = "semfold.nim";
+(*Result_111863).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 30):
-Result_109844 = Copytree_53856(N_109013);
-LOC67 = Sonslen_53801(N_109013);
+F.line = 381;F.filename = "semfold.nim";
+Result_111863 = Copytree_54856(N_111013);
+F.line = 382;F.filename = "semfold.nim";
+LOC67 = Sonslen_54801(N_111013);
 LOC66 = (0 < LOC67);
 if (!(LOC66)) goto LA68;
-LOC66 = ((*(*N_109013).KindU.S6.Sons->data[0]).Kind == ((NU8) 24));
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC66 = ((*(*N_111013).KindU.S6.Sons->data[0]).Kind == ((NU8) 24));
 LA68: ;
 if (!LOC66) goto LA69;
-I_110308 = 0;
-HEX3Atmp_110550 = 0;
-LOC71 = Sonslen_53801(N_109013);
-HEX3Atmp_110550 = (NI64)(LOC71 - 1);
-Res_110552 = 0;
-Res_110552 = 0;
+I_112327 = 0;
+HEX3Atmp_112569 = 0;
+F.line = 383;F.filename = "semfold.nim";
+LOC71 = Sonslen_54801(N_111013);
+HEX3Atmp_112569 = subInt(LOC71, 1);
+Res_112571 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_112571 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_110552 <= HEX3Atmp_110550)) goto LA72;
-I_110308 = Res_110552;
-A_110333 = 0;
-A_110333 = Getconstexpr_109010(M_109012, (*(*N_109013).KindU.S6.Sons->data[I_110308]).KindU.S6.Sons->data[1]);
-if (!(A_110333 == NIM_NIL)) goto LA74;
-Result_109844 = NIM_NIL;
+if (!(Res_112571 <= HEX3Atmp_112569)) goto LA72;
+F.line = 1011;F.filename = "system.nim";
+I_112327 = Res_112571;
+A_112352 = 0;
+F.line = 384;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112327) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP111159[(*(*N_111013).KindU.S6.Sons->data[I_112327]).Kind/8] &(1<<((*(*N_111013).KindU.S6.Sons->data[I_112327]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*(*N_111013).KindU.S6.Sons->data[I_112327]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112352 = Getconstexpr_111010(M_111012, (*(*N_111013).KindU.S6.Sons->data[I_112327]).KindU.S6.Sons->data[1]);
+F.line = 385;F.filename = "semfold.nim";
+if (!(A_112352 == NIM_NIL)) goto LA74;
+F.line = 385;F.filename = "semfold.nim";
+F.line = 385;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
 goto BeforeRet;
 LA74: ;
-asgnRefNoCycle((void**) &(*(*Result_109844).KindU.S6.Sons->data[I_110308]).KindU.S6.Sons->data[1], A_110333);
-Res_110552 += 1;
+F.line = 386;F.filename = "semfold.nim";
+if (((TMP111159[(*Result_111863).Kind/8] &(1<<((*Result_111863).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112327) >= (NU)((*Result_111863).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP111159[(*(*Result_111863).KindU.S6.Sons->data[I_112327]).Kind/8] &(1<<((*(*Result_111863).KindU.S6.Sons->data[I_112327]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*(*Result_111863).KindU.S6.Sons->data[I_112327]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*(*Result_111863).KindU.S6.Sons->data[I_112327]).KindU.S6.Sons->data[1], A_112352);
+F.line = 1014;F.filename = "system.nim";
+Res_112571 = addInt(Res_112571, 1);
 } LA72: ;
 goto LA65;
 LA69: ;
-I_110376 = 0;
-HEX3Atmp_110556 = 0;
-LOC76 = Sonslen_53801(N_109013);
-HEX3Atmp_110556 = (NI64)(LOC76 - 1);
-Res_110558 = 0;
-Res_110558 = 0;
+I_112395 = 0;
+HEX3Atmp_112575 = 0;
+F.line = 388;F.filename = "semfold.nim";
+LOC76 = Sonslen_54801(N_111013);
+HEX3Atmp_112575 = subInt(LOC76, 1);
+Res_112577 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_112577 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_110558 <= HEX3Atmp_110556)) goto LA77;
-I_110376 = Res_110558;
-A_110389 = 0;
-A_110389 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[I_110376]);
-if (!(A_110389 == NIM_NIL)) goto LA79;
-Result_109844 = NIM_NIL;
+if (!(Res_112577 <= HEX3Atmp_112575)) goto LA77;
+F.line = 1011;F.filename = "system.nim";
+I_112395 = Res_112577;
+A_112408 = 0;
+F.line = 389;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112395) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112408 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[I_112395]);
+F.line = 390;F.filename = "semfold.nim";
+if (!(A_112408 == NIM_NIL)) goto LA79;
+F.line = 390;F.filename = "semfold.nim";
+F.line = 390;F.filename = "semfold.nim";
+Result_111863 = NIM_NIL;
 goto BeforeRet;
 LA79: ;
-asgnRefNoCycle((void**) &(*Result_109844).KindU.S6.Sons->data[I_110376], A_110389);
-Res_110558 += 1;
+F.line = 391;F.filename = "semfold.nim";
+if (((TMP111159[(*Result_111863).Kind/8] &(1<<((*Result_111863).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(I_112395) >= (NU)((*Result_111863).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*Result_111863).KindU.S6.Sons->data[I_112395], A_112408);
+F.line = 1014;F.filename = "system.nim";
+Res_112577 = addInt(Res_112577, 1);
 } LA77: ;
 LA65: ;
-(*Result_109844).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
+F.line = 392;F.filename = "semfold.nim";
+(*Result_111863).Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 57):
 case ((NU8) 58):
 case ((NU8) 59):
-A_110437 = 0;
-A_110437 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[0]);
-if (!(A_110437 == NIM_NIL)) goto LA82;
+A_112456 = 0;
+F.line = 394;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112456 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[0]);
+F.line = 395;F.filename = "semfold.nim";
+if (!(A_112456 == NIM_NIL)) goto LA82;
+F.line = 395;F.filename = "semfold.nim";
 goto BeforeRet;
 LA82: ;
-LOC85 = Levalueconv_109021((*N_109013).KindU.S6.Sons->data[1], A_110437);
+F.line = 396;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC85 = Levalueconv_111021((*N_111013).KindU.S6.Sons->data[1], A_112456);
 if (!(LOC85)) goto LA86;
-LOC85 = Levalueconv_109021(A_110437, (*N_109013).KindU.S6.Sons->data[2]);
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(2) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC85 = Levalueconv_111021(A_112456, (*N_111013).KindU.S6.Sons->data[2]);
 LA86: ;
 if (!LOC85) goto LA87;
-Result_109844 = A_110437;
-asgnRef((void**) &(*Result_109844).Typ, (*N_109013).Typ);
+F.line = 397;F.filename = "semfold.nim";
+Result_111863 = A_112456;
+F.line = 398;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111863).Typ, (*N_111013).Typ);
 goto LA84;
 LA87: ;
-LOC89 = Msgkindtostring_45588(((NU8) 139));
-LOC90[0] = Typetostring_93014((*(*N_109013).KindU.S6.Sons->data[0]).Typ, ((NU8) 0));
-LOC90[1] = Typetostring_93014((*N_109013).Typ, ((NU8) 0));
+F.line = 400;F.filename = "semfold.nim";
+LOC89 = 0;
+LOC89 = Msgkindtostring_46588(((NU8) 139));
+memset((void*)&LOC90, 0, sizeof(LOC90));
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC90[0] = Typetostring_94014((*(*N_111013).KindU.S6.Sons->data[0]).Typ, ((NU8) 0));
+LOC90[1] = Typetostring_94014((*N_111013).Typ, ((NU8) 0));
+LOC91 = 0;
 LOC91 = nsuFormatOpenArray(LOC89, LOC90, 2);
-Limessage_45562((*N_109013).Info, ((NU8) 4), LOC91);
+Limessage_46562((*N_111013).Info, ((NU8) 4), LOC91);
 LA84: ;
 break;
 case ((NU8) 60):
 case ((NU8) 61):
-A_110501 = 0;
-A_110501 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[0]);
-if (!(A_110501 == NIM_NIL)) goto LA93;
+A_112520 = 0;
+F.line = 404;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(0) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112520 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[0]);
+F.line = 405;F.filename = "semfold.nim";
+if (!(A_112520 == NIM_NIL)) goto LA93;
+F.line = 405;F.filename = "semfold.nim";
 goto BeforeRet;
 LA93: ;
-Result_109844 = A_110501;
-asgnRef((void**) &(*Result_109844).Typ, (*N_109013).Typ);
+F.line = 406;F.filename = "semfold.nim";
+Result_111863 = A_112520;
+F.line = 407;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111863).Typ, (*N_111013).Typ);
 break;
 case ((NU8) 47):
 case ((NU8) 48):
 case ((NU8) 50):
 case ((NU8) 51):
-A_110525 = 0;
-A_110525 = Getconstexpr_109010(M_109012, (*N_109013).KindU.S6.Sons->data[1]);
-if (!(A_110525 == NIM_NIL)) goto LA96;
+A_112544 = 0;
+F.line = 409;F.filename = "semfold.nim";
+if (((TMP111159[(*N_111013).Kind/8] &(1<<((*N_111013).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP111160));
+if ((NU)(1) >= (NU)((*N_111013).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_112544 = Getconstexpr_111010(M_111012, (*N_111013).KindU.S6.Sons->data[1]);
+F.line = 410;F.filename = "semfold.nim";
+if (!(A_112544 == NIM_NIL)) goto LA96;
+F.line = 410;F.filename = "semfold.nim";
 goto BeforeRet;
 LA96: ;
-LOC98 = Skiptypes_93085((*N_109013).Typ, 1091584);
+F.line = 411;F.filename = "semfold.nim";
+LOC98 = 0;
+LOC98 = Skiptypes_94085((*N_111013).Typ, 1091584);
 switch ((*LOC98).Kind) {
 case ((NU8) 31) ... ((NU8) 35):
-LOC99 = Skiptypes_93085((*A_110525).Typ, 1091584);
+F.line = 413;F.filename = "semfold.nim";
+LOC99 = 0;
+LOC99 = Skiptypes_94085((*A_112544).Typ, 1091584);
 switch ((*LOC99).Kind) {
 case ((NU8) 36) ... ((NU8) 38):
-LOC100 = Getfloat_55987(A_110525);
-Result_109844 = Newintnodet_109025(((NI64) (float64ToInt32(((NF) (LOC100))))), N_109013);
+F.line = 414;F.filename = "semfold.nim";
+LOC100 = Getfloat_57054(A_112544);
+Result_111863 = Newintnodet_111025(((NI64) (float64ToInt32(((NF) (LOC100))))), N_111013);
 break;
 case ((NU8) 2):
-LOC101 = Getordvalue_93107(A_110525);
-Result_109844 = Newintnodet_109025(LOC101, N_109013);
+F.line = 415;F.filename = "semfold.nim";
+LOC101 = Getordvalue_94107(A_112544);
+Result_111863 = Newintnodet_111025(LOC101, N_111013);
 break;
 default:
-Result_109844 = A_110525;
-asgnRef((void**) &(*Result_109844).Typ, (*N_109013).Typ);
+F.line = 417;F.filename = "semfold.nim";
+Result_111863 = A_112544;
+F.line = 418;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111863).Typ, (*N_111013).Typ);
 break;
 }
 break;
 case ((NU8) 36) ... ((NU8) 38):
-LOC102 = Skiptypes_93085((*A_110525).Typ, 1091584);
+F.line = 420;F.filename = "semfold.nim";
+LOC102 = 0;
+LOC102 = Skiptypes_94085((*A_112544).Typ, 1091584);
 switch ((*LOC102).Kind) {
 case ((NU8) 31) ... ((NU8) 35):
 case ((NU8) 14):
 case ((NU8) 1):
 case ((NU8) 2):
-LOC103 = Getordvalue_93107(A_110525);
-Result_109844 = Newfloatnodet_109029(((NF64) (((double) (((NI) (LOC103)))))), N_109013);
+F.line = 422;F.filename = "semfold.nim";
+LOC103 = Getordvalue_94107(A_112544);
+Result_111863 = Newfloatnodet_111029(((NF64) (((double) (((NI) (LOC103)))))), N_111013);
 break;
 default:
-Result_109844 = A_110525;
-asgnRef((void**) &(*Result_109844).Typ, (*N_109013).Typ);
+F.line = 424;F.filename = "semfold.nim";
+Result_111863 = A_112544;
+F.line = 425;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111863).Typ, (*N_111013).Typ);
 break;
 }
 break;
@@ -1776,8 +2798,10 @@ case ((NU8) 27):
 case ((NU8) 25):
 break;
 default:
-Result_109844 = A_110525;
-asgnRef((void**) &(*Result_109844).Typ, (*N_109013).Typ);
+F.line = 431;F.filename = "semfold.nim";
+Result_111863 = A_112544;
+F.line = 432;F.filename = "semfold.nim";
+asgnRef((void**) &(*Result_111863).Typ, (*N_111013).Typ);
 break;
 }
 break;
@@ -1785,8 +2809,18 @@ default:
 break;
 }
 BeforeRet: ;
-return Result_109844;
+framePtr = framePtr->prev;
+return Result_111863;
 }
 N_NOINLINE(void, semfoldInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "semfold";
+F.prev = framePtr;
+F.filename = "rod/semfold.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

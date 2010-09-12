@@ -5,26 +5,283 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-N_NIMCALL(NIM_BOOL, Ispoweroftwo_97270)(NI X_97272) {
-NIM_BOOL Result_97273;
-Result_97273 = 0;
-Result_97273 = ((NI32)(X_97272 & ((NI32)-(X_97272))) == X_97272);
+#include <math.h>
+#include <time.h>
+typedef struct TY98802 TY98802;
+typedef struct TNimType TNimType;
+typedef struct TNimNode TNimNode;
+struct TNimType {
+NI size;
+NU8 kind;
+NU8 flags;
+TNimType* base;
+TNimNode* node;
+void* finalizer;
+};
+struct TY98802 {
+TNimType* m_type;
+NI N;
+NF Sum;
+NF Min;
+NF Max;
+NF Mean;
+NF Oldm;
+NF Olds;
+NF News;
+};
+struct TNimNode {
+NU8 kind;
+NI offset;
+TNimType* typ;
+NCSTRING name;
+NI len;
+TNimNode** sons;
+};
+N_NIMCALL(NU8, Classify_98212)(NF X_98214);
+N_NIMCALL(NI, Binom_98216)(NI N_98218, NI K_98219);
+N_NIMCALL(NI, Fac_98253)(NI N_98255);
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_98270)(NI X_98272);
+N_NIMCALL(NI, Nextpoweroftwo_98276)(NI X_98278);
+N_NIMCALL(NI, Countbits32_98413)(int N_98415);
+N_NIMCALL(NF, Mean_98428)(NF* X_98431, NI X_98431Len0);
+N_NIMCALL(NF, Variance_98495)(NF* X_98498, NI X_98498Len0);
+N_NIMCALL(NF, Log2_98540)(NF X_98542);
+N_NIMCALL(void, Randomize_98529)(void);
+N_NIMCALL(NI, Random_98526)(NI Max_98528);
+N_NIMCALL(void, Push_98811)(TY98802* S_98814, NF X_98815);
+N_NIMCALL(NF, Variance_98830)(TY98802* S_98832);
+N_NIMCALL(NF, Standarddeviation_98836)(TY98802* S_98838);
+N_NIMCALL(NF, Sum_98438)(NF* X_98442, NI X_98442Len0);
+N_NIMCALL(NU8, Classify_98212)(NF X_98214) {
+NU8 Result_98215;
+Result_98215 = 0;
+if (!(X_98214 == 0.00000)) goto LA2;
+if (!((1.00000 / X_98214) == INF)) goto LA5;
+Result_98215 = ((NU8) 2);
+goto BeforeRet;
+goto LA4;
+LA5: ;
+Result_98215 = ((NU8) 3);
+goto BeforeRet;
+LA4: ;
+LA2: ;
+if (!((X_98214 * 0.500000) == X_98214)) goto LA8;
+if (!(0.00000 < X_98214)) goto LA11;
+Result_98215 = ((NU8) 5);
+goto BeforeRet;
+goto LA10;
+LA11: ;
+Result_98215 = ((NU8) 6);
+goto BeforeRet;
+LA10: ;
+LA8: ;
+if (!!((X_98214 == X_98214))) goto LA14;
+Result_98215 = ((NU8) 4);
+goto BeforeRet;
+LA14: ;
+Result_98215 = ((NU8) 0);
 goto BeforeRet;
 BeforeRet: ;
-return Result_97273;
+return Result_98215;
 }
-N_NIMCALL(NI, Nextpoweroftwo_97276)(NI X_97278) {
-NI Result_97279;
-Result_97279 = 0;
-Result_97279 = (NI32)(X_97278 - 1);
-Result_97279 = (NI32)(Result_97279 | (NI32)((NU32)(Result_97279) >> (NU32)(16)));
-Result_97279 = (NI32)(Result_97279 | (NI32)((NU32)(Result_97279) >> (NU32)(8)));
-Result_97279 = (NI32)(Result_97279 | (NI32)((NU32)(Result_97279) >> (NU32)(4)));
-Result_97279 = (NI32)(Result_97279 | (NI32)((NU32)(Result_97279) >> (NU32)(2)));
-Result_97279 = (NI32)(Result_97279 | (NI32)((NU32)(Result_97279) >> (NU32)(1)));
-Result_97279 += 1;
-return Result_97279;
+N_NIMCALL(NI, Binom_98216)(NI N_98218, NI K_98219) {
+NI Result_98220;
+NI I_98247;
+NI Res_98250;
+Result_98220 = 0;
+if (!(K_98219 <= 0)) goto LA2;
+Result_98220 = 1;
+goto BeforeRet;
+LA2: ;
+if (!(N_98218 < (NI32)(2 * K_98219))) goto LA5;
+Result_98220 = Binom_98216(N_98218, (NI32)(N_98218 - K_98219));
+goto BeforeRet;
+LA5: ;
+Result_98220 = N_98218;
+I_98247 = 0;
+Res_98250 = 0;
+Res_98250 = 2;
+while (1) {
+if (!(Res_98250 <= K_98219)) goto LA7;
+I_98247 = Res_98250;
+Result_98220 = (NI32)((NI32)(Result_98220 * (NI32)((NI32)(N_98218 + 1) - I_98247)) / I_98247);
+Res_98250 += 1;
+} LA7: ;
+BeforeRet: ;
+return Result_98220;
+}
+N_NIMCALL(NI, Fac_98253)(NI N_98255) {
+NI Result_98256;
+NI I_98264;
+NI Res_98267;
+Result_98256 = 0;
+Result_98256 = 1;
+I_98264 = 0;
+Res_98267 = 0;
+Res_98267 = 2;
+while (1) {
+if (!(Res_98267 <= N_98255)) goto LA1;
+I_98264 = Res_98267;
+Result_98256 = (NI32)(Result_98256 * I_98264);
+Res_98267 += 1;
+} LA1: ;
+return Result_98256;
+}
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_98270)(NI X_98272) {
+NIM_BOOL Result_98273;
+Result_98273 = 0;
+Result_98273 = ((NI32)(X_98272 & ((NI32)-(X_98272))) == X_98272);
+goto BeforeRet;
+BeforeRet: ;
+return Result_98273;
+}
+N_NIMCALL(NI, Nextpoweroftwo_98276)(NI X_98278) {
+NI Result_98279;
+Result_98279 = 0;
+Result_98279 = (NI32)(X_98278 - 1);
+Result_98279 = (NI32)(Result_98279 | (NI32)((NU32)(Result_98279) >> (NU32)(16)));
+Result_98279 = (NI32)(Result_98279 | (NI32)((NU32)(Result_98279) >> (NU32)(8)));
+Result_98279 = (NI32)(Result_98279 | (NI32)((NU32)(Result_98279) >> (NU32)(4)));
+Result_98279 = (NI32)(Result_98279 | (NI32)((NU32)(Result_98279) >> (NU32)(2)));
+Result_98279 = (NI32)(Result_98279 | (NI32)((NU32)(Result_98279) >> (NU32)(1)));
+Result_98279 += 1;
+return Result_98279;
+}
+N_NIMCALL(NI, Countbits32_98413)(int N_98415) {
+NI Result_98416;
+int V_98417;
+Result_98416 = 0;
+V_98417 = 0;
+V_98417 = N_98415;
+V_98417 = (NI32)((NU32)(V_98417) - (NU32)((NI32)((NI32)((NU32)(V_98417) >> (NU32)(((NI32) 1))) & ((NI32) 1431655765))));
+V_98417 = (NI32)((NU32)((NI32)(V_98417 & ((NI32) 858993459))) + (NU32)((NI32)((NI32)((NU32)(V_98417) >> (NU32)(((NI32) 2))) & ((NI32) 858993459))));
+Result_98416 = ((NI) ((NI32)((NU32)((NI32)((NU32)((NI32)((NI32)((NU32)(V_98417) + (NU32)((NI32)((NU32)(V_98417) >> (NU32)(((NI32) 4))))) & ((NI32) 252645135))) * (NU32)(((NI32) 16843009)))) >> (NU32)(((NI32) 24)))));
+return Result_98416;
+}
+N_NIMCALL(NF, Mean_98428)(NF* X_98431, NI X_98431Len0) {
+NF Result_98432;
+NF LOC1;
+Result_98432 = 0;
+LOC1 = Sum_98438(X_98431, X_98431Len0);
+Result_98432 = (LOC1 / ((double) (X_98431Len0)));
+return Result_98432;
+}
+N_NIMCALL(NF, Variance_98495)(NF* X_98498, NI X_98498Len0) {
+NF Result_98499;
+NF M_98500;
+NI I_98508;
+NI HEX3Atmp_98521;
+NI Res_98523;
+NF Diff_98509;
+Result_98499 = 0;
+Result_98499 = 0.00000;
+M_98500 = 0;
+M_98500 = Mean_98428(X_98498, X_98498Len0);
+I_98508 = 0;
+HEX3Atmp_98521 = 0;
+HEX3Atmp_98521 = (X_98498Len0-1);
+Res_98523 = 0;
+Res_98523 = 0;
+while (1) {
+if (!(Res_98523 <= HEX3Atmp_98521)) goto LA1;
+I_98508 = Res_98523;
+Diff_98509 = 0;
+Diff_98509 = (X_98498[I_98508] - M_98500);
+Result_98499 = (Result_98499 + (Diff_98509 * Diff_98509));
+Res_98523 += 1;
+} LA1: ;
+Result_98499 = (Result_98499 / ((double) (X_98498Len0)));
+return Result_98499;
+}
+N_NIMCALL(NF, Log2_98540)(NF X_98542) {
+NF Result_98543;
+NF LOC1;
+NF LOC2;
+Result_98543 = 0;
+LOC1 = log(X_98542);
+LOC2 = log(2.00000);
+Result_98543 = (LOC1 / LOC2);
+goto BeforeRet;
+BeforeRet: ;
+return Result_98543;
+}
+N_NIMCALL(void, Randomize_98529)(void) {
+int LOC1;
+LOC1 = time(NIM_NIL);
+srand(LOC1);
+}
+N_NIMCALL(NI, Random_98526)(NI Max_98528) {
+NI Result_98605;
+int LOC1;
+Result_98605 = 0;
+LOC1 = rand();
+Result_98605 = (NI32)(((NI) (LOC1)) % Max_98528);
+goto BeforeRet;
+BeforeRet: ;
+return Result_98605;
+}
+N_NIMCALL(void, Push_98811)(TY98802* S_98814, NF X_98815) {
+(*S_98814).N += 1;
+if (!((*S_98814).N == 1)) goto LA2;
+(*S_98814).Oldm = X_98815;
+(*S_98814).Mean = X_98815;
+(*S_98814).Olds = 0.00000;
+goto LA1;
+LA2: ;
+(*S_98814).Mean = ((*S_98814).Oldm + ((X_98815 - (*S_98814).Oldm) / ((double) ((*S_98814).N))));
+(*S_98814).News = ((*S_98814).Olds + ((X_98815 - (*S_98814).Oldm) * (X_98815 - (*S_98814).Mean)));
+(*S_98814).Oldm = (*S_98814).Mean;
+(*S_98814).Olds = (*S_98814).News;
+LA1: ;
+(*S_98814).Sum = ((*S_98814).Sum + X_98815);
+if (!(X_98815 < (*S_98814).Min)) goto LA5;
+(*S_98814).Min = X_98815;
+LA5: ;
+if (!((*S_98814).Max < X_98815)) goto LA8;
+(*S_98814).Max = X_98815;
+LA8: ;
+}
+N_NIMCALL(NF, Variance_98830)(TY98802* S_98832) {
+NF Result_98833;
+Result_98833 = 0;
+if (!(1 < (*S_98832).N)) goto LA2;
+Result_98833 = ((*S_98832).News / ((double) ((NI32)((*S_98832).N - 1))));
+LA2: ;
+return Result_98833;
+}
+N_NIMCALL(NF, Standarddeviation_98836)(TY98802* S_98838) {
+NF Result_98839;
+NF LOC1;
+Result_98839 = 0;
+LOC1 = Variance_98830(S_98838);
+Result_98839 = sqrt(LOC1);
+return Result_98839;
+}
+N_NIMCALL(NF, Sum_98438)(NF* X_98442, NI X_98442Len0) {
+NF Result_98443;
+NF I_98479;
+NI I_98492;
+Result_98443 = 0;
+I_98479 = 0;
+I_98492 = 0;
+I_98492 = 0;
+while (1) {
+if (!(I_98492 < X_98442Len0)) goto LA1;
+I_98479 = X_98442[I_98492];
+Result_98443 = (Result_98443 + I_98479);
+I_98492 += 1;
+} LA1: ;
+return Result_98443;
 }
 N_NOINLINE(void, mathInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "math";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/math.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

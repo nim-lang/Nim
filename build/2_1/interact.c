@@ -6,5 +6,14 @@ typedef unsigned long int NU;
 #include "nimbase.h"
 
 N_NOINLINE(void, interactInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "interact";
+F.prev = framePtr;
+F.filename = "rod/interact.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

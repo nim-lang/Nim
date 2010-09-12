@@ -7,7 +7,7 @@ typedef unsigned long long int NU;
 
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef NI TY48040[256];
+typedef NI TY49040[256];
 struct TGenericSeq {
 NI len;
 NI space;
@@ -17,12 +17,24 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
+static N_INLINE(int, Updatecrc32_49014)(NI8 Val_49016, int Crc_49017);
+N_NOINLINE(void, raiseIndexError)(void);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
+static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021);
+N_NIMCALL(int, Strcrc32_49026)(NimStringDesc* S_49028);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NOINLINE(void, raiseOverflow)(void);
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NIMCALL(int, HEX3EHEX3C_49094)(int C_49096, NimStringDesc* S_49097);
+N_NIMCALL(int, Crcfrombuf_49022)(void* Buf_49024, NI Length_49025);
+N_NIMCALL(int, Crcfromfile_49029)(NimStringDesc* Filename_49031);
 N_NIMCALL(NIM_BOOL, Open_3617)(FILE** F_3620, NimStringDesc* Filename_3621, NU8 Mode_3622, NI Bufsize_3623);
 N_NOCONV(void*, Alloc_1774)(NI Size_1776);
 N_NIMCALL(NI, Readbuffer_3714)(FILE* F_3716, void* Buffer_3717, NI Len_3718);
-N_NIMCALL(int, Updatecrc32_48014)(NI8 Val_48016, int Crc_48017);
 N_NOCONV(void, Dealloc_1784)(void* P_1786);
-NIM_CONST TY48040 Crc32table_48039 = {0,
+N_NIMCALL(int, Updateadler32_49032)(int Adler_49034, void* Buf_49035, NI Length_49036);
+NIM_CONST TY49040 Crc32table_49039 = {0,
 1996959894,
 -301047508,
 -1727442502,
@@ -279,62 +291,349 @@ NIM_CONST TY48040 Crc32table_48039 = {0,
 1510334235,
 755167117}
 ;
-N_NIMCALL(int, Updatecrc32_48014)(NI8 Val_48016, int Crc_48017) {
-int Result_48048;
-Result_48048 = 0;
-Result_48048 = (NI32)(((int) (Crc32table_48039[((NI64)((NI64)(((NI) (Crc_48017)) ^ (NI64)(((NI) (Val_48016)) & 255)) & 255))-0])) ^ (NI32)((NU32)(Crc_48017) >> (NU32)(((NI32) 8))));
-return Result_48048;
-}
-N_NIMCALL(int, Crcfromfile_48029)(NimStringDesc* Filename_48031) {
-int Result_48122;
-FILE* Bin_48124;
-void* Buf_48125;
-NI Readbytes_48126;
-NI8* P_48127;
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5316;
 NIM_BOOL LOC2;
-NI I_48136;
-NI HEX3Atmp_48140;
-NI Res_48142;
-Result_48122 = 0;
-Bin_48124 = 0;
-Buf_48125 = 0;
-Readbytes_48126 = 0;
-P_48127 = 0;
-Result_48122 = ((NI32) -1);
-LOC2 = Open_3617(&Bin_48124, Filename_48031, ((NU8) 0), -1);
+Result_5316 = 0;
+LOC2 = (A_4611 <= I_4610);
+if (!(LOC2)) goto LA3;
+LOC2 = (I_4610 <= B_4612);
+LA3: ;
+if (!LOC2) goto LA4;
+Result_5316 = I_4610;
+goto BeforeRet;
+goto LA1;
+LA4: ;
+raiseRangeError(((NI64) (I_4610)));
+LA1: ;
+BeforeRet: ;
+return Result_5316;
+}
+static N_INLINE(int, Updatecrc32_49014)(NI8 Val_49016, int Crc_49017) {
+int Result_49048;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "updateCrc32";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49048 = 0;
+F.line = 78;F.filename = "crc.nim";
+if ((NU)((NI64)((NI64)(((NI) (Crc_49017)) ^ (NI64)(((NI) (Val_49016)) & 255)) & 255)) > (NU)(255)) raiseIndexError();
+Result_49048 = (NI32)(((int)chckRange(Crc32table_49039[((NI64)((NI64)(((NI) (Crc_49017)) ^ (NI64)(((NI) (Val_49016)) & 255)) & 255))-0], ((NI32) (-2147483647 -1)), ((NI32) 2147483647))) ^ (NI32)((NU32)(Crc_49017) >> (NU32)(((NI32) 8))));
+framePtr = framePtr->prev;
+return Result_49048;
+}
+static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021) {
+int Result_49053;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "updateCrc32";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49053 = 0;
+F.line = 82;F.filename = "crc.nim";
+Result_49053 = Updatecrc32_49014(((NI8)chckRange(((NU8)(Val_49020)), ((NI8) -128), ((NI8) 127))), Crc_49021);
+framePtr = framePtr->prev;
+return Result_49053;
+}
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
+NIM_BOOL LOC2;
+Result_5605 = 0;
+Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
+LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
+}
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
+NIM_BOOL LOC2;
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5805;
+}
+N_NIMCALL(int, Strcrc32_49026)(NimStringDesc* S_49028) {
+int Result_49062;
+NI I_49087;
+NI HEX3Atmp_49089;
+NI Res_49091;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "strCrc32";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49062 = 0;
+F.line = 85;F.filename = "crc.nim";
+Result_49062 = ((NI32) -1);
+I_49087 = 0;
+HEX3Atmp_49089 = 0;
+F.line = 86;F.filename = "crc.nim";
+HEX3Atmp_49089 = subInt(addInt(S_49028->Sup.len, 0), 1);
+Res_49091 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_49091 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_49091 <= HEX3Atmp_49089)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_49087 = Res_49091;
+F.line = 86;F.filename = "crc.nim";
+if ((NU)(I_49087) > (NU)(S_49028->Sup.len)) raiseIndexError();
+Result_49062 = Updatecrc32_49018(S_49028->data[I_49087], Result_49062);
+F.line = 1014;F.filename = "system.nim";
+Res_49091 = addInt(Res_49091, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+return Result_49062;
+}
+N_NIMCALL(int, HEX3EHEX3C_49094)(int C_49096, NimStringDesc* S_49097) {
+int Result_49098;
+NI I_49108;
+NI HEX3Atmp_49110;
+NI Res_49112;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "><";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49098 = 0;
+F.line = 89;F.filename = "crc.nim";
+Result_49098 = C_49096;
+I_49108 = 0;
+HEX3Atmp_49110 = 0;
+F.line = 90;F.filename = "crc.nim";
+HEX3Atmp_49110 = subInt(S_49097->Sup.len, 1);
+Res_49112 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_49112 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_49112 <= HEX3Atmp_49110)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_49108 = Res_49112;
+F.line = 90;F.filename = "crc.nim";
+if ((NU)(I_49108) > (NU)(S_49097->Sup.len)) raiseIndexError();
+Result_49098 = Updatecrc32_49018(S_49097->data[I_49108], Result_49098);
+F.line = 1014;F.filename = "system.nim";
+Res_49112 = addInt(Res_49112, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+return Result_49098;
+}
+N_NIMCALL(int, Crcfrombuf_49022)(void* Buf_49024, NI Length_49025) {
+int Result_49124;
+NI8* P_49125;
+NI I_49133;
+NI HEX3Atmp_49135;
+NI Res_49137;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "crcFromBuf";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49124 = 0;
+P_49125 = 0;
+F.line = 97;F.filename = "crc.nim";
+P_49125 = ((NI8*) (Buf_49024));
+F.line = 98;F.filename = "crc.nim";
+Result_49124 = ((NI32) -1);
+I_49133 = 0;
+HEX3Atmp_49135 = 0;
+F.line = 99;F.filename = "crc.nim";
+HEX3Atmp_49135 = subInt(Length_49025, 1);
+Res_49137 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_49137 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_49137 <= HEX3Atmp_49135)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_49133 = Res_49137;
+F.line = 99;F.filename = "crc.nim";
+if ((NU)(I_49133) > (NU)(10000000)) raiseIndexError();
+Result_49124 = Updatecrc32_49014(P_49125[(I_49133)-0], Result_49124);
+F.line = 1014;F.filename = "system.nim";
+Res_49137 = addInt(Res_49137, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+return Result_49124;
+}
+N_NIMCALL(int, Crcfromfile_49029)(NimStringDesc* Filename_49031) {
+int Result_49143;
+FILE* Bin_49145;
+void* Buf_49146;
+NI Readbytes_49147;
+NI8* P_49148;
+NIM_BOOL LOC2;
+NI I_49157;
+NI HEX3Atmp_49161;
+NI Res_49163;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "crcFromFile";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49143 = 0;
+Bin_49145 = 0;
+Buf_49146 = 0;
+Readbytes_49147 = 0;
+P_49148 = 0;
+F.line = 109;F.filename = "crc.nim";
+Result_49143 = ((NI32) -1);
+F.line = 110;F.filename = "crc.nim";
+LOC2 = Open_3617(&Bin_49145, Filename_49031, ((NU8) 0), -1);
 if (!!(LOC2)) goto LA3;
+F.line = 111;F.filename = "crc.nim";
 goto BeforeRet;
 LA3: ;
-Buf_48125 = Alloc_1774(8192);
-P_48127 = ((NI8*) (Buf_48125));
+F.line = 112;F.filename = "crc.nim";
+Buf_49146 = Alloc_1774(8192);
+F.line = 113;F.filename = "crc.nim";
+P_49148 = ((NI8*) (Buf_49146));
+F.line = 114;F.filename = "crc.nim";
 while (1) {
-Readbytes_48126 = Readbuffer_3714(Bin_48124, Buf_48125, 8192);
-I_48136 = 0;
-HEX3Atmp_48140 = 0;
-HEX3Atmp_48140 = (NI64)(Readbytes_48126 - 1);
-Res_48142 = 0;
-Res_48142 = 0;
+F.line = 115;F.filename = "crc.nim";
+Readbytes_49147 = Readbuffer_3714(Bin_49145, Buf_49146, 8192);
+I_49157 = 0;
+HEX3Atmp_49161 = 0;
+F.line = 116;F.filename = "crc.nim";
+HEX3Atmp_49161 = subInt(Readbytes_49147, 1);
+Res_49163 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_49163 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_48142 <= HEX3Atmp_48140)) goto LA6;
-I_48136 = Res_48142;
-Result_48122 = Updatecrc32_48014(P_48127[(I_48136)-0], Result_48122);
-Res_48142 += 1;
+if (!(Res_49163 <= HEX3Atmp_49161)) goto LA6;
+F.line = 1011;F.filename = "system.nim";
+I_49157 = Res_49163;
+F.line = 116;F.filename = "crc.nim";
+if ((NU)(I_49157) > (NU)(10000000)) raiseIndexError();
+Result_49143 = Updatecrc32_49014(P_49148[(I_49157)-0], Result_49143);
+F.line = 1014;F.filename = "system.nim";
+Res_49163 = addInt(Res_49163, 1);
 } LA6: ;
-if (!!((Readbytes_48126 == 8192))) goto LA8;
+F.line = 117;F.filename = "crc.nim";
+if (!!((Readbytes_49147 == 8192))) goto LA8;
+F.line = 117;F.filename = "crc.nim";
 goto LA5;
 LA8: ;
 } LA5: ;
-Dealloc_1784(Buf_48125);
-fclose(Bin_48124);
+F.line = 118;F.filename = "crc.nim";
+Dealloc_1784(Buf_49146);
+F.line = 119;F.filename = "crc.nim";
+fclose(Bin_49145);
 BeforeRet: ;
-return Result_48122;
+framePtr = framePtr->prev;
+return Result_49143;
 }
-N_NIMCALL(int, Updatecrc32_48018)(NIM_CHAR Val_48020, int Crc_48021) {
-int Result_48053;
-Result_48053 = 0;
-Result_48053 = Updatecrc32_48014(((NI8) (((NU8)(Val_48020)))), Crc_48021);
-return Result_48053;
+N_NIMCALL(int, Updateadler32_49032)(int Adler_49034, void* Buf_49035, NI Length_49036) {
+int Result_49174;
+int S1_49175;
+int S2_49176;
+NI L_49177;
+NI K_49178;
+NI B_49179;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "updateAdler32";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_49174 = 0;
+S1_49175 = 0;
+S2_49176 = 0;
+L_49177 = 0;
+K_49178 = 0;
+B_49179 = 0;
+F.line = 135;F.filename = "crc.nim";
+S1_49175 = (NI32)(Adler_49034 & ((NI32) 65535));
+F.line = 136;F.filename = "crc.nim";
+S2_49176 = (NI32)((NI32)((NU32)(Adler_49034) >> (NU32)(((NI32) 16))) & ((NI32) 65535));
+F.line = 137;F.filename = "crc.nim";
+L_49177 = Length_49036;
+F.line = 138;F.filename = "crc.nim";
+B_49179 = 0;
+F.line = 139;F.filename = "crc.nim";
+while (1) {
+if (!(0 < L_49177)) goto LA1;
+F.line = 140;F.filename = "crc.nim";
+if (!(L_49177 < 3854)) goto LA3;
+F.line = 140;F.filename = "crc.nim";
+K_49178 = L_49177;
+goto LA2;
+LA3: ;
+F.line = 141;F.filename = "crc.nim";
+K_49178 = 3854;
+LA2: ;
+F.line = 142;F.filename = "crc.nim";
+L_49177 = subInt(L_49177, K_49178);
+F.line = 143;F.filename = "crc.nim";
+while (1) {
+if (!(0 < K_49178)) goto LA5;
+F.line = 144;F.filename = "crc.nim";
+S1_49175 = (NI32)((NU32)(S1_49175) + (NU32)(((int) (((NU8)(((NCSTRING) (Buf_49035))[B_49179]))))));
+F.line = 145;F.filename = "crc.nim";
+S2_49176 = (NI32)((NU32)(S2_49176) + (NU32)(S1_49175));
+F.line = 146;F.filename = "crc.nim";
+B_49179 = addInt(B_49179, 1);
+F.line = 147;F.filename = "crc.nim";
+K_49178 = subInt(K_49178, 1);
+} LA5: ;
+F.line = 148;F.filename = "crc.nim";
+S1_49175 = (NI32)((NU32)(S1_49175) % (NU32)(((NI32) 65521)));
+F.line = 149;F.filename = "crc.nim";
+S2_49176 = (NI32)((NU32)(S2_49176) % (NU32)(((NI32) 65521)));
+} LA1: ;
+F.line = 150;F.filename = "crc.nim";
+Result_49174 = (NI32)((NI32)((NU32)(S2_49176) << (NU32)(((NI32) 16))) | S1_49175);
+framePtr = framePtr->prev;
+return Result_49174;
 }
 N_NOINLINE(void, crcInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "crc";
+F.prev = framePtr;
+F.filename = "rod/crc.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

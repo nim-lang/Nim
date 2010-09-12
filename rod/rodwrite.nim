@@ -70,8 +70,8 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 
 proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter = 
   new(result)
-  result.sstack = @ []
-  result.tstack = @ []
+  result.sstack = @[]
+  result.tstack = @[]
   InitIITable(result.index.tab)
   InitIITable(result.imports.tab)
   result.filename = modfilename
@@ -79,7 +79,7 @@ proc newRodWriter(modfilename: string, crc: TCrc32, module: PSym): PRodWriter =
   result.module = module
   result.defines = getDefines()
   result.options = options.gOptions
-  result.files = @ []
+  result.files = @[]
 
 proc addModDep(w: PRodWriter, dep: string) = 
   if w.modDeps != nil: app(w.modDeps, " ")
@@ -284,11 +284,10 @@ proc symStack(w: PRodWriter) =
   setlen(w.sstack, 0)
 
 proc typeStack(w: PRodWriter) = 
-  var i, L: int
-  i = 0
+  var i = 0
   while i < len(w.tstack): 
     if IiTableGet(w.index.tab, w.tstack[i].id) == invalidKey: 
-      L = ropeLen(w.data)
+      var L = ropeLen(w.data)
       addToIndex(w.index, w.tstack[i].id, L)
       app(w.data, encodeType(w, w.tstack[i]))
       app(w.data, rodNL)
@@ -317,9 +316,8 @@ proc addStmt(w: PRodWriter, n: PNode) =
   processStacks(w)
 
 proc writeRod(w: PRodWriter) = 
-  var content: PRope
   processStacks(w)            # write header:
-  content = toRope("NIM:")
+  var content = toRope("NIM:")
   app(content, toRope(FileVersion))
   app(content, rodNL)
   app(content, toRope("ID:"))
@@ -373,43 +371,39 @@ proc writeRod(w: PRodWriter) =
   writeRope(content, completeGeneratedFilePath(changeFileExt(w.filename, "rod")))
 
 proc process(c: PPassContext, n: PNode): PNode = 
-  var 
-    w: PRodWriter
-    a: PNode
-    s: PSym
   result = n
   if c == nil: return 
-  w = PRodWriter(c)
+  var w = PRodWriter(c)
   case n.kind
   of nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
   of nkTemplateDef, nkMacroDef: 
-    s = n.sons[namePos].sym
+    var s = n.sons[namePos].sym
     addInterfaceSym(w, s)
   of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef: 
-    s = n.sons[namePos].sym
+    var s = n.sons[namePos].sym
     if s == nil: InternalError(n.info, "rodwrite.process")
     if (n.sons[codePos] != nil) or (s.magic != mNone) or
         not (sfForward in s.flags): 
       addInterfaceSym(w, s)
   of nkVarSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if a.kind != nkIdentDefs: InternalError(a.info, "rodwrite.process")
       addInterfaceSym(w, a.sons[0].sym)
   of nkConstSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if a.kind != nkConstDef: InternalError(a.info, "rodwrite.process")
       addInterfaceSym(w, a.sons[0].sym)
   of nkTypeSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if a.sons[0].kind != nkSym: InternalError(a.info, "rodwrite.process")
-      s = a.sons[0].sym
+      var s = a.sons[0].sym
       addInterfaceSym(w, s) 
       # this takes care of enum fields too
       # Note: The check for ``s.typ.kind = tyEnum`` is wrong for enum

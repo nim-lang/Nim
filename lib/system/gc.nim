@@ -61,6 +61,8 @@ type
     decStack: TCellSeq       # cells in the stack that are to decref again
     cycleRoots: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
+    cycleRootsLock: TSysLock
+    zctLock: TSysLock
     stat: TGcStat
 
 var
@@ -68,11 +70,21 @@ var
   gch: TGcHeap
   cycleThreshold: int = InitialCycleThreshold
   recGcLock: int = 0
-    # we use a lock to prevend the garbage collector to be triggered in a
+    # we use a lock to prevent the garbage collector to be triggered in a
     # finalizer; the collector should not call itself this way! Thus every
     # object allocated by a finalizer will not trigger a garbage collection.
     # This is wasteful but safe. This is a lock against recursive garbage
     # collection, not a lock for threads!
+
+proc lock(gch: var TGcHeap) {.inline.} = 
+  if isMultiThreaded: 
+    Lock(gch.zctLock)
+    lock(gch.cycleRootsLock)
+
+proc unlock(gch: var TGcHeap) {.inline.} = 
+  if isMultiThreaded: 
+    unlock(gch.zctLock)
+    unlock(gch.cycleRootsLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -159,7 +171,7 @@ when traceGC:
     for c in elements(states[csAllocated]):
       inc(e)
       if c in states[csZctFreed]: inc(z)
-      elif c in states[csCycFreed]: inc(z)
+      elif c in states[csCycFreed]: inc(y)
       else: writeCell("leak", c)
     cfprintf(cstdout, "Allocations: %ld; ZCT freed: %ld; CYC freed: %ld\n",
              e, z, y)
@@ -190,25 +202,28 @@ proc prepareDealloc(cell: PCell) =
 
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
+  if isMultiThreaded: Lock(gch.cycleRootsLock)
   incl(gch.cycleRoots, c)
+  if isMultiThreaded: Unlock(gch.cycleRootsLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
+  if isMultiThreaded: Lock(gch.zctLock)
   addZCT(gch.zct, c)
+  if isMultiThreaded: Unlock(gch.zctLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
     if c.refcount <% rcIncrement:
       writeCell("broken cell", c)
   assert(c.refcount >=% rcIncrement)
-  c.refcount = c.refcount -% rcIncrement
-  if c.refcount <% rcIncrement:
+  if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
     rtlAddCycleRoot(c) 
 
 proc incRef(c: PCell) {.inline.} = 
-  c.refcount = c.refcount +% rcIncrement
+  discard atomicInc(c.refcount, rcIncrement)
   if canBeCycleRoot(c):
     rtlAddCycleRoot(c)
 
@@ -228,11 +243,10 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # cycle is possible.
   if src != nil: 
     var c = usrToCell(src)
-    c.refcount = c.refcount +% rcIncrement
+    discard atomicInc(c.refcount, rcIncrement)
   if dest^ != nil: 
     var c = usrToCell(dest^)
-    c.refcount = c.refcount -% rcIncrement
-    if c.refcount <% rcIncrement:
+    if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
       rtlAddZCT(c)
   dest^ = src
 
@@ -260,6 +274,8 @@ proc initGC() =
     init(gch.tempStack)
     Init(gch.cycleRoots)
     Init(gch.decStack)
+    InitLock(gch.cycleRootsLock)
+    InitLock(gch.zctLock)
     new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =
@@ -310,6 +326,7 @@ proc checkCollection {.inline.} =
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 0
+  lock(gch)
   assert(typ.kind in {tyRef, tyString, tySequence})
   checkCollection()
   var res = cast[PCell](rawAlloc(allocator, size + sizeof(TCell)))
@@ -337,15 +354,18 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
         break addToZCT
     add(gch.zct, res)
   when logGC: writeCell("new cell", res)
-  gcTrace(res, csAllocated)
+  gcTrace(res, csAllocated)  
+  unlock(gch)
   result = cellToUsr(res)
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+  # `newObj` already uses locks, so no need for them here.
   result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).space = len
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+  lock(gch)
   checkCollection()
   var ol = usrToCell(old)
   assert(ol.typ != nil)
@@ -383,6 +403,7 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   else:
     assert(ol.typ != nil)
     zeroMem(ol, sizeof(TCell))
+  unlock(gch)
   result = cellToUsr(res)
 
 # ---------------- cycle collector -------------------------------------------
@@ -632,9 +653,9 @@ proc collectCT(gch: var TGcHeap) =
     unmarkStackAndRegisters(gch)
 
 when not defined(useNimRtl):
-  proc GC_disable() = inc(recGcLock)
+  proc GC_disable() = discard atomicInc(recGcLock, 1)
   proc GC_enable() =
-    if recGcLock > 0: dec(recGcLock)
+    if recGcLock > 0: discard atomicDec(recGcLock, 1)
 
   proc GC_setStrategy(strategy: TGC_Strategy) =
     case strategy
@@ -651,10 +672,12 @@ when not defined(useNimRtl):
     # set to the max value to suppress the cycle detector
 
   proc GC_fullCollect() =
+    lock(gch)
     var oldThreshold = cycleThreshold
     cycleThreshold = 0 # forces cycle collection
     collectCT(gch)
     cycleThreshold = oldThreshold
+    unlock(gch)
 
   proc GC_getStatistics(): string =
     GC_disable()

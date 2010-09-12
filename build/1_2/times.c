@@ -6,21 +6,13 @@ typedef unsigned long long int NU;
 #include "nimbase.h"
 
 #include <time.h>
-typedef struct NimStringDesc NimStringDesc;
-typedef struct TGenericSeq TGenericSeq;
 typedef struct TY27402 TY27402;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-struct TGenericSeq {
-NI len;
-NI space;
-};
-typedef NIM_CHAR TY239[100000001];
-struct NimStringDesc {
-  TGenericSeq Sup;
-TY239 data;
-};
+typedef struct NimStringDesc NimStringDesc;
+typedef struct TGenericSeq TGenericSeq;
+typedef struct TY26596 TY26596;
 struct TNimType {
 NI size;
 NU8 kind;
@@ -52,14 +44,62 @@ NI len;
 TNimNode** sons;
 };
 typedef NU8 TY27648[7];
-N_NIMCALL(TY27402, Getlocaltime_27418)(NI32 T_27420);
+typedef NI TY27657[7];
+struct TGenericSeq {
+NI len;
+NI space;
+};
+typedef NIM_CHAR TY239[100000001];
+struct NimStringDesc {
+  TGenericSeq Sup;
+TY239 data;
+};
+struct TY26596 {
+NI32 Dwlowdatetime;
+NI32 Dwhighdatetime;
+};
+typedef N_STDCALL_PTR(void, TY26663) (TY26596* Lpsystemtimeasfiletime_26665);
+N_NIMCALL(NIM_BOOL, ntLtTime)(NI32 A_27439, NI32 B_27440);
+N_NIMCALL(NIM_BOOL, ntLeTime)(NI32 A_27446, NI32 B_27447);
 N_NIMCALL(TY27402, Tmtotimeinfo_27643)(struct tm* Tm_27645);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
+N_NOINLINE(void, raiseOverflow)(void);
+N_NOINLINE(void, raiseIndexError)(void);
+N_NIMCALL(struct tm, Timeinfototm_27652)(TY27402* T_27654);
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NIMCALL(NI64, ntDiffTime)(NI32 A_27435, NI32 B_27436);
+N_NIMCALL(NI, Getstartmilsecs_27451)(void);
+static N_INLINE(NI, divInt)(NI A_6203, NI B_6204);
+N_NOINLINE(void, raiseDivByZero)(void);
 N_NIMCALL(NI32, Gettime_27416)(void);
-N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_17603);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17009, NIM_CHAR C_17010);
+N_NIMCALL(TY27402, Getlocaltime_27418)(NI32 T_27420);
+N_NIMCALL(TY27402, Getgmtime_27421)(NI32 T_27423);
+N_NIMCALL(NI32, Timeinfototime_27424)(TY27402* Timeinfo_27426);
+N_NIMCALL(NimStringDesc*, Tostringtillnl_28221)(NCSTRING P_28223);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
+N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NIMCALL(NimStringDesc*, HEX24_27427)(TY27402* Timeinfo_27429);
+N_NIMCALL(NimStringDesc*, HEX24_27430)(NI32 Time_27432);
+N_NIMCALL(NI64, Unixtimetowintime_28257)(NI32 T_28259);
+N_NIMCALL(NI64, mulInt64)(NI64 A_5579, NI64 B_5580);
+static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530);
+N_NIMCALL(NI32, Wintimetounixtime_28261)(NI64 T_28263);
+static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539);
+static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
+N_NIMCALL(NF, ntepochTime)(void);
+N_NIMCALL(NI64, Rdfiletime_26654)(TY26596 F_26656);
+static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573);
+N_NIMCALL(NF, ntcpuTime)(void);
+N_NIMCALL(NimStringDesc*, ntgetDateStr)(void);
+N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_17803);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193);
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210);
 N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_23471, NI Minchars_23472);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_16887);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17087);
+N_NIMCALL(NimStringDesc*, ntgetClockStr)(void);
 NIM_CONST TY27648 Weekdays_27647 = {((NU8) 6),
 ((NU8) 0),
 ((NU8) 1),
@@ -69,116 +109,672 @@ NIM_CONST TY27648 Weekdays_27647 = {((NU8) 6),
 ((NU8) 5)}
 ;
 extern NIM_CONST TY27648 Weekdays_27647;
+NIM_CONST TY27657 Weekdays_27656 = {1,
+2,
+3,
+4,
+5,
+6,
+0}
+;
+extern NIM_CONST TY27657 Weekdays_27656;
+STRING_LITERAL(TMP28809, "", 0);
 extern TNimType* NTI27402; /* TTimeInfo */
-N_NIMCALL(NI32, Gettime_27416)(void) {
-NI32 Result_28203;
-Result_28203 = 0;
-Result_28203 = time(NIM_NIL);
+extern TY26663 Dl_26662;
+N_NIMCALL(NIM_BOOL, ntLtTime)(NI32 A_27439, NI32 B_27440) {
+NIM_BOOL Result_27441;
+NI64 LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "<";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_27441 = 0;
+F.line = 137;F.filename = "times.nim";
+LOC1 = ntDiffTime(A_27439, B_27440);
+Result_27441 = (LOC1 < 0);
+framePtr = framePtr->prev;
+return Result_27441;
+}
+N_NIMCALL(NIM_BOOL, ntLeTime)(NI32 A_27446, NI32 B_27447) {
+NIM_BOOL Result_27448;
+NI64 LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "<=";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_27448 = 0;
+F.line = 142;F.filename = "times.nim";
+LOC1 = ntDiffTime(A_27446, B_27447);
+Result_27448 = (LOC1 <= 0);
+framePtr = framePtr->prev;
+return Result_27448;
+}
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5316;
+NIM_BOOL LOC2;
+Result_5316 = 0;
+LOC2 = (A_4611 <= I_4610);
+if (!(LOC2)) goto LA3;
+LOC2 = (I_4610 <= B_4612);
+LA3: ;
+if (!LOC2) goto LA4;
+Result_5316 = I_4610;
 goto BeforeRet;
+goto LA1;
+LA4: ;
+raiseRangeError(((NI64) (I_4610)));
+LA1: ;
 BeforeRet: ;
-return Result_28203;
+return Result_5316;
 }
 N_NIMCALL(TY27402, Tmtotimeinfo_27643)(struct tm* Tm_27645) {
 TY27402 Result_27646;
+NI LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "tmToTimeInfo";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
 memset((void*)&Result_27646, 0, sizeof(Result_27646));
 Result_27646.Sup.m_type = NTI27402;
+F.line = 207;F.filename = "times.nim";
 Result_27646.Second = ((NI) (((NI) ((*Tm_27645).tm_sec))));
+F.line = 208;F.filename = "times.nim";
 Result_27646.Minute = ((NI) (((NI) ((*Tm_27645).tm_min))));
+F.line = 209;F.filename = "times.nim";
 Result_27646.Hour = ((NI) (((NI) ((*Tm_27645).tm_hour))));
+F.line = 210;F.filename = "times.nim";
 Result_27646.Monthday = ((NI) (((NI) ((*Tm_27645).tm_mday))));
-Result_27646.Month = ((NU8) ((*Tm_27645).tm_mon));
-Result_27646.Year = ((NI) ((NI32)((*Tm_27645).tm_year + ((NI32) 1900))));
+F.line = 211;F.filename = "times.nim";
+Result_27646.Month = ((NU8)chckRange((*Tm_27645).tm_mon, ((NU8) 0), ((NU8) 11)));
+F.line = 212;F.filename = "times.nim";
+LOC1 = ((NI)((*Tm_27645).tm_year) + (NI)(((NI32) 1900)));
+if (LOC1 < (-2147483647 -1) || LOC1 > 2147483647) raiseOverflow();
+Result_27646.Year = ((NI) ((NI32)(LOC1)));
+F.line = 213;F.filename = "times.nim";
+if ((NU)(((NI) ((*Tm_27645).tm_wday))) > (NU)(6)) raiseIndexError();
 Result_27646.Weekday = Weekdays_27647[(((NI) ((*Tm_27645).tm_wday)))-0];
+F.line = 214;F.filename = "times.nim";
 Result_27646.Yearday = ((NI) (((NI) ((*Tm_27645).tm_yday))));
+framePtr = framePtr->prev;
 return Result_27646;
+}
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
+NIM_BOOL LOC2;
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5805;
+}
+N_NIMCALL(struct tm, Timeinfototm_27652)(TY27402* T_27654) {
+struct tm Result_27655;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "timeInfoToTM";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+memset((void*)&Result_27655, 0, sizeof(Result_27655));
+F.line = 219;F.filename = "times.nim";
+Result_27655.tm_sec = ((NI32)chckRange((*T_27654).Second, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 220;F.filename = "times.nim";
+Result_27655.tm_min = ((NI32)chckRange((*T_27654).Minute, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 221;F.filename = "times.nim";
+Result_27655.tm_hour = ((NI32)chckRange((*T_27654).Hour, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 222;F.filename = "times.nim";
+Result_27655.tm_mday = ((NI32)chckRange((*T_27654).Monthday, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 223;F.filename = "times.nim";
+Result_27655.tm_mon = ((NI32)chckRange((*T_27654).Month, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 224;F.filename = "times.nim";
+Result_27655.tm_year = ((NI32)chckRange(subInt((*T_27654).Year, 1900), ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 225;F.filename = "times.nim";
+Result_27655.tm_wday = ((NI32)chckRange(Weekdays_27656[((*T_27654).Weekday)-0], ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 226;F.filename = "times.nim";
+Result_27655.tm_yday = ((NI32)chckRange((*T_27654).Yearday, ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+F.line = 227;F.filename = "times.nim";
+Result_27655.tm_isdst = ((NI32) -1);
+framePtr = framePtr->prev;
+return Result_27655;
+}
+N_NIMCALL(NI64, ntDiffTime)(NI32 A_27435, NI32 B_27436) {
+NI64 Result_27669;
+NF LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "-";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_27669 = 0;
+F.line = 231;F.filename = "times.nim";
+F.line = 231;F.filename = "times.nim";
+LOC1 = difftime(A_27435, B_27436);
+Result_27669 = float64ToInt64(((NF64) (LOC1)));
+goto BeforeRet;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_27669;
+}
+static N_INLINE(NI, divInt)(NI A_6203, NI B_6204) {
+NI Result_6205;
+NIM_BOOL LOC5;
+Result_6205 = 0;
+if (!(B_6204 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+LOC5 = (A_6203 == (IL64(-9223372036854775807) - IL64(1)));
+if (!(LOC5)) goto LA6;
+LOC5 = (B_6204 == -1);
+LA6: ;
+if (!LOC5) goto LA7;
+raiseOverflow();
+LA7: ;
+Result_6205 = (NI64)(A_6203 / B_6204);
+goto BeforeRet;
+BeforeRet: ;
+return Result_6205;
+}
+N_NIMCALL(NI, Getstartmilsecs_27451)(void) {
+NI Result_27803;
+NI LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getStartMilsecs";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_27803 = 0;
+F.line = 239;F.filename = "times.nim";
+LOC1 = clock();
+Result_27803 = divInt(((NI) (LOC1)), divInt(CLOCKS_PER_SEC, 1000));
+framePtr = framePtr->prev;
+return Result_27803;
+}
+N_NIMCALL(NI32, Gettime_27416)(void) {
+NI32 Result_28203;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28203 = 0;
+F.line = 246;F.filename = "times.nim";
+F.line = 246;F.filename = "times.nim";
+Result_28203 = time(NIM_NIL);
+goto BeforeRet;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_28203;
 }
 N_NIMCALL(TY27402, Getlocaltime_27418)(NI32 T_27420) {
 TY27402 Result_28207;
 NI32 A_28208;
 struct tm* LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getLocalTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
 memset((void*)&Result_28207, 0, sizeof(Result_28207));
 Result_28207.Sup.m_type = NTI27402;
 A_28208 = 0;
+F.line = 248;F.filename = "times.nim";
 A_28208 = T_27420;
+F.line = 249;F.filename = "times.nim";
 LOC1 = localtime(&A_28208);
 Result_28207 = Tmtotimeinfo_27643(&(*LOC1));
+framePtr = framePtr->prev;
 return Result_28207;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993) {
-memcpy(((NCSTRING) (&(*Dest_16992).data[((*Dest_16992).Sup.len)-0])), ((NCSTRING) ((*Src_16993).data)), ((NI32) ((NI64)((NI64)((*Src_16993).Sup.len + 1) * 1))));
-(*Dest_16992).Sup.len += (*Src_16993).Sup.len;
+N_NIMCALL(TY27402, Getgmtime_27421)(NI32 T_27423) {
+TY27402 Result_28213;
+NI32 A_28214;
+struct tm* LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getGMTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+memset((void*)&Result_28213, 0, sizeof(Result_28213));
+Result_28213.Sup.m_type = NTI27402;
+A_28214 = 0;
+F.line = 254;F.filename = "times.nim";
+A_28214 = T_27423;
+F.line = 255;F.filename = "times.nim";
+LOC1 = gmtime(&A_28214);
+Result_28213 = Tmtotimeinfo_27643(&(*LOC1));
+framePtr = framePtr->prev;
+return Result_28213;
 }
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17009, NIM_CHAR C_17010) {
-(*Dest_17009).data[((*Dest_17009).Sup.len)-0] = C_17010;
-(*Dest_17009).data[((NI64)((*Dest_17009).Sup.len + 1))-0] = 0;
-(*Dest_17009).Sup.len += 1;
-}
-N_NIMCALL(NimStringDesc*, ntgetDateStr)(void) {
-NimStringDesc* Result_28804;
-TY27402 Ti_28805;
-NI32 LOC1;
-NimStringDesc* LOC2;
-NimStringDesc* LOC3;
-NimStringDesc* LOC4;
-NimStringDesc* LOC5;
-Result_28804 = 0;
-memset((void*)&Ti_28805, 0, sizeof(Ti_28805));
-LOC1 = Gettime_27416();
-Ti_28805 = Getlocaltime_27418(LOC1);
-Ti_28805.Sup.m_type = NTI27402;
-LOC3 = nimIntToStr(Ti_28805.Year);
-LOC4 = nsuIntToStr((NI64)(Ti_28805.Month + 1), 2);
-LOC5 = nsuIntToStr(((NI) (Ti_28805.Monthday)), 2);
-LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
-appendString(LOC2, LOC3);
-appendChar(LOC2, 45);
-appendString(LOC2, LOC4);
-appendChar(LOC2, 45);
-appendString(LOC2, LOC5);
-Result_28804 = LOC2;
-return Result_28804;
-}
-N_NIMCALL(NimStringDesc*, ntgetClockStr)(void) {
-NimStringDesc* Result_28839;
-TY27402 Ti_28840;
-NI32 LOC1;
-NimStringDesc* LOC2;
-NimStringDesc* LOC3;
-NimStringDesc* LOC4;
-NimStringDesc* LOC5;
-Result_28839 = 0;
-memset((void*)&Ti_28840, 0, sizeof(Ti_28840));
-LOC1 = Gettime_27416();
-Ti_28840 = Getlocaltime_27418(LOC1);
-Ti_28840.Sup.m_type = NTI27402;
-LOC3 = nsuIntToStr(((NI) (Ti_28840.Hour)), 2);
-LOC4 = nsuIntToStr(((NI) (Ti_28840.Minute)), 2);
-LOC5 = nsuIntToStr(((NI) (Ti_28840.Second)), 2);
-LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
-appendString(LOC2, LOC3);
-appendChar(LOC2, 58);
-appendString(LOC2, LOC4);
-appendChar(LOC2, 58);
-appendString(LOC2, LOC5);
-Result_28839 = LOC2;
-return Result_28839;
-}
-N_NIMCALL(NI64, ntDiffTime)(NI32 A_27435, NI32 B_27436) {
-NI64 Result_27669;
-NF LOC1;
-Result_27669 = 0;
-LOC1 = difftime(A_27435, B_27436);
-Result_27669 = float64ToInt64(((NF64) (LOC1)));
+N_NIMCALL(NI32, Timeinfototime_27424)(TY27402* Timeinfo_27426) {
+NI32 Result_28219;
+TY27402 Ctimeinfo_28220;
+struct tm LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "TimeInfoToTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28219 = 0;
+memset((void*)&Ctimeinfo_28220, 0, sizeof(Ctimeinfo_28220));
+F.line = 260;F.filename = "times.nim";
+Ctimeinfo_28220 = (*Timeinfo_27426);
+Ctimeinfo_28220.Sup.m_type = NTI27402;
+F.line = 262;F.filename = "times.nim";
+F.line = 262;F.filename = "times.nim";
+LOC1 = Timeinfototm_27652(&Ctimeinfo_28220);
+Result_28219 = mktime(&LOC1);
 goto BeforeRet;
 BeforeRet: ;
-return Result_27669;
+framePtr = framePtr->prev;
+return Result_28219;
+}
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
+NIM_BOOL LOC2;
+Result_5605 = 0;
+Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
+LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
+}
+N_NIMCALL(NimStringDesc*, Tostringtillnl_28221)(NCSTRING P_28223) {
+NimStringDesc* Result_28224;
+NI I_28225;
+NIM_BOOL LOC2;
+NIM_BOOL LOC3;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "toStringTillNL";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28224 = 0;
+F.line = 265;F.filename = "times.nim";
+Result_28224 = copyString(((NimStringDesc*) &TMP28809));
+I_28225 = 0;
+F.line = 266;F.filename = "times.nim";
+I_28225 = 0;
+F.line = 267;F.filename = "times.nim";
+while (1) {
+LOC3 = !(((NU8)(P_28223[I_28225]) == (NU8)(0)));
+if (!(LOC3)) goto LA4;
+LOC3 = !(((NU8)(P_28223[I_28225]) == (NU8)(10)));
+LA4: ;
+LOC2 = LOC3;
+if (!(LOC2)) goto LA5;
+LOC2 = !(((NU8)(P_28223[I_28225]) == (NU8)(13)));
+LA5: ;
+if (!LOC2) goto LA1;
+F.line = 268;F.filename = "times.nim";
+Result_28224 = addChar(Result_28224, P_28223[I_28225]);
+F.line = 269;F.filename = "times.nim";
+I_28225 = addInt(I_28225, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+return Result_28224;
+}
+N_NIMCALL(NimStringDesc*, HEX24_27427)(TY27402* Timeinfo_27429) {
+NimStringDesc* Result_28247;
+NCSTRING P_28248;
+struct tm LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "$";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28247 = 0;
+P_28248 = 0;
+F.line = 273;F.filename = "times.nim";
+LOC1 = Timeinfototm_27652(Timeinfo_27429);
+P_28248 = asctime(&LOC1);
+F.line = 274;F.filename = "times.nim";
+Result_28247 = Tostringtillnl_28221(P_28248);
+framePtr = framePtr->prev;
+return Result_28247;
+}
+N_NIMCALL(NimStringDesc*, HEX24_27430)(NI32 Time_27432) {
+NimStringDesc* Result_28252;
+NI32 A_28253;
+NCSTRING LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "$";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28252 = 0;
+A_28253 = 0;
+F.line = 278;F.filename = "times.nim";
+A_28253 = Time_27432;
+F.line = 279;F.filename = "times.nim";
+F.line = 279;F.filename = "times.nim";
+LOC1 = ctime(&A_28253);
+Result_28252 = Tostringtillnl_28221(LOC1);
+goto BeforeRet;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_28252;
+}
+static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530) {
+NI64 Result_5531;
+NIM_BOOL LOC2;
+Result_5531 = 0;
+Result_5531 = (NI64)((NU64)(A_5529) + (NU64)(B_5530));
+LOC2 = (0 <= (Result_5531 ^ A_5529));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (Result_5531 ^ B_5530));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5531;
+}
+N_NIMCALL(NI64, Unixtimetowintime_28257)(NI32 T_28259) {
+NI64 Result_28260;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "unixTimeToWinTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28260 = 0;
+F.line = 287;F.filename = "times.nim";
+Result_28260 = addInt64(mulInt64(((NI64) (T_28259)), 10000000), IL64(116444736000000000));
+framePtr = framePtr->prev;
+return Result_28260;
+}
+static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539) {
+NI64 Result_5540;
+NIM_BOOL LOC2;
+Result_5540 = 0;
+Result_5540 = (NI64)((NU64)(A_5538) - (NU64)(B_5539));
+LOC2 = (0 <= (Result_5540 ^ A_5538));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (Result_5540 ^ ~(B_5539)));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5540;
+}
+static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562) {
+NI64 Result_5563;
+NIM_BOOL LOC5;
+Result_5563 = 0;
+if (!(B_5562 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+LOC5 = (A_5561 == (IL64(-9223372036854775807) - IL64(1)));
+if (!(LOC5)) goto LA6;
+LOC5 = (B_5562 == -1);
+LA6: ;
+if (!LOC5) goto LA7;
+raiseOverflow();
+LA7: ;
+Result_5563 = (NI64)(A_5561 / B_5562);
+goto BeforeRet;
+BeforeRet: ;
+return Result_5563;
 }
 N_NIMCALL(NI32, Wintimetounixtime_28261)(NI64 T_28263) {
 NI32 Result_28264;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "winTimeToUnixTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
 Result_28264 = 0;
-Result_28264 = ((NI32) ((NI64)((NI64)(T_28263 - IL64(116444736000000000)) / 10000000)));
+F.line = 291;F.filename = "times.nim";
+Result_28264 = ((NI32)chckRange64(divInt64(subInt64(T_28263, IL64(116444736000000000)), 10000000), ((NI32) (-2147483647 -1)), ((NI32) 2147483647)));
+framePtr = framePtr->prev;
 return Result_28264;
 }
+static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573) {
+NI64 Result_5574;
+Result_5574 = 0;
+if (!(B_5573 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+Result_5574 = (NI64)(A_5572 % B_5573);
+goto BeforeRet;
+BeforeRet: ;
+return Result_5574;
+}
+N_NIMCALL(NF, ntepochTime)(void) {
+NF Result_28267;
+TY26596 F_28268;
+NI64 I64_28270;
+NI64 LOC1;
+NI64 Secs_28271;
+NI64 Subsecs_28272;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "epochTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28267 = 0;
+memset((void*)&F_28268, 0, sizeof(F_28268));
+F.line = 302;F.filename = "times.nim";
+Dl_26662(&F_28268);
+I64_28270 = 0;
+F.line = 303;F.filename = "times.nim";
+LOC1 = Rdfiletime_26654(F_28268);
+I64_28270 = subInt64(LOC1, IL64(116444736000000000));
+Secs_28271 = 0;
+F.line = 304;F.filename = "times.nim";
+Secs_28271 = divInt64(I64_28270, 10000000);
+Subsecs_28272 = 0;
+F.line = 305;F.filename = "times.nim";
+Subsecs_28272 = modInt64(I64_28270, 10000000);
+F.line = 306;F.filename = "times.nim";
+Result_28267 = (((double) (((NI) (Secs_28271)))) + (((double) (((NI) (Subsecs_28272)))) * 1.00000e-07));
+framePtr = framePtr->prev;
+return Result_28267;
+}
+N_NIMCALL(NF, ntcpuTime)(void) {
+NF Result_28403;
+NI LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "cpuTime";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28403 = 0;
+F.line = 311;F.filename = "times.nim";
+LOC1 = clock();
+Result_28403 = (((double) (((NI) (LOC1)))) / ((double) (CLOCKS_PER_SEC)));
+framePtr = framePtr->prev;
+return Result_28403;
+}
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendString";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 150;F.filename = "sysstr.nim";
+memcpy(((NCSTRING) (&(*Dest_17192).data[((*Dest_17192).Sup.len)-0])), ((NCSTRING) ((*Src_17193).data)), ((NI32) ((NI64)((NI64)((*Src_17193).Sup.len + 1) * 1))));
+F.line = 151;F.filename = "sysstr.nim";
+(*Dest_17192).Sup.len += (*Src_17193).Sup.len;
+framePtr = framePtr->prev;
+}
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendChar";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 154;F.filename = "sysstr.nim";
+(*Dest_17209).data[((*Dest_17209).Sup.len)-0] = C_17210;
+F.line = 155;F.filename = "sysstr.nim";
+(*Dest_17209).data[((NI64)((*Dest_17209).Sup.len + 1))-0] = 0;
+F.line = 156;F.filename = "sysstr.nim";
+(*Dest_17209).Sup.len += 1;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(NimStringDesc*, ntgetDateStr)(void) {
+NimStringDesc* Result_28812;
+TY27402 Ti_28813;
+NI32 LOC1;
+NimStringDesc* LOC2;
+NimStringDesc* LOC3;
+NimStringDesc* LOC4;
+NimStringDesc* LOC5;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getDateStr";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28812 = 0;
+memset((void*)&Ti_28813, 0, sizeof(Ti_28813));
+F.line = 365;F.filename = "times.nim";
+LOC1 = Gettime_27416();
+Ti_28813 = Getlocaltime_27418(LOC1);
+Ti_28813.Sup.m_type = NTI27402;
+F.line = 366;F.filename = "times.nim";
+LOC2 = 0;
+LOC3 = 0;
+LOC3 = nimIntToStr(Ti_28813.Year);
+LOC4 = 0;
+LOC4 = nsuIntToStr(addInt(Ti_28813.Month, 1), 2);
+LOC5 = 0;
+LOC5 = nsuIntToStr(((NI) (Ti_28813.Monthday)), 2);
+LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
+appendString(LOC2, LOC3);
+appendChar(LOC2, 45);
+appendString(LOC2, LOC4);
+appendChar(LOC2, 45);
+appendString(LOC2, LOC5);
+Result_28812 = LOC2;
+framePtr = framePtr->prev;
+return Result_28812;
+}
+N_NIMCALL(NimStringDesc*, ntgetClockStr)(void) {
+NimStringDesc* Result_28847;
+TY27402 Ti_28848;
+NI32 LOC1;
+NimStringDesc* LOC2;
+NimStringDesc* LOC3;
+NimStringDesc* LOC4;
+NimStringDesc* LOC5;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getClockStr";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_28847 = 0;
+memset((void*)&Ti_28848, 0, sizeof(Ti_28848));
+F.line = 371;F.filename = "times.nim";
+LOC1 = Gettime_27416();
+Ti_28848 = Getlocaltime_27418(LOC1);
+Ti_28848.Sup.m_type = NTI27402;
+F.line = 372;F.filename = "times.nim";
+LOC2 = 0;
+LOC3 = 0;
+LOC3 = nsuIntToStr(((NI) (Ti_28848.Hour)), 2);
+LOC4 = 0;
+LOC4 = nsuIntToStr(((NI) (Ti_28848.Minute)), 2);
+LOC5 = 0;
+LOC5 = nsuIntToStr(((NI) (Ti_28848.Second)), 2);
+LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
+appendString(LOC2, LOC3);
+appendChar(LOC2, 58);
+appendString(LOC2, LOC4);
+appendChar(LOC2, 58);
+appendString(LOC2, LOC5);
+Result_28847 = LOC2;
+framePtr = framePtr->prev;
+return Result_28847;
+}
 N_NOINLINE(void, timesInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "times";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/pure/times.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

@@ -222,6 +222,54 @@ proc processCompile(filename: string) =
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
+proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool = 
+  case whichKeyword(switch)
+  of wGC: 
+    case whichKeyword(arg)
+    of wBoehm: result = contains(gGlobalOptions, optBoehmGC)
+    of wRefc:  result = contains(gGlobalOptions, optRefcGC)
+    of wNone:  result = gGlobalOptions * {optBoehmGC, optRefcGC} == {}
+    else: liMessage(info, errNoneBoehmRefcExpectedButXFound, arg)
+  of wOpt: 
+    case whichKeyword(arg)
+    of wSpeed: result = contains(gOptions, optOptimizeSpeed)
+    of wSize: result = contains(gOptions, optOptimizeSize)
+    of wNone: result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
+    else: liMessage(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+  else: InvalidCmdLineOption(passCmd1, switch, info)
+
+proc testCompileOption*(switch: string, info: TLineInfo): bool = 
+  case whichKeyword(switch)
+  of wDebuginfo: result = contains(gGlobalOptions, optCDebug)
+  of wCompileOnly, wC: result = contains(gGlobalOptions, optCompileOnly)
+  of wNoLinking: result = contains(gGlobalOptions, optNoLinking)
+  of wNoMain: result = contains(gGlobalOptions, optNoMain)
+  of wForceBuild, wF: result = contains(gGlobalOptions, optForceFullMake)
+  of wWarnings, wW: result = contains(gOptions, optWarns)
+  of wHints: result = contains(gOptions, optHints)
+  of wCheckpoints: result = contains(gOptions, optCheckpoints)
+  of wStackTrace: result = contains(gOptions, optStackTrace)
+  of wLineTrace: result = contains(gOptions, optLineTrace)
+  of wDebugger: result = contains(gOptions, optEndb)
+  of wProfiler: result = contains(gOptions, optProfiler)
+  of wChecks, wX: result = gOptions * checksOptions == checksOptions
+  of wFloatChecks:
+    result = gOptions * {optNanCheck, optInfCheck} == {optNanCheck, optInfCheck}
+  of wInfChecks: result = contains(gOptions, optInfCheck)
+  of wNanChecks: result = contains(gOptions, optNanCheck)
+  of wObjChecks: result = contains(gOptions, optObjCheck)
+  of wFieldChecks: result = contains(gOptions, optFieldCheck)
+  of wRangeChecks: result = contains(gOptions, optRangeCheck)
+  of wBoundChecks: result = contains(gOptions, optBoundsCheck)
+  of wOverflowChecks: result = contains(gOptions, optOverflowCheck)
+  of wLineDir: result = contains(gOptions, optLineDir)
+  of wAssertions, wA: result = contains(gOptions, optAssert)
+  of wDeadCodeElim: result = contains(gGlobalOptions, optDeadCodeElim)
+  of wRun, wR: result = contains(gGlobalOptions, optRun)
+  of wSymbolFiles: result = contains(gGlobalOptions, optSymbolFiles)
+  of wGenScript: result = contains(gGlobalOptions, optGenScript)
+  else: InvalidCmdLineOption(passCmd1, switch, info)
+
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
     theOS: TSystemOS

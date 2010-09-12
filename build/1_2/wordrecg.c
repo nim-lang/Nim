@@ -51,12 +51,19 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
+N_NIMCALL(NI, Findstr_66471)(NimStringDesc** A_66474, NI A_66474Len0, NimStringDesc* S_66475);
+N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_22638, NimStringDesc* B_22639);
+N_NOINLINE(void, raiseIndexError)(void);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NOINLINE(void, raiseOverflow)(void);
+N_NIMCALL(NU8, Whichkeyword_66468)(NimStringDesc* Id_66470);
+N_NIMCALL(TY48011*, Getident_48016)(NimStringDesc* Identifier_48018);
+N_NIMCALL(NU8, Whichkeyword_66465)(TY48011* Id_66467);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
 N_NIMCALL(void, Initspecials_66523)(void);
 N_NIMCALL(TY48011*, Getident_48019)(NimStringDesc* Identifier_48021, NI H_48022);
 N_NIMCALL(NI, Getnormalizedhash_38037)(NimStringDesc* S_38039);
-N_NIMCALL(NU8, Whichkeyword_66465)(TY48011* Id_66467);
-N_NIMCALL(TY48011*, Getident_48016)(NimStringDesc* Identifier_48018);
-N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_22638, NimStringDesc* B_22639);
 STRING_LITERAL(TMP66245, "", 0);
 STRING_LITERAL(TMP66246, "addr", 4);
 STRING_LITERAL(TMP66247, "and", 3);
@@ -498,41 +505,21 @@ NIM_CONST TY66241 Specialwords_66240 = {((NimStringDesc*) &TMP66245),
 ((NimStringDesc*) &TMP66463),
 ((NimStringDesc*) &TMP66464)}
 ;
-N_NIMCALL(void, Initspecials_66523)(void) {
-NU8 S_66563;
-NU8 Res_66571;
-NI LOC2;
-TY48011* LOC3;
-S_66563 = 0;
-Res_66571 = 0;
-Res_66571 = ((NU8) 1);
-while (1) {
-if (!(Res_66571 <= ((NU8) 219))) goto LA1;
-S_66563 = Res_66571;
-LOC2 = Getnormalizedhash_38037(Specialwords_66240[(S_66563)-0]);
-LOC3 = Getident_48019(Specialwords_66240[(S_66563)-0], LOC2);
-(*LOC3).Sup.Id = S_66563;
-Res_66571 += 1;
-} LA1: ;
-}
-N_NIMCALL(NU8, Whichkeyword_66465)(TY48011* Id_66467) {
-NU8 Result_66520;
-Result_66520 = 0;
-if (!((*Id_66467).Sup.Id < 0)) goto LA2;
-Result_66520 = ((NU8) 0);
-goto LA1;
-LA2: ;
-Result_66520 = ((NU8) ((*Id_66467).Sup.Id));
-LA1: ;
-return Result_66520;
-}
-N_NIMCALL(NU8, Whichkeyword_66468)(NimStringDesc* Id_66470) {
-NU8 Result_66516;
-TY48011* LOC1;
-Result_66516 = 0;
-LOC1 = Getident_48016(Id_66470);
-Result_66516 = Whichkeyword_66465(LOC1);
-return Result_66516;
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
+NIM_BOOL LOC2;
+Result_5605 = 0;
+Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
+LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
 }
 N_NIMCALL(NI, Findstr_66471)(NimStringDesc** A_66474, NI A_66474Len0, NimStringDesc* S_66475) {
 NI Result_66481;
@@ -540,27 +527,148 @@ NI I_66504;
 NI HEX3Atmp_66508;
 NI Res_66510;
 NI LOC3;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "findStr";
+F.prev = framePtr;
+F.filename = "rod/wordrecg.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
 Result_66481 = 0;
 I_66504 = 0;
 HEX3Atmp_66508 = 0;
+F.line = 115;F.filename = "wordrecg.nim";
 HEX3Atmp_66508 = (A_66474Len0-1);
 Res_66510 = 0;
+F.line = 1011;F.filename = "system.nim";
 Res_66510 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
 if (!(Res_66510 <= HEX3Atmp_66508)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
 I_66504 = Res_66510;
+F.line = 116;F.filename = "wordrecg.nim";
+if ((NU)(I_66504) >= (NU)(A_66474Len0)) raiseIndexError();
 LOC3 = nsuCmpIgnoreStyle(A_66474[I_66504], S_66475);
 if (!(LOC3 == 0)) goto LA4;
+F.line = 117;F.filename = "wordrecg.nim";
+F.line = 117;F.filename = "wordrecg.nim";
 Result_66481 = I_66504;
 goto BeforeRet;
 LA4: ;
-Res_66510 += 1;
+F.line = 1014;F.filename = "system.nim";
+Res_66510 = addInt(Res_66510, 1);
 } LA1: ;
+F.line = 118;F.filename = "wordrecg.nim";
 Result_66481 = -1;
 BeforeRet: ;
+framePtr = framePtr->prev;
 return Result_66481;
 }
+N_NIMCALL(NU8, Whichkeyword_66468)(NimStringDesc* Id_66470) {
+NU8 Result_66516;
+TY48011* LOC1;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "whichKeyword";
+F.prev = framePtr;
+F.filename = "rod/wordrecg.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_66516 = 0;
+F.line = 121;F.filename = "wordrecg.nim";
+LOC1 = 0;
+LOC1 = Getident_48016(Id_66470);
+Result_66516 = Whichkeyword_66465(LOC1);
+framePtr = framePtr->prev;
+return Result_66516;
+}
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5316;
+NIM_BOOL LOC2;
+Result_5316 = 0;
+LOC2 = (A_4611 <= I_4610);
+if (!(LOC2)) goto LA3;
+LOC2 = (I_4610 <= B_4612);
+LA3: ;
+if (!LOC2) goto LA4;
+Result_5316 = I_4610;
+goto BeforeRet;
+goto LA1;
+LA4: ;
+raiseRangeError(((NI64) (I_4610)));
+LA1: ;
+BeforeRet: ;
+return Result_5316;
+}
+N_NIMCALL(NU8, Whichkeyword_66465)(TY48011* Id_66467) {
+NU8 Result_66520;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "whichKeyword";
+F.prev = framePtr;
+F.filename = "rod/wordrecg.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_66520 = 0;
+F.line = 124;F.filename = "wordrecg.nim";
+if (!((*Id_66467).Sup.Id < 0)) goto LA2;
+F.line = 124;F.filename = "wordrecg.nim";
+Result_66520 = ((NU8) 0);
+goto LA1;
+LA2: ;
+F.line = 125;F.filename = "wordrecg.nim";
+Result_66520 = ((NU8)chckRange((*Id_66467).Sup.Id, ((NU8) 0), ((NU8) 219)));
+LA1: ;
+framePtr = framePtr->prev;
+return Result_66520;
+}
+N_NIMCALL(void, Initspecials_66523)(void) {
+NU8 S_66563;
+NU8 Res_66571;
+NI LOC2;
+TY48011* LOC3;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "initSpecials";
+F.prev = framePtr;
+F.filename = "rod/wordrecg.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+S_66563 = 0;
+Res_66571 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_66571 = ((NU8) 1);
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_66571 <= ((NU8) 219))) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+S_66563 = Res_66571;
+F.line = 130;F.filename = "wordrecg.nim";
+LOC2 = Getnormalizedhash_38037(Specialwords_66240[(S_66563)-0]);
+LOC3 = 0;
+LOC3 = Getident_48019(Specialwords_66240[(S_66563)-0], LOC2);
+(*LOC3).Sup.Id = S_66563;
+F.line = 1014;F.filename = "system.nim";
+Res_66571 = addInt(Res_66571, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+}
 N_NOINLINE(void, wordrecgInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "wordrecg";
+F.prev = framePtr;
+F.filename = "rod/wordrecg.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 132;F.filename = "wordrecg.nim";
 Initspecials_66523();
+framePtr = framePtr->prev;
 }
 

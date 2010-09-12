@@ -31,8 +31,8 @@ type
 
 const 
   CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall", 
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure", 
-    "noconv"]
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall",
+    "closure", "noconv"]
 
 type 
   TNodeKind* = enum # order is extremely important, because ranges are used
@@ -329,8 +329,9 @@ type
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc, 
     mIsMainModule, mCompileDate, mCompileTime, mNimrodVersion, mNimrodMajor, 
     mNimrodMinor, mNimrodPatch, mCpuEndian, mHostOS, mHostCPU, mAppType, 
-    mNaN, mInf, 
-    mNegInf, mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind, 
+    mNaN, mInf, mNegInf, 
+    mCompileOption, mCompileOptionArg,
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind, 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal, 
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, 
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr, 

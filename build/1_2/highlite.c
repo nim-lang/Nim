@@ -7,7 +7,7 @@ typedef unsigned long long int NU;
 
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY145007 TY145007;
+typedef struct TY146007 TY146007;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -22,8 +22,8 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-typedef NimStringDesc* TY145056[6];
-typedef NimStringDesc* TY145060[33];
+typedef NimStringDesc* TY146056[6];
+typedef NimStringDesc* TY146060[33];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -35,7 +35,7 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY145007 {
+struct TY146007 {
   TNimObject Sup;
 NU8 Kind;
 NI Start;
@@ -44,7 +44,6 @@ NCSTRING Buf;
 NI Pos;
 NU8 State;
 };
-typedef NU8 TY20402[32];
 struct TY48005 {
   TNimObject Sup;
 NI Id;
@@ -55,10 +54,11 @@ NimStringDesc* S;
 TY48011* Next;
 NI H;
 };
-typedef NimStringDesc* TY147361[48];
-typedef NimStringDesc* TY147371[77];
-typedef NimStringDesc* TY147351[37];
-typedef NimStringDesc* TY147381[53];
+typedef NU8 TY20402[32];
+typedef NimStringDesc* TY148355[37];
+typedef NimStringDesc* TY148402[48];
+typedef NimStringDesc* TY148427[77];
+typedef NimStringDesc* TY148477[53];
 struct TNimNode {
 NU8 kind;
 NI offset;
@@ -67,645 +67,810 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
+N_NIMCALL(NU8, Getsourcelanguage_146102)(NimStringDesc* Name_146104);
 N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_22638, NimStringDesc* B_22639);
-N_NIMCALL(void, Nimnexttoken_145517)(TY145007* G_145520);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_16908);
-N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-N_NIMCALL(NU8, Nimgetkeyword_145204)(NimStringDesc* Id_145206);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NOINLINE(void, raiseOverflow)(void);
+N_NIMCALL(void, Initgeneraltokenizer_146105)(TY146007* G_146108, NimStringDesc* Buf_146109);
+N_NIMCALL(void, Deinitgeneraltokenizer_146110)(TY146007* G_146113);
+N_NIMCALL(NU8, Nimgetkeyword_146204)(NimStringDesc* Id_146206);
 N_NIMCALL(TY48011*, Getident_48016)(NimStringDesc* Identifier_48018);
-N_NIMCALL(NI, Nimnumberpostfix_145233)(TY145007* G_145236, NI Position_145237);
-N_NIMCALL(NI, Nimnumber_145374)(TY145007* G_145377, NI Position_145378);
+N_NIMCALL(NI, Nimnumberpostfix_146233)(TY146007* G_146236, NI Position_146237);
+N_NIMCALL(NI, Nimnumber_146374)(TY146007* G_146377, NI Position_146378);
+N_NIMCALL(void, Nimnexttoken_146517)(TY146007* G_146520);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
+N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
 N_NIMCALL(void, Internalerror_41571)(NimStringDesc* Errmsg_41573);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993);
-N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_16904);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_16887);
-N_NIMCALL(void, Cppnexttoken_147356)(TY145007* G_147359);
-N_NIMCALL(void, Clikenexttoken_146574)(TY145007* G_146577, NimStringDesc** Keywords_146579, NI Keywords_146579Len0, NU8 Flags_146580);
-N_NIMCALL(NI, Iskeyword_146514)(NimStringDesc** X_146517, NI X_146517Len0, NimStringDesc* Y_146518);
-N_NIMCALL(NI, Cmp_1319)(NimStringDesc* X_1321, NimStringDesc* Y_1322);
-N_NIMCALL(NI, Generalnumber_146214)(TY145007* G_146217, NI Position_146218);
-N_NIMCALL(NI, Generalstrlit_146357)(TY145007* G_146360, NI Position_146361);
-N_NIMCALL(void, Csharpnexttoken_147366)(TY145007* G_147369);
-N_NIMCALL(void, Cnexttoken_147346)(TY145007* G_147349);
-N_NIMCALL(void, Javanexttoken_147376)(TY145007* G_147379);
-STRING_LITERAL(TMP145063, "none", 4);
-STRING_LITERAL(TMP145064, "Nimrod", 6);
-STRING_LITERAL(TMP145065, "C++", 3);
-STRING_LITERAL(TMP145066, "C#", 2);
-STRING_LITERAL(TMP145067, "C", 1);
-STRING_LITERAL(TMP145068, "Java", 4);
-NIM_CONST TY145056 Sourcelanguagetostr_145055 = {((NimStringDesc*) &TMP145063),
-((NimStringDesc*) &TMP145064),
-((NimStringDesc*) &TMP145065),
-((NimStringDesc*) &TMP145066),
-((NimStringDesc*) &TMP145067),
-((NimStringDesc*) &TMP145068)}
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193);
+N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_17104);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17087);
+N_NIMCALL(NI, Generalnumber_147217)(TY146007* G_147220, NI Position_147221);
+N_NIMCALL(NI, Generalstrlit_147360)(TY146007* G_147363, NI Position_147364);
+N_NIMCALL(NI, Iskeyword_147517)(NimStringDesc** X_147520, NI X_147520Len0, NimStringDesc* Y_147521);
+static N_INLINE(NI, divInt)(NI A_6203, NI B_6204);
+N_NOINLINE(void, raiseDivByZero)(void);
+N_NIMCALL(NI, Cmp_1321)(NimStringDesc* X_1323, NimStringDesc* Y_1324);
+N_NOINLINE(void, raiseIndexError)(void);
+N_NIMCALL(NI, Iskeywordignorecase_147544)(NimStringDesc** X_147547, NI X_147547Len0, NimStringDesc* Y_147548);
+N_NIMCALL(NI, nsuCmpIgnoreCase)(NimStringDesc* A_22595, NimStringDesc* B_22596);
+N_NIMCALL(void, Clikenexttoken_147577)(TY146007* G_147580, NimStringDesc** Keywords_147582, NI Keywords_147582Len0, NU8 Flags_147583);
+N_NIMCALL(void, Cnexttoken_148350)(TY146007* G_148353);
+N_NIMCALL(void, Cppnexttoken_148397)(TY146007* G_148400);
+N_NIMCALL(void, Csharpnexttoken_148422)(TY146007* G_148425);
+N_NIMCALL(void, Javanexttoken_148472)(TY146007* G_148475);
+N_NIMCALL(void, Getnexttoken_146114)(TY146007* G_146117, NU8 Lang_146118);
+STRING_LITERAL(TMP146063, "none", 4);
+STRING_LITERAL(TMP146064, "Nimrod", 6);
+STRING_LITERAL(TMP146065, "C++", 3);
+STRING_LITERAL(TMP146066, "C#", 2);
+STRING_LITERAL(TMP146067, "C", 1);
+STRING_LITERAL(TMP146068, "Java", 4);
+NIM_CONST TY146056 Sourcelanguagetostr_146055 = {((NimStringDesc*) &TMP146063),
+((NimStringDesc*) &TMP146064),
+((NimStringDesc*) &TMP146065),
+((NimStringDesc*) &TMP146066),
+((NimStringDesc*) &TMP146067),
+((NimStringDesc*) &TMP146068)}
 ;
-STRING_LITERAL(TMP145069, "Eof", 3);
-STRING_LITERAL(TMP145070, "None", 4);
-STRING_LITERAL(TMP145071, "Whitespace", 10);
-STRING_LITERAL(TMP145072, "DecNumber", 9);
-STRING_LITERAL(TMP145073, "BinNumber", 9);
-STRING_LITERAL(TMP145074, "HexNumber", 9);
-STRING_LITERAL(TMP145075, "OctNumber", 9);
-STRING_LITERAL(TMP145076, "FloatNumber", 11);
-STRING_LITERAL(TMP145077, "Identifier", 10);
-STRING_LITERAL(TMP145078, "Keyword", 7);
-STRING_LITERAL(TMP145079, "StringLit", 9);
-STRING_LITERAL(TMP145080, "LongStringLit", 13);
-STRING_LITERAL(TMP145081, "CharLit", 7);
-STRING_LITERAL(TMP145082, "EscapeSequence", 14);
-STRING_LITERAL(TMP145083, "Operator", 8);
-STRING_LITERAL(TMP145084, "Punctation", 10);
-STRING_LITERAL(TMP145085, "Comment", 7);
-STRING_LITERAL(TMP145086, "LongComment", 11);
-STRING_LITERAL(TMP145087, "RegularExpression", 17);
-STRING_LITERAL(TMP145088, "TagStart", 8);
-STRING_LITERAL(TMP145089, "TagEnd", 6);
-STRING_LITERAL(TMP145090, "Key", 3);
-STRING_LITERAL(TMP145091, "Value", 5);
-STRING_LITERAL(TMP145092, "RawData", 7);
-STRING_LITERAL(TMP145093, "Assembler", 9);
-STRING_LITERAL(TMP145094, "Preprocessor", 12);
-STRING_LITERAL(TMP145095, "Directive", 9);
-STRING_LITERAL(TMP145096, "Command", 7);
-STRING_LITERAL(TMP145097, "Rule", 4);
-STRING_LITERAL(TMP145098, "Hyperlink", 9);
-STRING_LITERAL(TMP145099, "Label", 5);
-STRING_LITERAL(TMP145100, "Reference", 9);
-STRING_LITERAL(TMP145101, "Other", 5);
-NIM_CONST TY145060 Tokenclasstostr_145059 = {((NimStringDesc*) &TMP145069),
-((NimStringDesc*) &TMP145070),
-((NimStringDesc*) &TMP145071),
-((NimStringDesc*) &TMP145072),
-((NimStringDesc*) &TMP145073),
-((NimStringDesc*) &TMP145074),
-((NimStringDesc*) &TMP145075),
-((NimStringDesc*) &TMP145076),
-((NimStringDesc*) &TMP145077),
-((NimStringDesc*) &TMP145078),
-((NimStringDesc*) &TMP145079),
-((NimStringDesc*) &TMP145080),
-((NimStringDesc*) &TMP145081),
-((NimStringDesc*) &TMP145082),
-((NimStringDesc*) &TMP145083),
-((NimStringDesc*) &TMP145084),
-((NimStringDesc*) &TMP145085),
-((NimStringDesc*) &TMP145086),
-((NimStringDesc*) &TMP145087),
-((NimStringDesc*) &TMP145088),
-((NimStringDesc*) &TMP145089),
-((NimStringDesc*) &TMP145090),
-((NimStringDesc*) &TMP145091),
-((NimStringDesc*) &TMP145092),
-((NimStringDesc*) &TMP145093),
-((NimStringDesc*) &TMP145094),
-((NimStringDesc*) &TMP145095),
-((NimStringDesc*) &TMP145096),
-((NimStringDesc*) &TMP145097),
-((NimStringDesc*) &TMP145098),
-((NimStringDesc*) &TMP145099),
-((NimStringDesc*) &TMP145100),
-((NimStringDesc*) &TMP145101)}
+STRING_LITERAL(TMP146069, "Eof", 3);
+STRING_LITERAL(TMP146070, "None", 4);
+STRING_LITERAL(TMP146071, "Whitespace", 10);
+STRING_LITERAL(TMP146072, "DecNumber", 9);
+STRING_LITERAL(TMP146073, "BinNumber", 9);
+STRING_LITERAL(TMP146074, "HexNumber", 9);
+STRING_LITERAL(TMP146075, "OctNumber", 9);
+STRING_LITERAL(TMP146076, "FloatNumber", 11);
+STRING_LITERAL(TMP146077, "Identifier", 10);
+STRING_LITERAL(TMP146078, "Keyword", 7);
+STRING_LITERAL(TMP146079, "StringLit", 9);
+STRING_LITERAL(TMP146080, "LongStringLit", 13);
+STRING_LITERAL(TMP146081, "CharLit", 7);
+STRING_LITERAL(TMP146082, "EscapeSequence", 14);
+STRING_LITERAL(TMP146083, "Operator", 8);
+STRING_LITERAL(TMP146084, "Punctation", 10);
+STRING_LITERAL(TMP146085, "Comment", 7);
+STRING_LITERAL(TMP146086, "LongComment", 11);
+STRING_LITERAL(TMP146087, "RegularExpression", 17);
+STRING_LITERAL(TMP146088, "TagStart", 8);
+STRING_LITERAL(TMP146089, "TagEnd", 6);
+STRING_LITERAL(TMP146090, "Key", 3);
+STRING_LITERAL(TMP146091, "Value", 5);
+STRING_LITERAL(TMP146092, "RawData", 7);
+STRING_LITERAL(TMP146093, "Assembler", 9);
+STRING_LITERAL(TMP146094, "Preprocessor", 12);
+STRING_LITERAL(TMP146095, "Directive", 9);
+STRING_LITERAL(TMP146096, "Command", 7);
+STRING_LITERAL(TMP146097, "Rule", 4);
+STRING_LITERAL(TMP146098, "Hyperlink", 9);
+STRING_LITERAL(TMP146099, "Label", 5);
+STRING_LITERAL(TMP146100, "Reference", 9);
+STRING_LITERAL(TMP146101, "Other", 5);
+NIM_CONST TY146060 Tokenclasstostr_146059 = {((NimStringDesc*) &TMP146069),
+((NimStringDesc*) &TMP146070),
+((NimStringDesc*) &TMP146071),
+((NimStringDesc*) &TMP146072),
+((NimStringDesc*) &TMP146073),
+((NimStringDesc*) &TMP146074),
+((NimStringDesc*) &TMP146075),
+((NimStringDesc*) &TMP146076),
+((NimStringDesc*) &TMP146077),
+((NimStringDesc*) &TMP146078),
+((NimStringDesc*) &TMP146079),
+((NimStringDesc*) &TMP146080),
+((NimStringDesc*) &TMP146081),
+((NimStringDesc*) &TMP146082),
+((NimStringDesc*) &TMP146083),
+((NimStringDesc*) &TMP146084),
+((NimStringDesc*) &TMP146085),
+((NimStringDesc*) &TMP146086),
+((NimStringDesc*) &TMP146087),
+((NimStringDesc*) &TMP146088),
+((NimStringDesc*) &TMP146089),
+((NimStringDesc*) &TMP146090),
+((NimStringDesc*) &TMP146091),
+((NimStringDesc*) &TMP146092),
+((NimStringDesc*) &TMP146093),
+((NimStringDesc*) &TMP146094),
+((NimStringDesc*) &TMP146095),
+((NimStringDesc*) &TMP146096),
+((NimStringDesc*) &TMP146097),
+((NimStringDesc*) &TMP146098),
+((NimStringDesc*) &TMP146099),
+((NimStringDesc*) &TMP146100),
+((NimStringDesc*) &TMP146101)}
 ;
-NIM_CONST TY20402 Hexchars_145521 = {
+NIM_CONST TY20402 Decchars_146380 = {
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
+0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;
+NIM_CONST TY20402 Hexchars_146521 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
 0x7E, 0x00, 0x00, 0x80, 0x7E, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Octchars_145523 = {
+NIM_CONST TY20402 Octchars_146523 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00,
 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Binchars_145525 = {
+NIM_CONST TY20402 Binchars_146525 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-STRING_LITERAL(TMP192259, "", 0);
-NIM_CONST TY20402 Decchars_145380 = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
-0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;
-static NIM_CONST TY20402 TMP192260 = {
+STRING_LITERAL(TMP147214, "", 0);
+static NIM_CONST TY20402 TMP147215 = {
 0x00, 0x00, 0x00, 0x00, 0x72, 0xEC, 0x00, 0xF0,
 0x01, 0x00, 0x00, 0x50, 0x00, 0x00, 0x00, 0x50,
 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
-;STRING_LITERAL(TMP192261, "nimNextToken: ", 14);
-STRING_LITERAL(TMP192262, "asm", 3);
-STRING_LITERAL(TMP192263, "auto", 4);
-STRING_LITERAL(TMP192264, "break", 5);
-STRING_LITERAL(TMP192265, "case", 4);
-STRING_LITERAL(TMP192266, "catch", 5);
-STRING_LITERAL(TMP192267, "char", 4);
-STRING_LITERAL(TMP192268, "class", 5);
-STRING_LITERAL(TMP192269, "const", 5);
-STRING_LITERAL(TMP192270, "continue", 8);
-STRING_LITERAL(TMP192271, "default", 7);
-STRING_LITERAL(TMP192272, "delete", 6);
-STRING_LITERAL(TMP192273, "do", 2);
-STRING_LITERAL(TMP192274, "double", 6);
-STRING_LITERAL(TMP192275, "else", 4);
-STRING_LITERAL(TMP192276, "enum", 4);
-STRING_LITERAL(TMP192277, "extern", 6);
-STRING_LITERAL(TMP192278, "float", 5);
-STRING_LITERAL(TMP192279, "for", 3);
-STRING_LITERAL(TMP192280, "friend", 6);
-STRING_LITERAL(TMP192281, "goto", 4);
-STRING_LITERAL(TMP192282, "if", 2);
-STRING_LITERAL(TMP192283, "inline", 6);
-STRING_LITERAL(TMP192284, "int", 3);
-STRING_LITERAL(TMP192285, "long", 4);
-STRING_LITERAL(TMP192286, "new", 3);
-STRING_LITERAL(TMP192287, "operator", 8);
-STRING_LITERAL(TMP192288, "private", 7);
-STRING_LITERAL(TMP192289, "protected", 9);
-STRING_LITERAL(TMP192290, "public", 6);
-STRING_LITERAL(TMP192291, "register", 8);
-STRING_LITERAL(TMP192292, "return", 6);
-STRING_LITERAL(TMP192293, "short", 5);
-STRING_LITERAL(TMP192294, "signed", 6);
-STRING_LITERAL(TMP192295, "sizeof", 6);
-STRING_LITERAL(TMP192296, "static", 6);
-STRING_LITERAL(TMP192297, "struct", 6);
-STRING_LITERAL(TMP192298, "switch", 6);
-STRING_LITERAL(TMP192299, "template", 8);
-STRING_LITERAL(TMP192300, "this", 4);
-STRING_LITERAL(TMP192301, "throw", 5);
-STRING_LITERAL(TMP192302, "try", 3);
-STRING_LITERAL(TMP192303, "typedef", 7);
-STRING_LITERAL(TMP192304, "union", 5);
-STRING_LITERAL(TMP192305, "unsigned", 8);
-STRING_LITERAL(TMP192306, "virtual", 7);
-STRING_LITERAL(TMP192307, "void", 4);
-STRING_LITERAL(TMP192308, "volatile", 8);
-STRING_LITERAL(TMP192309, "while", 5);
-NIM_CONST TY147361 Keywords_147360 = {((NimStringDesc*) &TMP192262),
-((NimStringDesc*) &TMP192263),
-((NimStringDesc*) &TMP192264),
-((NimStringDesc*) &TMP192265),
-((NimStringDesc*) &TMP192266),
-((NimStringDesc*) &TMP192267),
-((NimStringDesc*) &TMP192268),
-((NimStringDesc*) &TMP192269),
-((NimStringDesc*) &TMP192270),
-((NimStringDesc*) &TMP192271),
-((NimStringDesc*) &TMP192272),
-((NimStringDesc*) &TMP192273),
-((NimStringDesc*) &TMP192274),
-((NimStringDesc*) &TMP192275),
-((NimStringDesc*) &TMP192276),
-((NimStringDesc*) &TMP192277),
-((NimStringDesc*) &TMP192278),
-((NimStringDesc*) &TMP192279),
-((NimStringDesc*) &TMP192280),
-((NimStringDesc*) &TMP192281),
-((NimStringDesc*) &TMP192282),
-((NimStringDesc*) &TMP192283),
-((NimStringDesc*) &TMP192284),
-((NimStringDesc*) &TMP192285),
-((NimStringDesc*) &TMP192286),
-((NimStringDesc*) &TMP192287),
-((NimStringDesc*) &TMP192288),
-((NimStringDesc*) &TMP192289),
-((NimStringDesc*) &TMP192290),
-((NimStringDesc*) &TMP192291),
-((NimStringDesc*) &TMP192292),
-((NimStringDesc*) &TMP192293),
-((NimStringDesc*) &TMP192294),
-((NimStringDesc*) &TMP192295),
-((NimStringDesc*) &TMP192296),
-((NimStringDesc*) &TMP192297),
-((NimStringDesc*) &TMP192298),
-((NimStringDesc*) &TMP192299),
-((NimStringDesc*) &TMP192300),
-((NimStringDesc*) &TMP192301),
-((NimStringDesc*) &TMP192302),
-((NimStringDesc*) &TMP192303),
-((NimStringDesc*) &TMP192304),
-((NimStringDesc*) &TMP192305),
-((NimStringDesc*) &TMP192306),
-((NimStringDesc*) &TMP192307),
-((NimStringDesc*) &TMP192308),
-((NimStringDesc*) &TMP192309)}
+;STRING_LITERAL(TMP147216, "nimNextToken: ", 14);
+NIM_CONST TY20402 Decchars_147223 = {
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Hexchars_146581 = {
+NIM_CONST TY20402 Decchars_147366 = {
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;
+NIM_CONST TY20402 Hexchars_147368 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
 0x7E, 0x00, 0x00, 0x00, 0x7E, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Octchars_146583 = {
+NIM_CONST TY20402 Hexchars_147584 = {
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
+0x7E, 0x00, 0x00, 0x00, 0x7E, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+;
+NIM_CONST TY20402 Octchars_147586 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Binchars_146585 = {
+NIM_CONST TY20402 Binchars_147588 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY20402 Symchars_146587 = {
+NIM_CONST TY20402 Symchars_147590 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
 0xFE, 0xFF, 0xFF, 0x87, 0xFE, 0xFF, 0xFF, 0x07,
 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 ;
-NIM_CONST TY20402 Decchars_146220 = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+STRING_LITERAL(TMP148349, "clikeNextToken", 14);
+STRING_LITERAL(TMP148360, "_Bool", 5);
+STRING_LITERAL(TMP148361, "_Complex", 8);
+STRING_LITERAL(TMP148362, "_Imaginary", 10);
+STRING_LITERAL(TMP148363, "auto", 4);
+STRING_LITERAL(TMP148364, "break", 5);
+STRING_LITERAL(TMP148365, "case", 4);
+STRING_LITERAL(TMP148366, "char", 4);
+STRING_LITERAL(TMP148367, "const", 5);
+STRING_LITERAL(TMP148368, "continue", 8);
+STRING_LITERAL(TMP148369, "default", 7);
+STRING_LITERAL(TMP148370, "do", 2);
+STRING_LITERAL(TMP148371, "double", 6);
+STRING_LITERAL(TMP148372, "else", 4);
+STRING_LITERAL(TMP148373, "enum", 4);
+STRING_LITERAL(TMP148374, "extern", 6);
+STRING_LITERAL(TMP148375, "float", 5);
+STRING_LITERAL(TMP148376, "for", 3);
+STRING_LITERAL(TMP148377, "goto", 4);
+STRING_LITERAL(TMP148378, "if", 2);
+STRING_LITERAL(TMP148379, "inline", 6);
+STRING_LITERAL(TMP148380, "int", 3);
+STRING_LITERAL(TMP148381, "long", 4);
+STRING_LITERAL(TMP148382, "register", 8);
+STRING_LITERAL(TMP148383, "restrict", 8);
+STRING_LITERAL(TMP148384, "return", 6);
+STRING_LITERAL(TMP148385, "short", 5);
+STRING_LITERAL(TMP148386, "signed", 6);
+STRING_LITERAL(TMP148387, "sizeof", 6);
+STRING_LITERAL(TMP148388, "static", 6);
+STRING_LITERAL(TMP148389, "struct", 6);
+STRING_LITERAL(TMP148390, "switch", 6);
+STRING_LITERAL(TMP148391, "typedef", 7);
+STRING_LITERAL(TMP148392, "union", 5);
+STRING_LITERAL(TMP148393, "unsigned", 8);
+STRING_LITERAL(TMP148394, "void", 4);
+STRING_LITERAL(TMP148395, "volatile", 8);
+STRING_LITERAL(TMP148396, "while", 5);
+NIM_CONST TY148355 Keywords_148354 = {((NimStringDesc*) &TMP148360),
+((NimStringDesc*) &TMP148361),
+((NimStringDesc*) &TMP148362),
+((NimStringDesc*) &TMP148363),
+((NimStringDesc*) &TMP148364),
+((NimStringDesc*) &TMP148365),
+((NimStringDesc*) &TMP148366),
+((NimStringDesc*) &TMP148367),
+((NimStringDesc*) &TMP148368),
+((NimStringDesc*) &TMP148369),
+((NimStringDesc*) &TMP148370),
+((NimStringDesc*) &TMP148371),
+((NimStringDesc*) &TMP148372),
+((NimStringDesc*) &TMP148373),
+((NimStringDesc*) &TMP148374),
+((NimStringDesc*) &TMP148375),
+((NimStringDesc*) &TMP148376),
+((NimStringDesc*) &TMP148377),
+((NimStringDesc*) &TMP148378),
+((NimStringDesc*) &TMP148379),
+((NimStringDesc*) &TMP148380),
+((NimStringDesc*) &TMP148381),
+((NimStringDesc*) &TMP148382),
+((NimStringDesc*) &TMP148383),
+((NimStringDesc*) &TMP148384),
+((NimStringDesc*) &TMP148385),
+((NimStringDesc*) &TMP148386),
+((NimStringDesc*) &TMP148387),
+((NimStringDesc*) &TMP148388),
+((NimStringDesc*) &TMP148389),
+((NimStringDesc*) &TMP148390),
+((NimStringDesc*) &TMP148391),
+((NimStringDesc*) &TMP148392),
+((NimStringDesc*) &TMP148393),
+((NimStringDesc*) &TMP148394),
+((NimStringDesc*) &TMP148395),
+((NimStringDesc*) &TMP148396)}
 ;
-NIM_CONST TY20402 Decchars_146363 = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+extern NIM_CONST TY148355 Keywords_148354;
+STRING_LITERAL(TMP148407, "asm", 3);
+STRING_LITERAL(TMP148408, "catch", 5);
+STRING_LITERAL(TMP148409, "class", 5);
+STRING_LITERAL(TMP148410, "delete", 6);
+STRING_LITERAL(TMP148411, "friend", 6);
+STRING_LITERAL(TMP148412, "new", 3);
+STRING_LITERAL(TMP148413, "operator", 8);
+STRING_LITERAL(TMP148414, "private", 7);
+STRING_LITERAL(TMP148415, "protected", 9);
+STRING_LITERAL(TMP148416, "public", 6);
+STRING_LITERAL(TMP148417, "template", 8);
+STRING_LITERAL(TMP148418, "this", 4);
+STRING_LITERAL(TMP148419, "throw", 5);
+STRING_LITERAL(TMP148420, "try", 3);
+STRING_LITERAL(TMP148421, "virtual", 7);
+NIM_CONST TY148402 Keywords_148401 = {((NimStringDesc*) &TMP148407),
+((NimStringDesc*) &TMP148363),
+((NimStringDesc*) &TMP148364),
+((NimStringDesc*) &TMP148365),
+((NimStringDesc*) &TMP148408),
+((NimStringDesc*) &TMP148366),
+((NimStringDesc*) &TMP148409),
+((NimStringDesc*) &TMP148367),
+((NimStringDesc*) &TMP148368),
+((NimStringDesc*) &TMP148369),
+((NimStringDesc*) &TMP148410),
+((NimStringDesc*) &TMP148370),
+((NimStringDesc*) &TMP148371),
+((NimStringDesc*) &TMP148372),
+((NimStringDesc*) &TMP148373),
+((NimStringDesc*) &TMP148374),
+((NimStringDesc*) &TMP148375),
+((NimStringDesc*) &TMP148376),
+((NimStringDesc*) &TMP148411),
+((NimStringDesc*) &TMP148377),
+((NimStringDesc*) &TMP148378),
+((NimStringDesc*) &TMP148379),
+((NimStringDesc*) &TMP148380),
+((NimStringDesc*) &TMP148381),
+((NimStringDesc*) &TMP148412),
+((NimStringDesc*) &TMP148413),
+((NimStringDesc*) &TMP148414),
+((NimStringDesc*) &TMP148415),
+((NimStringDesc*) &TMP148416),
+((NimStringDesc*) &TMP148382),
+((NimStringDesc*) &TMP148384),
+((NimStringDesc*) &TMP148385),
+((NimStringDesc*) &TMP148386),
+((NimStringDesc*) &TMP148387),
+((NimStringDesc*) &TMP148388),
+((NimStringDesc*) &TMP148389),
+((NimStringDesc*) &TMP148390),
+((NimStringDesc*) &TMP148417),
+((NimStringDesc*) &TMP148418),
+((NimStringDesc*) &TMP148419),
+((NimStringDesc*) &TMP148420),
+((NimStringDesc*) &TMP148391),
+((NimStringDesc*) &TMP148392),
+((NimStringDesc*) &TMP148393),
+((NimStringDesc*) &TMP148421),
+((NimStringDesc*) &TMP148394),
+((NimStringDesc*) &TMP148395),
+((NimStringDesc*) &TMP148396)}
 ;
-NIM_CONST TY20402 Hexchars_146365 = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
-0x7E, 0x00, 0x00, 0x00, 0x7E, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+extern NIM_CONST TY148402 Keywords_148401;
+STRING_LITERAL(TMP148432, "abstract", 8);
+STRING_LITERAL(TMP148433, "as", 2);
+STRING_LITERAL(TMP148434, "base", 4);
+STRING_LITERAL(TMP148435, "bool", 4);
+STRING_LITERAL(TMP148436, "byte", 4);
+STRING_LITERAL(TMP148437, "checked", 7);
+STRING_LITERAL(TMP148438, "decimal", 7);
+STRING_LITERAL(TMP148439, "delegate", 8);
+STRING_LITERAL(TMP148440, "event", 5);
+STRING_LITERAL(TMP148441, "explicit", 8);
+STRING_LITERAL(TMP148442, "false", 5);
+STRING_LITERAL(TMP148443, "finally", 7);
+STRING_LITERAL(TMP148444, "fixed", 5);
+STRING_LITERAL(TMP148445, "foreach", 7);
+STRING_LITERAL(TMP148446, "implicit", 8);
+STRING_LITERAL(TMP148447, "in", 2);
+STRING_LITERAL(TMP148448, "interface", 9);
+STRING_LITERAL(TMP148449, "internal", 8);
+STRING_LITERAL(TMP148450, "is", 2);
+STRING_LITERAL(TMP148451, "lock", 4);
+STRING_LITERAL(TMP148452, "namespace", 9);
+STRING_LITERAL(TMP148453, "null", 4);
+STRING_LITERAL(TMP148454, "object", 6);
+STRING_LITERAL(TMP148455, "out", 3);
+STRING_LITERAL(TMP148456, "override", 8);
+STRING_LITERAL(TMP148457, "params", 6);
+STRING_LITERAL(TMP148458, "readonly", 8);
+STRING_LITERAL(TMP148459, "ref", 3);
+STRING_LITERAL(TMP148460, "sbyte", 5);
+STRING_LITERAL(TMP148461, "sealed", 6);
+STRING_LITERAL(TMP148462, "stackalloc", 10);
+STRING_LITERAL(TMP148463, "string", 6);
+STRING_LITERAL(TMP148464, "true", 4);
+STRING_LITERAL(TMP148465, "typeof", 6);
+STRING_LITERAL(TMP148466, "uint", 4);
+STRING_LITERAL(TMP148467, "ulong", 5);
+STRING_LITERAL(TMP148468, "unchecked", 9);
+STRING_LITERAL(TMP148469, "unsafe", 6);
+STRING_LITERAL(TMP148470, "ushort", 6);
+STRING_LITERAL(TMP148471, "using", 5);
+NIM_CONST TY148427 Keywords_148426 = {((NimStringDesc*) &TMP148432),
+((NimStringDesc*) &TMP148433),
+((NimStringDesc*) &TMP148434),
+((NimStringDesc*) &TMP148435),
+((NimStringDesc*) &TMP148364),
+((NimStringDesc*) &TMP148436),
+((NimStringDesc*) &TMP148365),
+((NimStringDesc*) &TMP148408),
+((NimStringDesc*) &TMP148366),
+((NimStringDesc*) &TMP148437),
+((NimStringDesc*) &TMP148409),
+((NimStringDesc*) &TMP148367),
+((NimStringDesc*) &TMP148368),
+((NimStringDesc*) &TMP148438),
+((NimStringDesc*) &TMP148369),
+((NimStringDesc*) &TMP148439),
+((NimStringDesc*) &TMP148370),
+((NimStringDesc*) &TMP148371),
+((NimStringDesc*) &TMP148372),
+((NimStringDesc*) &TMP148373),
+((NimStringDesc*) &TMP148440),
+((NimStringDesc*) &TMP148441),
+((NimStringDesc*) &TMP148374),
+((NimStringDesc*) &TMP148442),
+((NimStringDesc*) &TMP148443),
+((NimStringDesc*) &TMP148444),
+((NimStringDesc*) &TMP148375),
+((NimStringDesc*) &TMP148376),
+((NimStringDesc*) &TMP148445),
+((NimStringDesc*) &TMP148377),
+((NimStringDesc*) &TMP148378),
+((NimStringDesc*) &TMP148446),
+((NimStringDesc*) &TMP148447),
+((NimStringDesc*) &TMP148380),
+((NimStringDesc*) &TMP148448),
+((NimStringDesc*) &TMP148449),
+((NimStringDesc*) &TMP148450),
+((NimStringDesc*) &TMP148451),
+((NimStringDesc*) &TMP148381),
+((NimStringDesc*) &TMP148452),
+((NimStringDesc*) &TMP148412),
+((NimStringDesc*) &TMP148453),
+((NimStringDesc*) &TMP148454),
+((NimStringDesc*) &TMP148413),
+((NimStringDesc*) &TMP148455),
+((NimStringDesc*) &TMP148456),
+((NimStringDesc*) &TMP148457),
+((NimStringDesc*) &TMP148414),
+((NimStringDesc*) &TMP148415),
+((NimStringDesc*) &TMP148416),
+((NimStringDesc*) &TMP148458),
+((NimStringDesc*) &TMP148459),
+((NimStringDesc*) &TMP148384),
+((NimStringDesc*) &TMP148460),
+((NimStringDesc*) &TMP148461),
+((NimStringDesc*) &TMP148385),
+((NimStringDesc*) &TMP148387),
+((NimStringDesc*) &TMP148462),
+((NimStringDesc*) &TMP148388),
+((NimStringDesc*) &TMP148463),
+((NimStringDesc*) &TMP148389),
+((NimStringDesc*) &TMP148390),
+((NimStringDesc*) &TMP148418),
+((NimStringDesc*) &TMP148419),
+((NimStringDesc*) &TMP148464),
+((NimStringDesc*) &TMP148420),
+((NimStringDesc*) &TMP148465),
+((NimStringDesc*) &TMP148466),
+((NimStringDesc*) &TMP148467),
+((NimStringDesc*) &TMP148468),
+((NimStringDesc*) &TMP148469),
+((NimStringDesc*) &TMP148470),
+((NimStringDesc*) &TMP148471),
+((NimStringDesc*) &TMP148421),
+((NimStringDesc*) &TMP148394),
+((NimStringDesc*) &TMP148395),
+((NimStringDesc*) &TMP148396)}
 ;
-STRING_LITERAL(TMP192310, "clikeNextToken", 14);
-extern NIM_CONST TY147361 Keywords_147360;
-STRING_LITERAL(TMP192311, "abstract", 8);
-STRING_LITERAL(TMP192312, "as", 2);
-STRING_LITERAL(TMP192313, "base", 4);
-STRING_LITERAL(TMP192314, "bool", 4);
-STRING_LITERAL(TMP192315, "byte", 4);
-STRING_LITERAL(TMP192316, "checked", 7);
-STRING_LITERAL(TMP192317, "decimal", 7);
-STRING_LITERAL(TMP192318, "delegate", 8);
-STRING_LITERAL(TMP192319, "event", 5);
-STRING_LITERAL(TMP192320, "explicit", 8);
-STRING_LITERAL(TMP192321, "false", 5);
-STRING_LITERAL(TMP192322, "finally", 7);
-STRING_LITERAL(TMP192323, "fixed", 5);
-STRING_LITERAL(TMP192324, "foreach", 7);
-STRING_LITERAL(TMP192325, "implicit", 8);
-STRING_LITERAL(TMP192326, "in", 2);
-STRING_LITERAL(TMP192327, "interface", 9);
-STRING_LITERAL(TMP192328, "internal", 8);
-STRING_LITERAL(TMP192329, "is", 2);
-STRING_LITERAL(TMP192330, "lock", 4);
-STRING_LITERAL(TMP192331, "namespace", 9);
-STRING_LITERAL(TMP192332, "null", 4);
-STRING_LITERAL(TMP192333, "object", 6);
-STRING_LITERAL(TMP192334, "out", 3);
-STRING_LITERAL(TMP192335, "override", 8);
-STRING_LITERAL(TMP192336, "params", 6);
-STRING_LITERAL(TMP192337, "readonly", 8);
-STRING_LITERAL(TMP192338, "ref", 3);
-STRING_LITERAL(TMP192339, "sbyte", 5);
-STRING_LITERAL(TMP192340, "sealed", 6);
-STRING_LITERAL(TMP192341, "stackalloc", 10);
-STRING_LITERAL(TMP192342, "string", 6);
-STRING_LITERAL(TMP192343, "true", 4);
-STRING_LITERAL(TMP192344, "typeof", 6);
-STRING_LITERAL(TMP192345, "uint", 4);
-STRING_LITERAL(TMP192346, "ulong", 5);
-STRING_LITERAL(TMP192347, "unchecked", 9);
-STRING_LITERAL(TMP192348, "unsafe", 6);
-STRING_LITERAL(TMP192349, "ushort", 6);
-STRING_LITERAL(TMP192350, "using", 5);
-NIM_CONST TY147371 Keywords_147370 = {((NimStringDesc*) &TMP192311),
-((NimStringDesc*) &TMP192312),
-((NimStringDesc*) &TMP192313),
-((NimStringDesc*) &TMP192314),
-((NimStringDesc*) &TMP192264),
-((NimStringDesc*) &TMP192315),
-((NimStringDesc*) &TMP192265),
-((NimStringDesc*) &TMP192266),
-((NimStringDesc*) &TMP192267),
-((NimStringDesc*) &TMP192316),
-((NimStringDesc*) &TMP192268),
-((NimStringDesc*) &TMP192269),
-((NimStringDesc*) &TMP192270),
-((NimStringDesc*) &TMP192317),
-((NimStringDesc*) &TMP192271),
-((NimStringDesc*) &TMP192318),
-((NimStringDesc*) &TMP192273),
-((NimStringDesc*) &TMP192274),
-((NimStringDesc*) &TMP192275),
-((NimStringDesc*) &TMP192276),
-((NimStringDesc*) &TMP192319),
-((NimStringDesc*) &TMP192320),
-((NimStringDesc*) &TMP192277),
-((NimStringDesc*) &TMP192321),
-((NimStringDesc*) &TMP192322),
-((NimStringDesc*) &TMP192323),
-((NimStringDesc*) &TMP192278),
-((NimStringDesc*) &TMP192279),
-((NimStringDesc*) &TMP192324),
-((NimStringDesc*) &TMP192281),
-((NimStringDesc*) &TMP192282),
-((NimStringDesc*) &TMP192325),
-((NimStringDesc*) &TMP192326),
-((NimStringDesc*) &TMP192284),
-((NimStringDesc*) &TMP192327),
-((NimStringDesc*) &TMP192328),
-((NimStringDesc*) &TMP192329),
-((NimStringDesc*) &TMP192330),
-((NimStringDesc*) &TMP192285),
-((NimStringDesc*) &TMP192331),
-((NimStringDesc*) &TMP192286),
-((NimStringDesc*) &TMP192332),
-((NimStringDesc*) &TMP192333),
-((NimStringDesc*) &TMP192287),
-((NimStringDesc*) &TMP192334),
-((NimStringDesc*) &TMP192335),
-((NimStringDesc*) &TMP192336),
-((NimStringDesc*) &TMP192288),
-((NimStringDesc*) &TMP192289),
-((NimStringDesc*) &TMP192290),
-((NimStringDesc*) &TMP192337),
-((NimStringDesc*) &TMP192338),
-((NimStringDesc*) &TMP192292),
-((NimStringDesc*) &TMP192339),
-((NimStringDesc*) &TMP192340),
-((NimStringDesc*) &TMP192293),
-((NimStringDesc*) &TMP192295),
-((NimStringDesc*) &TMP192341),
-((NimStringDesc*) &TMP192296),
-((NimStringDesc*) &TMP192342),
-((NimStringDesc*) &TMP192297),
-((NimStringDesc*) &TMP192298),
-((NimStringDesc*) &TMP192300),
-((NimStringDesc*) &TMP192301),
-((NimStringDesc*) &TMP192343),
-((NimStringDesc*) &TMP192302),
-((NimStringDesc*) &TMP192344),
-((NimStringDesc*) &TMP192345),
-((NimStringDesc*) &TMP192346),
-((NimStringDesc*) &TMP192347),
-((NimStringDesc*) &TMP192348),
-((NimStringDesc*) &TMP192349),
-((NimStringDesc*) &TMP192350),
-((NimStringDesc*) &TMP192306),
-((NimStringDesc*) &TMP192307),
-((NimStringDesc*) &TMP192308),
-((NimStringDesc*) &TMP192309)}
+extern NIM_CONST TY148427 Keywords_148426;
+STRING_LITERAL(TMP148483, "assert", 6);
+STRING_LITERAL(TMP148484, "boolean", 7);
+STRING_LITERAL(TMP148485, "extends", 7);
+STRING_LITERAL(TMP148486, "final", 5);
+STRING_LITERAL(TMP148487, "implements", 10);
+STRING_LITERAL(TMP148488, "import", 6);
+STRING_LITERAL(TMP148489, "instanceof", 10);
+STRING_LITERAL(TMP148490, "native", 6);
+STRING_LITERAL(TMP148491, "package", 7);
+STRING_LITERAL(TMP148492, "strictfp", 8);
+STRING_LITERAL(TMP148493, "super", 5);
+STRING_LITERAL(TMP148494, "synchronized", 12);
+STRING_LITERAL(TMP148495, "throws", 6);
+STRING_LITERAL(TMP148496, "transient", 9);
+NIM_CONST TY148477 Keywords_148476 = {((NimStringDesc*) &TMP148432),
+((NimStringDesc*) &TMP148483),
+((NimStringDesc*) &TMP148484),
+((NimStringDesc*) &TMP148364),
+((NimStringDesc*) &TMP148436),
+((NimStringDesc*) &TMP148365),
+((NimStringDesc*) &TMP148408),
+((NimStringDesc*) &TMP148366),
+((NimStringDesc*) &TMP148409),
+((NimStringDesc*) &TMP148367),
+((NimStringDesc*) &TMP148368),
+((NimStringDesc*) &TMP148369),
+((NimStringDesc*) &TMP148370),
+((NimStringDesc*) &TMP148371),
+((NimStringDesc*) &TMP148372),
+((NimStringDesc*) &TMP148373),
+((NimStringDesc*) &TMP148485),
+((NimStringDesc*) &TMP148442),
+((NimStringDesc*) &TMP148486),
+((NimStringDesc*) &TMP148443),
+((NimStringDesc*) &TMP148375),
+((NimStringDesc*) &TMP148376),
+((NimStringDesc*) &TMP148377),
+((NimStringDesc*) &TMP148378),
+((NimStringDesc*) &TMP148487),
+((NimStringDesc*) &TMP148488),
+((NimStringDesc*) &TMP148489),
+((NimStringDesc*) &TMP148380),
+((NimStringDesc*) &TMP148448),
+((NimStringDesc*) &TMP148381),
+((NimStringDesc*) &TMP148490),
+((NimStringDesc*) &TMP148412),
+((NimStringDesc*) &TMP148453),
+((NimStringDesc*) &TMP148491),
+((NimStringDesc*) &TMP148414),
+((NimStringDesc*) &TMP148415),
+((NimStringDesc*) &TMP148416),
+((NimStringDesc*) &TMP148384),
+((NimStringDesc*) &TMP148385),
+((NimStringDesc*) &TMP148388),
+((NimStringDesc*) &TMP148492),
+((NimStringDesc*) &TMP148493),
+((NimStringDesc*) &TMP148390),
+((NimStringDesc*) &TMP148494),
+((NimStringDesc*) &TMP148418),
+((NimStringDesc*) &TMP148419),
+((NimStringDesc*) &TMP148495),
+((NimStringDesc*) &TMP148496),
+((NimStringDesc*) &TMP148464),
+((NimStringDesc*) &TMP148420),
+((NimStringDesc*) &TMP148394),
+((NimStringDesc*) &TMP148395),
+((NimStringDesc*) &TMP148396)}
 ;
-extern NIM_CONST TY147371 Keywords_147370;
-STRING_LITERAL(TMP192351, "_Bool", 5);
-STRING_LITERAL(TMP192352, "_Complex", 8);
-STRING_LITERAL(TMP192353, "_Imaginary", 10);
-STRING_LITERAL(TMP192354, "restrict", 8);
-NIM_CONST TY147351 Keywords_147350 = {((NimStringDesc*) &TMP192351),
-((NimStringDesc*) &TMP192352),
-((NimStringDesc*) &TMP192353),
-((NimStringDesc*) &TMP192263),
-((NimStringDesc*) &TMP192264),
-((NimStringDesc*) &TMP192265),
-((NimStringDesc*) &TMP192267),
-((NimStringDesc*) &TMP192269),
-((NimStringDesc*) &TMP192270),
-((NimStringDesc*) &TMP192271),
-((NimStringDesc*) &TMP192273),
-((NimStringDesc*) &TMP192274),
-((NimStringDesc*) &TMP192275),
-((NimStringDesc*) &TMP192276),
-((NimStringDesc*) &TMP192277),
-((NimStringDesc*) &TMP192278),
-((NimStringDesc*) &TMP192279),
-((NimStringDesc*) &TMP192281),
-((NimStringDesc*) &TMP192282),
-((NimStringDesc*) &TMP192283),
-((NimStringDesc*) &TMP192284),
-((NimStringDesc*) &TMP192285),
-((NimStringDesc*) &TMP192291),
-((NimStringDesc*) &TMP192354),
-((NimStringDesc*) &TMP192292),
-((NimStringDesc*) &TMP192293),
-((NimStringDesc*) &TMP192294),
-((NimStringDesc*) &TMP192295),
-((NimStringDesc*) &TMP192296),
-((NimStringDesc*) &TMP192297),
-((NimStringDesc*) &TMP192298),
-((NimStringDesc*) &TMP192303),
-((NimStringDesc*) &TMP192304),
-((NimStringDesc*) &TMP192305),
-((NimStringDesc*) &TMP192307),
-((NimStringDesc*) &TMP192308),
-((NimStringDesc*) &TMP192309)}
-;
-extern NIM_CONST TY147351 Keywords_147350;
-STRING_LITERAL(TMP192355, "assert", 6);
-STRING_LITERAL(TMP192356, "boolean", 7);
-STRING_LITERAL(TMP192357, "extends", 7);
-STRING_LITERAL(TMP192358, "final", 5);
-STRING_LITERAL(TMP192359, "implements", 10);
-STRING_LITERAL(TMP192360, "import", 6);
-STRING_LITERAL(TMP192361, "instanceof", 10);
-STRING_LITERAL(TMP192362, "native", 6);
-STRING_LITERAL(TMP192363, "package", 7);
-STRING_LITERAL(TMP192364, "strictfp", 8);
-STRING_LITERAL(TMP192365, "super", 5);
-STRING_LITERAL(TMP192366, "synchronized", 12);
-STRING_LITERAL(TMP192367, "throws", 6);
-STRING_LITERAL(TMP192368, "transient", 9);
-NIM_CONST TY147381 Keywords_147380 = {((NimStringDesc*) &TMP192311),
-((NimStringDesc*) &TMP192355),
-((NimStringDesc*) &TMP192356),
-((NimStringDesc*) &TMP192264),
-((NimStringDesc*) &TMP192315),
-((NimStringDesc*) &TMP192265),
-((NimStringDesc*) &TMP192266),
-((NimStringDesc*) &TMP192267),
-((NimStringDesc*) &TMP192268),
-((NimStringDesc*) &TMP192269),
-((NimStringDesc*) &TMP192270),
-((NimStringDesc*) &TMP192271),
-((NimStringDesc*) &TMP192273),
-((NimStringDesc*) &TMP192274),
-((NimStringDesc*) &TMP192275),
-((NimStringDesc*) &TMP192276),
-((NimStringDesc*) &TMP192357),
-((NimStringDesc*) &TMP192321),
-((NimStringDesc*) &TMP192358),
-((NimStringDesc*) &TMP192322),
-((NimStringDesc*) &TMP192278),
-((NimStringDesc*) &TMP192279),
-((NimStringDesc*) &TMP192281),
-((NimStringDesc*) &TMP192282),
-((NimStringDesc*) &TMP192359),
-((NimStringDesc*) &TMP192360),
-((NimStringDesc*) &TMP192361),
-((NimStringDesc*) &TMP192284),
-((NimStringDesc*) &TMP192327),
-((NimStringDesc*) &TMP192285),
-((NimStringDesc*) &TMP192362),
-((NimStringDesc*) &TMP192286),
-((NimStringDesc*) &TMP192332),
-((NimStringDesc*) &TMP192363),
-((NimStringDesc*) &TMP192288),
-((NimStringDesc*) &TMP192289),
-((NimStringDesc*) &TMP192290),
-((NimStringDesc*) &TMP192292),
-((NimStringDesc*) &TMP192293),
-((NimStringDesc*) &TMP192296),
-((NimStringDesc*) &TMP192364),
-((NimStringDesc*) &TMP192365),
-((NimStringDesc*) &TMP192298),
-((NimStringDesc*) &TMP192366),
-((NimStringDesc*) &TMP192300),
-((NimStringDesc*) &TMP192301),
-((NimStringDesc*) &TMP192367),
-((NimStringDesc*) &TMP192368),
-((NimStringDesc*) &TMP192343),
-((NimStringDesc*) &TMP192302),
-((NimStringDesc*) &TMP192307),
-((NimStringDesc*) &TMP192308),
-((NimStringDesc*) &TMP192309)}
-;
-extern NIM_CONST TY147381 Keywords_147380;
-STRING_LITERAL(TMP192369, "getNextToken", 12);
-N_NIMCALL(NU8, Getsourcelanguage_145102)(NimStringDesc* Name_145104) {
-NU8 Result_145122;
-NU8 I_145161;
-NU8 Res_145166;
-NI LOC3;
-Result_145122 = 0;
-I_145161 = 0;
-Res_145166 = 0;
-Res_145166 = ((NU8) 1);
-while (1) {
-if (!(Res_145166 <= ((NU8) 5))) goto LA1;
-I_145161 = Res_145166;
-LOC3 = nsuCmpIgnoreStyle(Name_145104, Sourcelanguagetostr_145055[(I_145161)-0]);
-if (!(LOC3 == 0)) goto LA4;
-Result_145122 = I_145161;
-goto BeforeRet;
-LA4: ;
-Res_145166 += 1;
-} LA1: ;
-Result_145122 = ((NU8) 0);
-BeforeRet: ;
-return Result_145122;
-}
-N_NIMCALL(void, Initgeneraltokenizer_145105)(TY145007* G_145108, NimStringDesc* Buf_145109) {
-NI Pos_145174;
-(*G_145108).Buf = Buf_145109->data;
-(*G_145108).Kind = ((NU8) 0);
-(*G_145108).Start = 0;
-(*G_145108).Length = 0;
-(*G_145108).State = ((NU8) 0);
-Pos_145174 = 0;
-Pos_145174 = 0;
-while (1) {
-if (!(((NU8)((*G_145108).Buf[Pos_145174])) == ((NU8)(32)) || ((NU8)((*G_145108).Buf[Pos_145174])) >= ((NU8)(9)) && ((NU8)((*G_145108).Buf[Pos_145174])) <= ((NU8)(13)))) goto LA1;
-Pos_145174 += 1;
-} LA1: ;
-(*G_145108).Pos = Pos_145174;
-}
-N_NIMCALL(NU8, Nimgetkeyword_145204)(NimStringDesc* Id_145206) {
-NU8 Result_145207;
-TY48011* I_145208;
+extern NIM_CONST TY148477 Keywords_148476;
+STRING_LITERAL(TMP148502, "getNextToken", 12);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
 NIM_BOOL LOC2;
-Result_145207 = 0;
-I_145208 = 0;
-I_145208 = Getident_48016(Id_145206);
-LOC2 = (1 <= (*I_145208).Sup.Id);
-if (!(LOC2)) goto LA3;
-LOC2 = ((*I_145208).Sup.Id <= 63);
+Result_5605 = 0;
+Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
+LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
 LA3: ;
 if (!LOC2) goto LA4;
-Result_145207 = ((NU8) 9);
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
+}
+N_NIMCALL(NU8, Getsourcelanguage_146102)(NimStringDesc* Name_146104) {
+NU8 Result_146122;
+NU8 I_146161;
+NU8 Res_146166;
+NI LOC3;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getSourceLanguage";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_146122 = 0;
+I_146161 = 0;
+Res_146166 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_146166 = ((NU8) 1);
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_146166 <= ((NU8) 5))) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_146161 = Res_146166;
+F.line = 55;F.filename = "highlite.nim";
+LOC3 = nsuCmpIgnoreStyle(Name_146104, Sourcelanguagetostr_146055[(I_146161)-0]);
+if (!(LOC3 == 0)) goto LA4;
+F.line = 56;F.filename = "highlite.nim";
+F.line = 56;F.filename = "highlite.nim";
+Result_146122 = I_146161;
+goto BeforeRet;
+LA4: ;
+F.line = 1014;F.filename = "system.nim";
+Res_146166 = addInt(Res_146166, 1);
+} LA1: ;
+F.line = 57;F.filename = "highlite.nim";
+Result_146122 = ((NU8) 0);
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_146122;
+}
+N_NIMCALL(void, Initgeneraltokenizer_146105)(TY146007* G_146108, NimStringDesc* Buf_146109) {
+NI Pos_146174;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "initGeneralTokenizer";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 60;F.filename = "highlite.nim";
+(*G_146108).Buf = Buf_146109->data;
+F.line = 61;F.filename = "highlite.nim";
+(*G_146108).Kind = ((NU8) 0);
+F.line = 62;F.filename = "highlite.nim";
+(*G_146108).Start = 0;
+F.line = 63;F.filename = "highlite.nim";
+(*G_146108).Length = 0;
+F.line = 64;F.filename = "highlite.nim";
+(*G_146108).State = ((NU8) 0);
+Pos_146174 = 0;
+F.line = 65;F.filename = "highlite.nim";
+Pos_146174 = 0;
+F.line = 66;F.filename = "highlite.nim";
+while (1) {
+if (!(((NU8)((*G_146108).Buf[Pos_146174])) == ((NU8)(32)) || ((NU8)((*G_146108).Buf[Pos_146174])) >= ((NU8)(9)) && ((NU8)((*G_146108).Buf[Pos_146174])) <= ((NU8)(13)))) goto LA1;
+F.line = 66;F.filename = "highlite.nim";
+Pos_146174 = addInt(Pos_146174, 1);
+} LA1: ;
+F.line = 67;F.filename = "highlite.nim";
+(*G_146108).Pos = Pos_146174;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(void, Deinitgeneraltokenizer_146110)(TY146007* G_146113) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "deinitGeneralTokenizer";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(NU8, Nimgetkeyword_146204)(NimStringDesc* Id_146206) {
+NU8 Result_146207;
+TY48011* I_146208;
+NIM_BOOL LOC2;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "nimGetKeyword";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_146207 = 0;
+I_146208 = 0;
+F.line = 73;F.filename = "highlite.nim";
+I_146208 = Getident_48016(Id_146206);
+F.line = 74;F.filename = "highlite.nim";
+LOC2 = (1 <= (*I_146208).Sup.Id);
+if (!(LOC2)) goto LA3;
+LOC2 = ((*I_146208).Sup.Id <= 63);
+LA3: ;
+if (!LOC2) goto LA4;
+F.line = 76;F.filename = "highlite.nim";
+Result_146207 = ((NU8) 9);
 goto LA1;
 LA4: ;
-Result_145207 = ((NU8) 8);
+F.line = 78;F.filename = "highlite.nim";
+Result_146207 = ((NU8) 8);
 LA1: ;
-return Result_145207;
+framePtr = framePtr->prev;
+return Result_146207;
 }
-N_NIMCALL(NI, Nimnumberpostfix_145233)(TY145007* G_145236, NI Position_145237) {
-NI Result_145238;
-NI Pos_145239;
-Result_145238 = 0;
-Pos_145239 = 0;
-Pos_145239 = Position_145237;
-if (!((NU8)((*G_145236).Buf[Pos_145239]) == (NU8)(39))) goto LA2;
-Pos_145239 += 1;
-switch (((NU8)((*G_145236).Buf[Pos_145239]))) {
+N_NIMCALL(NI, Nimnumberpostfix_146233)(TY146007* G_146236, NI Position_146237) {
+NI Result_146238;
+NI Pos_146239;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "nimNumberPostfix";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_146238 = 0;
+Pos_146239 = 0;
+F.line = 81;F.filename = "highlite.nim";
+Pos_146239 = Position_146237;
+F.line = 82;F.filename = "highlite.nim";
+if (!((NU8)((*G_146236).Buf[Pos_146239]) == (NU8)(39))) goto LA2;
+F.line = 83;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
+F.line = 84;F.filename = "highlite.nim";
+switch (((NU8)((*G_146236).Buf[Pos_146239]))) {
 case 102:
 case 70:
-(*G_145236).Kind = ((NU8) 7);
-Pos_145239 += 1;
-if (!(((NU8)((*G_145236).Buf[Pos_145239])) >= ((NU8)(48)) && ((NU8)((*G_145236).Buf[Pos_145239])) <= ((NU8)(57)))) goto LA5;
-Pos_145239 += 1;
+F.line = 86;F.filename = "highlite.nim";
+(*G_146236).Kind = ((NU8) 7);
+F.line = 87;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
+F.line = 88;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146236).Buf[Pos_146239])) >= ((NU8)(48)) && ((NU8)((*G_146236).Buf[Pos_146239])) <= ((NU8)(57)))) goto LA5;
+F.line = 88;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
 LA5: ;
-if (!(((NU8)((*G_145236).Buf[Pos_145239])) >= ((NU8)(48)) && ((NU8)((*G_145236).Buf[Pos_145239])) <= ((NU8)(57)))) goto LA8;
-Pos_145239 += 1;
+F.line = 89;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146236).Buf[Pos_146239])) >= ((NU8)(48)) && ((NU8)((*G_146236).Buf[Pos_146239])) <= ((NU8)(57)))) goto LA8;
+F.line = 89;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
 LA8: ;
 break;
 case 105:
 case 73:
-Pos_145239 += 1;
-if (!(((NU8)((*G_145236).Buf[Pos_145239])) >= ((NU8)(48)) && ((NU8)((*G_145236).Buf[Pos_145239])) <= ((NU8)(57)))) goto LA11;
-Pos_145239 += 1;
+F.line = 91;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
+F.line = 92;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146236).Buf[Pos_146239])) >= ((NU8)(48)) && ((NU8)((*G_146236).Buf[Pos_146239])) <= ((NU8)(57)))) goto LA11;
+F.line = 92;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
 LA11: ;
-if (!(((NU8)((*G_145236).Buf[Pos_145239])) >= ((NU8)(48)) && ((NU8)((*G_145236).Buf[Pos_145239])) <= ((NU8)(57)))) goto LA14;
-Pos_145239 += 1;
+F.line = 93;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146236).Buf[Pos_146239])) >= ((NU8)(48)) && ((NU8)((*G_146236).Buf[Pos_146239])) <= ((NU8)(57)))) goto LA14;
+F.line = 93;F.filename = "highlite.nim";
+Pos_146239 = addInt(Pos_146239, 1);
 LA14: ;
 break;
 default:
 break;
 }
 LA2: ;
-Result_145238 = Pos_145239;
-return Result_145238;
+F.line = 96;F.filename = "highlite.nim";
+Result_146238 = Pos_146239;
+framePtr = framePtr->prev;
+return Result_146238;
 }
-N_NIMCALL(NI, Nimnumber_145374)(TY145007* G_145377, NI Position_145378) {
-NI Result_145379;
-NI Pos_145382;
-Result_145379 = 0;
-Pos_145382 = 0;
-Pos_145382 = Position_145378;
-(*G_145377).Kind = ((NU8) 3);
+N_NIMCALL(NI, Nimnumber_146374)(TY146007* G_146377, NI Position_146378) {
+NI Result_146379;
+NI Pos_146382;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "nimNumber";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_146379 = 0;
+Pos_146382 = 0;
+F.line = 100;F.filename = "highlite.nim";
+Pos_146382 = Position_146378;
+F.line = 101;F.filename = "highlite.nim";
+(*G_146377).Kind = ((NU8) 3);
+F.line = 102;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145377).Buf[Pos_145382])) >= ((NU8)(48)) && ((NU8)((*G_145377).Buf[Pos_145382])) <= ((NU8)(57)) || ((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(95)))) goto LA1;
-Pos_145382 += 1;
+if (!(((NU8)((*G_146377).Buf[Pos_146382])) >= ((NU8)(48)) && ((NU8)((*G_146377).Buf[Pos_146382])) <= ((NU8)(57)) || ((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(95)))) goto LA1;
+F.line = 102;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
 } LA1: ;
-if (!((NU8)((*G_145377).Buf[Pos_145382]) == (NU8)(46))) goto LA3;
-(*G_145377).Kind = ((NU8) 7);
-Pos_145382 += 1;
+F.line = 103;F.filename = "highlite.nim";
+if (!((NU8)((*G_146377).Buf[Pos_146382]) == (NU8)(46))) goto LA3;
+F.line = 104;F.filename = "highlite.nim";
+(*G_146377).Kind = ((NU8) 7);
+F.line = 105;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
+F.line = 106;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145377).Buf[Pos_145382])) >= ((NU8)(48)) && ((NU8)((*G_145377).Buf[Pos_145382])) <= ((NU8)(57)) || ((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(95)))) goto LA5;
-Pos_145382 += 1;
+if (!(((NU8)((*G_146377).Buf[Pos_146382])) >= ((NU8)(48)) && ((NU8)((*G_146377).Buf[Pos_146382])) <= ((NU8)(57)) || ((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(95)))) goto LA5;
+F.line = 106;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
 } LA5: ;
 LA3: ;
-if (!(((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(101)) || ((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(69)))) goto LA7;
-(*G_145377).Kind = ((NU8) 7);
-Pos_145382 += 1;
-if (!(((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(43)) || ((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(45)))) goto LA10;
-Pos_145382 += 1;
+F.line = 107;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(101)) || ((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(69)))) goto LA7;
+F.line = 108;F.filename = "highlite.nim";
+(*G_146377).Kind = ((NU8) 7);
+F.line = 109;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
+F.line = 110;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(43)) || ((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(45)))) goto LA10;
+F.line = 110;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
 LA10: ;
+F.line = 111;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145377).Buf[Pos_145382])) >= ((NU8)(48)) && ((NU8)((*G_145377).Buf[Pos_145382])) <= ((NU8)(57)) || ((NU8)((*G_145377).Buf[Pos_145382])) == ((NU8)(95)))) goto LA12;
-Pos_145382 += 1;
+if (!(((NU8)((*G_146377).Buf[Pos_146382])) >= ((NU8)(48)) && ((NU8)((*G_146377).Buf[Pos_146382])) <= ((NU8)(57)) || ((NU8)((*G_146377).Buf[Pos_146382])) == ((NU8)(95)))) goto LA12;
+F.line = 111;F.filename = "highlite.nim";
+Pos_146382 = addInt(Pos_146382, 1);
 } LA12: ;
 LA7: ;
-Result_145379 = Nimnumberpostfix_145233(G_145377, Pos_145382);
-return Result_145379;
+F.line = 112;F.filename = "highlite.nim";
+Result_146379 = Nimnumberpostfix_146233(G_146377, Pos_146382);
+framePtr = framePtr->prev;
+return Result_146379;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993) {
-memcpy(((NCSTRING) (&(*Dest_16992).data[((*Dest_16992).Sup.len)-0])), ((NCSTRING) ((*Src_16993).data)), ((NI32) ((NI64)((NI64)((*Src_16993).Sup.len + 1) * 1))));
-(*Dest_16992).Sup.len += (*Src_16993).Sup.len;
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
+NIM_BOOL LOC2;
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5805;
 }
-N_NIMCALL(void, Nimnexttoken_145517)(TY145007* G_145520) {
-NI Pos_145527;
-NimStringDesc* Id_145715;
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendString";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 150;F.filename = "sysstr.nim";
+memcpy(((NCSTRING) (&(*Dest_17192).data[((*Dest_17192).Sup.len)-0])), ((NCSTRING) ((*Src_17193).data)), ((NI32) ((NI64)((NI64)((*Src_17193).Sup.len + 1) * 1))));
+F.line = 151;F.filename = "sysstr.nim";
+(*Dest_17192).Sup.len += (*Src_17193).Sup.len;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(void, Nimnexttoken_146517)(TY146007* G_146520) {
+NI Pos_146527;
+NimStringDesc* Id_146715;
 NIM_BOOL LOC19;
 NIM_BOOL LOC25;
 NIM_BOOL LOC26;
@@ -716,259 +881,370 @@ NIM_BOOL LOC52;
 NIM_BOOL LOC63;
 NimStringDesc* LOC67;
 NimStringDesc* LOC68;
-Pos_145527 = 0;
-Pos_145527 = (*G_145520).Pos;
-(*G_145520).Start = (*G_145520).Pos;
-if (!((*G_145520).State == ((NU8) 10))) goto LA2;
-(*G_145520).Kind = ((NU8) 10);
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "nimNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Pos_146527 = 0;
+F.line = 119;F.filename = "highlite.nim";
+Pos_146527 = (*G_146520).Pos;
+F.line = 120;F.filename = "highlite.nim";
+(*G_146520).Start = (*G_146520).Pos;
+F.line = 121;F.filename = "highlite.nim";
+if (!((*G_146520).State == ((NU8) 10))) goto LA2;
+F.line = 122;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 10);
+F.line = 123;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 124;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 92:
-(*G_145520).Kind = ((NU8) 13);
-Pos_145527 += 1;
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 126;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 13);
+F.line = 127;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 128;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 120:
 case 88:
-Pos_145527 += 1;
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(57)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(65)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(70)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(97)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(102)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)))) goto LA6;
-Pos_145527 += 1;
+F.line = 130;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 131;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(57)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(65)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(70)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(97)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(102)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)))) goto LA6;
+F.line = 131;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 LA6: ;
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(57)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(65)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(70)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(97)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(102)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)))) goto LA9;
-Pos_145527 += 1;
+F.line = 132;F.filename = "highlite.nim";
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(57)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(65)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(70)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(97)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(102)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)))) goto LA9;
+F.line = 132;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 LA9: ;
 break;
 case 48 ... 57:
+F.line = 134;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(57)))) goto LA11;
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(57)))) goto LA11;
+F.line = 134;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA11: ;
 break;
 case 0:
-(*G_145520).State = ((NU8) 1);
+F.line = 136;F.filename = "highlite.nim";
+(*G_146520).State = ((NU8) 1);
 break;
 default:
-Pos_145527 += 1;
+F.line = 137;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
+F.line = 138;F.filename = "highlite.nim";
 goto LA4;
 break;
 case 0:
 case 13:
 case 10:
-(*G_145520).State = ((NU8) 1);
+F.line = 140;F.filename = "highlite.nim";
+(*G_146520).State = ((NU8) 1);
+F.line = 141;F.filename = "highlite.nim";
 goto LA4;
 break;
 case 34:
-Pos_145527 += 1;
-(*G_145520).State = ((NU8) 1);
+F.line = 143;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 144;F.filename = "highlite.nim";
+(*G_146520).State = ((NU8) 1);
+F.line = 145;F.filename = "highlite.nim";
 goto LA4;
 break;
 default:
-Pos_145527 += 1;
+F.line = 146;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
 } LA4: ;
 goto LA1;
 LA2: ;
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 148;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 32:
 case 9 ... 13:
-(*G_145520).Kind = ((NU8) 2);
+F.line = 150;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 2);
+F.line = 151;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(32)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(9)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(13)))) goto LA12;
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(32)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(9)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(13)))) goto LA12;
+F.line = 151;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA12: ;
 break;
 case 35:
-(*G_145520).Kind = ((NU8) 16);
+F.line = 153;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 16);
+F.line = 154;F.filename = "highlite.nim";
 while (1) {
-if (!!((((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(0)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(10)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(13))))) goto LA13;
-Pos_145527 += 1;
+if (!!((((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(0)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(10)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(13))))) goto LA13;
+F.line = 154;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA13: ;
 break;
 case 97 ... 122:
 case 65 ... 90:
 case 95:
 case 128 ... 255:
-Id_145715 = 0;
-Id_145715 = copyString(((NimStringDesc*) &TMP192259));
+Id_146715 = 0;
+F.line = 156;F.filename = "highlite.nim";
+Id_146715 = copyString(((NimStringDesc*) &TMP147214));
+F.line = 157;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(57)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(65)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(90)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(97)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(122)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(128)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(248)))) goto LA14;
-Id_145715 = addChar(Id_145715, (*G_145520).Buf[Pos_145527]);
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(57)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(65)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(90)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(97)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(122)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(128)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(248)))) goto LA14;
+F.line = 158;F.filename = "highlite.nim";
+Id_146715 = addChar(Id_146715, (*G_146520).Buf[Pos_146527]);
+F.line = 159;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA14: ;
-if (!((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34))) goto LA16;
-LOC19 = ((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 1)]) == (NU8)(34));
+F.line = 160;F.filename = "highlite.nim";
+if (!((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34))) goto LA16;
+F.line = 161;F.filename = "highlite.nim";
+LOC19 = ((NU8)((*G_146520).Buf[addInt(Pos_146527, 1)]) == (NU8)(34));
 if (!(LOC19)) goto LA20;
-LOC19 = ((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 2)]) == (NU8)(34));
+LOC19 = ((NU8)((*G_146520).Buf[addInt(Pos_146527, 2)]) == (NU8)(34));
 LA20: ;
 if (!LOC19) goto LA21;
-Pos_145527 += 3;
-(*G_145520).Kind = ((NU8) 11);
+F.line = 162;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 3);
+F.line = 163;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 11);
+F.line = 164;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 165;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 0:
+F.line = 167;F.filename = "highlite.nim";
 goto LA23;
 break;
 case 34:
-Pos_145527 += 1;
-LOC26 = ((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34));
+F.line = 169;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 170;F.filename = "highlite.nim";
+LOC26 = ((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34));
 if (!(LOC26)) goto LA27;
-LOC26 = ((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 1)]) == (NU8)(34));
+LOC26 = ((NU8)((*G_146520).Buf[addInt(Pos_146527, 1)]) == (NU8)(34));
 LA27: ;
 LOC25 = LOC26;
 if (!(LOC25)) goto LA28;
-LOC25 = !(((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 2)]) == (NU8)(34)));
+LOC25 = !(((NU8)((*G_146520).Buf[addInt(Pos_146527, 2)]) == (NU8)(34)));
 LA28: ;
 if (!LOC25) goto LA29;
-Pos_145527 += 2;
+F.line = 172;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 2);
+F.line = 173;F.filename = "highlite.nim";
 goto LA23;
 LA29: ;
 break;
 default:
-Pos_145527 += 1;
+F.line = 174;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
 } LA23: ;
 goto LA18;
 LA21: ;
-(*G_145520).Kind = ((NU8) 23);
-Pos_145527 += 1;
+F.line = 176;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 23);
+F.line = 177;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 178;F.filename = "highlite.nim";
 while (1) {
-if (!!((((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(0)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(10)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(13))))) goto LA31;
-LOC33 = ((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34));
+if (!!((((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(0)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(10)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(13))))) goto LA31;
+F.line = 179;F.filename = "highlite.nim";
+LOC33 = ((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34));
 if (!(LOC33)) goto LA34;
-LOC33 = !(((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 1)]) == (NU8)(34)));
+LOC33 = !(((NU8)((*G_146520).Buf[addInt(Pos_146527, 1)]) == (NU8)(34)));
 LA34: ;
 if (!LOC33) goto LA35;
+F.line = 179;F.filename = "highlite.nim";
 goto LA31;
 LA35: ;
-Pos_145527 += 1;
+F.line = 180;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA31: ;
-if (!((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34))) goto LA38;
-Pos_145527 += 1;
+F.line = 181;F.filename = "highlite.nim";
+if (!((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34))) goto LA38;
+F.line = 181;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 LA38: ;
 LA18: ;
 goto LA15;
 LA16: ;
-(*G_145520).Kind = Nimgetkeyword_145204(Id_145715);
+F.line = 183;F.filename = "highlite.nim";
+(*G_146520).Kind = Nimgetkeyword_146204(Id_146715);
 LA15: ;
 break;
 case 48:
-Pos_145527 += 1;
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 185;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 186;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 98:
 case 66:
-Pos_145527 += 1;
+F.line = 188;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 189;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(49)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)))) goto LA40;
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(49)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)))) goto LA40;
+F.line = 189;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA40: ;
-Pos_145527 = Nimnumberpostfix_145233(G_145520, Pos_145527);
+F.line = 190;F.filename = "highlite.nim";
+Pos_146527 = Nimnumberpostfix_146233(G_146520, Pos_146527);
 break;
 case 120:
 case 88:
-Pos_145527 += 1;
+F.line = 192;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 193;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(57)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(65)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(70)) || ((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(97)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(102)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)))) goto LA41;
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(57)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(65)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(70)) || ((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(97)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(102)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)))) goto LA41;
+F.line = 193;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA41: ;
-Pos_145527 = Nimnumberpostfix_145233(G_145520, Pos_145527);
+F.line = 194;F.filename = "highlite.nim";
+Pos_146527 = Nimnumberpostfix_146233(G_146520, Pos_146527);
 break;
 case 111:
 case 79:
-Pos_145527 += 1;
+F.line = 196;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 197;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_145520).Buf[Pos_145527])) >= ((NU8)(48)) && ((NU8)((*G_145520).Buf[Pos_145527])) <= ((NU8)(55)) || ((NU8)((*G_145520).Buf[Pos_145527])) == ((NU8)(95)))) goto LA42;
-Pos_145527 += 1;
+if (!(((NU8)((*G_146520).Buf[Pos_146527])) >= ((NU8)(48)) && ((NU8)((*G_146520).Buf[Pos_146527])) <= ((NU8)(55)) || ((NU8)((*G_146520).Buf[Pos_146527])) == ((NU8)(95)))) goto LA42;
+F.line = 197;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA42: ;
-Pos_145527 = Nimnumberpostfix_145233(G_145520, Pos_145527);
+F.line = 198;F.filename = "highlite.nim";
+Pos_146527 = Nimnumberpostfix_146233(G_146520, Pos_146527);
 break;
 default:
-Pos_145527 = Nimnumber_145374(G_145520, Pos_145527);
+F.line = 199;F.filename = "highlite.nim";
+Pos_146527 = Nimnumber_146374(G_146520, Pos_146527);
 break;
 }
 break;
 case 49 ... 57:
-Pos_145527 = Nimnumber_145374(G_145520, Pos_145527);
+F.line = 201;F.filename = "highlite.nim";
+Pos_146527 = Nimnumber_146374(G_146520, Pos_146527);
 break;
 case 39:
-Pos_145527 += 1;
-(*G_145520).Kind = ((NU8) 12);
+F.line = 203;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 204;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 12);
+F.line = 205;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 206;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 0:
 case 13:
 case 10:
+F.line = 208;F.filename = "highlite.nim";
 goto LA43;
 break;
 case 39:
-Pos_145527 += 1;
+F.line = 210;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 211;F.filename = "highlite.nim";
 goto LA43;
 break;
 case 92:
-Pos_145527 += 2;
+F.line = 213;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 2);
 break;
 default:
-Pos_145527 += 1;
+F.line = 214;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
 } LA43: ;
 break;
 case 34:
-Pos_145527 += 1;
-LOC45 = ((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34));
+F.line = 216;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 217;F.filename = "highlite.nim";
+LOC45 = ((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34));
 if (!(LOC45)) goto LA46;
-LOC45 = ((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 1)]) == (NU8)(34));
+LOC45 = ((NU8)((*G_146520).Buf[addInt(Pos_146527, 1)]) == (NU8)(34));
 LA46: ;
 if (!LOC45) goto LA47;
-Pos_145527 += 2;
-(*G_145520).Kind = ((NU8) 11);
+F.line = 218;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 2);
+F.line = 219;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 11);
+F.line = 220;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 221;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 0:
+F.line = 223;F.filename = "highlite.nim";
 goto LA49;
 break;
 case 34:
-Pos_145527 += 1;
-LOC52 = ((NU8)((*G_145520).Buf[Pos_145527]) == (NU8)(34));
+F.line = 225;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 226;F.filename = "highlite.nim";
+LOC52 = ((NU8)((*G_146520).Buf[Pos_146527]) == (NU8)(34));
 if (!(LOC52)) goto LA53;
-LOC52 = ((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 1)]) == (NU8)(34));
+LOC52 = ((NU8)((*G_146520).Buf[addInt(Pos_146527, 1)]) == (NU8)(34));
 LA53: ;
 LOC51 = LOC52;
 if (!(LOC51)) goto LA54;
-LOC51 = !(((NU8)((*G_145520).Buf[(NI64)(Pos_145527 + 2)]) == (NU8)(34)));
+LOC51 = !(((NU8)((*G_146520).Buf[addInt(Pos_146527, 2)]) == (NU8)(34)));
 LA54: ;
 if (!LOC51) goto LA55;
-Pos_145527 += 2;
+F.line = 228;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 2);
+F.line = 229;F.filename = "highlite.nim";
 goto LA49;
 LA55: ;
 break;
 default:
-Pos_145527 += 1;
+F.line = 230;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
 } LA49: ;
 goto LA44;
 LA47: ;
-(*G_145520).Kind = ((NU8) 10);
+F.line = 232;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 10);
+F.line = 233;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_145520).Buf[Pos_145527]))) {
+F.line = 234;F.filename = "highlite.nim";
+switch (((NU8)((*G_146520).Buf[Pos_146527]))) {
 case 0:
 case 13:
 case 10:
+F.line = 236;F.filename = "highlite.nim";
 goto LA57;
 break;
 case 34:
-Pos_145527 += 1;
+F.line = 238;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 239;F.filename = "highlite.nim";
 goto LA57;
 break;
 case 92:
-(*G_145520).State = (*G_145520).Kind;
+F.line = 241;F.filename = "highlite.nim";
+(*G_146520).State = (*G_146520).Kind;
+F.line = 242;F.filename = "highlite.nim";
 goto LA57;
 break;
 default:
-Pos_145527 += 1;
+F.line = 243;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 break;
 }
 } LA57: ;
@@ -984,273 +1260,500 @@ case 96:
 case 58:
 case 44:
 case 59:
-Pos_145527 += 1;
-(*G_145520).Kind = ((NU8) 15);
+F.line = 245;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 246;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 15);
 break;
 case 0:
-(*G_145520).Kind = ((NU8) 0);
+F.line = 248;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 0);
 break;
 default:
-if (!((TMP192260[((NU8)((*G_145520).Buf[Pos_145527]))/8] &(1<<(((NU8)((*G_145520).Buf[Pos_145527]))%8)))!=0)) goto LA59;
-(*G_145520).Kind = ((NU8) 14);
+F.line = 250;F.filename = "highlite.nim";
+if (!((TMP147215[((NU8)((*G_146520).Buf[Pos_146527]))/8] &(1<<(((NU8)((*G_146520).Buf[Pos_146527]))%8)))!=0)) goto LA59;
+F.line = 251;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 14);
+F.line = 252;F.filename = "highlite.nim";
 while (1) {
-if (!((TMP192260[((NU8)((*G_145520).Buf[Pos_145527]))/8] &(1<<(((NU8)((*G_145520).Buf[Pos_145527]))%8)))!=0)) goto LA61;
-Pos_145527 += 1;
+if (!((TMP147215[((NU8)((*G_146520).Buf[Pos_146527]))/8] &(1<<(((NU8)((*G_146520).Buf[Pos_146527]))%8)))!=0)) goto LA61;
+F.line = 252;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
 } LA61: ;
 goto LA58;
 LA59: ;
-Pos_145527 += 1;
-(*G_145520).Kind = ((NU8) 1);
+F.line = 254;F.filename = "highlite.nim";
+Pos_146527 = addInt(Pos_146527, 1);
+F.line = 255;F.filename = "highlite.nim";
+(*G_146520).Kind = ((NU8) 1);
 LA58: ;
 break;
 }
 LA1: ;
-(*G_145520).Length = (NI64)(Pos_145527 - (*G_145520).Pos);
-LOC63 = !(((*G_145520).Kind == ((NU8) 0)));
+F.line = 256;F.filename = "highlite.nim";
+(*G_146520).Length = subInt(Pos_146527, (*G_146520).Pos);
+F.line = 257;F.filename = "highlite.nim";
+LOC63 = !(((*G_146520).Kind == ((NU8) 0)));
 if (!(LOC63)) goto LA64;
-LOC63 = ((*G_145520).Length <= 0);
+LOC63 = ((*G_146520).Length <= 0);
 LA64: ;
 if (!LOC63) goto LA65;
-LOC68 = cstrToNimstr((*G_145520).Buf);
+F.line = 258;F.filename = "highlite.nim";
+LOC67 = 0;
+LOC68 = 0;
+LOC68 = cstrToNimstr((*G_146520).Buf);
 LOC67 = rawNewString(LOC68->Sup.len + 14);
-appendString(LOC67, ((NimStringDesc*) &TMP192261));
+appendString(LOC67, ((NimStringDesc*) &TMP147216));
 appendString(LOC67, LOC68);
 Internalerror_41571(LOC67);
 LA65: ;
-(*G_145520).Pos = Pos_145527;
+F.line = 259;F.filename = "highlite.nim";
+(*G_146520).Pos = Pos_146527;
+framePtr = framePtr->prev;
 }
-N_NIMCALL(NI, Iskeyword_146514)(NimStringDesc** X_146517, NI X_146517Len0, NimStringDesc* Y_146518) {
-NI Result_146519;
-NI A_146520;
-NI B_146531;
-NI Mid_146534;
-NI C_146535;
-Result_146519 = 0;
-A_146520 = 0;
-A_146520 = 0;
-B_146531 = 0;
-B_146531 = (NI64)(X_146517Len0 - 1);
+N_NIMCALL(NI, Generalnumber_147217)(TY146007* G_147220, NI Position_147221) {
+NI Result_147222;
+NI Pos_147225;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "generalNumber";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_147222 = 0;
+Pos_147225 = 0;
+F.line = 263;F.filename = "highlite.nim";
+Pos_147225 = Position_147221;
+F.line = 264;F.filename = "highlite.nim";
+(*G_147220).Kind = ((NU8) 3);
+F.line = 265;F.filename = "highlite.nim";
 while (1) {
-if (!(A_146520 <= B_146531)) goto LA1;
-Mid_146534 = 0;
-Mid_146534 = (NI64)((NI64)(A_146520 + B_146531) / 2);
-C_146535 = 0;
-C_146535 = Cmp_1319(X_146517[Mid_146534], Y_146518);
-if (!(C_146535 < 0)) goto LA3;
-A_146520 = (NI64)(Mid_146534 + 1);
-goto LA2;
-LA3: ;
-if (!(0 < C_146535)) goto LA5;
-B_146531 = (NI64)(Mid_146534 - 1);
-goto LA2;
-LA5: ;
-Result_146519 = Mid_146534;
-goto BeforeRet;
-LA2: ;
+if (!(((NU8)((*G_147220).Buf[Pos_147225])) >= ((NU8)(48)) && ((NU8)((*G_147220).Buf[Pos_147225])) <= ((NU8)(57)))) goto LA1;
+F.line = 265;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
 } LA1: ;
-Result_146519 = -1;
-BeforeRet: ;
-return Result_146519;
-}
-N_NIMCALL(NI, Generalnumber_146214)(TY145007* G_146217, NI Position_146218) {
-NI Result_146219;
-NI Pos_146222;
-Result_146219 = 0;
-Pos_146222 = 0;
-Pos_146222 = Position_146218;
-(*G_146217).Kind = ((NU8) 3);
+F.line = 266;F.filename = "highlite.nim";
+if (!((NU8)((*G_147220).Buf[Pos_147225]) == (NU8)(46))) goto LA3;
+F.line = 267;F.filename = "highlite.nim";
+(*G_147220).Kind = ((NU8) 7);
+F.line = 268;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
+F.line = 269;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146217).Buf[Pos_146222])) >= ((NU8)(48)) && ((NU8)((*G_146217).Buf[Pos_146222])) <= ((NU8)(57)))) goto LA1;
-Pos_146222 += 1;
-} LA1: ;
-if (!((NU8)((*G_146217).Buf[Pos_146222]) == (NU8)(46))) goto LA3;
-(*G_146217).Kind = ((NU8) 7);
-Pos_146222 += 1;
-while (1) {
-if (!(((NU8)((*G_146217).Buf[Pos_146222])) >= ((NU8)(48)) && ((NU8)((*G_146217).Buf[Pos_146222])) <= ((NU8)(57)))) goto LA5;
-Pos_146222 += 1;
+if (!(((NU8)((*G_147220).Buf[Pos_147225])) >= ((NU8)(48)) && ((NU8)((*G_147220).Buf[Pos_147225])) <= ((NU8)(57)))) goto LA5;
+F.line = 269;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
 } LA5: ;
 LA3: ;
-if (!(((NU8)((*G_146217).Buf[Pos_146222])) == ((NU8)(101)) || ((NU8)((*G_146217).Buf[Pos_146222])) == ((NU8)(69)))) goto LA7;
-(*G_146217).Kind = ((NU8) 7);
-Pos_146222 += 1;
-if (!(((NU8)((*G_146217).Buf[Pos_146222])) == ((NU8)(43)) || ((NU8)((*G_146217).Buf[Pos_146222])) == ((NU8)(45)))) goto LA10;
-Pos_146222 += 1;
+F.line = 270;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147220).Buf[Pos_147225])) == ((NU8)(101)) || ((NU8)((*G_147220).Buf[Pos_147225])) == ((NU8)(69)))) goto LA7;
+F.line = 271;F.filename = "highlite.nim";
+(*G_147220).Kind = ((NU8) 7);
+F.line = 272;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
+F.line = 273;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147220).Buf[Pos_147225])) == ((NU8)(43)) || ((NU8)((*G_147220).Buf[Pos_147225])) == ((NU8)(45)))) goto LA10;
+F.line = 273;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
 LA10: ;
+F.line = 274;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146217).Buf[Pos_146222])) >= ((NU8)(48)) && ((NU8)((*G_146217).Buf[Pos_146222])) <= ((NU8)(57)))) goto LA12;
-Pos_146222 += 1;
+if (!(((NU8)((*G_147220).Buf[Pos_147225])) >= ((NU8)(48)) && ((NU8)((*G_147220).Buf[Pos_147225])) <= ((NU8)(57)))) goto LA12;
+F.line = 274;F.filename = "highlite.nim";
+Pos_147225 = addInt(Pos_147225, 1);
 } LA12: ;
 LA7: ;
-Result_146219 = Pos_146222;
-return Result_146219;
+F.line = 275;F.filename = "highlite.nim";
+Result_147222 = Pos_147225;
+framePtr = framePtr->prev;
+return Result_147222;
 }
-N_NIMCALL(NI, Generalstrlit_146357)(TY145007* G_146360, NI Position_146361) {
-NI Result_146362;
-NI Pos_146367;
-NIM_CHAR C_146368;
-Result_146362 = 0;
-Pos_146367 = 0;
-Pos_146367 = Position_146361;
-(*G_146360).Kind = ((NU8) 10);
-C_146368 = 0;
-C_146368 = (*G_146360).Buf[Pos_146367];
-Pos_146367 += 1;
+N_NIMCALL(NI, Generalstrlit_147360)(TY146007* G_147363, NI Position_147364) {
+NI Result_147365;
+NI Pos_147370;
+NIM_CHAR C_147371;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "generalStrLit";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_147365 = 0;
+Pos_147370 = 0;
+F.line = 281;F.filename = "highlite.nim";
+Pos_147370 = Position_147364;
+F.line = 282;F.filename = "highlite.nim";
+(*G_147363).Kind = ((NU8) 10);
+C_147371 = 0;
+F.line = 283;F.filename = "highlite.nim";
+C_147371 = (*G_147363).Buf[Pos_147370];
+F.line = 284;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
+F.line = 285;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_146360).Buf[Pos_146367]))) {
+F.line = 286;F.filename = "highlite.nim";
+switch (((NU8)((*G_147363).Buf[Pos_147370]))) {
 case 0:
+F.line = 288;F.filename = "highlite.nim";
 goto LA1;
 break;
 case 92:
-Pos_146367 += 1;
-switch (((NU8)((*G_146360).Buf[Pos_146367]))) {
+F.line = 290;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
+F.line = 291;F.filename = "highlite.nim";
+switch (((NU8)((*G_147363).Buf[Pos_147370]))) {
 case 0:
+F.line = 293;F.filename = "highlite.nim";
 goto LA1;
 break;
 case 48 ... 57:
+F.line = 295;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(48)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(57)))) goto LA2;
-Pos_146367 += 1;
+if (!(((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(48)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(57)))) goto LA2;
+F.line = 295;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
 } LA2: ;
 break;
 case 120:
 case 88:
-Pos_146367 += 1;
-if (!(((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(48)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(57)) || ((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(65)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(70)) || ((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(97)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(102)))) goto LA4;
-Pos_146367 += 1;
+F.line = 297;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
+F.line = 298;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(48)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(57)) || ((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(65)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(70)) || ((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(97)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(102)))) goto LA4;
+F.line = 298;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
 LA4: ;
-if (!(((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(48)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(57)) || ((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(65)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(70)) || ((NU8)((*G_146360).Buf[Pos_146367])) >= ((NU8)(97)) && ((NU8)((*G_146360).Buf[Pos_146367])) <= ((NU8)(102)))) goto LA7;
-Pos_146367 += 1;
+F.line = 299;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(48)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(57)) || ((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(65)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(70)) || ((NU8)((*G_147363).Buf[Pos_147370])) >= ((NU8)(97)) && ((NU8)((*G_147363).Buf[Pos_147370])) <= ((NU8)(102)))) goto LA7;
+F.line = 299;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
 LA7: ;
 break;
 default:
-Pos_146367 += 2;
+F.line = 300;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 2);
 break;
 }
 break;
 default:
-if (!((NU8)((*G_146360).Buf[Pos_146367]) == (NU8)(C_146368))) goto LA10;
-Pos_146367 += 1;
+F.line = 302;F.filename = "highlite.nim";
+if (!((NU8)((*G_147363).Buf[Pos_147370]) == (NU8)(C_147371))) goto LA10;
+F.line = 303;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
+F.line = 304;F.filename = "highlite.nim";
 goto LA1;
 goto LA9;
 LA10: ;
-Pos_146367 += 1;
+F.line = 306;F.filename = "highlite.nim";
+Pos_147370 = addInt(Pos_147370, 1);
 LA9: ;
 break;
 }
 } LA1: ;
-Result_146362 = Pos_146367;
-return Result_146362;
+F.line = 307;F.filename = "highlite.nim";
+Result_147365 = Pos_147370;
+framePtr = framePtr->prev;
+return Result_147365;
 }
-N_NIMCALL(void, Clikenexttoken_146574)(TY145007* G_146577, NimStringDesc** Keywords_146579, NI Keywords_146579Len0, NU8 Flags_146580) {
-NI Pos_146589;
-NI Nested_146793;
-NimStringDesc* Id_146965;
+static N_INLINE(NI, divInt)(NI A_6203, NI B_6204) {
+NI Result_6205;
+NIM_BOOL LOC5;
+Result_6205 = 0;
+if (!(B_6204 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+LOC5 = (A_6203 == (IL64(-9223372036854775807) - IL64(1)));
+if (!(LOC5)) goto LA6;
+LOC5 = (B_6204 == -1);
+LA6: ;
+if (!LOC5) goto LA7;
+raiseOverflow();
+LA7: ;
+Result_6205 = (NI64)(A_6203 / B_6204);
+goto BeforeRet;
+BeforeRet: ;
+return Result_6205;
+}
+N_NIMCALL(NI, Iskeyword_147517)(NimStringDesc** X_147520, NI X_147520Len0, NimStringDesc* Y_147521) {
+NI Result_147522;
+NI A_147523;
+NI B_147534;
+NI Mid_147537;
+NI C_147538;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "isKeyword";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_147522 = 0;
+A_147523 = 0;
+F.line = 310;F.filename = "highlite.nim";
+A_147523 = 0;
+B_147534 = 0;
+F.line = 311;F.filename = "highlite.nim";
+B_147534 = subInt(X_147520Len0, 1);
+F.line = 312;F.filename = "highlite.nim";
+while (1) {
+if (!(A_147523 <= B_147534)) goto LA1;
+Mid_147537 = 0;
+F.line = 313;F.filename = "highlite.nim";
+Mid_147537 = divInt(addInt(A_147523, B_147534), 2);
+C_147538 = 0;
+F.line = 314;F.filename = "highlite.nim";
+if ((NU)(Mid_147537) >= (NU)(X_147520Len0)) raiseIndexError();
+C_147538 = Cmp_1321(X_147520[Mid_147537], Y_147521);
+F.line = 315;F.filename = "highlite.nim";
+if (!(C_147538 < 0)) goto LA3;
+F.line = 316;F.filename = "highlite.nim";
+A_147523 = addInt(Mid_147537, 1);
+goto LA2;
+LA3: ;
+if (!(0 < C_147538)) goto LA5;
+F.line = 318;F.filename = "highlite.nim";
+B_147534 = subInt(Mid_147537, 1);
+goto LA2;
+LA5: ;
+F.line = 320;F.filename = "highlite.nim";
+F.line = 320;F.filename = "highlite.nim";
+Result_147522 = Mid_147537;
+goto BeforeRet;
+LA2: ;
+} LA1: ;
+F.line = 321;F.filename = "highlite.nim";
+Result_147522 = -1;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_147522;
+}
+N_NIMCALL(NI, Iskeywordignorecase_147544)(NimStringDesc** X_147547, NI X_147547Len0, NimStringDesc* Y_147548) {
+NI Result_147549;
+NI A_147550;
+NI B_147561;
+NI Mid_147564;
+NI C_147565;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "isKeywordIgnoreCase";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_147549 = 0;
+A_147550 = 0;
+F.line = 324;F.filename = "highlite.nim";
+A_147550 = 0;
+B_147561 = 0;
+F.line = 325;F.filename = "highlite.nim";
+B_147561 = subInt(X_147547Len0, 1);
+F.line = 326;F.filename = "highlite.nim";
+while (1) {
+if (!(A_147550 <= B_147561)) goto LA1;
+Mid_147564 = 0;
+F.line = 327;F.filename = "highlite.nim";
+Mid_147564 = divInt(addInt(A_147550, B_147561), 2);
+C_147565 = 0;
+F.line = 328;F.filename = "highlite.nim";
+if ((NU)(Mid_147564) >= (NU)(X_147547Len0)) raiseIndexError();
+C_147565 = nsuCmpIgnoreCase(X_147547[Mid_147564], Y_147548);
+F.line = 329;F.filename = "highlite.nim";
+if (!(C_147565 < 0)) goto LA3;
+F.line = 330;F.filename = "highlite.nim";
+A_147550 = addInt(Mid_147564, 1);
+goto LA2;
+LA3: ;
+if (!(0 < C_147565)) goto LA5;
+F.line = 332;F.filename = "highlite.nim";
+B_147561 = subInt(Mid_147564, 1);
+goto LA2;
+LA5: ;
+F.line = 334;F.filename = "highlite.nim";
+F.line = 334;F.filename = "highlite.nim";
+Result_147549 = Mid_147564;
+goto BeforeRet;
+LA2: ;
+} LA1: ;
+F.line = 335;F.filename = "highlite.nim";
+Result_147549 = -1;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_147549;
+}
+N_NIMCALL(void, Clikenexttoken_147577)(TY146007* G_147580, NimStringDesc** Keywords_147582, NI Keywords_147582Len0, NU8 Flags_147583) {
+NI Pos_147592;
+NI Nested_147796;
+NimStringDesc* Id_147968;
 NI LOC39;
 NIM_BOOL LOC66;
-Pos_146589 = 0;
-Pos_146589 = (*G_146577).Pos;
-(*G_146577).Start = (*G_146577).Pos;
-if (!((*G_146577).State == ((NU8) 10))) goto LA2;
-(*G_146577).Kind = ((NU8) 10);
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "clikeNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Pos_147592 = 0;
+F.line = 349;F.filename = "highlite.nim";
+Pos_147592 = (*G_147580).Pos;
+F.line = 350;F.filename = "highlite.nim";
+(*G_147580).Start = (*G_147580).Pos;
+F.line = 351;F.filename = "highlite.nim";
+if (!((*G_147580).State == ((NU8) 10))) goto LA2;
+F.line = 352;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 10);
+F.line = 353;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 354;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 92:
-(*G_146577).Kind = ((NU8) 13);
-Pos_146589 += 1;
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 356;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 13);
+F.line = 357;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 358;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 120:
 case 88:
-Pos_146589 += 1;
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(70)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(102)))) goto LA6;
-Pos_146589 += 1;
+F.line = 360;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 361;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(70)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(102)))) goto LA6;
+F.line = 361;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA6: ;
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(70)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(102)))) goto LA9;
-Pos_146589 += 1;
+F.line = 362;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(70)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(102)))) goto LA9;
+F.line = 362;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA9: ;
 break;
 case 48 ... 57:
+F.line = 364;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)))) goto LA11;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)))) goto LA11;
+F.line = 364;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA11: ;
 break;
 case 0:
-(*G_146577).State = ((NU8) 1);
+F.line = 366;F.filename = "highlite.nim";
+(*G_147580).State = ((NU8) 1);
 break;
 default:
-Pos_146589 += 1;
+F.line = 367;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 break;
 }
+F.line = 368;F.filename = "highlite.nim";
 goto LA4;
 break;
 case 0:
 case 13:
 case 10:
-(*G_146577).State = ((NU8) 1);
+F.line = 370;F.filename = "highlite.nim";
+(*G_147580).State = ((NU8) 1);
+F.line = 371;F.filename = "highlite.nim";
 goto LA4;
 break;
 case 34:
-Pos_146589 += 1;
-(*G_146577).State = ((NU8) 1);
+F.line = 373;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 374;F.filename = "highlite.nim";
+(*G_147580).State = ((NU8) 1);
+F.line = 375;F.filename = "highlite.nim";
 goto LA4;
 break;
 default:
-Pos_146589 += 1;
+F.line = 376;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 break;
 }
 } LA4: ;
 goto LA1;
 LA2: ;
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 378;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 32:
 case 9 ... 13:
-(*G_146577).Kind = ((NU8) 2);
+F.line = 380;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 2);
+F.line = 381;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(32)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(9)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(13)))) goto LA12;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(32)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(9)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(13)))) goto LA12;
+F.line = 381;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA12: ;
 break;
 case 47:
-Pos_146589 += 1;
-if (!((NU8)((*G_146577).Buf[Pos_146589]) == (NU8)(47))) goto LA14;
-(*G_146577).Kind = ((NU8) 16);
+F.line = 383;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 384;F.filename = "highlite.nim";
+if (!((NU8)((*G_147580).Buf[Pos_147592]) == (NU8)(47))) goto LA14;
+F.line = 385;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 16);
+F.line = 386;F.filename = "highlite.nim";
 while (1) {
-if (!!((((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(0)) || ((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(10)) || ((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(13))))) goto LA16;
-Pos_146589 += 1;
+if (!!((((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(0)) || ((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(10)) || ((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(13))))) goto LA16;
+F.line = 386;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA16: ;
 goto LA13;
 LA14: ;
-if (!((NU8)((*G_146577).Buf[Pos_146589]) == (NU8)(42))) goto LA17;
-(*G_146577).Kind = ((NU8) 17);
-Nested_146793 = 0;
-Nested_146793 = 0;
-Pos_146589 += 1;
+if (!((NU8)((*G_147580).Buf[Pos_147592]) == (NU8)(42))) goto LA17;
+F.line = 388;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 17);
+Nested_147796 = 0;
+F.line = 389;F.filename = "highlite.nim";
+Nested_147796 = 0;
+F.line = 390;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 391;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 392;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 42:
-Pos_146589 += 1;
-if (!((NU8)((*G_146577).Buf[Pos_146589]) == (NU8)(47))) goto LA21;
-Pos_146589 += 1;
-if (!(Nested_146793 == 0)) goto LA24;
+F.line = 394;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 395;F.filename = "highlite.nim";
+if (!((NU8)((*G_147580).Buf[Pos_147592]) == (NU8)(47))) goto LA21;
+F.line = 396;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 397;F.filename = "highlite.nim";
+if (!(Nested_147796 == 0)) goto LA24;
+F.line = 397;F.filename = "highlite.nim";
 goto LA19;
 LA24: ;
 LA21: ;
 break;
 case 47:
-Pos_146589 += 1;
-if (!((NU8)((*G_146577).Buf[Pos_146589]) == (NU8)(42))) goto LA27;
-Pos_146589 += 1;
-if (!((Flags_146580 &(1<<((((NU8) 1))&7)))!=0)) goto LA30;
-Nested_146793 += 1;
+F.line = 399;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 400;F.filename = "highlite.nim";
+if (!((NU8)((*G_147580).Buf[Pos_147592]) == (NU8)(42))) goto LA27;
+F.line = 401;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 402;F.filename = "highlite.nim";
+if (!((Flags_147583 &(1<<((((NU8) 1))&7)))!=0)) goto LA30;
+F.line = 402;F.filename = "highlite.nim";
+Nested_147796 = addInt(Nested_147796, 1);
 LA30: ;
 LA27: ;
 break;
 case 0:
+F.line = 404;F.filename = "highlite.nim";
 goto LA19;
 break;
 default:
-Pos_146589 += 1;
+F.line = 405;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 break;
 }
 } LA19: ;
@@ -1259,112 +1762,162 @@ LA17: ;
 LA13: ;
 break;
 case 35:
-Pos_146589 += 1;
-if (!((Flags_146580 &(1<<((((NU8) 0))&7)))!=0)) goto LA33;
-(*G_146577).Kind = ((NU8) 25);
+F.line = 407;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 408;F.filename = "highlite.nim";
+if (!((Flags_147583 &(1<<((((NU8) 0))&7)))!=0)) goto LA33;
+F.line = 409;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 25);
+F.line = 410;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(32)) || ((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(9)))) goto LA35;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(32)) || ((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(9)))) goto LA35;
+F.line = 410;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA35: ;
+F.line = 411;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)) || ((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(95)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(128)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(255)))) goto LA36;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)) || ((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(95)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(128)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(255)))) goto LA36;
+F.line = 411;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA36: ;
 goto LA32;
 LA33: ;
-(*G_146577).Kind = ((NU8) 14);
+F.line = 413;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 14);
 LA32: ;
 break;
 case 97 ... 122:
 case 65 ... 90:
 case 95:
 case 128 ... 255:
-Id_146965 = 0;
-Id_146965 = copyString(((NimStringDesc*) &TMP192259));
+Id_147968 = 0;
+F.line = 415;F.filename = "highlite.nim";
+Id_147968 = copyString(((NimStringDesc*) &TMP147214));
+F.line = 416;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)) || ((NU8)((*G_146577).Buf[Pos_146589])) == ((NU8)(95)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(128)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(255)))) goto LA37;
-Id_146965 = addChar(Id_146965, (*G_146577).Buf[Pos_146589]);
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)) || ((NU8)((*G_147580).Buf[Pos_147592])) == ((NU8)(95)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(128)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(255)))) goto LA37;
+F.line = 417;F.filename = "highlite.nim";
+Id_147968 = addChar(Id_147968, (*G_147580).Buf[Pos_147592]);
+F.line = 418;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA37: ;
-LOC39 = Iskeyword_146514(Keywords_146579, Keywords_146579Len0, Id_146965);
+F.line = 419;F.filename = "highlite.nim";
+LOC39 = Iskeyword_147517(Keywords_147582, Keywords_147582Len0, Id_147968);
 if (!(0 <= LOC39)) goto LA40;
-(*G_146577).Kind = ((NU8) 9);
+F.line = 419;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 9);
 goto LA38;
 LA40: ;
-(*G_146577).Kind = ((NU8) 8);
+F.line = 420;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 8);
 LA38: ;
 break;
 case 48:
-Pos_146589 += 1;
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 422;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 423;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 98:
 case 66:
-Pos_146589 += 1;
+F.line = 425;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 426;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(49)))) goto LA42;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(49)))) goto LA42;
+F.line = 426;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA42: ;
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)))) goto LA44;
-Pos_146589 += 1;
+F.line = 427;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)))) goto LA44;
+F.line = 427;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA44: ;
 break;
 case 120:
 case 88:
-Pos_146589 += 1;
+F.line = 429;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 430;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(57)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(70)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(102)))) goto LA46;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(57)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(70)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(102)))) goto LA46;
+F.line = 430;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA46: ;
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)))) goto LA48;
-Pos_146589 += 1;
+F.line = 431;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)))) goto LA48;
+F.line = 431;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA48: ;
 break;
 case 48 ... 55:
-Pos_146589 += 1;
+F.line = 433;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 434;F.filename = "highlite.nim";
 while (1) {
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(48)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(55)))) goto LA50;
-Pos_146589 += 1;
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(48)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(55)))) goto LA50;
+F.line = 434;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA50: ;
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)))) goto LA52;
-Pos_146589 += 1;
+F.line = 435;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)))) goto LA52;
+F.line = 435;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA52: ;
 break;
 default:
-Pos_146589 = Generalnumber_146214(G_146577, Pos_146589);
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)))) goto LA55;
-Pos_146589 += 1;
+F.line = 437;F.filename = "highlite.nim";
+Pos_147592 = Generalnumber_147217(G_147580, Pos_147592);
+F.line = 438;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)))) goto LA55;
+F.line = 438;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA55: ;
 break;
 }
 break;
 case 49 ... 57:
-Pos_146589 = Generalnumber_146214(G_146577, Pos_146589);
-if (!(((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(65)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(90)) || ((NU8)((*G_146577).Buf[Pos_146589])) >= ((NU8)(97)) && ((NU8)((*G_146577).Buf[Pos_146589])) <= ((NU8)(122)))) goto LA58;
-Pos_146589 += 1;
+F.line = 440;F.filename = "highlite.nim";
+Pos_147592 = Generalnumber_147217(G_147580, Pos_147592);
+F.line = 441;F.filename = "highlite.nim";
+if (!(((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(65)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(90)) || ((NU8)((*G_147580).Buf[Pos_147592])) >= ((NU8)(97)) && ((NU8)((*G_147580).Buf[Pos_147592])) <= ((NU8)(122)))) goto LA58;
+F.line = 441;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 LA58: ;
 break;
 case 39:
-Pos_146589 = Generalstrlit_146357(G_146577, Pos_146589);
-(*G_146577).Kind = ((NU8) 12);
+F.line = 443;F.filename = "highlite.nim";
+Pos_147592 = Generalstrlit_147360(G_147580, Pos_147592);
+F.line = 444;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 12);
 break;
 case 34:
-Pos_146589 += 1;
-(*G_146577).Kind = ((NU8) 10);
+F.line = 446;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 447;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 10);
+F.line = 448;F.filename = "highlite.nim";
 while (1) {
-switch (((NU8)((*G_146577).Buf[Pos_146589]))) {
+F.line = 449;F.filename = "highlite.nim";
+switch (((NU8)((*G_147580).Buf[Pos_147592]))) {
 case 0:
+F.line = 451;F.filename = "highlite.nim";
 goto LA60;
 break;
 case 34:
-Pos_146589 += 1;
+F.line = 453;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 454;F.filename = "highlite.nim";
 goto LA60;
 break;
 case 92:
-(*G_146577).State = (*G_146577).Kind;
+F.line = 456;F.filename = "highlite.nim";
+(*G_147580).State = (*G_147580).Kind;
+F.line = 457;F.filename = "highlite.nim";
 goto LA60;
 break;
 default:
-Pos_146589 += 1;
+F.line = 458;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 break;
 }
 } LA60: ;
@@ -1379,73 +1932,150 @@ case 58:
 case 44:
 case 59:
 case 46:
-Pos_146589 += 1;
-(*G_146577).Kind = ((NU8) 15);
+F.line = 460;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 461;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 15);
 break;
 case 0:
-(*G_146577).Kind = ((NU8) 0);
+F.line = 463;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 0);
 break;
 default:
-if (!((TMP192260[((NU8)((*G_146577).Buf[Pos_146589]))/8] &(1<<(((NU8)((*G_146577).Buf[Pos_146589]))%8)))!=0)) goto LA62;
-(*G_146577).Kind = ((NU8) 14);
+F.line = 465;F.filename = "highlite.nim";
+if (!((TMP147215[((NU8)((*G_147580).Buf[Pos_147592]))/8] &(1<<(((NU8)((*G_147580).Buf[Pos_147592]))%8)))!=0)) goto LA62;
+F.line = 466;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 14);
+F.line = 467;F.filename = "highlite.nim";
 while (1) {
-if (!((TMP192260[((NU8)((*G_146577).Buf[Pos_146589]))/8] &(1<<(((NU8)((*G_146577).Buf[Pos_146589]))%8)))!=0)) goto LA64;
-Pos_146589 += 1;
+if (!((TMP147215[((NU8)((*G_147580).Buf[Pos_147592]))/8] &(1<<(((NU8)((*G_147580).Buf[Pos_147592]))%8)))!=0)) goto LA64;
+F.line = 467;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
 } LA64: ;
 goto LA61;
 LA62: ;
-Pos_146589 += 1;
-(*G_146577).Kind = ((NU8) 1);
+F.line = 469;F.filename = "highlite.nim";
+Pos_147592 = addInt(Pos_147592, 1);
+F.line = 470;F.filename = "highlite.nim";
+(*G_147580).Kind = ((NU8) 1);
 LA61: ;
 break;
 }
 LA1: ;
-(*G_146577).Length = (NI64)(Pos_146589 - (*G_146577).Pos);
-LOC66 = !(((*G_146577).Kind == ((NU8) 0)));
+F.line = 471;F.filename = "highlite.nim";
+(*G_147580).Length = subInt(Pos_147592, (*G_147580).Pos);
+F.line = 472;F.filename = "highlite.nim";
+LOC66 = !(((*G_147580).Kind == ((NU8) 0)));
 if (!(LOC66)) goto LA67;
-LOC66 = ((*G_146577).Length <= 0);
+LOC66 = ((*G_147580).Length <= 0);
 LA67: ;
 if (!LOC66) goto LA68;
-Internalerror_41571(((NimStringDesc*) &TMP192310));
+F.line = 472;F.filename = "highlite.nim";
+Internalerror_41571(((NimStringDesc*) &TMP148349));
 LA68: ;
-(*G_146577).Pos = Pos_146589;
+F.line = 473;F.filename = "highlite.nim";
+(*G_147580).Pos = Pos_147592;
+framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Cppnexttoken_147356)(TY145007* G_147359) {
-Clikenexttoken_146574(G_147359, Keywords_147360, 48, 1);
+N_NIMCALL(void, Cnexttoken_148350)(TY146007* G_148353) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "cNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 483;F.filename = "highlite.nim";
+Clikenexttoken_147577(G_148353, Keywords_148354, 37, 1);
+framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Csharpnexttoken_147366)(TY145007* G_147369) {
-Clikenexttoken_146574(G_147369, Keywords_147370, 77, 1);
+N_NIMCALL(void, Cppnexttoken_148397)(TY146007* G_148400) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "cppNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 494;F.filename = "highlite.nim";
+Clikenexttoken_147577(G_148400, Keywords_148401, 48, 1);
+framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Cnexttoken_147346)(TY145007* G_147349) {
-Clikenexttoken_146574(G_147349, Keywords_147350, 37, 1);
+N_NIMCALL(void, Csharpnexttoken_148422)(TY146007* G_148425) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "csharpNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 509;F.filename = "highlite.nim";
+Clikenexttoken_147577(G_148425, Keywords_148426, 77, 1);
+framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Javanexttoken_147376)(TY145007* G_147379) {
-Clikenexttoken_146574(G_147379, Keywords_147380, 53, 0);
+N_NIMCALL(void, Javanexttoken_148472)(TY146007* G_148475) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "javaNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 521;F.filename = "highlite.nim";
+Clikenexttoken_147577(G_148475, Keywords_148476, 53, 0);
+framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Getnexttoken_145114)(TY145007* G_145117, NU8 Lang_145118) {
-switch (Lang_145118) {
+N_NIMCALL(void, Getnexttoken_146114)(TY146007* G_146117, NU8 Lang_146118) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "getNextToken";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 524;F.filename = "highlite.nim";
+switch (Lang_146118) {
 case ((NU8) 1):
-Nimnexttoken_145517(G_145117);
+F.line = 525;F.filename = "highlite.nim";
+Nimnexttoken_146517(G_146117);
 break;
 case ((NU8) 2):
-Cppnexttoken_147356(G_145117);
+F.line = 526;F.filename = "highlite.nim";
+Cppnexttoken_148397(G_146117);
 break;
 case ((NU8) 3):
-Csharpnexttoken_147366(G_145117);
+F.line = 527;F.filename = "highlite.nim";
+Csharpnexttoken_148422(G_146117);
 break;
 case ((NU8) 4):
-Cnexttoken_147346(G_145117);
+F.line = 528;F.filename = "highlite.nim";
+Cnexttoken_148350(G_146117);
 break;
 case ((NU8) 5):
-Javanexttoken_147376(G_145117);
+F.line = 529;F.filename = "highlite.nim";
+Javanexttoken_148472(G_146117);
 break;
 default:
-Internalerror_41571(((NimStringDesc*) &TMP192369));
+F.line = 530;F.filename = "highlite.nim";
+Internalerror_41571(((NimStringDesc*) &TMP148502));
 break;
 }
-}
-N_NIMCALL(void, Deinitgeneraltokenizer_145110)(TY145007* G_145113) {
+framePtr = framePtr->prev;
 }
 N_NOINLINE(void, highliteInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "highlite";
+F.prev = framePtr;
+F.filename = "rod/highlite.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 

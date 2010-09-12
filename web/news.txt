@@ -15,9 +15,10 @@ Bugfixes
 - Bugfix: ``system.splitChunk`` still contained code for debug output.
 - Bugfix: ``dialogs.ChooseFileToSave`` uses ``STOCK_SAVE`` instead of 
   ``STOCK_OPEN`` for the GTK backend.
-- Bugfix: ``raise`` within an exception handler did not work.
+- Bugfix: Various bugs concerning exception handling fixed.
 - Bugfix: ``low(somestring)`` crashed the compiler.
 - Bugfix: ``strutils.endsWith`` lacked range checking.
+- Bugfix: Better detection for AMD64 on Mac OS X. 
 
 
 Changes affecting backwards compatibility
@@ -48,6 +49,7 @@ Additions
 - Added ``system.reopen``. 
 - Added ``system.getCurrentException``.
 - Added ``system.appType``.
+- Added ``system.compileOption``. 
 - Added ``times.epochTime`` and ``times.cpuTime``. 
 - Implemented explicit type arguments for generics.
 - Implemented implicit type arguments for generics.

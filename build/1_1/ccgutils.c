@@ -39,7 +39,7 @@ struct TY49561 {
 NI Counter;
 TY49559* Data;
 };
-typedef TY49561 TY151023[40];
+typedef TY49561 TY152023[40];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -77,11 +77,6 @@ NI Align;
 NI Containerid;
 TY49537 Loc;
 };
-typedef NIM_CHAR TY239[100000001];
-struct NimStringDesc {
-  TGenericSeq Sup;
-TY239 data;
-};
 struct TNimNode {
 NU8 kind;
 NI offset;
@@ -89,6 +84,11 @@ TNimType* typ;
 NCSTRING name;
 NI len;
 TNimNode** sons;
+};
+typedef NIM_CHAR TY239[100000001];
+struct NimStringDesc {
+  TGenericSeq Sup;
+TY239 data;
 };
 struct TY41532 {
 NI16 Line;
@@ -179,239 +179,515 @@ struct TY49525 {
   TGenericSeq Sup;
   TY49545* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void, Inittypetables_151025)(void);
+N_NIMCALL(void, Inittypetables_152025)(void);
 N_NIMCALL(void, Initidtable_49752)(TY49561* X_49755);
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NOINLINE(void, raiseOverflow)(void);
+N_NIMCALL(TY49549*, Getuniquetype_152020)(TY49549* Key_152022);
 N_NIMCALL(TNimObject*, Idtableget_53166)(TY49561 T_53168, TY48005* Key_53169);
+N_NIMCALL(void, chckObj)(TNimType* Obj_5375, TNimType* Subclass_5376);
 N_NIMCALL(void, Idtableput_53174)(TY49561* T_53177, TY48005* Key_53178, TNimObject* Val_53179);
-N_NIMCALL(TY49549*, Getuniquetype_151020)(TY49549* Key_151022);
 N_NIMCALL(TY49549*, Lastson_49810)(TY49549* N_49812);
 N_NIMCALL(NIM_BOOL, Idtablehasobjectaskey_53180)(TY49561 T_53182, TY48005* Key_53183);
+N_NOINLINE(void, raiseIndexError)(void);
 N_NIMCALL(NIM_BOOL, Sametype_90048)(TY49549* X_90050, TY49549* Y_90051);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_16908);
+N_NIMCALL(TNimObject*, Tablegettype_152016)(TY49561 Tab_152018, TY49549* Key_152019);
+N_NIMCALL(NimStringDesc*, Tocchar_152007)(NIM_CHAR C_152009);
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210);
+N_NIMCALL(NimStringDesc*, nsuToOctal)(NIM_CHAR C_23043);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17087);
+N_NIMCALL(NimStringDesc*, nimCharToStr)(NIM_CHAR X_17928);
+N_NIMCALL(TY46008*, Makecstring_152010)(NimStringDesc* S_152012);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, modInt)(NI A_6403, NI B_6404);
+N_NOINLINE(void, raiseDivByZero)(void);
+N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
+N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_17182, NI Addlen_17183);
 N_NIMCALL(void, App_46031)(TY46008** A_46034, TY46008* B_46035);
 N_NIMCALL(TY46008*, Torope_46046)(NimStringDesc* S_46048);
-N_NIMCALL(NimStringDesc*, setLengthStr)(NimStringDesc* S_17025, NI Newlen_17026);
-N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
+N_NIMCALL(NimStringDesc*, setLengthStr)(NimStringDesc* S_17225, NI Newlen_17226);
+N_NIMCALL(TY46008*, Makellvmstring_152013)(NimStringDesc* S_152015);
 N_NIMCALL(NimStringDesc*, nsuToHex)(NI64 X_23450, NI Len_23451);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993);
-N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_16982, NI Addlen_16983);
-N_NIMCALL(NimStringDesc*, Tocchar_151007)(NIM_CHAR C_151009);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17009, NIM_CHAR C_17010);
-N_NIMCALL(NimStringDesc*, nsuToOctal)(NIM_CHAR C_23043);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_16887);
-N_NIMCALL(NimStringDesc*, nimCharToStr)(NIM_CHAR X_17728);
-STRING_LITERAL(TMP191304, "c\"", 2);
-STRING_LITERAL(TMP191305, "\\00\"", 4);
-STRING_LITERAL(TMP191307, "\"", 1);
-STRING_LITERAL(TMP191308, "\015\012", 2);
-TY151023 Gtypetable_151024;
-N_NIMCALL(void, Inittypetables_151025)(void) {
-NU8 I_151056;
-NU8 Res_151060;
-I_151056 = 0;
-Res_151060 = 0;
-Res_151060 = ((NU8) 0);
-while (1) {
-if (!(Res_151060 <= ((NU8) 39))) goto LA1;
-I_151056 = Res_151060;
-Initidtable_49752(&Gtypetable_151024[(I_151056)-0]);
-Res_151060 += 1;
-} LA1: ;
+STRING_LITERAL(TMP152221, "\"", 1);
+STRING_LITERAL(TMP152222, "\015\012", 2);
+STRING_LITERAL(TMP152254, "c\"", 2);
+STRING_LITERAL(TMP152255, "\\00\"", 4);
+TY152023 Gtypetable_152024;
+extern TNimType* NTI49549; /* TType */
+static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
+NI Result_5605;
+NIM_BOOL LOC2;
+Result_5605 = 0;
+Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
+LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5605;
 }
-N_NIMCALL(TY49549*, Getuniquetype_151020)(TY49549* Key_151022) {
-TY49549* Result_151066;
-TY49549* T_151067;
-NU8 K_151068;
+N_NIMCALL(void, Inittypetables_152025)(void) {
+NU8 I_152056;
+NU8 Res_152060;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "initTypeTables";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+I_152056 = 0;
+Res_152060 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_152060 = ((NU8) 0);
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_152060 <= ((NU8) 39))) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_152056 = Res_152060;
+F.line = 25;F.filename = "ccgutils.nim";
+Initidtable_49752(&Gtypetable_152024[(I_152056)-0]);
+F.line = 1014;F.filename = "system.nim";
+Res_152060 = addInt(Res_152060, 1);
+} LA1: ;
+framePtr = framePtr->prev;
+}
+N_NIMCALL(TY49549*, Getuniquetype_152020)(TY49549* Key_152022) {
+TY49549* Result_152066;
+TY49549* T_152067;
+NU8 K_152068;
 TNimObject* LOC4;
 TY49549* LOC8;
 NIM_BOOL LOC10;
-NI H_151114;
-NI HEX3Atmp_151128;
-NI Res_151130;
+NI H_152114;
+NI HEX3Atmp_152128;
+NI Res_152130;
 NIM_BOOL LOC15;
-Result_151066 = 0;
-T_151067 = 0;
-K_151068 = 0;
-Result_151066 = Key_151022;
-if (!(Key_151022 == NIM_NIL)) goto LA2;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "GetUniqueType";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_152066 = 0;
+T_152067 = 0;
+K_152068 = 0;
+F.line = 32;F.filename = "ccgutils.nim";
+Result_152066 = Key_152022;
+F.line = 33;F.filename = "ccgutils.nim";
+if (!(Key_152022 == NIM_NIL)) goto LA2;
+F.line = 33;F.filename = "ccgutils.nim";
 goto BeforeRet;
 LA2: ;
-K_151068 = (*Key_151022).Kind;
-switch (K_151068) {
+F.line = 34;F.filename = "ccgutils.nim";
+K_152068 = (*Key_152022).Kind;
+F.line = 35;F.filename = "ccgutils.nim";
+switch (K_152068) {
 case ((NU8) 17):
 case ((NU8) 14):
-LOC4 = Idtableget_53166(Gtypetable_151024[(K_151068)-0], &Key_151022->Sup);
-Result_151066 = ((TY49549*) (LOC4));
-if (!(Result_151066 == NIM_NIL)) goto LA6;
-Idtableput_53174(&Gtypetable_151024[(K_151068)-0], &Key_151022->Sup, &Key_151022->Sup.Sup);
-Result_151066 = Key_151022;
+F.line = 63;F.filename = "ccgutils.nim";
+LOC4 = 0;
+LOC4 = Idtableget_53166(Gtypetable_152024[(K_152068)-0], &Key_152022->Sup);
+if (LOC4) chckObj((*LOC4).m_type, NTI49549);
+Result_152066 = ((TY49549*) (LOC4));
+F.line = 64;F.filename = "ccgutils.nim";
+if (!(Result_152066 == NIM_NIL)) goto LA6;
+F.line = 65;F.filename = "ccgutils.nim";
+Idtableput_53174(&Gtypetable_152024[(K_152068)-0], &Key_152022->Sup, &Key_152022->Sup.Sup);
+F.line = 66;F.filename = "ccgutils.nim";
+Result_152066 = Key_152022;
 LA6: ;
 break;
 case ((NU8) 11):
 case ((NU8) 13):
 case ((NU8) 15):
-LOC8 = Lastson_49810(Key_151022);
-Result_151066 = Getuniquetype_151020(LOC8);
+F.line = 68;F.filename = "ccgutils.nim";
+LOC8 = 0;
+LOC8 = Lastson_49810(Key_152022);
+Result_152066 = Getuniquetype_152020(LOC8);
 break;
 case ((NU8) 25):
 break;
 default:
-LOC10 = Idtablehasobjectaskey_53180(Gtypetable_151024[(K_151068)-0], &Key_151022->Sup);
+F.line = 74;F.filename = "ccgutils.nim";
+LOC10 = Idtablehasobjectaskey_53180(Gtypetable_152024[(K_152068)-0], &Key_152022->Sup);
 if (!LOC10) goto LA11;
+F.line = 74;F.filename = "ccgutils.nim";
 goto BeforeRet;
 LA11: ;
-H_151114 = 0;
-HEX3Atmp_151128 = 0;
-HEX3Atmp_151128 = (Gtypetable_151024[(K_151068)-0].Data->Sup.len-1);
-Res_151130 = 0;
-Res_151130 = 0;
+H_152114 = 0;
+HEX3Atmp_152128 = 0;
+F.line = 75;F.filename = "ccgutils.nim";
+HEX3Atmp_152128 = (Gtypetable_152024[(K_152068)-0].Data->Sup.len-1);
+Res_152130 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_152130 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_151130 <= HEX3Atmp_151128)) goto LA13;
-H_151114 = Res_151130;
-T_151067 = ((TY49549*) (Gtypetable_151024[(K_151068)-0].Data->data[H_151114].Key));
-LOC15 = !((T_151067 == NIM_NIL));
+if (!(Res_152130 <= HEX3Atmp_152128)) goto LA13;
+F.line = 1011;F.filename = "system.nim";
+H_152114 = Res_152130;
+F.line = 76;F.filename = "ccgutils.nim";
+if ((NU)(H_152114) >= (NU)(Gtypetable_152024[(K_152068)-0].Data->Sup.len)) raiseIndexError();
+if (Gtypetable_152024[(K_152068)-0].Data->data[H_152114].Key) chckObj((*Gtypetable_152024[(K_152068)-0].Data->data[H_152114].Key).Sup.m_type, NTI49549);
+T_152067 = ((TY49549*) (Gtypetable_152024[(K_152068)-0].Data->data[H_152114].Key));
+F.line = 77;F.filename = "ccgutils.nim";
+LOC15 = !((T_152067 == NIM_NIL));
 if (!(LOC15)) goto LA16;
-LOC15 = Sametype_90048(T_151067, Key_151022);
+LOC15 = Sametype_90048(T_152067, Key_152022);
 LA16: ;
 if (!LOC15) goto LA17;
-Result_151066 = T_151067;
+F.line = 78;F.filename = "ccgutils.nim";
+F.line = 78;F.filename = "ccgutils.nim";
+Result_152066 = T_152067;
 goto BeforeRet;
 LA17: ;
-Res_151130 += 1;
+F.line = 1014;F.filename = "system.nim";
+Res_152130 = addInt(Res_152130, 1);
 } LA13: ;
-Idtableput_53174(&Gtypetable_151024[(K_151068)-0], &Key_151022->Sup, &Key_151022->Sup.Sup);
+F.line = 79;F.filename = "ccgutils.nim";
+Idtableput_53174(&Gtypetable_152024[(K_152068)-0], &Key_152022->Sup, &Key_152022->Sup.Sup);
 break;
 }
 BeforeRet: ;
-return Result_151066;
+framePtr = framePtr->prev;
+return Result_152066;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_16992, NimStringDesc* Src_16993) {
-memcpy(((NCSTRING) (&(*Dest_16992).data[((*Dest_16992).Sup.len)-0])), ((NCSTRING) ((*Src_16993).data)), ((NI32) ((NI32)((NI32)((*Src_16993).Sup.len + 1) * 1))));
-(*Dest_16992).Sup.len += (*Src_16993).Sup.len;
-}
-N_NIMCALL(TY46008*, Makellvmstring_151013)(NimStringDesc* S_151015) {
-TY46008* Result_151224;
-NimStringDesc* Res_151226;
-NI I_151236;
-NI HEX3Atmp_151247;
-NI Res_151249;
-TY46008* LOC5;
-NimStringDesc* LOC6;
-TY46008* LOC7;
-Result_151224 = 0;
-Res_151226 = 0;
-Result_151224 = NIM_NIL;
-Res_151226 = copyString(((NimStringDesc*) &TMP191304));
-I_151236 = 0;
-HEX3Atmp_151247 = 0;
-HEX3Atmp_151247 = (NI32)((NI32)(S_151015->Sup.len + 0) - 1);
-Res_151249 = 0;
-Res_151249 = 0;
-while (1) {
-if (!(Res_151249 <= HEX3Atmp_151247)) goto LA1;
-I_151236 = Res_151249;
-if (!((NI32)((NI32)((NI32)(I_151236 - 0) + 1) % 64) == 0)) goto LA3;
-LOC5 = Torope_46046(Res_151226);
-App_46031(&Result_151224, LOC5);
-Res_151226 = setLengthStr(Res_151226, 0);
+N_NIMCALL(TNimObject*, Tablegettype_152016)(TY49561 Tab_152018, TY49549* Key_152019) {
+TNimObject* Result_152137;
+TY49549* T_152138;
+NIM_BOOL LOC2;
+NI H_152159;
+NI HEX3Atmp_152172;
+NI Res_152174;
+NIM_BOOL LOC11;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "TableGetType";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_152137 = 0;
+T_152138 = 0;
+F.line = 84;F.filename = "ccgutils.nim";
+Result_152137 = Idtableget_53166(Tab_152018, &Key_152019->Sup);
+F.line = 85;F.filename = "ccgutils.nim";
+LOC2 = (Result_152137 == NIM_NIL);
+if (!(LOC2)) goto LA3;
+LOC2 = (0 < Tab_152018.Counter);
 LA3: ;
-switch (((NU8)(S_151015->data[I_151236]))) {
-case 0 ... 31:
-case 128 ... 255:
-case 34:
-case 92:
-Res_151226 = addChar(Res_151226, 92);
-LOC6 = nsuToHex(((NI64) (((NU8)(S_151015->data[I_151236])))), 2);
-Res_151226 = resizeString(Res_151226, LOC6->Sup.len + 0);
-appendString(Res_151226, LOC6);
-break;
-default:
-Res_151226 = addChar(Res_151226, S_151015->data[I_151236]);
-break;
+if (!LOC2) goto LA4;
+H_152159 = 0;
+HEX3Atmp_152172 = 0;
+F.line = 88;F.filename = "ccgutils.nim";
+HEX3Atmp_152172 = (Tab_152018.Data->Sup.len-1);
+Res_152174 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_152174 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_152174 <= HEX3Atmp_152172)) goto LA6;
+F.line = 1011;F.filename = "system.nim";
+H_152159 = Res_152174;
+F.line = 89;F.filename = "ccgutils.nim";
+if ((NU)(H_152159) >= (NU)(Tab_152018.Data->Sup.len)) raiseIndexError();
+if (Tab_152018.Data->data[H_152159].Key) chckObj((*Tab_152018.Data->data[H_152159].Key).Sup.m_type, NTI49549);
+T_152138 = ((TY49549*) (Tab_152018.Data->data[H_152159].Key));
+F.line = 90;F.filename = "ccgutils.nim";
+if (!!((T_152138 == NIM_NIL))) goto LA8;
+F.line = 91;F.filename = "ccgutils.nim";
+LOC11 = Sametype_90048(T_152138, Key_152019);
+if (!LOC11) goto LA12;
+F.line = 92;F.filename = "ccgutils.nim";
+F.line = 92;F.filename = "ccgutils.nim";
+if ((NU)(H_152159) >= (NU)(Tab_152018.Data->Sup.len)) raiseIndexError();
+Result_152137 = Tab_152018.Data->data[H_152159].Val;
+goto BeforeRet;
+LA12: ;
+LA8: ;
+F.line = 1014;F.filename = "system.nim";
+Res_152174 = addInt(Res_152174, 1);
+} LA6: ;
+LA4: ;
+BeforeRet: ;
+framePtr = framePtr->prev;
+return Result_152137;
 }
-Res_151249 += 1;
-} LA1: ;
-Res_151226 = resizeString(Res_151226, 4);
-appendString(Res_151226, ((NimStringDesc*) &TMP191305));
-LOC7 = Torope_46046(Res_151226);
-App_46031(&Result_151224, LOC7);
-return Result_151224;
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendChar";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 154;F.filename = "sysstr.nim";
+(*Dest_17209).data[((*Dest_17209).Sup.len)-0] = C_17210;
+F.line = 155;F.filename = "sysstr.nim";
+(*Dest_17209).data[((NI32)((*Dest_17209).Sup.len + 1))-0] = 0;
+F.line = 156;F.filename = "sysstr.nim";
+(*Dest_17209).Sup.len += 1;
+framePtr = framePtr->prev;
 }
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17009, NIM_CHAR C_17010) {
-(*Dest_17009).data[((*Dest_17009).Sup.len)-0] = C_17010;
-(*Dest_17009).data[((NI32)((*Dest_17009).Sup.len + 1))-0] = 0;
-(*Dest_17009).Sup.len += 1;
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "appendString";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 150;F.filename = "sysstr.nim";
+memcpy(((NCSTRING) (&(*Dest_17192).data[((*Dest_17192).Sup.len)-0])), ((NCSTRING) ((*Src_17193).data)), ((NI32) ((NI32)((NI32)((*Src_17193).Sup.len + 1) * 1))));
+F.line = 151;F.filename = "sysstr.nim";
+(*Dest_17192).Sup.len += (*Src_17193).Sup.len;
+framePtr = framePtr->prev;
 }
-N_NIMCALL(NimStringDesc*, Tocchar_151007)(NIM_CHAR C_151009) {
-NimStringDesc* Result_151180;
+N_NIMCALL(NimStringDesc*, Tocchar_152007)(NIM_CHAR C_152009) {
+NimStringDesc* Result_152180;
 NimStringDesc* LOC1;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
-Result_151180 = 0;
-switch (((NU8)(C_151009))) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "toCChar";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_152180 = 0;
+F.line = 95;F.filename = "ccgutils.nim";
+switch (((NU8)(C_152009))) {
 case 0 ... 31:
 case 128 ... 255:
-LOC2 = nsuToOctal(C_151009);
+F.line = 96;F.filename = "ccgutils.nim";
+LOC1 = 0;
+LOC2 = 0;
+LOC2 = nsuToOctal(C_152009);
 LOC1 = rawNewString(LOC2->Sup.len + 1);
 appendChar(LOC1, 92);
 appendString(LOC1, LOC2);
-Result_151180 = LOC1;
+Result_152180 = LOC1;
 break;
 case 39:
 case 34:
 case 92:
+F.line = 97;F.filename = "ccgutils.nim";
+LOC3 = 0;
 LOC3 = rawNewString(2);
 appendChar(LOC3, 92);
-appendChar(LOC3, C_151009);
-Result_151180 = LOC3;
+appendChar(LOC3, C_152009);
+Result_152180 = LOC3;
 break;
 default:
-Result_151180 = nimCharToStr(C_151009);
+F.line = 98;F.filename = "ccgutils.nim";
+Result_152180 = nimCharToStr(C_152009);
 break;
 }
-return Result_151180;
+framePtr = framePtr->prev;
+return Result_152180;
 }
-N_NIMCALL(TY46008*, Makecstring_151010)(NimStringDesc* S_151012) {
-TY46008* Result_151198;
-NimStringDesc* Res_151200;
-NI I_151210;
-NI HEX3Atmp_151216;
-NI Res_151218;
+static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
+NIM_BOOL LOC2;
+Result_5805 = 0;
+Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
+LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_5805;
+}
+static N_INLINE(NI, modInt)(NI A_6403, NI B_6404) {
+NI Result_6405;
+Result_6405 = 0;
+if (!(B_6404 == 0)) goto LA2;
+raiseDivByZero();
+LA2: ;
+Result_6405 = (NI32)(A_6403 % B_6404);
+goto BeforeRet;
+BeforeRet: ;
+return Result_6405;
+}
+N_NIMCALL(TY46008*, Makecstring_152010)(NimStringDesc* S_152012) {
+TY46008* Result_152198;
+NimStringDesc* Res_152200;
+NI I_152210;
+NI HEX3Atmp_152216;
+NI Res_152218;
 TY46008* LOC5;
 NimStringDesc* LOC6;
 TY46008* LOC7;
-Result_151198 = 0;
-Res_151200 = 0;
-Result_151198 = NIM_NIL;
-Res_151200 = copyString(((NimStringDesc*) &TMP191307));
-I_151210 = 0;
-HEX3Atmp_151216 = 0;
-HEX3Atmp_151216 = (NI32)((NI32)(S_151012->Sup.len + 0) - 1);
-Res_151218 = 0;
-Res_151218 = 0;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "makeCString";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_152198 = 0;
+Res_152200 = 0;
+F.line = 107;F.filename = "ccgutils.nim";
+Result_152198 = NIM_NIL;
+F.line = 108;F.filename = "ccgutils.nim";
+Res_152200 = copyString(((NimStringDesc*) &TMP152221));
+I_152210 = 0;
+HEX3Atmp_152216 = 0;
+F.line = 109;F.filename = "ccgutils.nim";
+HEX3Atmp_152216 = subInt(addInt(S_152012->Sup.len, 0), 1);
+Res_152218 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_152218 = 0;
+F.line = 1012;F.filename = "system.nim";
 while (1) {
-if (!(Res_151218 <= HEX3Atmp_151216)) goto LA1;
-I_151210 = Res_151218;
-if (!((NI32)((NI32)((NI32)(I_151210 - 0) + 1) % 64) == 0)) goto LA3;
-Res_151200 = addChar(Res_151200, 34);
-Res_151200 = resizeString(Res_151200, 2);
-appendString(Res_151200, ((NimStringDesc*) &TMP191308));
-LOC5 = Torope_46046(Res_151200);
-App_46031(&Result_151198, LOC5);
-Res_151200 = setLengthStr(Res_151200, 1);
-Res_151200->data[0] = 34;
+if (!(Res_152218 <= HEX3Atmp_152216)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_152210 = Res_152218;
+F.line = 110;F.filename = "ccgutils.nim";
+if (!(modInt(addInt(subInt(I_152210, 0), 1), 64) == 0)) goto LA3;
+F.line = 111;F.filename = "ccgutils.nim";
+Res_152200 = addChar(Res_152200, 34);
+F.line = 112;F.filename = "ccgutils.nim";
+Res_152200 = resizeString(Res_152200, 2);
+appendString(Res_152200, ((NimStringDesc*) &TMP152222));
+F.line = 113;F.filename = "ccgutils.nim";
+LOC5 = 0;
+LOC5 = Torope_46046(Res_152200);
+App_46031(&Result_152198, LOC5);
+F.line = 114;F.filename = "ccgutils.nim";
+Res_152200 = setLengthStr(Res_152200, 1);
+F.line = 115;F.filename = "ccgutils.nim";
+if ((NU)(0) > (NU)(Res_152200->Sup.len)) raiseIndexError();
+Res_152200->data[0] = 34;
 LA3: ;
-LOC6 = Tocchar_151007(S_151012->data[I_151210]);
-Res_151200 = resizeString(Res_151200, LOC6->Sup.len + 0);
-appendString(Res_151200, LOC6);
-Res_151218 += 1;
+F.line = 116;F.filename = "ccgutils.nim";
+if ((NU)(I_152210) > (NU)(S_152012->Sup.len)) raiseIndexError();
+LOC6 = 0;
+LOC6 = Tocchar_152007(S_152012->data[I_152210]);
+Res_152200 = resizeString(Res_152200, LOC6->Sup.len + 0);
+appendString(Res_152200, LOC6);
+F.line = 1014;F.filename = "system.nim";
+Res_152218 = addInt(Res_152218, 1);
 } LA1: ;
-Res_151200 = addChar(Res_151200, 34);
-LOC7 = Torope_46046(Res_151200);
-App_46031(&Result_151198, LOC7);
-return Result_151198;
+F.line = 117;F.filename = "ccgutils.nim";
+Res_152200 = addChar(Res_152200, 34);
+F.line = 118;F.filename = "ccgutils.nim";
+LOC7 = 0;
+LOC7 = Torope_46046(Res_152200);
+App_46031(&Result_152198, LOC7);
+framePtr = framePtr->prev;
+return Result_152198;
+}
+N_NIMCALL(TY46008*, Makellvmstring_152013)(NimStringDesc* S_152015) {
+TY46008* Result_152226;
+NimStringDesc* Res_152228;
+NI I_152238;
+NI HEX3Atmp_152249;
+NI Res_152251;
+TY46008* LOC5;
+NimStringDesc* LOC6;
+TY46008* LOC7;
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "makeLLVMString";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+Result_152226 = 0;
+Res_152228 = 0;
+F.line = 124;F.filename = "ccgutils.nim";
+Result_152226 = NIM_NIL;
+F.line = 125;F.filename = "ccgutils.nim";
+Res_152228 = copyString(((NimStringDesc*) &TMP152254));
+I_152238 = 0;
+HEX3Atmp_152249 = 0;
+F.line = 126;F.filename = "ccgutils.nim";
+HEX3Atmp_152249 = subInt(addInt(S_152015->Sup.len, 0), 1);
+Res_152251 = 0;
+F.line = 1011;F.filename = "system.nim";
+Res_152251 = 0;
+F.line = 1012;F.filename = "system.nim";
+while (1) {
+if (!(Res_152251 <= HEX3Atmp_152249)) goto LA1;
+F.line = 1011;F.filename = "system.nim";
+I_152238 = Res_152251;
+F.line = 127;F.filename = "ccgutils.nim";
+if (!(modInt(addInt(subInt(I_152238, 0), 1), 64) == 0)) goto LA3;
+F.line = 128;F.filename = "ccgutils.nim";
+LOC5 = 0;
+LOC5 = Torope_46046(Res_152228);
+App_46031(&Result_152226, LOC5);
+F.line = 129;F.filename = "ccgutils.nim";
+Res_152228 = setLengthStr(Res_152228, 0);
+LA3: ;
+F.line = 130;F.filename = "ccgutils.nim";
+if ((NU)(I_152238) > (NU)(S_152015->Sup.len)) raiseIndexError();
+switch (((NU8)(S_152015->data[I_152238]))) {
+case 0 ... 31:
+case 128 ... 255:
+case 34:
+case 92:
+F.line = 132;F.filename = "ccgutils.nim";
+Res_152228 = addChar(Res_152228, 92);
+F.line = 133;F.filename = "ccgutils.nim";
+if ((NU)(I_152238) > (NU)(S_152015->Sup.len)) raiseIndexError();
+LOC6 = 0;
+LOC6 = nsuToHex(((NI64) (((NU8)(S_152015->data[I_152238])))), 2);
+Res_152228 = resizeString(Res_152228, LOC6->Sup.len + 0);
+appendString(Res_152228, LOC6);
+break;
+default:
+F.line = 134;F.filename = "ccgutils.nim";
+if ((NU)(I_152238) > (NU)(S_152015->Sup.len)) raiseIndexError();
+Res_152228 = addChar(Res_152228, S_152015->data[I_152238]);
+break;
+}
+F.line = 1014;F.filename = "system.nim";
+Res_152251 = addInt(Res_152251, 1);
+} LA1: ;
+F.line = 135;F.filename = "ccgutils.nim";
+Res_152228 = resizeString(Res_152228, 4);
+appendString(Res_152228, ((NimStringDesc*) &TMP152255));
+F.line = 136;F.filename = "ccgutils.nim";
+LOC7 = 0;
+LOC7 = Torope_46046(Res_152228);
+App_46031(&Result_152226, LOC7);
+framePtr = framePtr->prev;
+return Result_152226;
 }
 N_NOINLINE(void, ccgutilsInit)(void) {
-Inittypetables_151025();
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "ccgutils";
+F.prev = framePtr;
+F.filename = "rod/ccgutils.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+F.line = 138;F.filename = "ccgutils.nim";
+Inittypetables_152025();
+framePtr = framePtr->prev;
 }
 

@@ -35,5 +35,14 @@ typedef unsigned long long int NU;
 #include <netdb.h>
 #include <poll.h>
 N_NOINLINE(void, posixInit)(void) {
+volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
+} F;
+F.procname = "posix";
+F.prev = framePtr;
+F.filename = "/home/andreas/projects/nimrod/lib/posix/posix.nim";
+F.line = 0;
+framePtr = (TFrame*)&F;
+F.len = 0;
+framePtr = framePtr->prev;
 }
 
