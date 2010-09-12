@@ -12,7 +12,8 @@
 
 import 
   strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times, 
-  nversion, platform, math, msgs, os, condsyms, idents, rnimsyn, types
+  nversion, platform, math, msgs, os, condsyms, idents, rnimsyn, types,
+  commands
 
 proc getConstExpr*(m: PSym, n: PNode): PNode
   # evaluates the constant expression or returns nil if it is no constant
@@ -194,6 +195,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mArrToSeq: 
     result = copyTree(a)
     result.typ = n.typ
+  of mCompileOption:
+    result = newIntNodeT(Ord(commands.testCompileOption(getStr(a), n.info)), n)  
+  of mCompileOptionArg:
+    result = newIntNodeT(Ord(
+      testCompileOptionArg(getStr(a), getStr(b), n.info)), n)
   of mNewString, mExit, mInc, ast.mDec, mEcho, mAssert, mSwap, mAppendStrCh, 
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq, 
      mNLen..mNError, mEqRef: 

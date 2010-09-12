@@ -20,9 +20,6 @@ else:
   proc writeToStdErr(msg: CString) =
     discard MessageBoxA(0, msg, nil, 0)
 
-proc raiseException(e: ref E_Base, ename: CString) {.compilerproc.}
-proc reraiseException() {.compilerproc.}
-
 proc registerSignalHandler() {.compilerproc.}
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
@@ -34,20 +31,29 @@ type
   PSafePoint = ptr TSafePoint
   TSafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point ON THE STACK
-    exc: ref E_Base
     status: int
+    exc: ref E_Base  # XXX only needed for bootstrapping
     context: C_JmpBuf
 
 var
   excHandler {.compilerproc.}: PSafePoint = nil
     # list of exception handlers
     # a global variable for the root of all try blocks
+  currException: ref E_Base
 
-proc reraiseException() =
-  if excHandler == nil:
-    raise newException(ENoExceptionToReraise, "no exception to reraise")
-  else:
-    c_longjmp(excHandler.context, 1)
+proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = 
+  s.prev = excHandler
+  excHandler = s
+
+proc popSafePoint {.compilerRtl, inl.} =
+  excHandler = excHandler.prev
+
+proc pushCurrentException(e: ref E_Base) {.compilerRtl, inl.} = 
+  e.parent = currException
+  currException = e
+
+proc popCurrentException {.compilerRtl, inl.} =
+  currException = currException.parent
 
 type
   PFrame = ptr TFrame
@@ -114,13 +120,17 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     add(s, stackTraceNewLine)
 
 proc rawWriteStackTrace(s: var string) =
-  if framePtr == nil:
+  when compileOption("stacktrace") or compileOption("linetrace"):
+    if framePtr == nil:
+      add(s, "No stack traceback available")
+      add(s, stackTraceNewLine)
+    else:
+      add(s, "Traceback (most recent call last)")
+      add(s, stackTraceNewLine)
+      auxWriteStackTrace(framePtr, s)
+  else:
     add(s, "No stack traceback available")
     add(s, stackTraceNewLine)
-  else:
-    add(s, "Traceback (most recent call last)")
-    add(s, stackTraceNewLine)
-    auxWriteStackTrace(framePtr, s)
 
 proc quitOrDebug() {.inline.} =
   when not defined(endb):
@@ -128,11 +138,11 @@ proc quitOrDebug() {.inline.} =
   else:
     endbStep() # call the debugger
 
-proc raiseException(e: ref E_Base, ename: CString) =
+proc raiseException(e: ref E_Base, ename: CString) {.compilerRtl.} =
   GC_disable() # a bad thing is an error in the GC while raising an exception
   e.name = ename
   if excHandler != nil:
-    excHandler.exc = e
+    pushCurrentException(e)
     c_longjmp(excHandler.context, 1)
   else:
     if not isNil(buf):
@@ -151,6 +161,12 @@ proc raiseException(e: ref E_Base, ename: CString) =
       writeToStdErr(ename)
     quitOrDebug()
   GC_enable()
+
+proc reraiseException() {.compilerRtl.} =
+  if currException == nil:
+    raise newException(ENoExceptionToReraise, "no exception to reraise")
+  else:
+    raiseException(currException, currException.name)
 
 var
   gAssertionFailed: ref EAssertionFailed

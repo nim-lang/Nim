@@ -193,7 +193,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
         while true: 
           j = (j * 10) + Ord(frmt[i]) - ord('0')
           inc(i)
-          if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break 
+          if i >= length or not (frmt[i] in {'0'..'9'}): break 
         num = j
         if j > high(args) + 1: 
           internalError("ropes: invalid format string $" & $(j))

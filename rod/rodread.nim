@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,10 +10,8 @@
 # This module is responsible for loading of rod files.
 #
 #  Reading and writing binary files are really hard to debug. Therefore we use
-#  a special text format. ROD-files only describe the interface of a module.
-#  Thus they are smaller than the source files most of the time. Even if they
-#  are bigger, they are more efficient to process because symbols are only
-#  loaded on demand.
+#  a special text format. ROD-files are more efficient to process because
+#  symbols are only loaded on demand.
 #  It consists of:
 #
 #  - a header:
@@ -149,10 +147,10 @@ proc decodeBInt(r: PRodReader): biggestInt
 
 proc encode(s: string): PRope = 
   var res = ""
-  for i in countup(0, len(s) + 0 - 1): 
+  for i in countup(0, len(s) - 1): 
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(res, s[i])
-    else: res = res & '\\' & toHex(ord(s[i]), 2)
+    else: add(res, '\\' & toHex(ord(s[i]), 2))
   result = toRope(res)
 
 proc encodeIntAux(str: var string, x: BiggestInt) = 
@@ -191,9 +189,6 @@ proc decodeLineInfo(r: PRodReader, info: var TLineInfo) =
         info = newLineInfo(r.files[decodeInt(r)], info.line, info.col)
 
 proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode = 
-  var 
-    id: int
-    fl: string
   result = nil
   if r.s[r.pos] == '(': 
     inc(r.pos)
@@ -207,7 +202,7 @@ proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
       result.flags = cast[TNodeFlags](int32(decodeInt(r)))
     if r.s[r.pos] == '^': 
       inc(r.pos)
-      id = decodeInt(r)
+      var id = decodeInt(r)
       result.typ = rrGetType(r, id, result.info)
     case result.kind
     of nkCharLit..nkInt64Lit: 
@@ -217,7 +212,7 @@ proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
     of nkFloatLit..nkFloat64Lit: 
       if r.s[r.pos] == '!': 
         inc(r.pos)
-        fl = decode(r)
+        var fl = decode(r)
         result.floatVal = parseFloat(fl)
     of nkStrLit..nkTripleStrLit: 
       if r.s[r.pos] == '!': 
@@ -228,14 +223,14 @@ proc decodeNode(r: PRodReader, fInfo: TLineInfo): PNode =
     of nkIdent: 
       if r.s[r.pos] == '!': 
         inc(r.pos)
-        fl = decode(r)
+        var fl = decode(r)
         result.ident = getIdent(fl)
       else: 
         internalError(result.info, "decodeNode: nkIdent")
     of nkSym: 
       if r.s[r.pos] == '!': 
         inc(r.pos)
-        id = decodeInt(r)
+        var id = decodeInt(r)
         result.sym = rrGetSym(r, id, result.info)
       else: 
         internalError(result.info, "decodeNode: nkSym")
@@ -282,7 +277,6 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
     else: InternalError(info, "decodeLoc " & r.s[r.pos])
   
 proc decodeType(r: PRodReader, info: TLineInfo): PType = 
-  var d: int
   result = nil
   if r.s[r.pos] == '[': 
     inc(r.pos)
@@ -335,7 +329,7 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
       else: InternalError(info, "decodeType ^(" & r.s[r.pos])
       addSon(result, nil)
     else: 
-      d = decodeInt(r)
+      var d = decodeInt(r)
       addSon(result, rrGetType(r, d, info))
 
 proc decodeLib(r: PRodReader, info: TLineInfo): PLib = 
@@ -470,8 +464,8 @@ proc decode(r: PRodReader): string =
     of '\\': 
       inc(i, 3)
       var xi = 0
-      hexChar(r.s[i - 2], xi)
-      hexChar(r.s[i - 1], xi)
+      hexChar(r.s[i-2], xi)
+      hexChar(r.s[i-1], xi)
       add(result, chr(xi))
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': 
       add(result, r.s[i])
@@ -488,7 +482,7 @@ proc skipSection(r: PRodReader) =
     while true: 
       case r.s[r.pos]
       of '\x0A': inc(r.line)
-      of '(':  inc(c)
+      of '(': inc(c)
       of ')': 
         if c == 0: 
           inc(r.pos)
@@ -499,7 +493,7 @@ proc skipSection(r: PRodReader) =
       else: nil
       inc(r.pos)
   else: 
-    InternalError("skipSection " & $(r.line))
+    InternalError("skipSection " & $r.line)
   
 proc rdWord(r: PRodReader): string = 
   result = ""
@@ -530,18 +524,14 @@ proc processInterf(r: PRodReader, module: PSym) =
     IdTablePut(r.syms, s, s)
 
 proc processCompilerProcs(r: PRodReader, module: PSym) = 
-  var 
-    s: PSym
-    w: string
-    key: int
   if r.compilerProcsIdx == 0: InternalError("processCompilerProcs")
   r.pos = r.compilerProcsIdx
   while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
-    w = decode(r)
+    var w = decode(r)
     inc(r.pos)
-    key = decodeInt(r)
+    var key = decodeInt(r)
     inc(r.pos)                # #10
-    s = PSym(IdTableGet(r.syms, key))
+    var s = PSym(IdTableGet(r.syms, key))
     if s == nil: 
       s = newStub(r, w, key)
       s.owner = module
@@ -572,24 +562,25 @@ proc processIndex(r: PRodReader, idx: var TIndex) =
   
 proc processRodFile(r: PRodReader, crc: TCrc32) = 
   var 
-    section, w: string
+    w: string
     d, L, inclCrc: int
   while r.s[r.pos] != '\0': 
-    section = rdWord(r)
+    var section = rdWord(r)
     if r.reason != rrNone: 
       break                   # no need to process this file further
-    if section == "CRC": 
+    case section 
+    of "CRC": 
       inc(r.pos)              # skip ':'
       if int(crc) != decodeInt(r): r.reason = rrCrcChange
-    elif section == "ID": 
+    of "ID": 
       inc(r.pos)              # skip ':'
       r.moduleID = decodeInt(r)
       setID(r.moduleID)
-    elif section == "OPTIONS": 
+    of "OPTIONS": 
       inc(r.pos)              # skip ':'
       r.options = cast[TOptions](int32(decodeInt(r)))
       if options.gOptions != r.options: r.reason = rrOptions
-    elif section == "DEFINES": 
+    of "DEFINES": 
       inc(r.pos)              # skip ':'
       d = 0
       while r.s[r.pos] > '\x0A': 
@@ -599,7 +590,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
           r.reason = rrDefines #MessageOut('not defined, but should: ' + w);
         if r.s[r.pos] == ' ': inc(r.pos)
       if (d != countDefinedSymbols()): r.reason = rrDefines
-    elif section == "FILES": 
+    of "FILES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       L = 0
@@ -610,7 +601,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
         inc(r.line)
         inc(L)
       if r.s[r.pos] == ')': inc(r.pos)
-    elif section == "INCLUDES": 
+    of "INCLUDES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'): 
@@ -624,7 +615,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
           inc(r.pos)
           inc(r.line)
       if r.s[r.pos] == ')': inc(r.pos)
-    elif section == "DEPS": 
+    of "DEPS": 
       inc(r.pos)              # skip ':'
       L = 0
       while (r.s[r.pos] > '\x0A'): 
@@ -632,32 +623,32 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
         r.modDeps[L] = r.files[decodeInt(r)]
         inc(L)
         if r.s[r.pos] == ' ': inc(r.pos)
-    elif section == "INTERF": 
+    of "INTERF": 
       r.interfIdx = r.pos + 2
       skipSection(r)
-    elif section == "COMPILERPROCS": 
+    of "COMPILERPROCS": 
       r.compilerProcsIdx = r.pos + 2
       skipSection(r)
-    elif section == "INDEX": 
+    of "INDEX": 
       processIndex(r, r.index)
-    elif section == "IMPORTS": 
+    of "IMPORTS": 
       processIndex(r, r.imports)
-    elif section == "CONVERTERS": 
+    of "CONVERTERS": 
       r.convertersIdx = r.pos + 1
       skipSection(r)
-    elif section == "DATA": 
+    of "DATA": 
       r.dataIdx = r.pos + 2 # "(\10"
       # We do not read the DATA section here! We read the needed objects on
       # demand.
       skipSection(r)
-    elif section == "INIT": 
+    of "INIT": 
       r.initIdx = r.pos + 2   # "(\10"
       skipSection(r)
-    elif section == "CGEN": 
+    of "CGEN": 
       r.cgenIdx = r.pos + 2
       skipSection(r)
     else: 
-      MessageOut("skipping section: " & $(r.pos))
+      MessageOut("skipping section: " & $r.pos)
       skipSection(r)
     if r.s[r.pos] == '\x0A': 
       inc(r.pos)
@@ -686,7 +677,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
       inc(r.pos)
     if r.s[r.pos] == '\x0A': inc(r.pos)
     if version == FileVersion: 
-      # since ROD files are only for caching, no backwarts compability is
+      # since ROD files are only for caching, no backwarts compatibility is
       # needed
       processRodFile(r, crc)
     else: 
@@ -814,7 +805,8 @@ proc checkDep(filename: string): TReasonForRecompile =
         for i in countup(0, high(r.modDeps)): 
           res = checkDep(r.modDeps[i])
           if res != rrNone: 
-            result = rrModDeps #break // BUGFIX: cannot break here!
+            result = rrModDeps 
+            # we cannot break here, because of side-effects of `checkDep`
   else: 
     result = rrRodDoesNotExist
   if (result != rrNone) and (gVerbosity > 0): 

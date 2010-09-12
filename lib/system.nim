@@ -144,6 +144,7 @@ type
   E_Base* {.compilerproc.} = object of TObject ## base exception class;
                                                ## each exception has to
                                                ## inherit from `E_Base`.
+    parent: ref E_Base        ## parent exception (can be used as a stack)
     name: cstring             ## The exception's name is its Nimrod identifier.
                               ## This field is filled automatically in the
                               ## ``raise`` statement.
@@ -717,6 +718,22 @@ const
     ## a string that describes the application type. Possible values:
     ## "console", "gui", "lib".
   
+proc compileOption*(option: string): bool {.
+  magic: "CompileOption", noSideEffect.}
+  ## can be used to determine a on|off compile-time option. Example:
+  ##
+  ## .. code-block:: nimrod
+  ## when compileOption("floatchecks"): 
+  ##   echo "compiled with floating point NaN and Inf checks"
+  
+proc compileOption*(option, arg: string): bool {.
+  magic: "CompileOptionArg", noSideEffect.}
+  ## can be used to determine an enum compile-time option. Example:
+  ##
+  ## .. code-block:: nimrod
+  ## when compileOption("opt", "size") and compileOption("gc", "boehm"): 
+  ##   echo "compiled with optimization for size and uses Boehm's GC"
+  
 include "system/inclrtl"
 include "system/cgprocs"
 
@@ -961,14 +978,6 @@ proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
 
 #proc writeStackTrace() {.export: "writeStackTrace".}
 
-when not defined(NimrodVM):
-  proc getCurrentExceptionMsg*(): string {.exportc.}
-    ## retrieves the error message that was attached to the current
-    ## exception; if there is none, "" is returned.
-  
-  proc getCurrentException*(): ref E_Base
-    ## retrieves the current exception; if there is none, nil is returned.
-
 # new constants:
 const
   inf* {.magic: "Inf".} = 1.0 / 0.0
@@ -1167,15 +1176,6 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
-
-
-# ----------------- FPU ------------------------------------------------------
-
-#proc disableFPUExceptions*()
-# disables all floating point unit exceptions
-
-#proc enableFPUExceptions*()
-# enables all floating point unit exceptions
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -1577,14 +1577,15 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include "system/assign"
   include "system/repr"
 
-  # we have to implement it here after gentostr for the cstrToNimStrDummy proc
-  proc getCurrentExceptionMsg(): string =
-    if excHandler == nil: return ""
-    return $excHandler.exc.msg
+  proc getCurrentException*(): ref E_Base {.compilerRtl, inl.} =
+    ## retrieves the current exception; if there is none, nil is returned.
+    result = currException
 
-  proc getCurrentException(): ref E_Base = 
-    if excHandler != nil: 
-      result = excHandler.exc
+  proc getCurrentExceptionMsg*(): string {.inline.} =
+    ## retrieves the error message that was attached to the current
+    ## exception; if there is none, "" is returned.
+    var e = getCurrentException()
+    return if e == nil: "" else: e.msg
 
   {.push stack_trace: off.}
   when defined(endb):
@@ -1593,6 +1594,14 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   when defined(profiler):
     include "system/profiler"
   {.pop.} # stacktrace
+
+  proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+    ## can be used to mark a condition to be likely. This is a hint for the 
+    ## optimizer.
+  
+  proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+    ## can be used to mark a condition to be unlikely. This is a hint for the 
+    ## optimizer.
 
 elif defined(ecmaScript):
   include "system/ecmasys"
