@@ -32,7 +32,7 @@ case $uos in
   *darwin* ) 
     myos="macosx"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
-    if [ `sysctl hw |grep 64bit` = "hw.cpu64bit_capable: 1" ] ; then
+    if [ "`sysctl hw |grep 64bit`" = "hw.cpu64bit_capable: 1" ] ; then
       ucpu="amd64"
     fi
     ;;
