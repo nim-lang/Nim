@@ -14,16 +14,16 @@ typedef struct TY418 TY418;
 typedef struct TY416 TY416;
 typedef struct E_Base E_Base;
 typedef struct TNimObject TNimObject;
-typedef struct TY10402 TY10402;
-typedef struct TY7804 TY7804;
-typedef struct TY10790 TY10790;
-typedef struct TY10418 TY10418;
-typedef struct TY10414 TY10414;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
-typedef struct TY60027 TY60027;
-typedef struct TY60226 TY60226;
-typedef struct TY60323 TY60323;
+typedef struct TY10602 TY10602;
+typedef struct TY8004 TY8004;
+typedef struct TY10990 TY10990;
+typedef struct TY10618 TY10618;
+typedef struct TY10614 TY10614;
+typedef struct TY10610 TY10610;
+typedef struct TY10988 TY10988;
+typedef struct TY61027 TY61027;
+typedef struct TY61226 TY61226;
+typedef struct TY61323 TY61323;
 struct TGenericSeq {
 NI len;
 NI space;
@@ -67,23 +67,23 @@ struct TY418 {
 struct TY420 {
   TY418 Sup;
 };
-struct TY10402 {
+struct TY10602 {
 NI Refcount;
 TNimType* Typ;
 };
-typedef N_STDCALL_PTR(void, TY7816) (TY7804* L_7818);
-struct TY10418 {
+typedef N_STDCALL_PTR(void, TY8016) (TY8004* L_8018);
+struct TY10618 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY10602** D;
 };
-struct TY10414 {
+struct TY10614 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY10610* Head;
+TY10610** Data;
 };
-struct TY7804 {
+struct TY8004 {
 void* Debuginfo;
 NI32 Lockcount;
 NI32 Recursioncount;
@@ -91,7 +91,7 @@ NI Owningthread;
 NI Locksemaphore;
 NI32 Reserved;
 };
-struct TY10788 {
+struct TY10988 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -99,117 +99,117 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY7804 Cyclerootslock;
-TY7804 Zctlock;
-TY10788 Stat;
+struct TY10990 {
+TY10618 Zct;
+TY10618 Decstack;
+TY10614 Cycleroots;
+TY10618 Tempstack;
+TY8004 Cyclerootslock;
+TY8004 Zctlock;
+TY10988 Stat;
 };
-typedef N_STDCALL_PTR(void, TY7820) (TY7804* L_7822);
-typedef N_NIMCALL_PTR(void, TY60028) (TY60027* S_60029);
-typedef N_NIMCALL_PTR(NIM_BOOL, TY60032) (TY60027* S_60033);
-typedef N_NIMCALL_PTR(void, TY60036) (TY60027* S_60037, NI Pos_60038);
-typedef N_NIMCALL_PTR(NI, TY60041) (TY60027* S_60042);
-typedef N_NIMCALL_PTR(NI, TY60045) (TY60027* S_60046, void* Buffer_60047, NI Buflen_60048);
-typedef N_NIMCALL_PTR(void, TY60051) (TY60027* S_60052, void* Buffer_60053, NI Buflen_60054);
-struct TY60027 {
+typedef N_STDCALL_PTR(void, TY8020) (TY8004* L_8022);
+typedef N_NIMCALL_PTR(void, TY61028) (TY61027* S_61029);
+typedef N_NIMCALL_PTR(NIM_BOOL, TY61032) (TY61027* S_61033);
+typedef N_NIMCALL_PTR(void, TY61036) (TY61027* S_61037, NI Pos_61038);
+typedef N_NIMCALL_PTR(NI, TY61041) (TY61027* S_61042);
+typedef N_NIMCALL_PTR(NI, TY61045) (TY61027* S_61046, void* Buffer_61047, NI Buflen_61048);
+typedef N_NIMCALL_PTR(void, TY61051) (TY61027* S_61052, void* Buffer_61053, NI Buflen_61054);
+struct TY61027 {
   TNimObject Sup;
-TY60028 Close;
-TY60032 Atend;
-TY60036 Setposition;
-TY60041 Getposition;
-TY60045 Readdata;
-TY60051 Writedata;
+TY61028 Close;
+TY61032 Atend;
+TY61036 Setposition;
+TY61041 Getposition;
+TY61045 Readdata;
+TY61051 Writedata;
 };
-struct TY60226 {
-  TY60027 Sup;
+struct TY61226 {
+  TY61027 Sup;
 NimStringDesc* Data;
 NI Pos;
 };
-struct TY60323 {
-  TY60027 Sup;
+struct TY61323 {
+  TY61027 Sup;
 FILE* F;
 };
-typedef NI TY8414[16];
-struct TY10410 {
-TY10410* Next;
+typedef NI TY8614[16];
+struct TY10610 {
+TY10610* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-N_NIMCALL(TY420*, Neweio_60004)(NimStringDesc* Msg_60006);
-N_NIMCALL(void*, newObj)(TNimType* Typ_12107, NI Size_12108);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619);
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838);
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805);
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810);
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460);
-N_NOINLINE(void, Addzct_10825)(TY10418* S_10828, TY10402* C_10829);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
-N_NIMCALL(void, Write_60064)(TY60027* S_60066, NimStringDesc* X_60067);
-N_NIMCALL(NIM_CHAR, Readchar_60077)(TY60027* S_60079);
-N_NIMCALL(NIM_BOOL, Readbool_60082)(TY60027* S_60084);
-N_NIMCALL(NI8, Readint8_60099)(TY60027* S_60101);
-N_NIMCALL(NI16, Readint16_60116)(TY60027* S_60118);
-N_NIMCALL(NI32, Readint32_60133)(TY60027* S_60135);
-N_NIMCALL(NI64, Readint64_60150)(TY60027* S_60152);
-N_NIMCALL(NF32, Readfloat32_60167)(TY60027* S_60169);
-N_NIMCALL(NF64, Readfloat64_60184)(TY60027* S_60186);
-N_NIMCALL(NimStringDesc*, Readstr_60201)(TY60027* S_60203, NI Length_60204);
+N_NIMCALL(TY420*, Neweio_61004)(NimStringDesc* Msg_61006);
+N_NIMCALL(void*, newObj)(TNimType* Typ_12307, NI Size_12308);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819);
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038);
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660);
+N_NOINLINE(void, Addzct_11025)(TY10618* S_11028, TY10602* C_11029);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(void, Write_61064)(TY61027* S_61066, NimStringDesc* X_61067);
+N_NIMCALL(NIM_CHAR, Readchar_61077)(TY61027* S_61079);
+N_NIMCALL(NIM_BOOL, Readbool_61082)(TY61027* S_61084);
+N_NIMCALL(NI8, Readint8_61099)(TY61027* S_61101);
+N_NIMCALL(NI16, Readint16_61116)(TY61027* S_61118);
+N_NIMCALL(NI32, Readint32_61133)(TY61027* S_61135);
+N_NIMCALL(NI64, Readint64_61150)(TY61027* S_61152);
+N_NIMCALL(NF32, Readfloat32_61167)(TY61027* S_61169);
+N_NIMCALL(NF64, Readfloat64_61184)(TY61027* S_61186);
+N_NIMCALL(NimStringDesc*, Readstr_61201)(TY61027* S_61203, NI Length_61204);
 N_NIMCALL(NimStringDesc*, mnewString)(NI Len_1349);
 N_NOINLINE(void, raiseIndexError)(void);
-N_NIMCALL(NimStringDesc*, setLengthStr)(NimStringDesc* S_17225, NI Newlen_17226);
-N_NIMCALL(NimStringDesc*, Readline_60210)(TY60027* S_60212);
+N_NIMCALL(NimStringDesc*, setLengthStr)(NimStringDesc* S_17425, NI Newlen_17426);
+N_NIMCALL(NimStringDesc*, Readline_61210)(TY61027* S_61212);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-N_NIMCALL(NIM_BOOL, Ssatend_60229)(TY60226* S_60231);
-N_NIMCALL(void, Sssetposition_60237)(TY60226* S_60239, NI Pos_60240);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NIMCALL(NIM_BOOL, Ssatend_61229)(TY61226* S_61231);
+N_NIMCALL(void, Sssetposition_61237)(TY61226* S_61239, NI Pos_61240);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NOINLINE(void, raiseOverflow)(void);
-N_NIMCALL(NI, Ssgetposition_60245)(TY60226* S_60247);
-N_NIMCALL(NI, Ssreaddata_60249)(TY60226* S_60251, void* Buffer_60252, NI Buflen_60253);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
-N_NIMCALL(void, Sswritedata_60274)(TY60226* S_60276, void* Buffer_60277, NI Buflen_60278);
-N_NIMCALL(void, Ssclose_60296)(TY60226* S_60298);
-N_NIMCALL(TY60226*, Newstringstream_60299)(NimStringDesc* S_60301);
-N_NIMCALL(void, Fsclose_60325)(TY60323* S_60327);
-N_NIMCALL(NIM_BOOL, Fsatend_60328)(TY60323* S_60330);
-N_NIMCALL(NIM_BOOL, Endoffile_3438)(FILE* F_3440);
-N_NIMCALL(void, Fssetposition_60332)(TY60323* S_60334, NI Pos_60335);
-N_NIMCALL(void, Setfilepos_3538)(FILE* F_3540, NI64 Pos_3541);
-N_NIMCALL(NI, Fsgetposition_60336)(TY60323* S_60338);
-N_NIMCALL(NI64, Getfilepos_3542)(FILE* F_3544);
-N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
-N_NIMCALL(NI, Fsreaddata_60340)(TY60323* S_60342, void* Buffer_60343, NI Buflen_60344);
-N_NIMCALL(NI, Readbuffer_3514)(FILE* F_3516, void* Buffer_3517, NI Len_3518);
-N_NIMCALL(void, Fswritedata_60346)(TY60323* S_60348, void* Buffer_60349, NI Buflen_60350);
-N_NIMCALL(NI, Writebuffer_3533)(FILE* F_3535, void* Buffer_3536, NI Len_3537);
-N_NIMCALL(void, raiseException)(E_Base* E_5004, NCSTRING Ename_5005);
-N_NIMCALL(TY60323*, Newfilestream_60354)(FILE* F_60356);
-N_NIMCALL(TY60323*, Newfilestream_60373)(NimStringDesc* Filename_60375, NU8 Mode_60376);
-N_NIMCALL(NIM_BOOL, Open_3417)(FILE** F_3420, NimStringDesc* Filename_3421, NU8 Mode_3422, NI Bufsize_3423);
-N_NIMCALL(void, Read_60089)(TY60027* S_60092, NIM_BOOL* Result_60094);
-N_NIMCALL(void, Read_60106)(TY60027* S_60109, NI8* Result_60111);
-N_NIMCALL(void, Read_60123)(TY60027* S_60126, NI16* Result_60128);
-N_NIMCALL(void, Read_60140)(TY60027* S_60143, NI32* Result_60145);
-N_NIMCALL(void, Read_60157)(TY60027* S_60160, NI64* Result_60162);
-N_NIMCALL(void, Read_60174)(TY60027* S_60177, NF32* Result_60179);
-N_NIMCALL(void, Read_60191)(TY60027* S_60194, NF64* Result_60196);
-STRING_LITERAL(TMP60222, "", 0);
-STRING_LITERAL(TMP60353, "cannot write to stream", 22);
-STRING_LITERAL(TMP60401, "cannot read from stream", 23);
-extern TNimType* NTI4062; /* ref EIO */
+N_NIMCALL(NI, Ssgetposition_61245)(TY61226* S_61247);
+N_NIMCALL(NI, Ssreaddata_61249)(TY61226* S_61251, void* Buffer_61252, NI Buflen_61253);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
+N_NIMCALL(void, Sswritedata_61274)(TY61226* S_61276, void* Buffer_61277, NI Buflen_61278);
+N_NIMCALL(void, Ssclose_61296)(TY61226* S_61298);
+N_NIMCALL(TY61226*, Newstringstream_61299)(NimStringDesc* S_61301);
+N_NIMCALL(void, Fsclose_61325)(TY61323* S_61327);
+N_NIMCALL(NIM_BOOL, Fsatend_61328)(TY61323* S_61330);
+N_NIMCALL(NIM_BOOL, Endoffile_3638)(FILE* F_3640);
+N_NIMCALL(void, Fssetposition_61332)(TY61323* S_61334, NI Pos_61335);
+N_NIMCALL(void, Setfilepos_3738)(FILE* F_3740, NI64 Pos_3741);
+N_NIMCALL(NI, Fsgetposition_61336)(TY61323* S_61338);
+N_NIMCALL(NI64, Getfilepos_3742)(FILE* F_3744);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5523, NI64 A_5524, NI64 B_5525);
+N_NIMCALL(NI, Fsreaddata_61340)(TY61323* S_61342, void* Buffer_61343, NI Buflen_61344);
+N_NIMCALL(NI, Readbuffer_3714)(FILE* F_3716, void* Buffer_3717, NI Len_3718);
+N_NIMCALL(void, Fswritedata_61346)(TY61323* S_61348, void* Buffer_61349, NI Buflen_61350);
+N_NIMCALL(NI, Writebuffer_3733)(FILE* F_3735, void* Buffer_3736, NI Len_3737);
+N_NIMCALL(void, raiseException)(E_Base* E_5204, NCSTRING Ename_5205);
+N_NIMCALL(TY61323*, Newfilestream_61354)(FILE* F_61356);
+N_NIMCALL(TY61323*, Newfilestream_61373)(NimStringDesc* Filename_61375, NU8 Mode_61376);
+N_NIMCALL(NIM_BOOL, Open_3617)(FILE** F_3620, NimStringDesc* Filename_3621, NU8 Mode_3622, NI Bufsize_3623);
+N_NIMCALL(void, Read_61089)(TY61027* S_61092, NIM_BOOL* Result_61094);
+N_NIMCALL(void, Read_61106)(TY61027* S_61109, NI8* Result_61111);
+N_NIMCALL(void, Read_61123)(TY61027* S_61126, NI16* Result_61128);
+N_NIMCALL(void, Read_61140)(TY61027* S_61143, NI32* Result_61145);
+N_NIMCALL(void, Read_61157)(TY61027* S_61160, NI64* Result_61162);
+N_NIMCALL(void, Read_61174)(TY61027* S_61177, NF32* Result_61179);
+N_NIMCALL(void, Read_61191)(TY61027* S_61194, NF64* Result_61196);
+STRING_LITERAL(TMP61222, "", 0);
+STRING_LITERAL(TMP61353, "cannot write to stream", 22);
+STRING_LITERAL(TMP61401, "cannot read from stream", 23);
+extern TNimType* NTI4262; /* ref EIO */
 extern TNimType* NTI420; /* EIO */
-extern TY7816 Dl_7815;
-extern TY10790 Gch_10810;
-extern TY7820 Dl_7819;
-extern TNimType* NTI60224; /* PStringStream */
-extern TNimType* NTI60226; /* TStringStream */
-extern TNimType* NTI60321; /* PFileStream */
-extern TNimType* NTI60323; /* TFileStream */
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838) {
-TY10402* Result_10839;
+extern TY8016 Dl_8015;
+extern TY10990 Gch_11010;
+extern TY8020 Dl_8019;
+extern TNimType* NTI61224; /* PStringStream */
+extern TNimType* NTI61226; /* TStringStream */
+extern TNimType* NTI61321; /* PFileStream */
+extern TNimType* NTI61323; /* TFileStream */
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038) {
+TY10602* Result_11039;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "usrToCell";
@@ -218,14 +218,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_10839 = 0;
+Result_11039 = 0;
 F.line = 100;F.filename = "gc.nim";
-Result_10839 = ((TY10402*) ((NI32)((NU32)(((NI) (Usr_10838))) - (NU32)(((NI) (((NI)sizeof(TY10402))))))));
+Result_11039 = ((TY10602*) ((NI32)((NU32)(((NI) (Usr_11038))) - (NU32)(((NI) (((NI)sizeof(TY10602))))))));
 framePtr = framePtr->prev;
-return Result_10839;
+return Result_11039;
 }
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805) {
-NI Result_7208;
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+NI Result_7408;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicInc";
@@ -234,14 +234,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7208 = 0;
+Result_7408 = 0;
 F.line = 29;F.filename = "systhread.nim";
-Result_7208 = __sync_add_and_fetch(Memloc_2804, X_2805);
+Result_7408 = __sync_add_and_fetch(Memloc_3004, X_3005);
 framePtr = framePtr->prev;
-return Result_7208;
+return Result_7408;
 }
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810) {
-NI Result_7406;
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+NI Result_7606;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicDec";
@@ -250,13 +250,13 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7406 = 0;
+Result_7606 = 0;
 F.line = 37;F.filename = "systhread.nim";
-Result_7406 = __sync_sub_and_fetch(Memloc_2809, X_2810);
+Result_7606 = __sync_sub_and_fetch(Memloc_3009, X_3010);
 framePtr = framePtr->prev;
-return Result_7406;
+return Result_7606;
 }
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460) {
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "rtlAddZCT";
@@ -268,21 +268,21 @@ F.len = 0;
 F.line = 211;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA2;
 F.line = 211;F.filename = "gc.nim";
-Dl_7815(&Gch_10810.Zctlock);
+Dl_8015(&Gch_11010.Zctlock);
 LA2: ;
 F.line = 212;F.filename = "gc.nim";
-Addzct_10825(&Gch_10810.Zct, C_11460);
+Addzct_11025(&Gch_11010.Zct, C_11660);
 F.line = 213;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA5;
 F.line = 213;F.filename = "gc.nim";
-Dl_7819(&Gch_10810.Zctlock);
+Dl_8019(&Gch_11010.Zctlock);
 LA5: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619) {
-TY10402* C_11620;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819) {
+TY10602* C_11820;
 NI LOC4;
-TY10402* C_11622;
+TY10602* C_11822;
 NI LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -293,31 +293,31 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 244;F.filename = "gc.nim";
-if (!!((Src_11619 == NIM_NIL))) goto LA2;
-C_11620 = 0;
+if (!!((Src_11819 == NIM_NIL))) goto LA2;
+C_11820 = 0;
 F.line = 245;F.filename = "gc.nim";
-C_11620 = Usrtocell_10836(Src_11619);
+C_11820 = Usrtocell_11036(Src_11819);
 F.line = 246;F.filename = "gc.nim";
-LOC4 = Atomicinc_2801(&(*C_11620).Refcount, 8);
+LOC4 = Atomicinc_3001(&(*C_11820).Refcount, 8);
 LA2: ;
 F.line = 247;F.filename = "gc.nim";
-if (!!(((*Dest_11618) == NIM_NIL))) goto LA6;
-C_11622 = 0;
+if (!!(((*Dest_11818) == NIM_NIL))) goto LA6;
+C_11822 = 0;
 F.line = 248;F.filename = "gc.nim";
-C_11622 = Usrtocell_10836((*Dest_11618));
+C_11822 = Usrtocell_11036((*Dest_11818));
 F.line = 249;F.filename = "gc.nim";
-LOC9 = Atomicdec_2806(&(*C_11622).Refcount, 8);
+LOC9 = Atomicdec_3006(&(*C_11822).Refcount, 8);
 if (!((NU32)(LOC9) < (NU32)(8))) goto LA10;
 F.line = 250;F.filename = "gc.nim";
-Rtladdzct_11458(C_11622);
+Rtladdzct_11658(C_11822);
 LA10: ;
 LA6: ;
 F.line = 251;F.filename = "gc.nim";
-(*Dest_11618) = Src_11619;
+(*Dest_11818) = Src_11819;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY420*, Neweio_60004)(NimStringDesc* Msg_60006) {
-TY420* Result_60008;
+N_NIMCALL(TY420*, Neweio_61004)(NimStringDesc* Msg_61006) {
+TY420* Result_61008;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "newEIO";
@@ -326,16 +326,16 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60008 = 0;
+Result_61008 = 0;
 F.line = 16;F.filename = "streams.nim";
-Result_60008 = (TY420*) newObj(NTI4062, sizeof(TY420));
-(*Result_60008).Sup.Sup.Sup.Sup.m_type = NTI420;
+Result_61008 = (TY420*) newObj(NTI4262, sizeof(TY420));
+(*Result_61008).Sup.Sup.Sup.Sup.m_type = NTI420;
 F.line = 17;F.filename = "streams.nim";
-asgnRefNoCycle((void**) &(*Result_60008).Sup.Sup.Sup.message, copyString(Msg_60006));
+asgnRefNoCycle((void**) &(*Result_61008).Sup.Sup.Sup.message, copyString(Msg_61006));
 framePtr = framePtr->prev;
-return Result_60008;
+return Result_61008;
 }
-N_NIMCALL(void, Write_60064)(TY60027* S_60066, NimStringDesc* X_60067) {
+N_NIMCALL(void, Write_61064)(TY61027* S_61066, NimStringDesc* X_61067) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "write";
@@ -345,11 +345,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 42;F.filename = "streams.nim";
-(*S_60066).Writedata(S_60066, ((void*) (X_60067->data)), X_60067->Sup.len);
+(*S_61066).Writedata(S_61066, ((void*) (X_61067->data)), X_61067->Sup.len);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NIM_CHAR, Readchar_60077)(TY60027* S_60079) {
-NIM_CHAR Result_60080;
+N_NIMCALL(NIM_CHAR, Readchar_61077)(TY61027* S_61079) {
+NIM_CHAR Result_61080;
 NI LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -359,14 +359,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60080 = 0;
+Result_61080 = 0;
 F.line = 52;F.filename = "streams.nim";
-LOC1 = (*S_60079).Readdata(S_60079, ((void*) (&Result_60080)), 1);
+LOC1 = (*S_61079).Readdata(S_61079, ((void*) (&Result_61080)), 1);
 framePtr = framePtr->prev;
-return Result_60080;
+return Result_61080;
 }
-N_NIMCALL(NIM_BOOL, Readbool_60082)(TY60027* S_60084) {
-NIM_BOOL Result_60085;
+N_NIMCALL(NIM_BOOL, Readbool_61082)(TY61027* S_61084) {
+NIM_BOOL Result_61085;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readBool";
@@ -375,14 +375,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60085 = 0;
+Result_61085 = 0;
 F.line = 56;F.filename = "streams.nim";
-Read_60089(S_60084, &Result_60085);
+Read_61089(S_61084, &Result_61085);
 framePtr = framePtr->prev;
-return Result_60085;
+return Result_61085;
 }
-N_NIMCALL(NI8, Readint8_60099)(TY60027* S_60101) {
-NI8 Result_60102;
+N_NIMCALL(NI8, Readint8_61099)(TY61027* S_61101) {
+NI8 Result_61102;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readInt8";
@@ -391,14 +391,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60102 = 0;
+Result_61102 = 0;
 F.line = 60;F.filename = "streams.nim";
-Read_60106(S_60101, &Result_60102);
+Read_61106(S_61101, &Result_61102);
 framePtr = framePtr->prev;
-return Result_60102;
+return Result_61102;
 }
-N_NIMCALL(NI16, Readint16_60116)(TY60027* S_60118) {
-NI16 Result_60119;
+N_NIMCALL(NI16, Readint16_61116)(TY61027* S_61118) {
+NI16 Result_61119;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readInt16";
@@ -407,14 +407,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60119 = 0;
+Result_61119 = 0;
 F.line = 64;F.filename = "streams.nim";
-Read_60123(S_60118, &Result_60119);
+Read_61123(S_61118, &Result_61119);
 framePtr = framePtr->prev;
-return Result_60119;
+return Result_61119;
 }
-N_NIMCALL(NI32, Readint32_60133)(TY60027* S_60135) {
-NI32 Result_60136;
+N_NIMCALL(NI32, Readint32_61133)(TY61027* S_61135) {
+NI32 Result_61136;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readInt32";
@@ -423,14 +423,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60136 = 0;
+Result_61136 = 0;
 F.line = 68;F.filename = "streams.nim";
-Read_60140(S_60135, &Result_60136);
+Read_61140(S_61135, &Result_61136);
 framePtr = framePtr->prev;
-return Result_60136;
+return Result_61136;
 }
-N_NIMCALL(NI64, Readint64_60150)(TY60027* S_60152) {
-NI64 Result_60153;
+N_NIMCALL(NI64, Readint64_61150)(TY61027* S_61152) {
+NI64 Result_61153;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readInt64";
@@ -439,14 +439,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60153 = 0;
+Result_61153 = 0;
 F.line = 72;F.filename = "streams.nim";
-Read_60157(S_60152, &Result_60153);
+Read_61157(S_61152, &Result_61153);
 framePtr = framePtr->prev;
-return Result_60153;
+return Result_61153;
 }
-N_NIMCALL(NF32, Readfloat32_60167)(TY60027* S_60169) {
-NF32 Result_60170;
+N_NIMCALL(NF32, Readfloat32_61167)(TY61027* S_61169) {
+NF32 Result_61170;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readFloat32";
@@ -455,14 +455,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60170 = 0;
+Result_61170 = 0;
 F.line = 76;F.filename = "streams.nim";
-Read_60174(S_60169, &Result_60170);
+Read_61174(S_61169, &Result_61170);
 framePtr = framePtr->prev;
-return Result_60170;
+return Result_61170;
 }
-N_NIMCALL(NF64, Readfloat64_60184)(TY60027* S_60186) {
-NF64 Result_60187;
+N_NIMCALL(NF64, Readfloat64_61184)(TY61027* S_61186) {
+NF64 Result_61187;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readFloat64";
@@ -471,15 +471,15 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60187 = 0;
+Result_61187 = 0;
 F.line = 80;F.filename = "streams.nim";
-Read_60191(S_60186, &Result_60187);
+Read_61191(S_61186, &Result_61187);
 framePtr = framePtr->prev;
-return Result_60187;
+return Result_61187;
 }
-N_NIMCALL(NimStringDesc*, Readstr_60201)(TY60027* S_60203, NI Length_60204) {
-NimStringDesc* Result_60205;
-NI L_60207;
+N_NIMCALL(NimStringDesc*, Readstr_61201)(TY61027* S_61203, NI Length_61204) {
+NimStringDesc* Result_61205;
+NI L_61207;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "readStr";
@@ -488,25 +488,25 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60205 = 0;
+Result_61205 = 0;
 F.line = 85;F.filename = "streams.nim";
-Result_60205 = mnewString(Length_60204);
-L_60207 = 0;
+Result_61205 = mnewString(Length_61204);
+L_61207 = 0;
 F.line = 86;F.filename = "streams.nim";
-if ((NU)(0) > (NU)(Result_60205->Sup.len)) raiseIndexError();
-L_60207 = (*S_60203).Readdata(S_60203, ((void*) (&Result_60205->data[0])), Length_60204);
+if ((NU)(0) > (NU)(Result_61205->Sup.len)) raiseIndexError();
+L_61207 = (*S_61203).Readdata(S_61203, ((void*) (&Result_61205->data[0])), Length_61204);
 F.line = 87;F.filename = "streams.nim";
-if (!!((L_60207 == Length_60204))) goto LA2;
+if (!!((L_61207 == Length_61204))) goto LA2;
 F.line = 87;F.filename = "streams.nim";
-Result_60205 = setLengthStr(Result_60205, L_60207);
+Result_61205 = setLengthStr(Result_61205, L_61207);
 LA2: ;
 framePtr = framePtr->prev;
-return Result_60205;
+return Result_61205;
 }
-N_NIMCALL(NimStringDesc*, Readline_60210)(TY60027* S_60212) {
-NimStringDesc* Result_60213;
+N_NIMCALL(NimStringDesc*, Readline_61210)(TY61027* S_61212) {
+NimStringDesc* Result_61213;
 NIM_BOOL LOC2;
-NIM_CHAR C_60214;
+NIM_CHAR C_61214;
 NIM_BOOL LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -516,27 +516,27 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60213 = 0;
+Result_61213 = 0;
 F.line = 92;F.filename = "streams.nim";
-Result_60213 = copyString(((NimStringDesc*) &TMP60222));
+Result_61213 = copyString(((NimStringDesc*) &TMP61222));
 F.line = 93;F.filename = "streams.nim";
 while (1) {
-LOC2 = (*S_60212).Atend(S_60212);
+LOC2 = (*S_61212).Atend(S_61212);
 if (!!(LOC2)) goto LA1;
-C_60214 = 0;
+C_61214 = 0;
 F.line = 94;F.filename = "streams.nim";
-C_60214 = Readchar_60077(S_60212);
+C_61214 = Readchar_61077(S_61212);
 F.line = 95;F.filename = "streams.nim";
-if (!((NU8)(C_60214) == (NU8)(13))) goto LA4;
+if (!((NU8)(C_61214) == (NU8)(13))) goto LA4;
 F.line = 96;F.filename = "streams.nim";
-C_60214 = Readchar_60077(S_60212);
+C_61214 = Readchar_61077(S_61212);
 F.line = 97;F.filename = "streams.nim";
 goto LA1;
 goto LA3;
 LA4: ;
-LOC6 = ((NU8)(C_60214) == (NU8)(10));
+LOC6 = ((NU8)(C_61214) == (NU8)(10));
 if (LOC6) goto LA7;
-LOC6 = ((NU8)(C_60214) == (NU8)(0));
+LOC6 = ((NU8)(C_61214) == (NU8)(0));
 LA7: ;
 if (!LOC6) goto LA8;
 F.line = 98;F.filename = "streams.nim";
@@ -545,13 +545,13 @@ goto LA3;
 LA8: ;
 LA3: ;
 F.line = 99;F.filename = "streams.nim";
-Result_60213 = addChar(Result_60213, C_60214);
+Result_61213 = addChar(Result_61213, C_61214);
 } LA1: ;
 framePtr = framePtr->prev;
-return Result_60213;
+return Result_61213;
 }
-N_NIMCALL(NIM_BOOL, Ssatend_60229)(TY60226* S_60231) {
-NIM_BOOL Result_60232;
+N_NIMCALL(NIM_BOOL, Ssatend_61229)(TY61226* S_61231) {
+NIM_BOOL Result_61232;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssAtEnd";
@@ -560,32 +560,32 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60232 = 0;
+Result_61232 = 0;
 F.line = 108;F.filename = "streams.nim";
 F.line = 587;F.filename = "system.nim";
-Result_60232 = ((*S_60231).Data->Sup.len <= (*S_60231).Pos);
+Result_61232 = ((*S_61231).Data->Sup.len <= (*S_61231).Pos);
 goto BeforeRet;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_60232;
+return Result_61232;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
-NI Result_5805;
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
 NIM_BOOL LOC2;
-Result_5805 = 0;
-Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
-LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
+Result_6005 = 0;
+Result_6005 = (NI32)((NU32)(A_6003) - (NU32)(B_6004));
+LOC2 = (0 <= (NI32)(Result_6005 ^ A_6003));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LOC2 = (0 <= (NI32)(Result_6005 ^ (NI32)((NU32) ~(B_6004))));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5805;
+return Result_6005;
 }
-N_NIMCALL(void, Sssetposition_60237)(TY60226* S_60239, NI Pos_60240) {
+N_NIMCALL(void, Sssetposition_61237)(TY61226* S_61239, NI Pos_61240) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssSetPosition";
@@ -595,11 +595,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 111;F.filename = "streams.nim";
-(*S_60239).Pos = ((Pos_60240 <= subInt((*S_60239).Data->Sup.len, 1)) ? Pos_60240 : subInt((*S_60239).Data->Sup.len, 1));
+(*S_61239).Pos = ((Pos_61240 <= subInt((*S_61239).Data->Sup.len, 1)) ? Pos_61240 : subInt((*S_61239).Data->Sup.len, 1));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NI, Ssgetposition_60245)(TY60226* S_60247) {
-NI Result_60248;
+N_NIMCALL(NI, Ssgetposition_61245)(TY61226* S_61247) {
+NI Result_61248;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssGetPosition";
@@ -608,33 +608,33 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60248 = 0;
+Result_61248 = 0;
 F.line = 114;F.filename = "streams.nim";
 F.line = 114;F.filename = "streams.nim";
-Result_60248 = (*S_60247).Pos;
+Result_61248 = (*S_61247).Pos;
 goto BeforeRet;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_60248;
+return Result_61248;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
+LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
-N_NIMCALL(NI, Ssreaddata_60249)(TY60226* S_60251, void* Buffer_60252, NI Buflen_60253) {
-NI Result_60254;
+N_NIMCALL(NI, Ssreaddata_61249)(TY61226* S_61251, void* Buffer_61252, NI Buflen_61253) {
+NI Result_61254;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssReadData";
@@ -643,21 +643,21 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60254 = 0;
+Result_61254 = 0;
 F.line = 117;F.filename = "streams.nim";
-Result_60254 = ((Buflen_60253 <= subInt((*S_60251).Data->Sup.len, (*S_60251).Pos)) ? Buflen_60253 : subInt((*S_60251).Data->Sup.len, (*S_60251).Pos));
+Result_61254 = ((Buflen_61253 <= subInt((*S_61251).Data->Sup.len, (*S_61251).Pos)) ? Buflen_61253 : subInt((*S_61251).Data->Sup.len, (*S_61251).Pos));
 F.line = 118;F.filename = "streams.nim";
-if (!(0 < Result_60254)) goto LA2;
+if (!(0 < Result_61254)) goto LA2;
 F.line = 119;F.filename = "streams.nim";
-if ((NU)((*S_60251).Pos) > (NU)((*S_60251).Data->Sup.len)) raiseIndexError();
-memcpy(Buffer_60252, ((void*) (&(*S_60251).Data->data[(*S_60251).Pos])), Result_60254);
+if ((NU)((*S_61251).Pos) > (NU)((*S_61251).Data->Sup.len)) raiseIndexError();
+memcpy(Buffer_61252, ((void*) (&(*S_61251).Data->data[(*S_61251).Pos])), Result_61254);
 F.line = 120;F.filename = "streams.nim";
-(*S_60251).Pos = addInt((*S_60251).Pos, Result_60254);
+(*S_61251).Pos = addInt((*S_61251).Pos, Result_61254);
 LA2: ;
 framePtr = framePtr->prev;
-return Result_60254;
+return Result_61254;
 }
-N_NIMCALL(void, Sswritedata_60274)(TY60226* S_60276, void* Buffer_60277, NI Buflen_60278) {
+N_NIMCALL(void, Sswritedata_61274)(TY61226* S_61276, void* Buffer_61277, NI Buflen_61278) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssWriteData";
@@ -667,18 +667,18 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 123;F.filename = "streams.nim";
-if (!(0 < Buflen_60278)) goto LA2;
+if (!(0 < Buflen_61278)) goto LA2;
 F.line = 124;F.filename = "streams.nim";
-(*S_60276).Data = setLengthStr((*S_60276).Data, addInt((*S_60276).Data->Sup.len, Buflen_60278));
+(*S_61276).Data = setLengthStr((*S_61276).Data, addInt((*S_61276).Data->Sup.len, Buflen_61278));
 F.line = 125;F.filename = "streams.nim";
-if ((NU)((*S_60276).Pos) > (NU)((*S_60276).Data->Sup.len)) raiseIndexError();
-memcpy(((void*) (&(*S_60276).Data->data[(*S_60276).Pos])), Buffer_60277, Buflen_60278);
+if ((NU)((*S_61276).Pos) > (NU)((*S_61276).Data->Sup.len)) raiseIndexError();
+memcpy(((void*) (&(*S_61276).Data->data[(*S_61276).Pos])), Buffer_61277, Buflen_61278);
 F.line = 126;F.filename = "streams.nim";
-(*S_60276).Pos = addInt((*S_60276).Pos, Buflen_60278);
+(*S_61276).Pos = addInt((*S_61276).Pos, Buflen_61278);
 LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Ssclose_60296)(TY60226* S_60298) {
+N_NIMCALL(void, Ssclose_61296)(TY61226* S_61298) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ssClose";
@@ -688,11 +688,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 129;F.filename = "streams.nim";
-asgnRefNoCycle((void**) &(*S_60298).Data, copyString(NIM_NIL));
+asgnRefNoCycle((void**) &(*S_61298).Data, copyString(NIM_NIL));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY60226*, Newstringstream_60299)(NimStringDesc* S_60301) {
-TY60226* Result_60302;
+N_NIMCALL(TY61226*, Newstringstream_61299)(NimStringDesc* S_61301) {
+TY61226* Result_61302;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "newStringStream";
@@ -701,30 +701,30 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60302 = 0;
+Result_61302 = 0;
 F.line = 133;F.filename = "streams.nim";
-Result_60302 = (TY60226*) newObj(NTI60224, sizeof(TY60226));
-(*Result_60302).Sup.Sup.m_type = NTI60226;
+Result_61302 = (TY61226*) newObj(NTI61224, sizeof(TY61226));
+(*Result_61302).Sup.Sup.m_type = NTI61226;
 F.line = 134;F.filename = "streams.nim";
-asgnRefNoCycle((void**) &(*Result_60302).Data, copyString(S_60301));
+asgnRefNoCycle((void**) &(*Result_61302).Data, copyString(S_61301));
 F.line = 135;F.filename = "streams.nim";
-(*Result_60302).Pos = 0;
+(*Result_61302).Pos = 0;
 F.line = 136;F.filename = "streams.nim";
-(*Result_60302).Sup.Close = ((TY60028) (Ssclose_60296));
+(*Result_61302).Sup.Close = ((TY61028) (Ssclose_61296));
 F.line = 137;F.filename = "streams.nim";
-(*Result_60302).Sup.Atend = ((TY60032) (Ssatend_60229));
+(*Result_61302).Sup.Atend = ((TY61032) (Ssatend_61229));
 F.line = 138;F.filename = "streams.nim";
-(*Result_60302).Sup.Setposition = ((TY60036) (Sssetposition_60237));
+(*Result_61302).Sup.Setposition = ((TY61036) (Sssetposition_61237));
 F.line = 139;F.filename = "streams.nim";
-(*Result_60302).Sup.Getposition = ((TY60041) (Ssgetposition_60245));
+(*Result_61302).Sup.Getposition = ((TY61041) (Ssgetposition_61245));
 F.line = 140;F.filename = "streams.nim";
-(*Result_60302).Sup.Readdata = ((TY60045) (Ssreaddata_60249));
+(*Result_61302).Sup.Readdata = ((TY61045) (Ssreaddata_61249));
 F.line = 141;F.filename = "streams.nim";
-(*Result_60302).Sup.Writedata = ((TY60051) (Sswritedata_60274));
+(*Result_61302).Sup.Writedata = ((TY61051) (Sswritedata_61274));
 framePtr = framePtr->prev;
-return Result_60302;
+return Result_61302;
 }
-N_NIMCALL(void, Fsclose_60325)(TY60323* S_60327) {
+N_NIMCALL(void, Fsclose_61325)(TY61323* S_61327) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "fsClose";
@@ -734,11 +734,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 148;F.filename = "streams.nim";
-fclose((*S_60327).F);
+fclose((*S_61327).F);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NIM_BOOL, Fsatend_60328)(TY60323* S_60330) {
-NIM_BOOL Result_60331;
+N_NIMCALL(NIM_BOOL, Fsatend_61328)(TY61323* S_61330) {
+NIM_BOOL Result_61331;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "fsAtEnd";
@@ -747,16 +747,16 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60331 = 0;
+Result_61331 = 0;
 F.line = 149;F.filename = "streams.nim";
 F.line = 149;F.filename = "streams.nim";
-Result_60331 = Endoffile_3438((*S_60330).F);
+Result_61331 = Endoffile_3638((*S_61330).F);
 goto BeforeRet;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_60331;
+return Result_61331;
 }
-N_NIMCALL(void, Fssetposition_60332)(TY60323* S_60334, NI Pos_60335) {
+N_NIMCALL(void, Fssetposition_61332)(TY61323* S_61334, NI Pos_61335) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "fsSetPosition";
@@ -766,11 +766,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "streams.nim";
-Setfilepos_3538((*S_60334).F, ((NI64) (Pos_60335)));
+Setfilepos_3738((*S_61334).F, ((NI64) (Pos_61335)));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NI, Fsgetposition_60336)(TY60323* S_60338) {
-NI Result_60339;
+N_NIMCALL(NI, Fsgetposition_61336)(TY61323* S_61338) {
+NI Result_61339;
 NI64 LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -780,18 +780,18 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60339 = 0;
+Result_61339 = 0;
 F.line = 151;F.filename = "streams.nim";
 F.line = 151;F.filename = "streams.nim";
-LOC1 = Getfilepos_3542((*S_60338).F);
-Result_60339 = ((NI)chckRange64(LOC1, (-2147483647 -1), 2147483647));
+LOC1 = Getfilepos_3742((*S_61338).F);
+Result_61339 = ((NI)chckRange64(LOC1, (-2147483647 -1), 2147483647));
 goto BeforeRet;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_60339;
+return Result_61339;
 }
-N_NIMCALL(NI, Fsreaddata_60340)(TY60323* S_60342, void* Buffer_60343, NI Buflen_60344) {
-NI Result_60345;
+N_NIMCALL(NI, Fsreaddata_61340)(TY61323* S_61342, void* Buffer_61343, NI Buflen_61344) {
+NI Result_61345;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "fsReadData";
@@ -800,13 +800,13 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60345 = 0;
+Result_61345 = 0;
 F.line = 154;F.filename = "streams.nim";
-Result_60345 = Readbuffer_3514((*S_60342).F, Buffer_60343, Buflen_60344);
+Result_61345 = Readbuffer_3714((*S_61342).F, Buffer_61343, Buflen_61344);
 framePtr = framePtr->prev;
-return Result_60345;
+return Result_61345;
 }
-N_NIMCALL(void, Fswritedata_60346)(TY60323* S_60348, void* Buffer_60349, NI Buflen_60350) {
+N_NIMCALL(void, Fswritedata_61346)(TY61323* S_61348, void* Buffer_61349, NI Buflen_61350) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -818,17 +818,17 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 157;F.filename = "streams.nim";
-LOC2 = Writebuffer_3533((*S_60348).F, Buffer_60349, Buflen_60350);
-if (!!((LOC2 == Buflen_60350))) goto LA3;
+LOC2 = Writebuffer_3733((*S_61348).F, Buffer_61349, Buflen_61350);
+if (!!((LOC2 == Buflen_61350))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60353));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61353));
 F.line = 158;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY60323*, Newfilestream_60354)(FILE* F_60356) {
-TY60323* Result_60357;
+N_NIMCALL(TY61323*, Newfilestream_61354)(FILE* F_61356) {
+TY61323* Result_61357;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "newFileStream";
@@ -837,30 +837,30 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60357 = 0;
+Result_61357 = 0;
 F.line = 162;F.filename = "streams.nim";
-Result_60357 = (TY60323*) newObj(NTI60321, sizeof(TY60323));
-(*Result_60357).Sup.Sup.m_type = NTI60323;
+Result_61357 = (TY61323*) newObj(NTI61321, sizeof(TY61323));
+(*Result_61357).Sup.Sup.m_type = NTI61323;
 F.line = 163;F.filename = "streams.nim";
-(*Result_60357).F = F_60356;
+(*Result_61357).F = F_61356;
 F.line = 164;F.filename = "streams.nim";
-(*Result_60357).Sup.Close = ((TY60028) (Fsclose_60325));
+(*Result_61357).Sup.Close = ((TY61028) (Fsclose_61325));
 F.line = 165;F.filename = "streams.nim";
-(*Result_60357).Sup.Atend = ((TY60032) (Fsatend_60328));
+(*Result_61357).Sup.Atend = ((TY61032) (Fsatend_61328));
 F.line = 166;F.filename = "streams.nim";
-(*Result_60357).Sup.Setposition = ((TY60036) (Fssetposition_60332));
+(*Result_61357).Sup.Setposition = ((TY61036) (Fssetposition_61332));
 F.line = 167;F.filename = "streams.nim";
-(*Result_60357).Sup.Getposition = ((TY60041) (Fsgetposition_60336));
+(*Result_61357).Sup.Getposition = ((TY61041) (Fsgetposition_61336));
 F.line = 168;F.filename = "streams.nim";
-(*Result_60357).Sup.Readdata = ((TY60045) (Fsreaddata_60340));
+(*Result_61357).Sup.Readdata = ((TY61045) (Fsreaddata_61340));
 F.line = 169;F.filename = "streams.nim";
-(*Result_60357).Sup.Writedata = ((TY60051) (Fswritedata_60346));
+(*Result_61357).Sup.Writedata = ((TY61051) (Fswritedata_61346));
 framePtr = framePtr->prev;
-return Result_60357;
+return Result_61357;
 }
-N_NIMCALL(TY60323*, Newfilestream_60373)(NimStringDesc* Filename_60375, NU8 Mode_60376) {
-TY60323* Result_60377;
-FILE* F_60378;
+N_NIMCALL(TY61323*, Newfilestream_61373)(NimStringDesc* Filename_61375, NU8 Mode_61376) {
+TY61323* Result_61377;
+FILE* F_61378;
 NIM_BOOL LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -870,18 +870,18 @@ F.filename = "/home/andreas/projects/nimrod/lib/pure/streams.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_60377 = 0;
-F_60378 = 0;
+Result_61377 = 0;
+F_61378 = 0;
 F.line = 175;F.filename = "streams.nim";
-LOC2 = Open_3417(&F_60378, Filename_60375, Mode_60376, -1);
+LOC2 = Open_3617(&F_61378, Filename_61375, Mode_61376, -1);
 if (!LOC2) goto LA3;
 F.line = 175;F.filename = "streams.nim";
-Result_60377 = Newfilestream_60354(F_60378);
+Result_61377 = Newfilestream_61354(F_61378);
 LA3: ;
 framePtr = framePtr->prev;
-return Result_60377;
+return Result_61377;
 }
-N_NIMCALL(void, Read_60089)(TY60027* S_60092, NIM_BOOL* Result_60094) {
+N_NIMCALL(void, Read_61089)(TY61027* S_61092, NIM_BOOL* Result_61094) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -893,16 +893,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60092).Readdata(S_60092, ((void*) (Result_60094)), 1);
+LOC2 = (*S_61092).Readdata(S_61092, ((void*) (Result_61094)), 1);
 if (!!((LOC2 == 1))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60106)(TY60027* S_60109, NI8* Result_60111) {
+N_NIMCALL(void, Read_61106)(TY61027* S_61109, NI8* Result_61111) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -914,16 +914,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60109).Readdata(S_60109, ((void*) (Result_60111)), 1);
+LOC2 = (*S_61109).Readdata(S_61109, ((void*) (Result_61111)), 1);
 if (!!((LOC2 == 1))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60123)(TY60027* S_60126, NI16* Result_60128) {
+N_NIMCALL(void, Read_61123)(TY61027* S_61126, NI16* Result_61128) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -935,16 +935,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60126).Readdata(S_60126, ((void*) (Result_60128)), 2);
+LOC2 = (*S_61126).Readdata(S_61126, ((void*) (Result_61128)), 2);
 if (!!((LOC2 == 2))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60140)(TY60027* S_60143, NI32* Result_60145) {
+N_NIMCALL(void, Read_61140)(TY61027* S_61143, NI32* Result_61145) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -956,16 +956,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60143).Readdata(S_60143, ((void*) (Result_60145)), 4);
+LOC2 = (*S_61143).Readdata(S_61143, ((void*) (Result_61145)), 4);
 if (!!((LOC2 == 4))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60157)(TY60027* S_60160, NI64* Result_60162) {
+N_NIMCALL(void, Read_61157)(TY61027* S_61160, NI64* Result_61162) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -977,16 +977,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60160).Readdata(S_60160, ((void*) (Result_60162)), 8);
+LOC2 = (*S_61160).Readdata(S_61160, ((void*) (Result_61162)), 8);
 if (!!((LOC2 == 8))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60174)(TY60027* S_60177, NF32* Result_60179) {
+N_NIMCALL(void, Read_61174)(TY61027* S_61177, NF32* Result_61179) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -998,16 +998,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60177).Readdata(S_60177, ((void*) (Result_60179)), 4);
+LOC2 = (*S_61177).Readdata(S_61177, ((void*) (Result_61179)), 4);
 if (!!((LOC2 == 4))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Read_60191)(TY60027* S_60194, NF64* Result_60196) {
+N_NIMCALL(void, Read_61191)(TY61027* S_61194, NF64* Result_61196) {
 NI LOC2;
 TY420* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -1019,10 +1019,10 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 46;F.filename = "streams.nim";
-LOC2 = (*S_60194).Readdata(S_60194, ((void*) (Result_60196)), 8);
+LOC2 = (*S_61194).Readdata(S_61194, ((void*) (Result_61196)), 8);
 if (!!((LOC2 == 8))) goto LA3;
 LOC5 = 0;
-LOC5 = Neweio_60004(((NimStringDesc*) &TMP60401));
+LOC5 = Neweio_61004(((NimStringDesc*) &TMP61401));
 F.line = 47;F.filename = "streams.nim";
 raiseException((E_Base*)LOC5, "EIO");
 LA3: ;

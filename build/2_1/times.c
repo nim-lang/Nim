@@ -58,41 +58,41 @@ TY239 data;
 N_NIMCALL(NIM_BOOL, ntLtTime)(NI A_27639, NI B_27640);
 N_NIMCALL(NIM_BOOL, ntLeTime)(NI A_27646, NI B_27647);
 N_NIMCALL(TY27602, Tmtotimeinfo_27843)(struct tm* Tm_27845);
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412);
-N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5418);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NOINLINE(void, raiseIndexError)(void);
 N_NIMCALL(struct tm, Timeinfototm_27852)(TY27602* T_27854);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NIMCALL(NI64, ntDiffTime)(NI A_27635, NI B_27636);
 N_NIMCALL(NI, Getstartmilsecs_27651)(void);
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204);
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404);
 N_NOINLINE(void, raiseDivByZero)(void);
 N_NIMCALL(NI, Gettime_27616)(void);
 N_NIMCALL(TY27602, Getlocaltime_27618)(NI T_27620);
 N_NIMCALL(TY27602, Getgmtime_27621)(NI T_27623);
 N_NIMCALL(NI, Timeinfototime_27624)(TY27602* Timeinfo_27626);
 N_NIMCALL(NimStringDesc*, Tostringtillnl_28421)(NCSTRING P_28423);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17508);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
 N_NIMCALL(NimStringDesc*, HEX24_27627)(TY27602* Timeinfo_27629);
 N_NIMCALL(NimStringDesc*, HEX24_27630)(NI Time_27632);
 N_NIMCALL(NI64, Unixtimetowintime_28457)(NI T_28459);
-N_NIMCALL(NI64, mulInt64)(NI64 A_5579, NI64 B_5580);
-static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530);
+N_NIMCALL(NI64, mulInt64)(NI64 A_5779, NI64 B_5780);
+static N_INLINE(NI64, addInt64)(NI64 A_5729, NI64 B_5730);
 N_NIMCALL(NI, Wintimetounixtime_28461)(NI64 T_28463);
-static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539);
-static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562);
-N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
+static N_INLINE(NI64, subInt64)(NI64 A_5738, NI64 B_5739);
+static N_INLINE(NI64, divInt64)(NI64 A_5761, NI64 B_5762);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5523, NI64 A_5524, NI64 B_5525);
 N_NIMCALL(NF, ntepochTime)(void);
 N_NIMCALL(NF, ntcpuTime)(void);
 N_NIMCALL(NimStringDesc*, ntgetDateStr)(void);
-N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_18003);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410);
+N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_18203);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593);
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17609, NIM_CHAR C_17610);
 N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_24471, NI Minchars_24472);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17287);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17487);
 N_NIMCALL(NimStringDesc*, ntgetClockStr)(void);
 NIM_CONST TY27848 Weekdays_27847 = {((NU8) 6),
 ((NU8) 0),
@@ -150,39 +150,39 @@ Result_27648 = (LOC1 <= 0);
 framePtr = framePtr->prev;
 return Result_27648;
 }
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412) {
-NI Result_5316;
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5516;
 NIM_BOOL LOC2;
-Result_5316 = 0;
-LOC2 = (A_4411 <= I_4410);
+Result_5516 = 0;
+LOC2 = (A_4611 <= I_4610);
 if (!(LOC2)) goto LA3;
-LOC2 = (I_4410 <= B_4412);
+LOC2 = (I_4610 <= B_4612);
 LA3: ;
 if (!LOC2) goto LA4;
-Result_5316 = I_4410;
+Result_5516 = I_4610;
 goto BeforeRet;
 goto LA1;
 LA4: ;
-raiseRangeError(((NI64) (I_4410)));
+raiseRangeError(((NI64) (I_4610)));
 LA1: ;
 BeforeRet: ;
-return Result_5316;
+return Result_5516;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
+LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
 N_NIMCALL(TY27602, Tmtotimeinfo_27843)(struct tm* Tm_27845) {
 TY27602 Result_27846;
@@ -216,21 +216,21 @@ Result_27846.Yearday = ((NI) (((NI) ((*Tm_27845).tm_yday))));
 framePtr = framePtr->prev;
 return Result_27846;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
-NI Result_5805;
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
 NIM_BOOL LOC2;
-Result_5805 = 0;
-Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
-LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
+Result_6005 = 0;
+Result_6005 = (NI32)((NU32)(A_6003) - (NU32)(B_6004));
+LOC2 = (0 <= (NI32)(Result_6005 ^ A_6003));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LOC2 = (0 <= (NI32)(Result_6005 ^ (NI32)((NU32) ~(B_6004))));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5805;
+return Result_6005;
 }
 N_NIMCALL(struct tm, Timeinfototm_27852)(TY27602* T_27854) {
 struct tm Result_27855;
@@ -285,24 +285,24 @@ BeforeRet: ;
 framePtr = framePtr->prev;
 return Result_27869;
 }
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204) {
-NI Result_6205;
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404) {
+NI Result_6405;
 NIM_BOOL LOC5;
-Result_6205 = 0;
-if (!(B_6204 == 0)) goto LA2;
+Result_6405 = 0;
+if (!(B_6404 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-LOC5 = (A_6203 == (-2147483647 -1));
+LOC5 = (A_6403 == (-2147483647 -1));
 if (!(LOC5)) goto LA6;
-LOC5 = (B_6204 == -1);
+LOC5 = (B_6404 == -1);
 LA6: ;
 if (!LOC5) goto LA7;
 raiseOverflow();
 LA7: ;
-Result_6205 = (NI32)(A_6203 / B_6204);
+Result_6405 = (NI32)(A_6403 / B_6404);
 goto BeforeRet;
 BeforeRet: ;
-return Result_6205;
+return Result_6405;
 }
 N_NIMCALL(NI, Getstartmilsecs_27651)(void) {
 NI Result_28003;
@@ -498,21 +498,21 @@ BeforeRet: ;
 framePtr = framePtr->prev;
 return Result_28452;
 }
-static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530) {
-NI64 Result_5531;
+static N_INLINE(NI64, addInt64)(NI64 A_5729, NI64 B_5730) {
+NI64 Result_5731;
 NIM_BOOL LOC2;
-Result_5531 = 0;
-Result_5531 = (NI64)((NU64)(A_5529) + (NU64)(B_5530));
-LOC2 = (0 <= (Result_5531 ^ A_5529));
+Result_5731 = 0;
+Result_5731 = (NI64)((NU64)(A_5729) + (NU64)(B_5730));
+LOC2 = (0 <= (Result_5731 ^ A_5729));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (Result_5531 ^ B_5530));
+LOC2 = (0 <= (Result_5731 ^ B_5730));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5531;
+return Result_5731;
 }
 N_NIMCALL(NI64, Unixtimetowintime_28457)(NI T_28459) {
 NI64 Result_28460;
@@ -530,40 +530,40 @@ Result_28460 = addInt64(mulInt64(((NI64) (T_28459)), 10000000), IL64(11644473600
 framePtr = framePtr->prev;
 return Result_28460;
 }
-static N_INLINE(NI64, subInt64)(NI64 A_5538, NI64 B_5539) {
-NI64 Result_5540;
+static N_INLINE(NI64, subInt64)(NI64 A_5738, NI64 B_5739) {
+NI64 Result_5740;
 NIM_BOOL LOC2;
-Result_5540 = 0;
-Result_5540 = (NI64)((NU64)(A_5538) - (NU64)(B_5539));
-LOC2 = (0 <= (Result_5540 ^ A_5538));
+Result_5740 = 0;
+Result_5740 = (NI64)((NU64)(A_5738) - (NU64)(B_5739));
+LOC2 = (0 <= (Result_5740 ^ A_5738));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (Result_5540 ^ ~(B_5539)));
+LOC2 = (0 <= (Result_5740 ^ ~(B_5739)));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5540;
+return Result_5740;
 }
-static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562) {
-NI64 Result_5563;
+static N_INLINE(NI64, divInt64)(NI64 A_5761, NI64 B_5762) {
+NI64 Result_5763;
 NIM_BOOL LOC5;
-Result_5563 = 0;
-if (!(B_5562 == 0)) goto LA2;
+Result_5763 = 0;
+if (!(B_5762 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-LOC5 = (A_5561 == (IL64(-9223372036854775807) - IL64(1)));
+LOC5 = (A_5761 == (IL64(-9223372036854775807) - IL64(1)));
 if (!(LOC5)) goto LA6;
-LOC5 = (B_5562 == -1);
+LOC5 = (B_5762 == -1);
 LA6: ;
 if (!LOC5) goto LA7;
 raiseOverflow();
 LA7: ;
-Result_5563 = (NI64)(A_5561 / B_5562);
+Result_5763 = (NI64)(A_5761 / B_5762);
 goto BeforeRet;
 BeforeRet: ;
-return Result_5563;
+return Result_5763;
 }
 N_NIMCALL(NI, Wintimetounixtime_28461)(NI64 T_28463) {
 NI Result_28464;
@@ -619,7 +619,7 @@ Result_28603 = (((double) (((NI) (LOC1)))) / ((double) (CLOCKS_PER_SEC)));
 framePtr = framePtr->prev;
 return Result_28603;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393) {
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendString";
@@ -629,12 +629,12 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "sysstr.nim";
-memcpy(((NCSTRING) (&(*Dest_17392).data[((*Dest_17392).Sup.len)-0])), ((NCSTRING) ((*Src_17393).data)), ((int) ((NI32)((NI32)((*Src_17393).Sup.len + 1) * 1))));
+memcpy(((NCSTRING) (&(*Dest_17592).data[((*Dest_17592).Sup.len)-0])), ((NCSTRING) ((*Src_17593).data)), ((int) ((NI32)((NI32)((*Src_17593).Sup.len + 1) * 1))));
 F.line = 151;F.filename = "sysstr.nim";
-(*Dest_17392).Sup.len += (*Src_17393).Sup.len;
+(*Dest_17592).Sup.len += (*Src_17593).Sup.len;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410) {
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17609, NIM_CHAR C_17610) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendChar";
@@ -644,11 +644,11 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 154;F.filename = "sysstr.nim";
-(*Dest_17409).data[((*Dest_17409).Sup.len)-0] = C_17410;
+(*Dest_17609).data[((*Dest_17609).Sup.len)-0] = C_17610;
 F.line = 155;F.filename = "sysstr.nim";
-(*Dest_17409).data[((NI32)((*Dest_17409).Sup.len + 1))-0] = 0;
+(*Dest_17609).data[((NI32)((*Dest_17609).Sup.len + 1))-0] = 0;
 F.line = 156;F.filename = "sysstr.nim";
-(*Dest_17409).Sup.len += 1;
+(*Dest_17609).Sup.len += 1;
 framePtr = framePtr->prev;
 }
 N_NIMCALL(NimStringDesc*, ntgetDateStr)(void) {

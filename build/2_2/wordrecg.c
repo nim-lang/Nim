@@ -54,13 +54,13 @@ TNimNode** sons;
 N_NIMCALL(NI, Findstr_70471)(NimStringDesc** A_70474, NI A_70474Len0, NimStringDesc* S_70475);
 N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_23638, NimStringDesc* B_23639);
 N_NOINLINE(void, raiseIndexError)(void);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NIMCALL(NU8, Whichkeyword_70468)(NimStringDesc* Id_70470);
 N_NIMCALL(TY53011*, Getident_53016)(NimStringDesc* Identifier_53018);
 N_NIMCALL(NU8, Whichkeyword_70465)(TY53011* Id_70467);
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412);
-N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5418);
 N_NIMCALL(void, Initspecials_70523)(void);
 N_NIMCALL(TY53011*, Getident_53019)(NimStringDesc* Identifier_53021, NI H_53022);
 N_NIMCALL(NI, Getnormalizedhash_43037)(NimStringDesc* S_43039);
@@ -505,21 +505,21 @@ NIM_CONST TY70241 Specialwords_70240 = {((NimStringDesc*) &TMP70245),
 ((NimStringDesc*) &TMP70463),
 ((NimStringDesc*) &TMP70464)}
 ;
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
 N_NIMCALL(NI, Findstr_70471)(NimStringDesc** A_70474, NI A_70474Len0, NimStringDesc* S_70475) {
 NI Result_70481;
@@ -541,12 +541,12 @@ HEX3Atmp_70508 = 0;
 F.line = 115;F.filename = "wordrecg.nim";
 HEX3Atmp_70508 = (A_70474Len0-1);
 Res_70510 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_70510 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_70510 <= HEX3Atmp_70508)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_70504 = Res_70510;
 F.line = 116;F.filename = "wordrecg.nim";
 if ((NU)(I_70504) >= (NU)(A_70474Len0)) raiseIndexError();
@@ -557,7 +557,7 @@ F.line = 117;F.filename = "wordrecg.nim";
 Result_70481 = I_70504;
 goto BeforeRet;
 LA4: ;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_70510 = addInt(Res_70510, 1);
 } LA1: ;
 F.line = 118;F.filename = "wordrecg.nim";
@@ -585,23 +585,23 @@ Result_70516 = Whichkeyword_70465(LOC1);
 framePtr = framePtr->prev;
 return Result_70516;
 }
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412) {
-NI Result_5316;
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5516;
 NIM_BOOL LOC2;
-Result_5316 = 0;
-LOC2 = (A_4411 <= I_4410);
+Result_5516 = 0;
+LOC2 = (A_4611 <= I_4610);
 if (!(LOC2)) goto LA3;
-LOC2 = (I_4410 <= B_4412);
+LOC2 = (I_4610 <= B_4612);
 LA3: ;
 if (!LOC2) goto LA4;
-Result_5316 = I_4410;
+Result_5516 = I_4610;
 goto BeforeRet;
 goto LA1;
 LA4: ;
-raiseRangeError(((NI64) (I_4410)));
+raiseRangeError(((NI64) (I_4610)));
 LA1: ;
 BeforeRet: ;
-return Result_5316;
+return Result_5516;
 }
 N_NIMCALL(NU8, Whichkeyword_70465)(TY53011* Id_70467) {
 NU8 Result_70520;
@@ -641,19 +641,19 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 S_70563 = 0;
 Res_70571 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_70571 = ((NU8) 1);
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_70571 <= ((NU8) 219))) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 S_70563 = Res_70571;
 F.line = 130;F.filename = "wordrecg.nim";
 LOC2 = Getnormalizedhash_43037(Specialwords_70240[(S_70563)-0]);
 LOC3 = 0;
 LOC3 = Getident_53019(Specialwords_70240[(S_70563)-0], LOC2);
 (*LOC3).Sup.Id = S_70563;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_70571 = addInt(Res_70571, 1);
 } LA1: ;
 framePtr = framePtr->prev;

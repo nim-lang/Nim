@@ -60,31 +60,31 @@ NI Rd;
 NI Wr;
 };
 N_NIMCALL(void, Closebaselexer_74029)(TY74015* L_74032);
-N_NOCONV(void, Dealloc_1784)(void* P_1786);
+N_NOCONV(void, Dealloc_1960)(void* P_1962);
 N_NIMCALL(void, Llstreamclose_73040)(TY73013* S_73042);
 N_NIMCALL(void, Fillbuffer_74056)(TY74015* L_74059);
-N_NIMCALL(void, internalAssert)(NCSTRING File_5054, NI Line_5055, NIM_BOOL Cond_5056);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NIMCALL(void, internalAssert)(NCSTRING File_5254, NI Line_5255, NIM_BOOL Cond_5256);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NOINLINE(void, raiseOverflow)(void);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
-N_NIMCALL(NI, mulInt)(NI A_6603, NI B_6604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
+N_NIMCALL(NI, mulInt)(NI A_6803, NI B_6804);
 N_NIMCALL(NI, Llstreamread_73043)(TY73013* S_73045, void* Buf_73046, NI Buflen_73047);
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204);
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404);
 N_NOINLINE(void, raiseDivByZero)(void);
-N_NOCONV(void*, Realloc_1780)(void* P_1782, NI Newsize_1783);
+N_NOCONV(void*, Realloc_1956)(void* P_1958, NI Newsize_1959);
 N_NIMCALL(NI, Fillbaselexer_74122)(TY74015* L_74125, NI Pos_74126);
 N_NIMCALL(NI, Handlecr_74041)(TY74015* L_74044, NI Pos_74045);
 N_NIMCALL(NI, Handlelf_74046)(TY74015* L_74049, NI Pos_74050);
 N_NIMCALL(void, Skiputf8bom_74174)(TY74015* L_74177);
 N_NIMCALL(void, Openbaselexer_74023)(TY74015* L_74026, TY73013* Inputstream_74027, NI Buflen_74028);
-N_NOCONV(void*, Alloc_1774)(NI Size_1776);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_11826, void* Src_11827);
+N_NOCONV(void*, Alloc_1950)(NI Size_1952);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_12026, void* Src_12027);
 N_NIMCALL(NI, Getcolnumber_74037)(TY74015* L_74039, NI Pos_74040);
 N_NIMCALL(NimStringDesc*, Getcurrentline_74033)(TY74015* L_74035, NIM_BOOL Marker_74036);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17508);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17287);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17487);
 N_NIMCALL(NimStringDesc*, nsuRepeatChar)(NI Count_24750, NIM_CHAR C_24751);
 NIM_CONST TY21402 Newlines_74012 = {
 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -105,19 +105,35 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 71;F.filename = "lexbase.nim";
-Dealloc_1784(((void*) ((*L_74032).Buf)));
+Dealloc_1960(((void*) ((*L_74032).Buf)));
 F.line = 72;F.filename = "lexbase.nim";
 Llstreamclose_73040((*L_74032).Stream);
 framePtr = framePtr->prev;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI64)((NU64)(A_6003) - (NU64)(B_6004));
+LOC2 = (0 <= (NI64)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_6005 ^ (NI64)((NU64) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
+}
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
 LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -126,40 +142,24 @@ raiseOverflow();
 BeforeRet: ;
 return Result_5805;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
-}
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204) {
-NI Result_6205;
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404) {
+NI Result_6405;
 NIM_BOOL LOC5;
-Result_6205 = 0;
-if (!(B_6204 == 0)) goto LA2;
+Result_6405 = 0;
+if (!(B_6404 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-LOC5 = (A_6203 == (IL64(-9223372036854775807) - IL64(1)));
+LOC5 = (A_6403 == (IL64(-9223372036854775807) - IL64(1)));
 if (!(LOC5)) goto LA6;
-LOC5 = (B_6204 == -1);
+LOC5 = (B_6404 == -1);
 LA6: ;
 if (!LOC5) goto LA7;
 raiseOverflow();
 LA7: ;
-Result_6205 = (NI64)(A_6203 / B_6204);
+Result_6405 = (NI64)(A_6403 / B_6404);
 goto BeforeRet;
 BeforeRet: ;
-return Result_6205;
+return Result_6405;
 }
 N_NIMCALL(void, Fillbuffer_74056)(TY74015* L_74059) {
 NI Charsread_74060;
@@ -235,7 +235,7 @@ Oldbuflen_74063 = (*L_74059).Buflen;
 F.line = 108;F.filename = "lexbase.nim";
 (*L_74059).Buflen = mulInt((*L_74059).Buflen, 2);
 F.line = 109;F.filename = "lexbase.nim";
-LOC15 = Realloc_1780(((void*) ((*L_74059).Buf)), mulInt((*L_74059).Buflen, 1));
+LOC15 = Realloc_1956(((void*) ((*L_74059).Buf)), mulInt((*L_74059).Buflen, 1));
 (*L_74059).Buf = ((NCSTRING) (LOC15));
 F.line = 110;F.filename = "lexbase.nim";
 internalAssert("rod/lexbase.nim", 110, (subInt((*L_74059).Buflen, Oldbuflen_74063) == Oldbuflen_74063));
@@ -379,7 +379,7 @@ F.line = 148;F.filename = "lexbase.nim";
 F.line = 149;F.filename = "lexbase.nim";
 (*L_74026).Buflen = Buflen_74028;
 F.line = 150;F.filename = "lexbase.nim";
-LOC1 = Alloc_1774(mulInt(Buflen_74028, 1));
+LOC1 = Alloc_1950(mulInt(Buflen_74028, 1));
 (*L_74026).Buf = ((NCSTRING) (LOC1));
 F.line = 151;F.filename = "lexbase.nim";
 (*L_74026).Sentinel = subInt(Buflen_74028, 1);
@@ -412,7 +412,7 @@ Result_74220 = (NI64)abs(subInt(Pos_74040, (*L_74039).Linestart));
 framePtr = framePtr->prev;
 return Result_74220;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393) {
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendString";
@@ -422,9 +422,9 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "sysstr.nim";
-memcpy(((NCSTRING) (&(*Dest_17392).data[((*Dest_17392).Sup.len)-0])), ((NCSTRING) ((*Src_17393).data)), ((int) ((NI64)((NI64)((*Src_17393).Sup.len + 1) * 1))));
+memcpy(((NCSTRING) (&(*Dest_17592).data[((*Dest_17592).Sup.len)-0])), ((NCSTRING) ((*Src_17593).data)), ((int) ((NI64)((NI64)((*Src_17593).Sup.len + 1) * 1))));
 F.line = 151;F.filename = "sysstr.nim";
-(*Dest_17392).Sup.len += (*Src_17393).Sup.len;
+(*Dest_17592).Sup.len += (*Src_17593).Sup.len;
 framePtr = framePtr->prev;
 }
 N_NIMCALL(NimStringDesc*, Getcurrentline_74033)(TY74015* L_74035, NIM_BOOL Marker_74036) {

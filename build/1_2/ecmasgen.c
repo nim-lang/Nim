@@ -5,52 +5,52 @@ typedef long long int NI;
 typedef unsigned long long int NU;
 #include "nimbase.h"
 
-typedef struct TY174017 TY174017;
+typedef struct TY175017 TY175017;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY46008 TY46008;
-typedef struct TY49900 TY49900;
-typedef struct TY49896 TY49896;
-typedef struct TY49898 TY49898;
+typedef struct TY47008 TY47008;
+typedef struct TY50900 TY50900;
+typedef struct TY50896 TY50896;
+typedef struct TY50898 TY50898;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY174013 TY174013;
-typedef struct TY174021 TY174021;
-typedef struct TY174007 TY174007;
-typedef struct TY49525 TY49525;
-typedef struct TY49547 TY49547;
-typedef struct TY174050 TY174050;
-typedef struct TY174015 TY174015;
-typedef struct TY49551 TY49551;
+typedef struct TY175013 TY175013;
+typedef struct TY175021 TY175021;
+typedef struct TY175007 TY175007;
+typedef struct TY50525 TY50525;
+typedef struct TY50547 TY50547;
+typedef struct TY175050 TY175050;
+typedef struct TY175015 TY175015;
+typedef struct TY50551 TY50551;
 typedef struct NimStringDesc NimStringDesc;
-typedef struct TY41532 TY41532;
-typedef struct TY48011 TY48011;
-typedef struct TY49519 TY49519;
-typedef struct TY48005 TY48005;
+typedef struct TY42532 TY42532;
+typedef struct TY49011 TY49011;
+typedef struct TY50519 TY50519;
+typedef struct TY49005 TY49005;
 typedef struct TNimObject TNimObject;
-typedef struct TY49549 TY49549;
-typedef struct TY49539 TY49539;
-typedef struct TY49529 TY49529;
-typedef struct TY49527 TY49527;
-typedef struct TY49543 TY49543;
-typedef struct TY10402 TY10402;
-typedef struct TY7804 TY7804;
-typedef struct TY10790 TY10790;
-typedef struct TY10418 TY10418;
-typedef struct TY10414 TY10414;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
-typedef struct TY99002 TY99002;
-typedef struct TY87031 TY87031;
-typedef struct TY99006 TY99006;
-typedef struct TY37013 TY37013;
-typedef struct TY4177 TY4177;
-typedef struct TY87029 TY87029;
-typedef struct TY53223 TY53223;
-typedef struct TY53221 TY53221;
-typedef struct TY53219 TY53219;
-typedef struct TY49563 TY49563;
-typedef struct TY49561 TY49561;
-typedef struct TY49559 TY49559;
+typedef struct TY50549 TY50549;
+typedef struct TY50539 TY50539;
+typedef struct TY50529 TY50529;
+typedef struct TY50527 TY50527;
+typedef struct TY50543 TY50543;
+typedef struct TY10602 TY10602;
+typedef struct TY8004 TY8004;
+typedef struct TY10990 TY10990;
+typedef struct TY10618 TY10618;
+typedef struct TY10614 TY10614;
+typedef struct TY10610 TY10610;
+typedef struct TY10988 TY10988;
+typedef struct TY100002 TY100002;
+typedef struct TY88031 TY88031;
+typedef struct TY100006 TY100006;
+typedef struct TY38013 TY38013;
+typedef struct TY4377 TY4377;
+typedef struct TY88029 TY88029;
+typedef struct TY54223 TY54223;
+typedef struct TY54221 TY54221;
+typedef struct TY54219 TY54219;
+typedef struct TY50563 TY50563;
+typedef struct TY50561 TY50561;
+typedef struct TY50559 TY50559;
 struct TNimType {
 NI size;
 NU8 kind;
@@ -71,52 +71,52 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-struct TY49900 {
+struct TY50900 {
 NI Counter;
 NI Max;
-TY49896* Head;
-TY49898* Data;
+TY50896* Head;
+TY50898* Data;
 };
-struct TY174017 {
-TY46008* Typeinfo;
-TY46008* Code;
-TY49900 Typeinfogenerated;
+struct TY175017 {
+TY47008* Typeinfo;
+TY47008* Code;
+TY50900 Typeinfogenerated;
 };
-struct TY174013 {
+struct TY175013 {
 NU8 Kind;
-TY46008* Com;
-TY46008* Res;
+TY47008* Com;
+TY47008* Res;
 };
-struct TY174015 {
+struct TY175015 {
 NI Id;
 NI Nestedtrystmts;
 };
-struct TY174021 {
-TY49525* Procdef;
-TY49547* Prc;
-TY46008* Data;
+struct TY175021 {
+TY50525* Procdef;
+TY50547* Prc;
+TY47008* Data;
 NU32 Options;
-TY174007* Module;
-TY174017* Globals;
+TY175007* Module;
+TY175017* Globals;
 NIM_BOOL Beforeretneeded;
 NI Nestedtrystmts;
 NI Unique;
-TY174050* Blocks;
+TY175050* Blocks;
 };
 typedef NIM_CHAR TY239[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY41532 {
+struct TY42532 {
 NI16 Line;
 NI16 Col;
 NI32 Fileindex;
 };
-struct TY49525 {
-TY49551* Typ;
+struct TY50525 {
+TY50551* Typ;
 NimStringDesc* Comment;
-TY41532 Info;
+TY42532 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -126,89 +126,89 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY49547* Sym;
+struct {TY50547* Sym;
 } S4;
-struct {TY48011* Ident;
+struct {TY49011* Ident;
 } S5;
-struct {TY49519* Sons;
+struct {TY50519* Sons;
 } S6;
 } KindU;
 };
-typedef NU8 TY49999[16];
+typedef NU8 TY50999[16];
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY48005 {
+struct TY49005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY49539 {
+struct TY50539 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY49551* T;
-TY46008* R;
+TY50551* T;
+TY47008* R;
 NI A;
 };
-struct TY49551 {
-  TY48005 Sup;
+struct TY50551 {
+  TY49005 Sup;
 NU8 Kind;
-TY49549* Sons;
-TY49525* N;
+TY50549* Sons;
+TY50525* N;
 NU8 Flags;
 NU8 Callconv;
-TY49547* Owner;
-TY49547* Sym;
+TY50547* Owner;
+TY50547* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY49539 Loc;
+TY50539 Loc;
 };
-struct TY49529 {
+struct TY50529 {
 TNimType* m_type;
 NI Counter;
-TY49527* Data;
+TY50527* Data;
 };
-struct TY49547 {
-  TY48005 Sup;
+struct TY50547 {
+  TY49005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY49551* Typ;
-TY48011* Name;
-TY41532 Info;
-TY49547* Owner;
+TY50551* Typ;
+TY49011* Name;
+TY42532 Info;
+TY50547* Owner;
 NU32 Flags;
-TY49529 Tab;
-TY49525* Ast;
+TY50529 Tab;
+TY50525* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY49539 Loc;
-TY49543* Annex;
+TY50539 Loc;
+TY50543* Annex;
 };
-struct TY48011 {
-  TY48005 Sup;
+struct TY49011 {
+  TY49005 Sup;
 NimStringDesc* S;
-TY48011* Next;
+TY49011* Next;
 NI H;
 };
-struct TY10402 {
+struct TY10602 {
 NI Refcount;
 TNimType* Typ;
 };
-typedef N_STDCALL_PTR(void, TY7816) (TY7804* L_7818);
-struct TY10418 {
+typedef N_STDCALL_PTR(void, TY8016) (TY8004* L_8018);
+struct TY10618 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY10602** D;
 };
-struct TY10414 {
+struct TY10614 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY10610* Head;
+TY10610** Data;
 };
-struct TY7804 {
+struct TY8004 {
 void* Debuginfo;
 NI32 Lockcount;
 NI32 Recursioncount;
@@ -216,7 +216,7 @@ NI Owningthread;
 NI Locksemaphore;
 NI32 Reserved;
 };
-struct TY10788 {
+struct TY10988 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -224,103 +224,103 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY7804 Cyclerootslock;
-TY7804 Zctlock;
-TY10788 Stat;
+struct TY10990 {
+TY10618 Zct;
+TY10618 Decstack;
+TY10614 Cycleroots;
+TY10618 Tempstack;
+TY8004 Cyclerootslock;
+TY8004 Zctlock;
+TY10988 Stat;
 };
-typedef N_STDCALL_PTR(void, TY7820) (TY7804* L_7822);
-typedef TY46008* TY53695[2];
-typedef TY46008* TY53637[3];
-typedef TY46008* TY158071[5];
-typedef TY46008* TY46451[1];
-typedef NimStringDesc* TY174989[4];
-typedef TY174989 TY174992[101];
-typedef TY46008* TY156324[1];
-typedef TY46008* TY54870[4];
-struct TY99002 {
+typedef N_STDCALL_PTR(void, TY8020) (TY8004* L_8022);
+typedef TY47008* TY54695[2];
+typedef TY47008* TY54637[3];
+typedef TY47008* TY159071[5];
+typedef TY47008* TY47451[1];
+typedef NimStringDesc* TY175989[4];
+typedef TY175989 TY175992[101];
+typedef TY47008* TY157324[1];
+typedef TY47008* TY55870[4];
+struct TY100002 {
   TNimObject Sup;
 };
-struct TY174007 {
-  TY99002 Sup;
+struct TY175007 {
+  TY100002 Sup;
 NimStringDesc* Filename;
-TY49547* Module;
+TY50547* Module;
 };
-typedef N_NIMCALL_PTR(TY99002*, TY99007) (TY49547* Module_99008, NimStringDesc* Filename_99009);
-typedef N_NIMCALL_PTR(TY99002*, TY99012) (TY49547* Module_99013, NimStringDesc* Filename_99014, TY87031* Rd_99015);
-typedef N_NIMCALL_PTR(TY49525*, TY99018) (TY99002* P_99019, TY49525* N_99020);
-typedef N_NIMCALL_PTR(TY49525*, TY99023) (TY99002* P_99024, TY49525* Toplevelstmt_99025);
-struct TY99006 {
-TY99007 Open;
-TY99012 Opencached;
-TY99018 Close;
-TY99023 Process;
+typedef N_NIMCALL_PTR(TY100002*, TY100007) (TY50547* Module_100008, NimStringDesc* Filename_100009);
+typedef N_NIMCALL_PTR(TY100002*, TY100012) (TY50547* Module_100013, NimStringDesc* Filename_100014, TY88031* Rd_100015);
+typedef N_NIMCALL_PTR(TY50525*, TY100018) (TY100002* P_100019, TY50525* N_100020);
+typedef N_NIMCALL_PTR(TY50525*, TY100023) (TY100002* P_100024, TY50525* Toplevelstmt_100025);
+struct TY100006 {
+TY100007 Open;
+TY100012 Opencached;
+TY100018 Close;
+TY100023 Process;
 };
-struct TY46008 {
+struct TY47008 {
   TNimObject Sup;
-TY46008* Left;
-TY46008* Right;
+TY47008* Left;
+TY47008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-typedef NI TY8414[8];
-struct TY49896 {
-TY49896* Next;
+typedef NI TY8614[8];
+struct TY50896 {
+TY50896* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-struct TY37013 {
+struct TY38013 {
   TNimObject Sup;
-TY37013* Prev;
-TY37013* Next;
+TY38013* Prev;
+TY38013* Next;
 };
-struct TY49543 {
-  TY37013 Sup;
+struct TY50543 {
+  TY38013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY46008* Name;
-TY49525* Path;
+TY47008* Name;
+TY50525* Path;
 };
-struct TY10410 {
-TY10410* Next;
+struct TY10610 {
+TY10610* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-struct TY53219 {
+struct TY54219 {
 NI Key;
 NI Val;
 };
-struct TY53223 {
+struct TY54223 {
 NI Counter;
-TY53221* Data;
+TY54221* Data;
 };
-struct TY87029 {
+struct TY88029 {
 NI Lastidxkey;
 NI Lastidxval;
-TY53223 Tab;
-TY46008* R;
+TY54223 Tab;
+TY47008* R;
 NI Offset;
 };
-struct TY49559 {
-TY48005* Key;
+struct TY50559 {
+TY49005* Key;
 TNimObject* Val;
 };
-struct TY49563 {
+struct TY50563 {
 NI Counter;
-TY49561* Data;
+TY50561* Data;
 };
-struct TY87031 {
+struct TY88031 {
   TNimObject Sup;
 NI Pos;
 NimStringDesc* S;
 NU32 Options;
 NU8 Reason;
-TY4177* Moddeps;
-TY4177* Files;
+TY4377* Moddeps;
+TY4377* Files;
 NI Dataidx;
 NI Convertersidx;
 NI Initidx;
@@ -328,1052 +328,1052 @@ NI Interfidx;
 NI Compilerprocsidx;
 NI Cgenidx;
 NimStringDesc* Filename;
-TY87029 Index;
-TY87029 Imports;
+TY88029 Index;
+TY88029 Imports;
 NI Readerindex;
 NI Line;
 NI Moduleid;
-TY49563 Syms;
+TY50563 Syms;
 };
-struct TY49898 {
+struct TY50898 {
   TGenericSeq Sup;
-  TY49896* data[SEQ_DECL_SIZE];
+  TY50896* data[SEQ_DECL_SIZE];
 };
-struct TY174050 {
+struct TY175050 {
   TGenericSeq Sup;
-  TY174015 data[SEQ_DECL_SIZE];
+  TY175015 data[SEQ_DECL_SIZE];
 };
-struct TY49519 {
+struct TY50519 {
   TGenericSeq Sup;
-  TY49525* data[SEQ_DECL_SIZE];
+  TY50525* data[SEQ_DECL_SIZE];
 };
-struct TY49549 {
+struct TY50549 {
   TGenericSeq Sup;
-  TY49551* data[SEQ_DECL_SIZE];
+  TY50551* data[SEQ_DECL_SIZE];
 };
-struct TY49527 {
+struct TY50527 {
   TGenericSeq Sup;
-  TY49547* data[SEQ_DECL_SIZE];
+  TY50547* data[SEQ_DECL_SIZE];
 };
-struct TY4177 {
+struct TY4377 {
   TGenericSeq Sup;
   NimStringDesc* data[SEQ_DECL_SIZE];
 };
-struct TY53221 {
+struct TY54221 {
   TGenericSeq Sup;
-  TY53219 data[SEQ_DECL_SIZE];
+  TY54219 data[SEQ_DECL_SIZE];
 };
-struct TY49561 {
+struct TY50561 {
   TGenericSeq Sup;
-  TY49559 data[SEQ_DECL_SIZE];
+  TY50559 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(TY174017*, Newglobals_174052)(void);
-N_NIMCALL(void*, newObj)(TNimType* Typ_12107, NI Size_12108);
-N_NIMCALL(void, Intsetinit_49924)(TY49900* S_49927);
-N_NIMCALL(void, Initcompres_174072)(TY174013* R_174075);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_11626, void* Src_11627);
-N_NIMCALL(void, Initproc_174076)(TY174021* P_174079, TY174017* Globals_174080, TY174007* Module_174081, TY49525* Procdef_174082, NU32 Options_174083);
-N_NIMCALL(void*, newSeq)(TNimType* Typ_12604, NI Len_12605);
-N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
+N_NIMCALL(TY175017*, Newglobals_175052)(void);
+N_NIMCALL(void*, newObj)(TNimType* Typ_12307, NI Size_12308);
+N_NIMCALL(void, Intsetinit_50924)(TY50900* S_50927);
+N_NIMCALL(void, Initcompres_175072)(TY175013* R_175075);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_11826, void* Src_11827);
+N_NIMCALL(void, Initproc_175076)(TY175021* P_175079, TY175017* Globals_175080, TY175007* Module_175081, TY50525* Procdef_175082, NU32 Options_175083);
+N_NIMCALL(void*, newSeq)(TNimType* Typ_12804, NI Len_12805);
+N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5475);
 N_NOINLINE(void, raiseIndexError)(void);
-N_NIMCALL(NU8, Maptype_174142)(TY49551* Typ_174144);
-N_NIMCALL(TY49551*, Skiptypes_91085)(TY49551* T_91087, NU64 Kinds_91088);
-N_NIMCALL(NimStringDesc*, Mangle_174158)(NimStringDesc* Name_174160);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+N_NIMCALL(NU8, Maptype_175142)(TY50551* Typ_175144);
+N_NIMCALL(TY50551*, Skiptypes_92085)(TY50551* T_92087, NU64 Kinds_92088);
+N_NIMCALL(NimStringDesc*, Mangle_175158)(NimStringDesc* Name_175160);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210);
-N_NIMCALL(NimStringDesc*, nsuToHex)(NI64 X_23450, NI Len_23451);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17087);
-N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_17182, NI Addlen_17183);
-N_NIMCALL(TY46008*, Manglename_174218)(TY49547* S_174220);
-N_NIMCALL(TY46008*, Torope_46046)(NimStringDesc* S_46048);
-N_NIMCALL(void, App_46036)(TY46008** A_46039, NimStringDesc* B_46040);
-N_NIMCALL(void, App_46031)(TY46008** A_46034, TY46008* B_46035);
-N_NIMCALL(TY46008*, Torope_46052)(NI64 I_46054);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619);
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838);
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805);
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810);
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460);
-N_NOINLINE(void, Addzct_10825)(TY10418* S_10828, TY10402* C_10829);
-N_NIMCALL(TY46008*, Genobjectfields_174241)(TY174021* P_174244, TY49551* Typ_174245, TY49525* N_174246);
-N_NIMCALL(NI, Sonslen_49803)(TY49525* N_49805);
-N_NIMCALL(TY46008*, Ropef_46069)(NimStringDesc* Frmt_46071, TY46008** Args_46073, NI Args_46073Len0);
-N_NIMCALL(TY46008*, Makecstring_153010)(NimStringDesc* S_153012);
-N_NIMCALL(void, Internalerror_41567)(TY41532 Info_41569, NimStringDesc* Errmsg_41570);
-N_NIMCALL(void, Appf_46074)(TY46008** C_46077, NimStringDesc* Frmt_46078, TY46008** Args_46080, NI Args_46080Len0);
-N_NIMCALL(NI64, Getordvalue_91107)(TY49525* N_91109);
-N_NIMCALL(NI64, Lengthord_91007)(TY49551* T_91009);
-N_NIMCALL(TY49525*, Lastson_49809)(TY49525* N_49811);
-N_NIMCALL(void, Genobjectinfo_174577)(TY174021* P_174580, TY49551* Typ_174581, TY46008* Name_174582);
-N_NIMCALL(void, Prepend_46041)(TY46008** A_46044, TY46008* B_46045);
-N_NIMCALL(void, Genenuminfo_174641)(TY174021* P_174644, TY49551* Typ_174645, TY46008* Name_174646);
-N_NIMCALL(TY46008*, Gentypeinfo_174236)(TY174021* P_174239, TY49551* Typ_174240);
-N_NIMCALL(TY49551*, Lastson_49812)(TY49551* N_49814);
-N_NIMCALL(NIM_BOOL, Intsetcontainsorincl_49928)(TY49900* S_49931, NI Key_49932);
-N_NIMCALL(void, Internalerror_41571)(NimStringDesc* Errmsg_41573);
-N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18179, TNimType* Typ_18180);
-N_NIMCALL(void, Usemagic_174882)(TY174021* P_174885, NimStringDesc* Ident_174886);
-N_NIMCALL(TY46008*, Mergeexpr_174887)(TY46008* A_174889, TY46008* B_174890);
-N_NIMCALL(TY46008*, Mergeexpr_174919)(TY174013* R_174921);
-N_NIMCALL(TY46008*, Mergestmt_174923)(TY174013* R_174925);
-N_NIMCALL(void, Genand_174954)(TY174021* P_174957, TY49525* A_174958, TY49525* B_174959, TY174013* R_174961);
-N_NIMCALL(void, Genor_174971)(TY174021* P_174974, TY49525* A_174975, TY49525* B_174976, TY174013* R_174978);
-N_NIMCALL(void, Binaryexpr_175305)(TY174021* P_175308, TY49525* N_175309, TY174013* R_175311, NimStringDesc* Magic_175312, NimStringDesc* Frmt_175313);
-N_NIMCALL(void, Binarystmt_175346)(TY174021* P_175349, TY49525* N_175350, TY174013* R_175352, NimStringDesc* Magic_175353, NimStringDesc* Frmt_175354);
-N_NIMCALL(void, Unaryexpr_175421)(TY174021* P_175424, TY49525* N_175425, TY174013* R_175427, NimStringDesc* Magic_175428, NimStringDesc* Frmt_175429);
-N_NIMCALL(void, Arith_175446)(TY174021* P_175449, TY49525* N_175450, TY174013* R_175452, NU8 Op_175453);
-N_NIMCALL(void, Genlinedir_175516)(TY174021* P_175519, TY49525* N_175520, TY174013* R_175522);
-N_NIMCALL(NI, Tolinenumber_41585)(TY41532 Info_41587);
-N_NIMCALL(NimStringDesc*, Tofilename_41579)(TY41532 Info_41581);
-N_NIMCALL(void, Finishtrystmt_175640)(TY174021* P_175643, TY174013* R_175645, NI Howmany_175646);
-N_NIMCALL(void, Genwhilestmt_175670)(TY174021* P_175673, TY49525* N_175674, TY174013* R_175676);
-N_NIMCALL(TGenericSeq*, setLengthSeq)(TGenericSeq* Seq_17403, NI Elemsize_17404, NI Newlen_17405);
-N_NIMCALL(void, Gentrystmt_175767)(TY174021* P_175770, TY49525* N_175771, TY174013* R_175773);
-N_NIMCALL(void, Genraisestmt_176205)(TY174021* P_176208, TY49525* N_176209, TY174013* R_176211);
-N_NIMCALL(void, Gencasestmt_176296)(TY174021* P_176299, TY49525* N_176300, TY174013* R_176302);
-N_NIMCALL(TY49525*, Copynode_49855)(TY49525* Src_49857);
-static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530);
-N_NIMCALL(void, Genblock_176621)(TY174021* P_176624, TY49525* N_176625, TY174013* R_176627);
-N_NIMCALL(void, Genbreakstmt_176786)(TY174021* P_176789, TY49525* N_176790, TY174013* R_176792);
-N_NIMCALL(void, internalAssert)(NCSTRING File_5054, NI Line_5055, NIM_BOOL Cond_5056);
-N_NIMCALL(void, Genasmstmt_176888)(TY174021* P_176891, TY49525* N_176892, TY174013* R_176894);
-N_NIMCALL(void, Genifstmt_176993)(TY174021* P_176996, TY49525* N_176997, TY174013* R_176999);
-N_NIMCALL(NimStringDesc*, nsuRepeatChar)(NI Count_23750, NIM_CHAR C_23751);
-N_NIMCALL(void, Genifexpr_177132)(TY174021* P_177135, TY49525* N_177136, TY174013* R_177138);
-N_NIMCALL(TY46008*, Generateheader_177239)(TY174021* P_177242, TY49551* Typ_177243);
-N_NIMCALL(NIM_BOOL, Needsnocopy_177334)(TY49525* Y_177336);
-N_NIMCALL(void, Genasgnaux_177362)(TY174021* P_177365, TY49525* X_177366, TY49525* Y_177367, TY174013* R_177369, NIM_BOOL Nocopyneeded_177370);
-N_NIMCALL(void, Genasgn_177482)(TY174021* P_177485, TY49525* N_177486, TY174013* R_177488);
-N_NIMCALL(void, Genfastasgn_177513)(TY174021* P_177516, TY49525* N_177517, TY174013* R_177519);
-N_NIMCALL(void, Genswap_177544)(TY174021* P_177547, TY49525* N_177548, TY174013* R_177550);
-N_NIMCALL(void, Genfieldaddr_177693)(TY174021* P_177696, TY49525* N_177697, TY174013* R_177699);
-N_NIMCALL(NimStringDesc*, Ropetostr_46066)(TY46008* P_46068);
-N_NIMCALL(void, Genfieldaccess_177784)(TY174021* P_177787, TY49525* N_177788, TY174013* R_177790);
-N_NIMCALL(void, Gencheckedfieldaddr_177877)(TY174021* P_177880, TY49525* N_177881, TY174013* R_177883);
-N_NIMCALL(void, Gencheckedfieldaccess_177896)(TY174021* P_177899, TY49525* N_177900, TY174013* R_177902);
-N_NIMCALL(void, Genarrayaddr_177915)(TY174021* P_177918, TY49525* N_177919, TY174013* R_177921);
-N_NIMCALL(NI64, Firstord_91001)(TY49551* T_91003);
-N_NIMCALL(NIM_BOOL, Isconstexpr_90016)(TY49525* N_90018);
-N_NIMCALL(void, Genarrayaccess_178012)(TY174021* P_178015, TY49525* N_178016, TY174013* R_178018);
-N_NIMCALL(void, Genaddr_178024)(TY174021* P_178027, TY49525* N_178028, TY174013* R_178030);
-N_NIMCALL(void, Gensym_178116)(TY174021* P_178119, TY49525* N_178120, TY174013* R_178122);
-N_NIMCALL(TY46008*, Con_46019)(TY46008* A_46021, NimStringDesc* B_46022);
-N_NIMCALL(void, Genderef_178224)(TY174021* P_178227, TY49525* N_178228, TY174013* R_178230);
-N_NIMCALL(void, Gencall_178292)(TY174021* P_178295, TY49525* N_178296, TY174013* R_178298);
-N_NIMCALL(TY46008*, Puttoseq_178359)(NimStringDesc* S_178361, NIM_BOOL Indirect_178362);
-N_NIMCALL(TY46008*, Createrecordvaraux_178375)(TY174021* P_178378, TY49525* Rec_178379, NI* C_178381);
-N_NIMCALL(TY46008*, Createvar_178369)(TY174021* P_178372, TY49551* Typ_178373, NIM_BOOL Indirect_178374);
-N_NIMCALL(TY49551*, Elemtype_91089)(TY49551* T_91091);
-N_NIMCALL(NIM_BOOL, Isindirect_178628)(TY49547* V_178630);
-N_NIMCALL(void, Genvarinit_178652)(TY174021* P_178655, TY49547* V_178656, TY49525* N_178657, TY174013* R_178659);
-N_NIMCALL(void, Genvarstmt_178774)(TY174021* P_178777, TY49525* N_178778, TY174013* R_178780);
-N_NIMCALL(void, Genconststmt_178895)(TY174021* P_178898, TY49525* N_178899, TY174013* R_178901);
-N_NIMCALL(void, Gennew_179040)(TY174021* P_179043, TY49525* N_179044, TY174013* R_179046);
-N_NIMCALL(void, Genord_179095)(TY174021* P_179098, TY49525* N_179099, TY174013* R_179101);
-N_NIMCALL(void, Genconstrstr_179128)(TY174021* P_179131, TY49525* N_179132, TY174013* R_179134);
-N_NIMCALL(void, Genmagic_179219)(TY174021* P_179222, TY49525* N_179223, TY174013* R_179225);
-N_NIMCALL(NI64, Getsize_91113)(TY49551* Typ_91115);
-N_NIMCALL(void, Limessage_41562)(TY41532 Info_41564, NU8 Msg_41565, NimStringDesc* Arg_41566);
-N_NIMCALL(void, Gensetconstr_179483)(TY174021* P_179486, TY49525* N_179487, TY174013* R_179489);
-N_NIMCALL(void, Genarrayconstr_179567)(TY174021* P_179570, TY49525* N_179571, TY174013* R_179573);
-N_NIMCALL(void, Genrecordconstr_179607)(TY174021* P_179610, TY49525* N_179611, TY174013* R_179613);
-N_NIMCALL(void, Genconv_179712)(TY174021* P_179715, TY49525* N_179716, TY174013* R_179718);
-N_NIMCALL(void, Upconv_179768)(TY174021* P_179771, TY49525* N_179772, TY174013* R_179774);
-N_NIMCALL(void, Genrangechck_179787)(TY174021* P_179790, TY49525* N_179791, TY174013* R_179793, NimStringDesc* Magic_179794);
-N_NIMCALL(void, Convstrtocstr_179852)(TY174021* P_179855, TY49525* N_179856, TY174013* R_179858);
-N_NIMCALL(void, Convcstrtostr_179933)(TY174021* P_179936, TY49525* N_179937, TY174013* R_179939);
-N_NIMCALL(void, Genreturnstmt_180015)(TY174021* P_180018, TY49525* N_180019, TY174013* R_180021);
-N_NIMCALL(TY46008*, Genprocbody_180095)(TY174021* P_180098, TY49547* Prc_180099, TY174013* R_180100);
-N_NIMCALL(void, Genproc_180188)(TY174021* Oldproc_180191, TY49525* N_180192, TY174013* R_180194);
-N_NIMCALL(void, Genstmtlistexpr_176614)(TY174021* P_176617, TY49525* N_176618, TY174013* R_176620);
-N_NIMCALL(void, Genstmt_174875)(TY174021* P_174878, TY49525* N_174879, TY174013* R_174881);
-N_NIMCALL(void, Gen_174868)(TY174021* P_174871, TY49525* N_174872, TY174013* R_174874);
-N_NIMCALL(TY46008*, Toropef_46049)(NF64 R_46051);
-N_NIMCALL(TY174007*, Newmodule_180716)(TY49547* Module_180718, NimStringDesc* Filename_180719);
-static N_INLINE(void, asgnRef)(void** Dest_11614, void* Src_11615);
-static N_INLINE(void, Incref_11602)(TY10402* C_11604);
-static N_INLINE(NIM_BOOL, Canbecycleroot_10840)(TY10402* C_10842);
-static N_INLINE(void, Rtladdcycleroot_11452)(TY10402* C_11454);
-N_NOINLINE(void, Incl_10674)(TY10414* S_10677, TY10402* Cell_10678);
-static N_INLINE(void, Decref_11464)(TY10402* C_11466);
-N_NIMCALL(TY46008*, Genheader_180748)(void);
-N_NIMCALL(void, Genmodule_180789)(TY174021* P_180792, TY49525* N_180793, TY174013* R_180795);
-N_NIMCALL(TY49525*, Myprocess_180845)(TY99002* B_180847, TY49525* N_180848);
-N_NIMCALL(void, chckObj)(TNimType* Obj_5375, TNimType* Subclass_5376);
-N_NIMCALL(TY49525*, Myclose_180870)(TY99002* B_180872, TY49525* N_180873);
-N_NIMCALL(TY46008*, Con_46015)(TY46008* A_46017, TY46008* B_46018);
-N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_32820, NimStringDesc* Ext_32821);
-N_NIMCALL(NimStringDesc*, Completecfilepath_64344)(NimStringDesc* Cfile_64346, NIM_BOOL Createsubdir_64347);
-N_NIMCALL(NIM_BOOL, Writeropeifnotequal_46062)(TY46008* R_46064, NimStringDesc* Filename_46065);
-N_NIMCALL(TY99002*, Myopencached_180890)(TY49547* S_180892, NimStringDesc* Filename_180893, TY87031* Rd_180894);
-N_NIMCALL(TY99002*, Myopen_180897)(TY49547* S_180899, NimStringDesc* Filename_180900);
-N_NIMCALL(TY99006, Ecmasgenpass_174004)(void);
-N_NIMCALL(void, Initpass_99031)(TY99006* P_99034);
-static NIM_CONST TY49999 TMP174136 = {
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410);
+N_NIMCALL(NimStringDesc*, nsuToHex)(NI64 X_24450, NI Len_24451);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17287);
+N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_17382, NI Addlen_17383);
+N_NIMCALL(TY47008*, Manglename_175218)(TY50547* S_175220);
+N_NIMCALL(TY47008*, Torope_47046)(NimStringDesc* S_47048);
+N_NIMCALL(void, App_47036)(TY47008** A_47039, NimStringDesc* B_47040);
+N_NIMCALL(void, App_47031)(TY47008** A_47034, TY47008* B_47035);
+N_NIMCALL(TY47008*, Torope_47052)(NI64 I_47054);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819);
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038);
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660);
+N_NOINLINE(void, Addzct_11025)(TY10618* S_11028, TY10602* C_11029);
+N_NIMCALL(TY47008*, Genobjectfields_175241)(TY175021* P_175244, TY50551* Typ_175245, TY50525* N_175246);
+N_NIMCALL(NI, Sonslen_50803)(TY50525* N_50805);
+N_NIMCALL(TY47008*, Ropef_47069)(NimStringDesc* Frmt_47071, TY47008** Args_47073, NI Args_47073Len0);
+N_NIMCALL(TY47008*, Makecstring_154010)(NimStringDesc* S_154012);
+N_NIMCALL(void, Internalerror_42567)(TY42532 Info_42569, NimStringDesc* Errmsg_42570);
+N_NIMCALL(void, Appf_47074)(TY47008** C_47077, NimStringDesc* Frmt_47078, TY47008** Args_47080, NI Args_47080Len0);
+N_NIMCALL(NI64, Getordvalue_92107)(TY50525* N_92109);
+N_NIMCALL(NI64, Lengthord_92007)(TY50551* T_92009);
+N_NIMCALL(TY50525*, Lastson_50809)(TY50525* N_50811);
+N_NIMCALL(void, Genobjectinfo_175577)(TY175021* P_175580, TY50551* Typ_175581, TY47008* Name_175582);
+N_NIMCALL(void, Prepend_47041)(TY47008** A_47044, TY47008* B_47045);
+N_NIMCALL(void, Genenuminfo_175641)(TY175021* P_175644, TY50551* Typ_175645, TY47008* Name_175646);
+N_NIMCALL(TY47008*, Gentypeinfo_175236)(TY175021* P_175239, TY50551* Typ_175240);
+N_NIMCALL(TY50551*, Lastson_50812)(TY50551* N_50814);
+N_NIMCALL(NIM_BOOL, Intsetcontainsorincl_50928)(TY50900* S_50931, NI Key_50932);
+N_NIMCALL(void, Internalerror_42571)(NimStringDesc* Errmsg_42573);
+N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18379, TNimType* Typ_18380);
+N_NIMCALL(void, Usemagic_175882)(TY175021* P_175885, NimStringDesc* Ident_175886);
+N_NIMCALL(TY47008*, Mergeexpr_175887)(TY47008* A_175889, TY47008* B_175890);
+N_NIMCALL(TY47008*, Mergeexpr_175919)(TY175013* R_175921);
+N_NIMCALL(TY47008*, Mergestmt_175923)(TY175013* R_175925);
+N_NIMCALL(void, Genand_175954)(TY175021* P_175957, TY50525* A_175958, TY50525* B_175959, TY175013* R_175961);
+N_NIMCALL(void, Genor_175971)(TY175021* P_175974, TY50525* A_175975, TY50525* B_175976, TY175013* R_175978);
+N_NIMCALL(void, Binaryexpr_176305)(TY175021* P_176308, TY50525* N_176309, TY175013* R_176311, NimStringDesc* Magic_176312, NimStringDesc* Frmt_176313);
+N_NIMCALL(void, Binarystmt_176346)(TY175021* P_176349, TY50525* N_176350, TY175013* R_176352, NimStringDesc* Magic_176353, NimStringDesc* Frmt_176354);
+N_NIMCALL(void, Unaryexpr_176421)(TY175021* P_176424, TY50525* N_176425, TY175013* R_176427, NimStringDesc* Magic_176428, NimStringDesc* Frmt_176429);
+N_NIMCALL(void, Arith_176446)(TY175021* P_176449, TY50525* N_176450, TY175013* R_176452, NU8 Op_176453);
+N_NIMCALL(void, Genlinedir_176516)(TY175021* P_176519, TY50525* N_176520, TY175013* R_176522);
+N_NIMCALL(NI, Tolinenumber_42585)(TY42532 Info_42587);
+N_NIMCALL(NimStringDesc*, Tofilename_42579)(TY42532 Info_42581);
+N_NIMCALL(void, Finishtrystmt_176640)(TY175021* P_176643, TY175013* R_176645, NI Howmany_176646);
+N_NIMCALL(void, Genwhilestmt_176670)(TY175021* P_176673, TY50525* N_176674, TY175013* R_176676);
+N_NIMCALL(TGenericSeq*, setLengthSeq)(TGenericSeq* Seq_17603, NI Elemsize_17604, NI Newlen_17605);
+N_NIMCALL(void, Gentrystmt_176767)(TY175021* P_176770, TY50525* N_176771, TY175013* R_176773);
+N_NIMCALL(void, Genraisestmt_177205)(TY175021* P_177208, TY50525* N_177209, TY175013* R_177211);
+N_NIMCALL(void, Gencasestmt_177296)(TY175021* P_177299, TY50525* N_177300, TY175013* R_177302);
+N_NIMCALL(TY50525*, Copynode_50855)(TY50525* Src_50857);
+static N_INLINE(NI64, addInt64)(NI64 A_5729, NI64 B_5730);
+N_NIMCALL(void, Genblock_177621)(TY175021* P_177624, TY50525* N_177625, TY175013* R_177627);
+N_NIMCALL(void, Genbreakstmt_177786)(TY175021* P_177789, TY50525* N_177790, TY175013* R_177792);
+N_NIMCALL(void, internalAssert)(NCSTRING File_5254, NI Line_5255, NIM_BOOL Cond_5256);
+N_NIMCALL(void, Genasmstmt_177888)(TY175021* P_177891, TY50525* N_177892, TY175013* R_177894);
+N_NIMCALL(void, Genifstmt_177993)(TY175021* P_177996, TY50525* N_177997, TY175013* R_177999);
+N_NIMCALL(NimStringDesc*, nsuRepeatChar)(NI Count_24750, NIM_CHAR C_24751);
+N_NIMCALL(void, Genifexpr_178132)(TY175021* P_178135, TY50525* N_178136, TY175013* R_178138);
+N_NIMCALL(TY47008*, Generateheader_178239)(TY175021* P_178242, TY50551* Typ_178243);
+N_NIMCALL(NIM_BOOL, Needsnocopy_178334)(TY50525* Y_178336);
+N_NIMCALL(void, Genasgnaux_178362)(TY175021* P_178365, TY50525* X_178366, TY50525* Y_178367, TY175013* R_178369, NIM_BOOL Nocopyneeded_178370);
+N_NIMCALL(void, Genasgn_178482)(TY175021* P_178485, TY50525* N_178486, TY175013* R_178488);
+N_NIMCALL(void, Genfastasgn_178513)(TY175021* P_178516, TY50525* N_178517, TY175013* R_178519);
+N_NIMCALL(void, Genswap_178544)(TY175021* P_178547, TY50525* N_178548, TY175013* R_178550);
+N_NIMCALL(void, Genfieldaddr_178693)(TY175021* P_178696, TY50525* N_178697, TY175013* R_178699);
+N_NIMCALL(NimStringDesc*, Ropetostr_47066)(TY47008* P_47068);
+N_NIMCALL(void, Genfieldaccess_178784)(TY175021* P_178787, TY50525* N_178788, TY175013* R_178790);
+N_NIMCALL(void, Gencheckedfieldaddr_178877)(TY175021* P_178880, TY50525* N_178881, TY175013* R_178883);
+N_NIMCALL(void, Gencheckedfieldaccess_178896)(TY175021* P_178899, TY50525* N_178900, TY175013* R_178902);
+N_NIMCALL(void, Genarrayaddr_178915)(TY175021* P_178918, TY50525* N_178919, TY175013* R_178921);
+N_NIMCALL(NI64, Firstord_92001)(TY50551* T_92003);
+N_NIMCALL(NIM_BOOL, Isconstexpr_91016)(TY50525* N_91018);
+N_NIMCALL(void, Genarrayaccess_179012)(TY175021* P_179015, TY50525* N_179016, TY175013* R_179018);
+N_NIMCALL(void, Genaddr_179024)(TY175021* P_179027, TY50525* N_179028, TY175013* R_179030);
+N_NIMCALL(void, Gensym_179116)(TY175021* P_179119, TY50525* N_179120, TY175013* R_179122);
+N_NIMCALL(TY47008*, Con_47019)(TY47008* A_47021, NimStringDesc* B_47022);
+N_NIMCALL(void, Genderef_179224)(TY175021* P_179227, TY50525* N_179228, TY175013* R_179230);
+N_NIMCALL(void, Gencall_179292)(TY175021* P_179295, TY50525* N_179296, TY175013* R_179298);
+N_NIMCALL(TY47008*, Puttoseq_179359)(NimStringDesc* S_179361, NIM_BOOL Indirect_179362);
+N_NIMCALL(TY47008*, Createrecordvaraux_179375)(TY175021* P_179378, TY50525* Rec_179379, NI* C_179381);
+N_NIMCALL(TY47008*, Createvar_179369)(TY175021* P_179372, TY50551* Typ_179373, NIM_BOOL Indirect_179374);
+N_NIMCALL(TY50551*, Elemtype_92089)(TY50551* T_92091);
+N_NIMCALL(NIM_BOOL, Isindirect_179628)(TY50547* V_179630);
+N_NIMCALL(void, Genvarinit_179652)(TY175021* P_179655, TY50547* V_179656, TY50525* N_179657, TY175013* R_179659);
+N_NIMCALL(void, Genvarstmt_179774)(TY175021* P_179777, TY50525* N_179778, TY175013* R_179780);
+N_NIMCALL(void, Genconststmt_179895)(TY175021* P_179898, TY50525* N_179899, TY175013* R_179901);
+N_NIMCALL(void, Gennew_180040)(TY175021* P_180043, TY50525* N_180044, TY175013* R_180046);
+N_NIMCALL(void, Genord_180095)(TY175021* P_180098, TY50525* N_180099, TY175013* R_180101);
+N_NIMCALL(void, Genconstrstr_180128)(TY175021* P_180131, TY50525* N_180132, TY175013* R_180134);
+N_NIMCALL(void, Genmagic_180219)(TY175021* P_180222, TY50525* N_180223, TY175013* R_180225);
+N_NIMCALL(NI64, Getsize_92113)(TY50551* Typ_92115);
+N_NIMCALL(void, Limessage_42562)(TY42532 Info_42564, NU8 Msg_42565, NimStringDesc* Arg_42566);
+N_NIMCALL(void, Gensetconstr_180483)(TY175021* P_180486, TY50525* N_180487, TY175013* R_180489);
+N_NIMCALL(void, Genarrayconstr_180567)(TY175021* P_180570, TY50525* N_180571, TY175013* R_180573);
+N_NIMCALL(void, Genrecordconstr_180607)(TY175021* P_180610, TY50525* N_180611, TY175013* R_180613);
+N_NIMCALL(void, Genconv_180712)(TY175021* P_180715, TY50525* N_180716, TY175013* R_180718);
+N_NIMCALL(void, Upconv_180768)(TY175021* P_180771, TY50525* N_180772, TY175013* R_180774);
+N_NIMCALL(void, Genrangechck_180787)(TY175021* P_180790, TY50525* N_180791, TY175013* R_180793, NimStringDesc* Magic_180794);
+N_NIMCALL(void, Convstrtocstr_180852)(TY175021* P_180855, TY50525* N_180856, TY175013* R_180858);
+N_NIMCALL(void, Convcstrtostr_180933)(TY175021* P_180936, TY50525* N_180937, TY175013* R_180939);
+N_NIMCALL(void, Genreturnstmt_181015)(TY175021* P_181018, TY50525* N_181019, TY175013* R_181021);
+N_NIMCALL(TY47008*, Genprocbody_181095)(TY175021* P_181098, TY50547* Prc_181099, TY175013* R_181100);
+N_NIMCALL(void, Genproc_181188)(TY175021* Oldproc_181191, TY50525* N_181192, TY175013* R_181194);
+N_NIMCALL(void, Genstmtlistexpr_177614)(TY175021* P_177617, TY50525* N_177618, TY175013* R_177620);
+N_NIMCALL(void, Genstmt_175875)(TY175021* P_175878, TY50525* N_175879, TY175013* R_175881);
+N_NIMCALL(void, Gen_175868)(TY175021* P_175871, TY50525* N_175872, TY175013* R_175874);
+N_NIMCALL(TY47008*, Toropef_47049)(NF64 R_47051);
+N_NIMCALL(TY175007*, Newmodule_181716)(TY50547* Module_181718, NimStringDesc* Filename_181719);
+static N_INLINE(void, asgnRef)(void** Dest_11814, void* Src_11815);
+static N_INLINE(void, Incref_11802)(TY10602* C_11804);
+static N_INLINE(NIM_BOOL, Canbecycleroot_11040)(TY10602* C_11042);
+static N_INLINE(void, Rtladdcycleroot_11652)(TY10602* C_11654);
+N_NOINLINE(void, Incl_10874)(TY10614* S_10877, TY10602* Cell_10878);
+static N_INLINE(void, Decref_11664)(TY10602* C_11666);
+N_NIMCALL(TY47008*, Genheader_181748)(void);
+N_NIMCALL(void, Genmodule_181789)(TY175021* P_181792, TY50525* N_181793, TY175013* R_181795);
+N_NIMCALL(TY50525*, Myprocess_181845)(TY100002* B_181847, TY50525* N_181848);
+N_NIMCALL(void, chckObj)(TNimType* Obj_5575, TNimType* Subclass_5576);
+N_NIMCALL(TY50525*, Myclose_181870)(TY100002* B_181872, TY50525* N_181873);
+N_NIMCALL(TY47008*, Con_47015)(TY47008* A_47017, TY47008* B_47018);
+N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_33820, NimStringDesc* Ext_33821);
+N_NIMCALL(NimStringDesc*, Completecfilepath_65344)(NimStringDesc* Cfile_65346, NIM_BOOL Createsubdir_65347);
+N_NIMCALL(NIM_BOOL, Writeropeifnotequal_47062)(TY47008* R_47064, NimStringDesc* Filename_47065);
+N_NIMCALL(TY100002*, Myopencached_181890)(TY50547* S_181892, NimStringDesc* Filename_181893, TY88031* Rd_181894);
+N_NIMCALL(TY100002*, Myopen_181897)(TY50547* S_181899, NimStringDesc* Filename_181900);
+N_NIMCALL(TY100006, Ecmasgenpass_175004)(void);
+N_NIMCALL(void, Initpass_100031)(TY100006* P_100034);
+static NIM_CONST TY50999 TMP175136 = {
 0xEC, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP174137, "sons", 4);
-static NIM_CONST TY49999 TMP174138 = {
+;STRING_LITERAL(TMP175137, "sons", 4);
+static NIM_CONST TY50999 TMP175138 = {
 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP174139, "sym", 3);
-NIM_CONST NU64 Mappedtoobject_174140 = 149880848;
-STRING_LITERAL(TMP174217, "", 0);
-STRING_LITERAL(TMP174235, "_", 1);
-STRING_LITERAL(TMP174568, ", ", 2);
-STRING_LITERAL(TMP174569, "{kind: 2, len: $1, offset: 0, typ: null, name: null, sons: [$2]"
+;STRING_LITERAL(TMP175139, "sym", 3);
+NIM_CONST NU64 Mappedtoobject_175140 = 149880848;
+STRING_LITERAL(TMP175217, "", 0);
+STRING_LITERAL(TMP175235, "_", 1);
+STRING_LITERAL(TMP175568, ", ", 2);
+STRING_LITERAL(TMP175569, "{kind: 2, len: $1, offset: 0, typ: null, name: null, sons: [$2]"
 "}", 64);
-STRING_LITERAL(TMP174570, "{kind: 1, offset: \"$1\", len: 0, typ: $2, name: $3, sons: null}", 62);
-STRING_LITERAL(TMP174571, "genObjectFields", 15);
-STRING_LITERAL(TMP174572, "genObjectFields; nkOfBranch broken", 34);
-STRING_LITERAL(TMP174573, "[$1, $2]", 8);
-STRING_LITERAL(TMP174574, "genObjectFields(nkRecCase)", 26);
-STRING_LITERAL(TMP174575, "[SetConstr($1), $2]", 19);
-STRING_LITERAL(TMP174576, "{kind: 3, offset: \"$1\", len: $3, typ: $2, name: $4, sons: [$5]}", 63);
-STRING_LITERAL(TMP174637, "var $1 = {size: 0, kind: $2, base: null, node: null, finalizer:"
+STRING_LITERAL(TMP175570, "{kind: 1, offset: \"$1\", len: 0, typ: $2, name: $3, sons: null}", 62);
+STRING_LITERAL(TMP175571, "genObjectFields", 15);
+STRING_LITERAL(TMP175572, "genObjectFields; nkOfBranch broken", 34);
+STRING_LITERAL(TMP175573, "[$1, $2]", 8);
+STRING_LITERAL(TMP175574, "genObjectFields(nkRecCase)", 26);
+STRING_LITERAL(TMP175575, "[SetConstr($1), $2]", 19);
+STRING_LITERAL(TMP175576, "{kind: 3, offset: \"$1\", len: $3, typ: $2, name: $4, sons: [$5]}", 63);
+STRING_LITERAL(TMP175637, "var $1 = {size: 0, kind: $2, base: null, node: null, finalizer:"
 " null};$n", 72);
-STRING_LITERAL(TMP174638, "var NNI$1 = $2;$n", 17);
-STRING_LITERAL(TMP174639, "$1.node = NNI$2;$n", 18);
-STRING_LITERAL(TMP174640, "$1.base = $2;$n", 15);
-STRING_LITERAL(TMP174778, "genEnumInfo", 11);
-STRING_LITERAL(TMP174779, "{kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}", 60);
-STRING_LITERAL(TMP174780, "var NNI$1 = {kind: 2, offset: 0, typ: null, name: null, len: $2"
+STRING_LITERAL(TMP175638, "var NNI$1 = $2;$n", 17);
+STRING_LITERAL(TMP175639, "$1.node = NNI$2;$n", 18);
+STRING_LITERAL(TMP175640, "$1.base = $2;$n", 15);
+STRING_LITERAL(TMP175778, "genEnumInfo", 11);
+STRING_LITERAL(TMP175779, "{kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}", 60);
+STRING_LITERAL(TMP175780, "var NNI$1 = {kind: 2, offset: 0, typ: null, name: null, len: $2"
 ", sons: [$3]};$n", 79);
-STRING_LITERAL(TMP174865, "NTI$1", 5);
-STRING_LITERAL(TMP174866, "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: nul"
+STRING_LITERAL(TMP175865, "NTI$1", 5);
+STRING_LITERAL(TMP175866, "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: nul"
 "l};$n", 68);
-STRING_LITERAL(TMP174867, "genTypeInfo(", 12);
-STRING_LITERAL(TMP174918, "($1, $2)", 8);
-STRING_LITERAL(TMP174953, "$1$2", 4);
-STRING_LITERAL(TMP174970, "($1 && $2)", 10);
-STRING_LITERAL(TMP174987, "($1 || $2)", 10);
-STRING_LITERAL(TMP175198, "addInt", 6);
-STRING_LITERAL(TMP175199, "addInt($1, $2)", 14);
-STRING_LITERAL(TMP175200, "($1 + $2)", 9);
-STRING_LITERAL(TMP175201, "subInt", 6);
-STRING_LITERAL(TMP175202, "subInt($1, $2)", 14);
-STRING_LITERAL(TMP175203, "($1 - $2)", 9);
-STRING_LITERAL(TMP175204, "mulInt", 6);
-STRING_LITERAL(TMP175205, "mulInt($1, $2)", 14);
-STRING_LITERAL(TMP175206, "($1 * $2)", 9);
-STRING_LITERAL(TMP175207, "divInt", 6);
-STRING_LITERAL(TMP175208, "divInt($1, $2)", 14);
-STRING_LITERAL(TMP175209, "Math.floor($1 / $2)", 19);
-STRING_LITERAL(TMP175210, "modInt", 6);
-STRING_LITERAL(TMP175211, "modInt($1, $2)", 14);
-STRING_LITERAL(TMP175212, "Math.floor($1 % $2)", 19);
-STRING_LITERAL(TMP175213, "addInt64", 8);
-STRING_LITERAL(TMP175214, "addInt64($1, $2)", 16);
-STRING_LITERAL(TMP175215, "subInt64", 8);
-STRING_LITERAL(TMP175216, "subInt64($1, $2)", 16);
-STRING_LITERAL(TMP175217, "mulInt64", 8);
-STRING_LITERAL(TMP175218, "mulInt64($1, $2)", 16);
-STRING_LITERAL(TMP175219, "divInt64", 8);
-STRING_LITERAL(TMP175220, "divInt64($1, $2)", 16);
-STRING_LITERAL(TMP175221, "modInt64", 8);
-STRING_LITERAL(TMP175222, "modInt64($1, $2)", 16);
-STRING_LITERAL(TMP175223, "($1 / $2)", 9);
-STRING_LITERAL(TMP175224, "($1 >>> $2)", 11);
-STRING_LITERAL(TMP175225, "($1 << $2)", 10);
-STRING_LITERAL(TMP175226, "($1 & $2)", 9);
-STRING_LITERAL(TMP175227, "($1 | $2)", 9);
-STRING_LITERAL(TMP175228, "($1 ^ $2)", 9);
-STRING_LITERAL(TMP175229, "nimMin", 6);
-STRING_LITERAL(TMP175230, "nimMin($1, $2)", 14);
-STRING_LITERAL(TMP175231, "nimMax", 6);
-STRING_LITERAL(TMP175232, "nimMax($1, $2)", 14);
-STRING_LITERAL(TMP175233, "AddU", 4);
-STRING_LITERAL(TMP175234, "AddU($1, $2)", 12);
-STRING_LITERAL(TMP175235, "SubU", 4);
-STRING_LITERAL(TMP175236, "SubU($1, $2)", 12);
-STRING_LITERAL(TMP175237, "MulU", 4);
-STRING_LITERAL(TMP175238, "MulU($1, $2)", 12);
-STRING_LITERAL(TMP175239, "DivU", 4);
-STRING_LITERAL(TMP175240, "DivU($1, $2)", 12);
-STRING_LITERAL(TMP175241, "ModU", 4);
-STRING_LITERAL(TMP175242, "ModU($1, $2)", 12);
-STRING_LITERAL(TMP175243, "AddU64", 6);
-STRING_LITERAL(TMP175244, "AddU64($1, $2)", 14);
-STRING_LITERAL(TMP175245, "SubU64", 6);
-STRING_LITERAL(TMP175246, "SubU64($1, $2)", 14);
-STRING_LITERAL(TMP175247, "MulU64", 6);
-STRING_LITERAL(TMP175248, "MulU64($1, $2)", 14);
-STRING_LITERAL(TMP175249, "DivU64", 6);
-STRING_LITERAL(TMP175250, "DivU64($1, $2)", 14);
-STRING_LITERAL(TMP175251, "ModU64", 6);
-STRING_LITERAL(TMP175252, "ModU64($1, $2)", 14);
-STRING_LITERAL(TMP175253, "($1 == $2)", 10);
-STRING_LITERAL(TMP175254, "($1 <= $2)", 10);
-STRING_LITERAL(TMP175255, "($1 < $2)", 9);
-STRING_LITERAL(TMP175256, "LeU", 3);
-STRING_LITERAL(TMP175257, "LeU($1, $2)", 11);
-STRING_LITERAL(TMP175258, "LtU", 3);
-STRING_LITERAL(TMP175259, "LtU($1, $2)", 11);
-STRING_LITERAL(TMP175260, "LeU64", 5);
-STRING_LITERAL(TMP175261, "LeU64($1, $2)", 13);
-STRING_LITERAL(TMP175262, "LtU64", 5);
-STRING_LITERAL(TMP175263, "LtU64($1, $2)", 13);
-STRING_LITERAL(TMP175264, "($1 != $2)", 10);
-STRING_LITERAL(TMP175265, "NegInt", 6);
-STRING_LITERAL(TMP175266, "NegInt($1)", 10);
-STRING_LITERAL(TMP175267, "-($1)", 5);
-STRING_LITERAL(TMP175268, "NegInt64", 8);
-STRING_LITERAL(TMP175269, "NegInt64($1)", 12);
-STRING_LITERAL(TMP175270, "AbsInt", 6);
-STRING_LITERAL(TMP175271, "AbsInt($1)", 10);
-STRING_LITERAL(TMP175272, "Math.abs($1)", 12);
-STRING_LITERAL(TMP175273, "AbsInt64", 8);
-STRING_LITERAL(TMP175274, "AbsInt64($1)", 12);
-STRING_LITERAL(TMP175275, "!($1)", 5);
-STRING_LITERAL(TMP175276, "+($1)", 5);
-STRING_LITERAL(TMP175277, "~($1)", 5);
-STRING_LITERAL(TMP175278, "Ze8ToI", 6);
-STRING_LITERAL(TMP175279, "Ze8ToI($1)", 10);
-STRING_LITERAL(TMP175280, "Ze8ToI64", 8);
-STRING_LITERAL(TMP175281, "Ze8ToI64($1)", 12);
-STRING_LITERAL(TMP175282, "Ze16ToI", 7);
-STRING_LITERAL(TMP175283, "Ze16ToI($1)", 11);
-STRING_LITERAL(TMP175284, "Ze16ToI64", 9);
-STRING_LITERAL(TMP175285, "Ze16ToI64($1)", 13);
-STRING_LITERAL(TMP175286, "Ze32ToI64", 9);
-STRING_LITERAL(TMP175287, "Ze32ToI64($1)", 13);
-STRING_LITERAL(TMP175288, "ZeIToI64", 8);
-STRING_LITERAL(TMP175289, "ZeIToI64($1)", 12);
-STRING_LITERAL(TMP175290, "ToU8", 4);
-STRING_LITERAL(TMP175291, "ToU8($1)", 8);
-STRING_LITERAL(TMP175292, "ToU16", 5);
-STRING_LITERAL(TMP175293, "ToU16($1)", 9);
-STRING_LITERAL(TMP175294, "ToU32", 5);
-STRING_LITERAL(TMP175295, "ToU32($1)", 9);
-STRING_LITERAL(TMP175296, "$1", 2);
-STRING_LITERAL(TMP175297, "Math.floor($1)", 14);
-STRING_LITERAL(TMP175298, "nimCharToStr", 12);
-STRING_LITERAL(TMP175299, "nimCharToStr($1)", 16);
-STRING_LITERAL(TMP175300, "nimBoolToStr", 12);
-STRING_LITERAL(TMP175301, "nimBoolToStr($1)", 16);
-STRING_LITERAL(TMP175302, "cstrToNimStr", 12);
-STRING_LITERAL(TMP175303, "cstrToNimStr(($1)+\"\")", 21);
-STRING_LITERAL(TMP175304, "cstrToNimStr($1)", 16);
-NIM_CONST TY174992 Ops_174991 = {{((NimStringDesc*) &TMP175198),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175199),
-((NimStringDesc*) &TMP175200)}
+STRING_LITERAL(TMP175867, "genTypeInfo(", 12);
+STRING_LITERAL(TMP175918, "($1, $2)", 8);
+STRING_LITERAL(TMP175953, "$1$2", 4);
+STRING_LITERAL(TMP175970, "($1 && $2)", 10);
+STRING_LITERAL(TMP175987, "($1 || $2)", 10);
+STRING_LITERAL(TMP176198, "addInt", 6);
+STRING_LITERAL(TMP176199, "addInt($1, $2)", 14);
+STRING_LITERAL(TMP176200, "($1 + $2)", 9);
+STRING_LITERAL(TMP176201, "subInt", 6);
+STRING_LITERAL(TMP176202, "subInt($1, $2)", 14);
+STRING_LITERAL(TMP176203, "($1 - $2)", 9);
+STRING_LITERAL(TMP176204, "mulInt", 6);
+STRING_LITERAL(TMP176205, "mulInt($1, $2)", 14);
+STRING_LITERAL(TMP176206, "($1 * $2)", 9);
+STRING_LITERAL(TMP176207, "divInt", 6);
+STRING_LITERAL(TMP176208, "divInt($1, $2)", 14);
+STRING_LITERAL(TMP176209, "Math.floor($1 / $2)", 19);
+STRING_LITERAL(TMP176210, "modInt", 6);
+STRING_LITERAL(TMP176211, "modInt($1, $2)", 14);
+STRING_LITERAL(TMP176212, "Math.floor($1 % $2)", 19);
+STRING_LITERAL(TMP176213, "addInt64", 8);
+STRING_LITERAL(TMP176214, "addInt64($1, $2)", 16);
+STRING_LITERAL(TMP176215, "subInt64", 8);
+STRING_LITERAL(TMP176216, "subInt64($1, $2)", 16);
+STRING_LITERAL(TMP176217, "mulInt64", 8);
+STRING_LITERAL(TMP176218, "mulInt64($1, $2)", 16);
+STRING_LITERAL(TMP176219, "divInt64", 8);
+STRING_LITERAL(TMP176220, "divInt64($1, $2)", 16);
+STRING_LITERAL(TMP176221, "modInt64", 8);
+STRING_LITERAL(TMP176222, "modInt64($1, $2)", 16);
+STRING_LITERAL(TMP176223, "($1 / $2)", 9);
+STRING_LITERAL(TMP176224, "($1 >>> $2)", 11);
+STRING_LITERAL(TMP176225, "($1 << $2)", 10);
+STRING_LITERAL(TMP176226, "($1 & $2)", 9);
+STRING_LITERAL(TMP176227, "($1 | $2)", 9);
+STRING_LITERAL(TMP176228, "($1 ^ $2)", 9);
+STRING_LITERAL(TMP176229, "nimMin", 6);
+STRING_LITERAL(TMP176230, "nimMin($1, $2)", 14);
+STRING_LITERAL(TMP176231, "nimMax", 6);
+STRING_LITERAL(TMP176232, "nimMax($1, $2)", 14);
+STRING_LITERAL(TMP176233, "AddU", 4);
+STRING_LITERAL(TMP176234, "AddU($1, $2)", 12);
+STRING_LITERAL(TMP176235, "SubU", 4);
+STRING_LITERAL(TMP176236, "SubU($1, $2)", 12);
+STRING_LITERAL(TMP176237, "MulU", 4);
+STRING_LITERAL(TMP176238, "MulU($1, $2)", 12);
+STRING_LITERAL(TMP176239, "DivU", 4);
+STRING_LITERAL(TMP176240, "DivU($1, $2)", 12);
+STRING_LITERAL(TMP176241, "ModU", 4);
+STRING_LITERAL(TMP176242, "ModU($1, $2)", 12);
+STRING_LITERAL(TMP176243, "AddU64", 6);
+STRING_LITERAL(TMP176244, "AddU64($1, $2)", 14);
+STRING_LITERAL(TMP176245, "SubU64", 6);
+STRING_LITERAL(TMP176246, "SubU64($1, $2)", 14);
+STRING_LITERAL(TMP176247, "MulU64", 6);
+STRING_LITERAL(TMP176248, "MulU64($1, $2)", 14);
+STRING_LITERAL(TMP176249, "DivU64", 6);
+STRING_LITERAL(TMP176250, "DivU64($1, $2)", 14);
+STRING_LITERAL(TMP176251, "ModU64", 6);
+STRING_LITERAL(TMP176252, "ModU64($1, $2)", 14);
+STRING_LITERAL(TMP176253, "($1 == $2)", 10);
+STRING_LITERAL(TMP176254, "($1 <= $2)", 10);
+STRING_LITERAL(TMP176255, "($1 < $2)", 9);
+STRING_LITERAL(TMP176256, "LeU", 3);
+STRING_LITERAL(TMP176257, "LeU($1, $2)", 11);
+STRING_LITERAL(TMP176258, "LtU", 3);
+STRING_LITERAL(TMP176259, "LtU($1, $2)", 11);
+STRING_LITERAL(TMP176260, "LeU64", 5);
+STRING_LITERAL(TMP176261, "LeU64($1, $2)", 13);
+STRING_LITERAL(TMP176262, "LtU64", 5);
+STRING_LITERAL(TMP176263, "LtU64($1, $2)", 13);
+STRING_LITERAL(TMP176264, "($1 != $2)", 10);
+STRING_LITERAL(TMP176265, "NegInt", 6);
+STRING_LITERAL(TMP176266, "NegInt($1)", 10);
+STRING_LITERAL(TMP176267, "-($1)", 5);
+STRING_LITERAL(TMP176268, "NegInt64", 8);
+STRING_LITERAL(TMP176269, "NegInt64($1)", 12);
+STRING_LITERAL(TMP176270, "AbsInt", 6);
+STRING_LITERAL(TMP176271, "AbsInt($1)", 10);
+STRING_LITERAL(TMP176272, "Math.abs($1)", 12);
+STRING_LITERAL(TMP176273, "AbsInt64", 8);
+STRING_LITERAL(TMP176274, "AbsInt64($1)", 12);
+STRING_LITERAL(TMP176275, "!($1)", 5);
+STRING_LITERAL(TMP176276, "+($1)", 5);
+STRING_LITERAL(TMP176277, "~($1)", 5);
+STRING_LITERAL(TMP176278, "Ze8ToI", 6);
+STRING_LITERAL(TMP176279, "Ze8ToI($1)", 10);
+STRING_LITERAL(TMP176280, "Ze8ToI64", 8);
+STRING_LITERAL(TMP176281, "Ze8ToI64($1)", 12);
+STRING_LITERAL(TMP176282, "Ze16ToI", 7);
+STRING_LITERAL(TMP176283, "Ze16ToI($1)", 11);
+STRING_LITERAL(TMP176284, "Ze16ToI64", 9);
+STRING_LITERAL(TMP176285, "Ze16ToI64($1)", 13);
+STRING_LITERAL(TMP176286, "Ze32ToI64", 9);
+STRING_LITERAL(TMP176287, "Ze32ToI64($1)", 13);
+STRING_LITERAL(TMP176288, "ZeIToI64", 8);
+STRING_LITERAL(TMP176289, "ZeIToI64($1)", 12);
+STRING_LITERAL(TMP176290, "ToU8", 4);
+STRING_LITERAL(TMP176291, "ToU8($1)", 8);
+STRING_LITERAL(TMP176292, "ToU16", 5);
+STRING_LITERAL(TMP176293, "ToU16($1)", 9);
+STRING_LITERAL(TMP176294, "ToU32", 5);
+STRING_LITERAL(TMP176295, "ToU32($1)", 9);
+STRING_LITERAL(TMP176296, "$1", 2);
+STRING_LITERAL(TMP176297, "Math.floor($1)", 14);
+STRING_LITERAL(TMP176298, "nimCharToStr", 12);
+STRING_LITERAL(TMP176299, "nimCharToStr($1)", 16);
+STRING_LITERAL(TMP176300, "nimBoolToStr", 12);
+STRING_LITERAL(TMP176301, "nimBoolToStr($1)", 16);
+STRING_LITERAL(TMP176302, "cstrToNimStr", 12);
+STRING_LITERAL(TMP176303, "cstrToNimStr(($1)+\"\")", 21);
+STRING_LITERAL(TMP176304, "cstrToNimStr($1)", 16);
+NIM_CONST TY175992 Ops_175991 = {{((NimStringDesc*) &TMP176198),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176199),
+((NimStringDesc*) &TMP176200)}
 ,
-{((NimStringDesc*) &TMP175201),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175202),
-((NimStringDesc*) &TMP175203)}
+{((NimStringDesc*) &TMP176201),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176202),
+((NimStringDesc*) &TMP176203)}
 ,
-{((NimStringDesc*) &TMP175204),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175205),
-((NimStringDesc*) &TMP175206)}
+{((NimStringDesc*) &TMP176204),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176205),
+((NimStringDesc*) &TMP176206)}
 ,
-{((NimStringDesc*) &TMP175207),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175208),
-((NimStringDesc*) &TMP175209)}
+{((NimStringDesc*) &TMP176207),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176208),
+((NimStringDesc*) &TMP176209)}
 ,
-{((NimStringDesc*) &TMP175210),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175211),
-((NimStringDesc*) &TMP175212)}
+{((NimStringDesc*) &TMP176210),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176211),
+((NimStringDesc*) &TMP176212)}
 ,
-{((NimStringDesc*) &TMP175213),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175214),
-((NimStringDesc*) &TMP175200)}
+{((NimStringDesc*) &TMP176213),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176214),
+((NimStringDesc*) &TMP176200)}
 ,
-{((NimStringDesc*) &TMP175215),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175216),
-((NimStringDesc*) &TMP175203)}
+{((NimStringDesc*) &TMP176215),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176216),
+((NimStringDesc*) &TMP176203)}
+,
+{((NimStringDesc*) &TMP176217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176218),
+((NimStringDesc*) &TMP176206)}
+,
+{((NimStringDesc*) &TMP176219),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176220),
+((NimStringDesc*) &TMP176209)}
+,
+{((NimStringDesc*) &TMP176221),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176222),
+((NimStringDesc*) &TMP176212)}
 ,
 {((NimStringDesc*) &TMP175217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175218),
-((NimStringDesc*) &TMP175206)}
-,
-{((NimStringDesc*) &TMP175219),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175220),
-((NimStringDesc*) &TMP175209)}
-,
-{((NimStringDesc*) &TMP175221),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175222),
-((NimStringDesc*) &TMP175212)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175200),
-((NimStringDesc*) &TMP175200)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175203),
-((NimStringDesc*) &TMP175203)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175206),
-((NimStringDesc*) &TMP175206)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175223),
-((NimStringDesc*) &TMP175223)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175224),
-((NimStringDesc*) &TMP175224)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175225),
-((NimStringDesc*) &TMP175225)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175226),
-((NimStringDesc*) &TMP175226)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175227),
-((NimStringDesc*) &TMP175227)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175228),
-((NimStringDesc*) &TMP175228)}
-,
-{((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175230),
-((NimStringDesc*) &TMP175230)}
-,
-{((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175232),
-((NimStringDesc*) &TMP175232)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175224),
-((NimStringDesc*) &TMP175224)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175225),
-((NimStringDesc*) &TMP175225)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175226),
-((NimStringDesc*) &TMP175226)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175227),
-((NimStringDesc*) &TMP175227)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175228),
-((NimStringDesc*) &TMP175228)}
-,
-{((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175230),
-((NimStringDesc*) &TMP175230)}
-,
-{((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175232),
-((NimStringDesc*) &TMP175232)}
-,
-{((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175229),
-((NimStringDesc*) &TMP175230),
-((NimStringDesc*) &TMP175230)}
-,
-{((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175231),
-((NimStringDesc*) &TMP175232),
-((NimStringDesc*) &TMP175232)}
-,
-{((NimStringDesc*) &TMP175233),
-((NimStringDesc*) &TMP175233),
-((NimStringDesc*) &TMP175234),
-((NimStringDesc*) &TMP175234)}
-,
-{((NimStringDesc*) &TMP175235),
-((NimStringDesc*) &TMP175235),
-((NimStringDesc*) &TMP175236),
-((NimStringDesc*) &TMP175236)}
-,
-{((NimStringDesc*) &TMP175237),
-((NimStringDesc*) &TMP175237),
-((NimStringDesc*) &TMP175238),
-((NimStringDesc*) &TMP175238)}
-,
-{((NimStringDesc*) &TMP175239),
-((NimStringDesc*) &TMP175239),
-((NimStringDesc*) &TMP175240),
-((NimStringDesc*) &TMP175240)}
-,
-{((NimStringDesc*) &TMP175241),
-((NimStringDesc*) &TMP175241),
-((NimStringDesc*) &TMP175242),
-((NimStringDesc*) &TMP175242)}
-,
-{((NimStringDesc*) &TMP175243),
-((NimStringDesc*) &TMP175243),
-((NimStringDesc*) &TMP175244),
-((NimStringDesc*) &TMP175244)}
-,
-{((NimStringDesc*) &TMP175245),
-((NimStringDesc*) &TMP175245),
-((NimStringDesc*) &TMP175246),
-((NimStringDesc*) &TMP175246)}
-,
-{((NimStringDesc*) &TMP175247),
-((NimStringDesc*) &TMP175247),
-((NimStringDesc*) &TMP175248),
-((NimStringDesc*) &TMP175248)}
-,
-{((NimStringDesc*) &TMP175249),
-((NimStringDesc*) &TMP175249),
-((NimStringDesc*) &TMP175250),
-((NimStringDesc*) &TMP175250)}
-,
-{((NimStringDesc*) &TMP175251),
-((NimStringDesc*) &TMP175251),
-((NimStringDesc*) &TMP175252),
-((NimStringDesc*) &TMP175252)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP175256),
-((NimStringDesc*) &TMP175256),
-((NimStringDesc*) &TMP175257),
-((NimStringDesc*) &TMP175257)}
-,
-{((NimStringDesc*) &TMP175258),
-((NimStringDesc*) &TMP175258),
-((NimStringDesc*) &TMP175259),
-((NimStringDesc*) &TMP175259)}
-,
-{((NimStringDesc*) &TMP175260),
-((NimStringDesc*) &TMP175260),
-((NimStringDesc*) &TMP175261),
-((NimStringDesc*) &TMP175261)}
-,
-{((NimStringDesc*) &TMP175262),
-((NimStringDesc*) &TMP175262),
-((NimStringDesc*) &TMP175263),
-((NimStringDesc*) &TMP175263)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175254),
-((NimStringDesc*) &TMP175254)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175255),
-((NimStringDesc*) &TMP175255)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175253),
-((NimStringDesc*) &TMP175253)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175264),
-((NimStringDesc*) &TMP175264)}
-,
-{((NimStringDesc*) &TMP175265),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175266),
-((NimStringDesc*) &TMP175267)}
-,
-{((NimStringDesc*) &TMP175268),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175269),
-((NimStringDesc*) &TMP175267)}
-,
-{((NimStringDesc*) &TMP175270),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175271),
-((NimStringDesc*) &TMP175272)}
-,
-{((NimStringDesc*) &TMP175273),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175274),
-((NimStringDesc*) &TMP175272)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175275),
-((NimStringDesc*) &TMP175275)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175276),
-((NimStringDesc*) &TMP175276)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175277),
-((NimStringDesc*) &TMP175277)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175276),
-((NimStringDesc*) &TMP175276)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175277),
-((NimStringDesc*) &TMP175277)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175276),
-((NimStringDesc*) &TMP175276)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175267),
-((NimStringDesc*) &TMP175267)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175272),
-((NimStringDesc*) &TMP175272)}
-,
-{((NimStringDesc*) &TMP175278),
-((NimStringDesc*) &TMP175278),
-((NimStringDesc*) &TMP175279),
-((NimStringDesc*) &TMP175279)}
-,
-{((NimStringDesc*) &TMP175280),
-((NimStringDesc*) &TMP175280),
-((NimStringDesc*) &TMP175281),
-((NimStringDesc*) &TMP175281)}
-,
-{((NimStringDesc*) &TMP175282),
-((NimStringDesc*) &TMP175282),
-((NimStringDesc*) &TMP175283),
-((NimStringDesc*) &TMP175283)}
-,
-{((NimStringDesc*) &TMP175284),
-((NimStringDesc*) &TMP175284),
-((NimStringDesc*) &TMP175285),
-((NimStringDesc*) &TMP175285)}
-,
-{((NimStringDesc*) &TMP175286),
-((NimStringDesc*) &TMP175286),
-((NimStringDesc*) &TMP175287),
-((NimStringDesc*) &TMP175287)}
-,
-{((NimStringDesc*) &TMP175288),
-((NimStringDesc*) &TMP175288),
-((NimStringDesc*) &TMP175289),
-((NimStringDesc*) &TMP175289)}
-,
-{((NimStringDesc*) &TMP175290),
-((NimStringDesc*) &TMP175290),
-((NimStringDesc*) &TMP175291),
-((NimStringDesc*) &TMP175291)}
-,
-{((NimStringDesc*) &TMP175292),
-((NimStringDesc*) &TMP175292),
-((NimStringDesc*) &TMP175293),
-((NimStringDesc*) &TMP175293)}
-,
-{((NimStringDesc*) &TMP175294),
-((NimStringDesc*) &TMP175294),
-((NimStringDesc*) &TMP175295),
-((NimStringDesc*) &TMP175295)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175296),
-((NimStringDesc*) &TMP175296)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175296),
-((NimStringDesc*) &TMP175296)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175297),
-((NimStringDesc*) &TMP175297)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175297),
-((NimStringDesc*) &TMP175297)}
-,
-{((NimStringDesc*) &TMP175298),
-((NimStringDesc*) &TMP175298),
-((NimStringDesc*) &TMP175299),
-((NimStringDesc*) &TMP175299)}
-,
-{((NimStringDesc*) &TMP175300),
-((NimStringDesc*) &TMP175300),
-((NimStringDesc*) &TMP175301),
-((NimStringDesc*) &TMP175301)}
-,
-{((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175303),
-((NimStringDesc*) &TMP175303)}
-,
-{((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175303),
-((NimStringDesc*) &TMP175303)}
-,
-{((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175303),
-((NimStringDesc*) &TMP175303)}
-,
-{((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175302),
-((NimStringDesc*) &TMP175304),
-((NimStringDesc*) &TMP175304)}
-,
-{((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP174217),
-((NimStringDesc*) &TMP175296),
-((NimStringDesc*) &TMP175296)}
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176200),
+((NimStringDesc*) &TMP176200)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176203),
+((NimStringDesc*) &TMP176203)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176206),
+((NimStringDesc*) &TMP176206)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176223),
+((NimStringDesc*) &TMP176223)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176224),
+((NimStringDesc*) &TMP176224)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176225),
+((NimStringDesc*) &TMP176225)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176226),
+((NimStringDesc*) &TMP176226)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176227),
+((NimStringDesc*) &TMP176227)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176228),
+((NimStringDesc*) &TMP176228)}
+,
+{((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176230),
+((NimStringDesc*) &TMP176230)}
+,
+{((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176232),
+((NimStringDesc*) &TMP176232)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176224),
+((NimStringDesc*) &TMP176224)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176225),
+((NimStringDesc*) &TMP176225)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176226),
+((NimStringDesc*) &TMP176226)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176227),
+((NimStringDesc*) &TMP176227)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176228),
+((NimStringDesc*) &TMP176228)}
+,
+{((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176230),
+((NimStringDesc*) &TMP176230)}
+,
+{((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176232),
+((NimStringDesc*) &TMP176232)}
+,
+{((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176229),
+((NimStringDesc*) &TMP176230),
+((NimStringDesc*) &TMP176230)}
+,
+{((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176231),
+((NimStringDesc*) &TMP176232),
+((NimStringDesc*) &TMP176232)}
+,
+{((NimStringDesc*) &TMP176233),
+((NimStringDesc*) &TMP176233),
+((NimStringDesc*) &TMP176234),
+((NimStringDesc*) &TMP176234)}
+,
+{((NimStringDesc*) &TMP176235),
+((NimStringDesc*) &TMP176235),
+((NimStringDesc*) &TMP176236),
+((NimStringDesc*) &TMP176236)}
+,
+{((NimStringDesc*) &TMP176237),
+((NimStringDesc*) &TMP176237),
+((NimStringDesc*) &TMP176238),
+((NimStringDesc*) &TMP176238)}
+,
+{((NimStringDesc*) &TMP176239),
+((NimStringDesc*) &TMP176239),
+((NimStringDesc*) &TMP176240),
+((NimStringDesc*) &TMP176240)}
+,
+{((NimStringDesc*) &TMP176241),
+((NimStringDesc*) &TMP176241),
+((NimStringDesc*) &TMP176242),
+((NimStringDesc*) &TMP176242)}
+,
+{((NimStringDesc*) &TMP176243),
+((NimStringDesc*) &TMP176243),
+((NimStringDesc*) &TMP176244),
+((NimStringDesc*) &TMP176244)}
+,
+{((NimStringDesc*) &TMP176245),
+((NimStringDesc*) &TMP176245),
+((NimStringDesc*) &TMP176246),
+((NimStringDesc*) &TMP176246)}
+,
+{((NimStringDesc*) &TMP176247),
+((NimStringDesc*) &TMP176247),
+((NimStringDesc*) &TMP176248),
+((NimStringDesc*) &TMP176248)}
+,
+{((NimStringDesc*) &TMP176249),
+((NimStringDesc*) &TMP176249),
+((NimStringDesc*) &TMP176250),
+((NimStringDesc*) &TMP176250)}
+,
+{((NimStringDesc*) &TMP176251),
+((NimStringDesc*) &TMP176251),
+((NimStringDesc*) &TMP176252),
+((NimStringDesc*) &TMP176252)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP176256),
+((NimStringDesc*) &TMP176256),
+((NimStringDesc*) &TMP176257),
+((NimStringDesc*) &TMP176257)}
+,
+{((NimStringDesc*) &TMP176258),
+((NimStringDesc*) &TMP176258),
+((NimStringDesc*) &TMP176259),
+((NimStringDesc*) &TMP176259)}
+,
+{((NimStringDesc*) &TMP176260),
+((NimStringDesc*) &TMP176260),
+((NimStringDesc*) &TMP176261),
+((NimStringDesc*) &TMP176261)}
+,
+{((NimStringDesc*) &TMP176262),
+((NimStringDesc*) &TMP176262),
+((NimStringDesc*) &TMP176263),
+((NimStringDesc*) &TMP176263)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176254),
+((NimStringDesc*) &TMP176254)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176255),
+((NimStringDesc*) &TMP176255)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176253),
+((NimStringDesc*) &TMP176253)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176264),
+((NimStringDesc*) &TMP176264)}
+,
+{((NimStringDesc*) &TMP176265),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176266),
+((NimStringDesc*) &TMP176267)}
+,
+{((NimStringDesc*) &TMP176268),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176269),
+((NimStringDesc*) &TMP176267)}
+,
+{((NimStringDesc*) &TMP176270),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176271),
+((NimStringDesc*) &TMP176272)}
+,
+{((NimStringDesc*) &TMP176273),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176274),
+((NimStringDesc*) &TMP176272)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176275),
+((NimStringDesc*) &TMP176275)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176276),
+((NimStringDesc*) &TMP176276)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176277),
+((NimStringDesc*) &TMP176277)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176276),
+((NimStringDesc*) &TMP176276)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176277),
+((NimStringDesc*) &TMP176277)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176276),
+((NimStringDesc*) &TMP176276)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176267),
+((NimStringDesc*) &TMP176267)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176272),
+((NimStringDesc*) &TMP176272)}
+,
+{((NimStringDesc*) &TMP176278),
+((NimStringDesc*) &TMP176278),
+((NimStringDesc*) &TMP176279),
+((NimStringDesc*) &TMP176279)}
+,
+{((NimStringDesc*) &TMP176280),
+((NimStringDesc*) &TMP176280),
+((NimStringDesc*) &TMP176281),
+((NimStringDesc*) &TMP176281)}
+,
+{((NimStringDesc*) &TMP176282),
+((NimStringDesc*) &TMP176282),
+((NimStringDesc*) &TMP176283),
+((NimStringDesc*) &TMP176283)}
+,
+{((NimStringDesc*) &TMP176284),
+((NimStringDesc*) &TMP176284),
+((NimStringDesc*) &TMP176285),
+((NimStringDesc*) &TMP176285)}
+,
+{((NimStringDesc*) &TMP176286),
+((NimStringDesc*) &TMP176286),
+((NimStringDesc*) &TMP176287),
+((NimStringDesc*) &TMP176287)}
+,
+{((NimStringDesc*) &TMP176288),
+((NimStringDesc*) &TMP176288),
+((NimStringDesc*) &TMP176289),
+((NimStringDesc*) &TMP176289)}
+,
+{((NimStringDesc*) &TMP176290),
+((NimStringDesc*) &TMP176290),
+((NimStringDesc*) &TMP176291),
+((NimStringDesc*) &TMP176291)}
+,
+{((NimStringDesc*) &TMP176292),
+((NimStringDesc*) &TMP176292),
+((NimStringDesc*) &TMP176293),
+((NimStringDesc*) &TMP176293)}
+,
+{((NimStringDesc*) &TMP176294),
+((NimStringDesc*) &TMP176294),
+((NimStringDesc*) &TMP176295),
+((NimStringDesc*) &TMP176295)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176296),
+((NimStringDesc*) &TMP176296)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176296),
+((NimStringDesc*) &TMP176296)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176297),
+((NimStringDesc*) &TMP176297)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176297),
+((NimStringDesc*) &TMP176297)}
+,
+{((NimStringDesc*) &TMP176298),
+((NimStringDesc*) &TMP176298),
+((NimStringDesc*) &TMP176299),
+((NimStringDesc*) &TMP176299)}
+,
+{((NimStringDesc*) &TMP176300),
+((NimStringDesc*) &TMP176300),
+((NimStringDesc*) &TMP176301),
+((NimStringDesc*) &TMP176301)}
+,
+{((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176303),
+((NimStringDesc*) &TMP176303)}
+,
+{((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176303),
+((NimStringDesc*) &TMP176303)}
+,
+{((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176303),
+((NimStringDesc*) &TMP176303)}
+,
+{((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176302),
+((NimStringDesc*) &TMP176304),
+((NimStringDesc*) &TMP176304)}
+,
+{((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP175217),
+((NimStringDesc*) &TMP176296),
+((NimStringDesc*) &TMP176296)}
 }
 ;
-STRING_LITERAL(TMP175420, "$1;$n", 5);
-STRING_LITERAL(TMP175636, "// line $2 \"$1\"$n", 17);
-STRING_LITERAL(TMP175637, "endb", 4);
-STRING_LITERAL(TMP175638, "endb($1);$n", 11);
-STRING_LITERAL(TMP175639, "F.line = $1;$n", 14);
-STRING_LITERAL(TMP175669, "excHandler = excHandler.prev;", 29);
-STRING_LITERAL(TMP175765, "L$3: while ($1) {$n$2}$n", 24);
-STRING_LITERAL(TMP175766, "while ($1) {$n$2}$n", 19);
-STRING_LITERAL(TMP176192, "Tmp$1", 5);
-STRING_LITERAL(TMP176193, "var $1 = {prev: excHandler, exc: null};$nexcHandler = $1;$n", 59);
-STRING_LITERAL(TMP176194, "framePtr = F;", 13);
-STRING_LITERAL(TMP176195, "try {", 5);
-STRING_LITERAL(TMP176196, "else {", 6);
-STRING_LITERAL(TMP176197, "genTryStmt", 10);
-STRING_LITERAL(TMP176198, "||", 2);
-STRING_LITERAL(TMP176199, "($1.exc.m_type == $2)", 21);
-STRING_LITERAL(TMP176200, "else ", 5);
-STRING_LITERAL(TMP176201, "if ($1.exc && $2) {$n", 21);
-STRING_LITERAL(TMP176202, "$1}$n", 5);
-STRING_LITERAL(TMP176203, "} catch (EXC) {$n$1", 19);
-STRING_LITERAL(TMP176204, "} finally {", 11);
-STRING_LITERAL(TMP176292, "raiseException", 14);
-STRING_LITERAL(TMP176293, "raiseException($1, $2);$n", 25);
-STRING_LITERAL(TMP176294, "reraiseException", 16);
-STRING_LITERAL(TMP176295, "reraiseException();", 19);
-STRING_LITERAL(TMP176601, "toEcmaStr", 9);
-STRING_LITERAL(TMP176602, "switch (toEcmaStr($1)) {$n", 26);
-STRING_LITERAL(TMP176603, "switch ($1) {$n", 15);
-static NIM_CONST TY49999 TMP176604 = {
+STRING_LITERAL(TMP176420, "$1;$n", 5);
+STRING_LITERAL(TMP176636, "// line $2 \"$1\"$n", 17);
+STRING_LITERAL(TMP176637, "endb", 4);
+STRING_LITERAL(TMP176638, "endb($1);$n", 11);
+STRING_LITERAL(TMP176639, "F.line = $1;$n", 14);
+STRING_LITERAL(TMP176669, "excHandler = excHandler.prev;", 29);
+STRING_LITERAL(TMP176765, "L$3: while ($1) {$n$2}$n", 24);
+STRING_LITERAL(TMP176766, "while ($1) {$n$2}$n", 19);
+STRING_LITERAL(TMP177192, "Tmp$1", 5);
+STRING_LITERAL(TMP177193, "var $1 = {prev: excHandler, exc: null};$nexcHandler = $1;$n", 59);
+STRING_LITERAL(TMP177194, "framePtr = F;", 13);
+STRING_LITERAL(TMP177195, "try {", 5);
+STRING_LITERAL(TMP177196, "else {", 6);
+STRING_LITERAL(TMP177197, "genTryStmt", 10);
+STRING_LITERAL(TMP177198, "||", 2);
+STRING_LITERAL(TMP177199, "($1.exc.m_type == $2)", 21);
+STRING_LITERAL(TMP177200, "else ", 5);
+STRING_LITERAL(TMP177201, "if ($1.exc && $2) {$n", 21);
+STRING_LITERAL(TMP177202, "$1}$n", 5);
+STRING_LITERAL(TMP177203, "} catch (EXC) {$n$1", 19);
+STRING_LITERAL(TMP177204, "} finally {", 11);
+STRING_LITERAL(TMP177292, "raiseException", 14);
+STRING_LITERAL(TMP177293, "raiseException($1, $2);$n", 25);
+STRING_LITERAL(TMP177294, "reraiseException", 16);
+STRING_LITERAL(TMP177295, "reraiseException();", 19);
+STRING_LITERAL(TMP177601, "toEcmaStr", 9);
+STRING_LITERAL(TMP177602, "switch (toEcmaStr($1)) {$n", 26);
+STRING_LITERAL(TMP177603, "switch ($1) {$n", 15);
+static NIM_CONST TY50999 TMP177604 = {
 0xE0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP176605, "intVal", 6);
-STRING_LITERAL(TMP176606, "ecmasgen.genCaseStmt", 20);
-STRING_LITERAL(TMP176607, "case $1: ", 9);
-static NIM_CONST TY49999 TMP176608 = {
+;STRING_LITERAL(TMP177605, "intVal", 6);
+STRING_LITERAL(TMP177606, "ecmasgen.genCaseStmt", 20);
+STRING_LITERAL(TMP177607, "case $1: ", 9);
+static NIM_CONST TY50999 TMP177608 = {
 0x00, 0xC0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP176609, "strVal", 6);
-STRING_LITERAL(TMP176610, "ecmasgen.genCaseStmt: 2", 23);
-STRING_LITERAL(TMP176611, "$n$1break;$n", 12);
-STRING_LITERAL(TMP176612, "default: $n$1break;$n", 21);
-STRING_LITERAL(TMP176613, "}$n", 3);
-STRING_LITERAL(TMP176784, "genBlock", 8);
-STRING_LITERAL(TMP176785, "L$1: do {$n$2} while(false);$n", 30);
-STRING_LITERAL(TMP176887, "break L$1;$n", 12);
-STRING_LITERAL(TMP176992, "ecmasgen: genAsmStmt()", 22);
-STRING_LITERAL(TMP177129, "else {$n", 8);
-STRING_LITERAL(TMP177130, "if ($1) {$n$2}", 14);
-STRING_LITERAL(TMP177131, "else {$n$1}$n", 13);
-STRING_LITERAL(TMP177236, ": (", 3);
-STRING_LITERAL(TMP177237, "($1) ? ($2)", 11);
-STRING_LITERAL(TMP177238, ": ($1)", 6);
-STRING_LITERAL(TMP177331, "_Idx", 4);
-NIM_CONST TY49999 Nodekindsneednocopy_177332 = {
+;STRING_LITERAL(TMP177609, "strVal", 6);
+STRING_LITERAL(TMP177610, "ecmasgen.genCaseStmt: 2", 23);
+STRING_LITERAL(TMP177611, "$n$1break;$n", 12);
+STRING_LITERAL(TMP177612, "default: $n$1break;$n", 21);
+STRING_LITERAL(TMP177613, "}$n", 3);
+STRING_LITERAL(TMP177784, "genBlock", 8);
+STRING_LITERAL(TMP177785, "L$1: do {$n$2} while(false);$n", 30);
+STRING_LITERAL(TMP177887, "break L$1;$n", 12);
+STRING_LITERAL(TMP177992, "ecmasgen: genAsmStmt()", 22);
+STRING_LITERAL(TMP178129, "else {$n", 8);
+STRING_LITERAL(TMP178130, "if ($1) {$n$2}", 14);
+STRING_LITERAL(TMP178131, "else {$n$1}$n", 13);
+STRING_LITERAL(TMP178236, ": (", 3);
+STRING_LITERAL(TMP178237, "($1) ? ($2)", 11);
+STRING_LITERAL(TMP178238, ": ($1)", 6);
+STRING_LITERAL(TMP178331, "_Idx", 4);
+NIM_CONST TY50999 Nodekindsneednocopy_178332 = {
 0xE0, 0xFF, 0x71, 0xC0, 0x00, 0x00, 0x02, 0x30,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-static NIM_CONST TY49999 TMP177361 = {
+static NIM_CONST TY50999 TMP178361 = {
 0xE0, 0xFF, 0x71, 0xC0, 0x00, 0x00, 0x02, 0x30,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP177477, "$1 = $2;$n", 10);
-STRING_LITERAL(TMP177478, "NimCopy", 7);
-STRING_LITERAL(TMP177479, "$1 = NimCopy($2, $3);$n", 23);
-STRING_LITERAL(TMP177480, "genAsgn", 7);
-STRING_LITERAL(TMP177481, "$1 = $2; $3 = $4;$n", 19);
-STRING_LITERAL(TMP177690, "genSwap", 7);
-STRING_LITERAL(TMP177691, "var $1 = $2; $2 = $3; $3 = $1;$n", 32);
-STRING_LITERAL(TMP177692, "var $1 = $2; $2 = $3; $3 = $1", 29);
-STRING_LITERAL(TMP177783, "genFieldAddr", 12);
-STRING_LITERAL(TMP177876, "$1.$2", 5);
-STRING_LITERAL(TMP178009, "chckIndx", 8);
-STRING_LITERAL(TMP178010, "chckIndx($1, $2, $3.length)-$2", 30);
-STRING_LITERAL(TMP178011, "($1)-$2", 7);
-STRING_LITERAL(TMP178023, "$1[$2]", 6);
-STRING_LITERAL(TMP178110, "genAddr: 3", 10);
-STRING_LITERAL(TMP178111, "Globals", 7);
-STRING_LITERAL(TMP178112, "0", 1);
-STRING_LITERAL(TMP178113, "genAddr: 4", 10);
-STRING_LITERAL(TMP178114, "genAddr: 2", 10);
-STRING_LITERAL(TMP178115, "genAddr", 7);
-STRING_LITERAL(TMP178221, "symbol has no generated name: ", 30);
-STRING_LITERAL(TMP178222, "$1[0]", 5);
-STRING_LITERAL(TMP178223, "$1[1]", 5);
-STRING_LITERAL(TMP178291, "genDeref", 8);
-STRING_LITERAL(TMP178357, "(", 1);
-STRING_LITERAL(TMP178358, ")", 1);
-STRING_LITERAL(TMP178368, "[$1]", 4);
-STRING_LITERAL(TMP178492, ": ", 2);
-STRING_LITERAL(TMP178493, "createRecordVarAux", 18);
-STRING_LITERAL(TMP178615, "0.0", 3);
-STRING_LITERAL(TMP178616, "{}", 2);
-STRING_LITERAL(TMP178617, "false", 5);
-STRING_LITERAL(TMP178618, "ArrayConstr", 11);
-STRING_LITERAL(TMP178619, "ArrayConstr($1, $2, $3)", 23);
-STRING_LITERAL(TMP178620, "[", 1);
-STRING_LITERAL(TMP178621, "]", 1);
-STRING_LITERAL(TMP178622, "{", 1);
-STRING_LITERAL(TMP178623, "}", 1);
-STRING_LITERAL(TMP178624, "m_type: $1", 10);
-STRING_LITERAL(TMP178625, "[null, 0]", 9);
-STRING_LITERAL(TMP178626, "null", 4);
-STRING_LITERAL(TMP178627, "createVar: ", 11);
-STRING_LITERAL(TMP178768, "var $1 = $2;$n", 14);
-STRING_LITERAL(TMP178769, "NimCopy($1, $2)", 15);
-STRING_LITERAL(TMP178770, "genVarInit", 10);
-STRING_LITERAL(TMP178771, "var $1 = [$2, $3];$n", 20);
-STRING_LITERAL(TMP178772, "var $1 = $2; var $1_Idx = $3;$n", 31);
-STRING_LITERAL(TMP178773, "var $1 = [$2];$n", 16);
-STRING_LITERAL(TMP179126, "($1 ? 1:0)", 10);
-STRING_LITERAL(TMP179127, "genOrd", 6);
-STRING_LITERAL(TMP179217, "[$1, 0]", 7);
-STRING_LITERAL(TMP179218, "($1.slice(0,-1)).concat($2)", 27);
-STRING_LITERAL(TMP179444, "$1 - $2", 7);
-STRING_LITERAL(TMP179445, "addChar", 7);
-STRING_LITERAL(TMP179446, "$1 = addChar($1, $2)", 20);
-STRING_LITERAL(TMP179447, "$1 = ($1.slice(0,-1)).concat($2)", 32);
-STRING_LITERAL(TMP179448, "$1.push($2)", 11);
-STRING_LITERAL(TMP179449, "eqStrings", 9);
-STRING_LITERAL(TMP179450, "eqStrings($1, $2)", 17);
-STRING_LITERAL(TMP179451, "cmpStrings", 10);
-STRING_LITERAL(TMP179452, "(cmpStrings($1, $2) <= 0)", 25);
-STRING_LITERAL(TMP179453, "(cmpStrings($1, $2) < 0)", 24);
-STRING_LITERAL(TMP179454, "$1 == null", 10);
-STRING_LITERAL(TMP179455, "internalAssert", 14);
-STRING_LITERAL(TMP179456, "if (!($3)) internalAssert($1, $2)", 33);
-STRING_LITERAL(TMP179457, "($1.length-1)", 13);
-STRING_LITERAL(TMP179458, "$1.length", 9);
-STRING_LITERAL(TMP179459, "($1.length-2)", 13);
-STRING_LITERAL(TMP179460, "$1 += $2", 8);
-STRING_LITERAL(TMP179461, "$1 = addInt($1, $2)", 19);
-STRING_LITERAL(TMP179462, "$1 -= $2", 8);
-STRING_LITERAL(TMP179463, "$1 = subInt($1, $2)", 19);
-STRING_LITERAL(TMP179464, "$1.length = ($2)-1", 18);
-STRING_LITERAL(TMP179465, "$1.length = $2", 14);
-STRING_LITERAL(TMP179466, "SetCard", 7);
-STRING_LITERAL(TMP179467, "SetCard($1)", 11);
-STRING_LITERAL(TMP179468, "SetLt", 5);
-STRING_LITERAL(TMP179469, "SetLt($1, $2)", 13);
-STRING_LITERAL(TMP179470, "SetLe", 5);
-STRING_LITERAL(TMP179471, "SetLe($1, $2)", 13);
-STRING_LITERAL(TMP179472, "SetEq", 5);
-STRING_LITERAL(TMP179473, "SetEq($1, $2)", 13);
-STRING_LITERAL(TMP179474, "SetMul", 6);
-STRING_LITERAL(TMP179475, "SetMul($1, $2)", 14);
-STRING_LITERAL(TMP179476, "SetPlus", 7);
-STRING_LITERAL(TMP179477, "SetPlus($1, $2)", 15);
-STRING_LITERAL(TMP179478, "SetMinus", 8);
-STRING_LITERAL(TMP179479, "SetMinus($1, $2)", 16);
-STRING_LITERAL(TMP179480, "$1[$2] = true", 13);
-STRING_LITERAL(TMP179481, "delete $1[$2]", 13);
-STRING_LITERAL(TMP179482, "($1[$2] != undefined)", 21);
-STRING_LITERAL(TMP179565, "SetConstr", 9);
-STRING_LITERAL(TMP179566, "SetConstr(", 10);
-STRING_LITERAL(TMP179710, "genRecordConstr", 15);
-STRING_LITERAL(TMP179711, "$1: $2", 6);
-STRING_LITERAL(TMP179767, "(($1)? 1:0)", 11);
-STRING_LITERAL(TMP179850, "chckRange", 9);
-STRING_LITERAL(TMP179851, "chckRange($1, $2, $3)", 21);
-STRING_LITERAL(TMP179931, "convStrToCStr", 13);
-STRING_LITERAL(TMP179932, "toEcmaStr($1)", 13);
-STRING_LITERAL(TMP180012, "convCStrToStr", 13);
-STRING_LITERAL(TMP180013, "cstrToNimstr", 12);
-STRING_LITERAL(TMP180014, "cstrToNimstr($1)", 16);
-STRING_LITERAL(TMP180093, "genReturnStmt", 13);
-STRING_LITERAL(TMP180094, "break BeforeRet;", 16);
-STRING_LITERAL(TMP180184, "var F={procname:$1,prev:framePtr,filename:$2,line:0};$nframePtr"
+;STRING_LITERAL(TMP178477, "$1 = $2;$n", 10);
+STRING_LITERAL(TMP178478, "NimCopy", 7);
+STRING_LITERAL(TMP178479, "$1 = NimCopy($2, $3);$n", 23);
+STRING_LITERAL(TMP178480, "genAsgn", 7);
+STRING_LITERAL(TMP178481, "$1 = $2; $3 = $4;$n", 19);
+STRING_LITERAL(TMP178690, "genSwap", 7);
+STRING_LITERAL(TMP178691, "var $1 = $2; $2 = $3; $3 = $1;$n", 32);
+STRING_LITERAL(TMP178692, "var $1 = $2; $2 = $3; $3 = $1", 29);
+STRING_LITERAL(TMP178783, "genFieldAddr", 12);
+STRING_LITERAL(TMP178876, "$1.$2", 5);
+STRING_LITERAL(TMP179009, "chckIndx", 8);
+STRING_LITERAL(TMP179010, "chckIndx($1, $2, $3.length)-$2", 30);
+STRING_LITERAL(TMP179011, "($1)-$2", 7);
+STRING_LITERAL(TMP179023, "$1[$2]", 6);
+STRING_LITERAL(TMP179110, "genAddr: 3", 10);
+STRING_LITERAL(TMP179111, "Globals", 7);
+STRING_LITERAL(TMP179112, "0", 1);
+STRING_LITERAL(TMP179113, "genAddr: 4", 10);
+STRING_LITERAL(TMP179114, "genAddr: 2", 10);
+STRING_LITERAL(TMP179115, "genAddr", 7);
+STRING_LITERAL(TMP179221, "symbol has no generated name: ", 30);
+STRING_LITERAL(TMP179222, "$1[0]", 5);
+STRING_LITERAL(TMP179223, "$1[1]", 5);
+STRING_LITERAL(TMP179291, "genDeref", 8);
+STRING_LITERAL(TMP179357, "(", 1);
+STRING_LITERAL(TMP179358, ")", 1);
+STRING_LITERAL(TMP179368, "[$1]", 4);
+STRING_LITERAL(TMP179492, ": ", 2);
+STRING_LITERAL(TMP179493, "createRecordVarAux", 18);
+STRING_LITERAL(TMP179615, "0.0", 3);
+STRING_LITERAL(TMP179616, "{}", 2);
+STRING_LITERAL(TMP179617, "false", 5);
+STRING_LITERAL(TMP179618, "ArrayConstr", 11);
+STRING_LITERAL(TMP179619, "ArrayConstr($1, $2, $3)", 23);
+STRING_LITERAL(TMP179620, "[", 1);
+STRING_LITERAL(TMP179621, "]", 1);
+STRING_LITERAL(TMP179622, "{", 1);
+STRING_LITERAL(TMP179623, "}", 1);
+STRING_LITERAL(TMP179624, "m_type: $1", 10);
+STRING_LITERAL(TMP179625, "[null, 0]", 9);
+STRING_LITERAL(TMP179626, "null", 4);
+STRING_LITERAL(TMP179627, "createVar: ", 11);
+STRING_LITERAL(TMP179768, "var $1 = $2;$n", 14);
+STRING_LITERAL(TMP179769, "NimCopy($1, $2)", 15);
+STRING_LITERAL(TMP179770, "genVarInit", 10);
+STRING_LITERAL(TMP179771, "var $1 = [$2, $3];$n", 20);
+STRING_LITERAL(TMP179772, "var $1 = $2; var $1_Idx = $3;$n", 31);
+STRING_LITERAL(TMP179773, "var $1 = [$2];$n", 16);
+STRING_LITERAL(TMP180126, "($1 ? 1:0)", 10);
+STRING_LITERAL(TMP180127, "genOrd", 6);
+STRING_LITERAL(TMP180217, "[$1, 0]", 7);
+STRING_LITERAL(TMP180218, "($1.slice(0,-1)).concat($2)", 27);
+STRING_LITERAL(TMP180444, "$1 - $2", 7);
+STRING_LITERAL(TMP180445, "addChar", 7);
+STRING_LITERAL(TMP180446, "$1 = addChar($1, $2)", 20);
+STRING_LITERAL(TMP180447, "$1 = ($1.slice(0,-1)).concat($2)", 32);
+STRING_LITERAL(TMP180448, "$1.push($2)", 11);
+STRING_LITERAL(TMP180449, "eqStrings", 9);
+STRING_LITERAL(TMP180450, "eqStrings($1, $2)", 17);
+STRING_LITERAL(TMP180451, "cmpStrings", 10);
+STRING_LITERAL(TMP180452, "(cmpStrings($1, $2) <= 0)", 25);
+STRING_LITERAL(TMP180453, "(cmpStrings($1, $2) < 0)", 24);
+STRING_LITERAL(TMP180454, "$1 == null", 10);
+STRING_LITERAL(TMP180455, "internalAssert", 14);
+STRING_LITERAL(TMP180456, "if (!($3)) internalAssert($1, $2)", 33);
+STRING_LITERAL(TMP180457, "($1.length-1)", 13);
+STRING_LITERAL(TMP180458, "$1.length", 9);
+STRING_LITERAL(TMP180459, "($1.length-2)", 13);
+STRING_LITERAL(TMP180460, "$1 += $2", 8);
+STRING_LITERAL(TMP180461, "$1 = addInt($1, $2)", 19);
+STRING_LITERAL(TMP180462, "$1 -= $2", 8);
+STRING_LITERAL(TMP180463, "$1 = subInt($1, $2)", 19);
+STRING_LITERAL(TMP180464, "$1.length = ($2)-1", 18);
+STRING_LITERAL(TMP180465, "$1.length = $2", 14);
+STRING_LITERAL(TMP180466, "SetCard", 7);
+STRING_LITERAL(TMP180467, "SetCard($1)", 11);
+STRING_LITERAL(TMP180468, "SetLt", 5);
+STRING_LITERAL(TMP180469, "SetLt($1, $2)", 13);
+STRING_LITERAL(TMP180470, "SetLe", 5);
+STRING_LITERAL(TMP180471, "SetLe($1, $2)", 13);
+STRING_LITERAL(TMP180472, "SetEq", 5);
+STRING_LITERAL(TMP180473, "SetEq($1, $2)", 13);
+STRING_LITERAL(TMP180474, "SetMul", 6);
+STRING_LITERAL(TMP180475, "SetMul($1, $2)", 14);
+STRING_LITERAL(TMP180476, "SetPlus", 7);
+STRING_LITERAL(TMP180477, "SetPlus($1, $2)", 15);
+STRING_LITERAL(TMP180478, "SetMinus", 8);
+STRING_LITERAL(TMP180479, "SetMinus($1, $2)", 16);
+STRING_LITERAL(TMP180480, "$1[$2] = true", 13);
+STRING_LITERAL(TMP180481, "delete $1[$2]", 13);
+STRING_LITERAL(TMP180482, "($1[$2] != undefined)", 21);
+STRING_LITERAL(TMP180565, "SetConstr", 9);
+STRING_LITERAL(TMP180566, "SetConstr(", 10);
+STRING_LITERAL(TMP180710, "genRecordConstr", 15);
+STRING_LITERAL(TMP180711, "$1: $2", 6);
+STRING_LITERAL(TMP180767, "(($1)? 1:0)", 11);
+STRING_LITERAL(TMP180850, "chckRange", 9);
+STRING_LITERAL(TMP180851, "chckRange($1, $2, $3)", 21);
+STRING_LITERAL(TMP180931, "convStrToCStr", 13);
+STRING_LITERAL(TMP180932, "toEcmaStr($1)", 13);
+STRING_LITERAL(TMP181012, "convCStrToStr", 13);
+STRING_LITERAL(TMP181013, "cstrToNimstr", 12);
+STRING_LITERAL(TMP181014, "cstrToNimstr($1)", 16);
+STRING_LITERAL(TMP181093, "genReturnStmt", 13);
+STRING_LITERAL(TMP181094, "break BeforeRet;", 16);
+STRING_LITERAL(TMP181184, "var F={procname:$1,prev:framePtr,filename:$2,line:0};$nframePtr"
 " = F;$n", 70);
-STRING_LITERAL(TMP180185, "BeforeRet: do {$n$1} while (false); $n", 38);
-STRING_LITERAL(TMP180186, "try {$n$1} catch (e) {$n alert(\"Unhandled exception:\\n\" + e.mes"
+STRING_LITERAL(TMP181185, "BeforeRet: do {$n$1} while (false); $n", 38);
+STRING_LITERAL(TMP181186, "try {$n$1} catch (e) {$n alert(\"Unhandled exception:\\n\" + e.mes"
 "sage + \"\\n\"$n}", 77);
-STRING_LITERAL(TMP180187, "framePtr = framePtr.prev;", 25);
-STRING_LITERAL(TMP180332, "return $1;$n", 12);
-STRING_LITERAL(TMP180333, "function $1($2) {$n$3$4$5}$n", 28);
-STRING_LITERAL(TMP180392, "function () {", 13);
-STRING_LITERAL(TMP180393, "return $1; }()", 14);
-STRING_LITERAL(TMP180534, "for statement not eliminated", 28);
-static NIM_CONST TY49999 TMP180707 = {
+STRING_LITERAL(TMP181187, "framePtr = framePtr.prev;", 25);
+STRING_LITERAL(TMP181332, "return $1;$n", 12);
+STRING_LITERAL(TMP181333, "function $1($2) {$n$3$4$5}$n", 28);
+STRING_LITERAL(TMP181392, "function () {", 13);
+STRING_LITERAL(TMP181393, "return $1; }()", 14);
+STRING_LITERAL(TMP181534, "for statement not eliminated", 28);
+static NIM_CONST TY50999 TMP181707 = {
 0x00, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP180708, "floatVal", 8);
-STRING_LITERAL(TMP180709, "NaN", 3);
-STRING_LITERAL(TMP180710, "Infinity", 8);
-STRING_LITERAL(TMP180711, "-Infinity", 9);
-STRING_LITERAL(TMP180712, "chckRangeF", 10);
-STRING_LITERAL(TMP180713, "chckRange64", 11);
-STRING_LITERAL(TMP180714, "gen: unknown node type: ", 24);
-STRING_LITERAL(TMP180787, "/* Generated by the Nimrod Compiler v$1 */$n/*   (c) 2008 Andre"
+;STRING_LITERAL(TMP181708, "floatVal", 8);
+STRING_LITERAL(TMP181709, "NaN", 3);
+STRING_LITERAL(TMP181710, "Infinity", 8);
+STRING_LITERAL(TMP181711, "-Infinity", 9);
+STRING_LITERAL(TMP181712, "chckRangeF", 10);
+STRING_LITERAL(TMP181713, "chckRange64", 11);
+STRING_LITERAL(TMP181714, "gen: unknown node type: ", 24);
+STRING_LITERAL(TMP181787, "/* Generated by the Nimrod Compiler v$1 */$n/*   (c) 2008 Andre"
 "as Rumpf */$n$n$nvar Globals = this;$nvar framePtr = null;$nvar "
 "excHandler = null;$n", 147);
-STRING_LITERAL(TMP180788, "0.8.9", 5);
-STRING_LITERAL(TMP180843, "var F = {procname:$1,prev:framePtr,filename:$2,line:0};$nframeP"
+STRING_LITERAL(TMP181788, "0.8.9", 5);
+STRING_LITERAL(TMP181843, "var F = {procname:$1,prev:framePtr,filename:$2,line:0};$nframeP"
 "tr = F;$n$3framePtr = framePtr.prev;$n", 101);
-STRING_LITERAL(TMP180844, "module ", 7);
-STRING_LITERAL(TMP180869, "myProcess", 9);
-STRING_LITERAL(TMP180889, "js", 2);
-STRING_LITERAL(TMP180896, "symbol files are not possible with the Ecmas code generator", 59);
-extern TNimType* NTI174019; /* PGlobals */
-extern TNimType* NTI174050; /* seq[TBlock] */
-extern TY7816 Dl_7815;
-extern TY10790 Gch_10810;
-extern TY7820 Dl_7819;
-extern NimStringDesc* Tnl_45573;
-extern TNimType* NTI49162; /* TTypeKind */
-extern TNimType* NTI49030; /* TNodeKind */
-TY174017* Globals_180715;
-extern TNimType* NTI174009; /* BModule */
-extern TNimType* NTI174007; /* TEcmasGen */
-N_NIMCALL(TY174017*, Newglobals_174052)(void) {
-TY174017* Result_174054;
+STRING_LITERAL(TMP181844, "module ", 7);
+STRING_LITERAL(TMP181869, "myProcess", 9);
+STRING_LITERAL(TMP181889, "js", 2);
+STRING_LITERAL(TMP181896, "symbol files are not possible with the Ecmas code generator", 59);
+extern TNimType* NTI175019; /* PGlobals */
+extern TNimType* NTI175050; /* seq[TBlock] */
+extern TY8016 Dl_8015;
+extern TY10990 Gch_11010;
+extern TY8020 Dl_8019;
+extern NimStringDesc* Tnl_46573;
+extern TNimType* NTI50162; /* TTypeKind */
+extern TNimType* NTI50030; /* TNodeKind */
+TY175017* Globals_181715;
+extern TNimType* NTI175009; /* BModule */
+extern TNimType* NTI175007; /* TEcmasGen */
+N_NIMCALL(TY175017*, Newglobals_175052)(void) {
+TY175017* Result_175054;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "newGlobals";
@@ -1382,15 +1382,15 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174054 = 0;
+Result_175054 = 0;
 F.line = 68;F.filename = "ecmasgen.nim";
-Result_174054 = (TY174017*) newObj(NTI174019, sizeof(TY174017));
+Result_175054 = (TY175017*) newObj(NTI175019, sizeof(TY175017));
 F.line = 69;F.filename = "ecmasgen.nim";
-Intsetinit_49924(&(*Result_174054).Typeinfogenerated);
+Intsetinit_50924(&(*Result_175054).Typeinfogenerated);
 framePtr = framePtr->prev;
-return Result_174054;
+return Result_175054;
 }
-N_NIMCALL(void, Initcompres_174072)(TY174013* R_174075) {
+N_NIMCALL(void, Initcompres_175072)(TY175013* R_175075) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "initCompRes";
@@ -1400,14 +1400,14 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 72;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174075).Com, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175075).Com, NIM_NIL);
 F.line = 73;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174075).Res, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175075).Res, NIM_NIL);
 F.line = 74;F.filename = "ecmasgen.nim";
-(*R_174075).Kind = ((NU8) 0);
+(*R_175075).Kind = ((NU8) 0);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Initproc_174076)(TY174021* P_174079, TY174017* Globals_174080, TY174007* Module_174081, TY49525* Procdef_174082, NU32 Options_174083) {
+N_NIMCALL(void, Initproc_175076)(TY175021* P_175079, TY175017* Globals_175080, TY175007* Module_175081, TY50525* Procdef_175082, NU32 Options_175083) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "initProc";
@@ -1417,29 +1417,29 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 78;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*P_174079).Blocks, (TY174050*) newSeq(NTI174050, 0));
+unsureAsgnRef((void**) &(*P_175079).Blocks, (TY175050*) newSeq(NTI175050, 0));
 F.line = 79;F.filename = "ecmasgen.nim";
-(*P_174079).Options = Options_174083;
+(*P_175079).Options = Options_175083;
 F.line = 80;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*P_174079).Module, Module_174081);
+unsureAsgnRef((void**) &(*P_175079).Module, Module_175081);
 F.line = 81;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*P_174079).Procdef, Procdef_174082);
+unsureAsgnRef((void**) &(*P_175079).Procdef, Procdef_175082);
 F.line = 82;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*P_174079).Globals, Globals_174080);
+unsureAsgnRef((void**) &(*P_175079).Globals, Globals_175080);
 F.line = 83;F.filename = "ecmasgen.nim";
-if (!!((Procdef_174082 == NIM_NIL))) goto LA2;
+if (!!((Procdef_175082 == NIM_NIL))) goto LA2;
 F.line = 83;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*Procdef_174082).Kind/8] &(1<<((*Procdef_174082).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*Procdef_174082).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*Procdef_174082).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Procdef_174082).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-unsureAsgnRef((void**) &(*P_174079).Prc, (*(*Procdef_174082).KindU.S6.Sons->data[0]).KindU.S4.Sym);
+if (((TMP175136[(*Procdef_175082).Kind/8] &(1<<((*Procdef_175082).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*Procdef_175082).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*Procdef_175082).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*Procdef_175082).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+unsureAsgnRef((void**) &(*P_175079).Prc, (*(*Procdef_175082).KindU.S6.Sons->data[0]).KindU.S4.Sym);
 LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NU8, Maptype_174142)(TY49551* Typ_174144) {
-NU8 Result_174145;
-TY49551* T_174146;
-TY49551* LOC2;
+N_NIMCALL(NU8, Maptype_175142)(TY50551* Typ_175144) {
+NU8 Result_175145;
+TY50551* T_175146;
+TY50551* LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "mapType";
@@ -1448,61 +1448,61 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174145 = 0;
-T_174146 = 0;
+Result_175145 = 0;
+T_175146 = 0;
 F.line = 90;F.filename = "ecmasgen.nim";
-T_174146 = Skiptypes_91085(Typ_174144, 43008);
+T_175146 = Skiptypes_92085(Typ_175144, 43008);
 F.line = 91;F.filename = "ecmasgen.nim";
-switch ((*T_174146).Kind) {
+switch ((*T_175146).Kind) {
 case ((NU8) 23):
 case ((NU8) 22):
 case ((NU8) 21):
 F.line = 93;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*T_174146).Sons->Sup.len)) raiseIndexError();
+if ((NU)(0) >= (NU)((*T_175146).Sons->Sup.len)) raiseIndexError();
 LOC2 = 0;
-LOC2 = Skiptypes_91085((*T_174146).Sons->data[0], 43008);
+LOC2 = Skiptypes_92085((*T_175146).Sons->data[0], 43008);
 if (!((149880848 &(IL64(1)<<(((*LOC2).Kind)&IL64(63))))!=0)) goto LA3;
 F.line = 94;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 7);
+Result_175145 = ((NU8) 7);
 goto LA1;
 LA3: ;
 F.line = 96;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 8);
+Result_175145 = ((NU8) 8);
 LA1: ;
 break;
 case ((NU8) 26):
 F.line = 99;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 4);
+Result_175145 = ((NU8) 4);
 break;
 case ((NU8) 20):
 case ((NU8) 13):
 case ((NU8) 15):
 F.line = 100;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*T_174146).Sons->Sup.len)) raiseIndexError();
-Result_174145 = Maptype_174142((*T_174146).Sons->data[0]);
+if ((NU)(0) >= (NU)((*T_175146).Sons->Sup.len)) raiseIndexError();
+Result_175145 = Maptype_175142((*T_175146).Sons->data[0]);
 break;
 case ((NU8) 31) ... ((NU8) 35):
 case ((NU8) 14):
 case ((NU8) 2):
 F.line = 101;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 4);
+Result_175145 = ((NU8) 4);
 break;
 case ((NU8) 1):
 F.line = 102;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 3);
+Result_175145 = ((NU8) 3);
 break;
 case ((NU8) 36) ... ((NU8) 39):
 F.line = 103;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 5);
+Result_175145 = ((NU8) 5);
 break;
 case ((NU8) 19):
 F.line = 104;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 7);
+Result_175145 = ((NU8) 7);
 break;
 case ((NU8) 28):
 case ((NU8) 24):
 F.line = 105;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 4);
+Result_175145 = ((NU8) 4);
 break;
 case ((NU8) 17):
 case ((NU8) 16):
@@ -1510,11 +1510,11 @@ case ((NU8) 4):
 case ((NU8) 18):
 case ((NU8) 27):
 F.line = 107;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 7);
+Result_175145 = ((NU8) 7);
 break;
 case ((NU8) 5):
 F.line = 108;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 1);
+Result_175145 = ((NU8) 1);
 break;
 case ((NU8) 11):
 case ((NU8) 12):
@@ -1527,44 +1527,28 @@ case ((NU8) 6):
 case ((NU8) 7):
 case ((NU8) 8):
 F.line = 111;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 0);
+Result_175145 = ((NU8) 0);
 break;
 case ((NU8) 25):
 F.line = 112;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 2);
+Result_175145 = ((NU8) 2);
 break;
 case ((NU8) 29):
 F.line = 113;F.filename = "ecmasgen.nim";
-Result_174145 = ((NU8) 6);
+Result_175145 = ((NU8) 6);
 break;
 }
 framePtr = framePtr->prev;
-return Result_174145;
+return Result_175145;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
-}
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
 LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -1573,7 +1557,23 @@ raiseOverflow();
 BeforeRet: ;
 return Result_5805;
 }
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_17209, NIM_CHAR C_17210) {
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI64)((NU64)(A_6003) - (NU64)(B_6004));
+LOC2 = (0 <= (NI64)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_6005 ^ (NI64)((NU64) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
+}
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_17409, NIM_CHAR C_17410) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendChar";
@@ -1583,14 +1583,14 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 154;F.filename = "sysstr.nim";
-(*Dest_17209).data[((*Dest_17209).Sup.len)-0] = C_17210;
+(*Dest_17409).data[((*Dest_17409).Sup.len)-0] = C_17410;
 F.line = 155;F.filename = "sysstr.nim";
-(*Dest_17209).data[((NI64)((*Dest_17209).Sup.len + 1))-0] = 0;
+(*Dest_17409).data[((NI64)((*Dest_17409).Sup.len + 1))-0] = 0;
 F.line = 156;F.filename = "sysstr.nim";
-(*Dest_17209).Sup.len += 1;
+(*Dest_17409).Sup.len += 1;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17192, NimStringDesc* Src_17193) {
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendString";
@@ -1600,16 +1600,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "sysstr.nim";
-memcpy(((NCSTRING) (&(*Dest_17192).data[((*Dest_17192).Sup.len)-0])), ((NCSTRING) ((*Src_17193).data)), ((NI32) ((NI64)((NI64)((*Src_17193).Sup.len + 1) * 1))));
+memcpy(((NCSTRING) (&(*Dest_17392).data[((*Dest_17392).Sup.len)-0])), ((NCSTRING) ((*Src_17393).data)), ((NI32) ((NI64)((NI64)((*Src_17393).Sup.len + 1) * 1))));
 F.line = 151;F.filename = "sysstr.nim";
-(*Dest_17192).Sup.len += (*Src_17193).Sup.len;
+(*Dest_17392).Sup.len += (*Src_17393).Sup.len;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NimStringDesc*, Mangle_174158)(NimStringDesc* Name_174160) {
-NimStringDesc* Result_174161;
-NI I_174186;
-NI HEX3Atmp_174212;
-NI Res_174214;
+N_NIMCALL(NimStringDesc*, Mangle_175158)(NimStringDesc* Name_175160) {
+NimStringDesc* Result_175161;
+NI I_175186;
+NI HEX3Atmp_175212;
+NI Res_175214;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -1620,58 +1620,58 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174161 = 0;
+Result_175161 = 0;
 F.line = 116;F.filename = "ecmasgen.nim";
-Result_174161 = copyString(((NimStringDesc*) &TMP174217));
-I_174186 = 0;
-HEX3Atmp_174212 = 0;
+Result_175161 = copyString(((NimStringDesc*) &TMP175217));
+I_175186 = 0;
+HEX3Atmp_175212 = 0;
 F.line = 117;F.filename = "ecmasgen.nim";
-HEX3Atmp_174212 = subInt(addInt(Name_174160->Sup.len, 0), 1);
-Res_174214 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_174214 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_175212 = subInt(addInt(Name_175160->Sup.len, 0), 1);
+Res_175214 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_175214 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_174214 <= HEX3Atmp_174212)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_174186 = Res_174214;
+if (!(Res_175214 <= HEX3Atmp_175212)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_175186 = Res_175214;
 F.line = 118;F.filename = "ecmasgen.nim";
-if ((NU)(I_174186) > (NU)(Name_174160->Sup.len)) raiseIndexError();
-switch (((NU8)(Name_174160->data[I_174186]))) {
+if ((NU)(I_175186) > (NU)(Name_175160->Sup.len)) raiseIndexError();
+switch (((NU8)(Name_175160->data[I_175186]))) {
 case 65 ... 90:
 F.line = 120;F.filename = "ecmasgen.nim";
-if ((NU)(I_174186) > (NU)(Name_174160->Sup.len)) raiseIndexError();
-Result_174161 = addChar(Result_174161, ((NIM_CHAR) (((NI) (addInt(subInt(((NU8)(Name_174160->data[I_174186])), 65), 97))))));
+if ((NU)(I_175186) > (NU)(Name_175160->Sup.len)) raiseIndexError();
+Result_175161 = addChar(Result_175161, ((NIM_CHAR) (((NI) (addInt(subInt(((NU8)(Name_175160->data[I_175186])), 65), 97))))));
 break;
 case 95:
 break;
 case 97 ... 122:
 case 48 ... 57:
 F.line = 124;F.filename = "ecmasgen.nim";
-if ((NU)(I_174186) > (NU)(Name_174160->Sup.len)) raiseIndexError();
-Result_174161 = addChar(Result_174161, Name_174160->data[I_174186]);
+if ((NU)(I_175186) > (NU)(Name_175160->Sup.len)) raiseIndexError();
+Result_175161 = addChar(Result_175161, Name_175160->data[I_175186]);
 break;
 default:
 F.line = 125;F.filename = "ecmasgen.nim";
 LOC2 = 0;
-if ((NU)(I_174186) > (NU)(Name_174160->Sup.len)) raiseIndexError();
+if ((NU)(I_175186) > (NU)(Name_175160->Sup.len)) raiseIndexError();
 LOC3 = 0;
-LOC3 = nsuToHex(((NI64) (((NU8)(Name_174160->data[I_174186])))), 2);
+LOC3 = nsuToHex(((NI64) (((NU8)(Name_175160->data[I_175186])))), 2);
 LOC2 = rawNewString(LOC3->Sup.len + 1);
 appendChar(LOC2, 88);
 appendString(LOC2, LOC3);
-Result_174161 = resizeString(Result_174161, LOC2->Sup.len + 0);
-appendString(Result_174161, LOC2);
+Result_175161 = resizeString(Result_175161, LOC2->Sup.len + 0);
+appendString(Result_175161, LOC2);
 break;
 }
-F.line = 1022;F.filename = "system.nim";
-Res_174214 = addInt(Res_174214, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_175214 = addInt(Res_175214, 1);
 } LA1: ;
 framePtr = framePtr->prev;
-return Result_174161;
+return Result_175161;
 }
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838) {
-TY10402* Result_10839;
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038) {
+TY10602* Result_11039;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "usrToCell";
@@ -1680,14 +1680,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_10839 = 0;
+Result_11039 = 0;
 F.line = 100;F.filename = "gc.nim";
-Result_10839 = ((TY10402*) ((NI64)((NU64)(((NI) (Usr_10838))) - (NU64)(((NI) (((NI)sizeof(TY10402))))))));
+Result_11039 = ((TY10602*) ((NI64)((NU64)(((NI) (Usr_11038))) - (NU64)(((NI) (((NI)sizeof(TY10602))))))));
 framePtr = framePtr->prev;
-return Result_10839;
+return Result_11039;
 }
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805) {
-NI Result_7208;
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+NI Result_7408;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicInc";
@@ -1696,14 +1696,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7208 = 0;
+Result_7408 = 0;
 F.line = 29;F.filename = "systhread.nim";
-Result_7208 = __sync_add_and_fetch(Memloc_2804, X_2805);
+Result_7408 = __sync_add_and_fetch(Memloc_3004, X_3005);
 framePtr = framePtr->prev;
-return Result_7208;
+return Result_7408;
 }
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810) {
-NI Result_7406;
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+NI Result_7606;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicDec";
@@ -1712,13 +1712,13 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7406 = 0;
+Result_7606 = 0;
 F.line = 37;F.filename = "systhread.nim";
-Result_7406 = __sync_sub_and_fetch(Memloc_2809, X_2810);
+Result_7606 = __sync_sub_and_fetch(Memloc_3009, X_3010);
 framePtr = framePtr->prev;
-return Result_7406;
+return Result_7606;
 }
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460) {
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "rtlAddZCT";
@@ -1730,21 +1730,21 @@ F.len = 0;
 F.line = 211;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA2;
 F.line = 211;F.filename = "gc.nim";
-Dl_7815(&Gch_10810.Zctlock);
+Dl_8015(&Gch_11010.Zctlock);
 LA2: ;
 F.line = 212;F.filename = "gc.nim";
-Addzct_10825(&Gch_10810.Zct, C_11460);
+Addzct_11025(&Gch_11010.Zct, C_11660);
 F.line = 213;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA5;
 F.line = 213;F.filename = "gc.nim";
-Dl_7819(&Gch_10810.Zctlock);
+Dl_8019(&Gch_11010.Zctlock);
 LA5: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619) {
-TY10402* C_11620;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819) {
+TY10602* C_11820;
 NI LOC4;
-TY10402* C_11622;
+TY10602* C_11822;
 NI LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1755,33 +1755,33 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 244;F.filename = "gc.nim";
-if (!!((Src_11619 == NIM_NIL))) goto LA2;
-C_11620 = 0;
+if (!!((Src_11819 == NIM_NIL))) goto LA2;
+C_11820 = 0;
 F.line = 245;F.filename = "gc.nim";
-C_11620 = Usrtocell_10836(Src_11619);
+C_11820 = Usrtocell_11036(Src_11819);
 F.line = 246;F.filename = "gc.nim";
-LOC4 = Atomicinc_2801(&(*C_11620).Refcount, 8);
+LOC4 = Atomicinc_3001(&(*C_11820).Refcount, 8);
 LA2: ;
 F.line = 247;F.filename = "gc.nim";
-if (!!(((*Dest_11618) == NIM_NIL))) goto LA6;
-C_11622 = 0;
+if (!!(((*Dest_11818) == NIM_NIL))) goto LA6;
+C_11822 = 0;
 F.line = 248;F.filename = "gc.nim";
-C_11622 = Usrtocell_10836((*Dest_11618));
+C_11822 = Usrtocell_11036((*Dest_11818));
 F.line = 249;F.filename = "gc.nim";
-LOC9 = Atomicdec_2806(&(*C_11622).Refcount, 8);
+LOC9 = Atomicdec_3006(&(*C_11822).Refcount, 8);
 if (!((NU64)(LOC9) < (NU64)(8))) goto LA10;
 F.line = 250;F.filename = "gc.nim";
-Rtladdzct_11458(C_11622);
+Rtladdzct_11658(C_11822);
 LA10: ;
 LA6: ;
 F.line = 251;F.filename = "gc.nim";
-(*Dest_11618) = Src_11619;
+(*Dest_11818) = Src_11819;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Manglename_174218)(TY49547* S_174220) {
-TY46008* Result_174221;
+N_NIMCALL(TY47008*, Manglename_175218)(TY50547* S_175220) {
+TY47008* Result_175221;
 NimStringDesc* LOC4;
-TY46008* LOC5;
+TY47008* LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "mangleName";
@@ -1790,59 +1790,59 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174221 = 0;
+Result_175221 = 0;
 F.line = 128;F.filename = "ecmasgen.nim";
-Result_174221 = (*S_174220).Loc.R;
+Result_175221 = (*S_175220).Loc.R;
 F.line = 129;F.filename = "ecmasgen.nim";
-if (!(Result_174221 == NIM_NIL)) goto LA2;
+if (!(Result_175221 == NIM_NIL)) goto LA2;
 F.line = 130;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = Mangle_174158((*(*S_174220).Name).S);
-Result_174221 = Torope_46046(LOC4);
+LOC4 = Mangle_175158((*(*S_175220).Name).S);
+Result_175221 = Torope_47046(LOC4);
 F.line = 131;F.filename = "ecmasgen.nim";
-App_46036(&Result_174221, ((NimStringDesc*) &TMP174235));
+App_47036(&Result_175221, ((NimStringDesc*) &TMP175235));
 F.line = 132;F.filename = "ecmasgen.nim";
 LOC5 = 0;
-LOC5 = Torope_46052(((NI64) ((*S_174220).Sup.Id)));
-App_46031(&Result_174221, LOC5);
+LOC5 = Torope_47052(((NI64) ((*S_175220).Sup.Id)));
+App_47031(&Result_175221, LOC5);
 F.line = 133;F.filename = "ecmasgen.nim";
-asgnRefNoCycle((void**) &(*S_174220).Loc.R, Result_174221);
+asgnRefNoCycle((void**) &(*S_175220).Loc.R, Result_175221);
 LA2: ;
 framePtr = framePtr->prev;
-return Result_174221;
+return Result_175221;
 }
-N_NIMCALL(TY46008*, Genobjectfields_174241)(TY174021* P_174244, TY49551* Typ_174245, TY49525* N_174246) {
-TY46008* Result_174247;
-TY46008* S_174248;
-TY46008* U_174249;
-NI Length_174250;
-TY49547* Field_174251;
-TY49525* B_174252;
-NI I_174274;
-NI HEX3Atmp_174547;
-NI Res_174549;
+N_NIMCALL(TY47008*, Genobjectfields_175241)(TY175021* P_175244, TY50551* Typ_175245, TY50525* N_175246) {
+TY47008* Result_175247;
+TY47008* S_175248;
+TY47008* U_175249;
+NI Length_175250;
+TY50547* Field_175251;
+TY50525* B_175252;
+NI I_175274;
+NI HEX3Atmp_175547;
+NI Res_175549;
 NimStringDesc* LOC8;
-TY46008* LOC9;
-TY53695 LOC10;
-TY53637 LOC11;
-NI I_174387;
-NI HEX3Atmp_174559;
-NI Res_174561;
+TY47008* LOC9;
+TY54695 LOC10;
+TY54637 LOC11;
+NI I_175387;
+NI HEX3Atmp_175559;
+NI Res_175561;
 NI LOC17;
-NI J_174409;
-NI HEX3Atmp_174553;
+NI J_175409;
+NI HEX3Atmp_175553;
 NI LOC20;
-NI Res_174555;
-TY53695 LOC28;
+NI Res_175555;
+TY54695 LOC28;
 NI64 LOC29;
 NI64 LOC30;
 NI64 LOC31;
-TY46008* LOC32;
+TY47008* LOC32;
 NI64 LOC33;
 NimStringDesc* LOC37;
-TY53695 LOC38;
-TY49525* LOC39;
-TY158071 LOC40;
+TY54695 LOC38;
+TY50525* LOC39;
+TY159071 LOC40;
 NI64 LOC41;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1852,228 +1852,228 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174247 = 0;
-S_174248 = 0;
-U_174249 = 0;
-Length_174250 = 0;
-Field_174251 = 0;
-B_174252 = 0;
+Result_175247 = 0;
+S_175248 = 0;
+U_175249 = 0;
+Length_175250 = 0;
+Field_175251 = 0;
+B_175252 = 0;
 F.line = 142;F.filename = "ecmasgen.nim";
-Result_174247 = NIM_NIL;
+Result_175247 = NIM_NIL;
 F.line = 143;F.filename = "ecmasgen.nim";
-switch ((*N_174246).Kind) {
+switch ((*N_175246).Kind) {
 case ((NU8) 113):
 F.line = 145;F.filename = "ecmasgen.nim";
-Length_174250 = Sonslen_49803(N_174246);
+Length_175250 = Sonslen_50803(N_175246);
 F.line = 146;F.filename = "ecmasgen.nim";
-if (!(Length_174250 == 1)) goto LA2;
+if (!(Length_175250 == 1)) goto LA2;
 F.line = 147;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174246).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Result_174247 = Genobjectfields_174241(P_174244, Typ_174245, (*N_174246).KindU.S6.Sons->data[0]);
+if (((TMP175136[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175246).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_175247 = Genobjectfields_175241(P_175244, Typ_175245, (*N_175246).KindU.S6.Sons->data[0]);
 goto LA1;
 LA2: ;
 F.line = 149;F.filename = "ecmasgen.nim";
-S_174248 = NIM_NIL;
-I_174274 = 0;
-HEX3Atmp_174547 = 0;
+S_175248 = NIM_NIL;
+I_175274 = 0;
+HEX3Atmp_175547 = 0;
 F.line = 150;F.filename = "ecmasgen.nim";
-HEX3Atmp_174547 = subInt(Length_174250, 1);
-Res_174549 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_174549 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_175547 = subInt(Length_175250, 1);
+Res_175549 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_175549 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_174549 <= HEX3Atmp_174547)) goto LA4;
-F.line = 1019;F.filename = "system.nim";
-I_174274 = Res_174549;
+if (!(Res_175549 <= HEX3Atmp_175547)) goto LA4;
+F.line = 1021;F.filename = "system.nim";
+I_175274 = Res_175549;
 F.line = 151;F.filename = "ecmasgen.nim";
-if (!(0 < I_174274)) goto LA6;
+if (!(0 < I_175274)) goto LA6;
 F.line = 151;F.filename = "ecmasgen.nim";
 LOC8 = 0;
-LOC8 = rawNewString(Tnl_45573->Sup.len + 2);
-appendString(LOC8, ((NimStringDesc*) &TMP174568));
-appendString(LOC8, Tnl_45573);
-App_46036(&S_174248, LOC8);
+LOC8 = rawNewString(Tnl_46573->Sup.len + 2);
+appendString(LOC8, ((NimStringDesc*) &TMP175568));
+appendString(LOC8, Tnl_46573);
+App_47036(&S_175248, LOC8);
 LA6: ;
 F.line = 152;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_174274) >= (NU)((*N_174246).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_175274) >= (NU)((*N_175246).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC9 = 0;
-LOC9 = Genobjectfields_174241(P_174244, Typ_174245, (*N_174246).KindU.S6.Sons->data[I_174274]);
-App_46031(&S_174248, LOC9);
-F.line = 1022;F.filename = "system.nim";
-Res_174549 = addInt(Res_174549, 1);
+LOC9 = Genobjectfields_175241(P_175244, Typ_175245, (*N_175246).KindU.S6.Sons->data[I_175274]);
+App_47031(&S_175248, LOC9);
+F.line = 1024;F.filename = "system.nim";
+Res_175549 = addInt(Res_175549, 1);
 } LA4: ;
 F.line = 153;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Torope_46052(((NI64) (Length_174250)));
-LOC10[1] = S_174248;
-Result_174247 = Ropef_46069(((NimStringDesc*) &TMP174569), LOC10, 2);
+LOC10[0] = Torope_47052(((NI64) (Length_175250)));
+LOC10[1] = S_175248;
+Result_175247 = Ropef_47069(((NimStringDesc*) &TMP175569), LOC10, 2);
 LA1: ;
 break;
 case ((NU8) 3):
 F.line = 156;F.filename = "ecmasgen.nim";
-if (!(((TMP174138[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Field_174251 = (*N_174246).KindU.S4.Sym;
+if (!(((TMP175138[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Field_175251 = (*N_175246).KindU.S4.Sym;
 F.line = 157;F.filename = "ecmasgen.nim";
-S_174248 = Gentypeinfo_174236(P_174244, (*Field_174251).Typ);
+S_175248 = Gentypeinfo_175236(P_175244, (*Field_175251).Typ);
 F.line = 158;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = Manglename_174218(Field_174251);
-LOC11[1] = S_174248;
-LOC11[2] = Makecstring_153010((*(*Field_174251).Name).S);
-Result_174247 = Ropef_46069(((NimStringDesc*) &TMP174570), LOC11, 3);
+LOC11[0] = Manglename_175218(Field_175251);
+LOC11[1] = S_175248;
+LOC11[2] = Makecstring_154010((*(*Field_175251).Name).S);
+Result_175247 = Ropef_47069(((NimStringDesc*) &TMP175570), LOC11, 3);
 break;
 case ((NU8) 114):
 F.line = 162;F.filename = "ecmasgen.nim";
-Length_174250 = Sonslen_49803(N_174246);
+Length_175250 = Sonslen_50803(N_175246);
 F.line = 163;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174246).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_174246).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA13;
+if (((TMP175136[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175246).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_175246).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA13;
 F.line = 163;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_174246).Info, ((NimStringDesc*) &TMP174571));
+Internalerror_42567((*N_175246).Info, ((NimStringDesc*) &TMP175571));
 LA13: ;
 F.line = 164;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174246).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_174246).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_174246).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Field_174251 = (*(*N_174246).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175246).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_175246).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_175246).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Field_175251 = (*(*N_175246).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 165;F.filename = "ecmasgen.nim";
-S_174248 = Gentypeinfo_174236(P_174244, (*Field_174251).Typ);
-I_174387 = 0;
-HEX3Atmp_174559 = 0;
+S_175248 = Gentypeinfo_175236(P_175244, (*Field_175251).Typ);
+I_175387 = 0;
+HEX3Atmp_175559 = 0;
 F.line = 166;F.filename = "ecmasgen.nim";
-HEX3Atmp_174559 = subInt(Length_174250, 1);
-Res_174561 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_174561 = 1;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_175559 = subInt(Length_175250, 1);
+Res_175561 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_175561 = 1;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_174561 <= HEX3Atmp_174559)) goto LA15;
-F.line = 1019;F.filename = "system.nim";
-I_174387 = Res_174561;
+if (!(Res_175561 <= HEX3Atmp_175559)) goto LA15;
+F.line = 1021;F.filename = "system.nim";
+I_175387 = Res_175561;
 F.line = 167;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174246).Kind/8] &(1<<((*N_174246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_174387) >= (NU)((*N_174246).KindU.S6.Sons->Sup.len)) raiseIndexError();
-B_174252 = (*N_174246).KindU.S6.Sons->data[I_174387];
+if (((TMP175136[(*N_175246).Kind/8] &(1<<((*N_175246).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_175387) >= (NU)((*N_175246).KindU.S6.Sons->Sup.len)) raiseIndexError();
+B_175252 = (*N_175246).KindU.S6.Sons->data[I_175387];
 F.line = 168;F.filename = "ecmasgen.nim";
-U_174249 = NIM_NIL;
+U_175249 = NIM_NIL;
 F.line = 169;F.filename = "ecmasgen.nim";
-switch ((*B_174252).Kind) {
+switch ((*B_175252).Kind) {
 case ((NU8) 75):
 F.line = 171;F.filename = "ecmasgen.nim";
-LOC17 = Sonslen_49803(B_174252);
+LOC17 = Sonslen_50803(B_175252);
 if (!(LOC17 < 2)) goto LA18;
 F.line = 172;F.filename = "ecmasgen.nim";
-Internalerror_41567((*B_174252).Info, ((NimStringDesc*) &TMP174572));
+Internalerror_42567((*B_175252).Info, ((NimStringDesc*) &TMP175572));
 LA18: ;
-J_174409 = 0;
-HEX3Atmp_174553 = 0;
+J_175409 = 0;
+HEX3Atmp_175553 = 0;
 F.line = 173;F.filename = "ecmasgen.nim";
-LOC20 = Sonslen_49803(B_174252);
-HEX3Atmp_174553 = subInt(LOC20, 2);
-Res_174555 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_174555 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC20 = Sonslen_50803(B_175252);
+HEX3Atmp_175553 = subInt(LOC20, 2);
+Res_175555 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_175555 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_174555 <= HEX3Atmp_174553)) goto LA21;
-F.line = 1019;F.filename = "system.nim";
-J_174409 = Res_174555;
+if (!(Res_175555 <= HEX3Atmp_175553)) goto LA21;
+F.line = 1021;F.filename = "system.nim";
+J_175409 = Res_175555;
 F.line = 174;F.filename = "ecmasgen.nim";
-if (!!((U_174249 == NIM_NIL))) goto LA23;
+if (!!((U_175249 == NIM_NIL))) goto LA23;
 F.line = 174;F.filename = "ecmasgen.nim";
-App_46036(&U_174249, ((NimStringDesc*) &TMP174568));
+App_47036(&U_175249, ((NimStringDesc*) &TMP175568));
 LA23: ;
 F.line = 175;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*B_174252).Kind/8] &(1<<((*B_174252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_174409) >= (NU)((*B_174252).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*B_174252).KindU.S6.Sons->data[J_174409]).Kind == ((NU8) 35))) goto LA26;
+if (((TMP175136[(*B_175252).Kind/8] &(1<<((*B_175252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_175409) >= (NU)((*B_175252).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*B_175252).KindU.S6.Sons->data[J_175409]).Kind == ((NU8) 35))) goto LA26;
 F.line = 176;F.filename = "ecmasgen.nim";
 memset((void*)&LOC28, 0, sizeof(LOC28));
-if (((TMP174136[(*B_174252).Kind/8] &(1<<((*B_174252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_174409) >= (NU)((*B_174252).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*B_174252).KindU.S6.Sons->data[J_174409]).Kind/8] &(1<<((*(*B_174252).KindU.S6.Sons->data[J_174409]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*B_174252).KindU.S6.Sons->data[J_174409]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC29 = Getordvalue_91107((*(*B_174252).KindU.S6.Sons->data[J_174409]).KindU.S6.Sons->data[0]);
-LOC28[0] = Torope_46052(LOC29);
-if (((TMP174136[(*B_174252).Kind/8] &(1<<((*B_174252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_174409) >= (NU)((*B_174252).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*B_174252).KindU.S6.Sons->data[J_174409]).Kind/8] &(1<<((*(*B_174252).KindU.S6.Sons->data[J_174409]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*(*B_174252).KindU.S6.Sons->data[J_174409]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC30 = Getordvalue_91107((*(*B_174252).KindU.S6.Sons->data[J_174409]).KindU.S6.Sons->data[1]);
-LOC28[1] = Torope_46052(LOC30);
-Appf_46074(&U_174249, ((NimStringDesc*) &TMP174573), LOC28, 2);
+if (((TMP175136[(*B_175252).Kind/8] &(1<<((*B_175252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_175409) >= (NU)((*B_175252).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*B_175252).KindU.S6.Sons->data[J_175409]).Kind/8] &(1<<((*(*B_175252).KindU.S6.Sons->data[J_175409]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*B_175252).KindU.S6.Sons->data[J_175409]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC29 = Getordvalue_92107((*(*B_175252).KindU.S6.Sons->data[J_175409]).KindU.S6.Sons->data[0]);
+LOC28[0] = Torope_47052(LOC29);
+if (((TMP175136[(*B_175252).Kind/8] &(1<<((*B_175252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_175409) >= (NU)((*B_175252).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*B_175252).KindU.S6.Sons->data[J_175409]).Kind/8] &(1<<((*(*B_175252).KindU.S6.Sons->data[J_175409]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*(*B_175252).KindU.S6.Sons->data[J_175409]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC30 = Getordvalue_92107((*(*B_175252).KindU.S6.Sons->data[J_175409]).KindU.S6.Sons->data[1]);
+LOC28[1] = Torope_47052(LOC30);
+Appf_47074(&U_175249, ((NimStringDesc*) &TMP175573), LOC28, 2);
 goto LA25;
 LA26: ;
 F.line = 179;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*B_174252).Kind/8] &(1<<((*B_174252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_174409) >= (NU)((*B_174252).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC31 = Getordvalue_91107((*B_174252).KindU.S6.Sons->data[J_174409]);
+if (((TMP175136[(*B_175252).Kind/8] &(1<<((*B_175252).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_175409) >= (NU)((*B_175252).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC31 = Getordvalue_92107((*B_175252).KindU.S6.Sons->data[J_175409]);
 LOC32 = 0;
-LOC32 = Torope_46052(LOC31);
-App_46031(&U_174249, LOC32);
+LOC32 = Torope_47052(LOC31);
+App_47031(&U_175249, LOC32);
 LA25: ;
-F.line = 1022;F.filename = "system.nim";
-Res_174555 = addInt(Res_174555, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_175555 = addInt(Res_175555, 1);
 } LA21: ;
 break;
 case ((NU8) 78):
 F.line = 181;F.filename = "ecmasgen.nim";
-LOC33 = Lengthord_91007((*Field_174251).Typ);
-U_174249 = Torope_46052(LOC33);
+LOC33 = Lengthord_92007((*Field_175251).Typ);
+U_175249 = Torope_47052(LOC33);
 break;
 default:
 F.line = 182;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_174246).Info, ((NimStringDesc*) &TMP174574));
+Internalerror_42567((*N_175246).Info, ((NimStringDesc*) &TMP175574));
 break;
 }
 F.line = 183;F.filename = "ecmasgen.nim";
-if (!!((Result_174247 == NIM_NIL))) goto LA35;
+if (!!((Result_175247 == NIM_NIL))) goto LA35;
 F.line = 183;F.filename = "ecmasgen.nim";
 LOC37 = 0;
-LOC37 = rawNewString(Tnl_45573->Sup.len + 2);
-appendString(LOC37, ((NimStringDesc*) &TMP174568));
-appendString(LOC37, Tnl_45573);
-App_46036(&Result_174247, LOC37);
+LOC37 = rawNewString(Tnl_46573->Sup.len + 2);
+appendString(LOC37, ((NimStringDesc*) &TMP175568));
+appendString(LOC37, Tnl_46573);
+App_47036(&Result_175247, LOC37);
 LA35: ;
 F.line = 184;F.filename = "ecmasgen.nim";
 memset((void*)&LOC38, 0, sizeof(LOC38));
-LOC38[0] = U_174249;
+LOC38[0] = U_175249;
 LOC39 = 0;
-LOC39 = Lastson_49809(B_174252);
-LOC38[1] = Genobjectfields_174241(P_174244, Typ_174245, LOC39);
-Appf_46074(&Result_174247, ((NimStringDesc*) &TMP174575), LOC38, 2);
-F.line = 1022;F.filename = "system.nim";
-Res_174561 = addInt(Res_174561, 1);
+LOC39 = Lastson_50809(B_175252);
+LOC38[1] = Genobjectfields_175241(P_175244, Typ_175245, LOC39);
+Appf_47074(&Result_175247, ((NimStringDesc*) &TMP175575), LOC38, 2);
+F.line = 1024;F.filename = "system.nim";
+Res_175561 = addInt(Res_175561, 1);
 } LA15: ;
 F.line = 186;F.filename = "ecmasgen.nim";
 memset((void*)&LOC40, 0, sizeof(LOC40));
-LOC40[0] = Manglename_174218(Field_174251);
-LOC40[1] = S_174248;
-LOC41 = Lengthord_91007((*Field_174251).Typ);
-LOC40[2] = Torope_46052(LOC41);
-LOC40[3] = Makecstring_153010((*(*Field_174251).Name).S);
-LOC40[4] = Result_174247;
-Result_174247 = Ropef_46069(((NimStringDesc*) &TMP174576), LOC40, 5);
+LOC40[0] = Manglename_175218(Field_175251);
+LOC40[1] = S_175248;
+LOC41 = Lengthord_92007((*Field_175251).Typ);
+LOC40[2] = Torope_47052(LOC41);
+LOC40[3] = Makecstring_154010((*(*Field_175251).Name).S);
+LOC40[4] = Result_175247;
+Result_175247 = Ropef_47069(((NimStringDesc*) &TMP175576), LOC40, 5);
 break;
 default:
 F.line = 189;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_174246).Info, ((NimStringDesc*) &TMP174571));
+Internalerror_42567((*N_175246).Info, ((NimStringDesc*) &TMP175571));
 break;
 }
 framePtr = framePtr->prev;
-return Result_174247;
+return Result_175247;
 }
-N_NIMCALL(void, Genobjectinfo_174577)(TY174021* P_174580, TY49551* Typ_174581, TY46008* Name_174582) {
-TY46008* S_174600;
-TY53695 LOC1;
-TY53695 LOC2;
-TY53695 LOC3;
+N_NIMCALL(void, Genobjectinfo_175577)(TY175021* P_175580, TY50551* Typ_175581, TY47008* Name_175582) {
+TY47008* S_175600;
+TY54695 LOC1;
+TY54695 LOC2;
+TY54695 LOC3;
 NIM_BOOL LOC5;
-TY53695 LOC9;
+TY54695 LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genObjectInfo";
@@ -2082,54 +2082,54 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-S_174600 = 0;
+S_175600 = 0;
 F.line = 192;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Name_174582;
-LOC1[1] = Torope_46052(((NI64) ((*Typ_174581).Kind)));
-S_174600 = Ropef_46069(((NimStringDesc*) &TMP174637), LOC1, 2);
+LOC1[0] = Name_175582;
+LOC1[1] = Torope_47052(((NI64) ((*Typ_175581).Kind)));
+S_175600 = Ropef_47069(((NimStringDesc*) &TMP175637), LOC1, 2);
 F.line = 194;F.filename = "ecmasgen.nim";
-Prepend_46041(&(*(*P_174580).Globals).Typeinfo, S_174600);
+Prepend_47041(&(*(*P_175580).Globals).Typeinfo, S_175600);
 F.line = 195;F.filename = "ecmasgen.nim";
 memset((void*)&LOC2, 0, sizeof(LOC2));
-LOC2[0] = Torope_46052(((NI64) ((*Typ_174581).Sup.Id)));
-LOC2[1] = Genobjectfields_174241(P_174580, Typ_174581, (*Typ_174581).N);
-Appf_46074(&(*(*P_174580).Globals).Typeinfo, ((NimStringDesc*) &TMP174638), LOC2, 2);
+LOC2[0] = Torope_47052(((NI64) ((*Typ_175581).Sup.Id)));
+LOC2[1] = Genobjectfields_175241(P_175580, Typ_175581, (*Typ_175581).N);
+Appf_47074(&(*(*P_175580).Globals).Typeinfo, ((NimStringDesc*) &TMP175638), LOC2, 2);
 F.line = 197;F.filename = "ecmasgen.nim";
 memset((void*)&LOC3, 0, sizeof(LOC3));
-LOC3[0] = Name_174582;
-LOC3[1] = Torope_46052(((NI64) ((*Typ_174581).Sup.Id)));
-Appf_46074(&(*(*P_174580).Globals).Typeinfo, ((NimStringDesc*) &TMP174639), LOC3, 2);
+LOC3[0] = Name_175582;
+LOC3[1] = Torope_47052(((NI64) ((*Typ_175581).Sup.Id)));
+Appf_47074(&(*(*P_175580).Globals).Typeinfo, ((NimStringDesc*) &TMP175639), LOC3, 2);
 F.line = 198;F.filename = "ecmasgen.nim";
-LOC5 = ((*Typ_174581).Kind == ((NU8) 17));
+LOC5 = ((*Typ_175581).Kind == ((NU8) 17));
 if (!(LOC5)) goto LA6;
-if ((NU)(0) >= (NU)((*Typ_174581).Sons->Sup.len)) raiseIndexError();
-LOC5 = !(((*Typ_174581).Sons->data[0] == NIM_NIL));
+if ((NU)(0) >= (NU)((*Typ_175581).Sons->Sup.len)) raiseIndexError();
+LOC5 = !(((*Typ_175581).Sons->data[0] == NIM_NIL));
 LA6: ;
 if (!LOC5) goto LA7;
 F.line = 199;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = Name_174582;
-if ((NU)(0) >= (NU)((*Typ_174581).Sons->Sup.len)) raiseIndexError();
-LOC9[1] = Gentypeinfo_174236(P_174580, (*Typ_174581).Sons->data[0]);
-Appf_46074(&(*(*P_174580).Globals).Typeinfo, ((NimStringDesc*) &TMP174640), LOC9, 2);
+LOC9[0] = Name_175582;
+if ((NU)(0) >= (NU)((*Typ_175581).Sons->Sup.len)) raiseIndexError();
+LOC9[1] = Gentypeinfo_175236(P_175580, (*Typ_175581).Sons->data[0]);
+Appf_47074(&(*(*P_175580).Globals).Typeinfo, ((NimStringDesc*) &TMP175640), LOC9, 2);
 LA7: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genenuminfo_174641)(TY174021* P_174644, TY49551* Typ_174645, TY46008* Name_174646) {
-TY46008* S_174647;
-TY46008* N_174648;
-NI Length_174649;
-TY49547* Field_174650;
-NI I_174658;
-NI HEX3Atmp_174773;
-NI Res_174775;
+N_NIMCALL(void, Genenuminfo_175641)(TY175021* P_175644, TY50551* Typ_175645, TY47008* Name_175646) {
+TY47008* S_175647;
+TY47008* N_175648;
+NI Length_175649;
+TY50547* Field_175650;
+NI I_175658;
+NI HEX3Atmp_175773;
+NI Res_175775;
 NimStringDesc* LOC8;
-TY53637 LOC9;
-TY53637 LOC10;
-TY53695 LOC11;
-TY53695 LOC12;
-TY53695 LOC16;
+TY54637 LOC9;
+TY54637 LOC10;
+TY54695 LOC11;
+TY54695 LOC12;
+TY54695 LOC16;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genEnumInfo";
@@ -2138,101 +2138,101 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-S_174647 = 0;
-N_174648 = 0;
-Length_174649 = 0;
-Field_174650 = 0;
+S_175647 = 0;
+N_175648 = 0;
+Length_175649 = 0;
+Field_175650 = 0;
 F.line = 207;F.filename = "ecmasgen.nim";
-Length_174649 = Sonslen_49803((*Typ_174645).N);
+Length_175649 = Sonslen_50803((*Typ_175645).N);
 F.line = 208;F.filename = "ecmasgen.nim";
-S_174647 = NIM_NIL;
-I_174658 = 0;
-HEX3Atmp_174773 = 0;
+S_175647 = NIM_NIL;
+I_175658 = 0;
+HEX3Atmp_175773 = 0;
 F.line = 209;F.filename = "ecmasgen.nim";
-HEX3Atmp_174773 = subInt(Length_174649, 1);
-Res_174775 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_174775 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_175773 = subInt(Length_175649, 1);
+Res_175775 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_175775 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_174775 <= HEX3Atmp_174773)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_174658 = Res_174775;
+if (!(Res_175775 <= HEX3Atmp_175773)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_175658 = Res_175775;
 F.line = 210;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*(*Typ_174645).N).Kind/8] &(1<<((*(*Typ_174645).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_174658) >= (NU)((*(*Typ_174645).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*(*Typ_174645).N).KindU.S6.Sons->data[I_174658]).Kind == ((NU8) 3)))) goto LA3;
+if (((TMP175136[(*(*Typ_175645).N).Kind/8] &(1<<((*(*Typ_175645).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_175658) >= (NU)((*(*Typ_175645).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*(*Typ_175645).N).KindU.S6.Sons->data[I_175658]).Kind == ((NU8) 3)))) goto LA3;
 F.line = 210;F.filename = "ecmasgen.nim";
-Internalerror_41567((*(*Typ_174645).N).Info, ((NimStringDesc*) &TMP174778));
+Internalerror_42567((*(*Typ_175645).N).Info, ((NimStringDesc*) &TMP175778));
 LA3: ;
 F.line = 211;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*(*Typ_174645).N).Kind/8] &(1<<((*(*Typ_174645).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_174658) >= (NU)((*(*Typ_174645).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*(*Typ_174645).N).KindU.S6.Sons->data[I_174658]).Kind/8] &(1<<((*(*(*Typ_174645).N).KindU.S6.Sons->data[I_174658]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Field_174650 = (*(*(*Typ_174645).N).KindU.S6.Sons->data[I_174658]).KindU.S4.Sym;
+if (((TMP175136[(*(*Typ_175645).N).Kind/8] &(1<<((*(*Typ_175645).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_175658) >= (NU)((*(*Typ_175645).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*(*Typ_175645).N).KindU.S6.Sons->data[I_175658]).Kind/8] &(1<<((*(*(*Typ_175645).N).KindU.S6.Sons->data[I_175658]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Field_175650 = (*(*(*Typ_175645).N).KindU.S6.Sons->data[I_175658]).KindU.S4.Sym;
 F.line = 212;F.filename = "ecmasgen.nim";
-if (!(0 < I_174658)) goto LA6;
+if (!(0 < I_175658)) goto LA6;
 F.line = 212;F.filename = "ecmasgen.nim";
 LOC8 = 0;
-LOC8 = rawNewString(Tnl_45573->Sup.len + 2);
-appendString(LOC8, ((NimStringDesc*) &TMP174568));
-appendString(LOC8, Tnl_45573);
-App_46036(&S_174647, LOC8);
+LOC8 = rawNewString(Tnl_46573->Sup.len + 2);
+appendString(LOC8, ((NimStringDesc*) &TMP175568));
+appendString(LOC8, Tnl_46573);
+App_47036(&S_175647, LOC8);
 LA6: ;
 F.line = 213;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = Torope_46052(((NI64) ((*Field_174650).Position)));
-LOC9[1] = Name_174646;
-LOC9[2] = Makecstring_153010((*(*Field_174650).Name).S);
-Appf_46074(&S_174647, ((NimStringDesc*) &TMP174779), LOC9, 3);
-F.line = 1022;F.filename = "system.nim";
-Res_174775 = addInt(Res_174775, 1);
+LOC9[0] = Torope_47052(((NI64) ((*Field_175650).Position)));
+LOC9[1] = Name_175646;
+LOC9[2] = Makecstring_154010((*(*Field_175650).Name).S);
+Appf_47074(&S_175647, ((NimStringDesc*) &TMP175779), LOC9, 3);
+F.line = 1024;F.filename = "system.nim";
+Res_175775 = addInt(Res_175775, 1);
 } LA1: ;
 F.line = 215;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Torope_46052(((NI64) ((*Typ_174645).Sup.Id)));
-LOC10[1] = Torope_46052(((NI64) (Length_174649)));
-LOC10[2] = S_174647;
-N_174648 = Ropef_46069(((NimStringDesc*) &TMP174780), LOC10, 3);
+LOC10[0] = Torope_47052(((NI64) ((*Typ_175645).Sup.Id)));
+LOC10[1] = Torope_47052(((NI64) (Length_175649)));
+LOC10[2] = S_175647;
+N_175648 = Ropef_47069(((NimStringDesc*) &TMP175780), LOC10, 3);
 F.line = 217;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = Name_174646;
-LOC11[1] = Torope_46052(((NI64) ((*Typ_174645).Kind)));
-S_174647 = Ropef_46069(((NimStringDesc*) &TMP174637), LOC11, 2);
+LOC11[0] = Name_175646;
+LOC11[1] = Torope_47052(((NI64) ((*Typ_175645).Kind)));
+S_175647 = Ropef_47069(((NimStringDesc*) &TMP175637), LOC11, 2);
 F.line = 219;F.filename = "ecmasgen.nim";
-Prepend_46041(&(*(*P_174644).Globals).Typeinfo, S_174647);
+Prepend_47041(&(*(*P_175644).Globals).Typeinfo, S_175647);
 F.line = 220;F.filename = "ecmasgen.nim";
-App_46031(&(*(*P_174644).Globals).Typeinfo, N_174648);
+App_47031(&(*(*P_175644).Globals).Typeinfo, N_175648);
 F.line = 221;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = Name_174646;
-LOC12[1] = Torope_46052(((NI64) ((*Typ_174645).Sup.Id)));
-Appf_46074(&(*(*P_174644).Globals).Typeinfo, ((NimStringDesc*) &TMP174639), LOC12, 2);
+LOC12[0] = Name_175646;
+LOC12[1] = Torope_47052(((NI64) ((*Typ_175645).Sup.Id)));
+Appf_47074(&(*(*P_175644).Globals).Typeinfo, ((NimStringDesc*) &TMP175639), LOC12, 2);
 F.line = 222;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*Typ_174645).Sons->Sup.len)) raiseIndexError();
-if (!!(((*Typ_174645).Sons->data[0] == NIM_NIL))) goto LA14;
+if ((NU)(0) >= (NU)((*Typ_175645).Sons->Sup.len)) raiseIndexError();
+if (!!(((*Typ_175645).Sons->data[0] == NIM_NIL))) goto LA14;
 F.line = 223;F.filename = "ecmasgen.nim";
 memset((void*)&LOC16, 0, sizeof(LOC16));
-LOC16[0] = Name_174646;
-if ((NU)(0) >= (NU)((*Typ_174645).Sons->Sup.len)) raiseIndexError();
-LOC16[1] = Gentypeinfo_174236(P_174644, (*Typ_174645).Sons->data[0]);
-Appf_46074(&(*(*P_174644).Globals).Typeinfo, ((NimStringDesc*) &TMP174640), LOC16, 2);
+LOC16[0] = Name_175646;
+if ((NU)(0) >= (NU)((*Typ_175645).Sons->Sup.len)) raiseIndexError();
+LOC16[1] = Gentypeinfo_175236(P_175644, (*Typ_175645).Sons->data[0]);
+Appf_47074(&(*(*P_175644).Globals).Typeinfo, ((NimStringDesc*) &TMP175640), LOC16, 2);
 LA14: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Gentypeinfo_174236)(TY174021* P_174239, TY49551* Typ_174240) {
-TY46008* Result_174786;
-TY49551* T_174787;
-TY46451 LOC4;
+N_NIMCALL(TY47008*, Gentypeinfo_175236)(TY175021* P_175239, TY50551* Typ_175240) {
+TY47008* Result_175786;
+TY50551* T_175787;
+TY47451 LOC4;
 NIM_BOOL LOC6;
-TY46008* S_174811;
-TY53695 LOC9;
-TY46008* S_174822;
-TY53695 LOC10;
-TY53695 LOC11;
-TY46008* S_174838;
-TY53695 LOC12;
-TY53695 LOC13;
+TY47008* S_175811;
+TY54695 LOC9;
+TY47008* S_175822;
+TY54695 LOC10;
+TY54695 LOC11;
+TY47008* S_175838;
+TY54695 LOC12;
+TY54695 LOC13;
 NimStringDesc* LOC14;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -2242,31 +2242,31 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174786 = 0;
-T_174787 = 0;
+Result_175786 = 0;
+T_175787 = 0;
 F.line = 227;F.filename = "ecmasgen.nim";
-T_174787 = Typ_174240;
+T_175787 = Typ_175240;
 F.line = 228;F.filename = "ecmasgen.nim";
-if (!((*T_174787).Kind == ((NU8) 11))) goto LA2;
+if (!((*T_175787).Kind == ((NU8) 11))) goto LA2;
 F.line = 228;F.filename = "ecmasgen.nim";
-T_174787 = Lastson_49812(T_174787);
+T_175787 = Lastson_50812(T_175787);
 LA2: ;
 F.line = 229;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = Torope_46052(((NI64) ((*T_174787).Sup.Id)));
-Result_174786 = Ropef_46069(((NimStringDesc*) &TMP174865), LOC4, 1);
+LOC4[0] = Torope_47052(((NI64) ((*T_175787).Sup.Id)));
+Result_175786 = Ropef_47069(((NimStringDesc*) &TMP175865), LOC4, 1);
 F.line = 230;F.filename = "ecmasgen.nim";
-LOC6 = Intsetcontainsorincl_49928(&(*(*P_174239).Globals).Typeinfogenerated, (*T_174787).Sup.Id);
+LOC6 = Intsetcontainsorincl_50928(&(*(*P_175239).Globals).Typeinfogenerated, (*T_175787).Sup.Id);
 if (!LOC6) goto LA7;
 F.line = 230;F.filename = "ecmasgen.nim";
 goto BeforeRet;
 LA7: ;
 F.line = 231;F.filename = "ecmasgen.nim";
-switch ((*T_174787).Kind) {
+switch ((*T_175787).Kind) {
 case ((NU8) 13):
 F.line = 233;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*Typ_174240).Sons->Sup.len)) raiseIndexError();
-Result_174786 = Gentypeinfo_174236(P_174239, (*Typ_174240).Sons->data[0]);
+if ((NU)(0) >= (NU)((*Typ_175240).Sons->Sup.len)) raiseIndexError();
+Result_175786 = Gentypeinfo_175236(P_175239, (*Typ_175240).Sons->data[0]);
 break;
 case ((NU8) 26):
 case ((NU8) 25):
@@ -2275,14 +2275,14 @@ case ((NU8) 2):
 case ((NU8) 29):
 case ((NU8) 28):
 case ((NU8) 31) ... ((NU8) 39):
-S_174811 = 0;
+S_175811 = 0;
 F.line = 235;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = Result_174786;
-LOC9[1] = Torope_46052(((NI64) ((*T_174787).Kind)));
-S_174811 = Ropef_46069(((NimStringDesc*) &TMP174866), LOC9, 2);
+LOC9[0] = Result_175786;
+LOC9[1] = Torope_47052(((NI64) ((*T_175787).Kind)));
+S_175811 = Ropef_47069(((NimStringDesc*) &TMP175866), LOC9, 2);
 F.line = 238;F.filename = "ecmasgen.nim";
-Prepend_46041(&(*(*P_174239).Globals).Typeinfo, S_174811);
+Prepend_47041(&(*(*P_175239).Globals).Typeinfo, S_175811);
 break;
 case ((NU8) 23):
 case ((NU8) 22):
@@ -2290,62 +2290,62 @@ case ((NU8) 21):
 case ((NU8) 24):
 case ((NU8) 20):
 case ((NU8) 19):
-S_174822 = 0;
+S_175822 = 0;
 F.line = 240;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Result_174786;
-LOC10[1] = Torope_46052(((NI64) ((*T_174787).Kind)));
-S_174822 = Ropef_46069(((NimStringDesc*) &TMP174866), LOC10, 2);
+LOC10[0] = Result_175786;
+LOC10[1] = Torope_47052(((NI64) ((*T_175787).Kind)));
+S_175822 = Ropef_47069(((NimStringDesc*) &TMP175866), LOC10, 2);
 F.line = 243;F.filename = "ecmasgen.nim";
-Prepend_46041(&(*(*P_174239).Globals).Typeinfo, S_174822);
+Prepend_47041(&(*(*P_175239).Globals).Typeinfo, S_175822);
 F.line = 244;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = Result_174786;
-if ((NU)(0) >= (NU)((*Typ_174240).Sons->Sup.len)) raiseIndexError();
-LOC11[1] = Gentypeinfo_174236(P_174239, (*Typ_174240).Sons->data[0]);
-Appf_46074(&(*(*P_174239).Globals).Typeinfo, ((NimStringDesc*) &TMP174640), LOC11, 2);
+LOC11[0] = Result_175786;
+if ((NU)(0) >= (NU)((*Typ_175240).Sons->Sup.len)) raiseIndexError();
+LOC11[1] = Gentypeinfo_175236(P_175239, (*Typ_175240).Sons->data[0]);
+Appf_47074(&(*(*P_175239).Globals).Typeinfo, ((NimStringDesc*) &TMP175640), LOC11, 2);
 break;
 case ((NU8) 4):
 case ((NU8) 16):
-S_174838 = 0;
+S_175838 = 0;
 F.line = 247;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = Result_174786;
-LOC12[1] = Torope_46052(((NI64) ((*T_174787).Kind)));
-S_174838 = Ropef_46069(((NimStringDesc*) &TMP174866), LOC12, 2);
+LOC12[0] = Result_175786;
+LOC12[1] = Torope_47052(((NI64) ((*T_175787).Kind)));
+S_175838 = Ropef_47069(((NimStringDesc*) &TMP175866), LOC12, 2);
 F.line = 250;F.filename = "ecmasgen.nim";
-Prepend_46041(&(*(*P_174239).Globals).Typeinfo, S_174838);
+Prepend_47041(&(*(*P_175239).Globals).Typeinfo, S_175838);
 F.line = 251;F.filename = "ecmasgen.nim";
 memset((void*)&LOC13, 0, sizeof(LOC13));
-LOC13[0] = Result_174786;
-if ((NU)(1) >= (NU)((*Typ_174240).Sons->Sup.len)) raiseIndexError();
-LOC13[1] = Gentypeinfo_174236(P_174239, (*Typ_174240).Sons->data[1]);
-Appf_46074(&(*(*P_174239).Globals).Typeinfo, ((NimStringDesc*) &TMP174640), LOC13, 2);
+LOC13[0] = Result_175786;
+if ((NU)(1) >= (NU)((*Typ_175240).Sons->Sup.len)) raiseIndexError();
+LOC13[1] = Gentypeinfo_175236(P_175239, (*Typ_175240).Sons->data[1]);
+Appf_47074(&(*(*P_175239).Globals).Typeinfo, ((NimStringDesc*) &TMP175640), LOC13, 2);
 break;
 case ((NU8) 14):
 F.line = 253;F.filename = "ecmasgen.nim";
-Genenuminfo_174641(P_174239, T_174787, Result_174786);
+Genenuminfo_175641(P_175239, T_175787, Result_175786);
 break;
 case ((NU8) 17):
 case ((NU8) 18):
 F.line = 254;F.filename = "ecmasgen.nim";
-Genobjectinfo_174577(P_174239, T_174787, Result_174786);
+Genobjectinfo_175577(P_175239, T_175787, Result_175786);
 break;
 default:
 F.line = 255;F.filename = "ecmasgen.nim";
 LOC14 = 0;
-LOC14 = rawNewString(reprEnum((*T_174787).Kind, NTI49162)->Sup.len + 13);
-appendString(LOC14, ((NimStringDesc*) &TMP174867));
-appendString(LOC14, reprEnum((*T_174787).Kind, NTI49162));
+LOC14 = rawNewString(reprEnum((*T_175787).Kind, NTI50162)->Sup.len + 13);
+appendString(LOC14, ((NimStringDesc*) &TMP175867));
+appendString(LOC14, reprEnum((*T_175787).Kind, NTI50162));
 appendChar(LOC14, 41);
-Internalerror_41571(LOC14);
+Internalerror_42571(LOC14);
 break;
 }
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_174786;
+return Result_175786;
 }
-N_NIMCALL(void, Usemagic_174882)(TY174021* P_174885, NimStringDesc* Ident_174886) {
+N_NIMCALL(void, Usemagic_175882)(TY175021* P_175885, NimStringDesc* Ident_175886) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "useMagic";
@@ -2356,9 +2356,9 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Mergeexpr_174887)(TY46008* A_174889, TY46008* B_174890) {
-TY46008* Result_174891;
-TY53695 LOC7;
+N_NIMCALL(TY47008*, Mergeexpr_175887)(TY47008* A_175889, TY47008* B_175890) {
+TY47008* Result_175891;
+TY54695 LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "mergeExpr";
@@ -2367,31 +2367,31 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174891 = 0;
+Result_175891 = 0;
 F.line = 264;F.filename = "ecmasgen.nim";
-if (!!((A_174889 == NIM_NIL))) goto LA2;
+if (!!((A_175889 == NIM_NIL))) goto LA2;
 F.line = 265;F.filename = "ecmasgen.nim";
-if (!!((B_174890 == NIM_NIL))) goto LA5;
+if (!!((B_175890 == NIM_NIL))) goto LA5;
 F.line = 265;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = A_174889;
-LOC7[1] = B_174890;
-Result_174891 = Ropef_46069(((NimStringDesc*) &TMP174918), LOC7, 2);
+LOC7[0] = A_175889;
+LOC7[1] = B_175890;
+Result_175891 = Ropef_47069(((NimStringDesc*) &TMP175918), LOC7, 2);
 goto LA4;
 LA5: ;
 F.line = 266;F.filename = "ecmasgen.nim";
-Result_174891 = A_174889;
+Result_175891 = A_175889;
 LA4: ;
 goto LA1;
 LA2: ;
 F.line = 268;F.filename = "ecmasgen.nim";
-Result_174891 = B_174890;
+Result_175891 = B_175890;
 LA1: ;
 framePtr = framePtr->prev;
-return Result_174891;
+return Result_175891;
 }
-N_NIMCALL(TY46008*, Mergeexpr_174919)(TY174013* R_174921) {
-TY46008* Result_174922;
+N_NIMCALL(TY47008*, Mergeexpr_175919)(TY175013* R_175921) {
+TY47008* Result_175922;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "mergeExpr";
@@ -2400,15 +2400,15 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174922 = 0;
+Result_175922 = 0;
 F.line = 271;F.filename = "ecmasgen.nim";
-Result_174922 = Mergeexpr_174887((*R_174921).Com, (*R_174921).Res);
+Result_175922 = Mergeexpr_175887((*R_175921).Com, (*R_175921).Res);
 framePtr = framePtr->prev;
-return Result_174922;
+return Result_175922;
 }
-N_NIMCALL(TY46008*, Mergestmt_174923)(TY174013* R_174925) {
-TY46008* Result_174926;
-TY53695 LOC6;
+N_NIMCALL(TY47008*, Mergestmt_175923)(TY175013* R_175925) {
+TY47008* Result_175926;
+TY54695 LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "mergeStmt";
@@ -2417,31 +2417,31 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_174926 = 0;
+Result_175926 = 0;
 F.line = 274;F.filename = "ecmasgen.nim";
-if (!((*R_174925).Res == NIM_NIL)) goto LA2;
+if (!((*R_175925).Res == NIM_NIL)) goto LA2;
 F.line = 274;F.filename = "ecmasgen.nim";
-Result_174926 = (*R_174925).Com;
+Result_175926 = (*R_175925).Com;
 goto LA1;
 LA2: ;
-if (!((*R_174925).Com == NIM_NIL)) goto LA4;
+if (!((*R_175925).Com == NIM_NIL)) goto LA4;
 F.line = 275;F.filename = "ecmasgen.nim";
-Result_174926 = (*R_174925).Res;
+Result_175926 = (*R_175925).Res;
 goto LA1;
 LA4: ;
 F.line = 276;F.filename = "ecmasgen.nim";
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = (*R_174925).Com;
-LOC6[1] = (*R_174925).Res;
-Result_174926 = Ropef_46069(((NimStringDesc*) &TMP174953), LOC6, 2);
+LOC6[0] = (*R_175925).Com;
+LOC6[1] = (*R_175925).Res;
+Result_175926 = Ropef_47069(((NimStringDesc*) &TMP175953), LOC6, 2);
 LA1: ;
 framePtr = framePtr->prev;
-return Result_174926;
+return Result_175926;
 }
-N_NIMCALL(void, Genand_174954)(TY174021* P_174957, TY49525* A_174958, TY49525* B_174959, TY174013* R_174961) {
-TY174013 X_174962;
-TY174013 Y_174963;
-TY53695 LOC1;
+N_NIMCALL(void, Genand_175954)(TY175021* P_175957, TY50525* A_175958, TY50525* B_175959, TY175013* R_175961) {
+TY175013 X_175962;
+TY175013 Y_175963;
+TY54695 LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genAnd";
@@ -2450,23 +2450,23 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&X_174962, 0, sizeof(X_174962));
-memset((void*)&Y_174963, 0, sizeof(Y_174963));
+memset((void*)&X_175962, 0, sizeof(X_175962));
+memset((void*)&Y_175963, 0, sizeof(Y_175963));
 F.line = 280;F.filename = "ecmasgen.nim";
-Gen_174868(P_174957, A_174958, &X_174962);
+Gen_175868(P_175957, A_175958, &X_175962);
 F.line = 281;F.filename = "ecmasgen.nim";
-Gen_174868(P_174957, B_174959, &Y_174963);
+Gen_175868(P_175957, B_175959, &Y_175963);
 F.line = 282;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Mergeexpr_174919(&X_174962);
-LOC1[1] = Mergeexpr_174919(&Y_174963);
-unsureAsgnRef((void**) &(*R_174961).Res, Ropef_46069(((NimStringDesc*) &TMP174970), LOC1, 2));
+LOC1[0] = Mergeexpr_175919(&X_175962);
+LOC1[1] = Mergeexpr_175919(&Y_175963);
+unsureAsgnRef((void**) &(*R_175961).Res, Ropef_47069(((NimStringDesc*) &TMP175970), LOC1, 2));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genor_174971)(TY174021* P_174974, TY49525* A_174975, TY49525* B_174976, TY174013* R_174978) {
-TY174013 X_174979;
-TY174013 Y_174980;
-TY53695 LOC1;
+N_NIMCALL(void, Genor_175971)(TY175021* P_175974, TY50525* A_175975, TY50525* B_175976, TY175013* R_175978) {
+TY175013 X_175979;
+TY175013 Y_175980;
+TY54695 LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genOr";
@@ -2475,23 +2475,23 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&X_174979, 0, sizeof(X_174979));
-memset((void*)&Y_174980, 0, sizeof(Y_174980));
+memset((void*)&X_175979, 0, sizeof(X_175979));
+memset((void*)&Y_175980, 0, sizeof(Y_175980));
 F.line = 286;F.filename = "ecmasgen.nim";
-Gen_174868(P_174974, A_174975, &X_174979);
+Gen_175868(P_175974, A_175975, &X_175979);
 F.line = 287;F.filename = "ecmasgen.nim";
-Gen_174868(P_174974, B_174976, &Y_174980);
+Gen_175868(P_175974, B_175976, &Y_175980);
 F.line = 288;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Mergeexpr_174919(&X_174979);
-LOC1[1] = Mergeexpr_174919(&Y_174980);
-unsureAsgnRef((void**) &(*R_174978).Res, Ropef_46069(((NimStringDesc*) &TMP174987), LOC1, 2));
+LOC1[0] = Mergeexpr_175919(&X_175979);
+LOC1[1] = Mergeexpr_175919(&Y_175980);
+unsureAsgnRef((void**) &(*R_175978).Res, Ropef_47069(((NimStringDesc*) &TMP175987), LOC1, 2));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Binaryexpr_175305)(TY174021* P_175308, TY49525* N_175309, TY174013* R_175311, NimStringDesc* Magic_175312, NimStringDesc* Frmt_175313) {
-TY174013 X_175314;
-TY174013 Y_175315;
-TY53695 LOC4;
+N_NIMCALL(void, Binaryexpr_176305)(TY175021* P_176308, TY50525* N_176309, TY175013* R_176311, NimStringDesc* Magic_176312, NimStringDesc* Frmt_176313) {
+TY175013 X_176314;
+TY175013 Y_176315;
+TY54695 LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "binaryExpr";
@@ -2500,36 +2500,36 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&X_175314, 0, sizeof(X_175314));
-memset((void*)&Y_175315, 0, sizeof(Y_175315));
+memset((void*)&X_176314, 0, sizeof(X_176314));
+memset((void*)&Y_176315, 0, sizeof(Y_176315));
 F.line = 401;F.filename = "ecmasgen.nim";
-if (!!(((Magic_175312) && (Magic_175312)->Sup.len == 0))) goto LA2;
+if (!!(((Magic_176312) && (Magic_176312)->Sup.len == 0))) goto LA2;
 F.line = 401;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_175308, Magic_175312);
+Usemagic_175882(P_176308, Magic_176312);
 LA2: ;
 F.line = 402;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175309).Kind/8] &(1<<((*N_175309).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175309).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175308, (*N_175309).KindU.S6.Sons->data[1], &X_175314);
+if (((TMP175136[(*N_176309).Kind/8] &(1<<((*N_176309).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176309).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176308, (*N_176309).KindU.S6.Sons->data[1], &X_176314);
 F.line = 403;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175309).Kind/8] &(1<<((*N_175309).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_175309).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175308, (*N_175309).KindU.S6.Sons->data[2], &Y_175315);
+if (((TMP175136[(*N_176309).Kind/8] &(1<<((*N_176309).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_176309).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176308, (*N_176309).KindU.S6.Sons->data[2], &Y_176315);
 F.line = 404;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = X_175314.Res;
-LOC4[1] = Y_175315.Res;
-unsureAsgnRef((void**) &(*R_175311).Res, Ropef_46069(Frmt_175313, LOC4, 2));
+LOC4[0] = X_176314.Res;
+LOC4[1] = Y_176315.Res;
+unsureAsgnRef((void**) &(*R_176311).Res, Ropef_47069(Frmt_176313, LOC4, 2));
 F.line = 405;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_175311).Com, Mergeexpr_174887(X_175314.Com, Y_175315.Com));
+unsureAsgnRef((void**) &(*R_176311).Com, Mergeexpr_175887(X_176314.Com, Y_176315.Com));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Binarystmt_175346)(TY174021* P_175349, TY49525* N_175350, TY174013* R_175352, NimStringDesc* Magic_175353, NimStringDesc* Frmt_175354) {
-TY174013 X_175355;
-TY174013 Y_175356;
-TY46451 LOC7;
-TY46451 LOC11;
-TY53695 LOC12;
+N_NIMCALL(void, Binarystmt_176346)(TY175021* P_176349, TY50525* N_176350, TY175013* R_176352, NimStringDesc* Magic_176353, NimStringDesc* Frmt_176354) {
+TY175013 X_176355;
+TY175013 Y_176356;
+TY47451 LOC7;
+TY47451 LOC11;
+TY54695 LOC12;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "binaryStmt";
@@ -2538,44 +2538,44 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&X_175355, 0, sizeof(X_175355));
-memset((void*)&Y_175356, 0, sizeof(Y_175356));
+memset((void*)&X_176355, 0, sizeof(X_176355));
+memset((void*)&Y_176356, 0, sizeof(Y_176356));
 F.line = 409;F.filename = "ecmasgen.nim";
-if (!!(((Magic_175353) && (Magic_175353)->Sup.len == 0))) goto LA2;
+if (!!(((Magic_176353) && (Magic_176353)->Sup.len == 0))) goto LA2;
 F.line = 409;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_175349, Magic_175353);
+Usemagic_175882(P_176349, Magic_176353);
 LA2: ;
 F.line = 410;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175350).Kind/8] &(1<<((*N_175350).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175350).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175349, (*N_175350).KindU.S6.Sons->data[1], &X_175355);
+if (((TMP175136[(*N_176350).Kind/8] &(1<<((*N_176350).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176350).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176349, (*N_176350).KindU.S6.Sons->data[1], &X_176355);
 F.line = 411;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175350).Kind/8] &(1<<((*N_175350).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_175350).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175349, (*N_175350).KindU.S6.Sons->data[2], &Y_175356);
+if (((TMP175136[(*N_176350).Kind/8] &(1<<((*N_176350).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_176350).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176349, (*N_176350).KindU.S6.Sons->data[2], &Y_176356);
 F.line = 412;F.filename = "ecmasgen.nim";
-if (!!((X_175355.Com == NIM_NIL))) goto LA5;
+if (!!((X_176355.Com == NIM_NIL))) goto LA5;
 F.line = 412;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = X_175355.Com;
-Appf_46074(&(*R_175352).Com, ((NimStringDesc*) &TMP175420), LOC7, 1);
+LOC7[0] = X_176355.Com;
+Appf_47074(&(*R_176352).Com, ((NimStringDesc*) &TMP176420), LOC7, 1);
 LA5: ;
 F.line = 413;F.filename = "ecmasgen.nim";
-if (!!((Y_175356.Com == NIM_NIL))) goto LA9;
+if (!!((Y_176356.Com == NIM_NIL))) goto LA9;
 F.line = 413;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = Y_175356.Com;
-Appf_46074(&(*R_175352).Com, ((NimStringDesc*) &TMP175420), LOC11, 1);
+LOC11[0] = Y_176356.Com;
+Appf_47074(&(*R_176352).Com, ((NimStringDesc*) &TMP176420), LOC11, 1);
 LA9: ;
 F.line = 414;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = X_175355.Res;
-LOC12[1] = Y_175356.Res;
-Appf_46074(&(*R_175352).Com, Frmt_175354, LOC12, 2);
+LOC12[0] = X_176355.Res;
+LOC12[1] = Y_176356.Res;
+Appf_47074(&(*R_176352).Com, Frmt_176354, LOC12, 2);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Unaryexpr_175421)(TY174021* P_175424, TY49525* N_175425, TY174013* R_175427, NimStringDesc* Magic_175428, NimStringDesc* Frmt_175429) {
-TY46451 LOC4;
+N_NIMCALL(void, Unaryexpr_176421)(TY175021* P_176424, TY50525* N_176425, TY175013* R_176427, NimStringDesc* Magic_176428, NimStringDesc* Frmt_176429) {
+TY47451 LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "unaryExpr";
@@ -2585,27 +2585,27 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 417;F.filename = "ecmasgen.nim";
-if (!!(((Magic_175428) && (Magic_175428)->Sup.len == 0))) goto LA2;
+if (!!(((Magic_176428) && (Magic_176428)->Sup.len == 0))) goto LA2;
 F.line = 417;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_175424, Magic_175428);
+Usemagic_175882(P_176424, Magic_176428);
 LA2: ;
 F.line = 418;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175425).Kind/8] &(1<<((*N_175425).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175425).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175424, (*N_175425).KindU.S6.Sons->data[1], R_175427);
+if (((TMP175136[(*N_176425).Kind/8] &(1<<((*N_176425).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176425).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176424, (*N_176425).KindU.S6.Sons->data[1], R_176427);
 F.line = 419;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = (*R_175427).Res;
-unsureAsgnRef((void**) &(*R_175427).Res, Ropef_46069(Frmt_175429, LOC4, 1));
+LOC4[0] = (*R_176427).Res;
+unsureAsgnRef((void**) &(*R_176427).Res, Ropef_47069(Frmt_176429, LOC4, 1));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Arith_175446)(TY174021* P_175449, TY49525* N_175450, TY174013* R_175452, NU8 Op_175453) {
-TY174013 X_175454;
-TY174013 Y_175455;
-NI I_175456;
+N_NIMCALL(void, Arith_176446)(TY175021* P_176449, TY50525* N_176450, TY175013* R_176452, NU8 Op_176453) {
+TY175013 X_176454;
+TY175013 Y_176455;
+NI I_176456;
 NI LOC5;
-TY53695 LOC8;
-TY46451 LOC9;
+TY54695 LOC8;
+TY47451 LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "arith";
@@ -2614,67 +2614,67 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&X_175454, 0, sizeof(X_175454));
-memset((void*)&Y_175455, 0, sizeof(Y_175455));
-I_175456 = 0;
+memset((void*)&X_176454, 0, sizeof(X_176454));
+memset((void*)&Y_176455, 0, sizeof(Y_176455));
+I_176456 = 0;
 F.line = 425;F.filename = "ecmasgen.nim";
-if (!(((*P_175449).Options &(1<<((((NU8) 5))&31)))!=0)) goto LA2;
+if (!(((*P_176449).Options &(1<<((((NU8) 5))&31)))!=0)) goto LA2;
 F.line = 425;F.filename = "ecmasgen.nim";
-I_175456 = 0;
+I_176456 = 0;
 goto LA1;
 LA2: ;
 F.line = 426;F.filename = "ecmasgen.nim";
-I_175456 = 1;
+I_176456 = 1;
 LA1: ;
 F.line = 427;F.filename = "ecmasgen.nim";
-if (Op_175453 < 26 || Op_175453 > 126) raiseIndexError();
-if ((NU)(I_175456) > (NU)(3)) raiseIndexError();
-Usemagic_174882(P_175449, Ops_174991[(Op_175453)-26][(I_175456)-0]);
+if (Op_176453 < 26 || Op_176453 > 126) raiseIndexError();
+if ((NU)(I_176456) > (NU)(3)) raiseIndexError();
+Usemagic_175882(P_176449, Ops_175991[(Op_176453)-26][(I_176456)-0]);
 F.line = 428;F.filename = "ecmasgen.nim";
-LOC5 = Sonslen_49803(N_175450);
+LOC5 = Sonslen_50803(N_176450);
 if (!(2 < LOC5)) goto LA6;
 F.line = 429;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175450).Kind/8] &(1<<((*N_175450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175450).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175449, (*N_175450).KindU.S6.Sons->data[1], &X_175454);
+if (((TMP175136[(*N_176450).Kind/8] &(1<<((*N_176450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176450).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176449, (*N_176450).KindU.S6.Sons->data[1], &X_176454);
 F.line = 430;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175450).Kind/8] &(1<<((*N_175450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_175450).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175449, (*N_175450).KindU.S6.Sons->data[2], &Y_175455);
+if (((TMP175136[(*N_176450).Kind/8] &(1<<((*N_176450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_176450).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176449, (*N_176450).KindU.S6.Sons->data[2], &Y_176455);
 F.line = 431;F.filename = "ecmasgen.nim";
-if (Op_175453 < 26 || Op_175453 > 126) raiseIndexError();
-if ((NU)(addInt(I_175456, 2)) > (NU)(3)) raiseIndexError();
+if (Op_176453 < 26 || Op_176453 > 126) raiseIndexError();
+if ((NU)(addInt(I_176456, 2)) > (NU)(3)) raiseIndexError();
 memset((void*)&LOC8, 0, sizeof(LOC8));
-LOC8[0] = X_175454.Res;
-LOC8[1] = Y_175455.Res;
-unsureAsgnRef((void**) &(*R_175452).Res, Ropef_46069(Ops_174991[(Op_175453)-26][(addInt(I_175456, 2))-0], LOC8, 2));
+LOC8[0] = X_176454.Res;
+LOC8[1] = Y_176455.Res;
+unsureAsgnRef((void**) &(*R_176452).Res, Ropef_47069(Ops_175991[(Op_176453)-26][(addInt(I_176456, 2))-0], LOC8, 2));
 F.line = 432;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_175452).Com, Mergeexpr_174887(X_175454.Com, Y_175455.Com));
+unsureAsgnRef((void**) &(*R_176452).Com, Mergeexpr_175887(X_176454.Com, Y_176455.Com));
 goto LA4;
 LA6: ;
 F.line = 434;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175450).Kind/8] &(1<<((*N_175450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175450).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175449, (*N_175450).KindU.S6.Sons->data[1], R_175452);
+if (((TMP175136[(*N_176450).Kind/8] &(1<<((*N_176450).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176450).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176449, (*N_176450).KindU.S6.Sons->data[1], R_176452);
 F.line = 435;F.filename = "ecmasgen.nim";
-if (Op_175453 < 26 || Op_175453 > 126) raiseIndexError();
-if ((NU)(addInt(I_175456, 2)) > (NU)(3)) raiseIndexError();
+if (Op_176453 < 26 || Op_176453 > 126) raiseIndexError();
+if ((NU)(addInt(I_176456, 2)) > (NU)(3)) raiseIndexError();
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = (*R_175452).Res;
-unsureAsgnRef((void**) &(*R_175452).Res, Ropef_46069(Ops_174991[(Op_175453)-26][(addInt(I_175456, 2))-0], LOC9, 1));
+LOC9[0] = (*R_176452).Res;
+unsureAsgnRef((void**) &(*R_176452).Res, Ropef_47069(Ops_175991[(Op_176453)-26][(addInt(I_176456, 2))-0], LOC9, 1));
 LA4: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genlinedir_175516)(TY174021* P_175519, TY49525* N_175520, TY174013* R_175522) {
-NI Line_175523;
-TY53695 LOC4;
+N_NIMCALL(void, Genlinedir_176516)(TY175021* P_176519, TY50525* N_176520, TY175013* R_176522) {
+NI Line_176523;
+TY54695 LOC4;
 NimStringDesc* LOC5;
 NIM_BOOL LOC7;
 NIM_BOOL LOC9;
-TY46451 LOC13;
+TY47451 LOC13;
 NIM_BOOL LOC14;
 NIM_BOOL LOC16;
-TY46451 LOC20;
+TY47451 LOC20;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genLineDir";
@@ -2683,58 +2683,58 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Line_175523 = 0;
+Line_176523 = 0;
 F.line = 439;F.filename = "ecmasgen.nim";
-Line_175523 = Tolinenumber_41585((*N_175520).Info);
+Line_176523 = Tolinenumber_42585((*N_176520).Info);
 F.line = 440;F.filename = "ecmasgen.nim";
-if (!(((*P_175519).Options &(1<<((((NU8) 10))&31)))!=0)) goto LA2;
+if (!(((*P_176519).Options &(1<<((((NU8) 10))&31)))!=0)) goto LA2;
 F.line = 441;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
 LOC5 = 0;
-LOC5 = Tofilename_41579((*N_175520).Info);
-LOC4[0] = Torope_46046(LOC5);
-LOC4[1] = Torope_46052(((NI64) (Line_175523)));
-Appf_46074(&(*R_175522).Com, ((NimStringDesc*) &TMP175636), LOC4, 2);
+LOC5 = Tofilename_42579((*N_176520).Info);
+LOC4[0] = Torope_47046(LOC5);
+LOC4[1] = Torope_47052(((NI64) (Line_176523)));
+Appf_47074(&(*R_176522).Com, ((NimStringDesc*) &TMP176636), LOC4, 2);
 LA2: ;
 F.line = 443;F.filename = "ecmasgen.nim";
-LOC7 = ((163840 & (*P_175519).Options) == 163840);
+LOC7 = ((163840 & (*P_176519).Options) == 163840);
 if (!(LOC7)) goto LA8;
-LOC9 = ((*P_175519).Prc == NIM_NIL);
+LOC9 = ((*P_176519).Prc == NIM_NIL);
 if (LOC9) goto LA10;
-LOC9 = !((((*(*P_175519).Prc).Flags &(1<<((((NU8) 11))&31)))!=0));
+LOC9 = !((((*(*P_176519).Prc).Flags &(1<<((((NU8) 11))&31)))!=0));
 LA10: ;
 LOC7 = LOC9;
 LA8: ;
 if (!LOC7) goto LA11;
 F.line = 445;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_175519, ((NimStringDesc*) &TMP175637));
+Usemagic_175882(P_176519, ((NimStringDesc*) &TMP176637));
 F.line = 446;F.filename = "ecmasgen.nim";
 memset((void*)&LOC13, 0, sizeof(LOC13));
-LOC13[0] = Torope_46052(((NI64) (Line_175523)));
-Appf_46074(&(*R_175522).Com, ((NimStringDesc*) &TMP175638), LOC13, 1);
+LOC13[0] = Torope_47052(((NI64) (Line_176523)));
+Appf_47074(&(*R_176522).Com, ((NimStringDesc*) &TMP176638), LOC13, 1);
 goto LA6;
 LA11: ;
-LOC14 = ((98304 & (*P_175519).Options) == 98304);
+LOC14 = ((98304 & (*P_176519).Options) == 98304);
 if (!(LOC14)) goto LA15;
-LOC16 = ((*P_175519).Prc == NIM_NIL);
+LOC16 = ((*P_176519).Prc == NIM_NIL);
 if (LOC16) goto LA17;
-LOC16 = !((((*(*P_175519).Prc).Flags &(1<<((((NU8) 11))&31)))!=0));
+LOC16 = !((((*(*P_176519).Prc).Flags &(1<<((((NU8) 11))&31)))!=0));
 LA17: ;
 LOC14 = LOC16;
 LA15: ;
 if (!LOC14) goto LA18;
 F.line = 450;F.filename = "ecmasgen.nim";
 memset((void*)&LOC20, 0, sizeof(LOC20));
-LOC20[0] = Torope_46052(((NI64) (Line_175523)));
-Appf_46074(&(*R_175522).Com, ((NimStringDesc*) &TMP175639), LOC20, 1);
+LOC20[0] = Torope_47052(((NI64) (Line_176523)));
+Appf_47074(&(*R_176522).Com, ((NimStringDesc*) &TMP176639), LOC20, 1);
 goto LA6;
 LA18: ;
 LA6: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Finishtrystmt_175640)(TY174021* P_175643, TY174013* R_175645, NI Howmany_175646) {
-NI I_175654;
-NI Res_175666;
+N_NIMCALL(void, Finishtrystmt_176640)(TY175021* P_176643, TY175013* R_176645, NI Howmany_176646) {
+NI I_176654;
+NI Res_176666;
 NimStringDesc* LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -2744,33 +2744,33 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_175654 = 0;
-Res_175666 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_175666 = 1;
-F.line = 1020;F.filename = "system.nim";
+I_176654 = 0;
+Res_176666 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_176666 = 1;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_175666 <= Howmany_175646)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_175654 = Res_175666;
+if (!(Res_176666 <= Howmany_176646)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_176654 = Res_176666;
 F.line = 454;F.filename = "ecmasgen.nim";
 LOC2 = 0;
-LOC2 = rawNewString(Tnl_45573->Sup.len + 29);
-appendString(LOC2, ((NimStringDesc*) &TMP175669));
-appendString(LOC2, Tnl_45573);
-App_46036(&(*R_175645).Com, LOC2);
-F.line = 1022;F.filename = "system.nim";
-Res_175666 = addInt(Res_175666, 1);
+LOC2 = rawNewString(Tnl_46573->Sup.len + 29);
+appendString(LOC2, ((NimStringDesc*) &TMP176669));
+appendString(LOC2, Tnl_46573);
+App_47036(&(*R_176645).Com, LOC2);
+F.line = 1024;F.filename = "system.nim";
+Res_176666 = addInt(Res_176666, 1);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genwhilestmt_175670)(TY174021* P_175673, TY49525* N_175674, TY174013* R_175676) {
-TY174013 Cond_175677;
-TY174013 Stmt_175678;
-NI Length_175679;
-NI Labl_175680;
-TY53637 LOC4;
-TY53695 LOC5;
+N_NIMCALL(void, Genwhilestmt_176670)(TY175021* P_176673, TY50525* N_176674, TY175013* R_176676) {
+TY175013 Cond_176677;
+TY175013 Stmt_176678;
+NI Length_176679;
+NI Labl_176680;
+TY54637 LOC4;
+TY54695 LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genWhileStmt";
@@ -2779,83 +2779,83 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&Cond_175677, 0, sizeof(Cond_175677));
-memset((void*)&Stmt_175678, 0, sizeof(Stmt_175678));
-Length_175679 = 0;
-Labl_175680 = 0;
+memset((void*)&Cond_176677, 0, sizeof(Cond_176677));
+memset((void*)&Stmt_176678, 0, sizeof(Stmt_176678));
+Length_176679 = 0;
+Labl_176680 = 0;
 F.line = 460;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_175673, N_175674, R_175676);
+Genlinedir_176516(P_176673, N_176674, R_176676);
 F.line = 461;F.filename = "ecmasgen.nim";
-(*P_175673).Unique = addInt((*P_175673).Unique, 1);
+(*P_176673).Unique = addInt((*P_176673).Unique, 1);
 F.line = 462;F.filename = "ecmasgen.nim";
-Length_175679 = (*P_175673).Blocks->Sup.len;
+Length_176679 = (*P_176673).Blocks->Sup.len;
 F.line = 463;F.filename = "ecmasgen.nim";
-(*P_175673).Blocks = (TY174050*) setLengthSeq(&((*P_175673).Blocks)->Sup, sizeof(TY174015), addInt(Length_175679, 1));
+(*P_176673).Blocks = (TY175050*) setLengthSeq(&((*P_176673).Blocks)->Sup, sizeof(TY175015), addInt(Length_176679, 1));
 F.line = 464;F.filename = "ecmasgen.nim";
-if ((NU)(Length_175679) >= (NU)((*P_175673).Blocks->Sup.len)) raiseIndexError();
-if ((*P_175673).Unique == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
-(*P_175673).Blocks->data[Length_175679].Id = ((NI64)-((*P_175673).Unique));
+if ((NU)(Length_176679) >= (NU)((*P_176673).Blocks->Sup.len)) raiseIndexError();
+if ((*P_176673).Unique == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
+(*P_176673).Blocks->data[Length_176679].Id = ((NI64)-((*P_176673).Unique));
 F.line = 465;F.filename = "ecmasgen.nim";
-if ((NU)(Length_175679) >= (NU)((*P_175673).Blocks->Sup.len)) raiseIndexError();
-(*P_175673).Blocks->data[Length_175679].Nestedtrystmts = (*P_175673).Nestedtrystmts;
+if ((NU)(Length_176679) >= (NU)((*P_176673).Blocks->Sup.len)) raiseIndexError();
+(*P_176673).Blocks->data[Length_176679].Nestedtrystmts = (*P_176673).Nestedtrystmts;
 F.line = 466;F.filename = "ecmasgen.nim";
-Labl_175680 = (*P_175673).Unique;
+Labl_176680 = (*P_176673).Unique;
 F.line = 467;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175674).Kind/8] &(1<<((*N_175674).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_175674).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_175673, (*N_175674).KindU.S6.Sons->data[0], &Cond_175677);
+if (((TMP175136[(*N_176674).Kind/8] &(1<<((*N_176674).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_176674).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_176673, (*N_176674).KindU.S6.Sons->data[0], &Cond_176677);
 F.line = 468;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175674).Kind/8] &(1<<((*N_175674).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_175674).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_175673, (*N_175674).KindU.S6.Sons->data[1], &Stmt_175678);
+if (((TMP175136[(*N_176674).Kind/8] &(1<<((*N_176674).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_176674).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_176673, (*N_176674).KindU.S6.Sons->data[1], &Stmt_176678);
 F.line = 469;F.filename = "ecmasgen.nim";
-if ((NU)(Length_175679) >= (NU)((*P_175673).Blocks->Sup.len)) raiseIndexError();
-if (!(0 < (*P_175673).Blocks->data[Length_175679].Id)) goto LA2;
+if ((NU)(Length_176679) >= (NU)((*P_176673).Blocks->Sup.len)) raiseIndexError();
+if (!(0 < (*P_176673).Blocks->data[Length_176679].Id)) goto LA2;
 F.line = 470;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = Mergeexpr_174919(&Cond_175677);
-LOC4[1] = Mergestmt_174923(&Stmt_175678);
-LOC4[2] = Torope_46052(((NI64) (Labl_175680)));
-Appf_46074(&(*R_175676).Com, ((NimStringDesc*) &TMP175765), LOC4, 3);
+LOC4[0] = Mergeexpr_175919(&Cond_176677);
+LOC4[1] = Mergestmt_175923(&Stmt_176678);
+LOC4[2] = Torope_47052(((NI64) (Labl_176680)));
+Appf_47074(&(*R_176676).Com, ((NimStringDesc*) &TMP176765), LOC4, 3);
 goto LA1;
 LA2: ;
 F.line = 473;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = Mergeexpr_174919(&Cond_175677);
-LOC5[1] = Mergestmt_174923(&Stmt_175678);
-Appf_46074(&(*R_175676).Com, ((NimStringDesc*) &TMP175766), LOC5, 2);
+LOC5[0] = Mergeexpr_175919(&Cond_176677);
+LOC5[1] = Mergestmt_175923(&Stmt_176678);
+Appf_47074(&(*R_176676).Com, ((NimStringDesc*) &TMP176766), LOC5, 2);
 LA1: ;
 F.line = 474;F.filename = "ecmasgen.nim";
-(*P_175673).Blocks = (TY174050*) setLengthSeq(&((*P_175673).Blocks)->Sup, sizeof(TY174015), Length_175679);
+(*P_176673).Blocks = (TY175050*) setLengthSeq(&((*P_176673).Blocks)->Sup, sizeof(TY175015), Length_176679);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gentrystmt_175767)(TY174021* P_175770, TY49525* N_175771, TY174013* R_175773) {
-NI I_175774;
-NI Length_175775;
-NI Blen_175776;
-TY46008* Safepoint_175777;
-TY46008* Orexpr_175778;
-TY46008* Epart_175779;
-TY174013 A_175780;
-TY46451 LOC1;
-TY46451 LOC2;
+N_NIMCALL(void, Gentrystmt_176767)(TY175021* P_176770, TY50525* N_176771, TY175013* R_176773) {
+NI I_176774;
+NI Length_176775;
+NI Blen_176776;
+TY47008* Safepoint_176777;
+TY47008* Orexpr_176778;
+TY47008* Epart_176779;
+TY175013 A_176780;
+TY47451 LOC1;
+TY47451 LOC2;
 NimStringDesc* LOC6;
 NimStringDesc* LOC7;
-TY46008* LOC8;
+TY47008* LOC8;
 NIM_BOOL LOC10;
 NimStringDesc* LOC18;
-TY46008* LOC19;
+TY47008* LOC19;
 NimStringDesc* LOC23;
-NI J_175953;
-NI HEX3Atmp_176186;
-NI Res_176188;
-TY53695 LOC31;
-TY53695 LOC35;
-TY46451 LOC36;
-TY46451 LOC40;
+NI J_176953;
+NI HEX3Atmp_177186;
+NI Res_177188;
+TY54695 LOC31;
+TY54695 LOC35;
+TY47451 LOC36;
+TY47451 LOC40;
 NimStringDesc* LOC41;
 NIM_BOOL LOC43;
-TY46008* LOC47;
+TY47008* LOC47;
 NimStringDesc* LOC48;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -2865,216 +2865,216 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_175774 = 0;
-Length_175775 = 0;
-Blen_175776 = 0;
-Safepoint_175777 = 0;
-Orexpr_175778 = 0;
-Epart_175779 = 0;
-memset((void*)&A_175780, 0, sizeof(A_175780));
+I_176774 = 0;
+Length_176775 = 0;
+Blen_176776 = 0;
+Safepoint_176777 = 0;
+Orexpr_176778 = 0;
+Epart_176779 = 0;
+memset((void*)&A_176780, 0, sizeof(A_176780));
 F.line = 500;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_175770, N_175771, R_175773);
+Genlinedir_176516(P_176770, N_176771, R_176773);
 F.line = 501;F.filename = "ecmasgen.nim";
-(*P_175770).Unique = addInt((*P_175770).Unique, 1);
+(*P_176770).Unique = addInt((*P_176770).Unique, 1);
 F.line = 502;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Torope_46052(((NI64) ((*P_175770).Unique)));
-Safepoint_175777 = Ropef_46069(((NimStringDesc*) &TMP176192), LOC1, 1);
+LOC1[0] = Torope_47052(((NI64) ((*P_176770).Unique)));
+Safepoint_176777 = Ropef_47069(((NimStringDesc*) &TMP177192), LOC1, 1);
 F.line = 503;F.filename = "ecmasgen.nim";
 memset((void*)&LOC2, 0, sizeof(LOC2));
-LOC2[0] = Safepoint_175777;
-Appf_46074(&(*R_175773).Com, ((NimStringDesc*) &TMP176193), LOC2, 1);
+LOC2[0] = Safepoint_176777;
+Appf_47074(&(*R_176773).Com, ((NimStringDesc*) &TMP177193), LOC2, 1);
 F.line = 506;F.filename = "ecmasgen.nim";
-if (!(((*P_175770).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA4;
+if (!(((*P_176770).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA4;
 F.line = 506;F.filename = "ecmasgen.nim";
 LOC6 = 0;
-LOC6 = rawNewString(Tnl_45573->Sup.len + 13);
-appendString(LOC6, ((NimStringDesc*) &TMP176194));
-appendString(LOC6, Tnl_45573);
-App_46036(&(*R_175773).Com, LOC6);
+LOC6 = rawNewString(Tnl_46573->Sup.len + 13);
+appendString(LOC6, ((NimStringDesc*) &TMP177194));
+appendString(LOC6, Tnl_46573);
+App_47036(&(*R_176773).Com, LOC6);
 LA4: ;
 F.line = 507;F.filename = "ecmasgen.nim";
 LOC7 = 0;
-LOC7 = rawNewString(Tnl_45573->Sup.len + 5);
-appendString(LOC7, ((NimStringDesc*) &TMP176195));
-appendString(LOC7, Tnl_45573);
-App_46036(&(*R_175773).Com, LOC7);
+LOC7 = rawNewString(Tnl_46573->Sup.len + 5);
+appendString(LOC7, ((NimStringDesc*) &TMP177195));
+appendString(LOC7, Tnl_46573);
+App_47036(&(*R_176773).Com, LOC7);
 F.line = 508;F.filename = "ecmasgen.nim";
-Length_175775 = Sonslen_49803(N_175771);
+Length_176775 = Sonslen_50803(N_176771);
 F.line = 509;F.filename = "ecmasgen.nim";
-(*P_175770).Nestedtrystmts = addInt((*P_175770).Nestedtrystmts, 1);
+(*P_176770).Nestedtrystmts = addInt((*P_176770).Nestedtrystmts, 1);
 F.line = 510;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_175770, (*N_175771).KindU.S6.Sons->data[0], &A_175780);
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_176770, (*N_176771).KindU.S6.Sons->data[0], &A_176780);
 F.line = 511;F.filename = "ecmasgen.nim";
 LOC8 = 0;
-LOC8 = Mergestmt_174923(&A_175780);
-App_46031(&(*R_175773).Com, LOC8);
+LOC8 = Mergestmt_175923(&A_176780);
+App_47031(&(*R_176773).Com, LOC8);
 F.line = 512;F.filename = "ecmasgen.nim";
-I_175774 = 1;
+I_176774 = 1;
 F.line = 513;F.filename = "ecmasgen.nim";
-Epart_175779 = NIM_NIL;
+Epart_176779 = NIM_NIL;
 F.line = 514;F.filename = "ecmasgen.nim";
 while (1) {
-LOC10 = (I_175774 < Length_175775);
+LOC10 = (I_176774 < Length_176775);
 if (!(LOC10)) goto LA11;
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC10 = ((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind == ((NU8) 77));
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC10 = ((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind == ((NU8) 77));
 LA11: ;
 if (!LOC10) goto LA9;
 F.line = 515;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Blen_175776 = Sonslen_49803((*N_175771).KindU.S6.Sons->data[I_175774]);
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Blen_176776 = Sonslen_50803((*N_176771).KindU.S6.Sons->data[I_176774]);
 F.line = 516;F.filename = "ecmasgen.nim";
-if (!(Blen_175776 == 1)) goto LA13;
+if (!(Blen_176776 == 1)) goto LA13;
 F.line = 518;F.filename = "ecmasgen.nim";
-if (!(1 < I_175774)) goto LA16;
+if (!(1 < I_176774)) goto LA16;
 F.line = 518;F.filename = "ecmasgen.nim";
 LOC18 = 0;
-LOC18 = rawNewString(Tnl_45573->Sup.len + 6);
-appendString(LOC18, ((NimStringDesc*) &TMP176196));
-appendString(LOC18, Tnl_45573);
-App_46036(&Epart_175779, LOC18);
+LOC18 = rawNewString(Tnl_46573->Sup.len + 6);
+appendString(LOC18, ((NimStringDesc*) &TMP177196));
+appendString(LOC18, Tnl_46573);
+App_47036(&Epart_176779, LOC18);
 LA16: ;
 F.line = 519;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind/8] &(1<<((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_175770, (*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->data[0], &A_175780);
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind/8] &(1<<((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_176770, (*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->data[0], &A_176780);
 F.line = 520;F.filename = "ecmasgen.nim";
 LOC19 = 0;
-LOC19 = Mergestmt_174923(&A_175780);
-App_46031(&Epart_175779, LOC19);
+LOC19 = Mergestmt_175923(&A_176780);
+App_47031(&Epart_176779, LOC19);
 F.line = 521;F.filename = "ecmasgen.nim";
-if (!(1 < I_175774)) goto LA21;
+if (!(1 < I_176774)) goto LA21;
 F.line = 521;F.filename = "ecmasgen.nim";
 LOC23 = 0;
-LOC23 = rawNewString(Tnl_45573->Sup.len + 1);
+LOC23 = rawNewString(Tnl_46573->Sup.len + 1);
 appendChar(LOC23, 125);
-appendString(LOC23, Tnl_45573);
-App_46036(&Epart_175779, LOC23);
+appendString(LOC23, Tnl_46573);
+App_47036(&Epart_176779, LOC23);
 LA21: ;
 goto LA12;
 LA13: ;
 F.line = 523;F.filename = "ecmasgen.nim";
-Orexpr_175778 = NIM_NIL;
-J_175953 = 0;
-HEX3Atmp_176186 = 0;
+Orexpr_176778 = NIM_NIL;
+J_176953 = 0;
+HEX3Atmp_177186 = 0;
 F.line = 524;F.filename = "ecmasgen.nim";
-HEX3Atmp_176186 = subInt(Blen_175776, 2);
-Res_176188 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_176188 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_177186 = subInt(Blen_176776, 2);
+Res_177188 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_177188 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_176188 <= HEX3Atmp_176186)) goto LA24;
-F.line = 1019;F.filename = "system.nim";
-J_175953 = Res_176188;
+if (!(Res_177188 <= HEX3Atmp_177186)) goto LA24;
+F.line = 1021;F.filename = "system.nim";
+J_176953 = Res_177188;
 F.line = 525;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind/8] &(1<<((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_175953) >= (NU)((*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->data[J_175953]).Kind == ((NU8) 4)))) goto LA26;
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind/8] &(1<<((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_176953) >= (NU)((*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->data[J_176953]).Kind == ((NU8) 4)))) goto LA26;
 F.line = 526;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_175771).Info, ((NimStringDesc*) &TMP176197));
+Internalerror_42567((*N_176771).Info, ((NimStringDesc*) &TMP177197));
 LA26: ;
 F.line = 527;F.filename = "ecmasgen.nim";
-if (!!((Orexpr_175778 == NIM_NIL))) goto LA29;
+if (!!((Orexpr_176778 == NIM_NIL))) goto LA29;
 F.line = 527;F.filename = "ecmasgen.nim";
-App_46036(&Orexpr_175778, ((NimStringDesc*) &TMP176198));
+App_47036(&Orexpr_176778, ((NimStringDesc*) &TMP177198));
 LA29: ;
 F.line = 528;F.filename = "ecmasgen.nim";
 memset((void*)&LOC31, 0, sizeof(LOC31));
-LOC31[0] = Safepoint_175777;
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind/8] &(1<<((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_175953) >= (NU)((*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC31[1] = Gentypeinfo_174236(P_175770, (*(*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->data[J_175953]).Typ);
-Appf_46074(&Orexpr_175778, ((NimStringDesc*) &TMP176199), LOC31, 2);
-F.line = 1022;F.filename = "system.nim";
-Res_176188 = addInt(Res_176188, 1);
+LOC31[0] = Safepoint_176777;
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind/8] &(1<<((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_176953) >= (NU)((*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC31[1] = Gentypeinfo_175236(P_176770, (*(*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->data[J_176953]).Typ);
+Appf_47074(&Orexpr_176778, ((NimStringDesc*) &TMP177199), LOC31, 2);
+F.line = 1024;F.filename = "system.nim";
+Res_177188 = addInt(Res_177188, 1);
 } LA24: ;
 F.line = 530;F.filename = "ecmasgen.nim";
-if (!(1 < I_175774)) goto LA33;
+if (!(1 < I_176774)) goto LA33;
 F.line = 530;F.filename = "ecmasgen.nim";
-App_46036(&Epart_175779, ((NimStringDesc*) &TMP176200));
+App_47036(&Epart_176779, ((NimStringDesc*) &TMP177200));
 LA33: ;
 F.line = 531;F.filename = "ecmasgen.nim";
 memset((void*)&LOC35, 0, sizeof(LOC35));
-LOC35[0] = Safepoint_175777;
-LOC35[1] = Orexpr_175778;
-Appf_46074(&Epart_175779, ((NimStringDesc*) &TMP176201), LOC35, 2);
+LOC35[0] = Safepoint_176777;
+LOC35[1] = Orexpr_176778;
+Appf_47074(&Epart_176779, ((NimStringDesc*) &TMP177201), LOC35, 2);
 F.line = 532;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind/8] &(1<<((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(subInt(Blen_175776, 1)) >= (NU)((*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_175770, (*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->data[subInt(Blen_175776, 1)], &A_175780);
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind/8] &(1<<((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(subInt(Blen_176776, 1)) >= (NU)((*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_176770, (*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->data[subInt(Blen_176776, 1)], &A_176780);
 F.line = 533;F.filename = "ecmasgen.nim";
 memset((void*)&LOC36, 0, sizeof(LOC36));
-LOC36[0] = Mergestmt_174923(&A_175780);
-Appf_46074(&Epart_175779, ((NimStringDesc*) &TMP176202), LOC36, 1);
+LOC36[0] = Mergestmt_175923(&A_176780);
+Appf_47074(&Epart_176779, ((NimStringDesc*) &TMP177202), LOC36, 1);
 LA12: ;
 F.line = 534;F.filename = "ecmasgen.nim";
-I_175774 = addInt(I_175774, 1);
+I_176774 = addInt(I_176774, 1);
 } LA9: ;
 F.line = 535;F.filename = "ecmasgen.nim";
-if (!!((Epart_175779 == NIM_NIL))) goto LA38;
+if (!!((Epart_176779 == NIM_NIL))) goto LA38;
 F.line = 535;F.filename = "ecmasgen.nim";
 memset((void*)&LOC40, 0, sizeof(LOC40));
-LOC40[0] = Epart_175779;
-Appf_46074(&(*R_175773).Com, ((NimStringDesc*) &TMP176203), LOC40, 1);
+LOC40[0] = Epart_176779;
+Appf_47074(&(*R_176773).Com, ((NimStringDesc*) &TMP177203), LOC40, 1);
 LA38: ;
 F.line = 536;F.filename = "ecmasgen.nim";
-Finishtrystmt_175640(P_175770, R_175773, (*P_175770).Nestedtrystmts);
+Finishtrystmt_176640(P_176770, R_176773, (*P_176770).Nestedtrystmts);
 F.line = 537;F.filename = "ecmasgen.nim";
-(*P_175770).Nestedtrystmts = subInt((*P_175770).Nestedtrystmts, 1);
+(*P_176770).Nestedtrystmts = subInt((*P_176770).Nestedtrystmts, 1);
 F.line = 538;F.filename = "ecmasgen.nim";
 LOC41 = 0;
-LOC41 = rawNewString(Tnl_45573->Sup.len + Tnl_45573->Sup.len + 40);
-appendString(LOC41, ((NimStringDesc*) &TMP176204));
-appendString(LOC41, Tnl_45573);
-appendString(LOC41, ((NimStringDesc*) &TMP175669));
-appendString(LOC41, Tnl_45573);
-App_46036(&(*R_175773).Com, LOC41);
+LOC41 = rawNewString(Tnl_46573->Sup.len + Tnl_46573->Sup.len + 40);
+appendString(LOC41, ((NimStringDesc*) &TMP177204));
+appendString(LOC41, Tnl_46573);
+appendString(LOC41, ((NimStringDesc*) &TMP176669));
+appendString(LOC41, Tnl_46573);
+App_47036(&(*R_176773).Com, LOC41);
 F.line = 539;F.filename = "ecmasgen.nim";
-LOC43 = (I_175774 < Length_175775);
+LOC43 = (I_176774 < Length_176775);
 if (!(LOC43)) goto LA44;
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC43 = ((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind == ((NU8) 94));
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC43 = ((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind == ((NU8) 94));
 LA44: ;
 if (!LOC43) goto LA45;
 F.line = 540;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_175771).Kind/8] &(1<<((*N_175771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_175774) >= (NU)((*N_175771).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind/8] &(1<<((*(*N_175771).KindU.S6.Sons->data[I_175774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_175770, (*(*N_175771).KindU.S6.Sons->data[I_175774]).KindU.S6.Sons->data[0], &A_175780);
+if (((TMP175136[(*N_176771).Kind/8] &(1<<((*N_176771).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_176774) >= (NU)((*N_176771).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind/8] &(1<<((*(*N_176771).KindU.S6.Sons->data[I_176774]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_176770, (*(*N_176771).KindU.S6.Sons->data[I_176774]).KindU.S6.Sons->data[0], &A_176780);
 F.line = 541;F.filename = "ecmasgen.nim";
 LOC47 = 0;
-LOC47 = Mergestmt_174923(&A_175780);
-App_46031(&(*R_175773).Com, LOC47);
+LOC47 = Mergestmt_175923(&A_176780);
+App_47031(&(*R_176773).Com, LOC47);
 LA45: ;
 F.line = 542;F.filename = "ecmasgen.nim";
 LOC48 = 0;
-LOC48 = rawNewString(Tnl_45573->Sup.len + 1);
+LOC48 = rawNewString(Tnl_46573->Sup.len + 1);
 appendChar(LOC48, 125);
-appendString(LOC48, Tnl_45573);
-App_46036(&(*R_175773).Com, LOC48);
+appendString(LOC48, Tnl_46573);
+App_47036(&(*R_176773).Com, LOC48);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genraisestmt_176205)(TY174021* P_176208, TY49525* N_176209, TY174013* R_176211) {
-TY174013 A_176212;
-TY49551* Typ_176213;
-TY46451 LOC7;
-TY53695 LOC8;
+N_NIMCALL(void, Genraisestmt_177205)(TY175021* P_177208, TY50525* N_177209, TY175013* R_177211) {
+TY175013 A_177212;
+TY50551* Typ_177213;
+TY47451 LOC7;
+TY54695 LOC8;
 NimStringDesc* LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -3084,91 +3084,91 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_176212, 0, sizeof(A_176212));
-Typ_176213 = 0;
+memset((void*)&A_177212, 0, sizeof(A_177212));
+Typ_177213 = 0;
 F.line = 548;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_176208, N_176209, R_176211);
+Genlinedir_176516(P_177208, N_177209, R_177211);
 F.line = 549;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176209).Kind/8] &(1<<((*N_176209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176209).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*N_176209).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
+if (((TMP175136[(*N_177209).Kind/8] &(1<<((*N_177209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177209).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*N_177209).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
 F.line = 550;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176209).Kind/8] &(1<<((*N_176209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176209).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_176208, (*N_176209).KindU.S6.Sons->data[0], &A_176212);
+if (((TMP175136[(*N_177209).Kind/8] &(1<<((*N_177209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177209).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_177208, (*N_177209).KindU.S6.Sons->data[0], &A_177212);
 F.line = 551;F.filename = "ecmasgen.nim";
-if (!!((A_176212.Com == NIM_NIL))) goto LA5;
+if (!!((A_177212.Com == NIM_NIL))) goto LA5;
 F.line = 551;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = A_176212.Com;
-Appf_46074(&(*R_176211).Com, ((NimStringDesc*) &TMP175420), LOC7, 1);
+LOC7[0] = A_177212.Com;
+Appf_47074(&(*R_177211).Com, ((NimStringDesc*) &TMP176420), LOC7, 1);
 LA5: ;
 F.line = 552;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176209).Kind/8] &(1<<((*N_176209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176209).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Typ_176213 = Skiptypes_91085((*(*N_176209).KindU.S6.Sons->data[0]).Typ, 14723072);
+if (((TMP175136[(*N_177209).Kind/8] &(1<<((*N_177209).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177209).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Typ_177213 = Skiptypes_92085((*(*N_177209).KindU.S6.Sons->data[0]).Typ, 14723072);
 F.line = 553;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_176208, ((NimStringDesc*) &TMP176292));
+Usemagic_175882(P_177208, ((NimStringDesc*) &TMP177292));
 F.line = 554;F.filename = "ecmasgen.nim";
 memset((void*)&LOC8, 0, sizeof(LOC8));
-LOC8[0] = A_176212.Res;
-LOC8[1] = Makecstring_153010((*(*(*Typ_176213).Sym).Name).S);
-Appf_46074(&(*R_176211).Com, ((NimStringDesc*) &TMP176293), LOC8, 2);
+LOC8[0] = A_177212.Res;
+LOC8[1] = Makecstring_154010((*(*(*Typ_177213).Sym).Name).S);
+Appf_47074(&(*R_177211).Com, ((NimStringDesc*) &TMP177293), LOC8, 2);
 goto LA1;
 LA2: ;
 F.line = 557;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_176208, ((NimStringDesc*) &TMP176294));
+Usemagic_175882(P_177208, ((NimStringDesc*) &TMP177294));
 F.line = 558;F.filename = "ecmasgen.nim";
 LOC9 = 0;
-LOC9 = rawNewString(Tnl_45573->Sup.len + 19);
-appendString(LOC9, ((NimStringDesc*) &TMP176295));
-appendString(LOC9, Tnl_45573);
-App_46036(&(*R_176211).Com, LOC9);
+LOC9 = rawNewString(Tnl_46573->Sup.len + 19);
+appendString(LOC9, ((NimStringDesc*) &TMP177295));
+appendString(LOC9, Tnl_46573);
+App_47036(&(*R_177211).Com, LOC9);
 LA1: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(NI64, addInt64)(NI64 A_5529, NI64 B_5530) {
-NI64 Result_5531;
+static N_INLINE(NI64, addInt64)(NI64 A_5729, NI64 B_5730) {
+NI64 Result_5731;
 NIM_BOOL LOC2;
-Result_5531 = 0;
-Result_5531 = (NI64)((NU64)(A_5529) + (NU64)(B_5530));
-LOC2 = (0 <= (Result_5531 ^ A_5529));
+Result_5731 = 0;
+Result_5731 = (NI64)((NU64)(A_5729) + (NU64)(B_5730));
+LOC2 = (0 <= (Result_5731 ^ A_5729));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (Result_5531 ^ B_5530));
+LOC2 = (0 <= (Result_5731 ^ B_5730));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5531;
+return Result_5731;
 }
-N_NIMCALL(void, Gencasestmt_176296)(TY174021* P_176299, TY49525* N_176300, TY174013* R_176302) {
-TY174013 Cond_176303;
-TY174013 Stmt_176304;
-TY49525* It_176305;
-TY49525* E_176306;
-TY49525* V_176307;
-NIM_BOOL Stringswitch_176308;
-TY46451 LOC4;
-TY49551* LOC5;
-TY46451 LOC9;
-TY46451 LOC10;
-NI I_176376;
-NI HEX3Atmp_176588;
+N_NIMCALL(void, Gencasestmt_177296)(TY175021* P_177299, TY50525* N_177300, TY175013* R_177302) {
+TY175013 Cond_177303;
+TY175013 Stmt_177304;
+TY50525* It_177305;
+TY50525* E_177306;
+TY50525* V_177307;
+NIM_BOOL Stringswitch_177308;
+TY47451 LOC4;
+TY50551* LOC5;
+TY47451 LOC9;
+TY47451 LOC10;
+NI I_177376;
+NI HEX3Atmp_177588;
 NI LOC11;
-NI Res_176590;
-NI J_176396;
-NI HEX3Atmp_176578;
+NI Res_177590;
+NI J_177396;
+NI HEX3Atmp_177578;
 NI LOC13;
-NI Res_176580;
-TY46451 LOC22;
-TY46451 LOC29;
-TY46451 LOC30;
-TY49525* LOC31;
-TY46451 LOC32;
-TY46451 LOC33;
-TY156324 LOC34;
+NI Res_177580;
+TY47451 LOC22;
+TY47451 LOC29;
+TY47451 LOC30;
+TY50525* LOC31;
+TY47451 LOC32;
+TY47451 LOC33;
+TY157324 LOC34;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genCaseStmt";
@@ -3177,184 +3177,184 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&Cond_176303, 0, sizeof(Cond_176303));
-memset((void*)&Stmt_176304, 0, sizeof(Stmt_176304));
-It_176305 = 0;
-E_176306 = 0;
-V_176307 = 0;
-Stringswitch_176308 = 0;
+memset((void*)&Cond_177303, 0, sizeof(Cond_177303));
+memset((void*)&Stmt_177304, 0, sizeof(Stmt_177304));
+It_177305 = 0;
+E_177306 = 0;
+V_177307 = 0;
+Stringswitch_177308 = 0;
 F.line = 565;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_176299, N_176300, R_176302);
+Genlinedir_176516(P_177299, N_177300, R_177302);
 F.line = 566;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176300).Kind/8] &(1<<((*N_176300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176300).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_176299, (*N_176300).KindU.S6.Sons->data[0], &Cond_176303);
+if (((TMP175136[(*N_177300).Kind/8] &(1<<((*N_177300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177300).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_177299, (*N_177300).KindU.S6.Sons->data[0], &Cond_177303);
 F.line = 567;F.filename = "ecmasgen.nim";
-if (!!((Cond_176303.Com == NIM_NIL))) goto LA2;
+if (!!((Cond_177303.Com == NIM_NIL))) goto LA2;
 F.line = 567;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = Cond_176303.Com;
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP175420), LOC4, 1);
+LOC4[0] = Cond_177303.Com;
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP176420), LOC4, 1);
 LA2: ;
 F.line = 568;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176300).Kind/8] &(1<<((*N_176300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176300).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_177300).Kind/8] &(1<<((*N_177300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177300).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC5 = 0;
-LOC5 = Skiptypes_91085((*(*N_176300).KindU.S6.Sons->data[0]).Typ, 8431616);
-Stringswitch_176308 = ((*LOC5).Kind == ((NU8) 28));
+LOC5 = Skiptypes_92085((*(*N_177300).KindU.S6.Sons->data[0]).Typ, 8431616);
+Stringswitch_177308 = ((*LOC5).Kind == ((NU8) 28));
 F.line = 569;F.filename = "ecmasgen.nim";
-if (!Stringswitch_176308) goto LA7;
+if (!Stringswitch_177308) goto LA7;
 F.line = 570;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_176299, ((NimStringDesc*) &TMP176601));
+Usemagic_175882(P_177299, ((NimStringDesc*) &TMP177601));
 F.line = 571;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = Cond_176303.Res;
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176602), LOC9, 1);
+LOC9[0] = Cond_177303.Res;
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177602), LOC9, 1);
 goto LA6;
 LA7: ;
 F.line = 573;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Cond_176303.Res;
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176603), LOC10, 1);
+LOC10[0] = Cond_177303.Res;
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177603), LOC10, 1);
 LA6: ;
-I_176376 = 0;
-HEX3Atmp_176588 = 0;
+I_177376 = 0;
+HEX3Atmp_177588 = 0;
 F.line = 574;F.filename = "ecmasgen.nim";
-LOC11 = Sonslen_49803(N_176300);
-HEX3Atmp_176588 = subInt(LOC11, 1);
-Res_176590 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_176590 = 1;
-F.line = 1020;F.filename = "system.nim";
+LOC11 = Sonslen_50803(N_177300);
+HEX3Atmp_177588 = subInt(LOC11, 1);
+Res_177590 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_177590 = 1;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_176590 <= HEX3Atmp_176588)) goto LA12;
-F.line = 1019;F.filename = "system.nim";
-I_176376 = Res_176590;
+if (!(Res_177590 <= HEX3Atmp_177588)) goto LA12;
+F.line = 1021;F.filename = "system.nim";
+I_177376 = Res_177590;
 F.line = 575;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176300).Kind/8] &(1<<((*N_176300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_176376) >= (NU)((*N_176300).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_176305 = (*N_176300).KindU.S6.Sons->data[I_176376];
+if (((TMP175136[(*N_177300).Kind/8] &(1<<((*N_177300).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_177376) >= (NU)((*N_177300).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_177305 = (*N_177300).KindU.S6.Sons->data[I_177376];
 F.line = 576;F.filename = "ecmasgen.nim";
-switch ((*It_176305).Kind) {
+switch ((*It_177305).Kind) {
 case ((NU8) 75):
-J_176396 = 0;
-HEX3Atmp_176578 = 0;
+J_177396 = 0;
+HEX3Atmp_177578 = 0;
 F.line = 578;F.filename = "ecmasgen.nim";
-LOC13 = Sonslen_49803(It_176305);
-HEX3Atmp_176578 = subInt(LOC13, 2);
-Res_176580 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_176580 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC13 = Sonslen_50803(It_177305);
+HEX3Atmp_177578 = subInt(LOC13, 2);
+Res_177580 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_177580 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_176580 <= HEX3Atmp_176578)) goto LA14;
-F.line = 1019;F.filename = "system.nim";
-J_176396 = Res_176580;
+if (!(Res_177580 <= HEX3Atmp_177578)) goto LA14;
+F.line = 1021;F.filename = "system.nim";
+J_177396 = Res_177580;
 F.line = 579;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_176305).Kind/8] &(1<<((*It_176305).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(J_176396) >= (NU)((*It_176305).KindU.S6.Sons->Sup.len)) raiseIndexError();
-E_176306 = (*It_176305).KindU.S6.Sons->data[J_176396];
+if (((TMP175136[(*It_177305).Kind/8] &(1<<((*It_177305).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(J_177396) >= (NU)((*It_177305).KindU.S6.Sons->Sup.len)) raiseIndexError();
+E_177306 = (*It_177305).KindU.S6.Sons->data[J_177396];
 F.line = 580;F.filename = "ecmasgen.nim";
-if (!((*E_176306).Kind == ((NU8) 35))) goto LA16;
+if (!((*E_177306).Kind == ((NU8) 35))) goto LA16;
 F.line = 581;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*E_176306).Kind/8] &(1<<((*E_176306).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*E_176306).KindU.S6.Sons->Sup.len)) raiseIndexError();
-V_176307 = Copynode_49855((*E_176306).KindU.S6.Sons->data[0]);
+if (((TMP175136[(*E_177306).Kind/8] &(1<<((*E_177306).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*E_177306).KindU.S6.Sons->Sup.len)) raiseIndexError();
+V_177307 = Copynode_50855((*E_177306).KindU.S6.Sons->data[0]);
 F.line = 582;F.filename = "ecmasgen.nim";
 while (1) {
-if (!(((TMP176604[(*V_176307).Kind/8] &(1<<((*V_176307).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176605));
-if (((TMP174136[(*E_176306).Kind/8] &(1<<((*E_176306).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*E_176306).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP176604[(*(*E_176306).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*E_176306).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176605));
-if (!((*V_176307).KindU.S1.Intval <= (*(*E_176306).KindU.S6.Sons->data[1]).KindU.S1.Intval)) goto LA18;
+if (!(((TMP177604[(*V_177307).Kind/8] &(1<<((*V_177307).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177605));
+if (((TMP175136[(*E_177306).Kind/8] &(1<<((*E_177306).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*E_177306).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP177604[(*(*E_177306).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*E_177306).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177605));
+if (!((*V_177307).KindU.S1.Intval <= (*(*E_177306).KindU.S6.Sons->data[1]).KindU.S1.Intval)) goto LA18;
 F.line = 583;F.filename = "ecmasgen.nim";
-Gen_174868(P_176299, V_176307, &Cond_176303);
+Gen_175868(P_177299, V_177307, &Cond_177303);
 F.line = 584;F.filename = "ecmasgen.nim";
-if (!!((Cond_176303.Com == NIM_NIL))) goto LA20;
+if (!!((Cond_177303.Com == NIM_NIL))) goto LA20;
 F.line = 584;F.filename = "ecmasgen.nim";
-Internalerror_41567((*V_176307).Info, ((NimStringDesc*) &TMP176606));
+Internalerror_42567((*V_177307).Info, ((NimStringDesc*) &TMP177606));
 LA20: ;
 F.line = 585;F.filename = "ecmasgen.nim";
 memset((void*)&LOC22, 0, sizeof(LOC22));
-LOC22[0] = Cond_176303.Res;
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176607), LOC22, 1);
+LOC22[0] = Cond_177303.Res;
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177607), LOC22, 1);
 F.line = 586;F.filename = "ecmasgen.nim";
-if (!(((TMP176604[(*V_176307).Kind/8] &(1<<((*V_176307).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176605));
-(*V_176307).KindU.S1.Intval = addInt64((*V_176307).KindU.S1.Intval, 1);
+if (!(((TMP177604[(*V_177307).Kind/8] &(1<<((*V_177307).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177605));
+(*V_177307).KindU.S1.Intval = addInt64((*V_177307).KindU.S1.Intval, 1);
 } LA18: ;
 goto LA15;
 LA16: ;
 F.line = 588;F.filename = "ecmasgen.nim";
-Gen_174868(P_176299, E_176306, &Cond_176303);
+Gen_175868(P_177299, E_177306, &Cond_177303);
 F.line = 589;F.filename = "ecmasgen.nim";
-if (!!((Cond_176303.Com == NIM_NIL))) goto LA24;
+if (!!((Cond_177303.Com == NIM_NIL))) goto LA24;
 F.line = 589;F.filename = "ecmasgen.nim";
-Internalerror_41567((*E_176306).Info, ((NimStringDesc*) &TMP176606));
+Internalerror_42567((*E_177306).Info, ((NimStringDesc*) &TMP177606));
 LA24: ;
 F.line = 590;F.filename = "ecmasgen.nim";
-if (!Stringswitch_176308) goto LA27;
+if (!Stringswitch_177308) goto LA27;
 F.line = 591;F.filename = "ecmasgen.nim";
-switch ((*E_176306).Kind) {
+switch ((*E_177306).Kind) {
 case ((NU8) 14) ... ((NU8) 16):
 F.line = 592;F.filename = "ecmasgen.nim";
 memset((void*)&LOC29, 0, sizeof(LOC29));
-if (!(((TMP176608[(*E_176306).Kind/8] &(1<<((*E_176306).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176609));
-LOC29[0] = Makecstring_153010((*E_176306).KindU.S3.Strval);
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176607), LOC29, 1);
+if (!(((TMP177608[(*E_177306).Kind/8] &(1<<((*E_177306).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177609));
+LOC29[0] = Makecstring_154010((*E_177306).KindU.S3.Strval);
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177607), LOC29, 1);
 break;
 default:
 F.line = 594;F.filename = "ecmasgen.nim";
-Internalerror_41567((*E_176306).Info, ((NimStringDesc*) &TMP176610));
+Internalerror_42567((*E_177306).Info, ((NimStringDesc*) &TMP177610));
 break;
 }
 goto LA26;
 LA27: ;
 F.line = 596;F.filename = "ecmasgen.nim";
 memset((void*)&LOC30, 0, sizeof(LOC30));
-LOC30[0] = Cond_176303.Res;
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176607), LOC30, 1);
+LOC30[0] = Cond_177303.Res;
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177607), LOC30, 1);
 LA26: ;
 LA15: ;
-F.line = 1022;F.filename = "system.nim";
-Res_176580 = addInt(Res_176580, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_177580 = addInt(Res_177580, 1);
 } LA14: ;
 F.line = 597;F.filename = "ecmasgen.nim";
 LOC31 = 0;
-LOC31 = Lastson_49809(It_176305);
-Genstmt_174875(P_176299, LOC31, &Stmt_176304);
+LOC31 = Lastson_50809(It_177305);
+Genstmt_175875(P_177299, LOC31, &Stmt_177304);
 F.line = 598;F.filename = "ecmasgen.nim";
 memset((void*)&LOC32, 0, sizeof(LOC32));
-LOC32[0] = Mergestmt_174923(&Stmt_176304);
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176611), LOC32, 1);
+LOC32[0] = Mergestmt_175923(&Stmt_177304);
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177611), LOC32, 1);
 break;
 case ((NU8) 78):
 F.line = 600;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_176305).Kind/8] &(1<<((*It_176305).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_176305).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_176299, (*It_176305).KindU.S6.Sons->data[0], &Stmt_176304);
+if (((TMP175136[(*It_177305).Kind/8] &(1<<((*It_177305).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_177305).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_177299, (*It_177305).KindU.S6.Sons->data[0], &Stmt_177304);
 F.line = 601;F.filename = "ecmasgen.nim";
 memset((void*)&LOC33, 0, sizeof(LOC33));
-LOC33[0] = Mergestmt_174923(&Stmt_176304);
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176612), LOC33, 1);
+LOC33[0] = Mergestmt_175923(&Stmt_177304);
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177612), LOC33, 1);
 break;
 default:
 F.line = 602;F.filename = "ecmasgen.nim";
-Internalerror_41567((*It_176305).Info, ((NimStringDesc*) &TMP176606));
+Internalerror_42567((*It_177305).Info, ((NimStringDesc*) &TMP177606));
 break;
 }
-F.line = 1022;F.filename = "system.nim";
-Res_176590 = addInt(Res_176590, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_177590 = addInt(Res_177590, 1);
 } LA12: ;
 F.line = 603;F.filename = "ecmasgen.nim";
 memset((void*)&LOC34, 0, sizeof(LOC34));
-Appf_46074(&(*R_176302).Com, ((NimStringDesc*) &TMP176613), LOC34, 0);
+Appf_47074(&(*R_177302).Com, ((NimStringDesc*) &TMP177613), LOC34, 0);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genblock_176621)(TY174021* P_176624, TY49525* N_176625, TY174013* R_176627) {
-NI Idx_176628;
-NI Labl_176629;
-TY49547* Sym_176630;
-TY53695 LOC13;
+N_NIMCALL(void, Genblock_177621)(TY175021* P_177624, TY50525* N_177625, TY175013* R_177627) {
+NI Idx_177628;
+NI Labl_177629;
+TY50547* Sym_177630;
+TY54695 LOC13;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genBlock";
@@ -3363,75 +3363,75 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Idx_176628 = 0;
-Labl_176629 = 0;
-Sym_176630 = 0;
+Idx_177628 = 0;
+Labl_177629 = 0;
+Sym_177630 = 0;
 F.line = 610;F.filename = "ecmasgen.nim";
-(*P_176624).Unique = addInt((*P_176624).Unique, 1);
+(*P_177624).Unique = addInt((*P_177624).Unique, 1);
 F.line = 611;F.filename = "ecmasgen.nim";
-Idx_176628 = (*P_176624).Blocks->Sup.len;
+Idx_177628 = (*P_177624).Blocks->Sup.len;
 F.line = 612;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176625).Kind/8] &(1<<((*N_176625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176625).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*N_176625).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
+if (((TMP175136[(*N_177625).Kind/8] &(1<<((*N_177625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177625).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*N_177625).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
 F.line = 614;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176625).Kind/8] &(1<<((*N_176625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176625).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_176625).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA5;
+if (((TMP175136[(*N_177625).Kind/8] &(1<<((*N_177625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177625).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_177625).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA5;
 F.line = 614;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_176625).Info, ((NimStringDesc*) &TMP176784));
+Internalerror_42567((*N_177625).Info, ((NimStringDesc*) &TMP177784));
 LA5: ;
 F.line = 615;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176625).Kind/8] &(1<<((*N_176625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176625).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_176625).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_176625).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Sym_176630 = (*(*N_176625).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_177625).Kind/8] &(1<<((*N_177625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177625).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_177625).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_177625).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Sym_177630 = (*(*N_177625).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 616;F.filename = "ecmasgen.nim";
-(*Sym_176630).Loc.K = ((NU8) 11);
+(*Sym_177630).Loc.K = ((NU8) 11);
 F.line = 617;F.filename = "ecmasgen.nim";
-(*Sym_176630).Loc.A = Idx_176628;
+(*Sym_177630).Loc.A = Idx_177628;
 LA2: ;
 F.line = 618;F.filename = "ecmasgen.nim";
-(*P_176624).Blocks = (TY174050*) setLengthSeq(&((*P_176624).Blocks)->Sup, sizeof(TY174015), addInt(Idx_176628, 1));
+(*P_177624).Blocks = (TY175050*) setLengthSeq(&((*P_177624).Blocks)->Sup, sizeof(TY175015), addInt(Idx_177628, 1));
 F.line = 619;F.filename = "ecmasgen.nim";
-if ((NU)(Idx_176628) >= (NU)((*P_176624).Blocks->Sup.len)) raiseIndexError();
-if ((*P_176624).Unique == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
-(*P_176624).Blocks->data[Idx_176628].Id = ((NI64)-((*P_176624).Unique));
+if ((NU)(Idx_177628) >= (NU)((*P_177624).Blocks->Sup.len)) raiseIndexError();
+if ((*P_177624).Unique == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
+(*P_177624).Blocks->data[Idx_177628].Id = ((NI64)-((*P_177624).Unique));
 F.line = 620;F.filename = "ecmasgen.nim";
-if ((NU)(Idx_176628) >= (NU)((*P_176624).Blocks->Sup.len)) raiseIndexError();
-(*P_176624).Blocks->data[Idx_176628].Nestedtrystmts = (*P_176624).Nestedtrystmts;
+if ((NU)(Idx_177628) >= (NU)((*P_177624).Blocks->Sup.len)) raiseIndexError();
+(*P_177624).Blocks->data[Idx_177628].Nestedtrystmts = (*P_177624).Nestedtrystmts;
 F.line = 621;F.filename = "ecmasgen.nim";
-Labl_176629 = (*P_176624).Unique;
+Labl_177629 = (*P_177624).Unique;
 F.line = 622;F.filename = "ecmasgen.nim";
-if (!((*N_176625).Kind == ((NU8) 107))) goto LA8;
+if (!((*N_177625).Kind == ((NU8) 107))) goto LA8;
 F.line = 622;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176625).Kind/8] &(1<<((*N_176625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_176625).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmtlistexpr_176614(P_176624, (*N_176625).KindU.S6.Sons->data[1], R_176627);
+if (((TMP175136[(*N_177625).Kind/8] &(1<<((*N_177625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_177625).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmtlistexpr_177614(P_177624, (*N_177625).KindU.S6.Sons->data[1], R_177627);
 goto LA7;
 LA8: ;
 F.line = 623;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176625).Kind/8] &(1<<((*N_176625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_176625).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_176624, (*N_176625).KindU.S6.Sons->data[1], R_176627);
+if (((TMP175136[(*N_177625).Kind/8] &(1<<((*N_177625).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_177625).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_177624, (*N_177625).KindU.S6.Sons->data[1], R_177627);
 LA7: ;
 F.line = 624;F.filename = "ecmasgen.nim";
-if ((NU)(Idx_176628) >= (NU)((*P_176624).Blocks->Sup.len)) raiseIndexError();
-if (!(0 < (*P_176624).Blocks->data[Idx_176628].Id)) goto LA11;
+if ((NU)(Idx_177628) >= (NU)((*P_177624).Blocks->Sup.len)) raiseIndexError();
+if (!(0 < (*P_177624).Blocks->data[Idx_177628].Id)) goto LA11;
 F.line = 626;F.filename = "ecmasgen.nim";
 memset((void*)&LOC13, 0, sizeof(LOC13));
-LOC13[0] = Torope_46052(((NI64) (Labl_176629)));
-LOC13[1] = (*R_176627).Com;
-unsureAsgnRef((void**) &(*R_176627).Com, Ropef_46069(((NimStringDesc*) &TMP176785), LOC13, 2));
+LOC13[0] = Torope_47052(((NI64) (Labl_177629)));
+LOC13[1] = (*R_177627).Com;
+unsureAsgnRef((void**) &(*R_177627).Com, Ropef_47069(((NimStringDesc*) &TMP177785), LOC13, 2));
 LA11: ;
 F.line = 627;F.filename = "ecmasgen.nim";
-(*P_176624).Blocks = (TY174050*) setLengthSeq(&((*P_176624).Blocks)->Sup, sizeof(TY174015), Idx_176628);
+(*P_177624).Blocks = (TY175050*) setLengthSeq(&((*P_177624).Blocks)->Sup, sizeof(TY175015), Idx_177628);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genbreakstmt_176786)(TY174021* P_176789, TY49525* N_176790, TY174013* R_176792) {
-NI Idx_176793;
-TY49547* Sym_176794;
-TY46451 LOC4;
+N_NIMCALL(void, Genbreakstmt_177786)(TY175021* P_177789, TY50525* N_177790, TY175013* R_177792) {
+NI Idx_177793;
+TY50547* Sym_177794;
+TY47451 LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genBreakStmt";
@@ -3440,51 +3440,51 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Idx_176793 = 0;
-Sym_176794 = 0;
+Idx_177793 = 0;
+Sym_177794 = 0;
 F.line = 633;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_176789, N_176790, R_176792);
+Genlinedir_176516(P_177789, N_177790, R_177792);
 F.line = 634;F.filename = "ecmasgen.nim";
-Idx_176793 = subInt((*P_176789).Blocks->Sup.len, 1);
+Idx_177793 = subInt((*P_177789).Blocks->Sup.len, 1);
 F.line = 635;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176790).Kind/8] &(1<<((*N_176790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176790).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*N_176790).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
+if (((TMP175136[(*N_177790).Kind/8] &(1<<((*N_177790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177790).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*N_177790).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA2;
 F.line = 637;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176790).Kind/8] &(1<<((*N_176790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176790).KindU.S6.Sons->Sup.len)) raiseIndexError();
-internalAssert("rod/ecmasgen.nim", 637, ((*(*N_176790).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)));
+if (((TMP175136[(*N_177790).Kind/8] &(1<<((*N_177790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177790).KindU.S6.Sons->Sup.len)) raiseIndexError();
+internalAssert("rod/ecmasgen.nim", 637, ((*(*N_177790).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)));
 F.line = 638;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176790).Kind/8] &(1<<((*N_176790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_176790).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_176790).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_176790).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Sym_176794 = (*(*N_176790).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_177790).Kind/8] &(1<<((*N_177790).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_177790).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_177790).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_177790).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Sym_177794 = (*(*N_177790).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 639;F.filename = "ecmasgen.nim";
-internalAssert("rod/ecmasgen.nim", 639, ((*Sym_176794).Loc.K == ((NU8) 11)));
+internalAssert("rod/ecmasgen.nim", 639, ((*Sym_177794).Loc.K == ((NU8) 11)));
 F.line = 640;F.filename = "ecmasgen.nim";
-Idx_176793 = (*Sym_176794).Loc.A;
+Idx_177793 = (*Sym_177794).Loc.A;
 LA2: ;
 F.line = 641;F.filename = "ecmasgen.nim";
-if ((NU)(Idx_176793) >= (NU)((*P_176789).Blocks->Sup.len)) raiseIndexError();
-if ((NU)(Idx_176793) >= (NU)((*P_176789).Blocks->Sup.len)) raiseIndexError();
-if ((*P_176789).Blocks->data[Idx_176793].Id == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
-(*P_176789).Blocks->data[Idx_176793].Id = (NI64)abs((*P_176789).Blocks->data[Idx_176793].Id);
+if ((NU)(Idx_177793) >= (NU)((*P_177789).Blocks->Sup.len)) raiseIndexError();
+if ((NU)(Idx_177793) >= (NU)((*P_177789).Blocks->Sup.len)) raiseIndexError();
+if ((*P_177789).Blocks->data[Idx_177793].Id == (IL64(-9223372036854775807) - IL64(1))) raiseOverflow();
+(*P_177789).Blocks->data[Idx_177793].Id = (NI64)abs((*P_177789).Blocks->data[Idx_177793].Id);
 F.line = 642;F.filename = "ecmasgen.nim";
-if ((NU)(Idx_176793) >= (NU)((*P_176789).Blocks->Sup.len)) raiseIndexError();
-Finishtrystmt_175640(P_176789, R_176792, subInt((*P_176789).Nestedtrystmts, (*P_176789).Blocks->data[Idx_176793].Nestedtrystmts));
+if ((NU)(Idx_177793) >= (NU)((*P_177789).Blocks->Sup.len)) raiseIndexError();
+Finishtrystmt_176640(P_177789, R_177792, subInt((*P_177789).Nestedtrystmts, (*P_177789).Blocks->data[Idx_177793].Nestedtrystmts));
 F.line = 643;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-if ((NU)(Idx_176793) >= (NU)((*P_176789).Blocks->Sup.len)) raiseIndexError();
-LOC4[0] = Torope_46052(((NI64) ((*P_176789).Blocks->data[Idx_176793].Id)));
-Appf_46074(&(*R_176792).Com, ((NimStringDesc*) &TMP176887), LOC4, 1);
+if ((NU)(Idx_177793) >= (NU)((*P_177789).Blocks->Sup.len)) raiseIndexError();
+LOC4[0] = Torope_47052(((NI64) ((*P_177789).Blocks->data[Idx_177793].Id)));
+Appf_47074(&(*R_177792).Com, ((NimStringDesc*) &TMP177887), LOC4, 1);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genasmstmt_176888)(TY174021* P_176891, TY49525* N_176892, TY174013* R_176894) {
-NI I_176911;
-NI HEX3Atmp_176987;
+N_NIMCALL(void, Genasmstmt_177888)(TY175021* P_177891, TY50525* N_177892, TY175013* R_177894) {
+NI I_177911;
+NI HEX3Atmp_177987;
 NI LOC1;
-NI Res_176989;
-TY46008* LOC3;
+NI Res_177989;
+TY47008* LOC3;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genAsmStmt";
@@ -3494,68 +3494,68 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 646;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_176891, N_176892, R_176894);
+Genlinedir_176516(P_177891, N_177892, R_177894);
 F.line = 647;F.filename = "ecmasgen.nim";
-internalAssert("rod/ecmasgen.nim", 647, ((*N_176892).Kind == ((NU8) 80)));
-I_176911 = 0;
-HEX3Atmp_176987 = 0;
+internalAssert("rod/ecmasgen.nim", 647, ((*N_177892).Kind == ((NU8) 80)));
+I_177911 = 0;
+HEX3Atmp_177987 = 0;
 F.line = 648;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_176892);
-HEX3Atmp_176987 = subInt(LOC1, 1);
-Res_176989 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_176989 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_177892);
+HEX3Atmp_177987 = subInt(LOC1, 1);
+Res_177989 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_177989 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_176989 <= HEX3Atmp_176987)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_176911 = Res_176989;
+if (!(Res_177989 <= HEX3Atmp_177987)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_177911 = Res_177989;
 F.line = 649;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176892).Kind/8] &(1<<((*N_176892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_176911) >= (NU)((*N_176892).KindU.S6.Sons->Sup.len)) raiseIndexError();
-switch ((*(*N_176892).KindU.S6.Sons->data[I_176911]).Kind) {
+if (((TMP175136[(*N_177892).Kind/8] &(1<<((*N_177892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_177911) >= (NU)((*N_177892).KindU.S6.Sons->Sup.len)) raiseIndexError();
+switch ((*(*N_177892).KindU.S6.Sons->data[I_177911]).Kind) {
 case ((NU8) 14) ... ((NU8) 16):
 F.line = 650;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176892).Kind/8] &(1<<((*N_176892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_176911) >= (NU)((*N_176892).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP176608[(*(*N_176892).KindU.S6.Sons->data[I_176911]).Kind/8] &(1<<((*(*N_176892).KindU.S6.Sons->data[I_176911]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176609));
-App_46036(&(*R_176894).Com, (*(*N_176892).KindU.S6.Sons->data[I_176911]).KindU.S3.Strval);
+if (((TMP175136[(*N_177892).Kind/8] &(1<<((*N_177892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_177911) >= (NU)((*N_177892).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP177608[(*(*N_177892).KindU.S6.Sons->data[I_177911]).Kind/8] &(1<<((*(*N_177892).KindU.S6.Sons->data[I_177911]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177609));
+App_47036(&(*R_177894).Com, (*(*N_177892).KindU.S6.Sons->data[I_177911]).KindU.S3.Strval);
 break;
 case ((NU8) 3):
 F.line = 651;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176892).Kind/8] &(1<<((*N_176892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_176911) >= (NU)((*N_176892).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_176892).KindU.S6.Sons->data[I_176911]).Kind/8] &(1<<((*(*N_176892).KindU.S6.Sons->data[I_176911]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
+if (((TMP175136[(*N_177892).Kind/8] &(1<<((*N_177892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_177911) >= (NU)((*N_177892).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_177892).KindU.S6.Sons->data[I_177911]).Kind/8] &(1<<((*(*N_177892).KindU.S6.Sons->data[I_177911]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
 LOC3 = 0;
-LOC3 = Manglename_174218((*(*N_176892).KindU.S6.Sons->data[I_176911]).KindU.S4.Sym);
-App_46031(&(*R_176894).Com, LOC3);
+LOC3 = Manglename_175218((*(*N_177892).KindU.S6.Sons->data[I_177911]).KindU.S4.Sym);
+App_47031(&(*R_177894).Com, LOC3);
 break;
 default:
 F.line = 652;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176892).Kind/8] &(1<<((*N_176892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_176911) >= (NU)((*N_176892).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Internalerror_41567((*(*N_176892).KindU.S6.Sons->data[I_176911]).Info, ((NimStringDesc*) &TMP176992));
+if (((TMP175136[(*N_177892).Kind/8] &(1<<((*N_177892).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_177911) >= (NU)((*N_177892).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Internalerror_42567((*(*N_177892).KindU.S6.Sons->data[I_177911]).Info, ((NimStringDesc*) &TMP177992));
 break;
 }
-F.line = 1022;F.filename = "system.nim";
-Res_176989 = addInt(Res_176989, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_177989 = addInt(Res_177989, 1);
 } LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genifstmt_176993)(TY174021* P_176996, TY49525* N_176997, TY174013* R_176999) {
-NI Toclose_177000;
-TY174013 Cond_177001;
-TY174013 Stmt_177002;
-TY49525* It_177003;
-NI I_177011;
-NI HEX3Atmp_177124;
+N_NIMCALL(void, Genifstmt_177993)(TY175021* P_177996, TY50525* N_177997, TY175013* R_177999) {
+NI Toclose_178000;
+TY175013 Cond_178001;
+TY175013 Stmt_178002;
+TY50525* It_178003;
+NI I_178011;
+NI HEX3Atmp_178124;
 NI LOC1;
-NI Res_177126;
+NI Res_178126;
 NI LOC4;
-TY156324 LOC10;
-TY46451 LOC14;
-TY53695 LOC15;
-TY46451 LOC16;
+TY157324 LOC10;
+TY47451 LOC14;
+TY54695 LOC15;
+TY47451 LOC16;
 NimStringDesc* LOC17;
 NimStringDesc* LOC18;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -3566,96 +3566,96 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Toclose_177000 = 0;
-memset((void*)&Cond_177001, 0, sizeof(Cond_177001));
-memset((void*)&Stmt_177002, 0, sizeof(Stmt_177002));
-It_177003 = 0;
+Toclose_178000 = 0;
+memset((void*)&Cond_178001, 0, sizeof(Cond_178001));
+memset((void*)&Stmt_178002, 0, sizeof(Stmt_178002));
+It_178003 = 0;
 F.line = 659;F.filename = "ecmasgen.nim";
-Toclose_177000 = 0;
-I_177011 = 0;
-HEX3Atmp_177124 = 0;
+Toclose_178000 = 0;
+I_178011 = 0;
+HEX3Atmp_178124 = 0;
 F.line = 660;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_176997);
-HEX3Atmp_177124 = subInt(LOC1, 1);
-Res_177126 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_177126 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_177997);
+HEX3Atmp_178124 = subInt(LOC1, 1);
+Res_178126 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_178126 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_177126 <= HEX3Atmp_177124)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_177011 = Res_177126;
+if (!(Res_178126 <= HEX3Atmp_178124)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_178011 = Res_178126;
 F.line = 661;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176997).Kind/8] &(1<<((*N_176997).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_177011) >= (NU)((*N_176997).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_177003 = (*N_176997).KindU.S6.Sons->data[I_177011];
+if (((TMP175136[(*N_177997).Kind/8] &(1<<((*N_177997).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_178011) >= (NU)((*N_177997).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_178003 = (*N_177997).KindU.S6.Sons->data[I_178011];
 F.line = 662;F.filename = "ecmasgen.nim";
-LOC4 = Sonslen_49803(It_177003);
+LOC4 = Sonslen_50803(It_178003);
 if (!!((LOC4 == 1))) goto LA5;
 F.line = 663;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177003).Kind/8] &(1<<((*It_177003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_177003).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_176996, (*It_177003).KindU.S6.Sons->data[0], &Cond_177001);
+if (((TMP175136[(*It_178003).Kind/8] &(1<<((*It_178003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_178003).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_177996, (*It_178003).KindU.S6.Sons->data[0], &Cond_178001);
 F.line = 664;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177003).Kind/8] &(1<<((*It_177003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*It_177003).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_176996, (*It_177003).KindU.S6.Sons->data[1], &Stmt_177002);
+if (((TMP175136[(*It_178003).Kind/8] &(1<<((*It_178003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*It_178003).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_177996, (*It_178003).KindU.S6.Sons->data[1], &Stmt_178002);
 F.line = 665;F.filename = "ecmasgen.nim";
-if (!(0 < I_177011)) goto LA8;
+if (!(0 < I_178011)) goto LA8;
 F.line = 666;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-Appf_46074(&(*R_176999).Com, ((NimStringDesc*) &TMP177129), LOC10, 0);
+Appf_47074(&(*R_177999).Com, ((NimStringDesc*) &TMP178129), LOC10, 0);
 F.line = 667;F.filename = "ecmasgen.nim";
-Toclose_177000 = addInt(Toclose_177000, 1);
+Toclose_178000 = addInt(Toclose_178000, 1);
 LA8: ;
 F.line = 668;F.filename = "ecmasgen.nim";
-if (!!((Cond_177001.Com == NIM_NIL))) goto LA12;
+if (!!((Cond_178001.Com == NIM_NIL))) goto LA12;
 F.line = 668;F.filename = "ecmasgen.nim";
 memset((void*)&LOC14, 0, sizeof(LOC14));
-LOC14[0] = Cond_177001.Com;
-Appf_46074(&(*R_176999).Com, ((NimStringDesc*) &TMP175420), LOC14, 1);
+LOC14[0] = Cond_178001.Com;
+Appf_47074(&(*R_177999).Com, ((NimStringDesc*) &TMP176420), LOC14, 1);
 LA12: ;
 F.line = 669;F.filename = "ecmasgen.nim";
 memset((void*)&LOC15, 0, sizeof(LOC15));
-LOC15[0] = Cond_177001.Res;
-LOC15[1] = Mergestmt_174923(&Stmt_177002);
-Appf_46074(&(*R_176999).Com, ((NimStringDesc*) &TMP177130), LOC15, 2);
+LOC15[0] = Cond_178001.Res;
+LOC15[1] = Mergestmt_175923(&Stmt_178002);
+Appf_47074(&(*R_177999).Com, ((NimStringDesc*) &TMP178130), LOC15, 2);
 goto LA3;
 LA5: ;
 F.line = 672;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177003).Kind/8] &(1<<((*It_177003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_177003).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_176996, (*It_177003).KindU.S6.Sons->data[0], &Stmt_177002);
+if (((TMP175136[(*It_178003).Kind/8] &(1<<((*It_178003).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_178003).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_177996, (*It_178003).KindU.S6.Sons->data[0], &Stmt_178002);
 F.line = 673;F.filename = "ecmasgen.nim";
 memset((void*)&LOC16, 0, sizeof(LOC16));
-LOC16[0] = Mergestmt_174923(&Stmt_177002);
-Appf_46074(&(*R_176999).Com, ((NimStringDesc*) &TMP177131), LOC16, 1);
+LOC16[0] = Mergestmt_175923(&Stmt_178002);
+Appf_47074(&(*R_177999).Com, ((NimStringDesc*) &TMP178131), LOC16, 1);
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_177126 = addInt(Res_177126, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_178126 = addInt(Res_178126, 1);
 } LA2: ;
 F.line = 674;F.filename = "ecmasgen.nim";
 LOC17 = 0;
 LOC18 = 0;
-LOC18 = nsuRepeatChar(Toclose_177000, 125);
-LOC17 = rawNewString(LOC18->Sup.len + Tnl_45573->Sup.len + 0);
+LOC18 = nsuRepeatChar(Toclose_178000, 125);
+LOC17 = rawNewString(LOC18->Sup.len + Tnl_46573->Sup.len + 0);
 appendString(LOC17, LOC18);
-appendString(LOC17, Tnl_45573);
-App_46036(&(*R_176999).Com, LOC17);
+appendString(LOC17, Tnl_46573);
+App_47036(&(*R_177999).Com, LOC17);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genifexpr_177132)(TY174021* P_177135, TY49525* N_177136, TY174013* R_177138) {
-NI Toclose_177139;
-TY174013 Cond_177140;
-TY174013 Stmt_177141;
-TY49525* It_177142;
-NI I_177150;
-NI HEX3Atmp_177231;
+N_NIMCALL(void, Genifexpr_178132)(TY175021* P_178135, TY50525* N_178136, TY175013* R_178138) {
+NI Toclose_178139;
+TY175013 Cond_178140;
+TY175013 Stmt_178141;
+TY50525* It_178142;
+NI I_178150;
+NI HEX3Atmp_178231;
 NI LOC1;
-NI Res_177233;
+NI Res_178233;
 NI LOC4;
-TY53695 LOC10;
-TY46451 LOC11;
+TY54695 LOC10;
+TY47451 LOC11;
 NimStringDesc* LOC12;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -3665,86 +3665,86 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Toclose_177139 = 0;
-memset((void*)&Cond_177140, 0, sizeof(Cond_177140));
-memset((void*)&Stmt_177141, 0, sizeof(Stmt_177141));
-It_177142 = 0;
+Toclose_178139 = 0;
+memset((void*)&Cond_178140, 0, sizeof(Cond_178140));
+memset((void*)&Stmt_178141, 0, sizeof(Stmt_178141));
+It_178142 = 0;
 F.line = 681;F.filename = "ecmasgen.nim";
-Toclose_177139 = 0;
-I_177150 = 0;
-HEX3Atmp_177231 = 0;
+Toclose_178139 = 0;
+I_178150 = 0;
+HEX3Atmp_178231 = 0;
 F.line = 682;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_177136);
-HEX3Atmp_177231 = subInt(LOC1, 1);
-Res_177233 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_177233 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_178136);
+HEX3Atmp_178231 = subInt(LOC1, 1);
+Res_178233 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_178233 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_177233 <= HEX3Atmp_177231)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_177150 = Res_177233;
+if (!(Res_178233 <= HEX3Atmp_178231)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_178150 = Res_178233;
 F.line = 683;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177136).Kind/8] &(1<<((*N_177136).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_177150) >= (NU)((*N_177136).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_177142 = (*N_177136).KindU.S6.Sons->data[I_177150];
+if (((TMP175136[(*N_178136).Kind/8] &(1<<((*N_178136).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_178150) >= (NU)((*N_178136).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_178142 = (*N_178136).KindU.S6.Sons->data[I_178150];
 F.line = 684;F.filename = "ecmasgen.nim";
-LOC4 = Sonslen_49803(It_177142);
+LOC4 = Sonslen_50803(It_178142);
 if (!!((LOC4 == 1))) goto LA5;
 F.line = 685;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177142).Kind/8] &(1<<((*It_177142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_177142).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177135, (*It_177142).KindU.S6.Sons->data[0], &Cond_177140);
+if (((TMP175136[(*It_178142).Kind/8] &(1<<((*It_178142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_178142).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178135, (*It_178142).KindU.S6.Sons->data[0], &Cond_178140);
 F.line = 686;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177142).Kind/8] &(1<<((*It_177142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*It_177142).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177135, (*It_177142).KindU.S6.Sons->data[1], &Stmt_177141);
+if (((TMP175136[(*It_178142).Kind/8] &(1<<((*It_178142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*It_178142).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178135, (*It_178142).KindU.S6.Sons->data[1], &Stmt_178141);
 F.line = 687;F.filename = "ecmasgen.nim";
-if (!(0 < I_177150)) goto LA8;
+if (!(0 < I_178150)) goto LA8;
 F.line = 688;F.filename = "ecmasgen.nim";
-App_46036(&(*R_177138).Res, ((NimStringDesc*) &TMP177236));
+App_47036(&(*R_178138).Res, ((NimStringDesc*) &TMP178236));
 F.line = 689;F.filename = "ecmasgen.nim";
-Toclose_177139 = addInt(Toclose_177139, 1);
+Toclose_178139 = addInt(Toclose_178139, 1);
 LA8: ;
 F.line = 690;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177138).Com, Mergeexpr_174887((*R_177138).Com, Cond_177140.Com));
+unsureAsgnRef((void**) &(*R_178138).Com, Mergeexpr_175887((*R_178138).Com, Cond_178140.Com));
 F.line = 691;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177138).Com, Mergeexpr_174887((*R_177138).Com, Stmt_177141.Com));
+unsureAsgnRef((void**) &(*R_178138).Com, Mergeexpr_175887((*R_178138).Com, Stmt_178141.Com));
 F.line = 692;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Cond_177140.Res;
-LOC10[1] = Stmt_177141.Res;
-Appf_46074(&(*R_177138).Res, ((NimStringDesc*) &TMP177237), LOC10, 2);
+LOC10[0] = Cond_178140.Res;
+LOC10[1] = Stmt_178141.Res;
+Appf_47074(&(*R_178138).Res, ((NimStringDesc*) &TMP178237), LOC10, 2);
 goto LA3;
 LA5: ;
 F.line = 695;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_177142).Kind/8] &(1<<((*It_177142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_177142).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177135, (*It_177142).KindU.S6.Sons->data[0], &Stmt_177141);
+if (((TMP175136[(*It_178142).Kind/8] &(1<<((*It_178142).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_178142).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178135, (*It_178142).KindU.S6.Sons->data[0], &Stmt_178141);
 F.line = 696;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177138).Com, Mergeexpr_174887((*R_177138).Com, Stmt_177141.Com));
+unsureAsgnRef((void**) &(*R_178138).Com, Mergeexpr_175887((*R_178138).Com, Stmt_178141.Com));
 F.line = 697;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = Stmt_177141.Res;
-Appf_46074(&(*R_177138).Res, ((NimStringDesc*) &TMP177238), LOC11, 1);
+LOC11[0] = Stmt_178141.Res;
+Appf_47074(&(*R_178138).Res, ((NimStringDesc*) &TMP178238), LOC11, 1);
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_177233 = addInt(Res_177233, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_178233 = addInt(Res_178233, 1);
 } LA2: ;
 F.line = 698;F.filename = "ecmasgen.nim";
 LOC12 = 0;
-LOC12 = nsuRepeatChar(Toclose_177139, 41);
-App_46036(&(*R_177138).Res, LOC12);
+LOC12 = nsuRepeatChar(Toclose_178139, 41);
+App_47036(&(*R_178138).Res, LOC12);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Generateheader_177239)(TY174021* P_177242, TY49551* Typ_177243) {
-TY46008* Result_177244;
-TY49547* Param_177245;
-TY46008* Name_177246;
-NI I_177254;
-NI HEX3Atmp_177326;
+N_NIMCALL(TY47008*, Generateheader_178239)(TY175021* P_178242, TY50551* Typ_178243) {
+TY47008* Result_178244;
+TY50547* Param_178245;
+TY47008* Name_178246;
+NI I_178254;
+NI HEX3Atmp_178326;
 NI LOC1;
-NI Res_177328;
+NI Res_178328;
 NU8 LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -3754,62 +3754,62 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_177244 = 0;
-Param_177245 = 0;
-Name_177246 = 0;
+Result_178244 = 0;
+Param_178245 = 0;
+Name_178246 = 0;
 F.line = 704;F.filename = "ecmasgen.nim";
-Result_177244 = NIM_NIL;
-I_177254 = 0;
-HEX3Atmp_177326 = 0;
+Result_178244 = NIM_NIL;
+I_178254 = 0;
+HEX3Atmp_178326 = 0;
 F.line = 705;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803((*Typ_177243).N);
-HEX3Atmp_177326 = subInt(LOC1, 1);
-Res_177328 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_177328 = 1;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803((*Typ_178243).N);
+HEX3Atmp_178326 = subInt(LOC1, 1);
+Res_178328 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_178328 = 1;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_177328 <= HEX3Atmp_177326)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_177254 = Res_177328;
+if (!(Res_178328 <= HEX3Atmp_178326)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_178254 = Res_178328;
 F.line = 706;F.filename = "ecmasgen.nim";
-if (!!((Result_177244 == NIM_NIL))) goto LA4;
+if (!!((Result_178244 == NIM_NIL))) goto LA4;
 F.line = 706;F.filename = "ecmasgen.nim";
-App_46036(&Result_177244, ((NimStringDesc*) &TMP174568));
+App_47036(&Result_178244, ((NimStringDesc*) &TMP175568));
 LA4: ;
 F.line = 707;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*(*Typ_177243).N).Kind/8] &(1<<((*(*Typ_177243).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_177254) >= (NU)((*(*Typ_177243).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
-internalAssert("rod/ecmasgen.nim", 707, ((*(*(*Typ_177243).N).KindU.S6.Sons->data[I_177254]).Kind == ((NU8) 3)));
+if (((TMP175136[(*(*Typ_178243).N).Kind/8] &(1<<((*(*Typ_178243).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_178254) >= (NU)((*(*Typ_178243).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
+internalAssert("rod/ecmasgen.nim", 707, ((*(*(*Typ_178243).N).KindU.S6.Sons->data[I_178254]).Kind == ((NU8) 3)));
 F.line = 708;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*(*Typ_177243).N).Kind/8] &(1<<((*(*Typ_177243).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_177254) >= (NU)((*(*Typ_177243).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*(*Typ_177243).N).KindU.S6.Sons->data[I_177254]).Kind/8] &(1<<((*(*(*Typ_177243).N).KindU.S6.Sons->data[I_177254]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Param_177245 = (*(*(*Typ_177243).N).KindU.S6.Sons->data[I_177254]).KindU.S4.Sym;
+if (((TMP175136[(*(*Typ_178243).N).Kind/8] &(1<<((*(*Typ_178243).N).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_178254) >= (NU)((*(*Typ_178243).N).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*(*Typ_178243).N).KindU.S6.Sons->data[I_178254]).Kind/8] &(1<<((*(*(*Typ_178243).N).KindU.S6.Sons->data[I_178254]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Param_178245 = (*(*(*Typ_178243).N).KindU.S6.Sons->data[I_178254]).KindU.S4.Sym;
 F.line = 709;F.filename = "ecmasgen.nim";
-Name_177246 = Manglename_174218(Param_177245);
+Name_178246 = Manglename_175218(Param_178245);
 F.line = 710;F.filename = "ecmasgen.nim";
-App_46031(&Result_177244, Name_177246);
+App_47031(&Result_178244, Name_178246);
 F.line = 711;F.filename = "ecmasgen.nim";
-LOC7 = Maptype_174142((*Param_177245).Typ);
+LOC7 = Maptype_175142((*Param_178245).Typ);
 if (!(LOC7 == ((NU8) 8))) goto LA8;
 F.line = 712;F.filename = "ecmasgen.nim";
-App_46036(&Result_177244, ((NimStringDesc*) &TMP174568));
+App_47036(&Result_178244, ((NimStringDesc*) &TMP175568));
 F.line = 713;F.filename = "ecmasgen.nim";
-App_46031(&Result_177244, Name_177246);
+App_47031(&Result_178244, Name_178246);
 F.line = 714;F.filename = "ecmasgen.nim";
-App_46036(&Result_177244, ((NimStringDesc*) &TMP177331));
+App_47036(&Result_178244, ((NimStringDesc*) &TMP178331));
 LA8: ;
-F.line = 1022;F.filename = "system.nim";
-Res_177328 = addInt(Res_177328, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_178328 = addInt(Res_178328, 1);
 } LA2: ;
 framePtr = framePtr->prev;
-return Result_177244;
+return Result_178244;
 }
-N_NIMCALL(NIM_BOOL, Needsnocopy_177334)(TY49525* Y_177336) {
-NIM_BOOL Result_177337;
+N_NIMCALL(NIM_BOOL, Needsnocopy_178334)(TY50525* Y_178336) {
+NIM_BOOL Result_178337;
 NIM_BOOL LOC1;
-TY49551* LOC3;
+TY50551* LOC3;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "needsNoCopy";
@@ -3818,32 +3818,32 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_177337 = 0;
+Result_178337 = 0;
 F.line = 722;F.filename = "ecmasgen.nim";
-LOC1 = ((TMP177361[(*Y_177336).Kind/8] &(1<<((*Y_177336).Kind%8)))!=0);
+LOC1 = ((TMP178361[(*Y_178336).Kind/8] &(1<<((*Y_178336).Kind%8)))!=0);
 if (LOC1) goto LA2;
 LOC3 = 0;
-LOC3 = Skiptypes_91085((*Y_177336).Typ, 43008);
+LOC3 = Skiptypes_92085((*Y_178336).Typ, 43008);
 LOC1 = ((14680064 &(IL64(1)<<(((*LOC3).Kind)&IL64(63))))!=0);
 LA2: ;
-Result_177337 = LOC1;
+Result_178337 = LOC1;
 framePtr = framePtr->prev;
-return Result_177337;
+return Result_178337;
 }
-N_NIMCALL(void, Genasgnaux_177362)(TY174021* P_177365, TY49525* X_177366, TY49525* Y_177367, TY174013* R_177369, NIM_BOOL Nocopyneeded_177370) {
-TY174013 A_177371;
-TY174013 B_177372;
+N_NIMCALL(void, Genasgnaux_178362)(TY175021* P_178365, TY50525* X_178366, TY50525* Y_178367, TY175013* R_178369, NIM_BOOL Nocopyneeded_178370) {
+TY175013 A_178371;
+TY175013 B_178372;
 NU8 LOC1;
-TY46451 LOC5;
-TY46451 LOC9;
+TY47451 LOC5;
+TY47451 LOC9;
 NIM_BOOL LOC11;
-TY53695 LOC15;
-TY53637 LOC16;
+TY54695 LOC15;
+TY54637 LOC16;
 NIM_BOOL LOC18;
-TY54870 LOC22;
-TY46451 LOC26;
-TY46451 LOC30;
-TY53695 LOC31;
+TY55870 LOC22;
+TY47451 LOC26;
+TY47451 LOC30;
+TY54695 LOC31;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genAsgnAux";
@@ -3852,96 +3852,96 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_177371, 0, sizeof(A_177371));
-memset((void*)&B_177372, 0, sizeof(B_177372));
+memset((void*)&A_178371, 0, sizeof(A_178371));
+memset((void*)&B_178372, 0, sizeof(B_178372));
 F.line = 728;F.filename = "ecmasgen.nim";
-Gen_174868(P_177365, X_177366, &A_177371);
+Gen_175868(P_178365, X_178366, &A_178371);
 F.line = 729;F.filename = "ecmasgen.nim";
-Gen_174868(P_177365, Y_177367, &B_177372);
+Gen_175868(P_178365, Y_178367, &B_178372);
 F.line = 730;F.filename = "ecmasgen.nim";
-LOC1 = Maptype_174142((*X_177366).Typ);
+LOC1 = Maptype_175142((*X_178366).Typ);
 switch (LOC1) {
 case ((NU8) 7):
 F.line = 732;F.filename = "ecmasgen.nim";
-if (!!((A_177371.Com == NIM_NIL))) goto LA3;
+if (!!((A_178371.Com == NIM_NIL))) goto LA3;
 F.line = 732;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = A_177371.Com;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP175420), LOC5, 1);
+LOC5[0] = A_178371.Com;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP176420), LOC5, 1);
 LA3: ;
 F.line = 733;F.filename = "ecmasgen.nim";
-if (!!((B_177372.Com == NIM_NIL))) goto LA7;
+if (!!((B_178372.Com == NIM_NIL))) goto LA7;
 F.line = 733;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = B_177372.Com;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP175420), LOC9, 1);
+LOC9[0] = B_178372.Com;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP176420), LOC9, 1);
 LA7: ;
 F.line = 734;F.filename = "ecmasgen.nim";
-LOC11 = Needsnocopy_177334(Y_177367);
+LOC11 = Needsnocopy_178334(Y_178367);
 if (LOC11) goto LA12;
-LOC11 = Nocopyneeded_177370;
+LOC11 = Nocopyneeded_178370;
 LA12: ;
 if (!LOC11) goto LA13;
 F.line = 735;F.filename = "ecmasgen.nim";
 memset((void*)&LOC15, 0, sizeof(LOC15));
-LOC15[0] = A_177371.Res;
-LOC15[1] = B_177372.Res;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP177477), LOC15, 2);
+LOC15[0] = A_178371.Res;
+LOC15[1] = B_178372.Res;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP178477), LOC15, 2);
 goto LA10;
 LA13: ;
 F.line = 737;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_177365, ((NimStringDesc*) &TMP177478));
+Usemagic_175882(P_178365, ((NimStringDesc*) &TMP178478));
 F.line = 738;F.filename = "ecmasgen.nim";
 memset((void*)&LOC16, 0, sizeof(LOC16));
-LOC16[0] = A_177371.Res;
-LOC16[1] = B_177372.Res;
-LOC16[2] = Gentypeinfo_174236(P_177365, (*Y_177367).Typ);
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP177479), LOC16, 3);
+LOC16[0] = A_178371.Res;
+LOC16[1] = B_178372.Res;
+LOC16[2] = Gentypeinfo_175236(P_178365, (*Y_178367).Typ);
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP178479), LOC16, 3);
 LA10: ;
 break;
 case ((NU8) 8):
 F.line = 741;F.filename = "ecmasgen.nim";
-LOC18 = !((A_177371.Kind == ((NU8) 8)));
+LOC18 = !((A_178371.Kind == ((NU8) 8)));
 if (LOC18) goto LA19;
-LOC18 = !((B_177372.Kind == ((NU8) 8)));
+LOC18 = !((B_178372.Kind == ((NU8) 8)));
 LA19: ;
 if (!LOC18) goto LA20;
 F.line = 742;F.filename = "ecmasgen.nim";
-Internalerror_41567((*X_177366).Info, ((NimStringDesc*) &TMP177480));
+Internalerror_42567((*X_178366).Info, ((NimStringDesc*) &TMP178480));
 LA20: ;
 F.line = 743;F.filename = "ecmasgen.nim";
 memset((void*)&LOC22, 0, sizeof(LOC22));
-LOC22[0] = A_177371.Com;
-LOC22[1] = B_177372.Com;
-LOC22[2] = A_177371.Res;
-LOC22[3] = B_177372.Res;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP177481), LOC22, 4);
+LOC22[0] = A_178371.Com;
+LOC22[1] = B_178372.Com;
+LOC22[2] = A_178371.Res;
+LOC22[3] = B_178372.Res;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP178481), LOC22, 4);
 break;
 default:
 F.line = 745;F.filename = "ecmasgen.nim";
-if (!!((A_177371.Com == NIM_NIL))) goto LA24;
+if (!!((A_178371.Com == NIM_NIL))) goto LA24;
 F.line = 745;F.filename = "ecmasgen.nim";
 memset((void*)&LOC26, 0, sizeof(LOC26));
-LOC26[0] = A_177371.Com;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP175420), LOC26, 1);
+LOC26[0] = A_178371.Com;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP176420), LOC26, 1);
 LA24: ;
 F.line = 746;F.filename = "ecmasgen.nim";
-if (!!((B_177372.Com == NIM_NIL))) goto LA28;
+if (!!((B_178372.Com == NIM_NIL))) goto LA28;
 F.line = 746;F.filename = "ecmasgen.nim";
 memset((void*)&LOC30, 0, sizeof(LOC30));
-LOC30[0] = B_177372.Com;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP175420), LOC30, 1);
+LOC30[0] = B_178372.Com;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP176420), LOC30, 1);
 LA28: ;
 F.line = 747;F.filename = "ecmasgen.nim";
 memset((void*)&LOC31, 0, sizeof(LOC31));
-LOC31[0] = A_177371.Res;
-LOC31[1] = B_177372.Res;
-Appf_46074(&(*R_177369).Com, ((NimStringDesc*) &TMP177477), LOC31, 2);
+LOC31[0] = A_178371.Res;
+LOC31[1] = B_178372.Res;
+Appf_47074(&(*R_178369).Com, ((NimStringDesc*) &TMP178477), LOC31, 2);
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genasgn_177482)(TY174021* P_177485, TY49525* N_177486, TY174013* R_177488) {
+N_NIMCALL(void, Genasgn_178482)(TY175021* P_178485, TY50525* N_178486, TY175013* R_178488) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genAsgn";
@@ -3951,16 +3951,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 750;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_177485, N_177486, R_177488);
+Genlinedir_176516(P_178485, N_178486, R_178488);
 F.line = 751;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177486).Kind/8] &(1<<((*N_177486).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177486).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*N_177486).Kind/8] &(1<<((*N_177486).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177486).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genasgnaux_177362(P_177485, (*N_177486).KindU.S6.Sons->data[0], (*N_177486).KindU.S6.Sons->data[1], R_177488, NIM_FALSE);
+if (((TMP175136[(*N_178486).Kind/8] &(1<<((*N_178486).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178486).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_178486).Kind/8] &(1<<((*N_178486).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178486).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genasgnaux_178362(P_178485, (*N_178486).KindU.S6.Sons->data[0], (*N_178486).KindU.S6.Sons->data[1], R_178488, NIM_FALSE);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genfastasgn_177513)(TY174021* P_177516, TY49525* N_177517, TY174013* R_177519) {
+N_NIMCALL(void, Genfastasgn_178513)(TY175021* P_178516, TY50525* N_178517, TY175013* R_178519) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genFastAsgn";
@@ -3970,29 +3970,29 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 754;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_177516, N_177517, R_177519);
+Genlinedir_176516(P_178516, N_178517, R_178519);
 F.line = 755;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177517).Kind/8] &(1<<((*N_177517).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177517).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*N_177517).Kind/8] &(1<<((*N_177517).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177517).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genasgnaux_177362(P_177516, (*N_177517).KindU.S6.Sons->data[0], (*N_177517).KindU.S6.Sons->data[1], R_177519, NIM_TRUE);
+if (((TMP175136[(*N_178517).Kind/8] &(1<<((*N_178517).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178517).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_178517).Kind/8] &(1<<((*N_178517).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178517).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genasgnaux_178362(P_178516, (*N_178517).KindU.S6.Sons->data[0], (*N_178517).KindU.S6.Sons->data[1], R_178519, NIM_TRUE);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genswap_177544)(TY174021* P_177547, TY49525* N_177548, TY174013* R_177550) {
-TY174013 A_177551;
-TY174013 B_177552;
-TY46008* Tmp_177595;
-TY46451 LOC1;
+N_NIMCALL(void, Genswap_178544)(TY175021* P_178547, TY50525* N_178548, TY175013* R_178550) {
+TY175013 A_178551;
+TY175013 B_178552;
+TY47008* Tmp_178595;
+TY47451 LOC1;
 NU8 LOC2;
-TY46008* Tmp2_177624;
-TY46451 LOC3;
+TY47008* Tmp2_178624;
+TY47451 LOC3;
 NIM_BOOL LOC5;
-TY53637 LOC9;
-TY53637 LOC10;
-TY46451 LOC14;
-TY46451 LOC18;
-TY53637 LOC19;
+TY54637 LOC9;
+TY54637 LOC10;
+TY47451 LOC14;
+TY47451 LOC18;
+TY54637 LOC19;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genSwap";
@@ -4001,86 +4001,86 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_177551, 0, sizeof(A_177551));
-memset((void*)&B_177552, 0, sizeof(B_177552));
+memset((void*)&A_178551, 0, sizeof(A_178551));
+memset((void*)&B_178552, 0, sizeof(B_178552));
 F.line = 759;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177548).Kind/8] &(1<<((*N_177548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177548).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177547, (*N_177548).KindU.S6.Sons->data[1], &A_177551);
+if (((TMP175136[(*N_178548).Kind/8] &(1<<((*N_178548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178548).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178547, (*N_178548).KindU.S6.Sons->data[1], &A_178551);
 F.line = 760;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177548).Kind/8] &(1<<((*N_177548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_177548).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177547, (*N_177548).KindU.S6.Sons->data[2], &B_177552);
+if (((TMP175136[(*N_178548).Kind/8] &(1<<((*N_178548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_178548).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178547, (*N_178548).KindU.S6.Sons->data[2], &B_178552);
 F.line = 761;F.filename = "ecmasgen.nim";
-(*P_177547).Unique = addInt((*P_177547).Unique, 1);
-Tmp_177595 = 0;
+(*P_178547).Unique = addInt((*P_178547).Unique, 1);
+Tmp_178595 = 0;
 F.line = 762;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Torope_46052(((NI64) ((*P_177547).Unique)));
-Tmp_177595 = Ropef_46069(((NimStringDesc*) &TMP176192), LOC1, 1);
+LOC1[0] = Torope_47052(((NI64) ((*P_178547).Unique)));
+Tmp_178595 = Ropef_47069(((NimStringDesc*) &TMP177192), LOC1, 1);
 F.line = 763;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177548).Kind/8] &(1<<((*N_177548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177548).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = Maptype_174142((*(*N_177548).KindU.S6.Sons->data[1]).Typ);
+if (((TMP175136[(*N_178548).Kind/8] &(1<<((*N_178548).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178548).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = Maptype_175142((*(*N_178548).KindU.S6.Sons->data[1]).Typ);
 switch (LOC2) {
 case ((NU8) 8):
 F.line = 765;F.filename = "ecmasgen.nim";
-(*P_177547).Unique = addInt((*P_177547).Unique, 1);
-Tmp2_177624 = 0;
+(*P_178547).Unique = addInt((*P_178547).Unique, 1);
+Tmp2_178624 = 0;
 F.line = 766;F.filename = "ecmasgen.nim";
 memset((void*)&LOC3, 0, sizeof(LOC3));
-LOC3[0] = Torope_46052(((NI64) ((*P_177547).Unique)));
-Tmp2_177624 = Ropef_46069(((NimStringDesc*) &TMP176192), LOC3, 1);
+LOC3[0] = Torope_47052(((NI64) ((*P_178547).Unique)));
+Tmp2_178624 = Ropef_47069(((NimStringDesc*) &TMP177192), LOC3, 1);
 F.line = 767;F.filename = "ecmasgen.nim";
-LOC5 = !((A_177551.Kind == ((NU8) 8)));
+LOC5 = !((A_178551.Kind == ((NU8) 8)));
 if (LOC5) goto LA6;
-LOC5 = !((B_177552.Kind == ((NU8) 8)));
+LOC5 = !((B_178552.Kind == ((NU8) 8)));
 LA6: ;
 if (!LOC5) goto LA7;
 F.line = 768;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_177548).Info, ((NimStringDesc*) &TMP177690));
+Internalerror_42567((*N_178548).Info, ((NimStringDesc*) &TMP178690));
 LA7: ;
 F.line = 769;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = Tmp_177595;
-LOC9[1] = A_177551.Com;
-LOC9[2] = B_177552.Com;
-Appf_46074(&(*R_177550).Com, ((NimStringDesc*) &TMP177691), LOC9, 3);
+LOC9[0] = Tmp_178595;
+LOC9[1] = A_178551.Com;
+LOC9[2] = B_178552.Com;
+Appf_47074(&(*R_178550).Com, ((NimStringDesc*) &TMP178691), LOC9, 3);
 F.line = 770;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Tmp2_177624;
-LOC10[1] = A_177551.Res;
-LOC10[2] = B_177552.Res;
-Appf_46074(&(*R_177550).Com, ((NimStringDesc*) &TMP177692), LOC10, 3);
+LOC10[0] = Tmp2_178624;
+LOC10[1] = A_178551.Res;
+LOC10[2] = B_178552.Res;
+Appf_47074(&(*R_178550).Com, ((NimStringDesc*) &TMP178692), LOC10, 3);
 break;
 default:
 F.line = 772;F.filename = "ecmasgen.nim";
-if (!!((A_177551.Com == NIM_NIL))) goto LA12;
+if (!!((A_178551.Com == NIM_NIL))) goto LA12;
 F.line = 772;F.filename = "ecmasgen.nim";
 memset((void*)&LOC14, 0, sizeof(LOC14));
-LOC14[0] = A_177551.Com;
-Appf_46074(&(*R_177550).Com, ((NimStringDesc*) &TMP175420), LOC14, 1);
+LOC14[0] = A_178551.Com;
+Appf_47074(&(*R_178550).Com, ((NimStringDesc*) &TMP176420), LOC14, 1);
 LA12: ;
 F.line = 773;F.filename = "ecmasgen.nim";
-if (!!((B_177552.Com == NIM_NIL))) goto LA16;
+if (!!((B_178552.Com == NIM_NIL))) goto LA16;
 F.line = 773;F.filename = "ecmasgen.nim";
 memset((void*)&LOC18, 0, sizeof(LOC18));
-LOC18[0] = B_177552.Com;
-Appf_46074(&(*R_177550).Com, ((NimStringDesc*) &TMP175420), LOC18, 1);
+LOC18[0] = B_178552.Com;
+Appf_47074(&(*R_178550).Com, ((NimStringDesc*) &TMP176420), LOC18, 1);
 LA16: ;
 F.line = 774;F.filename = "ecmasgen.nim";
 memset((void*)&LOC19, 0, sizeof(LOC19));
-LOC19[0] = Tmp_177595;
-LOC19[1] = A_177551.Res;
-LOC19[2] = B_177552.Res;
-Appf_46074(&(*R_177550).Com, ((NimStringDesc*) &TMP177692), LOC19, 3);
+LOC19[0] = Tmp_178595;
+LOC19[1] = A_178551.Res;
+LOC19[2] = B_178552.Res;
+Appf_47074(&(*R_178550).Com, ((NimStringDesc*) &TMP178692), LOC19, 3);
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genfieldaddr_177693)(TY174021* P_177696, TY49525* N_177697, TY174013* R_177699) {
-TY174013 A_177700;
-TY49547* F_177771;
+N_NIMCALL(void, Genfieldaddr_178693)(TY175021* P_178696, TY50525* N_178697, TY175013* R_178699) {
+TY175013 A_178700;
+TY50547* F_178771;
 NimStringDesc* LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -4090,44 +4090,44 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_177700, 0, sizeof(A_177700));
+memset((void*)&A_178700, 0, sizeof(A_178700));
 F.line = 778;F.filename = "ecmasgen.nim";
-(*R_177699).Kind = ((NU8) 8);
+(*R_178699).Kind = ((NU8) 8);
 F.line = 779;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177697).Kind/8] &(1<<((*N_177697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177697).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177696, (*N_177697).KindU.S6.Sons->data[0], &A_177700);
+if (((TMP175136[(*N_178697).Kind/8] &(1<<((*N_178697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178697).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178696, (*N_178697).KindU.S6.Sons->data[0], &A_178700);
 F.line = 780;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177697).Kind/8] &(1<<((*N_177697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177697).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_177697).KindU.S6.Sons->data[1]).Kind == ((NU8) 3)))) goto LA2;
+if (((TMP175136[(*N_178697).Kind/8] &(1<<((*N_178697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178697).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_178697).KindU.S6.Sons->data[1]).Kind == ((NU8) 3)))) goto LA2;
 F.line = 780;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177697).Kind/8] &(1<<((*N_177697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177697).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Internalerror_41567((*(*N_177697).KindU.S6.Sons->data[1]).Info, ((NimStringDesc*) &TMP177783));
+if (((TMP175136[(*N_178697).Kind/8] &(1<<((*N_178697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178697).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Internalerror_42567((*(*N_178697).KindU.S6.Sons->data[1]).Info, ((NimStringDesc*) &TMP178783));
 LA2: ;
-F_177771 = 0;
+F_178771 = 0;
 F.line = 781;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177697).Kind/8] &(1<<((*N_177697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177697).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_177697).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_177697).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-F_177771 = (*(*N_177697).KindU.S6.Sons->data[1]).KindU.S4.Sym;
+if (((TMP175136[(*N_178697).Kind/8] &(1<<((*N_178697).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178697).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_178697).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_178697).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+F_178771 = (*(*N_178697).KindU.S6.Sons->data[1]).KindU.S4.Sym;
 F.line = 782;F.filename = "ecmasgen.nim";
-if (!((*F_177771).Loc.R == NIM_NIL)) goto LA5;
+if (!((*F_178771).Loc.R == NIM_NIL)) goto LA5;
 F.line = 782;F.filename = "ecmasgen.nim";
-asgnRefNoCycle((void**) &(*F_177771).Loc.R, Manglename_174218(F_177771));
+asgnRefNoCycle((void**) &(*F_178771).Loc.R, Manglename_175218(F_178771));
 LA5: ;
 F.line = 783;F.filename = "ecmasgen.nim";
 LOC7 = 0;
-LOC7 = Ropetostr_46066((*F_177771).Loc.R);
-unsureAsgnRef((void**) &(*R_177699).Res, Makecstring_153010(LOC7));
+LOC7 = Ropetostr_47066((*F_178771).Loc.R);
+unsureAsgnRef((void**) &(*R_178699).Res, Makecstring_154010(LOC7));
 F.line = 784;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177699).Com, Mergeexpr_174919(&A_177700));
+unsureAsgnRef((void**) &(*R_178699).Com, Mergeexpr_175919(&A_178700));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genfieldaccess_177784)(TY174021* P_177787, TY49525* N_177788, TY174013* R_177790) {
-TY49547* F_177860;
-TY53695 LOC7;
+N_NIMCALL(void, Genfieldaccess_178784)(TY175021* P_178787, TY50525* N_178788, TY175013* R_178790) {
+TY50547* F_178860;
+TY54695 LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genFieldAccess";
@@ -4137,39 +4137,39 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 787;F.filename = "ecmasgen.nim";
-(*R_177790).Kind = ((NU8) 0);
+(*R_178790).Kind = ((NU8) 0);
 F.line = 788;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177788).Kind/8] &(1<<((*N_177788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177788).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177787, (*N_177788).KindU.S6.Sons->data[0], R_177790);
+if (((TMP175136[(*N_178788).Kind/8] &(1<<((*N_178788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178788).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178787, (*N_178788).KindU.S6.Sons->data[0], R_178790);
 F.line = 789;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177788).Kind/8] &(1<<((*N_177788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177788).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_177788).KindU.S6.Sons->data[1]).Kind == ((NU8) 3)))) goto LA2;
+if (((TMP175136[(*N_178788).Kind/8] &(1<<((*N_178788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178788).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_178788).KindU.S6.Sons->data[1]).Kind == ((NU8) 3)))) goto LA2;
 F.line = 789;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177788).Kind/8] &(1<<((*N_177788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177788).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Internalerror_41567((*(*N_177788).KindU.S6.Sons->data[1]).Info, ((NimStringDesc*) &TMP177783));
+if (((TMP175136[(*N_178788).Kind/8] &(1<<((*N_178788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178788).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Internalerror_42567((*(*N_178788).KindU.S6.Sons->data[1]).Info, ((NimStringDesc*) &TMP178783));
 LA2: ;
-F_177860 = 0;
+F_178860 = 0;
 F.line = 790;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177788).Kind/8] &(1<<((*N_177788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177788).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_177788).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_177788).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-F_177860 = (*(*N_177788).KindU.S6.Sons->data[1]).KindU.S4.Sym;
+if (((TMP175136[(*N_178788).Kind/8] &(1<<((*N_178788).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178788).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_178788).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_178788).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+F_178860 = (*(*N_178788).KindU.S6.Sons->data[1]).KindU.S4.Sym;
 F.line = 791;F.filename = "ecmasgen.nim";
-if (!((*F_177860).Loc.R == NIM_NIL)) goto LA5;
+if (!((*F_178860).Loc.R == NIM_NIL)) goto LA5;
 F.line = 791;F.filename = "ecmasgen.nim";
-asgnRefNoCycle((void**) &(*F_177860).Loc.R, Manglename_174218(F_177860));
+asgnRefNoCycle((void**) &(*F_178860).Loc.R, Manglename_175218(F_178860));
 LA5: ;
 F.line = 792;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = (*R_177790).Res;
-LOC7[1] = (*F_177860).Loc.R;
-unsureAsgnRef((void**) &(*R_177790).Res, Ropef_46069(((NimStringDesc*) &TMP177876), LOC7, 2));
+LOC7[0] = (*R_178790).Res;
+LOC7[1] = (*F_178860).Loc.R;
+unsureAsgnRef((void**) &(*R_178790).Res, Ropef_47069(((NimStringDesc*) &TMP178876), LOC7, 2));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gencheckedfieldaddr_177877)(TY174021* P_177880, TY49525* N_177881, TY174013* R_177883) {
+N_NIMCALL(void, Gencheckedfieldaddr_178877)(TY175021* P_178880, TY50525* N_178881, TY175013* R_178883) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genCheckedFieldAddr";
@@ -4179,12 +4179,12 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 795;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177881).Kind/8] &(1<<((*N_177881).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177881).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genfieldaddr_177693(P_177880, (*N_177881).KindU.S6.Sons->data[0], R_177883);
+if (((TMP175136[(*N_178881).Kind/8] &(1<<((*N_178881).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178881).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genfieldaddr_178693(P_178880, (*N_178881).KindU.S6.Sons->data[0], R_178883);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gencheckedfieldaccess_177896)(TY174021* P_177899, TY49525* N_177900, TY174013* R_177902) {
+N_NIMCALL(void, Gencheckedfieldaccess_178896)(TY175021* P_178899, TY50525* N_178900, TY175013* R_178902) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genCheckedFieldAccess";
@@ -4194,20 +4194,20 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 798;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177900).Kind/8] &(1<<((*N_177900).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177900).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genfieldaccess_177784(P_177899, (*N_177900).KindU.S6.Sons->data[0], R_177902);
+if (((TMP175136[(*N_178900).Kind/8] &(1<<((*N_178900).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178900).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genfieldaccess_178784(P_178899, (*N_178900).KindU.S6.Sons->data[0], R_178902);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genarrayaddr_177915)(TY174021* P_177918, TY49525* N_177919, TY174013* R_177921) {
-TY174013 A_177922;
-TY174013 B_177923;
-NI64 First_177924;
-TY49551* Typ_177963;
+N_NIMCALL(void, Genarrayaddr_178915)(TY175021* P_178918, TY50525* N_178919, TY175013* R_178921) {
+TY175013 A_178922;
+TY175013 B_178923;
+NI64 First_178924;
+TY50551* Typ_178963;
 NIM_BOOL LOC5;
 NIM_BOOL LOC7;
-TY53637 LOC10;
-TY53695 LOC13;
+TY54637 LOC10;
+TY54695 LOC13;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genArrayAddr";
@@ -4216,70 +4216,70 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_177922, 0, sizeof(A_177922));
-memset((void*)&B_177923, 0, sizeof(B_177923));
-First_177924 = 0;
+memset((void*)&A_178922, 0, sizeof(A_178922));
+memset((void*)&B_178923, 0, sizeof(B_178923));
+First_178924 = 0;
 F.line = 804;F.filename = "ecmasgen.nim";
-(*R_177921).Kind = ((NU8) 8);
+(*R_178921).Kind = ((NU8) 8);
 F.line = 805;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177919).Kind/8] &(1<<((*N_177919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177919).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177918, (*N_177919).KindU.S6.Sons->data[0], &A_177922);
+if (((TMP175136[(*N_178919).Kind/8] &(1<<((*N_178919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178919).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178918, (*N_178919).KindU.S6.Sons->data[0], &A_178922);
 F.line = 806;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177919).Kind/8] &(1<<((*N_177919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177919).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_177918, (*N_177919).KindU.S6.Sons->data[1], &B_177923);
+if (((TMP175136[(*N_178919).Kind/8] &(1<<((*N_178919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178919).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_178918, (*N_178919).KindU.S6.Sons->data[1], &B_178923);
 F.line = 807;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177921).Com, Mergeexpr_174919(&A_177922));
-Typ_177963 = 0;
+unsureAsgnRef((void**) &(*R_178921).Com, Mergeexpr_175919(&A_178922));
+Typ_178963 = 0;
 F.line = 808;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_177919).Kind/8] &(1<<((*N_177919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_177919).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Typ_177963 = Skiptypes_91085((*(*N_177919).KindU.S6.Sons->data[0]).Typ, 14723072);
+if (((TMP175136[(*N_178919).Kind/8] &(1<<((*N_178919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_178919).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Typ_178963 = Skiptypes_92085((*(*N_178919).KindU.S6.Sons->data[0]).Typ, 14723072);
 F.line = 809;F.filename = "ecmasgen.nim";
-if (!((65552 &(IL64(1)<<(((*Typ_177963).Kind)&IL64(63))))!=0)) goto LA2;
+if (!((65552 &(IL64(1)<<(((*Typ_178963).Kind)&IL64(63))))!=0)) goto LA2;
 F.line = 809;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*Typ_177963).Sons->Sup.len)) raiseIndexError();
-First_177924 = Firstord_91001((*Typ_177963).Sons->data[0]);
+if ((NU)(0) >= (NU)((*Typ_178963).Sons->Sup.len)) raiseIndexError();
+First_178924 = Firstord_92001((*Typ_178963).Sons->data[0]);
 goto LA1;
 LA2: ;
 F.line = 810;F.filename = "ecmasgen.nim";
-First_177924 = 0;
+First_178924 = 0;
 LA1: ;
 F.line = 811;F.filename = "ecmasgen.nim";
-LOC5 = (((*P_177918).Options &(1<<((((NU8) 4))&31)))!=0);
+LOC5 = (((*P_178918).Options &(1<<((((NU8) 4))&31)))!=0);
 if (!(LOC5)) goto LA6;
-if (((TMP174136[(*N_177919).Kind/8] &(1<<((*N_177919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_177919).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC7 = Isconstexpr_90016((*N_177919).KindU.S6.Sons->data[1]);
+if (((TMP175136[(*N_178919).Kind/8] &(1<<((*N_178919).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_178919).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC7 = Isconstexpr_91016((*N_178919).KindU.S6.Sons->data[1]);
 LOC5 = !(LOC7);
 LA6: ;
 if (!LOC5) goto LA8;
 F.line = 812;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_177918, ((NimStringDesc*) &TMP178009));
+Usemagic_175882(P_178918, ((NimStringDesc*) &TMP179009));
 F.line = 813;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = B_177923.Res;
-LOC10[1] = Torope_46052(First_177924);
-LOC10[2] = A_177922.Res;
-B_177923.Res = Ropef_46069(((NimStringDesc*) &TMP178010), LOC10, 3);
+LOC10[0] = B_178923.Res;
+LOC10[1] = Torope_47052(First_178924);
+LOC10[2] = A_178922.Res;
+B_178923.Res = Ropef_47069(((NimStringDesc*) &TMP179010), LOC10, 3);
 goto LA4;
 LA8: ;
-if (!!((First_177924 == 0))) goto LA11;
+if (!!((First_178924 == 0))) goto LA11;
 F.line = 817;F.filename = "ecmasgen.nim";
 memset((void*)&LOC13, 0, sizeof(LOC13));
-LOC13[0] = B_177923.Res;
-LOC13[1] = Torope_46052(First_177924);
-B_177923.Res = Ropef_46069(((NimStringDesc*) &TMP178011), LOC13, 2);
+LOC13[0] = B_178923.Res;
+LOC13[1] = Torope_47052(First_178924);
+B_178923.Res = Ropef_47069(((NimStringDesc*) &TMP179011), LOC13, 2);
 goto LA4;
 LA11: ;
 LA4: ;
 F.line = 818;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_177921).Res, Mergeexpr_174919(&B_177923));
+unsureAsgnRef((void**) &(*R_178921).Res, Mergeexpr_175919(&B_178923));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genarrayaccess_178012)(TY174021* P_178015, TY49525* N_178016, TY174013* R_178018) {
-TY53695 LOC1;
+N_NIMCALL(void, Genarrayaccess_179012)(TY175021* P_179015, TY50525* N_179016, TY175013* R_179018) {
+TY54695 LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genArrayAccess";
@@ -4289,20 +4289,20 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 821;F.filename = "ecmasgen.nim";
-Genarrayaddr_177915(P_178015, N_178016, R_178018);
+Genarrayaddr_178915(P_179015, N_179016, R_179018);
 F.line = 822;F.filename = "ecmasgen.nim";
-(*R_178018).Kind = ((NU8) 0);
+(*R_179018).Kind = ((NU8) 0);
 F.line = 823;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = (*R_178018).Com;
-LOC1[1] = (*R_178018).Res;
-unsureAsgnRef((void**) &(*R_178018).Res, Ropef_46069(((NimStringDesc*) &TMP178023), LOC1, 2));
+LOC1[0] = (*R_179018).Com;
+LOC1[1] = (*R_179018).Res;
+unsureAsgnRef((void**) &(*R_179018).Res, Ropef_47069(((NimStringDesc*) &TMP179023), LOC1, 2));
 F.line = 824;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178018).Com, NIM_NIL);
+unsureAsgnRef((void**) &(*R_179018).Com, NIM_NIL);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genaddr_178024)(TY174021* P_178027, TY49525* N_178028, TY174013* R_178030) {
-TY49547* S_178031;
+N_NIMCALL(void, Genaddr_179024)(TY175021* P_179027, TY50525* N_179028, TY175013* R_179030) {
+TY50547* S_179031;
 NU8 LOC5;
 NimStringDesc* LOC10;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -4313,93 +4313,93 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-S_178031 = 0;
+S_179031 = 0;
 F.line = 828;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178028).Kind/8] &(1<<((*N_178028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-switch ((*(*N_178028).KindU.S6.Sons->data[0]).Kind) {
+if (((TMP175136[(*N_179028).Kind/8] &(1<<((*N_179028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+switch ((*(*N_179028).KindU.S6.Sons->data[0]).Kind) {
 case ((NU8) 3):
 F.line = 830;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178028).Kind/8] &(1<<((*N_178028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178028).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_178028).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_178028).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-S_178031 = (*(*N_178028).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_179028).Kind/8] &(1<<((*N_179028).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179028).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_179028).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_179028).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+S_179031 = (*(*N_179028).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 831;F.filename = "ecmasgen.nim";
-if (!((*S_178031).Loc.R == NIM_NIL)) goto LA2;
+if (!((*S_179031).Loc.R == NIM_NIL)) goto LA2;
 F.line = 831;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178028).Info, ((NimStringDesc*) &TMP178110));
+Internalerror_42567((*N_179028).Info, ((NimStringDesc*) &TMP179110));
 LA2: ;
 F.line = 832;F.filename = "ecmasgen.nim";
-switch ((*S_178031).Kind) {
+switch ((*S_179031).Kind) {
 case ((NU8) 8):
 F.line = 834;F.filename = "ecmasgen.nim";
-LOC5 = Maptype_174142((*N_178028).Typ);
+LOC5 = Maptype_175142((*N_179028).Typ);
 if (!(LOC5 == ((NU8) 7))) goto LA6;
 F.line = 836;F.filename = "ecmasgen.nim";
-(*R_178030).Kind = ((NU8) 0);
+(*R_179030).Kind = ((NU8) 0);
 F.line = 837;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178030).Res, (*S_178031).Loc.R);
+unsureAsgnRef((void**) &(*R_179030).Res, (*S_179031).Loc.R);
 F.line = 838;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178030).Com, NIM_NIL);
+unsureAsgnRef((void**) &(*R_179030).Com, NIM_NIL);
 goto LA4;
 LA6: ;
-if (!(((*S_178031).Flags &(1<<((((NU8) 5))&31)))!=0)) goto LA8;
+if (!(((*S_179031).Flags &(1<<((((NU8) 5))&31)))!=0)) goto LA8;
 F.line = 841;F.filename = "ecmasgen.nim";
-(*R_178030).Kind = ((NU8) 8);
+(*R_179030).Kind = ((NU8) 8);
 F.line = 842;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178030).Com, Torope_46046(((NimStringDesc*) &TMP178111)));
+unsureAsgnRef((void**) &(*R_179030).Com, Torope_47046(((NimStringDesc*) &TMP179111)));
 F.line = 843;F.filename = "ecmasgen.nim";
 LOC10 = 0;
-LOC10 = Ropetostr_46066((*S_178031).Loc.R);
-unsureAsgnRef((void**) &(*R_178030).Res, Makecstring_153010(LOC10));
+LOC10 = Ropetostr_47066((*S_179031).Loc.R);
+unsureAsgnRef((void**) &(*R_179030).Res, Makecstring_154010(LOC10));
 goto LA4;
 LA8: ;
-if (!(((*S_178031).Flags &(1<<((((NU8) 18))&31)))!=0)) goto LA11;
+if (!(((*S_179031).Flags &(1<<((((NU8) 18))&31)))!=0)) goto LA11;
 F.line = 845;F.filename = "ecmasgen.nim";
-(*R_178030).Kind = ((NU8) 8);
+(*R_179030).Kind = ((NU8) 8);
 F.line = 846;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178030).Com, (*S_178031).Loc.R);
+unsureAsgnRef((void**) &(*R_179030).Com, (*S_179031).Loc.R);
 F.line = 847;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178030).Res, Torope_46046(((NimStringDesc*) &TMP178112)));
+unsureAsgnRef((void**) &(*R_179030).Res, Torope_47046(((NimStringDesc*) &TMP179112)));
 goto LA4;
 LA11: ;
 F.line = 849;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178028).Info, ((NimStringDesc*) &TMP178113));
+Internalerror_42567((*N_179028).Info, ((NimStringDesc*) &TMP179113));
 LA4: ;
 break;
 default:
 F.line = 850;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178028).Info, ((NimStringDesc*) &TMP178114));
+Internalerror_42567((*N_179028).Info, ((NimStringDesc*) &TMP179114));
 break;
 }
 break;
 case ((NU8) 37):
 F.line = 852;F.filename = "ecmasgen.nim";
-Gencheckedfieldaddr_177877(P_178027, N_178028, R_178030);
+Gencheckedfieldaddr_178877(P_179027, N_179028, R_179030);
 break;
 case ((NU8) 36):
 F.line = 854;F.filename = "ecmasgen.nim";
-Genfieldaddr_177693(P_178027, N_178028, R_178030);
+Genfieldaddr_178693(P_179027, N_179028, R_179030);
 break;
 case ((NU8) 33):
 F.line = 856;F.filename = "ecmasgen.nim";
-Genarrayaddr_177915(P_178027, N_178028, R_178030);
+Genarrayaddr_178915(P_179027, N_179028, R_179030);
 break;
 default:
 F.line = 857;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178028).Info, ((NimStringDesc*) &TMP178115));
+Internalerror_42567((*N_179028).Info, ((NimStringDesc*) &TMP179115));
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gensym_178116)(TY174021* P_178119, TY49525* N_178120, TY174013* R_178122) {
-TY49547* S_178135;
+N_NIMCALL(void, Gensym_179116)(TY175021* P_179119, TY50525* N_179120, TY175013* R_179122) {
+TY50547* S_179135;
 NimStringDesc* LOC4;
-NU8 K_178155;
-TY46451 LOC11;
-TY46451 LOC12;
+NU8 K_179155;
+TY47451 LOC11;
+TY47451 LOC12;
 NIM_BOOL LOC13;
-TY46451 LOC17;
+TY47451 LOC17;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genSym";
@@ -4408,76 +4408,76 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-S_178135 = 0;
+S_179135 = 0;
 F.line = 860;F.filename = "ecmasgen.nim";
-if (!(((TMP174138[(*N_178120).Kind/8] &(1<<((*N_178120).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-S_178135 = (*N_178120).KindU.S4.Sym;
+if (!(((TMP175138[(*N_179120).Kind/8] &(1<<((*N_179120).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+S_179135 = (*N_179120).KindU.S4.Sym;
 F.line = 861;F.filename = "ecmasgen.nim";
-if (!((*S_178135).Loc.R == NIM_NIL)) goto LA2;
+if (!((*S_179135).Loc.R == NIM_NIL)) goto LA2;
 F.line = 862;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = rawNewString((*(*S_178135).Name).S->Sup.len + 30);
-appendString(LOC4, ((NimStringDesc*) &TMP178221));
-appendString(LOC4, (*(*S_178135).Name).S);
-Internalerror_41567((*N_178120).Info, LOC4);
+LOC4 = rawNewString((*(*S_179135).Name).S->Sup.len + 30);
+appendString(LOC4, ((NimStringDesc*) &TMP179221));
+appendString(LOC4, (*(*S_179135).Name).S);
+Internalerror_42567((*N_179120).Info, LOC4);
 LA2: ;
 F.line = 863;F.filename = "ecmasgen.nim";
-switch ((*S_178135).Kind) {
+switch ((*S_179135).Kind) {
 case ((NU8) 8):
 case ((NU8) 3):
 case ((NU8) 5):
-K_178155 = 0;
+K_179155 = 0;
 F.line = 865;F.filename = "ecmasgen.nim";
-K_178155 = Maptype_174142((*S_178135).Typ);
+K_179155 = Maptype_175142((*S_179135).Typ);
 F.line = 866;F.filename = "ecmasgen.nim";
-if (!(K_178155 == ((NU8) 8))) goto LA6;
+if (!(K_179155 == ((NU8) 8))) goto LA6;
 F.line = 867;F.filename = "ecmasgen.nim";
-(*R_178122).Kind = ((NU8) 8);
+(*R_179122).Kind = ((NU8) 8);
 F.line = 868;F.filename = "ecmasgen.nim";
-if (!!(((262176 & (*S_178135).Flags) == 0))) goto LA9;
+if (!!(((262176 & (*S_179135).Flags) == 0))) goto LA9;
 F.line = 869;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = (*S_178135).Loc.R;
-unsureAsgnRef((void**) &(*R_178122).Com, Ropef_46069(((NimStringDesc*) &TMP178222), LOC11, 1));
+LOC11[0] = (*S_179135).Loc.R;
+unsureAsgnRef((void**) &(*R_179122).Com, Ropef_47069(((NimStringDesc*) &TMP179222), LOC11, 1));
 F.line = 870;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = (*S_178135).Loc.R;
-unsureAsgnRef((void**) &(*R_178122).Res, Ropef_46069(((NimStringDesc*) &TMP178223), LOC12, 1));
+LOC12[0] = (*S_179135).Loc.R;
+unsureAsgnRef((void**) &(*R_179122).Res, Ropef_47069(((NimStringDesc*) &TMP179223), LOC12, 1));
 goto LA8;
 LA9: ;
 F.line = 872;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178122).Com, (*S_178135).Loc.R);
+unsureAsgnRef((void**) &(*R_179122).Com, (*S_179135).Loc.R);
 F.line = 873;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178122).Res, Con_46019((*S_178135).Loc.R, ((NimStringDesc*) &TMP177331)));
+unsureAsgnRef((void**) &(*R_179122).Res, Con_47019((*S_179135).Loc.R, ((NimStringDesc*) &TMP178331)));
 LA8: ;
 goto LA5;
 LA6: ;
-LOC13 = !((K_178155 == ((NU8) 7)));
+LOC13 = !((K_179155 == ((NU8) 7)));
 if (!(LOC13)) goto LA14;
-LOC13 = (((*S_178135).Flags &(1<<((((NU8) 18))&31)))!=0);
+LOC13 = (((*S_179135).Flags &(1<<((((NU8) 18))&31)))!=0);
 LA14: ;
 if (!LOC13) goto LA15;
 F.line = 875;F.filename = "ecmasgen.nim";
 memset((void*)&LOC17, 0, sizeof(LOC17));
-LOC17[0] = (*S_178135).Loc.R;
-unsureAsgnRef((void**) &(*R_178122).Res, Ropef_46069(((NimStringDesc*) &TMP178222), LOC17, 1));
+LOC17[0] = (*S_179135).Loc.R;
+unsureAsgnRef((void**) &(*R_179122).Res, Ropef_47069(((NimStringDesc*) &TMP179222), LOC17, 1));
 goto LA5;
 LA15: ;
 F.line = 877;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178122).Res, (*S_178135).Loc.R);
+unsureAsgnRef((void**) &(*R_179122).Res, (*S_179135).Loc.R);
 LA5: ;
 break;
 default:
 F.line = 878;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_178122).Res, (*S_178135).Loc.R);
+unsureAsgnRef((void**) &(*R_179122).Res, (*S_179135).Loc.R);
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genderef_178224)(TY174021* P_178227, TY49525* N_178228, TY174013* R_178230) {
-TY174013 A_178231;
+N_NIMCALL(void, Genderef_179224)(TY175021* P_179227, TY50525* N_179228, TY175013* R_179230) {
+TY175013 A_179231;
 NU8 LOC2;
-TY53695 LOC8;
+TY54695 LOC8;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genDeref";
@@ -4486,42 +4486,42 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_178231, 0, sizeof(A_178231));
+memset((void*)&A_179231, 0, sizeof(A_179231));
 F.line = 882;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178228).Kind/8] &(1<<((*N_178228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178228).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = Maptype_174142((*(*N_178228).KindU.S6.Sons->data[0]).Typ);
+if (((TMP175136[(*N_179228).Kind/8] &(1<<((*N_179228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179228).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = Maptype_175142((*(*N_179228).KindU.S6.Sons->data[0]).Typ);
 if (!(LOC2 == ((NU8) 7))) goto LA3;
 F.line = 883;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178228).Kind/8] &(1<<((*N_178228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178228).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_178227, (*N_178228).KindU.S6.Sons->data[0], R_178230);
+if (((TMP175136[(*N_179228).Kind/8] &(1<<((*N_179228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179228).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_179227, (*N_179228).KindU.S6.Sons->data[0], R_179230);
 goto LA1;
 LA3: ;
 F.line = 885;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178228).Kind/8] &(1<<((*N_178228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178228).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_178227, (*N_178228).KindU.S6.Sons->data[0], &A_178231);
+if (((TMP175136[(*N_179228).Kind/8] &(1<<((*N_179228).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179228).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_179227, (*N_179228).KindU.S6.Sons->data[0], &A_179231);
 F.line = 886;F.filename = "ecmasgen.nim";
-if (!!((A_178231.Kind == ((NU8) 8)))) goto LA6;
+if (!!((A_179231.Kind == ((NU8) 8)))) goto LA6;
 F.line = 886;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178228).Info, ((NimStringDesc*) &TMP178291));
+Internalerror_42567((*N_179228).Info, ((NimStringDesc*) &TMP179291));
 LA6: ;
 F.line = 887;F.filename = "ecmasgen.nim";
 memset((void*)&LOC8, 0, sizeof(LOC8));
-LOC8[0] = A_178231.Com;
-LOC8[1] = A_178231.Res;
-unsureAsgnRef((void**) &(*R_178230).Res, Ropef_46069(((NimStringDesc*) &TMP178023), LOC8, 2));
+LOC8[0] = A_179231.Com;
+LOC8[1] = A_179231.Res;
+unsureAsgnRef((void**) &(*R_179230).Res, Ropef_47069(((NimStringDesc*) &TMP179023), LOC8, 2));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gencall_178292)(TY174021* P_178295, TY49525* N_178296, TY174013* R_178298) {
-TY174013 A_178299;
-NI I_178320;
-NI HEX3Atmp_178352;
+N_NIMCALL(void, Gencall_179292)(TY175021* P_179295, TY50525* N_179296, TY175013* R_179298) {
+TY175013 A_179299;
+NI I_179320;
+NI HEX3Atmp_179352;
 NI LOC1;
-NI Res_178354;
-TY46008* LOC9;
+NI Res_179354;
+TY47008* LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genCall";
@@ -4530,60 +4530,60 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_178299, 0, sizeof(A_178299));
+memset((void*)&A_179299, 0, sizeof(A_179299));
 F.line = 891;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178296).Kind/8] &(1<<((*N_178296).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_178296).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_178295, (*N_178296).KindU.S6.Sons->data[0], R_178298);
+if (((TMP175136[(*N_179296).Kind/8] &(1<<((*N_179296).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_179296).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_179295, (*N_179296).KindU.S6.Sons->data[0], R_179298);
 F.line = 892;F.filename = "ecmasgen.nim";
-App_46036(&(*R_178298).Res, ((NimStringDesc*) &TMP178357));
-I_178320 = 0;
-HEX3Atmp_178352 = 0;
+App_47036(&(*R_179298).Res, ((NimStringDesc*) &TMP179357));
+I_179320 = 0;
+HEX3Atmp_179352 = 0;
 F.line = 893;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_178296);
-HEX3Atmp_178352 = subInt(LOC1, 1);
-Res_178354 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_178354 = 1;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_179296);
+HEX3Atmp_179352 = subInt(LOC1, 1);
+Res_179354 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_179354 = 1;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_178354 <= HEX3Atmp_178352)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_178320 = Res_178354;
+if (!(Res_179354 <= HEX3Atmp_179352)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_179320 = Res_179354;
 F.line = 894;F.filename = "ecmasgen.nim";
-if (!(1 < I_178320)) goto LA4;
+if (!(1 < I_179320)) goto LA4;
 F.line = 894;F.filename = "ecmasgen.nim";
-App_46036(&(*R_178298).Res, ((NimStringDesc*) &TMP174568));
+App_47036(&(*R_179298).Res, ((NimStringDesc*) &TMP175568));
 LA4: ;
 F.line = 895;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178296).Kind/8] &(1<<((*N_178296).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178320) >= (NU)((*N_178296).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_178295, (*N_178296).KindU.S6.Sons->data[I_178320], &A_178299);
+if (((TMP175136[(*N_179296).Kind/8] &(1<<((*N_179296).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179320) >= (NU)((*N_179296).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_179295, (*N_179296).KindU.S6.Sons->data[I_179320], &A_179299);
 F.line = 896;F.filename = "ecmasgen.nim";
-if (!(A_178299.Kind == ((NU8) 8))) goto LA7;
+if (!(A_179299.Kind == ((NU8) 8))) goto LA7;
 F.line = 897;F.filename = "ecmasgen.nim";
-App_46031(&(*R_178298).Res, A_178299.Com);
+App_47031(&(*R_179298).Res, A_179299.Com);
 F.line = 898;F.filename = "ecmasgen.nim";
-App_46036(&(*R_178298).Res, ((NimStringDesc*) &TMP174568));
+App_47036(&(*R_179298).Res, ((NimStringDesc*) &TMP175568));
 F.line = 899;F.filename = "ecmasgen.nim";
-App_46031(&(*R_178298).Res, A_178299.Res);
+App_47031(&(*R_179298).Res, A_179299.Res);
 goto LA6;
 LA7: ;
 F.line = 901;F.filename = "ecmasgen.nim";
 LOC9 = 0;
-LOC9 = Mergeexpr_174919(&A_178299);
-App_46031(&(*R_178298).Res, LOC9);
+LOC9 = Mergeexpr_175919(&A_179299);
+App_47031(&(*R_179298).Res, LOC9);
 LA6: ;
-F.line = 1022;F.filename = "system.nim";
-Res_178354 = addInt(Res_178354, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_179354 = addInt(Res_179354, 1);
 } LA2: ;
 F.line = 902;F.filename = "ecmasgen.nim";
-App_46036(&(*R_178298).Res, ((NimStringDesc*) &TMP178358));
+App_47036(&(*R_179298).Res, ((NimStringDesc*) &TMP179358));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Puttoseq_178359)(NimStringDesc* S_178361, NIM_BOOL Indirect_178362) {
-TY46008* Result_178363;
-TY46451 LOC4;
+N_NIMCALL(TY47008*, Puttoseq_179359)(NimStringDesc* S_179361, NIM_BOOL Indirect_179362) {
+TY47008* Result_179363;
+TY47451 LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "putToSeq";
@@ -4592,35 +4592,35 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_178363 = 0;
+Result_179363 = 0;
 F.line = 905;F.filename = "ecmasgen.nim";
-Result_178363 = Torope_46046(S_178361);
+Result_179363 = Torope_47046(S_179361);
 F.line = 906;F.filename = "ecmasgen.nim";
-if (!Indirect_178362) goto LA2;
+if (!Indirect_179362) goto LA2;
 F.line = 906;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = Result_178363;
-Result_178363 = Ropef_46069(((NimStringDesc*) &TMP178368), LOC4, 1);
+LOC4[0] = Result_179363;
+Result_179363 = Ropef_47069(((NimStringDesc*) &TMP179368), LOC4, 1);
 LA2: ;
 framePtr = framePtr->prev;
-return Result_178363;
+return Result_179363;
 }
-N_NIMCALL(TY46008*, Createrecordvaraux_178375)(TY174021* P_178378, TY49525* Rec_178379, NI* C_178381) {
-TY46008* Result_178382;
-NI I_178390;
-NI HEX3Atmp_178481;
+N_NIMCALL(TY47008*, Createrecordvaraux_179375)(TY175021* P_179378, TY50525* Rec_179379, NI* C_179381) {
+TY47008* Result_179382;
+NI I_179390;
+NI HEX3Atmp_179481;
 NI LOC1;
-NI Res_178483;
-TY46008* LOC3;
-TY46008* LOC4;
-NI I_178424;
-NI HEX3Atmp_178487;
+NI Res_179483;
+TY47008* LOC3;
+TY47008* LOC4;
+NI I_179424;
+NI HEX3Atmp_179487;
 NI LOC5;
-NI Res_178489;
-TY49525* LOC7;
-TY46008* LOC8;
-TY46008* LOC12;
-TY46008* LOC13;
+NI Res_179489;
+TY50525* LOC7;
+TY47008* LOC8;
+TY47008* LOC12;
+TY47008* LOC13;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "createRecordVarAux";
@@ -4629,111 +4629,111 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_178382 = 0;
+Result_179382 = 0;
 F.line = 910;F.filename = "ecmasgen.nim";
-Result_178382 = NIM_NIL;
+Result_179382 = NIM_NIL;
 F.line = 911;F.filename = "ecmasgen.nim";
-switch ((*Rec_178379).Kind) {
+switch ((*Rec_179379).Kind) {
 case ((NU8) 113):
-I_178390 = 0;
-HEX3Atmp_178481 = 0;
+I_179390 = 0;
+HEX3Atmp_179481 = 0;
 F.line = 913;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(Rec_178379);
-HEX3Atmp_178481 = subInt(LOC1, 1);
-Res_178483 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_178483 = 0;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_178483 <= HEX3Atmp_178481)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_178390 = Res_178483;
-F.line = 914;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*Rec_178379).Kind/8] &(1<<((*Rec_178379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178390) >= (NU)((*Rec_178379).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC3 = 0;
-LOC3 = Createrecordvaraux_178375(P_178378, (*Rec_178379).KindU.S6.Sons->data[I_178390], C_178381);
-App_46031(&Result_178382, LOC3);
+LOC1 = Sonslen_50803(Rec_179379);
+HEX3Atmp_179481 = subInt(LOC1, 1);
+Res_179483 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_179483 = 0;
 F.line = 1022;F.filename = "system.nim";
-Res_178483 = addInt(Res_178483, 1);
+while (1) {
+if (!(Res_179483 <= HEX3Atmp_179481)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_179390 = Res_179483;
+F.line = 914;F.filename = "ecmasgen.nim";
+if (((TMP175136[(*Rec_179379).Kind/8] &(1<<((*Rec_179379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179390) >= (NU)((*Rec_179379).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC3 = 0;
+LOC3 = Createrecordvaraux_179375(P_179378, (*Rec_179379).KindU.S6.Sons->data[I_179390], C_179381);
+App_47031(&Result_179382, LOC3);
+F.line = 1024;F.filename = "system.nim";
+Res_179483 = addInt(Res_179483, 1);
 } LA2: ;
 break;
 case ((NU8) 114):
 F.line = 916;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*Rec_178379).Kind/8] &(1<<((*Rec_178379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*Rec_178379).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*Rec_179379).Kind/8] &(1<<((*Rec_179379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*Rec_179379).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC4 = 0;
-LOC4 = Createrecordvaraux_178375(P_178378, (*Rec_178379).KindU.S6.Sons->data[0], C_178381);
-App_46031(&Result_178382, LOC4);
-I_178424 = 0;
-HEX3Atmp_178487 = 0;
+LOC4 = Createrecordvaraux_179375(P_179378, (*Rec_179379).KindU.S6.Sons->data[0], C_179381);
+App_47031(&Result_179382, LOC4);
+I_179424 = 0;
+HEX3Atmp_179487 = 0;
 F.line = 917;F.filename = "ecmasgen.nim";
-LOC5 = Sonslen_49803(Rec_178379);
-HEX3Atmp_178487 = subInt(LOC5, 1);
-Res_178489 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_178489 = 1;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_178489 <= HEX3Atmp_178487)) goto LA6;
-F.line = 1019;F.filename = "system.nim";
-I_178424 = Res_178489;
-F.line = 918;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*Rec_178379).Kind/8] &(1<<((*Rec_178379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178424) >= (NU)((*Rec_178379).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC7 = 0;
-LOC7 = Lastson_49809((*Rec_178379).KindU.S6.Sons->data[I_178424]);
-LOC8 = 0;
-LOC8 = Createrecordvaraux_178375(P_178378, LOC7, C_178381);
-App_46031(&Result_178382, LOC8);
+LOC5 = Sonslen_50803(Rec_179379);
+HEX3Atmp_179487 = subInt(LOC5, 1);
+Res_179489 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_179489 = 1;
 F.line = 1022;F.filename = "system.nim";
-Res_178489 = addInt(Res_178489, 1);
+while (1) {
+if (!(Res_179489 <= HEX3Atmp_179487)) goto LA6;
+F.line = 1021;F.filename = "system.nim";
+I_179424 = Res_179489;
+F.line = 918;F.filename = "ecmasgen.nim";
+if (((TMP175136[(*Rec_179379).Kind/8] &(1<<((*Rec_179379).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179424) >= (NU)((*Rec_179379).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC7 = 0;
+LOC7 = Lastson_50809((*Rec_179379).KindU.S6.Sons->data[I_179424]);
+LOC8 = 0;
+LOC8 = Createrecordvaraux_179375(P_179378, LOC7, C_179381);
+App_47031(&Result_179382, LOC8);
+F.line = 1024;F.filename = "system.nim";
+Res_179489 = addInt(Res_179489, 1);
 } LA6: ;
 break;
 case ((NU8) 3):
 F.line = 920;F.filename = "ecmasgen.nim";
-if (!(0 < (*C_178381))) goto LA10;
+if (!(0 < (*C_179381))) goto LA10;
 F.line = 920;F.filename = "ecmasgen.nim";
-App_46036(&Result_178382, ((NimStringDesc*) &TMP174568));
+App_47036(&Result_179382, ((NimStringDesc*) &TMP175568));
 LA10: ;
 F.line = 921;F.filename = "ecmasgen.nim";
-if (!(((TMP174138[(*Rec_178379).Kind/8] &(1<<((*Rec_178379).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
+if (!(((TMP175138[(*Rec_179379).Kind/8] &(1<<((*Rec_179379).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
 LOC12 = 0;
-LOC12 = Manglename_174218((*Rec_178379).KindU.S4.Sym);
-App_46031(&Result_178382, LOC12);
+LOC12 = Manglename_175218((*Rec_179379).KindU.S4.Sym);
+App_47031(&Result_179382, LOC12);
 F.line = 922;F.filename = "ecmasgen.nim";
-App_46036(&Result_178382, ((NimStringDesc*) &TMP178492));
+App_47036(&Result_179382, ((NimStringDesc*) &TMP179492));
 F.line = 923;F.filename = "ecmasgen.nim";
-if (!(((TMP174138[(*Rec_178379).Kind/8] &(1<<((*Rec_178379).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
+if (!(((TMP175138[(*Rec_179379).Kind/8] &(1<<((*Rec_179379).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
 LOC13 = 0;
-LOC13 = Createvar_178369(P_178378, (*(*Rec_178379).KindU.S4.Sym).Typ, NIM_FALSE);
-App_46031(&Result_178382, LOC13);
+LOC13 = Createvar_179369(P_179378, (*(*Rec_179379).KindU.S4.Sym).Typ, NIM_FALSE);
+App_47031(&Result_179382, LOC13);
 F.line = 924;F.filename = "ecmasgen.nim";
-(*C_178381) = addInt((*C_178381), 1);
+(*C_179381) = addInt((*C_179381), 1);
 break;
 default:
 F.line = 925;F.filename = "ecmasgen.nim";
-Internalerror_41567((*Rec_178379).Info, ((NimStringDesc*) &TMP178493));
+Internalerror_42567((*Rec_179379).Info, ((NimStringDesc*) &TMP179493));
 break;
 }
 framePtr = framePtr->prev;
-return Result_178382;
+return Result_179382;
 }
-N_NIMCALL(TY46008*, Createvar_178369)(TY174021* P_178372, TY49551* Typ_178373, NIM_BOOL Indirect_178374) {
-TY46008* Result_178500;
-TY49551* T_178501;
-NI Length_178502;
+N_NIMCALL(TY47008*, Createvar_179369)(TY175021* P_179372, TY50551* Typ_179373, NIM_BOOL Indirect_179374) {
+TY47008* Result_179500;
+TY50551* T_179501;
+NI Length_179502;
 NI64 LOC1;
-TY49551* E_178503;
-TY53637 LOC5;
-NI I_178510;
-TY46008* LOC10;
-NI C_178530;
-TY46008* LOC11;
-NI C_178534;
+TY50551* E_179503;
+TY54637 LOC5;
+NI I_179510;
+TY47008* LOC10;
+NI C_179530;
+TY47008* LOC11;
+NI C_179534;
 NIM_BOOL LOC13;
-TY46451 LOC17;
-TY46008* LOC19;
+TY47451 LOC17;
+TY47008* LOC19;
 NU8 LOC21;
 NimStringDesc* LOC24;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -4744,139 +4744,139 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_178500 = 0;
-T_178501 = 0;
+Result_179500 = 0;
+T_179501 = 0;
 F.line = 928;F.filename = "ecmasgen.nim";
-T_178501 = Skiptypes_91085(Typ_178373, 43008);
+T_179501 = Skiptypes_92085(Typ_179373, 43008);
 F.line = 929;F.filename = "ecmasgen.nim";
-switch ((*T_178501).Kind) {
+switch ((*T_179501).Kind) {
 case ((NU8) 31) ... ((NU8) 35):
 case ((NU8) 14):
 case ((NU8) 2):
 F.line = 931;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178112), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179112), Indirect_179374);
 break;
 case ((NU8) 36) ... ((NU8) 39):
 F.line = 933;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178615), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179615), Indirect_179374);
 break;
 case ((NU8) 20):
 F.line = 935;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*Typ_178373).Sons->Sup.len)) raiseIndexError();
-Result_178500 = Createvar_178369(P_178372, (*Typ_178373).Sons->data[0], Indirect_178374);
+if ((NU)(0) >= (NU)((*Typ_179373).Sons->Sup.len)) raiseIndexError();
+Result_179500 = Createvar_179369(P_179372, (*Typ_179373).Sons->data[0], Indirect_179374);
 break;
 case ((NU8) 19):
 F.line = 937;F.filename = "ecmasgen.nim";
-Result_178500 = Torope_46046(((NimStringDesc*) &TMP178616));
+Result_179500 = Torope_47046(((NimStringDesc*) &TMP179616));
 break;
 case ((NU8) 1):
 F.line = 939;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178617), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179617), Indirect_179374);
 break;
 case ((NU8) 16):
 case ((NU8) 4):
-Length_178502 = 0;
+Length_179502 = 0;
 F.line = 941;F.filename = "ecmasgen.nim";
-LOC1 = Lengthord_91007(T_178501);
-Length_178502 = ((NI) (LOC1));
-E_178503 = 0;
+LOC1 = Lengthord_92007(T_179501);
+Length_179502 = ((NI) (LOC1));
+E_179503 = 0;
 F.line = 942;F.filename = "ecmasgen.nim";
-E_178503 = Elemtype_91089(T_178501);
+E_179503 = Elemtype_92089(T_179501);
 F.line = 943;F.filename = "ecmasgen.nim";
-if (!(32 < Length_178502)) goto LA3;
+if (!(32 < Length_179502)) goto LA3;
 F.line = 944;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_178372, ((NimStringDesc*) &TMP178618));
+Usemagic_175882(P_179372, ((NimStringDesc*) &TMP179618));
 F.line = 945;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = Torope_46052(((NI64) (Length_178502)));
-LOC5[1] = Createvar_178369(P_178372, E_178503, NIM_FALSE);
-LOC5[2] = Gentypeinfo_174236(P_178372, E_178503);
-Result_178500 = Ropef_46069(((NimStringDesc*) &TMP178619), LOC5, 3);
+LOC5[0] = Torope_47052(((NI64) (Length_179502)));
+LOC5[1] = Createvar_179369(P_179372, E_179503, NIM_FALSE);
+LOC5[2] = Gentypeinfo_175236(P_179372, E_179503);
+Result_179500 = Ropef_47069(((NimStringDesc*) &TMP179619), LOC5, 3);
 goto LA2;
 LA3: ;
 F.line = 948;F.filename = "ecmasgen.nim";
-Result_178500 = Torope_46046(((NimStringDesc*) &TMP178620));
-I_178510 = 0;
+Result_179500 = Torope_47046(((NimStringDesc*) &TMP179620));
+I_179510 = 0;
 F.line = 949;F.filename = "ecmasgen.nim";
-I_178510 = 0;
+I_179510 = 0;
 F.line = 950;F.filename = "ecmasgen.nim";
 while (1) {
-if (!(I_178510 < Length_178502)) goto LA6;
+if (!(I_179510 < Length_179502)) goto LA6;
 F.line = 951;F.filename = "ecmasgen.nim";
-if (!(0 < I_178510)) goto LA8;
+if (!(0 < I_179510)) goto LA8;
 F.line = 951;F.filename = "ecmasgen.nim";
-App_46036(&Result_178500, ((NimStringDesc*) &TMP174568));
+App_47036(&Result_179500, ((NimStringDesc*) &TMP175568));
 LA8: ;
 F.line = 952;F.filename = "ecmasgen.nim";
 LOC10 = 0;
-LOC10 = Createvar_178369(P_178372, E_178503, NIM_FALSE);
-App_46031(&Result_178500, LOC10);
+LOC10 = Createvar_179369(P_179372, E_179503, NIM_FALSE);
+App_47031(&Result_179500, LOC10);
 F.line = 953;F.filename = "ecmasgen.nim";
-I_178510 = addInt(I_178510, 1);
+I_179510 = addInt(I_179510, 1);
 } LA6: ;
 F.line = 954;F.filename = "ecmasgen.nim";
-App_46036(&Result_178500, ((NimStringDesc*) &TMP178621));
+App_47036(&Result_179500, ((NimStringDesc*) &TMP179621));
 LA2: ;
 break;
 case ((NU8) 18):
 F.line = 956;F.filename = "ecmasgen.nim";
-Result_178500 = Torope_46046(((NimStringDesc*) &TMP178622));
-C_178530 = 0;
+Result_179500 = Torope_47046(((NimStringDesc*) &TMP179622));
+C_179530 = 0;
 F.line = 957;F.filename = "ecmasgen.nim";
-C_178530 = 0;
+C_179530 = 0;
 F.line = 958;F.filename = "ecmasgen.nim";
 LOC11 = 0;
-LOC11 = Createrecordvaraux_178375(P_178372, (*T_178501).N, &C_178530);
-App_46031(&Result_178500, LOC11);
+LOC11 = Createrecordvaraux_179375(P_179372, (*T_179501).N, &C_179530);
+App_47031(&Result_179500, LOC11);
 F.line = 959;F.filename = "ecmasgen.nim";
-App_46036(&Result_178500, ((NimStringDesc*) &TMP178623));
+App_47036(&Result_179500, ((NimStringDesc*) &TMP179623));
 break;
 case ((NU8) 17):
 F.line = 961;F.filename = "ecmasgen.nim";
-Result_178500 = Torope_46046(((NimStringDesc*) &TMP178622));
-C_178534 = 0;
+Result_179500 = Torope_47046(((NimStringDesc*) &TMP179622));
+C_179534 = 0;
 F.line = 962;F.filename = "ecmasgen.nim";
-C_178534 = 0;
+C_179534 = 0;
 F.line = 963;F.filename = "ecmasgen.nim";
-LOC13 = !((((*T_178501).Flags &(1<<((((NU8) 2))&7)))!=0));
+LOC13 = !((((*T_179501).Flags &(1<<((((NU8) 2))&7)))!=0));
 if (LOC13) goto LA14;
-if ((NU)(0) >= (NU)((*T_178501).Sons->Sup.len)) raiseIndexError();
-LOC13 = !(((*T_178501).Sons->data[0] == NIM_NIL));
+if ((NU)(0) >= (NU)((*T_179501).Sons->Sup.len)) raiseIndexError();
+LOC13 = !(((*T_179501).Sons->data[0] == NIM_NIL));
 LA14: ;
 if (!LOC13) goto LA15;
 F.line = 964;F.filename = "ecmasgen.nim";
-C_178534 = addInt(C_178534, 1);
+C_179534 = addInt(C_179534, 1);
 F.line = 965;F.filename = "ecmasgen.nim";
 memset((void*)&LOC17, 0, sizeof(LOC17));
-LOC17[0] = Gentypeinfo_174236(P_178372, T_178501);
-Appf_46074(&Result_178500, ((NimStringDesc*) &TMP178624), LOC17, 1);
+LOC17[0] = Gentypeinfo_175236(P_179372, T_179501);
+Appf_47074(&Result_179500, ((NimStringDesc*) &TMP179624), LOC17, 1);
 LA15: ;
 F.line = 966;F.filename = "ecmasgen.nim";
 while (1) {
-if (!!((T_178501 == NIM_NIL))) goto LA18;
+if (!!((T_179501 == NIM_NIL))) goto LA18;
 F.line = 967;F.filename = "ecmasgen.nim";
 LOC19 = 0;
-LOC19 = Createrecordvaraux_178375(P_178372, (*T_178501).N, &C_178534);
-App_46031(&Result_178500, LOC19);
+LOC19 = Createrecordvaraux_179375(P_179372, (*T_179501).N, &C_179534);
+App_47031(&Result_179500, LOC19);
 F.line = 968;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*T_178501).Sons->Sup.len)) raiseIndexError();
-T_178501 = (*T_178501).Sons->data[0];
+if ((NU)(0) >= (NU)((*T_179501).Sons->Sup.len)) raiseIndexError();
+T_179501 = (*T_179501).Sons->data[0];
 } LA18: ;
 F.line = 969;F.filename = "ecmasgen.nim";
-App_46036(&Result_178500, ((NimStringDesc*) &TMP178623));
+App_47036(&Result_179500, ((NimStringDesc*) &TMP179623));
 break;
 case ((NU8) 23):
 case ((NU8) 21):
 case ((NU8) 22):
 F.line = 971;F.filename = "ecmasgen.nim";
-LOC21 = Maptype_174142(T_178501);
+LOC21 = Maptype_175142(T_179501);
 if (!(LOC21 == ((NU8) 8))) goto LA22;
 F.line = 971;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178625), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179625), Indirect_179374);
 goto LA20;
 LA22: ;
 F.line = 972;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178626), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179626), Indirect_179374);
 LA20: ;
 break;
 case ((NU8) 24):
@@ -4884,24 +4884,24 @@ case ((NU8) 28):
 case ((NU8) 29):
 case ((NU8) 26):
 F.line = 974;F.filename = "ecmasgen.nim";
-Result_178500 = Puttoseq_178359(((NimStringDesc*) &TMP178626), Indirect_178374);
+Result_179500 = Puttoseq_179359(((NimStringDesc*) &TMP179626), Indirect_179374);
 break;
 default:
 F.line = 976;F.filename = "ecmasgen.nim";
 LOC24 = 0;
-LOC24 = rawNewString(reprEnum((*T_178501).Kind, NTI49162)->Sup.len + 11);
-appendString(LOC24, ((NimStringDesc*) &TMP178627));
-appendString(LOC24, reprEnum((*T_178501).Kind, NTI49162));
-Internalerror_41571(LOC24);
+LOC24 = rawNewString(reprEnum((*T_179501).Kind, NTI50162)->Sup.len + 11);
+appendString(LOC24, ((NimStringDesc*) &TMP179627));
+appendString(LOC24, reprEnum((*T_179501).Kind, NTI50162));
+Internalerror_42571(LOC24);
 F.line = 977;F.filename = "ecmasgen.nim";
-Result_178500 = NIM_NIL;
+Result_179500 = NIM_NIL;
 break;
 }
 framePtr = framePtr->prev;
-return Result_178500;
+return Result_179500;
 }
-N_NIMCALL(NIM_BOOL, Isindirect_178628)(TY49547* V_178630) {
-NIM_BOOL Result_178631;
+N_NIMCALL(NIM_BOOL, Isindirect_179628)(TY50547* V_179630) {
+NIM_BOOL Result_179631;
 NIM_BOOL LOC1;
 NU8 LOC3;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -4912,33 +4912,33 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_178631 = 0;
+Result_179631 = 0;
 F.line = 980;F.filename = "ecmasgen.nim";
-LOC1 = (((*V_178630).Flags &(1<<((((NU8) 18))&31)))!=0);
+LOC1 = (((*V_179630).Flags &(1<<((((NU8) 18))&31)))!=0);
 if (!(LOC1)) goto LA2;
-LOC3 = Maptype_174142((*V_178630).Typ);
+LOC3 = Maptype_175142((*V_179630).Typ);
 LOC1 = !((LOC3 == ((NU8) 7)));
 LA2: ;
-Result_178631 = LOC1;
+Result_179631 = LOC1;
 framePtr = framePtr->prev;
-return Result_178631;
+return Result_179631;
 }
-N_NIMCALL(void, Genvarinit_178652)(TY174021* P_178655, TY49547* V_178656, TY49525* N_178657, TY174013* R_178659) {
-TY174013 A_178660;
-TY46008* S_178661;
-TY53695 LOC4;
+N_NIMCALL(void, Genvarinit_179652)(TY175021* P_179655, TY50547* V_179656, TY50525* N_179657, TY175013* R_179659) {
+TY175013 A_179660;
+TY47008* S_179661;
+TY54695 LOC4;
 NIM_BOOL LOC5;
-TY46008* LOC6;
+TY47008* LOC6;
 NU8 LOC7;
-TY46451 LOC11;
+TY47451 LOC11;
 NIM_BOOL LOC13;
-TY53695 LOC16;
-TY53637 LOC23;
-TY53637 LOC24;
-TY46451 LOC28;
+TY54695 LOC16;
+TY54637 LOC23;
+TY54637 LOC24;
+TY47451 LOC28;
 NIM_BOOL LOC30;
-TY53695 LOC33;
-TY53695 LOC34;
+TY54695 LOC33;
+TY54695 LOC34;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genVarInit";
@@ -4947,115 +4947,115 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_178660, 0, sizeof(A_178660));
-S_178661 = 0;
+memset((void*)&A_179660, 0, sizeof(A_179660));
+S_179661 = 0;
 F.line = 986;F.filename = "ecmasgen.nim";
-if (!(N_178657 == NIM_NIL)) goto LA2;
+if (!(N_179657 == NIM_NIL)) goto LA2;
 F.line = 987;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
-LOC4[0] = Manglename_174218(V_178656);
-LOC5 = Isindirect_178628(V_178656);
-LOC4[1] = Createvar_178369(P_178655, (*V_178656).Typ, LOC5);
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP178768), LOC4, 2);
+LOC4[0] = Manglename_175218(V_179656);
+LOC5 = Isindirect_179628(V_179656);
+LOC4[1] = Createvar_179369(P_179655, (*V_179656).Typ, LOC5);
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP179768), LOC4, 2);
 goto LA1;
 LA2: ;
 F.line = 990;F.filename = "ecmasgen.nim";
 LOC6 = 0;
-LOC6 = Manglename_174218(V_178656);
+LOC6 = Manglename_175218(V_179656);
 F.line = 991;F.filename = "ecmasgen.nim";
-Gen_174868(P_178655, N_178657, &A_178660);
+Gen_175868(P_179655, N_179657, &A_179660);
 F.line = 992;F.filename = "ecmasgen.nim";
-LOC7 = Maptype_174142((*V_178656).Typ);
+LOC7 = Maptype_175142((*V_179656).Typ);
 switch (LOC7) {
 case ((NU8) 7):
 F.line = 994;F.filename = "ecmasgen.nim";
-if (!!((A_178660.Com == NIM_NIL))) goto LA9;
+if (!!((A_179660.Com == NIM_NIL))) goto LA9;
 F.line = 994;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = A_178660.Com;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP175420), LOC11, 1);
+LOC11[0] = A_179660.Com;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP176420), LOC11, 1);
 LA9: ;
 F.line = 995;F.filename = "ecmasgen.nim";
-LOC13 = Needsnocopy_177334(N_178657);
+LOC13 = Needsnocopy_178334(N_179657);
 if (!LOC13) goto LA14;
 F.line = 996;F.filename = "ecmasgen.nim";
-S_178661 = A_178660.Res;
+S_179661 = A_179660.Res;
 goto LA12;
 LA14: ;
 F.line = 998;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_178655, ((NimStringDesc*) &TMP177478));
+Usemagic_175882(P_179655, ((NimStringDesc*) &TMP178478));
 F.line = 999;F.filename = "ecmasgen.nim";
 memset((void*)&LOC16, 0, sizeof(LOC16));
-LOC16[0] = A_178660.Res;
-LOC16[1] = Gentypeinfo_174236(P_178655, (*N_178657).Typ);
-S_178661 = Ropef_46069(((NimStringDesc*) &TMP178769), LOC16, 2);
+LOC16[0] = A_179660.Res;
+LOC16[1] = Gentypeinfo_175236(P_179655, (*N_179657).Typ);
+S_179661 = Ropef_47069(((NimStringDesc*) &TMP179769), LOC16, 2);
 LA12: ;
 break;
 case ((NU8) 8):
 F.line = 1001;F.filename = "ecmasgen.nim";
-if (!!((A_178660.Kind == ((NU8) 8)))) goto LA18;
+if (!!((A_179660.Kind == ((NU8) 8)))) goto LA18;
 F.line = 1001;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_178657).Info, ((NimStringDesc*) &TMP178770));
+Internalerror_42567((*N_179657).Info, ((NimStringDesc*) &TMP179770));
 LA18: ;
 F.line = 1002;F.filename = "ecmasgen.nim";
-if (!!(((262176 & (*V_178656).Flags) == 0))) goto LA21;
+if (!!(((262176 & (*V_179656).Flags) == 0))) goto LA21;
 F.line = 1003;F.filename = "ecmasgen.nim";
 memset((void*)&LOC23, 0, sizeof(LOC23));
-LOC23[0] = (*V_178656).Loc.R;
-LOC23[1] = A_178660.Com;
-LOC23[2] = A_178660.Res;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP178771), LOC23, 3);
+LOC23[0] = (*V_179656).Loc.R;
+LOC23[1] = A_179660.Com;
+LOC23[2] = A_179660.Res;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP179771), LOC23, 3);
 goto LA20;
 LA21: ;
 F.line = 1005;F.filename = "ecmasgen.nim";
 memset((void*)&LOC24, 0, sizeof(LOC24));
-LOC24[0] = (*V_178656).Loc.R;
-LOC24[1] = A_178660.Com;
-LOC24[2] = A_178660.Res;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP178772), LOC24, 3);
+LOC24[0] = (*V_179656).Loc.R;
+LOC24[1] = A_179660.Com;
+LOC24[2] = A_179660.Res;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP179772), LOC24, 3);
 LA20: ;
 F.line = 1006;F.filename = "ecmasgen.nim";
 goto BeforeRet;
 break;
 default:
 F.line = 1008;F.filename = "ecmasgen.nim";
-if (!!((A_178660.Com == NIM_NIL))) goto LA26;
+if (!!((A_179660.Com == NIM_NIL))) goto LA26;
 F.line = 1008;F.filename = "ecmasgen.nim";
 memset((void*)&LOC28, 0, sizeof(LOC28));
-LOC28[0] = A_178660.Com;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP175420), LOC28, 1);
+LOC28[0] = A_179660.Com;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP176420), LOC28, 1);
 LA26: ;
 F.line = 1009;F.filename = "ecmasgen.nim";
-S_178661 = A_178660.Res;
+S_179661 = A_179660.Res;
 break;
 }
 F.line = 1010;F.filename = "ecmasgen.nim";
-LOC30 = Isindirect_178628(V_178656);
+LOC30 = Isindirect_179628(V_179656);
 if (!LOC30) goto LA31;
 F.line = 1010;F.filename = "ecmasgen.nim";
 memset((void*)&LOC33, 0, sizeof(LOC33));
-LOC33[0] = (*V_178656).Loc.R;
-LOC33[1] = S_178661;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP178773), LOC33, 2);
+LOC33[0] = (*V_179656).Loc.R;
+LOC33[1] = S_179661;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP179773), LOC33, 2);
 goto LA29;
 LA31: ;
 F.line = 1011;F.filename = "ecmasgen.nim";
 memset((void*)&LOC34, 0, sizeof(LOC34));
-LOC34[0] = (*V_178656).Loc.R;
-LOC34[1] = S_178661;
-Appf_46074(&(*R_178659).Com, ((NimStringDesc*) &TMP178768), LOC34, 2);
+LOC34[0] = (*V_179656).Loc.R;
+LOC34[1] = S_179661;
+Appf_47074(&(*R_179659).Com, ((NimStringDesc*) &TMP179768), LOC34, 2);
 LA29: ;
 LA1: ;
 BeforeRet: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genvarstmt_178774)(TY174021* P_178777, TY49525* N_178778, TY174013* R_178780) {
-NI I_178788;
-NI HEX3Atmp_178890;
+N_NIMCALL(void, Genvarstmt_179774)(TY175021* P_179777, TY50525* N_179778, TY175013* R_179780) {
+NI I_179788;
+NI HEX3Atmp_179890;
 NI LOC1;
-NI Res_178892;
-TY49525* A_178801;
-TY49547* V_178865;
+NI Res_179892;
+TY50525* A_179801;
+TY50547* V_179865;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genVarStmt";
@@ -5064,64 +5064,64 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_178788 = 0;
-HEX3Atmp_178890 = 0;
+I_179788 = 0;
+HEX3Atmp_179890 = 0;
 F.line = 1014;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_178778);
-HEX3Atmp_178890 = subInt(LOC1, 1);
-Res_178892 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_178892 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_179778);
+HEX3Atmp_179890 = subInt(LOC1, 1);
+Res_179892 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_179892 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_178892 <= HEX3Atmp_178890)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_178788 = Res_178892;
-A_178801 = 0;
+if (!(Res_179892 <= HEX3Atmp_179890)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_179788 = Res_179892;
+A_179801 = 0;
 F.line = 1015;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178778).Kind/8] &(1<<((*N_178778).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178788) >= (NU)((*N_178778).KindU.S6.Sons->Sup.len)) raiseIndexError();
-A_178801 = (*N_178778).KindU.S6.Sons->data[I_178788];
+if (((TMP175136[(*N_179778).Kind/8] &(1<<((*N_179778).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179788) >= (NU)((*N_179778).KindU.S6.Sons->Sup.len)) raiseIndexError();
+A_179801 = (*N_179778).KindU.S6.Sons->data[I_179788];
 F.line = 1016;F.filename = "ecmasgen.nim";
-if (!((*A_178801).Kind == ((NU8) 105))) goto LA5;
+if (!((*A_179801).Kind == ((NU8) 105))) goto LA5;
 F.line = 1016;F.filename = "ecmasgen.nim";
 goto LA3;
 LA5: ;
 F.line = 1017;F.filename = "ecmasgen.nim";
-internalAssert("rod/ecmasgen.nim", 1017, ((*A_178801).Kind == ((NU8) 25)));
+internalAssert("rod/ecmasgen.nim", 1017, ((*A_179801).Kind == ((NU8) 25)));
 F.line = 1018;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*A_178801).Kind/8] &(1<<((*A_178801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*A_178801).KindU.S6.Sons->Sup.len)) raiseIndexError();
-internalAssert("rod/ecmasgen.nim", 1018, ((*(*A_178801).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)));
-V_178865 = 0;
+if (((TMP175136[(*A_179801).Kind/8] &(1<<((*A_179801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*A_179801).KindU.S6.Sons->Sup.len)) raiseIndexError();
+internalAssert("rod/ecmasgen.nim", 1018, ((*(*A_179801).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)));
+V_179865 = 0;
 F.line = 1019;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*A_178801).Kind/8] &(1<<((*A_178801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*A_178801).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*A_178801).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*A_178801).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-V_178865 = (*(*A_178801).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*A_179801).Kind/8] &(1<<((*A_179801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*A_179801).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*A_179801).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*A_179801).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+V_179865 = (*(*A_179801).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 1020;F.filename = "ecmasgen.nim";
-if (!(((*V_178865).Loc.Flags &(1<<((((NU8) 3))&7)))!=0)) goto LA8;
+if (!(((*V_179865).Loc.Flags &(1<<((((NU8) 3))&7)))!=0)) goto LA8;
 F.line = 1020;F.filename = "ecmasgen.nim";
 goto LA3;
 LA8: ;
 F.line = 1021;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_178777, A_178801, R_178780);
+Genlinedir_176516(P_179777, A_179801, R_179780);
 F.line = 1022;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*A_178801).Kind/8] &(1<<((*A_178801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*A_178801).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genvarinit_178652(P_178777, V_178865, (*A_178801).KindU.S6.Sons->data[2], R_178780);
+if (((TMP175136[(*A_179801).Kind/8] &(1<<((*A_179801).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*A_179801).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genvarinit_179652(P_179777, V_179865, (*A_179801).KindU.S6.Sons->data[2], R_179780);
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_178892 = addInt(Res_178892, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_179892 = addInt(Res_179892, 1);
 } LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genconststmt_178895)(TY174021* P_178898, TY49525* N_178899, TY174013* R_178901) {
-NI I_178909;
-NI HEX3Atmp_179035;
+N_NIMCALL(void, Genconststmt_179895)(TY175021* P_179898, TY50525* N_179899, TY175013* R_179901) {
+NI I_179909;
+NI HEX3Atmp_180035;
 NI LOC1;
-NI Res_179037;
-TY49547* C_178988;
+NI Res_180037;
+TY50547* C_179988;
 NIM_BOOL LOC8;
 NIM_BOOL LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -5133,68 +5133,68 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1025;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_178898, N_178899, R_178901);
-I_178909 = 0;
-HEX3Atmp_179035 = 0;
+Genlinedir_176516(P_179898, N_179899, R_179901);
+I_179909 = 0;
+HEX3Atmp_180035 = 0;
 F.line = 1026;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_178899);
-HEX3Atmp_179035 = subInt(LOC1, 1);
-Res_179037 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_179037 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_179899);
+HEX3Atmp_180035 = subInt(LOC1, 1);
+Res_180037 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_180037 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_179037 <= HEX3Atmp_179035)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_178909 = Res_179037;
+if (!(Res_180037 <= HEX3Atmp_180035)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_179909 = Res_180037;
 F.line = 1027;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178899).Kind/8] &(1<<((*N_178899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178909) >= (NU)((*N_178899).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*N_178899).KindU.S6.Sons->data[I_178909]).Kind == ((NU8) 105))) goto LA5;
+if (((TMP175136[(*N_179899).Kind/8] &(1<<((*N_179899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179909) >= (NU)((*N_179899).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*N_179899).KindU.S6.Sons->data[I_179909]).Kind == ((NU8) 105))) goto LA5;
 F.line = 1027;F.filename = "ecmasgen.nim";
 goto LA3;
 LA5: ;
 F.line = 1028;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178899).Kind/8] &(1<<((*N_178899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178909) >= (NU)((*N_178899).KindU.S6.Sons->Sup.len)) raiseIndexError();
-internalAssert("rod/ecmasgen.nim", 1028, ((*(*N_178899).KindU.S6.Sons->data[I_178909]).Kind == ((NU8) 89)));
-C_178988 = 0;
+if (((TMP175136[(*N_179899).Kind/8] &(1<<((*N_179899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179909) >= (NU)((*N_179899).KindU.S6.Sons->Sup.len)) raiseIndexError();
+internalAssert("rod/ecmasgen.nim", 1028, ((*(*N_179899).KindU.S6.Sons->data[I_179909]).Kind == ((NU8) 89)));
+C_179988 = 0;
 F.line = 1029;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178899).Kind/8] &(1<<((*N_178899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178909) >= (NU)((*N_178899).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_178899).KindU.S6.Sons->data[I_178909]).Kind/8] &(1<<((*(*N_178899).KindU.S6.Sons->data[I_178909]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*N_178899).KindU.S6.Sons->data[I_178909]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*(*N_178899).KindU.S6.Sons->data[I_178909]).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*(*N_178899).KindU.S6.Sons->data[I_178909]).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-C_178988 = (*(*(*N_178899).KindU.S6.Sons->data[I_178909]).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_179899).Kind/8] &(1<<((*N_179899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179909) >= (NU)((*N_179899).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_179899).KindU.S6.Sons->data[I_179909]).Kind/8] &(1<<((*(*N_179899).KindU.S6.Sons->data[I_179909]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*N_179899).KindU.S6.Sons->data[I_179909]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*(*N_179899).KindU.S6.Sons->data[I_179909]).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*(*N_179899).KindU.S6.Sons->data[I_179909]).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+C_179988 = (*(*(*N_179899).KindU.S6.Sons->data[I_179909]).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 1030;F.filename = "ecmasgen.nim";
-LOC9 = !(((*C_178988).Ast == NIM_NIL));
+LOC9 = !(((*C_179988).Ast == NIM_NIL));
 if (!(LOC9)) goto LA10;
-LOC9 = ((851968 &(IL64(1)<<(((*(*C_178988).Typ).Kind)&IL64(63))))!=0);
+LOC9 = ((851968 &(IL64(1)<<(((*(*C_179988).Typ).Kind)&IL64(63))))!=0);
 LA10: ;
 LOC8 = LOC9;
 if (!(LOC8)) goto LA11;
-LOC8 = !((((*C_178988).Loc.Flags &(1<<((((NU8) 3))&7)))!=0));
+LOC8 = !((((*C_179988).Loc.Flags &(1<<((((NU8) 3))&7)))!=0));
 LA11: ;
 if (!LOC8) goto LA12;
 F.line = 1032;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_178899).Kind/8] &(1<<((*N_178899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_178909) >= (NU)((*N_178899).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genlinedir_175516(P_178898, (*N_178899).KindU.S6.Sons->data[I_178909], R_178901);
+if (((TMP175136[(*N_179899).Kind/8] &(1<<((*N_179899).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_179909) >= (NU)((*N_179899).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genlinedir_176516(P_179898, (*N_179899).KindU.S6.Sons->data[I_179909], R_179901);
 F.line = 1033;F.filename = "ecmasgen.nim";
-Genvarinit_178652(P_178898, C_178988, (*C_178988).Ast, R_178901);
+Genvarinit_179652(P_179898, C_179988, (*C_179988).Ast, R_179901);
 LA12: ;
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_179037 = addInt(Res_179037, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_180037 = addInt(Res_180037, 1);
 } LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gennew_179040)(TY174021* P_179043, TY49525* N_179044, TY174013* R_179046) {
-TY174013 A_179047;
-TY49551* T_179073;
-TY49551* LOC1;
-TY46451 LOC5;
-TY53695 LOC6;
+N_NIMCALL(void, Gennew_180040)(TY175021* P_180043, TY50525* N_180044, TY175013* R_180046) {
+TY175013 A_180047;
+TY50551* T_180073;
+TY50551* LOC1;
+TY47451 LOC5;
+TY54695 LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genNew";
@@ -5203,35 +5203,35 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179047, 0, sizeof(A_179047));
+memset((void*)&A_180047, 0, sizeof(A_180047));
 F.line = 1037;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179044).Kind/8] &(1<<((*N_179044).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179044).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179043, (*N_179044).KindU.S6.Sons->data[1], &A_179047);
-T_179073 = 0;
+if (((TMP175136[(*N_180044).Kind/8] &(1<<((*N_180044).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180044).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180043, (*N_180044).KindU.S6.Sons->data[1], &A_180047);
+T_180073 = 0;
 F.line = 1038;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179044).Kind/8] &(1<<((*N_179044).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179044).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180044).Kind/8] &(1<<((*N_180044).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180044).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC1 = 0;
-LOC1 = Skiptypes_91085((*(*N_179044).KindU.S6.Sons->data[1]).Typ, 8431616);
+LOC1 = Skiptypes_92085((*(*N_180044).KindU.S6.Sons->data[1]).Typ, 8431616);
 if ((NU)(0) >= (NU)((*LOC1).Sons->Sup.len)) raiseIndexError();
-T_179073 = (*LOC1).Sons->data[0];
+T_180073 = (*LOC1).Sons->data[0];
 F.line = 1039;F.filename = "ecmasgen.nim";
-if (!!((A_179047.Com == NIM_NIL))) goto LA3;
+if (!!((A_180047.Com == NIM_NIL))) goto LA3;
 F.line = 1039;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = A_179047.Com;
-Appf_46074(&(*R_179046).Com, ((NimStringDesc*) &TMP175420), LOC5, 1);
+LOC5[0] = A_180047.Com;
+Appf_47074(&(*R_180046).Com, ((NimStringDesc*) &TMP176420), LOC5, 1);
 LA3: ;
 F.line = 1040;F.filename = "ecmasgen.nim";
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = A_179047.Res;
-LOC6[1] = Createvar_178369(P_179043, T_179073, NIM_TRUE);
-Appf_46074(&(*R_179046).Com, ((NimStringDesc*) &TMP177477), LOC6, 2);
+LOC6[0] = A_180047.Res;
+LOC6[1] = Createvar_179369(P_180043, T_180073, NIM_TRUE);
+Appf_47074(&(*R_180046).Com, ((NimStringDesc*) &TMP178477), LOC6, 2);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genord_179095)(TY174021* P_179098, TY49525* N_179099, TY174013* R_179101) {
-TY49551* LOC1;
+N_NIMCALL(void, Genord_180095)(TY175021* P_180098, TY50525* N_180099, TY175013* R_180101) {
+TY50551* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genOrd";
@@ -5241,38 +5241,38 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1043;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179099).Kind/8] &(1<<((*N_179099).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179099).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180099).Kind/8] &(1<<((*N_180099).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180099).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC1 = 0;
-LOC1 = Skiptypes_91085((*(*N_179099).KindU.S6.Sons->data[1]).Typ, 8431616);
+LOC1 = Skiptypes_92085((*(*N_180099).KindU.S6.Sons->data[1]).Typ, 8431616);
 switch ((*LOC1).Kind) {
 case ((NU8) 14):
 case ((NU8) 31) ... ((NU8) 35):
 case ((NU8) 2):
 F.line = 1044;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179099).Kind/8] &(1<<((*N_179099).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179099).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179098, (*N_179099).KindU.S6.Sons->data[1], R_179101);
+if (((TMP175136[(*N_180099).Kind/8] &(1<<((*N_180099).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180099).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180098, (*N_180099).KindU.S6.Sons->data[1], R_180101);
 break;
 case ((NU8) 1):
 F.line = 1045;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179098, N_179099, R_179101, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179126));
+Unaryexpr_176421(P_180098, N_180099, R_180101, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180126));
 break;
 default:
 F.line = 1046;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_179099).Info, ((NimStringDesc*) &TMP179127));
+Internalerror_42567((*N_180099).Info, ((NimStringDesc*) &TMP180127));
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genconstrstr_179128)(TY174021* P_179131, TY49525* N_179132, TY174013* R_179134) {
-TY174013 A_179135;
-TY174013 B_179136;
-TY49551* LOC2;
-TY46451 LOC5;
-TY49551* LOC7;
-TY46451 LOC10;
-TY53695 LOC11;
+N_NIMCALL(void, Genconstrstr_180128)(TY175021* P_180131, TY50525* N_180132, TY175013* R_180134) {
+TY175013 A_180135;
+TY175013 B_180136;
+TY50551* LOC2;
+TY47451 LOC5;
+TY50551* LOC7;
+TY47451 LOC10;
+TY54695 LOC11;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genConStrStr";
@@ -5281,57 +5281,57 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179135, 0, sizeof(A_179135));
-memset((void*)&B_179136, 0, sizeof(B_179136));
+memset((void*)&A_180135, 0, sizeof(A_180135));
+memset((void*)&B_180136, 0, sizeof(B_180136));
 F.line = 1050;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179132).Kind/8] &(1<<((*N_179132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179132).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179131, (*N_179132).KindU.S6.Sons->data[1], &A_179135);
+if (((TMP175136[(*N_180132).Kind/8] &(1<<((*N_180132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180132).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180131, (*N_180132).KindU.S6.Sons->data[1], &A_180135);
 F.line = 1051;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179132).Kind/8] &(1<<((*N_179132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_179132).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179131, (*N_179132).KindU.S6.Sons->data[2], &B_179136);
+if (((TMP175136[(*N_180132).Kind/8] &(1<<((*N_180132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_180132).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180131, (*N_180132).KindU.S6.Sons->data[2], &B_180136);
 F.line = 1052;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179134).Com, Mergeexpr_174887(A_179135.Com, B_179136.Com));
+unsureAsgnRef((void**) &(*R_180134).Com, Mergeexpr_175887(A_180135.Com, B_180136.Com));
 F.line = 1053;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179132).Kind/8] &(1<<((*N_179132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179132).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180132).Kind/8] &(1<<((*N_180132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180132).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC2 = 0;
-LOC2 = Skiptypes_91085((*(*N_179132).KindU.S6.Sons->data[1]).Typ, 9480192);
+LOC2 = Skiptypes_92085((*(*N_180132).KindU.S6.Sons->data[1]).Typ, 9480192);
 if (!((*LOC2).Kind == ((NU8) 2))) goto LA3;
 F.line = 1054;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = A_179135.Res;
-A_179135.Res = Ropef_46069(((NimStringDesc*) &TMP179217), LOC5, 1);
+LOC5[0] = A_180135.Res;
+A_180135.Res = Ropef_47069(((NimStringDesc*) &TMP180217), LOC5, 1);
 LA3: ;
 F.line = 1055;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179132).Kind/8] &(1<<((*N_179132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_179132).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180132).Kind/8] &(1<<((*N_180132).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_180132).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC7 = 0;
-LOC7 = Skiptypes_91085((*(*N_179132).KindU.S6.Sons->data[2]).Typ, 9480192);
+LOC7 = Skiptypes_92085((*(*N_180132).KindU.S6.Sons->data[2]).Typ, 9480192);
 if (!((*LOC7).Kind == ((NU8) 2))) goto LA8;
 F.line = 1056;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = B_179136.Res;
-B_179136.Res = Ropef_46069(((NimStringDesc*) &TMP179217), LOC10, 1);
+LOC10[0] = B_180136.Res;
+B_180136.Res = Ropef_47069(((NimStringDesc*) &TMP180217), LOC10, 1);
 LA8: ;
 F.line = 1057;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = A_179135.Res;
-LOC11[1] = B_179136.Res;
-unsureAsgnRef((void**) &(*R_179134).Res, Ropef_46069(((NimStringDesc*) &TMP179218), LOC11, 2));
+LOC11[0] = A_180135.Res;
+LOC11[1] = B_180136.Res;
+unsureAsgnRef((void**) &(*R_180134).Res, Ropef_47069(((NimStringDesc*) &TMP180218), LOC11, 2));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genmagic_179219)(TY174021* P_179222, TY49525* N_179223, TY174013* R_179225) {
-TY174013 A_179226;
-TY46008* Line_179227;
-TY46008* Filen_179228;
-NU8 Op_179253;
+N_NIMCALL(void, Genmagic_180219)(TY175021* P_180222, TY50525* N_180223, TY175013* R_180225) {
+TY175013 A_180226;
+TY47008* Line_180227;
+TY47008* Filen_180228;
+NU8 Op_180253;
 NI LOC10;
 NimStringDesc* LOC11;
-TY53637 LOC12;
+TY54637 LOC12;
 NI64 LOC13;
-TY49551* LOC15;
+TY50551* LOC15;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genMagic";
@@ -5340,260 +5340,260 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179226, 0, sizeof(A_179226));
-Line_179227 = 0;
-Filen_179228 = 0;
-Op_179253 = 0;
+memset((void*)&A_180226, 0, sizeof(A_180226));
+Line_180227 = 0;
+Filen_180228 = 0;
+Op_180253 = 0;
 F.line = 1063;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_179223).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_179223).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Op_179253 = (*(*(*N_179223).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_180223).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_180223).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Op_180253 = (*(*(*N_180223).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
 F.line = 1064;F.filename = "ecmasgen.nim";
-switch (Op_179253) {
+switch (Op_180253) {
 case ((NU8) 129):
 F.line = 1065;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genor_174971(P_179222, (*N_179223).KindU.S6.Sons->data[1], (*N_179223).KindU.S6.Sons->data[2], R_179225);
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genor_175971(P_180222, (*N_180223).KindU.S6.Sons->data[1], (*N_180223).KindU.S6.Sons->data[2], R_180225);
 break;
 case ((NU8) 128):
 F.line = 1066;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genand_174954(P_179222, (*N_179223).KindU.S6.Sons->data[1], (*N_179223).KindU.S6.Sons->data[2], R_179225);
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genand_175954(P_180222, (*N_180223).KindU.S6.Sons->data[1], (*N_180223).KindU.S6.Sons->data[2], R_180225);
 break;
 case ((NU8) 26) ... ((NU8) 126):
 F.line = 1067;F.filename = "ecmasgen.nim";
-Arith_175446(P_179222, N_179223, R_179225, Op_179253);
+Arith_176446(P_180222, N_180223, R_180225, Op_180253);
 break;
 case ((NU8) 156):
 F.line = 1068;F.filename = "ecmasgen.nim";
-Genswap_177544(P_179222, N_179223, R_179225);
+Genswap_178544(P_180222, N_180223, R_180225);
 break;
 case ((NU8) 9):
 F.line = 1071;F.filename = "ecmasgen.nim";
-if (!!((((*P_179222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA2;
+if (!!((((*P_180222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA2;
 F.line = 1071;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179444));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180444));
 goto LA1;
 LA2: ;
 F.line = 1072;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP175201), ((NimStringDesc*) &TMP175202));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP176201), ((NimStringDesc*) &TMP176202));
 LA1: ;
 break;
 case ((NU8) 8):
 F.line = 1075;F.filename = "ecmasgen.nim";
-if (!!((((*P_179222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA5;
+if (!!((((*P_180222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA5;
 F.line = 1075;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179444));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180444));
 goto LA4;
 LA5: ;
 F.line = 1076;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP175198), ((NimStringDesc*) &TMP175199));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP176198), ((NimStringDesc*) &TMP176199));
 LA4: ;
 break;
 case ((NU8) 146):
 F.line = 1077;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179445), ((NimStringDesc*) &TMP179446));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180445), ((NimStringDesc*) &TMP180446));
 break;
 case ((NU8) 147):
 F.line = 1079;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179447));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180447));
 break;
 case ((NU8) 148):
 F.line = 1081;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179448));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180448));
 break;
 case ((NU8) 140):
 F.line = 1082;F.filename = "ecmasgen.nim";
-Genconstrstr_179128(P_179222, N_179223, R_179225);
+Genconstrstr_180128(P_180222, N_180223, R_180225);
 break;
 case ((NU8) 130):
 F.line = 1083;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179449), ((NimStringDesc*) &TMP179450));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180449), ((NimStringDesc*) &TMP180450));
 break;
 case ((NU8) 131):
 F.line = 1084;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179451), ((NimStringDesc*) &TMP179452));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180451), ((NimStringDesc*) &TMP180452));
 break;
 case ((NU8) 132):
 F.line = 1085;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179451), ((NimStringDesc*) &TMP179453));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180451), ((NimStringDesc*) &TMP180453));
 break;
 case ((NU8) 157):
 F.line = 1086;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179454));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180454));
 break;
 case ((NU8) 155):
 F.line = 1088;F.filename = "ecmasgen.nim";
-if (!(((*P_179222).Options &(1<<((((NU8) 9))&31)))!=0)) goto LA8;
+if (!(((*P_180222).Options &(1<<((((NU8) 9))&31)))!=0)) goto LA8;
 F.line = 1089;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_179222, ((NimStringDesc*) &TMP179455));
+Usemagic_175882(P_180222, ((NimStringDesc*) &TMP180455));
 F.line = 1090;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179222, (*N_179223).KindU.S6.Sons->data[1], &A_179226);
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180222, (*N_180223).KindU.S6.Sons->data[1], &A_180226);
 F.line = 1091;F.filename = "ecmasgen.nim";
-LOC10 = Tolinenumber_41585((*N_179223).Info);
-Line_179227 = Torope_46052(((NI64) (LOC10)));
+LOC10 = Tolinenumber_42585((*N_180223).Info);
+Line_180227 = Torope_47052(((NI64) (LOC10)));
 F.line = 1092;F.filename = "ecmasgen.nim";
 LOC11 = 0;
-LOC11 = Tofilename_41579((*N_179223).Info);
-Filen_179228 = Makecstring_153010(LOC11);
+LOC11 = Tofilename_42579((*N_180223).Info);
+Filen_180228 = Makecstring_154010(LOC11);
 F.line = 1093;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = Filen_179228;
-LOC12[1] = Line_179227;
-LOC12[2] = Mergeexpr_174919(&A_179226);
-Appf_46074(&(*R_179225).Com, ((NimStringDesc*) &TMP179456), LOC12, 3);
+LOC12[0] = Filen_180228;
+LOC12[1] = Line_180227;
+LOC12[2] = Mergeexpr_175919(&A_180226);
+Appf_47074(&(*R_180225).Com, ((NimStringDesc*) &TMP180456), LOC12, 3);
 LA8: ;
 break;
 case ((NU8) 13):
 case ((NU8) 14):
 F.line = 1095;F.filename = "ecmasgen.nim";
-Gennew_179040(P_179222, N_179223, R_179225);
+Gennew_180040(P_180222, N_180223, R_180225);
 break;
 case ((NU8) 5):
 F.line = 1096;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC13 = Getsize_91113((*(*N_179223).KindU.S6.Sons->data[1]).Typ);
-unsureAsgnRef((void**) &(*R_179225).Res, Torope_46052(LOC13));
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC13 = Getsize_92113((*(*N_180223).KindU.S6.Sons->data[1]).Typ);
+unsureAsgnRef((void**) &(*R_180225).Res, Torope_47052(LOC13));
 break;
 case ((NU8) 23):
 F.line = 1097;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179222, (*N_179223).KindU.S6.Sons->data[1], R_179225);
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180222, (*N_180223).KindU.S6.Sons->data[1], R_180225);
 break;
 case ((NU8) 12):
 F.line = 1098;F.filename = "ecmasgen.nim";
-Genord_179095(P_179222, N_179223, R_179225);
+Genord_180095(P_180222, N_180223, R_180225);
 break;
 case ((NU8) 17):
 F.line = 1099;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179457));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180457));
 break;
 case ((NU8) 19):
 case ((NU8) 16):
 case ((NU8) 18):
 F.line = 1101;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179458));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180458));
 break;
 case ((NU8) 4):
 F.line = 1103;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
 LOC15 = 0;
-LOC15 = Skiptypes_91085((*(*N_179223).KindU.S6.Sons->data[0]).Typ, 8431616);
+LOC15 = Skiptypes_92085((*(*N_180223).KindU.S6.Sons->data[0]).Typ, 8431616);
 if (!((*LOC15).Kind == ((NU8) 28))) goto LA16;
 F.line = 1104;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179459));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180459));
 goto LA14;
 LA16: ;
 F.line = 1106;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179457));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180457));
 LA14: ;
 break;
 case ((NU8) 10):
 F.line = 1108;F.filename = "ecmasgen.nim";
-if (!!((((*P_179222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA19;
+if (!!((((*P_180222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA19;
 F.line = 1108;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179460));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180460));
 goto LA18;
 LA19: ;
 F.line = 1109;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP175198), ((NimStringDesc*) &TMP179461));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP176198), ((NimStringDesc*) &TMP180461));
 LA18: ;
 break;
 case ((NU8) 11):
 F.line = 1111;F.filename = "ecmasgen.nim";
-if (!!((((*P_179222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA22;
+if (!!((((*P_180222).Options &(1<<((((NU8) 5))&31)))!=0))) goto LA22;
 F.line = 1111;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179462));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180462));
 goto LA21;
 LA22: ;
 F.line = 1112;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP175201), ((NimStringDesc*) &TMP179463));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP176201), ((NimStringDesc*) &TMP180463));
 LA21: ;
 break;
 case ((NU8) 153):
 F.line = 1113;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179464));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180464));
 break;
 case ((NU8) 154):
 F.line = 1114;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179465));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180465));
 break;
 case ((NU8) 22):
 F.line = 1115;F.filename = "ecmasgen.nim";
-Unaryexpr_175421(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179466), ((NimStringDesc*) &TMP179467));
+Unaryexpr_176421(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180466), ((NimStringDesc*) &TMP180467));
 break;
 case ((NU8) 135):
 F.line = 1116;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179468), ((NimStringDesc*) &TMP179469));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180468), ((NimStringDesc*) &TMP180469));
 break;
 case ((NU8) 134):
 F.line = 1117;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179470), ((NimStringDesc*) &TMP179471));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180470), ((NimStringDesc*) &TMP180471));
 break;
 case ((NU8) 133):
 F.line = 1118;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179472), ((NimStringDesc*) &TMP179473));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180472), ((NimStringDesc*) &TMP180473));
 break;
 case ((NU8) 136):
 F.line = 1119;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179474), ((NimStringDesc*) &TMP179475));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180474), ((NimStringDesc*) &TMP180475));
 break;
 case ((NU8) 137):
 F.line = 1120;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179476), ((NimStringDesc*) &TMP179477));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180476), ((NimStringDesc*) &TMP180477));
 break;
 case ((NU8) 138):
 F.line = 1121;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP179478), ((NimStringDesc*) &TMP179479));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP180478), ((NimStringDesc*) &TMP180479));
 break;
 case ((NU8) 20):
 F.line = 1122;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179480));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180480));
 break;
 case ((NU8) 21):
 F.line = 1123;F.filename = "ecmasgen.nim";
-Binarystmt_175346(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179481));
+Binarystmt_176346(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180481));
 break;
 case ((NU8) 150):
 F.line = 1124;F.filename = "ecmasgen.nim";
-Binaryexpr_175305(P_179222, N_179223, R_179225, ((NimStringDesc*) &TMP174217), ((NimStringDesc*) &TMP179482));
+Binaryexpr_176305(P_180222, N_180223, R_180225, ((NimStringDesc*) &TMP175217), ((NimStringDesc*) &TMP180482));
 break;
 case ((NU8) 203) ... ((NU8) 231):
 F.line = 1126;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179223).Kind/8] &(1<<((*N_179223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179223).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_179223).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_179223).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Limessage_41562((*N_179223).Info, ((NU8) 199), (*(*(*(*N_179223).KindU.S6.Sons->data[0]).KindU.S4.Sym).Name).S);
+if (((TMP175136[(*N_180223).Kind/8] &(1<<((*N_180223).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180223).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_180223).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_180223).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Limessage_42562((*N_180223).Info, ((NU8) 199), (*(*(*(*N_180223).KindU.S6.Sons->data[0]).KindU.S4.Sym).Name).S);
 break;
 default:
 F.line = 1128;F.filename = "ecmasgen.nim";
-Gencall_178292(P_179222, N_179223, R_179225);
+Gencall_179292(P_180222, N_180223, R_180225);
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gensetconstr_179483)(TY174021* P_179486, TY49525* N_179487, TY174013* R_179489) {
-TY174013 A_179490;
-TY174013 B_179491;
-NI I_179499;
-NI HEX3Atmp_179560;
+N_NIMCALL(void, Gensetconstr_180483)(TY175021* P_180486, TY50525* N_180487, TY175013* R_180489) {
+TY175013 A_180490;
+TY175013 B_180491;
+NI I_180499;
+NI HEX3Atmp_180560;
 NI LOC1;
-NI Res_179562;
-TY49525* It_179515;
-TY46008* LOC9;
-TY53695 LOC10;
+NI Res_180562;
+TY50525* It_180515;
+TY47008* LOC9;
+TY54695 LOC10;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genSetConstr";
@@ -5602,76 +5602,76 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179490, 0, sizeof(A_179490));
-memset((void*)&B_179491, 0, sizeof(B_179491));
+memset((void*)&A_180490, 0, sizeof(A_180490));
+memset((void*)&B_180491, 0, sizeof(B_180491));
 F.line = 1134;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_179486, ((NimStringDesc*) &TMP179565));
+Usemagic_175882(P_180486, ((NimStringDesc*) &TMP180565));
 F.line = 1135;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179489).Res, Torope_46046(((NimStringDesc*) &TMP179566)));
-I_179499 = 0;
-HEX3Atmp_179560 = 0;
+unsureAsgnRef((void**) &(*R_180489).Res, Torope_47046(((NimStringDesc*) &TMP180566)));
+I_180499 = 0;
+HEX3Atmp_180560 = 0;
 F.line = 1136;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_179487);
-HEX3Atmp_179560 = subInt(LOC1, 1);
-Res_179562 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_179562 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_180487);
+HEX3Atmp_180560 = subInt(LOC1, 1);
+Res_180562 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_180562 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_179562 <= HEX3Atmp_179560)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_179499 = Res_179562;
+if (!(Res_180562 <= HEX3Atmp_180560)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_180499 = Res_180562;
 F.line = 1137;F.filename = "ecmasgen.nim";
-if (!(0 < I_179499)) goto LA4;
+if (!(0 < I_180499)) goto LA4;
 F.line = 1137;F.filename = "ecmasgen.nim";
-App_46036(&(*R_179489).Res, ((NimStringDesc*) &TMP174568));
+App_47036(&(*R_180489).Res, ((NimStringDesc*) &TMP175568));
 LA4: ;
-It_179515 = 0;
+It_180515 = 0;
 F.line = 1138;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179487).Kind/8] &(1<<((*N_179487).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_179499) >= (NU)((*N_179487).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_179515 = (*N_179487).KindU.S6.Sons->data[I_179499];
+if (((TMP175136[(*N_180487).Kind/8] &(1<<((*N_180487).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_180499) >= (NU)((*N_180487).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_180515 = (*N_180487).KindU.S6.Sons->data[I_180499];
 F.line = 1139;F.filename = "ecmasgen.nim";
-if (!((*It_179515).Kind == ((NU8) 35))) goto LA7;
+if (!((*It_180515).Kind == ((NU8) 35))) goto LA7;
 F.line = 1140;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_179515).Kind/8] &(1<<((*It_179515).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*It_179515).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179486, (*It_179515).KindU.S6.Sons->data[0], &A_179490);
+if (((TMP175136[(*It_180515).Kind/8] &(1<<((*It_180515).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*It_180515).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180486, (*It_180515).KindU.S6.Sons->data[0], &A_180490);
 F.line = 1141;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*It_179515).Kind/8] &(1<<((*It_179515).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*It_179515).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179486, (*It_179515).KindU.S6.Sons->data[1], &B_179491);
+if (((TMP175136[(*It_180515).Kind/8] &(1<<((*It_180515).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*It_180515).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180486, (*It_180515).KindU.S6.Sons->data[1], &B_180491);
 F.line = 1142;F.filename = "ecmasgen.nim";
 LOC9 = 0;
-LOC9 = Mergeexpr_174887(A_179490.Com, B_179491.Com);
-unsureAsgnRef((void**) &(*R_179489).Com, Mergeexpr_174887((*R_179489).Com, LOC9));
+LOC9 = Mergeexpr_175887(A_180490.Com, B_180491.Com);
+unsureAsgnRef((void**) &(*R_180489).Com, Mergeexpr_175887((*R_180489).Com, LOC9));
 F.line = 1143;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = A_179490.Res;
-LOC10[1] = B_179491.Res;
-Appf_46074(&(*R_179489).Res, ((NimStringDesc*) &TMP174573), LOC10, 2);
+LOC10[0] = A_180490.Res;
+LOC10[1] = B_180491.Res;
+Appf_47074(&(*R_180489).Res, ((NimStringDesc*) &TMP175573), LOC10, 2);
 goto LA6;
 LA7: ;
 F.line = 1145;F.filename = "ecmasgen.nim";
-Gen_174868(P_179486, It_179515, &A_179490);
+Gen_175868(P_180486, It_180515, &A_180490);
 F.line = 1146;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179489).Com, Mergeexpr_174887((*R_179489).Com, A_179490.Com));
+unsureAsgnRef((void**) &(*R_180489).Com, Mergeexpr_175887((*R_180489).Com, A_180490.Com));
 F.line = 1147;F.filename = "ecmasgen.nim";
-App_46031(&(*R_179489).Res, A_179490.Res);
+App_47031(&(*R_180489).Res, A_180490.Res);
 LA6: ;
-F.line = 1022;F.filename = "system.nim";
-Res_179562 = addInt(Res_179562, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_180562 = addInt(Res_180562, 1);
 } LA2: ;
 F.line = 1148;F.filename = "ecmasgen.nim";
-App_46036(&(*R_179489).Res, ((NimStringDesc*) &TMP178358));
+App_47036(&(*R_180489).Res, ((NimStringDesc*) &TMP179358));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genarrayconstr_179567)(TY174021* P_179570, TY49525* N_179571, TY174013* R_179573) {
-TY174013 A_179574;
-NI I_179582;
-NI HEX3Atmp_179602;
+N_NIMCALL(void, Genarrayconstr_180567)(TY175021* P_180570, TY50525* N_180571, TY175013* R_180573) {
+TY175013 A_180574;
+NI I_180582;
+NI HEX3Atmp_180602;
 NI LOC1;
-NI Res_179604;
+NI Res_180604;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genArrayConstr";
@@ -5680,47 +5680,47 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179574, 0, sizeof(A_179574));
+memset((void*)&A_180574, 0, sizeof(A_180574));
 F.line = 1152;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179573).Res, Torope_46046(((NimStringDesc*) &TMP178620)));
-I_179582 = 0;
-HEX3Atmp_179602 = 0;
+unsureAsgnRef((void**) &(*R_180573).Res, Torope_47046(((NimStringDesc*) &TMP179620)));
+I_180582 = 0;
+HEX3Atmp_180602 = 0;
 F.line = 1153;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_179571);
-HEX3Atmp_179602 = subInt(LOC1, 1);
-Res_179604 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_179604 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_180571);
+HEX3Atmp_180602 = subInt(LOC1, 1);
+Res_180604 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_180604 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_179604 <= HEX3Atmp_179602)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_179582 = Res_179604;
+if (!(Res_180604 <= HEX3Atmp_180602)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_180582 = Res_180604;
 F.line = 1154;F.filename = "ecmasgen.nim";
-if (!(0 < I_179582)) goto LA4;
+if (!(0 < I_180582)) goto LA4;
 F.line = 1154;F.filename = "ecmasgen.nim";
-App_46036(&(*R_179573).Res, ((NimStringDesc*) &TMP174568));
+App_47036(&(*R_180573).Res, ((NimStringDesc*) &TMP175568));
 LA4: ;
 F.line = 1155;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179571).Kind/8] &(1<<((*N_179571).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_179582) >= (NU)((*N_179571).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179570, (*N_179571).KindU.S6.Sons->data[I_179582], &A_179574);
+if (((TMP175136[(*N_180571).Kind/8] &(1<<((*N_180571).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_180582) >= (NU)((*N_180571).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180570, (*N_180571).KindU.S6.Sons->data[I_180582], &A_180574);
 F.line = 1156;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179573).Com, Mergeexpr_174887((*R_179573).Com, A_179574.Com));
+unsureAsgnRef((void**) &(*R_180573).Com, Mergeexpr_175887((*R_180573).Com, A_180574.Com));
 F.line = 1157;F.filename = "ecmasgen.nim";
-App_46031(&(*R_179573).Res, A_179574.Res);
-F.line = 1022;F.filename = "system.nim";
-Res_179604 = addInt(Res_179604, 1);
+App_47031(&(*R_180573).Res, A_180574.Res);
+F.line = 1024;F.filename = "system.nim";
+Res_180604 = addInt(Res_180604, 1);
 } LA2: ;
 F.line = 1158;F.filename = "ecmasgen.nim";
-App_46036(&(*R_179573).Res, ((NimStringDesc*) &TMP178621));
+App_47036(&(*R_180573).Res, ((NimStringDesc*) &TMP179621));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genrecordconstr_179607)(TY174021* P_179610, TY49525* N_179611, TY174013* R_179613) {
-TY174013 A_179614;
-NI I_179615;
-NI Length_179616;
-TY53695 LOC8;
+N_NIMCALL(void, Genrecordconstr_180607)(TY175021* P_180610, TY50525* N_180611, TY175013* R_180613) {
+TY175013 A_180614;
+NI I_180615;
+NI Length_180616;
+TY54695 LOC8;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genRecordConstr";
@@ -5729,56 +5729,56 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179614, 0, sizeof(A_179614));
-I_179615 = 0;
+memset((void*)&A_180614, 0, sizeof(A_180614));
+I_180615 = 0;
 F.line = 1162;F.filename = "ecmasgen.nim";
-I_179615 = 0;
-Length_179616 = 0;
+I_180615 = 0;
+Length_180616 = 0;
 F.line = 1163;F.filename = "ecmasgen.nim";
-Length_179616 = Sonslen_49803(N_179611);
+Length_180616 = Sonslen_50803(N_180611);
 F.line = 1164;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179613).Res, Torope_46046(((NimStringDesc*) &TMP178622)));
+unsureAsgnRef((void**) &(*R_180613).Res, Torope_47046(((NimStringDesc*) &TMP179622)));
 F.line = 1165;F.filename = "ecmasgen.nim";
 while (1) {
-if (!(I_179615 < Length_179616)) goto LA1;
+if (!(I_180615 < Length_180616)) goto LA1;
 F.line = 1166;F.filename = "ecmasgen.nim";
-if (!(0 < I_179615)) goto LA3;
+if (!(0 < I_180615)) goto LA3;
 F.line = 1166;F.filename = "ecmasgen.nim";
-App_46036(&(*R_179613).Res, ((NimStringDesc*) &TMP174568));
+App_47036(&(*R_180613).Res, ((NimStringDesc*) &TMP175568));
 LA3: ;
 F.line = 1167;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179611).Kind/8] &(1<<((*N_179611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_179615) >= (NU)((*N_179611).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_179611).KindU.S6.Sons->data[I_179615]).Kind == ((NU8) 3)))) goto LA6;
+if (((TMP175136[(*N_180611).Kind/8] &(1<<((*N_180611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_180615) >= (NU)((*N_180611).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_180611).KindU.S6.Sons->data[I_180615]).Kind == ((NU8) 3)))) goto LA6;
 F.line = 1168;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179611).Kind/8] &(1<<((*N_179611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_179615) >= (NU)((*N_179611).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Internalerror_41567((*(*N_179611).KindU.S6.Sons->data[I_179615]).Info, ((NimStringDesc*) &TMP179710));
+if (((TMP175136[(*N_180611).Kind/8] &(1<<((*N_180611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_180615) >= (NU)((*N_180611).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Internalerror_42567((*(*N_180611).KindU.S6.Sons->data[I_180615]).Info, ((NimStringDesc*) &TMP180710));
 LA6: ;
 F.line = 1169;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179611).Kind/8] &(1<<((*N_179611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(addInt(I_179615, 1)) >= (NU)((*N_179611).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179610, (*N_179611).KindU.S6.Sons->data[addInt(I_179615, 1)], &A_179614);
+if (((TMP175136[(*N_180611).Kind/8] &(1<<((*N_180611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(addInt(I_180615, 1)) >= (NU)((*N_180611).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180610, (*N_180611).KindU.S6.Sons->data[addInt(I_180615, 1)], &A_180614);
 F.line = 1170;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_179613).Com, Mergeexpr_174887((*R_179613).Com, A_179614.Com));
+unsureAsgnRef((void**) &(*R_180613).Com, Mergeexpr_175887((*R_180613).Com, A_180614.Com));
 F.line = 1171;F.filename = "ecmasgen.nim";
 memset((void*)&LOC8, 0, sizeof(LOC8));
-if (((TMP174136[(*N_179611).Kind/8] &(1<<((*N_179611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_179615) >= (NU)((*N_179611).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_179611).KindU.S6.Sons->data[I_179615]).Kind/8] &(1<<((*(*N_179611).KindU.S6.Sons->data[I_179615]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-LOC8[0] = Manglename_174218((*(*N_179611).KindU.S6.Sons->data[I_179615]).KindU.S4.Sym);
-LOC8[1] = A_179614.Res;
-Appf_46074(&(*R_179613).Res, ((NimStringDesc*) &TMP179711), LOC8, 2);
+if (((TMP175136[(*N_180611).Kind/8] &(1<<((*N_180611).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_180615) >= (NU)((*N_180611).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_180611).KindU.S6.Sons->data[I_180615]).Kind/8] &(1<<((*(*N_180611).KindU.S6.Sons->data[I_180615]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+LOC8[0] = Manglename_175218((*(*N_180611).KindU.S6.Sons->data[I_180615]).KindU.S4.Sym);
+LOC8[1] = A_180614.Res;
+Appf_47074(&(*R_180613).Res, ((NimStringDesc*) &TMP180711), LOC8, 2);
 F.line = 1172;F.filename = "ecmasgen.nim";
-I_179615 = addInt(I_179615, 2);
+I_180615 = addInt(I_180615, 2);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genconv_179712)(TY174021* P_179715, TY49525* N_179716, TY174013* R_179718) {
-TY49551* Dest_179719;
-TY49551* Src_179732;
+N_NIMCALL(void, Genconv_180712)(TY175021* P_180715, TY50525* N_180716, TY175013* R_180718) {
+TY50551* Dest_180719;
+TY50551* Src_180732;
 NIM_BOOL LOC2;
-TY46451 LOC6;
+TY47451 LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genConv";
@@ -5787,32 +5787,32 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Dest_179719 = 0;
+Dest_180719 = 0;
 F.line = 1175;F.filename = "ecmasgen.nim";
-Dest_179719 = Skiptypes_91085((*N_179716).Typ, 9480192);
-Src_179732 = 0;
+Dest_180719 = Skiptypes_92085((*N_180716).Typ, 9480192);
+Src_180732 = 0;
 F.line = 1176;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179716).Kind/8] &(1<<((*N_179716).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179716).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Src_179732 = Skiptypes_91085((*(*N_179716).KindU.S6.Sons->data[1]).Typ, 9480192);
+if (((TMP175136[(*N_180716).Kind/8] &(1<<((*N_180716).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180716).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Src_180732 = Skiptypes_92085((*(*N_180716).KindU.S6.Sons->data[1]).Typ, 9480192);
 F.line = 1177;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179716).Kind/8] &(1<<((*N_179716).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179716).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179715, (*N_179716).KindU.S6.Sons->data[1], R_179718);
+if (((TMP175136[(*N_180716).Kind/8] &(1<<((*N_180716).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180716).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180715, (*N_180716).KindU.S6.Sons->data[1], R_180718);
 F.line = 1178;F.filename = "ecmasgen.nim";
-LOC2 = !(((*Dest_179719).Kind == (*Src_179732).Kind));
+LOC2 = !(((*Dest_180719).Kind == (*Src_180732).Kind));
 if (!(LOC2)) goto LA3;
-LOC2 = ((*Src_179732).Kind == ((NU8) 1));
+LOC2 = ((*Src_180732).Kind == ((NU8) 1));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 1179;F.filename = "ecmasgen.nim";
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = (*R_179718).Res;
-unsureAsgnRef((void**) &(*R_179718).Res, Ropef_46069(((NimStringDesc*) &TMP179767), LOC6, 1));
+LOC6[0] = (*R_180718).Res;
+unsureAsgnRef((void**) &(*R_180718).Res, Ropef_47069(((NimStringDesc*) &TMP180767), LOC6, 1));
 LA4: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Upconv_179768)(TY174021* P_179771, TY49525* N_179772, TY174013* R_179774) {
+N_NIMCALL(void, Upconv_180768)(TY175021* P_180771, TY50525* N_180772, TY175013* R_180774) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "upConv";
@@ -5822,16 +5822,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1182;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179772).Kind/8] &(1<<((*N_179772).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179772).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179771, (*N_179772).KindU.S6.Sons->data[0], R_179774);
+if (((TMP175136[(*N_180772).Kind/8] &(1<<((*N_180772).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180772).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180771, (*N_180772).KindU.S6.Sons->data[0], R_180774);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genrangechck_179787)(TY174021* P_179790, TY49525* N_179791, TY174013* R_179793, NimStringDesc* Magic_179794) {
-TY174013 A_179795;
-TY174013 B_179796;
-TY46008* LOC4;
-TY53637 LOC5;
+N_NIMCALL(void, Genrangechck_180787)(TY175021* P_180790, TY50525* N_180791, TY175013* R_180793, NimStringDesc* Magic_180794) {
+TY175013 A_180795;
+TY175013 B_180796;
+TY47008* LOC4;
+TY54637 LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genRangeChck";
@@ -5840,39 +5840,39 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_179795, 0, sizeof(A_179795));
-memset((void*)&B_179796, 0, sizeof(B_179796));
+memset((void*)&A_180795, 0, sizeof(A_180795));
+memset((void*)&B_180796, 0, sizeof(B_180796));
 F.line = 1186;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179791).Kind/8] &(1<<((*N_179791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179791).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179790, (*N_179791).KindU.S6.Sons->data[0], R_179793);
+if (((TMP175136[(*N_180791).Kind/8] &(1<<((*N_180791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180791).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180790, (*N_180791).KindU.S6.Sons->data[0], R_180793);
 F.line = 1187;F.filename = "ecmasgen.nim";
-if (!(((*P_179790).Options &(1<<((((NU8) 3))&31)))!=0)) goto LA2;
+if (!(((*P_180790).Options &(1<<((((NU8) 3))&31)))!=0)) goto LA2;
 F.line = 1188;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179791).Kind/8] &(1<<((*N_179791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_179791).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179790, (*N_179791).KindU.S6.Sons->data[1], &A_179795);
+if (((TMP175136[(*N_180791).Kind/8] &(1<<((*N_180791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_180791).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180790, (*N_180791).KindU.S6.Sons->data[1], &A_180795);
 F.line = 1189;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179791).Kind/8] &(1<<((*N_179791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(2) >= (NU)((*N_179791).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179790, (*N_179791).KindU.S6.Sons->data[2], &B_179796);
+if (((TMP175136[(*N_180791).Kind/8] &(1<<((*N_180791).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(2) >= (NU)((*N_180791).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180790, (*N_180791).KindU.S6.Sons->data[2], &B_180796);
 F.line = 1190;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = Mergeexpr_174887(A_179795.Com, B_179796.Com);
-unsureAsgnRef((void**) &(*R_179793).Com, Mergeexpr_174887((*R_179793).Com, LOC4));
+LOC4 = Mergeexpr_175887(A_180795.Com, B_180796.Com);
+unsureAsgnRef((void**) &(*R_180793).Com, Mergeexpr_175887((*R_180793).Com, LOC4));
 F.line = 1191;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_179790, ((NimStringDesc*) &TMP179850));
+Usemagic_175882(P_180790, ((NimStringDesc*) &TMP180850));
 F.line = 1192;F.filename = "ecmasgen.nim";
 memset((void*)&LOC5, 0, sizeof(LOC5));
-LOC5[0] = (*R_179793).Res;
-LOC5[1] = A_179795.Res;
-LOC5[2] = B_179796.Res;
-unsureAsgnRef((void**) &(*R_179793).Res, Ropef_46069(((NimStringDesc*) &TMP179851), LOC5, 3));
+LOC5[0] = (*R_180793).Res;
+LOC5[1] = A_180795.Res;
+LOC5[2] = B_180796.Res;
+unsureAsgnRef((void**) &(*R_180793).Res, Ropef_47069(((NimStringDesc*) &TMP180851), LOC5, 3));
 LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Convstrtocstr_179852)(TY174021* P_179855, TY49525* N_179856, TY174013* R_179858) {
-TY46451 LOC7;
+N_NIMCALL(void, Convstrtocstr_180852)(TY175021* P_180855, TY50525* N_180856, TY175013* R_180858) {
+TY47451 LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "convStrToCStr";
@@ -5882,37 +5882,37 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1197;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179856).Kind/8] &(1<<((*N_179856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179856).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*N_179856).KindU.S6.Sons->data[0]).Kind == ((NU8) 61))) goto LA2;
+if (((TMP175136[(*N_180856).Kind/8] &(1<<((*N_180856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180856).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*N_180856).KindU.S6.Sons->data[0]).Kind == ((NU8) 61))) goto LA2;
 F.line = 1198;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179856).Kind/8] &(1<<((*N_179856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179856).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_179856).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_179856).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*N_179856).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179855, (*(*N_179856).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0], R_179858);
+if (((TMP175136[(*N_180856).Kind/8] &(1<<((*N_180856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180856).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_180856).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_180856).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*N_180856).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180855, (*(*N_180856).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0], R_180858);
 goto LA1;
 LA2: ;
 F.line = 1200;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179856).Kind/8] &(1<<((*N_179856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179856).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179855, (*N_179856).KindU.S6.Sons->data[0], R_179858);
+if (((TMP175136[(*N_180856).Kind/8] &(1<<((*N_180856).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180856).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180855, (*N_180856).KindU.S6.Sons->data[0], R_180858);
 F.line = 1201;F.filename = "ecmasgen.nim";
-if (!((*R_179858).Res == NIM_NIL)) goto LA5;
+if (!((*R_180858).Res == NIM_NIL)) goto LA5;
 F.line = 1201;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_179856).Info, ((NimStringDesc*) &TMP179931));
+Internalerror_42567((*N_180856).Info, ((NimStringDesc*) &TMP180931));
 LA5: ;
 F.line = 1202;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_179855, ((NimStringDesc*) &TMP176601));
+Usemagic_175882(P_180855, ((NimStringDesc*) &TMP177601));
 F.line = 1203;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = (*R_179858).Res;
-unsureAsgnRef((void**) &(*R_179858).Res, Ropef_46069(((NimStringDesc*) &TMP179932), LOC7, 1));
+LOC7[0] = (*R_180858).Res;
+unsureAsgnRef((void**) &(*R_180858).Res, Ropef_47069(((NimStringDesc*) &TMP180932), LOC7, 1));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Convcstrtostr_179933)(TY174021* P_179936, TY49525* N_179937, TY174013* R_179939) {
-TY46451 LOC7;
+N_NIMCALL(void, Convcstrtostr_180933)(TY175021* P_180936, TY50525* N_180937, TY175013* R_180939) {
+TY47451 LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "convCStrToStr";
@@ -5922,38 +5922,38 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1208;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179937).Kind/8] &(1<<((*N_179937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179937).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*N_179937).KindU.S6.Sons->data[0]).Kind == ((NU8) 60))) goto LA2;
+if (((TMP175136[(*N_180937).Kind/8] &(1<<((*N_180937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180937).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*N_180937).KindU.S6.Sons->data[0]).Kind == ((NU8) 60))) goto LA2;
 F.line = 1209;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179937).Kind/8] &(1<<((*N_179937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179937).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP174136[(*(*N_179937).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_179937).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*(*N_179937).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179936, (*(*N_179937).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0], R_179939);
+if (((TMP175136[(*N_180937).Kind/8] &(1<<((*N_180937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180937).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP175136[(*(*N_180937).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_180937).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*(*N_180937).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180936, (*(*N_180937).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0], R_180939);
 goto LA1;
 LA2: ;
 F.line = 1211;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_179937).Kind/8] &(1<<((*N_179937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_179937).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_179936, (*N_179937).KindU.S6.Sons->data[0], R_179939);
+if (((TMP175136[(*N_180937).Kind/8] &(1<<((*N_180937).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_180937).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_180936, (*N_180937).KindU.S6.Sons->data[0], R_180939);
 F.line = 1212;F.filename = "ecmasgen.nim";
-if (!((*R_179939).Res == NIM_NIL)) goto LA5;
+if (!((*R_180939).Res == NIM_NIL)) goto LA5;
 F.line = 1212;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_179937).Info, ((NimStringDesc*) &TMP180012));
+Internalerror_42567((*N_180937).Info, ((NimStringDesc*) &TMP181012));
 LA5: ;
 F.line = 1213;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_179936, ((NimStringDesc*) &TMP180013));
+Usemagic_175882(P_180936, ((NimStringDesc*) &TMP181013));
 F.line = 1214;F.filename = "ecmasgen.nim";
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = (*R_179939).Res;
-unsureAsgnRef((void**) &(*R_179939).Res, Ropef_46069(((NimStringDesc*) &TMP180014), LOC7, 1));
+LOC7[0] = (*R_180939).Res;
+unsureAsgnRef((void**) &(*R_180939).Res, Ropef_47069(((NimStringDesc*) &TMP181014), LOC7, 1));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genreturnstmt_180015)(TY174021* P_180018, TY49525* N_180019, TY174013* R_180021) {
-TY174013 A_180022;
-TY46451 LOC10;
+N_NIMCALL(void, Genreturnstmt_181015)(TY175021* P_181018, TY50525* N_181019, TY175013* R_181021) {
+TY175013 A_181022;
+TY47451 LOC10;
 NimStringDesc* LOC11;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -5963,52 +5963,52 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_180022, 0, sizeof(A_180022));
+memset((void*)&A_181022, 0, sizeof(A_181022));
 F.line = 1218;F.filename = "ecmasgen.nim";
-if (!((*P_180018).Procdef == NIM_NIL)) goto LA2;
+if (!((*P_181018).Procdef == NIM_NIL)) goto LA2;
 F.line = 1218;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_180019).Info, ((NimStringDesc*) &TMP180093));
+Internalerror_42567((*N_181019).Info, ((NimStringDesc*) &TMP181093));
 LA2: ;
 F.line = 1219;F.filename = "ecmasgen.nim";
-(*P_180018).Beforeretneeded = NIM_TRUE;
+(*P_181018).Beforeretneeded = NIM_TRUE;
 F.line = 1220;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180019).Kind/8] &(1<<((*N_180019).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_180019).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*N_180019).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA5;
+if (((TMP175136[(*N_181019).Kind/8] &(1<<((*N_181019).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_181019).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*N_181019).KindU.S6.Sons->data[0] == NIM_NIL))) goto LA5;
 F.line = 1221;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180019).Kind/8] &(1<<((*N_180019).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_180019).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_180018, (*N_180019).KindU.S6.Sons->data[0], &A_180022);
+if (((TMP175136[(*N_181019).Kind/8] &(1<<((*N_181019).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_181019).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_181018, (*N_181019).KindU.S6.Sons->data[0], &A_181022);
 F.line = 1222;F.filename = "ecmasgen.nim";
-if (!!((A_180022.Com == NIM_NIL))) goto LA8;
+if (!!((A_181022.Com == NIM_NIL))) goto LA8;
 F.line = 1222;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Mergestmt_174923(&A_180022);
-Appf_46074(&(*R_180021).Com, ((NimStringDesc*) &TMP175420), LOC10, 1);
+LOC10[0] = Mergestmt_175923(&A_181022);
+Appf_47074(&(*R_181021).Com, ((NimStringDesc*) &TMP176420), LOC10, 1);
 LA8: ;
 goto LA4;
 LA5: ;
 F.line = 1224;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_180018, N_180019, R_180021);
+Genlinedir_176516(P_181018, N_181019, R_181021);
 LA4: ;
 F.line = 1225;F.filename = "ecmasgen.nim";
-Finishtrystmt_175640(P_180018, R_180021, (*P_180018).Nestedtrystmts);
+Finishtrystmt_176640(P_181018, R_181021, (*P_181018).Nestedtrystmts);
 F.line = 1226;F.filename = "ecmasgen.nim";
 LOC11 = 0;
-LOC11 = rawNewString(Tnl_45573->Sup.len + 16);
-appendString(LOC11, ((NimStringDesc*) &TMP180094));
-appendString(LOC11, Tnl_45573);
-App_46036(&(*R_180021).Com, LOC11);
+LOC11 = rawNewString(Tnl_46573->Sup.len + 16);
+appendString(LOC11, ((NimStringDesc*) &TMP181094));
+appendString(LOC11, Tnl_46573);
+App_47036(&(*R_181021).Com, LOC11);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY46008*, Genprocbody_180095)(TY174021* P_180098, TY49547* Prc_180099, TY174013* R_180100) {
-TY46008* Result_180101;
-TY53695 LOC4;
+N_NIMCALL(TY47008*, Genprocbody_181095)(TY175021* P_181098, TY50547* Prc_181099, TY175013* R_181100) {
+TY47008* Result_181101;
+TY54695 LOC4;
 NimStringDesc* LOC5;
 NimStringDesc* LOC6;
-TY46451 LOC10;
-TY46008* LOC11;
-TY46451 LOC15;
+TY47451 LOC10;
+TY47008* LOC11;
+TY47451 LOC15;
 NimStringDesc* LOC19;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -6018,73 +6018,73 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180101 = 0;
+Result_181101 = 0;
 F.line = 1229;F.filename = "ecmasgen.nim";
-if (!(((*Prc_180099).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
+if (!(((*Prc_181099).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
 F.line = 1230;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
 LOC5 = 0;
-LOC5 = rawNewString((*(*(*Prc_180099).Owner).Name).S->Sup.len + (*(*Prc_180099).Name).S->Sup.len + 1);
-appendString(LOC5, (*(*(*Prc_180099).Owner).Name).S);
+LOC5 = rawNewString((*(*(*Prc_181099).Owner).Name).S->Sup.len + (*(*Prc_181099).Name).S->Sup.len + 1);
+appendString(LOC5, (*(*(*Prc_181099).Owner).Name).S);
 appendChar(LOC5, 46);
-appendString(LOC5, (*(*Prc_180099).Name).S);
-LOC4[0] = Makecstring_153010(LOC5);
+appendString(LOC5, (*(*Prc_181099).Name).S);
+LOC4[0] = Makecstring_154010(LOC5);
 LOC6 = 0;
-LOC6 = Tofilename_41579((*Prc_180099).Info);
-LOC4[1] = Makecstring_153010(LOC6);
-Result_180101 = Ropef_46069(((NimStringDesc*) &TMP180184), LOC4, 2);
+LOC6 = Tofilename_42579((*Prc_181099).Info);
+LOC4[1] = Makecstring_154010(LOC6);
+Result_181101 = Ropef_47069(((NimStringDesc*) &TMP181184), LOC4, 2);
 goto LA1;
 LA2: ;
 F.line = 1234;F.filename = "ecmasgen.nim";
-Result_180101 = NIM_NIL;
+Result_181101 = NIM_NIL;
 LA1: ;
 F.line = 1235;F.filename = "ecmasgen.nim";
-if (!(*P_180098).Beforeretneeded) goto LA8;
+if (!(*P_181098).Beforeretneeded) goto LA8;
 F.line = 1236;F.filename = "ecmasgen.nim";
 memset((void*)&LOC10, 0, sizeof(LOC10));
-LOC10[0] = Mergestmt_174923(R_180100);
-Appf_46074(&Result_180101, ((NimStringDesc*) &TMP180185), LOC10, 1);
+LOC10[0] = Mergestmt_175923(R_181100);
+Appf_47074(&Result_181101, ((NimStringDesc*) &TMP181185), LOC10, 1);
 goto LA7;
 LA8: ;
 F.line = 1238;F.filename = "ecmasgen.nim";
 LOC11 = 0;
-LOC11 = Mergestmt_174923(R_180100);
-App_46031(&Result_180101, LOC11);
+LOC11 = Mergestmt_175923(R_181100);
+App_47031(&Result_181101, LOC11);
 LA7: ;
 F.line = 1239;F.filename = "ecmasgen.nim";
-if (!((*(*Prc_180099).Typ).Callconv == ((NU8) 4))) goto LA13;
+if (!((*(*Prc_181099).Typ).Callconv == ((NU8) 4))) goto LA13;
 F.line = 1240;F.filename = "ecmasgen.nim";
 memset((void*)&LOC15, 0, sizeof(LOC15));
-LOC15[0] = Result_180101;
-Result_180101 = Ropef_46069(((NimStringDesc*) &TMP180186), LOC15, 1);
+LOC15[0] = Result_181101;
+Result_181101 = Ropef_47069(((NimStringDesc*) &TMP181186), LOC15, 1);
 LA13: ;
 F.line = 1242;F.filename = "ecmasgen.nim";
-if (!(((*Prc_180099).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA17;
+if (!(((*Prc_181099).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA17;
 F.line = 1243;F.filename = "ecmasgen.nim";
 LOC19 = 0;
-LOC19 = rawNewString(Tnl_45573->Sup.len + 25);
-appendString(LOC19, ((NimStringDesc*) &TMP180187));
-appendString(LOC19, Tnl_45573);
-App_46036(&Result_180101, LOC19);
+LOC19 = rawNewString(Tnl_46573->Sup.len + 25);
+appendString(LOC19, ((NimStringDesc*) &TMP181187));
+appendString(LOC19, Tnl_46573);
+App_47036(&Result_181101, LOC19);
 LA17: ;
 framePtr = framePtr->prev;
-return Result_180101;
+return Result_181101;
 }
-N_NIMCALL(void, Genproc_180188)(TY174021* Oldproc_180191, TY49525* N_180192, TY174013* R_180194) {
-TY174021 P_180195;
-TY49547* Resultsym_180196;
-TY46008* Name_180197;
-TY46008* Returnstmt_180198;
-TY46008* Resultasgn_180199;
-TY46008* Header_180200;
-TY174013 A_180201;
-TY49547* Prc_180226;
+N_NIMCALL(void, Genproc_181188)(TY175021* Oldproc_181191, TY50525* N_181192, TY175013* R_181194) {
+TY175021 P_181195;
+TY50547* Resultsym_181196;
+TY47008* Name_181197;
+TY47008* Returnstmt_181198;
+TY47008* Resultasgn_181199;
+TY47008* Header_181200;
+TY175013 A_181201;
+TY50547* Prc_181226;
 NIM_BOOL LOC2;
-TY53695 LOC6;
+TY54695 LOC6;
 NIM_BOOL LOC7;
-TY46451 LOC11;
-TY46451 LOC12;
-TY158071 LOC13;
+TY47451 LOC11;
+TY47451 LOC12;
+TY159071 LOC13;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genProc";
@@ -6093,89 +6093,89 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&P_180195, 0, sizeof(P_180195));
-Resultsym_180196 = 0;
-Name_180197 = 0;
-Returnstmt_180198 = 0;
-Resultasgn_180199 = 0;
-Header_180200 = 0;
-memset((void*)&A_180201, 0, sizeof(A_180201));
-Prc_180226 = 0;
+memset((void*)&P_181195, 0, sizeof(P_181195));
+Resultsym_181196 = 0;
+Name_181197 = 0;
+Returnstmt_181198 = 0;
+Resultasgn_181199 = 0;
+Header_181200 = 0;
+memset((void*)&A_181201, 0, sizeof(A_181201));
+Prc_181226 = 0;
 F.line = 1251;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180192).Kind/8] &(1<<((*N_180192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_180192).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_180192).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_180192).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Prc_180226 = (*(*N_180192).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_181192).Kind/8] &(1<<((*N_181192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_181192).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_181192).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_181192).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Prc_181226 = (*(*N_181192).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 1252;F.filename = "ecmasgen.nim";
-Initproc_174076(&P_180195, (*Oldproc_180191).Globals, (*Oldproc_180191).Module, N_180192, (*Prc_180226).Options);
+Initproc_175076(&P_181195, (*Oldproc_181191).Globals, (*Oldproc_181191).Module, N_181192, (*Prc_181226).Options);
 F.line = 1253;F.filename = "ecmasgen.nim";
-Returnstmt_180198 = NIM_NIL;
+Returnstmt_181198 = NIM_NIL;
 F.line = 1254;F.filename = "ecmasgen.nim";
-Resultasgn_180199 = NIM_NIL;
+Resultasgn_181199 = NIM_NIL;
 F.line = 1255;F.filename = "ecmasgen.nim";
-Name_180197 = Manglename_174218(Prc_180226);
+Name_181197 = Manglename_175218(Prc_181226);
 F.line = 1256;F.filename = "ecmasgen.nim";
-Header_180200 = Generateheader_177239(&P_180195, (*Prc_180226).Typ);
+Header_181200 = Generateheader_178239(&P_181195, (*Prc_181226).Typ);
 F.line = 1257;F.filename = "ecmasgen.nim";
-if ((NU)(0) >= (NU)((*(*Prc_180226).Typ).Sons->Sup.len)) raiseIndexError();
-LOC2 = !(((*(*Prc_180226).Typ).Sons->data[0] == NIM_NIL));
+if ((NU)(0) >= (NU)((*(*Prc_181226).Typ).Sons->Sup.len)) raiseIndexError();
+LOC2 = !(((*(*Prc_181226).Typ).Sons->data[0] == NIM_NIL));
 if (!(LOC2)) goto LA3;
-LOC2 = !((((*Prc_180226).Flags &(1<<((((NU8) 11))&31)))!=0));
+LOC2 = !((((*Prc_181226).Flags &(1<<((((NU8) 11))&31)))!=0));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 1258;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180192).Kind/8] &(1<<((*N_180192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(5) >= (NU)((*N_180192).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_180192).KindU.S6.Sons->data[5]).Kind/8] &(1<<((*(*N_180192).KindU.S6.Sons->data[5]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Resultsym_180196 = (*(*N_180192).KindU.S6.Sons->data[5]).KindU.S4.Sym;
+if (((TMP175136[(*N_181192).Kind/8] &(1<<((*N_181192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(5) >= (NU)((*N_181192).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_181192).KindU.S6.Sons->data[5]).Kind/8] &(1<<((*(*N_181192).KindU.S6.Sons->data[5]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Resultsym_181196 = (*(*N_181192).KindU.S6.Sons->data[5]).KindU.S4.Sym;
 F.line = 1259;F.filename = "ecmasgen.nim";
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = Manglename_174218(Resultsym_180196);
-LOC7 = Isindirect_178628(Resultsym_180196);
-LOC6[1] = Createvar_178369(&P_180195, (*Resultsym_180196).Typ, LOC7);
-Resultasgn_180199 = Ropef_46069(((NimStringDesc*) &TMP178768), LOC6, 2);
+LOC6[0] = Manglename_175218(Resultsym_181196);
+LOC7 = Isindirect_179628(Resultsym_181196);
+LOC6[1] = Createvar_179369(&P_181195, (*Resultsym_181196).Typ, LOC7);
+Resultasgn_181199 = Ropef_47069(((NimStringDesc*) &TMP179768), LOC6, 2);
 F.line = 1261;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180192).Kind/8] &(1<<((*N_180192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(5) >= (NU)((*N_180192).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(&P_180195, (*N_180192).KindU.S6.Sons->data[5], &A_180201);
+if (((TMP175136[(*N_181192).Kind/8] &(1<<((*N_181192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(5) >= (NU)((*N_181192).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(&P_181195, (*N_181192).KindU.S6.Sons->data[5], &A_181201);
 F.line = 1262;F.filename = "ecmasgen.nim";
-if (!!((A_180201.Com == NIM_NIL))) goto LA9;
+if (!!((A_181201.Com == NIM_NIL))) goto LA9;
 F.line = 1262;F.filename = "ecmasgen.nim";
 memset((void*)&LOC11, 0, sizeof(LOC11));
-LOC11[0] = A_180201.Com;
-Appf_46074(&Returnstmt_180198, ((NimStringDesc*) &TMP175420), LOC11, 1);
+LOC11[0] = A_181201.Com;
+Appf_47074(&Returnstmt_181198, ((NimStringDesc*) &TMP176420), LOC11, 1);
 LA9: ;
 F.line = 1263;F.filename = "ecmasgen.nim";
 memset((void*)&LOC12, 0, sizeof(LOC12));
-LOC12[0] = A_180201.Res;
-Returnstmt_180198 = Ropef_46069(((NimStringDesc*) &TMP180332), LOC12, 1);
+LOC12[0] = A_181201.Res;
+Returnstmt_181198 = Ropef_47069(((NimStringDesc*) &TMP181332), LOC12, 1);
 LA4: ;
 F.line = 1264;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_180192).Kind/8] &(1<<((*N_180192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(4) >= (NU)((*N_180192).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(&P_180195, (*N_180192).KindU.S6.Sons->data[4], R_180194);
+if (((TMP175136[(*N_181192).Kind/8] &(1<<((*N_181192).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(4) >= (NU)((*N_181192).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(&P_181195, (*N_181192).KindU.S6.Sons->data[4], R_181194);
 F.line = 1265;F.filename = "ecmasgen.nim";
 memset((void*)&LOC13, 0, sizeof(LOC13));
-LOC13[0] = Name_180197;
-LOC13[1] = Header_180200;
-LOC13[2] = Resultasgn_180199;
-LOC13[3] = Genprocbody_180095(&P_180195, Prc_180226, &(*R_180194));
-LOC13[4] = Returnstmt_180198;
-unsureAsgnRef((void**) &(*R_180194).Com, Ropef_46069(((NimStringDesc*) &TMP180333), LOC13, 5));
+LOC13[0] = Name_181197;
+LOC13[1] = Header_181200;
+LOC13[2] = Resultasgn_181199;
+LOC13[3] = Genprocbody_181095(&P_181195, Prc_181226, &(*R_181194));
+LOC13[4] = Returnstmt_181198;
+unsureAsgnRef((void**) &(*R_181194).Com, Ropef_47069(((NimStringDesc*) &TMP181333), LOC13, 5));
 F.line = 1267;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_180194).Res, NIM_NIL);
+unsureAsgnRef((void**) &(*R_181194).Res, NIM_NIL);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genstmtlistexpr_176614)(TY174021* P_176617, TY49525* N_176618, TY174013* R_176620) {
-TY174013 A_180341;
-NI I_180349;
-NI HEX3Atmp_180387;
+N_NIMCALL(void, Genstmtlistexpr_177614)(TY175021* P_177617, TY50525* N_177618, TY175013* R_177620) {
+TY175013 A_181341;
+NI I_181349;
+NI HEX3Atmp_181387;
 NI LOC1;
-NI Res_180389;
-TY46008* LOC3;
-TY49525* LOC4;
-TY46451 LOC8;
-TY46451 LOC9;
+NI Res_181389;
+TY47008* LOC3;
+TY50525* LOC4;
+TY47451 LOC8;
+TY47451 LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genStmtListExpr";
@@ -6184,61 +6184,61 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_180341, 0, sizeof(A_180341));
+memset((void*)&A_181341, 0, sizeof(A_181341));
 F.line = 1272;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_176620).Res, Torope_46046(((NimStringDesc*) &TMP180392)));
-I_180349 = 0;
-HEX3Atmp_180387 = 0;
+unsureAsgnRef((void**) &(*R_177620).Res, Torope_47046(((NimStringDesc*) &TMP181392)));
+I_181349 = 0;
+HEX3Atmp_181387 = 0;
 F.line = 1273;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_176618);
-HEX3Atmp_180387 = subInt(LOC1, 2);
-Res_180389 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_180389 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_177618);
+HEX3Atmp_181387 = subInt(LOC1, 2);
+Res_181389 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_181389 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_180389 <= HEX3Atmp_180387)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_180349 = Res_180389;
+if (!(Res_181389 <= HEX3Atmp_181387)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_181349 = Res_181389;
 F.line = 1274;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_176618).Kind/8] &(1<<((*N_176618).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_180349) >= (NU)((*N_176618).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_176617, (*N_176618).KindU.S6.Sons->data[I_180349], &A_180341);
+if (((TMP175136[(*N_177618).Kind/8] &(1<<((*N_177618).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_181349) >= (NU)((*N_177618).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_177617, (*N_177618).KindU.S6.Sons->data[I_181349], &A_181341);
 F.line = 1275;F.filename = "ecmasgen.nim";
 LOC3 = 0;
-LOC3 = Mergestmt_174923(&A_180341);
-App_46031(&(*R_176620).Res, LOC3);
-F.line = 1022;F.filename = "system.nim";
-Res_180389 = addInt(Res_180389, 1);
+LOC3 = Mergestmt_175923(&A_181341);
+App_47031(&(*R_177620).Res, LOC3);
+F.line = 1024;F.filename = "system.nim";
+Res_181389 = addInt(Res_181389, 1);
 } LA2: ;
 F.line = 1276;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = Lastson_49809(N_176618);
-Gen_174868(P_176617, LOC4, &A_180341);
+LOC4 = Lastson_50809(N_177618);
+Gen_175868(P_177617, LOC4, &A_181341);
 F.line = 1277;F.filename = "ecmasgen.nim";
-if (!!((A_180341.Com == NIM_NIL))) goto LA6;
+if (!!((A_181341.Com == NIM_NIL))) goto LA6;
 F.line = 1277;F.filename = "ecmasgen.nim";
 memset((void*)&LOC8, 0, sizeof(LOC8));
-LOC8[0] = A_180341.Com;
-Appf_46074(&(*R_176620).Res, ((NimStringDesc*) &TMP175420), LOC8, 1);
+LOC8[0] = A_181341.Com;
+Appf_47074(&(*R_177620).Res, ((NimStringDesc*) &TMP176420), LOC8, 1);
 LA6: ;
 F.line = 1278;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-LOC9[0] = A_180341.Res;
-Appf_46074(&(*R_176620).Res, ((NimStringDesc*) &TMP180393), LOC9, 1);
+LOC9[0] = A_181341.Res;
+Appf_47074(&(*R_177620).Res, ((NimStringDesc*) &TMP181393), LOC9, 1);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Genstmt_174875)(TY174021* P_174878, TY49525* N_174879, TY174013* R_174881) {
-TY174013 A_180401;
-NI I_180409;
-NI HEX3Atmp_180529;
+N_NIMCALL(void, Genstmt_175875)(TY175021* P_175878, TY50525* N_175879, TY175013* R_175881) {
+TY175013 A_181401;
+NI I_181409;
+NI HEX3Atmp_181529;
 NI LOC1;
-NI Res_180531;
-TY46008* LOC3;
+NI Res_181531;
+TY47008* LOC3;
 NimStringDesc* LOC4;
-TY49547* Prc_180488;
+TY50547* Prc_181488;
 NIM_BOOL LOC9;
-TY46008* LOC13;
+TY47008* LOC13;
 NimStringDesc* LOC14;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -6248,112 +6248,112 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&A_180401, 0, sizeof(A_180401));
+memset((void*)&A_181401, 0, sizeof(A_181401));
 F.line = 1282;F.filename = "ecmasgen.nim";
-(*R_174881).Kind = ((NU8) 0);
+(*R_175881).Kind = ((NU8) 0);
 F.line = 1283;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174881).Com, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175881).Com, NIM_NIL);
 F.line = 1284;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174881).Res, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175881).Res, NIM_NIL);
 F.line = 1285;F.filename = "ecmasgen.nim";
-switch ((*N_174879).Kind) {
+switch ((*N_175879).Kind) {
 case ((NU8) 18):
 break;
 case ((NU8) 101):
-I_180409 = 0;
-HEX3Atmp_180529 = 0;
+I_181409 = 0;
+HEX3Atmp_181529 = 0;
 F.line = 1288;F.filename = "ecmasgen.nim";
-LOC1 = Sonslen_49803(N_174879);
-HEX3Atmp_180529 = subInt(LOC1, 1);
-Res_180531 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_180531 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC1 = Sonslen_50803(N_175879);
+HEX3Atmp_181529 = subInt(LOC1, 1);
+Res_181531 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_181531 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_180531 <= HEX3Atmp_180529)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_180409 = Res_180531;
+if (!(Res_181531 <= HEX3Atmp_181529)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_181409 = Res_181531;
 F.line = 1289;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174879).Kind/8] &(1<<((*N_174879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(I_180409) >= (NU)((*N_174879).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Genstmt_174875(P_174878, (*N_174879).KindU.S6.Sons->data[I_180409], &A_180401);
+if (((TMP175136[(*N_175879).Kind/8] &(1<<((*N_175879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(I_181409) >= (NU)((*N_175879).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Genstmt_175875(P_175878, (*N_175879).KindU.S6.Sons->data[I_181409], &A_181401);
 F.line = 1290;F.filename = "ecmasgen.nim";
 LOC3 = 0;
-LOC3 = Mergestmt_174923(&A_180401);
-App_46031(&(*R_174881).Com, LOC3);
-F.line = 1022;F.filename = "system.nim";
-Res_180531 = addInt(Res_180531, 1);
+LOC3 = Mergestmt_175923(&A_181401);
+App_47031(&(*R_175881).Com, LOC3);
+F.line = 1024;F.filename = "system.nim";
+Res_181531 = addInt(Res_181531, 1);
 } LA2: ;
 break;
 case ((NU8) 99):
 F.line = 1291;F.filename = "ecmasgen.nim";
-Genblock_176621(P_174878, N_174879, R_174881);
+Genblock_177621(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 82):
 F.line = 1292;F.filename = "ecmasgen.nim";
-Genifstmt_176993(P_174878, N_174879, R_174881);
+Genifstmt_177993(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 85):
 F.line = 1293;F.filename = "ecmasgen.nim";
-Genwhilestmt_175670(P_174878, N_174879, R_174881);
+Genwhilestmt_176670(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 87):
 F.line = 1294;F.filename = "ecmasgen.nim";
-Genvarstmt_178774(P_174878, N_174879, R_174881);
+Genvarstmt_179774(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 88):
 F.line = 1295;F.filename = "ecmasgen.nim";
-Genconststmt_178895(P_174878, N_174879, R_174881);
+Genconststmt_179895(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 84):
 F.line = 1296;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_174879).Info, ((NimStringDesc*) &TMP180534));
+Internalerror_42567((*N_175879).Info, ((NimStringDesc*) &TMP181534));
 break;
 case ((NU8) 86):
 F.line = 1297;F.filename = "ecmasgen.nim";
-Gencasestmt_176296(P_174878, N_174879, R_174881);
+Gencasestmt_177296(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 96):
 F.line = 1298;F.filename = "ecmasgen.nim";
-Genreturnstmt_180015(P_174878, N_174879, R_174881);
+Genreturnstmt_181015(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 97):
 F.line = 1299;F.filename = "ecmasgen.nim";
-Genbreakstmt_176786(P_174878, N_174879, R_174881);
+Genbreakstmt_177786(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 63):
 F.line = 1300;F.filename = "ecmasgen.nim";
-Genasgn_177482(P_174878, N_174879, R_174881);
+Genasgn_178482(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 64):
 F.line = 1301;F.filename = "ecmasgen.nim";
-Genfastasgn_177513(P_174878, N_174879, R_174881);
+Genfastasgn_178513(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 100):
 F.line = 1303;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_174878, N_174879, R_174881);
+Genlinedir_176516(P_175878, N_175879, R_175881);
 F.line = 1304;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174879).Kind/8] &(1<<((*N_174879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174879).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_174878, (*N_174879).KindU.S6.Sons->data[0], R_174881);
+if (((TMP175136[(*N_175879).Kind/8] &(1<<((*N_175879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175879).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_175878, (*N_175879).KindU.S6.Sons->data[0], R_175881);
 F.line = 1305;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = rawNewString(Tnl_45573->Sup.len + 1);
+LOC4 = rawNewString(Tnl_46573->Sup.len + 1);
 appendChar(LOC4, 59);
-appendString(LOC4, Tnl_45573);
-App_46036(&(*R_174881).Res, LOC4);
+appendString(LOC4, Tnl_46573);
+App_47036(&(*R_175881).Res, LOC4);
 break;
 case ((NU8) 80):
 F.line = 1306;F.filename = "ecmasgen.nim";
-Genasmstmt_176888(P_174878, N_174879, R_174881);
+Genasmstmt_177888(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 93):
 F.line = 1307;F.filename = "ecmasgen.nim";
-Gentrystmt_175767(P_174878, N_174879, R_174881);
+Gentrystmt_176767(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 95):
 F.line = 1308;F.filename = "ecmasgen.nim";
-Genraisestmt_176205(P_174878, N_174879, R_174881);
+Genraisestmt_177205(P_175878, N_175879, R_175881);
 break;
 case ((NU8) 90):
 case ((NU8) 105):
@@ -6369,53 +6369,53 @@ case ((NU8) 69):
 case ((NU8) 70):
 case ((NU8) 71):
 F.line = 1313;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174879).Kind/8] &(1<<((*N_174879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(1) >= (NU)((*N_174879).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*N_174879).KindU.S6.Sons->data[1] == NIM_NIL)) goto LA6;
-Prc_180488 = 0;
+if (((TMP175136[(*N_175879).Kind/8] &(1<<((*N_175879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(1) >= (NU)((*N_175879).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*N_175879).KindU.S6.Sons->data[1] == NIM_NIL)) goto LA6;
+Prc_181488 = 0;
 F.line = 1314;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174879).Kind/8] &(1<<((*N_174879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174879).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_174879).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_174879).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-Prc_180488 = (*(*N_174879).KindU.S6.Sons->data[0]).KindU.S4.Sym;
+if (((TMP175136[(*N_175879).Kind/8] &(1<<((*N_175879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175879).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_175879).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_175879).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+Prc_181488 = (*(*N_175879).KindU.S6.Sons->data[0]).KindU.S4.Sym;
 F.line = 1315;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174879).Kind/8] &(1<<((*N_174879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(4) >= (NU)((*N_174879).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC9 = !(((*N_174879).KindU.S6.Sons->data[4] == NIM_NIL));
+if (((TMP175136[(*N_175879).Kind/8] &(1<<((*N_175879).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(4) >= (NU)((*N_175879).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC9 = !(((*N_175879).KindU.S6.Sons->data[4] == NIM_NIL));
 if (!(LOC9)) goto LA10;
-LOC9 = !((((*Prc_180488).Loc.Flags &(1<<((((NU8) 3))&7)))!=0));
+LOC9 = !((((*Prc_181488).Loc.Flags &(1<<((((NU8) 3))&7)))!=0));
 LA10: ;
 if (!LOC9) goto LA11;
 F.line = 1316;F.filename = "ecmasgen.nim";
-Genproc_180188(P_174878, N_174879, R_174881);
+Genproc_181188(P_175878, N_175879, R_175881);
 goto LA8;
 LA11: ;
 F.line = 1318;F.filename = "ecmasgen.nim";
 LOC13 = 0;
-LOC13 = Manglename_174218(Prc_180488);
+LOC13 = Manglename_175218(Prc_181488);
 LA8: ;
 LA6: ;
 break;
 default:
 F.line = 1320;F.filename = "ecmasgen.nim";
-Genlinedir_175516(P_174878, N_174879, R_174881);
+Genlinedir_176516(P_175878, N_175879, R_175881);
 F.line = 1321;F.filename = "ecmasgen.nim";
-Gen_174868(P_174878, N_174879, R_174881);
+Gen_175868(P_175878, N_175879, R_175881);
 F.line = 1322;F.filename = "ecmasgen.nim";
 LOC14 = 0;
-LOC14 = rawNewString(Tnl_45573->Sup.len + 1);
+LOC14 = rawNewString(Tnl_46573->Sup.len + 1);
 appendChar(LOC14, 59);
-appendString(LOC14, Tnl_45573);
-App_46036(&(*R_174881).Res, LOC14);
+appendString(LOC14, Tnl_46573);
+App_47036(&(*R_175881).Res, LOC14);
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Gen_174868)(TY174021* P_174871, TY49525* N_174872, TY174013* R_174874) {
-NF64 F_180542;
+N_NIMCALL(void, Gen_175868)(TY175021* P_175871, TY50525* N_175872, TY175013* R_175874) {
+NF64 F_181542;
 NU8 LOC2;
-TY49551* LOC6;
-TY46451 LOC9;
+TY50551* LOC6;
+TY47451 LOC9;
 NIM_BOOL LOC21;
 NimStringDesc* LOC25;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -6426,214 +6426,214 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-F_180542 = 0;
+F_181542 = 0;
 F.line = 1326;F.filename = "ecmasgen.nim";
-(*R_174874).Kind = ((NU8) 0);
+(*R_175874).Kind = ((NU8) 0);
 F.line = 1327;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Com, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175874).Com, NIM_NIL);
 F.line = 1328;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, NIM_NIL);
+unsureAsgnRef((void**) &(*R_175874).Res, NIM_NIL);
 F.line = 1329;F.filename = "ecmasgen.nim";
-switch ((*N_174872).Kind) {
+switch ((*N_175872).Kind) {
 case ((NU8) 3):
 F.line = 1331;F.filename = "ecmasgen.nim";
-Gensym_178116(P_174871, N_174872, R_174874);
+Gensym_179116(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 5) ... ((NU8) 10):
 F.line = 1333;F.filename = "ecmasgen.nim";
-if (!(((TMP176604[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176605));
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46052((*N_174872).KindU.S1.Intval));
+if (!(((TMP177604[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177605));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47052((*N_175872).KindU.S1.Intval));
 break;
 case ((NU8) 18):
 F.line = 1335;F.filename = "ecmasgen.nim";
-LOC2 = Maptype_174142((*N_174872).Typ);
+LOC2 = Maptype_175142((*N_175872).Typ);
 if (!(LOC2 == ((NU8) 8))) goto LA3;
 F.line = 1336;F.filename = "ecmasgen.nim";
-(*R_174874).Kind = ((NU8) 8);
+(*R_175874).Kind = ((NU8) 8);
 F.line = 1337;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Com, Torope_46046(((NimStringDesc*) &TMP178626)));
+unsureAsgnRef((void**) &(*R_175874).Com, Torope_47046(((NimStringDesc*) &TMP179626)));
 F.line = 1338;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46046(((NimStringDesc*) &TMP178112)));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47046(((NimStringDesc*) &TMP179112)));
 goto LA1;
 LA3: ;
 F.line = 1340;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46046(((NimStringDesc*) &TMP178626)));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47046(((NimStringDesc*) &TMP179626)));
 LA1: ;
 break;
 case ((NU8) 14) ... ((NU8) 16):
 F.line = 1342;F.filename = "ecmasgen.nim";
 LOC6 = 0;
-LOC6 = Skiptypes_91085((*N_174872).Typ, 9480192);
+LOC6 = Skiptypes_92085((*N_175872).Typ, 9480192);
 if (!((*LOC6).Kind == ((NU8) 28))) goto LA7;
 F.line = 1343;F.filename = "ecmasgen.nim";
-Usemagic_174882(P_174871, ((NimStringDesc*) &TMP180013));
+Usemagic_175882(P_175871, ((NimStringDesc*) &TMP181013));
 F.line = 1344;F.filename = "ecmasgen.nim";
 memset((void*)&LOC9, 0, sizeof(LOC9));
-if (!(((TMP176608[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176609));
-LOC9[0] = Makecstring_153010((*N_174872).KindU.S3.Strval);
-unsureAsgnRef((void**) &(*R_174874).Res, Ropef_46069(((NimStringDesc*) &TMP180014), LOC9, 1));
+if (!(((TMP177608[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177609));
+LOC9[0] = Makecstring_154010((*N_175872).KindU.S3.Strval);
+unsureAsgnRef((void**) &(*R_175874).Res, Ropef_47069(((NimStringDesc*) &TMP181014), LOC9, 1));
 goto LA5;
 LA7: ;
 F.line = 1346;F.filename = "ecmasgen.nim";
-if (!(((TMP176608[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP176609));
-unsureAsgnRef((void**) &(*R_174874).Res, Makecstring_153010((*N_174872).KindU.S3.Strval));
+if (!(((TMP177608[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP177609));
+unsureAsgnRef((void**) &(*R_175874).Res, Makecstring_154010((*N_175872).KindU.S3.Strval));
 LA5: ;
 break;
 case ((NU8) 11) ... ((NU8) 13):
 F.line = 1348;F.filename = "ecmasgen.nim";
-if (!(((TMP180707[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP180708));
-F_180542 = (*N_174872).KindU.S2.Floatval;
+if (!(((TMP181707[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP181708));
+F_181542 = (*N_175872).KindU.S2.Floatval;
 F.line = 1349;F.filename = "ecmasgen.nim";
-if (!!((((NF) (F_180542)) == ((NF) (F_180542))))) goto LA11;
+if (!!((((NF) (F_181542)) == ((NF) (F_181542))))) goto LA11;
 F.line = 1349;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46046(((NimStringDesc*) &TMP180709)));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47046(((NimStringDesc*) &TMP181709)));
 goto LA10;
 LA11: ;
-if (!(((NF) (F_180542)) == 0.00000)) goto LA13;
+if (!(((NF) (F_181542)) == 0.00000)) goto LA13;
 F.line = 1350;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Toropef_46049(F_180542));
+unsureAsgnRef((void**) &(*R_175874).Res, Toropef_47049(F_181542));
 goto LA10;
 LA13: ;
-if (!(((NF) (F_180542)) == (0.500000 * ((NF) (F_180542))))) goto LA15;
+if (!(((NF) (F_181542)) == (0.500000 * ((NF) (F_181542))))) goto LA15;
 F.line = 1352;F.filename = "ecmasgen.nim";
-if (!(0.00000 < ((NF) (F_180542)))) goto LA18;
+if (!(0.00000 < ((NF) (F_181542)))) goto LA18;
 F.line = 1352;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46046(((NimStringDesc*) &TMP180710)));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47046(((NimStringDesc*) &TMP181710)));
 goto LA17;
 LA18: ;
 F.line = 1353;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Torope_46046(((NimStringDesc*) &TMP180711)));
+unsureAsgnRef((void**) &(*R_175874).Res, Torope_47046(((NimStringDesc*) &TMP181711)));
 LA17: ;
 goto LA10;
 LA15: ;
 F.line = 1354;F.filename = "ecmasgen.nim";
-unsureAsgnRef((void**) &(*R_174874).Res, Toropef_46049(F_180542));
+unsureAsgnRef((void**) &(*R_175874).Res, Toropef_47049(F_181542));
 LA10: ;
 break;
 case ((NU8) 107):
 F.line = 1355;F.filename = "ecmasgen.nim";
-Genblock_176621(P_174871, N_174872, R_174874);
+Genblock_177621(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 39):
 F.line = 1356;F.filename = "ecmasgen.nim";
-Genifexpr_177132(P_174871, N_174872, R_174874);
+Genifexpr_178132(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 21):
 case ((NU8) 49):
 case ((NU8) 20):
 case ((NU8) 22):
 F.line = 1358;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174872).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC21 = ((*(*N_174872).KindU.S6.Sons->data[0]).Kind == ((NU8) 3));
+if (((TMP175136[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175872).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC21 = ((*(*N_175872).KindU.S6.Sons->data[0]).Kind == ((NU8) 3));
 if (!(LOC21)) goto LA22;
-if (((TMP174136[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174872).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP174138[(*(*N_174872).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_174872).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP174139));
-LOC21 = !(((*(*(*N_174872).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic == ((NU8) 0)));
+if (((TMP175136[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175872).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP175138[(*(*N_175872).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_175872).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP175139));
+LOC21 = !(((*(*(*N_175872).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic == ((NU8) 0)));
 LA22: ;
 if (!LOC21) goto LA23;
 F.line = 1359;F.filename = "ecmasgen.nim";
-Genmagic_179219(P_174871, N_174872, R_174874);
+Genmagic_180219(P_175871, N_175872, R_175874);
 goto LA20;
 LA23: ;
 F.line = 1361;F.filename = "ecmasgen.nim";
-Gencall_178292(P_174871, N_174872, R_174874);
+Gencall_179292(P_175871, N_175872, R_175874);
 LA20: ;
 break;
 case ((NU8) 31):
 F.line = 1362;F.filename = "ecmasgen.nim";
-Gensetconstr_179483(P_174871, N_174872, R_174874);
+Gensetconstr_180483(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 32):
 F.line = 1363;F.filename = "ecmasgen.nim";
-Genarrayconstr_179567(P_174871, N_174872, R_174874);
+Genarrayconstr_180567(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 30):
 F.line = 1364;F.filename = "ecmasgen.nim";
-Genrecordconstr_179607(P_174871, N_174872, R_174874);
+Genrecordconstr_180607(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 47):
 case ((NU8) 48):
 case ((NU8) 50):
 F.line = 1365;F.filename = "ecmasgen.nim";
-Genconv_179712(P_174871, N_174872, R_174874);
+Genconv_180712(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 52):
 case ((NU8) 53):
 F.line = 1366;F.filename = "ecmasgen.nim";
-Genaddr_178024(P_174871, N_174872, R_174874);
+Genaddr_179024(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 38):
 case ((NU8) 54):
 F.line = 1367;F.filename = "ecmasgen.nim";
-Genderef_178224(P_174871, N_174872, R_174874);
+Genderef_179224(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 33):
 F.line = 1368;F.filename = "ecmasgen.nim";
-Genarrayaccess_178012(P_174871, N_174872, R_174874);
+Genarrayaccess_179012(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 36):
 F.line = 1369;F.filename = "ecmasgen.nim";
-Genfieldaccess_177784(P_174871, N_174872, R_174874);
+Genfieldaccess_178784(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 37):
 F.line = 1370;F.filename = "ecmasgen.nim";
-Gencheckedfieldaccess_177896(P_174871, N_174872, R_174874);
+Gencheckedfieldaccess_178896(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 55):
 F.line = 1371;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174872).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_174871, (*N_174872).KindU.S6.Sons->data[0], R_174874);
+if (((TMP175136[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175872).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_175871, (*N_175872).KindU.S6.Sons->data[0], R_175874);
 break;
 case ((NU8) 56):
 F.line = 1372;F.filename = "ecmasgen.nim";
-Upconv_179768(P_174871, N_174872, R_174874);
+Upconv_180768(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 57):
 F.line = 1373;F.filename = "ecmasgen.nim";
-Genrangechck_179787(P_174871, N_174872, R_174874, ((NimStringDesc*) &TMP180712));
+Genrangechck_180787(P_175871, N_175872, R_175874, ((NimStringDesc*) &TMP181712));
 break;
 case ((NU8) 58):
 F.line = 1374;F.filename = "ecmasgen.nim";
-Genrangechck_179787(P_174871, N_174872, R_174874, ((NimStringDesc*) &TMP180713));
+Genrangechck_180787(P_175871, N_175872, R_175874, ((NimStringDesc*) &TMP181713));
 break;
 case ((NU8) 59):
 F.line = 1375;F.filename = "ecmasgen.nim";
-Genrangechck_179787(P_174871, N_174872, R_174874, ((NimStringDesc*) &TMP179850));
+Genrangechck_180787(P_175871, N_175872, R_175874, ((NimStringDesc*) &TMP180850));
 break;
 case ((NU8) 60):
 F.line = 1376;F.filename = "ecmasgen.nim";
-Convstrtocstr_179852(P_174871, N_174872, R_174874);
+Convstrtocstr_180852(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 61):
 F.line = 1377;F.filename = "ecmasgen.nim";
-Convcstrtostr_179933(P_174871, N_174872, R_174874);
+Convcstrtostr_180933(P_175871, N_175872, R_175874);
 break;
 case ((NU8) 62):
 F.line = 1378;F.filename = "ecmasgen.nim";
-if (((TMP174136[(*N_174872).Kind/8] &(1<<((*N_174872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP174137));
-if ((NU)(0) >= (NU)((*N_174872).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Gen_174868(P_174871, (*N_174872).KindU.S6.Sons->data[0], R_174874);
+if (((TMP175136[(*N_175872).Kind/8] &(1<<((*N_175872).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP175137));
+if ((NU)(0) >= (NU)((*N_175872).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Gen_175868(P_175871, (*N_175872).KindU.S6.Sons->data[0], R_175874);
 break;
 case ((NU8) 106):
 F.line = 1379;F.filename = "ecmasgen.nim";
-Genstmtlistexpr_176614(P_174871, N_174872, R_174874);
+Genstmtlistexpr_177614(P_175871, N_175872, R_175874);
 break;
 default:
 F.line = 1380;F.filename = "ecmasgen.nim";
 LOC25 = 0;
-LOC25 = rawNewString(reprEnum((*N_174872).Kind, NTI49030)->Sup.len + 24);
-appendString(LOC25, ((NimStringDesc*) &TMP180714));
-appendString(LOC25, reprEnum((*N_174872).Kind, NTI49030));
-Internalerror_41567((*N_174872).Info, LOC25);
+LOC25 = rawNewString(reprEnum((*N_175872).Kind, NTI50030)->Sup.len + 24);
+appendString(LOC25, ((NimStringDesc*) &TMP181714));
+appendString(LOC25, reprEnum((*N_175872).Kind, NTI50030));
+Internalerror_42567((*N_175872).Info, LOC25);
 break;
 }
 framePtr = framePtr->prev;
 }
-static N_INLINE(NIM_BOOL, Canbecycleroot_10840)(TY10402* C_10842) {
-NIM_BOOL Result_10843;
+static N_INLINE(NIM_BOOL, Canbecycleroot_11040)(TY10602* C_11042) {
+NIM_BOOL Result_11043;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "canbeCycleRoot";
@@ -6642,13 +6642,13 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_10843 = 0;
+Result_11043 = 0;
 F.line = 103;F.filename = "gc.nim";
-Result_10843 = !((((*(*C_10842).Typ).flags &(1<<((((NU8) 1))&7)))!=0));
+Result_11043 = !((((*(*C_11042).Typ).flags &(1<<((((NU8) 1))&7)))!=0));
 framePtr = framePtr->prev;
-return Result_10843;
+return Result_11043;
 }
-static N_INLINE(void, Rtladdcycleroot_11452)(TY10402* C_11454) {
+static N_INLINE(void, Rtladdcycleroot_11652)(TY10602* C_11654) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "rtlAddCycleRoot";
@@ -6660,18 +6660,18 @@ F.len = 0;
 F.line = 205;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA2;
 F.line = 205;F.filename = "gc.nim";
-Dl_7815(&Gch_10810.Cyclerootslock);
+Dl_8015(&Gch_11010.Cyclerootslock);
 LA2: ;
 F.line = 206;F.filename = "gc.nim";
-Incl_10674(&Gch_10810.Cycleroots, C_11454);
+Incl_10874(&Gch_11010.Cycleroots, C_11654);
 F.line = 207;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA5;
 F.line = 207;F.filename = "gc.nim";
-Dl_7819(&Gch_10810.Cyclerootslock);
+Dl_8019(&Gch_11010.Cyclerootslock);
 LA5: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, Incref_11602)(TY10402* C_11604) {
+static N_INLINE(void, Incref_11802)(TY10602* C_11804) {
 NI LOC1;
 NIM_BOOL LOC3;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -6683,16 +6683,16 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 226;F.filename = "gc.nim";
-LOC1 = Atomicinc_2801(&(*C_11604).Refcount, 8);
+LOC1 = Atomicinc_3001(&(*C_11804).Refcount, 8);
 F.line = 227;F.filename = "gc.nim";
-LOC3 = Canbecycleroot_10840(C_11604);
+LOC3 = Canbecycleroot_11040(C_11804);
 if (!LOC3) goto LA4;
 F.line = 228;F.filename = "gc.nim";
-Rtladdcycleroot_11452(C_11604);
+Rtladdcycleroot_11652(C_11804);
 LA4: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, Decref_11464)(TY10402* C_11466) {
+static N_INLINE(void, Decref_11664)(TY10602* C_11666) {
 NI LOC2;
 NIM_BOOL LOC5;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -6705,24 +6705,24 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 219;F.filename = "gc.nim";
 F.line = 220;F.filename = "gc.nim";
-LOC2 = Atomicdec_2806(&(*C_11466).Refcount, 8);
+LOC2 = Atomicdec_3006(&(*C_11666).Refcount, 8);
 if (!((NU64)(LOC2) < (NU64)(8))) goto LA3;
 F.line = 221;F.filename = "gc.nim";
-Rtladdzct_11458(C_11466);
+Rtladdzct_11658(C_11666);
 goto LA1;
 LA3: ;
-LOC5 = Canbecycleroot_10840(C_11466);
+LOC5 = Canbecycleroot_11040(C_11666);
 if (!LOC5) goto LA6;
 F.line = 223;F.filename = "gc.nim";
-Rtladdcycleroot_11452(C_11466);
+Rtladdcycleroot_11652(C_11666);
 goto LA1;
 LA6: ;
 LA1: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, asgnRef)(void** Dest_11614, void* Src_11615) {
-TY10402* LOC4;
-TY10402* LOC8;
+static N_INLINE(void, asgnRef)(void** Dest_11814, void* Src_11815) {
+TY10602* LOC4;
+TY10602* LOC8;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "asgnRef";
@@ -6733,23 +6733,23 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 235;F.filename = "gc.nim";
 F.line = 237;F.filename = "gc.nim";
-if (!!((Src_11615 == NIM_NIL))) goto LA2;
+if (!!((Src_11815 == NIM_NIL))) goto LA2;
 F.line = 237;F.filename = "gc.nim";
-LOC4 = Usrtocell_10836(Src_11615);
-Incref_11602(LOC4);
+LOC4 = Usrtocell_11036(Src_11815);
+Incref_11802(LOC4);
 LA2: ;
 F.line = 238;F.filename = "gc.nim";
-if (!!(((*Dest_11614) == NIM_NIL))) goto LA6;
+if (!!(((*Dest_11814) == NIM_NIL))) goto LA6;
 F.line = 238;F.filename = "gc.nim";
-LOC8 = Usrtocell_10836((*Dest_11614));
-Decref_11464(LOC8);
+LOC8 = Usrtocell_11036((*Dest_11814));
+Decref_11664(LOC8);
 LA6: ;
 F.line = 239;F.filename = "gc.nim";
-(*Dest_11614) = Src_11615;
+(*Dest_11814) = Src_11815;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY174007*, Newmodule_180716)(TY49547* Module_180718, NimStringDesc* Filename_180719) {
-TY174007* Result_180720;
+N_NIMCALL(TY175007*, Newmodule_181716)(TY50547* Module_181718, NimStringDesc* Filename_181719) {
+TY175007* Result_181720;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "newModule";
@@ -6758,25 +6758,25 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180720 = 0;
+Result_181720 = 0;
 F.line = 1385;F.filename = "ecmasgen.nim";
-Result_180720 = (TY174007*) newObj(NTI174009, sizeof(TY174007));
-(*Result_180720).Sup.Sup.m_type = NTI174007;
+Result_181720 = (TY175007*) newObj(NTI175009, sizeof(TY175007));
+(*Result_181720).Sup.Sup.m_type = NTI175007;
 F.line = 1386;F.filename = "ecmasgen.nim";
-asgnRefNoCycle((void**) &(*Result_180720).Filename, copyString(Filename_180719));
+asgnRefNoCycle((void**) &(*Result_181720).Filename, copyString(Filename_181719));
 F.line = 1387;F.filename = "ecmasgen.nim";
-asgnRef((void**) &(*Result_180720).Module, Module_180718);
+asgnRef((void**) &(*Result_181720).Module, Module_181718);
 F.line = 1388;F.filename = "ecmasgen.nim";
-if (!(Globals_180715 == NIM_NIL)) goto LA2;
+if (!(Globals_181715 == NIM_NIL)) goto LA2;
 F.line = 1388;F.filename = "ecmasgen.nim";
-asgnRefNoCycle((void**) &Globals_180715, Newglobals_174052());
+asgnRefNoCycle((void**) &Globals_181715, Newglobals_175052());
 LA2: ;
 framePtr = framePtr->prev;
-return Result_180720;
+return Result_181720;
 }
-N_NIMCALL(TY46008*, Genheader_180748)(void) {
-TY46008* Result_180750;
-TY46451 LOC1;
+N_NIMCALL(TY47008*, Genheader_181748)(void) {
+TY47008* Result_181750;
+TY47451 LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "genHeader";
@@ -6785,16 +6785,16 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180750 = 0;
+Result_181750 = 0;
 F.line = 1391;F.filename = "ecmasgen.nim";
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = Torope_46046(((NimStringDesc*) &TMP180788));
-Result_180750 = Ropef_46069(((NimStringDesc*) &TMP180787), LOC1, 1);
+LOC1[0] = Torope_47046(((NimStringDesc*) &TMP181788));
+Result_181750 = Ropef_47069(((NimStringDesc*) &TMP181787), LOC1, 1);
 framePtr = framePtr->prev;
-return Result_180750;
+return Result_181750;
 }
-N_NIMCALL(void, Genmodule_180789)(TY174021* P_180792, TY49525* N_180793, TY174013* R_180795) {
-TY53637 LOC4;
+N_NIMCALL(void, Genmodule_181789)(TY175021* P_181792, TY50525* N_181793, TY175013* R_181795) {
+TY54637 LOC4;
 NimStringDesc* LOC5;
 NimStringDesc* LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -6806,30 +6806,30 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 1397;F.filename = "ecmasgen.nim";
-Genstmt_174875(P_180792, N_180793, R_180795);
+Genstmt_175875(P_181792, N_181793, R_181795);
 F.line = 1398;F.filename = "ecmasgen.nim";
-if (!(((*P_180792).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
+if (!(((*P_181792).Options &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
 F.line = 1399;F.filename = "ecmasgen.nim";
 memset((void*)&LOC4, 0, sizeof(LOC4));
 LOC5 = 0;
-LOC5 = rawNewString((*(*(*(*P_180792).Module).Module).Name).S->Sup.len + 7);
-appendString(LOC5, ((NimStringDesc*) &TMP180844));
-appendString(LOC5, (*(*(*(*P_180792).Module).Module).Name).S);
-LOC4[0] = Makecstring_153010(LOC5);
+LOC5 = rawNewString((*(*(*(*P_181792).Module).Module).Name).S->Sup.len + 7);
+appendString(LOC5, ((NimStringDesc*) &TMP181844));
+appendString(LOC5, (*(*(*(*P_181792).Module).Module).Name).S);
+LOC4[0] = Makecstring_154010(LOC5);
 LOC6 = 0;
-LOC6 = Tofilename_41579((*(*(*P_180792).Module).Module).Info);
-LOC4[1] = Makecstring_153010(LOC6);
-LOC4[2] = (*R_180795).Com;
-unsureAsgnRef((void**) &(*R_180795).Com, Ropef_46069(((NimStringDesc*) &TMP180843), LOC4, 3));
+LOC6 = Tofilename_42579((*(*(*P_181792).Module).Module).Info);
+LOC4[1] = Makecstring_154010(LOC6);
+LOC4[2] = (*R_181795).Com;
+unsureAsgnRef((void**) &(*R_181795).Com, Ropef_47069(((NimStringDesc*) &TMP181843), LOC4, 3));
 LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY49525*, Myprocess_180845)(TY99002* B_180847, TY49525* N_180848) {
-TY49525* Result_180849;
-TY174021 P_180850;
-TY174013 R_180851;
-TY174007* M_180852;
-TY46008* LOC4;
+N_NIMCALL(TY50525*, Myprocess_181845)(TY100002* B_181847, TY50525* N_181848) {
+TY50525* Result_181849;
+TY175021 P_181850;
+TY175013 R_181851;
+TY175007* M_181852;
+TY47008* LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "myProcess";
@@ -6838,41 +6838,41 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180849 = 0;
-memset((void*)&P_180850, 0, sizeof(P_180850));
-memset((void*)&R_180851, 0, sizeof(R_180851));
+Result_181849 = 0;
+memset((void*)&P_181850, 0, sizeof(P_181850));
+memset((void*)&R_181851, 0, sizeof(R_181851));
 F.line = 1408;F.filename = "ecmasgen.nim";
-Result_180849 = N_180848;
-M_180852 = 0;
+Result_181849 = N_181848;
+M_181852 = 0;
 F.line = 1409;F.filename = "ecmasgen.nim";
-if (B_180847) chckObj((*B_180847).Sup.m_type, NTI174007);
-M_180852 = ((TY174007*) (B_180847));
+if (B_181847) chckObj((*B_181847).Sup.m_type, NTI175007);
+M_181852 = ((TY175007*) (B_181847));
 F.line = 1410;F.filename = "ecmasgen.nim";
-if (!((*M_180852).Module == NIM_NIL)) goto LA2;
+if (!((*M_181852).Module == NIM_NIL)) goto LA2;
 F.line = 1410;F.filename = "ecmasgen.nim";
-Internalerror_41567((*N_180848).Info, ((NimStringDesc*) &TMP180869));
+Internalerror_42567((*N_181848).Info, ((NimStringDesc*) &TMP181869));
 LA2: ;
 F.line = 1411;F.filename = "ecmasgen.nim";
-Initproc_174076(&P_180850, Globals_180715, M_180852, NIM_NIL, (*(*M_180852).Module).Options);
+Initproc_175076(&P_181850, Globals_181715, M_181852, NIM_NIL, (*(*M_181852).Module).Options);
 F.line = 1412;F.filename = "ecmasgen.nim";
-Genmodule_180789(&P_180850, N_180848, &R_180851);
+Genmodule_181789(&P_181850, N_181848, &R_181851);
 F.line = 1413;F.filename = "ecmasgen.nim";
-App_46031(&(*P_180850.Globals).Code, P_180850.Data);
+App_47031(&(*P_181850.Globals).Code, P_181850.Data);
 F.line = 1414;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = Mergestmt_174923(&R_180851);
-App_46031(&(*P_180850.Globals).Code, LOC4);
+LOC4 = Mergestmt_175923(&R_181851);
+App_47031(&(*P_181850.Globals).Code, LOC4);
 framePtr = framePtr->prev;
-return Result_180849;
+return Result_181849;
 }
-N_NIMCALL(TY49525*, Myclose_180870)(TY99002* B_180872, TY49525* N_180873) {
-TY49525* Result_180874;
-TY174007* M_180875;
-TY46008* Code_180887;
-NimStringDesc* Outfile_180888;
+N_NIMCALL(TY50525*, Myclose_181870)(TY100002* B_181872, TY50525* N_181873) {
+TY50525* Result_181874;
+TY175007* M_181875;
+TY47008* Code_181887;
+NimStringDesc* Outfile_181888;
 NimStringDesc* LOC4;
-TY46008* LOC5;
-TY46008* LOC6;
+TY47008* LOC5;
+TY47008* LOC6;
 NIM_BOOL LOC7;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -6882,35 +6882,35 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180874 = 0;
+Result_181874 = 0;
 F.line = 1417;F.filename = "ecmasgen.nim";
-Result_180874 = Myprocess_180845(B_180872, N_180873);
-M_180875 = 0;
+Result_181874 = Myprocess_181845(B_181872, N_181873);
+M_181875 = 0;
 F.line = 1418;F.filename = "ecmasgen.nim";
-if (B_180872) chckObj((*B_180872).Sup.m_type, NTI174007);
-M_180875 = ((TY174007*) (B_180872));
+if (B_181872) chckObj((*B_181872).Sup.m_type, NTI175007);
+M_181875 = ((TY175007*) (B_181872));
 F.line = 1419;F.filename = "ecmasgen.nim";
-if (!(((*(*M_180875).Module).Flags &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
-Code_180887 = 0;
+if (!(((*(*M_181875).Module).Flags &(1<<((((NU8) 15))&31)))!=0)) goto LA2;
+Code_181887 = 0;
 F.line = 1421;F.filename = "ecmasgen.nim";
-Code_180887 = Con_46015((*Globals_180715).Typeinfo, (*Globals_180715).Code);
-Outfile_180888 = 0;
+Code_181887 = Con_47015((*Globals_181715).Typeinfo, (*Globals_181715).Code);
+Outfile_181888 = 0;
 F.line = 1422;F.filename = "ecmasgen.nim";
 LOC4 = 0;
-LOC4 = Completecfilepath_64344((*M_180875).Filename, NIM_TRUE);
-Outfile_180888 = nosChangeFileExt(LOC4, ((NimStringDesc*) &TMP180889));
+LOC4 = Completecfilepath_65344((*M_181875).Filename, NIM_TRUE);
+Outfile_181888 = nosChangeFileExt(LOC4, ((NimStringDesc*) &TMP181889));
 F.line = 1423;F.filename = "ecmasgen.nim";
 LOC5 = 0;
-LOC5 = Genheader_180748();
+LOC5 = Genheader_181748();
 LOC6 = 0;
-LOC6 = Con_46015(LOC5, Code_180887);
-LOC7 = Writeropeifnotequal_46062(LOC6, Outfile_180888);
+LOC6 = Con_47015(LOC5, Code_181887);
+LOC7 = Writeropeifnotequal_47062(LOC6, Outfile_181888);
 LA2: ;
 framePtr = framePtr->prev;
-return Result_180874;
+return Result_181874;
 }
-N_NIMCALL(TY99002*, Myopencached_180890)(TY49547* S_180892, NimStringDesc* Filename_180893, TY87031* Rd_180894) {
-TY99002* Result_180895;
+N_NIMCALL(TY100002*, Myopencached_181890)(TY50547* S_181892, NimStringDesc* Filename_181893, TY88031* Rd_181894) {
+TY100002* Result_181895;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "myOpenCached";
@@ -6919,17 +6919,17 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180895 = 0;
+Result_181895 = 0;
 F.line = 1426;F.filename = "ecmasgen.nim";
-Internalerror_41571(((NimStringDesc*) &TMP180896));
+Internalerror_42571(((NimStringDesc*) &TMP181896));
 F.line = 1427;F.filename = "ecmasgen.nim";
-Result_180895 = NIM_NIL;
+Result_181895 = NIM_NIL;
 framePtr = framePtr->prev;
-return Result_180895;
+return Result_181895;
 }
-N_NIMCALL(TY99002*, Myopen_180897)(TY49547* S_180899, NimStringDesc* Filename_180900) {
-TY99002* Result_180901;
-TY174007* LOC1;
+N_NIMCALL(TY100002*, Myopen_181897)(TY50547* S_181899, NimStringDesc* Filename_181900) {
+TY100002* Result_181901;
+TY175007* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "myOpen";
@@ -6938,16 +6938,16 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_180901 = 0;
+Result_181901 = 0;
 F.line = 1430;F.filename = "ecmasgen.nim";
 LOC1 = 0;
-LOC1 = Newmodule_180716(S_180899, Filename_180900);
-Result_180901 = &LOC1->Sup;
+LOC1 = Newmodule_181716(S_181899, Filename_181900);
+Result_181901 = &LOC1->Sup;
 framePtr = framePtr->prev;
-return Result_180901;
+return Result_181901;
 }
-N_NIMCALL(TY99006, Ecmasgenpass_174004)(void) {
-TY99006 Result_180904;
+N_NIMCALL(TY100006, Ecmasgenpass_175004)(void) {
+TY100006 Result_181904;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "ecmasgenPass";
@@ -6956,19 +6956,19 @@ F.filename = "rod/ecmasgen.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&Result_180904, 0, sizeof(Result_180904));
+memset((void*)&Result_181904, 0, sizeof(Result_181904));
 F.line = 1433;F.filename = "ecmasgen.nim";
-Initpass_99031(&Result_180904);
+Initpass_100031(&Result_181904);
 F.line = 1434;F.filename = "ecmasgen.nim";
-Result_180904.Open = Myopen_180897;
+Result_181904.Open = Myopen_181897;
 F.line = 1435;F.filename = "ecmasgen.nim";
-Result_180904.Close = Myclose_180870;
+Result_181904.Close = Myclose_181870;
 F.line = 1436;F.filename = "ecmasgen.nim";
-Result_180904.Opencached = Myopencached_180890;
+Result_181904.Opencached = Myopencached_181890;
 F.line = 1437;F.filename = "ecmasgen.nim";
-Result_180904.Process = Myprocess_180845;
+Result_181904.Process = Myprocess_181845;
 framePtr = framePtr->prev;
-return Result_180904;
+return Result_181904;
 }
 N_NOINLINE(void, ecmasgenInit)(void) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;

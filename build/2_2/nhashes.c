@@ -19,9 +19,9 @@ TY239 data;
 N_NIMCALL(NI, Conchash_43040)(NI H_43042, NI Val_43043);
 N_NIMCALL(NI, Finishhash_43044)(NI H_43046);
 N_NIMCALL(NI, Getdatahash_43024)(void* Data_43026, NI Size_43027);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NIMCALL(NI, Hashptr_43028)(void* P_43030);
 N_NIMCALL(NI, Gethash_43018)(NCSTRING Str_43020);
 N_NIMCALL(NI, Gethashstr_43031)(NimStringDesc* S_43033);
@@ -69,30 +69,14 @@ Result_43055 = (NI64)((NU64)(Result_43055) + (NU64)((NI64)((NU64)(Result_43055) 
 framePtr = framePtr->prev;
 return Result_43055;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
-}
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
 LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -100,6 +84,22 @@ LA4: ;
 raiseOverflow();
 BeforeRet: ;
 return Result_5805;
+}
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI64)((NU64)(A_6003) - (NU64)(B_6004));
+LOC2 = (0 <= (NI64)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_6005 ^ (NI64)((NU64) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
 }
 N_NIMCALL(NI, Getdatahash_43024)(void* Data_43026, NI Size_43027) {
 NI Result_43060;
@@ -234,12 +234,12 @@ HEX3Atmp_43163 = 0;
 F.line = 87;F.filename = "nhashes.nim";
 HEX3Atmp_43163 = S_43033->Sup.len;
 Res_43165 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_43165 = 1;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_43165 <= HEX3Atmp_43163)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_43156 = Res_43165;
 F.line = 88;F.filename = "nhashes.nim";
 if ((NU)(I_43156) > (NU)(S_43033->Sup.len)) raiseIndexError();
@@ -248,7 +248,7 @@ F.line = 89;F.filename = "nhashes.nim";
 H_43131 = (NI64)((NU64)(H_43131) + (NU64)((NI64)((NU64)(H_43131) << (NU64)(10))));
 F.line = 90;F.filename = "nhashes.nim";
 H_43131 = (NI64)(H_43131 ^ (NI64)((NU64)(H_43131) >> (NU64)(6)));
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_43165 = addInt(Res_43165, 1);
 } LA1: ;
 F.line = 91;F.filename = "nhashes.nim";
@@ -287,12 +287,12 @@ HEX3Atmp_43219 = 0;
 F.line = 101;F.filename = "nhashes.nim";
 HEX3Atmp_43219 = subInt(addInt(S_43039->Sup.len, 0), 1);
 Res_43221 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_43221 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_43221 <= HEX3Atmp_43219)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_43183 = Res_43221;
 F.line = 102;F.filename = "nhashes.nim";
 if ((NU)(I_43183) > (NU)(S_43039->Sup.len)) raiseIndexError();
@@ -314,7 +314,7 @@ H_43172 = (NI64)((NU64)(H_43172) + (NU64)((NI64)((NU64)(H_43172) << (NU64)(10)))
 F.line = 109;F.filename = "nhashes.nim";
 H_43172 = (NI64)(H_43172 ^ (NI64)((NU64)(H_43172) >> (NU64)(6)));
 LA2: ;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_43221 = addInt(Res_43221, 1);
 } LA1: ;
 F.line = 110;F.filename = "nhashes.nim";
@@ -353,12 +353,12 @@ HEX3Atmp_43273 = 0;
 F.line = 120;F.filename = "nhashes.nim";
 HEX3Atmp_43273 = subInt(addInt(S_43036->Sup.len, 0), 1);
 Res_43275 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_43275 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_43275 <= HEX3Atmp_43273)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_43239 = Res_43275;
 F.line = 121;F.filename = "nhashes.nim";
 if ((NU)(I_43239) > (NU)(S_43036->Sup.len)) raiseIndexError();
@@ -374,7 +374,7 @@ F.line = 125;F.filename = "nhashes.nim";
 H_43228 = (NI64)((NU64)(H_43228) + (NU64)((NI64)((NU64)(H_43228) << (NU64)(10))));
 F.line = 126;F.filename = "nhashes.nim";
 H_43228 = (NI64)(H_43228 ^ (NI64)((NU64)(H_43228) >> (NU64)(6)));
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_43275 = addInt(Res_43275, 1);
 } LA1: ;
 F.line = 127;F.filename = "nhashes.nim";

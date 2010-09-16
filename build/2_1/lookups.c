@@ -223,11 +223,11 @@ TY54547* Resultsym;
 NI Nestedloopcounter;
 NI Nestedblockcounter;
 };
-typedef NI TY8614[16];
+typedef NI TY8814[16];
 struct TY54896 {
 TY54896* Next;
 NI Key;
-TY8614 Bits;
+TY8814 Bits;
 };
 struct TY54527 {
   TGenericSeq Sup;
@@ -251,11 +251,11 @@ struct TY54549 {
 };
 N_NIMCALL(NimStringDesc*, Getsymrepr_106014)(TY54547* S_106016);
 N_NIMCALL(NimStringDesc*, Getprocheader_95018)(TY54547* Sym_95020);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17508);
 N_NIMCALL(void, Closescope_106017)(TY58107* Tab_106020);
 N_NIMCALL(void, Internalerror_46571)(NimStringDesc* Errmsg_46573);
 N_NIMCALL(TY54547*, Inittabiter_58081)(TY58079* Ti_58084, TY54529* Tab_58085);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NOINLINE(void, raiseIndexError)(void);
 N_NIMCALL(void, Limessage_46562)(TY46532 Info_46564, NU8 Msg_46565, NimStringDesc* Arg_46566);
@@ -278,7 +278,7 @@ N_NIMCALL(void, Symtabaddat_58132)(TY58107* Tab_58135, TY54547* E_58136, NI At_5
 N_NIMCALL(void, Addinterfacedecl_106040)(TY105012* C_106042, TY54547* Sym_106043);
 N_NIMCALL(void, Addinterfaceoverloadablesymat_106044)(TY105012* C_106046, TY54547* Sym_106047, NI At_106048);
 N_NIMCALL(TY54547*, Lookup_106049)(TY105012* C_106051, TY54525* N_106052);
-N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
+N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5475);
 N_NIMCALL(TY54547*, Symtabget_58119)(TY58107 Tab_58121, TY53011* S_58122);
 N_NIMCALL(NIM_BOOL, Intsetcontains_54910)(TY54900 S_54912, NI Key_54913);
 N_NIMCALL(void, Loadstub_91070)(TY54547* S_91072);
@@ -286,11 +286,11 @@ N_NIMCALL(TY54547*, Qualifiedlookup_106053)(TY105012* C_106055, TY54525* N_10605
 N_NIMCALL(NimStringDesc*, Rendertree_83042)(TY54525* N_83044, NU8 Renderflags_83047);
 N_NIMCALL(TY54547*, Initoverloaditer_106058)(TY106004* O_106061, TY105012* C_106062, TY54525* N_106063);
 N_NIMCALL(TY54547*, Initidentiter_58095)(TY58092* Ti_58098, TY54529* Tab_58099, TY53011* S_58100);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_11826, void* Src_11827);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_12026, void* Src_12027);
 N_NIMCALL(TY54547*, Nextoverloaditer_106064)(TY106004* O_106067, TY105012* C_106068, TY54525* N_106069);
 N_NIMCALL(TY54547*, Nextidentiter_58101)(TY58092* Ti_58104, TY54529* Tab_58105);
 N_NIMCALL(NI, Sonslen_54803)(TY54525* N_54805);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 STRING_LITERAL(TMP106164, "CloseScope", 10);
 STRING_LITERAL(TMP106247, "AddInterfaceDeclAux", 19);
 STRING_LITERAL(TMP106293, "addOverloadableSymAt", 20);
@@ -335,21 +335,21 @@ break;
 framePtr = framePtr->prev;
 return Result_106073;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
-NI Result_5805;
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
 NIM_BOOL LOC2;
-Result_5805 = 0;
-Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
-LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
+Result_6005 = 0;
+Result_6005 = (NI32)((NU32)(A_6003) - (NU32)(B_6004));
+LOC2 = (0 <= (NI32)(Result_6005 ^ A_6003));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LOC2 = (0 <= (NI32)(Result_6005 ^ (NI32)((NU32) ~(B_6004))));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5805;
+return Result_6005;
 }
 N_NIMCALL(void, Closescope_106017)(TY58107* Tab_106020) {
 TY58079 It_106078;
@@ -943,21 +943,21 @@ LA27: ;
 framePtr = framePtr->prev;
 return Result_106734;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
+LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
 N_NIMCALL(TY54547*, Nextoverloaditer_106064)(TY106004* O_106067, TY105012* C_106068, TY54525* N_106069) {
 TY54547* Result_107062;

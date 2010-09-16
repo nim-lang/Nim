@@ -5,7 +5,7 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY97008 TY97008;
+typedef struct TY98008 TY98008;
 typedef struct TGenericSeq TGenericSeq;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -29,63 +29,63 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY97008 {
+struct TY98008 {
   TGenericSeq Sup;
   NI8 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(NIM_BOOL, Bitsetin_97045)(TY97008* X_97047, NI64 E_97048);
-static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562);
+N_NIMCALL(NIM_BOOL, Bitsetin_98045)(TY98008* X_98047, NI64 E_98048);
+static N_INLINE(NI64, divInt64)(NI64 A_5761, NI64 B_5762);
 N_NOINLINE(void, raiseDivByZero)(void);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NOINLINE(void, raiseIndexError)(void);
-static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573);
-N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
-N_NIMCALL(void, Bitsetincl_97035)(TY97008** X_97038, NI64 Elem_97039);
-N_NIMCALL(void, internalAssert)(NCSTRING File_5054, NI Line_5055, NIM_BOOL Cond_5056);
-N_NIMCALL(void, Bitsetexcl_97040)(TY97008** X_97043, NI64 Elem_97044);
-N_NIMCALL(void, Bitsetinit_97010)(TY97008** B_97013, NI Length_97014);
-N_NIMCALL(void*, newSeq)(TNimType* Typ_12604, NI Len_12605);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_11626, void* Src_11627);
-N_NIMCALL(void, Bitsetunion_97015)(TY97008** X_97018, TY97008* Y_97019);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
-N_NIMCALL(void, Bitsetdiff_97020)(TY97008** X_97023, TY97008* Y_97024);
-N_NIMCALL(void, Bitsetsymdiff_97025)(TY97008** X_97028, TY97008* Y_97029);
-N_NIMCALL(void, Bitsetintersect_97030)(TY97008** X_97033, TY97008* Y_97034);
-N_NIMCALL(NIM_BOOL, Bitsetequals_97049)(TY97008* X_97051, TY97008* Y_97052);
-N_NIMCALL(NIM_BOOL, Bitsetcontains_97053)(TY97008* X_97055, TY97008* Y_97056);
-extern TNimType* NTI97008; /* TBitSet */
-static N_INLINE(NI64, divInt64)(NI64 A_5561, NI64 B_5562) {
-NI64 Result_5563;
+static N_INLINE(NI64, modInt64)(NI64 A_5772, NI64 B_5773);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5523, NI64 A_5524, NI64 B_5525);
+N_NIMCALL(void, Bitsetincl_98035)(TY98008** X_98038, NI64 Elem_98039);
+N_NIMCALL(void, internalAssert)(NCSTRING File_5254, NI Line_5255, NIM_BOOL Cond_5256);
+N_NIMCALL(void, Bitsetexcl_98040)(TY98008** X_98043, NI64 Elem_98044);
+N_NIMCALL(void, Bitsetinit_98010)(TY98008** B_98013, NI Length_98014);
+N_NIMCALL(void*, newSeq)(TNimType* Typ_12804, NI Len_12805);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_11826, void* Src_11827);
+N_NIMCALL(void, Bitsetunion_98015)(TY98008** X_98018, TY98008* Y_98019);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
+N_NIMCALL(void, Bitsetdiff_98020)(TY98008** X_98023, TY98008* Y_98024);
+N_NIMCALL(void, Bitsetsymdiff_98025)(TY98008** X_98028, TY98008* Y_98029);
+N_NIMCALL(void, Bitsetintersect_98030)(TY98008** X_98033, TY98008* Y_98034);
+N_NIMCALL(NIM_BOOL, Bitsetequals_98049)(TY98008* X_98051, TY98008* Y_98052);
+N_NIMCALL(NIM_BOOL, Bitsetcontains_98053)(TY98008* X_98055, TY98008* Y_98056);
+extern TNimType* NTI98008; /* TBitSet */
+static N_INLINE(NI64, divInt64)(NI64 A_5761, NI64 B_5762) {
+NI64 Result_5763;
 NIM_BOOL LOC5;
-Result_5563 = 0;
-if (!(B_5562 == 0)) goto LA2;
+Result_5763 = 0;
+if (!(B_5762 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-LOC5 = (A_5561 == (IL64(-9223372036854775807) - IL64(1)));
+LOC5 = (A_5761 == (IL64(-9223372036854775807) - IL64(1)));
 if (!(LOC5)) goto LA6;
-LOC5 = (B_5562 == -1);
+LOC5 = (B_5762 == -1);
 LA6: ;
 if (!LOC5) goto LA7;
 raiseOverflow();
 LA7: ;
-Result_5563 = (NI64)(A_5561 / B_5562);
+Result_5763 = (NI64)(A_5761 / B_5762);
 goto BeforeRet;
 BeforeRet: ;
-return Result_5563;
+return Result_5763;
 }
-static N_INLINE(NI64, modInt64)(NI64 A_5572, NI64 B_5573) {
-NI64 Result_5574;
-Result_5574 = 0;
-if (!(B_5573 == 0)) goto LA2;
+static N_INLINE(NI64, modInt64)(NI64 A_5772, NI64 B_5773) {
+NI64 Result_5774;
+Result_5774 = 0;
+if (!(B_5773 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-Result_5574 = (NI64)(A_5572 % B_5573);
+Result_5774 = (NI64)(A_5772 % B_5773);
 goto BeforeRet;
 BeforeRet: ;
-return Result_5574;
+return Result_5774;
 }
-N_NIMCALL(NIM_BOOL, Bitsetin_97045)(TY97008* X_97047, NI64 E_97048) {
-NIM_BOOL Result_97061;
+N_NIMCALL(NIM_BOOL, Bitsetin_98045)(TY98008* X_98047, NI64 E_98048) {
+NIM_BOOL Result_98061;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetIn";
@@ -94,14 +94,14 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_97061 = 0;
+Result_98061 = 0;
 F.line = 34;F.filename = "bitsets.nim";
-if ((NU)(divInt64(E_97048, 8)) >= (NU)(X_97047->Sup.len)) raiseIndexError();
-Result_97061 = !(((NI8)(X_97047->data[divInt64(E_97048, 8)] & ((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(E_97048, 8))), (-2147483647 -1), 2147483647))))) == ((NI8) 0)));
+if ((NU)(divInt64(E_98048, 8)) >= (NU)(X_98047->Sup.len)) raiseIndexError();
+Result_98061 = !(((NI8)(X_98047->data[divInt64(E_98048, 8)] & ((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(E_98048, 8))), (-2147483647 -1), 2147483647))))) == ((NI8) 0)));
 framePtr = framePtr->prev;
-return Result_97061;
+return Result_98061;
 }
-N_NIMCALL(void, Bitsetincl_97035)(TY97008** X_97038, NI64 Elem_97039) {
+N_NIMCALL(void, Bitsetincl_98035)(TY98008** X_98038, NI64 Elem_98039) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetIncl";
@@ -111,14 +111,14 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 38;F.filename = "bitsets.nim";
-internalAssert("rod/bitsets.nim", 38, (0 <= Elem_97039));
+internalAssert("rod/bitsets.nim", 38, (0 <= Elem_98039));
 F.line = 39;F.filename = "bitsets.nim";
-if ((NU)(divInt64(Elem_97039, 8)) >= (NU)((*X_97038)->Sup.len)) raiseIndexError();
-if ((NU)(divInt64(Elem_97039, 8)) >= (NU)((*X_97038)->Sup.len)) raiseIndexError();
-(*X_97038)->data[divInt64(Elem_97039, 8)] = (NI8)((*X_97038)->data[divInt64(Elem_97039, 8)] | ((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(Elem_97039, 8))), (-2147483647 -1), 2147483647)))));
+if ((NU)(divInt64(Elem_98039, 8)) >= (NU)((*X_98038)->Sup.len)) raiseIndexError();
+if ((NU)(divInt64(Elem_98039, 8)) >= (NU)((*X_98038)->Sup.len)) raiseIndexError();
+(*X_98038)->data[divInt64(Elem_98039, 8)] = (NI8)((*X_98038)->data[divInt64(Elem_98039, 8)] | ((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(Elem_98039, 8))), (-2147483647 -1), 2147483647)))));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Bitsetexcl_97040)(TY97008** X_97043, NI64 Elem_97044) {
+N_NIMCALL(void, Bitsetexcl_98040)(TY98008** X_98043, NI64 Elem_98044) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetExcl";
@@ -128,12 +128,12 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 43;F.filename = "bitsets.nim";
-if ((NU)(divInt64(Elem_97044, 8)) >= (NU)((*X_97043)->Sup.len)) raiseIndexError();
-if ((NU)(divInt64(Elem_97044, 8)) >= (NU)((*X_97043)->Sup.len)) raiseIndexError();
-(*X_97043)->data[divInt64(Elem_97044, 8)] = (NI8)((*X_97043)->data[divInt64(Elem_97044, 8)] & (NI8)((NU8) ~(((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(Elem_97044, 8))), (-2147483647 -1), 2147483647)))))));
+if ((NU)(divInt64(Elem_98044, 8)) >= (NU)((*X_98043)->Sup.len)) raiseIndexError();
+if ((NU)(divInt64(Elem_98044, 8)) >= (NU)((*X_98043)->Sup.len)) raiseIndexError();
+(*X_98043)->data[divInt64(Elem_98044, 8)] = (NI8)((*X_98043)->data[divInt64(Elem_98044, 8)] & (NI8)((NU8) ~(((NI8)(NU8)(NU)(((NI)chckRange64((NI64)((NU64)(1) << (NU64)(modInt64(Elem_98044, 8))), (-2147483647 -1), 2147483647)))))));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Bitsetinit_97010)(TY97008** B_97013, NI Length_97014) {
+N_NIMCALL(void, Bitsetinit_98010)(TY98008** B_98013, NI Length_98014) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetInit";
@@ -143,29 +143,29 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 47;F.filename = "bitsets.nim";
-unsureAsgnRef((void**) &(*B_97013), (TY97008*) newSeq(NTI97008, Length_97014));
+unsureAsgnRef((void**) &(*B_98013), (TY98008*) newSeq(NTI98008, Length_98014));
 framePtr = framePtr->prev;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
+LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
-N_NIMCALL(void, Bitsetunion_97015)(TY97008** X_97018, TY97008* Y_97019) {
-NI I_97120;
-NI HEX3Atmp_97122;
-NI Res_97124;
+N_NIMCALL(void, Bitsetunion_98015)(TY98008** X_98018, TY98008* Y_98019) {
+NI I_98120;
+NI HEX3Atmp_98122;
+NI Res_98124;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetUnion";
@@ -174,32 +174,32 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_97120 = 0;
-HEX3Atmp_97122 = 0;
+I_98120 = 0;
+HEX3Atmp_98122 = 0;
 F.line = 50;F.filename = "bitsets.nim";
-HEX3Atmp_97122 = ((*X_97018)->Sup.len-1);
-Res_97124 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97124 = 0;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_97124 <= HEX3Atmp_97122)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97120 = Res_97124;
-F.line = 50;F.filename = "bitsets.nim";
-if ((NU)(I_97120) >= (NU)((*X_97018)->Sup.len)) raiseIndexError();
-if ((NU)(I_97120) >= (NU)((*X_97018)->Sup.len)) raiseIndexError();
-if ((NU)(I_97120) >= (NU)(Y_97019->Sup.len)) raiseIndexError();
-(*X_97018)->data[I_97120] = (NI8)((*X_97018)->data[I_97120] | Y_97019->data[I_97120]);
+HEX3Atmp_98122 = ((*X_98018)->Sup.len-1);
+Res_98124 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98124 = 0;
 F.line = 1022;F.filename = "system.nim";
-Res_97124 = addInt(Res_97124, 1);
+while (1) {
+if (!(Res_98124 <= HEX3Atmp_98122)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98120 = Res_98124;
+F.line = 50;F.filename = "bitsets.nim";
+if ((NU)(I_98120) >= (NU)((*X_98018)->Sup.len)) raiseIndexError();
+if ((NU)(I_98120) >= (NU)((*X_98018)->Sup.len)) raiseIndexError();
+if ((NU)(I_98120) >= (NU)(Y_98019->Sup.len)) raiseIndexError();
+(*X_98018)->data[I_98120] = (NI8)((*X_98018)->data[I_98120] | Y_98019->data[I_98120]);
+F.line = 1024;F.filename = "system.nim";
+Res_98124 = addInt(Res_98124, 1);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Bitsetdiff_97020)(TY97008** X_97023, TY97008* Y_97024) {
-NI I_97139;
-NI HEX3Atmp_97141;
-NI Res_97143;
+N_NIMCALL(void, Bitsetdiff_98020)(TY98008** X_98023, TY98008* Y_98024) {
+NI I_98139;
+NI HEX3Atmp_98141;
+NI Res_98143;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetDiff";
@@ -208,32 +208,32 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_97139 = 0;
-HEX3Atmp_97141 = 0;
+I_98139 = 0;
+HEX3Atmp_98141 = 0;
 F.line = 53;F.filename = "bitsets.nim";
-HEX3Atmp_97141 = ((*X_97023)->Sup.len-1);
-Res_97143 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97143 = 0;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_97143 <= HEX3Atmp_97141)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97139 = Res_97143;
-F.line = 53;F.filename = "bitsets.nim";
-if ((NU)(I_97139) >= (NU)((*X_97023)->Sup.len)) raiseIndexError();
-if ((NU)(I_97139) >= (NU)((*X_97023)->Sup.len)) raiseIndexError();
-if ((NU)(I_97139) >= (NU)(Y_97024->Sup.len)) raiseIndexError();
-(*X_97023)->data[I_97139] = (NI8)((*X_97023)->data[I_97139] & (NI8)((NU8) ~(Y_97024->data[I_97139])));
+HEX3Atmp_98141 = ((*X_98023)->Sup.len-1);
+Res_98143 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98143 = 0;
 F.line = 1022;F.filename = "system.nim";
-Res_97143 = addInt(Res_97143, 1);
+while (1) {
+if (!(Res_98143 <= HEX3Atmp_98141)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98139 = Res_98143;
+F.line = 53;F.filename = "bitsets.nim";
+if ((NU)(I_98139) >= (NU)((*X_98023)->Sup.len)) raiseIndexError();
+if ((NU)(I_98139) >= (NU)((*X_98023)->Sup.len)) raiseIndexError();
+if ((NU)(I_98139) >= (NU)(Y_98024->Sup.len)) raiseIndexError();
+(*X_98023)->data[I_98139] = (NI8)((*X_98023)->data[I_98139] & (NI8)((NU8) ~(Y_98024->data[I_98139])));
+F.line = 1024;F.filename = "system.nim";
+Res_98143 = addInt(Res_98143, 1);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Bitsetsymdiff_97025)(TY97008** X_97028, TY97008* Y_97029) {
-NI I_97158;
-NI HEX3Atmp_97160;
-NI Res_97162;
+N_NIMCALL(void, Bitsetsymdiff_98025)(TY98008** X_98028, TY98008* Y_98029) {
+NI I_98158;
+NI HEX3Atmp_98160;
+NI Res_98162;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetSymDiff";
@@ -242,32 +242,32 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_97158 = 0;
-HEX3Atmp_97160 = 0;
+I_98158 = 0;
+HEX3Atmp_98160 = 0;
 F.line = 56;F.filename = "bitsets.nim";
-HEX3Atmp_97160 = ((*X_97028)->Sup.len-1);
-Res_97162 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97162 = 0;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_97162 <= HEX3Atmp_97160)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97158 = Res_97162;
-F.line = 56;F.filename = "bitsets.nim";
-if ((NU)(I_97158) >= (NU)((*X_97028)->Sup.len)) raiseIndexError();
-if ((NU)(I_97158) >= (NU)((*X_97028)->Sup.len)) raiseIndexError();
-if ((NU)(I_97158) >= (NU)(Y_97029->Sup.len)) raiseIndexError();
-(*X_97028)->data[I_97158] = (NI8)((*X_97028)->data[I_97158] ^ Y_97029->data[I_97158]);
+HEX3Atmp_98160 = ((*X_98028)->Sup.len-1);
+Res_98162 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98162 = 0;
 F.line = 1022;F.filename = "system.nim";
-Res_97162 = addInt(Res_97162, 1);
+while (1) {
+if (!(Res_98162 <= HEX3Atmp_98160)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98158 = Res_98162;
+F.line = 56;F.filename = "bitsets.nim";
+if ((NU)(I_98158) >= (NU)((*X_98028)->Sup.len)) raiseIndexError();
+if ((NU)(I_98158) >= (NU)((*X_98028)->Sup.len)) raiseIndexError();
+if ((NU)(I_98158) >= (NU)(Y_98029->Sup.len)) raiseIndexError();
+(*X_98028)->data[I_98158] = (NI8)((*X_98028)->data[I_98158] ^ Y_98029->data[I_98158]);
+F.line = 1024;F.filename = "system.nim";
+Res_98162 = addInt(Res_98162, 1);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Bitsetintersect_97030)(TY97008** X_97033, TY97008* Y_97034) {
-NI I_97177;
-NI HEX3Atmp_97179;
-NI Res_97181;
+N_NIMCALL(void, Bitsetintersect_98030)(TY98008** X_98033, TY98008* Y_98034) {
+NI I_98177;
+NI HEX3Atmp_98179;
+NI Res_98181;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetIntersect";
@@ -276,33 +276,33 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-I_97177 = 0;
-HEX3Atmp_97179 = 0;
+I_98177 = 0;
+HEX3Atmp_98179 = 0;
 F.line = 59;F.filename = "bitsets.nim";
-HEX3Atmp_97179 = ((*X_97033)->Sup.len-1);
-Res_97181 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97181 = 0;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_97181 <= HEX3Atmp_97179)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97177 = Res_97181;
-F.line = 59;F.filename = "bitsets.nim";
-if ((NU)(I_97177) >= (NU)((*X_97033)->Sup.len)) raiseIndexError();
-if ((NU)(I_97177) >= (NU)((*X_97033)->Sup.len)) raiseIndexError();
-if ((NU)(I_97177) >= (NU)(Y_97034->Sup.len)) raiseIndexError();
-(*X_97033)->data[I_97177] = (NI8)((*X_97033)->data[I_97177] & Y_97034->data[I_97177]);
+HEX3Atmp_98179 = ((*X_98033)->Sup.len-1);
+Res_98181 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98181 = 0;
 F.line = 1022;F.filename = "system.nim";
-Res_97181 = addInt(Res_97181, 1);
+while (1) {
+if (!(Res_98181 <= HEX3Atmp_98179)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98177 = Res_98181;
+F.line = 59;F.filename = "bitsets.nim";
+if ((NU)(I_98177) >= (NU)((*X_98033)->Sup.len)) raiseIndexError();
+if ((NU)(I_98177) >= (NU)((*X_98033)->Sup.len)) raiseIndexError();
+if ((NU)(I_98177) >= (NU)(Y_98034->Sup.len)) raiseIndexError();
+(*X_98033)->data[I_98177] = (NI8)((*X_98033)->data[I_98177] & Y_98034->data[I_98177]);
+F.line = 1024;F.filename = "system.nim";
+Res_98181 = addInt(Res_98181, 1);
 } LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(NIM_BOOL, Bitsetequals_97049)(TY97008* X_97051, TY97008* Y_97052) {
-NIM_BOOL Result_97188;
-NI I_97196;
-NI HEX3Atmp_97200;
-NI Res_97202;
+N_NIMCALL(NIM_BOOL, Bitsetequals_98049)(TY98008* X_98051, TY98008* Y_98052) {
+NIM_BOOL Result_98188;
+NI I_98196;
+NI HEX3Atmp_98200;
+NI Res_98202;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetEquals";
@@ -311,42 +311,42 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_97188 = 0;
-I_97196 = 0;
-HEX3Atmp_97200 = 0;
+Result_98188 = 0;
+I_98196 = 0;
+HEX3Atmp_98200 = 0;
 F.line = 62;F.filename = "bitsets.nim";
-HEX3Atmp_97200 = (X_97051->Sup.len-1);
-Res_97202 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97202 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_98200 = (X_98051->Sup.len-1);
+Res_98202 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98202 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_97202 <= HEX3Atmp_97200)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97196 = Res_97202;
+if (!(Res_98202 <= HEX3Atmp_98200)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98196 = Res_98202;
 F.line = 63;F.filename = "bitsets.nim";
-if ((NU)(I_97196) >= (NU)(X_97051->Sup.len)) raiseIndexError();
-if ((NU)(I_97196) >= (NU)(Y_97052->Sup.len)) raiseIndexError();
-if (!!((X_97051->data[I_97196] == Y_97052->data[I_97196]))) goto LA3;
+if ((NU)(I_98196) >= (NU)(X_98051->Sup.len)) raiseIndexError();
+if ((NU)(I_98196) >= (NU)(Y_98052->Sup.len)) raiseIndexError();
+if (!!((X_98051->data[I_98196] == Y_98052->data[I_98196]))) goto LA3;
 F.line = 64;F.filename = "bitsets.nim";
 F.line = 64;F.filename = "bitsets.nim";
-Result_97188 = NIM_FALSE;
+Result_98188 = NIM_FALSE;
 goto BeforeRet;
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_97202 = addInt(Res_97202, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_98202 = addInt(Res_98202, 1);
 } LA1: ;
 F.line = 65;F.filename = "bitsets.nim";
-Result_97188 = NIM_TRUE;
+Result_98188 = NIM_TRUE;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_97188;
+return Result_98188;
 }
-N_NIMCALL(NIM_BOOL, Bitsetcontains_97053)(TY97008* X_97055, TY97008* Y_97056) {
-NIM_BOOL Result_97209;
-NI I_97217;
-NI HEX3Atmp_97221;
-NI Res_97223;
+N_NIMCALL(NIM_BOOL, Bitsetcontains_98053)(TY98008* X_98055, TY98008* Y_98056) {
+NIM_BOOL Result_98209;
+NI I_98217;
+NI HEX3Atmp_98221;
+NI Res_98223;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "BitSetContains";
@@ -355,36 +355,36 @@ F.filename = "rod/bitsets.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_97209 = 0;
-I_97217 = 0;
-HEX3Atmp_97221 = 0;
+Result_98209 = 0;
+I_98217 = 0;
+HEX3Atmp_98221 = 0;
 F.line = 68;F.filename = "bitsets.nim";
-HEX3Atmp_97221 = (X_97055->Sup.len-1);
-Res_97223 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_97223 = 0;
-F.line = 1020;F.filename = "system.nim";
+HEX3Atmp_98221 = (X_98055->Sup.len-1);
+Res_98223 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_98223 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_97223 <= HEX3Atmp_97221)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
-I_97217 = Res_97223;
+if (!(Res_98223 <= HEX3Atmp_98221)) goto LA1;
+F.line = 1021;F.filename = "system.nim";
+I_98217 = Res_98223;
 F.line = 69;F.filename = "bitsets.nim";
-if ((NU)(I_97217) >= (NU)(X_97055->Sup.len)) raiseIndexError();
-if ((NU)(I_97217) >= (NU)(Y_97056->Sup.len)) raiseIndexError();
-if (!!(((NI8)(X_97055->data[I_97217] & (NI8)((NU8) ~(Y_97056->data[I_97217]))) == ((NI8) 0)))) goto LA3;
+if ((NU)(I_98217) >= (NU)(X_98055->Sup.len)) raiseIndexError();
+if ((NU)(I_98217) >= (NU)(Y_98056->Sup.len)) raiseIndexError();
+if (!!(((NI8)(X_98055->data[I_98217] & (NI8)((NU8) ~(Y_98056->data[I_98217]))) == ((NI8) 0)))) goto LA3;
 F.line = 70;F.filename = "bitsets.nim";
 F.line = 70;F.filename = "bitsets.nim";
-Result_97209 = NIM_FALSE;
+Result_98209 = NIM_FALSE;
 goto BeforeRet;
 LA3: ;
-F.line = 1022;F.filename = "system.nim";
-Res_97223 = addInt(Res_97223, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_98223 = addInt(Res_98223, 1);
 } LA1: ;
 F.line = 71;F.filename = "bitsets.nim";
-Result_97209 = NIM_TRUE;
+Result_98209 = NIM_TRUE;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_97209;
+return Result_98209;
 }
 N_NOINLINE(void, bitsetsInit)(void) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;

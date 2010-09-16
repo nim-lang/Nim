@@ -69,7 +69,7 @@ TNimNode** sons;
 };
 N_NIMCALL(NU8, Getsourcelanguage_151102)(NimStringDesc* Name_151104);
 N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_23638, NimStringDesc* B_23639);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NIMCALL(void, Initgeneraltokenizer_151105)(TY151007* G_151108, NimStringDesc* Buf_151109);
 N_NIMCALL(void, Deinitgeneraltokenizer_151110)(TY151007* G_151113);
@@ -78,17 +78,17 @@ N_NIMCALL(TY53011*, Getident_53016)(NimStringDesc* Identifier_53018);
 N_NIMCALL(NI, Nimnumberpostfix_151233)(TY151007* G_151236, NI Position_151237);
 N_NIMCALL(NI, Nimnumber_151374)(TY151007* G_151377, NI Position_151378);
 N_NIMCALL(void, Nimnexttoken_151517)(TY151007* G_151520);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17508);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NIMCALL(void, Internalerror_46571)(NimStringDesc* Errmsg_46573);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393);
-N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_17304);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17287);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593);
+N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_17504);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_17487);
 N_NIMCALL(NI, Generalnumber_152217)(TY151007* G_152220, NI Position_152221);
 N_NIMCALL(NI, Generalstrlit_152360)(TY151007* G_152363, NI Position_152364);
 N_NIMCALL(NI, Iskeyword_152517)(NimStringDesc** X_152520, NI X_152520Len0, NimStringDesc* Y_152521);
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204);
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404);
 N_NOINLINE(void, raiseDivByZero)(void);
 N_NIMCALL(NI, Cmp_1321)(NimStringDesc* X_1323, NimStringDesc* Y_1324);
 N_NOINLINE(void, raiseIndexError)(void);
@@ -584,21 +584,21 @@ NIM_CONST TY153477 Keywords_153476 = {((NimStringDesc*) &TMP153432),
 ;
 extern NIM_CONST TY153477 Keywords_153476;
 STRING_LITERAL(TMP153502, "getNextToken", 12);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
+NI Result_5805;
 NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
+Result_5805 = 0;
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
+LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5605;
+return Result_5805;
 }
 N_NIMCALL(NU8, Getsourcelanguage_151102)(NimStringDesc* Name_151104) {
 NU8 Result_151122;
@@ -616,12 +616,12 @@ F.len = 0;
 Result_151122 = 0;
 I_151161 = 0;
 Res_151166 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_151166 = ((NU8) 1);
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_151166 <= ((NU8) 5))) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_151161 = Res_151166;
 F.line = 55;F.filename = "highlite.nim";
 LOC3 = nsuCmpIgnoreStyle(Name_151104, Sourcelanguagetostr_151055[(I_151161)-0]);
@@ -631,7 +631,7 @@ F.line = 56;F.filename = "highlite.nim";
 Result_151122 = I_151161;
 goto BeforeRet;
 LA4: ;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_151166 = addInt(Res_151166, 1);
 } LA1: ;
 F.line = 57;F.filename = "highlite.nim";
@@ -837,23 +837,23 @@ Result_151379 = Nimnumberpostfix_151233(G_151377, Pos_151382);
 framePtr = framePtr->prev;
 return Result_151379;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
-NI Result_5805;
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
 NIM_BOOL LOC2;
-Result_5805 = 0;
-Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
-LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
+Result_6005 = 0;
+Result_6005 = (NI64)((NU64)(A_6003) - (NU64)(B_6004));
+LOC2 = (0 <= (NI64)(Result_6005 ^ A_6003));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LOC2 = (0 <= (NI64)(Result_6005 ^ (NI64)((NU64) ~(B_6004))));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
 LA4: ;
 raiseOverflow();
 BeforeRet: ;
-return Result_5805;
+return Result_6005;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_17392, NimStringDesc* Src_17393) {
+static N_INLINE(void, appendString)(NimStringDesc* Dest_17592, NimStringDesc* Src_17593) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "appendString";
@@ -863,9 +863,9 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "sysstr.nim";
-memcpy(((NCSTRING) (&(*Dest_17392).data[((*Dest_17392).Sup.len)-0])), ((NCSTRING) ((*Src_17393).data)), ((int) ((NI64)((NI64)((*Src_17393).Sup.len + 1) * 1))));
+memcpy(((NCSTRING) (&(*Dest_17592).data[((*Dest_17592).Sup.len)-0])), ((NCSTRING) ((*Src_17593).data)), ((int) ((NI64)((NI64)((*Src_17593).Sup.len + 1) * 1))));
 F.line = 151;F.filename = "sysstr.nim";
-(*Dest_17392).Sup.len += (*Src_17393).Sup.len;
+(*Dest_17592).Sup.len += (*Src_17593).Sup.len;
 framePtr = framePtr->prev;
 }
 N_NIMCALL(void, Nimnexttoken_151517)(TY151007* G_151520) {
@@ -1459,24 +1459,24 @@ Result_152365 = Pos_152370;
 framePtr = framePtr->prev;
 return Result_152365;
 }
-static N_INLINE(NI, divInt)(NI A_6203, NI B_6204) {
-NI Result_6205;
+static N_INLINE(NI, divInt)(NI A_6403, NI B_6404) {
+NI Result_6405;
 NIM_BOOL LOC5;
-Result_6205 = 0;
-if (!(B_6204 == 0)) goto LA2;
+Result_6405 = 0;
+if (!(B_6404 == 0)) goto LA2;
 raiseDivByZero();
 LA2: ;
-LOC5 = (A_6203 == (IL64(-9223372036854775807) - IL64(1)));
+LOC5 = (A_6403 == (IL64(-9223372036854775807) - IL64(1)));
 if (!(LOC5)) goto LA6;
-LOC5 = (B_6204 == -1);
+LOC5 = (B_6404 == -1);
 LA6: ;
 if (!LOC5) goto LA7;
 raiseOverflow();
 LA7: ;
-Result_6205 = (NI64)(A_6203 / B_6204);
+Result_6405 = (NI64)(A_6403 / B_6404);
 goto BeforeRet;
 BeforeRet: ;
-return Result_6205;
+return Result_6405;
 }
 N_NIMCALL(NI, Iskeyword_152517)(NimStringDesc** X_152520, NI X_152520Len0, NimStringDesc* Y_152521) {
 NI Result_152522;

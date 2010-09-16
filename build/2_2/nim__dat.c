@@ -16,7 +16,7 @@ typedef struct TY418 TY418;
 typedef struct TY420 TY420;
 typedef struct TY442 TY442;
 typedef struct TY452 TY452;
-typedef struct TY4177 TY4177;
+typedef struct TY4377 TY4377;
 typedef struct TY428 TY428;
 typedef struct EOverflow EOverflow;
 typedef struct EAssertionFailed EAssertionFailed;
@@ -371,11 +371,11 @@ NI H;
 TY54525* Key;
 NI Val;
 };
-typedef NI TY8614[8];
+typedef NI TY8814[8];
 struct TY54896 {
 TY54896* Next;
 NI Key;
-TY8614 Bits;
+TY8814 Bits;
 };
 struct TY58219 {
 NI Key;
@@ -480,8 +480,8 @@ NI Pos;
 NimStringDesc* S;
 NU32 Options;
 NU8 Reason;
-TY4177* Moddeps;
-TY4177* Files;
+TY4377* Moddeps;
+TY4377* Files;
 NI Dataidx;
 NI Convertersidx;
 NI Initidx;
@@ -567,7 +567,7 @@ TY51008* Data;
 NimStringDesc* Filename;
 TY54527* Sstack;
 TY54549* Tstack;
-TY4177* Files;
+TY4377* Files;
 };
 struct TY54569 {
 NI Counter;
@@ -768,7 +768,7 @@ NU8 Kind;
 NimStringDesc* Key;
 NimStringDesc* Val;
 };
-struct TY4177 {
+struct TY4377 {
   TGenericSeq Sup;
   NimStringDesc* data[SEQ_DECL_SIZE];
 };
@@ -904,51 +904,51 @@ TNimType* NTI130; /* string */
 TNimType* NTI416; /* ESynch */
 TNimType* NTI418; /* ESystem */
 TNimType* NTI420; /* EIO */
-TNimType* NTI4062; /* ref EIO */
+TNimType* NTI4262; /* ref EIO */
 extern TNimType* NTI442; /* EOutOfMemory */
 TNimType* NTI442; /* EOutOfMemory */
-TNimType* NTI8062; /* ref EOutOfMemory */
+TNimType* NTI8262; /* ref EOutOfMemory */
 extern TNimType* NTI452; /* ENoExceptionToReraise */
 TNimType* NTI452; /* ENoExceptionToReraise */
-TNimType* NTI5033; /* ref ENoExceptionToReraise */
-TNimType* NTI4177; /* seq[string] */
+TNimType* NTI5233; /* ref ENoExceptionToReraise */
+TNimType* NTI4377; /* seq[string] */
 extern TNimType* NTI432; /* EOverflow */
 extern TNimType* NTI428; /* EArithmetic */
 TNimType* NTI428; /* EArithmetic */
 TNimType* NTI432; /* EOverflow */
-TNimType* NTI5491; /* ref EOverflow */
+TNimType* NTI5691; /* ref EOverflow */
 extern TNimType* NTI436; /* EAssertionFailed */
 TNimType* NTI436; /* EAssertionFailed */
-TNimType* NTI5050; /* ref EAssertionFailed */
+TNimType* NTI5250; /* ref EAssertionFailed */
 extern TNimType* NTI448; /* EOutOfRange */
 TNimType* NTI448; /* EOutOfRange */
-TNimType* NTI5219; /* ref EOutOfRange */
+TNimType* NTI5419; /* ref EOutOfRange */
 extern TNimType* NTI444; /* EInvalidIndex */
 TNimType* NTI444; /* EInvalidIndex */
-TNimType* NTI5256; /* ref EInvalidIndex */
+TNimType* NTI5456; /* ref EInvalidIndex */
 extern TNimType* NTI446; /* EInvalidField */
 TNimType* NTI446; /* EInvalidField */
-TNimType* NTI5276; /* ref EInvalidField */
+TNimType* NTI5476; /* ref EInvalidField */
 extern TNimType* NTI456; /* EInvalidObjectConversion */
 TNimType* NTI456; /* EInvalidObjectConversion */
-TNimType* NTI5407; /* ref EInvalidObjectConversion */
+TNimType* NTI5607; /* ref EInvalidObjectConversion */
 extern TNimType* NTI454; /* EInvalidObjectAssignment */
 TNimType* NTI454; /* EInvalidObjectAssignment */
-TNimType* NTI5437; /* ref EInvalidObjectAssignment */
+TNimType* NTI5637; /* ref EInvalidObjectAssignment */
 extern TNimType* NTI430; /* EDivByZero */
 TNimType* NTI430; /* EDivByZero */
-TNimType* NTI5510; /* ref EDivByZero */
+TNimType* NTI5710; /* ref EDivByZero */
 extern TNimType* NTI460; /* EFloatInvalidOp */
 extern TNimType* NTI458; /* EFloatingPoint */
 TNimType* NTI458; /* EFloatingPoint */
 TNimType* NTI460; /* EFloatInvalidOp */
-TNimType* NTI6803; /* ref EFloatInvalidOp */
+TNimType* NTI7003; /* ref EFloatInvalidOp */
 extern TNimType* NTI464; /* EFloatOverflow */
 TNimType* NTI464; /* EFloatOverflow */
-TNimType* NTI6826; /* ref EFloatOverflow */
+TNimType* NTI7026; /* ref EFloatOverflow */
 extern TNimType* NTI466; /* EFloatUnderflow */
 TNimType* NTI466; /* EFloatUnderflow */
-TNimType* NTI6843; /* ref EFloatUnderflow */
+TNimType* NTI7043; /* ref EFloatUnderflow */
 TNimType* NTI27602; /* TTimeInfo */
 extern TNimType* NTI27603; /* range 0..61 */
 extern TNimType* NTI108; /* int */
@@ -1095,8 +1095,8 @@ TNimType* NTI54573; /* TNodePairSeq */
 extern TNimType* NTI54894; /* PTrunk */
 extern TNimType* NTI54896; /* TTrunk */
 TNimType* NTI54896; /* TTrunk */
-extern TNimType* NTI8614; /* array[0..7, int] */
-TNimType* NTI8614; /* array[0..7, int] */
+extern TNimType* NTI8814; /* array[0..7, int] */
+TNimType* NTI8814; /* array[0..7, int] */
 TNimType* NTI54894; /* PTrunk */
 TNimType* NTI54898; /* TTrunkSeq */
 TNimType* NTI58109; /* seq[TStrTable] */
@@ -1127,10 +1127,10 @@ TNimType* NTI65226; /* TStringStream */
 TNimType* NTI65224; /* PStringStream */
 extern TNimType* NTI65323; /* TFileStream */
 TNimType* NTI65323; /* TFileStream */
-extern TNimType* NTI3404; /* TFile */
-extern TNimType* NTI3402; /* CFile */
-TNimType* NTI3402; /* CFile */
-TNimType* NTI3404; /* TFile */
+extern TNimType* NTI3604; /* TFile */
+extern TNimType* NTI3602; /* CFile */
+TNimType* NTI3602; /* CFile */
+TNimType* NTI3604; /* TFile */
 TNimType* NTI65321; /* PFileStream */
 extern TNimType* NTI66204; /* PProcess */
 extern TNimType* NTI66202; /* TProcess */
@@ -1166,7 +1166,7 @@ extern TNimType* NTI91031; /* TRodReader */
 TNimType* NTI91031; /* TRodReader */
 extern TNimType* NTI91005; /* TReasonForRecompile */
 TNimType* NTI91005; /* TReasonForRecompile */
-extern TNimType* NTI4177; /* seq[string] */
+extern TNimType* NTI4377; /* seq[string] */
 extern TNimType* NTI91029; /* TIndex */
 TNimType* NTI91029; /* TIndex */
 extern TNimType* NTI58223; /* TIITable */
@@ -1319,7 +1319,7 @@ TNimType* NTI194402; /* TCmdLineKind */
 N_NOINLINE(void, nim__datInit)(void) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
-static TNimNode* TMP20107[3];
+static TNimNode* TMP20307[3];
 static TNimNode* TMP29002[8];
 static TNimNode* TMP29003[12];
 NI TMP29005;
@@ -2492,36 +2492,36 @@ NTI130 = &TMP104[4];
 NTI416 = &TMP104[5];
 NTI418 = &TMP104[6];
 NTI420 = &TMP104[7];
-NTI4062 = &TMP104[8];
+NTI4262 = &TMP104[8];
 NTI442 = &TMP104[9];
-NTI8062 = &TMP104[10];
+NTI8262 = &TMP104[10];
 NTI452 = &TMP104[11];
-NTI5033 = &TMP104[12];
-NTI4177 = &TMP104[13];
+NTI5233 = &TMP104[12];
+NTI4377 = &TMP104[13];
 NTI428 = &TMP104[14];
 NTI432 = &TMP104[15];
-NTI5491 = &TMP104[16];
+NTI5691 = &TMP104[16];
 NTI436 = &TMP104[17];
-NTI5050 = &TMP104[18];
+NTI5250 = &TMP104[18];
 NTI448 = &TMP104[19];
-NTI5219 = &TMP104[20];
+NTI5419 = &TMP104[20];
 NTI444 = &TMP104[21];
-NTI5256 = &TMP104[22];
+NTI5456 = &TMP104[22];
 NTI446 = &TMP104[23];
-NTI5276 = &TMP104[24];
+NTI5476 = &TMP104[24];
 NTI456 = &TMP104[25];
-NTI5407 = &TMP104[26];
+NTI5607 = &TMP104[26];
 NTI454 = &TMP104[27];
-NTI5437 = &TMP104[28];
+NTI5637 = &TMP104[28];
 NTI430 = &TMP104[29];
-NTI5510 = &TMP104[30];
+NTI5710 = &TMP104[30];
 NTI458 = &TMP104[31];
 NTI460 = &TMP104[32];
-NTI6803 = &TMP104[33];
+NTI7003 = &TMP104[33];
 NTI464 = &TMP104[34];
-NTI6826 = &TMP104[35];
+NTI7026 = &TMP104[35];
 NTI466 = &TMP104[36];
-NTI6843 = &TMP104[37];
+NTI7043 = &TMP104[37];
 NTI27602 = &TMP104[38];
 NTI108 = &TMP104[39];
 NTI27603 = &TMP104[40];
@@ -2601,7 +2601,7 @@ NTI54567 = &TMP104[113];
 NTI54571 = &TMP104[114];
 NTI54573 = &TMP104[115];
 NTI54896 = &TMP104[116];
-NTI8614 = &TMP104[117];
+NTI8814 = &TMP104[117];
 NTI54894 = &TMP104[118];
 NTI54898 = &TMP104[119];
 NTI58109 = &TMP104[120];
@@ -2620,8 +2620,8 @@ NTI65051 = &TMP104[132];
 NTI65226 = &TMP104[133];
 NTI65224 = &TMP104[134];
 NTI65323 = &TMP104[135];
-NTI3402 = &TMP104[136];
-NTI3404 = &TMP104[137];
+NTI3602 = &TMP104[136];
+NTI3604 = &TMP104[137];
 NTI65321 = &TMP104[138];
 NTI66202 = &TMP104[139];
 NTI66204 = &TMP104[140];
@@ -2732,7 +2732,7 @@ NTI408->node = &TMP103[0];
 NTI412->size = sizeof(E_Base);
 NTI412->kind = 17;
 NTI412->base = NTI408;
-TMP20107[0] = &TMP103[2];
+TMP20307[0] = &TMP103[2];
 NTI471->size = sizeof(E_Base*);
 NTI471->kind = 22;
 NTI471->base = NTI412;
@@ -2740,7 +2740,7 @@ TMP103[2].kind = 1;
 TMP103[2].offset = offsetof(E_Base, parent);
 TMP103[2].typ = NTI471;
 TMP103[2].name = "parent";
-TMP20107[1] = &TMP103[3];
+TMP20307[1] = &TMP103[3];
 NTI132->size = sizeof(NCSTRING);
 NTI132->kind = 29;
 NTI132->base = 0;
@@ -2749,7 +2749,7 @@ TMP103[3].kind = 1;
 TMP103[3].offset = offsetof(E_Base, name);
 TMP103[3].typ = NTI132;
 TMP103[3].name = "name";
-TMP20107[2] = &TMP103[4];
+TMP20307[2] = &TMP103[4];
 NTI130->size = sizeof(NimStringDesc*);
 NTI130->kind = 28;
 NTI130->base = 0;
@@ -2758,7 +2758,7 @@ TMP103[4].kind = 1;
 TMP103[4].offset = offsetof(E_Base, message);
 TMP103[4].typ = NTI130;
 TMP103[4].name = "msg";
-TMP103[1].len = 3; TMP103[1].kind = 2; TMP103[1].sons = &TMP20107[0];
+TMP103[1].len = 3; TMP103[1].kind = 2; TMP103[1].sons = &TMP20307[0];
 NTI412->node = &TMP103[1];
 NTI416->size = sizeof(TY416);
 NTI416->kind = 17;
@@ -2778,34 +2778,34 @@ NTI420->base = NTI418;
 NTI420->flags = 2;
 TMP103[7].len = 0; TMP103[7].kind = 2;
 NTI420->node = &TMP103[7];
-NTI4062->size = sizeof(TY420*);
-NTI4062->kind = 22;
-NTI4062->base = NTI420;
-NTI4062->flags = 2;
+NTI4262->size = sizeof(TY420*);
+NTI4262->kind = 22;
+NTI4262->base = NTI420;
+NTI4262->flags = 2;
 NTI442->size = sizeof(TY442);
 NTI442->kind = 17;
 NTI442->base = NTI418;
 NTI442->flags = 2;
 TMP103[8].len = 0; TMP103[8].kind = 2;
 NTI442->node = &TMP103[8];
-NTI8062->size = sizeof(TY442*);
-NTI8062->kind = 22;
-NTI8062->base = NTI442;
-NTI8062->flags = 2;
+NTI8262->size = sizeof(TY442*);
+NTI8262->kind = 22;
+NTI8262->base = NTI442;
+NTI8262->flags = 2;
 NTI452->size = sizeof(TY452);
 NTI452->kind = 17;
 NTI452->base = NTI416;
 NTI452->flags = 2;
 TMP103[9].len = 0; TMP103[9].kind = 2;
 NTI452->node = &TMP103[9];
-NTI5033->size = sizeof(TY452*);
-NTI5033->kind = 22;
-NTI5033->base = NTI452;
-NTI5033->flags = 2;
-NTI4177->size = sizeof(TY4177*);
-NTI4177->kind = 24;
-NTI4177->base = NTI130;
-NTI4177->flags = 2;
+NTI5233->size = sizeof(TY452*);
+NTI5233->kind = 22;
+NTI5233->base = NTI452;
+NTI5233->flags = 2;
+NTI4377->size = sizeof(TY4377*);
+NTI4377->kind = 24;
+NTI4377->base = NTI130;
+NTI4377->flags = 2;
 NTI428->size = sizeof(TY428);
 NTI428->kind = 17;
 NTI428->base = NTI416;
@@ -2818,80 +2818,80 @@ NTI432->base = NTI428;
 NTI432->flags = 2;
 TMP103[11].len = 0; TMP103[11].kind = 2;
 NTI432->node = &TMP103[11];
-NTI5491->size = sizeof(EOverflow*);
-NTI5491->kind = 22;
-NTI5491->base = NTI432;
-NTI5491->flags = 2;
+NTI5691->size = sizeof(EOverflow*);
+NTI5691->kind = 22;
+NTI5691->base = NTI432;
+NTI5691->flags = 2;
 NTI436->size = sizeof(EAssertionFailed);
 NTI436->kind = 17;
 NTI436->base = NTI416;
 NTI436->flags = 2;
 TMP103[12].len = 0; TMP103[12].kind = 2;
 NTI436->node = &TMP103[12];
-NTI5050->size = sizeof(EAssertionFailed*);
-NTI5050->kind = 22;
-NTI5050->base = NTI436;
-NTI5050->flags = 2;
+NTI5250->size = sizeof(EAssertionFailed*);
+NTI5250->kind = 22;
+NTI5250->base = NTI436;
+NTI5250->flags = 2;
 NTI448->size = sizeof(TY448);
 NTI448->kind = 17;
 NTI448->base = NTI416;
 NTI448->flags = 2;
 TMP103[13].len = 0; TMP103[13].kind = 2;
 NTI448->node = &TMP103[13];
-NTI5219->size = sizeof(TY448*);
-NTI5219->kind = 22;
-NTI5219->base = NTI448;
-NTI5219->flags = 2;
+NTI5419->size = sizeof(TY448*);
+NTI5419->kind = 22;
+NTI5419->base = NTI448;
+NTI5419->flags = 2;
 NTI444->size = sizeof(TY444);
 NTI444->kind = 17;
 NTI444->base = NTI416;
 NTI444->flags = 2;
 TMP103[14].len = 0; TMP103[14].kind = 2;
 NTI444->node = &TMP103[14];
-NTI5256->size = sizeof(TY444*);
-NTI5256->kind = 22;
-NTI5256->base = NTI444;
-NTI5256->flags = 2;
+NTI5456->size = sizeof(TY444*);
+NTI5456->kind = 22;
+NTI5456->base = NTI444;
+NTI5456->flags = 2;
 NTI446->size = sizeof(TY446);
 NTI446->kind = 17;
 NTI446->base = NTI416;
 NTI446->flags = 2;
 TMP103[15].len = 0; TMP103[15].kind = 2;
 NTI446->node = &TMP103[15];
-NTI5276->size = sizeof(TY446*);
-NTI5276->kind = 22;
-NTI5276->base = NTI446;
-NTI5276->flags = 2;
+NTI5476->size = sizeof(TY446*);
+NTI5476->kind = 22;
+NTI5476->base = NTI446;
+NTI5476->flags = 2;
 NTI456->size = sizeof(TY456);
 NTI456->kind = 17;
 NTI456->base = NTI416;
 NTI456->flags = 2;
 TMP103[16].len = 0; TMP103[16].kind = 2;
 NTI456->node = &TMP103[16];
-NTI5407->size = sizeof(TY456*);
-NTI5407->kind = 22;
-NTI5407->base = NTI456;
-NTI5407->flags = 2;
+NTI5607->size = sizeof(TY456*);
+NTI5607->kind = 22;
+NTI5607->base = NTI456;
+NTI5607->flags = 2;
 NTI454->size = sizeof(TY454);
 NTI454->kind = 17;
 NTI454->base = NTI416;
 NTI454->flags = 2;
 TMP103[17].len = 0; TMP103[17].kind = 2;
 NTI454->node = &TMP103[17];
-NTI5437->size = sizeof(TY454*);
-NTI5437->kind = 22;
-NTI5437->base = NTI454;
-NTI5437->flags = 2;
+NTI5637->size = sizeof(TY454*);
+NTI5637->kind = 22;
+NTI5637->base = NTI454;
+NTI5637->flags = 2;
 NTI430->size = sizeof(EDivByZero);
 NTI430->kind = 17;
 NTI430->base = NTI428;
 NTI430->flags = 2;
 TMP103[18].len = 0; TMP103[18].kind = 2;
 NTI430->node = &TMP103[18];
-NTI5510->size = sizeof(EDivByZero*);
-NTI5510->kind = 22;
-NTI5510->base = NTI430;
-NTI5510->flags = 2;
+NTI5710->size = sizeof(EDivByZero*);
+NTI5710->kind = 22;
+NTI5710->base = NTI430;
+NTI5710->flags = 2;
 NTI458->size = sizeof(TY458);
 NTI458->kind = 17;
 NTI458->base = NTI416;
@@ -2904,30 +2904,30 @@ NTI460->base = NTI458;
 NTI460->flags = 2;
 TMP103[20].len = 0; TMP103[20].kind = 2;
 NTI460->node = &TMP103[20];
-NTI6803->size = sizeof(EFloatInvalidOp*);
-NTI6803->kind = 22;
-NTI6803->base = NTI460;
-NTI6803->flags = 2;
+NTI7003->size = sizeof(EFloatInvalidOp*);
+NTI7003->kind = 22;
+NTI7003->base = NTI460;
+NTI7003->flags = 2;
 NTI464->size = sizeof(EFloatOverflow);
 NTI464->kind = 17;
 NTI464->base = NTI458;
 NTI464->flags = 2;
 TMP103[21].len = 0; TMP103[21].kind = 2;
 NTI464->node = &TMP103[21];
-NTI6826->size = sizeof(EFloatOverflow*);
-NTI6826->kind = 22;
-NTI6826->base = NTI464;
-NTI6826->flags = 2;
+NTI7026->size = sizeof(EFloatOverflow*);
+NTI7026->kind = 22;
+NTI7026->base = NTI464;
+NTI7026->flags = 2;
 NTI466->size = sizeof(EFloatUnderflow);
 NTI466->kind = 17;
 NTI466->base = NTI458;
 NTI466->flags = 2;
 TMP103[22].len = 0; TMP103[22].kind = 2;
 NTI466->node = &TMP103[22];
-NTI6843->size = sizeof(EFloatUnderflow*);
-NTI6843->kind = 22;
-NTI6843->base = NTI466;
-NTI6843->flags = 2;
+NTI7043->size = sizeof(EFloatUnderflow*);
+NTI7043->kind = 22;
+NTI7043->base = NTI466;
+NTI7043->flags = 2;
 NTI27602->size = sizeof(TY27602);
 NTI27602->kind = 17;
 NTI27602->base = NTI408;
@@ -3868,13 +3868,13 @@ TMP103[689].offset = offsetof(TY54896, Key);
 TMP103[689].typ = NTI108;
 TMP103[689].name = "key";
 TMP57155[2] = &TMP103[690];
-NTI8614->size = sizeof(TY8614);
-NTI8614->kind = 16;
-NTI8614->base = NTI108;
-NTI8614->flags = 3;
+NTI8814->size = sizeof(TY8814);
+NTI8814->kind = 16;
+NTI8814->base = NTI108;
+NTI8814->flags = 3;
 TMP103[690].kind = 1;
 TMP103[690].offset = offsetof(TY54896, Bits);
-TMP103[690].typ = NTI8614;
+TMP103[690].typ = NTI8814;
 TMP103[690].name = "bits";
 TMP103[687].len = 3; TMP103[687].kind = 2; TMP103[687].sons = &TMP57155[0];
 NTI54896->node = &TMP103[687];
@@ -4030,19 +4030,19 @@ NTI65323->size = sizeof(TY65323);
 NTI65323->kind = 17;
 NTI65323->base = NTI65027;
 NTI65323->flags = 3;
-NTI3402->size = sizeof(FILE);
-NTI3402->kind = 40;
-NTI3402->base = 0;
-NTI3402->flags = 3;
+NTI3602->size = sizeof(FILE);
+NTI3602->kind = 40;
+NTI3602->base = 0;
+NTI3602->flags = 3;
 TMP103[713].len = 0; TMP103[713].kind = 2;
-NTI3402->node = &TMP103[713];
-NTI3404->size = sizeof(FILE*);
-NTI3404->kind = 21;
-NTI3404->base = NTI3402;
-NTI3404->flags = 3;
+NTI3602->node = &TMP103[713];
+NTI3604->size = sizeof(FILE*);
+NTI3604->kind = 21;
+NTI3604->base = NTI3602;
+NTI3604->flags = 3;
 TMP103[712].kind = 1;
 TMP103[712].offset = offsetof(TY65323, F);
-TMP103[712].typ = NTI3404;
+TMP103[712].typ = NTI3604;
 TMP103[712].name = "f";
 NTI65323->node = &TMP103[712];
 NTI65321->size = sizeof(TY65323*);
@@ -4112,7 +4112,7 @@ TMP103[721].name = "kind";
 TMP73093[1] = &TMP103[727];
 TMP103[727].kind = 1;
 TMP103[727].offset = offsetof(TY73013, F);
-TMP103[727].typ = NTI3404;
+TMP103[727].typ = NTI3604;
 TMP103[727].name = "f";
 TMP73093[2] = &TMP103[728];
 TMP103[728].kind = 1;
@@ -4345,12 +4345,12 @@ TMP103[875].name = "reason";
 TMP93144[4] = &TMP103[886];
 TMP103[886].kind = 1;
 TMP103[886].offset = offsetof(TY91031, Moddeps);
-TMP103[886].typ = NTI4177;
+TMP103[886].typ = NTI4377;
 TMP103[886].name = "modDeps";
 TMP93144[5] = &TMP103[887];
 TMP103[887].kind = 1;
 TMP103[887].offset = offsetof(TY91031, Files);
-TMP103[887].typ = NTI4177;
+TMP103[887].typ = NTI4377;
 TMP103[887].name = "files";
 TMP93144[6] = &TMP103[888];
 TMP103[888].kind = 1;
@@ -4843,7 +4843,7 @@ TMP103[1207].name = "tstack";
 TMP109218[16] = &TMP103[1208];
 TMP103[1208].kind = 1;
 TMP103[1208].offset = offsetof(TY109004, Files);
-TMP103[1208].typ = NTI4177;
+TMP103[1208].typ = NTI4377;
 TMP103[1208].name = "files";
 TMP103[1191].len = 17; TMP103[1191].kind = 2; TMP103[1191].sons = &TMP109218[0];
 NTI109004->node = &TMP103[1191];

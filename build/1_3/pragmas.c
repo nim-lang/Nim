@@ -5,45 +5,45 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY49525 TY49525;
-typedef struct TY41532 TY41532;
+typedef struct TY50525 TY50525;
+typedef struct TY42532 TY42532;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY49551 TY49551;
-typedef struct TY49547 TY49547;
-typedef struct TY48011 TY48011;
-typedef struct TY49519 TY49519;
-typedef struct TY101012 TY101012;
-typedef struct TY48005 TY48005;
+typedef struct TY50551 TY50551;
+typedef struct TY50547 TY50547;
+typedef struct TY49011 TY49011;
+typedef struct TY50519 TY50519;
+typedef struct TY102012 TY102012;
+typedef struct TY49005 TY49005;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY49529 TY49529;
-typedef struct TY49527 TY49527;
-typedef struct TY49539 TY49539;
-typedef struct TY46008 TY46008;
-typedef struct TY49543 TY49543;
-typedef struct TY10402 TY10402;
-typedef struct TY7804 TY7804;
-typedef struct TY10790 TY10790;
-typedef struct TY10418 TY10418;
-typedef struct TY10414 TY10414;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
-typedef struct TY99002 TY99002;
-typedef struct TY101006 TY101006;
-typedef struct TY53107 TY53107;
-typedef struct TY53109 TY53109;
-typedef struct TY49900 TY49900;
-typedef struct TY49896 TY49896;
-typedef struct TY49898 TY49898;
-typedef struct TY37019 TY37019;
-typedef struct TY37013 TY37013;
-typedef struct TY101002 TY101002;
-typedef struct TY49549 TY49549;
-typedef struct TY32515 TY32515;
-typedef NU8 TY117007[28];
-struct TY41532 {
+typedef struct TY50529 TY50529;
+typedef struct TY50527 TY50527;
+typedef struct TY50539 TY50539;
+typedef struct TY47008 TY47008;
+typedef struct TY50543 TY50543;
+typedef struct TY10602 TY10602;
+typedef struct TY8004 TY8004;
+typedef struct TY10990 TY10990;
+typedef struct TY10618 TY10618;
+typedef struct TY10614 TY10614;
+typedef struct TY10610 TY10610;
+typedef struct TY10988 TY10988;
+typedef struct TY100002 TY100002;
+typedef struct TY102006 TY102006;
+typedef struct TY54107 TY54107;
+typedef struct TY54109 TY54109;
+typedef struct TY50900 TY50900;
+typedef struct TY50896 TY50896;
+typedef struct TY50898 TY50898;
+typedef struct TY38019 TY38019;
+typedef struct TY38013 TY38013;
+typedef struct TY102002 TY102002;
+typedef struct TY50549 TY50549;
+typedef struct TY33515 TY33515;
+typedef NU8 TY118007[28];
+struct TY42532 {
 NI16 Line;
 NI16 Col;
 NI32 Fileindex;
@@ -57,10 +57,10 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY49525 {
-TY49551* Typ;
+struct TY50525 {
+TY50551* Typ;
 NimStringDesc* Comment;
-TY41532 Info;
+TY42532 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -70,15 +70,15 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY49547* Sym;
+struct {TY50547* Sym;
 } S4;
-struct {TY48011* Ident;
+struct {TY49011* Ident;
 } S5;
-struct {TY49519* Sons;
+struct {TY50519* Sons;
 } S6;
 } KindU;
 };
-typedef NU8 TY49999[16];
+typedef NU8 TY50999[16];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -90,63 +90,63 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY48005 {
+struct TY49005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY49529 {
+struct TY50529 {
 TNimType* m_type;
 NI Counter;
-TY49527* Data;
+TY50527* Data;
 };
-struct TY49539 {
+struct TY50539 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY49551* T;
-TY46008* R;
+TY50551* T;
+TY47008* R;
 NI A;
 };
-struct TY49547 {
-  TY48005 Sup;
+struct TY50547 {
+  TY49005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY49551* Typ;
-TY48011* Name;
-TY41532 Info;
-TY49547* Owner;
+TY50551* Typ;
+TY49011* Name;
+TY42532 Info;
+TY50547* Owner;
 NU32 Flags;
-TY49529 Tab;
-TY49525* Ast;
+TY50529 Tab;
+TY50525* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY49539 Loc;
-TY49543* Annex;
+TY50539 Loc;
+TY50543* Annex;
 };
-struct TY48011 {
-  TY48005 Sup;
+struct TY49011 {
+  TY49005 Sup;
 NimStringDesc* S;
-TY48011* Next;
+TY49011* Next;
 NI H;
 };
-struct TY10402 {
+struct TY10602 {
 NI Refcount;
 TNimType* Typ;
 };
-typedef N_STDCALL_PTR(void, TY7816) (TY7804* L_7818);
-struct TY10418 {
+typedef N_STDCALL_PTR(void, TY8016) (TY8004* L_8018);
+struct TY10618 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY10602** D;
 };
-struct TY10414 {
+struct TY10614 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY10610* Head;
+TY10610** Data;
 };
-struct TY7804 {
+struct TY8004 {
 void* Debuginfo;
 NI32 Lockcount;
 NI32 Recursioncount;
@@ -154,7 +154,7 @@ NI Owningthread;
 NI Locksemaphore;
 NI32 Reserved;
 };
-struct TY10788 {
+struct TY10988 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -162,55 +162,55 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY7804 Cyclerootslock;
-TY7804 Zctlock;
-TY10788 Stat;
+struct TY10990 {
+TY10618 Zct;
+TY10618 Decstack;
+TY10614 Cycleroots;
+TY10618 Tempstack;
+TY8004 Cyclerootslock;
+TY8004 Zctlock;
+TY10988 Stat;
 };
-typedef N_STDCALL_PTR(void, TY7820) (TY7804* L_7822);
-struct TY99002 {
+typedef N_STDCALL_PTR(void, TY8020) (TY8004* L_8022);
+struct TY100002 {
   TNimObject Sup;
 };
-struct TY53107 {
+struct TY54107 {
 NI Tos;
-TY53109* Stack;
+TY54109* Stack;
 };
-struct TY49900 {
+struct TY50900 {
 NI Counter;
 NI Max;
-TY49896* Head;
-TY49898* Data;
+TY50896* Head;
+TY50898* Data;
 };
-struct TY37019 {
+struct TY38019 {
 TNimType* m_type;
-TY37013* Head;
-TY37013* Tail;
+TY38013* Head;
+TY38013* Tail;
 NI Counter;
 };
-typedef N_NIMCALL_PTR(TY49525*, TY101032) (TY101012* C_101033, TY49525* N_101034);
-typedef N_NIMCALL_PTR(TY49525*, TY101037) (TY101012* C_101038, TY49525* N_101039);
-struct TY101012 {
-  TY99002 Sup;
-TY49547* Module;
-TY101006* P;
+typedef N_NIMCALL_PTR(TY50525*, TY102032) (TY102012* C_102033, TY50525* N_102034);
+typedef N_NIMCALL_PTR(TY50525*, TY102037) (TY102012* C_102038, TY50525* N_102039);
+struct TY102012 {
+  TY100002 Sup;
+TY50547* Module;
+TY102006* P;
 NI Instcounter;
-TY49525* Generics;
+TY50525* Generics;
 NI Lastgenericidx;
-TY53107 Tab;
-TY49900 Ambiguoussymbols;
-TY49527* Converters;
-TY37019 Optionstack;
-TY37019 Libs;
+TY54107 Tab;
+TY50900 Ambiguoussymbols;
+TY50527* Converters;
+TY38019 Optionstack;
+TY38019 Libs;
 NIM_BOOL Fromcache;
-TY101032 Semconstexpr;
-TY101037 Semexpr;
-TY49900 Includedfiles;
+TY102032 Semconstexpr;
+TY102037 Semexpr;
+TY50900 Includedfiles;
 NimStringDesc* Filename;
-TY49529 Userpragmas;
+TY50529 Userpragmas;
 };
 struct TNimNode {
 NU8 kind;
@@ -220,283 +220,283 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY37013 {
+struct TY38013 {
   TNimObject Sup;
-TY37013* Prev;
-TY37013* Next;
+TY38013* Prev;
+TY38013* Next;
 };
-struct TY101002 {
-  TY37013 Sup;
+struct TY102002 {
+  TY38013 Sup;
 NU32 Options;
 NU8 Defaultcc;
-TY49543* Dynlib;
+TY50543* Dynlib;
 NU32 Notes;
 };
-struct TY49543 {
-  TY37013 Sup;
+struct TY50543 {
+  TY38013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY46008* Name;
-TY49525* Path;
+TY47008* Name;
+TY50525* Path;
 };
-struct TY49551 {
-  TY48005 Sup;
+struct TY50551 {
+  TY49005 Sup;
 NU8 Kind;
-TY49549* Sons;
-TY49525* N;
+TY50549* Sons;
+TY50525* N;
 NU8 Flags;
 NU8 Callconv;
-TY49547* Owner;
-TY49547* Sym;
+TY50547* Owner;
+TY50547* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY49539 Loc;
+TY50539 Loc;
 };
-typedef NimStringDesc* TY41494[13];
-typedef NimStringDesc* TY41474[15];
-struct TY32515 {
+typedef NimStringDesc* TY42494[13];
+typedef NimStringDesc* TY42474[15];
+struct TY33515 {
 NimStringDesc* Dir;
 NimStringDesc* Name;
 NimStringDesc* Ext;
 };
-struct TY46008 {
+struct TY47008 {
   TNimObject Sup;
-TY46008* Left;
-TY46008* Right;
+TY47008* Left;
+TY47008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-typedef NI TY8414[16];
-struct TY10410 {
-TY10410* Next;
+typedef NI TY8614[16];
+struct TY10610 {
+TY10610* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-struct TY101006 {
-TY49547* Owner;
-TY49547* Resultsym;
+struct TY102006 {
+TY50547* Owner;
+TY50547* Resultsym;
 NI Nestedloopcounter;
 NI Nestedblockcounter;
 };
-struct TY49896 {
-TY49896* Next;
+struct TY50896 {
+TY50896* Next;
 NI Key;
-TY8414 Bits;
+TY8614 Bits;
 };
-struct TY49519 {
+struct TY50519 {
   TGenericSeq Sup;
-  TY49525* data[SEQ_DECL_SIZE];
+  TY50525* data[SEQ_DECL_SIZE];
 };
-struct TY49527 {
+struct TY50527 {
   TGenericSeq Sup;
-  TY49547* data[SEQ_DECL_SIZE];
+  TY50547* data[SEQ_DECL_SIZE];
 };
-struct TY53109 {
+struct TY54109 {
   TGenericSeq Sup;
-  TY49529 data[SEQ_DECL_SIZE];
+  TY50529 data[SEQ_DECL_SIZE];
 };
-struct TY49898 {
+struct TY50898 {
   TGenericSeq Sup;
-  TY49896* data[SEQ_DECL_SIZE];
+  TY50896* data[SEQ_DECL_SIZE];
 };
-struct TY49549 {
+struct TY50549 {
   TGenericSeq Sup;
-  TY49551* data[SEQ_DECL_SIZE];
+  TY50551* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void, Invalidpragma_117038)(TY49525* N_117040);
-N_NIMCALL(void, Limessage_41562)(TY41532 Info_41564, NU8 Msg_41565, NimStringDesc* Arg_41566);
-N_NIMCALL(NimStringDesc*, Rendertree_79042)(TY49525* N_79044, NU8 Renderflags_79047);
-N_NIMCALL(NIM_CHAR, Pragmaasm_117034)(TY101012* C_117036, TY49525* N_117037);
-N_NIMCALL(NI, Sonslen_49803)(TY49525* N_49805);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+N_NIMCALL(void, Invalidpragma_118038)(TY50525* N_118040);
+N_NIMCALL(void, Limessage_42562)(TY42532 Info_42564, NU8 Msg_42565, NimStringDesc* Arg_42566);
+N_NIMCALL(NimStringDesc*, Rendertree_80042)(TY50525* N_80044, NU8 Renderflags_80047);
+N_NIMCALL(NIM_CHAR, Pragmaasm_118034)(TY102012* C_118036, TY50525* N_118037);
+N_NIMCALL(NI, Sonslen_50803)(TY50525* N_50805);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NOINLINE(void, raiseOverflow)(void);
-N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
+N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5475);
 N_NOINLINE(void, raiseIndexError)(void);
-N_NIMCALL(NU8, Whichkeyword_66465)(TY48011* Id_66467);
-N_NIMCALL(NI64, chckRange64)(NI64 I_5323, NI64 A_5324, NI64 B_5325);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
-N_NIMCALL(void, Setexternname_117205)(TY49547* S_117207, NimStringDesc* Extname_117208);
-N_NIMCALL(TY46008*, Torope_46046)(NimStringDesc* S_46048);
-N_NIMCALL(NimStringDesc*, nsuFormatSingleElem)(NimStringDesc* Formatstr_22972, NimStringDesc* A_22973);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619);
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838);
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805);
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810);
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460);
-N_NOINLINE(void, Addzct_10825)(TY10418* S_10828, TY10402* C_10829);
-N_NIMCALL(void, Makeexternimport_117209)(TY49547* S_117211, NimStringDesc* Extname_117212);
-N_NIMCALL(void, Makeexternexport_117237)(TY49547* S_117239, NimStringDesc* Extname_117240);
-N_NIMCALL(TY49525*, Getstrlitnode_117253)(TY101012* C_117255, TY49525* N_117256);
-N_NIMCALL(NimStringDesc*, Expectstrlit_117316)(TY101012* C_117318, TY49525* N_117319);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17108);
-N_NIMCALL(NI, Expectintlit_117335)(TY101012* C_117337, TY49525* N_117338);
-N_NIMCALL(NimStringDesc*, Getoptionalstr_117409)(TY101012* C_117411, TY49525* N_117412, NimStringDesc* Defaultstr_117413);
-N_NIMCALL(void, Processmagic_117424)(TY101012* C_117426, TY49525* N_117427, TY49547* S_117428);
-N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_1748, NI First_1749);
-N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18179, TNimType* Typ_18180);
-static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048);
-N_NIMCALL(NU8, Wordtocallconv_117539)(NU8 Sw_117541);
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412);
-N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
-N_NIMCALL(NIM_BOOL, Isturnedon_117558)(TY101012* C_117560, TY49525* N_117561);
-N_NIMCALL(void, Onoff_117617)(TY101012* C_117619, TY49525* N_117620, NU32 Op_117621);
-N_NIMCALL(void, Pragmadeadcodeelim_117642)(TY101012* C_117644, TY49525* N_117645);
-N_NIMCALL(void, Processcallconv_117670)(TY101012* C_117672, TY49525* N_117673);
-N_NIMCALL(void, chckObj)(TNimType* Obj_5375, TNimType* Subclass_5376);
-N_NIMCALL(TY49543*, Getlib_117729)(TY101012* C_117731, NU8 Kind_117732, TY49525* Path_117733);
-N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_90035)(TY49525* A_90037, TY49525* B_90038);
-N_NIMCALL(TY49543*, Newlib_101062)(NU8 Kind_101064);
-N_NIMCALL(void, Append_37035)(TY37019* List_37038, TY37013* Entry_37039);
-N_NIMCALL(TY49525*, Expectdynlibnode_117758)(TY101012* C_117760, TY49525* N_117761);
-N_NIMCALL(void, Processdynlib_117848)(TY101012* C_117850, TY49525* N_117851, TY49547* Sym_117852);
-N_NIMCALL(void, Addtolib_101065)(TY49543* Lib_101067, TY49547* Sym_101068);
-N_NIMCALL(void, Processnote_117907)(TY101012* C_117909, TY49525* N_117910);
-N_NIMCALL(NI, Findstr_66471)(NimStringDesc** A_66474, NI A_66474Len0, NimStringDesc* S_66475);
-N_NIMCALL(void, Processoption_118203)(TY101012* C_118205, TY49525* N_118206);
-N_NIMCALL(void, Processpush_118418)(TY101012* C_118420, TY49525* N_118421, NI Start_118422);
-N_NIMCALL(TY101002*, Newoptionentry_101056)(void);
-N_NIMCALL(void, Processpop_118452)(TY101012* C_118454, TY49525* N_118455);
-N_NIMCALL(void, Remove_37045)(TY37019* List_37048, TY37013* Entry_37049);
-N_NIMCALL(void, Processdefine_118459)(TY101012* C_118461, TY49525* N_118462);
-N_NIMCALL(void, Definesymbol_57006)(NimStringDesc* Symbol_57008);
-N_NIMCALL(void, Processundef_118518)(TY101012* C_118520, TY49525* N_118521);
-N_NIMCALL(void, Undefsymbol_57009)(NimStringDesc* Symbol_57011);
-N_NIMCALL(void, Processcompile_118581)(TY101012* C_118583, TY49525* N_118584);
-N_NIMCALL(NimStringDesc*, Findfile_40087)(NimStringDesc* F_40089);
-N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_32820, NimStringDesc* Ext_32821);
-N_NIMCALL(void, Addexternalfiletocompile_64355)(NimStringDesc* Filename_64357);
-N_NIMCALL(void, Addfiletolink_64358)(NimStringDesc* Filename_64360);
-N_NIMCALL(NimStringDesc*, Completecfilepath_64344)(NimStringDesc* Cfile_64346, NIM_BOOL Createsubdir_64347);
-N_NIMCALL(void, Processcommonlink_118588)(TY101012* C_118590, TY49525* N_118591, NU8 Feature_118592);
-N_NIMCALL(void, nossplitFile)(NimStringDesc* Path_32514, TY32515* Result);
-N_NIMCALL(NimStringDesc*, Toobjfile_64367)(NimStringDesc* Filenamewithoutext_64369);
-N_NIMCALL(NimStringDesc*, nosJoinPath)(NimStringDesc* Head_32203, NimStringDesc* Tail_32204);
-N_NIMCALL(void, Internalerror_41567)(TY41532 Info_41569, NimStringDesc* Errmsg_41570);
-N_NIMCALL(void, Pragmabreakpoint_118596)(TY101012* C_118598, TY49525* N_118599);
-N_NIMCALL(void, Pragmacheckpoint_118600)(TY101012* C_118602, TY49525* N_118603);
-N_NIMCALL(void, Addcheckpoint_41596)(TY41532 Info_41598);
-N_NIMCALL(void, Noval_118617)(TY49525* N_118619);
-N_NIMCALL(void, Processpragma_118629)(TY101012* C_118631, TY49525* N_118632, NI I_118633);
-N_NIMCALL(TY49547*, Newsym_49701)(NU8 Symkind_49703, TY48011* Name_49704, TY49547* Owner_49705);
-N_NIMCALL(TY49525*, Newnodei_49737)(NU8 Kind_49739, TY41532 Info_49740);
-N_NIMCALL(void, Addson_49823)(TY49525* Father_49825, TY49525* Son_49826);
-N_NIMCALL(void, Strtableadd_53064)(TY49529* T_53067, TY49547* N_53068);
-N_NIMCALL(void, Pragma_117028)(TY101012* C_117030, TY49547* Sym_117031, TY49525* N_117032, TY117007 Validpragmas_117033);
-N_NIMCALL(TY49547*, Strtableget_53069)(TY49529* T_53071, TY48011* Name_53072);
-N_NIMCALL(NIM_BOOL, Ispoweroftwo_95270)(NI X_95272);
-N_NIMCALL(void, Registercompilerproc_96014)(TY49547* S_96016);
-N_NIMCALL(void, Addlinkoption_64364)(NimStringDesc* Option_64366);
-N_NIMCALL(void, Addcompileoption_64361)(NimStringDesc* Option_64363);
-N_NIMCALL(void, internalAssert)(NCSTRING File_5054, NI Line_5055, NIM_BOOL Cond_5056);
-NIM_CONST TY117007 Procpragmas_117006 = {
+N_NIMCALL(NU8, Whichkeyword_67465)(TY49011* Id_67467);
+N_NIMCALL(NI64, chckRange64)(NI64 I_5523, NI64 A_5524, NI64 B_5525);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
+N_NIMCALL(void, Setexternname_118205)(TY50547* S_118207, NimStringDesc* Extname_118208);
+N_NIMCALL(TY47008*, Torope_47046)(NimStringDesc* S_47048);
+N_NIMCALL(NimStringDesc*, nsuFormatSingleElem)(NimStringDesc* Formatstr_23972, NimStringDesc* A_23973);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819);
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038);
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660);
+N_NOINLINE(void, Addzct_11025)(TY10618* S_11028, TY10602* C_11029);
+N_NIMCALL(void, Makeexternimport_118209)(TY50547* S_118211, NimStringDesc* Extname_118212);
+N_NIMCALL(void, Makeexternexport_118237)(TY50547* S_118239, NimStringDesc* Extname_118240);
+N_NIMCALL(TY50525*, Getstrlitnode_118253)(TY102012* C_118255, TY50525* N_118256);
+N_NIMCALL(NimStringDesc*, Expectstrlit_118316)(TY102012* C_118318, TY50525* N_118319);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_17308);
+N_NIMCALL(NI, Expectintlit_118335)(TY102012* C_118337, TY50525* N_118338);
+N_NIMCALL(NimStringDesc*, Getoptionalstr_118409)(TY102012* C_118411, TY50525* N_118412, NimStringDesc* Defaultstr_118413);
+N_NIMCALL(void, Processmagic_118424)(TY102012* C_118426, TY50525* N_118427, TY50547* S_118428);
+N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_1924, NI First_1925);
+N_NIMCALL(NimStringDesc*, reprEnum)(NI E_18379, TNimType* Typ_18380);
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17247, NimStringDesc* B_17248);
+N_NIMCALL(NU8, Wordtocallconv_118539)(NU8 Sw_118541);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5418);
+N_NIMCALL(NIM_BOOL, Isturnedon_118558)(TY102012* C_118560, TY50525* N_118561);
+N_NIMCALL(void, Onoff_118617)(TY102012* C_118619, TY50525* N_118620, NU32 Op_118621);
+N_NIMCALL(void, Pragmadeadcodeelim_118642)(TY102012* C_118644, TY50525* N_118645);
+N_NIMCALL(void, Processcallconv_118670)(TY102012* C_118672, TY50525* N_118673);
+N_NIMCALL(void, chckObj)(TNimType* Obj_5575, TNimType* Subclass_5576);
+N_NIMCALL(TY50543*, Getlib_118729)(TY102012* C_118731, NU8 Kind_118732, TY50525* Path_118733);
+N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_91035)(TY50525* A_91037, TY50525* B_91038);
+N_NIMCALL(TY50543*, Newlib_102062)(NU8 Kind_102064);
+N_NIMCALL(void, Append_38035)(TY38019* List_38038, TY38013* Entry_38039);
+N_NIMCALL(TY50525*, Expectdynlibnode_118758)(TY102012* C_118760, TY50525* N_118761);
+N_NIMCALL(void, Processdynlib_118848)(TY102012* C_118850, TY50525* N_118851, TY50547* Sym_118852);
+N_NIMCALL(void, Addtolib_102065)(TY50543* Lib_102067, TY50547* Sym_102068);
+N_NIMCALL(void, Processnote_118907)(TY102012* C_118909, TY50525* N_118910);
+N_NIMCALL(NI, Findstr_67471)(NimStringDesc** A_67474, NI A_67474Len0, NimStringDesc* S_67475);
+N_NIMCALL(void, Processoption_119203)(TY102012* C_119205, TY50525* N_119206);
+N_NIMCALL(void, Processpush_119418)(TY102012* C_119420, TY50525* N_119421, NI Start_119422);
+N_NIMCALL(TY102002*, Newoptionentry_102056)(void);
+N_NIMCALL(void, Processpop_119452)(TY102012* C_119454, TY50525* N_119455);
+N_NIMCALL(void, Remove_38045)(TY38019* List_38048, TY38013* Entry_38049);
+N_NIMCALL(void, Processdefine_119459)(TY102012* C_119461, TY50525* N_119462);
+N_NIMCALL(void, Definesymbol_58006)(NimStringDesc* Symbol_58008);
+N_NIMCALL(void, Processundef_119518)(TY102012* C_119520, TY50525* N_119521);
+N_NIMCALL(void, Undefsymbol_58009)(NimStringDesc* Symbol_58011);
+N_NIMCALL(void, Processcompile_119581)(TY102012* C_119583, TY50525* N_119584);
+N_NIMCALL(NimStringDesc*, Findfile_41087)(NimStringDesc* F_41089);
+N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_33820, NimStringDesc* Ext_33821);
+N_NIMCALL(void, Addexternalfiletocompile_65355)(NimStringDesc* Filename_65357);
+N_NIMCALL(void, Addfiletolink_65358)(NimStringDesc* Filename_65360);
+N_NIMCALL(NimStringDesc*, Completecfilepath_65344)(NimStringDesc* Cfile_65346, NIM_BOOL Createsubdir_65347);
+N_NIMCALL(void, Processcommonlink_119588)(TY102012* C_119590, TY50525* N_119591, NU8 Feature_119592);
+N_NIMCALL(void, nossplitFile)(NimStringDesc* Path_33514, TY33515* Result);
+N_NIMCALL(NimStringDesc*, Toobjfile_65367)(NimStringDesc* Filenamewithoutext_65369);
+N_NIMCALL(NimStringDesc*, nosJoinPath)(NimStringDesc* Head_33203, NimStringDesc* Tail_33204);
+N_NIMCALL(void, Internalerror_42567)(TY42532 Info_42569, NimStringDesc* Errmsg_42570);
+N_NIMCALL(void, Pragmabreakpoint_119596)(TY102012* C_119598, TY50525* N_119599);
+N_NIMCALL(void, Pragmacheckpoint_119600)(TY102012* C_119602, TY50525* N_119603);
+N_NIMCALL(void, Addcheckpoint_42596)(TY42532 Info_42598);
+N_NIMCALL(void, Noval_119617)(TY50525* N_119619);
+N_NIMCALL(void, Processpragma_119629)(TY102012* C_119631, TY50525* N_119632, NI I_119633);
+N_NIMCALL(TY50547*, Newsym_50701)(NU8 Symkind_50703, TY49011* Name_50704, TY50547* Owner_50705);
+N_NIMCALL(TY50525*, Newnodei_50737)(NU8 Kind_50739, TY42532 Info_50740);
+N_NIMCALL(void, Addson_50823)(TY50525* Father_50825, TY50525* Son_50826);
+N_NIMCALL(void, Strtableadd_54064)(TY50529* T_54067, TY50547* N_54068);
+N_NIMCALL(void, Pragma_118028)(TY102012* C_118030, TY50547* Sym_118031, TY50525* N_118032, TY118007 Validpragmas_118033);
+N_NIMCALL(TY50547*, Strtableget_54069)(TY50529* T_54071, TY49011* Name_54072);
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_96270)(NI X_96272);
+N_NIMCALL(void, Registercompilerproc_97014)(TY50547* S_97016);
+N_NIMCALL(void, Addlinkoption_65364)(NimStringDesc* Option_65366);
+N_NIMCALL(void, Addcompileoption_65361)(NimStringDesc* Option_65363);
+N_NIMCALL(void, internalAssert)(NCSTRING File_5254, NI Line_5255, NIM_BOOL Cond_5256);
+NIM_CONST TY118007 Procpragmas_118006 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0xF3, 0x1D, 0x00, 0x60, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x04, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Converterpragmas_117008 = {
+NIM_CONST TY118007 Converterpragmas_118008 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0xF3, 0x1D, 0x00, 0x60, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x04, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Methodpragmas_117009 = {
+NIM_CONST TY118007 Methodpragmas_118009 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0xF3, 0x1D, 0x00, 0x60, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x04, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Macropragmas_117010 = {
+NIM_CONST TY118007 Macropragmas_118010 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x71, 0x41, 0x08, 0x00, 0x20, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Iteratorpragmas_117012 = {
+NIM_CONST TY118007 Iteratorpragmas_118012 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0x51, 0x00, 0x00, 0x20, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Stmtpragmas_117014 = {
+NIM_CONST TY118007 Stmtpragmas_118014 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x08, 0x02, 0xE0, 0xFD, 0x3D, 0x02, 0x80,
 0xFF, 0x0D, 0x00, 0x05, 0xA0, 0x00, 0x00, 0x04,
 0x04, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Lambdapragmas_117016 = {
+NIM_CONST TY118007 Lambdapragmas_118016 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x70, 0xF3, 0x04, 0x00, 0x20, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Typepragmas_117018 = {
+NIM_CONST TY118007 Typepragmas_118018 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x72, 0x23, 0x08, 0x00, 0x20, 0x00, 0x00,
 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x40, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Fieldpragmas_117020 = {
+NIM_CONST TY118007 Fieldpragmas_118020 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x70, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Varpragmas_117022 = {
+NIM_CONST TY118007 Varpragmas_118022 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0x2D, 0x0C, 0x00, 0x20, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x08}
 ;
-NIM_CONST TY117007 Constpragmas_117024 = {
+NIM_CONST TY118007 Constpragmas_118024 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x80, 0x70, 0x21, 0x00, 0x00, 0x20, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY117007 Proctypepragmas_117026 = {
+NIM_CONST TY118007 Proctypepragmas_118026 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0xF8, 0x1F,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00}
 ;
-static NIM_CONST TY49999 TMP117199 = {
+static NIM_CONST TY50999 TMP118199 = {
 0xEC, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP117200, "sons", 4);
-static NIM_CONST TY49999 TMP117201 = {
+;STRING_LITERAL(TMP118200, "sons", 4);
+static NIM_CONST TY50999 TMP118201 = {
 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP117202, "ident", 5);
-static NIM_CONST TY49999 TMP117203 = {
+;STRING_LITERAL(TMP118202, "ident", 5);
+static NIM_CONST TY50999 TMP118203 = {
 0xE0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP117204, "intVal", 6);
-STRING_LITERAL(TMP117315, "", 0);
-static NIM_CONST TY49999 TMP117333 = {
+;STRING_LITERAL(TMP118204, "intVal", 6);
+STRING_LITERAL(TMP118315, "", 0);
+static NIM_CONST TY50999 TMP118333 = {
 0x00, 0xC0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP117334, "strVal", 6);
-static NIM_CONST TY49999 TMP117846 = {
+;STRING_LITERAL(TMP118334, "strVal", 6);
+static NIM_CONST TY50999 TMP118846 = {
 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-;STRING_LITERAL(TMP117847, "sym", 3);
-extern NIM_CONST TY41494 Hintstostr_41493;
-extern NIM_CONST TY41474 Warningstostr_41473;
-STRING_LITERAL(TMP118517, "define", 6);
-STRING_LITERAL(TMP118576, "undef", 5);
-STRING_LITERAL(TMP118595, "processCommonLink", 17);
-extern TY7816 Dl_7815;
-extern TY10790 Gch_10810;
-extern TY7820 Dl_7819;
-extern TNimType* NTI49178; /* TMagic */
-extern NU32 Goptions_40075;
-extern TNimType* NTI101002; /* TOptionEntry */
-extern TNimType* NTI49543; /* TLib */
-extern NU32 Gnotes_41539;
-extern NimStringDesc* Libpath_40109;
-N_NIMCALL(void, Invalidpragma_117038)(TY49525* N_117040) {
+;STRING_LITERAL(TMP118847, "sym", 3);
+extern NIM_CONST TY42494 Hintstostr_42493;
+extern NIM_CONST TY42474 Warningstostr_42473;
+STRING_LITERAL(TMP119517, "define", 6);
+STRING_LITERAL(TMP119576, "undef", 5);
+STRING_LITERAL(TMP119595, "processCommonLink", 17);
+extern TY8016 Dl_8015;
+extern TY10990 Gch_11010;
+extern TY8020 Dl_8019;
+extern TNimType* NTI50178; /* TMagic */
+extern NU32 Goptions_41075;
+extern TNimType* NTI102002; /* TOptionEntry */
+extern TNimType* NTI50543; /* TLib */
+extern NU32 Gnotes_42539;
+extern NimStringDesc* Libpath_41109;
+N_NIMCALL(void, Invalidpragma_118038)(TY50525* N_118040) {
 NimStringDesc* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -508,18 +508,34 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 54;F.filename = "pragmas.nim";
 LOC1 = 0;
-LOC1 = Rendertree_79042(N_117040, 4);
-Limessage_41562((*N_117040).Info, ((NU8) 158), LOC1);
+LOC1 = Rendertree_80042(N_118040, 4);
+Limessage_42562((*N_118040).Info, ((NU8) 158), LOC1);
 framePtr = framePtr->prev;
 }
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI32)((NU32)(A_6003) - (NU32)(B_6004));
+LOC2 = (0 <= (NI32)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI32)(Result_6005 ^ (NI32)((NU32) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
+}
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
 LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -528,29 +544,13 @@ raiseOverflow();
 BeforeRet: ;
 return Result_5805;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
-}
-N_NIMCALL(NIM_CHAR, Pragmaasm_117034)(TY101012* C_117036, TY49525* N_117037) {
-NIM_CHAR Result_117046;
-NI I_117080;
-NI HEX3Atmp_117194;
+N_NIMCALL(NIM_CHAR, Pragmaasm_118034)(TY102012* C_118036, TY50525* N_118037) {
+NIM_CHAR Result_118046;
+NI I_118080;
+NI HEX3Atmp_118194;
 NI LOC4;
-NI Res_117196;
-TY49525* It_117093;
+NI Res_118196;
+TY50525* It_118093;
 NIM_BOOL LOC7;
 NU8 LOC11;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -561,78 +561,78 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117046 = 0;
+Result_118046 = 0;
 F.line = 57;F.filename = "pragmas.nim";
-Result_117046 = 0;
+Result_118046 = 0;
 F.line = 58;F.filename = "pragmas.nim";
-if (!!((N_117037 == NIM_NIL))) goto LA2;
-I_117080 = 0;
-HEX3Atmp_117194 = 0;
+if (!!((N_118037 == NIM_NIL))) goto LA2;
+I_118080 = 0;
+HEX3Atmp_118194 = 0;
 F.line = 59;F.filename = "pragmas.nim";
-LOC4 = Sonslen_49803(N_117037);
-HEX3Atmp_117194 = subInt(LOC4, 1);
-Res_117196 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_117196 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC4 = Sonslen_50803(N_118037);
+HEX3Atmp_118194 = subInt(LOC4, 1);
+Res_118196 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_118196 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_117196 <= HEX3Atmp_117194)) goto LA5;
-F.line = 1019;F.filename = "system.nim";
-I_117080 = Res_117196;
-It_117093 = 0;
+if (!(Res_118196 <= HEX3Atmp_118194)) goto LA5;
+F.line = 1021;F.filename = "system.nim";
+I_118080 = Res_118196;
+It_118093 = 0;
 F.line = 60;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117037).Kind/8] &(1<<((*N_117037).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(I_117080) >= (NU)((*N_117037).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_117093 = (*N_117037).KindU.S6.Sons->data[I_117080];
+if (((TMP118199[(*N_118037).Kind/8] &(1<<((*N_118037).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(I_118080) >= (NU)((*N_118037).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_118093 = (*N_118037).KindU.S6.Sons->data[I_118080];
 F.line = 61;F.filename = "pragmas.nim";
-LOC7 = ((*It_117093).Kind == ((NU8) 24));
+LOC7 = ((*It_118093).Kind == ((NU8) 24));
 if (!(LOC7)) goto LA8;
-if (((TMP117199[(*It_117093).Kind/8] &(1<<((*It_117093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*It_117093).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC7 = ((*(*It_117093).KindU.S6.Sons->data[0]).Kind == ((NU8) 2));
+if (((TMP118199[(*It_118093).Kind/8] &(1<<((*It_118093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*It_118093).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC7 = ((*(*It_118093).KindU.S6.Sons->data[0]).Kind == ((NU8) 2));
 LA8: ;
 if (!LOC7) goto LA9;
 F.line = 62;F.filename = "pragmas.nim";
-if (((TMP117199[(*It_117093).Kind/8] &(1<<((*It_117093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*It_117093).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*It_117093).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*It_117093).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-LOC11 = Whichkeyword_66465((*(*It_117093).KindU.S6.Sons->data[0]).KindU.S5.Ident);
+if (((TMP118199[(*It_118093).Kind/8] &(1<<((*It_118093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*It_118093).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*It_118093).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*It_118093).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+LOC11 = Whichkeyword_67465((*(*It_118093).KindU.S6.Sons->data[0]).KindU.S5.Ident);
 switch (LOC11) {
 case ((NU8) 197):
 F.line = 64;F.filename = "pragmas.nim";
-if (((TMP117199[(*It_117093).Kind/8] &(1<<((*It_117093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*It_117093).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*It_117093).KindU.S6.Sons->data[1]).Kind == ((NU8) 5))) goto LA13;
+if (((TMP118199[(*It_118093).Kind/8] &(1<<((*It_118093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*It_118093).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*It_118093).KindU.S6.Sons->data[1]).Kind == ((NU8) 5))) goto LA13;
 F.line = 64;F.filename = "pragmas.nim";
-if (((TMP117199[(*It_117093).Kind/8] &(1<<((*It_117093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*It_117093).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117203[(*(*It_117093).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*It_117093).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117204));
-Result_117046 = ((NIM_CHAR) (((NI) (((NI)chckRange64((*(*It_117093).KindU.S6.Sons->data[1]).KindU.S1.Intval, (-2147483647 -1), 2147483647))))));
+if (((TMP118199[(*It_118093).Kind/8] &(1<<((*It_118093).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*It_118093).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118203[(*(*It_118093).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*It_118093).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118204));
+Result_118046 = ((NIM_CHAR) (((NI) (((NI)chckRange64((*(*It_118093).KindU.S6.Sons->data[1]).KindU.S1.Intval, (-2147483647 -1), 2147483647))))));
 goto LA12;
 LA13: ;
 F.line = 65;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_117093);
+Invalidpragma_118038(It_118093);
 LA12: ;
 break;
 default:
 F.line = 66;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_117093);
+Invalidpragma_118038(It_118093);
 break;
 }
 goto LA6;
 LA9: ;
 F.line = 68;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_117093);
+Invalidpragma_118038(It_118093);
 LA6: ;
-F.line = 1022;F.filename = "system.nim";
-Res_117196 = addInt(Res_117196, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_118196 = addInt(Res_118196, 1);
 } LA5: ;
 LA2: ;
 framePtr = framePtr->prev;
-return Result_117046;
+return Result_118046;
 }
-static N_INLINE(TY10402*, Usrtocell_10836)(void* Usr_10838) {
-TY10402* Result_10839;
+static N_INLINE(TY10602*, Usrtocell_11036)(void* Usr_11038) {
+TY10602* Result_11039;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "usrToCell";
@@ -641,14 +641,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/gc.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_10839 = 0;
+Result_11039 = 0;
 F.line = 100;F.filename = "gc.nim";
-Result_10839 = ((TY10402*) ((NI32)((NU32)(((NI) (Usr_10838))) - (NU32)(((NI) (((NI)sizeof(TY10402))))))));
+Result_11039 = ((TY10602*) ((NI32)((NU32)(((NI) (Usr_11038))) - (NU32)(((NI) (((NI)sizeof(TY10602))))))));
 framePtr = framePtr->prev;
-return Result_10839;
+return Result_11039;
 }
-static N_INLINE(NI, Atomicinc_2801)(NI* Memloc_2804, NI X_2805) {
-NI Result_7208;
+static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
+NI Result_7408;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicInc";
@@ -657,14 +657,14 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7208 = 0;
+Result_7408 = 0;
 F.line = 29;F.filename = "systhread.nim";
-Result_7208 = __sync_add_and_fetch(Memloc_2804, X_2805);
+Result_7408 = __sync_add_and_fetch(Memloc_3004, X_3005);
 framePtr = framePtr->prev;
-return Result_7208;
+return Result_7408;
 }
-static N_INLINE(NI, Atomicdec_2806)(NI* Memloc_2809, NI X_2810) {
-NI Result_7406;
+static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
+NI Result_7606;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "atomicDec";
@@ -673,13 +673,13 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/systhread.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_7406 = 0;
+Result_7606 = 0;
 F.line = 37;F.filename = "systhread.nim";
-Result_7406 = __sync_sub_and_fetch(Memloc_2809, X_2810);
+Result_7606 = __sync_sub_and_fetch(Memloc_3009, X_3010);
 framePtr = framePtr->prev;
-return Result_7406;
+return Result_7606;
 }
-static N_INLINE(void, Rtladdzct_11458)(TY10402* C_11460) {
+static N_INLINE(void, Rtladdzct_11658)(TY10602* C_11660) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "rtlAddZCT";
@@ -691,21 +691,21 @@ F.len = 0;
 F.line = 211;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA2;
 F.line = 211;F.filename = "gc.nim";
-Dl_7815(&Gch_10810.Zctlock);
+Dl_8015(&Gch_11010.Zctlock);
 LA2: ;
 F.line = 212;F.filename = "gc.nim";
-Addzct_10825(&Gch_10810.Zct, C_11460);
+Addzct_11025(&Gch_11010.Zct, C_11660);
 F.line = 213;F.filename = "gc.nim";
 if (!NIM_TRUE) goto LA5;
 F.line = 213;F.filename = "gc.nim";
-Dl_7819(&Gch_10810.Zctlock);
+Dl_8019(&Gch_11010.Zctlock);
 LA5: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_11618, void* Src_11619) {
-TY10402* C_11620;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_11818, void* Src_11819) {
+TY10602* C_11820;
 NI LOC4;
-TY10402* C_11622;
+TY10602* C_11822;
 NI LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -716,30 +716,30 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 244;F.filename = "gc.nim";
-if (!!((Src_11619 == NIM_NIL))) goto LA2;
-C_11620 = 0;
+if (!!((Src_11819 == NIM_NIL))) goto LA2;
+C_11820 = 0;
 F.line = 245;F.filename = "gc.nim";
-C_11620 = Usrtocell_10836(Src_11619);
+C_11820 = Usrtocell_11036(Src_11819);
 F.line = 246;F.filename = "gc.nim";
-LOC4 = Atomicinc_2801(&(*C_11620).Refcount, 8);
+LOC4 = Atomicinc_3001(&(*C_11820).Refcount, 8);
 LA2: ;
 F.line = 247;F.filename = "gc.nim";
-if (!!(((*Dest_11618) == NIM_NIL))) goto LA6;
-C_11622 = 0;
+if (!!(((*Dest_11818) == NIM_NIL))) goto LA6;
+C_11822 = 0;
 F.line = 248;F.filename = "gc.nim";
-C_11622 = Usrtocell_10836((*Dest_11618));
+C_11822 = Usrtocell_11036((*Dest_11818));
 F.line = 249;F.filename = "gc.nim";
-LOC9 = Atomicdec_2806(&(*C_11622).Refcount, 8);
+LOC9 = Atomicdec_3006(&(*C_11822).Refcount, 8);
 if (!((NU32)(LOC9) < (NU32)(8))) goto LA10;
 F.line = 250;F.filename = "gc.nim";
-Rtladdzct_11458(C_11622);
+Rtladdzct_11658(C_11822);
 LA10: ;
 LA6: ;
 F.line = 251;F.filename = "gc.nim";
-(*Dest_11618) = Src_11619;
+(*Dest_11818) = Src_11819;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Setexternname_117205)(TY49547* S_117207, NimStringDesc* Extname_117208) {
+N_NIMCALL(void, Setexternname_118205)(TY50547* S_118207, NimStringDesc* Extname_118208) {
 NimStringDesc* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -751,11 +751,11 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 71;F.filename = "pragmas.nim";
 LOC1 = 0;
-LOC1 = nsuFormatSingleElem(Extname_117208, (*(*S_117207).Name).S);
-asgnRefNoCycle((void**) &(*S_117207).Loc.R, Torope_46046(LOC1));
+LOC1 = nsuFormatSingleElem(Extname_118208, (*(*S_118207).Name).S);
+asgnRefNoCycle((void**) &(*S_118207).Loc.R, Torope_47046(LOC1));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Makeexternimport_117209)(TY49547* S_117211, NimStringDesc* Extname_117212) {
+N_NIMCALL(void, Makeexternimport_118209)(TY50547* S_118211, NimStringDesc* Extname_118212) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "MakeExternImport";
@@ -765,14 +765,14 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 74;F.filename = "pragmas.nim";
-Setexternname_117205(S_117211, Extname_117212);
+Setexternname_118205(S_118211, Extname_118212);
 F.line = 75;F.filename = "pragmas.nim";
-(*S_117211).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
+(*S_118211).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
 F.line = 76;F.filename = "pragmas.nim";
-(*S_117211).Flags &= ~(1 << ((NI32)(((NU8) 6)) % (sizeof(NI32)*8)));
+(*S_118211).Flags &= ~(1 << ((NI32)(((NU8) 6)) % (sizeof(NI32)*8)));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Makeexternexport_117237)(TY49547* S_117239, NimStringDesc* Extname_117240) {
+N_NIMCALL(void, Makeexternexport_118237)(TY50547* S_118239, NimStringDesc* Extname_118240) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "MakeExternExport";
@@ -782,13 +782,13 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 79;F.filename = "pragmas.nim";
-Setexternname_117205(S_117239, Extname_117240);
+Setexternname_118205(S_118239, Extname_118240);
 F.line = 80;F.filename = "pragmas.nim";
-(*S_117239).Flags |=(1<<((NI32)(((NU8) 8))%(sizeof(NI32)*8)));
+(*S_118239).Flags |=(1<<((NI32)(((NU8) 8))%(sizeof(NI32)*8)));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY49525*, Getstrlitnode_117253)(TY101012* C_117255, TY49525* N_117256) {
-TY49525* Result_117257;
+N_NIMCALL(TY50525*, Getstrlitnode_118253)(TY102012* C_118255, TY50525* N_118256) {
+TY50525* Result_118257;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "getStrLitNode";
@@ -797,43 +797,43 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117257 = 0;
+Result_118257 = 0;
 F.line = 83;F.filename = "pragmas.nim";
-if (!!(((*N_117256).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*N_118256).Kind == ((NU8) 24)))) goto LA2;
 F.line = 84;F.filename = "pragmas.nim";
-Limessage_41562((*N_117256).Info, ((NU8) 6), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118256).Info, ((NU8) 6), ((NimStringDesc*) &TMP118315));
 goto LA1;
 LA2: ;
 F.line = 86;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117256).Kind/8] &(1<<((*N_117256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117256).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*N_117256).Kind/8] &(1<<((*N_117256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117256).KindU.S6.Sons->Sup.len)) raiseIndexError();
-asgnRefNoCycle((void**) &(*N_117256).KindU.S6.Sons->data[1], (*C_117255).Semconstexpr(C_117255, (*N_117256).KindU.S6.Sons->data[1]));
+if (((TMP118199[(*N_118256).Kind/8] &(1<<((*N_118256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118256).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*N_118256).Kind/8] &(1<<((*N_118256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118256).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*N_118256).KindU.S6.Sons->data[1], (*C_118255).Semconstexpr(C_118255, (*N_118256).KindU.S6.Sons->data[1]));
 F.line = 87;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117256).Kind/8] &(1<<((*N_117256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117256).KindU.S6.Sons->Sup.len)) raiseIndexError();
-switch ((*(*N_117256).KindU.S6.Sons->data[1]).Kind) {
+if (((TMP118199[(*N_118256).Kind/8] &(1<<((*N_118256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118256).KindU.S6.Sons->Sup.len)) raiseIndexError();
+switch ((*(*N_118256).KindU.S6.Sons->data[1]).Kind) {
 case ((NU8) 14):
 case ((NU8) 15):
 case ((NU8) 16):
 F.line = 88;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117256).Kind/8] &(1<<((*N_117256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117256).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Result_117257 = (*N_117256).KindU.S6.Sons->data[1];
+if (((TMP118199[(*N_118256).Kind/8] &(1<<((*N_118256).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118256).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_118257 = (*N_118256).KindU.S6.Sons->data[1];
 break;
 default:
 F.line = 89;F.filename = "pragmas.nim";
-Limessage_41562((*N_117256).Info, ((NU8) 6), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118256).Info, ((NU8) 6), ((NimStringDesc*) &TMP118315));
 break;
 }
 LA1: ;
 framePtr = framePtr->prev;
-return Result_117257;
+return Result_118257;
 }
-N_NIMCALL(NimStringDesc*, Expectstrlit_117316)(TY101012* C_117318, TY49525* N_117319) {
-NimStringDesc* Result_117320;
-TY49525* LOC1;
+N_NIMCALL(NimStringDesc*, Expectstrlit_118316)(TY102012* C_118318, TY50525* N_118319) {
+NimStringDesc* Result_118320;
+TY50525* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "expectStrLit";
@@ -842,17 +842,17 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117320 = 0;
+Result_118320 = 0;
 F.line = 92;F.filename = "pragmas.nim";
 LOC1 = 0;
-LOC1 = Getstrlitnode_117253(C_117318, N_117319);
-if (!(((TMP117333[(*LOC1).Kind/8] &(1<<((*LOC1).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117334));
-Result_117320 = copyString((*LOC1).KindU.S3.Strval);
+LOC1 = Getstrlitnode_118253(C_118318, N_118319);
+if (!(((TMP118333[(*LOC1).Kind/8] &(1<<((*LOC1).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118334));
+Result_118320 = copyString((*LOC1).KindU.S3.Strval);
 framePtr = framePtr->prev;
-return Result_117320;
+return Result_118320;
 }
-N_NIMCALL(NI, Expectintlit_117335)(TY101012* C_117337, TY49525* N_117338) {
-NI Result_117339;
+N_NIMCALL(NI, Expectintlit_118335)(TY102012* C_118337, TY50525* N_118338) {
+NI Result_118339;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "expectIntLit";
@@ -861,45 +861,45 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117339 = 0;
+Result_118339 = 0;
 F.line = 95;F.filename = "pragmas.nim";
-if (!!(((*N_117338).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*N_118338).Kind == ((NU8) 24)))) goto LA2;
 F.line = 96;F.filename = "pragmas.nim";
-Limessage_41562((*N_117338).Info, ((NU8) 7), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118338).Info, ((NU8) 7), ((NimStringDesc*) &TMP118315));
 F.line = 97;F.filename = "pragmas.nim";
-Result_117339 = 0;
+Result_118339 = 0;
 goto LA1;
 LA2: ;
 F.line = 99;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117338).Kind/8] &(1<<((*N_117338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117338).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*N_117338).Kind/8] &(1<<((*N_117338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117338).KindU.S6.Sons->Sup.len)) raiseIndexError();
-asgnRefNoCycle((void**) &(*N_117338).KindU.S6.Sons->data[1], (*C_117337).Semconstexpr(C_117337, (*N_117338).KindU.S6.Sons->data[1]));
+if (((TMP118199[(*N_118338).Kind/8] &(1<<((*N_118338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118338).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*N_118338).Kind/8] &(1<<((*N_118338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118338).KindU.S6.Sons->Sup.len)) raiseIndexError();
+asgnRefNoCycle((void**) &(*N_118338).KindU.S6.Sons->data[1], (*C_118337).Semconstexpr(C_118337, (*N_118338).KindU.S6.Sons->data[1]));
 F.line = 100;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117338).Kind/8] &(1<<((*N_117338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117338).KindU.S6.Sons->Sup.len)) raiseIndexError();
-switch ((*(*N_117338).KindU.S6.Sons->data[1]).Kind) {
+if (((TMP118199[(*N_118338).Kind/8] &(1<<((*N_118338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118338).KindU.S6.Sons->Sup.len)) raiseIndexError();
+switch ((*(*N_118338).KindU.S6.Sons->data[1]).Kind) {
 case ((NU8) 6) ... ((NU8) 10):
 F.line = 101;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117338).Kind/8] &(1<<((*N_117338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117338).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117203[(*(*N_117338).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_117338).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117204));
-Result_117339 = ((NI)chckRange64((*(*N_117338).KindU.S6.Sons->data[1]).KindU.S1.Intval, (-2147483647 -1), 2147483647));
+if (((TMP118199[(*N_118338).Kind/8] &(1<<((*N_118338).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118338).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118203[(*(*N_118338).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118338).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118204));
+Result_118339 = ((NI)chckRange64((*(*N_118338).KindU.S6.Sons->data[1]).KindU.S1.Intval, (-2147483647 -1), 2147483647));
 break;
 default:
 F.line = 103;F.filename = "pragmas.nim";
-Limessage_41562((*N_117338).Info, ((NU8) 7), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118338).Info, ((NU8) 7), ((NimStringDesc*) &TMP118315));
 F.line = 104;F.filename = "pragmas.nim";
-Result_117339 = 0;
+Result_118339 = 0;
 break;
 }
 LA1: ;
 framePtr = framePtr->prev;
-return Result_117339;
+return Result_118339;
 }
-N_NIMCALL(NimStringDesc*, Getoptionalstr_117409)(TY101012* C_117411, TY49525* N_117412, NimStringDesc* Defaultstr_117413) {
-NimStringDesc* Result_117414;
+N_NIMCALL(NimStringDesc*, Getoptionalstr_118409)(TY102012* C_118411, TY50525* N_118412, NimStringDesc* Defaultstr_118413) {
+NimStringDesc* Result_118414;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "getOptionalStr";
@@ -908,21 +908,21 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117414 = 0;
+Result_118414 = 0;
 F.line = 107;F.filename = "pragmas.nim";
-if (!((*N_117412).Kind == ((NU8) 24))) goto LA2;
+if (!((*N_118412).Kind == ((NU8) 24))) goto LA2;
 F.line = 107;F.filename = "pragmas.nim";
-Result_117414 = Expectstrlit_117316(C_117411, N_117412);
+Result_118414 = Expectstrlit_118316(C_118411, N_118412);
 goto LA1;
 LA2: ;
 F.line = 108;F.filename = "pragmas.nim";
-Result_117414 = copyString(Defaultstr_117413);
+Result_118414 = copyString(Defaultstr_118413);
 LA1: ;
 framePtr = framePtr->prev;
-return Result_117414;
+return Result_118414;
 }
-static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17047, NimStringDesc* B_17048) {
-NIM_BOOL Result_17049;
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_17247, NimStringDesc* B_17248) {
+NIM_BOOL Result_17249;
 NIM_BOOL LOC5;
 NIM_BOOL LOC9;
 NI32 LOC11;
@@ -934,42 +934,42 @@ F.filename = "/home/andreas/projects/nimrod/lib/system/sysstr.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_17049 = 0;
+Result_17249 = 0;
 F.line = 32;F.filename = "sysstr.nim";
-if (!(A_17047 == B_17048)) goto LA2;
+if (!(A_17247 == B_17248)) goto LA2;
 F.line = 32;F.filename = "sysstr.nim";
 F.line = 32;F.filename = "sysstr.nim";
-Result_17049 = NIM_TRUE;
+Result_17249 = NIM_TRUE;
 goto BeforeRet;
 LA2: ;
 F.line = 33;F.filename = "sysstr.nim";
-LOC5 = (A_17047 == NIM_NIL);
+LOC5 = (A_17247 == NIM_NIL);
 if (LOC5) goto LA6;
-LOC5 = (B_17048 == NIM_NIL);
+LOC5 = (B_17248 == NIM_NIL);
 LA6: ;
 if (!LOC5) goto LA7;
 F.line = 33;F.filename = "sysstr.nim";
 F.line = 33;F.filename = "sysstr.nim";
-Result_17049 = NIM_FALSE;
+Result_17249 = NIM_FALSE;
 goto BeforeRet;
 LA7: ;
 F.line = 34;F.filename = "sysstr.nim";
 F.line = 34;F.filename = "sysstr.nim";
-LOC9 = ((*A_17047).Sup.len == (*B_17048).Sup.len);
+LOC9 = ((*A_17247).Sup.len == (*B_17248).Sup.len);
 if (!(LOC9)) goto LA10;
-LOC11 = memcmp(((NCSTRING) ((*A_17047).data)), ((NCSTRING) ((*B_17048).data)), ((NI32) ((NI32)((*A_17047).Sup.len * 1))));
+LOC11 = memcmp(((NCSTRING) ((*A_17247).data)), ((NCSTRING) ((*B_17248).data)), ((NI32) ((NI32)((*A_17247).Sup.len * 1))));
 LOC9 = (LOC11 == ((NI32) 0));
 LA10: ;
-Result_17049 = LOC9;
+Result_17249 = LOC9;
 goto BeforeRet;
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_17049;
+return Result_17249;
 }
-N_NIMCALL(void, Processmagic_117424)(TY101012* C_117426, TY49525* N_117427, TY49547* S_117428) {
-NimStringDesc* V_117429;
-NU8 M_117525;
-NU8 Res_117536;
+N_NIMCALL(void, Processmagic_118424)(TY102012* C_118426, TY50525* N_118427, TY50547* S_118428) {
+NimStringDesc* V_118429;
+NU8 M_118525;
+NU8 Res_118536;
 NimStringDesc* LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -979,74 +979,74 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-V_117429 = 0;
+V_118429 = 0;
 F.line = 114;F.filename = "pragmas.nim";
-if (!!(((*N_117427).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*N_118427).Kind == ((NU8) 24)))) goto LA2;
 F.line = 114;F.filename = "pragmas.nim";
-Limessage_41562((*N_117427).Info, ((NU8) 6), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118427).Info, ((NU8) 6), ((NimStringDesc*) &TMP118315));
 LA2: ;
 F.line = 115;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117427).Kind/8] &(1<<((*N_117427).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117427).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*N_117427).KindU.S6.Sons->data[1]).Kind == ((NU8) 2))) goto LA5;
+if (((TMP118199[(*N_118427).Kind/8] &(1<<((*N_118427).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118427).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*N_118427).KindU.S6.Sons->data[1]).Kind == ((NU8) 2))) goto LA5;
 F.line = 115;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117427).Kind/8] &(1<<((*N_117427).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117427).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_117427).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_117427).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-V_117429 = copyString((*(*(*N_117427).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
+if (((TMP118199[(*N_118427).Kind/8] &(1<<((*N_118427).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118427).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_118427).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118427).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+V_118429 = copyString((*(*(*N_118427).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
 goto LA4;
 LA5: ;
 F.line = 116;F.filename = "pragmas.nim";
-V_117429 = Expectstrlit_117316(C_117426, N_117427);
+V_118429 = Expectstrlit_118316(C_118426, N_118427);
 LA4: ;
 F.line = 117;F.filename = "pragmas.nim";
-(*S_117428).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
-M_117525 = 0;
-Res_117536 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_117536 = ((NU8) 0);
-F.line = 1020;F.filename = "system.nim";
+(*S_118428).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
+M_118525 = 0;
+Res_118536 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_118536 = ((NU8) 0);
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_117536 <= ((NU8) 231))) goto LA7;
-F.line = 1019;F.filename = "system.nim";
-M_117525 = Res_117536;
+if (!(Res_118536 <= ((NU8) 231))) goto LA7;
+F.line = 1021;F.filename = "system.nim";
+M_118525 = Res_118536;
 F.line = 122;F.filename = "pragmas.nim";
 LOC9 = 0;
-LOC9 = copyStr(reprEnum(M_117525, NTI49178), 1);
-if (!eqStrings(LOC9, V_117429)) goto LA10;
+LOC9 = copyStr(reprEnum(M_118525, NTI50178), 1);
+if (!eqStrings(LOC9, V_118429)) goto LA10;
 F.line = 123;F.filename = "pragmas.nim";
-(*S_117428).Magic = M_117525;
+(*S_118428).Magic = M_118525;
 F.line = 124;F.filename = "pragmas.nim";
 goto BeforeRet;
 LA10: ;
-F.line = 1022;F.filename = "system.nim";
-Res_117536 = addInt(Res_117536, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_118536 = addInt(Res_118536, 1);
 } LA7: ;
 F.line = 125;F.filename = "pragmas.nim";
-Limessage_41562((*N_117427).Info, ((NU8) 215), V_117429);
+Limessage_42562((*N_118427).Info, ((NU8) 215), V_118429);
 BeforeRet: ;
 framePtr = framePtr->prev;
 }
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412) {
-NI Result_5316;
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5516;
 NIM_BOOL LOC2;
-Result_5316 = 0;
-LOC2 = (A_4411 <= I_4410);
+Result_5516 = 0;
+LOC2 = (A_4611 <= I_4610);
 if (!(LOC2)) goto LA3;
-LOC2 = (I_4410 <= B_4412);
+LOC2 = (I_4610 <= B_4612);
 LA3: ;
 if (!LOC2) goto LA4;
-Result_5316 = I_4410;
+Result_5516 = I_4610;
 goto BeforeRet;
 goto LA1;
 LA4: ;
-raiseRangeError(((NI64) (I_4410)));
+raiseRangeError(((NI64) (I_4610)));
 LA1: ;
 BeforeRet: ;
-return Result_5316;
+return Result_5516;
 }
-N_NIMCALL(NU8, Wordtocallconv_117539)(NU8 Sw_117541) {
-NU8 Result_117542;
+N_NIMCALL(NU8, Wordtocallconv_118539)(NU8 Sw_118541) {
+NU8 Result_118542;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "wordToCallConv";
@@ -1055,14 +1055,14 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117542 = 0;
+Result_118542 = 0;
 F.line = 130;F.filename = "pragmas.nim";
-Result_117542 = ((NU8)chckRange(subInt(addInt(0, Sw_117541), 115), ((NU8) 0), ((NU8) 9)));
+Result_118542 = ((NU8)chckRange(subInt(addInt(0, Sw_118541), 115), ((NU8) 0), ((NU8) 9)));
 framePtr = framePtr->prev;
-return Result_117542;
+return Result_118542;
 }
-N_NIMCALL(NIM_BOOL, Isturnedon_117558)(TY101012* C_117560, TY49525* N_117561) {
-NIM_BOOL Result_117562;
+N_NIMCALL(NIM_BOOL, Isturnedon_118558)(TY102012* C_118560, TY50525* N_118561) {
+NIM_BOOL Result_118562;
 NIM_BOOL LOC2;
 NU8 LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -1073,43 +1073,43 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117562 = 0;
+Result_118562 = 0;
 F.line = 133;F.filename = "pragmas.nim";
-LOC2 = ((*N_117561).Kind == ((NU8) 24));
+LOC2 = ((*N_118561).Kind == ((NU8) 24));
 if (!(LOC2)) goto LA3;
-if (((TMP117199[(*N_117561).Kind/8] &(1<<((*N_117561).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117561).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = ((*(*N_117561).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_118561).Kind/8] &(1<<((*N_118561).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118561).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = ((*(*N_118561).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 134;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117561).Kind/8] &(1<<((*N_117561).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117561).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_117561).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_117561).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-LOC6 = Whichkeyword_66465((*(*N_117561).KindU.S6.Sons->data[1]).KindU.S5.Ident);
+if (((TMP118199[(*N_118561).Kind/8] &(1<<((*N_118561).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118561).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_118561).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118561).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+LOC6 = Whichkeyword_67465((*(*N_118561).KindU.S6.Sons->data[1]).KindU.S5.Ident);
 switch (LOC6) {
 case ((NU8) 125):
 F.line = 135;F.filename = "pragmas.nim";
-Result_117562 = NIM_TRUE;
+Result_118562 = NIM_TRUE;
 break;
 case ((NU8) 126):
 F.line = 136;F.filename = "pragmas.nim";
-Result_117562 = NIM_FALSE;
+Result_118562 = NIM_FALSE;
 break;
 default:
 F.line = 137;F.filename = "pragmas.nim";
-Limessage_41562((*N_117561).Info, ((NU8) 24), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118561).Info, ((NU8) 24), ((NimStringDesc*) &TMP118315));
 break;
 }
 goto LA1;
 LA4: ;
 F.line = 139;F.filename = "pragmas.nim";
-Limessage_41562((*N_117561).Info, ((NU8) 24), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118561).Info, ((NU8) 24), ((NimStringDesc*) &TMP118315));
 LA1: ;
 framePtr = framePtr->prev;
-return Result_117562;
+return Result_118562;
 }
-N_NIMCALL(void, Onoff_117617)(TY101012* C_117619, TY49525* N_117620, NU32 Op_117621) {
+N_NIMCALL(void, Onoff_118617)(TY102012* C_118619, TY50525* N_118620, NU32 Op_118621) {
 NIM_BOOL LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1120,18 +1120,18 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 142;F.filename = "pragmas.nim";
-LOC2 = Isturnedon_117558(C_117619, N_117620);
+LOC2 = Isturnedon_118558(C_118619, N_118620);
 if (!LOC2) goto LA3;
 F.line = 142;F.filename = "pragmas.nim";
-Goptions_40075 = (Goptions_40075 | Op_117621);
+Goptions_41075 = (Goptions_41075 | Op_118621);
 goto LA1;
 LA3: ;
 F.line = 143;F.filename = "pragmas.nim";
-Goptions_40075 = (Goptions_40075 & ~ Op_117621);
+Goptions_41075 = (Goptions_41075 & ~ Op_118621);
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Pragmadeadcodeelim_117642)(TY101012* C_117644, TY49525* N_117645) {
+N_NIMCALL(void, Pragmadeadcodeelim_118642)(TY102012* C_118644, TY50525* N_118645) {
 NIM_BOOL LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1142,20 +1142,20 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 146;F.filename = "pragmas.nim";
-LOC2 = Isturnedon_117558(C_117644, N_117645);
+LOC2 = Isturnedon_118558(C_118644, N_118645);
 if (!LOC2) goto LA3;
 F.line = 146;F.filename = "pragmas.nim";
-(*(*C_117644).Module).Flags |=(1<<((NI32)(((NU8) 28))%(sizeof(NI32)*8)));
+(*(*C_118644).Module).Flags |=(1<<((NI32)(((NU8) 28))%(sizeof(NI32)*8)));
 goto LA1;
 LA3: ;
 F.line = 147;F.filename = "pragmas.nim";
-(*(*C_117644).Module).Flags &= ~(1 << ((NI32)(((NU8) 28)) % (sizeof(NI32)*8)));
+(*(*C_118644).Module).Flags &= ~(1 << ((NI32)(((NU8) 28)) % (sizeof(NI32)*8)));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processcallconv_117670)(TY101012* C_117672, TY49525* N_117673) {
+N_NIMCALL(void, Processcallconv_118670)(TY102012* C_118672, TY50525* N_118673) {
 NIM_BOOL LOC2;
-NU8 Sw_117728;
+NU8 Sw_118728;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "processCallConv";
@@ -1165,41 +1165,41 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 150;F.filename = "pragmas.nim";
-LOC2 = ((*N_117673).Kind == ((NU8) 24));
+LOC2 = ((*N_118673).Kind == ((NU8) 24));
 if (!(LOC2)) goto LA3;
-if (((TMP117199[(*N_117673).Kind/8] &(1<<((*N_117673).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117673).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = ((*(*N_117673).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_118673).Kind/8] &(1<<((*N_118673).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118673).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = ((*(*N_118673).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA3: ;
 if (!LOC2) goto LA4;
-Sw_117728 = 0;
+Sw_118728 = 0;
 F.line = 151;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117673).Kind/8] &(1<<((*N_117673).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117673).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_117673).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_117673).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Sw_117728 = Whichkeyword_66465((*(*N_117673).KindU.S6.Sons->data[1]).KindU.S5.Ident);
+if (((TMP118199[(*N_118673).Kind/8] &(1<<((*N_118673).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118673).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_118673).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118673).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Sw_118728 = Whichkeyword_67465((*(*N_118673).KindU.S6.Sons->data[1]).KindU.S5.Ident);
 F.line = 152;F.filename = "pragmas.nim";
-switch (Sw_117728) {
+switch (Sw_118728) {
 case ((NU8) 115) ... ((NU8) 124):
 F.line = 154;F.filename = "pragmas.nim";
-if ((*C_117672).Optionstack.Tail) chckObj((*(*C_117672).Optionstack.Tail).Sup.m_type, NTI101002);
-(*((TY101002*) ((*C_117672).Optionstack.Tail))).Defaultcc = Wordtocallconv_117539(Sw_117728);
+if ((*C_118672).Optionstack.Tail) chckObj((*(*C_118672).Optionstack.Tail).Sup.m_type, NTI102002);
+(*((TY102002*) ((*C_118672).Optionstack.Tail))).Defaultcc = Wordtocallconv_118539(Sw_118728);
 break;
 default:
 F.line = 155;F.filename = "pragmas.nim";
-Limessage_41562((*N_117673).Info, ((NU8) 98), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118673).Info, ((NU8) 98), ((NimStringDesc*) &TMP118315));
 break;
 }
 goto LA1;
 LA4: ;
 F.line = 157;F.filename = "pragmas.nim";
-Limessage_41562((*N_117673).Info, ((NU8) 98), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118673).Info, ((NU8) 98), ((NimStringDesc*) &TMP118315));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(TY49543*, Getlib_117729)(TY101012* C_117731, NU8 Kind_117732, TY49525* Path_117733) {
-TY49543* Result_117734;
-TY49543* It_117735;
+N_NIMCALL(TY50543*, Getlib_118729)(TY102012* C_118731, NU8 Kind_118732, TY50525* Path_118733) {
+TY50543* Result_118734;
+TY50543* It_118735;
 NIM_BOOL LOC6;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1209,41 +1209,41 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117734 = 0;
-It_117735 = 0;
+Result_118734 = 0;
+It_118735 = 0;
 F.line = 160;F.filename = "pragmas.nim";
-if ((*C_117731).Libs.Head) chckObj((*(*C_117731).Libs.Head).Sup.m_type, NTI49543);
-It_117735 = ((TY49543*) ((*C_117731).Libs.Head));
+if ((*C_118731).Libs.Head) chckObj((*(*C_118731).Libs.Head).Sup.m_type, NTI50543);
+It_118735 = ((TY50543*) ((*C_118731).Libs.Head));
 F.line = 161;F.filename = "pragmas.nim";
 while (1) {
-if (!!((It_117735 == NIM_NIL))) goto LA1;
+if (!!((It_118735 == NIM_NIL))) goto LA1;
 F.line = 162;F.filename = "pragmas.nim";
-if (!((*It_117735).Kind == Kind_117732)) goto LA3;
+if (!((*It_118735).Kind == Kind_118732)) goto LA3;
 F.line = 163;F.filename = "pragmas.nim";
-LOC6 = Exprstructuralequivalent_90035((*It_117735).Path, Path_117733);
+LOC6 = Exprstructuralequivalent_91035((*It_118735).Path, Path_118733);
 if (!LOC6) goto LA7;
 F.line = 163;F.filename = "pragmas.nim";
 F.line = 163;F.filename = "pragmas.nim";
-Result_117734 = It_117735;
+Result_118734 = It_118735;
 goto BeforeRet;
 LA7: ;
 LA3: ;
 F.line = 164;F.filename = "pragmas.nim";
-if ((*It_117735).Sup.Next) chckObj((*(*It_117735).Sup.Next).Sup.m_type, NTI49543);
-It_117735 = ((TY49543*) ((*It_117735).Sup.Next));
+if ((*It_118735).Sup.Next) chckObj((*(*It_118735).Sup.Next).Sup.m_type, NTI50543);
+It_118735 = ((TY50543*) ((*It_118735).Sup.Next));
 } LA1: ;
 F.line = 165;F.filename = "pragmas.nim";
-Result_117734 = Newlib_101062(Kind_117732);
+Result_118734 = Newlib_102062(Kind_118732);
 F.line = 166;F.filename = "pragmas.nim";
-asgnRefNoCycle((void**) &(*Result_117734).Path, Path_117733);
+asgnRefNoCycle((void**) &(*Result_118734).Path, Path_118733);
 F.line = 167;F.filename = "pragmas.nim";
-Append_37035(&(*C_117731).Libs, &Result_117734->Sup);
+Append_38035(&(*C_118731).Libs, &Result_118734->Sup);
 BeforeRet: ;
 framePtr = framePtr->prev;
-return Result_117734;
+return Result_118734;
 }
-N_NIMCALL(TY49525*, Expectdynlibnode_117758)(TY101012* C_117760, TY49525* N_117761) {
-TY49525* Result_117762;
+N_NIMCALL(TY50525*, Expectdynlibnode_118758)(TY102012* C_118760, TY50525* N_118761) {
+TY50525* Result_118762;
 NIM_BOOL LOC5;
 NIM_BOOL LOC10;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -1254,46 +1254,46 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-Result_117762 = 0;
+Result_118762 = 0;
 F.line = 170;F.filename = "pragmas.nim";
-if (!!(((*N_117761).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*N_118761).Kind == ((NU8) 24)))) goto LA2;
 F.line = 170;F.filename = "pragmas.nim";
-Limessage_41562((*N_117761).Info, ((NU8) 6), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118761).Info, ((NU8) 6), ((NimStringDesc*) &TMP118315));
 goto LA1;
 LA2: ;
 F.line = 172;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117761).Kind/8] &(1<<((*N_117761).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117761).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Result_117762 = (*C_117760).Semexpr(C_117760, (*N_117761).KindU.S6.Sons->data[1]);
+if (((TMP118199[(*N_118761).Kind/8] &(1<<((*N_118761).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118761).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Result_118762 = (*C_118760).Semexpr(C_118760, (*N_118761).KindU.S6.Sons->data[1]);
 F.line = 173;F.filename = "pragmas.nim";
-LOC5 = ((*Result_117762).Kind == ((NU8) 3));
+LOC5 = ((*Result_118762).Kind == ((NU8) 3));
 if (!(LOC5)) goto LA6;
-if (!(((TMP117846[(*Result_117762).Kind/8] &(1<<((*Result_117762).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117847));
-LOC5 = ((*(*Result_117762).KindU.S4.Sym).Kind == ((NU8) 7));
+if (!(((TMP118846[(*Result_118762).Kind/8] &(1<<((*Result_118762).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118847));
+LOC5 = ((*(*Result_118762).KindU.S4.Sym).Kind == ((NU8) 7));
 LA6: ;
 if (!LOC5) goto LA7;
 F.line = 174;F.filename = "pragmas.nim";
-if (!(((TMP117846[(*Result_117762).Kind/8] &(1<<((*Result_117762).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117847));
-Result_117762 = (*(*Result_117762).KindU.S4.Sym).Ast;
+if (!(((TMP118846[(*Result_118762).Kind/8] &(1<<((*Result_118762).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118847));
+Result_118762 = (*(*Result_118762).KindU.S4.Sym).Ast;
 LA7: ;
 F.line = 175;F.filename = "pragmas.nim";
-LOC10 = ((*Result_117762).Typ == NIM_NIL);
+LOC10 = ((*Result_118762).Typ == NIM_NIL);
 if (LOC10) goto LA11;
-LOC10 = !(((*(*Result_117762).Typ).Kind == ((NU8) 28)));
+LOC10 = !(((*(*Result_118762).Typ).Kind == ((NU8) 28)));
 LA11: ;
 if (!LOC10) goto LA12;
 F.line = 176;F.filename = "pragmas.nim";
-Limessage_41562((*N_117761).Info, ((NU8) 6), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118761).Info, ((NU8) 6), ((NimStringDesc*) &TMP118315));
 LA12: ;
 LA1: ;
 framePtr = framePtr->prev;
-return Result_117762;
+return Result_118762;
 }
-N_NIMCALL(void, Processdynlib_117848)(TY101012* C_117850, TY49525* N_117851, TY49547* Sym_117852) {
+N_NIMCALL(void, Processdynlib_118848)(TY102012* C_118850, TY50525* N_118851, TY50547* Sym_118852) {
 NIM_BOOL LOC2;
-TY49525* LOC6;
-TY49543* Lib_117882;
-TY49525* LOC9;
+TY50525* LOC6;
+TY50543* Lib_118882;
+TY50525* LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "processDynLib";
@@ -1303,46 +1303,46 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 179;F.filename = "pragmas.nim";
-LOC2 = (Sym_117852 == NIM_NIL);
+LOC2 = (Sym_118852 == NIM_NIL);
 if (LOC2) goto LA3;
-LOC2 = ((*Sym_117852).Kind == ((NU8) 18));
+LOC2 = ((*Sym_118852).Kind == ((NU8) 18));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 180;F.filename = "pragmas.nim";
-if ((*C_117850).Optionstack.Tail) chckObj((*(*C_117850).Optionstack.Tail).Sup.m_type, NTI101002);
+if ((*C_118850).Optionstack.Tail) chckObj((*(*C_118850).Optionstack.Tail).Sup.m_type, NTI102002);
 LOC6 = 0;
-LOC6 = Expectdynlibnode_117758(C_117850, N_117851);
-asgnRefNoCycle((void**) &(*((TY101002*) ((*C_117850).Optionstack.Tail))).Dynlib, Getlib_117729(C_117850, ((NU8) 1), LOC6));
+LOC6 = Expectdynlibnode_118758(C_118850, N_118851);
+asgnRefNoCycle((void**) &(*((TY102002*) ((*C_118850).Optionstack.Tail))).Dynlib, Getlib_118729(C_118850, ((NU8) 1), LOC6));
 goto LA1;
 LA4: ;
-if (!((*N_117851).Kind == ((NU8) 24))) goto LA7;
-Lib_117882 = 0;
+if (!((*N_118851).Kind == ((NU8) 24))) goto LA7;
+Lib_118882 = 0;
 F.line = 183;F.filename = "pragmas.nim";
 LOC9 = 0;
-LOC9 = Expectdynlibnode_117758(C_117850, N_117851);
-Lib_117882 = Getlib_117729(C_117850, ((NU8) 1), LOC9);
+LOC9 = Expectdynlibnode_118758(C_118850, N_118851);
+Lib_118882 = Getlib_118729(C_118850, ((NU8) 1), LOC9);
 F.line = 184;F.filename = "pragmas.nim";
-Addtolib_101065(Lib_117882, Sym_117852);
+Addtolib_102065(Lib_118882, Sym_118852);
 F.line = 185;F.filename = "pragmas.nim";
-(*Sym_117852).Loc.Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
+(*Sym_118852).Loc.Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
 goto LA1;
 LA7: ;
 F.line = 187;F.filename = "pragmas.nim";
-(*Sym_117852).Loc.Flags |=(1<<((NI8)(((NU8) 5))%(sizeof(NI8)*8)));
+(*Sym_118852).Loc.Flags |=(1<<((NI8)(((NU8) 5))%(sizeof(NI8)*8)));
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processnote_117907)(TY101012* C_117909, TY49525* N_117910) {
+N_NIMCALL(void, Processnote_118907)(TY102012* C_118909, TY50525* N_118910) {
 NIM_BOOL LOC2;
 NIM_BOOL LOC3;
 NIM_BOOL LOC4;
 NIM_BOOL LOC5;
 NIM_BOOL LOC6;
 NI LOC8;
-NU8 Nk_118030;
+NU8 Nk_119030;
 NU8 LOC15;
-NI X_118103;
-NI X_118147;
+NI X_119103;
+NI X_119147;
 NU8 LOC22;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1353,123 +1353,123 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 190;F.filename = "pragmas.nim";
-LOC6 = ((*N_117910).Kind == ((NU8) 24));
+LOC6 = ((*N_118910).Kind == ((NU8) 24));
 if (!(LOC6)) goto LA7;
-LOC8 = Sonslen_49803(N_117910);
+LOC8 = Sonslen_50803(N_118910);
 LOC6 = (LOC8 == 2);
 LA7: ;
 LOC5 = LOC6;
 if (!(LOC5)) goto LA9;
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC5 = ((*(*N_117910).KindU.S6.Sons->data[0]).Kind == ((NU8) 33));
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC5 = ((*(*N_118910).KindU.S6.Sons->data[0]).Kind == ((NU8) 33));
 LA9: ;
 LOC4 = LOC5;
 if (!(LOC4)) goto LA10;
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*(*N_117910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC4 = ((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*(*N_118910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC4 = ((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA10: ;
 LOC3 = LOC4;
 if (!(LOC3)) goto LA11;
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*(*N_117910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC3 = ((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*(*N_118910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC3 = ((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind == ((NU8) 2));
 LA11: ;
 LOC2 = LOC3;
 if (!(LOC2)) goto LA12;
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = ((*(*N_117910).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = ((*(*N_118910).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA12: ;
 if (!LOC2) goto LA13;
-Nk_118030 = 0;
+Nk_119030 = 0;
 F.line = 195;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*(*N_117910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-LOC15 = Whichkeyword_66465((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).KindU.S5.Ident);
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*(*N_118910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+LOC15 = Whichkeyword_67465((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]).KindU.S5.Ident);
 switch (LOC15) {
 case ((NU8) 96):
-X_118103 = 0;
+X_119103 = 0;
 F.line = 197;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*(*N_117910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-X_118103 = Findstr_66471(Hintstostr_41493, 13, (*(*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*(*N_118910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+X_119103 = Findstr_67471(Hintstostr_42493, 13, (*(*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
 F.line = 198;F.filename = "pragmas.nim";
-if (!(0 <= X_118103)) goto LA17;
+if (!(0 <= X_119103)) goto LA17;
 F.line = 198;F.filename = "pragmas.nim";
-Nk_118030 = ((NU8)chckRange(addInt(X_118103, 222), ((NU8) 207), ((NU8) 234)));
+Nk_119030 = ((NU8)chckRange(addInt(X_119103, 222), ((NU8) 207), ((NU8) 234)));
 goto LA16;
 LA17: ;
 F.line = 199;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_117910);
+Invalidpragma_118038(N_118910);
 LA16: ;
 break;
 case ((NU8) 95):
-X_118147 = 0;
+X_119147 = 0;
 F.line = 201;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (((TMP117199[(*(*N_117910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-X_118147 = Findstr_66471(Warningstostr_41473, 15, (*(*(*(*N_117910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (((TMP118199[(*(*N_118910).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[0]).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+X_119147 = Findstr_67471(Warningstostr_42473, 15, (*(*(*(*N_118910).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
 F.line = 202;F.filename = "pragmas.nim";
-if (!(0 <= X_118147)) goto LA20;
+if (!(0 <= X_119147)) goto LA20;
 F.line = 202;F.filename = "pragmas.nim";
-Nk_118030 = ((NU8)chckRange(addInt(X_118147, 207), ((NU8) 207), ((NU8) 234)));
+Nk_119030 = ((NU8)chckRange(addInt(X_119147, 207), ((NU8) 207), ((NU8) 234)));
 goto LA19;
 LA20: ;
 F.line = 203;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_117910);
+Invalidpragma_118038(N_118910);
 LA19: ;
 break;
 default:
 F.line = 205;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_117910);
+Invalidpragma_118038(N_118910);
 F.line = 206;F.filename = "pragmas.nim";
 goto BeforeRet;
 break;
 }
 F.line = 207;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117910).Kind/8] &(1<<((*N_117910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_117910).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_117910).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_117910).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-LOC22 = Whichkeyword_66465((*(*N_117910).KindU.S6.Sons->data[1]).KindU.S5.Ident);
+if (((TMP118199[(*N_118910).Kind/8] &(1<<((*N_118910).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_118910).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_118910).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118910).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+LOC22 = Whichkeyword_67465((*(*N_118910).KindU.S6.Sons->data[1]).KindU.S5.Ident);
 switch (LOC22) {
 case ((NU8) 125):
 F.line = 208;F.filename = "pragmas.nim";
-Gnotes_41539 |=(1<<((NI32)((Nk_118030-207))%(sizeof(NI32)*8)));
+Gnotes_42539 |=(1<<((NI32)((Nk_119030-207))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 126):
 F.line = 209;F.filename = "pragmas.nim";
-Gnotes_41539 &= ~(1 << ((NI32)((Nk_118030-207)) % (sizeof(NI32)*8)));
+Gnotes_42539 &= ~(1 << ((NI32)((Nk_119030-207)) % (sizeof(NI32)*8)));
 break;
 default:
 F.line = 210;F.filename = "pragmas.nim";
-Limessage_41562((*N_117910).Info, ((NU8) 24), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118910).Info, ((NU8) 24), ((NimStringDesc*) &TMP118315));
 break;
 }
 goto LA1;
 LA13: ;
 F.line = 212;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_117910);
+Invalidpragma_118038(N_118910);
 LA1: ;
 BeforeRet: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processoption_118203)(TY101012* C_118205, TY49525* N_118206) {
-NU8 Sw_118282;
+N_NIMCALL(void, Processoption_119203)(TY102012* C_119205, TY50525* N_119206) {
+NU8 Sw_119282;
 NU8 LOC11;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1480,172 +1480,172 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 215;F.filename = "pragmas.nim";
-if (!!(((*N_118206).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*N_119206).Kind == ((NU8) 24)))) goto LA2;
 F.line = 215;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118206);
+Invalidpragma_118038(N_119206);
 goto LA1;
 LA2: ;
-if (((TMP117199[(*N_118206).Kind/8] &(1<<((*N_118206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_118206).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!((*(*N_118206).KindU.S6.Sons->data[0]).Kind == ((NU8) 33))) goto LA4;
+if (((TMP118199[(*N_119206).Kind/8] &(1<<((*N_119206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_119206).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!((*(*N_119206).KindU.S6.Sons->data[0]).Kind == ((NU8) 33))) goto LA4;
 F.line = 216;F.filename = "pragmas.nim";
-Processnote_117907(C_118205, N_118206);
+Processnote_118907(C_119205, N_119206);
 goto LA1;
 LA4: ;
-if (((TMP117199[(*N_118206).Kind/8] &(1<<((*N_118206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_118206).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_118206).KindU.S6.Sons->data[0]).Kind == ((NU8) 2)))) goto LA6;
+if (((TMP118199[(*N_119206).Kind/8] &(1<<((*N_119206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_119206).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_119206).KindU.S6.Sons->data[0]).Kind == ((NU8) 2)))) goto LA6;
 F.line = 217;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118206);
+Invalidpragma_118038(N_119206);
 goto LA1;
 LA6: ;
-Sw_118282 = 0;
+Sw_119282 = 0;
 F.line = 219;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118206).Kind/8] &(1<<((*N_118206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*N_118206).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_118206).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_118206).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Sw_118282 = Whichkeyword_66465((*(*N_118206).KindU.S6.Sons->data[0]).KindU.S5.Ident);
+if (((TMP118199[(*N_119206).Kind/8] &(1<<((*N_119206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*N_119206).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_119206).KindU.S6.Sons->data[0]).Kind/8] &(1<<((*(*N_119206).KindU.S6.Sons->data[0]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Sw_119282 = Whichkeyword_67465((*(*N_119206).KindU.S6.Sons->data[0]).KindU.S5.Ident);
 F.line = 220;F.filename = "pragmas.nim";
-switch (Sw_118282) {
+switch (Sw_119282) {
 case ((NU8) 127):
 F.line = 221;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, IL64(4261609472));
+Onoff_118617(C_119205, N_119206, IL64(4261609472));
 break;
 case ((NU8) 75):
 F.line = 222;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 33554432);
+Onoff_118617(C_119205, N_119206, 33554432);
 break;
 case ((NU8) 186):
 F.line = 223;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 67108864);
+Onoff_118617(C_119205, N_119206, 67108864);
 break;
 case ((NU8) 128):
 F.line = 224;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 134217728);
+Onoff_118617(C_119205, N_119206, 134217728);
 break;
 case ((NU8) 129):
 F.line = 225;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 268435456);
+Onoff_118617(C_119205, N_119206, 268435456);
 break;
 case ((NU8) 130):
 F.line = 226;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 536870912);
+Onoff_118617(C_119205, N_119206, 536870912);
 break;
 case ((NU8) 131):
 F.line = 227;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 1073741824);
+Onoff_118617(C_119205, N_119206, 1073741824);
 break;
 case ((NU8) 132):
 F.line = 228;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, IL64(2147549184));
+Onoff_118617(C_119205, N_119206, IL64(2147549184));
 break;
 case ((NU8) 133):
 F.line = 229;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, IL64(2147483648));
+Onoff_118617(C_119205, N_119206, IL64(2147483648));
 break;
 case ((NU8) 134):
 F.line = 230;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 65536);
+Onoff_118617(C_119205, N_119206, 65536);
 break;
 case ((NU8) 135):
 F.line = 231;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 131072);
+Onoff_118617(C_119205, N_119206, 131072);
 break;
 case ((NU8) 136):
 F.line = 232;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 524288);
+Onoff_118617(C_119205, N_119206, 524288);
 break;
 case ((NU8) 138):
 F.line = 233;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 1048576);
+Onoff_118617(C_119205, N_119206, 1048576);
 break;
 case ((NU8) 112):
 F.line = 234;F.filename = "pragmas.nim";
-Processcallconv_117670(C_118205, N_118206);
+Processcallconv_118670(C_119205, N_119206);
 break;
 case ((NU8) 102):
 F.line = 235;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 262144);
+Onoff_118617(C_119205, N_119206, 262144);
 break;
 case ((NU8) 103):
 F.line = 236;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 8388608);
+Onoff_118617(C_119205, N_119206, 8388608);
 break;
 case ((NU8) 104):
 F.line = 237;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 256);
+Onoff_118617(C_119205, N_119206, 256);
 break;
 case ((NU8) 114):
 F.line = 238;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 512);
+Onoff_118617(C_119205, N_119206, 512);
 break;
 case ((NU8) 74):
 F.line = 239;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 4096);
+Onoff_118617(C_119205, N_119206, 4096);
 break;
 case ((NU8) 111):
 F.line = 240;F.filename = "pragmas.nim";
-Onoff_117617(C_118205, N_118206, 1024);
+Onoff_118617(C_119205, N_119206, 1024);
 break;
 case ((NU8) 90):
 F.line = 241;F.filename = "pragmas.nim";
-Processdynlib_117848(C_118205, N_118206, NIM_NIL);
+Processdynlib_118848(C_119205, N_119206, NIM_NIL);
 break;
 case ((NU8) 139):
 F.line = 243;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118206).Kind/8] &(1<<((*N_118206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118206).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*N_118206).KindU.S6.Sons->data[1]).Kind == ((NU8) 2)))) goto LA9;
+if (((TMP118199[(*N_119206).Kind/8] &(1<<((*N_119206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119206).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*N_119206).KindU.S6.Sons->data[1]).Kind == ((NU8) 2)))) goto LA9;
 F.line = 244;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118206);
+Invalidpragma_118038(N_119206);
 goto LA8;
 LA9: ;
 F.line = 246;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118206).Kind/8] &(1<<((*N_118206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118206).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_118206).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118206).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-LOC11 = Whichkeyword_66465((*(*N_118206).KindU.S6.Sons->data[1]).KindU.S5.Ident);
+if (((TMP118199[(*N_119206).Kind/8] &(1<<((*N_119206).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119206).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_119206).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_119206).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+LOC11 = Whichkeyword_67465((*(*N_119206).KindU.S6.Sons->data[1]).KindU.S5.Ident);
 switch (LOC11) {
 case ((NU8) 140):
 F.line = 248;F.filename = "pragmas.nim";
-Goptions_40075 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
+Goptions_41075 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
 F.line = 249;F.filename = "pragmas.nim";
-Goptions_40075 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
+Goptions_41075 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
 break;
 case ((NU8) 141):
 F.line = 251;F.filename = "pragmas.nim";
-Goptions_40075 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
+Goptions_41075 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
 F.line = 252;F.filename = "pragmas.nim";
-Goptions_40075 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
+Goptions_41075 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 142):
 F.line = 254;F.filename = "pragmas.nim";
-Goptions_40075 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
+Goptions_41075 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
 F.line = 255;F.filename = "pragmas.nim";
-Goptions_40075 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
+Goptions_41075 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
 break;
 default:
 F.line = 256;F.filename = "pragmas.nim";
-Limessage_41562((*N_118206).Info, ((NU8) 25), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_119206).Info, ((NU8) 25), ((NimStringDesc*) &TMP118315));
 break;
 }
 LA8: ;
 break;
 default:
 F.line = 257;F.filename = "pragmas.nim";
-Limessage_41562((*N_118206).Info, ((NU8) 145), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_119206).Info, ((NU8) 145), ((NimStringDesc*) &TMP118315));
 break;
 }
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processpush_118418)(TY101012* C_118420, TY49525* N_118421, NI Start_118422) {
-TY101002* X_118423;
-TY101002* Y_118424;
-NI I_118433;
-NI HEX3Atmp_118447;
+N_NIMCALL(void, Processpush_119418)(TY102012* C_119420, TY50525* N_119421, NI Start_119422) {
+TY102002* X_119423;
+TY102002* Y_119424;
+NI I_119433;
+NI HEX3Atmp_119447;
 NI LOC1;
-NI Res_118449;
+NI Res_119449;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "processPush";
@@ -1654,46 +1654,46 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-X_118423 = 0;
+X_119423 = 0;
 F.line = 260;F.filename = "pragmas.nim";
-X_118423 = Newoptionentry_101056();
-Y_118424 = 0;
+X_119423 = Newoptionentry_102056();
+Y_119424 = 0;
 F.line = 261;F.filename = "pragmas.nim";
-if ((*C_118420).Optionstack.Tail) chckObj((*(*C_118420).Optionstack.Tail).Sup.m_type, NTI101002);
-Y_118424 = ((TY101002*) ((*C_118420).Optionstack.Tail));
+if ((*C_119420).Optionstack.Tail) chckObj((*(*C_119420).Optionstack.Tail).Sup.m_type, NTI102002);
+Y_119424 = ((TY102002*) ((*C_119420).Optionstack.Tail));
 F.line = 262;F.filename = "pragmas.nim";
-(*X_118423).Options = Goptions_40075;
+(*X_119423).Options = Goptions_41075;
 F.line = 263;F.filename = "pragmas.nim";
-(*X_118423).Defaultcc = (*Y_118424).Defaultcc;
+(*X_119423).Defaultcc = (*Y_119424).Defaultcc;
 F.line = 264;F.filename = "pragmas.nim";
-asgnRefNoCycle((void**) &(*X_118423).Dynlib, (*Y_118424).Dynlib);
+asgnRefNoCycle((void**) &(*X_119423).Dynlib, (*Y_119424).Dynlib);
 F.line = 265;F.filename = "pragmas.nim";
-(*X_118423).Notes = Gnotes_41539;
+(*X_119423).Notes = Gnotes_42539;
 F.line = 266;F.filename = "pragmas.nim";
-Append_37035(&(*C_118420).Optionstack, &X_118423->Sup);
-I_118433 = 0;
-HEX3Atmp_118447 = 0;
+Append_38035(&(*C_119420).Optionstack, &X_119423->Sup);
+I_119433 = 0;
+HEX3Atmp_119447 = 0;
 F.line = 267;F.filename = "pragmas.nim";
-LOC1 = Sonslen_49803(N_118421);
-HEX3Atmp_118447 = subInt(LOC1, 1);
-Res_118449 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_118449 = Start_118422;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_118449 <= HEX3Atmp_118447)) goto LA2;
-F.line = 1019;F.filename = "system.nim";
-I_118433 = Res_118449;
-F.line = 268;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118421).Kind/8] &(1<<((*N_118421).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(I_118433) >= (NU)((*N_118421).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Processoption_118203(C_118420, (*N_118421).KindU.S6.Sons->data[I_118433]);
+LOC1 = Sonslen_50803(N_119421);
+HEX3Atmp_119447 = subInt(LOC1, 1);
+Res_119449 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_119449 = Start_119422;
 F.line = 1022;F.filename = "system.nim";
-Res_118449 = addInt(Res_118449, 1);
+while (1) {
+if (!(Res_119449 <= HEX3Atmp_119447)) goto LA2;
+F.line = 1021;F.filename = "system.nim";
+I_119433 = Res_119449;
+F.line = 268;F.filename = "pragmas.nim";
+if (((TMP118199[(*N_119421).Kind/8] &(1<<((*N_119421).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(I_119433) >= (NU)((*N_119421).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Processoption_119203(C_119420, (*N_119421).KindU.S6.Sons->data[I_119433]);
+F.line = 1024;F.filename = "system.nim";
+Res_119449 = addInt(Res_119449, 1);
 } LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processpop_118452)(TY101012* C_118454, TY49525* N_118455) {
+N_NIMCALL(void, Processpop_119452)(TY102012* C_119454, TY50525* N_119455) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "processPop";
@@ -1703,23 +1703,23 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 272;F.filename = "pragmas.nim";
-if (!((*C_118454).Optionstack.Counter <= 1)) goto LA2;
+if (!((*C_119454).Optionstack.Counter <= 1)) goto LA2;
 F.line = 273;F.filename = "pragmas.nim";
-Limessage_41562((*N_118455).Info, ((NU8) 29), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_119455).Info, ((NU8) 29), ((NimStringDesc*) &TMP118315));
 goto LA1;
 LA2: ;
 F.line = 275;F.filename = "pragmas.nim";
-if ((*C_118454).Optionstack.Tail) chckObj((*(*C_118454).Optionstack.Tail).Sup.m_type, NTI101002);
-Goptions_40075 = (*((TY101002*) ((*C_118454).Optionstack.Tail))).Options;
+if ((*C_119454).Optionstack.Tail) chckObj((*(*C_119454).Optionstack.Tail).Sup.m_type, NTI102002);
+Goptions_41075 = (*((TY102002*) ((*C_119454).Optionstack.Tail))).Options;
 F.line = 277;F.filename = "pragmas.nim";
-if ((*C_118454).Optionstack.Tail) chckObj((*(*C_118454).Optionstack.Tail).Sup.m_type, NTI101002);
-Gnotes_41539 = (*((TY101002*) ((*C_118454).Optionstack.Tail))).Notes;
+if ((*C_119454).Optionstack.Tail) chckObj((*(*C_119454).Optionstack.Tail).Sup.m_type, NTI102002);
+Gnotes_42539 = (*((TY102002*) ((*C_119454).Optionstack.Tail))).Notes;
 F.line = 278;F.filename = "pragmas.nim";
-Remove_37045(&(*C_118454).Optionstack, (*C_118454).Optionstack.Tail);
+Remove_38045(&(*C_119454).Optionstack, (*C_119454).Optionstack.Tail);
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processdefine_118459)(TY101012* C_118461, TY49525* N_118462) {
+N_NIMCALL(void, Processdefine_119459)(TY102012* C_119461, TY50525* N_119462) {
 NIM_BOOL LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1730,28 +1730,28 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 281;F.filename = "pragmas.nim";
-LOC2 = ((*N_118462).Kind == ((NU8) 24));
+LOC2 = ((*N_119462).Kind == ((NU8) 24));
 if (!(LOC2)) goto LA3;
-if (((TMP117199[(*N_118462).Kind/8] &(1<<((*N_118462).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118462).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = ((*(*N_118462).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_119462).Kind/8] &(1<<((*N_119462).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119462).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = ((*(*N_119462).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 282;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118462).Kind/8] &(1<<((*N_118462).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118462).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_118462).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118462).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Definesymbol_57006((*(*(*N_118462).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
+if (((TMP118199[(*N_119462).Kind/8] &(1<<((*N_119462).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119462).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_119462).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_119462).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Definesymbol_58006((*(*(*N_119462).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
 F.line = 283;F.filename = "pragmas.nim";
-Limessage_41562((*N_118462).Info, ((NU8) 213), ((NimStringDesc*) &TMP118517));
+Limessage_42562((*N_119462).Info, ((NU8) 213), ((NimStringDesc*) &TMP119517));
 goto LA1;
 LA4: ;
 F.line = 285;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118462);
+Invalidpragma_118038(N_119462);
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processundef_118518)(TY101012* C_118520, TY49525* N_118521) {
+N_NIMCALL(void, Processundef_119518)(TY102012* C_119520, TY50525* N_119521) {
 NIM_BOOL LOC2;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1762,31 +1762,31 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 288;F.filename = "pragmas.nim";
-LOC2 = ((*N_118521).Kind == ((NU8) 24));
+LOC2 = ((*N_119521).Kind == ((NU8) 24));
 if (!(LOC2)) goto LA3;
-if (((TMP117199[(*N_118521).Kind/8] &(1<<((*N_118521).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118521).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC2 = ((*(*N_118521).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
+if (((TMP118199[(*N_119521).Kind/8] &(1<<((*N_119521).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119521).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC2 = ((*(*N_119521).KindU.S6.Sons->data[1]).Kind == ((NU8) 2));
 LA3: ;
 if (!LOC2) goto LA4;
 F.line = 289;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118521).Kind/8] &(1<<((*N_118521).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*N_118521).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*N_118521).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_118521).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Undefsymbol_57009((*(*(*N_118521).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
+if (((TMP118199[(*N_119521).Kind/8] &(1<<((*N_119521).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*N_119521).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*N_119521).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*N_119521).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Undefsymbol_58009((*(*(*N_119521).KindU.S6.Sons->data[1]).KindU.S5.Ident).S);
 F.line = 290;F.filename = "pragmas.nim";
-Limessage_41562((*N_118521).Info, ((NU8) 213), ((NimStringDesc*) &TMP118576));
+Limessage_42562((*N_119521).Info, ((NU8) 213), ((NimStringDesc*) &TMP119576));
 goto LA1;
 LA4: ;
 F.line = 292;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118521);
+Invalidpragma_118038(N_119521);
 LA1: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processcompile_118581)(TY101012* C_118583, TY49525* N_118584) {
-NimStringDesc* S_118585;
-NimStringDesc* Found_118586;
-NimStringDesc* Trunc_118587;
+N_NIMCALL(void, Processcompile_119581)(TY102012* C_119583, TY50525* N_119584) {
+NimStringDesc* S_119585;
+NimStringDesc* Found_119586;
+NimStringDesc* Trunc_119587;
 NimStringDesc* LOC4;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1796,32 +1796,32 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-S_118585 = 0;
+S_119585 = 0;
 F.line = 299;F.filename = "pragmas.nim";
-S_118585 = Expectstrlit_117316(C_118583, N_118584);
-Found_118586 = 0;
+S_119585 = Expectstrlit_118316(C_119583, N_119584);
+Found_119586 = 0;
 F.line = 300;F.filename = "pragmas.nim";
-Found_118586 = Findfile_40087(S_118585);
+Found_119586 = Findfile_41087(S_119585);
 F.line = 301;F.filename = "pragmas.nim";
-if (!((Found_118586) && (Found_118586)->Sup.len == 0)) goto LA2;
+if (!((Found_119586) && (Found_119586)->Sup.len == 0)) goto LA2;
 F.line = 301;F.filename = "pragmas.nim";
-Found_118586 = copyString(S_118585);
+Found_119586 = copyString(S_119585);
 LA2: ;
-Trunc_118587 = 0;
+Trunc_119587 = 0;
 F.line = 302;F.filename = "pragmas.nim";
-Trunc_118587 = nosChangeFileExt(Found_118586, ((NimStringDesc*) &TMP117315));
+Trunc_119587 = nosChangeFileExt(Found_119586, ((NimStringDesc*) &TMP118315));
 F.line = 303;F.filename = "pragmas.nim";
-Addexternalfiletocompile_64355(Found_118586);
+Addexternalfiletocompile_65355(Found_119586);
 F.line = 304;F.filename = "pragmas.nim";
 LOC4 = 0;
-LOC4 = Completecfilepath_64344(Trunc_118587, NIM_FALSE);
-Addfiletolink_64358(LOC4);
+LOC4 = Completecfilepath_65344(Trunc_119587, NIM_FALSE);
+Addfiletolink_65358(LOC4);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processcommonlink_118588)(TY101012* C_118590, TY49525* N_118591, NU8 Feature_118592) {
-NimStringDesc* F_118593;
-TY32515 LOC2;
-NimStringDesc* Found_118594;
+N_NIMCALL(void, Processcommonlink_119588)(TY102012* C_119590, TY50525* N_119591, NU8 Feature_119592) {
+NimStringDesc* F_119593;
+TY33515 LOC2;
+NimStringDesc* Found_119594;
 NimStringDesc* LOC8;
 NimStringDesc* LOC9;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -1832,46 +1832,46 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-F_118593 = 0;
+F_119593 = 0;
 F.line = 307;F.filename = "pragmas.nim";
-F_118593 = Expectstrlit_117316(C_118590, N_118591);
+F_119593 = Expectstrlit_118316(C_119590, N_119591);
 F.line = 308;F.filename = "pragmas.nim";
 memset((void*)&LOC2, 0, sizeof(LOC2));
-nossplitFile(F_118593, &LOC2);
+nossplitFile(F_119593, &LOC2);
 if (!((LOC2.Ext) && (LOC2.Ext)->Sup.len == 0)) goto LA3;
 F.line = 308;F.filename = "pragmas.nim";
-F_118593 = Toobjfile_64367(F_118593);
+F_119593 = Toobjfile_65367(F_119593);
 LA3: ;
-Found_118594 = 0;
+Found_119594 = 0;
 F.line = 309;F.filename = "pragmas.nim";
-Found_118594 = Findfile_40087(F_118593);
+Found_119594 = Findfile_41087(F_119593);
 F.line = 310;F.filename = "pragmas.nim";
-if (!((Found_118594) && (Found_118594)->Sup.len == 0)) goto LA6;
+if (!((Found_119594) && (Found_119594)->Sup.len == 0)) goto LA6;
 F.line = 310;F.filename = "pragmas.nim";
-Found_118594 = copyString(F_118593);
+Found_119594 = copyString(F_119593);
 LA6: ;
 F.line = 311;F.filename = "pragmas.nim";
-switch (Feature_118592) {
+switch (Feature_119592) {
 case ((NU8) 0):
 F.line = 312;F.filename = "pragmas.nim";
-Addfiletolink_64358(Found_118594);
+Addfiletolink_65358(Found_119594);
 break;
 case ((NU8) 1):
 F.line = 314;F.filename = "pragmas.nim";
 LOC8 = 0;
-LOC8 = Completecfilepath_64344(Found_118594, NIM_FALSE);
+LOC8 = Completecfilepath_65344(Found_119594, NIM_FALSE);
 LOC9 = 0;
-LOC9 = nosJoinPath(Libpath_40109, LOC8);
-Addfiletolink_64358(LOC9);
+LOC9 = nosJoinPath(Libpath_41109, LOC8);
+Addfiletolink_65358(LOC9);
 break;
 default:
 F.line = 315;F.filename = "pragmas.nim";
-Internalerror_41567((*N_118591).Info, ((NimStringDesc*) &TMP118595));
+Internalerror_42567((*N_119591).Info, ((NimStringDesc*) &TMP119595));
 break;
 }
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Pragmabreakpoint_118596)(TY101012* C_118598, TY49525* N_118599) {
+N_NIMCALL(void, Pragmabreakpoint_119596)(TY102012* C_119598, TY50525* N_119599) {
 NimStringDesc* LOC1;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
@@ -1883,11 +1883,11 @@ framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 318;F.filename = "pragmas.nim";
 LOC1 = 0;
-LOC1 = Getoptionalstr_117409(C_118598, N_118599, ((NimStringDesc*) &TMP117315));
+LOC1 = Getoptionalstr_118409(C_119598, N_119599, ((NimStringDesc*) &TMP118315));
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Pragmacheckpoint_118600)(TY101012* C_118602, TY49525* N_118603) {
-TY41532 Info_118604;
+N_NIMCALL(void, Pragmacheckpoint_119600)(TY102012* C_119602, TY50525* N_119603) {
+TY42532 Info_119604;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "PragmaCheckpoint";
@@ -1896,16 +1896,16 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-memset((void*)&Info_118604, 0, sizeof(Info_118604));
+memset((void*)&Info_119604, 0, sizeof(Info_119604));
 F.line = 322;F.filename = "pragmas.nim";
-Info_118604 = (*N_118603).Info;
+Info_119604 = (*N_119603).Info;
 F.line = 323;F.filename = "pragmas.nim";
-Info_118604.Line = addInt(Info_118604.Line, 1);
+Info_119604.Line = addInt(Info_119604.Line, 1);
 F.line = 324;F.filename = "pragmas.nim";
-Addcheckpoint_41596(Info_118604);
+Addcheckpoint_42596(Info_119604);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Noval_118617)(TY49525* N_118619) {
+N_NIMCALL(void, Noval_119617)(TY50525* N_119619) {
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "noVal";
@@ -1915,21 +1915,21 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 327;F.filename = "pragmas.nim";
-if (!((*N_118619).Kind == ((NU8) 24))) goto LA2;
+if (!((*N_119619).Kind == ((NU8) 24))) goto LA2;
 F.line = 327;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118619);
+Invalidpragma_118038(N_119619);
 LA2: ;
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Processpragma_118629)(TY101012* C_118631, TY49525* N_118632, NI I_118633) {
-TY49525* It_118646;
-TY49547* Userpragma_118722;
-TY49525* Body_118723;
-NI J_118731;
-NI HEX3Atmp_118746;
-NI HEX3Atmp_118747;
+N_NIMCALL(void, Processpragma_119629)(TY102012* C_119631, TY50525* N_119632, NI I_119633) {
+TY50525* It_119646;
+TY50547* Userpragma_119722;
+TY50525* Body_119723;
+NI J_119731;
+NI HEX3Atmp_119746;
+NI HEX3Atmp_119747;
 NI LOC8;
-NI Res_118749;
+NI Res_119749;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
 } F;
 F.procname = "processPragma";
@@ -1938,93 +1938,93 @@ F.filename = "rod/pragmas.nim";
 F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
-It_118646 = 0;
+It_119646 = 0;
 F.line = 330;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118632).Kind/8] &(1<<((*N_118632).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(I_118633) >= (NU)((*N_118632).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_118646 = (*N_118632).KindU.S6.Sons->data[I_118633];
+if (((TMP118199[(*N_119632).Kind/8] &(1<<((*N_119632).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(I_119633) >= (NU)((*N_119632).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_119646 = (*N_119632).KindU.S6.Sons->data[I_119633];
 F.line = 331;F.filename = "pragmas.nim";
-if (!!(((*It_118646).Kind == ((NU8) 24)))) goto LA2;
+if (!!(((*It_119646).Kind == ((NU8) 24)))) goto LA2;
 F.line = 331;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118632);
+Invalidpragma_118038(N_119632);
 goto LA1;
 LA2: ;
-if (((TMP117199[(*It_118646).Kind/8] &(1<<((*It_118646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*It_118646).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*It_118646).KindU.S6.Sons->data[0]).Kind == ((NU8) 2)))) goto LA4;
+if (((TMP118199[(*It_119646).Kind/8] &(1<<((*It_119646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*It_119646).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*It_119646).KindU.S6.Sons->data[0]).Kind == ((NU8) 2)))) goto LA4;
 F.line = 332;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118632);
+Invalidpragma_118038(N_119632);
 goto LA1;
 LA4: ;
-if (((TMP117199[(*It_118646).Kind/8] &(1<<((*It_118646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*It_118646).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!!(((*(*It_118646).KindU.S6.Sons->data[1]).Kind == ((NU8) 2)))) goto LA6;
+if (((TMP118199[(*It_119646).Kind/8] &(1<<((*It_119646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*It_119646).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!!(((*(*It_119646).KindU.S6.Sons->data[1]).Kind == ((NU8) 2)))) goto LA6;
 F.line = 333;F.filename = "pragmas.nim";
-Invalidpragma_117038(N_118632);
+Invalidpragma_118038(N_119632);
 goto LA1;
 LA6: ;
 LA1: ;
-Userpragma_118722 = 0;
+Userpragma_119722 = 0;
 F.line = 335;F.filename = "pragmas.nim";
-if (((TMP117199[(*It_118646).Kind/8] &(1<<((*It_118646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(1) >= (NU)((*It_118646).KindU.S6.Sons->Sup.len)) raiseIndexError();
-if (!(((TMP117201[(*(*It_118646).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*It_118646).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Userpragma_118722 = Newsym_49701(((NU8) 14), (*(*It_118646).KindU.S6.Sons->data[1]).KindU.S5.Ident, NIM_NIL);
+if (((TMP118199[(*It_119646).Kind/8] &(1<<((*It_119646).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(1) >= (NU)((*It_119646).KindU.S6.Sons->Sup.len)) raiseIndexError();
+if (!(((TMP118201[(*(*It_119646).KindU.S6.Sons->data[1]).Kind/8] &(1<<((*(*It_119646).KindU.S6.Sons->data[1]).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Userpragma_119722 = Newsym_50701(((NU8) 14), (*(*It_119646).KindU.S6.Sons->data[1]).KindU.S5.Ident, NIM_NIL);
 F.line = 336;F.filename = "pragmas.nim";
-(*Userpragma_118722).Info = (*It_118646).Info;
-Body_118723 = 0;
+(*Userpragma_119722).Info = (*It_119646).Info;
+Body_119723 = 0;
 F.line = 337;F.filename = "pragmas.nim";
-Body_118723 = Newnodei_49737(((NU8) 81), (*N_118632).Info);
-J_118731 = 0;
-HEX3Atmp_118746 = 0;
-HEX3Atmp_118747 = 0;
+Body_119723 = Newnodei_50737(((NU8) 81), (*N_119632).Info);
+J_119731 = 0;
+HEX3Atmp_119746 = 0;
+HEX3Atmp_119747 = 0;
 F.line = 338;F.filename = "pragmas.nim";
-HEX3Atmp_118746 = addInt(I_118633, 1);
+HEX3Atmp_119746 = addInt(I_119633, 1);
 F.line = 338;F.filename = "pragmas.nim";
-LOC8 = Sonslen_49803(N_118632);
-HEX3Atmp_118747 = subInt(LOC8, 1);
-Res_118749 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_118749 = HEX3Atmp_118746;
-F.line = 1020;F.filename = "system.nim";
-while (1) {
-if (!(Res_118749 <= HEX3Atmp_118747)) goto LA9;
-F.line = 1019;F.filename = "system.nim";
-J_118731 = Res_118749;
-F.line = 338;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_118632).Kind/8] &(1<<((*N_118632).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(J_118731) >= (NU)((*N_118632).KindU.S6.Sons->Sup.len)) raiseIndexError();
-Addson_49823(Body_118723, (*N_118632).KindU.S6.Sons->data[J_118731]);
+LOC8 = Sonslen_50803(N_119632);
+HEX3Atmp_119747 = subInt(LOC8, 1);
+Res_119749 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_119749 = HEX3Atmp_119746;
 F.line = 1022;F.filename = "system.nim";
-Res_118749 = addInt(Res_118749, 1);
+while (1) {
+if (!(Res_119749 <= HEX3Atmp_119747)) goto LA9;
+F.line = 1021;F.filename = "system.nim";
+J_119731 = Res_119749;
+F.line = 338;F.filename = "pragmas.nim";
+if (((TMP118199[(*N_119632).Kind/8] &(1<<((*N_119632).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(J_119731) >= (NU)((*N_119632).KindU.S6.Sons->Sup.len)) raiseIndexError();
+Addson_50823(Body_119723, (*N_119632).KindU.S6.Sons->data[J_119731]);
+F.line = 1024;F.filename = "system.nim";
+Res_119749 = addInt(Res_119749, 1);
 } LA9: ;
 F.line = 339;F.filename = "pragmas.nim";
-asgnRefNoCycle((void**) &(*Userpragma_118722).Ast, Body_118723);
+asgnRefNoCycle((void**) &(*Userpragma_119722).Ast, Body_119723);
 F.line = 340;F.filename = "pragmas.nim";
-Strtableadd_53064(&(*C_118631).Userpragmas, Userpragma_118722);
+Strtableadd_54064(&(*C_119631).Userpragmas, Userpragma_119722);
 framePtr = framePtr->prev;
 }
-N_NIMCALL(void, Pragma_117028)(TY101012* C_117030, TY49547* Sym_117031, TY49525* N_117032, TY117007 Validpragmas_117033) {
-NI I_118776;
-NI HEX3Atmp_119423;
+N_NIMCALL(void, Pragma_118028)(TY102012* C_118030, TY50547* Sym_118031, TY50525* N_118032, TY118007 Validpragmas_118033) {
+NI I_119776;
+NI HEX3Atmp_120423;
 NI LOC4;
-NI Res_119425;
-TY49525* It_118789;
-TY49525* Key_118811;
-TY49525* LOC6;
-TY49547* Userpragma_118833;
-NU8 K_118857;
+NI Res_120425;
+TY50525* It_119789;
+TY50525* Key_119811;
+TY50525* LOC6;
+TY50547* Userpragma_119833;
+NU8 K_119857;
 NimStringDesc* LOC18;
 NimStringDesc* LOC19;
 NimStringDesc* LOC20;
 NIM_BOOL LOC25;
 NIM_BOOL LOC26;
-NI Size_118905;
+NI Size_119905;
 NIM_BOOL LOC34;
 NIM_BOOL LOC35;
 NIM_BOOL LOC36;
-TY49543* Lib_119017;
-TY49525* LOC44;
+TY50543* Lib_120017;
+TY50525* LOC44;
 NimStringDesc* LOC63;
 NimStringDesc* LOC64;
 NimStringDesc* LOC65;
@@ -2033,7 +2033,7 @@ NimStringDesc* LOC67;
 NimStringDesc* LOC68;
 NIM_BOOL LOC73;
 NIM_BOOL LOC78;
-TY49543* Lib_119352;
+TY50543* Lib_120352;
 NIM_BOOL LOC83;
 NIM_BOOL LOC84;
 volatile struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename;NI len;
@@ -2045,384 +2045,384 @@ F.line = 0;
 framePtr = (TFrame*)&F;
 F.len = 0;
 F.line = 343;F.filename = "pragmas.nim";
-if (!(N_117032 == NIM_NIL)) goto LA2;
+if (!(N_118032 == NIM_NIL)) goto LA2;
 F.line = 343;F.filename = "pragmas.nim";
 goto BeforeRet;
 LA2: ;
-I_118776 = 0;
-HEX3Atmp_119423 = 0;
+I_119776 = 0;
+HEX3Atmp_120423 = 0;
 F.line = 344;F.filename = "pragmas.nim";
-LOC4 = Sonslen_49803(N_117032);
-HEX3Atmp_119423 = subInt(LOC4, 1);
-Res_119425 = 0;
-F.line = 1019;F.filename = "system.nim";
-Res_119425 = 0;
-F.line = 1020;F.filename = "system.nim";
+LOC4 = Sonslen_50803(N_118032);
+HEX3Atmp_120423 = subInt(LOC4, 1);
+Res_120425 = 0;
+F.line = 1021;F.filename = "system.nim";
+Res_120425 = 0;
+F.line = 1022;F.filename = "system.nim";
 while (1) {
-if (!(Res_119425 <= HEX3Atmp_119423)) goto LA5;
-F.line = 1019;F.filename = "system.nim";
-I_118776 = Res_119425;
-It_118789 = 0;
+if (!(Res_120425 <= HEX3Atmp_120423)) goto LA5;
+F.line = 1021;F.filename = "system.nim";
+I_119776 = Res_120425;
+It_119789 = 0;
 F.line = 345;F.filename = "pragmas.nim";
-if (((TMP117199[(*N_117032).Kind/8] &(1<<((*N_117032).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(I_118776) >= (NU)((*N_117032).KindU.S6.Sons->Sup.len)) raiseIndexError();
-It_118789 = (*N_117032).KindU.S6.Sons->data[I_118776];
-Key_118811 = 0;
+if (((TMP118199[(*N_118032).Kind/8] &(1<<((*N_118032).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(I_119776) >= (NU)((*N_118032).KindU.S6.Sons->Sup.len)) raiseIndexError();
+It_119789 = (*N_118032).KindU.S6.Sons->data[I_119776];
+Key_119811 = 0;
 F.line = 346;F.filename = "pragmas.nim";
 LOC6 = 0;
-if (!((*It_118789).Kind == ((NU8) 24))) goto LA8;
-if (((TMP117199[(*It_118789).Kind/8] &(1<<((*It_118789).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP117200));
-if ((NU)(0) >= (NU)((*It_118789).KindU.S6.Sons->Sup.len)) raiseIndexError();
-LOC6 = (*It_118789).KindU.S6.Sons->data[0];
+if (!((*It_119789).Kind == ((NU8) 24))) goto LA8;
+if (((TMP118199[(*It_119789).Kind/8] &(1<<((*It_119789).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP118200));
+if ((NU)(0) >= (NU)((*It_119789).KindU.S6.Sons->Sup.len)) raiseIndexError();
+LOC6 = (*It_119789).KindU.S6.Sons->data[0];
 goto LA7;
 LA8: ;
-LOC6 = It_118789;
+LOC6 = It_119789;
 LA7: ;
-Key_118811 = LOC6;
+Key_119811 = LOC6;
 F.line = 347;F.filename = "pragmas.nim";
-if (!((*Key_118811).Kind == ((NU8) 2))) goto LA10;
-Userpragma_118833 = 0;
+if (!((*Key_119811).Kind == ((NU8) 2))) goto LA10;
+Userpragma_119833 = 0;
 F.line = 348;F.filename = "pragmas.nim";
-if (!(((TMP117201[(*Key_118811).Kind/8] &(1<<((*Key_118811).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-Userpragma_118833 = Strtableget_53069(&(*C_117030).Userpragmas, (*Key_118811).KindU.S5.Ident);
+if (!(((TMP118201[(*Key_119811).Kind/8] &(1<<((*Key_119811).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+Userpragma_119833 = Strtableget_54069(&(*C_118030).Userpragmas, (*Key_119811).KindU.S5.Ident);
 F.line = 349;F.filename = "pragmas.nim";
-if (!!((Userpragma_118833 == NIM_NIL))) goto LA13;
+if (!!((Userpragma_119833 == NIM_NIL))) goto LA13;
 F.line = 350;F.filename = "pragmas.nim";
-Pragma_117028(C_117030, Sym_117031, (*Userpragma_118833).Ast, Validpragmas_117033);
+Pragma_118028(C_118030, Sym_118031, (*Userpragma_119833).Ast, Validpragmas_118033);
 goto LA12;
 LA13: ;
-K_118857 = 0;
+K_119857 = 0;
 F.line = 353;F.filename = "pragmas.nim";
-if (!(((TMP117201[(*Key_118811).Kind/8] &(1<<((*Key_118811).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP117202));
-K_118857 = Whichkeyword_66465((*Key_118811).KindU.S5.Ident);
+if (!(((TMP118201[(*Key_119811).Kind/8] &(1<<((*Key_119811).Kind%8)))!=0))) raiseFieldError(((NimStringDesc*) &TMP118202));
+K_119857 = Whichkeyword_67465((*Key_119811).KindU.S5.Ident);
 F.line = 354;F.filename = "pragmas.nim";
-if (!((Validpragmas_117033[K_118857/8] &(1<<(K_118857%8)))!=0)) goto LA16;
+if (!((Validpragmas_118033[K_119857/8] &(1<<(K_119857%8)))!=0)) goto LA16;
 F.line = 355;F.filename = "pragmas.nim";
-switch (K_118857) {
+switch (K_119857) {
 case ((NU8) 77):
 F.line = 357;F.filename = "pragmas.nim";
 LOC18 = 0;
-LOC18 = Getoptionalstr_117409(C_117030, It_118789, (*(*Sym_117031).Name).S);
-Makeexternexport_117237(Sym_117031, LOC18);
+LOC18 = Getoptionalstr_118409(C_118030, It_119789, (*(*Sym_118031).Name).S);
+Makeexternexport_118237(Sym_118031, LOC18);
 F.line = 358;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 0))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 0))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 76):
 F.line = 359;F.filename = "pragmas.nim";
 LOC19 = 0;
-LOC19 = Getoptionalstr_117409(C_117030, It_118789, (*(*Sym_117031).Name).S);
-Makeexternimport_117209(Sym_117031, LOC19);
+LOC19 = Getoptionalstr_118409(C_118030, It_119789, (*(*Sym_118031).Name).S);
+Makeexternimport_118209(Sym_118031, LOC19);
 break;
 case ((NU8) 78):
 F.line = 360;F.filename = "pragmas.nim";
 LOC20 = 0;
-LOC20 = Expectstrlit_117316(C_117030, It_118789);
-Setexternname_117205(Sym_117031, LOC20);
+LOC20 = Expectstrlit_118316(C_118030, It_119789);
+Setexternname_118205(Sym_118031, LOC20);
 break;
 case ((NU8) 79):
 F.line = 362;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA22;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA22;
 F.line = 362;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA22: ;
 F.line = 363;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Align = Expectintlit_117335(C_117030, It_118789);
+(*(*Sym_118031).Typ).Align = Expectintlit_118335(C_118030, It_119789);
 F.line = 364;F.filename = "pragmas.nim";
-LOC26 = Ispoweroftwo_95270((*(*Sym_117031).Typ).Align);
+LOC26 = Ispoweroftwo_96270((*(*Sym_118031).Typ).Align);
 LOC25 = !(LOC26);
 if (!(LOC25)) goto LA27;
-LOC25 = !(((*(*Sym_117031).Typ).Align == 0));
+LOC25 = !(((*(*Sym_118031).Typ).Align == 0));
 LA27: ;
 if (!LOC25) goto LA28;
 F.line = 365;F.filename = "pragmas.nim";
-Limessage_41562((*It_118789).Info, ((NU8) 96), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*It_119789).Info, ((NU8) 96), ((NimStringDesc*) &TMP118315));
 LA28: ;
 break;
 case ((NU8) 141):
 F.line = 367;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA31;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA31;
 F.line = 367;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA31: ;
-Size_118905 = 0;
+Size_119905 = 0;
 F.line = 368;F.filename = "pragmas.nim";
-Size_118905 = Expectintlit_117335(C_117030, It_118789);
+Size_119905 = Expectintlit_118335(C_118030, It_119789);
 F.line = 369;F.filename = "pragmas.nim";
-LOC36 = Ispoweroftwo_95270(Size_118905);
+LOC36 = Ispoweroftwo_96270(Size_119905);
 LOC35 = !(LOC36);
 if (LOC35) goto LA37;
-LOC35 = (Size_118905 <= 0);
+LOC35 = (Size_119905 <= 0);
 LA37: ;
 LOC34 = LOC35;
 if (LOC34) goto LA38;
-LOC34 = (8 < Size_118905);
+LOC34 = (8 < Size_119905);
 LA38: ;
 if (!LOC34) goto LA39;
 F.line = 370;F.filename = "pragmas.nim";
-Limessage_41562((*It_118789).Info, ((NU8) 96), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*It_119789).Info, ((NU8) 96), ((NimStringDesc*) &TMP118315));
 goto LA33;
 LA39: ;
 F.line = 372;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Size = ((NI64) (Size_118905));
+(*(*Sym_118031).Typ).Size = ((NI64) (Size_119905));
 LA33: ;
 break;
 case ((NU8) 80):
 F.line = 374;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 375;F.filename = "pragmas.nim";
-(*Sym_117031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
+(*Sym_118031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 81):
 F.line = 377;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 378;F.filename = "pragmas.nim";
-if (!!((Sym_117031 == NIM_NIL))) goto LA42;
+if (!!((Sym_118031 == NIM_NIL))) goto LA42;
 F.line = 378;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 11))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 11))%(sizeof(NI32)*8)));
 LA42: ;
 break;
 case ((NU8) 82):
 F.line = 380;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 381;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 9))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 9))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 83):
 F.line = 383;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 384;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 10))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 10))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 219):
 F.line = 386;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 387;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 26))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 26))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 152):
 F.line = 388;F.filename = "pragmas.nim";
-Pragmadeadcodeelim_117642(C_117030, It_118789);
+Pragmadeadcodeelim_118642(C_118030, It_119789);
 break;
 case ((NU8) 71):
 F.line = 389;F.filename = "pragmas.nim";
-Processmagic_117424(C_117030, It_118789, Sym_117031);
+Processmagic_118424(C_118030, It_119789, Sym_118031);
 break;
 case ((NU8) 155):
 F.line = 391;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 392;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 25))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 25))%(sizeof(NI32)*8)));
 F.line = 393;F.filename = "pragmas.nim";
-(*Sym_117031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
+(*Sym_118031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 88):
 F.line = 395;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 396;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 27))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 27))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 85):
-Lib_119017 = 0;
+Lib_120017 = 0;
 F.line = 398;F.filename = "pragmas.nim";
 LOC44 = 0;
-LOC44 = Getstrlitnode_117253(C_117030, It_118789);
-Lib_119017 = Getlib_117729(C_117030, ((NU8) 0), LOC44);
+LOC44 = Getstrlitnode_118253(C_118030, It_119789);
+Lib_120017 = Getlib_118729(C_118030, ((NU8) 0), LOC44);
 F.line = 399;F.filename = "pragmas.nim";
-Addtolib_101065(Lib_119017, Sym_117031);
+Addtolib_102065(Lib_120017, Sym_118031);
 F.line = 400;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
 F.line = 401;F.filename = "pragmas.nim";
-(*Sym_117031).Loc.Flags |=(1<<((NI8)(((NU8) 6))%(sizeof(NI8)*8)));
+(*Sym_118031).Loc.Flags |=(1<<((NI8)(((NU8) 6))%(sizeof(NI8)*8)));
 F.line = 402;F.filename = "pragmas.nim";
-(*Sym_117031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
+(*Sym_118031).Loc.Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
 F.line = 404;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Loc.R == NIM_NIL)) goto LA46;
+if (!((*Sym_118031).Loc.R == NIM_NIL)) goto LA46;
 F.line = 404;F.filename = "pragmas.nim";
-asgnRefNoCycle((void**) &(*Sym_117031).Loc.R, Torope_46046((*(*Sym_117031).Name).S));
+asgnRefNoCycle((void**) &(*Sym_118031).Loc.R, Torope_47046((*(*Sym_118031).Name).S));
 LA46: ;
 break;
 case ((NU8) 86):
 F.line = 406;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 407;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
 F.line = 408;F.filename = "pragmas.nim";
-if (!!(((*Sym_117031).Typ == NIM_NIL))) goto LA49;
+if (!!(((*Sym_118031).Typ == NIM_NIL))) goto LA49;
 F.line = 408;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Flags |=(1<<((NI8)(((NU8) 1))%(sizeof(NI8)*8)));
+(*(*Sym_118031).Typ).Flags |=(1<<((NI8)(((NU8) 1))%(sizeof(NI8)*8)));
 LA49: ;
 break;
 case ((NU8) 84):
 F.line = 410;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 411;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 87):
 F.line = 413;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 414;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 17))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 17))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 90):
 F.line = 416;F.filename = "pragmas.nim";
-Processdynlib_117848(C_117030, It_118789, Sym_117031);
+Processdynlib_118848(C_118030, It_119789, Sym_118031);
 break;
 case ((NU8) 91):
 F.line = 418;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 419;F.filename = "pragmas.nim";
-Makeexternexport_117237(Sym_117031, (*(*Sym_117031).Name).S);
+Makeexternexport_118237(Sym_118031, (*(*Sym_118031).Name).S);
 F.line = 420;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 19))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 19))%(sizeof(NI32)*8)));
 F.line = 421;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 0))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 0))%(sizeof(NI32)*8)));
 F.line = 422;F.filename = "pragmas.nim";
-Registercompilerproc_96014(Sym_117031);
+Registercompilerproc_97014(Sym_118031);
 break;
 case ((NU8) 92):
 F.line = 424;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 425;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 20))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 20))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 109):
 F.line = 427;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 428;F.filename = "pragmas.nim";
-if (!!((Sym_117031 == NIM_NIL))) goto LA52;
+if (!!((Sym_118031 == NIM_NIL))) goto LA52;
 F.line = 428;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 22))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 22))%(sizeof(NI32)*8)));
 goto LA51;
 LA52: ;
 F.line = 429;F.filename = "pragmas.nim";
-(*(*C_117030).Module).Flags |=(1<<((NI32)(((NU8) 22))%(sizeof(NI32)*8)));
+(*(*C_118030).Module).Flags |=(1<<((NI32)(((NU8) 22))%(sizeof(NI32)*8)));
 LA51: ;
 break;
 case ((NU8) 110):
 F.line = 431;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 432;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA55;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA55;
 F.line = 432;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA55: ;
 F.line = 433;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+(*(*Sym_118031).Typ).Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 178):
 F.line = 435;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 436;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 29))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 29))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 73):
 F.line = 438;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 439;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA58;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA58;
 F.line = 439;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA58: ;
 F.line = 440;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Flags |=(1<<((NI8)(((NU8) 2))%(sizeof(NI8)*8)));
+(*(*Sym_118031).Typ).Flags |=(1<<((NI8)(((NU8) 2))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 198):
 F.line = 442;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 443;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA61;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA61;
 F.line = 443;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA61: ;
 F.line = 444;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
+(*(*Sym_118031).Typ).Flags |=(1<<((NI8)(((NU8) 3))%(sizeof(NI8)*8)));
 break;
 case ((NU8) 72):
 F.line = 446;F.filename = "pragmas.nim";
-Noval_118617(It_118789);
+Noval_119617(It_119789);
 F.line = 447;F.filename = "pragmas.nim";
-(*Sym_117031).Flags |=(1<<((NI32)(((NU8) 24))%(sizeof(NI32)*8)));
+(*Sym_118031).Flags |=(1<<((NI32)(((NU8) 24))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 96):
 F.line = 448;F.filename = "pragmas.nim";
 LOC63 = 0;
-LOC63 = Expectstrlit_117316(C_117030, It_118789);
-Limessage_41562((*It_118789).Info, ((NU8) 234), LOC63);
+LOC63 = Expectstrlit_118316(C_118030, It_119789);
+Limessage_42562((*It_119789).Info, ((NU8) 234), LOC63);
 break;
 case ((NU8) 95):
 F.line = 449;F.filename = "pragmas.nim";
 LOC64 = 0;
-LOC64 = Expectstrlit_117316(C_117030, It_118789);
-Limessage_41562((*It_118789).Info, ((NU8) 221), LOC64);
+LOC64 = Expectstrlit_118316(C_118030, It_119789);
+Limessage_42562((*It_119789).Info, ((NU8) 221), LOC64);
 break;
 case ((NU8) 94):
 F.line = 450;F.filename = "pragmas.nim";
 LOC65 = 0;
-LOC65 = Expectstrlit_117316(C_117030, It_118789);
-Limessage_41562((*It_118789).Info, ((NU8) 206), LOC65);
+LOC65 = Expectstrlit_118316(C_118030, It_119789);
+Limessage_42562((*It_119789).Info, ((NU8) 206), LOC65);
 break;
 case ((NU8) 93):
 F.line = 452;F.filename = "pragmas.nim";
 LOC66 = 0;
-LOC66 = Expectstrlit_117316(C_117030, It_118789);
-Limessage_41562((*It_118789).Info, ((NU8) 206), LOC66);
+LOC66 = Expectstrlit_118316(C_118030, It_119789);
+Limessage_42562((*It_119789).Info, ((NU8) 206), LOC66);
 F.line = 453;F.filename = "pragmas.nim";
 exit(1);
 break;
 case ((NU8) 100):
 F.line = 454;F.filename = "pragmas.nim";
-Processdefine_118459(C_117030, It_118789);
+Processdefine_119459(C_118030, It_119789);
 break;
 case ((NU8) 101):
 F.line = 455;F.filename = "pragmas.nim";
-Processundef_118518(C_117030, It_118789);
+Processundef_119518(C_118030, It_119789);
 break;
 case ((NU8) 107):
 F.line = 456;F.filename = "pragmas.nim";
-Processcompile_118581(C_117030, It_118789);
+Processcompile_119581(C_118030, It_119789);
 break;
 case ((NU8) 106):
 F.line = 457;F.filename = "pragmas.nim";
-Processcommonlink_118588(C_117030, It_118789, ((NU8) 0));
+Processcommonlink_119588(C_118030, It_119789, ((NU8) 0));
 break;
 case ((NU8) 108):
 F.line = 458;F.filename = "pragmas.nim";
-Processcommonlink_118588(C_117030, It_118789, ((NU8) 1));
+Processcommonlink_119588(C_118030, It_119789, ((NU8) 1));
 break;
 case ((NU8) 167):
 F.line = 459;F.filename = "pragmas.nim";
 LOC67 = 0;
-LOC67 = Expectstrlit_117316(C_117030, It_118789);
-Addlinkoption_64364(LOC67);
+LOC67 = Expectstrlit_118316(C_118030, It_119789);
+Addlinkoption_65364(LOC67);
 break;
 case ((NU8) 165):
 F.line = 460;F.filename = "pragmas.nim";
 LOC68 = 0;
-LOC68 = Expectstrlit_117316(C_117030, It_118789);
-Addcompileoption_64361(LOC68);
+LOC68 = Expectstrlit_118316(C_118030, It_119789);
+Addcompileoption_65361(LOC68);
 break;
 case ((NU8) 113):
 F.line = 461;F.filename = "pragmas.nim";
-Pragmabreakpoint_118596(C_117030, It_118789);
+Pragmabreakpoint_119596(C_118030, It_119789);
 break;
 case ((NU8) 194):
 F.line = 462;F.filename = "pragmas.nim";
-Pragmacheckpoint_118600(C_117030, It_118789);
+Pragmacheckpoint_119600(C_118030, It_119789);
 break;
 case ((NU8) 98):
 F.line = 464;F.filename = "pragmas.nim";
-Processpush_118418(C_117030, N_117032, addInt(I_118776, 1));
+Processpush_119418(C_118030, N_118032, addInt(I_119776, 1));
 F.line = 465;F.filename = "pragmas.nim";
 goto LA5;
 break;
 case ((NU8) 99):
 F.line = 466;F.filename = "pragmas.nim";
-Processpop_118452(C_117030, It_118789);
+Processpop_119452(C_118030, It_119789);
 break;
 case ((NU8) 154):
 F.line = 468;F.filename = "pragmas.nim";
-Processpragma_118629(C_117030, N_117032, I_118776);
+Processpragma_119629(C_118030, N_118032, I_119776);
 F.line = 469;F.filename = "pragmas.nim";
 goto LA5;
 break;
@@ -2448,75 +2448,75 @@ case ((NU8) 132):
 case ((NU8) 133):
 case ((NU8) 134):
 F.line = 475;F.filename = "pragmas.nim";
-Processoption_118203(C_117030, It_118789);
+Processoption_119203(C_118030, It_119789);
 break;
 case ((NU8) 115) ... ((NU8) 124):
 F.line = 477;F.filename = "pragmas.nim";
-internalAssert("rod/pragmas.nim", 477, !((Sym_117031 == NIM_NIL)));
+internalAssert("rod/pragmas.nim", 477, !((Sym_118031 == NIM_NIL)));
 F.line = 478;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Typ == NIM_NIL)) goto LA70;
+if (!((*Sym_118031).Typ == NIM_NIL)) goto LA70;
 F.line = 478;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA70: ;
 F.line = 479;F.filename = "pragmas.nim";
-(*(*Sym_117031).Typ).Callconv = Wordtocallconv_117539(K_118857);
+(*(*Sym_118031).Typ).Callconv = Wordtocallconv_118539(K_119857);
 break;
 default:
 F.line = 480;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 break;
 }
 goto LA15;
 LA16: ;
 F.line = 481;F.filename = "pragmas.nim";
-Invalidpragma_117038(It_118789);
+Invalidpragma_118038(It_119789);
 LA15: ;
 LA12: ;
 goto LA9;
 LA10: ;
 F.line = 482;F.filename = "pragmas.nim";
-Processnote_117907(C_117030, It_118789);
+Processnote_118907(C_118030, It_119789);
 LA9: ;
-F.line = 1022;F.filename = "system.nim";
-Res_119425 = addInt(Res_119425, 1);
+F.line = 1024;F.filename = "system.nim";
+Res_120425 = addInt(Res_120425, 1);
 } LA5: ;
 F.line = 483;F.filename = "pragmas.nim";
-LOC73 = !((Sym_117031 == NIM_NIL));
+LOC73 = !((Sym_118031 == NIM_NIL));
 if (!(LOC73)) goto LA74;
-LOC73 = !(((*Sym_117031).Kind == ((NU8) 18)));
+LOC73 = !(((*Sym_118031).Kind == ((NU8) 18)));
 LA74: ;
 if (!LOC73) goto LA75;
 F.line = 484;F.filename = "pragmas.nim";
-LOC78 = (((*Sym_117031).Loc.Flags &(1<<((((NU8) 5))&7)))!=0);
+LOC78 = (((*Sym_118031).Loc.Flags &(1<<((((NU8) 5))&7)))!=0);
 if (!(LOC78)) goto LA79;
-LOC78 = !((((*Sym_117031).Flags &(1<<((((NU8) 8))&31)))!=0));
+LOC78 = !((((*Sym_118031).Flags &(1<<((((NU8) 8))&31)))!=0));
 LA79: ;
 if (!LOC78) goto LA80;
 F.line = 485;F.filename = "pragmas.nim";
-Limessage_41562((*N_117032).Info, ((NU8) 76), ((NimStringDesc*) &TMP117315));
+Limessage_42562((*N_118032).Info, ((NU8) 76), ((NimStringDesc*) &TMP118315));
 LA80: ;
-Lib_119352 = 0;
+Lib_120352 = 0;
 F.line = 486;F.filename = "pragmas.nim";
-if ((*C_117030).Optionstack.Tail) chckObj((*(*C_117030).Optionstack.Tail).Sup.m_type, NTI101002);
-Lib_119352 = (*((TY101002*) ((*C_117030).Optionstack.Tail))).Dynlib;
+if ((*C_118030).Optionstack.Tail) chckObj((*(*C_118030).Optionstack.Tail).Sup.m_type, NTI102002);
+Lib_120352 = (*((TY102002*) ((*C_118030).Optionstack.Tail))).Dynlib;
 F.line = 487;F.filename = "pragmas.nim";
-LOC84 = ((80 & (*Sym_117031).Loc.Flags) == 0);
+LOC84 = ((80 & (*Sym_118031).Loc.Flags) == 0);
 if (!(LOC84)) goto LA85;
-LOC84 = (((*Sym_117031).Flags &(1<<((((NU8) 7))&31)))!=0);
+LOC84 = (((*Sym_118031).Flags &(1<<((((NU8) 7))&31)))!=0);
 LA85: ;
 LOC83 = LOC84;
 if (!(LOC83)) goto LA86;
-LOC83 = !((Lib_119352 == NIM_NIL));
+LOC83 = !((Lib_120352 == NIM_NIL));
 LA86: ;
 if (!LOC83) goto LA87;
 F.line = 489;F.filename = "pragmas.nim";
-(*Sym_117031).Loc.Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
+(*Sym_118031).Loc.Flags |=(1<<((NI8)(((NU8) 4))%(sizeof(NI8)*8)));
 F.line = 490;F.filename = "pragmas.nim";
-Addtolib_101065(Lib_119352, Sym_117031);
+Addtolib_102065(Lib_120352, Sym_118031);
 F.line = 491;F.filename = "pragmas.nim";
-if (!((*Sym_117031).Loc.R == NIM_NIL)) goto LA90;
+if (!((*Sym_118031).Loc.R == NIM_NIL)) goto LA90;
 F.line = 491;F.filename = "pragmas.nim";
-asgnRefNoCycle((void**) &(*Sym_117031).Loc.R, Torope_46046((*(*Sym_117031).Name).S));
+asgnRefNoCycle((void**) &(*Sym_118031).Loc.R, Torope_47046((*(*Sym_118031).Name).S));
 LA90: ;
 LA87: ;
 LA75: ;

@@ -20,19 +20,19 @@ TY239 data;
 static N_INLINE(int, Updatecrc32_49014)(NI8 Val_49016, int Crc_49017);
 N_NOINLINE(void, raiseIndexError)(void);
 static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021);
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412);
-N_NOINLINE(void, raiseRangeError)(NI64 Val_5218);
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612);
+N_NOINLINE(void, raiseRangeError)(NI64 Val_5418);
 N_NIMCALL(int, Strcrc32_49026)(NimStringDesc* S_49028);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NOINLINE(void, raiseOverflow)(void);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NIMCALL(int, HEX3EHEX3C_49094)(int C_49096, NimStringDesc* S_49097);
 N_NIMCALL(int, Crcfrombuf_49022)(void* Buf_49024, NI Length_49025);
 N_NIMCALL(int, Crcfromfile_49029)(NimStringDesc* Filename_49031);
-N_NIMCALL(NIM_BOOL, Open_3417)(FILE** F_3420, NimStringDesc* Filename_3421, NU8 Mode_3422, NI Bufsize_3423);
-N_NOCONV(void*, Alloc_1774)(NI Size_1776);
-N_NIMCALL(NI, Readbuffer_3514)(FILE* F_3516, void* Buffer_3517, NI Len_3518);
-N_NOCONV(void, Dealloc_1784)(void* P_1786);
+N_NIMCALL(NIM_BOOL, Open_3617)(FILE** F_3620, NimStringDesc* Filename_3621, NU8 Mode_3622, NI Bufsize_3623);
+N_NOCONV(void*, Alloc_1950)(NI Size_1952);
+N_NIMCALL(NI, Readbuffer_3714)(FILE* F_3716, void* Buffer_3717, NI Len_3718);
+N_NOCONV(void, Dealloc_1960)(void* P_1962);
 N_NIMCALL(int, Updateadler32_49032)(int Adler_49034, void* Buf_49035, NI Length_49036);
 NIM_CONST TY49040 Crc32table_49039 = {0,
 1996959894,
@@ -308,23 +308,23 @@ Result_49048 = (NI32)(((int) (Crc32table_49039[((NI32)((NI32)(((NI) (Crc_49017))
 framePtr = framePtr->prev;
 return Result_49048;
 }
-static N_INLINE(NI, chckRange)(NI I_4410, NI A_4411, NI B_4412) {
-NI Result_5316;
+static N_INLINE(NI, chckRange)(NI I_4610, NI A_4611, NI B_4612) {
+NI Result_5516;
 NIM_BOOL LOC2;
-Result_5316 = 0;
-LOC2 = (A_4411 <= I_4410);
+Result_5516 = 0;
+LOC2 = (A_4611 <= I_4610);
 if (!(LOC2)) goto LA3;
-LOC2 = (I_4410 <= B_4412);
+LOC2 = (I_4610 <= B_4612);
 LA3: ;
 if (!LOC2) goto LA4;
-Result_5316 = I_4410;
+Result_5516 = I_4610;
 goto BeforeRet;
 goto LA1;
 LA4: ;
-raiseRangeError(((NI64) (I_4410)));
+raiseRangeError(((NI64) (I_4610)));
 LA1: ;
 BeforeRet: ;
-return Result_5316;
+return Result_5516;
 }
 static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021) {
 int Result_49053;
@@ -342,30 +342,14 @@ Result_49053 = Updatecrc32_49014(((NI8)chckRange(((NU8)(Val_49020)), ((NI8) -128
 framePtr = framePtr->prev;
 return Result_49053;
 }
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI32)((NU32)(A_5603) + (NU32)(B_5604));
-LOC2 = (0 <= (NI32)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
-}
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI32)((NU32)(A_5803) - (NU32)(B_5804));
+Result_5805 = (NI32)((NU32)(A_5803) + (NU32)(B_5804));
 LOC2 = (0 <= (NI32)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI32)(Result_5805 ^ (NI32)((NU32) ~(B_5804))));
+LOC2 = (0 <= (NI32)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -373,6 +357,22 @@ LA4: ;
 raiseOverflow();
 BeforeRet: ;
 return Result_5805;
+}
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI32)((NU32)(A_6003) - (NU32)(B_6004));
+LOC2 = (0 <= (NI32)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI32)(Result_6005 ^ (NI32)((NU32) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
 }
 N_NIMCALL(int, Strcrc32_49026)(NimStringDesc* S_49028) {
 int Result_49062;
@@ -395,17 +395,17 @@ HEX3Atmp_49089 = 0;
 F.line = 86;F.filename = "crc.nim";
 HEX3Atmp_49089 = subInt(addInt(S_49028->Sup.len, 0), 1);
 Res_49091 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_49091 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_49091 <= HEX3Atmp_49089)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_49087 = Res_49091;
 F.line = 86;F.filename = "crc.nim";
 if ((NU)(I_49087) > (NU)(S_49028->Sup.len)) raiseIndexError();
 Result_49062 = Updatecrc32_49018(S_49028->data[I_49087], Result_49062);
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_49091 = addInt(Res_49091, 1);
 } LA1: ;
 framePtr = framePtr->prev;
@@ -432,17 +432,17 @@ HEX3Atmp_49110 = 0;
 F.line = 90;F.filename = "crc.nim";
 HEX3Atmp_49110 = subInt(S_49097->Sup.len, 1);
 Res_49112 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_49112 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_49112 <= HEX3Atmp_49110)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_49108 = Res_49112;
 F.line = 90;F.filename = "crc.nim";
 if ((NU)(I_49108) > (NU)(S_49097->Sup.len)) raiseIndexError();
 Result_49098 = Updatecrc32_49018(S_49097->data[I_49108], Result_49098);
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_49112 = addInt(Res_49112, 1);
 } LA1: ;
 framePtr = framePtr->prev;
@@ -473,17 +473,17 @@ HEX3Atmp_49135 = 0;
 F.line = 99;F.filename = "crc.nim";
 HEX3Atmp_49135 = subInt(Length_49025, 1);
 Res_49137 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_49137 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_49137 <= HEX3Atmp_49135)) goto LA1;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_49133 = Res_49137;
 F.line = 99;F.filename = "crc.nim";
 if ((NU)(I_49133) > (NU)(10000000)) raiseIndexError();
 Result_49124 = Updatecrc32_49014(P_49125[(I_49133)-0], Result_49124);
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_49137 = addInt(Res_49137, 1);
 } LA1: ;
 framePtr = framePtr->prev;
@@ -515,35 +515,35 @@ P_49148 = 0;
 F.line = 109;F.filename = "crc.nim";
 Result_49143 = ((NI32) -1);
 F.line = 110;F.filename = "crc.nim";
-LOC2 = Open_3417(&Bin_49145, Filename_49031, ((NU8) 0), -1);
+LOC2 = Open_3617(&Bin_49145, Filename_49031, ((NU8) 0), -1);
 if (!!(LOC2)) goto LA3;
 F.line = 111;F.filename = "crc.nim";
 goto BeforeRet;
 LA3: ;
 F.line = 112;F.filename = "crc.nim";
-Buf_49146 = Alloc_1774(8192);
+Buf_49146 = Alloc_1950(8192);
 F.line = 113;F.filename = "crc.nim";
 P_49148 = ((NI8*) (Buf_49146));
 F.line = 114;F.filename = "crc.nim";
 while (1) {
 F.line = 115;F.filename = "crc.nim";
-Readbytes_49147 = Readbuffer_3514(Bin_49145, Buf_49146, 8192);
+Readbytes_49147 = Readbuffer_3714(Bin_49145, Buf_49146, 8192);
 I_49157 = 0;
 HEX3Atmp_49161 = 0;
 F.line = 116;F.filename = "crc.nim";
 HEX3Atmp_49161 = subInt(Readbytes_49147, 1);
 Res_49163 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_49163 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_49163 <= HEX3Atmp_49161)) goto LA6;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_49157 = Res_49163;
 F.line = 116;F.filename = "crc.nim";
 if ((NU)(I_49157) > (NU)(10000000)) raiseIndexError();
 Result_49143 = Updatecrc32_49014(P_49148[(I_49157)-0], Result_49143);
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_49163 = addInt(Res_49163, 1);
 } LA6: ;
 F.line = 117;F.filename = "crc.nim";
@@ -553,7 +553,7 @@ goto LA5;
 LA8: ;
 } LA5: ;
 F.line = 118;F.filename = "crc.nim";
-Dealloc_1784(Buf_49146);
+Dealloc_1960(Buf_49146);
 F.line = 119;F.filename = "crc.nim";
 fclose(Bin_49145);
 BeforeRet: ;

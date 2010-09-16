@@ -212,11 +212,11 @@ TY54547* Resultsym;
 NI Nestedloopcounter;
 NI Nestedblockcounter;
 };
-typedef NI TY8614[8];
+typedef NI TY8814[8];
 struct TY54896 {
 TY54896* Next;
 NI Key;
-TY8614 Bits;
+TY8814 Bits;
 };
 struct TY54519 {
   TGenericSeq Sup;
@@ -240,21 +240,21 @@ struct TY54549 {
 };
 N_NIMCALL(NIM_BOOL, Equalgenericparams_120014)(TY54525* Proca_120016, TY54525* Procb_120017);
 N_NIMCALL(NI, Sonslen_54803)(TY54525* N_54805);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804);
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004);
 N_NOINLINE(void, raiseOverflow)(void);
-N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5275);
+N_NOINLINE(void, raiseFieldError)(NimStringDesc* F_5475);
 N_NOINLINE(void, raiseIndexError)(void);
 N_NIMCALL(void, Internalerror_46567)(TY46532 Info_46569, NimStringDesc* Errmsg_46570);
 N_NIMCALL(NIM_BOOL, Sametypeornil_95052)(TY54551* A_95054, TY54551* B_95055);
 N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_94035)(TY54525* A_94037, TY54525* B_94038);
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604);
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804);
 N_NIMCALL(TY54547*, Searchforproc_120004)(TY105012* C_120006, TY54547* Fn_120007, NI Tos_120008);
 N_NIMCALL(TY54547*, Initidentiter_58095)(TY58092* Ti_58098, TY54529* Tab_58099, TY53011* S_58100);
 N_NIMCALL(NU8, Equalparams_95065)(TY54525* A_95067, TY54525* B_95068);
 N_NIMCALL(void, Limessage_46562)(TY46532 Info_46564, NU8 Msg_46565, NimStringDesc* Arg_46566);
 N_NIMCALL(TY54547*, Nextidentiter_58101)(TY58092* Ti_58104, TY54529* Tab_58105);
 N_NIMCALL(NIM_BOOL, Paramsfitborrow_120256)(TY54525* A_120258, TY54525* B_120259);
-N_NIMCALL(void, internalAssert)(NCSTRING File_5054, NI Line_5055, NIM_BOOL Cond_5056);
+N_NIMCALL(void, internalAssert)(NCSTRING File_5254, NI Line_5255, NIM_BOOL Cond_5256);
 N_NIMCALL(NIM_BOOL, Equalordistinctof_95056)(TY54551* X_95058, TY54551* Y_95059);
 N_NIMCALL(TY54547*, Searchforborrowproc_120009)(TY105012* C_120011, TY54547* Fn_120012, NI Tos_120013);
 static NIM_CONST TY54999 TMP120197 = {
@@ -266,14 +266,30 @@ static NIM_CONST TY54999 TMP120200 = {
 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;STRING_LITERAL(TMP120201, "sym", 3);
-static N_INLINE(NI, subInt)(NI A_5803, NI B_5804) {
+static N_INLINE(NI, subInt)(NI A_6003, NI B_6004) {
+NI Result_6005;
+NIM_BOOL LOC2;
+Result_6005 = 0;
+Result_6005 = (NI64)((NU64)(A_6003) - (NU64)(B_6004));
+LOC2 = (0 <= (NI64)(Result_6005 ^ A_6003));
+if (LOC2) goto LA3;
+LOC2 = (0 <= (NI64)(Result_6005 ^ (NI64)((NU64) ~(B_6004))));
+LA3: ;
+if (!LOC2) goto LA4;
+goto BeforeRet;
+LA4: ;
+raiseOverflow();
+BeforeRet: ;
+return Result_6005;
+}
+static N_INLINE(NI, addInt)(NI A_5803, NI B_5804) {
 NI Result_5805;
 NIM_BOOL LOC2;
 Result_5805 = 0;
-Result_5805 = (NI64)((NU64)(A_5803) - (NU64)(B_5804));
+Result_5805 = (NI64)((NU64)(A_5803) + (NU64)(B_5804));
 LOC2 = (0 <= (NI64)(Result_5805 ^ A_5803));
 if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5805 ^ (NI64)((NU64) ~(B_5804))));
+LOC2 = (0 <= (NI64)(Result_5805 ^ B_5804));
 LA3: ;
 if (!LOC2) goto LA4;
 goto BeforeRet;
@@ -281,22 +297,6 @@ LA4: ;
 raiseOverflow();
 BeforeRet: ;
 return Result_5805;
-}
-static N_INLINE(NI, addInt)(NI A_5603, NI B_5604) {
-NI Result_5605;
-NIM_BOOL LOC2;
-Result_5605 = 0;
-Result_5605 = (NI64)((NU64)(A_5603) + (NU64)(B_5604));
-LOC2 = (0 <= (NI64)(Result_5605 ^ A_5603));
-if (LOC2) goto LA3;
-LOC2 = (0 <= (NI64)(Result_5605 ^ B_5604));
-LA3: ;
-if (!LOC2) goto LA4;
-goto BeforeRet;
-LA4: ;
-raiseOverflow();
-BeforeRet: ;
-return Result_5605;
 }
 N_NIMCALL(NIM_BOOL, Equalgenericparams_120014)(TY54525* Proca_120016, TY54525* Procb_120017) {
 NIM_BOOL Result_120018;
@@ -353,12 +353,12 @@ F.line = 30;F.filename = "procfind.nim";
 LOC14 = Sonslen_54803(Proca_120016);
 HEX3Atmp_120192 = subInt(LOC14, 1);
 Res_120194 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_120194 = 0;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_120194 <= HEX3Atmp_120192)) goto LA15;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_120076 = Res_120194;
 F.line = 31;F.filename = "procfind.nim";
 if (((TMP120197[(*Proca_120016).Kind/8] &(1<<((*Proca_120016).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP120198));
@@ -407,7 +407,7 @@ F.line = 39;F.filename = "procfind.nim";
 goto BeforeRet;
 LA35: ;
 LA31: ;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_120194 = addInt(Res_120194, 1);
 } LA15: ;
 F.line = 40;F.filename = "procfind.nim";
@@ -508,12 +508,12 @@ HEX3Atmp_120365 = 0;
 F.line = 66;F.filename = "procfind.nim";
 HEX3Atmp_120365 = subInt(Length_120261, 1);
 Res_120367 = 0;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 Res_120367 = 1;
-F.line = 1020;F.filename = "system.nim";
+F.line = 1022;F.filename = "system.nim";
 while (1) {
 if (!(Res_120367 <= HEX3Atmp_120365)) goto LA5;
-F.line = 1019;F.filename = "system.nim";
+F.line = 1021;F.filename = "system.nim";
 I_120273 = Res_120367;
 F.line = 67;F.filename = "procfind.nim";
 if (((TMP120197[(*A_120258).Kind/8] &(1<<((*A_120258).Kind%8)))!=0)) raiseFieldError(((NimStringDesc*) &TMP120198));
@@ -537,7 +537,7 @@ if (!!(LOC9)) goto LA10;
 F.line = 70;F.filename = "procfind.nim";
 goto BeforeRet;
 LA10: ;
-F.line = 1022;F.filename = "system.nim";
+F.line = 1024;F.filename = "system.nim";
 Res_120367 = addInt(Res_120367, 1);
 } LA5: ;
 F.line = 71;F.filename = "procfind.nim";
@@ -577,12 +577,12 @@ Result_120375 = 0;
 memset((void*)&It_120376, 0, sizeof(It_120376));
 Scope_120399 = 0;
 Res_120451 = 0;
-F.line = 1010;F.filename = "system.nim";
+F.line = 1012;F.filename = "system.nim";
 Res_120451 = Tos_120013;
-F.line = 1011;F.filename = "system.nim";
+F.line = 1013;F.filename = "system.nim";
 while (1) {
 if (!(0 <= Res_120451)) goto LA1;
-F.line = 1010;F.filename = "system.nim";
+F.line = 1012;F.filename = "system.nim";
 Scope_120399 = Res_120451;
 F.line = 79;F.filename = "procfind.nim";
 if ((NU)(Scope_120399) >= (NU)((*C_120011).Tab.Stack->Sup.len)) raiseIndexError();
@@ -615,7 +615,7 @@ F.line = 86;F.filename = "procfind.nim";
 if ((NU)(Scope_120399) >= (NU)((*C_120011).Tab.Stack->Sup.len)) raiseIndexError();
 Result_120375 = Nextidentiter_58101(&It_120376, &(*C_120011).Tab.Stack->data[Scope_120399]);
 } LA2: ;
-F.line = 1013;F.filename = "system.nim";
+F.line = 1015;F.filename = "system.nim";
 Res_120451 = subInt(Res_120451, 1);
 } LA1: ;
 BeforeRet: ;
