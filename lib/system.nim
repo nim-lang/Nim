@@ -720,7 +720,7 @@ const
   
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
-  ## can be used to determine a on|off compile-time option. Example:
+  ## can be used to determine an on|off compile-time option. Example:
   ##
   ## .. code-block:: nimrod
   ## when compileOption("floatchecks"): 
@@ -735,7 +735,9 @@ proc compileOption*(option, arg: string): bool {.
   ##   echo "compiled with optimization for size and uses Boehm's GC"
   
 include "system/inclrtl"
-include "system/cgprocs"
+
+when not defined(ecmascript):
+  include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
 proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =

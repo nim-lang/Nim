@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,23 +21,52 @@ type
   TParseState = enum 
     psDirective, psTempl
   TTmplParser{.final.} = object 
-    inp*: PLLStream
-    state*: TParseState
-    info*: TLineInfo
-    indent*, par*: int
-    x*: string                # the current input line
-    outp*: PLLStream          # the ouput will be parsed by pnimsyn
-    subsChar*, NimDirective*: Char
-    emit*, conc*, toStr*: string
+    inp: PLLStream
+    state: TParseState
+    info: TLineInfo
+    indent, emitPar: int
+    x: string                # the current input line
+    outp: PLLStream          # the ouput will be parsed by pnimsyn
+    subsChar, NimDirective: Char
+    emit, conc, toStr: string
+    curly, bracket, par: int
+    pendingExprLine: bool
 
 
 const 
   PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '.', '_'}
 
 proc newLine(p: var TTmplParser) = 
-  LLStreamWrite(p.outp, repeatChar(p.par, ')'))
-  p.par = 0
+  LLStreamWrite(p.outp, repeatChar(p.emitPar, ')'))
+  p.emitPar = 0
   if p.info.line > int16(1): LLStreamWrite(p.outp, "\n")
+  if p.pendingExprLine:
+    LLStreamWrite(p.outp, repeatChar(2))
+    p.pendingExprLine = false
+  
+proc scanPar(p: var TTmplParser, d: int) = 
+  var i = d
+  while true:
+    case p.x[i]
+    of '\0': break
+    of '(': inc(p.par)
+    of ')': dec(p.par)
+    of '[': inc(p.bracket)
+    of ']': dec(p.bracket)
+    of '{': inc(p.curly)
+    of '}': dec(p.curly)
+    else: nil
+    inc(i)
+  
+proc endsWithOpr(p: TTmplParser): bool = 
+  var i = p.x.len-1
+  while i >= 0 and p.x[i] == ' ': dec(i)
+  if i >= 0 and p.x[i] in {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
+                           '|', '%', '&', '$', '@', '~', ','}:
+    result = true
+  
+proc withInExpr(p: TTmplParser): bool {.inline.} = 
+  result = p.par > 0 or p.bracket > 0 or p.curly > 0
   
 proc parseLine(p: var TTmplParser) = 
   var 
@@ -56,6 +85,9 @@ proc parseLine(p: var TTmplParser) =
     while p.x[j] in PatternChars: 
       add(keyw, p.x[j])
       inc(j)
+    
+    scanPar(p, j)
+    p.pendingExprLine = withInExpr(p) or endsWithOpr(p)
     case whichKeyword(keyw)
     of wEnd: 
       if p.indent >= 2: 
@@ -79,6 +111,10 @@ proc parseLine(p: var TTmplParser) =
     p.state = psDirective
   else: 
     # data line
+    # reset counters
+    p.par = 0
+    p.curly = 0
+    p.bracket = 0
     j = 0
     case p.state
     of psTempl: 
@@ -92,7 +128,7 @@ proc parseLine(p: var TTmplParser) =
       LLStreamWrite(p.outp, repeatChar(p.indent))
       LLStreamWrite(p.outp, p.emit)
       LLStreamWrite(p.outp, "(\"")
-      inc(p.par)
+      inc(p.emitPar)
     p.state = psTempl
     while true: 
       case p.x[j]
