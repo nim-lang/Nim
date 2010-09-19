@@ -63,6 +63,7 @@ Additions
 - The standard library can be built as a DLL. Generating DLLs has been
   improved.
 - Added ``expat`` module.
+- Added ``json`` module.
 
 
 2010-03-14 Version 0.8.8 released

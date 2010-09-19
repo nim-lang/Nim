@@ -196,6 +196,7 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdRun
     wantFile(filename)
     when hasTinyCBackend:
+      extccomp.setCC("tcc")
       CommandCompileToC(filename)
     else: 
       rawMessage(errInvalidCommandX, cmd)

@@ -1,4 +1,4 @@
-# Tests emc's ability to detect overflows
+# Tests nimrod's ability to detect overflows
 
 {.push overflowChecks: on.}
 
