@@ -7,12 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) or defined(llvm_gcc):
+const
+  hasThreadSupport = false # deactivate for now: thread stack walking
+                           # is missing!
+  maxThreads = 256
+
+when (defined(gcc) or defined(llvm_gcc)) and hasThreadSupport:
   proc sync_add_and_fetch(p: var int, val: int): int {.
     importc: "__sync_add_and_fetch", nodecl.}
   proc sync_sub_and_fetch(p: var int, val: int): int {.
     importc: "__sync_sub_and_fetch", nodecl.}
-elif defined(vcc):
+elif defined(vcc) and hasThreadSupport:
   proc sync_add_and_fetch(p: var int, val: int): int {.
     importc: "NimXadd", nodecl.}
 else:
@@ -20,19 +25,18 @@ else:
     inc(p, val)
     result = p
 
-const
-  isMultiThreaded* = true
-  maxThreads = 256
+var
+  isMultiThreaded: bool # true when prog created at least 1 thread
 
 proc atomicInc(memLoc: var int, x: int): int =
-  when isMultiThreaded:
+  when hasThreadSupport:
     result = sync_add_and_fetch(memLoc, x)
   else:
     inc(memLoc, x)
     result = memLoc
   
 proc atomicDec(memLoc: var int, x: int): int =
-  when isMultiThreaded:
+  when hasThreadSupport:
     when defined(sync_sub_and_fetch):
       result = sync_sub_and_fetch(memLoc, x)
     else:
@@ -85,11 +89,8 @@ type
   TThreadFunc* = proc (closure: pointer) {.cdecl.}
   
 proc createThread*(t: var TThread, fn: TThreadFunc) = 
-  
   nil
   
 proc destroyThread*(t: var TThread) =
   nil
-
-
 

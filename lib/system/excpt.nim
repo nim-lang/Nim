@@ -10,6 +10,10 @@
 # Exception handling code. This is difficult because it has
 # to work if there is no more memory (but it doesn't yet!).
 
+var
+  stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
+                            ## for CGI applications
+
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: CString) = write(stdout, msg)
 
@@ -32,7 +36,7 @@ type
   TSafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point ON THE STACK
     status: int
-    exc: ref E_Base  # XXX only needed for bootstrapping
+    exc: ref E_Base  # XXX only needed for bootstrapping; unused
     context: C_JmpBuf
 
 var
@@ -55,6 +59,58 @@ proc pushCurrentException(e: ref E_Base) {.compilerRtl, inl.} =
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.parent
 
+# some platforms have native support for stack traces:
+const
+  nimrodStackTrace = compileOption("stacktrace")
+  nativeStackTrace = (defined(macosx) or defined(linux)) and 
+                     not nimrodStackTrace and false
+
+# `nativeStackTrace` does not work for me --> deactivated for now. Maybe for 
+# the next release version.
+
+when nativeStacktrace:
+  type
+    TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
+               final, pure.} = object
+      dli_fname: CString
+      dli_fbase: pointer
+      dli_sname: CString
+      dli_saddr: pointer
+
+  proc backtrace(symbols: ptr pointer, size: int): int {.
+    importc: "backtrace", header: "<execinfo.h>".}
+  proc dladdr(addr1: pointer, info: ptr TDl_info): int {.
+    importc: "dladdr", header: "<dlfcn.h>".}
+
+  var
+    tempAddresses: array [0..127, pointer] # cannot be allocated on the stack!
+    tempDlInfo: TDl_info
+
+  proc auxWriteStackTraceWithBacktrace(s: var string) =
+    # This is allowed to be expensive since it only happens during crashes
+    # (but this way you don't need manual stack tracing)
+    var size = backtrace(cast[ptr pointer](addr(tempAddresses)), 
+                         len(tempAddresses))
+    var enabled = false
+    for i in 0..size-1:
+      var dlresult = dladdr(tempAddresses[i], addr(tempDlInfo))
+      if enabled:
+        if dlresult != 0:
+          var oldLen = s.len
+          add(s, tempDlInfo.dli_fname)
+          if tempDlInfo.dli_sname != nil:
+            for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
+            add(s, tempDlInfo.dli_sname)
+        else:
+          add(s, '?')
+        add(s, stackTraceNewLine)
+      else:
+        if dlresult != 0 and tempDlInfo.dli_sname != nil and
+            c_strcmp(tempDlInfo.dli_sname, "signalHandler") == 0'i32:
+          # Once we're past signalHandler, we're at what the user is
+          # interested in
+          enabled = true
+
 type
   PFrame = ptr TFrame
   TFrame {.importc, nodecl, final.} = object
@@ -74,9 +130,6 @@ var
 
   tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
   
-  stackTraceNewLine* = "\n" ## undocumented feature; it is replaced by ``<br>``
-                            ## for CGI applications
-
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   const 
     firstCalls = 32
@@ -120,7 +173,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     add(s, stackTraceNewLine)
 
 proc rawWriteStackTrace(s: var string) =
-  when compileOption("stacktrace") or compileOption("linetrace"):
+  when nimrodStackTrace:
     if framePtr == nil:
       add(s, "No stack traceback available")
       add(s, stackTraceNewLine)
@@ -128,6 +181,10 @@ proc rawWriteStackTrace(s: var string) =
       add(s, "Traceback (most recent call last)")
       add(s, stackTraceNewLine)
       auxWriteStackTrace(framePtr, s)
+  elif nativeStackTrace:
+    add(s, "Traceback from system (most recent call last)")
+    add(s, stackTraceNewLine)
+    auxWriteStackTraceWithBacktrace(s)
   else:
     add(s, "No stack traceback available")
     add(s, stackTraceNewLine)
@@ -196,11 +253,6 @@ proc WriteStackTrace() =
   var s = ""
   rawWriteStackTrace(s)
   writeToStdErr(s)
-
-#proc stackTraceWrapper {.noconv.} =
-#  writeStackTrace()
-
-#addQuitProc(stackTraceWrapper)
 
 var
   dbgAborting: bool # whether the debugger wants to abort

@@ -7,17 +7,38 @@
 #    distribution, for details about the copyright.
 #
 
-import glib2, gtk2, gdk2, osproc, dialogs, strutils
+import glib2, gtk2, gdk2, os, osproc, dialogs, strutils
+
+when defined(tinyc):
+  const runCmd = "run"
+else:
+  const runCmd = "c -r"
+
+when not defined(findExe): 
+  # candidate for the stdlib:
+  proc findExe(exe: string): string = 
+    ## returns exe if the exe cannot be found
+    result = addFileExt(exe, os.exeExt)
+    if ExistsFile(result): return
+    var path = os.getEnv("PATH")
+    for candidate in split(path, pathSep): 
+      var x = candidate / result
+      if ExistsFile(x): return x
+    result = ""
+
+var nimExe = findExe("nimrod")
+if nimExe.len == 0: nimExe = "../bin" / addFileExt("nimrod", os.exeExt)
 
 proc execCode(code: string): string =
   var f: TFile
   if open(f, "temp.nim", fmWrite):
     f.write(code)
     f.close()
+    result = osproc.execProcess(
+      "$# $# --verbosity:0 --hint[Conf]:off temp.nim" % [nimExe, runCmd],
+      {poStdErrToStdOut})
   else:
-    raise newException(EIO, "Unable to open file")    
-  result = osproc.execProcess(
-      "nimrod c -r --verbosity:0 --hint[Conf]:off temp.nim")
+    result = "cannot open file 'temp.nim'"
 
 var shiftPressed = False
 var w: gtk2.PWindow
@@ -29,33 +50,29 @@ proc destroy(widget: PWidget, data: pgpointer){.cdecl.} =
 
 proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToOpen(w)
-  
   if path != "":
-
     var file: string = readFile(path)
     if file != nil:
       set_text(InputTextBuffer, file, len(file))
-      
     else:
       error(w, "Unable to read from file")
 
 proc FileSaveClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToSave(w)
   
-  if path != "":
-    var startIter: TTextIter
-    var endIter: TTextIter
-    get_start_iter(InputTextBuffer, addr(startIter))
-    get_end_iter(InputTextBuffer, addr(endIter))
-    var InputText = get_text(InputTextBuffer, addr(startIter), 
-                             addr(endIter), False)
-    var f: TFile
-    if open(f, path, fmWrite):
-      f.write(InputText)
-      f.close()
-    else:
-      error(w, "Unable to write to file")
-
+  if path == "": return
+  var startIter: TTextIter
+  var endIter: TTextIter
+  get_start_iter(InputTextBuffer, addr(startIter))
+  get_end_iter(InputTextBuffer, addr(endIter))
+  var InputText = get_text(InputTextBuffer, addr(startIter), 
+                           addr(endIter), False)
+  var f: TFile
+  if open(f, path, fmWrite):
+    f.write(InputText)
+    f.close()
+  else:
+    error(w, "Unable to write to file")
 
 proc inputKeyPressed(widget: PWidget, event: PEventKey, 
                      userdata: pgpointer): bool =
@@ -68,13 +85,13 @@ proc setError(msg: string) =
   
 proc inputKeyReleased(widget: PWidget, event: PEventKey, 
                       userdata: pgpointer): bool =
-  echo(keyval_name(event.keyval))
+  #echo(keyval_name(event.keyval))
   if ($keyval_name(event.keyval)).tolower() == "shift_l":
     # SHIFT is released
     shiftPressed = False
     
   if ($keyval_name(event.keyval)).tolower() == "return":
-    echo($keyval_name(event.keyval), "Shift_L")
+    #echo($keyval_name(event.keyval), "Shift_L")
     # Enter pressed
     if shiftPressed == False:
       var startIter: TTextIter

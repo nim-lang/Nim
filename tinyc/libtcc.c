@@ -808,11 +808,11 @@ void error1(TCCState *s1, int is_warning, const char *fmt, va_list ap)
     if (!s1->error_func) {
         /* default case: stderr */
         fprintf(stderr, "%s\n", buf);
-    } else {
+    } 
+    if (!is_warning || s1->warn_error) {
         s1->error_func(s1->error_opaque, buf);
-    }
-    if (!is_warning || s1->warn_error)
         s1->nb_errors++;
+    }
 }
 
 void tcc_set_error_func(TCCState *s, void *error_opaque,

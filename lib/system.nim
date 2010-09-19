@@ -1605,10 +1605,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## can be used to mark a condition to be unlikely. This is a hint for the 
     ## optimizer.
 
-elif defined(ecmaScript):
-  include "system/ecmasys"
-elif defined(NimrodVM):
-  # Stubs for the GC interface:
+elif defined(ecmaScript) or defined(NimrodVM):
+  # Stubs:
   proc GC_disable() = nil
   proc GC_enable() = nil
   proc GC_fullCollect() = nil
@@ -1620,16 +1618,19 @@ elif defined(NimrodVM):
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
-  
-  proc cmp(x, y: string): int =
-    if x == y: return 0
-    if x < y: return -1
-    return 1
-    
+
   proc dealloc(p: pointer) = nil
   proc alloc(size: int): pointer = nil
   proc alloc0(size: int): pointer = nil
   proc realloc(p: Pointer, newsize: int): pointer = nil
+
+  when defined(ecmaScript):
+    include "system/ecmasys"
+  elif defined(NimrodVM):
+    proc cmp(x, y: string): int =
+      if x == y: return 0
+      if x < y: return -1
+      return 1
 
 {.pop.} # checks
 {.pop.} # hints

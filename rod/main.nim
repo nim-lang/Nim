@@ -203,7 +203,7 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdCompileToCpp
     wantFile(filename)
     CommandCompileToC(filename)
-  of wCompileToEcmaScript: 
+  of wCompileToEcmaScript, wJs: 
     gCmd = cmdCompileToEcmaScript
     wantFile(filename)
     CommandCompileToEcmaScript(filename)

@@ -77,14 +77,16 @@ var
     # collection, not a lock for threads!
 
 proc lock(gch: var TGcHeap) {.inline.} = 
-  if isMultiThreaded: 
-    Lock(gch.zctLock)
-    lock(gch.cycleRootsLock)
+  when hasThreadSupport:
+    if isMultiThreaded: 
+      Lock(gch.zctLock)
+      lock(gch.cycleRootsLock)
 
 proc unlock(gch: var TGcHeap) {.inline.} = 
-  if isMultiThreaded: 
-    unlock(gch.zctLock)
-    unlock(gch.cycleRootsLock)
+  when hasThreadSupport:
+    if isMultiThreaded: 
+      unlock(gch.zctLock)
+      unlock(gch.cycleRootsLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -202,15 +204,19 @@ proc prepareDealloc(cell: PCell) =
 
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
-  if isMultiThreaded: Lock(gch.cycleRootsLock)
+  when hasThreadSupport:
+    if isMultiThreaded: Lock(gch.cycleRootsLock)
   incl(gch.cycleRoots, c)
-  if isMultiThreaded: Unlock(gch.cycleRootsLock)
+  when hasThreadSupport:  
+    if isMultiThreaded: Unlock(gch.cycleRootsLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
-  if isMultiThreaded: Lock(gch.zctLock)
+  when hasThreadSupport:
+    if isMultiThreaded: Lock(gch.zctLock)
   addZCT(gch.zct, c)
-  if isMultiThreaded: Unlock(gch.zctLock)
+  when hasThreadSupport:
+    if isMultiThreaded: Unlock(gch.zctLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -480,7 +486,7 @@ proc gcMark(p: pointer) {.inline.} =
       add(gch.decStack, cell)
 
 proc markThreadStacks(gch: var TGcHeap) = 
-  when isMultiThreaded:
+  when hasThreadSupport:
     nil
 
 # ----------------- stack management --------------------------------------

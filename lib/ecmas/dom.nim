@@ -1,14 +1,13 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2006 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 ## Declaration of the Document Object Model for the ECMAScript backend.
-##  (c) 2008 Andreas Rumpf
 
 when not defined(ecmascript):
   {.error: "This module only works on the ECMAScript platform".}
