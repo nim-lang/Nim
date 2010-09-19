@@ -1,25 +1,11 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-
-## Stubs for the GC interface:
-
-proc GC_disable() = nil
-proc GC_enable() = nil
-proc GC_fullCollect() = nil
-proc GC_setStrategy(strategy: TGC_Strategy) = nil
-proc GC_enableMarkAndSweep() = nil
-proc GC_disableMarkAndSweep() = nil
-proc GC_getStatistics(): string = return ""
-
-proc getOccupiedMem(): int = return -1
-proc getFreeMem(): int = return -1
-proc getTotalMem(): int = return -1
 
 proc alert(s: cstring) {.importc, nodecl.}
 
@@ -129,8 +115,6 @@ proc raiseIndexError() {.compilerproc, noreturn.} =
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(EInvalidField, f & " is not accessible")
-
-
 
 proc SetConstr() {.varargs, pure, compilerproc.} =
   asm """
@@ -317,61 +301,58 @@ proc ewriteln(x: cstring) =
   else: 
     raise newException(EInvalidValue, "<body> element does not exist yet!")
 
-proc echo*(x: int) = ewriteln($x)
-proc echo*(x: float) = ewriteln($x)
-proc echo*(x: bool) = ewriteln(if x: cstring("true") else: cstring("false"))
-proc echo*(x: string) = ewriteln(x)
-proc echo*(x: cstring) = ewriteln(x)
-
-proc echo[Ty](x: Ty) =
-  echo(x)
-
-proc echo[Ty](x: openArray[Ty]) =
-  for a in items(x): echo(a)
+proc rawEcho {.compilerproc.} =
+  var node = document.getElementsByTagName("body")[0]
+  if node == nil: raise newException(EIO, "<body> element does not exist yet!")
+  asm """
+    for (var i = 0; i < arguments.length; ++i) {
+      var x = `toEcmaStr`(arguments[i]);
+      `node`.appendChild(document.createTextNode(x))
+    }
+  """
+  node.appendChild(document.createElement("br"))
 
 # Arithmetic:
 proc addInt(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` + `b`;
-    if (result > 2147483647 || result < -2147483648) raiseOverflow();
+    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
 proc subInt(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` - `b`;
-    if (result > 2147483647 || result < -2147483648) raiseOverflow();
+    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
 proc mulInt(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` * `b`;
-    if (result > 2147483647 || result < -2147483648) raiseOverflow();
+    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
     return result;
   """
 
 proc divInt(a, b: int): int {.pure, compilerproc.} =
   asm """
-    if (`b` == 0) raiseDivByZero();
-    if (`b` == -1 && `a` == 2147483647) raiseOverflow();
+    if (`b` == 0) `raiseDivByZero`();
+    if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
     return Math.floor(`a` / `b`);
   """
 
 proc modInt(a, b: int): int {.pure, compilerproc.} =
   asm """
-    if (`b` == 0) raiseDivByZero();
-    if (`b` == -1 && `a` == 2147483647) raiseOverflow();
+    if (`b` == 0) `raiseDivByZero`();
+    if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
     return Math.floor(`a` % `b`);
   """
-
-
 
 proc addInt64(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` + `b`;
     if (result > 9223372036854775807
-    || result < -9223372036854775808) raiseOverflow();
+    || result < -9223372036854775808) `raiseOverflow`();
     return result;
   """
 
@@ -379,7 +360,7 @@ proc subInt64(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` - `b`;
     if (result > 9223372036854775807
-    || result < -9223372036854775808) raiseOverflow();
+    || result < -9223372036854775808) `raiseOverflow`();
     return result;
   """
 
@@ -387,21 +368,21 @@ proc mulInt64(a, b: int): int {.pure, compilerproc.} =
   asm """
     var result = `a` * `b`;
     if (result > 9223372036854775807
-    || result < -9223372036854775808) raiseOverflow();
+    || result < -9223372036854775808) `raiseOverflow`();
     return result;
   """
 
 proc divInt64(a, b: int): int {.pure, compilerproc.} =
   asm """
-    if (`b` == 0) raiseDivByZero();
-    if (`b` == -1 && `a` == 9223372036854775807) raiseOverflow();
+    if (`b` == 0) `raiseDivByZero`();
+    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
     return Math.floor(`a` / `b`);
   """
 
 proc modInt64(a, b: int): int {.pure, compilerproc.} =
   asm """
-    if (`b` == 0) raiseDivByZero();
-    if (`b` == -1 && `a` == 9223372036854775807) raiseOverflow();
+    if (`b` == 0) `raiseDivByZero`();
+    if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
     return Math.floor(`a` % `b`);
   """
 
@@ -415,13 +396,13 @@ proc internalAssert(file: cstring, line: int) {.pure, compilerproc.} =
   asm """`e`.message = "[Assertion failure] file: "+`file`+", line: "+`line`"""
   raise e
 
-include hti
+include "system/hti"
 
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
-  return ti.base.kind notin {tyRecord, tyRecordConstr, tyObject,
+  return ti.base.kind notin {tyObject,
     tyArray, tyArrayConstr, tyPureObject, tyTuple,
-    tyEmptySet, tyOpenArray, tySet, tyVar, tyRef, tyPtr}
+    tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
 proc NimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
 
@@ -452,7 +433,7 @@ proc NimCopy(x: pointer, ti: PNimType): pointer =
         `result`[0] = `x`[0];
         `result`[1] = `x`[1];
       """
-  of tyEmptySet, tySet:
+  of tySet:
     asm """
       `result` = {};
       for (var key in `x`) { `result`[key] = `x`[key]; }

@@ -55,7 +55,7 @@ type
     wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
     wAcyclic, wIndex, 
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
-    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wLazy, 
+    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar
     
@@ -103,7 +103,7 @@ const
     "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
     "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
-    "lazy", "rst2html", "rst2tex", "i", 
+    "js", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
