@@ -27,17 +27,6 @@ proc genLineDir(p: BProc, t: PNode) =
     appf(p.s[cpsStmts], "F.line = $1;F.filename = $2;$n", 
         [toRope(line), makeCString(toFilename(t.info).extractFilename)])
 
-proc popSafePoints(p: BProc, howMany: int) = 
-  for i in countup(1, howMany): 
-    appcg(p, cpsStmts, "#popSafePoint();$n", [])
-
-proc genReturnStmt(p: BProc, t: PNode) = 
-  p.beforeRetNeeded = true
-  genLineDir(p, t)
-  if (t.sons[0] != nil): genStmts(p, t.sons[0])
-  popSafePoints(p, p.nestedTryStmts)
-  appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
-
 proc genVarTuple(p: BProc, n: PNode) = 
   var 
     L: int
@@ -143,6 +132,31 @@ proc genIfStmt(p: BProc, n: PNode) =
     else: internalError(n.info, "genIfStmt()")
   if sonsLen(n) > 1: fixLabel(p, Lend)
   
+proc popSafePoints(p: BProc, howMany: int) = 
+  var L = p.nestedTryStmts.len
+  # danger of endless recursion! we workaround this here, by a temp stack
+  var stack: seq[PNode]
+  newSeq(stack, howMany)
+  for i in countup(1, howMany): 
+    stack[i-1] = p.nestedTryStmts[L-i]
+  setLen(p.nestedTryStmts, L-howMany)
+  
+  for tryStmt in items(stack):
+    appcg(p, cpsStmts, "#popSafePoint();$n", [])
+    var finallyStmt = lastSon(tryStmt)
+    if finallyStmt.kind == nkFinally: 
+      genStmts(p, finallyStmt.sons[0])
+  # push old elements again:
+  for i in countdown(howMany-1, 0): 
+    p.nestedTryStmts.add(stack[i])
+
+proc genReturnStmt(p: BProc, t: PNode) = 
+  p.beforeRetNeeded = true
+  popSafePoints(p, min(1, p.nestedTryStmts.len))
+  genLineDir(p, t)
+  if (t.sons[0] != nil): genStmts(p, t.sons[0])
+  appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
+  
 proc genWhileStmt(p: BProc, t: PNode) = 
   # we don't generate labels here as for example GCC would produce
   # significantly worse code
@@ -157,7 +171,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   length = len(p.blocks)
   setlen(p.blocks, length + 1)
   p.blocks[length].id = - p.labels # negative because it isn't used yet
-  p.blocks[length].nestedTryStmts = p.nestedTryStmts
+  p.blocks[length].nestedTryStmts = p.nestedTryStmts.len
   app(p.s[cpsStmts], "while (1) {" & tnl)
   initLocExpr(p, t.sons[0], a)
   if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0): 
@@ -178,8 +192,8 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
     sym.loc.k = locOther
     sym.loc.a = idx
   setlen(p.blocks, idx + 1)
-  p.blocks[idx].id = - p.labels # negative because it isn't used yet
-  p.blocks[idx].nestedTryStmts = p.nestedTryStmts
+  p.blocks[idx].id = -p.labels # negative because it isn't used yet
+  p.blocks[idx].nestedTryStmts = p.nestedTryStmts.len
   if t.kind == nkBlockExpr: genStmtListExpr(p, t.sons[1], d)
   else: genStmts(p, t.sons[1])
   if p.blocks[idx].id > 0: 
@@ -187,7 +201,6 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
   setlen(p.blocks, idx)
 
 proc genBreakStmt(p: BProc, t: PNode) = 
-  genLineDir(p, t)
   var idx = len(p.blocks) - 1
   if t.sons[0] != nil: 
     # named break?
@@ -196,7 +209,8 @@ proc genBreakStmt(p: BProc, t: PNode) =
     assert(sym.loc.k == locOther)
     idx = sym.loc.a
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  popSafePoints(p, p.nestedTryStmts - p.blocks[idx].nestedTryStmts)
+  popSafePoints(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
+  genLineDir(p, t)
   appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.blocks[idx].id)])
 
 proc genAsmStmt(p: BProc, t: PNode) = 
@@ -286,7 +300,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, labId: int) =
 proc genCaseGeneric(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr) = 
   # generate a C-if statement for a Nimrod case statement
   var a: TLoc
-  initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
+  initLocExpr(p, t.sons[0], a) # fist pass: generate ifs+goto:
   var labId = p.labels
   for i in countup(1, sonsLen(t) - 1): 
     inc(p.labels)
@@ -448,11 +462,10 @@ proc genCaseStmt(p: BProc, t: PNode) =
     genOrdinalCase(p, t)
   
 proc hasGeneralExceptSection(t: PNode): bool = 
-  var length, i, blen: int
-  length = sonsLen(t)
-  i = 1
+  var length = sonsLen(t)
+  var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch): 
-    blen = sonsLen(t.sons[i])
+    var blen = sonsLen(t.sons[i])
     if blen == 1: 
       return true
     inc(i)
@@ -494,7 +507,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
   if optStackTrace in p.Options: 
     app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
   app(p.s[cpsStmts], "try {" & tnl)
-  inc(p.nestedTryStmts)
+  add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   length = sonsLen(t)
   if t.sons[1].kind == nkExceptBranch: 
@@ -520,8 +533,8 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     inc(i)
   if t.sons[1].kind == nkExceptBranch: 
     app(p.s[cpsStmts], "}}" & tnl) # end of catch-switch statement
-  popSafePoints(p, p.nestedTryStmts)
-  dec(p.nestedTryStmts)
+  appcg(p, cpsStmts, "#popSafePoint();")
+  discard pop(p.nestedTryStmts)
   if (i < length) and (t.sons[i].kind == nkFinally): 
     genStmts(p, t.sons[i].sons[0])
   if rethrowFlag != nil: 
@@ -560,7 +573,7 @@ proc genTryStmt(p: BProc, t: PNode) =
     app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
   appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
-  inc(p.nestedTryStmts)
+  add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
   appcg(p, cpsStmts, "#popSafePoint();$n} else {$n#popSafePoint();$n")
   var i = 1
@@ -587,7 +600,7 @@ proc genTryStmt(p: BProc, t: PNode) =
            [safePoint])
     inc(i)
   app(p.s[cpsStmts], '}' & tnl) # end of if statement
-  dec(p.nestedTryStmts)
+  discard pop(p.nestedTryStmts)
   if i < length and t.sons[i].kind == nkFinally: 
     genStmts(p, t.sons[i].sons[0])
   appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])

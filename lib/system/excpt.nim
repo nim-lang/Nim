@@ -61,7 +61,6 @@ proc popCurrentException {.compilerRtl, inl.} =
 
 # some platforms have native support for stack traces:
 const
-  nimrodStackTrace = compileOption("stacktrace")
   nativeStackTrace = (defined(macosx) or defined(linux)) and 
                      not nimrodStackTrace and false
 
