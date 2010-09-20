@@ -13,9 +13,11 @@ try:
     try:
       genErrors("error!")
     except ESomething:
-      echo("Error happened")
-    echo "came here"
+      stdout.write("E")
+    stdout.write("C")
     raise newException(EsomeotherErr, "bla")
 finally:  
   echo "caught"
+
+#OUT ECcaught
 
