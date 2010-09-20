@@ -2,9 +2,14 @@
 
 proc main: int = 
   try:
-    return 1
+    try:
+      return 1
+    finally:
+      stdout.write("came ")
+      return 2
   finally: 
-    echo "came here"
+    stdout.write("here ")
+    return 3
     
-discard main() #OUT came here
+echo main() #OUT came here 1
 

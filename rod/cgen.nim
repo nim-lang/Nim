@@ -59,21 +59,21 @@ type
                               # has been used (i.e. the label should be emitted)
     nestedTryStmts*: int      # how many try statements is it nested into
   
-  TCProc{.final.} = object    # represents C proc that is currently generated
-    s*: TCProcSections        # the procs sections; short name for readability
-    prc*: PSym                # the Nimrod proc that this C proc belongs to
-    BeforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
-    nestedTryStmts*: Natural  # in how many nested try statements we are
-                              # (the vars must be volatile then)
-    labels*: Natural          # for generating unique labels in the C proc
-    blocks*: seq[TBlock]      # nested blocks
-    options*: TOptions        # options that should be used for code
-                              # generation; this is the same as prc.options
-                              # unless prc == nil
-    frameLen*: int            # current length of frame descriptor
-    sendClosure*: PType       # closure record type that we pass
-    receiveClosure*: PType    # closure record type that we get
-    module*: BModule          # used to prevent excessive parameter passing
+  TCProc{.final.} = object   # represents C proc that is currently generated
+    s: TCProcSections        # the procs sections; short name for readability
+    prc: PSym                # the Nimrod proc that this C proc belongs to
+    BeforeRetNeeded: bool    # true iff 'BeforeRet' label for proc is needed
+    nestedTryStmts: seq[PNode] # in how many nested try statements we are
+                               # (the vars must be volatile then)
+    labels: Natural          # for generating unique labels in the C proc
+    blocks: seq[TBlock]      # nested blocks
+    options: TOptions        # options that should be used for code
+                             # generation; this is the same as prc.options
+                             # unless prc == nil
+    frameLen: int            # current length of frame descriptor
+    sendClosure: PType       # closure record type that we pass
+    receiveClosure: PType    # closure record type that we get
+    module: BModule          # used to prevent excessive parameter passing
   
   TTypeSeq = seq[PType]
   TCGen = object of TPassContext # represents a C source file
@@ -158,7 +158,8 @@ proc newProc(prc: PSym, module: BModule): BProc =
   result.module = module
   if prc != nil: result.options = prc.options
   else: result.options = gOptions
-  result.blocks = @ []
+  result.blocks = @[]
+  result.nestedTryStmts = @[]
 
 proc isSimpleConst(typ: PType): bool = 
   result = not (skipTypes(typ, abstractVar).kind in
@@ -373,7 +374,7 @@ proc assignLocalVar(p: BProc, s: PSym) =
   else: 
     app(p.s[cpsLocals], getTypeDesc(p.module, s.loc.t))
     if sfRegister in s.flags: app(p.s[cpsLocals], " register")
-    if (sfVolatile in s.flags) or (p.nestedTryStmts > 0): 
+    if (sfVolatile in s.flags) or (p.nestedTryStmts.len > 0): 
       app(p.s[cpsLocals], " volatile")
     appf(p.s[cpsLocals], " $1;$n", [s.loc.r])
   localDebugInfo(p, s)

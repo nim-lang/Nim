@@ -1232,6 +1232,9 @@ template accumulateResult*(iter: expr) =
   result = @[]
   for x in iter: add(result, x)
 
+# we have to compute this here before turning it off in except.nim anyway ...
+const nimrodStackTrace = compileOption("stacktrace")
+
 {.push checks: off, line_dir: off, debugger: off.}  
 # obviously we cannot generate checking operations here :-)
 # because it would yield into an endless recursion
