@@ -16,6 +16,7 @@ tcgbug.nim;
 tclosure.nim;2 4 6 8 10
 tcnstseq.nim;AngelikaAnneAnnaAnkaAnja
 tconstr2.nim;69
+tcontinuexc.nim;ECcaught
 tcopy.nim;TEMP=C:\Programs\xyz\bin
 tcurrncy.nim;25
 texplicitgeneric1.nim;Key: 12 value: 12Key: 13 value: 13 Key: A value: 12 Key: B value: 13
