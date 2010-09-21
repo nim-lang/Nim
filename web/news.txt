@@ -24,6 +24,7 @@ Bugfixes
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- Reversed parameter order for ``os.copyFile`` and ``os.moveFile``!!!
 - Procs not marked as ``procvar`` cannot only be passed to a procvar anymore,
   unless they are used in the same module.
 - Deprecated ``times.getStartMilsecs``: Use ``epochTime`` or ``cpuTime`` 

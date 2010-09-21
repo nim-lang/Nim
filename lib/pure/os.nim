@@ -620,11 +620,9 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1".} =
   close(a)
   close(b)
 
-proc copyFile*(dest, source: string) {.deprecated, rtl, extern: "nos$1".} =
+proc copyFile*(source, dest: string) {.rtl, extern: "nos$1".} =
   ## Copies a file from `source` to `dest`. If this fails,
   ## `EOS` is raised.
-  ## **Deprecated since version 0.8.8**: Use this proc with named arguments
-  ## only, because the order will change!
   when defined(Windows):
     if CopyFileA(source, dest, 0'i32) == 0'i32: OSError()
   else:
@@ -650,10 +648,8 @@ proc copyFile*(dest, source: string) {.deprecated, rtl, extern: "nos$1".} =
     close(s)
     close(d)
 
-proc moveFile*(dest, source: string) {.deprecated, rtl, extern: "nos$1".} =
+proc moveFile*(source, dest: string) {.rtl, extern: "nos$1".} =
   ## Moves a file from `source` to `dest`. If this fails, `EOS` is raised.
-  ## **Deprecated since version 0.8.8**: Use this proc with named arguments
-  ## only, because the order will change!
   if crename(source, dest) != 0'i32: OSError()
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1".} =
