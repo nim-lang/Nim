@@ -256,7 +256,7 @@ Other
 Wrappers
 ========
 
-The generated HTML for some of these wrappers is so huge, that it is
+The generated HTML for some of these wrappers is so huge that it is
 not contained in the distribution. You can then find them on the website.
 
 Windows specific
@@ -319,6 +319,15 @@ UNIX specific
   Part of the wrapper for X11.
 * `xvlib <xvlib.html>`_
   Part of the wrapper for X11.
+
+
+Regular expressions
+-------------------
+
+* `pcre <pcre.html>`_
+  Wrapper for the PCRE library.
+* `tre <tre.html>`_
+  Wrapper for the TRE library.
 
 
 Graphics libraries

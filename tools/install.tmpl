@@ -7,15 +7,15 @@ if [ $# -eq 1 ] ; then
 # if c.cat[fcUnixBin].len > 0:
   if test -f ?{c.cat[fcUnixBin][0]}
   then 
-    echo "?c.name build detected"
+    echo "?c.displayName build detected"
   else
-    echo "Please build ?c.name before installing it"
+    echo "Please build ?c.displayName before installing it"
     exit 1
   fi
 #  end if
   case $1 in
     "--help"|"-h"|"help"|"h")
-      echo "?c.name installation script"
+      echo "?c.displayName installation script"
       echo "Usage: [sudo] sh install.sh DIR"
       echo "Where DIR may be:"
       echo "  /usr/bin"
@@ -92,7 +92,7 @@ if [ $# -eq 1 ] ; then
   
   echo "installation successful"
 else
-  echo "?c.name installation script"
+  echo "?c.displayName installation script"
   echo "Usage: [sudo] sh install.sh DIR"
   echo "Where DIR may be:"
   echo "  /usr/bin"

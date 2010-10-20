@@ -185,7 +185,7 @@ template gcTrace(cell, state: expr): stmt =
 
 # forward declarations:
 proc collectCT(gch: var TGcHeap)
-proc IsOnStack(p: pointer): bool {.noinline.}
+proc IsOnStack*(p: pointer): bool {.noinline.}
 proc forAllChildren(cell: PCell, op: TWalkOp)
 proc doOperation(p: pointer, op: TWalkOp)
 proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp)
@@ -223,6 +223,7 @@ proc decRef(c: PCell) {.inline.} =
     if c.refcount <% rcIncrement:
       writeCell("broken cell", c)
   assert(c.refcount >=% rcIncrement)
+  #if c.refcount <% rcIncrement: quit("leck mich")
   if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
     rtlAddZCT(c)
   elif canBeCycleRoot(c):
@@ -523,7 +524,7 @@ when defined(sparc): # For SPARC architecture.
     var b = cast[TAddress](stackBottom)
     var a = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
-    result = x >=% a and x <=% b
+    result = a <=% x and x <=% b
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
     when defined(sparcv9):
@@ -553,7 +554,7 @@ elif stackIncreases:
     var a = cast[TAddress](stackBottom)
     var b = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
-    result = x >=% a and x <=% b
+    result = a <=% x and x <=% b
 
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
@@ -580,7 +581,7 @@ else:
     var b = cast[TAddress](stackBottom)
     var a = cast[TAddress](addr(stackTop))
     var x = cast[TAddress](p)
-    result = x >=% a and x <=% b
+    result = a <=% x and x <=% b
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
     # We use a jmp_buf buffer that is in the C stack.

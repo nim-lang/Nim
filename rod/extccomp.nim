@@ -294,7 +294,8 @@ proc addLinkOption(option: string) =
   if find(linkOptions, option, 0) < 0: addOpt(linkOptions, option)
   
 proc toObjFile(filenameWithoutExt: string): string = 
-  result = changeFileExt(filenameWithoutExt, cc[ccompiler].objExt)
+  # BUGFIX: changeFileExt is wrong, use addFileExt!
+  result = addFileExt(filenameWithoutExt, cc[ccompiler].objExt)
 
 proc addFileToCompile(filename: string) = 
   appendStr(toCompile, filename)

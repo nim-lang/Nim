@@ -42,5 +42,5 @@ nr.intVal = 78
 stack.push(nr)
 
 var t = stack.pop()
-
+echo "came here"
 

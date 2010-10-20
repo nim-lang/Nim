@@ -8,7 +8,7 @@ when not defined(expatDll):
       expatDll = "expat.dll"
   elif defined(macosx): 
     const 
-      expatDll = "libexpat.dynlib"
+      expatDll = "libexpat.dylib"
   else: 
     const 
       expatDll = "libexpat.so(.1|)"

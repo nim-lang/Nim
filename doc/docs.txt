@@ -16,6 +16,9 @@ The documentation consists of several documents:
   | The user guide lists command line arguments, special features of the
     compiler, etc.
 
+- | `Tools documentation <tools.html>`_
+  | Description of some tools that come with the standard distribution.
+
 - | `Manual <manual.html>`_
   | The Nimrod manual is a draft that will evolve into a proper specification.
 

@@ -36,7 +36,7 @@ type
   DWORD_PTR* = ptr DWORD
   pHICON* = ptr HICON
   pBool* = ptr BOOL
-  STARTUPINFOW* {.final.} = object      # a guess. Omission should get fixed in Windows.
+  STARTUPINFOW* {.final.} = object # a guess. Omission should get fixed in Windows.
     cb*: DWORD
     lpReserved*: LPTSTR
     lpDesktop*: LPTSTR

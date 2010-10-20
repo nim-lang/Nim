@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(gcc) and defined(windows): 
+  {.link: "icons/koch.res".}
+
 import
   os, strutils, parseopt
 
@@ -29,11 +32,13 @@ Possible Commands:
   web                      generates the website
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
-  inno                     builds the Inno Setup installer
+  inno [options]           builds the Inno Setup installer
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
 """
+  
+proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 proc exec(cmd: string) =
   echo(cmd)
@@ -51,9 +56,15 @@ proc zip(args: string) =
   exec("nimrod cc -r tools/niminst --var:version=$# zip rod/nimrod" %
        NimrodVersion)
   
-proc inno(args: string) = 
-  exec("nimrod cc -r tools/niminst --var:version=$# inno rod/nimrod" %
-       NimrodVersion)
+proc buildTool(toolname, args: string) = 
+  exec("nimrod cc $# $#" % [args, toolname])
+  copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
+
+proc inno(args: string) =
+  # make sure we have generated the c2nim and niminst executables:
+  buildTool("tools/niminst", args)
+  buildTool("rod/c2nim/c2nim", args)
+  exec("tools/niminst --var:version=$# inno rod/nimrod" % NimrodVersion)
 
 proc install(args: string) = 
   exec("sh ./build.sh")
@@ -61,8 +72,6 @@ proc install(args: string) =
 proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
-  
-proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 # -------------- nim ----------------------------------------------------------
 

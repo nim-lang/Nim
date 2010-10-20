@@ -1,8 +1,8 @@
 Discuss Nimrod in our `forum <http://force7.de/heimdall>`_. 
 
-We also have a `Wiki <http://force7.de/niwiki>`_.
+Visit our project page at GitHub: http://github.com/Araq/Nimrod.
 
-Visit our project page at Launchpad: https://launchpad.net/nimrod.
+Wiki: http://github.com/Araq/Nimrod/wiki.
 
-Bug reports: https://bugs.launchpad.net/nimrod.
+Bug reports: http://github.com/Araq/Nimrod/issues.
 

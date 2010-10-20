@@ -2,16 +2,16 @@
 # which is based on the PCRE library
 
 import
-  regexprs
+  re
 
-if "keyA = valueA" =~ r"\s*(\w+)\s*\=\s*(\w+)":
-  write(stdout, "key: ", matches[1])
-elif "# comment!" =~ r"\s*(\#.*)":
-  echo("comment: ", matches[1])
+if "keyA = valueA" =~ re"\s*(\w+)\s*\=\s*(\w+)":
+  write(stdout, "key: ", matches[0])
+elif "# comment!" =~ re"\s*(\#.*)":
+  echo("comment: ", matches[0])
 else: 
   echo("Bug!")
 
-if "Username".match("[A-Za-z]+"):
+if "Username".match(re"[A-Za-z]+"):
   echo("Yes!")
 else:
   echo("Bug!")

@@ -49,7 +49,7 @@ type
     binPaths, authors, oses, cpus: seq[string]
     cfiles: array[1..maxOS, array[1..maxCPU, seq[string]]]
     ccompiler, innosetup: tuple[path, flags: string]
-    name, version, description, license, infile, outdir: string
+    name, displayName, version, description, license, infile, outdir: string
     innoSetupFlag, installScript, uninstallScript: bool
     vars: PStringTable
     app: TAppType
@@ -70,6 +70,7 @@ proc initConfigData(c: var TConfigData) =
   c.ccompiler = ("", "")
   c.innosetup = ("", "")
   c.name = ""
+  c.displayName = ""
   c.version = ""
   c.description = ""
   c.license = ""
@@ -98,7 +99,7 @@ include "deinstall.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  Version = "0.8"
+  Version = "0.9"
   Usage = "niminst - Nimrod Installation Generator Version " & version & """
 
   (c) 2010 Andreas Rumpf
@@ -209,6 +210,7 @@ proc parseIniFile(c: var TConfigData) =
         of "project":
           case normalize(k.key)
           of "name": c.name = v
+          of "displayname": c.displayName = v
           of "version": c.version = v
           of "os": c.oses = split(v, {';'})
           of "cpu": c.cpus = split(v, {';'})
@@ -249,6 +251,7 @@ proc parseIniFile(c: var TConfigData) =
       of cfgError: quit(errorStr(p, k.msg))
     close(p)
     if c.name.len == 0: c.name = changeFileExt(extractFilename(c.infile), "")
+    if c.displayName.len == 0: c.displayName = c.name
   else:
     quit("cannot open: " & c.infile)
 
@@ -363,6 +366,7 @@ when haveZipLib:
     else: n = c.outdir / n
     var z: TZipArchive
     if open(z, n, fmWrite):
+      addFile(z, proj / buildBatFile, buildBatFile)
       addFile(z, proj / buildShFile, buildShFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)

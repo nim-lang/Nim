@@ -11,5 +11,5 @@ proc main: int =
     stdout.write("here ")
     return 3
     
-echo main() #OUT came here 1
+echo main() #OUT came here 3
 

@@ -15,14 +15,14 @@ Index
 
    `$`:idx:
      * `sockets.html#111 <sockets.html#111>`_
-     * `system.html#428 <system.html#428>`_
-     * `system.html#429 <system.html#429>`_
      * `system.html#430 <system.html#430>`_
      * `system.html#431 <system.html#431>`_
      * `system.html#432 <system.html#432>`_
      * `system.html#433 <system.html#433>`_
      * `system.html#434 <system.html#434>`_
      * `system.html#435 <system.html#435>`_
+     * `system.html#436 <system.html#436>`_
+     * `system.html#437 <system.html#437>`_
      * `times.html#109 <times.html#109>`_
      * `times.html#110 <times.html#110>`_
      * `pegs.html#136 <pegs.html#136>`_
@@ -233,25 +233,25 @@ Index
      * `colors.html#102 <colors.html#102>`_
 
    `=~`:idx:
+     `re.html#113 <re.html#113>`_
+
+   `=~`:idx:
      `regexprs.html#111 <regexprs.html#111>`_
 
    `=~`:idx:
      `pegs.html#143 <pegs.html#143>`_
 
-   `=~`:idx:
-     `re.html#115 <re.html#115>`_
-
    `>`:idx:
      `system.html#355 <system.html#355>`_
 
    `>%`:idx:
-     `system.html#427 <system.html#427>`_
+     `system.html#429 <system.html#429>`_
 
    `>=`:idx:
      `system.html#354 <system.html#354>`_
 
    `>=%`:idx:
-     `system.html#426 <system.html#426>`_
+     `system.html#428 <system.html#428>`_
 
    `?`:idx:
      `pegs.html#111 <pegs.html#111>`_
@@ -267,19 +267,19 @@ Index
      `graphics.html#114 <graphics.html#114>`_
 
    `[]`:idx:
-     `macros.html#112 <macros.html#112>`_
+     `ropes.html#115 <ropes.html#115>`_
 
    `[]`:idx:
      `strtabs.html#107 <strtabs.html#107>`_
+
+   `[]`:idx:
+     `macros.html#112 <macros.html#112>`_
 
    `[]`:idx:
      `xmltree.html#114 <xmltree.html#114>`_
 
    `[]`:idx:
      `graphics.html#111 <graphics.html#111>`_
-
-   `[]`:idx:
-     `ropes.html#115 <ropes.html#115>`_
 
    `[]=`:idx:
      `strtabs.html#109 <strtabs.html#109>`_
@@ -320,8 +320,8 @@ Index
    `add`:idx:
      * `system.html#371 <system.html#371>`_
      * `system.html#372 <system.html#372>`_
-     * `system.html#385 <system.html#385>`_
-     * `system.html#386 <system.html#386>`_
+     * `system.html#387 <system.html#387>`_
+     * `system.html#388 <system.html#388>`_
      * `system.html#496 <system.html#496>`_
      * `parsesql.html#108 <parsesql.html#108>`_
      * `macros.html#119 <macros.html#119>`_
@@ -347,7 +347,7 @@ Index
      `os.html#135 <os.html#135>`_
 
    `addQuitProc`:idx:
-     `system.html#412 <system.html#412>`_
+     `system.html#414 <system.html#414>`_
 
    `address`:idx:
      `xmlgen.html#109 <xmlgen.html#109>`_
@@ -362,10 +362,10 @@ Index
      `strutils.html#139 <strutils.html#139>`_
 
    `alloc`:idx:
-     `system.html#419 <system.html#419>`_
+     `system.html#421 <system.html#421>`_
 
    `alloc0`:idx:
-     `system.html#420 <system.html#420>`_
+     `system.html#422 <system.html#422>`_
 
    `ALLOC_MAX_BLOCK_TO_DROP`:idx:
      `mysql.html#317 <mysql.html#317>`_
@@ -440,10 +440,16 @@ Index
      `manual.html#205 <manual.html#205>`_
 
    `assert`:idx:
-     `system.html#424 <system.html#424>`_
+     `system.html#426 <system.html#426>`_
 
    `AST`:idx:
      `macros.html#101 <macros.html#101>`_
+
+   `atomicDec`:idx:
+     `system.html#505 <system.html#505>`_
+
+   `atomicInc`:idx:
+     `system.html#504 <system.html#504>`_
 
    `attr`:idx:
      `xmltree.html#116 <xmltree.html#116>`_
@@ -484,8 +490,8 @@ Index
 
    `backslash`:idx:
      * `regexprs.html#101 <regexprs.html#101>`_
-     * `manual.html#127 <manual.html#127>`_
      * `re.html#101 <re.html#101>`_
+     * `manual.html#127 <manual.html#127>`_
 
    `backspace`:idx:
      `manual.html#132 <manual.html#132>`_
@@ -500,10 +506,10 @@ Index
      `xmlgen.html#113 <xmlgen.html#113>`_
 
    `BiggestFloat`:idx:
-     `system.html#393 <system.html#393>`_
+     `system.html#395 <system.html#395>`_
 
    `BiggestInt`:idx:
-     `system.html#392 <system.html#392>`_
+     `system.html#394 <system.html#394>`_
 
    `BINARY_FLAG`:idx:
      `mysql.html#131 <mysql.html#131>`_
@@ -579,7 +585,7 @@ Index
      `manual.html#190 <manual.html#190>`_
 
    `cchar`:idx:
-     `system.html#394 <system.html#394>`_
+     `system.html#396 <system.html#396>`_
 
    `CDataSectionNode`:idx:
      `xmldom.html#120 <xmldom.html#120>`_
@@ -588,10 +594,10 @@ Index
      `manual.html#172 <manual.html#172>`_
 
    `cdouble`:idx:
-     `system.html#401 <system.html#401>`_
+     `system.html#403 <system.html#403>`_
 
    `cfloat`:idx:
-     `system.html#400 <system.html#400>`_
+     `system.html#402 <system.html#402>`_
 
    `cgiError`:idx:
      `cgi.html#106 <cgi.html#106>`_
@@ -642,7 +648,7 @@ Index
      `system.html#183 <system.html#183>`_
 
    `cint`:idx:
-     `system.html#397 <system.html#397>`_
+     `system.html#399 <system.html#399>`_
 
    `cite`:idx:
      `xmlgen.html#119 <xmlgen.html#119>`_
@@ -726,13 +732,19 @@ Index
      `xmldom.html#166 <xmldom.html#166>`_
 
    `clong`:idx:
-     `system.html#398 <system.html#398>`_
+     `system.html#400 <system.html#400>`_
 
    `clongdouble`:idx:
-     `system.html#402 <system.html#402>`_
+     `system.html#404 <system.html#404>`_
 
    `clonglong`:idx:
-     `system.html#399 <system.html#399>`_
+     `system.html#401 <system.html#401>`_
+
+   `Close`:idx:
+     * `system.html#515 <system.html#515>`_
+     * `db_postgres.html#117 <db_postgres.html#117>`_
+     * `db_mysql.html#117 <db_mysql.html#117>`_
+     * `db_sqlite.html#117 <db_sqlite.html#117>`_
 
    `close`:idx:
      * `sockets.html#121 <sockets.html#121>`_
@@ -742,12 +754,7 @@ Index
      * `parsecsv.html#109 <parsecsv.html#109>`_
      * `zipfiles.html#103 <zipfiles.html#103>`_
      * `httpserver.html#106 <httpserver.html#106>`_
-
-   `Close`:idx:
-     * `system.html#513 <system.html#513>`_
-     * `db_postgres.html#117 <db_postgres.html#117>`_
-     * `db_mysql.html#117 <db_mysql.html#117>`_
-     * `db_sqlite.html#117 <db_sqlite.html#117>`_
+     * `json.html#106 <json.html#106>`_
 
    `closure`:idx:
      `manual.html#177 <manual.html#177>`_
@@ -1223,6 +1230,10 @@ Index
    `CompileDate`:idx:
      `system.html#375 <system.html#375>`_
 
+   `compileOption`:idx:
+     * `system.html#385 <system.html#385>`_
+     * `system.html#386 <system.html#386>`_
+
    `compileTime`:idx:
      `manual.html#236 <manual.html#236>`_
 
@@ -1246,13 +1257,13 @@ Index
      * `tut1.html#104 <tut1.html#104>`_
 
    `contains`:idx:
+     * `re.html#114 <re.html#114>`_
+     * `re.html#115 <re.html#115>`_
      * `system.html#356 <system.html#356>`_
      * `system.html#476 <system.html#476>`_
      * `strutils.html#146 <strutils.html#146>`_
      * `strutils.html#147 <strutils.html#147>`_
      * `strutils.html#148 <strutils.html#148>`_
-     * `re.html#116 <re.html#116>`_
-     * `re.html#117 <re.html#117>`_
      * `pegs.html#144 <pegs.html#144>`_
      * `pegs.html#145 <pegs.html#145>`_
 
@@ -1260,14 +1271,14 @@ Index
      `manual.html#204 <manual.html#204>`_
 
    `copy`:idx:
-     * `system.html#413 <system.html#413>`_
-     * `system.html#414 <system.html#414>`_
+     * `system.html#415 <system.html#415>`_
+     * `system.html#416 <system.html#416>`_
 
    `copyFile`:idx:
      `os.html#140 <os.html#140>`_
 
    `copyMem`:idx:
-     `system.html#416 <system.html#416>`_
+     `system.html#418 <system.html#418>`_
 
    `copyNimNode`:idx:
      `macros.html#136 <macros.html#136>`_
@@ -1341,20 +1352,20 @@ Index
      `xmldom.html#149 <xmldom.html#149>`_
 
    `cschar`:idx:
-     `system.html#395 <system.html#395>`_
+     `system.html#397 <system.html#397>`_
 
    `cshort`:idx:
-     `system.html#396 <system.html#396>`_
+     `system.html#398 <system.html#398>`_
 
    `cstring`:idx:
      `system.html#112 <system.html#112>`_
 
    `cstringArray`:idx:
-     `system.html#403 <system.html#403>`_
+     `system.html#405 <system.html#405>`_
 
    `cstringArrayToSeq`:idx:
-     * `system.html#540 <system.html#540>`_
-     * `system.html#541 <system.html#541>`_
+     * `system.html#542 <system.html#542>`_
+     * `system.html#543 <system.html#543>`_
 
    `CSV`:idx:
      `parsecsv.html#101 <parsecsv.html#101>`_
@@ -1749,7 +1760,7 @@ Index
      `manual.html#247 <manual.html#247>`_
 
    `dealloc`:idx:
-     `system.html#422 <system.html#422>`_
+     `system.html#424 <system.html#424>`_
 
    `debugger`:idx:
      `nimrodc.html#106 <nimrodc.html#106>`_
@@ -1771,12 +1782,12 @@ Index
      `system.html#119 <system.html#119>`_
 
    `del`:idx:
-     * `system.html#387 <system.html#387>`_
+     * `system.html#389 <system.html#389>`_
      * `xmlgen.html#124 <xmlgen.html#124>`_
      * `macros.html#121 <macros.html#121>`_
 
    `delete`:idx:
-     * `system.html#388 <system.html#388>`_
+     * `system.html#390 <system.html#390>`_
      * `strutils.html#151 <strutils.html#151>`_
 
    `dfn`:idx:
@@ -1847,6 +1858,9 @@ Index
 
    `dt`:idx:
      `xmlgen.html#128 <xmlgen.html#128>`_
+
+   `duff's device`:idx:
+     `c2nim.html#101 <c2nim.html#101>`_
 
    `dynamic type`:idx:
      `manual.html#104 <manual.html#104>`_
@@ -1978,7 +1992,7 @@ Index
 
    `EInvalidRegEx`:idx:
      * `regexprs.html#104 <regexprs.html#104>`_
-     * `re.html#107 <re.html#107>`_
+     * `re.html#105 <re.html#105>`_
 
    `EInvalidSql`:idx:
      `parsesql.html#103 <parsesql.html#103>`_
@@ -2020,12 +2034,12 @@ Index
      `endb.html#102 <endb.html#102>`_
 
    `EndOfFile`:idx:
-     * `system.html#514 <system.html#514>`_
+     * `system.html#516 <system.html#516>`_
      * `lexbase.html#101 <lexbase.html#101>`_
 
    `endsWith`:idx:
+     * `re.html#117 <re.html#117>`_
      * `strutils.html#137 <strutils.html#137>`_
-     * `re.html#119 <re.html#119>`_
      * `pegs.html#147 <pegs.html#147>`_
 
    `ENoDataAllowedErr`:idx:
@@ -2100,7 +2114,7 @@ Index
      `times.html#115 <times.html#115>`_
 
    `equalMem`:idx:
-     `system.html#418 <system.html#418>`_
+     `system.html#420 <system.html#420>`_
 
    `equalsFile`:idx:
      * `ropes.html#122 <ropes.html#122>`_
@@ -2123,9 +2137,11 @@ Index
    `errorMsg`:idx:
      * `parsexml.html#120 <parsexml.html#120>`_
      * `parsexml.html#122 <parsexml.html#122>`_
+     * `json.html#113 <json.html#113>`_
 
    `errorMsgExpected`:idx:
-     `parsexml.html#121 <parsexml.html#121>`_
+     * `parsexml.html#121 <parsexml.html#121>`_
+     * `json.html#114 <json.html#114>`_
 
    `errorStr`:idx:
      `parsecfg.html#109 <parsecfg.html#109>`_
@@ -2145,7 +2161,7 @@ Index
      `pegs.html#156 <pegs.html#156>`_
 
    `escapeRe`:idx:
-     `re.html#125 <re.html#125>`_
+     `re.html#123 <re.html#123>`_
 
    `EStackOverflow`:idx:
      `system.html#157 <system.html#157>`_
@@ -2376,7 +2392,7 @@ Index
      `mysql.html#218 <mysql.html#218>`_
 
    `fileHandle`:idx:
-     `system.html#539 <system.html#539>`_
+     `system.html#541 <system.html#541>`_
 
    `fileNewer`:idx:
      `os.html#117 <os.html#117>`_
@@ -2405,12 +2421,12 @@ Index
    `find`:idx:
      * `regexprs.html#109 <regexprs.html#109>`_
      * `regexprs.html#110 <regexprs.html#110>`_
+     * `re.html#111 <re.html#111>`_
+     * `re.html#112 <re.html#112>`_
      * `system.html#475 <system.html#475>`_
      * `strutils.html#142 <strutils.html#142>`_
      * `strutils.html#143 <strutils.html#143>`_
      * `strutils.html#144 <strutils.html#144>`_
-     * `re.html#113 <re.html#113>`_
-     * `re.html#114 <re.html#114>`_
      * `pegs.html#141 <pegs.html#141>`_
      * `pegs.html#142 <pegs.html#142>`_
 
@@ -2436,7 +2452,7 @@ Index
      `macros.html#130 <macros.html#130>`_
 
    `FlushFile`:idx:
-     `system.html#516 <system.html#516>`_
+     `system.html#518 <system.html#518>`_
 
    `for`:idx:
      * `manual.html#214 <manual.html#214>`_
@@ -2499,8 +2515,7 @@ Index
      `manual.html#136 <manual.html#136>`_
 
    `generic character types`:idx:
-     * `regexprs.html#102 <regexprs.html#102>`_
-     * `re.html#102 <re.html#102>`_
+     `regexprs.html#102 <regexprs.html#102>`_
 
    `Generics`:idx:
      * `manual.html#218 <manual.html#218>`_
@@ -2541,6 +2556,7 @@ Index
    `getColumn`:idx:
      * `parsecfg.html#106 <parsecfg.html#106>`_
      * `parsexml.html#117 <parsexml.html#117>`_
+     * `json.html#110 <json.html#110>`_
 
    `getConfigDir`:idx:
      `os.html#165 <os.html#165>`_
@@ -2564,10 +2580,10 @@ Index
      `os.html#118 <os.html#118>`_
 
    `getCurrentException`:idx:
-     `system.html#438 <system.html#438>`_
+     `system.html#544 <system.html#544>`_
 
    `getCurrentExceptionMsg`:idx:
-     `system.html#437 <system.html#437>`_
+     `system.html#545 <system.html#545>`_
 
    `getCurrentLine`:idx:
      `lexbase.html#106 <lexbase.html#106>`_
@@ -2595,15 +2611,16 @@ Index
    `getFilename`:idx:
      * `parsecfg.html#108 <parsecfg.html#108>`_
      * `parsexml.html#119 <parsexml.html#119>`_
+     * `json.html#112 <json.html#112>`_
 
    `getFilePermissions`:idx:
      `os.html#160 <os.html#160>`_
 
    `getFilePos`:idx:
-     `system.html#536 <system.html#536>`_
+     `system.html#538 <system.html#538>`_
 
    `getFileSize`:idx:
-     * `system.html#528 <system.html#528>`_
+     * `system.html#530 <system.html#530>`_
      * `os.html#171 <os.html#171>`_
 
    `getFreeMem`:idx:
@@ -2657,6 +2674,7 @@ Index
    `getLine`:idx:
      * `parsecfg.html#107 <parsecfg.html#107>`_
      * `parsexml.html#118 <parsexml.html#118>`_
+     * `json.html#111 <json.html#111>`_
 
    `getLocalTime`:idx:
      `times.html#106 <times.html#106>`_
@@ -2688,7 +2706,7 @@ Index
      `cgi.html#126 <cgi.html#126>`_
 
    `getRefcount`:idx:
-     `system.html#436 <system.html#436>`_
+     `system.html#438 <system.html#438>`_
 
    `getRemoteAddr`:idx:
      `cgi.html#127 <cgi.html#127>`_
@@ -2875,12 +2893,12 @@ Index
    `hr`:idx:
      `xmlgen.html#140 <xmlgen.html#140>`_
 
+   `html`:idx:
+     `xmlgen.html#139 <xmlgen.html#139>`_
+
    `HTML`:idx:
      * `parsexml.html#102 <parsexml.html#102>`_
      * `xmlgen.html#102 <xmlgen.html#102>`_
-
-   `html`:idx:
-     `xmlgen.html#139 <xmlgen.html#139>`_
 
    `htmlTag`:idx:
      * `htmlparser.html#105 <htmlparser.html#105>`_
@@ -2935,11 +2953,11 @@ Index
    `Identifiers`:idx:
      `manual.html#116 <manual.html#116>`_
 
-   `identStartChars`:idx:
-     `pegs.html#133 <pegs.html#133>`_
-
    `IdentStartChars`:idx:
      `strutils.html#107 <strutils.html#107>`_
+
+   `identStartChars`:idx:
+     `pegs.html#133 <pegs.html#133>`_
 
    `if`:idx:
      `manual.html#189 <manual.html#189>`_
@@ -3016,7 +3034,7 @@ Index
      `xmlgen.html#144 <xmlgen.html#144>`_
 
    `insert`:idx:
-     `system.html#389 <system.html#389>`_
+     `system.html#391 <system.html#391>`_
 
    `insertBefore`:idx:
      `xmldom.html#169 <xmldom.html#169>`_
@@ -3148,6 +3166,9 @@ Index
      * `os.html#120 <os.html#120>`_
      * `os.html#121 <os.html#121>`_
 
+   `JSON`:idx:
+     `json.html#101 <json.html#101>`_
+
    `kbd`:idx:
      `xmlgen.html#145 <xmlgen.html#145>`_
 
@@ -3158,6 +3179,7 @@ Index
      * `parsexml.html#110 <parsexml.html#110>`_
      * `macros.html#122 <macros.html#122>`_
      * `xmltree.html#113 <xmltree.html#113>`_
+     * `json.html#109 <json.html#109>`_
 
    `l-values`:idx:
      `manual.html#107 <manual.html#107>`_
@@ -3186,11 +3208,11 @@ Index
      * `ropes.html#103 <ropes.html#103>`_
      * `xmltree.html#112 <xmltree.html#112>`_
 
-   `letters`:idx:
-     `pegs.html#129 <pegs.html#129>`_
-
    `Letters`:idx:
      `strutils.html#103 <strutils.html#103>`_
+
+   `letters`:idx:
+     `pegs.html#129 <pegs.html#129>`_
 
    `li`:idx:
      `xmlgen.html#148 <xmlgen.html#148>`_
@@ -3210,6 +3232,9 @@ Index
    `LIBCURL_VERSION_PATCH`:idx:
      `libcurl.html#276 <libcurl.html#276>`_
 
+   `likely`:idx:
+     `system.html#546 <system.html#546>`_
+
    `line feed`:idx:
      `manual.html#123 <manual.html#123>`_
 
@@ -3217,8 +3242,8 @@ Index
      `nimrodc.html#103 <nimrodc.html#103>`_
 
    `lines`:idx:
-     * `system.html#537 <system.html#537>`_
-     * `system.html#538 <system.html#538>`_
+     * `system.html#539 <system.html#539>`_
+     * `system.html#540 <system.html#540>`_
 
    `lineTrace`:idx:
      `nimrodc.html#105 <nimrodc.html#105>`_
@@ -3318,15 +3343,15 @@ Index
    `match`:idx:
      * `regexprs.html#106 <regexprs.html#106>`_
      * `regexprs.html#107 <regexprs.html#107>`_
-     * `re.html#109 <re.html#109>`_
-     * `re.html#110 <re.html#110>`_
+     * `re.html#107 <re.html#107>`_
+     * `re.html#108 <re.html#108>`_
      * `pegs.html#137 <pegs.html#137>`_
      * `pegs.html#138 <pegs.html#138>`_
 
    `matchLen`:idx:
      * `regexprs.html#108 <regexprs.html#108>`_
-     * `re.html#111 <re.html#111>`_
-     * `re.html#112 <re.html#112>`_
+     * `re.html#109 <re.html#109>`_
+     * `re.html#110 <re.html#110>`_
      * `pegs.html#139 <pegs.html#139>`_
      * `pegs.html#140 <pegs.html#140>`_
 
@@ -3365,7 +3390,7 @@ Index
 
    `MaxSubpatterns`:idx:
      * `regexprs.html#105 <regexprs.html#105>`_
-     * `re.html#104 <re.html#104>`_
+     * `re.html#102 <re.html#102>`_
      * `pegs.html#101 <pegs.html#101>`_
 
    `MAX_TINYINT_WIDTH`:idx:
@@ -3431,7 +3456,7 @@ Index
      `os.html#141 <os.html#141>`_
 
    `moveMem`:idx:
-     `system.html#417 <system.html#417>`_
+     `system.html#419 <system.html#419>`_
 
    `multi-methods`:idx:
      `tut2.html#104 <tut2.html#104>`_
@@ -3974,11 +3999,11 @@ Index
    `nan`:idx:
      `system.html#441 <system.html#441>`_
 
-   `natural`:idx:
-     `pegs.html#135 <pegs.html#135>`_
-
    `Natural`:idx:
      `system.html#134 <system.html#134>`_
+
+   `natural`:idx:
+     `pegs.html#135 <pegs.html#135>`_
 
    `neginf`:idx:
      `system.html#440 <system.html#440>`_
@@ -4111,6 +4136,7 @@ Index
      * `parsecfg.html#110 <parsecfg.html#110>`_
      * `parsexml.html#123 <parsexml.html#123>`_
      * `httpserver.html#105 <httpserver.html#105>`_
+     * `json.html#115 <json.html#115>`_
 
    `nextPowerOfTwo`:idx:
      `math.html#108 <math.html#108>`_
@@ -4187,6 +4213,9 @@ Index
    `NULL_LENGTH`:idx:
      `mysql.html#289 <mysql.html#289>`_
 
+   `number`:idx:
+     `json.html#108 <json.html#108>`_
+
    `Numerical constants`:idx:
      `manual.html#137 <manual.html#137>`_
 
@@ -4207,8 +4236,8 @@ Index
      `mysql.html#189 <mysql.html#189>`_
 
    `Open`:idx:
-     * `system.html#510 <system.html#510>`_
-     * `system.html#511 <system.html#511>`_
+     * `system.html#512 <system.html#512>`_
+     * `system.html#513 <system.html#513>`_
      * `db_postgres.html#118 <db_postgres.html#118>`_
      * `db_mysql.html#118 <db_mysql.html#118>`_
      * `db_sqlite.html#118 <db_sqlite.html#118>`_
@@ -4220,6 +4249,7 @@ Index
      * `parsecsv.html#106 <parsecsv.html#106>`_
      * `zipfiles.html#102 <zipfiles.html#102>`_
      * `httpserver.html#103 <httpserver.html#103>`_
+     * `json.html#105 <json.html#105>`_
 
    `openarray`:idx:
      * `tut1.html#119 <tut1.html#119>`_
@@ -4251,11 +4281,11 @@ Index
    `ord`:idx:
      `system.html#182 <system.html#182>`_
 
-   `Ordinal`:idx:
-     `system.html#114 <system.html#114>`_
-
    `ordinal`:idx:
      `tut1.html#114 <tut1.html#114>`_
+
+   `Ordinal`:idx:
+     `system.html#114 <system.html#114>`_
 
    `Ordinal types`:idx:
      `manual.html#142 <manual.html#142>`_
@@ -4282,7 +4312,7 @@ Index
      `strtabs.html#105 <strtabs.html#105>`_
 
    `parallelReplace`:idx:
-     * `re.html#121 <re.html#121>`_
+     * `re.html#119 <re.html#119>`_
      * `pegs.html#149 <pegs.html#149>`_
 
    `param`:idx:
@@ -4318,11 +4348,11 @@ Index
    `parseColor`:idx:
      `colors.html#249 <colors.html#249>`_
 
-   `ParseFloat`:idx:
-     `strutils.html#133 <strutils.html#133>`_
-
    `parseFloat`:idx:
      `parseutils.html#111 <parseutils.html#111>`_
+
+   `ParseFloat`:idx:
+     `strutils.html#133 <strutils.html#133>`_
 
    `parseHex`:idx:
      `parseutils.html#101 <parseutils.html#101>`_
@@ -4522,10 +4552,10 @@ Index
      `streams.html#118 <streams.html#118>`_
 
    `PFloat32`:idx:
-     `system.html#404 <system.html#404>`_
+     `system.html#406 <system.html#406>`_
 
    `PFloat64`:idx:
-     `system.html#405 <system.html#405>`_
+     `system.html#407 <system.html#407>`_
 
    `PFont`:idx:
      `graphics.html#105 <graphics.html#105>`_
@@ -4540,10 +4570,10 @@ Index
      `parsexml.html#115 <parsexml.html#115>`_
 
    `PInt32`:idx:
-     `system.html#407 <system.html#407>`_
+     `system.html#409 <system.html#409>`_
 
    `PInt64`:idx:
-     `system.html#406 <system.html#406>`_
+     `system.html#408 <system.html#408>`_
 
    `PIRest`:idx:
      `parsexml.html#116 <parsexml.html#116>`_
@@ -4719,7 +4749,7 @@ Index
      `manual.html#235 <manual.html#235>`_
 
    `programming by contracts`:idx:
-     `system.html#423 <system.html#423>`_
+     `system.html#425 <system.html#425>`_
 
    `PRope`:idx:
      `ropes.html#102 <ropes.html#102>`_
@@ -4876,7 +4906,7 @@ Index
      `system.html#128 <system.html#128>`_
 
    `re`:idx:
-     `re.html#108 <re.html#108>`_
+     `re.html#106 <re.html#106>`_
 
    `re-raised`:idx:
      `manual.html#192 <manual.html#192>`_
@@ -4885,23 +4915,23 @@ Index
      `streams.html#106 <streams.html#106>`_
 
    `readBuffer`:idx:
-     `system.html#531 <system.html#531>`_
+     `system.html#533 <system.html#533>`_
 
    `ReadBytes`:idx:
-     `system.html#529 <system.html#529>`_
+     `system.html#531 <system.html#531>`_
 
    `readChar`:idx:
-     * `system.html#515 <system.html#515>`_
+     * `system.html#517 <system.html#517>`_
      * `streams.html#105 <streams.html#105>`_
 
    `ReadChars`:idx:
-     `system.html#530 <system.html#530>`_
+     `system.html#532 <system.html#532>`_
 
    `readData`:idx:
      `cgi.html#109 <cgi.html#109>`_
 
    `readFile`:idx:
-     `system.html#517 <system.html#517>`_
+     `system.html#519 <system.html#519>`_
 
    `readFloat32`:idx:
      `streams.html#111 <streams.html#111>`_
@@ -4922,7 +4952,7 @@ Index
      `streams.html#107 <streams.html#107>`_
 
    `readLine`:idx:
-     * `system.html#525 <system.html#525>`_
+     * `system.html#527 <system.html#527>`_
      * `streams.html#114 <streams.html#114>`_
 
    `readRow`:idx:
@@ -4932,11 +4962,11 @@ Index
      `streams.html#113 <streams.html#113>`_
 
    `realloc`:idx:
-     `system.html#421 <system.html#421>`_
+     `system.html#423 <system.html#423>`_
 
    `reBinary`:idx:
      * `regexprs.html#116 <regexprs.html#116>`_
-     * `re.html#130 <re.html#130>`_
+     * `re.html#128 <re.html#128>`_
 
    `Recursive module dependencies`:idx:
      `manual.html#228 <manual.html#228>`_
@@ -4950,11 +4980,11 @@ Index
 
    `reEmail`:idx:
      * `regexprs.html#119 <regexprs.html#119>`_
-     * `re.html#133 <re.html#133>`_
+     * `re.html#131 <re.html#131>`_
 
    `reFloat`:idx:
      * `regexprs.html#118 <regexprs.html#118>`_
-     * `re.html#132 <re.html#132>`_
+     * `re.html#130 <re.html#130>`_
 
    `REFRESH_DES_KEY_FILE`:idx:
      `mysql.html#154 <mysql.html#154>`_
@@ -5003,15 +5033,15 @@ Index
 
    `reHex`:idx:
      * `regexprs.html#115 <regexprs.html#115>`_
-     * `re.html#129 <re.html#129>`_
+     * `re.html#127 <re.html#127>`_
 
    `reIdentifier`:idx:
      * `regexprs.html#112 <regexprs.html#112>`_
-     * `re.html#126 <re.html#126>`_
+     * `re.html#124 <re.html#124>`_
 
    `reInteger`:idx:
      * `regexprs.html#114 <regexprs.html#114>`_
-     * `re.html#128 <re.html#128>`_
+     * `re.html#126 <re.html#126>`_
 
    `removeAttribute`:idx:
      `xmldom.html#197 <xmldom.html#197>`_
@@ -5039,32 +5069,32 @@ Index
 
    `reNatural`:idx:
      * `regexprs.html#113 <regexprs.html#113>`_
-     * `re.html#127 <re.html#127>`_
+     * `re.html#125 <re.html#125>`_
 
    `renderSQL`:idx:
      `parsesql.html#110 <parsesql.html#110>`_
 
    `reOctal`:idx:
      * `regexprs.html#117 <regexprs.html#117>`_
-     * `re.html#131 <re.html#131>`_
+     * `re.html#129 <re.html#129>`_
 
    `reopen`:idx:
-     `system.html#512 <system.html#512>`_
+     `system.html#514 <system.html#514>`_
 
    `repeatChar`:idx:
      `strutils.html#135 <strutils.html#135>`_
 
    `replace`:idx:
+     * `re.html#118 <re.html#118>`_
      * `strutils.html#149 <strutils.html#149>`_
      * `strutils.html#150 <strutils.html#150>`_
-     * `re.html#120 <re.html#120>`_
      * `pegs.html#148 <pegs.html#148>`_
 
    `replaceChild`:idx:
      `xmldom.html#173 <xmldom.html#173>`_
 
    `repr`:idx:
-     `system.html#390 <system.html#390>`_
+     `system.html#392 <system.html#392>`_
 
    `request`:idx:
      `httpclient.html#105 <httpclient.html#105>`_
@@ -5084,7 +5114,7 @@ Index
 
    `reURL`:idx:
      * `regexprs.html#120 <regexprs.html#120>`_
-     * `re.html#134 <re.html#134>`_
+     * `re.html#132 <re.html#132>`_
 
    `rgb`:idx:
      `colors.html#251 <colors.html#251>`_
@@ -5262,7 +5292,7 @@ Index
      `os.html#161 <os.html#161>`_
 
    `setFilePos`:idx:
-     `system.html#535 <system.html#535>`_
+     `system.html#537 <system.html#537>`_
 
    `SET_FLAG`:idx:
      `mysql.html#135 <mysql.html#135>`_
@@ -5303,8 +5333,7 @@ Index
      * `system.html#237 <system.html#237>`_
 
    `simple assertions`:idx:
-     * `regexprs.html#103 <regexprs.html#103>`_
-     * `re.html#103 <re.html#103>`_
+     `regexprs.html#103 <regexprs.html#103>`_
 
    `simple statements`:idx:
      `manual.html#183 <manual.html#183>`_
@@ -5347,12 +5376,12 @@ Index
      `xmldom.html#186 <xmldom.html#186>`_
 
    `split`:idx:
+     * `re.html#121 <re.html#121>`_
+     * `re.html#122 <re.html#122>`_
      * `strutils.html#123 <strutils.html#123>`_
      * `strutils.html#124 <strutils.html#124>`_
      * `strutils.html#127 <strutils.html#127>`_
      * `strutils.html#128 <strutils.html#128>`_
-     * `re.html#123 <re.html#123>`_
-     * `re.html#124 <re.html#124>`_
      * `pegs.html#151 <pegs.html#151>`_
      * `pegs.html#152 <pegs.html#152>`_
 
@@ -5892,8 +5921,8 @@ Index
      `osproc.html#107 <osproc.html#107>`_
 
    `startsWith`:idx:
+     * `re.html#116 <re.html#116>`_
      * `strutils.html#136 <strutils.html#136>`_
-     * `re.html#118 <re.html#118>`_
      * `pegs.html#146 <pegs.html#146>`_
 
    `statement macros`:idx:
@@ -5912,13 +5941,13 @@ Index
      `manual.html#171 <manual.html#171>`_
 
    `stderr`:idx:
-     `system.html#509 <system.html#509>`_
+     `system.html#511 <system.html#511>`_
 
    `stdin`:idx:
-     `system.html#507 <system.html#507>`_
+     `system.html#509 <system.html#509>`_
 
    `stdout`:idx:
-     `system.html#508 <system.html#508>`_
+     `system.html#510 <system.html#510>`_
 
    `st_dynamic_array`:idx:
      `mysql.html#339 <mysql.html#339>`_
@@ -5964,6 +5993,9 @@ Index
 
    `st_net`:idx:
      `mysql.html#198 <mysql.html#198>`_
+
+   `str`:idx:
+     `json.html#107 <json.html#107>`_
 
    `string`:idx:
      * `manual.html#157 <manual.html#157>`_
@@ -6028,7 +6060,7 @@ Index
      `osproc.html#108 <osproc.html#108>`_
 
    `swap`:idx:
-     `system.html#425 <system.html#425>`_
+     `system.html#427 <system.html#427>`_
 
    `symAddr`:idx:
      `dynlib.html#104 <dynlib.html#104>`_
@@ -6052,7 +6084,7 @@ Index
      `manual.html#125 <manual.html#125>`_
 
    `TAddress`:idx:
-     `system.html#391 <system.html#391>`_
+     `system.html#393 <system.html#393>`_
 
    `tag`:idx:
      `xmltree.html#110 <xmltree.html#110>`_
@@ -6313,13 +6345,13 @@ Index
      `xmldom.html#119 <xmldom.html#119>`_
 
    `TFile`:idx:
-     `system.html#504 <system.html#504>`_
-
-   `TFileHandle`:idx:
      `system.html#506 <system.html#506>`_
 
+   `TFileHandle`:idx:
+     `system.html#508 <system.html#508>`_
+
    `TFileMode`:idx:
-     `system.html#505 <system.html#505>`_
+     `system.html#507 <system.html#507>`_
 
    `TFilePermission`:idx:
      `os.html#159 <os.html#159>`_
@@ -6369,6 +6401,15 @@ Index
    `title`:idx:
      `xmlgen.html#177 <xmlgen.html#177>`_
 
+   `TJsonError`:idx:
+     `json.html#103 <json.html#103>`_
+
+   `TJsonEventKind`:idx:
+     `json.html#102 <json.html#102>`_
+
+   `TJsonParser`:idx:
+     `json.html#104 <json.html#104>`_
+
    `TLibHandle`:idx:
      `dynlib.html#101 <dynlib.html#101>`_
 
@@ -6397,10 +6438,10 @@ Index
      `macros.html#105 <macros.html#105>`_
 
    `toBiggestFloat`:idx:
-     `system.html#409 <system.html#409>`_
+     `system.html#411 <system.html#411>`_
 
    `toBiggestInt`:idx:
-     `system.html#411 <system.html#411>`_
+     `system.html#413 <system.html#413>`_
 
    `toBin`:idx:
      `strutils.html#154 <strutils.html#154>`_
@@ -6409,13 +6450,13 @@ Index
      `system.html#136 <system.html#136>`_
 
    `toFloat`:idx:
-     `system.html#408 <system.html#408>`_
+     `system.html#410 <system.html#410>`_
 
    `toHex`:idx:
      `strutils.html#129 <strutils.html#129>`_
 
    `toInt`:idx:
-     `system.html#410 <system.html#410>`_
+     `system.html#412 <system.html#412>`_
 
    `toLower`:idx:
      * `strutils.html#108 <strutils.html#108>`_
@@ -6480,17 +6521,17 @@ Index
      * `tut1.html#121 <tut1.html#121>`_
 
    `transformFile`:idx:
-     * `re.html#122 <re.html#122>`_
+     * `re.html#120 <re.html#120>`_
      * `pegs.html#150 <pegs.html#150>`_
 
    `TRect`:idx:
      `graphics.html#101 <graphics.html#101>`_
 
    `TRegEx`:idx:
-     `re.html#106 <re.html#106>`_
+     `re.html#104 <re.html#104>`_
 
    `TRegExFlag`:idx:
-     `re.html#105 <re.html#105>`_
+     `re.html#103 <re.html#103>`_
 
    `TRequestMethod`:idx:
      `cgi.html#105 <cgi.html#105>`_
@@ -6681,6 +6722,9 @@ Index
    `UnixToNativePath`:idx:
      `os.html#111 <os.html#111>`_
 
+   `unlikely`:idx:
+     `system.html#547 <system.html#547>`_
+
    `UnloadLib`:idx:
      `dynlib.html#103 <dynlib.html#103>`_
 
@@ -6726,11 +6770,11 @@ Index
    `validIdentifier`:idx:
      `strutils.html#158 <strutils.html#158>`_
 
-   `Var`:idx:
-     `manual.html#187 <manual.html#187>`_
-
    `var`:idx:
      `xmlgen.html#181 <xmlgen.html#181>`_
+
+   `Var`:idx:
+     `manual.html#187 <manual.html#187>`_
 
    `varargs`:idx:
      `manual.html#252 <manual.html#252>`_
@@ -6787,32 +6831,32 @@ Index
      `times.html#118 <times.html#118>`_
 
    `write`:idx:
-     * `system.html#518 <system.html#518>`_
-     * `system.html#519 <system.html#519>`_
      * `system.html#520 <system.html#520>`_
      * `system.html#521 <system.html#521>`_
      * `system.html#522 <system.html#522>`_
      * `system.html#523 <system.html#523>`_
      * `system.html#524 <system.html#524>`_
+     * `system.html#525 <system.html#525>`_
+     * `system.html#526 <system.html#526>`_
      * `streams.html#103 <streams.html#103>`_
      * `streams.html#104 <streams.html#104>`_
      * `ropes.html#118 <ropes.html#118>`_
 
    `writeBuffer`:idx:
-     `system.html#534 <system.html#534>`_
+     `system.html#536 <system.html#536>`_
 
    `writeBytes`:idx:
-     `system.html#532 <system.html#532>`_
+     `system.html#534 <system.html#534>`_
 
    `writeChars`:idx:
-     `system.html#533 <system.html#533>`_
+     `system.html#535 <system.html#535>`_
 
    `writeContentType`:idx:
      `cgi.html#144 <cgi.html#144>`_
 
    `writeln`:idx:
-     * `system.html#526 <system.html#526>`_
-     * `system.html#527 <system.html#527>`_
+     * `system.html#528 <system.html#528>`_
+     * `system.html#529 <system.html#529>`_
 
    `WriteStyled`:idx:
      `terminal.html#112 <terminal.html#112>`_
@@ -6861,4 +6905,4 @@ Index
      `mysql.html#130 <mysql.html#130>`_
 
    `zeroMem`:idx:
-     `system.html#415 <system.html#415>`_
+     `system.html#417 <system.html#417>`_

@@ -38,8 +38,8 @@ if [ $# -eq 1 ] ; then
   echo "removing files..."
 
   rm -f $bindir/nimrod
-  rm -f $configdir/nimdoc.cfg
   rm -f $configdir/nimrod.cfg
+  rm -f $configdir/nimdoc.cfg
   rm -f $configdir/nimdoc.tex.cfg
   rm -rf $docdir
   rm -rf $datadir
