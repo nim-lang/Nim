@@ -64,7 +64,7 @@ proc inno(args: string) =
   # make sure we have generated the c2nim and niminst executables:
   buildTool("tools/niminst", args)
   buildTool("rod/c2nim/c2nim", args)
-  exec("tools/niminst --var:version=$# inno rod/nimrod" % NimrodVersion)
+  exec("tools" / "niminst --var:version=$# inno rod/nimrod" % NimrodVersion)
 
 proc install(args: string) = 
   exec("sh ./build.sh")
