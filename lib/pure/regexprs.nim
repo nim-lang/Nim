@@ -64,7 +64,7 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: CString
     offset: int
-    com = pcreCompile(pattern, flags, addr(msg), addr(offset), nil)
+    com = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
   if com == nil:
     var e: ref EInvalidRegEx
     new(e)

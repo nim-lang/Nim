@@ -9,7 +9,7 @@
 
 ## Regular expression support for Nimrod. Consider using the pegs module
 ## instead.
-## Currently this module is implemented by providing a wrapper around the
+## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
 ## library's licence when using this module, which should not be a problem
@@ -45,8 +45,8 @@ type
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: CString
-    offset: int
-    com = pcreCompile(pattern, flags, addr(msg), addr(offset), nil)
+    offset: cint
+    com = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
   if com == nil:
     var e: ref EInvalidRegEx
     new(e)
@@ -54,7 +54,11 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
     raise e
   return com
 
-proc finalizeRegEx(x: TRegEx) = dealloc(x.h)
+proc finalizeRegEx(x: TRegEx) = 
+  # XXX This is a hack, but PCRE does not export it's "free" function properly.
+  # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
+  # Fortunately the implementation is unlikely to change. 
+  pcre.free_substring(cast[cstring](x.h))
 
 proc re*(s: string, flags = {reExtended}): TRegEx =
   ## Constructor of regular expressions. Note that Nimrod's
@@ -67,7 +71,7 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
                  start, flags: cint): cint =
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
-    res = pcreExec(pattern.h, nil, s, len(s), start, flags,
+    res = pcre.Exec(pattern.h, nil, s, len(s), start, flags,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
@@ -79,7 +83,7 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
 
 proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
   var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-  result = pcreExec(pattern.h, nil, s, len(s), start, flags,
+  result = pcre.Exec(pattern.h, nil, s, len(s), start, flags,
                     cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
@@ -91,24 +95,24 @@ proc match*(s: string, pattern: TRegEx, matches: var openarray[string],
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
   return matchOrFind(s, pattern, matches, start, 
-                     PCRE_ANCHORED) == cint(s.len - start)
+                     pcre.ANCHORED) == cint(s.len - start)
 
 proc match*(s: string, pattern: TRegEx, start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
-  return matchOrFind(s, pattern, start, PCRE_ANCHORED) == cint(s.len - start)
+  return matchOrFind(s, pattern, start, pcre.ANCHORED) == cint(s.len - start)
 
 proc matchLen*(s: string, pattern: TRegEx, matches: var openarray[string],
               start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen.
-  return matchOrFind(s, pattern, matches, start, PCRE_ANCHORED)
+  return matchOrFind(s, pattern, matches, start, pcre.ANCHORED)
 
 proc matchLen*(s: string, pattern: TRegEx, start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. 
-  return matchOrFind(s, pattern, start, PCRE_ANCHORED)
+  return matchOrFind(s, pattern, start, pcre.ANCHORED)
 
 proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
            start = 0): int =
@@ -117,7 +121,7 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
   ## is written into ``matches`` and -1 is returned.
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
-    res = pcreExec(pattern.h, nil, s, len(s), start, 0'i32,
+    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:

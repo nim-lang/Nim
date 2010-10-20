@@ -719,6 +719,8 @@ proc enumFields(p: var TParser): PNode =
     addSon(result, e)
     if p.tok.xkind != pxComma: break
     getTok(p, e)
+    # allow trailing comma:
+    if p.tok.xkind == pxCurlyRi: break
 
 proc parseTypedefStruct(p: var TParser, result: PNode, isUnion: bool) = 
   getTok(p, result)
@@ -965,6 +967,8 @@ proc enumSpecifier(p: var TParser): PNode =
       addSon(result, c)
       if p.tok.xkind != pxComma: break
       getTok(p, c)
+      # allow trailing comma:
+      if p.tok.xkind == pxCurlyRi: break
     eat(p, pxCurlyRi, result)
     eat(p, pxSemicolon)
   of pxSymbol: 

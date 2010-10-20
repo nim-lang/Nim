@@ -42,8 +42,7 @@ proc main*(infile: string, a, b: int, someverylongnamewithtype = 0,
            anotherlongthingie = 3) =
   var
     myInt: int = 0
-    a b = 9
-    s: sequence[string]
+    s: seq[string]
   # this should be an error!
   if initBaseLexer(L, infile, 30): nil
   else:
@@ -51,7 +50,7 @@ proc main*(infile: string, a, b: int, someverylongnamewithtype = 0,
   writeln(stdout, "Success!")
   call(3, # we use 3
        12, # we use 12
-       43 # we use 43
-       )
+       43) # we use 43
+       
 
-main(ParamStr(1))
+main(ParamStr(1), 9, 0)

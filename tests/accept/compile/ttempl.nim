@@ -18,10 +18,10 @@ var i = 0
 for item in items(tabs): 
   var content = $i
   var file: TFile
-  if openFile(file, changeFileExt(item[1], "html"), fmWrite): 
+  if open(file, changeFileExt(item[1], "html"), fmWrite): 
     write(file, sunsetTemplate(current=item[1], ticker="", content=content,
                                tabs=tabs))
-    closeFile(file)
+    close(file)
   else:
     write(stdout, "cannot open file for writing")
   inc(i)

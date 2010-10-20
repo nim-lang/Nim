@@ -32,5 +32,6 @@ tsimtych.nim;5;type mismatch: got (bool) but expected 'string'
 tstatret.nim;4;statement not allowed after
 tstmtexp.nim;3;value returned by statement has to be discarded
 ttempl2.nim;13;undeclared identifier: 'b'
+ttypelessemptyset.nim;0;Error: internal error: invalid kind for last(tyEmpty)
 tunderscores.nim;3;invalid token: _
 typredef.nim;2;illegal recursion in type 'Uint8'

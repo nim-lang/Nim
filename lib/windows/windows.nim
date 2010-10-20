@@ -17,7 +17,6 @@ type
   PWideChar* = ptr int16
 
 type  # WinNT.h -- Defines the 32-Bit Windows types and constants
-  CHAR* = int8
   SHORT* = int16
   LONG* = int
   # UNICODE (Wide Character) types

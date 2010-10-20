@@ -5,8 +5,8 @@ var
   inp: TFile
   line: string
 
-if openFile(inp, "readme.txt"):
+if open(inp, "readme.txt"):
   while not EndOfFile(inp):
     line = readLine(inp)
     echo("#" & line & "#")
-  closeFile(inp)
+  close(inp)

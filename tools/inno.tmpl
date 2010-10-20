@@ -3,10 +3,10 @@
 #  result = ""
 ; Default Template for NimInst
 [Setup]
-AppName=$c.name
-AppVerName=$c.name $c.version
+AppName=$c.displayName
+AppVerName=$c.displayName $c.version
 DefaultDirName={code:GiveMeAPath|nimrod}
-DefaultGroupName=$c.name
+DefaultGroupName=$c.displayName
 AllowNoIcons=yes
 LicenseFile=${expandFilename(c.license)}
 OutputBaseFilename=${c.name}_${c.version}
@@ -27,16 +27,16 @@ Source: ${expandFilename(f)}; DestDir: {app}\${splitFile(f).dir}; Flags: ignorev
 
 [Icons]
   #if c.app == appConsole:
-Name: {group}\Console for $c.name; Filename: {cmd}
+Name: {group}\Console for $c.displayName; Filename: {cmd}
   #else:
-Name: {group}\$c.name; Filename: {app}
+Name: {group}\$c.displayName; Filename: {app}
   #end if
 Name: {group}\Documentation; Filename: {app}\doc\overview.html
-Name: {group}\{cm:UninstallProgram,$c.name}; Filename: {uninstallexe}
+Name: {group}\{cm:UninstallProgram,$c.displayName}; Filename: {uninstallexe}
 
   #if c.binPaths.len > 0:
 [Tasks]
-Name: modifypath; Description: &Add $c.name to your system path (if not in path already);
+Name: modifypath; Description: &Add $c.displayName to your system path (if not in path already);
   #end if
 
 [Code]

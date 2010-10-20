@@ -1,12 +1,7 @@
-For version 0.8.10
-==================
-
-- fix implicit generic routines
-
-
 High priority (version 0.9.0)
 =============================
 
+- fix implicit generic routines
 - fix the streams implementation so that it uses methods
 - fix overloading resolution
 - wrong co-/contravariance
@@ -27,9 +22,6 @@ To implement
 * the two other parsers
 * distinct types for array/seq indexes
 * constant sequences
-* IMPLEMENT GENERIC TYPES!
-  - implement expr parameters
-  - document generic types better
 
 * implement closures for the C code generator
 

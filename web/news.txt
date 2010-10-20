@@ -2,7 +2,7 @@
 News
 ====
 
-2010-XX-XX Version 0.8.10 released
+2010-10-20 Version 0.8.10 released
 ==================================
 
 Bugfixes
@@ -40,6 +40,7 @@ Changes affecting backwards compatibility
   is not raised anymore. Instead ``system.quit()`` is called. This is because
   raising an exception requires heap allocations. However the memory manager
   might be contained in the DLL that failed to load.
+- The ``re`` module (and the ``pcre`` wrapper) now depend on the pcre dll.
 
 
 Additions
@@ -53,7 +54,6 @@ Additions
 - Added ``system.compileOption``. 
 - Added ``times.epochTime`` and ``times.cpuTime``. 
 - Implemented explicit type arguments for generics.
-- Implemented implicit type arguments for generics.
 - Implemented ``{.size: sizeof(cint).}`` pragma for enum types. This is useful
   for interfacing with C.
 - Implemented ``{.pragma.}`` pragma for user defined pragmas.
@@ -65,6 +65,9 @@ Additions
   improved.
 - Added ``expat`` module.
 - Added ``json`` module.
+- Added support for a *Tiny C* backend. Currently this only works on Linux.
+  You need to bootstrap with ``-d:tinyc`` to enable Tiny C support. Nimrod 
+  can then execute code directly via ``nimrod run myfile``.
 
 
 2010-03-14 Version 0.8.8 released
