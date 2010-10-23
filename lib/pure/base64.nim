@@ -90,18 +90,11 @@ proc decode*(s: string): string =
       inc(r, 3)
       inc(i, 4)
     else: break
-  if i < s.len-2 and s[i+2] == '=':
-    var a = s[i].decodeByte
-    var b = s[i+1].decodeByte
-    result[r] = chr(a shl 2 or ((b shr 4) and 3))
-    inc(r)
-  elif i < s.len-3 and s[i+3] == '=':
-    var a = s[i].decodeByte
-    var b = s[i+1].decodeByte
-    var c = s[i+2].decodeByte
-    result[r] = chr((a shl 2) or ((b shr 4) and 3))
-    result[r+1] = chr((b shl 4) or ((c shr 2) and 0xF))
-    inc(r, 2)
+  assert i == s.len
+  # adjust the length:
+  if i > 0 and s[i-1] == '=': 
+    dec(r)
+    if i > 1 and s[i-2] == '=': dec(r)
   setLen(result, r)
   
 when isMainModule:
@@ -118,12 +111,5 @@ when isMainModule:
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
                  "asure.", longText]
   for t in items(tests):
-    if decode(encode(t)) != t:
-      echo "##", t, "##"
-
-  echo encode("Man is distinguished, not only by his reason, but by this" &
-    " singular passion from other animals, which is a lust of the mind, " &
-    "that by a perseverance of delight in the continued and indefatigable" & 
-    " generation of knowledge, exceeds the short vehemence of any carnal" &
-    " pleasure.")
+    assert decode(encode(t)) == t
 
