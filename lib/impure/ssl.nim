@@ -13,7 +13,7 @@
 import openssl, strutils, os
 
 type
-  TSecureSocket* = object
+  TSecureSocket* = object {.final.}
     ssl: PSSL
     bio: PBIO
 

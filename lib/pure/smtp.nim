@@ -27,13 +27,13 @@
 import sockets, strutils, strtabs, ssl, base64
 
 type
-  TSMTP* = object
+  TSMTP* = object {.final.}
     sock: TSocket
     sslSock: TSecureSocket
     ssl: Bool
     debug: Bool
   
-  TMessage* = object
+  TMessage* = object {.final.}
     msgTo: seq[String]
     msgCc: seq[String]
     msgSubject: String
