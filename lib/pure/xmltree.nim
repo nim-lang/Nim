@@ -240,12 +240,12 @@ proc xmlConstructor(e: PNimrodNode): PNimrodNode {.compileTime.} =
       if a[i].kind == nnkExprEqExpr:
         attrs.add(toStrLit(a[i][0]))
         attrs.add(a[i][1])
-        echo repr(attrs)
+        #echo repr(attrs)
       else:
         elements.add(a[i])
     result.add(elements)
     if attrs.len > 1: 
-      echo repr(newStringTabCall)
+      #echo repr(newStringTabCall)
       result.add(newStringTabCall)
   else:
     result = newCall("newXmlTree", toStrLit(a))
