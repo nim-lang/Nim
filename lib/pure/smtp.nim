@@ -24,7 +24,7 @@
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##   
 
-import sockets, strutils, strtabs, ssl, base64
+import sockets, strutils, strtabs, ssl, base64, os
 
 type
   TSMTP* = object {.final.}
@@ -62,7 +62,7 @@ proc debugRecv(smtp: TSMTP): String =
       echo("S:" & line)
     return line
   else:
-    echo("S-Warning: recvLine failed.")
+    OSError()
     return ""
 
 proc quitExcpt(smtp: TSMTP, msg: String) =
@@ -84,8 +84,7 @@ proc connect*(address: String, port: int = 25,
     result.sock.connect(address, TPort(port))
   else:
     result.ssl = True
-    var certResult: int
-    result.sslSock.connect(address, port, certResult)
+    discard result.sslSock.connect(address, port)
   
   result.debug = debug
   

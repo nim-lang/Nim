@@ -17,12 +17,10 @@ type
     ssl: PSSL
     bio: PBIO
 
-  
-
 proc connect*(sock: var TSecureSocket, address: string, 
-    port: int, certResult: var Int) =
+    port: int): Int =
   ## Connects to the specified `address` on the specified `port`.
-  ## `certResult` will become the result of the certificate validation.
+  ## Returns the result of the certificate validation.
   SslLoadErrorStrings()
   ERR_load_BIO_strings()
   
@@ -50,7 +48,7 @@ proc connect*(sock: var TSecureSocket, address: string,
     ERR_print_errors_fp(stderr)
     OSError()
   
-  certResult = SSL_get_verify_result(sock.ssl)
+  result = SSL_get_verify_result(sock.ssl)
 
 proc recvLine*(sock: TSecureSocket, line: var String): bool =
   ## Acts in a similar fashion to the `recvLine` in the sockets module.
