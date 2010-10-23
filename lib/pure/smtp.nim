@@ -16,7 +16,9 @@
 ## 
 ## 
 ## .. code-block:: Nimrod
-##   var msg = createMessage("Hello from Nimrod's SMTP", "Hello!.\n Is this awesome or what?", @["foo@gmail.com"])
+##   var msg = createMessage("Hello from Nimrod's SMTP", 
+##                           "Hello!.\n Is this awesome or what?", 
+##                           @["foo@gmail.com"])
 ##   var smtp = connect("smtp.gmail.com", 465, True, True)
 ##   smtp.auth("username", "password")
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
@@ -72,7 +74,8 @@ proc checkReply(smtp: TSMTP, reply: string) =
   if not line.startswith(reply):
     quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
 
-proc connect*(address: String, port: int = 25, ssl: bool = False, debug: bool = False): TSMTP =
+proc connect*(address: String, port: int = 25, 
+              ssl: bool = False, debug: bool = False): TSMTP =
   ## Establishes a connection with a SMTP server.
   ## May fail with EInvalidReply or with a socket errors.
 
@@ -103,7 +106,8 @@ proc auth*(smtp: TSMTP, username, password: string) =
   smtp.debugSend(encode(password) & "\c\L")
   smtp.checkReply("235") # Check whether the authentification was successful.
 
-proc sendmail*(smtp: TSMTP, fromaddr: string, toaddrs: seq[string], msg: string) =
+proc sendmail*(smtp: TSMTP, fromaddr: string,
+               toaddrs: seq[string], msg: string) =
   ## Sends `msg` from `fromaddr` to `toaddr`. 
   ## Messages may be formed using ``createMessage`` by converting the TMessage into a string.
 
@@ -124,7 +128,7 @@ proc sendmail*(smtp: TSMTP, fromaddr: string, toaddrs: seq[string], msg: string)
   smtp.debugSend("QUIT\c\L")
 
 proc createMessage*(mSubject, mBody: String, mTo, mCc: seq[String],
-                    otherHeaders: openarray[tuple[name, value: String]]): TMessage =
+                otherHeaders: openarray[tuple[name, value: String]]): TMessage =
   ## Creates a new MIME compliant message.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -134,7 +138,8 @@ proc createMessage*(mSubject, mBody: String, mTo, mCc: seq[String],
   for n, v in items(otherHeaders):
     result.msgOtherHeaders[n] = v
 
-proc createMessage*(mSubject, mBody: String, mTo, mCc: seq[String] = @[]): TMessage =
+proc createMessage*(mSubject, mBody: String, mTo,
+                    mCc: seq[String] = @[]): TMessage =
   ## Alternate version of the above.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -157,7 +162,8 @@ proc `$`*(msg: TMessage): String =
   
 
 when isMainModule:
-  #var msg = createMessage("Test subject!", "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
+  #var msg = createMessage("Test subject!", 
+  #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
   #echo(msg)
 
   #var smtp = connect("localhost", 25, False, True)
@@ -165,12 +171,15 @@ when isMainModule:
   
   #echo(decode("a17sm3701420wbe.12"))
   
-  var msg = createMessage("Hello from Nimrod's SMTP!", "Hello!!!!.\n Is this awesome or what?", @["someone@yahoo.com", "someone@gmail.com"])
+  var msg = createMessage("Hello from Nimrod's SMTP!", 
+                          "Hello!!!!.\n Is this awesome or what?", 
+                          @["someone@yahoo.com", "someone@gmail.com"])
   echo(msg)
 
   var smtp = connect("smtp.gmail.com", 465, True, True)
   smtp.auth("someone", "password")
-  smtp.sendmail("someone@gmail.com", @["someone@yahoo.com", "someone@gmail.com"], $msg)
+  smtp.sendmail("someone@gmail.com", 
+                @["someone@yahoo.com", "someone@gmail.com"], $msg)
   
   
 

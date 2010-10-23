@@ -198,13 +198,17 @@ proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSLv23_client_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
-proc SSL_CTX_new*(meth: PSSL_METHOD): PSSL_CTX{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_CTX_load_verify_locations*(ctx: PSSL_CTX, CAfile: cstring, CApath: cstring): cInt{.
-    cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_new*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc SSL_CTX_load_verify_locations*(ctx: PSSL_CTX, CAfile: cstring,
+    CApath: cstring): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_verify_result*(ssl: PSSL): int{.cdecl,
+    dynlib: DLLSSLName, importc.}
 
-proc BIO_new_ssl_connect*(ctx: PSSL_CTX): PBIO{.cdecl, dynlib: DLLSSLName, importc.}
-proc BIO_ctrl*(bio: PBIO, cmd: cint, larg: int, arg: cstring): int{.cdecl, dynlib: DLLSSLName, importc.}
+proc BIO_new_ssl_connect*(ctx: PSSL_CTX): PBIO{.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc BIO_ctrl*(bio: PBIO, cmd: cint, larg: int, arg: cstring): int{.cdecl,
+    dynlib: DLLSSLName, importc.}
 proc BIO_get_ssl*(bio: PBIO, ssl: ptr PSSL): int = 
   return BIO_ctrl(bio, BIO_C_GET_SSL, 0, cast[cstring](ssl))
 proc BIO_set_conn_hostname*(bio: PBIO, name: cstring): int =
@@ -228,7 +232,8 @@ else:
       importc.}
   proc SslCtxSetCipherList*(arg0: PSSL_CTX, str: cstring): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
-  proc SslCtxNew*(meth: PSSL_METHOD): PSSL_CTX{.cdecl, dynlib: DLLSSLName, importc.}
+  proc SslCtxNew*(meth: PSSL_METHOD): PSSL_CTX{.cdecl,
+      dynlib: DLLSSLName, importc.}
   proc SslCtxFree*(arg0: PSSL_CTX){.cdecl, dynlib: DLLSSLName, importc.}
   proc SslSetFd*(s: PSSL, fd: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslCtrl*(ssl: PSSL, cmd: cInt, larg: int, parg: Pointer): int{.cdecl, 
@@ -246,10 +251,10 @@ else:
   proc SslMethodV23*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslCtxUsePrivateKey*(ctx: PSSL_CTX, pkey: SslPtr): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
-  proc SslCtxUsePrivateKeyASN1*(pk: cInt, ctx: PSSL_CTX, d: cstring, length: int): cInt{.
-      cdecl, dynlib: DLLSSLName, importc.}
-  proc SslCtxUsePrivateKeyFile*(ctx: PSSL_CTX, filename: cstring, typ: cInt): cInt{.
-      cdecl, dynlib: DLLSSLName, importc.}
+  proc SslCtxUsePrivateKeyASN1*(pk: cInt, ctx: PSSL_CTX,
+      d: cstring, length: int): cInt{.cdecl, dynlib: DLLSSLName, importc.}
+  proc SslCtxUsePrivateKeyFile*(ctx: PSSL_CTX,
+      filename: cstring, typ: cInt): cInt{.cdecl, dynlib: DLLSSLName, importc.}
   proc SslCtxUseCertificate*(ctx: PSSL_CTX, x: SslPtr): cInt{.cdecl, 
       dynlib: DLLSSLName, importc.}
   proc SslCtxUseCertificateASN1*(ctx: PSSL_CTX, length: int, d: cstring): cInt{.

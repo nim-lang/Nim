@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module provides an easy to use sockets-style nimrod interface to the OpenSSL library.
+## This module provides an easy to use sockets-style 
+## nimrod interface to the OpenSSL library.
 
 import openssl, strutils, os
 
@@ -16,26 +17,34 @@ type
     ssl: PSSL
     bio: PBIO
 
-proc connect*(sock: var TSecureSocket, address: string, port: int, certResult: var Int) =
-  ## Connects to the specified `address` on the specified `port`. `certResult` will become the result of the certificate validation.
+  
+
+proc connect*(sock: var TSecureSocket, address: string, 
+    port: int, certResult: var Int) =
+  ## Connects to the specified `address` on the specified `port`.
+  ## `certResult` will become the result of the certificate validation.
   SslLoadErrorStrings()
   ERR_load_BIO_strings()
   
-  assert(SSL_library_init() == 1)
+  if SSL_library_init() != 1:
+    OSError()
   
   var ctx = SSL_CTX_new(SSLv23_client_method())
   if ctx == nil:
     ERR_print_errors_fp(stderr)
-    assert(False)
+    OSError()
     
-  #if SSL_CTX_load_verify_locations(ctx, "/tmp/openssl-0.9.8e/certs/vsign1.pem", NIL) == 0:
+  #if SSL_CTX_load_verify_locations(ctx, 
+  #   "/tmp/openssl-0.9.8e/certs/vsign1.pem", NIL) == 0:
   #  echo("Failed load verify locations")
   #  ERR_print_errors_fp(stderr)
   
   sock.bio = BIO_new_ssl_connect(ctx)
-  assert(BIO_get_ssl(sock.bio, addr(sock.ssl)) != 0)
+  if BIO_get_ssl(sock.bio, addr(sock.ssl)) == 0:
+    OSError()
 
-  assert(BIO_set_conn_hostname(sock.bio, address & ":" & $port) == 1)
+  if BIO_set_conn_hostname(sock.bio, address & ":" & $port) != 1:
+    OSError()
   
   if BIO_do_connect(sock.bio) <= 0:
     ERR_print_errors_fp(stderr)
