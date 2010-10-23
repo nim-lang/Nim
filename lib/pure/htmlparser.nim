@@ -20,7 +20,7 @@
 ##
 ## Every tag in the resulting tree is in lower case.
 ##
-## **Note:** The resulting ``PXmlNode`` already use the ``clientData`` field, 
+## **Note:** The resulting ``PXmlNode`` already uses the ``clientData`` field, 
 ## so it cannot be used by clients of this library.
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
