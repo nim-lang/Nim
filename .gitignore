@@ -1,2 +1,13 @@
 *.o
 nimcache
+lib/nimcache
+tools/nimcache
+tests/nimcache
+tests/accept/run/nimcache
+tests/accept/compile/nimcache
+tests/reject/nimcache
+rod/nimcache
+rod/c2nim/nimcache
+rod/pas2nim/nimcache
+rod/tinyc
+

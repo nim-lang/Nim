@@ -10,7 +10,8 @@
 ## This module implements the SMTP client protocol as specified by RFC 5321, 
 ## this can be used to send mail to any SMTP Server.
 ## 
-## This module also implements the protocol used to format messages, as specified by RFC 2822.
+## This module also implements the protocol used to format messages, 
+## as specified by RFC 2822.
 ## 
 ## Example gmail use:
 ## 
@@ -23,40 +24,49 @@
 ##   smtp.auth("username", "password")
 ##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##   
+## 
+## For SSL support this module relies on the SSL module. If you want to 
+## disable SSL, compile with ``-d:NoSSL``.
 
-import sockets, strutils, strtabs, ssl, base64, os
+import sockets, strutils, strtabs, base64, os
+
+when not defined(noSSL):
+  import ssl
 
 type
-  TSMTP* = object {.final.}
+  TSMTP* {.final.} = object
     sock: TSocket
-    sslSock: TSecureSocket
+    when not defined(noSSL):
+      sslSock: TSecureSocket
     ssl: Bool
     debug: Bool
   
-  TMessage* = object {.final.}
-    msgTo: seq[String]
-    msgCc: seq[String]
-    msgSubject: String
+  TMessage* {.final.} = object
+    msgTo: seq[string]
+    msgCc: seq[string]
+    msgSubject: string
     msgOtherHeaders: PStringTable
-    msgBody: String
+    msgBody: string
   
   EInvalidReply* = object of EBase
   
-proc debugSend(smtp: TSMTP, cmd: String) =
+proc debugSend(smtp: TSMTP, cmd: string) =
   if smtp.debug:
     echo("C:" & cmd)
   if not smtp.ssl:
     smtp.sock.send(cmd)
   else:
-    smtp.sslSock.send(cmd)
+    when not defined(noSSL):
+      smtp.sslSock.send(cmd)
 
-proc debugRecv(smtp: TSMTP): String =
+proc debugRecv(smtp: TSMTP): string =
   var line = ""
   var ret = False
   if not smtp.ssl:
     ret = smtp.sock.recvLine(line)
   else:
-    ret = smtp.sslSock.recvLine(line)
+    when not defined(noSSL):
+      ret = smtp.sslSock.recvLine(line)
   if ret:
     if smtp.debug:
       echo("S:" & line)
@@ -65,7 +75,7 @@ proc debugRecv(smtp: TSMTP): String =
     OSError()
     return ""
 
-proc quitExcpt(smtp: TSMTP, msg: String) =
+proc quitExcpt(smtp: TSMTP, msg: string) =
   smtp.debugSend("QUIT")
   raise newException(EInvalidReply, msg)
 
@@ -74,8 +84,8 @@ proc checkReply(smtp: TSMTP, reply: string) =
   if not line.startswith(reply):
     quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
 
-proc connect*(address: String, port: int = 25, 
-              ssl: bool = False, debug: bool = False): TSMTP =
+proc connect*(address: string, port = 25, 
+              ssl = false, debug = false): TSMTP =
   ## Establishes a connection with a SMTP server.
   ## May fail with EInvalidReply or with a socket errors.
 
@@ -83,9 +93,13 @@ proc connect*(address: String, port: int = 25,
     result.sock = socket()
     result.sock.connect(address, TPort(port))
   else:
-    result.ssl = True
-    discard result.sslSock.connect(address, port)
-  
+    when not defined(noSSL):
+      result.ssl = True
+      discard result.sslSock.connect(address, port)
+    else:
+      raise newException(EInvalidReply, 
+                         "SMTP module compiled without SSL support")
+
   result.debug = debug
   
   result.checkReply("220")
@@ -93,7 +107,8 @@ proc connect*(address: String, port: int = 25,
   result.checkReply("250")
 
 proc auth*(smtp: TSMTP, username, password: string) =
-  ## Sends an AUTH command to the server to login as the `username` using `password`.
+  ## Sends an AUTH command to the server to login as the `username` 
+  ## using `password`.
   ## May fail with EInvalidReply.
 
   smtp.debugSend("AUTH LOGIN\c\L")
@@ -108,7 +123,8 @@ proc auth*(smtp: TSMTP, username, password: string) =
 proc sendmail*(smtp: TSMTP, fromaddr: string,
                toaddrs: seq[string], msg: string) =
   ## Sends `msg` from `fromaddr` to `toaddr`. 
-  ## Messages may be formed using ``createMessage`` by converting the TMessage into a string.
+  ## Messages may be formed using ``createMessage`` by converting the
+  ## TMessage into a string.
 
   smtp.debugSend("MAIL FROM:<" & fromaddr & ">\c\L")
   smtp.checkReply("250")
@@ -126,8 +142,8 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
   # quit
   smtp.debugSend("QUIT\c\L")
 
-proc createMessage*(mSubject, mBody: String, mTo, mCc: seq[String],
-                otherHeaders: openarray[tuple[name, value: String]]): TMessage =
+proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
+                otherHeaders: openarray[tuple[name, value: string]]): TMessage =
   ## Creates a new MIME compliant message.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -137,8 +153,8 @@ proc createMessage*(mSubject, mBody: String, mTo, mCc: seq[String],
   for n, v in items(otherHeaders):
     result.msgOtherHeaders[n] = v
 
-proc createMessage*(mSubject, mBody: String, mTo,
-                    mCc: seq[String] = @[]): TMessage =
+proc createMessage*(mSubject, mBody: string, mTo,
+                    mCc: seq[string] = @[]): TMessage =
   ## Alternate version of the above.
   result.msgTo = mTo
   result.msgCc = mCc
@@ -146,18 +162,19 @@ proc createMessage*(mSubject, mBody: String, mTo,
   result.msgBody = mBody
   result.msgOtherHeaders = newStringTable()
 
-proc `$`*(msg: TMessage): String =
+proc `$`*(msg: TMessage): string =
   result = ""
   if msg.msgTo.len() > 0:
     result = "TO: " & msg.msgTo.join(", ") & "\c\L"
   if msg.msgCc.len() > 0:
-    result.add("CC: " & msg.msgTo.join(", ") & "\c\L")
+    result.add("CC: " & msg.msgCc.join(", ") & "\c\L")
   # TODO: Folding? i.e when a line is too long, shorten it...
   result.add("Subject: " & msg.msgSubject & "\c\L")
   for key, value in pairs(msg.msgOtherHeaders):
     result.add(key & ": " & value & "\c\L")
 
-  result.add("\c\L" & msg.msgBody)
+  result.add("\c\L")
+  result.add(msg.msgBody)
   
 
 when isMainModule:
@@ -169,7 +186,6 @@ when isMainModule:
   #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
   
   #echo(decode("a17sm3701420wbe.12"))
-  
   var msg = createMessage("Hello from Nimrod's SMTP!", 
                           "Hello!!!!.\n Is this awesome or what?", 
                           @["someone@yahoo.com", "someone@gmail.com"])
