@@ -59,7 +59,7 @@ Library
 - locale support
 - conversion between character sets
 - bignums
-- ftp, smtp (and other internet protocols)
+- ftp (and other internet protocols)
 
 - pdcurses bindings
 - queues additional to streams: have two positions (read/write) instead of one

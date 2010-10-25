@@ -113,7 +113,10 @@ Internet Protocols and Support
 ------------------------------
 
 * `cgi <cgi.html>`_
-  This module implements helpers for CGI applictions.
+  This module implements helpers for CGI applications.
+
+* `scgi <scgi.html>`_
+  This module implements helpers for SCGI applications.
 
 * `sockets <sockets.html>`_
   This module implements a simple portable type-safe sockets layer.
@@ -128,6 +131,9 @@ Internet Protocols and Support
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client.
 
+* `smtp <smtp.html>`_
+  This module implement a simple SMTP client. 
+  
 
 Parsers
 -------
@@ -194,6 +200,9 @@ Cryptography and Hashing
 * `md5 <md5.html>`_
   This module implements the MD5 checksum algorithm.
 
+* `base64 <base64.html>`_
+  This module implements a base64 encoder and decoder.
+
 
 Multimedia support
 ------------------
@@ -251,6 +260,9 @@ Other
   This module contains simple high-level procedures for dealing with the
   Web like loading the contents of a Web page from an URL.
 
+* `ssl <ssl.html>`_
+  This module provides an easy to use sockets-style 
+  Nimrod interface to the OpenSSL library.
 
 
 Wrappers
@@ -425,6 +437,8 @@ Internet Protocols and Support
 * `libcurl <libcurl.html>`_
   Contains a wrapper for the libcurl library.
 
+* `openssl <openssl.html>`_
+  Wrapper for OpenSSL.
 
 Scripting languages
 -------------------

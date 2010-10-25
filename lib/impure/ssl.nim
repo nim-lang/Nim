@@ -13,7 +13,7 @@
 import openssl, strutils, os
 
 type
-  TSecureSocket* = object {.final.}
+  TSecureSocket* {.final.} = object
     ssl: PSSL
     bio: PBIO
 
@@ -50,7 +50,7 @@ proc connect*(sock: var TSecureSocket, address: string,
   
   result = SSL_get_verify_result(sock.ssl)
 
-proc recvLine*(sock: TSecureSocket, line: var String): bool =
+proc recvLine*(sock: TSecureSocket, line: var string): bool =
   ## Acts in a similar fashion to the `recvLine` in the sockets module.
   ## Returns false when no data is available to be read.
   ## `Line` must be initialized and not nil!
