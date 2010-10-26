@@ -1,4 +1,9 @@
 *.o
+*.exe
+*.dll
+*.so
+*.zip
+*.iss
 nimcache
 lib/nimcache
 tools/nimcache
@@ -10,4 +15,7 @@ rod/nimcache
 rod/c2nim/nimcache
 rod/pas2nim/nimcache
 rod/tinyc
+misc
+doc/*.html
+web/upload/*.html
 
