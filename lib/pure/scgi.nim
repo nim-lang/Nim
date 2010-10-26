@@ -77,7 +77,6 @@ proc open*(s: var TScgiState, port = TPort(4000)) =
   ## opens a connection.
   s.bufLen = 4000
   s.input = newString(s.buflen) # will be reused
-  system.stackTraceNewLine = "<br />\n"
   
   s.server = socket()
   if s.server == InvalidSocket: scgiError("could not open socket")
