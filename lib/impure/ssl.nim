@@ -74,6 +74,12 @@ proc send*(sock: TSecureSocket, data: string) =
   if BIO_write(sock.bio, data, data.len()) <= 0:
     OSError()
 
+proc close*(sock: TSecureSocket) =
+  ## Closes the socket
+  if BIO_free(sock.bio) <= 0:
+    ERR_print_errors_fp(stderr)
+    OSError()
+
 when isMainModule:
   var s: TSecureSocket
   echo connect(s, "smtp.gmail.com", 465)

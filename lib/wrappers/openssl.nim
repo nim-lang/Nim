@@ -223,6 +223,8 @@ proc BIO_read*(b: PBIO, data: cstring, length: cInt): cInt{.cdecl,
 proc BIO_write*(b: PBIO, data: cstring, length: cInt): cInt{.cdecl, 
     dynlib: DLLUtilName, importc.}
 
+proc BIO_free*(b: PBIO): cInt{.cdecl, dynlib: DLLUtilName, importc.}
+
 proc ERR_print_errors_fp*(fp: TFile){.cdecl, dynlib: DLLSSLName, importc.}
 
 when True:
