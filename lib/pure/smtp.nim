@@ -125,6 +125,7 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
   ## Sends `msg` from `fromaddr` to `toaddr`. 
   ## Messages may be formed using ``createMessage`` by converting the
   ## TMessage into a string.
+  ## This function sends the QUIT command when finished.
 
   smtp.debugSend("MAIL FROM:<" & fromaddr & ">\c\L")
   smtp.checkReply("250")
@@ -141,6 +142,10 @@ proc sendmail*(smtp: TSMTP, fromaddr: string,
   
   # quit
   smtp.debugSend("QUIT\c\L")
+  if not smtp.ssl:
+    smtp.sock.close()
+  else:
+    smtp.sslSock.close()
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): TMessage =
