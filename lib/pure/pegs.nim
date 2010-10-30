@@ -27,7 +27,7 @@ when useUnicode:
   import unicode
 
 const
-  InlineThreshold = 5   ## number of leaves; -1 to disable inlining
+  InlineThreshold = 5  ## number of leaves; -1 to disable inlining
   MaxSubpatterns* = 10 ## defines the maximum number of subpatterns that
                        ## can be captured. More subpatterns cannot be captured! 
 
@@ -652,7 +652,7 @@ proc find*(s: string, pattern: TPeg, matches: var openarray[string],
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
-  for i in 0 .. s.len-1:
+  for i in start .. s.len-1:
     if matchLen(s, pattern, matches, i) >= 0: return i
   return -1
   # could also use the pattern here: (!P .)* P
@@ -661,9 +661,27 @@ proc find*(s: string, pattern: TPeg,
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
-  for i in 0 .. s.len-1:
+  for i in start .. s.len-1:
     if matchLen(s, pattern, i) >= 0: return i
   return -1
+  
+iterator findAll*(s: string, pattern: TPeg, start = 0): string = 
+  ## yields all matching captures of pattern in `s`.
+  var matches: array[0..MaxSubpatterns-1, string]
+  var i = start
+  while i < s.len:
+    var L = matchLen(s, pattern, matches, i)
+    if L < 0: break
+    for k in 0..maxSubPatterns-1: 
+      if isNil(matches[k]): break
+      yield matches[k]
+    inc(i, L)
+    
+proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
+  nosideEffect, rtl, extern: "npegs$1".} = 
+  ## returns all matching captures of pattern in `s`.
+  ## If it does not match, @[] is returned.
+  accumulateResult(findAll(s, pattern, start))
   
 template `=~`*(s: string, pattern: TPeg): expr =
   ## This calls ``match`` with an implicit declared ``matches`` array that 
@@ -699,15 +717,15 @@ proc contains*(s: string, pattern: TPeg, matches: var openArray[string],
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
-proc startsWith*(s: string, prefix: TPeg): bool {.
+proc startsWith*(s: string, prefix: TPeg, start = 0): bool {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` starts with the pattern `prefix`
-  result = matchLen(s, prefix) >= 0
+  result = matchLen(s, prefix, start) >= 0
 
-proc endsWith*(s: string, suffix: TPeg): bool {.
+proc endsWith*(s: string, suffix: TPeg, start = 0): bool {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `prefix`
-  for i in 0 .. s.len-1:
+  for i in start .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
 proc replace*(s: string, sub: TPeg, by: string): string {.
@@ -1194,6 +1212,7 @@ type
     nonterms: seq[PNonTerminal]
     modifier: TModifier
     captures: int
+    identIsVerbatim: bool
 
 proc pegError(p: TPegParser, msg: string, line = -1, col = -1) =
   var e: ref EInvalidPeg
@@ -1245,7 +1264,12 @@ proc primary(p: var TPegParser): TPeg =
   else: nil
   case p.tok.kind
   of tkIdentifier:
-    if not arrowIsNextTok(p):
+    if p.identIsVerbatim: 
+      var m = p.tok.modifier
+      if m == modNone: m = p.modifier
+      result = modifiedTerm(p.tok.literal, m)
+      getTok(p)
+    elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
       incl(nt.flags, ntUsed)
       result = nonTerminal(nt)
@@ -1366,6 +1390,7 @@ proc rawParse(p: var TPegParser): TPeg =
     while p.tok.kind != tkEof:
       discard parseRule(p)
   else:
+    p.identIsVerbatim = true
     result = parseExpr(p)
   if p.tok.kind != tkEof:
     pegError(p, "EOF expected, but found: " & p.tok.literal)
@@ -1384,6 +1409,7 @@ proc parsePeg*(input: string, filename = "pattern", line = 1, col = 0): TPeg =
   p.tok.literal = ""
   p.tok.charset = {}
   p.nonterms = @[]
+  p.identIsVerbatim = false
   getTok(p)
   result = rawParse(p)
 
@@ -1453,7 +1479,7 @@ when isMainModule:
   #const filename = "lib/devel/peg/grammar.txt"
   #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
   #echo "a <- [abc]*?".match(grammar)
-  assert find("_____abc_______", term("abc")) == 5
+  assert find("_____abc_______", term("abc"), 2) == 5
   assert match("_______ana", peg"A <- 'ana' / . A")
   assert match("abcs%%%", peg"A <- ..A / .A / '%'")
 
@@ -1480,9 +1506,12 @@ when isMainModule:
     assert false
     
   var matches: array[0..5, string]
-  if match("abcdefg", peg"'c' {'d'} 'ef' {'g'}", matches, 2): 
+  if match("abcdefg", peg"c {d} ef {g}", matches, 2): 
     assert matches[0] == "d"
     assert matches[1] == "g"
   else:
     assert false
+
+  for x in findAll("abcdef", peg"{.}", 3):
+    echo x
 

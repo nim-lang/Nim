@@ -150,6 +150,16 @@ The PEG parser implements this grammar (written in PEG syntax)::
   expr <- seqExpr (ig "/" expr)*
 
 
+**Note**: As a special syntactic extension if the whole PEG is only a single 
+expression, identifiers are not interpreted as non-terminals, but are 
+interpreted as verbatim string:
+
+.. code-block:: nimrod
+  abc =~ peg"abc" # is true
+
+So it is not necessary to write ``peg" 'abc' "`` in the above example.
+
+
 Examples
 --------
 
