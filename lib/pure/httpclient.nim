@@ -238,8 +238,10 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   
   var headers = copy($httpMethod, len("http"))
   if r.path != "":
-    headers.add(" " & r.path & r.query)
-  headers.add(" / HTTP/1.1\c\L")
+    headers.add(" /" & r.path & r.query)
+  else:
+    headers.add(" /")
+  headers.add(" HTTP/1.1\c\L")
   
   add(headers, "Host: " & r.hostname & "\c\L")
   add(headers, extraHeaders)
