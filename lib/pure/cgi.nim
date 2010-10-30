@@ -345,6 +345,11 @@ proc writeContentType*() =
   write(stdout, "Content-type: text/html\n\n")
   system.stackTraceNewLine = "<br />\n"
   
+proc setStackTraceNewLine*() = 
+  ## Modifies the debug stack traces so that they contain
+  ## ``<br />`` and are easily readable in a browser.
+  system.stackTraceNewLine = "<br />\n"
+  
 proc setCookie*(name, value: string) = 
   ## Sets a cookie.
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")
