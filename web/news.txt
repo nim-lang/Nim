@@ -10,12 +10,13 @@ Bugfixes
 
 - Bugfix: ``httpclient`` correct passes the path starting with ``/``.
 - Bugfixes for the ``htmlparser`` module.
+- Bugfix: ``pegs.find`` did not respect ``start`` parameter.
 
 
 Additions
 ---------
 
-- Added ``re.findAll``.
+- Added ``re.findAll``, ``pegs.findAll``.
 
 
 2010-10-20 Version 0.8.10 released
