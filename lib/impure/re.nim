@@ -136,6 +136,24 @@ proc find*(s: string, pattern: TRegEx, start = 0): int =
   ## match, -1 is returned.
   var matches: array[0..maxSubpatterns-1, string]
   result = find(s, pattern, matches, start)
+  
+iterator findAll*(s: string, pattern: TRegEx, start = 0): string = 
+  ## yields all matching captures of pattern in `s`.
+  var matches: array[0..MaxSubpatterns-1, string]
+  var i = start
+  while true: 
+    var j = find(s, pattern, matches, i)
+    if j < 0: break
+    i = j
+    for k in 0..maxSubPatterns-1: 
+      if isNil(matches[k]): break
+      inc(i, matches[k].len)
+      yield matches[k]
+
+proc findAll*(s: string, pattern: TRegEx, start = 0): seq[string] = 
+  ## returns all matching captures of pattern in `s`.
+  ## If it does not match, @[] is returned.
+  accumulateResult(findAll(s, pattern, start))
 
 template `=~` *(s: string, pattern: TRegEx): expr = 
   ## This calls ``match`` with an implicit declared ``matches`` array that 

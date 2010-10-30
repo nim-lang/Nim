@@ -53,7 +53,7 @@ import
 
 # the parser treats ``<br />`` as ``<br></br>``
 
-##  xmlElementCloseEnd, ## ``/>`` 
+#  xmlElementCloseEnd, ## ``/>`` 
 
 type 
   TXmlEventKind* = enum ## enumation of all events that may occur when parsing

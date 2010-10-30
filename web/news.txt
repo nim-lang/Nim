@@ -2,6 +2,22 @@
 News
 ====
 
+2010-XX-XX Version 0.8.12 released
+==================================
+
+Bugfixes
+--------
+
+- Bugfix: ``httpclient`` correct passes the path starting with ``/``.
+- Bugfixes for the ``htmlparser`` module.
+
+
+Additions
+---------
+
+- Added ``re.findAll``.
+
+
 2010-10-20 Version 0.8.10 released
 ==================================
 
