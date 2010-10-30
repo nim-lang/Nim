@@ -269,6 +269,7 @@ proc expected(x: var TXmlParser, n: PXmlNode): string =
 
 proc untilElementEnd(x: var TXmlParser, result: PXmlNode, 
                      errors: var seq[string]) =
+  # we parsed e.g. ``<br>`` and don't really expect a ``</br>``: 
   if result.htmlTag in singleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elementName, result.tag) != 0:
       return
@@ -277,10 +278,15 @@ proc untilElementEnd(x: var TXmlParser, result: PXmlNode,
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
       of tagLi, tagP, tagDt, tagDd, tagInput, tagOption:
-        if htmlTag(x.elementName) notin InlineTags:
-          # some tags are common to have no ``</end>``, like ``<li>``:
+        # some tags are common to have no ``</end>``, like ``<li>``:
+        if htmlTag(x.elementName) in {tagLi, tagP, tagDt, tagDd, tagInput,
+                                      tagOption}:
           errors.add(expected(x, result))
           break
+        when false:
+          if htmlTag(x.elementName) notin InlineTags:
+            errors.add(expected(x, result))
+            break
       of tagTr, tagTd, tagTh, tagTfoot, tagThead:
         if htmlTag(x.elementName) in {tagTr, tagTd, tagTh, tagTfoot, tagThead}:
           errors.add(expected(x, result))
@@ -367,9 +373,14 @@ proc parseHtml*(s: PStream, filename: string,
   # skip the DOCTYPE:
   if x.kind == xmlSpecial: next(x)
   result = parse(x, errors)
-  while x.kind != xmlEof:
+  if x.kind != xmlEof:
     errors.add(errorMsg(x, "EOF expected"))
+  while x.kind != xmlEof:
+    var oldPos = x.bufpos # little hack to see if we made any progess
     result.addNode(parse(x, errors))
+    if x.bufpos == oldPos: 
+      # force progress!
+      next(x) 
   close(x)
 
 proc parseHtml*(s: PStream): PXmlNode = 
