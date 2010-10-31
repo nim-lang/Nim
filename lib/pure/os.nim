@@ -1231,4 +1231,17 @@ proc getFileSize*(file: string): biggestInt {.rtl, extern: "nos$1".} =
       close(f)
     else: OSError()
 
+proc findExe*(exe: string): string = 
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable. 
+  ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe` 
+  ## is added an ``.exe`` file extension if it has no extension.
+  result = addFileExt(exe, os.exeExt)
+  if ExistsFile(result): return
+  var path = os.getEnv("PATH")
+  for candidate in split(path, pathSep): 
+    var x = candidate / result
+    if ExistsFile(x): return x
+  result = ""
+
 {.pop.}

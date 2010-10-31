@@ -17,6 +17,7 @@ Additions
 ---------
 
 - Added ``re.findAll``, ``pegs.findAll``.
+- Added ``os.findExe``.
 
 
 2010-10-20 Version 0.8.10 released

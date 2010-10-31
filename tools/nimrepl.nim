@@ -14,18 +14,6 @@ when defined(tinyc):
 else:
   const runCmd = "c -r"
 
-when not defined(findExe): 
-  # candidate for the stdlib:
-  proc findExe(exe: string): string = 
-    ## returns exe if the exe cannot be found
-    result = addFileExt(exe, os.exeExt)
-    if ExistsFile(result): return
-    var path = os.getEnv("PATH")
-    for candidate in split(path, pathSep): 
-      var x = candidate / result
-      if ExistsFile(x): return x
-    result = ""
-
 var nimExe = findExe("nimrod")
 if nimExe.len == 0: nimExe = "../bin" / addFileExt("nimrod", os.exeExt)
 
