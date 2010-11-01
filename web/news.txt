@@ -11,6 +11,8 @@ Bugfixes
 - Bugfix: ``httpclient`` correct passes the path starting with ``/``.
 - Bugfixes for the ``htmlparser`` module.
 - Bugfix: ``pegs.find`` did not respect ``start`` parameter.
+- Bugfix: ``dialogs.ChooseFilesToOpen`` did not work if only one file is
+  selected.
 
 
 Additions

@@ -129,6 +129,10 @@ proc ChooseFilesToOpen*(window: PWindow, root: string = ""): seq[string] =
           inc(i)
           if buf[i] == '\0': break
         for i in 0..result.len-1: result[i] = os.joinPath(path, result[i])
+      else:
+        # only one file selected --> gosh, what an ungly thing 
+        # the windows API is
+        add(result, path) 
   else:
     var chooser = file_chooser_dialog_new("Open Files", window,
                 FILE_CHOOSER_ACTION_OPEN,
