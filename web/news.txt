@@ -13,6 +13,7 @@ Bugfixes
 - Bugfix: ``pegs.find`` did not respect ``start`` parameter.
 - Bugfix: ``dialogs.ChooseFilesToOpen`` did not work if only one file is
   selected.
+- Bugfix: niminst: ``nimrod`` is not default dir for *every* project.
 
 
 Additions
