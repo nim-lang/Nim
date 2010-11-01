@@ -29,7 +29,7 @@ Source: ${expandFilename(f)}; DestDir: {app}\${splitFile(f).dir}; Flags: ignorev
   #if c.app == appConsole:
 Name: {group}\Console for $c.displayName; Filename: {cmd}
   #else:
-Name: {group}\$c.displayName; Filename: {app}
+Name: {group}\$c.displayName; Filename: {app}\${c.name}.exe
   #end if
 Name: {group}\Documentation; Filename: {app}\doc\overview.html
 Name: {group}\{cm:UninstallProgram,$c.displayName}; Filename: {uninstallexe}
