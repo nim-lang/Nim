@@ -41,7 +41,8 @@ type
     fcOther,      # other files; will not be copied on UNIX
     fcWindows,    # files only for Windows
     fcUnix,       # files only for Unix; must be after ``fcWindows``
-    fcUnixBin     # binaries for Unix
+    fcUnixBin,    # binaries for Unix
+    fcDocStart    # links to documentation for Windows installer
 
   TConfigData = object of TObject
     actions: set[TAction]
@@ -227,7 +228,11 @@ proc parseIniFile(c: var TConfigData) =
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
         of "config": filesOnly(p, k.key, v, c.cat[fcConfig])
         of "data": filesOnly(p, k.key, v, c.cat[fcData])
-        of "documentation": filesOnly(p, k.key, v, c.cat[fcDoc])
+        of "documentation": 
+          case normalize(k.key)
+          of "files": addFiles(c.cat[fcDoc], split(v, {';'}))
+          of "start": addFiles(c.cat[fcDocStart], split(v, {';'}))
+          else: quit(errorStr(p, "unknown variable: " & k.key))
         of "lib": filesOnly(p, k.key, v, c.cat[fcLib])
         of "other": filesOnly(p, k.key, v, c.cat[fcOther])
         of "windows":

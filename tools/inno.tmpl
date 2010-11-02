@@ -31,7 +31,9 @@ Name: {group}\Console for $c.displayName; Filename: {cmd}
   #else:
 Name: {group}\$c.displayName; Filename: {app}\${c.name}.exe
   #end if
-Name: {group}\Documentation; Filename: {app}\doc\overview.html
+  #for f in items(c.cat[fcDocStart]):
+Name: {group}\Documentation; Filename: {app}\$f
+  #end for
 Name: {group}\{cm:UninstallProgram,$c.displayName}; Filename: {uninstallexe}
 
   #if c.binPaths.len > 0:

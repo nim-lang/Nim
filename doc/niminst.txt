@@ -86,9 +86,12 @@ will be installed into the OS's configuration directory.
 Documentation section
 ---------------------
 
-The ``documentation`` section currently only supports the ``files`` key. 
+The ``documentation`` section supports the ``files`` key. 
 Listed files will be installed into the OS's native documentation directory 
 (which might be ``$appdir/doc``).
+
+There is a ``start`` key which determines whether the Windows installer 
+generates a link to e.g. the ``index.html`` of your documentation.
 
 
 Other section
