@@ -66,6 +66,10 @@ notation           meaning
                    failure.
 ``@E``             Search: Shorthand for ``(!E .)* E``. (Search loop for the
                    pattern `E`.)
+``{@} E``          Captured Search: Shorthand for ``{(!E .)*} E``. (Search 
+                   loop for the pattern `E`.) Everything until and exluding
+                   `E` is captured.
+``@@ E``           Same as ``{@} E``.
 ``A <- E``         Rule: Bind the expression `E` to the *nonterminal symbol*
                    `A`. **Left recursive rules are not possible and crash the
                    matching engine.**
@@ -131,7 +135,7 @@ The PEG parser implements this grammar (written in PEG syntax)::
   
   rule <- identifier \s* "<-" expr ig
   identNoArrow <- identifier !(\s* "<-")
-  prefixOpr <- ig '&' / ig '!' / ig '@'
+  prefixOpr <- ig '&' / ig '!' / ig '@' / ig '{@}' / ig '@@'
   literal <- ig identifier? '$' [0-9]+
              ig identNoArrow / 
              ig charset / 

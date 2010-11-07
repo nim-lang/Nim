@@ -58,6 +58,7 @@ type
     pkBackRefIgnoreCase,
     pkBackRefIgnoreStyle,
     pkSearch,           ## @a     --> Internal DSL: @a
+    pkCapturedSearch,   ## {@} a  --> Internal DSL: @@a
     pkRule,             ## a <- b
     pkList              ## a, b
   TNonTerminalFlag = enum
@@ -191,6 +192,11 @@ proc `*`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsGreedyRep".} =
 proc `@`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsSearch".} =
   ## constructs a "search" for the PEG `a`
   result.kind = pkSearch
+  result.sons = @[a]
+
+proc `@@`*(a: TPeg): TPeg {.noSideEffect, rtl, 
+                            extern: "npgegsCapturedSearch".} =
+  result.kind = pkCapturedSearch
   result.sons = @[a]
   
 when false:
@@ -421,6 +427,9 @@ proc toStrAux(r: TPeg, res: var string) =
   of pkSearch:
     add(res, '@')
     toStrAux(r.sons[0], res)
+  of pkCapturedSearch:
+    add(res, "{@}")
+    toStrAux(r.sons[0], res)
   of pkCapture:
     add(res, '{')
     toStrAux(r.sons[0], res)    
@@ -558,6 +567,21 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
       inc(result)
     result = -1
     c.ml = oldMl
+  of pkCapturedSearch:
+    var idx = c.ml # reserve a slot for the subpattern
+    inc(c.ml)
+    result = 0
+    while start+result < s.len:
+      var x = m(s, p.sons[0], start+result, c)
+      if x >= 0:
+        if idx < maxSubpatterns:
+          c.matches[idx] = (start, start+result-1)
+        #else: silently ignore the capture
+        inc(result, x)
+        return
+      inc(result)
+    result = -1
+    c.ml = idx
   of pkGreedyRep:
     result = 0
     while true:
@@ -850,6 +874,7 @@ type
     tkParRi,            ## ')'
     tkCurlyLe,          ## '{'
     tkCurlyRi,          ## '}'
+    tkCurlyAt,          ## '{@}'
     tkArrow,            ## '<-'
     tkBar,              ## '/'
     tkStar,             ## '*'
@@ -880,7 +905,8 @@ type
 const
   tokKindToStr: array[TTokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
-    "character set", "(", ")", "{", "}", "<-", "/", "*", "+", "&", "!", "?",
+    "character set", "(", ")", "{", "}", "{@}",
+    "<-", "/", "*", "+", "&", "!", "?",
     "@", "built-in", "escaped", "$"
   ]
 
@@ -1112,9 +1138,14 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
   skip(c)
   case c.buf[c.bufpos]
   of '{':
-    tok.kind = tkCurlyLe
     inc(c.bufpos)
-    add(tok.literal, '{')
+    if c.buf[c.bufpos] == '@' and c.buf[c.bufpos+1] == '}':
+      tok.kind = tkCurlyAt
+      inc(c.bufpos, 2)
+      add(tok.literal, "{@}")
+    else:
+      tok.kind = tkCurlyLe
+      add(tok.literal, '{')
   of '}': 
     tok.kind = tkCurlyRi
     inc(c.bufpos)
@@ -1193,6 +1224,10 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
     tok.kind = tkAt
     inc(c.bufpos)
     add(tok.literal, '@')
+    if c.buf[c.bufpos] == '@': 
+      tok.kind = tkCurlyAt
+      inc(c.bufpos)
+      add(tok.literal, '@')
   else:
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
@@ -1261,6 +1296,9 @@ proc primary(p: var TPegParser): TPeg =
   of tkAt:
     getTok(p)
     return @primary(p)
+  of tkCurlyAt:
+    getTok(p)
+    return @@primary(p)
   else: nil
   case p.tok.kind
   of tkIdentifier:
@@ -1346,7 +1384,7 @@ proc seqExpr(p: var TPegParser): TPeg =
   while true:
     case p.tok.kind
     of tkAmp, tkNot, tkAt, tkStringLit, tkCharset, tkParLe, tkCurlyLe,
-       tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar:
+       tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar, tkCurlyAt:
       result = sequence(result, primary(p))
     of tkIdentifier:
       if not arrowIsNextTok(p):
@@ -1514,4 +1552,11 @@ when isMainModule:
 
   for x in findAll("abcdef", peg"{.}", 3):
     echo x
+    
+  if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
+    assert matches[0] == "f"
+    assert matches[1] == "a, b"
+  else:
+    assert false
+  
 
