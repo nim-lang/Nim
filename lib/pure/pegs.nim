@@ -37,6 +37,11 @@ type
     pkAny,              ## any character (.)
     pkAnyRune,          ## any Unicode character (_)
     pkNewLine,          ## CR-LF, LF, CR
+    pkLetter,           ## Unicode letter
+    pkLower,            ## Unicode lower case letter
+    pkUpper,            ## Unicode upper case letter
+    pkTitle,            ## Unicode title character
+    pkWhitespace,       ## Unicode whitespace character
     pkTerminal,
     pkTerminalIgnoreCase,
     pkTerminalIgnoreStyle,
@@ -71,7 +76,7 @@ type
     rule: TNode                   ## the rule that the symbol refers to
   TNode {.final.} = object
     case kind: TPegKind
-    of pkEmpty, pkAny, pkAnyRune, pkGreedyAny, pkNewLine: nil
+    of pkEmpty..pkWhitespace: nil
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
@@ -196,6 +201,7 @@ proc `@`*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsSearch".} =
 
 proc `@@`*(a: TPeg): TPeg {.noSideEffect, rtl, 
                             extern: "npgegsCapturedSearch".} =
+  ## constructs a "captured search" for the PEG `a`
   result.kind = pkCapturedSearch
   result.sons = @[a]
   
@@ -237,6 +243,27 @@ proc newLine*: TPeg {.inline.} =
   ## constructs the PEG `newline`:idx: (``\n``)
   result.kind = pkNewline
 
+proc UnicodeLetter*: TPeg {.inline.} = 
+  ## constructs the PEG ``\letter`` which matches any Unicode letter.
+  result.kind = pkLetter
+  
+proc UnicodeLower*: TPeg {.inline.} = 
+  ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
+  result.kind = pkLower 
+
+proc UnicodeUpper*: TPeg {.inline.} = 
+  ## constructs the PEG ``\upper`` which matches any Unicode lowercase letter.
+  result.kind = pkUpper 
+  
+proc UnicodeTitle*: TPeg {.inline.} = 
+  ## constructs the PEG ``\title`` which matches any Unicode title letter.
+  result.kind = pkTitle
+
+proc UnicodeWhitespace*: TPeg {.inline.} = 
+  ## constructs the PEG ``\white`` which matches any Unicode 
+  ## whitespace character.
+  result.kind = pkWhitespace
+
 proc capture*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
   result.kind = pkCapture
@@ -267,8 +294,8 @@ proc spaceCost(n: TPeg): int =
   case n.kind
   of pkEmpty: nil
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
-     pkGreedyRepChar, pkCharChoice, pkGreedyRepSet, pkAny, pkAnyRune,
-     pkNewLine, pkGreedyAny:
+     pkGreedyRepChar, pkCharChoice, pkGreedyRepSet, 
+     pkAny..pkWhitespace, pkGreedyAny:
     result = 1
   of pkNonTerminal:
     # we cannot inline a rule with a non-terminal
@@ -379,6 +406,12 @@ proc toStrAux(r: TPeg, res: var string) =
   of pkEmpty: add(res, "()")
   of pkAny: add(res, '.')
   of pkAnyRune: add(res, '_')
+  of pkLetter: add(res, "\\letter")
+  of pkLower: add(res, "\\lower")
+  of pkUpper: add(res, "\\upper")
+  of pkTitle: add(res, "\\title")
+  of pkWhitespace: add(res, "\\white")
+
   of pkNewline: add(res, "\\n")
   of pkTerminal: add(res, singleQuoteEsc(r.term))
   of pkTerminalIgnoreCase:
@@ -460,9 +493,14 @@ proc `$` *(r: TPeg): string {.nosideEffect, rtl, extern: "npegsToString".} =
 # --------------------- core engine -------------------------------------------
 
 type
-  TMatchClosure {.final.} = object
+  TCaptures* {.final.} = object ## contains the captured substrings.
     matches: array[0..maxSubpatterns-1, tuple[first, last: int]]
     ml: int
+
+proc bounds*(c: TCaptures, 
+             i: range[0..maxSubpatterns-1]): tuple[first, last: int] = 
+  ## returns the bounds ``[first..last]`` of the `i`'th capture.
+  result = c.matches[i]
 
 when not useUnicode:
   type
@@ -472,9 +510,17 @@ when not useUnicode:
     inc(i)
   template runeLenAt(s, i: expr): expr = 1
 
-proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
-  ## this implements a simple PEG interpreter. Thanks to superoperators it
-  ## has competitive performance nevertheless.
+  proc isAlpha(a: char): bool {.inline.} = return a in {'a'..'z','A'..'Z'}
+  proc isUpper(a: char): bool {.inline.} = return a in {'A'..'Z'}
+  proc isLower(a: char): bool {.inline.} = return a in {'a'..'z'}
+  proc isTitle(a: char): bool {.inline.} = return false
+  proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
+
+proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
+               nosideEffect, rtl, extern: "npegs$1".} =
+  ## low-level matching proc that implements the PEG interpreter. Use this 
+  ## for maximum efficiency (every other PEG operation ends up calling this
+  ## proc).
   ## Returns -1 if it does not match, else the length of the match
   case p.kind
   of pkEmpty: result = 0 # match of length 0
@@ -484,6 +530,51 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkAnyRune:
     if s[start] != '\0':
       result = runeLenAt(s, start)
+    else:
+      result = -1
+  of pkLetter: 
+    if s[start] != '\0':
+      var a: TRune
+      result = start
+      fastRuneAt(s, result, a)
+      if isAlpha(a): dec(result, start)
+      else: result = -1
+    else:
+      result = -1
+  of pkLower: 
+    if s[start] != '\0':
+      var a: TRune
+      result = start
+      fastRuneAt(s, result, a)
+      if isLower(a): dec(result, start)
+      else: result = -1
+    else:
+      result = -1
+  of pkUpper: 
+    if s[start] != '\0':
+      var a: TRune
+      result = start
+      fastRuneAt(s, result, a)
+      if isUpper(a): dec(result, start)
+      else: result = -1
+    else:
+      result = -1
+  of pkTitle: 
+    if s[start] != '\0':
+      var a: TRune
+      result = start
+      fastRuneAt(s, result, a)
+      if isTitle(a): dec(result, start) 
+      else: result = -1
+    else:
+      result = -1
+  of pkWhitespace: 
+    if s[start] != '\0':
+      var a: TRune
+      result = start
+      fastRuneAt(s, result, a)
+      if isWhitespace(a): dec(result, start)
+      else: result = -1
     else:
       result = -1
   of pkGreedyAny:
@@ -537,14 +628,14 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkNonTerminal:
     var oldMl = c.ml
     when false: echo "enter: ", p.nt.name
-    result = m(s, p.nt.rule, start, c)
+    result = rawMatch(s, p.nt.rule, start, c)
     when false: echo "leave: ", p.nt.name
     if result < 0: c.ml = oldMl
   of pkSequence:
     var oldMl = c.ml  
     result = 0
     for i in 0..high(p.sons):
-      var x = m(s, p.sons[i], start+result, c)
+      var x = rawMatch(s, p.sons[i], start+result, c)
       if x < 0:
         c.ml = oldMl
         result = -1
@@ -553,14 +644,14 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkOrderedChoice:
     var oldMl = c.ml
     for i in 0..high(p.sons):
-      result = m(s, p.sons[i], start, c)
+      result = rawMatch(s, p.sons[i], start, c)
       if result >= 0: break
       c.ml = oldMl
   of pkSearch:
     var oldMl = c.ml
     result = 0
     while start+result < s.len:
-      var x = m(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c)
       if x >= 0:
         inc(result, x)
         return
@@ -572,7 +663,7 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
     inc(c.ml)
     result = 0
     while start+result < s.len:
-      var x = m(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c)
       if x >= 0:
         if idx < maxSubpatterns:
           c.matches[idx] = (start, start+result-1)
@@ -585,7 +676,7 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkGreedyRep:
     result = 0
     while true:
-      var x = m(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c)
       # if x == 0, we have an endless loop; so the correct behaviour would be
       # not to break. But endless loops can be easily introduced:
       # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
@@ -600,15 +691,15 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
     result = 0
     while contains(p.charChoice^, s[start+result]): inc(result)
   of pkOption:
-    result = max(0, m(s, p.sons[0], start, c))
+    result = max(0, rawMatch(s, p.sons[0], start, c))
   of pkAndPredicate:
     var oldMl = c.ml
-    result = m(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c)
     if result >= 0: result = 0 # do not consume anything
     else: c.ml = oldMl
   of pkNotPredicate:
     var oldMl = c.ml
-    result = m(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c)
     if result < 0: result = 0
     else:
       c.ml = oldMl
@@ -616,7 +707,7 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
   of pkCapture:
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
-    result = m(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c)
     if result >= 0:
       if idx < maxSubpatterns:
         c.matches[idx] = (start, start+result-1)
@@ -629,7 +720,7 @@ proc m(s: string, p: TPeg, start: int, c: var TMatchClosure): int =
     var n: TPeg
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef)) 
     n.term = s.copy(a, b)
-    result = m(s, n, start, c)
+    result = rawMatch(s, n, start, c)
   of pkRule, pkList: assert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
@@ -638,8 +729,8 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
-  var c: TMatchClosure
-  result = m(s, pattern, start, c) == len(s) -start
+  var c: TCaptures
+  result = rawMatch(s, pattern, start, c) == len(s) -start
   if result:
     for i in 0..c.ml-1:
       matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
@@ -647,8 +738,8 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
 proc match*(s: string, pattern: TPeg, 
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
-  var c: TMatchClosure
-  result = m(s, pattern, start, c) == len(s)-start
+  var c: TCaptures
+  result = rawMatch(s, pattern, start, c) == len(s)-start
 
 proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
@@ -656,8 +747,8 @@ proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
-  var c: TMatchClosure
-  result = m(s, pattern, start, c)
+  var c: TCaptures
+  result = rawMatch(s, pattern, start, c)
   if result >= 0:
     for i in 0..c.ml-1:
       matches[i] = copy(s, c.matches[i][0], c.matches[i][1])
@@ -668,8 +759,8 @@ proc matchLen*(s: string, pattern: TPeg,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
-  var c: TMatchClosure
-  result = m(s, pattern, start, c)
+  var c: TCaptures
+  result = rawMatch(s, pattern, start, c)
 
 proc find*(s: string, pattern: TPeg, matches: var openarray[string],
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
@@ -680,6 +771,18 @@ proc find*(s: string, pattern: TPeg, matches: var openarray[string],
     if matchLen(s, pattern, matches, i) >= 0: return i
   return -1
   # could also use the pattern here: (!P .)* P
+  
+proc findBounds*(s: string, pattern: TPeg, matches: var openarray[string],
+                 start = 0): tuple[first, last: int] {.
+                 nosideEffect, rtl, extern: "npegs$1Capture".} =
+  ## returns the starting position and end position of ``pattern`` in ``s`` 
+  ## and the captured
+  ## substrings in the array ``matches``. If it does not match, nothing
+  ## is written into ``matches`` and (-1,0) is returned.
+  for i in start .. s.len-1:
+    var L = matchLen(s, pattern, matches, i)
+    if L >= 0: return (i, i+L-1)
+  return (-1, 0)
   
 proc find*(s: string, pattern: TPeg, 
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
@@ -1351,6 +1454,11 @@ proc primary(p: var TPegParser): TPeg =
     of "a": result = charset({'a'..'z', 'A'..'Z'})
     of "A": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
     of "ident": result = pegs.ident
+    of "letter": result = UnicodeLetter()
+    of "upper": result = UnicodeUpper()
+    of "lower": result = UnicodeLower()
+    of "title": result = UnicodeTitle()
+    of "white": result = UnicodeWhitespace()
     else: pegError(p, "unknown built-in: " & p.tok.literal)
     getTok(p)
   of tkEscaped:
@@ -1439,9 +1547,12 @@ proc rawParse(p: var TPegParser): TPeg =
     elif ntUsed notin nt.flags and i > 0:
       pegError(p, "unused rule: " & nt.name, nt.line, nt.col)
 
-proc parsePeg*(input: string, filename = "pattern", line = 1, col = 0): TPeg =
+proc parsePeg*(pattern: string, filename = "pattern", line = 1, col = 0): TPeg =
+  ## constructs a TPeg object from `pattern`. `filename`, `line`, `col` are
+  ## used for error messages, but they only provide start offsets. `parsePeg`
+  ## keeps track of line and column numbers within `pattern`.
   var p: TPegParser
-  init(TPegLexer(p), input, filename, line, col)
+  init(TPegLexer(p), pattern, filename, line, col)
   p.tok.kind = tkInvalid
   p.tok.modifier = modNone
   p.tok.literal = ""
@@ -1505,9 +1616,9 @@ when isMainModule:
   expr.rule = sequence(capture(ident), *sequence(
                 nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
   
-  var c: TMatchClosure
+  var c: TCaptures
   var s = "a+b +  c +d+e+f"
-  assert m(s, expr.rule, 0, c) == len(s)
+  assert rawMatch(s, expr.rule, 0, c) == len(s)
   var a = ""
   for i in 0..c.ml-1:
     a.add(copy(s, c.matches[i][0], c.matches[i][1]))
@@ -1559,4 +1670,10 @@ when isMainModule:
   else:
     assert false
   
-
+  assert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+  # ß is not a lower cased letter?!
+  assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+  assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
+  assert(not match("456678", peg"(\letter)+"))
+  
+  

@@ -84,6 +84,7 @@ proc initConfigData(c: var TConfigData) =
   c.vars = newStringTable(modeStyleInsensitive)
 
 proc skipRoot(f: string): string = 
+  # "abc/def/xyz" --> "def/xyz"
   var i = 0
   result = ""
   for component in split(f, {dirsep, altsep}): 

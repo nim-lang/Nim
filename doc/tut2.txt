@@ -75,9 +75,9 @@ Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``TObject``
 can be used as its ancestor, but this is only a convention.
 
-**Note**: Aggregation (*has-a* relation) is often preferable to inheritance
+**Note**: Composition (*has-a* relation) is often preferable to inheritance
 (*is-a* relation) for simple code reuse. Since objects are value types in
-Nimrod, aggregation is as efficient as inheritance.
+Nimrod, composition is as efficient as inheritance.
 
 
 Mutually recursive types
@@ -487,7 +487,7 @@ The example shows a generic binary tree. Depending on context, the brackets are
 used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
-is not hidden and used in the ``preorder`` iterator.
+is not hidden and is used in the ``preorder`` iterator.
 
 
 Templates

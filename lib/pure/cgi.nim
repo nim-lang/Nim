@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements helper procs for CGI applictions. Example:
+## This module implements helper procs for CGI applications. Example:
 ## 
 ## .. code-block:: Nimrod
 ##
@@ -29,7 +29,7 @@
 ##    writeln(stdout, "your password: " & myData["password"])
 ##    writeln(stdout, "</body></html>")
 
-import strutils, os, strtabs
+import strutils, os, strtabs, cookies
 
 proc URLencode*(s: string): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
@@ -355,32 +355,16 @@ proc setCookie*(name, value: string) =
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")
 
 var
-  cookies: PStringTable = nil
-
-proc parseCookies(s: string): PStringTable = 
-  result = newStringTable(modeCaseInsensitive)
-  var i = 0
-  while true:
-    while s[i] == ' ' or s[i] == '\t': inc(i)
-    var keystart = i
-    while s[i] != '=' and s[i] != '\0': inc(i)
-    var keyend = i-1
-    if s[i] == '\0': break
-    inc(i) # skip '='
-    var valstart = i
-    while s[i] != ';' and s[i] != '\0': inc(i)
-    result[copy(s, keystart, keyend)] = copy(s, valstart, i-1)
-    if s[i] == '\0': break
-    inc(i) # skip ';'
+  gcookies: PStringTable = nil
     
 proc getCookie*(name: string): string = 
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
-  if cookies == nil: cookies = parseCookies(getHttpCookie())
-  result = cookies[name]
+  if gcookies == nil: gcookies = parseCookies(getHttpCookie())
+  result = gcookies[name]
 
 proc existsCookie*(name: string): bool = 
   ## Checks if a cookie of `name` exists.
-  if cookies == nil: cookies = parseCookies(getHttpCookie())
-  result = hasKey(cookies, name)
+  if gcookies == nil: gcookies = parseCookies(getHttpCookie())
+  result = hasKey(gcookies, name)
 
 

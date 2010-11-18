@@ -756,6 +756,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
   of rnTitle: d.meta[metaTitle] = renderRstToOut(d, n.sons[0])
   else: InternalError("renderRstToOut")
   
+proc checkForFalse(n: PNode): bool = 
+  result = n.kind == nkIdent and IdentEq(n.ident, "false")
+  
 proc generateDoc(d: PDoc, n: PNode) = 
   if n == nil: return 
   case n.kind
@@ -782,7 +785,8 @@ proc generateDoc(d: PDoc, n: PNode) =
     for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i])
   of nkWhenStmt: 
     # generate documentation for the first branch only:
-    generateDoc(d, lastSon(n.sons[0]))
+    if not checkForFalse(n.sons[0].sons[0]):
+      generateDoc(d, lastSon(n.sons[0]))
   else: nil
 
 proc genSection(d: PDoc, kind: TSymKind) = 
