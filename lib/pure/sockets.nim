@@ -9,7 +9,7 @@
 
 ## This module implements a simple portable type-safe sockets layer.
 
-import os
+import os, parseutils
 
 when defined(Windows):
   import winlean
@@ -146,18 +146,66 @@ proc listen*(socket: TSocket, attempts = 5) =
   ## listens to socket.
   if listen(cint(socket), cint(attempts)) < 0'i32: OSError()
 
-proc bindAddr*(socket: TSocket, port = TPort(0)) =
-  ## binds a port number to a socket.
+proc invalidIp4(s: string) {.noreturn, noinline.} =
+  raise newException(EInvalidValue, "invalid ip4 address: " & s)
+
+proc parseIp4*(s: string): int32 = 
+  ## parses an IP version 4 in dotted decimal form like "a.b.c.d".
+  ## Raises EInvalidValue in case of an error.
+  var a, b, c, d: int
+  var i = 0
+  var j = parseInt(s, a, i)
+  if j <= 0: invalidIp4(s)
+  inc(i, j)
+  if s[i] == '.': inc(i)
+  else: invalidIp4(s)
+  j = parseInt(s, b, i)
+  if j <= 0: invalidIp4(s)
+  inc(i, j)
+  if s[i] == '.': inc(i)
+  else: invalidIp4(s)
+  j = parseInt(s, c, i)
+  if j <= 0: invalidIp4(s)
+  inc(i, j)
+  if s[i] == '.': inc(i)
+  else: invalidIp4(s)
+  j = parseInt(s, d, i)
+  if j <= 0: invalidIp4(s)
+  inc(i, j)
+  if s[i] != '\0': invalidIp4(s)
+  result = int32(a shl 24 or b shl 16 or c shl 8 or d)
+
+proc bindAddr*(socket: TSocket, port = TPort(0), address = "") =
+  ## binds an address/port number to a socket.
+  ## Use address string in dotted decimal form like "a.b.c.d"
+  ## or leave "" for any address.
   var name: Tsockaddr_in
   when defined(Windows):
     name.sin_family = int16(ord(AF_INET))
   else:
     name.sin_family = posix.AF_INET
   name.sin_port = sockets.htons(int16(port))
-  name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
+  if address == "":
+    name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
+  else:
+    name.sin_addr.s_addr = parseIp4(address)
   if bindSocket(cint(socket), cast[ptr TSockAddr](addr(name)),
                 sizeof(name)) < 0'i32:
     OSError()
+
+when false:
+  proc bindAddr*(socket: TSocket, port = TPort(0)) =
+    ## binds a port number to a socket.
+    var name: Tsockaddr_in
+    when defined(Windows):
+      name.sin_family = int16(ord(AF_INET))
+    else:
+      name.sin_family = posix.AF_INET
+    name.sin_port = sockets.htons(int16(port))
+    name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
+    if bindSocket(cint(socket), cast[ptr TSockAddr](addr(name)),
+                  sizeof(name)) < 0'i32:
+      OSError()
   
 proc getSockName*(socket: TSocket): TPort = 
   ## returns the socket's associated port number.
@@ -408,6 +456,33 @@ proc send*(socket: TSocket, data: pointer, size: int): int =
 proc send*(socket: TSocket, data: string) =
   ## sends data to a socket.
   if send(socket, cstring(data), data.len) != data.len: OSError()
+
+when defined(Windows):
+  const 
+    SOCKET_ERROR = -1
+    IOCPARM_MASK = 127
+    IOC_IN = int(-2147483648)
+    FIONBIO = int(IOC_IN or ((sizeof(int) and IOCPARM_MASK) shl 16) or 
+                             (102 shl 8) or 126)
+
+  proc ioctlsocket(s: TWinSocket, cmd: clong, 
+                   argptr: ptr clong): cint {.
+                   stdcall, importc:"ioctlsocket", dynlib: "ws2_32.dll".}
+
+proc setBlocking*(s: TSocket, blocking: bool) =
+  ## sets blocking mode on socket
+  when defined(Windows):
+    var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
+    if SOCKET_ERROR == ioctlsocket(TWinSocket(s), FIONBIO, addr(mode)):
+      OSError()
+  else: # BSD sockets
+    var x: int = fcntl(cint(s), F_GETFL, 0)
+    if x == -1:
+      OSError()
+    else:
+      var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
+      if fcntl(cint(s), F_SETFL, mode) == -1:
+        OSError()
 
 when defined(Windows):
   var wsa: TWSADATA

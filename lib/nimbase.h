@@ -22,6 +22,10 @@ __TINYC__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+#if defined(__GNUC__)
+#  define _GNU_SOURCE 1
+#endif
+
 #if !defined(__TINYC__)
 #  include  <math.h>
 #else
@@ -29,7 +33,6 @@ __TINYC__
 #  define GCC_MAJOR 4
 #  define __GNUC_MINOR__ 4
 #  define __GNUC_PATCHLEVEL__ 5 */
-
 #  define __DECLSPEC_SUPPORTED 1
 #endif
 

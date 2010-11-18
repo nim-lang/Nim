@@ -5,6 +5,8 @@ News
 2010-XX-XX Version 0.8.12 released
 ==================================
 
+Version 0.8.12 has been released! Get it `here <download.html>`_. 
+
 Bugfixes
 --------
 
@@ -21,7 +23,9 @@ Additions
 
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
-- The Pegs module supports a *captured search loop operator* ``{@}``.
+- Pegs support a *captured search loop operator* ``{@}``.
+- Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
+  ``\title``, ``\white``.
 
 
 2010-10-20 Version 0.8.10 released
@@ -94,9 +98,6 @@ Additions
 
 2010-03-14 Version 0.8.8 released
 =================================
-
-Version 0.8.8 has been released! Get it `here <download.html>`_. 
-
 
 Bugfixes
 --------

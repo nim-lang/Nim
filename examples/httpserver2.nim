@@ -1,33 +1,17 @@
-#
-#
-#            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
-#
-#    See the file "copying.txt", included in this
-#    distribution, for details about the copyright.
-#
-
-## This module implements a simple HTTP-Server.
-##
-## Example:
-##
-## .. code-block:: nimrod
-##  import strutils, sockets, httpserver
-##
-##  var counter = 0
-##  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
-##    inc(counter)
-##    client.send("Hello for the $#th time." % $counter & wwwNL)
-##    return false # do not stop processing
-##
-##  run(handleRequest, TPort(80))
-##
-
 import strutils, os, osproc, strtabs, streams, sockets
 
 const
   wwwNL* = "\r\L"
   ServerSig = "Server: httpserver.nim/1.0.0" & wwwNL
+
+type
+  TRequestMethod = enum reqGet, reqPost
+  TServer* = object       ## contains the current server state
+    socket: TSocket
+    job: seq[TJob]
+  TJob* = object
+    client: TSocket
+    process: PProcess
 
 # --------------- output messages --------------------------------------------
 
@@ -40,12 +24,14 @@ proc badRequest(client: TSocket) =
   send(client, "HTTP/1.0 400 BAD REQUEST" & wwwNL)
   sendTextContentType(client)
   send(client, "<p>Your browser sent a bad request, " &
-               "such as a POST without a Content-Length." & wwwNL)
+               "such as a POST without a Content-Length.</p>" & wwwNL)
+
 
 proc cannotExec(client: TSocket) =
   send(client, "HTTP/1.0 500 Internal Server Error" & wwwNL)
   sendTextContentType(client)
-  send(client, "<P>Error prohibited CGI execution." & wwwNL)
+  send(client, "<P>Error prohibited CGI execution.</p>" & wwwNL)
+
 
 proc headers(client: TSocket, filename: string) =
   # XXX could use filename to determine file type
@@ -53,15 +39,16 @@ proc headers(client: TSocket, filename: string) =
   send(client, ServerSig)
   sendTextContentType(client)
 
-proc notFound(client: TSocket) =
+proc notFound(client: TSocket, path: string) =
   send(client, "HTTP/1.0 404 NOT FOUND" & wwwNL)
   send(client, ServerSig)
   sendTextContentType(client)
   send(client, "<html><title>Not Found</title>" & wwwNL)
   send(client, "<body><p>The server could not fulfill" & wwwNL)
-  send(client, "your request because the resource specified" & wwwNL)
+  send(client, "your request because the resource <b>" & path & "</b>" & wwwNL)
   send(client, "is unavailable or nonexistent.</p>" & wwwNL)
   send(client, "</body></html>" & wwwNL)
+
 
 proc unimplemented(client: TSocket) =
   send(client, "HTTP/1.0 501 Method Not Implemented" & wwwNL)
@@ -71,6 +58,7 @@ proc unimplemented(client: TSocket) =
                "</title></head>" &
                "<body><p>HTTP request method not supported.</p>" &
                "</body></HTML>" & wwwNL)
+
 
 # ----------------- file serving ---------------------------------------------
 
@@ -95,15 +83,14 @@ proc serveFile(client: TSocket, filename: string) =
       if bytesread != bufSize: break
     dealloc(buf)
     close(f)
+    client.close()
   else:
-    notFound(client)
+    notFound(client, filename)
 
 # ------------------ CGI execution -------------------------------------------
 
-type
-  TRequestMethod = enum reqGet, reqPost
-
-proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
+proc executeCgi(server: var TServer, client: TSocket, path, query: string, 
+                meth: TRequestMethod) =
   var env = newStringTable(modeCaseInsensitive)
   var contentLength = -1
   case meth
@@ -114,9 +101,11 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
     env["QUERY_STRING"] = query
   of reqPost:
     var buf = ""
-    var dataAvail = false
+    var dataAvail = true
     while dataAvail:
       dataAvail = recvLine(client, buf)
+      if buf.len == 0:
+        break
       var L = toLower(buf)
       if L.startsWith("content-length:"):
         var i = len("content-length:")
@@ -133,6 +122,12 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
   send(client, "HTTP/1.0 200 OK" & wwwNL)
 
   var process = startProcess(command=path, env=env)
+ 
+  var job: TJob
+  job.process = process
+  job.client = client
+  server.job.add(job)
+ 
   if meth == reqPost:
     # get from client and post to CGI program:
     var buf = alloc(contentLength)
@@ -143,15 +138,32 @@ proc executeCgi(client: TSocket, path, query: string, meth: TRequestMethod) =
     inp.writeData(inp, buf, contentLength)
     dealloc(buf)
 
-  var outp = process.outputStream
-  while running(process) or not outp.atEnd(outp):
-    var line = outp.readLine()
-    send(client, line)
-    send(client, wwwNL)
+proc animate(server: var TServer) =
+  # checks list of jobs, removes finished ones (pretty sloppy by seq copying)
+  var active_jobs: seq[TJob] = @[]
+  for i in 0..server.job.len-1:
+    var job = server.job[i]
+    if running(job.process):
+      active_jobs.add(job)
+    else:
+      # read process output stream and send it to client
+      var outp = job.process.outputStream
+      while true:
+        var line = outp.readstr(1024)
+        if line.len == 0:
+          break
+        else:
+          try:
+            send(job.client, line)
+          except:
+            echo("send failed, client diconnected")
+      close(job.client)
+
+  server.job = active_jobs
 
 # --------------- Server Setup -----------------------------------------------
 
-proc acceptRequest(client: TSocket) =
+proc acceptRequest(server: var TServer, client: TSocket) =
   var cgi = false
   var query = ""
   var buf = ""
@@ -159,17 +171,19 @@ proc acceptRequest(client: TSocket) =
   var path = ""
   var data = buf.split()
   var meth = reqGet
-
   var q = find(data[1], '?')
 
   # extract path
   if q >= 0:
     # strip "?..." from path, this may be found in both POST and GET
-    path = "." & data[1].copy(0, q-1)
+    path = data[1].copy(0, q-1)
   else:
-    path = "." & data[1]
+    path = data[1]
   # path starts with "/", by adding "." in front of it we serve files from cwd
-  
+  path = "." & path
+
+  echo("accept: " & path)
+
   if cmpIgnoreCase(data[0], "GET") == 0:
     if q >= 0:
       cgi = true
@@ -185,7 +199,8 @@ proc acceptRequest(client: TSocket) =
 
   if not ExistsFile(path):
     discardHeaders(client)
-    notFound(client)
+    notFound(client, path)
+    client.close()
   else:
     when defined(Windows):
       var ext = splitFile(path).ext.toLower
@@ -198,75 +213,33 @@ proc acceptRequest(client: TSocket) =
     if not cgi:
       serveFile(client, path)
     else:
-      executeCgi(client, path, query, meth)
+      executeCgi(server, client, path, query, meth)
 
-type
-  TServer* = object       ## contains the current server state
-    socket: TSocket
-    port: TPort
-    client*: TSocket      ## the socket to write the file data to
-    path*, query*: string ## path and query the client requested
 
-proc open*(s: var TServer, port = TPort(80)) =
-  ## creates a new server at port `port`. If ``port == 0`` a free port is
-  ## acquired that can be accessed later by the ``port`` proc.
-  s.socket = socket(AF_INET)
-  if s.socket == InvalidSocket: OSError()
-  bindAddr(s.socket, port)
-  listen(s.socket)
-
-  if port == TPort(0):
-    s.port = getSockName(s.socket)
-  else:
-    s.port = port
-  s.client = InvalidSocket
-  s.path = ""
-  s.query = ""
-
-proc port*(s: var TServer): TPort =
-  ## get the port number the server has acquired.
-  result = s.port
-
-proc next*(s: var TServer) =
-  ## proceed to the first/next request.
-  s.client = accept(s.socket)
-  headers(s.client, "")
-  var buf = ""
-  discard recvLine(s.client, buf)
-  var data = buf.split()
-  if cmpIgnoreCase(data[0], "GET") == 0 or cmpIgnoreCase(data[0], "POST") == 0:
-    var q = find(data[1], '?')
-    if q >= 0:
-      s.query = data[1].copy(q+1)
-      s.path = data[1].copy(0, q-1)
-    else:
-      s.query = ""
-      s.path = data[1]
-  else:
-    unimplemented(s.client)
-
-proc close*(s: TServer) =
-  ## closes the server (and the socket the server uses).
-  close(s.socket)
-
-proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
-          port = TPort(80)) =
-  ## encapsulates the server object and main loop
-  var s: TServer
-  open(s, port)
-  #echo("httpserver running on port ", s.port)
-  while true:
-    next(s)
-    if handleRequest(s.client, s.path, s.query): break
-    close(s.client)
-  close(s)
 
 when isMainModule:
-  var counter = 0
-  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
-    inc(counter)
-    client.send("Hello, Andreas, for the $#th time." % $counter & wwwNL)
-    return false # do not stop processing
+  var port = 80
 
-  run(handleRequest, TPort(80))
+  var server: TServer
+  server.job = @[]
+  server.socket = socket(AF_INET)
+  if server.socket == InvalidSocket: OSError()
+  server.socket.bindAddr(port=TPort(port))
+  listen(server.socket)
+  echo("server up on port " & $port)
 
+  while true:
+    # check for new new connection & handle it
+    var list: seq[TSocket] = @[server.socket]
+    if select(list, 10) > 0:
+      var client = accept(server.socket)
+      try:
+        acceptRequest(server, client)
+      except:
+        echo("failed to accept client request")
+
+    # pooling events
+    animate(server)
+    # some slack for CPU
+    sleep(10)
+  server.socket.close()

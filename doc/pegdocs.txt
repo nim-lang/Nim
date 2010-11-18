@@ -98,6 +98,11 @@ macro              meaning
 ``\i``             ignore case for matching; use this at the start of the PEG
 ``\y``             ignore style for matching; use this at the start of the PEG
 ``\ident``         a standard ASCII identifier: ``[a-zA-Z_][a-zA-Z_0-9]*``
+``\letter``        any Unicode letter
+``\upper``         any Unicode uppercase letter
+``\lower``         any Unicode lowercase letter
+``\title``         any Unicode title letter
+``\white``         any Unicode whitespace character
 ==============     ============================================================
 
 A backslash followed by a letter is a built-in macro, otherwise it

@@ -2542,10 +2542,10 @@ cannot be inherited from.
 Pure pragma
 -----------
 The `pure`:idx: pragma serves two completely different purposes:
-1) To mark a procedure that Nimrod should not generate any exit statements like
+1. To mark a procedure that Nimrod should not generate any exit statements like
    ``return result;`` in the generated code. This is useful for procs that only
    consist of an assembler statement.
-2) To mark an object type so that its type field should be omitted. This is
+2. To mark an object type so that its type field should be omitted. This is
    necessary for binary compatibility with other compiled languages.
 
 
@@ -2795,7 +2795,7 @@ a dynamic library. The pragma then has no argument and has to be used in
 conjunction with the ``exportc`` pragma:
 
 .. code-block:: Nimrod
-  proc exportme(): int {.cdecl, export, dynlib.}
+  proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
 ``--app:lib`` command line option.

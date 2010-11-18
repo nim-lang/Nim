@@ -39,7 +39,7 @@ proc destroy(widget: PWidget, data: pgpointer){.cdecl.} =
 proc FileOpenClicked(menuitem: PMenuItem, userdata: pgpointer) {.cdecl.} =
   var path = ChooseFileToOpen(w)
   if path != "":
-    var file: string = readFile(path)
+    var file = readFile(path)
     if file != nil:
       set_text(InputTextBuffer, file, len(file))
     else:
