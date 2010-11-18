@@ -58,9 +58,9 @@ when defined(Windows):
   
   proc InitLock(L: var TSysLock) {.stdcall,
     dynlib: "kernel32", importc: "InitializeCriticalSection".}
-  proc Lock(L: var TSysLock) {.stdcall,
+  proc Aquire(L: var TSysLock) {.stdcall,
     dynlib: "kernel32", importc: "EnterCriticalSection".}
-  proc Unlock(L: var TSysLock) {.stdcall,
+  proc Release(L: var TSysLock) {.stdcall,
     dynlib: "kernel32", importc: "LeaveCriticalSection".}
 
   proc CreateThread(lpThreadAttributes: Pointer, dwStackSize: int32,
@@ -76,9 +76,9 @@ else:
 
   proc InitLock(L: var TSysLock, attr: pointer = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>".}
-  proc Lock(L: var TSysLock) {.
+  proc Aquire(L: var TSysLock) {.
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
-  proc Unlock(L: var TSysLock) {.
+  proc Release(L: var TSysLock) {.
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
   
   

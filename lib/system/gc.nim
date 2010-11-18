@@ -76,17 +76,17 @@ var
     # This is wasteful but safe. This is a lock against recursive garbage
     # collection, not a lock for threads!
 
-proc lock(gch: var TGcHeap) {.inline.} = 
+proc aquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
     if isMultiThreaded: 
-      Lock(gch.zctLock)
-      lock(gch.cycleRootsLock)
+      aquire(gch.zctLock)
+      aquire(gch.cycleRootsLock)
 
-proc unlock(gch: var TGcHeap) {.inline.} = 
+proc release(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:
     if isMultiThreaded: 
-      unlock(gch.zctLock)
-      unlock(gch.cycleRootsLock)
+      release(gch.zctLock)
+      release(gch.cycleRootsLock)
 
 proc addZCT(s: var TCellSeq, c: PCell) {.noinline.} =
   if (c.refcount and rcZct) == 0:
@@ -205,18 +205,18 @@ proc prepareDealloc(cell: PCell) =
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} = 
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: Lock(gch.cycleRootsLock)
+    if isMultiThreaded: Aquire(gch.cycleRootsLock)
   incl(gch.cycleRoots, c)
   when hasThreadSupport:  
-    if isMultiThreaded: Unlock(gch.cycleRootsLock)
+    if isMultiThreaded: Release(gch.cycleRootsLock)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport:
-    if isMultiThreaded: Lock(gch.zctLock)
+    if isMultiThreaded: Aquire(gch.zctLock)
   addZCT(gch.zct, c)
   when hasThreadSupport:
-    if isMultiThreaded: Unlock(gch.zctLock)
+    if isMultiThreaded: Release(gch.zctLock)
 
 proc decRef(c: PCell) {.inline.} =
   when stressGC:
@@ -333,7 +333,7 @@ proc checkCollection {.inline.} =
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 0
-  lock(gch)
+  aquire(gch)
   assert(typ.kind in {tyRef, tyString, tySequence})
   checkCollection()
   var res = cast[PCell](rawAlloc(allocator, size + sizeof(TCell)))
@@ -362,7 +362,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
     add(gch.zct, res)
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)  
-  unlock(gch)
+  release(gch)
   result = cellToUsr(res)
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
@@ -372,7 +372,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).space = len
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
-  lock(gch)
+  aquire(gch)
   checkCollection()
   var ol = usrToCell(old)
   assert(ol.typ != nil)
@@ -410,7 +410,7 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   else:
     assert(ol.typ != nil)
     zeroMem(ol, sizeof(TCell))
-  unlock(gch)
+  release(gch)
   result = cellToUsr(res)
 
 # ---------------- cycle collector -------------------------------------------
@@ -679,12 +679,12 @@ when not defined(useNimRtl):
     # set to the max value to suppress the cycle detector
 
   proc GC_fullCollect() =
-    lock(gch)
+    aquire(gch)
     var oldThreshold = cycleThreshold
     cycleThreshold = 0 # forces cycle collection
     collectCT(gch)
     cycleThreshold = oldThreshold
-    unlock(gch)
+    release(gch)
 
   proc GC_getStatistics(): string =
     GC_disable()
