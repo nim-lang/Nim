@@ -449,8 +449,20 @@ proc repeatChar*(count: int, c: Char = ' '): string {.noSideEffect,
   ## Returns a string of length `count` consisting only of
   ## the character `c`.
   result = newString(count)
-  for i in 0..count-1:
-    result[i] = c
+  for i in 0..count-1: result[i] = c
+
+proc align*(s: string, count: int): string {.
+  noSideEffect, rtl, extern: "nsuAlignString".} =
+  ## Aligns a string `s` with spaces, so that is of length `count`. Spaces are
+  ## added before `s` resulting in right alignment. If ``s.len >= count``, no
+  ## spaces are added and `s` is returned unchanged.
+  if s.len < count: 
+    result = newString(count)
+    var spaces = count - s.len
+    for i in 0..spaces-1: result[i] = ' '
+    for i in spaces..count-1: result[i] = s[i-spaces]
+  else:
+    result = s
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
@@ -739,7 +751,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
   rtl, extern: "nsuValidEmailAddress".} = 
   ## returns true if `s` seems to be a valid e-mail address. 
   ## The checking also uses a domain list.
-  ## Note: This will be moved into another module soon.
+  ## Note: This will be moved to another module soon.
   const
     chars = Letters + Digits + {'!','#','$','%','&',
       '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
@@ -862,3 +874,11 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   #dealloc(row)
 
 {.pop.}
+
+when isMainModule:
+  assert align("abc", 4) == " abc"
+  assert align("a", 0) == "a"
+  assert align("1232", 6) == "  1232"
+
+  
+  

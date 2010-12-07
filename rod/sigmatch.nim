@@ -89,7 +89,7 @@ proc writeMatches(c: TCandidate) =
   Writeln(stdout, "generic matches: " & $(c.genericMatches))
 
 proc getNotFoundError(c: PContext, n: PNode): string = 
-  # Gives a detailed error message; this is seperated from semDirectCall,
+  # Gives a detailed error message; this is separated from semDirectCall,
   # as semDirectCall is already pretty slow (and we need this information only
   # in case of an error).
   result = msgKindToString(errTypeMismatch)
@@ -516,7 +516,7 @@ proc ParamTypesMatch(c: PContext, m: var TCandidate, f, a: PType,
     x.calleeSym = m.calleeSym
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
-    var best = - 1
+    var best = -1
     for i in countup(0, sonsLen(arg) - 1): 
       # iterators are not first class yet, so ignore them
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}: 

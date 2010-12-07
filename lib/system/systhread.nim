@@ -88,19 +88,19 @@ type
   TLock* = TSysLock
   TThreadFunc* = proc (closure: pointer) {.cdecl.}
   
-DWORD WINAPI SuspendThread(
-  __in  HANDLE hThread
-);
-DWORD WINAPI ResumeThread(
-  __in  HANDLE hThread
-);
-DWORD WINAPI ThreadProc(
-  __in  LPVOID lpParameter
-);
+#DWORD WINAPI SuspendThread(
+#  __in  HANDLE hThread
+#);
+#DWORD WINAPI ResumeThread(
+#  __in  HANDLE hThread
+#);
+#DWORD WINAPI ThreadProc(
+#  __in  LPVOID lpParameter
+#);
 
 proc createThread*(t: var TThread, fn: TThreadFunc, closure: pointer) = 
   when defined(windows):
-    
+    nil  
   else: 
     nil
     #pthread_create(
