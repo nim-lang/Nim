@@ -48,6 +48,7 @@ proc atomicDec(memLoc: var int, x: int): int =
 when defined(Windows):
   type 
     THandle = int
+    TSysThread = THandle
     TSysLock {.final, pure.} = object # CRITICAL_SECTION in WinApi
       DebugInfo: pointer
       LockCount: int32
@@ -83,13 +84,31 @@ else:
   
   
 type
-  TThread* {.final, pure.} = object
-    id: int
-    next: ptr TThread
+  TThread* = TSysThread
+  TLock* = TSysLock
   TThreadFunc* = proc (closure: pointer) {.cdecl.}
   
-proc createThread*(t: var TThread, fn: TThreadFunc) = 
+DWORD WINAPI SuspendThread(
+  __in  HANDLE hThread
+);
+DWORD WINAPI ResumeThread(
+  __in  HANDLE hThread
+);
+DWORD WINAPI ThreadProc(
+  __in  LPVOID lpParameter
+);
+
+proc createThread*(t: var TThread, fn: TThreadFunc, closure: pointer) = 
+  when defined(windows):
+    
+  else: 
+    nil
+    #pthread_create(
+  
+proc joinThread*(t: TThread) = 
   nil
+
+#proc pthread_exit(void *value_ptr)
   
 proc destroyThread*(t: var TThread) =
   nil

@@ -103,7 +103,6 @@ Low priority
 - find a way for easy constructors and destructors; (destructors are much more
   important than constructors)
 - code generated for type information is wasteful
-- icon installation for the Windows installer
 
 
 Other ideas

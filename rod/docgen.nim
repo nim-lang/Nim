@@ -315,17 +315,13 @@ proc getRstName(n: PNode): PRstNode =
     result = nil
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) = 
-  var 
-    r: TSrcGen
-    kind: TTokType
-    literal: string
-    name, result, comm: PRope
   if not isVisible(nameNode): return 
-  name = toRope(getName(nameNode))
-  result = nil
-  literal = ""
-  kind = tkEof
-  comm = genRecComment(d, n)  # call this here for the side-effect!
+  var name = toRope(getName(nameNode))
+  var result: PRope = nil
+  var literal = ""
+  var kind = tkEof
+  var comm = genRecComment(d, n)  # call this here for the side-effect!
+  var r: TSrcGen
   initTokRender(r, n, {renderNoPragmas, renderNoBody, renderNoComments, 
                        renderDocComments})
   while true: 
@@ -630,10 +626,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     result = renderAux(d, n, disp("<ul class=\"simple\">$1</ul>\n", 
                                   "\\begin{itemize}$1\\end{itemize}\n"))
   of rnBulletItem, rnEnumItem: 
-    result = renderAux(d, n, disp("<li>$1</li>" & "\n", "\\item $1" & "\n"))
+    result = renderAux(d, n, disp("<li>$1</li>\n", "\\item $1\n"))
   of rnEnumList: 
-    result = renderAux(d, n, disp("<ol class=\"simple\">$1</ol>" & "\n", 
-                                  "\\begin{enumerate}$1\\end{enumerate}" & "\n"))
+    result = renderAux(d, n, disp("<ol class=\"simple\">$1</ol>\n", 
+                                  "\\begin{enumerate}$1\\end{enumerate}\n"))
   of rnDefList: 
     result = renderAux(d, n, disp("<dl class=\"docutils\">$1</dl>\n", 
                        "\\begin{description}$1\\end{description}\n"))
@@ -791,7 +787,7 @@ proc generateDoc(d: PDoc, n: PNode) =
 
 proc genSection(d: PDoc, kind: TSymKind) = 
   if d.section[kind] == nil: return 
-  var title = toRope(copy($kind, 0 + 2) & 's')
+  var title = toRope(copy($kind, 2) & 's')
   d.section[kind] = ropeFormatNamedVars(getConfigVar("doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       toRope(ord(kind)), title, toRope(ord(kind) + 50), d.section[kind]])
