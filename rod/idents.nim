@@ -16,7 +16,7 @@ import
 
 type 
   TIdObj* = object of TObject
-    id*: int                  # unique id; use this for comparisons and not the pointers
+    id*: int # unique id; use this for comparisons and not the pointers
   
   PIdObj* = ref TIdObj
   PIdent* = ref TIdent
@@ -48,8 +48,8 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   result = 1
   while j < blen: 
     while a[i] == '_': inc(i)
-    while b[j] == '_': 
-      inc(j)                  # tolower inlined:
+    while b[j] == '_': inc(j)
+    # tolower inlined:
     aa = a[i]
     bb = b[j]
     if (aa >= 'A') and (aa <= 'Z'): aa = chr(ord(aa) + (ord('a') - ord('A')))
