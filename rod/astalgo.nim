@@ -767,15 +767,13 @@ proc IdNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   data[h].val = val
 
 proc IdNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) = 
-  var 
-    index: int
-    n: TIdNodePairSeq
-  index = IdNodeTableRawGet(t, key)
+  var index = IdNodeTableRawGet(t, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else: 
     if mustRehash(len(t.data), t.counter): 
+      var n: TIdNodePairSeq
       newSeq(n, len(t.data) * growthFactor)
       for i in countup(0, high(t.data)): 
         if t.data[i].key != nil: 

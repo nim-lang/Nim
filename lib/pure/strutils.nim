@@ -464,6 +464,69 @@ proc align*(s: string, count: int): string {.
   else:
     result = s
 
+iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
+  token: string, isSep: bool] =
+  ## Tokenizes the string `s` into substrings.
+  ##
+  ## Substrings are separated by a substring containing only `seps`.
+  ## Examples:
+  ##
+  ## .. code-block:: nimrod
+  ##   for word in tokenize("  this is an  example  "):
+  ##     writeln(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##   ("  ", true)
+  ##   ("this", false)
+  ##   (" ", true)
+  ##   ("is", false)
+  ##   (" ", true)
+  ##   ("an", false)
+  ##   ("  ", true)
+  ##   ("example", false)
+  ##   ("  ", true)
+  var i = 0
+  while true:
+    var j = i
+    var isSep = s[j] in seps
+    while j < s.len and (s[j] in seps) == isSep: inc(j)
+    if j > i:
+      yield (copy(s, i, j-1), isSep)
+    else:
+      break
+    i = j
+
+proc wordWrap*(s: string, maxLineWidth = 80, 
+               splitLongWords = true,
+               seps: set[char] = whitespace,
+               newLine = "\n"): string {.
+               noSideEffect, rtl, extern: "nsuWordWrap".} = 
+  ## word wraps `s`.
+  result = ""
+  var SpaceLeft = maxLineWidth
+  for word, isSep in tokenize(s, seps):
+    if len(word) > SpaceLeft:
+      if splitLongWords and len(word) > maxLineWidth:
+        result.add(copy(word, 0, spaceLeft-1))
+        var w = spaceLeft+1
+        var wordLeft = len(word) - spaceLeft
+        while wordLeft > 0: 
+          result.add(newLine)
+          var L = min(maxLineWidth, wordLeft)
+          SpaceLeft = maxLineWidth - L
+          result.add(copy(word, w, w+L-1))
+          inc(w, L)
+          dec(wordLeft, L)
+      else:
+        SpaceLeft = maxLineWidth - len(Word)
+        result.add(newLine)
+        result.add(word)
+    else:
+      SpaceLeft = SpaceLeft - len(Word)
+      result.add(word)
+
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
   ## Returns true iff ``s`` starts with ``prefix``.
@@ -879,6 +942,7 @@ when isMainModule:
   assert align("abc", 4) == " abc"
   assert align("a", 0) == "a"
   assert align("1232", 6) == "  1232"
-
+  echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
+                   it goes""", 10, false)
   
   

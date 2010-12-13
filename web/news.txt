@@ -16,6 +16,8 @@ Bugfixes
 - Bugfix: ``dialogs.ChooseFilesToOpen`` did not work if only one file is
   selected.
 - Bugfix: niminst: ``nimrod`` is not default dir for *every* project.
+- Bugfix: Multiple yield statements in iterators did not cause local vars to be
+  copied.
 
 
 Additions
@@ -23,7 +25,7 @@ Additions
 
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
-- Added ``strutils.align``. 
+- Added ``strutils.align``, ``strutils.tokenize``, ``strutils.wordWrap``. 
 - Pegs support a *captured search loop operator* ``{@}``.
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.

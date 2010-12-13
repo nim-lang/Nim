@@ -14,20 +14,20 @@ type
   TCandidateState = enum 
     csEmpty, csMatch, csNoMatch
   TCandidate{.final.} = object 
-    exactMatches*: int
-    subtypeMatches*: int
-    intConvMatches*: int      # conversions to int are not as expensive
-    convMatches*: int
-    genericMatches*: int
-    state*: TCandidateState
-    callee*: PType            # may not be nil!
-    calleeSym*: PSym          # may be nil
-    call*: PNode              # modified call
-    bindings*: TIdTable       # maps sym-ids to types
-    baseTypeMatch*: bool      # needed for conversions from T to openarray[T]
-                              # for example
+    exactMatches: int
+    subtypeMatches: int
+    intConvMatches: int      # conversions to int are not as expensive
+    convMatches: int
+    genericMatches: int
+    state: TCandidateState
+    callee: PType            # may not be nil!
+    calleeSym: PSym          # may be nil
+    call: PNode              # modified call
+    bindings: TIdTable       # maps sym-ids to types
+    baseTypeMatch: bool      # needed for conversions from T to openarray[T]
+                             # for example
   
-  TTypeRelation = enum        # order is important!
+  TTypeRelation = enum       # order is important!
     isNone, isConvertible, isIntConv, isSubtype, isGeneric, isEqual
 
 proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
