@@ -537,8 +537,8 @@ const
 
 var gId*: int
 
-proc getID*(): int
-proc setID*(id: int)
+proc getID*(): int {.inline.}
+proc setID*(id: int) {.inline.}
 proc IDsynchronizationPoint*(idRange: int)
 
 # creator procs:
@@ -568,10 +568,10 @@ proc copyStrTable*(dest: var TStrTable, src: TStrTable)
 proc copyTable*(dest: var TTable, src: TTable)
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet)
 proc copyIdTable*(dest: var TIdTable, src: TIdTable)
-proc sonsLen*(n: PNode): int
-proc sonsLen*(n: PType): int
-proc lastSon*(n: PNode): PNode
-proc lastSon*(n: PType): PType
+proc sonsLen*(n: PNode): int {.inline.}
+proc sonsLen*(n: PType): int {.inline.}
+proc lastSon*(n: PNode): PNode {.inline.}
+proc lastSon*(n: PType): PType {.inline.}
 proc newSons*(father: PNode, length: int)
 proc newSons*(father: PType, length: int)
 proc addSon*(father, son: PNode)
@@ -903,6 +903,21 @@ proc copyNode(src: PNode): PNode =
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: nil
 
+proc shallowCopy*(src: PNode): PNode = 
+  # does not copy its sons, but provides space for them:
+  if src == nil: return nil
+  result = newNode(src.kind)
+  result.info = src.info
+  result.typ = src.typ
+  result.flags = src.flags * PersistentNodeFlags
+  case src.Kind
+  of nkCharLit..nkInt64Lit: result.intVal = src.intVal
+  of nkFloatLit, nkFloat32Lit, nkFloat64Lit: result.floatVal = src.floatVal
+  of nkSym: result.sym = src.sym
+  of nkIdent: result.ident = src.ident
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  else: newSons(result, sonsLen(src))
+
 proc copyTree(src: PNode): PNode = 
   # copy a whole syntax tree; performs deep copying
   if src == nil: 
@@ -920,7 +935,8 @@ proc copyTree(src: PNode): PNode =
   else: 
     result.sons = nil
     newSons(result, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1): result.sons[i] = copyTree(src.sons[i])
+    for i in countup(0, sonsLen(src) - 1): 
+      result.sons[i] = copyTree(src.sons[i])
   
 proc lastSon(n: PNode): PNode = 
   result = n.sons[sonsLen(n) - 1]
@@ -986,11 +1002,11 @@ proc getStrOrChar*(a: PNode): string =
     internalError(a.info, "getStrOrChar")
     result = ""
   
-proc mustRehash(length, counter: int): bool = 
+proc mustRehash(length, counter: int): bool {.inline.} = 
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash = 
+proc nextTry(h, maxHash: THash): THash {.inline.} = 
   result = ((5 * h) + 1) and maxHash 
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on

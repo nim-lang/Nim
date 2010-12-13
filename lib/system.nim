@@ -1099,6 +1099,15 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
+iterator enumerate*[TContainer, TItem](a: TContainer): tuple[
+                    index: int, item: TItem] {.inline.} = 
+  ## iterates over each item of `a` via `items` and yields an additional
+  ## counter/index starting from 0.
+  var j = 0
+  for it in items(a): 
+    yield (j, a)
+    inc j
+
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
@@ -1108,20 +1117,20 @@ proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
 
-proc `&` *[T](x, y: openArray[T]): seq[T] {.noSideEffect.} =
+proc `&` *[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
     result[i] = x[i]
   for i in 0..y.len-1:
     result[i+x.len] = y[i]
 
-proc `&` *[T](x: openArray[T], y: T): seq[T] {.noSideEffect.} =
+proc `&` *[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
     result[i] = x[i]
   result[x.len] = y
 
-proc `&` *[T](x: T, y: openArray[T]): seq[T] {.noSideEffect.} =
+proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, y.len + 1)
   for i in 0..y.len-1:
     result[i] = y[i]

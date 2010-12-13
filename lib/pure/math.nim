@@ -226,21 +226,27 @@ proc push*(s: var TRunningStat, x: float) =
   inc(s.n)
   # See Knuth TAOCP vol 2, 3rd edition, page 232
   if s.n == 1:
+    s.min = x
+    s.max = x
     s.oldM = x
     s.mean = x
     s.oldS = 0.0
   else:
+    if s.min > x: s.min = x
+    if s.max < x: s.max = x
     s.mean = s.oldM + (x - s.oldM)/toFloat(s.n)
     s.newS = s.oldS + (x - s.oldM)*(x - s.mean)
 
     # set up for next iteration:
     s.oldM = s.mean
     s.oldS = s.newS
-  
   s.sum = s.sum + x
-  if s.min > x: s.min = x
-  if s.max < x: s.max = x
-
+  
+proc push*(s: var TRunningStat, x: int) = 
+  ## pushes a value `x` for processing. `x` is simply converted to ``float``
+  ## and the other push operation is called.
+  push(s, toFloat(x))
+  
 proc variance*(s: TRunningStat): float = 
   ## computes the current variance of `s`
   if s.n > 1: result = s.newS / (toFloat(s.n - 1))

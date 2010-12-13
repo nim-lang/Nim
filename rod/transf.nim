@@ -29,20 +29,23 @@ proc transfPass*(): TPass
 type 
   PTransCon = ref TTransCon
   TTransCon{.final.} = object # part of TContext; stackable
-    mapping*: TIdNodeTable    # mapping from symbols to nodes
-    owner*: PSym              # current owner
-    forStmt*: PNode           # current for stmt
-    next*: PTransCon          # for stacking
+    mapping: TIdNodeTable     # mapping from symbols to nodes
+    owner: PSym               # current owner
+    forStmt: PNode            # current for stmt
+    next: PTransCon           # for stacking
   
   TTransfContext = object of passes.TPassContext
-    module*: PSym
-    transCon*: PTransCon      # top of a TransCon stack
+    module: PSym
+    transCon: PTransCon      # top of a TransCon stack
+    inlining: int            # > 0 if we are in inlining context (copy vars)
   
   PTransf = ref TTransfContext
 
-proc newTransCon(): PTransCon = 
+proc newTransCon(owner: PSym): PTransCon = 
+  assert owner != nil
   new(result)
   initIdNodeTable(result.mapping)
+  result.owner = owner
 
 proc pushTransCon(c: PTransf, t: PTransCon) = 
   t.next = c.transCon
@@ -209,9 +212,50 @@ proc transformYield(c: PTransf, n: PNode): PNode =
   else: 
     e = transform(c, copyTree(e))
     addSon(result, newAsgnStmt(c, c.transCon.forStmt.sons[0], e))
+  
+  #var tc = newTransCon(c.transCon.owner)
+  #tc.forStmt = c.transCon.forStmt
+  #pushTransCon(c, tc)
+  inc(c.inlining)
   addSon(result, transform(c, lastSon(c.transCon.forStmt)))
+  dec(c.inlining)
+  #popTransCon(c)
+
+proc transformVarSection(c: PTransf, v: PNode): PNode =
+  result = copyTree(v)
+  for i in countup(0, sonsLen(result) - 1): 
+    var it = result.sons[i]
+    if it.kind == nkCommentStmt: continue 
+    if it.kind == nkIdentDefs: 
+      if (it.sons[0].kind != nkSym):
+        InternalError(it.info, "transformVarSection")
+      var newVar = copySym(it.sons[0].sym)
+      if identEq(newVar.name, "titer2TestVar"):
+        echo "created a copy of titer2TestVar ", newVar.id, " ", 
+            it.sons[0].sym.id
+      
+      incl(newVar.flags, sfFromGeneric) 
+      # fixes a strange bug for rodgen:
+      #include(it.sons[0].sym.flags, sfFromGeneric);
+      newVar.owner = getCurrOwner(c)
+      IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
+      it.sons[0].sym = newVar
+      it.sons[2] = transform(c, it.sons[2])
+    else: 
+      if it.kind != nkVarTuple: 
+        InternalError(it.info, "transformVarSection: not nkVarTuple")
+      var L = sonsLen(it)
+      for j in countup(0, L - 3): 
+        var newVar = copySym(it.sons[j].sym)
+        incl(newVar.flags, sfFromGeneric)
+        newVar.owner = getCurrOwner(c)
+        IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
+        it.sons[j] = newSymNode(newVar)
+      assert(it.sons[L - 2] == nil)
+      it.sons[L - 1] = transform(c, it.sons[L - 1])
 
 proc inlineIter(c: PTransf, n: PNode): PNode = 
+  # n: iterator body
   result = n
   if n == nil: return 
   case n.kind
@@ -220,32 +264,7 @@ proc inlineIter(c: PTransf, n: PNode): PNode =
   of nkYieldStmt: 
     result = transformYield(c, n)
   of nkVarSection: 
-    result = copyTree(n)
-    for i in countup(0, sonsLen(result) - 1): 
-      var it = result.sons[i]
-      if it.kind == nkCommentStmt: continue 
-      if it.kind == nkIdentDefs: 
-        if (it.sons[0].kind != nkSym): InternalError(it.info, "inlineIter")
-        var newVar = copySym(it.sons[0].sym)
-        incl(newVar.flags, sfFromGeneric) 
-        # fixes a strange bug for rodgen:
-        #include(it.sons[0].sym.flags, sfFromGeneric);
-        newVar.owner = getCurrOwner(c)
-        IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
-        it.sons[0] = newSymNode(newVar)
-        it.sons[2] = transform(c, it.sons[2])
-      else: 
-        if it.kind != nkVarTuple: 
-          InternalError(it.info, "inlineIter: not nkVarTuple")
-        var L = sonsLen(it)
-        for j in countup(0, L - 3): 
-          var newVar = copySym(it.sons[j].sym)
-          incl(newVar.flags, sfFromGeneric)
-          newVar.owner = getCurrOwner(c)
-          IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
-          it.sons[j] = newSymNode(newVar)
-        assert(it.sons[L - 2] == nil)
-        it.sons[L - 1] = transform(c, it.sons[L - 1])
+    result = transformVarSection(c, n)
   else: 
     result = copyNode(n)
     for i in countup(0, sonsLen(n) - 1): addSon(result, inlineIter(c, n.sons[i]))
@@ -388,11 +407,11 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   for i in countup(0, length - 3): 
     addVar(v, copyTree(n.sons[i])) # declare new vars
   addSon(result, v)
-  var newC = newTransCon()
   var call = n.sons[length - 2]
   if (call.kind != nkCall) or (call.sons[0].kind != nkSym): 
     InternalError(call.info, "transformFor")
-  newC.owner = call.sons[0].sym
+  
+  var newC = newTransCon(call.sons[0].sym)
   newC.forStmt = n
   if (newC.owner.kind != skIterator): 
     InternalError(call.info, "transformFor") 
@@ -486,7 +505,7 @@ proc transformLambda(c: PTransf, n: PNode): PNode =
   # all variables that are accessed should be accessed by the new closure
   # parameter:
   if sonsLen(closure) > 0: 
-    var newC = newTransCon()
+    var newC = newTransCon(c.transCon.owner)
     for i in countup(0, sonsLen(closure) - 1): 
       IdNodeTablePut(newC.mapping, closure.sons[i].sym, 
                      indirectAccess(param, closure.sons[i].sym))
@@ -613,22 +632,35 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     result = transformConv(c, n)
   of nkDiscardStmt: 
-    for i in countup(0, sonsLen(n) - 1): result.sons[i] = transform(c, n.sons[i])
+    for i in countup(0, sonsLen(n) - 1): 
+      result.sons[i] = transform(c, n.sons[i])
     if isConstExpr(result.sons[0]): result = newNode(nkCommentStmt)
   of nkCommentStmt, nkTemplateDef: 
     return 
   of nkConstSection: 
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return                    
-  else: 
-    for i in countup(0, sonsLen(n) - 1): result.sons[i] = transform(c, n.sons[i])
+  of nkVarSection: 
+    if c.inlining > 0: 
+      # we need to copy the variables for multiple yield statements:
+      result = transformVarSection(c, n)
+    else:
+      result = shallowCopy(n)
+      for i in countup(0, sonsLen(n) - 1): 
+        result.sons[i] = transform(c, n.sons[i])
+  else:
+    result = shallowCopy(n)
+    for i in countup(0, sonsLen(n) - 1): 
+      result.sons[i] = transform(c, n.sons[i])
   var cnst = getConstExpr(c.module, result)
   if cnst != nil: 
     result = cnst             # do not miss an optimization  
   
 proc processTransf(context: PPassContext, n: PNode): PNode = 
   var c = PTransf(context)
+  pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = transform(c, n)
+  popTransCon(c)
 
 proc openTransf(module: PSym, filename: string): PPassContext = 
   var n: PTransf

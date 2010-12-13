@@ -9,7 +9,9 @@ proc QuickSort(list: seq[int]): seq[int] =
             left.add(list[i])
         elif list[i] > pivot:
             right.add(list[i])
-    result = QuickSort(left) & pivot & QuickSort(right)
+    result = QuickSort(left) & 
+      pivot & 
+      QuickSort(right)
     
 proc echoSeq(a: seq[int]) =
     for i in low(a)..high(a):
