@@ -430,8 +430,12 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   if (prefer == preferName) and (t.sym != nil): 
     return t.sym.Name.s
   case t.Kind
-  of tyGenericInst: 
-    result = typeToString(lastSon(t), prefer)
+  of tyGenericBody, tyGenericInst, tyGenericInvokation:
+    result = typeToString(t.sons[0]) & '['
+    for i in countup(1, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+      if i > 1: add(result, ", ")
+      add(result, typeToString(t.sons[i]))
+    add(result, ']')
   of tyArray: 
     if t.sons[0].kind == tyRange: 
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &
@@ -439,12 +443,6 @@ proc TypeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else: 
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
-  of tyGenericInvokation, tyGenericBody: 
-    result = typeToString(t.sons[0]) & '['
-    for i in countup(1, sonsLen(t) - 1): 
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
-    add(result, ']')
   of tyArrayConstr: 
     result = "Array constructor[" & rangeToStr(t.sons[0].n) & ", " &
         typeToString(t.sons[1]) & ']'
