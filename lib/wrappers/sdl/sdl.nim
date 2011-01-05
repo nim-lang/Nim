@@ -950,48 +950,63 @@ type
   
   TEventAction* = enum        # Application visibility event structure
     ADDEVENT, PEEKEVENT, GETEVENT
+
+  PActiveEvent* = ptr TActiveEvent
   TActiveEvent*{.final.} = object  # SDL_ACTIVEEVENT
                                    # Keyboard event structure
+    kind*: TEventKind
     gain*: byte              # Whether given states were gained or lost (1/0)
     state*: byte             # A mask of the focus states
   
+  PKeyboardEvent = ptr TKeyboardEvent
   TKeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
                                      # Mouse motion event structure
+    kind*: TEventKind
     which*: byte             # The keyboard device index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
     keysym*: TKeySym
 
+  PMouseMotionEvent = ptr TMouseMotionEvent
   TMouseMotionEvent*{.final.} = object  # SDL_MOUSEMOTION
                                         # Mouse button event structure
+    kind*: TEventKind
     which*: byte             # The mouse device index
     state*: byte             # The current button state
     x*, y*: UInt16            # The X/Y coordinates of the mouse
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
+  PMouseButtonEvent = ptr TMouseButtonEvent
   TMouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
                                         # Joystick axis motion event structure
+    kind*: TEventKind
     which*: byte             # The mouse device index
     button*: byte            # The mouse button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
     x*: UInt16                # The X coordinates of the mouse at press time
     y*: UInt16                # The Y coordinates of the mouse at press time
   
+  PJoyAxisEvent = ptr TJoyAxisEvent
   TJoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
                                     # Joystick trackball motion event structure
+    kind*: TEventKind
     which*: byte             # The joystick device index
     axis*: byte              # The joystick axis index
     value*: int16            # The axis value (range: -32768 to 32767)
   
+  PJoyBallEvent = ptr TJoyBallEvent
   TJoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
                                     # Joystick hat position change event structure
+    kind*: TEventKind
     which*: byte             # The joystick device index
     ball*: byte              # The joystick trackball index
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
+  PJoyHatEvent = ptr TJoyHatEvent
   TJoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
                                    # Joystick button event structure
+    kind*: TEventKind
     which*: byte             # The joystick device index */
     hat*: byte               # The joystick hat index */
     value*: byte             # The hat position value:
@@ -1000,22 +1015,27 @@ type
                              # 6   5   4
                              # Note that zero means the POV is centered.
   
+  PJoyButtonEvent = ptr TJoyButtonEvent
   TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
                                       # When you get this event, you are
                                       # responsible for setting a new video
                                       # mode with the new width and height.
+    kind*: TEventKind
     which*: byte             # The joystick device index
     button*: byte            # The joystick button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
   
+  PResizeEvent = ptr TResizeEvent
   TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
                                    # A user-defined event type
+    kind*: TEventKind
     w*: cint                   # New width
     h*: cint                   # New height
   
   PUserEvent* = ptr TUserEvent
   TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
+    kind*: TEventKind
     code*: cint                # User defined event code
     data1*: Pointer           # User defined data pointer
     data2*: Pointer           # User defined data pointer 
@@ -1094,63 +1114,21 @@ else:
 type 
   PSysWMEvent* = ptr TSysWMEvent
   TSysWMEvent*{.final.} = object 
+    kind*: TEventKind
     msg*: PSysWMmsg
+
+  PExposeEvent = ptr TExposeEvent
+  TExposeEvent*{.final.} = object
+    kind*: TEventKind
+
+  PQuitEvent = ptr TQuitEvent
+  TQuitEvent*{.final.} = object
+    kind*: TEventKind
 
   PEvent* = ptr TEvent
   TEvent*{.final.} = object  
-    # This function sets up a filter to process all events before they
-    # change internal state and are posted to the internal event queue.
-    # The filter is protypted as:
-    case kind*: TEventKind # SDL_NOEVENT, SDL_QUITEV: ();
-    of ACTIVEEVENT: 
-      gain*: byte              # Whether given states were gained or lost (1/0)
-      state*: byte             # A mask of the focus states
-    of KEYDOWN, KEYUP: 
-      keystate*: byte             # SDL_PRESSED or SDL_RELEASED
-      scancode*: byte           # hardware specific scancode
-      sym*: TKey                # SDL virtual keysym
-      modifier*: TMod           # current key modifiers
-      unicode*: UInt16          # translated character
-    of MOUSEMOTION: 
-      motionState*: byte             # The current button state
-      motionX*, motionY*: UInt16            # The X/Y coordinates of the mouse
-      xrel*: int16             # The relative motion in the X direction
-      yrel*: int16             # The relative motion in the Y direction
-    of MOUSEBUTTONDOWN, MOUSEBUTTONUP: 
-      button*: byte            # The mouse button index
-      buttonState*: byte             # SDL_PRESSED or SDL_RELEASED
-      align: byte
-      x*: UInt16                # The X coordinates of the mouse at press time
-      y*: UInt16                # The Y coordinates of the mouse at press time
-    of JOYAXISMOTION: 
-      axis*: byte              # The joystick axis index
-      value*: int16            # The axis value (range: -32768 to 32767)
-    of JOYBALLMOTION: 
-      ball*: byte              # The joystick trackball index
-      joyXrel*: int16             # The relative motion in the X direction
-      joyYrel*: int16             # The relative motion in the Y direction
-  
-    of JOYHATMOTION: 
-      hat*: byte               # The joystick hat index
-      hatValue*: byte          # The hat position value:
-                               # 8   1   2
-                               # 7   0   3
-                               # 6   5   4
-                               # Note that zero means the POV is centered.
-
-    of JOYBUTTONDOWN, JOYBUTTONUP: 
-      joybutton*: byte            # The joystick button index
-      joyState*: byte             # SDL_PRESSED or SDL_RELEASED
-  
-    of VIDEORESIZE: 
-      w*: cint                   # New width
-      h*: cint                   # New height
-    of USEREVENT: 
-      code*: cint                # User defined event code
-      data1*: Pointer           # User defined data pointer
-      data2*: Pointer           # User defined data pointer 
-    else: nil
-
+    kind*: TEventKind
+    pad: array[0..19, byte]
   
   TEventFilter* = proc (event: PEvent): int{.cdecl.} # SDL_video.h types
                                                      # Useful data types
@@ -1303,7 +1281,29 @@ type                          # This is the system-independent thread info struc
   TByteArray* = array[0..32767, int8]
   PWordArray* = ptr TWordArray
   TWordArray* = array[0..16383, int16] # Generic procedure pointer
-  TProcedure* = proc () #------------------------------------------------------------------------------
+  TProcedure* = proc ()
+
+type TEventSeq = set[TEventKind]
+template evconv(procName: expr, ptrName: typeDesc, assertions: TEventSeq): stmt =
+  proc `procName`*(event: PEvent): ptrName =
+    assert(assertions.contains(event.kind))
+    result = cast[ptrName](event)
+
+evconv(EvActive, PActiveEvent, {ACTIVEEVENT})
+evconv(EvKeyboard, PKeyboardEvent, {KEYDOWN, KEYUP})
+evconv(EvMouseMotion, PMouseMotionEvent, {MOUSEMOTION})
+evconv(EvMouseButton, PMouseButtonEvent, {MOUSEBUTTONDOWN, MOUSEBUTTONUP})
+evconv(EvJoyAxis, PJoyAxisEvent,{JOYAXISMOTION})
+evconv(EvJoyBall, PJoyBallEvent, {JOYBALLMOTION})
+evconv(EvJoyHat, PJoyHatEvent, {JOYHATMOTION})
+evconv(EvJoyButton, PJoyButtonEvent, {JOYBUTTONDOWN, JOYBUTTONUP})
+evconv(EvResize, PResizeEvent, {VIDEORESIZE})
+evconv(EvExpose, PExposeEvent, {VIDEOEXPOSE})
+evconv(EvQuit, PQuitEvent, {QUITEV})
+evconv(EvUser, PUserEvent, {USEREVENT})
+evconv(EvSysWM, PSysWMEvent, {SYSWMEVENT})
+
+#------------------------------------------------------------------------------
 # initialization
 #------------------------------------------------------------------------------
 # This function loads the SDL dynamically linked library and initializes
