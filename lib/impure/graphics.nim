@@ -264,7 +264,7 @@ proc drawHorLine*(sur: PSurface, x, y, w: Natural, Color: TColor) =
   var pitch = sur.s.pitch div ColSize
 
   if y >= 0 and y <= sur.s.h:
-    for i in 0 .. min(sur.s.w-x, w-1)-1:
+    for i in 0 .. min(sur.s.w-x, w)-1:
       setPix(video, pitch, x + i, y, color)
 
 proc drawVerLine*(sur: PSurface, x, y, h: Natural, Color: TColor) =
@@ -273,7 +273,7 @@ proc drawVerLine*(sur: PSurface, x, y, h: Natural, Color: TColor) =
   var pitch = sur.s.pitch div ColSize
 
   if x >= 0 and x <= sur.s.w:
-    for i in 0 .. min(sur.s.h-y, h-1)-1:
+    for i in 0 .. min(sur.s.h-y, h)-1:
       setPix(video, pitch, x, y + i, color)
 
 proc fillCircle*(s: PSurface, p: TPoint, r: Natural, color: TColor) =
