@@ -210,7 +210,7 @@ else:
   proc cosh*(x: float): float = return (exp(x)+exp(-x))*0.5
   proc hypot*(x, y: float): float = return sqrt(x*x + y*y)
   proc sinh*(x: float): float = return (exp(x)-exp(-x))*0.5
-  proc sin*(x: float): float {.importc: "Math.sin", nodecl.}  
+  proc sin*(x: float): float {.importc: "Math.sin", nodecl.}
   proc tan*(x: float): float {.importc: "Math.tan", nodecl.}
   proc tanh*(x: float): float =
     var y = exp(2.0*x)
