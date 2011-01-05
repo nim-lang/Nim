@@ -10,7 +10,7 @@
 # module for calling the different external C compilers
 # some things are read in from the configuration file
 
-import                        
+import
   lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, crc
 
 type 

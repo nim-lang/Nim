@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -201,4 +201,4 @@ proc generateMethodDispatchers(): PNode =
     sortBucket(gMethods[bucket], relevantCols)
     addSon(result, newSymNode(genDispatcher(gMethods[bucket], relevantCols)))
 
-gMethods = @ []
+gMethods = @[]

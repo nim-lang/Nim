@@ -28,7 +28,7 @@ tfloat1.nim;Error: unhandled exception: FPU operation caused an overflow [EFloat
 tfloat2.nim;Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]
 tformat.nim;Hi Andreas! How do you feel, Rumpf?
 thintoff.nim;0
-tinit.nim;Hallo from module! Hallo from main module!
+tinit.nim;Hello from module! Hello from main module!
 tints.nim;Success
 tisopr.nim;falsetrue
 titer2.nim;123

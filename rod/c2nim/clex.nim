@@ -259,7 +259,7 @@ proc getNumber2(L: var TLexer, tok: var TToken) =
   L.bufpos = pos
 
 proc getNumber8(L: var TLexer, tok: var TToken) = 
-  var pos = L.bufpos + 2 # skip 0b
+  var pos = L.bufpos + 1 # skip 0
   tok.base = base8
   var xi: biggestInt = 0
   var bits = 0

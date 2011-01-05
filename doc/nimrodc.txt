@@ -17,7 +17,7 @@ Introduction
 
 This document describes the usage of the *Nimrod compiler*
 on the different supported platforms. It is not a definition of the Nimrod
-programming language (therefore is the `manual <manual>`_).
+programming language (therefore is the `manual <manual.html>`_).
 
 Nimrod is free software; it is licensed under the
 `GNU General Public License <gpl.html>`_.
