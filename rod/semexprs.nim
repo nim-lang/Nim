@@ -662,7 +662,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
           check.sons[0] = n
           check.typ = n.typ
           result = check
-  elif ty.kind == tyTuple: 
+  elif ty.kind == tyTuple and ty.n != nil: 
     f = getSymFromList(ty.n, i)
     if f != nil: 
       n.sons[0] = makeDeref(n.sons[0])
