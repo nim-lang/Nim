@@ -1,12 +1,12 @@
 High priority (version 0.9.0)
 =============================
 
-- transf should use distinct types; shallowCopy() for PNode
 
 - fix implicit generic routines
 - fix the streams implementation so that it uses methods
 - fix overloading resolution
 - wrong co-/contravariance
+
 
 Bugs
 ----

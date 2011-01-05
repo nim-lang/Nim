@@ -664,6 +664,9 @@ proc `&` * (x, y: string): string {.
 proc `&` * (x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## is the `concatenation operator`. It concatenates `x` and `y`.
+  
+# implementation note: These must all have the same magic value "ConStrStr" so
+# that the merge optimization works properly. 
 
 proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
 proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}

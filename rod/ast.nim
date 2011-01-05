@@ -955,9 +955,9 @@ proc hasSubnodeWith(n: PNode, kind: TNodeKind): bool =
   of nkEmpty..nkNilLit: result = n.kind == kind
   else: 
     for i in countup(0, sonsLen(n) - 1): 
-      if (n.sons[i] != nil) and (n.sons[i].kind == kind) or
-          hasSubnodeWith(n.sons[i], kind): 
-        return true
+      if n.sons[i] != nil: 
+        if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind): 
+          return true
     result = false
 
 proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) = 

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2010 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -389,12 +389,12 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "Math.floor($1)", "Math.floor($1)"], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr", "nimCharToStr($1)", "nimCharToStr($1)"], 
     ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"], [
-      "cstrToNimStr", "cstrToNimStr", "cstrToNimStr(($1)+\"\")", 
-      "cstrToNimStr(($1)+\"\")"], ["cstrToNimStr", "cstrToNimStr", 
-                                   "cstrToNimStr(($1)+\"\")", 
-                                   "cstrToNimStr(($1)+\"\")"], ["cstrToNimStr", 
-      "cstrToNimStr", "cstrToNimStr(($1)+\"\")", "cstrToNimStr(($1)+\"\")"], 
-    ["cstrToNimStr", "cstrToNimStr", "cstrToNimStr($1)", "cstrToNimStr($1)"], 
+      "cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", 
+      "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr", "cstrToNimstr", 
+                                   "cstrToNimstr(($1)+\"\")", 
+                                   "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr", 
+      "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"], 
+    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr($1)", "cstrToNimstr($1)"], 
     ["", "", "$1", "$1"]]
 
 proc binaryExpr(p: var TProc, n: PNode, r: var TCompRes, magic, frmt: string) = 
