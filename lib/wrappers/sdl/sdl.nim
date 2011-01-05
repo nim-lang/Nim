@@ -1283,44 +1283,25 @@ type                          # This is the system-independent thread info struc
   TWordArray* = array[0..16383, int16] # Generic procedure pointer
   TProcedure* = proc ()
 
-proc EActive*(event: PEvent): PActiveEvent =
-  result = cast[PActiveEvent](event)
+type TEventSeq = set[TEventKind]
+template evconv(procName: expr, ptrName: typeDesc, assertions: TEventSeq): stmt =
+  proc `procName`*(event: PEvent): ptrName =
+    assert(assertions.contains(event.kind))
+    result = cast[ptrName](event)
 
-proc EKeyboard*(event: PEvent): PKeyBoardEvent =
-  result = cast[PKeyBoardEvent](event)
-
-proc EMouseMotion*(event: PEvent): PMouseMotionEvent =
-  result = cast[PMouseMotionEvent](event)
-
-proc EMouseButton*(event: PEvent): PMouseButtonEvent =
-  result = cast[PMouseButtonEvent](event)
-
-proc EJoyAxis*(event: PEvent): PJoyAxisEvent =
-  result = cast[PJoyAxisEvent](event)
-
-proc EJoyBall*(event: PEvent): PJoyBallEvent =
-  result = cast[PJoyBallEvent](event)
-
-proc EJoyHat*(event: PEvent): PJoyHatEvent =
-  result = cast[PJoyHatEvent](event)
-
-proc EJoyButton*(event: PEvent): PJoyButtonEvent =
-  result = cast[PJoyButtonEvent](event)
-
-proc EResize*(event: PEvent): PResizeEvent =
-  result = cast[PResizeEvent](event)
-
-proc EExpose*(event: PEvent): PExposeEvent =
-  result = cast[PExposeEvent](event)
-
-proc EQuit*(event: PEvent): PQuitEvent =
-  result = cast[PQuitEvent](event)
-
-proc EUser*(event: PEvent): PUserEvent =
-  result = cast[PUserEvent](event)
-
-proc ESysWM*(event: PEvent): PSysWMEvent =
-  result = cast[PSysWMEvent](event)
+evconv(EvActive, PActiveEvent, {ACTIVEEVENT})
+evconv(EvKeyboard, PKeyboardEvent, {KEYDOWN, KEYUP})
+evconv(EvMouseMotion, PMouseMotionEvent, {MOUSEMOTION})
+evconv(EvMouseButton, PMouseButtonEvent, {MOUSEBUTTONDOWN, MOUSEBUTTONUP})
+evconv(EvJoyAxis, PJoyAxisEvent,{JOYAXISMOTION})
+evconv(EvJoyBall, PJoyBallEvent, {JOYBALLMOTION})
+evconv(EvJoyHat, PJoyHatEvent, {JOYHATMOTION})
+evconv(EvJoyButton, PJoyButtonEvent, {JOYBUTTONDOWN, JOYBUTTONUP})
+evconv(EvResize, PResizeEvent, {VIDEORESIZE})
+evconv(EvExpose, PExposeEvent, {VIDEOEXPOSE})
+evconv(EvQuit, PQuitEvent, {QUITEV})
+evconv(EvUser, PUserEvent, {USEREVENT})
+evconv(EvSysWM, PSysWMEvent, {SYSWMEVENT})
 
 #------------------------------------------------------------------------------
 # initialization
