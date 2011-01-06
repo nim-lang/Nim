@@ -305,7 +305,7 @@ proc processCompile(c: PContext, n: PNode) =
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) = 
   var f = expectStrLit(c, n)
-  if splitFile(f).ext == "": f = toObjFile(f)
+  if splitFile(f).ext == "": f = addFileExt(f, cc[ccompiler].objExt)
   var found = findFile(f)
   if found == "": found = f # use the default
   case feature
