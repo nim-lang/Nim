@@ -188,6 +188,41 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
 proc transformSym(c: PTransf, n: PNode): PTransNode = 
   result = PTransNode(transformSymAux(c, n))
 
+proc transformVarSection(c: PTransf, v: PNode): PTransNode =
+  result = newTransNode(v)
+  for i in countup(0, sonsLen(v)-1): 
+    var it = v.sons[i]
+    if it.kind == nkCommentStmt: 
+      result[i] = PTransNode(it)
+    elif it.kind == nkIdentDefs: 
+      if (it.sons[0].kind != nkSym):
+        InternalError(it.info, "transformVarSection")
+      var newVar = copySym(it.sons[0].sym)
+      incl(newVar.flags, sfFromGeneric) 
+      # fixes a strange bug for rodgen:
+      #include(it.sons[0].sym.flags, sfFromGeneric);
+      newVar.owner = getCurrOwner(c)
+      IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
+      var defs = newTransNode(nkIdentDefs, it.info, 3)
+      defs[0] = newSymNode(newVar).PTransNode
+      defs[1] = it.sons[1].PTransNode
+      defs[2] = transform(c, it.sons[2])
+      result[i] = defs
+    else: 
+      if it.kind != nkVarTuple: 
+        InternalError(it.info, "transformVarSection: not nkVarTuple")
+      var L = sonsLen(it)
+      var defs = newTransNode(it.kind, it.info, L)
+      for j in countup(0, L-3): 
+        var newVar = copySym(it.sons[j].sym)
+        incl(newVar.flags, sfFromGeneric)
+        newVar.owner = getCurrOwner(c)
+        IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
+        defs[j] = newSymNode(newVar).PTransNode
+      assert(it.sons[L-2] == nil)
+      defs[L-1] = transform(c, it.sons[L-1])
+      result[i] = defs
+
 proc hasContinue(n: PNode): bool = 
   if n == nil: return 
   case n.kind
@@ -235,6 +270,21 @@ proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
     add(father, newAsgnStmt(c, c.transCon.forStmt.sons[i], 
         transform(c, newTupleAccess(n, i))))
 
+proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode = 
+  if n == nil: return
+  case n.kind
+  of nkSym: 
+    return transformSym(c, n)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit: 
+    # nothing to be done for leaves:
+    result = PTransNode(n)
+  of nkVarSection:
+    result = transformVarSection(c, n)
+  else:
+    result = newTransNode(n)
+    for i in countup(0, sonsLen(n)-1): 
+      result[i] =  introduceNewLocalVars(c, n.sons[i])
+
 proc transformYield(c: PTransf, n: PNode): PTransNode = 
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n.sons[0]
@@ -255,43 +305,8 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     # common case
     add(result, c.transCon.forLoopBody)
   else: 
-    # we need to transform again to introduce new local variables:
-    add(result, transform(c, c.transCon.forLoopBody.pnode))
-
-proc transformVarSection(c: PTransf, v: PNode): PTransNode =
-  result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1): 
-    var it = v.sons[i]
-    if it.kind == nkCommentStmt: 
-      result[i] = PTransNode(it)
-    elif it.kind == nkIdentDefs: 
-      if (it.sons[0].kind != nkSym):
-        InternalError(it.info, "transformVarSection")
-      var newVar = copySym(it.sons[0].sym)
-      incl(newVar.flags, sfFromGeneric) 
-      # fixes a strange bug for rodgen:
-      #include(it.sons[0].sym.flags, sfFromGeneric);
-      newVar.owner = getCurrOwner(c)
-      IdNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
-      var defs = newTransNode(nkIdentDefs, it.info, 3)
-      defs[0] = newSymNode(newVar).PTransNode
-      defs[1] = it.sons[1].PTransNode
-      defs[2] = transform(c, it.sons[2])
-      result[i] = defs
-    else: 
-      if it.kind != nkVarTuple: 
-        InternalError(it.info, "transformVarSection: not nkVarTuple")
-      var L = sonsLen(it)
-      var defs = newTransNode(it.kind, it.info, L)
-      for j in countup(0, L-3): 
-        var newVar = copySym(it.sons[j].sym)
-        incl(newVar.flags, sfFromGeneric)
-        newVar.owner = getCurrOwner(c)
-        IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
-        defs[j] = newSymNode(newVar).PTransNode
-      assert(it.sons[L-2] == nil)
-      defs[L-1] = transform(c, it.sons[L-1])
-      result[i] = defs
+    # we need to introduce new local variables:
+    add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.pnode))
 
 proc addVar(father, v: PNode) = 
   var vpart = newNodeI(nkIdentDefs, v.info)

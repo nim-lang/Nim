@@ -92,6 +92,9 @@ proc initResults: TResults =
   result.passed = 0
   result.data = ""
 
+proc `$`(x: TResults): string = 
+  result = "Tests passed: " & $x.passed & "/" & $x.total & "<br />\n"
+
 proc colorBool(b: bool): string =
   if b: result = "<span style=\"color:green\">yes</span>" 
   else: result = "<span style=\"color:red\">no</span>"
@@ -116,10 +119,13 @@ proc addResult(r: var TResults, test, given: string,
 proc listResults(reject, compile, run: TResults) =
   var s = "<html>"
   s.add("<h1>Tests to Reject</h1>\n")
+  s.add($reject)
   s.add(TableHeader4 & reject.data & TableFooter)
   s.add("<br /><br /><br /><h1>Tests to Compile</h1>\n")
+  s.add($compile)
   s.add(TableHeader3 & compile.data & TableFooter)
   s.add("<br /><br /><br /><h1>Tests to Run</h1>\n")
+  s.add($run)
   s.add(TableHeader4 & run.data & TableFooter)
   s.add("</html>")
   var outp: TFile
@@ -145,6 +151,8 @@ proc reject(r: var TResults, dir, options: string) =
   
   for test in os.walkFiles(dir / "t*.nim"):
     var t = extractFilename(test)
+    inc(r.total)
+    echo t
     var expected = findSpec(specs, t)
     var given = callCompiler(test, options)
     cmpMsgs(r, specs[expected], given, t)
@@ -153,6 +161,7 @@ proc compile(r: var TResults, pattern, options: string) =
   for test in os.walkFiles(pattern): 
     var t = extractFilename(test)
     inc(r.total)
+    echo t
     var given = callCompiler(test, options)
     r.addResult(t, given.msg, not given.err)
     if not given.err: inc(r.passed)
@@ -162,6 +171,7 @@ proc run(r: var TResults, dir, options: string) =
   for test in os.walkFiles(dir / "t*.nim"): 
     var t = extractFilename(test)
     inc(r.total)
+    echo t
     var given = callCompiler(test, options)
     if given.err:
       r.addResult(t, "", given.msg, not given.err)

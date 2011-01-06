@@ -2,6 +2,7 @@
 News
 ====
 
+
 2010-XX-XX Version 0.8.12 released
 ==================================
 
@@ -29,6 +30,7 @@ Additions
 - Pegs support a *captured search loop operator* ``{@}``.
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.
+- Pegs support the new built-in ``\skip`` operation.
 
 
 2010-10-20 Version 0.8.10 released

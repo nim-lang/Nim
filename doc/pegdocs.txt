@@ -97,6 +97,10 @@ macro              meaning
 ``\n``             any newline combination: ``\10 / \13\10 / \13``
 ``\i``             ignore case for matching; use this at the start of the PEG
 ``\y``             ignore style for matching; use this at the start of the PEG
+``\skip`` pat      skip pattern *pat* before trying to match other tokens; 
+                   this is useful for whitespace skipping, for example:
+                   ``\skip(\s*) {\ident} ':' {\ident}`` matches key value 
+                   pairs ignoring whitespace around the ``':'``.
 ``\ident``         a standard ASCII identifier: ``[a-zA-Z_][a-zA-Z_0-9]*``
 ``\letter``        any Unicode letter
 ``\upper``         any Unicode uppercase letter
@@ -198,8 +202,8 @@ As a regular expression ``\[.*\]`` matches the longest possible text between
 deterministic: ``.*`` consumes the rest of the input, so ``\]`` never matches.
 As a PEG this needs to be written as: ``\[ ( !\] . )* \]`` (or ``\[ @ \]``).
 
-Note that the regular expression does not behave as intended either:
-``*`` should not be greedy, so ``\[.*?\]`` should be used.
+Note that the regular expression does not behave as intended either: in the
+example ``*`` should not be greedy, so ``\[.*?\]`` should be used instead.
 
 
 PEG construction
