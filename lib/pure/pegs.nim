@@ -1351,6 +1351,7 @@ type
     modifier: TModifier
     captures: int
     identIsVerbatim: bool
+    skip: TPeg
 
 proc pegError(p: TPegParser, msg: string, line = -1, col = -1) =
   var e: ref EInvalidPeg
@@ -1388,6 +1389,30 @@ proc modifiedBackref(s: int, m: TModifier): TPeg =
   of modIgnoreCase: result = backRefIgnoreCase(s)
   of modIgnoreStyle: result = backRefIgnoreStyle(s)
 
+proc builtin(p: var TPegParser): TPeg =
+  # do not use "y", "skip" or "i" as these would be ambiguous
+  case p.tok.literal
+  of "n": result = newLine()
+  of "d": result = charset({'0'..'9'})
+  of "D": result = charset({'\1'..'\xff'} - {'0'..'9'})
+  of "s": result = charset({' ', '\9'..'\13'})
+  of "S": result = charset({'\1'..'\xff'} - {' ', '\9'..'\13'})
+  of "w": result = charset({'a'..'z', 'A'..'Z', '_', '0'..'9'})
+  of "W": result = charset({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
+  of "a": result = charset({'a'..'z', 'A'..'Z'})
+  of "A": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
+  of "ident": result = pegs.ident
+  of "letter": result = UnicodeLetter()
+  of "upper": result = UnicodeUpper()
+  of "lower": result = UnicodeLower()
+  of "title": result = UnicodeTitle()
+  of "white": result = UnicodeWhitespace()
+  else: pegError(p, "unknown built-in: " & p.tok.literal)
+
+proc token(terminal: TPeg, p: TPegParser): TPeg = 
+  if p.skip.kind == pkEmpty: result = terminal
+  else: result = sequence(p.skip, terminal)
+
 proc primary(p: var TPegParser): TPeg =
   case p.tok.kind
   of tkAmp:
@@ -1401,31 +1426,31 @@ proc primary(p: var TPegParser): TPeg =
     return @primary(p)
   of tkCurlyAt:
     getTok(p)
-    return @@primary(p)
+    return @@primary(p).token(p)
   else: nil
   case p.tok.kind
   of tkIdentifier:
     if p.identIsVerbatim: 
       var m = p.tok.modifier
       if m == modNone: m = p.modifier
-      result = modifiedTerm(p.tok.literal, m)
+      result = modifiedTerm(p.tok.literal, m).token(p)
       getTok(p)
     elif not arrowIsNextTok(p):
       var nt = getNonTerminal(p, p.tok.literal)
       incl(nt.flags, ntUsed)
-      result = nonTerminal(nt)
+      result = nonTerminal(nt).token(p)
       getTok(p)
     else:
       pegError(p, "expression expected, but found: " & p.tok.literal)
   of tkStringLit:
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
-    result = modifiedTerm(p.tok.literal, m)
+    result = modifiedTerm(p.tok.literal, m).token(p)
     getTok(p)
   of tkCharSet:
     if '\0' in p.tok.charset:
       pegError(p, "binary zero ('\\0') not allowed in character class")
-    result = charset(p.tok.charset)
+    result = charset(p.tok.charset).token(p)
     getTok(p)
   of tkParLe:
     getTok(p)
@@ -1433,41 +1458,25 @@ proc primary(p: var TPegParser): TPeg =
     eat(p, tkParRi)
   of tkCurlyLe:
     getTok(p)
-    result = capture(parseExpr(p))
+    result = capture(parseExpr(p)).token(p)
     eat(p, tkCurlyRi)
     inc(p.captures)
   of tkAny:
-    result = any()
+    result = any().token(p)
     getTok(p)
   of tkAnyRune:
-    result = anyRune()
+    result = anyRune().token(p)
     getTok(p)
   of tkBuiltin:
-    case p.tok.literal
-    of "n": result = newLine()
-    of "d": result = charset({'0'..'9'})
-    of "D": result = charset({'\1'..'\xff'} - {'0'..'9'})
-    of "s": result = charset({' ', '\9'..'\13'})
-    of "S": result = charset({'\1'..'\xff'} - {' ', '\9'..'\13'})
-    of "w": result = charset({'a'..'z', 'A'..'Z', '_', '0'..'9'})
-    of "W": result = charset({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
-    of "a": result = charset({'a'..'z', 'A'..'Z'})
-    of "A": result = charset({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
-    of "ident": result = pegs.ident
-    of "letter": result = UnicodeLetter()
-    of "upper": result = UnicodeUpper()
-    of "lower": result = UnicodeLower()
-    of "title": result = UnicodeTitle()
-    of "white": result = UnicodeWhitespace()
-    else: pegError(p, "unknown built-in: " & p.tok.literal)
+    result = builtin(p).token(p)
     getTok(p)
   of tkEscaped:
-    result = term(p.tok.literal[0])
+    result = term(p.tok.literal[0]).token(p)
     getTok(p)
   of tkDollar:
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
-    result = modifiedBackRef(p.tok.index, m)
+    result = modifiedBackRef(p.tok.index, m).token(p)
     if p.tok.index < 0 or p.tok.index > p.captures: 
       pegError(p, "invalid back reference index: " & $p.tok.index)
     getTok(p)
@@ -1522,7 +1531,7 @@ proc parseRule(p: var TPegParser): PNonTerminal =
   
 proc rawParse(p: var TPegParser): TPeg =
   ## parses a rule or a PEG expression
-  if p.tok.kind == tkBuiltin:
+  while p.tok.kind == tkBuiltin:
     case p.tok.literal
     of "i":
       p.modifier = modIgnoreCase
@@ -1530,7 +1539,10 @@ proc rawParse(p: var TPegParser): TPeg =
     of "y":
       p.modifier = modIgnoreStyle
       getTok(p)
-    else: nil
+    of "skip":
+      getTok(p)
+      p.skip = ?primary(p)
+    else: break
   if p.tok.kind == tkIdentifier and arrowIsNextTok(p):
     result = parseRule(p).rule
     while p.tok.kind != tkEof:
@@ -1675,5 +1687,8 @@ when isMainModule:
   assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
   assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
   assert(not match("456678", peg"(\letter)+"))
-  
-  
+
+  assert("var1 = key; var2 = key2".replace(
+    peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
+         "var1<-keykey;var2<-key2key2")
+
