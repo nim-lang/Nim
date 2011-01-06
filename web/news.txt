@@ -3,7 +3,7 @@ News
 ====
 
 
-2010-XX-XX Version 0.8.12 released
+2011-XX-XX Version 0.8.12 released
 ==================================
 
 Version 0.8.12 has been released! Get it `here <download.html>`_. 
@@ -32,6 +32,7 @@ Additions
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
 - Source code filters are now properly documented.
+- Added ``emit`` pragma for direct code generator control.
 
 
 2010-10-20 Version 0.8.10 released

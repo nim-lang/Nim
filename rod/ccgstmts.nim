@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -212,34 +212,6 @@ proc genBreakStmt(p: BProc, t: PNode) =
   popSafePoints(p, p.nestedTryStmts.len - p.blocks[idx].nestedTryStmts)
   genLineDir(p, t)
   appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.blocks[idx].id)])
-
-proc genAsmStmt(p: BProc, t: PNode) = 
-  var 
-    sym: PSym
-    r, s: PRope
-    a: TLoc
-  genLineDir(p, t)
-  assert(t.kind == nkAsmStmt)
-  s = nil
-  for i in countup(0, sonsLen(t) - 1): 
-    case t.sons[i].Kind
-    of nkStrLit..nkTripleStrLit: 
-      app(s, t.sons[i].strVal)
-    of nkSym: 
-      sym = t.sons[i].sym
-      if sym.kind in {skProc, skMethod}: 
-        initLocExpr(p, t.sons[i], a)
-        app(s, rdLoc(a))
-      else: 
-        r = sym.loc.r
-        if r == nil: 
-          # if no name has already been given,
-          # it doesn't matter much:
-          r = mangleName(sym)
-          sym.loc.r = r       # but be consequent!
-        app(s, r)
-    else: InternalError(t.sons[i].info, "genAsmStmt()")
-  appf(p.s[cpsStmts], CC[ccompiler].asmStmtFrmt, [s])
 
 proc getRaiseFrmt(p: BProc): string = 
   if gCmd == cmdCompileToCpp: 
@@ -605,6 +577,42 @@ proc genTryStmt(p: BProc, t: PNode) =
     genStmts(p, t.sons[i].sons[0])
   appcg(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
 
+proc genAsmOrEmitStmt(p: BProc, t: PNode): PRope = 
+  for i in countup(0, sonsLen(t) - 1): 
+    case t.sons[i].Kind
+    of nkStrLit..nkTripleStrLit: 
+      app(result, t.sons[i].strVal)
+    of nkSym: 
+      var sym = t.sons[i].sym
+      if sym.kind in {skProc, skMethod}: 
+        var a: TLoc
+        initLocExpr(p, t.sons[i], a)
+        app(result, rdLoc(a))
+      else: 
+        var r = sym.loc.r
+        if r == nil: 
+          # if no name has already been given,
+          # it doesn't matter much:
+          r = mangleName(sym)
+          sym.loc.r = r       # but be consequent!
+        app(result, r)
+    else: InternalError(t.sons[i].info, "genAsmOrEmitStmt()")
+
+proc genAsmStmt(p: BProc, t: PNode) = 
+  assert(t.kind == nkAsmStmt)
+  genLineDir(p, t)
+  var s = genAsmOrEmitStmt(p, t)
+  appf(p.s[cpsStmts], CC[ccompiler].asmStmtFrmt, [s])
+
+proc genEmit(p: BProc, t: PNode) = 
+  genLineDir(p, t)
+  var s = genAsmOrEmitStmt(p, t.sons[1])
+  if p.prc == nil: 
+    # top level emit pragma?
+    app(p.module.s[cfsProcs], s)
+  else:
+    app(p.s[cpsStmts], s)
+
 var 
   breakPointId: int = 0
   gBreakpoints: PRope # later the breakpoints are inserted into the main proc
@@ -630,6 +638,8 @@ proc genPragma(p: BProc, n: PNode) =
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent: 
       case whichKeyword(key.ident)
+      of wEmit:
+        genEmit(p, it)
       of wBreakpoint: 
         genBreakPoint(p, it)
       of wDeadCodeElim: 

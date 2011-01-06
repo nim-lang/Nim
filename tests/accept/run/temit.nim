@@ -1,0 +1,14 @@
+# Test the new ``emit`` pragma: 
+
+{.emit: """
+static int cvariable = 420;
+
+""".}
+
+proc embedsC() {.pure.} = 
+  var nimrodVar = 89
+  {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
+
+embedsC()
+
+

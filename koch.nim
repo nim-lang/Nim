@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nimrod  
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -18,7 +18,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nimrod                          |
 |             Version $1|
-|             (c) 2010 Andreas Rumpf                              |
+|             (c) 2011 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
