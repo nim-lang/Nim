@@ -231,21 +231,6 @@ const                   # the used compiler
 var cExt*: string = "c" # extension of generated C/C++ files
                         # (can be changed to .cpp later)
 
-proc completeCFilePath*(cfile: string, createSubDir: bool = true): string
-  
-proc getCompileCFileCmd*(cfilename: string, isExternal: bool = false): string
-proc addFileToCompile*(filename: string)
-proc addExternalFileToCompile*(filename: string)
-proc addFileToLink*(filename: string)
-proc addCompileOption*(option: string)
-proc addLinkOption*(option: string)
-proc toObjFile*(filenameWithoutExt: string): string
-proc CallCCompiler*(projectFile: string)
-proc execExternalProgram*(cmd: string)
-proc NameToCC*(name: string): TSystemCC
-proc initVars*()
-proc setCC*(ccname: string)
-proc writeMapping*(gSymbolMapping: PRope)
 # implementation
 
 var 
@@ -254,7 +239,13 @@ var
   compileOptions: string = ""
   ccompilerpath: string = ""
 
-proc setCC(ccname: string) = 
+proc NameToCC*(name: string): TSystemCC = 
+  for i in countup(succ(ccNone), high(TSystemCC)): 
+    if cmpIgnoreStyle(name, CC[i].name) == 0: 
+      return i
+  result = ccNone
+
+proc setCC*(ccname: string) = 
   ccompiler = nameToCC(ccname)
   if ccompiler == ccNone: rawMessage(errUnknownCcompiler, ccname)
   compileOptions = getConfigVar(CC[ccompiler].name & ".options.always")
@@ -263,7 +254,18 @@ proc setCC(ccname: string) =
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[ccompiler].name)
 
-proc initVars() = 
+proc addOpt(dest: var string, src: string) = 
+  if len(dest) == 0 or dest[len(dest) - 1 + 0] != ' ': add(dest, " ")
+  add(dest, src)
+
+proc addLinkOption*(option: string) = 
+  if find(linkOptions, option, 0) < 0: addOpt(linkOptions, option)
+
+proc addCompileOption*(option: string) = 
+  if strutils.find(compileOptions, option, 0) < 0: 
+    addOpt(compileOptions, option)
+
+proc initVars*() = 
   # we need to define the symbol here, because ``CC`` may have never been set!
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[ccompiler].name)
@@ -272,32 +274,15 @@ proc initVars() =
   addLinkOption(getConfigVar(CC[ccompiler].name & ".options.linker"))
   if len(ccompilerPath) == 0: 
     ccompilerpath = getConfigVar(CC[ccompiler].name & ".path")
-  
-proc completeCFilePath(cfile: string, createSubDir: bool = true): string = 
+
+proc completeCFilePath*(cfile: string, createSubDir: bool = true): string = 
   result = completeGeneratedFilePath(cfile, createSubDir)
 
-proc NameToCC(name: string): TSystemCC = 
-  for i in countup(succ(ccNone), high(TSystemCC)): 
-    if cmpIgnoreStyle(name, CC[i].name) == 0: 
-      return i
-  result = ccNone
+proc toObjFile*(filenameWithoutExt: string): string = 
+  # Object file for compilation
+  result = changeFileExt(filenameWithoutExt, cc[ccompiler].objExt)
 
-proc addOpt(dest: var string, src: string) = 
-  if len(dest) == 0 or dest[len(dest) - 1 + 0] != ' ': add(dest, " ")
-  add(dest, src)
-
-proc addCompileOption(option: string) = 
-  if strutils.find(compileOptions, option, 0) < 0: 
-    addOpt(compileOptions, option)
-  
-proc addLinkOption(option: string) = 
-  if find(linkOptions, option, 0) < 0: addOpt(linkOptions, option)
-  
-proc toObjFile(filenameWithoutExt: string): string = 
-  # BUGFIX: changeFileExt is wrong, use addFileExt!
-  result = addFileExt(filenameWithoutExt, cc[ccompiler].objExt)
-
-proc addFileToCompile(filename: string) = 
+proc addFileToCompile*(filename: string) = 
   appendStr(toCompile, filename)
 
 proc footprint(filename: string): TCrc32 =
@@ -323,18 +308,18 @@ proc externalFileChanged(filename: string): bool =
       f.writeln($currentCrc)
       close(f)
 
-proc addExternalFileToCompile(filename: string) = 
+proc addExternalFileToCompile*(filename: string) = 
   if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
-    appendStr(externalToCompile, changeFileExt(filename, ""))
+    appendStr(externalToCompile, filename)
 
-proc addFileToLink(filename: string) = 
+proc addFileToLink*(filename: string) = 
   prependStr(toLink, filename) 
   # BUGFIX: was ``appendStr``
-  
-proc execExternalProgram(cmd: string) = 
+
+proc execExternalProgram*(cmd: string) = 
   if (optListCmd in gGlobalOptions) or (gVerbosity > 0): MessageOut(cmd)
   if execCmd(cmd) != 0: rawMessage(errExecutionOfProgramFailed, "")
-  
+
 proc generateScript(projectFile: string, script: PRope) = 
   var (dir, name, ext) = splitFile(projectFile)
   WriteRope(script, dir / addFileExt("compile_" & name, 
@@ -344,24 +329,24 @@ proc getOptSpeed(c: TSystemCC): string =
   result = getConfigVar(cc[c].name & ".options.speed")
   if result == "": 
     result = cc[c].optSpeed   # use default settings from this file
-  
+
 proc getDebug(c: TSystemCC): string = 
   result = getConfigVar(cc[c].name & ".options.debug")
   if result == "": 
     result = cc[c].debug      # use default settings from this file
-  
+
 proc getOptSize(c: TSystemCC): string = 
   result = getConfigVar(cc[c].name & ".options.size")
   if result == "": 
     result = cc[c].optSize    # use default settings from this file
-  
+
 const 
   specialFileA = 42
   specialFileB = 42
 
 var fileCounter: int
 
-proc getCompileCFileCmd(cfilename: string, isExternal: bool = false): string = 
+proc getCompileCFileCmd*(cfilename: string, isExternal: bool = false): string = 
   var 
     cfile, objfile, options, includeCmd, compilePattern, key, trunk, exe: string
   var c = ccompiler
@@ -427,7 +412,7 @@ proc CompileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
       app(script, tnl)
     it = PStrEntry(it.next)
 
-proc CallCCompiler(projectfile: string) = 
+proc CallCCompiler*(projectfile: string) = 
   var 
     linkCmd, buildgui, builddll: string
   if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}: 
@@ -475,9 +460,9 @@ proc CallCCompiler(projectfile: string) =
     while it != nil: 
       add(objfiles, ' ')
       if targetOS == platform.hostOS: 
-        add(objfiles, quoteIfContainsWhite(toObjfile(it.data)))
+        add(objfiles, quoteIfContainsWhite(addFileExt(it.data, cc[ccompiler].objExt)))
       else: 
-        add(objfiles, quoteIfContainsWhite(toObjfile(extractFileName(it.data))))
+        add(objfiles, quoteIfContainsWhite(addFileExt(it.data, cc[ccompiler].objExt)))
       it = PStrEntry(it.next)
     linkCmd = quoteIfContainsWhite(linkCmd % ["builddll", builddll, 
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles, 
@@ -502,7 +487,7 @@ proc genMappingFiles(list: TLinkedList): PRope =
     appf(result, "--file:r\"$1\"$n", [toRope(AddFileExt(it.data, cExt))])
     it = PStrEntry(it.next)
 
-proc writeMapping(gSymbolMapping: PRope) = 
+proc writeMapping*(gSymbolMapping: PRope) = 
   if optGenMapping notin gGlobalOptions: return 
   var code = toRope("[C_Files]\n")
   app(code, genMappingFiles(toCompile))
