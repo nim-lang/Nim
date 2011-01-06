@@ -22,6 +22,10 @@ The documentation consists of several documents:
 - | `Manual <manual.html>`_
   | The Nimrod manual is a draft that will evolve into a proper specification.
 
+- | `Source code filters <filters.html>`_
+  | The Nimrod compiler supports source code filters as a simple yet powerful
+    builtin templating system.
+
 - | `Internal documentation <intern.html>`_
   | The internal documentation describes how the compiler is implemented. Read
     this if you want to hack the compiler.

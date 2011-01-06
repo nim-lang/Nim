@@ -1529,6 +1529,7 @@ Example:
     finally:
       close(f)
 
+
 The statements after the `try`:idx: are executed in sequential order unless
 an exception ``e`` is raised. If the exception type of ``e`` matches any
 of the list ``exceptlist`` the corresponding statements are executed.
@@ -2324,6 +2325,7 @@ invoked by an expression following a colon::
 The following example outlines a macro that generates a lexical analyzer from
 regular expressions:
 
+
 .. code-block:: nimrod
   import macros
 
@@ -2799,4 +2801,5 @@ conjunction with the ``exportc`` pragma:
 
 This is only useful if the program is compiled as a dynamic library via the
 ``--app:lib`` command line option.
+
 

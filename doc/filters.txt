@@ -1,45 +1,14 @@
 ===================
-Parsers and Filters
+Source Code Filters
 ===================
 
 .. contents::
 
-The Nimrod compiler contains multiple parsers. The standard is 
-indentation-based. Two others are available: The `braces`:idx: parser and the
-`endX`:idx: parser. Both parsers use the same lexer as the standard parser.
+A `Source Code Filter` transforms the input character stream to an in-memory 
+output stream before parsing. A filter can be used to provide templating 
+systems or preprocessors.
 
-To use a different parser for a source file the *shebang* notation is used:
-
-.. code-block:: nimrod
-  #! braces
-  if (x == 10) {
-    echo "x is ten"
-  } else {
-    echo "x isn't ten"
-  }
-
-The special ``#!`` comment for specifying a parser needs to be in the first
-line with no leading whitespace, unless an UNIX shebang line is used. Then the
-parser shebang can occur in the second line:
-
-.. code-block:: nimrod
-  #! /usr/bin/env nimrod c -r
-  #! braces
-  if (x == 10) {
-    echo "x is ten"
-  } else {
-    echo "x isn't ten"
-  }
-
-An UNIX shebang line is defined by the pattern ``'#!' \s* '/' .*`` 
-(``#!`` followed by optional whitespace followed by ``/``). 
-
-
-Filters
-=======
-
-Nimrod's shebang also supports the invokation of `source filters`:idx: before
-the source code file is passed to the parser::
+To use a filter for a source file the *shebang* notation is used::
 
   #! stdtmpl(subsChar = '$', metaChar = '#')
   #proc generateXML(name, age: string): string =
@@ -49,22 +18,17 @@ the source code file is passed to the parser::
     <age>$age</age>
   </xml>
 
-Filters transform the input character stream to an in-memory output stream.
-They are used to provide templating systems or preprocessors. 
-
-As the example shows, passing arguments to a filter (or parser) can be done
+As the example shows, passing arguments to a filter can be done
 just like an ordinary procedure call with named or positional arguments. The
-available parameters depend on the invoked filter/parser.
+available parameters depend on the invoked filter.
 
 
 Pipe operator
--------------
+=============
 
-Filters and parsers can be combined with the ``|`` `pipe operator`:idx:. Only
-the last operand can be a parser because a parser returns an abstract syntax
-tree which a filter cannot process::
+Filters can be combined with the ``|`` `pipe operator`:idx:\ ::
 
-  #! strip(startswith="<") | stdtmpl | standard
+  #! strip(startswith="<") | stdtmpl
   #proc generateXML(name, age: string): string =
   #  result = ""
   <xml>
