@@ -16,7 +16,6 @@ Bugs
 - proc (x: int) is passable to proc (x: var int)  !?
 - detected by pegs module 64bit: p(result, result) should use a temporary!
 - the parser allows empty object case branches
-- SDL event handling
 
 
 To implement
