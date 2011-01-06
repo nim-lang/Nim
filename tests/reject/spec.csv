@@ -14,6 +14,7 @@ tinout.nim;7;for a 'var' type a variable needs to be passed
 tinvalidnewseq.nim;10;type mismatch: got (array[0..6, string], int)
 tinvwhen.nim;6;invalid indentation
 titer4.nim;2;iterator within for loop context expected
+tmethod.nim;2;'method' needs a parameter that has an object type
 tnamspc.nim;5;undeclared identifier: 'global'
 tnoop.nim;6;expression 'a()' cannot be called
 tnot.nim;9;type mismatch
@@ -34,4 +35,5 @@ tstmtexp.nim;3;value returned by statement has to be discarded
 ttempl2.nim;13;undeclared identifier: 'b'
 ttypelessemptyset.nim;0;Error: internal error: invalid kind for last(tyEmpty)
 tunderscores.nim;3;invalid token: _
+twrongtupleaccess.nim;4;undeclared field: 'setBLAH'
 typredef.nim;2;illegal recursion in type 'Uint8'

@@ -1,3 +1,7 @@
+- Tester needs to count failures
+- we need a way to disable tests
+
+
 High priority (version 0.9.0)
 =============================
 
