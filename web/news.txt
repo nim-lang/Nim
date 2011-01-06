@@ -31,6 +31,7 @@ Additions
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
+- Source code filters are now properly documented.
 
 
 2010-10-20 Version 0.8.10 released
