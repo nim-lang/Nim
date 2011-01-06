@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -11,7 +11,8 @@
 
 import 
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, rnimsyn, 
-  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees
+  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees,
+  rodread
 
 const 
   FirstCallConv* = wNimcall
@@ -33,7 +34,7 @@ const
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
     wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop, wBreakpoint, 
     wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
-    wInfChecks, wNanChecks, wPragma}
+    wInfChecks, wNanChecks, wPragma, wEmit}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
     wDeprecated, wExtern}
@@ -323,6 +324,37 @@ proc PragmaCheckpoint(c: PContext, n: PNode) =
   inc(info.line)              # next line is affected!
   msgs.addCheckpoint(info)
 
+proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
+  case n.sons[1].kind
+  of nkStrLit, nkRStrLit, nkTripleStrLit: 
+    result = copyNode(n)
+    var str = n.sons[1].strVal
+    if str == "": liMessage(n.info, errEmptyAsm) 
+    # now parse the string literal and substitute symbols:
+    var a = 0
+    while true: 
+      var b = strutils.find(str, marker, a)
+      var sub = if b < 0: copy(str, a) else: copy(str, a, b - 1)
+      if sub != "": addSon(result, newStrNode(nkStrLit, sub))
+      if b < 0: break 
+      var c = strutils.find(str, marker, b + 1)
+      if c < 0: sub = copy(str, b + 1)
+      else: sub = copy(str, b + 1, c - 1)
+      if sub != "": 
+        var e = SymtabGet(con.tab, getIdent(sub))
+        if e != nil: 
+          if e.kind == skStub: loadStub(e)
+          addSon(result, newSymNode(e))
+        else: 
+          addSon(result, newStrNode(nkStrLit, sub))
+      if c < 0: break 
+      a = c + 1
+  else: illFormedAst(n)
+  
+proc PragmaEmit(c: PContext, n: PNode) = 
+  discard getStrLitNode(c, n)
+  n.sons[1] = semAsmOrEmit(c, n, '`')
+
 proc noVal(n: PNode) = 
   if n.kind == nkExprColonExpr: invalidPragma(n)
 
@@ -477,6 +509,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             assert(sym != nil)
             if sym.typ == nil: invalidPragma(it)
             sym.typ.callConv = wordToCallConv(k)
+          of wEmit: PragmaEmit(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

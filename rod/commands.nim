@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -27,7 +27,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
 
 const 
   HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]" &
-      "\n" & "Copyright (c) 2004-2010 by Andreas Rumpf" & "\n"
+      "\n" & "Copyright (c) 2004-2011 by Andreas Rumpf" & "\n"
 
 const 
   Usage = """
@@ -182,10 +182,10 @@ proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass,
   else: liMessage(info, errOnOrOffExpectedButXFound, arg)
   
 proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if (arg == ""): liMessage(info, errCmdLineArgExpected, switch)
+  if arg == "": liMessage(info, errCmdLineArgExpected, switch)
   
 proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if (arg != ""): liMessage(info, errCmdLineNoArgExpected, switch)
+  if arg != "": liMessage(info, errCmdLineNoArgExpected, switch)
   
 proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 

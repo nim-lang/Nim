@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -96,35 +96,10 @@ proc semBlock(c: PContext, n: PNode): PNode =
   Dec(c.p.nestedBlockCounter)
 
 proc semAsm(con: PContext, n: PNode): PNode = 
-  result = n
   checkSonsLen(n, 2)
   var marker = pragmaAsm(con, n.sons[0])
   if marker == '\0': marker = '`' # default marker
-  case n.sons[1].kind
-  of nkStrLit, nkRStrLit, nkTripleStrLit: 
-    result = copyNode(n)
-    var str = n.sons[1].strVal
-    if str == "": liMessage(n.info, errEmptyAsm) 
-    # now parse the string literal and substitute symbols:
-    var a = 0
-    while true: 
-      var b = strutils.find(str, marker, a)
-      var sub = if b < 0: copy(str, a) else: copy(str, a, b - 1)
-      if sub != "": addSon(result, newStrNode(nkStrLit, sub))
-      if b < 0: break 
-      var c = strutils.find(str, marker, b + 1)
-      if c < 0: sub = copy(str, b + 1)
-      else: sub = copy(str, b + 1, c - 1)
-      if sub != "": 
-        var e = SymtabGet(con.tab, getIdent(sub))
-        if e != nil: 
-          if e.kind == skStub: loadStub(e)
-          addSon(result, newSymNode(e))
-        else: 
-          addSon(result, newStrNode(nkStrLit, sub))
-      if c < 0: break 
-      a = c + 1
-  else: illFormedAst(n)
+  result = semAsmOrEmit(con, n, marker)
   
 proc semWhile(c: PContext, n: PNode): PNode = 
   result = n

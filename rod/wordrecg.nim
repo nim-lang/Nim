@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -57,7 +57,7 @@ type
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
     wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, 
     wRst2html, wRst2tex, wI,
-    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar
+    wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -104,7 +104,7 @@ const
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
     "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
     "js", "rst2html", "rst2tex", "i", 
-    "write", "putenv", "prependenv", "appendenv", "threadvar"]
+    "write", "putenv", "prependenv", "appendenv", "threadvar", "emit"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
 proc whichKeyword*(id: String): TSpecialWord
