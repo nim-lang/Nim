@@ -754,6 +754,20 @@ proc semProc(c: PContext, n: PNode): PNode =
 proc semMethod(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): liMessage(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
+  
+  var s = result.sons[namePos].sym
+  var t = s.typ
+  var hasObjParam = false
+  
+  for col in countup(1, sonsLen(t)-1): 
+    if skipTypes(t.sons[col], skipPtrs).kind == tyObject: 
+      hasObjParam = true
+      break
+  
+  # XXX this not really correct way to do it: Perhaps it should be done after
+  # generic instantiation. Well it's good enough for now: 
+  if not hasObjParam:
+    liMessage(n.info, errXNeedsParamObjectType, "method")
 
 proc semConverterDef(c: PContext, n: PNode): PNode = 
   if not isTopLevel(c): liMessage(n.info, errXOnlyAtModuleScope, "converter")

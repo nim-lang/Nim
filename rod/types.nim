@@ -56,6 +56,8 @@ const
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal}
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal}
 
+  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst}
+
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType
 proc elemType*(t: PType): PType
 proc containsObject*(t: PType): bool
