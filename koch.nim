@@ -124,8 +124,8 @@ proc bootIteration(args: string): bool =
   exec "rod" / "nimrod1 cc $# $# rod/nimrod.nim" % [bootOptions, args]
   # Nimrod does not produce an executable again if nothing changed. That's ok:
   result = sameFileContent("rod" / "nimrod".exe, nimrod1)
-  safeRemove("bin" / "nimrod".exe)
   var dest = "bin" / "nimrod".exe
+  safeRemove(dest)
   copyFile(dest=dest, source="rod" / "nimrod".exe)
   inclFilePermissions(dest, {fpUserExec})
   safeRemove(nimrod1)
