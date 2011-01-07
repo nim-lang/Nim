@@ -319,7 +319,7 @@ when defined(Windows) and not defined(useNimRtl):
       result.errorHandle = si.hStdError
 
     var cmdl: cstring
-    if false: # poUseShell in options:
+    when false: # poUseShell in options:
       cmdl = buildCommandLine(getEnv("COMSPEC"), @["/c", command] & args)
     else:
       cmdl = buildCommandLine(command, args)
