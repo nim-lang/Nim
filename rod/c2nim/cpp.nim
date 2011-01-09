@@ -279,7 +279,7 @@ proc parsePegLit(p: var TParser): TPeg =
   if p.tok.xkind != pxStrLit: ExpectIdent(p)
   try:
     result = parsePeg(
-      input = if p.tok.xkind == pxStrLit: p.tok.s else: escapePeg(p.tok.s), 
+      pattern = if p.tok.xkind == pxStrLit: p.tok.s else: escapePeg(p.tok.s), 
       filename = p.lex.filename, 
       line = p.lex.linenumber, 
       col = col)

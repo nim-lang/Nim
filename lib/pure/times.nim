@@ -143,7 +143,7 @@ proc `<=` * (a, b: TTime): bool {.
 
 proc getStartMilsecs*(): int {.deprecated.}
   ## get the miliseconds from the start of the program. **Deprecated since
-  ## version 0.8.10.** Use ``realTime`` or ``cpuTime`` instead.
+  ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
 when not defined(ECMAScript):  
   proc epochTime*(): float {.rtl, extern: "nt$1".}
