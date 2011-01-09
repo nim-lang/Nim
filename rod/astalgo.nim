@@ -12,7 +12,7 @@
 # the data structures here are used in various places of the compiler.
 
 import 
-  ast, nhashes, strutils, options, msgs, ropes, idents
+  ast, nhashes, strutils, options, msgs, ropes, idents, rodutils
 
 proc hashNode*(p: PObject): THash
 proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): PRope
@@ -327,7 +327,8 @@ proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int,
       of nkCharLit..nkInt64Lit: 
         appf(result, ",$n$1\"intVal\": $2", [istr, toRope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit: 
-        appf(result, ",$n$1\"floatVal\": $2", [istr, toRopeF(n.floatVal)])
+        appf(result, ",$n$1\"floatVal\": $2", 
+            [istr, toRope(n.floatVal.ToStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
         appf(result, ",$n$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
@@ -396,7 +397,8 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope =
       of nkCharLit..nkInt64Lit: 
         appf(result, ",$n$1\"intVal\": $2", [istr, toRope(n.intVal)])
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit: 
-        appf(result, ",$n$1\"floatVal\": $2", [istr, toRopeF(n.floatVal)])
+        appf(result, ",$n$1\"floatVal\": $2", 
+            [istr, toRope(n.floatVal.ToStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit: 
         appf(result, ",$n$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym: 
@@ -430,12 +432,13 @@ proc debug(n: PNode) =
   writeln(stdout, ropeToStr(debugTree(n, 0, 100)))
 
 const 
-  EmptySeq = @ []
+  EmptySeq = @[]
 
 proc nextTry(h, maxHash: THash): THash = 
-  result = ((5 * h) + 1) and maxHash # For any initial h in range(maxHash), repeating that maxHash times
-                                     # generates each int in range(maxHash) exactly once (see any text on
-                                     # random-number generation for proof).
+  result = ((5 * h) + 1) and maxHash 
+  # For any initial h in range(maxHash), repeating that maxHash times
+  # generates each int in range(maxHash) exactly once (see any text on
+  # random-number generation for proof).
   
 proc objectSetContains(t: TObjectSet, obj: PObject): bool = 
   # returns true whether n is in t
@@ -498,7 +501,8 @@ proc TableRawGet(t: TTable, key: PObject): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-proc TableSearch(t: TTable, key, closure: PObject, comparator: TCmpProc): PObject = 
+proc TableSearch(t: TTable, key, closure: PObject, 
+                 comparator: TCmpProc): PObject = 
   var h: THash
   h = hashNode(key) and high(t.data) # start with real hash value
   while t.data[h].key != nil: 
@@ -510,8 +514,7 @@ proc TableSearch(t: TTable, key, closure: PObject, comparator: TCmpProc): PObjec
   result = nil
 
 proc TableGet(t: TTable, key: PObject): PObject = 
-  var index: int
-  index = TableRawGet(t, key)
+  var index = TableRawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = nil
   
@@ -533,8 +536,7 @@ proc TableEnlarge(t: var TTable) =
   swap(t.data, n)
 
 proc TablePut(t: var TTable, key, val: PObject) = 
-  var index: int
-  index = TableRawGet(t, key)
+  var index = TableRawGet(t, key)
   if index >= 0: 
     t.data[index].val = val
   else: 
@@ -692,20 +694,17 @@ proc IdTableRawGet(t: TIdTable, key: int): int =
   result = - 1
 
 proc IdTableHasObjectAsKey(t: TIdTable, key: PIdObj): bool = 
-  var index: int
-  index = IdTableRawGet(t, key.id)
+  var index = IdTableRawGet(t, key.id)
   if index >= 0: result = t.data[index].key == key
   else: result = false
   
 proc IdTableGet(t: TIdTable, key: PIdObj): PObject = 
-  var index: int
-  index = IdTableRawGet(t, key.id)
+  var index = IdTableRawGet(t, key.id)
   if index >= 0: result = t.data[index].val
   else: result = nil
   
 proc IdTableGet(t: TIdTable, key: int): PObject = 
-  var index: int
-  index = IdTableRawGet(t, key)
+  var index = IdTableRawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = nil
   
@@ -797,8 +796,7 @@ proc IITableRawGet(t: TIITable, key: int): int =
   result = - 1
 
 proc IITableGet(t: TIITable, key: int): int = 
-  var index: int
-  index = IITableRawGet(t, key)
+  var index = IITableRawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = InvalidKey
   
@@ -813,15 +811,13 @@ proc IITableRawInsert(data: var TIIPairSeq, key, val: int) =
   data[h].val = val
 
 proc IITablePut(t: var TIITable, key, val: int) = 
-  var 
-    index: int
-    n: TIIPairSeq
-  index = IITableRawGet(t, key)
+  var index = IITableRawGet(t, key)
   if index >= 0: 
     assert(t.data[index].key != InvalidKey)
     t.data[index].val = val
   else: 
     if mustRehash(len(t.data), t.counter): 
+      var n: TIIPairSeq
       newSeq(n, len(t.data) * growthFactor)
       for i in countup(0, high(n)): n[i].key = InvalidKey
       for i in countup(0, high(t.data)): 

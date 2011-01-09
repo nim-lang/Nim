@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -34,7 +34,8 @@ var
   c_stdout {.importc: "stdout", noDecl.}: C_TextFileStar
   c_stderr {.importc: "stderr", noDecl.}: C_TextFileStar
 
-var # constants faked as variables:
+# constants faked as variables:
+var 
   SIGINT {.importc: "SIGINT", nodecl.}: cint
   SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
   SIGABRT {.importc: "SIGABRT", nodecl.}: cint

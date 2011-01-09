@@ -13,7 +13,8 @@
 import 
   ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp, options, 
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os, 
-  times, ropes, math, passes, rodread, wordrecg, rnimsyn, treetab, cgmeth
+  times, ropes, math, passes, rodread, wordrecg, rnimsyn, treetab, cgmeth,
+  rodutils
 
 when options.hasTinyCBackend:
   import tccgen

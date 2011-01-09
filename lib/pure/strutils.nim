@@ -936,6 +936,60 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   result = row[e]
   #dealloc(row)
 
+
+# floating point formating:
+
+proc c_sprintf(buf, frmt: CString) {.nodecl, importc: "sprintf", varargs,
+                                     noSideEffect.}
+
+type
+  TFloatFormat* = enum
+    ffDefault,    ## use the shorter floating point notation
+    ffDecimal,    ## use decimal floating point notation
+    ffScientific  ## use scientific notation (using ``e``) character
+
+proc formatBiggestFloat*(f: BiggestFloat, format: TFloatFormat = ffDefault,
+                         precision = 16): string {.noSideEffect,
+                                                  rtl, extern: "nsu$1".} = 
+  ## converts a floating point value `f` to a string. 
+  ##
+  ## If ``format == ffDecimal`` then precision is the number of digits to 
+  ## be printed after the decimal point.
+  ## If ``format == ffScientific`` then precision is the maximum number 
+  ## of significant digits to be printed.
+  ## `precision`'s default value is the maximum number of meaningful digits
+  ## after the decimal point for Nimrod's ``biggestFloat`` type. 
+  const floatFormatToChar: array[TFloatFormat, char] = ['g', 'f', 'e']
+  var 
+    frmtstr: array[0..5, char]
+    buf: array[0..80, char]
+  frmtstr[0] = '%'
+  frmtstr[1] = '#'
+  if precision > 0:
+    frmtstr[2] = '.'
+    frmtstr[3] = '*'
+    frmtstr[4] = floatFormatToChar[format]
+    frmtstr[5] = '\0'
+    c_sprintf(buf, frmtstr, precision, f)
+  else: 
+    frmtstr[2] = floatFormatToChar[format]
+    frmtstr[3] = '\0'
+    c_sprintf(buf, frmtstr, f)
+  result = $buf
+
+proc formatFloat*(f: float, format: TFloatFormat = ffDefault,
+                  precision = 16): string {.noSideEffect,
+                                           rtl, extern: "nsu$1".} = 
+  ## converts a floating point value `f` to a string. 
+  ##
+  ## If ``format == ffDecimal`` then precision is the number of digits to 
+  ## be printed after the decimal point.
+  ## If ``format == ffScientific`` then precision is the maximum number 
+  ## of significant digits to be printed.
+  ## `precision`'s default value is the maximum number of meaningful digits
+  ## after the decimal point for Nimrod's ``float`` type. 
+  result = formatBiggestFloat(f, format, precision)
+
 {.pop.}
 
 when isMainModule:
@@ -944,5 +998,7 @@ when isMainModule:
   assert align("1232", 6) == "  1232"
   echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
                    it goes""", 10, false)
+  assert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
+  assert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
   
-  
+

@@ -87,7 +87,6 @@ proc app*(a: var PRope, b: PRope)
 proc app*(a: var PRope, b: string)
 proc prepend*(a: var PRope, b: PRope)
 proc toRope*(s: string): PRope
-proc toRopeF*(r: BiggestFloat): PRope
 proc toRope*(i: BiggestInt): PRope
 proc ropeLen*(a: PRope): int
 proc WriteRope*(head: PRope, filename: string)
@@ -270,7 +269,7 @@ proc con(a: openarray[PRope]): PRope =
   for i in countup(0, high(a)): result = con(result, a[i])
 
 proc toRope(i: BiggestInt): PRope = result = toRope($i)
-proc toRopeF(r: BiggestFloat): PRope = result = toRope($r)
+#proc toRopeF*(r: BiggestFloat): PRope = result = toRope($r)
 proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
@@ -303,11 +302,10 @@ proc WriteRope(head: PRope, filename: string) =
     rawMessage(errCannotOpenFile, filename)
 
 proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope = 
-  var i, j, length, start, num: int
-  i = 0
-  length = len(frmt)
+  var i = 0
+  var length = len(frmt)
   result = nil
-  num = 0
+  var num = 0
   while i <= length - 1: 
     if frmt[i] == '$': 
       inc(i)                  # skip '$'
@@ -320,7 +318,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
         app(result, args[num])
         inc(num)
       of '0'..'9': 
-        j = 0
+        var j = 0
         while true: 
           j = (j * 10) + Ord(frmt[i]) - ord('0')
           inc(i)
@@ -333,7 +331,7 @@ proc ropef(frmt: TFormatStr, args: openarray[PRope]): PRope =
         app(result, tnl)
         inc(i)
       else: InternalError("ropes: invalid format string $" & frmt[i])
-    start = i
+    var start = i
     while (i <= length - 1): 
       if (frmt[i] != '$'): inc(i)
       else: break 

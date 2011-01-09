@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,8 @@
 proc intLiteral(i: biggestInt): PRope =
   if (i > low(int32)) and (i <= high(int32)):
     result = toRope(i)
-  elif i == low(int32):       # Nimrod has the same bug for the same reasons :-)
+  elif i == low(int32):       
+    # Nimrod has the same bug for the same reasons :-)
     result = toRope("(-2147483647 -1)")
   elif i > low(int64):
     result = ropef("IL64($1)", [toRope(i)])
@@ -76,16 +77,7 @@ proc genLiteral(p: BProc, v: PNode, ty: PType): PRope =
     else:
       result = makeCString(v.strVal)
   of nkFloatLit..nkFloat64Lit:
-    var f = v.floatVal
-    if f != f:
-      result = toRope("NAN")
-    elif f == 0.0:
-      result = toRopeF(f)
-    elif f == 0.5 * f:
-      if f > 0.0: result = toRope("INF")
-      else: result = toRope("-INF")
-    else:
-      result = toRopeF(f)
+    result = toRope(v.floatVal.ToStrMaxPrecision)
   else:
     InternalError(v.info, "genLiteral(" & $v.kind & ')')
     result = nil

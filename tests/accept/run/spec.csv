@@ -27,6 +27,7 @@ tfinally2.nim;ABCD
 tfinally3.nim;false
 tfloat1.nim;Error: unhandled exception: FPU operation caused an overflow [EFloatOverflow]
 tfloat2.nim;Error: unhandled exception: FPU operation caused a NaN result [EFloatInvalidOp]
+tfloat3.nim;Nimrod    3.4368930843, 0.3299290698 C double: 3.4368930843, 0.3299290698
 tformat.nim;Hi Andreas! How do you feel, Rumpf?
 thintoff.nim;0
 tinit.nim;Hello from module! Hello from main module!
