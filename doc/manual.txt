@@ -1885,7 +1885,7 @@ Overloading of the subscript operator
 
 The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
 Overloading support is only possible if the first parameter has no type that
-already supports the built-in ``[]`` notation. Currently the compiler currently
+already supports the built-in ``[]`` notation. Currently the compiler 
 does not check this. XXX Multiple indexes
 
 

@@ -131,6 +131,49 @@ encloses the header file in ``""`` in the generated C code.
 **Note**: This will not work for the LLVM backend.
 
 
+Compile pragma
+--------------
+The `compile`:idx: pragma can be used to compile and link a C/C++ source file 
+with the project: 
+
+.. code-block:: Nimrod
+  {.compile: "myfile.cpp".}
+
+**Note**: Nimrod computes a CRC checksum and only recompiles the file if it 
+has changed. You can use the ``-f`` command line option to force recompilation
+of the file.
+
+
+Link pragma
+-----------
+The `link`:idx: pragma can be used to link an additional file with the project: 
+
+.. code-block:: Nimrod
+  {.link: "myfile.o".}
+
+
+Emit pragma
+-----------
+The `emit`:idx: pragma can be used to directly affect the output of the 
+compiler's code generator. So it makes your code unportable to other code
+generators/backends. Its usage is highly discouraged! However, it can be
+extremely useful for interfacing with C++ or Objective C code.
+
+Example:
+
+.. code-block:: Nimrod
+  {.emit: """
+  static int cvariable = 420;
+  """.}
+
+  proc embedsC() {.pure.} = 
+    var nimrodVar = 89
+    # use backticks to access Nimrod symbols within an emit section:
+    {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
+
+  embedsC()
+
+
 LineDir option
 --------------
 The `lineDir`:idx: option can be turned on or off. If turned on the
