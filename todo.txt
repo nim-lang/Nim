@@ -59,7 +59,6 @@ Low priority
 Library
 -------
 
-- float formatting
 - locale support
 - conversion between character sets
 - bignums

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,6 +23,17 @@ when defined(Posix):
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
   E* = 2.71828182845904523536028747 ## Euler's number
+
+  MaxFloat64Precision* = 16 ## maximum number of meaningful digits
+                            ## after the decimal point for Nimrod's
+                            ## ``float64`` type.
+  MaxFloat32Precision* = 8  ## maximum number of meaningful digits
+                            ## after the decimal point for Nimrod's
+                            ## ``float32`` type.
+  MaxFloatPrecision* = MaxFloat64Precision ## maximum number of 
+                                           ## meaningful digits
+                                           ## after the decimal point 
+                                           ## for Nimrod's ``float`` type.
 
 type
   TFloatClass* = enum ## describes the class a floating point value belongs to.

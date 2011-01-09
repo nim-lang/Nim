@@ -14,7 +14,7 @@
 import 
   ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
-  times, ropes, math, passes, ccgutils, wordrecg, rnimsyn, rodread
+  times, ropes, math, passes, ccgutils, wordrecg, rnimsyn, rodread, rodutils
 
 proc ecmasgenPass*(): TPass
 # implementation
@@ -115,7 +115,7 @@ proc mapType(typ: PType): TEcmasTypeKind =
   
 proc mangle(name: string): string = 
   result = ""
-  for i in countup(0, len(name) + 0 - 1): 
+  for i in countup(0, len(name) - 1): 
     case name[i]
     of 'A'..'Z': 
       add(result, chr(ord(name[i]) - ord('A') + ord('a')))
@@ -1357,11 +1357,11 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkFloatLit..nkFloat64Lit: 
     f = n.floatVal
     if f != f: r.res = toRope("NaN")
-    elif f == 0.0: r.res = toRopeF(f)
+    elif f == 0.0: r.res = toRope("0.0")
     elif f == 0.5 * f: 
       if f > 0.0: r.res = toRope("Infinity")
       else: r.res = toRope("-Infinity")
-    else: r.res = toRopeF(f)
+    else: r.res = toRope(f.ToStrMaxPrecision)
   of nkBlockExpr: genBlock(p, n, r)
   of nkIfExpr: genIfExpr(p, n, r)
   of nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit: 
