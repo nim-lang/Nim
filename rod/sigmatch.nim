@@ -95,6 +95,9 @@ proc getNotFoundError(c: PContext, n: PNode): string =
   result = msgKindToString(errTypeMismatch)
   for i in countup(1, sonsLen(n) - 1): 
     #debug(n.sons[i].typ);
+    if n.sons[i].kind == nkExprEqExpr: 
+      add(result, renderTree(n.sons[i].sons[0]))
+      add(result, ": ")
     add(result, typeToString(n.sons[i].typ))
     if i != sonsLen(n) - 1: add(result, ", ")
   add(result, ')')
