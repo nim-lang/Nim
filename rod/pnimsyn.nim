@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -145,11 +145,14 @@ proc parseStmt(p: var TParser): PNode
 proc parseTypeDesc(p: var TParser): PNode
 proc parseParamList(p: var TParser): PNode
 
+proc IsLeftAssociative(tok: PToken): bool {.inline.} =
+  result = tok.tokType != tkOpr or tok.ident.s[0] != '^'
+
 proc getPrecedence(tok: PToken): int = 
   case tok.tokType
   of tkOpr: 
     case tok.ident.s[0]
-    of '$': result = 7
+    of '$', '^': result = 7
     of '*', '%', '/', '\\': result = 6
     of '+', '-', '~', '|': result = 5
     of '&': result = 4
@@ -159,7 +162,7 @@ proc getPrecedence(tok: PToken): int =
   of tkIn, tkNotIn, tkIs, tkIsNot: result = 3
   of tkAnd: result = 2
   of tkOr, tkXor: result = 1
-  else: result = - 1
+  else: result = - 10
   
 proc isOperator(tok: PToken): bool = 
   result = getPrecedence(tok) >= 0
@@ -386,14 +389,10 @@ proc parseAddr(p: var TParser): PNode =
 
 proc setBaseFlags(n: PNode, base: TNumericalBase) = 
   case base
-  of base10: 
-    nil
-  of base2: 
-    incl(n.flags, nfBase2)
-  of base8: 
-    incl(n.flags, nfBase8)
-  of base16: 
-    incl(n.flags, nfBase16)
+  of base10: nil
+  of base2: incl(n.flags, nfBase2)
+  of base8: incl(n.flags, nfBase8)
+  of base16: incl(n.flags, nfBase16)
   
 proc identOrLiteral(p: var TParser): PNode = 
   case p.tok.tokType
@@ -475,7 +474,7 @@ proc identOrLiteral(p: var TParser): PNode =
     result = parseAddr(p)
   else: 
     parMessage(p, errExprExpected, tokToStr(p.tok))
-    getTok(p)                 # we must consume a token here to prevend endless loops!
+    getTok(p)  # we must consume a token here to prevend endless loops!
     result = nil
 
 proc primary(p: var TParser): PNode = 
@@ -520,25 +519,23 @@ proc primary(p: var TParser): PNode =
     else: break 
   
 proc lowestExprAux(p: var TParser, v: var PNode, limit: int): PToken = 
-  var 
-    op, nextop: PToken
-    opPred: int
-    v2, node, opNode: PNode
   v = primary(p) # expand while operators have priorities higher than 'limit'
-  op = p.tok
-  opPred = getPrecedence(p.tok)
-  while (opPred > limit): 
-    node = newNodeP(nkInfix, p)
-    opNode = newIdentNodeP(op.ident, p) # skip operator:
+  var op = p.tok
+  var opPrec = getPrecedence(op)
+  while opPrec >= limit: 
+    var leftAssoc = ord(IsLeftAssociative(op))
+    var node = newNodeP(nkInfix, p)
+    var opNode = newIdentNodeP(op.ident, p) # skip operator:
     getTok(p)
     optInd(p, opNode)         # read sub-expression with higher priority
-    nextop = lowestExprAux(p, v2, opPred)
+    var v2: PNode
+    var nextop = lowestExprAux(p, v2, opPrec + leftAssoc)
     addSon(node, opNode)
     addSon(node, v)
     addSon(node, v2)
     v = node
     op = nextop
-    opPred = getPrecedence(nextop)
+    opPrec = getPrecedence(nextop)
   result = op                 # return first untreated operator
   
 proc lowestExpr(p: var TParser): PNode = 

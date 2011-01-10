@@ -49,6 +49,7 @@ tnestprc.nim;10
 toop1.nim;34[]o 5
 topenarrayrepr.nim;5 - [1]
 topenlen.nim;7
+toprprec.nim;done
 toverflw.nim;the computation overflowed
 toverflw2.nim;Error: unhandled exception: over- or underflow [EOverflow]
 toverl2.nim;true012
