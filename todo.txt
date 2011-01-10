@@ -1,5 +1,4 @@
 - we need a way to disable tests
-- {.extern: "thisfile.m".} pragma for objective C/C++ support
 - deprecate ^ and make it available as operator
 
 

@@ -1,4 +1,5 @@
 Advanced commands:
+  //compileToOC, oc         compile project to Objective C code
   //run                     run the project (with Tiny C backend; Linux only!)
   //pretty                  pretty print the inputfile
   //genDepend               generate a DOT file containing the

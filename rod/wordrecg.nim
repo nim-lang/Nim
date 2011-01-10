@@ -54,8 +54,10 @@ type
     wSymbolFiles, wFieldChecks, wX, wVersion, wAdvanced, wSkipcfg, wSkipProjCfg, 
     wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
     wAcyclic, wIndex, 
-    wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, wPretty, 
-    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, 
+    wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, 
+    wCompileToOC,
+    wPretty, 
+    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, wOC, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit
     
@@ -102,8 +104,9 @@ const
     "skipcfg", "skipprojcfg", "cc", "genscript", "checkpoint", "checkpoints", 
     "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
+    "compiletooc",
     "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
-    "js", "rst2html", "rst2tex", "i", 
+    "js", "oc", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
