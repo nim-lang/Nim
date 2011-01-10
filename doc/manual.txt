@@ -368,19 +368,20 @@ indentation tokens is already described in the `Lexical Analysis`_ section.
 Nimrod allows user-definable operators.
 Binary operators have 8 different levels of precedence. For user-defined
 operators, the precedence depends on the first character the operator consists
-of. All binary operators are left-associative.
+of. All binary operators are left-associative, except binary operator starting
+with (or only consisting of) ``^``.
 
 ================  ==============================================  ==================  ===============
 Precedence level    Operators                                     First characters    Terminal symbol
 ================  ==============================================  ==================  ===============
-  7 (highest)                                                     ``$``               OP7
+  7 (highest)                                                     ``$  ^``            OP7
   6               ``*    /    div   mod   shl  shr  %``           ``* % \  /``        OP6
   5               ``+    -``                                      ``+  ~  |``         OP5
   4               ``&``                                           ``&``               OP4
   3               ``==  <= < >= > !=  in  not_in  is  isnot``     ``= <  > !``        OP3
   2               ``and``                                                             OP2
   1               ``or xor``                                                          OP1
-  0 (lowest)                                                      ``? @ ^ ` : .``     OP0
+  0 (lowest)                                                      ``? @  ` : .``      OP0
 ================  ==============================================  ==================  ===============
 
 
@@ -1528,6 +1529,7 @@ Example:
       echo("Unknown exception!")
     finally:
       close(f)
+
 
 
 The statements after the `try`:idx: are executed in sequential order unless
