@@ -368,7 +368,7 @@ indentation tokens is already described in the `Lexical Analysis`_ section.
 Nimrod allows user-definable operators.
 Binary operators have 8 different levels of precedence. For user-defined
 operators, the precedence depends on the first character the operator consists
-of. All binary operators are left-associative, except binary operator starting
+of. All binary operators are left-associative, except binary operators starting
 with (or only consisting of) ``^``.
 
 ================  ==============================================  ==================  ===============
