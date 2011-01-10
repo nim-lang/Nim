@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,8 +43,8 @@ type                          # please make sure we have under 32 options
     optNoMain                 # do not generate a "main" proc
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
-    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToEcmaScript, 
-    cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
+    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
+    cmdCompileToEcmaScript, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
     cmdGenDepend, cmdListDef, cmdCheck, # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)

@@ -26,8 +26,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
 # implementation
 
 const 
-  HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]" &
-      "\n" & "Copyright (c) 2004-2011 by Andreas Rumpf" & "\n"
+  HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]\n" &
+      "Copyright (c) 2004-2011 by Andreas Rumpf\n"
 
 const 
   Usage = """
@@ -70,6 +70,7 @@ Options:
         
   AdvancedUsage = """
 Advanced commands:
+  compileToOC, oc           compile project to Objective C code
   run                       run the project (with Tiny C backend; buggy!)
   pretty                    pretty print the inputfile
   genDepend                 generate a DOT file containing the

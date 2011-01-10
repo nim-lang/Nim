@@ -270,6 +270,7 @@ proc initVars*() =
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
   defineSymbol(CC[ccompiler].name)
   if gCmd == cmdCompileToCpp: cExt = ".cpp"
+  elif gCmd == cmdCompileToOC: cExt = ".m"
   addCompileOption(getConfigVar(CC[ccompiler].name & ".options.always"))
   addLinkOption(getConfigVar(CC[ccompiler].name & ".options.linker"))
   if len(ccompilerPath) == 0: 

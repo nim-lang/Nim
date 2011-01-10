@@ -192,6 +192,16 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdCompileToC
     wantFile(filename)
     CommandCompileToC(filename)
+  of wCompileToCpp: 
+    extccomp.cExt = ".cpp"
+    gCmd = cmdCompileToCpp
+    wantFile(filename)
+    CommandCompileToC(filename)
+  of wCompileToOC, wOC:
+    extccomp.cExt = ".m"
+    gCmd = cmdCompileToOC
+    wantFile(filename)
+    CommandCompileToC(filename)
   of wRun:
     gCmd = cmdRun
     wantFile(filename)
@@ -200,10 +210,6 @@ proc MainCommand(cmd, filename: string) =
       CommandCompileToC(filename)
     else: 
       rawMessage(errInvalidCommandX, cmd)
-  of wCompileToCpp: 
-    gCmd = cmdCompileToCpp
-    wantFile(filename)
-    CommandCompileToC(filename)
   of wCompileToEcmaScript, wJs: 
     gCmd = cmdCompileToEcmaScript
     wantFile(filename)
