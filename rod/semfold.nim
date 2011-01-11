@@ -58,7 +58,11 @@ proc ordinalValToString(a: PNode): string =
     for i in countup(0, sonsLen(n) - 1): 
       if n.sons[i].kind != nkSym: InternalError(a.info, "ordinalValToString")
       var field = n.sons[i].sym
-      if field.position == x: return field.name.s
+      if field.position == x: 
+        if field.ast == nil: 
+          return field.name.s
+        else:
+          return field.ast.strVal
     InternalError(a.info, "no symbol for ordinal value: " & $x)
   else:
     result = $x

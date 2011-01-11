@@ -1,14 +1,14 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
 #var
-#  newDummyVar: int; // just to check the symbol file mechanism
+#  newDummyVar: int # just to check the symbol file mechanism
 
 # ------------------------- Name Mangling --------------------------------
 
@@ -688,7 +688,11 @@ proc genEnumInfo(m: BModule, typ: PType, name: PRope) =
     assert(typ.n.sons[i].kind == nkSym)
     field = typ.n.sons[i].sym
     elemNode = getNimNode(m)
-    app(enumNames, makeCString(field.name.s))
+    if field.ast == nil:
+      # no explicit string literal for the enum field, so use field.name:
+      app(enumNames, makeCString(field.name.s))
+    else:
+      app(enumNames, makeCString(field.ast.strVal))
     if i < length - 1: app(enumNames, ", " & tnl)
     if field.position != i: 
       appf(specialCases, "$1.offset = $2;$n", [elemNode, toRope(field.position)])
