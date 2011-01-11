@@ -1,5 +1,7 @@
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
+- test branch coverage
+- checked exceptions
 
 
 High priority (version 0.9.0)

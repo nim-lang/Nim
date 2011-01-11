@@ -23,6 +23,13 @@ Bugfixes
   anymore. 
 
 
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- Operators starting with ``^`` are now right-associative and have the highest 
+  priority.
+
+
 Additions
 ---------
 
@@ -37,6 +44,10 @@ Additions
 - Added ``emit`` pragma for direct code generator control.
 - Additional operations were added to the ``complex`` module. 
 - Added ``strutils.formatFloat``,  ``strutils.formatBiggestFloat``.
+- A field in an ``enum`` may be given an explicit string representation. 
+  This yields more maintainable code than using a constant 
+  ``array[TMyEnum, string]`` mapping.
+
 
 
 2010-10-20 Version 0.8.10 released

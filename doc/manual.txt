@@ -634,6 +634,24 @@ enums as an index type for arrays. The procedures ``inc``, ``dec``, ``succ``
 and ``pred`` are not available for them either.
 
 
+The compiler supports the built-in stringify operator ``$`` for enumerations.
+The stringify's result can be controlled by specifying the string values to
+use explicitely:
+
+.. code-block:: nimrod
+
+  type
+    TMyEnum = enum
+      valueA = (0, "my value A"),
+      valueB = "value B",
+      valueC = 2,
+      valueD = (3, "abc")
+
+As can be seen from the example, it is possible to both specify a field's 
+ordinal value and its string value by using a tuple construction. It is also
+possible to only specify one of them.
+
+
 Subrange types
 ~~~~~~~~~~~~~~
 A `subrange`:idx: type is a range of values from an ordinal type (the base

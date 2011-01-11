@@ -20,6 +20,7 @@ tcontinuexc.nim;ECcaught
 tcopy.nim;TEMP=C:\Programs\xyz\bin
 tcurrncy.nim;25
 temit.nim;509
+tenumhole;my value A1my value Bconc2valueCabc4abc
 texcsub.nim;caught!
 texplicitgeneric1.nim;Key: 12 value: 12Key: 13 value: 13 Key: A value: 12 Key: B value: 13
 tfinally.nim;came here 3
@@ -44,6 +45,7 @@ tmultim1.nim;7
 tmultim2.nim;collide: unit, thing collide: unit, thing collide: thing, unit
 tmultim3.nim;Hi derived!
 tmultim4.nim;hello
+tnamedenumfields;my value A0my value Bconc1valueCabc3abc
 tnestif.nim;i == 2
 tnestprc.nim;10
 toop1.nim;34[]o 5

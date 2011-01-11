@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,7 +25,6 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter, x: BiggestInt
     e: PSym
     base: PType
-    v: PNode
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -41,12 +40,25 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     case n.sons[i].kind
     of nkEnumFieldDef: 
       e = newSymS(skEnumField, n.sons[i].sons[0], c)
-      v = semConstExpr(c, n.sons[i].sons[1])
-      x = getOrdValue(v)
+      var v = semConstExpr(c, n.sons[i].sons[1])
+      var strVal: PNode = nil
+      case skipTypes(v.typ, abstractInst).kind 
+      of tyTuple: 
+        if sonsLen(v) != 2: liMessage(v.info, errWrongNumberOfVariables)
+        strVal = v.sons[1] # second tuple part is the string value
+        if skipTypes(strVal.typ, abstractInst).kind notin {tyString, tyCstring}:
+          liMessage(strVal.info, errStringLiteralExpected)
+        x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
+      of tyString, tyCstring:
+        strVal = v
+        x = counter
+      else:
+        x = getOrdValue(v)
       if i != 1: 
         if (x != counter): incl(result.flags, tfEnumHasWholes)
         if x < counter: 
           liMessage(n.sons[i].info, errInvalidOrderInEnumX, e.name.s)
+      e.ast = strVal # might be nil
       counter = x
     of nkSym: 
       e = n.sons[i].sym
