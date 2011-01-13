@@ -23,7 +23,7 @@
 ##  run(handleRequest, TPort(80))
 ##
 
-import strutils, os, osproc, strtabs, streams, sockets
+import parseutils, strutils, os, osproc, strtabs, streams, sockets
 
 const
   wwwNL* = "\r\L"
@@ -76,9 +76,9 @@ proc unimplemented(client: TSocket) =
 
 proc discardHeaders(client: TSocket) = skip(client)
 
-proc serveFile(client: TSocket, filename: string) =
-  discardHeaders(client)
-
+proc serveFile*(client: TSocket, filename: string) =
+  ## serves a file to the client.
+  when false: discardHeaders(client)
   var f: TFile
   if open(f, filename):
     headers(client, filename)
@@ -231,19 +231,33 @@ proc next*(s: var TServer) =
   ## proceed to the first/next request.
   s.client = accept(s.socket)
   headers(s.client, "")
-  var buf = ""
-  discard recvLine(s.client, buf)
-  var data = buf.split()
-  if cmpIgnoreCase(data[0], "GET") == 0 or cmpIgnoreCase(data[0], "POST") == 0:
-    var q = find(data[1], '?')
-    if q >= 0:
-      s.query = data[1].copy(q+1)
-      s.path = data[1].copy(0, q-1)
-    else:
-      s.query = ""
-      s.path = data[1]
-  else:
+  var data = recv(s.client)
+  #discard recvLine(s.client, data)
+  
+  var i = 0
+  if skipIgnoreCase(data, "GET") > 0: i = 3
+  elif skipIgnoreCase(data, "POST") > 0: i = 4
+  elif data.len == 0:  
+    # Google Chrome sends an empty line first? the web is ugly ...
+    nil
+  else: 
     unimplemented(s.client)
+    return
+  
+  var L = skipWhitespace(data, i)
+  inc(i, L)
+  # XXX we ignore "HTTP/1.1" etc. for now here
+  var query = 0
+  var last = i
+  while last < data.len and data[last] notin whitespace: 
+    if data[last] == '?' and query == 0: query = last
+    inc(last)
+  if query > 0:
+    s.query = data.copy(query+1, last-1)
+    s.path = data.copy(i, query-1)
+  else:
+    s.query = ""
+    s.path = data.copy(i, last-1)
 
 proc close*(s: TServer) =
   ## closes the server (and the socket the server uses).
@@ -254,7 +268,7 @@ proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
   ## encapsulates the server object and main loop
   var s: TServer
   open(s, port)
-  #echo("httpserver running on port ", s.port)
+  echo("httpserver running on port ", s.port)
   while true:
     next(s)
     if handleRequest(s.client, s.path, s.query): break
@@ -265,8 +279,9 @@ when isMainModule:
   var counter = 0
   proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
     inc(counter)
-    client.send("Hello, Andreas, for the $#th time." % $counter & wwwNL)
+    client.send("Hello, Andreas, for the $#th time. $# ? $#" % [
+      $counter, path, query] & wwwNL)
     return false # do not stop processing
 
-  run(handleRequest, TPort(80))
+  run(handleRequest, TPort(0))
 
