@@ -26,7 +26,6 @@ To implement
 
 * sort routine
 * hash tables and sets
-* the two other parsers
 * distinct types for array/seq indexes
 * constant sequences
 
@@ -98,6 +97,7 @@ Version 2
   
   type
     PWindow = ref TWindow not nil
+- the two other parsers
 
 
 Low priority

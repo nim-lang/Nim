@@ -55,7 +55,7 @@ proc rawCompile(pattern: string, flags: cint): PPcre =
   return com
 
 proc finalizeRegEx(x: TRegEx) = 
-  # XXX This is a hack, but PCRE does not export it's "free" function properly.
+  # XXX This is a hack, but PCRE does not export its "free" function properly.
   # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
   # Fortunately the implementation is unlikely to change. 
   pcre.free_substring(cast[cstring](x.h))
