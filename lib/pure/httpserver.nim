@@ -234,12 +234,9 @@ proc next*(s: var TServer) =
   var data = recv(s.client)
   #discard recvLine(s.client, data)
   
-  var i = 0
-  if skipIgnoreCase(data, "GET") > 0: i = 3
-  elif skipIgnoreCase(data, "POST") > 0: i = 4
-  elif data.len == 0:  
-    # Google Chrome sends an empty line first? the web is ugly ...
-    nil
+  var i = skipWhitespace(data)
+  if skipIgnoreCase(data, "GET") > 0: inc(i, 3)
+  elif skipIgnoreCase(data, "POST") > 0: inc(i, 4)
   else: 
     unimplemented(s.client)
     return
@@ -268,7 +265,7 @@ proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
   ## encapsulates the server object and main loop
   var s: TServer
   open(s, port)
-  echo("httpserver running on port ", s.port)
+  #echo("httpserver running on port ", s.port)
   while true:
     next(s)
     if handleRequest(s.client, s.path, s.query): break
@@ -277,11 +274,17 @@ proc run*(handleRequest: proc (client: TSocket, path, query: string): bool,
 
 when isMainModule:
   var counter = 0
-  proc handleRequest(client: TSocket, path, query: string): bool {.procvar.} =
-    inc(counter)
-    client.send("Hello, Andreas, for the $#th time. $# ? $#" % [
-      $counter, path, query] & wwwNL)
-    return false # do not stop processing
 
-  run(handleRequest, TPort(0))
+  var s: TServer
+  open(s, TPort(0))
+  echo("httpserver running on port ", s.port)
+  while true:
+    next(s)
+    
+    inc(counter)
+    s.client.send("Hello, Andreas, for the $#th time. $# ? $#" % [
+      $counter, s.path, s.query] & wwwNL)
+    
+    close(s.client)
+  close(s)
 
