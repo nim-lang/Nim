@@ -48,7 +48,7 @@ type
     msgOtherHeaders: PStringTable
     msgBody: string
   
-  EInvalidReply* = object of EBase
+  EInvalidReply* = object of EIO
   
 proc debugSend(smtp: TSMTP, cmd: string) =
   if smtp.debug:

@@ -1344,7 +1344,8 @@ proc arrowIsNextTok(c: TPegLexer): bool =
 # ----------------------------- parser ----------------------------------------
     
 type
-  EInvalidPeg* = object of EBase ## raised if an invalid PEG has been detected
+  EInvalidPeg* = object of EInvalidValue ## raised if an invalid
+                                         ## PEG has been detected
   TPegParser = object of TPegLexer ## the PEG parser object
     tok: TToken
     nonterms: seq[PNonTerminal]

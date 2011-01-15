@@ -15,8 +15,8 @@ import xmldom, os, streams, parsexml, strutils
 
 type
   # Parsing errors
-  EMismatchedTag* = object of E_Base ## Raised when a tag is not properly closed
-  EParserError* = object of E_Base ## Raised when an unexpected XML Parser event occurs
+  EMismatchedTag* = object of EInvalidValue ## Raised when a tag is not properly closed
+  EParserError* = object of EInvalidValue ## Raised when an unexpected XML Parser event occurs
 
   # For namespaces
   xmlnsAttr = tuple[name, value: string, ownerElement: PElement]

@@ -34,6 +34,10 @@ Core
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.
 
+* `marshal <marshal.html>`_
+  Contains procs for serialization and deseralization of arbitrary Nimrod 
+  data structures.
+  
 
 String handling
 ---------------

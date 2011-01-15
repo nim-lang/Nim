@@ -16,7 +16,7 @@ import strutils
 
 #Exceptions
 type
-  EDOMException* = object of E_Base ## Base exception object for all DOM Exceptions
+  EDOMException* = object of EInvalidValue ## Base exception object for all DOM Exceptions
   EDOMStringSizeErr* = object of EDOMException ## If the specified range of text does not fit into a DOMString
                                                ## Currently not used(Since DOMString is just string)
   EHierarchyRequestErr* = object of EDOMException ## If any node is inserted somewhere it doesn't belong

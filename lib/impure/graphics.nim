@@ -24,7 +24,7 @@ type
     w, h: int
     s: sdl.PSurface
   
-  EGraphics* = object of EBase
+  EGraphics* = object of EIO
 
   TFont {.pure, final.} = object
     f: sdl_ttf.PFont

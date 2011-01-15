@@ -8,7 +8,7 @@
 #
 
 ## This module implements a simple logger. It is based on the following design:
-## * Runtime log formating is a bug: Sooner or later ever log file is parsed.
+## * Runtime log formating is a bug: Sooner or later every log file is parsed.
 ## * Keep it simple: If this library does not fullfill your needs, write your 
 ##   own. Trying to support every logging feature just leads to bloat.
 ## 
