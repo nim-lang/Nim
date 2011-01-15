@@ -498,7 +498,7 @@ type
     of JArray:
       elems*: seq[PJsonNode]
 
-  EJsonParsingError* = object of EBase
+  EJsonParsingError* = object of EInvalidValue
 
 proc raiseParseErr(p: TJsonParser, msg: string) =
   raise newException(EJsonParsingError, errorMsgExpected(p, msg))

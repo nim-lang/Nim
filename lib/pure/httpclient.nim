@@ -52,13 +52,13 @@ type
     headers: PStringTable,
     body: string]
 
-  EInvalidProtocol* = object of EBase ## exception that is raised when server
-                                      ## does not conform to the implemented
-                                      ## protocol
+  EInvalidProtocol* = object of ESynch ## exception that is raised when server
+                                       ## does not conform to the implemented
+                                       ## protocol
 
-  EHttpRequestErr* = object of EBase ## Thrown in the ``getContent`` proc 
-                                     ## and ``postContent`` proc,
-                                     ## when the server returns an error
+  EHttpRequestErr* = object of ESynch ## Thrown in the ``getContent`` proc 
+                                      ## and ``postContent`` proc,
+                                      ## when the server returns an error
 
 proc httpError(msg: string) =
   var e: ref EInvalidProtocol

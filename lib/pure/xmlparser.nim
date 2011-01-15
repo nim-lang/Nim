@@ -12,8 +12,9 @@
 import streams, parsexml, strtabs, xmltree
 
 type
-  EInvalidXml* = object of E_Base ## exception that is raised for invalid XML
-    errors*: seq[string]          ## all detected parsing errors
+  EInvalidXml* = object of EInvalidValue ## exception that is raised
+                                         ## for invalid XML
+    errors*: seq[string]                 ## all detected parsing errors
 
 proc raiseInvalidXml(errors: seq[string]) = 
   var e: ref EInvalidXml

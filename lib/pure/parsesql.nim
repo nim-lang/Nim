@@ -536,7 +536,7 @@ type
     nkEnumDef
     
 type
-  EInvalidSql* = object of EBase  ## Invalid SQL encountered
+  EInvalidSql* = object of EInvalidValue ## Invalid SQL encountered
   PSqlNode* = ref TSqlNode        ## an SQL abstract syntax tree node
   TSqlNode* = object              ## an SQL abstract syntax tree node
     case kind*: TSqlNodeKind      ## kind of syntax tree
