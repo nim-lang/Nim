@@ -1,4 +1,3 @@
-- test new JSON module
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
 - test branch coverage
