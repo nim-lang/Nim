@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -69,7 +69,21 @@ when defined(Windows):
                      dwCreationFlags: int32, lpThreadId: var int32): THandle {.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 
-  
+  proc winSuspendThread(hThread: TSysThread): int32 {.
+    stdcall, dynlib: "kernel32", importc: "SuspendThread".}
+    
+  proc winResumeThread(hThread: TSysThread): int32 {.
+    stdcall, dynlib: "kernel32", importc: "ResumeThread".}
+
+  proc WaitForMultipleObjects(nCount: int32,
+                              lpHandles: ptr array[0..10, THandle],
+                              bWaitAll: int32,
+                              dwMilliseconds: int32): int32 {.
+    stdcall, dynlib: "kernel32", importc: "WaitForMultipleObjects".}
+
+  proc WaitForSingleObject(hHandle: THANDLE, dwMilliseconds: int32): int32 {.
+      stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+
 else:
   type
     TSysLock {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
@@ -81,23 +95,20 @@ else:
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
   proc Release(L: var TSysLock) {.
     importc: "pthread_mutex_unlock", header: "<pthread.h>".}
-  
+
+  proc pthread_create(a1: ptr TSysThread, a2: ptr int,
+            a3: proc (x: pointer): pointer {.noconv.}, 
+            a4: pointer): cint {.importc: "pthread_create", 
+            header: "<pthread.h>".}
+  proc pthread_join(a1: TSysThread, a2: ptr pointer): cint {.
+    importc, header: "<pthread.h>".}
+
   
 type
   TThread* = TSysThread
   TLock* = TSysLock
   TThreadFunc* = proc (closure: pointer) {.cdecl.}
   
-#DWORD WINAPI SuspendThread(
-#  __in  HANDLE hThread
-#);
-#DWORD WINAPI ResumeThread(
-#  __in  HANDLE hThread
-#);
-#DWORD WINAPI ThreadProc(
-#  __in  LPVOID lpParameter
-#);
-
 proc createThread*(t: var TThread, fn: TThreadFunc, closure: pointer) = 
   when defined(windows):
     nil  
