@@ -2,7 +2,6 @@
 - deprecate ^ and make it available as operator
 - test branch coverage
 - checked exceptions
-- explicit indices for array literals
 - built-in serialization
 - do not ambiguity error for methods if amibiguity only affects the same 
   dispatcher anyway
