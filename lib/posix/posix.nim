@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -19,11 +19,11 @@
 
 ## Coding conventions:
 ## ALL types are named the same as in the POSIX standard except that they start
-## with 'T' or 'P' (if they are pointers) and without the '_t' prefix to be
+## with 'T' or 'P' (if they are pointers) and without the '_t' suffix to be
 ## consistent with Nimrod conventions. If an identifier is a Nimrod keyword
 ## the \`identifier\` notation is used.
 ##
-## This library relies on the header files of your C compiler. Thus the
+## This library relies on the header files of your C compiler. The
 ## resulting C code will just include <XYZ.h> and *not* define the
 ## symbols declared here.
 
