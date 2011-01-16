@@ -2,6 +2,7 @@ tack.nim;125
 tambsym2.nim;7
 tambsys.nim;
 tarray.nim;10012
+tarraycons.nim;6
 tarray2.nim;[16, 25, 36]
 tarray3.nim;3
 tassert.nim;assertion failure!this shall be always written

@@ -260,11 +260,29 @@ proc semArrayConstr(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 0: 
     addSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else: 
-    addSon(result, semExprWithType(c, n.sons[0]))
+    var x = n.sons[0]
+    var lastIndex: biggestInt = 0
+    var indexType = getSysType(tyInt)
+    if x.kind == nkExprColonExpr: 
+      var idx = semConstExpr(c, x.sons[0])
+      lastIndex = getOrdValue(idx)
+      indexType = idx.typ
+      x = x.sons[1]
+    
+    addSon(result, semExprWithType(c, x))
     var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     for i in countup(1, sonsLen(n) - 1): 
-      n.sons[i] = semExprWithType(c, n.sons[i])
+      x = n.sons[i]
+      if x.kind == nkExprColonExpr:
+        var idx = semConstExpr(c, x.sons[0])
+        idx = fitNode(c, indexType, idx)
+        if lastIndex+1 != getOrdValue(idx):
+          liMessage(x.info, errInvalidOrderInArrayConstructor)
+        x = x.sons[1]
+      
+      n.sons[i] = semExprWithType(c, x)
       addSon(result, fitNode(c, typ, n.sons[i]))
+      inc(lastIndex)
     addSon(result.typ, typ)
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
