@@ -31,6 +31,9 @@ Core
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
+* `threads <threads.html>`_
+  Nimrod thread support. 
+
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nimrod for writing macros.
 

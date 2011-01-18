@@ -1,10 +1,14 @@
+- thread support: threadvar on Windows seems broken; 
+  add --deadlock_prevention:on|off switch
+
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
 - test branch coverage
 - checked exceptions
 - built-in serialization
-- do not ambiguity error for methods if amibiguity only affects the same 
+- do not ambiguity error for methods if ambiguity only affects the same 
   dispatcher anyway
+- slicing
 
 
 High priority (version 0.9.0)

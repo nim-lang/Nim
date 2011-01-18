@@ -61,8 +61,9 @@ type
     decStack: TCellSeq       # cells in the stack that are to decref again
     cycleRoots: TCellSet
     tempStack: TCellSeq      # temporary stack for recursion elimination
-    cycleRootsLock: TSysLock
-    zctLock: TSysLock
+    when hasThreadSupport:
+      cycleRootsLock: TSysLock
+      zctLock: TSysLock
     stat: TGcStat
 
 var
@@ -281,8 +282,9 @@ proc initGC() =
     init(gch.tempStack)
     Init(gch.cycleRoots)
     Init(gch.decStack)
-    InitLock(gch.cycleRootsLock)
-    InitLock(gch.zctLock)
+    when hasThreadSupport:
+      InitLock(gch.cycleRootsLock)
+      InitLock(gch.zctLock)
     new(gOutOfMem) # reserve space for the EOutOfMemory exception here!
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) =

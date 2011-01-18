@@ -49,6 +49,7 @@ Additions
   ``array[TMyEnum, string]`` mapping.
 - Indices in array literals may be explicitly given, enhancing readability:
   ``[enumValueA: "a", enumValueB: "b"]``.
+- Added basic thread support via the ``threads`` core module.
 
 
 
