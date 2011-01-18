@@ -477,7 +477,7 @@ proc genTryStmtCpp(p: BProc, t: PNode) =
     rethrowFlag = getTempName()
     appf(p.s[cpsLocals], "volatile NIM_BOOL $1 = NIM_FALSE;$n", [rethrowFlag])
   if optStackTrace in p.Options: 
-    app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
+    appcg(p, cpsStmts, "#framePtr = (TFrame*)&F;" & tnl)
   app(p.s[cpsStmts], "try {" & tnl)
   add(p.nestedTryStmts, t)
   genStmts(p, t.sons[0])
@@ -542,7 +542,7 @@ proc genTryStmt(p: BProc, t: PNode) =
   appcg(p, cpsStmts, "#pushSafePoint(&$1);$n" &
         "$1.status = setjmp($1.context);$n", [safePoint])
   if optStackTrace in p.Options: 
-    app(p.s[cpsStmts], "framePtr = (TFrame*)&F;" & tnl)
+    appcg(p, cpsStmts, "#framePtr = (TFrame*)&F;" & tnl)
   appf(p.s[cpsStmts], "if ($1.status == 0) {$n", [safePoint])
   var length = sonsLen(t)
   add(p.nestedTryStmts, t)

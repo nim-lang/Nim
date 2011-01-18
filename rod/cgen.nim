@@ -386,10 +386,10 @@ proc assignGlobalVar(p: BProc, s: PSym) =
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return 
   if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
+  if sfThreadVar in s.flags: app(p.module.s[cfsVars], "NIM_THREADVAR ")
   app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
   if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
   if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
-  if sfThreadVar in s.flags: app(p.module.s[cfsVars], " NIM_THREADVAR")
   appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
   if {optStackTrace, optEndb} * p.module.module.options ==
       {optStackTrace, optEndb}: 
@@ -550,19 +550,12 @@ proc retIsNotVoid(s: PSym): bool =
   result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
 proc initFrame(p: BProc, procname, filename: PRope): PRope = 
-  inc(p.labels, 5)
-  result = ropeff("F.procname = $1;$n" & "F.prev = framePtr;$n" &
-      "F.filename = $2;$n" & "F.line = 0;$n" & "framePtr = (TFrame*)&F;$n", 
-      "%LOC$3 = getelementptr %TF %F, %NI 1$n" &
-      "%LOC$4 = getelementptr %TF %F, %NI 0$n" &
-      "%LOC$5 = getelementptr %TF %F, %NI 3$n" &
-      "%LOC$6 = getelementptr %TF %F, %NI 2$n" & "store i8* $1, i8** %LOC$3$n" &
-      "store %TFrame* @framePtr, %TFrame** %LOC$4$n" &
-      "store i8* $2, i8** %LOC$5$n" & "store %NI 0, %NI* %LOC$6$n" &
-      "%LOC$7 = bitcast %TF* %F to %TFrame*$n" &
-      "store %TFrame* %LOC$7, %TFrame** @framePtr$n", [procname, filename, 
-      toRope(p.labels), toRope(p.labels - 1), toRope(p.labels - 2), 
-      toRope(p.labels - 3), toRope(p.labels - 4)])
+  result = ropecg(p.module, 
+    "F.procname = $1;$n" &
+    "F.prev = #framePtr;$n" &
+    "F.filename = $2;$n" & 
+    "F.line = 0;$n" & 
+    "framePtr = (TFrame*)&F;$n", [procname, filename])
 
 proc deinitFrame(p: BProc): PRope = 
   inc(p.labels, 3)
@@ -693,10 +686,10 @@ proc genVarPrototype(m: BModule, sym: PSym) =
            [sym.loc.r, getTypeDesc(m, sym.loc.t)])
     else: 
       app(m.s[cfsVars], "extern ")
+      if sfThreadVar in sym.flags: app(m.s[cfsVars], "NIM_THREADVAR ")
       app(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
       if sfRegister in sym.flags: app(m.s[cfsVars], " register")
       if sfVolatile in sym.flags: app(m.s[cfsVars], " volatile")
-      if sfThreadVar in sym.flags: app(m.s[cfsVars], " NIM_THREADVAR")
       appf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
 proc genConstPrototype(m: BModule, sym: PSym) = 
