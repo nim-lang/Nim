@@ -16,7 +16,7 @@ proc eatNewLine(p: var TParser, n: PNode) =
   if p.tok.xkind == pxLineComment:
     skipCom(p, n)
     if p.tok.xkind == pxNewLine: getTok(p)
-  else:
+  elif p.tok.xkind == pxNewLine: 
     eat(p, pxNewLine)
   
 proc skipLine(p: var TParser) = 

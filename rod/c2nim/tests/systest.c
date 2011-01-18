@@ -9,6 +9,15 @@ extern "C" {
 #  endif
 #endif
 
+typedef void (*callback_t) (int rc);
+
+int   aw_callback_set (AW_CALLBACK c, callback_t callback );
+int   aw_instance_callback_set (AW_CALLBACK c, callback_t callback);
+
+#define AW_BUILD 85 // AW 5.0
+// Limits
+#define AW_MAX_AVCHANGE_PER_SECOND 10
+
 #private expatDll
 
 #if !defined(expatDll)
