@@ -47,6 +47,9 @@ Additions
 - A field in an ``enum`` may be given an explicit string representation. 
   This yields more maintainable code than using a constant 
   ``array[TMyEnum, string]`` mapping.
+- Indices in array literals may be explicitly given, enhancing readability:
+  ``[enumValueA: "a", enumValueB: "b"]``.
+- Added basic thread support via the ``threads`` core module.
 
 
 

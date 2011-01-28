@@ -32,7 +32,6 @@ type
     filename*: string         # filename of the source file; without extension
     basedir*: string          # base directory (where to put the documentation)
     modDesc*: PRope           # module description
-    deps*: PRope              # dependencies
     id*: int                  # for generating IDs
     splitAfter*: int          # split too long entries in the TOC
     tocPart*: seq[TTocEntry]
@@ -765,9 +764,12 @@ proc getModuleFile(n: PNode): string =
     result = ""
   
 proc traceDeps(d: PDoc, n: PNode) = 
-  if d.deps != nil: app(d.deps, ", ")
-  app(d.deps, getModuleFile(n))
-  
+  const k = skModule
+  if d.section[k] != nil: app(d.section[k], ", ")
+  dispA(d.section[k], 
+        "<a class=\"reference external\" href=\"$1.html\">$1</a>", 
+        "$1", [toRope(getModuleFile(n))])
+
 proc generateDoc(d: PDoc, n: PNode) = 
   if n == nil: return 
   case n.kind
@@ -802,8 +804,12 @@ proc generateDoc(d: PDoc, n: PNode) =
   else: nil
 
 proc genSection(d: PDoc, kind: TSymKind) = 
+  const sectionNames: array[skModule..skTemplate, string] = [
+    "Imports", "Types", "Consts", "Vars", "Procs", "Methods", 
+    "Iterators", "Converters", "Macros", "Templates"
+  ]
   if d.section[kind] == nil: return 
-  var title = toRope(copy($kind, 2) & 's')
+  var title = toRope(sectionNames[kind])
   d.section[kind] = ropeFormatNamedVars(getConfigVar("doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       toRope(ord(kind)), title, toRope(ord(kind) + 50), d.section[kind]])
@@ -833,14 +839,14 @@ proc genOutFile(d: PDoc): PRope =
   if d.hasToc: bodyname = "doc.body_toc"
   else: bodyname = "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title", 
-      "tableofcontents", "moduledesc", "deps", "date", "time", "content"],
-      [title, toc, d.modDesc, d.deps, toRope(getDateStr()), 
+      "tableofcontents", "moduledesc", "date", "time", "content"],
+      [title, toc, d.modDesc, toRope(getDateStr()), 
       toRope(getClockStr()), code])
   if optCompileOnly notin gGlobalOptions: 
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title", 
-        "tableofcontents", "moduledesc", "deps", "date", "time", 
+        "tableofcontents", "moduledesc", "date", "time", 
         "content", "author", "version"], 
-        [title, toc, d.modDesc, d.deps, toRope(getDateStr()), 
+        [title, toc, d.modDesc, toRope(getDateStr()), 
                      toRope(getClockStr()), content, d.meta[metaAuthor], 
                      d.meta[metaVersion]])
   else: 

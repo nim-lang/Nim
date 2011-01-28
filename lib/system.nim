@@ -1259,6 +1259,18 @@ var
     ## each executed instruction. This should only be used by debuggers!
     ## Only code compiled with the ``debugger:on`` switch calls this hook.
 
+type
+  PFrame = ptr TFrame
+  TFrame {.importc, nodecl, final.} = object
+    prev: PFrame
+    procname: CString
+    line: int # current line number
+    filename: CString
+    len: int  # length of slots (when not debugging always zero)
+
+var
+  framePtr {.threadvar, compilerproc.}: PFrame
+
 when not defined(ECMAScript):
   {.push overflow_checks:off}
   proc add* (x: var string, y: cstring) =

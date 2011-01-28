@@ -280,6 +280,7 @@ type
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)
+    skModule,             # module identifier
     skType,               # a type
     skConst,              # a constant
     skVar,                # a variable
@@ -293,7 +294,6 @@ type
     skField,              # a field in a record or object
     skEnumField,          # an identifier in an enum
     skForVar,             # a for loop variable
-    skModule,             # module identifier
     skLabel,              # a label (for block statement)
     skStub                # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may mean: never)

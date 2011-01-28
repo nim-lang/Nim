@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -40,10 +40,10 @@ type
     context: C_JmpBuf
 
 var
-  excHandler {.compilerproc.}: PSafePoint = nil
+  excHandler {.threadvar, compilerproc.}: PSafePoint = nil
     # list of exception handlers
     # a global variable for the root of all try blocks
-  currException: ref E_Base
+  currException {.threadvar.}: ref E_Base
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = 
   s.prev = excHandler
@@ -107,23 +107,11 @@ when nativeStacktrace:
           # interested in
           enabled = true
 
-type
-  PFrame = ptr TFrame
-  TFrame {.importc, nodecl, final.} = object
-    prev: PFrame
-    procname: CString
-    line: int # current line number
-    filename: CString
-    len: int  # length of slots (when not debugging always zero)
-
 var
   buf: string       # cannot be allocated on the stack!
   assertBuf: string # we need a different buffer for
                     # assert, as it raises an exception and
                     # exception handler needs the buffer too
-
-  framePtr {.exportc.}: PFrame
-
   tempFrames: array [0..127, PFrame] # cannot be allocated on the stack!
   
 proc auxWriteStackTrace(f: PFrame, s: var string) =
