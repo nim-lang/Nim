@@ -18,7 +18,7 @@ import
   hashes, strutils, lexbase, streams, unicode
 
 type 
-  TJsonEventKind* = enum ## enumation of all events that may occur when parsing
+  TJsonEventKind* = enum ## enumeration of all events that may occur when parsing
     jsonError,           ## an error ocurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
@@ -620,21 +620,24 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
   of JObject:
     if currIndent != 0 and not lstArr: result.nl(ml)
     result.indent(currIndent) # Indentation
-    result.add("{")
-    result.nl(ml) # New line
-    for i in 0..len(node.fields)-1:
-      if i > 0:
-        result.add(", ")
-        result.nl(ml) # New Line
-      # Need to indent more than {
-      result.indent(newIndent(currIndent, indent, ml)) 
-      result.add(escapeJson(node.fields[i].key))
-      result.add(": ")
-      toPretty(result, node.fields[i].val, indent, ml, False, 
-               newIndent(currIndent, indent, ml))
-    result.nl(ml)
-    result.indent(currIndent) # indent the same as {
-    result.add("}")
+    if node.fields.len > 0:  
+      result.add("{")
+      result.nl(ml) # New line
+      for i in 0..len(node.fields)-1:
+        if i > 0:
+          result.add(", ")
+          result.nl(ml) # New Line
+        # Need to indent more than {
+        result.indent(newIndent(currIndent, indent, ml)) 
+        result.add(escapeJson(node.fields[i].key))
+        result.add(": ")
+        toPretty(result, node.fields[i].val, indent, ml, False, 
+                 newIndent(currIndent, indent, ml))
+      result.nl(ml)
+      result.indent(currIndent) # indent the same as {
+      result.add("}")
+    else:
+      result.add("{}")
   of JString: 
     if lstArr: result.indent(currIndent)
     result.add(escapeJson(node.str))
@@ -645,6 +648,7 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
     if lstArr: result.indent(currIndent)
     result.add($node.bval)
   of JArray:
+    if lstArr: result.indent(currIndent)
     if len(node.elems) != 0:
       result.add("[")
       result.nl(ml)
@@ -771,9 +775,14 @@ when isMainModule:
   #var node = parse("{ \"test\": null }")
   #echo(node.existsKey("test56"))
   var parsed = parseFile("tests/testdata/jsontest.json")
+  var parsed2 = parseFile("tests/testdata/jsontest2.json")
   echo(parsed)
   echo()
   echo(pretty(parsed, 2))
+  echo()
+  echo(parsed["keyÄÖöoßß"])
+  echo()
+  echo(pretty(parsed2))
 
   discard """
   while true:
