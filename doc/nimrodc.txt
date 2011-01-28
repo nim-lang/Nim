@@ -71,12 +71,23 @@ Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
 
 
+Cross compilation
+=================
+
+To `cross compile`:idx:, use for example::
+
+  nimrod c --cpu:i386 --os:linux --compile_only --gen_script myproject.nim
+
+Then move the C code and the compile script ``compile_myproject.sh`` to your 
+Linux i386 machine and run the script.
+
+
 DLL generation
 ==============
 
 Nimrod supports the generation of DLLs. However, there must be only one 
 instance of the GC per process/address space. This instance is contained in
-``nimrtl.dll``. This means that every generated Nimrod DLL depends
+``nimrtl.dll``. This means that every generated Nimrod `DLL`:idx: depends
 on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
   
   nimrod c -d:release lib/nimrtl.nim

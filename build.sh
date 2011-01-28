@@ -119,6 +119,8 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodutils.c -o build/1_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/rodutils.c -o build/1_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/extccomp.c -o build/1_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/extccomp.c -o build/1_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/osproc.c -o build/1_1/osproc.o"
@@ -236,6 +238,7 @@ build/1_1/ropes.o \
 build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/astalgo.o \
+build/1_1/rodutils.o \
 build/1_1/extccomp.o \
 build/1_1/osproc.o \
 build/1_1/strtabs.o \
@@ -306,6 +309,7 @@ build/1_1/ropes.o \
 build/1_1/platform.o \
 build/1_1/idents.o \
 build/1_1/astalgo.o \
+build/1_1/rodutils.o \
 build/1_1/extccomp.o \
 build/1_1/osproc.o \
 build/1_1/strtabs.o \
@@ -399,6 +403,8 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/idents.c -o build/1_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/astalgo.c -o build/1_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/rodutils.c -o build/1_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/rodutils.c -o build/1_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/extccomp.c -o build/1_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/extccomp.c -o build/1_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/osproc.c -o build/1_2/osproc.o"
@@ -516,6 +522,7 @@ build/1_2/ropes.o \
 build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/astalgo.o \
+build/1_2/rodutils.o \
 build/1_2/extccomp.o \
 build/1_2/osproc.o \
 build/1_2/strtabs.o \
@@ -586,6 +593,7 @@ build/1_2/ropes.o \
 build/1_2/platform.o \
 build/1_2/idents.o \
 build/1_2/astalgo.o \
+build/1_2/rodutils.o \
 build/1_2/extccomp.o \
 build/1_2/osproc.o \
 build/1_2/strtabs.o \
@@ -679,6 +687,8 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_1/idents.c -o build/1_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/astalgo.c -o build/1_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/rodutils.c -o build/1_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/rodutils.c -o build/1_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_3/extccomp.c -o build/1_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_3/extccomp.c -o build/1_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/osproc.c -o build/1_1/osproc.o"
@@ -796,6 +806,7 @@ build/1_1/ropes.o \
 build/1_3/platform.o \
 build/1_1/idents.o \
 build/1_1/astalgo.o \
+build/1_1/rodutils.o \
 build/1_3/extccomp.o \
 build/1_1/osproc.o \
 build/1_1/strtabs.o \
@@ -866,6 +877,7 @@ build/1_1/ropes.o \
 build/1_3/platform.o \
 build/1_1/idents.o \
 build/1_1/astalgo.o \
+build/1_1/rodutils.o \
 build/1_3/extccomp.o \
 build/1_1/osproc.o \
 build/1_1/strtabs.o \
@@ -967,6 +979,8 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodutils.c -o build/2_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/rodutils.c -o build/2_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/extccomp.c -o build/2_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/extccomp.c -o build/2_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/osproc.c -o build/2_1/osproc.o"
@@ -1084,6 +1098,7 @@ build/2_1/ropes.o \
 build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/astalgo.o \
+build/2_1/rodutils.o \
 build/2_1/extccomp.o \
 build/2_1/osproc.o \
 build/2_1/strtabs.o \
@@ -1154,6 +1169,7 @@ build/2_1/ropes.o \
 build/2_1/platform.o \
 build/2_1/idents.o \
 build/2_1/astalgo.o \
+build/2_1/rodutils.o \
 build/2_1/extccomp.o \
 build/2_1/osproc.o \
 build/2_1/strtabs.o \
@@ -1247,6 +1263,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/astalgo.c -o build/2_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/rodutils.c -o build/2_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/rodutils.c -o build/2_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/extccomp.c -o build/2_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/extccomp.c -o build/2_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/osproc.c -o build/2_2/osproc.o"
@@ -1364,6 +1382,7 @@ build/2_2/ropes.o \
 build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/astalgo.o \
+build/2_2/rodutils.o \
 build/2_2/extccomp.o \
 build/2_2/osproc.o \
 build/2_2/strtabs.o \
@@ -1434,6 +1453,7 @@ build/2_2/ropes.o \
 build/2_2/platform.o \
 build/2_2/idents.o \
 build/2_2/astalgo.o \
+build/2_2/rodutils.o \
 build/2_2/extccomp.o \
 build/2_2/osproc.o \
 build/2_2/strtabs.o \
@@ -1527,6 +1547,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/astalgo.c -o build/2_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/rodutils.c -o build/2_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/rodutils.c -o build/2_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_3/extccomp.c -o build/2_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_3/extccomp.c -o build/2_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/osproc.c -o build/2_1/osproc.o"
@@ -1644,6 +1666,7 @@ build/2_1/ropes.o \
 build/2_3/platform.o \
 build/2_1/idents.o \
 build/2_1/astalgo.o \
+build/2_1/rodutils.o \
 build/2_3/extccomp.o \
 build/2_1/osproc.o \
 build/2_1/strtabs.o \
@@ -1714,6 +1737,7 @@ build/2_1/ropes.o \
 build/2_3/platform.o \
 build/2_1/idents.o \
 build/2_1/astalgo.o \
+build/2_1/rodutils.o \
 build/2_3/extccomp.o \
 build/2_1/osproc.o \
 build/2_1/strtabs.o \
@@ -1815,6 +1839,8 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodutils.c -o build/3_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/rodutils.c -o build/3_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/extccomp.c -o build/3_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/extccomp.c -o build/3_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/osproc.c -o build/3_1/osproc.o"
@@ -1932,6 +1958,7 @@ build/3_1/ropes.o \
 build/3_1/platform.o \
 build/2_1/idents.o \
 build/3_1/astalgo.o \
+build/3_1/rodutils.o \
 build/3_1/extccomp.o \
 build/3_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2002,6 +2029,7 @@ build/3_1/ropes.o \
 build/3_1/platform.o \
 build/2_1/idents.o \
 build/3_1/astalgo.o \
+build/3_1/rodutils.o \
 build/3_1/extccomp.o \
 build/3_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2095,6 +2123,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/astalgo.c -o build/3_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/rodutils.c -o build/3_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/rodutils.c -o build/3_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/extccomp.c -o build/3_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/extccomp.c -o build/3_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/osproc.c -o build/3_2/osproc.o"
@@ -2212,6 +2242,7 @@ build/3_2/ropes.o \
 build/3_2/platform.o \
 build/2_2/idents.o \
 build/3_2/astalgo.o \
+build/3_2/rodutils.o \
 build/3_2/extccomp.o \
 build/3_2/osproc.o \
 build/2_2/strtabs.o \
@@ -2282,6 +2313,7 @@ build/3_2/ropes.o \
 build/3_2/platform.o \
 build/2_2/idents.o \
 build/3_2/astalgo.o \
+build/3_2/rodutils.o \
 build/3_2/extccomp.o \
 build/3_2/osproc.o \
 build/2_2/strtabs.o \
@@ -2375,6 +2407,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/astalgo.c -o build/3_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/rodutils.c -o build/3_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/rodutils.c -o build/3_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_3/extccomp.c -o build/3_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_3/extccomp.c -o build/3_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/osproc.c -o build/3_1/osproc.o"
@@ -2492,6 +2526,7 @@ build/3_1/ropes.o \
 build/3_3/platform.o \
 build/2_1/idents.o \
 build/3_1/astalgo.o \
+build/3_1/rodutils.o \
 build/3_3/extccomp.o \
 build/3_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2562,6 +2597,7 @@ build/3_1/ropes.o \
 build/3_3/platform.o \
 build/2_1/idents.o \
 build/3_1/astalgo.o \
+build/3_1/rodutils.o \
 build/3_3/extccomp.o \
 build/3_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2663,6 +2699,8 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -2780,6 +2818,7 @@ build/4_1/ropes.o \
 build/4_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2850,6 +2889,7 @@ build/4_1/ropes.o \
 build/4_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -2943,6 +2983,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/osproc.c -o build/4_2/osproc.o"
@@ -3060,6 +3102,7 @@ build/4_2/ropes.o \
 build/4_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -3130,6 +3173,7 @@ build/4_2/ropes.o \
 build/4_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -3223,6 +3267,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -3340,6 +3386,7 @@ build/4_1/ropes.o \
 build/4_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -3410,6 +3457,7 @@ build/4_1/ropes.o \
 build/4_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -3511,6 +3559,8 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -3628,6 +3678,7 @@ build/4_1/ropes.o \
 build/5_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -3698,6 +3749,7 @@ build/4_1/ropes.o \
 build/5_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -3791,6 +3843,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/osproc.c -o build/4_2/osproc.o"
@@ -3908,6 +3962,7 @@ build/4_2/ropes.o \
 build/5_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -3978,6 +4033,7 @@ build/4_2/ropes.o \
 build/5_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -4071,6 +4127,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -4188,6 +4246,7 @@ build/4_1/ropes.o \
 build/5_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -4258,6 +4317,7 @@ build/4_1/ropes.o \
 build/5_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -4359,6 +4419,8 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -4476,6 +4538,7 @@ build/4_1/ropes.o \
 build/6_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -4546,6 +4609,7 @@ build/4_1/ropes.o \
 build/6_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -4639,6 +4703,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/osproc.c -o build/4_2/osproc.o"
@@ -4756,6 +4822,7 @@ build/4_2/ropes.o \
 build/6_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -4826,6 +4893,7 @@ build/4_2/ropes.o \
 build/6_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/4_2/osproc.o \
 build/2_2/strtabs.o \
@@ -4919,6 +4987,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/osproc.c -o build/4_1/osproc.o"
@@ -5036,6 +5106,7 @@ build/4_1/ropes.o \
 build/6_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -5106,6 +5177,7 @@ build/4_1/ropes.o \
 build/6_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/4_1/osproc.o \
 build/2_1/strtabs.o \
@@ -5207,6 +5279,8 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/extccomp.c -o build/4_1/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/osproc.c -o build/7_1/osproc.o"
@@ -5324,6 +5398,7 @@ build/4_1/ropes.o \
 build/7_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/7_1/osproc.o \
 build/2_1/strtabs.o \
@@ -5394,6 +5469,7 @@ build/4_1/ropes.o \
 build/7_1/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_1/extccomp.o \
 build/7_1/osproc.o \
 build/2_1/strtabs.o \
@@ -5487,6 +5563,8 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/idents.c -o build/2_2/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/astalgo.c -o build/4_2/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/rodutils.c -o build/4_2/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/extccomp.c -o build/4_2/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_2/osproc.c -o build/7_2/osproc.o"
@@ -5604,6 +5682,7 @@ build/4_2/ropes.o \
 build/7_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/7_2/osproc.o \
 build/2_2/strtabs.o \
@@ -5674,6 +5753,7 @@ build/4_2/ropes.o \
 build/7_2/platform.o \
 build/2_2/idents.o \
 build/4_2/astalgo.o \
+build/4_2/rodutils.o \
 build/4_2/extccomp.o \
 build/7_2/osproc.o \
 build/2_2/strtabs.o \
@@ -5767,6 +5847,8 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_1/idents.c -o build/2_1/idents.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/astalgo.c -o build/4_1/astalgo.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/rodutils.c -o build/4_1/rodutils.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_3/extccomp.c -o build/4_3/extccomp.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/7_1/osproc.c -o build/7_1/osproc.o"
@@ -5884,6 +5966,7 @@ build/4_1/ropes.o \
 build/7_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/7_1/osproc.o \
 build/2_1/strtabs.o \
@@ -5954,6 +6037,7 @@ build/4_1/ropes.o \
 build/7_3/platform.o \
 build/2_1/idents.o \
 build/4_1/astalgo.o \
+build/4_1/rodutils.o \
 build/4_3/extccomp.o \
 build/7_1/osproc.o \
 build/2_1/strtabs.o \

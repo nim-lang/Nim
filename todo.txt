@@ -1,11 +1,16 @@
+- built-in serialization
+- thread support: threadvar on Windows seems broken; 
+  add --deadlock_prevention:on|off switch
+
+- ban ``nil`` from the AST. This might also fix bugs concerning macros.
+
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
 - test branch coverage
 - checked exceptions
-- explicit indices for array literals
-- built-in serialization
-- do not ambiguity error for methods if amibiguity only affects the same 
+- do not ambiguity error for methods if ambiguity only affects the same 
   dispatcher anyway
+- slicing
 
 
 High priority (version 0.9.0)
@@ -23,6 +28,7 @@ Bugs
 - proc (x: int) is passable to proc (x: var int)  !?
 - detected by pegs module 64bit: p(result, result) should use a temporary!
 - the parser allows empty object case branches
+- Exception matching needs to take subclasses into account
 
 
 To implement

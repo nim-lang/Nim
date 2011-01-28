@@ -321,6 +321,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sysstr.nim
   cp lib/system/systhread.nim $libdir/system/systhread.nim
   chmod 644 $libdir/system/systhread.nim
+  cp lib/pure/base64.nim $libdir/pure/base64.nim
+  chmod 644 $libdir/pure/base64.nim
   cp lib/pure/browsers.nim $libdir/pure/browsers.nim
   chmod 644 $libdir/pure/browsers.nim
   cp lib/pure/cgi.nim $libdir/pure/cgi.nim
@@ -329,12 +331,12 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/colors.nim
   cp lib/pure/complex.nim $libdir/pure/complex.nim
   chmod 644 $libdir/pure/complex.nim
+  cp lib/pure/cookies.nim $libdir/pure/cookies.nim
+  chmod 644 $libdir/pure/cookies.nim
   cp lib/pure/dynlib.nim $libdir/pure/dynlib.nim
   chmod 644 $libdir/pure/dynlib.nim
   cp lib/pure/hashes.nim $libdir/pure/hashes.nim
   chmod 644 $libdir/pure/hashes.nim
-  cp lib/pure/hashtabs.nim $libdir/pure/hashtabs.nim
-  chmod 644 $libdir/pure/hashtabs.nim
   cp lib/pure/htmlparser.nim $libdir/pure/htmlparser.nim
   chmod 644 $libdir/pure/htmlparser.nim
   cp lib/pure/httpclient.nim $libdir/pure/httpclient.nim
@@ -347,8 +349,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/lexbase.nim
   cp lib/pure/logging.nim $libdir/pure/logging.nim
   chmod 644 $libdir/pure/logging.nim
-  cp lib/pure/macros.nim $libdir/pure/macros.nim
-  chmod 644 $libdir/pure/macros.nim
   cp lib/pure/math.nim $libdir/pure/math.nim
   chmod 644 $libdir/pure/math.nim
   cp lib/pure/md5.nim $libdir/pure/md5.nim
@@ -377,6 +377,10 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/regexprs.nim
   cp lib/pure/ropes.nim $libdir/pure/ropes.nim
   chmod 644 $libdir/pure/ropes.nim
+  cp lib/pure/scgi.nim $libdir/pure/scgi.nim
+  chmod 644 $libdir/pure/scgi.nim
+  cp lib/pure/smtp.nim $libdir/pure/smtp.nim
+  chmod 644 $libdir/pure/smtp.nim
   cp lib/pure/sockets.nim $libdir/pure/sockets.nim
   chmod 644 $libdir/pure/sockets.nim
   cp lib/pure/streams.nim $libdir/pure/streams.nim
@@ -391,8 +395,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/times.nim
   cp lib/pure/unicode.nim $libdir/pure/unicode.nim
   chmod 644 $libdir/pure/unicode.nim
-  cp lib/pure/variants.nim $libdir/pure/variants.nim
-  chmod 644 $libdir/pure/variants.nim
   cp lib/pure/xmldom.nim $libdir/pure/xmldom.nim
   chmod 644 $libdir/pure/xmldom.nim
   cp lib/pure/xmldomparser.nim $libdir/pure/xmldomparser.nim
@@ -421,10 +423,14 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/impure/osinfo_win.nim
   cp lib/impure/re.nim $libdir/impure/re.nim
   chmod 644 $libdir/impure/re.nim
+  cp lib/impure/ssl.nim $libdir/impure/ssl.nim
+  chmod 644 $libdir/impure/ssl.nim
   cp lib/impure/web.nim $libdir/impure/web.nim
   chmod 644 $libdir/impure/web.nim
   cp lib/impure/zipfiles.nim $libdir/impure/zipfiles.nim
   chmod 644 $libdir/impure/zipfiles.nim
+  cp lib/wrappers/claro.nim $libdir/wrappers/claro.nim
+  chmod 644 $libdir/wrappers/claro.nim
   cp lib/wrappers/expat.nim $libdir/wrappers/expat.nim
   chmod 644 $libdir/wrappers/expat.nim
   cp lib/wrappers/iup.nim $libdir/wrappers/iup.nim
@@ -435,6 +441,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/wrappers/mysql.nim
   cp lib/wrappers/odbcsql.nim $libdir/wrappers/odbcsql.nim
   chmod 644 $libdir/wrappers/odbcsql.nim
+  cp lib/wrappers/openssl.nim $libdir/wrappers/openssl.nim
+  chmod 644 $libdir/wrappers/openssl.nim
   cp lib/wrappers/pcre.nim $libdir/wrappers/pcre.nim
   chmod 644 $libdir/wrappers/pcre.nim
   cp lib/wrappers/postgres.nim $libdir/wrappers/postgres.nim
