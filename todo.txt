@@ -2,8 +2,6 @@
   add --deadlock_prevention:on|off switch
 - built-in serialization
 
-- ban ``nil`` from the AST. This might also fix bugs concerning macros.
-
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
 - test branch coverage
@@ -68,6 +66,8 @@ Low priority
 - fast assignment optimization for TPeg
 - better error messages for used keywords as identifiers
 - case statement branches should support constant sets
+- ban ``nil`` from the AST. This might also fix bugs concerning macros.
+
 
 Library
 -------

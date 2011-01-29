@@ -279,8 +279,10 @@ proc addPath(path: string, info: TLineInfo) =
     lists.PrependStr(options.searchPaths, path)
 
 proc addPathRec(dir: string, info: TLineInfo) =
+  var pos = dir.len-1
+  if dir[pos] == '/': inc(pos)
   for k,p in os.walkDir(dir):
-    if k == pcDir and '.' notin p:
+    if k == pcDir and p[pos] != '.':
       addPathRec(p, info)
       if not contains(options.searchPaths, p): 
         liMessage(info, hintPath, p)
