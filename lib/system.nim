@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -246,6 +246,14 @@ proc sizeof*[T](x: T): natural {.magic: "SizeOf", noSideEffect.}
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
+
+proc `<`*[T](x: ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+  ## unary ``<`` that can be used for nice looking excluding ranges:
+  ## 
+  ## .. code-block:: nimrod
+  ##   for i in 0 .. <10: echo i
+  ##
+  ## Semantically this is the same as ``pred``. 
 
 proc succ*[T](x: ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
@@ -1017,11 +1025,11 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
     yield res
     dec(res, step)
 
-iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` with the given
-  ## step count. `T` may be any ordinal type, `step` may only
+  ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive.
-  var res = a
+  var res: T = a
   while res <= b:
     yield res
     inc(res, step)
@@ -1459,6 +1467,8 @@ when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc write*(f: TFile, r: float)
   proc write*(f: TFile, i: int)
+  proc write*(f: TFile, i: biggestInt)
+  proc write*(f: TFile, r: biggestFloat)
   proc write*(f: TFile, s: string)
   proc write*(f: TFile, b: Bool)
   proc write*(f: TFile, c: char)

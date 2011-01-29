@@ -95,6 +95,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mToU8: result = newIntNodeT(getInt(a) and 0x000000FF, n)
   of mToU16: result = newIntNodeT(getInt(a) and 0x0000FFFF, n)
   of mToU32: result = newIntNodeT(getInt(a) and 0x00000000FFFFFFFF'i64, n)
+  of mUnaryLt: result = newIntNodeT(getOrdValue(a) - 1, n)
   of mSucc: result = newIntNodeT(getOrdValue(a) + getInt(b), n)
   of mPred: result = newIntNodeT(getOrdValue(a) - getInt(b), n)
   of mAddI, mAddI64: result = newIntNodeT(getInt(a) + getInt(b), n)

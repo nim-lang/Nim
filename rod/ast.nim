@@ -300,7 +300,8 @@ type
   TSymKinds* = set[TSymKind]
 
   TMagic* = enum # symbols that require compiler magic:
-    mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, mEcho, mSucc, 
+    mNone, mDefined, mDefinedInScope, mLow, mHigh, mSizeOf, mIs, mEcho, 
+    mUnaryLt, mSucc, 
     mPred, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray, 
     mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref, 
     mGCunref, mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64, 

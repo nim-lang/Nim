@@ -861,7 +861,7 @@ iterator walkDir*(dir: string): tuple[kind: TPathComponent, path: string] =
         if y != "." and y != "..":
           var s: TStat
           y = dir / y
-          if stat(y, s) < 0'i32: break
+          if lstat(y, s) < 0'i32: break
           var k = pcFile
           if S_ISDIR(s.st_mode): k = pcDir
           if S_ISLNK(s.st_mode): k = succ(k)
@@ -1245,3 +1245,4 @@ proc findExe*(exe: string): string =
   result = ""
 
 {.pop.}
+
