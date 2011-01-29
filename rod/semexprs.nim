@@ -631,7 +631,7 @@ proc makeDeref(n: PNode): PNode =
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
-  var s = qualifiedLookup(c, n, true) # check for ambiguity
+  var s = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
   if s != nil:
     return semSym(c, n, s, flags)
 
@@ -940,7 +940,7 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck: bool = true): PNode =
   var a: PNode
   if isCallExpr(n.sons[0]): a = n.sons[0].sons[0]
   else: a = n.sons[0]
-  var s = qualifiedLookup(c, a, false)
+  var s = qualifiedLookup(c, a, {checkUndeclared})
   if s != nil: 
     case s.kind
     of skMacro: 
@@ -1014,7 +1014,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    var s = qualifiedLookup(c, n.sons[0], false)
+    var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     if s != nil: 
       case s.kind
       of skMacro: result = semMacroExpr(c, n, s)
@@ -1037,10 +1037,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semMacroStmt(c, n)
   of nkBracketExpr: 
     checkMinSonsLen(n, 1)
-    var s = qualifiedLookup(c, n.sons[0], false)
+    var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}: 
       # type parameters: partial generic specialization
-      result = partialSpecialization(c, n, s)
+      result = explictGenericInstantiation(c, n, s)
     else: 
       result = semArrayAccess(c, n, flags)
   of nkPragmaExpr: 

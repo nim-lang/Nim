@@ -18,7 +18,7 @@ Options:
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
-  --debugger:on|off         turn Embedded Nimrod Debugger on|off
+  --threads:on|off          turn support for multi-threading on|off
   -x, --checks:on|off       turn all runtime checks on|off
   --objChecks:on|off        turn obj conversion checks on|off
   --fieldChecks:on|off      turn case variant field checks on|off

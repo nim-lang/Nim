@@ -47,13 +47,13 @@ if [ $# -eq 1 ] ; then
       docdir="$1/?proj/doc"
       datadir="$1/?proj/data"
       
-      mkdir -p $1/?proj
-      mkdir -p $bindir
-      mkdir -p $configdir
+      mkdir -p $1/?proj || exit 1
+      mkdir -p $bindir || exit 1
+      mkdir -p $configdir || exit 1
       ;;
   esac
-  mkdir -p $libdir
-  mkdir -p $docdir
+  mkdir -p $libdir || exit 1
+  mkdir -p $docdir || exit 1
   echo "copying files..."
 #var createdDirs = newStringTable()
 #for cat in fcConfig..fcLib:
@@ -63,30 +63,30 @@ if [ $# -eq 1 ] ; then
 #      mk = unixDirVars[cat] & "/" & mk
 #      if not createdDirs.hasKey(mk):
 #        createdDirs[mk] = "true"
-  mkdir -p ?mk
+  mkdir -p ?mk || exit 1
 #      end if
 #    end if
 #  end for
 #end for
 
 #for f in items(c.cat[fcUnixBin]):
-  cp ?f $bindir/?f.skipRoot
+  cp ?f $bindir/?f.skipRoot || exit 1
   chmod 755 $bindir/?f.skipRoot
 #end for
 #for f in items(c.cat[fcConfig]): 
-  cp ?f $configdir/?f.skipRoot
+  cp ?f $configdir/?f.skipRoot || exit 1
   chmod 644 $configdir/?f.skipRoot
 #end for
 #for f in items(c.cat[fcData]): 
-  cp ?f $datadir/?f.skipRoot
+  cp ?f $datadir/?f.skipRoot || exit 1
   chmod 644 $datadir/?f.skipRoot
 #end for
 #for f in items(c.cat[fcDoc]): 
-  cp ?f $docdir/?f.skipRoot
+  cp ?f $docdir/?f.skipRoot || exit 1
   chmod 644 $docdir/?f.skipRoot
 #end for
 #for f in items(c.cat[fcLib]): 
-  cp ?f $libdir/?f.skipRoot
+  cp ?f $libdir/?f.skipRoot || exit 1
   chmod 644 $libdir/?f.skipRoot
 #end for
   

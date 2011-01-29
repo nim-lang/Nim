@@ -33,6 +33,8 @@ Changes affecting backwards compatibility
 Additions
 ---------
 
+- Added ``scgi`` module.
+- Added ``smtp`` module.
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
 - Added ``strutils.align``, ``strutils.tokenize``, ``strutils.wordWrap``. 
@@ -40,7 +42,7 @@ Additions
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
-- Source code filters are now properly documented.
+- Source code filters are now documented.
 - Added ``emit`` pragma for direct code generator control.
 - Additional operations were added to the ``complex`` module. 
 - Added ``strutils.formatFloat``,  ``strutils.formatBiggestFloat``.

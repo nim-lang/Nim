@@ -380,14 +380,20 @@ proc assignLocalVar(p: BProc, s: PSym) =
     appf(p.s[cpsLocals], " $1;$n", [s.loc.r])
   localDebugInfo(p, s)
 
+proc declareThreadVar(m: BModule, s: PSym) =
+  if optThreads in gGlobalOptions:
+    app(m.s[cfsVars], "NIM_THREADVAR ")
+  app(m.s[cfsVars], getTypeDesc(m, s.loc.t))
+  
+
 proc assignGlobalVar(p: BProc, s: PSym) = 
   if s.loc.k == locNone: 
     fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap)
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return 
   if sfImportc in s.flags: app(p.module.s[cfsVars], "extern ")
-  if sfThreadVar in s.flags: app(p.module.s[cfsVars], "NIM_THREADVAR ")
-  app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
+  if sfThreadVar in s.flags: declareThreadVar(p.module, s)
+  else: app(p.module.s[cfsVars], getTypeDesc(p.module, s.loc.t))
   if sfRegister in s.flags: app(p.module.s[cfsVars], " register")
   if sfVolatile in s.flags: app(p.module.s[cfsVars], " volatile")
   appf(p.module.s[cfsVars], " $1;$n", [s.loc.r])
@@ -686,8 +692,8 @@ proc genVarPrototype(m: BModule, sym: PSym) =
            [sym.loc.r, getTypeDesc(m, sym.loc.t)])
     else: 
       app(m.s[cfsVars], "extern ")
-      if sfThreadVar in sym.flags: app(m.s[cfsVars], "NIM_THREADVAR ")
-      app(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
+      if sfThreadVar in sym.flags: declareThreadVar(m, sym)
+      else: app(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
       if sfRegister in sym.flags: app(m.s[cfsVars], " register")
       if sfVolatile in sym.flags: app(m.s[cfsVars], " volatile")
       appf(m.s[cfsVars], " $1;$n", [sym.loc.r])
