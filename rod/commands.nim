@@ -25,7 +25,7 @@ proc ProcessCommand*(switch: string, pass: TCmdLinePass)
 proc processSwitch*(switch, arg: string, pass: TCmdlinePass, info: TLineInfo)
 # implementation
 
-const 
+const
   HelpMessage = "Nimrod Compiler Version $1 (" & compileDate & ") [$2: $3]\n" &
       "Copyright (c) 2004-2011 by Andreas Rumpf\n"
 
@@ -49,7 +49,7 @@ Options:
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
-  --debugger:on|off         turn Embedded Nimrod Debugger on|off
+  --threads:on|off          turn support for multi-threading on|off
   -x, --checks:on|off       turn all runtime checks on|off
   --objChecks:on|off        turn obj conversion checks on|off
   --fieldChecks:on|off      turn case variant field checks on|off
@@ -92,6 +92,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
+  --debugger:on|off         turn Embedded Nimrod Debugger on|off
   -t, --passc:OPTION        pass an option to the C compiler
   -l, --passl:OPTION        pass an option to the linker
   --genMapping              generate a mapping file containing
@@ -212,9 +213,6 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
   of wOn: incl(gNotes, n)
   of wOff: excl(gNotes, n)
   else: liMessage(info, errOnOrOffExpectedButXFound, arg)
-  
-proc processPath(path: string): string = 
-  result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath])
 
 proc processCompile(filename: string) = 
   var found = findFile(filename)
@@ -269,20 +267,32 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of wRun, wR: result = contains(gGlobalOptions, optRun)
   of wSymbolFiles: result = contains(gGlobalOptions, optSymbolFiles)
   of wGenScript: result = contains(gGlobalOptions, optGenScript)
+  of wThreads: result = contains(gGlobalOptions, optThreads)
   else: InvalidCmdLineOption(passCmd1, switch, info)
+  
+proc processPath(path: string): string = 
+  result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
+    "home", removeTrailingDirSep(os.getHomeDir())])
+
+proc addPath(path: string) = 
+  if not contains(options.searchPaths, path): 
+    lists.PrependStr(options.searchPaths, path)
 
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
     theOS: TSystemOS
     cpu: TSystemCPU
-    key, val, path: string
+    key, val: string
   case whichKeyword(switch)
   of wPath, wP: 
     expectArg(switch, arg, pass, info)
-    path = processPath(arg)
-    if not contains(options.searchPaths, path): 
-      lists.PrependStr(options.searchPaths, path)
+    addPath(processPath(arg))
     #discard lists.IncludeStr(options.searchPaths, path)
+  of wRecursivePath:
+    expectArg(switch, arg, pass, info)
+    var path = processPath(arg)
+    for p in os.walkDirRec(path, {pcDir}): addPath(p)
+    addPath(path)
   of wOut, wO: 
     expectArg(switch, arg, pass, info)
     options.outFile = arg
@@ -356,6 +366,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of wLineDir: ProcessOnOffSwitch({optLineDir}, arg, pass, info)
   of wAssertions, wA: ProcessOnOffSwitch({optAssert}, arg, pass, info)
   of wDeadCodeElim: ProcessOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of wThreads: ProcessOnOffSwitchG({optThreads}, arg, pass, info)
   of wOpt: 
     expectArg(switch, arg, pass, info)
     case whichKeyword(arg)

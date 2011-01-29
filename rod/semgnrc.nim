@@ -21,12 +21,14 @@ type
   TSemGenericFlags = set[TSemGenericFlag]
 
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode
-proc semGenericStmtScope(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode = 
+proc semGenericStmtScope(c: PContext, n: PNode, 
+                         flags: TSemGenericFlags = {}): PNode = 
   openScope(c.tab)
   result = semGenericStmt(c, n, flags)
   closeScope(c.tab)
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode = 
+  incl(s.flags, sfUsed)
   case s.kind
   of skUnknown: 
     # Introduced in this pass! Leave it as an identifier.
@@ -55,20 +57,29 @@ proc getIdentNode(n: PNode): PNode =
     illFormedAst(n)
     result = nil
 
+#  of nkAccQuoted: 
+#    s = lookUp(c, n)
+#    if withinBind in flags: result = symChoice(c, n, s)
+#    else: result = semGenericStmtSymbol(c, n, s)
+
 proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode = 
   var 
     L: int
     a: PNode
-    s: PSym
   result = n
   if n == nil: return 
   case n.kind
-  of nkIdent, nkAccQuoted: 
-    s = lookUp(c, n)
-    if withinBind in flags: result = symChoice(c, n, s)
-    else: result = semGenericStmtSymbol(c, n, s)
+  of nkIdent:
+    var s = SymtabGet(c.Tab, n.ident)
+    if s == nil:
+      # no error if symbol cannot be bound, unless in ``bind`` context:
+      if withinBind in flags: 
+        liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
+    else:
+      if withinBind in flags: result = symChoice(c, n, s)
+      else: result = semGenericStmtSymbol(c, n, s)
   of nkDotExpr: 
-    s = QualifiedLookUp(c, n, true)
+    var s = QualifiedLookUp(c, n, {})
     if s != nil: result = semGenericStmtSymbol(c, n, s)
   of nkSym..nkNilLit: 
     nil
@@ -77,8 +88,9 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkCommand, nkCallStrLit: 
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
-    s = qualifiedLookup(c, n.sons[0], false)
-    if (s != nil): 
+    var s = qualifiedLookup(c, n.sons[0], {})
+    if s != nil: 
+      incl(s.flags, sfUsed)
       case s.kind
       of skMacro: 
         return semMacroExpr(c, n, s, false)
@@ -100,16 +112,16 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
   of nkMacroStmt: 
     result = semMacroStmt(c, n, false)
   of nkIfStmt: 
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n)-1): 
       n.sons[i] = semGenericStmtScope(c, n.sons[i])
   of nkWhileStmt: 
     openScope(c.tab)
-    for i in countup(0, sonsLen(n) - 1): n.sons[i] = semGenericStmt(c, n.sons[i])
+    for i in countup(0, sonsLen(n)-1): n.sons[i] = semGenericStmt(c, n.sons[i])
     closeScope(c.tab)
   of nkCaseStmt: 
     openScope(c.tab)
     n.sons[0] = semGenericStmt(c, n.sons[0])
-    for i in countup(1, sonsLen(n) - 1): 
+    for i in countup(1, sonsLen(n)-1): 
       a = n.sons[i]
       checkMinSonsLen(a, 1)
       L = sonsLen(a)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -747,7 +747,7 @@ proc typeAllowedNode(marker: var TIntSet, n: PNode, kind: TSymKind): bool =
   result = true
   if n != nil: 
     result = typeAllowedAux(marker, n.typ, kind)
-    if not result: debug(n.typ)
+    #if not result: debug(n.typ)
     if result: 
       case n.kind
       of nkNone..nkNilLit: 

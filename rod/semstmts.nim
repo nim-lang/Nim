@@ -162,7 +162,7 @@ proc propertyWriteAccess(c: PContext, n, a: PNode): PNode =
   addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
-  # nodes!
+  # nodes?
   addSon(result, a[0])
   addSon(result, semExpr(c, n[1]))
   result = semDirectCallAnalyseEffects(c, result, {})
@@ -182,18 +182,6 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     a = builtinFieldAccess(c, a, {efLValue})
     if a == nil: 
       return propertyWriteAccess(c, n, n[0])
-    when false:
-      checkSonsLen(a, 2)
-      var id = considerAcc(a.sons[1])
-      result = newNodeI(nkCall, n.info)
-      addSon(result, newIdentNode(getIdent(id.s & '='), n.info))
-      addSon(result, semExpr(c, a.sons[0]))
-      addSon(result, semExpr(c, n.sons[1]))
-      result = semDirectCallAnalyseEffects(c, result, {})
-      if result != nil: 
-        fixAbstractType(c, result)
-        analyseIfAddressTakenInCall(c, result)
-        return 
   of nkBracketExpr: 
     # a[i..j] = x
     # --> `[..]=`(a, i, j, x)
@@ -204,7 +192,6 @@ proc semAsgn(c: PContext, n: PNode): PNode =
       return semExprNoType(c, result)
   else: 
     a = semExprWithType(c, a, {efLValue})
-  #n.sons[0] = semExprWithType(c, n.sons[0], {efLValue})
   n.sons[0] = a
   n.sons[1] = semExprWithType(c, n.sons[1])
   var le = a.typ
@@ -288,7 +275,6 @@ proc semVar(c: PContext, n: PNode): PNode =
     else: 
       def = nil
     if not typeAllowed(typ, skVar): 
-      #debug(typ);
       liMessage(a.info, errXisNoType, typeToString(typ))
     tup = skipTypes(typ, {tyGenericInst})
     if a.kind == nkVarTuple: 

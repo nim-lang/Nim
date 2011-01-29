@@ -106,6 +106,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   else: 
     result.typ = newTypeS(tyProc, c)
     addSon(result.typ, nil)
+  result.typ.callConv = fn.typ.callConv
   oldPrc = GenericCacheGet(c, fn, result)
   if oldPrc == nil: 
     # add it here, so that recursive generic procs are possible:
@@ -244,10 +245,3 @@ proc generateTypeInstance(p: PContext, pt: TIdTable, arg: PNode,
   result = ReplaceTypeVarsT(cl, t)
   popInfoContext()
 
-proc partialSpecialization(c: PContext, n: PNode, s: PSym): PNode = 
-  for i in 1..sonsLen(n)-1:
-    n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
-  # we cannot check for the proper number of type parameters because in
-  # `f[a,b](x, y)` `f` is not resolved yet properly.
-  # XXX: BUG this should be checked somehow!
-  result = n

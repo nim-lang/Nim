@@ -1,6 +1,6 @@
-- built-in serialization
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
+- built-in serialization
 
 - ban ``nil`` from the AST. This might also fix bugs concerning macros.
 
@@ -66,7 +66,8 @@ Low priority
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
 - nested tuple unpacking
 - fast assignment optimization for TPeg
-
+- better error messages for used keywords as identifiers
+- case statement branches should support constant sets
 
 Library
 -------

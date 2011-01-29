@@ -22,6 +22,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
+  --debugger:on|off         turn Embedded Nimrod Debugger on|off
   -t, --passc:OPTION        pass an option to the C compiler
   -l, --passl:OPTION        pass an option to the linker
   --genMapping              generate a mapping file containing

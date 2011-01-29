@@ -30,7 +30,8 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum 
     gloptNone, optForceFullMake, optBoehmGC, optRefcGC, optDeadCodeElim, 
-    optListCmd, optCompileOnly, optNoLinking, optSafeCode, # only allow safe code
+    optListCmd, optCompileOnly, optNoLinking, 
+    optSafeCode,              # only allow safe code
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenGuiApp,             # generate a GUI application
@@ -40,7 +41,8 @@ type                          # please make sure we have under 32 options
     optSymbolFiles,           # use symbol files for speeding up compilation
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
-    optNoMain                 # do not generate a "main" proc
+    optNoMain,                # do not generate a "main" proc
+    optThreads                # support for multi-threading
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
@@ -142,7 +144,7 @@ proc shortenDir(dir: string): string =
     return copy(dir, len(prefix))
   result = dir
 
-proc removeTrailingDirSep(path: string): string = 
+proc removeTrailingDirSep*(path: string): string = 
   if (len(path) > 0) and (path[len(path) - 1] == dirSep): 
     result = copy(path, 0, len(path) - 2)
   else: 

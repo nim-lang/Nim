@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -21,28 +21,12 @@ type
     m*: PSym
     mode*: TOverloadIterMode
 
-
-proc getSymRepr*(s: PSym): string
-proc CloseScope*(tab: var TSymTab)
-proc AddSym*(t: var TStrTable, n: PSym)
-proc addDecl*(c: PContext, sym: PSym)
-proc addDeclAt*(c: PContext, sym: PSym, at: Natural)
-proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural)
-proc addInterfaceDecl*(c: PContext, sym: PSym)
-proc addInterfaceOverloadableSymAt*(c: PContext, sym: PSym, at: int)
-proc lookUp*(c: PContext, n: PNode): PSym
-  # Looks up a symbol. Generates an error in case of nil.
-proc QualifiedLookUp*(c: PContext, n: PNode, ambiguousCheck: bool): PSym
-proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym
-proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym
-# implementation
-
-proc getSymRepr(s: PSym): string = 
+proc getSymRepr*(s: PSym): string = 
   case s.kind
   of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
   else: result = s.name.s
   
-proc CloseScope(tab: var TSymTab) = 
+proc CloseScope*(tab: var TSymTab) = 
   var 
     it: TTabIter
     s: PSym
@@ -59,14 +43,14 @@ proc CloseScope(tab: var TSymTab) =
     s = NextIter(it, tab.stack[tab.tos - 1])
   astalgo.rawCloseScope(tab)
 
-proc AddSym(t: var TStrTable, n: PSym) = 
+proc AddSym*(t: var TStrTable, n: PSym) = 
   if StrTableIncl(t, n): liMessage(n.info, errAttemptToRedefine, n.name.s)
   
-proc addDecl(c: PContext, sym: PSym) = 
+proc addDecl*(c: PContext, sym: PSym) = 
   if SymTabAddUnique(c.tab, sym) == Failure: 
     liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
   
-proc addDeclAt(c: PContext, sym: PSym, at: Natural) = 
+proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
   if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
     liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
 
@@ -81,7 +65,7 @@ proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) =
   addDeclAt(c, sym, at)
   AddInterfaceDeclAux(c, sym)
   
-proc addOverloadableSymAt(c: PContext, fn: PSym, at: Natural) = 
+proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) = 
   if not (fn.kind in OverloadableSyms): 
     InternalError(fn.info, "addOverloadableSymAt")
   var check = StrTableGet(c.tab.stack[at], fn.name)
@@ -89,17 +73,17 @@ proc addOverloadableSymAt(c: PContext, fn: PSym, at: Natural) =
     liMessage(fn.info, errAttemptToRedefine, fn.Name.s)
   SymTabAddAt(c.tab, fn, at)
   
-proc addInterfaceDecl(c: PContext, sym: PSym) = 
+proc addInterfaceDecl*(c: PContext, sym: PSym) = 
   # it adds the symbol to the interface if appropriate
   addDecl(c, sym)
   AddInterfaceDeclAux(c, sym)
 
-proc addInterfaceOverloadableSymAt(c: PContext, sym: PSym, at: int) = 
+proc addInterfaceOverloadableSymAt*(c: PContext, sym: PSym, at: int) = 
   # it adds the symbol to the interface if appropriate
   addOverloadableSymAt(c, sym, at)
   AddInterfaceDeclAux(c, sym)
 
-proc lookUp(c: PContext, n: PNode): PSym = 
+proc lookUp*(c: PContext, n: PNode): PSym = 
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
   of nkAccQuoted: 
@@ -118,26 +102,32 @@ proc lookUp(c: PContext, n: PNode): PSym =
     liMessage(n.info, errUseQualifier, result.name.s)
   if result.kind == skStub: loadStub(result)
   
-proc QualifiedLookUp(c: PContext, n: PNode, ambiguousCheck: bool): PSym = 
+type 
+  TLookupFlag* = enum 
+    checkAmbiguity, checkUndeclared
+  
+proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym = 
   case n.kind
   of nkIdent: 
     result = SymtabGet(c.Tab, n.ident)
-    if result == nil: 
+    if result == nil and checkUndeclared in flags: 
       liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
-    elif ambiguousCheck and IntSetContains(c.AmbiguousSymbols, result.id): 
+    elif checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
+                                                    result.id): 
       liMessage(n.info, errUseQualifier, n.ident.s)
   of nkSym: 
     #
-    #      result := SymtabGet(c.Tab, n.sym.name);
-    #      if result = nil then
+    #      result = SymtabGet(c.Tab, n.sym.name)
+    #      if result == nil:
     #        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s)
     #      else 
     result = n.sym
-    if ambiguousCheck and IntSetContains(c.AmbiguousSymbols, result.id): 
+    if checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
+                                                  result.id): 
       liMessage(n.info, errUseQualifier, n.sym.name.s)
   of nkDotExpr: 
     result = nil
-    var m = qualifiedLookUp(c, n.sons[0], false)
+    var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})
     if (m != nil) and (m.kind == skModule): 
       var ident: PIdent = nil
       if (n.sons[1].kind == nkIdent): 
@@ -150,17 +140,17 @@ proc QualifiedLookUp(c: PContext, n: PNode, ambiguousCheck: bool): PSym =
           result = StrTableGet(c.tab.stack[ModuleTablePos], ident)
         else: 
           result = StrTableGet(m.tab, ident)
-        if result == nil: 
+        if result == nil and checkUndeclared in flags: 
           liMessage(n.sons[1].info, errUndeclaredIdentifier, ident.s)
-      else: 
+      elif checkUndeclared in flags: 
         liMessage(n.sons[1].info, errIdentifierExpected, renderTree(n.sons[1]))
   of nkAccQuoted: 
-    result = QualifiedLookup(c, n.sons[0], ambiguousCheck)
+    result = QualifiedLookup(c, n.sons[0], flags)
   else: 
-    result = nil              #liMessage(n.info, errIdentifierExpected, '')
+    result = nil
   if (result != nil) and (result.kind == skStub): loadStub(result)
   
-proc InitOverloadIter(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
+proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
   var ident: PIdent
   result = nil
   case n.kind
@@ -173,17 +163,16 @@ proc InitOverloadIter(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident)
   of nkSym: 
     result = n.sym
-    o.mode = oimDone #
-                     #      o.stackPtr := c.tab.tos;
-                     #      o.mode := oimNoQualifier;
-                     #      while (result = nil) do begin
-                     #        dec(o.stackPtr);
-                     #        if o.stackPtr < 0 then break;
-                     #        result := InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name);
-                     #      end; 
+    o.mode = oimDone 
+    #      o.stackPtr = c.tab.tos
+    #      o.mode = oimNoQualifier
+    #      while result == nil:
+    #        dec(o.stackPtr)
+    #        if o.stackPtr < 0: break
+    #        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name)
   of nkDotExpr: 
     o.mode = oimOtherModule
-    o.m = qualifiedLookUp(c, n.sons[0], false)
+    o.m = qualifiedLookUp(c, n.sons[0])
     if (o.m != nil) and (o.m.kind == skModule): 
       ident = nil
       if (n.sons[1].kind == nkIdent): 
@@ -210,7 +199,7 @@ proc InitOverloadIter(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     nil
   if (result != nil) and (result.kind == skStub): loadStub(result)
   
-proc nextOverloadIter(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
+proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
   case o.mode
   of oimDone: 
     result = nil
@@ -222,8 +211,8 @@ proc nextOverloadIter(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       while (result == nil): 
         dec(o.stackPtr)
         if o.stackPtr < 0: break 
-        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name) # BUGFIX: 
-                                                                         # o.it.name <-> n.ident
+        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name) 
+        # BUGFIX: o.it.name <-> n.ident
     else: 
       result = nil
   of oimSelfModule: 

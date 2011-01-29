@@ -178,7 +178,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     liMessage(n.info, errXExpectsOneTypeParam, "ordinal")
   
 proc semTypeIdent(c: PContext, n: PNode): PSym = 
-  result = qualifiedLookup(c, n, true)
+  result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
   if (result != nil): 
     markUsed(n, result)
     if result.kind != skType: liMessage(n.info, errTypeExpected)

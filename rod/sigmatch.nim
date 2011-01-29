@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -82,11 +82,11 @@ proc cmpCandidates(a, b: TCandidate): int =
   result = a.convMatches - b.convMatches
 
 proc writeMatches(c: TCandidate) = 
-  Writeln(stdout, "exact matches: " & $(c.exactMatches))
-  Writeln(stdout, "subtype matches: " & $(c.subtypeMatches))
-  Writeln(stdout, "conv matches: " & $(c.convMatches))
-  Writeln(stdout, "intconv matches: " & $(c.intConvMatches))
-  Writeln(stdout, "generic matches: " & $(c.genericMatches))
+  Writeln(stdout, "exact matches: " & $c.exactMatches)
+  Writeln(stdout, "subtype matches: " & $c.subtypeMatches)
+  Writeln(stdout, "conv matches: " & $c.convMatches)
+  Writeln(stdout, "intconv matches: " & $c.intConvMatches)
+  Writeln(stdout, "generic matches: " & $c.genericMatches)
 
 proc getNotFoundError(c: PContext, n: PNode): string = 
   # Gives a detailed error message; this is separated from semDirectCall,
@@ -710,8 +710,7 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
   elif y.state == csMatch and cmpCandidates(x, y) == 0 and
       not sameMethodDispatcher(x.calleeSym, y.calleeSym): 
     if x.state != csMatch: 
-      InternalError(n.info, "x.state is not csMatch") #writeMatches(x);
-                                                      #writeMatches(y);
+      InternalError(n.info, "x.state is not csMatch") 
     liMessage(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
       getProcHeader(x.calleeSym), getProcHeader(y.calleeSym), 
       x.calleeSym.Name.s])
@@ -739,4 +738,21 @@ proc semDirectCall(c: PContext, n: PNode, filter: TSymKinds): PNode =
   else: 
     initialBinding = nil
   result = semDirectCallWithBinding(c, n, f, filter, initialBinding)
+
+proc explictGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode = 
+  assert n.kind == nkBracketExpr
+  for i in 1..sonsLen(n)-1:
+    n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
+  # we cannot check for the proper number of type parameters because in
+  # `f[a,b](x, y)` `f` is not resolved yet properly.
+  # XXX: BUG this should be checked somehow!
+  assert n.sons[0].kind == nkSym
+  
+  var x: TCandidate
+  initCandidate(x, s, n)
+  var newInst = generateInstance(c, s, x.bindings, n.info)
+  
+  markUsed(n, s)
+  result = newSymNode(newInst)
+  result.info = n.info
 
