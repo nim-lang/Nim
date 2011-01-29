@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -59,11 +59,19 @@ proc write(f: TFile, i: int) =
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
+
+proc write(f: TFile, i: biggestInt) = 
+  when sizeof(biggestint) == 8:
+    fprintf(f, "%lld", i)
+  else:
+    fprintf(f, "%ld", i)
     
 proc write(f: TFile, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
 proc write(f: TFile, r: float) = fprintf(f, "%g", r)
+proc write(f: TFile, r: biggestFloat) = fprintf(f, "%g", r)
+
 proc write(f: TFile, c: Char) = putc(c, f)
 proc write(f: TFile, a: openArray[string]) =
   for x in items(a): write(f, x)

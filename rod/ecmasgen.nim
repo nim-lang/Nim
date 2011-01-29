@@ -1074,6 +1074,10 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   of mAnd: genAnd(p, n.sons[1], n.sons[2], r)
   of mAddi..mStrToStr: arith(p, n, r, op)        #mRepr: genRepr(p, n, r);
   of mSwap: genSwap(p, n, r)
+  of mUnaryLt: 
+    # XXX: range checking?
+    if not (optOverflowCheck in p.Options): unaryExpr(p, n, r, "", "$1 - 1")
+    else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mPred: 
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): binaryExpr(p, n, r, "", "$1 - $2")

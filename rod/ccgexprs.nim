@@ -1369,6 +1369,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAddi..mModi64: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)
   of mSwap: genSwap(p, e, d)
+  of mUnaryLt: 
+    if not (optOverflowCheck in p.Options): unaryExpr(p, e, d, "$1 - 1")
+    else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mPred:
     # XXX: range checking?
     if not (optOverflowCheck in p.Options): binaryExpr(p, e, d, "$1 - $2")

@@ -1,46 +1,13 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-import #[[[cog
-       #from string import replace
-       #enum = "type\n  TMsgKind = (\n"
-       #msgs = "const\n  MsgKindToStr: array [TMsgKind] of string = (\n"
-       #warns = "const\n  WarningsToStr: array [0..%d] of string = (\n"
-       #hints = "const\n  HintsToStr: array [0..%d] of string = (\n"
-       #w = 0 # counts the warnings
-       #h = 0 # counts the hints
-       #
-       #for elem in eval(open('data/messages.yml').read()):
-       #  for key, val in elem.items():
-       #    enum = enum + '    %s,\n' % key
-       #    v = replace(val, "'", "''")
-       #    if key[0:4] == 'warn':
-       #      msgs = msgs +  "    '%s [%s]',\n" % (v, key[4:])
-       #      warns = warns + "    '%s',\n" % key[4:]
-       #      w = w + 1
-       #    elif key[0:4] == 'hint':
-       #      msgs = msgs + "    '%s [%s]',\n" % (v, key[4:])
-       #      hints = hints + "    '%s',\n" % key[4:]
-       #      h = h + 1
-       #    else:
-       #      msgs = msgs + "    '%s',\n" % v
-       #
-       #enum = enum[:-2] + ');\n\n'
-       #msgs = msgs[:-2] + '\n  );\n'
-       #warns = (warns[:-2] + '\n  );\n') % (w-1)
-       #hints = (hints[:-2] + '\n  );\n') % (h-1)
-       #
-       #cog.out(enum)
-       #cog.out(msgs)
-       #cog.out(warns)
-       #cog.out(hints)
-       #]]]
+import
   options, strutils, os
 
 type 
@@ -126,7 +93,7 @@ type
     warnXisPassedToProcVar, warnUser, hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
-    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintUser
+    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, hintUser
 
 const 
   MsgKindToStr*: array[TMsgKind, string] = ["unknown error", 
@@ -274,7 +241,9 @@ const
     "expression evaluates always to \'$1\' [ExprAlwaysX]", 
     "quit() called [QuitCalled]", "$1 [Processing]", 
     "generated code listing: [CodeBegin]", "end of listing [CodeEnd]", 
-    "used config file \'$1\' [Conf]", "$1 [User]"]
+    "used config file \'$1\' [Conf]", 
+    "added path: '$1' [Path]",
+    "$1 [User]"]
 
 const 
   WarningsToStr*: array[0..14, string] = ["CannotOpenFile", "OctalEscape", 
@@ -284,10 +253,11 @@ const
     "CommentXIgnored", "XisPassedToProcVar", "User"]
 
 const 
-  HintsToStr*: array[0..12, string] = ["Success", "SuccessX", "LineTooLong", 
+  HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf", 
-    "User"]                   #[[[end]]]
+    "Path",
+    "User"]
 
 const 
   fatalMin* = errUnknown

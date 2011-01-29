@@ -274,9 +274,17 @@ proc processPath(path: string): string =
   result = UnixToNativePath(path % ["nimrod", getPrefixDir(), "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir())])
 
-proc addPath(path: string) = 
+proc addPath(path: string, info: TLineInfo) = 
   if not contains(options.searchPaths, path): 
     lists.PrependStr(options.searchPaths, path)
+
+proc addPathRec(dir: string, info: TLineInfo) =
+  for k,p in os.walkDir(dir):
+    if k == pcDir and '.' notin p:
+      addPathRec(p, info)
+      if not contains(options.searchPaths, p): 
+        liMessage(info, hintPath, p)
+        lists.PrependStr(options.searchPaths, p)
 
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
@@ -286,13 +294,12 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   case whichKeyword(switch)
   of wPath, wP: 
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg))
-    #discard lists.IncludeStr(options.searchPaths, path)
+    addPath(processPath(arg), info)
   of wRecursivePath:
     expectArg(switch, arg, pass, info)
     var path = processPath(arg)
-    for p in os.walkDirRec(path, {pcDir}): addPath(p)
-    addPath(path)
+    addPathRec(path, info)
+    addPath(path, info)
   of wOut, wO: 
     expectArg(switch, arg, pass, info)
     options.outFile = arg
