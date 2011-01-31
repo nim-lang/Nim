@@ -280,7 +280,7 @@ proc addPath(path: string, info: TLineInfo) =
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var pos = dir.len-1
-  if dir[pos] == '/': inc(pos)
+  if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
       addPathRec(p, info)

@@ -329,7 +329,6 @@ proc ListRemove[T](head: var T, c: T) {.inline.} =
   
 proc isSmallChunk(c: PChunk): bool {.inline.} = 
   return c.size <= SmallChunkSize-smallChunkOverhead()
-  #return c.size < SmallChunkSize
   
 proc chunkUnused(c: PChunk): bool {.inline.} = 
   result = not c.used
@@ -377,9 +376,6 @@ proc freeBigChunk(a: var TAllocator, c: PBigChunk) =
 proc splitChunk(a: var TAllocator, c: PBigChunk, size: int) = 
   var rest = cast[PBigChunk](cast[TAddress](c) +% size)
   assert(rest notin a.freeChunksList)
-  #  c_fprintf(c_stdout, "to add: %p\n", rest)
-  #  writeFreeList(allocator)
-  #  assert false
   rest.size = c.size - size
   rest.used = false
   rest.next = nil
@@ -397,14 +393,11 @@ proc getBigChunk(a: var TAllocator, size: int): PBigChunk =
   result = a.freeChunksList
   block search:
     while result != nil:
-      #if not chunkUnused(result): 
-      #  c_fprintf(c_stdout, "%lld\n", int(result.used))
       assert chunkUnused(result)
       if result.size == size: 
         ListRemove(a.freeChunksList, result)
         break search
       elif result.size > size:
-        #c_fprintf(c_stdout, "res size: %lld; size: %lld\n", result.size, size)
         ListRemove(a.freeChunksList, result)
         splitChunk(a, result, size)
         break search

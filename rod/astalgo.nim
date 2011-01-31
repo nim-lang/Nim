@@ -194,7 +194,7 @@ proc toYamlChar(c: Char): string =
   of '\'', '\"', '\\': result = '\\' & c
   else: result = c & ""
   
-proc makeYamlString(s: string): PRope = 
+proc makeYamlString*(s: string): PRope = 
   # We have to split long strings into many ropes. Otherwise
   # this could trigger InternalError(111). See the ropes module for
   # further information.
