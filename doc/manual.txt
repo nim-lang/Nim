@@ -533,11 +533,11 @@ The IEEE standard defines five types of floating-point exceptions:
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
 The IEEE exceptions are either ignored at runtime or mapped to the 
-Nimrod exceptions: `EFloatInvalidOp`:idx, `EFloatDivByZero`:idx:,
-`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:\. 
+Nimrod exceptions: `EFloatInvalidOp`:idx:, `EFloatDivByZero`:idx:,
+`EFloatOverflow`:idx:, `EFloatUnderflow`:idx:, and `EFloatInexact`:idx:. 
 These exceptions inherit from the `EFloatingPoint`:idx: base class.
 
-Nimrod provides the pragmas `NaNChecks`:idx and `InfChecks`:idx:\ to control
+Nimrod provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nimrod exception:
 
 .. code-block:: nimrod
@@ -950,10 +950,41 @@ If a reference points to *nothing*, it has the value ``nil``.
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: in order to free everything properly,
-the built-in procedure ``GCunref`` has to be called before freeing the
-untraced memory manually!
+the built-in procedure ``GCunref`` has to be called before freeing the untraced
+memory manually:
+
+.. code-block:: nimrod
+  type
+    TData = tuple[x, y: int, s: string]
+
+  # allocate memory for TData on the heap:
+  var d = cast[ptr TData](alloc0(sizeof(TData)))
+
+  # create a new string on the garbage collected heap:
+  d.s = "abc"
+
+  # tell the GC that the string is not needed anymore:
+  GCunref(d.s)
+
+  # free the memory:
+  dealloc(d)
+
+Without the ``GCunref`` call the memory allocated for the ``d.s`` string would
+never be freed. The example also demonstrates two important features for low
+level programming: the ``sizeof`` proc returns the size of a type or value
+in bytes. The ``cast`` operator can circumvent the type system: the compiler
+is forced to treat the result of the ``alloc0`` call (which returns an untyped
+pointer) as if it would have the type ``ptr TData``. Casting should only be
+done if it is unavoidable: it breaks type safety and bugs can lead to
+mysterious crashes.
+
+**Note**: The example only works because the memory is initialized with zero
+(``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
+``nil`` which the string assignment can handle. You need to know low level
+details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
+
 
 Procedural type
 ~~~~~~~~~~~~~~~
@@ -1719,8 +1750,18 @@ Syntax::
 The direct embedding of `assembler`:idx: code into Nimrod code is supported
 by the unsafe ``asm`` statement. Identifiers in the assembler code that refer to
 Nimrod identifiers shall be enclosed in a special character which can be
-specified in the statement's pragmas. The default special character is ``'`'``.
+specified in the statement's pragmas. The default special character is ``'`'``:
 
+.. code-block:: nimrod
+  proc addInt(a, b: int): int {.pure.} =
+    # a in eax, and b in edx
+    asm """
+        mov eax, `a`
+        add eax, `b`
+        jno theEnd
+        call `raiseOverflow`
+      theEnd:
+    """
 
 If expression
 ~~~~~~~~~~~~~
@@ -1729,7 +1770,7 @@ An `if expression` is almost like an if statement, but it is an expression.
 Example:
 
 .. code-block:: nimrod
-  p(if x > 8: 9 else: 10)
+  var y = if x > 8: 9 else: 10
 
 An if expression always results in a value, so the ``else`` part is
 required. ``Elif`` parts are also allowed (but unlikely to be good
@@ -2040,7 +2081,7 @@ convention ``inline``.
 
 If the iterator yields a tuple, there have to be as many iteration variables
 as there are components in the tuple. The i'th iteration variable's type is
-the one of the i'th component.
+the type of the i'th component.
 
 
 Type sections
@@ -2213,7 +2254,7 @@ special ``:`` syntax:
 In the example the two ``writeln`` statements are bound to the ``actions``
 parameter. 
 
-**Note:** Symbol binding rules in templates might change!
+**Note:** Symbol binding rules for templates might change!
 
 Symbol binding within templates happens after template instantation: 
 
@@ -2768,7 +2809,8 @@ a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX). The
 non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nimrod
-  proc gtk_image_new(): PGtkWidget {.cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
+  proc gtk_image_new(): PGtkWidget {.
+    cdecl, dynlib: "libgtk-x11-2.0.so", importc.}
 
 In general, importing a dynamic library does not require any special linker
 options or linking with import libraries. This also implies that no *devel*

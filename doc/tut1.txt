@@ -10,7 +10,11 @@ Nimrod Tutorial (Part I)
 Introduction
 ============
 
-  "Der Mensch ist doch ein Augentier -- schöne Dinge wünsch ich mir."
+.. raw:: html
+  <blockquote><p>
+  "Der Mensch ist doch ein Augentier -- sch&ouml;ne Dinge w&uuml;nsch ich mir."
+  </p></blockquote>
+
 
 This document is a tutorial for the programming language *Nimrod*. After this
 tutorial you will have a decent knowledge about Nimrod. This tutorial assumes
@@ -91,8 +95,7 @@ means tabulator, etc. There are also *raw* string literals:
 .. code-block:: Nimrod
   r"C:\program files\nim"
 
-In raw literals the backslash is not an escape character, so they fit
-the principle *what you see is what you get*.
+In raw literals the backslash is not an escape character.
 
 The third and last way to write string literals are *long string literals*.
 They are written with three quotes: ``""" ... """``; they can span over
@@ -121,7 +124,7 @@ aligned to the preceding one, it does not start a new comment:
 
 Comments are tokens; they are only allowed at certain places in the input file
 as they belong to the syntax tree! This feature enables perfect source-to-source
-transformations (such as pretty-printing) and superior documentation generators.
+transformations (such as pretty-printing) and simpler documentation generators.
 A nice side-effect is that the human reader of the code always knows exactly
 which code snippet the comment refers to. Since comments are a proper part of
 the syntax, watch their indentation:
@@ -613,7 +616,7 @@ specify them:
 Now the call to ``createWindow`` only needs to set the values that differ
 from the defaults.
 
-Note that type inference works for parameters with default values, there is
+Note that type inference works for parameters with default values; there is
 no need to write ``title: string = "unknown"``, for example.
 
 
@@ -806,7 +809,7 @@ a sequence of bytes. The index operation ``s[i]`` means the i-th *char* of
 
 String variables are initialized with a special value, called ``nil``. However,
 most string operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. Thus one should use empty strings ``""``
+raised) for performance reasons. One should use empty strings ``""``
 rather than ``nil`` as the *empty* value. But ``""`` often creates a string
 object on the heap, so there is a trade-off to be made here.
 
@@ -1025,7 +1028,7 @@ operation             meaning
 ==================    ========================================================
 
 Sets are often used to define a type for the *flags* of a procedure. This is
-much cleaner (and type safe) solution than just defining integer
+a much cleaner (and type safe) solution than just defining integer
 constants that should be ``or``'ed together.
 
 
@@ -1034,8 +1037,7 @@ Arrays
 An `array`:idx: is a simple fixed length container. Each element in
 the array has the same type. The array's index type can be any ordinal type.
 
-Arrays can be constructed via the array constructor: ``[]`` is the empty
-array. The constructor can also be used to include elements.
+Arrays can be constructed via ``[]``: 
 
 .. code-block:: nimrod
 
@@ -1198,41 +1200,6 @@ To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 further information.
 
 If a reference points to *nothing*, it has the value ``nil``.
-
-Special care has to be taken if an untraced object contains traced objects like
-traced references, strings or sequences: in order to free everything properly,
-the built-in procedure ``GCunref`` has to be called before freeing the untraced
-memory manually:
-
-.. code-block:: nimrod
-  type
-    TData = tuple[x, y: int, s: string]
-
-  # allocate memory for TData on the heap:
-  var d = cast[ptr TData](alloc0(sizeof(TData)))
-
-  # create a new string on the garbage collected heap:
-  d.s = "abc"
-
-  # tell the GC that the string is not needed anymore:
-  GCunref(d.s)
-
-  # free the memory:
-  dealloc(d)
-
-Without the ``GCunref`` call the memory allocated for the ``d.s`` string would
-never be freed. The example also demonstrates two important features for low
-level programming: the ``sizeof`` proc returns the size of a type or value
-in bytes. The ``cast`` operator can circumvent the type system: the compiler
-is forced to treat the result of the ``alloc0`` call (which returns an untyped
-pointer) as if it would have the type ``ptr TData``. Casting should only be
-done if it is unavoidable: it breaks type safety and bugs can lead to
-mysterious crashes.
-
-**Note**: The example only works because the memory is initialized with zero
-(``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
-``nil`` which the string assignment can handle. You need to know low level
-details like this when mixing garbage collected data with unmanaged memory.
 
 
 Procedural type
