@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -42,6 +42,8 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
+  NewLines* = {'\13', '\10'}
+    ## the set of characters a newline terminator can start with
 
 proc toLower*(c: Char): Char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerChar".} =
