@@ -16,7 +16,7 @@ const
 
   (c) 2011 Andreas Rumpf
 Usage:
-  nimgrep [options] [pattern] [files/directory]
+  nimgrep [options] [pattern] (file/directory)*
 Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
@@ -44,7 +44,7 @@ type
     ceAbort, ceYes, ceAll, ceNo, ceNone
     
 var
-  filename = ""
+  filenames: seq[string] = @[]
   pattern = ""
   replacement = ""
   options: TOptions
@@ -107,6 +107,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
 proc processFile(filename: string) = 
   var buffer = system.readFile(filename)
   if isNil(buffer): quit("cannot open file: " & filename)
+  stdout.writeln(filename)
   var pegp: TPeg
   var rep: TRegex
   var result: string
@@ -204,13 +205,13 @@ for kind, key, val in getopt():
   case kind
   of cmdArgument:
     if options.contains(optStdIn): 
-      filename = key
+      filenames.add(key)
     elif pattern.len == 0: 
       pattern = key
     elif options.contains(optReplace) and replacement.len == 0:
       replacement = key
     else:
-      filename = key
+      filenames.add(key)
   of cmdLongOption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
@@ -242,7 +243,7 @@ if optStdin in options:
 if pattern.len == 0:
   writeHelp()
 else: 
-  if filename.len == 0: filename = os.getCurrentDir()
+  if filenames.len == 0: filenames.add(os.getCurrentDir())
   if optRegex notin options: 
     if optIgnoreStyle in options: 
       pattern = "\\y " & pattern
@@ -255,5 +256,6 @@ else:
       quit "ignorestyle not supported for regular expressions"
     if optWord in options:
       pattern = r"\b (:?" & pattern & r") \b"
-  walker(filename)
+  for f in items(filenames):
+    walker(f)
 
