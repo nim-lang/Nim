@@ -1,7 +1,7 @@
 #
 #
 #           Nimrod Grep Utility
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -11,21 +11,28 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Usage = """
-Usage: nimgrep [options] [pattern] [files/directory]
+  Version = "0.7"
+  Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
+
+  (c) 2011 Andreas Rumpf
+Usage:
+  nimgrep [options] [pattern] [files/directory]
 Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
   --peg               pattern is a peg (default)
-  --re                pattern is a regular expression
+  --re                pattern is a regular expression; extended syntax for
+                      the regular expression is always turned on
   --recursive         process directories recursively
   --confirm           confirm each occurence/replacement; there is a chance 
-                      to abort any time without touching the file(s)
+                      to abort any time without touching the file
   --stdin             read pattern from stdin (to avoid the shell's confusing
                       quoting rules)
   --word, -w          the pattern should have word boundaries
   --ignore_case, -i   be case insensitive
   --ignore_style, -y  be style insensitive
+  --help, -h          shows this help
+  --version, -v       shows the version
 """
 
 type
@@ -48,7 +55,7 @@ proc ask(msg: string): string =
 
 proc Confirm: TConfirmEnum = 
   while true:
-    case normalize(ask("[a]bort; [y]es, a[l]l, [n]o, non[e]: "))
+    case normalize(ask("     [a]bort; [y]es, a[l]l, [n]o, non[e]: "))
     of "a", "abort": return ceAbort 
     of "y", "yes": return ceYes
     of "l", "all": return ceAll
@@ -56,12 +63,7 @@ proc Confirm: TConfirmEnum =
     of "e", "none": return ceNone
     else: nil
 
-proc highlight(a, b, c: string) = 
-  stdout.write(a)
-  terminal.WriteStyled(b)
-  stdout.writeln(c)
-
-proc countLines(s: string, first = 0, last = s.high): int = 
+proc countLines(s: string, first, last: int): int = 
   var i = first
   while i <= last:
     if s[i] == '\13': 
@@ -70,6 +72,37 @@ proc countLines(s: string, first = 0, last = s.high): int =
     elif s[i] == '\10': 
       inc result
     inc i
+
+proc beforePattern(s: string, first: int): int = 
+  result = first-1
+  while result >= 0:
+    if s[result] in newlines: break
+    dec(result)
+  inc(result)
+
+proc afterPattern(s: string, last: int): int = 
+  result = last+1
+  while result < s.len:
+    if s[result] in newlines: break
+    inc(result)
+  dec(result)
+
+proc highlight(s, match, repl: string, t: tuple[first, last: int],
+               line: int, showRepl: bool) = 
+  const alignment = 6
+  stdout.write(line.`$`.align(alignment), ": ")
+  var x = beforePattern(s, t.first)
+  var y = afterPattern(s, t.last)
+  for i in x .. t.first-1: stdout.write(s[i])
+  terminal.WriteStyled(match, {styleUnderscore, styleBright})
+  for i in t.last+1 .. y: stdout.write(s[i])
+  stdout.write("\n")
+  if showRepl:
+    stdout.write(repeatChar(alignment-1), "-> ")
+    for i in x .. t.first-1: stdout.write(s[i])
+    terminal.WriteStyled(repl, {styleUnderscore, styleBright})
+    for i in t.last+1 .. y: stdout.write(s[i])
+    stdout.write("\n")
 
 proc processFile(filename: string) = 
   var buffer = system.readFile(filename)
@@ -92,53 +125,76 @@ proc processFile(filename: string) =
     
   var line = 1
   var i = 0
-  var matches: array[0..re.MaxSubpatterns-1. string]
+  var matches: array[0..re.MaxSubpatterns-1, string]
+  for j in 0..high(matches): matches[j] = ""
   var reallyReplace = true
   while i < buffer.len:
     var t: tuple[first, last: int]
-    if optRegex in options:
-      quit "to implement"
-    else:
+    if optRegex notin options:
       t = findBounds(buffer, pegp, matches, i)
-
+    else:
+      t = findBounds(buffer, rep, matches, i)
     if t.first <= 0: break
     inc(line, countLines(buffer, i, t.first-1))
     
     var wholeMatch = buffer.copy(t.first, t.last)
-    echo "line ", line, ": ", wholeMatch
     
-    if optReplace in options: 
-      var r = replace(wholeMatch, pegp, replacement)
-      
+    if optReplace notin options: 
+      highlight(buffer, wholeMatch, "", t, line, showRepl=false)
+    else:
+      var r: string
+      if optRegex notin options:
+        r = replace(wholeMatch, pegp, replacement % matches)
+      else: 
+        r = replace(wholeMatch, rep, replacement % matches)
       if optConfirm in options: 
+        highlight(buffer, wholeMatch, r, t, line, showRepl=true)
         case Confirm()
-        of ceAbort:
-        of ceYes:
+        of ceAbort: quit(0)
+        of ceYes: reallyReplace = true 
         of ceAll: 
           reallyReplace = true
+          options.excl(optConfirm)
         of ceNo:
           reallyReplace = false
         of ceNone:
           reallyReplace = false
+          options.excl(optConfirm)
+      else:
+        highlight(buffer, wholeMatch, r, t, line, showRepl=reallyReplace)
       if reallyReplace:
-        
+        result.add(buffer.copy(i, t.first-1))
+        result.add(r)
+      else:
+        result.add(buffer.copy(i, t.last))
 
     inc(line, countLines(buffer, t.first, t.last))
-    
     i = t.last+1
-    
+  if optReplace in options:
+    result.add(copy(buffer, i))
+    var f: TFile
+    if open(f, filename, fmWrite):
+      f.write(result)
+      f.close()
+    else:
+      quit "cannot open file for overwriting: " & filename
+
 
 proc walker(dir: string) = 
+  var isDir = false
   for kind, path in walkDir(dir):
+    isDir = true
     case kind
-    of pcFile: processFile(path)
-    of pcDirectory: 
+    of pcFile: 
+      processFile(path)
+    of pcDir: 
       if optRecursive in options:
         walker(path)
     else: nil
+  if not isDir: processFile(dir)
 
 proc writeHelp() = quit(Usage)
-proc writeVersion() = quit("1.0")
+proc writeVersion() = quit(Version)
 
 proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:
@@ -187,5 +243,17 @@ if pattern.len == 0:
   writeHelp()
 else: 
   if filename.len == 0: filename = os.getCurrentDir()
+  if optRegex notin options: 
+    if optIgnoreStyle in options: 
+      pattern = "\\y " & pattern
+    elif optIgnoreCase in options:
+      pattern = "\\i " & pattern
+    if optWord in options:
+      pattern = r"(&\letter? / ^ )(" & pattern & r") !\letter"
+  else:
+    if optIgnoreStyle in options: 
+      quit "ignorestyle not supported for regular expressions"
+    if optWord in options:
+      pattern = r"\b (:?" & pattern & r") \b"
   walker(filename)
 

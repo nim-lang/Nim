@@ -42,6 +42,7 @@ Additions
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,
   ``\title``, ``\white``.
 - Pegs support the new built-in ``\skip`` operation.
+- Pegs support the ``$`` and ``^`` anchors.
 - Source code filters are now documented.
 - Added ``emit`` pragma for direct code generator control.
 - Additional operations were added to the ``complex`` module. 

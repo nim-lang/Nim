@@ -80,6 +80,24 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
     if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
     else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
+  
+proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
+                 start = 0): tuple[first, last: int] =
+  ## returns the starting position and end position of ``pattern`` in ``s`` 
+  ## and the captured
+  ## substrings in the array ``matches``. If it does not match, nothing
+  ## is written into ``matches`` and (-1,0) is returned.
+  var
+    rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
+    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  if res < 0'i32: return (-1, 0)
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
+    else: matches[i-1] = ""
+  return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
   var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]

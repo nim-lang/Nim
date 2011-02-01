@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -65,7 +65,8 @@ type
     pkSearch,           ## @a     --> Internal DSL: @a
     pkCapturedSearch,   ## {@} a  --> Internal DSL: @@a
     pkRule,             ## a <- b
-    pkList              ## a, b
+    pkList,             ## a, b
+    pkStartAnchor       ## ^      --> Internal DSL: startAnchor()
   TNonTerminalFlag = enum
     ntDeclared, ntUsed
   TNonTerminal {.final.} = object ## represents a non terminal symbol
@@ -263,6 +264,14 @@ proc UnicodeWhitespace*: TPeg {.inline.} =
   ## constructs the PEG ``\white`` which matches any Unicode 
   ## whitespace character.
   result.kind = pkWhitespace
+
+proc startAnchor*: TPeg {.inline.} = 
+  ## constructs the PEG ``^`` which matches the start of the input.  
+  result.kind = pkStartAnchor
+
+proc endAnchor*: TPeg {.inline.} = 
+  ## constructs the PEG ``$`` which matches the end of the input.  
+  result = !any()
 
 proc capture*(a: TPeg): TPeg {.nosideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
@@ -484,6 +493,8 @@ proc toStrAux(r: TPeg, res: var string) =
     for i in 0 .. high(r.sons):
       toStrAux(r.sons[i], res)
       add(res, "\n")  
+  of pkStartAnchor:
+    add(res, '^')
 
 proc `$` *(r: TPeg): string {.nosideEffect, rtl, extern: "npegsToString".} =
   ## converts a PEG to its string representation
@@ -496,6 +507,7 @@ type
   TCaptures* {.final.} = object ## contains the captured substrings.
     matches: array[0..maxSubpatterns-1, tuple[first, last: int]]
     ml: int
+    origStart: int
 
 proc bounds*(c: TCaptures, 
              i: range[0..maxSubpatterns-1]): tuple[first, last: int] = 
@@ -721,6 +733,9 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef)) 
     n.term = s.copy(a, b)
     result = rawMatch(s, n, start, c)
+  of pkStartAnchor:
+    if c.origStart == start: result = 0
+    else: result = -1
   of pkRule, pkList: assert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
@@ -730,6 +745,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
   var c: TCaptures
+  c.origStart = start
   result = rawMatch(s, pattern, start, c) == len(s) -start
   if result:
     for i in 0..c.ml-1:
@@ -739,6 +755,7 @@ proc match*(s: string, pattern: TPeg,
             start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
   var c: TCaptures
+  c.origStart = start
   result = rawMatch(s, pattern, start, c) == len(s)-start
 
 proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
@@ -748,6 +765,7 @@ proc matchLen*(s: string, pattern: TPeg, matches: var openarray[string],
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
   var c: TCaptures
+  c.origStart = start
   result = rawMatch(s, pattern, start, c)
   if result >= 0:
     for i in 0..c.ml-1:
@@ -760,6 +778,7 @@ proc matchLen*(s: string, pattern: TPeg,
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
   var c: TCaptures
+  c.origStart = start
   result = rawMatch(s, pattern, start, c)
 
 proc find*(s: string, pattern: TPeg, matches: var openarray[string],
@@ -988,14 +1007,16 @@ type
     tkAt,               ## '@'
     tkBuiltin,          ## \identifier
     tkEscaped,          ## \\
-    tkDollar            ## '$'
+    tkBackref,          ## '$'
+    tkDollar,           ## '$'
+    tkHat               ## '^'
   
   TToken {.final.} = object  ## a token
     kind: TTokKind           ## the type of the token
     modifier: TModifier
     literal: string          ## the parsed (string) literal
     charset: set[char]       ## if kind == tkCharSet
-    index: int               ## if kind == tkDollar
+    index: int               ## if kind == tkBackref
   
   TPegLexer = object          ## the lexer object.
     bufpos: int               ## the current position within the buffer
@@ -1010,7 +1031,7 @@ const
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
     "character set", "(", ")", "{", "}", "{@}",
     "<-", "/", "*", "+", "&", "!", "?",
-    "@", "built-in", "escaped", "$"
+    "@", "built-in", "escaped", "$", "$", "^"
   ]
 
 proc HandleCR(L: var TPegLexer, pos: int): int =
@@ -1155,13 +1176,13 @@ proc getDollar(c: var TPegLexer, tok: var TToken) =
   var pos = c.bufPos + 1
   var buf = c.buf
   if buf[pos] in {'0'..'9'}:
-    tok.kind = tkDollar
+    tok.kind = tkBackref
     tok.index = 0
     while buf[pos] in {'0'..'9'}:
       tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
       inc(pos)
   else:
-    tok.kind = tkInvalid
+    tok.kind = tkDollar
   c.bufpos = pos
   
 proc getCharSet(c: var TPegLexer, tok: var TToken) = 
@@ -1280,7 +1301,8 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
     tok.literal = "[EOF]"
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
-    if c.buf[c.bufpos] in {'\'', '"', '$'}:
+    if c.buf[c.bufpos] in {'\'', '"'} or 
+        c.buf[c.bufpos] == '$' and c.buf[c.bufpos+1] in {'0'..'9'}:
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
@@ -1331,6 +1353,10 @@ proc getTok(c: var TPegLexer, tok: var TToken) =
       tok.kind = tkCurlyAt
       inc(c.bufpos)
       add(tok.literal, '@')
+  of '^':
+    tok.kind = tkHat
+    inc(c.bufpos)
+    add(tok.literal, '^')
   else:
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
@@ -1474,7 +1500,13 @@ proc primary(p: var TPegParser): TPeg =
   of tkEscaped:
     result = term(p.tok.literal[0]).token(p)
     getTok(p)
-  of tkDollar:
+  of tkDollar: 
+    result = endAnchor()
+    getTok(p)
+  of tkHat: 
+    result = startAnchor()
+    getTok(p)
+  of tkBackref:
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
     result = modifiedBackRef(p.tok.index, m).token(p)
@@ -1502,7 +1534,8 @@ proc seqExpr(p: var TPegParser): TPeg =
   while true:
     case p.tok.kind
     of tkAmp, tkNot, tkAt, tkStringLit, tkCharset, tkParLe, tkCurlyLe,
-       tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar, tkCurlyAt:
+       tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar, tkBackref, 
+       tkHat, tkCurlyAt:
       result = sequence(result, primary(p))
     of tkIdentifier:
       if not arrowIsNextTok(p):
@@ -1692,4 +1725,6 @@ when isMainModule:
   assert("var1 = key; var2 = key2".replace(
     peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey;var2<-key2key2")
+
+  assert match("prefix/start", peg"^start$", 7)
 
