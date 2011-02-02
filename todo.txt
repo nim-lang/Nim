@@ -27,6 +27,8 @@ Bugs
 - detected by pegs module 64bit: p(result, result) should use a temporary!
 - the parser allows empty object case branches
 - Exception matching needs to take subclasses into account
+- pegs: the anchor '^' does not work because many procs use a linear search
+  and matchLen()
 
 
 To implement
