@@ -28,6 +28,10 @@ Changes affecting backwards compatibility
 
 - Operators starting with ``^`` are now right-associative and have the highest 
   priority.
+- Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` 
+  instead.
+- Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` 
+  instead.
 
 
 Additions

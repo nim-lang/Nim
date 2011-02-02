@@ -16,7 +16,7 @@ const
 
   (c) 2011 Andreas Rumpf
 Usage:
-  nimgrep [options] [pattern] (file/directory)*
+  nimgrep [options] [pattern] [replacement] (file/directory)*
 Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
@@ -29,8 +29,9 @@ Options:
   --stdin             read pattern from stdin (to avoid the shell's confusing
                       quoting rules)
   --word, -w          the pattern should have word boundaries
-  --ignore_case, -i   be case insensitive
-  --ignore_style, -y  be style insensitive
+  --ignoreCase, -i    be case insensitive
+  --ignoreStyle, -y   be style insensitive
+  --ext:EX1|EX2|...   only search the files with the given extension(s)
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -47,6 +48,7 @@ var
   filenames: seq[string] = @[]
   pattern = ""
   replacement = ""
+  extensions: seq[string] = @[]
   options: TOptions
 
 proc ask(msg: string): string =
@@ -180,6 +182,10 @@ proc processFile(filename: string) =
     else:
       quit "cannot open file for overwriting: " & filename
 
+proc hasRightExt(filename: string, exts: seq[string]): bool =
+  var y = splitFile(filename).ext.copy(1) # skip leading '.'
+  for x in items(exts): 
+    if os.cmpPaths(x, y) == 0: return true
 
 proc walker(dir: string) = 
   var isDir = false
@@ -187,7 +193,8 @@ proc walker(dir: string) =
     isDir = true
     case kind
     of pcFile: 
-      processFile(path)
+      if extensions.len == 0 or path.hasRightExt(extensions):
+        processFile(path)
     of pcDir: 
       if optRecursive in options:
         walker(path)
@@ -224,6 +231,7 @@ for kind, key, val in getopt():
     of "word", "w": incl(options, optWord)
     of "ignorecase", "i": incl(options, optIgnoreCase)
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
+    of "ext": extensions = val.split('|')
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: writeHelp()
@@ -243,7 +251,8 @@ if optStdin in options:
 if pattern.len == 0:
   writeHelp()
 else: 
-  if filenames.len == 0: filenames.add(os.getCurrentDir())
+  if filenames.len == 0: 
+    filenames.add(os.getCurrentDir())
   if optRegex notin options: 
     if optIgnoreStyle in options: 
       pattern = "\\y " & pattern
