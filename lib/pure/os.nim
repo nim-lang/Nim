@@ -1165,7 +1165,7 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var int32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
-proc getApplicationFilename*(): string {.rtl, extern: "nos$1".} =
+proc getAppFilename*(): string {.rtl, extern: "nos$1".} =
   ## Returns the filename of the application's executable.
 
   # Linux: /proc/<pid>/exe
@@ -1202,9 +1202,21 @@ proc getApplicationFilename*(): string {.rtl, extern: "nos$1".} =
           var x = joinPath(p, result)
           if ExistsFile(x): return x
 
-proc getApplicationDir*(): string {.rtl, extern: "nos$1".} =
+proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
+  ## Returns the filename of the application's executable.
+  ## **Deprecated since version 0.8.12**: use ``getAppFilename`` 
+  ## instead.
+  result = getAppFilename()
+
+proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Returns the directory of the application's executable.
-  result = splitFile(getApplicationFilename()).dir
+  ## **Deprecated since version 0.8.12**: use ``getAppDir`` 
+  ## instead.
+  result = splitFile(getAppFilename()).dir
+
+proc getAppDir*(): string {.rtl, extern: "nos$1".} =
+  ## Returns the directory of the application's executable.
+  result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1".} =
   ## sleeps `milsecs` milliseconds.
