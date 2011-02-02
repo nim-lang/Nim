@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "0.7"
+  Version = "0.8"
   Usage = "nimgrep - Nimrod Grep Utility Version " & version & """
 
   (c) 2011 Andreas Rumpf
@@ -20,15 +20,15 @@ Usage:
 Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
-  --peg               pattern is a peg (default)
-  --re                pattern is a regular expression; extended syntax for
-                      the regular expression is always turned on
+  --peg               pattern is a peg
+  --re                pattern is a regular expression (default); extended 
+                      syntax for the regular expression is always turned on
   --recursive         process directories recursively
   --confirm           confirm each occurence/replacement; there is a chance 
                       to abort any time without touching the file
   --stdin             read pattern from stdin (to avoid the shell's confusing
                       quoting rules)
-  --word, -w          the pattern should have word boundaries
+  --word, -w          the match should have word boundaries (buggy for pegs!)
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
@@ -49,7 +49,7 @@ var
   pattern = ""
   replacement = ""
   extensions: seq[string] = @[]
-  options: TOptions
+  options: TOptions = {optRegex}
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -108,14 +108,16 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
 
 proc processFile(filename: string) = 
   var buffer = system.readFile(filename)
-  if isNil(buffer): quit("cannot open file: " & filename)
+  if isNil(buffer): 
+    echo "cannot open file: ", filename
+    return
   stdout.writeln(filename)
   var pegp: TPeg
   var rep: TRegex
   var result: string
 
   if optRegex in options:
-    if optIgnoreCase in options:
+    if {optIgnoreCase, optIgnoreStyle} * options != {}:
       rep = re(pattern, {reExtended, reIgnoreCase})
     else:
       rep = re(pattern)
@@ -187,10 +189,42 @@ proc hasRightExt(filename: string, exts: seq[string]): bool =
   for x in items(exts): 
     if os.cmpPaths(x, y) == 0: return true
 
+proc styleInsensitive(s: string): string = 
+  template addx: stmt = 
+    result.add(s[i])
+    inc(i)
+  result = ""
+  var i = 0
+  var brackets = 0
+  while i < s.len:
+    case s[i]
+    of 'A'..'Z', 'a'..'z', '0'..'9': 
+      addx()
+      if brackets == 0: result.add("_?")
+    of '_':
+      addx()
+      result.add('?')
+    of '[':
+      addx()
+      inc(brackets)
+    of ']':
+      addx()
+      if brackets > 0: dec(brackets)
+    of '?':
+      addx()
+      if s[i] == '<':
+        addx()
+        while s[i] != '>' and s[i] != '\0': addx()
+    of '\\':
+      addx()
+      if s[i] in strutils.digits: 
+        while s[i] in strutils.digits: addx()
+      else:
+        addx()
+    else: addx()
+
 proc walker(dir: string) = 
-  var isDir = false
   for kind, path in walkDir(dir):
-    isDir = true
     case kind
     of pcFile: 
       if extensions.len == 0 or path.hasRightExt(extensions):
@@ -199,7 +233,7 @@ proc walker(dir: string) =
       if optRecursive in options:
         walker(path)
     else: nil
-  if not isDir: processFile(dir)
+  if existsFile(dir): processFile(dir)
 
 proc writeHelp() = quit(Usage)
 proc writeVersion() = quit(Version)
@@ -223,8 +257,12 @@ for kind, key, val in getopt():
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)
-    of "peg": incl(options, optPeg)
-    of "re": incl(options, optRegex)
+    of "peg":
+      excl(options, optRegex)
+      incl(options, optPeg)
+    of "re":
+      incl(options, optRegex)
+      excl(options, optPeg)
     of "recursive": incl(options, optRecursive)
     of "confirm": incl(options, optConfirm)
     of "stdin": incl(options, optStdin)
@@ -240,7 +278,6 @@ for kind, key, val in getopt():
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
-checkOptions({optIgnoreCase, optPeg}, "ignore_case", "peg")
 
 if optStdin in options: 
   pattern = ask("pattern [ENTER to exit]: ")
@@ -254,15 +291,15 @@ else:
   if filenames.len == 0: 
     filenames.add(os.getCurrentDir())
   if optRegex notin options: 
+    if optWord in options:
+      pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
     if optIgnoreStyle in options: 
       pattern = "\\y " & pattern
     elif optIgnoreCase in options:
       pattern = "\\i " & pattern
-    if optWord in options:
-      pattern = r"(&\letter? / ^ )(" & pattern & r") !\letter"
   else:
     if optIgnoreStyle in options: 
-      quit "ignorestyle not supported for regular expressions"
+      pattern = styleInsensitive(pattern)
     if optWord in options:
       pattern = r"\b (:?" & pattern & r") \b"
   for f in items(filenames):
