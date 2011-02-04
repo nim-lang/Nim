@@ -5,21 +5,23 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
+#include <dirent.h>
+#include <sys/stat.h>
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY50036 TY50036;
-typedef struct TY50448 TY50448;
-typedef struct TY46536 TY46536;
-typedef struct TY42019 TY42019;
+typedef struct TY51036 TY51036;
+typedef struct TY51448 TY51448;
+typedef struct TY47539 TY47539;
+typedef struct TY43019 TY43019;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY42013 TY42013;
-typedef struct TY10402 TY10402;
-typedef struct TY10418 TY10418;
-typedef struct TY10790 TY10790;
-typedef struct TY10414 TY10414;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
+typedef struct TY43013 TY43013;
+typedef struct TY11002 TY11002;
+typedef struct TY11018 TY11018;
+typedef struct TY11396 TY11396;
+typedef struct TY11014 TY11014;
+typedef struct TY11010 TY11010;
+typedef struct TY11394 TY11394;
 typedef struct TNimObject TNimObject;
 struct TGenericSeq {
 NI len;
@@ -30,8 +32,8 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-typedef NimStringDesc* TY72026[3];
-struct TY50036 {
+typedef NimStringDesc* TY73026[3];
+struct TY51036 {
 NimStringDesc* Name;
 NimStringDesc* Pardir;
 NimStringDesc* Dllfrmt;
@@ -46,21 +48,20 @@ NimStringDesc* Exeext;
 NimStringDesc* Extsep;
 NU8 Props;
 };
-typedef TY50036 TY50054[21];
-struct TY50448 {
+typedef TY51036 TY51054[21];
+struct TY51448 {
 NimStringDesc* Name;
 NI Intsize;
 NU8 Endian;
 NI Floatsize;
 NI Bit;
 };
-typedef TY50448 TY50461[12];
-struct TY46536 {
+typedef TY51448 TY51461[12];
+struct TY47539 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-typedef NimStringDesc* TY47016[4];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -69,28 +70,30 @@ TNimType* base;
 TNimNode* node;
 void* finalizer;
 };
-struct TY42019 {
+struct TY43019 {
 TNimType* m_type;
-TY42013* Head;
-TY42013* Tail;
+TY43013* Head;
+TY43013* Tail;
 NI Counter;
 };
-struct TY10402 {
+typedef NimStringDesc* TY73797[6];
+typedef NIM_CHAR TY31757[256];
+struct TY11002 {
 NI Refcount;
 TNimType* Typ;
 };
-struct TY10418 {
+struct TY11018 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY11002** D;
 };
-struct TY10414 {
+struct TY11014 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY11010* Head;
+TY11010** Data;
 };
-struct TY10788 {
+struct TY11394 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -98,15 +101,15 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY10788 Stat;
+struct TY11396 {
+TY11018 Zct;
+TY11018 Decstack;
+TY11014 Cycleroots;
+TY11018 Tempstack;
+TY11394 Stat;
 };
-typedef NimStringDesc* TY46498[13];
-typedef NimStringDesc* TY46478[15];
+typedef NimStringDesc* TY47500[14];
+typedef NimStringDesc* TY47480[15];
 struct TNimNode {
 NU8 kind;
 NI offset;
@@ -118,77 +121,84 @@ TNimNode** sons;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY42013 {
+struct TY43013 {
   TNimObject Sup;
-TY42013* Prev;
-TY42013* Next;
+TY43013* Prev;
+TY43013* Next;
 };
-typedef NI TY8414[16];
-struct TY10410 {
-TY10410* Next;
+typedef NI TY9014[16];
+struct TY11010 {
+TY11010* Next;
 NI Key;
-TY8414 Bits;
+TY9014 Bits;
 };
-N_NIMCALL(void, Messageout_46554)(NimStringDesc* S_46556);
-N_NIMCALL(NimStringDesc*, Getcommandlinedesc_72021)(void);
-N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_23943, NimStringDesc** A_23945, NI A_23945Len0);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18308);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18392, NimStringDesc* Src_18393);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18287);
-N_NIMCALL(NU8, Whichkeyword_71474)(NimStringDesc* Id_71476);
-N_NIMCALL(void, Expectarg_72211)(NimStringDesc* Switch_72213, NimStringDesc* Arg_72214, NU8 Pass_72215, TY46536 Info_72216);
-N_NIMCALL(void, Limessage_46566)(TY46536 Info_46568, NU8 Msg_46569, NimStringDesc* Arg_46570);
-N_NIMCALL(NimStringDesc*, Processpath_72345)(NimStringDesc* Path_72347);
-N_NIMCALL(NimStringDesc*, nosUnixToNativePath)(NimStringDesc* Path_35856);
-N_NIMCALL(NimStringDesc*, Getprefixdir_45108)(void);
-N_NIMCALL(NIM_BOOL, Contains_42159)(TY42019* List_42161, NimStringDesc* Data_42162);
-N_NIMCALL(void, Prependstr_42071)(TY42019* List_42074, NimStringDesc* Data_42075);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12818, void* Src_12819);
-static N_INLINE(TY10402*, Usrtocell_11212)(void* Usr_11214);
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
-static N_INLINE(void, Rtladdzct_12201)(TY10402* C_12203);
-N_NOINLINE(void, Addzct_11201)(TY10418* S_11204, TY10402* C_11205);
-N_NIMCALL(void, Definesymbol_63053)(NimStringDesc* Symbol_63055);
-N_NIMCALL(void, Undefsymbol_63056)(NimStringDesc* Symbol_63058);
-N_NIMCALL(void, Processcompile_72353)(NimStringDesc* Filename_72355);
-N_NIMCALL(NimStringDesc*, Findfile_45089)(NimStringDesc* F_45091);
-N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_37820, NimStringDesc* Ext_37821);
-N_NIMCALL(void, Addexternalfiletocompile_69544)(NimStringDesc* Filename_69546);
-N_NIMCALL(void, Addfiletolink_69559)(NimStringDesc* Filename_69561);
-N_NIMCALL(NimStringDesc*, Completecfilepath_69500)(NimStringDesc* Cfile_69502, NIM_BOOL Createsubdir_69503);
-N_NIMCALL(void, Expectnoarg_72217)(NimStringDesc* Switch_72219, NimStringDesc* Arg_72220, NU8 Pass_72221, TY46536 Info_72222);
-N_NIMCALL(void, Processonoffswitch_72159)(NU32 Op_72161, NimStringDesc* Arg_72162, NU8 Pass_72163, TY46536 Info_72164);
-N_NIMCALL(void, Processspecificnote_72223)(NimStringDesc* Arg_72225, NU8 State_72226, NU8 Pass_72227, TY46536 Info_72228);
-N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-N_NIMCALL(void, Invalidcmdlineoption_72077)(NU8 Pass_72079, NimStringDesc* Switch_72080, TY46536 Info_72081);
-N_NIMCALL(NI, Findstr_71477)(NimStringDesc** A_71480, NI A_71480Len0, NimStringDesc* S_71481);
-N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_1924, NI First_1925);
-N_NIMCALL(void, Processonoffswitchg_72185)(NU32 Op_72187, NimStringDesc* Arg_72188, NU8 Pass_72189, TY46536 Info_72190);
-N_NIMCALL(void, Listsymbols_63062)(void);
-N_NIMCALL(void, Addcompileoption_69460)(NimStringDesc* Option_69462);
-N_NIMCALL(void, Addlinkoption_69454)(NimStringDesc* Option_69456);
-N_NIMCALL(void, Addimplicitmod_45141)(NimStringDesc* Filename_45143);
-N_NIMCALL(NU8, Nametoos_50564)(NimStringDesc* Name_50566);
-N_NIMCALL(void, Settarget_50574)(NU8 O_50576, NU8 C_50577);
-N_NIMCALL(void, Initdefines_63049)(void);
-N_NIMCALL(NU8, Nametocpu_50567)(NimStringDesc* Name_50569);
-N_NIMCALL(NI, nsuParseInt)(NimStringDesc* S_24425);
-N_NIMCALL(void, Writeversioninfo_72059)(NU8 Pass_72061);
-N_NIMCALL(void, Writeadvancedusage_72043)(NU8 Pass_72045);
-N_NIMCALL(void, Helponerror_72031)(NU8 Pass_72033);
-N_NIMCALL(void, Splitswitch_72082)(NimStringDesc* Switch_72084, NimStringDesc** Cmd_72086, NimStringDesc** Arg_72087, NU8 Pass_72088, TY46536 Info_72089);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_12826, void* Src_12827);
-N_NIMCALL(void, Putenv_38431)(NimStringDesc* Key_38433, NimStringDesc* Val_38434);
-N_NIMCALL(void, Setcc_69397)(NimStringDesc* Ccname_69399);
-N_NIMCALL(NI, nsuFindChar)(NimStringDesc* S_25205, NIM_CHAR Sub_25206, NI Start_25207);
-N_NIMCALL(void, Setconfigvar_45137)(NimStringDesc* Key_45139, NimStringDesc* Val_45140);
-STRING_LITERAL(TMP193623, "Nimrod Compiler Version $1 (2011-01-18) [$2: $3]\012Copyright (c) "
+N_NIMCALL(void, Messageout_47557)(NimStringDesc* S_47559);
+N_NIMCALL(NimStringDesc*, Getcommandlinedesc_73021)(void);
+N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_24960, NimStringDesc** A_24962, NI A_24962Len0);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18912);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18999, NimStringDesc* Src_19000);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18889);
+N_NIMCALL(NU8, Whichkeyword_72478)(NimStringDesc* Id_72480);
+N_NIMCALL(void, Expectarg_73217)(NimStringDesc* Switch_73219, NimStringDesc* Arg_73220, NU8 Pass_73221, TY47539 Info_73222);
+N_NIMCALL(void, Limessage_47569)(TY47539 Info_47571, NU8 Msg_47572, NimStringDesc* Arg_47573);
+N_NIMCALL(void, Addpath_73799)(NimStringDesc* Path_73801, TY47539 Info_73802);
+N_NIMCALL(NIM_BOOL, Contains_43159)(TY43019* List_43161, NimStringDesc* Data_43162);
+N_NIMCALL(void, Prependstr_43071)(TY43019* List_43074, NimStringDesc* Data_43075);
+N_NIMCALL(NimStringDesc*, Processpath_73791)(NimStringDesc* Path_73793);
+N_NIMCALL(NimStringDesc*, nosUnixToNativePath)(NimStringDesc* Path_36856);
+N_NIMCALL(NimStringDesc*, Getprefixdir_46109)(void);
+N_NIMCALL(NimStringDesc*, Removetrailingdirsep_46211)(NimStringDesc* Path_46213);
+N_NIMCALL(NimStringDesc*, nosgetHomeDir)(void);
+N_NIMCALL(void, Addpathrec_73806)(NimStringDesc* Dir_73808, TY47539 Info_73809);
+N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_18908);
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_18849, NimStringDesc* B_18850);
+N_NIMCALL(NimStringDesc*, HEX2F_38480)(NimStringDesc* Head_38482, NimStringDesc* Tail_38483);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13418, void* Src_13419);
+static N_INLINE(TY11002*, Usrtocell_11812)(void* Usr_11814);
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405);
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410);
+static N_INLINE(void, Rtladdzct_12801)(TY11002* C_12803);
+N_NOINLINE(void, Addzct_11801)(TY11018* S_11804, TY11002* C_11805);
+N_NIMCALL(void, Definesymbol_64053)(NimStringDesc* Symbol_64055);
+N_NIMCALL(void, Undefsymbol_64056)(NimStringDesc* Symbol_64058);
+N_NIMCALL(void, Processcompile_73357)(NimStringDesc* Filename_73359);
+N_NIMCALL(NimStringDesc*, Findfile_46090)(NimStringDesc* F_46092);
+N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_38820, NimStringDesc* Ext_38821);
+N_NIMCALL(void, Addexternalfiletocompile_70551)(NimStringDesc* Filename_70553);
+N_NIMCALL(void, Addfiletolink_70566)(NimStringDesc* Filename_70568);
+N_NIMCALL(NimStringDesc*, Completecfilepath_70507)(NimStringDesc* Cfile_70509, NIM_BOOL Createsubdir_70510);
+N_NIMCALL(void, Expectnoarg_73223)(NimStringDesc* Switch_73225, NimStringDesc* Arg_73226, NU8 Pass_73227, TY47539 Info_73228);
+N_NIMCALL(void, Processonoffswitch_73165)(NU32 Op_73167, NimStringDesc* Arg_73168, NU8 Pass_73169, TY47539 Info_73170);
+N_NIMCALL(void, Processspecificnote_73229)(NimStringDesc* Arg_73231, NU8 State_73232, NU8 Pass_73233, TY47539 Info_73234);
+N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1803, NIM_CHAR C_1804);
+N_NIMCALL(void, Invalidcmdlineoption_73077)(NU8 Pass_73079, NimStringDesc* Switch_73080, TY47539 Info_73081);
+N_NIMCALL(NI, Findstr_72481)(NimStringDesc** A_72484, NI A_72484Len0, NimStringDesc* S_72485);
+N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_2324, NI First_2325);
+N_NIMCALL(void, Processonoffswitchg_73191)(NU32 Op_73193, NimStringDesc* Arg_73194, NU8 Pass_73195, TY47539 Info_73196);
+N_NIMCALL(void, Listsymbols_64062)(void);
+N_NIMCALL(void, Addcompileoption_70464)(NimStringDesc* Option_70466);
+N_NIMCALL(void, Addlinkoption_70456)(NimStringDesc* Option_70458);
+N_NIMCALL(void, Addimplicitmod_46142)(NimStringDesc* Filename_46144);
+N_NIMCALL(NU8, Nametoos_51564)(NimStringDesc* Name_51566);
+N_NIMCALL(void, Settarget_51574)(NU8 O_51576, NU8 C_51577);
+N_NIMCALL(void, Initdefines_64049)(void);
+N_NIMCALL(NU8, Nametocpu_51567)(NimStringDesc* Name_51569);
+N_NIMCALL(NI, nsuParseInt)(NimStringDesc* S_25453);
+N_NIMCALL(void, Writeversioninfo_73059)(NU8 Pass_73061);
+N_NIMCALL(void, Writeadvancedusage_73043)(NU8 Pass_73045);
+N_NIMCALL(void, Helponerror_73031)(NU8 Pass_73033);
+N_NIMCALL(void, Splitswitch_73082)(NimStringDesc* Switch_73084, NimStringDesc** Cmd_73086, NimStringDesc** Arg_73087, NU8 Pass_73088, TY47539 Info_73089);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_13426, void* Src_13427);
+N_NIMCALL(void, Putenv_39432)(NimStringDesc* Key_39434, NimStringDesc* Val_39435);
+N_NIMCALL(void, Setcc_70398)(NimStringDesc* Ccname_70400);
+N_NIMCALL(NI, nsuFindChar)(NimStringDesc* S_26216, NIM_CHAR Sub_26217, NI Start_26218);
+N_NIMCALL(void, Setconfigvar_46138)(NimStringDesc* Key_46140, NimStringDesc* Val_46141);
+STRING_LITERAL(TMP195623, "Nimrod Compiler Version $1 (2011-02-04) [$2: $3]\012Copyright (c) "
 "2004-2011 by Andreas Rumpf\012", 90);
-STRING_LITERAL(TMP193624, "0.8.11", 6);
-extern NIM_CONST TY50054 Os_50053;
-extern NIM_CONST TY50461 Cpu_50460;
-STRING_LITERAL(TMP193625, "Usage:\012  nimrod command [options] inputfile [arguments]\012Command"
+STRING_LITERAL(TMP195624, "0.8.11", 6);
+extern NIM_CONST TY51054 Os_51053;
+extern NIM_CONST TY51461 Cpu_51460;
+STRING_LITERAL(TMP195625, "Usage:\012  nimrod command [options] inputfile [arguments]\012Command"
 ":\012  compile, c                compile project with default code "
 "generator (C)\012  compileToC, cc            compile project with C"
 " code generator\012  doc                       generate the documen"
@@ -202,35 +212,38 @@ STRING_LITERAL(TMP193625, "Usage:\012  nimrod command [options] inputfile [argum
 "efine a conditional symbol\012  -f, --forceBuild          force reb"
 "uilding of all modules\012  --stackTrace:on|off       turn stack tr"
 "acing on|off\012  --lineTrace:on|off        turn line tracing on|of"
-"f\012  --debugger:on|off         turn Embedded Nimrod Debugger on|o"
-"ff\012  -x, --checks:on|off       turn all runtime checks on|off\012  "
-"--objChecks:on|off        turn obj conversion checks on|off\012  --"
-"fieldChecks:on|off      turn case variant field checks on|off\012  "
-"--rangeChecks:on|off      turn range checks on|off\012  --boundChec"
-"ks:on|off      turn bound checks on|off\012  --overflowChecks:on|of"
-"f   turn int over-/underflow checks on|off\012  -a, --assertions:on"
-"|off   turn assertions on|off\012  --floatChecks:on|off      turn a"
-"ll floating point (NaN/Inf) checks on|off\012  --nanChecks:on|off  "
-"      turn NaN checks on|off\012  --infChecks:on|off        turn In"
-"f checks on|off\012  --deadCodeElim:on|off     whole program dead c"
-"ode elimination on|off\012  --opt:none|speed|size     optimize not "
-"at all or for speed|size\012  --app:console|gui|lib     generate a "
-"console|GUI application|dynamic library\012  -r, --run             "
-"    run the compiled program with given arguments\012  --advanced  "
-"              show advanced command line switches\012  -h, --help  "
-"              show this help\012", 1948);
-STRING_LITERAL(TMP193635, "nimrod", 6);
-STRING_LITERAL(TMP193638, "lib", 3);
-STRING_LITERAL(TMP193639, "", 0);
-STRING_LITERAL(TMP193655, "boehmgc", 7);
-STRING_LITERAL(TMP193656, "nogc", 4);
-extern NIM_CONST TY46498 Hintstostr_46497;
-extern NIM_CONST TY46478 Warningstostr_46477;
-STRING_LITERAL(TMP193657, "endb", 4);
-STRING_LITERAL(TMP193658, "profiler", 8);
-STRING_LITERAL(TMP193659, "guiapp", 6);
-STRING_LITERAL(TMP193660, "library", 7);
-STRING_LITERAL(TMP193664, "Advanced commands:\012  compileToOC, oc           compile project "
+"f\012  --threads:on|off          turn support for multi-threading o"
+"n|off\012  -x, --checks:on|off       turn all runtime checks on|off"
+"\012  --objChecks:on|off        turn obj conversion checks on|off\012 "
+" --fieldChecks:on|off      turn case variant field checks on|off"
+"\012  --rangeChecks:on|off      turn range checks on|off\012  --boundC"
+"hecks:on|off      turn bound checks on|off\012  --overflowChecks:on"
+"|off   turn int over-/underflow checks on|off\012  -a, --assertions"
+":on|off   turn assertions on|off\012  --floatChecks:on|off      tur"
+"n all floating point (NaN/Inf) checks on|off\012  --nanChecks:on|of"
+"f        turn NaN checks on|off\012  --infChecks:on|off        turn"
+" Inf checks on|off\012  --deadCodeElim:on|off     whole program dea"
+"d code elimination on|off\012  --opt:none|speed|size     optimize n"
+"ot at all or for speed|size\012  --app:console|gui|lib     generate"
+" a console|GUI application|dynamic library\012  -r, --run          "
+"       run the compiled program with given arguments\012  --advance"
+"d                show advanced command line switches\012  -h, --hel"
+"p                show this help\012", 1951);
+STRING_LITERAL(TMP195635, "nimrod", 6);
+STRING_LITERAL(TMP195638, "lib", 3);
+STRING_LITERAL(TMP195639, "home", 4);
+STRING_LITERAL(TMP195642, ".", 1);
+STRING_LITERAL(TMP195643, "..", 2);
+STRING_LITERAL(TMP195644, "", 0);
+STRING_LITERAL(TMP195660, "boehmgc", 7);
+STRING_LITERAL(TMP195661, "nogc", 4);
+extern NIM_CONST TY47500 Hintstostr_47499;
+extern NIM_CONST TY47480 Warningstostr_47479;
+STRING_LITERAL(TMP195662, "endb", 4);
+STRING_LITERAL(TMP195663, "profiler", 8);
+STRING_LITERAL(TMP195664, "guiapp", 6);
+STRING_LITERAL(TMP195665, "library", 7);
+STRING_LITERAL(TMP195669, "Advanced commands:\012  compileToOC, oc           compile project "
 "to Objective C code\012  run                       run the project "
 "(with Tiny C backend; buggy!)\012  pretty                    pretty"
 " print the inputfile\012  genDepend                 generate a DOT "
@@ -251,879 +264,1004 @@ STRING_LITERAL(TMP193664, "Advanced commands:\012  compileToOC, oc           com
 "text\')\012  --os:SYMBOL               set the target operating syst"
 "em (cross-compilation)\012  --cpu:SYMBOL              set the targe"
 "t processor (cross-compilation)\012  --debuginfo               enab"
-"les debug information\012  -t, --passc:OPTION        pass an option"
-" to the C compiler\012  -l, --passl:OPTION        pass an option to"
-" the linker\012  --genMapping              generate a mapping file "
-"containing\012                            (Nimrod, mangled) identif"
-"ier pairs\012  --lineDir:on|off          generation of #line direct"
-"ive on|off\012  --checkpoints:on|off      turn checkpoints on|off; "
-"for debugging Nimrod\012  --skipCfg                 do not read the"
-" general configuration file\012  --skipProjCfg             do not r"
-"ead the project\'s configuration file\012  --gc:refc|boehm|none     "
-" use Nimrod\'s native GC|Boehm GC|no GC\012  --index:FILE           "
-"   use FILE to generate a documenation index file\012  --putenv:key"
-"=value        set an environment variable\012  --listCmd           "
-"      list the commands used to execute external programs\012  --pa"
-"rallelBuild=0|1|...   perform a parallel build\012                 "
-"           value = number of processors (0 for auto-detect)\012  --"
-"verbosity:0|1|2|3       set Nimrod\'s verbosity level (0 is defau"
-"lt)\012  -v, --version             show detailed version informatio"
-"n\012", 2433);
-NIM_BOOL Helpwritten_72028;
-NIM_BOOL Versionwritten_72029;
-NIM_BOOL Advhelpwritten_72030;
-extern NU8 Hostos_50563;
-extern NU8 Hostcpu_50561;
-extern NimStringDesc* Libpath_45111;
-extern TY42019 Searchpaths_45080;
-extern NimStringDesc* Outfile_45081;
-extern TY10790 Gch_10808;
-extern NU32 Gglobaloptions_45078;
-extern NU32 Goptions_45076;
-extern NU32 Gnotes_46543;
-extern NimStringDesc* Gindexfile_45082;
-extern NU8 Targetcpu_50560;
-extern NU8 Targetos_50562;
-extern NI Gverbosity_45084;
-extern NI Gnumberofprocessors_45085;
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18392, NimStringDesc* Src_18393) {
-memcpy(((NCSTRING) (&(*Dest_18392).data[((*Dest_18392).Sup.len)-0])), ((NCSTRING) ((*Src_18393).data)), ((int) ((NI32)((NI32)((*Src_18393).Sup.len + 1) * 1))));
-(*Dest_18392).Sup.len += (*Src_18393).Sup.len;
+"les debug information\012  --debugger:on|off         turn Embedded "
+"Nimrod Debugger on|off\012  -t, --passc:OPTION        pass an optio"
+"n to the C compiler\012  -l, --passl:OPTION        pass an option t"
+"o the linker\012  --genMapping              generate a mapping file"
+" containing\012                            (Nimrod, mangled) identi"
+"fier pairs\012  --lineDir:on|off          generation of #line direc"
+"tive on|off\012  --checkpoints:on|off      turn checkpoints on|off;"
+" for debugging Nimrod\012  --skipCfg                 do not read th"
+"e general configuration file\012  --skipProjCfg             do not "
+"read the project\'s configuration file\012  --gc:refc|boehm|none    "
+"  use Nimrod\'s native GC|Boehm GC|no GC\012  --index:FILE          "
+"    use FILE to generate a documenation index file\012  --putenv:ke"
+"y=value        set an environment variable\012  --listCmd          "
+"       list the commands used to execute external programs\012  --p"
+"arallelBuild=0|1|...   perform a parallel build\012                "
+"            value = number of processors (0 for auto-detect)\012  -"
+"-verbosity:0|1|2|3       set Nimrod\'s verbosity level (0 is defa"
+"ult)\012  -v, --version             show detailed version informati"
+"on\012", 2498);
+NIM_BOOL Helpwritten_73028;
+NIM_BOOL Versionwritten_73029;
+NIM_BOOL Advhelpwritten_73030;
+extern NU8 Hostos_51563;
+extern NU8 Hostcpu_51561;
+extern TY43019 Searchpaths_46081;
+extern NimStringDesc* Libpath_46112;
+extern NimStringDesc* Outfile_46082;
+extern TY11396 Gch_11414;
+extern NU32 Gglobaloptions_46079;
+extern NU32 Goptions_46077;
+extern NU32 Gnotes_47546;
+extern NimStringDesc* Gindexfile_46083;
+extern NU8 Targetcpu_51560;
+extern NU8 Targetos_51562;
+extern NI Gverbosity_46085;
+extern NI Gnumberofprocessors_46086;
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18999, NimStringDesc* Src_19000) {
+memcpy(((NCSTRING) (&(*Dest_18999).data[((*Dest_18999).Sup.len)-0])), ((NCSTRING) ((*Src_19000).data)), ((int) ((NI32)((NI32)((*Src_19000).Sup.len + 1) * 1))));
+(*Dest_18999).Sup.len += (*Src_19000).Sup.len;
 }
-N_NIMCALL(NimStringDesc*, Getcommandlinedesc_72021)(void) {
-NimStringDesc* Result_72023;
+N_NIMCALL(NimStringDesc*, Getcommandlinedesc_73021)(void) {
+NimStringDesc* Result_73023;
 NimStringDesc* LOC1;
-TY72026 LOC2;
+TY73026 LOC2;
 NimStringDesc* LOC3;
-Result_72023 = 0;
+Result_73023 = 0;
 LOC1 = 0;
 memset((void*)&LOC2, 0, sizeof(LOC2));
-LOC2[0] = copyString(((NimStringDesc*) &TMP193624));
-LOC2[1] = copyString(Os_50053[(Hostos_50563)-1].Name);
-LOC2[2] = copyString(Cpu_50460[(Hostcpu_50561)-1].Name);
+LOC2[0] = copyString(((NimStringDesc*) &TMP195624));
+LOC2[1] = copyString(Os_51053[(Hostos_51563)-1].Name);
+LOC2[2] = copyString(Cpu_51460[(Hostcpu_51561)-1].Name);
 LOC3 = 0;
-LOC3 = nsuFormatOpenArray(((NimStringDesc*) &TMP193623), LOC2, 3);
-LOC1 = rawNewString(LOC3->Sup.len + 1948);
+LOC3 = nsuFormatOpenArray(((NimStringDesc*) &TMP195623), LOC2, 3);
+LOC1 = rawNewString(LOC3->Sup.len + 1951);
 appendString(LOC1, LOC3);
-appendString(LOC1, ((NimStringDesc*) &TMP193625));
-Result_72023 = LOC1;
-return Result_72023;
+appendString(LOC1, ((NimStringDesc*) &TMP195625));
+Result_73023 = LOC1;
+return Result_73023;
 }
-N_NIMCALL(void, Writecommandlineusage_72001)(void) {
+N_NIMCALL(void, Writecommandlineusage_73001)(void) {
 NimStringDesc* LOC4;
-if (!!(Helpwritten_72028)) goto LA2;
+if (!!(Helpwritten_73028)) goto LA2;
 LOC4 = 0;
-LOC4 = Getcommandlinedesc_72021();
-Messageout_46554(LOC4);
-Helpwritten_72028 = NIM_TRUE;
+LOC4 = Getcommandlinedesc_73021();
+Messageout_47557(LOC4);
+Helpwritten_73028 = NIM_TRUE;
 LA2: ;
 }
-N_NIMCALL(void, Expectarg_72211)(NimStringDesc* Switch_72213, NimStringDesc* Arg_72214, NU8 Pass_72215, TY46536 Info_72216) {
-if (!((Arg_72214) && (Arg_72214)->Sup.len == 0)) goto LA2;
-Limessage_46566(Info_72216, ((NU8) 42), Switch_72213);
+N_NIMCALL(void, Expectarg_73217)(NimStringDesc* Switch_73219, NimStringDesc* Arg_73220, NU8 Pass_73221, TY47539 Info_73222) {
+if (!((Arg_73220) && (Arg_73220)->Sup.len == 0)) goto LA2;
+Limessage_47569(Info_73222, ((NU8) 42), Switch_73219);
 LA2: ;
 }
-N_NIMCALL(NimStringDesc*, Processpath_72345)(NimStringDesc* Path_72347) {
-NimStringDesc* Result_72348;
-TY47016 LOC1;
+N_NIMCALL(void, Addpath_73799)(NimStringDesc* Path_73801, TY47539 Info_73802) {
+NIM_BOOL LOC2;
+LOC2 = Contains_43159(&Searchpaths_46081, Path_73801);
+if (!!(LOC2)) goto LA3;
+Prependstr_43071(&Searchpaths_46081, Path_73801);
+LA3: ;
+}
+N_NIMCALL(NimStringDesc*, Processpath_73791)(NimStringDesc* Path_73793) {
+NimStringDesc* Result_73794;
+TY73797 LOC1;
 NimStringDesc* LOC2;
-Result_72348 = 0;
+NimStringDesc* LOC3;
+Result_73794 = 0;
 memset((void*)&LOC1, 0, sizeof(LOC1));
-LOC1[0] = copyString(((NimStringDesc*) &TMP193635));
-LOC1[1] = Getprefixdir_45108();
-LOC1[2] = copyString(((NimStringDesc*) &TMP193638));
-LOC1[3] = copyString(Libpath_45111);
+LOC1[0] = copyString(((NimStringDesc*) &TMP195635));
+LOC1[1] = Getprefixdir_46109();
+LOC1[2] = copyString(((NimStringDesc*) &TMP195638));
+LOC1[3] = copyString(Libpath_46112);
+LOC1[4] = copyString(((NimStringDesc*) &TMP195639));
 LOC2 = 0;
-LOC2 = nsuFormatOpenArray(Path_72347, LOC1, 4);
-Result_72348 = nosUnixToNativePath(LOC2);
-return Result_72348;
+LOC2 = nosgetHomeDir();
+LOC1[5] = Removetrailingdirsep_46211(LOC2);
+LOC3 = 0;
+LOC3 = nsuFormatOpenArray(Path_73793, LOC1, 6);
+Result_73794 = nosUnixToNativePath(LOC3);
+return Result_73794;
 }
-static N_INLINE(TY10402*, Usrtocell_11212)(void* Usr_11214) {
-TY10402* Result_11215;
-Result_11215 = 0;
-Result_11215 = ((TY10402*) ((NI32)((NU32)(((NI) (Usr_11214))) - (NU32)(((NI) (((NI)sizeof(TY10402))))))));
-return Result_11215;
-}
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
-NI Result_7407;
-Result_7407 = 0;
-(*Memloc_3004) += X_3005;
-Result_7407 = (*Memloc_3004);
-return Result_7407;
-}
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
-NI Result_7606;
-Result_7606 = 0;
-(*Memloc_3009) -= X_3010;
-Result_7606 = (*Memloc_3009);
-return Result_7606;
-}
-static N_INLINE(void, Rtladdzct_12201)(TY10402* C_12203) {
-Addzct_11201(&Gch_10808.Zct, C_12203);
-}
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12818, void* Src_12819) {
-TY10402* C_12820;
-NI LOC4;
-TY10402* C_12822;
-NI LOC9;
-if (!!((Src_12819 == NIM_NIL))) goto LA2;
-C_12820 = 0;
-C_12820 = Usrtocell_11212(Src_12819);
-LOC4 = Atomicinc_3001(&(*C_12820).Refcount, 8);
+static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_18849, NimStringDesc* B_18850) {
+NIM_BOOL Result_18851;
+NIM_BOOL LOC5;
+NIM_BOOL LOC9;
+int LOC11;
+Result_18851 = 0;
+if (!(A_18849 == B_18850)) goto LA2;
+Result_18851 = NIM_TRUE;
+goto BeforeRet;
 LA2: ;
-if (!!(((*Dest_12818) == NIM_NIL))) goto LA6;
-C_12822 = 0;
-C_12822 = Usrtocell_11212((*Dest_12818));
-LOC9 = Atomicdec_3006(&(*C_12822).Refcount, 8);
+LOC5 = (A_18849 == NIM_NIL);
+if (LOC5) goto LA6;
+LOC5 = (B_18850 == NIM_NIL);
+LA6: ;
+if (!LOC5) goto LA7;
+Result_18851 = NIM_FALSE;
+goto BeforeRet;
+LA7: ;
+LOC9 = ((*A_18849).Sup.len == (*B_18850).Sup.len);
+if (!(LOC9)) goto LA10;
+LOC11 = memcmp(((NCSTRING) ((*A_18849).data)), ((NCSTRING) ((*B_18850).data)), ((int) ((NI32)((*A_18849).Sup.len * 1))));
+LOC9 = (LOC11 == ((NI32) 0));
+LA10: ;
+Result_18851 = LOC9;
+goto BeforeRet;
+BeforeRet: ;
+return Result_18851;
+}
+N_NIMCALL(void, Addpathrec_73806)(NimStringDesc* Dir_73808, TY47539 Info_73809) {
+NI Pos_73812;
+NU8 K_73837;
+NimStringDesc* P_73838;
+DIR* D_73854;
+struct dirent* X_73856;
+NimStringDesc* Y_73858;
+NIM_BOOL LOC12;
+struct stat S_73860;
+int LOC17;
+NU8 K_73862;
+NIM_BOOL LOC21;
+NIM_BOOL LOC25;
+NIM_BOOL LOC29;
+NIM_BOOL LOC34;
+int LOC37;
+Pos_73812 = 0;
+Pos_73812 = (NI32)(Dir_73808->Sup.len - 1);
+if (!(((NU8)(Dir_73808->data[Pos_73812])) == ((NU8)(47)) || ((NU8)(Dir_73808->data[Pos_73812])) == ((NU8)(47)))) goto LA2;
+Pos_73812 += 1;
+LA2: ;
+K_73837 = 0;
+P_73838 = 0;
+D_73854 = 0;
+D_73854 = opendir(Dir_73808->data);
+if (!!((D_73854 == NIM_NIL))) goto LA5;
+while (1) {
+X_73856 = 0;
+X_73856 = readdir(D_73854);
+if (!(X_73856 == NIM_NIL)) goto LA9;
+goto LA7;
+LA9: ;
+Y_73858 = 0;
+Y_73858 = cstrToNimstr(((NCSTRING) ((*X_73856).d_name)));
+LOC12 = !(eqStrings(Y_73858, ((NimStringDesc*) &TMP195642)));
+if (!(LOC12)) goto LA13;
+LOC12 = !(eqStrings(Y_73858, ((NimStringDesc*) &TMP195643)));
+LA13: ;
+if (!LOC12) goto LA14;
+memset((void*)&S_73860, 0, sizeof(S_73860));
+Y_73858 = HEX2F_38480(Dir_73808, Y_73858);
+LOC17 = lstat(Y_73858->data, &S_73860);
+if (!(LOC17 < ((NI32) 0))) goto LA18;
+goto LA7;
+LA18: ;
+K_73862 = 0;
+K_73862 = ((NU8) 0);
+LOC21 = S_ISDIR(S_73860.st_mode);
+if (!LOC21) goto LA22;
+K_73862 = ((NU8) 2);
+LA22: ;
+LOC25 = S_ISLNK(S_73860.st_mode);
+if (!LOC25) goto LA26;
+K_73862 = K_73862 + 1;
+LA26: ;
+K_73837 = K_73862;
+P_73838 = Y_73858;
+LOC29 = (K_73837 == ((NU8) 2));
+if (!(LOC29)) goto LA30;
+LOC29 = !(((NU8)(P_73838->data[Pos_73812]) == (NU8)(46)));
+LA30: ;
+if (!LOC29) goto LA31;
+Addpathrec_73806(P_73838, Info_73809);
+LOC34 = Contains_43159(&Searchpaths_46081, P_73838);
+if (!!(LOC34)) goto LA35;
+Limessage_47569(Info_73809, ((NU8) 236), P_73838);
+Prependstr_43071(&Searchpaths_46081, P_73838);
+LA35: ;
+LA31: ;
+LA14: ;
+} LA7: ;
+LOC37 = closedir(D_73854);
+LA5: ;
+}
+static N_INLINE(TY11002*, Usrtocell_11812)(void* Usr_11814) {
+TY11002* Result_11815;
+Result_11815 = 0;
+Result_11815 = ((TY11002*) ((NI32)((NU32)(((NI) (Usr_11814))) - (NU32)(((NI) (((NI)sizeof(TY11002))))))));
+return Result_11815;
+}
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405) {
+NI Result_8007;
+Result_8007 = 0;
+(*Memloc_3404) += X_3405;
+Result_8007 = (*Memloc_3404);
+return Result_8007;
+}
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410) {
+NI Result_8206;
+Result_8206 = 0;
+(*Memloc_3409) -= X_3410;
+Result_8206 = (*Memloc_3409);
+return Result_8206;
+}
+static N_INLINE(void, Rtladdzct_12801)(TY11002* C_12803) {
+Addzct_11801(&Gch_11414.Zct, C_12803);
+}
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13418, void* Src_13419) {
+TY11002* C_13420;
+NI LOC4;
+TY11002* C_13422;
+NI LOC9;
+if (!!((Src_13419 == NIM_NIL))) goto LA2;
+C_13420 = 0;
+C_13420 = Usrtocell_11812(Src_13419);
+LOC4 = Atomicinc_3401(&(*C_13420).Refcount, 8);
+LA2: ;
+if (!!(((*Dest_13418) == NIM_NIL))) goto LA6;
+C_13422 = 0;
+C_13422 = Usrtocell_11812((*Dest_13418));
+LOC9 = Atomicdec_3406(&(*C_13422).Refcount, 8);
 if (!((NU32)(LOC9) < (NU32)(8))) goto LA10;
-Rtladdzct_12201(C_12822);
+Rtladdzct_12801(C_13422);
 LA10: ;
 LA6: ;
-(*Dest_12818) = Src_12819;
+(*Dest_13418) = Src_13419;
 }
-N_NIMCALL(void, Processcompile_72353)(NimStringDesc* Filename_72355) {
-NimStringDesc* Found_72356;
-NimStringDesc* Trunc_72357;
+N_NIMCALL(void, Processcompile_73357)(NimStringDesc* Filename_73359) {
+NimStringDesc* Found_73360;
+NimStringDesc* Trunc_73361;
 NimStringDesc* LOC4;
-Found_72356 = 0;
-Found_72356 = Findfile_45089(Filename_72355);
-if (!((Found_72356) && (Found_72356)->Sup.len == 0)) goto LA2;
-Found_72356 = copyString(Filename_72355);
+Found_73360 = 0;
+Found_73360 = Findfile_46090(Filename_73359);
+if (!((Found_73360) && (Found_73360)->Sup.len == 0)) goto LA2;
+Found_73360 = copyString(Filename_73359);
 LA2: ;
-Trunc_72357 = 0;
-Trunc_72357 = nosChangeFileExt(Found_72356, ((NimStringDesc*) &TMP193639));
-Addexternalfiletocompile_69544(Found_72356);
+Trunc_73361 = 0;
+Trunc_73361 = nosChangeFileExt(Found_73360, ((NimStringDesc*) &TMP195644));
+Addexternalfiletocompile_70551(Found_73360);
 LOC4 = 0;
-LOC4 = Completecfilepath_69500(Trunc_72357, NIM_FALSE);
-Addfiletolink_69559(LOC4);
+LOC4 = Completecfilepath_70507(Trunc_73361, NIM_FALSE);
+Addfiletolink_70566(LOC4);
 }
-N_NIMCALL(void, Expectnoarg_72217)(NimStringDesc* Switch_72219, NimStringDesc* Arg_72220, NU8 Pass_72221, TY46536 Info_72222) {
-if (!!(((Arg_72220) && (Arg_72220)->Sup.len == 0))) goto LA2;
-Limessage_46566(Info_72222, ((NU8) 43), Switch_72219);
+N_NIMCALL(void, Expectnoarg_73223)(NimStringDesc* Switch_73225, NimStringDesc* Arg_73226, NU8 Pass_73227, TY47539 Info_73228) {
+if (!!(((Arg_73226) && (Arg_73226)->Sup.len == 0))) goto LA2;
+Limessage_47569(Info_73228, ((NU8) 43), Switch_73225);
 LA2: ;
 }
-N_NIMCALL(void, Processonoffswitch_72159)(NU32 Op_72161, NimStringDesc* Arg_72162, NU8 Pass_72163, TY46536 Info_72164) {
+N_NIMCALL(void, Processonoffswitch_73165)(NU32 Op_73167, NimStringDesc* Arg_73168, NU8 Pass_73169, TY47539 Info_73170) {
 NU8 LOC1;
-LOC1 = Whichkeyword_71474(Arg_72162);
+LOC1 = Whichkeyword_72478(Arg_73168);
 switch (LOC1) {
 case ((NU8) 125):
-Goptions_45076 = (Goptions_45076 | Op_72161);
+Goptions_46077 = (Goptions_46077 | Op_73167);
 break;
 case ((NU8) 126):
-Goptions_45076 = (Goptions_45076 & ~ Op_72161);
+Goptions_46077 = (Goptions_46077 & ~ Op_73167);
 break;
 default:
-Limessage_46566(Info_72164, ((NU8) 47), Arg_72162);
+Limessage_47569(Info_73170, ((NU8) 47), Arg_73168);
 break;
 }
 }
-N_NIMCALL(void, Invalidcmdlineoption_72077)(NU8 Pass_72079, NimStringDesc* Switch_72080, TY46536 Info_72081) {
-Limessage_46566(Info_72081, ((NU8) 41), Switch_72080);
+N_NIMCALL(void, Invalidcmdlineoption_73077)(NU8 Pass_73079, NimStringDesc* Switch_73080, TY47539 Info_73081) {
+Limessage_47569(Info_73081, ((NU8) 41), Switch_73080);
 }
-N_NIMCALL(void, Processspecificnote_72223)(NimStringDesc* Arg_72225, NU8 State_72226, NU8 Pass_72227, TY46536 Info_72228) {
-NimStringDesc* Id_72229;
-NI I_72230;
-NU8 N_72231;
+N_NIMCALL(void, Processspecificnote_73229)(NimStringDesc* Arg_73231, NU8 State_73232, NU8 Pass_73233, TY47539 Info_73234) {
+NimStringDesc* Id_73235;
+NI I_73236;
+NU8 N_73237;
 NIM_BOOL LOC2;
 NIM_BOOL LOC5;
 NIM_BOOL LOC10;
-NI X_72305;
-NI X_72313;
+NI X_73317;
+NI X_73325;
 NimStringDesc* LOC23;
 NU8 LOC24;
-Id_72229 = 0;
-Id_72229 = copyString(((NimStringDesc*) &TMP193639));
-I_72230 = 0;
-I_72230 = 0;
-N_72231 = 0;
-N_72231 = ((NU8) 224);
+Id_73235 = 0;
+Id_73235 = copyString(((NimStringDesc*) &TMP195644));
+I_73236 = 0;
+I_73236 = 0;
+N_73237 = 0;
+N_73237 = ((NU8) 224);
 while (1) {
-LOC2 = (I_72230 < (NI32)(Arg_72225->Sup.len + 0));
+LOC2 = (I_73236 < (NI32)(Arg_73231->Sup.len + 0));
 if (!(LOC2)) goto LA3;
-LOC2 = !(((NU8)(Arg_72225->data[I_72230]) == (NU8)(93)));
+LOC2 = !(((NU8)(Arg_73231->data[I_73236]) == (NU8)(93)));
 LA3: ;
 if (!LOC2) goto LA1;
-Id_72229 = addChar(Id_72229, Arg_72225->data[I_72230]);
-I_72230 += 1;
+Id_73235 = addChar(Id_73235, Arg_73231->data[I_73236]);
+I_73236 += 1;
 } LA1: ;
-LOC5 = (I_72230 < (NI32)(Arg_72225->Sup.len + 0));
+LOC5 = (I_73236 < (NI32)(Arg_73231->Sup.len + 0));
 if (!(LOC5)) goto LA6;
-LOC5 = ((NU8)(Arg_72225->data[I_72230]) == (NU8)(93));
+LOC5 = ((NU8)(Arg_73231->data[I_73236]) == (NU8)(93));
 LA6: ;
 if (!LOC5) goto LA7;
-I_72230 += 1;
+I_73236 += 1;
 goto LA4;
 LA7: ;
-Invalidcmdlineoption_72077(Pass_72227, Arg_72225, Info_72228);
+Invalidcmdlineoption_73077(Pass_73233, Arg_73231, Info_73234);
 LA4: ;
-LOC10 = (I_72230 < (NI32)(Arg_72225->Sup.len + 0));
+LOC10 = (I_73236 < (NI32)(Arg_73231->Sup.len + 0));
 if (!(LOC10)) goto LA11;
-LOC10 = (((NU8)(Arg_72225->data[I_72230])) == ((NU8)(58)) || ((NU8)(Arg_72225->data[I_72230])) == ((NU8)(61)));
+LOC10 = (((NU8)(Arg_73231->data[I_73236])) == ((NU8)(58)) || ((NU8)(Arg_73231->data[I_73236])) == ((NU8)(61)));
 LA11: ;
 if (!LOC10) goto LA12;
-I_72230 += 1;
+I_73236 += 1;
 goto LA9;
 LA12: ;
-Invalidcmdlineoption_72077(Pass_72227, Arg_72225, Info_72228);
+Invalidcmdlineoption_73077(Pass_73233, Arg_73231, Info_73234);
 LA9: ;
-if (!(State_72226 == ((NU8) 96))) goto LA15;
-X_72305 = 0;
-X_72305 = Findstr_71477(Hintstostr_46497, 13, Id_72229);
-if (!(0 <= X_72305)) goto LA18;
-N_72231 = ((NU8) (((NU8) ((NI32)(X_72305 + 224)))));
+if (!(State_73232 == ((NU8) 96))) goto LA15;
+X_73317 = 0;
+X_73317 = Findstr_72481(Hintstostr_47499, 14, Id_73235);
+if (!(0 <= X_73317)) goto LA18;
+N_73237 = ((NU8) (((NU8) ((NI32)(X_73317 + 224)))));
 goto LA17;
 LA18: ;
-Invalidcmdlineoption_72077(Pass_72227, Arg_72225, Info_72228);
+Invalidcmdlineoption_73077(Pass_73233, Arg_73231, Info_73234);
 LA17: ;
 goto LA14;
 LA15: ;
-X_72313 = 0;
-X_72313 = Findstr_71477(Warningstostr_46477, 15, Id_72229);
-if (!(0 <= X_72313)) goto LA21;
-N_72231 = ((NU8) (((NU8) ((NI32)(X_72313 + 209)))));
+X_73325 = 0;
+X_73325 = Findstr_72481(Warningstostr_47479, 15, Id_73235);
+if (!(0 <= X_73325)) goto LA21;
+N_73237 = ((NU8) (((NU8) ((NI32)(X_73325 + 209)))));
 goto LA20;
 LA21: ;
-Invalidcmdlineoption_72077(Pass_72227, Arg_72225, Info_72228);
+Invalidcmdlineoption_73077(Pass_73233, Arg_73231, Info_73234);
 LA20: ;
 LA14: ;
 LOC23 = 0;
-LOC23 = copyStr(Arg_72225, I_72230);
-LOC24 = Whichkeyword_71474(LOC23);
+LOC23 = copyStr(Arg_73231, I_73236);
+LOC24 = Whichkeyword_72478(LOC23);
 switch (LOC24) {
 case ((NU8) 125):
-Gnotes_46543 |=(1<<((NI32)((((NU8) (N_72231))-209))%(sizeof(NI32)*8)));
+Gnotes_47546 |=(1<<((NI32)((((NU8) (N_73237))-209))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 126):
-Gnotes_46543 &= ~(1 << ((NI32)((((NU8) (N_72231))-209)) % (sizeof(NI32)*8)));
+Gnotes_47546 &= ~(1 << ((NI32)((((NU8) (N_73237))-209)) % (sizeof(NI32)*8)));
 break;
 default:
-Limessage_46566(Info_72228, ((NU8) 47), Arg_72225);
+Limessage_47569(Info_73234, ((NU8) 47), Arg_73231);
 break;
 }
 }
-N_NIMCALL(void, Processonoffswitchg_72185)(NU32 Op_72187, NimStringDesc* Arg_72188, NU8 Pass_72189, TY46536 Info_72190) {
+N_NIMCALL(void, Processonoffswitchg_73191)(NU32 Op_73193, NimStringDesc* Arg_73194, NU8 Pass_73195, TY47539 Info_73196) {
 NU8 LOC1;
-LOC1 = Whichkeyword_71474(Arg_72188);
+LOC1 = Whichkeyword_72478(Arg_73194);
 switch (LOC1) {
 case ((NU8) 125):
-Gglobaloptions_45078 = (Gglobaloptions_45078 | Op_72187);
+Gglobaloptions_46079 = (Gglobaloptions_46079 | Op_73193);
 break;
 case ((NU8) 126):
-Gglobaloptions_45078 = (Gglobaloptions_45078 & ~ Op_72187);
+Gglobaloptions_46079 = (Gglobaloptions_46079 & ~ Op_73193);
 break;
 default:
-Limessage_46566(Info_72190, ((NU8) 47), Arg_72188);
+Limessage_47569(Info_73196, ((NU8) 47), Arg_73194);
 break;
 }
 }
-N_NIMCALL(void, Writeversioninfo_72059)(NU8 Pass_72061) {
+N_NIMCALL(void, Writeversioninfo_73059)(NU8 Pass_73061) {
 NIM_BOOL LOC2;
-TY72026 LOC6;
+TY73026 LOC6;
 NimStringDesc* LOC7;
-LOC2 = (Pass_72061 == ((NU8) 0));
+LOC2 = (Pass_73061 == ((NU8) 0));
 if (!(LOC2)) goto LA3;
-LOC2 = !(Versionwritten_72029);
+LOC2 = !(Versionwritten_73029);
 LA3: ;
 if (!LOC2) goto LA4;
-Versionwritten_72029 = NIM_TRUE;
-Helpwritten_72028 = NIM_TRUE;
+Versionwritten_73029 = NIM_TRUE;
+Helpwritten_73028 = NIM_TRUE;
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = copyString(((NimStringDesc*) &TMP193624));
-LOC6[1] = copyString(Os_50053[(Hostos_50563)-1].Name);
-LOC6[2] = copyString(Cpu_50460[(Hostcpu_50561)-1].Name);
+LOC6[0] = copyString(((NimStringDesc*) &TMP195624));
+LOC6[1] = copyString(Os_51053[(Hostos_51563)-1].Name);
+LOC6[2] = copyString(Cpu_51460[(Hostcpu_51561)-1].Name);
 LOC7 = 0;
-LOC7 = nsuFormatOpenArray(((NimStringDesc*) &TMP193623), LOC6, 3);
-Messageout_46554(LOC7);
+LOC7 = nsuFormatOpenArray(((NimStringDesc*) &TMP195623), LOC6, 3);
+Messageout_47557(LOC7);
 exit(0);
 LA4: ;
 }
-N_NIMCALL(void, Writeadvancedusage_72043)(NU8 Pass_72045) {
+N_NIMCALL(void, Writeadvancedusage_73043)(NU8 Pass_73045) {
 NIM_BOOL LOC2;
 NimStringDesc* LOC6;
-TY72026 LOC7;
+TY73026 LOC7;
 NimStringDesc* LOC8;
-LOC2 = (Pass_72045 == ((NU8) 0));
+LOC2 = (Pass_73045 == ((NU8) 0));
 if (!(LOC2)) goto LA3;
-LOC2 = !(Advhelpwritten_72030);
+LOC2 = !(Advhelpwritten_73030);
 LA3: ;
 if (!LOC2) goto LA4;
 LOC6 = 0;
 memset((void*)&LOC7, 0, sizeof(LOC7));
-LOC7[0] = copyString(((NimStringDesc*) &TMP193624));
-LOC7[1] = copyString(Os_50053[(Hostos_50563)-1].Name);
-LOC7[2] = copyString(Cpu_50460[(Hostcpu_50561)-1].Name);
+LOC7[0] = copyString(((NimStringDesc*) &TMP195624));
+LOC7[1] = copyString(Os_51053[(Hostos_51563)-1].Name);
+LOC7[2] = copyString(Cpu_51460[(Hostcpu_51561)-1].Name);
 LOC8 = 0;
-LOC8 = nsuFormatOpenArray(((NimStringDesc*) &TMP193623), LOC7, 3);
-LOC6 = rawNewString(LOC8->Sup.len + 2433);
+LOC8 = nsuFormatOpenArray(((NimStringDesc*) &TMP195623), LOC7, 3);
+LOC6 = rawNewString(LOC8->Sup.len + 2498);
 appendString(LOC6, LOC8);
-appendString(LOC6, ((NimStringDesc*) &TMP193664));
-Messageout_46554(LOC6);
-Advhelpwritten_72030 = NIM_TRUE;
-Helpwritten_72028 = NIM_TRUE;
+appendString(LOC6, ((NimStringDesc*) &TMP195669));
+Messageout_47557(LOC6);
+Advhelpwritten_73030 = NIM_TRUE;
+Helpwritten_73028 = NIM_TRUE;
 exit(0);
 LA4: ;
 }
-N_NIMCALL(void, Helponerror_72031)(NU8 Pass_72033) {
+N_NIMCALL(void, Helponerror_73031)(NU8 Pass_73033) {
 NIM_BOOL LOC2;
 NimStringDesc* LOC6;
-LOC2 = (Pass_72033 == ((NU8) 0));
+LOC2 = (Pass_73033 == ((NU8) 0));
 if (!(LOC2)) goto LA3;
-LOC2 = !(Helpwritten_72028);
+LOC2 = !(Helpwritten_73028);
 LA3: ;
 if (!LOC2) goto LA4;
 LOC6 = 0;
-LOC6 = Getcommandlinedesc_72021();
-Messageout_46554(LOC6);
-Helpwritten_72028 = NIM_TRUE;
+LOC6 = Getcommandlinedesc_73021();
+Messageout_47557(LOC6);
+Helpwritten_73028 = NIM_TRUE;
 exit(0);
 LA4: ;
 }
-N_NIMCALL(void, Splitswitch_72082)(NimStringDesc* Switch_72084, NimStringDesc** Cmd_72086, NimStringDesc** Arg_72087, NU8 Pass_72088, TY46536 Info_72089) {
-NI I_72090;
+N_NIMCALL(void, Splitswitch_73082)(NimStringDesc* Switch_73084, NimStringDesc** Cmd_73086, NimStringDesc** Arg_73087, NU8 Pass_73088, TY47539 Info_73089) {
+NI I_73090;
 NIM_BOOL LOC2;
 NIM_BOOL LOC7;
-unsureAsgnRef((void**) &(*Cmd_72086), copyString(((NimStringDesc*) &TMP193639)));
-I_72090 = 0;
-I_72090 = 0;
-LOC2 = (I_72090 < Switch_72084->Sup.len);
+unsureAsgnRef((void**) &(*Cmd_73086), copyString(((NimStringDesc*) &TMP195644)));
+I_73090 = 0;
+I_73090 = 0;
+LOC2 = (I_73090 < Switch_73084->Sup.len);
 if (!(LOC2)) goto LA3;
-LOC2 = ((NU8)(Switch_72084->data[I_72090]) == (NU8)(45));
+LOC2 = ((NU8)(Switch_73084->data[I_73090]) == (NU8)(45));
 LA3: ;
 if (!LOC2) goto LA4;
-I_72090 += 1;
+I_73090 += 1;
 LA4: ;
-LOC7 = (I_72090 < Switch_72084->Sup.len);
+LOC7 = (I_73090 < Switch_73084->Sup.len);
 if (!(LOC7)) goto LA8;
-LOC7 = ((NU8)(Switch_72084->data[I_72090]) == (NU8)(45));
+LOC7 = ((NU8)(Switch_73084->data[I_73090]) == (NU8)(45));
 LA8: ;
 if (!LOC7) goto LA9;
-I_72090 += 1;
+I_73090 += 1;
 LA9: ;
 while (1) {
-if (!(I_72090 < Switch_72084->Sup.len)) goto LA11;
-switch (((NU8)(Switch_72084->data[I_72090]))) {
+if (!(I_73090 < Switch_73084->Sup.len)) goto LA11;
+switch (((NU8)(Switch_73084->data[I_73090]))) {
 case 97 ... 122:
 case 65 ... 90:
 case 48 ... 57:
 case 95:
 case 46:
-(*Cmd_72086) = addChar((*Cmd_72086), Switch_72084->data[I_72090]);
+(*Cmd_73086) = addChar((*Cmd_73086), Switch_73084->data[I_73090]);
 break;
 default:
 goto LA11;
 break;
 }
-I_72090 += 1;
+I_73090 += 1;
 } LA11: ;
-if (!(Switch_72084->Sup.len <= I_72090)) goto LA13;
-unsureAsgnRef((void**) &(*Arg_72087), copyString(((NimStringDesc*) &TMP193639)));
+if (!(Switch_73084->Sup.len <= I_73090)) goto LA13;
+unsureAsgnRef((void**) &(*Arg_73087), copyString(((NimStringDesc*) &TMP195644)));
 goto LA12;
 LA13: ;
-if (!(((NU8)(Switch_72084->data[I_72090])) == ((NU8)(58)) || ((NU8)(Switch_72084->data[I_72090])) == ((NU8)(61)) || ((NU8)(Switch_72084->data[I_72090])) == ((NU8)(91)))) goto LA15;
-unsureAsgnRef((void**) &(*Arg_72087), copyStr(Switch_72084, (NI32)(I_72090 + 1)));
+if (!(((NU8)(Switch_73084->data[I_73090])) == ((NU8)(58)) || ((NU8)(Switch_73084->data[I_73090])) == ((NU8)(61)) || ((NU8)(Switch_73084->data[I_73090])) == ((NU8)(91)))) goto LA15;
+unsureAsgnRef((void**) &(*Arg_73087), copyStr(Switch_73084, (NI32)(I_73090 + 1)));
 goto LA12;
 LA15: ;
-Invalidcmdlineoption_72077(Pass_72088, Switch_72084, Info_72089);
+Invalidcmdlineoption_73077(Pass_73088, Switch_73084, Info_73089);
 LA12: ;
 }
-N_NIMCALL(void, Processswitch_72012)(NimStringDesc* Switch_72014, NimStringDesc* Arg_72015, NU8 Pass_72016, TY46536 Info_72017) {
-NU8 Theos_72782;
-NU8 Cpu_72783;
-NimStringDesc* Key_72784;
-NimStringDesc* Val_72785;
-NimStringDesc* Path_72786;
+N_NIMCALL(void, Processswitch_73012)(NimStringDesc* Switch_73014, NimStringDesc* Arg_73015, NU8 Pass_73016, TY47539 Info_73017) {
+NU8 Theos_73869;
+NU8 Cpu_73870;
+NimStringDesc* Key_73871;
+NimStringDesc* Val_73872;
 NU8 LOC1;
-NIM_BOOL LOC3;
-NU8 LOC12;
-NU8 LOC19;
-NU8 LOC20;
-NI LOC52;
-Theos_72782 = 0;
-Cpu_72783 = 0;
-Key_72784 = 0;
-Val_72785 = 0;
-Path_72786 = 0;
-LOC1 = Whichkeyword_71474(Switch_72014);
+NimStringDesc* LOC2;
+NimStringDesc* Path_73873;
+NU8 LOC9;
+NU8 LOC16;
+NU8 LOC17;
+NI LOC49;
+Theos_73869 = 0;
+Cpu_73870 = 0;
+Key_73871 = 0;
+Val_73872 = 0;
+LOC1 = Whichkeyword_72478(Switch_73014);
 switch (LOC1) {
 case ((NU8) 143):
 case ((NU8) 144):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Path_72786 = Processpath_72345(Arg_72015);
-LOC3 = Contains_42159(&Searchpaths_45080, Path_72786);
-if (!!(LOC3)) goto LA4;
-Prependstr_42071(&Searchpaths_45080, Path_72786);
-LA4: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+LOC2 = 0;
+LOC2 = Processpath_73791(Arg_73015);
+Addpath_73799(LOC2, Info_73017);
+break;
+case ((NU8) 224):
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Path_73873 = 0;
+Path_73873 = Processpath_73791(Arg_73015);
+Addpathrec_73806(Path_73873, Info_73017);
+Addpath_73799(Path_73873, Info_73017);
 break;
 case ((NU8) 45):
 case ((NU8) 161):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-asgnRefNoCycle((void**) &Outfile_45081, copyString(Arg_72015));
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+asgnRefNoCycle((void**) &Outfile_46082, copyString(Arg_73015));
 break;
 case ((NU8) 100):
 case ((NU8) 145):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Definesymbol_63053(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Definesymbol_64053(Arg_73015);
 break;
 case ((NU8) 101):
 case ((NU8) 146):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Undefsymbol_63056(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Undefsymbol_64056(Arg_73015);
 break;
 case ((NU8) 107):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA7;
-Processcompile_72353(Arg_72015);
-LA7: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA4;
+Processcompile_73357(Arg_73015);
+LA4: ;
 break;
 case ((NU8) 106):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA10;
-Addfiletolink_69559(Arg_72015);
-LA10: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA7;
+Addfiletolink_70566(Arg_73015);
+LA7: ;
 break;
 case ((NU8) 147):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 9))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 9))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 148):
 case ((NU8) 176):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 149):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 7))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 196):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 18))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 18))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 150):
 case ((NU8) 151):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 1))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 1))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 156):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-LOC12 = Whichkeyword_71474(Arg_72015);
-switch (LOC12) {
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+LOC9 = Whichkeyword_72478(Arg_73015);
+switch (LOC9) {
 case ((NU8) 158):
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 2))%(sizeof(NI32)*8)));
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 3)) % (sizeof(NI32)*8)));
-Definesymbol_63053(((NimStringDesc*) &TMP193655));
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 2))%(sizeof(NI32)*8)));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 3)) % (sizeof(NI32)*8)));
+Definesymbol_64053(((NimStringDesc*) &TMP195660));
 break;
 case ((NU8) 157):
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 2)) % (sizeof(NI32)*8)));
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 3))%(sizeof(NI32)*8)));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 2)) % (sizeof(NI32)*8)));
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 3))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 142):
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 3)) % (sizeof(NI32)*8)));
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 2)) % (sizeof(NI32)*8)));
-Definesymbol_63053(((NimStringDesc*) &TMP193656));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 3)) % (sizeof(NI32)*8)));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 2)) % (sizeof(NI32)*8)));
+Definesymbol_64053(((NimStringDesc*) &TMP195661));
 break;
 default:
-Limessage_46566(Info_72017, ((NU8) 48), Arg_72015);
+Limessage_47569(Info_73017, ((NU8) 48), Arg_73015);
 break;
 }
 break;
 case ((NU8) 136):
 case ((NU8) 137):
-Processonoffswitch_72159(2048, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(2048, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 95):
-Processspecificnote_72223(Arg_72015, ((NU8) 95), Pass_72016, Info_72017);
+Processspecificnote_73229(Arg_73015, ((NU8) 95), Pass_73016, Info_73017);
 break;
 case ((NU8) 96):
-Processspecificnote_72223(Arg_72015, ((NU8) 96), Pass_72016, Info_72017);
+Processspecificnote_73229(Arg_73015, ((NU8) 96), Pass_73016, Info_73017);
 break;
 case ((NU8) 138):
-Processonoffswitch_72159(4096, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(4096, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 195):
-Processonoffswitch_72159(524288, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(524288, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 103):
-Processonoffswitch_72159(32768, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(32768, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 104):
-Processonoffswitch_72159(65536, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(65536, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 114):
-Processonoffswitch_72159(131072, Arg_72015, Pass_72016, Info_72017);
-if (!((Goptions_45076 &(1<<((((NU8) 17))&31)))!=0)) goto LA14;
-Definesymbol_63053(((NimStringDesc*) &TMP193657));
-goto LA13;
-LA14: ;
-Undefsymbol_63056(((NimStringDesc*) &TMP193657));
-LA13: ;
+Processonoffswitch_73165(131072, Arg_73015, Pass_73016, Info_73017);
+if (!((Goptions_46077 &(1<<((((NU8) 17))&31)))!=0)) goto LA11;
+Definesymbol_64053(((NimStringDesc*) &TMP195662));
+goto LA10;
+LA11: ;
+Undefsymbol_64056(((NimStringDesc*) &TMP195662));
+LA10: ;
 break;
 case ((NU8) 74):
-Processonoffswitch_72159(1048576, Arg_72015, Pass_72016, Info_72017);
-if (!((Goptions_45076 &(1<<((((NU8) 20))&31)))!=0)) goto LA17;
-Definesymbol_63053(((NimStringDesc*) &TMP193658));
-goto LA16;
-LA17: ;
-Undefsymbol_63056(((NimStringDesc*) &TMP193658));
-LA16: ;
+Processonoffswitch_73165(1048576, Arg_73015, Pass_73016, Info_73017);
+if (!((Goptions_46077 &(1<<((((NU8) 20))&31)))!=0)) goto LA14;
+Definesymbol_64053(((NimStringDesc*) &TMP195663));
+goto LA13;
+LA14: ;
+Undefsymbol_64056(((NimStringDesc*) &TMP195663));
+LA13: ;
 break;
 case ((NU8) 127):
 case ((NU8) 187):
-Processonoffswitch_72159(1022, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(1022, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 132):
-Processonoffswitch_72159(384, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(384, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 134):
-Processonoffswitch_72159(256, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(256, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 133):
-Processonoffswitch_72159(128, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(128, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 75):
-Processonoffswitch_72159(2, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(2, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 186):
-Processonoffswitch_72159(4, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(4, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 128):
-Processonoffswitch_72159(8, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(8, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 129):
-Processonoffswitch_72159(16, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(16, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 130):
-Processonoffswitch_72159(32, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(32, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 102):
-Processonoffswitch_72159(1024, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(1024, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 135):
 case ((NU8) 159):
-Processonoffswitch_72159(512, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitch_73165(512, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 152):
-Processonoffswitchg_72185(16, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitchg_73191(16, Arg_73015, Pass_73016, Info_73017);
+break;
+case ((NU8) 223):
+Processonoffswitchg_73191(524288, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 160):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-LOC19 = Whichkeyword_71474(Arg_72015);
-switch (LOC19) {
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+LOC16 = Whichkeyword_72478(Arg_73015);
+switch (LOC16) {
 case ((NU8) 140):
-Goptions_45076 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
-Goptions_45076 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
+Goptions_46077 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
+Goptions_46077 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
 break;
 case ((NU8) 141):
-Goptions_45076 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
-Goptions_45076 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
+Goptions_46077 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
+Goptions_46077 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 142):
-Goptions_45076 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
-Goptions_45076 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
+Goptions_46077 &= ~(1 << ((NI32)(((NU8) 13)) % (sizeof(NI32)*8)));
+Goptions_46077 &= ~(1 << ((NI32)(((NU8) 14)) % (sizeof(NI32)*8)));
 break;
 default:
-Limessage_46566(Info_72017, ((NU8) 49), Arg_72015);
+Limessage_47569(Info_73017, ((NU8) 49), Arg_73015);
 break;
 }
 break;
 case ((NU8) 162):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-LOC20 = Whichkeyword_71474(Arg_72015);
-switch (LOC20) {
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+LOC17 = Whichkeyword_72478(Arg_73015);
+switch (LOC17) {
 case ((NU8) 164):
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 11))%(sizeof(NI32)*8)));
-Definesymbol_63053(((NimStringDesc*) &TMP193659));
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 11))%(sizeof(NI32)*8)));
+Definesymbol_64053(((NimStringDesc*) &TMP195664));
 break;
 case ((NU8) 163):
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 11)) % (sizeof(NI32)*8)));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 11)) % (sizeof(NI32)*8)));
 break;
 case ((NU8) 89):
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 10))%(sizeof(NI32)*8)));
-Gglobaloptions_45078 &= ~(1 << ((NI32)(((NU8) 11)) % (sizeof(NI32)*8)));
-Definesymbol_63053(((NimStringDesc*) &TMP193660));
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 10))%(sizeof(NI32)*8)));
+Gglobaloptions_46079 &= ~(1 << ((NI32)(((NU8) 11)) % (sizeof(NI32)*8)));
+Definesymbol_64053(((NimStringDesc*) &TMP195665));
 break;
 default:
-Limessage_46566(Info_72017, ((NU8) 50), Arg_72015);
+Limessage_47569(Info_73017, ((NU8) 50), Arg_73015);
 break;
 }
 break;
 case ((NU8) 208):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA22;
-Listsymbols_63062();
-LA22: ;
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA19;
+Listsymbols_64062();
+LA19: ;
 break;
 case ((NU8) 165):
 case ((NU8) 166):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA25;
-Addcompileoption_69460(Arg_72015);
-LA25: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA22;
+Addcompileoption_70464(Arg_73015);
+LA22: ;
 break;
 case ((NU8) 167):
 case ((NU8) 168):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA28;
-Addlinkoption_69454(Arg_72015);
-LA28: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA25;
+Addlinkoption_70456(Arg_73015);
+LA25: ;
 break;
 case ((NU8) 199):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!((6 &(1<<((Pass_72016)&7)))!=0)) goto LA31;
-asgnRefNoCycle((void**) &Gindexfile_45082, copyString(Arg_72015));
-LA31: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!((6 &(1<<((Pass_73016)&7)))!=0)) goto LA28;
+asgnRefNoCycle((void**) &Gindexfile_46083, copyString(Arg_73015));
+LA28: ;
 break;
 case ((NU8) 28):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Addimplicitmod_45141(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Addimplicitmod_46142(Arg_73015);
 break;
 case ((NU8) 169):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 5))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 5))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 171):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 13))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 172):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!(Pass_72016 == ((NU8) 0))) goto LA34;
-Theos_72782 = Nametoos_50564(Arg_72015);
-if (!(Theos_72782 == ((NU8) 0))) goto LA37;
-Limessage_46566(Info_72017, ((NU8) 51), Arg_72015);
-LA37: ;
-if (!!((Theos_72782 == Hostos_50563))) goto LA40;
-Settarget_50574(Theos_72782, Targetcpu_50560);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
-Initdefines_63049();
-LA40: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!(Pass_73016 == ((NU8) 0))) goto LA31;
+Theos_73869 = Nametoos_51564(Arg_73015);
+if (!(Theos_73869 == ((NU8) 0))) goto LA34;
+Limessage_47569(Info_73017, ((NU8) 51), Arg_73015);
 LA34: ;
+if (!!((Theos_73869 == Hostos_51563))) goto LA37;
+Settarget_51574(Theos_73869, Targetcpu_51560);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
+Initdefines_64049();
+LA37: ;
+LA31: ;
 break;
 case ((NU8) 173):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-if (!(Pass_72016 == ((NU8) 0))) goto LA43;
-Cpu_72783 = Nametocpu_50567(Arg_72015);
-if (!(Cpu_72783 == ((NU8) 0))) goto LA46;
-Limessage_46566(Info_72017, ((NU8) 52), Arg_72015);
-LA46: ;
-if (!!((Cpu_72783 == Hostcpu_50561))) goto LA49;
-Settarget_50574(Targetos_50562, Cpu_72783);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
-Initdefines_63049();
-LA49: ;
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+if (!(Pass_73016 == ((NU8) 0))) goto LA40;
+Cpu_73870 = Nametocpu_51567(Arg_73015);
+if (!(Cpu_73870 == ((NU8) 0))) goto LA43;
+Limessage_47569(Info_73017, ((NU8) 52), Arg_73015);
 LA43: ;
+if (!!((Cpu_73870 == Hostcpu_51561))) goto LA46;
+Settarget_51574(Targetos_51562, Cpu_73870);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 6))%(sizeof(NI32)*8)));
+Initdefines_64049();
+LA46: ;
+LA40: ;
 break;
 case ((NU8) 179):
 case ((NU8) 180):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 14))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 181):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gverbosity_45084 = nsuParseInt(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gverbosity_46085 = nsuParseInt(Arg_73015);
 break;
 case ((NU8) 105):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gnumberofprocessors_45085 = nsuParseInt(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gnumberofprocessors_46086 = nsuParseInt(Arg_73015);
 break;
 case ((NU8) 188):
 case ((NU8) 182):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Writeversioninfo_72059(Pass_72016);
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Writeversioninfo_73059(Pass_73016);
 break;
 case ((NU8) 189):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Writeadvancedusage_72043(Pass_72016);
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Writeadvancedusage_73043(Pass_73016);
 break;
 case ((NU8) 183):
 case ((NU8) 184):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Helponerror_72031(Pass_72016);
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Helponerror_73031(Pass_73016);
 break;
 case ((NU8) 185):
-Processonoffswitchg_72185(32768, Arg_72015, Pass_72016, Info_72017);
+Processonoffswitchg_73191(32768, Arg_73015, Pass_73016, Info_73017);
 break;
 case ((NU8) 190):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 16))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 16))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 191):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 17))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 17))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 193):
-Expectnoarg_72217(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Gglobaloptions_45078 |=(1<<((NI32)(((NU8) 12))%(sizeof(NI32)*8)));
+Expectnoarg_73223(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Gglobaloptions_46079 |=(1<<((NI32)(((NU8) 12))%(sizeof(NI32)*8)));
 break;
 case ((NU8) 89):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-asgnRefNoCycle((void**) &Libpath_45111, Processpath_72345(Arg_72015));
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+asgnRefNoCycle((void**) &Libpath_46112, Processpath_73791(Arg_73015));
 break;
 case ((NU8) 218):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Splitswitch_72082(Arg_72015, &Key_72784, &Val_72785, Pass_72016, Info_72017);
-Putenv_38431(Key_72784, Val_72785);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Splitswitch_73082(Arg_73015, &Key_73871, &Val_73872, Pass_73016, Info_73017);
+Putenv_39432(Key_73871, Val_73872);
 break;
 case ((NU8) 192):
-Expectarg_72211(Switch_72014, Arg_72015, Pass_72016, Info_72017);
-Setcc_69397(Arg_72015);
+Expectarg_73217(Switch_73014, Arg_73015, Pass_73016, Info_73017);
+Setcc_70398(Arg_73015);
 break;
 default:
-LOC52 = nsuFindChar(Switch_72014, 46, 0);
-if (!(0 <= LOC52)) goto LA53;
-Setconfigvar_45137(Switch_72014, Arg_72015);
-goto LA51;
-LA53: ;
-Invalidcmdlineoption_72077(Pass_72016, Switch_72014, Info_72017);
-LA51: ;
+LOC49 = nsuFindChar(Switch_73014, 46, 0);
+if (!(0 <= LOC49)) goto LA50;
+Setconfigvar_46138(Switch_73014, Arg_73015);
+goto LA48;
+LA50: ;
+Invalidcmdlineoption_73077(Pass_73016, Switch_73014, Info_73017);
+LA48: ;
 break;
 }
 }
-N_NIMCALL(NIM_BOOL, Testcompileoption_72456)(NimStringDesc* Switch_72458, TY46536 Info_72459) {
-NIM_BOOL Result_72460;
+N_NIMCALL(NIM_BOOL, Testcompileoption_73460)(NimStringDesc* Switch_73462, TY47539 Info_73463) {
+NIM_BOOL Result_73464;
 NU8 LOC1;
-Result_72460 = 0;
-LOC1 = Whichkeyword_71474(Switch_72458);
+Result_73464 = 0;
+LOC1 = Whichkeyword_72478(Switch_73462);
 switch (LOC1) {
 case ((NU8) 147):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 9))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 9))&31)))!=0);
 break;
 case ((NU8) 148):
 case ((NU8) 176):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 6))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 6))&31)))!=0);
 break;
 case ((NU8) 149):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 7))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 7))&31)))!=0);
 break;
 case ((NU8) 196):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 18))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 18))&31)))!=0);
 break;
 case ((NU8) 150):
 case ((NU8) 151):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 1))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 1))&31)))!=0);
 break;
 case ((NU8) 136):
 case ((NU8) 137):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 11))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 11))&31)))!=0);
 break;
 case ((NU8) 138):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 12))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 12))&31)))!=0);
 break;
 case ((NU8) 195):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 19))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 19))&31)))!=0);
 break;
 case ((NU8) 103):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 15))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 15))&31)))!=0);
 break;
 case ((NU8) 104):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 16))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 16))&31)))!=0);
 break;
 case ((NU8) 114):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 17))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 17))&31)))!=0);
 break;
 case ((NU8) 74):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 20))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 20))&31)))!=0);
 break;
 case ((NU8) 127):
 case ((NU8) 187):
-Result_72460 = ((Goptions_45076 & 1022) == 1022);
+Result_73464 = ((Goptions_46077 & 1022) == 1022);
 break;
 case ((NU8) 132):
-Result_72460 = ((Goptions_45076 & 384) == 384);
+Result_73464 = ((Goptions_46077 & 384) == 384);
 break;
 case ((NU8) 134):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 8))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 8))&31)))!=0);
 break;
 case ((NU8) 133):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 7))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 7))&31)))!=0);
 break;
 case ((NU8) 75):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 1))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 1))&31)))!=0);
 break;
 case ((NU8) 186):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 2))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 2))&31)))!=0);
 break;
 case ((NU8) 128):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 3))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 3))&31)))!=0);
 break;
 case ((NU8) 129):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 4))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 4))&31)))!=0);
 break;
 case ((NU8) 130):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 5))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 5))&31)))!=0);
 break;
 case ((NU8) 102):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 10))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 10))&31)))!=0);
 break;
 case ((NU8) 135):
 case ((NU8) 159):
-Result_72460 = ((Goptions_45076 &(1<<((((NU8) 9))&31)))!=0);
+Result_73464 = ((Goptions_46077 &(1<<((((NU8) 9))&31)))!=0);
 break;
 case ((NU8) 152):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 4))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 4))&31)))!=0);
 break;
 case ((NU8) 179):
 case ((NU8) 180):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 14))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 14))&31)))!=0);
 break;
 case ((NU8) 185):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 15))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 15))&31)))!=0);
 break;
 case ((NU8) 193):
-Result_72460 = ((Gglobaloptions_45078 &(1<<((((NU8) 12))&31)))!=0);
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 12))&31)))!=0);
+break;
+case ((NU8) 223):
+Result_73464 = ((Gglobaloptions_46079 &(1<<((((NU8) 19))&31)))!=0);
 break;
 default:
-Invalidcmdlineoption_72077(((NU8) 0), Switch_72458, Info_72459);
+Invalidcmdlineoption_73077(((NU8) 0), Switch_73462, Info_73463);
 break;
 }
-return Result_72460;
+return Result_73464;
 }
-N_NIMCALL(NIM_BOOL, Testcompileoptionarg_72358)(NimStringDesc* Switch_72360, NimStringDesc* Arg_72361, TY46536 Info_72362) {
-NIM_BOOL Result_72363;
+N_NIMCALL(NIM_BOOL, Testcompileoptionarg_73362)(NimStringDesc* Switch_73364, NimStringDesc* Arg_73365, TY47539 Info_73366) {
+NIM_BOOL Result_73367;
 NU8 LOC1;
 NU8 LOC2;
 NU8 LOC3;
-Result_72363 = 0;
-LOC1 = Whichkeyword_71474(Switch_72360);
+Result_73367 = 0;
+LOC1 = Whichkeyword_72478(Switch_73364);
 switch (LOC1) {
 case ((NU8) 156):
-LOC2 = Whichkeyword_71474(Arg_72361);
+LOC2 = Whichkeyword_72478(Arg_73365);
 switch (LOC2) {
 case ((NU8) 158):
-Result_72363 = ((Gglobaloptions_45078 &(1<<((((NU8) 2))&31)))!=0);
+Result_73367 = ((Gglobaloptions_46079 &(1<<((((NU8) 2))&31)))!=0);
 break;
 case ((NU8) 157):
-Result_72363 = ((Gglobaloptions_45078 &(1<<((((NU8) 3))&31)))!=0);
+Result_73367 = ((Gglobaloptions_46079 &(1<<((((NU8) 3))&31)))!=0);
 break;
 case ((NU8) 142):
-Result_72363 = ((Gglobaloptions_45078 & 12) == 0);
+Result_73367 = ((Gglobaloptions_46079 & 12) == 0);
 break;
 default:
-Limessage_46566(Info_72362, ((NU8) 48), Arg_72361);
+Limessage_47569(Info_73366, ((NU8) 48), Arg_73365);
 break;
 }
 break;
 case ((NU8) 160):
-LOC3 = Whichkeyword_71474(Arg_72361);
+LOC3 = Whichkeyword_72478(Arg_73365);
 switch (LOC3) {
 case ((NU8) 140):
-Result_72363 = ((Goptions_45076 &(1<<((((NU8) 13))&31)))!=0);
+Result_73367 = ((Goptions_46077 &(1<<((((NU8) 13))&31)))!=0);
 break;
 case ((NU8) 141):
-Result_72363 = ((Goptions_45076 &(1<<((((NU8) 14))&31)))!=0);
+Result_73367 = ((Goptions_46077 &(1<<((((NU8) 14))&31)))!=0);
 break;
 case ((NU8) 142):
-Result_72363 = ((Goptions_45076 & 24576) == 0);
+Result_73367 = ((Goptions_46077 & 24576) == 0);
 break;
 default:
-Limessage_46566(Info_72362, ((NU8) 49), Arg_72361);
+Limessage_47569(Info_73366, ((NU8) 49), Arg_73365);
 break;
 }
 break;
 default:
-Invalidcmdlineoption_72077(((NU8) 0), Switch_72360, Info_72362);
+Invalidcmdlineoption_73077(((NU8) 0), Switch_73364, Info_73366);
 break;
 }
-return Result_72363;
+return Result_73367;
 }
 N_NOINLINE(void, commandsInit)(void) {
 }

@@ -71,7 +71,11 @@ __TINYC__
 #  define NIM_CONST  const
 #endif
 
-#define NIM_THREADVAR __thread
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
+#  define NIM_THREADVAR __declspec(thread) 
+#else
+#  define NIM_THREADVAR __thread
+#endif
 
 /* --------------- how int64 constants should be declared: ----------- */
 #if defined(__GNUC__) || defined(__LCC__) || \

@@ -5,12 +5,12 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY65408 TY65408;
+typedef struct TY66408 TY66408;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY44006 TY44006;
-typedef struct TY44004 TY44004;
+typedef struct TY45006 TY45006;
+typedef struct TY45004 TY45004;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
 struct TNimType {
@@ -33,14 +33,14 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY44004 {
+struct TY45004 {
 NimStringDesc* Key;
 NimStringDesc* Val;
 };
-struct TY65408 {
+struct TY66408 {
   TNimObject Sup;
 NI Counter;
-TY44006* Data;
+TY45006* Data;
 NU8 Mode;
 };
 struct TNimNode {
@@ -51,15 +51,15 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY44006 {
+struct TY45006 {
   TGenericSeq Sup;
-  TY44004 data[SEQ_DECL_SIZE];
+  TY45004 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(NI, nstlen)(TY65408* T_65421) {
-NI Result_65422;
-Result_65422 = 0;
-Result_65422 = (*T_65421).Counter;
-return Result_65422;
+N_NIMCALL(NI, nstlen)(TY66408* T_66421) {
+NI Result_66422;
+Result_66422 = 0;
+Result_66422 = (*T_66421).Counter;
+return Result_66422;
 }
 N_NOINLINE(void, strtabsInit)(void) {
 }

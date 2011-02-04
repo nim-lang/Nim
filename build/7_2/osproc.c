@@ -11,21 +11,21 @@ typedef unsigned long long int NU;
 #include <sys/wait.h>
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY67694 TY67694;
-typedef struct TY67202 TY67202;
+typedef struct TY68699 TY68699;
+typedef struct TY68202 TY68202;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY38221 TY38221;
-typedef struct TY10402 TY10402;
-typedef struct TY10418 TY10418;
-typedef struct TY10790 TY10790;
-typedef struct TY10414 TY10414;
-typedef struct TY10410 TY10410;
-typedef struct TY10788 TY10788;
-typedef struct TY65408 TY65408;
+typedef struct TY39221 TY39221;
+typedef struct TY11002 TY11002;
+typedef struct TY11018 TY11018;
+typedef struct TY11396 TY11396;
+typedef struct TY11014 TY11014;
+typedef struct TY11010 TY11010;
+typedef struct TY11394 TY11394;
+typedef struct TY66408 TY66408;
 typedef struct TNimObject TNimObject;
-typedef struct TY44006 TY44006;
-typedef struct TY44004 TY44004;
+typedef struct TY45006 TY45006;
+typedef struct TY45004 TY45004;
 struct TGenericSeq {
 NI len;
 NI space;
@@ -51,22 +51,22 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY10402 {
+struct TY11002 {
 NI Refcount;
 TNimType* Typ;
 };
-struct TY10418 {
+struct TY11018 {
 NI Len;
 NI Cap;
-TY10402** D;
+TY11002** D;
 };
-struct TY10414 {
+struct TY11014 {
 NI Counter;
 NI Max;
-TY10410* Head;
-TY10410** Data;
+TY11010* Head;
+TY11010** Data;
 };
-struct TY10788 {
+struct TY11394 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -74,18 +74,18 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10790 {
-TY10418 Zct;
-TY10418 Decstack;
-TY10414 Cycleroots;
-TY10418 Tempstack;
-TY10788 Stat;
+struct TY11396 {
+TY11018 Zct;
+TY11018 Decstack;
+TY11014 Cycleroots;
+TY11018 Tempstack;
+TY11394 Stat;
 };
-typedef int TY68328[2];
+typedef int TY69331[2];
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY67202 {
+struct TY68202 {
   TNimObject Sup;
 int Inputhandle;
 int Outputhandle;
@@ -93,290 +93,290 @@ int Errorhandle;
 int Id;
 int Exitcode;
 };
-typedef NimStringDesc* TY46866[1];
-struct TY44004 {
+typedef NimStringDesc* TY47869[1];
+struct TY45004 {
 NimStringDesc* Key;
 NimStringDesc* Val;
 };
-struct TY65408 {
+struct TY66408 {
   TNimObject Sup;
 NI Counter;
-TY44006* Data;
+TY45006* Data;
 NU8 Mode;
 };
-typedef NimStringDesc* TY114148[2];
-typedef NI TY8414[8];
-struct TY10410 {
-TY10410* Next;
+typedef NimStringDesc* TY115148[2];
+typedef NI TY9014[8];
+struct TY11010 {
+TY11010* Next;
 NI Key;
-TY8414 Bits;
+TY9014 Bits;
 };
-struct TY67694 {
+struct TY68699 {
   TGenericSeq Sup;
-  TY67202* data[SEQ_DECL_SIZE];
+  TY68202* data[SEQ_DECL_SIZE];
 };
-struct TY38221 {
+struct TY39221 {
   TGenericSeq Sup;
   NimStringDesc* data[SEQ_DECL_SIZE];
 };
-struct TY44006 {
+struct TY45006 {
   TGenericSeq Sup;
-  TY44004 data[SEQ_DECL_SIZE];
+  TY45004 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void*, newSeq)(TNimType* Typ_14004, NI Len_14005);
-N_NIMCALL(TY67202*, Startprocessaux_67603)(NimStringDesc* Cmd_67605, NU8 Options_67607);
-N_NIMCALL(TY38221*, nosparseCmdLine)(NimStringDesc* C_39431);
-N_NIMCALL(TGenericSeq*, incrSeq)(TGenericSeq* Seq_18435, NI Elemsize_18436);
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12818, void* Src_12819);
-static N_INLINE(TY10402*, Usrtocell_11212)(void* Usr_11214);
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
-static N_INLINE(void, Rtladdzct_12201)(TY10402* C_12203);
-N_NOINLINE(void, Addzct_11201)(TY10418* S_11204, TY10402* C_11205);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18308);
-N_NIMCALL(TY67202*, nospstartProcess)(NimStringDesc* Command_67238, NimStringDesc* Workingdir_67239, NimStringDesc** Args_67244, NI Args_67244Len0, TY65408* Env_67245, NU8 Options_67248);
-N_NIMCALL(void*, newObj)(TNimType* Typ_13507, NI Size_13508);
-N_NOINLINE(void, nosOSError)(NimStringDesc* Msg_35604);
-static N_INLINE(void, Setcurrentdir_37201)(NimStringDesc* Newdir_37203);
-N_NIMCALL(NCSTRING*, Tocstringarray_68217)(NimStringDesc** B_68220, NI B_68220Len0, NimStringDesc** A_68221, NI A_68221Len0);
-N_NOCONV(void*, Alloc0_1953)(NI Size_1955);
-N_NOCONV(void*, Alloc_1950)(NI Size_1952);
-N_NIMCALL(NimStringDesc*, nosextractFilename)(NimStringDesc* Path_37727);
-N_NIMCALL(NCSTRING*, Tocstringarray_68287)(TY65408* T_68289);
-N_NIMCALL(NI, nstlen)(TY65408* T_65421);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18392, NimStringDesc* Src_18393);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18287);
-N_NIMCALL(NimStringDesc*, Addcmdargs_68203)(NimStringDesc* Command_68205, NimStringDesc** Args_68207, NI Args_68207Len0);
-N_NIMCALL(NimStringDesc*, Quoteifcontainswhite_25255)(NimStringDesc* S_25257);
-N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_18382, NI Addlen_18383);
-N_NIMCALL(void, Quit_2821)(NimStringDesc* Errormsg_2823);
-N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_18304);
-N_NIMCALL(NimStringDesc*, nsuJoinSep)(NimStringDesc** A_25004, NI A_25004Len0, NimStringDesc* Sep_25005);
-static N_INLINE(void, rawEcho)(NimStringDesc* X_4094);
-N_NIMCALL(void, Write_3658)(FILE* F_3660, NimStringDesc* S_3661);
+N_NIMCALL(void*, newSeq)(TNimType* Typ_14604, NI Len_14605);
+N_NIMCALL(TY68202*, Startprocessaux_68603)(NimStringDesc* Cmd_68605, NU8 Options_68607);
+N_NIMCALL(TY39221*, nosparseCmdLine)(NimStringDesc* C_40432);
+N_NIMCALL(TGenericSeq*, incrSeq)(TGenericSeq* Seq_19042, NI Elemsize_19043);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13418, void* Src_13419);
+static N_INLINE(TY11002*, Usrtocell_11812)(void* Usr_11814);
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405);
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410);
+static N_INLINE(void, Rtladdzct_12801)(TY11002* C_12803);
+N_NOINLINE(void, Addzct_11801)(TY11018* S_11804, TY11002* C_11805);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18912);
+N_NIMCALL(TY68202*, nospstartProcess)(NimStringDesc* Command_68238, NimStringDesc* Workingdir_68239, NimStringDesc** Args_68244, NI Args_68244Len0, TY66408* Env_68245, NU8 Options_68248);
+N_NIMCALL(void*, newObj)(TNimType* Typ_14110, NI Size_14111);
+N_NOINLINE(void, nosOSError)(NimStringDesc* Msg_36604);
+static N_INLINE(void, Setcurrentdir_38201)(NimStringDesc* Newdir_38203);
+N_NIMCALL(NCSTRING*, Tocstringarray_69218)(NimStringDesc** B_69221, NI B_69221Len0, NimStringDesc** A_69222, NI A_69222Len0);
+N_NOCONV(void*, Alloc0_2353)(NI Size_2355);
+N_NOCONV(void*, Alloc_2350)(NI Size_2352);
+N_NIMCALL(NimStringDesc*, nosextractFilename)(NimStringDesc* Path_38730);
+N_NIMCALL(NCSTRING*, Tocstringarray_69290)(TY66408* T_69292);
+N_NIMCALL(NI, nstlen)(TY66408* T_66421);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18999, NimStringDesc* Src_19000);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18889);
+N_NIMCALL(NimStringDesc*, Addcmdargs_69203)(NimStringDesc* Command_69205, NimStringDesc** Args_69207, NI Args_69207Len0);
+N_NIMCALL(NimStringDesc*, Quoteifcontainswhite_26268)(NimStringDesc* S_26270);
+N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_18989, NI Addlen_18990);
+N_NIMCALL(void, Quit_3221)(NimStringDesc* Errormsg_3223);
+N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_18908);
+N_NIMCALL(NimStringDesc*, nsuJoinSep)(NimStringDesc** A_26004, NI A_26004Len0, NimStringDesc* Sep_26005);
+static N_INLINE(void, rawEcho)(NimStringDesc* X_4702);
+N_NIMCALL(void, Write_4066)(FILE* F_4068, NimStringDesc* S_4069);
 static N_INLINE(void, rawEchoNL)(void);
-N_NIMCALL(void, nossleep)(NI Milsecs_41206);
-N_NIMCALL(NIM_BOOL, nosprunning)(TY67202* P_67260);
-N_NIMCALL(NI, nospwaitForExit)(TY67202* P_67267);
-STRING_LITERAL(TMP194857, "failed to create a pipe", 23);
-STRING_LITERAL(TMP194858, "failed to fork process", 22);
-STRING_LITERAL(TMP194859, "", 0);
-STRING_LITERAL(TMP194860, "=", 1);
-STRING_LITERAL(TMP194861, " ", 1);
-STRING_LITERAL(TMP194863, "sh", 2);
-STRING_LITERAL(TMP194864, "-c", 2);
-NIM_CONST TY114148 TMP194862 = {((NimStringDesc*) &TMP194863),
-((NimStringDesc*) &TMP194864)}
+N_NIMCALL(void, nossleep)(NI Milsecs_42212);
+N_NIMCALL(NIM_BOOL, nosprunning)(TY68202* P_68260);
+N_NIMCALL(NI, nospwaitForExit)(TY68202* P_68267);
+STRING_LITERAL(TMP196858, "failed to create a pipe", 23);
+STRING_LITERAL(TMP196859, "failed to fork process", 22);
+STRING_LITERAL(TMP196860, "", 0);
+STRING_LITERAL(TMP196861, "=", 1);
+STRING_LITERAL(TMP196862, " ", 1);
+STRING_LITERAL(TMP196864, "sh", 2);
+STRING_LITERAL(TMP196865, "-c", 2);
+NIM_CONST TY115148 TMP196863 = {((NimStringDesc*) &TMP196864),
+((NimStringDesc*) &TMP196865)}
 ;
-STRING_LITERAL(TMP194865, "execve call failed: ", 20);
-STRING_LITERAL(TMP194866, "\012", 1);
-extern TNimType* NTI67694; /* seq[PProcess] */
-extern TNimType* NTI38221; /* seq[string] */
-extern TY10790 Gch_10808;
-extern TNimType* NTI67204; /* PProcess */
-extern TNimType* NTI67202; /* TProcess */
+STRING_LITERAL(TMP196866, "execve call failed: ", 20);
+STRING_LITERAL(TMP196867, "\012", 1);
+extern TNimType* NTI68699; /* seq[PProcess] */
+extern TNimType* NTI39221; /* seq[string] */
+extern TY11396 Gch_11414;
+extern TNimType* NTI68204; /* PProcess */
+extern TNimType* NTI68202; /* TProcess */
 N_NIMCALL(NI, nospcountProcessors)(void) {
-NI Result_67403;
-Result_67403 = 0;
-Result_67403 = sysconf(_SC_NPROCESSORS_ONLN);
-if (!(Result_67403 <= 0)) goto LA2;
-Result_67403 = 1;
+NI Result_68403;
+Result_68403 = 0;
+Result_68403 = sysconf(_SC_NPROCESSORS_ONLN);
+if (!(Result_68403 <= 0)) goto LA2;
+Result_68403 = 1;
 LA2: ;
-return Result_67403;
+return Result_68403;
 }
-N_NIMCALL(NI, nospexecCmd)(NimStringDesc* Command_67231) {
-NI Result_68502;
+N_NIMCALL(NI, nospexecCmd)(NimStringDesc* Command_68231) {
+NI Result_69519;
 int LOC1;
-Result_68502 = 0;
-LOC1 = system(Command_67231->data);
-Result_68502 = ((NI) (LOC1));
-return Result_68502;
+Result_69519 = 0;
+LOC1 = system(Command_68231->data);
+Result_69519 = ((NI) (LOC1));
+return Result_69519;
 }
-static N_INLINE(TY10402*, Usrtocell_11212)(void* Usr_11214) {
-TY10402* Result_11215;
-Result_11215 = 0;
-Result_11215 = ((TY10402*) ((NI64)((NU64)(((NI) (Usr_11214))) - (NU64)(((NI) (((NI)sizeof(TY10402))))))));
-return Result_11215;
+static N_INLINE(TY11002*, Usrtocell_11812)(void* Usr_11814) {
+TY11002* Result_11815;
+Result_11815 = 0;
+Result_11815 = ((TY11002*) ((NI64)((NU64)(((NI) (Usr_11814))) - (NU64)(((NI) (((NI)sizeof(TY11002))))))));
+return Result_11815;
 }
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
-NI Result_7407;
-Result_7407 = 0;
-(*Memloc_3004) += X_3005;
-Result_7407 = (*Memloc_3004);
-return Result_7407;
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405) {
+NI Result_8007;
+Result_8007 = 0;
+(*Memloc_3404) += X_3405;
+Result_8007 = (*Memloc_3404);
+return Result_8007;
 }
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
-NI Result_7606;
-Result_7606 = 0;
-(*Memloc_3009) -= X_3010;
-Result_7606 = (*Memloc_3009);
-return Result_7606;
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410) {
+NI Result_8206;
+Result_8206 = 0;
+(*Memloc_3409) -= X_3410;
+Result_8206 = (*Memloc_3409);
+return Result_8206;
 }
-static N_INLINE(void, Rtladdzct_12201)(TY10402* C_12203) {
-Addzct_11201(&Gch_10808.Zct, C_12203);
+static N_INLINE(void, Rtladdzct_12801)(TY11002* C_12803) {
+Addzct_11801(&Gch_11414.Zct, C_12803);
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12818, void* Src_12819) {
-TY10402* C_12820;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13418, void* Src_13419) {
+TY11002* C_13420;
 NI LOC4;
-TY10402* C_12822;
+TY11002* C_13422;
 NI LOC9;
-if (!!((Src_12819 == NIM_NIL))) goto LA2;
-C_12820 = 0;
-C_12820 = Usrtocell_11212(Src_12819);
-LOC4 = Atomicinc_3001(&(*C_12820).Refcount, 8);
+if (!!((Src_13419 == NIM_NIL))) goto LA2;
+C_13420 = 0;
+C_13420 = Usrtocell_11812(Src_13419);
+LOC4 = Atomicinc_3401(&(*C_13420).Refcount, 8);
 LA2: ;
-if (!!(((*Dest_12818) == NIM_NIL))) goto LA6;
-C_12822 = 0;
-C_12822 = Usrtocell_11212((*Dest_12818));
-LOC9 = Atomicdec_3006(&(*C_12822).Refcount, 8);
+if (!!(((*Dest_13418) == NIM_NIL))) goto LA6;
+C_13422 = 0;
+C_13422 = Usrtocell_11812((*Dest_13418));
+LOC9 = Atomicdec_3406(&(*C_13422).Refcount, 8);
 if (!((NU64)(LOC9) < (NU64)(8))) goto LA10;
-Rtladdzct_12201(C_12822);
+Rtladdzct_12801(C_13422);
 LA10: ;
 LA6: ;
-(*Dest_12818) = Src_12819;
+(*Dest_13418) = Src_13419;
 }
-static N_INLINE(void, Setcurrentdir_37201)(NimStringDesc* Newdir_37203) {
+static N_INLINE(void, Setcurrentdir_38201)(NimStringDesc* Newdir_38203) {
 int LOC2;
-LOC2 = chdir(Newdir_37203->data);
+LOC2 = chdir(Newdir_38203->data);
 if (!!((LOC2 == ((NI32) 0)))) goto LA3;
-nosOSError(((NimStringDesc*) &TMP194859));
+nosOSError(((NimStringDesc*) &TMP196860));
 LA3: ;
 }
-N_NIMCALL(NCSTRING*, Tocstringarray_68217)(NimStringDesc** B_68220, NI B_68220Len0, NimStringDesc** A_68221, NI A_68221Len0) {
-NCSTRING* Result_68222;
+N_NIMCALL(NCSTRING*, Tocstringarray_69218)(NimStringDesc** B_69221, NI B_69221Len0, NimStringDesc** A_69222, NI A_69222Len0) {
+NCSTRING* Result_69223;
 void* LOC1;
-NI I_68250;
-NI HEX3Atmp_68604;
-NI Res_68606;
+NI I_69252;
+NI HEX3Atmp_69604;
+NI Res_69606;
 void* LOC3;
-NI I_68262;
-NI HEX3Atmp_68607;
-NI Res_68609;
+NI I_69265;
+NI HEX3Atmp_69607;
+NI Res_69609;
 void* LOC5;
-Result_68222 = 0;
-LOC1 = Alloc0_1953((NI64)((NI64)((NI64)(A_68221Len0 + B_68220Len0) + 1) * 8));
-Result_68222 = ((NCSTRING*) (LOC1));
-I_68250 = 0;
-HEX3Atmp_68604 = 0;
-HEX3Atmp_68604 = (B_68220Len0-1);
-Res_68606 = 0;
-Res_68606 = 0;
+Result_69223 = 0;
+LOC1 = Alloc0_2353((NI64)((NI64)((NI64)(A_69222Len0 + B_69221Len0) + 1) * 8));
+Result_69223 = ((NCSTRING*) (LOC1));
+I_69252 = 0;
+HEX3Atmp_69604 = 0;
+HEX3Atmp_69604 = (B_69221Len0-1);
+Res_69606 = 0;
+Res_69606 = 0;
 while (1) {
-if (!(Res_68606 <= HEX3Atmp_68604)) goto LA2;
-I_68250 = Res_68606;
-LOC3 = Alloc_1950((NI64)(B_68220[I_68250]->Sup.len + 1));
-Result_68222[(I_68250)-0] = ((NCSTRING) (LOC3));
-memcpy(((void*) (Result_68222[(I_68250)-0])), ((void*) (B_68220[I_68250]->data)), (NI64)(B_68220[I_68250]->Sup.len + 1));
-Res_68606 += 1;
+if (!(Res_69606 <= HEX3Atmp_69604)) goto LA2;
+I_69252 = Res_69606;
+LOC3 = Alloc_2350((NI64)(B_69221[I_69252]->Sup.len + 1));
+Result_69223[(I_69252)-0] = ((NCSTRING) (LOC3));
+memcpy(((void*) (Result_69223[(I_69252)-0])), ((void*) (B_69221[I_69252]->data)), (NI64)(B_69221[I_69252]->Sup.len + 1));
+Res_69606 += 1;
 } LA2: ;
-I_68262 = 0;
-HEX3Atmp_68607 = 0;
-HEX3Atmp_68607 = (A_68221Len0-1);
-Res_68609 = 0;
-Res_68609 = 0;
+I_69265 = 0;
+HEX3Atmp_69607 = 0;
+HEX3Atmp_69607 = (A_69222Len0-1);
+Res_69609 = 0;
+Res_69609 = 0;
 while (1) {
-if (!(Res_68609 <= HEX3Atmp_68607)) goto LA4;
-I_68262 = Res_68609;
-LOC5 = Alloc_1950((NI64)(A_68221[I_68262]->Sup.len + 1));
-Result_68222[((NI64)(I_68262 + B_68220Len0))-0] = ((NCSTRING) (LOC5));
-memcpy(((void*) (Result_68222[((NI64)(I_68262 + B_68220Len0))-0])), ((void*) (A_68221[I_68262]->data)), (NI64)(A_68221[I_68262]->Sup.len + 1));
-Res_68609 += 1;
+if (!(Res_69609 <= HEX3Atmp_69607)) goto LA4;
+I_69265 = Res_69609;
+LOC5 = Alloc_2350((NI64)(A_69222[I_69265]->Sup.len + 1));
+Result_69223[((NI64)(I_69265 + B_69221Len0))-0] = ((NCSTRING) (LOC5));
+memcpy(((void*) (Result_69223[((NI64)(I_69265 + B_69221Len0))-0])), ((void*) (A_69222[I_69265]->data)), (NI64)(A_69222[I_69265]->Sup.len + 1));
+Res_69609 += 1;
 } LA4: ;
-return Result_68222;
+return Result_69223;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18392, NimStringDesc* Src_18393) {
-memcpy(((NCSTRING) (&(*Dest_18392).data[((*Dest_18392).Sup.len)-0])), ((NCSTRING) ((*Src_18393).data)), ((int) ((NI64)((NI64)((*Src_18393).Sup.len + 1) * 1))));
-(*Dest_18392).Sup.len += (*Src_18393).Sup.len;
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18999, NimStringDesc* Src_19000) {
+memcpy(((NCSTRING) (&(*Dest_18999).data[((*Dest_18999).Sup.len)-0])), ((NCSTRING) ((*Src_19000).data)), ((int) ((NI64)((NI64)((*Src_19000).Sup.len + 1) * 1))));
+(*Dest_18999).Sup.len += (*Src_19000).Sup.len;
 }
-N_NIMCALL(NCSTRING*, Tocstringarray_68287)(TY65408* T_68289) {
-NCSTRING* Result_68290;
+N_NIMCALL(NCSTRING*, Tocstringarray_69290)(TY66408* T_69292) {
+NCSTRING* Result_69293;
 NI LOC1;
 void* LOC2;
-NI I_68293;
-NimStringDesc* Key_68294;
-NimStringDesc* Val_68295;
-NI H_68611;
-NI HEX3Atmp_68613;
-NI Res_68615;
-NimStringDesc* X_68296;
+NI I_69296;
+NimStringDesc* Key_69297;
+NimStringDesc* Val_69298;
+NI H_69611;
+NI HEX3Atmp_69613;
+NI Res_69615;
+NimStringDesc* X_69299;
 NimStringDesc* LOC7;
 void* LOC8;
-Result_68290 = 0;
-LOC1 = nstlen(T_68289);
-LOC2 = Alloc0_1953((NI64)((NI64)(LOC1 + 1) * 8));
-Result_68290 = ((NCSTRING*) (LOC2));
-I_68293 = 0;
-I_68293 = 0;
-Key_68294 = 0;
-Val_68295 = 0;
-H_68611 = 0;
-HEX3Atmp_68613 = 0;
-HEX3Atmp_68613 = ((*T_68289).Data->Sup.len-1);
-Res_68615 = 0;
-Res_68615 = 0;
+Result_69293 = 0;
+LOC1 = nstlen(T_69292);
+LOC2 = Alloc0_2353((NI64)((NI64)(LOC1 + 1) * 8));
+Result_69293 = ((NCSTRING*) (LOC2));
+I_69296 = 0;
+I_69296 = 0;
+Key_69297 = 0;
+Val_69298 = 0;
+H_69611 = 0;
+HEX3Atmp_69613 = 0;
+HEX3Atmp_69613 = ((*T_69292).Data->Sup.len-1);
+Res_69615 = 0;
+Res_69615 = 0;
 while (1) {
-if (!(Res_68615 <= HEX3Atmp_68613)) goto LA3;
-H_68611 = Res_68615;
-if (!!((*T_68289).Data->data[H_68611].Key == 0)) goto LA5;
-Key_68294 = (*T_68289).Data->data[H_68611].Key;
-Val_68295 = (*T_68289).Data->data[H_68611].Val;
-X_68296 = 0;
+if (!(Res_69615 <= HEX3Atmp_69613)) goto LA3;
+H_69611 = Res_69615;
+if (!!((*T_69292).Data->data[H_69611].Key == 0)) goto LA5;
+Key_69297 = (*T_69292).Data->data[H_69611].Key;
+Val_69298 = (*T_69292).Data->data[H_69611].Val;
+X_69299 = 0;
 LOC7 = 0;
-LOC7 = rawNewString(Key_68294->Sup.len + Val_68295->Sup.len + 1);
-appendString(LOC7, Key_68294);
-appendString(LOC7, ((NimStringDesc*) &TMP194860));
-appendString(LOC7, Val_68295);
-X_68296 = LOC7;
-LOC8 = Alloc_1950((NI64)(X_68296->Sup.len + 1));
-Result_68290[(I_68293)-0] = ((NCSTRING) (LOC8));
-memcpy(((void*) (Result_68290[(I_68293)-0])), ((void*) (&X_68296->data[0])), (NI64)(X_68296->Sup.len + 1));
-I_68293 += 1;
+LOC7 = rawNewString(Key_69297->Sup.len + Val_69298->Sup.len + 1);
+appendString(LOC7, Key_69297);
+appendString(LOC7, ((NimStringDesc*) &TMP196861));
+appendString(LOC7, Val_69298);
+X_69299 = LOC7;
+LOC8 = Alloc_2350((NI64)(X_69299->Sup.len + 1));
+Result_69293[(I_69296)-0] = ((NCSTRING) (LOC8));
+memcpy(((void*) (Result_69293[(I_69296)-0])), ((void*) (&X_69299->data[0])), (NI64)(X_69299->Sup.len + 1));
+I_69296 += 1;
 LA5: ;
-Res_68615 += 1;
+Res_69615 += 1;
 } LA3: ;
-return Result_68290;
+return Result_69293;
 }
-N_NIMCALL(NimStringDesc*, Addcmdargs_68203)(NimStringDesc* Command_68205, NimStringDesc** Args_68207, NI Args_68207Len0) {
-NimStringDesc* Result_68208;
-NI I_68216;
-NI HEX3Atmp_68601;
-NI Res_68603;
+N_NIMCALL(NimStringDesc*, Addcmdargs_69203)(NimStringDesc* Command_69205, NimStringDesc** Args_69207, NI Args_69207Len0) {
+NimStringDesc* Result_69208;
+NI I_69217;
+NI HEX3Atmp_69601;
+NI Res_69603;
 NimStringDesc* LOC2;
-Result_68208 = 0;
-Result_68208 = Quoteifcontainswhite_25255(Command_68205);
-I_68216 = 0;
-HEX3Atmp_68601 = 0;
-HEX3Atmp_68601 = (Args_68207Len0-1);
-Res_68603 = 0;
-Res_68603 = 0;
+Result_69208 = 0;
+Result_69208 = Quoteifcontainswhite_26268(Command_69205);
+I_69217 = 0;
+HEX3Atmp_69601 = 0;
+HEX3Atmp_69601 = (Args_69207Len0-1);
+Res_69603 = 0;
+Res_69603 = 0;
 while (1) {
-if (!(Res_68603 <= HEX3Atmp_68601)) goto LA1;
-I_68216 = Res_68603;
-Result_68208 = resizeString(Result_68208, 1);
-appendString(Result_68208, ((NimStringDesc*) &TMP194861));
+if (!(Res_69603 <= HEX3Atmp_69601)) goto LA1;
+I_69217 = Res_69603;
+Result_69208 = resizeString(Result_69208, 1);
+appendString(Result_69208, ((NimStringDesc*) &TMP196862));
 LOC2 = 0;
-LOC2 = Quoteifcontainswhite_25255(Args_68207[I_68216]);
-Result_68208 = resizeString(Result_68208, LOC2->Sup.len + 0);
-appendString(Result_68208, LOC2);
-Res_68603 += 1;
+LOC2 = Quoteifcontainswhite_26268(Args_69207[I_69217]);
+Result_69208 = resizeString(Result_69208, LOC2->Sup.len + 0);
+appendString(Result_69208, LOC2);
+Res_69603 += 1;
 } LA1: ;
-return Result_68208;
+return Result_69208;
 }
-static N_INLINE(void, rawEcho)(NimStringDesc* X_4094) {
-Write_3658(stdout, X_4094);
+static N_INLINE(void, rawEcho)(NimStringDesc* X_4702) {
+Write_4066(stdout, X_4702);
 }
 static N_INLINE(void, rawEchoNL)(void) {
-Write_3658(stdout, ((NimStringDesc*) &TMP194866));
+Write_4066(stdout, ((NimStringDesc*) &TMP196867));
 }
-N_NIMCALL(TY67202*, nospstartProcess)(NimStringDesc* Command_67238, NimStringDesc* Workingdir_67239, NimStringDesc** Args_67244, NI Args_67244Len0, TY65408* Env_67245, NU8 Options_67248) {
-TY67202* Result_68327;
-TY68328 Pstdin_68330;
-TY68328 Pstdout_68331;
-TY68328 Pstderr_68332;
+N_NIMCALL(TY68202*, nospstartProcess)(NimStringDesc* Command_68238, NimStringDesc* Workingdir_68239, NimStringDesc** Args_68244, NI Args_68244Len0, TY66408* Env_68245, NU8 Options_68248) {
+TY68202* Result_69330;
+TY69331 Pstdin_69333;
+TY69331 Pstdout_69334;
+TY69331 Pstderr_69335;
 NIM_BOOL LOC2;
 int LOC3;
 int LOC5;
-NI Pid_68352;
+NI Pid_69355;
 int LOC14;
 int LOC16;
 int LOC19;
@@ -385,14 +385,14 @@ int LOC28;
 int LOC32;
 int LOC35;
 int LOC37;
-NCSTRING* A_68397;
-TY46866 LOC46;
+NCSTRING* A_69412;
+TY47869 LOC46;
 int LOC50;
 NCSTRING* LOC51;
 int LOC52;
-NimStringDesc* X_68409;
-NCSTRING* A_68418;
-TY46866 LOC53;
+NimStringDesc* X_69424;
+NCSTRING* A_69433;
+TY47869 LOC53;
 int LOC57;
 NCSTRING* LOC58;
 int LOC59;
@@ -404,84 +404,84 @@ NimStringDesc* LOC67;
 int LOC71;
 int LOC72;
 int LOC73;
-Result_68327 = 0;
-memset((void*)&Pstdin_68330, 0, sizeof(Pstdin_68330));
-memset((void*)&Pstdout_68331, 0, sizeof(Pstdout_68331));
-memset((void*)&Pstderr_68332, 0, sizeof(Pstderr_68332));
-Result_68327 = (TY67202*) newObj(NTI67204, sizeof(TY67202));
-(*Result_68327).Sup.m_type = NTI67202;
-(*Result_68327).Exitcode = ((NI32) 3);
-LOC3 = pipe(Pstdin_68330);
+Result_69330 = 0;
+memset((void*)&Pstdin_69333, 0, sizeof(Pstdin_69333));
+memset((void*)&Pstdout_69334, 0, sizeof(Pstdout_69334));
+memset((void*)&Pstderr_69335, 0, sizeof(Pstderr_69335));
+Result_69330 = (TY68202*) newObj(NTI68204, sizeof(TY68202));
+(*Result_69330).Sup.m_type = NTI68202;
+(*Result_69330).Exitcode = ((NI32) 3);
+LOC3 = pipe(Pstdin_69333);
 LOC2 = !((LOC3 == ((NI32) 0)));
 if (LOC2) goto LA4;
-LOC5 = pipe(Pstdout_68331);
+LOC5 = pipe(Pstdout_69334);
 LOC2 = !((LOC5 == ((NI32) 0)));
 LA4: ;
 if (!LOC2) goto LA6;
-nosOSError(((NimStringDesc*) &TMP194857));
+nosOSError(((NimStringDesc*) &TMP196858));
 LA6: ;
-Pid_68352 = 0;
-Pid_68352 = fork();
-if (!(Pid_68352 < 0)) goto LA9;
-nosOSError(((NimStringDesc*) &TMP194858));
+Pid_69355 = 0;
+Pid_69355 = fork();
+if (!(Pid_69355 < 0)) goto LA9;
+nosOSError(((NimStringDesc*) &TMP196859));
 LA9: ;
-if (!(Pid_68352 == 0)) goto LA12;
-LOC14 = close(Pstdin_68330[(1)-0]);
-LOC16 = dup2(Pstdin_68330[(0)-0], ((NI32) 0));
+if (!(Pid_69355 == 0)) goto LA12;
+LOC14 = close(Pstdin_69333[(1)-0]);
+LOC16 = dup2(Pstdin_69333[(0)-0], ((NI32) 0));
 if (!(((NI) (LOC16)) < 0)) goto LA17;
-nosOSError(((NimStringDesc*) &TMP194859));
+nosOSError(((NimStringDesc*) &TMP196860));
 LA17: ;
-LOC19 = close(Pstdout_68331[(0)-0]);
-LOC21 = dup2(Pstdout_68331[(1)-0], ((NI32) 1));
+LOC19 = close(Pstdout_69334[(0)-0]);
+LOC21 = dup2(Pstdout_69334[(1)-0], ((NI32) 1));
 if (!(((NI) (LOC21)) < 0)) goto LA22;
-nosOSError(((NimStringDesc*) &TMP194859));
+nosOSError(((NimStringDesc*) &TMP196860));
 LA22: ;
-if (!((Options_67248 &(1<<((((NU8) 2))&7)))!=0)) goto LA25;
-LOC28 = dup2(Pstdout_68331[(1)-0], ((NI32) 2));
+if (!((Options_68248 &(1<<((((NU8) 2))&7)))!=0)) goto LA25;
+LOC28 = dup2(Pstdout_69334[(1)-0], ((NI32) 2));
 if (!(((NI) (LOC28)) < 0)) goto LA29;
-nosOSError(((NimStringDesc*) &TMP194859));
+nosOSError(((NimStringDesc*) &TMP196860));
 LA29: ;
 goto LA24;
 LA25: ;
-LOC32 = pipe(Pstderr_68332);
+LOC32 = pipe(Pstderr_69335);
 if (!!((LOC32 == ((NI32) 0)))) goto LA33;
-nosOSError(((NimStringDesc*) &TMP194857));
+nosOSError(((NimStringDesc*) &TMP196858));
 LA33: ;
-LOC35 = close(Pstderr_68332[(0)-0]);
-LOC37 = dup2(Pstderr_68332[(1)-0], ((NI32) 2));
+LOC35 = close(Pstderr_69335[(0)-0]);
+LOC37 = dup2(Pstderr_69335[(1)-0], ((NI32) 2));
 if (!(((NI) (LOC37)) < 0)) goto LA38;
-nosOSError(((NimStringDesc*) &TMP194859));
+nosOSError(((NimStringDesc*) &TMP196860));
 LA38: ;
 LA24: ;
-if (!(0 < Workingdir_67239->Sup.len)) goto LA41;
-Setcurrentdir_37201(Workingdir_67239);
+if (!(0 < Workingdir_68239->Sup.len)) goto LA41;
+Setcurrentdir_38201(Workingdir_68239);
 LA41: ;
-if (!!(((Options_67248 &(1<<((((NU8) 1))&7)))!=0))) goto LA44;
-A_68397 = 0;
+if (!!(((Options_68248 &(1<<((((NU8) 1))&7)))!=0))) goto LA44;
+A_69412 = 0;
 memset((void*)&LOC46, 0, sizeof(LOC46));
-LOC46[0] = nosextractFilename(Command_67238);
-A_68397 = Tocstringarray_68217(LOC46, 1, Args_67244, Args_67244Len0);
-if (!(Env_67245 == NIM_NIL)) goto LA48;
-LOC50 = execv(Command_67238->data, A_68397);
+LOC46[0] = nosextractFilename(Command_68238);
+A_69412 = Tocstringarray_69218(LOC46, 1, Args_68244, Args_68244Len0);
+if (!(Env_68245 == NIM_NIL)) goto LA48;
+LOC50 = execv(Command_68238->data, A_69412);
 goto LA47;
 LA48: ;
-LOC51 = Tocstringarray_68287(Env_67245);
-LOC52 = execve(Command_67238->data, A_68397, LOC51);
+LOC51 = Tocstringarray_69290(Env_68245);
+LOC52 = execve(Command_68238->data, A_69412, LOC51);
 LA47: ;
 goto LA43;
 LA44: ;
-X_68409 = 0;
-X_68409 = Addcmdargs_68203(Command_67238, Args_67244, Args_67244Len0);
-A_68418 = 0;
+X_69424 = 0;
+X_69424 = Addcmdargs_69203(Command_68238, Args_68244, Args_68244Len0);
+A_69433 = 0;
 memset((void*)&LOC53, 0, sizeof(LOC53));
-LOC53[0] = copyString(X_68409);
-A_68418 = Tocstringarray_68217(TMP194862, 2, LOC53, 1);
-if (!(Env_67245 == NIM_NIL)) goto LA55;
-LOC57 = execv("/bin/sh", A_68418);
+LOC53[0] = copyString(X_69424);
+A_69433 = Tocstringarray_69218(TMP196863, 2, LOC53, 1);
+if (!(Env_68245 == NIM_NIL)) goto LA55;
+LOC57 = execv("/bin/sh", A_69433);
 goto LA54;
 LA55: ;
-LOC58 = Tocstringarray_68287(Env_67245);
-LOC59 = execve("/bin/sh", A_68418, LOC58);
+LOC58 = Tocstringarray_69290(Env_68245);
+LOC59 = execve("/bin/sh", A_69433, LOC58);
 LA54: ;
 LA43: ;
 LOC60 = 0;
@@ -489,179 +489,179 @@ LOC61 = strerror(errno);
 LOC62 = 0;
 LOC62 = cstrToNimstr(LOC61);
 LOC60 = rawNewString(LOC62->Sup.len + 20);
-appendString(LOC60, ((NimStringDesc*) &TMP194865));
+appendString(LOC60, ((NimStringDesc*) &TMP196866));
 appendString(LOC60, LOC62);
-Quit_2821(LOC60);
+Quit_3221(LOC60);
 LA12: ;
-if (!((Options_67248 &(1<<((((NU8) 0))&7)))!=0)) goto LA64;
+if (!((Options_68248 &(1<<((((NU8) 0))&7)))!=0)) goto LA64;
 LOC66 = 0;
 LOC67 = 0;
-LOC67 = nsuJoinSep(Args_67244, Args_67244Len0, ((NimStringDesc*) &TMP194861));
-LOC66 = rawNewString(Command_67238->Sup.len + LOC67->Sup.len + 1);
-appendString(LOC66, Command_67238);
-appendString(LOC66, ((NimStringDesc*) &TMP194861));
+LOC67 = nsuJoinSep(Args_68244, Args_68244Len0, ((NimStringDesc*) &TMP196862));
+LOC66 = rawNewString(Command_68238->Sup.len + LOC67->Sup.len + 1);
+appendString(LOC66, Command_68238);
+appendString(LOC66, ((NimStringDesc*) &TMP196862));
 appendString(LOC66, LOC67);
 rawEcho(LOC66);
 rawEchoNL();
 LA64: ;
-(*Result_68327).Id = ((int) (Pid_68352));
-(*Result_68327).Inputhandle = Pstdin_68330[(1)-0];
-(*Result_68327).Outputhandle = Pstdout_68331[(0)-0];
-if (!((Options_67248 &(1<<((((NU8) 2))&7)))!=0)) goto LA69;
-(*Result_68327).Errorhandle = (*Result_68327).Outputhandle;
+(*Result_69330).Id = ((int) (Pid_69355));
+(*Result_69330).Inputhandle = Pstdin_69333[(1)-0];
+(*Result_69330).Outputhandle = Pstdout_69334[(0)-0];
+if (!((Options_68248 &(1<<((((NU8) 2))&7)))!=0)) goto LA69;
+(*Result_69330).Errorhandle = (*Result_69330).Outputhandle;
 goto LA68;
 LA69: ;
-(*Result_68327).Errorhandle = Pstderr_68332[(0)-0];
-LOC71 = close(Pstderr_68332[(1)-0]);
+(*Result_69330).Errorhandle = Pstderr_69335[(0)-0];
+LOC71 = close(Pstderr_69335[(1)-0]);
 LA68: ;
-LOC72 = close(Pstdin_68330[(0)-0]);
-LOC73 = close(Pstdout_68331[(1)-0]);
-return Result_68327;
+LOC72 = close(Pstdin_69333[(0)-0]);
+LOC73 = close(Pstdout_69334[(1)-0]);
+return Result_69330;
 }
-N_NIMCALL(TY67202*, Startprocessaux_67603)(NimStringDesc* Cmd_67605, NU8 Options_67607) {
-TY67202* Result_67608;
-TY38221* C_67609;
-TY38221* A_67627;
-NI I_67660;
-NI HEX3Atmp_67679;
-NI Res_67681;
-Result_67608 = 0;
-C_67609 = 0;
-C_67609 = nosparseCmdLine(Cmd_67605);
-A_67627 = 0;
-A_67627 = (TY38221*) newSeq(NTI38221, 0);
-I_67660 = 0;
-HEX3Atmp_67679 = 0;
-HEX3Atmp_67679 = (NI64)(C_67609->Sup.len - 1);
-Res_67681 = 0;
-Res_67681 = 1;
+N_NIMCALL(TY68202*, Startprocessaux_68603)(NimStringDesc* Cmd_68605, NU8 Options_68607) {
+TY68202* Result_68608;
+TY39221* C_68609;
+TY39221* A_68627;
+NI I_68661;
+NI HEX3Atmp_68680;
+NI Res_68682;
+Result_68608 = 0;
+C_68609 = 0;
+C_68609 = nosparseCmdLine(Cmd_68605);
+A_68627 = 0;
+A_68627 = (TY39221*) newSeq(NTI39221, 0);
+I_68661 = 0;
+HEX3Atmp_68680 = 0;
+HEX3Atmp_68680 = (NI64)(C_68609->Sup.len - 1);
+Res_68682 = 0;
+Res_68682 = 1;
 while (1) {
-if (!(Res_67681 <= HEX3Atmp_67679)) goto LA1;
-I_67660 = Res_67681;
-A_67627 = (TY38221*) incrSeq(&(A_67627)->Sup, sizeof(NimStringDesc*));
-asgnRefNoCycle((void**) &A_67627->data[A_67627->Sup.len-1], copyString(C_67609->data[I_67660]));
-Res_67681 += 1;
+if (!(Res_68682 <= HEX3Atmp_68680)) goto LA1;
+I_68661 = Res_68682;
+A_68627 = (TY39221*) incrSeq(&(A_68627)->Sup, sizeof(NimStringDesc*));
+asgnRefNoCycle((void**) &A_68627->data[A_68627->Sup.len-1], copyString(C_68609->data[I_68661]));
+Res_68682 += 1;
 } LA1: ;
-Result_67608 = nospstartProcess(C_67609->data[0], ((NimStringDesc*) &TMP194859), A_67627->data, A_67627->Sup.len, NIM_NIL, Options_67607);
-return Result_67608;
+Result_68608 = nospstartProcess(C_68609->data[0], ((NimStringDesc*) &TMP196860), A_68627->data, A_68627->Sup.len, NIM_NIL, Options_68607);
+return Result_68608;
 }
-N_NIMCALL(NIM_BOOL, nosprunning)(TY67202* P_67260) {
-NIM_BOOL Result_68461;
+N_NIMCALL(NIM_BOOL, nosprunning)(TY68202* P_68260) {
+NIM_BOOL Result_69476;
 NI LOC1;
-Result_68461 = 0;
-LOC1 = waitpid(((NI) ((*P_67260).Id)), &(*P_67260).Exitcode, WNOHANG);
-Result_68461 = (LOC1 == ((NI) ((*P_67260).Id)));
-return Result_68461;
+Result_69476 = 0;
+LOC1 = waitpid(((NI) ((*P_68260).Id)), &(*P_68260).Exitcode, WNOHANG);
+Result_69476 = (LOC1 == ((NI) ((*P_68260).Id)));
+return Result_69476;
 }
-N_NIMCALL(NI, nospwaitForExit)(TY67202* P_67267) {
-NI Result_68473;
-int Oldexitcode_68474;
+N_NIMCALL(NI, nospwaitForExit)(TY68202* P_68267) {
+NI Result_69488;
+int Oldexitcode_69489;
 NI LOC2;
-Result_68473 = 0;
-Oldexitcode_68474 = 0;
-Oldexitcode_68474 = (*P_67267).Exitcode;
-LOC2 = waitpid(((NI) ((*P_67267).Id)), &(*P_67267).Exitcode, ((NI32) 0));
+Result_69488 = 0;
+Oldexitcode_69489 = 0;
+Oldexitcode_69489 = (*P_68267).Exitcode;
+LOC2 = waitpid(((NI) ((*P_68267).Id)), &(*P_68267).Exitcode, ((NI32) 0));
 if (!(LOC2 < 0)) goto LA3;
-(*P_67267).Exitcode = Oldexitcode_68474;
+(*P_68267).Exitcode = Oldexitcode_69489;
 LA3: ;
-Result_68473 = ((NI) ((*P_67267).Exitcode));
-return Result_68473;
+Result_69488 = ((NI) ((*P_68267).Exitcode));
+return Result_69488;
 }
-N_NIMCALL(NI, nospexecProcesses)(NimStringDesc** Cmds_67685, NI Cmds_67685Len0, NU8 Options_67687, NI N_67688) {
-NI Result_67689;
-TY67694* Q_67695;
-NI M_67720;
-NI I_67728;
-NI HEX3Atmp_67822;
-NI Res_67824;
-NI I_67729;
-NI R_67739;
-NI HEX3Atmp_67825;
-NI Res_67827;
+N_NIMCALL(NI, nospexecProcesses)(NimStringDesc** Cmds_68686, NI Cmds_68686Len0, NU8 Options_68688, NI N_68689) {
+NI Result_68690;
+TY68699* Q_68700;
+NI M_68725;
+NI I_68734;
+NI HEX3Atmp_68824;
+NI Res_68826;
+NI I_68735;
+NI R_68746;
+NI HEX3Atmp_68827;
+NI Res_68829;
 NIM_BOOL LOC8;
 NI LOC11;
-NI I_67808;
-NI HEX3Atmp_67828;
-NI Res_67830;
+NI I_68809;
+NI HEX3Atmp_68830;
+NI Res_68832;
 NI LOC16;
-NI I_67818;
-NI HEX3Atmp_67831;
-NI Res_67833;
-TY67202* P_67819;
+NI I_68820;
+NI HEX3Atmp_68833;
+NI Res_68835;
+TY68202* P_68821;
 NI LOC18;
-Result_67689 = 0;
-if (!(1 < N_67688)) goto LA2;
-Q_67695 = 0;
-Q_67695 = (TY67694*) newSeq(NTI67694, N_67688);
-M_67720 = 0;
-M_67720 = ((N_67688 <= Cmds_67685Len0) ? N_67688 : Cmds_67685Len0);
-I_67728 = 0;
-HEX3Atmp_67822 = 0;
-HEX3Atmp_67822 = (NI64)(M_67720 - 1);
-Res_67824 = 0;
-Res_67824 = 0;
+Result_68690 = 0;
+if (!(1 < N_68689)) goto LA2;
+Q_68700 = 0;
+Q_68700 = (TY68699*) newSeq(NTI68699, N_68689);
+M_68725 = 0;
+M_68725 = ((N_68689 <= Cmds_68686Len0) ? N_68689 : Cmds_68686Len0);
+I_68734 = 0;
+HEX3Atmp_68824 = 0;
+HEX3Atmp_68824 = (NI64)(M_68725 - 1);
+Res_68826 = 0;
+Res_68826 = 0;
 while (1) {
-if (!(Res_67824 <= HEX3Atmp_67822)) goto LA4;
-I_67728 = Res_67824;
-asgnRefNoCycle((void**) &Q_67695->data[I_67728], Startprocessaux_67603(Cmds_67685[I_67728], Options_67687));
-Res_67824 += 1;
+if (!(Res_68826 <= HEX3Atmp_68824)) goto LA4;
+I_68734 = Res_68826;
+asgnRefNoCycle((void**) &Q_68700->data[I_68734], Startprocessaux_68603(Cmds_68686[I_68734], Options_68688));
+Res_68826 += 1;
 } LA4: ;
-I_67729 = 0;
-I_67729 = M_67720;
+I_68735 = 0;
+I_68735 = M_68725;
 while (1) {
-if (!(I_67729 <= (Cmds_67685Len0-1))) goto LA5;
+if (!(I_68735 <= (Cmds_68686Len0-1))) goto LA5;
 nossleep(50);
-R_67739 = 0;
-HEX3Atmp_67825 = 0;
-HEX3Atmp_67825 = (NI64)(N_67688 - 1);
-Res_67827 = 0;
-Res_67827 = 0;
+R_68746 = 0;
+HEX3Atmp_68827 = 0;
+HEX3Atmp_68827 = (NI64)(N_68689 - 1);
+Res_68829 = 0;
+Res_68829 = 0;
 while (1) {
-if (!(Res_67827 <= HEX3Atmp_67825)) goto LA6;
-R_67739 = Res_67827;
-LOC8 = nosprunning(Q_67695->data[R_67739]);
+if (!(Res_68829 <= HEX3Atmp_68827)) goto LA6;
+R_68746 = Res_68829;
+LOC8 = nosprunning(Q_68700->data[R_68746]);
 if (!!(LOC8)) goto LA9;
-LOC11 = nospwaitForExit(Q_67695->data[R_67739]);
-Result_67689 = ((LOC11 >= Result_67689) ? LOC11 : Result_67689);
-asgnRefNoCycle((void**) &Q_67695->data[R_67739], Startprocessaux_67603(Cmds_67685[I_67729], Options_67687));
-I_67729 += 1;
-if (!((Cmds_67685Len0-1) < I_67729)) goto LA13;
+LOC11 = nospwaitForExit(Q_68700->data[R_68746]);
+Result_68690 = ((LOC11 >= Result_68690) ? LOC11 : Result_68690);
+asgnRefNoCycle((void**) &Q_68700->data[R_68746], Startprocessaux_68603(Cmds_68686[I_68735], Options_68688));
+I_68735 += 1;
+if (!((Cmds_68686Len0-1) < I_68735)) goto LA13;
 goto LA6;
 LA13: ;
 LA9: ;
-Res_67827 += 1;
+Res_68829 += 1;
 } LA6: ;
 } LA5: ;
-I_67808 = 0;
-HEX3Atmp_67828 = 0;
-HEX3Atmp_67828 = (NI64)(M_67720 - 1);
-Res_67830 = 0;
-Res_67830 = 0;
+I_68809 = 0;
+HEX3Atmp_68830 = 0;
+HEX3Atmp_68830 = (NI64)(M_68725 - 1);
+Res_68832 = 0;
+Res_68832 = 0;
 while (1) {
-if (!(Res_67830 <= HEX3Atmp_67828)) goto LA15;
-I_67808 = Res_67830;
-LOC16 = nospwaitForExit(Q_67695->data[I_67808]);
-Result_67689 = ((LOC16 >= Result_67689) ? LOC16 : Result_67689);
-Res_67830 += 1;
+if (!(Res_68832 <= HEX3Atmp_68830)) goto LA15;
+I_68809 = Res_68832;
+LOC16 = nospwaitForExit(Q_68700->data[I_68809]);
+Result_68690 = ((LOC16 >= Result_68690) ? LOC16 : Result_68690);
+Res_68832 += 1;
 } LA15: ;
 goto LA1;
 LA2: ;
-I_67818 = 0;
-HEX3Atmp_67831 = 0;
-HEX3Atmp_67831 = (Cmds_67685Len0-1);
-Res_67833 = 0;
-Res_67833 = 0;
+I_68820 = 0;
+HEX3Atmp_68833 = 0;
+HEX3Atmp_68833 = (Cmds_68686Len0-1);
+Res_68835 = 0;
+Res_68835 = 0;
 while (1) {
-if (!(Res_67833 <= HEX3Atmp_67831)) goto LA17;
-I_67818 = Res_67833;
-P_67819 = 0;
-P_67819 = Startprocessaux_67603(Cmds_67685[I_67818], Options_67687);
-LOC18 = nospwaitForExit(P_67819);
-Result_67689 = ((LOC18 >= Result_67689) ? LOC18 : Result_67689);
-Res_67833 += 1;
+if (!(Res_68835 <= HEX3Atmp_68833)) goto LA17;
+I_68820 = Res_68835;
+P_68821 = 0;
+P_68821 = Startprocessaux_68603(Cmds_68686[I_68820], Options_68688);
+LOC18 = nospwaitForExit(P_68821);
+Result_68690 = ((LOC18 >= Result_68690) ? LOC18 : Result_68690);
+Res_68835 += 1;
 } LA17: ;
 LA1: ;
-return Result_67689;
+return Result_68690;
 }
 N_NOINLINE(void, osprocInit)(void) {
 }

@@ -7,7 +7,7 @@ typedef unsigned long long int NU;
 
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef NI TY49040[256];
+typedef NI TY50040[256];
 struct TGenericSeq {
 NI len;
 NI space;
@@ -17,13 +17,13 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021);
-static N_INLINE(int, Updatecrc32_49014)(NI8 Val_49016, int Crc_49017);
-N_NIMCALL(NIM_BOOL, Open_3617)(FILE** F_3620, NimStringDesc* Filename_3621, NU8 Mode_3622, NI Bufsize_3623);
-N_NOCONV(void*, Alloc_1950)(NI Size_1952);
-N_NIMCALL(NI, Readbuffer_3714)(FILE* F_3716, void* Buffer_3717, NI Len_3718);
-N_NOCONV(void, Dealloc_1960)(void* P_1962);
-NIM_CONST TY49040 Crc32table_49039 = {0,
+static N_INLINE(int, Updatecrc32_50018)(NIM_CHAR Val_50020, int Crc_50021);
+static N_INLINE(int, Updatecrc32_50014)(NI8 Val_50016, int Crc_50017);
+N_NIMCALL(NIM_BOOL, Open_4017)(FILE** F_4020, NimStringDesc* Filename_4021, NU8 Mode_4022, NI Bufsize_4023);
+N_NOCONV(void*, Alloc_2350)(NI Size_2352);
+N_NIMCALL(NI, Readbuffer_4122)(FILE* F_4124, void* Buffer_4125, NI Len_4126);
+N_NOCONV(void, Dealloc_2360)(void* P_2362);
+NIM_CONST TY50040 Crc32table_50039 = {0,
 1996959894,
 -301047508,
 -1727442502,
@@ -280,81 +280,81 @@ NIM_CONST TY49040 Crc32table_49039 = {0,
 1510334235,
 755167117}
 ;
-static N_INLINE(int, Updatecrc32_49014)(NI8 Val_49016, int Crc_49017) {
-int Result_49048;
-Result_49048 = 0;
-Result_49048 = (NI32)(((int) (Crc32table_49039[((NI64)((NI64)(((NI) (Crc_49017)) ^ (NI64)(((NI) (Val_49016)) & 255)) & 255))-0])) ^ (NI32)((NU32)(Crc_49017) >> (NU32)(((NI32) 8))));
-return Result_49048;
+static N_INLINE(int, Updatecrc32_50014)(NI8 Val_50016, int Crc_50017) {
+int Result_50048;
+Result_50048 = 0;
+Result_50048 = (NI32)(((int) (Crc32table_50039[((NI64)((NI64)(((NI) (Crc_50017)) ^ (NI64)(((NI) (Val_50016)) & 255)) & 255))-0])) ^ (NI32)((NU32)(Crc_50017) >> (NU32)(((NI32) 8))));
+return Result_50048;
 }
-static N_INLINE(int, Updatecrc32_49018)(NIM_CHAR Val_49020, int Crc_49021) {
-int Result_49053;
-Result_49053 = 0;
-Result_49053 = Updatecrc32_49014(((NI8) (((NU8)(Val_49020)))), Crc_49021);
-return Result_49053;
+static N_INLINE(int, Updatecrc32_50018)(NIM_CHAR Val_50020, int Crc_50021) {
+int Result_50053;
+Result_50053 = 0;
+Result_50053 = Updatecrc32_50014(((NI8) (((NU8)(Val_50020)))), Crc_50021);
+return Result_50053;
 }
-N_NIMCALL(int, HEX3EHEX3C_49091)(int C_49093, NimStringDesc* S_49094) {
-int Result_49095;
-NI I_49105;
-NI HEX3Atmp_49106;
-NI Res_49108;
-Result_49095 = 0;
-Result_49095 = C_49093;
-I_49105 = 0;
-HEX3Atmp_49106 = 0;
-HEX3Atmp_49106 = (NI64)(S_49094->Sup.len - 1);
-Res_49108 = 0;
-Res_49108 = 0;
+N_NIMCALL(int, HEX3EHEX3C_50092)(int C_50094, NimStringDesc* S_50095) {
+int Result_50096;
+NI I_50107;
+NI HEX3Atmp_50108;
+NI Res_50110;
+Result_50096 = 0;
+Result_50096 = C_50094;
+I_50107 = 0;
+HEX3Atmp_50108 = 0;
+HEX3Atmp_50108 = (NI64)(S_50095->Sup.len - 1);
+Res_50110 = 0;
+Res_50110 = 0;
 while (1) {
-if (!(Res_49108 <= HEX3Atmp_49106)) goto LA1;
-I_49105 = Res_49108;
-Result_49095 = Updatecrc32_49018(S_49094->data[I_49105], Result_49095);
-Res_49108 += 1;
+if (!(Res_50110 <= HEX3Atmp_50108)) goto LA1;
+I_50107 = Res_50110;
+Result_50096 = Updatecrc32_50018(S_50095->data[I_50107], Result_50096);
+Res_50110 += 1;
 } LA1: ;
-return Result_49095;
+return Result_50096;
 }
-N_NIMCALL(int, Crcfromfile_49029)(NimStringDesc* Filename_49031) {
-int Result_49134;
-FILE* Bin_49136;
-void* Buf_49137;
-NI Readbytes_49138;
-NI8* P_49139;
+N_NIMCALL(int, Crcfromfile_50029)(NimStringDesc* Filename_50031) {
+int Result_50137;
+FILE* Bin_50139;
+void* Buf_50140;
+NI Readbytes_50141;
+NI8* P_50142;
 NIM_BOOL LOC2;
-NI I_49148;
-NI HEX3Atmp_49151;
-NI Res_49153;
-Result_49134 = 0;
-Bin_49136 = 0;
-Buf_49137 = 0;
-Readbytes_49138 = 0;
-P_49139 = 0;
-Result_49134 = ((NI32) -1);
-LOC2 = Open_3617(&Bin_49136, Filename_49031, ((NU8) 0), -1);
+NI I_50152;
+NI HEX3Atmp_50155;
+NI Res_50157;
+Result_50137 = 0;
+Bin_50139 = 0;
+Buf_50140 = 0;
+Readbytes_50141 = 0;
+P_50142 = 0;
+Result_50137 = ((NI32) -1);
+LOC2 = Open_4017(&Bin_50139, Filename_50031, ((NU8) 0), -1);
 if (!!(LOC2)) goto LA3;
 goto BeforeRet;
 LA3: ;
-Buf_49137 = Alloc_1950(8192);
-P_49139 = ((NI8*) (Buf_49137));
+Buf_50140 = Alloc_2350(8192);
+P_50142 = ((NI8*) (Buf_50140));
 while (1) {
-Readbytes_49138 = Readbuffer_3714(Bin_49136, Buf_49137, 8192);
-I_49148 = 0;
-HEX3Atmp_49151 = 0;
-HEX3Atmp_49151 = (NI64)(Readbytes_49138 - 1);
-Res_49153 = 0;
-Res_49153 = 0;
+Readbytes_50141 = Readbuffer_4122(Bin_50139, Buf_50140, 8192);
+I_50152 = 0;
+HEX3Atmp_50155 = 0;
+HEX3Atmp_50155 = (NI64)(Readbytes_50141 - 1);
+Res_50157 = 0;
+Res_50157 = 0;
 while (1) {
-if (!(Res_49153 <= HEX3Atmp_49151)) goto LA6;
-I_49148 = Res_49153;
-Result_49134 = Updatecrc32_49014(P_49139[(I_49148)-0], Result_49134);
-Res_49153 += 1;
+if (!(Res_50157 <= HEX3Atmp_50155)) goto LA6;
+I_50152 = Res_50157;
+Result_50137 = Updatecrc32_50014(P_50142[(I_50152)-0], Result_50137);
+Res_50157 += 1;
 } LA6: ;
-if (!!((Readbytes_49138 == 8192))) goto LA8;
+if (!!((Readbytes_50141 == 8192))) goto LA8;
 goto LA5;
 LA8: ;
 } LA5: ;
-Dealloc_1960(Buf_49137);
-fclose(Bin_49136);
+Dealloc_2360(Buf_50140);
+fclose(Bin_50139);
 BeforeRet: ;
-return Result_49134;
+return Result_50137;
 }
 N_NOINLINE(void, crcInit)(void) {
 }

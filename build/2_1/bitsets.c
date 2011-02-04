@@ -5,7 +5,7 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY102008 TY102008;
+typedef struct TY103008 TY103008;
 typedef struct TGenericSeq TGenericSeq;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -29,136 +29,136 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY102008 {
+struct TY103008 {
   TGenericSeq Sup;
   NI8 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void*, newSeq)(TNimType* Typ_14004, NI Len_14005);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_12826, void* Src_12827);
-extern TNimType* NTI102008; /* TBitSet */
-N_NIMCALL(void, Bitsetinit_102010)(TY102008** B_102013, NI Length_102014) {
-unsureAsgnRef((void**) &(*B_102013), (TY102008*) newSeq(NTI102008, Length_102014));
+N_NIMCALL(void*, newSeq)(TNimType* Typ_14604, NI Len_14605);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_13426, void* Src_13427);
+extern TNimType* NTI103008; /* TBitSet */
+N_NIMCALL(void, Bitsetinit_103010)(TY103008** B_103013, NI Length_103014) {
+unsureAsgnRef((void**) &(*B_103013), (TY103008*) newSeq(NTI103008, Length_103014));
 }
-N_NIMCALL(void, Bitsetincl_102035)(TY102008** X_102038, NI64 Elem_102039) {
-(*X_102038)->data[(NI64)(Elem_102039 / 8)] = (NI8)((*X_102038)->data[(NI64)(Elem_102039 / 8)] | ((NI8)(NU8)(NU)(((NI) ((NI64)((NU64)(1) << (NU64)((NI64)(Elem_102039 % 8))))))));
+N_NIMCALL(void, Bitsetincl_103035)(TY103008** X_103038, NI64 Elem_103039) {
+(*X_103038)->data[(NI64)(Elem_103039 / 8)] = (NI8)((*X_103038)->data[(NI64)(Elem_103039 / 8)] | ((NI8)(NU8)(NU)(((NI) ((NI64)((NU64)(1) << (NU64)((NI64)(Elem_103039 % 8))))))));
 }
-N_NIMCALL(void, Bitsetunion_102015)(TY102008** X_102018, TY102008* Y_102019) {
-NI I_102120;
-NI HEX3Atmp_102121;
-NI Res_102123;
-I_102120 = 0;
-HEX3Atmp_102121 = 0;
-HEX3Atmp_102121 = ((*X_102018)->Sup.len-1);
-Res_102123 = 0;
-Res_102123 = 0;
+N_NIMCALL(void, Bitsetunion_103015)(TY103008** X_103018, TY103008* Y_103019) {
+NI I_103121;
+NI HEX3Atmp_103122;
+NI Res_103124;
+I_103121 = 0;
+HEX3Atmp_103122 = 0;
+HEX3Atmp_103122 = ((*X_103018)->Sup.len-1);
+Res_103124 = 0;
+Res_103124 = 0;
 while (1) {
-if (!(Res_102123 <= HEX3Atmp_102121)) goto LA1;
-I_102120 = Res_102123;
-(*X_102018)->data[I_102120] = (NI8)((*X_102018)->data[I_102120] | Y_102019->data[I_102120]);
-Res_102123 += 1;
+if (!(Res_103124 <= HEX3Atmp_103122)) goto LA1;
+I_103121 = Res_103124;
+(*X_103018)->data[I_103121] = (NI8)((*X_103018)->data[I_103121] | Y_103019->data[I_103121]);
+Res_103124 += 1;
 } LA1: ;
 }
-N_NIMCALL(void, Bitsetdiff_102020)(TY102008** X_102023, TY102008* Y_102024) {
-NI I_102136;
-NI HEX3Atmp_102137;
-NI Res_102139;
-I_102136 = 0;
-HEX3Atmp_102137 = 0;
-HEX3Atmp_102137 = ((*X_102023)->Sup.len-1);
-Res_102139 = 0;
-Res_102139 = 0;
+N_NIMCALL(void, Bitsetdiff_103020)(TY103008** X_103023, TY103008* Y_103024) {
+NI I_103138;
+NI HEX3Atmp_103139;
+NI Res_103141;
+I_103138 = 0;
+HEX3Atmp_103139 = 0;
+HEX3Atmp_103139 = ((*X_103023)->Sup.len-1);
+Res_103141 = 0;
+Res_103141 = 0;
 while (1) {
-if (!(Res_102139 <= HEX3Atmp_102137)) goto LA1;
-I_102136 = Res_102139;
-(*X_102023)->data[I_102136] = (NI8)((*X_102023)->data[I_102136] & (NI8)((NU8) ~(Y_102024->data[I_102136])));
-Res_102139 += 1;
+if (!(Res_103141 <= HEX3Atmp_103139)) goto LA1;
+I_103138 = Res_103141;
+(*X_103023)->data[I_103138] = (NI8)((*X_103023)->data[I_103138] & (NI8)((NU8) ~(Y_103024->data[I_103138])));
+Res_103141 += 1;
 } LA1: ;
 }
-N_NIMCALL(void, Bitsetsymdiff_102025)(TY102008** X_102028, TY102008* Y_102029) {
-NI I_102152;
-NI HEX3Atmp_102153;
-NI Res_102155;
-I_102152 = 0;
-HEX3Atmp_102153 = 0;
-HEX3Atmp_102153 = ((*X_102028)->Sup.len-1);
-Res_102155 = 0;
-Res_102155 = 0;
+N_NIMCALL(void, Bitsetsymdiff_103025)(TY103008** X_103028, TY103008* Y_103029) {
+NI I_103155;
+NI HEX3Atmp_103156;
+NI Res_103158;
+I_103155 = 0;
+HEX3Atmp_103156 = 0;
+HEX3Atmp_103156 = ((*X_103028)->Sup.len-1);
+Res_103158 = 0;
+Res_103158 = 0;
 while (1) {
-if (!(Res_102155 <= HEX3Atmp_102153)) goto LA1;
-I_102152 = Res_102155;
-(*X_102028)->data[I_102152] = (NI8)((*X_102028)->data[I_102152] ^ Y_102029->data[I_102152]);
-Res_102155 += 1;
+if (!(Res_103158 <= HEX3Atmp_103156)) goto LA1;
+I_103155 = Res_103158;
+(*X_103028)->data[I_103155] = (NI8)((*X_103028)->data[I_103155] ^ Y_103029->data[I_103155]);
+Res_103158 += 1;
 } LA1: ;
 }
-N_NIMCALL(void, Bitsetintersect_102030)(TY102008** X_102033, TY102008* Y_102034) {
-NI I_102168;
-NI HEX3Atmp_102169;
-NI Res_102171;
-I_102168 = 0;
-HEX3Atmp_102169 = 0;
-HEX3Atmp_102169 = ((*X_102033)->Sup.len-1);
-Res_102171 = 0;
-Res_102171 = 0;
+N_NIMCALL(void, Bitsetintersect_103030)(TY103008** X_103033, TY103008* Y_103034) {
+NI I_103172;
+NI HEX3Atmp_103173;
+NI Res_103175;
+I_103172 = 0;
+HEX3Atmp_103173 = 0;
+HEX3Atmp_103173 = ((*X_103033)->Sup.len-1);
+Res_103175 = 0;
+Res_103175 = 0;
 while (1) {
-if (!(Res_102171 <= HEX3Atmp_102169)) goto LA1;
-I_102168 = Res_102171;
-(*X_102033)->data[I_102168] = (NI8)((*X_102033)->data[I_102168] & Y_102034->data[I_102168]);
-Res_102171 += 1;
+if (!(Res_103175 <= HEX3Atmp_103173)) goto LA1;
+I_103172 = Res_103175;
+(*X_103033)->data[I_103172] = (NI8)((*X_103033)->data[I_103172] & Y_103034->data[I_103172]);
+Res_103175 += 1;
 } LA1: ;
 }
-N_NIMCALL(NIM_BOOL, Bitsetin_102045)(TY102008* X_102047, NI64 E_102048) {
-NIM_BOOL Result_102061;
-Result_102061 = 0;
-Result_102061 = !(((NI8)(X_102047->data[(NI64)(E_102048 / 8)] & ((NI8)(NU8)(NU)(((NI) ((NI64)((NU64)(1) << (NU64)((NI64)(E_102048 % 8)))))))) == ((NI8) 0)));
-return Result_102061;
+N_NIMCALL(NIM_BOOL, Bitsetin_103045)(TY103008* X_103047, NI64 E_103048) {
+NIM_BOOL Result_103061;
+Result_103061 = 0;
+Result_103061 = !(((NI8)(X_103047->data[(NI64)(E_103048 / 8)] & ((NI8)(NU8)(NU)(((NI) ((NI64)((NU64)(1) << (NU64)((NI64)(E_103048 % 8)))))))) == ((NI8) 0)));
+return Result_103061;
 }
-N_NIMCALL(NIM_BOOL, Bitsetcontains_102053)(TY102008* X_102055, TY102008* Y_102056) {
-NIM_BOOL Result_102194;
-NI I_102202;
-NI HEX3Atmp_102205;
-NI Res_102207;
-Result_102194 = 0;
-I_102202 = 0;
-HEX3Atmp_102205 = 0;
-HEX3Atmp_102205 = (X_102055->Sup.len-1);
-Res_102207 = 0;
-Res_102207 = 0;
+N_NIMCALL(NIM_BOOL, Bitsetcontains_103053)(TY103008* X_103055, TY103008* Y_103056) {
+NIM_BOOL Result_103199;
+NI I_103208;
+NI HEX3Atmp_103211;
+NI Res_103213;
+Result_103199 = 0;
+I_103208 = 0;
+HEX3Atmp_103211 = 0;
+HEX3Atmp_103211 = (X_103055->Sup.len-1);
+Res_103213 = 0;
+Res_103213 = 0;
 while (1) {
-if (!(Res_102207 <= HEX3Atmp_102205)) goto LA1;
-I_102202 = Res_102207;
-if (!!(((NI8)(X_102055->data[I_102202] & (NI8)((NU8) ~(Y_102056->data[I_102202]))) == ((NI8) 0)))) goto LA3;
-Result_102194 = NIM_FALSE;
+if (!(Res_103213 <= HEX3Atmp_103211)) goto LA1;
+I_103208 = Res_103213;
+if (!!(((NI8)(X_103055->data[I_103208] & (NI8)((NU8) ~(Y_103056->data[I_103208]))) == ((NI8) 0)))) goto LA3;
+Result_103199 = NIM_FALSE;
 goto BeforeRet;
 LA3: ;
-Res_102207 += 1;
+Res_103213 += 1;
 } LA1: ;
-Result_102194 = NIM_TRUE;
+Result_103199 = NIM_TRUE;
 BeforeRet: ;
-return Result_102194;
+return Result_103199;
 }
-N_NIMCALL(NIM_BOOL, Bitsetequals_102049)(TY102008* X_102051, TY102008* Y_102052) {
-NIM_BOOL Result_102176;
-NI I_102184;
-NI HEX3Atmp_102187;
-NI Res_102189;
-Result_102176 = 0;
-I_102184 = 0;
-HEX3Atmp_102187 = 0;
-HEX3Atmp_102187 = (X_102051->Sup.len-1);
-Res_102189 = 0;
-Res_102189 = 0;
+N_NIMCALL(NIM_BOOL, Bitsetequals_103049)(TY103008* X_103051, TY103008* Y_103052) {
+NIM_BOOL Result_103180;
+NI I_103189;
+NI HEX3Atmp_103192;
+NI Res_103194;
+Result_103180 = 0;
+I_103189 = 0;
+HEX3Atmp_103192 = 0;
+HEX3Atmp_103192 = (X_103051->Sup.len-1);
+Res_103194 = 0;
+Res_103194 = 0;
 while (1) {
-if (!(Res_102189 <= HEX3Atmp_102187)) goto LA1;
-I_102184 = Res_102189;
-if (!!((X_102051->data[I_102184] == Y_102052->data[I_102184]))) goto LA3;
-Result_102176 = NIM_FALSE;
+if (!(Res_103194 <= HEX3Atmp_103192)) goto LA1;
+I_103189 = Res_103194;
+if (!!((X_103051->data[I_103189] == Y_103052->data[I_103189]))) goto LA3;
+Result_103180 = NIM_FALSE;
 goto BeforeRet;
 LA3: ;
-Res_102189 += 1;
+Res_103194 += 1;
 } LA1: ;
-Result_102176 = NIM_TRUE;
+Result_103180 = NIM_TRUE;
 BeforeRet: ;
-return Result_102176;
+return Result_103180;
 }
 N_NOINLINE(void, bitsetsInit)(void) {
 }

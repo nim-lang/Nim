@@ -5,26 +5,26 @@ typedef long long int NI;
 typedef unsigned long long int NU;
 #include "nimbase.h"
 
-N_NIMCALL(NIM_BOOL, Ispoweroftwo_100267)(NI X_100269) {
-NIM_BOOL Result_100270;
-Result_100270 = 0;
-Result_100270 = ((NI64)(X_100269 & ((NI64)-(X_100269))) == X_100269);
+N_NIMCALL(NIM_BOOL, Ispoweroftwo_101271)(NI X_101273) {
+NIM_BOOL Result_101274;
+Result_101274 = 0;
+Result_101274 = ((NI64)(X_101273 & ((NI64)-(X_101273))) == X_101273);
 goto BeforeRet;
 BeforeRet: ;
-return Result_100270;
+return Result_101274;
 }
-N_NIMCALL(NI, Nextpoweroftwo_100273)(NI X_100275) {
-NI Result_100276;
-Result_100276 = 0;
-Result_100276 = (NI64)(X_100275 - 1);
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(32)));
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(16)));
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(8)));
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(4)));
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(2)));
-Result_100276 = (NI64)(Result_100276 | (NI64)((NU64)(Result_100276) >> (NU64)(1)));
-Result_100276 += 1;
-return Result_100276;
+N_NIMCALL(NI, Nextpoweroftwo_101277)(NI X_101279) {
+NI Result_101280;
+Result_101280 = 0;
+Result_101280 = (NI64)(X_101279 - 1);
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(32)));
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(16)));
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(8)));
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(4)));
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(2)));
+Result_101280 = (NI64)(Result_101280 | (NI64)((NU64)(Result_101280) >> (NU64)(1)));
+Result_101280 += 1;
+return Result_101280;
 }
 N_NOINLINE(void, mathInit)(void) {
 }

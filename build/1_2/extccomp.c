@@ -5,26 +5,26 @@ typedef long long int NI;
 typedef unsigned long long int NU;
 #include "nimbase.h"
 
-typedef struct TY65008 TY65008;
+typedef struct TY67008 TY67008;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY10202 TY10202;
+typedef struct TY10802 TY10802;
 typedef struct TNimType TNimType;
-typedef struct TY10218 TY10218;
-typedef struct TY10590 TY10590;
-typedef struct TY10214 TY10214;
-typedef struct TY10210 TY10210;
-typedef struct TY10588 TY10588;
-typedef struct TY38019 TY38019;
+typedef struct TY10818 TY10818;
+typedef struct TY11196 TY11196;
+typedef struct TY10814 TY10814;
+typedef struct TY10810 TY10810;
+typedef struct TY11194 TY11194;
+typedef struct TY39019 TY39019;
 typedef struct TNimNode TNimNode;
-typedef struct TY38013 TY38013;
-typedef struct TY46036 TY46036;
-typedef struct TY46448 TY46448;
-typedef struct TY33460 TY33460;
-typedef struct TY47008 TY47008;
-typedef struct TY38015 TY38015;
+typedef struct TY39013 TY39013;
+typedef struct TY47036 TY47036;
+typedef struct TY47448 TY47448;
+typedef struct TY34461 TY34461;
+typedef struct TY48008 TY48008;
+typedef struct TY39015 TY39015;
 typedef struct TNimObject TNimObject;
-typedef struct TY34021 TY34021;
+typedef struct TY35021 TY35021;
 struct TGenericSeq {
 NI len;
 NI space;
@@ -34,7 +34,7 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY65008 {
+struct TY67008 {
 NimStringDesc* Name;
 NimStringDesc* Objext;
 NimStringDesc* Optspeed;
@@ -51,23 +51,23 @@ NimStringDesc* Pic;
 NimStringDesc* Asmstmtfrmt;
 NU8 Props;
 };
-typedef TY65008 TY65042[12];
-struct TY10202 {
+typedef TY67008 TY67042[12];
+struct TY10802 {
 NI Refcount;
 TNimType* Typ;
 };
-struct TY10218 {
+struct TY10818 {
 NI Len;
 NI Cap;
-TY10202** D;
+TY10802** D;
 };
-struct TY10214 {
+struct TY10814 {
 NI Counter;
 NI Max;
-TY10210* Head;
-TY10210** Data;
+TY10810* Head;
+TY10810** Data;
 };
-struct TY10588 {
+struct TY11194 {
 NI Stackscans;
 NI Cyclecollections;
 NI Maxthreshold;
@@ -75,12 +75,12 @@ NI Maxstacksize;
 NI Maxstackcells;
 NI Cycletablesize;
 };
-struct TY10590 {
-TY10218 Zct;
-TY10218 Decstack;
-TY10214 Cycleroots;
-TY10218 Tempstack;
-TY10588 Stat;
+struct TY11196 {
+TY10818 Zct;
+TY10818 Decstack;
+TY10814 Cycleroots;
+TY10818 Tempstack;
+TY11194 Stat;
 };
 struct TNimType {
 NI size;
@@ -90,10 +90,10 @@ TNimType* base;
 TNimNode* node;
 void* finalizer;
 };
-struct TY38019 {
+struct TY39019 {
 TNimType* m_type;
-TY38013* Head;
-TY38013* Tail;
+TY39013* Head;
+TY39013* Tail;
 NI Counter;
 };
 struct TNimNode {
@@ -104,7 +104,7 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY46036 {
+struct TY47036 {
 NimStringDesc* Name;
 NimStringDesc* Pardir;
 NimStringDesc* Dllfrmt;
@@ -119,781 +119,781 @@ NimStringDesc* Exeext;
 NimStringDesc* Extsep;
 NU8 Props;
 };
-typedef TY46036 TY46054[21];
-struct TY46448 {
+typedef TY47036 TY47054[21];
+struct TY47448 {
 NimStringDesc* Name;
 NI Intsize;
 NU8 Endian;
 NI Floatsize;
 NI Bit;
 };
-typedef TY46448 TY46461[12];
-struct TY33460 {
+typedef TY47448 TY47461[12];
+struct TY34461 {
 NimStringDesc* Dir;
 NimStringDesc* Name;
 NimStringDesc* Ext;
 };
-typedef NimStringDesc* TY65717[12];
-typedef TY47008* TY47399[1];
+typedef NimStringDesc* TY67726[12];
+typedef TY48008* TY48407[1];
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY38013 {
+struct TY39013 {
   TNimObject Sup;
-TY38013* Prev;
-TY38013* Next;
+TY39013* Prev;
+TY39013* Next;
 };
-struct TY38015 {
-  TY38013 Sup;
+struct TY39015 {
+  TY39013 Sup;
 NimStringDesc* Data;
 };
-typedef NimStringDesc* TY41320[1];
-typedef NimStringDesc* TY42866[1];
-typedef NimStringDesc* TY66007[14];
-typedef NI TY8214[8];
-struct TY10210 {
-TY10210* Next;
+typedef NimStringDesc* TY42331[1];
+typedef NimStringDesc* TY43869[1];
+typedef NimStringDesc* TY68019[14];
+typedef NI TY8814[8];
+struct TY10810 {
+TY10810* Next;
 NI Key;
-TY8214 Bits;
+TY8814 Bits;
 };
-struct TY47008 {
+struct TY48008 {
   TNimObject Sup;
-TY47008* Left;
-TY47008* Right;
+TY48008* Left;
+TY48008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-struct TY34021 {
+struct TY35021 {
   TGenericSeq Sup;
   NimStringDesc* data[SEQ_DECL_SIZE];
 };
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12618, void* Src_12619);
-static N_INLINE(TY10202*, Usrtocell_11012)(void* Usr_11014);
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005);
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010);
-static N_INLINE(void, Rtladdzct_12001)(TY10202* C_12003);
-N_NOINLINE(void, Addzct_11001)(TY10218* S_11004, TY10202* C_11005);
-N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18108);
-N_NIMCALL(NIM_BOOL, Externalfilechanged_65517)(NimStringDesc* Filename_65519);
-N_NIMCALL(NimStringDesc*, Togeneratedfile_41104)(NimStringDesc* Path_41106, NimStringDesc* Ext_41107);
-N_NIMCALL(NI32, Footprint_65513)(NimStringDesc* Filename_65515);
-N_NIMCALL(NI32, HEX3EHEX3C_45091)(NI32 C_45093, NimStringDesc* S_45094);
-N_NIMCALL(NI32, Crcfromfile_45029)(NimStringDesc* Filename_45031);
-N_NIMCALL(NIM_BOOL, Open_3617)(FILE** F_3620, NimStringDesc* Filename_3621, NU8 Mode_3622, NI Bufsize_3623);
-N_NIMCALL(NimStringDesc*, Readline_3679)(FILE* F_3681);
-N_NIMCALL(NI, nsuParseInt)(NimStringDesc* S_24425);
-N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_18803);
-N_NIMCALL(void, Appendstr_38061)(TY38019* List_38064, NimStringDesc* Data_38065);
-N_NIMCALL(void, Prependstr_38071)(TY38019* List_38074, NimStringDesc* Data_38075);
-N_NIMCALL(NimStringDesc*, Completegeneratedfilepath_41100)(NimStringDesc* F_41102, NIM_BOOL Createsubdir_41103);
-N_NIMCALL(NI, nsuFindStr)(NimStringDesc* S_25197, NimStringDesc* Sub_25198, NI Start_25199);
-N_NIMCALL(void, Addopt_65441)(NimStringDesc** Dest_65444, NimStringDesc* Src_65445);
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18192, NimStringDesc* Src_18193);
-N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_18182, NI Addlen_18183);
-N_NIMCALL(NU8, Nametocc_65350)(NimStringDesc* Name_65352);
-N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_23624, NimStringDesc* B_23625);
-N_NIMCALL(void, Rawmessage_42557)(NU8 Msg_42559, NimStringDesc* Arg_42560);
-N_NIMCALL(NimStringDesc*, Getconfigvar_41134)(NimStringDesc* Key_41136);
-N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18087);
-N_NIMCALL(void, Undefsymbol_59056)(NimStringDesc* Symbol_59058);
-N_NIMCALL(void, Definesymbol_59053)(NimStringDesc* Symbol_59055);
-N_NIMCALL(void, Addcompileoption_65460)(NimStringDesc* Option_65462);
-N_NIMCALL(void, Addlinkoption_65454)(NimStringDesc* Option_65456);
-N_NIMCALL(void, nossplitFile)(NimStringDesc* Path_33459, TY33460* Result);
-N_NIMCALL(NIM_BOOL, Existsconfigvar_41131)(NimStringDesc* Key_41133);
-N_NIMCALL(NimStringDesc*, Getdebug_65592)(NU8 C_65594);
-N_NIMCALL(NimStringDesc*, Getoptspeed_65588)(NU8 C_65590);
-N_NIMCALL(NimStringDesc*, Getoptsize_65596)(NU8 C_65598);
-N_NIMCALL(NimStringDesc*, nosaddFileExt)(NimStringDesc* Filename_33628, NimStringDesc* Ext_33629);
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_18209, NIM_CHAR C_18210);
-N_NIMCALL(NimStringDesc*, Quoteifcontainswhite_25255)(NimStringDesc* S_25257);
-N_NIMCALL(NimStringDesc*, nosJoinPath)(NimStringDesc* Head_33203, NimStringDesc* Tail_33204);
-N_NIMCALL(NimStringDesc*, nosextractFilename)(NimStringDesc* Path_33527);
-N_NIMCALL(NimStringDesc*, Toobjfile_65505)(NimStringDesc* Filenamewithoutext_65507);
-N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_33620, NimStringDesc* Ext_33621);
-N_NIMCALL(NimStringDesc*, Completecfilepath_65500)(NimStringDesc* Cfile_65502, NIM_BOOL Createsubdir_65503);
-N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_23943, NimStringDesc** A_23945, NI A_23945Len0);
-N_NIMCALL(NimStringDesc*, Getprefixdir_41108)(void);
-N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1603, NIM_CHAR C_1604);
-N_NIMCALL(void, nsuAddf)(NimStringDesc** S_23723, NimStringDesc* Formatstr_23724, NimStringDesc** A_23726, NI A_23726Len0);
-N_NIMCALL(TY47008*, Torope_47046)(NimStringDesc* S_47048);
-N_NIMCALL(void, App_47031)(TY47008** A_47034, TY47008* B_47035);
-N_NIMCALL(TY47008*, Genmappingfiles_66041)(TY38019* List_66043);
-N_NIMCALL(void, Appf_47071)(TY47008** C_47074, NimStringDesc* Frmt_47075, TY47008** Args_47077, NI Args_47077Len0);
-N_NIMCALL(void, Writerope_47055)(TY47008* Head_47057, NimStringDesc* Filename_47058);
-N_NIMCALL(void*, newSeq)(TNimType* Typ_13804, NI Len_13805);
-N_NIMCALL(void, Compilecfile_65724)(TY38019* List_65726, TY47008** Script_65728, TY34021** Cmds_65730, NIM_BOOL Isexternal_65731);
-N_NIMCALL(NimStringDesc*, Getcompilecfilecmd_65603)(NimStringDesc* Cfilename_65605, NIM_BOOL Isexternal_65606);
-N_NIMCALL(TGenericSeq*, incrSeq)(TGenericSeq* Seq_18235, NI Elemsize_18236);
-N_NIMCALL(void, App_47036)(TY47008** A_47039, NimStringDesc* B_47040);
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13218, void* Src_13219);
+static N_INLINE(TY10802*, Usrtocell_11612)(void* Usr_11614);
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405);
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410);
+static N_INLINE(void, Rtladdzct_12601)(TY10802* C_12603);
+N_NOINLINE(void, Addzct_11601)(TY10818* S_11604, TY10802* C_11605);
+N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18712);
+N_NIMCALL(NIM_BOOL, Externalfilechanged_67524)(NimStringDesc* Filename_67526);
+N_NIMCALL(NimStringDesc*, Togeneratedfile_42105)(NimStringDesc* Path_42107, NimStringDesc* Ext_42108);
+N_NIMCALL(NI32, Footprint_67520)(NimStringDesc* Filename_67522);
+N_NIMCALL(NI32, HEX3EHEX3C_46092)(NI32 C_46094, NimStringDesc* S_46095);
+N_NIMCALL(NI32, Crcfromfile_46029)(NimStringDesc* Filename_46031);
+N_NIMCALL(NIM_BOOL, Open_4017)(FILE** F_4020, NimStringDesc* Filename_4021, NU8 Mode_4022, NI Bufsize_4023);
+N_NIMCALL(NimStringDesc*, Readline_4087)(FILE* F_4089);
+N_NIMCALL(NI, nsuParseInt)(NimStringDesc* S_25453);
+N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_19403);
+N_NIMCALL(void, Appendstr_39061)(TY39019* List_39064, NimStringDesc* Data_39065);
+N_NIMCALL(void, Prependstr_39071)(TY39019* List_39074, NimStringDesc* Data_39075);
+N_NIMCALL(NimStringDesc*, Completegeneratedfilepath_42101)(NimStringDesc* F_42103, NIM_BOOL Createsubdir_42104);
+N_NIMCALL(NI, nsuFindStr)(NimStringDesc* S_26208, NimStringDesc* Sub_26209, NI Start_26210);
+N_NIMCALL(void, Addopt_67443)(NimStringDesc** Dest_67446, NimStringDesc* Src_67447);
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800);
+N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_18789, NI Addlen_18790);
+N_NIMCALL(NU8, Nametocc_67350)(NimStringDesc* Name_67352);
+N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_24633, NimStringDesc* B_24634);
+N_NIMCALL(void, Rawmessage_43560)(NU8 Msg_43562, NimStringDesc* Arg_43563);
+N_NIMCALL(NimStringDesc*, Getconfigvar_42135)(NimStringDesc* Key_42137);
+N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18689);
+N_NIMCALL(void, Undefsymbol_60056)(NimStringDesc* Symbol_60058);
+N_NIMCALL(void, Definesymbol_60053)(NimStringDesc* Symbol_60055);
+N_NIMCALL(void, Addcompileoption_67464)(NimStringDesc* Option_67466);
+N_NIMCALL(void, Addlinkoption_67456)(NimStringDesc* Option_67458);
+N_NIMCALL(void, nossplitFile)(NimStringDesc* Path_34460, TY34461* Result);
+N_NIMCALL(NIM_BOOL, Existsconfigvar_42132)(NimStringDesc* Key_42134);
+N_NIMCALL(NimStringDesc*, Getdebug_67601)(NU8 C_67603);
+N_NIMCALL(NimStringDesc*, Getoptspeed_67597)(NU8 C_67599);
+N_NIMCALL(NimStringDesc*, Getoptsize_67605)(NU8 C_67607);
+N_NIMCALL(NimStringDesc*, nosaddFileExt)(NimStringDesc* Filename_34630, NimStringDesc* Ext_34631);
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_18816, NIM_CHAR C_18817);
+N_NIMCALL(NimStringDesc*, Quoteifcontainswhite_26268)(NimStringDesc* S_26270);
+N_NIMCALL(NimStringDesc*, nosJoinPath)(NimStringDesc* Head_34203, NimStringDesc* Tail_34204);
+N_NIMCALL(NimStringDesc*, nosextractFilename)(NimStringDesc* Path_34530);
+N_NIMCALL(NimStringDesc*, Toobjfile_67512)(NimStringDesc* Filenamewithoutext_67514);
+N_NIMCALL(NimStringDesc*, nosChangeFileExt)(NimStringDesc* Filename_34620, NimStringDesc* Ext_34621);
+N_NIMCALL(NimStringDesc*, Completecfilepath_67507)(NimStringDesc* Cfile_67509, NIM_BOOL Createsubdir_67510);
+N_NIMCALL(NimStringDesc*, nsuFormatOpenArray)(NimStringDesc* Formatstr_24960, NimStringDesc** A_24962, NI A_24962Len0);
+N_NIMCALL(NimStringDesc*, Getprefixdir_42109)(void);
+N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1803, NIM_CHAR C_1804);
+N_NIMCALL(void, nsuAddf)(NimStringDesc** S_24734, NimStringDesc* Formatstr_24735, NimStringDesc** A_24737, NI A_24737Len0);
+N_NIMCALL(TY48008*, Torope_48046)(NimStringDesc* S_48048);
+N_NIMCALL(void, App_48031)(TY48008** A_48034, TY48008* B_48035);
+N_NIMCALL(TY48008*, Genmappingfiles_68053)(TY39019* List_68055);
+N_NIMCALL(void, Appf_48071)(TY48008** C_48074, NimStringDesc* Frmt_48075, TY48008** Args_48077, NI Args_48077Len0);
+N_NIMCALL(void, Writerope_48055)(TY48008* Head_48057, NimStringDesc* Filename_48058);
+N_NIMCALL(void*, newSeq)(TNimType* Typ_14404, NI Len_14405);
+N_NIMCALL(void, Compilecfile_67733)(TY39019* List_67735, TY48008** Script_67737, TY35021** Cmds_67739, NIM_BOOL Isexternal_67740);
+N_NIMCALL(NimStringDesc*, Getcompilecfilecmd_67612)(NimStringDesc* Cfilename_67614, NIM_BOOL Isexternal_67615);
+N_NIMCALL(TGenericSeq*, incrSeq)(TGenericSeq* Seq_18842, NI Elemsize_18843);
+N_NIMCALL(void, App_48036)(TY48008** A_48039, NimStringDesc* B_48040);
 N_NIMCALL(NI, nospcountProcessors)(void);
-N_NIMCALL(NI, nospexecCmd)(NimStringDesc* Command_63232);
-N_NIMCALL(NI, nospexecProcesses)(NimStringDesc** Cmds_63685, NI Cmds_63685Len0, NU8 Options_63687, NI N_63688);
-N_NIMCALL(void, Rawmessage_42561)(NU8 Msg_42563, NimStringDesc** Args_42565, NI Args_42565Len0);
-N_NIMCALL(void, Execexternalprogram_65563)(NimStringDesc* Cmd_65565);
-N_NIMCALL(void, Messageout_42554)(NimStringDesc* S_42556);
-N_NIMCALL(void, Generatescript_65581)(NimStringDesc* Projectfile_65583, TY47008* Script_65584);
-N_NIMCALL(NimStringDesc*, HEX2F_33279)(NimStringDesc* Head_33281, NimStringDesc* Tail_33282);
-N_NIMCALL(void, Writeln_65539)(FILE* F_65542, NimStringDesc* X_65543);
-N_NIMCALL(void, Write_3658)(FILE* F_3660, NimStringDesc* S_3661);
-STRING_LITERAL(TMP65262, "gcc", 3);
-STRING_LITERAL(TMP65263, "o", 1);
-STRING_LITERAL(TMP65264, " -O3 -ffast-math ", 17);
-STRING_LITERAL(TMP65265, " -Os -ffast-math ", 17);
-STRING_LITERAL(TMP65266, "-c $options $include -o $objfile $file", 38);
-STRING_LITERAL(TMP65267, " -mwindows", 10);
-STRING_LITERAL(TMP65268, " -shared", 8);
-STRING_LITERAL(TMP65269, "$options $buildgui $builddll -o $exefile $objfiles", 50);
-STRING_LITERAL(TMP65270, " -I", 3);
-STRING_LITERAL(TMP65271, "", 0);
-STRING_LITERAL(TMP65272, "-fPIC", 5);
-STRING_LITERAL(TMP65273, "asm($1);$n", 10);
-STRING_LITERAL(TMP65274, "llvm_gcc", 8);
-STRING_LITERAL(TMP65275, "llvm-gcc", 8);
-STRING_LITERAL(TMP65276, "lcc", 3);
-STRING_LITERAL(TMP65277, "obj", 3);
-STRING_LITERAL(TMP65278, " -O -p6 ", 8);
-STRING_LITERAL(TMP65279, "$options $include -Fo$objfile $file", 35);
-STRING_LITERAL(TMP65280, " -subsystem windows", 19);
-STRING_LITERAL(TMP65281, " -dll", 5);
-STRING_LITERAL(TMP65282, "lcclnk", 6);
-STRING_LITERAL(TMP65283, "$options $buildgui $builddll -O $exefile $objfiles", 50);
-STRING_LITERAL(TMP65284, " -g5 ", 5);
-STRING_LITERAL(TMP65285, "_asm{$n$1$n}$n", 14);
-STRING_LITERAL(TMP65286, "bcc", 3);
-STRING_LITERAL(TMP65287, " -O2 -6 ", 8);
-STRING_LITERAL(TMP65288, " -O1 -6 ", 8);
-STRING_LITERAL(TMP65289, "bcc32", 5);
-STRING_LITERAL(TMP65290, "-c $options $include -o$objfile $file", 37);
-STRING_LITERAL(TMP65291, " -tW", 4);
-STRING_LITERAL(TMP65292, " -tWD", 5);
-STRING_LITERAL(TMP65293, "$options $buildgui $builddll -e$exefile $objfiles", 49);
-STRING_LITERAL(TMP65294, "__asm{$n$1$n}$n", 15);
-STRING_LITERAL(TMP65295, "dmc", 3);
-STRING_LITERAL(TMP65296, " -ff -o -6 ", 11);
-STRING_LITERAL(TMP65297, " -L/exet:nt/su:windows", 22);
-STRING_LITERAL(TMP65298, " -WD", 4);
-STRING_LITERAL(TMP65299, "$options $buildgui $builddll -o$exefile $objfiles", 49);
-STRING_LITERAL(TMP65300, " -g ", 4);
-STRING_LITERAL(TMP65301, "wcc", 3);
-STRING_LITERAL(TMP65302, " -ox -on -6 -d0 -fp6 -zW ", 25);
-STRING_LITERAL(TMP65303, "wcl386", 6);
-STRING_LITERAL(TMP65304, "-c $options $include -fo=$objfile $file", 39);
-STRING_LITERAL(TMP65305, " -bw", 4);
-STRING_LITERAL(TMP65306, " -bd", 4);
-STRING_LITERAL(TMP65307, "$options $buildgui $builddll -fe=$exefile $objfiles ", 52);
-STRING_LITERAL(TMP65308, " -i=", 4);
-STRING_LITERAL(TMP65309, " -d2 ", 5);
-STRING_LITERAL(TMP65310, "vcc", 3);
-STRING_LITERAL(TMP65311, " /Ogityb2 /G7 /arch:SSE2 ", 25);
-STRING_LITERAL(TMP65312, " /O1 /G7 ", 9);
-STRING_LITERAL(TMP65313, "cl", 2);
-STRING_LITERAL(TMP65314, "/c $options $include /Fo$objfile $file", 38);
-STRING_LITERAL(TMP65315, " /link /SUBSYSTEM:WINDOWS ", 26);
-STRING_LITERAL(TMP65316, " /LD", 4);
-STRING_LITERAL(TMP65317, "$options $builddll /Fe$exefile $objfiles $buildgui", 50);
-STRING_LITERAL(TMP65318, " /I", 3);
-STRING_LITERAL(TMP65319, " /GZ /Zi ", 9);
-STRING_LITERAL(TMP65320, "tcc", 3);
-STRING_LITERAL(TMP65321, "UNAVAILABLE!", 12);
-STRING_LITERAL(TMP65322, "-o $exefile $options $buildgui $builddll $objfiles", 50);
-STRING_LITERAL(TMP65323, "pcc", 3);
-STRING_LITERAL(TMP65324, " -Ox ", 5);
-STRING_LITERAL(TMP65325, " -Os ", 5);
-STRING_LITERAL(TMP65326, "cc", 2);
-STRING_LITERAL(TMP65327, "-c $options $include -Fo$objfile $file", 38);
-STRING_LITERAL(TMP65328, " -SUBSYSTEM:WINDOWS", 19);
-STRING_LITERAL(TMP65329, " -DLL", 5);
-STRING_LITERAL(TMP65330, "$options $buildgui $builddll -OUT:$exefile $objfiles", 52);
-STRING_LITERAL(TMP65331, " -Zi ", 5);
-STRING_LITERAL(TMP65332, "ucc", 3);
-STRING_LITERAL(TMP65333, " -O3 ", 5);
-STRING_LITERAL(TMP65334, " -O1 ", 5);
-STRING_LITERAL(TMP65335, " -shared ", 9);
-STRING_LITERAL(TMP65336, "icc", 3);
-STRING_LITERAL(TMP65337, " -mdll", 6);
-STRING_LITERAL(TMP65338, "gpp", 3);
-STRING_LITERAL(TMP65339, "g++", 3);
-NIM_CONST TY65042 Cc_65041 = {{((NimStringDesc*) &TMP65262),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65264),
-((NimStringDesc*) &TMP65265),
-((NimStringDesc*) &TMP65262),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65267),
-((NimStringDesc*) &TMP65268),
-((NimStringDesc*) &TMP65262),
-((NimStringDesc*) &TMP65269),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65272),
-((NimStringDesc*) &TMP65273),
+N_NIMCALL(NI, nospexecCmd)(NimStringDesc* Command_64232);
+N_NIMCALL(NI, nospexecProcesses)(NimStringDesc** Cmds_64686, NI Cmds_64686Len0, NU8 Options_64688, NI N_64689);
+N_NIMCALL(void, Rawmessage_43564)(NU8 Msg_43566, NimStringDesc** Args_43568, NI Args_43568Len0);
+N_NIMCALL(void, Execexternalprogram_67570)(NimStringDesc* Cmd_67572);
+N_NIMCALL(void, Messageout_43557)(NimStringDesc* S_43559);
+N_NIMCALL(void, Generatescript_67590)(NimStringDesc* Projectfile_67592, TY48008* Script_67593);
+N_NIMCALL(NimStringDesc*, HEX2F_34280)(NimStringDesc* Head_34282, NimStringDesc* Tail_34283);
+static N_INLINE(void, Writeln_67546)(FILE* F_67549, NimStringDesc* X_67550);
+N_NIMCALL(void, Write_4066)(FILE* F_4068, NimStringDesc* S_4069);
+STRING_LITERAL(TMP67262, "gcc", 3);
+STRING_LITERAL(TMP67263, "o", 1);
+STRING_LITERAL(TMP67264, " -O3 -ffast-math ", 17);
+STRING_LITERAL(TMP67265, " -Os -ffast-math ", 17);
+STRING_LITERAL(TMP67266, "-c $options $include -o $objfile $file", 38);
+STRING_LITERAL(TMP67267, " -mwindows", 10);
+STRING_LITERAL(TMP67268, " -shared", 8);
+STRING_LITERAL(TMP67269, "$options $buildgui $builddll -o $exefile $objfiles", 50);
+STRING_LITERAL(TMP67270, " -I", 3);
+STRING_LITERAL(TMP67271, "", 0);
+STRING_LITERAL(TMP67272, "-fPIC", 5);
+STRING_LITERAL(TMP67273, "asm($1);$n", 10);
+STRING_LITERAL(TMP67274, "llvm_gcc", 8);
+STRING_LITERAL(TMP67275, "llvm-gcc", 8);
+STRING_LITERAL(TMP67276, "lcc", 3);
+STRING_LITERAL(TMP67277, "obj", 3);
+STRING_LITERAL(TMP67278, " -O -p6 ", 8);
+STRING_LITERAL(TMP67279, "$options $include -Fo$objfile $file", 35);
+STRING_LITERAL(TMP67280, " -subsystem windows", 19);
+STRING_LITERAL(TMP67281, " -dll", 5);
+STRING_LITERAL(TMP67282, "lcclnk", 6);
+STRING_LITERAL(TMP67283, "$options $buildgui $builddll -O $exefile $objfiles", 50);
+STRING_LITERAL(TMP67284, " -g5 ", 5);
+STRING_LITERAL(TMP67285, "_asm{$n$1$n}$n", 14);
+STRING_LITERAL(TMP67286, "bcc", 3);
+STRING_LITERAL(TMP67287, " -O2 -6 ", 8);
+STRING_LITERAL(TMP67288, " -O1 -6 ", 8);
+STRING_LITERAL(TMP67289, "bcc32", 5);
+STRING_LITERAL(TMP67290, "-c $options $include -o$objfile $file", 37);
+STRING_LITERAL(TMP67291, " -tW", 4);
+STRING_LITERAL(TMP67292, " -tWD", 5);
+STRING_LITERAL(TMP67293, "$options $buildgui $builddll -e$exefile $objfiles", 49);
+STRING_LITERAL(TMP67294, "__asm{$n$1$n}$n", 15);
+STRING_LITERAL(TMP67295, "dmc", 3);
+STRING_LITERAL(TMP67296, " -ff -o -6 ", 11);
+STRING_LITERAL(TMP67297, " -L/exet:nt/su:windows", 22);
+STRING_LITERAL(TMP67298, " -WD", 4);
+STRING_LITERAL(TMP67299, "$options $buildgui $builddll -o$exefile $objfiles", 49);
+STRING_LITERAL(TMP67300, " -g ", 4);
+STRING_LITERAL(TMP67301, "wcc", 3);
+STRING_LITERAL(TMP67302, " -ox -on -6 -d0 -fp6 -zW ", 25);
+STRING_LITERAL(TMP67303, "wcl386", 6);
+STRING_LITERAL(TMP67304, "-c $options $include -fo=$objfile $file", 39);
+STRING_LITERAL(TMP67305, " -bw", 4);
+STRING_LITERAL(TMP67306, " -bd", 4);
+STRING_LITERAL(TMP67307, "$options $buildgui $builddll -fe=$exefile $objfiles ", 52);
+STRING_LITERAL(TMP67308, " -i=", 4);
+STRING_LITERAL(TMP67309, " -d2 ", 5);
+STRING_LITERAL(TMP67310, "vcc", 3);
+STRING_LITERAL(TMP67311, " /Ogityb2 /G7 /arch:SSE2 ", 25);
+STRING_LITERAL(TMP67312, " /O1 /G7 ", 9);
+STRING_LITERAL(TMP67313, "cl", 2);
+STRING_LITERAL(TMP67314, "/c $options $include /Fo$objfile $file", 38);
+STRING_LITERAL(TMP67315, " /link /SUBSYSTEM:WINDOWS ", 26);
+STRING_LITERAL(TMP67316, " /LD", 4);
+STRING_LITERAL(TMP67317, "$options $builddll /Fe$exefile $objfiles $buildgui", 50);
+STRING_LITERAL(TMP67318, " /I", 3);
+STRING_LITERAL(TMP67319, " /GZ /Zi ", 9);
+STRING_LITERAL(TMP67320, "tcc", 3);
+STRING_LITERAL(TMP67321, "UNAVAILABLE!", 12);
+STRING_LITERAL(TMP67322, "-o $exefile $options $buildgui $builddll $objfiles", 50);
+STRING_LITERAL(TMP67323, "pcc", 3);
+STRING_LITERAL(TMP67324, " -Ox ", 5);
+STRING_LITERAL(TMP67325, " -Os ", 5);
+STRING_LITERAL(TMP67326, "cc", 2);
+STRING_LITERAL(TMP67327, "-c $options $include -Fo$objfile $file", 38);
+STRING_LITERAL(TMP67328, " -SUBSYSTEM:WINDOWS", 19);
+STRING_LITERAL(TMP67329, " -DLL", 5);
+STRING_LITERAL(TMP67330, "$options $buildgui $builddll -OUT:$exefile $objfiles", 52);
+STRING_LITERAL(TMP67331, " -Zi ", 5);
+STRING_LITERAL(TMP67332, "ucc", 3);
+STRING_LITERAL(TMP67333, " -O3 ", 5);
+STRING_LITERAL(TMP67334, " -O1 ", 5);
+STRING_LITERAL(TMP67335, " -shared ", 9);
+STRING_LITERAL(TMP67336, "icc", 3);
+STRING_LITERAL(TMP67337, " -mdll", 6);
+STRING_LITERAL(TMP67338, "gpp", 3);
+STRING_LITERAL(TMP67339, "g++", 3);
+NIM_CONST TY67042 Cc_67041 = {{((NimStringDesc*) &TMP67262),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67264),
+((NimStringDesc*) &TMP67265),
+((NimStringDesc*) &TMP67262),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67267),
+((NimStringDesc*) &TMP67268),
+((NimStringDesc*) &TMP67262),
+((NimStringDesc*) &TMP67269),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67272),
+((NimStringDesc*) &TMP67273),
 7}
 ,
-{((NimStringDesc*) &TMP65274),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65264),
-((NimStringDesc*) &TMP65265),
-((NimStringDesc*) &TMP65275),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65267),
-((NimStringDesc*) &TMP65268),
-((NimStringDesc*) &TMP65275),
-((NimStringDesc*) &TMP65269),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65272),
-((NimStringDesc*) &TMP65273),
+{((NimStringDesc*) &TMP67274),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67264),
+((NimStringDesc*) &TMP67265),
+((NimStringDesc*) &TMP67275),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67267),
+((NimStringDesc*) &TMP67268),
+((NimStringDesc*) &TMP67275),
+((NimStringDesc*) &TMP67269),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67272),
+((NimStringDesc*) &TMP67273),
 7}
 ,
-{((NimStringDesc*) &TMP65276),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65278),
-((NimStringDesc*) &TMP65278),
-((NimStringDesc*) &TMP65276),
-((NimStringDesc*) &TMP65279),
-((NimStringDesc*) &TMP65280),
-((NimStringDesc*) &TMP65281),
-((NimStringDesc*) &TMP65282),
-((NimStringDesc*) &TMP65283),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65284),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65285),
+{((NimStringDesc*) &TMP67276),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67278),
+((NimStringDesc*) &TMP67278),
+((NimStringDesc*) &TMP67276),
+((NimStringDesc*) &TMP67279),
+((NimStringDesc*) &TMP67280),
+((NimStringDesc*) &TMP67281),
+((NimStringDesc*) &TMP67282),
+((NimStringDesc*) &TMP67283),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67284),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67285),
 0}
 ,
-{((NimStringDesc*) &TMP65286),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65287),
-((NimStringDesc*) &TMP65288),
-((NimStringDesc*) &TMP65289),
-((NimStringDesc*) &TMP65290),
-((NimStringDesc*) &TMP65291),
-((NimStringDesc*) &TMP65292),
-((NimStringDesc*) &TMP65289),
-((NimStringDesc*) &TMP65293),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67286),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67287),
+((NimStringDesc*) &TMP67288),
+((NimStringDesc*) &TMP67289),
+((NimStringDesc*) &TMP67290),
+((NimStringDesc*) &TMP67291),
+((NimStringDesc*) &TMP67292),
+((NimStringDesc*) &TMP67289),
+((NimStringDesc*) &TMP67293),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 4}
 ,
-{((NimStringDesc*) &TMP65295),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65296),
-((NimStringDesc*) &TMP65296),
-((NimStringDesc*) &TMP65295),
-((NimStringDesc*) &TMP65290),
-((NimStringDesc*) &TMP65297),
-((NimStringDesc*) &TMP65298),
-((NimStringDesc*) &TMP65295),
-((NimStringDesc*) &TMP65299),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65300),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67295),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67296),
+((NimStringDesc*) &TMP67296),
+((NimStringDesc*) &TMP67295),
+((NimStringDesc*) &TMP67290),
+((NimStringDesc*) &TMP67297),
+((NimStringDesc*) &TMP67298),
+((NimStringDesc*) &TMP67295),
+((NimStringDesc*) &TMP67299),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67300),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 4}
 ,
-{((NimStringDesc*) &TMP65301),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65302),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65303),
-((NimStringDesc*) &TMP65304),
-((NimStringDesc*) &TMP65305),
-((NimStringDesc*) &TMP65306),
-((NimStringDesc*) &TMP65303),
-((NimStringDesc*) &TMP65307),
-((NimStringDesc*) &TMP65308),
-((NimStringDesc*) &TMP65309),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67301),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67302),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67303),
+((NimStringDesc*) &TMP67304),
+((NimStringDesc*) &TMP67305),
+((NimStringDesc*) &TMP67306),
+((NimStringDesc*) &TMP67303),
+((NimStringDesc*) &TMP67307),
+((NimStringDesc*) &TMP67308),
+((NimStringDesc*) &TMP67309),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 4}
 ,
-{((NimStringDesc*) &TMP65310),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65311),
-((NimStringDesc*) &TMP65312),
-((NimStringDesc*) &TMP65313),
-((NimStringDesc*) &TMP65314),
-((NimStringDesc*) &TMP65315),
-((NimStringDesc*) &TMP65316),
-((NimStringDesc*) &TMP65313),
-((NimStringDesc*) &TMP65317),
-((NimStringDesc*) &TMP65318),
-((NimStringDesc*) &TMP65319),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67310),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67311),
+((NimStringDesc*) &TMP67312),
+((NimStringDesc*) &TMP67313),
+((NimStringDesc*) &TMP67314),
+((NimStringDesc*) &TMP67315),
+((NimStringDesc*) &TMP67316),
+((NimStringDesc*) &TMP67313),
+((NimStringDesc*) &TMP67317),
+((NimStringDesc*) &TMP67318),
+((NimStringDesc*) &TMP67319),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 12}
 ,
-{((NimStringDesc*) &TMP65320),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65320),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65321),
-((NimStringDesc*) &TMP65268),
-((NimStringDesc*) &TMP65320),
-((NimStringDesc*) &TMP65322),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65300),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67320),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67320),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67321),
+((NimStringDesc*) &TMP67268),
+((NimStringDesc*) &TMP67320),
+((NimStringDesc*) &TMP67322),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67300),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 3}
 ,
-{((NimStringDesc*) &TMP65323),
-((NimStringDesc*) &TMP65277),
-((NimStringDesc*) &TMP65324),
-((NimStringDesc*) &TMP65325),
-((NimStringDesc*) &TMP65326),
-((NimStringDesc*) &TMP65327),
-((NimStringDesc*) &TMP65328),
-((NimStringDesc*) &TMP65329),
-((NimStringDesc*) &TMP65326),
-((NimStringDesc*) &TMP65330),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65331),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67323),
+((NimStringDesc*) &TMP67277),
+((NimStringDesc*) &TMP67324),
+((NimStringDesc*) &TMP67325),
+((NimStringDesc*) &TMP67326),
+((NimStringDesc*) &TMP67327),
+((NimStringDesc*) &TMP67328),
+((NimStringDesc*) &TMP67329),
+((NimStringDesc*) &TMP67326),
+((NimStringDesc*) &TMP67330),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67331),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 0}
 ,
-{((NimStringDesc*) &TMP65332),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65333),
-((NimStringDesc*) &TMP65334),
-((NimStringDesc*) &TMP65326),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65335),
-((NimStringDesc*) &TMP65326),
-((NimStringDesc*) &TMP65322),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65294),
+{((NimStringDesc*) &TMP67332),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67333),
+((NimStringDesc*) &TMP67334),
+((NimStringDesc*) &TMP67326),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67335),
+((NimStringDesc*) &TMP67326),
+((NimStringDesc*) &TMP67322),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67294),
 0}
 ,
-{((NimStringDesc*) &TMP65336),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65333),
-((NimStringDesc*) &TMP65325),
-((NimStringDesc*) &TMP65336),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65267),
-((NimStringDesc*) &TMP65337),
-((NimStringDesc*) &TMP65336),
-((NimStringDesc*) &TMP65269),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65271),
-((NimStringDesc*) &TMP65272),
-((NimStringDesc*) &TMP65273),
+{((NimStringDesc*) &TMP67336),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67333),
+((NimStringDesc*) &TMP67325),
+((NimStringDesc*) &TMP67336),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67267),
+((NimStringDesc*) &TMP67337),
+((NimStringDesc*) &TMP67336),
+((NimStringDesc*) &TMP67269),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67271),
+((NimStringDesc*) &TMP67272),
+((NimStringDesc*) &TMP67273),
 7}
 ,
-{((NimStringDesc*) &TMP65338),
-((NimStringDesc*) &TMP65263),
-((NimStringDesc*) &TMP65264),
-((NimStringDesc*) &TMP65265),
-((NimStringDesc*) &TMP65339),
-((NimStringDesc*) &TMP65266),
-((NimStringDesc*) &TMP65267),
-((NimStringDesc*) &TMP65337),
-((NimStringDesc*) &TMP65339),
-((NimStringDesc*) &TMP65269),
-((NimStringDesc*) &TMP65270),
-((NimStringDesc*) &TMP65300),
-((NimStringDesc*) &TMP65272),
-((NimStringDesc*) &TMP65273),
+{((NimStringDesc*) &TMP67338),
+((NimStringDesc*) &TMP67263),
+((NimStringDesc*) &TMP67264),
+((NimStringDesc*) &TMP67265),
+((NimStringDesc*) &TMP67339),
+((NimStringDesc*) &TMP67266),
+((NimStringDesc*) &TMP67267),
+((NimStringDesc*) &TMP67337),
+((NimStringDesc*) &TMP67339),
+((NimStringDesc*) &TMP67269),
+((NimStringDesc*) &TMP67270),
+((NimStringDesc*) &TMP67300),
+((NimStringDesc*) &TMP67272),
+((NimStringDesc*) &TMP67273),
 7}
 }
 ;
-STRING_LITERAL(TMP65343, "c", 1);
-STRING_LITERAL(TMP189648, "crc", 3);
-extern NIM_CONST TY46054 Os_46053;
-extern NIM_CONST TY46461 Cpu_46460;
-STRING_LITERAL(TMP189650, "0", 1);
-STRING_LITERAL(TMP189669, " ", 1);
-STRING_LITERAL(TMP189675, ".options.always", 15);
-STRING_LITERAL(TMP189676, ".options.linker", 15);
-STRING_LITERAL(TMP189677, ".path", 5);
-STRING_LITERAL(TMP189725, ".cpp", 4);
-STRING_LITERAL(TMP189726, ".m", 2);
-STRING_LITERAL(TMP190784, ".debug", 6);
-STRING_LITERAL(TMP190785, ".options.debug", 14);
-STRING_LITERAL(TMP190786, ".speed", 6);
-STRING_LITERAL(TMP190787, ".options.speed", 14);
-STRING_LITERAL(TMP190788, ".size", 5);
-STRING_LITERAL(TMP190789, ".options.size", 13);
-STRING_LITERAL(TMP190790, ".always", 7);
-STRING_LITERAL(TMP190791, ".exe", 4);
-STRING_LITERAL(TMP190792, "exe", 3);
-STRING_LITERAL(TMP190793, "file", 4);
-STRING_LITERAL(TMP190794, "objfile", 7);
-STRING_LITERAL(TMP190795, "options", 7);
-STRING_LITERAL(TMP190796, "include", 7);
-STRING_LITERAL(TMP190797, "nimrod", 6);
-STRING_LITERAL(TMP190798, "lib", 3);
-STRING_LITERAL(TMP190808, "[C_Files]\015\012", 11);
-STRING_LITERAL(TMP190809, "--file:r\"$1\"$n", 14);
-STRING_LITERAL(TMP190810, "[Symbols]$n$1", 13);
-STRING_LITERAL(TMP190811, "mapping.txt", 11);
-STRING_LITERAL(TMP190866, ".linkerexe", 10);
-STRING_LITERAL(TMP190867, "builddll", 8);
-STRING_LITERAL(TMP190868, "buildgui", 8);
-STRING_LITERAL(TMP190869, "objfiles", 8);
-STRING_LITERAL(TMP190870, "exefile", 7);
-STRING_LITERAL(TMP190871, "compile_", 8);
-STRING_LITERAL(TMP191504, "\015\012", 2);
-NU8 Ccompiler_65340;
-NimStringDesc* Cext_65342;
-extern TY10590 Gch_10608;
-TY38019 Tolink_65344;
-extern TNimType* NTI38019; /* TLinkedList */
-TY38019 Tocompile_65345;
-TY38019 Externaltocompile_65346;
-NimStringDesc* Linkoptions_65347;
-NimStringDesc* Compileoptions_65348;
-NimStringDesc* Ccompilerpath_65349;
-NI Filecounter_65602;
-extern NU32 Gglobaloptions_41078;
-extern NU8 Targetos_46562;
-extern NU8 Targetcpu_46560;
-extern NU8 Gcmd_41083;
-extern NU32 Goptions_41076;
-extern NU8 Hostos_46563;
-extern NimStringDesc* Libpath_41111;
-extern NimStringDesc* Projectpath_41112;
-extern TNimType* NTI34021; /* seq[string] */
-extern NimStringDesc* Tnl_46573;
-extern NI Gnumberofprocessors_41085;
-extern NI Gverbosity_41084;
-static N_INLINE(TY10202*, Usrtocell_11012)(void* Usr_11014) {
-TY10202* Result_11015;
-Result_11015 = 0;
-Result_11015 = ((TY10202*) ((NI64)((NU64)(((NI) (Usr_11014))) - (NU64)(((NI) (((NI)sizeof(TY10202))))))));
-return Result_11015;
+STRING_LITERAL(TMP67343, "c", 1);
+STRING_LITERAL(TMP192652, "crc", 3);
+extern NIM_CONST TY47054 Os_47053;
+extern NIM_CONST TY47461 Cpu_47460;
+STRING_LITERAL(TMP192654, "0", 1);
+STRING_LITERAL(TMP192673, " ", 1);
+STRING_LITERAL(TMP192679, ".options.always", 15);
+STRING_LITERAL(TMP192680, ".options.linker", 15);
+STRING_LITERAL(TMP192681, ".path", 5);
+STRING_LITERAL(TMP192728, ".cpp", 4);
+STRING_LITERAL(TMP192729, ".m", 2);
+STRING_LITERAL(TMP193784, ".debug", 6);
+STRING_LITERAL(TMP193785, ".options.debug", 14);
+STRING_LITERAL(TMP193786, ".speed", 6);
+STRING_LITERAL(TMP193787, ".options.speed", 14);
+STRING_LITERAL(TMP193788, ".size", 5);
+STRING_LITERAL(TMP193789, ".options.size", 13);
+STRING_LITERAL(TMP193790, ".always", 7);
+STRING_LITERAL(TMP193791, ".exe", 4);
+STRING_LITERAL(TMP193792, "exe", 3);
+STRING_LITERAL(TMP193793, "file", 4);
+STRING_LITERAL(TMP193794, "objfile", 7);
+STRING_LITERAL(TMP193795, "options", 7);
+STRING_LITERAL(TMP193796, "include", 7);
+STRING_LITERAL(TMP193797, "nimrod", 6);
+STRING_LITERAL(TMP193798, "lib", 3);
+STRING_LITERAL(TMP193808, "[C_Files]\015\012", 11);
+STRING_LITERAL(TMP193809, "--file:r\"$1\"$n", 14);
+STRING_LITERAL(TMP193810, "[Symbols]$n$1", 13);
+STRING_LITERAL(TMP193811, "mapping.txt", 11);
+STRING_LITERAL(TMP193866, ".linkerexe", 10);
+STRING_LITERAL(TMP193867, "builddll", 8);
+STRING_LITERAL(TMP193868, "buildgui", 8);
+STRING_LITERAL(TMP193869, "objfiles", 8);
+STRING_LITERAL(TMP193870, "exefile", 7);
+STRING_LITERAL(TMP193871, "compile_", 8);
+STRING_LITERAL(TMP194505, "\015\012", 2);
+NU8 Ccompiler_67340;
+NimStringDesc* Cext_67342;
+extern TY11196 Gch_11214;
+TY39019 Tolink_67344;
+extern TNimType* NTI39019; /* TLinkedList */
+TY39019 Tocompile_67345;
+TY39019 Externaltocompile_67346;
+NimStringDesc* Linkoptions_67347;
+NimStringDesc* Compileoptions_67348;
+NimStringDesc* Ccompilerpath_67349;
+NI Filecounter_67611;
+extern NU32 Gglobaloptions_42079;
+extern NU8 Targetos_47562;
+extern NU8 Targetcpu_47560;
+extern NU8 Gcmd_42084;
+extern NU32 Goptions_42077;
+extern NU8 Hostos_47563;
+extern NimStringDesc* Libpath_42112;
+extern NimStringDesc* Projectpath_42113;
+extern TNimType* NTI35021; /* seq[string] */
+extern NimStringDesc* Tnl_47573;
+extern NI Gnumberofprocessors_42086;
+extern NI Gverbosity_42085;
+static N_INLINE(TY10802*, Usrtocell_11612)(void* Usr_11614) {
+TY10802* Result_11615;
+Result_11615 = 0;
+Result_11615 = ((TY10802*) ((NI64)((NU64)(((NI) (Usr_11614))) - (NU64)(((NI) (((NI)sizeof(TY10802))))))));
+return Result_11615;
 }
-static N_INLINE(NI, Atomicinc_3001)(NI* Memloc_3004, NI X_3005) {
-NI Result_7407;
-Result_7407 = 0;
-(*Memloc_3004) += X_3005;
-Result_7407 = (*Memloc_3004);
-return Result_7407;
+static N_INLINE(NI, Atomicinc_3401)(NI* Memloc_3404, NI X_3405) {
+NI Result_8007;
+Result_8007 = 0;
+(*Memloc_3404) += X_3405;
+Result_8007 = (*Memloc_3404);
+return Result_8007;
 }
-static N_INLINE(NI, Atomicdec_3006)(NI* Memloc_3009, NI X_3010) {
-NI Result_7606;
-Result_7606 = 0;
-(*Memloc_3009) -= X_3010;
-Result_7606 = (*Memloc_3009);
-return Result_7606;
+static N_INLINE(NI, Atomicdec_3406)(NI* Memloc_3409, NI X_3410) {
+NI Result_8206;
+Result_8206 = 0;
+(*Memloc_3409) -= X_3410;
+Result_8206 = (*Memloc_3409);
+return Result_8206;
 }
-static N_INLINE(void, Rtladdzct_12001)(TY10202* C_12003) {
-Addzct_11001(&Gch_10608.Zct, C_12003);
+static N_INLINE(void, Rtladdzct_12601)(TY10802* C_12603) {
+Addzct_11601(&Gch_11214.Zct, C_12603);
 }
-static N_INLINE(void, asgnRefNoCycle)(void** Dest_12618, void* Src_12619) {
-TY10202* C_12620;
+static N_INLINE(void, asgnRefNoCycle)(void** Dest_13218, void* Src_13219) {
+TY10802* C_13220;
 NI LOC4;
-TY10202* C_12622;
+TY10802* C_13222;
 NI LOC9;
-if (!!((Src_12619 == NIM_NIL))) goto LA2;
-C_12620 = 0;
-C_12620 = Usrtocell_11012(Src_12619);
-LOC4 = Atomicinc_3001(&(*C_12620).Refcount, 8);
+if (!!((Src_13219 == NIM_NIL))) goto LA2;
+C_13220 = 0;
+C_13220 = Usrtocell_11612(Src_13219);
+LOC4 = Atomicinc_3401(&(*C_13220).Refcount, 8);
 LA2: ;
-if (!!(((*Dest_12618) == NIM_NIL))) goto LA6;
-C_12622 = 0;
-C_12622 = Usrtocell_11012((*Dest_12618));
-LOC9 = Atomicdec_3006(&(*C_12622).Refcount, 8);
+if (!!(((*Dest_13218) == NIM_NIL))) goto LA6;
+C_13222 = 0;
+C_13222 = Usrtocell_11612((*Dest_13218));
+LOC9 = Atomicdec_3406(&(*C_13222).Refcount, 8);
 if (!((NU64)(LOC9) < (NU64)(8))) goto LA10;
-Rtladdzct_12001(C_12622);
+Rtladdzct_12601(C_13222);
 LA10: ;
 LA6: ;
-(*Dest_12618) = Src_12619;
+(*Dest_13218) = Src_13219;
 }
-N_NIMCALL(NI32, Footprint_65513)(NimStringDesc* Filename_65515) {
-NI32 Result_65516;
+N_NIMCALL(NI32, Footprint_67520)(NimStringDesc* Filename_67522) {
+NI32 Result_67523;
 NI32 LOC1;
 NI32 LOC2;
 NI32 LOC3;
-Result_65516 = 0;
-LOC1 = Crcfromfile_45029(Filename_65515);
-LOC2 = HEX3EHEX3C_45091(LOC1, Os_46053[(Targetos_46562)-1].Name);
-LOC3 = HEX3EHEX3C_45091(LOC2, Cpu_46460[(Targetcpu_46560)-1].Name);
-Result_65516 = HEX3EHEX3C_45091(LOC3, Cc_65041[(Ccompiler_65340)-1].Name);
-return Result_65516;
+Result_67523 = 0;
+LOC1 = Crcfromfile_46029(Filename_67522);
+LOC2 = HEX3EHEX3C_46092(LOC1, Os_47053[(Targetos_47562)-1].Name);
+LOC3 = HEX3EHEX3C_46092(LOC2, Cpu_47460[(Targetcpu_47560)-1].Name);
+Result_67523 = HEX3EHEX3C_46092(LOC3, Cc_67041[(Ccompiler_67340)-1].Name);
+return Result_67523;
 }
-N_NIMCALL(NIM_BOOL, Externalfilechanged_65517)(NimStringDesc* Filename_65519) {
-NIM_BOOL Result_65520;
-NimStringDesc* Crcfile_65521;
-NI Currentcrc_65522;
+N_NIMCALL(NIM_BOOL, Externalfilechanged_67524)(NimStringDesc* Filename_67526) {
+NIM_BOOL Result_67527;
+NimStringDesc* Crcfile_67528;
+NI Currentcrc_67529;
 NI32 LOC1;
-FILE* F_65523;
+FILE* F_67530;
 NIM_BOOL LOC3;
-NimStringDesc* Line_65525;
+NimStringDesc* Line_67532;
 NIM_BOOL LOC7;
-NI Oldcrc_65530;
+NI Oldcrc_67537;
 NIM_BOOL LOC15;
 NimStringDesc* LOC18;
-Result_65520 = 0;
-Crcfile_65521 = 0;
-Crcfile_65521 = Togeneratedfile_41104(Filename_65519, ((NimStringDesc*) &TMP189648));
-Currentcrc_65522 = 0;
-LOC1 = Footprint_65513(Filename_65519);
-Currentcrc_65522 = ((NI) (LOC1));
-F_65523 = 0;
-LOC3 = Open_3617(&F_65523, Crcfile_65521, ((NU8) 0), -1);
+Result_67527 = 0;
+Crcfile_67528 = 0;
+Crcfile_67528 = Togeneratedfile_42105(Filename_67526, ((NimStringDesc*) &TMP192652));
+Currentcrc_67529 = 0;
+LOC1 = Footprint_67520(Filename_67526);
+Currentcrc_67529 = ((NI) (LOC1));
+F_67530 = 0;
+LOC3 = Open_4017(&F_67530, Crcfile_67528, ((NU8) 0), -1);
 if (!LOC3) goto LA4;
-Line_65525 = 0;
-Line_65525 = Readline_3679(F_65523);
-LOC7 = Line_65525 == 0;
+Line_67532 = 0;
+Line_67532 = Readline_4087(F_67530);
+LOC7 = Line_67532 == 0;
 if (LOC7) goto LA8;
-LOC7 = (Line_65525->Sup.len == 0);
+LOC7 = (Line_67532->Sup.len == 0);
 LA8: ;
 if (!LOC7) goto LA9;
-Line_65525 = copyString(((NimStringDesc*) &TMP189650));
+Line_67532 = copyString(((NimStringDesc*) &TMP192654));
 LA9: ;
-fclose(F_65523);
-Oldcrc_65530 = 0;
-Oldcrc_65530 = nsuParseInt(Line_65525);
-Result_65520 = !((Oldcrc_65530 == Currentcrc_65522));
+fclose(F_67530);
+Oldcrc_67537 = 0;
+Oldcrc_67537 = nsuParseInt(Line_67532);
+Result_67527 = !((Oldcrc_67537 == Currentcrc_67529));
 goto LA2;
 LA4: ;
-Result_65520 = NIM_TRUE;
+Result_67527 = NIM_TRUE;
 LA2: ;
-if (!Result_65520) goto LA12;
-LOC15 = Open_3617(&F_65523, Crcfile_65521, ((NU8) 1), -1);
+if (!Result_67527) goto LA12;
+LOC15 = Open_4017(&F_67530, Crcfile_67528, ((NU8) 1), -1);
 if (!LOC15) goto LA16;
 LOC18 = 0;
-LOC18 = nimIntToStr(Currentcrc_65522);
-Writeln_65539(F_65523, LOC18);
-fclose(F_65523);
+LOC18 = nimIntToStr(Currentcrc_67529);
+Writeln_67546(F_67530, LOC18);
+fclose(F_67530);
 LA16: ;
 LA12: ;
-return Result_65520;
+return Result_67527;
 }
-N_NIMCALL(void, Addexternalfiletocompile_65544)(NimStringDesc* Filename_65546) {
+N_NIMCALL(void, Addexternalfiletocompile_67551)(NimStringDesc* Filename_67553) {
 NIM_BOOL LOC2;
-LOC2 = ((Gglobaloptions_41078 &(1<<((((NU8) 1))&31)))!=0);
+LOC2 = ((Gglobaloptions_42079 &(1<<((((NU8) 1))&31)))!=0);
 if (LOC2) goto LA3;
-LOC2 = Externalfilechanged_65517(Filename_65546);
+LOC2 = Externalfilechanged_67524(Filename_67553);
 LA3: ;
 if (!LOC2) goto LA4;
-Appendstr_38061(&Externaltocompile_65346, Filename_65546);
+Appendstr_39061(&Externaltocompile_67346, Filename_67553);
 LA4: ;
 }
-N_NIMCALL(void, Addfiletolink_65559)(NimStringDesc* Filename_65561) {
-Prependstr_38071(&Tolink_65344, Filename_65561);
+N_NIMCALL(void, Addfiletolink_67566)(NimStringDesc* Filename_67568) {
+Prependstr_39071(&Tolink_67344, Filename_67568);
 }
-N_NIMCALL(NimStringDesc*, Completecfilepath_65500)(NimStringDesc* Cfile_65502, NIM_BOOL Createsubdir_65503) {
-NimStringDesc* Result_65504;
-Result_65504 = 0;
-Result_65504 = Completegeneratedfilepath_41100(Cfile_65502, Createsubdir_65503);
-return Result_65504;
+N_NIMCALL(NimStringDesc*, Completecfilepath_67507)(NimStringDesc* Cfile_67509, NIM_BOOL Createsubdir_67510) {
+NimStringDesc* Result_67511;
+Result_67511 = 0;
+Result_67511 = Completegeneratedfilepath_42101(Cfile_67509, Createsubdir_67510);
+return Result_67511;
 }
-static N_INLINE(void, appendString)(NimStringDesc* Dest_18192, NimStringDesc* Src_18193) {
-memcpy(((NCSTRING) (&(*Dest_18192).data[((*Dest_18192).Sup.len)-0])), ((NCSTRING) ((*Src_18193).data)), ((NI32) ((NI64)((NI64)((*Src_18193).Sup.len + 1) * 1))));
-(*Dest_18192).Sup.len += (*Src_18193).Sup.len;
+static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800) {
+memcpy(((NCSTRING) (&(*Dest_18799).data[((*Dest_18799).Sup.len)-0])), ((NCSTRING) ((*Src_18800).data)), ((NI32) ((NI64)((NI64)((*Src_18800).Sup.len + 1) * 1))));
+(*Dest_18799).Sup.len += (*Src_18800).Sup.len;
 }
-N_NIMCALL(void, Addopt_65441)(NimStringDesc** Dest_65444, NimStringDesc* Src_65445) {
+N_NIMCALL(void, Addopt_67443)(NimStringDesc** Dest_67446, NimStringDesc* Src_67447) {
 NIM_BOOL LOC2;
-LOC2 = ((*Dest_65444)->Sup.len == 0);
+LOC2 = ((*Dest_67446)->Sup.len == 0);
 if (LOC2) goto LA3;
-LOC2 = !(((NU8)((*Dest_65444)->data[(NI64)((NI64)((*Dest_65444)->Sup.len - 1) + 0)]) == (NU8)(32)));
+LOC2 = !(((NU8)((*Dest_67446)->data[(NI64)((NI64)((*Dest_67446)->Sup.len - 1) + 0)]) == (NU8)(32)));
 LA3: ;
 if (!LOC2) goto LA4;
-(*Dest_65444) = resizeString((*Dest_65444), 1);
-appendString((*Dest_65444), ((NimStringDesc*) &TMP189669));
+(*Dest_67446) = resizeString((*Dest_67446), 1);
+appendString((*Dest_67446), ((NimStringDesc*) &TMP192673));
 LA4: ;
-(*Dest_65444) = resizeString((*Dest_65444), Src_65445->Sup.len + 0);
-appendString((*Dest_65444), Src_65445);
+(*Dest_67446) = resizeString((*Dest_67446), Src_67447->Sup.len + 0);
+appendString((*Dest_67446), Src_67447);
 }
-N_NIMCALL(void, Addcompileoption_65460)(NimStringDesc* Option_65462) {
+N_NIMCALL(void, Addcompileoption_67464)(NimStringDesc* Option_67466) {
 NI LOC2;
-LOC2 = nsuFindStr(Compileoptions_65348, Option_65462, 0);
+LOC2 = nsuFindStr(Compileoptions_67348, Option_67466, 0);
 if (!(LOC2 < 0)) goto LA3;
-Addopt_65441(&Compileoptions_65348, Option_65462);
+Addopt_67443(&Compileoptions_67348, Option_67466);
 LA3: ;
 }
-N_NIMCALL(void, Addlinkoption_65454)(NimStringDesc* Option_65456) {
+N_NIMCALL(void, Addlinkoption_67456)(NimStringDesc* Option_67458) {
 NI LOC2;
-LOC2 = nsuFindStr(Linkoptions_65347, Option_65456, 0);
+LOC2 = nsuFindStr(Linkoptions_67347, Option_67458, 0);
 if (!(LOC2 < 0)) goto LA3;
-Addopt_65441(&Linkoptions_65347, Option_65456);
+Addopt_67443(&Linkoptions_67347, Option_67458);
 LA3: ;
 }
-N_NIMCALL(NU8, Nametocc_65350)(NimStringDesc* Name_65352) {
-NU8 Result_65353;
-NU8 I_65392;
-NU8 Res_65396;
+N_NIMCALL(NU8, Nametocc_67350)(NimStringDesc* Name_67352) {
+NU8 Result_67353;
+NU8 I_67393;
+NU8 Res_67397;
 NI LOC3;
-Result_65353 = 0;
-I_65392 = 0;
-Res_65396 = 0;
-Res_65396 = ((NU8) 1);
+Result_67353 = 0;
+I_67393 = 0;
+Res_67397 = 0;
+Res_67397 = ((NU8) 1);
 while (1) {
-if (!(Res_65396 <= ((NU8) 12))) goto LA1;
-I_65392 = Res_65396;
-LOC3 = nsuCmpIgnoreStyle(Name_65352, Cc_65041[(I_65392)-1].Name);
+if (!(Res_67397 <= ((NU8) 12))) goto LA1;
+I_67393 = Res_67397;
+LOC3 = nsuCmpIgnoreStyle(Name_67352, Cc_67041[(I_67393)-1].Name);
 if (!(LOC3 == 0)) goto LA4;
-Result_65353 = I_65392;
+Result_67353 = I_67393;
 goto BeforeRet;
 LA4: ;
-Res_65396 += 1;
+Res_67397 += 1;
 } LA1: ;
-Result_65353 = ((NU8) 0);
+Result_67353 = ((NU8) 0);
 BeforeRet: ;
-return Result_65353;
+return Result_67353;
 }
-N_NIMCALL(void, Setcc_65397)(NimStringDesc* Ccname_65399) {
+N_NIMCALL(void, Setcc_67398)(NimStringDesc* Ccname_67400) {
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
 NimStringDesc* LOC6;
-NU8 I_65438;
-NU8 Res_65440;
-Ccompiler_65340 = Nametocc_65350(Ccname_65399);
-if (!(Ccompiler_65340 == ((NU8) 0))) goto LA2;
-Rawmessage_42557(((NU8) 46), Ccname_65399);
+NU8 I_67440;
+NU8 Res_67442;
+Ccompiler_67340 = Nametocc_67350(Ccname_67400);
+if (!(Ccompiler_67340 == ((NU8) 0))) goto LA2;
+Rawmessage_43560(((NU8) 46), Ccname_67400);
 LA2: ;
 LOC4 = 0;
-LOC4 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 15);
-appendString(LOC4, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC4, ((NimStringDesc*) &TMP189675));
-asgnRefNoCycle((void**) &Compileoptions_65348, Getconfigvar_41134(LOC4));
+LOC4 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 15);
+appendString(LOC4, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC4, ((NimStringDesc*) &TMP192679));
+asgnRefNoCycle((void**) &Compileoptions_67348, Getconfigvar_42135(LOC4));
 LOC5 = 0;
-LOC5 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 15);
-appendString(LOC5, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC5, ((NimStringDesc*) &TMP189676));
-asgnRefNoCycle((void**) &Linkoptions_65347, Getconfigvar_41134(LOC5));
+LOC5 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 15);
+appendString(LOC5, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC5, ((NimStringDesc*) &TMP192680));
+asgnRefNoCycle((void**) &Linkoptions_67347, Getconfigvar_42135(LOC5));
 LOC6 = 0;
-LOC6 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 5);
-appendString(LOC6, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC6, ((NimStringDesc*) &TMP189677));
-asgnRefNoCycle((void**) &Ccompilerpath_65349, Getconfigvar_41134(LOC6));
-I_65438 = 0;
-Res_65440 = 0;
-Res_65440 = ((NU8) 1);
+LOC6 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 5);
+appendString(LOC6, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC6, ((NimStringDesc*) &TMP192681));
+asgnRefNoCycle((void**) &Ccompilerpath_67349, Getconfigvar_42135(LOC6));
+I_67440 = 0;
+Res_67442 = 0;
+Res_67442 = ((NU8) 1);
 while (1) {
-if (!(Res_65440 <= ((NU8) 12))) goto LA7;
-I_65438 = Res_65440;
-Undefsymbol_59056(Cc_65041[(I_65438)-1].Name);
-Res_65440 += 1;
+if (!(Res_67442 <= ((NU8) 12))) goto LA7;
+I_67440 = Res_67442;
+Undefsymbol_60056(Cc_67041[(I_67440)-1].Name);
+Res_67442 += 1;
 } LA7: ;
-Definesymbol_59053(Cc_65041[(Ccompiler_65340)-1].Name);
+Definesymbol_60053(Cc_67041[(Ccompiler_67340)-1].Name);
 }
-N_NIMCALL(void, Initvars_65466)(void) {
-NU8 I_65475;
-NU8 Res_65499;
+N_NIMCALL(void, Initvars_67472)(void) {
+NU8 I_67482;
+NU8 Res_67506;
 NimStringDesc* LOC7;
 NimStringDesc* LOC8;
 NimStringDesc* LOC9;
 NimStringDesc* LOC10;
 NimStringDesc* LOC14;
-I_65475 = 0;
-Res_65499 = 0;
-Res_65499 = ((NU8) 1);
+I_67482 = 0;
+Res_67506 = 0;
+Res_67506 = ((NU8) 1);
 while (1) {
-if (!(Res_65499 <= ((NU8) 12))) goto LA1;
-I_65475 = Res_65499;
-Undefsymbol_59056(Cc_65041[(I_65475)-1].Name);
-Res_65499 += 1;
+if (!(Res_67506 <= ((NU8) 12))) goto LA1;
+I_67482 = Res_67506;
+Undefsymbol_60056(Cc_67041[(I_67482)-1].Name);
+Res_67506 += 1;
 } LA1: ;
-Definesymbol_59053(Cc_65041[(Ccompiler_65340)-1].Name);
-if (!(Gcmd_41083 == ((NU8) 2))) goto LA3;
-asgnRefNoCycle((void**) &Cext_65342, copyString(((NimStringDesc*) &TMP189725)));
+Definesymbol_60053(Cc_67041[(Ccompiler_67340)-1].Name);
+if (!(Gcmd_42084 == ((NU8) 2))) goto LA3;
+asgnRefNoCycle((void**) &Cext_67342, copyString(((NimStringDesc*) &TMP192728)));
 goto LA2;
 LA3: ;
-if (!(Gcmd_41083 == ((NU8) 3))) goto LA5;
-asgnRefNoCycle((void**) &Cext_65342, copyString(((NimStringDesc*) &TMP189726)));
+if (!(Gcmd_42084 == ((NU8) 3))) goto LA5;
+asgnRefNoCycle((void**) &Cext_67342, copyString(((NimStringDesc*) &TMP192729)));
 goto LA2;
 LA5: ;
 LA2: ;
 LOC7 = 0;
-LOC7 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 15);
-appendString(LOC7, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC7, ((NimStringDesc*) &TMP189675));
+LOC7 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 15);
+appendString(LOC7, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC7, ((NimStringDesc*) &TMP192679));
 LOC8 = 0;
-LOC8 = Getconfigvar_41134(LOC7);
-Addcompileoption_65460(LOC8);
+LOC8 = Getconfigvar_42135(LOC7);
+Addcompileoption_67464(LOC8);
 LOC9 = 0;
-LOC9 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 15);
-appendString(LOC9, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC9, ((NimStringDesc*) &TMP189676));
+LOC9 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 15);
+appendString(LOC9, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC9, ((NimStringDesc*) &TMP192680));
 LOC10 = 0;
-LOC10 = Getconfigvar_41134(LOC9);
-Addlinkoption_65454(LOC10);
-if (!(Ccompilerpath_65349->Sup.len == 0)) goto LA12;
+LOC10 = Getconfigvar_42135(LOC9);
+Addlinkoption_67456(LOC10);
+if (!(Ccompilerpath_67349->Sup.len == 0)) goto LA12;
 LOC14 = 0;
-LOC14 = rawNewString(Cc_65041[(Ccompiler_65340)-1].Name->Sup.len + 5);
-appendString(LOC14, Cc_65041[(Ccompiler_65340)-1].Name);
-appendString(LOC14, ((NimStringDesc*) &TMP189677));
-asgnRefNoCycle((void**) &Ccompilerpath_65349, Getconfigvar_41134(LOC14));
+LOC14 = rawNewString(Cc_67041[(Ccompiler_67340)-1].Name->Sup.len + 5);
+appendString(LOC14, Cc_67041[(Ccompiler_67340)-1].Name);
+appendString(LOC14, ((NimStringDesc*) &TMP192681));
+asgnRefNoCycle((void**) &Ccompilerpath_67349, Getconfigvar_42135(LOC14));
 LA12: ;
 }
-N_NIMCALL(NimStringDesc*, Getdebug_65592)(NU8 C_65594) {
-NimStringDesc* Result_65595;
+N_NIMCALL(NimStringDesc*, Getdebug_67601)(NU8 C_67603) {
+NimStringDesc* Result_67604;
 NimStringDesc* LOC1;
-Result_65595 = 0;
+Result_67604 = 0;
 LOC1 = 0;
-LOC1 = rawNewString(Cc_65041[(C_65594)-1].Name->Sup.len + 14);
-appendString(LOC1, Cc_65041[(C_65594)-1].Name);
-appendString(LOC1, ((NimStringDesc*) &TMP190785));
-Result_65595 = Getconfigvar_41134(LOC1);
-if (!((Result_65595) && (Result_65595)->Sup.len == 0)) goto LA3;
-Result_65595 = copyString(Cc_65041[(C_65594)-1].Debug);
+LOC1 = rawNewString(Cc_67041[(C_67603)-1].Name->Sup.len + 14);
+appendString(LOC1, Cc_67041[(C_67603)-1].Name);
+appendString(LOC1, ((NimStringDesc*) &TMP193785));
+Result_67604 = Getconfigvar_42135(LOC1);
+if (!((Result_67604) && (Result_67604)->Sup.len == 0)) goto LA3;
+Result_67604 = copyString(Cc_67041[(C_67603)-1].Debug);
 LA3: ;
-return Result_65595;
+return Result_67604;
 }
-N_NIMCALL(NimStringDesc*, Getoptspeed_65588)(NU8 C_65590) {
-NimStringDesc* Result_65591;
+N_NIMCALL(NimStringDesc*, Getoptspeed_67597)(NU8 C_67599) {
+NimStringDesc* Result_67600;
 NimStringDesc* LOC1;
-Result_65591 = 0;
+Result_67600 = 0;
 LOC1 = 0;
-LOC1 = rawNewString(Cc_65041[(C_65590)-1].Name->Sup.len + 14);
-appendString(LOC1, Cc_65041[(C_65590)-1].Name);
-appendString(LOC1, ((NimStringDesc*) &TMP190787));
-Result_65591 = Getconfigvar_41134(LOC1);
-if (!((Result_65591) && (Result_65591)->Sup.len == 0)) goto LA3;
-Result_65591 = copyString(Cc_65041[(C_65590)-1].Optspeed);
+LOC1 = rawNewString(Cc_67041[(C_67599)-1].Name->Sup.len + 14);
+appendString(LOC1, Cc_67041[(C_67599)-1].Name);
+appendString(LOC1, ((NimStringDesc*) &TMP193787));
+Result_67600 = Getconfigvar_42135(LOC1);
+if (!((Result_67600) && (Result_67600)->Sup.len == 0)) goto LA3;
+Result_67600 = copyString(Cc_67041[(C_67599)-1].Optspeed);
 LA3: ;
-return Result_65591;
+return Result_67600;
 }
-N_NIMCALL(NimStringDesc*, Getoptsize_65596)(NU8 C_65598) {
-NimStringDesc* Result_65599;
+N_NIMCALL(NimStringDesc*, Getoptsize_67605)(NU8 C_67607) {
+NimStringDesc* Result_67608;
 NimStringDesc* LOC1;
-Result_65599 = 0;
+Result_67608 = 0;
 LOC1 = 0;
-LOC1 = rawNewString(Cc_65041[(C_65598)-1].Name->Sup.len + 13);
-appendString(LOC1, Cc_65041[(C_65598)-1].Name);
-appendString(LOC1, ((NimStringDesc*) &TMP190789));
-Result_65599 = Getconfigvar_41134(LOC1);
-if (!((Result_65599) && (Result_65599)->Sup.len == 0)) goto LA3;
-Result_65599 = copyString(Cc_65041[(C_65598)-1].Optsize);
+LOC1 = rawNewString(Cc_67041[(C_67607)-1].Name->Sup.len + 13);
+appendString(LOC1, Cc_67041[(C_67607)-1].Name);
+appendString(LOC1, ((NimStringDesc*) &TMP193789));
+Result_67608 = Getconfigvar_42135(LOC1);
+if (!((Result_67608) && (Result_67608)->Sup.len == 0)) goto LA3;
+Result_67608 = copyString(Cc_67041[(C_67607)-1].Optsize);
 LA3: ;
-return Result_65599;
+return Result_67608;
 }
-static N_INLINE(void, appendChar)(NimStringDesc* Dest_18209, NIM_CHAR C_18210) {
-(*Dest_18209).data[((*Dest_18209).Sup.len)-0] = C_18210;
-(*Dest_18209).data[((NI64)((*Dest_18209).Sup.len + 1))-0] = 0;
-(*Dest_18209).Sup.len += 1;
+static N_INLINE(void, appendChar)(NimStringDesc* Dest_18816, NIM_CHAR C_18817) {
+(*Dest_18816).data[((*Dest_18816).Sup.len)-0] = C_18817;
+(*Dest_18816).data[((NI64)((*Dest_18816).Sup.len + 1))-0] = 0;
+(*Dest_18816).Sup.len += 1;
 }
-N_NIMCALL(NimStringDesc*, Toobjfile_65505)(NimStringDesc* Filenamewithoutext_65507) {
-NimStringDesc* Result_65508;
-Result_65508 = 0;
-Result_65508 = nosChangeFileExt(Filenamewithoutext_65507, Cc_65041[(Ccompiler_65340)-1].Objext);
-return Result_65508;
+N_NIMCALL(NimStringDesc*, Toobjfile_67512)(NimStringDesc* Filenamewithoutext_67514) {
+NimStringDesc* Result_67515;
+Result_67515 = 0;
+Result_67515 = nosChangeFileExt(Filenamewithoutext_67514, Cc_67041[(Ccompiler_67340)-1].Objext);
+return Result_67515;
 }
-N_NIMCALL(NimStringDesc*, Getcompilecfilecmd_65603)(NimStringDesc* Cfilename_65605, NIM_BOOL Isexternal_65606) {
-NimStringDesc* Result_65607;
-NimStringDesc* Cfile_65608;
-NimStringDesc* Objfile_65609;
-NimStringDesc* Options_65610;
-NimStringDesc* Includecmd_65611;
-NimStringDesc* Compilepattern_65612;
-NimStringDesc* Key_65613;
-NimStringDesc* Trunk_65614;
-NimStringDesc* Exe_65615;
-NU8 C_65616;
-TY33460 LOC1;
+N_NIMCALL(NimStringDesc*, Getcompilecfilecmd_67612)(NimStringDesc* Cfilename_67614, NIM_BOOL Isexternal_67615) {
+NimStringDesc* Result_67616;
+NimStringDesc* Cfile_67617;
+NimStringDesc* Objfile_67618;
+NimStringDesc* Options_67619;
+NimStringDesc* Includecmd_67620;
+NimStringDesc* Compilepattern_67621;
+NimStringDesc* Key_67622;
+NimStringDesc* Trunk_67623;
+NimStringDesc* Exe_67624;
+NU8 C_67625;
+TY34461 LOC1;
 NimStringDesc* LOC5;
 NIM_BOOL LOC7;
 NimStringDesc* LOC10;
@@ -917,520 +917,520 @@ NimStringDesc* LOC54;
 NIM_BOOL LOC59;
 NimStringDesc* LOC63;
 NimStringDesc* LOC64;
-TY65717 LOC65;
+TY67726 LOC65;
 NimStringDesc* LOC66;
-TY65717 LOC67;
+TY67726 LOC67;
 NimStringDesc* LOC68;
-Result_65607 = 0;
-Cfile_65608 = 0;
-Objfile_65609 = 0;
-Options_65610 = 0;
-Includecmd_65611 = 0;
-Compilepattern_65612 = 0;
-Key_65613 = 0;
-Trunk_65614 = 0;
-Exe_65615 = 0;
-C_65616 = 0;
-C_65616 = Ccompiler_65340;
-Options_65610 = copyString(Compileoptions_65348);
+Result_67616 = 0;
+Cfile_67617 = 0;
+Objfile_67618 = 0;
+Options_67619 = 0;
+Includecmd_67620 = 0;
+Compilepattern_67621 = 0;
+Key_67622 = 0;
+Trunk_67623 = 0;
+Exe_67624 = 0;
+C_67625 = 0;
+C_67625 = Ccompiler_67340;
+Options_67619 = copyString(Compileoptions_67348);
 memset((void*)&LOC1, 0, sizeof(LOC1));
-nossplitFile(Cfilename_65605, &LOC1);
-Trunk_65614 = copyString(LOC1.Name);
-if (!((Gglobaloptions_41078 &(1<<((((NU8) 9))&31)))!=0)) goto LA3;
+nossplitFile(Cfilename_67614, &LOC1);
+Trunk_67623 = copyString(LOC1.Name);
+if (!((Gglobaloptions_42079 &(1<<((((NU8) 9))&31)))!=0)) goto LA3;
 LOC5 = 0;
-LOC5 = rawNewString(Trunk_65614->Sup.len + 6);
-appendString(LOC5, Trunk_65614);
-appendString(LOC5, ((NimStringDesc*) &TMP190784));
-Key_65613 = LOC5;
-LOC7 = Existsconfigvar_41131(Key_65613);
+LOC5 = rawNewString(Trunk_67623->Sup.len + 6);
+appendString(LOC5, Trunk_67623);
+appendString(LOC5, ((NimStringDesc*) &TMP193784));
+Key_67622 = LOC5;
+LOC7 = Existsconfigvar_42132(Key_67622);
 if (!LOC7) goto LA8;
 LOC10 = 0;
-LOC10 = Getconfigvar_41134(Key_65613);
-Addopt_65441(&Options_65610, LOC10);
+LOC10 = Getconfigvar_42135(Key_67622);
+Addopt_67443(&Options_67619, LOC10);
 goto LA6;
 LA8: ;
 LOC11 = 0;
-LOC11 = Getdebug_65592(C_65616);
-Addopt_65441(&Options_65610, LOC11);
+LOC11 = Getdebug_67601(C_67625);
+Addopt_67443(&Options_67619, LOC11);
 LA6: ;
 LA3: ;
-if (!((Goptions_41076 &(1<<((((NU8) 13))&31)))!=0)) goto LA13;
+if (!((Goptions_42077 &(1<<((((NU8) 13))&31)))!=0)) goto LA13;
 LOC15 = 0;
-LOC15 = rawNewString(Trunk_65614->Sup.len + 6);
-appendString(LOC15, Trunk_65614);
-appendString(LOC15, ((NimStringDesc*) &TMP190786));
-Key_65613 = LOC15;
-LOC17 = Existsconfigvar_41131(Key_65613);
+LOC15 = rawNewString(Trunk_67623->Sup.len + 6);
+appendString(LOC15, Trunk_67623);
+appendString(LOC15, ((NimStringDesc*) &TMP193786));
+Key_67622 = LOC15;
+LOC17 = Existsconfigvar_42132(Key_67622);
 if (!LOC17) goto LA18;
 LOC20 = 0;
-LOC20 = Getconfigvar_41134(Key_65613);
-Addopt_65441(&Options_65610, LOC20);
+LOC20 = Getconfigvar_42135(Key_67622);
+Addopt_67443(&Options_67619, LOC20);
 goto LA16;
 LA18: ;
 LOC21 = 0;
-LOC21 = Getoptspeed_65588(C_65616);
-Addopt_65441(&Options_65610, LOC21);
+LOC21 = Getoptspeed_67597(C_67625);
+Addopt_67443(&Options_67619, LOC21);
 LA16: ;
 goto LA12;
 LA13: ;
-if (!((Goptions_41076 &(1<<((((NU8) 14))&31)))!=0)) goto LA22;
+if (!((Goptions_42077 &(1<<((((NU8) 14))&31)))!=0)) goto LA22;
 LOC24 = 0;
-LOC24 = rawNewString(Trunk_65614->Sup.len + 5);
-appendString(LOC24, Trunk_65614);
-appendString(LOC24, ((NimStringDesc*) &TMP190788));
-Key_65613 = LOC24;
-LOC26 = Existsconfigvar_41131(Key_65613);
+LOC24 = rawNewString(Trunk_67623->Sup.len + 5);
+appendString(LOC24, Trunk_67623);
+appendString(LOC24, ((NimStringDesc*) &TMP193788));
+Key_67622 = LOC24;
+LOC26 = Existsconfigvar_42132(Key_67622);
 if (!LOC26) goto LA27;
 LOC29 = 0;
-LOC29 = Getconfigvar_41134(Key_65613);
-Addopt_65441(&Options_65610, LOC29);
+LOC29 = Getconfigvar_42135(Key_67622);
+Addopt_67443(&Options_67619, LOC29);
 goto LA25;
 LA27: ;
 LOC30 = 0;
-LOC30 = Getoptsize_65596(C_65616);
-Addopt_65441(&Options_65610, LOC30);
+LOC30 = Getoptsize_67605(C_67625);
+Addopt_67443(&Options_67619, LOC30);
 LA25: ;
 goto LA12;
 LA22: ;
 LA12: ;
 LOC31 = 0;
-LOC31 = rawNewString(Trunk_65614->Sup.len + 7);
-appendString(LOC31, Trunk_65614);
-appendString(LOC31, ((NimStringDesc*) &TMP190790));
-Key_65613 = LOC31;
-LOC33 = Existsconfigvar_41131(Key_65613);
+LOC31 = rawNewString(Trunk_67623->Sup.len + 7);
+appendString(LOC31, Trunk_67623);
+appendString(LOC31, ((NimStringDesc*) &TMP193790));
+Key_67622 = LOC31;
+LOC33 = Existsconfigvar_42132(Key_67622);
 if (!LOC33) goto LA34;
 LOC36 = 0;
-LOC36 = Getconfigvar_41134(Key_65613);
-Addopt_65441(&Options_65610, LOC36);
+LOC36 = Getconfigvar_42135(Key_67622);
+Addopt_67443(&Options_67619, LOC36);
 LA34: ;
-Exe_65615 = copyString(Cc_65041[(C_65616)-1].Compilerexe);
+Exe_67624 = copyString(Cc_67041[(C_67625)-1].Compilerexe);
 LOC37 = 0;
-LOC37 = rawNewString(Cc_65041[(C_65616)-1].Name->Sup.len + 4);
-appendString(LOC37, Cc_65041[(C_65616)-1].Name);
-appendString(LOC37, ((NimStringDesc*) &TMP190791));
-Key_65613 = LOC37;
-LOC39 = Existsconfigvar_41131(Key_65613);
+LOC37 = rawNewString(Cc_67041[(C_67625)-1].Name->Sup.len + 4);
+appendString(LOC37, Cc_67041[(C_67625)-1].Name);
+appendString(LOC37, ((NimStringDesc*) &TMP193791));
+Key_67622 = LOC37;
+LOC39 = Existsconfigvar_42132(Key_67622);
 if (!LOC39) goto LA40;
-Exe_65615 = Getconfigvar_41134(Key_65613);
+Exe_67624 = Getconfigvar_42135(Key_67622);
 LA40: ;
-if (!(Targetos_46562 == ((NU8) 2))) goto LA43;
-Exe_65615 = nosaddFileExt(Exe_65615, ((NimStringDesc*) &TMP190792));
+if (!(Targetos_47562 == ((NU8) 2))) goto LA43;
+Exe_67624 = nosaddFileExt(Exe_67624, ((NimStringDesc*) &TMP193792));
 LA43: ;
-LOC46 = ((Gglobaloptions_41078 &(1<<((((NU8) 10))&31)))!=0);
+LOC46 = ((Gglobaloptions_42079 &(1<<((((NU8) 10))&31)))!=0);
 if (!(LOC46)) goto LA47;
-LOC46 = ((Os_46053[(Targetos_46562)-1].Props &(1<<((((NU8) 0))&7)))!=0);
+LOC46 = ((Os_47053[(Targetos_47562)-1].Props &(1<<((((NU8) 0))&7)))!=0);
 LA47: ;
 if (!LOC46) goto LA48;
 LOC50 = 0;
-LOC50 = rawNewString(Cc_65041[(C_65616)-1].Pic->Sup.len + 1);
+LOC50 = rawNewString(Cc_67041[(C_67625)-1].Pic->Sup.len + 1);
 appendChar(LOC50, 32);
-appendString(LOC50, Cc_65041[(C_65616)-1].Pic);
-Options_65610 = resizeString(Options_65610, LOC50->Sup.len + 0);
-appendString(Options_65610, LOC50);
+appendString(LOC50, Cc_67041[(C_67625)-1].Pic);
+Options_67619 = resizeString(Options_67619, LOC50->Sup.len + 0);
+appendString(Options_67619, LOC50);
 LA48: ;
-if (!(Targetos_46562 == Hostos_46563)) goto LA52;
-Includecmd_65611 = copyString(Cc_65041[(C_65616)-1].Includecmd);
+if (!(Targetos_47562 == Hostos_47563)) goto LA52;
+Includecmd_67620 = copyString(Cc_67041[(C_67625)-1].Includecmd);
 LOC54 = 0;
-LOC54 = Quoteifcontainswhite_25255(Libpath_41111);
-Includecmd_65611 = resizeString(Includecmd_65611, LOC54->Sup.len + 0);
-appendString(Includecmd_65611, LOC54);
-Compilepattern_65612 = nosJoinPath(Ccompilerpath_65349, Exe_65615);
+LOC54 = Quoteifcontainswhite_26268(Libpath_42112);
+Includecmd_67620 = resizeString(Includecmd_67620, LOC54->Sup.len + 0);
+appendString(Includecmd_67620, LOC54);
+Compilepattern_67621 = nosJoinPath(Ccompilerpath_67349, Exe_67624);
 goto LA51;
 LA52: ;
-Includecmd_65611 = copyString(((NimStringDesc*) &TMP65271));
-Compilepattern_65612 = copyString(Cc_65041[(C_65616)-1].Compilerexe);
+Includecmd_67620 = copyString(((NimStringDesc*) &TMP67271));
+Compilepattern_67621 = copyString(Cc_67041[(C_67625)-1].Compilerexe);
 LA51: ;
-if (!(Targetos_46562 == Hostos_46563)) goto LA56;
-Cfile_65608 = copyString(Cfilename_65605);
+if (!(Targetos_47562 == Hostos_47563)) goto LA56;
+Cfile_67617 = copyString(Cfilename_67614);
 goto LA55;
 LA56: ;
-Cfile_65608 = nosextractFilename(Cfilename_65605);
+Cfile_67617 = nosextractFilename(Cfilename_67614);
 LA55: ;
-LOC59 = !(Isexternal_65606);
+LOC59 = !(Isexternal_67615);
 if (LOC59) goto LA60;
-LOC59 = !((Targetos_46562 == Hostos_46563));
+LOC59 = !((Targetos_47562 == Hostos_47563));
 LA60: ;
 if (!LOC59) goto LA61;
-Objfile_65609 = Toobjfile_65505(Cfile_65608);
+Objfile_67618 = Toobjfile_67512(Cfile_67617);
 goto LA58;
 LA61: ;
 LOC63 = 0;
-LOC63 = Toobjfile_65505(Cfile_65608);
-Objfile_65609 = Completecfilepath_65500(LOC63, NIM_TRUE);
+LOC63 = Toobjfile_67512(Cfile_67617);
+Objfile_67618 = Completecfilepath_67507(LOC63, NIM_TRUE);
 LA58: ;
 LOC64 = 0;
-LOC64 = nosaddFileExt(Cfile_65608, Cext_65342);
-Cfile_65608 = Quoteifcontainswhite_25255(LOC64);
-Objfile_65609 = Quoteifcontainswhite_25255(Objfile_65609);
+LOC64 = nosaddFileExt(Cfile_67617, Cext_67342);
+Cfile_67617 = Quoteifcontainswhite_26268(LOC64);
+Objfile_67618 = Quoteifcontainswhite_26268(Objfile_67618);
 memset((void*)&LOC65, 0, sizeof(LOC65));
-LOC65[0] = copyString(((NimStringDesc*) &TMP190793));
-LOC65[1] = copyString(Cfile_65608);
-LOC65[2] = copyString(((NimStringDesc*) &TMP190794));
-LOC65[3] = copyString(Objfile_65609);
-LOC65[4] = copyString(((NimStringDesc*) &TMP190795));
-LOC65[5] = copyString(Options_65610);
-LOC65[6] = copyString(((NimStringDesc*) &TMP190796));
-LOC65[7] = copyString(Includecmd_65611);
-LOC65[8] = copyString(((NimStringDesc*) &TMP190797));
-LOC65[9] = Getprefixdir_41108();
-LOC65[10] = copyString(((NimStringDesc*) &TMP190798));
-LOC65[11] = copyString(Libpath_41111);
+LOC65[0] = copyString(((NimStringDesc*) &TMP193793));
+LOC65[1] = copyString(Cfile_67617);
+LOC65[2] = copyString(((NimStringDesc*) &TMP193794));
+LOC65[3] = copyString(Objfile_67618);
+LOC65[4] = copyString(((NimStringDesc*) &TMP193795));
+LOC65[5] = copyString(Options_67619);
+LOC65[6] = copyString(((NimStringDesc*) &TMP193796));
+LOC65[7] = copyString(Includecmd_67620);
+LOC65[8] = copyString(((NimStringDesc*) &TMP193797));
+LOC65[9] = Getprefixdir_42109();
+LOC65[10] = copyString(((NimStringDesc*) &TMP193798));
+LOC65[11] = copyString(Libpath_42112);
 LOC66 = 0;
-LOC66 = nsuFormatOpenArray(Compilepattern_65612, LOC65, 12);
-Result_65607 = Quoteifcontainswhite_25255(LOC66);
-Result_65607 = addChar(Result_65607, 32);
+LOC66 = nsuFormatOpenArray(Compilepattern_67621, LOC65, 12);
+Result_67616 = Quoteifcontainswhite_26268(LOC66);
+Result_67616 = addChar(Result_67616, 32);
 memset((void*)&LOC67, 0, sizeof(LOC67));
-LOC67[0] = copyString(((NimStringDesc*) &TMP190793));
-LOC67[1] = copyString(Cfile_65608);
-LOC67[2] = copyString(((NimStringDesc*) &TMP190794));
-LOC67[3] = copyString(Objfile_65609);
-LOC67[4] = copyString(((NimStringDesc*) &TMP190795));
-LOC67[5] = copyString(Options_65610);
-LOC67[6] = copyString(((NimStringDesc*) &TMP190796));
-LOC67[7] = copyString(Includecmd_65611);
-LOC67[8] = copyString(((NimStringDesc*) &TMP190797));
+LOC67[0] = copyString(((NimStringDesc*) &TMP193793));
+LOC67[1] = copyString(Cfile_67617);
+LOC67[2] = copyString(((NimStringDesc*) &TMP193794));
+LOC67[3] = copyString(Objfile_67618);
+LOC67[4] = copyString(((NimStringDesc*) &TMP193795));
+LOC67[5] = copyString(Options_67619);
+LOC67[6] = copyString(((NimStringDesc*) &TMP193796));
+LOC67[7] = copyString(Includecmd_67620);
+LOC67[8] = copyString(((NimStringDesc*) &TMP193797));
 LOC68 = 0;
-LOC68 = Getprefixdir_41108();
-LOC67[9] = Quoteifcontainswhite_25255(LOC68);
-LOC67[10] = copyString(((NimStringDesc*) &TMP190798));
-LOC67[11] = Quoteifcontainswhite_25255(Libpath_41111);
-nsuAddf(&Result_65607, Cc_65041[(C_65616)-1].Compiletmpl, LOC67, 12);
-return Result_65607;
+LOC68 = Getprefixdir_42109();
+LOC67[9] = Quoteifcontainswhite_26268(LOC68);
+LOC67[10] = copyString(((NimStringDesc*) &TMP193798));
+LOC67[11] = Quoteifcontainswhite_26268(Libpath_42112);
+nsuAddf(&Result_67616, Cc_67041[(C_67625)-1].Compiletmpl, LOC67, 12);
+return Result_67616;
 }
-N_NIMCALL(void, Addfiletocompile_65509)(NimStringDesc* Filename_65511) {
-Appendstr_38061(&Tocompile_65345, Filename_65511);
+N_NIMCALL(void, Addfiletocompile_67516)(NimStringDesc* Filename_67518) {
+Appendstr_39061(&Tocompile_67345, Filename_67518);
 }
-N_NIMCALL(TY47008*, Genmappingfiles_66041)(TY38019* List_66043) {
-TY47008* Result_66044;
-TY38015* It_66045;
-TY47399 LOC2;
+N_NIMCALL(TY48008*, Genmappingfiles_68053)(TY39019* List_68055) {
+TY48008* Result_68056;
+TY39015* It_68057;
+TY48407 LOC2;
 NimStringDesc* LOC3;
-Result_66044 = 0;
-It_66045 = 0;
-It_66045 = ((TY38015*) ((*List_66043).Head));
+Result_68056 = 0;
+It_68057 = 0;
+It_68057 = ((TY39015*) ((*List_68055).Head));
 while (1) {
-if (!!((It_66045 == NIM_NIL))) goto LA1;
+if (!!((It_68057 == NIM_NIL))) goto LA1;
 memset((void*)&LOC2, 0, sizeof(LOC2));
 LOC3 = 0;
-LOC3 = nosaddFileExt((*It_66045).Data, Cext_65342);
-LOC2[0] = Torope_47046(LOC3);
-Appf_47071(&Result_66044, ((NimStringDesc*) &TMP190809), LOC2, 1);
-It_66045 = ((TY38015*) ((*It_66045).Sup.Next));
+LOC3 = nosaddFileExt((*It_68057).Data, Cext_67342);
+LOC2[0] = Torope_48046(LOC3);
+Appf_48071(&Result_68056, ((NimStringDesc*) &TMP193809), LOC2, 1);
+It_68057 = ((TY39015*) ((*It_68057).Sup.Next));
 } LA1: ;
-return Result_66044;
+return Result_68056;
 }
-N_NIMCALL(void, Writemapping_66062)(TY47008* Gsymbolmapping_66064) {
-TY47008* Code_66076;
-TY47008* LOC4;
-TY47008* LOC5;
-TY47399 LOC6;
+N_NIMCALL(void, Writemapping_68074)(TY48008* Gsymbolmapping_68076) {
+TY48008* Code_68088;
+TY48008* LOC4;
+TY48008* LOC5;
+TY48407 LOC6;
 NimStringDesc* LOC7;
-if (!!(((Gglobaloptions_41078 &(1<<((((NU8) 13))&31)))!=0))) goto LA2;
+if (!!(((Gglobaloptions_42079 &(1<<((((NU8) 13))&31)))!=0))) goto LA2;
 goto BeforeRet;
 LA2: ;
-Code_66076 = 0;
-Code_66076 = Torope_47046(((NimStringDesc*) &TMP190808));
+Code_68088 = 0;
+Code_68088 = Torope_48046(((NimStringDesc*) &TMP193808));
 LOC4 = 0;
-LOC4 = Genmappingfiles_66041(&Tocompile_65345);
-App_47031(&Code_66076, LOC4);
+LOC4 = Genmappingfiles_68053(&Tocompile_67345);
+App_48031(&Code_68088, LOC4);
 LOC5 = 0;
-LOC5 = Genmappingfiles_66041(&Externaltocompile_65346);
-App_47031(&Code_66076, LOC5);
+LOC5 = Genmappingfiles_68053(&Externaltocompile_67346);
+App_48031(&Code_68088, LOC5);
 memset((void*)&LOC6, 0, sizeof(LOC6));
-LOC6[0] = Gsymbolmapping_66064;
-Appf_47071(&Code_66076, ((NimStringDesc*) &TMP190810), LOC6, 1);
+LOC6[0] = Gsymbolmapping_68076;
+Appf_48071(&Code_68088, ((NimStringDesc*) &TMP193810), LOC6, 1);
 LOC7 = 0;
-LOC7 = nosJoinPath(Projectpath_41112, ((NimStringDesc*) &TMP190811));
-Writerope_47055(Code_66076, LOC7);
+LOC7 = nosJoinPath(Projectpath_42113, ((NimStringDesc*) &TMP193811));
+Writerope_48055(Code_68088, LOC7);
 BeforeRet: ;
 }
-N_NIMCALL(void, Compilecfile_65724)(TY38019* List_65726, TY47008** Script_65728, TY34021** Cmds_65730, NIM_BOOL Isexternal_65731) {
-TY38015* It_65732;
-NimStringDesc* Compilecmd_65756;
-It_65732 = 0;
-It_65732 = ((TY38015*) ((*List_65726).Head));
+N_NIMCALL(void, Compilecfile_67733)(TY39019* List_67735, TY48008** Script_67737, TY35021** Cmds_67739, NIM_BOOL Isexternal_67740) {
+TY39015* It_67741;
+NimStringDesc* Compilecmd_67765;
+It_67741 = 0;
+It_67741 = ((TY39015*) ((*List_67735).Head));
 while (1) {
-if (!!((It_65732 == NIM_NIL))) goto LA1;
-Filecounter_65602 += 1;
-Compilecmd_65756 = 0;
-Compilecmd_65756 = Getcompilecfilecmd_65603((*It_65732).Data, Isexternal_65731);
-if (!!(((Gglobaloptions_41078 &(1<<((((NU8) 6))&31)))!=0))) goto LA3;
-(*Cmds_65730) = (TY34021*) incrSeq(&((*Cmds_65730))->Sup, sizeof(NimStringDesc*));
-asgnRefNoCycle((void**) &(*Cmds_65730)->data[(*Cmds_65730)->Sup.len-1], copyString(Compilecmd_65756));
+if (!!((It_67741 == NIM_NIL))) goto LA1;
+Filecounter_67611 += 1;
+Compilecmd_67765 = 0;
+Compilecmd_67765 = Getcompilecfilecmd_67612((*It_67741).Data, Isexternal_67740);
+if (!!(((Gglobaloptions_42079 &(1<<((((NU8) 6))&31)))!=0))) goto LA3;
+(*Cmds_67739) = (TY35021*) incrSeq(&((*Cmds_67739))->Sup, sizeof(NimStringDesc*));
+asgnRefNoCycle((void**) &(*Cmds_67739)->data[(*Cmds_67739)->Sup.len-1], copyString(Compilecmd_67765));
 LA3: ;
-if (!((Gglobaloptions_41078 &(1<<((((NU8) 12))&31)))!=0)) goto LA6;
-App_47036(Script_65728, Compilecmd_65756);
-App_47036(Script_65728, Tnl_46573);
+if (!((Gglobaloptions_42079 &(1<<((((NU8) 12))&31)))!=0)) goto LA6;
+App_48036(Script_67737, Compilecmd_67765);
+App_48036(Script_67737, Tnl_47573);
 LA6: ;
-It_65732 = ((TY38015*) ((*It_65732).Sup.Next));
+It_67741 = ((TY39015*) ((*It_67741).Sup.Next));
 } LA1: ;
 }
-N_NIMCALL(void, Execexternalprogram_65563)(NimStringDesc* Cmd_65565) {
+N_NIMCALL(void, Execexternalprogram_67570)(NimStringDesc* Cmd_67572) {
 NIM_BOOL LOC2;
 NI LOC7;
-LOC2 = ((Gglobaloptions_41078 &(1<<((((NU8) 5))&31)))!=0);
+LOC2 = ((Gglobaloptions_42079 &(1<<((((NU8) 5))&31)))!=0);
 if (LOC2) goto LA3;
-LOC2 = (0 < Gverbosity_41084);
+LOC2 = (0 < Gverbosity_42085);
 LA3: ;
 if (!LOC2) goto LA4;
-Messageout_42554(Cmd_65565);
+Messageout_43557(Cmd_67572);
 LA4: ;
-LOC7 = nospexecCmd(Cmd_65565);
+LOC7 = nospexecCmd(Cmd_67572);
 if (!!((LOC7 == 0))) goto LA8;
-Rawmessage_42557(((NU8) 62), ((NimStringDesc*) &TMP65271));
+Rawmessage_43560(((NU8) 62), ((NimStringDesc*) &TMP67271));
 LA8: ;
 }
-N_NIMCALL(void, Generatescript_65581)(NimStringDesc* Projectfile_65583, TY47008* Script_65584) {
-TY33460 LOC1;
-NimStringDesc* Dir_65585;
-NimStringDesc* Name_65586;
-NimStringDesc* Ext_65587;
+N_NIMCALL(void, Generatescript_67590)(NimStringDesc* Projectfile_67592, TY48008* Script_67593) {
+TY34461 LOC1;
+NimStringDesc* Dir_67594;
+NimStringDesc* Name_67595;
+NimStringDesc* Ext_67596;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
 NimStringDesc* LOC4;
 memset((void*)&LOC1, 0, sizeof(LOC1));
-nossplitFile(Projectfile_65583, &LOC1);
-Dir_65585 = 0;
-Dir_65585 = copyString(LOC1.Dir);
-Name_65586 = 0;
-Name_65586 = copyString(LOC1.Name);
-Ext_65587 = 0;
-Ext_65587 = copyString(LOC1.Ext);
+nossplitFile(Projectfile_67592, &LOC1);
+Dir_67594 = 0;
+Dir_67594 = copyString(LOC1.Dir);
+Name_67595 = 0;
+Name_67595 = copyString(LOC1.Name);
+Ext_67596 = 0;
+Ext_67596 = copyString(LOC1.Ext);
 LOC2 = 0;
-LOC2 = rawNewString(Name_65586->Sup.len + 8);
-appendString(LOC2, ((NimStringDesc*) &TMP190871));
-appendString(LOC2, Name_65586);
+LOC2 = rawNewString(Name_67595->Sup.len + 8);
+appendString(LOC2, ((NimStringDesc*) &TMP193871));
+appendString(LOC2, Name_67595);
 LOC3 = 0;
-LOC3 = nosaddFileExt(LOC2, Os_46053[(Targetos_46562)-1].Scriptext);
+LOC3 = nosaddFileExt(LOC2, Os_47053[(Targetos_47562)-1].Scriptext);
 LOC4 = 0;
-LOC4 = HEX2F_33279(Dir_65585, LOC3);
-Writerope_47055(Script_65584, LOC4);
+LOC4 = HEX2F_34280(Dir_67594, LOC3);
+Writerope_48055(Script_67593, LOC4);
 }
-N_NIMCALL(void, Callccompiler_65797)(NimStringDesc* Projectfile_65799) {
-NimStringDesc* Linkcmd_65800;
-NimStringDesc* Buildgui_65801;
-NimStringDesc* Builddll_65802;
-NU8 C_65824;
-TY47008* Script_65825;
-TY34021* Cmds_65842;
-NI Res_65860;
-NI I_65885;
-NI HEX3Atmp_66038;
-NI Res_66040;
+N_NIMCALL(void, Callccompiler_67806)(NimStringDesc* Projectfile_67808) {
+NimStringDesc* Linkcmd_67809;
+NimStringDesc* Buildgui_67810;
+NimStringDesc* Builddll_67811;
+NU8 C_67833;
+TY48008* Script_67834;
+TY35021* Cmds_67851;
+NI Res_67869;
+NI I_67895;
+NI HEX3Atmp_68050;
+NI Res_68052;
 NI LOC14;
 NIM_BOOL LOC15;
-TY41320 LOC22;
-NimStringDesc* Linkerexe_65924;
+TY42331 LOC22;
+NimStringDesc* Linkerexe_67936;
 NimStringDesc* LOC26;
 NimStringDesc* LOC36;
-NimStringDesc* Exefile_65958;
-TY42866 LOC43;
-TY33460 LOC44;
+NimStringDesc* Exefile_67970;
+TY43869 LOC43;
+TY34461 LOC44;
 NimStringDesc* LOC45;
-TY33460 LOC46;
-TY33460 LOC50;
-TY38015* It_65983;
-NimStringDesc* Objfiles_65984;
+TY34461 LOC46;
+TY34461 LOC50;
+TY39015* It_67995;
+NimStringDesc* Objfiles_67996;
 NimStringDesc* LOC55;
 NimStringDesc* LOC56;
 NimStringDesc* LOC57;
 NimStringDesc* LOC58;
-TY66007 LOC59;
+TY68019 LOC59;
 NimStringDesc* LOC60;
-TY66007 LOC61;
+TY68019 LOC61;
 NimStringDesc* LOC62;
-Linkcmd_65800 = 0;
-Buildgui_65801 = 0;
-Builddll_65802 = 0;
-if (!((Gglobaloptions_41078 & 4160) == 64)) goto LA2;
+Linkcmd_67809 = 0;
+Buildgui_67810 = 0;
+Builddll_67811 = 0;
+if (!((Gglobaloptions_42079 & 4160) == 64)) goto LA2;
 goto BeforeRet;
 LA2: ;
-Filecounter_65602 = 0;
-C_65824 = 0;
-C_65824 = Ccompiler_65340;
-Script_65825 = 0;
-Script_65825 = NIM_NIL;
-Cmds_65842 = 0;
-Cmds_65842 = (TY34021*) newSeq(NTI34021, 0);
-Compilecfile_65724(&Tocompile_65345, &Script_65825, &Cmds_65842, NIM_FALSE);
-Compilecfile_65724(&Externaltocompile_65346, &Script_65825, &Cmds_65842, NIM_TRUE);
-if (!!(((Gglobaloptions_41078 &(1<<((((NU8) 6))&31)))!=0))) goto LA5;
-if (!(Gnumberofprocessors_41085 == 0)) goto LA8;
-Gnumberofprocessors_41085 = nospcountProcessors();
+Filecounter_67611 = 0;
+C_67833 = 0;
+C_67833 = Ccompiler_67340;
+Script_67834 = 0;
+Script_67834 = NIM_NIL;
+Cmds_67851 = 0;
+Cmds_67851 = (TY35021*) newSeq(NTI35021, 0);
+Compilecfile_67733(&Tocompile_67345, &Script_67834, &Cmds_67851, NIM_FALSE);
+Compilecfile_67733(&Externaltocompile_67346, &Script_67834, &Cmds_67851, NIM_TRUE);
+if (!!(((Gglobaloptions_42079 &(1<<((((NU8) 6))&31)))!=0))) goto LA5;
+if (!(Gnumberofprocessors_42086 == 0)) goto LA8;
+Gnumberofprocessors_42086 = nospcountProcessors();
 LA8: ;
-Res_65860 = 0;
-Res_65860 = 0;
-if (!(Gnumberofprocessors_41085 <= 1)) goto LA11;
-I_65885 = 0;
-HEX3Atmp_66038 = 0;
-HEX3Atmp_66038 = (Cmds_65842->Sup.len-1);
-Res_66040 = 0;
-Res_66040 = 0;
+Res_67869 = 0;
+Res_67869 = 0;
+if (!(Gnumberofprocessors_42086 <= 1)) goto LA11;
+I_67895 = 0;
+HEX3Atmp_68050 = 0;
+HEX3Atmp_68050 = (Cmds_67851->Sup.len-1);
+Res_68052 = 0;
+Res_68052 = 0;
 while (1) {
-if (!(Res_66040 <= HEX3Atmp_66038)) goto LA13;
-I_65885 = Res_66040;
-LOC14 = nospexecCmd(Cmds_65842->data[I_65885]);
-Res_65860 = ((LOC14 >= Res_65860) ? LOC14 : Res_65860);
-Res_66040 += 1;
+if (!(Res_68052 <= HEX3Atmp_68050)) goto LA13;
+I_67895 = Res_68052;
+LOC14 = nospexecCmd(Cmds_67851->data[I_67895]);
+Res_67869 = ((LOC14 >= Res_67869) ? LOC14 : Res_67869);
+Res_68052 += 1;
 } LA13: ;
 goto LA10;
 LA11: ;
-LOC15 = ((Gglobaloptions_41078 &(1<<((((NU8) 5))&31)))!=0);
+LOC15 = ((Gglobaloptions_42079 &(1<<((((NU8) 5))&31)))!=0);
 if (LOC15) goto LA16;
-LOC15 = (0 < Gverbosity_41084);
+LOC15 = (0 < Gverbosity_42085);
 LA16: ;
 if (!LOC15) goto LA17;
-Res_65860 = nospexecProcesses(Cmds_65842->data, Cmds_65842->Sup.len, 11, Gnumberofprocessors_41085);
+Res_67869 = nospexecProcesses(Cmds_67851->data, Cmds_67851->Sup.len, 11, Gnumberofprocessors_42086);
 goto LA10;
 LA17: ;
-Res_65860 = nospexecProcesses(Cmds_65842->data, Cmds_65842->Sup.len, 10, Gnumberofprocessors_41085);
+Res_67869 = nospexecProcesses(Cmds_67851->data, Cmds_67851->Sup.len, 10, Gnumberofprocessors_42086);
 LA10: ;
-if (!!((Res_65860 == 0))) goto LA20;
+if (!!((Res_67869 == 0))) goto LA20;
 memset((void*)&LOC22, 0, sizeof(LOC22));
-Rawmessage_42561(((NU8) 62), LOC22, 0);
+Rawmessage_43564(((NU8) 62), LOC22, 0);
 LA20: ;
 LA5: ;
-if (!!(((Gglobaloptions_41078 &(1<<((((NU8) 7))&31)))!=0))) goto LA24;
-Linkerexe_65924 = 0;
+if (!!(((Gglobaloptions_42079 &(1<<((((NU8) 7))&31)))!=0))) goto LA24;
+Linkerexe_67936 = 0;
 LOC26 = 0;
-LOC26 = rawNewString(Cc_65041[(C_65824)-1].Name->Sup.len + 10);
-appendString(LOC26, Cc_65041[(C_65824)-1].Name);
-appendString(LOC26, ((NimStringDesc*) &TMP190866));
-Linkerexe_65924 = Getconfigvar_41134(LOC26);
-if (!(Linkerexe_65924->Sup.len == 0)) goto LA28;
-Linkerexe_65924 = copyString(Cc_65041[(C_65824)-1].Linkerexe);
+LOC26 = rawNewString(Cc_67041[(C_67833)-1].Name->Sup.len + 10);
+appendString(LOC26, Cc_67041[(C_67833)-1].Name);
+appendString(LOC26, ((NimStringDesc*) &TMP193866));
+Linkerexe_67936 = Getconfigvar_42135(LOC26);
+if (!(Linkerexe_67936->Sup.len == 0)) goto LA28;
+Linkerexe_67936 = copyString(Cc_67041[(C_67833)-1].Linkerexe);
 LA28: ;
-if (!(Targetos_46562 == ((NU8) 2))) goto LA31;
-Linkerexe_65924 = nosaddFileExt(Linkerexe_65924, ((NimStringDesc*) &TMP190792));
+if (!(Targetos_47562 == ((NU8) 2))) goto LA31;
+Linkerexe_67936 = nosaddFileExt(Linkerexe_67936, ((NimStringDesc*) &TMP193792));
 LA31: ;
-if (!!((Hostos_46563 == Targetos_46562))) goto LA34;
-Linkcmd_65800 = Quoteifcontainswhite_25255(Linkerexe_65924);
+if (!!((Hostos_47563 == Targetos_47562))) goto LA34;
+Linkcmd_67809 = Quoteifcontainswhite_26268(Linkerexe_67936);
 goto LA33;
 LA34: ;
 LOC36 = 0;
-LOC36 = nosJoinPath(Ccompilerpath_65349, Linkerexe_65924);
-Linkcmd_65800 = Quoteifcontainswhite_25255(LOC36);
+LOC36 = nosJoinPath(Ccompilerpath_67349, Linkerexe_67936);
+Linkcmd_67809 = Quoteifcontainswhite_26268(LOC36);
 LA33: ;
-if (!((Gglobaloptions_41078 &(1<<((((NU8) 11))&31)))!=0)) goto LA38;
-Buildgui_65801 = copyString(Cc_65041[(C_65824)-1].Buildgui);
+if (!((Gglobaloptions_42079 &(1<<((((NU8) 11))&31)))!=0)) goto LA38;
+Buildgui_67810 = copyString(Cc_67041[(C_67833)-1].Buildgui);
 goto LA37;
 LA38: ;
-Buildgui_65801 = copyString(((NimStringDesc*) &TMP65271));
+Buildgui_67810 = copyString(((NimStringDesc*) &TMP67271));
 LA37: ;
-Exefile_65958 = 0;
-if (!((Gglobaloptions_41078 &(1<<((((NU8) 10))&31)))!=0)) goto LA41;
+Exefile_67970 = 0;
+if (!((Gglobaloptions_42079 &(1<<((((NU8) 10))&31)))!=0)) goto LA41;
 memset((void*)&LOC43, 0, sizeof(LOC43));
 memset((void*)&LOC44, 0, sizeof(LOC44));
-nossplitFile(Projectfile_65799, &LOC44);
+nossplitFile(Projectfile_67808, &LOC44);
 LOC43[0] = copyString(LOC44.Name);
-Exefile_65958 = nsuFormatOpenArray(Os_46053[(Targetos_46562)-1].Dllfrmt, LOC43, 1);
-Builddll_65802 = copyString(Cc_65041[(C_65824)-1].Builddll);
+Exefile_67970 = nsuFormatOpenArray(Os_47053[(Targetos_47562)-1].Dllfrmt, LOC43, 1);
+Builddll_67811 = copyString(Cc_67041[(C_67833)-1].Builddll);
 goto LA40;
 LA41: ;
 LOC45 = 0;
 memset((void*)&LOC46, 0, sizeof(LOC46));
-nossplitFile(Projectfile_65799, &LOC46);
-LOC45 = rawNewString(LOC46.Name->Sup.len + Os_46053[(Targetos_46562)-1].Exeext->Sup.len + 0);
+nossplitFile(Projectfile_67808, &LOC46);
+LOC45 = rawNewString(LOC46.Name->Sup.len + Os_47053[(Targetos_47562)-1].Exeext->Sup.len + 0);
 appendString(LOC45, LOC46.Name);
-appendString(LOC45, Os_46053[(Targetos_46562)-1].Exeext);
-Exefile_65958 = LOC45;
-Builddll_65802 = copyString(((NimStringDesc*) &TMP65271));
+appendString(LOC45, Os_47053[(Targetos_47562)-1].Exeext);
+Exefile_67970 = LOC45;
+Builddll_67811 = copyString(((NimStringDesc*) &TMP67271));
 LA40: ;
-if (!(Targetos_46562 == Hostos_46563)) goto LA48;
+if (!(Targetos_47562 == Hostos_47563)) goto LA48;
 memset((void*)&LOC50, 0, sizeof(LOC50));
-nossplitFile(Projectfile_65799, &LOC50);
-Exefile_65958 = nosJoinPath(LOC50.Dir, Exefile_65958);
+nossplitFile(Projectfile_67808, &LOC50);
+Exefile_67970 = nosJoinPath(LOC50.Dir, Exefile_67970);
 LA48: ;
-Exefile_65958 = Quoteifcontainswhite_25255(Exefile_65958);
-It_65983 = 0;
-It_65983 = ((TY38015*) (Tolink_65344.Head));
-Objfiles_65984 = 0;
-Objfiles_65984 = copyString(((NimStringDesc*) &TMP65271));
+Exefile_67970 = Quoteifcontainswhite_26268(Exefile_67970);
+It_67995 = 0;
+It_67995 = ((TY39015*) (Tolink_67344.Head));
+Objfiles_67996 = 0;
+Objfiles_67996 = copyString(((NimStringDesc*) &TMP67271));
 while (1) {
-if (!!((It_65983 == NIM_NIL))) goto LA51;
-Objfiles_65984 = addChar(Objfiles_65984, 32);
-if (!(Targetos_46562 == Hostos_46563)) goto LA53;
+if (!!((It_67995 == NIM_NIL))) goto LA51;
+Objfiles_67996 = addChar(Objfiles_67996, 32);
+if (!(Targetos_47562 == Hostos_47563)) goto LA53;
 LOC55 = 0;
-LOC55 = nosaddFileExt((*It_65983).Data, Cc_65041[(Ccompiler_65340)-1].Objext);
+LOC55 = nosaddFileExt((*It_67995).Data, Cc_67041[(Ccompiler_67340)-1].Objext);
 LOC56 = 0;
-LOC56 = Quoteifcontainswhite_25255(LOC55);
-Objfiles_65984 = resizeString(Objfiles_65984, LOC56->Sup.len + 0);
-appendString(Objfiles_65984, LOC56);
+LOC56 = Quoteifcontainswhite_26268(LOC55);
+Objfiles_67996 = resizeString(Objfiles_67996, LOC56->Sup.len + 0);
+appendString(Objfiles_67996, LOC56);
 goto LA52;
 LA53: ;
 LOC57 = 0;
-LOC57 = nosaddFileExt((*It_65983).Data, Cc_65041[(Ccompiler_65340)-1].Objext);
+LOC57 = nosaddFileExt((*It_67995).Data, Cc_67041[(Ccompiler_67340)-1].Objext);
 LOC58 = 0;
-LOC58 = Quoteifcontainswhite_25255(LOC57);
-Objfiles_65984 = resizeString(Objfiles_65984, LOC58->Sup.len + 0);
-appendString(Objfiles_65984, LOC58);
+LOC58 = Quoteifcontainswhite_26268(LOC57);
+Objfiles_67996 = resizeString(Objfiles_67996, LOC58->Sup.len + 0);
+appendString(Objfiles_67996, LOC58);
 LA52: ;
-It_65983 = ((TY38015*) ((*It_65983).Sup.Next));
+It_67995 = ((TY39015*) ((*It_67995).Sup.Next));
 } LA51: ;
 memset((void*)&LOC59, 0, sizeof(LOC59));
-LOC59[0] = copyString(((NimStringDesc*) &TMP190867));
-LOC59[1] = copyString(Builddll_65802);
-LOC59[2] = copyString(((NimStringDesc*) &TMP190868));
-LOC59[3] = copyString(Buildgui_65801);
-LOC59[4] = copyString(((NimStringDesc*) &TMP190795));
-LOC59[5] = copyString(Linkoptions_65347);
-LOC59[6] = copyString(((NimStringDesc*) &TMP190869));
-LOC59[7] = copyString(Objfiles_65984);
-LOC59[8] = copyString(((NimStringDesc*) &TMP190870));
-LOC59[9] = copyString(Exefile_65958);
-LOC59[10] = copyString(((NimStringDesc*) &TMP190797));
-LOC59[11] = Getprefixdir_41108();
-LOC59[12] = copyString(((NimStringDesc*) &TMP190798));
-LOC59[13] = copyString(Libpath_41111);
+LOC59[0] = copyString(((NimStringDesc*) &TMP193867));
+LOC59[1] = copyString(Builddll_67811);
+LOC59[2] = copyString(((NimStringDesc*) &TMP193868));
+LOC59[3] = copyString(Buildgui_67810);
+LOC59[4] = copyString(((NimStringDesc*) &TMP193795));
+LOC59[5] = copyString(Linkoptions_67347);
+LOC59[6] = copyString(((NimStringDesc*) &TMP193869));
+LOC59[7] = copyString(Objfiles_67996);
+LOC59[8] = copyString(((NimStringDesc*) &TMP193870));
+LOC59[9] = copyString(Exefile_67970);
+LOC59[10] = copyString(((NimStringDesc*) &TMP193797));
+LOC59[11] = Getprefixdir_42109();
+LOC59[12] = copyString(((NimStringDesc*) &TMP193798));
+LOC59[13] = copyString(Libpath_42112);
 LOC60 = 0;
-LOC60 = nsuFormatOpenArray(Linkcmd_65800, LOC59, 14);
-Linkcmd_65800 = Quoteifcontainswhite_25255(LOC60);
-Linkcmd_65800 = addChar(Linkcmd_65800, 32);
+LOC60 = nsuFormatOpenArray(Linkcmd_67809, LOC59, 14);
+Linkcmd_67809 = Quoteifcontainswhite_26268(LOC60);
+Linkcmd_67809 = addChar(Linkcmd_67809, 32);
 memset((void*)&LOC61, 0, sizeof(LOC61));
-LOC61[0] = copyString(((NimStringDesc*) &TMP190867));
-LOC61[1] = copyString(Builddll_65802);
-LOC61[2] = copyString(((NimStringDesc*) &TMP190868));
-LOC61[3] = copyString(Buildgui_65801);
-LOC61[4] = copyString(((NimStringDesc*) &TMP190795));
-LOC61[5] = copyString(Linkoptions_65347);
-LOC61[6] = copyString(((NimStringDesc*) &TMP190869));
-LOC61[7] = copyString(Objfiles_65984);
-LOC61[8] = copyString(((NimStringDesc*) &TMP190870));
-LOC61[9] = copyString(Exefile_65958);
-LOC61[10] = copyString(((NimStringDesc*) &TMP190797));
+LOC61[0] = copyString(((NimStringDesc*) &TMP193867));
+LOC61[1] = copyString(Builddll_67811);
+LOC61[2] = copyString(((NimStringDesc*) &TMP193868));
+LOC61[3] = copyString(Buildgui_67810);
+LOC61[4] = copyString(((NimStringDesc*) &TMP193795));
+LOC61[5] = copyString(Linkoptions_67347);
+LOC61[6] = copyString(((NimStringDesc*) &TMP193869));
+LOC61[7] = copyString(Objfiles_67996);
+LOC61[8] = copyString(((NimStringDesc*) &TMP193870));
+LOC61[9] = copyString(Exefile_67970);
+LOC61[10] = copyString(((NimStringDesc*) &TMP193797));
 LOC62 = 0;
-LOC62 = Getprefixdir_41108();
-LOC61[11] = Quoteifcontainswhite_25255(LOC62);
-LOC61[12] = copyString(((NimStringDesc*) &TMP190798));
-LOC61[13] = Quoteifcontainswhite_25255(Libpath_41111);
-nsuAddf(&Linkcmd_65800, Cc_65041[(C_65824)-1].Linktmpl, LOC61, 14);
-if (!!(((Gglobaloptions_41078 &(1<<((((NU8) 6))&31)))!=0))) goto LA64;
-Execexternalprogram_65563(Linkcmd_65800);
+LOC62 = Getprefixdir_42109();
+LOC61[11] = Quoteifcontainswhite_26268(LOC62);
+LOC61[12] = copyString(((NimStringDesc*) &TMP193798));
+LOC61[13] = Quoteifcontainswhite_26268(Libpath_42112);
+nsuAddf(&Linkcmd_67809, Cc_67041[(C_67833)-1].Linktmpl, LOC61, 14);
+if (!!(((Gglobaloptions_42079 &(1<<((((NU8) 6))&31)))!=0))) goto LA64;
+Execexternalprogram_67570(Linkcmd_67809);
 LA64: ;
 goto LA23;
 LA24: ;
-Linkcmd_65800 = copyString(((NimStringDesc*) &TMP65271));
+Linkcmd_67809 = copyString(((NimStringDesc*) &TMP67271));
 LA23: ;
-if (!((Gglobaloptions_41078 &(1<<((((NU8) 12))&31)))!=0)) goto LA67;
-App_47036(&Script_65825, Linkcmd_65800);
-App_47036(&Script_65825, Tnl_46573);
-Generatescript_65581(Projectfile_65799, Script_65825);
+if (!((Gglobaloptions_42079 &(1<<((((NU8) 12))&31)))!=0)) goto LA67;
+App_48036(&Script_67834, Linkcmd_67809);
+App_48036(&Script_67834, Tnl_47573);
+Generatescript_67590(Projectfile_67808, Script_67834);
 LA67: ;
 BeforeRet: ;
 }
-N_NIMCALL(void, Writeln_65539)(FILE* F_65542, NimStringDesc* X_65543) {
-Write_3658(F_65542, X_65543);
-Write_3658(F_65542, ((NimStringDesc*) &TMP191504));
+static N_INLINE(void, Writeln_67546)(FILE* F_67549, NimStringDesc* X_67550) {
+Write_4066(F_67549, X_67550);
+Write_4066(F_67549, ((NimStringDesc*) &TMP194505));
 }
 N_NOINLINE(void, extccompInit)(void) {
-Ccompiler_65340 = ((NU8) 1);
-asgnRefNoCycle((void**) &Cext_65342, copyString(((NimStringDesc*) &TMP65343)));
-Tolink_65344.m_type = NTI38019;
-Tocompile_65345.m_type = NTI38019;
-Externaltocompile_65346.m_type = NTI38019;
-asgnRefNoCycle((void**) &Linkoptions_65347, copyString(((NimStringDesc*) &TMP65271)));
-asgnRefNoCycle((void**) &Compileoptions_65348, copyString(((NimStringDesc*) &TMP65271)));
-asgnRefNoCycle((void**) &Ccompilerpath_65349, copyString(((NimStringDesc*) &TMP65271)));
+Ccompiler_67340 = ((NU8) 1);
+asgnRefNoCycle((void**) &Cext_67342, copyString(((NimStringDesc*) &TMP67343)));
+Tolink_67344.m_type = NTI39019;
+Tocompile_67345.m_type = NTI39019;
+Externaltocompile_67346.m_type = NTI39019;
+asgnRefNoCycle((void**) &Linkoptions_67347, copyString(((NimStringDesc*) &TMP67271)));
+asgnRefNoCycle((void**) &Compileoptions_67348, copyString(((NimStringDesc*) &TMP67271)));
+asgnRefNoCycle((void**) &Ccompilerpath_67349, copyString(((NimStringDesc*) &TMP67271)));
 }
 

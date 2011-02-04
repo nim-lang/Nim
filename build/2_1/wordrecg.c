@@ -7,8 +7,8 @@ typedef unsigned long int NU;
 
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY53011 TY53011;
-typedef struct TY53005 TY53005;
+typedef struct TY54011 TY54011;
+typedef struct TY54005 TY54005;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -21,7 +21,7 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-typedef NimStringDesc* TY71244[223];
+typedef NimStringDesc* TY72246[225];
 struct TNimType {
 NI size;
 NU8 kind;
@@ -33,14 +33,14 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY53005 {
+struct TY54005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY53011 {
-  TY53005 Sup;
+struct TY54011 {
+  TY54005 Sup;
 NimStringDesc* S;
-TY53011* Next;
+TY54011* Next;
 NI H;
 };
 struct TNimNode {
@@ -51,524 +51,528 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-N_NIMCALL(void, Initspecials_71526)(void);
-N_NIMCALL(TY53011*, Getident_53019)(NimStringDesc* Identifier_53021, NI H_53022);
-N_NIMCALL(NI, Getnormalizedhash_43037)(NimStringDesc* S_43039);
-N_NIMCALL(NU8, Whichkeyword_71471)(TY53011* Id_71473);
-N_NIMCALL(TY53011*, Getident_53016)(NimStringDesc* Identifier_53018);
-N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_23624, NimStringDesc* B_23625);
-STRING_LITERAL(TMP71248, "", 0);
-STRING_LITERAL(TMP71249, "addr", 4);
-STRING_LITERAL(TMP71250, "and", 3);
-STRING_LITERAL(TMP71251, "as", 2);
-STRING_LITERAL(TMP71252, "asm", 3);
-STRING_LITERAL(TMP71253, "atomic", 6);
-STRING_LITERAL(TMP71254, "bind", 4);
-STRING_LITERAL(TMP71255, "block", 5);
-STRING_LITERAL(TMP71256, "break", 5);
-STRING_LITERAL(TMP71257, "case", 4);
-STRING_LITERAL(TMP71258, "cast", 4);
-STRING_LITERAL(TMP71259, "const", 5);
-STRING_LITERAL(TMP71260, "continue", 8);
-STRING_LITERAL(TMP71261, "converter", 9);
-STRING_LITERAL(TMP71262, "discard", 7);
-STRING_LITERAL(TMP71263, "distinct", 8);
-STRING_LITERAL(TMP71264, "div", 3);
-STRING_LITERAL(TMP71265, "elif", 4);
-STRING_LITERAL(TMP71266, "else", 4);
-STRING_LITERAL(TMP71267, "end", 3);
-STRING_LITERAL(TMP71268, "enum", 4);
-STRING_LITERAL(TMP71269, "except", 6);
-STRING_LITERAL(TMP71270, "finally", 7);
-STRING_LITERAL(TMP71271, "for", 3);
-STRING_LITERAL(TMP71272, "from", 4);
-STRING_LITERAL(TMP71273, "generic", 7);
-STRING_LITERAL(TMP71274, "if", 2);
-STRING_LITERAL(TMP71275, "implies", 7);
-STRING_LITERAL(TMP71276, "import", 6);
-STRING_LITERAL(TMP71277, "in", 2);
-STRING_LITERAL(TMP71278, "include", 7);
-STRING_LITERAL(TMP71279, "is", 2);
-STRING_LITERAL(TMP71280, "isnot", 5);
-STRING_LITERAL(TMP71281, "iterator", 8);
-STRING_LITERAL(TMP71282, "lambda", 6);
-STRING_LITERAL(TMP71283, "let", 3);
-STRING_LITERAL(TMP71284, "macro", 5);
-STRING_LITERAL(TMP71285, "method", 6);
-STRING_LITERAL(TMP71286, "mod", 3);
-STRING_LITERAL(TMP71287, "nil", 3);
-STRING_LITERAL(TMP71288, "not", 3);
-STRING_LITERAL(TMP71289, "notin", 5);
-STRING_LITERAL(TMP71290, "object", 6);
-STRING_LITERAL(TMP71291, "of", 2);
-STRING_LITERAL(TMP71292, "or", 2);
-STRING_LITERAL(TMP71293, "out", 3);
-STRING_LITERAL(TMP71294, "proc", 4);
-STRING_LITERAL(TMP71295, "ptr", 3);
-STRING_LITERAL(TMP71296, "raise", 5);
-STRING_LITERAL(TMP71297, "ref", 3);
-STRING_LITERAL(TMP71298, "return", 6);
-STRING_LITERAL(TMP71299, "shl", 3);
-STRING_LITERAL(TMP71300, "shr", 3);
-STRING_LITERAL(TMP71301, "template", 8);
-STRING_LITERAL(TMP71302, "try", 3);
-STRING_LITERAL(TMP71303, "tuple", 5);
-STRING_LITERAL(TMP71304, "type", 4);
-STRING_LITERAL(TMP71305, "var", 3);
-STRING_LITERAL(TMP71306, "when", 4);
-STRING_LITERAL(TMP71307, "while", 5);
-STRING_LITERAL(TMP71308, "with", 4);
-STRING_LITERAL(TMP71309, "without", 7);
-STRING_LITERAL(TMP71310, "xor", 3);
-STRING_LITERAL(TMP71311, "yield", 5);
-STRING_LITERAL(TMP71312, ":", 1);
-STRING_LITERAL(TMP71313, "=", 1);
-STRING_LITERAL(TMP71314, ".", 1);
-STRING_LITERAL(TMP71315, "..", 2);
-STRING_LITERAL(TMP71316, "^", 1);
-STRING_LITERAL(TMP71317, "*", 1);
-STRING_LITERAL(TMP71318, "-", 1);
-STRING_LITERAL(TMP71319, "magic", 5);
-STRING_LITERAL(TMP71320, "typecheck", 9);
-STRING_LITERAL(TMP71321, "final", 5);
-STRING_LITERAL(TMP71322, "profiler", 8);
-STRING_LITERAL(TMP71323, "objchecks", 9);
-STRING_LITERAL(TMP71324, "importc", 7);
-STRING_LITERAL(TMP71325, "exportc", 7);
-STRING_LITERAL(TMP71326, "extern", 6);
-STRING_LITERAL(TMP71327, "align", 5);
-STRING_LITERAL(TMP71328, "nodecl", 6);
-STRING_LITERAL(TMP71329, "pure", 4);
-STRING_LITERAL(TMP71330, "volatile", 8);
-STRING_LITERAL(TMP71331, "register", 8);
-STRING_LITERAL(TMP71332, "sideeffect", 10);
-STRING_LITERAL(TMP71333, "header", 6);
-STRING_LITERAL(TMP71334, "nosideeffect", 12);
-STRING_LITERAL(TMP71335, "noreturn", 8);
-STRING_LITERAL(TMP71336, "merge", 5);
-STRING_LITERAL(TMP71337, "lib", 3);
-STRING_LITERAL(TMP71338, "dynlib", 6);
-STRING_LITERAL(TMP71339, "compilerproc", 12);
-STRING_LITERAL(TMP71340, "procvar", 7);
-STRING_LITERAL(TMP71341, "fatal", 5);
-STRING_LITERAL(TMP71342, "error", 5);
-STRING_LITERAL(TMP71343, "warning", 7);
-STRING_LITERAL(TMP71344, "hint", 4);
-STRING_LITERAL(TMP71345, "line", 4);
-STRING_LITERAL(TMP71346, "push", 4);
-STRING_LITERAL(TMP71347, "pop", 3);
-STRING_LITERAL(TMP71348, "define", 6);
-STRING_LITERAL(TMP71349, "undef", 5);
-STRING_LITERAL(TMP71350, "linedir", 7);
-STRING_LITERAL(TMP71351, "stacktrace", 10);
-STRING_LITERAL(TMP71352, "linetrace", 9);
-STRING_LITERAL(TMP71353, "parallelbuild", 13);
-STRING_LITERAL(TMP71354, "link", 4);
-STRING_LITERAL(TMP71355, "compile", 7);
-STRING_LITERAL(TMP71356, "linksys", 7);
-STRING_LITERAL(TMP71357, "deprecated", 10);
-STRING_LITERAL(TMP71358, "varargs", 7);
-STRING_LITERAL(TMP71359, "byref", 5);
-STRING_LITERAL(TMP71360, "callconv", 8);
-STRING_LITERAL(TMP71361, "breakpoint", 10);
-STRING_LITERAL(TMP71362, "debugger", 8);
-STRING_LITERAL(TMP71363, "nimcall", 7);
-STRING_LITERAL(TMP71364, "stdcall", 7);
-STRING_LITERAL(TMP71365, "cdecl", 5);
-STRING_LITERAL(TMP71366, "safecall", 8);
-STRING_LITERAL(TMP71367, "syscall", 7);
-STRING_LITERAL(TMP71368, "inline", 6);
-STRING_LITERAL(TMP71369, "noinline", 8);
-STRING_LITERAL(TMP71370, "fastcall", 8);
-STRING_LITERAL(TMP71371, "closure", 7);
-STRING_LITERAL(TMP71372, "noconv", 6);
-STRING_LITERAL(TMP71373, "on", 2);
-STRING_LITERAL(TMP71374, "off", 3);
-STRING_LITERAL(TMP71375, "checks", 6);
-STRING_LITERAL(TMP71376, "rangechecks", 11);
-STRING_LITERAL(TMP71377, "boundchecks", 11);
-STRING_LITERAL(TMP71378, "overflowchecks", 14);
-STRING_LITERAL(TMP71379, "nilchecks", 9);
-STRING_LITERAL(TMP71380, "floatchecks", 11);
-STRING_LITERAL(TMP71381, "nanchecks", 9);
-STRING_LITERAL(TMP71382, "infchecks", 9);
-STRING_LITERAL(TMP71383, "assertions", 10);
-STRING_LITERAL(TMP71384, "warnings", 8);
-STRING_LITERAL(TMP71385, "w", 1);
-STRING_LITERAL(TMP71386, "hints", 5);
-STRING_LITERAL(TMP71387, "optimization", 12);
-STRING_LITERAL(TMP71388, "speed", 5);
-STRING_LITERAL(TMP71389, "size", 4);
-STRING_LITERAL(TMP71390, "none", 4);
-STRING_LITERAL(TMP71391, "path", 4);
-STRING_LITERAL(TMP71392, "p", 1);
-STRING_LITERAL(TMP71393, "d", 1);
-STRING_LITERAL(TMP71394, "u", 1);
-STRING_LITERAL(TMP71395, "debuginfo", 9);
-STRING_LITERAL(TMP71396, "compileonly", 11);
-STRING_LITERAL(TMP71397, "nolinking", 9);
-STRING_LITERAL(TMP71398, "forcebuild", 10);
-STRING_LITERAL(TMP71399, "f", 1);
-STRING_LITERAL(TMP71400, "deadcodeelim", 12);
-STRING_LITERAL(TMP71401, "safecode", 8);
-STRING_LITERAL(TMP71402, "pragma", 6);
-STRING_LITERAL(TMP71403, "compiletime", 11);
-STRING_LITERAL(TMP71404, "gc", 2);
-STRING_LITERAL(TMP71405, "refc", 4);
-STRING_LITERAL(TMP71406, "boehm", 5);
-STRING_LITERAL(TMP71407, "a", 1);
-STRING_LITERAL(TMP71408, "opt", 3);
-STRING_LITERAL(TMP71409, "o", 1);
-STRING_LITERAL(TMP71410, "app", 3);
-STRING_LITERAL(TMP71411, "console", 7);
-STRING_LITERAL(TMP71412, "gui", 3);
-STRING_LITERAL(TMP71413, "passc", 5);
-STRING_LITERAL(TMP71414, "t", 1);
-STRING_LITERAL(TMP71415, "passl", 5);
-STRING_LITERAL(TMP71416, "l", 1);
-STRING_LITERAL(TMP71417, "listcmd", 7);
-STRING_LITERAL(TMP71418, "gendoc", 6);
-STRING_LITERAL(TMP71419, "genmapping", 10);
-STRING_LITERAL(TMP71420, "os", 2);
-STRING_LITERAL(TMP71421, "cpu", 3);
-STRING_LITERAL(TMP71422, "generate", 8);
-STRING_LITERAL(TMP71423, "g", 1);
-STRING_LITERAL(TMP71424, "c", 1);
-STRING_LITERAL(TMP71425, "cpp", 3);
-STRING_LITERAL(TMP71426, "borrow", 6);
-STRING_LITERAL(TMP71427, "run", 3);
-STRING_LITERAL(TMP71428, "r", 1);
-STRING_LITERAL(TMP71429, "verbosity", 9);
-STRING_LITERAL(TMP71430, "v", 1);
-STRING_LITERAL(TMP71431, "help", 4);
-STRING_LITERAL(TMP71432, "h", 1);
-STRING_LITERAL(TMP71433, "symbolfiles", 11);
-STRING_LITERAL(TMP71434, "fieldchecks", 11);
-STRING_LITERAL(TMP71435, "x", 1);
-STRING_LITERAL(TMP71436, "version", 7);
-STRING_LITERAL(TMP71437, "advanced", 8);
-STRING_LITERAL(TMP71438, "skipcfg", 7);
-STRING_LITERAL(TMP71439, "skipprojcfg", 11);
-STRING_LITERAL(TMP71440, "cc", 2);
-STRING_LITERAL(TMP71441, "genscript", 9);
-STRING_LITERAL(TMP71442, "checkpoint", 10);
-STRING_LITERAL(TMP71443, "checkpoints", 11);
-STRING_LITERAL(TMP71444, "nomain", 6);
-STRING_LITERAL(TMP71445, "subschar", 8);
-STRING_LITERAL(TMP71446, "acyclic", 7);
-STRING_LITERAL(TMP71447, "index", 5);
-STRING_LITERAL(TMP71448, "compiletoc", 10);
-STRING_LITERAL(TMP71449, "compiletocpp", 12);
-STRING_LITERAL(TMP71450, "compiletoecmascript", 19);
-STRING_LITERAL(TMP71451, "compiletollvm", 13);
-STRING_LITERAL(TMP71452, "compiletooc", 11);
-STRING_LITERAL(TMP71453, "pretty", 6);
-STRING_LITERAL(TMP71454, "doc", 3);
-STRING_LITERAL(TMP71455, "gendepend", 9);
-STRING_LITERAL(TMP71456, "listdef", 7);
-STRING_LITERAL(TMP71457, "check", 5);
-STRING_LITERAL(TMP71458, "parse", 5);
-STRING_LITERAL(TMP71459, "scan", 4);
-STRING_LITERAL(TMP71460, "js", 2);
-STRING_LITERAL(TMP71461, "oc", 2);
-STRING_LITERAL(TMP71462, "rst2html", 8);
-STRING_LITERAL(TMP71463, "rst2tex", 7);
-STRING_LITERAL(TMP71464, "i", 1);
-STRING_LITERAL(TMP71465, "write", 5);
-STRING_LITERAL(TMP71466, "putenv", 6);
-STRING_LITERAL(TMP71467, "prependenv", 10);
-STRING_LITERAL(TMP71468, "appendenv", 9);
-STRING_LITERAL(TMP71469, "threadvar", 9);
-STRING_LITERAL(TMP71470, "emit", 4);
-NIM_CONST TY71244 Specialwords_71243 = {((NimStringDesc*) &TMP71248),
-((NimStringDesc*) &TMP71249),
-((NimStringDesc*) &TMP71250),
-((NimStringDesc*) &TMP71251),
-((NimStringDesc*) &TMP71252),
-((NimStringDesc*) &TMP71253),
-((NimStringDesc*) &TMP71254),
-((NimStringDesc*) &TMP71255),
-((NimStringDesc*) &TMP71256),
-((NimStringDesc*) &TMP71257),
-((NimStringDesc*) &TMP71258),
-((NimStringDesc*) &TMP71259),
-((NimStringDesc*) &TMP71260),
-((NimStringDesc*) &TMP71261),
-((NimStringDesc*) &TMP71262),
-((NimStringDesc*) &TMP71263),
-((NimStringDesc*) &TMP71264),
-((NimStringDesc*) &TMP71265),
-((NimStringDesc*) &TMP71266),
-((NimStringDesc*) &TMP71267),
-((NimStringDesc*) &TMP71268),
-((NimStringDesc*) &TMP71269),
-((NimStringDesc*) &TMP71270),
-((NimStringDesc*) &TMP71271),
-((NimStringDesc*) &TMP71272),
-((NimStringDesc*) &TMP71273),
-((NimStringDesc*) &TMP71274),
-((NimStringDesc*) &TMP71275),
-((NimStringDesc*) &TMP71276),
-((NimStringDesc*) &TMP71277),
-((NimStringDesc*) &TMP71278),
-((NimStringDesc*) &TMP71279),
-((NimStringDesc*) &TMP71280),
-((NimStringDesc*) &TMP71281),
-((NimStringDesc*) &TMP71282),
-((NimStringDesc*) &TMP71283),
-((NimStringDesc*) &TMP71284),
-((NimStringDesc*) &TMP71285),
-((NimStringDesc*) &TMP71286),
-((NimStringDesc*) &TMP71287),
-((NimStringDesc*) &TMP71288),
-((NimStringDesc*) &TMP71289),
-((NimStringDesc*) &TMP71290),
-((NimStringDesc*) &TMP71291),
-((NimStringDesc*) &TMP71292),
-((NimStringDesc*) &TMP71293),
-((NimStringDesc*) &TMP71294),
-((NimStringDesc*) &TMP71295),
-((NimStringDesc*) &TMP71296),
-((NimStringDesc*) &TMP71297),
-((NimStringDesc*) &TMP71298),
-((NimStringDesc*) &TMP71299),
-((NimStringDesc*) &TMP71300),
-((NimStringDesc*) &TMP71301),
-((NimStringDesc*) &TMP71302),
-((NimStringDesc*) &TMP71303),
-((NimStringDesc*) &TMP71304),
-((NimStringDesc*) &TMP71305),
-((NimStringDesc*) &TMP71306),
-((NimStringDesc*) &TMP71307),
-((NimStringDesc*) &TMP71308),
-((NimStringDesc*) &TMP71309),
-((NimStringDesc*) &TMP71310),
-((NimStringDesc*) &TMP71311),
-((NimStringDesc*) &TMP71312),
-((NimStringDesc*) &TMP71313),
-((NimStringDesc*) &TMP71314),
-((NimStringDesc*) &TMP71315),
-((NimStringDesc*) &TMP71316),
-((NimStringDesc*) &TMP71317),
-((NimStringDesc*) &TMP71318),
-((NimStringDesc*) &TMP71319),
-((NimStringDesc*) &TMP71320),
-((NimStringDesc*) &TMP71321),
-((NimStringDesc*) &TMP71322),
-((NimStringDesc*) &TMP71323),
-((NimStringDesc*) &TMP71324),
-((NimStringDesc*) &TMP71325),
-((NimStringDesc*) &TMP71326),
-((NimStringDesc*) &TMP71327),
-((NimStringDesc*) &TMP71328),
-((NimStringDesc*) &TMP71329),
-((NimStringDesc*) &TMP71330),
-((NimStringDesc*) &TMP71331),
-((NimStringDesc*) &TMP71332),
-((NimStringDesc*) &TMP71333),
-((NimStringDesc*) &TMP71334),
-((NimStringDesc*) &TMP71335),
-((NimStringDesc*) &TMP71336),
-((NimStringDesc*) &TMP71337),
-((NimStringDesc*) &TMP71338),
-((NimStringDesc*) &TMP71339),
-((NimStringDesc*) &TMP71340),
-((NimStringDesc*) &TMP71341),
-((NimStringDesc*) &TMP71342),
-((NimStringDesc*) &TMP71343),
-((NimStringDesc*) &TMP71344),
-((NimStringDesc*) &TMP71345),
-((NimStringDesc*) &TMP71346),
-((NimStringDesc*) &TMP71347),
-((NimStringDesc*) &TMP71348),
-((NimStringDesc*) &TMP71349),
-((NimStringDesc*) &TMP71350),
-((NimStringDesc*) &TMP71351),
-((NimStringDesc*) &TMP71352),
-((NimStringDesc*) &TMP71353),
-((NimStringDesc*) &TMP71354),
-((NimStringDesc*) &TMP71355),
-((NimStringDesc*) &TMP71356),
-((NimStringDesc*) &TMP71357),
-((NimStringDesc*) &TMP71358),
-((NimStringDesc*) &TMP71359),
-((NimStringDesc*) &TMP71360),
-((NimStringDesc*) &TMP71361),
-((NimStringDesc*) &TMP71362),
-((NimStringDesc*) &TMP71363),
-((NimStringDesc*) &TMP71364),
-((NimStringDesc*) &TMP71365),
-((NimStringDesc*) &TMP71366),
-((NimStringDesc*) &TMP71367),
-((NimStringDesc*) &TMP71368),
-((NimStringDesc*) &TMP71369),
-((NimStringDesc*) &TMP71370),
-((NimStringDesc*) &TMP71371),
-((NimStringDesc*) &TMP71372),
-((NimStringDesc*) &TMP71373),
-((NimStringDesc*) &TMP71374),
-((NimStringDesc*) &TMP71375),
-((NimStringDesc*) &TMP71376),
-((NimStringDesc*) &TMP71377),
-((NimStringDesc*) &TMP71378),
-((NimStringDesc*) &TMP71379),
-((NimStringDesc*) &TMP71380),
-((NimStringDesc*) &TMP71381),
-((NimStringDesc*) &TMP71382),
-((NimStringDesc*) &TMP71383),
-((NimStringDesc*) &TMP71384),
-((NimStringDesc*) &TMP71385),
-((NimStringDesc*) &TMP71386),
-((NimStringDesc*) &TMP71387),
-((NimStringDesc*) &TMP71388),
-((NimStringDesc*) &TMP71389),
-((NimStringDesc*) &TMP71390),
-((NimStringDesc*) &TMP71391),
-((NimStringDesc*) &TMP71392),
-((NimStringDesc*) &TMP71393),
-((NimStringDesc*) &TMP71394),
-((NimStringDesc*) &TMP71395),
-((NimStringDesc*) &TMP71396),
-((NimStringDesc*) &TMP71397),
-((NimStringDesc*) &TMP71398),
-((NimStringDesc*) &TMP71399),
-((NimStringDesc*) &TMP71400),
-((NimStringDesc*) &TMP71401),
-((NimStringDesc*) &TMP71402),
-((NimStringDesc*) &TMP71403),
-((NimStringDesc*) &TMP71404),
-((NimStringDesc*) &TMP71405),
-((NimStringDesc*) &TMP71406),
-((NimStringDesc*) &TMP71407),
-((NimStringDesc*) &TMP71408),
-((NimStringDesc*) &TMP71409),
-((NimStringDesc*) &TMP71410),
-((NimStringDesc*) &TMP71411),
-((NimStringDesc*) &TMP71412),
-((NimStringDesc*) &TMP71413),
-((NimStringDesc*) &TMP71414),
-((NimStringDesc*) &TMP71415),
-((NimStringDesc*) &TMP71416),
-((NimStringDesc*) &TMP71417),
-((NimStringDesc*) &TMP71418),
-((NimStringDesc*) &TMP71419),
-((NimStringDesc*) &TMP71420),
-((NimStringDesc*) &TMP71421),
-((NimStringDesc*) &TMP71422),
-((NimStringDesc*) &TMP71423),
-((NimStringDesc*) &TMP71424),
-((NimStringDesc*) &TMP71425),
-((NimStringDesc*) &TMP71426),
-((NimStringDesc*) &TMP71427),
-((NimStringDesc*) &TMP71428),
-((NimStringDesc*) &TMP71429),
-((NimStringDesc*) &TMP71430),
-((NimStringDesc*) &TMP71431),
-((NimStringDesc*) &TMP71432),
-((NimStringDesc*) &TMP71433),
-((NimStringDesc*) &TMP71434),
-((NimStringDesc*) &TMP71435),
-((NimStringDesc*) &TMP71436),
-((NimStringDesc*) &TMP71437),
-((NimStringDesc*) &TMP71438),
-((NimStringDesc*) &TMP71439),
-((NimStringDesc*) &TMP71440),
-((NimStringDesc*) &TMP71441),
-((NimStringDesc*) &TMP71442),
-((NimStringDesc*) &TMP71443),
-((NimStringDesc*) &TMP71444),
-((NimStringDesc*) &TMP71445),
-((NimStringDesc*) &TMP71446),
-((NimStringDesc*) &TMP71447),
-((NimStringDesc*) &TMP71448),
-((NimStringDesc*) &TMP71449),
-((NimStringDesc*) &TMP71450),
-((NimStringDesc*) &TMP71451),
-((NimStringDesc*) &TMP71452),
-((NimStringDesc*) &TMP71453),
-((NimStringDesc*) &TMP71454),
-((NimStringDesc*) &TMP71455),
-((NimStringDesc*) &TMP71456),
-((NimStringDesc*) &TMP71457),
-((NimStringDesc*) &TMP71458),
-((NimStringDesc*) &TMP71459),
-((NimStringDesc*) &TMP71460),
-((NimStringDesc*) &TMP71461),
-((NimStringDesc*) &TMP71462),
-((NimStringDesc*) &TMP71463),
-((NimStringDesc*) &TMP71464),
-((NimStringDesc*) &TMP71465),
-((NimStringDesc*) &TMP71466),
-((NimStringDesc*) &TMP71467),
-((NimStringDesc*) &TMP71468),
-((NimStringDesc*) &TMP71469),
-((NimStringDesc*) &TMP71470)}
+N_NIMCALL(void, Initspecials_72533)(void);
+N_NIMCALL(TY54011*, Getident_54019)(NimStringDesc* Identifier_54021, NI H_54022);
+N_NIMCALL(NI, Getnormalizedhash_44037)(NimStringDesc* S_44039);
+N_NIMCALL(NU8, Whichkeyword_72475)(TY54011* Id_72477);
+N_NIMCALL(TY54011*, Getident_54016)(NimStringDesc* Identifier_54018);
+N_NIMCALL(NI, nsuCmpIgnoreStyle)(NimStringDesc* A_24633, NimStringDesc* B_24634);
+STRING_LITERAL(TMP72250, "", 0);
+STRING_LITERAL(TMP72251, "addr", 4);
+STRING_LITERAL(TMP72252, "and", 3);
+STRING_LITERAL(TMP72253, "as", 2);
+STRING_LITERAL(TMP72254, "asm", 3);
+STRING_LITERAL(TMP72255, "atomic", 6);
+STRING_LITERAL(TMP72256, "bind", 4);
+STRING_LITERAL(TMP72257, "block", 5);
+STRING_LITERAL(TMP72258, "break", 5);
+STRING_LITERAL(TMP72259, "case", 4);
+STRING_LITERAL(TMP72260, "cast", 4);
+STRING_LITERAL(TMP72261, "const", 5);
+STRING_LITERAL(TMP72262, "continue", 8);
+STRING_LITERAL(TMP72263, "converter", 9);
+STRING_LITERAL(TMP72264, "discard", 7);
+STRING_LITERAL(TMP72265, "distinct", 8);
+STRING_LITERAL(TMP72266, "div", 3);
+STRING_LITERAL(TMP72267, "elif", 4);
+STRING_LITERAL(TMP72268, "else", 4);
+STRING_LITERAL(TMP72269, "end", 3);
+STRING_LITERAL(TMP72270, "enum", 4);
+STRING_LITERAL(TMP72271, "except", 6);
+STRING_LITERAL(TMP72272, "finally", 7);
+STRING_LITERAL(TMP72273, "for", 3);
+STRING_LITERAL(TMP72274, "from", 4);
+STRING_LITERAL(TMP72275, "generic", 7);
+STRING_LITERAL(TMP72276, "if", 2);
+STRING_LITERAL(TMP72277, "implies", 7);
+STRING_LITERAL(TMP72278, "import", 6);
+STRING_LITERAL(TMP72279, "in", 2);
+STRING_LITERAL(TMP72280, "include", 7);
+STRING_LITERAL(TMP72281, "is", 2);
+STRING_LITERAL(TMP72282, "isnot", 5);
+STRING_LITERAL(TMP72283, "iterator", 8);
+STRING_LITERAL(TMP72284, "lambda", 6);
+STRING_LITERAL(TMP72285, "let", 3);
+STRING_LITERAL(TMP72286, "macro", 5);
+STRING_LITERAL(TMP72287, "method", 6);
+STRING_LITERAL(TMP72288, "mod", 3);
+STRING_LITERAL(TMP72289, "nil", 3);
+STRING_LITERAL(TMP72290, "not", 3);
+STRING_LITERAL(TMP72291, "notin", 5);
+STRING_LITERAL(TMP72292, "object", 6);
+STRING_LITERAL(TMP72293, "of", 2);
+STRING_LITERAL(TMP72294, "or", 2);
+STRING_LITERAL(TMP72295, "out", 3);
+STRING_LITERAL(TMP72296, "proc", 4);
+STRING_LITERAL(TMP72297, "ptr", 3);
+STRING_LITERAL(TMP72298, "raise", 5);
+STRING_LITERAL(TMP72299, "ref", 3);
+STRING_LITERAL(TMP72300, "return", 6);
+STRING_LITERAL(TMP72301, "shl", 3);
+STRING_LITERAL(TMP72302, "shr", 3);
+STRING_LITERAL(TMP72303, "template", 8);
+STRING_LITERAL(TMP72304, "try", 3);
+STRING_LITERAL(TMP72305, "tuple", 5);
+STRING_LITERAL(TMP72306, "type", 4);
+STRING_LITERAL(TMP72307, "var", 3);
+STRING_LITERAL(TMP72308, "when", 4);
+STRING_LITERAL(TMP72309, "while", 5);
+STRING_LITERAL(TMP72310, "with", 4);
+STRING_LITERAL(TMP72311, "without", 7);
+STRING_LITERAL(TMP72312, "xor", 3);
+STRING_LITERAL(TMP72313, "yield", 5);
+STRING_LITERAL(TMP72314, ":", 1);
+STRING_LITERAL(TMP72315, "=", 1);
+STRING_LITERAL(TMP72316, ".", 1);
+STRING_LITERAL(TMP72317, "..", 2);
+STRING_LITERAL(TMP72318, "^", 1);
+STRING_LITERAL(TMP72319, "*", 1);
+STRING_LITERAL(TMP72320, "-", 1);
+STRING_LITERAL(TMP72321, "magic", 5);
+STRING_LITERAL(TMP72322, "typecheck", 9);
+STRING_LITERAL(TMP72323, "final", 5);
+STRING_LITERAL(TMP72324, "profiler", 8);
+STRING_LITERAL(TMP72325, "objchecks", 9);
+STRING_LITERAL(TMP72326, "importc", 7);
+STRING_LITERAL(TMP72327, "exportc", 7);
+STRING_LITERAL(TMP72328, "extern", 6);
+STRING_LITERAL(TMP72329, "align", 5);
+STRING_LITERAL(TMP72330, "nodecl", 6);
+STRING_LITERAL(TMP72331, "pure", 4);
+STRING_LITERAL(TMP72332, "volatile", 8);
+STRING_LITERAL(TMP72333, "register", 8);
+STRING_LITERAL(TMP72334, "sideeffect", 10);
+STRING_LITERAL(TMP72335, "header", 6);
+STRING_LITERAL(TMP72336, "nosideeffect", 12);
+STRING_LITERAL(TMP72337, "noreturn", 8);
+STRING_LITERAL(TMP72338, "merge", 5);
+STRING_LITERAL(TMP72339, "lib", 3);
+STRING_LITERAL(TMP72340, "dynlib", 6);
+STRING_LITERAL(TMP72341, "compilerproc", 12);
+STRING_LITERAL(TMP72342, "procvar", 7);
+STRING_LITERAL(TMP72343, "fatal", 5);
+STRING_LITERAL(TMP72344, "error", 5);
+STRING_LITERAL(TMP72345, "warning", 7);
+STRING_LITERAL(TMP72346, "hint", 4);
+STRING_LITERAL(TMP72347, "line", 4);
+STRING_LITERAL(TMP72348, "push", 4);
+STRING_LITERAL(TMP72349, "pop", 3);
+STRING_LITERAL(TMP72350, "define", 6);
+STRING_LITERAL(TMP72351, "undef", 5);
+STRING_LITERAL(TMP72352, "linedir", 7);
+STRING_LITERAL(TMP72353, "stacktrace", 10);
+STRING_LITERAL(TMP72354, "linetrace", 9);
+STRING_LITERAL(TMP72355, "parallelbuild", 13);
+STRING_LITERAL(TMP72356, "link", 4);
+STRING_LITERAL(TMP72357, "compile", 7);
+STRING_LITERAL(TMP72358, "linksys", 7);
+STRING_LITERAL(TMP72359, "deprecated", 10);
+STRING_LITERAL(TMP72360, "varargs", 7);
+STRING_LITERAL(TMP72361, "byref", 5);
+STRING_LITERAL(TMP72362, "callconv", 8);
+STRING_LITERAL(TMP72363, "breakpoint", 10);
+STRING_LITERAL(TMP72364, "debugger", 8);
+STRING_LITERAL(TMP72365, "nimcall", 7);
+STRING_LITERAL(TMP72366, "stdcall", 7);
+STRING_LITERAL(TMP72367, "cdecl", 5);
+STRING_LITERAL(TMP72368, "safecall", 8);
+STRING_LITERAL(TMP72369, "syscall", 7);
+STRING_LITERAL(TMP72370, "inline", 6);
+STRING_LITERAL(TMP72371, "noinline", 8);
+STRING_LITERAL(TMP72372, "fastcall", 8);
+STRING_LITERAL(TMP72373, "closure", 7);
+STRING_LITERAL(TMP72374, "noconv", 6);
+STRING_LITERAL(TMP72375, "on", 2);
+STRING_LITERAL(TMP72376, "off", 3);
+STRING_LITERAL(TMP72377, "checks", 6);
+STRING_LITERAL(TMP72378, "rangechecks", 11);
+STRING_LITERAL(TMP72379, "boundchecks", 11);
+STRING_LITERAL(TMP72380, "overflowchecks", 14);
+STRING_LITERAL(TMP72381, "nilchecks", 9);
+STRING_LITERAL(TMP72382, "floatchecks", 11);
+STRING_LITERAL(TMP72383, "nanchecks", 9);
+STRING_LITERAL(TMP72384, "infchecks", 9);
+STRING_LITERAL(TMP72385, "assertions", 10);
+STRING_LITERAL(TMP72386, "warnings", 8);
+STRING_LITERAL(TMP72387, "w", 1);
+STRING_LITERAL(TMP72388, "hints", 5);
+STRING_LITERAL(TMP72389, "optimization", 12);
+STRING_LITERAL(TMP72390, "speed", 5);
+STRING_LITERAL(TMP72391, "size", 4);
+STRING_LITERAL(TMP72392, "none", 4);
+STRING_LITERAL(TMP72393, "path", 4);
+STRING_LITERAL(TMP72394, "p", 1);
+STRING_LITERAL(TMP72395, "d", 1);
+STRING_LITERAL(TMP72396, "u", 1);
+STRING_LITERAL(TMP72397, "debuginfo", 9);
+STRING_LITERAL(TMP72398, "compileonly", 11);
+STRING_LITERAL(TMP72399, "nolinking", 9);
+STRING_LITERAL(TMP72400, "forcebuild", 10);
+STRING_LITERAL(TMP72401, "f", 1);
+STRING_LITERAL(TMP72402, "deadcodeelim", 12);
+STRING_LITERAL(TMP72403, "safecode", 8);
+STRING_LITERAL(TMP72404, "pragma", 6);
+STRING_LITERAL(TMP72405, "compiletime", 11);
+STRING_LITERAL(TMP72406, "gc", 2);
+STRING_LITERAL(TMP72407, "refc", 4);
+STRING_LITERAL(TMP72408, "boehm", 5);
+STRING_LITERAL(TMP72409, "a", 1);
+STRING_LITERAL(TMP72410, "opt", 3);
+STRING_LITERAL(TMP72411, "o", 1);
+STRING_LITERAL(TMP72412, "app", 3);
+STRING_LITERAL(TMP72413, "console", 7);
+STRING_LITERAL(TMP72414, "gui", 3);
+STRING_LITERAL(TMP72415, "passc", 5);
+STRING_LITERAL(TMP72416, "t", 1);
+STRING_LITERAL(TMP72417, "passl", 5);
+STRING_LITERAL(TMP72418, "l", 1);
+STRING_LITERAL(TMP72419, "listcmd", 7);
+STRING_LITERAL(TMP72420, "gendoc", 6);
+STRING_LITERAL(TMP72421, "genmapping", 10);
+STRING_LITERAL(TMP72422, "os", 2);
+STRING_LITERAL(TMP72423, "cpu", 3);
+STRING_LITERAL(TMP72424, "generate", 8);
+STRING_LITERAL(TMP72425, "g", 1);
+STRING_LITERAL(TMP72426, "c", 1);
+STRING_LITERAL(TMP72427, "cpp", 3);
+STRING_LITERAL(TMP72428, "borrow", 6);
+STRING_LITERAL(TMP72429, "run", 3);
+STRING_LITERAL(TMP72430, "r", 1);
+STRING_LITERAL(TMP72431, "verbosity", 9);
+STRING_LITERAL(TMP72432, "v", 1);
+STRING_LITERAL(TMP72433, "help", 4);
+STRING_LITERAL(TMP72434, "h", 1);
+STRING_LITERAL(TMP72435, "symbolfiles", 11);
+STRING_LITERAL(TMP72436, "fieldchecks", 11);
+STRING_LITERAL(TMP72437, "x", 1);
+STRING_LITERAL(TMP72438, "version", 7);
+STRING_LITERAL(TMP72439, "advanced", 8);
+STRING_LITERAL(TMP72440, "skipcfg", 7);
+STRING_LITERAL(TMP72441, "skipprojcfg", 11);
+STRING_LITERAL(TMP72442, "cc", 2);
+STRING_LITERAL(TMP72443, "genscript", 9);
+STRING_LITERAL(TMP72444, "checkpoint", 10);
+STRING_LITERAL(TMP72445, "checkpoints", 11);
+STRING_LITERAL(TMP72446, "nomain", 6);
+STRING_LITERAL(TMP72447, "subschar", 8);
+STRING_LITERAL(TMP72448, "acyclic", 7);
+STRING_LITERAL(TMP72449, "index", 5);
+STRING_LITERAL(TMP72450, "compiletoc", 10);
+STRING_LITERAL(TMP72451, "compiletocpp", 12);
+STRING_LITERAL(TMP72452, "compiletoecmascript", 19);
+STRING_LITERAL(TMP72453, "compiletollvm", 13);
+STRING_LITERAL(TMP72454, "compiletooc", 11);
+STRING_LITERAL(TMP72455, "pretty", 6);
+STRING_LITERAL(TMP72456, "doc", 3);
+STRING_LITERAL(TMP72457, "gendepend", 9);
+STRING_LITERAL(TMP72458, "listdef", 7);
+STRING_LITERAL(TMP72459, "check", 5);
+STRING_LITERAL(TMP72460, "parse", 5);
+STRING_LITERAL(TMP72461, "scan", 4);
+STRING_LITERAL(TMP72462, "js", 2);
+STRING_LITERAL(TMP72463, "oc", 2);
+STRING_LITERAL(TMP72464, "rst2html", 8);
+STRING_LITERAL(TMP72465, "rst2tex", 7);
+STRING_LITERAL(TMP72466, "i", 1);
+STRING_LITERAL(TMP72467, "write", 5);
+STRING_LITERAL(TMP72468, "putenv", 6);
+STRING_LITERAL(TMP72469, "prependenv", 10);
+STRING_LITERAL(TMP72470, "appendenv", 9);
+STRING_LITERAL(TMP72471, "threadvar", 9);
+STRING_LITERAL(TMP72472, "emit", 4);
+STRING_LITERAL(TMP72473, "threads", 7);
+STRING_LITERAL(TMP72474, "recursivepath", 13);
+NIM_CONST TY72246 Specialwords_72245 = {((NimStringDesc*) &TMP72250),
+((NimStringDesc*) &TMP72251),
+((NimStringDesc*) &TMP72252),
+((NimStringDesc*) &TMP72253),
+((NimStringDesc*) &TMP72254),
+((NimStringDesc*) &TMP72255),
+((NimStringDesc*) &TMP72256),
+((NimStringDesc*) &TMP72257),
+((NimStringDesc*) &TMP72258),
+((NimStringDesc*) &TMP72259),
+((NimStringDesc*) &TMP72260),
+((NimStringDesc*) &TMP72261),
+((NimStringDesc*) &TMP72262),
+((NimStringDesc*) &TMP72263),
+((NimStringDesc*) &TMP72264),
+((NimStringDesc*) &TMP72265),
+((NimStringDesc*) &TMP72266),
+((NimStringDesc*) &TMP72267),
+((NimStringDesc*) &TMP72268),
+((NimStringDesc*) &TMP72269),
+((NimStringDesc*) &TMP72270),
+((NimStringDesc*) &TMP72271),
+((NimStringDesc*) &TMP72272),
+((NimStringDesc*) &TMP72273),
+((NimStringDesc*) &TMP72274),
+((NimStringDesc*) &TMP72275),
+((NimStringDesc*) &TMP72276),
+((NimStringDesc*) &TMP72277),
+((NimStringDesc*) &TMP72278),
+((NimStringDesc*) &TMP72279),
+((NimStringDesc*) &TMP72280),
+((NimStringDesc*) &TMP72281),
+((NimStringDesc*) &TMP72282),
+((NimStringDesc*) &TMP72283),
+((NimStringDesc*) &TMP72284),
+((NimStringDesc*) &TMP72285),
+((NimStringDesc*) &TMP72286),
+((NimStringDesc*) &TMP72287),
+((NimStringDesc*) &TMP72288),
+((NimStringDesc*) &TMP72289),
+((NimStringDesc*) &TMP72290),
+((NimStringDesc*) &TMP72291),
+((NimStringDesc*) &TMP72292),
+((NimStringDesc*) &TMP72293),
+((NimStringDesc*) &TMP72294),
+((NimStringDesc*) &TMP72295),
+((NimStringDesc*) &TMP72296),
+((NimStringDesc*) &TMP72297),
+((NimStringDesc*) &TMP72298),
+((NimStringDesc*) &TMP72299),
+((NimStringDesc*) &TMP72300),
+((NimStringDesc*) &TMP72301),
+((NimStringDesc*) &TMP72302),
+((NimStringDesc*) &TMP72303),
+((NimStringDesc*) &TMP72304),
+((NimStringDesc*) &TMP72305),
+((NimStringDesc*) &TMP72306),
+((NimStringDesc*) &TMP72307),
+((NimStringDesc*) &TMP72308),
+((NimStringDesc*) &TMP72309),
+((NimStringDesc*) &TMP72310),
+((NimStringDesc*) &TMP72311),
+((NimStringDesc*) &TMP72312),
+((NimStringDesc*) &TMP72313),
+((NimStringDesc*) &TMP72314),
+((NimStringDesc*) &TMP72315),
+((NimStringDesc*) &TMP72316),
+((NimStringDesc*) &TMP72317),
+((NimStringDesc*) &TMP72318),
+((NimStringDesc*) &TMP72319),
+((NimStringDesc*) &TMP72320),
+((NimStringDesc*) &TMP72321),
+((NimStringDesc*) &TMP72322),
+((NimStringDesc*) &TMP72323),
+((NimStringDesc*) &TMP72324),
+((NimStringDesc*) &TMP72325),
+((NimStringDesc*) &TMP72326),
+((NimStringDesc*) &TMP72327),
+((NimStringDesc*) &TMP72328),
+((NimStringDesc*) &TMP72329),
+((NimStringDesc*) &TMP72330),
+((NimStringDesc*) &TMP72331),
+((NimStringDesc*) &TMP72332),
+((NimStringDesc*) &TMP72333),
+((NimStringDesc*) &TMP72334),
+((NimStringDesc*) &TMP72335),
+((NimStringDesc*) &TMP72336),
+((NimStringDesc*) &TMP72337),
+((NimStringDesc*) &TMP72338),
+((NimStringDesc*) &TMP72339),
+((NimStringDesc*) &TMP72340),
+((NimStringDesc*) &TMP72341),
+((NimStringDesc*) &TMP72342),
+((NimStringDesc*) &TMP72343),
+((NimStringDesc*) &TMP72344),
+((NimStringDesc*) &TMP72345),
+((NimStringDesc*) &TMP72346),
+((NimStringDesc*) &TMP72347),
+((NimStringDesc*) &TMP72348),
+((NimStringDesc*) &TMP72349),
+((NimStringDesc*) &TMP72350),
+((NimStringDesc*) &TMP72351),
+((NimStringDesc*) &TMP72352),
+((NimStringDesc*) &TMP72353),
+((NimStringDesc*) &TMP72354),
+((NimStringDesc*) &TMP72355),
+((NimStringDesc*) &TMP72356),
+((NimStringDesc*) &TMP72357),
+((NimStringDesc*) &TMP72358),
+((NimStringDesc*) &TMP72359),
+((NimStringDesc*) &TMP72360),
+((NimStringDesc*) &TMP72361),
+((NimStringDesc*) &TMP72362),
+((NimStringDesc*) &TMP72363),
+((NimStringDesc*) &TMP72364),
+((NimStringDesc*) &TMP72365),
+((NimStringDesc*) &TMP72366),
+((NimStringDesc*) &TMP72367),
+((NimStringDesc*) &TMP72368),
+((NimStringDesc*) &TMP72369),
+((NimStringDesc*) &TMP72370),
+((NimStringDesc*) &TMP72371),
+((NimStringDesc*) &TMP72372),
+((NimStringDesc*) &TMP72373),
+((NimStringDesc*) &TMP72374),
+((NimStringDesc*) &TMP72375),
+((NimStringDesc*) &TMP72376),
+((NimStringDesc*) &TMP72377),
+((NimStringDesc*) &TMP72378),
+((NimStringDesc*) &TMP72379),
+((NimStringDesc*) &TMP72380),
+((NimStringDesc*) &TMP72381),
+((NimStringDesc*) &TMP72382),
+((NimStringDesc*) &TMP72383),
+((NimStringDesc*) &TMP72384),
+((NimStringDesc*) &TMP72385),
+((NimStringDesc*) &TMP72386),
+((NimStringDesc*) &TMP72387),
+((NimStringDesc*) &TMP72388),
+((NimStringDesc*) &TMP72389),
+((NimStringDesc*) &TMP72390),
+((NimStringDesc*) &TMP72391),
+((NimStringDesc*) &TMP72392),
+((NimStringDesc*) &TMP72393),
+((NimStringDesc*) &TMP72394),
+((NimStringDesc*) &TMP72395),
+((NimStringDesc*) &TMP72396),
+((NimStringDesc*) &TMP72397),
+((NimStringDesc*) &TMP72398),
+((NimStringDesc*) &TMP72399),
+((NimStringDesc*) &TMP72400),
+((NimStringDesc*) &TMP72401),
+((NimStringDesc*) &TMP72402),
+((NimStringDesc*) &TMP72403),
+((NimStringDesc*) &TMP72404),
+((NimStringDesc*) &TMP72405),
+((NimStringDesc*) &TMP72406),
+((NimStringDesc*) &TMP72407),
+((NimStringDesc*) &TMP72408),
+((NimStringDesc*) &TMP72409),
+((NimStringDesc*) &TMP72410),
+((NimStringDesc*) &TMP72411),
+((NimStringDesc*) &TMP72412),
+((NimStringDesc*) &TMP72413),
+((NimStringDesc*) &TMP72414),
+((NimStringDesc*) &TMP72415),
+((NimStringDesc*) &TMP72416),
+((NimStringDesc*) &TMP72417),
+((NimStringDesc*) &TMP72418),
+((NimStringDesc*) &TMP72419),
+((NimStringDesc*) &TMP72420),
+((NimStringDesc*) &TMP72421),
+((NimStringDesc*) &TMP72422),
+((NimStringDesc*) &TMP72423),
+((NimStringDesc*) &TMP72424),
+((NimStringDesc*) &TMP72425),
+((NimStringDesc*) &TMP72426),
+((NimStringDesc*) &TMP72427),
+((NimStringDesc*) &TMP72428),
+((NimStringDesc*) &TMP72429),
+((NimStringDesc*) &TMP72430),
+((NimStringDesc*) &TMP72431),
+((NimStringDesc*) &TMP72432),
+((NimStringDesc*) &TMP72433),
+((NimStringDesc*) &TMP72434),
+((NimStringDesc*) &TMP72435),
+((NimStringDesc*) &TMP72436),
+((NimStringDesc*) &TMP72437),
+((NimStringDesc*) &TMP72438),
+((NimStringDesc*) &TMP72439),
+((NimStringDesc*) &TMP72440),
+((NimStringDesc*) &TMP72441),
+((NimStringDesc*) &TMP72442),
+((NimStringDesc*) &TMP72443),
+((NimStringDesc*) &TMP72444),
+((NimStringDesc*) &TMP72445),
+((NimStringDesc*) &TMP72446),
+((NimStringDesc*) &TMP72447),
+((NimStringDesc*) &TMP72448),
+((NimStringDesc*) &TMP72449),
+((NimStringDesc*) &TMP72450),
+((NimStringDesc*) &TMP72451),
+((NimStringDesc*) &TMP72452),
+((NimStringDesc*) &TMP72453),
+((NimStringDesc*) &TMP72454),
+((NimStringDesc*) &TMP72455),
+((NimStringDesc*) &TMP72456),
+((NimStringDesc*) &TMP72457),
+((NimStringDesc*) &TMP72458),
+((NimStringDesc*) &TMP72459),
+((NimStringDesc*) &TMP72460),
+((NimStringDesc*) &TMP72461),
+((NimStringDesc*) &TMP72462),
+((NimStringDesc*) &TMP72463),
+((NimStringDesc*) &TMP72464),
+((NimStringDesc*) &TMP72465),
+((NimStringDesc*) &TMP72466),
+((NimStringDesc*) &TMP72467),
+((NimStringDesc*) &TMP72468),
+((NimStringDesc*) &TMP72469),
+((NimStringDesc*) &TMP72470),
+((NimStringDesc*) &TMP72471),
+((NimStringDesc*) &TMP72472),
+((NimStringDesc*) &TMP72473),
+((NimStringDesc*) &TMP72474)}
 ;
-N_NIMCALL(void, Initspecials_71526)(void) {
-NU8 S_71566;
-NU8 Res_71573;
+N_NIMCALL(void, Initspecials_72533)(void) {
+NU8 S_72574;
+NU8 Res_72581;
 NI LOC2;
-TY53011* LOC3;
-S_71566 = 0;
-Res_71573 = 0;
-Res_71573 = ((NU8) 1);
+TY54011* LOC3;
+S_72574 = 0;
+Res_72581 = 0;
+Res_72581 = ((NU8) 1);
 while (1) {
-if (!(Res_71573 <= ((NU8) 222))) goto LA1;
-S_71566 = Res_71573;
-LOC2 = Getnormalizedhash_43037(Specialwords_71243[(S_71566)-0]);
+if (!(Res_72581 <= ((NU8) 224))) goto LA1;
+S_72574 = Res_72581;
+LOC2 = Getnormalizedhash_44037(Specialwords_72245[(S_72574)-0]);
 LOC3 = 0;
-LOC3 = Getident_53019(Specialwords_71243[(S_71566)-0], LOC2);
-(*LOC3).Sup.Id = S_71566;
-Res_71573 += 1;
+LOC3 = Getident_54019(Specialwords_72245[(S_72574)-0], LOC2);
+(*LOC3).Sup.Id = S_72574;
+Res_72581 += 1;
 } LA1: ;
 }
-N_NIMCALL(NU8, Whichkeyword_71471)(TY53011* Id_71473) {
-NU8 Result_71523;
-Result_71523 = 0;
-if (!((*Id_71473).Sup.Id < 0)) goto LA2;
-Result_71523 = ((NU8) 0);
+N_NIMCALL(NU8, Whichkeyword_72475)(TY54011* Id_72477) {
+NU8 Result_72528;
+Result_72528 = 0;
+if (!((*Id_72477).Sup.Id < 0)) goto LA2;
+Result_72528 = ((NU8) 0);
 goto LA1;
 LA2: ;
-Result_71523 = ((NU8) ((*Id_71473).Sup.Id));
+Result_72528 = ((NU8) ((*Id_72477).Sup.Id));
 LA1: ;
-return Result_71523;
+return Result_72528;
 }
-N_NIMCALL(NU8, Whichkeyword_71474)(NimStringDesc* Id_71476) {
-NU8 Result_71519;
-TY53011* LOC1;
-Result_71519 = 0;
+N_NIMCALL(NU8, Whichkeyword_72478)(NimStringDesc* Id_72480) {
+NU8 Result_72524;
+TY54011* LOC1;
+Result_72524 = 0;
 LOC1 = 0;
-LOC1 = Getident_53016(Id_71476);
-Result_71519 = Whichkeyword_71471(LOC1);
-return Result_71519;
+LOC1 = Getident_54016(Id_72480);
+Result_72524 = Whichkeyword_72475(LOC1);
+return Result_72524;
 }
-N_NIMCALL(NI, Findstr_71477)(NimStringDesc** A_71480, NI A_71480Len0, NimStringDesc* S_71481) {
-NI Result_71487;
-NI I_71510;
-NI HEX3Atmp_71513;
-NI Res_71515;
+N_NIMCALL(NI, Findstr_72481)(NimStringDesc** A_72484, NI A_72484Len0, NimStringDesc* S_72485) {
+NI Result_72491;
+NI I_72515;
+NI HEX3Atmp_72518;
+NI Res_72520;
 NI LOC3;
-Result_71487 = 0;
-I_71510 = 0;
-HEX3Atmp_71513 = 0;
-HEX3Atmp_71513 = (A_71480Len0-1);
-Res_71515 = 0;
-Res_71515 = 0;
+Result_72491 = 0;
+I_72515 = 0;
+HEX3Atmp_72518 = 0;
+HEX3Atmp_72518 = (A_72484Len0-1);
+Res_72520 = 0;
+Res_72520 = 0;
 while (1) {
-if (!(Res_71515 <= HEX3Atmp_71513)) goto LA1;
-I_71510 = Res_71515;
-LOC3 = nsuCmpIgnoreStyle(A_71480[I_71510], S_71481);
+if (!(Res_72520 <= HEX3Atmp_72518)) goto LA1;
+I_72515 = Res_72520;
+LOC3 = nsuCmpIgnoreStyle(A_72484[I_72515], S_72485);
 if (!(LOC3 == 0)) goto LA4;
-Result_71487 = I_71510;
+Result_72491 = I_72515;
 goto BeforeRet;
 LA4: ;
-Res_71515 += 1;
+Res_72520 += 1;
 } LA1: ;
-Result_71487 = -1;
+Result_72491 = -1;
 BeforeRet: ;
-return Result_71487;
+return Result_72491;
 }
 N_NOINLINE(void, wordrecgInit)(void) {
-Initspecials_71526();
+Initspecials_72533();
 }
 
