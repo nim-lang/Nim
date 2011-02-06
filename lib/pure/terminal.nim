@@ -22,7 +22,7 @@ when defined(windows):
   # = createFile("CONOUT$", GENERIC_WRITE, 0, nil, OPEN_ALWAYS, 0, 0)
     
   block:
-    var hTemp = GetStdHandle(STD_OUTPUT_HANDLE())
+    var hTemp = GetStdHandle(STD_OUTPUT_HANDLE)
     if DuplicateHandle(GetCurrentProcess(), hTemp, GetCurrentProcess(),
                        addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
       OSError()
