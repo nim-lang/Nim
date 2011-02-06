@@ -284,7 +284,7 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   result = getLastModificationTime(a) - getLastModificationTime(b) > 0
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1".} =
-  ## Returns the current working directory.
+  ## Returns the `current working directory`:idx:.
   const bufsize = 512 # should be enough
   result = newString(bufsize)
   when defined(windows):
@@ -298,7 +298,7 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1".} =
       OSError()
 
 proc setCurrentDir*(newDir: string) {.inline.} =
-  ## Sets the current working directory; `EOS` is raised if
+  ## Sets the `current working directory`:idx:; `EOS` is raised if
   ## `newDir` cannot been set.
   when defined(Windows):
     if SetCurrentDirectoryA(newDir) == 0'i32: OSError()
@@ -661,7 +661,7 @@ proc executeShellCommand*(command: string): int {.deprecated.} =
   result = csystem(command)
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1".} =
-  ## Executes a shell command.
+  ## Executes a `shell command`:idx:.
   ##
   ## Command has the form 'program args' where args are the command
   ## line arguments given to program. The proc returns the error code
@@ -720,7 +720,7 @@ proc findEnvVar(key: string): int =
   return -1
 
 proc getEnv*(key: string): string =
-  ## Returns the value of the environment variable named `key`.
+  ## Returns the value of the `environment variable`:idx: named `key`.
   ##
   ## If the variable does not exist, "" is returned. To distinguish
   ## whether a variable exists or it's value is just "", call
@@ -740,7 +740,7 @@ proc existsEnv*(key: string): bool =
   else: return findEnvVar(key) >= 0
 
 proc putEnv*(key, val: string) =
-  ## Sets the value of the environment variable named `key` to `val`.
+  ## Sets the value of the `environment variable`:idx: named `key` to `val`.
   ## If an error occurs, `EInvalidEnvVar` is raised.
 
   # Note: by storing the string in the environment sequence,
@@ -770,15 +770,17 @@ iterator iterOverEnvironment*(): tuple[key, value: string] {.deprecated.} =
     yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
 
 iterator envPairs*(): tuple[key, value: string] =
-  ## Iterate over all environments variables. In the first component of the
-  ## tuple is the name of the current variable stored, in the second its value.
+  ## Iterate over all `environments variables`:idx:. In the first component 
+  ## of the tuple is the name of the current variable stored, in the second
+  ## its value.
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')
     yield (copy(environment[i], 0, p-1), copy(environment[i], p+1))
 
 iterator walkFiles*(pattern: string): string =
-  ## Iterate over all the files that match the `pattern`.
+  ## Iterate over all the files that match the `pattern`. On POSIX this uses
+  ## the `glob`:idx: call.
   ##
   ## `pattern` is OS dependant, but at least the "\*.ext"
   ## notation is supported.
@@ -914,7 +916,7 @@ proc rawCreateDir(dir: string) =
       OSError()
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1".} =
-  ## Creates the directory `dir`.
+  ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
   ## The full path is created. If this fails, `EOS` is raised. It does **not**
@@ -1122,13 +1124,13 @@ when defined(windows):
     ownArgv: seq[string]
 
   proc paramCount*(): int {.rtl, extern: "nos$1".} =
-    ## Returns the number of command line arguments given to the
+    ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLineA())
     result = ownArgv.len-1
 
   proc paramStr*(i: int): string {.rtl, extern: "nos$1".} =
-    ## Returns the `i`-th command line argument given to the
+    ## Returns the `i`-th `command line argument`:idx: given to the
     ## application.
     ##
     ## `i` should be in the range `1..paramCount()`, else

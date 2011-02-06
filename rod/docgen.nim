@@ -254,7 +254,7 @@ proc setIndexForSourceTerm(d: PDoc, name: PRstNode, id: int) =
 
 proc renderIndexTerm(d: PDoc, n: PRstNode): PRope = 
   inc(d.id)
-  result = dispF("<em id=\"$1\">$2</em>", "$2\\label{$1}", 
+  result = dispF("<span id=\"$1\">$2</span>", "$2\\label{$1}", 
                  [toRope(d.id), renderAux(d, n)])
   var h = newRstNode(rnHyperlink)
   var a = newRstNode(rnLeaf, d.indexValFilename & disp("#", "") & $d.id)
@@ -739,7 +739,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode): PRope =
     result = renderAux(d, n, disp("<cite>$1</cite>", "\\emph{$1}"))
   of rnIdx: 
     if d.theIndex == nil: 
-      result = renderAux(d, n, disp("<em>$1</em>", "\\emph{$1}"))
+      result = renderAux(d, n, disp("<span>$1</span>", "\\emph{$1}"))
     else: 
       result = renderIndexTerm(d, n)
   of rnInlineLiteral: 

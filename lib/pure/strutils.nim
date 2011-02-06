@@ -205,6 +205,7 @@ proc `%` *(formatstr: string, a: openarray[string]): string {.noSideEffect,
   ##
   ## The substitution variables (the thing after the ``$``) are enumerated
   ## from 1 to ``a.len``.
+  ## To produce a verbatim ``$``, use ``$$``.
   ## The notation ``$#`` can be used to refer to the next substitution variable:
   ##
   ## .. code-block:: nimrod

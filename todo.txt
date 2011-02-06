@@ -1,6 +1,7 @@
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
 - built-in serialization
+- change how generalized raw string literals work
 
 - we need a way to disable tests
 - deprecate ^ and make it available as operator
