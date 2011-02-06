@@ -128,7 +128,7 @@ proc addImplicitMod(filename: string) =
   gImplicitMods[length] = filename
 
 proc getPrefixDir(): string = 
-  result = SplitPath(getApplicationDir()).head
+  result = SplitPath(getAppDir()).head
 
 proc shortenDir(dir: string): string = 
   # returns the interesting part of a dir

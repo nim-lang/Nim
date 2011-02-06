@@ -58,7 +58,7 @@ type
     tkYield, #[[[end]]]
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit, tkFloatLit, 
     tkFloat32Lit, tkFloat64Lit, tkStrLit, tkRStrLit, tkTripleStrLit, 
-    tkCallRStrLit, tkCallTripleStrLit, tkCharLit, tkParLe, tkParRi, tkBracketLe, 
+    tkGStrLit, tkGTripleStrLit, tkCharLit, tkParLe, tkParRi, tkBracketLe, 
     tkBracketRi, tkCurlyLe, tkCurlyRi, 
     tkBracketDotLe, tkBracketDotRi, # [. and  .]
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
@@ -91,7 +91,7 @@ const
     "yield", #[[[end]]]
     "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit", 
     "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkStrLit", "tkRStrLit", 
-    "tkTripleStrLit", "tkCallRStrLit", "tkCallTripleStrLit", "tkCharLit", "(", 
+    "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)", ",", ";", ":", 
     "=", ".", "..", "^", "tkOpr", "tkComment", "`", "[new indentation]", 
     "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
@@ -587,10 +587,11 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     tok.tokType = tkSymbol
   else: 
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
-  if buf[pos] == '\"': 
-    getString(L, tok, true)
-    if tok.tokType == tkRStrLit: tok.tokType = tkCallRStrLit
-    else: tok.tokType = tkCallTripleStrLit
+  when false:
+    if buf[pos] == '\"': 
+      getString(L, tok, true)
+      if tok.tokType == tkRStrLit: tok.tokType = tkCallRStrLit
+      else: tok.tokType = tkCallTripleStrLit
   
 proc getOperator(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
@@ -770,7 +771,13 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       tok.tokType = tkAccent
       Inc(L.bufpos)
     of '\"': 
-      getString(L, tok, false)
+      # check for extended raw string literal:
+      var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars
+      getString(L, tok, rawMode)
+      if rawMode:
+        # tkRStrLit -> tkGStrLit
+        # tkTripleStrLit -> tkGTripleStrLit
+        inc(tok.tokType, 2)
     of '\'':
       tok.tokType = tkCharLit
       getCharacter(L, tok)
