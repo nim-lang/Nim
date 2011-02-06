@@ -178,6 +178,8 @@ the exact spelling of an identifier.
 String literals
 ---------------
 
+Terminal symbol in the grammar: ``STR_LIT``.
+
 `String literals`:idx: can be delimited by matching double quotes, and can
 contain the following `escape sequences`:idx:\ :
 
@@ -205,11 +207,13 @@ contain the following `escape sequences`:idx:\ :
 
 
 Strings in Nimrod may contain any 8-bit value, even embedded zeros. However 
-some operations may interpret the first binary zero as terminator.
+some operations may interpret the first binary zero as a terminator.
 
 
 Triple quoted string literals
 -----------------------------
+
+Terminal symbol in the grammar: ``TRIPLESTR_LIT``.
 
 String literals can also be delimited by three double quotes
 ``"""`` ... ``"""``.
@@ -230,10 +234,12 @@ Produces::
 Raw string literals
 -------------------
 
-There are also `raw string literals` that are preceded with the letter ``r``
-(or ``R``) and are delimited by matching double quotes (just like ordinary
-string literals) and do not interpret the escape sequences. This is especially
-convenient for regular expressions or Windows paths:
+Terminal symbol in the grammar: ``RSTR_LIT``.
+
+There are also `raw string literals`:idx: that are preceded with the 
+letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
+like ordinary string literals) and do not interpret the escape sequences. 
+This is especially convenient for regular expressions or Windows paths:
 
 .. code-block:: nimrod
 
@@ -250,11 +256,16 @@ Produces::
   a"b
 
 ``r""""`` is not possible with this notation, because the three leading 
-quotes introduce a triple quoted string literal. 
+quotes introduce a triple quoted string literal. ``r"""`` is the same 
+as ``"""`` since triple quoted string literals do not interpret escape 
+sequences either.
 
 
 Generalized raw string literals
 -------------------------------
+
+Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``, 
+``GENERALIZED_TRIPLESTR_LIT``.
 
 The construct ``identifier"string literal"`` (without whitespace between the
 identifier and the opening quotation mark) is a

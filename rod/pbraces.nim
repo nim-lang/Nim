@@ -163,12 +163,28 @@ proc parseAddr(p: var TParser): PNode =
   addSon(result, parseExpr(p))
   optPar(p)
   eat(p, tkParRi)
+  
+proc parseGStrLit(p: var TParser, a: PNode): PNode = 
+  case p.tok.tokType
+  of tkGStrLit: 
+    result = newNodeP(nkCallStrLit, p)
+    addSon(result, a)
+    addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
+    getTok(p)
+  of tkGTripleStrLit: 
+    result = newNodeP(nkCallStrLit, p)
+    addSon(result, a)
+    addSon(result, newStrNodeP(nkTripleStrLit, p.tok.literal, p))
+    getTok(p)
+  else:
+    result = a
 
 proc identOrLiteral(p: var TParser): PNode = 
   case p.tok.tokType
   of tkSymbol: 
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
+    result = parseGStrLit(p, result)
   of tkAccent: 
     result = accExpr(p)       # literals
   of tkIntLit: 
@@ -211,16 +227,6 @@ proc identOrLiteral(p: var TParser): PNode =
     getTok(p)
   of tkTripleStrLit: 
     result = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
-    getTok(p)
-  of tkCallRStrLit: 
-    result = newNodeP(nkCallStrLit, p)
-    addSon(result, newIdentNodeP(p.tok.ident, p))
-    addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
-    getTok(p)
-  of tkCallTripleStrLit: 
-    result = newNodeP(nkCallStrLit, p)
-    addSon(result, newIdentNodeP(p.tok.ident, p))
-    addSon(result, newStrNodeP(nkTripleStrLit, p.tok.literal, p))
     getTok(p)
   of tkCharLit: 
     result = newIntNodeP(nkCharLit, ord(p.tok.literal[0]), p)
@@ -279,6 +285,7 @@ proc primary(p: var TParser): PNode =
       getTok(p)               # skip '.'
       optInd(p, result)
       addSon(result, parseSymbol(p))
+      result = parseGStrLit(p, result)
     of tkHat: 
       a = result
       result = newNodeP(nkDerefExpr, p)

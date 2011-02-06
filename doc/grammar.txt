@@ -29,14 +29,17 @@ symbol ::= '`' (KEYWORD | IDENT | operator | '(' ')'
          | IDENT
          
 primaryPrefix ::= (prefixOperator | 'bind') optInd
-primarySuffix ::= '.' optInd symbol
+primarySuffix ::= '.' optInd symbol [generalizedLit]
                 | '(' optInd namedExprList optPar ')'
                 | '[' optInd [indexExpr (comma indexExpr)* [comma]] optPar ']'
                 | '^'
                 | pragma
 
-primary ::= primaryPrefix* (symbol | constructor | castExpr | addrExpr)
+primary ::= primaryPrefix* (symbol [generalizedLit] | 
+                            constructor | castExpr | addrExpr)
             primarySuffix*
+
+generalizedLit ::= GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
 
 literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
