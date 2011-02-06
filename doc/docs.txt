@@ -31,5 +31,5 @@ The documentation consists of several documents:
     this if you want to hack the compiler.
 
 - | `Index <theindex.html>`_
-  | The generated index. Often the quickest way to find the piece of
-    information you need.
+  | The generated index. **Index + (Ctrl+F) == Joy**
+

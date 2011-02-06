@@ -17,9 +17,11 @@ Introduction
 
 
 This document is a tutorial for the programming language *Nimrod*. After this
-tutorial you will have a decent knowledge about Nimrod. This tutorial assumes
+tutorial you will have a decent knowledge of Nimrod. This tutorial assumes
 that you are familiar with basic programming concepts like variables, types
 or statements.
+
+
 
 
 The first program
@@ -44,9 +46,14 @@ appending them after the filename::
 
   nimrod compile --run greetings.nim arg1 arg2
 
-The most used commands and switches have abbreviations, so you can also use::
+Commonly used commands and switches have abbreviations, so you can also use::
 
   nimrod c -r greetings.nim
+
+To compile a `release`:idx: version use::
+  
+  nimrod c -d:release greetings.nim
+
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program

@@ -12,15 +12,31 @@
 
 import streams
 
-proc load*[T](s: PStream, data: var T) {.magic: "Load".}
+proc load*[T](s: PStream, data: var T) =
   ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
 
-proc store*[T](s: PStream, data: T) {.magic: "Store".}
+proc store*[T](s: PStream, data: T) =
   ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
 
 
-proc reprInt(x: int64): string {.compilerproc.} = return $x
-proc reprFloat(x: float): string {.compilerproc.} = return $x
+type
+  TTypeInfo = distinct whatever
+  
+  TValue = object
+    t: TTypeInfo
+    x: pointer
+    
+  
+proc rtti[T](x: T): TTypeInfo {.magic: "rtti".}
+
+proc `[]` (a: TValue, i: int): TValue = 
+  ## works for arrays, objects, etc.
+
+proc `[]=` (a: TValue, i: int, x: TValue) = 
+  ## 
+  
+
+
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
   var buf: array [0..59, char]

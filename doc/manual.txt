@@ -193,18 +193,19 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\d+``                  `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
   ``\b``                   `backspace`:idx:
   ``\e``                   `escape`:idx: `[ESC]`:idx:
-  ``\xHH``                 `character with hex value HH`:idx:;
+  ``\x`` HH                `character with hex value HH`:idx:;
                            exactly two hex digits are allowed
 ==================         ===================================================
 
 
-Strings in Nimrod may contain any 8-bit value, except embedded zeros.
+Strings in Nimrod may contain any 8-bit value, even embedded zeros. However 
+some operations may interpret the first binary zero as terminator.
 
 
 Triple quoted string literals
