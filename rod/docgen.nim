@@ -771,7 +771,6 @@ proc traceDeps(d: PDoc, n: PNode) =
         "$1", [toRope(getModuleFile(n))])
 
 proc generateDoc(d: PDoc, n: PNode) = 
-  if n == nil: return 
   case n.kind
   of nkCommentStmt: app(d.modDesc, genComment(d, n))
   of nkProcDef: genItem(d, n, n.sons[namePos], skProc)

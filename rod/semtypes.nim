@@ -133,7 +133,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
       {tyInt..tyInt64, tyEnum, tyBool, tyChar, tyFloat..tyFloat128}): 
     liMessage(n.info, errOrdinalTypeExpected)
   if enumHasWholes(a.typ): 
-    liMessage(n.info, errEnumXHasWholes, a.typ.sym.name.s)
+    liMessage(n.info, errEnumXHasHoles, a.typ.sym.name.s)
   if not leValue(a, b): liMessage(n.Info, errRangeIsEmpty)
   addSon(result.n, a)
   addSon(result.n, b)
@@ -160,7 +160,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       if not isOrdinalType(indx): 
         liMessage(n.sons[1].info, errOrdinalTypeExpected)
       if enumHasWholes(indx): 
-        liMessage(n.sons[1].info, errEnumXHasWholes, indx.sym.name.s)
+        liMessage(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
     base = semTypeNode(c, n.sons[2], nil)
     addSon(result, base)
   else: 

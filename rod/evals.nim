@@ -54,8 +54,6 @@ const
   evalMaxIterations = 10000000 # max iterations of all loops
   evalMaxRecDepth = 100000    # max recursion depth for evaluation
 
-var emptyNode: PNode
-
 proc newStackFrame(): PStackFrame = 
   new(result)
   initIdNodeTable(result.mapping)
@@ -136,7 +134,7 @@ proc evalWhile(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[1], {})
     case result.kind
     of nkBreakStmt: 
-      if result.sons[0] == nil: 
+      if result.sons[0].kind == nkEmpty: 
         result = emptyNode    # consume ``break`` token
         break 
     of nkExceptBranch, nkReturnToken: 
@@ -153,7 +151,7 @@ proc evalBlock(c: PEvalContext, n: PNode): PNode =
   if result.kind == nkBreakStmt: 
     if result.sons[0] != nil: 
       assert(result.sons[0].kind == nkSym)
-      if n.sons[0] != nil: 
+      if n.sons[0].kind != nkempty: 
         assert(n.sons[0].kind == nkSym)
         if result.sons[0].sym.id == n.sons[0].sym.id: result = emptyNode
     else: 
@@ -228,7 +226,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     assert(a.kind == nkIdentDefs)
     assert(a.sons[0].kind == nkSym)
     var v = a.sons[0].sym
-    if a.sons[2] != nil: 
+    if a.sons[2].kind != nkEmpty: 
       result = evalAux(c, a.sons[2], {})
       if isSpecial(result): return 
     else: 
@@ -507,7 +505,7 @@ proc evalConvCStrToStr(c: PEvalContext, n: PNode): PNode =
   result.typ = n.typ
 
 proc evalRaise(c: PEvalContext, n: PNode): PNode = 
-  if n.sons[0] != nil: 
+  if n.sons[0].kind != nkEmpty: 
     result = evalAux(c, n.sons[0], {})
     if isSpecial(result): return 
     var a = result
@@ -519,17 +517,17 @@ proc evalRaise(c: PEvalContext, n: PNode): PNode =
   else: 
     stackTrace(c, n, errExceptionAlreadyHandled)
     result = newNodeIT(nkExceptBranch, n.info, nil)
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
 
 proc evalReturn(c: PEvalContext, n: PNode): PNode = 
-  if n.sons[0] != nil: 
+  if n.sons[0].kind != nkEmpty: 
     result = evalAsgn(c, n.sons[0])
     if isSpecial(result): return 
   result = newNodeIT(nkReturnToken, n.info, nil)
 
 proc evalProc(c: PEvalContext, n: PNode): PNode = 
-  if n.sons[genericParamsPos] == nil: 
-    if (resultPos < sonsLen(n)) and (n.sons[resultPos] != nil): 
+  if n.sons[genericParamsPos].kind == nkEmpty: 
+    if (resultPos < sonsLen(n)) and (n.sons[resultPos].kind != nkEmpty): 
       var v = n.sons[resultPos].sym
       result = getNullValue(v.typ, n.info)
       IdNodeTablePut(c.tos.mapping, v, result)
@@ -740,8 +738,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     if isSpecial(result): return 
     var k = getOrdValue(b)
     if (k >= 0) and (k < sonsLen(a)) and not (a.kind in {nkEmpty..nkNilLit}): 
-      if result.kind == nkEmpty: a.sons[int(k)] = nil
-      else: a.sons[int(k)] = result
+      a.sons[int(k)] = result
     else: 
       stackTrace(c, n, errIndexOutOfBounds)
     result = emptyNode
@@ -1055,4 +1052,3 @@ proc evalPass(): TPass =
   result.close = myProcess
   result.process = myProcess
 
-emptyNode = newNode(nkEmpty)

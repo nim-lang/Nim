@@ -1,3 +1,8 @@
+- ban ``nil`` from the AST. This might also fix bugs concerning macros.
+  TODO: 
+    * semantic checking (keep in mind incremental parsing!)
+    * code generators
+
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
 - built-in serialization
@@ -68,7 +73,6 @@ Low priority
 - fast assignment optimization for TPeg
 - better error messages for used keywords as identifiers
 - case statement branches should support constant sets
-- ban ``nil`` from the AST. This might also fix bugs concerning macros.
 
 
 Library

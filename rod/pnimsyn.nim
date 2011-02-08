@@ -28,8 +28,8 @@ proc ParseAll*(p: var TParser): PNode
 proc openParser*(p: var TParser, filename: string, inputstream: PLLStream)
 proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
-  # implements an iterator. Returns the next top-level statement or nil if end
-  # of stream.
+  # implements an iterator. Returns the next top-level statement or
+  # emtyNode if end of stream.
   
 # helpers for the other parsers
 proc getPrecedence*(tok: PToken): int
@@ -94,7 +94,7 @@ proc optInd(p: var TParser, n: PNode) =
   skipInd(p)
 
 proc expectIdentOrKeyw(p: TParser) = 
-  if (p.tok.tokType != tkSymbol) and not isKeyword(p.tok.tokType): 
+  if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType): 
     lexMessage(p.lex^, errIdentifierExpected, tokToStr(p.tok))
   
 proc ExpectIdent(p: TParser) = 
@@ -217,18 +217,17 @@ proc parseSymbol(p: var TParser): PNode =
         addSon(result, newIdentNodeP(id, p))
     else: 
       parMessage(p, errIdentifierExpected, tokToStr(p.tok))
-      result = nil
+      result = ast.emptyNode
     eat(p, tkAccent)
   else: 
     parMessage(p, errIdentifierExpected, tokToStr(p.tok))
-    result = nil
+    result = ast.emptyNode
 
 proc accExpr(p: var TParser): PNode = 
-  var x, y: PNode
   result = newNodeP(nkAccQuoted, p)
   getTok(p)                   # skip `
-  x = nil
-  y = nil
+  var x = ast.emptyNode
+  var y = ast.emptyNode
   case p.tok.tokType
   of tkSymbol, tkOpr, tokKeywordLow..tokKeywordHigh: 
     x = newIdentNodeP(p.tok.ident, p)
@@ -255,9 +254,9 @@ proc optExpr(p: var TParser): PNode =
       (p.tok.tokType != tkDotDot): 
     result = parseExpr(p)
   else: 
-    result = nil
+    result = ast.emptyNode
   
-proc dotdotExpr(p: var TParser, first: PNode = nil): PNode = 
+proc dotdotExpr(p: var TParser, first: PNode): PNode = 
   result = newNodeP(nkRange, p)
   addSon(result, first)
   getTok(p)
@@ -266,20 +265,19 @@ proc dotdotExpr(p: var TParser, first: PNode = nil): PNode =
 
 proc indexExpr(p: var TParser): PNode = 
   # indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
-  var a, b: PNode
   if p.tok.tokType == tkDotDot: 
-    result = dotdotExpr(p)
+    result = dotdotExpr(p, ast.emptyNode)
   else: 
-    a = parseExpr(p)
+    var a = parseExpr(p)
     case p.tok.tokType
     of tkEquals: 
       result = newNodeP(nkExprEqExpr, p)
       addSon(result, a)
       getTok(p)
       if p.tok.tokType == tkDotDot: 
-        addSon(result, dotdotExpr(p))
+        addSon(result, dotdotExpr(p, ast.emptyNode))
       else: 
-        b = parseExpr(p)
+        var b = parseExpr(p)
         if p.tok.tokType == tkDotDot: b = dotdotExpr(p, b)
         addSon(result, b)
     of tkDotDot: 
@@ -305,7 +303,8 @@ proc exprColonEqExpr(p: var TParser, kind: TNodeKind, tok: TTokType): PNode =
   var a = parseExpr(p)
   if p.tok.tokType == tok: 
     result = newNodeP(kind, p)
-    getTok(p)                 #optInd(p, result);
+    getTok(p)
+    #optInd(p, result)
     addSon(result, a)
     addSon(result, parseExpr(p))
   else: 
@@ -481,14 +480,13 @@ proc identOrLiteral(p: var TParser): PNode =
   else: 
     parMessage(p, errExprExpected, tokToStr(p.tok))
     getTok(p)  # we must consume a token here to prevend endless loops!
-    result = nil
+    result = ast.emptyNode
 
 proc primary(p: var TParser): PNode = 
-  var a: PNode
   # prefix operator?
   if (p.tok.tokType == tkNot) or (p.tok.tokType == tkOpr): 
     result = newNodeP(nkPrefix, p)
-    a = newIdentNodeP(p.tok.ident, p)
+    var a = newIdentNodeP(p.tok.ident, p)
     addSon(result, a)
     getTok(p)
     optInd(p, a)
@@ -504,12 +502,12 @@ proc primary(p: var TParser): PNode =
   while true: 
     case p.tok.tokType
     of tkParLe: 
-      a = result
+      var a = result
       result = newNodeP(nkCall, p)
       addSon(result, a)
       exprColonEqExprListAux(p, nkExprEqExpr, tkParRi, tkEquals, result)
     of tkDot: 
-      a = result
+      var a = result
       result = newNodeP(nkDotExpr, p)
       addSon(result, a)
       getTok(p)               # skip '.'
@@ -517,7 +515,7 @@ proc primary(p: var TParser): PNode =
       addSon(result, parseSymbol(p))
       result = parseGStrLit(p, result)
     of tkHat: 
-      a = result
+      var a = result
       result = newNodeP(nkDerefExpr, p)
       addSon(result, a)
       getTok(p)
@@ -549,30 +547,28 @@ proc lowestExpr(p: var TParser): PNode =
   discard lowestExprAux(p, result, - 1)
 
 proc parseIfExpr(p: var TParser): PNode = 
-  var branch: PNode
   result = newNodeP(nkIfExpr, p)
   while true: 
     getTok(p)                 # skip `if`, `elif`
-    branch = newNodeP(nkElifExpr, p)
+    var branch = newNodeP(nkElifExpr, p)
     addSon(branch, parseExpr(p))
     eat(p, tkColon)
     addSon(branch, parseExpr(p))
     addSon(result, branch)
     if p.tok.tokType != tkElif: break 
-  branch = newNodeP(nkElseExpr, p)
+  var branch = newNodeP(nkElseExpr, p)
   eat(p, tkElse)
   eat(p, tkColon)
   addSon(branch, parseExpr(p))
   addSon(result, branch)
 
 proc parsePragma(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkPragma, p)
   getTok(p)
   optInd(p, result)
   while (p.tok.tokType != tkCurlyDotRi) and (p.tok.tokType != tkCurlyRi) and
       (p.tok.tokType != tkEof) and (p.tok.tokType != tkSad): 
-    a = exprColonEqExpr(p, nkExprColonExpr, tkColon)
+    var a = exprColonEqExpr(p, nkExprColonExpr, tkColon)
     addSon(result, a)
     if p.tok.tokType == tkComma: 
       getTok(p)
@@ -583,8 +579,7 @@ proc parsePragma(p: var TParser): PNode =
   
 proc identVis(p: var TParser): PNode = 
   # identifier with visability
-  var a: PNode
-  a = parseSymbol(p)
+  var a = parseSymbol(p)
   if p.tok.tokType == tkOpr: 
     result = newNodeP(nkPostfix, p)
     addSon(result, newIdentNodeP(p.tok.ident, p))
@@ -594,8 +589,7 @@ proc identVis(p: var TParser): PNode =
     result = a
   
 proc identWithPragma(p: var TParser): PNode = 
-  var a: PNode
-  a = identVis(p)
+  var a = identVis(p)
   if p.tok.tokType == tkCurlyDotLe: 
     result = newNodeP(nkPragmaExpr, p)
     addSon(result, a)
@@ -617,7 +611,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     of tkSymbol, tkAccent: 
       if withPragma in flags: a = identWithPragma(p)
       else: a = parseSymbol(p)
-      if a == nil: return 
+      if a.kind == nkEmpty: return 
     else: break 
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
@@ -628,7 +622,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     optInd(p, result)
     addSon(result, parseTypeDesc(p))
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
     if (p.tok.tokType != tkEquals) and not (withBothOptional in flags): 
       parMessage(p, errColonOrEqualsExpected, tokToStr(p.tok))
   if p.tok.tokType == tkEquals: 
@@ -636,16 +630,15 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     optInd(p, result)
     addSon(result, parseExpr(p))
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   
 proc parseTuple(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkTupleTy, p)
   getTok(p)
   eat(p, tkBracketLe)
   optInd(p, result)
   while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
-    a = parseIdentColonEquals(p, {})
+    var a = parseIdentColonEquals(p, {})
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -656,7 +649,7 @@ proc parseTuple(p: var TParser): PNode =
 proc parseParamList(p: var TParser): PNode = 
   var a: PNode
   result = newNodeP(nkFormalParams, p)
-  addSon(result, nil)         # return type
+  addSon(result, ast.emptyNode) # return type
   if p.tok.tokType == tkParLe: 
     getTok(p)
     optInd(p, result)
@@ -689,11 +682,11 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
   getTok(p)
   params = parseParamList(p)
   if p.tok.tokType == tkCurlyDotLe: pragmas = parsePragma(p)
-  else: pragmas = nil
+  else: pragmas = ast.emptyNode
   if (p.tok.tokType == tkEquals) and isExpr: 
     result = newNodeI(nkLambda, info)
-    addSon(result, nil)       # no name part
-    addSon(result, nil)       # no generic parameters
+    addSon(result, ast.emptyNode)       # no name part
+    addSon(result, ast.emptyNode)       # no generic parameters
     addSon(result, params)
     addSon(result, pragmas)
     getTok(p)
@@ -744,12 +737,11 @@ proc isExprStart(p: TParser): bool =
   else: result = false
   
 proc parseExprStmt(p: var TParser): PNode = 
-  var a, b, e: PNode
-  a = lowestExpr(p)
+  var a = lowestExpr(p)
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
-    b = parseExpr(p)
+    var b = parseExpr(p)
     result = newNodeI(nkAsgn, a.info)
     addSon(result, a)
     addSon(result, b)
@@ -759,7 +751,7 @@ proc parseExprStmt(p: var TParser): PNode =
     addSon(result, a)
     while true: 
       if not isExprStart(p): break 
-      e = parseExpr(p)
+      var e = parseExpr(p)
       addSon(result, e)
       if p.tok.tokType != tkComma: break 
       getTok(p)
@@ -778,6 +770,7 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(result, parseStmt(p))
       while true: 
         if p.tok.tokType == tkSad: getTok(p)
+        var b: PNode
         case p.tok.tokType
         of tkOf: 
           b = newNodeP(nkOfBranch, p)
@@ -871,7 +864,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   getTok(p)
   optInd(p, result)
   case p.tok.tokType
-  of tkEof, tkSad, tkDed: addSon(result, nil)
+  of tkEof, tkSad, tkDed: addSon(result, ast.emptyNode)
   else: addSon(result, parseExpr(p))
   
 proc parseYieldOrDiscard(p: var TParser, kind: TNodeKind): PNode = 
@@ -885,15 +878,14 @@ proc parseBreakOrContinue(p: var TParser, kind: TNodeKind): PNode =
   getTok(p)
   optInd(p, result)
   case p.tok.tokType
-  of tkEof, tkSad, tkDed: addSon(result, nil)
+  of tkEof, tkSad, tkDed: addSon(result, ast.emptyNode)
   else: addSon(result, parseSymbol(p))
   
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode = 
-  var branch: PNode
   result = newNodeP(kind, p)
   while true: 
     getTok(p)                 # skip `if`, `when`, `elif`
-    branch = newNodeP(nkElifBranch, p)
+    var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     addSon(branch, parseExpr(p))
     eat(p, tkColon)
@@ -903,7 +895,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     addSon(result, branch)
     if p.tok.tokType != tkElif: break 
   if p.tok.tokType == tkElse: 
-    branch = newNodeP(nkElse, p)
+    var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
     eat(p, tkColon)
     skipComment(p, branch)
@@ -954,13 +946,12 @@ proc parseCase(p: var TParser): PNode =
     if b.kind == nkElse: break 
   
 proc parseTry(p: var TParser): PNode = 
-  var b: PNode
   result = newNodeP(nkTryStmt, p)
   getTok(p)
   eat(p, tkColon)
   skipComment(p, result)
   addSon(result, parseStmt(p))
-  b = nil
+  var b: PNode = nil
   while true: 
     if p.tok.tokType == tkSad: getTok(p)
     case p.tok.tokType
@@ -979,11 +970,10 @@ proc parseTry(p: var TParser): PNode =
   if b == nil: parMessage(p, errTokenExpected, "except")
   
 proc parseFor(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkForStmt, p)
   getTok(p)
   optInd(p, result)
-  a = parseSymbol(p)
+  var a = parseSymbol(p)
   addSon(result, a)
   while p.tok.tokType == tkComma: 
     getTok(p)
@@ -1001,7 +991,7 @@ proc parseBlock(p: var TParser): PNode =
   getTok(p)
   optInd(p, result)
   case p.tok.tokType
-  of tkEof, tkSad, tkDed, tkColon: addSon(result, nil)
+  of tkEof, tkSad, tkDed, tkColon: addSon(result, ast.emptyNode)
   else: addSon(result, parseSymbol(p))
   eat(p, tkColon)
   skipComment(p, result)
@@ -1012,7 +1002,7 @@ proc parseAsm(p: var TParser): PNode =
   getTok(p)
   optInd(p, result)
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
-  else: addSon(result, nil)
+  else: addSon(result, ast.emptyNode)
   case p.tok.tokType
   of tkStrLit: addSon(result, newStrNodeP(nkStrLit, p.tok.literal, p))
   of tkRStrLit: addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
@@ -1020,17 +1010,16 @@ proc parseAsm(p: var TParser): PNode =
                             newStrNodeP(nkTripleStrLit, p.tok.literal, p))
   else: 
     parMessage(p, errStringLiteralExpected)
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
     return 
   getTok(p)
 
 proc parseGenericParamList(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkGenericParams, p)
   getTok(p)
   optInd(p, result)
   while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
-    a = parseIdentColonEquals(p, {withBothOptional})
+    var a = parseIdentColonEquals(p, {withBothOptional})
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -1044,16 +1033,16 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   optInd(p, result)
   addSon(result, identVis(p))
   if p.tok.tokType == tkBracketLe: addSon(result, parseGenericParamList(p))
-  else: addSon(result, nil)
+  else: addSon(result, ast.emptyNode)
   addSon(result, parseParamList(p))
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
-  else: addSon(result, nil)
+  else: addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals: 
     getTok(p)
     skipComment(p, result)
     addSon(result, parseStmt(p))
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   indAndComment(p, result)    # XXX: document this in the grammar!
   
 proc newCommentStmt(p: var TParser): PNode = 
@@ -1065,13 +1054,12 @@ type
 
 proc parseSection(p: var TParser, kind: TNodeKind, 
                   defparser: TDefParser): PNode = 
-  var a: PNode
   result = newNodeP(kind, p)
   getTok(p)
   skipComment(p, result)
   case p.tok.tokType
   of tkInd: 
-    pushInd(p.lex^ , p.tok.indent)
+    pushInd(p.lex^, p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -1079,7 +1067,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
       of tkSad: 
         getTok(p)
       of tkSymbol, tkAccent: 
-        a = defparser(p)
+        var a = defparser(p)
         skipComment(p, a)
         addSon(result, a)
       of tkDed: 
@@ -1088,13 +1076,13 @@ proc parseSection(p: var TParser, kind: TNodeKind,
       of tkEof: 
         break                 # BUGFIX
       of tkComment: 
-        a = newCommentStmt(p)
+        var a = newCommentStmt(p)
         skipComment(p, a)
         addSon(result, a)
       else: 
         parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break 
-    popInd(p.lex^ )
+    popInd(p.lex^)
   of tkSymbol, tkAccent, tkParLe: 
     # tkParLe is allowed for ``var (x, y) = ...`` tuple parsing
     addSon(result, defparser(p))
@@ -1108,7 +1096,7 @@ proc parseConstant(p: var TParser): PNode =
     optInd(p, result)
     addSon(result, parseTypeDesc(p))
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   eat(p, tkEquals)
   optInd(p, result)
   addSon(result, parseExpr(p))
@@ -1126,7 +1114,7 @@ proc parseEnum(p: var TParser): PNode =
     addSon(a, parseTypeDesc(p))
     addSon(result, a)
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   optInd(p, result)
   while true: 
     case p.tok.tokType
@@ -1148,11 +1136,10 @@ proc parseEnum(p: var TParser): PNode =
 
 proc parseObjectPart(p: var TParser): PNode
 proc parseObjectWhen(p: var TParser): PNode = 
-  var branch: PNode
   result = newNodeP(nkRecWhen, p)
   while true: 
     getTok(p)                 # skip `when`, `elif`
-    branch = newNodeP(nkElifBranch, p)
+    var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     addSon(branch, parseExpr(p))
     eat(p, tkColon)
@@ -1162,7 +1149,7 @@ proc parseObjectWhen(p: var TParser): PNode =
     addSon(result, branch)
     if p.tok.tokType != tkElif: break 
   if p.tok.tokType == tkElse: 
-    branch = newNodeP(nkElse, p)
+    var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
     eat(p, tkColon)
     skipComment(p, branch)
@@ -1170,18 +1157,18 @@ proc parseObjectWhen(p: var TParser): PNode =
     addSon(result, branch)
 
 proc parseObjectCase(p: var TParser): PNode = 
-  var a, b: PNode
   result = newNodeP(nkRecCase, p)
   getTok(p)
-  a = newNodeP(nkIdentDefs, p)
+  var a = newNodeP(nkIdentDefs, p)
   addSon(a, identWithPragma(p))
   eat(p, tkColon)
   addSon(a, parseTypeDesc(p))
-  addSon(a, nil)
+  addSon(a, ast.emptyNode)
   addSon(result, a)
   skipComment(p, result)
   while true: 
     if p.tok.tokType == tkSad: getTok(p)
+    var b: PNode
     case p.tok.tokType
     of tkOf: 
       b = newNodeP(nkOfBranch, p)
@@ -1200,7 +1187,7 @@ proc parseObjectPart(p: var TParser): PNode =
   case p.tok.tokType
   of tkInd: 
     result = newNodeP(nkRecList, p)
-    pushInd(p.lex^ , p.tok.indent)
+    pushInd(p.lex^, p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -1228,21 +1215,20 @@ proc parseObjectPart(p: var TParser): PNode =
   of tkNil: 
     result = newNodeP(nkNilLit, p)
     getTok(p)
-  else: result = nil
+  else: result = ast.emptyNode
   
 proc parseObject(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkObjectTy, p)
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
-  else: addSon(result, nil)
+  else: addSon(result, ast.emptyNode)
   if p.tok.tokType == tkOf: 
-    a = newNodeP(nkOfInherit, p)
+    var a = newNodeP(nkOfInherit, p)
     getTok(p)
     addSon(a, parseTypeDesc(p))
     addSon(result, a)
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   skipComment(p, result)
   addSon(result, parseObjectPart(p))
 
@@ -1253,14 +1239,14 @@ proc parseDistinct(p: var TParser): PNode =
   addSon(result, parseTypeDesc(p))
 
 proc parseTypeDef(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkTypeDef, p)
   addSon(result, identWithPragma(p))
   if p.tok.tokType == tkBracketLe: addSon(result, parseGenericParamList(p))
-  else: addSon(result, nil)
+  else: addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals: 
     getTok(p)
     optInd(p, result)
+    var a: PNode
     case p.tok.tokType
     of tkObject: a = parseObject(p)
     of tkEnum: a = parseEnum(p)
@@ -1268,21 +1254,20 @@ proc parseTypeDef(p: var TParser): PNode =
     else: a = parseTypeDesc(p)
     addSon(result, a)
   else: 
-    addSon(result, nil)
+    addSon(result, ast.emptyNode)
   indAndComment(p, result)    # special extension!
   
 proc parseVarTuple(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
   while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
-    a = identWithPragma(p)
+    var a = identWithPragma(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
     optInd(p, a)
-  addSon(result, nil)         # no type desc
+  addSon(result, ast.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
   eat(p, tkEquals)
@@ -1309,8 +1294,8 @@ proc simpleStmt(p: var TParser): PNode =
   of tkComment: result = newCommentStmt(p)
   else: 
     if isExprStart(p): result = parseExprStmt(p)
-    else: result = nil
-  if result != nil: skipComment(p, result)
+    else: result = ast.emptyNode
+  if result.kind != nkEmpty: skipComment(p, result)
   
 proc complexOrSimpleStmt(p: var TParser): PNode = 
   case p.tok.tokType
@@ -1334,10 +1319,9 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   else: result = simpleStmt(p)
   
 proc parseStmt(p: var TParser): PNode = 
-  var a: PNode
   if p.tok.tokType == tkInd: 
     result = newNodeP(nkStmtList, p)
-    pushInd(p.lex^ , p.tok.indent)
+    pushInd(p.lex^, p.tok.indent)
     getTok(p)
     while true: 
       case p.tok.tokType
@@ -1347,8 +1331,8 @@ proc parseStmt(p: var TParser): PNode =
         getTok(p)
         break 
       else: 
-        a = complexOrSimpleStmt(p)
-        if a == nil: break 
+        var a = complexOrSimpleStmt(p)
+        if a.kind == nkEmpty: break 
         addSon(result, a)
     popInd(p.lex^ )
   else: 
@@ -1357,14 +1341,13 @@ proc parseStmt(p: var TParser): PNode =
     of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkIterator, 
        tkMacro, tkType, tkConst, tkWhen, tkVar: 
       parMessage(p, errComplexStmtRequiresInd)
-      result = nil
+      result = ast.emptyNode
     else: 
       result = simpleStmt(p)
-      if result == nil: parMessage(p, errExprExpected, tokToStr(p.tok))
+      if result.kind == nkEmpty: parMessage(p, errExprExpected, tokToStr(p.tok))
       if p.tok.tokType == tkSad: getTok(p)
   
 proc parseAll(p: var TParser): PNode = 
-  var a: PNode
   result = newNodeP(nkStmtList, p)
   while true: 
     case p.tok.tokType
@@ -1372,20 +1355,20 @@ proc parseAll(p: var TParser): PNode =
     of tkDed, tkInd: parMessage(p, errInvalidIndentation)
     of tkEof: break 
     else: 
-      a = complexOrSimpleStmt(p)
-      if a == nil: parMessage(p, errExprExpected, tokToStr(p.tok))
+      var a = complexOrSimpleStmt(p)
+      if a.kind == nkEmpty: parMessage(p, errExprExpected, tokToStr(p.tok))
       addSon(result, a)
 
 proc parseTopLevelStmt(p: var TParser): PNode = 
-  result = nil
+  result = ast.emptyNode
   while true: 
     case p.tok.tokType
     of tkSad: getTok(p)
     of tkDed, tkInd: 
       parMessage(p, errInvalidIndentation)
-      break 
+      getTok(p)
     of tkEof: break 
     else: 
       result = complexOrSimpleStmt(p)
-      if result == nil: parMessage(p, errExprExpected, tokToStr(p.tok))
+      if result.kind == nkEmpty: parMessage(p, errExprExpected, tokToStr(p.tok))
       break 

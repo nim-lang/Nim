@@ -577,18 +577,20 @@ proc newSons*(father: PNode, length: int)
 proc newSons*(father: PType, length: int)
 proc addSon*(father, son: PNode)
 proc addSon*(father, son: PType)
-proc addSonIfNotNil*(father, n: PNode)
 proc delSon*(father: PNode, idx: int)
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool
 proc replaceSons*(n: PNode, oldKind, newKind: TNodeKind)
-proc sonsNotNil*(n: PNode): bool
 proc copyNode*(src: PNode): PNode
   # does not copy its sons!
 proc copyTree*(src: PNode): PNode
   # does copy its sons!
 
 proc discardSons*(father: PNode)
+
+var emptyNode* = newNode(nkEmpty)
+# There is a single empty node that is shared! Do not overwrite it!
+
 
 const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
@@ -868,6 +870,7 @@ proc len*(n: PNode): int {.inline.} =
   else: result = len(n.sons)
   
 proc add*(father, son: PNode) =
+  assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)  
   
@@ -879,6 +882,7 @@ proc newSons(father: PNode, length: int) =
   setlen(father.sons, len(father.sons) + length)
 
 proc addSon(father, son: PNode) = 
+  assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
@@ -947,7 +951,7 @@ proc lastSon(n: PType): PType =
 
 proc hasSonWith(n: PNode, kind: TNodeKind): bool = 
   for i in countup(0, sonsLen(n) - 1): 
-    if (n.sons[i] != nil) and (n.sons[i].kind == kind): 
+    if n.sons[i].kind == kind: 
       return true
   result = false
 
@@ -956,9 +960,8 @@ proc hasSubnodeWith(n: PNode, kind: TNodeKind): bool =
   of nkEmpty..nkNilLit: result = n.kind == kind
   else: 
     for i in countup(0, sonsLen(n) - 1): 
-      if n.sons[i] != nil: 
-        if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind): 
-          return true
+      if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind): 
+        return true
     result = false
 
 proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) = 
@@ -971,9 +974,6 @@ proc sonsNotNil(n: PNode): bool =
       return false
   result = true
 
-proc addSonIfNotNil(father, n: PNode) = 
-  if n != nil: addSon(father, n)
-  
 proc getInt*(a: PNode): biggestInt = 
   case a.kind
   of nkIntLit..nkInt64Lit: result = a.intVal

@@ -45,7 +45,7 @@ proc parseDefine(p: var TParser): PNode =
     eat(p, pxParLe)
     var params = newNodeP(nkFormalParams, p)
     # return type; not known yet:
-    addSon(params, nil)  
+    addSon(params, ast.emptyNode)  
     var identDefs = newNodeP(nkIdentDefs, p)
     while p.tok.xkind != pxParRi: 
       addSon(identDefs, skipIdent(p))
@@ -53,13 +53,13 @@ proc parseDefine(p: var TParser): PNode =
       if p.tok.xkind != pxComma: break
       getTok(p)
     addSon(identDefs, newIdentNodeP("expr", p))
-    addSon(identDefs, nil)
+    addSon(identDefs, ast.emptyNode)
     addSon(params, identDefs)
     eat(p, pxParRi)
     
-    addSon(result, nil) # no generic parameters
+    addSon(result, ast.emptyNode) # no generic parameters
     addSon(result, params)
-    addSon(result, nil) # no pragmas
+    addSon(result, ast.emptyNode) # no pragmas
     var kind = parseDefineBody(p, result)
     params.sons[0] = newIdentNodeP(kind, p)
     eatNewLine(p, result)
@@ -70,7 +70,7 @@ proc parseDefine(p: var TParser): PNode =
       getTok(p) # skip #define
       var c = newNodeP(nkConstDef, p)
       addSon(c, skipIdentExport(p))
-      addSon(c, nil)
+      addSon(c, ast.emptyNode)
       skipStarCom(p, c)
       if p.tok.xkind in {pxLineComment, pxNewLine, pxEof}:
         addSon(c, newIdentNodeP("true", p))
@@ -78,6 +78,7 @@ proc parseDefine(p: var TParser): PNode =
         addSon(c, expression(p))
       addSon(result, c)
       eatNewLine(p, c)
+  assert result != nil
   
 proc parseDefBody(p: var TParser, m: var TMacro, params: seq[string]) =
   m.body = @[]
@@ -147,7 +148,7 @@ proc parseInclude(p: var TParser): PNode =
       skipLine(p)
   if sonsLen(result) == 0: 
     # we only parsed includes that we chose to ignore:
-    result = nil
+    result = ast.emptyNode
 
 proc definedExprAux(p: var TParser): PNode = 
   result = newNodeP(nkCall, p)
@@ -226,6 +227,7 @@ proc parseIfdef(p: var TParser): PNode =
   case p.tok.s
   of "__cplusplus":
     skipUntilEndif(p)
+    result = ast.emptyNode
   of c2nimSymbol:
     skipLine(p)
     result = parseStmtList(p)
@@ -238,6 +240,7 @@ proc parseIfdef(p: var TParser): PNode =
     parseIfDirAux(p, result)
   
 proc parseIfndef(p: var TParser): PNode = 
+  result = ast.emptyNode
   getTok(p) # skip #ifndef
   ExpectIdent(p)
   if p.tok.s == c2nimSymbol: 
@@ -295,6 +298,7 @@ proc parseMangleDir(p: var TParser) =
   eatNewLine(p, nil)
 
 proc parseDir(p: var TParser): PNode = 
+  result = ast.emptyNode
   assert(p.tok.xkind in {pxDirective, pxDirectiveParLe})
   case p.tok.s
   of "define": result = parseDefine(p)
