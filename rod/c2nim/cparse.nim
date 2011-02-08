@@ -197,7 +197,7 @@ proc parLineInfo(p: TParser): TLineInfo =
   result = getLineInfo(p.lex)
 
 proc skipComAux(p: var TParser, n: PNode) =
-  if (n != nil): 
+  if n != nil and n.kind != nkEmpty: 
     if pfSkipComments notin p.options.flags:
       if n.comment == nil: n.comment = p.tok.s
       else: add(n.comment, "\n" & p.tok.s)
@@ -216,8 +216,7 @@ proc getTok(p: var TParser, n: PNode) =
   skipCom(p, n)
 
 proc ExpectIdent(p: TParser) = 
-  if p.tok.xkind != pxSymbol: 
-    parMessage(p, errIdentifierExpected, $(p.tok^))
+  if p.tok.xkind != pxSymbol: parMessage(p, errIdentifierExpected, $(p.tok^))
   
 proc Eat(p: var TParser, xkind: TTokKind, n: PNode) = 
   if p.tok.xkind == xkind: getTok(p, n)
@@ -375,7 +374,7 @@ proc skipTypeIdentExport(p: var TParser, prefix='T'): PNode =
 proc markTypeIdent(p: var TParser, typ: PNode) = 
   if pfTypePrefixes in p.options.flags:
     var prefix = ""
-    if typ == nil: 
+    if typ == nil or typ.kind == nkEmpty: 
       prefix = "T"
     else: 
       var t = typ
@@ -479,11 +478,12 @@ proc newProcPragmas(p: TParser): PNode =
 
 proc addPragmas(father, pragmas: PNode) =
   if sonsLen(pragmas) > 0: addSon(father, pragmas)
-  else: addSon(father, nil)
+  else: addSon(father, ast.emptyNode)
 
 proc addReturnType(params, rettyp: PNode) =
-  if rettyp == nil or rettyp.kind != nkNilLit: addSon(params, rettyp)
-  else: addson(params, nil)
+  if rettyp == nil: addSon(params, ast.emptyNode)
+  elif rettyp.kind != nkNilLit: addSon(params, rettyp)
+  else: addson(params, ast.emptyNode)
 
 proc parseFormalParams(p: var TParser, params, pragmas: PNode)
 
@@ -527,9 +527,6 @@ proc parseTypeSuffix(p: var TParser, typ: PNode): PNode =
     else: break
 
 proc typeDesc(p: var TParser): PNode = 
-  #result = typeAtom(p)
-  #if result != nil:
-  #  result = pointer(p, result)
   result = pointer(p, typeAtom(p))
 
 proc parseField(p: var TParser, kind: TNodeKind): PNode =
@@ -560,7 +557,7 @@ proc parseStructBody(p: var TParser, isUnion: bool,
       var t = pointer(p, baseTyp)
       var i = parseField(p, kind)
       t = parseTypeSuffix(p, t)
-      addSon(def, i, t, nil)
+      addSon(def, i, t, ast.emptyNode)
       if not takeOnlyFirstField(p, isUnion) or sonsLen(result) < 1: 
         addSon(result, def)
       if p.tok.xkind != pxComma: break
@@ -591,7 +588,7 @@ proc enumPragmas(p: TParser, name: PNode): PNode =
 
 proc parseStruct(p: var TParser, isUnion: bool): PNode = 
   result = newNodeP(nkObjectTy, p)
-  addSon(result, nil, nil) # no pragmas, no inheritance 
+  addSon(result, ast.emptyNode, ast.emptyNode) # no pragmas, no inheritance 
   if p.tok.xkind == pxCurlyLe:
     addSon(result, parseStructBody(p, isUnion))
   else: 
@@ -616,7 +613,7 @@ proc parseParam(p: var TParser, params: PNode) =
     getTok(p, x)
     addSon(x, assignmentExpression(p))
   else:
-    addSon(x, nil)
+    addSon(x, ast.emptyNode)
   addSon(params, x)
 
 proc parseFormalParams(p: var TParser, params, pragmas: PNode) = 
@@ -662,15 +659,16 @@ proc parseFunctionPointerDecl(p: var TParser, rettyp: PNode): PNode =
   if p.inTypeDef == 0:
     result = newNodeP(nkVarSection, p)
     var def = newNodeP(nkIdentDefs, p)
-    addSon(def, name, procType, nil)
+    addSon(def, name, procType, ast.emptyNode)
     addSon(result, def)    
   else:
     result = newNodeP(nkTypeDef, p)
-    addSon(result, name, nil, procType)
+    addSon(result, name, ast.emptyNode, procType)
+  assert result != nil
   
 proc addTypeDef(section, name, t: PNode) = 
   var def = newNodeI(nkTypeDef, name.info)
-  addSon(def, name, nil, t)
+  addSon(def, name, ast.emptyNode, t)
   addSon(section, def)
   
 proc otherTypeDef(p: var TParser, section, typ: PNode) = 
@@ -705,7 +703,7 @@ proc parseTrailingDefinedTypes(p: var TParser, section, typ: PNode) =
 
 proc enumFields(p: var TParser): PNode = 
   result = newNodeP(nkEnumTy, p)
-  addSon(result, nil) # enum does not inherit from anything
+  addSon(result, ast.emptyNode) # enum does not inherit from anything
   while true:
     var e = skipIdent(p)
     if p.tok.xkind == pxAsgn: 
@@ -846,7 +844,7 @@ proc addInitializer(p: var TParser, def: PNode) =
     getTok(p, def)
     addSon(def, parseInitializer(p))
   else:
-    addSon(def, nil)  
+    addSon(def, ast.emptyNode)  
 
 proc parseVarDecl(p: var TParser, baseTyp, typ: PNode, 
                   origName: string): PNode =  
@@ -921,22 +919,24 @@ proc declaration(p: var TParser): PNode =
       addSon(pragmas, newIdentNodeP("cdecl", p))
     elif pfStdcall in p.options.flags:
       addSon(pragmas, newIdentNodeP("stdcall", p))
-    addSon(result, exportSym(p, name, origName), nil) # no generics
+    addSon(result, exportSym(p, name, origName), ast.emptyNode) # no generics
     addSon(result, params, pragmas)
     case p.tok.xkind 
     of pxSemicolon: 
       getTok(p)
-      addSon(result, nil) # nobody
+      addSon(result, ast.emptyNode) # nobody
       if p.scopeCounter == 0: DoImport(origName, pragmas, p)
     of pxCurlyLe:
       addSon(result, compoundStatement(p))
     else:
       parMessage(p, errTokenExpected, ";")
-    if sonsLen(result.sons[pragmasPos]) == 0: result.sons[pragmasPos] = nil
+    if sonsLen(result.sons[pragmasPos]) == 0: 
+      result.sons[pragmasPos] = ast.emptyNode
   of pxAsgn, pxSemicolon, pxComma:
     result = parseVarDecl(p, baseTyp, rettyp, origName)
   else:
     parMessage(p, errTokenExpected, ";")
+  assert result != nil
 
 proc createConst(name, typ, val: PNode, p: TParser): PNode =
   result = newNodeP(nkConstDef, p)
@@ -963,7 +963,7 @@ proc enumSpecifier(p: var TParser): PNode =
       else:
         val = newIntNodeP(nkIntLit, i, p)
         inc(i)
-      var c = createConst(name, nil, val, p)
+      var c = createConst(name, ast.emptyNode, val, p)
       addSon(result, c)
       if p.tok.xkind != pxComma: break
       getTok(p, c)
@@ -984,7 +984,7 @@ proc enumSpecifier(p: var TParser): PNode =
       var t = newNodeP(nkTypeDef, p)
       getTok(p, t)
       var e = enumFields(p)
-      addSon(t, exportSym(p, name, origName), nil, e) # nil for generic params
+      addSon(t, exportSym(p, name, origName), ast.emptyNode, e)
       addSon(result, t)
       eat(p, pxCurlyRi, result)
       eat(p, pxSemicolon)
@@ -998,6 +998,7 @@ proc enumSpecifier(p: var TParser): PNode =
   else:
     closeContext(p)
     parMessage(p, errTokenExpected, "{")
+    result = ast.emptyNode
     
 # Expressions
 
@@ -1085,7 +1086,7 @@ proc primaryExpression(p: var TParser): PNode =
   of pxParLe:
     result = castExpression(p)
   else:
-    result = nil
+    result = ast.emptyNode
 
 proc multiplicativeExpression(p: var TParser): PNode = 
   result = castExpression(p)
@@ -1309,7 +1310,7 @@ proc andExpression(p: var TParser): PNode =
     getTok(p, result)
     var a = result 
     var b = equalityExpression(p)
-    result = newBinary("&", a, b, p)
+    result = newBinary("and", a, b, p)
 
 proc exclusiveOrExpression(p: var TParser): PNode = 
   result = andExpression(p)
@@ -1390,10 +1391,12 @@ proc expressionStatement(p: var TParser): PNode =
   # do not skip the comment after a semicolon to make a new nkCommentStmt
   if p.tok.xkind == pxSemicolon: 
     getTok(p)
+    result = ast.emptyNode
   else:
     result = expression(p)
     if p.tok.xkind == pxSemicolon: getTok(p)
     else: parMessage(p, errTokenExpected, ";")
+  assert result != nil
 
 proc parseIf(p: var TParser): PNode = 
   # we parse additional "else if"s too here for better Nimrod code
@@ -1431,7 +1434,7 @@ proc parseDoWhile(p: var TParser): PNode =
   # ``block: stmt``
   result = newNodeP(nkBlockStmt, p)
   getTok(p, result) # skip "do"
-  addSon(result, nil, nestedStatement(p))
+  addSon(result, ast.emptyNode, nestedStatement(p))
   eat(p, "while", result)
   eat(p, pxParLe, result)
   if p.tok.xkind == pxIntLit and p.tok.iNumber == 0: getTok(p, result)
@@ -1465,6 +1468,7 @@ proc declarationOrStatement(p: var TParser): PNode =
     else: 
       backtrackContext(p)
       result = expressionStatement(p)
+  assert result != nil
 
 proc parseTuple(p: var TParser, isUnion: bool): PNode = 
   result = parseStructBody(p, isUnion, nkTupleTy)
@@ -1516,15 +1520,16 @@ proc parseFor(p: var TParser, result: PNode) =
   getTok(p, result)
   eat(p, pxParLe, result)
   var initStmt = declarationOrStatement(p)
-  addSonIfNotNil(result, initStmt)
+  if initStmt.kind != nkEmpty:
+    addSon(result, initStmt)
   var w = newNodeP(nkWhileStmt, p)
   var condition = expressionStatement(p)
-  if condition == nil: condition = newIdentNodeP("true", p)
+  if condition.kind == nkEmpty: condition = newIdentNodeP("true", p)
   addSon(w, condition)
-  var step = if p.tok.xkind != pxParRi: expression(p) else: nil
+  var step = if p.tok.xkind != pxParRi: expression(p) else: ast.emptyNode
   eat(p, pxParRi, step)
   var loopBody = nestedStatement(p)
-  if step != nil:
+  if step.kind != nkEmpty:
     loopBody = buildStmtList(loopBody)
     addSon(loopBody, step)
   addSon(w, loopBody)
@@ -1604,7 +1609,7 @@ proc embedStmts(sl, a: PNode) =
     addStmt(sl, a)
   else:
     for i in 0..sonsLen(a)-1: 
-      if a[i] != nil: addStmt(sl, a[i])
+      if a[i].kind != nkEmpty: addStmt(sl, a[i])
 
 proc compoundStatement(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)
@@ -1612,7 +1617,7 @@ proc compoundStatement(p: var TParser): PNode =
   inc(p.scopeCounter)
   while p.tok.xkind notin {pxEof, pxCurlyRi}: 
     var a = statement(p)
-    if a == nil: break
+    if a.kind == nkEmpty: break
     embedStmts(result, a)
   if sonsLen(result) == 0:
     # translate ``{}`` to Nimrod's ``nil`` statement
@@ -1644,12 +1649,12 @@ proc statement(p: var TParser): PNode =
       result = newNodeP(nkContinueStmt, p)
       getTok(p)
       eat(p, pxSemicolon)
-      addSon(result, nil)
+      addSon(result, ast.emptyNode)
     of "break":
       result = newNodeP(nkBreakStmt, p)
       getTok(p)
       eat(p, pxSemicolon)
-      addSon(result, nil)
+      addSon(result, ast.emptyNode)
     of "return":
       result = newNodeP(nkReturnStmt, p)
       getTok(p)
@@ -1662,18 +1667,13 @@ proc statement(p: var TParser): PNode =
       elif p.tok.xkind != pxSemicolon:
         addSon(result, expression(p))
       else:
-        addSon(result, nil)
+        addSon(result, ast.emptyNode)
       eat(p, pxSemicolon)
-    of "enum":
-      result = enumSpecifier(p)
-    of "typedef": 
-      result = parseTypeDef(p)
-    of "struct":
-      result = parseStandaloneStruct(p, isUnion=false)
-    of "union":
-      result = parseStandaloneStruct(p, isUnion=true)    
-    else: 
-      result = declarationOrStatement(p)
+    of "enum": result = enumSpecifier(p)
+    of "typedef": result = parseTypeDef(p)
+    of "struct": result = parseStandaloneStruct(p, isUnion=false)
+    of "union": result = parseStandaloneStruct(p, isUnion=true)    
+    else: result = declarationOrStatement(p)
   of pxCurlyLe:
     result = compoundStatement(p)
   of pxDirective, pxDirectiveParLe:
@@ -1691,12 +1691,12 @@ proc statement(p: var TParser): PNode =
       result = newNodeP(nkNilLit, p)
   else:
     result = expressionStatement(p)
-    #parMessage(p, errStmtExpected)
+  assert result != nil
 
 proc parseUnit(p: var TParser): PNode = 
   result = newNodeP(nkStmtList, p)
   getTok(p) # read first token
   while p.tok.xkind != pxEof: 
     var s = statement(p)
-    if s != nil: embedStmts(result, s)
+    if s.kind != nkEmpty: embedStmts(result, s)
 

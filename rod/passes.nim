@@ -104,7 +104,7 @@ proc processTopLevelStmtCached(n: PNode, a: var TPassContextArray) =
     if not isNil(gPasses[i].openCached): m = gPasses[i].process(a[i], m)
   
 proc closePassesCached(a: var TPassContextArray) = 
-  var m: PNode = nil
+  var m = ast.emptyNode
   for i in countup(0, gPassesLen - 1): 
     if not isNil(gPasses[i].openCached) and not isNil(gPasses[i].close): 
       m = gPasses[i].close(a[i], m)
@@ -114,7 +114,6 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
                    rd: PRodReader) = 
   var 
     p: TParsers
-    n: PNode
     a: TPassContextArray
     s: PLLStream
   if rd == nil: 
@@ -129,8 +128,8 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
     while true: 
       openParsers(p, filename, s)
       while true: 
-        n = parseTopLevelStmt(p)
-        if n == nil: break 
+        var n = parseTopLevelStmt(p)
+        if n.kind == nkEmpty: break 
         processTopLevelStmt(n, a)
       closeParsers(p)
       if s.kind != llsStdIn: break 
@@ -139,7 +138,7 @@ proc processModule(module: PSym, filename: string, stream: PLLStream,
     IDsynchronizationPoint(1000)
   else: 
     openPassesCached(a, module, filename, rd)
-    n = loadInitSection(rd)   #MessageOut('init section' + renderTree(n));
+    var n = loadInitSection(rd)   #MessageOut('init section' + renderTree(n));
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
 

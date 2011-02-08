@@ -109,6 +109,7 @@ proc CommandGenDepend(filename: string) =
       changeFileExt(filename, "dot"))
 
 proc CommandCheck(filename: string) = 
+  msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()            # use an empty backend for semantic checking only
   compileProject(filename)
 

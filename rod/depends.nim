@@ -29,7 +29,6 @@ proc addDependencyAux(importing, imported: string) =
   
 proc addDotDependency(c: PPassContext, n: PNode): PNode = 
   result = n
-  if n == nil: return 
   var g = PGen(c)
   case n.kind
   of nkImportStmt: 

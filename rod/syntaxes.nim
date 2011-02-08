@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -59,6 +59,7 @@ proc parseAll(p: var TParsers): PNode =
     result = pbraces.parseAll(p.parser)
   of skinEndX: 
     InternalError("parser to implement") 
+    result = ast.emptyNode
     # skinEndX: result := pendx.parseAll(p.parser);
   
 proc parseTopLevelStmt(p: var TParsers): PNode = 
@@ -69,6 +70,7 @@ proc parseTopLevelStmt(p: var TParsers): PNode =
     result = pbraces.parseTopLevelStmt(p.parser)
   of skinEndX: 
     InternalError("parser to implement") 
+    result = ast.emptyNode
     #skinEndX: result := pendx.parseTopLevelStmt(p.parser);
   
 proc UTF8_BOM(s: string): int = 
@@ -84,6 +86,7 @@ proc containsShebang(s: string, i: int): bool =
     result = s[j] == '/'
 
 proc parsePipe(filename: string, inputStream: PLLStream): PNode = 
+  result = ast.emptyNode
   var s = LLStreamOpen(filename, fmRead)
   if s != nil: 
     var line = LLStreamReadLine(s)
@@ -143,7 +146,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
 proc evalPipe(p: var TParsers, n: PNode, filename: string, 
               start: PLLStream): PLLStream = 
   result = start
-  if n == nil: return 
+  if n.kind == nkEmpty: return 
   if (n.kind == nkInfix) and (n.sons[0].kind == nkIdent) and
       IdentEq(n.sons[0].ident, "|"): 
     for i in countup(1, 2): 

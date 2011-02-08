@@ -175,7 +175,6 @@ proc findIdent(L: TLexer, indent: int): bool =
   for i in countdown(len(L.indentStack) - 1, 0): 
     if L.indentStack[i] == indent: 
       return true
-  result = false
 
 proc tokToStr(tok: PToken): string = 
   case tok.tokType
@@ -574,7 +573,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     of '_': 
       if buf[pos+1] notin SymChars: 
         lexMessage(L, errInvalidToken, "_")
-        return
+        break
     else: break 
     Inc(pos)
   h = h +% h shl 3
@@ -587,11 +586,6 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     tok.tokType = tkSymbol
   else: 
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
-  when false:
-    if buf[pos] == '\"': 
-      getString(L, tok, true)
-      if tok.tokType == tkRStrLit: tok.tokType = tkCallRStrLit
-      else: tok.tokType = tkCallTripleStrLit
   
 proc getOperator(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
