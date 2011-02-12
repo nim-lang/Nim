@@ -334,8 +334,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mSizeOf: 
         var a = n.sons[1]
         if computeSize(a.typ) < 0: 
-          liMessage(a.info, errCannotEvalXBecauseIncompletelyDefined, "sizeof")
-        if a.typ.kind in {tyArray, tyObject, tyTuple}: 
+          LocalError(a.info, errCannotEvalXBecauseIncompletelyDefined, 
+                     "sizeof")
+          result = nil
+        elif a.typ.kind in {tyArray, tyObject, tyTuple}: 
           result = nil        
           # XXX: size computation for complex types is still wrong
         else: 
@@ -345,7 +347,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mHigh: 
         if not (skipTypes(n.sons[1].typ, abstractVar).kind in
             {tyOpenArray, tySequence, tyString}): 
-          result = newIntNodeT(lastOrd(skipTypes(n.sons[1].typ, abstractVar)), n)
+          result = newIntNodeT(lastOrd(skipTypes(n.sons[1].typ, abstractVar)),
+                               n)
       of mLengthOpenArray:
         var a = n.sons[1]
         if a.kind == nkPassAsOpenArray: a = a.sons[0]
@@ -357,9 +360,9 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       else: 
         result = magicCall(m, n)
     except EOverflow: 
-      liMessage(n.info, errOverOrUnderflow)
+      LocalError(n.info, errOverOrUnderflow)
     except EDivByZero: 
-      liMessage(n.info, errConstantDivisionByZero)
+      LocalError(n.info, errConstantDivisionByZero)
   of nkAddr: 
     var a = getConstExpr(m, n.sons[0])
     if a != nil: 
@@ -408,7 +411,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       result = a              # a <= x and x <= b
       result.typ = n.typ
     else: 
-      liMessage(n.info, errGenerated, `%`(
+      LocalError(n.info, errGenerated, `%`(
           msgKindToString(errIllegalConvFromXtoY), 
           [typeToString(n.sons[0].typ), typeToString(n.typ)]))
   of nkStringToCString, nkCStringToString: 

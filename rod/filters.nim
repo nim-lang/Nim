@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,7 +9,7 @@
 
 # This module implements Nimrod's simple filters and helpers for filters.
 
-import 
+import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, rnimsyn
 
 proc filterReplace*(stdin: PLLStream, filename: string, call: PNode): PLLStream
@@ -21,7 +21,7 @@ proc boolArg*(n: PNode, name: string, pos: int, default: bool): bool
 # implementation
 
 proc invalidPragma(n: PNode) = 
-  liMessage(n.info, errXNotAllowedHere, renderTree(n, {renderNoComments}))
+  LocalError(n.info, errXNotAllowedHere, renderTree(n, {renderNoComments}))
 
 proc getArg(n: PNode, name: string, pos: int): PNode = 
   result = nil

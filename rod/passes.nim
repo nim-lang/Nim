@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,9 +25,9 @@ type
     close: proc (p: PPassContext, n: PNode): PNode, 
     process: proc (p: PPassContext, topLevelStmt: PNode): PNode] 
     
-# a  pass is a tuple of procedure vars ``TPass.close`` may produce additional 
+# a pass is a tuple of procedure vars ``TPass.close`` may produce additional 
 # nodes. These are passed to the other close procedures. 
-# This mechanism is needed for the instantiation of generics.
+# This mechanism used to be used for the instantiation of generics.
 
 proc registerPass*(p: TPass)
 proc initPass*(p: var TPass)
@@ -37,11 +37,6 @@ proc initPass*(p: var TPass)
   # whole program optimizations. For now, we avoid it to save a lot of memory.
 proc processModule*(module: PSym, filename: string, stream: PLLStream, 
                     rd: PRodReader)
-proc astNeeded*(s: PSym): bool
-  # The ``rodwrite`` module uses this to determine if the body of a proc
-  # needs to be stored. The passes manager frees s.sons[codePos] when
-  # appropriate to free the procedure body's memory. This is important
-  # to keep memory usage down.
 
 # the semantic checker needs these:
 var 
@@ -50,10 +45,21 @@ var
 
 # implementation
 
-proc astNeeded(s: PSym): bool = 
+proc skipCodegen*(n: PNode): bool {.inline.} = 
+  # can be used by codegen passes to determine whether they should do 
+  # something with `n`. Currently, this ignores `n` and uses the global
+  # error count instead.
+  result = msgs.gErrorCounter > 0
+
+proc astNeeded*(s: PSym): bool = 
+  # The ``rodwrite`` module uses this to determine if the body of a proc
+  # needs to be stored. The passes manager frees s.sons[codePos] when
+  # appropriate to free the procedure body's memory. This is important
+  # to keep memory usage down.
   if (s.kind in {skMethod, skProc}) and
       ({sfCompilerProc, sfCompileTime} * s.flags == {}) and
-      (s.typ.callConv != ccInline) and (s.ast.sons[genericParamsPos] == nil): 
+      (s.typ.callConv != ccInline) and 
+      (s.ast.sons[genericParamsPos].kind == nkEmpty): 
     result = false
   else: 
     result = true

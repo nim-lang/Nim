@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -69,10 +69,6 @@ proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
 proc makeRangeType*(c: PContext, first, last: biggestInt, info: TLineInfo): PType
-proc illFormedAst*(n: PNode)
-proc getSon*(n: PNode, indx: int): PNode
-proc checkSonsLen*(n: PNode, length: int)
-proc checkMinSonsLen*(n: PNode, length: int)
   
 # owner handling:
 proc getCurrOwner*(): PSym
@@ -122,7 +118,7 @@ proc newContext(module: PSym, nimfile: string): PContext =
   append(result.optionStack, newOptionEntry())
   result.module = module
   result.generics = newNode(nkStmtList)
-  result.converters = @ []
+  result.converters = @[]
   result.filename = nimfile
   IntSetInit(result.includedFiles)
   initStrTable(result.userPragmas)
@@ -140,7 +136,7 @@ proc newLib(kind: TLibKind): PLib =
   
 proc addToLib(lib: PLib, sym: PSym) = 
   #ObjectSetIncl(lib.syms, sym);
-  if sym.annex != nil: liMessage(sym.info, errInvalidPragma)
+  if sym.annex != nil: LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
 proc makePtrType(c: PContext, baseType: PType): PType = 
@@ -170,20 +166,13 @@ proc makeRangeType(c: PContext, first, last: biggestInt,
   result.n = n
   addSon(result, getSysType(tyInt)) # basetype of range
   
-proc illFormedAst(n: PNode) = 
-  liMessage(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+proc illFormedAst*(n: PNode) = 
+  GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc getSon(n: PNode, indx: int): PNode = 
-  if (n != nil) and (indx < sonsLen(n)): 
-    result = n.sons[indx]
-  else: 
-    illFormedAst(n)
-    result = nil
-
-proc checkSonsLen(n: PNode, length: int) = 
-  if (n == nil) or (sonsLen(n) != length): illFormedAst(n)
+proc checkSonsLen*(n: PNode, length: int) = 
+  if sonsLen(n) != length: illFormedAst(n)
   
-proc checkMinSonsLen(n: PNode, length: int) = 
-  if (n == nil) or (sonsLen(n) < length): illFormedAst(n)
+proc checkMinSonsLen*(n: PNode, length: int) = 
+  if sonsLen(n) < length: illFormedAst(n)
   
 initIdTable(gInstTypes)

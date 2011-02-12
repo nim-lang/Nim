@@ -1,21 +1,16 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# This module implements code generation for multi methods.
+## This module implements code generation for multi methods.
 
 import 
   options, ast, astalgo, msgs, idents, rnimsyn, types, magicsys
-
-proc methodDef*(s: PSym)
-proc methodCall*(n: PNode): PNode
-proc generateMethodDispatchers*(): PNode
-# implementation
 
 proc genConv(n: PNode, d: PType, downcast: bool): PNode = 
   var 
@@ -40,7 +35,7 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   else: 
     result = n
   
-proc methodCall(n: PNode): PNode = 
+proc methodCall*(n: PNode): PNode = 
   var disp: PSym
   result = n
   disp = lastSon(result.sons[0].sym.ast).sym
@@ -76,7 +71,7 @@ proc sameMethodBucket(a, b: PSym): bool =
       return 
   result = true
 
-proc methodDef(s: PSym) = 
+proc methodDef*(s: PSym) = 
   var 
     L, q: int
     disp: PSym
@@ -86,12 +81,12 @@ proc methodDef(s: PSym) =
       add(gMethods[i], s)     # store a symbol to the dispatcher:
       addSon(s.ast, lastSon(gMethods[i][0].ast))
       return 
-  add(gMethods, @ [s])        # create a new dispatcher:
+  add(gMethods, @[s])        # create a new dispatcher:
   disp = copySym(s)
   disp.typ = copyType(disp.typ, disp.typ.owner, false)
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
   disp.ast = copyTree(s.ast)
-  disp.ast.sons[codePos] = nil
+  disp.ast.sons[codePos] = ast.emptyNode
   if s.typ.sons[0] != nil: 
     disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
   addSon(s.ast, newSymNode(disp))
@@ -188,7 +183,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: TIntSet): PSym =
     addSon(disp, a)
   result.ast.sons[codePos] = disp
 
-proc generateMethodDispatchers(): PNode = 
+proc generateMethodDispatchers*(): PNode = 
   var relevantCols: TIntSet
   result = newNode(nkStmtList)
   for bucket in countup(0, len(gMethods) - 1): 

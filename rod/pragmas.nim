@@ -52,7 +52,7 @@ proc pragmaAsm*(c: PContext, n: PNode): char
 # implementation
 
 proc invalidPragma(n: PNode) = 
-  liMessage(n.info, errInvalidPragmaX, renderTree(n, {renderNoComments}))
+  LocalError(n.info, errInvalidPragmaX, renderTree(n, {renderNoComments}))
 
 proc pragmaAsm(c: PContext, n: PNode): char = 
   result = '\0'
@@ -82,27 +82,24 @@ proc MakeExternExport(s: PSym, extname: string) =
 
 proc getStrLitNode(c: PContext, n: PNode): PNode =
   if n.kind != nkExprColonExpr: 
-    liMessage(n.info, errStringLiteralExpected)
+    GlobalError(n.info, errStringLiteralExpected)
   else: 
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     case n.sons[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit: result = n.sons[1]
-    else: liMessage(n.info, errStringLiteralExpected)
+    else: GlobalError(n.info, errStringLiteralExpected)
 
 proc expectStrLit(c: PContext, n: PNode): string = 
   result = getStrLitNode(c, n).strVal
 
 proc expectIntLit(c: PContext, n: PNode): int = 
   if n.kind != nkExprColonExpr: 
-    liMessage(n.info, errIntLiteralExpected)
-    result = 0
+    LocalError(n.info, errIntLiteralExpected)
   else: 
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     case n.sons[1].kind
     of nkIntLit..nkInt64Lit: result = int(n.sons[1].intVal)
-    else: 
-      liMessage(n.info, errIntLiteralExpected)
-      result = 0
+    else: LocalError(n.info, errIntLiteralExpected)
 
 proc getOptionalStr(c: PContext, n: PNode, defaultStr: string): string = 
   if n.kind == nkExprColonExpr: result = expectStrLit(c, n)
@@ -112,7 +109,9 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   #if not (sfSystemModule in c.module.flags) then
   #  liMessage(n.info, errMagicOnlyInSystem);
-  if n.kind != nkExprColonExpr: liMessage(n.info, errStringLiteralExpected)
+  if n.kind != nkExprColonExpr: 
+    LocalError(n.info, errStringLiteralExpected)
+    return
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
   else: v = expectStrLit(c, n)
   incl(s.flags, sfImportc) 
@@ -123,7 +122,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
     if copy($m, 1) == v: 
       s.magic = m
       return 
-  liMessage(n.info, warnUnknownMagic, v)
+  Message(n.info, warnUnknownMagic, v)
 
 proc wordToCallConv(sw: TSpecialWord): TCallingConvention = 
   # this assumes that the order of special words and calling conventions is
@@ -135,9 +134,9 @@ proc IsTurnedOn(c: PContext, n: PNode): bool =
     case whichKeyword(n.sons[1].ident)
     of wOn: result = true
     of wOff: result = false
-    else: liMessage(n.info, errOnOrOffExpected)
+    else: LocalError(n.info, errOnOrOffExpected)
   else: 
-    liMessage(n.info, errOnOrOffExpected)
+    LocalError(n.info, errOnOrOffExpected)
 
 proc onOff(c: PContext, n: PNode, op: TOptions) = 
   if IsTurnedOn(c, n): gOptions = gOptions + op
@@ -153,9 +152,9 @@ proc processCallConv(c: PContext, n: PNode) =
     case sw
     of firstCallConv..lastCallConv: 
       POptionEntry(c.optionStack.tail).defaultCC = wordToCallConv(sw)
-    else: liMessage(n.info, errCallConvExpected)
+    else: LocalError(n.info, errCallConvExpected)
   else: 
-    liMessage(n.info, errCallConvExpected)
+    LocalError(n.info, errCallConvExpected)
   
 proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib = 
   var it = PLib(c.libs.head)
@@ -168,13 +167,13 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   Append(c.libs, result)
 
 proc expectDynlibNode(c: PContext, n: PNode): PNode = 
-  if n.kind != nkExprColonExpr: liMessage(n.info, errStringLiteralExpected)
+  if n.kind != nkExprColonExpr: GlobalError(n.info, errStringLiteralExpected)
   else: 
     result = c.semExpr(c, n.sons[1])
     if result.kind == nkSym and result.sym.kind == skConst:
       result = result.sym.ast # look it up
     if result.typ == nil or result.typ.kind != tyString: 
-      liMessage(n.info, errStringLiteralExpected)
+      GlobalError(n.info, errStringLiteralExpected)
     
 proc processDynLib(c: PContext, n: PNode, sym: PSym) = 
   if (sym == nil) or (sym.kind == skModule): 
@@ -208,7 +207,7 @@ proc processNote(c: PContext, n: PNode) =
     case whichKeyword(n.sons[1].ident)
     of wOn: incl(gNotes, nk)
     of wOff: excl(gNotes, nk)
-    else: liMessage(n.info, errOnOrOffExpected)
+    else: LocalError(n.info, errOnOrOffExpected)
   else: 
     invalidPragma(n)
   
@@ -254,8 +253,8 @@ proc processOption(c: PContext, n: PNode) =
         of wNone: 
           excl(gOptions, optOptimizeSpeed)
           excl(gOptions, optOptimizeSize)
-        else: liMessage(n.info, errNoneSpeedOrSizeExpected)
-    else: liMessage(n.info, errOptionExpected)
+        else: LocalError(n.info, errNoneSpeedOrSizeExpected)
+    else: LocalError(n.info, errOptionExpected)
   
 proc processPush(c: PContext, n: PNode, start: int) = 
   var x = newOptionEntry()
@@ -271,7 +270,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   
 proc processPop(c: PContext, n: PNode) = 
   if c.optionStack.counter <= 1: 
-    liMessage(n.info, errAtPopWithoutPush)
+    LocalError(n.info, errAtPopWithoutPush)
   else: 
     gOptions = POptionEntry(c.optionStack.tail).options 
     #liMessage(n.info, warnUser, ropeToStr(optionsToStr(gOptions)));
@@ -281,14 +280,14 @@ proc processPop(c: PContext, n: PNode) =
 proc processDefine(c: PContext, n: PNode) = 
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
     DefineSymbol(n.sons[1].ident.s)
-    liMessage(n.info, warnDeprecated, "define")
+    Message(n.info, warnDeprecated, "define")
   else: 
     invalidPragma(n)
   
 proc processUndef(c: PContext, n: PNode) = 
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent): 
     UndefSymbol(n.sons[1].ident.s)
-    liMessage(n.info, warnDeprecated, "undef")
+    Message(n.info, warnDeprecated, "undef")
   else: 
     invalidPragma(n)
   
@@ -329,7 +328,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   of nkStrLit, nkRStrLit, nkTripleStrLit: 
     result = copyNode(n)
     var str = n.sons[1].strVal
-    if str == "": liMessage(n.info, errEmptyAsm) 
+    if str == "": GlobalError(n.info, errEmptyAsm) 
     # now parse the string literal and substitute symbols:
     var a = 0
     while true: 
@@ -392,14 +391,16 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wExtern: setExternName(sym, expectStrLit(c, it))
           of wAlign: 
             if sym.typ == nil: invalidPragma(it)
-            sym.typ.align = expectIntLit(c, it)
-            if not IsPowerOfTwo(sym.typ.align) and (sym.typ.align != 0): 
-              liMessage(it.info, errPowerOfTwoExpected)
+            var align = expectIntLit(c, it)
+            if not IsPowerOfTwo(align) and align != 0: 
+              LocalError(it.info, errPowerOfTwoExpected)
+            else: 
+              sym.typ.align = align              
           of wSize: 
             if sym.typ == nil: invalidPragma(it)
             var size = expectIntLit(c, it)
             if not IsPowerOfTwo(size) or size <= 0 or size > 8: 
-              liMessage(it.info, errPowerOfTwoExpected)
+              LocalError(it.info, errPowerOfTwoExpected)
             else:
               sym.typ.size = size
           of wNodecl: 
@@ -477,12 +478,10 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
           of wTypeCheck: 
             noVal(it)
             incl(sym.flags, sfTypeCheck)
-          of wHint: liMessage(it.info, hintUser, expectStrLit(c, it))
-          of wWarning: liMessage(it.info, warnUser, expectStrLit(c, it))
-          of wError: liMessage(it.info, errUser, expectStrLit(c, it))
-          of wFatal: 
-            liMessage(it.info, errUser, expectStrLit(c, it))
-            quit(1)
+          of wHint: Message(it.info, hintUser, expectStrLit(c, it))
+          of wWarning: Message(it.info, warnUser, expectStrLit(c, it))
+          of wError: LocalError(it.info, errUser, expectStrLit(c, it))
+          of wFatal: Fatal(it.info, errUser, expectStrLit(c, it))
           of wDefine: processDefine(c, it)
           of wUndef: processUndef(c, it)
           of wCompile: processCompile(c, it)
@@ -515,7 +514,7 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
     else: processNote(c, it)
   if (sym != nil) and (sym.kind != skModule): 
     if (lfExportLib in sym.loc.flags) and not (sfExportc in sym.flags): 
-      liMessage(n.info, errDynlibRequiresExportc)
+      LocalError(n.info, errDynlibRequiresExportc)
     var lib = POptionEntry(c.optionstack.tail).dynlib
     if ({lfDynamicLib, lfHeader} * sym.loc.flags == {}) and
         (sfImportc in sym.flags) and (lib != nil): 

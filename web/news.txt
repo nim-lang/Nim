@@ -61,6 +61,7 @@ Additions
 - Added basic thread support via the ``threads`` core module and 
   the ``--threads:on`` command line switch.
 - Added unary ``<`` for nice looking excluding upper bounds in ranges.
+- Added ``math.floor``.
 
 
 2010-10-20 Version 0.8.10 released

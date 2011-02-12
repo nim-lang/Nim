@@ -443,7 +443,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   if containsGenericType(f): result.typ = getInstantiatedType(c, arg, m, f)
   else: result.typ = f
   if result.typ == nil: InternalError(arg.info, "implicitConv")
-  addSon(result, nil)
+  addSon(result, ast.emptyNode)
   addSon(result, arg)
 
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType, 
@@ -578,7 +578,7 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
       # named param
       # check if m.callee has such a param:
       if n.sons[a].sons[0].kind != nkIdent: 
-        liMessage(n.sons[a].info, errNamedParamHasToBeIdent)
+        LocalError(n.sons[a].info, errNamedParamHasToBeIdent)
         m.state = csNoMatch
         return 
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
@@ -588,7 +588,7 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
         return 
       if IntSetContainsOrIncl(marker, formal.position): 
         # already in namedParams:
-        liMessage(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+        LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
         return 
       m.baseTypeMatch = false
@@ -633,7 +633,7 @@ proc matches(c: PContext, n: PNode, m: var TCandidate) =
         formal = m.callee.n.sons[f].sym
         if IntSetContainsOrIncl(marker, formal.position): 
           # already in namedParams:
-          liMessage(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+          LocalError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
           return 
         m.baseTypeMatch = false
@@ -683,12 +683,13 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
   var
     o: TOverloadIter
     x, y, z: TCandidate
-  #liMessage(n.info, warnUser, renderTree(n));
+  #Message(n.info, warnUser, renderTree(n))
   var sym = initOverloadIter(o, c, f)
   result = nil
   if sym == nil: return 
   initCandidate(x, sym, initialBinding)
   initCandidate(y, sym, initialBinding)
+
   while sym != nil: 
     if sym.kind in filter: 
       initCandidate(z, sym, initialBinding)
@@ -711,7 +712,7 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
       not sameMethodDispatcher(x.calleeSym, y.calleeSym): 
     if x.state != csMatch: 
       InternalError(n.info, "x.state is not csMatch") 
-    liMessage(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+    LocalError(n.Info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
       getProcHeader(x.calleeSym), getProcHeader(y.calleeSym), 
       x.calleeSym.Name.s])
   else: 
@@ -719,7 +720,7 @@ proc semDirectCallWithBinding(c: PContext, n, f: PNode, filter: TSymKinds,
     markUsed(n, x.calleeSym)
     if x.calleeSym.ast == nil: 
       internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
-    if x.calleeSym.ast.sons[genericParamsPos] != nil: 
+    if x.calleeSym.ast.sons[genericParamsPos].kind != nkEmpty: 
       # a generic proc!
       x.calleeSym = generateInstance(c, x.calleeSym, x.bindings, n.info)
       x.callee = x.calleeSym.typ

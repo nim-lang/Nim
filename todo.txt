@@ -1,7 +1,4 @@
-- ban ``nil`` from the AST. This might also fix bugs concerning macros.
-  TODO: 
-    * semantic checking (keep in mind incremental parsing!)
-    * code generators
+- 'suggest'
 
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch

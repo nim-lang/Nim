@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -288,10 +288,10 @@ proc tokInfo(p: TRstParser, tok: TToken): TLineInfo =
   result = newLineInfo(p.filename, p.line + tok.line, p.col + tok.col)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind, arg: string) = 
-  liMessage(tokInfo(p, p.tok[p.idx]), msgKind, arg)
+  GenericMessage(tokInfo(p, p.tok[p.idx]), msgKind, arg)
 
 proc rstMessage(p: TRstParser, msgKind: TMsgKind) = 
-  liMessage(tokInfo(p, p.tok[p.idx]), msgKind, p.tok[p.idx].symbol)
+  GenericMessage(tokInfo(p, p.tok[p.idx]), msgKind, p.tok[p.idx].symbol)
 
 proc currInd(p: TRstParser): int = 
   result = p.indentStack[high(p.indentStack)]

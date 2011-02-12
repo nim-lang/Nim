@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -55,7 +55,7 @@ proc getIdentNode(n: PNode): PNode =
   of nkIdent: result = n
   else: 
     illFormedAst(n)
-    result = nil
+    result = n
 
 #  of nkAccQuoted: 
 #    s = lookUp(c, n)
@@ -67,21 +67,20 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     L: int
     a: PNode
   result = n
-  if n == nil: return 
   case n.kind
   of nkIdent:
     var s = SymtabGet(c.Tab, n.ident)
     if s == nil:
       # no error if symbol cannot be bound, unless in ``bind`` context:
       if withinBind in flags: 
-        liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
+        localError(n.info, errUndeclaredIdentifier, n.ident.s)
     else:
       if withinBind in flags: result = symChoice(c, n, s)
       else: result = semGenericStmtSymbol(c, n, s)
   of nkDotExpr: 
     var s = QualifiedLookUp(c, n, {})
     if s != nil: result = semGenericStmtSymbol(c, n, s)
-  of nkSym..nkNilLit: 
+  of nkEmpty, nkSym..nkNilLit: 
     nil
   of nkBind: 
     result = semGenericStmt(c, n.sons[0], {withinBind})
@@ -138,7 +137,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
   of nkBlockStmt, nkBlockExpr, nkBlockType: 
     checkSonsLen(n, 2)
     openScope(c.tab)
-    if n.sons[0] != nil: addDecl(c, newSymS(skUnknown, n.sons[0], c))
+    if n.sons[0].kind != nkEmpty: addDecl(c, newSymS(skUnknown, n.sons[0], c))
     n.sons[1] = semGenericStmt(c, n.sons[1])
     closeScope(c.tab)
   of nkTryStmt: 
@@ -193,7 +192,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkTypeDef): IllFormedAst(a)
       checkSonsLen(a, 3)
-      if a.sons[1] != nil: 
+      if a.sons[1].kind != nkEmpty: 
         openScope(c.tab)
         a.sons[1] = semGenericStmt(c, a.sons[1])
         a.sons[2] = semGenericStmt(c, a.sons[2], {withinTypeDesc})
@@ -202,7 +201,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
         a.sons[2] = semGenericStmt(c, a.sons[2], {withinTypeDesc})
   of nkEnumTy: 
     checkMinSonsLen(n, 1)
-    if n.sons[0] != nil: 
+    if n.sons[0].kind != nkEmpty: 
       n.sons[0] = semGenericStmt(c, n.sons[0], {withinTypeDesc})
     for i in countup(1, sonsLen(n) - 1): 
       case n.sons[i].kind
@@ -214,7 +213,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     nil
   of nkFormalParams: 
     checkMinSonsLen(n, 1)
-    if n.sons[0] != nil: 
+    if n.sons[0].kind != nkEmpty: 
       n.sons[0] = semGenericStmt(c, n.sons[0], {withinTypeDesc})
     for i in countup(1, sonsLen(n) - 1): 
       a = n.sons[i]
@@ -231,8 +230,8 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     addDecl(c, newSymS(skUnknown, getIdentNode(n.sons[0]), c))
     openScope(c.tab)
     n.sons[genericParamsPos] = semGenericStmt(c, n.sons[genericParamsPos])
-    if n.sons[paramsPos] != nil: 
-      if n.sons[paramsPos].sons[0] != nil: 
+    if n.sons[paramsPos].kind != nkEmpty: 
+      if n.sons[paramsPos].sons[0].kind != nkEmpty: 
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos])
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos])

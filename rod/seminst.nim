@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -48,7 +48,9 @@ proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) =
     if not (q.typ.kind in {tyTypeDesc, tyGenericParam}): continue 
     var s = newSym(skType, q.name, getCurrOwner())
     var t = PType(IdTableGet(pt, q.typ))
-    if t == nil: liMessage(a.info, errCannotInstantiateX, s.name.s)
+    if t == nil: 
+      LocalError(a.info, errCannotInstantiateX, s.name.s)
+      break
     if (t.kind == tyGenericParam): 
       InternalError(a.info, "instantiateGenericParamList: " & q.name.s)
     s.typ = t
@@ -94,13 +96,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(result)
   openScope(c.tab)
-  if (n.sons[genericParamsPos] == nil): 
+  if (n.sons[genericParamsPos].kind == nkEmpty): 
     InternalError(n.info, "generateInstance")
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
   instantiateGenericParamList(c, n.sons[genericParamsPos], pt)
-  n.sons[genericParamsPos] = nil # semantic checking for the parameters:
-  if n.sons[paramsPos] != nil: 
+  n.sons[genericParamsPos] = ast.emptyNode
+  # semantic checking for the parameters:
+  if n.sons[paramsPos].kind != nkEmpty: 
     semParamList(c, n.sons[ParamsPos], nil, result)
     addParams(c, result.typ.n)
   else: 
@@ -112,7 +115,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     # add it here, so that recursive generic procs are possible:
     GenericCacheAdd(c, fn, result)
     addDecl(c, result)
-    if n.sons[codePos] != nil: 
+    if n.sons[codePos].kind != nkEmpty: 
       c.p = newProcCon(result)
       if result.kind in {skProc, skMethod, skConverter}: 
         addResult(c, result.typ.sons[0], n.info)
@@ -129,11 +132,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
 proc checkConstructedType(info: TLineInfo, t: PType) = 
   if (tfAcyclic in t.flags) and (skipTypes(t, abstractInst).kind != tyObject): 
-    liMessage(info, errInvalidPragmaX, "acyclic")
-  if computeSize(t) < 0: 
-    liMessage(info, errIllegalRecursionInTypeX, typeToString(t))
-  if (t.kind == tyVar) and (t.sons[0].kind == tyVar): 
-    liMessage(info, errVarVarTypeNotAllowed)
+    LocalError(info, errInvalidPragmaX, "acyclic")
+  elif computeSize(t) < 0: 
+    LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
+  elif (t.kind == tyVar) and (t.sons[0].kind == tyVar): 
+    LocalError(info, errVarVarTypeNotAllowed)
   
 type 
   TReplTypeVars{.final.} = object 
@@ -162,8 +165,7 @@ proc ReplaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
           result.sons[i] = ReplaceTypeVarsN(cl, n.sons[i])
   
 proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym = 
-  if s == nil: 
-    return nil
+  if s == nil: return nil
   result = PSym(idTableGet(cl.symMap, s))
   if result == nil: 
     result = copySym(s, false)
@@ -176,7 +178,7 @@ proc ReplaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 proc lookupTypeVar(cl: TReplTypeVars, t: PType): PType = 
   result = PType(idTableGet(cl.typeMap, t))
   if result == nil: 
-    liMessage(t.sym.info, errCannotInstantiateX, typeToString(t))
+    GlobalError(t.sym.info, errCannotInstantiateX, typeToString(t))
   elif result.kind == tyGenericParam: 
     InternalError(cl.info, "substitution with generic parameter")
   
@@ -210,7 +212,8 @@ proc ReplaceTypeVarsT(cl: var TReplTypeVars, t: PType): PType =
     idTablePut(gInstTypes, header, result)
     newbody = ReplaceTypeVarsT(cl, lastSon(body))
     newbody.n = ReplaceTypeVarsN(cl, lastSon(body).n)
-    addSon(result, newbody)   #writeln(output, ropeToStr(Typetoyaml(newbody)));
+    addSon(result, newbody)   
+    #writeln(output, ropeToStr(Typetoyaml(newbody)));
     checkConstructedType(cl.info, newbody)
   of tyGenericBody: 
     InternalError(cl.info, "ReplaceTypeVarsT: tyGenericBody")
@@ -222,7 +225,7 @@ proc ReplaceTypeVarsT(cl: var TReplTypeVars, t: PType): PType =
         result.sons[i] = ReplaceTypeVarsT(cl, result.sons[i])
       result.n = ReplaceTypeVarsN(cl, result.n)
       if result.Kind in GenericTypes: 
-        liMessage(cl.info, errCannotInstantiateX, TypeToString(t, preferName))
+        LocalError(cl.info, errCannotInstantiateX, TypeToString(t, preferName))
         #writeln(output, ropeToStr(Typetoyaml(result)))
         #checkConstructedType(cl.info, result)
   
