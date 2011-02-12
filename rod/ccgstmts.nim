@@ -56,22 +56,19 @@ proc genVarTuple(p: BProc, n: PNode) =
     genObjectInit(p, v.typ, v.loc, true)
 
 proc genVarStmt(p: BProc, n: PNode) = 
-  var 
-    v: PSym
-    a: PNode
   for i in countup(0, sonsLen(n) - 1): 
-    a = n.sons[i]
+    var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if a.kind == nkIdentDefs: 
       assert(a.sons[0].kind == nkSym)
-      v = a.sons[0].sym
+      var v = a.sons[0].sym
       if sfGlobal in v.flags: 
         assignGlobalVar(p, v)
       else: 
         assignLocalVar(p, v)
         initVariable(p, v)    # XXX: this is not required if a.sons[2] != nil,
                               # unless it is a GC'ed pointer
-      if a.sons[2] != nil: 
+      if a.sons[2].kind != nkEmpty: 
         genLineDir(p, a)
         expr(p, a.sons[2], v.loc)
       genObjectInit(p, v.typ, v.loc, true) # correct position
@@ -79,13 +76,11 @@ proc genVarStmt(p: BProc, n: PNode) =
       genVarTuple(p, a)
   
 proc genConstStmt(p: BProc, t: PNode) = 
-  var c: PSym
   for i in countup(0, sonsLen(t) - 1): 
     if t.sons[i].kind == nkCommentStmt: continue 
     if t.sons[i].kind != nkConstDef: InternalError(t.info, "genConstStmt")
-    c = t.sons[i].sons[0].sym # This can happen for forward consts:
-    if (c.ast != nil) and (c.typ.kind in ConstantDataTypes) and
-        not (lfNoDecl in c.loc.flags): 
+    var c = t.sons[i].sons[0].sym 
+    if c.typ.kind in ConstantDataTypes and not (lfNoDecl in c.loc.flags): 
       # generate the data:
       fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)
       if sfImportc in c.flags: 
@@ -134,7 +129,7 @@ proc genIfStmt(p: BProc, n: PNode) =
   
 proc popSafePoints(p: BProc, howMany: int) = 
   var L = p.nestedTryStmts.len
-  # danger of endless recursion! we workaround this here, by a temp stack
+  # danger of endless recursion! we workaround this here by a temp stack
   var stack: seq[PNode]
   newSeq(stack, howMany)
   for i in countup(1, howMany): 
@@ -154,7 +149,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
   p.beforeRetNeeded = true
   popSafePoints(p, min(1, p.nestedTryStmts.len))
   genLineDir(p, t)
-  if (t.sons[0] != nil): genStmts(p, t.sons[0])
+  if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
   appff(p.s[cpsStmts], "goto BeforeRet;$n", "br label %BeforeRet$n", [])
   
 proc genWhileStmt(p: BProc, t: PNode) = 
@@ -185,7 +180,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
 proc genBlock(p: BProc, t: PNode, d: var TLoc) = 
   inc(p.labels)
   var idx = len(p.blocks)
-  if t.sons[0] != nil: 
+  if t.sons[0].kind != nkEmpty: 
     # named block?
     assert(t.sons[0].kind == nkSym)
     var sym = t.sons[0].sym
@@ -202,7 +197,7 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
 
 proc genBreakStmt(p: BProc, t: PNode) = 
   var idx = len(p.blocks) - 1
-  if t.sons[0] != nil: 
+  if t.sons[0].kind != nkEmpty: 
     # named break?
     assert(t.sons[0].kind == nkSym)
     var sym = t.sons[0].sym
@@ -220,7 +215,7 @@ proc getRaiseFrmt(p: BProc): string =
     result = "#raiseException((#E_Base*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) = 
-  if t.sons[0] != nil: 
+  if t.sons[0].kind != nkEmpty: 
     var a: TLoc
     InitLocExpr(p, t.sons[0], a)
     var e = rdLoc(a)
@@ -668,8 +663,6 @@ proc genStmts(p: BProc, t: PNode) =
   var 
     a: TLoc
     prc: PSym
-  #assert(t <> nil);
-  if inCheckpoint(t.info): MessageOut(renderTree(t))
   case t.kind
   of nkEmpty: 
     nil
@@ -707,7 +700,7 @@ proc genStmts(p: BProc, t: PNode) =
     nil
   of nkPragma: genPragma(p, t)
   of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (t.sons[genericParamsPos] == nil): 
+    if (t.sons[genericParamsPos].kind == nkEmpty): 
       prc = t.sons[namePos].sym
       if (optDeadCodeElim notin gGlobalOptions and
           sfDeadCodeElim notin getModule(prc).flags) or
@@ -715,7 +708,7 @@ proc genStmts(p: BProc, t: PNode) =
           (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
           (prc.kind == skMethod): 
         # we have not only the header: 
-        if (t.sons[codePos] != nil) or (lfDynamicLib in prc.loc.flags): 
+        if (t.sons[codePos].kind != nkEmpty) or (lfDynamicLib in prc.loc.flags): 
           genProc(p.module, prc)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
   

@@ -1439,7 +1439,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mEcho: genEcho(p, e)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError:
-    liMessage(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)
+    localError(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope
@@ -1605,7 +1605,7 @@ proc expr(p: BProc, e: PNode, d: var TLoc) =
     var sym = e.sym
     case sym.Kind
     of skMethod:
-      if sym.ast.sons[codePos] == nil:
+      if sym.ast.sons[codePos].kind == nkEmpty:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(sym)
         genProcPrototype(p.module, sym)

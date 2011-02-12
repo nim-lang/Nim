@@ -343,7 +343,6 @@ const
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
     "CommentXIgnored", "XisPassedToProcVar", "User"]
 
-const 
   HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf", 
@@ -371,19 +370,20 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
+    
+  ERecoverableError* = object of EInvalidValue
 
 
-proc UnknownLineInfo*(): TLineInfo
-
-var 
+var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)}
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
 
-const # this format is understood by many text editors: it is the same that
-      # Borland and Freepascal use
+# this format is understood by many text editors: it is the same that
+# Borland and Freepascal use
+const
   PosErrorFormat* = "$1($2, $3) Error: $4"
   PosWarningFormat* = "$1($2, $3) Warning: $4"
   PosHintFormat* = "$1($2, $3) Hint: $4"
@@ -391,47 +391,22 @@ const # this format is understood by many text editors: it is the same that
   RawWarningFormat* = "Warning: $1"
   RawHintFormat* = "Hint: $1"
 
-proc MessageOut*(s: string)
-proc rawMessage*(msg: TMsgKind, arg: string)
-proc rawMessage*(msg: TMsgKind, args: openarray[string])
-proc liMessage*(info: TLineInfo, msg: TMsgKind, arg: string = "")
-proc InternalError*(info: TLineInfo, errMsg: string)
-proc InternalError*(errMsg: string)
-proc newLineInfo*(filename: string, line, col: int): TLineInfo
-proc ToFilename*(info: TLineInfo): string
-proc toColumn*(info: TLineInfo): int
-proc ToLinenumber*(info: TLineInfo): int
-proc MsgKindToString*(kind: TMsgKind): string
-  # checkpoints are used for debugging:
-proc checkpoint*(info: TLineInfo, filename: string, line: int): bool
-proc addCheckpoint*(info: TLineInfo)
-proc addCheckpoint*(filename: string, line: int)
-proc inCheckpoint*(current: TLineInfo): bool
-  # prints the line information if in checkpoint
-proc pushInfoContext*(info: TLineInfo)
-proc popInfoContext*()
-proc includeFilename*(f: string): int
-# implementation
-
-proc UnknownLineInfo(): TLineInfo = 
-  result.line = int16(- 1)
-  result.col = int16(- 1)
-  result.fileIndex = - 1
+proc UnknownLineInfo*(): TLineInfo = 
+  result.line = int16(-1)
+  result.col = int16(-1)
+  result.fileIndex = -1
 
 var 
   filenames: seq[string] = @ []
   msgContext: seq[TLineInfo] = @ []
 
-proc pushInfoContext(info: TLineInfo) = 
-  var length: int
-  length = len(msgContext)
-  setlen(msgContext, length + 1)
-  msgContext[length] = info
-
-proc popInfoContext() = 
+proc pushInfoContext*(info: TLineInfo) = 
+  msgContext.add(info)
+  
+proc popInfoContext*() = 
   setlen(msgContext, len(msgContext) - 1)
 
-proc includeFilename(f: string): int = 
+proc includeFilename*(f: string): int = 
   for i in countdown(high(filenames), low(filenames)): 
     if filenames[i] == f: 
       return i
@@ -439,53 +414,51 @@ proc includeFilename(f: string): int =
   setlen(filenames, result + 1)
   filenames[result] = f
 
-proc checkpoint(info: TLineInfo, filename: string, line: int): bool = 
+proc newLineInfo*(filename: string, line, col: int): TLineInfo = 
+  result.fileIndex = includeFilename(filename)
+  result.line = int16(line)
+  result.col = int16(col)
+
+proc ToFilename*(info: TLineInfo): string = 
+  if info.fileIndex == - 1: result = "???"
+  else: result = filenames[info.fileIndex]
+  
+proc ToLinenumber*(info: TLineInfo): int = 
+  result = info.line
+
+proc toColumn*(info: TLineInfo): int = 
+  result = info.col
+
+proc checkpoint*(info: TLineInfo, filename: string, line: int): bool = 
   result = (int(info.line) == line) and
       (ChangeFileExt(extractFilename(filenames[info.fileIndex]), "") ==
       filename)
 
 var checkPoints: seq[TLineInfo] = @[]
 
-proc addCheckpoint(info: TLineInfo) = 
-  var length: int
-  length = len(checkPoints)
-  setlen(checkPoints, length + 1)
-  checkPoints[length] = info
+proc addCheckpoint*(info: TLineInfo) = 
+  checkPoints.add(info)
 
-proc addCheckpoint(filename: string, line: int) = 
+proc addCheckpoint*(filename: string, line: int) = 
   addCheckpoint(newLineInfo(filename, line, - 1))
 
-proc newLineInfo(filename: string, line, col: int): TLineInfo = 
-  result.fileIndex = includeFilename(filename)
-  result.line = int16(line)
-  result.col = int16(col)
-
-proc ToFilename(info: TLineInfo): string = 
-  if info.fileIndex == - 1: result = "???"
-  else: result = filenames[info.fileIndex]
-  
-proc ToLinenumber(info: TLineInfo): int = 
-  result = info.line
-
-proc toColumn(info: TLineInfo): int = 
-  result = info.col
-
-proc MessageOut(s: string) = 
+proc MessageOut*(s: string) = 
   # change only this proc to put it elsewhere
   Writeln(stdout, s)
  
 proc coordToStr(coord: int): string = 
-  if coord == - 1: result = "???"
-  else: result = $(coord)
+  if coord == -1: result = "???"
+  else: result = $coord
   
-proc MsgKindToString(kind: TMsgKind): string = 
+proc MsgKindToString*(kind: TMsgKind): string = 
   # later versions may provide translated error messages
   result = msgKindToStr[kind]
 
 proc getMessageStr(msg: TMsgKind, arg: string): string = 
   result = `%`(msgKindToString(msg), [arg])
 
-proc inCheckpoint(current: TLineInfo): bool = 
+proc inCheckpoint*(current: TLineInfo): bool = 
+  ## prints the line information if in checkpoint
   result = false
   if not (optCheckpoints in gOptions): 
     return                    # ignore all checkpoints
@@ -496,7 +469,10 @@ proc inCheckpoint(current: TLineInfo): bool =
           coordToStr(current.line), coordToStr(current.col)]))
       return true
 
-proc handleError(msg: TMsgKind) = 
+type
+  TErrorHandling = enum doNothing, doAbort, doRaise
+
+proc handleError(msg: TMsgKind, eh: TErrorHandling) = 
   if msg == errInternal: 
     assert(false)             # we want a stack trace here
   if (msg >= fatalMin) and (msg <= fatalMax): 
@@ -504,9 +480,12 @@ proc handleError(msg: TMsgKind) =
     quit(1)
   if (msg >= errMin) and (msg <= errMax): 
     inc(gErrorCounter)
-    if gErrorCounter >= gErrorMax: 
+    options.gExitcode = 1'i8
+    if gErrorCounter >= gErrorMax or eh == doAbort: 
       if gVerbosity >= 3: assert(false)
       quit(1)                 # one error stops the compiler
+    elif eh == doRaise:
+      raise newException(ERecoverableError, "")
   
 proc sameLineInfo(a, b: TLineInfo): bool = 
   result = (a.line == b.line) and (a.fileIndex == b.fileIndex)
@@ -523,7 +502,7 @@ proc writeContext(lastinfo: TLineInfo) =
                                       getMessageStr(errInstantiationFrom, "")]))
     info = msgContext[i]
 
-proc rawMessage(msg: TMsgKind, args: openarray[string]) = 
+proc rawMessage*(msg: TMsgKind, args: openarray[string]) = 
   var frmt: string
   case msg
   of errMin..errMax: 
@@ -542,12 +521,13 @@ proc rawMessage(msg: TMsgKind, args: openarray[string]) =
   else: 
     assert(false)             # cannot happen
   MessageOut(`%`(frmt, `%`(msgKindToString(msg), args)))
-  handleError(msg)
+  handleError(msg, doAbort)
 
-proc rawMessage(msg: TMsgKind, arg: string) = 
+proc rawMessage*(msg: TMsgKind, arg: string) = 
   rawMessage(msg, [arg])
 
-proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string = "") = 
+proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
+               eh: TErrorHandling) = 
   var frmt: string
   case msg
   of errMin..errMax: 
@@ -567,12 +547,29 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string = "") =
     assert(false)             # cannot happen
   MessageOut(`%`(frmt, [toFilename(info), coordToStr(info.line), 
                         coordToStr(info.col), getMessageStr(msg, arg)]))
-  handleError(msg)
+  handleError(msg, doAbort)
+  
+proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
+  liMessage(info, msg, arg, doAbort)
 
-proc InternalError(info: TLineInfo, errMsg: string) = 
+proc GlobalError*(info: TLineInfo, msg: TMsgKind, arg = "") = 
+  liMessage(info, msg, arg, doRaise)
+
+proc LocalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  liMessage(info, msg, arg, doNothing)
+
+proc Message*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  liMessage(info, msg, arg, doNothing)
+
+proc GenericMessage*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  ## does the right thing for old code that is written with "abort on first
+  ## error" in mind.
+  liMessage(info, msg, arg, doAbort)
+
+proc InternalError*(info: TLineInfo, errMsg: string) = 
   writeContext(info)
-  liMessage(info, errInternal, errMsg)
+  liMessage(info, errInternal, errMsg, doAbort)
 
-proc InternalError(errMsg: string) = 
+proc InternalError*(errMsg: string) = 
   writeContext(UnknownLineInfo())
   rawMessage(errInternal, errMsg)

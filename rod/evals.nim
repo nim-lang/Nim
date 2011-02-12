@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -84,7 +84,7 @@ proc stackTraceAux(x: PStackFrame) =
 proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg: string = "") = 
   messageOut("stack trace: (most recent call last)")
   stackTraceAux(c.tos)
-  liMessage(n.info, msg, arg)
+  Fatal(n.info, msg, arg)
 
 proc isSpecial(n: PNode): bool = 
   result = (n.kind == nkExceptBranch) 
@@ -414,7 +414,7 @@ proc evalEcho(c: PEvalContext, n: PNode): PNode =
 proc evalExit(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[1], {})
   if isSpecial(result): return 
-  liMessage(n.info, hintQuitCalled)
+  Message(n.info, hintQuitCalled)
   quit(int(getOrdValue(result)))
 
 proc evalOr(c: PEvalContext, n: PNode): PNode = 
@@ -915,12 +915,12 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
   of mNHint: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
-    liMessage(n.info, hintUser, getStrValue(result))
+    Message(n.info, hintUser, getStrValue(result))
     result = emptyNode
   of mNWarning: 
     result = evalAux(c, n.sons[1], {})
     if isSpecial(result): return 
-    liMessage(n.info, warnUser, getStrValue(result))
+    Message(n.info, warnUser, getStrValue(result))
     result = emptyNode
   of mNError: 
     result = evalAux(c, n.sons[1], {})

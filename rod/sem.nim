@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,7 +25,7 @@ proc considerAcc(n: PNode): PIdent =
   of nkIdent: result = x.ident
   of nkSym: result = x.sym.name
   else: 
-    liMessage(n.info, errIdentifierExpected, renderTree(n))
+    GlobalError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
 
 proc isTopLevel(c: PContext): bool = 
@@ -37,7 +37,7 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
 
 proc markUsed(n: PNode, s: PSym) = 
   incl(s.flags, sfUsed)
-  if sfDeprecated in s.flags: liMessage(n.info, warnDeprecated, s.name.s)
+  if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
   
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSym
   # identifier with visability
@@ -65,22 +65,22 @@ proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc semConstExpr(c: PContext, n: PNode): PNode = 
   result = semExprWithType(c, n)
   if result == nil: 
-    liMessage(n.info, errConstExprExpected)
+    GlobalError(n.info, errConstExprExpected)
     return 
   result = getConstExpr(c.module, result)
-  if result == nil: liMessage(n.info, errConstExprExpected)
+  if result == nil: GlobalError(n.info, errConstExprExpected)
   
 proc semAndEvalConstExpr(c: PContext, n: PNode): PNode = 
   var e = semExprWithType(c, n)
   if e == nil: 
-    liMessage(n.info, errConstExprExpected)
+    GlobalError(n.info, errConstExprExpected)
     return nil
   result = getConstExpr(c.module, e)
   if result == nil: 
     #writeln(output, renderTree(n));
     result = evalConstExpr(c.module, e)
     if (result == nil) or (result.kind == nkEmpty): 
-      liMessage(n.info, errConstExprExpected)
+      GlobalError(n.info, errConstExprExpected)
   
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode = 
   result = n
@@ -91,7 +91,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym): PNode =
     result = semExpr(c, result) # semExprWithType(c, result)
   of tyStmt: result = semStmt(c, result)
   of tyTypeDesc: result.typ = semTypeNode(c, result, nil)
-  else: liMessage(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+  else: GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   
 include "semtempl.nim"
 
@@ -99,7 +99,7 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
                   semCheck: bool = true): PNode = 
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100: 
-    liMessage(n.info, errTemplateInstantiationTooNested)
+    GlobalError(n.info, errTemplateInstantiationTooNested)
   markUsed(n, sym)
   var p = newEvalContext(c.module, "", false)
   var s = newStackFrame()
@@ -111,23 +111,23 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
   discard eval(p, sym.ast.sons[codePos])
   result = s.params[0]
   popStackFrame(p)
-  if cyclicTree(result): liMessage(n.info, errCyclicTree)
+  if cyclicTree(result): GlobalError(n.info, errCyclicTree)
   if semCheck: result = semAfterMacroCall(c, result, sym)
   dec(evalTemplateCounter)
 
-include "seminst.nim", "sigmatch.nim"
+include seminst, sigmatch
 
 proc CheckBool(t: PNode) = 
   if (t.Typ == nil) or
       (skipTypes(t.Typ, {tyGenericInst, tyVar, tyOrdinal}).kind != tyBool): 
-    liMessage(t.Info, errExprMustBeBool)
+    LocalError(t.Info, errExprMustBeBool)
   
 proc typeMismatch(n: PNode, formal, actual: PType) = 
-  liMessage(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
+  GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
       typeToString(actual) & ") " &
       `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
-include "semtypes.nim", "semexprs.nim", "semgnrc.nim", "semstmts.nim"
+include semtypes, semexprs, semgnrc, semstmts
 
 proc addCodeForGenerics(c: PContext, n: PNode) = 
   for i in countup(c.lastGenericIdx, sonsLen(c.generics) - 1): 
@@ -166,19 +166,28 @@ proc myOpenCached(module: PSym, filename: string, rd: PRodReader): PPassContext 
   c.fromCache = true
   result = c
 
-proc myProcess(context: PPassContext, n: PNode): PNode = 
-  result = nil
-  var c = PContext(context)
-  result = semStmt(c, n)      
+proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode = 
+  result = semStmt(c, n)
   # BUGFIX: process newly generated generics here, not at the end!
   if sonsLen(c.generics) > 0: 
     var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
     if sonsLen(a) > 0: 
       # a generic has been added to `a`:
-      addSonIfNotNil(a, result)
+      if result.kind != nkEmpty: addSon(a, result)
       result = a
 
+proc myProcess(context: PPassContext, n: PNode): PNode = 
+  var c = PContext(context)    
+  # no need for an expensive 'try' if we stop after the first error anyway:
+  if msgs.gErrorMax <= 1:
+    result = SemStmtAndGenerateGenerics(c, n)
+  else:
+    try:
+      result = SemStmtAndGenerateGenerics(c, n)
+    except ERecoverableError:
+      result = ast.emptyNode
+  
 proc myClose(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)
   closeScope(c.tab)           # close module's scope

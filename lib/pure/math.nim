@@ -185,11 +185,12 @@ when not defined(ECMAScript):
   proc random(max: int): int = return int(rand()) mod max
 
   proc trunc*(x: float): float {.importc: "trunc", nodecl.}
+  proc floor*(x: float): float {.importc: "floor", nodecl.}
 
 else:  
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
-  proc mathfloor(x: float): float {.importc: "Math.floor", nodecl.}
-  proc random*(max: int): int = return mathfloor(mathrandom() * max)
+  proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
+  proc random*(max: int): int = return floor(mathrandom() * max)
   proc randomize*() = nil
   
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
@@ -208,7 +209,7 @@ else:
     elif x < 0.0:
       result = -frexp(-x, exponent)
     else:
-      var ex = mathfloor(log2(x))
+      var ex = floor(log2(x))
       exponent = round(ex)
       result = x / pow(2.0, ex)
 
@@ -226,7 +227,6 @@ else:
   proc tanh*(x: float): float =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
-
 
 type
   TRunningStat* = object  ## an accumulator for statistical data

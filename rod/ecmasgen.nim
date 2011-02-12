@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -547,7 +547,7 @@ proc genRaiseStmt(p: var TProc, n: PNode, r: var TCompRes) =
     a: TCompRes
     typ: PType
   genLineDir(p, n, r)
-  if n.sons[0] != nil: 
+  if n.sons[0].kind != nkEmpty: 
     gen(p, n.sons[0], a)
     if a.com != nil: appf(r.com, "$1;$n", [a.com])
     typ = skipTypes(n.sons[0].typ, abstractPtrs)
@@ -610,7 +610,7 @@ proc genBlock(p: var TProc, n: PNode, r: var TCompRes) =
     sym: PSym
   inc(p.unique)
   idx = len(p.blocks)
-  if n.sons[0] != nil: 
+  if n.sons[0].kind != nkEmpty: 
     # named block?
     if (n.sons[0].kind != nkSym): InternalError(n.info, "genBlock")
     sym = n.sons[0].sym
@@ -633,7 +633,7 @@ proc genBreakStmt(p: var TProc, n: PNode, r: var TCompRes) =
     sym: PSym
   genLineDir(p, n, r)
   idx = len(p.blocks) - 1
-  if n.sons[0] != nil: 
+  if n.sons[0].kind != nkEmpty: 
     # named break?
     assert(n.sons[0].kind == nkSym)
     sym = n.sons[0].sym
@@ -991,7 +991,7 @@ proc genVarInit(p: var TProc, v: PSym, n: PNode, r: var TCompRes) =
   var 
     a: TCompRes
     s: PRope
-  if n == nil: 
+  if n.kind == nkEmpty: 
     appf(r.com, "var $1 = $2;$n", 
          [mangleName(v), createVar(p, v.typ, isIndirect(v))])
   else: 
@@ -1135,7 +1135,7 @@ proc genMagic(p: var TProc, n: PNode, r: var TCompRes) =
   of mExcl: binaryStmt(p, n, r, "", "delete $1[$2]")
   of mInSet: binaryExpr(p, n, r, "", "($1[$2] != undefined)")
   of mNLen..mNError: 
-    liMessage(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
+    localError(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
   of mNewSeq: binaryStmt(p, n, r, "", "$1 = new Array($2)")
   of mEcho: genEcho(p, n, r)
   else: 
@@ -1231,7 +1231,7 @@ proc genReturnStmt(p: var TProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   if p.procDef == nil: InternalError(n.info, "genReturnStmt")
   p.BeforeRetNeeded = true
-  if (n.sons[0] != nil): 
+  if (n.sons[0].kind != nkEmpty): 
     genStmt(p, n.sons[0], a)
     if a.com != nil: appf(r.com, "$1;$n", mergeStmt(a))
   else: 
@@ -1297,7 +1297,7 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
   r.com = nil
   r.res = nil
   case n.kind
-  of nkNilLit: nil
+  of nkNilLit, nkEmpty: nil
   of nkStmtList: 
     for i in countup(0, sonsLen(n) - 1): 
       genStmt(p, n.sons[i], a)
@@ -1324,9 +1324,9 @@ proc genStmt(p: var TProc, n: PNode, r: var TCompRes) =
      nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: 
     nil
   of nkProcDef, nkMethodDef, nkConverterDef: 
-    if (n.sons[genericParamsPos] == nil): 
+    if (n.sons[genericParamsPos].kind == nkEmpty): 
       var prc = n.sons[namePos].sym
-      if (n.sons[codePos] != nil) and not (lfNoDecl in prc.loc.flags): 
+      if (n.sons[codePos].kind != nkEmpty) and not (lfNoDecl in prc.loc.flags): 
         genProc(p, n, r)
       else: 
         discard mangleName(prc)
@@ -1391,6 +1391,7 @@ proc gen(p: var TProc, n: PNode, r: var TCompRes) =
   of nkCStringToString: convCStrToStr(p, n, r)
   of nkPassAsOpenArray: gen(p, n.sons[0], r)
   of nkStmtListExpr: genStmtListExpr(p, n, r)
+  of nkEmpty: nil
   else: InternalError(n.info, "gen: unknown node type: " & $n.kind)
   
 var globals: PGlobals
@@ -1416,6 +1417,7 @@ proc genModule(p: var TProc, n: PNode, r: var TCompRes) =
         makeCString(toFilename(p.module.module.info)), r.com])
 
 proc myProcess(b: PPassContext, n: PNode): PNode = 
+  if passes.skipCodegen(n): return n
   var 
     p: TProc
     r: TCompRes
@@ -1428,6 +1430,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   app(p.globals.code, mergeStmt(r))
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
+  if passes.skipCodegen(n): return n
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags: 

@@ -22,7 +22,7 @@ proc test(a, b: TThing) {.inline.} =
 var
   a: TThing
   b, c: TUnit
-collide(b, c) # ambiguous unit, thing or thing, unit? -> prefer unit, thing!
+collide(b, c) # ambiguous (unit, thing) or (thing, unit)? -> prefer unit, thing!
 test(b, c)
 collide(a, b)
 #OUT collide: unit, thing collide: unit, thing collide: thing, unit

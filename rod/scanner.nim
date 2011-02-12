@@ -223,11 +223,11 @@ proc getLineInfo(L: TLexer): TLineInfo =
   result = newLineInfo(L.filename, L.linenumber, getColNumber(L, L.bufpos))
 
 proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") = 
-  msgs.liMessage(getLineInfo(L), msg, arg)
+  msgs.Message(getLineInfo(L), msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") = 
   var info = newLineInfo(L.filename, L.linenumber, pos - L.lineStart)
-  msgs.liMessage(info, msg, arg)
+  msgs.Message(info, msg, arg)
 
 proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: TCharSet) = 
   var pos = L.bufpos              # use registers for pos, buf

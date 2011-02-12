@@ -117,7 +117,7 @@ proc indAndComment(p: var TParser, n: PNode) =
     var info = parLineInfo(p)
     getTok(p)
     if p.tok.tokType == tkComment: skipComment(p, n)
-    else: liMessage(info, errInvalidIndentation)
+    else: LocalError(info, errInvalidIndentation)
   else: 
     skipComment(p, n)
   

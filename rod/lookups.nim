@@ -35,24 +35,24 @@ proc CloseScope*(tab: var TSymTab) =
   s = InitTabIter(it, tab.stack[tab.tos - 1])
   while s != nil: 
     if sfForward in s.flags: 
-      liMessage(s.info, errImplOfXexpected, getSymRepr(s))
+      LocalError(s.info, errImplOfXexpected, getSymRepr(s))
     elif ({sfUsed, sfInInterface} * s.flags == {}) and
         (optHints in s.options): # BUGFIX: check options in s!
       if not (s.kind in {skForVar, skParam, skMethod, skUnknown}): 
-        liMessage(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
+        Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = NextIter(it, tab.stack[tab.tos - 1])
   astalgo.rawCloseScope(tab)
 
 proc AddSym*(t: var TStrTable, n: PSym) = 
-  if StrTableIncl(t, n): liMessage(n.info, errAttemptToRedefine, n.name.s)
+  if StrTableIncl(t, n): LocalError(n.info, errAttemptToRedefine, n.name.s)
   
 proc addDecl*(c: PContext, sym: PSym) = 
   if SymTabAddUnique(c.tab, sym) == Failure: 
-    liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
+    LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
   
 proc addDeclAt*(c: PContext, sym: PSym, at: Natural) = 
   if SymTabAddUniqueAt(c.tab, sym, at) == Failure: 
-    liMessage(sym.info, errAttemptToRedefine, sym.Name.s)
+    LocalError(sym.info, errAttemptToRedefine, sym.Name.s)
 
 proc AddInterfaceDeclAux(c: PContext, sym: PSym) = 
   if (sfInInterface in sym.flags): 
@@ -66,12 +66,13 @@ proc addInterfaceDeclAt*(c: PContext, sym: PSym, at: Natural) =
   AddInterfaceDeclAux(c, sym)
   
 proc addOverloadableSymAt*(c: PContext, fn: PSym, at: Natural) = 
-  if not (fn.kind in OverloadableSyms): 
+  if fn.kind notin OverloadableSyms: 
     InternalError(fn.info, "addOverloadableSymAt")
   var check = StrTableGet(c.tab.stack[at], fn.name)
-  if (check != nil) and not (check.Kind in OverloadableSyms): 
-    liMessage(fn.info, errAttemptToRedefine, fn.Name.s)
-  SymTabAddAt(c.tab, fn, at)
+  if check != nil and check.Kind notin OverloadableSyms: 
+    LocalError(fn.info, errAttemptToRedefine, fn.Name.s)
+  else:
+    SymTabAddAt(c.tab, fn, at)
   
 proc addInterfaceDecl*(c: PContext, sym: PSym) = 
   # it adds the symbol to the interface if appropriate
@@ -89,17 +90,13 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   of nkAccQuoted: 
     result = lookup(c, n.sons[0])
   of nkSym: 
-    #
-    #      result := SymtabGet(c.Tab, n.sym.name);
-    #      if result = nil then
-    #        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s); 
     result = n.sym
   of nkIdent: 
     result = SymtabGet(c.Tab, n.ident)
-    if result == nil: liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
+    if result == nil: GlobalError(n.info, errUndeclaredIdentifier, n.ident.s)
   else: InternalError(n.info, "lookUp")
   if IntSetContains(c.AmbiguousSymbols, result.id): 
-    liMessage(n.info, errUseQualifier, result.name.s)
+    LocalError(n.info, errUseQualifier, result.name.s)
   if result.kind == skStub: loadStub(result)
   
 type 
@@ -111,20 +108,15 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   of nkIdent: 
     result = SymtabGet(c.Tab, n.ident)
     if result == nil and checkUndeclared in flags: 
-      liMessage(n.info, errUndeclaredIdentifier, n.ident.s)
-    elif checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
-                                                    result.id): 
-      liMessage(n.info, errUseQualifier, n.ident.s)
+      GlobalError(n.info, errUndeclaredIdentifier, n.ident.s)
+    elif checkAmbiguity in flags and result != nil and 
+        IntSetContains(c.AmbiguousSymbols, result.id): 
+      LocalError(n.info, errUseQualifier, n.ident.s)
   of nkSym: 
-    #
-    #      result = SymtabGet(c.Tab, n.sym.name)
-    #      if result == nil:
-    #        liMessage(n.info, errUndeclaredIdentifier, n.sym.name.s)
-    #      else 
     result = n.sym
     if checkAmbiguity in flags and IntSetContains(c.AmbiguousSymbols, 
                                                   result.id): 
-      liMessage(n.info, errUseQualifier, n.sym.name.s)
+      LocalError(n.info, errUseQualifier, n.sym.name.s)
   of nkDotExpr: 
     result = nil
     var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})
@@ -141,9 +133,10 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
         else: 
           result = StrTableGet(m.tab, ident)
         if result == nil and checkUndeclared in flags: 
-          liMessage(n.sons[1].info, errUndeclaredIdentifier, ident.s)
+          GlobalError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
       elif checkUndeclared in flags: 
-        liMessage(n.sons[1].info, errIdentifierExpected, renderTree(n.sons[1]))
+        GlobalError(n.sons[1].info, errIdentifierExpected, 
+                    renderTree(n.sons[1]))
   of nkAccQuoted: 
     result = QualifiedLookup(c, n.sons[0], flags)
   else: 
@@ -151,7 +144,6 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   if (result != nil) and (result.kind == skStub): loadStub(result)
   
 proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
-  var ident: PIdent
   result = nil
   case n.kind
   of nkIdent: 
@@ -163,18 +155,12 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident)
   of nkSym: 
     result = n.sym
-    o.mode = oimDone 
-    #      o.stackPtr = c.tab.tos
-    #      o.mode = oimNoQualifier
-    #      while result == nil:
-    #        dec(o.stackPtr)
-    #        if o.stackPtr < 0: break
-    #        result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.sym.name)
+    o.mode = oimDone
   of nkDotExpr: 
     o.mode = oimOtherModule
     o.m = qualifiedLookUp(c, n.sons[0])
     if (o.m != nil) and (o.m.kind == skModule): 
-      ident = nil
+      var ident: PIdent = nil
       if (n.sons[1].kind == nkIdent): 
         ident = n.sons[1].ident
       elif (n.sons[1].kind == nkAccQuoted) and
@@ -188,7 +174,8 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         else: 
           result = InitIdentIter(o.it, o.m.tab, ident)
       else: 
-        liMessage(n.sons[1].info, errIdentifierExpected, renderTree(n.sons[1]))
+        GlobalError(n.sons[1].info, errIdentifierExpected, 
+                    renderTree(n.sons[1]))
   of nkAccQuoted: 
     result = InitOverloadIter(o, c, n.sons[0])
   of nkSymChoice: 

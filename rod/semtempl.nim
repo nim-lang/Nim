@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,8 +9,6 @@
 
 proc isExpr(n: PNode): bool = 
   # returns true if ``n`` looks like an expression
-  if n == nil: 
-    return false
   case n.kind
   of nkIdent..nkNilLit: 
     result = true
@@ -23,8 +21,6 @@ proc isExpr(n: PNode): bool =
   
 proc isTypeDesc(n: PNode): bool = 
   # returns true if ``n`` looks like a type desc
-  if n == nil: 
-    return false
   case n.kind
   of nkIdent, nkSym, nkType: 
     result = true
@@ -38,12 +34,9 @@ proc isTypeDesc(n: PNode): bool =
   else: result = false
   
 proc evalTemplateAux(c: PContext, templ, actual: PNode, sym: PSym): PNode = 
-  var p: PSym
-  if templ == nil: 
-    return nil
   case templ.kind
   of nkSym: 
-    p = templ.sym
+    var p = templ.sym
     if (p.kind == skParam) and (p.owner.id == sym.id): 
       result = copyTree(actual.sons[p.position])
     else: 
@@ -63,32 +56,38 @@ proc evalTemplateArgs(c: PContext, n: PNode, s: PSym): PNode =
   var 
     f, a: int
     arg: PNode
-  f = sonsLen(s.typ) # if the template has zero arguments, it can be called without ``()``
-                     # `n` is then a nkSym or something similar
+  f = sonsLen(s.typ) 
+  # if the template has zero arguments, it can be called without ``()``
+  # `n` is then a nkSym or something similar
   case n.kind
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: 
     a = sonsLen(n)
   else: a = 0
-  if a > f: liMessage(n.info, errWrongNumberOfArguments)
+  if a > f: LocalError(n.info, errWrongNumberOfArguments)
   result = copyNode(n)
   for i in countup(1, f - 1): 
     if i < a: arg = n.sons[i]
     else: arg = copyTree(s.typ.n.sons[i].sym.ast)
-    if arg == nil: liMessage(n.info, errWrongNumberOfArguments)
-    if not (s.typ.sons[i].kind in {tyTypeDesc, tyStmt, tyExpr}): 
+    if arg == nil or arg.kind == nkEmpty: 
+      LocalError(n.info, errWrongNumberOfArguments)
+    elif not (s.typ.sons[i].kind in {tyTypeDesc, tyStmt, tyExpr}): 
       # concrete type means semantic checking for argument:
+      # XXX This is horrible! Better make semantic checking use some kind
+      # of fixpoint iteration ...
       arg = fitNode(c, s.typ.sons[i], semExprWithType(c, arg))
     addSon(result, arg)
 
 proc evalTemplate(c: PContext, n: PNode, sym: PSym): PNode = 
   var args: PNode
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100: 
-    liMessage(n.info, errTemplateInstantiationTooNested) 
-  # replace each param by the corresponding node:
-  args = evalTemplateArgs(c, n, sym)
-  result = evalTemplateAux(c, sym.ast.sons[codePos], args, sym)
-  dec(evalTemplateCounter)
+  if evalTemplateCounter <= 100: 
+    # replace each param by the corresponding node:
+    args = evalTemplateArgs(c, n, sym)
+    result = evalTemplateAux(c, sym.ast.sons[codePos], args, sym)
+    dec(evalTemplateCounter)
+  else:
+    GlobalError(n.info, errTemplateInstantiationTooNested)
+    result = n
 
 proc symChoice(c: PContext, n: PNode, s: PSym): PNode = 
   var 
@@ -116,8 +115,6 @@ proc symChoice(c: PContext, n: PNode, s: PSym): PNode =
 proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool, 
                            toBind: var TIntSet): PNode = 
   var s: PSym
-  if n == nil: 
-    return nil
   case n.kind
   of nkIdent: 
     if not withinBind and not IntSetContains(toBind, n.ident.id): 
@@ -130,7 +127,7 @@ proc resolveTemplateParams(c: PContext, n: PNode, withinBind: bool,
     else: 
       IntSetIncl(toBind, n.ident.id)
       result = symChoice(c, n, lookup(c, n))
-  of nkSym..nkNilLit:         # atom
+  of nkEmpty, nkSym..nkNilLit:         # atom
     result = n
   of nkBind: 
     result = resolveTemplateParams(c, n.sons[0], true, toBind)
@@ -155,7 +152,8 @@ proc transformToExpr(n: PNode): PNode =
     if realStmt >= 0: result = transformToExpr(n.sons[realStmt])
     else: n.kind = nkStmtListExpr
   of nkBlockStmt: 
-    n.kind = nkBlockExpr      #nkIfStmt: n.kind := nkIfExpr; // this is not correct!
+    n.kind = nkBlockExpr      
+    #nkIfStmt: n.kind := nkIfExpr; // this is not correct!
   else: 
     nil
 
@@ -173,11 +171,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   pushOwner(s)
   openScope(c.tab)
   n.sons[namePos] = newSymNode(s) # check that no pragmas exist:
-  if n.sons[pragmasPos] != nil: 
-    liMessage(n.info, errNoPragmasAllowedForX, "template") # check that no generic parameters exist:
-  if n.sons[genericParamsPos] != nil: 
-    liMessage(n.info, errNoGenericParamsAllowedForX, "template")
-  if (n.sons[paramsPos] == nil): 
+  if n.sons[pragmasPos].kind != nkEmpty: 
+    LocalError(n.info, errNoPragmasAllowedForX, "template") 
+  # check that no generic parameters exist:
+  if n.sons[genericParamsPos].kind != nkEmpty: 
+    LocalError(n.info, errNoGenericParamsAllowedForX, "template")
+  if n.sons[paramsPos].kind == nkEmpty: 
     # use ``stmt`` as implicit result type
     s.typ = newTypeS(tyProc, c)
     s.typ.n = newNodeI(nkFormalParams, n.info)
@@ -185,7 +184,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
   else: 
     semParamList(c, n.sons[ParamsPos], nil, s)
-    if n.sons[paramsPos].sons[0] == nil: 
+    if n.sons[paramsPos].sons[0].kind == nkEmpty: 
       # use ``stmt`` as implicit result type
       s.typ.sons[0] = newTypeS(tyStmt, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
@@ -193,12 +192,13 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   IntSetInit(toBind)
   n.sons[codePos] = resolveTemplateParams(c, n.sons[codePos], false, toBind)
   if not (s.typ.sons[0].kind in {tyStmt, tyTypeDesc}): 
-    n.sons[codePos] = transformToExpr(n.sons[codePos]) # only parameters are resolved, no type checking is performed
+    n.sons[codePos] = transformToExpr(n.sons[codePos]) 
+    # only parameters are resolved, no type checking is performed
   closeScope(c.tab)
   popOwner()
   s.ast = n
   result = n
-  if n.sons[codePos] == nil: 
-    liMessage(n.info, errImplOfXexpected, s.name.s) # add identifier of template as a last step to not allow
-                                                    # recursive templates
+  if n.sons[codePos].kind == nkEmpty: 
+    LocalError(n.info, errImplOfXexpected, s.name.s)
+  # add identifier of template as a last step to not allow recursive templates:
   addInterfaceDecl(c, s)

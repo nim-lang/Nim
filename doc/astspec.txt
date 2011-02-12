@@ -43,10 +43,8 @@ To specify the AST for the different Nimrod constructs, the notation
 ``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
 ``nodekind(field=value)`` is used.
 
-Some child may be missing. Then it is ``nil``. A nil child is equivalent to 
-a node of kind ``nnkEmpty``. This is more or less a (useful) artifact from 
-the implementation. (In the compiler's implementation ``nil`` is of course 
-not the same as ``nnkEmpty``!)
+Some child may be missing. A missing child is a node of kind ``nnkEmpty``; 
+a child can never be nil.
 
 
 Leaf nodes/Atoms
@@ -364,7 +362,7 @@ When statement
 --------------
 
 Like the ``if`` statement, but the root has the kind ``nnkWhenStmt``.
-  
+
 
 Assignment
 ----------

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -50,7 +50,7 @@ proc SearchForProc(c: PContext, fn: PSym, tos: int): PSym =
         of paramsEqual: 
           return 
         of paramsIncompatible: 
-          liMessage(fn.info, errNotOverloadable, fn.name.s)
+          LocalError(fn.info, errNotOverloadable, fn.name.s)
           return 
         of paramsNotEqual: 
           nil

@@ -119,7 +119,7 @@ proc getOrdValue(n: PNode): biggestInt =
   of nkCharLit..nkInt64Lit: result = n.intVal
   of nkNilLit: result = 0
   else: 
-    liMessage(n.info, errOrdinalTypeExpected)
+    LocalError(n.info, errOrdinalTypeExpected)
     result = 0
 
 proc isCompatibleToCString(a: PType): bool = 

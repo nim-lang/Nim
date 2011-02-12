@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -94,7 +94,7 @@ proc parseLine(p: var TTmplParser) =
         dec(p.indent, 2)
       else: 
         p.info.col = int16(j)
-        liMessage(p.info, errXNotAllowedHere, "end")
+        LocalError(p.info, errXNotAllowedHere, "end")
       LLStreamWrite(p.outp, repeatChar(p.indent))
       LLStreamWrite(p.outp, "#end")
     of wIf, wWhen, wTry, wWhile, wFor, wBlock, wCase, wProc, wIterator, 
@@ -163,7 +163,8 @@ proc parseLine(p: var TTmplParser) =
             while true: 
               case p.x[j]
               of '\0': 
-                liMessage(p.info, errXExpected, "}")
+                LocalError(p.info, errXExpected, "}")
+                break
               of '{': 
                 inc(j)
                 inc(curly)
@@ -196,7 +197,7 @@ proc parseLine(p: var TTmplParser) =
               inc(j)
             else: 
               p.info.col = int16(j)
-              liMessage(p.info, errInvalidExpression, "$")
+              LocalError(p.info, errInvalidExpression, "$")
         else: 
           LLStreamWrite(p.outp, p.x[j])
           inc(j)

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -219,12 +219,11 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         newVar.owner = getCurrOwner(c)
         IdNodeTablePut(c.transCon.mapping, it.sons[j].sym, newSymNode(newVar))
         defs[j] = newSymNode(newVar).PTransNode
-      assert(it.sons[L-2] == nil)
+      assert(it.sons[L-2].kind == nkEmpty)
       defs[L-1] = transform(c, it.sons[L-1])
       result[i] = defs
 
 proc hasContinue(n: PNode): bool = 
-  if n == nil: return 
   case n.kind
   of nkEmpty..nkNilLit, nkForStmt, nkWhileStmt: nil
   of nkContinueStmt: result = true
@@ -271,7 +270,6 @@ proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
         transform(c, newTupleAccess(n, i))))
 
 proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode = 
-  if n == nil: return
   case n.kind
   of nkSym: 
     return transformSym(c, n)
@@ -311,8 +309,8 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
 proc addVar(father, v: PNode) = 
   var vpart = newNodeI(nkIdentDefs, v.info)
   addSon(vpart, v)
-  addSon(vpart, nil)
-  addSon(vpart, nil)
+  addSon(vpart, ast.emptyNode)
+  addSon(vpart, ast.emptyNode)
   addSon(father, vpart)
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode = 
@@ -515,7 +513,6 @@ proc getMagicOp(call: PNode): TMagic =
 proc gatherVars(c: PTransf, n: PNode, marked: var TIntSet, owner: PSym, 
                 container: PNode) = 
   # gather used vars for closure generation
-  if n == nil: return 
   case n.kind
   of nkSym: 
     var s = n.sym
@@ -662,7 +659,6 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     result = transformSons(c, n)
 
 proc transform(c: PTransf, n: PNode): PTransNode = 
-  if n == nil: return
   case n.kind
   of nkSym: 
     return transformSym(c, n)
@@ -678,7 +674,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkCaseStmt: 
     result = transformCase(c, n)
   of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef: 
-    if n.sons[genericParamsPos] == nil: 
+    if n.sons[genericParamsPos].kind == nkEmpty: 
       n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
       if n.kind == nkMethodDef: methodDef(n.sons[namePos].sym)
     result = PTransNode(n)
@@ -727,6 +723,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = PTransNode(cnst) # do not miss an optimization
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 
+  if passes.skipCodegen(n): return n
   var c = PTransf(context)
   pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = PNode(transform(c, n))

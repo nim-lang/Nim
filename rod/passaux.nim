@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,10 +12,6 @@
 import 
   strutils, ast, astalgo, passes, msgs, options
 
-proc verbosePass*(): TPass
-proc cleanupPass*(): TPass
-# implementation
-
 proc verboseOpen(s: PSym, filename: string): PPassContext = 
   #MessageOut('compiling ' + s.name.s);
   result = nil                # we don't need a context
@@ -24,9 +20,9 @@ proc verboseOpen(s: PSym, filename: string): PPassContext =
 proc verboseProcess(context: PPassContext, n: PNode): PNode = 
   result = n
   if context != nil: InternalError("logpass: context is not nil")
-  if gVerbosity == 3: liMessage(n.info, hintProcessing, $(ast.gid))
+  if gVerbosity == 3: Message(n.info, hintProcessing, $ast.gid)
   
-proc verbosePass(): TPass = 
+proc verbosePass*(): TPass = 
   initPass(result)
   result.open = verboseOpen
   result.process = verboseProcess
@@ -43,11 +39,11 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
     if (n.sons[namePos].kind == nkSym): 
       s = n.sons[namePos].sym
       if not (sfDeadCodeElim in getModule(s).flags) and not astNeeded(s): 
-        s.ast.sons[codePos] = nil # free the memory
+        s.ast.sons[codePos] = ast.emptyNode # free the memory
   else: 
     nil
 
-proc cleanupPass(): TPass = 
+proc cleanupPass*(): TPass = 
   initPass(result)
   result.process = cleanUp
   result.close = cleanUp

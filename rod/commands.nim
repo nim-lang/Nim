@@ -152,7 +152,7 @@ proc writeCommandLineUsage() =
     helpWritten = true
 
 proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 
-  liMessage(info, errInvalidCmdLineOption, switch)
+  LocalError(info, errInvalidCmdLineOption, switch)
 
 proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass, 
                  info: TLineInfo) = 
@@ -174,20 +174,20 @@ proc ProcessOnOffSwitch(op: TOptions, arg: string, pass: TCmdlinePass,
   case whichKeyword(arg)
   of wOn: gOptions = gOptions + op
   of wOff: gOptions = gOptions - op
-  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
   
 proc ProcessOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdlinePass, 
                          info: TLineInfo) = 
   case whichKeyword(arg)
   of wOn: gGlobalOptions = gGlobalOptions + op
   of wOff: gGlobalOptions = gGlobalOptions - op
-  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
   
 proc ExpectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg == "": liMessage(info, errCmdLineArgExpected, switch)
+  if arg == "": LocalError(info, errCmdLineArgExpected, switch)
   
 proc ExpectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) = 
-  if arg != "": liMessage(info, errCmdLineNoArgExpected, switch)
+  if arg != "": LocalError(info, errCmdLineNoArgExpected, switch)
   
 proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass, 
                          info: TLineInfo) = 
@@ -212,7 +212,7 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
   case whichKeyword(copy(arg, i))
   of wOn: incl(gNotes, n)
   of wOff: excl(gNotes, n)
-  else: liMessage(info, errOnOrOffExpectedButXFound, arg)
+  else: LocalError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) = 
   var found = findFile(filename)
@@ -228,13 +228,13 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of wBoehm: result = contains(gGlobalOptions, optBoehmGC)
     of wRefc:  result = contains(gGlobalOptions, optRefcGC)
     of wNone:  result = gGlobalOptions * {optBoehmGC, optRefcGC} == {}
-    else: liMessage(info, errNoneBoehmRefcExpectedButXFound, arg)
+    else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of wOpt: 
     case whichKeyword(arg)
     of wSpeed: result = contains(gOptions, optOptimizeSpeed)
     of wSize: result = contains(gOptions, optOptimizeSize)
     of wNone: result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
-    else: liMessage(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+    else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   else: InvalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool = 
@@ -285,7 +285,7 @@ proc addPathRec(dir: string, info: TLineInfo) =
     if k == pcDir and p[pos] != '.':
       addPathRec(p, info)
       if not contains(options.searchPaths, p): 
-        liMessage(info, hintPath, p)
+        Message(info, hintPath, p)
         lists.PrependStr(options.searchPaths, p)
 
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
@@ -346,7 +346,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       excl(gGlobalOptions, optRefcGC)
       excl(gGlobalOptions, optBoehmGC)
       defineSymbol("nogc")
-    else: liMessage(info, errNoneBoehmRefcExpectedButXFound, arg)
+    else: LocalError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of wWarnings, wW: ProcessOnOffSwitch({optWarns}, arg, pass, info)
   of wWarning: ProcessSpecificNote(arg, wWarning, pass, info)
   of wHint: ProcessSpecificNote(arg, wHint, pass, info)
@@ -388,7 +388,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     of wNone: 
       excl(gOptions, optOptimizeSpeed)
       excl(gOptions, optOptimizeSize)
-    else: liMessage(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+    else: LocalError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   of wApp: 
     expectArg(switch, arg, pass, info)
     case whichKeyword(arg)
@@ -401,7 +401,7 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       incl(gGlobalOptions, optGenDynLib)
       excl(gGlobalOptions, optGenGuiApp)
       defineSymbol("library")
-    else: liMessage(info, errGuiConsoleOrLibExpectedButXFound, arg)
+    else: LocalError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   of wListDef: 
     expectNoArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: condsyms.listSymbols()
@@ -427,8 +427,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if (pass == passCmd1): 
       theOS = platform.NameToOS(arg)
-      if theOS == osNone: liMessage(info, errUnknownOS, arg)
-      if theOS != platform.hostOS: 
+      if theOS == osNone: LocalError(info, errUnknownOS, arg)
+      elif theOS != platform.hostOS: 
         setTarget(theOS, targetCPU)
         incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()
@@ -436,8 +436,8 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if (pass == passCmd1): 
       cpu = platform.NameToCPU(arg)
-      if cpu == cpuNone: liMessage(info, errUnknownCPU, arg)
-      if cpu != platform.hostCPU: 
+      if cpu == cpuNone: LocalError(info, errUnknownCPU, arg)
+      elif cpu != platform.hostCPU: 
         setTarget(targetOS, cpu)
         incl(gGlobalOptions, optCompileOnly)
         condsyms.InitDefines()

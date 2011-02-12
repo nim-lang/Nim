@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -44,9 +44,8 @@ proc TableSearch*(t: TTable, key, closure: PObject, comparator: TCmpProc): PObje
 # ----------------------- str table -----------------------------------------
 proc StrTableContains*(t: TStrTable, n: PSym): bool
 proc StrTableAdd*(t: var TStrTable, n: PSym)
-proc StrTableGet*(t: TStrTable, name: PIdent): PSym
-proc StrTableIncl*(t: var TStrTable, n: PSym): bool
-  # returns true if n is already in the string table
+proc StrTableGet*(t: TStrTable, name: PIdent): PSym  
+  
   # the iterator scheme:
 type 
   TTabIter*{.final.} = object # consider all fields here private
@@ -574,8 +573,10 @@ proc StrTableAdd(t: var TStrTable, n: PSym) =
   StrTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc StrTableIncl(t: var TStrTable, n: PSym): bool = 
+proc StrTableIncl*(t: var TStrTable, n: PSym): bool = 
   # returns true if n is already in the string table:
+  # It is essential that `n` is written nevertheless!
+  # This way the newest redefinition is picked by the semantic analyses!
   var 
     h: THash
     it: PSym
@@ -584,6 +585,7 @@ proc StrTableIncl(t: var TStrTable, n: PSym): bool =
     it = t.data[h]
     if it == nil: break 
     if it.name.id == n.name.id: 
+      t.data[h] = n           # overwrite it with newer definition!
       return true             # found it
     h = nextTry(h, high(t.data))
   if mustRehash(len(t.data), t.counter): 
@@ -661,10 +663,9 @@ proc SymTabAdd(tab: var TSymTab, e: PSym) =
   StrTableAdd(tab.stack[tab.tos - 1], e)
 
 proc SymTabAddUniqueAt(tab: var TSymTab, e: PSym, at: Natural): TResult = 
-  if StrTableGet(tab.stack[at], e.name) != nil: 
+  if StrTableIncl(tab.stack[at], e): 
     result = Failure
   else: 
-    StrTableAdd(tab.stack[at], e)
     result = Success
 
 proc SymTabAddUnique(tab: var TSymTab, e: PSym): TResult = 

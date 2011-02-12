@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -73,7 +73,7 @@ proc importModule(filename: string): PSym =
     # compile the module
     result = compileModule(filename, false, false)
   elif sfSystemModule in result.flags: 
-    liMessage(result.info, errAttemptToRedefine, result.Name.s)
+    LocalError(result.info, errAttemptToRedefine, result.Name.s)
   
 proc CompileModule(filename: string, isMainFile, isSystemFile: bool): PSym = 
   var rd: PRodReader = nil
@@ -177,7 +177,7 @@ proc CommandScan(filename: string) =
   
 proc WantFile(filename: string) = 
   if filename == "": 
-    liMessage(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
+    Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
   
 proc MainCommand(cmd, filename: string) = 
   appendStr(searchPaths, options.libpath)

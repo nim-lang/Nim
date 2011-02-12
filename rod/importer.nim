@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -22,7 +22,7 @@ proc getModuleFile*(n: PNode): string
 proc findModule(info: TLineInfo, modulename: string): string = 
   # returns path to module
   result = options.FindFile(AddFileExt(modulename, nimExt))
-  if result == "": liMessage(info, errCannotOpenFile, modulename)
+  if result == "": Fatal(info, errCannotOpenFile, modulename)
   
 proc getModuleFile(n: PNode): string = 
   case n.kind
@@ -73,7 +73,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
 proc importSymbol(c: PContext, ident: PNode, fromMod: PSym) = 
   if (ident.kind != nkIdent): InternalError(ident.info, "importSymbol")
   var s = StrTableGet(fromMod.tab, ident.ident)
-  if s == nil: liMessage(ident.info, errUndeclaredIdentifier, ident.ident.s)
+  if s == nil: GlobalError(ident.info, errUndeclaredIdentifier, ident.ident.s)
   if s.kind == skStub: loadStub(s)
   if not (s.Kind in ExportableSymKinds): 
     InternalError(ident.info, "importSymbol: 2")  
@@ -106,7 +106,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
     var f = getModuleFile(n.sons[i])
     var m = gImportModule(f)
     if sfDeprecated in m.flags: 
-      liMessage(n.sons[i].info, warnDeprecated, m.name.s) 
+      Message(n.sons[i].info, warnDeprecated, m.name.s) 
     # ``addDecl`` needs to be done before ``importAllSymbols``!
     addDecl(c, m)             # add symbol to symbol table of module
     importAllSymbols(c, m)

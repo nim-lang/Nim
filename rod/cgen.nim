@@ -890,12 +890,12 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 proc myOpenCached(module: PSym, filename: string, 
                   rd: PRodReader): PPassContext = 
   if gNimDat == nil: 
-    registerTypeInfoModule()  
-    #MessageOut('cgen.myOpenCached has been called ' + filename);
+    registerTypeInfoModule()
+    #MessageOut('cgen.myOpenCached has been called ' + filename)
   var cfile = changeFileExt(completeCFilePath(filename), cExt)
   var cfilenoext = changeFileExt(cfile, "")
   addFileToLink(cfilenoext)
-  registerModuleToMain(module) 
+  registerModuleToMain(module)
   # XXX: this cannot be right here, initalization has to be appended during
   # the ``myClose`` call
   result = nil
@@ -911,7 +911,7 @@ proc shouldRecompile(code: PRope, cfile, cfilenoext: string): bool =
   
 proc myProcess(b: PPassContext, n: PNode): PNode = 
   result = n
-  if b == nil: return 
+  if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
   m.initProc.options = gOptions
   genStmts(m.initProc, n)
@@ -951,7 +951,7 @@ proc writeModule(m: BModule) =
 
 proc myClose(b: PPassContext, n: PNode): PNode = 
   result = n
-  if b == nil: return 
+  if b == nil or passes.skipCodegen(n): return 
   var m = BModule(b)
   if n != nil: 
     m.initProc.options = gOptions
