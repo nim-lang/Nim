@@ -32,13 +32,11 @@ const
 const 
   Usage = """
 Usage:
-  nimrod command [options] inputfile [arguments]
+  nimrod command [options] [projectfile] [arguments]
 Command:
   compile, c                compile project with default code generator (C)
-  compileToC, cc            compile project with C code generator
   doc                       generate the documentation for inputfile
-  rst2html                  converts a reStructuredText file to HTML
-  rst2tex                   converts a reStructuredText file to TeX
+  i                         start Nimrod in interactive mode (limited)
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:
@@ -67,10 +65,13 @@ Options:
   --advanced                show advanced command line switches
   -h, --help                show this help
 """
-        
+
   AdvancedUsage = """
 Advanced commands:
+  compileToC, cc            compile project with C code generator
   compileToOC, oc           compile project to Objective C code
+  rst2html                  converts a reStructuredText file to HTML
+  rst2tex                   converts a reStructuredText file to TeX
   run                       run the project (with Tiny C backend; buggy!)
   pretty                    pretty print the inputfile
   genDepend                 generate a DOT file containing the

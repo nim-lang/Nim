@@ -377,7 +377,6 @@ type
     result*: cstring # Do not access this directly. Use
                      # Tcl_GetStringResult since result
                      # may be pointing to an object
-                     #
     freeProc*: TFreeProc
     errorLine*: int
 

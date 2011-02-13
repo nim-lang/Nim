@@ -57,14 +57,7 @@ proc scanPar(p: var TTmplParser, d: int) =
     of '}': dec(p.curly)
     else: nil
     inc(i)
-  
-proc endsWithOpr(p: TTmplParser): bool = 
-  var i = p.x.len-1
-  while i >= 0 and p.x[i] == ' ': dec(i)
-  if i >= 0 and p.x[i] in {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
-                           '|', '%', '&', '$', '@', '~', ','}:
-    result = true
-  
+
 proc withInExpr(p: TTmplParser): bool {.inline.} = 
   result = p.par > 0 or p.bracket > 0 or p.curly > 0
   
@@ -87,7 +80,7 @@ proc parseLine(p: var TTmplParser) =
       inc(j)
     
     scanPar(p, j)
-    p.pendingExprLine = withInExpr(p) or endsWithOpr(p)
+    p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x)
     case whichKeyword(keyw)
     of wEnd: 
       if p.indent >= 2: 

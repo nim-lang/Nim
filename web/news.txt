@@ -28,10 +28,8 @@ Changes affecting backwards compatibility
 
 - Operators starting with ``^`` are now right-associative and have the highest 
   priority.
-- Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` 
-  instead.
-- Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` 
-  instead.
+- Deprecated ``os.getApplicationFilename``: Use ``os.getAppFilename`` instead.
+- Deprecated ``os.getApplicationDir``: Use ``os.getAppDir`` instead.
 - Changed and documented how generalized string literals work: The syntax
   ``module.re"abc"`` is now supported.
 
@@ -62,6 +60,8 @@ Additions
   the ``--threads:on`` command line switch.
 - Added unary ``<`` for nice looking excluding upper bounds in ranges.
 - Added ``math.floor``.
+- The *interactive mode* (REPL) has been improved and documented for the 
+  first time.
 
 
 2010-10-20 Version 0.8.10 released

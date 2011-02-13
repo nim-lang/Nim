@@ -1,5 +1,8 @@
 Advanced commands:
+  //compileToC, cc          compile project with C code generator
   //compileToOC, oc         compile project to Objective C code
+  //rst2html                converts a reStructuredText file to HTML
+  //rst2tex                 converts a reStructuredText file to TeX
   //run                     run the project (with Tiny C backend; Linux only!)
   //pretty                  pretty print the inputfile
   //genDepend               generate a DOT file containing the

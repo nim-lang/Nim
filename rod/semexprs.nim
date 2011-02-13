@@ -487,15 +487,20 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   fixAbstractType(c, result)
   analyseIfAddressTakenInCall(c, result)
 
+proc buildStringify(c: PContext, arg: PNode): PNode = 
+  if arg.typ != nil and skipTypes(arg.typ, abstractInst).kind == tyString:
+    result = arg
+  else:
+    result = newNodeI(nkCall, arg.info)
+    addSon(result, newIdentNode(getIdent"$", arg.info))
+    addSon(result, arg)
+
 proc semEcho(c: PContext, n: PNode): PNode = 
   # this really is a macro
   checkMinSonsLen(n, 1)
   for i in countup(1, sonsLen(n) - 1): 
     var arg = semExprWithType(c, n.sons[i])
-    var call = newNodeI(nkCall, arg.info)
-    addSon(call, newIdentNode(getIdent("$"), n.info))
-    addSon(call, arg)
-    n.sons[i] = semExpr(c, call)
+    n.sons[i] = semExpr(c, buildStringify(c, arg))
   result = n
 
 proc LookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym = 

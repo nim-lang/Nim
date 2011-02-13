@@ -7,12 +7,29 @@
 #    distribution, for details about the copyright.
 #
 
-# this module does the semantic checking of statements
+## this module does the semantic checking of statements
+  
+proc buildEchoStmt(c: PContext, n: PNode): PNode = 
+  # we MUST not check 'n' for semantics again here!
+  result = newNodeI(nkCall, n.info)
+  var e = StrTableGet(magicsys.systemModule.Tab, getIdent"echo")
+  if e == nil: GlobalError(n.info, errSystemNeeds, "echo")
+  addSon(result, newSymNode(e))
+  var arg = buildStringify(c, n)
+  # problem is: implicit '$' is not checked for semantics yet. So we give up
+  # and check 'arg' for semantics again:
+  addSon(result, semExpr(c, arg))
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil and result.typ.kind != tyStmt:
-    localError(n.info, errDiscardValue)
+    if gCmd == cmdInteractive:
+      result = buildEchoStmt(c, result)
+    else:
+      localError(n.info, errDiscardValue)
+
+proc semCommand(c: PContext, n: PNode): PNode =
+  result = semExprNoType(c, n)
 
 proc semWhen(c: PContext, n: PNode): PNode = 
   result = nil
@@ -660,7 +677,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n.sons[pragmasPos].kind != nkEmpty: 
       LocalError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
     if sfForward notin proto.flags: 
-      LocalError(n.info, errAttemptToRedefineX, proto.name.s)
+      LocalError(n.info, errAttemptToRedefine, proto.name.s)
     excl(proto.flags, sfForward)
     closeScope(c.tab)         # close scope with wrong parameter symbols
     openScope(c.tab)          # open scope for old (correct) parameter symbols
@@ -770,9 +787,6 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       GlobalError(n.info, errRecursiveDependencyX, f)
     addSon(result, semStmt(c, gIncludeFile(f)))
     IntSetExcl(c.includedFiles, fileIndex)
-
-proc semCommand(c: PContext, n: PNode): PNode =
-  result = semExprNoType(c, n)
   
 proc SemStmt(c: PContext, n: PNode): PNode = 
   const                       # must be last statements in a block:
@@ -825,7 +839,13 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   of nkIncludeStmt: 
     if not isTopLevel(c): LocalError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
-  else: LocalError(n.info, errStmtExpected)
+  else: 
+    # in interactive mode, we embed the expression in an 'echo':
+    if gCmd == cmdInteractive:
+      result = buildEchoStmt(c, semExpr(c, n))
+    else:
+      LocalError(n.info, errStmtExpected)
+      result = ast.emptyNode
   if result == nil: InternalError(n.info, "SemStmt: result = nil")
   incl(result.flags, nfSem)
 
