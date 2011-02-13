@@ -59,6 +59,11 @@ that its extension should be ``.cfg``.
 
 Command line settings have priority over configuration file settings.
 
+The default build of a project is a `debug build`:idx:. To compile a 
+`release build`:idx: define the ``release`` symbol::
+  
+  nimrod c -d:release myproject.nim
+
 
 Generated C code directory
 --------------------------
@@ -224,6 +229,22 @@ The `volatile`:idx: pragma is for variables only. It declares the variable as
 ``volatile``, whatever that means in C/C++.
 
 **Note**: This pragma will not exist for the LLVM backend.
+
+
+Nimrod interactive mode
+=======================
+
+The Nimrod compiler supports an `interactive mode`:idx:. This is also known as
+a `REPL`:idx: (*read eval print loop*). If Nimrod has been built with the 
+``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
+input management. To start Nimrod in interactive mode use the command 
+``nimrod i``. To quit use the ``quit()` command. To determine whether an input
+line is an incomplete statement to be continued these rules are used:
+
+1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$``.
+2. The line starts with a space (indentation).
+3. The line is within a triple quoted string literal. However, the detection 
+   does not work if the line contains more than one ``"""``.
 
 
 Debugging with Nimrod

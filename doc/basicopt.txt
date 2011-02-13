@@ -3,11 +3,9 @@ Usage::
 
 Command:
   //compile, c              compile project with default code generator (C)
-  //compileToC, cc          compile project with C code generator
   //doc                     generate the documentation for inputfile
-  //rst2html                converts a reStructuredText file to HTML
-  //rst2tex                 converts a reStructuredText file to TeX
-
+  //i                       start Nimrod in interactive mode (limited)
+  
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:

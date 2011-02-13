@@ -50,10 +50,13 @@ Commonly used commands and switches have abbreviations, so you can also use::
 
   nimrod c -r greetings.nim
 
-To compile a `release`:idx: version use::
+To compile a release version use::
   
   nimrod c -d:release greetings.nim
 
+By default the Nimrod compiler generates a large amount of runtime checks 
+aiming for your debugging pleasure. With ``-d:release`` these checks are 
+turned off and optimizations are turned on.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program

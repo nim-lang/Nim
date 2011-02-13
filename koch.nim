@@ -36,8 +36,10 @@ Possible Commands:
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
+  -d:useGnuReadline        use the GNU readline library for interactive mode
+                           (not supported on Windows)
 """
-  
+
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
 proc exec(cmd: string) =

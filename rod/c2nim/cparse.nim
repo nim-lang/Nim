@@ -1,7 +1,7 @@
 #
 #
 #      c2nim - C to Nimrod source converter
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -48,6 +48,7 @@ type
     backtrack: seq[ref TToken]
     inTypeDef: int
     scopeCounter: int
+    hasDeadCodeElimPragma: bool
   
   TReplaceTuple* = array[0..1, string]
 
@@ -289,7 +290,7 @@ proc mangleName(s: string, p: TParser): string =
 
 proc isPrivate(s: string, p: TParser): bool = 
   for pattern in items(p.options.privateRules): 
-     if s.match(pattern): return true
+    if s.match(pattern): return true
 
 proc mangledIdent(ident: string, p: TParser): PNode = 
   result = newNodeP(nkIdent, p)
@@ -381,6 +382,7 @@ proc markTypeIdent(p: var TParser, typ: PNode) =
       while t != nil and t.kind in {nkVarTy, nkPtrTy, nkRefTy}: 
         prefix.add('P')
         t = t.sons[0]
+      if prefix.len == 0: prefix.add('T')
     expectIdent(p)
     p.options.toMangle[p.tok.s] = prefix & mangleRules(p.tok.s, p)
   

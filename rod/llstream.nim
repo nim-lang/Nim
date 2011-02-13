@@ -1,16 +1,19 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-# Low-level streams for high performance.
+## Low-level streams for high performance.
 
 import 
   strutils
+
+when not defined(windows) and defined(useGnuReadline):
+  import rdstdin
 
 type 
   TLLStreamKind* = enum       # stream encapsulates stdin
@@ -19,7 +22,7 @@ type
     llsFile,                  # stream encapsulates a file
     llsStdIn
   TLLStream* = object of TObject
-    kind*: TLLStreamKind      # accessible for low-level access (lexbase uses this)
+    kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
     f*: tfile
     s*: string
     rd*, wr*: int             # for string streams
@@ -74,24 +77,52 @@ proc LLStreamClose(s: PLLStream) =
     nil
   of llsFile: 
     close(s.f)
-  
+
+when not defined(ReadLineFromStdin): 
+  # fallback implementation:
+  proc ReadLineFromStdin(prompt: string): string = 
+    stdout.write(prompt)
+    result = readLine(stdin)
+
+proc endsWith*(x: string, s: set[char]): bool =
+  var i = x.len-1
+  while i >= 0 and x[i] == ' ': dec(i)
+  if i >= 0 and x[i] in s:
+    result = true
+
+const 
+  LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
+                          '|', '%', '&', '$', '@', '~', ','}
+  AdditionalLineContinuationOprs = {'#', ':', '='}
+
+proc endsWithOpr*(x: string): bool = 
+  # also used be the standard template filter:
+  result = x.endsWith(LineContinuationOprs)
+
+proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
+  result = inTriplestring or
+      line[0] == ' ' or
+      line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
+
 proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int = 
   var 
     line: string
     L: int
+    inTripleString = false
   s.s = ""
   s.rd = 0
   while true: 
-    write(stdout, "Nimrod> ")
-    line = readLine(stdin)
+    line = ReadLineFromStdin(if s.s.len == 0: ">>> " else: "... ")
     L = len(line)
     add(s.s, line)
     add(s.s, "\n")
-    if (L > 0) and (line[L - 1 + 0] == '#'): break
+    if line.contains("\"\"\""):
+      inTripleString = not inTripleString
+    if not continueLine(line, inTripleString): break
   inc(s.lineOffset)
   result = min(bufLen, len(s.s) - s.rd)
   if result > 0: 
-    copyMem(buf, addr(s.s[0 + s.rd]), result)
+    copyMem(buf, addr(s.s[s.rd]), result)
     inc(s.rd, result)
 
 proc LLStreamRead(s: PLLStream, buf: pointer, bufLen: int): int = 
