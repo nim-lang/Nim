@@ -723,7 +723,9 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = PTransNode(cnst) # do not miss an optimization
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 
-  if passes.skipCodegen(n): return n
+  # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
+  # this step! We have to rely that the semantic pass transforms too errornous
+  # nodes into an empty node.
   var c = PTransf(context)
   pushTransCon(c, newTransCon(getCurrOwner(c)))
   result = PNode(transform(c, n))
