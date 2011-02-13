@@ -22,7 +22,8 @@ type
     jsonError,           ## an error ocurred during parsing
     jsonEof,             ## end of file reached
     jsonString,          ## a string literal
-    jsonNumber,          ## a number literal
+    jsonInt,             ## a integer literal
+    jsonFloat,           ## a float literal
     jsonTrue,            ## the value ``true``
     jsonFalse,           ## the value ``false``
     jsonNull,            ## the value ``null``
@@ -35,7 +36,8 @@ type
     tkError,
     tkEof,
     tkString,
-    tkNumber,
+    tkInt,
+    tkFloat,
     tkTrue,
     tkFalse,
     tkNull,
@@ -89,7 +91,8 @@ const
     "invalid token",
     "EOF",
     "string literal",
-    "number literal",
+    "int literal",
+    "float literal",
     "true",
     "false",
     "null",
@@ -110,14 +113,19 @@ proc close*(my: var TJsonParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: TJsonParser): string {.inline.} = 
-  ## returns the character data for the events: ``jsonNumber``, 
+  ## returns the character data for the events: ``jsonInt``, ``jsonFloat``, 
   ## ``jsonString``
-  assert(my.kind in {jsonNumber, jsonString})
+  assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
-proc number*(my: TJsonParser): float {.inline.} = 
-  ## returns the number for the event: ``jsonNumber``
-  assert(my.kind == jsonNumber)
+proc getInt*(my: TJsonParser): biggestInt {.inline.} = 
+  ## returns the number for the event: ``jsonInt``
+  assert(my.kind == jsonInt)
+  return parseInt(my.a)
+
+proc getFloat*(my: TJsonParser): float {.inline.} = 
+  ## returns the number for the event: ``jsonFloat``
+  assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
 proc kind*(my: TJsonParser): TJsonEventKind {.inline.} = 
@@ -318,7 +326,10 @@ proc getTok(my: var TJsonParser): TTokKind =
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9': 
     parseNumber(my)
-    result = tkNumber
+    if {'.', 'e', 'E'} in my.a:
+      result = tkFloat
+    else:
+      result = tkInt
   of '"':
     result = parseString(my)
   of '[':
@@ -369,7 +380,7 @@ proc next*(my: var TJsonParser) =
   of stateStart: 
     # tokens allowed? 
     case tk
-    of tkString, tkNumber, tkTrue, tkFalse, tkNull:
+    of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state[i] = stateEof # expect EOF next!
       my.kind = TJsonEventKind(ord(tk))
     of tkBracketLe: 
@@ -385,7 +396,7 @@ proc next*(my: var TJsonParser) =
       my.err = errEofExpected
   of stateObject: 
     case tk
-    of tkString, tkNumber, tkTrue, tkFalse, tkNull:
+    of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state.add(stateExpectColon)
       my.kind = TJsonEventKind(ord(tk))
     of tkBracketLe: 
@@ -404,7 +415,7 @@ proc next*(my: var TJsonParser) =
       my.err = errCurlyRiExpected
   of stateArray:
     case tk
-    of tkString, tkNumber, tkTrue, tkFalse, tkNull:
+    of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state.add(stateExpectArrayComma) # expect value next!
       my.kind = TJsonEventKind(ord(tk))
     of tkBracketLe: 
@@ -455,7 +466,7 @@ proc next*(my: var TJsonParser) =
       my.err = errColonExpected
   of stateExpectValue:
     case tk
-    of tkString, tkNumber, tkTrue, tkFalse, tkNull:
+    of tkString, tkInt, tkFloat, tkTrue, tkFalse, tkNull:
       my.state[i] = stateExpectObjectComma
       my.kind = TJsonEventKind(ord(tk))
     of tkBracketLe: 
@@ -477,7 +488,8 @@ type
   TJsonNodeKind* = enum ## possible JSON node types
     JNull,
     JBool,
-    JNumber,
+    JInt,
+    JFloat,
     JString,
     JObject,
     JArray
@@ -487,8 +499,10 @@ type
     case kind*: TJsonNodeKind
     of JString:
       str*: String
-    of JNumber:
-      num*: Float
+    of JInt:
+      num*: biggestInt
+    of JFloat:
+      fnum: Float
     of JBool:
       bval*: Bool
     of JNull:
@@ -509,12 +523,18 @@ proc newJString*(s: String): PJsonNode =
   result.kind = JString
   result.str = s
 
-proc newJNumber*(n: Float): PJsonNode =
-  ## Creates a new `JNumber PJsonNode`.
+proc newJInt*(n: biggestInt): PJsonNode =
+  ## Creates a new `JInt PJsonNode`.
   new(result)
-  result.kind = JNumber
+  result.kind = JInt
   result.num  = n
-  
+
+proc newJFloat*(n: Float): PJsonNode =
+  ## Creates a new `JFloat PJsonNode`.
+  new(result)
+  result.kind = JFloat
+  result.fnum  = n
+
 proc newJBool*(b: Bool): PJsonNode =
   ## Creates a new `JBool PJsonNode`.
   new(result)
@@ -641,9 +661,12 @@ proc toPretty(result: var string, node: PJsonNode, indent = 2, ml = True,
   of JString: 
     if lstArr: result.indent(currIndent)
     result.add(escapeJson(node.str))
-  of JNumber:
+  of JInt:
     if lstArr: result.indent(currIndent)
     result.add($node.num)
+  of JFloat:
+    if lstArr: result.indent(currIndent)
+    result.add($node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add($node.bval)
@@ -687,8 +710,11 @@ proc parseJson(p: var TJsonParser): PJsonNode =
   of tkString:
     result = newJString(p.a)
     discard getTok(p)
-  of tkNumber:
-    result = newJNumber(parseFloat(p.a))
+  of tkInt:
+    result = newJInt(parseInt(p.a))
+    discard getTok(p)
+  of tkFloat:
+    result = newJFloat(parseFloat(p.a))
     discard getTok(p)
   of tkTrue:
     result = newJBool(true)
@@ -757,7 +783,7 @@ when false:
       Echo(x.errorMsg())
       break
     of jsonEof: break
-    of jsonString, jsonNumber: echo(x.str)
+    of jsonString, jsonInt, jsonFloat: echo(x.str)
     of jsonTrue: Echo("!TRUE")
     of jsonFalse: Echo("!FALSE")
     of jsonNull: Echo("!NULL")
