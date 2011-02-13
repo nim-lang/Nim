@@ -68,17 +68,18 @@ proc HandleCmdLine() =
     ProcessCmdLine(passCmd2, command, filename)
     MainCommand(command, filename)
     if gVerbosity >= 2: echo(GC_getStatistics())
-    when hasTinyCBackend:
-      if gCmd == cmdRun:
-        tccgen.run()
-    if gCmd notin {cmdInterpret, cmdRun} and msgs.gErrorCounter == 0: 
-      rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start)])
-    if optRun in gGlobalOptions: 
-      when defined(unix): 
-        var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))
-      else: 
-        var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
-      execExternalProgram(prog & ' ' & arguments)
+    if msgs.gErrorCounter == 0:
+      when hasTinyCBackend:
+        if gCmd == cmdRun:
+          tccgen.run()
+      if gCmd notin {cmdInterpret, cmdRun}: 
+        rawMessage(hintSuccessX, [$gLinesCompiled, $(getTime() - start)])
+      if optRun in gGlobalOptions: 
+        when defined(unix): 
+          var prog = "./" & quoteIfContainsWhite(changeFileExt(filename, ""))
+        else: 
+          var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
+        execExternalProgram(prog & ' ' & arguments)
 
 cmdLineInfo = newLineInfo("command line", - 1, - 1)
 condsyms.InitDefines()

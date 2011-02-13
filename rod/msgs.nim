@@ -373,6 +373,8 @@ type
     
   ERecoverableError* = object of EInvalidValue
 
+proc raiseRecoverableError*() {.noinline, noreturn.} =
+  raise newException(ERecoverableError, "")
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)}
@@ -485,7 +487,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling) =
       if gVerbosity >= 3: assert(false)
       quit(1)                 # one error stops the compiler
     elif eh == doRaise:
-      raise newException(ERecoverableError, "")
+      raiseRecoverableError()
   
 proc sameLineInfo(a, b: TLineInfo): bool = 
   result = (a.line == b.line) and (a.fileIndex == b.fileIndex)
@@ -518,36 +520,39 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
     if not (msg in gNotes): return 
     frmt = rawHintFormat
     inc(gHintCounter)
-  else: 
-    assert(false)             # cannot happen
   MessageOut(`%`(frmt, `%`(msgKindToString(msg), args)))
   handleError(msg, doAbort)
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
   rawMessage(msg, [arg])
 
+var
+  lastError = UnknownLineInfo()
+
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string, 
                eh: TErrorHandling) = 
   var frmt: string
+  var ignoreMsg = false
   case msg
   of errMin..errMax: 
     writeContext(info)
     frmt = posErrorFormat
+    # we try to filter error messages so that not two error message
+    # in the same file and line are produced:
+    ignoreMsg = sameLineInfo(lastError, info)
+    lastError = info
   of warnMin..warnMax: 
-    if not (optWarns in gOptions): return 
-    if not (msg in gNotes): return 
+    ignoreMsg = optWarns notin gOptions or msg notin gNotes
     frmt = posWarningFormat
     inc(gWarnCounter)
   of hintMin..hintMax: 
-    if not (optHints in gOptions): return 
-    if not (msg in gNotes): return 
+    ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = posHintFormat
     inc(gHintCounter)
-  else: 
-    assert(false)             # cannot happen
-  MessageOut(`%`(frmt, [toFilename(info), coordToStr(info.line), 
-                        coordToStr(info.col), getMessageStr(msg, arg)]))
-  handleError(msg, doAbort)
+  if not ignoreMsg:
+    MessageOut(frmt % [toFilename(info), coordToStr(info.line),
+                       coordToStr(info.col), getMessageStr(msg, arg)])
+  handleError(msg, eh)
   
 proc Fatal*(info: TLineInfo, msg: TMsgKind, arg = "") = 
   liMessage(info, msg, arg, doAbort)

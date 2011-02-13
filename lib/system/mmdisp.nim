@@ -56,7 +56,9 @@ var
   gOutOfMem: ref EOutOfMemory
 
 proc raiseOutOfMem() {.noreturn.} =
-  if gOutOfMem == nil: quit("out of memory; cannot even throw an exception")
+  if gOutOfMem == nil: 
+    echo("out of memory; cannot even throw an exception")
+    quit(1)
   gOutOfMem.msg = "out of memory"
   raise gOutOfMem
 

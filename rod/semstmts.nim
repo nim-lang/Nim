@@ -276,6 +276,8 @@ proc semVar(c: PContext, n: PNode): PNode =
       else: typ = def.typ
     else: 
       def = ast.emptyNode
+    # this can only happen for errornous var statements:
+    if typ == nil: continue
     if not typeAllowed(typ, skVar): 
       GlobalError(a.info, errXisNoType, typeToString(typ))
     var tup = skipTypes(typ, {tyGenericInst})

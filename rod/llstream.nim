@@ -23,6 +23,7 @@ type
     f*: tfile
     s*: string
     rd*, wr*: int             # for string streams
+    lineOffset*: int          # for fake stdin line numbers
   
   PLLStream* = ref TLLStream
 
@@ -65,6 +66,7 @@ proc LLStreamOpenStdIn(): PLLStream =
   new(result)
   result.kind = llsStdIn
   result.s = ""
+  result.lineOffset = -1
 
 proc LLStreamClose(s: PLLStream) = 
   case s.kind
@@ -85,7 +87,8 @@ proc LLreadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
     L = len(line)
     add(s.s, line)
     add(s.s, "\n")
-    if (L > 0) and (line[L - 1 + 0] == '#'): break 
+    if (L > 0) and (line[L - 1 + 0] == '#'): break
+  inc(s.lineOffset)
   result = min(bufLen, len(s.s) - s.rd)
   if result > 0: 
     copyMem(buf, addr(s.s[0 + s.rd]), result)

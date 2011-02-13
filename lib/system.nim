@@ -747,7 +747,7 @@ proc compileOption*(option, arg: string): bool {.
   
 include "system/inclrtl"
 
-when not defined(ecmascript):
+when not defined(ecmascript) and not defined(nimrodVm):
   include "system/cgprocs"
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -1334,10 +1334,6 @@ proc quit*(errorcode: int = QuitSuccess) {.
   ## It does *not* call the garbage collector to free all the memory,
   ## unless a quit procedure calls ``GC_collect``.
 
-when not defined(EcmaScript) and not defined(NimrodVM): 
-  proc quit*(errormsg: string) {.noReturn.}
-    ## a shorthand for ``echo(errormsg); quit(quitFailure)``.
-
 when not defined(EcmaScript) and not defined(NimrodVM):
 
   proc atomicInc*(memLoc: var int, x: int): int {.inline.}
@@ -1558,10 +1554,6 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## returns the OS file handle of the file ``f``. This is only useful for
     ## platform specific programming.
 
-  proc quit(errormsg: string) =
-    echo(errormsg)
-    quit(quitFailure)
-
   proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
     ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
     ## of length ``len``.
@@ -1668,6 +1660,11 @@ elif defined(ecmaScript) or defined(NimrodVM):
       if x == y: return 0
       if x < y: return -1
       return 1
+
+proc quit*(errormsg: string) {.noReturn.} =
+  ## a shorthand for ``echo(errormsg); quit(quitFailure)``.
+  echo(errormsg)
+  quit(quitFailure)
 
 {.pop.} # checks
 {.pop.} # hints

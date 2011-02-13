@@ -139,6 +139,7 @@ proc CommandCompileToEcmaScript(filename: string) =
   compileProject(filename)
 
 proc CommandInteractive() = 
+  msgs.gErrorMax = high(int)  # do not stop after first error
   incl(gGlobalOptions, optSafeCode)
   setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()

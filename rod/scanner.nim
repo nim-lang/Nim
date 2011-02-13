@@ -211,6 +211,7 @@ proc openLexer(lex: var TLexer, filename: string, inputstream: PLLStream) =
   lex.indentStack = @[0]
   lex.filename = filename
   lex.indentAhead = - 1
+  inc(lex.Linenumber, inputstream.lineOffset) 
 
 proc closeLexer(lex: var TLexer) = 
   inc(gLinesCompiled, lex.LineNumber)

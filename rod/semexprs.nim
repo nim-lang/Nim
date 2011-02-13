@@ -21,9 +21,12 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   popInfoContext()
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = semExpr(c, n, flags)
-  if result.kind == nkEmpty: InternalError("semExprWithType")
+  if result.kind == nkEmpty: 
+    # do not produce another redundant error message:
+    raiseRecoverableError()
   if result.typ != nil: 
     if result.typ.kind == tyVar: 
       var d = newNodeIT(nkHiddenDeref, result.info, result.typ.sons[0])
