@@ -326,7 +326,7 @@ proc getTok(my: var TJsonParser): TTokKind =
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9': 
     parseNumber(my)
-    if {'.', 'e'} in my.a:
+    if {'.', 'e', 'E'} in my.a:
       result = tkFloat
     else:
       result = tkInt
