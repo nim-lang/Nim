@@ -19,15 +19,11 @@
 #
 
 {.deadCodeElim: on.}
-when defined(windows): 
-  const 
-    historyDll = "history.dll"
-elif defined(macosx): 
-  const 
-    historyDll = "libhistory.dynlib"
-else: 
-  const 
-    historyDll = "libhistory.so.6(|.0)"
+
+import readline
+
+const 
+  historyDll = readlineDll
 
 import times, rltypedefs
 

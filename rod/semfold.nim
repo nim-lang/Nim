@@ -293,6 +293,28 @@ proc getAppType(n: PNode): PNode =
   else:
     result = newStrNodeT("console", n)
   
+proc foldConv*(n, a: PNode): PNode = 
+  case skipTypes(n.typ, abstractRange).kind
+  of tyInt..tyInt64: 
+    case skipTypes(a.typ, abstractRange).kind
+    of tyFloat..tyFloat64: result = newIntNodeT(system.toInt(getFloat(a)), n)
+    of tyChar: result = newIntNodeT(getOrdValue(a), n)
+    else: 
+      result = a
+      result.typ = n.typ
+  of tyFloat..tyFloat64: 
+    case skipTypes(a.typ, abstractRange).kind
+    of tyInt..tyInt64, tyEnum, tyBool, tyChar: 
+      result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
+    else: 
+      result = a
+      result.typ = n.typ
+  of tyOpenArray, tyProc: 
+    nil
+  else: 
+    result = a
+    result.typ = n.typ
+  
 proc getConstExpr(m: PSym, n: PNode): PNode = 
   result = nil
   case n.kind
@@ -422,27 +444,6 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast: 
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return 
-    case skipTypes(n.typ, abstractRange).kind
-    of tyInt..tyInt64: 
-      case skipTypes(a.typ, abstractRange).kind
-      of tyFloat..tyFloat64: result = newIntNodeT(system.toInt(getFloat(a)), n)
-      of tyChar: result = newIntNodeT(getOrdValue(a), n)
-      else: 
-        result = a
-        result.typ = n.typ
-    of tyFloat..tyFloat64: 
-      case skipTypes(a.typ, abstractRange).kind
-      of tyInt..tyInt64, tyEnum, tyBool, tyChar: 
-        result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
-      else: 
-        result = a
-        result.typ = n.typ
-    of tyOpenArray, tyProc: 
-      nil
-    else: 
-      #n.sons[1] := a;
-      #result := n;
-      result = a
-      result.typ = n.typ
+    result = foldConv(n, a)
   else: 
     nil

@@ -238,7 +238,7 @@ The Nimrod compiler supports an `interactive mode`:idx:. This is also known as
 a `REPL`:idx: (*read eval print loop*). If Nimrod has been built with the 
 ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
 input management. To start Nimrod in interactive mode use the command 
-``nimrod i``. To quit use the ``quit()` command. To determine whether an input
+``nimrod i``. To quit use the ``quit()`` command. To determine whether an input
 line is an incomplete statement to be continued these rules are used:
 
 1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$``.

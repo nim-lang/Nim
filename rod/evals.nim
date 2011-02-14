@@ -462,9 +462,13 @@ proc evalAddr(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   addSon(result, a)
 
 proc evalConv(c: PEvalContext, n: PNode): PNode = 
-  # hm, I cannot think of any conversions that need to be handled here...
-  result = evalAux(c, n.sons[1], {})
-  result.typ = n.typ
+  result = evalAux(c, n.sons[1], {efLValue})
+  if isSpecial(result): return
+  var a = result
+  result = foldConv(n, a)
+  if result == nil: 
+    # foldConv() cannot deal with everything that we want to do here:
+    result = a
 
 proc evalCheckedFieldAccess(c: PEvalContext, n: PNode, 
                             flags: TEvalFlags): PNode = 

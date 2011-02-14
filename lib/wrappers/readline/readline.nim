@@ -21,13 +21,14 @@
 {.deadCodeElim: on.}
 when defined(windows): 
   const 
-    readlineDll = "readline.dll"
+    readlineDll* = "readline.dll"
 elif defined(macosx): 
+  # Mac OS X ships with 'libedit'
   const 
-    readlineDll = "libreadline.dynlib"
+    readlineDll* = "libedit(.2|.1|).dylib"
 else: 
   const 
-    readlineDll = "libreadline.so.6(|.0)"
+    readlineDll* = "libreadline.so.6(|.0)"
 ##  mangle "'TCommandFunc'" TCommandFunc
 ##  mangle TvcpFunc TvcpFunc
 
