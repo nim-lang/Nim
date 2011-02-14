@@ -271,6 +271,10 @@ Other
   This module provides an easy to use sockets-style 
   Nimrod interface to the OpenSSL library.
 
+* `rdstdin <rdstdin.html>`_
+  This module contains code for reading from `stdin`:idx:. On UNIX the GNU
+  readline library is wrapped and set up.
+
 
 Wrappers
 ========
@@ -338,6 +342,13 @@ UNIX specific
   Part of the wrapper for X11.
 * `xvlib <xvlib.html>`_
   Part of the wrapper for X11.
+
+* `readline <readline.html>`_
+  Part of the wrapper for the GNU readline library.
+* `history <history.html>`_
+  Part of the wrapper for the GNU readline library.
+* `rltypedefs <rltypedefs.html>`_
+  Part of the wrapper for the GNU readline library.
 
 
 Regular expressions

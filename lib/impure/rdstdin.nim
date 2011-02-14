@@ -34,4 +34,3 @@ else:
   # disable auto-complete: 
   discard readline.bind_key('\t'.ord, readline.abort) 
 
-

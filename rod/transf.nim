@@ -720,7 +720,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformSons(c, n)
   var cnst = getConstExpr(c.module, PNode(result))
   if cnst != nil: 
-    result = PTransNode(cnst) # do not miss an optimization
+    result = PTransNode(cnst) # do not miss an optimization  
  
 proc processTransf(context: PPassContext, n: PNode): PNode = 
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
