@@ -11,7 +11,7 @@
 
 import 
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists, 
-  wordrecg
+  wordrecg, parseutils
 
 proc writeCommandLineUsage*()
 
@@ -78,7 +78,8 @@ Advanced commands:
                             module dependency graph
   listDef                   list all defined conditionals and exit
   check                     checks the project for syntax and semantic
-  parse                     parses a single file (for debugging Nimrod)
+  suggest                   list all possible symbols at position; 
+                            use with --track option
 Advanced options:
   -w, --warnings:on|off     turn all warnings on|off
   --warning[X]:on|off       turn specific warning X on|off
@@ -105,6 +106,7 @@ Advanced options:
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
   --index:FILE              use FILE to generate a documenation index file
   --putenv:key=value        set an environment variable
+  --track:FILE,LINE,COLUMN  track a file position for 'suggest'
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
@@ -288,6 +290,16 @@ proc addPathRec(dir: string, info: TLineInfo) =
       if not contains(options.searchPaths, p): 
         Message(info, hintPath, p)
         lists.PrependStr(options.searchPaths, p)
+
+proc track(arg: string, info: TLineInfo) = 
+  var a = arg.split(',')
+  if a.len != 3: LocalError(info, errTokenExpected, "FILE,LINE,COLMUN")
+  var line, column: int
+  if parseUtils.parseInt(a[1], line) <= 0:
+    LocalError(info, errInvalidNumber, a[1])
+  if parseUtils.parseInt(a[2], column) <= 0:
+    LocalError(info, errInvalidNumber, a[2])
+  msgs.addCheckpoint(newLineInfo(a[0], line, column))
 
 proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) = 
   var 
@@ -481,6 +493,9 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of wCC: 
     expectArg(switch, arg, pass, info)
     setCC(arg)
+  of wTrack:
+    expectArg(switch, arg, pass, info)
+    track(arg, info)
   else: 
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)

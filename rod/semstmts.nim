@@ -792,6 +792,8 @@ proc SemStmt(c: PContext, n: PNode): PNode =
   const                       # must be last statements in a block:
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
+  if gCmd == cmdSuggest: 
+    suggestStmt(c, n)
   if nfSem in n.flags: return 
   case n.kind
   of nkAsgn: result = semAsgn(c, n)
