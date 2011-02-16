@@ -677,8 +677,19 @@ proc OpenScope(tab: var TSymTab) =
   Inc(tab.tos)
 
 proc RawCloseScope(tab: var TSymTab) = 
-  Dec(tab.tos)                #tab.stack[tab.tos] := nil;
+  Dec(tab.tos)
   
+iterator items*(tab: TStrTable): PSym = 
+  var it: TTabIter
+  var s = InitTabIter(it, tab)
+  while s != nil: 
+    yield s
+    s = NextIter(it, tab)
+
+iterator items*(tab: TSymTab): PSym = 
+  for i in countdown(tab.tos-1, 0): 
+    for it in items(tab.stack[i]): yield it
+
 proc hasEmptySlot(data: TIdPairSeq): bool = 
   for h in countup(0, high(data)): 
     if data[h].key == nil: 

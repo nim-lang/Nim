@@ -57,15 +57,12 @@ proc SearchForProc(c: PContext, fn: PSym, tos: int): PSym =
     result = NextIdentIter(it, c.tab.stack[tos])
 
 proc paramsFitBorrow(a, b: PNode): bool = 
-  var 
-    length: int
-    m, n: PSym
-  length = sonsLen(a)
+  var length = sonsLen(a)
   result = false
   if length == sonsLen(b): 
     for i in countup(1, length - 1): 
-      m = a.sons[i].sym
-      n = b.sons[i].sym
+      var m = a.sons[i].sym
+      var n = b.sons[i].sym
       assert((m.kind == skParam) and (n.kind == skParam))
       if not equalOrDistinctOf(m.typ, n.typ): return 
     if not equalOrDistinctOf(a.sons[0].typ, b.sons[0].typ): return 

@@ -32,5 +32,7 @@ else:
 
   # initialization:
   # disable auto-complete: 
-  discard readline.bind_key('\t'.ord, readline.abort) 
+  proc doNothing(a, b: cint): cint {.cdecl, procvar.} = nil
+  
+  discard readline.bind_key('\t'.ord, doNothing)
 

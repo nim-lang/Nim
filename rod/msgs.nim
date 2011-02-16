@@ -430,11 +430,6 @@ proc ToLinenumber*(info: TLineInfo): int =
 proc toColumn*(info: TLineInfo): int = 
   result = info.col
 
-proc checkpoint*(info: TLineInfo, filename: string, line: int): bool = 
-  result = (int(info.line) == line) and
-      (ChangeFileExt(extractFilename(filenames[info.fileIndex]), "") ==
-      filename)
-
 var checkPoints: seq[TLineInfo] = @[]
 
 proc addCheckpoint*(info: TLineInfo) = 
@@ -461,13 +456,9 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 proc inCheckpoint*(current: TLineInfo): bool = 
   ## prints the line information if in checkpoint
   result = false
-  if not (optCheckpoints in gOptions): 
-    return                    # ignore all checkpoints
   for i in countup(0, high(checkPoints)): 
     if (current.line == checkPoints[i].line) and
         (current.fileIndex == (checkPoints[i].fileIndex)): 
-      MessageOut(`%`("$1($2, $3) Checkpoint: ", [toFilename(current), 
-          coordToStr(current.line), coordToStr(current.col)]))
       return true
 
 type

@@ -176,6 +176,11 @@ proc CommandScan(filename: string) =
   else: 
     rawMessage(errCannotOpenFile, f)
   
+proc CommandSuggest(filename: string) = 
+  msgs.gErrorMax = high(int)  # do not stop after first error
+  semanticPasses()
+  compileProject(filename)
+
 proc WantFile(filename: string) = 
   if filename == "": 
     Fatal(newLineInfo("command line", 1, 1), errCommandExpectsFilename)
@@ -265,5 +270,9 @@ proc MainCommand(cmd, filename: string) =
   of wI: 
     gCmd = cmdInteractive
     CommandInteractive()
+  of wSuggest:
+    gCmd = cmdSuggest
+    wantFile(filename)
+    CommandSuggest(filename)
   else: rawMessage(errInvalidCommandX, cmd)
   

@@ -13,7 +13,7 @@ import
   strutils, nhashes, lists, options, scanner, ast, astalgo, trees, treetab, 
   wordrecg, ropes, msgs, os, condsyms, idents, rnimsyn, types, platform, math, 
   magicsys, pnimsyn, nversion, nimsets, semdata, evals, semfold, importer, 
-  procfind, lookups, rodread, pragmas, passes
+  procfind, lookups, rodread, pragmas, passes, suggest
 
 proc semPass*(): TPass
 # implementation

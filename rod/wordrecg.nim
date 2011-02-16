@@ -60,7 +60,7 @@ type
     wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, wOC, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wThreads,
-    wRecursivePath
+    wRecursivePath, wSuggest, wTrack
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -109,7 +109,7 @@ const
     "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
     "js", "oc", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "threads", "recursivepath"]
+    "threads", "recursivepath", "suggest", "track"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
 proc whichKeyword*(id: String): TSpecialWord

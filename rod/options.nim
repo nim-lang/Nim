@@ -50,7 +50,7 @@ type                          # please make sure we have under 32 options
     cmdGenDepend, cmdListDef, cmdCheck, # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)
-    cmdDebugTrans,            # debug a transformation pass
+    cmdSuggest,               # suggest feature (auto-completion for IDEs)
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
