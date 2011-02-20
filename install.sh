@@ -52,6 +52,7 @@ if [ $# -eq 1 ] ; then
   mkdir -p $docdir || exit 1
   echo "copying files..."
   mkdir -p $libdir/system || exit 1
+  mkdir -p $libdir/core || exit 1
   mkdir -p $libdir/pure || exit 1
   mkdir -p $libdir/impure || exit 1
   mkdir -p $libdir/wrappers || exit 1
@@ -323,6 +324,12 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/system/sysstr.nim
   cp lib/system/systhread.nim $libdir/system/systhread.nim || exit 1
   chmod 644 $libdir/system/systhread.nim
+  cp lib/core/macros.nim $libdir/core/macros.nim || exit 1
+  chmod 644 $libdir/core/macros.nim
+  cp lib/core/marshal.nim $libdir/core/marshal.nim || exit 1
+  chmod 644 $libdir/core/marshal.nim
+  cp lib/core/threads.nim $libdir/core/threads.nim || exit 1
+  chmod 644 $libdir/core/threads.nim
   cp lib/pure/base64.nim $libdir/pure/base64.nim || exit 1
   chmod 644 $libdir/pure/base64.nim
   cp lib/pure/browsers.nim $libdir/pure/browsers.nim || exit 1
@@ -423,6 +430,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/impure/osinfo_posix.nim
   cp lib/impure/osinfo_win.nim $libdir/impure/osinfo_win.nim || exit 1
   chmod 644 $libdir/impure/osinfo_win.nim
+  cp lib/impure/rdstdin.nim $libdir/impure/rdstdin.nim || exit 1
+  chmod 644 $libdir/impure/rdstdin.nim
   cp lib/impure/re.nim $libdir/impure/re.nim || exit 1
   chmod 644 $libdir/impure/re.nim
   cp lib/impure/ssl.nim $libdir/impure/ssl.nim || exit 1
