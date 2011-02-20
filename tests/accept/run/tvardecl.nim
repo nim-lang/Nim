@@ -1,3 +1,7 @@
+discard """
+  file: "tvardecl.nim"
+  output: "44"
+"""
 # Test the new variable declaration syntax
 
 var
@@ -7,3 +11,5 @@ var
 
 write(stdout, a)
 write(stdout, b) #OUT 44
+
+

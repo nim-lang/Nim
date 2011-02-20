@@ -1,3 +1,7 @@
+discard """
+  file: "toverl2.nim"
+  output: "true012"
+"""
 # Test new overloading resolution rules
 
 import strutils
@@ -18,4 +22,6 @@ for x in toverl2(3):
   stdout.write(toverl2(x))
 stdout.write("\n")
 #OUT true012
+
+
 

@@ -1,3 +1,7 @@
+discard """
+  file: "tseqtuple.nim"
+  output: "fA13msg1falsefB14msg2truefC15msg3false"
+"""
 
 type
   TMsg = tuple[
@@ -19,4 +23,6 @@ for file, line, msg, err in items(s):
   stdout.write($err)
 
 #OUT fA13msg1falsefB14msg2truefC15msg3false
+
+
 

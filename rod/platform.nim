@@ -143,8 +143,9 @@ const
 type 
   TSystemCPU* = enum # Also add CPU for in initialization section and 
                      # alias conditionals to condsyms (end of module).
-    cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuSparc, cpuVm, cpuIa64, 
-    cpuAmd64, cpuMips, cpuArm, cpuEcmaScript, cpuNimrodVM
+    cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
+    cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuArm, 
+    cpuEcmaScript, cpuNimrodVM
 
 type 
   TEndian* = enum 
@@ -158,7 +159,8 @@ const
     (name: "i386", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
     (name: "m68k", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "alpha", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 
-    (name: "powerpc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
+    (name: "powerpc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
+    (name: "powerpc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64), 
     (name: "sparc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32), 
     (name: "vm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32), 
     (name: "ia64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64), 

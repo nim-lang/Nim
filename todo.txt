@@ -5,7 +5,6 @@
   add --deadlock_prevention:on|off switch
 - built-in serialization
 
-- we need a way to disable tests
 - deprecate ^ and make it available as operator
 - test branch coverage
 - checked exceptions

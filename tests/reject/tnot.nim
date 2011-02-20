@@ -1,3 +1,8 @@
+discard """
+  file: "tnot.nim"
+  line: 14
+  errormsg: "type mismatch"
+"""
 # BUG: following compiles, but should not:
 
 proc nodeOfDegree(x: Int): bool = 
@@ -12,4 +17,6 @@ proc main =
         Echo "No"
 
 main()
+
+
 

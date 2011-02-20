@@ -1,3 +1,7 @@
+discard """
+  file: "tstrutil.nim"
+  output: "ha/home/a1xyz/usr/bin"
+"""
 # test the new strutils module
 
 import
@@ -37,3 +41,5 @@ assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
 
 main()
 #OUT ha/home/a1xyz/usr/bin
+
+

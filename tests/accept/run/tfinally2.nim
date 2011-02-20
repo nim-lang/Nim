@@ -1,3 +1,7 @@
+discard """
+  file: "tfinally2.nim"
+  output: "ABCD"
+"""
 # Test break in try statement:
 
 proc main: int = 
@@ -18,4 +22,6 @@ proc main: int =
     stdout.writeln("D")
     
 discard main() #OUT ABCD
+
+
 

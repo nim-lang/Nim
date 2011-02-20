@@ -1,3 +1,7 @@
+discard """
+  file: "tstrange.nim"
+  output: "hallo4"
+"""
 # test for extremely strange bug
 
 proc ack(x: int, y: int): int =
@@ -14,4 +18,6 @@ proc gen[T](a: T) =
 gen("hallo")
 write(stdout, ack(5, 4))
 #OUT hallo4
+
+
 

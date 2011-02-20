@@ -1,3 +1,7 @@
+discard """
+  file: "tlowhigh.nim"
+  output: "10"
+"""
 # Test the magic low() and high() procs
 
 type
@@ -16,3 +20,5 @@ proc sum(a: openarray[int]): int =
 
 write(stdout, sum([1, 2, 3, 4]))
 #OUT 10
+
+

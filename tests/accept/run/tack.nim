@@ -1,3 +1,7 @@
+discard """
+  file: "tack.nim"
+  output: "125"
+"""
 # the Ackermann function
 
 proc ack(x, y: int): int =
@@ -13,3 +17,5 @@ proc ack(x, y: int): int =
 
 # echo(ack(0, 0))
 write(stdout, ack(3, 4)) #OUT 125
+
+

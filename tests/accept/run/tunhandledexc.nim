@@ -1,3 +1,7 @@
+discard """
+  file: "tunhandledexc.nim"
+  output: "Error: unhandled exception: bla [ESomeOtherErr]"
+"""
 type
   ESomething = object of E_Base
   ESomeOtherErr = object of E_Base
@@ -14,3 +18,5 @@ when True:
   except ESomething:
     echo("Error happened")
   
+
+

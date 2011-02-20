@@ -1,3 +1,7 @@
+discard """
+  file: "toverflw.nim"
+  output: "the computation overflowed"
+"""
 # Tests nimrod's ability to detect overflows
 
 {.push overflowChecks: on.}
@@ -13,3 +17,5 @@ except EOverflow:
 
 {.pop.} # overflow check
 #OUT the computation overflowed
+
+

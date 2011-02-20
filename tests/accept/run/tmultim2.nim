@@ -1,3 +1,7 @@
+discard """
+  file: "tmultim2.nim"
+  output: "collide: unit, thing collide: unit, thing collide: thing, unit"
+"""
 # Test multi methods
 
 type
@@ -26,5 +30,7 @@ collide(b, c) # ambiguous (unit, thing) or (thing, unit)? -> prefer unit, thing!
 test(b, c)
 collide(a, b)
 #OUT collide: unit, thing collide: unit, thing collide: thing, unit
+
+
 
 

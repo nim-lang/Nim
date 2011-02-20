@@ -364,8 +364,8 @@ type
   TLineInfo*{.final.} = object # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We safe space here by using 
-                               # two int16 and an int32
-                               # on 64 bit and on 32 bit systems this is 
+                               # two int16 and an int32.
+                               # On 64 bit and on 32 bit systems this is 
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
@@ -454,10 +454,8 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
   result = `%`(msgKindToString(msg), [arg])
 
 proc inCheckpoint*(current: TLineInfo): bool = 
-  ## prints the line information if in checkpoint
-  result = false
   for i in countup(0, high(checkPoints)): 
-    if (current.line == checkPoints[i].line) and
+    if (current.line >= checkPoints[i].line) and
         (current.fileIndex == (checkPoints[i].fileIndex)): 
       return true
 

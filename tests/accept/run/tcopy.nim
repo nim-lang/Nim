@@ -1,3 +1,7 @@
+discard """
+  file: "tcopy.nim"
+  output: "TEMP=C:\\Programs\\xyz\\bin"
+"""
 # tests the copy proc
 
 import
@@ -17,3 +21,5 @@ proc main() =
 
 main()
 #OUT TEMP=C:\Programs\xyz\bin
+
+

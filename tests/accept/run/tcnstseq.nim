@@ -1,3 +1,7 @@
+discard """
+  file: "tcnstseq.nim"
+  output: "AngelikaAnneAnnaAnkaAnja"
+"""
 # Test the new implicit conversion from sequences to arrays in a constant
 # context.
 
@@ -8,4 +12,6 @@ const
   
 for x in items(myWords): 
   write(stdout, x) #OUT AngelikaAnneAnnaAnkaAnja
+
+
 

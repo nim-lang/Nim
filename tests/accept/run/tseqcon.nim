@@ -1,3 +1,7 @@
+discard """
+  file: "tseqcon.nim"
+  output: "Hithere, what\'s your name?Hathere, what\'s your name?"
+"""
 # Test the add proc for sequences and strings
 
 const
@@ -43,3 +47,5 @@ when nestedFixed:
   nested()
 
 #OUT Hithere, what's your name?Hathere, what's your name?
+
+

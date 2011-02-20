@@ -1,3 +1,8 @@
+discard """
+  file: "trectype.nim"
+  line: 25
+  errormsg: "internal error: cannot generate C type for: PA"
+"""
 # Test recursive type descriptions
 # (mainly for the C code generator)
 
@@ -18,4 +23,6 @@ var
   x: PA
 new(x)
 #ERROR_MSG internal error: cannot generate C type for: PA
+
+
 

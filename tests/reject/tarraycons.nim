@@ -1,3 +1,8 @@
+discard """
+  file: "tarraycons.nim"
+  line: 14
+  errormsg: "invalid order in array constructor"
+"""
 
 type
   TEnum = enum
@@ -14,4 +19,6 @@ const
   ]
 
 echo myMapping[eC][1]
+
+
 
