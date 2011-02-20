@@ -80,7 +80,7 @@ proc gitAux(dir: string) =
   for kind, path in walkDir(dir):
     if kind == pcDir: 
       var cfiles = path / "*.c"
-      exec("git rm " & cfiles)
+      when false: exec("git rm " & cfiles)
       exec("git add " & cfiles)
       gitAux(path)
 
