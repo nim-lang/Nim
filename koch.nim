@@ -214,6 +214,7 @@ of cmdArgument:
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "nim": nim(op.cmdLineRest)
+  of "git": git()
   else: showHelp()
 of cmdEnd: showHelp()
 
