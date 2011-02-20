@@ -1,3 +1,7 @@
+discard """
+  file: "tvartup.nim"
+  output: "2 3"
+"""
 # Test the new tuple unpacking
 
 proc divmod(a, b: int): tuple[di, mo: int] =
@@ -9,3 +13,5 @@ stdout.write(" ")
 stdout.write(y)
 
 #OUT 2 3
+
+

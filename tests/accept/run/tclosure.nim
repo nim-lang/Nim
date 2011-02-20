@@ -1,3 +1,7 @@
+discard """
+  file: "tclosure.nim"
+  output: "2 4 6 8 10"
+"""
 # Test the closure implementation
 
 proc map(n: var openarray[int], fn: proc (x: int): int {.closure}) =
@@ -22,5 +26,7 @@ testA()
 for x in items(myData):
   write(stout, x)
 #OUT 2 4 6 8 10
+
+
 
 

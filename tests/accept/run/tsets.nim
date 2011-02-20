@@ -1,3 +1,7 @@
+discard """
+  file: "tsets.nim"
+  output: "Ha ein F ist in s!"
+"""
 # Test the handling of sets
 
 import
@@ -56,3 +60,5 @@ for x in low(TTokTypeRange) .. high(TTokTypeRange):
     #writeln(stdout, "the token '$1' is in the set" % repr(x))
 
 #OUT Ha ein F ist in s!
+
+

@@ -1,3 +1,7 @@
+discard """
+  file: "tmultim4.nim"
+  output: "hello"
+"""
 type
   Test = object of TObject
 
@@ -35,5 +39,7 @@ for z in 1..4:
 #while true:
 #  s.doProc()
 #  break
+
+
 
 

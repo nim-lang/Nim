@@ -1,3 +1,7 @@
+discard """
+  file: "tisopr.nim"
+  output: "falsetrue"
+"""
 # Test is operator
 
 type
@@ -18,3 +22,5 @@ write(stdout, p(m))
 write(stdout, p(n))
 
 #OUT falsetrue
+
+

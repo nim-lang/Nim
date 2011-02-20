@@ -1,3 +1,8 @@
+discard """
+  file: "tadrdisc.nim"
+  line: 20
+  errormsg: "for a \'var\' type a variable needs to be passed"
+"""
 # Test that the address of a dicriminants cannot be taken
 
 type
@@ -13,4 +18,6 @@ proc setKind(k: var TKind) =
   
 var a: TA
 setKind(a.k) #ERROR_MSG for a 'var' type a variable needs to be passed
+
+
 

@@ -1,3 +1,7 @@
+discard """
+  file: "tarray2.nim"
+  output: "[16, 25, 36]"
+"""
 # simple check for one dimensional arrays
 
 type
@@ -16,3 +20,5 @@ y = x
 echo repr(mul(x, y))
 
 #OUT [16, 25, 36]
+
+

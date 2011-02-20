@@ -10,7 +10,7 @@
 ## This program verifies Nimrod against the testcases.
 
 import
-  strutils, pegs, os, osproc, streams, parsecsv, browsers
+  parseutils, strutils, pegs, os, osproc, streams, parsecfg, browsers
 
 const
   cmdTemplate = r"nimrod cc --hints:on $# $#"
@@ -21,11 +21,71 @@ type
     file: string,
     line: int,       
     msg: string,
-    err: bool]
-  TOutp = tuple[file, outp: string]
+    err: bool,
+    disabled: bool]
+  TOutp = tuple[file, outp: string, disabled: bool]
   TResults = object
-    total, passed: int
+    total, passed, skipped: int
     data: string
+
+# ----------------------- Spec parser ----------------------------------------
+
+when not defined(parseCfgBool): 
+  # candidate for the stdlib:
+  proc parseCfgBool(s: string): bool = 
+    case normalize(s)
+    of "y", "yes", "true", "1", "on": result = true 
+    of "n", "no", "false", "0", "off": result = false
+    else: raise newException(EInvalidValue, "cannot interpret as a bool: " & s)
+
+proc extractSpec(filename: string): string = 
+  const tripleQuote = "\"\"\""
+  var x = readFile(filename)
+  if isNil(x): quit "cannot open file: " & filename
+  var a = x.find(tripleQuote)
+  var b = x.find(tripleQuote, a+3)
+  if a >= 0 and b > a: 
+    result = x.copy(a+3, b-1).replace("'''", tripleQuote)
+  else:
+    echo "warning: file does not contain spec: " & filename
+
+template parseTest(fillResult: stmt) = 
+  var ss = newStringStream(extractSpec(filename))
+  var p: TCfgParser
+  open(p, ss, filename, 1)
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgEof: break
+    of cfgSectionStart, cfgOption, cfgError:
+      echo ignoreMsg(p, e)
+    of cfgKeyValuePair:
+      fillResult
+  close(p)
+  
+proc parseRejectTest(filename: string): TMsg = 
+  result.file = filename
+  result.err = true
+  result.msg = ""
+  parseTest:
+    case normalize(e.key)
+    of "file": result.file = e.value
+    of "line": discard parseInt(e.value, result.line)
+    of "errormsg": result.msg = e.value
+    of "disabled": result.disabled = parseCfgBool(e.value)
+    else: echo ignoreMsg(p, e)
+  
+proc parseRunTest(filename: string): TOutp = 
+  result.file = filename
+  result.outp = ""
+  parseTest:
+    case normalize(e.key)
+    of "file": result.file = e.value
+    of "output": result.outp = e.value
+    of "disabled": result.disabled = parseCfgBool(e.value)
+    else: echo ignoreMsg(p, e)
+
+# ----------------------------------------------------------------------------
 
 proc myExec(cmd: string): string =
   result = osproc.execProcess(cmd)
@@ -62,38 +122,16 @@ proc callCompiler(filename, options: string): TMsg =
   elif s =~ pegSuccess:
     result.err = false
 
-proc setupCvsParser(csvFile: string): TCsvParser = 
-  var s = newFileStream(csvFile, fmRead)
-  if s == nil: quit("cannot open the file" & csvFile)
-  result.open(s, csvFile, separator=';', skipInitialSpace=true)
-
-proc parseRejectData(dir: string): seq[TMsg] = 
-  var p = setupCvsParser(dir / "spec.csv")
-  result = @[]
-  while readRow(p, 3):
-    result.add((p.row[0], parseInt(p.row[1]), p.row[2], true))
-  close(p)
-
-proc parseRunData(dir: string): seq[TOutp] = 
-  var p = setupCvsParser(dir / "spec.csv")
-  result = @[]
-  while readRow(p, 2):
-    result.add((p.row[0], p.row[1]))
-  close(p)
-
-proc findSpec[T](specs: seq[T], filename: string): int = 
-  while result < specs.len:
-    if specs[result].file == filename: return
-    inc(result)
-  quit("cannot find spec for file: " & filename)
-
 proc initResults: TResults = 
   result.total = 0
   result.passed = 0
+  result.skipped = 0
   result.data = ""
 
 proc `$`(x: TResults): string = 
-  result = "Tests passed: " & $x.passed & "/" & $x.total & "<br />\n"
+  result = ("Tests passed: $1 / $3 <br />\n" &
+            "Tests skipped: $2 / $3 <br />\n") %
+            [$x.passed, $x.skipped, $x.total]
 
 proc colorBool(b: bool): string =
   if b: result = "<span style=\"color:green\">yes</span>" 
@@ -147,15 +185,15 @@ proc cmpMsgs(r: var TResults, expected, given: TMsg, test: string) =
 
 proc reject(r: var TResults, dir, options: string) =  
   ## handle all the tests that the compiler should reject
-  var specs = parseRejectData(dir)
-  
   for test in os.walkFiles(dir / "t*.nim"):
     var t = extractFilename(test)
     inc(r.total)
     echo t
-    var expected = findSpec(specs, t)
-    var given = callCompiler(test, options)
-    cmpMsgs(r, specs[expected], given, t)
+    var expected = parseRejectTest(test)
+    if expected.disabled: inc(r.skipped)
+    else:
+      var given = callCompiler(test, options)
+      cmpMsgs(r, expected, given, t)
   
 proc compile(r: var TResults, pattern, options: string) = 
   for test in os.walkFiles(pattern): 
@@ -167,24 +205,25 @@ proc compile(r: var TResults, pattern, options: string) =
     if not given.err: inc(r.passed)
   
 proc run(r: var TResults, dir, options: string) = 
-  var specs = parseRunData(dir)
   for test in os.walkFiles(dir / "t*.nim"): 
     var t = extractFilename(test)
-    inc(r.total)
     echo t
-    var given = callCompiler(test, options)
-    if given.err:
-      r.addResult(t, "", given.msg, not given.err)
+    inc(r.total)
+    var expected = parseRunTest(test)
+    if expected.disabled: inc(r.skipped)
     else:
-      var exeFile = changeFileExt(test, ExeExt)
-      var expected = specs[findSpec(specs, t)]
-      if existsFile(exeFile):
-        var buf = myExec(exeFile)
-        var success = strip(buf) == strip(expected.outp)
-        if success: inc(r.passed)
-        r.addResult(t, expected.outp, buf, success)
+      var given = callCompiler(test, options)
+      if given.err:
+        r.addResult(t, "", given.msg, not given.err)
       else:
-        r.addResult(t, expected.outp, "executable not found", false)
+        var exeFile = changeFileExt(test, ExeExt)
+        if existsFile(exeFile):
+          var buf = myExec(exeFile)
+          var success = strip(buf) == strip(expected.outp)
+          if success: inc(r.passed)
+          r.addResult(t, expected.outp, buf, success)
+        else:
+          r.addResult(t, expected.outp, "executable not found", false)
 
 var options = ""
 var rejectRes = initResults()
@@ -202,3 +241,4 @@ compile(compileRes, "examples/gtk/*.nim", options)
 run(runRes, "tests/accept/run", options)
 listResults(rejectRes, compileRes, runRes)
 openDefaultBrowser(resultsFile)
+

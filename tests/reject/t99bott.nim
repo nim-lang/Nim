@@ -1,3 +1,8 @@
+discard """
+  file: "t99bott.nim"
+  line: 25
+  errormsg: "constant expression expected"
+"""
 ## 99 Bottles of Beer
 ## http://www.99-bottles-of-beer.net/
 ## Nimrod version
@@ -24,5 +29,7 @@ for bn in countdown(99, 1):
 
 echo "No more bottles of beer on the wall, no more bottles of beer."
 echo "Go to the store and buy some more, 99 bottles of beer on the wall."
+
+
 
 

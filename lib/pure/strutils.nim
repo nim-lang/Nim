@@ -139,7 +139,7 @@ proc findNormalized(x: string, inArray: openarray[string]): int =
   var i = 0
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
-    inc(i, 2) # incrementing by 1 would probably result in a
+    inc(i, 2) # incrementing by 1 would probably lead to a
               # security hole...
   return -1
 
@@ -166,7 +166,6 @@ proc addf*(s: var string, formatstr: string, a: openarray[string]) {.
         while formatstr[i] in Digits:
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
-        num = j
         add s, a[j - 1]
       of '{':
         var j = i+1
@@ -1004,4 +1003,5 @@ when isMainModule:
   assert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   assert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
   
+  assert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
 

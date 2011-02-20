@@ -1,3 +1,7 @@
+discard """
+  file: "tcurrncy.nim"
+  output: "25"
+"""
 template Additive(typ: typeDesc): stmt =
   proc `+` *(x, y: typ): typ {.borrow.}
   proc `-` *(x, y: typ): typ {.borrow.}
@@ -29,4 +33,6 @@ template DefineCurrency(typ, base: expr): stmt =
 DefineCurrency(TDollar, int)
 DefineCurrency(TEuro, int)
 echo($( 12.TDollar + 13.TDollar )) #OUT 25
+
+
 

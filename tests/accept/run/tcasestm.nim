@@ -1,3 +1,7 @@
+discard """
+  file: "tcasestm.nim"
+  output: "ayyy"
+"""
 # Test the case statement
 
 type
@@ -29,4 +33,6 @@ else:
   nil
 
 #OUT ayyy
+
+
 

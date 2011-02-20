@@ -1,3 +1,7 @@
+discard """
+  file: "treraise.nim"
+  output: "Error: unhandled exception: bla [ESomeOtherErr]"
+"""
 type
   ESomething = object of E_Base
   ESomeOtherErr = object of E_Base
@@ -14,4 +18,6 @@ except ESomething:
   echo("Error happened")
 except:
   raise
+
+
 

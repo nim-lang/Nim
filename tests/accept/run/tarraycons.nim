@@ -1,3 +1,7 @@
+discard """
+  file: "tarraycons.nim"
+  output: "6"
+"""
 
 type
   TEnum = enum
@@ -14,4 +18,6 @@ const
   ]
 
 echo myMapping[eC][1]
+
+
 

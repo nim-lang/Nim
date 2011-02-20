@@ -1,3 +1,7 @@
+discard """
+  file: "tvarnums.nim"
+  output: "Success!"
+"""
 # Test variable length binary integers
 
 import
@@ -134,3 +138,5 @@ tm(low(int32))
 tm(high(int32))
 
 writeln(stdout, "Success!") #OUT Success!
+
+

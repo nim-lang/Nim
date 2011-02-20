@@ -74,15 +74,18 @@ const
   
 proc rawGetTok(c: var TCfgParser, tok: var TToken)
 
-proc open*(c: var TCfgParser, input: PStream, filename: string) {.
+proc open*(c: var TCfgParser, input: PStream, filename: string, 
+           lineOffset = 0) {.
   rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
-  ## for nice error messages.
+  ## for nice error messages. `lineOffset` can be used to influence the line
+  ## number information in the generated error messages.
   lexbase.open(c, input)
   c.filename = filename
   c.state = startState
   c.tok.kind = tkInvalid
   c.tok.literal = ""
+  inc(c.linenumber, lineOffset)
   rawGetTok(c, c.tok)
   
 proc close*(c: var TCfgParser) {.rtl, extern: "npc$1".} =
@@ -291,6 +294,23 @@ proc errorStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## column information.
   result = `%`("$1($2, $3) Error: $4", 
                [c.filename, $getLine(c), $getColumn(c), msg])
+  
+proc warningStr*(c: TCfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+  ## returns a properly formated warning message containing current line and
+  ## column information.
+  result = `%`("$1($2, $3) Warning: $4", 
+               [c.filename, $getLine(c), $getColumn(c), msg])
+
+proc ignoreMsg*(c: TCfgParser, e: TCfgEvent): string {.rtl, extern: "npc$1".} =
+  ## returns a properly formated warning message containing that
+  ## an entry is ignored.
+  case e.kind 
+  of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)
+  of cfgKeyValuePair: result = c.warningStr("key ignored: " & e.key)
+  of cfgOption: 
+    result = c.warningStr("command ignored: " & e.key & ": " & e.value)
+  of cfgError: result = e.msg
+  of cfgEof: result = ""
 
 proc getKeyValPair(c: var TCfgParser, kind: TCfgEventKind): TCfgEvent = 
   if c.tok.kind == tkSymbol: 

@@ -9,7 +9,7 @@
 
 ## This file implements features required for IDE support.
 
-import ast, astalgo, semdata, msgs, types
+import scanner, ast, astalgo, semdata, msgs, types
 
 const
   sep = '\t'
@@ -33,12 +33,16 @@ proc SymToStr(s: PSym, isLocal: bool): string =
   result.add(sep)
   result.add($ToColumn(s.info))
 
+proc suggestSym(s: PSym): bool {.inline.} = 
+  result = s.name.s[0] in scanner.SymChars
+
 proc suggestExpr*(c: PContext, n: PNode) = 
   if not msgs.inCheckpoint(n.info): return
 
   for i in countdown(c.tab.tos-1, 0): 
     for it in items(c.tab.stack[i]): 
-      MessageOut(SymToStr(it, i > ModuleTablePos))
+      if suggestSym(it):
+        MessageOut(SymToStr(it, i > ModuleTablePos))
   quit(0)
 
 proc suggestStmt*(c: PContext, n: PNode) = 

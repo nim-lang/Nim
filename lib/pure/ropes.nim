@@ -271,7 +271,6 @@ when false:
             j = j * 10 + ord(frmt[i]) - ord('0')
             inc(i)
             if frmt[i] notin {'0'..'9'}: break 
-          num = j
           add(s, compiledArg(j))
         of '{':
           inc(i)
@@ -281,7 +280,6 @@ when false:
             inc(i)
           if frmt[i] == '}': inc(i)
           else: raise newException(EInvalidValue, "invalid format string")
-          num = j
           add(s, compiledArg(j))
         else: raise newException(EInvalidValue, "invalid format string")
       var start = i
@@ -316,7 +314,6 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
           if frmt[i] notin {'0'..'9'}: break 
-        num = j
         add(result, args[j-1])
       of '{':
         inc(i)
@@ -326,7 +323,6 @@ proc `%`*(frmt: string, args: openarray[PRope]): PRope {.
           inc(i)
         if frmt[i] == '}': inc(i)
         else: raise newException(EInvalidValue, "invalid format string")
-        num = j
         add(result, args[j-1])
       else: raise newException(EInvalidValue, "invalid format string")
     var start = i

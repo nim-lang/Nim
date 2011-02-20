@@ -1,3 +1,7 @@
+discard """
+  file: "tcgbug.nim"
+  output: ""
+"""
 
 type
   TObj = object
@@ -14,4 +18,6 @@ var
   a: PObj
 new(a)
 q(a)
+
+
 

@@ -1,3 +1,7 @@
+discard """
+  file: "texcsub.nim"
+  output: "caught!"
+"""
 # Test inheritance for exception matching:
 
 try:
@@ -8,4 +12,6 @@ except:
   echo "wtf!?"
   
 #OUT caught!
+
+
 

@@ -1,3 +1,7 @@
+discard """
+  file: "tconstr2.nim"
+  output: "69"
+"""
 # Test array, record constructors
 
 type
@@ -17,4 +21,6 @@ const
 
 write(stdout, things[0].x)
 #OUT 69
+
+
 

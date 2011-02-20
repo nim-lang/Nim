@@ -1,3 +1,7 @@
+discard """
+  file: "tregex.nim"
+  output: "key: keyAYes!"
+"""
 # Test the new regular expression module
 # which is based on the PCRE library
 
@@ -18,3 +22,5 @@ else:
   echo("Bug!")
 
 #OUT key: keyAYes!
+
+

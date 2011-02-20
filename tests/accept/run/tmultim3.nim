@@ -1,3 +1,7 @@
+discard """
+  file: "tmultim3.nim"
+  output: "Hi derived!"
+"""
 import mmultim3
 
 type
@@ -11,4 +15,6 @@ var a : ref TBObj
 new(a)
 myObj = a
 testMyObj()
+
+
 

@@ -1,3 +1,7 @@
+discard """
+  file: "tcontinuexc.nim"
+  output: "ECcaught"
+"""
 type
   ESomething = object of E_Base
   ESomeOtherErr = object of E_Base
@@ -20,4 +24,6 @@ finally:
   echo "caught"
 
 #OUT ECcaught
+
+
 

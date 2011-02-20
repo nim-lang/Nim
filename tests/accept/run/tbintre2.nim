@@ -1,3 +1,7 @@
+discard """
+  file: "tbintre2.nim"
+  output: "helloworld99110223"
+"""
 # Same test, but check module boundaries
 
 import tbintree
@@ -22,4 +26,6 @@ for y in items(r2):
   stdout.write(y)
 
 #OUT helloworld99110223
+
+
 

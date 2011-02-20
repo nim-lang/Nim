@@ -1,3 +1,7 @@
+discard """
+  file: "tvariantstack.nim"
+  output: "came here"
+"""
 #BUG
 type
   TAnyKind = enum
@@ -43,4 +47,6 @@ stack.push(nr)
 
 var t = stack.pop()
 echo "came here"
+
+
 

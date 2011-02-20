@@ -1,3 +1,7 @@
+discard """
+  file: "tenumhole.nim"
+  output: "my value A1my value Bconc2valueCabc4abc"
+"""
 
 const
   strValB = "my value B"
@@ -12,5 +16,7 @@ type
 # trick the optimizer with a variable:
 var x = valueD
 echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
+
+
 
 

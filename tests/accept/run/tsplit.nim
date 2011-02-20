@@ -1,3 +1,7 @@
+discard """
+  file: "tsplit.nim"
+  output: "true"
+"""
 import strutils
 
 var s = ""
@@ -11,4 +15,6 @@ else:
   echo "false"
   
 #OUT true
+
+
 

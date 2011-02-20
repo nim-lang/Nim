@@ -1,3 +1,7 @@
+discard """
+  file: "tbintree.nim"
+  output: "helloworld99110223"
+"""
 type
   TBinaryTree[T] = object      # TBinaryTree is a generic type with
                                # with generic param ``T``
@@ -99,3 +103,5 @@ when isMainModule:
     stdout.write(y)
 
 #OUT helloworld99110223
+
+

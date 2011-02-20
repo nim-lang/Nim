@@ -1,3 +1,7 @@
+discard """
+  file: "tquotewords.nim"
+  output: "thisanexample"
+"""
 # Test an idea I recently had:
 
 import macros
@@ -16,4 +20,6 @@ for w in items(myWordList):
   s.add(w)
 
 echo s #OUT thisanexample
+
+
 

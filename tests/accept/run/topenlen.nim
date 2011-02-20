@@ -1,3 +1,7 @@
+discard """
+  file: "topenlen.nim"
+  output: "7"
+"""
 # Tests a special bug
 
 proc choose(b: openArray[string]): string = return b[0]
@@ -10,3 +14,5 @@ proc p(a, b: openarray[string]): int =
 
 discard choose(["sh", "-c", $p([""], ["a"])])
 echo($p(["", "ha", "abc"], ["xyz"])) #OUT 7
+
+

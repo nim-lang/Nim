@@ -1,3 +1,7 @@
+discard """
+  file: "temit.nim"
+  output: "509"
+"""
 # Test the new ``emit`` pragma: 
 
 {.emit: """
@@ -10,5 +14,7 @@ proc embedsC() {.pure.} =
   {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimrodVar`);""".}
 
 embedsC()
+
+
 
 

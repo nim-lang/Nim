@@ -1,3 +1,7 @@
+discard """
+  file: "toverwr.nim"
+  output: "hello"
+"""
 # Test the overloading resolution in connection with a qualifier
 
 proc write(t: TFile, s: string) =
@@ -5,3 +9,5 @@ proc write(t: TFile, s: string) =
 
 system.write(stdout, "hello")
 #OUT hello
+
+

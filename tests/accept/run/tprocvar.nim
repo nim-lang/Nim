@@ -1,3 +1,7 @@
+discard """
+  file: "tprocvar.nim"
+  output: "papbpcpdpe7"
+"""
 # test variables of type proc
 
 proc pa() {.cdecl.} = write(stdout, "pa")
@@ -23,4 +27,6 @@ x = ha
 discard x(3, 4)
 
 #OUT papbpcpdpe7
+
+
 
