@@ -33,11 +33,12 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer
+  git                      removes and adds generated C files to git
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
   -d:useGnuReadline        use the GNU readline library for interactive mode
-                           (not supported on Windows)
+                           (not needed on Windows)
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
@@ -74,6 +75,17 @@ proc install(args: string) =
 proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
+
+proc gitAux(dir: string) = 
+  for kind, path in walkDir(dir):
+    if kind == pcDir: 
+      var cfiles = path / "*.c"
+      exec("git rm " & cfiles)
+      exec("git add " & cfiles)
+      gitAux(path)
+
+proc git = 
+  gitAux("build")
 
 # -------------- nim ----------------------------------------------------------
 
