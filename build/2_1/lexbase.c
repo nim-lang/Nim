@@ -6,7 +6,7 @@ typedef unsigned long int NU;
 #include "nimbase.h"
 
 typedef struct TY76015 TY76015;
-typedef struct TY75013 TY75013;
+typedef struct TY75204 TY75204;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -29,7 +29,7 @@ struct TY76015 {
 NI Bufpos;
 NCSTRING Buf;
 NI Buflen;
-TY75013* Stream;
+TY75204* Stream;
 NI Linenumber;
 NI Sentinel;
 NI Linestart;
@@ -43,13 +43,14 @@ struct NimStringDesc {
   TGenericSeq Sup;
 TY239 data;
 };
-struct TY75013 {
+struct TY75204 {
   TNimObject Sup;
 NU8 Kind;
 FILE* F;
 NimStringDesc* S;
 NI Rd;
 NI Wr;
+NI Lineoffset;
 };
 struct TNimNode {
 NU8 kind;
@@ -60,14 +61,14 @@ NI len;
 TNimNode** sons;
 };
 N_NOCONV(void*, Alloc_2350)(NI Size_2352);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_13426, void* Src_13427);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_13226, void* Src_13227);
 N_NIMCALL(void, Fillbuffer_76056)(TY76015* L_76059);
-N_NIMCALL(NI, Llstreamread_75043)(TY75013* S_75045, void* Buf_75046, NI Buflen_75047);
+N_NIMCALL(NI, Llstreamread_75235)(TY75204* S_75237, void* Buf_75238, NI Buflen_75239);
 N_NOCONV(void*, Realloc_2356)(void* P_2358, NI Newsize_2359);
 N_NIMCALL(void, Skiputf8bom_76184)(TY76015* L_76187);
 N_NIMCALL(NI, Fillbaselexer_76130)(TY76015* L_76133, NI Pos_76134);
 N_NOCONV(void, Dealloc_2360)(void* P_2362);
-N_NIMCALL(void, Llstreamclose_75040)(TY75013* S_75042);
+N_NIMCALL(void, Llstreamclose_75232)(TY75204* S_75234);
 NIM_CONST TY22602 Newlines_76012 = {
 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -91,7 +92,7 @@ Tocopy_76061 = (NI32)((NI32)((*L_76059).Buflen - (*L_76059).Sentinel) - 1);
 if (!(0 < Tocopy_76061)) goto LA2;
 memmove(((void*) ((*L_76059).Buf)), ((void*) (&(*L_76059).Buf[(NI32)((*L_76059).Sentinel + 1)])), (NI32)(Tocopy_76061 * 1));
 LA2: ;
-LOC4 = Llstreamread_75043((*L_76059).Stream, ((void*) (&(*L_76059).Buf[Tocopy_76061])), (NI32)((NI32)((*L_76059).Sentinel + 1) * 1));
+LOC4 = Llstreamread_75235((*L_76059).Stream, ((void*) (&(*L_76059).Buf[Tocopy_76061])), (NI32)((NI32)((*L_76059).Sentinel + 1) * 1));
 Charsread_76060 = (NI32)(LOC4 / 1);
 S_76062 = (NI32)(Tocopy_76061 + Charsread_76060);
 if (!(Charsread_76060 < (NI32)((*L_76059).Sentinel + 1))) goto LA6;
@@ -118,7 +119,7 @@ Oldbuflen_76063 = (*L_76059).Buflen;
 (*L_76059).Buflen = (NI32)((*L_76059).Buflen * 2);
 LOC15 = Realloc_2356(((void*) ((*L_76059).Buf)), (NI32)((*L_76059).Buflen * 1));
 (*L_76059).Buf = ((NCSTRING) (LOC15));
-LOC16 = Llstreamread_75043((*L_76059).Stream, ((void*) (&(*L_76059).Buf[Oldbuflen_76063])), (NI32)(Oldbuflen_76063 * 1));
+LOC16 = Llstreamread_75235((*L_76059).Stream, ((void*) (&(*L_76059).Buf[Oldbuflen_76063])), (NI32)(Oldbuflen_76063 * 1));
 Charsread_76060 = (NI32)(LOC16 / 1);
 if (!(Charsread_76060 < Oldbuflen_76063)) goto LA18;
 (*L_76059).Buf[(NI32)(Oldbuflen_76063 + Charsread_76060)] = 0;
@@ -146,7 +147,7 @@ if (!LOC2) goto LA6;
 (*L_76187).Linestart += 3;
 LA6: ;
 }
-N_NIMCALL(void, Openbaselexer_76023)(TY76015* L_76026, TY75013* Inputstream_76027, NI Buflen_76028) {
+N_NIMCALL(void, Openbaselexer_76023)(TY76015* L_76026, TY75204* Inputstream_76027, NI Buflen_76028) {
 void* LOC1;
 (*L_76026).Bufpos = 0;
 (*L_76026).Buflen = Buflen_76028;
@@ -198,7 +199,7 @@ return Result_76169;
 }
 N_NIMCALL(void, Closebaselexer_76029)(TY76015* L_76032) {
 Dealloc_2360(((void*) ((*L_76032).Buf)));
-Llstreamclose_75040((*L_76032).Stream);
+Llstreamclose_75232((*L_76032).Stream);
 }
 N_NOINLINE(void, lexbaseInit)(void) {
 }

@@ -33,8 +33,8 @@ struct TY103008 {
   TGenericSeq Sup;
   NI8 data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void*, newSeq)(TNimType* Typ_14604, NI Len_14605);
-N_NIMCALL(void, unsureAsgnRef)(void** Dest_13426, void* Src_13427);
+N_NIMCALL(void*, newSeq)(TNimType* Typ_14404, NI Len_14405);
+N_NIMCALL(void, unsureAsgnRef)(void** Dest_13226, void* Src_13227);
 extern TNimType* NTI103008; /* TBitSet */
 N_NIMCALL(void, Bitsetinit_103010)(TY103008** B_103013, NI Length_103014) {
 unsureAsgnRef((void**) &(*B_103013), (TY103008*) newSeq(NTI103008, Length_103014));

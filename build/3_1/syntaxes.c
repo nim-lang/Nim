@@ -12,9 +12,9 @@ typedef struct TY92028 TY92028;
 typedef struct TY81011 TY81011;
 typedef struct TY77267 TY77267;
 typedef struct TY77263 TY77263;
-typedef struct TY75013 TY75013;
+typedef struct TY75204 TY75204;
 typedef struct TY55552 TY55552;
-typedef struct TY47539 TY47539;
+typedef struct TY47538 TY47538;
 typedef struct TY55548 TY55548;
 typedef struct TY54011 TY54011;
 typedef struct TY55520 TY55520;
@@ -50,7 +50,7 @@ struct TY92028 {
 NU8 Skin;
 TY81011 Parser;
 };
-struct TY47539 {
+struct TY47538 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
@@ -58,7 +58,7 @@ int Fileindex;
 struct TY55526 {
 TY55552* Typ;
 NimStringDesc* Comment;
-TY47539 Info;
+TY47538 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -98,20 +98,21 @@ TY54011* Next;
 NI H;
 };
 typedef NimStringDesc* TY46331[1];
-struct TY75013 {
+struct TY75204 {
   TNimObject Sup;
 NU8 Kind;
 FILE* F;
 NimStringDesc* S;
 NI Rd;
 NI Wr;
+NI Lineoffset;
 };
 struct TY76015 {
   TNimObject Sup;
 NI Bufpos;
 NCSTRING Buf;
 NI Buflen;
-TY75013* Stream;
+TY75204* Stream;
 NI Linenumber;
 NI Sentinel;
 NI Linestart;
@@ -167,7 +168,7 @@ NU8 Kind;
 NU8 Magic;
 TY55552* Typ;
 TY54011* Name;
-TY47539 Info;
+TY47538 Info;
 TY55548* Owner;
 NU32 Flags;
 TY55530 Tab;
@@ -221,36 +222,36 @@ struct TY55528 {
   TGenericSeq Sup;
   TY55548* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(NIM_BOOL, Open_4017)(FILE** F_4020, NimStringDesc* Filename_4021, NU8 Mode_4022, NI Bufsize_4023);
-N_NIMCALL(void, Rawmessage_47560)(NU8 Msg_47562, NimStringDesc* Arg_47563);
-N_NIMCALL(void, Openparsers_92034)(TY92028* P_92037, NimStringDesc* Filename_92038, TY75013* Inputstream_92039);
-N_NIMCALL(TY55526*, Parsepipe_92122)(NimStringDesc* Filename_92124, TY75013* Inputstream_92125);
-N_NIMCALL(TY75013*, Llstreamopen_75032)(NimStringDesc* Filename_75034, NU8 Mode_75035);
-N_NIMCALL(NimStringDesc*, Llstreamreadline_75048)(TY75013* S_75050);
+N_NIMCALL(NIM_BOOL, Open_3817)(FILE** F_3820, NimStringDesc* Filename_3821, NU8 Mode_3822, NI Bufsize_3823);
+N_NIMCALL(void, Rawmessage_48045)(NU8 Msg_48047, NimStringDesc* Arg_48048);
+N_NIMCALL(void, Openparsers_92034)(TY92028* P_92037, NimStringDesc* Filename_92038, TY75204* Inputstream_92039);
+N_NIMCALL(TY55526*, Parsepipe_92122)(NimStringDesc* Filename_92124, TY75204* Inputstream_92125);
+N_NIMCALL(TY75204*, Llstreamopen_75224)(NimStringDesc* Filename_75226, NU8 Mode_75227);
+N_NIMCALL(NimStringDesc*, Llstreamreadline_75240)(TY75204* S_75242);
 N_NIMCALL(NI, Utf8bom_92077)(NimStringDesc* S_92079);
 N_NIMCALL(NIM_BOOL, Containsshebang_92087)(NimStringDesc* S_92089, NI I_92090);
-N_NIMCALL(void, Openparser_81018)(TY81011* P_81021, NimStringDesc* Filename_81022, TY75013* Inputstream_81023);
-N_NIMCALL(TY75013*, Llstreamopen_75025)(NimStringDesc* Data_75027);
+N_NIMCALL(void, Openparser_81018)(TY81011* P_81021, NimStringDesc* Filename_81022, TY75204* Inputstream_81023);
+N_NIMCALL(TY75204*, Llstreamopen_75217)(NimStringDesc* Data_75219);
 N_NIMCALL(NimStringDesc*, copyStr)(NimStringDesc* S_2324, NI First_2325);
 N_NIMCALL(TY55526*, Parseall_81014)(TY81011* P_81017);
 N_NIMCALL(void, Closeparser_81024)(TY81011* P_81027);
-N_NIMCALL(void, Llstreamclose_75040)(TY75013* S_75042);
-N_NIMCALL(TY75013*, Evalpipe_92374)(TY92028* P_92377, TY55526* N_92378, NimStringDesc* Filename_92379, TY75013* Start_92380);
+N_NIMCALL(void, Llstreamclose_75232)(TY75204* S_75234);
+N_NIMCALL(TY75204*, Evalpipe_92374)(TY92028* P_92377, TY55526* N_92378, NimStringDesc* Filename_92379, TY75204* Start_92380);
 N_NIMCALL(NIM_BOOL, Identeq_54028)(TY54011* Id_54030, NimStringDesc* Name_54031);
-N_NIMCALL(TY75013*, Applyfilter_92337)(TY92028* P_92340, TY55526* N_92341, NimStringDesc* Filename_92342, TY75013* Stdin_92343);
+N_NIMCALL(TY75204*, Applyfilter_92337)(TY92028* P_92340, TY55526* N_92341, NimStringDesc* Filename_92342, TY75204* Stdin_92343);
 N_NIMCALL(TY54011*, Getcallee_92258)(TY55526* N_92260);
 N_NIMCALL(NimStringDesc*, Rendertree_85042)(TY55526* N_85044, NU8 Renderflags_85047);
 N_NIMCALL(NU8, Getfilter_92184)(TY54011* Ident_92186);
 N_NIMCALL(NU8, Getparser_92221)(TY54011* Ident_92223);
-N_NIMCALL(TY75013*, Filtertmpl_91001)(TY75013* Stdin_91003, NimStringDesc* Filename_91004, TY55526* Call_91005);
-N_NIMCALL(TY75013*, Filterstrip_90009)(TY75013* Stdin_90011, NimStringDesc* Filename_90012, TY55526* Call_90013);
-N_NIMCALL(TY75013*, Filterreplace_90004)(TY75013* Stdin_90006, NimStringDesc* Filename_90007, TY55526* Call_90008);
-N_NIMCALL(void, Rawmessage_47564)(NU8 Msg_47566, NimStringDesc** Args_47568, NI Args_47568Len0);
-N_NIMCALL(void, Messageout_47557)(NimStringDesc* S_47559);
-N_NIMCALL(TY75013*, Llstreamopen_75028)(FILE** F_75031);
+N_NIMCALL(TY75204*, Filtertmpl_91001)(TY75204* Stdin_91003, NimStringDesc* Filename_91004, TY55526* Call_91005);
+N_NIMCALL(TY75204*, Filterstrip_90009)(TY75204* Stdin_90011, NimStringDesc* Filename_90012, TY55526* Call_90013);
+N_NIMCALL(TY75204*, Filterreplace_90004)(TY75204* Stdin_90006, NimStringDesc* Filename_90007, TY55526* Call_90008);
+N_NIMCALL(void, Rawmessage_47971)(NU8 Msg_47973, NimStringDesc** Args_47975, NI Args_47975Len0);
+N_NIMCALL(void, Messageout_47775)(NimStringDesc* S_47777);
+N_NIMCALL(TY75204*, Llstreamopen_75220)(FILE** F_75223);
 N_NIMCALL(TY55526*, Parseall_92044)(TY92028* P_92047);
 N_NIMCALL(TY55526*, Parseall_83004)(TY81011* P_83007);
-N_NIMCALL(void, Internalerror_47578)(NimStringDesc* Errmsg_47580);
+N_NIMCALL(void, Internalerror_48163)(NimStringDesc* Errmsg_48165);
 N_NIMCALL(void, Closeparsers_92040)(TY92028* P_92043);
 N_NIMCALL(TY55526*, Parsetoplevelstmt_81028)(TY81011* P_81031);
 N_NIMCALL(TY55526*, Parsetoplevelstmt_83008)(TY81011* P_83011);
@@ -270,8 +271,9 @@ NIM_CONST TY92017 Filternames_92016 = {((NimStringDesc*) &TMP92023),
 ((NimStringDesc*) &TMP92025),
 ((NimStringDesc*) &TMP92026)}
 ;
-STRING_LITERAL(TMP195736, "|", 1);
-STRING_LITERAL(TMP195859, "parser to implement", 19);
+STRING_LITERAL(TMP195739, "|", 1);
+STRING_LITERAL(TMP195862, "parser to implement", 19);
+extern TY55526* Emptynode_55858;
 extern NI Gverbosity_46085;
 N_NIMCALL(NI, Utf8bom_92077)(NimStringDesc* S_92079) {
 NI Result_92080;
@@ -314,27 +316,28 @@ Result_92091 = ((NU8)(S_92089->data[J_92096]) == (NU8)(47));
 LA4: ;
 return Result_92091;
 }
-N_NIMCALL(TY55526*, Parsepipe_92122)(NimStringDesc* Filename_92124, TY75013* Inputstream_92125) {
+N_NIMCALL(TY55526*, Parsepipe_92122)(NimStringDesc* Filename_92124, TY75204* Inputstream_92125) {
 TY55526* Result_92126;
-TY75013* S_92127;
+TY75204* S_92127;
 NimStringDesc* Line_92139;
 NI I_92140;
 NIM_BOOL LOC5;
 NIM_BOOL LOC9;
 TY81011 Q_92180;
 NimStringDesc* LOC14;
-TY75013* LOC15;
+TY75204* LOC15;
 Result_92126 = 0;
+Result_92126 = Emptynode_55858;
 S_92127 = 0;
-S_92127 = Llstreamopen_75032(Filename_92124, ((NU8) 0));
+S_92127 = Llstreamopen_75224(Filename_92124, ((NU8) 0));
 if (!!((S_92127 == NIM_NIL))) goto LA2;
 Line_92139 = 0;
-Line_92139 = Llstreamreadline_75048(S_92127);
+Line_92139 = Llstreamreadline_75240(S_92127);
 I_92140 = 0;
 I_92140 = Utf8bom_92077(Line_92139);
 LOC5 = Containsshebang_92087(Line_92139, I_92140);
 if (!LOC5) goto LA6;
-Line_92139 = Llstreamreadline_75048(S_92127);
+Line_92139 = Llstreamreadline_75240(S_92127);
 I_92140 = 0;
 LA6: ;
 LOC9 = ((NU8)(Line_92139->data[I_92140]) == (NU8)(35));
@@ -351,12 +354,12 @@ memset((void*)&Q_92180, 0, sizeof(Q_92180));
 LOC14 = 0;
 LOC14 = copyStr(Line_92139, I_92140);
 LOC15 = 0;
-LOC15 = Llstreamopen_75025(LOC14);
+LOC15 = Llstreamopen_75217(LOC14);
 Openparser_81018(&Q_92180, Filename_92124, LOC15);
 Result_92126 = Parseall_81014(&Q_92180);
 Closeparser_81024(&Q_92180);
 LA11: ;
-Llstreamclose_75040(S_92127);
+Llstreamclose_75232(S_92127);
 LA2: ;
 return Result_92126;
 }
@@ -379,7 +382,7 @@ goto LA1;
 LA6: ;
 LOC8 = 0;
 LOC8 = Rendertree_85042(N_92260, 0);
-Rawmessage_47560(((NU8) 160), LOC8);
+Rawmessage_48045(((NU8) 159), LOC8);
 LA1: ;
 return Result_92261;
 }
@@ -425,12 +428,12 @@ goto BeforeRet;
 LA4: ;
 Res_92257 += 1;
 } LA1: ;
-Rawmessage_47560(((NU8) 28), (*Ident_92223).S);
+Rawmessage_48045(((NU8) 28), (*Ident_92223).S);
 BeforeRet: ;
 return Result_92224;
 }
-N_NIMCALL(TY75013*, Applyfilter_92337)(TY92028* P_92340, TY55526* N_92341, NimStringDesc* Filename_92342, TY75013* Stdin_92343) {
-TY75013* Result_92344;
+N_NIMCALL(TY75204*, Applyfilter_92337)(TY92028* P_92340, TY55526* N_92341, NimStringDesc* Filename_92342, TY75204* Stdin_92343) {
+TY75204* Result_92344;
 TY54011* Ident_92345;
 NU8 F_92346;
 TY46331 LOC7;
@@ -458,23 +461,23 @@ break;
 if (!!((F_92346 == ((NU8) 0)))) goto LA2;
 if (!(2 <= Gverbosity_46085)) goto LA5;
 memset((void*)&LOC7, 0, sizeof(LOC7));
-Rawmessage_47564(((NU8) 233), LOC7, 0);
-Messageout_47557((*Result_92344).S);
+Rawmessage_47971(((NU8) 232), LOC7, 0);
+Messageout_47775((*Result_92344).S);
 memset((void*)&LOC8, 0, sizeof(LOC8));
-Rawmessage_47564(((NU8) 234), LOC8, 0);
+Rawmessage_47971(((NU8) 233), LOC8, 0);
 LA5: ;
 LA2: ;
 return Result_92344;
 }
-N_NIMCALL(TY75013*, Evalpipe_92374)(TY92028* P_92377, TY55526* N_92378, NimStringDesc* Filename_92379, TY75013* Start_92380) {
-TY75013* Result_92381;
+N_NIMCALL(TY75204*, Evalpipe_92374)(TY92028* P_92377, TY55526* N_92378, NimStringDesc* Filename_92379, TY75204* Start_92380) {
+TY75204* Result_92381;
 NIM_BOOL LOC5;
 NIM_BOOL LOC6;
-NI I_92470;
-NI Res_92538;
+NI I_92468;
+NI Res_92536;
 Result_92381 = 0;
 Result_92381 = Start_92380;
-if (!(N_92378 == NIM_NIL)) goto LA2;
+if (!((*N_92378).Kind == ((NU8) 1))) goto LA2;
 goto BeforeRet;
 LA2: ;
 LOC6 = ((*N_92378).Kind == ((NU8) 27));
@@ -483,22 +486,22 @@ LOC6 = ((*(*N_92378).KindU.S6.Sons->data[0]).Kind == ((NU8) 2));
 LA7: ;
 LOC5 = LOC6;
 if (!(LOC5)) goto LA8;
-LOC5 = Identeq_54028((*(*N_92378).KindU.S6.Sons->data[0]).KindU.S5.Ident, ((NimStringDesc*) &TMP195736));
+LOC5 = Identeq_54028((*(*N_92378).KindU.S6.Sons->data[0]).KindU.S5.Ident, ((NimStringDesc*) &TMP195739));
 LA8: ;
 if (!LOC5) goto LA9;
-I_92470 = 0;
-Res_92538 = 0;
-Res_92538 = 1;
+I_92468 = 0;
+Res_92536 = 0;
+Res_92536 = 1;
 while (1) {
-if (!(Res_92538 <= 2)) goto LA11;
-I_92470 = Res_92538;
-if (!((*(*N_92378).KindU.S6.Sons->data[I_92470]).Kind == ((NU8) 27))) goto LA13;
-Result_92381 = Evalpipe_92374(P_92377, (*N_92378).KindU.S6.Sons->data[I_92470], Filename_92379, Result_92381);
+if (!(Res_92536 <= 2)) goto LA11;
+I_92468 = Res_92536;
+if (!((*(*N_92378).KindU.S6.Sons->data[I_92468]).Kind == ((NU8) 27))) goto LA13;
+Result_92381 = Evalpipe_92374(P_92377, (*N_92378).KindU.S6.Sons->data[I_92468], Filename_92379, Result_92381);
 goto LA12;
 LA13: ;
-Result_92381 = Applyfilter_92337(P_92377, (*N_92378).KindU.S6.Sons->data[I_92470], Filename_92379, Result_92381);
+Result_92381 = Applyfilter_92337(P_92377, (*N_92378).KindU.S6.Sons->data[I_92468], Filename_92379, Result_92381);
 LA12: ;
-Res_92538 += 1;
+Res_92536 += 1;
 } LA11: ;
 goto LA4;
 LA9: ;
@@ -511,24 +514,24 @@ LA4: ;
 BeforeRet: ;
 return Result_92381;
 }
-N_NIMCALL(void, Openparsers_92034)(TY92028* P_92037, NimStringDesc* Filename_92038, TY75013* Inputstream_92039) {
-TY75013* S_92545;
-TY55526* Pipe_92546;
-S_92545 = 0;
+N_NIMCALL(void, Openparsers_92034)(TY92028* P_92037, NimStringDesc* Filename_92038, TY75204* Inputstream_92039) {
+TY75204* S_92543;
+TY55526* Pipe_92544;
+S_92543 = 0;
 (*P_92037).Skin = ((NU8) 0);
-Pipe_92546 = 0;
-Pipe_92546 = Parsepipe_92122(Filename_92038, Inputstream_92039);
-if (!!((Pipe_92546 == NIM_NIL))) goto LA2;
-S_92545 = Evalpipe_92374(P_92037, Pipe_92546, Filename_92038, Inputstream_92039);
+Pipe_92544 = 0;
+Pipe_92544 = Parsepipe_92122(Filename_92038, Inputstream_92039);
+if (!!((Pipe_92544 == NIM_NIL))) goto LA2;
+S_92543 = Evalpipe_92374(P_92037, Pipe_92544, Filename_92038, Inputstream_92039);
 goto LA1;
 LA2: ;
-S_92545 = Inputstream_92039;
+S_92543 = Inputstream_92039;
 LA1: ;
 switch ((*P_92037).Skin) {
 case ((NU8) 0):
 case ((NU8) 1):
 case ((NU8) 2):
-Openparser_81018(&(*P_92037).Parser, Filename_92038, S_92545);
+Openparser_81018(&(*P_92037).Parser, Filename_92038, S_92543);
 break;
 }
 }
@@ -543,7 +546,8 @@ case ((NU8) 1):
 Result_92067 = Parseall_83004(&(*P_92047).Parser);
 break;
 case ((NU8) 2):
-Internalerror_47578(((NimStringDesc*) &TMP195859));
+Internalerror_48163(((NimStringDesc*) &TMP195862));
+Result_92067 = Emptynode_55858;
 break;
 }
 return Result_92067;
@@ -556,17 +560,17 @@ TY55526* Result_92055;
 TY92028 P_92056;
 FILE* F_92057;
 NIM_BOOL LOC2;
-TY75013* LOC5;
+TY75204* LOC5;
 Result_92055 = 0;
 memset((void*)&P_92056, 0, sizeof(P_92056));
 F_92057 = 0;
-LOC2 = Open_4017(&F_92057, Filename_92033, ((NU8) 0), -1);
+LOC2 = Open_3817(&F_92057, Filename_92033, ((NU8) 0), -1);
 if (!!(LOC2)) goto LA3;
-Rawmessage_47560(((NU8) 2), Filename_92033);
+Rawmessage_48045(((NU8) 2), Filename_92033);
 goto BeforeRet;
 LA3: ;
 LOC5 = 0;
-LOC5 = Llstreamopen_75028(&F_92057);
+LOC5 = Llstreamopen_75220(&F_92057);
 Openparsers_92034(&P_92056, Filename_92033, LOC5);
 Result_92055 = Parseall_92044(&P_92056);
 Closeparsers_92040(&P_92056);
@@ -584,7 +588,8 @@ case ((NU8) 1):
 Result_92074 = Parsetoplevelstmt_83008(&(*P_92051).Parser);
 break;
 case ((NU8) 2):
-Internalerror_47578(((NimStringDesc*) &TMP195859));
+Internalerror_48163(((NimStringDesc*) &TMP195862));
+Result_92074 = Emptynode_55858;
 break;
 }
 return Result_92074;

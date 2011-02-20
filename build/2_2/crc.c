@@ -19,9 +19,9 @@ TY239 data;
 };
 static N_INLINE(int, Updatecrc32_50018)(NIM_CHAR Val_50020, int Crc_50021);
 static N_INLINE(int, Updatecrc32_50014)(NI8 Val_50016, int Crc_50017);
-N_NIMCALL(NIM_BOOL, Open_4017)(FILE** F_4020, NimStringDesc* Filename_4021, NU8 Mode_4022, NI Bufsize_4023);
+N_NIMCALL(NIM_BOOL, Open_3817)(FILE** F_3820, NimStringDesc* Filename_3821, NU8 Mode_3822, NI Bufsize_3823);
 N_NOCONV(void*, Alloc_2350)(NI Size_2352);
-N_NIMCALL(NI, Readbuffer_4122)(FILE* F_4124, void* Buffer_4125, NI Len_4126);
+N_NIMCALL(NI, Readbuffer_3922)(FILE* F_3924, void* Buffer_3925, NI Len_3926);
 N_NOCONV(void, Dealloc_2360)(void* P_2362);
 NIM_CONST TY50040 Crc32table_50039 = {0,
 1996959894,
@@ -328,14 +328,14 @@ Buf_50140 = 0;
 Readbytes_50141 = 0;
 P_50142 = 0;
 Result_50137 = ((NI32) -1);
-LOC2 = Open_4017(&Bin_50139, Filename_50031, ((NU8) 0), -1);
+LOC2 = Open_3817(&Bin_50139, Filename_50031, ((NU8) 0), -1);
 if (!!(LOC2)) goto LA3;
 goto BeforeRet;
 LA3: ;
 Buf_50140 = Alloc_2350(8192);
 P_50142 = ((NI8*) (Buf_50140));
 while (1) {
-Readbytes_50141 = Readbuffer_4122(Bin_50139, Buf_50140, 8192);
+Readbytes_50141 = Readbuffer_3922(Bin_50139, Buf_50140, 8192);
 I_50152 = 0;
 HEX3Atmp_50155 = 0;
 HEX3Atmp_50155 = (NI64)(Readbytes_50141 - 1);
