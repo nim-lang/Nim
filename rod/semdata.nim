@@ -166,6 +166,10 @@ proc makeRangeType(c: PContext, first, last: biggestInt,
   result.n = n
   addSon(result, getSysType(tyInt)) # basetype of range
   
+proc markUsed*(n: PNode, s: PSym) = 
+  incl(s.flags, sfUsed)
+  if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
+  
 proc illFormedAst*(n: PNode) = 
   GlobalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 

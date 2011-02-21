@@ -13,7 +13,7 @@ import
   strutils, nhashes, lists, options, scanner, ast, astalgo, trees, treetab, 
   wordrecg, ropes, msgs, os, condsyms, idents, rnimsyn, types, platform, math, 
   magicsys, pnimsyn, nversion, nimsets, semdata, evals, semfold, importer, 
-  procfind, lookups, rodread, pragmas, passes, suggest
+  procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest
 
 proc semPass*(): TPass
 # implementation
@@ -34,10 +34,6 @@ proc isTopLevel(c: PContext): bool =
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner())
   result.info = n.info
-
-proc markUsed(n: PNode, s: PSym) = 
-  incl(s.flags, sfUsed)
-  if sfDeprecated in s.flags: Message(n.info, warnDeprecated, s.name.s)
   
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode, allowed: TSymFlags): PSym
   # identifier with visability
@@ -115,7 +111,7 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
   if semCheck: result = semAfterMacroCall(c, result, sym)
   dec(evalTemplateCounter)
 
-include seminst, sigmatch
+include seminst, semcall
 
 proc CheckBool(t: PNode) = 
   if (t.Typ == nil) or

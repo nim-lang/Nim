@@ -245,7 +245,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       elif (sfMinus in allowed) and (v.id == ord(wMinus)): 
         incl(result.flags, sfMinus)
       else: 
-        GlobalError(n.sons[0].info, errInvalidVisibilityX, v.s)
+        LocalError(n.sons[0].info, errInvalidVisibilityX, v.s)
     else: 
       illFormedAst(n)
   else: 
