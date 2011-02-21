@@ -275,6 +275,7 @@ proc semVar(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   for i in countup(0, sonsLen(n)-1): 
     var a = n.sons[i]
+    if gCmd == cmdSuggest: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
     checkMinSonsLen(a, 3)
@@ -331,6 +332,7 @@ proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
+    if gCmd == cmdSuggest: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkConstDef): IllFormedAst(a)
     checkSonsLen(a, 3)
@@ -483,6 +485,7 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
   # we even look at the type definitions on the right
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
+    if gCmd == cmdSuggest: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue 
     if a.kind != nkTypeDef: IllFormedAst(a)
     checkSonsLen(a, 3)

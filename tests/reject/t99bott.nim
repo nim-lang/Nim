@@ -2,6 +2,7 @@ discard """
   file: "t99bott.nim"
   line: 25
   errormsg: "constant expression expected"
+  disabled: true
 """
 ## 99 Bottles of Beer
 ## http://www.99-bottles-of-beer.net/

@@ -61,6 +61,10 @@ case $ucpu in
   *sparc*|*sun* ) 
     mycpu="sparc" ;;
   *ppc64* ) 
+    if [ "$myos" = "linux" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m64"
+      LINK_FLAGS="$LINK_FLAGS -m64"
+    fi
     mycpu="powerpc64" ;;
   *power*|*Power* ) 
     mycpu="powerpc" ;;

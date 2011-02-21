@@ -104,7 +104,6 @@ proc existsConfigVar*(key: string): bool
 proc getConfigVar*(key: string): string
 proc setConfigVar*(key, val: string)
 proc addImplicitMod*(filename: string)
-proc getOutFile*(filename, ext: string): string
 proc binaryStrSearch*(x: openarray[string], y: string): int
 # implementation
 
@@ -117,7 +116,7 @@ proc getConfigVar(key: string): string =
 proc setConfigVar(key, val: string) = 
   nstrtabs.put(gConfigVars, key, val)
 
-proc getOutFile(filename, ext: string): string = 
+proc getOutFile*(filename, ext: string): string = 
   if options.outFile != "": result = options.outFile
   else: result = changeFileExt(filename, ext)
   
