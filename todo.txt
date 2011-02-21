@@ -1,5 +1,5 @@
-- 'suggest' needs tweaking: more places in the semantic checking
-   need to take it into account
+- 'suggest' needs tweaking: support for '.'
+- stdout support for doc, pretty
 
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
