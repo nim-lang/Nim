@@ -51,16 +51,18 @@ type
   TTabIter*{.final.} = object # consider all fields here private
     h*: THash                 # current hash
   
-
 proc InitTabIter*(ti: var TTabIter, tab: TStrTable): PSym
 proc NextIter*(ti: var TTabIter, tab: TStrTable): PSym
   # usage:
-  # var i: TTabIter; s: PSym;
-  # s := InitTabIter(i, table);
-  # while s <> nil do begin
+  # var 
+  #   i: TTabIter
+  #   s: PSym
+  # s = InitTabIter(i, table)
+  # while s != nil:
   #   ...
-  #   s := NextIter(i, table);
-  # end;
+  #   s = NextIter(i, table)
+  #
+
 type 
   TIdentIter*{.final.} = object # iterator over all syms with the same identifier
     h*: THash                 # current hash

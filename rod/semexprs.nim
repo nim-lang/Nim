@@ -12,8 +12,7 @@ const
   ConstAbstractTypes = {tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128, 
     tyArrayConstr, tyTuple, tySet}
 
-proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
-                     semCheck: bool = true): PNode = 
+proc semTemplateExpr(c: PContext, n: PNode, s: PSym, semCheck = true): PNode = 
   markUsed(n, s)
   pushInfoContext(n.info)
   result = evalTemplate(c, n, s)
@@ -122,9 +121,9 @@ proc checkConvertible(info: TLineInfo, castDest, src: PType) =
 
 proc isCastable(dst, src: PType): bool = 
   #const
-  #  castableTypeKinds = {@set}[tyInt, tyPtr, tyRef, tyCstring, tyString, 
-  #                             tySequence, tyPointer, tyNil, tyOpenArray,
-  #                             tyProc, tySet, tyEnum, tyBool, tyChar];
+  #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString, 
+  #                       tySequence, tyPointer, tyNil, tyOpenArray,
+  #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   var ds, ss: biggestInt
   # this is very unrestrictive; cast is allowed if castDest.size >= src.size
   ds = computeSize(dst)
@@ -232,7 +231,8 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
 proc changeType(n: PNode, newType: PType) = 
   case n.kind
   of nkCurly, nkBracket: 
-    for i in countup(0, sonsLen(n) - 1): changeType(n.sons[i], elemType(newType))
+    for i in countup(0, sonsLen(n) - 1): 
+      changeType(n.sons[i], elemType(newType))
   of nkPar: 
     if newType.kind != tyTuple: 
       InternalError(n.info, "changeType: no tuple type for constructor")
@@ -350,8 +350,6 @@ proc isAssignable(n: PNode): TAssignableResult =
       result = isAssignable(n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
     # Object and tuple conversions are still addressable, so we skip them
-    #if skipPtrsGeneric(n.sons[1].typ).kind in [tyOpenArray,
-    #                                           tyTuple, tyObject] then
     if skipTypes(n.typ, abstractPtrs).kind in {tyOpenArray, tyTuple, tyObject}: 
       result = isAssignable(n.sons[1])
   of nkHiddenDeref, nkDerefExpr: 
@@ -643,6 +641,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   checkSonsLen(n, 2)
   n.sons[0] = semExprWithType(c, n.sons[0], {efAllowType} + flags)
+  if gCmd == cmdSuggest: 
+    suggestFieldAccess(c, n.sons[0])
   var i = considerAcc(n.sons[1])
   var ty = n.sons[0].Typ
   var f: PSym = nil
