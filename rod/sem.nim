@@ -28,8 +28,10 @@ proc considerAcc(n: PNode): PIdent =
     GlobalError(n.info, errIdentifierExpected, renderTree(n))
     result = nil
 
-proc isTopLevel(c: PContext): bool = 
-  result = c.tab.tos <= 2
+proc isTopLevel(c: PContext): bool {.inline.} = 
+  # if we encountered an error, we treat as top-level so that
+  # cascading errors are not that strange:
+  result = c.tab.tos <= 2 or msgs.gErrorCounter > 0
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner())

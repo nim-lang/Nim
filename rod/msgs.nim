@@ -398,8 +398,8 @@ proc UnknownLineInfo*(): TLineInfo =
   result.fileIndex = -1
 
 var 
-  filenames: seq[string] = @ []
-  msgContext: seq[TLineInfo] = @ []
+  filenames: seq[string] = @[]
+  msgContext: seq[TLineInfo] = @[]
 
 proc pushInfoContext*(info: TLineInfo) = 
   msgContext.add(info)
@@ -424,10 +424,10 @@ proc ToFilename*(info: TLineInfo): string =
   if info.fileIndex == - 1: result = "???"
   else: result = filenames[info.fileIndex]
   
-proc ToLinenumber*(info: TLineInfo): int = 
+proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
   result = info.line
 
-proc toColumn*(info: TLineInfo): int = 
+proc toColumn*(info: TLineInfo): int {.inline.} = 
   result = info.col
 
 var checkPoints: seq[TLineInfo] = @[]
@@ -453,11 +453,18 @@ proc MsgKindToString*(kind: TMsgKind): string =
 proc getMessageStr(msg: TMsgKind, arg: string): string = 
   result = `%`(msgKindToString(msg), [arg])
 
-proc inCheckpoint*(current: TLineInfo): bool = 
+type
+  TCheckPointResult* = enum 
+    cpNone, cpFuzzy, cpExact
+
+proc inCheckpoint*(current: TLineInfo): TCheckPointResult = 
   for i in countup(0, high(checkPoints)): 
-    if (current.line >= checkPoints[i].line) and
-        (current.fileIndex == (checkPoints[i].fileIndex)): 
-      return true
+    if current.fileIndex == checkPoints[i].fileIndex:
+      if current.line == checkPoints[i].line and
+          abs(current.col-checkPoints[i].col) < 4:
+        return cpExact
+      if current.line >= checkPoints[i].line:
+        return cpFuzzy
 
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
