@@ -9,7 +9,7 @@
 
 ## This file implements features required for IDE support.
 
-import scanner, ast, astalgo, semdata, msgs, types, sigmatch
+import scanner, idents, ast, astalgo, semdata, msgs, types, sigmatch
 
 const
   sep = '\t'
@@ -64,7 +64,14 @@ proc suggestObject(n: PNode) =
   else: nil
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
-  result = n.sons[0].kind == nkSym and n.sons[0].sym.name.id == s.name.id
+  var op = n.sons[0]
+  if op.kind == nkSymChoice: op = op.sons[0]
+  var opr: PIdent
+  case op.kind
+  of nkSym: opr = op.sym.name
+  of nkIdent: opr = op.ident
+  else: return false
+  result = opr.id == s.name.id
 
 proc argsFit(c: PContext, candidate: PSym, n: PNode): bool = 
   case candidate.kind 
@@ -78,11 +85,11 @@ proc argsFit(c: PContext, candidate: PSym, n: PNode): bool =
   else:
     result = false
 
-proc suggestCall*(c: PContext, n: PNode) = 
+proc suggestCall(c: PContext, n: PNode) = 
   wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n))
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
-  if s.typ != nil and sonsLen(s.typ) > 1:
+  if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
 proc suggestOperations(c: PContext, n: PNode, typ: PType) =
@@ -132,21 +139,51 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
       # fallback: 
       suggestEverything(c, n)
 
-proc suggestExpr*(c: PContext, n: PNode) = 
-  var cp = msgs.inCheckpoint(n.info)
+proc interestingNode(n: PNode): bool {.inline.} =
+  result = n.kind == nkDotExpr
+
+proc findClosestNode(n: PNode): PNode = 
+  if msgs.inCheckpoint(n.info) == cpExact: 
+    result = n
+    echo "came here"
+    debug result
+  elif n.kind notin {nkNone..nkNilLit}:
+    for i in 0.. <sonsLen(n):
+      if interestingNode(n.sons[i]):
+        result = findClosestNode(n.sons[i])
+        if result != nil: return
+
+var recursiveCheck = 0
+
+proc suggestExpr*(c: PContext, node: PNode) = 
+  var cp = msgs.inCheckpoint(node.info)
   if cp == cpNone: return
+  # HACK: This keeps semExpr() from coming here recursively:
+  if recursiveCheck > 0: return
+  inc(recursiveCheck)
+  var n = findClosestNode(node)
+  if n == nil: n = node
+  else: cp = msgs.inCheckpoint(n.info)
   block:
+    debug n
     case n.kind
     of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
         nkCallStrLit, nkMacroStmt: 
-      var a = copyNode(n)
-      for i in 0..sonsLen(n)-1:
-        # use as many typed arguments as possible:
-        var x = c.semExpr(c, n.sons[i])
-        if x.kind == nkEmpty or x.typ == nil: break
+      when false:
+        # this provides "context information", not "type suggestion":
+        var a = copyNode(n)
+        var x = c.semExpr(c, n.sons[0])
+        if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
         addSon(a, x)
-      suggestCall(c, n)
-      break
+        for i in 1..sonsLen(n)-1:
+          # use as many typed arguments as possible:
+          var x = c.semExpr(c, n.sons[i])
+          if x.kind == nkEmpty or x.typ == nil: break
+          addSon(a, x)
+        suggestCall(c, a)
+        break
+      else:
+        nil
     of nkDotExpr: 
       if cp == cpExact:
         var obj = c.semExpr(c, n.sons[0])

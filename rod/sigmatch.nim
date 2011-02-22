@@ -564,7 +564,7 @@ proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode =
 proc argtypeMatches*(c: PContext, f, a: PType): bool = 
   var m: TCandidate
   initCandidate(m, f)
-  result = paramTypesMatch(c, m, f, a, nil) != nil  
+  result = paramTypesMatch(c, m, f, a, ast.emptyNode) != nil  
 
 proc setSon(father: PNode, at: int, son: PNode) = 
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
