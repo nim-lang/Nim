@@ -641,8 +641,6 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   checkSonsLen(n, 2)
   n.sons[0] = semExprWithType(c, n.sons[0], {efAllowType} + flags)
-  if gCmd == cmdSuggest: 
-    suggestFieldAccess(c, n.sons[0])
   var i = considerAcc(n.sons[1])
   var ty = n.sons[0].Typ
   var f: PSym = nil

@@ -7,11 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This module does the instantiation of generic procs.
-
-proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym
-  # generates an instantiated proc
+# This module implements the instantiation of generic procs.
 
 proc instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable) = 
   if (n.kind != nkGenericParams): 

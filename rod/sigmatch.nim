@@ -561,11 +561,17 @@ proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode =
   initCandidate(m, f)
   result = paramTypesMatch(c, m, f, a, arg)
 
+proc argtypeMatches*(c: PContext, f, a: PType): bool = 
+  var m: TCandidate
+  initCandidate(m, f)
+  result = paramTypesMatch(c, m, f, a, nil) != nil  
+
 proc setSon(father: PNode, at: int, son: PNode) = 
   if sonsLen(father) <= at: setlen(father.sons, at + 1)
   father.sons[at] = son
 
-proc matches*(c: PContext, n: PNode, m: var TCandidate) = 
+proc matchesAux*(c: PContext, n: PNode, m: var TCandidate, 
+                 marker: var TIntSet) = 
   var f = 1 # iterates over formal parameters
   var a = 1 # iterates over the actual given arguments
   m.state = csMatch           # until proven otherwise
@@ -573,8 +579,6 @@ proc matches*(c: PContext, n: PNode, m: var TCandidate) =
   m.call.typ = base(m.callee) # may be nil
   var formalLen = sonsLen(m.callee.n)
   addSon(m.call, copyTree(n.sons[0]))
-  var marker: TIntSet
-  IntSetInit(marker)
   var container: PNode = nil # constructed container
   var formal: PSym = nil
   while a < sonsLen(n): 
@@ -656,13 +660,26 @@ proc matches*(c: PContext, n: PNode, m: var TCandidate) =
           setSon(m.call, formal.position + 1, arg)
     inc(a)
     inc(f)
-  f = 1
+
+proc partialMatch*(c: PContext, n: PNode, m: var TCandidate) = 
+  # for 'suggest' support:
+  var marker: TIntSet
+  IntSetInit(marker)
+  matchesAux(c, n, m, marker)  
+
+proc matches*(c: PContext, n: PNode, m: var TCandidate) = 
+  var marker: TIntSet
+  IntSetInit(marker)
+  matchesAux(c, n, m, marker)
+  if m.state == csNoMatch: return
+  # check that every formal parameter got a value:
+  var f = 1
   while f < sonsLen(m.callee.n): 
-    formal = m.callee.n.sons[f].sym
+    var formal = m.callee.n.sons[f].sym
     if not IntSetContainsOrIncl(marker, formal.position): 
       if formal.ast == nil: 
         if formal.typ.kind == tyOpenArray:
-          container = newNodeI(nkBracket, n.info)
+          var container = newNodeI(nkBracket, n.info)
           addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ, 
                                       container, m, c))
         else:

@@ -40,17 +40,11 @@ proc suggestField(s: PSym) =
   if filterSym(s):
     MessageOut(SymToStr(s, isLocal=true))
 
-proc suggestExpr*(c: PContext, n: PNode) = 
-  if not msgs.inCheckpoint(n.info): return
-
+template wholeSymTab(cond: expr) = 
   for i in countdown(c.tab.tos-1, 0): 
     for it in items(c.tab.stack[i]): 
-      if filterSym(it):
+      if cond:
         MessageOut(SymToStr(it, isLocal = i > ModuleTablePos))
-  quit(0)
-
-proc suggestStmt*(c: PContext, n: PNode) = 
-  suggestExpr(c, n)
 
 proc suggestSymList(list: PNode) = 
   for i in countup(0, sonsLen(list) - 1): 
@@ -60,20 +54,45 @@ proc suggestSymList(list: PNode) =
 proc suggestObject(n: PNode) = 
   case n.kind
   of nkRecList: 
-    for i in countup(0, sonsLen(n) - 1): suggestObject(n.sons[i])
+    for i in countup(0, sonsLen(n)-1): suggestObject(n.sons[i])
   of nkRecCase: 
     var L = sonsLen(n)
     if L > 0:
       suggestObject(n.sons[0])
-      for i in countup(1, L-1): 
-        suggestObject(lastSon(n.sons[i]))
+      for i in countup(1, L-1): suggestObject(lastSon(n.sons[i]))
   of nkSym: suggestField(n.sym)
   else: nil
 
-proc suggestOperations(c: PContext, n: PNode, typ: PType) =
-  nil
+proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
+  result = n.sons[0].kind == nkSym and n.sons[0].sym.name.id == s.name.id
 
-proc suggestFieldAccess*(c: PContext, n: PNode) =
+proc argsFit(c: PContext, candidate: PSym, n: PNode): bool = 
+  case candidate.kind 
+  of skProc, skIterator, skMethod:
+    var m: TCandidate
+    initCandidate(m, candidate, nil)
+    sigmatch.partialMatch(c, n, m)
+    result = m.state != csNoMatch
+  of skTemplate, skMacro:
+    result = true
+  else:
+    result = false
+
+proc suggestCall*(c: PContext, n: PNode) = 
+  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n))
+
+proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
+  if s.typ != nil and sonsLen(s.typ) > 1:
+    result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
+
+proc suggestOperations(c: PContext, n: PNode, typ: PType) =
+  assert typ != nil
+  wholeSymTab(filterSym(it) and typeFits(c, it, typ))
+
+proc suggestEverything(c: PContext, n: PNode) = 
+  wholeSymTab(filterSym(it))
+
+proc suggestFieldAccess(c: PContext, n: PNode) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
   # ``myObj``.
   var typ = n.Typ
@@ -89,7 +108,7 @@ proc suggestFieldAccess*(c: PContext, n: PNode) =
           if filterSym(it): MessageOut(SymToStr(it, isLocal=false))
     else:
       # fallback:
-      suggestExpr(c, n)
+      suggestEverything(c, n)
   elif typ.kind == tyEnum: 
     # look up if the identifier belongs to the enum:
     var t = typ
@@ -111,5 +130,32 @@ proc suggestFieldAccess*(c: PContext, n: PNode) =
       suggestOperations(c, n, typ)
     else:
       # fallback: 
-      suggestExpr(c, n)
+      suggestEverything(c, n)
+
+proc suggestExpr*(c: PContext, n: PNode) = 
+  var cp = msgs.inCheckpoint(n.info)
+  if cp == cpNone: return
+  block:
+    case n.kind
+    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
+        nkCallStrLit, nkMacroStmt: 
+      var a = copyNode(n)
+      for i in 0..sonsLen(n)-1:
+        # use as many typed arguments as possible:
+        var x = c.semExpr(c, n.sons[i])
+        if x.kind == nkEmpty or x.typ == nil: break
+        addSon(a, x)
+      suggestCall(c, n)
+      break
+    of nkDotExpr: 
+      if cp == cpExact:
+        var obj = c.semExpr(c, n.sons[0])
+        suggestFieldAccess(c, obj)
+        break
+    else: nil
+    suggestEverything(c, n)
+  quit(0)
+
+proc suggestStmt*(c: PContext, n: PNode) = 
+  suggestExpr(c, n)
 
