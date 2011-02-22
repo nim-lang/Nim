@@ -145,8 +145,6 @@ proc interestingNode(n: PNode): bool {.inline.} =
 proc findClosestNode(n: PNode): PNode = 
   if msgs.inCheckpoint(n.info) == cpExact: 
     result = n
-    echo "came here"
-    debug result
   elif n.kind notin {nkNone..nkNilLit}:
     for i in 0.. <sonsLen(n):
       if interestingNode(n.sons[i]):
@@ -165,7 +163,6 @@ proc suggestExpr*(c: PContext, node: PNode) =
   if n == nil: n = node
   else: cp = msgs.inCheckpoint(n.info)
   block:
-    debug n
     case n.kind
     of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
         nkCallStrLit, nkMacroStmt: 
