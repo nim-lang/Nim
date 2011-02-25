@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -648,7 +648,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
       r.cgenIdx = r.pos + 2
       skipSection(r)
     else: 
-      MessageOut("skipping section: " & $r.pos)
+      MsgWriteln("skipping section: " & $r.pos)
       skipSection(r)
     if r.s[r.pos] == '\x0A': 
       inc(r.pos)
@@ -810,7 +810,7 @@ proc checkDep(filename: string): TReasonForRecompile =
   else: 
     result = rrRodDoesNotExist
   if (result != rrNone) and (gVerbosity > 0): 
-    MessageOut(`%`(reasonToFrmt[result], [filename]))
+    MsgWriteln(`%`(reasonToFrmt[result], [filename]))
   if (result != rrNone) or (optForceFullMake in gGlobalOptions): 
     # recompilation is necessary:
     r = nil

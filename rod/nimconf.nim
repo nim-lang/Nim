@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -139,7 +139,7 @@ proc parseDirective(L: var TLexer, tok: PToken) =
     doEnd(L, tok)
   of wWrite: 
     ppGetTok(L, tok)
-    msgs.MessageOut(tokToStr(tok))
+    msgs.MsgWriteln(tokToStr(tok))
     ppGetTok(L, tok)
   of wPutEnv: 
     ppGetTok(L, tok)

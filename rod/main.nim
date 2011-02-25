@@ -254,7 +254,7 @@ proc MainCommand(cmd, filename: string) =
   of wDump: 
     gCmd = cmdDump
     condsyms.ListSymbols()
-    for it in iterSearchPath(): MessageOut(it)
+    for it in iterSearchPath(): MsgWriteln(it)
   of wCheck: 
     gCmd = cmdCheck
     wantFile(filename)
@@ -267,7 +267,7 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdScan
     wantFile(filename)
     CommandScan(filename)
-    MessageOut("Beware: Indentation tokens depend on the parser\'s state!")
+    MsgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
   of wI: 
     gCmd = cmdInteractive
     CommandInteractive()

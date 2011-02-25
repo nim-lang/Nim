@@ -140,7 +140,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   if f != filtNone: 
     if gVerbosity >= 2: 
       rawMessage(hintCodeBegin, [])
-      messageOut(result.s)
+      MsgWriteln(result.s)
       rawMessage(hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string, 
