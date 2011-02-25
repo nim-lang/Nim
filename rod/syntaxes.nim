@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Implements the dispatcher for the different parsers.
+## Implements the dispatcher for the different parsers.
 
 import 
   strutils, llstream, ast, astalgo, idents, scanner, options, msgs, pnimsyn, 

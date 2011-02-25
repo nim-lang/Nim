@@ -9,13 +9,17 @@
 
 ## This file implements features required for IDE support.
 
-import scanner, idents, ast, astalgo, semdata, msgs, types, sigmatch
+import scanner, idents, ast, astalgo, semdata, msgs, types, sigmatch, options
 
 const
   sep = '\t'
+  sectionSuggest = "sug"
+  sectionDef = "def"
+  sectionContext = "con"
 
-proc SymToStr(s: PSym, isLocal: bool): string = 
-  result = ""
+proc SymToStr(s: PSym, isLocal: bool, section: string): string = 
+  result = section
+  result.add(sep)
   result.add($s.kind)
   result.add(sep)
   if not isLocal: 
@@ -38,13 +42,13 @@ proc filterSym(s: PSym): bool {.inline.} =
 
 proc suggestField(s: PSym) = 
   if filterSym(s):
-    MessageOut(SymToStr(s, isLocal=true))
+    MessageOut(SymToStr(s, isLocal=true, sectionSuggest))
 
-template wholeSymTab(cond: expr) = 
+template wholeSymTab(cond, section: expr) = 
   for i in countdown(c.tab.tos-1, 0): 
     for it in items(c.tab.stack[i]): 
       if cond:
-        MessageOut(SymToStr(it, isLocal = i > ModuleTablePos))
+        MessageOut(SymToStr(it, isLocal = i > ModuleTablePos, section))
 
 proc suggestSymList(list: PNode) = 
   for i in countup(0, sonsLen(list) - 1): 
@@ -86,7 +90,8 @@ proc argsFit(c: PContext, candidate: PSym, n: PNode): bool =
     result = false
 
 proc suggestCall(c: PContext, n: PNode) = 
-  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n))
+  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n),
+              sectionContext)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
@@ -94,10 +99,10 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
 
 proc suggestOperations(c: PContext, n: PNode, typ: PType) =
   assert typ != nil
-  wholeSymTab(filterSym(it) and typeFits(c, it, typ))
+  wholeSymTab(filterSym(it) and typeFits(c, it, typ), sectionSuggest)
 
 proc suggestEverything(c: PContext, n: PNode) = 
-  wholeSymTab(filterSym(it))
+  wholeSymTab(filterSym(it), sectionSuggest)
 
 proc suggestFieldAccess(c: PContext, n: PNode) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -109,10 +114,12 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
       if n.sym == c.module: 
         # all symbols accessible, because we are in the current module:
         for it in items(c.tab.stack[ModuleTablePos]): 
-          if filterSym(it): MessageOut(SymToStr(it, isLocal=false))
+          if filterSym(it): 
+            MessageOut(SymToStr(it, isLocal=false, sectionSuggest))
       else: 
         for it in items(n.sym.tab): 
-          if filterSym(it): MessageOut(SymToStr(it, isLocal=false))
+          if filterSym(it): 
+            MessageOut(SymToStr(it, isLocal=false, sectionSuggest))
     else:
       # fallback:
       suggestEverything(c, n)
@@ -139,19 +146,50 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
       # fallback: 
       suggestEverything(c, n)
 
-proc interestingNode(n: PNode): bool {.inline.} =
-  result = n.kind == nkDotExpr
-
-proc findClosestNode(n: PNode): PNode = 
+proc findClosestDot(n: PNode): PNode = 
   if msgs.inCheckpoint(n.info) == cpExact: 
     result = n
   elif n.kind notin {nkNone..nkNilLit}:
     for i in 0.. <sonsLen(n):
-      if interestingNode(n.sons[i]):
-        result = findClosestNode(n.sons[i])
+      if n.sons[i].kind == nkDotExpr:
+        result = findClosestDot(n.sons[i])
         if result != nil: return
 
+const
+  CallNodes = {nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit,
+               nkMacroStmt}
+
+proc findClosestCall(n: PNode): PNode = 
+  if msgs.inCheckpoint(n.info) == cpExact: 
+    result = n
+  elif n.kind notin {nkNone..nkNilLit}:
+    for i in 0.. <sonsLen(n):
+      if n.sons[i].kind in callNodes:
+        result = findClosestCall(n.sons[i])
+        if result != nil: return
+
+proc findClosestSym(n: PNode): PNode = 
+  if n.kind == nkSym and msgs.inCheckpoint(n.info) == cpExact: 
+    result = n
+  elif n.kind notin {nkNone..nkNilLit}:
+    for i in 0.. <sonsLen(n):
+      result = findClosestSym(n.sons[i])
+      if result != nil: return
+
 var recursiveCheck = 0
+
+proc safeSemExpr(c: PContext, n: PNode): PNode = 
+  try:
+    result = c.semExpr(c, n)
+  except ERecoverableError:
+    result = ast.emptyNode
+
+proc fuzzySemCheck(c: PContext, n: PNode): PNode = 
+  result = safeSemExpr(c, n)
+  if result == nil or result.kind == nkEmpty:
+    result = newNodeI(n.kind, n.info)
+    if n.kind notin {nkNone..nkNilLit}:
+      for i in 0 .. < sonsLen(n): result.addSon(fuzzySemCheck(c, n.sons[i]))
 
 proc suggestExpr*(c: PContext, node: PNode) = 
   var cp = msgs.inCheckpoint(node.info)
@@ -159,35 +197,38 @@ proc suggestExpr*(c: PContext, node: PNode) =
   # HACK: This keeps semExpr() from coming here recursively:
   if recursiveCheck > 0: return
   inc(recursiveCheck)
-  var n = findClosestNode(node)
-  if n == nil: n = node
-  else: cp = msgs.inCheckpoint(n.info)
-  block:
-    case n.kind
-    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, 
-        nkCallStrLit, nkMacroStmt: 
-      when false:
-        # this provides "context information", not "type suggestion":
-        var a = copyNode(n)
-        var x = c.semExpr(c, n.sons[0])
-        if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
+  
+  if optSuggest in gGlobalOptions:
+    var n = findClosestDot(node)
+    if n == nil: n = node
+    else: cp = cpExact
+    
+    if n.kind == nkDotExpr and cp == cpExact:
+      var obj = safeSemExpr(c, n.sons[0])
+      suggestFieldAccess(c, obj)
+    else:
+      suggestEverything(c, n)
+  
+  if optContext in gGlobalOptions:
+    var n = findClosestCall(node)
+    if n == nil: n = node
+    else: cp = cpExact
+    
+    if n.kind in CallNodes:
+      var a = copyNode(n)
+      var x = safeSemExpr(c, n.sons[0])
+      if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
+      addSon(a, x)
+      for i in 1..sonsLen(n)-1:
+        # use as many typed arguments as possible:
+        var x = safeSemExpr(c, n.sons[i])
+        if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
-        for i in 1..sonsLen(n)-1:
-          # use as many typed arguments as possible:
-          var x = c.semExpr(c, n.sons[i])
-          if x.kind == nkEmpty or x.typ == nil: break
-          addSon(a, x)
-        suggestCall(c, a)
-        break
-      else:
-        nil
-    of nkDotExpr: 
-      if cp == cpExact:
-        var obj = c.semExpr(c, n.sons[0])
-        suggestFieldAccess(c, obj)
-        break
-    else: nil
-    suggestEverything(c, n)
+      suggestCall(c, a)
+  
+  if optDef in gGlobalOptions:
+    var n = findClosestSym(fuzzySemCheck(c, node))
+    if n != nil: MessageOut(SymToStr(n.sym, isLocal=false, sectionDef))
   quit(0)
 
 proc suggestStmt*(c: PContext, n: PNode) = 

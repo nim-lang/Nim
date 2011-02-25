@@ -67,7 +67,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     L: int
     a: PNode
   result = n
-  if gCmd == cmdSuggest: suggestStmt(c, n)
+  if gCmd == cmdIdeTools: suggestStmt(c, n)
   case n.kind
   of nkIdent:
     var s = SymtabGet(c.Tab, n.ident)

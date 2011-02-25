@@ -1,16 +1,15 @@
 Usage::
-  nimrod command [options] inputfile [arguments]
+  nimrod command [options] [projectfile] [arguments]
 
 Command:
-  //compile, c              compile project with default code generator (C)
-  //doc                     generate the documentation for inputfile
-  //i                       start Nimrod in interactive mode (limited)
-  
+  //compile, c                compile project with default code generator (C)
+  //doc                       generate the documentation for inputfile
+  //i                         start Nimrod in interactive mode (limited)
+
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:
   -p, --path:PATH           add path to search paths
-  -o, --out:FILE            set the output filename
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
@@ -33,3 +32,4 @@ Options:
   -r, --run                 run the compiled program with given arguments
   --advanced                show advanced command line switches
   -h, --help                show this help
+

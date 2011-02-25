@@ -251,9 +251,10 @@ proc MainCommand(cmd, filename: string) =
     gCmd = cmdGenDepend
     wantFile(filename)
     CommandGenDepend(filename)
-  of wListDef: 
-    gCmd = cmdListDef
+  of wDump: 
+    gCmd = cmdDump
     condsyms.ListSymbols()
+    for it in iterSearchPath(): MessageOut(it)
   of wCheck: 
     gCmd = cmdCheck
     wantFile(filename)
@@ -270,9 +271,9 @@ proc MainCommand(cmd, filename: string) =
   of wI: 
     gCmd = cmdInteractive
     CommandInteractive()
-  of wSuggest:
-    gCmd = cmdSuggest
+  of wIdeTools:
+    gCmd = cmdIdeTools
     wantFile(filename)
     CommandSuggest(filename)
   else: rawMessage(errInvalidCommandX, cmd)
-  
+

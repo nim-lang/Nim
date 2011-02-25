@@ -42,15 +42,21 @@ type                          # please make sure we have under 32 options
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
     optNoMain,                # do not generate a "main" proc
-    optThreads                # support for multi-threading
+    optThreads,               # support for multi-threading
+    optStdout,                # output to stdout
+    optSuggest,               # ideTools: 'suggest'
+    optContext,               # ideTools: 'context'
+    optDef                    # ideTools: 'def'
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nimrod's commands
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
     cmdCompileToEcmaScript, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
-    cmdGenDepend, cmdListDef, cmdCheck, # semantic checking for whole project
+    cmdGenDepend, cmdDump, 
+    cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)
-    cmdSuggest,               # suggest feature (auto-completion for IDEs)
+    cmdIdeTools,              # ide tools
+    cmdDef,                   # def feature (find definition for IDEs)
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
@@ -121,8 +127,7 @@ proc getOutFile*(filename, ext: string): string =
   else: result = changeFileExt(filename, ext)
   
 proc addImplicitMod(filename: string) = 
-  var length: int
-  length = len(gImplicitMods)
+  var length = len(gImplicitMods)
   setlen(gImplicitMods, length + 1)
   gImplicitMods[length] = filename
 
@@ -166,15 +171,19 @@ proc completeGeneratedFilePath(f: string, createSubDir: bool = true): string =
       quit(1)
   result = joinPath(subdir, tail)
 
+iterator iterSearchPath*(): string = 
+  var it = PStrEntry(SearchPaths.head)
+  while it != nil: 
+    yield it.data
+    it = PStrEntry(it.Next)  
+
 proc rawFindFile(f: string): string = 
   if ExistsFile(f): 
     result = f
   else: 
-    var it = PStrEntry(SearchPaths.head)
-    while it != nil: 
-      result = JoinPath(it.data, f)
-      if ExistsFile(result): return 
-      it = PStrEntry(it.Next)
+    for it in iterSearchPath():
+      result = JoinPath(it, f)
+      if ExistsFile(result): return
     result = ""
 
 proc FindFile(f: string): string = 

@@ -274,15 +274,7 @@ proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
 
-proc WriteRopeRec(f: var tfile, c: PRope) = 
-  if c == nil: return 
-  if (c.data != nil): 
-    write(f, c.data)
-  else: 
-    writeRopeRec(f, c.left)
-    writeRopeRec(f, c.right)
-
-proc newWriteRopeRec(f: var tfile, c: PRope) = 
+proc writeRope*(f: var tfile, c: PRope) = 
   var stack = @[c]
   while len(stack) > 0: 
     var it = pop(stack)
@@ -296,7 +288,7 @@ proc newWriteRopeRec(f: var tfile, c: PRope) =
 proc WriteRope(head: PRope, filename: string) = 
   var f: tfile                # we use a textfile for automatic buffer handling
   if open(f, filename, fmWrite): 
-    if head != nil: newWriteRopeRec(f, head)
+    if head != nil: WriteRope(f, head)
     close(f)
   else: 
     rawMessage(errCannotOpenFile, filename)
