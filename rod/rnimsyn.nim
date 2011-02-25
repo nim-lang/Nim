@@ -1058,9 +1058,13 @@ proc renderModule(n: PNode, filename: string, renderFlags: TRenderFlags = {}) =
     of nkTypeSection, nkConstSection, nkVarSection, nkCommentStmt: putNL(g)
     else: nil
   gcoms(g)
-  if open(f, filename, fmWrite): 
+  if optStdout in gGlobalOptions: 
+    write(stdout, g.buf)
+  elif open(f, filename, fmWrite): 
     write(f, g.buf)
     close(f)
+  else:
+    rawMessage(errCannotOpenFile, filename)    
 
 proc initTokRender(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) = 
   initSrcGen(r, renderFlags)

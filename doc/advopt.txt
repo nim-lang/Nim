@@ -1,22 +1,28 @@
 Advanced commands:
   //compileToC, cc          compile project with C code generator
   //compileToOC, oc         compile project to Objective C code
-  //rst2html                converts a reStructuredText file to HTML
-  //rst2tex                 converts a reStructuredText file to TeX
-  //run                     run the project (with Tiny C backend; Linux only!)
+  //rst2html                convert a reStructuredText file to HTML
+  //rst2tex                 convert a reStructuredText file to TeX
+  //run                     run the project (with Tiny C backend; buggy!)
   //pretty                  pretty print the inputfile
   //genDepend               generate a DOT file containing the
                             module dependency graph
-  //listDef                 list all defined conditionals and exit
+  //dump                    dump all defined conditionals and search paths
   //check                   checks the project for syntax and semantic
-  //parse                   parses a single file (for debugging Nimrod)
+  //idetools                compiler support for IDEs: possible options:
+    --track:FILE,LINE,COL   track a file/cursor position
+    --suggest               suggest all possible symbols at position
+    --def                   list all possible symbols at position
+    --context               list possible invokation context  
 
 Advanced options:
+  -o, --out:FILE            set the output filename
+  --stdout                  output to stdout
   -w, --warnings:on|off     turn all warnings on|off
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
   --hint[X]:on|off          turn specific hint X on|off
-  --lib:PATH                set the path to the system.nim library
+  --lib:PATH                set the system library path
   -c, --compileOnly         compile only; do not assemble or link
   --noLinking               compile but do not link
   --noMain                  do not generate a main procedure
@@ -35,10 +41,11 @@ Advanced options:
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
-  --index:FILE              use FILE to generate a documenation index file
+  --index:FILE              use FILE to generate a documentation index file
   --putenv:key=value        set an environment variable
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --verbosity:0|1|2|3       set Nimrod's verbosity level (0 is default)
   -v, --version             show detailed version information
+

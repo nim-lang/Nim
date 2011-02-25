@@ -57,10 +57,12 @@ type
     wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, 
     wCompileToOC,
     wPretty, 
-    wDoc, wGenDepend, wListDef, wCheck, wParse, wScan, wJs, wOC, 
+    wDoc, wGenDepend, wDump, wCheck, wParse, wScan, wJs, wOC, 
     wRst2html, wRst2tex, wI,
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wThreads,
-    wRecursivePath, wSuggest, wTrack
+    wRecursivePath, 
+    wStdout,
+    wIdeTools, wSuggest, wTrack, wDef, wContext
     
   TSpecialWords* = set[TSpecialWord]
 
@@ -106,10 +108,12 @@ const
     "nomain", "subschar", "acyclic", "index", 
     "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
     "compiletooc",
-    "pretty", "doc", "gendepend", "listdef", "check", "parse", "scan", 
+    "pretty", "doc", "gendepend", "dump", "check", "parse", "scan", 
     "js", "oc", "rst2html", "rst2tex", "i", 
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
-    "threads", "recursivepath", "suggest", "track"]
+    "threads", "recursivepath", 
+    "stdout",
+    "idetools", "suggest", "track", "def", "context"]
 
 proc whichKeyword*(id: PIdent): TSpecialWord
 proc whichKeyword*(id: String): TSpecialWord

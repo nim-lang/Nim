@@ -41,7 +41,6 @@ Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:
   -p, --path:PATH           add path to search paths
-  -o, --out:FILE            set the output filename
   -d, --define:SYMBOL       define a conditional symbol
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
@@ -70,17 +69,22 @@ Options:
 Advanced commands:
   compileToC, cc            compile project with C code generator
   compileToOC, oc           compile project to Objective C code
-  rst2html                  converts a reStructuredText file to HTML
-  rst2tex                   converts a reStructuredText file to TeX
+  rst2html                  convert a reStructuredText file to HTML
+  rst2tex                   convert a reStructuredText file to TeX
   run                       run the project (with Tiny C backend; buggy!)
   pretty                    pretty print the inputfile
   genDepend                 generate a DOT file containing the
                             module dependency graph
-  listDef                   list all defined conditionals and exit
+  dump                      dump all defined conditionals and search paths
   check                     checks the project for syntax and semantic
-  suggest                   list all possible symbols at position; 
-                            use with --track option
+  idetools                  compiler support for IDEs: possible options:
+    --track:FILE,LINE,COL   track a file/cursor position
+    --suggest               suggest all possible symbols at position
+    --def                   list all possible symbols at position
+    --context               list possible invokation context  
 Advanced options:
+  -o, --out:FILE            set the output filename
+  --stdout                  output to stdout
   -w, --warnings:on|off     turn all warnings on|off
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off            turn all hints on|off
@@ -104,9 +108,8 @@ Advanced options:
   --skipCfg                 do not read the general configuration file
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|boehm|none      use Nimrod's native GC|Boehm GC|no GC
-  --index:FILE              use FILE to generate a documenation index file
+  --index:FILE              use FILE to generate a documentation index file
   --putenv:key=value        set an environment variable
-  --track:FILE,LINE,COLUMN  track a file position for 'suggest'
   --listCmd                 list the commands used to execute external programs
   --parallelBuild=0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
@@ -415,9 +418,6 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
       excl(gGlobalOptions, optGenGuiApp)
       defineSymbol("library")
     else: LocalError(info, errGuiConsoleOrLibExpectedButXFound, arg)
-  of wListDef: 
-    expectNoArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: condsyms.listSymbols()
   of wPassC, wT: 
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
@@ -496,6 +496,18 @@ proc processSwitch(switch, arg: string, pass: TCmdlinePass, info: TLineInfo) =
   of wTrack:
     expectArg(switch, arg, pass, info)
     track(arg, info)
+  of wSuggest: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optSuggest)
+  of wDef:
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optDef)
+  of wContext:
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optContext)
+  of wStdout: 
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optStdout)
   else: 
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: InvalidCmdLineOption(pass, switch, info)

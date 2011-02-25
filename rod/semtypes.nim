@@ -566,6 +566,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     s: PSym
     t: PType
   result = nil
+  if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
   of nkEmpty: nil
   of nkTypeOfExpr: 

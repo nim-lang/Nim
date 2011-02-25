@@ -953,7 +953,7 @@ proc semMacroStmt(c: PContext, n: PNode, semCheck = true): PNode =
   
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode = 
   result = n
-  if gCmd == cmdSuggest: 
+  if gCmd == cmdIdeTools: 
     suggestExpr(c, n)
   if nfSem in n.flags: return 
   case n.kind                 # atoms:

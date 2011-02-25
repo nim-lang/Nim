@@ -1,5 +1,4 @@
-- 'suggest' needs tweaking: end-token; testing!
-- stdout support for doc, pretty
+- 'nimrod def': does not always work
 - BUG: gcleak.nim
 
 - thread support: threadvar on Windows seems broken; 

@@ -857,6 +857,13 @@ proc generateIndex(d: PDoc) =
     sortIndex(d.theIndex)
     writeRope(renderRstToRst(d, d.indexFile), gIndexFile)
 
+proc writeOutput(d: PDoc, filename, outExt: string) = 
+  var content = genOutFile(d)
+  if optStdout in gGlobalOptions:
+    writeRope(stdout, content)
+  else:
+    writeRope(content, getOutFile(filename, outExt))
+
 proc CommandDoc(filename: string) = 
   var ast = parseFile(addFileExt(filename, nimExt))
   if ast == nil: return 
@@ -864,7 +871,7 @@ proc CommandDoc(filename: string) =
   initIndexFile(d)
   d.hasToc = true
   generateDoc(d, ast)
-  writeRope(genOutFile(d), getOutFile(filename, HtmlExt))
+  writeOutput(d, filename, HtmlExt)
   generateIndex(d)
 
 proc CommandRstAux(filename, outExt: string) = 
@@ -873,8 +880,7 @@ proc CommandRstAux(filename, outExt: string) =
   initIndexFile(d)
   var rst = rstParse(readFile(filen), false, filen, 0, 1, d.hasToc)
   d.modDesc = renderRstToOut(d, rst)
-  var code = genOutFile(d)
-  writeRope(code, getOutFile(filename, outExt))
+  writeOutput(d, filename, outExt)
   generateIndex(d)
 
 proc CommandRst2Html(filename: string) = 
