@@ -42,13 +42,13 @@ proc filterSym(s: PSym): bool {.inline.} =
 
 proc suggestField(s: PSym) = 
   if filterSym(s):
-    MessageOut(SymToStr(s, isLocal=true, sectionSuggest))
+    OutWriteln(SymToStr(s, isLocal=true, sectionSuggest))
 
 template wholeSymTab(cond, section: expr) = 
   for i in countdown(c.tab.tos-1, 0): 
     for it in items(c.tab.stack[i]): 
       if cond:
-        MessageOut(SymToStr(it, isLocal = i > ModuleTablePos, section))
+        OutWriteln(SymToStr(it, isLocal = i > ModuleTablePos, section))
 
 proc suggestSymList(list: PNode) = 
   for i in countup(0, sonsLen(list) - 1): 
@@ -115,11 +115,11 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
         # all symbols accessible, because we are in the current module:
         for it in items(c.tab.stack[ModuleTablePos]): 
           if filterSym(it): 
-            MessageOut(SymToStr(it, isLocal=false, sectionSuggest))
+            OutWriteln(SymToStr(it, isLocal=false, sectionSuggest))
       else: 
         for it in items(n.sym.tab): 
           if filterSym(it): 
-            MessageOut(SymToStr(it, isLocal=false, sectionSuggest))
+            OutWriteln(SymToStr(it, isLocal=false, sectionSuggest))
     else:
       # fallback:
       suggestEverything(c, n)
@@ -228,7 +228,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
   
   if optDef in gGlobalOptions:
     var n = findClosestSym(fuzzySemCheck(c, node))
-    if n != nil: MessageOut(SymToStr(n.sym, isLocal=false, sectionDef))
+    if n != nil: OutWriteln(SymToStr(n.sym, isLocal=false, sectionDef))
   quit(0)
 
 proc suggestStmt*(c: PContext, n: PNode) = 

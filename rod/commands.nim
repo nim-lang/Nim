@@ -129,14 +129,14 @@ var
 proc HelpOnError(pass: TCmdLinePass) = 
   if (pass == passCmd1) and not helpWritten: 
     # BUGFIX 19
-    MessageOut(getCommandLineDesc())
+    MsgWriteln(getCommandLineDesc())
     helpWritten = true
     quit(0)
 
 proc writeAdvancedUsage(pass: TCmdLinePass) = 
   if (pass == passCmd1) and not advHelpWritten: 
     # BUGFIX 19
-    MessageOut(`%`(HelpMessage, [VersionAsString, 
+    MsgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]) & AdvancedUsage)
     advHelpWritten = true
@@ -147,14 +147,14 @@ proc writeVersionInfo(pass: TCmdLinePass) =
   if (pass == passCmd1) and not versionWritten: 
     versionWritten = true
     helpWritten = true
-    messageOut(`%`(HelpMessage, [VersionAsString, 
+    MsgWriteln(`%`(HelpMessage, [VersionAsString, 
                                  platform.os[platform.hostOS].name, 
                                  cpu[platform.hostCPU].name]))
     quit(0)
 
 proc writeCommandLineUsage() = 
   if not helpWritten: 
-    messageOut(getCommandLineDesc())
+    MsgWriteln(getCommandLineDesc())
     helpWritten = true
 
 proc InvalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) = 

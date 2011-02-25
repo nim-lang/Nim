@@ -44,11 +44,11 @@ proc isDefined(symbol: PIdent): bool =
 proc ListSymbols() = 
   var it: TTabIter
   var s = InitTabIter(it, gSymbols)
-  MessageOut("-- List of currently defined symbols --")
+  OutWriteln("-- List of currently defined symbols --")
   while s != nil: 
-    if s.position == 1: MessageOut(s.name.s)
+    if s.position == 1: OutWriteln(s.name.s)
     s = nextIter(it, gSymbols)
-  MessageOut("-- End of list --")
+  OutWriteln("-- End of list --")
 
 proc countDefinedSymbols(): int = 
   var it: TTabIter
@@ -67,8 +67,7 @@ proc InitDefines() =
   of cpuI386: DefineSymbol("x86")
   of cpuIa64: DefineSymbol("itanium")
   of cpuAmd64: DefineSymbol("x8664")
-  else: 
-    nil
+  else: nil
   case targetOS
   of osDOS: 
     DefineSymbol("msdos")
@@ -93,8 +92,7 @@ proc InitDefines() =
     DefineSymbol("macintosh")
     DefineSymbol("unix")
     DefineSymbol("posix")
-  else: 
-    nil
+  else: nil
   DefineSymbol("cpu" & $cpu[targetCPU].bit)
   DefineSymbol(normalize(endianToStr[cpu[targetCPU].endian]))
   DefineSymbol(cpu[targetCPU].name)

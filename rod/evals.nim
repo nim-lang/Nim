@@ -79,11 +79,11 @@ proc stackTraceAux(x: PStackFrame) =
   if x != nil:
     stackTraceAux(x.next)
     var info = if x.call != nil: x.call.info else: UnknownLineInfo()
-    messageOut(`%`("file: $1, line: $2", 
+    MsgWriteln(`%`("file: $1, line: $2", 
                    [toFilename(info), $(toLineNumber(info))]))
 
 proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg: string = "") = 
-  messageOut("stack trace: (most recent call last)")
+  MsgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c.tos)
   Fatal(n.info, msg, arg)
 

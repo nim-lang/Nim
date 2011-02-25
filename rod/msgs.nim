@@ -438,10 +438,15 @@ proc addCheckpoint*(info: TLineInfo) =
 proc addCheckpoint*(filename: string, line: int) = 
   addCheckpoint(newLineInfo(filename, line, - 1))
 
-proc MessageOut*(s: string) = 
-  # change only this proc to put it elsewhere
+proc OutWriteln*(s: string) = 
+  ## Writes to stdout. Always.
   Writeln(stdout, s)
  
+proc MsgWriteln*(s: string) = 
+  ## Writes to stdout. If --stdout option is given, writes to stderr instead.
+  if optStdout in gGlobalOptions: Writeln(stderr, s)
+  else: Writeln(stdout, s)
+
 proc coordToStr(coord: int): string = 
   if coord == -1: result = "???"
   else: result = $coord
@@ -493,7 +498,7 @@ proc writeContext(lastinfo: TLineInfo) =
   for i in countup(0, len(msgContext) - 1): 
     if not sameLineInfo(msgContext[i], lastInfo) and
         not sameLineInfo(msgContext[i], info): 
-      MessageOut(`%`(posErrorFormat, [toFilename(msgContext[i]), 
+      MsgWriteln(`%`(posErrorFormat, [toFilename(msgContext[i]), 
                                       coordToStr(msgContext[i].line), 
                                       coordToStr(msgContext[i].col), 
                                       getMessageStr(errInstantiationFrom, "")]))
@@ -515,7 +520,7 @@ proc rawMessage*(msg: TMsgKind, args: openarray[string]) =
     if not (msg in gNotes): return 
     frmt = rawHintFormat
     inc(gHintCounter)
-  MessageOut(`%`(frmt, `%`(msgKindToString(msg), args)))
+  MsgWriteln(`%`(frmt, `%`(msgKindToString(msg), args)))
   handleError(msg, doAbort)
 
 proc rawMessage*(msg: TMsgKind, arg: string) = 
@@ -545,7 +550,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     frmt = posHintFormat
     inc(gHintCounter)
   if not ignoreMsg:
-    MessageOut(frmt % [toFilename(info), coordToStr(info.line),
+    MsgWriteln(frmt % [toFilename(info), coordToStr(info.line),
                        coordToStr(info.col), getMessageStr(msg, arg)])
   handleError(msg, eh)
   
