@@ -97,14 +97,15 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
       add result, s[i]
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreCase".} =
+  rtl, extern: "nsuCmpIgnoreCase", procvar.} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b
   ## | > 0 iff a > b
   var i = 0
-  while i < a.len and i < b.len:
+  var m = min(a.len, b.len)
+  while i < m:
     result = ord(toLower(a[i])) - ord(toLower(b[i]))
     if result != 0: return
     inc(i)
@@ -114,7 +115,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
                                        # thus we compile without checks here
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreStyle".} =
+  rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
   ## Compares two strings normalized (i.e. case and
   ## underscores do not matter). Returns:
   ##

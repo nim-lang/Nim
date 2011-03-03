@@ -61,24 +61,22 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if s.typ.kind in ConstAbstractTypes: 
       result = copyTree(s.ast)
       result.typ = s.typ
+      result.info = n.info
     else: 
-      result = newSymNode(s)
-    result.info = n.info
+      result = newSymNode(s, n.info)
   of skMacro: result = semMacroExpr(c, n, s)
   of skTemplate: result = semTemplateExpr(c, n, s)
   of skVar: 
     markUsed(n, s)
     # if a proc accesses a global variable, it is not side effect free:
     if sfGlobal in s.flags: incl(c.p.owner.flags, sfSideEffect)
-    result = newSymNode(s)
-    result.info = n.info
+    result = newSymNode(s, n.info)
   of skGenericParam: 
     if s.ast == nil: InternalError(n.info, "no default for")
     result = semExpr(c, s.ast)
   else: 
     markUsed(n, s)
-    result = newSymNode(s)
-    result.info = n.info
+    result = newSymNode(s, n.info)
 
 proc checkConversionBetweenObjects(info: TLineInfo, castDest, src: PType) = 
   var diff = inheritanceDiff(castDest, src)
@@ -645,23 +643,22 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var ty = n.sons[0].Typ
   var f: PSym = nil
   result = nil
-  if ty.kind == tyEnum: 
-    # look up if the identifier belongs to the enum:
-    while ty != nil: 
-      f = getSymFromList(ty.n, i)
-      if f != nil: break 
-      ty = ty.sons[0]         # enum inheritance
-    if f != nil: 
-      result = newSymNode(f)
-      result.info = n.info
-      result.typ = ty
-      markUsed(n, f)
-    else: 
-      GlobalError(n.sons[1].info, errEnumHasNoValueX, i.s)
-    return 
-  elif not (efAllowType in flags) and isTypeExpr(n.sons[0]): 
-    GlobalError(n.sons[0].info, errATypeHasNoValue)
-    return 
+  if isTypeExpr(n.sons[0]):
+    if ty.kind == tyEnum: 
+      # look up if the identifier belongs to the enum:
+      while ty != nil: 
+        f = getSymFromList(ty.n, i)
+        if f != nil: break 
+        ty = ty.sons[0]         # enum inheritance
+      if f != nil: 
+        result = newSymNode(f)
+        result.info = n.info
+        result.typ = ty
+        markUsed(n, f)
+        return 
+    elif efAllowType notin flags: 
+      GlobalError(n.sons[0].info, errATypeHasNoValue)
+      return
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
   var check: PNode = nil
   if ty.kind == tyObject: 
@@ -1027,7 +1024,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     var s = qualifiedLookup(c, n.sons[0], {checkUndeclared})
     if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}: 
       # type parameters: partial generic specialization
-      result = explictGenericInstantiation(c, n, s)
+      n.sons[0] = semSym(c, n.sons[0], s, flags)
+      result = explicitGenericInstantiation(c, n, s)
     else: 
       result = semArrayAccess(c, n, flags)
   of nkPragmaExpr: 

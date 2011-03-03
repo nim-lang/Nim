@@ -1,5 +1,7 @@
 discard """
-  output: "256 100"
+  file: "tambsym.nim"
+  line: 36
+  errormsg: "a type has no value"
 """
 
 # A min-heap.
@@ -25,7 +27,7 @@ proc siftUp[T](heap: PBinHeap[T], elem: int) =
   var idx = elem
   while idx != 0:
     var p = parent(idx)
-    if heap.heap[idx].priority < heap.heap[p].priority:
+    if heap.heap[idx] < heap.heap[p]:
       swap(heap.heap[idx], heap.heap[p])
       idx = p
     else:
@@ -33,7 +35,7 @@ proc siftUp[T](heap: PBinHeap[T], elem: int) =
 
 proc add*[T](heap: PBinHeap[T], priority: int, data: T) =
   var node: TNode[T]
-  node.priority = priority
+  node.priority = int
   node.data = data
   heap.heap[heap.last] = node
   siftUp(heap, heap.last)
@@ -41,7 +43,7 @@ proc add*[T](heap: PBinHeap[T], priority: int, data: T) =
 
 proc print*[T](heap: PBinHeap[T]) =
   for i in countup(0, heap.last):
-    echo heap.heap[i].data
+    echo($heap.heap[i])
 
 var
   heap: PBinHeap[int]

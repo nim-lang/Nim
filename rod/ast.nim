@@ -750,6 +750,12 @@ proc newSymNode(sym: PSym): PNode =
   result.typ = sym.typ
   result.info = sym.info
 
+proc newSymNode*(sym: PSym, info: TLineInfo): PNode = 
+  result = newNode(nkSym)
+  result.sym = sym
+  result.typ = sym.typ
+  result.info = info
+
 proc newNodeI(kind: TNodeKind, info: TLineInfo): PNode = 
   result = newNode(kind)
   result.info = info
@@ -867,6 +873,11 @@ proc sonsLen(n: PNode): int =
   
 proc len*(n: PNode): int {.inline.} =
   if isNil(n.sons): result = 0
+  else: result = len(n.sons)
+  
+proc safeLen*(n: PNode): int {.inline.} =
+  ## works even for leaves.
+  if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
   
 proc add*(father, son: PNode) =

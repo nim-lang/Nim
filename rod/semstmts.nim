@@ -522,11 +522,15 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
         InternalError(a.info, "semTypeSection: containerID")
       s.typ.containerID = getID()
       a.sons[1] = semGenericParamList(c, a.sons[1], s.typ)
-      addSon(s.typ, nil)      # to be filled out later
+      
+      # we fill it out later. For magic generics like 'seq', it won't be filled
+      # so we use tyEmpty instead of nil to not crash for strange conversions
+      # like: mydata.seq 
+      addSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
       body = semTypeNode(c, a.sons[2], nil)
       if body != nil: body.sym = s
-      s.typ.sons[sonsLen(s.typ) - 1] = body #debug(s.typ);
+      s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
       closeScope(c.tab)
     elif a.sons[2].kind != nkEmpty: 

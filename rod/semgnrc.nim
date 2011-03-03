@@ -40,13 +40,15 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skMacro: 
     result = semMacroExpr(c, n, s, false)
   of skGenericParam: 
-    result = newSymNode(s)
+    result = newSymNode(s, n.info)
   of skParam: 
     result = n
   of skType: 
-    if (s.typ != nil) and (s.typ.kind != tyGenericParam): result = newSymNode(s)
-    else: result = n
-  else: result = newSymNode(s)
+    if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
+      result = newSymNode(s, n.info)
+    else: 
+      result = n
+  else: result = newSymNode(s, n.info)
   
 proc getIdentNode(n: PNode): PNode = 
   case n.kind
@@ -101,12 +103,12 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       of skProc, skMethod, skIterator, skConverter: 
         n.sons[0] = symChoice(c, n.sons[0], s)
       of skGenericParam: 
-        n.sons[0] = newSymNode(s)
+        n.sons[0] = newSymNode(s, n.sons[0].info)
       of skType: 
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam): 
-          n.sons[0] = newSymNode(s)
-      else: n.sons[0] = newSymNode(s)
+          n.sons[0] = newSymNode(s, n.sons[0].info)
+      else: n.sons[0] = newSymNode(s, n.sons[0].info)
     for i in countup(1, sonsLen(n) - 1): 
       n.sons[i] = semGenericStmt(c, n.sons[i], flags)
   of nkMacroStmt: 
@@ -221,9 +223,9 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       if (a.kind != nkIdentDefs): IllFormedAst(a)
       checkMinSonsLen(a, 3)
       L = sonsLen(a)
-      a.sons[L - 1] = semGenericStmt(c, a.sons[L - 2], {withinTypeDesc})
-      a.sons[L - 1] = semGenericStmt(c, a.sons[L - 1])
-      for j in countup(0, L - 3): 
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], {withinTypeDesc})
+      a.sons[L-1] = semGenericStmt(c, a.sons[L-1])
+      for j in countup(0, L-3): 
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef, 
      nkIteratorDef, nkLambda: 

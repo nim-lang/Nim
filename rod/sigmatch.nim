@@ -130,8 +130,11 @@ proc concreteType(mapping: TIdTable, t: PType): PType =
     result = t
     while true: 
       result = PType(idTableGet(mapping, t))
-      if result == nil: InternalError("lookup failed")
-      if result.kind != tyGenericParam: break 
+      if result == nil:
+        break # it's ok, no match
+        # example code that triggers it:
+        # proc sort[T](cmp: proc(a, b: T): int = cmp)
+      if result.kind != tyGenericParam: break
   else: 
     result = t                # Note: empty is valid here
   

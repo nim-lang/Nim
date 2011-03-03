@@ -1075,7 +1075,7 @@ proc binarySearch(c: irune, tab: openArray[iRune], len, stride: int): int =
     return t
   return -1
 
-proc toLower*(c: TRune): TRune {.rtl, extern: "nuc$1".} = 
+proc toLower*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
   ## Converts `c` into lower case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
   var c = irune(c)
@@ -1087,7 +1087,7 @@ proc toLower*(c: TRune): TRune {.rtl, extern: "nuc$1".} =
     return TRune(c + toLowerSinglets[p+1] - 500)
   return TRune(c)
 
-proc toUpper*(c: TRune): TRune {.rtl, extern: "nuc$1".} = 
+proc toUpper*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
   ## Converts `c` into upper case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`. 
   var c = irune(c)
@@ -1099,14 +1099,14 @@ proc toUpper*(c: TRune): TRune {.rtl, extern: "nuc$1".} =
     return TRune(c + toUpperSinglets[p+1] - 500)
   return TRune(c)
 
-proc toTitle*(c: TRune): TRune {.rtl, extern: "nuc$1".} = 
+proc toTitle*(c: TRune): TRune {.rtl, extern: "nuc$1", procvar.} = 
   var c = irune(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
   if p >= 0 and c == toTitleSinglets[p]:
     return TRune(c + toTitleSinglets[p+1] - 500)
   return TRune(c)
 
-proc isLower*(c: TRune): bool {.rtl, extern: "nuc$1".} = 
+proc isLower*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a lower case Unicode character
   ## If possible, prefer `isLower` over `isUpper`. 
   var c = irune(c)
@@ -1118,7 +1118,7 @@ proc isLower*(c: TRune): bool {.rtl, extern: "nuc$1".} =
   if p >= 0 and c == toUpperSinglets[p]:
     return true
 
-proc isUpper*(c: TRune): bool {.rtl, extern: "nuc$1".} = 
+proc isUpper*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a upper case Unicode character
   ## If possible, prefer `isLower` over `isUpper`. 
   var c = irune(c)
@@ -1130,7 +1130,7 @@ proc isUpper*(c: TRune): bool {.rtl, extern: "nuc$1".} =
   if p >= 0 and c == toLowerSinglets[p]:
     return true
 
-proc isAlpha*(c: TRune): bool {.rtl, extern: "nuc$1".} = 
+proc isAlpha*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is an *alpha* Unicode character (i.e. a letter)
   if isUpper(c) or isLower(c): 
     return true
@@ -1142,10 +1142,10 @@ proc isAlpha*(c: TRune): bool {.rtl, extern: "nuc$1".} =
   if p >= 0 and c == alphaSinglets[p]:
     return true
   
-proc isTitle*(c: TRune): bool {.rtl, extern: "nuc$1".} = 
+proc isTitle*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   return isUpper(c) and isLower(c)
 
-proc isWhiteSpace*(c: TRune): bool {.rtl, extern: "nuc$1".} = 
+proc isWhiteSpace*(c: TRune): bool {.rtl, extern: "nuc$1", procvar.} = 
   ## returns true iff `c` is a Unicode whitespace character
   var c = irune(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
@@ -1161,7 +1161,7 @@ iterator runes*(s: string): TRune =
     fastRuneAt(s, i, result, true)
     yield result
 
-proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1".} = 
+proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} = 
   ## compares two UTF8 strings and ignores the case. Returns:
   ##
   ## | 0 iff a == b
