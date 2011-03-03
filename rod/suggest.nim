@@ -123,7 +123,7 @@ proc suggestFieldAccess(c: PContext, n: PNode) =
     else:
       # fallback:
       suggestEverything(c, n)
-  elif typ.kind == tyEnum: 
+  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType: 
     # look up if the identifier belongs to the enum:
     var t = typ
     while t != nil: 

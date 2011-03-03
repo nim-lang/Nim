@@ -623,7 +623,7 @@ template `not_in` * (x, y: expr): expr = not contains(y, x)
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `is_not` *(x, y: expr): expr = not (x is y)
 
-proc cmp*[T, S: typeDesc](x: T, y: S): int =
+proc cmp*[T, S: typeDesc](x: T, y: S): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
   ## and 0 iff x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
@@ -632,7 +632,7 @@ proc cmp*[T, S: typeDesc](x: T, y: S): int =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect.}
+proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## Compare proc for strings. More efficient than the generic version.
 
 proc `@` * [IDX, T](a: array[IDX, T]): seq[T] {.
@@ -714,7 +714,8 @@ const
 
   cpuEndian* {.magic: "CpuEndian"}: TEndian = littleEndian
     ## is the endianness of the target CPU. This is a valuable piece of
-    ## information for low-level code only. This works thanks to compiler magic.
+    ## information for low-level code only. This works thanks to compiler
+    ## magic.
     
   hostOS* {.magic: "HostOS"}: string = ""
     ## a string that describes the host operating system. Possible values:
@@ -1307,7 +1308,7 @@ proc echo*[Ty](x: openarray[Ty]) {.magic: "Echo".}
   ## available for the ECMAScript target too!
 
 template newException*(exceptn, message: expr): expr = 
-  ## creates an exception object of type "exceptn" and sets its ``msg`` field
+  ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object. 
   block: # open a new scope
     var
@@ -1365,7 +1366,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   include "system/ansi_c"
 
   proc cmp(x, y: string): int =
-    return int(c_strcmp(x, y))
+    result = int(c_strcmp(x, y))
 
   const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
   when defined(windows):
@@ -1419,8 +1420,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
       ## stream* is a good idea, but since it is named ``stderr`` there are few
       ## programs out there that distinguish properly between ``stdout`` and
       ## ``stderr``. So, that's what you get if you don't name your variables
-      ## appropriately. It also annoys people if redirection via ``>output.txt``
-      ## does not work because the program writes to ``stderr``.
+      ## appropriately. It also annoys people if redirection
+      ## via ``>output.txt`` does not work because the program writes
+      ## to ``stderr``.
 
   proc Open*(f: var TFile, filename: string,
              mode: TFileMode = fmRead, bufSize: int = -1): Bool

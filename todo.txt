@@ -35,7 +35,6 @@ Bugs
 To implement
 ------------
 
-* sort routine
 * hash tables and sets
 * distinct types for array/seq indexes
 * constant sequences

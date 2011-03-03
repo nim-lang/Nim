@@ -488,7 +488,8 @@ proc paramType(c: PContext, n, genericParams: PNode, cl: var TIntSet): PType =
     result = addTypeVarsOfGenericBody(c, result, genericParams, cl)
     #if result.kind == tyGenericInvokation: debug(result)
   
-proc semProcTypeNode(c: PContext, n, genericParams: PNode, prev: PType): PType = 
+proc semProcTypeNode(c: PContext, n, genericParams: PNode, 
+                     prev: PType): PType = 
   var 
     def, res: PNode
     typ: PType
@@ -515,12 +516,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode, prev: PType): PType =
     if a.sons[length - 1].kind != nkEmpty: 
       def = semExprWithType(c, a.sons[length - 1]) 
       # check type compability between def.typ and typ:
-      if typ != nil: 
-        if cmpTypes(typ, def.typ) < isConvertible: 
-          typeMismatch(a.sons[length - 1], typ, def.typ)
-        def = fitNode(c, typ, def)
-      else: 
+      if typ == nil: 
         typ = def.typ
+      elif def != nil and def.typ != nil and def.typ.kind != tyNone:
+        # example code that triggers it:
+        # proc sort[T](cmp: proc(a, b: T): int = cmp)
+        def = fitNode(c, typ, def)
     else: 
       def = ast.emptyNode
     for j in countup(0, length - 3): 

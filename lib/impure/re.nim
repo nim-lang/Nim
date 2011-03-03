@@ -62,7 +62,7 @@ proc finalizeRegEx(x: TRegEx) =
 
 proc re*(s: string, flags = {reExtended}): TRegEx =
   ## Constructor of regular expressions. Note that Nimrod's
-  ## extended raw string literals supports this syntax ``re"[abc]"`` as
+  ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
   new(result, finalizeRegEx)
   result.h = rawCompile(s, cast[cint](flags))
@@ -152,8 +152,12 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
 proc find*(s: string, pattern: TRegEx, start = 0): int =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
-  var matches: array[0..maxSubpatterns-1, string]
-  result = find(s, pattern, matches, start)
+  var
+    rawMatches: array[0..3 - 1, cint]
+    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
+      cast[ptr cint](addr(rawMatches)), 3)
+  if res < 0'i32: return res
+  return rawMatches[0]
   
 iterator findAll*(s: string, pattern: TRegEx, start = 0): string = 
   ## yields all matching captures of pattern in `s`.
