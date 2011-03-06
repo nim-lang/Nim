@@ -8,8 +8,6 @@
 - deprecate ^ and make it available as operator
 - test branch coverage
 - checked exceptions
-- do not ambiguity error for methods if ambiguity only affects the same 
-  dispatcher anyway
 - slicing
 
 
@@ -109,6 +107,13 @@ Version 2
   
   type
     PWindow = ref TWindow not nil
+    
+  The problem with ``nil`` is that the language currently relies on it for
+  implicit initialization. Initialization is different from assignment. The
+  issues can "easily" dealt with by ensuring:
+  
+    var x = myProc() # checks myProc() initializes every pointer explicitely
+    
 - the two other parsers
 
 

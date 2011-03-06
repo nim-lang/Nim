@@ -34,7 +34,8 @@ Changes affecting backwards compatibility
   ``module.re"abc"`` is now supported.
 - Changed the behaviour of ``strutils.%``, ``ropes.%`` 
   if both ``$#`` and ``$i`` are involved.
-
+- The ``pegs`` and ``re`` modules distinguish between ``replace`` 
+  and ``replacef`` operations.
 
 Additions
 ---------

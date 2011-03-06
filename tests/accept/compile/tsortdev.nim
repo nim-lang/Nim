@@ -50,7 +50,7 @@ when isMainModule:
       for j in 0 .. L-1: 
         data[j] = (math.random(90) - 10)
       var copy = data
-      sort(data, cmp[int, int], order)
+      sort(data, cmp[int], order)
       if not sorted(data, order):
         #for x in items(data): echo x
         break

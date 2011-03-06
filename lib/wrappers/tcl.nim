@@ -39,7 +39,7 @@ when defined(WIN32):
     dllName = "tcl(85|84|83|82|81|80).dll"
 elif defined(macosx): 
   const 
-    dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).dynlib"
+    dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).dylib"
 else: 
   const 
     dllName = "libtcl(8.5|8.4|8.3|8.2|8.1).so.(1|0)"

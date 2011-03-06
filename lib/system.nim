@@ -65,11 +65,11 @@ proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
 
 proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
   ## Boolean ``and``; returns true iff ``x == y == true``.
-  ## Evaluation is short-circuited: this means that if ``x`` is false,
+  ## Evaluation is lazy: if ``x`` is false,
   ## ``y`` will not even be evaluated.
 proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
   ## Boolean ``or``; returns true iff ``not (not x and not y)``.
-  ## Evaluation is short-circuited: this means that if ``x`` is true,
+  ## Evaluation is lazy: if ``x`` is true,
   ## ``y`` will not even be evaluated.
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
@@ -623,7 +623,7 @@ template `not_in` * (x, y: expr): expr = not contains(y, x)
 proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `is_not` *(x, y: expr): expr = not (x is y)
 
-proc cmp*[T, S: typeDesc](x: T, y: S): int {.procvar.} =
+proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
   ## and 0 iff x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
@@ -1034,9 +1034,6 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   while res <= b:
     yield res
     inc(res, step)
-  # we cannot use ``for x in a..b: `` here, because that is not
-  # known in the System module
-
 
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}

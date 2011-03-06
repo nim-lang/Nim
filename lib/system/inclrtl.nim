@@ -31,7 +31,7 @@ elif defined(useNimRtl):
   when hostOS == "windows": 
     const nimrtl* = "nimrtl.dll"
   elif hostOS == "macosx":
-    const nimrtl* = "nimrtl.dynlib"
+    const nimrtl* = "nimrtl.dylib"
   else: 
     const nimrtl* = "libnimrtl.so"
   {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl.}

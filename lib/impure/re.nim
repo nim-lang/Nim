@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -32,46 +32,57 @@ type
     reIgnoreCase = 0,    ## do caseless matching
     reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data 
     reDotAll = 2,        ## ``.`` matches anything including NL
-    reExtended = 3       ## ignore whitespace and ``#`` comments
+    reExtended = 3,      ## ignore whitespace and ``#`` comments
+    reStudy = 4          ## study the expression (may be omitted if the
+                         ## expression will be used only once)
     
   TRegExDesc {.pure, final.}  = object 
     h: PPcre
+    e: ptr TExtra
     
   TRegEx* = ref TRegExDesc ## a compiled regular expression
     
   EInvalidRegEx* = object of EInvalidValue
     ## is raised if the pattern is no valid regular expression.
 
+proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} = 
+  var e: ref EInvalidRegEx
+  new(e)
+  e.msg = msg
+  raise e
+  
 proc rawCompile(pattern: string, flags: cint): PPcre =
   var
     msg: CString
     offset: cint
-    com = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
-  if com == nil:
-    var e: ref EInvalidRegEx
-    new(e)
-    e.msg = $msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n"
-    raise e
-  return com
+  result = pcre.Compile(pattern, flags, addr(msg), addr(offset), nil)
+  if result == nil:
+    raiseInvalidRegEx($msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n")
 
 proc finalizeRegEx(x: TRegEx) = 
   # XXX This is a hack, but PCRE does not export its "free" function properly.
   # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
   # Fortunately the implementation is unlikely to change. 
   pcre.free_substring(cast[cstring](x.h))
+  if not isNil(x.e):
+    pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended}): TRegEx =
+proc re*(s: string, flags = {reExtended, reStudy}): TRegEx =
   ## Constructor of regular expressions. Note that Nimrod's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
   new(result, finalizeRegEx)
-  result.h = rawCompile(s, cast[cint](flags))
-  
+  result.h = rawCompile(s, cast[cint](flags - {reStudy}))
+  if reStudy in flags:
+    var msg: cstring
+    result.e = pcre.study(result.h, 0, msg)
+    if not isNil(msg): raiseInvalidRegex($msg)
+
 proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
                  start, flags: cint): cint =
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
-    res = pcre.Exec(pattern.h, nil, s, len(s), start, flags,
+    res = pcre.Exec(pattern.h, pattern.e, s, len(s), start, flags,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
@@ -83,13 +94,13 @@ proc matchOrFind(s: string, pattern: TRegEx, matches: var openarray[string],
   
 proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
                  start = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``s`` 
+  ## returns the starting position and end position of `pattern` in `s` 
   ## and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and (-1,0) is returned.
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and ``(-1,0)`` is returned.
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
-    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
+    res = pcre.Exec(pattern.h, pattern.e, s, len(s), start, 0'i32,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if res < 0'i32: return (-1, 0)
   for i in 1..int(res)-1:
@@ -98,10 +109,40 @@ proc findBounds*(s: string, pattern: TRegEx, matches: var openarray[string],
     if a >= 0'i32: matches[i-1] = copy(s, int(a), int(b)-1)
     else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
+  
+proc findBounds*(s: string, pattern: TRegEx, 
+                 matches: var openarray[tuple[first, last: int]],
+                 start = 0): tuple[first, last: int] =
+  ## returns the starting position and end position of ``pattern`` in ``s`` 
+  ## and the captured substrings in the array `matches`. 
+  ## If it does not match, nothing is written into `matches` and
+  ## ``(-1,0)`` is returned.
+  var
+    rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
+    res = pcre.Exec(pattern.h, pattern.e, s, len(s), start, 0'i32,
+      cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
+  if res < 0'i32: return (-1, 0)
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = (int(a), int(b)-1)
+    else: matches[i-1] = (-1,0)
+  return (rawMatches[0].int, rawMatches[1].int - 1)
 
+proc findBounds*(s: string, pattern: TRegEx, 
+                 start = 0): tuple[first, last: int] =
+  ## returns the starting position of `pattern` in `s`. If it does not
+  ## match, ``(-1,0)`` is returned.
+  var
+    rawMatches: array[0..3 - 1, cint]
+    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
+      cast[ptr cint](addr(rawMatches)), 3)
+  if res < 0'i32: return (int(res), 0)
+  return (int(rawMatches[0]), int(rawMatches[1]-1))
+  
 proc matchOrFind(s: string, pattern: TRegEx, start, flags: cint): cint =
   var rawMatches: array [0..maxSubpatterns * 3 - 1, cint]
-  result = pcre.Exec(pattern.h, nil, s, len(s), start, flags,
+  result = pcre.Exec(pattern.h, pattern.e, s, len(s), start, flags,
                     cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
@@ -139,7 +180,7 @@ proc find*(s: string, pattern: TRegEx, matches: var openarray[string],
   ## is written into ``matches`` and -1 is returned.
   var
     rawMatches: array[0..maxSubpatterns * 3 - 1, cint]
-    res = pcre.Exec(pattern.h, nil, s, len(s), start, 0'i32,
+    res = pcre.Exec(pattern.h, pattern.e, s, len(s), start, 0'i32,
       cast[ptr cint](addr(rawMatches)), maxSubpatterns * 3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
@@ -219,31 +260,64 @@ proc endsWith*(s: string, suffix: TRegEx): bool =
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
-proc replace*(s: string, sub: TRegEx, by: string): string =
-  ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
-  ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
+proc replace*(s: string, sub: TRegEx, by = ""): string =
+  ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
+  ## accessed in `by`. Examples:
   ##
   ## .. code-block:: nimrod
-  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)")
   ##
   ## Results in:
   ##
   ## .. code-block:: nimrod
   ##
-  ##   "var1<-keykey; val2<-key2key2"
+  ##   "; "
   result = ""
-  var i = 0
+  var prev = 0
+  while true:
+    var match = findBounds(s, sub, prev)
+    if match.first < 0: break
+    add(result, copy(s, prev, match.first-1))
+    add(result, by)
+    prev = match.last + 1
+  add(result, copy(s, prev))
+  
+proc replacef*(s: string, sub: TRegEx, by: string): string =
+  ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
+  ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
+  ##
+  ## .. code-block:: nimrod
+  ## "var1=key; var2=key2".replace(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nimrod
+  ##
+  ## "var1<-keykey; val2<-key2key2"
+  result = ""
   var caps: array[0..maxSubpatterns-1, string]
-  while i < s.len:
-    var x = matchLen(s, sub, caps, i)
-    if x <= 0:
-      add(result, s[i])
-      inc(i)
-    else:
-      addf(result, by, caps)
-      inc(i, x)
-  # copy the rest:
-  add(result, copy(s, i))
+  var prev = 0
+  while true:
+    var match = findBounds(s, sub, caps, prev)
+    if match.first < 0: break
+    add(result, copy(s, prev, match.first-1))
+    addf(result, by, caps)
+    prev = match.last + 1
+  add(result, copy(s, prev))
+  when false:
+    result = ""
+    var i = 0
+    var caps: array[0..maxSubpatterns-1, string]
+    while i < s.len:
+      var x = matchLen(s, sub, caps, i)
+      if x <= 0:
+        add(result, s[i])
+        inc(i)
+      else:
+        addf(result, by, caps)
+        inc(i, x)
+    # copy the rest:
+    add(result, copy(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: TRegEx, repl: string]]): string = 
@@ -376,8 +450,10 @@ when isMainModule:
     assert false
     
   assert "var1=key; var2=key2".endsWith(re"\w+=\w+")
-  assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
+  assert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
+  assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
+         "$1<-$2$2; $1<-$2$2")
 
   for word in split("00232this02939is39an22example111", re"\d+"):
     writeln(stdout, word)

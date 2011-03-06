@@ -10,7 +10,7 @@ when not defined(treDll):
   when hostOS == "windows":
     const treDll = "tre.dll"
   elif hostOS == "macosx":
-    const treDll = "libtre.dynlib"
+    const treDll = "libtre.dylib"
   else:
     const treDll = "libtre.so(.5|)"
 

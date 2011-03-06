@@ -874,7 +874,7 @@ proc endsWith*(s: string, suffix: TPeg, start = 0): bool {.
   for i in start .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
-proc replace*(s: string, sub: TPeg, by: string): string {.
+proc replacef*(s: string, sub: TPeg, by: string): string {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
@@ -898,7 +898,23 @@ proc replace*(s: string, sub: TPeg, by: string): string {.
     else:
       addf(result, by, caps)
       inc(i, x)
-  # copy the rest:
+  add(result, copy(s, i))
+
+proc replace*(s: string, sub: TPeg, by = ""): string {.
+  nosideEffect, rtl, extern: "npegs$1".} =
+  ## Replaces `sub` in `s` by the string `by`. Captures cannot be accessed
+  ## in `by`.
+  result = ""
+  var i = 0
+  var caps: array[0..maxSubpatterns-1, string]
+  while i < s.len:
+    var x = matchLen(s, sub, caps, i)
+    if x <= 0:
+      add(result, s[i])
+      inc(i)
+    else:
+      addf(result, by, caps)
+      inc(i, x)
   add(result, copy(s, i))
   
 proc parallelReplace*(s: string, subs: openArray[
@@ -1691,7 +1707,7 @@ when isMainModule:
               """
   assert($g2 == "((A B) / (C D))")
   assert match("cccccdddddd", g2)
-  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+  assert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
   assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
@@ -1722,7 +1738,7 @@ when isMainModule:
   assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
   assert(not match("456678", peg"(\letter)+"))
 
-  assert("var1 = key; var2 = key2".replace(
+  assert("var1 = key; var2 = key2".replacef(
     peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
          "var1<-keykey;var2<-key2key2")
 
