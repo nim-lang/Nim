@@ -687,7 +687,7 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
   ## Same as ``find(s, chars) >= 0``.
   return find(s, chars) >= 0
 
-proc replace*(s, sub, by: string): string {.noSideEffect,
+proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
   var a: TSkipTable
@@ -800,7 +800,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
-  ## ``prefix`` and suffixed with ``suffix``. Both may be empty strings.
+  ## `prefix` and suffixed with `suffix`. Both may be empty strings.
   result = prefix
   for c in items(s):
     case c

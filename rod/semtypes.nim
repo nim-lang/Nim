@@ -11,7 +11,9 @@
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
   result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil: typeMismatch(arg, formal, arg.typ)
+  if result == nil: 
+    #debug(arg)
+    typeMismatch(arg, formal, arg.typ)
   
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType = 
   if prev == nil: 
@@ -518,7 +520,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       # check type compability between def.typ and typ:
       if typ == nil: 
         typ = def.typ
-      elif def != nil and def.typ != nil and def.typ.kind != tyNone:
+      elif def != nil:
+        # and def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
         def = fitNode(c, typ, def)

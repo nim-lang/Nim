@@ -398,7 +398,8 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic in FakeVarParams): 
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     for i in countup(1, sonsLen(n) - 1): 
-      if i < sonsLen(t) and skipTypes(t.sons[i], abstractInst).kind == tyVar: 
+      if i < sonsLen(t) and t.sons[i] != nil and
+          skipTypes(t.sons[i], abstractInst).kind == tyVar: 
         if isAssignable(n.sons[i]) != arLValue: 
           LocalError(n.sons[i].info, errVarForOutParamNeeded)
     return

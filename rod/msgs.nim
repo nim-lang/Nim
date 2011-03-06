@@ -412,8 +412,7 @@ proc includeFilename*(f: string): int =
     if filenames[i] == f: 
       return i
   result = len(filenames)
-  setlen(filenames, result + 1)
-  filenames[result] = f
+  filenames.add(f)
 
 proc newLineInfo*(filename: string, line, col: int): TLineInfo = 
   result.fileIndex = includeFilename(filename)
@@ -421,7 +420,7 @@ proc newLineInfo*(filename: string, line, col: int): TLineInfo =
   result.col = int16(col)
 
 proc ToFilename*(info: TLineInfo): string = 
-  if info.fileIndex == - 1: result = "???"
+  if info.fileIndex < 0: result = "???"
   else: result = filenames[info.fileIndex]
   
 proc ToLinenumber*(info: TLineInfo): int {.inline.} = 
@@ -456,7 +455,7 @@ proc MsgKindToString*(kind: TMsgKind): string =
   result = msgKindToStr[kind]
 
 proc getMessageStr(msg: TMsgKind, arg: string): string = 
-  result = `%`(msgKindToString(msg), [arg])
+  result = msgKindToString(msg) % [arg]
 
 type
   TCheckPointResult* = enum 
@@ -489,19 +488,17 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling) =
     elif eh == doRaise:
       raiseRecoverableError()
   
-proc sameLineInfo(a, b: TLineInfo): bool = 
-  result = (a.line == b.line) and (a.fileIndex == b.fileIndex)
+proc `==`(a, b: TLineInfo): bool = 
+  result = a.line == b.line and a.fileIndex == b.fileIndex
 
 proc writeContext(lastinfo: TLineInfo) = 
-  var info: TLineInfo
-  info = lastInfo
+  var info = lastInfo
   for i in countup(0, len(msgContext) - 1): 
-    if not sameLineInfo(msgContext[i], lastInfo) and
-        not sameLineInfo(msgContext[i], info): 
-      MsgWriteln(`%`(posErrorFormat, [toFilename(msgContext[i]), 
-                                      coordToStr(msgContext[i].line), 
-                                      coordToStr(msgContext[i].col), 
-                                      getMessageStr(errInstantiationFrom, "")]))
+    if msgContext[i] != lastInfo and msgContext[i] != info: 
+      MsgWriteln(posErrorFormat % [toFilename(msgContext[i]), 
+                                   coordToStr(msgContext[i].line), 
+                                   coordToStr(msgContext[i].col), 
+                                   getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
 proc rawMessage*(msg: TMsgKind, args: openarray[string]) = 
@@ -539,7 +536,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     frmt = posErrorFormat
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
-    ignoreMsg = sameLineInfo(lastError, info)
+    ignoreMsg = lastError == info
     lastError = info
   of warnMin..warnMax: 
     ignoreMsg = optWarns notin gOptions or msg notin gNotes

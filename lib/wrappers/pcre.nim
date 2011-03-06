@@ -39,7 +39,7 @@ when not defined(pcreDll):
   when hostOS == "windows":
     const pcreDll = "pcre3.dll"
   elif hostOS == "macosx":
-    const pcreDll = "libpcre.dynlib"
+    const pcreDll = "libpcre(.3|).dylib"
   else:
     const pcreDll = "libpcre.so(.3|)"
 
@@ -275,7 +275,7 @@ proc maketables*(): ptr char{.cdecl, importc: "pcre_maketables",
                                        dynlib: pcredll.}
 proc refcount*(a2: ptr TPcre, a3: cint): cint{.cdecl, importc: "pcre_refcount", 
     dynlib: pcredll.}
-proc study*(a2: ptr TPcre, a3: cint, a4: cstringArray): ptr Textra{.cdecl, 
+proc study*(a2: ptr TPcre, a3: cint, a4: var cstring): ptr Textra{.cdecl, 
     importc: "pcre_study", dynlib: pcredll.}
 proc version*(): cstring{.cdecl, importc: "pcre_version", dynlib: pcredll.}
 

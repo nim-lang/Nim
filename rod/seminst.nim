@@ -47,6 +47,22 @@ proc GenericCacheAdd(c: PContext, genericSym, instSym: PSym) =
   addSon(n, newSymNode(instSym))
   addSon(c.generics, n)
 
+proc removeDefaultParamValues(n: PNode) = 
+  # we remove default params, because they cannot be instantiated properly
+  # and they are not needed anyway for instantiation (each param is already
+  # provided).
+  when false:
+    for i in countup(1, sonsLen(n)-1): 
+      var a = n.sons[i]
+      if a.kind != nkIdentDefs: IllFormedAst(a)
+      var L = a.len
+      if a.sons[L-1].kind != nkEmpty and a.sons[L-2].kind != nkEmpty:
+        # ``param: typ = defaultVal``. 
+        # We don't need defaultVal for semantic checking and it's wrong for
+        # ``cmp: proc (a, b: T): int = cmp``. Hm, for ``cmp = cmp`` that is
+        # not possible... XXX We don't solve this issue here.
+        a.sons[L-1] = ast.emptyNode
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable, 
                       info: TLineInfo): PSym = 
   # generates an instantiated proc
@@ -76,6 +92,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   n.sons[genericParamsPos] = ast.emptyNode
   # semantic checking for the parameters:
   if n.sons[paramsPos].kind != nkEmpty: 
+    removeDefaultParamValues(n.sons[ParamsPos])
     semParamList(c, n.sons[ParamsPos], nil, result)
     addParams(c, result.typ.n)
   else: 

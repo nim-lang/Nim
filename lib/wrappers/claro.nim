@@ -27,7 +27,7 @@ when defined(windows):
     clarodll = "claro.dll"
 elif defined(macosx): 
   const 
-    clarodll = "libclaro.dynlib"
+    clarodll = "libclaro.dylib"
 else: 
   const 
     clarodll = "libclaro.so"

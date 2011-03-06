@@ -15,7 +15,7 @@ import
   os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,
-  platform, interact, nimconf, importer, passaux, depends, transf, evals, types
+  platform, nimconf, importer, passaux, depends, transf, evals, types
 
 const
   has_LLVM_Backend = false
