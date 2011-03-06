@@ -196,6 +196,23 @@ proc evalTry(c: PEvalContext, n: PNode): PNode =
       result = evalFinally(c, n, exc)
   else: result = evalFinally(c, n, emptyNode)
   
+proc getNullValue(typ: PType, info: TLineInfo): PNode
+proc getNullValueAux(obj: PNode, result: PNode) = 
+  case obj.kind
+  of nkRecList:
+    for i in countup(0, sonsLen(obj) - 1): getNullValueAux(obj.sons[i], result)
+  of nkRecCase:
+    getNullValueAux(obj.sons[0], result)
+    for i in countup(1, sonsLen(obj) - 1): 
+      getNullValueAux(lastSon(obj.sons[i]), result)
+  of nkSym: 
+    var s = obj.sym
+    var p = newNodeIT(nkExprColonExpr, result.info, s.typ)
+    addSon(p, newSymNode(s, result.info))
+    addSon(p, getNullValue(s.typ, result.info))
+    addSon(result, p)
+  else: InternalError(result.info, "getNullValueAux")
+  
 proc getNullValue(typ: PType, info: TLineInfo): PNode = 
   var t = skipTypes(typ, abstractRange)
   result = emptyNode
@@ -209,7 +226,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkNilLit, info, t)
   of tyObject: 
     result = newNodeIT(nkPar, info, t)
-    internalError(info, "init to implement") # XXX
+    getNullValueAux(t.n, result)
   of tyArray, tyArrayConstr: 
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1): 
@@ -217,7 +234,12 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyTuple: 
     result = newNodeIT(nkPar, info, t)
     for i in countup(0, sonsLen(t) - 1): 
-      addSon(result, getNullValue(t.sons[i], info))
+      var p = newNodeIT(nkExprColonExpr, info, t.sons[i])
+      var field = if t.n != nil: t.n.sons[i].sym else: newSym(
+        skField, getIdent(":tmp" & $i), t.owner)
+      addSon(p, newSymNode(field, info))
+      addSon(p, getNullValue(t.sons[i], info))
+      addSon(result, p)
   else: InternalError("getNullValue")
   
 proc evalVar(c: PEvalContext, n: PNode): PNode = 
@@ -286,7 +308,11 @@ proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   var idx = getOrdValue(result)
   result = emptyNode
   case x.kind
-  of nkBracket, nkPar, nkMetaNode: 
+  of nkPar: 
+    if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)].sons[1]
+    else: stackTrace(c, n, errIndexOutOfBounds)
+    if not aliasNeeded(result, flags): result = copyTree(result)
+  of nkBracket, nkMetaNode: 
     if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)]
     else: stackTrace(c, n, errIndexOutOfBounds)
     if not aliasNeeded(result, flags): result = copyTree(result)
@@ -303,18 +329,18 @@ proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   else: stackTrace(c, n, errNilAccess)
   
 proc evalFieldAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
-  # a real field access; proc calls have already been
-  # transformed
+  # a real field access; proc calls have already been transformed
   # XXX: field checks!
   result = evalAux(c, n.sons[0], flags)
   if isSpecial(result): return 
   var x = result
   if x.kind != nkPar: InternalError(n.info, "evalFieldAccess")
   var field = n.sons[1].sym
-  for i in countup(0, sonsLen(n) - 1): 
-    if x.sons[i].kind != nkExprColonExpr: 
-      InternalError(n.info, "evalFieldAccess")
-    if x.sons[i].sons[0].sym.name.id == field.name.id: 
+  for i in countup(0, sonsLen(x) - 1): 
+    var it = x.sons[i]
+    if it.kind != nkExprColonExpr: 
+      InternalError(it.info, "evalFieldAccess")
+    if it.sons[0].sym.name.id == field.name.id: 
       result = x.sons[i].sons[1]
       if not aliasNeeded(result, flags): result = copyTree(result)
       return
