@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -81,7 +81,7 @@ proc HandleCmdLine() =
           var prog = quoteIfContainsWhite(changeFileExt(filename, ""))
         execExternalProgram(prog & ' ' & arguments)
 
-cmdLineInfo = newLineInfo("command line", - 1, - 1)
+cmdLineInfo = newLineInfo("command line", -1, -1)
 condsyms.InitDefines()
 HandleCmdLine()
 quit(options.gExitcode)
