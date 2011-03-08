@@ -41,8 +41,8 @@ when defined(Nimdoc): # only for proper documentation:
       ## For example: '.' for POSIX or ':' for the classic Macintosh.
 
     ParDir* = ".."
-      ## The constant string used by the operating system to refer to the parent
-      ## directory.
+      ## The constant string used by the operating system to refer to the
+      ## parent directory.
       ##
       ## For example: ".." for POSIX or "::" for the classic Macintosh.
 
@@ -699,12 +699,25 @@ when defined(windows):
       discard FreeEnvironmentStringsA(env)
 
 else:
-  var gEnv {.importc: "environ".}: cstringArray
-  # var gEnv {.importc: "gEnv".}: cstringArray
+  when defined(macosx):
+    # From the manual:
+    # Shared libraries and bundles don't have direct access to environ, 
+    # which is only available to the loader ld(1) when a complete program
+    # is being linked.
+    # The environment routines can still be used, but if direct access to
+    # environ is needed, the _NSGetEnviron() routine, defined in
+    # <crt_externs.h>, can be used to retrieve the address of environ
+    # at runtime.
+    proc NSGetEnviron(): cstringArray {.
+      importc: "_NSGetEnviron", header: "<crt_externs.h>".}
+  else:
+    var gEnv {.importc: "environ".}: cstringArray
 
   proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
+      when defined(macosx):
+        var gEnv = NSGetEnviron()
       var i = 0
       while True:
         if gEnv[i] == nil: break
