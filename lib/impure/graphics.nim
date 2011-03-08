@@ -412,7 +412,7 @@ proc ipart(x: float): float = return x.trunc()
 proc fpart(x: float): float = return x - ipart(x)
 proc rfpart(x: float): float = return 1.0 - fpart(x)
 
-proc drawLineAA(sur: PSurface, p1, p2: TPoint, color: TColor) =
+proc drawLineAA*(sur: PSurface, p1, p2: TPoint, color: TColor) =
   ## Draws a anti-aliased line from ``p1`` to ``p2``, using Xiaolin Wu's 
   ## line algorithm
   var (x1, x2, y1, y2) = (p1.x.toFloat(), p2.x.toFloat(), 

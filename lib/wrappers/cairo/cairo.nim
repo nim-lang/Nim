@@ -49,11 +49,12 @@
 #
 
 when defined(windows): 
-  const 
-    LIB_CAIRO* = "libcairo-2.dll"
+  const LIB_CAIRO* = "libcairo-2.dll"
+elif defined(macosx):
+  const LIB_CAIRO* = "libcairo.dylib"
 else: 
-  const 
-    LIB_CAIRO* = "libcairo.so"
+  const LIB_CAIRO* = "libcairo.so"
+
 type 
   PByte = cstring
   TStatus* = enum 

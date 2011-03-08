@@ -45,7 +45,8 @@ const
   DocumentFragmentNode* = 11
 
   # Nodes which are childless - Not sure about AttributeNode
-  childlessObjects = {DocumentNode, AttributeNode, TextNode, CDataSectionNode, ProcessingInstructionNode, CommentNode}
+  childlessObjects = {DocumentNode, AttributeNode, TextNode, 
+    CDataSectionNode, ProcessingInstructionNode, CommentNode}
   # Illegal characters
   illegalChars = {'>', '<', '&', '"'}
 
@@ -73,7 +74,7 @@ type
   Element = object of Node
     FTagName: string # Read-only
   
-  PCharacterData = ref CharacterData
+  PCharacterData* = ref CharacterData
   CharacterData = object of Node
     data*: string
     
@@ -109,10 +110,10 @@ type
 # DOMImplementation
 proc getDOM*(): PDOMImplementation =
   ## Returns a DOMImplementation
-  var DOMImpl: PDOMImplementation
-  new(DOMImpl)
-  DOMImpl.Features = @[(name: "core", version: "2.0"), (name: "core", version: "1.0"), (name: "XML", version: "2.0")]
-  return DOMImpl
+  new(result)
+  result.Features = @[(name: "core", version: "2.0"), 
+                      (name: "core", version: "1.0"), 
+                      (name: "XML", version: "2.0")]
 
 proc createDocument*(dom: PDOMImplementation, namespaceURI: string, qualifiedName: string): PDocument =
   ## Creates an XML Document object of the specified type with its document element.

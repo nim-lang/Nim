@@ -119,7 +119,7 @@ from a C function prototype with the ``dynlib`` pragma:
   #  if defined(windows)
   #    define iupdll "iup.dll"
   #  elif defined(macosx)
-  #    define iupdll "libiup.dynlib"
+  #    define iupdll "libiup.dylib"
   #  else
   #    define iupdll "libiup.so"
   #  endif
@@ -133,7 +133,7 @@ Is translated to:
   when defined(windows):
     const iupdll* = "iup.dll"
   elif defined(macosx):
-    const iupdll* = "libiup.dynlib"
+    const iupdll* = "libiup.dylib"
   else:
     const iupdll* = "libiup.so"
   
