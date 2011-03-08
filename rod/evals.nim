@@ -42,7 +42,8 @@ type
 proc newStackFrame*(): PStackFrame
 proc pushStackFrame*(c: PEvalContext, t: PStackFrame)
 proc popStackFrame*(c: PEvalContext)
-proc newEvalContext*(module: PSym, filename: string, optEval: bool): PEvalContext
+proc newEvalContext*(module: PSym, filename: string, 
+                     optEval: bool): PEvalContext
 proc eval*(c: PEvalContext, n: PNode): PNode
   # eval never returns nil! This simplifies the code a lot and
   # makes it faster too.
@@ -50,9 +51,12 @@ proc evalConstExpr*(module: PSym, e: PNode): PNode
 proc evalPass*(): TPass
 # implementation
 
-const 
-  evalMaxIterations = 10000000 # max iterations of all loops
-  evalMaxRecDepth = 100000    # max recursion depth for evaluation
+const
+  evalMaxIterations = 500_000 # max iterations of all loops
+  evalMaxRecDepth = 10_000      # max recursion depth for evaluation
+
+# Much better: use a timeout! -> Wether code compiles depends on the machine
+# the compiler runs on then! Bad idea!
 
 proc newStackFrame(): PStackFrame = 
   new(result)
@@ -87,7 +91,7 @@ proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg: string = "") =
   stackTraceAux(c.tos)
   Fatal(n.info, msg, arg)
 
-proc isSpecial(n: PNode): bool = 
+proc isSpecial(n: PNode): bool {.inline.} = 
   result = (n.kind == nkExceptBranch) 
   # or (n.kind == nkEmpty)
   # XXX this does not work yet! Better to compile too much than to compile to
@@ -137,11 +141,10 @@ proc evalWhile(c: PEvalContext, n: PNode): PNode =
     of nkBreakStmt: 
       if result.sons[0].kind == nkEmpty: 
         result = emptyNode    # consume ``break`` token
-        break 
-    of nkExceptBranch, nkReturnToken: 
+      # Bugfix (see tmacro2): but break in any case!
       break 
-    else: 
-      nil
+    of nkExceptBranch, nkReturnToken: break 
+    else: nil
     dec(gWhileCounter)
     if gWhileCounter <= 0: 
       stackTrace(c, n, errTooManyIterations)
@@ -152,7 +155,7 @@ proc evalBlock(c: PEvalContext, n: PNode): PNode =
   if result.kind == nkBreakStmt: 
     if result.sons[0] != nil: 
       assert(result.sons[0].kind == nkSym)
-      if n.sons[0].kind != nkempty: 
+      if n.sons[0].kind != nkEmpty: 
         assert(n.sons[0].kind == nkSym)
         if result.sons[0].sym.id == n.sons[0].sym.id: result = emptyNode
     else: 
@@ -250,6 +253,7 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     assert(a.sons[0].kind == nkSym)
     var v = a.sons[0].sym
     if a.sons[2].kind != nkEmpty: 
+      #if a.sons[2].kind == nkNone: echo "Yep"
       result = evalAux(c, a.sons[2], {})
       if isSpecial(result): return 
     else: 
@@ -309,7 +313,9 @@ proc evalArrayAccess(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   result = emptyNode
   case x.kind
   of nkPar: 
-    if (idx >= 0) and (idx < sonsLen(x)): result = x.sons[int(idx)].sons[1]
+    if (idx >= 0) and (idx < sonsLen(x)): 
+      result = x.sons[int(idx)]
+      if result.kind == nkExprColonExpr: result = result.sons[1]
     else: stackTrace(c, n, errIndexOutOfBounds)
     if not aliasNeeded(result, flags): result = copyTree(result)
   of nkBracket, nkMetaNode: 
@@ -458,12 +464,25 @@ proc evalAnd(c: PEvalContext, n: PNode): PNode =
   
 proc evalNoOpt(c: PEvalContext, n: PNode): PNode = 
   result = newNodeI(nkExceptBranch, n.info) 
-  # creating a nkExceptBranch without sons means that it could not be evaluated
+  # creating a nkExceptBranch without sons 
+  # means that it could not be evaluated
   
 proc evalNew(c: PEvalContext, n: PNode): PNode = 
-  if c.optEval: 
-    result = evalNoOpt(c, n)
-  else: 
+  if c.optEval: return evalNoOpt(c, n)
+  # we ignore the finalizer for now and most likely forever :-)
+  result = evalAux(c, n.sons[1], {efLValue})
+  if isSpecial(result): return 
+  var a = result
+  var t = skipTypes(n.sons[1].typ, abstractVar)
+  if a.kind == nkEmpty: InternalError(n.info, "first parameter is empty")
+  # changing the node kind is ugly and suggests deep problems:
+  a.kind = nkRefTy
+  a.info = n.info
+  a.typ = t
+  a.sons = nil
+  addSon(a, getNullValue(t.sons[0], n.info))
+  result = emptyNode
+  when false:
     var t = skipTypes(n.sons[1].typ, abstractVar)
     result = newNodeIT(nkRefTy, n.info, t)
     addSon(result, getNullValue(t.sons[0], n.info))
@@ -522,8 +541,8 @@ proc evalRangeChck(c: PEvalContext, n: PNode): PNode =
     result = x                # a <= x and x <= b
     result.typ = n.typ
   else: 
-    stackTrace(c, n, errGenerated, `%`(msgKindToString(errIllegalConvFromXtoY), [
-        typeToString(n.sons[0].typ), typeToString(n.typ)]))
+    stackTrace(c, n, errGenerated, msgKindToString(errIllegalConvFromXtoY) % [
+        typeToString(n.sons[0].typ), typeToString(n.typ)])
   
 proc evalConvStrToCStr(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[0], {})
@@ -623,11 +642,15 @@ proc evalNewSeq(c: PEvalContext, n: PNode): PNode =
   var b = result
   var t = skipTypes(n.sons[1].typ, abstractVar)
   if a.kind == nkEmpty: InternalError(n.info, "first parameter is empty")
+  # changing the node kind is ugly and suggests deep problems:
   a.kind = nkBracket
   a.info = n.info
   a.typ = t
-  for i in countup(0, int(getOrdValue(b)) - 1): 
-    addSon(a, getNullValue(t.sons[0], n.info))
+  a.sons = nil
+  var L = int(getOrdValue(b))
+  newSeq(a.sons, L)
+  for i in countup(0, L-1): 
+    a.sons[i] = getNullValue(t.sons[0], n.info)
   result = emptyNode
 
 proc evalAssert(c: PEvalContext, n: PNode): PNode = 
