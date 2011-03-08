@@ -5,6 +5,9 @@ import
 when defined(win32): 
   const 
     lib* = "libpango-1.0-0.dll"
+elif defined(macosx): 
+  const 
+    lib* = "libpango-1.0.dylib"
 else: 
   const 
     lib* = "libpango-1.0.so.0"

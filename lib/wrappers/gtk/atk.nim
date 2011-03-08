@@ -5,6 +5,9 @@ import
 when defined(windows): 
   const 
     lib = "libatk-1.0-0.dll"
+elif defined(macosx):
+  const 
+    lib = "libatk-1.0.dylib"
 else: 
   const 
     lib = "libatk-1.0.so"

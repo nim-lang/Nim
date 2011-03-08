@@ -61,7 +61,8 @@ type
                           # (used for macros)
     nkNilLit,             # the nil literal
                           # end of atoms
-    nkDotCall,            # used to temporarily flag a nkCall node; this is used
+    nkDotCall,            # used to temporarily flag a nkCall node; 
+                          # this is used
                           # for transforming ``s.len`` to ``len(s)``
     nkCommand,            # a call like ``p 2, 4`` without parenthesis
     nkCall,               # a call like p(x, y) or an operation like +(a, b)
@@ -115,7 +116,8 @@ type
                           # end of expressions
 
     nkAsgn,               # a = b
-    nkFastAsgn,           # internal node for a fast ``a = b`` (no string copy) 
+    nkFastAsgn,           # internal node for a fast ``a = b``
+                          # (no string copy) 
     nkGenericParams,      # generic parameters
     nkFormalParams,       # formal parameters
     nkOfInherit,          # inherited from symbol
@@ -128,7 +130,8 @@ type
     nkTemplateDef,        # a template
     nkIteratorDef,        # an iterator
 
-    nkOfBranch,           # used inside case statements for (cond, action)-pairs
+    nkOfBranch,           # used inside case statements
+                          # for (cond, action)-pairs
     nkElifBranch,         # used in if statements
     nkExceptBranch,       # an except section
     nkElse,               # an else part
@@ -296,7 +299,8 @@ type
     skForVar,             # a for loop variable
     skLabel,              # a label (for block statement)
     skStub                # symbol is a stub and not yet loaded from the ROD
-                          # file (it is loaded on demand, which may mean: never)
+                          # file (it is loaded on demand, which may
+                          # mean: never)
   TSymKinds* = set[TSymKind]
 
   TMagic* = enum # symbols that require compiler magic:
@@ -312,10 +316,12 @@ type
     mMinF64, mMaxF64, mAddU, mSubU, mMulU, 
     mDivU, mModU, mAddU64, mSubU64, mMulU64, mDivU64, mModU64, mEqI, mLeI,
     mLtI, 
-    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, mLeU, mLtU, mLeU64, mLtU64, 
+    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64, 
+    mLeU, mLtU, mLeU64, mLtU64, 
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef, 
     mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI, 
-    mUnaryMinusI64, mAbsI, mAbsI64, mNot, mUnaryPlusI, mBitnotI, mUnaryPlusI64, 
+    mUnaryMinusI64, mAbsI, mAbsI64, mNot, 
+    mUnaryPlusI, mBitnotI, mUnaryPlusI64, 
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64, 
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32, 
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr, 
@@ -521,7 +527,8 @@ const
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject, 
-    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyPointer, 
+    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
+    tyPointer, 
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128} 
   
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet, tyTuple}
@@ -609,7 +616,8 @@ type
 const 
   InitIntSetSize* = 8         # must be a power of two!
   TrunkShift* = 9
-  BitsPerTrunk* = 1 shl TrunkShift # needs to be a power of 2 and divisible by 64
+  BitsPerTrunk* = 1 shl TrunkShift # needs to be a power of 2 and
+                                   # divisible by 64
   TrunkMask* = BitsPerTrunk - 1
   IntsPerTrunk* = BitsPerTrunk div (sizeof(TBitScalar) * 8)
   IntShift* = 5 + ord(sizeof(TBitScalar) == 8) # 5 or 6, depending on int width
@@ -718,7 +726,8 @@ proc discardSons(father: PNode) =
 
 proc newNode(kind: TNodeKind): PNode = 
   new(result)
-  result.kind = kind          #result.info := UnknownLineInfo(); inlined:
+  result.kind = kind
+  #result.info = UnknownLineInfo() inlined:
   result.info.fileIndex = int32(- 1)
   result.info.col = int16(- 1)
   result.info.line = int16(- 1)
@@ -773,8 +782,9 @@ proc NewType(kind: TTypeKind, owner: PSym): PType =
   result.align = 2            # default alignment
   result.id = getID()
   if debugIds: 
-    RegisterId(result)        #if result.id < 2000 then
-                              #  MessageOut(typeKindToStr[kind] +{&} ' has id: ' +{&} toString(result.id));
+    RegisterId(result)        
+  #if result.id < 2000 then
+  #  MessageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
   
 proc assignType(dest, src: PType) = 
   dest.kind = src.kind
@@ -827,8 +837,9 @@ proc NewSym(symKind: TSymKind, Name: PIdent, owner: PSym): PSym =
   result.offset = - 1
   result.id = getID()
   if debugIds: 
-    RegisterId(result)        #if result.id < 2000 then
-                              #  MessageOut(name.s +{&} ' has id: ' +{&} toString(result.id));
+    RegisterId(result)
+  #if result.id < 2000:
+  #  MessageOut(name.s & " has id: " & toString(result.id))
   
 proc initStrTable(x: var TStrTable) = 
   x.counter = 0

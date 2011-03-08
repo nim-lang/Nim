@@ -22741,144 +22741,144 @@ proc AnsiLowerBuff*(lpsz: LPSTR, cchLength: DWORD): DWORD{.stdcall,
 
 # WinBase.h
 
-proc FreeModule(h: HINST): WINBOOL =
+proc FreeModule*(h: HINST): WINBOOL =
   result = FreeLibrary(h)
 
-proc MakeProcInstance(p, i: pointer): pointer =
+proc MakeProcInstance*(p, i: pointer): pointer =
   result = p
 
-proc FreeProcInstance(p: pointer): pointer =
+proc FreeProcInstance*(p: pointer): pointer =
   result = p
 
-proc GlobalDiscard(hglbMem: HGLOBAL): HGLOBAL =
+proc GlobalDiscard*(hglbMem: HGLOBAL): HGLOBAL =
   result = GlobalReAlloc(hglbMem, 0, GMEM_MOVEABLE)
 
-proc LocalDiscard(hlocMem: HLOCAL): HLOCAL =
+proc LocalDiscard*(hlocMem: HLOCAL): HLOCAL =
   result = LocalReAlloc(hlocMem, 0, LMEM_MOVEABLE)
 
 # WinGDI.h
 
-proc GetGValue(rgb: int32): int8 =
+proc GetGValue*(rgb: int32): int8 =
   result = toU8(rgb shr 8'i32)
-proc RGB(r, g, b: int): COLORREF =
+proc RGB*(r, g, b: int): COLORREF =
   result = toU32(r) or (toU32(g) shl 8) or (toU32(b) shl 16)
-proc RGB(r, g, b: range[0 .. 255]): COLORREF =
+proc RGB*(r, g, b: range[0 .. 255]): COLORREF =
   result = r or g shl 8 or b shl 16
 
-proc PALETTERGB(r, g, b: range[0..255]): COLORREF =
+proc PALETTERGB*(r, g, b: range[0..255]): COLORREF =
   result = 0x02000000 or RGB(r, g, b)
 
-proc PALETTEINDEX(i: DWORD): COLORREF =
+proc PALETTEINDEX*(i: DWORD): COLORREF =
   result = COLORREF(0x01000000'i32 or i and 0xffff'i32)
 
 
-proc GetRValue(rgb: COLORREF): int8 =
+proc GetRValue*(rgb: COLORREF): int8 =
   result = toU8(rgb)
 
-proc GetGValue(rgb: COLORREF): int8 =
+proc GetGValue*(rgb: COLORREF): int8 =
   result = toU8(rgb shr 8)
 
-proc GetBValue(rgb: COLORREF): int8 =
+proc GetBValue*(rgb: COLORREF): int8 =
   result = toU8(rgb shr 16)
 
 #
 
-proc HIBYTE(w: int32): int8 =
+proc HIBYTE*(w: int32): int8 =
   result = toU8(w shr 8'i32 and 0x000000FF'i32)
 
-proc HIWORD(L: int32): int16 =
+proc HIWORD*(L: int32): int16 =
   result = toU16(L shr 16'i32 and 0x0000FFFF'i32)
 
-proc LOBYTE(w: int32): int8 =
+proc LOBYTE*(w: int32): int8 =
   result = toU8(w)
 
-proc LOWORD(L: int32): int16 =
+proc LOWORD*(L: int32): int16 =
   result = toU16(L)
 
-proc MAKELONG(a, b: int32): LONG =
+proc MAKELONG*(a, b: int32): LONG =
   result = a and 0x0000ffff'i32 or b shl 16'i32
 
-proc MAKEWORD(a, b: int32): int16 =
+proc MAKEWORD*(a, b: int32): int16 =
   result = toU16(a and 0xff'i32) or toU16(b shl 8'i32)
 
-proc SEXT_HIWORD(L: int32): int32 =
+proc SEXT_HIWORD*(L: int32): int32 =
   # return type might be wrong
   result = HIWORD(L)
 
-proc ZEXT_HIWORD(L: int32): int32 =
+proc ZEXT_HIWORD*(L: int32): int32 =
   # return type might be wrong
   result = ze(HIWORD(L))
 
-proc SEXT_LOWORD(L: int32): int32 =
+proc SEXT_LOWORD*(L: int32): int32 =
   result = LOWORD(L)
 
-proc INDEXTOOVERLAYMASK(i: int32): int32 =
+proc INDEXTOOVERLAYMASK*(i: int32): int32 =
   # return type might be wrong
   result = i shl 8'i32
 
-proc INDEXTOSTATEIMAGEMASK(i: int32): int32 =
+proc INDEXTOSTATEIMAGEMASK*(i: int32): int32 =
   # return type might be wrong
   result = i shl 12'i32
 
-proc MAKEINTATOM(i: int32): LPTSTR =
+proc MAKEINTATOM*(i: int32): LPTSTR =
   result = cast[LPTSTR](cast[ULONG_PTR](ToU16(i)))
 
-proc MAKELANGID(p, s: int32): int32 =
+proc MAKELANGID*(p, s: int32): int32 =
   # return type might be wrong
   result = toU16(s) shl 10'i16 or toU16(p)
 
-proc PRIMARYLANGID(lgid: int32): int16 =
+proc PRIMARYLANGID*(lgid: int32): int16 =
   result = toU16(lgid) and 0x000003FF'i16
 
-proc SUBLANGID(lgid: int32): int32 =
+proc SUBLANGID*(lgid: int32): int32 =
   # return type might be wrong
   result = toU16(lgid) shr 10'i16
 
-proc LANGIDFROMLCID(lcid: int32): int16 =
+proc LANGIDFROMLCID*(lcid: int32): int16 =
   result = toU16(lcid)
 
-proc SORTIDFROMLCID(lcid: int32): int16 =
+proc SORTIDFROMLCID*(lcid: int32): int16 =
   result = toU16((lcid and 0x000FFFFF'i32) shr 16'i32)
 
-proc MAKELCID(lgid, srtid: int32): DWORD =
+proc MAKELCID*(lgid, srtid: int32): DWORD =
   result = toU32(srtid shl 16'i32 or lgid and 0xffff'i32)
 
-proc MAKELPARAM(L, h: int32): LPARAM =
+proc MAKELPARAM*(L, h: int32): LPARAM =
   result = LPARAM(MAKELONG(L, h))
 
-proc MAKELRESULT(L, h: int32): LRESULT =
+proc MAKELRESULT*(L, h: int32): LRESULT =
   result = LRESULT(MAKELONG(L, h))
 
-proc MAKEROP4(fore, back: int32): DWORD =
+proc MAKEROP4*(fore, back: int32): DWORD =
   result = back shl 8'i32 and 0xFF000000'i32 or fore
 
-proc MAKEWPARAM(L, h: int32): WPARAM =
+proc MAKEWPARAM*(L, h: int32): WPARAM =
   result = WPARAM(MAKELONG(L, h))
 
-proc GET_X_LPARAM(lp: Windows.LParam): int32 =
+proc GET_X_LPARAM*(lp: Windows.LParam): int32 =
   result = int16(LOWORD(lp))
 
-proc GET_Y_LPARAM(lp: Windows.LParam): int32 =
+proc GET_Y_LPARAM*(lp: Windows.LParam): int32 =
   result = int16(HIWORD(lp))
 
-proc UNICODE_NULL(): WCHAR =
+proc UNICODE_NULL*(): WCHAR =
   result = 0'i16
 
 
 
-proc GetFirstChild(h: HWND): HWND =
+proc GetFirstChild*(h: HWND): HWND =
   result = GetTopWindow(h)
 
-proc GetNextSibling(h: HWND): HWND =
+proc GetNextSibling*(h: HWND): HWND =
   result = GetWindow(h, GW_HWNDNEXT)
 
-proc GetWindowID(h: HWND): int32 =
+proc GetWindowID*(h: HWND): int32 =
   result = GetDlgCtrlID(h)
 
-proc SubclassWindow(h: HWND, p: LONG): LONG =
+proc SubclassWindow*(h: HWND, p: LONG): LONG =
   result = SetWindowLong(h, GWL_WNDPROC, p)
 
-proc GET_WM_COMMAND_CMD(w, L: int32): int32 =
+proc GET_WM_COMMAND_CMD*(w, L: int32): int32 =
   # return type might be wrong
   result = HIWORD(w)
 

@@ -3,9 +3,11 @@ import
   gtk2, glib2, atk, pango, gdk2pixbuf, gdk2
 
 when defined(windows): 
-  {.define: WINDOWING_WIN32.}
   const 
     htmllib = "libgtkhtml-win32-2.0-0.dll"
+elif defined(macosx): 
+  const 
+    htmllib = "libgtkhtml-2.dylib"
 else: 
   const 
     htmllib = "libgtkhtml-2.so"

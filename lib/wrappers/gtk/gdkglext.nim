@@ -5,6 +5,9 @@ import
 when defined(WIN32): 
   const 
     GLExtLib = "libgdkglext-win32-1.0-0.dll"
+elif defined(macosx): 
+  const 
+    GLExtLib = "libgdkglext-x11-1.0.dylib"
 else: 
   const 
     GLExtLib = "libgdkglext-x11-1.0.so"

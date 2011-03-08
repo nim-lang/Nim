@@ -2,8 +2,15 @@
 import 
   Glib2, Gdk2, gtk2, GdkGLExt
 
-const 
-  GLExtLib* = if defined(WIN32): "libgtkglext-win32-1.0-0.dll" else: "libgtkglext-x11-1.0.so"
+when defined(windows):
+  const 
+    GLExtLib* = "libgtkglext-win32-1.0-0.dll" 
+elif defined(macosx):
+  const
+    GLExtLib* = "libgtkglext-x11-1.0.dylib"
+else:
+  const
+    GLExtLib* = "libgtkglext-x11-1.0.so"
 
 const 
   HEADER_GTKGLEXT_MAJOR_VERSION* = 1

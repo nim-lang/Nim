@@ -38,42 +38,34 @@ type
     efNone, efLValue
   TEvalFlags = set[TEvalFlag]
 
-
-proc newStackFrame*(): PStackFrame
-proc pushStackFrame*(c: PEvalContext, t: PStackFrame)
-proc popStackFrame*(c: PEvalContext)
-proc newEvalContext*(module: PSym, filename: string, 
-                     optEval: bool): PEvalContext
 proc eval*(c: PEvalContext, n: PNode): PNode
   # eval never returns nil! This simplifies the code a lot and
   # makes it faster too.
 proc evalConstExpr*(module: PSym, e: PNode): PNode
-proc evalPass*(): TPass
-# implementation
 
 const
   evalMaxIterations = 500_000 # max iterations of all loops
-  evalMaxRecDepth = 10_000      # max recursion depth for evaluation
+  evalMaxRecDepth = 10_000    # max recursion depth for evaluation
 
 # Much better: use a timeout! -> Wether code compiles depends on the machine
 # the compiler runs on then! Bad idea!
 
-proc newStackFrame(): PStackFrame = 
+proc newStackFrame*(): PStackFrame = 
   new(result)
   initIdNodeTable(result.mapping)
   result.params = @[]
 
-proc newEvalContext(module: PSym, filename: string, 
-                    optEval: bool): PEvalContext = 
+proc newEvalContext*(module: PSym, filename: string, 
+                     optEval: bool): PEvalContext = 
   new(result)
   result.module = module
   result.optEval = optEval
 
-proc pushStackFrame(c: PEvalContext, t: PStackFrame) = 
+proc pushStackFrame*(c: PEvalContext, t: PStackFrame) {.inline.} = 
   t.next = c.tos
   c.tos = t
 
-proc popStackFrame(c: PEvalContext) = 
+proc popStackFrame*(c: PEvalContext) {.inline.} = 
   if (c.tos == nil): InternalError("popStackFrame")
   c.tos = c.tos.next
 
@@ -83,10 +75,19 @@ proc stackTraceAux(x: PStackFrame) =
   if x != nil:
     stackTraceAux(x.next)
     var info = if x.call != nil: x.call.info else: UnknownLineInfo()
-    MsgWriteln(`%`("file: $1, line: $2", 
-                   [toFilename(info), $(toLineNumber(info))]))
+    # we now use the same format as in system/except.nim
+    var s = toFilename(info)
+    var line = toLineNumber(info)
+    if line > 0:
+      add(s, '(')
+      add(s, $line)
+      add(s, ')')
+    if x.prc != nil:
+      for k in 1..max(1, 25-s.len): add(s, ' ')
+      add(s, x.prc.name.s)
+    MsgWriteln(s)
 
-proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg: string = "") = 
+proc stackTrace(c: PEvalContext, n: PNode, msg: TMsgKind, arg = "") = 
   MsgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c.tos)
   Fatal(n.info, msg, arg)
@@ -253,7 +254,6 @@ proc evalVar(c: PEvalContext, n: PNode): PNode =
     assert(a.sons[0].kind == nkSym)
     var v = a.sons[0].sym
     if a.sons[2].kind != nkEmpty: 
-      #if a.sons[2].kind == nkNone: echo "Yep"
       result = evalAux(c, a.sons[2], {})
       if isSpecial(result): return 
     else: 
@@ -373,6 +373,7 @@ proc evalAsgn(c: PEvalContext, n: PNode): PNode =
       discardSons(x)
       for i in countup(0, sonsLen(result) - 1): addSon(x, result.sons[i])
   result = emptyNode
+  assert result.kind == nkEmpty
 
 proc evalSwap(c: PEvalContext, n: PNode): PNode = 
   result = evalAux(c, n.sons[0], {efLValue})
@@ -918,7 +919,7 @@ proc evalMagicOrCall(c: PEvalContext, n: PNode): PNode =
     result = evalAux(c, n.sons[2], {efLValue})
     if result.kind == nkExceptBranch: return 
     var a = result
-    if (k < 0) or (k > ord(high(TNodeKind))): 
+    if k < 0 or k > ord(high(TNodeKind)): 
       internalError(n.info, "request to create a NimNode with invalid kind")
     result = newNodeI(TNodeKind(int(k)), 
       if a.kind == nkNilLit: n.info else: a.info)
@@ -1015,8 +1016,7 @@ proc evalAux(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode =
   case n.kind                 # atoms:
   of nkEmpty: result = n
   of nkSym: result = evalSym(c, n, flags)
-  of nkType..pred(nkNilLit): result = copyNode(n)
-  of nkNilLit: result = n                # end of atoms
+  of nkType..nkNilLit: result = copyNode(n) # end of atoms
   of nkCall, nkHiddenCallConv, nkMacroStmt, nkCommand, nkCallStrLit: 
     result = evalMagicOrCall(c, n)
   of nkCurly, nkBracket, nkRange: 
@@ -1089,7 +1089,7 @@ proc evalConstExpr(module: PSym, e: PNode): PNode =
   s.call = e
   pushStackFrame(p, s)
   result = eval(p, e)
-  if (result != nil) and (result.kind == nkExceptBranch): result = nil
+  if result != nil and result.kind == nkExceptBranch: result = nil
   popStackFrame(p)
 
 proc myOpen(module: PSym, filename: string): PPassContext = 
@@ -1100,7 +1100,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
 proc myProcess(c: PPassContext, n: PNode): PNode = 
   result = eval(PEvalContext(c), n)
 
-proc evalPass(): TPass = 
+proc evalPass*(): TPass = 
   initPass(result)
   result.open = myOpen
   result.close = myProcess

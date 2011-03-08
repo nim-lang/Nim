@@ -5,9 +5,9 @@ import
 when defined(win32): 
   const 
     pixbuflib = "libgdk_pixbuf-2.0-0.dll"
-elif defined(darwin): 
+elif defined(macosx): 
   const 
-    pixbuflib = "gdk_pixbuf-2.0.0"
+    pixbuflib = "libgdk_pixbuf-2.0.0.dylib"
   # linklib gtk-x11-2.0
   # linklib gdk-x11-2.0
   # linklib pango-1.0.0

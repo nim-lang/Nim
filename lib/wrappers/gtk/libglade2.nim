@@ -5,6 +5,9 @@ import
 when defined(win32): 
   const 
     LibGladeLib = "libglade-2.0-0.dll"
+elif defined(macosx): 
+  const 
+    LibGladeLib = "libglade-2.0.dylib"
 else: 
   const 
     LibGladeLib = "libglade-2.0.so"
