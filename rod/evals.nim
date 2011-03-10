@@ -244,6 +244,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(p, newSymNode(field, info))
       addSon(p, getNullValue(t.sons[i], info))
       addSon(result, p)
+  of tySet:
+    result = newNodeIT(nkCurly, info, t)    
   else: InternalError("getNullValue")
   
 proc evalVar(c: PEvalContext, n: PNode): PNode = 

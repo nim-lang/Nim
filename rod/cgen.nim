@@ -11,7 +11,8 @@
 # than the old one. It also generates better code.
 
 import 
-  ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp, options, 
+  ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp,
+  options, 
   nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os, 
   times, ropes, math, passes, rodread, wordrecg, rnimsyn, treetab, cgmeth,
   rodutils
@@ -42,7 +43,8 @@ type
     cfsTypeInit3,             # section 3 for init of type information
     cfsDebugInit,             # section for init of debug information
     cfsDynLibInit,            # section for init of dynamic library binding
-    cfsDynLibDeinit           # section for deinitialization of dynamic libraries
+    cfsDynLibDeinit           # section for deinitialization of dynamic
+                              # libraries
   TCTypeKind = enum           # describes the type kind of a C type
     ctVoid, ctChar, ctBool, ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64, 
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64, ctFloat, ctFloat32, ctFloat64, 
@@ -225,7 +227,8 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: openarray[PRope]): PRope =
     if i - 1 >= start: 
       app(result, copy(frmt, start, i - 1))
 
-proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, args: openarray[PRope]) = 
+proc appcg(m: BModule, c: var PRope, frmt: TFormatStr, 
+           args: openarray[PRope]) = 
   app(c, ropecg(m, frmt, args))
 
 
