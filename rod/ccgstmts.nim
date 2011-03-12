@@ -42,6 +42,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     v = n.sons[i].sym
     if sfGlobal in v.flags: 
       assignGlobalVar(p, v)
+      genObjectInit(p, cpsInit, v.typ, v.loc, true)
     else: 
       assignLocalVar(p, v)
       initVariable(p, v)
@@ -53,7 +54,6 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = ropef("$1.$2", 
                       [rdLoc(tup), mangleRecFieldName(t.n.sons[i].sym, t)])
     putLocIntoDest(p, v.loc, field)
-    genObjectInit(p, v.typ, v.loc, true)
 
 proc genVarStmt(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
@@ -64,14 +64,13 @@ proc genVarStmt(p: BProc, n: PNode) =
       var v = a.sons[0].sym
       if sfGlobal in v.flags: 
         assignGlobalVar(p, v)
+        genObjectInit(p, cpsInit, v.typ, v.loc, true)
       else: 
         assignLocalVar(p, v)
-        initVariable(p, v)    # XXX: this is not required if a.sons[2] != nil,
-                              # unless it is a GC'ed pointer
+        initVariable(p, v)
       if a.sons[2].kind != nkEmpty: 
         genLineDir(p, a)
         expr(p, a.sons[2], v.loc)
-      genObjectInit(p, v.typ, v.loc, true) # correct position
     else: 
       genVarTuple(p, a)
   

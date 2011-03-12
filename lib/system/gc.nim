@@ -74,8 +74,9 @@ var
     # we use a lock to prevent the garbage collector to be triggered in a
     # finalizer; the collector should not call itself this way! Thus every
     # object allocated by a finalizer will not trigger a garbage collection.
-    # This is wasteful but safe. This is a lock against recursive garbage
-    # collection, not a lock for threads!
+    # This is wasteful but safe and won't ever be a problem for sane
+    # finalizers. This is a lock against recursive garbage collection, not a
+    # lock for threads!
 
 proc aquire(gch: var TGcHeap) {.inline.} = 
   when hasThreadSupport:

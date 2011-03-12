@@ -118,3 +118,34 @@ proc objectInit(dest: Pointer, typ: PNimType) =
     for i in 0..(typ.size div typ.base.size)-1:
       objectInit(cast[pointer](d +% i * typ.base.size), typ.base)
   else: nil # nothing to do
+  
+# ---------------------- assign zero -----------------------------------------
+
+proc genericReset(dest: Pointer, mt: PNimType) {.compilerProc.}
+proc genericResetAux(dest: Pointer, n: ptr TNimNode) =
+  var d = cast[TAddress](dest)
+  case n.kind
+  of nkNone: assert(false)
+  of nkSlot: genericReset(cast[pointer](d +% n.offset), n.typ)
+  of nkList:
+    for i in 0..n.len-1: genericResetAux(dest, n.sons[i])
+  of nkCase:
+    zeroMem(cast[pointer](d +% n.offset), n.typ.size)
+    var m = selectBranch(dest, n)
+    if m != nil: genericResetAux(dest, m)
+
+proc genericReset(dest: Pointer, mt: PNimType) =
+  var d = cast[TAddress](dest)
+  assert(mt != nil)
+  case mt.Kind
+  of tyString, tyRef, tySequence:
+    unsureAsgnRef(cast[ppointer](dest), nil)
+  of tyObject, tyTuple, tyPureObject:
+    # we don't need to reset m_type field for tyObject
+    genericResetAux(dest, mt.node)
+  of tyArray, tyArrayConstr:
+    for i in 0..(mt.size div mt.base.size)-1:
+      genericReset(cast[pointer](d +% i*% mt.base.size), mt.base)
+  else:
+    zeroMem(dest, mt.size) # set raw bits to zero
+

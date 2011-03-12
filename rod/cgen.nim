@@ -256,35 +256,75 @@ proc rdCharLoc(a: TLoc): PRope =
   if skipTypes(a.t, abstractRange).kind == tyChar:
     result = ropef("((NU8)($1))", [result])
 
-proc zeroLoc(p: BProc, loc: TLoc) = 
-  if not (skipTypes(loc.t, abstractVarRange).Kind in
-      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}): 
-    if gCmd == cmdCompileToLLVM: 
-      appf(p.s[cpsStmts], "store $2 0, $2* $1$n", 
-           [addrLoc(loc), getTypeDesc(p.module, loc.t)])
-    else: 
+proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc, 
+                   takeAddr: bool) =
+  case analyseObjectWithTypeField(t)
+  of frNone:
+    nil
+  of frHeader:
+    var r = rdLoc(a)
+    if not takeAddr: r = ropef("(*$1)", [r])
+    var s = t
+    while (s.kind == tyObject) and (s.sons[0] != nil):
+      app(r, ".Sup")
+      s = skipTypes(s.sons[0], abstractInst)
+    appcg(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
+  of frEmbedded:
+    # worst case for performance:
+    var r = if takeAddr: addrLoc(a) else: rdLoc(a)
+    appcg(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t)])
+
+type
+  TAssignmentFlag = enum
+    needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
+    afSrcIsNotNil
+  TAssignmentFlags = set[TAssignmentFlag]
+
+proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+
+proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) = 
+  if skipTypes(loc.t, abstractVarRange).Kind notin
+      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
+    if containsGcref:
+      appf(p.s[cpsInit], "$1 = 0;$n", [rdLoc(loc)])
+      var nilLoc: TLoc
+      initLoc(nilLoc, locTemp, loc.t, onStack)
+      nilLoc.r = toRope("NIM_NIL")
+      # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
+      genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+    else:
       appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
   else: 
-    if gCmd == cmdCompileToLLVM: 
-      app(p.module.s[cfsProcHeaders], 
-          "declare void @llvm.memset.i32(i8*, i8, i32, i32)" & tnl)
-      inc(p.labels, 2)
-      appf(p.s[cpsStmts], "%LOC$3 = getelementptr $2* null, %NI 1$n" &
-          "%LOC$4 = cast $2* %LOC$3 to i32$n" &
-          "call void @llvm.memset.i32(i8* $1, i8 0, i32 %LOC$4, i32 0)$n", [
-          addrLoc(loc), getTypeDesc(p.module, loc.t), toRope(p.labels), 
-          toRope(p.labels - 1)])
-    else: 
+    if containsGcref:
+      appf(p.s[cpsInit], "memset((void*)$1, 0, sizeof($2));$n", 
+           [addrLoc(loc), rdLoc(loc)])
+      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
+           [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+    else:
       appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
            [addrLoc(loc), rdLoc(loc)])
+    genObjectInit(p, cpsInit, loc.t, loc, true)
+
+proc zeroTemp(p: BProc, loc: TLoc) = 
+  if skipTypes(loc.t, abstractVarRange).Kind notin
+      {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
+    var nilLoc: TLoc
+    initLoc(nilLoc, locTemp, loc.t, onStack)
+    nilLoc.r = toRope("NIM_NIL")
+    # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
+    genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+  else: 
+    appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
+         [addrLoc(loc), genTypeInfo(p.module, loc.t)])
 
 proc initVariable(p: BProc, v: PSym) = 
-  if containsGarbageCollectedRef(v.typ) or (v.ast == nil): 
-    zeroLoc(p, v.loc)
+  var b = containsGarbageCollectedRef(v.typ)
+  if b or v.ast == nil: 
+    zeroVar(p, v.loc, b)
     
 proc initTemp(p: BProc, tmp: var TLoc) = 
   if containsGarbageCollectedRef(tmp.t):
-    zeroLoc(p, tmp)
+    zeroTemp(p, tmp)
 
 proc getTemp(p: BProc, t: PType, result: var TLoc) = 
   inc(p.labels)
@@ -324,11 +364,10 @@ proc cstringLit(m: BModule, r: var PRope, s: string): PRope =
     result = makeCString(s)
   
 proc allocParam(p: BProc, s: PSym) = 
-  var tmp: PRope
   assert(s.kind == skParam)
   if not (lfParamCopy in s.loc.flags): 
     inc(p.labels)
-    tmp = con("%LOC", toRope(p.labels))
+    var tmp = con("%LOC", toRope(p.labels))
     incl(s.loc.flags, lfParamCopy)
     incl(s.loc.flags, lfIndirect)
     appf(p.s[cpsInit], "$1 = alloca $3$n" & "store $3 $2, $3* $1$n", 
@@ -520,11 +559,7 @@ proc cgsym(m: BModule, name: string): PRope =
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
     # we're picky here for the system module too:
-    when false:
-      if not (sfSystemModule in m.module.flags): 
-        rawMessage(errSystemNeeds, name) 
-    else:
-      rawMessage(errSystemNeeds, name)
+    rawMessage(errSystemNeeds, name)
   result = sym.loc.r
   
 proc generateHeaders(m: BModule) = 
@@ -593,14 +628,13 @@ proc genProcAux(m: BModule, prc: PSym) =
       assignLocalVar(p, res)
       assert(res.loc.r != nil)
       returnStmt = ropeff("return $1;$n", "ret $1$n", [rdLoc(res.loc)])
+      initVariable(p, res)
     else: 
       fillResult(res)
       assignParam(p, res)
       if skipTypes(res.typ, abstractInst).kind == tyArray: 
         incl(res.loc.flags, lfIndirect)
         res.loc.s = OnUnknown
-    initVariable(p, res)
-    genObjectInit(p, res.typ, res.loc, true)
   for i in countup(1, sonsLen(prc.typ.n) - 1): 
     param = prc.typ.n.sons[i].sym
     assignParam(p, param)
@@ -644,23 +678,22 @@ proc genProcAux(m: BModule, prc: PSym) =
   
 proc genProcPrototype(m: BModule, sym: PSym) = 
   useHeader(m, sym)
-  if (lfNoDecl in sym.loc.Flags): return 
+  if lfNoDecl in sym.loc.Flags: return 
   if lfDynamicLib in sym.loc.Flags: 
-    if (sym.owner.id != m.module.id) and
+    if sym.owner.id != m.module.id and
         not intSetContainsOrIncl(m.declaredThings, sym.id): 
       appff(m.s[cfsVars], "extern $1 $2;$n", 
             "@$2 = linkonce global $1 zeroinitializer$n", 
             [getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)])
       if gCmd == cmdCompileToLLVM: incl(sym.loc.flags, lfIndirect)
-  else: 
-    if not IntSetContainsOrIncl(m.declaredProtos, sym.id): 
-      appf(m.s[cfsProcHeaders], "$1;$n", [genProcHeader(m, sym)])
+  elif not IntSetContainsOrIncl(m.declaredProtos, sym.id): 
+    appf(m.s[cfsProcHeaders], "$1;$n", [genProcHeader(m, sym)])
 
 proc genProcNoForward(m: BModule, prc: PSym) = 
   fillProcLoc(prc)
   useHeader(m, prc)
   genProcPrototype(m, prc)
-  if (lfNoDecl in prc.loc.Flags): return 
+  if lfNoDecl in prc.loc.Flags: return 
   if prc.typ.callConv == ccInline: 
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``gGeneratedSyms`` is wrong, we need
@@ -771,7 +804,8 @@ proc genMainProc(m: BModule) =
         "  NimMain();$n" & "  return 0;$n" & "}$n"
     WinNimDllMain = "N_LIB_EXPORT N_CDECL(void, NimMain)(void) {$n" &
         CommonMainBody & "}$n"
-    WinCDllMain = "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
+    WinCDllMain = 
+        "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $n" &
         "                    LPVOID lpvReserved) {$n" & "  NimMain();$n" &
         "  return 1;$n" & "}$n"
     PosixNimDllMain = WinNimDllMain
@@ -779,8 +813,8 @@ proc genMainProc(m: BModule) =
         "void NIM_POSIX_INIT NimMainInit(void) {$n" &
         "  NimMain();$n}$n"
   var nimMain, otherMain: TFormatStr
-  if (platform.targetOS == osWindows) and
-      (gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}): 
+  if platform.targetOS == osWindows and
+      gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}: 
     if optGenGuiApp in gGlobalOptions: 
       nimMain = WinNimMain
       otherMain = WinCMain
