@@ -150,12 +150,6 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
-type
-  TAssignmentFlag = enum
-    needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil
-  TAssignmentFlags = set[TAssignmentFlag]
-
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
     appf(p.s[cpsStmts], "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
@@ -902,27 +896,6 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   dest.r = ropef("$1->data[$1->Sup.len-1]", [rdLoc(a)])
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
 
-proc genObjectInit(p: BProc, t: PType, a: TLoc, takeAddr: bool) =
-  var
-    r: PRope
-    s: PType
-  case analyseObjectWithTypeField(t)
-  of frNone:
-    nil
-  of frHeader:
-    r = rdLoc(a)
-    if not takeAddr: r = ropef("(*$1)", [r])
-    s = t
-    while (s.kind == tyObject) and (s.sons[0] != nil):
-      app(r, ".Sup")
-      s = skipTypes(s.sons[0], abstractInst)
-    appf(p.s[cpsStmts], "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t)])
-  of frEmbedded:
-    # worst case for performance:
-    if takeAddr: r = addrLoc(a)
-    else: r = rdLoc(a)
-    appcg(p, cpsStmts, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t)])
-
 proc genNew(p: BProc, e: PNode) =
   var
     a, b: TLoc
@@ -936,7 +909,7 @@ proc genNew(p: BProc, e: PNode) =
       getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
   genAssignment(p, a, b, {})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
-  genObjectInit(p, bt, a, false)
+  genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genNewSeq(p: BProc, e: PNode) =
   var
@@ -1001,7 +974,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
       ti, getTypeDesc(p.module, skipTypes(reftype.sons[0], abstractRange))])
   genAssignment(p, a, b, {})  # set the object type:
   bt = skipTypes(refType.sons[0], abstractRange)
-  genObjectInit(p, bt, a, false)
+  genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc

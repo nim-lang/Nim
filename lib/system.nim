@@ -662,7 +662,6 @@ proc newString*(len: int): string {.
   ## optimization purposes; the same effect can be achieved with the
   ## ``&`` operator.
 
-# concat operator:
 proc `&` * (x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
 proc `&` * (x: char, y: char): string {.

@@ -7,5 +7,5 @@ proc MakeObj(): TTestObj =
 
 while true:
   var obj = MakeObj()
-
+#  echo GC_getstatistics()
 
