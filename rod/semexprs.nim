@@ -410,10 +410,13 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   
 proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
                                  flags: TExprFlags): PNode = 
-  if not (efWantIterator in flags): 
-    result = semDirectCall(c, n, {skProc, skMethod, skConverter})
-  else: 
-    result = semDirectCall(c, n, {skIterator})
+  var symflags = {skProc, skMethod, skConverter}
+  if efWantIterator in flags:
+    symflags = {skIterator}
+  elif efAllowType in flags: 
+    # for ``type countup(1,3)``, see ``tests/ttoseq``.
+    symflags.incl(skIterator)
+  result = semDirectCall(c, n, symflags)
   if result != nil: 
     if result.sons[0].kind != nkSym: 
       InternalError("semDirectCallAnalyseEffects")
@@ -1037,7 +1040,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paNone: result = nil
     of paTuplePositions: result = semTuplePositionsConstr(c, n)
     of paTupleFields: result = semTupleFieldsConstr(c, n)
-    of paSingle: result = semExpr(c, n.sons[0])
+    of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n)
   of nkLambda: result = semLambda(c, n)

@@ -53,12 +53,8 @@ type
     wGenerate, wG, wC, wCpp, wBorrow, wRun, wR, wVerbosity, wV, wHelp, wH, 
     wSymbolFiles, wFieldChecks, wX, wVersion, wAdvanced, wSkipcfg, wSkipProjCfg, 
     wCc, wGenscript, wCheckPoint, wCheckPoints, wNoMain, wSubsChar, 
-    wAcyclic, wIndex, 
-    wCompileToC, wCompileToCpp, wCompileToEcmaScript, wCompileToLLVM, 
-    wCompileToOC,
-    wPretty, 
-    wDoc, wGenDepend, wDump, wCheck, wParse, wScan, wJs, wOC, 
-    wRst2html, wRst2tex, wI,
+    wAcyclic, wShallow, wUnroll, wLinearScanEnd,
+    wIndex, 
     wWrite, wPutEnv, wPrependEnv, wAppendEnv, wThreadVar, wEmit, wThreads,
     wRecursivePath, 
     wStdout,
@@ -105,33 +101,25 @@ const
     "cpu", "generate", "g", "c", "cpp", "borrow", "run", "r", "verbosity", "v", 
     "help", "h", "symbolfiles", "fieldchecks", "x", "version", "advanced", 
     "skipcfg", "skipprojcfg", "cc", "genscript", "checkpoint", "checkpoints", 
-    "nomain", "subschar", "acyclic", "index", 
-    "compiletoc", "compiletocpp", "compiletoecmascript", "compiletollvm", 
-    "compiletooc",
-    "pretty", "doc", "gendepend", "dump", "check", "parse", "scan", 
-    "js", "oc", "rst2html", "rst2tex", "i", 
+    "nomain", "subschar", "acyclic", "shallow", "unroll", "linearscanend",
+    "index", 
     "write", "putenv", "prependenv", "appendenv", "threadvar", "emit",
     "threads", "recursivepath", 
     "stdout",
     "idetools", "suggest", "track", "def", "context"]
 
-proc whichKeyword*(id: PIdent): TSpecialWord
-proc whichKeyword*(id: String): TSpecialWord
-proc findStr*(a: openarray[string], s: string): int
-# implementation
-
-proc findStr(a: openarray[string], s: string): int = 
+proc findStr*(a: openarray[string], s: string): int = 
   for i in countup(low(a), high(a)): 
     if cmpIgnoreStyle(a[i], s) == 0: 
       return i
   result = - 1
 
-proc whichKeyword(id: String): TSpecialWord = 
-  result = whichKeyword(getIdent(id))
-
-proc whichKeyword(id: PIdent): TSpecialWord = 
+proc whichKeyword*(id: PIdent): TSpecialWord = 
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
+
+proc whichKeyword*(id: String): TSpecialWord = 
+  result = whichKeyword(getIdent(id))
   
 proc initSpecials() = 
   # initialize the keywords:

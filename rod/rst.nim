@@ -188,7 +188,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
   of '\x0D', '\x0A': 
     getIndent(L, tok)
   of '!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', 
-     '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', 
+     '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{',
      '|', '}', '~': 
     getAdornment(L, tok)
     if len(tok.symbol) <= 3: tok.kind = tkPunct
@@ -257,16 +257,16 @@ type
     value*: PRstNode
 
   TSharedState{.final.} = object 
-    uLevel*, oLevel*: int     # counters for the section levels
-    subs*: seq[TSubstitution] # substitutions
-    refs*: seq[TSubstitution] # references
+    uLevel*, oLevel*: int        # counters for the section levels
+    subs*: seq[TSubstitution]    # substitutions
+    refs*: seq[TSubstitution]    # references
     underlineToLevel*: TLevelMap # Saves for each possible title adornment
                                  # character its level in the
                                  # current document. 
                                  # This is for single underline adornments.
-    overlineToLevel*: TLevelMap # Saves for each possible title adornment 
-                                # character its level in the current document. 
-                                # This is for over-underline adornments.
+    overlineToLevel*: TLevelMap  # Saves for each possible title adornment 
+                                 # character its level in the current document. 
+                                 # This is for over-underline adornments.
   
   PSharedState = ref TSharedState
   TRstParser = object of TObject

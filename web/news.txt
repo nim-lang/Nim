@@ -20,7 +20,8 @@ Bugfixes
 - Bugfix: Multiple yield statements in iterators did not cause local vars to be
   copied.
 - Bugfix: The compiler does not emit very inaccurate floating point literals
-  anymore. 
+  anymore.
+- Lots of other bugfixes: Too many to list them all.
 
 
 Changes affecting backwards compatibility
@@ -65,6 +66,9 @@ Additions
 - Added ``math.floor``.
 - The *interactive mode* (REPL) has been improved and documented for the 
   first time.
+- Added the ``linearScanEnd`` and ``unroll`` pragmas.
+- The compiler now might use a hashing for string case statements depending
+  on the number of string literals in the case statement.
 
 
 2010-10-20 Version 0.8.10 released

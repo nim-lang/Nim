@@ -215,6 +215,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
     else:
       appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
+  of tyObject:                
+    # XXX: check for subtyping?
+    if needsComplexAssignment(dest.t):
+      appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
+           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+    else:
+      appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray, tyArrayConstr:
     if needsComplexAssignment(dest.t):
       appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
@@ -223,12 +230,6 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       appcg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
            [rdLoc(dest), rdLoc(src)])
-  of tyObject:                # XXX: check for subtyping?
-    if needsComplexAssignment(dest.t):
-      appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
-    else:
-      appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyOpenArray:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?

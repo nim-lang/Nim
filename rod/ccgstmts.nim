@@ -10,6 +10,10 @@
 const 
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
+  stringCaseThreshold = 8
+    # above X strings a hash-switch for strings is generated
+    # this version sets it too high to avoid hashing, because this has not
+    # been tested for a long time
 
 proc genLineDir(p: BProc, t: PNode) = 
   var line = toLinenumber(t.info) # BUGFIX
@@ -229,13 +233,6 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     else: 
       appcg(p, cpsStmts, "#reraiseException();" & tnl)
 
-const 
-  stringCaseThreshold = 100000 
-    # above X strings a hash-switch for strings is generated
-    # this version sets it too high to avoid hashing, because this has not
-    # been tested for a long time
-    # XXX test and enable this optimization!
-
 proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc, 
                           rangeFormat, eqFormat: TFormatStr, labl: TLabel) = 
   var 
@@ -251,90 +248,68 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
       initLocExpr(p, b.sons[i], x)
       appcg(p, cpsStmts, eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
 
-proc genCaseSecondPass(p: BProc, t: PNode, labId: int) = 
+proc genCaseSecondPass(p: BProc, t: PNode, labId, until: int): TLabel = 
   var Lend = getLabel(p)
-  for i in countup(1, sonsLen(t) - 1): 
+  for i in 1..until: 
     appf(p.s[cpsStmts], "LA$1: ;$n", [toRope(labId + i)])
-    if t.sons[i].kind == nkOfBranch: # else statement
+    if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
       genStmts(p, t.sons[i].sons[length - 1])
       appf(p.s[cpsStmts], "goto $1;$n", [Lend])
     else: 
       genStmts(p, t.sons[i].sons[0])
-  fixLabel(p, Lend)
+  result = Lend
 
-proc genCaseGeneric(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr) = 
+proc genIfForCaseUntil(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr,
+                       until: int, a: TLoc): TLabel = 
   # generate a C-if statement for a Nimrod case statement
-  var a: TLoc
-  initLocExpr(p, t.sons[0], a) # fist pass: generate ifs+goto:
   var labId = p.labels
-  for i in countup(1, sonsLen(t) - 1): 
+  for i in 1..until: 
     inc(p.labels)
     if t.sons[i].kind == nkOfBranch: # else statement
       genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat, 
                            con("LA", toRope(p.labels)))
     else: 
       appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.labels)])
-  genCaseSecondPass(p, t, labId)
+  if until < t.len-1: 
+    inc(p.labels)
+    var gotoTarget = p.labels
+    appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(gotoTarget)])
+    result = genCaseSecondPass(p, t, labId, until)
+    appf(p.s[cpsStmts], "LA$1: ;$n", [toRope(gotoTarget)])
+  else:
+    result = genCaseSecondPass(p, t, labId, until)
 
-proc hashString(s: string): biggestInt = 
-  var 
-    a: int32
-    b: int64
-  if CPU[targetCPU].bit == 64: 
-    # we have to use the same bitwidth
-    # as the target CPU
-    b = 0
-    for i in countup(0, len(s) - 1): 
-      b = b +% Ord(s[i])
-      b = b +% `shl`(b, 10)
-      b = b xor `shr`(b, 6)
-    b = b +% `shl`(b, 3)
-    b = b xor `shr`(b, 11)
-    b = b +% `shl`(b, 15)
-    result = b
-  else: 
-    a = 0
-    for i in countup(0, len(s) - 1): 
-      a = a +% int32(Ord(s[i]))
-      a = a +% `shl`(a, int32(10))
-      a = a xor `shr`(a, int32(6))
-    a = a +% `shl`(a, int32(3))
-    a = a xor `shr`(a, int32(11))
-    a = a +% `shl`(a, int32(15))
-    result = a
-
-type 
-  TRopeSeq = seq[PRope]
+proc genCaseGeneric(p: BProc, t: PNode, rangeFormat, eqFormat: TFormatStr) = 
+  var a: TLoc
+  initLocExpr(p, t.sons[0], a)
+  var Lend = genIfForCaseUntil(p, t, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  fixLabel(p, Lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel, 
-                         branches: var TRopeSeq) = 
-  var 
-    length, j: int
-    x: TLoc
-  length = sonsLen(b)
+                         branches: var openArray[PRope]) = 
+  var x: TLoc
+  var length = sonsLen(b)
   for i in countup(0, length - 2): 
     assert(b.sons[i].kind != nkRange)
     initLocExpr(p, b.sons[i], x)
     assert(b.sons[i].kind in {nkStrLit..nkTripleStrLit})
-    j = int(hashString(b.sons[i].strVal) and high(branches))
+    var j = int(hashString(b.sons[i].strVal) and high(branches))
     appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n", 
          [rdLoc(e), rdLoc(x), labl])
 
 proc genStringCase(p: BProc, t: PNode) = 
-  var 
-    strings, bitMask, labId: int
-    a: TLoc
-    branches: TRopeSeq
   # count how many constant strings there are in the case:
-  strings = 0
+  var strings = 0
   for i in countup(1, sonsLen(t) - 1): 
     if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
   if strings > stringCaseThreshold: 
-    bitMask = math.nextPowerOfTwo(strings) - 1
+    var bitMask = math.nextPowerOfTwo(strings) - 1
+    var branches: seq[PRope]
     newSeq(branches, bitMask + 1)
+    var a: TLoc
     initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
-    labId = p.labels
+    var labId = p.labels
     for i in countup(1, sonsLen(t) - 1): 
       inc(p.labels)
       if t.sons[i].kind == nkOfBranch: 
@@ -353,67 +328,72 @@ proc genStringCase(p: BProc, t: PNode) =
     if t.sons[sonsLen(t) - 1].kind != nkOfBranch: 
       appf(p.s[cpsStmts], "goto LA$1;$n", [toRope(p.labels)]) 
     # third pass: generate statements
-    genCaseSecondPass(p, t, labId)
+    var Lend = genCaseSecondPass(p, t, labId, sonsLen(t)-1)
+    fixLabel(p, Lend)
   else: 
     genCaseGeneric(p, t, "", "if (#eqStrings($1, $2)) goto $3;$n")
   
 proc branchHasTooBigRange(b: PNode): bool = 
-  for i in countup(0, sonsLen(b) - 2): 
+  for i in countup(0, sonsLen(b)-2): 
     # last son is block
     if (b.sons[i].Kind == nkRange) and
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit: 
       return true
-  result = false
 
-proc genOrdinalCase(p: BProc, t: PNode) = 
-  # We analyse if we have a too big switch range. If this is the case,
-  # we generate an ordinary if statement and rely on the C compiler
-  # to produce good code.
-  var 
-    canGenerateSwitch, hasDefault: bool
-    length: int
-    a: TLoc
-    v: PNode
-  canGenerateSwitch = true
-  if not (hasSwitchRange in CC[ccompiler].props): 
-    for i in countup(1, sonsLen(t) - 1): 
-      if (t.sons[i].kind == nkOfBranch) and branchHasTooBigRange(t.sons[i]): 
-        canGenerateSwitch = false
-        break 
-  if canGenerateSwitch: 
-    initLocExpr(p, t.sons[0], a)
+proc IfSwitchSplitPoint(p: BProc, n: PNode): int =
+  for i in 1..n.len-1:
+    var branch = n[i]
+    var stmtBlock = lastSon(branch)
+    if stmtBlock.stmtsContainPragma(wLinearScanEnd):
+      result = i
+    elif hasSwitchRange notin CC[ccompiler].props: 
+      if branch.kind == nkOfBranch and branchHasTooBigRange(branch): 
+        result = i
+
+proc genOrdinalCase(p: BProc, n: PNode) = 
+  # analyse 'case' statement:
+  var splitPoint = IfSwitchSplitPoint(p, n)
+  
+  # generate if part (might be empty):
+  var a: TLoc
+  initLocExpr(p, n.sons[0], a)
+  var Lend = if splitPoint > 0: genIfForCaseUntil(p, n, 
+                    rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
+                    eqFormat = "if ($1 == $2) goto $3;$n", 
+                    splitPoint, a) else: nil
+  
+  # generate switch part (might be empty):
+  if splitPoint+1 < n.len:
     appf(p.s[cpsStmts], "switch ($1) {$n", [rdCharLoc(a)])
-    hasDefault = false
-    for i in countup(1, sonsLen(t) - 1): 
-      if t.sons[i].kind == nkOfBranch: 
-        length = sonsLen(t.sons[i])
-        for j in countup(0, length - 2): 
-          if t.sons[i].sons[j].kind == nkRange: 
-            # a range
+    var hasDefault = false
+    for i in splitPoint+1 .. < n.len: 
+      var branch = n[i]
+      if branch.kind == nkOfBranch: 
+        var length = branch.len
+        for j in 0 .. length-2: 
+          if branch[j].kind == nkRange: 
             if hasSwitchRange in CC[ccompiler].props: 
               appf(p.s[cpsStmts], "case $1 ... $2:$n", [
-                  genLiteral(p, t.sons[i].sons[j].sons[0]), 
-                  genLiteral(p, t.sons[i].sons[j].sons[1])])
+                  genLiteral(p, branch[j][0]), 
+                  genLiteral(p, branch[j][1])])
             else: 
-              v = copyNode(t.sons[i].sons[j].sons[0])
-              while (v.intVal <= t.sons[i].sons[j].sons[1].intVal): 
+              var v = copyNode(branch[j][0])
+              while v.intVal <= branch[j][1].intVal: 
                 appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, v)])
                 Inc(v.intVal)
           else: 
-            appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, t.sons[i].sons[j])])
-        genStmts(p, t.sons[i].sons[length - 1])
+            appf(p.s[cpsStmts], "case $1:$n", [genLiteral(p, branch[j])])
+        genStmts(p, branch[length-1])
       else: 
         # else part of case statement:
         app(p.s[cpsStmts], "default:" & tnl)
-        genStmts(p, t.sons[i].sons[0])
+        genStmts(p, branch[0])
         hasDefault = true
       app(p.s[cpsStmts], "break;" & tnl)
     if (hasAssume in CC[ccompiler].props) and not hasDefault: 
       app(p.s[cpsStmts], "default: __assume(0);" & tnl)
     app(p.s[cpsStmts], '}' & tnl)
-  else: 
-    genCaseGeneric(p, t, "if ($1 >= $2 && $1 <= $3) goto $4;$n", 
-                   "if ($1 == $2) goto $3;$n")
+  if Lend != nil: fixLabel(p, Lend)
   
 proc genCaseStmt(p: BProc, t: PNode) = 
   genLineDir(p, t)
@@ -424,7 +404,6 @@ proc genCaseStmt(p: BProc, t: PNode) =
     genCaseGeneric(p, t, "if ($1 >= $2 && $1 <= $3) goto $4;$n", 
                    "if ($1 == $2) goto $3;$n") 
   else: 
-    # ordinal type: generate a switch statement
     genOrdinalCase(p, t)
   
 proc hasGeneralExceptSection(t: PNode): bool = 
@@ -629,19 +608,17 @@ proc genBreakPoint(p: BProc, t: PNode) =
 proc genPragma(p: BProc, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var it = n.sons[i]
-    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
-    if key.kind == nkIdent: 
-      case whichKeyword(key.ident)
-      of wEmit:
-        genEmit(p, it)
-      of wBreakpoint: 
-        genBreakPoint(p, it)
-      of wDeadCodeElim: 
-        if not (optDeadCodeElim in gGlobalOptions): 
-          # we need to keep track of ``deadCodeElim`` pragma
-          if (sfDeadCodeElim in p.module.module.flags): 
-            addPendingModule(p.module)
-      else: nil
+    case whichPragma(it)
+    of wEmit:
+      genEmit(p, it)
+    of wBreakpoint: 
+      genBreakPoint(p, it)
+    of wDeadCodeElim: 
+      if not (optDeadCodeElim in gGlobalOptions): 
+        # we need to keep track of ``deadCodeElim`` pragma
+        if (sfDeadCodeElim in p.module.module.flags): 
+          addPendingModule(p.module)
+    else: nil
   
 proc genAsgn(p: BProc, e: PNode) = 
   var a: TLoc

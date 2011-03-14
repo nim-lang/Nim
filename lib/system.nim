@@ -1198,12 +1198,12 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
 
 # ----------------- GC interface ---------------------------------------------
 
-proc GC_disable*() {.rtl.}
+proc GC_disable*() {.rtl, inl.}
   ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
   ## reactivate the GC. Note that in most circumstances one should only disable
   ## the mark and sweep phase with `GC_disableMarkAndSweep`.
 
-proc GC_enable*() {.rtl.}
+proc GC_enable*() {.rtl, inl.}
   ## enables the GC again.
 
 proc GC_fullCollect*() {.rtl.}

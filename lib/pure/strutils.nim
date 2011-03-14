@@ -406,14 +406,16 @@ proc ParseInt*(s: string): int {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
   var L = parseutils.parseInt(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
+  if L != s.len or L == 0:
+    raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseBiggestInt*(s: string): biggestInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`. If `s` is not
   ## a valid integer, `EInvalidValue` is raised.
   var L = parseutils.parseBiggestInt(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid integer: " & s)
+  if L != s.len or L == 0:
+    raise newException(EInvalidValue, "invalid integer: " & s)
 
 proc ParseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
@@ -421,7 +423,8 @@ proc ParseFloat*(s: string): float {.noSideEffect, procvar,
   ## a valid floating point number, `EInvalidValue` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
   var L = parseutils.parseFloat(s, result, 0)
-  if L != s.len: raise newException(EInvalidValue, "invalid float: " & s)
+  if L != s.len or L == 0:
+    raise newException(EInvalidValue, "invalid float: " & s)
 
 proc ParseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =

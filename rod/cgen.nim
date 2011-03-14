@@ -308,14 +308,19 @@ proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) =
 proc zeroTemp(p: BProc, loc: TLoc) = 
   if skipTypes(loc.t, abstractVarRange).Kind notin
       {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
-    var nilLoc: TLoc
-    initLoc(nilLoc, locTemp, loc.t, onStack)
-    nilLoc.r = toRope("NIM_NIL")
-    # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
-    genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+    appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
+    when false:
+      var nilLoc: TLoc
+      initLoc(nilLoc, locTemp, loc.t, onStack)
+      nilLoc.r = toRope("NIM_NIL")
+      # puts ``unsureAsgnRef`` etc to ``p.s[cpsStmts]``:
+      genRefAssign(p, loc, nilLoc, {afSrcIsNil})
   else: 
-    appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
-         [addrLoc(loc), genTypeInfo(p.module, loc.t)])
+    appf(p.s[cpsStmts], "memset((void*)$1, 0, sizeof($2));$n", 
+         [addrLoc(loc), rdLoc(loc)])
+    when false:
+      appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
+           [addrLoc(loc), genTypeInfo(p.module, loc.t)])
 
 proc initVariable(p: BProc, v: PSym) = 
   var b = containsGarbageCollectedRef(v.typ)

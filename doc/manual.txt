@@ -2648,6 +2648,53 @@ The `hint`:idx: pragma is used to make the compiler output a hint message with
 the given content. Compilation continues after the hint.
 
 
+linearScanEnd pragma
+--------------------
+The `linearScanEnd`:idx: pragma can be used to tell the compiler how to 
+compile a Nimrod `case`:idx: statement. Syntactially it has to be used as a
+statement:
+
+.. code-block:: nimrod
+  case myInt
+  of 0: 
+    echo "most common case"
+  of 1: 
+    {.linearScanEnd.}
+    echo "second most common case"
+  of 2: echo "unlikely: use branch table"
+  else: echo "unlikely too: use branch table for ", myInt
+
+In the example, the case branches ``0`` and ``1`` are much more common than 
+the other cases. Therefore the generated assembler code should test for these 
+values first, so that the CPU's branch predictor has a good chance to succeed 
+(avoiding an expensive CPU pipeline stall). The other cases might be put into a
+jump table for O(1) overhead, but at the cost of a (very likely) pipeline
+stall. 
+
+The ``linearScanEnd`` pragma should be put into the last branch that should be
+tested against via linear scanning. If put into the last branch of the
+whole ``case`` statement, the whole ``case`` statement uses linear scanning.
+
+
+unroll pragma
+-------------
+The `unroll`:idx: pragma can be used to tell the compiler that it should unroll
+a `for`:idx: or `while`:idx: loop for runtime efficiency: 
+
+.. code-block:: nimrod
+  proc searchChar(s: string, c: char): int = 
+    for i in 0 .. s.high:
+      {.unroll: 4.}
+      if s[i] == c: return i
+    result = -1
+
+In the above example, the search loop is unrolled by a factor 4. The unroll
+factor can be left out too; the compiler then chooses an appropriate unroll
+factor.
+
+**Note**: Currently the compiler recognizes but ignores this pragma.
+
+
 compilation option pragmas
 --------------------------
 The listed pragmas here can be used to override the code generation options
