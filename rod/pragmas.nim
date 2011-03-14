@@ -34,12 +34,12 @@ const
     wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError, wFatal, 
     wDefine, wUndef, wCompile, wLink, wLinkSys, wPure, wPush, wPop, wBreakpoint, 
     wCheckpoint, wPassL, wPassC, wDeadCodeElim, wDeprecated, wFloatChecks,
-    wInfChecks, wNanChecks, wPragma, wEmit}
+    wInfChecks, wNanChecks, wPragma, wEmit, wUnroll, wLinearScanEnd}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl, 
     wNosideEffect, wSideEffect, wNoreturn, wDynLib, wHeader, wPure, 
     wDeprecated, wExtern}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl, 
-    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern}
+    wPure, wHeader, wCompilerProc, wFinal, wSize, wExtern, wShallow}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl, 
     wMagic, wHeader, wDeprecated, wCompilerProc, wDynLib, wExtern}
@@ -357,6 +357,19 @@ proc PragmaEmit(c: PContext, n: PNode) =
 proc noVal(n: PNode) = 
   if n.kind == nkExprColonExpr: invalidPragma(n)
 
+proc PragmaUnroll(c: PContext, n: PNode) = 
+  if c.p.nestedLoopCounter <= 0: 
+    invalidPragma(n)
+  elif n.kind == nkExprColonExpr:
+    var unrollFactor = expectIntLit(c, n)
+    if unrollFactor <% 32: 
+      n.sons[1] = newIntNode(nkIntLit, unrollFactor)
+    else: 
+      invalidPragma(n)
+
+proc PragmaLinearScanEnd(c: PContext, n: PNode) =
+  noVal(n)
+
 proc processPragma(c: PContext, n: PNode, i: int) = 
   var it = n.sons[i]
   if it.kind != nkExprColonExpr: invalidPragma(n)
@@ -475,6 +488,10 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             noVal(it)
             if sym.typ == nil: invalidPragma(it)
             incl(sym.typ.flags, tfAcyclic)
+          of wShallow:
+            noVal(it)
+            if sym.typ == nil: invalidPragma(it)
+            incl(sym.typ.flags, tfShallow)
           of wTypeCheck: 
             noVal(it)
             incl(sym.flags, sfTypeCheck)
@@ -509,6 +526,8 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
             if sym.typ == nil: invalidPragma(it)
             sym.typ.callConv = wordToCallConv(k)
           of wEmit: PragmaEmit(c, it)
+          of wUnroll: PragmaUnroll(c, it)
+          of wLinearScanEnd: PragmaLinearScanEnd(c, it)
           else: invalidPragma(it)
         else: invalidPragma(it)
     else: processNote(c, it)

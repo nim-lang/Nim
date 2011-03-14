@@ -340,10 +340,6 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       #result = newTransNode(n.sons[0])
       #result[1] = transform(c, m.sons[0])
       
-      #if skipTypes(n.sons[0].typ, abstractVar).kind == tyOpenArray:
-      #  debug(result.pnode)
-      #  liMessage(n.info, warnUser, 
-      #    "nkPassAsOpenArray introduced here " & renderTree(n))
     else:
       result = transformSons(c, n)
   else: 

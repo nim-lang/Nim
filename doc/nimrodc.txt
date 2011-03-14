@@ -293,10 +293,26 @@ However it is not efficient to do:
 .. code-block:: Nimrod
   var s = varA    # assignment has to copy the whole string into a new buffer!
 
-..
-  String case statements are optimized too. A hashing scheme is used for them
-  if several different string constants are used. This is likely to be more
-  efficient than any hand-coded scheme.
+The compiler optimizes string case statements: A hashing scheme is used for them
+if several different string constants are used. So code like this is reasonably
+efficient:
+
+.. code-block:: Nimrod
+  case normalize(k.key)
+  of "name": c.name = v
+  of "displayname": c.displayName = v
+  of "version": c.version = v
+  of "os": c.oses = split(v, {';'})
+  of "cpu": c.cpus = split(v, {';'})
+  of "authors": c.authors = split(v, {';'})
+  of "description": c.description = v
+  of "app":
+    case normalize(v)
+    of "console": c.app = appConsole
+    of "gui": c.app = appGUI
+    else: quit(errorStr(p, "expected: console or gui"))
+  of "license": c.license = UnixToNativePath(k.value)
+  else: quit(errorStr(p, "unknown variable: " & k.key))
 
 
 ..

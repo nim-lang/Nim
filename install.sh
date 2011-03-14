@@ -88,8 +88,6 @@ if [ $# -eq 1 ] ; then
   chmod 644 $docdir/abstypes.txt
   cp doc/advopt.txt $docdir/advopt.txt || exit 1
   chmod 644 $docdir/advopt.txt
-  cp doc/altsyn.txt $docdir/altsyn.txt || exit 1
-  chmod 644 $docdir/altsyn.txt
   cp doc/apis.txt $docdir/apis.txt || exit 1
   chmod 644 $docdir/apis.txt
   cp doc/astspec.txt $docdir/astspec.txt || exit 1
@@ -330,6 +328,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/core/marshal.nim
   cp lib/core/threads.nim $libdir/core/threads.nim || exit 1
   chmod 644 $libdir/core/threads.nim
+  cp lib/pure/algorithm.nim $libdir/pure/algorithm.nim || exit 1
+  chmod 644 $libdir/pure/algorithm.nim
   cp lib/pure/base64.nim $libdir/pure/base64.nim || exit 1
   chmod 644 $libdir/pure/base64.nim
   cp lib/pure/browsers.nim $libdir/pure/browsers.nim || exit 1
@@ -344,6 +344,8 @@ if [ $# -eq 1 ] ; then
   chmod 644 $libdir/pure/cookies.nim
   cp lib/pure/dynlib.nim $libdir/pure/dynlib.nim || exit 1
   chmod 644 $libdir/pure/dynlib.nim
+  cp lib/pure/gentabs.nim $libdir/pure/gentabs.nim || exit 1
+  chmod 644 $libdir/pure/gentabs.nim
   cp lib/pure/hashes.nim $libdir/pure/hashes.nim || exit 1
   chmod 644 $libdir/pure/hashes.nim
   cp lib/pure/htmlparser.nim $libdir/pure/htmlparser.nim || exit 1

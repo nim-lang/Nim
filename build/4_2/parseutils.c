@@ -25,10 +25,10 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
 struct TNimType {
 NI size;
@@ -135,7 +135,7 @@ NIM_CONST TY22602 Identstartchars_22605 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-STRING_LITERAL(TMP195656, "overflow", 8);
+STRING_LITERAL(TMP197656, "overflow", 8);
 extern TNimType* NTI6051; /* ref EOverflow */
 extern TNimType* NTI432; /* EOverflow */
 extern TY11196 Gch_11214;
@@ -191,7 +191,7 @@ N_NIMCALL(NI, Rawparseint_22945)(NimStringDesc* S_22947, NI64* B_22949, NI Start
 NI Result_22951;
 NI64 Sign_22952;
 NI I_22953;
-NI64 TMP195651;NI TMP195652;NI64 TMP195653;NI64 TMP195654;NI TMP195655;Result_22951 = 0;
+NI64 TMP197651;NI TMP197652;NI64 TMP197653;NI64 TMP197654;NI TMP197655;Result_22951 = 0;
 Sign_22952 = 0;
 Sign_22952 = -1;
 I_22953 = 0;
@@ -210,15 +210,15 @@ if (!(((NU8)(S_22947->data[I_22953])) >= ((NU8)(48)) && ((NU8)(S_22947->data[I_2
 (*B_22949) = 0;
 while (1) {
 if (!(((NU8)(S_22947->data[I_22953])) >= ((NU8)(48)) && ((NU8)(S_22947->data[I_22953])) <= ((NU8)(57)))) goto LA9;
-TMP195651 = mulInt64((*B_22949), 10);TMP195652 = subInt(((NU8)(S_22947->data[I_22953])), 48);TMP195653 = subInt64((NI64)(TMP195651), ((NI64) ((NI64)(TMP195652))));(*B_22949) = (NI64)(TMP195653);
+TMP197651 = mulInt64((*B_22949), 10);TMP197652 = subInt(((NU8)(S_22947->data[I_22953])), 48);TMP197653 = subInt64((NI64)(TMP197651), ((NI64) ((NI64)(TMP197652))));(*B_22949) = (NI64)(TMP197653);
 I_22953 = addInt(I_22953, 1);
 while (1) {
 if (!((NU8)(S_22947->data[I_22953]) == (NU8)(95))) goto LA10;
 I_22953 = addInt(I_22953, 1);
 } LA10: ;
 } LA9: ;
-TMP195654 = mulInt64((*B_22949), Sign_22952);(*B_22949) = (NI64)(TMP195654);
-TMP195655 = subInt(I_22953, Start_22950);Result_22951 = (NI64)(TMP195655);
+TMP197654 = mulInt64((*B_22949), Sign_22952);(*B_22949) = (NI64)(TMP197654);
+TMP197655 = subInt(I_22953, Start_22950);Result_22951 = (NI64)(TMP197655);
 LA7: ;
 return Result_22951;
 }
@@ -277,6 +277,7 @@ NI64 Res_23056;
 NIM_BOOL LOC2;
 NIM_BOOL LOC4;
 EOverflow* E_23069;
+E_23069 = 0;
 Result_23055 = 0;
 Res_23056 = 0;
 Result_23055 = npuParseBiggestInt(S_23051, &Res_23056, Start_23054);
@@ -289,10 +290,10 @@ LA5: ;
 LOC2 = LOC4;
 LA3: ;
 if (!LOC2) goto LA6;
-E_23069 = 0;
+E_23069 = NIM_NIL;
 E_23069 = (EOverflow*) newObj(NTI6051, sizeof(EOverflow));
 (*E_23069).Sup.Sup.Sup.Sup.m_type = NTI432;
-asgnRefNoCycle((void**) &(*E_23069).Sup.Sup.Sup.message, copyString(((NimStringDesc*) &TMP195656)));
+asgnRefNoCycle((void**) &(*E_23069).Sup.Sup.Sup.message, copyString(((NimStringDesc*) &TMP197656)));
 raiseException((E_Base*)E_23069, "EOverflow");
 goto LA1;
 LA6: ;

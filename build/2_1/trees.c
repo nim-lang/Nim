@@ -5,43 +5,43 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY55526 TY55526;
-typedef struct TY55552 TY55552;
+typedef struct TY56526 TY56526;
+typedef struct TY56552 TY56552;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY47538 TY47538;
-typedef struct TY55548 TY55548;
-typedef struct TY54011 TY54011;
-typedef struct TY55520 TY55520;
-typedef struct TY54005 TY54005;
+typedef struct TY48538 TY48538;
+typedef struct TY56548 TY56548;
+typedef struct TY55011 TY55011;
+typedef struct TY56520 TY56520;
+typedef struct TY55005 TY55005;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY55530 TY55530;
-typedef struct TY55528 TY55528;
-typedef struct TY55540 TY55540;
-typedef struct TY52008 TY52008;
-typedef struct TY55544 TY55544;
-typedef struct TY55550 TY55550;
-typedef struct TY43013 TY43013;
+typedef struct TY56530 TY56530;
+typedef struct TY56528 TY56528;
+typedef struct TY56540 TY56540;
+typedef struct TY53008 TY53008;
+typedef struct TY56544 TY56544;
+typedef struct TY56550 TY56550;
+typedef struct TY44013 TY44013;
 struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
-struct TY47538 {
+struct TY48538 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-struct TY55526 {
-TY55552* Typ;
+struct TY56526 {
+TY56552* Typ;
 NimStringDesc* Comment;
-TY47538 Info;
+TY48538 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -51,11 +51,11 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY55548* Sym;
+struct {TY56548* Sym;
 } S4;
-struct {TY54011* Ident;
+struct {TY55011* Ident;
 } S5;
-struct {TY55520* Sons;
+struct {TY56520* Sons;
 } S6;
 } KindU;
 };
@@ -70,59 +70,59 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY54005 {
+struct TY55005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY55530 {
+struct TY56530 {
 TNimType* m_type;
 NI Counter;
-TY55528* Data;
+TY56528* Data;
 };
-struct TY55540 {
+struct TY56540 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY55552* T;
-TY52008* R;
+TY56552* T;
+TY53008* R;
 NI A;
 };
-struct TY55548 {
-  TY54005 Sup;
+struct TY56548 {
+  TY55005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY55552* Typ;
-TY54011* Name;
-TY47538 Info;
-TY55548* Owner;
+TY56552* Typ;
+TY55011* Name;
+TY48538 Info;
+TY56548* Owner;
 NU32 Flags;
-TY55530 Tab;
-TY55526* Ast;
+TY56530 Tab;
+TY56526* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY55540 Loc;
-TY55544* Annex;
+TY56540 Loc;
+TY56544* Annex;
 };
-struct TY54011 {
-  TY54005 Sup;
+struct TY55011 {
+  TY55005 Sup;
 NimStringDesc* S;
-TY54011* Next;
+TY55011* Next;
 NI H;
 };
-struct TY55552 {
-  TY54005 Sup;
+struct TY56552 {
+  TY55005 Sup;
 NU8 Kind;
-TY55550* Sons;
-TY55526* N;
+TY56550* Sons;
+TY56526* N;
 NU8 Flags;
 NU8 Callconv;
-TY55548* Owner;
-TY55548* Sym;
+TY56548* Owner;
+TY56548* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY55540 Loc;
+TY56540 Loc;
 };
 struct TNimNode {
 NU8 kind;
@@ -132,158 +132,159 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY52008 {
+struct TY53008 {
   TNimObject Sup;
-TY52008* Left;
-TY52008* Right;
+TY53008* Left;
+TY53008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-struct TY43013 {
+struct TY44013 {
   TNimObject Sup;
-TY43013* Prev;
-TY43013* Next;
+TY44013* Prev;
+TY44013* Next;
 };
-struct TY55544 {
-  TY43013 Sup;
+struct TY56544 {
+  TY44013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY52008* Name;
-TY55526* Path;
+TY53008* Name;
+TY56526* Path;
 };
-struct TY55520 {
+struct TY56520 {
   TGenericSeq Sup;
-  TY55526* data[SEQ_DECL_SIZE];
+  TY56526* data[SEQ_DECL_SIZE];
 };
-struct TY55528 {
+struct TY56528 {
   TGenericSeq Sup;
-  TY55548* data[SEQ_DECL_SIZE];
+  TY56548* data[SEQ_DECL_SIZE];
 };
-struct TY55550 {
+struct TY56550 {
   TGenericSeq Sup;
-  TY55552* data[SEQ_DECL_SIZE];
+  TY56552* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(TY55526*, Newnodei_55738)(NU8 Kind_55740, TY47538 Info_55741);
-N_NIMCALL(NIM_BOOL, Cyclictreeaux_96099)(TY55526* N_96101, TY55526* S_96102);
-N_NIMCALL(NIM_BOOL, Hasson_96046)(TY55526* Father_96048, TY55526* Son_96049);
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806);
-N_NIMCALL(void, Addson_55824)(TY55526* Father_55826, TY55526* Son_55827);
-N_NIMCALL(void, Delson_55832)(TY55526* Father_55834, NI Idx_55835);
+N_NIMCALL(TY56526*, Newnodei_56738)(NU8 Kind_56740, TY48538 Info_56741);
+N_NIMCALL(NIM_BOOL, Cyclictreeaux_97099)(TY56526* N_97101, TY56526* S_97102);
+N_NIMCALL(NIM_BOOL, Hasson_97046)(TY56526* Father_97048, TY56526* Son_97049);
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806);
+N_NIMCALL(void, Addson_56824)(TY56526* Father_56826, TY56526* Son_56827);
+N_NIMCALL(void, Delson_56832)(TY56526* Father_56834, NI Idx_56835);
 static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_18649, NimStringDesc* B_18650);
-N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_96035)(TY55526* A_96037, TY55526* B_96038);
-N_NIMCALL(NU8, Getmagic_96013)(TY55526* Op_96015) {
-NU8 Result_96682;
-Result_96682 = 0;
-switch ((*Op_96015).Kind) {
+N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_97035)(TY56526* A_97037, TY56526* B_97038);
+N_NIMCALL(NU8, Getmagic_97013)(TY56526* Op_97015) {
+NU8 Result_97682;
+Result_97682 = 0;
+switch ((*Op_97015).Kind) {
 case ((NU8) 21):
 case ((NU8) 49):
 case ((NU8) 20):
 case ((NU8) 22):
-switch ((*(*Op_96015).KindU.S6.Sons->data[0]).Kind) {
+switch ((*(*Op_97015).KindU.S6.Sons->data[0]).Kind) {
 case ((NU8) 3):
-Result_96682 = (*(*(*Op_96015).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
+Result_97682 = (*(*(*Op_97015).KindU.S6.Sons->data[0]).KindU.S4.Sym).Magic;
 break;
 default:
-Result_96682 = ((NU8) 0);
+Result_97682 = ((NU8) 0);
 break;
 }
 break;
 default:
-Result_96682 = ((NU8) 0);
+Result_97682 = ((NU8) 0);
 break;
 }
-return Result_96682;
+return Result_97682;
 }
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806) {
-NI Result_56880;
-Result_56880 = 0;
-if (!(*N_55806).KindU.S6.Sons == 0) goto LA2;
-Result_56880 = 0;
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806) {
+NI Result_57897;
+Result_57897 = 0;
+if (!(*N_56806).KindU.S6.Sons == 0) goto LA2;
+Result_57897 = 0;
 goto LA1;
 LA2: ;
-Result_56880 = (*N_55806).KindU.S6.Sons->Sup.len;
+Result_57897 = (*N_56806).KindU.S6.Sons->Sup.len;
 LA1: ;
-return Result_56880;
+return Result_57897;
 }
-N_NIMCALL(NIM_BOOL, Hasson_96046)(TY55526* Father_96048, TY55526* Son_96049) {
-NIM_BOOL Result_96050;
-NI I_96074;
-NI HEX3Atmp_96096;
+N_NIMCALL(NIM_BOOL, Hasson_97046)(TY56526* Father_97048, TY56526* Son_97049) {
+NIM_BOOL Result_97050;
+NI I_97074;
+NI HEX3Atmp_97096;
 NI LOC1;
-NI Res_96098;
-Result_96050 = 0;
-I_96074 = 0;
-HEX3Atmp_96096 = 0;
-LOC1 = Sonslen_55804(Father_96048);
-HEX3Atmp_96096 = (NI32)(LOC1 - 1);
-Res_96098 = 0;
-Res_96098 = 0;
+NI Res_97098;
+Result_97050 = 0;
+I_97074 = 0;
+HEX3Atmp_97096 = 0;
+LOC1 = Sonslen_56804(Father_97048);
+HEX3Atmp_97096 = (NI32)(LOC1 - 1);
+Res_97098 = 0;
+Res_97098 = 0;
 while (1) {
-if (!(Res_96098 <= HEX3Atmp_96096)) goto LA2;
-I_96074 = Res_96098;
-if (!((*Father_96048).KindU.S6.Sons->data[I_96074] == Son_96049)) goto LA4;
-Result_96050 = NIM_TRUE;
+if (!(Res_97098 <= HEX3Atmp_97096)) goto LA2;
+I_97074 = Res_97098;
+if (!((*Father_97048).KindU.S6.Sons->data[I_97074] == Son_97049)) goto LA4;
+Result_97050 = NIM_TRUE;
 goto BeforeRet;
 LA4: ;
-Res_96098 += 1;
+Res_97098 += 1;
 } LA2: ;
-Result_96050 = NIM_FALSE;
+Result_97050 = NIM_FALSE;
 BeforeRet: ;
-return Result_96050;
+return Result_97050;
 }
-N_NIMCALL(NIM_BOOL, Cyclictreeaux_96099)(TY55526* N_96101, TY55526* S_96102) {
-NIM_BOOL Result_96103;
+N_NIMCALL(NIM_BOOL, Cyclictreeaux_97099)(TY56526* N_97101, TY56526* S_97102) {
+NIM_BOOL Result_97103;
 NIM_BOOL LOC5;
-NI M_96115;
-NI I_96136;
-NI HEX3Atmp_96149;
+NI M_97115;
+NI I_97136;
+NI HEX3Atmp_97149;
 NI LOC11;
-NI Res_96151;
+NI Res_97151;
 NIM_BOOL LOC14;
-Result_96103 = 0;
-if (!(N_96101 == NIM_NIL)) goto LA2;
-Result_96103 = NIM_FALSE;
+Result_97103 = 0;
+if (!(N_97101 == NIM_NIL)) goto LA2;
+Result_97103 = NIM_FALSE;
 goto BeforeRet;
 LA2: ;
-LOC5 = Hasson_96046(S_96102, N_96101);
+LOC5 = Hasson_97046(S_97102, N_97101);
 if (!LOC5) goto LA6;
-Result_96103 = NIM_TRUE;
+Result_97103 = NIM_TRUE;
 goto BeforeRet;
 LA6: ;
-M_96115 = 0;
-M_96115 = Sonslen_55804(S_96102);
-Addson_55824(S_96102, N_96101);
-if (!!(((*N_96101).Kind >= ((NU8) 1) && (*N_96101).Kind <= ((NU8) 18)))) goto LA9;
-I_96136 = 0;
-HEX3Atmp_96149 = 0;
-LOC11 = Sonslen_55804(N_96101);
-HEX3Atmp_96149 = (NI32)(LOC11 - 1);
-Res_96151 = 0;
-Res_96151 = 0;
+M_97115 = 0;
+M_97115 = Sonslen_56804(S_97102);
+Addson_56824(S_97102, N_97101);
+if (!!(((*N_97101).Kind >= ((NU8) 1) && (*N_97101).Kind <= ((NU8) 18)))) goto LA9;
+I_97136 = 0;
+HEX3Atmp_97149 = 0;
+LOC11 = Sonslen_56804(N_97101);
+HEX3Atmp_97149 = (NI32)(LOC11 - 1);
+Res_97151 = 0;
+Res_97151 = 0;
 while (1) {
-if (!(Res_96151 <= HEX3Atmp_96149)) goto LA12;
-I_96136 = Res_96151;
-LOC14 = Cyclictreeaux_96099((*N_96101).KindU.S6.Sons->data[I_96136], S_96102);
+if (!(Res_97151 <= HEX3Atmp_97149)) goto LA12;
+I_97136 = Res_97151;
+LOC14 = Cyclictreeaux_97099((*N_97101).KindU.S6.Sons->data[I_97136], S_97102);
 if (!LOC14) goto LA15;
-Result_96103 = NIM_TRUE;
+Result_97103 = NIM_TRUE;
 goto BeforeRet;
 LA15: ;
-Res_96151 += 1;
+Res_97151 += 1;
 } LA12: ;
 LA9: ;
-Result_96103 = NIM_FALSE;
-Delson_55832(S_96102, M_96115);
+Result_97103 = NIM_FALSE;
+Delson_56832(S_97102, M_97115);
 BeforeRet: ;
-return Result_96103;
+return Result_97103;
 }
-N_NIMCALL(NIM_BOOL, Cyclictree_96043)(TY55526* N_96045) {
-NIM_BOOL Result_96155;
-TY55526* S_96156;
-Result_96155 = 0;
-S_96156 = 0;
-S_96156 = Newnodei_55738(((NU8) 1), (*N_96045).Info);
-Result_96155 = Cyclictreeaux_96099(N_96045, S_96156);
-return Result_96155;
+N_NIMCALL(NIM_BOOL, Cyclictree_97043)(TY56526* N_97045) {
+NIM_BOOL Result_97155;
+TY56526* S_97156;
+S_97156 = 0;
+Result_97155 = 0;
+S_97156 = NIM_NIL;
+S_97156 = Newnodei_56738(((NU8) 1), (*N_97045).Info);
+Result_97155 = Cyclictreeaux_97099(N_97045, S_97156);
+return Result_97155;
 }
 static N_INLINE(NIM_BOOL, eqStrings)(NimStringDesc* A_18649, NimStringDesc* B_18650) {
 NIM_BOOL Result_18651;
@@ -313,73 +314,73 @@ goto BeforeRet;
 BeforeRet: ;
 return Result_18651;
 }
-N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_96035)(TY55526* A_96037, TY55526* B_96038) {
-NIM_BOOL Result_96161;
+N_NIMCALL(NIM_BOOL, Exprstructuralequivalent_97035)(TY56526* A_97037, TY56526* B_97038) {
+NIM_BOOL Result_97161;
 NIM_BOOL LOC4;
 NIM_BOOL LOC5;
 NI LOC11;
 NI LOC12;
-NI I_96338;
-NI HEX3Atmp_96363;
+NI I_97338;
+NI HEX3Atmp_97363;
 NI LOC15;
-NI Res_96365;
+NI Res_97365;
 NIM_BOOL LOC18;
-Result_96161 = 0;
-Result_96161 = NIM_FALSE;
-if (!(A_96037 == B_96038)) goto LA2;
-Result_96161 = NIM_TRUE;
+Result_97161 = 0;
+Result_97161 = NIM_FALSE;
+if (!(A_97037 == B_97038)) goto LA2;
+Result_97161 = NIM_TRUE;
 goto LA1;
 LA2: ;
-LOC5 = !((A_96037 == NIM_NIL));
+LOC5 = !((A_97037 == NIM_NIL));
 if (!(LOC5)) goto LA6;
-LOC5 = !((B_96038 == NIM_NIL));
+LOC5 = !((B_97038 == NIM_NIL));
 LA6: ;
 LOC4 = LOC5;
 if (!(LOC4)) goto LA7;
-LOC4 = ((*A_96037).Kind == (*B_96038).Kind);
+LOC4 = ((*A_97037).Kind == (*B_97038).Kind);
 LA7: ;
 if (!LOC4) goto LA8;
-switch ((*A_96037).Kind) {
+switch ((*A_97037).Kind) {
 case ((NU8) 3):
-Result_96161 = ((*(*(*A_96037).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_96038).KindU.S4.Sym).Name).Sup.Id);
+Result_97161 = ((*(*(*A_97037).KindU.S4.Sym).Name).Sup.Id == (*(*(*B_97038).KindU.S4.Sym).Name).Sup.Id);
 break;
 case ((NU8) 2):
-Result_96161 = ((*(*A_96037).KindU.S5.Ident).Sup.Id == (*(*B_96038).KindU.S5.Ident).Sup.Id);
+Result_97161 = ((*(*A_97037).KindU.S5.Ident).Sup.Id == (*(*B_97038).KindU.S5.Ident).Sup.Id);
 break;
 case ((NU8) 5) ... ((NU8) 10):
-Result_96161 = ((*A_96037).KindU.S1.Intval == (*B_96038).KindU.S1.Intval);
+Result_97161 = ((*A_97037).KindU.S1.Intval == (*B_97038).KindU.S1.Intval);
 break;
 case ((NU8) 11) ... ((NU8) 13):
-Result_96161 = (((NF) ((*A_96037).KindU.S2.Floatval)) == ((NF) ((*B_96038).KindU.S2.Floatval)));
+Result_97161 = (((NF) ((*A_97037).KindU.S2.Floatval)) == ((NF) ((*B_97038).KindU.S2.Floatval)));
 break;
 case ((NU8) 14) ... ((NU8) 16):
-Result_96161 = eqStrings((*A_96037).KindU.S3.Strval, (*B_96038).KindU.S3.Strval);
+Result_97161 = eqStrings((*A_97037).KindU.S3.Strval, (*B_97038).KindU.S3.Strval);
 break;
 case ((NU8) 1):
 case ((NU8) 18):
 case ((NU8) 4):
-Result_96161 = NIM_TRUE;
+Result_97161 = NIM_TRUE;
 break;
 default:
-LOC11 = Sonslen_55804(A_96037);
-LOC12 = Sonslen_55804(B_96038);
+LOC11 = Sonslen_56804(A_97037);
+LOC12 = Sonslen_56804(B_97038);
 if (!(LOC11 == LOC12)) goto LA13;
-I_96338 = 0;
-HEX3Atmp_96363 = 0;
-LOC15 = Sonslen_55804(A_96037);
-HEX3Atmp_96363 = (NI32)(LOC15 - 1);
-Res_96365 = 0;
-Res_96365 = 0;
+I_97338 = 0;
+HEX3Atmp_97363 = 0;
+LOC15 = Sonslen_56804(A_97037);
+HEX3Atmp_97363 = (NI32)(LOC15 - 1);
+Res_97365 = 0;
+Res_97365 = 0;
 while (1) {
-if (!(Res_96365 <= HEX3Atmp_96363)) goto LA16;
-I_96338 = Res_96365;
-LOC18 = Exprstructuralequivalent_96035((*A_96037).KindU.S6.Sons->data[I_96338], (*B_96038).KindU.S6.Sons->data[I_96338]);
+if (!(Res_97365 <= HEX3Atmp_97363)) goto LA16;
+I_97338 = Res_97365;
+LOC18 = Exprstructuralequivalent_97035((*A_97037).KindU.S6.Sons->data[I_97338], (*B_97038).KindU.S6.Sons->data[I_97338]);
 if (!!(LOC18)) goto LA19;
 goto BeforeRet;
 LA19: ;
-Res_96365 += 1;
+Res_97365 += 1;
 } LA16: ;
-Result_96161 = NIM_TRUE;
+Result_97161 = NIM_TRUE;
 LA13: ;
 break;
 }
@@ -387,18 +388,18 @@ goto LA1;
 LA8: ;
 LA1: ;
 BeforeRet: ;
-return Result_96161;
+return Result_97161;
 }
-N_NIMCALL(NIM_BOOL, Isconstexpr_96016)(TY55526* N_96018) {
-NIM_BOOL Result_96738;
+N_NIMCALL(NIM_BOOL, Isconstexpr_97016)(TY56526* N_97018) {
+NIM_BOOL Result_97738;
 NIM_BOOL LOC1;
-Result_96738 = 0;
-LOC1 = ((*N_96018).Kind >= ((NU8) 5) && (*N_96018).Kind <= ((NU8) 10) || (*N_96018).Kind >= ((NU8) 14) && (*N_96018).Kind <= ((NU8) 16) || (*N_96018).Kind >= ((NU8) 11) && (*N_96018).Kind <= ((NU8) 13) || (*N_96018).Kind == ((NU8) 18));
+Result_97738 = 0;
+LOC1 = ((*N_97018).Kind >= ((NU8) 5) && (*N_97018).Kind <= ((NU8) 10) || (*N_97018).Kind >= ((NU8) 14) && (*N_97018).Kind <= ((NU8) 16) || (*N_97018).Kind >= ((NU8) 11) && (*N_97018).Kind <= ((NU8) 13) || (*N_97018).Kind == ((NU8) 18));
 if (LOC1) goto LA2;
-LOC1 = (((*N_96018).Flags &(1<<((((NU8) 4))&7)))!=0);
+LOC1 = (((*N_97018).Flags &(1<<((((NU8) 4))&7)))!=0);
 LA2: ;
-Result_96738 = LOC1;
-return Result_96738;
+Result_97738 = LOC1;
+return Result_97738;
 }
 N_NOINLINE(void, treesInit)(void) {
 }

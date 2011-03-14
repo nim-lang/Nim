@@ -7,9 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-#when defined(debugGC):
-#  {.define: logAssign.}
-proc genericAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.}
+proc genericAssignAux(dest, src: Pointer, mt: PNimType)
 proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
   var
     d = cast[TAddress](dest)
@@ -17,8 +15,8 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
   case n.kind
   of nkNone: assert(false)
   of nkSlot:
-    genericAssign(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
-                  n.typ)
+    genericAssignAux(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
+                     n.typ)
   of nkList:
     for i in 0..n.len-1:
       genericAssignAux(dest, src, n.sons[i])
@@ -28,7 +26,7 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
     var m = selectBranch(src, n)
     if m != nil: genericAssignAux(dest, src, m)
 
-proc genericAssign(dest, src: Pointer, mt: PNimType) =
+proc genericAssignAux(dest, src: Pointer, mt: PNimType) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
@@ -47,7 +45,7 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
                   newObj(mt, seq.len * mt.base.size + GenericSeqSize))
     var dst = cast[taddress](cast[ppointer](dest)^)
     for i in 0..seq.len-1:
-      genericAssign(
+      genericAssignAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
         cast[pointer](cast[taddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
@@ -60,8 +58,8 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
     genericAssignAux(dest, src, mt.node)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericAssign(cast[pointer](d +% i*% mt.base.size),
-                    cast[pointer](s +% i*% mt.base.size), mt.base)
+      genericAssignAux(cast[pointer](d +% i*% mt.base.size),
+                       cast[pointer](s +% i*% mt.base.size), mt.base)
   of tyString: # a leaf
     var s2 = cast[ppointer](s)^
     if s2 != nil: # nil strings are possible!
@@ -74,6 +72,11 @@ proc genericAssign(dest, src: Pointer, mt: PNimType) =
     unsureAsgnRef(cast[ppointer](dest), cast[ppointer](s)^)
   else:
     copyMem(dest, src, mt.size) # copy raw bits
+
+proc genericAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+  GC_disable()
+  genericAssignAux(dest, src, mt)
+  GC_enable()
 
 proc genericSeqAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
   var src = src # ugly, but I like to stress the parser sometimes :-)

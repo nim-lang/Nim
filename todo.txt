@@ -1,5 +1,4 @@
 - 'nimrod def': does not always work
-- BUG: gcleak.nim
 
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch

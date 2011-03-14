@@ -8,7 +8,7 @@ typedef unsigned long long int NU;
 #include <time.h>
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY28402 TY28402;
+typedef struct TY29402 TY29402;
 typedef struct TNimObject TNimObject;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
@@ -16,10 +16,10 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
 struct TNimType {
 NI size;
@@ -32,7 +32,7 @@ void* finalizer;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY28402 {
+struct TY29402 {
   TNimObject Sup;
 NI Second;
 NI Minute;
@@ -51,16 +51,16 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-typedef NU8 TY28648[7];
-N_NIMCALL(TY28402, Getlocaltime_28418)(NI32 T_28420);
-N_NIMCALL(TY28402, Tmtotimeinfo_28643)(struct tm* Tm_28645);
-N_NIMCALL(NI32, Gettime_28416)(void);
+typedef NU8 TY29648[7];
+N_NIMCALL(TY29402, Getlocaltime_29418)(NI32 T_29420);
+N_NIMCALL(TY29402, Tmtotimeinfo_29643)(struct tm* Tm_29645);
+N_NIMCALL(NI32, Gettime_29416)(void);
 N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_19203);
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18599, NimStringDesc* Src_18600);
 static N_INLINE(void, appendChar)(NimStringDesc* Dest_18616, NIM_CHAR C_18617);
-N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_24428, NI Minchars_24429);
+N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_25427, NI Minchars_25428);
 N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18489);
-NIM_CONST TY28648 Weekdays_28647 = {((NU8) 6),
+NIM_CONST TY29648 Weekdays_29647 = {((NU8) 6),
 ((NU8) 0),
 ((NU8) 1),
 ((NU8) 2),
@@ -68,41 +68,41 @@ NIM_CONST TY28648 Weekdays_28647 = {((NU8) 6),
 ((NU8) 4),
 ((NU8) 5)}
 ;
-extern NIM_CONST TY28648 Weekdays_28647;
-extern TNimType* NTI28402; /* TTimeInfo */
-N_NIMCALL(NI32, Gettime_28416)(void) {
-NI32 Result_29203;
-Result_29203 = 0;
-Result_29203 = time(NIM_NIL);
+extern NIM_CONST TY29648 Weekdays_29647;
+extern TNimType* NTI29402; /* TTimeInfo */
+N_NIMCALL(NI32, Gettime_29416)(void) {
+NI32 Result_30203;
+Result_30203 = 0;
+Result_30203 = time(NIM_NIL);
 goto BeforeRet;
 BeforeRet: ;
-return Result_29203;
+return Result_30203;
 }
-N_NIMCALL(TY28402, Tmtotimeinfo_28643)(struct tm* Tm_28645) {
-TY28402 Result_28646;
-memset((void*)&Result_28646, 0, sizeof(Result_28646));
-Result_28646.Sup.m_type = NTI28402;
-Result_28646.Second = ((NI) (((NI) ((*Tm_28645).tm_sec))));
-Result_28646.Minute = ((NI) (((NI) ((*Tm_28645).tm_min))));
-Result_28646.Hour = ((NI) (((NI) ((*Tm_28645).tm_hour))));
-Result_28646.Monthday = ((NI) (((NI) ((*Tm_28645).tm_mday))));
-Result_28646.Month = ((NU8) ((*Tm_28645).tm_mon));
-Result_28646.Year = ((NI) ((NI32)((*Tm_28645).tm_year + ((NI32) 1900))));
-Result_28646.Weekday = Weekdays_28647[(((NI) ((*Tm_28645).tm_wday)))-0];
-Result_28646.Yearday = ((NI) (((NI) ((*Tm_28645).tm_yday))));
-return Result_28646;
+N_NIMCALL(TY29402, Tmtotimeinfo_29643)(struct tm* Tm_29645) {
+TY29402 Result_29646;
+Result_29646.Sup.m_type = NTI29402;
+memset((void*)&Result_29646, 0, sizeof(Result_29646));
+Result_29646.Second = ((NI) (((NI) ((*Tm_29645).tm_sec))));
+Result_29646.Minute = ((NI) (((NI) ((*Tm_29645).tm_min))));
+Result_29646.Hour = ((NI) (((NI) ((*Tm_29645).tm_hour))));
+Result_29646.Monthday = ((NI) (((NI) ((*Tm_29645).tm_mday))));
+Result_29646.Month = ((NU8) ((*Tm_29645).tm_mon));
+Result_29646.Year = ((NI) ((NI32)((*Tm_29645).tm_year + ((NI32) 1900))));
+Result_29646.Weekday = Weekdays_29647[(((NI) ((*Tm_29645).tm_wday)))-0];
+Result_29646.Yearday = ((NI) (((NI) ((*Tm_29645).tm_yday))));
+return Result_29646;
 }
-N_NIMCALL(TY28402, Getlocaltime_28418)(NI32 T_28420) {
-TY28402 Result_29207;
-NI32 A_29208;
+N_NIMCALL(TY29402, Getlocaltime_29418)(NI32 T_29420) {
+TY29402 Result_30207;
+NI32 A_30208;
 struct tm* LOC1;
-memset((void*)&Result_29207, 0, sizeof(Result_29207));
-Result_29207.Sup.m_type = NTI28402;
-A_29208 = 0;
-A_29208 = T_28420;
-LOC1 = localtime(&A_29208);
-Result_29207 = Tmtotimeinfo_28643(&(*LOC1));
-return Result_29207;
+Result_30207.Sup.m_type = NTI29402;
+memset((void*)&Result_30207, 0, sizeof(Result_30207));
+A_30208 = 0;
+A_30208 = T_29420;
+LOC1 = localtime(&A_30208);
+Result_30207 = Tmtotimeinfo_29643(&(*LOC1));
+return Result_30207;
 }
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18599, NimStringDesc* Src_18600) {
 memcpy(((NCSTRING) (&(*Dest_18599).data[((*Dest_18599).Sup.len)-0])), ((NCSTRING) ((*Src_18600).data)), ((NI32) ((NI64)((NI64)((*Src_18600).Sup.len + 1) * 1))));
@@ -114,78 +114,80 @@ static N_INLINE(void, appendChar)(NimStringDesc* Dest_18616, NIM_CHAR C_18617) {
 (*Dest_18616).Sup.len += 1;
 }
 N_NIMCALL(NimStringDesc*, ntgetDateStr)(void) {
-NimStringDesc* Result_29803;
-TY28402 Ti_29804;
+NimStringDesc* Result_30803;
+TY29402 Ti_30804;
 NI32 LOC1;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
-Result_29803 = 0;
-memset((void*)&Ti_29804, 0, sizeof(Ti_29804));
-LOC1 = Gettime_28416();
-Ti_29804 = Getlocaltime_28418(LOC1);
-Ti_29804.Sup.m_type = NTI28402;
+Result_30803 = 0;
+Ti_30804.Sup.m_type = NTI29402;
+Result_30803 = NIM_NIL;
+memset((void*)&Ti_30804, 0, sizeof(Ti_30804));
+LOC1 = Gettime_29416();
+Ti_30804 = Getlocaltime_29418(LOC1);
 LOC2 = 0;
 LOC3 = 0;
-LOC3 = nimIntToStr(Ti_29804.Year);
+LOC3 = nimIntToStr(Ti_30804.Year);
 LOC4 = 0;
-LOC4 = nsuIntToStr((NI64)(Ti_29804.Month + 1), 2);
+LOC4 = nsuIntToStr((NI64)(Ti_30804.Month + 1), 2);
 LOC5 = 0;
-LOC5 = nsuIntToStr(((NI) (Ti_29804.Monthday)), 2);
+LOC5 = nsuIntToStr(((NI) (Ti_30804.Monthday)), 2);
 LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
 appendString(LOC2, LOC3);
 appendChar(LOC2, 45);
 appendString(LOC2, LOC4);
 appendChar(LOC2, 45);
 appendString(LOC2, LOC5);
-Result_29803 = LOC2;
-return Result_29803;
+Result_30803 = LOC2;
+return Result_30803;
 }
 N_NIMCALL(NimStringDesc*, ntgetClockStr)(void) {
-NimStringDesc* Result_29814;
-TY28402 Ti_29815;
+NimStringDesc* Result_30814;
+TY29402 Ti_30815;
 NI32 LOC1;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
-Result_29814 = 0;
-memset((void*)&Ti_29815, 0, sizeof(Ti_29815));
-LOC1 = Gettime_28416();
-Ti_29815 = Getlocaltime_28418(LOC1);
-Ti_29815.Sup.m_type = NTI28402;
+Result_30814 = 0;
+Ti_30815.Sup.m_type = NTI29402;
+Result_30814 = NIM_NIL;
+memset((void*)&Ti_30815, 0, sizeof(Ti_30815));
+LOC1 = Gettime_29416();
+Ti_30815 = Getlocaltime_29418(LOC1);
 LOC2 = 0;
 LOC3 = 0;
-LOC3 = nsuIntToStr(((NI) (Ti_29815.Hour)), 2);
+LOC3 = nsuIntToStr(((NI) (Ti_30815.Hour)), 2);
 LOC4 = 0;
-LOC4 = nsuIntToStr(((NI) (Ti_29815.Minute)), 2);
+LOC4 = nsuIntToStr(((NI) (Ti_30815.Minute)), 2);
 LOC5 = 0;
-LOC5 = nsuIntToStr(((NI) (Ti_29815.Second)), 2);
+LOC5 = nsuIntToStr(((NI) (Ti_30815.Second)), 2);
 LOC2 = rawNewString(LOC3->Sup.len + LOC4->Sup.len + LOC5->Sup.len + 2);
 appendString(LOC2, LOC3);
 appendChar(LOC2, 58);
 appendString(LOC2, LOC4);
 appendChar(LOC2, 58);
 appendString(LOC2, LOC5);
-Result_29814 = LOC2;
-return Result_29814;
+Result_30814 = LOC2;
+return Result_30814;
 }
-N_NIMCALL(NI64, ntDiffTime)(NI32 A_28435, NI32 B_28436) {
-NI64 Result_28669;
+N_NIMCALL(NI64, ntDiffTime)(NI32 A_29435, NI32 B_29436) {
+NI64 Result_29669;
 NF LOC1;
-Result_28669 = 0;
-LOC1 = difftime(A_28435, B_28436);
-Result_28669 = float64ToInt64(((NF64) (LOC1)));
+Result_29669 = 0;
+LOC1 = difftime(A_29435, B_29436);
+Result_29669 = float64ToInt64(((NF64) (LOC1)));
 goto BeforeRet;
 BeforeRet: ;
-return Result_28669;
+return Result_29669;
 }
-N_NIMCALL(NI32, Wintimetounixtime_29261)(NI64 T_29263) {
-NI32 Result_29264;
-Result_29264 = 0;
-Result_29264 = ((NI32) ((NI64)((NI64)(T_29263 - IL64(116444736000000000)) / 10000000)));
-return Result_29264;
+N_NIMCALL(NI32, Wintimetounixtime_30261)(NI64 T_30263) {
+NI32 Result_30264;
+Result_30264 = 0;
+Result_30264 = ((NI32) ((NI64)((NI64)(T_30263 - IL64(116444736000000000)) / 10000000)));
+return Result_30264;
 }
 N_NOINLINE(void, timesInit)(void) {
 }

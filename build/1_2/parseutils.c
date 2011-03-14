@@ -20,15 +20,15 @@ typedef struct TY10996 TY10996;
 typedef struct TY10614 TY10614;
 typedef struct TY10610 TY10610;
 typedef struct TY10994 TY10994;
-typedef NU8 TY21602[32];
+typedef NU8 TY22602[32];
 struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
 struct TNimType {
 NI size;
@@ -100,8 +100,8 @@ TY10610* Next;
 NI Key;
 TY8614 Bits;
 };
-N_NIMCALL(NI, npuParseBiggestInt)(NimStringDesc* S_22044, NI64* Number_22046, NI Start_22047);
-N_NIMCALL(NI, Rawparseint_21945)(NimStringDesc* S_21947, NI64* B_21949, NI Start_21950);
+N_NIMCALL(NI, npuParseBiggestInt)(NimStringDesc* S_23044, NI64* Number_23046, NI Start_23047);
+N_NIMCALL(NI, Rawparseint_22945)(NimStringDesc* S_22947, NI64* B_22949, NI Start_22950);
 static N_INLINE(NI, addInt)(NI A_6203, NI B_6204);
 N_NOINLINE(void, raiseOverflow)(void);
 N_NIMCALL(NI64, mulInt64)(NI64 A_6139, NI64 B_6140);
@@ -116,26 +116,26 @@ static N_INLINE(void, Rtladdzct_12401)(TY10602* C_12403);
 N_NOINLINE(void, Addzct_11401)(TY10618* S_11404, TY10602* C_11405);
 N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18512);
 N_NIMCALL(void, raiseException)(E_Base* E_5604, NCSTRING Ename_5605);
-N_NIMCALL(NI, npuParseBiggestFloat)(NimStringDesc* S_22087, NF64* Number_22089, NI Start_22090);
-NIM_CONST TY21602 Whitespace_21601 = {
+N_NIMCALL(NI, npuParseBiggestFloat)(NimStringDesc* S_23087, NF64* Number_23089, NI Start_23090);
+NIM_CONST TY22602 Whitespace_22601 = {
 0x00, 0x3E, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY21602 Identchars_21603 = {
+NIM_CONST TY22602 Identchars_22603 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03,
 0xFE, 0xFF, 0xFF, 0x87, 0xFE, 0xFF, 0xFF, 0x07,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-NIM_CONST TY21602 Identstartchars_21605 = {
+NIM_CONST TY22602 Identstartchars_22605 = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0xFE, 0xFF, 0xFF, 0x87, 0xFE, 0xFF, 0xFF, 0x07,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ;
-STRING_LITERAL(TMP191660, "overflow", 8);
+STRING_LITERAL(TMP193660, "overflow", 8);
 extern TNimType* NTI6051; /* ref EOverflow */
 extern TNimType* NTI432; /* EOverflow */
 extern TY10996 Gch_11014;
@@ -187,46 +187,46 @@ raiseOverflow();
 BeforeRet: ;
 return Result_6100;
 }
-N_NIMCALL(NI, Rawparseint_21945)(NimStringDesc* S_21947, NI64* B_21949, NI Start_21950) {
-NI Result_21951;
-NI64 Sign_21952;
-NI I_21953;
-NI64 TMP191655;NI TMP191656;NI64 TMP191657;NI64 TMP191658;NI TMP191659;Result_21951 = 0;
-Sign_21952 = 0;
-Sign_21952 = -1;
-I_21953 = 0;
-I_21953 = Start_21950;
-if (!((NU8)(S_21947->data[I_21953]) == (NU8)(43))) goto LA2;
-I_21953 = addInt(I_21953, 1);
+N_NIMCALL(NI, Rawparseint_22945)(NimStringDesc* S_22947, NI64* B_22949, NI Start_22950) {
+NI Result_22951;
+NI64 Sign_22952;
+NI I_22953;
+NI64 TMP193655;NI TMP193656;NI64 TMP193657;NI64 TMP193658;NI TMP193659;Result_22951 = 0;
+Sign_22952 = 0;
+Sign_22952 = -1;
+I_22953 = 0;
+I_22953 = Start_22950;
+if (!((NU8)(S_22947->data[I_22953]) == (NU8)(43))) goto LA2;
+I_22953 = addInt(I_22953, 1);
 goto LA1;
 LA2: ;
-if (!((NU8)(S_21947->data[I_21953]) == (NU8)(45))) goto LA4;
-I_21953 = addInt(I_21953, 1);
-Sign_21952 = 1;
+if (!((NU8)(S_22947->data[I_22953]) == (NU8)(45))) goto LA4;
+I_22953 = addInt(I_22953, 1);
+Sign_22952 = 1;
 goto LA1;
 LA4: ;
 LA1: ;
-if (!(((NU8)(S_21947->data[I_21953])) >= ((NU8)(48)) && ((NU8)(S_21947->data[I_21953])) <= ((NU8)(57)))) goto LA7;
-(*B_21949) = 0;
+if (!(((NU8)(S_22947->data[I_22953])) >= ((NU8)(48)) && ((NU8)(S_22947->data[I_22953])) <= ((NU8)(57)))) goto LA7;
+(*B_22949) = 0;
 while (1) {
-if (!(((NU8)(S_21947->data[I_21953])) >= ((NU8)(48)) && ((NU8)(S_21947->data[I_21953])) <= ((NU8)(57)))) goto LA9;
-TMP191655 = mulInt64((*B_21949), 10);TMP191656 = subInt(((NU8)(S_21947->data[I_21953])), 48);TMP191657 = subInt64((NI64)(TMP191655), ((NI64) ((NI64)(TMP191656))));(*B_21949) = (NI64)(TMP191657);
-I_21953 = addInt(I_21953, 1);
+if (!(((NU8)(S_22947->data[I_22953])) >= ((NU8)(48)) && ((NU8)(S_22947->data[I_22953])) <= ((NU8)(57)))) goto LA9;
+TMP193655 = mulInt64((*B_22949), 10);TMP193656 = subInt(((NU8)(S_22947->data[I_22953])), 48);TMP193657 = subInt64((NI64)(TMP193655), ((NI64) ((NI64)(TMP193656))));(*B_22949) = (NI64)(TMP193657);
+I_22953 = addInt(I_22953, 1);
 while (1) {
-if (!((NU8)(S_21947->data[I_21953]) == (NU8)(95))) goto LA10;
-I_21953 = addInt(I_21953, 1);
+if (!((NU8)(S_22947->data[I_22953]) == (NU8)(95))) goto LA10;
+I_22953 = addInt(I_22953, 1);
 } LA10: ;
 } LA9: ;
-TMP191658 = mulInt64((*B_21949), Sign_21952);(*B_21949) = (NI64)(TMP191658);
-TMP191659 = subInt(I_21953, Start_21950);Result_21951 = (NI64)(TMP191659);
+TMP193658 = mulInt64((*B_22949), Sign_22952);(*B_22949) = (NI64)(TMP193658);
+TMP193659 = subInt(I_22953, Start_22950);Result_22951 = (NI64)(TMP193659);
 LA7: ;
-return Result_21951;
+return Result_22951;
 }
-N_NIMCALL(NI, npuParseBiggestInt)(NimStringDesc* S_22044, NI64* Number_22046, NI Start_22047) {
-NI Result_22048;
-Result_22048 = 0;
-Result_22048 = Rawparseint_21945(S_22044, Number_22046, Start_22047);
-return Result_22048;
+N_NIMCALL(NI, npuParseBiggestInt)(NimStringDesc* S_23044, NI64* Number_23046, NI Start_23047) {
+NI Result_23048;
+Result_23048 = 0;
+Result_23048 = Rawparseint_22945(S_23044, Number_23046, Start_23047);
+return Result_23048;
 }
 static N_INLINE(TY10602*, Usrtocell_11412)(void* Usr_11414) {
 TY10602* Result_11415;
@@ -271,209 +271,210 @@ LA10: ;
 LA6: ;
 (*Dest_13018) = Src_13019;
 }
-N_NIMCALL(NI, npuParseInt)(NimStringDesc* S_22051, NI* Number_22053, NI Start_22054) {
-NI Result_22055;
-NI64 Res_22056;
+N_NIMCALL(NI, npuParseInt)(NimStringDesc* S_23051, NI* Number_23053, NI Start_23054) {
+NI Result_23055;
+NI64 Res_23056;
 NIM_BOOL LOC2;
 NIM_BOOL LOC4;
-EOverflow* E_22069;
-Result_22055 = 0;
-Res_22056 = 0;
-Result_22055 = npuParseBiggestInt(S_22051, &Res_22056, Start_22054);
+EOverflow* E_23069;
+E_23069 = 0;
+Result_23055 = 0;
+Res_23056 = 0;
+Result_23055 = npuParseBiggestInt(S_23051, &Res_23056, Start_23054);
 LOC2 = NIM_FALSE;
 if (!(LOC2)) goto LA3;
-LOC4 = (Res_22056 < (IL64(-9223372036854775807) - IL64(1)));
+LOC4 = (Res_23056 < (IL64(-9223372036854775807) - IL64(1)));
 if (LOC4) goto LA5;
-LOC4 = (IL64(9223372036854775807) < Res_22056);
+LOC4 = (IL64(9223372036854775807) < Res_23056);
 LA5: ;
 LOC2 = LOC4;
 LA3: ;
 if (!LOC2) goto LA6;
-E_22069 = 0;
-E_22069 = (EOverflow*) newObj(NTI6051, sizeof(EOverflow));
-(*E_22069).Sup.Sup.Sup.Sup.m_type = NTI432;
-asgnRefNoCycle((void**) &(*E_22069).Sup.Sup.Sup.message, copyString(((NimStringDesc*) &TMP191660)));
-raiseException((E_Base*)E_22069, "EOverflow");
+E_23069 = NIM_NIL;
+E_23069 = (EOverflow*) newObj(NTI6051, sizeof(EOverflow));
+(*E_23069).Sup.Sup.Sup.Sup.m_type = NTI432;
+asgnRefNoCycle((void**) &(*E_23069).Sup.Sup.Sup.message, copyString(((NimStringDesc*) &TMP193660)));
+raiseException((E_Base*)E_23069, "EOverflow");
 goto LA1;
 LA6: ;
-(*Number_22053) = ((NI) (Res_22056));
+(*Number_23053) = ((NI) (Res_23056));
 LA1: ;
-return Result_22055;
+return Result_23055;
 }
-N_NIMCALL(NI, npuParseBiggestFloat)(NimStringDesc* S_22087, NF64* Number_22089, NI Start_22090) {
-NI Result_22091;
-NF Esign_22092;
-NF Sign_22093;
-NI I_22094;
-NI Exponent_22095;
-NI Flags_22096;
+N_NIMCALL(NI, npuParseBiggestFloat)(NimStringDesc* S_23087, NF64* Number_23089, NI Start_23090) {
+NI Result_23091;
+NF Esign_23092;
+NF Sign_23093;
+NI I_23094;
+NI Exponent_23095;
+NI Flags_23096;
 NIM_BOOL LOC7;
 NIM_BOOL LOC12;
 NIM_BOOL LOC17;
 NIM_BOOL LOC25;
 NIM_BOOL LOC30;
 NIM_BOOL LOC35;
-NF Hd_22221;
-NF Hd_22396;
-NI J_22420;
-NI Res_22422;
-Result_22091 = 0;
-Esign_22092 = 0;
-Esign_22092 = 1.0000000000000000e+00;
-Sign_22093 = 0;
-Sign_22093 = 1.0000000000000000e+00;
-I_22094 = 0;
-I_22094 = Start_22090;
-Exponent_22095 = 0;
-Flags_22096 = 0;
-(*Number_22089) = 0.0;
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(43))) goto LA2;
-I_22094 += 1;
+NF Hd_23221;
+NF Hd_23396;
+NI J_23420;
+NI Res_23422;
+Result_23091 = 0;
+Esign_23092 = 0;
+Esign_23092 = 1.0000000000000000e+00;
+Sign_23093 = 0;
+Sign_23093 = 1.0000000000000000e+00;
+I_23094 = 0;
+I_23094 = Start_23090;
+Exponent_23095 = 0;
+Flags_23096 = 0;
+(*Number_23089) = 0.0;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(43))) goto LA2;
+I_23094 += 1;
 goto LA1;
 LA2: ;
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(45))) goto LA4;
-Sign_22093 = -1.0000000000000000e+00;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(45))) goto LA4;
+Sign_23093 = -1.0000000000000000e+00;
+I_23094 += 1;
 goto LA1;
 LA4: ;
 LA1: ;
-LOC7 = ((NU8)(S_22087->data[I_22094]) == (NU8)(78));
+LOC7 = ((NU8)(S_23087->data[I_23094]) == (NU8)(78));
 if (LOC7) goto LA8;
-LOC7 = ((NU8)(S_22087->data[I_22094]) == (NU8)(110));
+LOC7 = ((NU8)(S_23087->data[I_23094]) == (NU8)(110));
 LA8: ;
 if (!LOC7) goto LA9;
-LOC12 = ((NU8)(S_22087->data[(NI64)(I_22094 + 1)]) == (NU8)(65));
+LOC12 = ((NU8)(S_23087->data[(NI64)(I_23094 + 1)]) == (NU8)(65));
 if (LOC12) goto LA13;
-LOC12 = ((NU8)(S_22087->data[(NI64)(I_22094 + 1)]) == (NU8)(97));
+LOC12 = ((NU8)(S_23087->data[(NI64)(I_23094 + 1)]) == (NU8)(97));
 LA13: ;
 if (!LOC12) goto LA14;
-LOC17 = ((NU8)(S_22087->data[(NI64)(I_22094 + 2)]) == (NU8)(78));
+LOC17 = ((NU8)(S_23087->data[(NI64)(I_23094 + 2)]) == (NU8)(78));
 if (LOC17) goto LA18;
-LOC17 = ((NU8)(S_22087->data[(NI64)(I_22094 + 2)]) == (NU8)(110));
+LOC17 = ((NU8)(S_23087->data[(NI64)(I_23094 + 2)]) == (NU8)(110));
 LA18: ;
 if (!LOC17) goto LA19;
-if (!!((((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(97)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(122)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(65)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(90)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(48)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(57)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) == ((NU8)(95))))) goto LA22;
-(*Number_22089) = NAN;
-Result_22091 = (NI64)((NI64)(I_22094 + 3) - Start_22090);
+if (!!((((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(97)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(122)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(65)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(90)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(48)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(57)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) == ((NU8)(95))))) goto LA22;
+(*Number_23089) = NAN;
+Result_23091 = (NI64)((NI64)(I_23094 + 3) - Start_23090);
 goto BeforeRet;
 LA22: ;
 LA19: ;
 LA14: ;
-Result_22091 = 0;
+Result_23091 = 0;
 goto BeforeRet;
 LA9: ;
-LOC25 = ((NU8)(S_22087->data[I_22094]) == (NU8)(73));
+LOC25 = ((NU8)(S_23087->data[I_23094]) == (NU8)(73));
 if (LOC25) goto LA26;
-LOC25 = ((NU8)(S_22087->data[I_22094]) == (NU8)(105));
+LOC25 = ((NU8)(S_23087->data[I_23094]) == (NU8)(105));
 LA26: ;
 if (!LOC25) goto LA27;
-LOC30 = ((NU8)(S_22087->data[(NI64)(I_22094 + 1)]) == (NU8)(78));
+LOC30 = ((NU8)(S_23087->data[(NI64)(I_23094 + 1)]) == (NU8)(78));
 if (LOC30) goto LA31;
-LOC30 = ((NU8)(S_22087->data[(NI64)(I_22094 + 1)]) == (NU8)(110));
+LOC30 = ((NU8)(S_23087->data[(NI64)(I_23094 + 1)]) == (NU8)(110));
 LA31: ;
 if (!LOC30) goto LA32;
-LOC35 = ((NU8)(S_22087->data[(NI64)(I_22094 + 2)]) == (NU8)(70));
+LOC35 = ((NU8)(S_23087->data[(NI64)(I_23094 + 2)]) == (NU8)(70));
 if (LOC35) goto LA36;
-LOC35 = ((NU8)(S_22087->data[(NI64)(I_22094 + 2)]) == (NU8)(102));
+LOC35 = ((NU8)(S_23087->data[(NI64)(I_23094 + 2)]) == (NU8)(102));
 LA36: ;
 if (!LOC35) goto LA37;
-if (!!((((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(97)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(122)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(65)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(90)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) >= ((NU8)(48)) && ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) <= ((NU8)(57)) || ((NU8)(S_22087->data[(NI64)(I_22094 + 3)])) == ((NU8)(95))))) goto LA40;
-(*Number_22089) = ((NF64) ((INF * Sign_22093)));
-Result_22091 = (NI64)((NI64)(I_22094 + 3) - Start_22090);
+if (!!((((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(97)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(122)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(65)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(90)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) >= ((NU8)(48)) && ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) <= ((NU8)(57)) || ((NU8)(S_23087->data[(NI64)(I_23094 + 3)])) == ((NU8)(95))))) goto LA40;
+(*Number_23089) = ((NF64) ((INF * Sign_23093)));
+Result_23091 = (NI64)((NI64)(I_23094 + 3) - Start_23090);
 goto BeforeRet;
 LA40: ;
 LA37: ;
 LA32: ;
-Result_22091 = 0;
+Result_23091 = 0;
 goto BeforeRet;
 LA27: ;
 while (1) {
-if (!(((NU8)(S_22087->data[I_22094])) >= ((NU8)(48)) && ((NU8)(S_22087->data[I_22094])) <= ((NU8)(57)))) goto LA42;
-Flags_22096 = (NI64)(Flags_22096 | 1);
-(*Number_22089) = ((NF64) (((((NF) ((*Number_22089))) * 1.0000000000000000e+01) + ((double) ((NI64)(((NU8)(S_22087->data[I_22094])) - 48))))));
-I_22094 += 1;
+if (!(((NU8)(S_23087->data[I_23094])) >= ((NU8)(48)) && ((NU8)(S_23087->data[I_23094])) <= ((NU8)(57)))) goto LA42;
+Flags_23096 = (NI64)(Flags_23096 | 1);
+(*Number_23089) = ((NF64) (((((NF) ((*Number_23089))) * 1.0000000000000000e+01) + ((double) ((NI64)(((NU8)(S_23087->data[I_23094])) - 48))))));
+I_23094 += 1;
 while (1) {
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(95))) goto LA43;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(95))) goto LA43;
+I_23094 += 1;
 } LA43: ;
 } LA42: ;
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(46))) goto LA45;
-Hd_22221 = 0;
-Hd_22221 = 1.0000000000000000e+00;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(46))) goto LA45;
+Hd_23221 = 0;
+Hd_23221 = 1.0000000000000000e+00;
+I_23094 += 1;
 while (1) {
-if (!(((NU8)(S_22087->data[I_22094])) >= ((NU8)(48)) && ((NU8)(S_22087->data[I_22094])) <= ((NU8)(57)))) goto LA47;
-Flags_22096 = (NI64)(Flags_22096 | 2);
-(*Number_22089) = ((NF64) (((((NF) ((*Number_22089))) * 1.0000000000000000e+01) + ((double) ((NI64)(((NU8)(S_22087->data[I_22094])) - 48))))));
-Hd_22221 = (Hd_22221 * 1.0000000000000000e+01);
-I_22094 += 1;
+if (!(((NU8)(S_23087->data[I_23094])) >= ((NU8)(48)) && ((NU8)(S_23087->data[I_23094])) <= ((NU8)(57)))) goto LA47;
+Flags_23096 = (NI64)(Flags_23096 | 2);
+(*Number_23089) = ((NF64) (((((NF) ((*Number_23089))) * 1.0000000000000000e+01) + ((double) ((NI64)(((NU8)(S_23087->data[I_23094])) - 48))))));
+Hd_23221 = (Hd_23221 * 1.0000000000000000e+01);
+I_23094 += 1;
 while (1) {
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(95))) goto LA48;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(95))) goto LA48;
+I_23094 += 1;
 } LA48: ;
 } LA47: ;
-(*Number_22089) = ((NF64) ((((NF) ((*Number_22089))) / Hd_22221)));
+(*Number_23089) = ((NF64) ((((NF) ((*Number_23089))) / Hd_23221)));
 LA45: ;
-if (!(Flags_22096 == 0)) goto LA50;
-Result_22091 = 0;
+if (!(Flags_23096 == 0)) goto LA50;
+Result_23091 = 0;
 goto BeforeRet;
 LA50: ;
-if (!(((NU8)(S_22087->data[I_22094])) == ((NU8)(101)) || ((NU8)(S_22087->data[I_22094])) == ((NU8)(69)))) goto LA53;
-I_22094 += 1;
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(43))) goto LA56;
-I_22094 += 1;
+if (!(((NU8)(S_23087->data[I_23094])) == ((NU8)(101)) || ((NU8)(S_23087->data[I_23094])) == ((NU8)(69)))) goto LA53;
+I_23094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(43))) goto LA56;
+I_23094 += 1;
 goto LA55;
 LA56: ;
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(45))) goto LA58;
-Esign_22092 = -1.0000000000000000e+00;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(45))) goto LA58;
+Esign_23092 = -1.0000000000000000e+00;
+I_23094 += 1;
 goto LA55;
 LA58: ;
 LA55: ;
-if (!!((((NU8)(S_22087->data[I_22094])) >= ((NU8)(48)) && ((NU8)(S_22087->data[I_22094])) <= ((NU8)(57))))) goto LA61;
-Result_22091 = 0;
+if (!!((((NU8)(S_23087->data[I_23094])) >= ((NU8)(48)) && ((NU8)(S_23087->data[I_23094])) <= ((NU8)(57))))) goto LA61;
+Result_23091 = 0;
 goto BeforeRet;
 LA61: ;
 while (1) {
-if (!(((NU8)(S_22087->data[I_22094])) >= ((NU8)(48)) && ((NU8)(S_22087->data[I_22094])) <= ((NU8)(57)))) goto LA63;
-Exponent_22095 = (NI64)((NI64)((NI64)(Exponent_22095 * 10) + ((NU8)(S_22087->data[I_22094]))) - 48);
-I_22094 += 1;
+if (!(((NU8)(S_23087->data[I_23094])) >= ((NU8)(48)) && ((NU8)(S_23087->data[I_23094])) <= ((NU8)(57)))) goto LA63;
+Exponent_23095 = (NI64)((NI64)((NI64)(Exponent_23095 * 10) + ((NU8)(S_23087->data[I_23094]))) - 48);
+I_23094 += 1;
 while (1) {
-if (!((NU8)(S_22087->data[I_22094]) == (NU8)(95))) goto LA64;
-I_22094 += 1;
+if (!((NU8)(S_23087->data[I_23094]) == (NU8)(95))) goto LA64;
+I_23094 += 1;
 } LA64: ;
 } LA63: ;
 LA53: ;
-Hd_22396 = 0;
-Hd_22396 = 1.0000000000000000e+00;
-J_22420 = 0;
-Res_22422 = 0;
-Res_22422 = 1;
+Hd_23396 = 0;
+Hd_23396 = 1.0000000000000000e+00;
+J_23420 = 0;
+Res_23422 = 0;
+Res_23422 = 1;
 while (1) {
-if (!(Res_22422 <= Exponent_22095)) goto LA65;
-J_22420 = Res_22422;
-Hd_22396 = (Hd_22396 * 1.0000000000000000e+01);
-Res_22422 += 1;
+if (!(Res_23422 <= Exponent_23095)) goto LA65;
+J_23420 = Res_23422;
+Hd_23396 = (Hd_23396 * 1.0000000000000000e+01);
+Res_23422 += 1;
 } LA65: ;
-if (!(0.0 < Esign_22092)) goto LA67;
-(*Number_22089) = ((NF64) ((((NF) ((*Number_22089))) * Hd_22396)));
+if (!(0.0 < Esign_23092)) goto LA67;
+(*Number_23089) = ((NF64) ((((NF) ((*Number_23089))) * Hd_23396)));
 goto LA66;
 LA67: ;
-(*Number_22089) = ((NF64) ((((NF) ((*Number_22089))) / Hd_22396)));
+(*Number_23089) = ((NF64) ((((NF) ((*Number_23089))) / Hd_23396)));
 LA66: ;
-(*Number_22089) = ((NF64) ((((NF) ((*Number_22089))) * Sign_22093)));
-Result_22091 = (NI64)(I_22094 - Start_22090);
+(*Number_23089) = ((NF64) ((((NF) ((*Number_23089))) * Sign_23093)));
+Result_23091 = (NI64)(I_23094 - Start_23090);
 BeforeRet: ;
-return Result_22091;
+return Result_23091;
 }
-N_NIMCALL(NI, npuParseFloat)(NimStringDesc* S_22425, NF* Number_22427, NI Start_22428) {
-NI Result_22429;
-NF64 Bf_22430;
-Result_22429 = 0;
-Bf_22430 = 0;
-Result_22429 = npuParseBiggestFloat(S_22425, &Bf_22430, Start_22428);
-(*Number_22427) = ((NF) (Bf_22430));
-return Result_22429;
+N_NIMCALL(NI, npuParseFloat)(NimStringDesc* S_23425, NF* Number_23427, NI Start_23428) {
+NI Result_23429;
+NF64 Bf_23430;
+Result_23429 = 0;
+Bf_23430 = 0;
+Result_23429 = npuParseBiggestFloat(S_23425, &Bf_23430, Start_23428);
+(*Number_23427) = ((NF) (Bf_23430));
+return Result_23429;
 }
 N_NOINLINE(void, parseutilsInit)(void) {
 }

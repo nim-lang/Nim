@@ -5,45 +5,45 @@ typedef long int NI;
 typedef unsigned long int NU;
 #include "nimbase.h"
 
-typedef struct TY60215 TY60215;
-typedef struct TY60213 TY60213;
-typedef struct TY60211 TY60211;
+typedef struct TY61215 TY61215;
+typedef struct TY61213 TY61213;
+typedef struct TY61211 TY61211;
 typedef struct TGenericSeq TGenericSeq;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY55548 TY55548;
-typedef struct TY55530 TY55530;
-typedef struct TY55528 TY55528;
-typedef struct TY54011 TY54011;
-typedef struct TY54005 TY54005;
+typedef struct TY56548 TY56548;
+typedef struct TY56530 TY56530;
+typedef struct TY56528 TY56528;
+typedef struct TY55011 TY55011;
+typedef struct TY55005 TY55005;
 typedef struct TNimObject TNimObject;
 typedef struct NimStringDesc NimStringDesc;
-typedef struct TY55552 TY55552;
-typedef struct TY47538 TY47538;
-typedef struct TY55526 TY55526;
-typedef struct TY55540 TY55540;
-typedef struct TY52008 TY52008;
-typedef struct TY55544 TY55544;
+typedef struct TY56552 TY56552;
+typedef struct TY48538 TY48538;
+typedef struct TY56526 TY56526;
+typedef struct TY56540 TY56540;
+typedef struct TY53008 TY53008;
+typedef struct TY56544 TY56544;
 typedef struct TY10802 TY10802;
 typedef struct TY10814 TY10814;
 typedef struct TY11196 TY11196;
 typedef struct TY10818 TY10818;
 typedef struct TY10810 TY10810;
 typedef struct TY11194 TY11194;
-typedef struct TY60071 TY60071;
-typedef struct TY55564 TY55564;
-typedef struct TY55562 TY55562;
-typedef struct TY55560 TY55560;
-typedef struct TY60099 TY60099;
-typedef struct TY60101 TY60101;
-typedef struct TY60084 TY60084;
-typedef struct TY55570 TY55570;
-typedef struct TY55568 TY55568;
-typedef struct TY55566 TY55566;
-typedef struct TY55520 TY55520;
-typedef struct TY55550 TY55550;
-typedef struct TY43013 TY43013;
-struct TY60211 {
+typedef struct TY61071 TY61071;
+typedef struct TY56564 TY56564;
+typedef struct TY56562 TY56562;
+typedef struct TY56560 TY56560;
+typedef struct TY61099 TY61099;
+typedef struct TY61101 TY61101;
+typedef struct TY56520 TY56520;
+typedef struct TY61084 TY61084;
+typedef struct TY56570 TY56570;
+typedef struct TY56568 TY56568;
+typedef struct TY56566 TY56566;
+typedef struct TY56550 TY56550;
+typedef struct TY44013 TY44013;
+struct TY61211 {
 NI Key;
 NI Val;
 };
@@ -51,9 +51,9 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-struct TY60215 {
+struct TY61215 {
 NI Counter;
-TY60213* Data;
+TY61213* Data;
 };
 struct TNimType {
 NI size;
@@ -71,58 +71,58 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY55530 {
+struct TY56530 {
 TNimType* m_type;
 NI Counter;
-TY55528* Data;
+TY56528* Data;
 };
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY54005 {
+struct TY55005 {
   TNimObject Sup;
 NI Id;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
-struct TY54011 {
-  TY54005 Sup;
+struct TY55011 {
+  TY55005 Sup;
 NimStringDesc* S;
-TY54011* Next;
+TY55011* Next;
 NI H;
 };
-struct TY47538 {
+struct TY48538 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-struct TY55540 {
+struct TY56540 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY55552* T;
-TY52008* R;
+TY56552* T;
+TY53008* R;
 NI A;
 };
-struct TY55548 {
-  TY54005 Sup;
+struct TY56548 {
+  TY55005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY55552* Typ;
-TY54011* Name;
-TY47538 Info;
-TY55548* Owner;
+TY56552* Typ;
+TY55011* Name;
+TY48538 Info;
+TY56548* Owner;
 NU32 Flags;
-TY55530 Tab;
-TY55526* Ast;
+TY56530 Tab;
+TY56526* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY55540 Loc;
-TY55544* Annex;
+TY56540 Loc;
+TY56544* Annex;
 };
 struct TY10802 {
 NI Refcount;
@@ -154,37 +154,25 @@ TY10814 Cycleroots;
 TY10818 Tempstack;
 TY11194 Stat;
 };
-struct TY60071 {
+struct TY61071 {
 NI H;
 };
-struct TY55560 {
-TY54005* Key;
+struct TY56560 {
+TY55005* Key;
 TNimObject* Val;
 };
-struct TY55564 {
+struct TY56564 {
 NI Counter;
-TY55562* Data;
+TY56562* Data;
 };
-struct TY60099 {
+struct TY61099 {
 NI Tos;
-TY60101* Stack;
+TY61101* Stack;
 };
-struct TY60084 {
-NI H;
-TY54011* Name;
-};
-struct TY55566 {
-TY54005* Key;
-TY55526* Val;
-};
-struct TY55570 {
-NI Counter;
-TY55568* Data;
-};
-struct TY55526 {
-TY55552* Typ;
+struct TY56526 {
+TY56552* Typ;
 NimStringDesc* Comment;
-TY47538 Info;
+TY48538 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -194,46 +182,58 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY55548* Sym;
+struct {TY56548* Sym;
 } S4;
-struct {TY54011* Ident;
+struct {TY55011* Ident;
 } S5;
-struct {TY55520* Sons;
+struct {TY56520* Sons;
 } S6;
 } KindU;
 };
-struct TY55552 {
-  TY54005 Sup;
+struct TY61084 {
+NI H;
+TY55011* Name;
+};
+struct TY56566 {
+TY55005* Key;
+TY56526* Val;
+};
+struct TY56570 {
+NI Counter;
+TY56568* Data;
+};
+struct TY56552 {
+  TY55005 Sup;
 NU8 Kind;
-TY55550* Sons;
-TY55526* N;
+TY56550* Sons;
+TY56526* N;
 NU8 Flags;
 NU8 Callconv;
-TY55548* Owner;
-TY55548* Sym;
+TY56548* Owner;
+TY56548* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY55540 Loc;
+TY56540 Loc;
 };
-struct TY52008 {
+struct TY53008 {
   TNimObject Sup;
-TY52008* Left;
-TY52008* Right;
+TY53008* Left;
+TY53008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-struct TY43013 {
+struct TY44013 {
   TNimObject Sup;
-TY43013* Prev;
-TY43013* Next;
+TY44013* Prev;
+TY44013* Next;
 };
-struct TY55544 {
-  TY43013 Sup;
+struct TY56544 {
+  TY44013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY52008* Name;
-TY55526* Path;
+TY53008* Name;
+TY56526* Path;
 };
 typedef NI TY8814[16];
 struct TY10810 {
@@ -241,41 +241,41 @@ TY10810* Next;
 NI Key;
 TY8814 Bits;
 };
-struct TY60213 {
+struct TY61213 {
   TGenericSeq Sup;
-  TY60211 data[SEQ_DECL_SIZE];
+  TY61211 data[SEQ_DECL_SIZE];
 };
-struct TY55528 {
+struct TY56528 {
   TGenericSeq Sup;
-  TY55548* data[SEQ_DECL_SIZE];
+  TY56548* data[SEQ_DECL_SIZE];
 };
-struct TY55562 {
+struct TY56562 {
   TGenericSeq Sup;
-  TY55560 data[SEQ_DECL_SIZE];
+  TY56560 data[SEQ_DECL_SIZE];
 };
-struct TY60101 {
+struct TY61101 {
   TGenericSeq Sup;
-  TY55530 data[SEQ_DECL_SIZE];
+  TY56530 data[SEQ_DECL_SIZE];
 };
-struct TY55568 {
+struct TY56520 {
   TGenericSeq Sup;
-  TY55566 data[SEQ_DECL_SIZE];
+  TY56526* data[SEQ_DECL_SIZE];
 };
-struct TY55520 {
+struct TY56568 {
   TGenericSeq Sup;
-  TY55526* data[SEQ_DECL_SIZE];
+  TY56566 data[SEQ_DECL_SIZE];
 };
-struct TY55550 {
+struct TY56550 {
   TGenericSeq Sup;
-  TY55552* data[SEQ_DECL_SIZE];
+  TY56552* data[SEQ_DECL_SIZE];
 };
 N_NIMCALL(void*, newSeq)(TNimType* Typ_14404, NI Len_14405);
 N_NIMCALL(void, unsureAsgnRef)(void** Dest_13226, void* Src_13227);
-N_NIMCALL(NI, Nexttry_60205)(NI H_60207, NI Maxhash_60208);
-N_NIMCALL(NIM_BOOL, Mustrehash_60201)(NI Length_60203, NI Counter_60204);
-N_NIMCALL(void, Strtableenlarge_62293)(TY55530* T_62296);
-N_NIMCALL(void, Strtablerawinsert_62256)(TY55528** Data_62259, TY55548* N_62260);
-N_NIMCALL(void, Internalerror_48159)(TY47538 Info_48161, NimStringDesc* Errmsg_48162);
+N_NIMCALL(NI, Nexttry_61205)(NI H_61207, NI Maxhash_61208);
+N_NIMCALL(NIM_BOOL, Mustrehash_61201)(NI Length_61203, NI Counter_61204);
+N_NIMCALL(void, Strtableenlarge_63293)(TY56530* T_63296);
+N_NIMCALL(void, Strtablerawinsert_63256)(TY56528** Data_63259, TY56548* N_63260);
+N_NIMCALL(void, Internalerror_49208)(TY48538 Info_49210, NimStringDesc* Errmsg_49211);
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800);
 N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18689);
 static N_INLINE(void, asgnRef)(void** Dest_13214, void* Src_13215);
@@ -289,84 +289,85 @@ static N_INLINE(void, Decref_13001)(TY10802* C_13003);
 static N_INLINE(NI, Atomicdec_3226)(NI* Memloc_3229, NI X_3230);
 static N_INLINE(void, Rtladdzct_12601)(TY10802* C_12603);
 N_NOINLINE(void, Addzct_11601)(TY10818* S_11604, TY10802* C_11605);
-N_NIMCALL(TY55548*, Nextiter_60078)(TY60071* Ti_60081, TY55530* Tab_60082);
-N_NIMCALL(NI, Iitablerawget_63101)(TY60215 T_63103, NI Key_63104);
-N_NIMCALL(void, Iitablerawinsert_63119)(TY60213** Data_63122, NI Key_63123, NI Val_63124);
-N_NIMCALL(NI, Idtablerawget_62732)(TY55564 T_62734, NI Key_62735);
+N_NIMCALL(TY56548*, Nextiter_61078)(TY61071* Ti_61081, TY56530* Tab_61082);
+N_NIMCALL(NI, Iitablerawget_64101)(TY61215 T_64103, NI Key_64104);
+N_NIMCALL(void, Iitablerawinsert_64119)(TY61213** Data_64122, NI Key_64123, NI Val_64124);
+N_NIMCALL(NI, Idtablerawget_63732)(TY56564 T_63734, NI Key_63735);
 static N_INLINE(void, asgnRefNoCycle)(void** Dest_13218, void* Src_13219);
-N_NIMCALL(void, Idtablerawinsert_62784)(TY55562** Data_62787, TY54005* Key_62788, TNimObject* Val_62789);
-N_NIMCALL(TY55548*, Strtableget_60066)(TY55530* T_60068, TY54011* Name_60069);
-N_NIMCALL(TY55548*, Nextidentiter_60093)(TY60084* Ti_60096, TY55530* Tab_60097);
-N_NIMCALL(NI, Idnodetablerawget_62917)(TY55570 T_62919, TY54005* Key_62920);
-N_NIMCALL(void, Idnodetablerawinsert_62944)(TY55568** Data_62947, TY54005* Key_62948, TY55526* Val_62949);
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806);
+N_NIMCALL(void, Idtablerawinsert_63784)(TY56562** Data_63787, TY55005* Key_63788, TNimObject* Val_63789);
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806);
+N_NIMCALL(TY56548*, Strtableget_61066)(TY56530* T_61068, TY55011* Name_61069);
+N_NIMCALL(TY56548*, Nextidentiter_61093)(TY61084* Ti_61096, TY56530* Tab_61097);
+N_NIMCALL(NI, Idnodetablerawget_63917)(TY56570 T_63919, TY55005* Key_63920);
+N_NIMCALL(void, Idnodetablerawinsert_63944)(TY56568** Data_63947, TY55005* Key_63948, TY56526* Val_63949);
 N_NIMCALL(TGenericSeq*, setLengthSeq)(TGenericSeq* Seq_19003, NI Elemsize_19004, NI Newlen_19005);
-N_NIMCALL(void, Initstrtable_55747)(TY55530* X_55750);
-N_NIMCALL(NU8, Symtabadduniqueat_60135)(TY60099* Tab_60138, TY55548* E_60139, NI At_60140);
-N_NIMCALL(NIM_BOOL, Strtableincl_62381)(TY55530* T_62384, TY55548* N_62385);
-N_NIMCALL(void, Strtableadd_60061)(TY55530* T_60064, TY55548* N_60065);
-N_NIMCALL(TY55548*, Lookupinrecord_60194)(TY55526* N_60196, TY54011* Field_60197);
-static N_INLINE(TY55526*, Lastson_55810)(TY55526* N_55812);
-STRING_LITERAL(TMP195609, "StrTableRawInsert: ", 19);
-STRING_LITERAL(TMP196061, "getSymFromList", 14);
-STRING_LITERAL(TMP196681, "lookupInRecord", 14);
-STRING_LITERAL(TMP196682, "lookupInRecord(record case branch)", 34);
-STRING_LITERAL(TMP196683, "lookupInRecord()", 16);
-extern TNimType* NTI60213; /* TIIPairSeq */
-extern TNimType* NTI55528; /* TSymSeq */
+N_NIMCALL(void, Initstrtable_56747)(TY56530* X_56750);
+N_NIMCALL(NU8, Symtabadduniqueat_61135)(TY61099* Tab_61138, TY56548* E_61139, NI At_61140);
+N_NIMCALL(NIM_BOOL, Strtableincl_63381)(TY56530* T_63384, TY56548* N_63385);
+N_NIMCALL(void, Strtableadd_61061)(TY56530* T_61064, TY56548* N_61065);
+N_NIMCALL(TY56548*, Lookupinrecord_61194)(TY56526* N_61196, TY55011* Field_61197);
+static N_INLINE(TY56526*, Lastson_56810)(TY56526* N_56812);
+STRING_LITERAL(TMP197609, "StrTableRawInsert: ", 19);
+STRING_LITERAL(TMP198049, "getSymFromList", 14);
+STRING_LITERAL(TMP198727, "lookupInRecord", 14);
+STRING_LITERAL(TMP198728, "lookupInRecord(record case branch)", 34);
+STRING_LITERAL(TMP198729, "lookupInRecord()", 16);
+extern TNimType* NTI61213; /* TIIPairSeq */
+extern TNimType* NTI56528; /* TSymSeq */
 extern TY11196 Gch_11214;
-extern TNimType* NTI55562; /* TIdPairSeq */
-extern TNimType* NTI60101; /* seq[TStrTable] */
-extern TNimType* NTI55568; /* TIdNodePairSeq */
-N_NIMCALL(void, Initiitable_60220)(TY60215* X_60223) {
-NI I_63098;
-NI Res_63100;
-(*X_60223).Counter = 0;
-unsureAsgnRef((void**) &(*X_60223).Data, (TY60213*) newSeq(NTI60213, 8));
-I_63098 = 0;
-Res_63100 = 0;
-Res_63100 = 0;
+extern TNimType* NTI56562; /* TIdPairSeq */
+extern TNimType* NTI61101; /* seq[TStrTable] */
+extern TNimType* NTI56568; /* TIdNodePairSeq */
+N_NIMCALL(void, Initiitable_61220)(TY61215* X_61223) {
+NI I_64098;
+NI Res_64100;
+(*X_61223).Counter = 0;
+unsureAsgnRef((void**) &(*X_61223).Data, (TY61213*) newSeq(NTI61213, 8));
+I_64098 = 0;
+Res_64100 = 0;
+Res_64100 = 0;
 while (1) {
-if (!(Res_63100 <= 7)) goto LA1;
-I_63098 = Res_63100;
-(*X_60223).Data->data[I_63098].Key = (-2147483647 -1);
-Res_63100 += 1;
+if (!(Res_64100 <= 7)) goto LA1;
+I_64098 = Res_64100;
+(*X_61223).Data->data[I_64098].Key = (-2147483647 -1);
+Res_64100 += 1;
 } LA1: ;
 }
-N_NIMCALL(NI, Nexttry_60205)(NI H_60207, NI Maxhash_60208) {
-NI Result_61824;
-Result_61824 = 0;
-Result_61824 = (NI32)((NI32)((NI32)(5 * H_60207) + 1) & Maxhash_60208);
-return Result_61824;
+N_NIMCALL(NI, Nexttry_61205)(NI H_61207, NI Maxhash_61208) {
+NI Result_62824;
+Result_62824 = 0;
+Result_62824 = (NI32)((NI32)((NI32)(5 * H_61207) + 1) & Maxhash_61208);
+return Result_62824;
 }
-N_NIMCALL(TY55548*, Strtableget_60066)(TY55530* T_60068, TY54011* Name_60069) {
-TY55548* Result_62440;
-NI H_62441;
-Result_62440 = 0;
-H_62441 = 0;
-H_62441 = (NI32)((*Name_60069).H & ((*T_60068).Data->Sup.len-1));
+N_NIMCALL(TY56548*, Strtableget_61066)(TY56530* T_61068, TY55011* Name_61069) {
+TY56548* Result_63440;
+NI H_63441;
+Result_63440 = 0;
+Result_63440 = NIM_NIL;
+H_63441 = 0;
+H_63441 = (NI32)((*Name_61069).H & ((*T_61068).Data->Sup.len-1));
 while (1) {
-Result_62440 = (*T_60068).Data->data[H_62441];
-if (!(Result_62440 == NIM_NIL)) goto LA3;
+Result_63440 = (*T_61068).Data->data[H_63441];
+if (!(Result_63440 == NIM_NIL)) goto LA3;
 goto LA1;
 LA3: ;
-if (!((*(*Result_62440).Name).Sup.Id == (*Name_60069).Sup.Id)) goto LA6;
+if (!((*(*Result_63440).Name).Sup.Id == (*Name_61069).Sup.Id)) goto LA6;
 goto LA1;
 LA6: ;
-H_62441 = Nexttry_60205(H_62441, ((*T_60068).Data->Sup.len-1));
+H_63441 = Nexttry_61205(H_63441, ((*T_61068).Data->Sup.len-1));
 } LA1: ;
-return Result_62440;
+return Result_63440;
 }
-N_NIMCALL(NIM_BOOL, Mustrehash_60201)(NI Length_60203, NI Counter_60204) {
-NIM_BOOL Result_60521;
+N_NIMCALL(NIM_BOOL, Mustrehash_61201)(NI Length_61203, NI Counter_61204) {
+NIM_BOOL Result_61521;
 NIM_BOOL LOC1;
-Result_60521 = 0;
-LOC1 = ((NI32)(Length_60203 * 2) < (NI32)(Counter_60204 * 3));
+Result_61521 = 0;
+LOC1 = ((NI32)(Length_61203 * 2) < (NI32)(Counter_61204 * 3));
 if (LOC1) goto LA2;
-LOC1 = ((NI32)(Length_60203 - Counter_60204) < 4);
+LOC1 = ((NI32)(Length_61203 - Counter_61204) < 4);
 LA2: ;
-Result_60521 = LOC1;
-return Result_60521;
+Result_61521 = LOC1;
+return Result_61521;
 }
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800) {
 memcpy(((NCSTRING) (&(*Dest_18799).data[((*Dest_18799).Sup.len)-0])), ((NCSTRING) ((*Src_18800).data)), ((int) ((NI32)((NI32)((*Src_18800).Sup.len + 1) * 1))));
@@ -441,185 +442,189 @@ Decref_13001(LOC8);
 LA6: ;
 (*Dest_13214) = Src_13215;
 }
-N_NIMCALL(void, Strtablerawinsert_62256)(TY55528** Data_62259, TY55548* N_62260) {
-NI H_62261;
+N_NIMCALL(void, Strtablerawinsert_63256)(TY56528** Data_63259, TY56548* N_63260) {
+NI H_63261;
 NimStringDesc* LOC5;
-H_62261 = 0;
-H_62261 = (NI32)((*(*N_62260).Name).H & ((*Data_62259)->Sup.len-1));
+H_63261 = 0;
+H_63261 = (NI32)((*(*N_63260).Name).H & ((*Data_63259)->Sup.len-1));
 while (1) {
-if (!!(((*Data_62259)->data[H_62261] == NIM_NIL))) goto LA1;
-if (!((*Data_62259)->data[H_62261] == N_62260)) goto LA3;
+if (!!(((*Data_63259)->data[H_63261] == NIM_NIL))) goto LA1;
+if (!((*Data_63259)->data[H_63261] == N_63260)) goto LA3;
 LOC5 = 0;
-LOC5 = rawNewString((*(*N_62260).Name).S->Sup.len + 19);
-appendString(LOC5, ((NimStringDesc*) &TMP195609));
-appendString(LOC5, (*(*N_62260).Name).S);
-Internalerror_48159((*N_62260).Info, LOC5);
+LOC5 = rawNewString((*(*N_63260).Name).S->Sup.len + 19);
+appendString(LOC5, ((NimStringDesc*) &TMP197609));
+appendString(LOC5, (*(*N_63260).Name).S);
+Internalerror_49208((*N_63260).Info, LOC5);
 LA3: ;
-H_62261 = Nexttry_60205(H_62261, ((*Data_62259)->Sup.len-1));
+H_63261 = Nexttry_61205(H_63261, ((*Data_63259)->Sup.len-1));
 } LA1: ;
-asgnRef((void**) &(*Data_62259)->data[H_62261], N_62260);
+asgnRef((void**) &(*Data_63259)->data[H_63261], N_63260);
 }
-N_NIMCALL(void, Strtableenlarge_62293)(TY55530* T_62296) {
-TY55528* N_62297;
-NI I_62328;
-NI HEX3Atmp_62350;
-NI Res_62352;
-TY55528* LOC5;
-N_62297 = 0;
-N_62297 = (TY55528*) newSeq(NTI55528, (NI32)((*T_62296).Data->Sup.len * 2));
-I_62328 = 0;
-HEX3Atmp_62350 = 0;
-HEX3Atmp_62350 = ((*T_62296).Data->Sup.len-1);
-Res_62352 = 0;
-Res_62352 = 0;
+N_NIMCALL(void, Strtableenlarge_63293)(TY56530* T_63296) {
+TY56528* N_63297;
+NI I_63328;
+NI HEX3Atmp_63350;
+NI Res_63352;
+TY56528* LOC5;
+N_63297 = 0;
+N_63297 = NIM_NIL;
+N_63297 = (TY56528*) newSeq(NTI56528, (NI32)((*T_63296).Data->Sup.len * 2));
+I_63328 = 0;
+HEX3Atmp_63350 = 0;
+HEX3Atmp_63350 = ((*T_63296).Data->Sup.len-1);
+Res_63352 = 0;
+Res_63352 = 0;
 while (1) {
-if (!(Res_62352 <= HEX3Atmp_62350)) goto LA1;
-I_62328 = Res_62352;
-if (!!(((*T_62296).Data->data[I_62328] == NIM_NIL))) goto LA3;
-Strtablerawinsert_62256(&N_62297, (*T_62296).Data->data[I_62328]);
+if (!(Res_63352 <= HEX3Atmp_63350)) goto LA1;
+I_63328 = Res_63352;
+if (!!(((*T_63296).Data->data[I_63328] == NIM_NIL))) goto LA3;
+Strtablerawinsert_63256(&N_63297, (*T_63296).Data->data[I_63328]);
 LA3: ;
-Res_62352 += 1;
+Res_63352 += 1;
 } LA1: ;
 LOC5 = 0;
-LOC5 = (*T_62296).Data;
-unsureAsgnRef((void**) &(*T_62296).Data, N_62297);
-N_62297 = LOC5;
+LOC5 = (*T_63296).Data;
+unsureAsgnRef((void**) &(*T_63296).Data, N_63297);
+N_63297 = LOC5;
 }
-N_NIMCALL(void, Strtableadd_60061)(TY55530* T_60064, TY55548* N_60065) {
+N_NIMCALL(void, Strtableadd_61061)(TY56530* T_61064, TY56548* N_61065) {
 NIM_BOOL LOC2;
-LOC2 = Mustrehash_60201((*T_60064).Data->Sup.len, (*T_60064).Counter);
+LOC2 = Mustrehash_61201((*T_61064).Data->Sup.len, (*T_61064).Counter);
 if (!LOC2) goto LA3;
-Strtableenlarge_62293(T_60064);
+Strtableenlarge_63293(T_61064);
 LA3: ;
-Strtablerawinsert_62256(&(*T_60064).Data, N_60065);
-(*T_60064).Counter += 1;
+Strtablerawinsert_63256(&(*T_61064).Data, N_61065);
+(*T_61064).Counter += 1;
 }
-N_NIMCALL(TY55548*, Nextiter_60078)(TY60071* Ti_60081, TY55530* Tab_60082) {
-TY55548* Result_62500;
-Result_62500 = 0;
-Result_62500 = NIM_NIL;
+N_NIMCALL(TY56548*, Nextiter_61078)(TY61071* Ti_61081, TY56530* Tab_61082) {
+TY56548* Result_63500;
+Result_63500 = 0;
+Result_63500 = NIM_NIL;
+Result_63500 = NIM_NIL;
 while (1) {
-if (!((*Ti_60081).H <= ((*Tab_60082).Data->Sup.len-1))) goto LA1;
-Result_62500 = (*Tab_60082).Data->data[(*Ti_60081).H];
-(*Ti_60081).H += 1;
-if (!!((Result_62500 == NIM_NIL))) goto LA3;
+if (!((*Ti_61081).H <= ((*Tab_61082).Data->Sup.len-1))) goto LA1;
+Result_63500 = (*Tab_61082).Data->data[(*Ti_61081).H];
+(*Ti_61081).H += 1;
+if (!!((Result_63500 == NIM_NIL))) goto LA3;
 goto LA1;
 LA3: ;
 } LA1: ;
-return Result_62500;
+return Result_63500;
 }
-N_NIMCALL(TY55548*, Inittabiter_60073)(TY60071* Ti_60076, TY55530* Tab_60077) {
-TY55548* Result_62492;
-Result_62492 = 0;
-(*Ti_60076).H = 0;
-if (!((*Tab_60077).Counter == 0)) goto LA2;
-Result_62492 = NIM_NIL;
+N_NIMCALL(TY56548*, Inittabiter_61073)(TY61071* Ti_61076, TY56530* Tab_61077) {
+TY56548* Result_63492;
+Result_63492 = 0;
+Result_63492 = NIM_NIL;
+(*Ti_61076).H = 0;
+if (!((*Tab_61077).Counter == 0)) goto LA2;
+Result_63492 = NIM_NIL;
 goto LA1;
 LA2: ;
-Result_62492 = Nextiter_60078(Ti_60076, Tab_60077);
+Result_63492 = Nextiter_61078(Ti_61076, Tab_61077);
 LA1: ;
-return Result_62492;
+return Result_63492;
 }
-N_NIMCALL(NI, Iitablerawget_63101)(TY60215 T_63103, NI Key_63104) {
-NI Result_63105;
-NI H_63106;
-Result_63105 = 0;
-H_63106 = 0;
-H_63106 = (NI32)(Key_63104 & (T_63103.Data->Sup.len-1));
+N_NIMCALL(NI, Iitablerawget_64101)(TY61215 T_64103, NI Key_64104) {
+NI Result_64105;
+NI H_64106;
+Result_64105 = 0;
+H_64106 = 0;
+H_64106 = (NI32)(Key_64104 & (T_64103.Data->Sup.len-1));
 while (1) {
-if (!!((T_63103.Data->data[H_63106].Key == (-2147483647 -1)))) goto LA1;
-if (!(T_63103.Data->data[H_63106].Key == Key_63104)) goto LA3;
-Result_63105 = H_63106;
+if (!!((T_64103.Data->data[H_64106].Key == (-2147483647 -1)))) goto LA1;
+if (!(T_64103.Data->data[H_64106].Key == Key_64104)) goto LA3;
+Result_64105 = H_64106;
 goto BeforeRet;
 LA3: ;
-H_63106 = Nexttry_60205(H_63106, (T_63103.Data->Sup.len-1));
+H_64106 = Nexttry_61205(H_64106, (T_64103.Data->Sup.len-1));
 } LA1: ;
-Result_63105 = -1;
+Result_64105 = -1;
 BeforeRet: ;
-return Result_63105;
+return Result_64105;
 }
-N_NIMCALL(void, Iitablerawinsert_63119)(TY60213** Data_63122, NI Key_63123, NI Val_63124) {
-NI H_63125;
-H_63125 = 0;
-H_63125 = (NI32)(Key_63123 & ((*Data_63122)->Sup.len-1));
+N_NIMCALL(void, Iitablerawinsert_64119)(TY61213** Data_64122, NI Key_64123, NI Val_64124) {
+NI H_64125;
+H_64125 = 0;
+H_64125 = (NI32)(Key_64123 & ((*Data_64122)->Sup.len-1));
 while (1) {
-if (!!(((*Data_63122)->data[H_63125].Key == (-2147483647 -1)))) goto LA1;
-H_63125 = Nexttry_60205(H_63125, ((*Data_63122)->Sup.len-1));
+if (!!(((*Data_64122)->data[H_64125].Key == (-2147483647 -1)))) goto LA1;
+H_64125 = Nexttry_61205(H_64125, ((*Data_64122)->Sup.len-1));
 } LA1: ;
-(*Data_63122)->data[H_63125].Key = Key_63123;
-(*Data_63122)->data[H_63125].Val = Val_63124;
+(*Data_64122)->data[H_64125].Key = Key_64123;
+(*Data_64122)->data[H_64125].Val = Val_64124;
 }
-N_NIMCALL(void, Iitableput_60228)(TY60215* T_60231, NI Key_60232, NI Val_60233) {
-NI Index_63138;
+N_NIMCALL(void, Iitableput_61228)(TY61215* T_61231, NI Key_61232, NI Val_61233) {
+NI Index_64138;
 NIM_BOOL LOC5;
-TY60213* N_63153;
-NI I_63184;
-NI HEX3Atmp_63219;
-NI Res_63221;
-NI I_63193;
-NI HEX3Atmp_63222;
-NI Res_63224;
-TY60213* LOC13;
-Index_63138 = 0;
-Index_63138 = Iitablerawget_63101((*T_60231), Key_60232);
-if (!(0 <= Index_63138)) goto LA2;
-(*T_60231).Data->data[Index_63138].Val = Val_60233;
+TY61213* N_64153;
+NI I_64184;
+NI HEX3Atmp_64219;
+NI Res_64221;
+NI I_64193;
+NI HEX3Atmp_64222;
+NI Res_64224;
+TY61213* LOC13;
+N_64153 = 0;
+Index_64138 = 0;
+Index_64138 = Iitablerawget_64101((*T_61231), Key_61232);
+if (!(0 <= Index_64138)) goto LA2;
+(*T_61231).Data->data[Index_64138].Val = Val_61233;
 goto LA1;
 LA2: ;
-LOC5 = Mustrehash_60201((*T_60231).Data->Sup.len, (*T_60231).Counter);
+LOC5 = Mustrehash_61201((*T_61231).Data->Sup.len, (*T_61231).Counter);
 if (!LOC5) goto LA6;
-N_63153 = 0;
-N_63153 = (TY60213*) newSeq(NTI60213, (NI32)((*T_60231).Data->Sup.len * 2));
-I_63184 = 0;
-HEX3Atmp_63219 = 0;
-HEX3Atmp_63219 = (N_63153->Sup.len-1);
-Res_63221 = 0;
-Res_63221 = 0;
+N_64153 = NIM_NIL;
+N_64153 = (TY61213*) newSeq(NTI61213, (NI32)((*T_61231).Data->Sup.len * 2));
+I_64184 = 0;
+HEX3Atmp_64219 = 0;
+HEX3Atmp_64219 = (N_64153->Sup.len-1);
+Res_64221 = 0;
+Res_64221 = 0;
 while (1) {
-if (!(Res_63221 <= HEX3Atmp_63219)) goto LA8;
-I_63184 = Res_63221;
-N_63153->data[I_63184].Key = (-2147483647 -1);
-Res_63221 += 1;
+if (!(Res_64221 <= HEX3Atmp_64219)) goto LA8;
+I_64184 = Res_64221;
+N_64153->data[I_64184].Key = (-2147483647 -1);
+Res_64221 += 1;
 } LA8: ;
-I_63193 = 0;
-HEX3Atmp_63222 = 0;
-HEX3Atmp_63222 = ((*T_60231).Data->Sup.len-1);
-Res_63224 = 0;
-Res_63224 = 0;
+I_64193 = 0;
+HEX3Atmp_64222 = 0;
+HEX3Atmp_64222 = ((*T_61231).Data->Sup.len-1);
+Res_64224 = 0;
+Res_64224 = 0;
 while (1) {
-if (!(Res_63224 <= HEX3Atmp_63222)) goto LA9;
-I_63193 = Res_63224;
-if (!!(((*T_60231).Data->data[I_63193].Key == (-2147483647 -1)))) goto LA11;
-Iitablerawinsert_63119(&N_63153, (*T_60231).Data->data[I_63193].Key, (*T_60231).Data->data[I_63193].Val);
+if (!(Res_64224 <= HEX3Atmp_64222)) goto LA9;
+I_64193 = Res_64224;
+if (!!(((*T_61231).Data->data[I_64193].Key == (-2147483647 -1)))) goto LA11;
+Iitablerawinsert_64119(&N_64153, (*T_61231).Data->data[I_64193].Key, (*T_61231).Data->data[I_64193].Val);
 LA11: ;
-Res_63224 += 1;
+Res_64224 += 1;
 } LA9: ;
 LOC13 = 0;
-LOC13 = (*T_60231).Data;
-unsureAsgnRef((void**) &(*T_60231).Data, N_63153);
-N_63153 = LOC13;
+LOC13 = (*T_61231).Data;
+unsureAsgnRef((void**) &(*T_61231).Data, N_64153);
+N_64153 = LOC13;
 LA6: ;
-Iitablerawinsert_63119(&(*T_60231).Data, Key_60232, Val_60233);
-(*T_60231).Counter += 1;
+Iitablerawinsert_64119(&(*T_61231).Data, Key_61232, Val_61233);
+(*T_61231).Counter += 1;
 LA1: ;
 }
-N_NIMCALL(NI, Idtablerawget_62732)(TY55564 T_62734, NI Key_62735) {
-NI Result_62736;
-NI H_62737;
-Result_62736 = 0;
-H_62737 = 0;
-H_62737 = (NI32)(Key_62735 & (T_62734.Data->Sup.len-1));
+N_NIMCALL(NI, Idtablerawget_63732)(TY56564 T_63734, NI Key_63735) {
+NI Result_63736;
+NI H_63737;
+Result_63736 = 0;
+H_63737 = 0;
+H_63737 = (NI32)(Key_63735 & (T_63734.Data->Sup.len-1));
 while (1) {
-if (!!((T_62734.Data->data[H_62737].Key == NIM_NIL))) goto LA1;
-if (!((*T_62734.Data->data[H_62737].Key).Id == Key_62735)) goto LA3;
-Result_62736 = H_62737;
+if (!!((T_63734.Data->data[H_63737].Key == NIM_NIL))) goto LA1;
+if (!((*T_63734.Data->data[H_63737].Key).Id == Key_63735)) goto LA3;
+Result_63736 = H_63737;
 goto BeforeRet;
 LA3: ;
-H_62737 = Nexttry_60205(H_62737, (T_62734.Data->Sup.len-1));
+H_63737 = Nexttry_61205(H_63737, (T_63734.Data->Sup.len-1));
 } LA1: ;
-Result_62736 = -1;
+Result_63736 = -1;
 BeforeRet: ;
-return Result_62736;
+return Result_63736;
 }
 static N_INLINE(void, asgnRefNoCycle)(void** Dest_13218, void* Src_13219) {
 TY10802* C_13220;
@@ -641,476 +646,490 @@ LA10: ;
 LA6: ;
 (*Dest_13218) = Src_13219;
 }
-N_NIMCALL(void, Idtablerawinsert_62784)(TY55562** Data_62787, TY54005* Key_62788, TNimObject* Val_62789) {
-NI H_62790;
-H_62790 = 0;
-H_62790 = (NI32)((*Key_62788).Id & ((*Data_62787)->Sup.len-1));
+N_NIMCALL(void, Idtablerawinsert_63784)(TY56562** Data_63787, TY55005* Key_63788, TNimObject* Val_63789) {
+NI H_63790;
+H_63790 = 0;
+H_63790 = (NI32)((*Key_63788).Id & ((*Data_63787)->Sup.len-1));
 while (1) {
-if (!!(((*Data_62787)->data[H_62790].Key == NIM_NIL))) goto LA1;
-H_62790 = Nexttry_60205(H_62790, ((*Data_62787)->Sup.len-1));
+if (!!(((*Data_63787)->data[H_63790].Key == NIM_NIL))) goto LA1;
+H_63790 = Nexttry_61205(H_63790, ((*Data_63787)->Sup.len-1));
 } LA1: ;
-asgnRefNoCycle((void**) &(*Data_62787)->data[H_62790].Key, Key_62788);
-asgnRefNoCycle((void**) &(*Data_62787)->data[H_62790].Val, Val_62789);
+asgnRefNoCycle((void**) &(*Data_63787)->data[H_63790].Key, Key_63788);
+asgnRefNoCycle((void**) &(*Data_63787)->data[H_63790].Val, Val_63789);
 }
-N_NIMCALL(void, Idtableput_60166)(TY55564* T_60169, TY54005* Key_60170, TNimObject* Val_60171) {
-NI Index_62821;
-TY55562* N_62822;
+N_NIMCALL(void, Idtableput_61166)(TY56564* T_61169, TY55005* Key_61170, TNimObject* Val_61171) {
+NI Index_63821;
+TY56562* N_63822;
 NIM_BOOL LOC5;
-NI I_62876;
-NI HEX3Atmp_62911;
-NI Res_62913;
-TY55562* LOC12;
-Index_62821 = 0;
-N_62822 = 0;
-Index_62821 = Idtablerawget_62732((*T_60169), (*Key_60170).Id);
-if (!(0 <= Index_62821)) goto LA2;
-asgnRefNoCycle((void**) &(*T_60169).Data->data[Index_62821].Val, Val_60171);
+NI I_63876;
+NI HEX3Atmp_63911;
+NI Res_63913;
+TY56562* LOC12;
+N_63822 = 0;
+Index_63821 = 0;
+N_63822 = NIM_NIL;
+Index_63821 = Idtablerawget_63732((*T_61169), (*Key_61170).Id);
+if (!(0 <= Index_63821)) goto LA2;
+asgnRefNoCycle((void**) &(*T_61169).Data->data[Index_63821].Val, Val_61171);
 goto LA1;
 LA2: ;
-LOC5 = Mustrehash_60201((*T_60169).Data->Sup.len, (*T_60169).Counter);
+LOC5 = Mustrehash_61201((*T_61169).Data->Sup.len, (*T_61169).Counter);
 if (!LOC5) goto LA6;
-N_62822 = (TY55562*) newSeq(NTI55562, (NI32)((*T_60169).Data->Sup.len * 2));
-I_62876 = 0;
-HEX3Atmp_62911 = 0;
-HEX3Atmp_62911 = ((*T_60169).Data->Sup.len-1);
-Res_62913 = 0;
-Res_62913 = 0;
+N_63822 = (TY56562*) newSeq(NTI56562, (NI32)((*T_61169).Data->Sup.len * 2));
+I_63876 = 0;
+HEX3Atmp_63911 = 0;
+HEX3Atmp_63911 = ((*T_61169).Data->Sup.len-1);
+Res_63913 = 0;
+Res_63913 = 0;
 while (1) {
-if (!(Res_62913 <= HEX3Atmp_62911)) goto LA8;
-I_62876 = Res_62913;
-if (!!(((*T_60169).Data->data[I_62876].Key == NIM_NIL))) goto LA10;
-Idtablerawinsert_62784(&N_62822, (*T_60169).Data->data[I_62876].Key, (*T_60169).Data->data[I_62876].Val);
+if (!(Res_63913 <= HEX3Atmp_63911)) goto LA8;
+I_63876 = Res_63913;
+if (!!(((*T_61169).Data->data[I_63876].Key == NIM_NIL))) goto LA10;
+Idtablerawinsert_63784(&N_63822, (*T_61169).Data->data[I_63876].Key, (*T_61169).Data->data[I_63876].Val);
 LA10: ;
-Res_62913 += 1;
+Res_63913 += 1;
 } LA8: ;
 LOC12 = 0;
-LOC12 = (*T_60169).Data;
-unsureAsgnRef((void**) &(*T_60169).Data, N_62822);
-N_62822 = LOC12;
+LOC12 = (*T_61169).Data;
+unsureAsgnRef((void**) &(*T_61169).Data, N_63822);
+N_63822 = LOC12;
 LA6: ;
-Idtablerawinsert_62784(&(*T_60169).Data, Key_60170, Val_60171);
-(*T_60169).Counter += 1;
+Idtablerawinsert_63784(&(*T_61169).Data, Key_61170, Val_61171);
+(*T_61169).Counter += 1;
 LA1: ;
 }
-N_NIMCALL(TNimObject*, Idtableget_60162)(TY55564 T_60164, NI Key_60165) {
-TNimObject* Result_62780;
-NI Index_62781;
-Result_62780 = 0;
-Index_62781 = 0;
-Index_62781 = Idtablerawget_62732(T_60164, Key_60165);
-if (!(0 <= Index_62781)) goto LA2;
-Result_62780 = T_60164.Data->data[Index_62781].Val;
+N_NIMCALL(TNimObject*, Idtableget_61162)(TY56564 T_61164, NI Key_61165) {
+TNimObject* Result_63780;
+NI Index_63781;
+Result_63780 = 0;
+Result_63780 = NIM_NIL;
+Index_63781 = 0;
+Index_63781 = Idtablerawget_63732(T_61164, Key_61165);
+if (!(0 <= Index_63781)) goto LA2;
+Result_63780 = T_61164.Data->data[Index_63781].Val;
 goto LA1;
 LA2: ;
-Result_62780 = NIM_NIL;
+Result_63780 = NIM_NIL;
 LA1: ;
-return Result_62780;
+return Result_63780;
 }
-N_NIMCALL(NI, Iitableget_60224)(TY60215 T_60226, NI Key_60227) {
-NI Result_63115;
-NI Index_63116;
-Result_63115 = 0;
-Index_63116 = 0;
-Index_63116 = Iitablerawget_63101(T_60226, Key_60227);
-if (!(0 <= Index_63116)) goto LA2;
-Result_63115 = T_60226.Data->data[Index_63116].Val;
+N_NIMCALL(NI, Iitableget_61224)(TY61215 T_61226, NI Key_61227) {
+NI Result_64115;
+NI Index_64116;
+Result_64115 = 0;
+Index_64116 = 0;
+Index_64116 = Iitablerawget_64101(T_61226, Key_61227);
+if (!(0 <= Index_64116)) goto LA2;
+Result_64115 = T_61226.Data->data[Index_64116].Val;
 goto LA1;
 LA2: ;
-Result_63115 = (-2147483647 -1);
+Result_64115 = (-2147483647 -1);
 LA1: ;
-return Result_63115;
+return Result_64115;
 }
-N_NIMCALL(void, Initsymtab_60103)(TY60099* Tab_60106) {
-(*Tab_60106).Tos = 0;
-unsureAsgnRef((void**) &(*Tab_60106).Stack, (TY60101*) newSeq(NTI60101, 0));
+N_NIMCALL(void, Initsymtab_61103)(TY61099* Tab_61106) {
+(*Tab_61106).Tos = 0;
+unsureAsgnRef((void**) &(*Tab_61106).Stack, (TY61101*) newSeq(NTI61101, 0));
 }
-N_NIMCALL(TY55548*, Symtabget_60111)(TY60099 Tab_60113, TY54011* S_60114) {
-TY55548* Result_62543;
-NI I_62566;
-NI HEX3Atmp_62578;
-NI Res_62580;
-Result_62543 = 0;
-I_62566 = 0;
-HEX3Atmp_62578 = 0;
-HEX3Atmp_62578 = (NI32)(((NI) (Tab_60113.Tos)) - 1);
-Res_62580 = 0;
-Res_62580 = HEX3Atmp_62578;
-while (1) {
-if (!(0 <= Res_62580)) goto LA1;
-I_62566 = Res_62580;
-Result_62543 = Strtableget_60066(&Tab_60113.Stack->data[I_62566], S_60114);
-if (!!((Result_62543 == NIM_NIL))) goto LA3;
-goto BeforeRet;
-LA3: ;
-Res_62580 -= 1;
-} LA1: ;
-Result_62543 = NIM_NIL;
-BeforeRet: ;
-return Result_62543;
-}
-N_NIMCALL(TY55548*, Getmodule_60198)(TY55548* S_60200) {
-TY55548* Result_60409;
-NIM_BOOL LOC2;
-Result_60409 = 0;
-Result_60409 = S_60200;
-while (1) {
-LOC2 = !((Result_60409 == NIM_NIL));
-if (!(LOC2)) goto LA3;
-LOC2 = !(((*Result_60409).Kind == ((NU8) 6)));
-LA3: ;
-if (!LOC2) goto LA1;
-Result_60409 = (*Result_60409).Owner;
-} LA1: ;
-return Result_60409;
-}
-N_NIMCALL(TY55548*, Nextidentiter_60093)(TY60084* Ti_60096, TY55530* Tab_60097) {
-TY55548* Result_62469;
-NI H_62470;
-NI Start_62471;
-Result_62469 = 0;
-H_62470 = 0;
-Start_62471 = 0;
-H_62470 = (NI32)((*Ti_60096).H & ((*Tab_60097).Data->Sup.len-1));
-Start_62471 = H_62470;
-Result_62469 = (*Tab_60097).Data->data[H_62470];
-while (1) {
-if (!!((Result_62469 == NIM_NIL))) goto LA1;
-if (!((*(*Result_62469).Name).Sup.Id == (*(*Ti_60096).Name).Sup.Id)) goto LA3;
-goto LA1;
-LA3: ;
-H_62470 = Nexttry_60205(H_62470, ((*Tab_60097).Data->Sup.len-1));
-if (!(H_62470 == Start_62471)) goto LA6;
-Result_62469 = NIM_NIL;
-goto LA1;
-LA6: ;
-Result_62469 = (*Tab_60097).Data->data[H_62470];
-} LA1: ;
-(*Ti_60096).H = Nexttry_60205(H_62470, ((*Tab_60097).Data->Sup.len-1));
-return Result_62469;
-}
-N_NIMCALL(TY55548*, Initidentiter_60087)(TY60084* Ti_60090, TY55530* Tab_60091, TY54011* S_60092) {
-TY55548* Result_62461;
-Result_62461 = 0;
-(*Ti_60090).H = (*S_60092).H;
-unsureAsgnRef((void**) &(*Ti_60090).Name, S_60092);
-if (!((*Tab_60091).Counter == 0)) goto LA2;
-Result_62461 = NIM_NIL;
+N_NIMCALL(TNimObject*, Idtableget_61158)(TY56564 T_61160, TY55005* Key_61161) {
+TNimObject* Result_63772;
+NI Index_63773;
+Result_63772 = 0;
+Result_63772 = NIM_NIL;
+Index_63773 = 0;
+Index_63773 = Idtablerawget_63732(T_61160, (*Key_61161).Id);
+if (!(0 <= Index_63773)) goto LA2;
+Result_63772 = T_61160.Data->data[Index_63773].Val;
 goto LA1;
 LA2: ;
-Result_62461 = Nextidentiter_60093(Ti_60090, Tab_60091);
+Result_63772 = NIM_NIL;
 LA1: ;
-return Result_62461;
+return Result_63772;
 }
-N_NIMCALL(NI, Idnodetablerawget_62917)(TY55570 T_62919, TY54005* Key_62920) {
-NI Result_62921;
-NI H_62922;
-Result_62921 = 0;
-H_62922 = 0;
-H_62922 = (NI32)((*Key_62920).Id & (T_62919.Data->Sup.len-1));
-while (1) {
-if (!!((T_62919.Data->data[H_62922].Key == NIM_NIL))) goto LA1;
-if (!((*T_62919.Data->data[H_62922].Key).Id == (*Key_62920).Id)) goto LA3;
-Result_62921 = H_62922;
-goto BeforeRet;
-LA3: ;
-H_62922 = Nexttry_60205(H_62922, (T_62919.Data->Sup.len-1));
-} LA1: ;
-Result_62921 = -1;
-BeforeRet: ;
-return Result_62921;
-}
-N_NIMCALL(TY55526*, Idnodetableget_60176)(TY55570 T_60178, TY54005* Key_60179) {
-TY55526* Result_62940;
-NI Index_62941;
-Result_62940 = 0;
-Index_62941 = 0;
-Index_62941 = Idnodetablerawget_62917(T_60178, Key_60179);
-if (!(0 <= Index_62941)) goto LA2;
-Result_62940 = T_60178.Data->data[Index_62941].Val;
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806) {
+NI Result_57897;
+Result_57897 = 0;
+if (!(*N_56806).KindU.S6.Sons == 0) goto LA2;
+Result_57897 = 0;
 goto LA1;
 LA2: ;
-Result_62940 = NIM_NIL;
+Result_57897 = (*N_56806).KindU.S6.Sons->Sup.len;
 LA1: ;
-return Result_62940;
+return Result_57897;
 }
-N_NIMCALL(void, Idnodetablerawinsert_62944)(TY55568** Data_62947, TY54005* Key_62948, TY55526* Val_62949) {
-NI H_62950;
-H_62950 = 0;
-H_62950 = (NI32)((*Key_62948).Id & ((*Data_62947)->Sup.len-1));
-while (1) {
-if (!!(((*Data_62947)->data[H_62950].Key == NIM_NIL))) goto LA1;
-H_62950 = Nexttry_60205(H_62950, ((*Data_62947)->Sup.len-1));
-} LA1: ;
-asgnRefNoCycle((void**) &(*Data_62947)->data[H_62950].Key, Key_62948);
-asgnRefNoCycle((void**) &(*Data_62947)->data[H_62950].Val, Val_62949);
-}
-N_NIMCALL(void, Idnodetableput_60180)(TY55570* T_60183, TY54005* Key_60184, TY55526* Val_60185) {
-NI Index_62981;
-NIM_BOOL LOC5;
-TY55568* N_63005;
-NI I_63036;
-NI HEX3Atmp_63071;
-NI Res_63073;
-TY55568* LOC12;
-Index_62981 = 0;
-Index_62981 = Idnodetablerawget_62917((*T_60183), Key_60184);
-if (!(0 <= Index_62981)) goto LA2;
-asgnRefNoCycle((void**) &(*T_60183).Data->data[Index_62981].Val, Val_60185);
-goto LA1;
-LA2: ;
-LOC5 = Mustrehash_60201((*T_60183).Data->Sup.len, (*T_60183).Counter);
-if (!LOC5) goto LA6;
-N_63005 = 0;
-N_63005 = (TY55568*) newSeq(NTI55568, (NI32)((*T_60183).Data->Sup.len * 2));
-I_63036 = 0;
-HEX3Atmp_63071 = 0;
-HEX3Atmp_63071 = ((*T_60183).Data->Sup.len-1);
-Res_63073 = 0;
-Res_63073 = 0;
-while (1) {
-if (!(Res_63073 <= HEX3Atmp_63071)) goto LA8;
-I_63036 = Res_63073;
-if (!!(((*T_60183).Data->data[I_63036].Key == NIM_NIL))) goto LA10;
-Idnodetablerawinsert_62944(&N_63005, (*T_60183).Data->data[I_63036].Key, (*T_60183).Data->data[I_63036].Val);
-LA10: ;
-Res_63073 += 1;
-} LA8: ;
-LOC12 = 0;
-LOC12 = (*T_60183).Data;
-unsureAsgnRef((void**) &(*T_60183).Data, N_63005);
-N_63005 = LOC12;
-LA6: ;
-Idnodetablerawinsert_62944(&(*T_60183).Data, Key_60184, Val_60185);
-(*T_60183).Counter += 1;
-LA1: ;
-}
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806) {
-NI Result_56880;
-Result_56880 = 0;
-if (!(*N_55806).KindU.S6.Sons == 0) goto LA2;
-Result_56880 = 0;
-goto LA1;
-LA2: ;
-Result_56880 = (*N_55806).KindU.S6.Sons->Sup.len;
-LA1: ;
-return Result_56880;
-}
-N_NIMCALL(TY55548*, Getsymfromlist_60189)(TY55526* List_60191, TY54011* Ident_60192, NI Start_60193) {
-TY55548* Result_60453;
-NI I_60462;
-NI HEX3Atmp_60510;
+N_NIMCALL(TY56548*, Getsymfromlist_61189)(TY56526* List_61191, TY55011* Ident_61192, NI Start_61193) {
+TY56548* Result_61453;
+NI I_61462;
+NI HEX3Atmp_61510;
 NI LOC1;
-NI Res_60512;
-Result_60453 = 0;
-I_60462 = 0;
-HEX3Atmp_60510 = 0;
-LOC1 = Sonslen_55804(List_60191);
-HEX3Atmp_60510 = (NI32)(LOC1 - 1);
-Res_60512 = 0;
-Res_60512 = Start_60193;
+NI Res_61512;
+Result_61453 = 0;
+Result_61453 = NIM_NIL;
+I_61462 = 0;
+HEX3Atmp_61510 = 0;
+LOC1 = Sonslen_56804(List_61191);
+HEX3Atmp_61510 = (NI32)(LOC1 - 1);
+Res_61512 = 0;
+Res_61512 = Start_61193;
 while (1) {
-if (!(Res_60512 <= HEX3Atmp_60510)) goto LA2;
-I_60462 = Res_60512;
-if (!!(((*(*List_60191).KindU.S6.Sons->data[I_60462]).Kind == ((NU8) 3)))) goto LA4;
-Internalerror_48159((*List_60191).Info, ((NimStringDesc*) &TMP196061));
+if (!(Res_61512 <= HEX3Atmp_61510)) goto LA2;
+I_61462 = Res_61512;
+if (!!(((*(*List_61191).KindU.S6.Sons->data[I_61462]).Kind == ((NU8) 3)))) goto LA4;
+Internalerror_49208((*List_61191).Info, ((NimStringDesc*) &TMP198049));
 LA4: ;
-Result_60453 = (*(*List_60191).KindU.S6.Sons->data[I_60462]).KindU.S4.Sym;
-if (!((*(*Result_60453).Name).Sup.Id == (*Ident_60192).Sup.Id)) goto LA7;
+Result_61453 = (*(*List_61191).KindU.S6.Sons->data[I_61462]).KindU.S4.Sym;
+if (!((*(*Result_61453).Name).Sup.Id == (*Ident_61192).Sup.Id)) goto LA7;
 goto BeforeRet;
 LA7: ;
-Res_60512 += 1;
+Res_61512 += 1;
 } LA2: ;
-Result_60453 = NIM_NIL;
+Result_61453 = NIM_NIL;
 BeforeRet: ;
-return Result_60453;
+return Result_61453;
 }
-N_NIMCALL(TNimObject*, Idtableget_60158)(TY55564 T_60160, TY54005* Key_60161) {
-TNimObject* Result_62772;
-NI Index_62773;
-Result_62772 = 0;
-Index_62773 = 0;
-Index_62773 = Idtablerawget_62732(T_60160, (*Key_60161).Id);
-if (!(0 <= Index_62773)) goto LA2;
-Result_62772 = T_60160.Data->data[Index_62773].Val;
-goto LA1;
-LA2: ;
-Result_62772 = NIM_NIL;
-LA1: ;
-return Result_62772;
-}
-N_NIMCALL(void, Openscope_60141)(TY60099* Tab_60144) {
-if (!((*Tab_60144).Stack->Sup.len <= ((NI) ((*Tab_60144).Tos)))) goto LA2;
-(*Tab_60144).Stack = (TY60101*) setLengthSeq(&((*Tab_60144).Stack)->Sup, sizeof(TY55530), (NI32)(((NI) ((*Tab_60144).Tos)) + 1));
-LA2: ;
-Initstrtable_55747(&(*Tab_60144).Stack->data[(*Tab_60144).Tos]);
-(*Tab_60144).Tos += 1;
-}
-N_NIMCALL(NIM_BOOL, Strtableincl_62381)(TY55530* T_62384, TY55548* N_62385) {
-NIM_BOOL Result_62386;
-NI H_62387;
-TY55548* It_62388;
-NIM_BOOL LOC9;
-Result_62386 = 0;
-H_62387 = 0;
-It_62388 = 0;
-H_62387 = (NI32)((*(*N_62385).Name).H & ((*T_62384).Data->Sup.len-1));
+N_NIMCALL(TY56548*, Symtabget_61111)(TY61099 Tab_61113, TY55011* S_61114) {
+TY56548* Result_63543;
+NI I_63566;
+NI HEX3Atmp_63578;
+NI Res_63580;
+Result_63543 = 0;
+Result_63543 = NIM_NIL;
+I_63566 = 0;
+HEX3Atmp_63578 = 0;
+HEX3Atmp_63578 = (NI32)(((NI) (Tab_61113.Tos)) - 1);
+Res_63580 = 0;
+Res_63580 = HEX3Atmp_63578;
 while (1) {
-It_62388 = (*T_62384).Data->data[H_62387];
-if (!(It_62388 == NIM_NIL)) goto LA3;
+if (!(0 <= Res_63580)) goto LA1;
+I_63566 = Res_63580;
+Result_63543 = Strtableget_61066(&Tab_61113.Stack->data[I_63566], S_61114);
+if (!!((Result_63543 == NIM_NIL))) goto LA3;
+goto BeforeRet;
+LA3: ;
+Res_63580 -= 1;
+} LA1: ;
+Result_63543 = NIM_NIL;
+BeforeRet: ;
+return Result_63543;
+}
+N_NIMCALL(TY56548*, Getmodule_61198)(TY56548* S_61200) {
+TY56548* Result_61409;
+NIM_BOOL LOC2;
+Result_61409 = 0;
+Result_61409 = NIM_NIL;
+Result_61409 = S_61200;
+while (1) {
+LOC2 = !((Result_61409 == NIM_NIL));
+if (!(LOC2)) goto LA3;
+LOC2 = !(((*Result_61409).Kind == ((NU8) 6)));
+LA3: ;
+if (!LOC2) goto LA1;
+Result_61409 = (*Result_61409).Owner;
+} LA1: ;
+return Result_61409;
+}
+N_NIMCALL(TY56548*, Nextidentiter_61093)(TY61084* Ti_61096, TY56530* Tab_61097) {
+TY56548* Result_63469;
+NI H_63470;
+NI Start_63471;
+Result_63469 = 0;
+Result_63469 = NIM_NIL;
+H_63470 = 0;
+Start_63471 = 0;
+H_63470 = (NI32)((*Ti_61096).H & ((*Tab_61097).Data->Sup.len-1));
+Start_63471 = H_63470;
+Result_63469 = (*Tab_61097).Data->data[H_63470];
+while (1) {
+if (!!((Result_63469 == NIM_NIL))) goto LA1;
+if (!((*(*Result_63469).Name).Sup.Id == (*(*Ti_61096).Name).Sup.Id)) goto LA3;
 goto LA1;
 LA3: ;
-if (!((*(*It_62388).Name).Sup.Id == (*(*N_62385).Name).Sup.Id)) goto LA6;
-asgnRef((void**) &(*T_62384).Data->data[H_62387], N_62385);
-Result_62386 = NIM_TRUE;
+H_63470 = Nexttry_61205(H_63470, ((*Tab_61097).Data->Sup.len-1));
+if (!(H_63470 == Start_63471)) goto LA6;
+Result_63469 = NIM_NIL;
+goto LA1;
+LA6: ;
+Result_63469 = (*Tab_61097).Data->data[H_63470];
+} LA1: ;
+(*Ti_61096).H = Nexttry_61205(H_63470, ((*Tab_61097).Data->Sup.len-1));
+return Result_63469;
+}
+N_NIMCALL(TY56548*, Initidentiter_61087)(TY61084* Ti_61090, TY56530* Tab_61091, TY55011* S_61092) {
+TY56548* Result_63461;
+Result_63461 = 0;
+Result_63461 = NIM_NIL;
+(*Ti_61090).H = (*S_61092).H;
+unsureAsgnRef((void**) &(*Ti_61090).Name, S_61092);
+if (!((*Tab_61091).Counter == 0)) goto LA2;
+Result_63461 = NIM_NIL;
+goto LA1;
+LA2: ;
+Result_63461 = Nextidentiter_61093(Ti_61090, Tab_61091);
+LA1: ;
+return Result_63461;
+}
+N_NIMCALL(NI, Idnodetablerawget_63917)(TY56570 T_63919, TY55005* Key_63920) {
+NI Result_63921;
+NI H_63922;
+Result_63921 = 0;
+H_63922 = 0;
+H_63922 = (NI32)((*Key_63920).Id & (T_63919.Data->Sup.len-1));
+while (1) {
+if (!!((T_63919.Data->data[H_63922].Key == NIM_NIL))) goto LA1;
+if (!((*T_63919.Data->data[H_63922].Key).Id == (*Key_63920).Id)) goto LA3;
+Result_63921 = H_63922;
+goto BeforeRet;
+LA3: ;
+H_63922 = Nexttry_61205(H_63922, (T_63919.Data->Sup.len-1));
+} LA1: ;
+Result_63921 = -1;
+BeforeRet: ;
+return Result_63921;
+}
+N_NIMCALL(TY56526*, Idnodetableget_61176)(TY56570 T_61178, TY55005* Key_61179) {
+TY56526* Result_63940;
+NI Index_63941;
+Result_63940 = 0;
+Result_63940 = NIM_NIL;
+Index_63941 = 0;
+Index_63941 = Idnodetablerawget_63917(T_61178, Key_61179);
+if (!(0 <= Index_63941)) goto LA2;
+Result_63940 = T_61178.Data->data[Index_63941].Val;
+goto LA1;
+LA2: ;
+Result_63940 = NIM_NIL;
+LA1: ;
+return Result_63940;
+}
+N_NIMCALL(void, Idnodetablerawinsert_63944)(TY56568** Data_63947, TY55005* Key_63948, TY56526* Val_63949) {
+NI H_63950;
+H_63950 = 0;
+H_63950 = (NI32)((*Key_63948).Id & ((*Data_63947)->Sup.len-1));
+while (1) {
+if (!!(((*Data_63947)->data[H_63950].Key == NIM_NIL))) goto LA1;
+H_63950 = Nexttry_61205(H_63950, ((*Data_63947)->Sup.len-1));
+} LA1: ;
+asgnRefNoCycle((void**) &(*Data_63947)->data[H_63950].Key, Key_63948);
+asgnRefNoCycle((void**) &(*Data_63947)->data[H_63950].Val, Val_63949);
+}
+N_NIMCALL(void, Idnodetableput_61180)(TY56570* T_61183, TY55005* Key_61184, TY56526* Val_61185) {
+NI Index_63981;
+NIM_BOOL LOC5;
+TY56568* N_64005;
+NI I_64036;
+NI HEX3Atmp_64071;
+NI Res_64073;
+TY56568* LOC12;
+N_64005 = 0;
+Index_63981 = 0;
+Index_63981 = Idnodetablerawget_63917((*T_61183), Key_61184);
+if (!(0 <= Index_63981)) goto LA2;
+asgnRefNoCycle((void**) &(*T_61183).Data->data[Index_63981].Val, Val_61185);
+goto LA1;
+LA2: ;
+LOC5 = Mustrehash_61201((*T_61183).Data->Sup.len, (*T_61183).Counter);
+if (!LOC5) goto LA6;
+N_64005 = NIM_NIL;
+N_64005 = (TY56568*) newSeq(NTI56568, (NI32)((*T_61183).Data->Sup.len * 2));
+I_64036 = 0;
+HEX3Atmp_64071 = 0;
+HEX3Atmp_64071 = ((*T_61183).Data->Sup.len-1);
+Res_64073 = 0;
+Res_64073 = 0;
+while (1) {
+if (!(Res_64073 <= HEX3Atmp_64071)) goto LA8;
+I_64036 = Res_64073;
+if (!!(((*T_61183).Data->data[I_64036].Key == NIM_NIL))) goto LA10;
+Idnodetablerawinsert_63944(&N_64005, (*T_61183).Data->data[I_64036].Key, (*T_61183).Data->data[I_64036].Val);
+LA10: ;
+Res_64073 += 1;
+} LA8: ;
+LOC12 = 0;
+LOC12 = (*T_61183).Data;
+unsureAsgnRef((void**) &(*T_61183).Data, N_64005);
+N_64005 = LOC12;
+LA6: ;
+Idnodetablerawinsert_63944(&(*T_61183).Data, Key_61184, Val_61185);
+(*T_61183).Counter += 1;
+LA1: ;
+}
+N_NIMCALL(void, Openscope_61141)(TY61099* Tab_61144) {
+if (!((*Tab_61144).Stack->Sup.len <= ((NI) ((*Tab_61144).Tos)))) goto LA2;
+(*Tab_61144).Stack = (TY61101*) setLengthSeq(&((*Tab_61144).Stack)->Sup, sizeof(TY56530), (NI32)(((NI) ((*Tab_61144).Tos)) + 1));
+LA2: ;
+Initstrtable_56747(&(*Tab_61144).Stack->data[(*Tab_61144).Tos]);
+(*Tab_61144).Tos += 1;
+}
+N_NIMCALL(NIM_BOOL, Strtableincl_63381)(TY56530* T_63384, TY56548* N_63385) {
+NIM_BOOL Result_63386;
+NI H_63387;
+TY56548* It_63388;
+NIM_BOOL LOC9;
+It_63388 = 0;
+Result_63386 = 0;
+H_63387 = 0;
+It_63388 = NIM_NIL;
+H_63387 = (NI32)((*(*N_63385).Name).H & ((*T_63384).Data->Sup.len-1));
+while (1) {
+It_63388 = (*T_63384).Data->data[H_63387];
+if (!(It_63388 == NIM_NIL)) goto LA3;
+goto LA1;
+LA3: ;
+if (!((*(*It_63388).Name).Sup.Id == (*(*N_63385).Name).Sup.Id)) goto LA6;
+asgnRef((void**) &(*T_63384).Data->data[H_63387], N_63385);
+Result_63386 = NIM_TRUE;
 goto BeforeRet;
 LA6: ;
-H_62387 = Nexttry_60205(H_62387, ((*T_62384).Data->Sup.len-1));
+H_63387 = Nexttry_61205(H_63387, ((*T_63384).Data->Sup.len-1));
 } LA1: ;
-LOC9 = Mustrehash_60201((*T_62384).Data->Sup.len, (*T_62384).Counter);
+LOC9 = Mustrehash_61201((*T_63384).Data->Sup.len, (*T_63384).Counter);
 if (!LOC9) goto LA10;
-Strtableenlarge_62293(T_62384);
-Strtablerawinsert_62256(&(*T_62384).Data, N_62385);
+Strtableenlarge_63293(T_63384);
+Strtablerawinsert_63256(&(*T_63384).Data, N_63385);
 goto LA8;
 LA10: ;
-asgnRef((void**) &(*T_62384).Data->data[H_62387], N_62385);
+asgnRef((void**) &(*T_63384).Data->data[H_63387], N_63385);
 LA8: ;
-(*T_62384).Counter += 1;
-Result_62386 = NIM_FALSE;
+(*T_63384).Counter += 1;
+Result_63386 = NIM_FALSE;
 BeforeRet: ;
-return Result_62386;
+return Result_63386;
 }
-N_NIMCALL(NU8, Symtabadduniqueat_60135)(TY60099* Tab_60138, TY55548* E_60139, NI At_60140) {
-NU8 Result_62600;
+N_NIMCALL(NU8, Symtabadduniqueat_61135)(TY61099* Tab_61138, TY56548* E_61139, NI At_61140) {
+NU8 Result_63600;
 NIM_BOOL LOC2;
-Result_62600 = 0;
-LOC2 = Strtableincl_62381(&(*Tab_60138).Stack->data[At_60140], E_60139);
+Result_63600 = 0;
+LOC2 = Strtableincl_63381(&(*Tab_61138).Stack->data[At_61140], E_61139);
 if (!LOC2) goto LA3;
-Result_62600 = ((NU8) 0);
+Result_63600 = ((NU8) 0);
 goto LA1;
 LA3: ;
-Result_62600 = ((NU8) 1);
+Result_63600 = ((NU8) 1);
 LA1: ;
-return Result_62600;
+return Result_63600;
 }
-N_NIMCALL(NU8, Symtabaddunique_60130)(TY60099* Tab_60133, TY55548* E_60134) {
-NU8 Result_62607;
-Result_62607 = 0;
-Result_62607 = Symtabadduniqueat_60135(Tab_60133, E_60134, ((NI) ((NI32)(((NI) ((*Tab_60133).Tos)) - 1))));
-return Result_62607;
+N_NIMCALL(NU8, Symtabaddunique_61130)(TY61099* Tab_61133, TY56548* E_61134) {
+NU8 Result_63607;
+Result_63607 = 0;
+Result_63607 = Symtabadduniqueat_61135(Tab_61133, E_61134, ((NI) ((NI32)(((NI) ((*Tab_61133).Tos)) - 1))));
+return Result_63607;
 }
-N_NIMCALL(void, Rawclosescope_60145)(TY60099* Tab_60148) {
-(*Tab_60148).Tos -= 1;
+N_NIMCALL(void, Rawclosescope_61145)(TY61099* Tab_61148) {
+(*Tab_61148).Tos -= 1;
 }
-N_NIMCALL(void, Symtabaddat_60124)(TY60099* Tab_60127, TY55548* E_60128, NI At_60129) {
-Strtableadd_60061(&(*Tab_60127).Stack->data[At_60129], E_60128);
+N_NIMCALL(void, Symtabaddat_61124)(TY61099* Tab_61127, TY56548* E_61128, NI At_61129) {
+Strtableadd_61061(&(*Tab_61127).Stack->data[At_61129], E_61128);
 }
-N_NIMCALL(TY55548*, Symtablocalget_60115)(TY60099 Tab_60117, TY54011* S_60118) {
-TY55548* Result_62538;
-Result_62538 = 0;
-Result_62538 = Strtableget_60066(&Tab_60117.Stack->data[(NI32)(((NI) (Tab_60117.Tos)) - 1)], S_60118);
-return Result_62538;
+N_NIMCALL(TY56548*, Symtablocalget_61115)(TY61099 Tab_61117, TY55011* S_61118) {
+TY56548* Result_63538;
+Result_63538 = 0;
+Result_63538 = NIM_NIL;
+Result_63538 = Strtableget_61066(&Tab_61117.Stack->data[(NI32)(((NI) (Tab_61117.Tos)) - 1)], S_61118);
+return Result_63538;
 }
-N_NIMCALL(void, Symtabadd_60119)(TY60099* Tab_60122, TY55548* E_60123) {
-Strtableadd_60061(&(*Tab_60122).Stack->data[(NI32)(((NI) ((*Tab_60122).Tos)) - 1)], E_60123);
+N_NIMCALL(void, Symtabadd_61119)(TY61099* Tab_61122, TY56548* E_61123) {
+Strtableadd_61061(&(*Tab_61122).Stack->data[(NI32)(((NI) ((*Tab_61122).Tos)) - 1)], E_61123);
 }
-N_NIMCALL(NIM_BOOL, Idtablehasobjectaskey_60172)(TY55564 T_60174, TY54005* Key_60175) {
-NIM_BOOL Result_62755;
-NI Index_62756;
-Result_62755 = 0;
-Index_62756 = 0;
-Index_62756 = Idtablerawget_62732(T_60174, (*Key_60175).Id);
-if (!(0 <= Index_62756)) goto LA2;
-Result_62755 = (T_60174.Data->data[Index_62756].Key == Key_60175);
+N_NIMCALL(NIM_BOOL, Idtablehasobjectaskey_61172)(TY56564 T_61174, TY55005* Key_61175) {
+NIM_BOOL Result_63755;
+NI Index_63756;
+Result_63755 = 0;
+Index_63756 = 0;
+Index_63756 = Idtablerawget_63732(T_61174, (*Key_61175).Id);
+if (!(0 <= Index_63756)) goto LA2;
+Result_63755 = (T_61174.Data->data[Index_63756].Key == Key_61175);
 goto LA1;
 LA2: ;
-Result_62755 = NIM_FALSE;
+Result_63755 = NIM_FALSE;
 LA1: ;
-return Result_62755;
+return Result_63755;
 }
-static N_INLINE(TY55526*, Lastson_55810)(TY55526* N_55812) {
-TY55526* Result_57841;
+static N_INLINE(TY56526*, Lastson_56810)(TY56526* N_56812) {
+TY56526* Result_58916;
 NI LOC1;
-Result_57841 = 0;
-LOC1 = Sonslen_55804(N_55812);
-Result_57841 = (*N_55812).KindU.S6.Sons->data[(NI32)(LOC1 - 1)];
-return Result_57841;
+Result_58916 = 0;
+Result_58916 = NIM_NIL;
+LOC1 = Sonslen_56804(N_56812);
+Result_58916 = (*N_56812).KindU.S6.Sons->data[(NI32)(LOC1 - 1)];
+return Result_58916;
 }
-N_NIMCALL(TY55548*, Lookupinrecord_60194)(TY55526* N_60196, TY54011* Field_60197) {
-TY55548* Result_60238;
-NI I_60262;
-NI HEX3Atmp_60400;
+N_NIMCALL(TY56548*, Lookupinrecord_61194)(TY56526* N_61196, TY55011* Field_61197) {
+TY56548* Result_61238;
+NI I_61262;
+NI HEX3Atmp_61400;
 NI LOC1;
-NI Res_60402;
-NI I_60338;
-NI HEX3Atmp_60403;
+NI Res_61402;
+NI I_61338;
+NI HEX3Atmp_61403;
 NI LOC12;
-NI Res_60405;
-TY55526* LOC14;
-Result_60238 = 0;
-Result_60238 = NIM_NIL;
-switch ((*N_60196).Kind) {
+NI Res_61405;
+TY56526* LOC14;
+Result_61238 = 0;
+Result_61238 = NIM_NIL;
+Result_61238 = NIM_NIL;
+switch ((*N_61196).Kind) {
 case ((NU8) 113):
-I_60262 = 0;
-HEX3Atmp_60400 = 0;
-LOC1 = Sonslen_55804(N_60196);
-HEX3Atmp_60400 = (NI32)(LOC1 - 1);
-Res_60402 = 0;
-Res_60402 = 0;
+I_61262 = 0;
+HEX3Atmp_61400 = 0;
+LOC1 = Sonslen_56804(N_61196);
+HEX3Atmp_61400 = (NI32)(LOC1 - 1);
+Res_61402 = 0;
+Res_61402 = 0;
 while (1) {
-if (!(Res_60402 <= HEX3Atmp_60400)) goto LA2;
-I_60262 = Res_60402;
-Result_60238 = Lookupinrecord_60194((*N_60196).KindU.S6.Sons->data[I_60262], Field_60197);
-if (!!((Result_60238 == NIM_NIL))) goto LA4;
+if (!(Res_61402 <= HEX3Atmp_61400)) goto LA2;
+I_61262 = Res_61402;
+Result_61238 = Lookupinrecord_61194((*N_61196).KindU.S6.Sons->data[I_61262], Field_61197);
+if (!!((Result_61238 == NIM_NIL))) goto LA4;
 goto BeforeRet;
 LA4: ;
-Res_60402 += 1;
+Res_61402 += 1;
 } LA2: ;
 break;
 case ((NU8) 114):
-if (!!(((*(*N_60196).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA7;
-Internalerror_48159((*N_60196).Info, ((NimStringDesc*) &TMP196681));
+if (!!(((*(*N_61196).KindU.S6.Sons->data[0]).Kind == ((NU8) 3)))) goto LA7;
+Internalerror_49208((*N_61196).Info, ((NimStringDesc*) &TMP198727));
 LA7: ;
-Result_60238 = Lookupinrecord_60194((*N_60196).KindU.S6.Sons->data[0], Field_60197);
-if (!!((Result_60238 == NIM_NIL))) goto LA10;
+Result_61238 = Lookupinrecord_61194((*N_61196).KindU.S6.Sons->data[0], Field_61197);
+if (!!((Result_61238 == NIM_NIL))) goto LA10;
 goto BeforeRet;
 LA10: ;
-I_60338 = 0;
-HEX3Atmp_60403 = 0;
-LOC12 = Sonslen_55804(N_60196);
-HEX3Atmp_60403 = (NI32)(LOC12 - 1);
-Res_60405 = 0;
-Res_60405 = 1;
+I_61338 = 0;
+HEX3Atmp_61403 = 0;
+LOC12 = Sonslen_56804(N_61196);
+HEX3Atmp_61403 = (NI32)(LOC12 - 1);
+Res_61405 = 0;
+Res_61405 = 1;
 while (1) {
-if (!(Res_60405 <= HEX3Atmp_60403)) goto LA13;
-I_60338 = Res_60405;
-switch ((*(*N_60196).KindU.S6.Sons->data[I_60338]).Kind) {
+if (!(Res_61405 <= HEX3Atmp_61403)) goto LA13;
+I_61338 = Res_61405;
+switch ((*(*N_61196).KindU.S6.Sons->data[I_61338]).Kind) {
 case ((NU8) 75):
 case ((NU8) 78):
 LOC14 = 0;
-LOC14 = Lastson_55810((*N_60196).KindU.S6.Sons->data[I_60338]);
-Result_60238 = Lookupinrecord_60194(LOC14, Field_60197);
-if (!!((Result_60238 == NIM_NIL))) goto LA16;
+LOC14 = Lastson_56810((*N_61196).KindU.S6.Sons->data[I_61338]);
+Result_61238 = Lookupinrecord_61194(LOC14, Field_61197);
+if (!!((Result_61238 == NIM_NIL))) goto LA16;
 goto BeforeRet;
 LA16: ;
 break;
 default:
-Internalerror_48159((*N_60196).Info, ((NimStringDesc*) &TMP196682));
+Internalerror_49208((*N_61196).Info, ((NimStringDesc*) &TMP198728));
 break;
 }
-Res_60405 += 1;
+Res_61405 += 1;
 } LA13: ;
 break;
 case ((NU8) 3):
-if (!((*(*(*N_60196).KindU.S4.Sym).Name).Sup.Id == (*Field_60197).Sup.Id)) goto LA19;
-Result_60238 = (*N_60196).KindU.S4.Sym;
+if (!((*(*(*N_61196).KindU.S4.Sym).Name).Sup.Id == (*Field_61197).Sup.Id)) goto LA19;
+Result_61238 = (*N_61196).KindU.S4.Sym;
 LA19: ;
 break;
 default:
-Internalerror_48159((*N_60196).Info, ((NimStringDesc*) &TMP196683));
+Internalerror_49208((*N_61196).Info, ((NimStringDesc*) &TMP198729));
 break;
 }
 BeforeRet: ;
-return Result_60238;
+return Result_61238;
 }
 N_NOINLINE(void, astalgoInit)(void) {
 }

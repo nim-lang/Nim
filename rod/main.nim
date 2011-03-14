@@ -193,23 +193,23 @@ proc MainCommand(cmd, filename: string) =
   setID(100)
   passes.gIncludeFile = syntaxes.parseFile
   passes.gImportModule = importModule
-  case whichKeyword(cmd)
-  of wCompile, wCompileToC, wC, wCC: 
+  case cmd.normalize
+  of "c", "cc", "compile", "compiletoc": 
     # compile means compileToC currently
     gCmd = cmdCompileToC
     wantFile(filename)
     CommandCompileToC(filename)
-  of wCompileToCpp: 
+  of "compiletocpp": 
     extccomp.cExt = ".cpp"
     gCmd = cmdCompileToCpp
     wantFile(filename)
     CommandCompileToC(filename)
-  of wCompileToOC, wOC:
+  of "oc", "compiletooc":
     extccomp.cExt = ".m"
     gCmd = cmdCompileToOC
     wantFile(filename)
     CommandCompileToC(filename)
-  of wRun:
+  of "run":
     gCmd = cmdRun
     wantFile(filename)
     when hasTinyCBackend:
@@ -217,61 +217,61 @@ proc MainCommand(cmd, filename: string) =
       CommandCompileToC(filename)
     else: 
       rawMessage(errInvalidCommandX, cmd)
-  of wCompileToEcmaScript, wJs: 
+  of "js", "compiletoecmascript": 
     gCmd = cmdCompileToEcmaScript
     wantFile(filename)
     CommandCompileToEcmaScript(filename)
-  of wCompileToLLVM: 
+  of "compiletollvm": 
     gCmd = cmdCompileToLLVM
     wantFile(filename)
     when has_LLVM_Backend:
       CommandCompileToLLVM(filename)
     else:
       rawMessage(errInvalidCommandX, cmd)
-  of wPretty: 
+  of "pretty": 
     gCmd = cmdPretty
     wantFile(filename)        #CommandExportSymbols(filename);
     CommandPretty(filename)
-  of wDoc: 
+  of "doc": 
     gCmd = cmdDoc
     LoadSpecialConfig(DocConfig)
     wantFile(filename)
     CommandDoc(filename)
-  of wRst2html: 
+  of "rst2html": 
     gCmd = cmdRst2html
     LoadSpecialConfig(DocConfig)
     wantFile(filename)
     CommandRst2Html(filename)
-  of wRst2tex: 
+  of "rst2tex": 
     gCmd = cmdRst2tex
     LoadSpecialConfig(DocTexConfig)
     wantFile(filename)
     CommandRst2TeX(filename)
-  of wGenDepend: 
+  of "gendepend": 
     gCmd = cmdGenDepend
     wantFile(filename)
     CommandGenDepend(filename)
-  of wDump: 
+  of "dump": 
     gCmd = cmdDump
     condsyms.ListSymbols()
     for it in iterSearchPath(): MsgWriteln(it)
-  of wCheck: 
+  of "check": 
     gCmd = cmdCheck
     wantFile(filename)
     CommandCheck(filename)
-  of wParse: 
+  of "parse": 
     gCmd = cmdParse
     wantFile(filename)
     discard parseFile(addFileExt(filename, nimExt))
-  of wScan: 
+  of "scan": 
     gCmd = cmdScan
     wantFile(filename)
     CommandScan(filename)
     MsgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
-  of wI: 
+  of "i": 
     gCmd = cmdInteractive
     CommandInteractive()
-  of wIdeTools:
+  of "idetools":
     gCmd = cmdIdeTools
     wantFile(filename)
     CommandSuggest(filename)

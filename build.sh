@@ -60,6 +60,10 @@ case $ucpu in
   *sparc*|*sun* ) 
     mycpu="sparc" ;;
   *ppc64* ) 
+    if [ "$myos" = "linux" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m64"
+      LINK_FLAGS="$LINK_FLAGS -m64"
+    fi
     mycpu="powerpc64" ;;
   *power*|*Power* ) 
     mycpu="powerpc" ;;
@@ -193,6 +197,10 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/procfind.c -o build/1_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/pragmas.c -o build/1_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/pragmas.c -o build/1_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/semtypinst.c -o build/1_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/semtypinst.c -o build/1_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_1/sigmatch.c -o build/1_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/suggest.c -o build/1_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/docgen.c -o build/1_1/docgen.o"
@@ -209,8 +217,6 @@ windows)
     $CC $COMP_FLAGS -Ibuild -c build/1_1/cgmeth.c -o build/1_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/ecmasgen.c -o build/1_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/interact.c -o build/1_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_1/interact.c -o build/1_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/passaux.c -o build/1_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_1/passaux.c -o build/1_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_1/depends.c -o build/1_1/depends.o"
@@ -278,6 +284,8 @@ build/1_1/evals.o \
 build/1_1/semfold.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
+build/1_1/semtypinst.o \
+build/1_1/sigmatch.o \
 build/1_1/suggest.o \
 build/1_1/docgen.o \
 build/1_1/rst.o \
@@ -286,7 +294,6 @@ build/1_1/cgen.o \
 build/1_1/ccgutils.o \
 build/1_1/cgmeth.o \
 build/1_1/ecmasgen.o \
-build/1_1/interact.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/transf.o \
@@ -350,6 +357,8 @@ build/1_1/evals.o \
 build/1_1/semfold.o \
 build/1_1/procfind.o \
 build/1_1/pragmas.o \
+build/1_1/semtypinst.o \
+build/1_1/sigmatch.o \
 build/1_1/suggest.o \
 build/1_1/docgen.o \
 build/1_1/rst.o \
@@ -358,7 +367,6 @@ build/1_1/cgen.o \
 build/1_1/ccgutils.o \
 build/1_1/cgmeth.o \
 build/1_1/ecmasgen.o \
-build/1_1/interact.o \
 build/1_1/passaux.o \
 build/1_1/depends.o \
 build/1_1/transf.o \
@@ -481,6 +489,10 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semtypinst.c -o build/1_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/semtypinst.c -o build/1_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
@@ -497,8 +509,6 @@ build/1_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/interact.c -o build/1_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/interact.c -o build/1_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o"
@@ -566,6 +576,8 @@ build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
+build/1_2/semtypinst.o \
+build/1_2/sigmatch.o \
 build/1_2/suggest.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
@@ -574,7 +586,6 @@ build/1_2/cgen.o \
 build/1_2/ccgutils.o \
 build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
-build/1_2/interact.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/transf.o \
@@ -638,6 +649,8 @@ build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
+build/1_2/semtypinst.o \
+build/1_2/sigmatch.o \
 build/1_2/suggest.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
@@ -646,7 +659,6 @@ build/1_2/cgen.o \
 build/1_2/ccgutils.o \
 build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
-build/1_2/interact.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/transf.o \
@@ -769,6 +781,10 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/procfind.c -o build/1_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/pragmas.c -o build/1_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/semtypinst.c -o build/1_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/semtypinst.c -o build/1_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/1_2/sigmatch.c -o build/1_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/suggest.c -o build/1_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/docgen.c -o build/1_2/docgen.o"
@@ -785,8 +801,6 @@ build/1_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/1_2/cgmeth.c -o build/1_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/ecmasgen.c -o build/1_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/interact.c -o build/1_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/1_2/interact.c -o build/1_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/1_2/passaux.c -o build/1_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/1_2/depends.c -o build/1_2/depends.o"
@@ -854,6 +868,8 @@ build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
+build/1_2/semtypinst.o \
+build/1_2/sigmatch.o \
 build/1_2/suggest.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
@@ -862,7 +878,6 @@ build/1_2/cgen.o \
 build/1_2/ccgutils.o \
 build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
-build/1_2/interact.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/transf.o \
@@ -926,6 +941,8 @@ build/1_2/evals.o \
 build/1_2/semfold.o \
 build/1_2/procfind.o \
 build/1_2/pragmas.o \
+build/1_2/semtypinst.o \
+build/1_2/sigmatch.o \
 build/1_2/suggest.o \
 build/1_2/docgen.o \
 build/1_2/rst.o \
@@ -934,7 +951,6 @@ build/1_2/cgen.o \
 build/1_2/ccgutils.o \
 build/1_2/cgmeth.o \
 build/1_2/ecmasgen.o \
-build/1_2/interact.o \
 build/1_2/passaux.o \
 build/1_2/depends.o \
 build/1_2/transf.o \
@@ -1065,6 +1081,10 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/procfind.c -o build/2_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/pragmas.c -o build/2_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/pragmas.c -o build/2_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/semtypinst.c -o build/2_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/semtypinst.c -o build/2_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/sigmatch.c -o build/2_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_1/sigmatch.c -o build/2_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/suggest.c -o build/2_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/suggest.c -o build/2_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/docgen.c -o build/2_1/docgen.o"
@@ -1081,8 +1101,6 @@ linux)
     $CC $COMP_FLAGS -Ibuild -c build/2_1/cgmeth.c -o build/2_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/ecmasgen.c -o build/2_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/passaux.c -o build/2_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_1/passaux.c -o build/2_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/depends.c -o build/2_1/depends.o"
@@ -1150,6 +1168,8 @@ build/2_1/evals.o \
 build/2_1/semfold.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
+build/2_1/semtypinst.o \
+build/2_1/sigmatch.o \
 build/2_1/suggest.o \
 build/2_1/docgen.o \
 build/2_1/rst.o \
@@ -1158,7 +1178,6 @@ build/2_1/cgen.o \
 build/2_1/ccgutils.o \
 build/2_1/cgmeth.o \
 build/2_1/ecmasgen.o \
-build/2_1/interact.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/transf.o \
@@ -1222,6 +1241,8 @@ build/2_1/evals.o \
 build/2_1/semfold.o \
 build/2_1/procfind.o \
 build/2_1/pragmas.o \
+build/2_1/semtypinst.o \
+build/2_1/sigmatch.o \
 build/2_1/suggest.o \
 build/2_1/docgen.o \
 build/2_1/rst.o \
@@ -1230,7 +1251,6 @@ build/2_1/cgen.o \
 build/2_1/ccgutils.o \
 build/2_1/cgmeth.o \
 build/2_1/ecmasgen.o \
-build/2_1/interact.o \
 build/2_1/passaux.o \
 build/2_1/depends.o \
 build/2_1/transf.o \
@@ -1353,6 +1373,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semtypinst.c -o build/2_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/semtypinst.c -o build/2_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
@@ -1369,8 +1393,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o"
@@ -1438,6 +1460,8 @@ build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
+build/2_2/semtypinst.o \
+build/2_2/sigmatch.o \
 build/2_2/suggest.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
@@ -1446,7 +1470,6 @@ build/2_2/cgen.o \
 build/2_2/ccgutils.o \
 build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
-build/2_2/interact.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/transf.o \
@@ -1510,6 +1533,8 @@ build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
+build/2_2/semtypinst.o \
+build/2_2/sigmatch.o \
 build/2_2/suggest.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
@@ -1518,7 +1543,6 @@ build/2_2/cgen.o \
 build/2_2/ccgutils.o \
 build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
-build/2_2/interact.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/transf.o \
@@ -1641,6 +1665,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/procfind.c -o build/2_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/pragmas.c -o build/2_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/semtypinst.c -o build/2_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/semtypinst.c -o build/2_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/2_2/sigmatch.c -o build/2_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/suggest.c -o build/2_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/docgen.c -o build/2_2/docgen.o"
@@ -1657,8 +1685,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/2_2/cgmeth.c -o build/2_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/ecmasgen.c -o build/2_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/2_2/passaux.c -o build/2_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/depends.c -o build/2_2/depends.o"
@@ -1726,6 +1752,8 @@ build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
+build/2_2/semtypinst.o \
+build/2_2/sigmatch.o \
 build/2_2/suggest.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
@@ -1734,7 +1762,6 @@ build/2_2/cgen.o \
 build/2_2/ccgutils.o \
 build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
-build/2_2/interact.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/transf.o \
@@ -1798,6 +1825,8 @@ build/2_2/evals.o \
 build/2_2/semfold.o \
 build/2_2/procfind.o \
 build/2_2/pragmas.o \
+build/2_2/semtypinst.o \
+build/2_2/sigmatch.o \
 build/2_2/suggest.o \
 build/2_2/docgen.o \
 build/2_2/rst.o \
@@ -1806,7 +1835,6 @@ build/2_2/cgen.o \
 build/2_2/ccgutils.o \
 build/2_2/cgmeth.o \
 build/2_2/ecmasgen.o \
-build/2_2/interact.o \
 build/2_2/passaux.o \
 build/2_2/depends.o \
 build/2_2/transf.o \
@@ -1937,6 +1965,10 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/procfind.c -o build/3_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/pragmas.c -o build/3_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/pragmas.c -o build/3_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/semtypinst.c -o build/3_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/semtypinst.c -o build/3_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/sigmatch.c -o build/3_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_1/sigmatch.c -o build/3_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/suggest.c -o build/3_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/suggest.c -o build/3_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/docgen.c -o build/3_1/docgen.o"
@@ -1953,8 +1985,6 @@ macosx)
     $CC $COMP_FLAGS -Ibuild -c build/3_1/cgmeth.c -o build/3_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/ecmasgen.c -o build/3_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/passaux.c -o build/3_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_1/passaux.c -o build/3_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_1/depends.c -o build/3_1/depends.o"
@@ -2022,6 +2052,8 @@ build/3_1/evals.o \
 build/3_1/semfold.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
+build/3_1/semtypinst.o \
+build/3_1/sigmatch.o \
 build/3_1/suggest.o \
 build/3_1/docgen.o \
 build/3_1/rst.o \
@@ -2030,7 +2062,6 @@ build/3_1/cgen.o \
 build/3_1/ccgutils.o \
 build/3_1/cgmeth.o \
 build/3_1/ecmasgen.o \
-build/2_1/interact.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
@@ -2094,6 +2125,8 @@ build/3_1/evals.o \
 build/3_1/semfold.o \
 build/3_1/procfind.o \
 build/3_1/pragmas.o \
+build/3_1/semtypinst.o \
+build/3_1/sigmatch.o \
 build/3_1/suggest.o \
 build/3_1/docgen.o \
 build/3_1/rst.o \
@@ -2102,7 +2135,6 @@ build/3_1/cgen.o \
 build/3_1/ccgutils.o \
 build/3_1/cgmeth.o \
 build/3_1/ecmasgen.o \
-build/2_1/interact.o \
 build/3_1/passaux.o \
 build/3_1/depends.o \
 build/3_1/transf.o \
@@ -2225,6 +2257,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semtypinst.c -o build/3_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/semtypinst.c -o build/3_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
@@ -2241,8 +2277,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o"
@@ -2310,6 +2344,8 @@ build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
+build/3_2/semtypinst.o \
+build/3_2/sigmatch.o \
 build/3_2/suggest.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
@@ -2318,7 +2354,6 @@ build/3_2/cgen.o \
 build/3_2/ccgutils.o \
 build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
-build/2_2/interact.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
@@ -2382,6 +2417,8 @@ build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
+build/3_2/semtypinst.o \
+build/3_2/sigmatch.o \
 build/3_2/suggest.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
@@ -2390,7 +2427,6 @@ build/3_2/cgen.o \
 build/3_2/ccgutils.o \
 build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
-build/2_2/interact.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
@@ -2513,6 +2549,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/procfind.c -o build/3_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/pragmas.c -o build/3_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/semtypinst.c -o build/3_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/semtypinst.c -o build/3_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/3_2/sigmatch.c -o build/3_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/suggest.c -o build/3_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/docgen.c -o build/3_2/docgen.o"
@@ -2529,8 +2569,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/3_2/cgmeth.c -o build/3_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/ecmasgen.c -o build/3_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/3_2/passaux.c -o build/3_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/3_2/depends.c -o build/3_2/depends.o"
@@ -2598,6 +2636,8 @@ build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
+build/3_2/semtypinst.o \
+build/3_2/sigmatch.o \
 build/3_2/suggest.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
@@ -2606,7 +2646,6 @@ build/3_2/cgen.o \
 build/3_2/ccgutils.o \
 build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
-build/2_2/interact.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
@@ -2670,6 +2709,8 @@ build/3_2/evals.o \
 build/3_2/semfold.o \
 build/3_2/procfind.o \
 build/3_2/pragmas.o \
+build/3_2/semtypinst.o \
+build/3_2/sigmatch.o \
 build/3_2/suggest.o \
 build/3_2/docgen.o \
 build/3_2/rst.o \
@@ -2678,7 +2719,6 @@ build/3_2/cgen.o \
 build/3_2/ccgutils.o \
 build/3_2/cgmeth.o \
 build/3_2/ecmasgen.o \
-build/2_2/interact.o \
 build/3_2/passaux.o \
 build/3_2/depends.o \
 build/3_2/transf.o \
@@ -2809,6 +2849,10 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
@@ -2825,8 +2869,6 @@ freebsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
@@ -2894,6 +2936,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -2902,7 +2946,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -2966,6 +3009,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -2974,7 +3019,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -3097,6 +3141,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -3113,8 +3161,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -3182,6 +3228,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -3190,7 +3238,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -3254,6 +3301,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -3262,7 +3311,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -3385,6 +3433,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -3401,8 +3453,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -3470,6 +3520,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -3478,7 +3530,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -3542,6 +3593,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -3550,7 +3603,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -3681,6 +3733,10 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
@@ -3697,8 +3753,6 @@ netbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
@@ -3766,6 +3820,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -3774,7 +3830,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -3838,6 +3893,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -3846,7 +3903,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -3969,6 +4025,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -3985,8 +4045,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -4054,6 +4112,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -4062,7 +4122,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -4126,6 +4185,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -4134,7 +4195,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -4257,6 +4317,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -4273,8 +4337,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -4342,6 +4404,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -4350,7 +4414,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -4414,6 +4477,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -4422,7 +4487,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -4553,6 +4617,10 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
@@ -4569,8 +4637,6 @@ openbsd)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
@@ -4638,6 +4704,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -4646,7 +4714,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -4710,6 +4777,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -4718,7 +4787,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -4841,6 +4909,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -4857,8 +4929,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -4926,6 +4996,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -4934,7 +5006,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -4998,6 +5069,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -5006,7 +5079,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -5129,6 +5201,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -5145,8 +5221,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -5214,6 +5288,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -5222,7 +5298,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -5286,6 +5361,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -5294,7 +5371,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -5425,6 +5501,10 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/procfind.c -o build/4_1/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/pragmas.c -o build/4_1/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/semtypinst.c -o build/4_1/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_1/sigmatch.c -o build/4_1/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/suggest.c -o build/4_1/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/docgen.c -o build/4_1/docgen.o"
@@ -5441,8 +5521,6 @@ solaris)
     $CC $COMP_FLAGS -Ibuild -c build/4_1/cgmeth.c -o build/4_1/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/ecmasgen.c -o build/4_1/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_1/interact.c -o build/2_1/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_1/passaux.c -o build/4_1/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_1/depends.c -o build/4_1/depends.o"
@@ -5510,6 +5588,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -5518,7 +5598,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -5582,6 +5661,8 @@ build/4_1/evals.o \
 build/4_1/semfold.o \
 build/4_1/procfind.o \
 build/4_1/pragmas.o \
+build/4_1/semtypinst.o \
+build/4_1/sigmatch.o \
 build/4_1/suggest.o \
 build/4_1/docgen.o \
 build/4_1/rst.o \
@@ -5590,7 +5671,6 @@ build/4_1/cgen.o \
 build/4_1/ccgutils.o \
 build/4_1/cgmeth.o \
 build/4_1/ecmasgen.o \
-build/2_1/interact.o \
 build/4_1/passaux.o \
 build/4_1/depends.o \
 build/4_1/transf.o \
@@ -5713,6 +5793,10 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -5729,8 +5813,6 @@ build/2_1/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -5798,6 +5880,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -5806,7 +5890,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -5870,6 +5953,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -5878,7 +5963,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -6001,6 +6085,10 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/procfind.c -o build/4_2/procfind.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/pragmas.c -o build/4_2/pragmas.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/semtypinst.c -o build/4_2/semtypinst.o || exit 1
+    echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o"
+    $CC $COMP_FLAGS -Ibuild -c build/4_2/sigmatch.c -o build/4_2/sigmatch.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/suggest.c -o build/4_2/suggest.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/docgen.c -o build/4_2/docgen.o"
@@ -6017,8 +6105,6 @@ build/2_2/parseopt.o || exit 1
     $CC $COMP_FLAGS -Ibuild -c build/4_2/cgmeth.c -o build/4_2/cgmeth.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/ecmasgen.c -o build/4_2/ecmasgen.o || exit 1
-    echo "$CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o"
-    $CC $COMP_FLAGS -Ibuild -c build/2_2/interact.c -o build/2_2/interact.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o"
     $CC $COMP_FLAGS -Ibuild -c build/4_2/passaux.c -o build/4_2/passaux.o || exit 1
     echo "$CC $COMP_FLAGS -Ibuild -c build/4_2/depends.c -o build/4_2/depends.o"
@@ -6086,6 +6172,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -6094,7 +6182,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \
@@ -6158,6 +6245,8 @@ build/4_2/evals.o \
 build/4_2/semfold.o \
 build/4_2/procfind.o \
 build/4_2/pragmas.o \
+build/4_2/semtypinst.o \
+build/4_2/sigmatch.o \
 build/4_2/suggest.o \
 build/4_2/docgen.o \
 build/4_2/rst.o \
@@ -6166,7 +6255,6 @@ build/4_2/cgen.o \
 build/4_2/ccgutils.o \
 build/4_2/cgmeth.o \
 build/4_2/ecmasgen.o \
-build/2_2/interact.o \
 build/4_2/passaux.o \
 build/4_2/depends.o \
 build/4_2/transf.o \

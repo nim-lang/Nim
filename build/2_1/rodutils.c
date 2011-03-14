@@ -11,44 +11,45 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
-typedef NIM_CHAR TY59015[81];
+typedef NIM_CHAR TY60015[81];
 N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18712);
 N_NIMCALL(NimStringDesc*, cstrToNimstr)(NCSTRING Str_18708);
-STRING_LITERAL(TMP196457, "NAN", 3);
-STRING_LITERAL(TMP196458, "0.0", 3);
-STRING_LITERAL(TMP196459, "INF", 3);
-STRING_LITERAL(TMP196460, "-INF", 4);
-N_NIMCALL(NimStringDesc*, Tostrmaxprecision_59011)(NF64 F_59013) {
-NimStringDesc* Result_59014;
-TY59015 Buf_59017;
-Result_59014 = 0;
-if (!!((((NF) (F_59013)) == ((NF) (F_59013))))) goto LA2;
-Result_59014 = copyString(((NimStringDesc*) &TMP196457));
+STRING_LITERAL(TMP198503, "NAN", 3);
+STRING_LITERAL(TMP198504, "0.0", 3);
+STRING_LITERAL(TMP198505, "INF", 3);
+STRING_LITERAL(TMP198506, "-INF", 4);
+N_NIMCALL(NimStringDesc*, Tostrmaxprecision_60011)(NF64 F_60013) {
+NimStringDesc* Result_60014;
+TY60015 Buf_60017;
+Result_60014 = 0;
+Result_60014 = NIM_NIL;
+if (!!((((NF) (F_60013)) == ((NF) (F_60013))))) goto LA2;
+Result_60014 = copyString(((NimStringDesc*) &TMP198503));
 goto LA1;
 LA2: ;
-if (!(((NF) (F_59013)) == 0.0)) goto LA4;
-Result_59014 = copyString(((NimStringDesc*) &TMP196458));
+if (!(((NF) (F_60013)) == 0.0)) goto LA4;
+Result_60014 = copyString(((NimStringDesc*) &TMP198504));
 goto LA1;
 LA4: ;
-if (!(((NF) (F_59013)) == (5.0000000000000000e-01 * ((NF) (F_59013))))) goto LA6;
-if (!(0.0 < ((NF) (F_59013)))) goto LA9;
-Result_59014 = copyString(((NimStringDesc*) &TMP196459));
+if (!(((NF) (F_60013)) == (5.0000000000000000e-01 * ((NF) (F_60013))))) goto LA6;
+if (!(0.0 < ((NF) (F_60013)))) goto LA9;
+Result_60014 = copyString(((NimStringDesc*) &TMP198505));
 goto LA8;
 LA9: ;
-Result_59014 = copyString(((NimStringDesc*) &TMP196460));
+Result_60014 = copyString(((NimStringDesc*) &TMP198506));
 LA8: ;
 goto LA1;
 LA6: ;
-memset((void*)&Buf_59017, 0, sizeof(Buf_59017));
-sprintf(((NCSTRING) (Buf_59017)), "%#.16e", F_59013);
-Result_59014 = cstrToNimstr(((NCSTRING) (Buf_59017)));
+memset((void*)&Buf_60017, 0, sizeof(Buf_60017));
+sprintf(((NCSTRING) (Buf_60017)), "%#.16e", F_60013);
+Result_60014 = cstrToNimstr(((NCSTRING) (Buf_60017)));
 LA1: ;
-return Result_59014;
+return Result_60014;
 }
 N_NOINLINE(void, rodutilsInit)(void) {
 }

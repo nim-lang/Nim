@@ -16,10 +16,10 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
 struct TNimType {
 NI size;
@@ -58,7 +58,7 @@ N_NIMCALL(NI, Gettime_28616)(void);
 N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_19403);
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800);
 static N_INLINE(void, appendChar)(NimStringDesc* Dest_18816, NIM_CHAR C_18817);
-N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_25428, NI Minchars_25429);
+N_NIMCALL(NimStringDesc*, nsuIntToStr)(NI X_25427, NI Minchars_25428);
 N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18689);
 NIM_CONST TY28848 Weekdays_28847 = {((NU8) 6),
 ((NU8) 0),
@@ -80,8 +80,8 @@ return Result_29403;
 }
 N_NIMCALL(TY28602, Tmtotimeinfo_28843)(struct tm* Tm_28845) {
 TY28602 Result_28846;
-memset((void*)&Result_28846, 0, sizeof(Result_28846));
 Result_28846.Sup.m_type = NTI28602;
+memset((void*)&Result_28846, 0, sizeof(Result_28846));
 Result_28846.Second = ((NI) (((NI) ((*Tm_28845).tm_sec))));
 Result_28846.Minute = ((NI) (((NI) ((*Tm_28845).tm_min))));
 Result_28846.Hour = ((NI) (((NI) ((*Tm_28845).tm_hour))));
@@ -96,8 +96,8 @@ N_NIMCALL(TY28602, Getlocaltime_28618)(NI T_28620) {
 TY28602 Result_29407;
 NI A_29408;
 struct tm* LOC1;
-memset((void*)&Result_29407, 0, sizeof(Result_29407));
 Result_29407.Sup.m_type = NTI28602;
+memset((void*)&Result_29407, 0, sizeof(Result_29407));
 A_29408 = 0;
 A_29408 = T_28620;
 LOC1 = localtime(&A_29408);
@@ -122,10 +122,11 @@ NimStringDesc* LOC3;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
 Result_30003 = 0;
+Ti_30004.Sup.m_type = NTI28602;
+Result_30003 = NIM_NIL;
 memset((void*)&Ti_30004, 0, sizeof(Ti_30004));
 LOC1 = Gettime_28616();
 Ti_30004 = Getlocaltime_28618(LOC1);
-Ti_30004.Sup.m_type = NTI28602;
 LOC2 = 0;
 LOC3 = 0;
 LOC3 = nimIntToStr(Ti_30004.Year);
@@ -151,10 +152,11 @@ NimStringDesc* LOC3;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
 Result_30014 = 0;
+Ti_30015.Sup.m_type = NTI28602;
+Result_30014 = NIM_NIL;
 memset((void*)&Ti_30015, 0, sizeof(Ti_30015));
 LOC1 = Gettime_28616();
 Ti_30015 = Getlocaltime_28618(LOC1);
-Ti_30015.Sup.m_type = NTI28602;
 LOC2 = 0;
 LOC3 = 0;
 LOC3 = nsuIntToStr(((NI) (Ti_30015.Hour)), 2);

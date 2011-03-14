@@ -5,36 +5,36 @@ typedef long long int NI;
 typedef unsigned long long int NU;
 #include "nimbase.h"
 
-typedef struct TY86840 TY86840;
+typedef struct TY87840 TY87840;
 typedef struct NimStringDesc NimStringDesc;
 typedef struct TGenericSeq TGenericSeq;
-typedef struct TY55526 TY55526;
-typedef struct TY85016 TY85016;
-typedef struct TY85014 TY85014;
-typedef struct TY85012 TY85012;
-typedef struct TY55520 TY55520;
+typedef struct TY56526 TY56526;
+typedef struct TY86016 TY86016;
+typedef struct TY86014 TY86014;
+typedef struct TY86012 TY86012;
+typedef struct TY56520 TY56520;
 typedef struct TNimType TNimType;
 typedef struct TNimNode TNimNode;
-typedef struct TY55552 TY55552;
-typedef struct TY47538 TY47538;
-typedef struct TY55548 TY55548;
-typedef struct TY54011 TY54011;
+typedef struct TY56552 TY56552;
+typedef struct TY48538 TY48538;
+typedef struct TY56548 TY56548;
+typedef struct TY55011 TY55011;
 typedef struct TY10802 TY10802;
 typedef struct TY10818 TY10818;
 typedef struct TY11196 TY11196;
 typedef struct TY10814 TY10814;
 typedef struct TY10810 TY10810;
 typedef struct TY11194 TY11194;
-typedef struct TY54005 TY54005;
+typedef struct TY55005 TY55005;
 typedef struct TNimObject TNimObject;
-typedef struct TY55530 TY55530;
-typedef struct TY55528 TY55528;
-typedef struct TY55540 TY55540;
-typedef struct TY52008 TY52008;
-typedef struct TY55544 TY55544;
-typedef struct TY55550 TY55550;
-typedef struct TY43013 TY43013;
-struct TY86840 {
+typedef struct TY56530 TY56530;
+typedef struct TY56528 TY56528;
+typedef struct TY56540 TY56540;
+typedef struct TY53008 TY53008;
+typedef struct TY56544 TY56544;
+typedef struct TY56550 TY56550;
+typedef struct TY44013 TY44013;
+struct TY87840 {
 NI Spacing;
 NU8 Flags;
 };
@@ -42,24 +42,24 @@ struct TGenericSeq {
 NI len;
 NI space;
 };
-typedef NIM_CHAR TY239[100000001];
+typedef NIM_CHAR TY245[100000001];
 struct NimStringDesc {
   TGenericSeq Sup;
-TY239 data;
+TY245 data;
 };
-struct TY85012 {
+struct TY86012 {
 NU8 Kind;
 NI16 Length;
 };
-struct TY85016 {
+struct TY86016 {
 NI Indent;
 NI Linelen;
 NI Pos;
 NI Idx;
-TY85014* Tokens;
+TY86014* Tokens;
 NimStringDesc* Buf;
 NI Pendingnl;
-TY55520* Comstack;
+TY56520* Comstack;
 NU8 Flags;
 };
 struct TNimType {
@@ -78,15 +78,15 @@ NCSTRING name;
 NI len;
 TNimNode** sons;
 };
-struct TY47538 {
+struct TY48538 {
 NI16 Line;
 NI16 Col;
 int Fileindex;
 };
-struct TY55526 {
-TY55552* Typ;
+struct TY56526 {
+TY56552* Typ;
 NimStringDesc* Comment;
-TY47538 Info;
+TY48538 Info;
 NU8 Flags;
 NU8 Kind;
 union {
@@ -96,11 +96,11 @@ struct {NF64 Floatval;
 } S2;
 struct {NimStringDesc* Strval;
 } S3;
-struct {TY55548* Sym;
+struct {TY56548* Sym;
 } S4;
-struct {TY54011* Ident;
+struct {TY55011* Ident;
 } S5;
-struct {TY55520* Sons;
+struct {TY56520* Sons;
 } S6;
 } KindU;
 };
@@ -137,59 +137,59 @@ TY11194 Stat;
 struct TNimObject {
 TNimType* m_type;
 };
-struct TY54005 {
+struct TY55005 {
   TNimObject Sup;
 NI Id;
 };
-struct TY54011 {
-  TY54005 Sup;
+struct TY55011 {
+  TY55005 Sup;
 NimStringDesc* S;
-TY54011* Next;
+TY55011* Next;
 NI H;
 };
-struct TY55530 {
+struct TY56530 {
 TNimType* m_type;
 NI Counter;
-TY55528* Data;
+TY56528* Data;
 };
-struct TY55540 {
+struct TY56540 {
 NU8 K;
 NU8 S;
 NU8 Flags;
-TY55552* T;
-TY52008* R;
+TY56552* T;
+TY53008* R;
 NI A;
 };
-struct TY55548 {
-  TY54005 Sup;
+struct TY56548 {
+  TY55005 Sup;
 NU8 Kind;
 NU8 Magic;
-TY55552* Typ;
-TY54011* Name;
-TY47538 Info;
-TY55548* Owner;
+TY56552* Typ;
+TY55011* Name;
+TY48538 Info;
+TY56548* Owner;
 NU32 Flags;
-TY55530 Tab;
-TY55526* Ast;
+TY56530 Tab;
+TY56526* Ast;
 NU32 Options;
 NI Position;
 NI Offset;
-TY55540 Loc;
-TY55544* Annex;
+TY56540 Loc;
+TY56544* Annex;
 };
-struct TY55552 {
-  TY54005 Sup;
+struct TY56552 {
+  TY55005 Sup;
 NU8 Kind;
-TY55550* Sons;
-TY55526* N;
+TY56550* Sons;
+TY56526* N;
 NU8 Flags;
 NU8 Callconv;
-TY55548* Owner;
-TY55548* Sym;
+TY56548* Owner;
+TY56548* Sym;
 NI64 Size;
 NI Align;
 NI Containerid;
-TY55540 Loc;
+TY56540 Loc;
 };
 typedef NI TY8814[8];
 struct TY10810 {
@@ -197,49 +197,50 @@ TY10810* Next;
 NI Key;
 TY8814 Bits;
 };
-struct TY52008 {
+struct TY53008 {
   TNimObject Sup;
-TY52008* Left;
-TY52008* Right;
+TY53008* Left;
+TY53008* Right;
 NI Length;
 NimStringDesc* Data;
 };
-struct TY43013 {
+struct TY44013 {
   TNimObject Sup;
-TY43013* Prev;
-TY43013* Next;
+TY44013* Prev;
+TY44013* Next;
 };
-struct TY55544 {
-  TY43013 Sup;
+struct TY56544 {
+  TY44013 Sup;
 NU8 Kind;
 NIM_BOOL Generated;
-TY52008* Name;
-TY55526* Path;
+TY53008* Name;
+TY56526* Path;
 };
-struct TY85014 {
+struct TY86014 {
   TGenericSeq Sup;
-  TY85012 data[SEQ_DECL_SIZE];
+  TY86012 data[SEQ_DECL_SIZE];
 };
-struct TY55520 {
+struct TY56520 {
   TGenericSeq Sup;
-  TY55526* data[SEQ_DECL_SIZE];
+  TY56526* data[SEQ_DECL_SIZE];
 };
-struct TY55528 {
+struct TY56528 {
   TGenericSeq Sup;
-  TY55548* data[SEQ_DECL_SIZE];
+  TY56548* data[SEQ_DECL_SIZE];
 };
-struct TY55550 {
+struct TY56550 {
   TGenericSeq Sup;
-  TY55552* data[SEQ_DECL_SIZE];
+  TY56552* data[SEQ_DECL_SIZE];
 };
-N_NIMCALL(void, Initsrcgen_85068)(TY85016* G_85071, NU8 Renderflags_85072);
+N_NIMCALL(void, genericReset)(void* Dest_19728, TNimType* Mt_19729);
+N_NIMCALL(void, Initsrcgen_86068)(TY86016* G_86071, NU8 Renderflags_86072);
 N_NIMCALL(void*, newSeq)(TNimType* Typ_14404, NI Len_14405);
 N_NIMCALL(void, unsureAsgnRef)(void** Dest_13226, void* Src_13227);
 N_NIMCALL(NimStringDesc*, copyString)(NimStringDesc* Src_18712);
-N_NIMCALL(void, Gsub_86864)(TY85016* G_86867, TY55526* N_86868);
-N_NIMCALL(void, Initcontext_86852)(TY86840* C_86855);
-N_NIMCALL(void, Gsub_86858)(TY85016* G_86861, TY55526* N_86862, TY86840* C_86863);
-N_NIMCALL(void, Pushcom_85595)(TY85016* G_85598, TY55526* N_85599);
+N_NIMCALL(void, Gsub_87864)(TY86016* G_87867, TY56526* N_87868);
+N_NIMCALL(void, Initcontext_87852)(TY87840* C_87855);
+N_NIMCALL(void, Gsub_87858)(TY86016* G_87861, TY56526* N_87862, TY87840* C_87863);
+N_NIMCALL(void, Pushcom_86595)(TY86016* G_86598, TY56526* N_86599);
 N_NIMCALL(TGenericSeq*, setLengthSeq)(TGenericSeq* Seq_19003, NI Elemsize_19004, NI Newlen_19005);
 static N_INLINE(void, asgnRefNoCycle)(void** Dest_13218, void* Src_13219);
 static N_INLINE(TY10802*, Usrtocell_11612)(void* Usr_11614);
@@ -247,182 +248,185 @@ static N_INLINE(NI, Atomicinc_3221)(NI* Memloc_3224, NI X_3225);
 static N_INLINE(NI, Atomicdec_3226)(NI* Memloc_3229, NI X_3230);
 static N_INLINE(void, Rtladdzct_12601)(TY10802* C_12603);
 N_NOINLINE(void, Addzct_11601)(TY10818* S_11604, TY10802* C_11605);
-N_NIMCALL(void, Putrawstr_85512)(TY85016* G_85515, NU8 Kind_85516, NimStringDesc* S_85517);
-N_NIMCALL(void, Put_85224)(TY85016* G_85227, NU8 Kind_85228, NimStringDesc* S_85229);
-N_NIMCALL(void, Addpendingnl_85136)(TY85016* G_85139);
-N_NIMCALL(void, Addtok_85105)(TY85016* G_85108, NU8 Kind_85109, NimStringDesc* S_85110);
+N_NIMCALL(void, Putrawstr_86512)(TY86016* G_86515, NU8 Kind_86516, NimStringDesc* S_86517);
+N_NIMCALL(void, Put_86224)(TY86016* G_86227, NU8 Kind_86228, NimStringDesc* S_86229);
+N_NIMCALL(void, Addpendingnl_86136)(TY86016* G_86139);
+N_NIMCALL(void, Addtok_86105)(TY86016* G_86108, NU8 Kind_86109, NimStringDesc* S_86110);
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800);
 N_NIMCALL(NimStringDesc*, resizeString)(NimStringDesc* Dest_18789, NI Addlen_18790);
-N_NIMCALL(NimStringDesc*, nsuRepeatChar)(NI Count_25666, NIM_CHAR C_25667);
+N_NIMCALL(NimStringDesc*, nsuRepeatChar)(NI Count_25671, NIM_CHAR C_25672);
 N_NIMCALL(NimStringDesc*, rawNewString)(NI Space_18689);
-N_NIMCALL(void, Optnl_85153)(TY85016* G_85156, NI Indent_85157);
+N_NIMCALL(void, Optnl_86153)(TY86016* G_86156, NI Indent_86157);
 N_NIMCALL(NimStringDesc*, addChar)(NimStringDesc* S_1803, NIM_CHAR C_1804);
-N_NIMCALL(NimStringDesc*, Atom_85801)(TY55526* N_85803);
-N_NIMCALL(NimStringDesc*, Makenimstring_85266)(NimStringDesc* S_85268);
-N_NIMCALL(NimStringDesc*, Tonimchar_85257)(NIM_CHAR C_85259);
-N_NIMCALL(NimStringDesc*, nsuToHex)(NI64 X_25410, NI Len_25411);
+N_NIMCALL(NimStringDesc*, Atom_86801)(TY56526* N_86803);
+N_NIMCALL(NimStringDesc*, Makenimstring_86266)(NimStringDesc* S_86268);
+N_NIMCALL(NimStringDesc*, Tonimchar_86257)(NIM_CHAR C_86259);
+N_NIMCALL(NimStringDesc*, nsuToHex)(NI64 X_25409, NI Len_25410);
 static N_INLINE(void, appendChar)(NimStringDesc* Dest_18816, NIM_CHAR C_18817);
 N_NIMCALL(NimStringDesc*, nsuReplaceStr)(NimStringDesc* S_26301, NimStringDesc* Sub_26302, NimStringDesc* By_26303);
-N_NIMCALL(NimStringDesc*, Litaux_85760)(TY55526* N_85762, NI64 X_85763, NI Size_85764);
+N_NIMCALL(NimStringDesc*, Litaux_86760)(TY56526* N_86762, NI64 X_86763, NI Size_86764);
 N_NIMCALL(NimStringDesc*, nsuToBin)(NI64 X_26486, NI Len_26487);
 N_NIMCALL(NimStringDesc*, nsuToOct)(NI64 X_26459, NI Len_26460);
 N_NIMCALL(NimStringDesc*, nimInt64ToStr)(NI64 X_19470);
 N_NIMCALL(NimStringDesc*, nimFloatToStr)(NF X_19463);
-N_NIMCALL(void, Internalerror_48163)(NimStringDesc* Errmsg_48165);
-N_NIMCALL(NimStringDesc*, reprEnum)(NI E_19771, TNimType* Typ_19772);
-N_NIMCALL(void, Gident_87837)(TY85016* G_87840, TY55526* N_87841);
+N_NIMCALL(void, Internalerror_49212)(NimStringDesc* Errmsg_49214);
+N_NIMCALL(NimStringDesc*, reprEnum)(NI E_19832, TNimType* Typ_19833);
+N_NIMCALL(void, Gident_88837)(TY86016* G_88840, TY56526* N_88841);
 N_NIMCALL(NimStringDesc*, nimIntToStr)(NI X_19403);
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806);
-N_NIMCALL(void, Gcomma_87000)(TY85016* G_87003, TY55526* N_87004, NI Start_87005, NI Theend_87006);
-N_NIMCALL(void, Gcommaaux_86905)(TY85016* G_86908, TY55526* N_86909, NI Ind_86910, NI Start_86911, NI Theend_86912);
-N_NIMCALL(NI, Lsub_85757)(TY55526* N_85759);
-N_NIMCALL(NIM_BOOL, Containsnl_85577)(NimStringDesc* S_85579);
-N_NIMCALL(NI, Lcomma_86115)(TY55526* N_86117, NI Start_86118, NI Theend_86119);
-static N_INLINE(TY55526*, HEX5BHEX5D_57062)(TY55526* N_57064, NI I_57065);
-N_NIMCALL(NI, Lsons_86189)(TY55526* N_86191, NI Start_86192, NI Theend_86193);
-static N_INLINE(TY55526*, Lastson_55810)(TY55526* N_55812);
-N_NIMCALL(NIM_BOOL, Fits_86828)(TY85016* G_86830, NI X_86831);
-N_NIMCALL(void, Putwithspace_86899)(TY85016* G_86902, NU8 Kind_86903, NimStringDesc* S_86904);
-N_NIMCALL(NIM_BOOL, Hascom_86871)(TY55526* N_86873);
-N_NIMCALL(void, Gcoms_85741)(TY85016* G_85744);
-N_NIMCALL(void, Gcom_85694)(TY85016* G_85697, TY55526* N_85698);
-N_NIMCALL(NIM_BOOL, Shouldrendercomment_85666)(TY85016* G_85669, TY55526* N_85670);
-N_NIMCALL(NIM_BOOL, nsuStartsWith)(NimStringDesc* S_25848, NimStringDesc* Prefix_25849);
-N_NIMCALL(NI, Maxlinelength_85440)(NimStringDesc* S_85442);
-N_NIMCALL(void, Putcomment_85299)(TY85016* G_85302, NimStringDesc* S_85303);
-N_NIMCALL(void, Optnl_85158)(TY85016* G_85161);
-N_NIMCALL(void, Popallcoms_85623)(TY85016* G_85626);
-N_NIMCALL(void, Gcomma_86976)(TY85016* G_86979, TY55526* N_86980, TY86840* C_86981, NI Start_86982, NI Theend_86983);
-N_NIMCALL(void, Gsons_87012)(TY85016* G_87015, TY55526* N_87016, TY86840* C_87017, NI Start_87018, NI Theend_87019);
-N_NIMCALL(void, Indentnl_85162)(TY85016* G_85165);
-N_NIMCALL(void, Dedent_85178)(TY85016* G_85181);
-N_NIMCALL(void, Putnl_85149)(TY85016* G_85152);
-N_NIMCALL(void, Putnl_85142)(TY85016* G_85145, NI Indent_85146);
-N_NIMCALL(void, Gstmts_87112)(TY85016* G_87115, TY55526* N_87116, TY86840* C_87117);
-N_NIMCALL(void, Gif_87191)(TY85016* G_87194, TY55526* N_87195);
-N_NIMCALL(NIM_BOOL, Longmode_87078)(TY55526* N_87080, NI Start_87081, NI Theend_87082);
-N_NIMCALL(void, Gwhile_87311)(TY85016* G_87314, TY55526* N_87315);
-N_NIMCALL(void, Gcase_87536)(TY85016* G_87539, TY55526* N_87540);
-N_NIMCALL(void, Gmacro_87489)(TY85016* G_87492, TY55526* N_87493);
-N_NIMCALL(void, Gtry_87370)(TY85016* G_87373, TY55526* N_87374);
-N_NIMCALL(void, Gfor_87417)(TY85016* G_87420, TY55526* N_87421);
-N_NIMCALL(void, Gblock_87728)(TY85016* G_87731, TY55526* N_87732);
-N_NIMCALL(void, Gasm_87808)(TY85016* G_87811, TY55526* N_87812);
-N_NIMCALL(void, Gproc_87629)(TY85016* G_87632, TY55526* N_87633);
-N_NIMCALL(void, Gsection_87044)(TY85016* G_87047, TY55526* N_87048, TY86840* C_87049, NU8 Kind_87050, NimStringDesc* K_87051);
-N_NIMCALL(void, Internalerror_48159)(TY47538 Info_48161, NimStringDesc* Errmsg_48162);
-N_NIMCALL(NIM_BOOL, Open_3817)(FILE** F_3820, NimStringDesc* Filename_3821, NU8 Mode_3822, NI Bufsize_3823);
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806);
+N_NIMCALL(void, Gcomma_88000)(TY86016* G_88003, TY56526* N_88004, NI Start_88005, NI Theend_88006);
+N_NIMCALL(void, Gcommaaux_87905)(TY86016* G_87908, TY56526* N_87909, NI Ind_87910, NI Start_87911, NI Theend_87912);
+N_NIMCALL(NI, Lsub_86757)(TY56526* N_86759);
+N_NIMCALL(NIM_BOOL, Containsnl_86577)(NimStringDesc* S_86579);
+N_NIMCALL(NI, Lcomma_87115)(TY56526* N_87117, NI Start_87118, NI Theend_87119);
+static N_INLINE(TY56526*, HEX5BHEX5D_58137)(TY56526* N_58139, NI I_58140);
+N_NIMCALL(NI, Lsons_87189)(TY56526* N_87191, NI Start_87192, NI Theend_87193);
+static N_INLINE(TY56526*, Lastson_56810)(TY56526* N_56812);
+N_NIMCALL(NIM_BOOL, Fits_87828)(TY86016* G_87830, NI X_87831);
+N_NIMCALL(void, Putwithspace_87899)(TY86016* G_87902, NU8 Kind_87903, NimStringDesc* S_87904);
+N_NIMCALL(NIM_BOOL, Hascom_87871)(TY56526* N_87873);
+N_NIMCALL(void, Gcoms_86741)(TY86016* G_86744);
+N_NIMCALL(void, Gcom_86694)(TY86016* G_86697, TY56526* N_86698);
+N_NIMCALL(NIM_BOOL, Shouldrendercomment_86666)(TY86016* G_86669, TY56526* N_86670);
+N_NIMCALL(NIM_BOOL, nsuStartsWith)(NimStringDesc* S_25853, NimStringDesc* Prefix_25854);
+N_NIMCALL(NI, Maxlinelength_86440)(NimStringDesc* S_86442);
+N_NIMCALL(void, Putcomment_86299)(TY86016* G_86302, NimStringDesc* S_86303);
+N_NIMCALL(void, Optnl_86158)(TY86016* G_86161);
+N_NIMCALL(void, Popallcoms_86623)(TY86016* G_86626);
+N_NIMCALL(void, Gcomma_87976)(TY86016* G_87979, TY56526* N_87980, TY87840* C_87981, NI Start_87982, NI Theend_87983);
+N_NIMCALL(void, Gsons_88012)(TY86016* G_88015, TY56526* N_88016, TY87840* C_88017, NI Start_88018, NI Theend_88019);
+N_NIMCALL(void, Indentnl_86162)(TY86016* G_86165);
+N_NIMCALL(void, Dedent_86178)(TY86016* G_86181);
+N_NIMCALL(void, Putnl_86149)(TY86016* G_86152);
+N_NIMCALL(void, Putnl_86142)(TY86016* G_86145, NI Indent_86146);
+N_NIMCALL(void, Gstmts_88112)(TY86016* G_88115, TY56526* N_88116, TY87840* C_88117);
+N_NIMCALL(void, Gif_88191)(TY86016* G_88194, TY56526* N_88195);
+N_NIMCALL(NIM_BOOL, Longmode_88078)(TY56526* N_88080, NI Start_88081, NI Theend_88082);
+N_NIMCALL(void, Gwhile_88311)(TY86016* G_88314, TY56526* N_88315);
+N_NIMCALL(void, Gcase_88536)(TY86016* G_88539, TY56526* N_88540);
+N_NIMCALL(void, Gmacro_88489)(TY86016* G_88492, TY56526* N_88493);
+N_NIMCALL(void, Gtry_88370)(TY86016* G_88373, TY56526* N_88374);
+N_NIMCALL(void, Gfor_88417)(TY86016* G_88420, TY56526* N_88421);
+N_NIMCALL(void, Gblock_88728)(TY86016* G_88731, TY56526* N_88732);
+N_NIMCALL(void, Gasm_88808)(TY86016* G_88811, TY56526* N_88812);
+N_NIMCALL(void, Gproc_88629)(TY86016* G_88632, TY56526* N_88633);
+N_NIMCALL(void, Gsection_88044)(TY86016* G_88047, TY56526* N_88048, TY87840* C_88049, NU8 Kind_88050, NimStringDesc* K_88051);
+N_NIMCALL(void, Internalerror_49208)(TY48538 Info_49210, NimStringDesc* Errmsg_49211);
 N_NIMCALL(void, Write_3866)(FILE* F_3868, NimStringDesc* S_3869);
+N_NIMCALL(NIM_BOOL, Open_3817)(FILE** F_3820, NimStringDesc* Filename_3821, NU8 Mode_3822, NI Bufsize_3823);
+N_NIMCALL(void, Rawmessage_49094)(NU8 Msg_49096, NimStringDesc* Arg_49097);
 N_NIMCALL(NimStringDesc*, copyStrLast)(NimStringDesc* S_2328, NI First_2329, NI Last_2330);
-NIM_CONST TY86840 Emptycontext_86846 = {0,
+NIM_CONST TY87840 Emptycontext_87846 = {0,
 0}
 ;
-STRING_LITERAL(TMP195743, "", 0);
-STRING_LITERAL(TMP195744, "\012", 1);
-STRING_LITERAL(TMP195745, "\"", 1);
-STRING_LITERAL(TMP195746, "\\0", 2);
-STRING_LITERAL(TMP195747, "\\x", 2);
-STRING_LITERAL(TMP195749, "r\"", 2);
-STRING_LITERAL(TMP195750, "\"\"", 2);
-STRING_LITERAL(TMP195751, "\"\"\"", 3);
-STRING_LITERAL(TMP195752, "0b", 2);
-STRING_LITERAL(TMP195753, "0o", 2);
-STRING_LITERAL(TMP195754, "0x", 2);
-STRING_LITERAL(TMP195755, "\'i8", 3);
-STRING_LITERAL(TMP195756, "\'i16", 4);
-STRING_LITERAL(TMP195757, "\'i32", 4);
-STRING_LITERAL(TMP195758, "\'i64", 4);
-STRING_LITERAL(TMP195759, "\'f32", 4);
-STRING_LITERAL(TMP195760, "\'f64", 4);
-STRING_LITERAL(TMP195761, "nil", 3);
-STRING_LITERAL(TMP195762, "[type node]", 11);
-STRING_LITERAL(TMP195763, "rnimsyn.atom ", 13);
-STRING_LITERAL(TMP195765, "(", 1);
-STRING_LITERAL(TMP195766, " ", 1);
-STRING_LITERAL(TMP195767, ",", 1);
-STRING_LITERAL(TMP195768, "##", 2);
-STRING_LITERAL(TMP195769, ")", 1);
-STRING_LITERAL(TMP195770, "cast", 4);
-STRING_LITERAL(TMP195771, "[", 1);
-STRING_LITERAL(TMP195772, "]", 1);
-STRING_LITERAL(TMP195773, "addr", 4);
-STRING_LITERAL(TMP195774, "=", 1);
-STRING_LITERAL(TMP195775, "chckRangeF", 10);
-STRING_LITERAL(TMP195776, "chckRange64", 11);
-STRING_LITERAL(TMP195777, "chckRange", 9);
-STRING_LITERAL(TMP195778, "|", 1);
-STRING_LITERAL(TMP195779, "{", 1);
-STRING_LITERAL(TMP195780, "}", 1);
-STRING_LITERAL(TMP195781, ".", 1);
-STRING_LITERAL(TMP195782, "bind", 4);
-STRING_LITERAL(TMP195783, "lambda", 6);
-STRING_LITERAL(TMP195784, ":", 1);
-STRING_LITERAL(TMP195785, "..", 2);
-STRING_LITERAL(TMP195786, "^", 1);
-STRING_LITERAL(TMP195787, "`", 1);
-STRING_LITERAL(TMP195788, "if", 2);
-NIM_CONST TY86840 TMP195789 = {0,
+STRING_LITERAL(TMP197750, "", 0);
+STRING_LITERAL(TMP197751, "\012", 1);
+STRING_LITERAL(TMP197752, "\"", 1);
+STRING_LITERAL(TMP197753, "\\0", 2);
+STRING_LITERAL(TMP197754, "\\x", 2);
+STRING_LITERAL(TMP197756, "r\"", 2);
+STRING_LITERAL(TMP197757, "\"\"", 2);
+STRING_LITERAL(TMP197758, "\"\"\"", 3);
+STRING_LITERAL(TMP197759, "0b", 2);
+STRING_LITERAL(TMP197760, "0o", 2);
+STRING_LITERAL(TMP197761, "0x", 2);
+STRING_LITERAL(TMP197762, "\'i8", 3);
+STRING_LITERAL(TMP197763, "\'i16", 4);
+STRING_LITERAL(TMP197764, "\'i32", 4);
+STRING_LITERAL(TMP197765, "\'i64", 4);
+STRING_LITERAL(TMP197766, "\'f32", 4);
+STRING_LITERAL(TMP197767, "\'f64", 4);
+STRING_LITERAL(TMP197768, "nil", 3);
+STRING_LITERAL(TMP197769, "[type node]", 11);
+STRING_LITERAL(TMP197770, "rnimsyn.atom ", 13);
+STRING_LITERAL(TMP197772, "(", 1);
+STRING_LITERAL(TMP197773, " ", 1);
+STRING_LITERAL(TMP197774, ",", 1);
+STRING_LITERAL(TMP197775, "##", 2);
+STRING_LITERAL(TMP197776, ")", 1);
+STRING_LITERAL(TMP197777, "cast", 4);
+STRING_LITERAL(TMP197778, "[", 1);
+STRING_LITERAL(TMP197779, "]", 1);
+STRING_LITERAL(TMP197780, "addr", 4);
+STRING_LITERAL(TMP197781, "=", 1);
+STRING_LITERAL(TMP197782, "chckRangeF", 10);
+STRING_LITERAL(TMP197783, "chckRange64", 11);
+STRING_LITERAL(TMP197784, "chckRange", 9);
+STRING_LITERAL(TMP197785, "|", 1);
+STRING_LITERAL(TMP197786, "{", 1);
+STRING_LITERAL(TMP197787, "}", 1);
+STRING_LITERAL(TMP197788, ".", 1);
+STRING_LITERAL(TMP197789, "bind", 4);
+STRING_LITERAL(TMP197790, "lambda", 6);
+STRING_LITERAL(TMP197791, ":", 1);
+STRING_LITERAL(TMP197792, "..", 2);
+STRING_LITERAL(TMP197793, "^", 1);
+STRING_LITERAL(TMP197794, "`", 1);
+STRING_LITERAL(TMP197795, "if", 2);
+NIM_CONST TY87840 TMP197796 = {0,
 0}
 ;
-STRING_LITERAL(TMP195790, " elif", 5);
-STRING_LITERAL(TMP195791, " else", 5);
-STRING_LITERAL(TMP195792, "type", 4);
-STRING_LITERAL(TMP195793, "ref", 3);
-STRING_LITERAL(TMP195794, "ptr", 3);
-STRING_LITERAL(TMP195795, "var", 3);
-STRING_LITERAL(TMP195796, "distinct", 8);
-STRING_LITERAL(TMP195797, "object", 6);
-STRING_LITERAL(TMP195798, "of", 2);
-STRING_LITERAL(TMP195799, "proc", 4);
-STRING_LITERAL(TMP195800, "enum", 4);
-STRING_LITERAL(TMP195801, "when", 4);
-STRING_LITERAL(TMP195802, "while", 5);
-STRING_LITERAL(TMP195803, "case", 4);
-STRING_LITERAL(TMP195804, "try", 3);
-STRING_LITERAL(TMP195805, "for", 3);
-STRING_LITERAL(TMP195806, "in", 2);
-STRING_LITERAL(TMP195807, "block", 5);
-STRING_LITERAL(TMP195808, "asm", 3);
-STRING_LITERAL(TMP195809, "method", 6);
-STRING_LITERAL(TMP195810, "iterator", 8);
-STRING_LITERAL(TMP195811, "macro", 5);
-STRING_LITERAL(TMP195812, "template", 8);
-STRING_LITERAL(TMP195813, "const", 5);
-STRING_LITERAL(TMP195814, "return", 6);
-STRING_LITERAL(TMP195815, "raise", 5);
-STRING_LITERAL(TMP195816, "yield", 5);
-STRING_LITERAL(TMP195817, "discard", 7);
-STRING_LITERAL(TMP195818, "break", 5);
-STRING_LITERAL(TMP195819, "continue", 8);
-STRING_LITERAL(TMP195820, "{.", 2);
-STRING_LITERAL(TMP195821, ".}", 2);
-STRING_LITERAL(TMP195822, "import", 6);
-STRING_LITERAL(TMP195823, "from", 4);
-STRING_LITERAL(TMP195824, "include", 7);
-STRING_LITERAL(TMP195825, "elif", 4);
-STRING_LITERAL(TMP195826, "else", 4);
-STRING_LITERAL(TMP195827, "finally", 7);
-STRING_LITERAL(TMP195828, "except", 6);
-STRING_LITERAL(TMP195829, "tuple", 5);
-STRING_LITERAL(TMP195830, "rnimsyn.gsub(", 13);
-extern TNimType* NTI55520; /* TNodeSeq */
-extern TNimType* NTI85014; /* TRenderTokSeq */
+STRING_LITERAL(TMP197797, " elif", 5);
+STRING_LITERAL(TMP197798, " else", 5);
+STRING_LITERAL(TMP197799, "type", 4);
+STRING_LITERAL(TMP197800, "ref", 3);
+STRING_LITERAL(TMP197801, "ptr", 3);
+STRING_LITERAL(TMP197802, "var", 3);
+STRING_LITERAL(TMP197803, "distinct", 8);
+STRING_LITERAL(TMP197804, "object", 6);
+STRING_LITERAL(TMP197805, "of", 2);
+STRING_LITERAL(TMP197806, "proc", 4);
+STRING_LITERAL(TMP197807, "enum", 4);
+STRING_LITERAL(TMP197808, "when", 4);
+STRING_LITERAL(TMP197809, "while", 5);
+STRING_LITERAL(TMP197810, "case", 4);
+STRING_LITERAL(TMP197811, "try", 3);
+STRING_LITERAL(TMP197812, "for", 3);
+STRING_LITERAL(TMP197813, "in", 2);
+STRING_LITERAL(TMP197814, "block", 5);
+STRING_LITERAL(TMP197815, "asm", 3);
+STRING_LITERAL(TMP197816, "method", 6);
+STRING_LITERAL(TMP197817, "iterator", 8);
+STRING_LITERAL(TMP197818, "macro", 5);
+STRING_LITERAL(TMP197819, "template", 8);
+STRING_LITERAL(TMP197820, "const", 5);
+STRING_LITERAL(TMP197821, "return", 6);
+STRING_LITERAL(TMP197822, "raise", 5);
+STRING_LITERAL(TMP197823, "yield", 5);
+STRING_LITERAL(TMP197824, "discard", 7);
+STRING_LITERAL(TMP197825, "break", 5);
+STRING_LITERAL(TMP197826, "continue", 8);
+STRING_LITERAL(TMP197827, "{.", 2);
+STRING_LITERAL(TMP197828, ".}", 2);
+STRING_LITERAL(TMP197829, "import", 6);
+STRING_LITERAL(TMP197830, "from", 4);
+STRING_LITERAL(TMP197831, "include", 7);
+STRING_LITERAL(TMP197832, "elif", 4);
+STRING_LITERAL(TMP197833, "else", 4);
+STRING_LITERAL(TMP197834, "finally", 7);
+STRING_LITERAL(TMP197835, "except", 6);
+STRING_LITERAL(TMP197836, "tuple", 5);
+STRING_LITERAL(TMP197837, "rnimsyn.gsub(", 13);
+extern TNimType* NTI86016; /* TSrcGen */
+extern TNimType* NTI56520; /* TNodeSeq */
+extern TNimType* NTI86014; /* TRenderTokSeq */
 extern TY11196 Gch_11214;
-extern TNimType* NTI55030; /* TNodeKind */
-N_NIMCALL(void, Initsrcgen_85068)(TY85016* G_85071, NU8 Renderflags_85072) {
-unsureAsgnRef((void**) &(*G_85071).Comstack, (TY55520*) newSeq(NTI55520, 0));
-unsureAsgnRef((void**) &(*G_85071).Tokens, (TY85014*) newSeq(NTI85014, 0));
-(*G_85071).Indent = 0;
-(*G_85071).Linelen = 0;
-(*G_85071).Pos = 0;
-(*G_85071).Idx = 0;
-unsureAsgnRef((void**) &(*G_85071).Buf, copyString(((NimStringDesc*) &TMP195743)));
-(*G_85071).Flags = Renderflags_85072;
-(*G_85071).Pendingnl = -1;
+extern TNimType* NTI56030; /* TNodeKind */
+extern NU32 Gglobaloptions_47084;
+N_NIMCALL(void, Initsrcgen_86068)(TY86016* G_86071, NU8 Renderflags_86072) {
+unsureAsgnRef((void**) &(*G_86071).Comstack, (TY56520*) newSeq(NTI56520, 0));
+unsureAsgnRef((void**) &(*G_86071).Tokens, (TY86014*) newSeq(NTI86014, 0));
+(*G_86071).Indent = 0;
+(*G_86071).Linelen = 0;
+(*G_86071).Pos = 0;
+(*G_86071).Idx = 0;
+unsureAsgnRef((void**) &(*G_86071).Buf, copyString(((NimStringDesc*) &TMP197750)));
+(*G_86071).Flags = Renderflags_86072;
+(*G_86071).Pendingnl = -1;
 }
-N_NIMCALL(void, Initcontext_86852)(TY86840* C_86855) {
-(*C_86855).Spacing = 0;
-(*C_86855).Flags = 0;
+N_NIMCALL(void, Initcontext_87852)(TY87840* C_87855) {
+(*C_87855).Spacing = 0;
+(*C_87855).Flags = 0;
 }
 static N_INLINE(TY10802*, Usrtocell_11612)(void* Usr_11614) {
 TY10802* Result_11615;
@@ -467,119 +471,121 @@ LA10: ;
 LA6: ;
 (*Dest_13218) = Src_13219;
 }
-N_NIMCALL(void, Pushcom_85595)(TY85016* G_85598, TY55526* N_85599) {
-NI Length_85610;
-Length_85610 = 0;
-Length_85610 = (*G_85598).Comstack->Sup.len;
-(*G_85598).Comstack = (TY55520*) setLengthSeq(&((*G_85598).Comstack)->Sup, sizeof(TY55526*), (NI64)(Length_85610 + 1));
-asgnRefNoCycle((void**) &(*G_85598).Comstack->data[Length_85610], N_85599);
+N_NIMCALL(void, Pushcom_86595)(TY86016* G_86598, TY56526* N_86599) {
+NI Length_86610;
+Length_86610 = 0;
+Length_86610 = (*G_86598).Comstack->Sup.len;
+(*G_86598).Comstack = (TY56520*) setLengthSeq(&((*G_86598).Comstack)->Sup, sizeof(TY56526*), (NI64)(Length_86610 + 1));
+asgnRefNoCycle((void**) &(*G_86598).Comstack->data[Length_86610], N_86599);
 }
 static N_INLINE(void, appendString)(NimStringDesc* Dest_18799, NimStringDesc* Src_18800) {
 memcpy(((NCSTRING) (&(*Dest_18799).data[((*Dest_18799).Sup.len)-0])), ((NCSTRING) ((*Src_18800).data)), ((int) ((NI64)((NI64)((*Src_18800).Sup.len + 1) * 1))));
 (*Dest_18799).Sup.len += (*Src_18800).Sup.len;
 }
-N_NIMCALL(void, Addtok_85105)(TY85016* G_85108, NU8 Kind_85109, NimStringDesc* S_85110) {
-NI Length_85121;
-Length_85121 = 0;
-Length_85121 = (*G_85108).Tokens->Sup.len;
-(*G_85108).Tokens = (TY85014*) setLengthSeq(&((*G_85108).Tokens)->Sup, sizeof(TY85012), (NI64)(Length_85121 + 1));
-(*G_85108).Tokens->data[Length_85121].Kind = Kind_85109;
-(*G_85108).Tokens->data[Length_85121].Length = ((NI16) (S_85110->Sup.len));
-(*G_85108).Buf = resizeString((*G_85108).Buf, S_85110->Sup.len + 0);
-appendString((*G_85108).Buf, S_85110);
+N_NIMCALL(void, Addtok_86105)(TY86016* G_86108, NU8 Kind_86109, NimStringDesc* S_86110) {
+NI Length_86121;
+Length_86121 = 0;
+Length_86121 = (*G_86108).Tokens->Sup.len;
+(*G_86108).Tokens = (TY86014*) setLengthSeq(&((*G_86108).Tokens)->Sup, sizeof(TY86012), (NI64)(Length_86121 + 1));
+(*G_86108).Tokens->data[Length_86121].Kind = Kind_86109;
+(*G_86108).Tokens->data[Length_86121].Length = ((NI16) (S_86110->Sup.len));
+(*G_86108).Buf = resizeString((*G_86108).Buf, S_86110->Sup.len + 0);
+appendString((*G_86108).Buf, S_86110);
 }
-N_NIMCALL(void, Addpendingnl_85136)(TY85016* G_85139) {
+N_NIMCALL(void, Addpendingnl_86136)(TY86016* G_86139) {
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
-if (!(0 <= (*G_85139).Pendingnl)) goto LA2;
+if (!(0 <= (*G_86139).Pendingnl)) goto LA2;
 LOC4 = 0;
 LOC5 = 0;
-LOC5 = nsuRepeatChar((*G_85139).Pendingnl, 32);
+LOC5 = nsuRepeatChar((*G_86139).Pendingnl, 32);
 LOC4 = rawNewString(LOC5->Sup.len + 1);
-appendString(LOC4, ((NimStringDesc*) &TMP195744));
+appendString(LOC4, ((NimStringDesc*) &TMP197751));
 appendString(LOC4, LOC5);
-Addtok_85105(G_85139, ((NU8) 102), LOC4);
-(*G_85139).Linelen = (*G_85139).Pendingnl;
-(*G_85139).Pendingnl = -1;
+Addtok_86105(G_86139, ((NU8) 102), LOC4);
+(*G_86139).Linelen = (*G_86139).Pendingnl;
+(*G_86139).Pendingnl = -1;
 LA2: ;
 }
-N_NIMCALL(void, Put_85224)(TY85016* G_85227, NU8 Kind_85228, NimStringDesc* S_85229) {
-Addpendingnl_85136(G_85227);
-if (!(0 < S_85229->Sup.len)) goto LA2;
-Addtok_85105(G_85227, Kind_85228, S_85229);
-(*G_85227).Linelen += S_85229->Sup.len;
+N_NIMCALL(void, Put_86224)(TY86016* G_86227, NU8 Kind_86228, NimStringDesc* S_86229) {
+Addpendingnl_86136(G_86227);
+if (!(0 < S_86229->Sup.len)) goto LA2;
+Addtok_86105(G_86227, Kind_86228, S_86229);
+(*G_86227).Linelen += S_86229->Sup.len;
 LA2: ;
 }
-N_NIMCALL(void, Optnl_85153)(TY85016* G_85156, NI Indent_85157) {
-(*G_85156).Pendingnl = Indent_85157;
-(*G_85156).Linelen = Indent_85157;
+N_NIMCALL(void, Optnl_86153)(TY86016* G_86156, NI Indent_86157) {
+(*G_86156).Pendingnl = Indent_86157;
+(*G_86156).Linelen = Indent_86157;
 }
-N_NIMCALL(void, Putrawstr_85512)(TY85016* G_85515, NU8 Kind_85516, NimStringDesc* S_85517) {
-NI I_85518;
-NI Hi_85521;
-NimStringDesc* Str_85522;
+N_NIMCALL(void, Putrawstr_86512)(TY86016* G_86515, NU8 Kind_86516, NimStringDesc* S_86517) {
+NI I_86518;
+NI Hi_86521;
+NimStringDesc* Str_86522;
 NIM_BOOL LOC3;
-I_85518 = 0;
-I_85518 = 0;
-Hi_85521 = 0;
-Hi_85521 = (NI64)((NI64)(S_85517->Sup.len + 0) - 1);
-Str_85522 = 0;
-Str_85522 = copyString(((NimStringDesc*) &TMP195743));
+Str_86522 = 0;
+I_86518 = 0;
+I_86518 = 0;
+Hi_86521 = 0;
+Hi_86521 = (NI64)((NI64)(S_86517->Sup.len + 0) - 1);
+Str_86522 = NIM_NIL;
+Str_86522 = copyString(((NimStringDesc*) &TMP197750));
 while (1) {
-if (!(I_85518 <= Hi_85521)) goto LA1;
-switch (((NU8)(S_85517->data[I_85518]))) {
+if (!(I_86518 <= Hi_86521)) goto LA1;
+switch (((NU8)(S_86517->data[I_86518]))) {
 case 13:
-Put_85224(G_85515, Kind_85516, Str_85522);
-Str_85522 = copyString(((NimStringDesc*) &TMP195743));
-I_85518 += 1;
-LOC3 = (I_85518 <= Hi_85521);
+Put_86224(G_86515, Kind_86516, Str_86522);
+Str_86522 = copyString(((NimStringDesc*) &TMP197750));
+I_86518 += 1;
+LOC3 = (I_86518 <= Hi_86521);
 if (!(LOC3)) goto LA4;
-LOC3 = ((NU8)(S_85517->data[I_85518]) == (NU8)(10));
+LOC3 = ((NU8)(S_86517->data[I_86518]) == (NU8)(10));
 LA4: ;
 if (!LOC3) goto LA5;
-I_85518 += 1;
+I_86518 += 1;
 LA5: ;
-Optnl_85153(G_85515, 0);
+Optnl_86153(G_86515, 0);
 break;
 case 10:
-Put_85224(G_85515, Kind_85516, Str_85522);
-Str_85522 = copyString(((NimStringDesc*) &TMP195743));
-I_85518 += 1;
-Optnl_85153(G_85515, 0);
+Put_86224(G_86515, Kind_86516, Str_86522);
+Str_86522 = copyString(((NimStringDesc*) &TMP197750));
+I_86518 += 1;
+Optnl_86153(G_86515, 0);
 break;
 default:
-Str_85522 = addChar(Str_85522, S_85517->data[I_85518]);
-I_85518 += 1;
+Str_86522 = addChar(Str_86522, S_86517->data[I_86518]);
+I_86518 += 1;
 break;
 }
 } LA1: ;
-Put_85224(G_85515, Kind_85516, Str_85522);
+Put_86224(G_86515, Kind_86516, Str_86522);
 }
 static N_INLINE(void, appendChar)(NimStringDesc* Dest_18816, NIM_CHAR C_18817) {
 (*Dest_18816).data[((*Dest_18816).Sup.len)-0] = C_18817;
 (*Dest_18816).data[((NI64)((*Dest_18816).Sup.len + 1))-0] = 0;
 (*Dest_18816).Sup.len += 1;
 }
-N_NIMCALL(NimStringDesc*, Tonimchar_85257)(NIM_CHAR C_85259) {
-NimStringDesc* Result_85260;
+N_NIMCALL(NimStringDesc*, Tonimchar_86257)(NIM_CHAR C_86259) {
+NimStringDesc* Result_86260;
 NimStringDesc* LOC1;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
 NimStringDesc* LOC4;
-Result_85260 = 0;
-switch (((NU8)(C_85259))) {
+Result_86260 = 0;
+Result_86260 = NIM_NIL;
+switch (((NU8)(C_86259))) {
 case 0:
-Result_85260 = copyString(((NimStringDesc*) &TMP195746));
+Result_86260 = copyString(((NimStringDesc*) &TMP197753));
 break;
 case 1 ... 31:
 case 128 ... 255:
 LOC1 = 0;
 LOC2 = 0;
-LOC2 = nsuToHex(((NI64) (((NU8)(C_85259)))), 2);
+LOC2 = nsuToHex(((NI64) (((NU8)(C_86259)))), 2);
 LOC1 = rawNewString(LOC2->Sup.len + 2);
-appendString(LOC1, ((NimStringDesc*) &TMP195747));
+appendString(LOC1, ((NimStringDesc*) &TMP197754));
 appendString(LOC1, LOC2);
-Result_85260 = LOC1;
+Result_86260 = LOC1;
 break;
 case 39:
 case 34:
@@ -587,90 +593,92 @@ case 92:
 LOC3 = 0;
 LOC3 = rawNewString(2);
 appendChar(LOC3, 92);
-appendChar(LOC3, C_85259);
-Result_85260 = LOC3;
+appendChar(LOC3, C_86259);
+Result_86260 = LOC3;
 break;
 default:
 LOC4 = 0;
 LOC4 = rawNewString(1);
-appendChar(LOC4, C_85259);
-appendString(LOC4, ((NimStringDesc*) &TMP195743));
-Result_85260 = LOC4;
+appendChar(LOC4, C_86259);
+appendString(LOC4, ((NimStringDesc*) &TMP197750));
+Result_86260 = LOC4;
 break;
 }
-return Result_85260;
+return Result_86260;
 }
-N_NIMCALL(NimStringDesc*, Makenimstring_85266)(NimStringDesc* S_85268) {
-NimStringDesc* Result_85269;
-NI I_85295;
-NI HEX3Atmp_85296;
-NI Res_85298;
+N_NIMCALL(NimStringDesc*, Makenimstring_86266)(NimStringDesc* S_86268) {
+NimStringDesc* Result_86269;
+NI I_86295;
+NI HEX3Atmp_86296;
+NI Res_86298;
 NimStringDesc* LOC2;
-Result_85269 = 0;
-Result_85269 = copyString(((NimStringDesc*) &TMP195745));
-I_85295 = 0;
-HEX3Atmp_85296 = 0;
-HEX3Atmp_85296 = (NI64)((NI64)(S_85268->Sup.len + 0) - 1);
-Res_85298 = 0;
-Res_85298 = 0;
+Result_86269 = 0;
+Result_86269 = NIM_NIL;
+Result_86269 = copyString(((NimStringDesc*) &TMP197752));
+I_86295 = 0;
+HEX3Atmp_86296 = 0;
+HEX3Atmp_86296 = (NI64)((NI64)(S_86268->Sup.len + 0) - 1);
+Res_86298 = 0;
+Res_86298 = 0;
 while (1) {
-if (!(Res_85298 <= HEX3Atmp_85296)) goto LA1;
-I_85295 = Res_85298;
+if (!(Res_86298 <= HEX3Atmp_86296)) goto LA1;
+I_86295 = Res_86298;
 LOC2 = 0;
-LOC2 = Tonimchar_85257(S_85268->data[I_85295]);
-Result_85269 = resizeString(Result_85269, LOC2->Sup.len + 0);
-appendString(Result_85269, LOC2);
-Res_85298 += 1;
+LOC2 = Tonimchar_86257(S_86268->data[I_86295]);
+Result_86269 = resizeString(Result_86269, LOC2->Sup.len + 0);
+appendString(Result_86269, LOC2);
+Res_86298 += 1;
 } LA1: ;
-Result_85269 = addChar(Result_85269, 34);
-return Result_85269;
+Result_86269 = addChar(Result_86269, 34);
+return Result_86269;
 }
-N_NIMCALL(NimStringDesc*, Litaux_85760)(TY55526* N_85762, NI64 X_85763, NI Size_85764) {
-NimStringDesc* Result_85765;
+N_NIMCALL(NimStringDesc*, Litaux_86760)(TY56526* N_86762, NI64 X_86763, NI Size_86764) {
+NimStringDesc* Result_86765;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
 NimStringDesc* LOC8;
 NimStringDesc* LOC9;
 NimStringDesc* LOC12;
 NimStringDesc* LOC13;
-Result_85765 = 0;
-if (!(((*N_85762).Flags &(1<<((((NU8) 1))&7)))!=0)) goto LA2;
+Result_86765 = 0;
+Result_86765 = NIM_NIL;
+if (!(((*N_86762).Flags &(1<<((((NU8) 1))&7)))!=0)) goto LA2;
 LOC4 = 0;
 LOC5 = 0;
-LOC5 = nsuToBin(X_85763, (NI64)(Size_85764 * 8));
+LOC5 = nsuToBin(X_86763, (NI64)(Size_86764 * 8));
 LOC4 = rawNewString(LOC5->Sup.len + 2);
-appendString(LOC4, ((NimStringDesc*) &TMP195752));
+appendString(LOC4, ((NimStringDesc*) &TMP197759));
 appendString(LOC4, LOC5);
-Result_85765 = LOC4;
+Result_86765 = LOC4;
 goto LA1;
 LA2: ;
-if (!(((*N_85762).Flags &(1<<((((NU8) 2))&7)))!=0)) goto LA6;
+if (!(((*N_86762).Flags &(1<<((((NU8) 2))&7)))!=0)) goto LA6;
 LOC8 = 0;
 LOC9 = 0;
-LOC9 = nsuToOct(X_85763, (NI64)(Size_85764 * 3));
+LOC9 = nsuToOct(X_86763, (NI64)(Size_86764 * 3));
 LOC8 = rawNewString(LOC9->Sup.len + 2);
-appendString(LOC8, ((NimStringDesc*) &TMP195753));
+appendString(LOC8, ((NimStringDesc*) &TMP197760));
 appendString(LOC8, LOC9);
-Result_85765 = LOC8;
+Result_86765 = LOC8;
 goto LA1;
 LA6: ;
-if (!(((*N_85762).Flags &(1<<((((NU8) 3))&7)))!=0)) goto LA10;
+if (!(((*N_86762).Flags &(1<<((((NU8) 3))&7)))!=0)) goto LA10;
 LOC12 = 0;
 LOC13 = 0;
-LOC13 = nsuToHex(X_85763, (NI64)(Size_85764 * 2));
+LOC13 = nsuToHex(X_86763, (NI64)(Size_86764 * 2));
 LOC12 = rawNewString(LOC13->Sup.len + 2);
-appendString(LOC12, ((NimStringDesc*) &TMP195754));
+appendString(LOC12, ((NimStringDesc*) &TMP197761));
 appendString(LOC12, LOC13);
-Result_85765 = LOC12;
+Result_86765 = LOC12;
 goto LA1;
 LA10: ;
-Result_85765 = nimInt64ToStr(X_85763);
+Result_86765 = nimInt64ToStr(X_86763);
 LA1: ;
-return Result_85765;
+return Result_86765;
 }
-N_NIMCALL(NimStringDesc*, Atom_85801)(TY55526* N_85803) {
-NimStringDesc* Result_85804;
-NF32 F_85805;
+N_NIMCALL(NimStringDesc*, Atom_86801)(TY56526* N_86803) {
+NimStringDesc* Result_86804;
+NF32 F_86805;
 NimStringDesc* LOC1;
 NimStringDesc* LOC2;
 NimStringDesc* LOC3;
@@ -694,316 +702,320 @@ NimStringDesc* LOC29;
 NimStringDesc* LOC30;
 NIM_BOOL LOC32;
 NimStringDesc* LOC36;
-Result_85804 = 0;
-F_85805 = 0;
-switch ((*N_85803).Kind) {
+Result_86804 = 0;
+Result_86804 = NIM_NIL;
+F_86805 = 0;
+switch ((*N_86803).Kind) {
 case ((NU8) 1):
-Result_85804 = copyString(((NimStringDesc*) &TMP195743));
+Result_86804 = copyString(((NimStringDesc*) &TMP197750));
 break;
 case ((NU8) 2):
-Result_85804 = copyString((*(*N_85803).KindU.S5.Ident).S);
+Result_86804 = copyString((*(*N_86803).KindU.S5.Ident).S);
 break;
 case ((NU8) 3):
-Result_85804 = copyString((*(*(*N_85803).KindU.S4.Sym).Name).S);
+Result_86804 = copyString((*(*(*N_86803).KindU.S4.Sym).Name).S);
 break;
 case ((NU8) 14):
-Result_85804 = Makenimstring_85266((*N_85803).KindU.S3.Strval);
+Result_86804 = Makenimstring_86266((*N_86803).KindU.S3.Strval);
 break;
 case ((NU8) 15):
 LOC1 = 0;
 LOC2 = 0;
-LOC2 = nsuReplaceStr((*N_85803).KindU.S3.Strval, ((NimStringDesc*) &TMP195745), ((NimStringDesc*) &TMP195750));
+LOC2 = nsuReplaceStr((*N_86803).KindU.S3.Strval, ((NimStringDesc*) &TMP197752), ((NimStringDesc*) &TMP197757));
 LOC1 = rawNewString(LOC2->Sup.len + 3);
-appendString(LOC1, ((NimStringDesc*) &TMP195749));
+appendString(LOC1, ((NimStringDesc*) &TMP197756));
 appendString(LOC1, LOC2);
 appendChar(LOC1, 34);
-Result_85804 = LOC1;
+Result_86804 = LOC1;
 break;
 case ((NU8) 16):
 LOC3 = 0;
-LOC3 = rawNewString((*N_85803).KindU.S3.Strval->Sup.len + 6);
-appendString(LOC3, ((NimStringDesc*) &TMP195751));
-appendString(LOC3, (*N_85803).KindU.S3.Strval);
-appendString(LOC3, ((NimStringDesc*) &TMP195751));
-Result_85804 = LOC3;
+LOC3 = rawNewString((*N_86803).KindU.S3.Strval->Sup.len + 6);
+appendString(LOC3, ((NimStringDesc*) &TMP197758));
+appendString(LOC3, (*N_86803).KindU.S3.Strval);
+appendString(LOC3, ((NimStringDesc*) &TMP197758));
+Result_86804 = LOC3;
 break;
 case ((NU8) 5):
 LOC4 = 0;
 LOC5 = 0;
-LOC5 = Tonimchar_85257(((NIM_CHAR) (((NI) (((NI) ((*N_85803).KindU.S1.Intval)))))));
+LOC5 = Tonimchar_86257(((NIM_CHAR) (((NI) (((NI) ((*N_86803).KindU.S1.Intval)))))));
 LOC4 = rawNewString(LOC5->Sup.len + 2);
 appendChar(LOC4, 39);
 appendString(LOC4, LOC5);
 appendChar(LOC4, 39);
-Result_85804 = LOC4;
+Result_86804 = LOC4;
 break;
 case ((NU8) 6):
-Result_85804 = Litaux_85760(N_85803, (*N_85803).KindU.S1.Intval, 4);
+Result_86804 = Litaux_86760(N_86803, (*N_86803).KindU.S1.Intval, 4);
 break;
 case ((NU8) 7):
 LOC6 = 0;
 LOC7 = 0;
-LOC7 = Litaux_85760(N_85803, (*N_85803).KindU.S1.Intval, 1);
+LOC7 = Litaux_86760(N_86803, (*N_86803).KindU.S1.Intval, 1);
 LOC6 = rawNewString(LOC7->Sup.len + 3);
 appendString(LOC6, LOC7);
-appendString(LOC6, ((NimStringDesc*) &TMP195755));
-Result_85804 = LOC6;
+appendString(LOC6, ((NimStringDesc*) &TMP197762));
+Result_86804 = LOC6;
 break;
 case ((NU8) 8):
 LOC8 = 0;
 LOC9 = 0;
-LOC9 = Litaux_85760(N_85803, (*N_85803).KindU.S1.Intval, 2);
+LOC9 = Litaux_86760(N_86803, (*N_86803).KindU.S1.Intval, 2);
 LOC8 = rawNewString(LOC9->Sup.len + 4);
 appendString(LOC8, LOC9);
-appendString(LOC8, ((NimStringDesc*) &TMP195756));
-Result_85804 = LOC8;
+appendString(LOC8, ((NimStringDesc*) &TMP197763));
+Result_86804 = LOC8;
 break;
 case ((NU8) 9):
 LOC10 = 0;
 LOC11 = 0;
-LOC11 = Litaux_85760(N_85803, (*N_85803).KindU.S1.Intval, 4);
+LOC11 = Litaux_86760(N_86803, (*N_86803).KindU.S1.Intval, 4);
 LOC10 = rawNewString(LOC11->Sup.len + 4);
 appendString(LOC10, LOC11);
-appendString(LOC10, ((NimStringDesc*) &TMP195757));
-Result_85804 = LOC10;
+appendString(LOC10, ((NimStringDesc*) &TMP197764));
+Result_86804 = LOC10;
 break;
 case ((NU8) 10):
 LOC12 = 0;
 LOC13 = 0;
-LOC13 = Litaux_85760(N_85803, (*N_85803).KindU.S1.Intval, 8);
+LOC13 = Litaux_86760(N_86803, (*N_86803).KindU.S1.Intval, 8);
 LOC12 = rawNewString(LOC13->Sup.len + 4);
 appendString(LOC12, LOC13);
-appendString(LOC12, ((NimStringDesc*) &TMP195758));
-Result_85804 = LOC12;
+appendString(LOC12, ((NimStringDesc*) &TMP197765));
+Result_86804 = LOC12;
 break;
 case ((NU8) 11):
-if (!(((*N_85803).Flags & 14) == 0)) goto LA15;
-Result_85804 = nimFloatToStr(((NF) ((*N_85803).KindU.S2.Floatval)));
+if (!(((*N_86803).Flags & 14) == 0)) goto LA15;
+Result_86804 = nimFloatToStr(((NF) ((*N_86803).KindU.S2.Floatval)));
 goto LA14;
 LA15: ;
-Result_85804 = Litaux_85760(N_85803, (*((NI64*) (&(*N_85803).KindU.S2.Floatval))), 8);
+Result_86804 = Litaux_86760(N_86803, (*((NI64*) (&(*N_86803).KindU.S2.Floatval))), 8);
 LA14: ;
 break;
 case ((NU8) 12):
-if (!(((*N_85803).Flags & 14) == 0)) goto LA18;
+if (!(((*N_86803).Flags & 14) == 0)) goto LA18;
 LOC20 = 0;
 LOC21 = 0;
-LOC21 = nimFloatToStr(((NF) ((*N_85803).KindU.S2.Floatval)));
+LOC21 = nimFloatToStr(((NF) ((*N_86803).KindU.S2.Floatval)));
 LOC20 = rawNewString(LOC21->Sup.len + 4);
 appendString(LOC20, LOC21);
-appendString(LOC20, ((NimStringDesc*) &TMP195759));
-Result_85804 = LOC20;
+appendString(LOC20, ((NimStringDesc*) &TMP197766));
+Result_86804 = LOC20;
 goto LA17;
 LA18: ;
-F_85805 = ((NF32) ((*N_85803).KindU.S2.Floatval));
+F_86805 = ((NF32) ((*N_86803).KindU.S2.Floatval));
 LOC22 = 0;
 LOC23 = 0;
-LOC23 = Litaux_85760(N_85803, ((NI64) ((*((int*) (&F_85805))))), 4);
+LOC23 = Litaux_86760(N_86803, ((NI64) ((*((int*) (&F_86805))))), 4);
 LOC22 = rawNewString(LOC23->Sup.len + 4);
 appendString(LOC22, LOC23);
-appendString(LOC22, ((NimStringDesc*) &TMP195759));
-Result_85804 = LOC22;
+appendString(LOC22, ((NimStringDesc*) &TMP197766));
+Result_86804 = LOC22;
 LA17: ;
 break;
 case ((NU8) 13):
-if (!(((*N_85803).Flags & 14) == 0)) goto LA25;
+if (!(((*N_86803).Flags & 14) == 0)) goto LA25;
 LOC27 = 0;
 LOC28 = 0;
-LOC28 = nimFloatToStr(((NF) ((*N_85803).KindU.S2.Floatval)));
+LOC28 = nimFloatToStr(((NF) ((*N_86803).KindU.S2.Floatval)));
 LOC27 = rawNewString(LOC28->Sup.len + 4);
 appendString(LOC27, LOC28);
-appendString(LOC27, ((NimStringDesc*) &TMP195760));
-Result_85804 = LOC27;
+appendString(LOC27, ((NimStringDesc*) &TMP197767));
+Result_86804 = LOC27;
 goto LA24;
 LA25: ;
 LOC29 = 0;
 LOC30 = 0;
-LOC30 = Litaux_85760(N_85803, (*((NI64*) (&(*N_85803).KindU.S2.Floatval))), 8);
+LOC30 = Litaux_86760(N_86803, (*((NI64*) (&(*N_86803).KindU.S2.Floatval))), 8);
 LOC29 = rawNewString(LOC30->Sup.len + 4);
 appendString(LOC29, LOC30);
-appendString(LOC29, ((NimStringDesc*) &TMP195760));
-Result_85804 = LOC29;
+appendString(LOC29, ((NimStringDesc*) &TMP197767));
+Result_86804 = LOC29;
 LA24: ;
 break;
 case ((NU8) 18):
-Result_85804 = copyString(((NimStringDesc*) &TMP195761));
+Result_86804 = copyString(((NimStringDesc*) &TMP197768));
 break;
 case ((NU8) 4):
-LOC32 = !(((*N_85803).Typ == NIM_NIL));
+LOC32 = !(((*N_86803).Typ == NIM_NIL));
 if (!(LOC32)) goto LA33;
-LOC32 = !(((*(*N_85803).Typ).Sym == NIM_NIL));
+LOC32 = !(((*(*N_86803).Typ).Sym == NIM_NIL));
 LA33: ;
 if (!LOC32) goto LA34;
-Result_85804 = copyString((*(*(*(*N_85803).Typ).Sym).Name).S);
+Result_86804 = copyString((*(*(*(*N_86803).Typ).Sym).Name).S);
 goto LA31;
 LA34: ;
-Result_85804 = copyString(((NimStringDesc*) &TMP195762));
+Result_86804 = copyString(((NimStringDesc*) &TMP197769));
 LA31: ;
 break;
 default:
 LOC36 = 0;
-LOC36 = rawNewString(reprEnum((*N_85803).Kind, NTI55030)->Sup.len + 13);
-appendString(LOC36, ((NimStringDesc*) &TMP195763));
-appendString(LOC36, reprEnum((*N_85803).Kind, NTI55030));
-Internalerror_48163(LOC36);
+LOC36 = rawNewString(reprEnum((*N_86803).Kind, NTI56030)->Sup.len + 13);
+appendString(LOC36, ((NimStringDesc*) &TMP197770));
+appendString(LOC36, reprEnum((*N_86803).Kind, NTI56030));
+Internalerror_49212(LOC36);
 break;
 }
-return Result_85804;
+return Result_86804;
 }
-N_NIMCALL(void, Gident_87837)(TY85016* G_87840, TY55526* N_87841) {
-NU8 T_87842;
-NimStringDesc* S_87843;
+N_NIMCALL(void, Gident_88837)(TY86016* G_88840, TY56526* N_88841) {
+NU8 T_88842;
+NimStringDesc* S_88843;
 NIM_BOOL LOC8;
 NIM_BOOL LOC13;
 NimStringDesc* LOC17;
-T_87842 = 0;
-S_87843 = 0;
-S_87843 = Atom_85801(N_87841);
-if (!(((NU8)(S_87843->data[0])) >= ((NU8)(97)) && ((NU8)(S_87843->data[0])) <= ((NU8)(122)) || ((NU8)(S_87843->data[0])) >= ((NU8)(65)) && ((NU8)(S_87843->data[0])) <= ((NU8)(90)) || ((NU8)(S_87843->data[0])) >= ((NU8)(48)) && ((NU8)(S_87843->data[0])) <= ((NU8)(57)) || ((NU8)(S_87843->data[0])) >= ((NU8)(128)) && ((NU8)(S_87843->data[0])) <= ((NU8)(255)))) goto LA2;
-if (!((*N_87841).Kind == ((NU8) 2))) goto LA5;
-LOC8 = ((*(*N_87841).KindU.S5.Ident).Sup.Id < 1);
+S_88843 = 0;
+T_88842 = 0;
+S_88843 = NIM_NIL;
+S_88843 = Atom_86801(N_88841);
+if (!(((NU8)(S_88843->data[0])) >= ((NU8)(97)) && ((NU8)(S_88843->data[0])) <= ((NU8)(122)) || ((NU8)(S_88843->data[0])) >= ((NU8)(65)) && ((NU8)(S_88843->data[0])) <= ((NU8)(90)) || ((NU8)(S_88843->data[0])) >= ((NU8)(48)) && ((NU8)(S_88843->data[0])) <= ((NU8)(57)) || ((NU8)(S_88843->data[0])) >= ((NU8)(128)) && ((NU8)(S_88843->data[0])) <= ((NU8)(255)))) goto LA2;
+if (!((*N_88841).Kind == ((NU8) 2))) goto LA5;
+LOC8 = ((*(*N_88841).KindU.S5.Ident).Sup.Id < 1);
 if (LOC8) goto LA9;
-LOC8 = (63 < (*(*N_87841).KindU.S5.Ident).Sup.Id);
+LOC8 = (63 < (*(*N_88841).KindU.S5.Ident).Sup.Id);
 LA9: ;
 if (!LOC8) goto LA10;
-T_87842 = ((NU8) 2);
+T_88842 = ((NU8) 2);
 goto LA7;
 LA10: ;
-T_87842 = ((NU8) ((NI64)((*(*N_87841).KindU.S5.Ident).Sup.Id + 2)));
+T_88842 = ((NU8) ((NI64)((*(*N_88841).KindU.S5.Ident).Sup.Id + 2)));
 LA7: ;
 goto LA4;
 LA5: ;
-T_87842 = ((NU8) 2);
+T_88842 = ((NU8) 2);
 LA4: ;
 goto LA1;
 LA2: ;
-T_87842 = ((NU8) 99);
+T_88842 = ((NU8) 99);
 LA1: ;
-Put_85224(G_87840, T_87842, S_87843);
-LOC13 = ((*N_87841).Kind == ((NU8) 3));
+Put_86224(G_88840, T_88842, S_88843);
+LOC13 = ((*N_88841).Kind == ((NU8) 3));
 if (!(LOC13)) goto LA14;
-LOC13 = (((*G_87840).Flags &(1<<((((NU8) 5))&7)))!=0);
+LOC13 = (((*G_88840).Flags &(1<<((((NU8) 5))&7)))!=0);
 LA14: ;
 if (!LOC13) goto LA15;
 LOC17 = 0;
-LOC17 = nimIntToStr((*(*N_87841).KindU.S4.Sym).Sup.Id);
-Put_85224(G_87840, ((NU8) 66), LOC17);
+LOC17 = nimIntToStr((*(*N_88841).KindU.S4.Sym).Sup.Id);
+Put_86224(G_88840, ((NU8) 66), LOC17);
 LA15: ;
 }
-static N_INLINE(NI, Sonslen_55804)(TY55526* N_55806) {
-NI Result_56880;
-Result_56880 = 0;
-if (!(*N_55806).KindU.S6.Sons == 0) goto LA2;
-Result_56880 = 0;
+static N_INLINE(NI, Sonslen_56804)(TY56526* N_56806) {
+NI Result_57897;
+Result_57897 = 0;
+if (!(*N_56806).KindU.S6.Sons == 0) goto LA2;
+Result_57897 = 0;
 goto LA1;
 LA2: ;
-Result_56880 = (*N_55806).KindU.S6.Sons->Sup.len;
+Result_57897 = (*N_56806).KindU.S6.Sons->Sup.len;
 LA1: ;
-return Result_56880;
+return Result_57897;
 }
-N_NIMCALL(NIM_BOOL, Containsnl_85577)(NimStringDesc* S_85579) {
-NIM_BOOL Result_85580;
-NI I_85591;
-NI HEX3Atmp_85592;
-NI Res_85594;
-Result_85580 = 0;
-I_85591 = 0;
-HEX3Atmp_85592 = 0;
-HEX3Atmp_85592 = (NI64)((NI64)(S_85579->Sup.len + 0) - 1);
-Res_85594 = 0;
-Res_85594 = 0;
+N_NIMCALL(NIM_BOOL, Containsnl_86577)(NimStringDesc* S_86579) {
+NIM_BOOL Result_86580;
+NI I_86591;
+NI HEX3Atmp_86592;
+NI Res_86594;
+Result_86580 = 0;
+I_86591 = 0;
+HEX3Atmp_86592 = 0;
+HEX3Atmp_86592 = (NI64)((NI64)(S_86579->Sup.len + 0) - 1);
+Res_86594 = 0;
+Res_86594 = 0;
 while (1) {
-if (!(Res_85594 <= HEX3Atmp_85592)) goto LA1;
-I_85591 = Res_85594;
-switch (((NU8)(S_85579->data[I_85591]))) {
+if (!(Res_86594 <= HEX3Atmp_86592)) goto LA1;
+I_86591 = Res_86594;
+switch (((NU8)(S_86579->data[I_86591]))) {
 case 13:
 case 10:
-Result_85580 = NIM_TRUE;
+Result_86580 = NIM_TRUE;
 goto BeforeRet;
 break;
 default:
 break;
 }
-Res_85594 += 1;
+Res_86594 += 1;
 } LA1: ;
-Result_85580 = NIM_FALSE;
+Result_86580 = NIM_FALSE;
 BeforeRet: ;
-return Result_85580;
+return Result_86580;
 }
-N_NIMCALL(NI, Lcomma_86115)(TY55526* N_86117, NI Start_86118, NI Theend_86119) {
-NI Result_86120;
-NI I_86133;
-NI HEX3Atmp_86186;
+N_NIMCALL(NI, Lcomma_87115)(TY56526* N_87117, NI Start_87118, NI Theend_87119) {
+NI Result_87120;
+NI I_87133;
+NI HEX3Atmp_87186;
 NI LOC1;
-NI Res_86188;
+NI Res_87188;
 NI LOC3;
-Result_86120 = 0;
-Result_86120 = 0;
-I_86133 = 0;
-HEX3Atmp_86186 = 0;
-LOC1 = Sonslen_55804(N_86117);
-HEX3Atmp_86186 = (NI64)(LOC1 + Theend_86119);
-Res_86188 = 0;
-Res_86188 = Start_86118;
+Result_87120 = 0;
+Result_87120 = 0;
+I_87133 = 0;
+HEX3Atmp_87186 = 0;
+LOC1 = Sonslen_56804(N_87117);
+HEX3Atmp_87186 = (NI64)(LOC1 + Theend_87119);
+Res_87188 = 0;
+Res_87188 = Start_87118;
 while (1) {
-if (!(Res_86188 <= HEX3Atmp_86186)) goto LA2;
-I_86133 = Res_86188;
-LOC3 = Lsub_85757((*N_86117).KindU.S6.Sons->data[I_86133]);
-Result_86120 += LOC3;
-Result_86120 += 2;
-Res_86188 += 1;
+if (!(Res_87188 <= HEX3Atmp_87186)) goto LA2;
+I_87133 = Res_87188;
+LOC3 = Lsub_86757((*N_87117).KindU.S6.Sons->data[I_87133]);
+Result_87120 += LOC3;
+Result_87120 += 2;
+Res_87188 += 1;
 } LA2: ;
-if (!(0 < Result_86120)) goto LA5;
-Result_86120 -= 2;
+if (!(0 < Result_87120)) goto LA5;
+Result_87120 -= 2;
 LA5: ;
-return Result_86120;
+return Result_87120;
 }
-static N_INLINE(TY55526*, HEX5BHEX5D_57062)(TY55526* N_57064, NI I_57065) {
-TY55526* Result_57066;
-Result_57066 = 0;
-Result_57066 = (*N_57064).KindU.S6.Sons->data[I_57065];
-return Result_57066;
+static N_INLINE(TY56526*, HEX5BHEX5D_58137)(TY56526* N_58139, NI I_58140) {
+TY56526* Result_58141;
+Result_58141 = 0;
+Result_58141 = NIM_NIL;
+Result_58141 = (*N_58139).KindU.S6.Sons->data[I_58140];
+return Result_58141;
 }
-N_NIMCALL(NI, Lsons_86189)(TY55526* N_86191, NI Start_86192, NI Theend_86193) {
-NI Result_86194;
-NI I_86207;
-NI HEX3Atmp_86232;
+N_NIMCALL(NI, Lsons_87189)(TY56526* N_87191, NI Start_87192, NI Theend_87193) {
+NI Result_87194;
+NI I_87207;
+NI HEX3Atmp_87232;
 NI LOC1;
-NI Res_86234;
+NI Res_87234;
 NI LOC3;
-Result_86194 = 0;
-Result_86194 = 0;
-I_86207 = 0;
-HEX3Atmp_86232 = 0;
-LOC1 = Sonslen_55804(N_86191);
-HEX3Atmp_86232 = (NI64)(LOC1 + Theend_86193);
-Res_86234 = 0;
-Res_86234 = Start_86192;
+Result_87194 = 0;
+Result_87194 = 0;
+I_87207 = 0;
+HEX3Atmp_87232 = 0;
+LOC1 = Sonslen_56804(N_87191);
+HEX3Atmp_87232 = (NI64)(LOC1 + Theend_87193);
+Res_87234 = 0;
+Res_87234 = Start_87192;
 while (1) {
-if (!(Res_86234 <= HEX3Atmp_86232)) goto LA2;
-I_86207 = Res_86234;
-LOC3 = Lsub_85757((*N_86191).KindU.S6.Sons->data[I_86207]);
-Result_86194 += LOC3;
-Res_86234 += 1;
+if (!(Res_87234 <= HEX3Atmp_87232)) goto LA2;
+I_87207 = Res_87234;
+LOC3 = Lsub_86757((*N_87191).KindU.S6.Sons->data[I_87207]);
+Result_87194 += LOC3;
+Res_87234 += 1;
 } LA2: ;
-return Result_86194;
+return Result_87194;
 }
-static N_INLINE(TY55526*, Lastson_55810)(TY55526* N_55812) {
-TY55526* Result_57841;
+static N_INLINE(TY56526*, Lastson_56810)(TY56526* N_56812) {
+TY56526* Result_58916;
 NI LOC1;
-Result_57841 = 0;
-LOC1 = Sonslen_55804(N_55812);
-Result_57841 = (*N_55812).KindU.S6.Sons->data[(NI64)(LOC1 - 1)];
-return Result_57841;
+Result_58916 = 0;
+Result_58916 = NIM_NIL;
+LOC1 = Sonslen_56804(N_56812);
+Result_58916 = (*N_56812).KindU.S6.Sons->data[(NI64)(LOC1 - 1)];
+return Result_58916;
 }
-N_NIMCALL(NI, Lsub_85757)(TY55526* N_85759) {
-NI Result_86238;
+N_NIMCALL(NI, Lsub_86757)(TY56526* N_86759) {
+NI Result_87238;
 NIM_BOOL LOC5;
 NimStringDesc* LOC8;
 NimStringDesc* LOC9;
 NI LOC10;
 NI LOC11;
-TY55526* LOC12;
+TY56526* LOC12;
 NI LOC13;
 NI LOC14;
 NI LOC15;
@@ -1017,11 +1029,11 @@ NI LOC22;
 NI LOC23;
 NI LOC24;
 NI LOC25;
-NI L_86378;
+NI L_87378;
 NI LOC29;
 NI LOC33;
 NI LOC34;
-TY55526* LOC35;
+TY56526* LOC35;
 NI LOC36;
 NI LOC37;
 NI LOC38;
@@ -1063,7 +1075,7 @@ NI LOC79;
 NI LOC80;
 NI LOC81;
 NI LOC82;
-TY55526* LOC83;
+TY56526* LOC83;
 NI LOC84;
 NI LOC85;
 NI LOC86;
@@ -1072,1026 +1084,1027 @@ NI LOC88;
 NI LOC89;
 NI LOC93;
 NI LOC94;
-TY55526* LOC95;
+TY56526* LOC95;
 NI LOC96;
-Result_86238 = 0;
-if (!!(((*N_85759).Comment == NIM_NIL))) goto LA2;
-Result_86238 = 81;
+Result_87238 = 0;
+if (!!(((*N_86759).Comment == NIM_NIL))) goto LA2;
+Result_87238 = 81;
 goto BeforeRet;
 LA2: ;
-switch ((*N_85759).Kind) {
+switch ((*N_86759).Kind) {
 case ((NU8) 1):
-Result_86238 = 0;
+Result_87238 = 0;
 break;
 case ((NU8) 16):
-LOC5 = Containsnl_85577((*N_85759).KindU.S3.Strval);
+LOC5 = Containsnl_86577((*N_86759).KindU.S3.Strval);
 if (!LOC5) goto LA6;
-Result_86238 = 81;
+Result_87238 = 81;
 goto LA4;
 LA6: ;
 LOC8 = 0;
-LOC8 = Atom_85801(N_85759);
-Result_86238 = LOC8->Sup.len;
+LOC8 = Atom_86801(N_86759);
+Result_87238 = LOC8->Sup.len;
 LA4: ;
 break;
 case ((NU8) 2) ... ((NU8) 15):
 case ((NU8) 17) ... ((NU8) 18):
 LOC9 = 0;
-LOC9 = Atom_85801(N_85759);
-Result_86238 = LOC9->Sup.len;
+LOC9 = Atom_86801(N_86759);
+Result_87238 = LOC9->Sup.len;
 break;
 case ((NU8) 21):
 case ((NU8) 33):
 case ((NU8) 50):
-LOC10 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-LOC11 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)((NI64)(LOC10 + LOC11) + 2);
+LOC10 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+LOC11 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)((NI64)(LOC10 + LOC11) + 2);
 break;
 case ((NU8) 47):
 case ((NU8) 48):
 case ((NU8) 49):
 LOC12 = 0;
-LOC12 = HEX5BHEX5D_57062(N_85759, 1);
-Result_86238 = Lsub_85757(LOC12);
+LOC12 = HEX5BHEX5D_58137(N_86759, 1);
+Result_87238 = Lsub_86757(LOC12);
 break;
 case ((NU8) 51):
-LOC13 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-LOC14 = Lsub_85757((*N_85759).KindU.S6.Sons->data[1]);
-Result_86238 = (NI64)((NI64)(LOC13 + LOC14) + 8);
+LOC13 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+LOC14 = Lsub_86757((*N_86759).KindU.S6.Sons->data[1]);
+Result_87238 = (NI64)((NI64)(LOC13 + LOC14) + 8);
 break;
 case ((NU8) 52):
-LOC15 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC15 + 6);
+LOC15 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC15 + 6);
 break;
 case ((NU8) 53):
 case ((NU8) 54):
-Result_86238 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
+Result_87238 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 20):
-LOC16 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-LOC17 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)((NI64)(LOC16 + LOC17) + 1);
+LOC16 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+LOC17 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)((NI64)(LOC16 + LOC17) + 1);
 break;
 case ((NU8) 23):
 case ((NU8) 63):
 case ((NU8) 64):
-LOC18 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC18 + 3);
+LOC18 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC18 + 3);
 break;
 case ((NU8) 30):
 case ((NU8) 31):
 case ((NU8) 32):
-LOC19 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC19 + 2);
+LOC19 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC19 + 2);
 break;
 case ((NU8) 46):
-LOC20 = Lsons_86189(N_85759, 0, -1);
-LOC21 = Sonslen_55804(N_85759);
-Result_86238 = (NI64)((NI64)((NI64)(LOC20 + 2) + LOC21) - 1);
+LOC20 = Lsons_87189(N_86759, 0, -1);
+LOC21 = Sonslen_56804(N_86759);
+Result_87238 = (NI64)((NI64)((NI64)(LOC20 + 2) + LOC21) - 1);
 break;
 case ((NU8) 112):
-LOC22 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC22 + 7);
+LOC22 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC22 + 7);
 break;
 case ((NU8) 36):
-LOC23 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC23 + 1);
+LOC23 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC23 + 1);
 break;
 case ((NU8) 45):
-LOC24 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC24 + 5);
+LOC24 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC24 + 5);
 break;
 case ((NU8) 37):
-Result_86238 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
+Result_87238 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 42):
-LOC25 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC25 + 10);
+LOC25 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC25 + 10);
 break;
 case ((NU8) 89):
 case ((NU8) 25):
-Result_86238 = Lcomma_86115(N_85759, 0, -3);
-L_86378 = 0;
-L_86378 = Sonslen_55804(N_85759);
-if (!!(((*(*N_85759).KindU.S6.Sons->data[(NI64)(L_86378 - 2)]).Kind == ((NU8) 1)))) goto LA27;
-LOC29 = Lsub_85757((*N_85759).KindU.S6.Sons->data[(NI64)(L_86378 - 2)]);
-Result_86238 = (NI64)((NI64)(Result_86238 + LOC29) + 2);
+Result_87238 = Lcomma_87115(N_86759, 0, -3);
+L_87378 = 0;
+L_87378 = Sonslen_56804(N_86759);
+if (!!(((*(*N_86759).KindU.S6.Sons->data[(NI64)(L_87378 - 2)]).Kind == ((NU8) 1)))) goto LA27;
+LOC29 = Lsub_86757((*N_86759).KindU.S6.Sons->data[(NI64)(L_87378 - 2)]);
+Result_87238 = (NI64)((NI64)(Result_87238 + LOC29) + 2);
 LA27: ;
-if (!!(((*(*N_85759).KindU.S6.Sons->data[(NI64)(L_86378 - 1)]).Kind == ((NU8) 1)))) goto LA31;
-LOC33 = Lsub_85757((*N_85759).KindU.S6.Sons->data[(NI64)(L_86378 - 1)]);
-Result_86238 = (NI64)((NI64)(Result_86238 + LOC33) + 3);
+if (!!(((*(*N_86759).KindU.S6.Sons->data[(NI64)(L_87378 - 1)]).Kind == ((NU8) 1)))) goto LA31;
+LOC33 = Lsub_86757((*N_86759).KindU.S6.Sons->data[(NI64)(L_87378 - 1)]);
+Result_87238 = (NI64)((NI64)(Result_87238 + LOC33) + 3);
 LA31: ;
 break;
 case ((NU8) 26):
-LOC34 = Lcomma_86115(N_85759, 0, -3);
+LOC34 = Lcomma_87115(N_86759, 0, -3);
 LOC35 = 0;
-LOC35 = Lastson_55810(N_85759);
-LOC36 = Lsub_85757(LOC35);
-Result_86238 = (NI64)((NI64)(LOC34 + 5) + LOC36);
+LOC35 = Lastson_56810(N_86759);
+LOC36 = Lsub_86757(LOC35);
+Result_87238 = (NI64)((NI64)(LOC34 + 5) + LOC36);
 break;
 case ((NU8) 57):
-LOC37 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(12 + LOC37);
+LOC37 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(12 + LOC37);
 break;
 case ((NU8) 58):
-LOC38 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(13 + LOC38);
+LOC38 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(13 + LOC38);
 break;
 case ((NU8) 59):
-LOC39 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(11 + LOC39);
+LOC39 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(11 + LOC39);
 break;
 case ((NU8) 55):
 case ((NU8) 56):
 case ((NU8) 60):
 case ((NU8) 61):
 case ((NU8) 62):
-Result_86238 = 2;
-LOC41 = Sonslen_55804(N_85759);
+Result_87238 = 2;
+LOC41 = Sonslen_56804(N_86759);
 if (!(1 <= LOC41)) goto LA42;
-LOC44 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(Result_86238 + LOC44);
+LOC44 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(Result_87238 + LOC44);
 LA42: ;
-LOC45 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)(Result_86238 + LOC45);
+LOC45 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)(Result_87238 + LOC45);
 break;
 case ((NU8) 24):
-LOC46 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC46 + 2);
+LOC46 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC46 + 2);
 break;
 case ((NU8) 27):
-LOC47 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC47 + 2);
+LOC47 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC47 + 2);
 break;
 case ((NU8) 28):
-LOC48 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC48 + 1);
+LOC48 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC48 + 1);
 break;
 case ((NU8) 29):
-Result_86238 = Lsons_86189(N_85759, 0, -1);
+Result_87238 = Lsons_87189(N_86759, 0, -1);
 break;
 case ((NU8) 22):
-Result_86238 = Lsons_86189(N_85759, 0, -1);
+Result_87238 = Lsons_87189(N_86759, 0, -1);
 break;
 case ((NU8) 34):
-LOC49 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-LOC50 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)(LOC49 + LOC50);
+LOC49 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+LOC50 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)(LOC49 + LOC50);
 break;
 case ((NU8) 35):
-LOC51 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC51 + 2);
+LOC51 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC51 + 2);
 break;
 case ((NU8) 38):
-LOC52 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC52 + 2);
+LOC52 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC52 + 2);
 break;
 case ((NU8) 43):
-LOC53 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC53 + 2);
+LOC53 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC53 + 2);
 break;
 case ((NU8) 39):
-LOC54 = Lsub_85757((*(*N_85759).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
-LOC55 = Lsub_85757((*(*N_85759).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
-LOC56 = Lsons_86189(N_85759, 1, -1);
-Result_86238 = (NI64)((NI64)((NI64)(LOC54 + LOC55) + LOC56) + 5);
+LOC54 = Lsub_86757((*(*N_86759).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
+LOC55 = Lsub_86757((*(*N_86759).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
+LOC56 = Lsons_87189(N_86759, 1, -1);
+Result_87238 = (NI64)((NI64)((NI64)(LOC54 + LOC55) + LOC56) + 5);
 break;
 case ((NU8) 40):
-LOC57 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC57 + 8);
+LOC57 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC57 + 8);
 break;
 case ((NU8) 41):
-LOC58 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC58 + 7);
+LOC58 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC58 + 7);
 break;
 case ((NU8) 110):
-LOC59 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC59 + 5);
+LOC59 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC59 + 5);
 break;
 case ((NU8) 116):
-LOC60 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC60 + 4);
+LOC60 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC60 + 4);
 break;
 case ((NU8) 117):
-LOC61 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC61 + 4);
+LOC61 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC61 + 4);
 break;
 case ((NU8) 118):
-LOC62 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC62 + 4);
+LOC62 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC62 + 4);
 break;
 case ((NU8) 119):
-LOC63 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC63 + 9);
+LOC63 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC63 + 9);
 break;
 case ((NU8) 91):
-LOC64 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC64 + 3);
+LOC64 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC64 + 3);
 break;
 case ((NU8) 67):
-LOC65 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC65 + 3);
+LOC65 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC65 + 3);
 break;
 case ((NU8) 120):
-LOC66 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC66 + 5);
+LOC66 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC66 + 5);
 break;
 case ((NU8) 121):
-LOC67 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-LOC68 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)((NI64)(LOC67 + LOC68) + 5);
+LOC67 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+LOC68 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)((NI64)(LOC67 + LOC68) + 5);
 break;
 case ((NU8) 122):
-LOC69 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC69 + 3);
+LOC69 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC69 + 3);
 break;
 case ((NU8) 87):
-LOC71 = Sonslen_55804(N_85759);
+LOC71 = Sonslen_56804(N_86759);
 if (!(1 < LOC71)) goto LA72;
-Result_86238 = 81;
+Result_87238 = 81;
 goto LA70;
 LA72: ;
-LOC74 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC74 + 4);
+LOC74 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC74 + 4);
 LA70: ;
 break;
 case ((NU8) 96):
-LOC75 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC75 + 7);
+LOC75 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC75 + 7);
 break;
 case ((NU8) 95):
-LOC76 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC76 + 6);
+LOC76 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC76 + 6);
 break;
 case ((NU8) 92):
-LOC77 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC77 + 6);
+LOC77 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC77 + 6);
 break;
 case ((NU8) 100):
-LOC78 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC78 + 8);
+LOC78 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC78 + 8);
 break;
 case ((NU8) 97):
-LOC79 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC79 + 6);
+LOC79 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC79 + 6);
 break;
 case ((NU8) 98):
-LOC80 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC80 + 9);
+LOC80 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC80 + 9);
 break;
 case ((NU8) 81):
-LOC81 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC81 + 4);
+LOC81 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC81 + 4);
 break;
 case ((NU8) 105):
-Result_86238 = (*N_85759).Comment->Sup.len;
+Result_87238 = (*N_86759).Comment->Sup.len;
 break;
 case ((NU8) 75):
-LOC82 = Lcomma_86115(N_85759, 0, -2);
+LOC82 = Lcomma_87115(N_86759, 0, -2);
 LOC83 = 0;
-LOC83 = Lastson_55810(N_85759);
-LOC84 = Lsub_85757(LOC83);
-Result_86238 = (NI64)((NI64)(LOC82 + LOC84) + 5);
+LOC83 = Lastson_56810(N_86759);
+LOC84 = Lsub_86757(LOC83);
+Result_87238 = (NI64)((NI64)(LOC82 + LOC84) + 5);
 break;
 case ((NU8) 76):
-LOC85 = Lsons_86189(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC85 + 7);
+LOC85 = Lsons_87189(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC85 + 7);
 break;
 case ((NU8) 78):
-LOC86 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC86 + 6);
+LOC86 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC86 + 6);
 break;
 case ((NU8) 94):
-LOC87 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)(LOC87 + 9);
+LOC87 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)(LOC87 + 9);
 break;
 case ((NU8) 65):
-LOC88 = Lcomma_86115(N_85759, 0, -1);
-Result_86238 = (NI64)(LOC88 + 2);
+LOC88 = Lcomma_87115(N_86759, 0, -1);
+Result_87238 = (NI64)(LOC88 + 2);
 break;
 case ((NU8) 66):
-LOC89 = Lcomma_86115(N_85759, 1, -1);
-Result_86238 = (NI64)(LOC89 + 2);
-if (!!(((*(*N_85759).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA91;
-LOC93 = Lsub_85757((*N_85759).KindU.S6.Sons->data[0]);
-Result_86238 = (NI64)((NI64)(Result_86238 + LOC93) + 2);
+LOC89 = Lcomma_87115(N_86759, 1, -1);
+Result_87238 = (NI64)(LOC89 + 2);
+if (!!(((*(*N_86759).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA91;
+LOC93 = Lsub_86757((*N_86759).KindU.S6.Sons->data[0]);
+Result_87238 = (NI64)((NI64)(Result_87238 + LOC93) + 2);
 LA91: ;
 break;
 case ((NU8) 77):
-LOC94 = Lcomma_86115(N_85759, 0, -2);
+LOC94 = Lcomma_87115(N_86759, 0, -2);
 LOC95 = 0;
-LOC95 = Lastson_55810(N_85759);
-LOC96 = Lsub_85757(LOC95);
-Result_86238 = (NI64)((NI64)(LOC94 + LOC96) + 9);
+LOC95 = Lastson_56810(N_86759);
+LOC96 = Lsub_86757(LOC95);
+Result_87238 = (NI64)((NI64)(LOC94 + LOC96) + 9);
 break;
 default:
-Result_86238 = 81;
+Result_87238 = 81;
 break;
 }
 BeforeRet: ;
-return Result_86238;
+return Result_87238;
 }
-N_NIMCALL(NIM_BOOL, Fits_86828)(TY85016* G_86830, NI X_86831) {
-NIM_BOOL Result_86832;
-Result_86832 = 0;
-Result_86832 = ((NI64)(X_86831 + (*G_86830).Linelen) <= 80);
-return Result_86832;
+N_NIMCALL(NIM_BOOL, Fits_87828)(TY86016* G_87830, NI X_87831) {
+NIM_BOOL Result_87832;
+Result_87832 = 0;
+Result_87832 = ((NI64)(X_87831 + (*G_87830).Linelen) <= 80);
+return Result_87832;
 }
-N_NIMCALL(void, Putwithspace_86899)(TY85016* G_86902, NU8 Kind_86903, NimStringDesc* S_86904) {
-Put_85224(G_86902, Kind_86903, S_86904);
-Put_85224(G_86902, ((NU8) 105), ((NimStringDesc*) &TMP195766));
+N_NIMCALL(void, Putwithspace_87899)(TY86016* G_87902, NU8 Kind_87903, NimStringDesc* S_87904) {
+Put_86224(G_87902, Kind_87903, S_87904);
+Put_86224(G_87902, ((NU8) 105), ((NimStringDesc*) &TMP197773));
 }
-N_NIMCALL(NIM_BOOL, Hascom_86871)(TY55526* N_86873) {
-NIM_BOOL Result_86874;
-NI I_86883;
-NI HEX3Atmp_86896;
+N_NIMCALL(NIM_BOOL, Hascom_87871)(TY56526* N_87873) {
+NIM_BOOL Result_87874;
+NI I_87883;
+NI HEX3Atmp_87896;
 NI LOC4;
-NI Res_86898;
+NI Res_87898;
 NIM_BOOL LOC7;
-Result_86874 = 0;
-Result_86874 = NIM_FALSE;
-if (!!(((*N_86873).Comment == NIM_NIL))) goto LA2;
-Result_86874 = NIM_TRUE;
+Result_87874 = 0;
+Result_87874 = NIM_FALSE;
+if (!!(((*N_87873).Comment == NIM_NIL))) goto LA2;
+Result_87874 = NIM_TRUE;
 goto BeforeRet;
 LA2: ;
-switch ((*N_86873).Kind) {
+switch ((*N_87873).Kind) {
 case ((NU8) 1) ... ((NU8) 18):
 break;
 default:
-I_86883 = 0;
-HEX3Atmp_86896 = 0;
-LOC4 = Sonslen_55804(N_86873);
-HEX3Atmp_86896 = (NI64)(LOC4 - 1);
-Res_86898 = 0;
-Res_86898 = 0;
+I_87883 = 0;
+HEX3Atmp_87896 = 0;
+LOC4 = Sonslen_56804(N_87873);
+HEX3Atmp_87896 = (NI64)(LOC4 - 1);
+Res_87898 = 0;
+Res_87898 = 0;
 while (1) {
-if (!(Res_86898 <= HEX3Atmp_86896)) goto LA5;
-I_86883 = Res_86898;
-LOC7 = Hascom_86871((*N_86873).KindU.S6.Sons->data[I_86883]);
+if (!(Res_87898 <= HEX3Atmp_87896)) goto LA5;
+I_87883 = Res_87898;
+LOC7 = Hascom_87871((*N_87873).KindU.S6.Sons->data[I_87883]);
 if (!LOC7) goto LA8;
-Result_86874 = NIM_TRUE;
+Result_87874 = NIM_TRUE;
 goto BeforeRet;
 LA8: ;
-Res_86898 += 1;
+Res_87898 += 1;
 } LA5: ;
 break;
 }
 BeforeRet: ;
-return Result_86874;
+return Result_87874;
 }
-N_NIMCALL(NIM_BOOL, Shouldrendercomment_85666)(TY85016* G_85669, TY55526* N_85670) {
-NIM_BOOL Result_85671;
+N_NIMCALL(NIM_BOOL, Shouldrendercomment_86666)(TY86016* G_86669, TY56526* N_86670) {
+NIM_BOOL Result_86671;
 NIM_BOOL LOC4;
 NIM_BOOL LOC6;
-Result_85671 = 0;
-Result_85671 = NIM_FALSE;
-if (!!(((*N_85670).Comment == NIM_NIL))) goto LA2;
-LOC4 = !((((*G_85669).Flags &(1<<((((NU8) 2))&7)))!=0));
+Result_86671 = 0;
+Result_86671 = NIM_FALSE;
+if (!!(((*N_86670).Comment == NIM_NIL))) goto LA2;
+LOC4 = !((((*G_86669).Flags &(1<<((((NU8) 2))&7)))!=0));
 if (LOC4) goto LA5;
-LOC6 = (((*G_85669).Flags &(1<<((((NU8) 3))&7)))!=0);
+LOC6 = (((*G_86669).Flags &(1<<((((NU8) 3))&7)))!=0);
 if (!(LOC6)) goto LA7;
-LOC6 = nsuStartsWith((*N_85670).Comment, ((NimStringDesc*) &TMP195768));
+LOC6 = nsuStartsWith((*N_86670).Comment, ((NimStringDesc*) &TMP197775));
 LA7: ;
 LOC4 = LOC6;
 LA5: ;
-Result_85671 = LOC4;
+Result_86671 = LOC4;
 LA2: ;
-return Result_85671;
+return Result_86671;
 }
-N_NIMCALL(NI, Maxlinelength_85440)(NimStringDesc* S_85442) {
-NI Result_85443;
-NI I_85444;
-NI Linelen_85445;
-Result_85443 = 0;
-Result_85443 = 0;
-I_85444 = 0;
-I_85444 = 0;
-Linelen_85445 = 0;
-Linelen_85445 = 0;
+N_NIMCALL(NI, Maxlinelength_86440)(NimStringDesc* S_86442) {
+NI Result_86443;
+NI I_86444;
+NI Linelen_86445;
+Result_86443 = 0;
+Result_86443 = 0;
+I_86444 = 0;
+I_86444 = 0;
+Linelen_86445 = 0;
+Linelen_86445 = 0;
 while (1) {
-switch (((NU8)(S_85442->data[I_85444]))) {
+switch (((NU8)(S_86442->data[I_86444]))) {
 case 0:
 goto LA1;
 break;
 case 13:
-I_85444 += 1;
-if (!((NU8)(S_85442->data[I_85444]) == (NU8)(10))) goto LA3;
-I_85444 += 1;
+I_86444 += 1;
+if (!((NU8)(S_86442->data[I_86444]) == (NU8)(10))) goto LA3;
+I_86444 += 1;
 LA3: ;
-Result_85443 = ((Result_85443 >= Linelen_85445) ? Result_85443 : Linelen_85445);
-Linelen_85445 = 0;
+Result_86443 = ((Result_86443 >= Linelen_86445) ? Result_86443 : Linelen_86445);
+Linelen_86445 = 0;
 break;
 case 10:
-I_85444 += 1;
-Result_85443 = ((Result_85443 >= Linelen_85445) ? Result_85443 : Linelen_85445);
-Linelen_85445 = 0;
+I_86444 += 1;
+Result_86443 = ((Result_86443 >= Linelen_86445) ? Result_86443 : Linelen_86445);
+Linelen_86445 = 0;
 break;
 default:
-Linelen_85445 += 1;
-I_85444 += 1;
+Linelen_86445 += 1;
+I_86444 += 1;
 break;
 }
 } LA1: ;
-return Result_85443;
+return Result_86443;
 }
-N_NIMCALL(void, Optnl_85158)(TY85016* G_85161) {
-Optnl_85153(G_85161, (*G_85161).Indent);
+N_NIMCALL(void, Optnl_86158)(TY86016* G_86161) {
+Optnl_86153(G_86161, (*G_86161).Indent);
 }
-N_NIMCALL(void, Putcomment_85299)(TY85016* G_85302, NimStringDesc* S_85303) {
-NI I_85304;
-NI Comindent_85305;
-NIM_BOOL Iscode_85312;
+N_NIMCALL(void, Putcomment_86299)(TY86016* G_86302, NimStringDesc* S_86303) {
+NI I_86304;
+NI Comindent_86305;
+NIM_BOOL Iscode_86312;
 NIM_BOOL LOC1;
-NI Ind_85313;
-NimStringDesc* Com_85314;
-NI J_85403;
+NI Ind_86313;
+NimStringDesc* Com_86314;
+NI J_86403;
 NIM_BOOL LOC10;
 NimStringDesc* LOC14;
 NimStringDesc* LOC15;
-I_85304 = 0;
-I_85304 = 0;
-Comindent_85305 = 0;
-Comindent_85305 = 1;
-Iscode_85312 = 0;
-LOC1 = (2 <= S_85303->Sup.len);
+Com_86314 = 0;
+I_86304 = 0;
+I_86304 = 0;
+Comindent_86305 = 0;
+Comindent_86305 = 1;
+Iscode_86312 = 0;
+LOC1 = (2 <= S_86303->Sup.len);
 if (!(LOC1)) goto LA2;
-LOC1 = !(((NU8)(S_85303->data[1]) == (NU8)(32)));
+LOC1 = !(((NU8)(S_86303->data[1]) == (NU8)(32)));
 LA2: ;
-Iscode_85312 = LOC1;
-Ind_85313 = 0;
-Ind_85313 = (*G_85302).Linelen;
-Com_85314 = 0;
-Com_85314 = copyString(((NimStringDesc*) &TMP195743));
+Iscode_86312 = LOC1;
+Ind_86313 = 0;
+Ind_86313 = (*G_86302).Linelen;
+Com_86314 = NIM_NIL;
+Com_86314 = copyString(((NimStringDesc*) &TMP197750));
 while (1) {
-switch (((NU8)(S_85303->data[I_85304]))) {
+switch (((NU8)(S_86303->data[I_86304]))) {
 case 0:
 goto LA3;
 break;
 case 13:
-Put_85224(G_85302, ((NU8) 100), Com_85314);
-Com_85314 = copyString(((NimStringDesc*) &TMP195743));
-I_85304 += 1;
-if (!((NU8)(S_85303->data[I_85304]) == (NU8)(10))) goto LA5;
-I_85304 += 1;
+Put_86224(G_86302, ((NU8) 100), Com_86314);
+Com_86314 = copyString(((NimStringDesc*) &TMP197750));
+I_86304 += 1;
+if (!((NU8)(S_86303->data[I_86304]) == (NU8)(10))) goto LA5;
+I_86304 += 1;
 LA5: ;
-Optnl_85153(G_85302, Ind_85313);
+Optnl_86153(G_86302, Ind_86313);
 break;
 case 10:
-Put_85224(G_85302, ((NU8) 100), Com_85314);
-Com_85314 = copyString(((NimStringDesc*) &TMP195743));
-I_85304 += 1;
-Optnl_85153(G_85302, Ind_85313);
+Put_86224(G_86302, ((NU8) 100), Com_86314);
+Com_86314 = copyString(((NimStringDesc*) &TMP197750));
+I_86304 += 1;
+Optnl_86153(G_86302, Ind_86313);
 break;
 case 35:
-Com_85314 = addChar(Com_85314, S_85303->data[I_85304]);
-I_85304 += 1;
-Comindent_85305 = 0;
+Com_86314 = addChar(Com_86314, S_86303->data[I_86304]);
+I_86304 += 1;
+Comindent_86305 = 0;
 while (1) {
-if (!((NU8)(S_85303->data[I_85304]) == (NU8)(32))) goto LA7;
-Com_85314 = addChar(Com_85314, S_85303->data[I_85304]);
-I_85304 += 1;
-Comindent_85305 += 1;
+if (!((NU8)(S_86303->data[I_86304]) == (NU8)(32))) goto LA7;
+Com_86314 = addChar(Com_86314, S_86303->data[I_86304]);
+I_86304 += 1;
+Comindent_86305 += 1;
 } LA7: ;
 break;
 case 32:
 case 9:
-Com_85314 = addChar(Com_85314, S_85303->data[I_85304]);
-I_85304 += 1;
+Com_86314 = addChar(Com_86314, S_86303->data[I_86304]);
+I_86304 += 1;
 break;
 default:
-J_85403 = 0;
-J_85403 = I_85304;
+J_86403 = 0;
+J_86403 = I_86304;
 while (1) {
-if (!((NU8)(32) < (NU8)(S_85303->data[J_85403]))) goto LA8;
-J_85403 += 1;
+if (!((NU8)(32) < (NU8)(S_86303->data[J_86403]))) goto LA8;
+J_86403 += 1;
 } LA8: ;
-LOC10 = !(Iscode_85312);
+LOC10 = !(Iscode_86312);
 if (!(LOC10)) goto LA11;
-LOC10 = (80 < (NI64)((*G_85302).Linelen + (NI64)(J_85403 - I_85304)));
+LOC10 = (80 < (NI64)((*G_86302).Linelen + (NI64)(J_86403 - I_86304)));
 LA11: ;
 if (!LOC10) goto LA12;
-Put_85224(G_85302, ((NU8) 100), Com_85314);
-Com_85314 = copyString(((NimStringDesc*) &TMP195743));
-Optnl_85153(G_85302, Ind_85313);
+Put_86224(G_86302, ((NU8) 100), Com_86314);
+Com_86314 = copyString(((NimStringDesc*) &TMP197750));
+Optnl_86153(G_86302, Ind_86313);
 LOC14 = 0;
 LOC15 = 0;
-LOC15 = nsuRepeatChar(Comindent_85305, 32);
-LOC14 = rawNewString(Com_85314->Sup.len + LOC15->Sup.len + 1);
-appendString(LOC14, Com_85314);
+LOC15 = nsuRepeatChar(Comindent_86305, 32);
+LOC14 = rawNewString(Com_86314->Sup.len + LOC15->Sup.len + 1);
+appendString(LOC14, Com_86314);
 appendChar(LOC14, 35);
 appendString(LOC14, LOC15);
-Com_85314 = LOC14;
+Com_86314 = LOC14;
 LA12: ;
 while (1) {
-if (!((NU8)(32) < (NU8)(S_85303->data[I_85304]))) goto LA16;
-Com_85314 = addChar(Com_85314, S_85303->data[I_85304]);
-I_85304 += 1;
+if (!((NU8)(32) < (NU8)(S_86303->data[I_86304]))) goto LA16;
+Com_86314 = addChar(Com_86314, S_86303->data[I_86304]);
+I_86304 += 1;
 } LA16: ;
 break;
 }
 } LA3: ;
-Put_85224(G_85302, ((NU8) 100), Com_85314);
-Optnl_85158(G_85302);
+Put_86224(G_86302, ((NU8) 100), Com_86314);
+Optnl_86158(G_86302);
 }
-N_NIMCALL(void, Gcom_85694)(TY85016* G_85697, TY55526* N_85698) {
+N_NIMCALL(void, Gcom_86694)(TY86016* G_86697, TY56526* N_86698) {
 NIM_BOOL LOC2;
 NIM_BOOL LOC6;
 NIM_BOOL LOC7;
 NIM_BOOL LOC13;
 NIM_BOOL LOC14;
-NI Ml_85738;
+NI Ml_86738;
 NimStringDesc* LOC22;
-LOC2 = Shouldrendercomment_85666(G_85697, N_85698);
+LOC2 = Shouldrendercomment_86666(G_86697, N_86698);
 if (!LOC2) goto LA3;
-LOC7 = ((*G_85697).Pendingnl < 0);
+LOC7 = ((*G_86697).Pendingnl < 0);
 if (!(LOC7)) goto LA8;
-LOC7 = (0 < (*G_85697).Buf->Sup.len);
+LOC7 = (0 < (*G_86697).Buf->Sup.len);
 LA8: ;
 LOC6 = LOC7;
 if (!(LOC6)) goto LA9;
-LOC6 = !(((NU8)((*G_85697).Buf->data[(*G_85697).Buf->Sup.len]) == (NU8)(32)));
+LOC6 = !(((NU8)((*G_86697).Buf->data[(*G_86697).Buf->Sup.len]) == (NU8)(32)));
 LA9: ;
 if (!LOC6) goto LA10;
-Put_85224(G_85697, ((NU8) 105), ((NimStringDesc*) &TMP195766));
+Put_86224(G_86697, ((NU8) 105), ((NimStringDesc*) &TMP197773));
 LA10: ;
-LOC14 = ((*G_85697).Pendingnl < 0);
+LOC14 = ((*G_86697).Pendingnl < 0);
 if (!(LOC14)) goto LA15;
-LOC14 = (0 < (*G_85697).Buf->Sup.len);
+LOC14 = (0 < (*G_86697).Buf->Sup.len);
 LA15: ;
 LOC13 = LOC14;
 if (!(LOC13)) goto LA16;
-LOC13 = ((*G_85697).Linelen < 30);
+LOC13 = ((*G_86697).Linelen < 30);
 LA16: ;
 if (!LOC13) goto LA17;
-Ml_85738 = 0;
-Ml_85738 = Maxlinelength_85440((*N_85698).Comment);
-if (!((NI64)(Ml_85738 + 30) <= 80)) goto LA20;
+Ml_86738 = 0;
+Ml_86738 = Maxlinelength_86440((*N_86698).Comment);
+if (!((NI64)(Ml_86738 + 30) <= 80)) goto LA20;
 LOC22 = 0;
-LOC22 = nsuRepeatChar((NI64)(30 - (*G_85697).Linelen), 32);
-Put_85224(G_85697, ((NU8) 105), LOC22);
+LOC22 = nsuRepeatChar((NI64)(30 - (*G_86697).Linelen), 32);
+Put_86224(G_86697, ((NU8) 105), LOC22);
 LA20: ;
 LA17: ;
-Putcomment_85299(G_85697, (*N_85698).Comment);
+Putcomment_86299(G_86697, (*N_86698).Comment);
 LA3: ;
 }
-N_NIMCALL(void, Popallcoms_85623)(TY85016* G_85626) {
-(*G_85626).Comstack = (TY55520*) setLengthSeq(&((*G_85626).Comstack)->Sup, sizeof(TY55526*), 0);
+N_NIMCALL(void, Popallcoms_86623)(TY86016* G_86626) {
+(*G_86626).Comstack = (TY56520*) setLengthSeq(&((*G_86626).Comstack)->Sup, sizeof(TY56526*), 0);
 }
-N_NIMCALL(void, Gcoms_85741)(TY85016* G_85744) {
-NI I_85753;
-NI HEX3Atmp_85754;
-NI Res_85756;
-I_85753 = 0;
-HEX3Atmp_85754 = 0;
-HEX3Atmp_85754 = ((*G_85744).Comstack->Sup.len-1);
-Res_85756 = 0;
-Res_85756 = 0;
+N_NIMCALL(void, Gcoms_86741)(TY86016* G_86744) {
+NI I_86753;
+NI HEX3Atmp_86754;
+NI Res_86756;
+I_86753 = 0;
+HEX3Atmp_86754 = 0;
+HEX3Atmp_86754 = ((*G_86744).Comstack->Sup.len-1);
+Res_86756 = 0;
+Res_86756 = 0;
 while (1) {
-if (!(Res_85756 <= HEX3Atmp_85754)) goto LA1;
-I_85753 = Res_85756;
-Gcom_85694(G_85744, (*G_85744).Comstack->data[I_85753]);
-Res_85756 += 1;
+if (!(Res_86756 <= HEX3Atmp_86754)) goto LA1;
+I_86753 = Res_86756;
+Gcom_86694(G_86744, (*G_86744).Comstack->data[I_86753]);
+Res_86756 += 1;
 } LA1: ;
-Popallcoms_85623(G_85744);
+Popallcoms_86623(G_86744);
 }
-N_NIMCALL(void, Gcommaaux_86905)(TY85016* G_86908, TY55526* N_86909, NI Ind_86910, NI Start_86911, NI Theend_86912) {
-NI I_86921;
-NI HEX3Atmp_86973;
+N_NIMCALL(void, Gcommaaux_87905)(TY86016* G_87908, TY56526* N_87909, NI Ind_87910, NI Start_87911, NI Theend_87912) {
+NI I_87921;
+NI HEX3Atmp_87973;
 NI LOC1;
-NI Res_86975;
-NIM_BOOL C_86926;
+NI Res_87975;
+NIM_BOOL C_87926;
 NI LOC3;
-NI Sublen_86944;
+NI Sublen_87944;
 NI LOC4;
 NIM_BOOL LOC6;
 NIM_BOOL LOC7;
 NIM_BOOL LOC15;
-I_86921 = 0;
-HEX3Atmp_86973 = 0;
-LOC1 = Sonslen_55804(N_86909);
-HEX3Atmp_86973 = (NI64)(LOC1 + Theend_86912);
-Res_86975 = 0;
-Res_86975 = Start_86911;
+I_87921 = 0;
+HEX3Atmp_87973 = 0;
+LOC1 = Sonslen_56804(N_87909);
+HEX3Atmp_87973 = (NI64)(LOC1 + Theend_87912);
+Res_87975 = 0;
+Res_87975 = Start_87911;
 while (1) {
-if (!(Res_86975 <= HEX3Atmp_86973)) goto LA2;
-I_86921 = Res_86975;
-C_86926 = 0;
-LOC3 = Sonslen_55804(N_86909);
-C_86926 = (I_86921 < (NI64)(LOC3 + Theend_86912));
-Sublen_86944 = 0;
-LOC4 = Lsub_85757((*N_86909).KindU.S6.Sons->data[I_86921]);
-Sublen_86944 = (NI64)(LOC4 + C_86926);
-LOC7 = Fits_86828(&(*G_86908), Sublen_86944);
+if (!(Res_87975 <= HEX3Atmp_87973)) goto LA2;
+I_87921 = Res_87975;
+C_87926 = 0;
+LOC3 = Sonslen_56804(N_87909);
+C_87926 = (I_87921 < (NI64)(LOC3 + Theend_87912));
+Sublen_87944 = 0;
+LOC4 = Lsub_86757((*N_87909).KindU.S6.Sons->data[I_87921]);
+Sublen_87944 = (NI64)(LOC4 + C_87926);
+LOC7 = Fits_87828(&(*G_87908), Sublen_87944);
 LOC6 = !(LOC7);
 if (!(LOC6)) goto LA8;
-LOC6 = ((NI64)(Ind_86910 + Sublen_86944) < 80);
+LOC6 = ((NI64)(Ind_87910 + Sublen_87944) < 80);
 LA8: ;
 if (!LOC6) goto LA9;
-Optnl_85153(G_86908, Ind_86910);
+Optnl_86153(G_87908, Ind_87910);
 LA9: ;
-Gsub_86864(G_86908, (*N_86909).KindU.S6.Sons->data[I_86921]);
-if (!C_86926) goto LA12;
-Putwithspace_86899(G_86908, ((NU8) 92), ((NimStringDesc*) &TMP195767));
-LOC15 = Hascom_86871((*N_86909).KindU.S6.Sons->data[I_86921]);
+Gsub_87864(G_87908, (*N_87909).KindU.S6.Sons->data[I_87921]);
+if (!C_87926) goto LA12;
+Putwithspace_87899(G_87908, ((NU8) 92), ((NimStringDesc*) &TMP197774));
+LOC15 = Hascom_87871((*N_87909).KindU.S6.Sons->data[I_87921]);
 if (!LOC15) goto LA16;
-Gcoms_85741(G_86908);
-Optnl_85153(G_86908, Ind_86910);
+Gcoms_86741(G_87908);
+Optnl_86153(G_87908, Ind_87910);
 LA16: ;
 LA12: ;
-Res_86975 += 1;
+Res_87975 += 1;
 } LA2: ;
 }
-N_NIMCALL(void, Gcomma_87000)(TY85016* G_87003, TY55526* N_87004, NI Start_87005, NI Theend_87006) {
-NI Ind_87007;
-Ind_87007 = 0;
-Ind_87007 = (*G_87003).Linelen;
-if (!(40 < Ind_87007)) goto LA2;
-Ind_87007 = (NI64)((*G_87003).Indent + 4);
+N_NIMCALL(void, Gcomma_88000)(TY86016* G_88003, TY56526* N_88004, NI Start_88005, NI Theend_88006) {
+NI Ind_88007;
+Ind_88007 = 0;
+Ind_88007 = (*G_88003).Linelen;
+if (!(40 < Ind_88007)) goto LA2;
+Ind_88007 = (NI64)((*G_88003).Indent + 4);
 LA2: ;
-Gcommaaux_86905(G_87003, N_87004, Ind_87007, Start_87005, Theend_87006);
+Gcommaaux_87905(G_88003, N_88004, Ind_88007, Start_88005, Theend_88006);
 }
-N_NIMCALL(void, Gcomma_86976)(TY85016* G_86979, TY55526* N_86980, TY86840* C_86981, NI Start_86982, NI Theend_86983) {
-NI Ind_86984;
-Ind_86984 = 0;
-if (!(((*C_86981).Flags &(1<<((((NU8) 2))&7)))!=0)) goto LA2;
-Ind_86984 = (NI64)((*G_86979).Indent + 2);
+N_NIMCALL(void, Gcomma_87976)(TY86016* G_87979, TY56526* N_87980, TY87840* C_87981, NI Start_87982, NI Theend_87983) {
+NI Ind_87984;
+Ind_87984 = 0;
+if (!(((*C_87981).Flags &(1<<((((NU8) 2))&7)))!=0)) goto LA2;
+Ind_87984 = (NI64)((*G_87979).Indent + 2);
 goto LA1;
 LA2: ;
-Ind_86984 = (*G_86979).Linelen;
-if (!(40 < Ind_86984)) goto LA5;
-Ind_86984 = (NI64)((*G_86979).Indent + 4);
+Ind_87984 = (*G_87979).Linelen;
+if (!(40 < Ind_87984)) goto LA5;
+Ind_87984 = (NI64)((*G_87979).Indent + 4);
 LA5: ;
 LA1: ;
-Gcommaaux_86905(G_86979, N_86980, Ind_86984, Start_86982, Theend_86983);
+Gcommaaux_87905(G_87979, N_87980, Ind_87984, Start_87982, Theend_87983);
 }
-N_NIMCALL(void, Gsons_87012)(TY85016* G_87015, TY55526* N_87016, TY86840* C_87017, NI Start_87018, NI Theend_87019) {
-NI I_87028;
-NI HEX3Atmp_87041;
+N_NIMCALL(void, Gsons_88012)(TY86016* G_88015, TY56526* N_88016, TY87840* C_88017, NI Start_88018, NI Theend_88019) {
+NI I_88028;
+NI HEX3Atmp_88041;
 NI LOC1;
-NI Res_87043;
-I_87028 = 0;
-HEX3Atmp_87041 = 0;
-LOC1 = Sonslen_55804(N_87016);
-HEX3Atmp_87041 = (NI64)(LOC1 + Theend_87019);
-Res_87043 = 0;
-Res_87043 = Start_87018;
+NI Res_88043;
+I_88028 = 0;
+HEX3Atmp_88041 = 0;
+LOC1 = Sonslen_56804(N_88016);
+HEX3Atmp_88041 = (NI64)(LOC1 + Theend_88019);
+Res_88043 = 0;
+Res_88043 = Start_88018;
 while (1) {
-if (!(Res_87043 <= HEX3Atmp_87041)) goto LA2;
-I_87028 = Res_87043;
-Gsub_86858(G_87015, (*N_87016).KindU.S6.Sons->data[I_87028], C_87017);
-Res_87043 += 1;
+if (!(Res_88043 <= HEX3Atmp_88041)) goto LA2;
+I_88028 = Res_88043;
+Gsub_87858(G_88015, (*N_88016).KindU.S6.Sons->data[I_88028], C_88017);
+Res_88043 += 1;
 } LA2: ;
 }
-N_NIMCALL(void, Indentnl_85162)(TY85016* G_85165) {
-(*G_85165).Indent += 2;
-(*G_85165).Pendingnl = (*G_85165).Indent;
-(*G_85165).Linelen = (*G_85165).Indent;
+N_NIMCALL(void, Indentnl_86162)(TY86016* G_86165) {
+(*G_86165).Indent += 2;
+(*G_86165).Pendingnl = (*G_86165).Indent;
+(*G_86165).Linelen = (*G_86165).Indent;
 }
-N_NIMCALL(void, Dedent_85178)(TY85016* G_85181) {
-(*G_85181).Indent -= 2;
-if (!(2 < (*G_85181).Pendingnl)) goto LA2;
-(*G_85181).Pendingnl -= 2;
-(*G_85181).Linelen -= 2;
+N_NIMCALL(void, Dedent_86178)(TY86016* G_86181) {
+(*G_86181).Indent -= 2;
+if (!(2 < (*G_86181).Pendingnl)) goto LA2;
+(*G_86181).Pendingnl -= 2;
+(*G_86181).Linelen -= 2;
 LA2: ;
 }
-N_NIMCALL(void, Putnl_85142)(TY85016* G_85145, NI Indent_85146) {
-if (!(0 <= (*G_85145).Pendingnl)) goto LA2;
-Addpendingnl_85136(G_85145);
+N_NIMCALL(void, Putnl_86142)(TY86016* G_86145, NI Indent_86146) {
+if (!(0 <= (*G_86145).Pendingnl)) goto LA2;
+Addpendingnl_86136(G_86145);
 goto LA1;
 LA2: ;
-Addtok_85105(G_85145, ((NU8) 102), ((NimStringDesc*) &TMP195744));
+Addtok_86105(G_86145, ((NU8) 102), ((NimStringDesc*) &TMP197751));
 LA1: ;
-(*G_85145).Pendingnl = Indent_85146;
-(*G_85145).Linelen = Indent_85146;
+(*G_86145).Pendingnl = Indent_86146;
+(*G_86145).Linelen = Indent_86146;
 }
-N_NIMCALL(void, Putnl_85149)(TY85016* G_85152) {
-Putnl_85142(G_85152, (*G_85152).Indent);
+N_NIMCALL(void, Putnl_86149)(TY86016* G_86152) {
+Putnl_86142(G_86152, (*G_86152).Indent);
 }
-N_NIMCALL(void, Gstmts_87112)(TY85016* G_87115, TY55526* N_87116, TY86840* C_87117) {
+N_NIMCALL(void, Gstmts_88112)(TY86016* G_88115, TY56526* N_88116, TY87840* C_88117) {
 NIM_BOOL LOC5;
-NI I_87153;
-NI HEX3Atmp_87188;
+NI I_88153;
+NI HEX3Atmp_88188;
 NI LOC9;
-NI Res_87190;
-if (!((*N_87116).Kind == ((NU8) 1))) goto LA2;
+NI Res_88190;
+if (!((*N_88116).Kind == ((NU8) 1))) goto LA2;
 goto BeforeRet;
 LA2: ;
-LOC5 = ((*N_87116).Kind == ((NU8) 101));
+LOC5 = ((*N_88116).Kind == ((NU8) 101));
 if (LOC5) goto LA6;
-LOC5 = ((*N_87116).Kind == ((NU8) 106));
+LOC5 = ((*N_88116).Kind == ((NU8) 106));
 LA6: ;
 if (!LOC5) goto LA7;
-Indentnl_85162(G_87115);
-I_87153 = 0;
-HEX3Atmp_87188 = 0;
-LOC9 = Sonslen_55804(N_87116);
-HEX3Atmp_87188 = (NI64)(LOC9 - 1);
-Res_87190 = 0;
-Res_87190 = 0;
+Indentnl_86162(G_88115);
+I_88153 = 0;
+HEX3Atmp_88188 = 0;
+LOC9 = Sonslen_56804(N_88116);
+HEX3Atmp_88188 = (NI64)(LOC9 - 1);
+Res_88190 = 0;
+Res_88190 = 0;
 while (1) {
-if (!(Res_87190 <= HEX3Atmp_87188)) goto LA10;
-I_87153 = Res_87190;
-Optnl_85158(G_87115);
-Gsub_86864(G_87115, (*N_87116).KindU.S6.Sons->data[I_87153]);
-Gcoms_85741(G_87115);
-Res_87190 += 1;
+if (!(Res_88190 <= HEX3Atmp_88188)) goto LA10;
+I_88153 = Res_88190;
+Optnl_86158(G_88115);
+Gsub_87864(G_88115, (*N_88116).KindU.S6.Sons->data[I_88153]);
+Gcoms_86741(G_88115);
+Res_88190 += 1;
 } LA10: ;
-Dedent_85178(G_87115);
+Dedent_86178(G_88115);
 goto LA4;
 LA7: ;
-if (!(((*C_87117).Flags &(1<<((((NU8) 0))&7)))!=0)) goto LA12;
-Indentnl_85162(G_87115);
+if (!(((*C_88117).Flags &(1<<((((NU8) 0))&7)))!=0)) goto LA12;
+Indentnl_86162(G_88115);
 LA12: ;
-Gsub_86864(G_87115, N_87116);
-Gcoms_85741(G_87115);
-Optnl_85158(G_87115);
-if (!(((*C_87117).Flags &(1<<((((NU8) 0))&7)))!=0)) goto LA15;
-Dedent_85178(G_87115);
+Gsub_87864(G_88115, N_88116);
+Gcoms_86741(G_88115);
+Optnl_86158(G_88115);
+if (!(((*C_88117).Flags &(1<<((((NU8) 0))&7)))!=0)) goto LA15;
+Dedent_86178(G_88115);
 LA15: ;
 LA4: ;
 BeforeRet: ;
 }
-N_NIMCALL(NIM_BOOL, Longmode_87078)(TY55526* N_87080, NI Start_87081, NI Theend_87082) {
-NIM_BOOL Result_87083;
-NI I_87092;
-NI HEX3Atmp_87109;
+N_NIMCALL(NIM_BOOL, Longmode_88078)(TY56526* N_88080, NI Start_88081, NI Theend_88082) {
+NIM_BOOL Result_88083;
+NI I_88092;
+NI HEX3Atmp_88109;
 NI LOC4;
-NI Res_87111;
+NI Res_88111;
 NI LOC7;
-Result_87083 = 0;
-Result_87083 = !(((*N_87080).Comment == NIM_NIL));
-if (!!(Result_87083)) goto LA2;
-I_87092 = 0;
-HEX3Atmp_87109 = 0;
-LOC4 = Sonslen_55804(N_87080);
-HEX3Atmp_87109 = (NI64)(LOC4 + Theend_87082);
-Res_87111 = 0;
-Res_87111 = Start_87081;
+Result_88083 = 0;
+Result_88083 = !(((*N_88080).Comment == NIM_NIL));
+if (!!(Result_88083)) goto LA2;
+I_88092 = 0;
+HEX3Atmp_88109 = 0;
+LOC4 = Sonslen_56804(N_88080);
+HEX3Atmp_88109 = (NI64)(LOC4 + Theend_88082);
+Res_88111 = 0;
+Res_88111 = Start_88081;
 while (1) {
-if (!(Res_87111 <= HEX3Atmp_87109)) goto LA5;
-I_87092 = Res_87111;
-LOC7 = Lsub_85757((*N_87080).KindU.S6.Sons->data[I_87092]);
+if (!(Res_88111 <= HEX3Atmp_88109)) goto LA5;
+I_88092 = Res_88111;
+LOC7 = Lsub_86757((*N_88080).KindU.S6.Sons->data[I_88092]);
 if (!(80 < LOC7)) goto LA8;
-Result_87083 = NIM_TRUE;
+Result_88083 = NIM_TRUE;
 goto LA5;
 LA8: ;
-Res_87111 += 1;
+Res_88111 += 1;
 } LA5: ;
 LA2: ;
-return Result_87083;
+return Result_88083;
 }
-N_NIMCALL(void, Gif_87191)(TY85016* G_87194, TY55526* N_87195) {
-TY86840 C_87196;
+N_NIMCALL(void, Gif_88191)(TY86016* G_88194, TY56526* N_88195) {
+TY87840 C_88196;
 NIM_BOOL LOC2;
 NI LOC4;
-NI Length_87286;
-NI I_87295;
-NI HEX3Atmp_87308;
-NI Res_87310;
-memset((void*)&C_87196, 0, sizeof(C_87196));
-Gsub_86864(G_87194, (*(*N_87195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
-Initcontext_86852(&C_87196);
-Putwithspace_86899(G_87194, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-LOC2 = Longmode_87078(N_87195, 0, -1);
+NI Length_88286;
+NI I_88295;
+NI HEX3Atmp_88308;
+NI Res_88310;
+memset((void*)&C_88196, 0, sizeof(C_88196));
+Gsub_87864(G_88194, (*(*N_88195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
+Initcontext_87852(&C_88196);
+Putwithspace_87899(G_88194, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+LOC2 = Longmode_88078(N_88195, 0, -1);
 if (LOC2) goto LA3;
-LOC4 = Lsub_85757((*(*N_87195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
-LOC2 = (80 < (NI64)(LOC4 + (*G_87194).Linelen));
+LOC4 = Lsub_86757((*(*N_88195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
+LOC2 = (80 < (NI64)(LOC4 + (*G_88194).Linelen));
 LA3: ;
 if (!LOC2) goto LA5;
-C_87196.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88196.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA5: ;
-Gcoms_85741(G_87194);
-Gstmts_87112(G_87194, (*(*N_87195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1], &C_87196);
-Length_87286 = 0;
-Length_87286 = Sonslen_55804(N_87195);
-I_87295 = 0;
-HEX3Atmp_87308 = 0;
-HEX3Atmp_87308 = (NI64)(Length_87286 - 1);
-Res_87310 = 0;
-Res_87310 = 1;
+Gcoms_86741(G_88194);
+Gstmts_88112(G_88194, (*(*N_88195).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1], &C_88196);
+Length_88286 = 0;
+Length_88286 = Sonslen_56804(N_88195);
+I_88295 = 0;
+HEX3Atmp_88308 = 0;
+HEX3Atmp_88308 = (NI64)(Length_88286 - 1);
+Res_88310 = 0;
+Res_88310 = 1;
 while (1) {
-if (!(Res_87310 <= HEX3Atmp_87308)) goto LA7;
-I_87295 = Res_87310;
-Optnl_85158(G_87194);
-Gsub_86858(G_87194, (*N_87195).KindU.S6.Sons->data[I_87295], &C_87196);
-Res_87310 += 1;
+if (!(Res_88310 <= HEX3Atmp_88308)) goto LA7;
+I_88295 = Res_88310;
+Optnl_86158(G_88194);
+Gsub_87858(G_88194, (*N_88195).KindU.S6.Sons->data[I_88295], &C_88196);
+Res_88310 += 1;
 } LA7: ;
 }
-N_NIMCALL(void, Gwhile_87311)(TY85016* G_87314, TY55526* N_87315) {
-TY86840 C_87316;
+N_NIMCALL(void, Gwhile_88311)(TY86016* G_88314, TY56526* N_88315) {
+TY87840 C_88316;
 NIM_BOOL LOC2;
 NI LOC4;
-memset((void*)&C_87316, 0, sizeof(C_87316));
-Putwithspace_86899(G_87314, ((NU8) 61), ((NimStringDesc*) &TMP195802));
-Gsub_86864(G_87314, (*N_87315).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_87314, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Initcontext_86852(&C_87316);
-LOC2 = Longmode_87078(N_87315, 0, -1);
+memset((void*)&C_88316, 0, sizeof(C_88316));
+Putwithspace_87899(G_88314, ((NU8) 61), ((NimStringDesc*) &TMP197809));
+Gsub_87864(G_88314, (*N_88315).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_88314, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Initcontext_87852(&C_88316);
+LOC2 = Longmode_88078(N_88315, 0, -1);
 if (LOC2) goto LA3;
-LOC4 = Lsub_85757((*N_87315).KindU.S6.Sons->data[1]);
-LOC2 = (80 < (NI64)(LOC4 + (*G_87314).Linelen));
+LOC4 = Lsub_86757((*N_88315).KindU.S6.Sons->data[1]);
+LOC2 = (80 < (NI64)(LOC4 + (*G_88314).Linelen));
 LA3: ;
 if (!LOC2) goto LA5;
-C_87316.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88316.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA5: ;
-Gcoms_85741(G_87314);
-Gstmts_87112(G_87314, (*N_87315).KindU.S6.Sons->data[1], &C_87316);
+Gcoms_86741(G_88314);
+Gstmts_88112(G_88314, (*N_88315).KindU.S6.Sons->data[1], &C_88316);
 }
-N_NIMCALL(void, Gcase_87536)(TY85016* G_87539, TY55526* N_87540) {
-TY86840 C_87541;
-NI Length_87543;
-NI Last_87565;
+N_NIMCALL(void, Gcase_88536)(TY86016* G_88539, TY56526* N_88540) {
+TY87840 C_88541;
+NI Length_88543;
+NI Last_88565;
 NI LOC1;
 NIM_BOOL LOC5;
 NIM_BOOL LOC12;
-memset((void*)&C_87541, 0, sizeof(C_87541));
-Initcontext_86852(&C_87541);
-Length_87543 = 0;
-Length_87543 = Sonslen_55804(N_87540);
-Last_87565 = 0;
-if (!((*(*N_87540).KindU.S6.Sons->data[(NI64)(Length_87543 - 1)]).Kind == ((NU8) 78))) goto LA3;
+memset((void*)&C_88541, 0, sizeof(C_88541));
+Initcontext_87852(&C_88541);
+Length_88543 = 0;
+Length_88543 = Sonslen_56804(N_88540);
+Last_88565 = 0;
+if (!((*(*N_88540).KindU.S6.Sons->data[(NI64)(Length_88543 - 1)]).Kind == ((NU8) 78))) goto LA3;
 LOC1 = -2;
 goto LA2;
 LA3: ;
 LOC1 = -1;
 LA2: ;
-Last_87565 = LOC1;
-LOC5 = Longmode_87078(N_87540, 0, Last_87565);
+Last_88565 = LOC1;
+LOC5 = Longmode_88078(N_88540, 0, Last_88565);
 if (!LOC5) goto LA6;
-C_87541.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88541.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA6: ;
-Putwithspace_86899(G_87539, ((NU8) 11), ((NimStringDesc*) &TMP195803));
-Gsub_86864(G_87539, (*N_87540).KindU.S6.Sons->data[0]);
-Gcoms_85741(G_87539);
-Optnl_85158(G_87539);
-Gsons_87012(G_87539, N_87540, &C_87541, 1, Last_87565);
-if (!(Last_87565 == -2)) goto LA9;
-Initcontext_86852(&C_87541);
-LOC12 = Longmode_87078((*N_87540).KindU.S6.Sons->data[(NI64)(Length_87543 - 1)], 0, -1);
+Putwithspace_87899(G_88539, ((NU8) 11), ((NimStringDesc*) &TMP197810));
+Gsub_87864(G_88539, (*N_88540).KindU.S6.Sons->data[0]);
+Gcoms_86741(G_88539);
+Optnl_86158(G_88539);
+Gsons_88012(G_88539, N_88540, &C_88541, 1, Last_88565);
+if (!(Last_88565 == -2)) goto LA9;
+Initcontext_87852(&C_88541);
+LOC12 = Longmode_88078((*N_88540).KindU.S6.Sons->data[(NI64)(Length_88543 - 1)], 0, -1);
 if (!LOC12) goto LA13;
-C_87541.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88541.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA13: ;
-Gsub_86858(G_87539, (*N_87540).KindU.S6.Sons->data[(NI64)(Length_87543 - 1)], &C_87541);
+Gsub_87858(G_88539, (*N_88540).KindU.S6.Sons->data[(NI64)(Length_88543 - 1)], &C_88541);
 LA9: ;
 }
-N_NIMCALL(void, Gmacro_87489)(TY85016* G_87492, TY55526* N_87493) {
-TY86840 C_87494;
+N_NIMCALL(void, Gmacro_88489)(TY86016* G_88492, TY56526* N_88493) {
+TY87840 C_88494;
 NIM_BOOL LOC2;
 NI LOC4;
-memset((void*)&C_87494, 0, sizeof(C_87494));
-Initcontext_86852(&C_87494);
-Gsub_86864(G_87492, (*N_87493).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_87492, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-LOC2 = Longmode_87078(N_87493, 0, -1);
+memset((void*)&C_88494, 0, sizeof(C_88494));
+Initcontext_87852(&C_88494);
+Gsub_87864(G_88492, (*N_88493).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_88492, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+LOC2 = Longmode_88078(N_88493, 0, -1);
 if (LOC2) goto LA3;
-LOC4 = Lsub_85757((*N_87493).KindU.S6.Sons->data[1]);
-LOC2 = (80 < (NI64)(LOC4 + (*G_87492).Linelen));
+LOC4 = Lsub_86757((*N_88493).KindU.S6.Sons->data[1]);
+LOC2 = (80 < (NI64)(LOC4 + (*G_88492).Linelen));
 LA3: ;
 if (!LOC2) goto LA5;
-C_87494.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88494.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA5: ;
-Gcoms_85741(G_87492);
-Gsons_87012(G_87492, N_87493, &C_87494, 1, -1);
+Gcoms_86741(G_88492);
+Gsons_88012(G_88492, N_88493, &C_88494, 1, -1);
 }
-N_NIMCALL(void, Gtry_87370)(TY85016* G_87373, TY55526* N_87374) {
-TY86840 C_87375;
+N_NIMCALL(void, Gtry_88370)(TY86016* G_88373, TY56526* N_88374) {
+TY87840 C_88375;
 NIM_BOOL LOC2;
 NI LOC4;
-memset((void*)&C_87375, 0, sizeof(C_87375));
-Put_85224(G_87373, ((NU8) 56), ((NimStringDesc*) &TMP195804));
-Putwithspace_86899(G_87373, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Initcontext_86852(&C_87375);
-LOC2 = Longmode_87078(N_87374, 0, -1);
+memset((void*)&C_88375, 0, sizeof(C_88375));
+Put_86224(G_88373, ((NU8) 56), ((NimStringDesc*) &TMP197811));
+Putwithspace_87899(G_88373, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Initcontext_87852(&C_88375);
+LOC2 = Longmode_88078(N_88374, 0, -1);
 if (LOC2) goto LA3;
-LOC4 = Lsub_85757((*N_87374).KindU.S6.Sons->data[0]);
-LOC2 = (80 < (NI64)(LOC4 + (*G_87373).Linelen));
+LOC4 = Lsub_86757((*N_88374).KindU.S6.Sons->data[0]);
+LOC2 = (80 < (NI64)(LOC4 + (*G_88373).Linelen));
 LA3: ;
 if (!LOC2) goto LA5;
-C_87375.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88375.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA5: ;
-Gcoms_85741(G_87373);
-Gstmts_87112(G_87373, (*N_87374).KindU.S6.Sons->data[0], &C_87375);
-Gsons_87012(G_87373, N_87374, &C_87375, 1, -1);
+Gcoms_86741(G_88373);
+Gstmts_88112(G_88373, (*N_88374).KindU.S6.Sons->data[0], &C_88375);
+Gsons_88012(G_88373, N_88374, &C_88375, 1, -1);
 }
-N_NIMCALL(void, Gfor_87417)(TY85016* G_87420, TY55526* N_87421) {
-TY86840 C_87422;
-NI Length_87423;
+N_NIMCALL(void, Gfor_88417)(TY86016* G_88420, TY56526* N_88421) {
+TY87840 C_88422;
+NI Length_88423;
 NIM_BOOL LOC2;
 NI LOC4;
 NI LOC5;
-memset((void*)&C_87422, 0, sizeof(C_87422));
-Length_87423 = 0;
-Length_87423 = Sonslen_55804(N_87421);
-Putwithspace_86899(G_87420, ((NU8) 25), ((NimStringDesc*) &TMP195805));
-Initcontext_86852(&C_87422);
-LOC2 = Longmode_87078(N_87421, 0, -1);
+memset((void*)&C_88422, 0, sizeof(C_88422));
+Length_88423 = 0;
+Length_88423 = Sonslen_56804(N_88421);
+Putwithspace_87899(G_88420, ((NU8) 25), ((NimStringDesc*) &TMP197812));
+Initcontext_87852(&C_88422);
+LOC2 = Longmode_88078(N_88421, 0, -1);
 if (LOC2) goto LA3;
-LOC4 = Lsub_85757((*N_87421).KindU.S6.Sons->data[(NI64)(Length_87423 - 1)]);
-LOC5 = Lsub_85757((*N_87421).KindU.S6.Sons->data[(NI64)(Length_87423 - 2)]);
-LOC2 = (80 < (NI64)((NI64)((NI64)(LOC4 + LOC5) + 6) + (*G_87420).Linelen));
+LOC4 = Lsub_86757((*N_88421).KindU.S6.Sons->data[(NI64)(Length_88423 - 1)]);
+LOC5 = Lsub_86757((*N_88421).KindU.S6.Sons->data[(NI64)(Length_88423 - 2)]);
+LOC2 = (80 < (NI64)((NI64)((NI64)(LOC4 + LOC5) + 6) + (*G_88420).Linelen));
 LA3: ;
 if (!LOC2) goto LA6;
-C_87422.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88422.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA6: ;
-Gcomma_86976(G_87420, N_87421, &C_87422, 0, -3);
-Put_85224(G_87420, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_87420, ((NU8) 31), ((NimStringDesc*) &TMP195806));
-Gsub_86858(G_87420, (*N_87421).KindU.S6.Sons->data[(NI64)(Length_87423 - 2)], &C_87422);
-Putwithspace_86899(G_87420, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_87420);
-Gstmts_87112(G_87420, (*N_87421).KindU.S6.Sons->data[(NI64)(Length_87423 - 1)], &C_87422);
+Gcomma_87976(G_88420, N_88421, &C_88422, 0, -3);
+Put_86224(G_88420, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_88420, ((NU8) 31), ((NimStringDesc*) &TMP197813));
+Gsub_87858(G_88420, (*N_88421).KindU.S6.Sons->data[(NI64)(Length_88423 - 2)], &C_88422);
+Putwithspace_87899(G_88420, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_88420);
+Gstmts_88112(G_88420, (*N_88421).KindU.S6.Sons->data[(NI64)(Length_88423 - 1)], &C_88422);
 }
-N_NIMCALL(void, Gblock_87728)(TY85016* G_87731, TY55526* N_87732) {
-TY86840 C_87733;
+N_NIMCALL(void, Gblock_88728)(TY86016* G_88731, TY56526* N_88732) {
+TY87840 C_88733;
 NIM_BOOL LOC5;
 NI LOC7;
-memset((void*)&C_87733, 0, sizeof(C_87733));
-Initcontext_86852(&C_87733);
-if (!!(((*(*N_87732).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA2;
-Putwithspace_86899(G_87731, ((NU8) 9), ((NimStringDesc*) &TMP195807));
-Gsub_86864(G_87731, (*N_87732).KindU.S6.Sons->data[0]);
+memset((void*)&C_88733, 0, sizeof(C_88733));
+Initcontext_87852(&C_88733);
+if (!!(((*(*N_88732).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA2;
+Putwithspace_87899(G_88731, ((NU8) 9), ((NimStringDesc*) &TMP197814));
+Gsub_87864(G_88731, (*N_88732).KindU.S6.Sons->data[0]);
 goto LA1;
 LA2: ;
-Put_85224(G_87731, ((NU8) 9), ((NimStringDesc*) &TMP195807));
+Put_86224(G_88731, ((NU8) 9), ((NimStringDesc*) &TMP197814));
 LA1: ;
-Putwithspace_86899(G_87731, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-LOC5 = Longmode_87078(N_87732, 0, -1);
+Putwithspace_87899(G_88731, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+LOC5 = Longmode_88078(N_88732, 0, -1);
 if (LOC5) goto LA6;
-LOC7 = Lsub_85757((*N_87732).KindU.S6.Sons->data[1]);
-LOC5 = (80 < (NI64)(LOC7 + (*G_87731).Linelen));
+LOC7 = Lsub_86757((*N_88732).KindU.S6.Sons->data[1]);
+LOC5 = (80 < (NI64)(LOC7 + (*G_88731).Linelen));
 LA6: ;
 if (!LOC5) goto LA8;
-C_87733.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
+C_88733.Flags |=(1<<((NI8)(((NU8) 0))%(sizeof(NI8)*8)));
 LA8: ;
-Gcoms_85741(G_87731);
-Indentnl_85162(G_87731);
-Gstmts_87112(G_87731, (*N_87732).KindU.S6.Sons->data[1], &C_87733);
-Dedent_85178(G_87731);
+Gcoms_86741(G_88731);
+Indentnl_86162(G_88731);
+Gstmts_88112(G_88731, (*N_88732).KindU.S6.Sons->data[1], &C_88733);
+Dedent_86178(G_88731);
 }
-N_NIMCALL(void, Gasm_87808)(TY85016* G_87811, TY55526* N_87812) {
-Putwithspace_86899(G_87811, ((NU8) 6), ((NimStringDesc*) &TMP195808));
-Gsub_86864(G_87811, (*N_87812).KindU.S6.Sons->data[0]);
-Gcoms_85741(G_87811);
-Gsub_86864(G_87811, (*N_87812).KindU.S6.Sons->data[1]);
+N_NIMCALL(void, Gasm_88808)(TY86016* G_88811, TY56526* N_88812) {
+Putwithspace_87899(G_88811, ((NU8) 6), ((NimStringDesc*) &TMP197815));
+Gsub_87864(G_88811, (*N_88812).KindU.S6.Sons->data[0]);
+Gcoms_86741(G_88811);
+Gsub_87864(G_88811, (*N_88812).KindU.S6.Sons->data[1]);
 }
-N_NIMCALL(void, Gproc_87629)(TY85016* G_87632, TY55526* N_87633) {
-TY86840 C_87634;
-memset((void*)&C_87634, 0, sizeof(C_87634));
-Gsub_86864(G_87632, (*N_87633).KindU.S6.Sons->data[0]);
-Gsub_86864(G_87632, (*N_87633).KindU.S6.Sons->data[1]);
-Gsub_86864(G_87632, (*N_87633).KindU.S6.Sons->data[2]);
-Gsub_86864(G_87632, (*N_87633).KindU.S6.Sons->data[3]);
-if (!!((((*G_87632).Flags &(1<<((((NU8) 1))&7)))!=0))) goto LA2;
-if (!!(((*(*N_87633).KindU.S6.Sons->data[4]).Kind == ((NU8) 1)))) goto LA5;
-Put_85224(G_87632, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_87632, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Indentnl_85162(G_87632);
-Gcoms_85741(G_87632);
-Dedent_85178(G_87632);
-Initcontext_86852(&C_87634);
-Gstmts_87112(G_87632, (*N_87633).KindU.S6.Sons->data[4], &C_87634);
-Putnl_85149(G_87632);
+N_NIMCALL(void, Gproc_88629)(TY86016* G_88632, TY56526* N_88633) {
+TY87840 C_88634;
+memset((void*)&C_88634, 0, sizeof(C_88634));
+Gsub_87864(G_88632, (*N_88633).KindU.S6.Sons->data[0]);
+Gsub_87864(G_88632, (*N_88633).KindU.S6.Sons->data[1]);
+Gsub_87864(G_88632, (*N_88633).KindU.S6.Sons->data[2]);
+Gsub_87864(G_88632, (*N_88633).KindU.S6.Sons->data[3]);
+if (!!((((*G_88632).Flags &(1<<((((NU8) 1))&7)))!=0))) goto LA2;
+if (!!(((*(*N_88633).KindU.S6.Sons->data[4]).Kind == ((NU8) 1)))) goto LA5;
+Put_86224(G_88632, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_88632, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Indentnl_86162(G_88632);
+Gcoms_86741(G_88632);
+Dedent_86178(G_88632);
+Initcontext_87852(&C_88634);
+Gstmts_88112(G_88632, (*N_88633).KindU.S6.Sons->data[4], &C_88634);
+Putnl_86149(G_88632);
 goto LA4;
 LA5: ;
-Indentnl_85162(G_87632);
-Gcoms_85741(G_87632);
-Dedent_85178(G_87632);
+Indentnl_86162(G_88632);
+Gcoms_86741(G_88632);
+Dedent_86178(G_88632);
 LA4: ;
 LA2: ;
 }
-N_NIMCALL(void, Gsection_87044)(TY85016* G_87047, TY55526* N_87048, TY86840* C_87049, NU8 Kind_87050, NimStringDesc* K_87051) {
+N_NIMCALL(void, Gsection_88044)(TY86016* G_88047, TY56526* N_88048, TY87840* C_88049, NU8 Kind_88050, NimStringDesc* K_88051) {
 NI LOC2;
-NI I_87062;
-NI HEX3Atmp_87075;
+NI I_88062;
+NI HEX3Atmp_88075;
 NI LOC5;
-NI Res_87077;
-LOC2 = Sonslen_55804(N_87048);
+NI Res_88077;
+LOC2 = Sonslen_56804(N_88048);
 if (!(LOC2 == 0)) goto LA3;
 goto BeforeRet;
 LA3: ;
-Putwithspace_86899(G_87047, Kind_87050, K_87051);
-Gcoms_85741(G_87047);
-Indentnl_85162(G_87047);
-I_87062 = 0;
-HEX3Atmp_87075 = 0;
-LOC5 = Sonslen_55804(N_87048);
-HEX3Atmp_87075 = (NI64)(LOC5 - 1);
-Res_87077 = 0;
-Res_87077 = 0;
+Putwithspace_87899(G_88047, Kind_88050, K_88051);
+Gcoms_86741(G_88047);
+Indentnl_86162(G_88047);
+I_88062 = 0;
+HEX3Atmp_88075 = 0;
+LOC5 = Sonslen_56804(N_88048);
+HEX3Atmp_88075 = (NI64)(LOC5 - 1);
+Res_88077 = 0;
+Res_88077 = 0;
 while (1) {
-if (!(Res_87077 <= HEX3Atmp_87075)) goto LA6;
-I_87062 = Res_87077;
-Optnl_85158(G_87047);
-Gsub_86858(G_87047, (*N_87048).KindU.S6.Sons->data[I_87062], C_87049);
-Gcoms_85741(G_87047);
-Res_87077 += 1;
+if (!(Res_88077 <= HEX3Atmp_88075)) goto LA6;
+I_88062 = Res_88077;
+Optnl_86158(G_88047);
+Gsub_87858(G_88047, (*N_88048).KindU.S6.Sons->data[I_88062], C_88049);
+Gcoms_86741(G_88047);
+Res_88077 += 1;
 } LA6: ;
-Dedent_85178(G_87047);
+Dedent_86178(G_88047);
 BeforeRet: ;
 }
-N_NIMCALL(void, Gsub_86858)(TY85016* G_86861, TY55526* N_86862, TY86840* C_86863) {
-NI L_87973;
-TY86840 A_87974;
+N_NIMCALL(void, Gsub_87858)(TY86016* G_87861, TY56526* N_87862, TY87840* C_87863) {
+NI L_88973;
+TY87840 A_88974;
 NimStringDesc* LOC4;
 NimStringDesc* LOC5;
 NimStringDesc* LOC6;
@@ -2107,729 +2120,739 @@ NimStringDesc* LOC15;
 NimStringDesc* LOC16;
 NI LOC18;
 NimStringDesc* LOC24;
-TY55526* LOC25;
+TY56526* LOC25;
 NimStringDesc* LOC26;
 NI LOC28;
-NI I_88188;
-NI HEX3Atmp_89123;
+NI I_89188;
+NI HEX3Atmp_90123;
 NI LOC31;
-NI Res_89125;
-NI L_88310;
-TY55526* LOC42;
+NI Res_90125;
+NI L_89310;
+TY56526* LOC42;
 NI LOC44;
 NI LOC45;
 NIM_BOOL LOC46;
-NI I_88802;
-NI HEX3Atmp_89126;
+NI I_89802;
+NI HEX3Atmp_90126;
 NI LOC52;
-NI Res_89128;
-NI I_88914;
-NI HEX3Atmp_89129;
-NI Res_89131;
-TY55526* LOC64;
-TY55526* LOC65;
+NI Res_90128;
+NI I_89914;
+NI HEX3Atmp_90129;
+NI Res_90131;
+TY56526* LOC64;
+TY56526* LOC65;
 NimStringDesc* LOC69;
-L_87973 = 0;
-memset((void*)&A_87974, 0, sizeof(A_87974));
-if (!!(((*N_86862).Comment == NIM_NIL))) goto LA2;
-Pushcom_85595(G_86861, N_86862);
+L_88973 = 0;
+memset((void*)&A_88974, 0, sizeof(A_88974));
+if (!!(((*N_87862).Comment == NIM_NIL))) goto LA2;
+Pushcom_86595(G_87861, N_87862);
 LA2: ;
-switch ((*N_86862).Kind) {
+switch ((*N_87862).Kind) {
 case ((NU8) 16):
-Putrawstr_85512(G_86861, ((NU8) 76), (*N_86862).KindU.S3.Strval);
+Putrawstr_86512(G_87861, ((NU8) 76), (*N_87862).KindU.S3.Strval);
 break;
 case ((NU8) 1):
 break;
 case ((NU8) 4):
 LOC4 = 0;
-LOC4 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 0), LOC4);
+LOC4 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 0), LOC4);
 break;
 case ((NU8) 3):
 case ((NU8) 2):
-Gident_87837(G_86861, N_86862);
+Gident_88837(G_87861, N_87862);
 break;
 case ((NU8) 6):
 LOC5 = 0;
-LOC5 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 66), LOC5);
+LOC5 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 66), LOC5);
 break;
 case ((NU8) 7):
 LOC6 = 0;
-LOC6 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 67), LOC6);
+LOC6 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 67), LOC6);
 break;
 case ((NU8) 8):
 LOC7 = 0;
-LOC7 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 68), LOC7);
+LOC7 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 68), LOC7);
 break;
 case ((NU8) 9):
 LOC8 = 0;
-LOC8 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 69), LOC8);
+LOC8 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 69), LOC8);
 break;
 case ((NU8) 10):
 LOC9 = 0;
-LOC9 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 70), LOC9);
+LOC9 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 70), LOC9);
 break;
 case ((NU8) 11):
 LOC10 = 0;
-LOC10 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 71), LOC10);
+LOC10 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 71), LOC10);
 break;
 case ((NU8) 12):
 LOC11 = 0;
-LOC11 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 72), LOC11);
+LOC11 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 72), LOC11);
 break;
 case ((NU8) 13):
 LOC12 = 0;
-LOC12 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 73), LOC12);
+LOC12 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 73), LOC12);
 break;
 case ((NU8) 14):
 LOC13 = 0;
-LOC13 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 74), LOC13);
+LOC13 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 74), LOC13);
 break;
 case ((NU8) 15):
 LOC14 = 0;
-LOC14 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 75), LOC14);
+LOC14 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 75), LOC14);
 break;
 case ((NU8) 5):
 LOC15 = 0;
-LOC15 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 79), LOC15);
+LOC15 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 79), LOC15);
 break;
 case ((NU8) 18):
 LOC16 = 0;
-LOC16 = Atom_85801(N_86862);
-Put_85224(G_86861, ((NU8) 41), LOC16);
+LOC16 = Atom_86801(N_87862);
+Put_86224(G_87861, ((NU8) 41), LOC16);
 break;
 case ((NU8) 21):
 case ((NU8) 50):
 case ((NU8) 19):
-LOC18 = Sonslen_55804(N_86862);
+LOC18 = Sonslen_56804(N_87862);
 if (!(1 <= LOC18)) goto LA19;
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 LA19: ;
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 1, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 1, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 22):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-if (!((*(*N_86862).KindU.S6.Sons->data[1]).Kind == ((NU8) 15))) goto LA22;
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+if (!((*(*N_87862).KindU.S6.Sons->data[1]).Kind == ((NU8) 15))) goto LA22;
 LOC24 = 0;
 LOC25 = 0;
-LOC25 = HEX5BHEX5D_57062(N_86862, 1);
+LOC25 = HEX5BHEX5D_58137(N_87862, 1);
 LOC26 = 0;
-LOC26 = nsuReplaceStr((*LOC25).KindU.S3.Strval, ((NimStringDesc*) &TMP195745), ((NimStringDesc*) &TMP195750));
+LOC26 = nsuReplaceStr((*LOC25).KindU.S3.Strval, ((NimStringDesc*) &TMP197752), ((NimStringDesc*) &TMP197757));
 LOC24 = rawNewString(LOC26->Sup.len + 2);
 appendChar(LOC24, 34);
 appendString(LOC24, LOC26);
 appendChar(LOC24, 34);
-Put_85224(G_86861, ((NU8) 75), LOC24);
+Put_86224(G_87861, ((NU8) 75), LOC24);
 goto LA21;
 LA22: ;
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 LA21: ;
 break;
 case ((NU8) 47):
 case ((NU8) 48):
 case ((NU8) 49):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 51):
-Put_85224(G_86861, ((NU8) 12), ((NimStringDesc*) &TMP195770));
-Put_85224(G_86861, ((NU8) 82), ((NimStringDesc*) &TMP195771));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 83), ((NimStringDesc*) &TMP195772));
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 12), ((NimStringDesc*) &TMP197777));
+Put_86224(G_87861, ((NU8) 82), ((NimStringDesc*) &TMP197778));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 83), ((NimStringDesc*) &TMP197779));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 52):
-Put_85224(G_86861, ((NU8) 3), ((NimStringDesc*) &TMP195773));
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 3), ((NimStringDesc*) &TMP197780));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 33):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 82), ((NimStringDesc*) &TMP195771));
-Gcomma_87000(G_86861, N_86862, 1, -1);
-Put_85224(G_86861, ((NU8) 83), ((NimStringDesc*) &TMP195772));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 82), ((NimStringDesc*) &TMP197778));
+Gcomma_88000(G_87861, N_87862, 1, -1);
+Put_86224(G_87861, ((NU8) 83), ((NimStringDesc*) &TMP197779));
 break;
 case ((NU8) 34):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Gcomma_87000(G_86861, N_86862, 1, -1);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Gcomma_88000(G_87861, N_87862, 1, -1);
 break;
 case ((NU8) 20):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Gcomma_87000(G_86861, N_86862, 1, -1);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Gcomma_88000(G_87861, N_87862, 1, -1);
 break;
 case ((NU8) 23):
 case ((NU8) 63):
 case ((NU8) 64):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 57):
-Put_85224(G_86861, ((NU8) 2), ((NimStringDesc*) &TMP195775));
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 0, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 2), ((NimStringDesc*) &TMP197782));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 0, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 58):
-Put_85224(G_86861, ((NU8) 2), ((NimStringDesc*) &TMP195776));
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 0, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 2), ((NimStringDesc*) &TMP197783));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 0, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 59):
-Put_85224(G_86861, ((NU8) 2), ((NimStringDesc*) &TMP195777));
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 0, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 2), ((NimStringDesc*) &TMP197784));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 0, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 55):
 case ((NU8) 56):
 case ((NU8) 60):
 case ((NU8) 61):
 case ((NU8) 62):
-LOC28 = Sonslen_55804(N_86862);
+LOC28 = Sonslen_56804(N_87862);
 if (!(1 <= LOC28)) goto LA29;
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 LA29: ;
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 1, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 1, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 46):
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-I_88188 = 0;
-HEX3Atmp_89123 = 0;
-LOC31 = Sonslen_55804(N_86862);
-HEX3Atmp_89123 = (NI64)(LOC31 - 1);
-Res_89125 = 0;
-Res_89125 = 0;
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+I_89188 = 0;
+HEX3Atmp_90123 = 0;
+LOC31 = Sonslen_56804(N_87862);
+HEX3Atmp_90123 = (NI64)(LOC31 - 1);
+Res_90125 = 0;
+Res_90125 = 0;
 while (1) {
-if (!(Res_89125 <= HEX3Atmp_89123)) goto LA32;
-I_88188 = Res_89125;
-if (!(0 < I_88188)) goto LA34;
-Put_85224(G_86861, ((NU8) 99), ((NimStringDesc*) &TMP195778));
+if (!(Res_90125 <= HEX3Atmp_90123)) goto LA32;
+I_89188 = Res_90125;
+if (!(0 < I_89188)) goto LA34;
+Put_86224(G_87861, ((NU8) 99), ((NimStringDesc*) &TMP197785));
 LA34: ;
-Gsub_86858(G_86861, (*N_86862).KindU.S6.Sons->data[I_88188], C_86863);
-Res_89125 += 1;
+Gsub_87858(G_87861, (*N_87862).KindU.S6.Sons->data[I_89188], C_87863);
+Res_90125 += 1;
 } LA32: ;
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 30):
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_86976(G_86861, N_86862, C_86863, 0, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_87976(G_87861, N_87862, C_87863, 0, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
 break;
 case ((NU8) 31):
-Put_85224(G_86861, ((NU8) 84), ((NimStringDesc*) &TMP195779));
-Gcomma_86976(G_86861, N_86862, C_86863, 0, -1);
-Put_85224(G_86861, ((NU8) 85), ((NimStringDesc*) &TMP195780));
+Put_86224(G_87861, ((NU8) 84), ((NimStringDesc*) &TMP197786));
+Gcomma_87976(G_87861, N_87862, C_87863, 0, -1);
+Put_86224(G_87861, ((NU8) 85), ((NimStringDesc*) &TMP197787));
 break;
 case ((NU8) 32):
-Put_85224(G_86861, ((NU8) 82), ((NimStringDesc*) &TMP195771));
-Gcomma_86976(G_86861, N_86862, C_86863, 0, -1);
-Put_85224(G_86861, ((NU8) 83), ((NimStringDesc*) &TMP195772));
+Put_86224(G_87861, ((NU8) 82), ((NimStringDesc*) &TMP197778));
+Gcomma_87976(G_87861, N_87862, C_87863, 0, -1);
+Put_86224(G_87861, ((NU8) 83), ((NimStringDesc*) &TMP197779));
 break;
 case ((NU8) 36):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 96), ((NimStringDesc*) &TMP195781));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 96), ((NimStringDesc*) &TMP197788));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 45):
-Putwithspace_86899(G_86861, ((NU8) 8), ((NimStringDesc*) &TMP195782));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 8), ((NimStringDesc*) &TMP197789));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 37):
 case ((NU8) 53):
 case ((NU8) 54):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 42):
-Putwithspace_86899(G_86861, ((NU8) 36), ((NimStringDesc*) &TMP195783));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[2]);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[3]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[4]);
+Putwithspace_87899(G_87861, ((NU8) 36), ((NimStringDesc*) &TMP197790));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[2]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[3]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[4]);
 break;
 case ((NU8) 89):
 case ((NU8) 25):
-Gcomma_87000(G_86861, N_86862, 0, -3);
-L_88310 = 0;
-L_88310 = Sonslen_55804(N_86862);
-if (!!(((*(*N_86862).KindU.S6.Sons->data[(NI64)(L_88310 - 2)]).Kind == ((NU8) 1)))) goto LA37;
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[(NI64)(L_88310 - 2)]);
+Gcomma_88000(G_87861, N_87862, 0, -3);
+L_89310 = 0;
+L_89310 = Sonslen_56804(N_87862);
+if (!!(((*(*N_87862).KindU.S6.Sons->data[(NI64)(L_89310 - 2)]).Kind == ((NU8) 1)))) goto LA37;
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[(NI64)(L_89310 - 2)]);
 LA37: ;
-if (!!(((*(*N_86862).KindU.S6.Sons->data[(NI64)(L_88310 - 1)]).Kind == ((NU8) 1)))) goto LA40;
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Gsub_86858(G_86861, (*N_86862).KindU.S6.Sons->data[(NI64)(L_88310 - 1)], C_86863);
+if (!!(((*(*N_87862).KindU.S6.Sons->data[(NI64)(L_89310 - 1)]).Kind == ((NU8) 1)))) goto LA40;
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Gsub_87858(G_87861, (*N_87862).KindU.S6.Sons->data[(NI64)(L_89310 - 1)], C_87863);
 LA40: ;
 break;
 case ((NU8) 26):
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 0, -3);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 0, -3);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
 LOC42 = 0;
-LOC42 = Lastson_55810(N_86862);
-Gsub_86858(G_86861, LOC42, C_86863);
+LOC42 = Lastson_56810(N_87862);
+Gsub_87858(G_87861, LOC42, C_87863);
 break;
 case ((NU8) 24):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 27):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-LOC44 = Lsub_85757((*N_86862).KindU.S6.Sons->data[2]);
-LOC45 = Lsub_85757((*N_86862).KindU.S6.Sons->data[0]);
-LOC46 = Fits_86828(&(*G_86861), (NI64)((NI64)(LOC44 + LOC45) + 1));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+LOC44 = Lsub_86757((*N_87862).KindU.S6.Sons->data[2]);
+LOC45 = Lsub_86757((*N_87862).KindU.S6.Sons->data[0]);
+LOC46 = Fits_87828(&(*G_87861), (NI64)((NI64)(LOC44 + LOC45) + 1));
 if (!!(LOC46)) goto LA47;
-Optnl_85153(G_86861, (NI64)((*G_86861).Indent + 4));
+Optnl_86153(G_87861, (NI64)((*G_87861).Indent + 4));
 goto LA43;
 LA47: ;
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
 LA43: ;
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[2]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[2]);
 break;
 case ((NU8) 28):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 29):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 35):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 97), ((NimStringDesc*) &TMP195785));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 97), ((NimStringDesc*) &TMP197792));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 38):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_86861, ((NU8) 98), ((NimStringDesc*) &TMP195786));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 98), ((NimStringDesc*) &TMP197793));
 break;
 case ((NU8) 43):
-Put_85224(G_86861, ((NU8) 101), ((NimStringDesc*) &TMP195787));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 101), ((NimStringDesc*) &TMP195787));
+Put_86224(G_87861, ((NU8) 101), ((NimStringDesc*) &TMP197794));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 101), ((NimStringDesc*) &TMP197794));
 break;
 case ((NU8) 39):
-Putwithspace_86899(G_86861, ((NU8) 28), ((NimStringDesc*) &TMP195788));
-Gsub_86864(G_86861, (*(*N_86862).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*(*N_86862).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
-Gsons_87012(G_86861, N_86862, &TMP195789, 1, -1);
+Putwithspace_87899(G_87861, ((NU8) 28), ((NimStringDesc*) &TMP197795));
+Gsub_87864(G_87861, (*(*N_87862).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*(*N_87862).KindU.S6.Sons->data[0]).KindU.S6.Sons->data[1]);
+Gsons_88012(G_87861, N_87862, &TMP197796, 1, -1);
 break;
 case ((NU8) 40):
-Putwithspace_86899(G_86861, ((NU8) 19), ((NimStringDesc*) &TMP195790));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Putwithspace_87899(G_87861, ((NU8) 19), ((NimStringDesc*) &TMP197797));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 41):
-Put_85224(G_86861, ((NU8) 20), ((NimStringDesc*) &TMP195791));
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 20), ((NimStringDesc*) &TMP197798));
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 110):
-Putwithspace_86899(G_86861, ((NU8) 58), ((NimStringDesc*) &TMP195792));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 58), ((NimStringDesc*) &TMP197799));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 116):
-Putwithspace_86899(G_86861, ((NU8) 51), ((NimStringDesc*) &TMP195793));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 51), ((NimStringDesc*) &TMP197800));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 117):
-Putwithspace_86899(G_86861, ((NU8) 49), ((NimStringDesc*) &TMP195794));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 49), ((NimStringDesc*) &TMP197801));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 118):
-Putwithspace_86899(G_86861, ((NU8) 59), ((NimStringDesc*) &TMP195795));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 59), ((NimStringDesc*) &TMP197802));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 119):
-Putwithspace_86899(G_86861, ((NU8) 17), ((NimStringDesc*) &TMP195796));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 17), ((NimStringDesc*) &TMP197803));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 91):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-if (!!(((*(*N_86862).KindU.S6.Sons->data[2]).Kind == ((NU8) 1)))) goto LA50;
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[2]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+if (!!(((*(*N_87862).KindU.S6.Sons->data[2]).Kind == ((NU8) 1)))) goto LA50;
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[2]);
 LA50: ;
 break;
 case ((NU8) 111):
-Putwithspace_86899(G_86861, ((NU8) 44), ((NimStringDesc*) &TMP195797));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
-Gcoms_85741(G_86861);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[2]);
+Putwithspace_87899(G_87861, ((NU8) 44), ((NimStringDesc*) &TMP197804));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
+Gcoms_86741(G_87861);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[2]);
 break;
 case ((NU8) 113):
-Indentnl_85162(G_86861);
-I_88802 = 0;
-HEX3Atmp_89126 = 0;
-LOC52 = Sonslen_55804(N_86862);
-HEX3Atmp_89126 = (NI64)(LOC52 - 1);
-Res_89128 = 0;
-Res_89128 = 0;
+Indentnl_86162(G_87861);
+I_89802 = 0;
+HEX3Atmp_90126 = 0;
+LOC52 = Sonslen_56804(N_87862);
+HEX3Atmp_90126 = (NI64)(LOC52 - 1);
+Res_90128 = 0;
+Res_90128 = 0;
 while (1) {
-if (!(Res_89128 <= HEX3Atmp_89126)) goto LA53;
-I_88802 = Res_89128;
-Optnl_85158(G_86861);
-Gsub_86858(G_86861, (*N_86862).KindU.S6.Sons->data[I_88802], C_86863);
-Gcoms_85741(G_86861);
-Res_89128 += 1;
+if (!(Res_90128 <= HEX3Atmp_90126)) goto LA53;
+I_89802 = Res_90128;
+Optnl_86158(G_87861);
+Gsub_87858(G_87861, (*N_87862).KindU.S6.Sons->data[I_89802], C_87863);
+Gcoms_86741(G_87861);
+Res_90128 += 1;
 } LA53: ;
-Dedent_85178(G_86861);
-Putnl_85149(G_86861);
+Dedent_86178(G_87861);
+Putnl_86149(G_87861);
 break;
 case ((NU8) 67):
-Putwithspace_86899(G_86861, ((NU8) 45), ((NimStringDesc*) &TMP195798));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 45), ((NimStringDesc*) &TMP197805));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 120):
-Putwithspace_86899(G_86861, ((NU8) 48), ((NimStringDesc*) &TMP195799));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Putwithspace_87899(G_87861, ((NU8) 48), ((NimStringDesc*) &TMP197806));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 121):
-Putwithspace_86899(G_86861, ((NU8) 22), ((NimStringDesc*) &TMP195800));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Gcoms_85741(G_86861);
-Indentnl_85162(G_86861);
-Gcommaaux_86905(G_86861, N_86862, (*G_86861).Indent, 1, -1);
-Gcoms_85741(G_86861);
-Dedent_85178(G_86861);
+Putwithspace_87899(G_87861, ((NU8) 22), ((NimStringDesc*) &TMP197807));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Gcoms_86741(G_87861);
+Indentnl_86162(G_87861);
+Gcommaaux_87905(G_87861, N_87862, (*G_87861).Indent, 1, -1);
+Gcoms_86741(G_87861);
+Dedent_86178(G_87861);
 break;
 case ((NU8) 122):
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 95), ((NimStringDesc*) &TMP195774));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[1]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 95), ((NimStringDesc*) &TMP197781));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[1]);
 break;
 case ((NU8) 101):
 case ((NU8) 106):
-Gstmts_87112(G_86861, N_86862, &TMP195789);
+Gstmts_88112(G_87861, N_87862, &TMP197796);
 break;
 case ((NU8) 82):
-Putwithspace_86899(G_86861, ((NU8) 28), ((NimStringDesc*) &TMP195788));
-Gif_87191(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 28), ((NimStringDesc*) &TMP197795));
+Gif_88191(G_87861, N_87862);
 break;
 case ((NU8) 83):
 case ((NU8) 115):
-Putwithspace_86899(G_86861, ((NU8) 60), ((NimStringDesc*) &TMP195801));
-Gif_87191(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 60), ((NimStringDesc*) &TMP197808));
+Gif_88191(G_87861, N_87862);
 break;
 case ((NU8) 85):
-Gwhile_87311(G_86861, N_86862);
+Gwhile_88311(G_87861, N_87862);
 break;
 case ((NU8) 86):
 case ((NU8) 114):
-Gcase_87536(G_86861, N_86862);
+Gcase_88536(G_87861, N_87862);
 break;
 case ((NU8) 79):
-Gmacro_87489(G_86861, N_86862);
+Gmacro_88489(G_87861, N_87862);
 break;
 case ((NU8) 93):
-Gtry_87370(G_86861, N_86862);
+Gtry_88370(G_87861, N_87862);
 break;
 case ((NU8) 84):
-Gfor_87417(G_86861, N_86862);
+Gfor_88417(G_87861, N_87862);
 break;
 case ((NU8) 99):
 case ((NU8) 107):
-Gblock_87728(G_86861, N_86862);
+Gblock_88728(G_87861, N_87862);
 break;
 case ((NU8) 80):
-Gasm_87808(G_86861, N_86862);
+Gasm_88808(G_87861, N_87862);
 break;
 case ((NU8) 69):
-Putwithspace_86899(G_86861, ((NU8) 48), ((NimStringDesc*) &TMP195799));
-Gproc_87629(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 48), ((NimStringDesc*) &TMP197806));
+Gproc_88629(G_87861, N_87862);
 break;
 case ((NU8) 70):
-Putwithspace_86899(G_86861, ((NU8) 39), ((NimStringDesc*) &TMP195809));
-Gproc_87629(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 39), ((NimStringDesc*) &TMP197816));
+Gproc_88629(G_87861, N_87862);
 break;
 case ((NU8) 74):
-Putwithspace_86899(G_86861, ((NU8) 35), ((NimStringDesc*) &TMP195810));
-Gproc_87629(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 35), ((NimStringDesc*) &TMP197817));
+Gproc_88629(G_87861, N_87862);
 break;
 case ((NU8) 72):
-Putwithspace_86899(G_86861, ((NU8) 38), ((NimStringDesc*) &TMP195811));
-Gproc_87629(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 38), ((NimStringDesc*) &TMP197818));
+Gproc_88629(G_87861, N_87862);
 break;
 case ((NU8) 73):
-Putwithspace_86899(G_86861, ((NU8) 55), ((NimStringDesc*) &TMP195812));
-Gproc_87629(G_86861, N_86862);
+Putwithspace_87899(G_87861, ((NU8) 55), ((NimStringDesc*) &TMP197819));
+Gproc_88629(G_87861, N_87862);
 break;
 case ((NU8) 90):
-Gsection_87044(G_86861, N_86862, &TMP195789, ((NU8) 58), ((NimStringDesc*) &TMP195792));
+Gsection_88044(G_87861, N_87862, &TMP197796, ((NU8) 58), ((NimStringDesc*) &TMP197799));
 break;
 case ((NU8) 88):
-Initcontext_86852(&A_87974);
-A_87974.Flags |=(1<<((NI8)(((NU8) 2))%(sizeof(NI8)*8)));
-Gsection_87044(G_86861, N_86862, &A_87974, ((NU8) 13), ((NimStringDesc*) &TMP195813));
+Initcontext_87852(&A_88974);
+A_88974.Flags |=(1<<((NI8)(((NU8) 2))%(sizeof(NI8)*8)));
+Gsection_88044(G_87861, N_87862, &A_88974, ((NU8) 13), ((NimStringDesc*) &TMP197820));
 break;
 case ((NU8) 87):
-L_87973 = Sonslen_55804(N_86862);
-if (!(L_87973 == 0)) goto LA55;
+L_88973 = Sonslen_56804(N_87862);
+if (!(L_88973 == 0)) goto LA55;
 goto BeforeRet;
 LA55: ;
-Putwithspace_86899(G_86861, ((NU8) 59), ((NimStringDesc*) &TMP195795));
-if (!(1 < L_87973)) goto LA58;
-Gcoms_85741(G_86861);
-Indentnl_85162(G_86861);
-I_88914 = 0;
-HEX3Atmp_89129 = 0;
-HEX3Atmp_89129 = (NI64)(L_87973 - 1);
-Res_89131 = 0;
-Res_89131 = 0;
+Putwithspace_87899(G_87861, ((NU8) 59), ((NimStringDesc*) &TMP197802));
+if (!(1 < L_88973)) goto LA58;
+Gcoms_86741(G_87861);
+Indentnl_86162(G_87861);
+I_89914 = 0;
+HEX3Atmp_90129 = 0;
+HEX3Atmp_90129 = (NI64)(L_88973 - 1);
+Res_90131 = 0;
+Res_90131 = 0;
 while (1) {
-if (!(Res_89131 <= HEX3Atmp_89129)) goto LA60;
-I_88914 = Res_89131;
-Optnl_85158(G_86861);
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[I_88914]);
-Gcoms_85741(G_86861);
-Res_89131 += 1;
+if (!(Res_90131 <= HEX3Atmp_90129)) goto LA60;
+I_89914 = Res_90131;
+Optnl_86158(G_87861);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[I_89914]);
+Gcoms_86741(G_87861);
+Res_90131 += 1;
 } LA60: ;
-Dedent_85178(G_86861);
+Dedent_86178(G_87861);
 goto LA57;
 LA58: ;
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 LA57: ;
 break;
 case ((NU8) 96):
-Putwithspace_86899(G_86861, ((NU8) 52), ((NimStringDesc*) &TMP195814));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 52), ((NimStringDesc*) &TMP197821));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 95):
-Putwithspace_86899(G_86861, ((NU8) 50), ((NimStringDesc*) &TMP195815));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 50), ((NimStringDesc*) &TMP197822));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 92):
-Putwithspace_86899(G_86861, ((NU8) 65), ((NimStringDesc*) &TMP195816));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 65), ((NimStringDesc*) &TMP197823));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 100):
-Putwithspace_86899(G_86861, ((NU8) 16), ((NimStringDesc*) &TMP195817));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 16), ((NimStringDesc*) &TMP197824));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 97):
-Putwithspace_86899(G_86861, ((NU8) 10), ((NimStringDesc*) &TMP195818));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 10), ((NimStringDesc*) &TMP197825));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 98):
-Putwithspace_86899(G_86861, ((NU8) 14), ((NimStringDesc*) &TMP195819));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 14), ((NimStringDesc*) &TMP197826));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 break;
 case ((NU8) 81):
-if (!!((((*G_86861).Flags &(1<<((((NU8) 4))&7)))!=0))) goto LA62;
-Put_85224(G_86861, ((NU8) 88), ((NimStringDesc*) &TMP195820));
-Gcomma_86976(G_86861, N_86862, &TMP195789, 0, -1);
-Put_85224(G_86861, ((NU8) 89), ((NimStringDesc*) &TMP195821));
+if (!!((((*G_87861).Flags &(1<<((((NU8) 4))&7)))!=0))) goto LA62;
+Put_86224(G_87861, ((NU8) 88), ((NimStringDesc*) &TMP197827));
+Gcomma_87976(G_87861, N_87862, &TMP197796, 0, -1);
+Put_86224(G_87861, ((NU8) 89), ((NimStringDesc*) &TMP197828));
 LA62: ;
 break;
 case ((NU8) 102):
-Putwithspace_86899(G_86861, ((NU8) 30), ((NimStringDesc*) &TMP195822));
-Gcoms_85741(G_86861);
-Indentnl_85162(G_86861);
-Gcommaaux_86905(G_86861, N_86862, (*G_86861).Indent, 0, -1);
-Dedent_85178(G_86861);
-Putnl_85149(G_86861);
+Putwithspace_87899(G_87861, ((NU8) 30), ((NimStringDesc*) &TMP197829));
+Gcoms_86741(G_87861);
+Indentnl_86162(G_87861);
+Gcommaaux_87905(G_87861, N_87862, (*G_87861).Indent, 0, -1);
+Dedent_86178(G_87861);
+Putnl_86149(G_87861);
 break;
 case ((NU8) 103):
-Putwithspace_86899(G_86861, ((NU8) 26), ((NimStringDesc*) &TMP195823));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Put_85224(G_86861, ((NU8) 105), ((NimStringDesc*) &TMP195766));
-Putwithspace_86899(G_86861, ((NU8) 30), ((NimStringDesc*) &TMP195822));
-Gcomma_86976(G_86861, N_86862, &TMP195789, 1, -1);
-Putnl_85149(G_86861);
+Putwithspace_87899(G_87861, ((NU8) 26), ((NimStringDesc*) &TMP197830));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 105), ((NimStringDesc*) &TMP197773));
+Putwithspace_87899(G_87861, ((NU8) 30), ((NimStringDesc*) &TMP197829));
+Gcomma_87976(G_87861, N_87862, &TMP197796, 1, -1);
+Putnl_86149(G_87861);
 break;
 case ((NU8) 104):
-Putwithspace_86899(G_86861, ((NU8) 32), ((NimStringDesc*) &TMP195824));
-Gcoms_85741(G_86861);
-Indentnl_85162(G_86861);
-Gcommaaux_86905(G_86861, N_86862, (*G_86861).Indent, 0, -1);
-Dedent_85178(G_86861);
-Putnl_85149(G_86861);
+Putwithspace_87899(G_87861, ((NU8) 32), ((NimStringDesc*) &TMP197831));
+Gcoms_86741(G_87861);
+Indentnl_86162(G_87861);
+Gcommaaux_87905(G_87861, N_87862, (*G_87861).Indent, 0, -1);
+Dedent_86178(G_87861);
+Putnl_86149(G_87861);
 break;
 case ((NU8) 105):
-Gcoms_85741(G_86861);
-Optnl_85158(G_86861);
+Gcoms_86741(G_87861);
+Optnl_86158(G_87861);
 break;
 case ((NU8) 75):
-Optnl_85158(G_86861);
-Putwithspace_86899(G_86861, ((NU8) 45), ((NimStringDesc*) &TMP195798));
-Gcomma_86976(G_86861, N_86862, C_86863, 0, -2);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_86861);
+Optnl_86158(G_87861);
+Putwithspace_87899(G_87861, ((NU8) 45), ((NimStringDesc*) &TMP197805));
+Gcomma_87976(G_87861, N_87862, C_87863, 0, -2);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_87861);
 LOC64 = 0;
-LOC64 = Lastson_55810(N_86862);
-Gstmts_87112(G_86861, LOC64, C_86863);
+LOC64 = Lastson_56810(N_87862);
+Gstmts_88112(G_87861, LOC64, C_87863);
 break;
 case ((NU8) 76):
-Optnl_85158(G_86861);
-Putwithspace_86899(G_86861, ((NU8) 19), ((NimStringDesc*) &TMP195825));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_86861);
-Gstmts_87112(G_86861, (*N_86862).KindU.S6.Sons->data[1], C_86863);
+Optnl_86158(G_87861);
+Putwithspace_87899(G_87861, ((NU8) 19), ((NimStringDesc*) &TMP197832));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_87861);
+Gstmts_88112(G_87861, (*N_87862).KindU.S6.Sons->data[1], C_87863);
 break;
 case ((NU8) 78):
-Optnl_85158(G_86861);
-Put_85224(G_86861, ((NU8) 20), ((NimStringDesc*) &TMP195826));
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_86861);
-Gstmts_87112(G_86861, (*N_86862).KindU.S6.Sons->data[0], C_86863);
+Optnl_86158(G_87861);
+Put_86224(G_87861, ((NU8) 20), ((NimStringDesc*) &TMP197833));
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_87861);
+Gstmts_88112(G_87861, (*N_87862).KindU.S6.Sons->data[0], C_87863);
 break;
 case ((NU8) 94):
-Optnl_85158(G_86861);
-Put_85224(G_86861, ((NU8) 24), ((NimStringDesc*) &TMP195827));
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_86861);
-Gstmts_87112(G_86861, (*N_86862).KindU.S6.Sons->data[0], C_86863);
+Optnl_86158(G_87861);
+Put_86224(G_87861, ((NU8) 24), ((NimStringDesc*) &TMP197834));
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_87861);
+Gstmts_88112(G_87861, (*N_87862).KindU.S6.Sons->data[0], C_87863);
 break;
 case ((NU8) 77):
-Optnl_85158(G_86861);
-Putwithspace_86899(G_86861, ((NU8) 23), ((NimStringDesc*) &TMP195828));
-Gcomma_87000(G_86861, N_86862, 0, -2);
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gcoms_85741(G_86861);
+Optnl_86158(G_87861);
+Putwithspace_87899(G_87861, ((NU8) 23), ((NimStringDesc*) &TMP197835));
+Gcomma_88000(G_87861, N_87862, 0, -2);
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gcoms_86741(G_87861);
 LOC65 = 0;
-LOC65 = Lastson_55810(N_86862);
-Gstmts_87112(G_86861, LOC65, C_86863);
+LOC65 = Lastson_56810(N_87862);
+Gstmts_88112(G_87861, LOC65, C_87863);
 break;
 case ((NU8) 65):
-Put_85224(G_86861, ((NU8) 82), ((NimStringDesc*) &TMP195771));
-Gcomma_87000(G_86861, N_86862, 0, -1);
-Put_85224(G_86861, ((NU8) 83), ((NimStringDesc*) &TMP195772));
+Put_86224(G_87861, ((NU8) 82), ((NimStringDesc*) &TMP197778));
+Gcomma_88000(G_87861, N_87862, 0, -1);
+Put_86224(G_87861, ((NU8) 83), ((NimStringDesc*) &TMP197779));
 break;
 case ((NU8) 66):
-Put_85224(G_86861, ((NU8) 80), ((NimStringDesc*) &TMP195765));
-Gcomma_87000(G_86861, N_86862, 1, -1);
-Put_85224(G_86861, ((NU8) 81), ((NimStringDesc*) &TMP195769));
-if (!!(((*(*N_86862).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA67;
-Putwithspace_86899(G_86861, ((NU8) 94), ((NimStringDesc*) &TMP195784));
-Gsub_86864(G_86861, (*N_86862).KindU.S6.Sons->data[0]);
+Put_86224(G_87861, ((NU8) 80), ((NimStringDesc*) &TMP197772));
+Gcomma_88000(G_87861, N_87862, 1, -1);
+Put_86224(G_87861, ((NU8) 81), ((NimStringDesc*) &TMP197776));
+if (!!(((*(*N_87862).KindU.S6.Sons->data[0]).Kind == ((NU8) 1)))) goto LA67;
+Putwithspace_87899(G_87861, ((NU8) 94), ((NimStringDesc*) &TMP197791));
+Gsub_87864(G_87861, (*N_87862).KindU.S6.Sons->data[0]);
 LA67: ;
 break;
 case ((NU8) 112):
-Put_85224(G_86861, ((NU8) 57), ((NimStringDesc*) &TMP195829));
-Put_85224(G_86861, ((NU8) 82), ((NimStringDesc*) &TMP195771));
-Gcomma_87000(G_86861, N_86862, 0, -1);
-Put_85224(G_86861, ((NU8) 83), ((NimStringDesc*) &TMP195772));
+Put_86224(G_87861, ((NU8) 57), ((NimStringDesc*) &TMP197836));
+Put_86224(G_87861, ((NU8) 82), ((NimStringDesc*) &TMP197778));
+Gcomma_88000(G_87861, N_87862, 0, -1);
+Put_86224(G_87861, ((NU8) 83), ((NimStringDesc*) &TMP197779));
 break;
 default:
 LOC69 = 0;
-LOC69 = rawNewString(reprEnum((*N_86862).Kind, NTI55030)->Sup.len + 14);
-appendString(LOC69, ((NimStringDesc*) &TMP195830));
-appendString(LOC69, reprEnum((*N_86862).Kind, NTI55030));
+LOC69 = rawNewString(reprEnum((*N_87862).Kind, NTI56030)->Sup.len + 14);
+appendString(LOC69, ((NimStringDesc*) &TMP197837));
+appendString(LOC69, reprEnum((*N_87862).Kind, NTI56030));
 appendChar(LOC69, 41);
-Internalerror_48159((*N_86862).Info, LOC69);
+Internalerror_49208((*N_87862).Info, LOC69);
 break;
 }
 BeforeRet: ;
 }
-N_NIMCALL(void, Gsub_86864)(TY85016* G_86867, TY55526* N_86868) {
-TY86840 C_86869;
-memset((void*)&C_86869, 0, sizeof(C_86869));
-Initcontext_86852(&C_86869);
-Gsub_86858(G_86867, N_86868, &C_86869);
+N_NIMCALL(void, Gsub_87864)(TY86016* G_87867, TY56526* N_87868) {
+TY87840 C_87869;
+memset((void*)&C_87869, 0, sizeof(C_87869));
+Initcontext_87852(&C_87869);
+Gsub_87858(G_87867, N_87868, &C_87869);
 }
-N_NIMCALL(NimStringDesc*, Rendertree_85042)(TY55526* N_85044, NU8 Renderflags_85047) {
-NimStringDesc* Result_89138;
-TY85016 G_89139;
-Result_89138 = 0;
-memset((void*)&G_89139, 0, sizeof(G_89139));
-Initsrcgen_85068(&G_89139, Renderflags_85047);
-Gsub_86864(&G_89139, N_85044);
-Result_89138 = copyString(G_89139.Buf);
-return Result_89138;
+N_NIMCALL(NimStringDesc*, Rendertree_86042)(TY56526* N_86044, NU8 Renderflags_86047) {
+NimStringDesc* Result_90138;
+TY86016 G_90139;
+Result_90138 = 0;
+memset((void*)&G_90139, 0, sizeof(G_90139));
+Result_90138 = NIM_NIL;
+genericReset((void*)&G_90139, NTI86016);
+Initsrcgen_86068(&G_90139, Renderflags_86047);
+Gsub_87864(&G_90139, N_86044);
+Result_90138 = copyString(G_90139.Buf);
+return Result_90138;
 }
-N_NIMCALL(void, Rendermodule_85035)(TY55526* N_85037, NimStringDesc* Filename_85038, NU8 Renderflags_85041) {
-FILE* F_89149;
-TY85016 G_89150;
-NI I_89160;
-NI HEX3Atmp_89190;
+N_NIMCALL(void, Rendermodule_86035)(TY56526* N_86037, NimStringDesc* Filename_86038, NU8 Renderflags_86041) {
+FILE* F_90149;
+TY86016 G_90150;
+NI I_90160;
+NI HEX3Atmp_90201;
 NI LOC1;
-NI Res_89192;
-NIM_BOOL LOC4;
-F_89149 = 0;
-memset((void*)&G_89150, 0, sizeof(G_89150));
-Initsrcgen_85068(&G_89150, Renderflags_85041);
-I_89160 = 0;
-HEX3Atmp_89190 = 0;
-LOC1 = Sonslen_55804(N_85037);
-HEX3Atmp_89190 = (NI64)(LOC1 - 1);
-Res_89192 = 0;
-Res_89192 = 0;
+NI Res_90203;
+NIM_BOOL LOC6;
+memset((void*)&G_90150, 0, sizeof(G_90150));
+F_90149 = 0;
+genericReset((void*)&G_90150, NTI86016);
+Initsrcgen_86068(&G_90150, Renderflags_86041);
+I_90160 = 0;
+HEX3Atmp_90201 = 0;
+LOC1 = Sonslen_56804(N_86037);
+HEX3Atmp_90201 = (NI64)(LOC1 - 1);
+Res_90203 = 0;
+Res_90203 = 0;
 while (1) {
-if (!(Res_89192 <= HEX3Atmp_89190)) goto LA2;
-I_89160 = Res_89192;
-Gsub_86864(&G_89150, (*N_85037).KindU.S6.Sons->data[I_89160]);
-Optnl_85158(&G_89150);
-switch ((*(*N_85037).KindU.S6.Sons->data[I_89160]).Kind) {
+if (!(Res_90203 <= HEX3Atmp_90201)) goto LA2;
+I_90160 = Res_90203;
+Gsub_87864(&G_90150, (*N_86037).KindU.S6.Sons->data[I_90160]);
+Optnl_86158(&G_90150);
+switch ((*(*N_86037).KindU.S6.Sons->data[I_90160]).Kind) {
 case ((NU8) 90):
 case ((NU8) 88):
 case ((NU8) 87):
 case ((NU8) 105):
-Putnl_85149(&G_89150);
+Putnl_86149(&G_90150);
 break;
 default:
 break;
 }
-Res_89192 += 1;
+Res_90203 += 1;
 } LA2: ;
-Gcoms_85741(&G_89150);
-LOC4 = Open_3817(&F_89149, Filename_85038, ((NU8) 1), -1);
-if (!LOC4) goto LA5;
-Write_3866(F_89149, G_89150.Buf);
-fclose(F_89149);
-LA5: ;
+Gcoms_86741(&G_90150);
+if (!((Gglobaloptions_47084 &(1<<((((NU8) 20))&31)))!=0)) goto LA4;
+Write_3866(stdout, G_90150.Buf);
+goto LA3;
+LA4: ;
+LOC6 = Open_3817(&F_90149, Filename_86038, ((NU8) 1), -1);
+if (!LOC6) goto LA7;
+Write_3866(F_90149, G_90150.Buf);
+fclose(F_90149);
+goto LA3;
+LA7: ;
+Rawmessage_49094(((NU8) 2), Filename_86038);
+LA3: ;
 }
-N_NIMCALL(void, Inittokrender_85048)(TY85016* R_85051, TY55526* N_85052, NU8 Renderflags_85055) {
-Initsrcgen_85068(R_85051, Renderflags_85055);
-Gsub_86864(R_85051, N_85052);
+N_NIMCALL(void, Inittokrender_86048)(TY86016* R_86051, TY56526* N_86052, NU8 Renderflags_86055) {
+Initsrcgen_86068(R_86051, Renderflags_86055);
+Gsub_87864(R_86051, N_86052);
 }
-N_NIMCALL(void, Getnexttok_85056)(TY85016* R_85059, NU8* Kind_85061, NimStringDesc** Literal_85063) {
-NI16 Length_89223;
-if (!((*R_85059).Idx < (*R_85059).Tokens->Sup.len)) goto LA2;
-(*Kind_85061) = (*R_85059).Tokens->data[(*R_85059).Idx].Kind;
-Length_89223 = 0;
-Length_89223 = (*R_85059).Tokens->data[(*R_85059).Idx].Length;
-unsureAsgnRef((void**) &(*Literal_85063), copyStrLast((*R_85059).Buf, (NI64)((*R_85059).Pos + 0), (NI64)((NI64)((NI64)((*R_85059).Pos + 0) + ((NI) (Length_89223))) - 1)));
-(*R_85059).Pos += ((NI) (Length_89223));
-(*R_85059).Idx += 1;
+N_NIMCALL(void, Getnexttok_86056)(TY86016* R_86059, NU8* Kind_86061, NimStringDesc** Literal_86063) {
+NI16 Length_90234;
+if (!((*R_86059).Idx < (*R_86059).Tokens->Sup.len)) goto LA2;
+(*Kind_86061) = (*R_86059).Tokens->data[(*R_86059).Idx].Kind;
+Length_90234 = 0;
+Length_90234 = (*R_86059).Tokens->data[(*R_86059).Idx].Length;
+unsureAsgnRef((void**) &(*Literal_86063), copyStrLast((*R_86059).Buf, (NI64)((*R_86059).Pos + 0), (NI64)((NI64)((NI64)((*R_86059).Pos + 0) + ((NI) (Length_90234))) - 1)));
+(*R_86059).Pos += ((NI) (Length_90234));
+(*R_86059).Idx += 1;
 goto LA1;
 LA2: ;
-(*Kind_85061) = ((NU8) 1);
+(*Kind_86061) = ((NU8) 1);
 LA1: ;
 }
 N_NOINLINE(void, rnimsynInit)(void) {
