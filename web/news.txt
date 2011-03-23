@@ -66,7 +66,7 @@ Additions
 - Added ``math.floor``.
 - The *interactive mode* (REPL) has been improved and documented for the 
   first time.
-- Added the ``linearScanEnd`` and ``unroll`` pragmas.
+- Added the ``linearScanEnd``, ``unroll``, ``shallow`` pragmas.
 - The compiler now might use a hashing for string case statements depending
   on the number of string literals in the case statement.
 

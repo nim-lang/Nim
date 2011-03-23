@@ -7,9 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-#var
-#  newDummyVar: int # just to check the symbol file mechanism
-
 # ------------------------- Name Mangling --------------------------------
 
 proc mangle(name: string): string = 
@@ -566,46 +563,51 @@ proc genTypeInfoAux(m: BModule, typ: PType, name: PRope) =
     base = toRope("0")
   genTypeInfoAuxBase(m, typ, name, base)
 
+proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): PRope = 
+  if objType.sym == nil: 
+    InternalError(d.info, "anonymous obj with discriminator")
+  result = ropef("NimDT_$1_$2", [
+    toRope(objType.sym.name.s), toRope(d.name.s)])
+
+proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): PRope = 
+  discard cgsym(m, "TNimNode")
+  var tmp = discriminatorTableName(m, objtype, d)
+  result = ropef("TNimNode* $1[$2];$n", [tmp, toRope(lengthOrd(d.typ)+1)])
+
 proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) = 
-  var 
-    tmp, tmp2: PRope
-    length, x, y: int
-    field: PSym
-    b: PNode
   case n.kind
   of nkRecList: 
-    length = sonsLen(n)
-    if length == 1: 
+    var L = sonsLen(n)
+    if L == 1: 
       genObjectFields(m, typ, n.sons[0], expr)
-    elif length > 0: 
-      tmp = getTempName()
-      appf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", 
-           [tmp, toRope(length)])
-      for i in countup(0, length - 1): 
-        tmp2 = getNimNode(m)
+    elif L > 0: 
+      var tmp = getTempName()
+      appf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, toRope(L)])
+      for i in countup(0, L-1): 
+        var tmp2 = getNimNode(m)
         appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, toRope(i), tmp2])
         genObjectFields(m, typ, n.sons[i], tmp2)
       appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n", 
-           [expr, toRope(length), tmp])
-    else: 
-      appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2;$n", 
-           [expr, toRope(length)])
+           [expr, toRope(L), tmp])
+    else:
+      appf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2;$n", [expr, toRope(L)])
   of nkRecCase: 
-    length = sonsLen(n)
     assert(n.sons[0].kind == nkSym)
-    field = n.sons[0].sym
-    tmp = getTempName()
+    var field = n.sons[0].sym
+    var tmp = discriminatorTableName(m, typ, field)
+    var L = lengthOrd(field.typ)
+    assert L > 0
     appf(m.s[cfsTypeInit3], "$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
         "$1.len = $7;$n", [expr, getTypeDesc(m, typ), field.loc.r, 
-                           genTypeInfo(m, field.typ), makeCString(field.name.s), 
-                           tmp, toRope(lengthOrd(field.typ))])
-    appf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", 
-         [tmp, toRope(lengthOrd(field.typ) + 1)])
-    for i in countup(1, length - 1): 
-      b = n.sons[i]           # branch
-      tmp2 = getNimNode(m)
+                           genTypeInfo(m, field.typ), 
+                           makeCString(field.name.s), 
+                           tmp, toRope(L)])
+    appf(m.s[cfsData], "TNimNode* $1[$2];$n", [tmp, toRope(L+1)])
+    for i in countup(1, sonsLen(n)-1): 
+      var b = n.sons[i]           # branch
+      var tmp2 = getNimNode(m)
       genObjectFields(m, typ, lastSon(b), tmp2)
       case b.kind
       of nkOfBranch: 
@@ -613,8 +615,8 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) =
           internalError(b.info, "genObjectFields; nkOfBranch broken")
         for j in countup(0, sonsLen(b) - 2): 
           if b.sons[j].kind == nkRange: 
-            x = int(getOrdValue(b.sons[j].sons[0]))
-            y = int(getOrdValue(b.sons[j].sons[1]))
+            var x = int(getOrdValue(b.sons[j].sons[0]))
+            var y = int(getOrdValue(b.sons[j].sons[1]))
             while x <= y: 
               appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, toRope(x), tmp2])
               inc(x)
@@ -623,10 +625,10 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) =
                  [tmp, toRope(getOrdValue(b.sons[j])), tmp2])
       of nkElse: 
         appf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", 
-             [tmp, toRope(lengthOrd(field.typ)), tmp2])
+             [tmp, toRope(L), tmp2])
       else: internalError(n.info, "genObjectFields(nkRecCase)")
   of nkSym: 
-    field = n.sym
+    var field = n.sym
     appf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n", [expr, getTypeDesc(m, typ), 
@@ -634,10 +636,9 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: PRope) =
   else: internalError(n.info, "genObjectFields")
   
 proc genObjectInfo(m: BModule, typ: PType, name: PRope) = 
-  var tmp: PRope
   if typ.kind == tyObject: genTypeInfoAux(m, typ, name)
   else: genTypeInfoAuxBase(m, typ, name, toRope("0"))
-  tmp = getNimNode(m)
+  var tmp = getNimNode(m)
   genObjectFields(m, typ, typ.n, tmp)
   appf(m.s[cfsTypeInit3], "$1->node = &$2;$n", [name, tmp])
 
@@ -742,21 +743,15 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
          [result, toRope(typeToString(t))])
   if dataGenerated: return 
   case t.kind
-  of tyEmpty: 
-    result = toRope("0")
+  of tyEmpty: result = toRope("0")
   of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyFloat128, 
      tyVar: 
     genTypeInfoAuxBase(gNimDat, t, result, toRope("0"))
-  of tyRef, tyPtr, tySequence, tyRange: 
-    genTypeInfoAux(gNimDat, t, result)
-  of tyArrayConstr, tyArray: 
-    genArrayInfo(gNimDat, t, result)
-  of tySet: 
-    genSetInfo(gNimDat, t, result)
-  of tyEnum: 
-    genEnumInfo(gNimDat, t, result)
-  of tyObject: 
-    genObjectInfo(gNimDat, t, result)
+  of tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gNimDat, t, result)
+  of tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result)
+  of tySet: genSetInfo(gNimDat, t, result)
+  of tyEnum: genEnumInfo(gNimDat, t, result)
+  of tyObject: genObjectInfo(gNimDat, t, result)
   of tyTuple: 
     if t.n != nil: genObjectInfo(gNimDat, t, result)
     else: genTupleInfo(gNimDat, t, result)

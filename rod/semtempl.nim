@@ -152,7 +152,7 @@ proc transformToExpr(n: PNode): PNode =
     if realStmt >= 0: result = transformToExpr(n.sons[realStmt])
     else: n.kind = nkStmtListExpr
   of nkBlockStmt: 
-    n.kind = nkBlockExpr      
+    n.kind = nkBlockExpr
     #nkIfStmt: n.kind := nkIfExpr; // this is not correct!
   else: 
     nil

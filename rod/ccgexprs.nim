@@ -184,6 +184,26 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     appcg(p.module, p.s[cpsStmts], "#unsureAsgnRef((void**) $1, $2);$n",
          [addrLoc(dest), rdLoc(src)])
 
+proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
+  # Consider: 
+  # type TMyFastString {.shallow.} = string
+  # Due to the implementation of pragmas this would end up to set the
+  # tfShallow flag for the built-in string type too! So we check only
+  # here for this flag, where it is reasonably safe to do so
+  # (for objects, etc.):
+  if needToCopy notin flags or 
+      tfShallow in skipTypes(dest.t, abstractVarRange).flags:
+    if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
+      appcg(p, cpsStmts,
+           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           [addrLoc(dest), addrLoc(src), rdLoc(dest)])
+    else:
+      appcg(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
+           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+  else:
+    appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
+         [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
@@ -192,13 +212,13 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyRef:
     genRefAssign(p, dest, src, flags)
   of tySequence:
-    if not (needToCopy in flags):
+    if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
     else:
       appcg(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
            [addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t)])
   of tyString:
-    if not (needToCopy in flags):
+    if needToCopy notin flags:
       genRefAssign(p, dest, src, flags)
     else:
       if (dest.s == OnStack) or not (optRefcGC in gGlobalOptions):
@@ -209,23 +229,15 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       else:
         appcg(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
              [addrLoc(dest), rdLoc(src)])
-  of tyTuple:
-    if needsComplexAssignment(dest.t):
-      appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
-    else:
-      appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
-  of tyObject:                
+  of tyTuple, tyObject:
     # XXX: check for subtyping?
     if needsComplexAssignment(dest.t):
-      appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+      genGenericAsgn(p, dest, src, flags)
     else:
       appcg(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray, tyArrayConstr:
     if needsComplexAssignment(dest.t):
-      appcg(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-           [addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t)])
+      genGenericAsgn(p, dest, src, flags)
     else:
       appcg(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
@@ -363,10 +375,11 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    opr: array[mUnaryMinusI..mAbsI64, string] = ["((NI$2)-($1))", # UnaryMinusI
-      "-($1)",                # UnaryMinusI64
-      "(NI$2)abs($1)",        # AbsI
-      "($1 > 0? ($1) : -($1))"] # AbsI64
+    opr: array[mUnaryMinusI..mAbsI64, string] = [
+      mUnaryMinusI: "((NI$2)-($1))",
+      mUnaryMinusI64: "-($1)",
+      mAbsI: "(NI$2)abs($1)",
+      mAbsI64: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
     t: PType
@@ -760,47 +773,68 @@ proc genEcho(p: BProc, n: PNode) =
   appcg(p, cpsStmts, "#rawEchoNL();$n")
 
 proc genCall(p: BProc, t: PNode, d: var TLoc) =
-  var
-    param: PSym
-    invalidRetType: bool
-    typ: PType
-    pl: PRope                 # parameter list
-    op, list, a: TLoc
-    length: int
+  var op, a: TLoc
   # this is a hotspot in the compiler
   initLocExpr(p, t.sons[0], op)
-  pl = con(op.r, "(")         #typ := getUniqueType(t.sons[0].typ);
-  typ = t.sons[0].typ         # getUniqueType() is too expensive here!
+  var pl = con(op.r, "(")
+  var typ = t.sons[0].typ # getUniqueType() is too expensive here!
   assert(typ.kind == tyProc)
-  invalidRetType = isInvalidReturnType(typ.sons[0])
-  length = sonsLen(t)
+  var invalidRetType = isInvalidReturnType(typ.sons[0])
+  var length = sonsLen(t)
   for i in countup(1, length - 1):
     initLocExpr(p, t.sons[i], a) # generate expression for param
     assert(sonsLen(typ) == sonsLen(typ.n))
     if (i < sonsLen(typ)):
       assert(typ.n.sons[i].kind == nkSym)
-      param = typ.n.sons[i].sym
+      var param = typ.n.sons[i].sym
       if ccgIntroducedPtr(param): app(pl, addrLoc(a))
       else: app(pl, rdLoc(a))
     else:
       app(pl, rdLoc(a))
-    if (i < length - 1) or (invalidRetType and (typ.sons[0] != nil)):
-      app(pl, ", ")
-  if (typ.sons[0] != nil) and invalidRetType:
-    # XXX (detected by pegs module 64bit): p(result, result) is not
-    # correct here. Thus we always allocate a temporary:
-    if d.k == locNone: getTemp(p, typ.sons[0], d)
-    app(pl, addrLoc(d))
-  app(pl, ")")
-  if (typ.sons[0] != nil) and not invalidRetType:
-    if d.k == locNone: getTemp(p, typ.sons[0], d)
-    assert(d.t != nil)        # generate an assignment to d:
-    initLoc(list, locCall, nil, OnUnknown)
-    list.r = pl
-    genAssignment(p, d, list, {}) # no need for deep copying
+    if i < length - 1: app(pl, ", ")
+  if typ.sons[0] != nil:
+    if invalidRetType:
+      if length > 1: app(pl, ", ")
+      # beware of 'result = p(result)'. We always allocate a temporary:
+      if d.k in {locTemp, locNone}:
+        # We already got a temp. Great, special case it:
+        if d.k == locNone: getTemp(p, typ.sons[0], d)
+        app(pl, addrLoc(d))
+        app(pl, ")")
+        app(p.s[cpsStmts], pl)
+        app(p.s[cpsStmts], ';' & tnl)
+      else:
+        var tmp: TLoc
+        getTemp(p, typ.sons[0], tmp)
+        app(pl, addrLoc(tmp))
+        app(pl, ")")
+        app(p.s[cpsStmts], pl)
+        app(p.s[cpsStmts], ';' & tnl)
+        genAssignment(p, d, tmp, {}) # no need for deep copying
+    else:
+      app(pl, ")")
+      if d.k == locNone: getTemp(p, typ.sons[0], d)
+      assert(d.t != nil)        # generate an assignment to d:
+      var list: TLoc
+      initLoc(list, locCall, nil, OnUnknown)
+      list.r = pl
+      genAssignment(p, d, list, {}) # no need for deep copying
   else:
+    app(pl, ")")
     app(p.s[cpsStmts], pl)
     app(p.s[cpsStmts], ';' & tnl)
+    
+  when false:
+    app(pl, ")")
+    if (typ.sons[0] != nil) and not invalidRetType:
+      if d.k == locNone: getTemp(p, typ.sons[0], d)
+      assert(d.t != nil)        # generate an assignment to d:
+      initLoc(list, locCall, nil, OnUnknown)
+      list.r = pl
+      genAssignment(p, d, list, {}) # no need for deep copying
+    else:
+      app(p.s[cpsStmts], pl)
+      app(p.s[cpsStmts], ';' & tnl)
 
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nimrod code>

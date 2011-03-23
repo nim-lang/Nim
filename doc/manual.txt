@@ -2614,6 +2614,26 @@ The `final`:idx: pragma can be used for an object type to specify that it
 cannot be inherited from.
 
 
+shallow pragma
+--------------
+The `shallow`:idx: pragma affects the semantics of a type: The compiler is
+allowed to make a shallow copy. This can cause serious semantic issues and
+break memory safety! However, it can speed up assignments considerably, 
+because the semantics of Nimrod require deep copying of sequences and strings. 
+This can be expensive, especially if sequences are used to build a tree
+structure: 
+
+.. code-block:: nimrod
+  type
+    TNodeKind = enum nkLeaf, nkInner
+    TNode {.final, shallow.} = object
+      case kind: TNodeKind
+      of nkLeaf: 
+        strVal: string
+      of nkInner: 
+        children: seq[TNode]
+
+
 Pure pragma
 -----------
 The `pure`:idx: pragma serves two completely different purposes:

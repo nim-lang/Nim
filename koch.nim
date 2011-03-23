@@ -131,28 +131,29 @@ proc findStartNimrod: string =
 proc safeRemove(filename: string) = 
   if existsFile(filename): removeFile(filename)
 
-proc bootIteration(args: string): bool = 
-  var nimrod1 = "rod" / "nimrod1".exe
-  safeRemove(nimrod1)
-  moveFile(dest=nimrod1, source="rod" / "nimrod".exe)
-  exec "rod" / "nimrod1 cc $# $# rod/nimrod.nim" % [bootOptions, args]
-  # Nimrod does not produce an executable again if nothing changed. That's ok:
-  result = sameFileContent("rod" / "nimrod".exe, nimrod1)
-  var dest = "bin" / "nimrod".exe
-  safeRemove(dest)
-  copyFile(dest=dest, source="rod" / "nimrod".exe)
-  inclFilePermissions(dest, {fpUserExec})
-  safeRemove(nimrod1)
-  if result: echo "executables are equal: SUCCESS!"
+proc thVersion(i: int): string = 
+  result = ("rod" / "nimrod" & $i).exe
 
+proc copyExe(source, dest: string) =
+  safeRemove(dest)
+  copyFile(dest=dest, source=source)
+  inclFilePermissions(dest, {fpUserExec})
+  
 proc boot(args: string) =
-  echo "iteration: 1"
-  exec findStartNimrod() & " cc $# $# rod" / "nimrod.nim" % [bootOptions, args]
-  echo "iteration: 2"
-  if not bootIteration(args):
-    echo "executables are not equal: compile once again..."
-    if not bootIteration(args):
-      echo "[Warning] executables are still not equal"
+  var output = "rod" / "nimrod".exe
+  var finalDest = "bin" / "nimrod".exe
+  
+  copyExe(findStartNimrod(), 0.thVersion)
+  for i in 0..2:
+    echo "iteration: ", i+1
+    exec i.thVersion & " cc $# $# rod" / "nimrod.nim" % [bootOptions, args]
+    if sameFileContent(output, i.thVersion):
+      copyExe(output, finalDest)
+      echo "executables are equal: SUCCESS!"
+      return
+    copyExe(output, (i+1).thVersion)
+  copyExe(output, finalDest)
+  echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 

@@ -77,6 +77,7 @@ type
     sendClosure: PType       # closure record type that we pass
     receiveClosure: PType    # closure record type that we get
     module: BModule          # used to prevent excessive parameter passing
+    withinLoop: int          # > 0 if we are within a loop
   
   TTypeSeq = seq[PType]
   TCGen = object of TPassContext # represents a C source file
@@ -131,8 +132,7 @@ proc addPendingModule(m: BModule) =
 
 proc findPendingModule(m: BModule, s: PSym): BModule = 
   var ms = getModule(s)
-  if ms.id == m.module.id: 
-    return m
+  if ms.id == m.module.id: return m
   for i in countup(0, high(gPendingModules)): 
     result = gPendingModules[i]
     if result.module.id == ms.id: return 
@@ -231,6 +231,9 @@ proc appcg(m: BModule, c: var PRope, frmt: TFormatStr,
            args: openarray[PRope]) = 
   app(c, ropecg(m, frmt, args))
 
+proc appcg(m: BModule, s: TCFileSection, frmt: TFormatStr, 
+           args: openarray[PRope]) = 
+  app(m.s[s], ropecg(m, frmt, args))
 
 proc appcg(p: BProc, s: TCProcSection, frmt: TFormatStr, 
            args: openarray[PRope]) = 
@@ -248,7 +251,7 @@ proc rdLoc(a: TLoc): PRope =
 
 proc addrLoc(a: TLoc): PRope =
   result = a.r
-  if not (lfIndirect in a.flags): result = con("&", result)
+  if lfIndirect notin a.flags: result = con("&", result)
 
 proc rdCharLoc(a: TLoc): PRope =
   # read a location that may need a char-cast:
@@ -285,7 +288,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) = 
   if skipTypes(loc.t, abstractVarRange).Kind notin
       {tyArray, tyArrayConstr, tySet, tyTuple, tyObject}: 
-    if containsGcref:
+    if containsGcref and p.WithInLoop > 0:
       appf(p.s[cpsInit], "$1 = 0;$n", [rdLoc(loc)])
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.t, onStack)
@@ -295,7 +298,7 @@ proc zeroVar(p: BProc, loc: TLoc, containsGCref: bool) =
     else:
       appf(p.s[cpsStmts], "$1 = 0;$n", [rdLoc(loc)])
   else: 
-    if containsGcref:
+    if containsGcref and p.WithInLoop > 0:
       appf(p.s[cpsInit], "memset((void*)$1, 0, sizeof($2));$n", 
            [addrLoc(loc), rdLoc(loc)])
       appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 

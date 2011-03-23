@@ -432,7 +432,7 @@ proc matchesHyperlink(h: PRstNode, filename: string): bool =
     result = matchesHyperlink(h.sons[0], filename)
   elif h.kind == rnHyperlink: 
     var s = addNodes(h.sons[1])
-    if startsWith(s, filename) and (s[len(filename) + 0] == '#'): result = true
+    if startsWith(s, filename) and (s[len(filename)] == '#'): result = true
     else: result = false
   else: 
     result = false

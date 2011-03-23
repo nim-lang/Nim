@@ -162,6 +162,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
     a: TLoc
     Labl: TLabel
     length: int
+  inc(p.withinLoop)
   genLineDir(p, t)
   assert(sonsLen(t) == 2)
   inc(p.labels)
@@ -179,6 +180,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   if p.blocks[length].id > 0: appf(p.s[cpsStmts], "} $1: ;$n", [Labl])
   else: app(p.s[cpsStmts], '}' & tnl)
   setlen(p.blocks, len(p.blocks) - 1)
+  dec(p.withinLoop)
 
 proc genBlock(p: BProc, t: PNode, d: var TLoc) = 
   inc(p.labels)
@@ -619,21 +621,52 @@ proc genPragma(p: BProc, n: PNode) =
         if (sfDeadCodeElim in p.module.module.flags): 
           addPendingModule(p.module)
     else: nil
-  
-proc genAsgn(p: BProc, e: PNode) = 
-  var a: TLoc
-  genLineDir(p, e)            # BUGFIX
-  InitLocExpr(p, e.sons[0], a)
-  assert(a.t != nil)
-  expr(p, e.sons[1], a)
 
-proc genFastAsgn(p: BProc, e: PNode) = 
-  var a: TLoc
-  genLineDir(p, e)            # BUGFIX
+proc FieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool = 
+  if optFieldCheck in p.options:
+    var le = asgn.sons[0]
+    if le.kind == nkCheckedFieldExpr:
+      var field = le.sons[0].sons[1].sym
+      result = sfDiscriminant in field.flags
+    elif le.kind == nkDotExpr:
+      var field = le.sons[1].sym
+      result = sfDiscriminant in field.flags      
+
+proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType, 
+                          field: PSym) = 
+  var t = skipTypes(objtype, abstractVar)
+  assert t.kind == tyObject
+  discard genTypeInfo(p.module, t)
+  var L = lengthOrd(field.typ)
+  if not IntSetContainsOrIncl(p.module.declaredThings, field.id):
+    appcg(p.module, cfsVars, "extern $1", 
+          discriminatorTableDecl(p.module, t, field))
+  appcg(p, cpsStmts,
+        "#FieldDiscriminantCheck((NI)(NU)($1), (NI)(NU)($2), $3, $4);$n",
+        [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
+         intLiteral(L+1)])
+
+proc asgnFieldDiscriminant(p: BProc, e: PNode) = 
+  var a, tmp: TLoc
+  var dotExpr = e.sons[0]
+  var d: PSym
+  if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr.sons[0]
   InitLocExpr(p, e.sons[0], a)
-  incl(a.flags, lfNoDeepCopy)
-  assert(a.t != nil)
-  expr(p, e.sons[1], a)
+  getTemp(p, a.t, tmp)
+  expr(p, e.sons[1], tmp)
+  genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
+  genAssignment(p, a, tmp, {})
+  
+proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) = 
+  genLineDir(p, e)
+  if not FieldDiscriminantCheckNeeded(p, e):
+    var a: TLoc
+    InitLocExpr(p, e.sons[0], a)
+    if fastAsgn: incl(a.flags, lfNoDeepCopy)
+    assert(a.t != nil)
+    expr(p, e.sons[1], a)
+  else:
+    asgnFieldDiscriminant(p, e)
 
 proc genStmts(p: BProc, t: PNode) = 
   var 
@@ -657,8 +690,8 @@ proc genStmts(p: BProc, t: PNode) =
      nkCallStrLit: 
     genLineDir(p, t)
     initLocExpr(p, t, a)
-  of nkAsgn: genAsgn(p, t)
-  of nkFastAsgn: genFastAsgn(p, t)
+  of nkAsgn: genAsgn(p, t, fastAsgn=false)
+  of nkFastAsgn: genAsgn(p, t, fastAsgn=true)
   of nkDiscardStmt: 
     genLineDir(p, t)
     initLocExpr(p, t.sons[0], a)
@@ -684,7 +717,7 @@ proc genStmts(p: BProc, t: PNode) =
           (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
           (prc.kind == skMethod): 
         # we have not only the header: 
-        if (t.sons[codePos].kind != nkEmpty) or (lfDynamicLib in prc.loc.flags): 
+        if t.sons[codePos].kind != nkEmpty or lfDynamicLib in prc.loc.flags: 
           genProc(p.module, prc)
   else: internalError(t.info, "genStmts(" & $t.kind & ')')
   
