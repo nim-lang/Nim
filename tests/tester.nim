@@ -48,6 +48,7 @@ proc extractSpec(filename: string): string =
     result = x.copy(a+3, b-1).replace("'''", tripleQuote)
   else:
     echo "warning: file does not contain spec: " & filename
+    result = ""
 
 template parseSpecAux(fillResult: stmt) = 
   var ss = newStringStream(extractSpec(filename))

@@ -877,7 +877,7 @@ proc newSons(father: PType, length: int) =
 proc addSon(father, son: PType) = 
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
-  assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
+  #assert((father.kind != tyGenericInvokation) or (son.kind != tyGenericInst))
 
 proc sonsLen(n: PNode): int = 
   if isNil(n.sons): result = 0

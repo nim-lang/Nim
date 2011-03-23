@@ -104,12 +104,10 @@ proc hasKey*[T](tbl: PGenTable[T], key: string): bool =
 
 proc `[]`*[T](tbl: PGenTable[T], key: string): T =
   ## retrieves the value at ``tbl[key]``. If `key` is not in `tbl`,
-  ## "" is returned and no exception is raised. One can check
+  ## default(T) is returned and no exception is raised. One can check
   ## with ``hasKey`` whether the key exists.
-  var index: int
-  index = RawGet(tbl, key)
+  var index = RawGet(tbl, key)
   if index >= 0: result = tbl.data[index].val
-  #else: result = ""   ### Not sure what to do here
 
 proc `[]=`*[T](tbl: PGenTable[T], key: string, val: T) =
   ## puts a (key, value)-pair into `tbl`.
@@ -141,8 +139,6 @@ when isMainModule:
   assert(not x.hasKey("NOPE"))    # ...but key "NOPE" is not in the table.
   for k,v in pairs(x):            # make sure the 'pairs' iterator works
     assert(x[k]==v)
-  echo()
-  
   
   #
   # Verify a table of user-defined types
@@ -154,15 +150,18 @@ when isMainModule:
                                                     # value is TMyType tuple
   
   #var junk: TMyType = ("OK", "Here")
+  
+  #echo junk.first, " ", junk.second
+  
   y["Hello"] = ("Hello", "World")
   y["Goodbye"] = ("Goodbye", "Everyone")
   #y["Hello"] = TMyType( ("Hello", "World") )
   #y["Goodbye"] = TMyType( ("Goodbye", "Everyone") )
 
+  assert( not isNil(y["Hello"].first) )
   assert( y["Hello"].first == "Hello" )
   assert( y["Hello"].second == "World" )
-  
-  
+    
   #
   # Verify table of tables
   #
