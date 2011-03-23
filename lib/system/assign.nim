@@ -1,14 +1,14 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-proc genericAssignAux(dest, src: Pointer, mt: PNimType)
-proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
+proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool)
+proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
@@ -16,66 +16,69 @@ proc genericAssignAux(dest, src: Pointer, n: ptr TNimNode) =
   of nkNone: assert(false)
   of nkSlot:
     genericAssignAux(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
-                     n.typ)
+                     n.typ, shallow)
   of nkList:
     for i in 0..n.len-1:
-      genericAssignAux(dest, src, n.sons[i])
+      genericAssignAux(dest, src, n.sons[i], shallow)
   of nkCase:
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
     var m = selectBranch(src, n)
-    if m != nil: genericAssignAux(dest, src, m)
+    if m != nil: genericAssignAux(dest, src, m, shallow)
 
-proc genericAssignAux(dest, src: Pointer, mt: PNimType) =
+proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
   var
     d = cast[TAddress](dest)
     s = cast[TAddress](src)
-
   assert(mt != nil)
   case mt.Kind
+  of tyString:
+    var x = cast[ppointer](dest)
+    var s2 = cast[ppointer](s)^
+    if s2 == nil or shallow:
+      unsureAsgnRef(x, s2)
+    else:
+      unsureAsgnRef(x, copyString(cast[NimString](s2)))
   of tySequence:
     var s2 = cast[ppointer](src)^
-    var seq = cast[PGenericSeq](s2)
-    if s2 == nil:  # this can happen! nil sequences are allowed
-      var x = cast[ppointer](dest)
-      x^ = nil
+    var seq = cast[PGenericSeq](s2)      
+    var x = cast[ppointer](dest)
+    if s2 == nil or shallow:
+      # this can happen! nil sequences are allowed
+      unsureAsgnRef(x, s2)
       return
     assert(dest != nil)
-    unsureAsgnRef(cast[ppointer](dest),
-                  newObj(mt, seq.len * mt.base.size + GenericSeqSize))
+    unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
     var dst = cast[taddress](cast[ppointer](dest)^)
     for i in 0..seq.len-1:
       genericAssignAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
         cast[pointer](cast[taddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
-        mt.Base)
+        mt.Base, shallow)
     var dstseq = cast[PGenericSeq](dst)
     dstseq.len = seq.len
     dstseq.space = seq.len
   of tyObject, tyTuple, tyPureObject:
     # we don't need to copy m_type field for tyObject, as they are equal anyway
-    genericAssignAux(dest, src, mt.node)
+    genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
       genericAssignAux(cast[pointer](d +% i*% mt.base.size),
-                       cast[pointer](s +% i*% mt.base.size), mt.base)
-  of tyString: # a leaf
-    var s2 = cast[ppointer](s)^
-    if s2 != nil: # nil strings are possible!
-      unsureAsgnRef(cast[ppointer](dest), copyString(cast[NimString](s2)))
-    else:
-      var x = cast[ppointer](dest)
-      x^ = nil
-      return
-  of tyRef:  # BUGFIX: a long time this has been forgotten!
+                       cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
+  of tyRef:
     unsureAsgnRef(cast[ppointer](dest), cast[ppointer](s)^)
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
 proc genericAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
   GC_disable()
-  genericAssignAux(dest, src, mt)
+  genericAssignAux(dest, src, mt, false)
+  GC_enable()
+
+proc genericShallowAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
+  GC_disable()
+  genericAssignAux(dest, src, mt, true)
   GC_enable()
 
 proc genericSeqAssign(dest, src: Pointer, mt: PNimType) {.compilerProc.} =
@@ -152,3 +155,19 @@ proc genericReset(dest: Pointer, mt: PNimType) =
   else:
     zeroMem(dest, mt.size) # set raw bits to zero
 
+proc selectBranch(discVal, L: int, 
+                  a: ptr array [0..0x7fff, ptr TNimNode]): ptr TNimNode =
+  result = a[L] # a[L] contains the ``else`` part (but may be nil)
+  if discVal <% L:
+    var x = a[discVal]
+    if x != nil: result = x
+  
+proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int, 
+                            a: ptr array [0..0x7fff, ptr TNimNode], 
+                            L: int) {.compilerProc.} =
+  var oldBranch = selectBranch(oldDiscVal, L, a)
+  var newBranch = selectBranch(newDiscVal, L, a)
+  if newBranch != oldBranch and oldDiscVal != 0:
+    raise newException(EInvalidField, 
+                       "assignment to discriminant changes object branch")
+  

@@ -75,7 +75,7 @@ type
     col: int                      ## column the symbol has been declared/used in
     flags: set[TNonTerminalFlag]  ## the nonterminal's flags
     rule: TNode                   ## the rule that the symbol refers to
-  TNode {.final.} = object
+  TNode {.final, shallow.} = object
     case kind: TPegKind
     of pkEmpty..pkWhitespace: nil
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
@@ -128,10 +128,12 @@ proc add(d: var TPeg, s: TPeg) {.inline.} = add(d.sons, s)
 proc addChoice(dest: var TPeg, elem: TPeg) =
   var L = dest.len-1
   if L >= 0 and dest.sons[L].kind == pkCharChoice: 
+    # caution! Do not introduce false aliasing here!
     case elem.kind
     of pkCharChoice:
-      dest.sons[L].charChoice^ = dest.sons[L].charChoice^ + elem.charChoice^
-    of pkChar: incl(dest.sons[L].charChoice^, elem.ch)
+      dest.sons[L] = charSet(dest.sons[L].charChoice^ + elem.charChoice^)
+    of pkChar: 
+      dest.sons[L] = charSet(dest.sons[L].charChoice^ + {elem.ch})
     else: add(dest, elem)
   else: add(dest, elem)
 
@@ -155,9 +157,12 @@ proc `/`*(a: openArray[TPeg]): TPeg {.
 proc addSequence(dest: var TPeg, elem: TPeg) =
   var L = dest.len-1
   if L >= 0 and dest.sons[L].kind == pkTerminal: 
+    # caution! Do not introduce false aliasing here!
     case elem.kind
-    of pkTerminal: add(dest.sons[L].term, elem.term)
-    of pkChar: add(dest.sons[L].term, elem.ch)
+    of pkTerminal: 
+      dest.sons[L] = term(dest.sons[L].term & elem.term)
+    of pkChar: 
+      dest.sons[L] = term(dest.sons[L].term & elem.ch)
     else: add(dest, elem)
   else: add(dest, elem)
 

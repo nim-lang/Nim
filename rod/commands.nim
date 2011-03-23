@@ -200,12 +200,12 @@ proc ProcessSpecificNote(arg: string, state: TSpecialWord, pass: TCmdlinePass,
   var id = ""  # arg = "X]:on|off"
   var i = 0
   var n = hintMin
-  while (i < len(arg) + 0) and (arg[i] != ']'): 
+  while i < len(arg) and (arg[i] != ']'): 
     add(id, arg[i])
     inc(i)
-  if (i < len(arg) + 0) and (arg[i] == ']'): inc(i)
+  if i < len(arg) and (arg[i] == ']'): inc(i)
   else: InvalidCmdLineOption(pass, arg, info)
-  if (i < len(arg) + 0) and (arg[i] in {':', '='}): inc(i)
+  if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: InvalidCmdLineOption(pass, arg, info)
   if state == wHint: 
     var x = findStr(msgs.HintsToStr, id)

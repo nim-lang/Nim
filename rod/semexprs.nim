@@ -412,10 +412,8 @@ proc semDirectCallAnalyseEffects(c: PContext, n: PNode,
                                  flags: TExprFlags): PNode = 
   var symflags = {skProc, skMethod, skConverter}
   if efWantIterator in flags:
-    symflags = {skIterator}
-  elif efAllowType in flags: 
     # for ``type countup(1,3)``, see ``tests/ttoseq``.
-    symflags.incl(skIterator)
+    symflags = {skIterator}
   result = semDirectCall(c, n, symflags)
   if result != nil: 
     if result.sons[0].kind != nkSym: 
@@ -571,7 +569,6 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
                                  check: var PNode): PSym = 
   # transform in a node that contains the runtime check for the
   # field, if it is in a case-part...
-  var s, it, inExpr, notExpr: PNode
   result = nil
   case r.kind
   of nkRecList: 
@@ -583,9 +580,9 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if (r.sons[0].kind != nkSym): IllFormedAst(r)
     result = lookupInRecordAndBuildCheck(c, n, r.sons[0], field, check)
     if result != nil: return 
-    s = newNodeI(nkCurly, r.info)
+    var s = newNodeI(nkCurly, r.info)
     for i in countup(1, sonsLen(r) - 1): 
-      it = r.sons[i]
+      var it = r.sons[i]
       case it.kind
       of nkOfBranch: 
         result = lookupInRecordAndBuildCheck(c, n, lastSon(it), field, check)
@@ -597,7 +594,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             addSon(check, ast.emptyNode) # make space for access node
           s = newNodeI(nkCurly, n.info)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
-          inExpr = newNodeI(nkCall, n.info)
+          var inExpr = newNodeI(nkCall, n.info)
           addSon(inExpr, newIdentNode(getIdent("in"), n.info))
           addSon(inExpr, copyTree(r.sons[0]))
           addSon(inExpr, s)   #writeln(output, renderTree(inExpr));
@@ -609,11 +606,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           if check == nil: 
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
-          inExpr = newNodeI(nkCall, n.info)
+          var inExpr = newNodeI(nkCall, n.info)
           addSon(inExpr, newIdentNode(getIdent("in"), n.info))
           addSon(inExpr, copyTree(r.sons[0]))
           addSon(inExpr, s)
-          notExpr = newNodeI(nkCall, n.info)
+          var notExpr = newNodeI(nkCall, n.info)
           addSon(notExpr, newIdentNode(getIdent("not"), n.info))
           addSon(notExpr, inExpr)
           addSon(check, semExpr(c, notExpr))

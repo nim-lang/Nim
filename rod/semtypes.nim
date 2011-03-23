@@ -574,8 +574,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   case n.kind
   of nkEmpty: nil
   of nkTypeOfExpr: 
+    # for ``type countup(1,3)``, see ``tests/ttoseq``.
+    # XXX We should find a better solution.
     checkSonsLen(n, 1)
-    result = semExprWithType(c, n.sons[0], {efAllowType}).typ
+    result = semExprWithType(c, n.sons[0], {efWantIterator}).typ
   of nkPar: 
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else: GlobalError(n.info, errTypeExpected)

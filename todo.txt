@@ -22,11 +22,13 @@ High priority (version 0.9.0)
 Bugs
 ----
 - proc (x: int) is passable to proc (x: var int)  !?
-- detected by pegs module 64bit: p(result, result) should use a temporary!
 - the parser allows empty object case branches
 - Exception matching needs to take subclasses into account
 - pegs: the anchor '^' does not work because many procs use a linear search
   and matchLen()
+- BUG: generic assign still buggy
+  - Optimization: If we use a temporary for the result anyway the code gen
+    should make use of this fact to generate better code...
 
 
 To implement
@@ -51,18 +53,13 @@ Low priority
 - find a way to reintroduce the cleanup() pass for C code generation: this
   is hard because of partial evaluation --> symbol files will fix this as
   a side effect
-- implement better error handling: errornous top level statements are ignored
-  and not part of the symbal table --> for REPL
-  --> this needs deletion operation for symbol table!
 - floating point checks for EcmaScript
 - enhance `` notation for identifier concatenation: `concat` a `these`
 - prefer proc in current module over other procs with same overloading result?
 - real types for template results
 - generalized case statement (requires better transf)
-- normalize for the DOM
 - tlastmod returns wrong results on BSD (Linux, MacOS X: works)
-- nested tuple unpacking
-- fast assignment optimization for TPeg
+- nested tuple unpacking; no auto-unpacking in 'for' loops!
 - better error messages for used keywords as identifiers
 - case statement branches should support constant sets
 

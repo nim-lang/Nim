@@ -708,7 +708,7 @@ else:
     # environ is needed, the _NSGetEnviron() routine, defined in
     # <crt_externs.h>, can be used to retrieve the address of environ
     # at runtime.
-    proc NSGetEnviron(): cstringArray {.
+    proc NSGetEnviron(): ptr cstringArray {.
       importc: "_NSGetEnviron", header: "<crt_externs.h>".}
   else:
     var gEnv {.importc: "environ".}: cstringArray
@@ -717,7 +717,7 @@ else:
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
       when defined(macosx):
-        var gEnv = NSGetEnviron()
+        var gEnv = NSGetEnviron()^
       var i = 0
       while True:
         if gEnv[i] == nil: break

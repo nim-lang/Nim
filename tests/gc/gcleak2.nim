@@ -7,14 +7,13 @@ proc MakeObj(): TTestObj =
   result.x = "Hello"
   result.s = @[1,2,3]
 
-#while true:
-#  var obj = MakeObj()
-#  echo GC_getstatistics()
-
 proc inProc() = 
-  while true:
+  for i in 1 .. 100_000_000:
     var obj: TTestObj
     obj = MakeObj()
+    if getOccupiedMem() > 300_000: quit("still a leak!")
 
 inProc()
+echo "no leak: ", getOccupiedMem()
+
 
