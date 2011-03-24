@@ -1299,6 +1299,22 @@ algorithm returns true:
     if b.kind == distinct and typeEquals(b.baseType, a): return true
     return false
     
+You can, however, define your own implicit converters:
+
+.. code-block:: nimrod
+  converter toInt(x: char): int = result = ord(x)
+
+  var
+    x: int
+    chr: char = 'a'
+
+  # implicit conversion magic happens here
+  x = chr
+  echo x # => 97
+  # you can use the explicit form too
+  x = chr.toInt
+  echo x # => 97
+
 
 Assignment compatibility
 ~~~~~~~~~~~~~~~~~~~~~~~~
