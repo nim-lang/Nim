@@ -38,8 +38,7 @@ proc semWhen(c: PContext, n: PNode): PNode =
     case it.kind
     of nkElifBranch: 
       checkSonsLen(it, 2)
-      var e = semConstExpr(c, it.sons[0])
-      checkBool(e)
+      var e = semConstBoolExpr(c, it.sons[0])
       if (e.kind != nkIntLit): InternalError(n.info, "semWhen")
       if (e.intVal != 0) and (result == nil): 
         result = semStmt(c, it.sons[1]) # do not open a new scope!
@@ -63,8 +62,7 @@ proc semIf(c: PContext, n: PNode): PNode =
     of nkElifBranch: 
       checkSonsLen(it, 2)
       openScope(c.tab)
-      it.sons[0] = semExprWithType(c, it.sons[0])
-      checkBool(it.sons[0])
+      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
       it.sons[1] = semStmt(c, it.sons[1])
       closeScope(c.tab)
     of nkElse: 
@@ -121,8 +119,7 @@ proc semWhile(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 2)
   openScope(c.tab)
-  n.sons[0] = semExprWithType(c, n.sons[0])
-  CheckBool(n.sons[0])
+  n.sons[0] = forceBool(c, semExprWithType(c, n.sons[0]))
   inc(c.p.nestedLoopCounter)
   n.sons[1] = semStmt(c, n.sons[1])
   dec(c.p.nestedLoopCounter)
@@ -162,8 +159,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     of nkElifBranch: 
       chckCovered = false
       checkSonsLen(x, 2)
-      x.sons[0] = semExprWithType(c, x.sons[0])
-      checkBool(x.sons[0])
+      x.sons[0] = forceBool(c, semExprWithType(c, x.sons[0]))
       x.sons[1] = semStmtScope(c, x.sons[1])
     of nkElse: 
       chckCovered = false

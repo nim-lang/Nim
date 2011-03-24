@@ -9,12 +9,6 @@
 
 # this module does the semantic checking of type declarations
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
-  result = IndexTypesMatch(c, formal, arg.typ, arg)
-  if result == nil: 
-    #debug(arg)
-    typeMismatch(arg, formal, arg.typ)
-  
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType = 
   if prev == nil: 
     result = newTypeS(kind, c)
@@ -355,8 +349,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var TIntSet, pos: var int,
       case it.kind
       of nkElifBranch: 
         checkSonsLen(it, 2)
-        e = semConstExpr(c, it.sons[0])
-        checkBool(e)
+        e = semConstBoolExpr(c, it.sons[0])
         if (e.kind != nkIntLit): InternalError(e.info, "semRecordNodeAux")
         if (e.intVal != 0) and (branch == nil): branch = it.sons[1]
       of nkElse: 

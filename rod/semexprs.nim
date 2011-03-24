@@ -792,8 +792,7 @@ proc semIfExpr(c: PContext, n: PNode): PNode =
     case it.kind
     of nkElifExpr: 
       checkSonsLen(it, 2)
-      it.sons[0] = semExprWithType(c, it.sons[0])
-      checkBool(it.sons[0])
+      it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
       it.sons[1] = semExprWithType(c, it.sons[1])
       if typ == nil: typ = it.sons[1].typ
       else: it.sons[1] = fitNode(c, typ, it.sons[1])

@@ -114,16 +114,36 @@ proc semMacroExpr(c: PContext, n: PNode, sym: PSym,
   dec(evalTemplateCounter)
 
 include seminst, semcall
-
-proc CheckBool(t: PNode) = 
-  if (t.Typ == nil) or
-      (skipTypes(t.Typ, {tyGenericInst, tyVar, tyOrdinal}).kind != tyBool): 
-    LocalError(t.Info, errExprMustBeBool)
   
 proc typeMismatch(n: PNode, formal, actual: PType) = 
   GlobalError(n.Info, errGenerated, msgKindToString(errTypeMismatch) &
       typeToString(actual) & ") " &
       `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
+
+proc fitNode(c: PContext, formal: PType, arg: PNode): PNode = 
+  result = IndexTypesMatch(c, formal, arg.typ, arg)
+  if result == nil: 
+    #debug(arg)
+    typeMismatch(arg, formal, arg.typ)
+
+proc forceBool(c: PContext, n: PNode): PNode = 
+  result = fitNode(c, getSysType(tyBool), n)
+  if result == nil: result = n
+  when false:
+    result = t
+    if (t.Typ == nil) or
+        (skipTypes(t.Typ, {tyGenericInst, tyVar, tyOrdinal}).kind != tyBool): 
+      var a = ConvertTo(c, getSysType(tyBool), t)
+      if a != nil: result = a
+      else: LocalError(t.Info, errExprMustBeBool)
+
+proc semConstBoolExpr(c: PContext, n: PNode): PNode = 
+  result = fitNode(c, getSysType(tyBool), semExprWithType(c, n))
+  if result == nil: 
+    GlobalError(n.info, errConstExprExpected)
+    return 
+  result = getConstExpr(c.module, result)
+  if result == nil: GlobalError(n.info, errConstExprExpected)
 
 include semtypes, semexprs, semgnrc, semstmts
 
