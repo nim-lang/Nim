@@ -361,6 +361,7 @@ proc evalAsgn(c: PEvalContext, n: PNode): PNode =
   var x = result
   result = evalAux(c, n.sons[1], {})
   if isSpecial(result): return 
+  when defined(system.reset): reset(x)
   x.kind = result.kind
   x.typ = result.typ
   case x.kind

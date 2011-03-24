@@ -461,6 +461,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     var dest = c.converters[i].typ.sons[0]
     if (typeRel(m.bindings, f, dest) == isEqual) and
         (typeRel(m.bindings, src, a) == isEqual): 
+      markUsed(arg, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -563,6 +564,11 @@ proc IndexTypesMatch*(c: PContext, f, a: PType, arg: PNode): PNode =
   var m: TCandidate
   initCandidate(m, f)
   result = paramTypesMatch(c, m, f, a, arg)
+
+proc ConvertTo*(c: PContext, f: PType, n: PNode): PNode = 
+  var m: TCandidate
+  initCandidate(m, f)
+  result = paramTypesMatch(c, m, f, n.typ, n)
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool = 
   var m: TCandidate

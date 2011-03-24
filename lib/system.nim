@@ -87,6 +87,11 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.
   ## freeing the object. Note: The `finalizer` refers to the type `T`, not to
   ## the object! This means that for each object of type `T` the finalizer
   ## will be called!
+  
+proc reset*(obj: var T) {.magic: "Reset", noSideEffect.}
+proc reset*(obj: ref T) {.noSideEffect.} = reset(obj^)
+  ## resets an object `obj` to its initial (binary zero) value. This needs to
+  ## be called before any possible `object branch transition`:idx:.
 
 # for low and high the return type T may not be correct, but
 # we handle that with compiler magic in SemLowHigh()
