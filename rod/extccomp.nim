@@ -15,8 +15,8 @@ import
 
 type 
   TSystemCC* = enum 
-    ccNone, ccGcc, ccLLVM_Gcc, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, 
-    ccUcc, ccIcc, ccGpp
+    ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, 
+    ccTcc, ccPcc, ccUcc, ccIcc, ccGpp
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -67,6 +67,20 @@ const
      buildGui: " -mwindows", 
      buildDll: " -shared", 
      linkerExe: "llvm-gcc", 
+     linkTmpl: "$options $buildgui $builddll -o $exefile $objfiles", 
+     includeCmd: " -I", 
+     debug: "", pic: "-fPIC", 
+     asmStmtFrmt: "asm($1);$n", 
+     props: {hasSwitchRange, hasComputedGoto, hasCpp}), 
+    (name: "clang", 
+     objExt: "o", 
+     optSpeed: " -O3 -ffast-math ", 
+     optSize: " -Os -ffast-math ", 
+     compilerExe: "clang", 
+     compileTmpl: "-c $options $include -o $objfile $file", 
+     buildGui: " -mwindows", 
+     buildDll: " -shared", 
+     linkerExe: "clang", 
      linkTmpl: "$options $buildgui $builddll -o $exefile $objfiles", 
      includeCmd: " -I", 
      debug: "", pic: "-fPIC", 
