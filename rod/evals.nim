@@ -98,6 +98,9 @@ proc isSpecial(n: PNode): bool {.inline.} =
   # XXX this does not work yet! Better to compile too much than to compile to
   # few programs
 
+proc myreset(n: PNode) {.inline.} =
+  when defined(system.reset): reset(n^)
+
 proc evalIf(c: PEvalContext, n: PNode): PNode = 
   var i = 0
   var length = sonsLen(n)
@@ -361,7 +364,7 @@ proc evalAsgn(c: PEvalContext, n: PNode): PNode =
   var x = result
   result = evalAux(c, n.sons[1], {})
   if isSpecial(result): return 
-  when defined(system.reset): reset(x)
+  myreset(x)
   x.kind = result.kind
   x.typ = result.typ
   case x.kind
@@ -479,17 +482,13 @@ proc evalNew(c: PEvalContext, n: PNode): PNode =
   var a = result
   var t = skipTypes(n.sons[1].typ, abstractVar)
   if a.kind == nkEmpty: InternalError(n.info, "first parameter is empty")
-  # changing the node kind is ugly and suggests deep problems:
+  myreset(a)
   a.kind = nkRefTy
   a.info = n.info
   a.typ = t
   a.sons = nil
   addSon(a, getNullValue(t.sons[0], n.info))
   result = emptyNode
-  when false:
-    var t = skipTypes(n.sons[1].typ, abstractVar)
-    result = newNodeIT(nkRefTy, n.info, t)
-    addSon(result, getNullValue(t.sons[0], n.info))
 
 proc evalDeref(c: PEvalContext, n: PNode, flags: TEvalFlags): PNode = 
   result = evalAux(c, n.sons[0], {efLValue})
@@ -646,7 +645,7 @@ proc evalNewSeq(c: PEvalContext, n: PNode): PNode =
   var b = result
   var t = skipTypes(n.sons[1].typ, abstractVar)
   if a.kind == nkEmpty: InternalError(n.info, "first parameter is empty")
-  # changing the node kind is ugly and suggests deep problems:
+  myreset(a)
   a.kind = nkBracket
   a.info = n.info
   a.typ = t
