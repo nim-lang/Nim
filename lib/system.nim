@@ -88,8 +88,7 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T)) {.
   ## the object! This means that for each object of type `T` the finalizer
   ## will be called!
   
-proc reset*(obj: var T) {.magic: "Reset", noSideEffect.}
-proc reset*(obj: ref T) {.noSideEffect.} = reset(obj^)
+proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 

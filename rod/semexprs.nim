@@ -392,7 +392,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   const 
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl, 
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap, 
-      mAppendSeqElem, mNewSeq}
+      mAppendSeqElem, mNewSeq, mReset}
   checkMinSonsLen(n, 1)
   var t = n.sons[0].typ
   if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic in FakeVarParams): 

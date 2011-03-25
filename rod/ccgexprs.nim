@@ -931,6 +931,12 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   dest.r = ropef("$1->data[$1->Sup.len-1]", [rdLoc(a)])
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
 
+proc genReset(p: BProc, n: PNode) = 
+  var a: TLoc
+  InitLocExpr(p, n.sons[1], a)
+  appcg(p, cpsStmts, "#genericReset((void*)$1, $2);$n", 
+       [addrLoc(a), genTypeInfo(p.module, skipTypes(a.t, abstractVarRange))])
+
 proc genNew(p: BProc, e: PNode) =
   var
     a, b: TLoc
@@ -1449,6 +1455,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
      mInSet:
     genSetOp(p, e, d, op)
   of mNewString, mCopyStr, mCopyStrLast, mExit: genCall(p, e, d)
+  of mReset: genReset(p, e)
   of mEcho: genEcho(p, e)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError:
