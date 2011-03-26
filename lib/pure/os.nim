@@ -699,7 +699,10 @@ when defined(windows):
       discard FreeEnvironmentStringsA(env)
 
 else:
-  when defined(macosx):
+  const
+    useNSGetEnviron = defined(macosx) and 
+      (defined(createNimRtl) or defined(useNimRtl))
+  when useNSGetEnviron:
     # From the manual:
     # Shared libraries and bundles don't have direct access to environ, 
     # which is only available to the loader ld(1) when a complete program
@@ -716,7 +719,7 @@ else:
   proc getEnvVarsC() =
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
-      when defined(macosx):
+      when useNSGetEnviron:
         var gEnv = NSGetEnviron()^
       var i = 0
       while True:

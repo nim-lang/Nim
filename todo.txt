@@ -34,7 +34,7 @@ Bugs
 To implement
 ------------
 
-* hash tables and sets
+* hash tables and sets; count tables; ordered dicts
 * distinct types for array/seq indexes
 * constant sequences
 
