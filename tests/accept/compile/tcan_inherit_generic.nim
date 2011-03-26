@@ -6,5 +6,12 @@
 
 type
   TGen[T] = object
+    x, y: T
+  
   TSpef[T] = object of TGen[T]
+
+
+var s: TSpef[float]
+s.x = 0.4
+s.y = 0.6
 

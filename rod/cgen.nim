@@ -267,7 +267,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
   of frHeader:
     var r = rdLoc(a)
     if not takeAddr: r = ropef("(*$1)", [r])
-    var s = t
+    var s = skipTypes(t, abstractInst)
     while (s.kind == tyObject) and (s.sons[0] != nil):
       app(r, ".Sup")
       s = skipTypes(s.sons[0], abstractInst)
@@ -373,7 +373,7 @@ proc cstringLit(m: BModule, r: var PRope, s: string): PRope =
   
 proc allocParam(p: BProc, s: PSym) = 
   assert(s.kind == skParam)
-  if not (lfParamCopy in s.loc.flags): 
+  if lfParamCopy notin s.loc.flags: 
     inc(p.labels)
     var tmp = con("%LOC", toRope(p.labels))
     incl(s.loc.flags, lfParamCopy)
@@ -383,7 +383,6 @@ proc allocParam(p: BProc, s: PSym) =
     s.loc.r = tmp
 
 proc localDebugInfo(p: BProc, s: PSym) = 
-  var name, a: PRope
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return 
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind == tyOpenArray: return
@@ -391,7 +390,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
     # "address" is the 0th field
     # "typ" is the 1rst field
     # "name" is the 2nd field
-    name = cstringLit(p, p.s[cpsInit], normalize(s.name.s))
+    var name = cstringLit(p, p.s[cpsInit], normalize(s.name.s))
     if (s.kind == skParam) and not ccgIntroducedPtr(s): allocParam(p, s)
     inc(p.labels, 3)
     appf(p.s[cpsInit], "%LOC$6 = getelementptr %TF* %F, %NI 0, $1, %NI 0$n" &
@@ -404,12 +403,12 @@ proc localDebugInfo(p: BProc, s: PSym) =
                                         toRope(p.labels), toRope(p.labels - 1), 
                                         toRope(p.labels - 2)])
   else: 
-    a = con("&", s.loc.r)
+    var a = con("&", s.loc.r)
     if (s.kind == skParam) and ccgIntroducedPtr(s): a = s.loc.r
     appf(p.s[cpsInit], 
-         "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n", [
-        toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
-        genTypeInfo(p.module, s.loc.t)])
+         "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
+         [toRope(p.frameLen), makeCString(normalize(s.name.s)), a, 
+          genTypeInfo(p.module, s.loc.t)])
   inc(p.frameLen)
 
 proc assignLocalVar(p: BProc, s: PSym) = 
@@ -461,7 +460,7 @@ proc iff(cond: bool, the, els: PRope): PRope =
   
 proc assignParam(p: BProc, s: PSym) = 
   assert(s.loc.r != nil)
-  if (sfAddrTaken in s.flags) and (gCmd == cmdCompileToLLVM): allocParam(p, s)
+  if sfAddrTaken in s.flags and gCmd == cmdCompileToLLVM: allocParam(p, s)
   localDebugInfo(p, s)
 
 proc fillProcLoc(sym: PSym) = 
@@ -574,7 +573,7 @@ proc generateHeaders(m: BModule) =
   app(m.s[cfsHeaders], "#include \"nimbase.h\"" & tnl & tnl)
   var it = PStrEntry(m.headerFiles.head)
   while it != nil: 
-    if not (it.data[0] in {'\"', '<'}): 
+    if it.data[0] notin {'\"', '<'}: 
       appf(m.s[cfsHeaders], "#include \"$1\"$n", [toRope(it.data)])
     else: 
       appf(m.s[cfsHeaders], "#include $1$n", [toRope(it.data)])

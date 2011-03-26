@@ -472,11 +472,7 @@ proc addGenericParamListToScope(c: PContext, n: PNode) =
     if a.kind != nkSym: internalError(a.info, "addGenericParamListToScope")
     addDecl(c, a.sym)
 
-proc SemTypeSection(c: PContext, n: PNode): PNode = 
-  var 
-    s: PSym
-    t, body: PType
-  result = n 
+proc typeSectionLeftSidePass(c: PContext, n: PNode) = 
   # process the symbols on the left side for the whole type section, before
   # we even look at the type definitions on the right
   for i in countup(0, sonsLen(n) - 1): 
@@ -485,7 +481,8 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
     if a.kind == nkCommentStmt: continue 
     if a.kind != nkTypeDef: IllFormedAst(a)
     checkSonsLen(a, 3)
-    if (c.p.owner.kind == skModule): 
+    var s: PSym
+    if c.p.owner.kind == skModule: 
       s = semIdentWithPragma(c, skType, a.sons[0], {sfStar, sfMinus})
       incl(s.flags, sfGlobal)
     else: 
@@ -493,18 +490,20 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
     if s.flags * {sfStar, sfMinus} != {}: incl(s.flags, sfInInterface)
     s.typ = newTypeS(tyForward, c)
     s.typ.sym = s             # process pragmas:
-    if a.sons[0].kind == nkPragmaExpr: 
+    if a.sons[0].kind == nkPragmaExpr:
       pragma(c, s, a.sons[0].sons[1], typePragmas) 
     # add it here, so that recursive types are possible:
     addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)
+
+proc typeSectionRightSidePass(c: PContext, n: PNode) =
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkTypeDef): IllFormedAst(a)
     checkSonsLen(a, 3)
     if (a.sons[0].kind != nkSym): IllFormedAst(a)
-    s = a.sons[0].sym
+    var s = a.sons[0].sym
     if (s.magic == mNone) and (a.sons[2].kind == nkEmpty): 
       GlobalError(a.info, errImplOfXexpected, s.name.s)
     if s.magic != mNone: processMagicType(c, s)
@@ -518,13 +517,12 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
         InternalError(a.info, "semTypeSection: containerID")
       s.typ.containerID = getID()
       a.sons[1] = semGenericParamList(c, a.sons[1], s.typ)
-      
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyEmpty instead of nil to not crash for strange conversions
-      # like: mydata.seq 
+      # like: mydata.seq
       addSon(s.typ, newTypeS(tyEmpty, c))
       s.ast = a
-      body = semTypeNode(c, a.sons[2], nil)
+      var body = semTypeNode(c, a.sons[2], nil)
       if body != nil: body.sym = s
       s.typ.sons[sonsLen(s.typ) - 1] = body
       popOwner()
@@ -532,27 +530,38 @@ proc SemTypeSection(c: PContext, n: PNode): PNode =
     elif a.sons[2].kind != nkEmpty: 
       # process the type's body:
       pushOwner(s)
-      t = semTypeNode(c, a.sons[2], s.typ)
-      if (t != s.typ) and (s.typ != nil): 
-        internalError(a.info, "semTypeSection()")
-      s.typ = t
+      var t = semTypeNode(c, a.sons[2], s.typ)
+      if s.typ == nil: 
+        s.typ = t
+      elif t != s.typ: 
+        # this can happen for e.g. tcan_alias_specialised_generic:
+        assignType(s.typ, t)
+        #debug s.typ
       s.ast = a
       popOwner()
+
+proc typeSectionFinalPass(c: PContext, n: PNode) = 
   for i in countup(0, sonsLen(n) - 1): 
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue 
     if (a.sons[0].kind != nkSym): IllFormedAst(a)
-    s = a.sons[0].sym         
+    var s = a.sons[0].sym         
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty: 
-      if (a.sons[2].kind in {nkSym, nkIdent, nkAccQuoted}): 
+      if a.sons[2].kind in {nkSym, nkIdent, nkAccQuoted}:
         # type aliases are hard:
         #MessageOut('for type ' + typeToString(s.typ));
-        t = semTypeNode(c, a.sons[2], nil)
+        var t = semTypeNode(c, a.sons[2], nil)
         if t.kind in {tyObject, tyEnum}: 
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
+
+proc SemTypeSection(c: PContext, n: PNode): PNode =
+  typeSectionLeftSidePass(c, n)
+  typeSectionRightSidePass(c, n)
+  typeSectionFinalPass(c, n)
+  result = n
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) = 
   s.typ = semProcTypeNode(c, n, genericParams, nil)

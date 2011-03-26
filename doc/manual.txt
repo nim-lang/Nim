@@ -2163,7 +2163,7 @@ Example:
 
   proc newNode[T](data: T): PBinaryTree[T] = # constructor for a node
     new(result)
-    result.dat = data
+    result.data = data
 
   proc add[T](root: var PBinaryTree[T], n: PBinaryTree[T]) =
     if root == nil:
@@ -2172,7 +2172,7 @@ Example:
       var it = root
       while it != nil:
         var c = cmp(it.data, n.data) # compare the data items; uses
-                                     # the generic ``cmd`` proc that works for
+                                     # the generic ``cmp`` proc that works for
                                      # any type that has a ``==`` and ``<``
                                      # operator
         if c < 0:

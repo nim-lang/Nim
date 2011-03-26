@@ -421,27 +421,34 @@ proc addInheritedFields(c: PContext, check: var TIntSet, pos: var int,
     addInheritedFields(c, check, pos, obj.sons[0])
   addInheritedFieldsAux(c, check, pos, obj.n)
 
+proc skipGenericInvokation(t: PType): PType {.inline.} = 
+  result = t
+  if result.kind == tyGenericInvokation:
+    result = result.sons[0]
+  if result.kind == tyGenericBody:
+    result = lastSon(result)
+
 proc semObjectNode(c: PContext, n: PNode, prev: PType): PType = 
-  var 
-    check: TIntSet
-    base: PType
-    pos: int
+  var check: TIntSet
   IntSetInit(check)
-  pos = 0 # n.sons[0] contains the pragmas (if any). We process these later...
+  var pos = 0 
+  var base: PType = nil
+  # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty: 
     base = semTypeNode(c, n.sons[1].sons[0], nil)
-    if base.kind == tyObject: addInheritedFields(c, check, pos, base)
-    else: localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
-  else:
-    base = nil
+    var concreteBase = skipGenericInvokation(skipTypes(base, skipPtrs))
+    if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
+      addInheritedFields(c, check, pos, concreteBase)
+    else:
+      debug base
+      debug concreteBase
+      localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
   if n.kind != nkObjectTy: InternalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   addSon(result, base)
   result.n = newNodeI(nkRecList, n.info)
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result.sym)
-  if (base != nil) and (tfFinal in base.flags): 
-    localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
   
 proc addTypeVarsOfGenericBody(c: PContext, t: PType, genericParams: PNode, 
                               cl: var TIntSet): PType = 
@@ -559,9 +566,6 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
   Dec(c.p.nestedBlockCounter)
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType = 
-  var 
-    s: PSym
-    t: PType
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
@@ -576,7 +580,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else: GlobalError(n.info, errTypeExpected)
   of nkBracketExpr: 
     checkMinSonsLen(n, 2)
-    s = semTypeIdent(c, n.sons[0])
+    var s = semTypeIdent(c, n.sons[0])
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
@@ -586,7 +590,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
     else: result = semGeneric(c, n, s, prev)
   of nkIdent, nkDotExpr, nkAccQuoted: 
-    s = semTypeIdent(c, n)
+    var s = semTypeIdent(c, n)
     if s.typ == nil: GlobalError(n.info, errTypeExpected)
     if prev == nil: 
       result = s.typ
@@ -596,7 +600,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = prev
   of nkSym: 
     if (n.sym.kind == skType) and (n.sym.typ != nil): 
-      t = n.sym.typ
+      var t = n.sym.typ
       if prev == nil: 
         result = t
       else: 
@@ -615,20 +619,15 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     checkSonsLen(n, 2)
     result = semProcTypeNode(c, n.sons[0], nil, prev) 
     # dummy symbol for `pragma`:
-    s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
+    var s = newSymS(skProc, newIdentNode(getIdent("dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[1], procTypePragmas)
-  of nkEnumTy: 
-    result = semEnum(c, n, prev)
-  of nkType: 
-    result = n.typ
-  of nkStmtListType: 
-    result = semStmtListType(c, n, prev)
-  of nkBlockType: 
-    result = semBlockType(c, n, prev)
-  else: 
-    GlobalError(n.info, errTypeExpected) 
-    #internalError(n.info, 'semTypeNode(' +{&} nodeKindToStr[n.kind] +{&} ')');
+  of nkEnumTy: result = semEnum(c, n, prev)
+  of nkType: result = n.typ
+  of nkStmtListType: result = semStmtListType(c, n, prev)
+  of nkBlockType: result = semBlockType(c, n, prev)
+  else: GlobalError(n.info, errTypeExpected) 
+  #internalError(n.info, 'semTypeNode(' +{&} nodeKindToStr[n.kind] +{&} ')');
   
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind

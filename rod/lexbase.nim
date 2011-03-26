@@ -164,7 +164,7 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   while not (L.buf[i] in {CR, LF, EndOfFile}): 
     add(result, L.buf[i])
     inc(i)
-  result = result & "\n"
+  result.add("\n")
   if marker: 
-    result = result & RepeatChar(getColNumber(L, L.bufpos)) & '^' & "\n"
+    result.add(RepeatChar(getColNumber(L, L.bufpos)) & '^' & "\n")
   

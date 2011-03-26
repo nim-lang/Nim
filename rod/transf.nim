@@ -669,7 +669,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformFor(c, n)
   of nkCaseStmt: 
     result = transformCase(c, n)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef: 
+  of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkConverterDef: 
     if n.sons[genericParamsPos].kind == nkEmpty: 
       n.sons[codePos] = PNode(transform(c, n.sons[codePos]))
       if n.kind == nkMethodDef: methodDef(n.sons[namePos].sym)

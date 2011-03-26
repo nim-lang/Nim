@@ -12,13 +12,17 @@
 import ast, astalgo, msgs, types, semdata
 
 proc checkConstructedType*(info: TLineInfo, t: PType) = 
-  if (tfAcyclic in t.flags) and (skipTypes(t, abstractInst).kind != tyObject): 
+  if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject: 
     LocalError(info, errInvalidPragmaX, "acyclic")
   elif computeSize(t) < 0: 
     LocalError(info, errIllegalRecursionInTypeX, typeToString(t))
-  elif (t.kind == tyVar) and (t.sons[0].kind == tyVar): 
+  elif t.kind == tyVar and t.sons[0].kind == tyVar: 
     LocalError(info, errVarVarTypeNotAllowed)
-
+  when false:
+    if t.kind == tyObject and t.sons[0] != nil:
+      if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags: 
+        localError(info, errInheritanceOnlyWithNonFinalObjects)
+    
 proc containsGenericTypeIter(t: PType, closure: PObject): bool = 
   result = t.kind in GenericTypes
 
