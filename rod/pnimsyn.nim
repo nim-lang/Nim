@@ -1014,12 +1014,77 @@ proc parseAsm(p: var TParser): PNode =
     return 
   getTok(p)
 
+proc parseGenericConstraint(p: var TParser): PNode = 
+  case p.tok.tokType
+  of tkObject:
+    result = newNodeP(nkObjectTy, p)
+    getTok(p)
+  of tkTuple:
+    result = newNodeP(nkTupleTy, p)
+    getTok(p)
+  of tkEnum: 
+    result = newNodeP(nkEnumTy, p)
+    getTok(p)
+  of tkProc:
+    result = newNodeP(nkProcTy, p)
+    getTok(p)
+  of tkVar:
+    result = newNodeP(nkVarTy, p)
+    getTok(p)
+  of tkPtr:
+    result = newNodeP(nkPtrTy, p)
+    getTok(p)
+  of tkRef:
+    result = newNodeP(nkRefTy, p)
+    getTok(p)
+  of tkDistinct:
+    result = newNodeP(nkDistinctTy, p)
+    getTok(p)
+  else: result = primary(p)
+
+proc parseGenericConstraintList(p: var TParser): PNode = 
+  result = parseGenericConstraint(p)
+  while p.tok.tokType == tkOpr:
+    var a = result
+    result = newNodeP(nkInfix, p)
+    addSon(result, newIdentNodeP(p.tok.ident, p))
+    addSon(result, a)
+    getTok(p)
+    optInd(p, result)
+    addSon(result, parseGenericConstraint(p))
+
+proc parseGenericParam(p: var TParser): PNode = 
+  var a: PNode
+  result = newNodeP(nkIdentDefs, p)
+  while true: 
+    case p.tok.tokType
+    of tkSymbol, tkAccent: 
+      a = parseSymbol(p)
+      if a.kind == nkEmpty: return 
+    else: break 
+    addSon(result, a)
+    if p.tok.tokType != tkComma: break 
+    getTok(p)
+    optInd(p, a)
+  if p.tok.tokType == tkColon: 
+    getTok(p)
+    optInd(p, result)
+    addSon(result, parseGenericConstraintList(p))
+  else: 
+    addSon(result, ast.emptyNode)
+  if p.tok.tokType == tkEquals: 
+    getTok(p)
+    optInd(p, result)
+    addSon(result, parseExpr(p))
+  else: 
+    addSon(result, ast.emptyNode)
+
 proc parseGenericParamList(p: var TParser): PNode = 
   result = newNodeP(nkGenericParams, p)
   getTok(p)
   optInd(p, result)
   while (p.tok.tokType == tkSymbol) or (p.tok.tokType == tkAccent): 
-    var a = parseIdentColonEquals(p, {withBothOptional})
+    var a = parseGenericParam(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)

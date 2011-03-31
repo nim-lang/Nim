@@ -765,7 +765,7 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-proc del* [T](x: var seq[T], i: int) {.noSideEffect.} = 
+proc del*[T](x: var seq[T], i: int) {.noSideEffect.} = 
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
   var xl = x.len
@@ -1111,15 +1111,6 @@ iterator items*(a: cstring): char {.inline.} =
     yield a[i]
     inc(i)
 
-iterator enumerate*[TContainer, TItem](a: TContainer): tuple[
-                    index: int, item: TItem] {.inline.} = 
-  ## iterates over each item of `a` via `items` and yields an additional
-  ## counter/index starting from 0.
-  var j = 0
-  for it in items(a): 
-    yield (j, a)
-    inc j
-
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
@@ -1170,7 +1161,7 @@ when not defined(NimrodVM):
 
 proc find*[T, S: typeDesc](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
-  ## appropriate `items` and `==` procs to work.
+  ## appropriate `items` and `==` operations to work.
   for i in items(a):
     if i == item: return
     inc(result)
@@ -1199,6 +1190,62 @@ proc each*[T](data: var openArray[T], op: proc (x: var T)) =
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data`.
   for i in 0..data.len-1: op(data[i])
+
+iterator fields*(x: tuple[]): expr {.magic: "Fields", noSideEffect.}
+  ## iterates over every field of `x`. Warning: This is really transforms
+  ## the 'for' and unrolls the loop. The current implementation also has a bug
+  ## that affects symbol binding in the loop body.
+iterator fields*(x, y: tuple[]): tuple[a, b: expr] {.
+  magic: "Fields", noSideEffect.}
+  ## iterates over every field of `x` and `y`.
+  ## Warning: This is really transforms the 'for' and unrolls the loop. 
+  ## The current implementation also has a bug that affects symbol binding
+  ## in the loop body.
+iterator fieldPairs*(x: tuple[]): expr {.magic: "FieldPairs", noSideEffect.}
+  ## iterates over every field of `x`. Warning: This is really transforms
+  ## the 'for' and unrolls the loop. The current implementation also has a bug
+  ## that affects symbol binding in the loop body.
+iterator fieldPairs*(x, y: tuple[]): tuple[a, b: expr] {.
+  magic: "FieldPairs", noSideEffect.}
+  ## iterates over every field of `x` and `y`.
+  ## Warning: This is really transforms the 'for' and unrolls the loop. 
+  ## The current implementation also has a bug that affects symbol binding
+  ## in the loop body.
+
+proc `==`*[T: tuple](x, y: T): bool = 
+  ## generic ``==`` operator that is lifted from the components
+  ## of `x` and `y`.
+  for a, b in fields(x, y):
+    if a != b: return false
+  return true
+
+proc `<=`*[T: tuple](x, y: T): bool = 
+  ## generic ``<=`` operator that is lifted from the components
+  ## of `x` and `y`. This implementation uses `cmp`.
+  for a, b in fields(x, y):
+    var c = cmp(a, b)
+    if c < 0: return true
+    if c > 0: return false
+  return true
+
+proc `<`*[T: tuple](x, y: T): bool = 
+  ## generic ``<`` operator that is lifted from the components
+  ## of `x` and `y`. This implementation uses `cmp`.
+  for a, b in fields(x, y):
+    var c = cmp(a, b)
+    if c < 0: return true
+    if c > 0: return false
+  return false
+
+proc `$`*[T: tuple](x: T): string = 
+  ## generic ``$`` operator that is lifted from the components of `x`.
+  result = "("
+  for name, value in fieldPairs(x):
+    if result.len > 1: result.add(", ")
+    result.add(name)
+    result.add(": ")
+    result.add($value)
+  result.add(")")
 
 # ----------------- GC interface ---------------------------------------------
 

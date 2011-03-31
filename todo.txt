@@ -1,13 +1,8 @@
-- 'nimrod def': does not always work
-
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
 - built-in serialization
 
 - deprecate ^ and make it available as operator
-- test branch coverage
-- checked exceptions
-- slicing
 
 
 High priority (version 0.9.0)
@@ -61,6 +56,10 @@ Low priority
 - nested tuple unpacking; no auto-unpacking in 'for' loops!
 - better error messages for used keywords as identifiers
 - case statement branches should support constant sets
+- 'nimrod def': does not always work
+- test branch coverage
+- checked exceptions
+- slicing
 
 
 Library

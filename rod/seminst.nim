@@ -118,7 +118,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.p = oldP                  # restore
   c.module = oldMod
   dec(c.InstCounter)
-    
+  
 proc instGenericContainer(c: PContext, n: PNode, header: PType): PType = 
   var cl: TReplTypeVars
   InitIdTable(cl.symMap)
