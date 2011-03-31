@@ -11,7 +11,7 @@ ucpu=`uname -m`
 uos=`uname`
 
 # convert to lower case:
-upcu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
+ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
 uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
 
 case $uos in
