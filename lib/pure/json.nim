@@ -700,6 +700,18 @@ proc `$`*(node: PJsonNode): String =
   result = ""
   toPretty(result, node, 1, False)
 
+iterator items*(node: PJsonNode): PJSonNode =
+  ## Iterator for the items of `node`. `node` has to be a JArray.
+  assert node.kind == JArray
+  for i in items(node.elems):
+    yield i
+
+iterator pairs*(node: PJsonNode): tuple[key: string, val: PJsonNode] =
+  ## Iterator for the child elements of `node`. `node` has to be a JObject.
+  assert node.kind == JObject
+  for key, val in items(node.fields):
+    yield (key, val)
+
 proc eat(p: var TJsonParser, tok: TTokKind) = 
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
@@ -711,7 +723,7 @@ proc parseJson(p: var TJsonParser): PJsonNode =
     result = newJString(p.a)
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseInt(p.a))
+    result = newJInt(parseBiggestInt(p.a))
     discard getTok(p)
   of tkFloat:
     result = newJFloat(parseFloat(p.a))

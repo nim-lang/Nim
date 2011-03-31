@@ -98,17 +98,17 @@ iterator items*(n: PXmlNode): PXmlNode {.inline.} =
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
-proc attr*(n: PXmlNode): PXmlAttributes {.inline.} = 
+proc attrs*(n: PXmlNode): PXmlAttributes {.inline.} = 
   ## gets the attributes belonging to `n`.
   assert n.k == xnElement
   result = n.fAttr
   
-proc `attr=`*(n: PXmlNode, attr: PXmlAttributes) {.inline.} = 
+proc `attrs=`*(n: PXmlNode, attr: PXmlAttributes) {.inline.} = 
   ## sets the attributes belonging to `n`.
   assert n.k == xnElement
   n.fAttr = attr
 
-proc attrLen*(n: PXmlNode): int {.inline.} = 
+proc attrsLen*(n: PXmlNode): int {.inline.} = 
   ## returns the number of `n`'s attributes.
   assert n.k == xnElement
   if not isNil(n.fAttr): result = len(n.fAttr)
@@ -262,3 +262,16 @@ macro `<>`*(x: expr): expr =
   ##
   result = xmlConstructor(x)
 
+proc child*(n: PXmlNode, name: string): PXmlNode =
+  ## Finds the first child element of `n` with a name of `name`.
+  ## Returns `nil` on failure.
+  assert n.kind == xnElement
+  for i in items(n):
+    if i.kind == xnElement:
+      if i.tag == name:
+        return i
+
+proc attr*(n: PXmlNode, name: string): string =
+  ## Finds the first attribute of `n` with a name of `name`.
+  assert n.kind == xnElement
+  return n.attrs[name]

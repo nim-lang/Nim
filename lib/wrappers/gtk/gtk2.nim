@@ -1059,7 +1059,7 @@ type
   TResponseType* = int32
   PDialog* = ptr TDialog
   TDialog* = object of TWindow
-    vbox*: PWidget
+    vbox*: PBox
     action_area*: PWidget
     separator*: PWidget
 
@@ -16865,6 +16865,9 @@ proc list_shortcut_folder_uris*(chooser: PFileChooser): PGSList{.
 proc set_do_overwrite_confirmation*(chooser: PFileChooser, 
     do_overwrite_confirmation: gboolean){.cdecl, dynlib: lib, 
     importc: "gtk_file_chooser_set_do_overwrite_confirmation".}
+
+proc get_realized*(w: PWidget): gboolean {.cdecl, dynlib: lib,
+                                           importc: "gtk_widget_get_realized".}
 
 proc nimrod_init*() = 
   var 
