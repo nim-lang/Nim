@@ -586,11 +586,11 @@ proc next*(my: var TXmlParser) =
   of stateNormal:
     getTok(my)  
   of stateStart:
+    my.state = stateNormal
     getTok(my)
     if my.kind == xmlPI and my.a == "xml": 
       # just skip the first ``<?xml >`` processing instruction
       getTok(my)
-    my.state = stateNormal
   of stateAttr:
     # parse an attribute key-value pair:
     if my.buf[my.bufpos] == '>':

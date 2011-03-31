@@ -358,49 +358,120 @@ proc semConst(c: PContext, n: PNode): PNode =
     addSon(b, copyTree(def))
     addSon(result, b)
 
+proc transfFieldLoopBody(n: PNode, forLoop: PNode,
+                         tupleType: PType,
+                         tupleIndex, first: int): PNode = 
+  case n.kind
+  of nkEmpty..pred(nkIdent), succ(nkIdent)..nkNilLit: result = n
+  of nkIdent:
+    result = n
+    var L = sonsLen(forLoop)
+    # field name:
+    if first > 0:
+      if n.ident.id == forLoop[0].ident.id:
+        if tupleType.n == nil: 
+          # ugh, there are no field names:
+          result = newStrNode(nkStrLit, "")
+        else:
+          result = newStrNode(nkStrLit, tupleType.n.sons[tupleIndex].sym.name.s)
+        return
+    # other fields:
+    for i in first..L-3:
+      if n.ident.id == forLoop[i].ident.id:
+        var call = forLoop.sons[L-2]
+        var tupl = call.sons[i+1-first]
+        result = newNodeI(nkBracketExpr, n.info)
+        result.add(tupl)
+        result.add(newIntNode(nkIntLit, tupleIndex))
+        break
+  else:
+    result = copyNode(n)
+    newSons(result, sonsLen(n))
+    for i in countup(0, sonsLen(n)-1):
+      result.sons[i] = transfFieldLoopBody(n.sons[i], forLoop,
+                                           tupleType, tupleIndex, first)
+
+proc semForFields(c: PContext, n: PNode, m: TMagic): PNode = 
+  # so that 'break' etc. work as expected, we produce 
+  # a 'while true: stmt; break' loop ...
+  result = newNodeI(nkWhileStmt, n.info)
+  var trueSymbol = StrTableGet(magicsys.systemModule.Tab, getIdent"true")
+  if trueSymbol == nil: GlobalError(n.info, errSystemNeeds, "true")
+
+  result.add(newSymNode(trueSymbol, n.info))
+  var stmts = newNodeI(nkStmtList, n.info)
+  result.add(stmts)
+  
+  var length = sonsLen(n)
+  var call = n.sons[length-2]
+  if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
+    GlobalError(n.info, errWrongNumberOfVariables)
+  
+  var tupleTypeA = skipTypes(call.sons[1].typ, abstractVar)
+  if tupleTypeA.kind != tyTuple: InternalError(n.info, "no tuple type!")
+  for i in 1..call.len-1:
+    var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar)
+    if not SameType(tupleTypeA, tupleTypeB):
+      typeMismatch(call.sons[i], tupleTypeA, tupleTypeB)
+  
+  Inc(c.p.nestedLoopCounter)
+  var loopBody = n.sons[length-1]
+  for i in 0..sonsLen(tupleTypeA)-1:
+    openScope(c.tab)
+    var body = transfFieldLoopBody(loopBody, n, tupleTypeA, i,
+                                   ord(m==mFieldPairs))
+    stmts.add(SemStmt(c, body))
+    closeScope(c.tab)
+  Dec(c.p.nestedLoopCounter)
+  var b = newNodeI(nkBreakStmt, n.info)
+  b.add(ast.emptyNode)
+  stmts.add(b)
+  
+proc createCountupNode(c: PContext, rangeNode: PNode): PNode = 
+  # convert ``in 3..5`` to ``in countup(3, 5)``
+  checkSonsLen(rangeNode, 2)
+  result = newNodeI(nkCall, rangeNode.info)
+  var countUp = StrTableGet(magicsys.systemModule.Tab, getIdent"countup")
+  if countUp == nil: GlobalError(rangeNode.info, errSystemNeeds, "countup")
+  newSons(result, 3)
+  result.sons[0] = newSymNode(countup)
+  result.sons[1] = rangeNode.sons[0]
+  result.sons[2] = rangeNode.sons[1]
+
 proc semFor(c: PContext, n: PNode): PNode = 
-  var 
-    v, countup: PSym
-    iter: PType
-    countupNode, call: PNode
   result = n
   checkMinSonsLen(n, 3)
   var length = sonsLen(n)
   openScope(c.tab)
-  if n.sons[length - 2].kind == nkRange: 
-    checkSonsLen(n.sons[length - 2], 2) 
-    # convert ``in 3..5`` to ``in countup(3, 5)``
-    countupNode = newNodeI(nkCall, n.sons[length - 2].info)
-    countUp = StrTableGet(magicsys.systemModule.Tab, getIdent("countup"))
-    if countUp == nil: GlobalError(countupNode.info, errSystemNeeds, "countup")
-    newSons(countupNode, 3)
-    countupnode.sons[0] = newSymNode(countup)
-    countupNode.sons[1] = n.sons[length - 2].sons[0]
-    countupNode.sons[2] = n.sons[length - 2].sons[1]
-    n.sons[length - 2] = countupNode
-  n.sons[length - 2] = semExprWithType(c, n.sons[length - 2], {efWantIterator})
-  call = n.sons[length - 2]
-  if (call.kind != nkCall) or (call.sons[0].kind != nkSym) or
-      (call.sons[0].sym.kind != skIterator): 
+  if n.sons[length-2].kind == nkRange:
+    n.sons[length-2] = createCountupNode(c, n.sons[length-2])
+  n.sons[length-2] = semExprWithType(c, n.sons[length-2], {efWantIterator})
+  var call = n.sons[length-2]
+  if call.kind != nkCall or call.sons[0].kind != nkSym or
+      call.sons[0].sym.kind != skIterator: 
     GlobalError(n.sons[length - 2].info, errIteratorExpected)
-  iter = skipTypes(n.sons[length - 2].typ, {tyGenericInst})
-  if iter.kind != tyTuple: 
-    if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
-    v = newSymS(skForVar, n.sons[0], c)
-    v.typ = iter
-    n.sons[0] = newSymNode(v)
-    addDecl(c, v)
-  else: 
-    if length-2 != sonsLen(iter): GlobalError(n.info, errWrongNumberOfVariables)
-    for i in countup(0, length - 3): 
-      v = newSymS(skForVar, n.sons[i], c)
-      v.typ = iter.sons[i]
-      n.sons[i] = newSymNode(v)
+  elif call.sons[0].sym.magic != mNone:
+    result = semForFields(c, n, call.sons[0].sym.magic)
+  else:
+    var iter = skipTypes(n.sons[length-2].typ, {tyGenericInst})
+    if iter.kind != tyTuple: 
+      if length != 3: GlobalError(n.info, errWrongNumberOfVariables)
+      var v = newSymS(skForVar, n.sons[0], c)
+      v.typ = iter
+      n.sons[0] = newSymNode(v)
       addDecl(c, v)
-  Inc(c.p.nestedLoopCounter)
-  n.sons[length - 1] = SemStmt(c, n.sons[length - 1])
+    else: 
+      if length-2 != sonsLen(iter): 
+        GlobalError(n.info, errWrongNumberOfVariables)
+      for i in countup(0, length - 3): 
+        var v = newSymS(skForVar, n.sons[i], c)
+        v.typ = iter.sons[i]
+        n.sons[i] = newSymNode(v)
+        addDecl(c, v)
+    Inc(c.p.nestedLoopCounter)
+    n.sons[length-1] = SemStmt(c, n.sons[length-1])
+    Dec(c.p.nestedLoopCounter)
   closeScope(c.tab)
-  Dec(c.p.nestedLoopCounter)
 
 proc semRaise(c: PContext, n: PNode): PNode = 
   result = n
@@ -435,34 +506,6 @@ proc semTry(c: PContext, n: PNode): PNode =
       illFormedAst(n) 
     # last child of an nkExcept/nkFinally branch is a statement:
     a.sons[length - 1] = semStmtScope(c, a.sons[length - 1])
-
-proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
-  result = copyNode(n)
-  if n.kind != nkGenericParams: InternalError(n.info, "semGenericParamList")
-  for i in countup(0, sonsLen(n)-1): 
-    var a = n.sons[i]
-    if a.kind != nkIdentDefs: illFormedAst(n)
-    var L = sonsLen(a)
-    var def = a.sons[L-1]
-    var typ: PType
-    if a.sons[L-2].kind != nkEmpty: typ = semTypeNode(c, a.sons[L-2], nil)
-    elif def.kind != nkEmpty: typ = newTypeS(tyExpr, c)
-    else: typ = nil
-    for j in countup(0, L-3): 
-      var s: PSym
-      if (typ == nil) or (typ.kind == tyTypeDesc): 
-        s = newSymS(skType, a.sons[j], c)
-        s.typ = newTypeS(tyGenericParam, c)
-      else: 
-        # not a type param, but an expression
-        s = newSymS(skGenericParam, a.sons[j], c)
-        s.typ = typ
-      if def.kind != nkEmpty: s.ast = def
-      s.typ.sym = s
-      if father != nil: addSon(father, s.typ)
-      s.position = i
-      addSon(result, newSymNode(s))
-      addDecl(c, s)
 
 proc addGenericParamListToScope(c: PContext, n: PNode) = 
   if n.kind != nkGenericParams: 
@@ -741,7 +784,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil: 
     LocalError(n.info, errXNeedsReturnType, "iterator")
-  if n.sons[codePos].kind == nkEmpty: 
+  if n.sons[codePos].kind == nkEmpty and s.magic == mNone: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
   
 proc semProc(c: PContext, n: PNode): PNode = 
