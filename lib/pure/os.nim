@@ -1130,6 +1130,12 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1".} =
   when defined(windows): return getEnv("APPDATA") & "\\"
   else: return getEnv("HOME") & "/.config/"
 
+proc getTempDir*(): string {.rtl, extern: "nos$1".} =
+  ## Returns the temporary directory of the current user for applications to
+  ## save temporary files in.
+  when defined(windows): return getEnv("TEMP") & "\\"
+  else: return "/tmp/"
+
 when defined(windows):
   # Since we support GUI applications with Nimrod, we sometimes generate
   # a WinMain entry proc. But a WinMain proc has no access to the parsed

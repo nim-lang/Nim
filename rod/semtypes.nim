@@ -173,12 +173,12 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
   else: 
     GlobalError(n.info, errXExpectsOneTypeParam, "ordinal")
   
-proc semTypeIdent(c: PContext, n: PNode): PSym = 
+proc semTypeIdent(c: PContext, n: PNode): PSym =
   result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
-  if (result != nil): 
+  if result != nil:
     markUsed(n, result)
     if result.kind != skType: GlobalError(n.info, errTypeExpected)
-  else: 
+  else:
     GlobalError(n.info, errIdentifierExpected)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
@@ -441,8 +441,6 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags: 
       addInheritedFields(c, check, pos, concreteBase)
     else:
-      debug base
-      debug concreteBase
       localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
   if n.kind != nkObjectTy: InternalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
@@ -632,10 +630,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) = 
   m.typ.kind = kind
   m.typ.align = size
-  m.typ.size = size           #m.typ.sym := nil;
+  m.typ.size = size
   
 proc processMagicType(c: PContext, m: PSym) = 
-  case m.magic                #registerSysType(m.typ);
+  case m.magic
   of mInt: setMagicType(m, tyInt, intSize)
   of mInt8: setMagicType(m, tyInt8, 1)
   of mInt16: setMagicType(m, tyInt16, 2)
@@ -656,13 +654,70 @@ proc processMagicType(c: PContext, m: PSym) =
   of mEmptySet: 
     setMagicType(m, tySet, 1)
     addSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: 
-    setMagicType(m, tyRange, intSize) #intSetBaseType := m.typ;
-    return 
+  of mIntSetBaseType: setMagicType(m, tyRange, intSize)
   of mNil: setMagicType(m, tyNil, ptrSize)
   of mExpr: setMagicType(m, tyExpr, 0)
   of mStmt: setMagicType(m, tyStmt, 0)
   of mTypeDesc: setMagicType(m, tyTypeDesc, 0)
-  of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: return 
+  of mArray, mOpenArray, mRange, mSet, mSeq, mOrdinal: nil 
   else: GlobalError(m.info, errTypeExpected)
+  
+proc newConstraint(c: PContext, k: TTypeKind): PType = 
+  result = newTypeS(tyOrdinal, c)
+  result.addSon(newTypeS(k, c))
+  
+proc semGenericConstraints(c: PContext, n: PNode, result: PType) = 
+  case n.kind
+  of nkProcTy: result.addSon(newConstraint(c, tyProc))
+  of nkEnumTy: result.addSon(newConstraint(c, tyEnum))
+  of nkObjectTy: result.addSon(newConstraint(c, tyObject))
+  of nkTupleTy: result.addSon(newConstraint(c, tyTuple))
+  of nkDistinctTy: result.addSon(newConstraint(c, tyDistinct))
+  of nkVarTy: result.addSon(newConstraint(c, tyVar))
+  of nkPtrTy: result.addSon(newConstraint(c, tyPtr))
+  of nkRefTy: result.addSon(newConstraint(c, tyRef))
+  of nkInfix: 
+    semGenericConstraints(c, n.sons[1], result)
+    semGenericConstraints(c, n.sons[2], result)
+  else:
+    result.addSon(semTypeNode(c, n, nil))
+
+proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode = 
+  result = copyNode(n)
+  if n.kind != nkGenericParams: InternalError(n.info, "semGenericParamList")
+  for i in countup(0, sonsLen(n)-1): 
+    var a = n.sons[i]
+    if a.kind != nkIdentDefs: illFormedAst(n)
+    var L = sonsLen(a)
+    var def = a.sons[L-1]
+    var typ: PType
+    if a.sons[L-2].kind != nkEmpty: 
+      typ = newTypeS(tyGenericParam, c)
+      semGenericConstraints(c, a.sons[L-2], typ)
+    elif def.kind != nkEmpty: typ = newTypeS(tyExpr, c)
+    else: typ = nil
+    for j in countup(0, L-3): 
+      var s: PSym
+      if typ == nil:
+        s = newSymS(skType, a.sons[j], c)
+        s.typ = newTypeS(tyGenericParam, c)
+      else:
+        case typ.kind
+        of tyTypeDesc: 
+          s = newSymS(skType, a.sons[j], c)
+          s.typ = newTypeS(tyGenericParam, c)
+        of tyExpr:
+          # not a type param, but an expression
+          s = newSymS(skGenericParam, a.sons[j], c)
+          s.typ = typ
+        else:
+          s = newSymS(skType, a.sons[j], c)
+          s.typ = typ
+      if def.kind != nkEmpty: s.ast = def
+      s.typ.sym = s
+      if father != nil: addSon(father, s.typ)
+      s.position = i
+      addSon(result, newSymNode(s))
+      addDecl(c, s)
+
   
