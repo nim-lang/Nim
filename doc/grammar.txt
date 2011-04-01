@@ -137,7 +137,11 @@ pragma ::= '{.' optInd (colonExpr [comma])* optPar ('.}' | '}')
 param ::= symbol (comma symbol)* (':' typeDesc ['=' expr] | '=' expr)
 paramList ::= ['(' [param (comma param)*] optPar ')'] [':' typeDesc]
 
-genericParam ::= symbol [':' typeDesc] ['=' expr]
+genericConstraint ::= 'object' | 'tuple' | 'enum' | 'proc' | 'ref' | 'ptr' 
+                    | 'var' | 'distinct' | primary
+genericConstraints ::= genericConstraint ( '|' optInd genericConstraint )*
+
+genericParam ::= symbol [':' genericConstraints] ['=' expr]
 genericParams ::= '[' genericParam (comma genericParam)* optPar ']'
 
 

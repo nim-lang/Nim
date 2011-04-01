@@ -32,7 +32,10 @@ type
                              # for example
   
   TTypeRelation* = enum      # order is important!
-    isNone, isConvertible, isIntConv, isSubtype, isGeneric, isEqual
+    isNone, isConvertible, isIntConv, isSubtype, 
+    isLifted, # match, but do not change argument type to formal's type!
+    isGeneric, 
+    isEqual
 
 proc initCandidateAux(c: var TCandidate, callee: PType) {.inline.} = 
   c.exactMatches = 0
@@ -144,8 +147,8 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
   else: 
     var k = skipTypes(a, {tyRange}).kind
     if k == f.kind: result = isSubtype
-    elif (f.kind == tyInt) and (k in {tyInt..tyInt32}): result = isIntConv
-    elif (k >= min) and (k <= max): result = isConvertible
+    elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
+    elif k >= min and k <= max: result = isConvertible
     else: result = isNone
   
 proc handleFloatRange(f, a: PType): TTypeRelation = 
@@ -159,7 +162,7 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
   
 proc isObjectSubtype(a, f: PType): bool = 
   var t = a
-  while (t != nil) and (t.id != f.id): t = base(t)
+  while t != nil and t.id != f.id: t = base(t)
   result = t != nil
 
 proc minRel(a, b: TTypeRelation): TTypeRelation = 
@@ -182,11 +185,15 @@ proc tupleRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         var x = f.n.sons[i].sym
         var y = a.n.sons[i].sym
         if x.name.id != y.name.id: return isNone
+  elif sonsLen(f) == 0:
+    idTablePut(mapping, f, a)
+    result = isLifted
+
+proc constraintRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
+  result = isNone
+  if f.kind == a.kind: result = isGeneric
 
 proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation = 
-  var 
-    x, concrete: PType
-    m: TTypeRelation
   # is a subtype of f?
   result = isNone
   assert(f != nil)
@@ -272,9 +279,11 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         if result < isGeneric: result = isNone
     else: nil
   of tyOrdinal: 
-    if isOrdinalType(a): 
-      if a.kind == tyOrdinal: x = a.sons[0]
-      else: x = a
+    if f.sons[0].kind != tyGenericParam: 
+      # some constraint:
+      result = constraintRel(mapping, f.sons[0], a)
+    elif isOrdinalType(a): 
+      var x = if a.kind == tyOrdinal: a.sons[0] else: a
       result = typeRel(mapping, f.sons[0], x)
       if result < isGeneric: result = isNone
   of tyForward: InternalError("forward type in typeRel()")
@@ -319,6 +328,7 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
         # return type!
         result = isEqual      # start with maximum; also correct for no
                               # params at all
+        var m: TTypeRelation
         for i in countup(1, sonsLen(f) - 1): 
           m = typeRel(mapping, f.sons[i], a.sons[i])
           if (m == isNone) and
@@ -392,26 +402,25 @@ proc typeRel(mapping: var TIdTable, f, a: PType): TTypeRelation =
       if result != isNone: 
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1): 
-          x = PType(idTableGet(mapping, f.sons[0].sons[i - 1]))
+          var x = PType(idTableGet(mapping, f.sons[0].sons[i - 1]))
           if (x == nil) or (x.kind == tyGenericParam): 
             InternalError("wrong instantiated type!")
           idTablePut(mapping, f.sons[i], x)
   of tyGenericParam: 
-    x = PType(idTableGet(mapping, f))
+    var x = PType(idTableGet(mapping, f))
     if x == nil: 
       if sonsLen(f) == 0: 
         # no constraints
-        concrete = concreteType(mapping, a)
+        var concrete = concreteType(mapping, a)
         if concrete != nil: 
           #MessageOut('putting: ' + f.sym.name.s);
           idTablePut(mapping, f, concrete)
           result = isGeneric
       else: 
-        InternalError(f.sym.info, "has constraints: " & f.sym.name.s) 
         # check constraints:
         for i in countup(0, sonsLen(f) - 1): 
           if typeRel(mapping, f.sons[i], a) >= isSubtype: 
-            concrete = concreteType(mapping, a)
+            var concrete = concreteType(mapping, a)
             if concrete != nil: 
               idTablePut(mapping, f, concrete)
               result = isGeneric
@@ -484,6 +493,9 @@ proc ParamTypesMatchAux(c: PContext, m: var TCandidate, f, a: PType,
   of isSubtype: 
     inc(m.subtypeMatches)
     result = implicitConv(nkHiddenSubConv, f, copyTree(arg), m, c)
+  of isLifted:
+    inc(m.genericMatches)
+    result = copyTree(arg)
   of isGeneric: 
     inc(m.genericMatches)
     result = copyTree(arg)

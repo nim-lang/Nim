@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -839,17 +839,29 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkType, "type")
     gsub(g, n.sons[0])
   of nkRefTy: 
-    putWithSpace(g, tkRef, "ref")
-    gsub(g, n.sons[0])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkRef, "ref")
+      gsub(g, n.sons[0])
+    else:
+      put(g, tkRef, "ref")
   of nkPtrTy: 
-    putWithSpace(g, tkPtr, "ptr")
-    gsub(g, n.sons[0])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkPtr, "ptr")
+      gsub(g, n.sons[0])
+    else:
+      put(g, tkPtr, "ptr")
   of nkVarTy: 
-    putWithSpace(g, tkVar, "var")
-    gsub(g, n.sons[0])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkVar, "var")
+      gsub(g, n.sons[0])
+    else:
+      put(g, tkVar, "var")
   of nkDistinctTy: 
-    putWithSpace(g, tkDistinct, "distinct")
-    gsub(g, n.sons[0])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkDistinct, "distinct")
+      gsub(g, n.sons[0])
+    else:
+      put(g, tkDistinct, "distinct")
   of nkTypeDef: 
     gsub(g, n.sons[0])
     gsub(g, n.sons[1])
@@ -858,11 +870,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       putWithSpace(g, tkEquals, "=")
       gsub(g, n.sons[2])
   of nkObjectTy: 
-    putWithSpace(g, tkObject, "object")
-    gsub(g, n.sons[0])
-    gsub(g, n.sons[1])
-    gcoms(g)
-    gsub(g, n.sons[2])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkObject, "object")
+      gsub(g, n.sons[0])
+      gsub(g, n.sons[1])
+      gcoms(g)
+      gsub(g, n.sons[2])
+    else:
+      put(g, tkObject, "object")
   of nkRecList: 
     indentNL(g)
     for i in countup(0, sonsLen(n) - 1): 
@@ -875,17 +890,23 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkOf, "of")
     gsub(g, n.sons[0])
   of nkProcTy: 
-    putWithSpace(g, tkProc, "proc")
-    gsub(g, n.sons[0])
-    gsub(g, n.sons[1])
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkProc, "proc")
+      gsub(g, n.sons[0])
+      gsub(g, n.sons[1])
+    else:
+      put(g, tkProc, "proc")
   of nkEnumTy: 
-    putWithSpace(g, tkEnum, "enum")
-    gsub(g, n.sons[0])
-    gcoms(g)
-    indentNL(g)
-    gcommaAux(g, n, g.indent, 1)
-    gcoms(g)                  # BUGFIX: comment for the last enum field
-    dedent(g)
+    if sonsLen(n) > 0:
+      putWithSpace(g, tkEnum, "enum")
+      gsub(g, n.sons[0])
+      gcoms(g)
+      indentNL(g)
+      gcommaAux(g, n, g.indent, 1)
+      gcoms(g)                  # BUGFIX: comment for the last enum field
+      dedent(g)
+    else:
+      put(g, tkEnum, "enum")
   of nkEnumFieldDef: 
     gsub(g, n.sons[0])
     put(g, tkSpaces, Space)
@@ -1033,9 +1054,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
   of nkTupleTy: 
     put(g, tkTuple, "tuple")
-    put(g, tkBracketLe, "[")
-    gcomma(g, n)
-    put(g, tkBracketRi, "]")
+    if sonsLen(n) > 0:
+      put(g, tkBracketLe, "[")
+      gcomma(g, n)
+      put(g, tkBracketRi, "]")
   else: 
     #nkNone, nkMetaNode, nkTableConstr, nkExplicitTypeListCall: 
     InternalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2008 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,14 +30,10 @@ proc finishHash(h: THash): THash {.inline.} =
 
 proc hashData*(Data: Pointer, Size: int): THash = 
   ## hashes an array of bytes of size `size`
-  var 
-    h: THash
-    p: cstring
-    i, s: int
-  h = 0
-  p = cast[cstring](Data)
-  i = 0
-  s = size
+  var h: THash = 0
+  var p = cast[cstring](Data)
+  var i = 0
+  var s = size
   while s > 0: 
     h = concHash(h, ord(p[i]))
     Inc(i)
@@ -62,20 +58,16 @@ proc hash*(x: char): THash {.inline.} =
 
 proc hash*(x: string): THash = 
   ## efficient hashing of strings
-  var h: THash
-  h = 0
+  var h: THash = 0
   for i in 0..x.len-1: 
     h = concHash(h, ord(x[i]))
   result = finishHash(h)
   
 proc hashIgnoreStyle*(x: string): THash = 
   ## efficient hashing of strings; style is ignored
-  var 
-    h: THash
-    c: Char
-  h = 0
+  var h: THash = 0
   for i in 0..x.len-1: 
-    c = x[i]
+    var c = x[i]
     if c == '_': 
       continue                # skip _
     if c in {'A'..'Z'}: 
@@ -85,13 +77,17 @@ proc hashIgnoreStyle*(x: string): THash =
 
 proc hashIgnoreCase*(x: string): THash = 
   ## efficient hashing of strings; case is ignored
-  var 
-    h: THash
-    c: Char
-  h = 0
+  var h: THash = 0
   for i in 0..x.len-1: 
-    c = x[i]
+    var c = x[i]
     if c in {'A'..'Z'}: 
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = concHash(h, ord(c))
   result = finishHash(h)
+  
+proc hash*[T: tuple](x: T): THash = 
+  ## efficient hashing of tuples.
+  for f in fields(x):
+    result = concHash(result, hash(f))
+  result = finishHash(result)
+

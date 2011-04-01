@@ -237,7 +237,7 @@ type
     tyGenericParam,      # ``a`` in the example
     tyDistinct,
     tyEnum,
-    tyOrdinal,
+    tyOrdinal,           # misnamed: should become 'tyConstraint'
     tyArray,
     tyObject,
     tyTuple,
@@ -329,7 +329,9 @@ type
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr, 
     mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet, 
     mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mConArrArr, mConArrT, 
-    mConTArr, mConTT, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
+    mConTArr, mConTT, mSlice, 
+    mFields, mFieldPairs,
+    mAppendStrCh, mAppendStrStr, mAppendSeqElem, 
     mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq, mAssert, 
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast, mNewString, mReset, 
     mArray, mOpenArray, mRange, mSet, mSeq, 
