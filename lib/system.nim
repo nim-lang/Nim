@@ -1213,14 +1213,14 @@ iterator fieldPairs*(x, y: tuple[]): tuple[a, b: expr] {.
   ## in the loop body.
 
 proc `==`*[T: tuple](x, y: T): bool = 
-  ## generic ``==`` operator that is lifted from the components
+  ## generic ``==`` operator for tuples that is lifted from the components
   ## of `x` and `y`.
   for a, b in fields(x, y):
     if a != b: return false
   return true
 
 proc `<=`*[T: tuple](x, y: T): bool = 
-  ## generic ``<=`` operator that is lifted from the components
+  ## generic ``<=`` operator for tuples that is lifted from the components
   ## of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
@@ -1229,7 +1229,7 @@ proc `<=`*[T: tuple](x, y: T): bool =
   return true
 
 proc `<`*[T: tuple](x, y: T): bool = 
-  ## generic ``<`` operator that is lifted from the components
+  ## generic ``<`` operator for tuples that is lifted from the components
   ## of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
@@ -1238,7 +1238,8 @@ proc `<`*[T: tuple](x, y: T): bool =
   return false
 
 proc `$`*[T: tuple](x: T): string = 
-  ## generic ``$`` operator that is lifted from the components of `x`.
+  ## generic ``$`` operator for tuples that is lifted from the components
+  ## of `x`.
   result = "("
   for name, value in fieldPairs(x):
     if result.len > 1: result.add(", ")

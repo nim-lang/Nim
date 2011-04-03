@@ -694,6 +694,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     if a.sons[L-2].kind != nkEmpty: 
       typ = newTypeS(tyGenericParam, c)
       semGenericConstraints(c, a.sons[L-2], typ)
+      if sonsLen(typ) == 1 and typ.sons[0].kind == tyTypeDesc:
+        typ = typ.sons[0]
     elif def.kind != nkEmpty: typ = newTypeS(tyExpr, c)
     else: typ = nil
     for j in countup(0, L-3): 
