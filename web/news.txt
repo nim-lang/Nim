@@ -67,7 +67,8 @@ Additions
 - The *interactive mode* (REPL) has been improved and documented for the 
   first time.
 - Added the ``linearScanEnd``, ``unroll``, ``shallow`` pragmas.
-- Added ``system.reset``.
+- Added ``system.reset`` and a version of ``system.open`` that 
+  returns a ``TFile`` and raises an exception in case of an error.
 - The compiler now might use a hashing for string case statements depending
   on the number of string literals in the case statement.
 

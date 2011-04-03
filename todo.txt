@@ -1,3 +1,4 @@
+- clean up the tests!
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
 - built-in serialization

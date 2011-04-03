@@ -180,7 +180,7 @@ proc cleanAux(dir: string) =
       of "nimcache": 
         echo "removing dir: ", path
         removeDir(path)
-      of "dist", ".bzr":
+      of "dist", ".git":
         nil
       else:
         cleanAux(path)

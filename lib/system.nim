@@ -1477,15 +1477,22 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     ## Opens a file named `filename` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
-    ## This throws no exception if the file could not be opened. The reason is
-    ## that the programmer needs to provide an appropriate error message 
-    ## anyway.
+    ## This throws no exception if the file could not be opened.
 
   proc Open*(f: var TFile, filehandle: TFileHandle,
              mode: TFileMode = fmRead): Bool
     ## Creates a ``TFile`` from a `filehandle` with given `mode`.
     ##
     ## Default mode is readonly. Returns true iff the file could be opened.
+    
+  proc Open*(filename: string,
+             mode: TFileMode = fmRead, bufSize: int = -1): TFile = 
+    ## Opens a file named `filename` with given `mode`.
+    ##
+    ## Default mode is readonly. Raises an ``IO`` exception if the file
+    ## could not be opened.
+    if not open(result, filename, mode, bufSize):
+      raise newException(EIO, "cannot open: " & filename)
 
   proc reopen*(f: TFile, filename: string, mode: TFileMode = fmRead): bool
     ## reopens the file `f` with given `filename` and `mode`. This 
@@ -1582,10 +1589,7 @@ when not defined(EcmaScript) and not defined(NimrodVM):
   iterator lines*(filename: string): string =
     ## Iterate over any line in the file named `filename`.
     ## If the file does not exist `EIO` is raised.
-    var
-      f: TFile
-    if not open(f, filename):
-      raise newException(EIO, "cannot open: " & filename)
+    var f = open(filename)
     var res = ""
     while not endOfFile(f):
       rawReadLine(f, res)
