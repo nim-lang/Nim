@@ -29,9 +29,7 @@ proc considerAcc(n: PNode): PIdent =
     result = nil
 
 proc isTopLevel(c: PContext): bool {.inline.} = 
-  # if we encountered an error, we treat as top-level so that
-  # cascading errors are not that strange:
-  result = c.tab.tos <= 2 or msgs.gErrorCounter > 0
+  result = c.tab.tos <= 2
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym = 
   result = newSym(kind, considerAcc(n), getCurrOwner())
@@ -166,7 +164,7 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   if (c.p != nil): InternalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExprNoFlags
-  c.p = newProcCon(module)
+  pushProcCon(c, module)
   pushOwner(c.module)
   openScope(c.tab)            # scope for imported symbols
   SymTabAdd(c.tab, module)    # a module knows itself
@@ -179,7 +177,8 @@ proc myOpen(module: PSym, filename: string): PPassContext =
   openScope(c.tab)            # scope for the module's symbols  
   result = c
 
-proc myOpenCached(module: PSym, filename: string, rd: PRodReader): PPassContext = 
+proc myOpenCached(module: PSym, filename: string, 
+                  rd: PRodReader): PPassContext = 
   var c = PContext(myOpen(module, filename))
   c.fromCache = true
   result = c
@@ -195,6 +194,14 @@ proc SemStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       if result.kind != nkEmpty: addSon(a, result)
       result = a
 
+proc RecoverContext(c: PContext) = 
+  # clean up in case of a semantic error: We clean up the stacks, etc. This is
+  # faster than wrapping every stack operation in a 'try finally' block and 
+  # requires far less code.
+  while c.tab.tos-1 > ModuleTablePos: rawCloseScope(c.tab)
+  while getCurrOwner().kind != skModule: popOwner()
+  while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
+
 proc myProcess(context: PPassContext, n: PNode): PNode = 
   var c = PContext(context)    
   # no need for an expensive 'try' if we stop after the first error anyway:
@@ -204,6 +211,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
     try:
       result = SemStmtAndGenerateGenerics(c, n)
     except ERecoverableError:
+      RecoverContext(c)
       result = ast.emptyNode
   
 proc myClose(context: PPassContext, n: PNode): PNode = 
@@ -216,7 +224,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
     InternalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   popOwner()
-  c.p = nil
+  popProcCon(c)
 
 proc semPass(): TPass = 
   initPass(result)
