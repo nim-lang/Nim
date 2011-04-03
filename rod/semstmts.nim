@@ -638,7 +638,6 @@ proc semLambda(c: PContext, n: PNode): PNode =
   checkSonsLen(n, codePos + 1)
   var s = newSym(skProc, getIdent(":anonymous"), getCurrOwner())
   s.info = n.info
-  var oldP = c.p                  # restore later
   s.ast = n
   n.sons[namePos] = newSymNode(s)
   pushOwner(s)
@@ -658,15 +657,15 @@ proc semLambda(c: PContext, n: PNode): PNode =
   if n.sons[codePos].kind != nkEmpty: 
     if sfImportc in s.flags: 
       LocalError(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
-    c.p = newProcCon(s)
+    pushProcCon(c, s)
     addResult(c, s.typ.sons[0], n.info)
     n.sons[codePos] = semStmtScope(c, n.sons[codePos])
     addResultNode(c, n)
+    popProcCon(c)
   else: 
     LocalError(n.info, errImplOfXexpected, s.name.s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
-  c.p = oldP                  # restore
   result.typ = s.typ
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
@@ -678,7 +677,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   checkSonsLen(n, codePos + 1)
   var s = semIdentDef(c, n.sons[0], kind)
   n.sons[namePos] = newSymNode(s)
-  var oldP = c.p                  # restore later
   if sfStar in s.flags: incl(s.flags, sfInInterface)
   s.ast = n
   pushOwner(s)
@@ -704,7 +702,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   proto = SearchForProc(c, s, c.tab.tos - 2) # -2 because we have a scope open
                                              # for parameters
   if proto == nil: 
-    if oldP.owner.kind != skModule: 
+    if c.p.owner.kind != skModule: 
       s.typ.callConv = ccClosure
     else: 
       s.typ.callConv = lastOptionEntry(c).defaultCC 
@@ -743,13 +741,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfBorrow in s.flags: 
       LocalError(n.sons[codePos].info, errImplOfXNotAllowed, s.name.s)
     if n.sons[genericParamsPos].kind == nkEmpty: 
-      c.p = newProcCon(s)
+      pushProcCon(c, s)
       if (s.typ.sons[0] != nil) and (kind != skIterator): 
         addResult(c, s.typ.sons[0], n.info)
       if sfImportc notin s.flags: 
         # no semantic checking for importc:
         n.sons[codePos] = semStmtScope(c, n.sons[codePos])
       if s.typ.sons[0] != nil and kind != skIterator: addResultNode(c, n)
+      popProcCon(c)
     else: 
       if s.typ.sons[0] != nil and kind != skIterator: 
         addDecl(c, newSym(skUnknown, getIdent("result"), nil))
@@ -764,7 +763,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   sideEffectsCheck(c, s)
   closeScope(c.tab)           # close scope for parameters
   popOwner()
-  c.p = oldP                  # restore
   
 proc semIterator(c: PContext, n: PNode): PNode = 
   result = semProcAux(c, n, skIterator, iteratorPragmas)

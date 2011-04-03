@@ -23,14 +23,15 @@ type
     Notes*: TNoteKinds
 
   POptionEntry* = ref TOptionEntry
+  PProcCon* = ref TProcCon
   TProcCon*{.final.} = object # procedure context; also used for top-level
                               # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
+    next*: PProcCon           # used for stacking procedure contexts
   
-  PProcCon* = ref TProcCon
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym             # the module sym belonging to the context
@@ -58,7 +59,6 @@ var gInstTypes*: TIdTable # map PType to PType
 
 proc newContext*(module: PSym, nimfile: string): PContext
 
-proc newProcCon*(owner: PSym): PProcCon
 proc lastOptionEntry*(c: PContext): POptionEntry
 proc newOptionEntry*(): POptionEntry
 proc addConverter*(c: PContext, conv: PSym)
@@ -97,10 +97,15 @@ proc PopOwner() =
 proc lastOptionEntry(c: PContext): POptionEntry = 
   result = POptionEntry(c.optionStack.tail)
 
-proc newProcCon(owner: PSym): PProcCon = 
+proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
   if owner == nil: InternalError("owner is nil")
-  new(result)
-  result.owner = owner
+  var x: PProcCon
+  new(x)
+  x.owner = owner
+  x.next = c.p
+  c.p = x
+
+proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc newOptionEntry(): POptionEntry = 
   new(result)

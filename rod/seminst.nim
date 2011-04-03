@@ -68,13 +68,12 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # generates an instantiated proc
   var 
     oldPrc, oldMod: PSym
-    oldP: PProcCon
     n: PNode
   if c.InstCounter > 1000: InternalError(fn.ast.info, "nesting too deep")
   inc(c.InstCounter)
-  oldP = c.p # restore later
   # NOTE: for access of private fields within generics from a different module
   # and other identifiers we fake the current module temporarily!
+  # XXX bad hack!
   oldMod = c.module
   c.module = getModule(fn)
   result = copySym(fn, false)
@@ -105,17 +104,17 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     GenericCacheAdd(c, fn, result)
     addDecl(c, result)
     if n.sons[codePos].kind != nkEmpty: 
-      c.p = newProcCon(result)
+      pushProcCon(c, result)
       if result.kind in {skProc, skMethod, skConverter}: 
         addResult(c, result.typ.sons[0], n.info)
         addResultNode(c, n)
       n.sons[codePos] = semStmtScope(c, n.sons[codePos])
-  else: 
+      popProcCon(c)
+  else:
     result = oldPrc
   popInfoContext()
   closeScope(c.tab)           # close scope for parameters
   popOwner()
-  c.p = oldP                  # restore
   c.module = oldMod
   dec(c.InstCounter)
   
