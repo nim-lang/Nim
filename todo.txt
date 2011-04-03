@@ -1,4 +1,5 @@
 - clean up the tests!
+- GC: marker procs for native Nimrod GC and Boehm GC
 - thread support: threadvar on Windows seems broken; 
   add --deadlock_prevention:on|off switch
 - built-in serialization
