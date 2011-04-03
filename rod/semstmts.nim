@@ -85,7 +85,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
     of nkIdent: s = lookUp(c, n.sons[0])
     of nkSym: s = n.sons[0].sym
     else: illFormedAst(n)
-    if (s.kind == skLabel) and (s.owner.id == c.p.owner.id): 
+    if s.kind == skLabel and s.owner.id == c.p.owner.id: 
       var x = newSymNode(s)
       x.info = n.info
       incl(s.flags, sfUsed)
@@ -266,6 +266,13 @@ proc fitRemoveHiddenConv(c: PContext, typ: Ptype, n: PNode): PNode =
   elif not sameType(result.typ, typ): 
     changeType(result, typ)
   
+proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
+  if isTopLevel(c): 
+    result = semIdentWithPragma(c, kind, n, {sfStar, sfMinus})
+    incl(result.flags, sfGlobal)
+  else: 
+    result = semIdentWithPragma(c, kind, n, {})
+  
 proc semVar(c: PContext, n: PNode): PNode = 
   var b: PNode
   result = copyNode(n)
@@ -304,13 +311,8 @@ proc semVar(c: PContext, n: PNode): PNode =
       b.sons[length - 2] = ast.emptyNode # no type desc
       b.sons[length - 1] = def
       addSon(result, b)
-    for j in countup(0, length - 3): 
-      var v: PSym
-      if (c.p.owner.kind == skModule): 
-        v = semIdentWithPragma(c, skVar, a.sons[j], {sfStar, sfMinus})
-        incl(v.flags, sfGlobal)
-      else: 
-        v = semIdentWithPragma(c, skVar, a.sons[j], {})
+    for j in countup(0, length-3): 
+      var v = semIdentDef(c, a.sons[j], skVar)
       if v.flags * {sfStar, sfMinus} != {}: incl(v.flags, sfInInterface)
       addInterfaceDecl(c, v)
       if a.kind != nkVarTuple: 
@@ -332,12 +334,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind == nkCommentStmt: continue 
     if (a.kind != nkConstDef): IllFormedAst(a)
     checkSonsLen(a, 3)
-    var v: PSym
-    if (c.p.owner.kind == skModule): 
-      v = semIdentWithPragma(c, skConst, a.sons[0], {sfStar, sfMinus})
-      incl(v.flags, sfGlobal)
-    else: 
-      v = semIdentWithPragma(c, skConst, a.sons[0], {})
+    var v = semIdentDef(c, a.sons[0], skConst)
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
     var def = semAndEvalConstExpr(c, a.sons[2]) 
@@ -524,12 +521,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue 
     if a.kind != nkTypeDef: IllFormedAst(a)
     checkSonsLen(a, 3)
-    var s: PSym
-    if c.p.owner.kind == skModule: 
-      s = semIdentWithPragma(c, skType, a.sons[0], {sfStar, sfMinus})
-      incl(s.flags, sfGlobal)
-    else: 
-      s = semIdentWithPragma(c, skType, a.sons[0], {})
+    var s = semIdentDef(c, a.sons[0], skType)
     if s.flags * {sfStar, sfMinus} != {}: incl(s.flags, sfInInterface)
     s.typ = newTypeS(tyForward, c)
     s.typ.sym = s             # process pragmas:
@@ -547,7 +539,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     checkSonsLen(a, 3)
     if (a.sons[0].kind != nkSym): IllFormedAst(a)
     var s = a.sons[0].sym
-    if (s.magic == mNone) and (a.sons[2].kind == nkEmpty): 
+    if s.magic == mNone and a.sons[2].kind == nkEmpty: 
       GlobalError(a.info, errImplOfXexpected, s.name.s)
     if s.magic != mNone: processMagicType(c, s)
     if a.sons[1].kind != nkEmpty: 
@@ -680,15 +672,11 @@ proc semLambda(c: PContext, n: PNode): PNode =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind, 
                 validPragmas: TSpecialWords): PNode = 
   var 
-    s, proto: PSym
+    proto: PSym
     gp: PNode
   result = n
   checkSonsLen(n, codePos + 1)
-  if c.p.owner.kind == skModule: 
-    s = semIdentVis(c, kind, n.sons[0], {sfStar})
-    incl(s.flags, sfGlobal)
-  else: 
-    s = semIdentVis(c, kind, n.sons[0], {})
+  var s = semIdentDef(c, n.sons[0], kind)
   n.sons[namePos] = newSymNode(s)
   var oldP = c.p                  # restore later
   if sfStar in s.flags: incl(s.flags, sfInInterface)

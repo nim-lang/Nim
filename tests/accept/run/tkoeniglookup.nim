@@ -9,8 +9,8 @@ type
   TMyObj = object
     x, y: int
 
-proc `$`*(a: TMyObj): bool = 
-  result = "x: " & a.x & " y: " & a.y
+proc `$`*(a: TMyObj): string = 
+  result = "x: " & $a.x & " y: " & $a.y
 
 var a: TMyObj
 echo toString(a)
