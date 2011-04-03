@@ -265,7 +265,10 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
   # reference is in the stack or not (this can happen for var parameters).
   if not IsOnStack(dest):
     if src != nil: incRef(usrToCell(src))
-    if dest^ != nil: decRef(usrToCell(dest^))
+    # XXX finally use assembler for the stack checking instead!
+    # the test for '!= nil' is correct, but I got tired of the segfaults
+    # resulting from the crappy stack checking:
+    if cast[int](dest^) >=% PageSize: decRef(usrToCell(dest^))
   dest^ = src
 
 proc initGC() =

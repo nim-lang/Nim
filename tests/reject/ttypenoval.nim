@@ -1,5 +1,5 @@
 discard """
-  file: "tambsym.nim"
+  file: "ttypenoval.nim"
   line: 36
   errormsg: "a type has no value"
 """

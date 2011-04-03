@@ -333,11 +333,11 @@ proc parse(x: var TXmlParser, errors: var seq[string]): PXmlNode =
   of xmlElementOpen: 
     result = newElement(x.elementName.toLower)
     next(x)
-    result.attr = newStringTable()
+    result.attrs = newStringTable()
     while true: 
       case x.kind
       of xmlAttribute:
-        result.attr[x.attrKey] = x.attrValue
+        result.attrs[x.attrKey] = x.attrValue
         next(x)
       of xmlElementClose:
         next(x)
