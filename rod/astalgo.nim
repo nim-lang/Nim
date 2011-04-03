@@ -64,8 +64,8 @@ proc NextIter*(ti: var TTabIter, tab: TStrTable): PSym
   #
 
 type 
-  TIdentIter*{.final.} = object # iterator over all syms with the same identifier
-    h*: THash                 # current hash
+  TIdentIter*{.final.} = object # iterator over all syms with same identifier
+    h*: THash                   # current hash
     name*: PIdent
 
 
@@ -123,7 +123,7 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
 proc getModule*(s: PSym): PSym
 proc mustRehash*(length, counter: int): bool
-proc nextTry*(h, maxHash: THash): THash
+proc nextTry*(h, maxHash: THash): THash {.inline.}
 
 # ------------- table[int, int] ---------------------------------------------
 const 
@@ -193,19 +193,17 @@ proc toYamlChar(c: Char): string =
   case c
   of '\0'..'\x1F', '\x80'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
   of '\'', '\"', '\\': result = '\\' & c
-  else: result = c & ""
+  else: result = $c
   
 proc makeYamlString*(s: string): PRope = 
   # We have to split long strings into many ropes. Otherwise
   # this could trigger InternalError(111). See the ropes module for
   # further information.
-  const 
-    MaxLineLength = 64
-  var res: string
+  const MaxLineLength = 64
   result = nil
-  res = "\""
-  for i in countup(0, len(s) + 0 - 1): 
-    if (i - 0 + 1) mod MaxLineLength == 0: 
+  var res = "\""
+  for i in countup(0, len(s) - 1): 
+    if (i + 1) mod MaxLineLength == 0: 
       add(res, '\"')
       add(res, "\n")
       app(result, toRope(res))
@@ -229,17 +227,17 @@ proc lineInfoToStr(info: TLineInfo): PRope =
                                   toRope(toLinenumber(info)), 
                                   toRope(toColumn(info))])
 
-proc treeToYamlAux(n: PNode, marker: var TIntSet, indent, maxRecDepth: int): PRope
-proc symToYamlAux(n: PSym, marker: var TIntSet, indent, maxRecDepth: int): PRope
-proc typeToYamlAux(n: PType, marker: var TIntSet, indent, maxRecDepth: int): PRope
+proc treeToYamlAux(n: PNode, marker: var TIntSet, 
+                   indent, maxRecDepth: int): PRope
+proc symToYamlAux(n: PSym, marker: var TIntSet, 
+                  indent, maxRecDepth: int): PRope
+proc typeToYamlAux(n: PType, marker: var TIntSet, 
+                   indent, maxRecDepth: int): PRope
 proc strTableToYaml(n: TStrTable, marker: var TIntSet, indent: int, 
                     maxRecDepth: int): PRope = 
-  var 
-    istr: PRope
-    mycount: int
-  istr = spaces(indent + 2)
+  var istr = spaces(indent + 2)
   result = toRope("[")
-  mycount = 0
+  var mycount = 0
   for i in countup(0, high(n.data)): 
     if n.data[i] != nil: 
       if mycount > 0: app(result, ",")
@@ -252,12 +250,9 @@ proc strTableToYaml(n: TStrTable, marker: var TIntSet, indent: int,
 
 proc ropeConstr(indent: int, c: openarray[PRope]): PRope = 
   # array of (name, value) pairs
-  var 
-    istr: PRope
-    i: int
-  istr = spaces(indent + 2)
+  var istr = spaces(indent + 2)
   result = toRope("{")
-  i = 0
+  var i = 0
   while i <= high(c): 
     if i > 0: app(result, ",")
     appf(result, "$n$1\"$2\": $3", [istr, c[i], c[i + 1]])
@@ -315,13 +310,11 @@ proc typeToYamlAux(n: PType, marker: var TIntSet, indent: int,
 
 proc treeToYamlAux(n: PNode, marker: var TIntSet, indent: int, 
                    maxRecDepth: int): PRope = 
-  var istr: PRope
   if n == nil: 
     result = toRope("null")
   else: 
-    istr = spaces(indent + 2)
-    result = ropef("{$n$1\"kind\": $2", 
-                   [istr, makeYamlString($n.kind)])
+    var istr = spaces(indent + 2)
+    result = ropef("{$n$1\"kind\": $2", [istr, makeYamlString($n.kind)])
     if maxRecDepth != 0: 
       appf(result, ",$n$1\"info\": $2", [istr, lineInfoToStr(n.info)])
       case n.kind
@@ -386,11 +379,10 @@ proc debugType(n: PType): PRope =
       app(result, ")")
 
 proc debugTree(n: PNode, indent: int, maxRecDepth: int): PRope = 
-  var istr: PRope
   if n == nil: 
     result = toRope("null")
   else: 
-    istr = spaces(indent + 2)
+    var istr = spaces(indent + 2)
     result = ropef("{$n$1\"kind\": $2", 
                    [istr, makeYamlString($n.kind)])
     if maxRecDepth != 0: 
@@ -443,8 +435,7 @@ proc nextTry(h, maxHash: THash): THash =
   
 proc objectSetContains(t: TObjectSet, obj: PObject): bool = 
   # returns true whether n is in t
-  var h: THash
-  h = hashNode(obj) and high(t.data) # start with real hash value
+  var h: THash = hashNode(obj) and high(t.data) # start with real hash value
   while t.data[h] != nil: 
     if (t.data[h] == obj): 
       return true
@@ -452,8 +443,7 @@ proc objectSetContains(t: TObjectSet, obj: PObject): bool =
   result = false
 
 proc objectSetRawInsert(data: var TObjectSeq, obj: PObject) = 
-  var h: THash
-  h = HashNode(obj) and high(data)
+  var h: THash = HashNode(obj) and high(data)
   while data[h] != nil: 
     assert(data[h] != obj)
     h = nextTry(h, high(data))
@@ -474,12 +464,9 @@ proc objectSetIncl(t: var TObjectSet, obj: PObject) =
 
 proc objectSetContainsOrIncl(t: var TObjectSet, obj: PObject): bool = 
   # returns true if obj is already in the string table:
-  var 
-    h: THash
-    it: PObject
-  h = HashNode(obj) and high(t.data)
+  var h: THash = HashNode(obj) and high(t.data)
   while true: 
-    it = t.data[h]
+    var it = t.data[h]
     if it == nil: break 
     if it == obj: 
       return true             # found it
@@ -494,20 +481,18 @@ proc objectSetContainsOrIncl(t: var TObjectSet, obj: PObject): bool =
   result = false
 
 proc TableRawGet(t: TTable, key: PObject): int = 
-  var h: THash
-  h = hashNode(key) and high(t.data) # start with real hash value
+  var h: THash = hashNode(key) and high(t.data) # start with real hash value
   while t.data[h].key != nil: 
-    if (t.data[h].key == key): 
+    if t.data[h].key == key: 
       return h
     h = nextTry(h, high(t.data))
-  result = - 1
+  result = -1
 
 proc TableSearch(t: TTable, key, closure: PObject, 
                  comparator: TCmpProc): PObject = 
-  var h: THash
-  h = hashNode(key) and high(t.data) # start with real hash value
+  var h: THash = hashNode(key) and high(t.data) # start with real hash value
   while t.data[h].key != nil: 
-    if (t.data[h].key == key): 
+    if t.data[h].key == key: 
       if comparator(t.data[h].val, closure): 
         # BUGFIX 1
         return t.data[h].val
@@ -520,8 +505,7 @@ proc TableGet(t: TTable, key: PObject): PObject =
   else: result = nil
   
 proc TableRawInsert(data: var TPairSeq, key, val: PObject) = 
-  var h: THash
-  h = HashNode(key) and high(data)
+  var h: THash = HashNode(key) and high(data)
   while data[h].key != nil: 
     assert(data[h].key != key)
     h = nextTry(h, high(data))
@@ -546,8 +530,7 @@ proc TablePut(t: var TTable, key, val: PObject) =
     inc(t.counter)
 
 proc StrTableContains(t: TStrTable, n: PSym): bool = 
-  var h: THash
-  h = n.name.h and high(t.data) # start with real hash value
+  var h: THash = n.name.h and high(t.data) # start with real hash value
   while t.data[h] != nil: 
     if (t.data[h] == n): 
       return true
@@ -555,8 +538,7 @@ proc StrTableContains(t: TStrTable, n: PSym): bool =
   result = false
 
 proc StrTableRawInsert(data: var TSymSeq, n: PSym) = 
-  var h: THash
-  h = n.name.h and high(data)
+  var h: THash = n.name.h and high(data)
   while data[h] != nil: 
     if data[h] == n: InternalError(n.info, "StrTableRawInsert: " & n.name.s)
     h = nextTry(h, high(data))
@@ -579,12 +561,9 @@ proc StrTableIncl*(t: var TStrTable, n: PSym): bool =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
-  var 
-    h: THash
-    it: PSym
-  h = n.name.h and high(t.data)
+  var h: THash = n.name.h and high(t.data)
   while true: 
-    it = t.data[h]
+    var it = t.data[h]
     if it == nil: break 
     if it.name.id == n.name.id: 
       t.data[h] = n           # overwrite it with newer definition!
@@ -600,8 +579,7 @@ proc StrTableIncl*(t: var TStrTable, n: PSym): bool =
   result = false
 
 proc StrTableGet(t: TStrTable, name: PIdent): PSym = 
-  var h: THash
-  h = name.h and high(t.data)
+  var h: THash = name.h and high(t.data)
   while true: 
     result = t.data[h]
     if result == nil: break 
@@ -619,7 +597,7 @@ proc NextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
   h = ti.h and high(tab.data)
   start = h
   result = tab.data[h]
-  while (result != nil): 
+  while result != nil: 
     if result.Name.id == ti.name.id: break 
     h = nextTry(h, high(tab.data))
     if h == start: 
@@ -627,6 +605,29 @@ proc NextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
       break 
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
+  
+proc NextIdentExcluding*(ti: var TIdentIter, tab: TStrTable, 
+                         excluding: TIntSet): PSym =
+  var h: THash = ti.h and high(tab.data)
+  var start = h
+  result = tab.data[h]
+  while result != nil: 
+    if result.Name.id == ti.name.id and 
+        not IntSetContains(excluding, result.id): break
+    h = nextTry(h, high(tab.data))
+    if h == start: 
+      result = nil
+      break 
+    result = tab.data[h]
+  ti.h = nextTry(h, high(tab.data))
+  if result != nil and IntSetContains(excluding, result.id): result = nil
+
+proc FirstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
+                          excluding: TIntSet): PSym = 
+  ti.h = s.h
+  ti.name = s
+  if tab.Counter == 0: result = nil
+  else: result = NextIdentExcluding(ti, tab, excluding)
 
 proc InitTabIter(ti: var TTabIter, tab: TStrTable): PSym = 
   ti.h = 0                    # we start by zero ...

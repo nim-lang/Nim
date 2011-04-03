@@ -64,10 +64,8 @@ proc getIdentNode(n: PNode): PNode =
 #    if withinBind in flags: result = symChoice(c, n, s)
 #    else: result = semGenericStmtSymbol(c, n, s)
 
-proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode = 
-  var 
-    L: int
-    a: PNode
+proc semGenericStmt(c: PContext, n: PNode, 
+                    flags: TSemGenericFlags = {}): PNode = 
   result = n
   if gCmd == cmdIdeTools: suggestStmt(c, n)
   case n.kind
@@ -124,14 +122,14 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     openScope(c.tab)
     n.sons[0] = semGenericStmt(c, n.sons[0])
     for i in countup(1, sonsLen(n)-1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       checkMinSonsLen(a, 1)
-      L = sonsLen(a)
+      var L = sonsLen(a)
       for j in countup(0, L - 2): a.sons[j] = semGenericStmt(c, a.sons[j])
       a.sons[L - 1] = semGenericStmtScope(c, a.sons[L - 1])
     closeScope(c.tab)
   of nkForStmt: 
-    L = sonsLen(n)
+    var L = sonsLen(n)
     openScope(c.tab)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L - 2])
     for i in countup(0, L - 3): addDecl(c, newSymS(skUnknown, n.sons[i], c))
@@ -147,36 +145,36 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     checkMinSonsLen(n, 2)
     n.sons[0] = semGenericStmtScope(c, n.sons[0])
     for i in countup(1, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       checkMinSonsLen(a, 1)
-      L = sonsLen(a)
+      var L = sonsLen(a)
       for j in countup(0, L - 2): 
         a.sons[j] = semGenericStmt(c, a.sons[j], {withinTypeDesc})
       a.sons[L - 1] = semGenericStmtScope(c, a.sons[L - 1])
   of nkVarSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): IllFormedAst(a)
       checkMinSonsLen(a, 3)
-      L = sonsLen(a)
-      a.sons[L - 2] = semGenericStmt(c, a.sons[L - 2], {withinTypeDesc})
-      a.sons[L - 1] = semGenericStmt(c, a.sons[L - 1])
-      for j in countup(0, L - 3): 
+      var L = sonsLen(a)
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], {withinTypeDesc})
+      a.sons[L-1] = semGenericStmt(c, a.sons[L-1])
+      for j in countup(0, L-3):
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkGenericParams: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if (a.kind != nkIdentDefs): IllFormedAst(a)
       checkMinSonsLen(a, 3)
-      L = sonsLen(a)
-      a.sons[L - 2] = semGenericStmt(c, a.sons[L - 2], {withinTypeDesc}) 
+      var L = sonsLen(a)
+      a.sons[L-2] = semGenericStmt(c, a.sons[L-2], {withinTypeDesc}) 
       # do not perform symbol lookup for default expressions 
-      for j in countup(0, L - 3): 
+      for j in countup(0, L-3): 
         addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[j]), c))
   of nkConstSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkConstDef): IllFormedAst(a)
       checkSonsLen(a, 3)
@@ -185,13 +183,13 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
       a.sons[2] = semGenericStmt(c, a.sons[2])
   of nkTypeSection: 
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkTypeDef): IllFormedAst(a)
       checkSonsLen(a, 3)
       addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[0]), c))
     for i in countup(0, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if a.kind == nkCommentStmt: continue 
       if (a.kind != nkTypeDef): IllFormedAst(a)
       checkSonsLen(a, 3)
@@ -207,6 +205,7 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     if n.sons[0].kind != nkEmpty: 
       n.sons[0] = semGenericStmt(c, n.sons[0], {withinTypeDesc})
     for i in countup(1, sonsLen(n) - 1): 
+      var a: PNode
       case n.sons[i].kind
       of nkEnumFieldDef: a = n.sons[i].sons[0]
       of nkIdent: a = n.sons[i]
@@ -219,10 +218,10 @@ proc semGenericStmt(c: PContext, n: PNode, flags: TSemGenericFlags = {}): PNode 
     if n.sons[0].kind != nkEmpty: 
       n.sons[0] = semGenericStmt(c, n.sons[0], {withinTypeDesc})
     for i in countup(1, sonsLen(n) - 1): 
-      a = n.sons[i]
+      var a = n.sons[i]
       if (a.kind != nkIdentDefs): IllFormedAst(a)
       checkMinSonsLen(a, 3)
-      L = sonsLen(a)
+      var L = sonsLen(a)
       a.sons[L-2] = semGenericStmt(c, a.sons[L-2], {withinTypeDesc})
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1])
       for j in countup(0, L-3): 

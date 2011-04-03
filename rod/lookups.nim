@@ -14,12 +14,14 @@ import
 
 type 
   TOverloadIterMode* = enum 
-    oimDone, oimNoQualifier, oimSelfModule, oimOtherModule, oimSymChoice
+    oimDone, oimNoQualifier, oimSelfModule, oimOtherModule, oimSymChoice,
+    oimSymChoiceLocalLookup
   TOverloadIter*{.final.} = object 
     stackPtr*: int
     it*: TIdentIter
     m*: PSym
     mode*: TOverloadIterMode
+    inSymChoice: TIntSet
 
 proc getSymRepr*(s: PSym): string = 
   case s.kind
@@ -27,12 +29,10 @@ proc getSymRepr*(s: PSym): string =
   else: result = s.name.s
   
 proc CloseScope*(tab: var TSymTab) = 
-  var 
-    it: TTabIter
-    s: PSym
   # check if all symbols have been used and defined:
   if (tab.tos > len(tab.stack)): InternalError("CloseScope")
-  s = InitTabIter(it, tab.stack[tab.tos - 1])
+  var it: TTabIter
+  var s = InitTabIter(it, tab.stack[tab.tos-1])
   while s != nil: 
     if sfForward in s.flags: 
       LocalError(s.info, errImplOfXexpected, getSymRepr(s))
@@ -40,7 +40,7 @@ proc CloseScope*(tab: var TSymTab) =
         (optHints in s.options): # BUGFIX: check options in s!
       if not (s.kind in {skForVar, skParam, skMethod, skUnknown}): 
         Message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
-    s = NextIter(it, tab.stack[tab.tos - 1])
+    s = NextIter(it, tab.stack[tab.tos-1])
   astalgo.rawCloseScope(tab)
 
 proc AddSym*(t: var TStrTable, n: PSym) = 
@@ -144,12 +144,11 @@ proc QualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
   if (result != nil) and (result.kind == skStub): loadStub(result)
   
 proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
-  result = nil
   case n.kind
   of nkIdent: 
     o.stackPtr = c.tab.tos
     o.mode = oimNoQualifier
-    while (result == nil): 
+    while result == nil: 
       dec(o.stackPtr)
       if o.stackPtr < 0: break 
       result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], n.ident)
@@ -159,12 +158,12 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of nkDotExpr: 
     o.mode = oimOtherModule
     o.m = qualifiedLookUp(c, n.sons[0])
-    if (o.m != nil) and (o.m.kind == skModule): 
+    if o.m != nil and o.m.kind == skModule:
       var ident: PIdent = nil
-      if (n.sons[1].kind == nkIdent): 
+      if n.sons[1].kind == nkIdent: 
         ident = n.sons[1].ident
-      elif (n.sons[1].kind == nkAccQuoted) and
-          (n.sons[1].sons[0].kind == nkIdent): 
+      elif n.sons[1].kind == nkAccQuoted and
+          n.sons[1].sons[0].kind == nkIdent: 
         ident = n.sons[1].sons[0].ident
       if ident != nil: 
         if o.m == c.module: 
@@ -182,9 +181,10 @@ proc InitOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimSymChoice
     result = n.sons[0].sym
     o.stackPtr = 1
-  else: 
-    nil
-  if (result != nil) and (result.kind == skStub): loadStub(result)
+    IntSetInit(o.inSymChoice)
+    IntSetIncl(o.inSymChoice, result.id)
+  else: nil
+  if result != nil and result.kind == skStub: loadStub(result)
   
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym = 
   case o.mode
@@ -192,10 +192,10 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     result = nil
   of oimNoQualifier: 
     if n.kind == nkAccQuoted: 
-      result = nextOverloadIter(o, c, n.sons[0]) # BUGFIX
+      result = nextOverloadIter(o, c, n.sons[0])
     elif o.stackPtr >= 0: 
       result = nextIdentIter(o.it, c.tab.stack[o.stackPtr])
-      while (result == nil): 
+      while result == nil: 
         dec(o.stackPtr)
         if o.stackPtr < 0: break 
         result = InitIdentIter(o.it, c.tab.stack[o.stackPtr], o.it.name) 
@@ -209,8 +209,26 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSymChoice: 
     if o.stackPtr < sonsLen(n): 
       result = n.sons[o.stackPtr].sym
+      IntSetIncl(o.inSymChoice, result.id)
       inc(o.stackPtr)
-    else: 
-      result = nil
-  if (result != nil) and (result.kind == skStub): loadStub(result)
+    else:
+      # try 'local' symbols too for Koenig's lookup:
+      o.mode = oimSymChoiceLocalLookup
+      o.stackPtr = c.tab.tos-1
+      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+                                   n.sons[0].sym.name, o.inSymChoice)
+      while result == nil:
+        dec(o.stackPtr)
+        if o.stackPtr < 0: break 
+        result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+                                     n.sons[0].sym.name, o.inSymChoice)
+  of oimSymChoiceLocalLookup:
+    result = nextIdentExcluding(o.it, c.tab.stack[o.stackPtr], o.inSymChoice)
+    while result == nil:
+      dec(o.stackPtr)
+      if o.stackPtr < 0: break 
+      result = FirstIdentExcluding(o.it, c.tab.stack[o.stackPtr], 
+                                   n.sons[0].sym.name, o.inSymChoice)
+  
+  if result != nil and result.kind == skStub: loadStub(result)
   
