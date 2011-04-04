@@ -1038,7 +1038,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprStr($1)", [rdLoc(a)]))
   of tySet:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprSet($1, $2)", [
-                rdLoc(a), genTypeInfo(p.module, t)]))
+                addrLoc(a), genTypeInfo(p.module, t)]))
   of tyOpenArray:
     var b: TLoc
     case a.t.kind
