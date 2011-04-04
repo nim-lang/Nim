@@ -303,7 +303,8 @@ proc evalVariable(c: PStackFrame, sym: PSym, flags: TEvalFlags): PNode =
       if result == nil: result = emptyNode
       return
     result = IdNodeTableGet(x.mapping, sym)
-    if not aliasNeeded(result, flags): result = copyTree(result)
+    if result != nil and not aliasNeeded(result, flags): 
+      result = copyTree(result)
     if result != nil: return 
     x = x.next
   result = emptyNode
