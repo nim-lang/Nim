@@ -765,8 +765,8 @@ proc parseExprStmt(p: var TParser): PNode =
       addSon(result, a)
       getTok(p)
       skipComment(p, result)
-      if (p.tok.tokType == tkInd) or
-          not (p.tok.TokType in {tkOf, tkElif, tkElse, tkExcept}): 
+      if p.tok.tokType == tkSad: getTok(p)
+      if not (p.tok.TokType in {tkOf, tkElif, tkElse, tkExcept}): 
         addSon(result, parseStmt(p))
       while true: 
         if p.tok.tokType == tkSad: getTok(p)
