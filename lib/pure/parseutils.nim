@@ -77,7 +77,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
-                 start = 0): int =
+                 start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`. 
@@ -91,14 +91,24 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## skipped characters.
   while s[start+result] in Whitespace: inc(result)
 
-proc skip*(s, token: string, start = 0): int =
+proc skip*(s, token: string, start = 0): int {.inline.} =
   while result < token.len and s[result+start] == token[result]: inc(result)
   if result != token.len: result = 0
   
 proc skipIgnoreCase*(s, token: string, start = 0): int =
   while result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
-  if result != token.len: result = 0  
+  if result != token.len: result = 0
+  
+proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
+  ## Skips all characters until one char from the set `token` is found.
+  ## Returns number of characters skipped.
+  while s[result+start] notin until and s[result+start] != '\0': inc(result)
+
+proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
+  ## Skips all characters while one char from the set `token` is found.
+  ## Returns number of characters skipped.
+  while s[result+start] in toSkip and s[result+start] != '\0': inc(result)
 
 {.push overflowChecks: on.}
 # this must be compiled with overflow checking turned on:
