@@ -77,8 +77,7 @@ proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc RawGet(t: PStringTable, key: string): int =
-  var h: THash
-  h = myhash(t, key) and high(t.data) # start with real hash value
+  var h: THash = myhash(t, key) and high(t.data) # start with real hash value
   while not isNil(t.data[h].key):
     if mycmp(t, t.data[h].key, key):
       return h
@@ -89,8 +88,7 @@ proc `[]`*(t: PStringTable, key: string): string {.rtl, extern: "nstGet".} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var index: int
-  index = RawGet(t, key)
+  var index = RawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = ""
 
@@ -99,8 +97,7 @@ proc hasKey*(t: PStringTable, key: string): bool {.rtl, extern: "nst$1".} =
   result = rawGet(t, key) >= 0
 
 proc RawInsert(t: PStringTable, data: var TKeyValuePairSeq, key, val: string) =
-  var h: THash
-  h = myhash(t, key) and high(data)
+  var h: THash = myhash(t, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
   data[h].key = key
@@ -187,4 +184,17 @@ proc `%`*(f: string, t: PStringTable, flags: set[TFormatFlag] = {}): string {.
     else:
       add(result, f[i])
       inc(i)
+
+proc `$`*(t: PStringTable): string {.rtl, extern: "nstDollar".} =
+  ## The `$` operator for string tables.
+  if t.len == 0:
+    result = "{:}"
+  else:
+    result = "{"
+    for key, val in pairs(t): 
+      if result.len > 1: result.add(", ")
+      result.add(key)
+      result.add(": ")
+      result.add(val)
+    result.add("}")
 
