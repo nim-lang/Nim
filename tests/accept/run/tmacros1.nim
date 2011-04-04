@@ -1,5 +1,5 @@
 discard """
-  output: "hellow"
+  output: "Got: 'nnkIntLit' hi"
 """
 
 import
