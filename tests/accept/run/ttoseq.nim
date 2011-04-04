@@ -7,6 +7,6 @@ template toSeq*(iter: expr): expr =
   for x in iter: add(result, x)
   result
   
-for x, y in items(toSeq(countup(2, 6))).withIndex: 
+for x in items(toSeq(countup(2, 6))): 
   stdout.write(x)
 
