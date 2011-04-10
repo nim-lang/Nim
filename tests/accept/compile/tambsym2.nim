@@ -1,8 +1,3 @@
-discard """
-  file: "tambsym2.nim"
-  line: 9
-  errormsg: "undeclared identifier: \'CreateRGBSurface\'"
-"""
 
 from sdl import PSurface
 

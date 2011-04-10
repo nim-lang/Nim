@@ -83,6 +83,8 @@ proc genConstStmt(p: BProc, t: PNode) =
     if t.sons[i].kind == nkCommentStmt: continue 
     if t.sons[i].kind != nkConstDef: InternalError(t.info, "genConstStmt")
     var c = t.sons[i].sons[0].sym 
+    assert c != nil
+    assert c.typ != nil
     if c.typ.kind in ConstantDataTypes and not (lfNoDecl in c.loc.flags): 
       # generate the data:
       fillLoc(c.loc, locData, c.typ, mangleName(c), OnUnknown)

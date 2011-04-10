@@ -700,13 +700,12 @@ proc evalAppendStrCh(c: PEvalContext, n: PNode): PNode =
 
 proc evalConStrStr(c: PEvalContext, n: PNode): PNode = 
   # we cannot use ``evalOp`` for this as we can here have more than 2 arguments
-  result = evalAux(c, n.sons[1], {})
-  if isSpecial(result): return 
-  var a = result
-  for i in countup(2, sonsLen(n) - 1): 
+  var a = newNodeIT(nkStrLit, n.info, n.typ)
+  a.strVal = ""
+  for i in countup(1, sonsLen(n) - 1): 
     result = evalAux(c, n.sons[i], {})
     if isSpecial(result): return 
-    a.strVal = getStrValue(a) & getStrValue(result)
+    a.strVal.add(getStrValue(result))
   result = a
 
 proc evalAppendStrStr(c: PEvalContext, n: PNode): PNode = 

@@ -1,5 +1,5 @@
 discard """
-  output: "256 100"
+  output: "100 0"
 """
 
 # A min-heap.
