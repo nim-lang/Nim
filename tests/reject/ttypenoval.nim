@@ -1,6 +1,6 @@
 discard """
   file: "ttypenoval.nim"
-  line: 36
+  line: 38
   errormsg: "a type has no value"
 """
 

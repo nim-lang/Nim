@@ -174,12 +174,20 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     GlobalError(n.info, errXExpectsOneTypeParam, "ordinal")
   
 proc semTypeIdent(c: PContext, n: PNode): PSym =
-  result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
-  if result != nil:
-    markUsed(n, result)
-    if result.kind != skType: GlobalError(n.info, errTypeExpected)
+  if n.kind == nkSym: 
+    result = n.sym
   else:
-    GlobalError(n.info, errIdentifierExpected)
+    result = qualifiedLookup(c, n, {checkAmbiguity, checkUndeclared})
+    if result != nil:
+      markUsed(n, result)
+      if result.kind != skType: GlobalError(n.info, errTypeExpected)
+      if result.typ.kind != tyGenericParam:
+        # XXX get rid of this hack!
+        reset(n^)
+        n.kind = nkSym
+        n.sym = result
+    else:
+      GlobalError(n.info, errIdentifierExpected)
   
 proc semTuple(c: PContext, n: PNode, prev: PType): PType = 
   var 

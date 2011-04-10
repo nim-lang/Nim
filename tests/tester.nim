@@ -27,6 +27,9 @@ type
   TResults {.pure.} = object
     total, passed, skipped: int
     data: string
+  
+  TResultEnum = enum
+    reFailure, reIgnored, reSuccess
 
 # ----------------------- Spec parser ----------------------------------------
 
@@ -127,9 +130,11 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
-proc colorBool(b: bool): string =
-  if b: result = "<span style=\"color:green\">yes</span>" 
-  else: result = "<span style=\"color:red\">no</span>"
+proc colorResult(r: TResultEnum): string =
+  case r
+  of reFailure: result = "<span style=\"color:red\">no</span>"
+  of reIgnored: result = "<span style=\"color:fuchsia\">ignored</span>"
+  of reSuccess: result = "<span style=\"color:green\">yes</span>" 
 
 const
   TableHeader4 = "<table border=\"1\"><tr><td>Test</td><td>Expected</td>" &
@@ -139,14 +144,14 @@ const
   TableFooter = "</table>\n"
 
 proc addResult(r: var TResults, test, expected, given: string,
-               success: bool) =
+               success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    test, expected, given, success.colorBool])
+    test, expected, given, success.colorResult])
 
 proc addResult(r: var TResults, test, given: string,
-               success: bool) =
+               success: TResultEnum) =
   r.data.addf("<tr><td>$#</td><td>$#</td><td>$#</td></tr>\n", [
-    test, given, success.colorBool])
+    test, given, success.colorResult])
 
 proc listResults(reject, compile, run: TResults) =
   var s = "<html>"
@@ -166,15 +171,14 @@ proc listResults(reject, compile, run: TResults) =
     close(outp)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: string) = 
-  inc(r.total)
   if strip(expected.msg) notin strip(given.msg):
-    r.addResult(test, expected.msg, given.msg, false)
-  elif expected.file != given.file:
-    r.addResult(test, expected.file, given.file, false)
+    r.addResult(test, expected.msg, given.msg, reFailure)
+  elif extractFilename(expected.file) != extractFilename(given.file):
+    r.addResult(test, expected.file, given.file, reFailure)
   elif expected.line != given.line: 
-    r.addResult(test, $expected.line, $given.line, false)
+    r.addResult(test, $expected.line, $given.line, reFailure)
   else:
-    r.addResult(test, expected.msg, given.msg, true)
+    r.addResult(test, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
 proc reject(r: var TResults, dir, options: string) =  
@@ -184,7 +188,9 @@ proc reject(r: var TResults, dir, options: string) =
     inc(r.total)
     echo t
     var expected = parseSpec(test)
-    if expected.disabled: inc(r.skipped)
+    if expected.disabled: 
+      r.addResult(t, "", "", reIgnored)
+      inc(r.skipped)
     else:
       var given = callCompiler(test, options)
       cmpMsgs(r, expected, given, t)
@@ -195,7 +201,7 @@ proc compile(r: var TResults, pattern, options: string) =
     inc(r.total)
     echo t
     var given = callCompiler(test, options)
-    r.addResult(t, given.msg, not given.err)
+    r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
     if not given.err: inc(r.passed)
   
 proc run(r: var TResults, dir, options: string) = 
@@ -204,20 +210,23 @@ proc run(r: var TResults, dir, options: string) =
     echo t
     inc(r.total)
     var expected = parseSpec(test)
-    if expected.disabled: inc(r.skipped)
+    if expected.disabled:
+      r.addResult(t, "", "", reIgnored)
+      inc(r.skipped)
     else:
       var given = callCompiler(test, options)
       if given.err:
-        r.addResult(t, "", given.msg, not given.err)
+        r.addResult(t, "", given.msg, reFailure)
       else:
         var exeFile = changeFileExt(test, ExeExt)
         if existsFile(exeFile):
           var buf = myExec(exeFile)
           var success = strip(buf) == strip(expected.outp)
           if success: inc(r.passed)
-          r.addResult(t, expected.outp, buf, success)
+          r.addResult(t, expected.outp, 
+              buf, if success: reSuccess else: reFailure)
         else:
-          r.addResult(t, expected.outp, "executable not found", false)
+          r.addResult(t, expected.outp, "executable not found", reFailure)
 
 var options = ""
 var rejectRes = initResults()

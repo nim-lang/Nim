@@ -1,7 +1,7 @@
 discard """
   file: "toverl.nim"
   line: 11
-  errormsg: "attempt to redefine \'TNone\'"
+  errormsg: "redefinition of \'TNone\'"
 """
 # Test for overloading
 
