@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -244,8 +244,8 @@ proc asgnRef(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   assert(not isOnStack(dest))
   # BUGFIX: first incRef then decRef!
   if src != nil: incRef(usrToCell(src))
-  if dest^ != nil: decRef(usrToCell(dest^))
-  dest^ = src
+  if dest[] != nil: decRef(usrToCell(dest[]))
+  dest[] = src
 
 proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc if it is known at compile time that no 
@@ -253,11 +253,11 @@ proc asgnRefNoCycle(dest: ppointer, src: pointer) {.compilerProc, inline.} =
   if src != nil: 
     var c = usrToCell(src)
     discard atomicInc(c.refcount, rcIncrement)
-  if dest^ != nil: 
-    var c = usrToCell(dest^)
+  if dest[] != nil: 
+    var c = usrToCell(dest[])
     if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
       rtlAddZCT(c)
-  dest^ = src
+  dest[] = src
 
 proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
@@ -268,8 +268,8 @@ proc unsureAsgnRef(dest: ppointer, src: pointer) {.compilerProc.} =
     # XXX finally use assembler for the stack checking instead!
     # the test for '!= nil' is correct, but I got tired of the segfaults
     # resulting from the crappy stack checking:
-    if cast[int](dest^) >=% PageSize: decRef(usrToCell(dest^))
-  dest^ = src
+    if cast[int](dest[]) >=% PageSize: decRef(usrToCell(dest[]))
+  dest[] = src
 
 proc initGC() =
   when not defined(useNimRtl):
@@ -311,7 +311,7 @@ proc forAllChildrenAux(dest: Pointer, mt: PNimType, op: TWalkOp) =
       for i in 0..(mt.size div mt.base.size)-1:
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
     of tyRef, tyString, tySequence: # leaf:
-      doOperation(cast[ppointer](d)^, op)
+      doOperation(cast[ppointer](d)[], op)
     of tyObject, tyTuple, tyPureObject:
       forAllSlotsAux(dest, mt.node, op)
     else: nil
@@ -545,7 +545,7 @@ when defined(sparc): # For SPARC architecture.
     sp = addr(stackTop[0])
     # Addresses decrease as the stack grows.
     while sp <= max:
-      gcMark(sp^)
+      gcMark(sp[])
       sp = cast[ppointer](cast[TAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
@@ -575,7 +575,7 @@ elif stackIncreases:
       # sp will traverse the JMP_BUF as well (jmp_buf size is added,
       # otherwise sp would be below the registers structure).
       while sp >=% max:
-        gcMark(cast[ppointer](sp)^)
+        gcMark(cast[ppointer](sp)[])
         sp = sp -% sizeof(pointer)
 
 else:
@@ -598,7 +598,7 @@ else:
       var max = cast[TAddress](stackBottom)
       var sp = cast[TAddress](addr(registers))
       while sp <=% max:
-        gcMark(cast[ppointer](sp)^)
+        gcMark(cast[ppointer](sp)[])
         sp = sp +% sizeof(pointer)
 
 # ----------------------------------------------------------------------------
@@ -611,13 +611,13 @@ proc CollectZCT(gch: var TGcHeap) =
   # avoid a deep stack, we move objects to keep the ZCT small.
   # This is performance critical!
   var L = addr(gch.zct.len)
-  while L^ > 0:
+  while L[] > 0:
     var c = gch.zct.d[0]
     # remove from ZCT:
     assert((c.refcount and colorMask) == rcZct)
     c.refcount = c.refcount and not colorMask
-    gch.zct.d[0] = gch.zct.d[L^ - 1]
-    dec(L^)
+    gch.zct.d[0] = gch.zct.d[L[] - 1]
+    dec(L[])
     if c.refcount <% rcIncrement: 
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because

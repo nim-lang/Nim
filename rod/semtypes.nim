@@ -183,7 +183,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       if result.kind != skType: GlobalError(n.info, errTypeExpected)
       if result.typ.kind != tyGenericParam:
         # XXX get rid of this hack!
-        reset(n^)
+        reset(n[])
         n.kind = nkSym
         n.sym = result
     else:

@@ -3468,8 +3468,8 @@ when false:
     result = g_array_insert_vals(a, i, addr(v), 1)
 
   proc g_ptr_array_index*(parray: PGPtrArray, index: guint): gpointer = 
-    result = cast[PGPointer](cast[int](parray ^. pdata) +
-        index * SizeOf(GPointer))^ 
+    result = cast[PGPointer](cast[int](parray []. pdata) +
+        index * SizeOf(GPointer))[] 
 
   proc G_THREAD_ERROR*(): TGQuark = 
     result = g_thread_error_quark()
@@ -3754,7 +3754,7 @@ proc TGIOChannel_set_is_seekable*(a: PGIOChannel, `is_seekable`: guint) =
       bm_TGIOChannel_is_seekable)
 
 proc utf8_next_char*(p: pguchar): pguchar = 
-  result = cast[pguchar](cast[TAddress](p) + 1) # p + ord((g_utf8_skip + p^ )^ )
+  result = cast[pguchar](cast[TAddress](p) + 1) # p + ord((g_utf8_skip + p[] )[] )
   
 when false: 
   proc GLIB_CHECK_VERSION*(major, minor, micro: guint): bool = 

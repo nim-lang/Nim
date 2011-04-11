@@ -120,7 +120,7 @@ proc charSet*(s: set[char]): TPeg {.nosideEffect, rtl, extern: "npegs$1".} =
   assert '\0' notin s
   result.kind = pkCharChoice
   new(result.charChoice)
-  result.charChoice^ = s
+  result.charChoice[] = s
 
 proc len(a: TPeg): int {.inline.} = return a.sons.len
 proc add(d: var TPeg, s: TPeg) {.inline.} = add(d.sons, s)
@@ -131,9 +131,9 @@ proc addChoice(dest: var TPeg, elem: TPeg) =
     # caution! Do not introduce false aliasing here!
     case elem.kind
     of pkCharChoice:
-      dest.sons[L] = charSet(dest.sons[L].charChoice^ + elem.charChoice^)
+      dest.sons[L] = charSet(dest.sons[L].charChoice[] + elem.charChoice[])
     of pkChar: 
-      dest.sons[L] = charSet(dest.sons[L].charChoice^ + {elem.ch})
+      dest.sons[L] = charSet(dest.sons[L].charChoice[] + {elem.ch})
     else: add(dest, elem)
   else: add(dest, elem)
 
@@ -435,7 +435,7 @@ proc toStrAux(r: TPeg, res: var string) =
     add(res, 'y')
     add(res, singleQuoteEsc(r.term))
   of pkChar: add(res, singleQuoteEsc(r.ch))
-  of pkCharChoice: add(res, charSetEsc(r.charChoice^))
+  of pkCharChoice: add(res, charSetEsc(r.charChoice[]))
   of pkNonTerminal: add(res, r.nt.name)
   of pkSequence:
     add(res, '(')
@@ -458,7 +458,7 @@ proc toStrAux(r: TPeg, res: var string) =
     add(res, singleQuoteEsc(r.ch))
     add(res, '*')
   of pkGreedyRepSet:
-    add(res, charSetEsc(r.charChoice^))
+    add(res, charSetEsc(r.charChoice[]))
     add(res, '*')
   of pkGreedyAny:
     add(res, ".*")
@@ -640,7 +640,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     if p.ch == s[start]: result = 1
     else: result = -1
   of pkCharChoice:
-    if contains(p.charChoice^, s[start]): result = 1
+    if contains(p.charChoice[], s[start]): result = 1
     else: result = -1
   of pkNonTerminal:
     var oldMl = c.ml
@@ -706,7 +706,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     while ch == s[start+result]: inc(result)
   of pkGreedyRepSet:
     result = 0
-    while contains(p.charChoice^, s[start+result]): inc(result)
+    while contains(p.charChoice[], s[start+result]): inc(result)
   of pkOption:
     result = max(0, rawMatch(s, p.sons[0], start, c))
   of pkAndPredicate:

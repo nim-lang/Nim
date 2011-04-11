@@ -21,10 +21,10 @@ proc LoadSpecialConfig*(configfilename: string)
 
 proc ppGetTok(L: var TLexer, tok: PToken) = 
   # simple filter
-  rawGetTok(L, tok^ )
+  rawGetTok(L, tok[] )
   while (tok.tokType == tkInd) or (tok.tokType == tkSad) or
       (tok.tokType == tkDed) or (tok.tokType == tkComment): 
-    rawGetTok(L, tok^ )
+    rawGetTok(L, tok[] )
   
 proc parseExpr(L: var TLexer, tok: PToken): bool
 proc parseAtom(L: var TLexer, tok: PToken): bool = 

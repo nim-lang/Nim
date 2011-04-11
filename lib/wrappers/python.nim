@@ -1337,7 +1337,7 @@ proc PyImport_ExecCodeModule(name: string, codeobject: PPyObject): PPyObject =
   Py_XDECREF(v)
   modules = PyImport_GetModuleDict()
   if PyDict_GetItemString(modules, cstring(name)) == nil: 
-    PyErr_SetString(PyExc_ImportError^ , cstring(
+    PyErr_SetString(PyExc_ImportError[] , cstring(
         "Loaded module " & name & "not found in sys.modules"))
     return nil
   Py_XINCREF(m)
@@ -1371,37 +1371,37 @@ proc PyTuple_Check(obj: PPyObject): bool =
   Result = PyObject_TypeCheck(obj, PyTuple_Type)
 
 proc PyTuple_CheckExact(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyTuple_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyTuple_Type)
 
 proc PyInstance_Check(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyInstance_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyInstance_Type)
 
 proc PyClass_Check(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyClass_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyClass_Type)
 
 proc PyMethod_Check(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyMethod_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyMethod_Type)
 
 proc PyList_Check(obj: PPyObject): bool = 
   Result = PyObject_TypeCheck(obj, PyList_Type)
 
 proc PyList_CheckExact(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyList_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyList_Type)
 
 proc PyDict_Check(obj: PPyObject): bool = 
   Result = PyObject_TypeCheck(obj, PyDict_Type)
 
 proc PyDict_CheckExact(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyDict_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyDict_Type)
 
 proc PyModule_Check(obj: PPyObject): bool = 
   Result = PyObject_TypeCheck(obj, PyModule_Type)
 
 proc PyModule_CheckExact(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PyModule_Type)
+  Result = (obj != nil) and (obj[].ob_type == PyModule_Type)
 
 proc PySlice_Check(obj: PPyObject): bool = 
-  Result = (obj != nil) and (obj^ .ob_type == PySlice_Type)
+  Result = (obj != nil) and (obj[].ob_type == PySlice_Type)
 
 proc PyFunction_Check(obj: PPyObject): bool = 
   Result = (obj != nil) and

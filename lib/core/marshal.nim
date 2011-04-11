@@ -101,10 +101,10 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   add result, "{"
   var u: int64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)^)
-  of 2: u = ze64(cast[ptr int16](p)^)
-  of 4: u = ze64(cast[ptr int32](p)^)
-  of 8: u = cast[ptr int64](p)^
+  of 1: u = ze64(cast[ptr int8](p)[])
+  of 2: u = ze64(cast[ptr int16](p)[])
+  of 4: u = ze64(cast[ptr int32](p)[])
+  of 8: u = cast[ptr int64](p)[]
   else:
     var a = cast[pbyteArray](p)
     for i in 0 .. typ.size*8-1:
@@ -217,31 +217,31 @@ when not defined(useNimRtl):
     of tyArray: reprArray(result, p, typ, cl)
     of tyTuple, tyPureObject: reprRecord(result, p, typ, cl)
     of tyObject: 
-      var t = cast[ptr PNimType](p)^
+      var t = cast[ptr PNimType](p)[]
       reprRecord(result, p, t, cl)
     of tyRef, tyPtr:
       assert(p != nil)
-      if cast[ppointer](p)^ == nil: add result, "nil"
-      else: reprRef(result, cast[ppointer](p)^, typ, cl)
+      if cast[ppointer](p)[] == nil: add result, "nil"
+      else: reprRef(result, cast[ppointer](p)[], typ, cl)
     of tySequence:
-      reprSequence(result, cast[ppointer](p)^, typ, cl)
-    of tyInt: add result, $(cast[ptr int](p)^)
-    of tyInt8: add result, $int(cast[ptr Int8](p)^)
-    of tyInt16: add result, $int(cast[ptr Int16](p)^)
-    of tyInt32: add result, $int(cast[ptr Int32](p)^)
-    of tyInt64: add result, $(cast[ptr Int64](p)^)
-    of tyFloat: add result, $(cast[ptr float](p)^)
-    of tyFloat32: add result, $(cast[ptr float32](p)^)
-    of tyFloat64: add result, $(cast[ptr float64](p)^)
-    of tyEnum: add result, reprEnum(cast[ptr int](p)^, typ)
-    of tyBool: add result, reprBool(cast[ptr bool](p)^)
-    of tyChar: add result, reprChar(cast[ptr char](p)^)
-    of tyString: reprStrAux(result, cast[ptr string](p)^)
-    of tyCString: reprStrAux(result, $(cast[ptr cstring](p)^))
+      reprSequence(result, cast[ppointer](p)[], typ, cl)
+    of tyInt: add result, $(cast[ptr int](p)[])
+    of tyInt8: add result, $int(cast[ptr Int8](p)[])
+    of tyInt16: add result, $int(cast[ptr Int16](p)[])
+    of tyInt32: add result, $int(cast[ptr Int32](p)[])
+    of tyInt64: add result, $(cast[ptr Int64](p)[])
+    of tyFloat: add result, $(cast[ptr float](p)[])
+    of tyFloat32: add result, $(cast[ptr float32](p)[])
+    of tyFloat64: add result, $(cast[ptr float64](p)[])
+    of tyEnum: add result, reprEnum(cast[ptr int](p)[], typ)
+    of tyBool: add result, reprBool(cast[ptr bool](p)[])
+    of tyChar: add result, reprChar(cast[ptr char](p)[])
+    of tyString: reprStrAux(result, cast[ptr string](p)[])
+    of tyCString: reprStrAux(result, $(cast[ptr cstring](p)[]))
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
-      if cast[ppointer](p)^ == nil: add result, "nil"
-      else: add result, reprPointer(cast[ppointer](p)^)
+      if cast[ppointer](p)[] == nil: add result, "nil"
+      else: add result, reprPointer(cast[ppointer](p)[])
     else:
       add result, "(invalid data!)"
     inc(cl.recdepth)

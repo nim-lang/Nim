@@ -22,7 +22,7 @@ p.s[1] = "xyz"
 p.e = en6
 
 new(q)
-q^ = p
+q[] = p
 
 s = @[q, q, q, q]
 

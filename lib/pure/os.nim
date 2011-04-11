@@ -720,7 +720,7 @@ else:
     # retrieves the variables of char** env of C's main proc
     if not envComputed:
       when useNSGetEnviron:
-        var gEnv = NSGetEnviron()^
+        var gEnv = NSGetEnviron()[]
       var i = 0
       while True:
         if gEnv[i] == nil: break

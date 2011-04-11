@@ -843,7 +843,7 @@ proc parseSection(p: var TParser, kind: TNodeKind, defparser: TDefParser): PNode
   skipComment(p, result)
   case p.tok.tokType
   of tkInd: 
-    pushInd(p.lex^ , p.tok.indent)
+    pushInd(p.lex[] , p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -866,7 +866,7 @@ proc parseSection(p: var TParser, kind: TNodeKind, defparser: TDefParser): PNode
       else: 
         parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break 
-    popInd(p.lex^ )
+    popInd(p.lex[] )
   of tkSymbol, tkAccent, tkParLe: 
     # tkParLe is allowed for ``var (x, y) = ...`` tuple parsing
     addSon(result, defparser(p))
@@ -985,7 +985,7 @@ proc parseObjectPart(p: var TParser): PNode =
   case p.tok.tokType
   of tkInd: 
     result = newNodeP(nkRecList, p)
-    pushInd(p.lex^ , p.tok.indent)
+    pushInd(p.lex[] , p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -1002,7 +1002,7 @@ proc parseObjectPart(p: var TParser): PNode =
       else: 
         parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break 
-    popInd(p.lex^ )
+    popInd(p.lex[] )
   of tkWhen: 
     result = parseObjectWhen(p)
   of tkCase: 

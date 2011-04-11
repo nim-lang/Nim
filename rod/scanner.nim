@@ -382,10 +382,10 @@ proc GetNumber(L: var TLexer): TToken =
       of tkInt16Lit: result.iNumber = biggestInt(toU16(int(xi)))
       of tkInt32Lit: result.iNumber = biggestInt(toU32(xi))
       of tkFloat32Lit: 
-        result.fNumber = (cast[PFloat32](addr(xi)))^ 
+        result.fNumber = (cast[PFloat32](addr(xi)))[] 
         # note: this code is endian neutral!
         # XXX: Test this on big endian machine!
-      of tkFloat64Lit: result.fNumber = (cast[PFloat64](addr(xi)))^ 
+      of tkFloat64Lit: result.fNumber = (cast[PFloat64](addr(xi)))[] 
       else: InternalError(getLineInfo(L), "getNumber")
     elif isFloatLiteral(result.literal) or (result.tokType == tkFloat32Lit) or
         (result.tokType == tkFloat64Lit): 

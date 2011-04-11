@@ -1,8 +1,4 @@
 - clean up the tests!
-- GC: marker procs for native Nimrod GC and Boehm GC
-- thread support: threadvar on Windows seems broken; 
-  add --deadlock_prevention:on|off switch
-- built-in serialization
 
 
 High priority (version 0.9.0)
@@ -12,7 +8,7 @@ High priority (version 0.9.0)
 - fix the streams implementation so that it uses methods
 - fix overloading resolution
 - wrong co-/contravariance
-- deprecate ^ and make it available as operator; new other notation: p[]
+- make ^ available as operator
 
 
 Bugs
@@ -35,7 +31,10 @@ To implement
 * constant sequences
 
 * implement closures for the C code generator
-
+* GC: marker procs for native Nimrod GC and Boehm GC
+* thread support: threadvar on Windows seems broken; 
+  add --deadlock_prevention:on|off switch
+* built-in serialization
 
 
 Low priority

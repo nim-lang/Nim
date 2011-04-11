@@ -195,7 +195,7 @@ proc IntSetGet(t: TIntSet, key: int): PTrunk =
 proc IntSetPut(t: var TIntSet, key: int): PTrunk = 
   result = IntSetGet(t, key)
   if result == nil:
-    result = cast[PTrunk](llAlloc(allocator, sizeof(result^)))
+    result = cast[PTrunk](llAlloc(allocator, sizeof(result[])))
     result.next = t.data[key and high(t.data)]
     t.data[key and high(t.data)] = result
     result.key = key

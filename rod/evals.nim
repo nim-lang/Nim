@@ -99,7 +99,7 @@ proc isSpecial(n: PNode): bool {.inline.} =
   # few programs
 
 proc myreset(n: PNode) {.inline.} =
-  when defined(system.reset): reset(n^)
+  when defined(system.reset): reset(n[])
 
 proc evalIf(c: PEvalContext, n: PNode): PNode = 
   var i = 0

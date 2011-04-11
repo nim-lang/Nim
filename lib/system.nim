@@ -1641,9 +1641,9 @@ when not defined(EcmaScript) and not defined(NimrodVM):
     var d: int
     var a = cast[TAddress](aa)
     case n.typ.size
-    of 1: d = ze(cast[ptr int8](a +% n.offset)^)
-    of 2: d = ze(cast[ptr int16](a +% n.offset)^)
-    of 4: d = int(cast[ptr int32](a +% n.offset)^)
+    of 1: d = ze(cast[ptr int8](a +% n.offset)[])
+    of 2: d = ze(cast[ptr int16](a +% n.offset)[])
+    of 4: d = int(cast[ptr int32](a +% n.offset)[])
     else: assert(false)
     return d
 
