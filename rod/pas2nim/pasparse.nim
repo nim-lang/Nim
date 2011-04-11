@@ -436,7 +436,7 @@ proc primary(p: var TParser): PNode =
         parMessage(p, errIdentifierExpected, $p.tok)
     of pxHat: 
       var a = result
-      result = newNodeP(nkDerefExpr, p)
+      result = newNodeP(nkBracketExpr, p)
       addSon(result, a)
       getTok(p)
     of pxBracketLe: 

@@ -90,7 +90,9 @@ type
     warnCannotWriteMO2, warnCannotReadMO2, warnDeprecated, 
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel, 
     warnUnknownSubstitutionX, warnLanguageXNotSupported, warnCommentXIgnored, 
-    warnXisPassedToProcVar, warnUser, hintSuccess, hintSuccessX, 
+    warnXisPassedToProcVar, warnDerefDeprecated,
+    warnUser, 
+    hintSuccess, hintSuccessX, 
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded, 
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled, 
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath, hintUser
@@ -319,6 +321,7 @@ const
     warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]", 
     warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]", 
     warnXisPassedToProcVar: "\'$1\' is passed to a procvar; deprecated [XisPassedToProcVar]", 
+    warnDerefDeprecated: "p^ is deprecated; use p[] instead [DerefDeprecated]",
     warnUser: "$1 [User]", 
     hintSuccess: "operation successful [Success]", 
     hintSuccessX: "operation successful ($1 lines compiled; $2 sec total) [SuccessX]", 
@@ -336,11 +339,11 @@ const
     hintUser: "$1 [User]"]
 
 const 
-  WarningsToStr*: array[0..14, string] = ["CannotOpenFile", "OctalEscape", 
+  WarningsToStr*: array[0..15, string] = ["CannotOpenFile", "OctalEscape", 
     "XIsNeverRead", "XmightNotBeenInit", "CannotWriteMO2", "CannotReadMO2", 
     "Deprecated", "SmallLshouldNotBeUsed", "UnknownMagic", 
     "RedefinitionOfLabel", "UnknownSubstitutionX", "LanguageXNotSupported", 
-    "CommentXIgnored", "XisPassedToProcVar", "User"]
+    "CommentXIgnored", "XisPassedToProcVar", "DerefDeprecated", "User"]
 
   HintsToStr*: array[0..13, string] = ["Success", "SuccessX", "LineTooLong", 
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded", 

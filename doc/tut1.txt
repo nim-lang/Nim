@@ -1183,9 +1183,9 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The ``^`` operator can be used to *derefer* a reference, meaning to retrieve
-the item the reference points to. The ``addr`` procedure returns the address
-of an item. An address is always an untraced reference:
+The empty ``[]`` subscript notation can be used to *derefer* a reference, 
+meaning to retrieve the item the reference points to. The ``addr`` procedure 
+returns the address of an item. An address is always an untraced reference:
 ``addr`` is an *unsafe* feature.
 
 The ``.`` (access a tuple/object field operator)
@@ -1200,7 +1200,8 @@ dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 # no need to write n^ .data
+  n.data = 9 
+  # no need to write n[].data; in fact n[].data is highly discouraged!
 
 (As a convention, reference types use a 'P' prefix.)
 

@@ -629,7 +629,7 @@ proc makeDeref(n: PNode): PNode =
     t = skipTypes(t.sons[0], {tyGenericInst})
   if t.kind in {tyPtr, tyRef}: 
     var a = result
-    result = newNodeIT(nkDerefExpr, n.info, t.sons[0])
+    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, a)
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -745,8 +745,23 @@ proc buildOverloadedSubscripts(n: PNode, inAsgn: bool): PNode =
   # now we know the operator
   result.sons[0] = newIdentNode(getIdent(opr), n.info)
   
+proc semDeref(c: PContext, n: PNode): PNode =
+  checkSonsLen(n, 1)
+  n.sons[0] = semExprWithType(c, n.sons[0])
+  result = n
+  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar})
+  case t.kind
+  of tyRef, tyPtr: n.typ = t.sons[0]
+  else: GlobalError(n.sons[0].info, errCircumNeedsPointer)
+  result = n
+  
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator;
+  if sonsLen(n) == 1: 
+    var x = semDeref(c, n)
+    result = newNodeIT(nkDerefExpr, x.info, x.typ)
+    result.add(x[0])
+    return
   checkMinSonsLen(n, 2)
   n.sons[0] = semExprWithType(c, n.sons[0], flags - {efAllowType})
   var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
@@ -1041,14 +1056,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkBracket: result = semArrayConstr(c, n)
   of nkLambda: result = semLambda(c, n)
   of nkDerefExpr: 
-    checkSonsLen(n, 1)
-    n.sons[0] = semExprWithType(c, n.sons[0])
-    result = n
-    var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar})
-    case t.kind
-    of tyRef, tyPtr: n.typ = t.sons[0]
-    else: GlobalError(n.sons[0].info, errCircumNeedsPointer)
-    result = n
+    Message(n.info, warnDerefDeprecated)
+    result = semDeref(c, n)
   of nkAddr: 
     result = n
     checkSonsLen(n, 1)
@@ -1056,7 +1065,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if isAssignable(n.sons[0]) != arLValue: 
       GlobalError(n.info, errExprHasNoAddress)
     n.typ = makePtrType(c, n.sons[0].typ)
-  of nkHiddenAddr, nkHiddenDeref: 
+  of nkHiddenAddr, nkHiddenDeref:
     checkSonsLen(n, 1)
     n.sons[0] = semExpr(c, n.sons[0], flags)
   of nkCast: result = semCast(c, n)
