@@ -375,19 +375,19 @@ when defined(MACROS):
 
 when defined(MACROS): 
   proc XDestroyImage(ximage: PXImage): cint = 
-    XDestroyImage = ximage^ .f.destroy_image(ximage)
+    XDestroyImage = ximage[] .f.destroy_image(ximage)
 
   proc XGetPixel(ximage: PXImage, x, y: cint): culong = 
-    XGetPixel = ximage^ .f.get_pixel(ximage, x, y)
+    XGetPixel = ximage[] .f.get_pixel(ximage, x, y)
 
   proc XPutPixel(ximage: PXImage, x, y: cint, pixel: culong): cint = 
-    XPutPixel = ximage^ .f.put_pixel(ximage, x, y, pixel)
+    XPutPixel = ximage[] .f.put_pixel(ximage, x, y, pixel)
 
   proc XSubImage(ximage: PXImage, x, y: cint, width, height: cuint): PXImage = 
-    XSubImage = ximage^ .f.sub_image(ximage, x, y, width, height)
+    XSubImage = ximage[] .f.sub_image(ximage, x, y, width, height)
 
   proc XAddPixel(ximage: PXImage, value: clong): cint = 
-    XAddPixel = ximage^ .f.add_pixel(ximage, value)
+    XAddPixel = ximage[] .f.add_pixel(ximage, value)
 
   proc IsKeypadKey(keysym: TKeySym): bool = 
     IsKeypadKey = (keysym >= XK_KP_Space) and (keysym <= XK_KP_Equal)

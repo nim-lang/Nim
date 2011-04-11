@@ -107,13 +107,13 @@ proc rawGetTok(p: var TParser) =
     p.tok = p.tok.next
   elif p.backtrack.len == 0: 
     p.tok.next = nil
-    getTok(p.lex, p.tok^)
+    getTok(p.lex, p.tok[])
   else: 
     # We need the next token and must be able to backtrack. So we need to 
     # allocate a new token.
     var t: ref TToken
     new(t)
-    getTok(p.lex, t^)
+    getTok(p.lex, t[])
     p.tok.next = t
     p.tok = t
 
@@ -217,7 +217,7 @@ proc getTok(p: var TParser, n: PNode) =
   skipCom(p, n)
 
 proc ExpectIdent(p: TParser) = 
-  if p.tok.xkind != pxSymbol: parMessage(p, errIdentifierExpected, $(p.tok^))
+  if p.tok.xkind != pxSymbol: parMessage(p, errIdentifierExpected, $(p.tok[]))
   
 proc Eat(p: var TParser, xkind: TTokKind, n: PNode) = 
   if p.tok.xkind == xkind: getTok(p, n)

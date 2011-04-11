@@ -8,7 +8,7 @@ proc recTest(i: int) =
     recTest(i+1)
   else: # should printStackTrace()
     var p: ptr int = nil
-    p^ = 12
+    p[] = 12
   # leave
 
 {.pop.}

@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -246,13 +246,13 @@ when not defined(ECMAScript):
   proc getTime(): TTime = return timec(nil)
   proc getLocalTime(t: TTime): TTimeInfo =
     var a = t
-    result = tmToTimeInfo(localtime(addr(a))^)
+    result = tmToTimeInfo(localtime(addr(a))[])
     # copying is needed anyway to provide reentrancity; thus
     # the convertion is not expensive
   
   proc getGMTime(t: TTime): TTimeInfo =
     var a = t
-    result = tmToTimeInfo(gmtime(addr(a))^)
+    result = tmToTimeInfo(gmtime(addr(a))[])
     # copying is needed anyway to provide reentrancity; thus
     # the convertion is not expensive
   

@@ -34,13 +34,13 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
   case mt.Kind
   of tyString:
     var x = cast[ppointer](dest)
-    var s2 = cast[ppointer](s)^
+    var s2 = cast[ppointer](s)[]
     if s2 == nil or shallow:
       unsureAsgnRef(x, s2)
     else:
       unsureAsgnRef(x, copyString(cast[NimString](s2)))
   of tySequence:
-    var s2 = cast[ppointer](src)^
+    var s2 = cast[ppointer](src)[]
     var seq = cast[PGenericSeq](s2)      
     var x = cast[ppointer](dest)
     if s2 == nil or shallow:
@@ -49,7 +49,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
       return
     assert(dest != nil)
     unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
-    var dst = cast[taddress](cast[ppointer](dest)^)
+    var dst = cast[taddress](cast[ppointer](dest)[])
     for i in 0..seq.len-1:
       genericAssignAux(
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
@@ -67,7 +67,7 @@ proc genericAssignAux(dest, src: Pointer, mt: PNimType, shallow: bool) =
       genericAssignAux(cast[pointer](d +% i*% mt.base.size),
                        cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
   of tyRef:
-    unsureAsgnRef(cast[ppointer](dest), cast[ppointer](s)^)
+    unsureAsgnRef(cast[ppointer](dest), cast[ppointer](s)[])
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
@@ -116,7 +116,7 @@ proc objectInit(dest: Pointer, typ: PNimType) =
     # iterate over any structural type
     # here we have to init the type field:
     var pint = cast[ptr PNimType](dest)
-    pint^ = typ
+    pint[] = typ
     objectInitAux(dest, typ.node)
   of tyTuple, tyPureObject:
     objectInitAux(dest, typ.node)

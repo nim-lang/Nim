@@ -289,18 +289,18 @@ proc atom(n: PNode): string =
   of nkInt64Lit: result = litAux(n, n.intVal, 8) & "\'i64"
   of nkFloatLit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: result = $(n.floatVal)
-    else: result = litAux(n, (cast[PInt64](addr(n.floatVal)))^ , 8)
+    else: result = litAux(n, (cast[PInt64](addr(n.floatVal)))[] , 8)
   of nkFloat32Lit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
       result = $(n.floatVal) & "\'f32"
     else: 
       f = n.floatVal
-      result = litAux(n, (cast[PInt32](addr(f)))^ , 4) & "\'f32"
+      result = litAux(n, (cast[PInt32](addr(f)))[] , 4) & "\'f32"
   of nkFloat64Lit: 
     if n.flags * {nfBase2, nfBase8, nfBase16} == {}: 
       result = $(n.floatVal) & "\'f64"
     else: 
-      result = litAux(n, (cast[PInt64](addr(n.floatVal)))^ , 8) & "\'f64"
+      result = litAux(n, (cast[PInt64](addr(n.floatVal)))[] , 8) & "\'f64"
   of nkNilLit: result = "nil"
   of nkType: 
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s

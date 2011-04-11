@@ -169,7 +169,7 @@ proc CommandScan(filename: string) =
     new(tok)
     openLexer(L, f, stream)
     while true: 
-      rawGetTok(L, tok^)
+      rawGetTok(L, tok[])
       PrintTok(tok)
       if tok.tokType == tkEof: break 
     CloseLexer(L)

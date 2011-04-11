@@ -61,18 +61,18 @@ proc initParser(p: var TParser) =
   new(p.tok)
 
 proc getTok(p: var TParser) = 
-  rawGetTok(p.lex^, p.tok^)
+  rawGetTok(p.lex[], p.tok[])
 
 proc OpenParser(p: var TParser, filename: string, inputStream: PLLStream) = 
   initParser(p)
-  OpenLexer(p.lex^, filename, inputstream)
+  OpenLexer(p.lex[], filename, inputstream)
   getTok(p)                   # read the first token
   
 proc CloseParser(p: var TParser) = 
-  CloseLexer(p.lex^)
+  CloseLexer(p.lex[])
 
 proc parMessage(p: TParser, msg: TMsgKind, arg: string = "") = 
-  lexMessage(p.lex^, msg, arg)
+  lexMessage(p.lex[], msg, arg)
 
 proc skipComment(p: var TParser, node: PNode) = 
   if p.tok.tokType == tkComment: 
@@ -95,22 +95,22 @@ proc optInd(p: var TParser, n: PNode) =
 
 proc expectIdentOrKeyw(p: TParser) = 
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType): 
-    lexMessage(p.lex^, errIdentifierExpected, tokToStr(p.tok))
+    lexMessage(p.lex[], errIdentifierExpected, tokToStr(p.tok))
   
 proc ExpectIdent(p: TParser) = 
   if p.tok.tokType != tkSymbol: 
-    lexMessage(p.lex^, errIdentifierExpected, tokToStr(p.tok))
+    lexMessage(p.lex[], errIdentifierExpected, tokToStr(p.tok))
   
 proc expectIdentOrOpr(p: TParser) = 
   if not (p.tok.tokType in tokOperators): 
-    lexMessage(p.lex^, errOperatorExpected, tokToStr(p.tok))
+    lexMessage(p.lex[], errOperatorExpected, tokToStr(p.tok))
   
 proc Eat(p: var TParser, TokType: TTokType) = 
   if p.tok.TokType == TokType: getTok(p)
-  else: lexMessage(p.lex^, errTokenExpected, TokTypeToStr[tokType])
+  else: lexMessage(p.lex[], errTokenExpected, TokTypeToStr[tokType])
   
 proc parLineInfo(p: TParser): TLineInfo = 
-  result = getLineInfo(p.lex^)
+  result = getLineInfo(p.lex[])
 
 proc indAndComment(p: var TParser, n: PNode) = 
   if p.tok.tokType == tkInd: 
@@ -122,7 +122,7 @@ proc indAndComment(p: var TParser, n: PNode) =
     skipComment(p, n)
   
 proc newNodeP(kind: TNodeKind, p: TParser): PNode = 
-  result = newNodeI(kind, getLineInfo(p.lex^))
+  result = newNodeI(kind, getLineInfo(p.lex[]))
 
 proc newIntNodeP(kind: TNodeKind, intVal: BiggestInt, p: TParser): PNode = 
   result = newNodeP(kind, p)
@@ -1124,7 +1124,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
   skipComment(p, result)
   case p.tok.tokType
   of tkInd: 
-    pushInd(p.lex^, p.tok.indent)
+    pushInd(p.lex[], p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -1147,7 +1147,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
       else: 
         parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break 
-    popInd(p.lex^)
+    popInd(p.lex[])
   of tkSymbol, tkAccent, tkParLe: 
     # tkParLe is allowed for ``var (x, y) = ...`` tuple parsing
     addSon(result, defparser(p))
@@ -1252,7 +1252,7 @@ proc parseObjectPart(p: var TParser): PNode =
   case p.tok.tokType
   of tkInd: 
     result = newNodeP(nkRecList, p)
-    pushInd(p.lex^, p.tok.indent)
+    pushInd(p.lex[], p.tok.indent)
     getTok(p)
     skipComment(p, result)
     while true: 
@@ -1269,7 +1269,7 @@ proc parseObjectPart(p: var TParser): PNode =
       else: 
         parMessage(p, errIdentifierExpected, tokToStr(p.tok))
         break 
-    popInd(p.lex^)
+    popInd(p.lex[])
   of tkWhen: 
     result = parseObjectWhen(p)
   of tkCase: 
@@ -1386,7 +1386,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
 proc parseStmt(p: var TParser): PNode = 
   if p.tok.tokType == tkInd: 
     result = newNodeP(nkStmtList, p)
-    pushInd(p.lex^, p.tok.indent)
+    pushInd(p.lex[], p.tok.indent)
     getTok(p)
     while true: 
       case p.tok.tokType
@@ -1399,7 +1399,7 @@ proc parseStmt(p: var TParser): PNode =
         var a = complexOrSimpleStmt(p)
         if a.kind == nkEmpty: break 
         addSon(result, a)
-    popInd(p.lex^ )
+    popInd(p.lex[] )
   else: 
     # the case statement is only needed for better error messages:
     case p.tok.tokType

@@ -14,7 +14,7 @@ bind .e <Return> {
 }  
 """
 
-FindExecutable(getApplicationFilename())
+FindExecutable(getAppFilename())
 var interp = CreateInterp()
 if interp == nil: quit("cannot create TCL interpreter")
 if Init(interp) != TCL_OK: 

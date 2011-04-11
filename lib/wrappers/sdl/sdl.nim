@@ -2525,8 +2525,8 @@ proc AllocSurface(flags: int32, width, height, depth: int,
                             AMask)
 
 proc MustLock(Surface: PSurface): bool = 
-  Result = ((surface^ .offset != 0) or
-      ((surface^ .flags and (HWSURFACE or ASYNCBLIT or RLEACCEL)) != 0))
+  Result = ((surface[] .offset != 0) or
+      ((surface[] .flags and (HWSURFACE or ASYNCBLIT or RLEACCEL)) != 0))
 
 proc LockMutex(mutex: Pmutex): int = 
   Result = mutexP(mutex)

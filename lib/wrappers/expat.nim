@@ -564,7 +564,7 @@ proc SetUserData*(parser: PParser, userData: pointer){.cdecl,
 # Returns the last value set by XML_SetUserData or NULL. 
 
 template GetUserData*(parser: expr): expr = 
-  (cast[ptr pointer]((parser))^ )
+  (cast[ptr pointer]((parser))[] )
 
 # This is equivalent to supplying an encoding argument to
 #   XML_ParserCreate. On success XML_SetEncoding returns non-zero,
