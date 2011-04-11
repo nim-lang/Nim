@@ -535,7 +535,7 @@ proc indirectAccess(a, b: PSym): PNode =
   # returns a^ .b as a node
   var x = newSymNode(a)
   var y = newSymNode(b)
-  var deref = newNodeI(nkDerefExpr, x.info)
+  var deref = newNodeI(nkHiddenDeref, x.info)
   deref.typ = x.typ.sons[0]
   addSon(deref, x)
   result = newNodeI(nkDotExpr, x.info)

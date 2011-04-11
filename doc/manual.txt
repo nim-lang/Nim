@@ -932,8 +932,9 @@ untraced references are *unsafe*. However for certain low-level operations
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.
 
-The ``^`` operator can be used to derefer a reference, the ``addr`` procedure
-returns the address of an item. An address is always an untraced reference.
+An empty subscript ``[]`` notation can be used to derefer a reference, 
+the ``addr`` procedure returns the address of an item. An address is always 
+an untraced reference.
 Thus the usage of ``addr`` is an *unsafe* feature.
 
 The ``.`` (access a tuple/object field operator)
@@ -951,7 +952,8 @@ dereferencing operations for reference types:
   var
     n: PNode
   new(n)
-  n.data = 9 # no need to write n^ .data
+  n.data = 9 
+  # no need to write n[].data; in fact n[].data is highly discouraged!
 
 To allocate a new traced object, the built-in procedure ``new`` has to be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
@@ -1941,8 +1943,8 @@ above example is equivalent to:
 .. code-block:: nimrod
   proc divmod(a, b: int,
               res, remainder: ptr int) =
-    res^ = a div b
-    remainder^ = a mod b
+    res[] = a div b
+    remainder[] = a mod b
 
   var
     x, y: int
@@ -2070,6 +2072,7 @@ The `for`:idx: statement is an abstract mechanism to iterate over the elements
 of a container. It relies on an `iterator`:idx: to do so. Like ``while``
 statements, ``for`` statements open an `implicit block`:idx:, so that they
 can be left with a ``break`` statement. The ``for`` loop declares
+
 iteration variables (``x`` in the example) - their scope reaches until the
 end of the loop body. The iteration variables' types are inferred by the
 return type of the iterator.
@@ -2579,6 +2582,7 @@ procvar pragma
 --------------
 The `procvar`:idx: pragma is used to mark a proc that it can be passed to a
 procedural variable.
+
 
 
 compileTime pragma

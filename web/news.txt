@@ -37,6 +37,10 @@ Changes affecting backwards compatibility
   if both ``$#`` and ``$i`` are involved.
 - The ``pegs`` and ``re`` modules distinguish between ``replace`` 
   and ``replacef`` operations.
+- The pointer dereference operation ``p^`` is deprecated and might become
+  ``^p`` in later versions or be dropped entirely since it is rarely used. 
+  Use the new notation ``p[]`` to dereference a pointer.
+  
 
 Additions
 ---------

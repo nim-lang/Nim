@@ -17,8 +17,11 @@ const
   resultsFile = "testresults.html"
 
 type
+  TTestAction = enum
+    actionCompile, actionRun, actionReject
   TSpec {.pure.} = object
-    file: string
+    action: TTestAction
+    file, cmd: string
     outp: string
     line: int
     msg: string
@@ -72,13 +75,21 @@ proc parseSpec(filename: string): TSpec =
   result.err = true
   result.msg = ""
   result.outp = ""
+  result.cmd = cmdTemplate
   parseSpecAux:
     case normalize(e.key)
+    of "action": 
+      case e.value.normalize
+      of "compile": result.action = actionCompile
+      of "run": result.action = actionRun
+      of "reject": result.action = actionReject
+      else: echo ignoreMsg(p, e)
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
     of "output": result.outp = e.value
     of "errormsg", "msg": result.msg = e.value
     of "disabled": result.disabled = parseCfgBool(e.value)
+    of "cmd": result.cmd = e.value
     else: echo ignoreMsg(p, e)
 
 # ----------------------------------------------------------------------------
@@ -92,7 +103,7 @@ var
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError / pegSuccess
 
-proc callCompiler(filename, options: string): TSpec =
+proc callCompiler(cmdTemplate, filename, options: string): TSpec =
   var c = parseCmdLine(cmdTemplate % [options, filename])
   var a: seq[string] = @[] # slicing is not yet implemented :-(
   for i in 1 .. c.len-1: add(a, c[i])
@@ -192,7 +203,7 @@ proc reject(r: var TResults, dir, options: string) =
       r.addResult(t, "", "", reIgnored)
       inc(r.skipped)
     else:
-      var given = callCompiler(test, options)
+      var given = callCompiler(expected.cmd, test, options)
       cmpMsgs(r, expected, given, t)
   
 proc compile(r: var TResults, pattern, options: string) = 
@@ -200,7 +211,7 @@ proc compile(r: var TResults, pattern, options: string) =
     var t = extractFilename(test)
     inc(r.total)
     echo t
-    var given = callCompiler(test, options)
+    var given = callCompiler(cmdTemplate, test, options)
     r.addResult(t, given.msg, if given.err: reFailure else: reSuccess)
     if not given.err: inc(r.passed)
   
@@ -214,7 +225,7 @@ proc run(r: var TResults, dir, options: string) =
       r.addResult(t, "", "", reIgnored)
       inc(r.skipped)
     else:
-      var given = callCompiler(test, options)
+      var given = callCompiler(expected.cmd, test, options)
       if given.err:
         r.addResult(t, "", given.msg, reFailure)
       else:
