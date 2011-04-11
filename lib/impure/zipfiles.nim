@@ -58,8 +58,8 @@ proc addFile*(z: var TZipArchive, dest, src: string) =
   assert(z.mode != fmRead) 
   var zipsrc = zip_source_file(z.w, src, 0, -1)
   if zipsrc == nil:
-    echo("Dest: " & dest)
-    echo("Src: " & src)
+    #echo("Dest: " & dest)
+    #echo("Src: " & src)
     zipError(z)
   if zip_add(z.w, dest, zipsrc) < 0'i32:
     zip_source_free(zipsrc)
