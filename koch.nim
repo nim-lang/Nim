@@ -52,11 +52,11 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc csource(args: string) = 
-  exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource rod/nimrod $1" %
+  exec("nimrod cc $1 -r tools/niminst --var:version=$2 csource compiler/nimrod $1" %
        [args, NimrodVersion])
 
 proc zip(args: string) = 
-  exec("nimrod cc -r tools/niminst --var:version=$# zip rod/nimrod" %
+  exec("nimrod cc -r tools/niminst --var:version=$# zip compiler/nimrod" %
        NimrodVersion)
   
 proc buildTool(toolname, args: string) = 
@@ -66,8 +66,9 @@ proc buildTool(toolname, args: string) =
 proc inno(args: string) =
   # make sure we have generated the c2nim and niminst executables:
   buildTool("tools/niminst", args)
-  buildTool("rod/c2nim/c2nim", args)
-  exec("tools" / "niminst --var:version=$# inno rod/nimrod" % NimrodVersion)
+  buildTool("compiler/c2nim/c2nim", args)
+  exec("tools" / "niminst --var:version=$# inno compiler/nimrod" % 
+       NimrodVersion)
 
 proc install(args: string) = 
   exec("sh ./build.sh")
@@ -87,18 +88,6 @@ proc gitAux(dir: string) =
 proc git = 
   gitAux("build")
 
-# -------------- nim ----------------------------------------------------------
-
-proc compileNimCmd(args: string): string = 
-  var cwd = getCurrentDir()
-  result = ("fpc -Cs16777216 -gl -bl -Crtoi -Sgidh -vw -Se1 $4 -o\"$1\" " &
-            "-FU\"$2\" \"$3\"") % [cwd / "bin" / "nim".exe, 
-                                   cwd / "obj",
-                                   cwd / "nim" / "nimrod.pas",
-                                   args]
-
-proc nim(args: string) = exec(compileNimCmd(args))
-
 # -------------- boot ---------------------------------------------------------
 
 const
@@ -117,14 +106,15 @@ proc findStartNimrod: string =
   if ExistsFile(result): return
   for dir in split(getEnv("PATH"), PathSep):
     if ExistsFile(dir / nimrod): return nimrod
-  result = "bin" / "nim".exe
-  if ExistsFile(result): return
   when defined(Posix):
     const buildScript = "build.sh"
     if ExistsFile(buildScript): 
       if tryExec("./" & buildScript): return "bin" / nimrod
+  else:
+    const buildScript = "build.bat"
+    if ExistsFile(buildScript): 
+      if tryExec(buildScript): return "bin" / nimrod
   
-  if tryExec(compileNimCmd("")): return 
   echo("Found no nimrod compiler and every attempt to build one failed!")
   quit("FAILURE")
 
@@ -132,7 +122,7 @@ proc safeRemove(filename: string) =
   if existsFile(filename): removeFile(filename)
 
 proc thVersion(i: int): string = 
-  result = ("rod" / "nimrod" & $i).exe
+  result = ("compiler" / "nimrod" & $i).exe
 
 proc copyExe(source, dest: string) =
   safeRemove(dest)
@@ -140,13 +130,13 @@ proc copyExe(source, dest: string) =
   inclFilePermissions(dest, {fpUserExec})
   
 proc boot(args: string) =
-  var output = "rod" / "nimrod".exe
+  var output = "compiler" / "nimrod".exe
   var finalDest = "bin" / "nimrod".exe
   
   copyExe(findStartNimrod(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " cc $# $# rod" / "nimrod.nim" % [bootOptions, args]
+    exec i.thVersion & " cc $# $# compiler" / "nimrod.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -214,7 +204,6 @@ of cmdArgument:
   of "zip": zip(op.cmdLineRest)
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
-  of "nim": nim(op.cmdLineRest)
   of "git": git()
   else: showHelp()
 of cmdEnd: showHelp()
