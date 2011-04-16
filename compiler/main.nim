@@ -56,7 +56,7 @@ proc newModule(filename: string): PSym =
   result.kind = skModule
   result.name = getIdent(splitFile(filename).name)
   if not isNimrodIdentifier(result.name.s):
-    rawMessage(errIdentifierExpected, result.name.s)
+    rawMessage(errInvalidModuleName, result.name.s)
   
   result.owner = result       # a module belongs to itself
   result.info = newLineInfo(filename, 1, 1)
