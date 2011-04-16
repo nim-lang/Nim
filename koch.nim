@@ -33,7 +33,6 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno [options]           builds the Inno Setup installer
-  git                      removes and adds generated C files to git
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -77,17 +76,6 @@ proc web(args: string) =
   exec("nimrod cc -r tools/nimweb.nim web/nimrod --putenv:nimrodversion=$#" %
        NimrodVersion)
 
-proc gitAux(dir: string) = 
-  for kind, path in walkDir(dir):
-    if kind == pcDir: 
-      var cfiles = path / "*.c"
-      when false: exec("git rm " & cfiles)
-      exec("git add " & cfiles)
-      gitAux(path)
-
-proc git = 
-  gitAux("build")
-
 # -------------- boot ---------------------------------------------------------
 
 const
@@ -97,10 +85,7 @@ proc findStartNimrod: string =
   # we try several things before giving up:
   # * bin/nimrod
   # * $PATH/nimrod
-  # * bin/nim
-  # If these fail, we build nimrod with the "build.sh" script
-  # (but only on UNIX). Otherwise we try to compile "nim" with FPC 
-  # and use "bin/nim".
+  # If these fail, we try to build nimrod with the "build.(sh|bat)" script.
   var nimrod = "nimrod".exe
   result = "bin" / nimrod
   if ExistsFile(result): return
@@ -204,7 +189,6 @@ of cmdArgument:
   of "zip": zip(op.cmdLineRest)
   of "inno": inno(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
-  of "git": git()
   else: showHelp()
 of cmdEnd: showHelp()
 
