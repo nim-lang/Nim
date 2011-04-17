@@ -642,7 +642,11 @@ proc unmarkStackAndRegisters(gch: var TGcHeap) =
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
     assert isAllocatedPtr(allocator, d[i])
-    decRef(d[i]) # OPT: cannot create a cycle!
+    # decRef(d[i]) inlined: cannot create a cycle
+    var c = d[i]
+    if atomicDec(c.refcount, rcIncrement) <% rcIncrement:
+      rtlAddZCT(c)
+    assert c.typ != nil
   gch.decStack.len = 0
 
 proc collectCT(gch: var TGcHeap) =

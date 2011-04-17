@@ -650,13 +650,15 @@ proc setLen*[T](s: var seq[T], newlen: int) {.
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
+  ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
+  ## a size, use ``newSeq`` instead. 
 
 proc setLen*(s: var string, newlen: int) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
+  ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
+  ## a size, use ``newString`` instead. 
 
 proc newString*(len: int): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}

@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2010 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,27 +25,12 @@ const
   SymChars*: TCharSet = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: TCharSet = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
   OpChars*: TCharSet = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.', 
-    '|', '=', '%', '&', '$', '@', '~', '\x80'..'\xFF'}
+    '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
 
 type 
   TTokType* = enum 
     tkInvalid, tkEof,         # order is important here!
     tkSymbol, # keywords:
-              #[[[cog
-              #from string import split, capitalize
-              #keywords = split(open("data/keywords.txt").read())
-              #idents = ""
-              #strings = ""
-              #i = 1
-              #for k in keywords:
-              #  idents = idents + "tk" + capitalize(k) + ", "
-              #  strings = strings + "'" + k + "', "
-              #  if i % 4 == 0:
-              #    idents = idents + "\n"
-              #    strings = strings + "\n"
-              #  i = i + 1
-              #cog.out(idents)
-              #]]]
     tkAddr, tkAnd, tkAs, tkAsm, tkAtomic, 
     tkBind, tkBlock, tkBreak, tkCase, tkCast, 
     tkConst, tkContinue, tkConverter, tkDiscard, tkDistinct, tkDiv, tkElif, 
@@ -55,7 +40,7 @@ type
     tkMacro, tkMethod, tkMod, tkNil, tkNot, tkNotin, tkObject, tkOf, tkOr, 
     tkOut, tkProc, tkPtr, tkRaise, tkRef, tkReturn, tkShl, tkShr, tkTemplate, 
     tkTry, tkTuple, tkType, tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
-    tkYield, #[[[end]]]
+    tkYield, # end of keywords
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit, tkFloatLit, 
     tkFloat32Lit, tkFloat64Lit, tkStrLit, tkRStrLit, tkTripleStrLit, 
     tkGStrLit, tkGTripleStrLit, tkCharLit, tkParLe, tkParRi, tkBracketLe, 
@@ -63,8 +48,8 @@ type
     tkBracketDotLe, tkBracketDotRi, # [. and  .]
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
-    tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot, tkHat, tkOpr, 
-    tkComment, tkAccent, tkInd, tkSad, 
+    tkComma, tkSemiColon, tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, 
+    tkHat, tkOpr, tkComment, tkAccent, tkInd, tkSad, 
     tkDed, # pseudo token types used by the source renderers:
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
   TTokTypes* = set[TTokType]
@@ -72,13 +57,8 @@ type
 const 
   tokKeywordLow* = succ(tkSymbol)
   tokKeywordHigh* = pred(tkIntLit)
-  tokOperators*: TTokTypes = {tkOpr, tkSymbol, tkBracketLe, tkBracketRi, tkIn, 
-    tkIs, tkIsNot, tkEquals, tkDot, tkHat, tkNot, tkAnd, tkOr, tkXor, tkShl, 
-    tkShr, tkDiv, tkMod, tkNotIn}
   TokTypeToStr*: array[TTokType, string] = ["tkInvalid", "[EOF]", 
-    "tkSymbol", #[[[cog
-                #cog.out(strings)
-                #]]]
+    "tkSymbol",
     "addr", "and", "as", "asm", "atomic", 
     "bind", "block", "break", "case", "cast", 
     "const", "continue", "converter", "discard", "distinct", "div", "elif", 
@@ -88,11 +68,12 @@ const
     "macro", "method", "mod", "nil", "not", "notin", "object", "of", "or", 
     "out", "proc", "ptr", "raise", "ref", "return", "shl", "shr", "template", 
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
-    "yield", #[[[end]]]
+    "yield",
     "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit", 
     "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkStrLit", "tkRStrLit", 
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(", 
-    ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)", ",", ";", ":", 
+    ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)", ",", ";", 
+    ":", "::",
     "=", ".", "..", "^", "tkOpr", "tkComment", "`", "[new indentation]", 
     "[same indentation]", "[dedentation]", "tkSpaces", "tkInfixOpr", 
     "tkPrefixOpr", "tkPostfixOpr"]
@@ -414,8 +395,7 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   of 'A'..'F': 
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
-  else: 
-    nil
+  else: nil
 
 proc handleDecChars(L: var TLexer, xi: var int) = 
   while L.buf[L.bufpos] in {'0'..'9'}: 
@@ -508,7 +488,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
       of CR, LF: 
         pos = HandleCRLF(L, pos)
         buf = L.buf
-        tok.literal = tok.literal & tnl
+        add(tok.literal, tnl)
       of lexbase.EndOfFile: 
         var line2 = L.linenumber
         L.LineNumber = line
@@ -563,23 +543,17 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF': 
-      h = h +% Ord(c)
-      h = h +% h shl 10
-      h = h xor (h shr 6)
+      h = concHash(h, ord(c))
     of 'A'..'Z': 
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = h +% Ord(c)
-      h = h +% h shl 10
-      h = h xor (h shr 6)
+      h = concHash(h, ord(c))
     of '_': 
       if buf[pos+1] notin SymChars: 
         lexMessage(L, errInvalidToken, "_")
         break
     else: break 
     Inc(pos)
-  h = h +% h shl 3
-  h = h xor (h shr 11)
-  h = h +% h shl 15
+  h = finishHash(h)
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
@@ -588,26 +562,24 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   else: 
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
   
+proc endOperator(L: var TLexer, tok: var TToken, pos: int,
+                 hash: THash) {.inline.} = 
+  var h = finishHash(hash)
+  tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
+  else: tok.tokType = TTokType(tok.ident.id - oprLow + ord(tkColon))
+  L.bufpos = pos
+  
 proc getOperator(L: var TLexer, tok: var TToken) = 
   var pos = L.bufpos
   var buf = L.buf
   var h: THash = 0
   while true: 
     var c = buf[pos]
-    if c in OpChars: 
-      h = h +% Ord(c)
-      h = h +% h shl 10
-      h = h xor (h shr 6)
-    else: 
-      break 
+    if c notin OpChars: break
+    h = concHash(h, Ord(c))
     Inc(pos)
-  h = h +% h shl 3
-  h = h xor (h shr 11)
-  h = h +% h shl 15
-  tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
-  else: tok.tokType = TTokType(tok.ident.id - oprLow + ord(tkColon))
-  L.bufpos = pos
+  endOperator(L, tok, pos, h)
 
 proc handleIndentation(L: var TLexer, tok: var TToken, indent: int) = 
   tok.indent = indent
@@ -679,17 +651,17 @@ proc skip(L: var TLexer, tok: var TToken) =
 
 proc rawGetTok(L: var TLexer, tok: var TToken) = 
   fillToken(tok)
-  if L.dedent > 0: 
+  if L.dedent > 0:
     dec(L.dedent)
     if L.indentAhead >= 0: 
       handleIndentation(L, tok, L.indentAhead)
       L.indentAhead = - 1
-    else: 
+    else:
       tok.tokType = tkDed
-    return 
+    return
   skip(L, tok)
   # got an documentation comment or tkIndent, return that:
-  if tok.toktype != tkInvalid: return 
+  if tok.toktype != tkInvalid: return
   var c = L.buf[L.bufpos]
   if c in SymStartChars - {'r', 'R', 'l'}: 
     getSymbol(L, tok)
@@ -699,10 +671,15 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     case c
     of '#': 
       scanComment(L, tok)
-    of ':': 
-      tok.tokType = tkColon
-      inc(L.bufpos)
-    of ',': 
+    of '*':
+      # '*:' is unfortunately a special case, because it is two tokens in 
+      # 'var v*: int'.
+      if L.buf[L.bufpos+1] == ':' and L.buf[L.bufpos+2] notin OpChars:
+        var h = concHash(0, ord('*'))
+        endOperator(L, tok, L.bufpos+1, h)
+      else:
+        getOperator(L, tok)
+    of ',':
       tok.toktype = tkComma
       Inc(L.bufpos)
     of 'l': 
@@ -751,7 +728,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
         getOperator(L, tok)
     of '{': 
       Inc(L.bufpos)
-      if (L.buf[L.bufPos] == '.') and (L.buf[L.bufPos + 1] != '.'): 
+      if (L.buf[L.bufPos] == '.') and (L.buf[L.bufPos+1] != '.'): 
         tok.toktype = tkCurlyDotLe
         Inc(L.bufpos)
       else: 
@@ -777,12 +754,12 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
       getCharacter(L, tok)
       tok.tokType = tkCharLit
-    of lexbase.EndOfFile: 
-      tok.toktype = tkEof
-    else: 
+    else:
       if c in OpChars: 
         getOperator(L, tok)
-      else: 
+      elif c == lexbase.EndOfFile:
+        tok.toktype = tkEof
+      else:
         tok.literal = c & ""
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')

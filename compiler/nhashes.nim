@@ -1,7 +1,7 @@
 #
 #
 #           The Nimrod Compiler
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,29 +20,17 @@ type
   PHash* = ref THash
   THashFunc* = proc (str: cstring): THash
 
-proc GetHash*(str: cstring): THash
-proc GetHashCI*(str: cstring): THash
-proc GetDataHash*(Data: Pointer, Size: int): THash
-proc hashPtr*(p: Pointer): THash
-proc GetHashStr*(s: string): THash
-proc GetHashStrCI*(s: string): THash
-proc getNormalizedHash*(s: string): THash
-  #function nextPowerOfTwo(x: int): int;
-proc concHash*(h: THash, val: int): THash
-proc finishHash*(h: THash): THash
-# implementation
-
-proc concHash(h: THash, val: int): THash = 
+proc concHash*(h: THash, val: int): THash {.inline.} = 
   result = h +% val
   result = result +% result shl 10
   result = result xor (result shr 6)
 
-proc finishHash(h: THash): THash = 
+proc finishHash*(h: THash): THash {.inline.} = 
   result = h +% h shl 3
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc GetDataHash(Data: Pointer, Size: int): THash = 
+proc GetDataHash*(Data: Pointer, Size: int): THash = 
   var 
     h: THash
     p: cstring
@@ -62,10 +50,10 @@ proc GetDataHash(Data: Pointer, Size: int): THash =
   h = h +% h shl 15
   result = THash(h)
 
-proc hashPtr(p: Pointer): THash = 
+proc hashPtr*(p: Pointer): THash = 
   result = (cast[THash](p)) shr 3 # skip the alignment
   
-proc GetHash(str: cstring): THash = 
+proc GetHash*(str: cstring): THash = 
   var 
     h: THash
     i: int
@@ -81,7 +69,7 @@ proc GetHash(str: cstring): THash =
   h = h +% h shl 15
   result = THash(h)
 
-proc GetHashStr(s: string): THash = 
+proc GetHashStr*(s: string): THash = 
   var h: THash
   h = 0
   for i in countup(1, len(s)): 
@@ -93,7 +81,7 @@ proc GetHashStr(s: string): THash =
   h = h +% h shl 15
   result = THash(h)
 
-proc getNormalizedHash(s: string): THash = 
+proc getNormalizedHash*(s: string): THash = 
   var 
     h: THash
     c: Char
@@ -112,7 +100,7 @@ proc getNormalizedHash(s: string): THash =
   h = h +% h shl 15
   result = THash(h)
 
-proc GetHashStrCI(s: string): THash = 
+proc GetHashStrCI*(s: string): THash = 
   var 
     h: THash
     c: Char
@@ -129,7 +117,7 @@ proc GetHashStrCI(s: string): THash =
   h = h +% h shl 15
   result = THash(h)
 
-proc GetHashCI(str: cstring): THash = 
+proc GetHashCI*(str: cstring): THash = 
   var 
     h: THash
     c: Char

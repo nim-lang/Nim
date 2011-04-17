@@ -513,13 +513,14 @@ proc genProcHeader(m: BModule, prc: PSym): PRope =
     rettype, params: PRope
     check: TIntSet
   # using static is needed for inline procs
-  if (prc.typ.callConv == ccInline): result = toRope("static ")
-  else: result = nil
+  if (prc.typ.callConv == ccInline): result = toRope"static "
   IntSetInit(check)
   fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   appf(result, "$1($2, $3)$4", 
        [toRope(CallingConvToStr[prc.typ.callConv]), rettype, prc.loc.r, params])
+
+# ------------------ type info generation -------------------------------------
 
 proc genTypeInfo(m: BModule, typ: PType): PRope
 proc getNimNode(m: BModule): PRope = 
@@ -743,10 +744,10 @@ proc genTypeInfo(m: BModule, typ: PType): PRope =
          [result, toRope(typeToString(t))])
   if dataGenerated: return 
   case t.kind
-  of tyEmpty: result = toRope("0")
+  of tyEmpty: result = toRope"0"
   of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyFloat128, 
      tyVar: 
-    genTypeInfoAuxBase(gNimDat, t, result, toRope("0"))
+    genTypeInfoAuxBase(gNimDat, t, result, toRope"0")
   of tyRef, tyPtr, tySequence, tyRange: genTypeInfoAux(gNimDat, t, result)
   of tyArrayConstr, tyArray: genArrayInfo(gNimDat, t, result)
   of tySet: genSetInfo(gNimDat, t, result)

@@ -13,18 +13,13 @@ import
   llstream, nversion, commands, os, strutils, msgs, platform, condsyms, scanner, 
   options, idents, wordrecg
 
-proc LoadConfig*(project: string)
-proc LoadSpecialConfig*(configfilename: string)
-# implementation
 # ---------------- configuration file parser -----------------------------
 # we use Nimrod's scanner here to safe space and work
 
 proc ppGetTok(L: var TLexer, tok: PToken) = 
   # simple filter
-  rawGetTok(L, tok[] )
-  while (tok.tokType == tkInd) or (tok.tokType == tkSad) or
-      (tok.tokType == tkDed) or (tok.tokType == tkComment): 
-    rawGetTok(L, tok[] )
+  rawGetTok(L, tok[])
+  while tok.tokType in {tkInd, tkSad, tkDed, tkComment}: rawGetTok(L, tok[])
   
 proc parseExpr(L: var TLexer, tok: PToken): bool
 proc parseAtom(L: var TLexer, tok: PToken): bool = 
@@ -36,25 +31,22 @@ proc parseAtom(L: var TLexer, tok: PToken): bool =
   elif tok.ident.id == ord(wNot): 
     ppGetTok(L, tok)
     result = not parseAtom(L, tok)
-  else: 
-    result = isDefined(tok.ident) #condsyms.listSymbols();
-                                  #writeln(tok.ident.s + ' has the value: ', result);
+  else:
+    result = isDefined(tok.ident)
     ppGetTok(L, tok)
 
 proc parseAndExpr(L: var TLexer, tok: PToken): bool = 
-  var b: bool
   result = parseAtom(L, tok)
   while tok.ident.id == ord(wAnd): 
     ppGetTok(L, tok)          # skip "and"
-    b = parseAtom(L, tok)
+    var b = parseAtom(L, tok)
     result = result and b
 
 proc parseExpr(L: var TLexer, tok: PToken): bool = 
-  var b: bool
   result = parseAndExpr(L, tok)
   while tok.ident.id == ord(wOr): 
     ppGetTok(L, tok)          # skip "or"
-    b = parseAndExpr(L, tok)
+    var b = parseAndExpr(L, tok)
     result = result or b
 
 proc EvalppIf(L: var TLexer, tok: PToken): bool = 
@@ -63,9 +55,8 @@ proc EvalppIf(L: var TLexer, tok: PToken): bool =
   if tok.tokType == tkColon: ppGetTok(L, tok)
   else: lexMessage(L, errTokenExpected, "\':\'")
   
-var condStack: seq[bool]
+var condStack: seq[bool] = @[]
 
-condStack = @ []
 proc doEnd(L: var TLexer, tok: PToken) = 
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
   ppGetTok(L, tok)            # skip 'end'
@@ -83,15 +74,13 @@ proc doElse(L: var TLexer, tok: PToken) =
   if condStack[high(condStack)]: jumpToDirective(L, tok, jdEndif)
   
 proc doElif(L: var TLexer, tok: PToken) = 
-  var res: bool
   if high(condStack) < 0: lexMessage(L, errTokenExpected, "@if")
-  res = EvalppIf(L, tok)
+  var res = EvalppIf(L, tok)
   if condStack[high(condStack)] or not res: jumpToDirective(L, tok, jdElseEndif)
   else: condStack[high(condStack)] = true
   
 proc jumpToDirective(L: var TLexer, tok: PToken, dest: TJumpDest) = 
-  var nestedIfs: int
-  nestedIfs = 0
+  var nestedIfs = 0
   while True: 
     if (tok.ident != nil) and (tok.ident.s == "@"): 
       ppGetTok(L, tok)
@@ -120,42 +109,35 @@ proc jumpToDirective(L: var TLexer, tok: PToken, dest: TJumpDest) =
       ppGetTok(L, tok)
   
 proc parseDirective(L: var TLexer, tok: PToken) = 
-  var 
-    res: bool
-    key: string
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
   of wIf: 
     setlen(condStack, len(condStack) + 1)
-    res = EvalppIf(L, tok)
+    var res = EvalppIf(L, tok)
     condStack[high(condStack)] = res
-    if not res: 
-      jumpToDirective(L, tok, jdElseEndif)
-  of wElif: 
-    doElif(L, tok)
-  of wElse: 
-    doElse(L, tok)
-  of wEnd: 
-    doEnd(L, tok)
+    if not res: jumpToDirective(L, tok, jdElseEndif)
+  of wElif: doElif(L, tok)
+  of wElse: doElse(L, tok)
+  of wEnd: doEnd(L, tok)
   of wWrite: 
     ppGetTok(L, tok)
     msgs.MsgWriteln(tokToStr(tok))
     ppGetTok(L, tok)
   of wPutEnv: 
     ppGetTok(L, tok)
-    key = tokToStr(tok)
+    var key = tokToStr(tok)
     ppGetTok(L, tok)
     os.putEnv(key, tokToStr(tok))
     ppGetTok(L, tok)
   of wPrependEnv: 
     ppGetTok(L, tok)
-    key = tokToStr(tok)
+    var key = tokToStr(tok)
     ppGetTok(L, tok)
     os.putEnv(key, tokToStr(tok) & os.getenv(key))
     ppGetTok(L, tok)
   of wAppendenv: 
     ppGetTok(L, tok)
-    key = tokToStr(tok)
+    var key = tokToStr(tok)
     ppGetTok(L, tok)
     os.putEnv(key, os.getenv(key) & tokToStr(tok))
     ppGetTok(L, tok)
@@ -163,24 +145,21 @@ proc parseDirective(L: var TLexer, tok: PToken) =
   
 proc confTok(L: var TLexer, tok: PToken) = 
   ppGetTok(L, tok)
-  while (tok.ident != nil) and (tok.ident.s == "@"): 
+  while tok.ident != nil and tok.ident.s == "@": 
     parseDirective(L, tok)    # else: give the token to the parser
   
 proc checkSymbol(L: TLexer, tok: PToken) = 
-  if not (tok.tokType in {tkSymbol..pred(tkIntLit), tkStrLit..tkTripleStrLit}): 
+  if tok.tokType notin {tkSymbol..pred(tkIntLit), tkStrLit..tkTripleStrLit}: 
     lexMessage(L, errIdentifierExpected, tokToStr(tok))
   
 proc parseAssignment(L: var TLexer, tok: PToken) = 
-  var 
-    s, val: string
-    info: TLineInfo
-  if (tok.ident.id == getIdent("-").id) or (tok.ident.id == getIdent("--").id): 
+  if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
     confTok(L, tok)           # skip unnecessary prefix
-  info = getLineInfo(L)       # safe for later in case of an error
+  var info = getLineInfo(L)   # safe for later in case of an error
   checkSymbol(L, tok)
-  s = tokToStr(tok)
+  var s = tokToStr(tok)
   confTok(L, tok)             # skip symbol
-  val = ""
+  var val = ""
   while tok.tokType == tkDot: 
     add(s, '.')
     confTok(L, tok)
@@ -197,14 +176,13 @@ proc parseAssignment(L: var TLexer, tok: PToken) =
     if tok.tokType == tkBracketRi: confTok(L, tok)
     else: lexMessage(L, errTokenExpected, "\']\'")
     add(val, ']')
-  if (tok.tokType == tkColon) or (tok.tokType == tkEquals): 
-    if len(val) > 0: 
-      add(val, ':')           # BUGFIX
+  if tok.tokType in {tkColon, tkEquals}: 
+    if len(val) > 0: add(val, ':')
     confTok(L, tok)           # skip ':' or '='
     checkSymbol(L, tok)
     add(val, tokToStr(tok))
     confTok(L, tok)           # skip symbol
-    while (tok.ident != nil) and (tok.ident.id == getIdent("&").id): 
+    while tok.ident != nil and tok.ident.id == getIdent("&").id:
       confTok(L, tok)
       checkSymbol(L, tok)
       add(val, tokToStr(tok))
@@ -234,24 +212,22 @@ proc getConfigPath(filename: string): string =
     # try standard configuration file (installation did not distribute files
     # the UNIX way)
     result = joinPath([getPrefixDir(), "config", filename])
-    if not ExistsFile(result): 
-      result = "/etc/" & filename
+    if not ExistsFile(result): result = "/etc/" & filename
 
-proc LoadSpecialConfig(configfilename: string) = 
-  if not (optSkipConfigFile in gGlobalOptions): 
+proc LoadSpecialConfig*(configfilename: string) = 
+  if optSkipConfigFile notin gGlobalOptions:
     readConfigFile(getConfigPath(configfilename))
   
-proc LoadConfig(project: string) = 
-  var conffile, prefix: string
+proc LoadConfig*(project: string) = 
   # set default value (can be overwritten):
   if libpath == "": 
     # choose default libpath:
-    prefix = getPrefixDir()
+    var prefix = getPrefixDir()
     if (prefix == "/usr"): libpath = "/usr/lib/nimrod"
     elif (prefix == "/usr/local"): libpath = "/usr/local/lib/nimrod"
     else: libpath = joinPath(prefix, "lib")
   LoadSpecialConfig("nimrod.cfg") # read project config file:
-  if not (optSkipProjConfigFile in gGlobalOptions) and (project != ""): 
-    conffile = changeFileExt(project, "cfg")
+  if optSkipProjConfigFile notin gGlobalOptions and project != "": 
+    var conffile = changeFileExt(project, "cfg")
     if existsFile(conffile): readConfigFile(conffile)
   

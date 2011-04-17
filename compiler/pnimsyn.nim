@@ -44,7 +44,6 @@ proc newStrNodeP*(kind: TNodeKind, strVal: string, p: TParser): PNode
 proc newIdentNodeP*(ident: PIdent, p: TParser): PNode
 proc expectIdentOrKeyw*(p: TParser)
 proc ExpectIdent*(p: TParser)
-proc expectIdentOrOpr*(p: TParser)
 proc parLineInfo*(p: TParser): TLineInfo
 proc Eat*(p: var TParser, TokType: TTokType)
 proc skipInd*(p: var TParser)
@@ -100,10 +99,6 @@ proc expectIdentOrKeyw(p: TParser) =
 proc ExpectIdent(p: TParser) = 
   if p.tok.tokType != tkSymbol: 
     lexMessage(p.lex[], errIdentifierExpected, tokToStr(p.tok))
-  
-proc expectIdentOrOpr(p: TParser) = 
-  if not (p.tok.tokType in tokOperators): 
-    lexMessage(p.lex[], errOperatorExpected, tokToStr(p.tok))
   
 proc Eat(p: var TParser, TokType: TTokType) = 
   if p.tok.TokType == TokType: getTok(p)

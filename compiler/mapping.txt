@@ -1,76 +1,76 @@
 [C_Files]
---file:r"rod/nimcache/nim__dat.c"
---file:r"rod/nimcache/lib/system.c"
---file:r"rod/nimcache/nimrod.c"
---file:r"rod/nimcache/lib/pure/times.c"
---file:r"rod/nimcache/lib/pure/strutils.c"
---file:r"rod/nimcache/lib/pure/parseutils.c"
---file:r"rod/nimcache/commands.c"
---file:r"rod/nimcache/lib/pure/os.c"
---file:r"rod/nimcache/lib/posix/posix.c"
---file:r"rod/nimcache/msgs.c"
---file:r"rod/nimcache/options.c"
---file:r"rod/nimcache/lists.c"
---file:r"rod/nimcache/nstrtabs.c"
---file:r"rod/nimcache/nhashes.c"
---file:r"rod/nimcache/nversion.c"
---file:r"rod/nimcache/condsyms.c"
---file:r"rod/nimcache/ast.c"
---file:r"rod/nimcache/crc.c"
---file:r"rod/nimcache/ropes.c"
---file:r"rod/nimcache/platform.c"
---file:r"rod/nimcache/idents.c"
---file:r"rod/nimcache/astalgo.c"
---file:r"rod/nimcache/rodutils.c"
---file:r"rod/nimcache/extccomp.c"
---file:r"rod/nimcache/lib/pure/osproc.c"
---file:r"rod/nimcache/lib/pure/strtabs.c"
---file:r"rod/nimcache/lib/pure/hashes.c"
---file:r"rod/nimcache/lib/pure/streams.c"
---file:r"rod/nimcache/wordrecg.c"
---file:r"rod/nimcache/scanner.c"
---file:r"rod/nimcache/lexbase.c"
---file:r"rod/nimcache/llstream.c"
---file:r"rod/nimcache/nimconf.c"
---file:r"rod/nimcache/main.c"
---file:r"rod/nimcache/syntaxes.c"
---file:r"rod/nimcache/pnimsyn.c"
---file:r"rod/nimcache/pbraces.c"
---file:r"rod/nimcache/ptmplsyn.c"
---file:r"rod/nimcache/rnimsyn.c"
---file:r"rod/nimcache/filters.c"
---file:r"rod/nimcache/rodread.c"
---file:r"rod/nimcache/rodwrite.c"
---file:r"rod/nimcache/passes.c"
---file:r"rod/nimcache/types.c"
---file:r"rod/nimcache/trees.c"
---file:r"rod/nimcache/lib/pure/math.c"
---file:r"rod/nimcache/magicsys.c"
---file:r"rod/nimcache/nimsets.c"
---file:r"rod/nimcache/bitsets.c"
---file:r"rod/nimcache/importer.c"
---file:r"rod/nimcache/lookups.c"
---file:r"rod/nimcache/semdata.c"
---file:r"rod/nimcache/treetab.c"
---file:r"rod/nimcache/sem.c"
---file:r"rod/nimcache/evals.c"
---file:r"rod/nimcache/semfold.c"
---file:r"rod/nimcache/procfind.c"
---file:r"rod/nimcache/pragmas.c"
---file:r"rod/nimcache/semtypinst.c"
---file:r"rod/nimcache/sigmatch.c"
---file:r"rod/nimcache/suggest.c"
---file:r"rod/nimcache/docgen.c"
---file:r"rod/nimcache/rst.c"
---file:r"rod/nimcache/highlite.c"
---file:r"rod/nimcache/cgen.c"
---file:r"rod/nimcache/ccgutils.c"
---file:r"rod/nimcache/cgmeth.c"
---file:r"rod/nimcache/ecmasgen.c"
---file:r"rod/nimcache/passaux.c"
---file:r"rod/nimcache/depends.c"
---file:r"rod/nimcache/transf.c"
---file:r"rod/nimcache/lib/pure/parseopt.c"
+--file:r"compiler/nimcache/nim__dat.c"
+--file:r"compiler/nimcache/lib/system.c"
+--file:r"compiler/nimcache/nimrod.c"
+--file:r"compiler/nimcache/lib/pure/times.c"
+--file:r"compiler/nimcache/lib/pure/strutils.c"
+--file:r"compiler/nimcache/lib/pure/parseutils.c"
+--file:r"compiler/nimcache/commands.c"
+--file:r"compiler/nimcache/lib/pure/os.c"
+--file:r"compiler/nimcache/lib/posix/posix.c"
+--file:r"compiler/nimcache/msgs.c"
+--file:r"compiler/nimcache/options.c"
+--file:r"compiler/nimcache/lists.c"
+--file:r"compiler/nimcache/nstrtabs.c"
+--file:r"compiler/nimcache/nhashes.c"
+--file:r"compiler/nimcache/nversion.c"
+--file:r"compiler/nimcache/condsyms.c"
+--file:r"compiler/nimcache/ast.c"
+--file:r"compiler/nimcache/crc.c"
+--file:r"compiler/nimcache/ropes.c"
+--file:r"compiler/nimcache/platform.c"
+--file:r"compiler/nimcache/idents.c"
+--file:r"compiler/nimcache/astalgo.c"
+--file:r"compiler/nimcache/rodutils.c"
+--file:r"compiler/nimcache/extccomp.c"
+--file:r"compiler/nimcache/lib/pure/osproc.c"
+--file:r"compiler/nimcache/lib/pure/strtabs.c"
+--file:r"compiler/nimcache/lib/pure/hashes.c"
+--file:r"compiler/nimcache/lib/pure/streams.c"
+--file:r"compiler/nimcache/wordrecg.c"
+--file:r"compiler/nimcache/scanner.c"
+--file:r"compiler/nimcache/lexbase.c"
+--file:r"compiler/nimcache/llstream.c"
+--file:r"compiler/nimcache/nimconf.c"
+--file:r"compiler/nimcache/main.c"
+--file:r"compiler/nimcache/syntaxes.c"
+--file:r"compiler/nimcache/pnimsyn.c"
+--file:r"compiler/nimcache/pbraces.c"
+--file:r"compiler/nimcache/ptmplsyn.c"
+--file:r"compiler/nimcache/rnimsyn.c"
+--file:r"compiler/nimcache/filters.c"
+--file:r"compiler/nimcache/rodread.c"
+--file:r"compiler/nimcache/rodwrite.c"
+--file:r"compiler/nimcache/passes.c"
+--file:r"compiler/nimcache/types.c"
+--file:r"compiler/nimcache/trees.c"
+--file:r"compiler/nimcache/lib/pure/math.c"
+--file:r"compiler/nimcache/magicsys.c"
+--file:r"compiler/nimcache/nimsets.c"
+--file:r"compiler/nimcache/bitsets.c"
+--file:r"compiler/nimcache/importer.c"
+--file:r"compiler/nimcache/lookups.c"
+--file:r"compiler/nimcache/semdata.c"
+--file:r"compiler/nimcache/treetab.c"
+--file:r"compiler/nimcache/sem.c"
+--file:r"compiler/nimcache/evals.c"
+--file:r"compiler/nimcache/semfold.c"
+--file:r"compiler/nimcache/procfind.c"
+--file:r"compiler/nimcache/pragmas.c"
+--file:r"compiler/nimcache/semtypinst.c"
+--file:r"compiler/nimcache/sigmatch.c"
+--file:r"compiler/nimcache/suggest.c"
+--file:r"compiler/nimcache/docgen.c"
+--file:r"compiler/nimcache/rst.c"
+--file:r"compiler/nimcache/highlite.c"
+--file:r"compiler/nimcache/cgen.c"
+--file:r"compiler/nimcache/ccgutils.c"
+--file:r"compiler/nimcache/cgmeth.c"
+--file:r"compiler/nimcache/ecmasgen.c"
+--file:r"compiler/nimcache/passaux.c"
+--file:r"compiler/nimcache/depends.c"
+--file:r"compiler/nimcache/transf.c"
+--file:r"compiler/nimcache/lib/pure/parseopt.c"
 [Symbols]
 r"system.dbgLineHook": Dbglinehook_3201
 r"system.strDesc": Strdesc_3437
@@ -642,20 +642,20 @@ r"RawInsert.data": Data_46174
 r"RawInsert.key": Key_46175
 r"RawInsert.val": Val_46176
 r"RawInsert.h": H_46177
-r"msgs.MsgKindToStr": Msgkindtostr_48241
-r"msgs.WarningsToStr": Warningstostr_48480
-r"msgs.HintsToStr": Hintstostr_48485
-r"msgs.gNotes": Gnotes_48567
-r"msgs.gErrorCounter": Gerrorcounter_48568
-r"msgs.gHintCounter": Ghintcounter_48569
-r"msgs.gWarnCounter": Gwarncounter_48570
-r"msgs.gErrorMax": Gerrormax_48571
-r"msgs.filenames": Filenames_48598
-r"msgs.msgContext": Msgcontext_48616
-r"msgs.checkPoints": Checkpoints_48760
-r"msgs.lastError": Lasterror_49105
-r"msgs.UnknownLineInfo": Unknownlineinfo_48578
-r"UnknownLineInfo.result": Result_48580
+r"msgs.MsgKindToStr": Msgkindtostr_48242
+r"msgs.WarningsToStr": Warningstostr_48482
+r"msgs.HintsToStr": Hintstostr_48487
+r"msgs.gNotes": Gnotes_48569
+r"msgs.gErrorCounter": Gerrorcounter_48570
+r"msgs.gHintCounter": Ghintcounter_48571
+r"msgs.gWarnCounter": Gwarncounter_48572
+r"msgs.gErrorMax": Gerrormax_48573
+r"msgs.filenames": Filenames_48600
+r"msgs.msgContext": Msgcontext_48618
+r"msgs.checkPoints": Checkpoints_48762
+r"msgs.lastError": Lasterror_49107
+r"msgs.UnknownLineInfo": Unknownlineinfo_48580
+r"UnknownLineInfo.result": Result_48582
 r"crc.crc32table": Crc32table_51039
 r"platform.OS": Os_52053
 r"platform.EndianToStr": Endiantostr_52457
@@ -868,17 +868,17 @@ r"depends.gDotGraph": Gdotgraph_191015
 r"main.compMods": Compmods_195227
 r"nimrod.arguments": Arguments_199201
 r"nimrod.cmdLineInfo": Cmdlineinfo_199202
-r"msgs.newLineInfo": Newlineinfo_48721
-r"newLineInfo.filename": Filename_48723
-r"newLineInfo.line": Line_48724
-r"newLineInfo.col": Col_48725
-r"newLineInfo.result": Result_48726
-r"msgs.includeFilename": Includefilename_48663
-r"includeFilename.f": F_48665
-r"includeFilename.result": Result_48666
-r"includeFilename.i": I_48689
-r"countdown.:tmp": HEX3Atmp_48718
-r"countdown.res": Res_48720
+r"msgs.newLineInfo": Newlineinfo_48723
+r"newLineInfo.filename": Filename_48725
+r"newLineInfo.line": Line_48726
+r"newLineInfo.col": Col_48727
+r"newLineInfo.result": Result_48728
+r"msgs.includeFilename": Includefilename_48665
+r"includeFilename.f": F_48667
+r"includeFilename.result": Result_48668
+r"includeFilename.i": I_48691
+r"countdown.:tmp": HEX3Atmp_48720
+r"countdown.res": Res_48722
 r"eqStrings.a": A_18849
 r"eqStrings.b": B_18850
 r"eqStrings.result": Result_18851
@@ -931,22 +931,22 @@ r"astalgo.StrTableRawInsert": Strtablerawinsert_63258
 r"StrTableRawInsert.data": Data_63261
 r"StrTableRawInsert.n": N_63262
 r"StrTableRawInsert.h": H_63263
-r"msgs.InternalError": Internalerror_49211
-r"InternalError.info": Info_49213
-r"InternalError.errMsg": Errmsg_49214
-r"msgs.writeContext": Writecontext_48993
-r"writeContext.lastinfo": Lastinfo_48995
-r"writeContext.info": Info_48996
-r"writeContext.i": I_49015
-r"countup.:tmp": HEX3Atmp_49020
-r"countup.res": Res_49022
-r"msgs.==": HEX3DHEX3D_48984
-r"==.a": A_48986
-r"==.b": B_48987
-r"==.result": Result_48988
-r"msgs.MsgWriteln": Msgwriteln_48797
-r"MsgWriteln.s": S_48799
-r"msgs.writeln": Writeln_48792
+r"msgs.InternalError": Internalerror_49213
+r"InternalError.info": Info_49215
+r"InternalError.errMsg": Errmsg_49216
+r"msgs.writeContext": Writecontext_48995
+r"writeContext.lastinfo": Lastinfo_48997
+r"writeContext.info": Info_48998
+r"writeContext.i": I_49017
+r"countup.:tmp": HEX3Atmp_49022
+r"countup.res": Res_49024
+r"msgs.==": HEX3DHEX3D_48986
+r"==.a": A_48988
+r"==.b": B_48989
+r"==.result": Result_48990
+r"msgs.MsgWriteln": Msgwriteln_48799
+r"MsgWriteln.s": S_48801
+r"msgs.writeln": Writeln_48794
 r"%.formatstr": Formatstr_24959
 r"%.a": A_24961
 r"%.result": Result_24962
@@ -975,12 +975,12 @@ r"addf.j": J_24880
 r"addf.x": X_24904
 r"addf.e": E_24912
 r"addf.e": E_24929
-r"msgs.ToFilename": Tofilename_48727
-r"ToFilename.info": Info_48729
-r"ToFilename.result": Result_48730
-r"msgs.coordToStr": Coordtostr_48827
-r"coordToStr.coord": Coord_48829
-r"coordToStr.result": Result_48830
+r"msgs.ToFilename": Tofilename_48729
+r"ToFilename.info": Info_48731
+r"ToFilename.result": Result_48732
+r"msgs.coordToStr": Coordtostr_48829
+r"coordToStr.coord": Coord_48831
+r"coordToStr.result": Result_48832
 r"nimIntToStr.x": X_19603
 r"nimIntToStr.result": Result_19604
 r"nimIntToStr.i": I_19605
@@ -989,25 +989,25 @@ r"nimIntToStr.d": D_19607
 r"nimIntToStr.j": J_19651
 r"countup.:tmp": HEX3Atmp_21472
 r"countup.res": Res_21474
-r"msgs.getMessageStr": Getmessagestr_48839
-r"getMessageStr.msg": Msg_48841
-r"getMessageStr.arg": Arg_48842
-r"getMessageStr.result": Result_48843
-r"msgs.MsgKindToString": Msgkindtostring_48835
-r"MsgKindToString.kind": Kind_48837
-r"MsgKindToString.result": Result_48838
-r"msgs.liMessage": Limessage_49106
-r"liMessage.info": Info_49108
-r"liMessage.msg": Msg_49109
-r"liMessage.arg": Arg_49110
-r"liMessage.eh": Eh_49111
-r"liMessage.frmt": Frmt_49112
-r"liMessage.ignoreMsg": Ignoremsg_49113
-r"msgs.handleError": Handleerror_48899
-r"handleError.msg": Msg_48901
-r"handleError.eh": Eh_48902
-r"msgs.raiseRecoverableError": Raiserecoverableerror_48547
-r"raiseRecoverableError.e": E_48550
+r"msgs.getMessageStr": Getmessagestr_48841
+r"getMessageStr.msg": Msg_48843
+r"getMessageStr.arg": Arg_48844
+r"getMessageStr.result": Result_48845
+r"msgs.MsgKindToString": Msgkindtostring_48837
+r"MsgKindToString.kind": Kind_48839
+r"MsgKindToString.result": Result_48840
+r"msgs.liMessage": Limessage_49108
+r"liMessage.info": Info_49110
+r"liMessage.msg": Msg_49111
+r"liMessage.arg": Arg_49112
+r"liMessage.eh": Eh_49113
+r"liMessage.frmt": Frmt_49114
+r"liMessage.ignoreMsg": Ignoremsg_49115
+r"msgs.handleError": Handleerror_48901
+r"handleError.msg": Msg_48903
+r"handleError.eh": Eh_48904
+r"msgs.raiseRecoverableError": Raiserecoverableerror_48549
+r"raiseRecoverableError.e": E_48552
 r"normalize.s": S_24540
 r"normalize.result": Result_24541
 r"normalize.i": I_24552
@@ -1093,10 +1093,10 @@ r"ExpectArg.switch": Switch_74219
 r"ExpectArg.arg": Arg_74220
 r"ExpectArg.pass": Pass_74221
 r"ExpectArg.info": Info_74222
-r"msgs.LocalError": Localerror_49196
-r"LocalError.info": Info_49198
-r"LocalError.msg": Msg_49199
-r"LocalError.arg": Arg_49200
+r"msgs.LocalError": Localerror_49198
+r"LocalError.info": Info_49200
+r"LocalError.msg": Msg_49201
+r"LocalError.arg": Arg_49202
 r"commands.addPath": Addpath_74799
 r"addPath.path": Path_74801
 r"addPath.info": Info_74802
@@ -1179,10 +1179,10 @@ r"JoinPath.head": Head_38403
 r"JoinPath.tail": Tail_38404
 r"JoinPath.result": Result_38405
 r"walkDir.k": K_74862
-r"msgs.Message": Message_49201
-r"Message.info": Info_49203
-r"Message.msg": Msg_49204
-r"Message.arg": Arg_49205
+r"msgs.Message": Message_49203
+r"Message.info": Info_49205
+r"Message.msg": Msg_49206
+r"Message.arg": Arg_49207
 r"condsyms.UndefSymbol": Undefsymbol_65055
 r"UndefSymbol.symbol": Symbol_65057
 r"UndefSymbol.sym": Sym_65100
@@ -1464,13 +1464,13 @@ r"NameToCC.name": Name_71371
 r"NameToCC.result": Result_71372
 r"NameToCC.i": I_71412
 r"countup.res": Res_71416
-r"msgs.rawMessage": Rawmessage_49097
-r"rawMessage.msg": Msg_49099
-r"rawMessage.arg": Arg_49100
-r"msgs.rawMessage": Rawmessage_49023
-r"rawMessage.msg": Msg_49025
-r"rawMessage.args": Args_49027
-r"rawMessage.frmt": Frmt_49028
+r"msgs.rawMessage": Rawmessage_49099
+r"rawMessage.msg": Msg_49101
+r"rawMessage.arg": Arg_49102
+r"msgs.rawMessage": Rawmessage_49025
+r"rawMessage.msg": Msg_49027
+r"rawMessage.args": Args_49029
+r"rawMessage.frmt": Frmt_49030
 r"%.formatstr": Formatstr_24966
 r"%.a": A_24967
 r"%.result": Result_24968
@@ -1496,8 +1496,8 @@ r"split.last": Last_25404
 r"split.first": First_25406
 r"track.line": Line_74880
 r"track.column": Column_74881
-r"msgs.addCheckpoint": Addcheckpoint_48761
-r"addCheckpoint.info": Info_48763
+r"msgs.addCheckpoint": Addcheckpoint_48763
+r"addCheckpoint.info": Info_48765
 r"options.setConfigVar": Setconfigvar_47143
 r"setConfigVar.key": Key_47145
 r"setConfigVar.val": Val_47146
@@ -1820,8 +1820,8 @@ r"countup.res": Res_21477
 r"nimFloatToStr.x": X_19663
 r"nimFloatToStr.result": Result_19664
 r"nimFloatToStr.buf": Buf_19667
-r"msgs.InternalError": Internalerror_49215
-r"InternalError.errMsg": Errmsg_49217
+r"msgs.InternalError": Internalerror_49217
+r"InternalError.errMsg": Errmsg_49219
 r"nimconf.parseAssignment": Parseassignment_81358
 r"parseAssignment.L": L_81361
 r"parseAssignment.tok": Tok_81362
@@ -3361,10 +3361,10 @@ r"countup.:tmp": HEX3Atmp_106269
 r"countup.res": Res_106271
 r"main.WantFile": Wantfile_195707
 r"WantFile.filename": Filename_195709
-r"msgs.Fatal": Fatal_49186
-r"Fatal.info": Info_49188
-r"Fatal.msg": Msg_49189
-r"Fatal.arg": Arg_49190
+r"msgs.Fatal": Fatal_49188
+r"Fatal.info": Info_49190
+r"Fatal.msg": Msg_49191
+r"Fatal.arg": Arg_49192
 r"main.CommandCompileToC": Commandcompiletoc_195416
 r"CommandCompileToC.filename": Filename_195418
 r"main.semanticPasses": Semanticpasses_195408
@@ -3421,12 +3421,12 @@ r"suggest.suggestExpr": Suggestexpr_130991
 r"suggestExpr.c": C_130993
 r"suggestExpr.node": Node_130994
 r"suggestExpr.cp": Cp_130995
-r"msgs.inCheckpoint": Incheckpoint_48853
-r"inCheckpoint.current": Current_48855
-r"inCheckpoint.result": Result_48856
-r"inCheckpoint.i": I_48880
-r"countup.:tmp": HEX3Atmp_48891
-r"countup.res": Res_48893
+r"msgs.inCheckpoint": Incheckpoint_48855
+r"inCheckpoint.current": Current_48857
+r"inCheckpoint.result": Result_48858
+r"inCheckpoint.i": I_48882
+r"countup.:tmp": HEX3Atmp_48893
+r"countup.res": Res_48895
 r"suggestExpr.n": N_131032
 r"suggest.findClosestDot": Findclosestdot_130649
 r"findClosestDot.n": N_130651
@@ -3450,8 +3450,8 @@ r"items.s": S_130643
 r"suggest.filterSym": Filtersym_130057
 r"filterSym.s": S_130059
 r"filterSym.result": Result_130060
-r"msgs.OutWriteln": Outwriteln_48786
-r"OutWriteln.s": S_48788
+r"msgs.OutWriteln": Outwriteln_48788
+r"OutWriteln.s": S_48790
 r"suggest.SymToStr": Symtostr_130008
 r"SymToStr.s": S_130010
 r"SymToStr.isLocal": Islocal_130011
@@ -3489,12 +3489,12 @@ r"strutils.addSep": Addsep_25902
 r"addSep.dest": Dest_25905
 r"addSep.sep": Sep_25906
 r"addSep.startLen": Startlen_25907
-r"msgs.ToLinenumber": Tolinenumber_48735
-r"ToLinenumber.info": Info_48737
-r"ToLinenumber.result": Result_48738
-r"msgs.toColumn": Tocolumn_48739
-r"toColumn.info": Info_48741
-r"toColumn.result": Result_48742
+r"msgs.ToLinenumber": Tolinenumber_48737
+r"ToLinenumber.info": Info_48739
+r"ToLinenumber.result": Result_48740
+r"msgs.toColumn": Tocolumn_48741
+r"toColumn.info": Info_48743
+r"toColumn.result": Result_48744
 r"suggestFieldAccess.it": It_130544
 r"items.:tmp": HEX3Atmp_130644
 r"items.it": It_130646
@@ -3737,8 +3737,8 @@ r"countup.res": Res_57348
 r"genericAssign.dest": Dest_19855
 r"genericAssign.src": Src_19856
 r"genericAssign.mt": Mt_19857
-r"msgs.pushInfoContext": Pushinfocontext_48618
-r"pushInfoContext.info": Info_48620
+r"msgs.pushInfoContext": Pushinfocontext_48620
+r"pushInfoContext.info": Info_48622
 r"semtypinst.ReplaceTypeVarsT": Replacetypevarst_126301
 r"ReplaceTypeVarsT.cl": Cl_126304
 r"ReplaceTypeVarsT.t": T_126305
@@ -3751,10 +3751,10 @@ r"semtypinst.lookupTypeVar": Lookuptypevar_126452
 r"lookupTypeVar.cl": Cl_126454
 r"lookupTypeVar.t": T_126455
 r"lookupTypeVar.result": Result_126456
-r"msgs.GlobalError": Globalerror_49191
-r"GlobalError.info": Info_49193
-r"GlobalError.msg": Msg_49194
-r"GlobalError.arg": Arg_49195
+r"msgs.GlobalError": Globalerror_49193
+r"GlobalError.info": Info_49195
+r"GlobalError.msg": Msg_49196
+r"GlobalError.arg": Arg_49197
 r"ReplaceTypeVarsT.i": I_126515
 r"countup.:tmp": HEX3Atmp_126589
 r"countup.res": Res_126591
@@ -3902,7 +3902,7 @@ r"countup.res": Res_101056
 r"ReplaceTypeVarsT.i": I_126577
 r"countup.:tmp": HEX3Atmp_126595
 r"countup.res": Res_126597
-r"msgs.popInfoContext": Popinfocontext_48639
+r"msgs.popInfoContext": Popinfocontext_48641
 r"ast.copyTree": Copytree_56856
 r"copyTree.src": Src_56858
 r"copyTree.result": Result_58709
@@ -7024,10 +7024,10 @@ r"ropeff.result": Result_165342
 r"ropes.ropef": Ropef_53066
 r"ropef.frmt": Frmt_53068
 r"ropef.args": Args_53070
-r"ropef.result": Result_53704
-r"ropef.i": I_53705
-r"ropef.length": Length_53708
-r"ropef.num": Num_53709
+r"ropef.result": Result_53702
+r"ropef.i": I_53703
+r"ropef.length": Length_53706
+r"ropef.num": Num_53707
 r"ropes.app": App_53036
 r"app.a": A_53039
 r"app.b": B_53040
@@ -7042,8 +7042,8 @@ r"con.result": Result_53519
 r"ropes.app": App_53031
 r"app.a": A_53034
 r"app.b": B_53035
-r"ropef.j": J_53764
-r"ropef.start": Start_53823
+r"ropef.j": J_53762
+r"ropef.start": Start_53821
 r"ropes.toRope": Torope_53049
 r"toRope.i": I_53051
 r"toRope.result": Result_53587
@@ -8809,28 +8809,28 @@ r"shouldRecompile.objFile": Objfile_182118
 r"ropes.writeRopeIfNotEqual": Writeropeifnotequal_53059
 r"writeRopeIfNotEqual.r": R_53061
 r"writeRopeIfNotEqual.filename": Filename_53062
-r"writeRopeIfNotEqual.result": Result_53989
-r"writeRopeIfNotEqual.c": C_53990
-r"ropes.crcFromRope": Crcfromrope_53981
-r"crcFromRope.r": R_53983
-r"crcFromRope.result": Result_53984
-r"ropes.newCrcFromRopeAux": Newcrcfromropeaux_53896
-r"newCrcFromRopeAux.r": R_53898
-r"newCrcFromRopeAux.startVal": Startval_53899
-r"newCrcFromRopeAux.result": Result_53900
-r"newCrcFromRopeAux.stack": Stack_53915
-r"newCrcFromRopeAux.it": It_53942
-r"newCrcFromRopeAux.i": I_53961
-r"newCrcFromRopeAux.L": L_53964
+r"writeRopeIfNotEqual.result": Result_53987
+r"writeRopeIfNotEqual.c": C_53988
+r"ropes.crcFromRope": Crcfromrope_53979
+r"crcFromRope.r": R_53981
+r"crcFromRope.result": Result_53982
+r"ropes.newCrcFromRopeAux": Newcrcfromropeaux_53894
+r"newCrcFromRopeAux.r": R_53896
+r"newCrcFromRopeAux.startVal": Startval_53897
+r"newCrcFromRopeAux.result": Result_53898
+r"newCrcFromRopeAux.stack": Stack_53913
+r"newCrcFromRopeAux.it": It_53940
+r"newCrcFromRopeAux.i": I_53959
+r"newCrcFromRopeAux.L": L_53962
 r"ropes.WriteRope": Writerope_53055
 r"WriteRope.head": Head_53057
 r"WriteRope.filename": Filename_53058
-r"WriteRope.f": F_53685
+r"WriteRope.f": F_53684
 r"ropes.writeRope": Writerope_53605
-r"writeRope.f": F_53608
-r"writeRope.c": C_53609
-r"writeRope.stack": Stack_53624
-r"writeRope.it": It_53651
+r"writeRope.f": F_53607
+r"writeRope.c": C_53608
+r"writeRope.stack": Stack_53623
+r"writeRope.it": It_53650
 r"fileNewer.a": A_38003
 r"fileNewer.b": B_38004
 r"fileNewer.result": Result_38005
@@ -9681,8 +9681,8 @@ r"getOutFile.ext": Ext_47170
 r"getOutFile.result": Result_47171
 r"docgen.CommandDoc": Commanddoc_160001
 r"CommandDoc.filename": Filename_160003
-r"CommandDoc.ast": Ast_162614
-r"CommandDoc.d": D_162626
+r"CommandDoc.ast": Ast_162613
+r"CommandDoc.d": D_162625
 r"docgen.newDocumentor": Newdocumentor_160159
 r"newDocumentor.filename": Filename_160161
 r"newDocumentor.result": Result_160162
@@ -9775,10 +9775,10 @@ r"rst.rstMessage": Rstmessage_152752
 r"rstMessage.p": P_152754
 r"rstMessage.msgKind": Msgkind_152755
 r"rstMessage.arg": Arg_152756
-r"msgs.GenericMessage": Genericmessage_49206
-r"GenericMessage.info": Info_49208
-r"GenericMessage.msg": Msg_49209
-r"GenericMessage.arg": Arg_49210
+r"msgs.GenericMessage": Genericmessage_49208
+r"GenericMessage.info": Info_49210
+r"GenericMessage.msg": Msg_49211
+r"GenericMessage.arg": Arg_49212
 r"rst.tokInfo": Tokinfo_152747
 r"tokInfo.p": P_152749
 r"tokInfo.tok": Tok_152750
@@ -10581,12 +10581,12 @@ r"renderRstToRst.L": L_161274
 r"renderRstToRst.L": L_161408
 r"docgen.CommandRst2Html": Commandrst2html_160004
 r"CommandRst2Html.filename": Filename_160006
-r"docgen.CommandRstAux": Commandrstaux_162627
-r"CommandRstAux.filename": Filename_162629
-r"CommandRstAux.outExt": Outext_162630
-r"CommandRstAux.filen": Filen_162631
-r"CommandRstAux.d": D_162632
-r"CommandRstAux.rst": Rst_162634
+r"docgen.CommandRstAux": Commandrstaux_162626
+r"CommandRstAux.filename": Filename_162628
+r"CommandRstAux.outExt": Outext_162629
+r"CommandRstAux.filen": Filen_162630
+r"CommandRstAux.d": D_162631
+r"CommandRstAux.rst": Rst_162633
 r"docgen.CommandRst2TeX": Commandrst2tex_160007
 r"CommandRst2TeX.filename": Filename_160009
 r"main.CommandGenDepend": Commandgendepend_195410
@@ -10670,8 +10670,8 @@ r"ListRemove.head": Head_10182
 r"ListRemove.c": C_10183
 r"ListAdd.head": Head_9813
 r"ListAdd.c": C_9814
-r"writeln.f": F_48795
-r"writeln.x": X_48796
+r"writeln.f": F_48797
+r"writeln.x": X_48798
 r"writeln.f": F_47269
 r"writeln.x": X_47270
 r"pop.s": S_53434

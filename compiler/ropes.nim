@@ -274,7 +274,7 @@ proc app(a: var PRope, b: PRope) = a = con(a, b)
 proc app(a: var PRope, b: string) = a = con(a, b)
 proc prepend(a: var PRope, b: PRope) = a = con(b, a)
 
-proc writeRope*(f: var tfile, c: PRope) = 
+proc writeRope*(f: TFile, c: PRope) = 
   var stack = @[c]
   while len(stack) > 0: 
     var it = pop(stack)
