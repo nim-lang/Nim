@@ -32,7 +32,7 @@ type
     wShl, wShr, wTemplate, wTry, wTuple, wType, wVar, wWhen, wWhile, wWith, 
     wWithout, wXor, wYield,
     
-    wColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
+    wColon, wColonColon, wEquals, wDot, wDotDot, wHat, wStar, wMinus, 
     wMagic, wTypeCheck, wFinal, wProfiler, wObjChecks, wImportc, wExportc, 
     wExtern,
     wAlign, wNodecl, wPure, wVolatile, wRegister, wSideeffect, wHeader, 
@@ -78,7 +78,7 @@ const
     "try", "tuple", "type", "var", "when", "while", "with", "without", "xor",
     "yield",
 
-    ":", "=", ".", "..", "^", "*", "-",
+    ":", "::", "=", ".", "..", "^", "*", "-",
     "magic", "typecheck", "final", "profiler", "objchecks", "importc", 
     "exportc", "extern",
     "align", "nodecl", "pure", "volatile", "register", "sideeffect", 
