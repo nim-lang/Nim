@@ -49,6 +49,7 @@ Additions
 - Added ``smtp`` module.
 - Added ``re.findAll``, ``pegs.findAll``.
 - Added ``os.findExe``.
+- Added ``parseutils.parseUntil`` and ``parseutils.parseWhile``.
 - Added ``strutils.align``, ``strutils.tokenize``, ``strutils.wordWrap``. 
 - Pegs support a *captured search loop operator* ``{@}``.
 - Pegs support new built-ins: ``\letter``, ``\upper``, ``\lower``,

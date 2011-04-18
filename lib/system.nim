@@ -1717,10 +1717,10 @@ elif defined(ecmaScript) or defined(NimrodVM):
       if x < y: return -1
       return 1
 
-proc quit*(errormsg: string) {.noReturn.} =
-  ## a shorthand for ``echo(errormsg); quit(quitFailure)``.
+proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
+  ## a shorthand for ``echo(errormsg); quit(errorcode)``.
   echo(errormsg)
-  quit(quitFailure)
+  quit(errorcode)
 
 {.pop.} # checks
 {.pop.} # hints
