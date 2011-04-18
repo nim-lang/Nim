@@ -11,12 +11,13 @@
 ## a mapping from keys to values.
 
 import
-  os, hashes, strutils
+  os, hashes, math
 
 type
-  TKeyValuePair[A, B] = tuple[key: A, val: B]
+  TSlotEnum = enum seEmpty, seFilled, seDeleted
+  TKeyValuePair[A, B] = tuple[slot: TSlotEnum, key: A, val: B]
   TKeyValuePairSeq[A, B] = seq[TKeyValuePair[A, B]]
-  THashTable*[A, B] = object of TObject
+  THashTable[A, B] = object of TObject
     counter: int
     data: TKeyValuePairSeq[A, B]
 
@@ -29,20 +30,22 @@ proc len*[A, B](t: PHashTable[A, B]): int =
 iterator pairs*[A, B](t: PHashTable[A, B]): tuple[key: A, val: B] =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if not isNil(t.data[h].key) and not isNil(t.data[h].val):
-      yield (t.data[h].key, t.data[h].val)
+    if t.data[h].slot == seFilled: yield (t.data[h].key, t.data[h].val)
+
+iterator keys*[A, B](t: PHashTable[A, B]): tuple[key: A, val: B] =
+  ## iterates over any key in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].key
+
+iterator values*[A, B](t: PHashTable[A, B]): tuple[key: A, val: B] =
+  ## iterates over any value in the table `t`.
+  for h in 0..high(t.data):
+    if t.data[h].slot == seFilled: yield t.data[h].val
 
 const
   growthFactor = 2
-  startSize = 64
 
-proc myhash[A](key: A): THash =
-  result = hashes.hash(key)
-
-proc myCmp[A](key: A, key2: A): bool =
-  result = cmp(key, key2) == 0
-
-proc mustRehash(length, counter: int): bool =
+proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
@@ -50,9 +53,9 @@ proc nextTry(h, maxHash: THash): THash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc RawGet[A, B](t: PHashTable[A, B], key: A): int =
-  var h: THash = myhash(key) and high(t.data) # start with real hash value
-  while not isNil(t.data[h].key) and not isNil(t.data[h].val):
-    if mycmp(t.data[h].key, key):
+  var h: THash = hash(key) and high(t.data) # start with real hash value
+  while t.data[h].slot != seEmpty:
+    if t.data[h].key == key and t.data[h].slot == seFilled:
       return h
     h = nextTry(h, high(t.data))
   result = -1
@@ -71,17 +74,18 @@ proc hasKey*[A, B](t: PHashTable[A, B], key: A): bool =
 
 proc RawInsert[A, B](t: PHashTable[A, B], data: var TKeyValuePairSeq[A, B],
                      key: A, val: B) =
-  var h: THash = myhash(key) and high(data)
-  while not isNil(data[h].key):
+  var h: THash = hash(key) and high(data)
+  while data[h].slot == seFilled:
     h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
+  data[h].slot = seFilled
 
 proc Enlarge[A, B](t: PHashTable[A, B]) =
   var n: TKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if not isNil(t.data[i].key): RawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].slot == seFilled: RawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*[A, B](t: PHashTable[A, B], key: A, val: B) =
@@ -94,21 +98,19 @@ proc `[]=`*[A, B](t: PHashTable[A, B], key: A, val: B) =
     RawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc default[T](): T = nil
-
 proc del*[A, B](t: PHashTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   var index = RawGet(t, key)
   if index >= 0:
-    t.data[index].key = default[A]()
-  else:
-    raise newException(EInvalidIndex, "Key not found.")
+    t.data[index].slot = seDeleted
 
-proc newHashTable*[A, B](): PHashTable[A, B] =
-  ## creates a new string table that is empty.
+proc newHashTable*[A, B](initialSize = 64): PHashTable[A, B] =
+  ## creates a new string table that is empty. `initialSize` needs to be
+  ## a power of two.
+  assert isPowerOfTwo(initialSize)
   new(result)
   result.counter = 0
-  newSeq(result.data, startSize)
+  newSeq(result.data, initialSize)
 
 proc `$`*[A, B](t: PHashTable[A, B]): string =
   ## The `$` operator for string tables.
@@ -130,8 +132,8 @@ when isMainModule:
   echo table
   table.del("111")
   echo table
-  echo repr(table["111"])
-  echo(repr(table["1212"]))
+  #echo repr(table["111"])
+  #echo(repr(table["1212"]))
   table["111"] = 1.5
   table["011"] = 67.9
   echo table
