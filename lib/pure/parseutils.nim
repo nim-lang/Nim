@@ -77,10 +77,12 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
-                 start = 0): int {.inline.} =
+                 start = 0): int {.inline, deprecated.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`. 
+  ##
+  ## **Deprecated since version 0.8.12**: Use ``parseWhile`` instead.
   var i = start
   while s[i] in validChars: inc(i)
   result = i-start
@@ -109,6 +111,26 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
   while s[result+start] in toSkip and s[result+start] != '\0': inc(result)
+
+proc parseUntil*(s: string, token: var string, until: set[char],
+                 start = 0): int {.inline.} =
+  ## parses a token and stores it in ``token``. Returns
+  ## the number of the parsed characters or 0 in case of an error. A token
+  ## consists of the characters notin `until`. 
+  var i = start
+  while s[i] notin until: inc(i)
+  result = i-start
+  token = copy(s, start, i-1)
+
+proc parseWhile*(s: string, token: var string, validChars: set[char],
+                 start = 0): int {.inline.} =
+  ## parses a token and stores it in ``token``. Returns
+  ## the number of the parsed characters or 0 in case of an error. A token
+  ## consists of the characters in `validChars`. 
+  var i = start
+  while s[i] in validChars: inc(i)
+  result = i-start
+  token = copy(s, start, i-1)
 
 {.push overflowChecks: on.}
 # this must be compiled with overflow checking turned on:
