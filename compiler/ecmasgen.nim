@@ -14,7 +14,7 @@
 import 
   ast, astalgo, strutils, nhashes, trees, platform, magicsys, extccomp,
   options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
-  times, ropes, math, passes, ccgutils, wordrecg, rnimsyn, rodread, rodutils
+  times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils
 
 proc ecmasgenPass*(): TPass
 # implementation

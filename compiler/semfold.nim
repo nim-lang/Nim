@@ -12,7 +12,7 @@
 
 import 
   strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times, 
-  nversion, platform, math, msgs, os, condsyms, idents, rnimsyn, types,
+  nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands
 
 proc getConstExpr*(m: PSym, n: PNode): PNode

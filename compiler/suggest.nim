@@ -9,7 +9,8 @@
 
 ## This file implements features required for IDE support.
 
-import scanner, idents, ast, astalgo, semdata, msgs, types, sigmatch, options
+import 
+  lexer, idents, ast, astalgo, semdata, msgs, types, sigmatch, options
 
 const
   sep = '\t'
@@ -38,7 +39,7 @@ proc SymToStr(s: PSym, isLocal: bool, section: string): string =
   result.add($ToColumn(s.info))
 
 proc filterSym(s: PSym): bool {.inline.} = 
-  result = s.name.s[0] in scanner.SymChars
+  result = s.name.s[0] in lexer.SymChars
 
 proc suggestField(s: PSym) = 
   if filterSym(s):

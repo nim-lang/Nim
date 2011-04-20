@@ -10,9 +10,9 @@
 # This module implements the semantic checking pass.
 
 import
-  strutils, nhashes, lists, options, scanner, ast, astalgo, trees, treetab, 
-  wordrecg, ropes, msgs, os, condsyms, idents, rnimsyn, types, platform, math, 
-  magicsys, pnimsyn, nversion, nimsets, semdata, evals, semfold, importer, 
+  strutils, nhashes, lists, options, lexer, ast, astalgo, trees, treetab, 
+  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math, 
+  magicsys, parser, nversion, nimsets, semdata, evals, semfold, importer, 
   procfind, lookups, rodread, pragmas, passes, semtypinst, sigmatch, suggest
 
 proc semPass*(): TPass

@@ -11,7 +11,7 @@ when defined(gcc) and defined(windows):
   {.link: "icons/nimrod.res".}
 
 import 
-  times, commands, scanner, condsyms, options, msgs, nversion, nimconf, ropes, 
+  times, commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes, 
   extccomp, strutils, os, platform, main, parseopt
 
 when hasTinyCBackend:

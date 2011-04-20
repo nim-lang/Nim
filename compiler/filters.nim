@@ -10,7 +10,8 @@
 # This module implements Nimrod's simple filters and helpers for filters.
 
 import
-  llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, rnimsyn
+  llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, 
+  renderer
 
 proc filterReplace*(stdin: PLLStream, filename: string, call: PNode): PLLStream
 proc filterStrip*(stdin: PLLStream, filename: string, call: PNode): PLLStream

@@ -12,8 +12,8 @@
 
 import 
   strutils, lists, options, ast, astalgo, llstream, msgs, platform, os, 
-  condsyms, idents, rnimsyn, types, extccomp, math, magicsys, nversion, nimsets, 
-  syntaxes, times, rodread
+  condsyms, idents, renderer, types, extccomp, math, magicsys, nversion, 
+  nimsets, syntaxes, times, rodread
 
 type 
   TPassContext* = object of TObject # the pass's context

@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nimrod representation.
 
 import 
-  scanner, options, idents, strutils, ast, msgs, lists
+  lexer, options, idents, strutils, ast, msgs, lists
 
 type 
   TRenderFlag* = enum 
@@ -637,7 +637,7 @@ proc gasm(g: var TSrcGen, n: PNode) =
 proc gident(g: var TSrcGen, n: PNode) = 
   var t: TTokType
   var s = atom(n)
-  if (s[0] in scanner.SymChars): 
+  if (s[0] in lexer.SymChars): 
     if (n.kind == nkIdent): 
       if (n.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)): 

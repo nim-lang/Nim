@@ -18,7 +18,7 @@
 
 import 
   strutils, lists, options, ast, astalgo, trees, treetab, evals, msgs, os, 
-  idents, rnimsyn, types, passes, semfold, magicsys, cgmeth
+  idents, renderer, types, passes, semfold, magicsys, cgmeth
 
 const 
   genPrefix* = ":tmp"         # prefix for generated names

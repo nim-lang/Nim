@@ -9,16 +9,11 @@ nimrod          main module: parses the command line and calls
 main            implements the top-level command dispatching
 nimconf         implements the config file reader
 syntaxes        dispatcher for the different parsers and filters
-ptmplsyn        standard template filter (``#! stdtempl``)
+filter_tmpl     standard template filter (``#! stdtempl``)
 lexbase         buffer handling of the lexical analyser
-scanner         lexical analyser
-pnimsyn         Nimrod's parser
-rnimsyn         Nimrod code renderer (AST back to its textual form)
-
-paslex          lexer for Pascal
-pasparse        parser for Pascal; Pascal's advanced OO features are not
-                supported
-
+lexer           lexical analyser
+parser          Nimrod's parser
+renderer        Nimrod code renderer (AST back to its textual form)
 options         contains global and local compiler options
 ast             type definitions of the abstract syntax tree (AST) and
                 node constructors
