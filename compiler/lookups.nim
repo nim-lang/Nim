@@ -10,7 +10,7 @@
 # This module implements lookup helpers.
 
 import 
-  ast, astalgo, idents, semdata, types, msgs, options, rodread, rnimsyn
+  ast, astalgo, idents, semdata, types, msgs, options, rodread, renderer
 
 type 
   TOverloadIterMode* = enum 

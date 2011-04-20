@@ -14,7 +14,7 @@
 # XXX cleanup of declaration handling.
 
 import 
-  os, llstream, rnimsyn, clex, idents, strutils, pegs, ast, astalgo, msgs,
+  os, llstream, renderer, clex, idents, strutils, pegs, ast, astalgo, msgs,
   options, strtabs
 
 type 

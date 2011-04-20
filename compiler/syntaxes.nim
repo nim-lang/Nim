@@ -10,8 +10,8 @@
 ## Implements the dispatcher for the different parsers.
 
 import 
-  strutils, llstream, ast, astalgo, idents, scanner, options, msgs, pnimsyn, 
-  pbraces, ptmplsyn, filters, rnimsyn
+  strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser, 
+  pbraces, filters, filter_tmpl, renderer
 
 type 
   TFilterKind* = enum 
@@ -54,7 +54,7 @@ proc ParseFile(filename: string): PNode =
 proc parseAll(p: var TParsers): PNode = 
   case p.skin
   of skinStandard: 
-    result = pnimsyn.parseAll(p.parser)
+    result = parser.parseAll(p.parser)
   of skinBraces: 
     result = pbraces.parseAll(p.parser)
   of skinEndX: 
@@ -65,7 +65,7 @@ proc parseAll(p: var TParsers): PNode =
 proc parseTopLevelStmt(p: var TParsers): PNode = 
   case p.skin
   of skinStandard: 
-    result = pnimsyn.parseTopLevelStmt(p.parser)
+    result = parser.parseTopLevelStmt(p.parser)
   of skinBraces: 
     result = pbraces.parseTopLevelStmt(p.parser)
   of skinEndX: 
@@ -99,7 +99,7 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       while line[i] in WhiteSpace: inc(i)
       var q: TParser
       OpenParser(q, filename, LLStreamOpen(copy(line, i)))
-      result = pnimsyn.parseAll(q)
+      result = parser.parseAll(q)
       CloseParser(q)
     LLStreamClose(s)
 
@@ -167,7 +167,7 @@ proc openParsers(p: var TParsers, filename: string, inputstream: PLLStream) =
   else: s = inputStream
   case p.skin
   of skinStandard, skinBraces, skinEndX: 
-    pnimsyn.openParser(p.parser, filename, s)
+    parser.openParser(p.parser, filename, s)
   
 proc closeParsers(p: var TParsers) = 
-  pnimsyn.closeParser(p.parser)
+  parser.closeParser(p.parser)

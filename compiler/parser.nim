@@ -15,7 +15,7 @@
 # from the grammar and how comments belong to the AST.
 
 import
-  llstream, scanner, idents, strutils, ast, msgs
+  llstream, lexer, idents, strutils, ast, msgs
 
 type 
   TParser*{.final.} = object  # a TParser object represents a module that

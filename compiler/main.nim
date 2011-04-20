@@ -11,7 +11,7 @@
 # module handling
 
 import 
-  llstream, strutils, ast, astalgo, scanner, syntaxes, rnimsyn, options, msgs, 
+  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs, 
   os, lists, condsyms, rodread, rodwrite, ropes, trees, 
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, ecmasgen,

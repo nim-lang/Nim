@@ -8,16 +8,11 @@
 #
 
 import 
-  llstream, scanner, idents, strutils, ast, msgs, pnimsyn
+  llstream, lexer, parser, idents, strutils, ast, msgs
 
-proc ParseAll*(p: var TParser): PNode
-proc parseTopLevelStmt*(p: var TParser): PNode
-  # implements an iterator. Returns the next top-level statement or nil if end
-  # of stream.
-# implementation
-
-proc ParseAll(p: var TParser): PNode = 
+proc ParseAll*(p: var TParser): PNode = 
   result = nil
 
-proc parseTopLevelStmt(p: var TParser): PNode = 
+proc parseTopLevelStmt*(p: var TParser): PNode = 
   result = nil
+  

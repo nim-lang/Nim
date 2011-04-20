@@ -11,7 +11,7 @@
 
 import 
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options, 
-  rnimsyn, filters
+  renderer, filters
 
 proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode): PLLStream
   # #! template(subsChar='$', metaChar='#') | standard(version="0.7.2")

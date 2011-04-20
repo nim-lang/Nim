@@ -12,7 +12,7 @@
 # The interface supports one language nested in another.
 
 import 
-  nhashes, options, msgs, strutils, platform, idents, lexbase, wordrecg, scanner
+  nhashes, options, msgs, strutils, platform, idents, lexbase, wordrecg, lexer
 
 type 
   TTokenClass* = enum 
@@ -154,7 +154,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
       while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): inc(pos)
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF': 
       var id = ""
-      while g.buf[pos] in scanner.SymChars + {'_'}: 
+      while g.buf[pos] in lexer.SymChars + {'_'}: 
         add(id, g.buf[pos])
         inc(pos)
       if (g.buf[pos] == '\"'): 
@@ -247,9 +247,9 @@ proc nimNextToken(g: var TGeneralTokenizer) =
     of '\0': 
       g.kind = gtEof
     else: 
-      if g.buf[pos] in scanner.OpChars: 
+      if g.buf[pos] in lexer.OpChars: 
         g.kind = gtOperator
-        while g.buf[pos] in scanner.OpChars: inc(pos)
+        while g.buf[pos] in lexer.OpChars: inc(pos)
       else: 
         inc(pos)
         g.kind = gtNone
@@ -462,10 +462,10 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openarray[string],
     of '\0': 
       g.kind = gtEof
     else: 
-      if g.buf[pos] in scanner.OpChars: 
+      if g.buf[pos] in lexer.OpChars: 
         g.kind = gtOperator
-        while g.buf[pos] in scanner.OpChars: inc(pos)
-      else: 
+        while g.buf[pos] in lexer.OpChars: inc(pos)
+      else:
         inc(pos)
         g.kind = gtNone
   g.length = pos - g.pos

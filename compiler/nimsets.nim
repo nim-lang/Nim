@@ -10,7 +10,7 @@
 # this unit handles Nimrod sets; it implements symbolic sets
 
 import 
-  ast, astalgo, trees, nversion, msgs, platform, bitsets, types, rnimsyn
+  ast, astalgo, trees, nversion, msgs, platform, bitsets, types, renderer
 
 proc toBitSet*(s: PNode, b: var TBitSet)
   # this function is used for case statement checking:

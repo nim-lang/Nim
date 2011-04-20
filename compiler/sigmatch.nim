@@ -11,7 +11,7 @@
 # the call to overloaded procs, generic procs and operators.
 
 import 
-  ast, astalgo, semdata, types, msgs, rnimsyn, lookups, semtypinst, 
+  ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst, 
   magicsys
 
 type 

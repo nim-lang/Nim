@@ -10,9 +10,9 @@
 # This module contains the data structures for the semantic checking phase.
 
 import 
-  strutils, lists, options, scanner, ast, astalgo, trees, treetab, wordrecg, 
-  ropes, msgs, platform, os, condsyms, idents, rnimsyn, types, extccomp, math, 
-  magicsys, nversion, nimsets, pnimsyn, times, passes, rodread
+  strutils, lists, options, lexer, ast, astalgo, trees, treetab, wordrecg, 
+  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
+  magicsys, nversion, nimsets, parser, times, passes, rodread
 
 type 
   TOptionEntry* = object of lists.TListEntry # entries to put on a

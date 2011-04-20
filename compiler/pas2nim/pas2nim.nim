@@ -8,7 +8,7 @@
 #
 
 import 
-  strutils, os, parseopt, llstream, ast, rnimsyn, options, msgs,
+  strutils, os, parseopt, llstream, ast, renderer, options, msgs,
   paslex, pasparse
 
 const

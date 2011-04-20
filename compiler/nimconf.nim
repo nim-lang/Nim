@@ -10,7 +10,7 @@
 # This module handles the reading of the config file.
 
 import 
-  llstream, nversion, commands, os, strutils, msgs, platform, condsyms, scanner, 
+  llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer, 
   options, idents, wordrecg
 
 # ---------------- configuration file parser -----------------------------

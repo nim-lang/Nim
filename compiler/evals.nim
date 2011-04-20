@@ -15,7 +15,7 @@
 
 import 
   strutils, magicsys, lists, options, ast, astalgo, trees, treetab, nimsets, 
-  msgs, os, condsyms, idents, rnimsyn, types, passes, semfold
+  msgs, os, condsyms, idents, renderer, types, passes, semfold
 
 type 
   PStackFrame* = ref TStackFrame
