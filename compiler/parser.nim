@@ -355,6 +355,24 @@ proc exprColonEqExprList(p: var TParser, kind, elemKind: TNodeKind,
   result = newNodeP(kind, p)
   exprColonEqExprListAux(p, elemKind, endTok, sepTok, result)
 
+proc setOrTableConstr(p: var TParser): PNode =
+  result = newNodeP(nkCurly, p)
+  getTok(p) # skip '{'
+  optInd(p, result)
+  if p.tok.tokType == tkColon:
+    getTok(p) # skip ':'
+    result.kind = nkTableConstr
+  else:
+    while p.tok.tokType notin {tkCurlyRi, tkEof, tkSad, tkInd}: 
+      var a = exprColonEqExpr(p, nkExprColonExpr, tkColon)
+      if a.kind == nkExprColonExpr: result.kind = nkTableConstr
+      addSon(result, a)
+      if p.tok.tokType != tkComma: break 
+      getTok(p)
+      optInd(p, a)
+  optPar(p)
+  eat(p, tkCurlyRi) # skip '}'
+
 proc parseCast(p: var TParser): PNode = 
   result = newNodeP(nkCast, p)
   getTok(p)
@@ -460,7 +478,7 @@ proc identOrLiteral(p: var TParser): PNode =
     result = exprColonEqExprList(p, nkPar, nkExprColonExpr, tkParRi, tkColon)
   of tkCurlyLe: 
     # {} constructor
-    result = exprColonEqExprList(p, nkCurly, nkRange, tkCurlyRi, tkDotDot)
+    result = setOrTableConstr(p)
   of tkBracketLe: 
     # [] constructor
     result = exprColonEqExprList(p, nkBracket, nkExprColonExpr, tkBracketRi, 

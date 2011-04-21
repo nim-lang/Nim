@@ -339,6 +339,8 @@ proc lsub(n: PNode): int =
   of nkCommand: result = lsub(n.sons[0]) + lcomma(n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(n) + 3
   of nkPar, nkCurly, nkBracket: result = lcomma(n) + 2
+  of nkTableConstr:
+    result = if n.len > 0: lcomma(n) + 2 else: len("{:}")
   of nkSymChoice: result = lsons(n) + len("()") + sonsLen(n) - 1
   of nkTupleTy: result = lcomma(n) + len("tuple[]")
   of nkDotExpr: result = lsons(n) + 1
@@ -750,7 +752,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkCurlyLe, "{")
     gcomma(g, n, c)
     put(g, tkCurlyRi, "}")
-  of nkBracket: 
+  of nkTableConstr:
+    put(g, tkCurlyLe, "{")
+    if n.len > 0: gcomma(g, n, c)
+    else: put(g, tkColon, ":")
+    put(g, tkCurlyRi, "}")
+  of nkBracket:
     put(g, tkBracketLe, "[")
     gcomma(g, n, c)
     put(g, tkBracketRi, "]")
@@ -1059,7 +1066,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gcomma(g, n)
       put(g, tkBracketRi, "]")
   else: 
-    #nkNone, nkMetaNode, nkTableConstr, nkExplicitTypeListCall: 
+    #nkNone, nkMetaNode, nkExplicitTypeListCall: 
     InternalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string = 
