@@ -1,7 +1,7 @@
 #
 #
 #            Nimrod's Runtime Library
-#        (c) Copyright 2009 Andreas Rumpf
+#        (c) Copyright 2011 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,25 +13,6 @@
 
 ## .. include:: ../doc/astspec.txt
 
-#[[[cog
-#def toEnum(name, elems):
-#  body = ""
-#  counter = 0
-#  for e in elems:
-#    if counter % 4 == 0: p = "\n    "
-#    else: p = ""
-#    body = body + p + 'n' + e + ', '
-#    counter = counter + 1
-#
-#  return ("  TNimrod%s* = enum%s\n  TNim%ss* = set[TNimrod%s]\n" %
-#            (name, body[:-2], name, name))
-#
-#enums = eval(open("data/ast.yml").read())
-#cog.out("type\n")
-#for key, val in enums.items():
-#  if key[-4:] == "Flag": continue
-#  cog.out(toEnum(key, val))
-#]]]
 type
   TNimrodNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym, 
@@ -86,7 +67,6 @@ type
     nskEnumField, nskForVar, nskModule, nskLabel, 
     nskStub
   TNimSymKinds* = set[TNimrodSymKind]
-#[[[end]]]
 
 type
   TNimrodIdent* = object of TObject
