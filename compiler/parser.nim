@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements the parser of the standard Nimrod representation.
+# This module implements the parser of the standard Nimrod syntax.
 # The parser strictly reflects the grammar ("doc/grammar.txt"); however
 # it uses several helper routines to keep the parser small. A special
 # efficient algorithm is used for the precedence levels. The parser here can
@@ -259,13 +259,13 @@ proc dotdotExpr(p: var TParser, first: PNode): PNode =
   addSon(result, optExpr(p))
 
 proc indexExpr(p: var TParser): PNode = 
-  # indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
-  if p.tok.tokType == tkDotDot: 
+  # indexExpr ::= '..' [expr] | expr ['=' expr]
+  if p.tok.tokType == tkDotDot:
     result = dotdotExpr(p, ast.emptyNode)
   else: 
-    var a = parseExpr(p)
-    case p.tok.tokType
-    of tkEquals: 
+    result = parseExpr(p)
+    if p.tok.tokType == tkEquals: 
+      var a = result
       result = newNodeP(nkExprEqExpr, p)
       addSon(result, a)
       getTok(p)
@@ -275,9 +275,6 @@ proc indexExpr(p: var TParser): PNode =
         var b = parseExpr(p)
         if p.tok.tokType == tkDotDot: b = dotdotExpr(p, b)
         addSon(result, b)
-    of tkDotDot: 
-      result = dotdotExpr(p, a)
-    else: result = a
   
 proc indexExprList(p: var TParser, first: PNode): PNode = 
   result = newNodeP(nkBracketExpr, p)
@@ -304,13 +301,13 @@ proc exprColonEqExpr(p: var TParser, kind: TNodeKind, tok: TTokType): PNode =
     addSon(result, parseExpr(p))
   else: 
     result = a
-  
-proc exprListAux(p: var TParser, elemKind: TNodeKind, endTok, sepTok: TTokType, 
-                 result: PNode) = 
+
+proc exprList(p: var TParser, endTok: TTokType, 
+              result: PNode) = 
   getTok(p)
   optInd(p, result)
   while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof): 
-    var a = exprColonEqExpr(p, elemKind, sepTok)
+    var a = parseExpr(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break 
     getTok(p)
@@ -538,8 +535,18 @@ proc lowestExprAux(p: var TParser, v: var PNode, limit: int): PToken =
     opPrec = getPrecedence(nextop)
   result = op                 # return first untreated operator
   
-proc lowestExpr(p: var TParser): PNode = 
+proc otherExpr(p: var TParser): PNode = 
   discard lowestExprAux(p, result, - 1)
+
+proc lowestExpr(p: var TParser): PNode = 
+  result = otherExpr(p)
+  while p.tok.tokType == tkDotDot:
+    getTok(p)
+    optInd(p, result)
+    var a = result
+    result = newNodeP(nkRange, p)
+    addSon(result, a)
+    addSon(result, otherExpr(p))
 
 proc parseIfExpr(p: var TParser): PNode = 
   result = newNodeP(nkIfExpr, p)
@@ -769,7 +776,7 @@ proc parseExprStmt(p: var TParser): PNode =
         case p.tok.tokType
         of tkOf: 
           b = newNodeP(nkOfBranch, p)
-          exprListAux(p, nkRange, tkColon, tkDotDot, b)
+          exprList(p, tkColon, b)
         of tkElif: 
           b = newNodeP(nkElifBranch, p)
           getTok(p)
@@ -922,7 +929,7 @@ proc parseCase(p: var TParser): PNode =
     of tkOf: 
       if inElif: break 
       b = newNodeP(nkOfBranch, p)
-      exprListAux(p, nkRange, tkColon, tkDotDot, b)
+      exprList(p, tkColon, b)
     of tkElif: 
       inElif = true
       b = newNodeP(nkElifBranch, p)
@@ -1232,7 +1239,7 @@ proc parseObjectCase(p: var TParser): PNode =
     case p.tok.tokType
     of tkOf: 
       b = newNodeP(nkOfBranch, p)
-      exprListAux(p, nkRange, tkColon, tkDotDot, b)
+      exprList(p, tkColon, b)
     of tkElse: 
       b = newNodeP(nkElse, p)
       getTok(p)
