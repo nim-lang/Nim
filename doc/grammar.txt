@@ -10,7 +10,8 @@ prefixOperator ::= OP0 | OP3 | OP4 | OP5 | OP6 | OP7 | 'not'
 optInd ::= [COMMENT] [IND]
 optPar ::= [IND] | [SAD]
 
-lowestExpr ::= orExpr (OP0 optInd orExpr)*
+lowestExpr ::= otherExpr ('..' optInd otherExpr)*
+otherExpr ::= orExpr (OP0 optInd orExpr)*
 orExpr ::= andExpr (OR | 'xor' optInd andExpr)*
 andExpr ::= cmpExpr ('and' optInd cmpExpr)*
 cmpExpr ::= ampExpr (OP3 | 'is' | 'isnot' | 'in' | 'notin' optInd ampExpr)*
@@ -19,7 +20,7 @@ plusExpr ::= mulExpr (OP5 optInd mulExpr)*
 mulExpr ::= dollarExpr (OP6 | 'div' | 'mod' | 'shl' | 'shr' optInd dollarExpr)*
 dollarExpr ::= primary (OP7 optInd primary)*
 
-indexExpr ::= '..' [expr] | expr ['=' expr | '..' expr]
+indexExpr ::= '..' [expr] | expr ['=' expr]
 
 castExpr ::= 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 addrExpr ::= 'addr' '(' optInd expr optPar ')'
@@ -49,7 +50,7 @@ literal ::= INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
 
 constructor ::= literal
           | '[' optInd colonExprList optPar ']'
-          | '{' optInd sliceExprList optPar '}'
+          | '{' optInd ':' | colonExprList optPar '}'
           | '(' optInd colonExprList optPar ')'
 
 colonExpr ::= expr [':' expr]
@@ -57,9 +58,6 @@ colonExprList ::= [colonExpr (comma colonExpr)* [comma]]
 
 namedExpr ::= expr ['=' expr]
 namedExprList ::= [namedExpr (comma namedExpr)* [comma]]
-
-sliceExpr ::= expr ['..' expr]
-sliceExprList ::= [sliceExpr (comma sliceExpr)* [comma]]
 
 exprOrType ::= lowestExpr
             | 'if' expr ':' expr ('elif' expr ':' expr)* 'else' ':' expr
@@ -72,12 +70,15 @@ exprOrType ::= lowestExpr
 expr ::= exprOrType
      | 'proc' paramList [pragma] ['=' stmt] 
 
+exprList ::= [expr (comma expr)* [comma]]
+
+
 qualifiedIdent ::= symbol ['.' symbol]
 
 typeDesc ::= exprOrType
          | 'proc' paramList [pragma]
 
-macroStmt ::= ':' [stmt] ('of' [sliceExprList] ':' stmt
+macroStmt ::= ':' [stmt] ('of' [exprList] ':' stmt
                          |'elif' expr ':' stmt
                          |'except' exceptList ':' stmt )*
                          ['else' ':' stmt]
@@ -115,7 +116,7 @@ breakStmt ::= 'break' [symbol]
 continueStmt ::= 'continue'
 ifStmt ::= 'if' expr ':' stmt ('elif' expr ':' stmt)* ['else' ':' stmt]
 whenStmt ::= 'when' expr ':' stmt ('elif' expr ':' stmt)* ['else' ':' stmt]
-caseStmt ::= 'case' expr [':'] ('of' sliceExprList ':' stmt)*
+caseStmt ::= 'case' expr [':'] ('of' exprList ':' stmt)*
                                ('elif' expr ':' stmt)*
                                ['else' ':' stmt]
 whileStmt ::= 'while' expr ':' stmt
@@ -167,7 +168,7 @@ objectWhen ::= 'when' expr ':' [COMMENT] objectPart
               ('elif' expr ':' [COMMENT] objectPart)*
               ['else' ':' [COMMENT] objectPart]
 objectCase ::= 'case' expr ':' typeDesc [COMMENT]
-              ('of' sliceExprList ':' [COMMENT] objectPart)*
+              ('of' exprList ':' [COMMENT] objectPart)*
               ['else' ':' [COMMENT] objectPart]
 
 objectPart ::= objectWhen | objectCase | objectIdentPart | 'nil'
