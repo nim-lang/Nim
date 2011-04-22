@@ -246,38 +246,15 @@ proc accExpr(p: var TParser): PNode =
   addSon(result, x)
   eat(p, tkAccent)
 
-proc optExpr(p: var TParser): PNode = 
-  # [expr]
-  if (p.tok.tokType != tkComma) and (p.tok.tokType != tkBracketRi) and
-      (p.tok.tokType != tkDotDot): 
-    result = parseExpr(p)
-  else: 
-    result = ast.emptyNode
-  
-proc dotdotExpr(p: var TParser, first: PNode): PNode = 
-  result = newNodeP(nkRange, p)
-  addSon(result, first)
-  getTok(p)
-  optInd(p, result)
-  addSon(result, optExpr(p))
-
 proc indexExpr(p: var TParser): PNode = 
-  # indexExpr ::= '..' [expr] | expr ['=' expr]
-  if p.tok.tokType == tkDotDot:
-    result = dotdotExpr(p, ast.emptyNode)
-  else: 
-    result = parseExpr(p)
-    if p.tok.tokType == tkEquals: 
-      var a = result
-      result = newNodeP(nkExprEqExpr, p)
-      addSon(result, a)
-      getTok(p)
-      if p.tok.tokType == tkDotDot: 
-        addSon(result, dotdotExpr(p, ast.emptyNode))
-      else: 
-        var b = parseExpr(p)
-        if p.tok.tokType == tkDotDot: b = dotdotExpr(p, b)
-        addSon(result, b)
+  # indexExpr ::= expr ['=' expr]
+  result = parseExpr(p)
+  if p.tok.tokType == tkEquals: 
+    var a = result
+    result = newNodeP(nkExprEqExpr, p)
+    addSon(result, a)
+    getTok(p)
+    addSon(result, parseExpr(p))
   
 proc indexExprList(p: var TParser, first: PNode): PNode = 
   result = newNodeP(nkBracketExpr, p)
@@ -994,7 +971,7 @@ proc parseFor(p: var TParser): PNode =
     a = parseSymbol(p)
     addSon(result, a)
   eat(p, tkIn)
-  addSon(result, exprColonEqExpr(p, nkRange, tkDotDot))
+  addSon(result, parseExpr(p))
   eat(p, tkColon)
   skipComment(p, result)
   addSon(result, parseStmt(p))
