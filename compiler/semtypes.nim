@@ -116,14 +116,14 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   else: GlobalError(n.info, errXExpectsOneTypeParam, "distinct")
   
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType = 
-  if (n.kind != nkRange): InternalError(n.info, "semRangeAux")
-  checkSonsLen(n, 2)
+  assert IsRange(n)
+  checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
-  if (n.sons[0].kind == nkEmpty) or (n.sons[1].kind == nkEmpty): 
+  if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty): 
     GlobalError(n.Info, errRangeIsEmpty)
-  var a = semConstExpr(c, n.sons[0])
-  var b = semConstExpr(c, n.sons[1])
+  var a = semConstExpr(c, n[1])
+  var b = semConstExpr(c, n[2])
   if not sameType(a.typ, b.typ): GlobalError(n.info, errPureTypeMismatch)
   if not (a.typ.kind in
       {tyInt..tyInt64, tyEnum, tyBool, tyChar, tyFloat..tyFloat128}): 
@@ -138,7 +138,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 proc semRange(c: PContext, n: PNode, prev: PType): PType = 
   result = nil
   if sonsLen(n) == 2: 
-    if n.sons[1].kind == nkRange: result = semRangeAux(c, n.sons[1], prev)
+    if isRange(n[1]): result = semRangeAux(c, n[1], prev)
     else: GlobalError(n.sons[0].info, errRangeExpected)
   else: 
     GlobalError(n.info, errXExpectsOneTypeParam, "range")
@@ -148,7 +148,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyArray, prev, c)
   if sonsLen(n) == 3: 
     # 3 = length(array indx base)
-    if n.sons[1].kind == nkRange: indx = semRangeAux(c, n.sons[1], nil)
+    if isRange(n[1]): indx = semRangeAux(c, n[1], nil)
     else: indx = semTypeNode(c, n.sons[1], nil)
     addSon(result, indx)
     if indx.kind == tyGenericInst: indx = lastSon(indx)
@@ -276,26 +276,26 @@ proc checkForOverlap(c: PContext, t, ex: PNode, branchIndex: int) =
       if overlap(t.sons[i].sons[j], ex): 
         LocalError(ex.info, errDuplicateCaseLabel)
   
-proc semBranchExpr(c: PContext, t: PNode, ex: var PNode) = 
-  ex = semConstExpr(c, ex)
+proc semBranchExpr(c: PContext, t, e: PNode): PNode = 
+  result = semConstExpr(c, e)
   checkMinSonsLen(t, 1)
-  if (cmpTypes(t.sons[0].typ, ex.typ) <= isConvertible): 
-    typeMismatch(ex, t.sons[0].typ, ex.typ)
+  if cmpTypes(t.sons[0].typ, result.typ) <= isConvertible: 
+    typeMismatch(result, t.sons[0].typ, result.typ)
 
 proc SemCaseBranch(c: PContext, t, branch: PNode, branchIndex: int, 
                    covered: var biggestInt) = 
   for i in countup(0, sonsLen(branch) - 2): 
     var b = branch.sons[i]
-    if b.kind == nkRange: 
-      checkSonsLen(b, 2)
-      semBranchExpr(c, t, b.sons[0])
-      semBranchExpr(c, t, b.sons[1])
-      if emptyRange(b.sons[0], b.sons[1]): 
-        #MessageOut(renderTree(t));
-        GlobalError(b.info, errRangeIsEmpty)
-      covered = covered + getOrdValue(b.sons[1]) - getOrdValue(b.sons[0]) + 1
-    else: 
-      semBranchExpr(c, t, branch.sons[i]) # NOT: `b`, because of var-param!
+    if isRange(b): 
+      checkSonsLen(b, 3)
+      var r = newNodeI(nkRange, b.info)
+      r.add(semBranchExpr(c, t, b.sons[1]))
+      r.add(semBranchExpr(c, t, b.sons[2]))
+      if emptyRange(r[0], r[1]): GlobalError(b.info, errRangeIsEmpty)
+      covered = covered + getOrdValue(r[1]) - getOrdValue(r[0]) + 1
+      branch.sons[i] = r
+    else:
+      branch.sons[i] = semBranchExpr(c, t, b)
       inc(covered)
     checkForOverlap(c, t, branch.sons[i], branchIndex)
 

@@ -115,6 +115,26 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
+type
+  TSlice* {.final, pure.}[T] = object ## builtin slice type
+    a*, b*: T                         ## the bounds
+
+proc `..`*[T](a, b: T): TSlice[T] {.noSideEffect, inline.} =
+  ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
+  ## and `b` are inclusive. Slices can also be used in the set constructor
+  ## and in ordinal case statements, but then they are special-cased by the
+  ## compiler.
+  result.a = a
+  result.b = b
+
+proc `..`*[T](b: T): TSlice[T] {.noSideEffect, inline.} =
+  ## `slice`:idx: operator that constructs an interval ``[low(T), b]``
+  result.a = low(b)
+  result.b = b
+
+proc contains*[T](s: TSlice[T], value: T): bool {.noSideEffect, inline.} = 
+  result = value >= s.a and value <= s.b
+
 when not defined(EcmaScript) and not defined(NimrodVM):
   type
     TGenericSeq {.compilerproc, pure.} = object
@@ -1039,6 +1059,13 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   while res <= b:
     yield res
     inc(res, step)
+
+iterator `..`*[S, T](a: S, b: T): T {.inline.} =
+  ## An alias for `countup`.
+  var res: T = a
+  while res <= b:
+    yield res
+    inc res
 
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.}
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.}
